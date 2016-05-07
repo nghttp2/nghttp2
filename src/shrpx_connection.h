@@ -139,6 +139,15 @@ struct Connection {
   shrpx_proto proto;
 };
 
+// Creates BIO_method shared by all SSL objects.  If nghttp2 is built
+// with OpenSSL < 1.1.0, this returns statically allocated object.
+// Otherwise, it returns new BIO_METHOD object every time.
+BIO_METHOD *create_bio_method();
+
+// Deletes given |bio_method|.  If nghttp2 is built with OpenSSL <
+// 1.1.0, this function is noop.
+void delete_bio_method(BIO_METHOD *bio_method);
+
 } // namespace shrpx
 
 #endif // SHRPX_CONNECTION_H

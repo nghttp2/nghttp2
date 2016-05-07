@@ -81,6 +81,7 @@
 #include "shrpx_worker_process.h"
 #include "shrpx_process.h"
 #include "shrpx_signal.h"
+#include "shrpx_connection.h"
 #include "util.h"
 #include "app_helper.h"
 #include "ssl.h"
@@ -2072,6 +2073,8 @@ void process_options(int argc, char **argv,
   tlsconf.tls_proto_mask = ssl::create_tls_proto_mask(tlsconf.tls_proto_list);
 
   tlsconf.alpn_prefs = ssl::set_alpn_prefs(tlsconf.npn_list);
+
+  tlsconf.bio_method = create_bio_method();
 
   auto &listenerconf = mod_config()->conn.listener;
   auto &upstreamconf = mod_config()->conn.upstream;

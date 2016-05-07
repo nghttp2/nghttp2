@@ -61,6 +61,7 @@
 #include "util.h"
 #include "ssl.h"
 #include "template.h"
+#include "ssl_compat.h"
 
 using namespace nghttp2;
 
@@ -243,8 +244,13 @@ int tls_session_new_cb(SSL *ssl, SSL_SESSION *session) {
 } // namespace
 
 namespace {
-SSL_SESSION *tls_session_get_cb(SSL *ssl, unsigned char *id, int idlen,
-                                int *copy) {
+SSL_SESSION *tls_session_get_cb(SSL *ssl,
+#if OPENSSL_101_API
+                                const unsigned char *id,
+#else  // !OPENSSL_101_API
+                                unsigned char *id,
+#endif // !OPENSSL_101_API
+                                int idlen, int *copy) {
   auto conn = static_cast<Connection *>(SSL_get_app_data(ssl));
   auto handler = static_cast<ClientHandler *>(conn->data);
   auto worker = handler->get_worker();

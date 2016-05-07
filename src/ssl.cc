@@ -32,6 +32,8 @@
 #include <openssl/crypto.h>
 #include <openssl/conf.h>
 
+#include "ssl_compat.h"
+
 namespace nghttp2 {
 
 namespace ssl {
@@ -51,6 +53,14 @@ const char *const DEFAULT_CIPHER_LIST =
     "ECDSA-DES-CBC3-SHA:ECDHE-RSA-DES-CBC3-SHA:EDH-RSA-DES-CBC3-SHA:AES128-GCM-"
     "SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-"
     "SHA:DES-CBC3-SHA:!DSS";
+
+#if OPENSSL_101_API
+
+// CRYPTO_LOCK is deprecated as of OpenSSL 1.1.0
+LibsslGlobalLock::LibsslGlobalLock() {}
+LibsslGlobalLock::~LibsslGlobalLock() {}
+
+#else // !OPENSSL_101_API
 
 namespace {
 std::vector<std::mutex> ssl_global_locks;
@@ -80,6 +90,8 @@ LibsslGlobalLock::LibsslGlobalLock() {
 }
 
 LibsslGlobalLock::~LibsslGlobalLock() { ssl_global_locks.clear(); }
+
+#endif // !OPENSSL_101_API
 
 const char *get_tls_protocol(SSL *ssl) {
   switch (SSL_version(ssl)) {
@@ -152,9 +164,12 @@ bool check_http2_requirement(SSL *ssl) {
 }
 
 void libssl_init() {
-#ifndef OPENSSL_IS_BORINGSSL
+// OPENSSL_config() is not available in BoringSSL.  It is also
+// deprecated as of OpenSSL 1.1.0.
+#if !defined(OPENSSL_IS_BORINGSSL) && !OPENSSL_101_API
   OPENSSL_config(nullptr);
-#endif // OPENSSL_IS_BORINGSSL
+#endif // !defined(OPENSSL_IS_BORINGSSL) && !OPENSSL_101_API
+
   SSL_load_error_strings();
   SSL_library_init();
   OpenSSL_add_all_algorithms();

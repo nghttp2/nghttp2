@@ -36,10 +36,20 @@
 #include "shrpx_memcached_request.h"
 #include "memchunk.h"
 #include "util.h"
+#include "ssl_compat.h"
 
 using namespace nghttp2;
 
 namespace shrpx {
+
+#if !OPENSSL_101_API
+
+void *BIO_get_data(BIO *bio) { return bio->ptr; }
+void BIO_set_data(BIO *bio, void *ptr) { bio->ptr = ptr; }
+void BIO_set_init(BIO *bio, int init) { bio->init = init; }
+
+#endif // !OPENSSL_101_API
+
 Connection::Connection(struct ev_loop *loop, int fd, SSL *ssl,
                        MemchunkPool *mcpool, ev_tstamp write_timeout,
                        ev_tstamp read_timeout,
@@ -140,7 +150,7 @@ int shrpx_bio_write(BIO *b, const char *buf, int len) {
     return 0;
   }
 
-  auto conn = static_cast<Connection *>(b->ptr);
+  auto conn = static_cast<Connection *>(BIO_get_data(b));
   auto &wbuf = conn->tls.wbuf;
 
   BIO_clear_retry_flags(b);
@@ -181,7 +191,7 @@ int shrpx_bio_read(BIO *b, char *buf, int len) {
     return 0;
   }
 
-  auto conn = static_cast<Connection *>(b->ptr);
+  auto conn = static_cast<Connection *>(BIO_get_data(b));
   auto &rbuf = conn->tls.rbuf;
 
   BIO_clear_retry_flags(b);
@@ -230,10 +240,14 @@ long shrpx_bio_ctrl(BIO *b, int cmd, long num, void *ptr) {
 
 namespace {
 int shrpx_bio_create(BIO *b) {
+#if OPENSSL_101_API
+  BIO_set_init(b, 1);
+#else  // !OPENSSL_101_API
   b->init = 1;
   b->num = 0;
   b->ptr = nullptr;
   b->flags = 0;
+#endif // !OPENSSL_101_API
   return 1;
 }
 } // namespace
@@ -244,26 +258,55 @@ int shrpx_bio_destroy(BIO *b) {
     return 0;
   }
 
+#if !OPENSSL_101_API
   b->ptr = nullptr;
   b->init = 0;
   b->flags = 0;
+#endif // !OPENSSL_101_API
 
   return 1;
 }
 } // namespace
 
-namespace {
-BIO_METHOD shrpx_bio_method = {
-    BIO_TYPE_FD,    "nghttpx-bio",    shrpx_bio_write,
-    shrpx_bio_read, shrpx_bio_puts,   shrpx_bio_gets,
-    shrpx_bio_ctrl, shrpx_bio_create, shrpx_bio_destroy,
-};
-} // namespace
+#if OPENSSL_101_API
+
+BIO_METHOD *create_bio_method() {
+  auto meth = BIO_meth_new(BIO_TYPE_FD, "nghttpx-bio");
+  BIO_meth_set_write(meth, shrpx_bio_write);
+  BIO_meth_set_read(meth, shrpx_bio_read);
+  BIO_meth_set_puts(meth, shrpx_bio_puts);
+  BIO_meth_set_gets(meth, shrpx_bio_gets);
+  BIO_meth_set_ctrl(meth, shrpx_bio_ctrl);
+  BIO_meth_set_create(meth, shrpx_bio_create);
+  BIO_meth_set_destroy(meth, shrpx_bio_destroy);
+
+  return meth;
+}
+
+void delete_bio_method(BIO_METHOD *bio_method) { BIO_meth_free(bio_method); }
+
+#else // !OPENSSL_101_API
+
+BIO_METHOD *create_bio_method() {
+  static BIO_METHOD shrpx_bio_method = {
+      BIO_TYPE_FD,    "nghttpx-bio",    shrpx_bio_write,
+      shrpx_bio_read, shrpx_bio_puts,   shrpx_bio_gets,
+      shrpx_bio_ctrl, shrpx_bio_create, shrpx_bio_destroy,
+  };
+
+  return &shrpx_bio_method;
+}
+
+void delete_bio_method(BIO_METHOD *bio_method) {}
+
+#endif // !OPENSSL_101_API
 
 void Connection::set_ssl(SSL *ssl) {
   tls.ssl = ssl;
-  auto bio = BIO_new(&shrpx_bio_method);
-  bio->ptr = this;
+
+  auto &tlsconf = get_config()->tls;
+  auto bio = BIO_new(tlsconf.bio_method);
+  BIO_set_data(bio, this);
   SSL_set_bio(tls.ssl, bio, bio);
   SSL_set_app_data(tls.ssl, this);
 }
