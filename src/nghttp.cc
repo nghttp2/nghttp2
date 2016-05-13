@@ -2332,7 +2332,9 @@ ssize_t file_read_callback(nghttp2_session *session, int32_t stream_id,
     return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
   }
 
-  if (nread == 0) {
+  req->data_offset += nread;
+
+  if (req->data_offset == req->data_length) {
     *data_flags |= NGHTTP2_DATA_FLAG_EOF;
     if (!config.trailer.empty()) {
       std::vector<nghttp2_nv> nva;
@@ -2349,8 +2351,12 @@ ssize_t file_read_callback(nghttp2_session *session, int32_t stream_id,
         *data_flags |= NGHTTP2_DATA_FLAG_NO_END_STREAM;
       }
     }
-  } else {
-    req->data_offset += nread;
+
+    return nread;
+  }
+
+  if (nread == 0) {
+    return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
   }
 
   return nread;
