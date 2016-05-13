@@ -2355,7 +2355,7 @@ ssize_t file_read_callback(nghttp2_session *session, int32_t stream_id,
     return nread;
   }
 
-  if (nread == 0) {
+  if (req->data_offset > req->data_length || nread == 0) {
     return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
   }
 
