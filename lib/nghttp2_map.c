@@ -170,20 +170,18 @@ nghttp2_map_entry *nghttp2_map_find(nghttp2_map *map, key_type key) {
 
 int nghttp2_map_remove(nghttp2_map *map, key_type key) {
   uint32_t h;
-  nghttp2_map_entry *entry, *prev;
+  nghttp2_map_entry **dst;
+
   h = hash(key, map->tablelen);
-  prev = NULL;
-  for (entry = map->table[h]; entry; entry = entry->next) {
-    if (entry->key == key) {
-      if (prev == NULL) {
-        map->table[h] = entry->next;
-      } else {
-        prev->next = entry->next;
-      }
-      --map->size;
-      return 0;
+
+  for (dst = &map->table[h]; *dst; dst = &(*dst)->next) {
+    if ((*dst)->key != key) {
+      continue;
     }
-    prev = entry;
+
+    *dst = (*dst)->next;
+    --map->size;
+    return 0;
   }
   return NGHTTP2_ERR_INVALID_ARGUMENT;
 }

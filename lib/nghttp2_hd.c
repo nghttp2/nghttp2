@@ -584,27 +584,18 @@ static nghttp2_hd_entry *hd_map_find(nghttp2_hd_map *map, int *exact_match,
 }
 
 static void hd_map_remove(nghttp2_hd_map *map, nghttp2_hd_entry *ent) {
-  nghttp2_hd_entry **bucket;
-  nghttp2_hd_entry *p;
+  nghttp2_hd_entry **dst;
 
-  bucket = &map->table[ent->hash & (HD_MAP_SIZE - 1)];
+  dst = &map->table[ent->hash & (HD_MAP_SIZE - 1)];
 
-  if (*bucket == NULL) {
-    return;
-  }
+  for (; *dst; dst = &(*dst)->next) {
+    if (*dst != ent) {
+      continue;
+    }
 
-  if (*bucket == ent) {
-    *bucket = ent->next;
+    *dst = ent->next;
     ent->next = NULL;
     return;
-  }
-
-  for (p = *bucket; p; p = p->next) {
-    if (p->next == ent) {
-      p->next = ent->next;
-      ent->next = NULL;
-      return;
-    }
   }
 }
 
