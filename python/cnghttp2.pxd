@@ -314,9 +314,10 @@ cdef extern from 'nghttp2/nghttp2.h':
     int nghttp2_hd_inflate_change_table_size(nghttp2_hd_inflater *inflater,
                                              size_t hd_table_bufsize_max)
 
-    ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
-                                  nghttp2_nv *nv_out, int *inflate_flags,
-                                  uint8_t *input, size_t inlen, int in_final)
+    ssize_t nghttp2_hd_inflate_hd2(nghttp2_hd_inflater *inflater,
+                                   nghttp2_nv *nv_out, int *inflate_flags,
+                                   const uint8_t *input, size_t inlen,
+                                   int in_final)
 
     int nghttp2_hd_inflate_end_headers(nghttp2_hd_inflater *inflater)
 

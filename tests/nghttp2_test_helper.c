@@ -178,8 +178,8 @@ ssize_t inflate_hd(nghttp2_hd_inflater *inflater, nva_out *out,
 
     for (;;) {
       inflate_flags = 0;
-      rv = nghttp2_hd_inflate_hd(inflater, &nv, &inflate_flags, bp.pos,
-                                 nghttp2_buf_len(&bp), final);
+      rv = nghttp2_hd_inflate_hd2(inflater, &nv, &inflate_flags, bp.pos,
+                                  nghttp2_buf_len(&bp), final);
 
       if (rv < 0) {
         return rv;

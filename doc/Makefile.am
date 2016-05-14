@@ -47,6 +47,7 @@ APIDOCS= \
 	nghttp2_hd_inflate_get_num_table_entries.rst \
 	nghttp2_hd_inflate_get_table_entry.rst \
 	nghttp2_hd_inflate_hd.rst \
+	nghttp2_hd_inflate_hd2.rst \
 	nghttp2_hd_inflate_new.rst \
 	nghttp2_hd_inflate_new2.rst \
 	nghttp2_http2_strerror.rst \

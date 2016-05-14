@@ -191,9 +191,9 @@ cdef class HDInflater:
         res = []
         while True:
             inflate_flags = 0
-            rv = cnghttp2.nghttp2_hd_inflate_hd(self._inflater, &nv,
-                                                &inflate_flags,
-                                                buf, buflen, 1)
+            rv = cnghttp2.nghttp2_hd_inflate_hd2(self._inflater, &nv,
+                                                 &inflate_flags,
+                                                 buf, buflen, 1)
             if rv < 0:
                 raise Exception(_strerror(rv))
             buf += rv

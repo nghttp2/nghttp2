@@ -862,11 +862,11 @@ static size_t encode_length(uint8_t *buf, size_t n, size_t prefix) {
  * of bytes processed, or returns -1, indicating decoding error.
  */
 static ssize_t decode_length(uint32_t *res, size_t *shift_ptr, int *final,
-                             uint32_t initial, size_t shift, uint8_t *in,
-                             uint8_t *last, size_t prefix) {
+                             uint32_t initial, size_t shift, const uint8_t *in,
+                             const uint8_t *last, size_t prefix) {
   uint32_t k = (uint8_t)((1 << prefix) - 1);
   uint32_t n = initial;
-  uint8_t *start = in;
+  const uint8_t *start = in;
 
   *shift_ptr = 0;
   *final = 0;
@@ -1625,8 +1625,8 @@ static void hd_inflate_set_huffman_encoded(nghttp2_hd_inflater *inflater,
  *   Integer decoding failed
  */
 static ssize_t hd_inflate_read_len(nghttp2_hd_inflater *inflater, int *rfin,
-                                   uint8_t *in, uint8_t *last, size_t prefix,
-                                   size_t maxlen) {
+                                   const uint8_t *in, const uint8_t *last,
+                                   size_t prefix, size_t maxlen) {
   ssize_t rv;
   uint32_t out;
 
@@ -1667,8 +1667,8 @@ static ssize_t hd_inflate_read_len(nghttp2_hd_inflater *inflater, int *rfin,
  *   Huffman decoding failed
  */
 static ssize_t hd_inflate_read_huff(nghttp2_hd_inflater *inflater,
-                                    nghttp2_buf *buf, uint8_t *in,
-                                    uint8_t *last) {
+                                    nghttp2_buf *buf, const uint8_t *in,
+                                    const uint8_t *last) {
   ssize_t readlen;
   int final = 0;
   if ((size_t)(last - in) >= inflater->left) {
@@ -1699,7 +1699,7 @@ static ssize_t hd_inflate_read_huff(nghttp2_hd_inflater *inflater,
  *   Header decompression failed
  */
 static ssize_t hd_inflate_read(nghttp2_hd_inflater *inflater, nghttp2_buf *buf,
-                               uint8_t *in, uint8_t *last) {
+                               const uint8_t *in, const uint8_t *last) {
   size_t len = nghttp2_min((size_t)(last - in), inflater->left);
 
   buf->last = nghttp2_cpymem(buf->last, in, len);
@@ -1822,11 +1822,18 @@ static int hd_inflate_commit_indname(nghttp2_hd_inflater *inflater,
 ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater, nghttp2_nv *nv_out,
                               int *inflate_flags, uint8_t *in, size_t inlen,
                               int in_final) {
+  return nghttp2_hd_inflate_hd2(inflater, nv_out, inflate_flags, in, inlen,
+                                in_final);
+}
+
+ssize_t nghttp2_hd_inflate_hd2(nghttp2_hd_inflater *inflater,
+                               nghttp2_nv *nv_out, int *inflate_flags,
+                               const uint8_t *in, size_t inlen, int in_final) {
   ssize_t rv;
   nghttp2_hd_nv hd_nv;
 
-  rv = nghttp2_hd_inflate_hd2(inflater, &hd_nv, inflate_flags, in, inlen,
-                              in_final);
+  rv = nghttp2_hd_inflate_hd_nv(inflater, &hd_nv, inflate_flags, in, inlen,
+                                in_final);
 
   if (rv < 0) {
     return rv;
@@ -1845,12 +1852,13 @@ ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater, nghttp2_nv *nv_out,
   return rv;
 }
 
-ssize_t nghttp2_hd_inflate_hd2(nghttp2_hd_inflater *inflater,
-                               nghttp2_hd_nv *nv_out, int *inflate_flags,
-                               uint8_t *in, size_t inlen, int in_final) {
+ssize_t nghttp2_hd_inflate_hd_nv(nghttp2_hd_inflater *inflater,
+                                 nghttp2_hd_nv *nv_out, int *inflate_flags,
+                                 const uint8_t *in, size_t inlen,
+                                 int in_final) {
   ssize_t rv = 0;
-  uint8_t *first = in;
-  uint8_t *last = in + inlen;
+  const uint8_t *first = in;
+  const uint8_t *last = in + inlen;
   int rfin = 0;
   int busy = 0;
   nghttp2_mem *mem;

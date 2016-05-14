@@ -353,9 +353,9 @@ void nghttp2_hd_inflate_free(nghttp2_hd_inflater *inflater);
  * that return values and semantics are the same as
  * nghttp2_hd_inflate_hd().
  */
-ssize_t nghttp2_hd_inflate_hd2(nghttp2_hd_inflater *inflater,
-                               nghttp2_hd_nv *nv_out, int *inflate_flags,
-                               uint8_t *in, size_t inlen, int in_final);
+ssize_t nghttp2_hd_inflate_hd_nv(nghttp2_hd_inflater *inflater,
+                                 nghttp2_hd_nv *nv_out, int *inflate_flags,
+                                 const uint8_t *in, size_t inlen, int in_final);
 
 /* For unittesting purpose */
 int nghttp2_hd_emit_indname_block(nghttp2_bufs *bufs, size_t index,
