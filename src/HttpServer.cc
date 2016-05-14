@@ -1121,8 +1121,12 @@ void prepare_status_response(Stream *stream, Http2Handler *hd, int status) {
   data_prd.read_callback = file_read_callback;
 
   HeaderRefs headers;
+  headers.reserve(2);
   headers.emplace_back(StringRef::from_lit("content-type"),
                        StringRef::from_lit("text/html; charset=UTF-8"));
+  headers.emplace_back(
+      StringRef::from_lit("content-length"),
+      util::make_string_ref_uint(stream->balloc, file_ent->length));
   hd->submit_response(StringRef{status_page->status}, stream->stream_id,
                       headers, &data_prd);
 }
