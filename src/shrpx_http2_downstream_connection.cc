@@ -179,24 +179,11 @@ ssize_t http2_data_read_callback(nghttp2_session *session, int32_t stream_id,
   }
   const auto &req = downstream->request();
   auto input = downstream->get_request_buf();
-  auto nread = input->remove(buf, length);
-  auto input_empty = input->rleft() == 0;
 
-  if (nread > 0) {
-    // This is important because it will handle flow control
-    // stuff.
-    if (downstream->get_upstream()->resume_read(SHRPX_NO_BUFFER, downstream,
-                                                nread) != 0) {
-      // In this case, downstream may be deleted.
-      return NGHTTP2_ERR_CALLBACK_FAILURE;
-    }
+  auto nread = std::min(input->rleft(), length);
+  auto input_empty = input->rleft() == nread;
 
-    // Check dconn is still alive because Upstream::resume_read()
-    // may delete downstream which will delete dconn.
-    if (sd->dconn == nullptr) {
-      return NGHTTP2_ERR_DEFERRED;
-    }
-  }
+  *data_flags |= NGHTTP2_DATA_FLAG_NO_COPY;
 
   if (input_empty &&
       downstream->get_request_state() == Downstream::MSG_COMPLETE &&
@@ -227,12 +214,6 @@ ssize_t http2_data_read_callback(nghttp2_session *session, int32_t stream_id,
         }
       }
     }
-  }
-
-  if (!input_empty) {
-    downstream->reset_downstream_wtimer();
-  } else {
-    downstream->disable_downstream_wtimer();
   }
 
   if (nread == 0 && (*data_flags & NGHTTP2_DATA_FLAG_EOF) == 0) {

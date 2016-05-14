@@ -1362,6 +1362,54 @@ int on_frame_not_send_callback(nghttp2_session *session,
 }
 } // namespace
 
+namespace {
+constexpr auto PADDING = std::array<uint8_t, 256>{};
+} // namespace
+
+namespace {
+int send_data_callback(nghttp2_session *session, nghttp2_frame *frame,
+                       const uint8_t *framehd, size_t length,
+                       nghttp2_data_source *source, void *user_data) {
+  auto http2session = static_cast<Http2Session *>(user_data);
+  auto sd = static_cast<StreamData *>(
+      nghttp2_session_get_stream_user_data(session, frame->hd.stream_id));
+  auto dconn = sd->dconn;
+  auto downstream = dconn->get_downstream();
+  auto input = downstream->get_request_buf();
+  auto wb = http2session->get_request_buf();
+
+  size_t padlen = 0;
+
+  wb->append(framehd, 9);
+  if (frame->data.padlen > 0) {
+    padlen = frame->data.padlen - 1;
+    wb->append(static_cast<uint8_t>(padlen));
+  }
+
+  input->remove(*wb, length);
+
+  wb->append(PADDING.data(), padlen);
+
+  downstream->reset_downstream_wtimer();
+
+  if (length > 0) {
+    // This is important because it will handle flow control
+    // stuff.
+    if (downstream->get_upstream()->resume_read(SHRPX_NO_BUFFER, downstream,
+                                                length) != 0) {
+      // In this case, downstream may be deleted.
+      return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
+    }
+
+    // Here sd->dconn could be nullptr, because
+    // Upstream::resume_read() may delete downstream which will delete
+    // dconn.  Is this still really true?
+  }
+
+  return 0;
+}
+} // namespace
+
 nghttp2_session_callbacks *create_http2_downstream_callbacks() {
   int rv;
   nghttp2_session_callbacks *callbacks;
@@ -1392,6 +1440,9 @@ nghttp2_session_callbacks *create_http2_downstream_callbacks() {
 
   nghttp2_session_callbacks_set_on_begin_headers_callback(
       callbacks, on_begin_headers_callback);
+
+  nghttp2_session_callbacks_set_send_data_callback(callbacks,
+                                                   send_data_callback);
 
   if (get_config()->padding) {
     nghttp2_session_callbacks_set_select_padding_callback(
@@ -2114,5 +2165,7 @@ void Http2Session::exclude_from_scheduling() {
   remove_from_freelist();
   freelist_zone_ = FREELIST_ZONE_GONE;
 }
+
+DefaultMemchunks *Http2Session::get_request_buf() { return &wb_; }
 
 } // namespace shrpx
