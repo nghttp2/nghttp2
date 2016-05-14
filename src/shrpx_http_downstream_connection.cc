@@ -645,7 +645,10 @@ int htp_hdrs_completecb(http_parser *htp) {
     resp.connection_close = true;
     // transfer-encoding not applied to upgraded connection
     downstream->set_chunked_response(false);
+  } else if (!downstream->expect_response_body()) {
+    downstream->set_chunked_response(false);
   }
+
   if (upstream->on_downstream_header_complete(downstream) != 0) {
     return -1;
   }
