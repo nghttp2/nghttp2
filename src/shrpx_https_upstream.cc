@@ -628,14 +628,13 @@ int HttpsUpstream::on_write() {
   // We need to postpone detachment until all data are sent so that
   // we can notify nghttp2 library all data consumed.
   if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
-    if (resp.connection_close ||
-        downstream->get_request_state() != Downstream::MSG_COMPLETE) {
+    if (downstream->can_detach_downstream_connection()) {
+      // Keep-alive
+      downstream->detach_downstream_connection();
+    } else {
       // Connection close
       downstream->pop_downstream_connection();
       // dconn was deleted
-    } else {
-      // Keep-alive
-      downstream->detach_downstream_connection();
     }
     // We need this if response ends before request.
     if (downstream->get_request_state() == Downstream::MSG_COMPLETE) {

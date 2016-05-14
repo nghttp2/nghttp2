@@ -905,9 +905,12 @@ BlockedLink *Downstream::detach_blocked_link() {
 }
 
 bool Downstream::can_detach_downstream_connection() const {
+  // We should check request and response buffer.  If request buffer
+  // is not empty, then we might leave downstream connection in weird
+  // state, especially for HTTP/1.1
   return dconn_ && response_state_ == Downstream::MSG_COMPLETE &&
          request_state_ == Downstream::MSG_COMPLETE && !upgraded_ &&
-         !resp_.connection_close;
+         !resp_.connection_close && request_buf_.rleft() == 0;
 }
 
 DefaultMemchunks Downstream::pop_response_buf() {
