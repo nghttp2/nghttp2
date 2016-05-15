@@ -341,13 +341,13 @@ void memcached_get_ticket_key_cb(struct ev_loop *loop, ev_timer *w,
       key.hmac = EVP_sha256();
       key.hmac_keylen = hmac_keylen;
 
-      std::copy_n(p, key.data.name.size(), key.data.name.data());
+      std::copy_n(p, key.data.name.size(), std::begin(key.data.name));
       p += key.data.name.size();
 
-      std::copy_n(p, enc_keylen, key.data.enc_key.data());
+      std::copy_n(p, enc_keylen, std::begin(key.data.enc_key));
       p += enc_keylen;
 
-      std::copy_n(p, hmac_keylen, key.data.hmac_key.data());
+      std::copy_n(p, hmac_keylen, std::begin(key.data.hmac_key));
       p += hmac_keylen;
 
       ticket_keys->keys.push_back(std::move(key));

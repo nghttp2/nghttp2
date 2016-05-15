@@ -665,7 +665,6 @@ int htp_hdrs_completecb(http_parser *htp) {
     }
   }
 
-  auto status = resp.http_status;
   // Ignore the response body. HEAD response may contain
   // Content-Length or Transfer-Encoding: chunked.  Some server send
   // 304 status code with nonzero Content-Length, but without response
@@ -674,10 +673,7 @@ int htp_hdrs_completecb(http_parser *htp) {
 
   // TODO It seems that the cases other than HEAD are handled by
   // http-parser.  Need test.
-  return req.method == HTTP_HEAD || (100 <= status && status <= 199) ||
-                 status == 204 || status == 304
-             ? 1
-             : 0;
+  return !http2::expect_response_body(req.method, resp.http_status);
 }
 } // namespace
 
