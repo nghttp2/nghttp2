@@ -422,7 +422,7 @@ typedef enum {
 /**
  * @struct
  *
- * The object representing single contagious buffer.
+ * The object representing single contiguous buffer.
  */
 typedef struct {
   /**
