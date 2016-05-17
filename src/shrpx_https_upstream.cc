@@ -806,7 +806,16 @@ int HttpsUpstream::send_reply(Downstream *downstream, const uint8_t *body,
   auto &balloc = downstream->get_block_allocator();
 
   auto connection_close = false;
-  if (req.http_major <= 0 || (req.http_major == 1 && req.http_minor == 0)) {
+
+  auto worker = handler_->get_worker();
+
+  if (worker->get_graceful_shutdown()) {
+    resp.fs.add_header_token(StringRef::from_lit("connection"),
+                             StringRef::from_lit("close"), false,
+                             http2::HD_CONNECTION);
+    connection_close = true;
+  } else if (req.http_major <= 0 ||
+             (req.http_major == 1 && req.http_minor == 0)) {
     connection_close = true;
   } else {
     auto c = resp.fs.header(http2::HD_CONNECTION);
