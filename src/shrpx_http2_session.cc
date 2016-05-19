@@ -92,6 +92,11 @@ void settings_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
   auto http2session = static_cast<Http2Session *>(w->data);
   http2session->stop_settings_timer();
   SSLOG(INFO, http2session) << "SETTINGS timeout";
+
+  auto addr = http2session->get_addr();
+  auto &connect_blocker = addr->connect_blocker;
+  connect_blocker->on_failure();
+
   if (http2session->terminate_session(NGHTTP2_SETTINGS_TIMEOUT) != 0) {
     delete http2session;
 
