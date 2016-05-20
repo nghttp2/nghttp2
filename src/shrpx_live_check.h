@@ -34,6 +34,8 @@
 
 #include <ev.h>
 
+#include <nghttp2/nghttp2.h>
+
 #include "shrpx_connection.h"
 
 namespace shrpx {
@@ -64,14 +66,37 @@ public:
   int noop();
   int connected();
   int tls_handshake();
+  int read_tls();
+  int write_tls();
+  int read_clear();
+  int write_clear();
 
   int do_read();
   int do_write();
 
+  // These functions are used to feed / extract data to
+  // nghttp2_session object.
+  int on_read(const uint8_t *data, size_t len);
+  int on_write();
+
+  // Call this function when HTTP/2 connection was established.  We
+  // don't call this function for HTTP/1 at the moment.
+  int connection_made();
+
+  void start_settings_timer();
+  void stop_settings_timer();
+
+  // Call this function when SETTINGS ACK was received from server.
+  void settings_ack_received();
+
+  void signal_write();
+
 private:
   Connection conn_;
+  DefaultMemchunks wb_;
   std::mt19937 &gen_;
   ev_timer backoff_timer_;
+  ev_timer settings_timer_;
   std::function<int(LiveCheck &)> read_, write_;
   Worker *worker_;
   // nullptr if no TLS is configured
@@ -79,10 +104,15 @@ private:
   DownstreamAddrGroup *group_;
   // Address of remote endpoint
   DownstreamAddr *addr_;
+  nghttp2_session *session_;
   // The number of successful connect attempt in a row.
   size_t success_count_;
   // The number of unsuccessful connect attempt in a row.
   size_t fail_count_;
+  // true when SETTINGS ACK has been received from server.
+  bool settings_ack_received_;
+  // true when GOAWAY has been queued.
+  bool session_closing_;
 };
 
 } // namespace shrpx

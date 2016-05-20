@@ -30,6 +30,10 @@
 namespace shrpx {
 
 namespace {
+constexpr size_t MAX_BUFFER_SIZE = 4_k;
+} // namespace
+
+namespace {
 void readcb(struct ev_loop *loop, ev_io *w, int revents) {
   int rv;
   auto conn = static_cast<Connection *>(w->data);
@@ -79,6 +83,18 @@ void backoff_timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
 }
 } // namespace
 
+namespace {
+void settings_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
+  auto live_check = static_cast<LiveCheck *>(w->data);
+
+  if (LOG_ENABLED(INFO)) {
+    LOG(INFO) << "SETTINGS timeout";
+  }
+
+  live_check->on_failure();
+}
+} // namespace
+
 LiveCheck::LiveCheck(struct ev_loop *loop, SSL_CTX *ssl_ctx, Worker *worker,
                      DownstreamAddrGroup *group, DownstreamAddr *addr,
                      std::mt19937 &gen)
@@ -87,6 +103,7 @@ LiveCheck::LiveCheck(struct ev_loop *loop, SSL_CTX *ssl_ctx, Worker *worker,
             get_config()->conn.downstream.timeout.read, {}, {}, writecb, readcb,
             timeoutcb, this, get_config()->tls.dyn_rec.warmup_threshold,
             get_config()->tls.dyn_rec.idle_timeout, PROTO_NONE),
+      wb_(worker->get_mcpool()),
       gen_(gen),
       read_(&LiveCheck::noop),
       write_(&LiveCheck::noop),
@@ -94,10 +111,18 @@ LiveCheck::LiveCheck(struct ev_loop *loop, SSL_CTX *ssl_ctx, Worker *worker,
       ssl_ctx_(ssl_ctx),
       group_(group),
       addr_(addr),
+      session_(nullptr),
       success_count_(0),
-      fail_count_(0) {
+      fail_count_(0),
+      settings_ack_received_(false),
+      session_closing_(false) {
   ev_timer_init(&backoff_timer_, backoff_timeoutcb, 0., 0.);
   backoff_timer_.data = this;
+
+  // SETTINGS ACK must be received in a short timeout.  Otherwise, we
+  // assume that connection is broken.
+  ev_timer_init(&settings_timer_, settings_timeout_cb, 0., 0.);
+  settings_timer_.data = this;
 }
 
 LiveCheck::~LiveCheck() {
@@ -110,9 +135,19 @@ void LiveCheck::disconnect() {
   conn_.rlimit.stopw();
   conn_.wlimit.stopw();
 
+  ev_timer_stop(conn_.loop, &settings_timer_);
+
   read_ = write_ = &LiveCheck::noop;
 
   conn_.disconnect();
+
+  nghttp2_session_del(session_);
+  session_ = nullptr;
+
+  settings_ack_received_ = false;
+  session_closing_ = false;
+
+  wb_.reset();
 }
 
 // Use the similar backoff algorithm described in
@@ -243,8 +278,21 @@ int LiveCheck::connected() {
     return do_write();
   }
 
+  const auto &shared_addr = group_->shared_addr;
+  if (shared_addr->proto == PROTO_HTTP2) {
+    // For HTTP/2, we try to read SETTINGS ACK from server to make
+    // sure it is really alive, and serving HTTP/2.
+    read_ = &LiveCheck::read_clear;
+    write_ = &LiveCheck::write_clear;
+
+    if (connection_made() != 0) {
+      return -1;
+    }
+
+    return 0;
+  }
+
   on_success();
-  disconnect();
 
   return 0;
 }
@@ -305,7 +353,16 @@ int LiveCheck::tls_handshake() {
     return -1;
   case PROTO_HTTP2:
     if (util::check_h2_is_selected(proto)) {
-      break;
+      // For HTTP/2, we try to read SETTINGS ACK from server to make
+      // sure it is really alive, and serving HTTP/2.
+      read_ = &LiveCheck::read_tls;
+      write_ = &LiveCheck::write_tls;
+
+      if (connection_made() != 0) {
+        return -1;
+      }
+
+      return 0;
     }
     return -1;
   default:
@@ -313,7 +370,209 @@ int LiveCheck::tls_handshake() {
   }
 
   on_success();
-  disconnect();
+
+  return 0;
+}
+
+int LiveCheck::read_tls() {
+  ev_timer_again(conn_.loop, &conn_.rt);
+
+  std::array<uint8_t, 4_k> buf;
+
+  ERR_clear_error();
+
+  for (;;) {
+    auto nread = conn_.read_tls(buf.data(), buf.size());
+
+    if (nread == 0) {
+      return 0;
+    }
+
+    if (nread < 0) {
+      return nread;
+    }
+
+    if (on_read(buf.data(), nread) != 0) {
+      return -1;
+    }
+  }
+}
+
+int LiveCheck::write_tls() {
+  ev_timer_again(conn_.loop, &conn_.rt);
+
+  ERR_clear_error();
+
+  struct iovec iov;
+
+  for (;;) {
+    if (wb_.rleft() > 0) {
+      auto iovcnt = wb_.riovec(&iov, 1);
+      assert(iovcnt == 1);
+      auto nwrite = conn_.write_tls(iov.iov_base, iov.iov_len);
+
+      if (nwrite == 0) {
+        return 0;
+      }
+
+      if (nwrite < 0) {
+        return nwrite;
+      }
+
+      wb_.drain(nwrite);
+
+      continue;
+    }
+
+    if (on_write() != 0) {
+      return -1;
+    }
+
+    if (wb_.rleft() == 0) {
+      conn_.start_tls_write_idle();
+      break;
+    }
+  }
+
+  conn_.wlimit.stopw();
+  ev_timer_stop(conn_.loop, &conn_.wt);
+
+  if (settings_ack_received_) {
+    on_success();
+  }
+
+  return 0;
+}
+
+int LiveCheck::read_clear() {
+  ev_timer_again(conn_.loop, &conn_.rt);
+
+  std::array<uint8_t, 4_k> buf;
+
+  for (;;) {
+    auto nread = conn_.read_clear(buf.data(), buf.size());
+
+    if (nread == 0) {
+      return 0;
+    }
+
+    if (nread < 0) {
+      return nread;
+    }
+
+    if (on_read(buf.data(), nread) != 0) {
+      return -1;
+    }
+  }
+}
+
+int LiveCheck::write_clear() {
+  ev_timer_again(conn_.loop, &conn_.rt);
+
+  struct iovec iov;
+
+  for (;;) {
+    if (wb_.rleft() > 0) {
+      auto iovcnt = wb_.riovec(&iov, 1);
+      assert(iovcnt == 1);
+      auto nwrite = conn_.write_clear(iov.iov_base, iov.iov_len);
+
+      if (nwrite == 0) {
+        return 0;
+      }
+
+      if (nwrite < 0) {
+        return nwrite;
+      }
+
+      wb_.drain(nwrite);
+
+      continue;
+    }
+
+    if (on_write() != 0) {
+      return -1;
+    }
+
+    if (wb_.rleft() == 0) {
+      break;
+    }
+  }
+
+  conn_.wlimit.stopw();
+  ev_timer_stop(conn_.loop, &conn_.wt);
+
+  if (settings_ack_received_) {
+    on_success();
+  }
+
+  return 0;
+}
+
+int LiveCheck::on_read(const uint8_t *data, size_t len) {
+  ssize_t rv;
+
+  rv = nghttp2_session_mem_recv(session_, data, len);
+  if (rv < 0) {
+    LOG(ERROR) << "nghttp2_session_mem_recv() returned error: "
+               << nghttp2_strerror(rv);
+    return -1;
+  }
+
+  if (settings_ack_received_ && !session_closing_) {
+    session_closing_ = true;
+    rv = nghttp2_session_terminate_session(session_, NGHTTP2_NO_ERROR);
+    if (rv != 0) {
+      return -1;
+    }
+  }
+
+  if (nghttp2_session_want_read(session_) == 0 &&
+      nghttp2_session_want_write(session_) == 0 && wb_.rleft() == 0) {
+    if (LOG_ENABLED(INFO)) {
+      LOG(INFO) << "No more read/write for this session";
+    }
+
+    return -1;
+  }
+
+  signal_write();
+
+  return 0;
+}
+
+int LiveCheck::on_write() {
+  for (;;) {
+    const uint8_t *data;
+    auto datalen = nghttp2_session_mem_send(session_, &data);
+
+    if (datalen < 0) {
+      LOG(ERROR) << "nghttp2_session_mem_send() returned error: "
+                 << nghttp2_strerror(datalen);
+      return -1;
+    }
+    if (datalen == 0) {
+      break;
+    }
+    wb_.append(data, datalen);
+
+    if (wb_.rleft() >= MAX_BUFFER_SIZE) {
+      break;
+    }
+  }
+
+  if (nghttp2_session_want_read(session_) == 0 &&
+      nghttp2_session_want_write(session_) == 0 && wb_.rleft() == 0) {
+    if (LOG_ENABLED(INFO)) {
+      LOG(INFO) << "No more read/write for this session";
+    }
+
+    if (settings_ack_received_) {
+      return 0;
+    }
+
+    return -1;
+  }
 
   return 0;
 }
@@ -359,5 +618,103 @@ void LiveCheck::on_success() {
 }
 
 int LiveCheck::noop() { return 0; }
+
+void LiveCheck::start_settings_timer() {
+  if (ev_is_active(&settings_timer_)) {
+    return;
+  }
+
+  ev_timer_set(&settings_timer_, 10., 0.);
+  ev_timer_start(conn_.loop, &settings_timer_);
+}
+
+void LiveCheck::stop_settings_timer() {
+  ev_timer_stop(conn_.loop, &settings_timer_);
+}
+
+void LiveCheck::settings_ack_received() { settings_ack_received_ = true; }
+
+namespace {
+int on_frame_send_callback(nghttp2_session *session, const nghttp2_frame *frame,
+                           void *user_data) {
+  auto live_check = static_cast<LiveCheck *>(user_data);
+
+  if (frame->hd.type != NGHTTP2_SETTINGS ||
+      (frame->hd.flags & NGHTTP2_FLAG_ACK)) {
+    return 0;
+  }
+
+  live_check->start_settings_timer();
+
+  return 0;
+}
+} // namespace
+
+namespace {
+int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
+                           void *user_data) {
+  auto live_check = static_cast<LiveCheck *>(user_data);
+
+  if (frame->hd.type != NGHTTP2_SETTINGS ||
+      (frame->hd.flags & NGHTTP2_FLAG_ACK) == 0) {
+    return 0;
+  }
+
+  live_check->stop_settings_timer();
+  live_check->settings_ack_received();
+
+  return 0;
+}
+} // namespace
+
+int LiveCheck::connection_made() {
+  int rv;
+
+  nghttp2_session_callbacks *callbacks;
+  rv = nghttp2_session_callbacks_new(&callbacks);
+  if (rv != 0) {
+    return -1;
+  }
+
+  nghttp2_session_callbacks_set_on_frame_send_callback(callbacks,
+                                                       on_frame_send_callback);
+  nghttp2_session_callbacks_set_on_frame_recv_callback(callbacks,
+                                                       on_frame_recv_callback);
+
+  rv = nghttp2_session_client_new(&session_, callbacks, this);
+
+  nghttp2_session_callbacks_del(callbacks);
+
+  if (rv != 0) {
+    return -1;
+  }
+
+  rv = nghttp2_submit_settings(session_, NGHTTP2_FLAG_NONE, nullptr, 0);
+  if (rv != 0) {
+    return -1;
+  }
+
+  auto &shared_addr = group_->shared_addr;
+  auto must_terminate =
+      shared_addr->tls && !nghttp2::ssl::check_http2_requirement(conn_.tls.ssl);
+
+  if (must_terminate) {
+    if (LOG_ENABLED(INFO)) {
+      LOG(INFO) << "TLSv1.2 was not negotiated. HTTP/2 must not be negotiated.";
+    }
+
+    rv = nghttp2_session_terminate_session(session_,
+                                           NGHTTP2_INADEQUATE_SECURITY);
+    if (rv != 0) {
+      return -1;
+    }
+  }
+
+  signal_write();
+
+  return 0;
+}
+
+void LiveCheck::signal_write() { conn_.wlimit.startw(); }
 
 } // namespace shrpx
