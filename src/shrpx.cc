@@ -1098,6 +1098,12 @@ void fill_default_config() {
   auto &http2conf = mod_config()->http2;
   {
     auto &upstreamconf = http2conf.upstream;
+
+    {
+      auto &timeoutconf = upstreamconf.timeout;
+      timeoutconf.settings = 10_s;
+    }
+
     // window bits for HTTP/2 and SPDY upstream connection per
     // stream. 2**16-1 = 64KiB-1, which is HTTP/2 default. Please note
     // that SPDY/3 default is 64KiB.
@@ -1114,6 +1120,12 @@ void fill_default_config() {
 
   {
     auto &downstreamconf = http2conf.downstream;
+
+    {
+      auto &timeoutconf = downstreamconf.timeout;
+      timeoutconf.settings = 10_s;
+    }
+
     downstreamconf.window_bits = 16;
     downstreamconf.connection_window_bits = 30;
     downstreamconf.max_concurrent_streams = 100;
@@ -1496,6 +1508,18 @@ Timeout:
               disables this feature.
               Default: )"
       << util::duration_str(get_config()->conn.listener.timeout.sleep) << R"(
+  --frontend-http2-setting-timeout=<DURATION>
+              Specify  timeout before  SETTINGS ACK  is received  from
+              client.
+              Default: )"
+      << util::duration_str(get_config()->http2.upstream.timeout.settings)
+      << R"(
+  --backend-http2-settings-timeout=<DURATION>
+              Specify  timeout before  SETTINGS ACK  is received  from
+              backend server.
+              Default: )"
+      << util::duration_str(get_config()->http2.downstream.timeout.settings)
+      << R"(
 
 SSL/TLS:
   --ciphers=<SUITE>
@@ -2576,6 +2600,10 @@ int main(int argc, char **argv) {
          &flag, 121},
         {SHRPX_OPT_ERROR_PAGE.c_str(), required_argument, &flag, 122},
         {SHRPX_OPT_NO_KQUEUE.c_str(), no_argument, &flag, 123},
+        {SHRPX_OPT_FRONTEND_HTTP2_SETTINGS_TIMEOUT.c_str(), required_argument,
+         &flag, 124},
+        {SHRPX_OPT_BACKEND_HTTP2_SETTINGS_TIMEOUT.c_str(), required_argument,
+         &flag, 125},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -3154,6 +3182,16 @@ int main(int argc, char **argv) {
       case 123:
         // --no-kqueue
         cmdcfgs.emplace_back(SHRPX_OPT_NO_KQUEUE, StringRef::from_lit("yes"));
+        break;
+      case 124:
+        // --frontend-http2-settings-timeout
+        cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_HTTP2_SETTINGS_TIMEOUT,
+                             StringRef{optarg});
+        break;
+      case 125:
+        // --backend-http2-settings-timeout
+        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_HTTP2_SETTINGS_TIMEOUT,
+                             StringRef{optarg});
         break;
       default:
         break;

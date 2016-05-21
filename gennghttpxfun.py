@@ -130,6 +130,8 @@ OPTIONS = [
     "backend-connections-per-host",
     "error-page",
     "no-kqueue",
+    "frontend-http2-settings-timeout",
+    "backend-http2-settings-timeout",
 ]
 
 LOGVARS = [

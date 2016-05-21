@@ -755,7 +755,9 @@ int on_stream_close_callback(nghttp2_session *session, int32_t stream_id,
 } // namespace
 
 void Http2Session::start_settings_timer() {
-  ev_timer_set(&settings_timer_, 10., 0.);
+  auto &downstreamconf = get_config()->http2.downstream;
+
+  ev_timer_set(&settings_timer_, downstreamconf.timeout.settings, 0.);
   ev_timer_start(conn_.loop, &settings_timer_);
 }
 

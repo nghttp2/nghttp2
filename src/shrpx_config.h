@@ -276,6 +276,10 @@ constexpr auto SHRPX_OPT_BACKEND_CONNECTIONS_PER_HOST =
     StringRef::from_lit("backend-connections-per-host");
 constexpr auto SHRPX_OPT_ERROR_PAGE = StringRef::from_lit("error-page");
 constexpr auto SHRPX_OPT_NO_KQUEUE = StringRef::from_lit("no-kqueue");
+constexpr auto SHRPX_OPT_FRONTEND_HTTP2_SETTINGS_TIMEOUT =
+    StringRef::from_lit("frontend-http2-settings-timeout");
+constexpr auto SHRPX_OPT_BACKEND_HTTP2_SETTINGS_TIMEOUT =
+    StringRef::from_lit("backend-http2-settings-timeout");
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
@@ -532,6 +536,9 @@ struct Http2Config {
       } dump;
       bool frame_debug;
     } debug;
+    struct {
+      ev_tstamp settings;
+    } timeout;
     nghttp2_option *option;
     nghttp2_session_callbacks *callbacks;
     size_t window_bits;
@@ -539,6 +546,9 @@ struct Http2Config {
     size_t max_concurrent_streams;
   } upstream;
   struct {
+    struct {
+      ev_tstamp settings;
+    } timeout;
     nghttp2_option *option;
     nghttp2_session_callbacks *callbacks;
     size_t window_bits;

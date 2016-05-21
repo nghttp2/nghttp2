@@ -625,7 +625,9 @@ void LiveCheck::on_success() {
 int LiveCheck::noop() { return 0; }
 
 void LiveCheck::start_settings_timer() {
-  ev_timer_set(&settings_timer_, 10., 0.);
+  auto &downstreamconf = get_config()->http2.downstream;
+
+  ev_timer_set(&settings_timer_, downstreamconf.timeout.settings, 0.);
   ev_timer_start(conn_.loop, &settings_timer_);
 }
 

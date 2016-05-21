@@ -895,7 +895,8 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
   }
 
   // We wait for SETTINGS ACK at least 10 seconds.
-  ev_timer_init(&settings_timer_, settings_timeout_cb, 10., 0.);
+  ev_timer_init(&settings_timer_, settings_timeout_cb,
+                http2conf.upstream.timeout.settings, 0.);
 
   settings_timer_.data = this;
 

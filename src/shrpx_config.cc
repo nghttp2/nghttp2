@@ -937,6 +937,7 @@ enum {
   SHRPX_OPTID_BACKEND_HTTP2_CONNECTION_WINDOW_BITS,
   SHRPX_OPTID_BACKEND_HTTP2_CONNECTIONS_PER_WORKER,
   SHRPX_OPTID_BACKEND_HTTP2_MAX_CONCURRENT_STREAMS,
+  SHRPX_OPTID_BACKEND_HTTP2_SETTINGS_TIMEOUT,
   SHRPX_OPTID_BACKEND_HTTP2_WINDOW_BITS,
   SHRPX_OPTID_BACKEND_IPV4,
   SHRPX_OPTID_BACKEND_IPV6,
@@ -973,6 +974,7 @@ enum {
   SHRPX_OPTID_FRONTEND_HTTP2_DUMP_RESPONSE_HEADER,
   SHRPX_OPTID_FRONTEND_HTTP2_MAX_CONCURRENT_STREAMS,
   SHRPX_OPTID_FRONTEND_HTTP2_READ_TIMEOUT,
+  SHRPX_OPTID_FRONTEND_HTTP2_SETTINGS_TIMEOUT,
   SHRPX_OPTID_FRONTEND_HTTP2_WINDOW_BITS,
   SHRPX_OPTID_FRONTEND_NO_TLS,
   SHRPX_OPTID_FRONTEND_READ_TIMEOUT,
@@ -1628,6 +1630,11 @@ int option_lookup_token(const char *name, size_t namelen) {
         return SHRPX_OPTID_STRIP_INCOMING_X_FORWARDED_FOR;
       }
       break;
+    case 't':
+      if (util::strieq_l("backend-http2-settings-timeou", name, 29)) {
+        return SHRPX_OPTID_BACKEND_HTTP2_SETTINGS_TIMEOUT;
+      }
+      break;
     }
     break;
   case 31:
@@ -1635,6 +1642,11 @@ int option_lookup_token(const char *name, size_t namelen) {
     case 's':
       if (util::strieq_l("tls-session-cache-memcached-tl", name, 30)) {
         return SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED_TLS;
+      }
+      break;
+    case 't':
+      if (util::strieq_l("frontend-http2-settings-timeou", name, 30)) {
+        return SHRPX_OPTID_FRONTEND_HTTP2_SETTINGS_TIMEOUT;
       }
       break;
     }
@@ -2725,6 +2737,12 @@ int parse_config(const StringRef &opt, const StringRef &optarg,
     mod_config()->ev_loop_flags = ev_recommended_backends() & ~EVBACKEND_KQUEUE;
 
     return 0;
+  case SHRPX_OPTID_FRONTEND_HTTP2_SETTINGS_TIMEOUT:
+    return parse_duration(&mod_config()->http2.upstream.timeout.settings, opt,
+                          optarg);
+  case SHRPX_OPTID_BACKEND_HTTP2_SETTINGS_TIMEOUT:
+    return parse_duration(&mod_config()->http2.downstream.timeout.settings, opt,
+                          optarg);
   case SHRPX_OPTID_CONF:
     LOG(WARN) << "conf: ignored";
 
