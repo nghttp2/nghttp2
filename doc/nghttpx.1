@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTPX" "1" "April 29, 2016" "1.11.0-DEV" "nghttp2"
+.TH "NGHTTPX" "1" "May 21, 2016" "1.11.0-DEV" "nghttp2"
 .SH NAME
 nghttpx \- HTTP/2 proxy
 .
@@ -364,6 +364,13 @@ value is 0 then fast open is disabled.
 .sp
 Default: \fB0\fP
 .UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-no\-kqueue
+Don\(aqt use  kqueue.  This  option is only  applicable for
+the platforms  which have kqueue.  For  other platforms,
+this option will be simply ignored.
+.UNINDENT
 .SS Timeout
 .INDENT 0.0
 .TP
@@ -432,6 +439,22 @@ is disabled  for a given  amount of time.   Specifying 0
 disables this feature.
 .sp
 Default: \fB30s\fP
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-frontend\-http2\-setting\-timeout=<DURATION>
+Specify  timeout before  SETTINGS ACK  is received  from
+client.
+.sp
+Default: \fB10s\fP
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-backend\-http2\-settings\-timeout=<DURATION>
+Specify  timeout before  SETTINGS ACK  is received  from
+backend server.
+.sp
+Default: \fB10s\fP
 .UNINDENT
 .SS SSL/TLS
 .INDENT 0.0

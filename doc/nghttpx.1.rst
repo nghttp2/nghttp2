@@ -332,6 +332,13 @@ Performance
 
     Default: ``0``
 
+.. option:: --no-kqueue
+
+    Don't use  kqueue.  This  option is only  applicable for
+    the platforms  which have kqueue.  For  other platforms,
+    this option will be simply ignored.
+
+
 Timeout
 ~~~~~~~
 
@@ -393,6 +400,20 @@ Timeout
     disables this feature.
 
     Default: ``30s``
+
+.. option:: --frontend-http2-setting-timeout=<DURATION>
+
+    Specify  timeout before  SETTINGS ACK  is received  from
+    client.
+
+    Default: ``10s``
+
+.. option:: --backend-http2-settings-timeout=<DURATION>
+
+    Specify  timeout before  SETTINGS ACK  is received  from
+    backend server.
+
+    Default: ``10s``
 
 
 SSL/TLS
