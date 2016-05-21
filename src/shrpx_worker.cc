@@ -478,6 +478,10 @@ size_t match_downstream_addr_group(
 void downstream_failure(DownstreamAddr *addr) {
   const auto &connect_blocker = addr->connect_blocker;
 
+  if (connect_blocker->in_offline()) {
+    return;
+  }
+
   connect_blocker->on_failure();
 
   if (addr->fall == 0) {
