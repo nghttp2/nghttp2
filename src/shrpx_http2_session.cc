@@ -90,7 +90,6 @@ void connchk_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
 namespace {
 void settings_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
   auto http2session = static_cast<Http2Session *>(w->data);
-  http2session->stop_settings_timer();
   SSLOG(INFO, http2session) << "SETTINGS timeout";
 
   downstream_failure(http2session->get_addr());
@@ -203,7 +202,7 @@ Http2Session::Http2Session(struct ev_loop *loop, SSL_CTX *ssl_ctx,
 
   // SETTINGS ACK timeout is 10 seconds for now.  We will resuse this
   // many times, so use repeat timeout value.
-  ev_timer_init(&settings_timer_, settings_timeout_cb, 0., 10.);
+  ev_timer_init(&settings_timer_, settings_timeout_cb, 0., 0.);
 
   settings_timer_.data = this;
 
@@ -756,7 +755,8 @@ int on_stream_close_callback(nghttp2_session *session, int32_t stream_id,
 } // namespace
 
 void Http2Session::start_settings_timer() {
-  ev_timer_again(conn_.loop, &settings_timer_);
+  ev_timer_set(&settings_timer_, 10., 0.);
+  ev_timer_start(conn_.loop, &settings_timer_);
 }
 
 void Http2Session::stop_settings_timer() {
