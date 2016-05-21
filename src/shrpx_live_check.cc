@@ -533,6 +533,11 @@ int LiveCheck::on_read(const uint8_t *data, size_t len) {
       LOG(INFO) << "No more read/write for this session";
     }
 
+    // If we have SETTINGS ACK already, we treat this success.
+    if (settings_ack_received_) {
+      return 0;
+    }
+
     return -1;
   }
 
