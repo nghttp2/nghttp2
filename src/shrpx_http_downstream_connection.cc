@@ -220,7 +220,8 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
                           << util::to_numeric_addr(&addr.addr)
                           << ", errno=" << error;
 
-        connect_blocker->on_failure();
+        downstream_failure(&addr);
+
         close(conn_.fd);
         conn_.fd = -1;
 
