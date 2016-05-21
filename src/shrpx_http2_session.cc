@@ -756,10 +756,6 @@ int on_stream_close_callback(nghttp2_session *session, int32_t stream_id,
 } // namespace
 
 void Http2Session::start_settings_timer() {
-  if (ev_is_active(&settings_timer_)) {
-    return;
-  }
-
   ev_timer_again(conn_.loop, &settings_timer_);
 }
 

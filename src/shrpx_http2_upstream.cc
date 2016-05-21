@@ -146,9 +146,6 @@ int Http2Upstream::upgrade_upstream(HttpsUpstream *http) {
 }
 
 void Http2Upstream::start_settings_timer() {
-  if (ev_is_active(&settings_timer_)) {
-    return;
-  }
   ev_timer_start(handler_->get_loop(), &settings_timer_);
 }
 

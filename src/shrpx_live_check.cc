@@ -620,10 +620,6 @@ void LiveCheck::on_success() {
 int LiveCheck::noop() { return 0; }
 
 void LiveCheck::start_settings_timer() {
-  if (ev_is_active(&settings_timer_)) {
-    return;
-  }
-
   ev_timer_set(&settings_timer_, 10., 0.);
   ev_timer_start(conn_.loop, &settings_timer_);
 }
