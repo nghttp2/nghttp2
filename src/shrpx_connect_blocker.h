@@ -57,6 +57,9 @@ public:
   // Peer is now considered online
   void online();
 
+  // Returns true if peer is considered offline.
+  bool in_offline() const;
+
 private:
   std::mt19937 gen_;
   ev_timer timer_;
@@ -64,6 +67,8 @@ private:
   // The number of consecutive connection failure.  Reset to 0 on
   // success.
   size_t fail_count_;
+  // true if peer is considered offline.
+  bool offline_;
 };
 
 } // namespace

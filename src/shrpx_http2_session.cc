@@ -92,6 +92,9 @@ void settings_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
   auto http2session = static_cast<Http2Session *>(w->data);
   http2session->stop_settings_timer();
   SSLOG(INFO, http2session) << "SETTINGS timeout";
+
+  downstream_failure(http2session->get_addr());
+
   if (http2session->terminate_session(NGHTTP2_SETTINGS_TIMEOUT) != 0) {
     delete http2session;
 
@@ -290,8 +293,6 @@ int Http2Session::initiate_connection() {
     }
   }
 
-  auto &connect_blocker = addr_->connect_blocker;
-
   const auto &proxy = get_config()->downstream_http_proxy;
   if (!proxy.host.empty() && state_ == DISCONNECTED) {
     if (LOG_ENABLED(INFO)) {
@@ -311,8 +312,6 @@ int Http2Session::initiate_connection() {
       return -1;
     }
 
-    worker_blocker->on_success();
-
     rv = connect(conn_.fd, &proxy.addr.su.sa, proxy.addr.len);
     if (rv != 0 && errno != EINPROGRESS) {
       auto error = errno;
@@ -320,9 +319,12 @@ int Http2Session::initiate_connection() {
                         << util::to_numeric_addr(&proxy.addr)
                         << ", errno=" << error;
 
-      connect_blocker->on_failure();
+      worker_blocker->on_failure();
+
       return -1;
     }
+
+    worker_blocker->on_success();
 
     ev_io_set(&conn_.rev, conn_.fd, EV_READ);
     ev_io_set(&conn_.wev, conn_.fd, EV_WRITE);
@@ -405,7 +407,7 @@ int Http2Session::initiate_connection() {
                             << util::to_numeric_addr(&addr_->addr)
                             << ", errno=" << error;
 
-          connect_blocker->on_failure();
+          downstream_failure(addr_);
           return -1;
         }
 
@@ -442,7 +444,7 @@ int Http2Session::initiate_connection() {
                             << util::to_numeric_addr(&addr_->addr)
                             << ", errno=" << error;
 
-          connect_blocker->on_failure();
+          downstream_failure(addr_);
           return -1;
         }
 
@@ -754,6 +756,10 @@ int on_stream_close_callback(nghttp2_session *session, int32_t stream_id,
 } // namespace
 
 void Http2Session::start_settings_timer() {
+  if (ev_is_active(&settings_timer_)) {
+    return;
+  }
+
   ev_timer_again(conn_.loop, &settings_timer_);
 }
 
@@ -1152,12 +1158,20 @@ int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
     }
     return 0;
   }
-  case NGHTTP2_SETTINGS:
+  case NGHTTP2_SETTINGS: {
     if ((frame->hd.flags & NGHTTP2_FLAG_ACK) == 0) {
       return 0;
     }
+
     http2session->stop_settings_timer();
+
+    auto addr = http2session->get_addr();
+    auto &connect_blocker = addr->connect_blocker;
+
+    connect_blocker->on_success();
+
     return 0;
+  }
   case NGHTTP2_PING:
     if (frame->hd.flags & NGHTTP2_FLAG_ACK) {
       if (LOG_ENABLED(INFO)) {
@@ -1526,6 +1540,8 @@ int Http2Session::connection_made() {
   auto must_terminate =
       shared_addr->tls && !nghttp2::ssl::check_http2_requirement(conn_.tls.ssl);
 
+  reset_connection_check_timer(CONNCHK_TIMEOUT);
+
   if (must_terminate) {
     if (LOG_ENABLED(INFO)) {
       LOG(INFO) << "TLSv1.2 was not negotiated. HTTP/2 must not be negotiated.";
@@ -1536,15 +1552,9 @@ int Http2Session::connection_made() {
     if (rv != 0) {
       return -1;
     }
+  } else {
+    submit_pending_requests();
   }
-
-  if (must_terminate) {
-    return 0;
-  }
-
-  reset_connection_check_timer(CONNCHK_TIMEOUT);
-
-  submit_pending_requests();
 
   signal_write();
   return 0;
@@ -1564,7 +1574,7 @@ int Http2Session::downstream_read(const uint8_t *data, size_t datalen) {
 
   rv = nghttp2_session_mem_recv(session_, data, datalen);
   if (rv < 0) {
-    SSLOG(ERROR, this) << "nghttp2_session_recv() returned error: "
+    SSLOG(ERROR, this) << "nghttp2_session_mem_recv() returned error: "
                        << nghttp2_strerror(rv);
     return -1;
   }
@@ -1763,8 +1773,6 @@ int Http2Session::read_noop(const uint8_t *data, size_t datalen) { return 0; }
 int Http2Session::write_noop() { return 0; }
 
 int Http2Session::connected() {
-  auto &connect_blocker = addr_->connect_blocker;
-
   if (!util::check_socket_connected(conn_.fd)) {
     if (LOG_ENABLED(INFO)) {
       SSLOG(INFO, this) << "Backend connect failed; addr="
@@ -1775,8 +1783,6 @@ int Http2Session::connected() {
 
     return -1;
   }
-
-  connect_blocker->on_success();
 
   if (LOG_ENABLED(INFO)) {
     SSLOG(INFO, this) << "Connection established";
