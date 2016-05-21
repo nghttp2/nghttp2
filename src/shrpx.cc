@@ -946,10 +946,6 @@ int event_loop() {
     redirect_stderr_to_errorlog();
   }
 
-  if (!get_config()->pid_file.empty()) {
-    save_pid();
-  }
-
   SignalServer ssv;
 
   rv = pipe(ssv.ipc_fd.data());
@@ -995,6 +991,14 @@ int event_loop() {
   ev_child_init(&worker_process_childev, worker_process_child_cb, pid, 0);
   worker_process_childev.data = nullptr;
   ev_child_start(loop, &worker_process_childev);
+
+  // Write PID file when we are ready to accept connection from peer.
+  // This makes easier to write restart script for nghttpx.  Because
+  // when we know that PID file is recreated, it means we can send
+  // QUIT signal to the old process to make it shutdown gracefully.
+  if (!get_config()->pid_file.empty()) {
+    save_pid();
+  }
 
   ev_run(loop, 0);
 
