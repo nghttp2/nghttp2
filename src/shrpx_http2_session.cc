@@ -1385,6 +1385,11 @@ int send_data_callback(nghttp2_session *session, nghttp2_frame *frame,
   auto http2session = static_cast<Http2Session *>(user_data);
   auto sd = static_cast<StreamData *>(
       nghttp2_session_get_stream_user_data(session, frame->hd.stream_id));
+
+  if (sd == nullptr) {
+    return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
+  }
+
   auto dconn = sd->dconn;
   auto downstream = dconn->get_downstream();
   auto input = downstream->get_request_buf();
