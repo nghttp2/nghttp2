@@ -206,10 +206,11 @@ void save_pid() {
   std::vector<char> temp_path;
   temp_path.reserve(get_config()->pid_file.size() + SUFFIX.size() + 1);
 
-  auto p = std::copy(std::begin(pid_file), std::end(pid_file),
-                     std::begin(temp_path));
+  std::copy(std::begin(pid_file), std::end(pid_file),
+            std::back_inserter(temp_path));
 
-  p = std::copy(std::begin(SUFFIX), std::end(SUFFIX), p);
+  auto p = std::copy(std::begin(SUFFIX), std::end(SUFFIX),
+                     std::back_inserter(temp_path));
   *p = '\0';
 
   auto fd = mkstemp(temp_path.data());
