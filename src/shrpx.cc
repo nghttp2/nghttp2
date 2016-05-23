@@ -203,17 +203,17 @@ void save_pid() {
   constexpr auto SUFFIX = StringRef::from_lit(".XXXXXX");
   auto &pid_file = get_config()->pid_file;
 
-  std::vector<char> temp_path;
-  temp_path.reserve(get_config()->pid_file.size() + SUFFIX.size() + 1);
+  auto len = get_config()->pid_file.size() + SUFFIX.size();
+  auto buf = make_unique<char[]>(len + 1);
+  auto p = buf.get();
 
-  std::copy(std::begin(pid_file), std::end(pid_file),
-            std::back_inserter(temp_path));
-
-  auto p = std::copy(std::begin(SUFFIX), std::end(SUFFIX),
-                     std::back_inserter(temp_path));
+  p = std::copy(std::begin(pid_file), std::end(pid_file), p);
+  p = std::copy(std::begin(SUFFIX), std::end(SUFFIX), p);
   *p = '\0';
 
-  auto fd = mkstemp(temp_path.data());
+  auto temp_path = buf.get();
+
+  auto fd = mkstemp(temp_path);
   if (fd == -1) {
     auto error = errno;
     LOG(ERROR) << "Could not save PID to file " << pid_file << ": "
@@ -239,12 +239,12 @@ void save_pid() {
 
   close(fd);
 
-  if (rename(temp_path.data(), pid_file.c_str()) == -1) {
+  if (rename(temp_path, pid_file.c_str()) == -1) {
     auto error = errno;
     LOG(ERROR) << "Could not save PID to file " << pid_file << ": "
                << strerror(error);
 
-    unlink(temp_path.data());
+    unlink(temp_path);
 
     exit(EXIT_FAILURE);
   }
