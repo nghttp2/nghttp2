@@ -200,18 +200,58 @@ int chown_to_running_user(const char *path) {
 
 namespace {
 void save_pid() {
-  std::ofstream out(get_config()->pid_file.c_str(), std::ios::binary);
-  out << get_config()->pid << "\n";
-  out.close();
-  if (!out) {
-    LOG(ERROR) << "Could not save PID to file " << get_config()->pid_file;
+  constexpr auto SUFFIX = StringRef::from_lit(".XXXXXX");
+  auto &pid_file = get_config()->pid_file;
+
+  std::vector<char> temp_path;
+  temp_path.reserve(get_config()->pid_file.size() + SUFFIX.size() + 1);
+
+  auto p = std::copy(std::begin(pid_file), std::end(pid_file),
+                     std::begin(temp_path));
+
+  p = std::copy(std::begin(SUFFIX), std::end(SUFFIX), p);
+  *p = '\0';
+
+  auto fd = mkstemp(temp_path.data());
+  if (fd == -1) {
+    auto error = errno;
+    LOG(ERROR) << "Could not save PID to file " << pid_file << ": "
+               << strerror(error);
+    exit(EXIT_FAILURE);
+  }
+
+  auto content = util::utos(get_config()->pid) + '\n';
+
+  if (write(fd, content.c_str(), content.size()) == -1) {
+    auto error = errno;
+    LOG(ERROR) << "Could not save PID to file " << pid_file << ": "
+               << strerror(error);
+    exit(EXIT_FAILURE);
+  }
+
+  if (fsync(fd) == -1) {
+    auto error = errno;
+    LOG(ERROR) << "Could not save PID to file " << pid_file << ": "
+               << strerror(error);
+    exit(EXIT_FAILURE);
+  }
+
+  close(fd);
+
+  if (rename(temp_path.data(), pid_file.c_str()) == -1) {
+    auto error = errno;
+    LOG(ERROR) << "Could not save PID to file " << pid_file << ": "
+               << strerror(error);
+
+    unlink(temp_path.data());
+
     exit(EXIT_FAILURE);
   }
 
   if (get_config()->uid != 0) {
-    if (chown_to_running_user(get_config()->pid_file.c_str()) == -1) {
+    if (chown_to_running_user(pid_file.c_str()) == -1) {
       auto error = errno;
-      LOG(WARN) << "Changing owner of pid file " << get_config()->pid_file
+      LOG(WARN) << "Changing owner of pid file " << pid_file
                 << " failed: " << strerror(error);
     }
   }
