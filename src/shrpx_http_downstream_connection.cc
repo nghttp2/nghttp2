@@ -67,6 +67,31 @@ void timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
 } // namespace
 
 namespace {
+void connect_timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
+  auto conn = static_cast<Connection *>(w->data);
+  auto dconn = static_cast<HttpDownstreamConnection *>(conn->data);
+
+  if (LOG_ENABLED(INFO)) {
+    DCLOG(INFO, dconn) << "Connect time out";
+  }
+
+  downstream_failure(dconn->get_addr());
+
+  auto downstream = dconn->get_downstream();
+  auto upstream = downstream->get_upstream();
+  auto handler = upstream->get_client_handler();
+  auto &resp = downstream->response();
+
+  // Do this so that dconn is not pooled
+  resp.connection_close = true;
+
+  if (upstream->downstream_error(dconn, Downstream::EVENT_TIMEOUT) != 0) {
+    delete handler;
+  }
+}
+} // namespace
+
+namespace {
 void readcb(struct ev_loop *loop, ev_io *w, int revents) {
   auto conn = static_cast<Connection *>(w->data);
   auto dconn = static_cast<HttpDownstreamConnection *>(conn->data);
@@ -128,7 +153,8 @@ HttpDownstreamConnection::HttpDownstreamConnection(DownstreamAddrGroup *group,
     : conn_(loop, -1, nullptr, worker->get_mcpool(),
             get_config()->conn.downstream.timeout.write,
             get_config()->conn.downstream.timeout.read, {}, {}, connectcb,
-            readcb, timeoutcb, this, get_config()->tls.dyn_rec.warmup_threshold,
+            readcb, connect_timeoutcb, this,
+            get_config()->tls.dyn_rec.warmup_threshold,
             get_config()->tls.dyn_rec.idle_timeout, PROTO_HTTP1),
       do_read_(&HttpDownstreamConnection::noop),
       do_write_(&HttpDownstreamConnection::noop),
@@ -920,6 +946,12 @@ int HttpDownstreamConnection::tls_handshake() {
     }
   }
 
+  auto &connect_blocker = addr_->connect_blocker;
+
+  connect_blocker->on_success();
+
+  conn_.timeoutcb = timeoutcb;
+
   do_read_ = &HttpDownstreamConnection::read_tls;
   do_write_ = &HttpDownstreamConnection::write_tls;
 
@@ -1082,8 +1114,6 @@ int HttpDownstreamConnection::connected() {
     DCLOG(INFO, this) << "Connected to downstream host";
   }
 
-  connect_blocker->on_success();
-
   conn_.rlimit.startw();
 
   ev_set_cb(&conn_.wev, writecb);
@@ -1096,6 +1126,10 @@ int HttpDownstreamConnection::connected() {
 
     return 0;
   }
+
+  connect_blocker->on_success();
+
+  conn_.timeoutcb = timeoutcb;
 
   do_read_ = &HttpDownstreamConnection::read_clear;
   do_write_ = &HttpDownstreamConnection::write_clear;
@@ -1122,5 +1156,7 @@ DownstreamAddrGroup *
 HttpDownstreamConnection::get_downstream_addr_group() const {
   return group_;
 }
+
+DownstreamAddr *HttpDownstreamConnection::get_addr() const { return addr_; }
 
 } // namespace shrpx
