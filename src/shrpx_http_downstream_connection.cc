@@ -160,7 +160,7 @@ HttpDownstreamConnection::HttpDownstreamConnection(DownstreamAddrGroup *group,
       do_write_(&HttpDownstreamConnection::noop),
       do_signal_write_(&HttpDownstreamConnection::noop),
       worker_(worker),
-      ssl_ctx_(group->shared_addr->tls ? worker->get_cl_ssl_ctx() : nullptr),
+      ssl_ctx_(worker->get_cl_ssl_ctx()),
       group_(group),
       addr_(nullptr),
       ioctrl_(&conn_.rlimit),
@@ -185,17 +185,6 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
   auto &downstreamconf = get_config()->conn.downstream;
 
   if (conn_.fd == -1) {
-    if (ssl_ctx_) {
-      auto ssl = ssl::create_ssl(ssl_ctx_);
-      if (!ssl) {
-        return -1;
-      }
-
-      ssl::setup_downstream_http1_alpn(ssl);
-
-      conn_.set_ssl(ssl);
-    }
-
     auto &shared_addr = group_->shared_addr;
     auto &addrs = shared_addr->addrs;
     auto &next_downstream = shared_addr->next;
@@ -205,6 +194,10 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
 
       if (++next_downstream >= addrs.size()) {
         next_downstream = 0;
+      }
+
+      if (addr.proto != PROTO_HTTP1) {
+        continue;
       }
 
       auto &connect_blocker = addr.connect_blocker;
@@ -265,7 +258,18 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
 
       addr_ = &addr;
 
-      if (ssl_ctx_) {
+      if (addr_->tls) {
+        assert(ssl_ctx_);
+
+        auto ssl = ssl::create_ssl(ssl_ctx_);
+        if (!ssl) {
+          return -1;
+        }
+
+        ssl::setup_downstream_http1_alpn(ssl);
+
+        conn_.set_ssl(ssl);
+
         auto sni_name =
             addr_->sni.empty() ? StringRef{addr_->host} : StringRef{addr_->sni};
         if (!util::numeric_host(sni_name.c_str())) {

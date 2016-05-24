@@ -336,23 +336,21 @@ struct DownstreamAddrConfig {
   ImmutableString sni;
   size_t fall;
   size_t rise;
+  // Application protocol used in this group
+  shrpx_proto proto;
   // backend port.  0 if |host_unix| is true.
   uint16_t port;
   // true if |host| contains UNIX domain socket path.
   bool host_unix;
+  bool tls;
 };
 
 struct DownstreamAddrGroupConfig {
   DownstreamAddrGroupConfig(const StringRef &pattern)
-      : pattern(pattern.c_str(), pattern.size()),
-        proto(PROTO_HTTP1),
-        tls(false) {}
+      : pattern(pattern.c_str(), pattern.size()) {}
 
   ImmutableString pattern;
   std::vector<DownstreamAddrConfig> addrs;
-  // Application protocol used in this group
-  shrpx_proto proto;
-  bool tls;
 };
 
 struct TicketKey {

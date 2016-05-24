@@ -41,14 +41,12 @@
 namespace shrpx {
 
 class Worker;
-struct DownstreamAddrGroup;
 struct DownstreamAddr;
 
 class LiveCheck {
 public:
   LiveCheck(struct ev_loop *loop, SSL_CTX *ssl_ctx, Worker *worker,
-            DownstreamAddrGroup *group, DownstreamAddr *addr,
-            std::mt19937 &gen);
+            DownstreamAddr *addr, std::mt19937 &gen);
   ~LiveCheck();
 
   void disconnect();
@@ -101,7 +99,6 @@ private:
   Worker *worker_;
   // nullptr if no TLS is configured
   SSL_CTX *ssl_ctx_;
-  DownstreamAddrGroup *group_;
   // Address of remote endpoint
   DownstreamAddr *addr_;
   nghttp2_session *session_;

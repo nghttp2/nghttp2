@@ -67,8 +67,7 @@ namespace {
 bool match_shared_downstream_addr(
     const std::shared_ptr<SharedDownstreamAddr> &lhs,
     const std::shared_ptr<SharedDownstreamAddr> &rhs) {
-  if (lhs->addrs.size() != rhs->addrs.size() || lhs->proto != rhs->proto ||
-      lhs->tls != rhs->tls) {
+  if (lhs->addrs.size() != rhs->addrs.size() || lhs->proto != rhs->proto) {
     return false;
   }
 
@@ -83,7 +82,8 @@ bool match_shared_downstream_addr(
 
       auto &b = rhs->addrs[i];
       if (a.host == b.host && a.port == b.port && a.host_unix == b.host_unix &&
-          a.sni == b.sni && a.fall == b.fall && a.rise == b.rise) {
+          a.proto == b.proto && a.tls == b.tls && a.sni == b.sni &&
+          a.fall == b.fall && a.rise == b.rise) {
         break;
       }
     }
@@ -147,8 +147,14 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
     // does not value initialize SharedDownstreamAddr above.
     shared_addr->next = 0;
     shared_addr->addrs.resize(src.addrs.size());
-    shared_addr->proto = src.proto;
-    shared_addr->tls = src.tls;
+    shared_addr->proto = PROTO_NONE;
+    shared_addr->http1_pri = {};
+    shared_addr->http2_pri = {};
+
+    auto mixed_proto = false;
+
+    size_t num_http1 = 0;
+    size_t num_http2 = 0;
 
     for (size_t j = 0; j < src.addrs.size(); ++j) {
       auto &src_addr = src.addrs[j];
@@ -159,14 +165,31 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
       dst_addr.hostport = src_addr.hostport;
       dst_addr.port = src_addr.port;
       dst_addr.host_unix = src_addr.host_unix;
+      dst_addr.proto = src_addr.proto;
+      dst_addr.tls = src_addr.tls;
       dst_addr.sni = src_addr.sni;
       dst_addr.fall = src_addr.fall;
       dst_addr.rise = src_addr.rise;
 
       dst_addr.connect_blocker = make_unique<ConnectBlocker>(randgen_, loop_);
-      dst_addr.live_check = make_unique<LiveCheck>(
-          loop_, shared_addr->tls ? cl_ssl_ctx_ : nullptr, this, &dst,
-          &dst_addr, randgen_);
+      dst_addr.live_check =
+          make_unique<LiveCheck>(loop_, cl_ssl_ctx_, this, &dst_addr, randgen_);
+
+      if (!mixed_proto) {
+        if (shared_addr->proto == PROTO_NONE) {
+          shared_addr->proto = dst_addr.proto;
+        } else if (shared_addr->proto != dst_addr.proto) {
+          shared_addr->proto = PROTO_NONE;
+          mixed_proto = true;
+        }
+      }
+
+      if (dst_addr.proto == PROTO_HTTP2) {
+        ++num_http2;
+      } else {
+        assert(dst_addr.proto == PROTO_HTTP1);
+        ++num_http1;
+      }
     }
 
     // share the connection if patterns have the same set of backend
@@ -179,6 +202,16 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
                            });
 
     if (it == end) {
+      if (shared_addr->proto == PROTO_NONE) {
+        auto max = std::max(static_cast<size_t>(65536),
+                            std::max(num_http1, num_http2));
+
+        shared_addr->http1_pri.iweight = max / num_http1;
+        shared_addr->http2_pri.iweight = max / num_http2;
+        shared_addr->max_pri_dist = std::max(shared_addr->http1_pri.iweight,
+                                             shared_addr->http2_pri.iweight);
+      }
+
       dst.shared_addr = shared_addr;
     } else {
       if (LOG_ENABLED(INFO)) {

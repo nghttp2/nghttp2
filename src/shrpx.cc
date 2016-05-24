@@ -1335,13 +1335,12 @@ Connections:
 
               The backend application protocol  can be specified using
               optional  "proto"   parameter,  and   in  the   form  of
-              "proto=<PROTO>".  All that share the same <PATTERN> must
-              have the  same <PROTO>  value if  it is  given.  <PROTO>
-              should  be one  of  the following  list without  quotes:
-              "h2",  "http/1.1".   The  default value  of  <PROTO>  is
-              "http/1.1".   Note that  usually "h2"  refers to  HTTP/2
-              over TLS.  But  in this option, it may  mean HTTP/2 over
-              cleartext TCP unless "tls" keyword is used (see below).
+              "proto=<PROTO>".  <PROTO> should be one of the following
+              list  without  quotes:  "h2", "http/1.1".   The  default
+              value of <PROTO> is  "http/1.1".  Note that usually "h2"
+              refers to HTTP/2  over TLS.  But in this  option, it may
+              mean HTTP/2  over cleartext TCP unless  "tls" keyword is
+              used (see below).
 
               TLS  can   be  enabled  by  specifying   optional  "tls"
               parameter.  TLS is not enabled by default.
@@ -2187,9 +2186,9 @@ void process_options(int argc, char **argv,
     DownstreamAddrConfig addr{};
     addr.host = ImmutableString::from_lit(DEFAULT_DOWNSTREAM_HOST);
     addr.port = DEFAULT_DOWNSTREAM_PORT;
+    addr.proto = PROTO_HTTP1;
 
     DownstreamAddrGroupConfig g(StringRef::from_lit("/"));
-    g.proto = PROTO_HTTP1;
     g.addrs.push_back(std::move(addr));
     mod_config()->router.add_route(StringRef{g.pattern}, addr_groups.size());
     addr_groups.push_back(std::move(g));
@@ -2197,34 +2196,10 @@ void process_options(int argc, char **argv,
     // We don't support host mapping in these cases.  Move all
     // non-catch-all patterns to catch-all pattern.
     DownstreamAddrGroupConfig catch_all(StringRef::from_lit("/"));
-    auto proto = PROTO_NONE;
-    auto tls = false;
-    auto tls_seen = false;
     for (auto &g : addr_groups) {
-      if (proto == PROTO_NONE) {
-        proto = g.proto;
-      } else if (proto != g.proto) {
-        LOG(ERROR) << SHRPX_OPT_BACKEND << ": <PATTERN> was ignored with "
-                                           "--http2-proxy, and protocol must "
-                                           "be the same for all backends.";
-        exit(EXIT_FAILURE);
-      }
-
-      if (!tls_seen) {
-        tls = g.tls;
-        tls_seen = true;
-      } else if (tls != g.tls) {
-        LOG(ERROR) << SHRPX_OPT_BACKEND
-                   << ": <PATTERN> was ignored with --http2-proxy, and tls "
-                      "must be enabled or disabled for all backends.";
-        exit(EXIT_FAILURE);
-      }
-
       std::move(std::begin(g.addrs), std::end(g.addrs),
                 std::back_inserter(catch_all.addrs));
     }
-    catch_all.proto = proto;
-    catch_all.tls = tls;
     std::vector<DownstreamAddrGroupConfig>().swap(addr_groups);
     std::vector<WildcardPattern>().swap(mod_config()->wildcard_patterns);
     // maybe not necessary?
@@ -2272,10 +2247,12 @@ void process_options(int argc, char **argv,
     }
     if (LOG_ENABLED(INFO)) {
       LOG(INFO) << "Host-path pattern: group " << i << ": '" << g.pattern
-                << "', proto=" << strproto(g.proto) << (g.tls ? ", tls" : "");
+                << "'";
       for (auto &addr : g.addrs) {
         LOG(INFO) << "group " << i << " -> " << addr.host.c_str()
-                  << (addr.host_unix ? "" : ":" + util::utos(addr.port));
+                  << (addr.host_unix ? "" : ":" + util::utos(addr.port))
+                  << ", proto=" << strproto(addr.proto)
+                  << (addr.tls ? ", tls" : "");
       }
     }
   }
