@@ -112,6 +112,8 @@ void timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
     SSLOG(INFO, http2session) << "Timeout";
   }
 
+  http2session->on_timeout();
+
   delete http2session;
 }
 } // namespace
@@ -2176,5 +2178,19 @@ void Http2Session::exclude_from_scheduling() {
 }
 
 DefaultMemchunks *Http2Session::get_request_buf() { return &wb_; }
+
+void Http2Session::on_timeout() {
+  switch (state_) {
+  case PROXY_CONNECTING: {
+    auto worker_blocker = worker_->get_connect_blocker();
+    worker_blocker->on_failure();
+    break;
+  }
+  case CONNECTING: {
+    downstream_failure(addr_);
+    break;
+  }
+  }
+}
 
 } // namespace shrpx

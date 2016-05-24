@@ -197,6 +197,8 @@ public:
 
   DefaultMemchunks *get_request_buf();
 
+  void on_timeout();
+
   enum {
     // Disconnected
     DISCONNECTED,
