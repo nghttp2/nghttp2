@@ -96,8 +96,7 @@ void settings_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
 } // namespace
 
 LiveCheck::LiveCheck(struct ev_loop *loop, SSL_CTX *ssl_ctx, Worker *worker,
-                     DownstreamAddrGroup *group, DownstreamAddr *addr,
-                     std::mt19937 &gen)
+                     DownstreamAddr *addr, std::mt19937 &gen)
     : conn_(loop, -1, nullptr, worker->get_mcpool(),
             get_config()->conn.downstream.timeout.write,
             get_config()->conn.downstream.timeout.read, {}, {}, writecb, readcb,
@@ -109,7 +108,6 @@ LiveCheck::LiveCheck(struct ev_loop *loop, SSL_CTX *ssl_ctx, Worker *worker,
       write_(&LiveCheck::noop),
       worker_(worker),
       ssl_ctx_(ssl_ctx),
-      group_(group),
       addr_(addr),
       session_(nullptr),
       success_count_(0),
@@ -175,8 +173,6 @@ int LiveCheck::do_write() { return write_(*this); }
 int LiveCheck::initiate_connection() {
   int rv;
 
-  const auto &shared_addr = group_->shared_addr;
-
   auto worker_blocker = worker_->get_connect_blocker();
   if (worker_blocker->blocked()) {
     if (LOG_ENABLED(INFO)) {
@@ -185,13 +181,15 @@ int LiveCheck::initiate_connection() {
     return -1;
   }
 
-  if (ssl_ctx_) {
+  if (addr_->tls) {
+    assert(ssl_ctx_);
+
     auto ssl = ssl::create_ssl(ssl_ctx_);
     if (!ssl) {
       return -1;
     }
 
-    switch (shared_addr->proto) {
+    switch (addr_->proto) {
     case PROTO_HTTP1:
       ssl::setup_downstream_http1_alpn(ssl);
       break;
@@ -226,7 +224,7 @@ int LiveCheck::initiate_connection() {
     return -1;
   }
 
-  if (ssl_ctx_) {
+  if (addr_->tls) {
     auto sni_name =
         addr_->sni.empty() ? StringRef{addr_->host} : StringRef{addr_->sni};
     if (!util::numeric_host(sni_name.c_str())) {
@@ -278,8 +276,7 @@ int LiveCheck::connected() {
     return do_write();
   }
 
-  const auto &shared_addr = group_->shared_addr;
-  if (shared_addr->proto == PROTO_HTTP2) {
+  if (addr_->proto == PROTO_HTTP2) {
     // For HTTP/2, we try to read SETTINGS ACK from server to make
     // sure it is really alive, and serving HTTP/2.
     read_ = &LiveCheck::read_clear;
@@ -343,9 +340,7 @@ int LiveCheck::tls_handshake() {
 
   auto proto = StringRef{next_proto, next_proto_len};
 
-  const auto &shared_addr = group_->shared_addr;
-
-  switch (shared_addr->proto) {
+  switch (addr_->proto) {
   case PROTO_HTTP1:
     if (proto.empty() || proto == StringRef::from_lit("http/1.1")) {
       break;
@@ -697,9 +692,8 @@ int LiveCheck::connection_made() {
     return -1;
   }
 
-  auto &shared_addr = group_->shared_addr;
   auto must_terminate =
-      shared_addr->tls && !nghttp2::ssl::check_http2_requirement(conn_.tls.ssl);
+      addr_->tls && !nghttp2::ssl::check_http2_requirement(conn_.tls.ssl);
 
   if (must_terminate) {
     if (LOG_ENABLED(INFO)) {

@@ -753,6 +753,8 @@ int parse_mapping(DownstreamAddrConfig addr, const StringRef &src_pattern,
 
   addr.fall = params.fall;
   addr.rise = params.rise;
+  addr.proto = params.proto;
+  addr.tls = params.tls;
   addr.sni = ImmutableString{std::begin(params.sni), std::end(params.sni)};
 
   for (const auto &raw_pattern : mapping) {
@@ -772,21 +774,6 @@ int parse_mapping(DownstreamAddrConfig addr, const StringRef &src_pattern,
     }
     for (auto &g : addr_groups) {
       if (g.pattern == pattern) {
-        if (g.proto != params.proto) {
-          LOG(ERROR) << "backend: protocol mismatch.  We saw protocol "
-                     << strproto(g.proto) << " for pattern " << g.pattern
-                     << ", but another protocol " << strproto(params.proto);
-          return -1;
-        }
-
-        if (g.tls != params.tls) {
-          LOG(ERROR) << "backend: TLS mismatch.  We saw TLS was "
-                     << (g.tls ? "enabled" : "disabled") << " for pattern "
-                     << g.pattern << ", but we now got TLS was "
-                     << (params.tls ? "enabled" : "disabled");
-          return -1;
-        }
-
         g.addrs.push_back(addr);
         done = true;
         break;
@@ -797,8 +784,6 @@ int parse_mapping(DownstreamAddrConfig addr, const StringRef &src_pattern,
     }
     DownstreamAddrGroupConfig g(StringRef{pattern});
     g.addrs.push_back(addr);
-    g.proto = params.proto;
-    g.tls = params.tls;
 
     if (pattern[0] == '*') {
       // wildcard pattern

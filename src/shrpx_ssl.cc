@@ -1394,7 +1394,11 @@ bool downstream_tls_enabled() {
   const auto &groups = get_config()->conn.downstream.addr_groups;
 
   return std::any_of(std::begin(groups), std::end(groups),
-                     [](const DownstreamAddrGroupConfig &g) { return g.tls; });
+                     [](const DownstreamAddrGroupConfig &g) {
+                       return std::any_of(
+                           std::begin(g.addrs), std::end(g.addrs),
+                           [](const DownstreamAddrConfig &a) { return a.tls; });
+                     });
 }
 
 SSL_CTX *setup_downstream_client_ssl_context(

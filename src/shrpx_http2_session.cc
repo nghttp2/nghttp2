@@ -353,7 +353,9 @@ int Http2Session::initiate_connection() {
     if (LOG_ENABLED(INFO)) {
       SSLOG(INFO, this) << "Connecting to downstream server";
     }
-    if (ssl_ctx_) {
+    if (addr_->tls) {
+      assert(ssl_ctx_);
+
       auto ssl = ssl::create_ssl(ssl_ctx_);
       if (!ssl) {
         return -1;
@@ -1476,7 +1478,7 @@ int Http2Session::connection_made() {
 
   state_ = Http2Session::CONNECTED;
 
-  if (ssl_ctx_) {
+  if (addr_->tls) {
     const unsigned char *next_proto = nullptr;
     unsigned int next_proto_len = 0;
 
@@ -1541,9 +1543,8 @@ int Http2Session::connection_made() {
     }
   }
 
-  auto &shared_addr = group_->shared_addr;
   auto must_terminate =
-      shared_addr->tls && !nghttp2::ssl::check_http2_requirement(conn_.tls.ssl);
+      addr_->tls && !nghttp2::ssl::check_http2_requirement(conn_.tls.ssl);
 
   reset_connection_check_timer(CONNCHK_TIMEOUT);
 

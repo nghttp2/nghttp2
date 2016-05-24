@@ -99,11 +99,31 @@ struct DownstreamAddr {
   // total number of streams created in HTTP/2 connections for this
   // address.
   size_t num_dconn;
+  // Application protocol used in this backend
+  shrpx_proto proto;
+  // true if TLS is used in this backend
+  bool tls;
+};
+
+// Simplified weighted fair queuing.  Actually we don't use queue here
+// since we have just 2 items.  This is the same algorithm used in
+// stream priority, but ignores remainder.
+struct WeightedPri {
+  // current cycle of this item.  The lesser cycle has higher
+  // priority.  This is unsigned 32 bit integer, so it may overflow.
+  // But with the same theory described in stream priority, it is no
+  // problem.
+  uint32_t cycle;
+  // inverted weight, this is a penalty added to cycle when this item
+  // is selected.
+  uint32_t iweight;
 };
 
 struct SharedDownstreamAddr {
   std::vector<DownstreamAddr> addrs;
-  // Application protocol used in this group
+  // Application protocol used in this backend addresses.  If all
+  // addresses use a single protocol, this field has that value.
+  // Otherwise, this value contains PROTO_NONE.
   shrpx_proto proto;
   // List of Http2Session which is not fully utilized (i.e., the
   // server advertized maximum concurrency is not reached).  We will
@@ -114,9 +134,17 @@ struct SharedDownstreamAddr {
   // wise.
   DList<Http2Session> http2_avail_freelist;
   DownstreamConnectionPool dconn_pool;
-  // Next downstream address index in addrs.
+  // Next http/1.1 downstream address index in addrs.
   size_t next;
-  bool tls;
+  // http1_pri and http2_pri are used to which protocols are used
+  // between HTTP/1.1 or HTTP/2 if they both are available in
+  // backends.  They are choosed proportional to the number available
+  // backend.  Usually, if http1_pri.cycle < http2_pri.cycle, choose
+  // HTTP/1.1.  Otherwise, choose HTTP/2.
+  WeightedPri http1_pri;
+  WeightedPri http2_pri;
+  // The maximum penalty added to http2_pri or http1_pri
+  uint32_t max_pri_dist;
 };
 
 struct DownstreamAddrGroup {
