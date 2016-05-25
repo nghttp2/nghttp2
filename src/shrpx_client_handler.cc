@@ -873,7 +873,7 @@ ClientHandler::get_downstream_connection(Downstream *downstream) {
     }
   } else if (http1_weight > 0) {
     proto = PROTO_HTTP1;
-  } else {
+  } else if (http2_weight > 0) {
     proto = PROTO_HTTP2;
   }
 
