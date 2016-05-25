@@ -790,17 +790,25 @@ Http2Session *ClientHandler::select_http2_session(DownstreamAddrGroup &group) {
 }
 
 namespace {
-bool pri_less(const WeightedPri &lhs, const WeightedPri &rhs, uint32_t max) {
+// The chosen value is small enough for uint32_t, and large enough for
+// the number of backend.
+constexpr uint32_t WEIGHT_MAX = 65536;
+} // namespace
+
+namespace {
+bool pri_less(const WeightedPri &lhs, const WeightedPri &rhs) {
   if (lhs.cycle < rhs.cycle) {
-    return rhs.cycle - lhs.cycle <= max;
+    return rhs.cycle - lhs.cycle <= WEIGHT_MAX;
   }
 
-  return lhs.cycle - rhs.cycle > max;
+  return lhs.cycle - rhs.cycle > WEIGHT_MAX;
 }
 } // namespace
 
 namespace {
-uint32_t next_cycle(const WeightedPri &pri) { return pri.cycle + pri.iweight; }
+uint32_t next_cycle(const WeightedPri &pri) {
+  return pri.cycle + WEIGHT_MAX / std::min(WEIGHT_MAX, pri.weight);
+}
 } // namespace
 
 std::unique_ptr<DownstreamConnection>
@@ -850,17 +858,31 @@ ClientHandler::get_downstream_connection(Downstream *downstream) {
 
   auto proto = PROTO_NONE;
 
-  if (shared_addr->proto == PROTO_NONE) {
-    if (pri_less(shared_addr->http1_pri, shared_addr->http2_pri,
-                 shared_addr->max_pri_dist)) {
-      shared_addr->http1_pri.cycle = next_cycle(shared_addr->http1_pri);
+  auto http1_weight = shared_addr->http1_pri.weight;
+  auto http2_weight = shared_addr->http2_pri.weight;
+
+  if (http1_weight > 0 && http2_weight > 0) {
+    // We only advance cycle if both weight has nonzero to keep its
+    // distance under WEIGHT_MAX.
+    if (pri_less(shared_addr->http1_pri, shared_addr->http2_pri)) {
       proto = PROTO_HTTP1;
+      shared_addr->http1_pri.cycle = next_cycle(shared_addr->http1_pri);
     } else {
-      shared_addr->http2_pri.cycle = next_cycle(shared_addr->http2_pri);
       proto = PROTO_HTTP2;
+      shared_addr->http2_pri.cycle = next_cycle(shared_addr->http2_pri);
     }
+  } else if (http1_weight > 0) {
+    proto = PROTO_HTTP1;
   } else {
-    proto = shared_addr->proto;
+    proto = PROTO_HTTP2;
+  }
+
+  if (proto == PROTO_NONE) {
+    if (LOG_ENABLED(INFO)) {
+      CLOG(INFO, this) << "No working downstream address found";
+    }
+
+    return nullptr;
   }
 
   if (proto == PROTO_HTTP2) {

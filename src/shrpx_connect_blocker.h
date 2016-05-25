@@ -35,7 +35,9 @@ namespace shrpx {
 
 class ConnectBlocker {
 public:
-  ConnectBlocker(std::mt19937 &gen, struct ev_loop *loop);
+  ConnectBlocker(std::mt19937 &gen, struct ev_loop *loop,
+                 std::function<void()> block_func,
+                 std::function<void()> unblock_func);
   ~ConnectBlocker();
 
   // Returns true if making connection is not allowed.
@@ -60,8 +62,15 @@ public:
   // Returns true if peer is considered offline.
   bool in_offline() const;
 
+  void call_block_func();
+  void call_unblock_func();
+
 private:
   std::mt19937 gen_;
+  // Called when blocking is started
+  std::function<void()> block_func_;
+  // Called when unblocked
+  std::function<void()> unblock_func_;
   ev_timer timer_;
   struct ev_loop *loop_;
   // The number of consecutive connection failure.  Reset to 0 on

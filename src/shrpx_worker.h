@@ -114,17 +114,12 @@ struct WeightedPri {
   // But with the same theory described in stream priority, it is no
   // problem.
   uint32_t cycle;
-  // inverted weight, this is a penalty added to cycle when this item
-  // is selected.
-  uint32_t iweight;
+  // weight, larger weight means more frequent use.
+  uint32_t weight;
 };
 
 struct SharedDownstreamAddr {
   std::vector<DownstreamAddr> addrs;
-  // Application protocol used in this backend addresses.  If all
-  // addresses use a single protocol, this field has that value.
-  // Otherwise, this value contains PROTO_NONE.
-  shrpx_proto proto;
   // List of Http2Session which is not fully utilized (i.e., the
   // server advertized maximum concurrency is not reached).  We will
   // coalesce as much stream as possible in one Http2Session to fully
@@ -143,8 +138,6 @@ struct SharedDownstreamAddr {
   // HTTP/1.1.  Otherwise, choose HTTP/2.
   WeightedPri http1_pri;
   WeightedPri http2_pri;
-  // The maximum penalty added to http2_pri or http1_pri
-  uint32_t max_pri_dist;
 };
 
 struct DownstreamAddrGroup {

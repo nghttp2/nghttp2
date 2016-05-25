@@ -67,7 +67,7 @@ namespace {
 bool match_shared_downstream_addr(
     const std::shared_ptr<SharedDownstreamAddr> &lhs,
     const std::shared_ptr<SharedDownstreamAddr> &rhs) {
-  if (lhs->addrs.size() != rhs->addrs.size() || lhs->proto != rhs->proto) {
+  if (lhs->addrs.size() != rhs->addrs.size()) {
     return false;
   }
 
@@ -115,7 +115,8 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
       cert_tree_(cert_tree),
       ticket_keys_(ticket_keys),
       downstream_addr_groups_(get_config()->conn.downstream.addr_groups.size()),
-      connect_blocker_(make_unique<ConnectBlocker>(randgen_, loop_)),
+      connect_blocker_(
+          make_unique<ConnectBlocker>(randgen_, loop_, []() {}, []() {})),
       graceful_shutdown_(false) {
   ev_async_init(&w_, eventcb);
   w_.data = this;
@@ -147,11 +148,8 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
     // does not value initialize SharedDownstreamAddr above.
     shared_addr->next = 0;
     shared_addr->addrs.resize(src.addrs.size());
-    shared_addr->proto = PROTO_NONE;
     shared_addr->http1_pri = {};
     shared_addr->http2_pri = {};
-
-    auto mixed_proto = false;
 
     size_t num_http1 = 0;
     size_t num_http2 = 0;
@@ -171,18 +169,35 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
       dst_addr.fall = src_addr.fall;
       dst_addr.rise = src_addr.rise;
 
-      dst_addr.connect_blocker = make_unique<ConnectBlocker>(randgen_, loop_);
+      dst_addr.connect_blocker =
+          make_unique<ConnectBlocker>(randgen_, loop_,
+                                      [shared_addr, &dst_addr]() {
+                                        switch (dst_addr.proto) {
+                                        case PROTO_HTTP1:
+                                          --shared_addr->http1_pri.weight;
+                                          break;
+                                        case PROTO_HTTP2:
+                                          --shared_addr->http2_pri.weight;
+                                          break;
+                                        default:
+                                          assert(0);
+                                        }
+                                      },
+                                      [shared_addr, &dst_addr]() {
+                                        switch (dst_addr.proto) {
+                                        case PROTO_HTTP1:
+                                          ++shared_addr->http1_pri.weight;
+                                          break;
+                                        case PROTO_HTTP2:
+                                          ++shared_addr->http2_pri.weight;
+                                          break;
+                                        default:
+                                          assert(0);
+                                        }
+                                      });
+
       dst_addr.live_check =
           make_unique<LiveCheck>(loop_, cl_ssl_ctx_, this, &dst_addr, randgen_);
-
-      if (!mixed_proto) {
-        if (shared_addr->proto == PROTO_NONE) {
-          shared_addr->proto = dst_addr.proto;
-        } else if (shared_addr->proto != dst_addr.proto) {
-          shared_addr->proto = PROTO_NONE;
-          mixed_proto = true;
-        }
-      }
 
       if (dst_addr.proto == PROTO_HTTP2) {
         ++num_http2;
@@ -202,14 +217,14 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
                            });
 
     if (it == end) {
-      if (shared_addr->proto == PROTO_NONE) {
-        auto max = std::max(static_cast<size_t>(65536),
-                            std::max(num_http1, num_http2));
+      if (LOG_ENABLED(INFO)) {
+        LOG(INFO) << "number of http/1.1 backend: " << num_http1
+                  << ", number of h2 backend: " << num_http2;
+      }
 
-        shared_addr->http1_pri.iweight = max / num_http1;
-        shared_addr->http2_pri.iweight = max / num_http2;
-        shared_addr->max_pri_dist = std::max(shared_addr->http1_pri.iweight,
-                                             shared_addr->http2_pri.iweight);
+      if (num_http2 > 0 && num_http1 > 0) {
+        shared_addr->http1_pri.weight = num_http1;
+        shared_addr->http2_pri.weight = num_http2;
       }
 
       dst.shared_addr = shared_addr;

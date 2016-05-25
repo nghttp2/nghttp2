@@ -197,6 +197,10 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
       }
 
       if (addr.proto != PROTO_HTTP1) {
+        if (end == next_downstream) {
+          return SHRPX_ERR_NETWORK;
+        }
+
         continue;
       }
 
