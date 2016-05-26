@@ -113,13 +113,12 @@ Connections
 
     The backend application protocol  can be specified using
     optional  "proto"   parameter,  and   in  the   form  of
-    "proto=<PROTO>".  All that share the same <PATTERN> must
-    have the  same <PROTO>  value if  it is  given.  <PROTO>
-    should  be one  of  the following  list without  quotes:
-    "h2",  "http/1.1".   The  default value  of  <PROTO>  is
-    "http/1.1".   Note that  usually "h2"  refers to  HTTP/2
-    over TLS.  But  in this option, it may  mean HTTP/2 over
-    cleartext TCP unless "tls" keyword is used (see below).
+    "proto=<PROTO>".  <PROTO> should be one of the following
+    list  without  quotes:  "h2", "http/1.1".   The  default
+    value of <PROTO> is  "http/1.1".  Note that usually "h2"
+    refers to HTTP/2  over TLS.  But in this  option, it may
+    mean HTTP/2  over cleartext TCP unless  "tls" keyword is
+    used (see below).
 
     TLS  can   be  enabled  by  specifying   optional  "tls"
     parameter.  TLS is not enabled by default.
