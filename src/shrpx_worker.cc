@@ -222,10 +222,8 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
                   << ", number of h2 backend: " << num_http2;
       }
 
-      if (num_http2 > 0 && num_http1 > 0) {
-        shared_addr->http1_pri.weight = num_http1;
-        shared_addr->http2_pri.weight = num_http2;
-      }
+      shared_addr->http1_pri.weight = num_http1;
+      shared_addr->http2_pri.weight = num_http2;
 
       dst.shared_addr = shared_addr;
     } else {
