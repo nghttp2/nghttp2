@@ -321,7 +321,7 @@ int HttpDownstreamConnection::push_request_headers() {
 
   auto &balloc = downstream_->get_block_allocator();
 
-  auto connect_method = req.method == HTTP_CONNECT;
+  auto connect_method = req.method_token == HTTP_CONNECT;
 
   auto &httpconf = get_config()->http;
 
@@ -340,8 +340,7 @@ int HttpDownstreamConnection::push_request_headers() {
   auto buf = downstream_->get_request_buf();
 
   // Assume that method and request path do not contain \r\n.
-  auto meth = http2::to_method_string(req.method);
-  buf->append(meth);
+  buf->append(req.method);
   buf->append(" ");
 
   if (connect_method) {
@@ -354,7 +353,7 @@ int HttpDownstreamConnection::push_request_headers() {
     buf->append("://");
     buf->append(authority);
     buf->append(req.path);
-  } else if (req.method == HTTP_OPTIONS && req.path.empty()) {
+  } else if (req.method_token == HTTP_OPTIONS && req.path.empty()) {
     // Server-wide OPTIONS
     buf->append("*");
   } else {
@@ -708,7 +707,7 @@ int htp_hdrs_completecb(http_parser *htp) {
 
   // TODO It seems that the cases other than HEAD are handled by
   // http-parser.  Need test.
-  return !http2::expect_response_body(req.method, resp.http_status);
+  return !http2::expect_response_body(req.method_token, resp.http_status);
 }
 } // namespace
 

@@ -81,6 +81,33 @@ int htp_msg_begin(http_parser *htp) {
 } // namespace
 
 namespace {
+int htp_methodcb(http_parser *htp, const char *data, size_t len) {
+  auto upstream = static_cast<HttpsUpstream *>(htp->data);
+  auto downstream = upstream->get_downstream();
+  auto &req = downstream->request();
+
+  auto &balloc = downstream->get_block_allocator();
+
+  if (req.fs.buffer_size() + len >
+      get_config()->http.request_header_field_buffer) {
+    if (LOG_ENABLED(INFO)) {
+      ULOG(INFO, upstream) << "Too large request size="
+                           << req.fs.buffer_size() + len;
+    }
+    assert(downstream->get_request_state() == Downstream::INITIAL);
+    downstream->set_request_state(Downstream::HTTP1_REQUEST_HEADER_TOO_LARGE);
+    return -1;
+  }
+
+  req.fs.add_extra_buffer_size(len);
+
+  req.method = concat_string_ref(balloc, req.method, StringRef{data, len});
+
+  return 0;
+}
+} // namespace
+
+namespace {
 int htp_uricb(http_parser *htp, const char *data, size_t len) {
   auto upstream = static_cast<HttpsUpstream *>(htp->data);
   auto downstream = upstream->get_downstream();
@@ -88,8 +115,11 @@ int htp_uricb(http_parser *htp, const char *data, size_t len) {
 
   auto &balloc = downstream->get_block_allocator();
 
-  // We happen to have the same value for method token.
-  req.method = htp->method;
+  // This could be executed more than once, but no harm here.
+  if (htp->method != HTTP_METHOD_UNKNOWN) {
+    // We happen to have the same value for method token.
+    req.method_token = htp->method;
+  }
 
   if (req.fs.buffer_size() + len >
       get_config()->http.request_header_field_buffer) {
@@ -104,7 +134,7 @@ int htp_uricb(http_parser *htp, const char *data, size_t len) {
 
   req.fs.add_extra_buffer_size(len);
 
-  if (req.method == HTTP_CONNECT) {
+  if (req.method_token == HTTP_CONNECT) {
     req.authority =
         concat_string_ref(balloc, req.authority, StringRef{data, len});
   } else {
@@ -243,7 +273,7 @@ void rewrite_request_host_path_from_uri(BlockAllocator &balloc, Request &req,
   StringRef path;
   if (u.field_set & (1 << UF_PATH)) {
     path = util::get_uri_field(uri.c_str(), u, UF_PATH);
-  } else if (req.method == HTTP_OPTIONS) {
+  } else if (req.method_token == HTTP_OPTIONS) {
     // Server-wide OPTIONS takes following form in proxy request:
     //
     // OPTIONS http://example.org HTTP/1.1
@@ -297,13 +327,11 @@ int htp_hdrs_completecb(http_parser *htp) {
 
   req.connection_close = !http_should_keep_alive(htp);
 
-  auto method = req.method;
-
   if (LOG_ENABLED(INFO)) {
     std::stringstream ss;
-    ss << http2::to_method_string(method) << " "
-       << (method == HTTP_CONNECT ? req.authority : req.path) << " "
-       << "HTTP/" << req.http_major << "." << req.http_minor << "\n";
+    ss << req.method << " "
+       << (req.method_token == HTTP_CONNECT ? req.authority : req.path)
+       << " HTTP/" << req.http_major << "." << req.http_minor << "\n";
 
     for (const auto &kv : req.fs.headers()) {
       ss << TTY_HTTP_HD << kv.name << TTY_RST << ": " << kv.value << "\n";
@@ -340,7 +368,7 @@ int htp_hdrs_completecb(http_parser *htp) {
 
   auto &balloc = downstream->get_block_allocator();
 
-  if (method != HTTP_CONNECT) {
+  if (req.method_token != HTTP_CONNECT) {
     http_parser_url u{};
     rv = http_parser_parse_url(req.path.c_str(), req.path.size(), 0, &u);
     if (rv != 0) {
@@ -356,7 +384,8 @@ int htp_hdrs_completecb(http_parser *htp) {
 
       req.no_authority = true;
 
-      if (method == HTTP_OPTIONS && req.path == StringRef::from_lit("*")) {
+      if (req.method_token == HTTP_OPTIONS &&
+          req.path == StringRef::from_lit("*")) {
         req.path = StringRef{};
       } else {
         req.path = http2::rewrite_clean_path(balloc, req.path);
@@ -482,7 +511,10 @@ http_parser_settings htp_hooks = {
     htp_hdr_valcb,       // http_data_cb on_header_value;
     htp_hdrs_completecb, // http_cb      on_headers_complete;
     htp_bodycb,          // http_data_cb on_body;
-    htp_msg_completecb   // http_cb      on_message_complete;
+    htp_msg_completecb,  // http_cb      on_message_complete;
+    nullptr,             // http_cb      on_chunk_header;
+    nullptr,             // http_cb      on_chunk_complete;
+    htp_methodcb,        // http_data_cb on_method;
 };
 } // namespace
 
@@ -973,7 +1005,7 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
   }
 #endif // HAVE_MRUBY
 
-  auto connect_method = req.method == HTTP_CONNECT;
+  auto connect_method = req.method_token == HTTP_CONNECT;
 
   auto buf = downstream->get_response_buf();
 

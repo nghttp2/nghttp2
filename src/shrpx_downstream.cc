@@ -635,7 +635,7 @@ bool Downstream::validate_response_recv_body_length() const {
 }
 
 void Downstream::check_upgrade_fulfilled() {
-  if (req_.method == HTTP_CONNECT) {
+  if (req_.method_token == HTTP_CONNECT) {
     upgraded_ = 200 <= resp_.http_status && resp_.http_status < 300;
 
     return;
@@ -650,13 +650,13 @@ void Downstream::check_upgrade_fulfilled() {
 }
 
 void Downstream::inspect_http2_request() {
-  if (req_.method == HTTP_CONNECT) {
+  if (req_.method_token == HTTP_CONNECT) {
     req_.upgrade_request = true;
   }
 }
 
 void Downstream::inspect_http1_request() {
-  if (req_.method == HTTP_CONNECT) {
+  if (req_.method_token == HTTP_CONNECT) {
     req_.upgrade_request = true;
   } else {
     auto upgrade = req_.fs.header(http2::HD_UPGRADE);
@@ -741,7 +741,7 @@ bool Downstream::get_expect_final_response() const {
 
 bool Downstream::expect_response_body() const {
   return !resp_.headers_only &&
-         http2::expect_response_body(req_.method, resp_.http_status);
+         http2::expect_response_body(req_.method_token, resp_.http_status);
 }
 
 bool Downstream::expect_response_trailer() const {

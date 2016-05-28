@@ -2055,13 +2055,6 @@ int Http2Session::handle_downstream_push_promise_complete(
   }
 
   auto method_token = http2::lookup_method_token(method->value);
-  if (method_token == -1) {
-    if (LOG_ENABLED(INFO)) {
-      SSLOG(INFO, this) << "Unrecognized method: " << method->value;
-    }
-
-    return -1;
-  }
 
   // TODO Rewrite authority if we enabled rewrite host.  But we
   // really don't know how to rewrite host.  Should we use the same
@@ -2069,7 +2062,8 @@ int Http2Session::handle_downstream_push_promise_complete(
   if (authority) {
     promised_req.authority = authority->value;
   }
-  promised_req.method = method_token;
+  promised_req.method = method->value;
+  promised_req.method_token = method_token;
   // libnghttp2 ensures that we don't have CONNECT method in
   // PUSH_PROMISE, and guarantees that :scheme exists.
   if (scheme) {

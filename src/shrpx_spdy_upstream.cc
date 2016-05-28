@@ -220,12 +220,6 @@ void on_ctrl_recv_callback(spdylay_session *session, spdylay_frame_type type,
     }
 
     auto method_token = http2::lookup_method_token(method->value);
-    if (method_token == -1) {
-      if (upstream->error_reply(downstream, 501) != 0) {
-        ULOG(FATAL, upstream) << "error_reply failed";
-      }
-      return;
-    }
 
     auto is_connect = method_token == HTTP_CONNECT;
     if (!path || !host || !http2::non_empty_value(host) ||
@@ -264,7 +258,8 @@ void on_ctrl_recv_callback(spdylay_session *session, spdylay_frame_type type,
       return;
     }
 
-    req.method = method_token;
+    req.method = method->value;
+    req.method_token = method_token;
     if (is_connect) {
       req.authority = path->value;
     } else {

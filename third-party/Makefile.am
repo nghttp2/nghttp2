@@ -28,6 +28,7 @@ EXTRA_DIST = CMakeLists.txt
 if ENABLE_THIRD_PARTY
 
 noinst_LTLIBRARIES = libhttp-parser.la
+libhttp_parser_la_CPPFLAGS = ${AMCPPFLAGS} -DHTTP_PARSER_METHOD_CB=1
 libhttp_parser_la_SOURCES = \
 	http-parser/http_parser.c \
 	http-parser/http_parser.h

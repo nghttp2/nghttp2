@@ -53,23 +53,20 @@ func TestH1H1PlainGETClose(t *testing.T) {
 	}
 }
 
-// TestH1H1InvalidMethod tests that server rejects invalid method with
-// 501 status code
-func TestH1H1InvalidMethod(t *testing.T) {
-	st := newServerTester(nil, t, func(w http.ResponseWriter, r *http.Request) {
-		t.Errorf("server should not forward this request")
-	})
+// TestH1H1UnknownMethod tests that server can forward unknown method
+func TestH1H1UnknownMethod(t *testing.T) {
+	st := newServerTester(nil, t, noopHandler)
 	defer st.Close()
 
 	res, err := st.http1(requestParam{
-		name:   "TestH1H1InvalidMethod",
+		name:   "TestH1H1UnknownMethod",
 		method: "get",
 	})
 	if err != nil {
 		t.Fatalf("Error st.http1() = %v", err)
 	}
 
-	if got, want := res.status, 501; got != want {
+	if got, want := res.status, 200; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 }

@@ -68,9 +68,8 @@ mrb_value request_get_method(mrb_state *mrb, mrb_value self) {
   auto data = static_cast<MRubyAssocData *>(mrb->ud);
   auto downstream = data->downstream;
   const auto &req = downstream->request();
-  auto method = http2::to_method_string(req.method);
 
-  return mrb_str_new(mrb, method.c_str(), method.size());
+  return mrb_str_new(mrb, req.method.c_str(), req.method.size());
 }
 } // namespace
 
@@ -80,6 +79,8 @@ mrb_value request_set_method(mrb_state *mrb, mrb_value self) {
   auto downstream = data->downstream;
   auto &req = downstream->request();
 
+  auto &balloc = downstream->get_block_allocator();
+
   check_phase(mrb, data->phase, PHASE_REQUEST);
 
   const char *method;
@@ -88,13 +89,13 @@ mrb_value request_set_method(mrb_state *mrb, mrb_value self) {
   if (n == 0) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "method must not be empty string");
   }
+
   auto token =
       http2::lookup_method_token(reinterpret_cast<const uint8_t *>(method), n);
-  if (token == -1) {
-    mrb_raise(mrb, E_RUNTIME_ERROR, "method not supported");
-  }
 
-  req.method = token;
+  req.method =
+      make_string_ref(balloc, StringRef{method, static_cast<size_t>(n)});
+  req.method_token = token;
 
   return self;
 }

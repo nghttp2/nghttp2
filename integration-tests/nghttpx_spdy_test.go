@@ -210,22 +210,19 @@ func TestS3H1HeaderFields(t *testing.T) {
 	}
 }
 
-// TestS3H1InvalidMethod tests that server rejects invalid method with
-// 501.
-func TestS3H1InvalidMethod(t *testing.T) {
-	st := newServerTesterTLS([]string{"--npn-list=spdy/3.1"}, t, func(w http.ResponseWriter, r *http.Request) {
-		t.Errorf("server should not forward this request")
-	})
+// TestS3H1UnknownMethod tests that server can forward unknown method.
+func TestS3H1UnknownMethod(t *testing.T) {
+	st := newServerTesterTLS([]string{"--npn-list=spdy/3.1"}, t, noopHandler)
 	defer st.Close()
 
 	res, err := st.spdy(requestParam{
-		name:   "TestS3H1InvalidMethod",
+		name:   "TestS3H1UnknownMethod",
 		method: "get",
 	})
 	if err != nil {
 		t.Fatalf("Error st.spdy() = %v", err)
 	}
-	if got, want := res.status, 501; got != want {
+	if got, want := res.status, 200; got != want {
 		t.Errorf("status: %v; want %v", got, want)
 	}
 }

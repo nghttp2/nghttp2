@@ -117,7 +117,7 @@ int Http2Upstream::upgrade_upstream(HttpsUpstream *http) {
   rv = nghttp2_session_upgrade2(
       session_, reinterpret_cast<const uint8_t *>(settings_payload.c_str()),
       settings_payload.size(),
-      http->get_downstream()->request().method == HTTP_HEAD, nullptr);
+      http->get_downstream()->request().method_token == HTTP_HEAD, nullptr);
   if (rv != 0) {
     if (LOG_ENABLED(INFO)) {
       ULOG(INFO, this) << "nghttp2_session_upgrade() returned error: "
@@ -296,12 +296,6 @@ int Http2Upstream::on_request_headers(Downstream *downstream,
   auto scheme = req.fs.header(http2::HD__SCHEME);
 
   auto method_token = http2::lookup_method_token(method->value);
-  if (method_token == -1) {
-    if (error_reply(downstream, 501) != 0) {
-      return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
-    }
-    return 0;
-  }
 
   // For HTTP/2 proxy, we request :authority.
   if (method_token != HTTP_CONNECT && get_config()->http2_proxy && !authority) {
@@ -309,7 +303,8 @@ int Http2Upstream::on_request_headers(Downstream *downstream,
     return 0;
   }
 
-  req.method = method_token;
+  req.method = method->value;
+  req.method_token = method_token;
   if (scheme) {
     req.scheme = scheme->value;
   }
@@ -604,9 +599,11 @@ int on_frame_send_callback(nghttp2_session *session, const nghttp2_frame *frame,
 
       auto token = http2::lookup_token(nv.name, nv.namelen);
       switch (token) {
-      case http2::HD__METHOD:
-        req.method = http2::lookup_method_token(value);
+      case http2::HD__METHOD: {
+        req.method = value;
+        req.method_token = http2::lookup_method_token(value);
         break;
+      }
       case http2::HD__SCHEME:
         req.scheme = value;
         break;
@@ -1415,7 +1412,7 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
       !get_config()->http2_proxy && (downstream->get_stream_id() % 2) &&
       resp.fs.header(http2::HD_LINK) &&
       (downstream->get_non_final_response() || resp.http_status == 200) &&
-      (req.method == HTTP_GET || req.method == HTTP_POST)) {
+      (req.method_token == HTTP_GET || req.method_token == HTTP_POST)) {
 
     if (prepare_push_promise(downstream) != 0) {
       // Continue to send response even if push was failed.

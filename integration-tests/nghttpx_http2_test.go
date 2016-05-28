@@ -589,22 +589,19 @@ func TestH2H1InvalidRequestCL(t *testing.T) {
 // 	}
 // }
 
-// TestH2H1InvalidMethod tests that server rejects invalid method with
-// 501.
-func TestH2H1InvalidMethod(t *testing.T) {
-	st := newServerTester(nil, t, func(w http.ResponseWriter, r *http.Request) {
-		t.Errorf("server should not forward this request")
-	})
+// TestH2H1UnknownMethod tests that server can forward unknown method.
+func TestH2H1UnknownMethod(t *testing.T) {
+	st := newServerTester(nil, t, noopHandler)
 	defer st.Close()
 
 	res, err := st.http2(requestParam{
-		name:   "TestH2H1InvalidMethod",
+		name:   "TestH2H1UnknownMethod",
 		method: "get",
 	})
 	if err != nil {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
-	if got, want := res.status, 501; got != want {
+	if got, want := res.status, 200; got != want {
 		t.Errorf("status: %v; want %v", got, want)
 	}
 }

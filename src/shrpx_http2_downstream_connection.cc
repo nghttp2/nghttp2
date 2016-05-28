@@ -103,7 +103,7 @@ int Http2DownstreamConnection::attach_downstream(Downstream *downstream) {
   auto &req = downstream_->request();
 
   // HTTP/2 disables HTTP Upgrade.
-  if (req.method != HTTP_CONNECT) {
+  if (req.method_token != HTTP_CONNECT) {
     req.upgrade_request = false;
   }
 
@@ -251,7 +251,7 @@ int Http2DownstreamConnection::push_request_headers() {
 
   auto no_host_rewrite = httpconf.no_host_rewrite ||
                          get_config()->http2_proxy ||
-                         req.method == HTTP_CONNECT;
+                         req.method_token == HTTP_CONNECT;
 
   // http2session_ has already in CONNECTED state, so we can get
   // addr_idx here.
@@ -286,15 +286,14 @@ int Http2DownstreamConnection::push_request_headers() {
   nva.reserve(req.fs.headers().size() + 9 + num_cookies +
               httpconf.add_request_headers.size());
 
-  nva.push_back(
-      http2::make_nv_ls_nocopy(":method", http2::to_method_string(req.method)));
+  nva.push_back(http2::make_nv_ls_nocopy(":method", req.method));
 
-  if (req.method != HTTP_CONNECT) {
+  if (req.method_token != HTTP_CONNECT) {
     assert(!req.scheme.empty());
 
     nva.push_back(http2::make_nv_ls_nocopy(":scheme", req.scheme));
 
-    if (req.method == HTTP_OPTIONS && req.path.empty()) {
+    if (req.method_token == HTTP_OPTIONS && req.path.empty()) {
       nva.push_back(http2::make_nv_ll(":path", "*"));
     } else {
       nva.push_back(http2::make_nv_ls_nocopy(":path", req.path));
@@ -333,7 +332,7 @@ int Http2DownstreamConnection::push_request_headers() {
   if (fwdconf.params) {
     auto params = fwdconf.params;
 
-    if (get_config()->http2_proxy || req.method == HTTP_CONNECT) {
+    if (get_config()->http2_proxy || req.method_token == HTTP_CONNECT) {
       params &= ~FORWARDED_PROTO;
     }
 
@@ -376,7 +375,7 @@ int Http2DownstreamConnection::push_request_headers() {
     nva.push_back(http2::make_nv_ls_nocopy("x-forwarded-for", xff->value));
   }
 
-  if (!get_config()->http2_proxy && req.method != HTTP_CONNECT) {
+  if (!get_config()->http2_proxy && req.method_token != HTTP_CONNECT) {
     // We use same protocol with :scheme header field
     nva.push_back(http2::make_nv_ls_nocopy("x-forwarded-proto", req.scheme));
   }
@@ -428,7 +427,7 @@ int Http2DownstreamConnection::push_request_headers() {
 
   // Add body as long as transfer-encoding is given even if
   // req.fs.content_length == 0 to forward trailer fields.
-  if (req.method == HTTP_CONNECT || transfer_encoding ||
+  if (req.method_token == HTTP_CONNECT || transfer_encoding ||
       req.fs.content_length > 0 || req.http2_expect_body) {
     // Request-body is expected.
     nghttp2_data_provider data_prd{{}, http2_data_read_callback};

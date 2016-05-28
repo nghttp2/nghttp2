@@ -126,7 +126,7 @@ struct Request {
       : fs(balloc, 16),
         recv_body_length(0),
         unconsumed_body_length(0),
-        method(-1),
+        method_token(-1),
         http_major(1),
         http_minor(1),
         upgrade_request(false),
@@ -158,7 +158,8 @@ struct Request {
   int64_t recv_body_length;
   // The number of bytes not consumed by the application yet.
   size_t unconsumed_body_length;
-  int method;
+  StringRef method;
+  int method_token;
   // HTTP major and minor version
   int http_major, http_minor;
   // Returns true if the request is HTTP upgrade (HTTP Upgrade or
