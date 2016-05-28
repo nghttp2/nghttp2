@@ -310,13 +310,6 @@ int Http2DownstreamConnection::push_request_headers() {
 
   http2::copy_headers_to_nva_nocopy(nva, req.fs.headers());
 
-  bool chunked_encoding = false;
-  auto transfer_encoding = req.fs.header(http2::HD_TRANSFER_ENCODING);
-  if (transfer_encoding &&
-      util::strieq_l("chunked", (*transfer_encoding).value)) {
-    chunked_encoding = true;
-  }
-
   if (!http2conf.no_cookie_crumbling) {
     downstream_->crumble_request_cookie(nva);
   }
@@ -424,6 +417,8 @@ int Http2DownstreamConnection::push_request_headers() {
     }
     DCLOG(INFO, this) << "HTTP request headers\n" << ss.str();
   }
+
+  auto transfer_encoding = req.fs.header(http2::HD_TRANSFER_ENCODING);
 
   // Add body as long as transfer-encoding is given even if
   // req.fs.content_length == 0 to forward trailer fields.
