@@ -958,7 +958,8 @@ int HttpDownstreamConnection::tls_handshake() {
 
   connect_blocker->on_success();
 
-  conn_.timeoutcb = timeoutcb;
+  ev_set_cb(&conn_.rt, timeoutcb);
+  ev_set_cb(&conn_.wt, timeoutcb);
 
   do_read_ = &HttpDownstreamConnection::read_tls;
   do_write_ = &HttpDownstreamConnection::write_tls;
@@ -1137,7 +1138,8 @@ int HttpDownstreamConnection::connected() {
 
   connect_blocker->on_success();
 
-  conn_.timeoutcb = timeoutcb;
+  ev_set_cb(&conn_.rt, timeoutcb);
+  ev_set_cb(&conn_.wt, timeoutcb);
 
   do_read_ = &HttpDownstreamConnection::read_clear;
   do_write_ = &HttpDownstreamConnection::write_clear;
