@@ -125,9 +125,6 @@ struct Connection {
   ev_timer rt;
   RateLimit wlimit;
   RateLimit rlimit;
-  IOCb writecb;
-  IOCb readcb;
-  TimerCb timeoutcb;
   struct ev_loop *loop;
   void *data;
   int fd;
