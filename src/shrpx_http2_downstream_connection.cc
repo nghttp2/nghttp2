@@ -426,11 +426,10 @@ int Http2DownstreamConnection::push_request_headers() {
     DCLOG(INFO, this) << "HTTP request headers\n" << ss.str();
   }
 
-  auto content_length = req.fs.header(http2::HD_CONTENT_LENGTH);
-  // TODO check content-length: 0 case
-
-  if (req.method == HTTP_CONNECT || chunked_encoding || content_length ||
-      req.http2_expect_body) {
+  // Add body as long as transfer-encoding is given even if
+  // req.fs.content_length == 0 to forward trailer fields.
+  if (req.method == HTTP_CONNECT || transfer_encoding ||
+      req.fs.content_length > 0 || req.http2_expect_body) {
     // Request-body is expected.
     nghttp2_data_provider data_prd{{}, http2_data_read_callback};
     rv = http2session_->submit_request(this, nva.data(), nva.size(), &data_prd);

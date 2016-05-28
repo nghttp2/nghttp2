@@ -373,9 +373,9 @@ int HttpDownstreamConnection::push_request_headers() {
     buf->append("\r\n");
   }
 
-  if (!connect_method && req.http2_expect_body &&
-      !req.fs.header(http2::HD_CONTENT_LENGTH)) {
-
+  // set transfer-encoding only when content-length is unknown and
+  // request body is expected.
+  if (!connect_method && req.http2_expect_body && req.fs.content_length == -1) {
     downstream_->set_chunked_request(true);
     buf->append("Transfer-Encoding: chunked\r\n");
   }
