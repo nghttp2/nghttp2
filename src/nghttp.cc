@@ -1151,9 +1151,9 @@ int HttpClient::connection_made() {
   ev_timer_again(loop, &settings_timer);
 
   if (config.connection_window_bits != -1) {
-    int32_t wininc = (1 << config.connection_window_bits) - 1 -
-                     NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE;
-    rv = nghttp2_submit_window_update(session, NGHTTP2_FLAG_NONE, 0, wininc);
+    int32_t window_size = (1 << config.connection_window_bits) - 1;
+    rv = nghttp2_session_set_local_window_size(session, NGHTTP2_FLAG_NONE, 0,
+                                               window_size);
     if (rv != 0) {
       return -1;
     }

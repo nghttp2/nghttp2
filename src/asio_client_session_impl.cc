@@ -373,9 +373,8 @@ bool session_impl::setup_session() {
        {NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE, window_size}}};
   nghttp2_submit_settings(session_, NGHTTP2_FLAG_NONE, iv.data(), iv.size());
   // increase connection window size up to window_size
-  nghttp2_submit_window_update(session_, NGHTTP2_FLAG_NONE, 0,
-                               window_size -
-                                   NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE);
+  nghttp2_session_set_local_window_size(session_, NGHTTP2_FLAG_NONE, 0,
+                                        window_size);
   return true;
 }
 

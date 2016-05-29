@@ -1533,11 +1533,11 @@ int Http2Session::connection_made() {
     return -1;
   }
 
-  auto connection_window_bits = http2conf.downstream.connection_window_bits;
-  if (connection_window_bits > 16) {
-    int32_t delta = (1 << connection_window_bits) - 1 -
-                    NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE;
-    rv = nghttp2_submit_window_update(session_, NGHTTP2_FLAG_NONE, 0, delta);
+  if (http2conf.downstream.connection_window_bits != 16) {
+    int32_t window_size =
+        (1 << http2conf.downstream.connection_window_bits) - 1;
+    rv = nghttp2_session_set_local_window_size(session_, NGHTTP2_FLAG_NONE, 0,
+                                               window_size);
     if (rv != 0) {
       return -1;
     }

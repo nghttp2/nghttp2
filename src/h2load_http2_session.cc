@@ -219,13 +219,10 @@ void Http2Session::on_connect() {
 
   assert(rv == 0);
 
-  auto extra_connection_window =
-      (1 << client_->worker->config->connection_window_bits) - 1 -
-      NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE;
-  if (extra_connection_window != 0) {
-    nghttp2_submit_window_update(session_, NGHTTP2_FLAG_NONE, 0,
-                                 extra_connection_window);
-  }
+  auto connection_window =
+      (1 << client_->worker->config->connection_window_bits) - 1;
+  nghttp2_session_set_local_window_size(session_, NGHTTP2_FLAG_NONE, 0,
+                                        connection_window);
 
   client_->signal_write();
 }

@@ -883,10 +883,10 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
                       << nghttp2_strerror(rv);
   }
 
-  if (http2conf.upstream.connection_window_bits > 16) {
-    int32_t delta = (1 << http2conf.upstream.connection_window_bits) - 1 -
-                    NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE;
-    rv = nghttp2_submit_window_update(session_, NGHTTP2_FLAG_NONE, 0, delta);
+  if (http2conf.upstream.connection_window_bits != 16) {
+    int32_t window_size = (1 << http2conf.upstream.connection_window_bits) - 1;
+    rv = nghttp2_session_set_local_window_size(session_, NGHTTP2_FLAG_NONE, 0,
+                                               window_size);
 
     if (rv != 0) {
       ULOG(ERROR, this) << "nghttp2_submit_window_update() returned error: "

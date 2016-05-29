@@ -856,10 +856,9 @@ int Http2Handler::connection_made() {
   }
 
   if (config->connection_window_bits != -1) {
-    r = nghttp2_submit_window_update(
+    r = nghttp2_session_set_local_window_size(
         session_, NGHTTP2_FLAG_NONE, 0,
-        (1 << config->connection_window_bits) - 1 -
-            NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE);
+        (1 << config->connection_window_bits) - 1);
     if (r != 0) {
       return r;
     }
