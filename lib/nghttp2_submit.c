@@ -410,6 +410,75 @@ int nghttp2_submit_window_update(nghttp2_session *session, uint8_t flags,
   return 0;
 }
 
+int nghttp2_session_set_local_window_size(nghttp2_session *session,
+                                          uint8_t flags, int32_t stream_id,
+                                          int32_t window_size) {
+  int32_t window_size_increment;
+  nghttp2_stream *stream;
+  int rv;
+
+  if (window_size < 0) {
+    return NGHTTP2_ERR_INVALID_ARGUMENT;
+  }
+
+  flags = 0;
+
+  if (stream_id == 0) {
+    window_size_increment = window_size - session->local_window_size;
+
+    if (window_size_increment == 0) {
+      return 0;
+    }
+
+    if (window_size_increment < 0) {
+      return nghttp2_adjust_local_window_size(
+          &session->local_window_size, &session->recv_window_size,
+          &session->recv_reduction, &window_size_increment);
+    }
+
+    rv = nghttp2_increase_local_window_size(
+        &session->local_window_size, &session->recv_window_size,
+        &session->recv_reduction, &window_size_increment);
+
+    if (rv != 0) {
+      return rv;
+    }
+  } else {
+    stream = nghttp2_session_get_stream(session, stream_id);
+
+    if (stream == NULL) {
+      return 0;
+    }
+
+    window_size_increment = window_size - stream->local_window_size;
+
+    if (window_size_increment == 0) {
+      return 0;
+    }
+
+    if (window_size_increment < 0) {
+      return nghttp2_adjust_local_window_size(
+          &stream->local_window_size, &stream->recv_window_size,
+          &stream->recv_reduction, &window_size_increment);
+    }
+
+    rv = nghttp2_increase_local_window_size(
+        &stream->local_window_size, &stream->recv_window_size,
+        &stream->recv_reduction, &window_size_increment);
+
+    if (rv != 0) {
+      return rv;
+    }
+  }
+
+  if (window_size_increment > 0) {
+    return nghttp2_session_add_window_update(session, flags, stream_id,
+                                             window_size_increment);
+  }
+
+  return 0;
+}
+
 int nghttp2_submit_altsvc(nghttp2_session *session, uint8_t flags _U_,
                           int32_t stream_id, const uint8_t *origin,
                           size_t origin_len, const uint8_t *field_value,

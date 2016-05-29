@@ -213,6 +213,38 @@ int nghttp2_adjust_local_window_size(int32_t *local_window_size_ptr,
   return 0;
 }
 
+int nghttp2_increase_local_window_size(int32_t *local_window_size_ptr,
+                                       int32_t *recv_window_size_ptr,
+                                       int32_t *recv_reduction_ptr,
+                                       int32_t *delta_ptr) {
+  int32_t recv_reduction_delta;
+  int32_t delta;
+
+  delta = *delta_ptr;
+
+  assert(delta >= 0);
+
+  /* The delta size is strictly more than received bytes. Increase
+     local_window_size by that difference |delta|. */
+  if (*local_window_size_ptr > NGHTTP2_MAX_WINDOW_SIZE - delta) {
+    return NGHTTP2_ERR_FLOW_CONTROL;
+  }
+
+  *local_window_size_ptr += delta;
+  /* If there is recv_reduction due to earlier window_size
+     reduction, we have to adjust it too. */
+  recv_reduction_delta = nghttp2_min(*recv_reduction_ptr, delta);
+  *recv_reduction_ptr -= recv_reduction_delta;
+
+  *recv_window_size_ptr += recv_reduction_delta;
+
+  /* recv_reduction_delta must be paied from *delta_ptr, since it was
+     added in window size reduction (see below). */
+  *delta_ptr -= recv_reduction_delta;
+
+  return 0;
+}
+
 int nghttp2_should_send_window_update(int32_t local_window_size,
                                       int32_t recv_window_size) {
   return recv_window_size > 0 && recv_window_size >= local_window_size / 2;
