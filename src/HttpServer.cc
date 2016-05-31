@@ -1288,7 +1288,7 @@ void prepare_response(Stream *stream, Http2Handler *hd,
     p = std::copy(std::begin(htdocs), std::end(htdocs), p);
     p = std::copy(std::begin(path), std::end(path), p);
     if (trailing_slash) {
-      p = std::copy(std::begin(DEFAULT_HTML), std::end(DEFAULT_HTML), p);
+      std::copy(std::begin(DEFAULT_HTML), std::end(DEFAULT_HTML), p);
     }
   }
 

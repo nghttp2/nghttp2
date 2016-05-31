@@ -797,8 +797,9 @@ std::vector<unsigned char> get_default_alpn() {
 std::vector<StringRef> split_str(const StringRef &s, char delim) {
   size_t len = 1;
   auto last = std::end(s);
-  for (auto first = std::begin(s), d = first;
-       (d = std::find(first, last, delim)) != last; ++len, first = d + 1)
+  StringRef::const_iterator d;
+  for (auto first = std::begin(s); (d = std::find(first, last, delim)) != last;
+       ++len, first = d + 1)
     ;
 
   auto list = std::vector<StringRef>(len);
