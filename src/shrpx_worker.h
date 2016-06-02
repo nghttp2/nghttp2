@@ -206,9 +206,13 @@ public:
   mruby::MRubyContext *get_mruby_context() const;
 #endif // HAVE_MRUBY
 
-  std::vector<DownstreamAddrGroup> &get_downstream_addr_groups();
+  std::vector<std::shared_ptr<DownstreamAddrGroup>> &
+  get_downstream_addr_groups();
 
   ConnectBlocker *get_connect_blocker() const;
+
+  const DownstreamRouter *get_downstream_router() const;
+  size_t get_addr_group_catch_all() const;
 
 private:
 #ifndef NOTHREADS
@@ -222,6 +226,7 @@ private:
   MemchunkPool mcpool_;
   WorkerStat worker_stat_;
 
+  std::shared_ptr<DownstreamRouter> downstream_router_;
   std::unique_ptr<MemcachedDispatcher> session_cache_memcached_dispatcher_;
 #ifdef HAVE_MRUBY
   std::unique_ptr<mruby::MRubyContext> mruby_ctx_;
@@ -235,10 +240,12 @@ private:
   ssl::CertLookupTree *cert_tree_;
 
   std::shared_ptr<TicketKeys> ticket_keys_;
-  std::vector<DownstreamAddrGroup> downstream_addr_groups_;
+  std::vector<std::shared_ptr<DownstreamAddrGroup>> downstream_addr_groups_;
   // Worker level blocker for downstream connection.  For example,
   // this is used when file decriptor is exhausted.
   std::unique_ptr<ConnectBlocker> connect_blocker_;
+
+  size_t addr_group_catch_all_;
 
   bool graceful_shutdown_;
 };
@@ -252,7 +259,8 @@ private:
 size_t match_downstream_addr_group(
     const Router &router, const std::vector<WildcardPattern> &wildcard_patterns,
     const StringRef &hostport, const StringRef &path,
-    const std::vector<DownstreamAddrGroup> &groups, size_t catch_all);
+    const std::vector<std::shared_ptr<DownstreamAddrGroup>> &groups,
+    size_t catch_all);
 
 void downstream_failure(DownstreamAddr *addr);
 

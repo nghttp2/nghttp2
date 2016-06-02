@@ -1036,6 +1036,7 @@ void fill_default_config() {
   mod_config()->num_worker = 1;
   mod_config()->conf_path = "/etc/nghttpx/nghttpx.conf";
   mod_config()->pid = getpid();
+  mod_config()->downstream_router = std::make_shared<DownstreamRouter>();
 
   if (ev_supported_backends() & ~ev_recommended_backends() & EVBACKEND_KQUEUE) {
     mod_config()->ev_loop_flags = ev_recommended_backends() | EVBACKEND_KQUEUE;

@@ -109,6 +109,7 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
                const std::shared_ptr<TicketKeys> &ticket_keys)
     : randgen_(rd()),
       worker_stat_{},
+      downstream_router_(get_config()->downstream_router),
       loop_(loop),
       sv_ssl_ctx_(sv_ssl_ctx),
       cl_ssl_ctx_(cl_ssl_ctx),
@@ -117,6 +118,7 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
       downstream_addr_groups_(get_config()->conn.downstream.addr_groups.size()),
       connect_blocker_(
           make_unique<ConnectBlocker>(randgen_, loop_, []() {}, []() {})),
+      addr_group_catch_all_(get_config()->conn.downstream.addr_group_catch_all),
       graceful_shutdown_(false) {
   ev_async_init(&w_, eventcb);
   w_.data = this;
@@ -140,7 +142,8 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
     auto &src = downstreamconf.addr_groups[i];
     auto &dst = downstream_addr_groups_[i];
 
-    dst.pattern = src.pattern;
+    dst = std::make_shared<DownstreamAddrGroup>();
+    dst->pattern = src.pattern;
 
     auto shared_addr = std::make_shared<SharedDownstreamAddr>();
 
@@ -210,11 +213,11 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
     // share the connection if patterns have the same set of backend
     // addresses.
     auto end = std::begin(downstream_addr_groups_) + i;
-    auto it = std::find_if(std::begin(downstream_addr_groups_), end,
-                           [&shared_addr](const DownstreamAddrGroup &group) {
-                             return match_shared_downstream_addr(
-                                 group.shared_addr, shared_addr);
-                           });
+    auto it = std::find_if(
+        std::begin(downstream_addr_groups_), end,
+        [&shared_addr](const std::shared_ptr<DownstreamAddrGroup> &group) {
+          return match_shared_downstream_addr(group->shared_addr, shared_addr);
+        });
 
     if (it == end) {
       if (LOG_ENABLED(INFO)) {
@@ -225,13 +228,13 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
       shared_addr->http1_pri.weight = num_http1;
       shared_addr->http2_pri.weight = num_http2;
 
-      dst.shared_addr = shared_addr;
+      dst->shared_addr = shared_addr;
     } else {
       if (LOG_ENABLED(INFO)) {
-        LOG(INFO) << dst.pattern << " shares the same backend group with "
-                  << (*it).pattern;
+        LOG(INFO) << dst->pattern << " shares the same backend group with "
+                  << (*it)->pattern;
       }
-      dst.shared_addr = (*it).shared_addr;
+      dst->shared_addr = (*it)->shared_addr;
     }
   }
 }
@@ -395,7 +398,8 @@ mruby::MRubyContext *Worker::get_mruby_context() const {
 }
 #endif // HAVE_MRUBY
 
-std::vector<DownstreamAddrGroup> &Worker::get_downstream_addr_groups() {
+std::vector<std::shared_ptr<DownstreamAddrGroup>> &
+Worker::get_downstream_addr_groups() {
   return downstream_addr_groups_;
 }
 
@@ -403,17 +407,26 @@ ConnectBlocker *Worker::get_connect_blocker() const {
   return connect_blocker_.get();
 }
 
+const DownstreamRouter *Worker::get_downstream_router() const {
+  return downstream_router_.get();
+}
+
+size_t Worker::get_addr_group_catch_all() const {
+  return addr_group_catch_all_;
+}
+
 namespace {
 size_t match_downstream_addr_group_host(
     const Router &router, const std::vector<WildcardPattern> &wildcard_patterns,
     const StringRef &host, const StringRef &path,
-    const std::vector<DownstreamAddrGroup> &groups, size_t catch_all) {
+    const std::vector<std::shared_ptr<DownstreamAddrGroup>> &groups,
+    size_t catch_all) {
   if (path.empty() || path[0] != '/') {
     auto group = router.match(host, StringRef::from_lit("/"));
     if (group != -1) {
       if (LOG_ENABLED(INFO)) {
         LOG(INFO) << "Found pattern with query " << host
-                  << ", matched pattern=" << groups[group].pattern;
+                  << ", matched pattern=" << groups[group]->pattern;
       }
       return group;
     }
@@ -429,7 +442,7 @@ size_t match_downstream_addr_group_host(
   if (group != -1) {
     if (LOG_ENABLED(INFO)) {
       LOG(INFO) << "Found pattern with query " << host << path
-                << ", matched pattern=" << groups[group].pattern;
+                << ", matched pattern=" << groups[group]->pattern;
     }
     return group;
   }
@@ -448,7 +461,7 @@ size_t match_downstream_addr_group_host(
       // longest host pattern.
       if (LOG_ENABLED(INFO)) {
         LOG(INFO) << "Found wildcard pattern with query " << host << path
-                  << ", matched pattern=" << groups[group].pattern;
+                  << ", matched pattern=" << groups[group]->pattern;
       }
       return group;
     }
@@ -458,7 +471,7 @@ size_t match_downstream_addr_group_host(
   if (group != -1) {
     if (LOG_ENABLED(INFO)) {
       LOG(INFO) << "Found pattern with query " << path
-                << ", matched pattern=" << groups[group].pattern;
+                << ", matched pattern=" << groups[group]->pattern;
     }
     return group;
   }
@@ -473,7 +486,8 @@ size_t match_downstream_addr_group_host(
 size_t match_downstream_addr_group(
     const Router &router, const std::vector<WildcardPattern> &wildcard_patterns,
     const StringRef &hostport, const StringRef &raw_path,
-    const std::vector<DownstreamAddrGroup> &groups, size_t catch_all) {
+    const std::vector<std::shared_ptr<DownstreamAddrGroup>> &groups,
+    size_t catch_all) {
   if (std::find(std::begin(hostport), std::end(hostport), '/') !=
       std::end(hostport)) {
     // We use '/' specially, and if '/' is included in host, it breaks

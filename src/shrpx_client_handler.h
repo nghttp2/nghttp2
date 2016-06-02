@@ -142,7 +142,8 @@ public:
   // header field.
   StringRef get_forwarded_for() const;
 
-  Http2Session *select_http2_session(DownstreamAddrGroup &group);
+  Http2Session *
+  select_http2_session(const std::shared_ptr<DownstreamAddrGroup> &group);
 
   const UpstreamAddr *get_upstream_addr() const;
 

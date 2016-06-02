@@ -172,7 +172,8 @@ void initiate_connection_cb(struct ev_loop *loop, ev_timer *w, int revents) {
 } // namespace
 
 Http2Session::Http2Session(struct ev_loop *loop, SSL_CTX *ssl_ctx,
-                           Worker *worker, DownstreamAddrGroup *group,
+                           Worker *worker,
+                           const std::shared_ptr<DownstreamAddrGroup> &group,
                            DownstreamAddr *addr)
     : dlnext(nullptr),
       dlprev(nullptr),
@@ -2111,7 +2112,7 @@ bool Http2Session::max_concurrency_reached(size_t extra) const {
 }
 
 DownstreamAddrGroup *Http2Session::get_downstream_addr_group() const {
-  return group_;
+  return group_.get();
 }
 
 void Http2Session::add_to_avail_freelist() {
@@ -2120,8 +2121,8 @@ void Http2Session::add_to_avail_freelist() {
   }
 
   if (LOG_ENABLED(INFO)) {
-    SSLOG(INFO, this) << "Append to http2_avail_freelist, group=" << group_
-                      << ", freelist.size="
+    SSLOG(INFO, this) << "Append to http2_avail_freelist, group="
+                      << group_.get() << ", freelist.size="
                       << group_->shared_addr->http2_avail_freelist.size();
   }
 

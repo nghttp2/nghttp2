@@ -788,6 +788,8 @@ int parse_mapping(Config *config, DownstreamAddrConfig addr,
     DownstreamAddrGroupConfig g(StringRef{pattern});
     g.addrs.push_back(addr);
 
+    auto &downstream_router = config->downstream_router;
+
     if (pattern[0] == '*') {
       // wildcard pattern
       auto path_first =
@@ -796,23 +798,24 @@ int parse_mapping(Config *config, DownstreamAddrConfig addr,
       auto host = StringRef{std::begin(g.pattern) + 1, path_first};
       auto path = StringRef{path_first, std::end(g.pattern)};
 
-      auto &wildcard_patterns = config->wildcard_patterns;
+      auto &wildcard_patterns = downstream_router->wildcard_patterns;
 
       auto it = std::find_if(
           std::begin(wildcard_patterns), std::end(wildcard_patterns),
           [&host](const WildcardPattern &wp) { return wp.host == host; });
 
       if (it == std::end(wildcard_patterns)) {
-        config->wildcard_patterns.push_back(
+        wildcard_patterns.push_back(
             {ImmutableString{std::begin(host), std::end(host)}});
 
-        auto &router = config->wildcard_patterns.back().router;
+        auto &router = wildcard_patterns.back().router;
         router.add_route(path, addr_groups.size());
       } else {
         (*it).router.add_route(path, addr_groups.size());
       }
     } else {
-      config->router.add_route(StringRef{g.pattern}, addr_groups.size());
+      downstream_router->router.add_route(StringRef{g.pattern},
+                                          addr_groups.size());
     }
 
     addr_groups.push_back(std::move(g));
@@ -2904,13 +2907,15 @@ StringRef strproto(shrpx_proto proto) {
   assert(0);
 }
 
-// Configures the following member in |config|: router,
-// conn.downstream.addr_groups, wildcard_patterns,
+// Configures the following member in |config|:
+// conn.downstream_router, conn.downstream.addr_groups,
+// conn.downstream.addr_group_catch_all.
 int configure_downstream_group(Config *config, bool http2_proxy,
                                bool numeric_addr_only,
                                const TLSConfig &tlsconf) {
   auto &downstreamconf = config->conn.downstream;
   auto &addr_groups = downstreamconf.addr_groups;
+  auto &downstream_router = config->downstream_router;
 
   if (addr_groups.empty()) {
     DownstreamAddrConfig addr{};
@@ -2920,7 +2925,8 @@ int configure_downstream_group(Config *config, bool http2_proxy,
 
     DownstreamAddrGroupConfig g(StringRef::from_lit("/"));
     g.addrs.push_back(std::move(addr));
-    config->router.add_route(StringRef{g.pattern}, addr_groups.size());
+    downstream_router->router.add_route(StringRef{g.pattern},
+                                        addr_groups.size());
     addr_groups.push_back(std::move(g));
   } else if (http2_proxy) {
     // We don't support host mapping in these cases.  Move all
@@ -2931,13 +2937,13 @@ int configure_downstream_group(Config *config, bool http2_proxy,
                 std::back_inserter(catch_all.addrs));
     }
     std::vector<DownstreamAddrGroupConfig>().swap(addr_groups);
-    std::vector<WildcardPattern>().swap(config->wildcard_patterns);
     // maybe not necessary?
-    config->router = Router();
-    config->router.add_route(StringRef{catch_all.pattern}, addr_groups.size());
+    downstream_router = std::make_shared<DownstreamRouter>();
+    downstream_router->router.add_route(StringRef{catch_all.pattern},
+                                        addr_groups.size());
     addr_groups.push_back(std::move(catch_all));
   } else {
-    auto &wildcard_patterns = config->wildcard_patterns;
+    auto &wildcard_patterns = downstream_router->wildcard_patterns;
     std::sort(std::begin(wildcard_patterns), std::end(wildcard_patterns),
               [](const WildcardPattern &lhs, const WildcardPattern &rhs) {
                 return std::lexicographical_compare(
@@ -2947,7 +2953,7 @@ int configure_downstream_group(Config *config, bool http2_proxy,
     if (LOG_ENABLED(INFO)) {
       LOG(INFO) << "Reverse sorted wildcard hosts (compared from tail to head, "
                    "and sorted in reverse order):";
-      for (auto &wp : config->wildcard_patterns) {
+      for (auto &wp : wildcard_patterns) {
         LOG(INFO) << wp.host;
       }
     }

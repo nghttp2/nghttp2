@@ -73,7 +73,8 @@ enum FreelistZone {
 class Http2Session {
 public:
   Http2Session(struct ev_loop *loop, SSL_CTX *ssl_ctx, Worker *worker,
-               DownstreamAddrGroup *group, DownstreamAddr *addr);
+               const std::shared_ptr<DownstreamAddrGroup> &group,
+               DownstreamAddr *addr);
   ~Http2Session();
 
   // If hard is true, all pending requests are abandoned and
@@ -250,7 +251,7 @@ private:
   Worker *worker_;
   // NULL if no TLS is configured
   SSL_CTX *ssl_ctx_;
-  DownstreamAddrGroup *group_;
+  std::shared_ptr<DownstreamAddrGroup> group_;
   // Address of remote endpoint
   DownstreamAddr *addr_;
   nghttp2_session *session_;

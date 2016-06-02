@@ -147,9 +147,9 @@ void connectcb(struct ev_loop *loop, ev_io *w, int revents) {
 }
 } // namespace
 
-HttpDownstreamConnection::HttpDownstreamConnection(DownstreamAddrGroup *group,
-                                                   struct ev_loop *loop,
-                                                   Worker *worker)
+HttpDownstreamConnection::HttpDownstreamConnection(
+    const std::shared_ptr<DownstreamAddrGroup> &group, struct ev_loop *loop,
+    Worker *worker)
     : conn_(loop, -1, nullptr, worker->get_mcpool(),
             get_config()->conn.downstream.timeout.write,
             get_config()->conn.downstream.timeout.read, {}, {}, connectcb,
@@ -1164,7 +1164,7 @@ int HttpDownstreamConnection::noop() { return 0; }
 
 DownstreamAddrGroup *
 HttpDownstreamConnection::get_downstream_addr_group() const {
-  return group_;
+  return group_.get();
 }
 
 DownstreamAddr *HttpDownstreamConnection::get_addr() const { return addr_; }

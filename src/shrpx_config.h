@@ -642,9 +642,13 @@ struct WildcardPattern {
   Router router;
 };
 
-struct Config {
+struct DownstreamRouter {
   Router router;
   std::vector<WildcardPattern> wildcard_patterns;
+};
+
+struct Config {
+  std::shared_ptr<DownstreamRouter> downstream_router;
   HttpProxy downstream_http_proxy;
   HttpConfig http;
   Http2Config http2;

@@ -690,8 +690,9 @@ bool load_lighter(const DownstreamAddr *lhs, const DownstreamAddr *rhs) {
 }
 } // namespace
 
-Http2Session *ClientHandler::select_http2_session(DownstreamAddrGroup &group) {
-  auto &shared_addr = group.shared_addr;
+Http2Session *ClientHandler::select_http2_session(
+    const std::shared_ptr<DownstreamAddrGroup> &group) {
+  auto &shared_addr = group->shared_addr;
 
   // First count the working backend addresses.
   size_t min = 0;
@@ -779,7 +780,7 @@ Http2Session *ClientHandler::select_http2_session(DownstreamAddrGroup &group) {
   }
 
   auto session = new Http2Session(conn_.loop, worker_->get_cl_ssl_ctx(),
-                                  worker_, &group, selected_addr);
+                                  worker_, group, selected_addr);
 
   if (LOG_ENABLED(INFO)) {
     CLOG(INFO, this) << "Create new Http2Session " << session;
@@ -815,9 +816,9 @@ uint32_t next_cycle(const WeightedPri &pri) {
 std::unique_ptr<DownstreamConnection>
 ClientHandler::get_downstream_connection(Downstream *downstream) {
   size_t group_idx;
-  auto &downstreamconf = get_config()->conn.downstream;
-  auto catch_all = downstreamconf.addr_group_catch_all;
+  auto catch_all = worker_->get_addr_group_catch_all();
   auto &groups = worker_->get_downstream_addr_groups();
+  auto downstream_router = worker_->get_downstream_router();
 
   const auto &req = downstream->request();
 
@@ -835,8 +836,8 @@ ClientHandler::get_downstream_connection(Downstream *downstream) {
     //  have dealt with proxy case already, just use catch-all group.
     group_idx = catch_all;
   } else {
-    auto &router = get_config()->router;
-    auto &wildcard_patterns = get_config()->wildcard_patterns;
+    auto &router = downstream_router->router;
+    auto &wildcard_patterns = downstream_router->wildcard_patterns;
     if (!req.authority.empty()) {
       group_idx =
           match_downstream_addr_group(router, wildcard_patterns, req.authority,
@@ -859,7 +860,7 @@ ClientHandler::get_downstream_connection(Downstream *downstream) {
   }
 
   auto &group = worker_->get_downstream_addr_groups()[group_idx];
-  auto &shared_addr = group.shared_addr;
+  auto &shared_addr = group->shared_addr;
 
   auto proto = PROTO_NONE;
 
@@ -925,7 +926,7 @@ ClientHandler::get_downstream_connection(Downstream *downstream) {
                        << " Create new one";
     }
 
-    dconn = make_unique<HttpDownstreamConnection>(&group, conn_.loop, worker_);
+    dconn = make_unique<HttpDownstreamConnection>(group, conn_.loop, worker_);
   }
 
   dconn->set_client_handler(this);
