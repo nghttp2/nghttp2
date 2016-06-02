@@ -611,6 +611,7 @@ int parse_memcached_connection_params(MemcachedConnectionParams &out,
 
 struct UpstreamParams {
   bool tls;
+  bool api;
 };
 
 namespace {
@@ -627,6 +628,8 @@ int parse_upstream_params(UpstreamParams &out, const StringRef &src_params) {
       out.tls = true;
     } else if (util::strieq_l("no-tls", param)) {
       out.tls = false;
+    } else if (util::strieq_l("api", param)) {
+      out.api = true;
     } else if (!param.empty()) {
       LOG(ERROR) << "frontend: " << param << ": unknown keyword";
       return -1;
@@ -1832,6 +1835,7 @@ int parse_config(const StringRef &opt, const StringRef &optarg,
     UpstreamAddr addr{};
     addr.fd = -1;
     addr.tls = params.tls;
+    addr.api = params.api;
 
     if (util::istarts_with(optarg, SHRPX_UNIX_PATH_PREFIX)) {
       auto path = std::begin(optarg) + SHRPX_UNIX_PATH_PREFIX.size();

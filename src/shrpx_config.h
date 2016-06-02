@@ -321,6 +321,8 @@ struct UpstreamAddr {
   bool host_unix;
   // true if TLS is enabled.
   bool tls;
+  // true if this is an API endpoint.
+  bool api;
   int fd;
 };
 
