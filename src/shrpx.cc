@@ -2046,7 +2046,7 @@ void process_options(int argc, char **argv,
     std::set<StringRef> include_set;
 
     for (auto &p : cmdcfgs) {
-      if (parse_config(p.first, p.second, include_set) == -1) {
+      if (parse_config(mod_config(), p.first, p.second, include_set) == -1) {
         LOG(FATAL) << "Failed to parse command-line argument.";
         exit(EXIT_FAILURE);
       }

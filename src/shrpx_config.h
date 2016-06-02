@@ -674,11 +674,11 @@ Config *mod_config();
 void create_config();
 
 // Parses option name |opt| and value |optarg|.  The results are
-// stored into statically allocated Config object. This function
-// returns 0 if it succeeds, or -1.  The |included_set| contains the
-// all paths already included while processing this configuration, to
-// avoid loop in --include option.
-int parse_config(const StringRef &opt, const StringRef &optarg,
+// stored into the object pointed by |config|. This function returns 0
+// if it succeeds, or -1.  The |included_set| contains the all paths
+// already included while processing this configuration, to avoid loop
+// in --include option.
+int parse_config(Config *config, const StringRef &opt, const StringRef &optarg,
                  std::set<StringRef> &included_set);
 
 // Loads configurations from |filename| and stores them in statically
