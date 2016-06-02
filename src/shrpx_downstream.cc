@@ -500,6 +500,14 @@ bool Downstream::get_chunked_request() const { return chunked_request_; }
 void Downstream::set_chunked_request(bool f) { chunked_request_ = f; }
 
 bool Downstream::request_buf_full() {
+  auto handler = upstream_->get_client_handler();
+  auto faddr = handler->get_upstream_addr();
+
+  // We don't check buffer size here for API endpoint.
+  if (faddr->api) {
+    return false;
+  }
+
   if (dconn_) {
     return request_buf_.rleft() >=
            get_config()->conn.downstream.request_buffer_size;

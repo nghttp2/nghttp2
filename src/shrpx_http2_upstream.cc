@@ -861,8 +861,11 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
 
   auto &http2conf = get_config()->http2;
 
-  rv = nghttp2_session_server_new2(&session_, http2conf.upstream.callbacks,
-                                   this, http2conf.upstream.option);
+  auto faddr = handler_->get_upstream_addr();
+
+  rv = nghttp2_session_server_new2(
+      &session_, http2conf.upstream.callbacks, this,
+      faddr->api ? http2conf.upstream.api_option : http2conf.upstream.option);
 
   assert(rv == 0);
 
@@ -874,7 +877,11 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
   entry[0].value = http2conf.upstream.max_concurrent_streams;
 
   entry[1].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
-  entry[1].value = (1 << http2conf.upstream.window_bits) - 1;
+  if (faddr->api) {
+    entry[1].value = (1u << 31) - 1;
+  } else {
+    entry[1].value = (1 << http2conf.upstream.window_bits) - 1;
+  }
 
   rv = nghttp2_submit_settings(session_, NGHTTP2_FLAG_NONE, entry.data(),
                                entry.size());
@@ -883,8 +890,11 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
                       << nghttp2_strerror(rv);
   }
 
-  if (http2conf.upstream.connection_window_bits != 16) {
-    int32_t window_size = (1 << http2conf.upstream.connection_window_bits) - 1;
+  int32_t window_bits =
+      faddr->api ? 31 : http2conf.upstream.connection_window_bits;
+
+  if (window_bits != 16) {
+    int32_t window_size = (1u << window_bits) - 1;
     rv = nghttp2_session_set_local_window_size(session_, NGHTTP2_FLAG_NONE, 0,
                                                window_size);
 
@@ -1674,6 +1684,12 @@ int Http2Upstream::on_downstream_abort_request(Downstream *downstream,
 
 int Http2Upstream::consume(int32_t stream_id, size_t len) {
   int rv;
+
+  auto faddr = handler_->get_upstream_addr();
+
+  if (faddr->api) {
+    return 0;
+  }
 
   rv = nghttp2_session_consume(session_, stream_id, len);
 

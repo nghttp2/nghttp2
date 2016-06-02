@@ -540,6 +540,7 @@ struct Http2Config {
       ev_tstamp settings;
     } timeout;
     nghttp2_option *option;
+    nghttp2_option *api_option;
     nghttp2_session_callbacks *callbacks;
     size_t window_bits;
     size_t connection_window_bits;

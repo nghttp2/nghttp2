@@ -48,6 +48,7 @@
 #include "shrpx_downstream.h"
 #include "shrpx_http2_session.h"
 #include "shrpx_connect_blocker.h"
+#include "shrpx_api_downstream_connection.h"
 #ifdef HAVE_SPDYLAY
 #include "shrpx_spdy_upstream.h"
 #endif // HAVE_SPDYLAY
@@ -819,6 +820,10 @@ ClientHandler::get_downstream_connection(Downstream *downstream) {
   auto &groups = worker_->get_downstream_addr_groups();
 
   const auto &req = downstream->request();
+
+  if (faddr_->api) {
+    return make_unique<APIDownstreamConnection>(worker_);
+  }
 
   // Fast path.  If we have one group, it must be catch-all group.
   // proxy mode falls in this case.

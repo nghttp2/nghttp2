@@ -1157,6 +1157,11 @@ void fill_default_config() {
     nghttp2_option_new(&upstreamconf.option);
     nghttp2_option_set_no_auto_window_update(upstreamconf.option, 1);
     nghttp2_option_set_no_recv_client_magic(upstreamconf.option, 1);
+
+    // For API endpoint, we enable automatic window update.  This is
+    // because we are a sink.
+    nghttp2_option_new(&upstreamconf.api_option);
+    nghttp2_option_set_no_recv_client_magic(upstreamconf.api_option, 1);
   }
 
   {
