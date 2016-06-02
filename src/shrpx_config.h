@@ -283,6 +283,9 @@ constexpr auto SHRPX_OPT_BACKEND_HTTP2_SETTINGS_TIMEOUT =
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
+constexpr char DEFAULT_DOWNSTREAM_HOST[] = "127.0.0.1";
+constexpr int16_t DEFAULT_DOWNSTREAM_PORT = 80;
+
 enum shrpx_proto { PROTO_NONE, PROTO_HTTP1, PROTO_HTTP2, PROTO_MEMCACHED };
 
 enum shrpx_forwarded_param {
@@ -712,6 +715,13 @@ read_tls_ticket_key_file(const std::vector<std::string> &files,
 
 // Returns string representation of |proto|.
 StringRef strproto(shrpx_proto proto);
+
+int configure_downstream_group(Config *config, bool http2_proxy,
+                               bool numeric_addr_only,
+                               const TLSConfig &tlsconf);
+
+int resolve_hostname(Address *addr, const char *hostname, uint16_t port,
+                     int family, int additional_flags = 0);
 
 } // namespace shrpx
 
