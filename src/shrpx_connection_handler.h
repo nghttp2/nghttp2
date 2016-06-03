@@ -48,6 +48,7 @@
 #endif // HAVE_NEVERBLEED
 
 #include "shrpx_downstream_connection_pool.h"
+#include "shrpx_config.h"
 
 namespace shrpx {
 
@@ -74,6 +75,21 @@ struct OCSPUpdateContext {
   int error;
   // pid of forked fetch-ocsp-response script process
   pid_t pid;
+};
+
+// SerialEvent is an event sent from Worker thread.
+enum SerialEventType {
+  SEV_NONE,
+  SEV_REPLACE_DOWNSTREAM,
+};
+
+struct SerialEvent {
+  // ctor for event uses DownstreamConfig
+  SerialEvent(int type, const std::shared_ptr<DownstreamConfig> &downstreamconf)
+      : type(type), downstreamconf(downstreamconf) {}
+
+  int type;
+  std::shared_ptr<DownstreamConfig> downstreamconf;
 };
 
 class ConnectionHandler {
@@ -136,6 +152,17 @@ public:
   neverbleed_t *get_neverbleed() const;
 #endif // HAVE_NEVERBLEED
 
+  // Send SerialEvent SEV_REPLACE_DOWNSTREAM to this object.
+  void send_replace_downstream(
+      const std::shared_ptr<DownstreamConfig> &downstreamconf);
+  // Internal function to send |ev| to this object.
+  void send_serial_event(SerialEvent ev);
+  // Handles SerialEvents received.
+  void handle_serial_event();
+  // Sends WorkerEvent to make them replace downstream.
+  void
+  worker_replace_downstream(std::shared_ptr<DownstreamConfig> downstreamconf);
+
 private:
   // Stores all SSL_CTX objects.
   std::vector<SSL_CTX *> all_ssl_ctx_;
@@ -145,6 +172,10 @@ private:
   std::vector<struct ev_loop *> worker_loops_;
   // Worker instances when multi threaded mode (-nN, N >= 2) is used.
   std::vector<std::unique_ptr<Worker>> workers_;
+  // mutex for serial event resive buffer handling
+  std::mutex serial_event_mu_;
+  // SerialEvent receive buffer
+  std::vector<SerialEvent> serial_events_;
   // Worker instance used when single threaded mode (-n1) is used.
   // Otherwise, nullptr and workers_ has instances of Worker instead.
   std::unique_ptr<Worker> single_worker_;
@@ -161,6 +192,7 @@ private:
   ev_timer disable_acceptor_timer_;
   ev_timer ocsp_timer_;
   ev_async thread_join_asyncev_;
+  ev_async serial_event_asyncev_;
 #ifndef NOTHREADS
   std::future<void> thread_join_fut_;
 #endif // NOTHREADS

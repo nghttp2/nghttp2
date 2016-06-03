@@ -106,13 +106,16 @@ std::random_device rd;
 Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
                SSL_CTX *tls_session_cache_memcached_ssl_ctx,
                ssl::CertLookupTree *cert_tree,
-               const std::shared_ptr<TicketKeys> &ticket_keys)
+               const std::shared_ptr<TicketKeys> &ticket_keys,
+               ConnectionHandler *conn_handler,
+               std::shared_ptr<DownstreamConfig> downstreamconf)
     : randgen_(rd()),
       worker_stat_{},
       loop_(loop),
       sv_ssl_ctx_(sv_ssl_ctx),
       cl_ssl_ctx_(cl_ssl_ctx),
       cert_tree_(cert_tree),
+      conn_handler_(conn_handler),
       ticket_keys_(ticket_keys),
       connect_blocker_(
           make_unique<ConnectBlocker>(randgen_, loop_, []() {}, []() {})),
@@ -133,11 +136,11 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
         StringRef{session_cacheconf.memcached.host}, &mcpool_);
   }
 
-  replace_downstream_config(get_config()->conn.downstream);
+  replace_downstream_config(std::move(downstreamconf));
 }
 
 void Worker::replace_downstream_config(
-    const std::shared_ptr<DownstreamConfig> &downstreamconf) {
+    std::shared_ptr<DownstreamConfig> downstreamconf) {
   downstreamconf_ = downstreamconf;
 
   downstream_addr_groups_ = std::vector<std::shared_ptr<DownstreamAddrGroup>>(
@@ -346,6 +349,12 @@ void Worker::process_events() {
       }
 
       break;
+    case REPLACE_DOWNSTREAM:
+      WLOG(NOTICE, this) << "Replace downstream";
+
+      replace_downstream_config(wev.downstreamconf);
+
+      break;
     default:
       if (LOG_ENABLED(INFO)) {
         WLOG(INFO, this) << "unknown event type " << wev.type;
@@ -414,6 +423,10 @@ ConnectBlocker *Worker::get_connect_blocker() const {
 
 const DownstreamConfig *Worker::get_downstream_config() const {
   return downstreamconf_.get();
+}
+
+ConnectionHandler *Worker::get_connection_handler() const {
+  return conn_handler_;
 }
 
 namespace {

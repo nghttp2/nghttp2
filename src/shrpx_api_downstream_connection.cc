@@ -28,6 +28,7 @@
 #include "shrpx_upstream.h"
 #include "shrpx_downstream.h"
 #include "shrpx_worker.h"
+#include "shrpx_connection_handler.h"
 
 namespace shrpx {
 
@@ -176,7 +177,9 @@ int APIDownstreamConnection::end_upload_data() {
     return 0;
   }
 
-  worker_->replace_downstream_config(downstreamconf);
+  auto conn_handler = worker_->get_connection_handler();
+
+  conn_handler->send_replace_downstream(downstreamconf);
 
   send_reply(200, body);
 

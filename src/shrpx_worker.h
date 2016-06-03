@@ -56,6 +56,7 @@ class ConnectBlocker;
 class LiveCheck;
 class MemcachedDispatcher;
 struct UpstreamAddr;
+class ConnectionHandler;
 
 #ifdef HAVE_MRUBY
 namespace mruby {
@@ -153,6 +154,7 @@ enum WorkerEventType {
   NEW_CONNECTION = 0x01,
   REOPEN_LOG = 0x02,
   GRACEFUL_SHUTDOWN = 0x03,
+  REPLACE_DOWNSTREAM = 0x04,
 };
 
 struct WorkerEvent {
@@ -164,6 +166,7 @@ struct WorkerEvent {
     const UpstreamAddr *faddr;
   };
   std::shared_ptr<TicketKeys> ticket_keys;
+  std::shared_ptr<DownstreamConfig> downstreamconf;
 };
 
 class Worker {
@@ -171,7 +174,9 @@ public:
   Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
          SSL_CTX *tls_session_cache_memcached_ssl_ctx,
          ssl::CertLookupTree *cert_tree,
-         const std::shared_ptr<TicketKeys> &ticket_keys);
+         const std::shared_ptr<TicketKeys> &ticket_keys,
+         ConnectionHandler *conn_handler,
+         std::shared_ptr<DownstreamConfig> downstreamconf);
   ~Worker();
   void run_async();
   void wait();
@@ -213,8 +218,10 @@ public:
 
   const DownstreamConfig *get_downstream_config() const;
 
-  void replace_downstream_config(
-      const std::shared_ptr<DownstreamConfig> &downstreamconf);
+  void
+  replace_downstream_config(std::shared_ptr<DownstreamConfig> downstreamconf);
+
+  ConnectionHandler *get_connection_handler() const;
 
 private:
 #ifndef NOTHREADS
@@ -240,6 +247,7 @@ private:
   SSL_CTX *sv_ssl_ctx_;
   SSL_CTX *cl_ssl_ctx_;
   ssl::CertLookupTree *cert_tree_;
+  ConnectionHandler *conn_handler_;
 
   std::shared_ptr<TicketKeys> ticket_keys_;
   std::vector<std::shared_ptr<DownstreamAddrGroup>> downstream_addr_groups_;

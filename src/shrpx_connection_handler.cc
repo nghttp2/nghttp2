@@ -103,6 +103,14 @@ void thread_join_async_cb(struct ev_loop *loop, ev_async *w, int revent) {
 } // namespace
 
 namespace {
+void serial_event_async_cb(struct ev_loop *loop, ev_async *w, int revent) {
+  auto h = static_cast<ConnectionHandler *>(w->data);
+
+  h->handle_serial_event();
+}
+} // namespace
+
+namespace {
 std::random_device rd;
 } // namespace
 
@@ -125,6 +133,11 @@ ConnectionHandler::ConnectionHandler(struct ev_loop *loop)
 
   ev_async_init(&thread_join_asyncev_, thread_join_async_cb);
 
+  ev_async_init(&serial_event_asyncev_, serial_event_async_cb);
+  serial_event_asyncev_.data = this;
+
+  ev_async_start(loop_, &serial_event_asyncev_);
+
   ev_child_init(&ocsp_.chldev, ocsp_chld_cb, 0, 0);
   ocsp_.chldev.data = this;
 
@@ -136,6 +149,7 @@ ConnectionHandler::ConnectionHandler(struct ev_loop *loop)
 
 ConnectionHandler::~ConnectionHandler() {
   ev_child_stop(loop_, &ocsp_.chldev);
+  ev_async_stop(loop_, &serial_event_asyncev_);
   ev_async_stop(loop_, &thread_join_asyncev_);
   ev_io_stop(loop_, &ocsp_.rev);
   ev_timer_stop(loop_, &ocsp_timer_);
@@ -175,6 +189,18 @@ void ConnectionHandler::worker_reopen_log_files() {
   }
 }
 
+void ConnectionHandler::worker_replace_downstream(
+    std::shared_ptr<DownstreamConfig> downstreamconf) {
+  WorkerEvent wev{};
+
+  wev.type = REPLACE_DOWNSTREAM;
+  wev.downstreamconf = std::move(downstreamconf);
+
+  for (auto &worker : workers_) {
+    worker->send(wev);
+  }
+}
+
 int ConnectionHandler::create_single_worker() {
   auto cert_tree = ssl::create_cert_lookup_tree();
   auto sv_ssl_ctx = ssl::setup_server_ssl_context(all_ssl_ctx_, cert_tree
@@ -207,9 +233,9 @@ int ConnectionHandler::create_single_worker() {
     all_ssl_ctx_.push_back(session_cache_ssl_ctx);
   }
 
-  single_worker_ =
-      make_unique<Worker>(loop_, sv_ssl_ctx, cl_ssl_ctx, session_cache_ssl_ctx,
-                          cert_tree, ticket_keys_);
+  single_worker_ = make_unique<Worker>(
+      loop_, sv_ssl_ctx, cl_ssl_ctx, session_cache_ssl_ctx, cert_tree,
+      ticket_keys_, this, get_config()->conn.downstream);
 #ifdef HAVE_MRUBY
   if (single_worker_->create_mruby_context() != 0) {
     return -1;
@@ -256,9 +282,9 @@ int ConnectionHandler::create_worker_thread(size_t num) {
           StringRef{memcachedconf.private_key_file}, nullptr);
       all_ssl_ctx_.push_back(session_cache_ssl_ctx);
     }
-    auto worker =
-        make_unique<Worker>(loop, sv_ssl_ctx, cl_ssl_ctx, session_cache_ssl_ctx,
-                            cert_tree, ticket_keys_);
+    auto worker = make_unique<Worker>(
+        loop, sv_ssl_ctx, cl_ssl_ctx, session_cache_ssl_ctx, cert_tree,
+        ticket_keys_, this, get_config()->conn.downstream);
 #ifdef HAVE_MRUBY
     if (worker->create_mruby_context() != 0) {
       return -1;
@@ -781,5 +807,47 @@ void ConnectionHandler::set_neverbleed(std::unique_ptr<neverbleed_t> nb) {
 neverbleed_t *ConnectionHandler::get_neverbleed() const { return nb_.get(); }
 
 #endif // HAVE_NEVERBLEED
+
+void ConnectionHandler::handle_serial_event() {
+  std::vector<SerialEvent> q;
+  {
+    std::lock_guard<std::mutex> g(serial_event_mu_);
+    q.swap(serial_events_);
+  }
+
+  for (auto &sev : q) {
+    switch (sev.type) {
+    case SEV_REPLACE_DOWNSTREAM:
+      // TODO make sure that none of worker uses
+      // get_config()->conn.downstream
+      mod_config()->conn.downstream = sev.downstreamconf;
+
+      if (single_worker_) {
+        single_worker_->replace_downstream_config(sev.downstreamconf);
+
+        break;
+      }
+
+      worker_replace_downstream(sev.downstreamconf);
+
+      break;
+    }
+  }
+}
+
+void ConnectionHandler::send_replace_downstream(
+    const std::shared_ptr<DownstreamConfig> &downstreamconf) {
+  send_serial_event(SerialEvent(SEV_REPLACE_DOWNSTREAM, downstreamconf));
+}
+
+void ConnectionHandler::send_serial_event(SerialEvent ev) {
+  {
+    std::lock_guard<std::mutex> g(serial_event_mu_);
+
+    serial_events_.push_back(std::move(ev));
+  }
+
+  ev_async_send(loop_, &serial_event_asyncev_);
+}
 
 } // namespace shrpx
