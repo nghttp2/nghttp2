@@ -56,8 +56,11 @@ public:
 
   virtual DownstreamAddrGroup *get_downstream_addr_group() const;
 
+  int send_reply(unsigned int http_status, const StringRef &body);
+
 private:
   Worker *worker_;
+  bool abandoned_;
 };
 
 } // namespace shrpx

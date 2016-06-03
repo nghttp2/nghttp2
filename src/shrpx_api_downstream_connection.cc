@@ -32,21 +32,13 @@
 namespace shrpx {
 
 APIDownstreamConnection::APIDownstreamConnection(Worker *worker)
-    : worker_(worker) {}
+    : worker_(worker), abandoned_(false) {}
 
 APIDownstreamConnection::~APIDownstreamConnection() {}
 
 int APIDownstreamConnection::attach_downstream(Downstream *downstream) {
   if (LOG_ENABLED(INFO)) {
     DCLOG(INFO, this) << "Attaching to DOWNSTREAM:" << downstream;
-  }
-
-  auto &req = downstream->request();
-
-  if (req.path != StringRef::from_lit("/api/v1/dynamicconfig")) {
-    // TODO this will return 503 error, which is not nice.  We'd like
-    // to use 404 in this case.
-    return -1;
   }
 
   downstream_ = downstream;
@@ -61,10 +53,48 @@ void APIDownstreamConnection::detach_downstream(Downstream *downstream) {
   downstream_ = nullptr;
 }
 
-int APIDownstreamConnection::push_request_headers() { return 0; }
+int APIDownstreamConnection::send_reply(unsigned int http_status,
+                                        const StringRef &body) {
+  abandoned_ = true;
+
+  auto upstream = downstream_->get_upstream();
+
+  auto &resp = downstream_->response();
+
+  resp.http_status = http_status;
+
+  auto &balloc = downstream_->get_block_allocator();
+
+  auto content_length = util::make_string_ref_uint(balloc, body.size());
+
+  resp.fs.add_header_token(StringRef::from_lit("content-length"),
+                           content_length, false, http2::HD_CONTENT_LENGTH);
+
+  if (upstream->send_reply(downstream_, body.byte(), body.size()) != 0) {
+    return -1;
+  }
+
+  return 0;
+}
+
+int APIDownstreamConnection::push_request_headers() {
+  auto &req = downstream_->request();
+
+  if (req.path != StringRef::from_lit("/api/v1alpha1/backend/replace")) {
+    send_reply(404, StringRef::from_lit("404 Not Found"));
+
+    return 0;
+  }
+
+  return 0;
+}
 
 int APIDownstreamConnection::push_upload_data_chunk(const uint8_t *data,
                                                     size_t datalen) {
+  if (abandoned_) {
+    return 0;
+  }
+
   auto output = downstream_->get_request_buf();
 
   // TODO limit the maximum payload size
@@ -78,32 +108,38 @@ int APIDownstreamConnection::push_upload_data_chunk(const uint8_t *data,
 }
 
 int APIDownstreamConnection::end_upload_data() {
-  // TODO process request payload here
-  (void)worker_;
+  if (abandoned_) {
+    return 0;
+  }
 
-  auto upstream = downstream_->get_upstream();
   auto output = downstream_->get_request_buf();
-  auto &resp = downstream_->response();
-  struct iovec iov;
 
+  struct iovec iov;
   auto iovcnt = output->riovec(&iov, 1);
 
-  constexpr auto body = StringRef::from_lit("OK");
+  constexpr auto body = StringRef::from_lit("200 OK");
+  constexpr auto error_body = StringRef::from_lit("400 Bad Request");
 
   if (iovcnt == 0) {
-    resp.http_status = 200;
-
-    upstream->send_reply(downstream_, body.byte(), body.size());
+    send_reply(200, body);
 
     return 0;
   }
 
   Config config{};
   config.conn.downstream = std::make_shared<DownstreamConfig>();
+  const auto &downstreamconf = config.conn.downstream;
+
+  auto src = get_config()->conn.downstream;
+
+  downstreamconf->timeout = src->timeout;
+  downstreamconf->connections_per_host = src->connections_per_host;
+  downstreamconf->connections_per_frontend = src->connections_per_frontend;
+  downstreamconf->request_buffer_size = src->request_buffer_size;
+  downstreamconf->response_buffer_size = src->response_buffer_size;
+  downstreamconf->family = src->family;
 
   std::set<StringRef> include_set;
-
-  constexpr auto error_body = StringRef::from_lit("invalid configuration");
 
   for (auto first = reinterpret_cast<const uint8_t *>(iov.iov_base),
             last = first + iov.iov_len;
@@ -120,17 +156,13 @@ int APIDownstreamConnection::end_upload_data() {
 
     auto eq = std::find(first, eol, '=');
     if (eq == eol) {
-      resp.http_status = 500;
-
-      upstream->send_reply(downstream_, error_body.byte(), error_body.size());
+      send_reply(400, error_body);
       return 0;
     }
 
     if (parse_config(&config, StringRef{first, eq}, StringRef{eq + 1, eol},
                      include_set) != 0) {
-      resp.http_status = 500;
-
-      upstream->send_reply(downstream_, error_body.byte(), error_body.size());
+      send_reply(400, error_body);
       return 0;
     }
 
@@ -140,16 +172,13 @@ int APIDownstreamConnection::end_upload_data() {
   auto &tlsconf = get_config()->tls;
   if (configure_downstream_group(&config, get_config()->http2_proxy, true,
                                  tlsconf) != 0) {
-    resp.http_status = 500;
-    upstream->send_reply(downstream_, error_body.byte(), error_body.size());
+    send_reply(400, error_body);
     return 0;
   }
 
-  worker_->replace_downstream_config(config.conn.downstream);
+  worker_->replace_downstream_config(downstreamconf);
 
-  resp.http_status = 200;
-
-  upstream->send_reply(downstream_, body.byte(), body.size());
+  send_reply(200, body);
 
   return 0;
 }

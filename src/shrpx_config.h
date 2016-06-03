@@ -591,6 +591,9 @@ struct RateLimitConfig {
 // field.  router includes all path pattern sharing same wildcard
 // host.
 struct WildcardPattern {
+  WildcardPattern(const StringRef &host)
+      : host(std::begin(host), std::end(host)) {}
+
   ImmutableString host;
   Router router;
 };

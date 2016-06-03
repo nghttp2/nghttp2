@@ -38,20 +38,22 @@
 namespace shrpx {
 
 void test_shrpx_worker_match_downstream_addr_group(void) {
-  auto groups = std::vector<DownstreamAddrGroup>();
+  auto groups = std::vector<std::shared_ptr<DownstreamAddrGroup>>();
   for (auto &s : {"nghttp2.org/", "nghttp2.org/alpha/bravo/",
                   "nghttp2.org/alpha/charlie", "nghttp2.org/delta%3A",
                   "www.nghttp2.org/", "[::1]/", "nghttp2.org/alpha/bravo/delta",
                   // Check that match is done in the single node
                   "example.com/alpha/bravo", "192.168.0.1/alpha/", "/golf/"}) {
-    groups.push_back(DownstreamAddrGroup{ImmutableString(s)});
+    auto g = std::make_shared<DownstreamAddrGroup>();
+    g->pattern = ImmutableString(s);
+    groups.push_back(std::move(g));
   }
 
   Router router;
 
   for (size_t i = 0; i < groups.size(); ++i) {
     auto &g = groups[i];
-    router.add_route(StringRef{g.pattern}, i);
+    router.add_route(StringRef{g->pattern}, i);
   }
 
   std::vector<WildcardPattern> wp;
@@ -176,15 +178,18 @@ void test_shrpx_worker_match_downstream_addr_group(void) {
                        StringRef::from_lit("/"), groups, 255));
 
   // Test for wildcard hosts
-  groups.push_back(
-      DownstreamAddrGroup{ImmutableString::from_lit("git.nghttp2.org")});
-  groups.push_back(
-      DownstreamAddrGroup{ImmutableString::from_lit(".nghttp2.org")});
+  auto g1 = std::make_shared<DownstreamAddrGroup>();
+  g1->pattern = ImmutableString::from_lit("git.nghttp2.org");
+  groups.push_back(std::move(g1));
 
-  wp.push_back({ImmutableString("git.nghttp2.org")});
+  auto g2 = std::make_shared<DownstreamAddrGroup>();
+  g2->pattern = ImmutableString::from_lit(".nghttp2.org");
+  groups.push_back(std::move(g2));
+
+  wp.emplace_back(StringRef::from_lit("git.nghttp2.org"));
   wp.back().router.add_route(StringRef::from_lit("/echo/"), 10);
 
-  wp.push_back({ImmutableString(".nghttp2.org")});
+  wp.emplace_back(StringRef::from_lit(".nghttp2.org"));
   wp.back().router.add_route(StringRef::from_lit("/echo/"), 11);
   wp.back().router.add_route(StringRef::from_lit("/echo/foxtrot"), 12);
 

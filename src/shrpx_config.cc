@@ -786,7 +786,10 @@ int parse_mapping(Config *config, DownstreamAddrConfig addr,
     if (done) {
       continue;
     }
-    DownstreamAddrGroupConfig g(StringRef{pattern});
+
+    auto idx = addr_groups.size();
+    addr_groups.emplace_back(StringRef{pattern});
+    auto &g = addr_groups.back();
     g.addrs.push_back(addr);
 
     if (pattern[0] == '*') {
@@ -804,19 +807,16 @@ int parse_mapping(Config *config, DownstreamAddrConfig addr,
           [&host](const WildcardPattern &wp) { return wp.host == host; });
 
       if (it == std::end(wildcard_patterns)) {
-        wildcard_patterns.push_back(
-            {ImmutableString{std::begin(host), std::end(host)}});
+        wildcard_patterns.emplace_back(host);
 
         auto &router = wildcard_patterns.back().router;
-        router.add_route(path, addr_groups.size());
+        router.add_route(path, idx);
       } else {
-        (*it).router.add_route(path, addr_groups.size());
+        (*it).router.add_route(path, idx);
       }
     } else {
-      downstreamconf.router.add_route(StringRef{g.pattern}, addr_groups.size());
+      downstreamconf.router.add_route(StringRef{g.pattern}, idx);
     }
-
-    addr_groups.push_back(std::move(g));
   }
   return 0;
 }
