@@ -109,16 +109,13 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
                const std::shared_ptr<TicketKeys> &ticket_keys)
     : randgen_(rd()),
       worker_stat_{},
-      downstream_router_(get_config()->downstream_router),
       loop_(loop),
       sv_ssl_ctx_(sv_ssl_ctx),
       cl_ssl_ctx_(cl_ssl_ctx),
       cert_tree_(cert_tree),
       ticket_keys_(ticket_keys),
-      downstream_addr_groups_(get_config()->conn.downstream.addr_groups.size()),
       connect_blocker_(
           make_unique<ConnectBlocker>(randgen_, loop_, []() {}, []() {})),
-      addr_group_catch_all_(get_config()->conn.downstream.addr_group_catch_all),
       graceful_shutdown_(false) {
   ev_async_init(&w_, eventcb);
   w_.data = this;
@@ -136,10 +133,18 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
         StringRef{session_cacheconf.memcached.host}, &mcpool_);
   }
 
-  auto &downstreamconf = get_config()->conn.downstream;
+  replace_downstream_config(get_config()->conn.downstream);
+}
 
-  for (size_t i = 0; i < downstreamconf.addr_groups.size(); ++i) {
-    auto &src = downstreamconf.addr_groups[i];
+void Worker::replace_downstream_config(
+    const std::shared_ptr<DownstreamConfig> &downstreamconf) {
+  downstreamconf_ = downstreamconf;
+
+  downstream_addr_groups_ = std::vector<std::shared_ptr<DownstreamAddrGroup>>(
+      downstreamconf->addr_groups.size());
+
+  for (size_t i = 0; i < downstreamconf->addr_groups.size(); ++i) {
+    auto &src = downstreamconf->addr_groups[i];
     auto &dst = downstream_addr_groups_[i];
 
     dst = std::make_shared<DownstreamAddrGroup>();
@@ -407,12 +412,8 @@ ConnectBlocker *Worker::get_connect_blocker() const {
   return connect_blocker_.get();
 }
 
-const DownstreamRouter *Worker::get_downstream_router() const {
-  return downstream_router_.get();
-}
-
-size_t Worker::get_addr_group_catch_all() const {
-  return addr_group_catch_all_;
+const DownstreamConfig *Worker::get_downstream_config() const {
+  return downstreamconf_.get();
 }
 
 namespace {

@@ -1036,7 +1036,6 @@ void fill_default_config() {
   mod_config()->num_worker = 1;
   mod_config()->conf_path = "/etc/nghttpx/nghttpx.conf";
   mod_config()->pid = getpid();
-  mod_config()->downstream_router = std::make_shared<DownstreamRouter>();
 
   if (ev_supported_backends() & ~ev_recommended_backends() & EVBACKEND_KQUEUE) {
     mod_config()->ev_loop_flags = ev_recommended_backends() | EVBACKEND_KQUEUE;
@@ -1168,7 +1167,8 @@ void fill_default_config() {
   }
 
   {
-    auto &downstreamconf = connconf.downstream;
+    connconf.downstream = std::make_shared<DownstreamConfig>();
+    auto &downstreamconf = *connconf.downstream;
     {
       auto &timeoutconf = downstreamconf.timeout;
       // Read/Write timeouts for downstream connection
@@ -1424,7 +1424,7 @@ Performance:
               HTTP/2).   To  limit  the   number  of  connections  per
               frontend        for       default        mode,       use
               --backend-connections-per-frontend.
-              Default: )" << get_config()->conn.downstream.connections_per_host
+              Default: )" << get_config()->conn.downstream->connections_per_host
       << R"(
   --backend-connections-per-frontend=<N>
               Set  maximum number  of  backend concurrent  connections
@@ -1434,7 +1434,7 @@ Performance:
               with          --http2-proxy         option,          use
               --backend-connections-per-host.
               Default: )"
-      << get_config()->conn.downstream.connections_per_frontend << R"(
+      << get_config()->conn.downstream->connections_per_frontend << R"(
   --rlimit-nofile=<N>
               Set maximum number of open files (RLIMIT_NOFILE) to <N>.
               If 0 is given, nghttpx does not set the limit.
@@ -1442,12 +1442,12 @@ Performance:
   --backend-request-buffer=<SIZE>
               Set buffer size used to store backend request.
               Default: )"
-      << util::utos_unit(get_config()->conn.downstream.request_buffer_size)
+      << util::utos_unit(get_config()->conn.downstream->request_buffer_size)
       << R"(
   --backend-response-buffer=<SIZE>
               Set buffer size used to store backend response.
               Default: )"
-      << util::utos_unit(get_config()->conn.downstream.response_buffer_size)
+      << util::utos_unit(get_config()->conn.downstream->response_buffer_size)
       << R"(
   --fastopen=<N>
               Enables  "TCP Fast  Open" for  the listening  socket and
@@ -1487,15 +1487,15 @@ Timeout:
   --backend-read-timeout=<DURATION>
               Specify read timeout for backend connection.
               Default: )"
-      << util::duration_str(get_config()->conn.downstream.timeout.read) << R"(
+      << util::duration_str(get_config()->conn.downstream->timeout.read) << R"(
   --backend-write-timeout=<DURATION>
               Specify write timeout for backend connection.
               Default: )"
-      << util::duration_str(get_config()->conn.downstream.timeout.write) << R"(
+      << util::duration_str(get_config()->conn.downstream->timeout.write) << R"(
   --backend-keep-alive-timeout=<DURATION>
               Specify keep-alive timeout for backend connection.
               Default: )"
-      << util::duration_str(get_config()->conn.downstream.timeout.idle_read)
+      << util::duration_str(get_config()->conn.downstream->timeout.idle_read)
       << R"(
   --listener-disable-timeout=<DURATION>
               After accepting  connection failed,  connection listener

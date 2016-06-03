@@ -211,8 +211,10 @@ public:
 
   ConnectBlocker *get_connect_blocker() const;
 
-  const DownstreamRouter *get_downstream_router() const;
-  size_t get_addr_group_catch_all() const;
+  const DownstreamConfig *get_downstream_config() const;
+
+  void replace_downstream_config(
+      const std::shared_ptr<DownstreamConfig> &downstreamconf);
 
 private:
 #ifndef NOTHREADS
@@ -226,7 +228,7 @@ private:
   MemchunkPool mcpool_;
   WorkerStat worker_stat_;
 
-  std::shared_ptr<DownstreamRouter> downstream_router_;
+  std::shared_ptr<DownstreamConfig> downstreamconf_;
   std::unique_ptr<MemcachedDispatcher> session_cache_memcached_dispatcher_;
 #ifdef HAVE_MRUBY
   std::unique_ptr<mruby::MRubyContext> mruby_ctx_;
@@ -244,8 +246,6 @@ private:
   // Worker level blocker for downstream connection.  For example,
   // this is used when file decriptor is exhausted.
   std::unique_ptr<ConnectBlocker> connect_blocker_;
-
-  size_t addr_group_catch_all_;
 
   bool graceful_shutdown_;
 };

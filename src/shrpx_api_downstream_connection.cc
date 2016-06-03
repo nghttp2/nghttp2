@@ -80,6 +80,77 @@ int APIDownstreamConnection::push_upload_data_chunk(const uint8_t *data,
 int APIDownstreamConnection::end_upload_data() {
   // TODO process request payload here
   (void)worker_;
+
+  auto upstream = downstream_->get_upstream();
+  auto output = downstream_->get_request_buf();
+  auto &resp = downstream_->response();
+  struct iovec iov;
+
+  auto iovcnt = output->riovec(&iov, 1);
+
+  constexpr auto body = StringRef::from_lit("OK");
+
+  if (iovcnt == 0) {
+    resp.http_status = 200;
+
+    upstream->send_reply(downstream_, body.byte(), body.size());
+
+    return 0;
+  }
+
+  Config config{};
+  config.conn.downstream = std::make_shared<DownstreamConfig>();
+
+  std::set<StringRef> include_set;
+
+  constexpr auto error_body = StringRef::from_lit("invalid configuration");
+
+  for (auto first = reinterpret_cast<const uint8_t *>(iov.iov_base),
+            last = first + iov.iov_len;
+       first != last;) {
+    auto eol = std::find(first, last, '\n');
+    if (eol == last) {
+      break;
+    }
+
+    if (first == eol || *first == '#') {
+      first = ++eol;
+      continue;
+    }
+
+    auto eq = std::find(first, eol, '=');
+    if (eq == eol) {
+      resp.http_status = 500;
+
+      upstream->send_reply(downstream_, error_body.byte(), error_body.size());
+      return 0;
+    }
+
+    if (parse_config(&config, StringRef{first, eq}, StringRef{eq + 1, eol},
+                     include_set) != 0) {
+      resp.http_status = 500;
+
+      upstream->send_reply(downstream_, error_body.byte(), error_body.size());
+      return 0;
+    }
+
+    first = ++eol;
+  }
+
+  auto &tlsconf = get_config()->tls;
+  if (configure_downstream_group(&config, get_config()->http2_proxy, true,
+                                 tlsconf) != 0) {
+    resp.http_status = 500;
+    upstream->send_reply(downstream_, error_body.byte(), error_body.size());
+    return 0;
+  }
+
+  worker_->replace_downstream_config(config.conn.downstream);
+
+  resp.http_status = 200;
+
+  upstream->send_reply(downstream_, body.byte(), body.size());
+
   return 0;
 }
 

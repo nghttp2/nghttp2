@@ -201,9 +201,7 @@ SSL_CTX *setup_server_ssl_context(std::vector<SSL_CTX *> &all_ssl_ctx,
 #endif // HAVE_NEVERBLEED
                                   );
 
-// Setups client side SSL_CTX.  This function inspects get_config()
-// and if TLS is disabled in all downstreams, returns nullptr.
-// Otherwise, only construct SSL_CTX.
+// Setups client side SSL_CTX.
 SSL_CTX *setup_downstream_client_ssl_context(
 #ifdef HAVE_NEVERBLEED
     neverbleed_t *nb
@@ -223,9 +221,6 @@ SSL *create_ssl(SSL_CTX *ssl_ctx);
 
 // Returns true if SSL/TLS is enabled on upstream
 bool upstream_tls_enabled();
-
-// Returns true if SSL/TLS is enabled on downstream
-bool downstream_tls_enabled();
 
 // Performs TLS hostname match.  |pattern| can contain wildcard
 // character '*', which matches prefix of target hostname.  There are

@@ -745,7 +745,8 @@ int parse_mapping(Config *config, DownstreamAddrConfig addr,
   // will append '/' to all patterns, so it becomes catch-all pattern.
   auto mapping = util::split_str(src_pattern, ':');
   assert(!mapping.empty());
-  auto &addr_groups = config->conn.downstream.addr_groups;
+  auto &downstreamconf = *config->conn.downstream;
+  auto &addr_groups = downstreamconf.addr_groups;
 
   DownstreamParams params{};
   params.proto = PROTO_HTTP1;
@@ -788,8 +789,6 @@ int parse_mapping(Config *config, DownstreamAddrConfig addr,
     DownstreamAddrGroupConfig g(StringRef{pattern});
     g.addrs.push_back(addr);
 
-    auto &downstream_router = config->downstream_router;
-
     if (pattern[0] == '*') {
       // wildcard pattern
       auto path_first =
@@ -798,7 +797,7 @@ int parse_mapping(Config *config, DownstreamAddrConfig addr,
       auto host = StringRef{std::begin(g.pattern) + 1, path_first};
       auto path = StringRef{path_first, std::end(g.pattern)};
 
-      auto &wildcard_patterns = downstream_router->wildcard_patterns;
+      auto &wildcard_patterns = downstreamconf.wildcard_patterns;
 
       auto it = std::find_if(
           std::begin(wildcard_patterns), std::end(wildcard_patterns),
@@ -814,8 +813,7 @@ int parse_mapping(Config *config, DownstreamAddrConfig addr,
         (*it).router.add_route(path, addr_groups.size());
       }
     } else {
-      downstream_router->router.add_route(StringRef{g.pattern},
-                                          addr_groups.size());
+      downstreamconf.router.add_route(StringRef{g.pattern}, addr_groups.size());
     }
 
     addr_groups.push_back(std::move(g));
@@ -1944,9 +1942,9 @@ int parse_config(Config *config, const StringRef &opt, const StringRef &optarg,
   case SHRPX_OPTID_FRONTEND_WRITE_TIMEOUT:
     return parse_duration(&config->conn.upstream.timeout.write, opt, optarg);
   case SHRPX_OPTID_BACKEND_READ_TIMEOUT:
-    return parse_duration(&config->conn.downstream.timeout.read, opt, optarg);
+    return parse_duration(&config->conn.downstream->timeout.read, opt, optarg);
   case SHRPX_OPTID_BACKEND_WRITE_TIMEOUT:
-    return parse_duration(&config->conn.downstream.timeout.write, opt, optarg);
+    return parse_duration(&config->conn.downstream->timeout.write, opt, optarg);
   case SHRPX_OPTID_STREAM_READ_TIMEOUT:
     return parse_duration(&config->http2.timeout.stream_read, opt, optarg);
   case SHRPX_OPTID_STREAM_WRITE_TIMEOUT:
@@ -1989,7 +1987,7 @@ int parse_config(Config *config, const StringRef &opt, const StringRef &optarg,
     return 0;
   }
   case SHRPX_OPTID_BACKEND_KEEP_ALIVE_TIMEOUT:
-    return parse_duration(&config->conn.downstream.timeout.idle_read, opt,
+    return parse_duration(&config->conn.downstream->timeout.idle_read, opt,
                           optarg);
   case SHRPX_OPTID_FRONTEND_HTTP2_WINDOW_BITS:
   case SHRPX_OPTID_BACKEND_HTTP2_WINDOW_BITS: {
@@ -2176,14 +2174,14 @@ int parse_config(Config *config, const StringRef &opt, const StringRef &optarg,
     LOG(WARN) << opt
               << ": deprecated.  Use backend-address-family=IPv4 instead.";
 
-    config->conn.downstream.family = AF_INET;
+    config->conn.downstream->family = AF_INET;
 
     return 0;
   case SHRPX_OPTID_BACKEND_IPV6:
     LOG(WARN) << opt
               << ": deprecated.  Use backend-address-family=IPv6 instead.";
 
-    config->conn.downstream.family = AF_INET6;
+    config->conn.downstream->family = AF_INET6;
 
     return 0;
   case SHRPX_OPTID_BACKEND_HTTP_PROXY_URI: {
@@ -2383,7 +2381,7 @@ int parse_config(Config *config, const StringRef &opt, const StringRef &optarg,
       return -1;
     }
 
-    config->conn.downstream.connections_per_host = n;
+    config->conn.downstream->connections_per_host = n;
 
     return 0;
   }
@@ -2392,7 +2390,7 @@ int parse_config(Config *config, const StringRef &opt, const StringRef &optarg,
               << SHRPX_OPT_BACKEND_CONNECTIONS_PER_FRONTEND << " instead.";
   // fall through
   case SHRPX_OPTID_BACKEND_CONNECTIONS_PER_FRONTEND:
-    return parse_uint(&config->conn.downstream.connections_per_frontend, opt,
+    return parse_uint(&config->conn.downstream->connections_per_frontend, opt,
                       optarg);
   case SHRPX_OPTID_LISTENER_DISABLE_TIMEOUT:
     return parse_duration(&config->conn.listener.timeout.sleep, opt, optarg);
@@ -2430,9 +2428,9 @@ int parse_config(Config *config, const StringRef &opt, const StringRef &optarg,
     }
 
     if (optid == SHRPX_OPTID_BACKEND_REQUEST_BUFFER) {
-      config->conn.downstream.request_buffer_size = n;
+      config->conn.downstream->request_buffer_size = n;
     } else {
-      config->conn.downstream.response_buffer_size = n;
+      config->conn.downstream->response_buffer_size = n;
     }
 
     return 0;
@@ -2690,7 +2688,7 @@ int parse_config(Config *config, const StringRef &opt, const StringRef &optarg,
     return parse_address_family(&config->tls.session_cache.memcached.family,
                                 opt, optarg);
   case SHRPX_OPTID_BACKEND_ADDRESS_FAMILY:
-    return parse_address_family(&config->conn.downstream.family, opt, optarg);
+    return parse_address_family(&config->conn.downstream->family, opt, optarg);
   case SHRPX_OPTID_FRONTEND_HTTP2_MAX_CONCURRENT_STREAMS:
     return parse_uint(&config->http2.upstream.max_concurrent_streams, opt,
                       optarg);
@@ -2913,9 +2911,9 @@ StringRef strproto(shrpx_proto proto) {
 int configure_downstream_group(Config *config, bool http2_proxy,
                                bool numeric_addr_only,
                                const TLSConfig &tlsconf) {
-  auto &downstreamconf = config->conn.downstream;
+  auto &downstreamconf = *config->conn.downstream;
   auto &addr_groups = downstreamconf.addr_groups;
-  auto &downstream_router = config->downstream_router;
+  auto &router = downstreamconf.router;
 
   if (addr_groups.empty()) {
     DownstreamAddrConfig addr{};
@@ -2925,8 +2923,7 @@ int configure_downstream_group(Config *config, bool http2_proxy,
 
     DownstreamAddrGroupConfig g(StringRef::from_lit("/"));
     g.addrs.push_back(std::move(addr));
-    downstream_router->router.add_route(StringRef{g.pattern},
-                                        addr_groups.size());
+    router.add_route(StringRef{g.pattern}, addr_groups.size());
     addr_groups.push_back(std::move(g));
   } else if (http2_proxy) {
     // We don't support host mapping in these cases.  Move all
@@ -2938,12 +2935,11 @@ int configure_downstream_group(Config *config, bool http2_proxy,
     }
     std::vector<DownstreamAddrGroupConfig>().swap(addr_groups);
     // maybe not necessary?
-    downstream_router = std::make_shared<DownstreamRouter>();
-    downstream_router->router.add_route(StringRef{catch_all.pattern},
-                                        addr_groups.size());
+    router = Router();
+    router.add_route(StringRef{catch_all.pattern}, addr_groups.size());
     addr_groups.push_back(std::move(catch_all));
   } else {
-    auto &wildcard_patterns = downstream_router->wildcard_patterns;
+    auto &wildcard_patterns = downstreamconf.wildcard_patterns;
     std::sort(std::begin(wildcard_patterns), std::end(wildcard_patterns),
               [](const WildcardPattern &lhs, const WildcardPattern &rhs) {
                 return std::lexicographical_compare(

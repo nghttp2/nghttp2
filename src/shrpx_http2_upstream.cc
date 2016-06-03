@@ -413,6 +413,13 @@ void Http2Upstream::initiate_downstream(Downstream *downstream) {
 
   downstream_queue_.mark_active(downstream);
 
+  auto &req = downstream->request();
+  if (!req.http2_expect_body) {
+    downstream->end_upload_data();
+    // TODO is this necessary?
+    handler_->signal_write();
+  }
+
   return;
 }
 
@@ -846,13 +853,22 @@ nghttp2_session_callbacks *create_http2_upstream_callbacks() {
   return callbacks;
 }
 
+namespace {
+size_t downstream_queue_size(Worker *worker) {
+  auto downstreamconf = worker->get_downstream_config();
+
+  if (get_config()->http2_proxy) {
+    return downstreamconf->connections_per_host;
+  }
+
+  return downstreamconf->connections_per_frontend;
+}
+} // namespace
+
 Http2Upstream::Http2Upstream(ClientHandler *handler)
     : wb_(handler->get_worker()->get_mcpool()),
-      downstream_queue_(
-          get_config()->http2_proxy
-              ? get_config()->conn.downstream.connections_per_host
-              : get_config()->conn.downstream.connections_per_frontend,
-          !get_config()->http2_proxy),
+      downstream_queue_(downstream_queue_size(handler->get_worker()),
+                        !get_config()->http2_proxy),
       handler_(handler),
       session_(nullptr),
       shutdown_handled_(false) {

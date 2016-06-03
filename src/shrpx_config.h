@@ -587,6 +587,35 @@ struct RateLimitConfig {
   size_t burst;
 };
 
+// Wildcard host pattern routing.  We strips left most '*' from host
+// field.  router includes all path pattern sharing same wildcard
+// host.
+struct WildcardPattern {
+  ImmutableString host;
+  Router router;
+};
+
+struct DownstreamConfig {
+  struct {
+    ev_tstamp read;
+    ev_tstamp write;
+    ev_tstamp idle_read;
+  } timeout;
+  Router router;
+  std::vector<WildcardPattern> wildcard_patterns;
+  std::vector<DownstreamAddrGroupConfig> addr_groups;
+  // The index of catch-all group in downstream_addr_groups.
+  size_t addr_group_catch_all;
+  size_t connections_per_host;
+  size_t connections_per_frontend;
+  size_t request_buffer_size;
+  size_t response_buffer_size;
+  // Address family of backend connection.  One of either AF_INET,
+  // AF_INET6 or AF_UNSPEC.  This is ignored if backend connection
+  // is made via Unix domain socket.
+  int family;
+};
+
 struct ConnectionConfig {
   struct {
     struct {
@@ -614,41 +643,10 @@ struct ConnectionConfig {
     bool accept_proxy_protocol;
   } upstream;
 
-  struct {
-    struct {
-      ev_tstamp read;
-      ev_tstamp write;
-      ev_tstamp idle_read;
-    } timeout;
-    std::vector<DownstreamAddrGroupConfig> addr_groups;
-    // The index of catch-all group in downstream_addr_groups.
-    size_t addr_group_catch_all;
-    size_t connections_per_host;
-    size_t connections_per_frontend;
-    size_t request_buffer_size;
-    size_t response_buffer_size;
-    // Address family of backend connection.  One of either AF_INET,
-    // AF_INET6 or AF_UNSPEC.  This is ignored if backend connection
-    // is made via Unix domain socket.
-    int family;
-  } downstream;
-};
-
-// Wildcard host pattern routing.  We strips left most '*' from host
-// field.  router includes all path pattern sharing same wildcard
-// host.
-struct WildcardPattern {
-  ImmutableString host;
-  Router router;
-};
-
-struct DownstreamRouter {
-  Router router;
-  std::vector<WildcardPattern> wildcard_patterns;
+  std::shared_ptr<DownstreamConfig> downstream;
 };
 
 struct Config {
-  std::shared_ptr<DownstreamRouter> downstream_router;
   HttpProxy downstream_http_proxy;
   HttpConfig http;
   Http2Config http2;
