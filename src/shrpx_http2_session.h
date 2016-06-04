@@ -200,6 +200,11 @@ public:
 
   void on_timeout();
 
+  // This is called periodically using ev_prepare watcher, and if
+  // group_ is retired (backend has been replaced), send GOAWAY to
+  // shutdown the connection.
+  void check_retire();
+
   enum {
     // Disconnected
     DISCONNECTED,
@@ -241,6 +246,7 @@ private:
   ev_timer connchk_timer_;
   // timer to initiate connection.  usually, this fires immediately.
   ev_timer initiate_connection_timer_;
+  ev_prepare prep_;
   DList<Http2DownstreamConnection> dconns_;
   DList<StreamData> streams_;
   std::function<int(Http2Session &)> read_, write_;

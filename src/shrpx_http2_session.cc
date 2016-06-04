@@ -171,6 +171,13 @@ void initiate_connection_cb(struct ev_loop *loop, ev_timer *w, int revents) {
 }
 } // namespace
 
+namespace {
+void prepare_cb(struct ev_loop *loop, ev_prepare *w, int revents) {
+  auto http2session = static_cast<Http2Session *>(w->data);
+  http2session->check_retire();
+}
+} // namespace
+
 Http2Session::Http2Session(struct ev_loop *loop, SSL_CTX *ssl_ctx,
                            Worker *worker,
                            const std::shared_ptr<DownstreamAddrGroup> &group,
@@ -211,6 +218,10 @@ Http2Session::Http2Session(struct ev_loop *loop, SSL_CTX *ssl_ctx,
 
   ev_timer_init(&initiate_connection_timer_, initiate_connection_cb, 0., 0.);
   initiate_connection_timer_.data = this;
+
+  ev_prepare_init(&prep_, prepare_cb);
+  prep_.data = this;
+  ev_prepare_start(loop, &prep_);
 }
 
 Http2Session::~Http2Session() {
@@ -229,6 +240,8 @@ int Http2Session::disconnect(bool hard) {
 
   conn_.rlimit.stopw();
   conn_.wlimit.stopw();
+
+  ev_prepare_stop(conn_.loop, &prep_);
 
   ev_timer_stop(conn_.loop, &initiate_connection_timer_);
   ev_timer_stop(conn_.loop, &settings_timer_);
@@ -2193,6 +2206,20 @@ void Http2Session::on_timeout() {
     break;
   }
   }
+}
+
+void Http2Session::check_retire() {
+  if (!group_->retired) {
+    return;
+  }
+
+  ev_prepare_stop(conn_.loop, &prep_);
+
+  auto last_stream_id = nghttp2_session_get_last_proc_stream_id(session_);
+  nghttp2_submit_goaway(session_, NGHTTP2_FLAG_NONE, last_stream_id,
+                        NGHTTP2_NO_ERROR, nullptr, 0);
+
+  signal_write();
 }
 
 } // namespace shrpx
