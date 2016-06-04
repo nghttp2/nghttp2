@@ -857,13 +857,13 @@ nghttp2_session_callbacks *create_http2_upstream_callbacks() {
 
 namespace {
 size_t downstream_queue_size(Worker *worker) {
-  auto downstreamconf = worker->get_downstream_config();
+  auto &downstreamconf = *worker->get_downstream_config();
 
   if (get_config()->http2_proxy) {
-    return downstreamconf->connections_per_host;
+    return downstreamconf.connections_per_host;
   }
 
-  return downstreamconf->connections_per_frontend;
+  return downstreamconf.connections_per_frontend;
 }
 } // namespace
 

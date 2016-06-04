@@ -131,7 +131,7 @@ int APIDownstreamConnection::end_upload_data() {
   config.conn.downstream = std::make_shared<DownstreamConfig>();
   const auto &downstreamconf = config.conn.downstream;
 
-  auto src = get_config()->conn.downstream;
+  auto &src = get_config()->conn.downstream;
 
   downstreamconf->timeout = src->timeout;
   downstreamconf->connections_per_host = src->connections_per_host;

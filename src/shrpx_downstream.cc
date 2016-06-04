@@ -510,8 +510,8 @@ bool Downstream::request_buf_full() {
   }
 
   if (dconn_) {
-    auto downstreamconf = worker->get_downstream_config();
-    return request_buf_.rleft() >= downstreamconf->request_buffer_size;
+    auto &downstreamconf = *worker->get_downstream_config();
+    return request_buf_.rleft() >= downstreamconf.request_buffer_size;
   }
 
   return false;
@@ -604,9 +604,9 @@ bool Downstream::response_buf_full() {
   if (dconn_) {
     auto handler = upstream_->get_client_handler();
     auto worker = handler->get_worker();
-    auto downstreamconf = worker->get_downstream_config();
+    auto &downstreamconf = *worker->get_downstream_config();
 
-    return response_buf_.rleft() >= downstreamconf->response_buffer_size;
+    return response_buf_.rleft() >= downstreamconf.response_buffer_size;
   }
 
   return false;
