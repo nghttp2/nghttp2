@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTPX" "1" "May 26, 2016" "1.11.0" "nghttp2"
+.TH "NGHTTPX" "1" "June 04, 2016" "1.12.0-DEV" "nghttp2"
 .SH NAME
 nghttpx \- HTTP/2 proxy
 .
@@ -178,6 +178,13 @@ multiple addresses.
 .sp
 Optionally, TLS  can be disabled by  specifying "no\-tls"
 parameter.  TLS is enabled by default.
+.sp
+To  make this  frontend as  API endpoint,  specify "api"
+parameter.   This   is  disabled  by  default.    It  is
+important  to  limit the  access  to  the API  frontend.
+Otherwise, someone  may change  the backend  server, and
+break your services,  or expose confidential information
+to the outside the world.
 .sp
 Default: \fB*,3000\fP
 .UNINDENT
@@ -1078,6 +1085,14 @@ originally  generates  HTTP  error status  code  <CODE>.
 HTTP  status  code.  If  error  status  code comes  from
 backend server, the custom error pages are not used.
 .UNINDENT
+.SS API
+.INDENT 0.0
+.TP
+.B \-\-api\-max\-request\-body=<SIZE>
+Set the maximum size of request body for API request.
+.sp
+Default: \fB16K\fP
+.UNINDENT
 .SS Debug
 .INDENT 0.0
 .TP
@@ -1682,6 +1697,37 @@ App.new
 .fi
 .UNINDENT
 .UNINDENT
+.SH API ENDPOINTS
+.sp
+nghttpx exposes API endpoints to manipulate it via HTTP based API.  By
+default, API endpoint is disabled.  To enable it, add a dedicated
+frontend for API using \fI\%\-\-frontend\fP option with "api"
+parameter.  All requests which come from this frontend address, will
+be treated as API request.
+.sp
+The following section describes available API endpoints.
+.SS PUT /api/v1beta/backend/replace
+.sp
+This API replaces the current set of backend servers with the
+requested ones.  The request must carry request body with method PUT
+or POST.  The request body must be nghttpx configuration file format.
+For configuration file format, see \fI\%FILES\fP section.  The line
+separator inside the request body must be single LF (0x0A).
+Currently, only \fI\%backend\fP option is parsed, the
+others are simply ignored.  The semantics of this API is replace the
+current backend with the backend options in request body.  Describe
+the desired set of backend severs, and nghttpx makes it happen.  If
+there is no \fI\%backend\fP option is found in request
+body, the current set of backend is replaced with the \fI\%backend\fP option\(aqs default value, which is \fB127.0.0.1,80\fP\&.
+.sp
+The replacement is done instantly without breaking existing
+connections or requests.  It also avoids any process creation as is
+the case with hot swapping with signals.
+.sp
+The one limitation is that only numeric IP address is allowd in
+\fI\%backend\fP in request body while non numeric
+hostname is allowed in command\-line or configuration file is read
+using \fI\%\-\-conf\fP\&.
 .SH SEE ALSO
 .sp
 \fInghttp(1)\fP, \fInghttpd(1)\fP, \fIh2load(1)\fP

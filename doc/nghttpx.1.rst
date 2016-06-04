@@ -163,6 +163,13 @@ Connections
     Optionally, TLS  can be disabled by  specifying "no-tls"
     parameter.  TLS is enabled by default.
 
+    To  make this  frontend as  API endpoint,  specify "api"
+    parameter.   This   is  disabled  by  default.    It  is
+    important  to  limit the  access  to  the API  frontend.
+    Otherwise, someone  may change  the backend  server, and
+    break your services,  or expose confidential information
+    to the outside the world.
+
 
     Default: ``*,3000``
 
@@ -972,6 +979,16 @@ HTTP
     backend server, the custom error pages are not used.
 
 
+API
+~~~
+
+.. option:: --api-max-request-body=<SIZE>
+
+    Set the maximum size of request body for API request.
+
+    Default: ``16K``
+
+
 Debug
 ~~~~~
 
@@ -1521,6 +1538,42 @@ addresses:
     end
 
     App.new
+
+API ENDPOINTS
+-------------
+
+nghttpx exposes API endpoints to manipulate it via HTTP based API.  By
+default, API endpoint is disabled.  To enable it, add a dedicated
+frontend for API using :option:`--frontend` option with "api"
+parameter.  All requests which come from this frontend address, will
+be treated as API request.
+
+The following section describes available API endpoints.
+
+PUT /api/v1beta/backend/replace
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This API replaces the current set of backend servers with the
+requested ones.  The request must carry request body with method PUT
+or POST.  The request body must be nghttpx configuration file format.
+For configuration file format, see `FILES`_ section.  The line
+separator inside the request body must be single LF (0x0A).
+Currently, only :option:`backend <--backend>` option is parsed, the
+others are simply ignored.  The semantics of this API is replace the
+current backend with the backend options in request body.  Describe
+the desired set of backend severs, and nghttpx makes it happen.  If
+there is no :option:`backend <--backend>` option is found in request
+body, the current set of backend is replaced with the :option:`backend
+<--backend>` option's default value, which is ``127.0.0.1,80``.
+
+The replacement is done instantly without breaking existing
+connections or requests.  It also avoids any process creation as is
+the case with hot swapping with signals.
+
+The one limitation is that only numeric IP address is allowd in
+:option:`backend <--backend>` in request body while non numeric
+hostname is allowed in command-line or configuration file is read
+using :option:`--conf`.
 
 SEE ALSO
 --------
