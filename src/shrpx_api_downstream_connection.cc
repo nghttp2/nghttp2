@@ -131,7 +131,7 @@ int APIDownstreamConnection::push_request_headers() {
   auto &req = downstream_->request();
   auto &resp = downstream_->response();
 
-  if (req.path != StringRef::from_lit("/api/v1alpha1/backend/replace")) {
+  if (req.path != StringRef::from_lit("/api/v1beta1/backend/replace")) {
     send_reply(404, API_FAILURE);
 
     return 0;
