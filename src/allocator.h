@@ -54,7 +54,7 @@ struct BlockAllocator {
         block_size(block_size),
         isolation_threshold(std::min(block_size, isolation_threshold)) {}
 
-  ~BlockAllocator() { destroy(); }
+  ~BlockAllocator() { reset(); }
 
   BlockAllocator(BlockAllocator &&other) noexcept
       : retain(other.retain),
@@ -66,7 +66,7 @@ struct BlockAllocator {
   }
 
   BlockAllocator &operator=(BlockAllocator &&other) noexcept {
-    destroy();
+    reset();
 
     retain = other.retain;
     head = other.head;
@@ -82,12 +82,15 @@ struct BlockAllocator {
   BlockAllocator(const BlockAllocator &) = delete;
   BlockAllocator &operator=(const BlockAllocator &) = delete;
 
-  void destroy() {
+  void reset() {
     for (auto mb = retain; mb;) {
       auto next = mb->next;
       delete[] reinterpret_cast<uint8_t *>(mb);
       mb = next;
     }
+
+    retain = nullptr;
+    head = nullptr;
   }
 
   MemBlock *alloc_mem_block(size_t size) {
