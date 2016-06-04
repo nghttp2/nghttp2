@@ -467,7 +467,7 @@ int htp_msg_completecb(http_parser *htp) {
       // reason why end_upload_data() failed is when we sent response
       // in request phase hook.  We only delete and proceed to the
       // next request handling (if we don't close the connection).  We
-      // first pause parser here jsut as we normally do, and call
+      // first pause parser here just as we normally do, and call
       // signal_write() to run on_write().
       http_parser_pause(htp, 1);
 
