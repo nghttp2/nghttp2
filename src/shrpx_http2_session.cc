@@ -197,8 +197,7 @@ Http2Session::Http2Session(struct ev_loop *loop, SSL_CTX *ssl_ctx,
       session_(nullptr),
       state_(DISCONNECTED),
       connection_check_state_(CONNECTION_CHECK_NONE),
-      freelist_zone_(FREELIST_ZONE_NONE),
-      flow_control_(false) {
+      freelist_zone_(FREELIST_ZONE_NONE) {
   read_ = write_ = &Http2Session::noop;
 
   on_read_ = &Http2Session::read_noop;
@@ -674,8 +673,6 @@ int Http2Session::submit_rst_stream(int32_t stream_id, uint32_t error_code) {
 }
 
 nghttp2_session *Http2Session::get_session() const { return session_; }
-
-bool Http2Session::get_flow_control() const { return flow_control_; }
 
 int Http2Session::resume_data(Http2DownstreamConnection *dconn) {
   assert(state_ == CONNECTED);
@@ -1524,8 +1521,6 @@ int Http2Session::connection_made() {
   if (rv != 0) {
     return -1;
   }
-
-  flow_control_ = true;
 
   std::array<nghttp2_settings_entry, 3> entry;
   size_t nentry = 2;

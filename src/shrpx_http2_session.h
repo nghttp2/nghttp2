@@ -96,8 +96,6 @@ public:
 
   nghttp2_session *get_session() const;
 
-  bool get_flow_control() const;
-
   int resume_data(Http2DownstreamConnection *dconn);
 
   int connection_made();
@@ -264,7 +262,6 @@ private:
   int state_;
   int connection_check_state_;
   int freelist_zone_;
-  bool flow_control_;
 };
 
 nghttp2_session_callbacks *create_http2_downstream_callbacks();
