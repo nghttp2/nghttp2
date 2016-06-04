@@ -787,23 +787,25 @@ void Http2Upstream::submit_goaway() {
 
 void Http2Upstream::check_shutdown() {
   int rv;
-  if (shutdown_handled_) {
-    return;
-  }
 
   auto worker = handler_->get_worker();
 
-  if (worker->get_graceful_shutdown()) {
-    shutdown_handled_ = true;
-    rv = nghttp2_submit_shutdown_notice(session_);
-    if (rv != 0) {
-      ULOG(FATAL, this) << "nghttp2_submit_shutdown_notice() failed: "
-                        << nghttp2_strerror(rv);
-      return;
-    }
-    handler_->signal_write();
-    ev_timer_start(handler_->get_loop(), &shutdown_timer_);
+  if (!worker->get_graceful_shutdown()) {
+    return;
   }
+
+  ev_prepare_stop(handler_->get_loop(), &prep_);
+
+  rv = nghttp2_submit_shutdown_notice(session_);
+  if (rv != 0) {
+    ULOG(FATAL, this) << "nghttp2_submit_shutdown_notice() failed: "
+                      << nghttp2_strerror(rv);
+    return;
+  }
+
+  handler_->signal_write();
+
+  ev_timer_start(handler_->get_loop(), &shutdown_timer_);
 }
 
 nghttp2_session_callbacks *create_http2_upstream_callbacks() {
@@ -870,9 +872,7 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
       downstream_queue_(downstream_queue_size(handler->get_worker()),
                         !get_config()->http2_proxy),
       handler_(handler),
-      session_(nullptr),
-      shutdown_handled_(false) {
-
+      session_(nullptr) {
   int rv;
 
   auto &http2conf = get_config()->http2;
