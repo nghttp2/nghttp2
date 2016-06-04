@@ -479,8 +479,7 @@ int Http2DownstreamConnection::resume_read(IOCtrlReason reason,
                                            size_t consumed) {
   int rv;
 
-  if (http2session_->get_state() != Http2Session::CONNECTED ||
-      !http2session_->get_flow_control()) {
+  if (http2session_->get_state() != Http2Session::CONNECTED) {
     return 0;
   }
 

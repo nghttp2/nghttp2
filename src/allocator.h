@@ -54,19 +54,44 @@ struct BlockAllocator {
         block_size(block_size),
         isolation_threshold(std::min(block_size, isolation_threshold)) {}
 
-  ~BlockAllocator() {
+  ~BlockAllocator() { reset(); }
+
+  BlockAllocator(BlockAllocator &&other) noexcept
+      : retain(other.retain),
+        head(other.head),
+        block_size(other.block_size),
+        isolation_threshold(other.isolation_threshold) {
+    other.retain = nullptr;
+    other.head = nullptr;
+  }
+
+  BlockAllocator &operator=(BlockAllocator &&other) noexcept {
+    reset();
+
+    retain = other.retain;
+    head = other.head;
+    block_size = other.block_size;
+    isolation_threshold = other.isolation_threshold;
+
+    other.retain = nullptr;
+    other.head = nullptr;
+
+    return *this;
+  }
+
+  BlockAllocator(const BlockAllocator &) = delete;
+  BlockAllocator &operator=(const BlockAllocator &) = delete;
+
+  void reset() {
     for (auto mb = retain; mb;) {
       auto next = mb->next;
       delete[] reinterpret_cast<uint8_t *>(mb);
       mb = next;
     }
+
+    retain = nullptr;
+    head = nullptr;
   }
-
-  BlockAllocator(BlockAllocator &&) = default;
-  BlockAllocator &operator=(BlockAllocator &&) = default;
-
-  BlockAllocator(const BlockAllocator &) = delete;
-  BlockAllocator &operator=(const BlockAllocator &) = delete;
 
   MemBlock *alloc_mem_block(size_t size) {
     auto block = new uint8_t[sizeof(MemBlock) + size];

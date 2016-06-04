@@ -512,13 +512,22 @@ uint32_t infer_upstream_rst_stream_status_code(uint32_t downstream_error_code) {
 }
 } // namespace
 
+namespace {
+size_t downstream_queue_size(Worker *worker) {
+  auto &downstreamconf = *worker->get_downstream_config();
+
+  if (get_config()->http2_proxy) {
+    return downstreamconf.connections_per_host;
+  }
+
+  return downstreamconf.connections_per_frontend;
+}
+} // namespace
+
 SpdyUpstream::SpdyUpstream(uint16_t version, ClientHandler *handler)
     : wb_(handler->get_worker()->get_mcpool()),
-      downstream_queue_(
-          get_config()->http2_proxy
-              ? get_config()->conn.downstream.connections_per_host
-              : get_config()->conn.downstream.connections_per_frontend,
-          !get_config()->http2_proxy),
+      downstream_queue_(downstream_queue_size(handler->get_worker()),
+                        !get_config()->http2_proxy),
       handler_(handler),
       session_(nullptr) {
   spdylay_session_callbacks callbacks{};

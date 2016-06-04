@@ -1,7 +1,7 @@
 /*
  * nghttp2 - HTTP/2 C Library
  *
- * Copyright (c) 2014 Tatsuhiro Tsujikawa
+ * Copyright (c) 2016 Tatsuhiro Tsujikawa
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -22,45 +22,47 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#include "shrpx_downstream_connection_pool.h"
+#ifndef SHRPX_API_DOWNSTREAM_CONNECTION_H
+#define SHRPX_API_DOWNSTREAM_CONNECTION_H
+
 #include "shrpx_downstream_connection.h"
 
 namespace shrpx {
 
-DownstreamConnectionPool::DownstreamConnectionPool() {}
+class Worker;
 
-DownstreamConnectionPool::~DownstreamConnectionPool() { remove_all(); }
+class APIDownstreamConnection : public DownstreamConnection {
+public:
+  APIDownstreamConnection(Worker *worker);
+  virtual ~APIDownstreamConnection();
+  virtual int attach_downstream(Downstream *downstream);
+  virtual void detach_downstream(Downstream *downstream);
 
-void DownstreamConnectionPool::remove_all() {
-  for (auto dconn : pool_) {
-    delete dconn;
-  }
+  virtual int push_request_headers();
+  virtual int push_upload_data_chunk(const uint8_t *data, size_t datalen);
+  virtual int end_upload_data();
 
-  pool_.clear();
-}
+  virtual void pause_read(IOCtrlReason reason);
+  virtual int resume_read(IOCtrlReason reason, size_t consumed);
+  virtual void force_resume_read();
 
-void DownstreamConnectionPool::add_downstream_connection(
-    std::unique_ptr<DownstreamConnection> dconn) {
-  pool_.insert(dconn.release());
-}
+  virtual int on_read();
+  virtual int on_write();
 
-std::unique_ptr<DownstreamConnection>
-DownstreamConnectionPool::pop_downstream_connection() {
-  if (pool_.empty()) {
-    return nullptr;
-  }
+  virtual void on_upstream_change(Upstream *uptream);
 
-  auto it = std::begin(pool_);
-  auto dconn = std::unique_ptr<DownstreamConnection>(*it);
-  pool_.erase(it);
+  // true if this object is poolable.
+  virtual bool poolable() const;
 
-  return dconn;
-}
+  virtual DownstreamAddrGroup *get_downstream_addr_group() const;
 
-void DownstreamConnectionPool::remove_downstream_connection(
-    DownstreamConnection *dconn) {
-  pool_.erase(dconn);
-  delete dconn;
-}
+  int send_reply(unsigned int http_status, int api_status);
+
+private:
+  Worker *worker_;
+  bool abandoned_;
+};
 
 } // namespace shrpx
+
+#endif // SHRPX_API_DOWNSTREAM_CONNECTION_H

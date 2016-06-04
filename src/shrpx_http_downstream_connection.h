@@ -42,8 +42,8 @@ struct DownstreamAddr;
 
 class HttpDownstreamConnection : public DownstreamConnection {
 public:
-  HttpDownstreamConnection(DownstreamAddrGroup *group, struct ev_loop *loop,
-                           Worker *worker);
+  HttpDownstreamConnection(const std::shared_ptr<DownstreamAddrGroup> &group,
+                           struct ev_loop *loop, Worker *worker);
   virtual ~HttpDownstreamConnection();
   virtual int attach_downstream(Downstream *downstream);
   virtual void detach_downstream(Downstream *downstream);
@@ -61,7 +61,7 @@ public:
 
   virtual void on_upstream_change(Upstream *upstream);
 
-  virtual bool poolable() const { return true; }
+  virtual bool poolable() const;
 
   virtual DownstreamAddrGroup *get_downstream_addr_group() const;
 
@@ -88,7 +88,7 @@ private:
   Worker *worker_;
   // nullptr if TLS is not used.
   SSL_CTX *ssl_ctx_;
-  DownstreamAddrGroup *group_;
+  const std::shared_ptr<DownstreamAddrGroup> &group_;
   // Address of remote endpoint
   DownstreamAddr *addr_;
   IOControl ioctrl_;

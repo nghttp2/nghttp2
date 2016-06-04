@@ -147,52 +147,6 @@ struct SignalServer {
 };
 
 namespace {
-int resolve_hostname(Address *addr, const char *hostname, uint16_t port,
-                     int family) {
-  int rv;
-
-  auto service = util::utos(port);
-
-  addrinfo hints{};
-  hints.ai_family = family;
-  hints.ai_socktype = SOCK_STREAM;
-#ifdef AI_ADDRCONFIG
-  hints.ai_flags |= AI_ADDRCONFIG;
-#endif // AI_ADDRCONFIG
-  addrinfo *res;
-
-  rv = getaddrinfo(hostname, service.c_str(), &hints, &res);
-  if (rv != 0) {
-    LOG(FATAL) << "Unable to resolve address for " << hostname << ": "
-               << gai_strerror(rv);
-    return -1;
-  }
-
-  auto res_d = defer(freeaddrinfo, res);
-
-  char host[NI_MAXHOST];
-  rv = getnameinfo(res->ai_addr, res->ai_addrlen, host, sizeof(host), nullptr,
-                   0, NI_NUMERICHOST);
-  if (rv != 0) {
-    LOG(FATAL) << "Address resolution for " << hostname
-               << " failed: " << gai_strerror(rv);
-
-    return -1;
-  }
-
-  if (LOG_ENABLED(INFO)) {
-    LOG(INFO) << "Address resolution for " << hostname
-              << " succeeded: " << host;
-  }
-
-  memcpy(&addr->su, res->ai_addr, res->ai_addrlen);
-  addr->len = res->ai_addrlen;
-
-  return 0;
-}
-} // namespace
-
-namespace {
 int chown_to_running_user(const char *path) {
   return chown(path, get_config()->uid, get_config()->gid);
 }
@@ -1076,11 +1030,6 @@ constexpr auto DEFAULT_ACCESSLOG_FORMAT = StringRef::from_lit(
 } // namespace
 
 namespace {
-constexpr char DEFAULT_DOWNSTREAM_HOST[] = "127.0.0.1";
-constexpr int16_t DEFAULT_DOWNSTREAM_PORT = 80;
-} // namespace;
-
-namespace {
 void fill_default_config() {
   *mod_config() = {};
 
@@ -1157,6 +1106,11 @@ void fill_default_config() {
     nghttp2_option_new(&upstreamconf.option);
     nghttp2_option_set_no_auto_window_update(upstreamconf.option, 1);
     nghttp2_option_set_no_recv_client_magic(upstreamconf.option, 1);
+
+    // For API endpoint, we enable automatic window update.  This is
+    // because we are a sink.
+    nghttp2_option_new(&upstreamconf.api_option);
+    nghttp2_option_set_no_recv_client_magic(upstreamconf.api_option, 1);
   }
 
   {
@@ -1213,7 +1167,8 @@ void fill_default_config() {
   }
 
   {
-    auto &downstreamconf = connconf.downstream;
+    connconf.downstream = std::make_shared<DownstreamConfig>();
+    auto &downstreamconf = *connconf.downstream;
     {
       auto &timeoutconf = downstreamconf.timeout;
       // Read/Write timeouts for downstream connection
@@ -1228,6 +1183,9 @@ void fill_default_config() {
     downstreamconf.response_buffer_size = 128_k;
     downstreamconf.family = AF_UNSPEC;
   }
+
+  auto &apiconf = mod_config()->api;
+  apiconf.max_request_body = 16_k;
 }
 
 } // namespace
@@ -1383,6 +1341,13 @@ Connections:
               Optionally, TLS  can be disabled by  specifying "no-tls"
               parameter.  TLS is enabled by default.
 
+              To  make this  frontend as  API endpoint,  specify "api"
+              parameter.   This   is  disabled  by  default.    It  is
+              important  to  limit the  access  to  the API  frontend.
+              Otherwise, someone  may change  the backend  server, and
+              break your services,  or expose confidential information
+              to the outside the world.
+
               Default: *,3000
   --backlog=<N>
               Set listen backlog size.
@@ -1469,7 +1434,7 @@ Performance:
               HTTP/2).   To  limit  the   number  of  connections  per
               frontend        for       default        mode,       use
               --backend-connections-per-frontend.
-              Default: )" << get_config()->conn.downstream.connections_per_host
+              Default: )" << get_config()->conn.downstream->connections_per_host
       << R"(
   --backend-connections-per-frontend=<N>
               Set  maximum number  of  backend concurrent  connections
@@ -1479,7 +1444,7 @@ Performance:
               with          --http2-proxy         option,          use
               --backend-connections-per-host.
               Default: )"
-      << get_config()->conn.downstream.connections_per_frontend << R"(
+      << get_config()->conn.downstream->connections_per_frontend << R"(
   --rlimit-nofile=<N>
               Set maximum number of open files (RLIMIT_NOFILE) to <N>.
               If 0 is given, nghttpx does not set the limit.
@@ -1487,12 +1452,12 @@ Performance:
   --backend-request-buffer=<SIZE>
               Set buffer size used to store backend request.
               Default: )"
-      << util::utos_unit(get_config()->conn.downstream.request_buffer_size)
+      << util::utos_unit(get_config()->conn.downstream->request_buffer_size)
       << R"(
   --backend-response-buffer=<SIZE>
               Set buffer size used to store backend response.
               Default: )"
-      << util::utos_unit(get_config()->conn.downstream.response_buffer_size)
+      << util::utos_unit(get_config()->conn.downstream->response_buffer_size)
       << R"(
   --fastopen=<N>
               Enables  "TCP Fast  Open" for  the listening  socket and
@@ -1532,15 +1497,15 @@ Timeout:
   --backend-read-timeout=<DURATION>
               Specify read timeout for backend connection.
               Default: )"
-      << util::duration_str(get_config()->conn.downstream.timeout.read) << R"(
+      << util::duration_str(get_config()->conn.downstream->timeout.read) << R"(
   --backend-write-timeout=<DURATION>
               Specify write timeout for backend connection.
               Default: )"
-      << util::duration_str(get_config()->conn.downstream.timeout.write) << R"(
+      << util::duration_str(get_config()->conn.downstream->timeout.write) << R"(
   --backend-keep-alive-timeout=<DURATION>
               Specify keep-alive timeout for backend connection.
               Default: )"
-      << util::duration_str(get_config()->conn.downstream.timeout.idle_read)
+      << util::duration_str(get_config()->conn.downstream->timeout.idle_read)
       << R"(
   --listener-disable-timeout=<DURATION>
               After accepting  connection failed,  connection listener
@@ -1959,6 +1924,12 @@ HTTP:
               HTTP  status  code.  If  error  status  code comes  from
               backend server, the custom error pages are not used.
 
+API:
+  --api-max-request-body=<SIZE>
+              Set the maximum size of request body for API request.
+              Default: )" << util::utos_unit(get_config()->api.max_request_body)
+      << R"(
+
 Debug:
   --frontend-http2-dump-request-header=<PATH>
               Dumps request headers received by HTTP/2 frontend to the
@@ -2041,7 +2012,7 @@ void process_options(int argc, char **argv,
     std::set<StringRef> include_set;
 
     for (auto &p : cmdcfgs) {
-      if (parse_config(p.first, p.second, include_set) == -1) {
+      if (parse_config(mod_config(), p.first, p.second, include_set) == -1) {
         LOG(FATAL) << "Failed to parse command-line argument.";
         exit(EXIT_FAILURE);
       }
@@ -2146,7 +2117,6 @@ void process_options(int argc, char **argv,
 
   auto &listenerconf = mod_config()->conn.listener;
   auto &upstreamconf = mod_config()->conn.upstream;
-  auto &downstreamconf = mod_config()->conn.downstream;
 
   if (listenerconf.addrs.empty()) {
     UpstreamAddr addr{};
@@ -2180,138 +2150,9 @@ void process_options(int argc, char **argv,
     }
   }
 
-  auto &addr_groups = downstreamconf.addr_groups;
-
-  if (addr_groups.empty()) {
-    DownstreamAddrConfig addr{};
-    addr.host = ImmutableString::from_lit(DEFAULT_DOWNSTREAM_HOST);
-    addr.port = DEFAULT_DOWNSTREAM_PORT;
-    addr.proto = PROTO_HTTP1;
-
-    DownstreamAddrGroupConfig g(StringRef::from_lit("/"));
-    g.addrs.push_back(std::move(addr));
-    mod_config()->router.add_route(StringRef{g.pattern}, addr_groups.size());
-    addr_groups.push_back(std::move(g));
-  } else if (get_config()->http2_proxy) {
-    // We don't support host mapping in these cases.  Move all
-    // non-catch-all patterns to catch-all pattern.
-    DownstreamAddrGroupConfig catch_all(StringRef::from_lit("/"));
-    for (auto &g : addr_groups) {
-      std::move(std::begin(g.addrs), std::end(g.addrs),
-                std::back_inserter(catch_all.addrs));
-    }
-    std::vector<DownstreamAddrGroupConfig>().swap(addr_groups);
-    std::vector<WildcardPattern>().swap(mod_config()->wildcard_patterns);
-    // maybe not necessary?
-    mod_config()->router = Router();
-    mod_config()->router.add_route(StringRef{catch_all.pattern},
-                                   addr_groups.size());
-    addr_groups.push_back(std::move(catch_all));
-  } else {
-    auto &wildcard_patterns = mod_config()->wildcard_patterns;
-    std::sort(std::begin(wildcard_patterns), std::end(wildcard_patterns),
-              [](const WildcardPattern &lhs, const WildcardPattern &rhs) {
-                return std::lexicographical_compare(
-                    rhs.host.rbegin(), rhs.host.rend(), lhs.host.rbegin(),
-                    lhs.host.rend());
-              });
-    if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "Reverse sorted wildcard hosts (compared from tail to head, "
-                   "and sorted in reverse order):";
-      for (auto &wp : mod_config()->wildcard_patterns) {
-        LOG(INFO) << wp.host;
-      }
-    }
-  }
-
-  // backward compatibility: override all SNI fields with the option
-  // value --backend-tls-sni-field
-  if (!tlsconf.backend_sni_name.empty()) {
-    auto &sni = tlsconf.backend_sni_name;
-    for (auto &addr_group : addr_groups) {
-      for (auto &addr : addr_group.addrs) {
-        addr.sni = sni;
-      }
-    }
-  }
-
-  if (LOG_ENABLED(INFO)) {
-    LOG(INFO) << "Resolving backend address";
-  }
-
-  ssize_t catch_all_group = -1;
-  for (size_t i = 0; i < addr_groups.size(); ++i) {
-    auto &g = addr_groups[i];
-    if (g.pattern == StringRef::from_lit("/")) {
-      catch_all_group = i;
-    }
-    if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "Host-path pattern: group " << i << ": '" << g.pattern
-                << "'";
-      for (auto &addr : g.addrs) {
-        LOG(INFO) << "group " << i << " -> " << addr.host.c_str()
-                  << (addr.host_unix ? "" : ":" + util::utos(addr.port))
-                  << ", proto=" << strproto(addr.proto)
-                  << (addr.tls ? ", tls" : "");
-      }
-    }
-  }
-
-  if (catch_all_group == -1) {
-    LOG(FATAL) << "backend: No catch-all backend address is configured";
+  if (configure_downstream_group(mod_config(), get_config()->http2_proxy, false,
+                                 tlsconf) != 0) {
     exit(EXIT_FAILURE);
-  }
-
-  downstreamconf.addr_group_catch_all = catch_all_group;
-
-  if (LOG_ENABLED(INFO)) {
-    LOG(INFO) << "Catch-all pattern is group " << catch_all_group;
-  }
-
-  for (auto &g : addr_groups) {
-    for (auto &addr : g.addrs) {
-
-      if (addr.host_unix) {
-        // for AF_UNIX socket, we use "localhost" as host for backend
-        // hostport.  This is used as Host header field to backend and
-        // not going to be passed to any syscalls.
-        addr.hostport = "localhost";
-
-        auto path = addr.host.c_str();
-        auto pathlen = addr.host.size();
-
-        if (pathlen + 1 > sizeof(addr.addr.su.un.sun_path)) {
-          LOG(FATAL) << "UNIX domain socket path " << path << " is too long > "
-                     << sizeof(addr.addr.su.un.sun_path);
-          exit(EXIT_FAILURE);
-        }
-
-        if (LOG_ENABLED(INFO)) {
-          LOG(INFO) << "Use UNIX domain socket path " << path
-                    << " for backend connection";
-        }
-
-        addr.addr.su.un.sun_family = AF_UNIX;
-        // copy path including terminal NULL
-        std::copy_n(path, pathlen + 1, addr.addr.su.un.sun_path);
-        addr.addr.len = sizeof(addr.addr.su.un);
-
-        continue;
-      }
-
-      addr.hostport = ImmutableString(
-          util::make_http_hostport(StringRef(addr.host), addr.port));
-
-      auto hostport = util::make_hostport(StringRef{addr.host}, addr.port);
-
-      if (resolve_hostname(&addr.addr, addr.host.c_str(), addr.port,
-                           downstreamconf.family) == -1) {
-        LOG(FATAL) << "Resolving backend address failed: " << hostport;
-        exit(EXIT_FAILURE);
-      }
-      LOG(NOTICE) << "Resolved backend address: " << hostport << " -> "
-                  << util::to_numeric_addr(&addr.addr);
-    }
   }
 
   auto &proxy = mod_config()->downstream_http_proxy;
@@ -2622,6 +2463,7 @@ int main(int argc, char **argv) {
          &flag, 124},
         {SHRPX_OPT_BACKEND_HTTP2_SETTINGS_TIMEOUT.c_str(), required_argument,
          &flag, 125},
+        {SHRPX_OPT_API_MAX_REQUEST_BODY.c_str(), required_argument, &flag, 126},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -3210,6 +3052,10 @@ int main(int argc, char **argv) {
         // --backend-http2-settings-timeout
         cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_HTTP2_SETTINGS_TIMEOUT,
                              StringRef{optarg});
+        break;
+      case 126:
+        // --api-max-request-body
+        cmdcfgs.emplace_back(SHRPX_OPT_API_MAX_REQUEST_BODY, StringRef{optarg});
         break;
       default:
         break;

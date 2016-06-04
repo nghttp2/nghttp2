@@ -413,6 +413,13 @@ void Http2Upstream::initiate_downstream(Downstream *downstream) {
 
   downstream_queue_.mark_active(downstream);
 
+  auto &req = downstream->request();
+  if (!req.http2_expect_body) {
+    downstream->end_upload_data();
+    // TODO is this necessary?
+    handler_->signal_write();
+  }
+
   return;
 }
 
@@ -780,23 +787,25 @@ void Http2Upstream::submit_goaway() {
 
 void Http2Upstream::check_shutdown() {
   int rv;
-  if (shutdown_handled_) {
-    return;
-  }
 
   auto worker = handler_->get_worker();
 
-  if (worker->get_graceful_shutdown()) {
-    shutdown_handled_ = true;
-    rv = nghttp2_submit_shutdown_notice(session_);
-    if (rv != 0) {
-      ULOG(FATAL, this) << "nghttp2_submit_shutdown_notice() failed: "
-                        << nghttp2_strerror(rv);
-      return;
-    }
-    handler_->signal_write();
-    ev_timer_start(handler_->get_loop(), &shutdown_timer_);
+  if (!worker->get_graceful_shutdown()) {
+    return;
   }
+
+  ev_prepare_stop(handler_->get_loop(), &prep_);
+
+  rv = nghttp2_submit_shutdown_notice(session_);
+  if (rv != 0) {
+    ULOG(FATAL, this) << "nghttp2_submit_shutdown_notice() failed: "
+                      << nghttp2_strerror(rv);
+    return;
+  }
+
+  handler_->signal_write();
+
+  ev_timer_start(handler_->get_loop(), &shutdown_timer_);
 }
 
 nghttp2_session_callbacks *create_http2_upstream_callbacks() {
@@ -846,23 +855,33 @@ nghttp2_session_callbacks *create_http2_upstream_callbacks() {
   return callbacks;
 }
 
+namespace {
+size_t downstream_queue_size(Worker *worker) {
+  auto &downstreamconf = *worker->get_downstream_config();
+
+  if (get_config()->http2_proxy) {
+    return downstreamconf.connections_per_host;
+  }
+
+  return downstreamconf.connections_per_frontend;
+}
+} // namespace
+
 Http2Upstream::Http2Upstream(ClientHandler *handler)
     : wb_(handler->get_worker()->get_mcpool()),
-      downstream_queue_(
-          get_config()->http2_proxy
-              ? get_config()->conn.downstream.connections_per_host
-              : get_config()->conn.downstream.connections_per_frontend,
-          !get_config()->http2_proxy),
+      downstream_queue_(downstream_queue_size(handler->get_worker()),
+                        !get_config()->http2_proxy),
       handler_(handler),
-      session_(nullptr),
-      shutdown_handled_(false) {
-
+      session_(nullptr) {
   int rv;
 
   auto &http2conf = get_config()->http2;
 
-  rv = nghttp2_session_server_new2(&session_, http2conf.upstream.callbacks,
-                                   this, http2conf.upstream.option);
+  auto faddr = handler_->get_upstream_addr();
+
+  rv = nghttp2_session_server_new2(
+      &session_, http2conf.upstream.callbacks, this,
+      faddr->api ? http2conf.upstream.api_option : http2conf.upstream.option);
 
   assert(rv == 0);
 
@@ -874,7 +893,11 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
   entry[0].value = http2conf.upstream.max_concurrent_streams;
 
   entry[1].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
-  entry[1].value = (1 << http2conf.upstream.window_bits) - 1;
+  if (faddr->api) {
+    entry[1].value = (1u << 31) - 1;
+  } else {
+    entry[1].value = (1 << http2conf.upstream.window_bits) - 1;
+  }
 
   rv = nghttp2_submit_settings(session_, NGHTTP2_FLAG_NONE, entry.data(),
                                entry.size());
@@ -883,8 +906,11 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
                       << nghttp2_strerror(rv);
   }
 
-  if (http2conf.upstream.connection_window_bits != 16) {
-    int32_t window_size = (1 << http2conf.upstream.connection_window_bits) - 1;
+  int32_t window_bits =
+      faddr->api ? 31 : http2conf.upstream.connection_window_bits;
+
+  if (window_bits != 16) {
+    int32_t window_size = (1u << window_bits) - 1;
     rv = nghttp2_session_set_local_window_size(session_, NGHTTP2_FLAG_NONE, 0,
                                                window_size);
 
@@ -1674,6 +1700,12 @@ int Http2Upstream::on_downstream_abort_request(Downstream *downstream,
 
 int Http2Upstream::consume(int32_t stream_id, size_t len) {
   int rv;
+
+  auto faddr = handler_->get_upstream_addr();
+
+  if (faddr->api) {
+    return 0;
+  }
 
   rv = nghttp2_session_consume(session_, stream_id, len);
 

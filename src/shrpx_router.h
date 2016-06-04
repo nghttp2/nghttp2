@@ -30,6 +30,8 @@
 #include <vector>
 #include <memory>
 
+#include "allocator.h"
+
 namespace shrpx {
 
 struct RNode {
@@ -55,6 +57,12 @@ struct RNode {
 class Router {
 public:
   Router();
+  ~Router();
+  Router(Router &&) = default;
+  Router(const Router &) = delete;
+  Router &operator=(Router &&) = default;
+  Router &operator=(const Router &) = delete;
+
   // Adds route |pattern| with its |index|.
   bool add_route(const StringRef &pattern, size_t index);
   // Returns the matched index of pattern.  -1 if there is no match.
@@ -65,6 +73,7 @@ public:
   void dump() const;
 
 private:
+  BlockAllocator balloc_;
   // The root node of Patricia tree.  This is special node and its s
   // field is nulptr, and len field is 0.
   RNode root_;

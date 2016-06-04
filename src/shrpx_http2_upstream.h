@@ -132,7 +132,6 @@ private:
   ClientHandler *handler_;
   nghttp2_session *session_;
   bool flow_control_;
-  bool shutdown_handled_;
 };
 
 nghttp2_session_callbacks *create_http2_upstream_callbacks();

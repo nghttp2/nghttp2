@@ -35,7 +35,9 @@ RNode::RNode() : s(nullptr), len(0), index(-1) {}
 RNode::RNode(const char *s, size_t len, size_t index)
     : s(s), len(len), index(index) {}
 
-Router::Router() : root_{} {}
+Router::Router() : balloc_(1024, 1024), root_{} {}
+
+Router::~Router() {}
 
 namespace {
 RNode *find_next_node(const RNode *node, char c) {
@@ -62,7 +64,8 @@ void add_next_node(RNode *node, std::unique_ptr<RNode> new_node) {
 
 void Router::add_node(RNode *node, const char *pattern, size_t patlen,
                       size_t index) {
-  auto new_node = make_unique<RNode>(pattern, patlen, index);
+  auto pat = make_string_ref(balloc_, StringRef{pattern, patlen});
+  auto new_node = make_unique<RNode>(pat.c_str(), pat.size(), index);
   add_next_node(node, std::move(new_node));
 }
 

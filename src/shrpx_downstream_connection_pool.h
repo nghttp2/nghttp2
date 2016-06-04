@@ -42,6 +42,7 @@ public:
   void add_downstream_connection(std::unique_ptr<DownstreamConnection> dconn);
   std::unique_ptr<DownstreamConnection> pop_downstream_connection();
   void remove_downstream_connection(DownstreamConnection *dconn);
+  void remove_all();
 
 private:
   std::set<DownstreamConnection *> pool_;

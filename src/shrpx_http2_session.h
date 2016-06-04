@@ -73,7 +73,8 @@ enum FreelistZone {
 class Http2Session {
 public:
   Http2Session(struct ev_loop *loop, SSL_CTX *ssl_ctx, Worker *worker,
-               DownstreamAddrGroup *group, DownstreamAddr *addr);
+               const std::shared_ptr<DownstreamAddrGroup> &group,
+               DownstreamAddr *addr);
   ~Http2Session();
 
   // If hard is true, all pending requests are abandoned and
@@ -94,8 +95,6 @@ public:
   int terminate_session(uint32_t error_code);
 
   nghttp2_session *get_session() const;
-
-  bool get_flow_control() const;
 
   int resume_data(Http2DownstreamConnection *dconn);
 
@@ -199,6 +198,11 @@ public:
 
   void on_timeout();
 
+  // This is called periodically using ev_prepare watcher, and if
+  // group_ is retired (backend has been replaced), send GOAWAY to
+  // shutdown the connection.
+  void check_retire();
+
   enum {
     // Disconnected
     DISCONNECTED,
@@ -240,6 +244,7 @@ private:
   ev_timer connchk_timer_;
   // timer to initiate connection.  usually, this fires immediately.
   ev_timer initiate_connection_timer_;
+  ev_prepare prep_;
   DList<Http2DownstreamConnection> dconns_;
   DList<StreamData> streams_;
   std::function<int(Http2Session &)> read_, write_;
@@ -250,14 +255,13 @@ private:
   Worker *worker_;
   // NULL if no TLS is configured
   SSL_CTX *ssl_ctx_;
-  DownstreamAddrGroup *group_;
+  std::shared_ptr<DownstreamAddrGroup> group_;
   // Address of remote endpoint
   DownstreamAddr *addr_;
   nghttp2_session *session_;
   int state_;
   int connection_check_state_;
   int freelist_zone_;
-  bool flow_control_;
 };
 
 nghttp2_session_callbacks *create_http2_downstream_callbacks();

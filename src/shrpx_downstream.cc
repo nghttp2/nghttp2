@@ -500,12 +500,21 @@ bool Downstream::get_chunked_request() const { return chunked_request_; }
 void Downstream::set_chunked_request(bool f) { chunked_request_ = f; }
 
 bool Downstream::request_buf_full() {
-  if (dconn_) {
-    return request_buf_.rleft() >=
-           get_config()->conn.downstream.request_buffer_size;
-  } else {
+  auto handler = upstream_->get_client_handler();
+  auto faddr = handler->get_upstream_addr();
+  auto worker = handler->get_worker();
+
+  // We don't check buffer size here for API endpoint.
+  if (faddr->api) {
     return false;
   }
+
+  if (dconn_) {
+    auto &downstreamconf = *worker->get_downstream_config();
+    return request_buf_.rleft() >= downstreamconf.request_buffer_size;
+  }
+
+  return false;
 }
 
 DefaultMemchunks *Downstream::get_request_buf() { return &request_buf_; }
@@ -593,11 +602,14 @@ DefaultMemchunks *Downstream::get_response_buf() { return &response_buf_; }
 
 bool Downstream::response_buf_full() {
   if (dconn_) {
-    return response_buf_.rleft() >=
-           get_config()->conn.downstream.response_buffer_size;
-  } else {
-    return false;
+    auto handler = upstream_->get_client_handler();
+    auto worker = handler->get_worker();
+    auto &downstreamconf = *worker->get_downstream_config();
+
+    return response_buf_.rleft() >= downstreamconf.response_buffer_size;
   }
+
+  return false;
 }
 
 bool Downstream::validate_request_recv_body_length() const {

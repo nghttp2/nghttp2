@@ -411,6 +411,23 @@ int htp_hdrs_completecb(http_parser *htp) {
     return -1;
   }
 
+  auto faddr = handler->get_upstream_addr();
+
+  if (faddr->api) {
+    // Normally, we forward expect: 100-continue to backend server,
+    // and let them decide whether responds with 100 Continue or not.
+    // For API endpoint, we have no backend, so just send 100 Continue
+    // here to make the client happy.
+    auto expect = req.fs.header(http2::HD_EXPECT);
+    if (expect &&
+        util::strieq(expect->value, StringRef::from_lit("100-continue"))) {
+      auto output = downstream->get_response_buf();
+      constexpr auto res = StringRef::from_lit("HTTP/1.1 100 Continue\r\n\r\n");
+      output->append(res);
+      handler->signal_write();
+    }
+  }
+
   return 0;
 }
 } // namespace
@@ -450,7 +467,7 @@ int htp_msg_completecb(http_parser *htp) {
       // reason why end_upload_data() failed is when we sent response
       // in request phase hook.  We only delete and proceed to the
       // next request handling (if we don't close the connection).  We
-      // first pause parser here jsut as we normally do, and call
+      // first pause parser here just as we normally do, and call
       // signal_write() to run on_write().
       http_parser_pause(htp, 1);
 

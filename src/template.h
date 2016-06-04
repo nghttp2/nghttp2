@@ -502,6 +502,10 @@ inline bool operator==(const char *lhs, const StringRef &rhs) {
   return rhs == lhs;
 }
 
+inline bool operator!=(const StringRef &lhs, const StringRef &rhs) {
+  return !(lhs == rhs);
+}
+
 inline bool operator!=(const StringRef &lhs, const std::string &rhs) {
   return !(lhs == rhs);
 }

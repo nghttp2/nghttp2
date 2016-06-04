@@ -171,15 +171,23 @@ void initiate_connection_cb(struct ev_loop *loop, ev_timer *w, int revents) {
 }
 } // namespace
 
+namespace {
+void prepare_cb(struct ev_loop *loop, ev_prepare *w, int revents) {
+  auto http2session = static_cast<Http2Session *>(w->data);
+  http2session->check_retire();
+}
+} // namespace
+
 Http2Session::Http2Session(struct ev_loop *loop, SSL_CTX *ssl_ctx,
-                           Worker *worker, DownstreamAddrGroup *group,
+                           Worker *worker,
+                           const std::shared_ptr<DownstreamAddrGroup> &group,
                            DownstreamAddr *addr)
     : dlnext(nullptr),
       dlprev(nullptr),
       conn_(loop, -1, nullptr, worker->get_mcpool(),
-            get_config()->conn.downstream.timeout.write,
-            get_config()->conn.downstream.timeout.read, {}, {}, writecb, readcb,
-            timeoutcb, this, get_config()->tls.dyn_rec.warmup_threshold,
+            worker->get_downstream_config()->timeout.write,
+            worker->get_downstream_config()->timeout.read, {}, {}, writecb,
+            readcb, timeoutcb, this, get_config()->tls.dyn_rec.warmup_threshold,
             get_config()->tls.dyn_rec.idle_timeout, PROTO_HTTP2),
       wb_(worker->get_mcpool()),
       worker_(worker),
@@ -189,8 +197,7 @@ Http2Session::Http2Session(struct ev_loop *loop, SSL_CTX *ssl_ctx,
       session_(nullptr),
       state_(DISCONNECTED),
       connection_check_state_(CONNECTION_CHECK_NONE),
-      freelist_zone_(FREELIST_ZONE_NONE),
-      flow_control_(false) {
+      freelist_zone_(FREELIST_ZONE_NONE) {
   read_ = write_ = &Http2Session::noop;
 
   on_read_ = &Http2Session::read_noop;
@@ -210,6 +217,10 @@ Http2Session::Http2Session(struct ev_loop *loop, SSL_CTX *ssl_ctx,
 
   ev_timer_init(&initiate_connection_timer_, initiate_connection_cb, 0., 0.);
   initiate_connection_timer_.data = this;
+
+  ev_prepare_init(&prep_, prepare_cb);
+  prep_.data = this;
+  ev_prepare_start(loop, &prep_);
 }
 
 Http2Session::~Http2Session() {
@@ -228,6 +239,8 @@ int Http2Session::disconnect(bool hard) {
 
   conn_.rlimit.stopw();
   conn_.wlimit.stopw();
+
+  ev_prepare_stop(conn_.loop, &prep_);
 
   ev_timer_stop(conn_.loop, &initiate_connection_timer_);
   ev_timer_stop(conn_.loop, &settings_timer_);
@@ -660,8 +673,6 @@ int Http2Session::submit_rst_stream(int32_t stream_id, uint32_t error_code) {
 }
 
 nghttp2_session *Http2Session::get_session() const { return session_; }
-
-bool Http2Session::get_flow_control() const { return flow_control_; }
 
 int Http2Session::resume_data(Http2DownstreamConnection *dconn) {
   assert(state_ == CONNECTED);
@@ -1511,8 +1522,6 @@ int Http2Session::connection_made() {
     return -1;
   }
 
-  flow_control_ = true;
-
   std::array<nghttp2_settings_entry, 3> entry;
   size_t nentry = 2;
   entry[0].settings_id = NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS;
@@ -2111,7 +2120,7 @@ bool Http2Session::max_concurrency_reached(size_t extra) const {
 }
 
 DownstreamAddrGroup *Http2Session::get_downstream_addr_group() const {
-  return group_;
+  return group_.get();
 }
 
 void Http2Session::add_to_avail_freelist() {
@@ -2120,8 +2129,8 @@ void Http2Session::add_to_avail_freelist() {
   }
 
   if (LOG_ENABLED(INFO)) {
-    SSLOG(INFO, this) << "Append to http2_avail_freelist, group=" << group_
-                      << ", freelist.size="
+    SSLOG(INFO, this) << "Append to http2_avail_freelist, group="
+                      << group_.get() << ", freelist.size="
                       << group_->shared_addr->http2_avail_freelist.size();
   }
 
@@ -2192,6 +2201,20 @@ void Http2Session::on_timeout() {
     break;
   }
   }
+}
+
+void Http2Session::check_retire() {
+  if (!group_->retired) {
+    return;
+  }
+
+  ev_prepare_stop(conn_.loop, &prep_);
+
+  auto last_stream_id = nghttp2_session_get_last_proc_stream_id(session_);
+  nghttp2_submit_goaway(session_, NGHTTP2_FLAG_NONE, last_stream_id,
+                        NGHTTP2_NO_ERROR, nullptr, 0);
+
+  signal_write();
 }
 
 } // namespace shrpx

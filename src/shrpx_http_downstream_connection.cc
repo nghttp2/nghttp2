@@ -147,12 +147,12 @@ void connectcb(struct ev_loop *loop, ev_io *w, int revents) {
 }
 } // namespace
 
-HttpDownstreamConnection::HttpDownstreamConnection(DownstreamAddrGroup *group,
-                                                   struct ev_loop *loop,
-                                                   Worker *worker)
+HttpDownstreamConnection::HttpDownstreamConnection(
+    const std::shared_ptr<DownstreamAddrGroup> &group, struct ev_loop *loop,
+    Worker *worker)
     : conn_(loop, -1, nullptr, worker->get_mcpool(),
-            get_config()->conn.downstream.timeout.write,
-            get_config()->conn.downstream.timeout.read, {}, {}, connectcb,
+            worker->get_downstream_config()->timeout.write,
+            worker->get_downstream_config()->timeout.read, {}, {}, connectcb,
             readcb, connect_timeoutcb, this,
             get_config()->tls.dyn_rec.warmup_threshold,
             get_config()->tls.dyn_rec.idle_timeout, PROTO_HTTP1),
@@ -166,7 +166,11 @@ HttpDownstreamConnection::HttpDownstreamConnection(DownstreamAddrGroup *group,
       ioctrl_(&conn_.rlimit),
       response_htp_{0} {}
 
-HttpDownstreamConnection::~HttpDownstreamConnection() {}
+HttpDownstreamConnection::~HttpDownstreamConnection() {
+  if (LOG_ENABLED(INFO)) {
+    DCLOG(INFO, this) << "Deleted";
+  }
+}
 
 int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
   if (LOG_ENABLED(INFO)) {
@@ -182,7 +186,7 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
     return SHRPX_ERR_NETWORK;
   }
 
-  auto &downstreamconf = get_config()->conn.downstream;
+  auto &downstreamconf = *worker_->get_downstream_config();
 
   if (conn_.fd == -1) {
     auto &shared_addr = group_->shared_addr;
@@ -588,7 +592,9 @@ void HttpDownstreamConnection::detach_downstream(Downstream *downstream) {
   ev_set_cb(&conn_.rev, idle_readcb);
   ioctrl_.force_resume_read();
 
-  conn_.rt.repeat = get_config()->conn.downstream.timeout.idle_read;
+  auto &downstreamconf = *worker_->get_downstream_config();
+
+  conn_.rt.repeat = downstreamconf.timeout.idle_read;
   ev_set_cb(&conn_.rt, idle_timeoutcb);
   ev_timer_again(conn_.loop, &conn_.rt);
 
@@ -602,8 +608,10 @@ void HttpDownstreamConnection::pause_read(IOCtrlReason reason) {
 
 int HttpDownstreamConnection::resume_read(IOCtrlReason reason,
                                           size_t consumed) {
+  auto &downstreamconf = *worker_->get_downstream_config();
+
   if (downstream_->get_response_buf()->rleft() <=
-      get_config()->conn.downstream.request_buffer_size / 2) {
+      downstreamconf.request_buffer_size / 2) {
     ioctrl_.resume_read(reason);
   }
 
@@ -1164,9 +1172,11 @@ int HttpDownstreamConnection::noop() { return 0; }
 
 DownstreamAddrGroup *
 HttpDownstreamConnection::get_downstream_addr_group() const {
-  return group_;
+  return group_.get();
 }
 
 DownstreamAddr *HttpDownstreamConnection::get_addr() const { return addr_; }
+
+bool HttpDownstreamConnection::poolable() const { return !group_->retired; }
 
 } // namespace shrpx
