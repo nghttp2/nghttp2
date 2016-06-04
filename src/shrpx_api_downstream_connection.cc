@@ -73,6 +73,7 @@ int APIDownstreamConnection::send_reply(unsigned int http_status,
 
   switch (http_status) {
   case 400:
+  case 405:
   case 413:
     resp.fs.add_header_token(StringRef::from_lit("connection"),
                              StringRef::from_lit("close"), false,
@@ -89,9 +90,19 @@ int APIDownstreamConnection::send_reply(unsigned int http_status,
 
 int APIDownstreamConnection::push_request_headers() {
   auto &req = downstream_->request();
+  auto &resp = downstream_->response();
 
   if (req.path != StringRef::from_lit("/api/v1alpha1/backend/replace")) {
     send_reply(404, StringRef::from_lit("404 Not Found"));
+
+    return 0;
+  }
+
+  if (req.method != HTTP_POST && req.method != HTTP_PUT) {
+    resp.fs.add_header_token(StringRef::from_lit("allow"),
+                             StringRef::from_lit("POST, PUT"), false, -1);
+    send_reply(
+        405, http2::get_status_string(downstream_->get_block_allocator(), 405));
 
     return 0;
   }
