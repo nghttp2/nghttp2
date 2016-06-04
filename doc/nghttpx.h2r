@@ -473,8 +473,8 @@ be treated as API request.
 
 The following section describes available API endpoints.
 
-PUT /api/v1beta/backend/replace
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+PUT /api/v1beta1/backend/replace
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 This API replaces the current set of backend servers with the
 requested ones.  The request must carry request body with method PUT
