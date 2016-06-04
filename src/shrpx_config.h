@@ -280,6 +280,8 @@ constexpr auto SHRPX_OPT_FRONTEND_HTTP2_SETTINGS_TIMEOUT =
     StringRef::from_lit("frontend-http2-settings-timeout");
 constexpr auto SHRPX_OPT_BACKEND_HTTP2_SETTINGS_TIMEOUT =
     StringRef::from_lit("backend-http2-settings-timeout");
+constexpr auto SHRPX_OPT_API_MAX_REQUEST_BODY =
+    StringRef::from_lit("api-max-request-body");
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
@@ -649,6 +651,11 @@ struct ConnectionConfig {
   std::shared_ptr<DownstreamConfig> downstream;
 };
 
+struct APIConfig {
+  // Maximum request body size for one API request
+  size_t max_request_body;
+};
+
 struct Config {
   HttpProxy downstream_http_proxy;
   HttpConfig http;
@@ -656,6 +663,7 @@ struct Config {
   TLSConfig tls;
   LoggingConfig logging;
   ConnectionConfig conn;
+  APIConfig api;
   ImmutableString pid_file;
   ImmutableString conf_path;
   ImmutableString user;

@@ -1183,6 +1183,9 @@ void fill_default_config() {
     downstreamconf.response_buffer_size = 128_k;
     downstreamconf.family = AF_UNSPEC;
   }
+
+  auto &apiconf = mod_config()->api;
+  apiconf.max_request_body = 16_k;
 }
 
 } // namespace
@@ -1914,6 +1917,12 @@ HTTP:
               HTTP  status  code.  If  error  status  code comes  from
               backend server, the custom error pages are not used.
 
+API:
+  --api-max-request-body=<SIZE>
+              Set the maximum size of request body for API request.
+              Default: )" << util::utos_unit(get_config()->api.max_request_body)
+      << R"(
+
 Debug:
   --frontend-http2-dump-request-header=<PATH>
               Dumps request headers received by HTTP/2 frontend to the
@@ -2447,6 +2456,7 @@ int main(int argc, char **argv) {
          &flag, 124},
         {SHRPX_OPT_BACKEND_HTTP2_SETTINGS_TIMEOUT.c_str(), required_argument,
          &flag, 125},
+        {SHRPX_OPT_API_MAX_REQUEST_BODY.c_str(), required_argument, &flag, 126},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -3035,6 +3045,10 @@ int main(int argc, char **argv) {
         // --backend-http2-settings-timeout
         cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_HTTP2_SETTINGS_TIMEOUT,
                              StringRef{optarg});
+        break;
+      case 126:
+        // --api-max-request-body
+        cmdcfgs.emplace_back(SHRPX_OPT_API_MAX_REQUEST_BODY, StringRef{optarg});
         break;
       default:
         break;

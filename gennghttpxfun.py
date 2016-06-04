@@ -132,6 +132,7 @@ OPTIONS = [
     "no-kqueue",
     "frontend-http2-settings-timeout",
     "backend-http2-settings-timeout",
+    "api-max-request-body",
 ]
 
 LOGVARS = [

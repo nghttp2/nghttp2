@@ -87,6 +87,15 @@ int APIDownstreamConnection::push_request_headers() {
     return 0;
   }
 
+  // This works with req.fs.content_length == -1
+  if (req.fs.content_length >
+      static_cast<int64_t>(get_config()->api.max_request_body)) {
+    send_reply(
+        413, http2::get_status_string(downstream_->get_block_allocator(), 413));
+
+    return 0;
+  }
+
   return 0;
 }
 
@@ -98,7 +107,15 @@ int APIDownstreamConnection::push_upload_data_chunk(const uint8_t *data,
 
   auto output = downstream_->get_request_buf();
 
-  // TODO limit the maximum payload size
+  auto &apiconf = get_config()->api;
+
+  if (output->rleft() + datalen > apiconf.max_request_body) {
+    send_reply(
+        413, http2::get_status_string(downstream_->get_block_allocator(), 413));
+
+    return 0;
+  }
+
   output->append(data, datalen);
 
   // We don't have to call Upstream::resume_read() here, because
@@ -116,7 +133,7 @@ int APIDownstreamConnection::end_upload_data() {
   auto output = downstream_->get_request_buf();
 
   struct iovec iov;
-  auto iovcnt = output->riovec(&iov, 1);
+  auto iovcnt = output->riovec(&iov, 2);
 
   constexpr auto body = StringRef::from_lit("200 OK");
   constexpr auto error_body = StringRef::from_lit("400 Bad Request");
@@ -125,6 +142,19 @@ int APIDownstreamConnection::end_upload_data() {
     send_reply(200, body);
 
     return 0;
+  }
+
+  std::unique_ptr<uint8_t[]> large_buf;
+
+  // If data spans in multiple chunks, pull them up into one
+  // contiguous buffer.
+  if (iovcnt > 1) {
+    large_buf = make_unique<uint8_t[]>(output->rleft());
+    auto len = output->rleft();
+    output->remove(large_buf.get(), len);
+
+    iov.iov_base = large_buf.get();
+    iov.iov_len = len;
   }
 
   Config config{};

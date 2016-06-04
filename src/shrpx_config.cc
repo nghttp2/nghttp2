@@ -915,6 +915,7 @@ enum {
   SHRPX_OPTID_ADD_RESPONSE_HEADER,
   SHRPX_OPTID_ADD_X_FORWARDED_FOR,
   SHRPX_OPTID_ALTSVC,
+  SHRPX_OPTID_API_MAX_REQUEST_BODY,
   SHRPX_OPTID_BACKEND,
   SHRPX_OPTID_BACKEND_ADDRESS_FAMILY,
   SHRPX_OPTID_BACKEND_CONNECTIONS_PER_FRONTEND,
@@ -1427,6 +1428,11 @@ int option_lookup_token(const char *name, size_t namelen) {
       }
       if (util::strieq_l("verify-client-cacer", name, 19)) {
         return SHRPX_OPTID_VERIFY_CLIENT_CACERT;
+      }
+      break;
+    case 'y':
+      if (util::strieq_l("api-max-request-bod", name, 19)) {
+        return SHRPX_OPTID_API_MAX_REQUEST_BODY;
       }
       break;
     }
@@ -2712,6 +2718,8 @@ int parse_config(Config *config, const StringRef &opt, const StringRef &optarg,
   case SHRPX_OPTID_BACKEND_HTTP2_SETTINGS_TIMEOUT:
     return parse_duration(&config->http2.downstream.timeout.settings, opt,
                           optarg);
+  case SHRPX_OPTID_API_MAX_REQUEST_BODY:
+    return parse_uint_with_unit(&config->api.max_request_body, opt, optarg);
   case SHRPX_OPTID_CONF:
     LOG(WARN) << "conf: ignored";
 
