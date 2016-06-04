@@ -1341,6 +1341,13 @@ Connections:
               Optionally, TLS  can be disabled by  specifying "no-tls"
               parameter.  TLS is enabled by default.
 
+              To  make this  frontend as  API endpoint,  specify "api"
+              parameter.   This   is  disabled  by  default.    It  is
+              important  to  limit the  access  to  the API  frontend.
+              Otherwise, someone  may change  the backend  server, and
+              break your services,  or expose confidential information
+              to the outside the world.
+
               Default: *,3000
   --backlog=<N>
               Set listen backlog size.
