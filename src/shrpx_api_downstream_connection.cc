@@ -191,8 +191,20 @@ int APIDownstreamConnection::end_upload_data() {
       return 0;
     }
 
-    if (parse_config(&config, StringRef{first, eq}, StringRef{eq + 1, eol},
-                     include_set) != 0) {
+    auto opt = StringRef{first, eq};
+    auto optval = StringRef{eq + 1, eol};
+
+    auto optid = option_lookup_token(opt.c_str(), opt.size());
+
+    switch (optid) {
+    case SHRPX_OPTID_BACKEND:
+      break;
+    default:
+      first = ++eol;
+      continue;
+    }
+
+    if (parse_config(&config, optid, opt, optval, include_set) != 0) {
       send_reply(400, error_body);
       return 0;
     }
