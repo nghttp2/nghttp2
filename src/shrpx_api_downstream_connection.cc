@@ -71,6 +71,15 @@ int APIDownstreamConnection::send_reply(unsigned int http_status,
   resp.fs.add_header_token(StringRef::from_lit("content-length"),
                            content_length, false, http2::HD_CONTENT_LENGTH);
 
+  switch (http_status) {
+  case 400:
+  case 413:
+    resp.fs.add_header_token(StringRef::from_lit("connection"),
+                             StringRef::from_lit("close"), false,
+                             http2::HD_CONNECTION);
+    break;
+  }
+
   if (upstream->send_reply(downstream_, body.byte(), body.size()) != 0) {
     return -1;
   }
