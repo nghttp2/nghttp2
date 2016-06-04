@@ -29,10 +29,14 @@ namespace shrpx {
 
 DownstreamConnectionPool::DownstreamConnectionPool() {}
 
-DownstreamConnectionPool::~DownstreamConnectionPool() {
+DownstreamConnectionPool::~DownstreamConnectionPool() { remove_all(); }
+
+void DownstreamConnectionPool::remove_all() {
   for (auto dconn : pool_) {
     delete dconn;
   }
+
+  pool_.clear();
 }
 
 void DownstreamConnectionPool::add_downstream_connection(

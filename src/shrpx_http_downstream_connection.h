@@ -61,7 +61,7 @@ public:
 
   virtual void on_upstream_change(Upstream *upstream);
 
-  virtual bool poolable() const { return true; }
+  virtual bool poolable() const;
 
   virtual DownstreamAddrGroup *get_downstream_addr_group() const;
 

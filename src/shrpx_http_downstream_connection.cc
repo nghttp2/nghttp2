@@ -166,7 +166,11 @@ HttpDownstreamConnection::HttpDownstreamConnection(
       ioctrl_(&conn_.rlimit),
       response_htp_{0} {}
 
-HttpDownstreamConnection::~HttpDownstreamConnection() {}
+HttpDownstreamConnection::~HttpDownstreamConnection() {
+  if (LOG_ENABLED(INFO)) {
+    DCLOG(INFO, this) << "Deleted";
+  }
+}
 
 int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
   if (LOG_ENABLED(INFO)) {
@@ -1172,5 +1176,7 @@ HttpDownstreamConnection::get_downstream_addr_group() const {
 }
 
 DownstreamAddr *HttpDownstreamConnection::get_addr() const { return addr_; }
+
+bool HttpDownstreamConnection::poolable() const { return !group_->retired; }
 
 } // namespace shrpx

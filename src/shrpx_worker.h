@@ -144,6 +144,10 @@ struct SharedDownstreamAddr {
 struct DownstreamAddrGroup {
   ImmutableString pattern;
   std::shared_ptr<SharedDownstreamAddr> shared_addr;
+  // true if this group is no longer used for new request.  If this is
+  // true, the connection made using one of address in shared_addr
+  // must not be pooled.
+  bool retired;
 };
 
 struct WorkerStat {

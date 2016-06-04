@@ -141,6 +141,11 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
 
 void Worker::replace_downstream_config(
     std::shared_ptr<DownstreamConfig> downstreamconf) {
+  for (auto &g : downstream_addr_groups_) {
+    g->retired = true;
+    g->shared_addr->dconn_pool.remove_all();
+  }
+
   downstreamconf_ = downstreamconf;
 
   downstream_addr_groups_ = std::vector<std::shared_ptr<DownstreamAddrGroup>>(
@@ -153,14 +158,11 @@ void Worker::replace_downstream_config(
     dst = std::make_shared<DownstreamAddrGroup>();
     dst->pattern = src.pattern;
 
+    // TODO for some reason, clang-3.6 which comes with Ubuntu 15.10
+    // does not value initialize with std::make_shared.
     auto shared_addr = std::make_shared<SharedDownstreamAddr>();
 
-    // TODO for some reason, clang-3.6 which comes with Ubuntu 15.10
-    // does not value initialize SharedDownstreamAddr above.
-    shared_addr->next = 0;
     shared_addr->addrs.resize(src.addrs.size());
-    shared_addr->http1_pri = {};
-    shared_addr->http2_pri = {};
 
     size_t num_http1 = 0;
     size_t num_http2 = 0;
