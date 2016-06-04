@@ -54,8 +54,15 @@ void APIDownstreamConnection::detach_downstream(Downstream *downstream) {
   downstream_ = nullptr;
 }
 
+// API status, which is independent from HTTP status code.  But
+// generally, 2xx code for API_SUCCESS, and otherwise API_FAILURE.
+enum {
+  API_SUCCESS,
+  API_FAILURE,
+};
+
 int APIDownstreamConnection::send_reply(unsigned int http_status,
-                                        const StringRef &body) {
+                                        int api_status) {
   abandoned_ = true;
 
   auto upstream = downstream_->get_upstream();
@@ -66,7 +73,39 @@ int APIDownstreamConnection::send_reply(unsigned int http_status,
 
   auto &balloc = downstream_->get_block_allocator();
 
-  auto content_length = util::make_string_ref_uint(balloc, body.size());
+  StringRef api_status_str;
+
+  switch (api_status) {
+  case API_SUCCESS:
+    api_status_str = StringRef::from_lit("Success");
+    break;
+  case API_FAILURE:
+    api_status_str = StringRef::from_lit("Failure");
+    break;
+  default:
+    assert(0);
+  }
+
+  constexpr auto M1 = StringRef::from_lit("{\"status\":\"");
+  constexpr auto M2 = StringRef::from_lit("\",\"code\":");
+  constexpr auto M3 = StringRef::from_lit("}");
+
+  // 3 is the number of digits in http_status, assuming it is 3 digits
+  // number.
+  auto buflen = M1.size() + M2.size() + M3.size() + api_status_str.size() + 3;
+
+  auto buf = make_byte_ref(balloc, buflen);
+  auto p = buf.base;
+
+  p = std::copy(std::begin(M1), std::end(M1), p);
+  p = std::copy(std::begin(api_status_str), std::end(api_status_str), p);
+  p = std::copy(std::begin(M2), std::end(M2), p);
+  p = util::utos(p, http_status);
+  p = std::copy(std::begin(M3), std::end(M3), p);
+
+  buf.len = p - buf.base;
+
+  auto content_length = util::make_string_ref_uint(balloc, buf.len);
 
   resp.fs.add_header_token(StringRef::from_lit("content-length"),
                            content_length, false, http2::HD_CONTENT_LENGTH);
@@ -81,7 +120,7 @@ int APIDownstreamConnection::send_reply(unsigned int http_status,
     break;
   }
 
-  if (upstream->send_reply(downstream_, body.byte(), body.size()) != 0) {
+  if (upstream->send_reply(downstream_, buf.base, buf.len) != 0) {
     return -1;
   }
 
@@ -93,7 +132,7 @@ int APIDownstreamConnection::push_request_headers() {
   auto &resp = downstream_->response();
 
   if (req.path != StringRef::from_lit("/api/v1alpha1/backend/replace")) {
-    send_reply(404, StringRef::from_lit("404 Not Found"));
+    send_reply(404, API_FAILURE);
 
     return 0;
   }
@@ -101,8 +140,7 @@ int APIDownstreamConnection::push_request_headers() {
   if (req.method != HTTP_POST && req.method != HTTP_PUT) {
     resp.fs.add_header_token(StringRef::from_lit("allow"),
                              StringRef::from_lit("POST, PUT"), false, -1);
-    send_reply(
-        405, http2::get_status_string(downstream_->get_block_allocator(), 405));
+    send_reply(405, API_FAILURE);
 
     return 0;
   }
@@ -110,8 +148,7 @@ int APIDownstreamConnection::push_request_headers() {
   // This works with req.fs.content_length == -1
   if (req.fs.content_length >
       static_cast<int64_t>(get_config()->api.max_request_body)) {
-    send_reply(
-        413, http2::get_status_string(downstream_->get_block_allocator(), 413));
+    send_reply(413, API_FAILURE);
 
     return 0;
   }
@@ -130,8 +167,7 @@ int APIDownstreamConnection::push_upload_data_chunk(const uint8_t *data,
   auto &apiconf = get_config()->api;
 
   if (output->rleft() + datalen > apiconf.max_request_body) {
-    send_reply(
-        413, http2::get_status_string(downstream_->get_block_allocator(), 413));
+    send_reply(413, API_FAILURE);
 
     return 0;
   }
@@ -155,11 +191,8 @@ int APIDownstreamConnection::end_upload_data() {
   struct iovec iov;
   auto iovcnt = output->riovec(&iov, 2);
 
-  constexpr auto body = StringRef::from_lit("200 OK");
-  constexpr auto error_body = StringRef::from_lit("400 Bad Request");
-
   if (iovcnt == 0) {
-    send_reply(200, body);
+    send_reply(200, API_SUCCESS);
 
     return 0;
   }
@@ -207,7 +240,7 @@ int APIDownstreamConnection::end_upload_data() {
 
     auto eq = std::find(first, eol, '=');
     if (eq == eol) {
-      send_reply(400, error_body);
+      send_reply(400, API_FAILURE);
       return 0;
     }
 
@@ -225,7 +258,7 @@ int APIDownstreamConnection::end_upload_data() {
     }
 
     if (parse_config(&config, optid, opt, optval, include_set) != 0) {
-      send_reply(400, error_body);
+      send_reply(400, API_FAILURE);
       return 0;
     }
 
@@ -235,7 +268,7 @@ int APIDownstreamConnection::end_upload_data() {
   auto &tlsconf = get_config()->tls;
   if (configure_downstream_group(&config, get_config()->http2_proxy, true,
                                  tlsconf) != 0) {
-    send_reply(400, error_body);
+    send_reply(400, API_FAILURE);
     return 0;
   }
 
@@ -243,7 +276,7 @@ int APIDownstreamConnection::end_upload_data() {
 
   conn_handler->send_replace_downstream(downstreamconf);
 
-  send_reply(200, body);
+  send_reply(200, API_SUCCESS);
 
   return 0;
 }

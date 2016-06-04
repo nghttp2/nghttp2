@@ -56,7 +56,7 @@ public:
 
   virtual DownstreamAddrGroup *get_downstream_addr_group() const;
 
-  int send_reply(unsigned int http_status, const StringRef &body);
+  int send_reply(unsigned int http_status, int api_status);
 
 private:
   Worker *worker_;
