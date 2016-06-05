@@ -1,6 +1,7 @@
 package nghttp2
 
 import (
+	"encoding/json"
 	"github.com/tatsuhiro-t/spdy"
 	"golang.org/x/net/http2/hpack"
 	"net/http"
@@ -472,5 +473,116 @@ func TestS3H2RespPhaseReturn(t *testing.T) {
 
 	if got, want := string(res.body), "Hello World from resp"; got != want {
 		t.Errorf("body = %v; want %v", got, want)
+	}
+}
+
+// TestS3APIBackendReplace exercise backend/replace API endpoint
+// routine for successful case.
+func TestS3APIBackendReplace(t *testing.T) {
+	st := newServerTesterTLSConnectPort([]string{"--npn-list=spdy/3.1", "-f127.0.0.1,3010;api"}, t, func(w http.ResponseWriter, r *http.Request) {
+		t.Fatalf("request should not be forwarded")
+	}, 3010)
+	defer st.Close()
+
+	res, err := st.spdy(requestParam{
+		name:   "TestS3APIBackendReplace",
+		path:   "/api/v1beta1/backend/replace",
+		method: "PUT",
+		body: []byte(`# comment
+backend=127.0.0.1,3011
+
+`),
+	})
+	if err != nil {
+		t.Fatalf("Error st.spdy() = %v", err)
+	}
+	if got, want := res.status, 200; got != want {
+		t.Errorf("res.status: %v; want %v", got, want)
+	}
+
+	var apiResp APIResponse
+	err = json.Unmarshal(res.body, &apiResp)
+	if err != nil {
+		t.Fatalf("Error unmarshaling API response: %v", err)
+	}
+	if got, want := apiResp.Status, "Success"; got != want {
+		t.Errorf("apiResp.Status: %v; want %v", got, want)
+	}
+	if got, want := apiResp.Code, 200; got != want {
+		t.Errorf("apiResp.Status: %v; want %v", got, want)
+	}
+}
+
+// TestS3APIBackendReplaceBadMethod exercise backend/replace API
+// endpoint routine with bad method.
+func TestS3APIBackendReplaceBadMethod(t *testing.T) {
+	st := newServerTesterTLSConnectPort([]string{"--npn-list=spdy/3.1", "-f127.0.0.1,3010;api"}, t, func(w http.ResponseWriter, r *http.Request) {
+		t.Fatalf("request should not be forwarded")
+	}, 3010)
+	defer st.Close()
+
+	res, err := st.spdy(requestParam{
+		name:   "TestS3APIBackendReplaceBadMethod",
+		path:   "/api/v1beta1/backend/replace",
+		method: "GET",
+		body: []byte(`# comment
+backend=127.0.0.1,3011
+
+`),
+	})
+	if err != nil {
+		t.Fatalf("Error st.spdy() = %v", err)
+	}
+	if got, want := res.status, 405; got != want {
+		t.Errorf("res.status: %v; want %v", got, want)
+	}
+
+	var apiResp APIResponse
+	err = json.Unmarshal(res.body, &apiResp)
+	if err != nil {
+		t.Fatalf("Error unmarshaling API response: %v", err)
+	}
+	if got, want := apiResp.Status, "Failure"; got != want {
+		t.Errorf("apiResp.Status: %v; want %v", got, want)
+	}
+	if got, want := apiResp.Code, 405; got != want {
+		t.Errorf("apiResp.Status: %v; want %v", got, want)
+	}
+}
+
+// TestS3APINotFound exercise backend/replace API endpoint routine
+// when API endpoint is not found.
+func TestS3APINotFound(t *testing.T) {
+	st := newServerTesterTLSConnectPort([]string{"--npn-list=spdy/3.1", "-f127.0.0.1,3010;api"}, t, func(w http.ResponseWriter, r *http.Request) {
+		t.Fatalf("request should not be forwarded")
+	}, 3010)
+	defer st.Close()
+
+	res, err := st.spdy(requestParam{
+		name:   "TestS3APINotFound",
+		path:   "/api/notfound",
+		method: "GET",
+		body: []byte(`# comment
+backend=127.0.0.1,3011
+
+`),
+	})
+	if err != nil {
+		t.Fatalf("Error st.spdy() = %v", err)
+	}
+	if got, want := res.status, 404; got != want {
+		t.Errorf("res.status: %v; want %v", got, want)
+	}
+
+	var apiResp APIResponse
+	err = json.Unmarshal(res.body, &apiResp)
+	if err != nil {
+		t.Fatalf("Error unmarshaling API response: %v", err)
+	}
+	if got, want := apiResp.Status, "Failure"; got != want {
+		t.Errorf("apiResp.Status: %v; want %v", got, want)
+	}
+	if got, want := apiResp.Code, 404; got != want {
+		t.Errorf("apiResp.Status: %v; want %v", got, want)
 	}
 }

@@ -82,6 +82,10 @@ func newServerTesterTLS(args []string, t *testing.T, handler http.HandlerFunc) *
 	return newServerTesterInternal(args, t, handler, true, serverPort, nil)
 }
 
+func newServerTesterTLSConnectPort(args []string, t *testing.T, handler http.HandlerFunc, port int) *serverTester {
+	return newServerTesterInternal(args, t, handler, true, port, nil)
+}
+
 // newServerTester creates test context for TLS frontend connection
 // with given clientConfig
 func newServerTesterTLSConfig(args []string, t *testing.T, handler http.HandlerFunc, clientConfig *tls.Config) *serverTester {
