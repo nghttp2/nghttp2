@@ -359,6 +359,11 @@ void SpdyUpstream::initiate_downstream(Downstream *downstream) {
   }
 
   downstream_queue_.mark_active(downstream);
+
+  auto &req = downstream->request();
+  if (!req.http2_expect_body) {
+    downstream->end_upload_data();
+  }
 }
 
 namespace {
@@ -554,7 +559,13 @@ SpdyUpstream::SpdyUpstream(uint16_t version, ClientHandler *handler)
 
   auto &http2conf = get_config()->http2;
 
-  if (version >= SPDYLAY_PROTO_SPDY3) {
+  auto faddr = handler_->get_upstream_addr();
+
+  // We use automatic WINDOW_UPDATE for API endpoints.  Since SPDY is
+  // going to be deprecated in the future, and the default stream
+  // window is large enough for API request body (64KiB), we don't
+  // expand window size depending on the options.
+  if (version >= SPDYLAY_PROTO_SPDY3 && !faddr->api) {
     int val = 1;
     flow_control_ = true;
     initial_window_size_ = 1 << http2conf.upstream.window_bits;
@@ -567,19 +578,23 @@ SpdyUpstream::SpdyUpstream(uint16_t version, ClientHandler *handler)
   }
   // TODO Maybe call from outside?
   std::array<spdylay_settings_entry, 2> entry;
+  size_t num_entry = 1;
   entry[0].settings_id = SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS;
   entry[0].value = http2conf.upstream.max_concurrent_streams;
   entry[0].flags = SPDYLAY_ID_FLAG_SETTINGS_NONE;
 
-  entry[1].settings_id = SPDYLAY_SETTINGS_INITIAL_WINDOW_SIZE;
-  entry[1].value = initial_window_size_;
-  entry[1].flags = SPDYLAY_ID_FLAG_SETTINGS_NONE;
+  if (flow_control_) {
+    ++num_entry;
+    entry[1].settings_id = SPDYLAY_SETTINGS_INITIAL_WINDOW_SIZE;
+    entry[1].value = initial_window_size_;
+    entry[1].flags = SPDYLAY_ID_FLAG_SETTINGS_NONE;
+  }
 
   rv = spdylay_submit_settings(session_, SPDYLAY_FLAG_SETTINGS_NONE,
-                               entry.data(), entry.size());
+                               entry.data(), num_entry);
   assert(rv == 0);
 
-  if (version >= SPDYLAY_PROTO_SPDY3_1 &&
+  if (flow_control_ && version >= SPDYLAY_PROTO_SPDY3_1 &&
       http2conf.upstream.connection_window_bits > 16) {
     int32_t delta = (1 << http2conf.upstream.connection_window_bits) -
                     SPDYLAY_INITIAL_WINDOW_SIZE;
@@ -1203,6 +1218,10 @@ int SpdyUpstream::on_downstream_abort_request(Downstream *downstream,
 
 int SpdyUpstream::consume(int32_t stream_id, size_t len) {
   int rv;
+
+  if (!get_flow_control()) {
+    return 0;
+  }
 
   rv = spdylay_session_consume(session_, stream_id, len);
 
