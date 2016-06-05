@@ -471,6 +471,26 @@ frontend for API using :option:`--frontend` option with "api"
 parameter.  All requests which come from this frontend address, will
 be treated as API request.
 
+The response is normally JSON dictionary, and at least includes the
+following keys:
+
+status
+  The status of the request processing.  The following values are
+  defined:
+
+  Success
+    The request was successful.
+
+  Failure
+    The request was faield.  No change has been made.
+
+code
+  HTTP status code
+
+We wrote "normally", since nghttpx may return ordinal HTML response in
+some cases where the error has occurred before reaching API endpoint
+(e.g., header field is too large).
+
 The following section describes available API endpoints.
 
 PUT /api/v1beta1/backend/replace
