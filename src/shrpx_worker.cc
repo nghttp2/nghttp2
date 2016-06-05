@@ -182,27 +182,29 @@ void Worker::replace_downstream_config(
       dst_addr.fall = src_addr.fall;
       dst_addr.rise = src_addr.rise;
 
+      auto shared_addr_ptr = shared_addr.get();
+
       dst_addr.connect_blocker =
           make_unique<ConnectBlocker>(randgen_, loop_,
-                                      [shared_addr, &dst_addr]() {
+                                      [shared_addr_ptr, &dst_addr]() {
                                         switch (dst_addr.proto) {
                                         case PROTO_HTTP1:
-                                          --shared_addr->http1_pri.weight;
+                                          --shared_addr_ptr->http1_pri.weight;
                                           break;
                                         case PROTO_HTTP2:
-                                          --shared_addr->http2_pri.weight;
+                                          --shared_addr_ptr->http2_pri.weight;
                                           break;
                                         default:
                                           assert(0);
                                         }
                                       },
-                                      [shared_addr, &dst_addr]() {
+                                      [shared_addr_ptr, &dst_addr]() {
                                         switch (dst_addr.proto) {
                                         case PROTO_HTTP1:
-                                          ++shared_addr->http1_pri.weight;
+                                          ++shared_addr_ptr->http1_pri.weight;
                                           break;
                                         case PROTO_HTTP2:
-                                          ++shared_addr->http2_pri.weight;
+                                          ++shared_addr_ptr->http2_pri.weight;
                                           break;
                                         default:
                                           assert(0);
