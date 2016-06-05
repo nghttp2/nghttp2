@@ -66,27 +66,32 @@ type serverTester struct {
 // newServerTester creates test context for plain TCP frontend
 // connection.
 func newServerTester(args []string, t *testing.T, handler http.HandlerFunc) *serverTester {
-	return newServerTesterInternal(args, t, handler, false, nil)
+	return newServerTesterInternal(args, t, handler, false, serverPort, nil)
+}
+
+func newServerTesterConnectPort(args []string, t *testing.T, handler http.HandlerFunc, port int) *serverTester {
+	return newServerTesterInternal(args, t, handler, false, port, nil)
 }
 
 func newServerTesterHandler(args []string, t *testing.T, handler http.Handler) *serverTester {
-	return newServerTesterInternal(args, t, handler, false, nil)
+	return newServerTesterInternal(args, t, handler, false, serverPort, nil)
 }
 
 // newServerTester creates test context for TLS frontend connection.
 func newServerTesterTLS(args []string, t *testing.T, handler http.HandlerFunc) *serverTester {
-	return newServerTesterInternal(args, t, handler, true, nil)
+	return newServerTesterInternal(args, t, handler, true, serverPort, nil)
 }
 
 // newServerTester creates test context for TLS frontend connection
 // with given clientConfig
 func newServerTesterTLSConfig(args []string, t *testing.T, handler http.HandlerFunc, clientConfig *tls.Config) *serverTester {
-	return newServerTesterInternal(args, t, handler, true, clientConfig)
+	return newServerTesterInternal(args, t, handler, true, serverPort, clientConfig)
 }
 
 // newServerTesterInternal creates test context.  If frontendTLS is
-// true, set up TLS frontend connection.
-func newServerTesterInternal(src_args []string, t *testing.T, handler http.Handler, frontendTLS bool, clientConfig *tls.Config) *serverTester {
+// true, set up TLS frontend connection.  connectPort is the server
+// side port where client connection is made.
+func newServerTesterInternal(src_args []string, t *testing.T, handler http.Handler, frontendTLS bool, connectPort int, clientConfig *tls.Config) *serverTester {
 	ts := httptest.NewUnstartedServer(handler)
 
 	args := []string{}
@@ -138,7 +143,7 @@ func newServerTesterInternal(src_args []string, t *testing.T, handler http.Handl
 	args = append(args, fmt.Sprintf("-f127.0.0.1,%v;%v", serverPort, noTLS), b,
 		"--errorlog-file="+logDir+"/log.txt", "-LINFO")
 
-	authority := fmt.Sprintf("127.0.0.1:%v", serverPort)
+	authority := fmt.Sprintf("127.0.0.1:%v", connectPort)
 
 	st := &serverTester{
 		cmd:          exec.Command(serverBin, args...),
@@ -170,7 +175,7 @@ func newServerTesterInternal(src_args []string, t *testing.T, handler http.Handl
 				tlsConfig = clientConfig
 			}
 			tlsConfig.InsecureSkipVerify = true
-			tlsConfig.NextProtos = []string{"h2-14", "spdy/3.1"}
+			tlsConfig.NextProtos = []string{"h2", "spdy/3.1"}
 			conn, err = tls.Dial("tcp", authority, tlsConfig)
 		} else {
 			conn, err = net.Dial("tcp", authority)
@@ -746,3 +751,8 @@ func cloneHeader(h http.Header) http.Header {
 }
 
 func noopHandler(w http.ResponseWriter, r *http.Request) {}
+
+type APIResponse struct {
+	Status string `json:"status,omitempty"`
+	Code   int    `json:"code,omitempty"`
+}
