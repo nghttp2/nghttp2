@@ -818,7 +818,7 @@ void ConnectionHandler::handle_serial_event() {
   for (auto &sev : q) {
     switch (sev.type) {
     case SEV_REPLACE_DOWNSTREAM:
-      // TODO make sure that none of worker uses
+      // Mmake sure that none of worker uses
       // get_config()->conn.downstream
       mod_config()->conn.downstream = sev.downstreamconf;
 

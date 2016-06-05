@@ -416,8 +416,6 @@ void Http2Upstream::initiate_downstream(Downstream *downstream) {
   auto &req = downstream->request();
   if (!req.http2_expect_body) {
     downstream->end_upload_data();
-    // TODO is this necessary?
-    handler_->signal_write();
   }
 
   return;
