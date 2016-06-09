@@ -104,12 +104,13 @@ Connections
     Several parameters <PARAM> are accepted after <PATTERN>.
     The  parameters are  delimited  by  ";".  The  available
     parameters       are:      "proto=<PROTO>",       "tls",
-    "sni=<SNI_HOST>",   "fall=<N>",  and   "rise=<N>".   The
-    parameter consists  of keyword, and  optionally followed
-    by "=" and value.  For example, the parameter "proto=h2"
-    consists  of the  keyword "proto"  and value  "h2".  The
-    parameter "tls"  consists of  the keyword  "tls" without
-    value.  Each parameter is described as follows.
+    "sni=<SNI_HOST>",     "fall=<N>",    "rise=<N>",     and
+    "affinity=<METHOD>".  The parameter consists of keyword,
+    and optionally followed by  "=" and value.  For example,
+    the parameter "proto=h2" consists of the keyword "proto"
+    and  value "h2".   The parameter  "tls" consists  of the
+    keyword   "tls"  without   value.   Each   parameter  is
+    described as follows.
 
     The backend application protocol  can be specified using
     optional  "proto"   parameter,  and   in  the   form  of
@@ -143,6 +144,20 @@ Connections
     eligible  for load  balancing target.   If <N>  is 0,  a
     backend  is permanently  offline, once  it goes  in that
     state, and this is the default behaviour.
+
+    The     session     affinity    is     enabled     using
+    "affinity=<METHOD>"  parameter.   If  "ip" is  given  in
+    <METHOD>, client  IP based session affinity  is enabled.
+    If  "none" is  given  in <METHOD>,  session affinity  is
+    disabled, and this is the default.  The session affinity
+    is enabled per  <PATTERN>.  If at least  one backend has
+    "affinity" parameter,  and its  <METHOD> is  not "none",
+    session  affinity is  enabled  for  all backend  servers
+    sharing  the  same  <PATTERN>.   It is  advised  to  set
+    "affinity"  parameter  to   all  backend  explicitly  if
+    session affinity  is desired.  The session  affinity may
+    break if one of the backend gets unreachable, or backend
+    settings are reload or replaced by API.
 
     Since ";" and ":" are  used as delimiter, <PATTERN> must
     not  contain these  characters.  Since  ";" has  special
@@ -1547,6 +1562,26 @@ default, API endpoint is disabled.  To enable it, add a dedicated
 frontend for API using :option:`--frontend` option with "api"
 parameter.  All requests which come from this frontend address, will
 be treated as API request.
+
+The response is normally JSON dictionary, and at least includes the
+following keys:
+
+status
+  The status of the request processing.  The following values are
+  defined:
+
+  Success
+    The request was successful.
+
+  Failure
+    The request was faield.  No change has been made.
+
+code
+  HTTP status code
+
+We wrote "normally", since nghttpx may return ordinal HTML response in
+some cases where the error has occurred before reaching API endpoint
+(e.g., header field is too large).
 
 The following section describes available API endpoints.
 
