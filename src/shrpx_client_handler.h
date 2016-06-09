@@ -50,6 +50,7 @@ class DownstreamConnectionPool;
 class Worker;
 struct WorkerStat;
 struct DownstreamAddrGroup;
+struct DownstreamAddr;
 
 class ClientHandler {
 public:
@@ -145,6 +146,9 @@ public:
   Http2Session *
   select_http2_session(const std::shared_ptr<DownstreamAddrGroup> &group);
 
+  Http2Session *select_http2_session_with_affinity(
+      const std::shared_ptr<DownstreamAddrGroup> &group, DownstreamAddr *addr);
+
   const UpstreamAddr *get_upstream_addr() const;
 
 private:
@@ -167,6 +171,7 @@ private:
   Worker *worker_;
   // The number of bytes of HTTP/2 client connection header to read
   size_t left_connhd_len_;
+  int32_t affinity_hash_;
   bool should_close_after_write_;
   bool reset_conn_rtimer_required_;
   ReadBuf rb_;

@@ -290,6 +290,13 @@ constexpr int16_t DEFAULT_DOWNSTREAM_PORT = 80;
 
 enum shrpx_proto { PROTO_NONE, PROTO_HTTP1, PROTO_HTTP2, PROTO_MEMCACHED };
 
+enum shrpx_session_affinity {
+  // No session affinity
+  AFFINITY_NONE,
+  // Client IP affinity
+  AFFINITY_IP,
+};
+
 enum shrpx_forwarded_param {
   FORWARDED_NONE = 0,
   FORWARDED_BY = 0x1,
@@ -354,10 +361,12 @@ struct DownstreamAddrConfig {
 
 struct DownstreamAddrGroupConfig {
   DownstreamAddrGroupConfig(const StringRef &pattern)
-      : pattern(pattern.c_str(), pattern.size()) {}
+      : pattern(pattern.c_str(), pattern.size()), affinity(AFFINITY_NONE) {}
 
   ImmutableString pattern;
   std::vector<DownstreamAddrConfig> addrs;
+  // Session affinity
+  shrpx_session_affinity affinity;
 };
 
 struct TicketKey {

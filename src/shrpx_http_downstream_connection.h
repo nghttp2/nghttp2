@@ -43,7 +43,8 @@ struct DownstreamAddr;
 class HttpDownstreamConnection : public DownstreamConnection {
 public:
   HttpDownstreamConnection(const std::shared_ptr<DownstreamAddrGroup> &group,
-                           struct ev_loop *loop, Worker *worker);
+                           ssize_t initial_addr_idx, struct ev_loop *loop,
+                           Worker *worker);
   virtual ~HttpDownstreamConnection();
   virtual int attach_downstream(Downstream *downstream);
   virtual void detach_downstream(Downstream *downstream);
@@ -64,6 +65,7 @@ public:
   virtual bool poolable() const;
 
   virtual DownstreamAddrGroup *get_downstream_addr_group() const;
+  virtual DownstreamAddr *get_addr() const;
 
   int read_clear();
   int write_clear();
@@ -79,8 +81,6 @@ public:
 
   int noop();
 
-  DownstreamAddr *get_addr() const;
-
 private:
   Connection conn_;
   std::function<int(HttpDownstreamConnection &)> do_read_, do_write_,
@@ -93,6 +93,7 @@ private:
   DownstreamAddr *addr_;
   IOControl ioctrl_;
   http_parser response_htp_;
+  ssize_t initial_addr_idx_;
 };
 
 } // namespace shrpx

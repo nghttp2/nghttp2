@@ -302,4 +302,6 @@ APIDownstreamConnection::get_downstream_addr_group() const {
   return nullptr;
 }
 
+DownstreamAddr *APIDownstreamConnection::get_addr() const { return nullptr; }
+
 } // namespace shrpx

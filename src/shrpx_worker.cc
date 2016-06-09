@@ -71,6 +71,10 @@ bool match_shared_downstream_addr(
     return false;
   }
 
+  if (lhs->affinity != rhs->affinity) {
+    return false;
+  }
+
   auto used = std::vector<bool>(lhs->addrs.size());
 
   for (auto &a : lhs->addrs) {
@@ -143,7 +147,17 @@ void Worker::replace_downstream_config(
     std::shared_ptr<DownstreamConfig> downstreamconf) {
   for (auto &g : downstream_addr_groups_) {
     g->retired = true;
-    g->shared_addr->dconn_pool.remove_all();
+
+    auto &shared_addr = g->shared_addr;
+
+    if (shared_addr->affinity == AFFINITY_NONE) {
+      shared_addr->dconn_pool.remove_all();
+      continue;
+    }
+
+    for (auto &addr : shared_addr->addrs) {
+      addr.dconn_pool->remove_all();
+    }
   }
 
   downstreamconf_ = downstreamconf;
@@ -163,6 +177,7 @@ void Worker::replace_downstream_config(
     auto shared_addr = std::make_shared<SharedDownstreamAddr>();
 
     shared_addr->addrs.resize(src.addrs.size());
+    shared_addr->affinity = src.affinity;
 
     size_t num_http1 = 0;
     size_t num_http2 = 0;
@@ -239,6 +254,12 @@ void Worker::replace_downstream_config(
 
       shared_addr->http1_pri.weight = num_http1;
       shared_addr->http2_pri.weight = num_http2;
+
+      if (shared_addr->affinity != AFFINITY_NONE) {
+        for (auto &addr : shared_addr->addrs) {
+          addr.dconn_pool = make_unique<DownstreamConnectionPool>();
+        }
+      }
 
       dst->shared_addr = shared_addr;
     } else {

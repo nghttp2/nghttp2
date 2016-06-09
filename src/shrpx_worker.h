@@ -86,6 +86,9 @@ struct DownstreamAddr {
 
   std::unique_ptr<ConnectBlocker> connect_blocker;
   std::unique_ptr<LiveCheck> live_check;
+  // Connection pool for this particular address if session affinity
+  // is enabled
+  std::unique_ptr<DownstreamConnectionPool> dconn_pool;
   size_t fall;
   size_t rise;
   // Client side TLS session cache
@@ -93,6 +96,9 @@ struct DownstreamAddr {
   // Http2Session object created for this address.  This list chains
   // all Http2Session objects that is not in group scope
   // http2_avail_freelist, and is not reached in maximum concurrency.
+  //
+  // If session affinity is enabled, http2_avail_freelist is not used,
+  // and this list is solely used.
   DList<Http2Session> http2_extra_freelist;
   // true if Http2Session for this address is in group scope
   // SharedDownstreamAddr.http2_avail_freelist
@@ -126,6 +132,9 @@ struct SharedDownstreamAddr {
   // coalesce as much stream as possible in one Http2Session to fully
   // utilize TCP connection.
   //
+  // If session affinity is enabled, this list is not used.  Per
+  // address http2_extra_freelist is used instead.
+  //
   // TODO Verify that this approach performs better in performance
   // wise.
   DList<Http2Session> http2_avail_freelist;
@@ -139,6 +148,8 @@ struct SharedDownstreamAddr {
   // HTTP/1.1.  Otherwise, choose HTTP/2.
   WeightedPri http1_pri;
   WeightedPri http2_pri;
+  // Session affinity
+  shrpx_session_affinity affinity;
 };
 
 struct DownstreamAddrGroup {

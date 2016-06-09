@@ -55,6 +55,7 @@ public:
   virtual bool poolable() const;
 
   virtual DownstreamAddrGroup *get_downstream_addr_group() const;
+  virtual DownstreamAddr *get_addr() const;
 
   int send_reply(unsigned int http_status, int api_status);
 

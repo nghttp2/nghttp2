@@ -651,6 +651,7 @@ struct DownstreamParams {
   size_t fall;
   size_t rise;
   shrpx_proto proto;
+  shrpx_session_affinity affinity;
   bool tls;
 };
 
@@ -715,6 +716,16 @@ int parse_downstream_params(DownstreamParams &out,
       out.tls = false;
     } else if (util::istarts_with_l(param, "sni=")) {
       out.sni = StringRef{first + str_size("sni="), end};
+    } else if (util::istarts_with_l(param, "affinity=")) {
+      auto valstr = StringRef{first + str_size("affinity="), end};
+      if (util::strieq_l("none", valstr)) {
+        out.affinity = AFFINITY_NONE;
+      } else if (util::strieq_l("ip", valstr)) {
+        out.affinity = AFFINITY_IP;
+      } else {
+        LOG(ERROR) << "backend: affinity: value must be either none or ip";
+        return -1;
+      }
     } else if (!param.empty()) {
       LOG(ERROR) << "backend: " << param << ": unknown keyword";
       return -1;
@@ -778,6 +789,11 @@ int parse_mapping(Config *config, DownstreamAddrConfig addr,
     }
     for (auto &g : addr_groups) {
       if (g.pattern == pattern) {
+        // Last value wins if we have multiple different affinity
+        // value under one group.
+        if (params.affinity != AFFINITY_NONE) {
+          g.affinity = params.affinity;
+        }
         g.addrs.push_back(addr);
         done = true;
         break;
@@ -791,6 +807,7 @@ int parse_mapping(Config *config, DownstreamAddrConfig addr,
     addr_groups.emplace_back(StringRef{pattern});
     auto &g = addr_groups.back();
     g.addrs.push_back(addr);
+    g.affinity = params.affinity;
 
     if (pattern[0] == '*') {
       // wildcard pattern
