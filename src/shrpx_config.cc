@@ -2825,6 +2825,7 @@ int configure_downstream_group(Config *config, bool http2_proxy,
       std::move(std::begin(g.addrs), std::end(g.addrs),
                 std::back_inserter(catch_all.addrs));
     }
+    std::vector<WildcardPattern>().swap(downstreamconf.wildcard_patterns);
     std::vector<DownstreamAddrGroupConfig>().swap(addr_groups);
     // maybe not necessary?
     router = Router();
