@@ -65,6 +65,7 @@ public:
   virtual bool poolable() const;
 
   virtual DownstreamAddrGroup *get_downstream_addr_group() const;
+  virtual DownstreamAddr *get_addr() const;
 
   int read_clear();
   int write_clear();
@@ -79,8 +80,6 @@ public:
   int actual_signal_write();
 
   int noop();
-
-  DownstreamAddr *get_addr() const;
 
 private:
   Connection conn_;

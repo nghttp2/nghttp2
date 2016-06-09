@@ -65,6 +65,7 @@ public:
   virtual bool poolable() const { return false; }
 
   virtual DownstreamAddrGroup *get_downstream_addr_group() const;
+  virtual DownstreamAddr *get_addr() const;
 
   int send();
 

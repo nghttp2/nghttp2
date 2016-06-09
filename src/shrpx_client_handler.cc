@@ -669,8 +669,18 @@ void ClientHandler::pool_downstream_connection(
                      << " in group " << group;
   }
 
-  auto &dconn_pool = group->shared_addr->dconn_pool;
-  dconn_pool.add_downstream_connection(std::move(dconn));
+  auto &shared_addr = group->shared_addr;
+
+  if (shared_addr->affinity == AFFINITY_NONE) {
+    auto &dconn_pool = group->shared_addr->dconn_pool;
+    dconn_pool.add_downstream_connection(std::move(dconn));
+
+    return;
+  }
+
+  auto addr = dconn->get_addr();
+  auto &dconn_pool = addr->dconn_pool;
+  dconn_pool->add_downstream_connection(std::move(dconn));
 }
 
 void ClientHandler::remove_downstream_connection(DownstreamConnection *dconn) {
@@ -715,7 +725,6 @@ Http2Session *ClientHandler::select_http2_session_with_affinity(
 
   if (addr->http2_extra_freelist.size()) {
     auto session = addr->http2_extra_freelist.head;
-    session->remove_from_freelist();
 
     if (LOG_ENABLED(INFO)) {
       CLOG(INFO, this) << "Use Http2Session " << session
@@ -727,8 +736,8 @@ Http2Session *ClientHandler::select_http2_session_with_affinity(
         CLOG(INFO, this) << "Maximum streams are reached for Http2Session("
                          << session << ").";
       }
-    } else {
-      session->add_to_avail_freelist();
+
+      session->remove_from_freelist();
     }
     return session;
   }
@@ -740,7 +749,7 @@ Http2Session *ClientHandler::select_http2_session_with_affinity(
     CLOG(INFO, this) << "Create new Http2Session " << session;
   }
 
-  session->add_to_avail_freelist();
+  session->add_to_extra_freelist();
 
   return session;
 }

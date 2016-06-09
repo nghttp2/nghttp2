@@ -96,6 +96,9 @@ struct DownstreamAddr {
   // Http2Session object created for this address.  This list chains
   // all Http2Session objects that is not in group scope
   // http2_avail_freelist, and is not reached in maximum concurrency.
+  //
+  // If session affinity is enabled, http2_avail_freelist is not used,
+  // and this list is solely used.
   DList<Http2Session> http2_extra_freelist;
   // true if Http2Session for this address is in group scope
   // SharedDownstreamAddr.http2_avail_freelist
@@ -128,6 +131,9 @@ struct SharedDownstreamAddr {
   // server advertized maximum concurrency is not reached).  We will
   // coalesce as much stream as possible in one Http2Session to fully
   // utilize TCP connection.
+  //
+  // If session affinity is enabled, this list is not used.  Per
+  // address http2_extra_freelist is used instead.
   //
   // TODO Verify that this approach performs better in performance
   // wise.

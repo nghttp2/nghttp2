@@ -543,4 +543,6 @@ Http2DownstreamConnection::get_downstream_addr_group() const {
   return http2session_->get_downstream_addr_group();
 }
 
+DownstreamAddr *Http2DownstreamConnection::get_addr() const { return nullptr; }
+
 } // namespace shrpx

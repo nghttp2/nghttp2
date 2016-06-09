@@ -563,15 +563,32 @@ int HttpDownstreamConnection::end_upload_data() {
 }
 
 namespace {
+void remove_from_pool(HttpDownstreamConnection *dconn) {
+  auto group = dconn->get_downstream_addr_group();
+  auto &shared_addr = group->shared_addr;
+
+  if (shared_addr->affinity == AFFINITY_NONE) {
+    auto &dconn_pool =
+        dconn->get_downstream_addr_group()->shared_addr->dconn_pool;
+    dconn_pool.remove_downstream_connection(dconn);
+    return;
+  }
+
+  auto addr = dconn->get_addr();
+  auto &dconn_pool = addr->dconn_pool;
+  dconn_pool->remove_downstream_connection(dconn);
+}
+} // namespace
+
+namespace {
 void idle_readcb(struct ev_loop *loop, ev_io *w, int revents) {
   auto conn = static_cast<Connection *>(w->data);
   auto dconn = static_cast<HttpDownstreamConnection *>(conn->data);
   if (LOG_ENABLED(INFO)) {
     DCLOG(INFO, dconn) << "Idle connection EOF";
   }
-  auto &dconn_pool =
-      dconn->get_downstream_addr_group()->shared_addr->dconn_pool;
-  dconn_pool.remove_downstream_connection(dconn);
+
+  remove_from_pool(dconn);
   // dconn was deleted
 }
 } // namespace
@@ -583,9 +600,8 @@ void idle_timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
   if (LOG_ENABLED(INFO)) {
     DCLOG(INFO, dconn) << "Idle connection timeout";
   }
-  auto &dconn_pool =
-      dconn->get_downstream_addr_group()->shared_addr->dconn_pool;
-  dconn_pool.remove_downstream_connection(dconn);
+
+  remove_from_pool(dconn);
   // dconn was deleted
 }
 } // namespace
