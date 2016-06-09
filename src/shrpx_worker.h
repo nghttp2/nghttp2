@@ -86,6 +86,9 @@ struct DownstreamAddr {
 
   std::unique_ptr<ConnectBlocker> connect_blocker;
   std::unique_ptr<LiveCheck> live_check;
+  // Connection pool for this particular address if session affinity
+  // is enabled
+  std::unique_ptr<DownstreamConnectionPool> dconn_pool;
   size_t fall;
   size_t rise;
   // Client side TLS session cache
@@ -139,6 +142,8 @@ struct SharedDownstreamAddr {
   // HTTP/1.1.  Otherwise, choose HTTP/2.
   WeightedPri http1_pri;
   WeightedPri http2_pri;
+  // Session affinity
+  shrpx_session_affinity affinity;
 };
 
 struct DownstreamAddrGroup {

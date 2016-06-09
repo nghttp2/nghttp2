@@ -407,6 +407,7 @@ ClientHandler::ClientHandler(Worker *worker, int fd, SSL *ssl,
       faddr_(faddr),
       worker_(worker),
       left_connhd_len_(NGHTTP2_CLIENT_MAGIC_LEN),
+      affinity_hash_(-1),
       should_close_after_write_(false),
       reset_conn_rtimer_required_(false) {
 
@@ -683,6 +684,68 @@ void ClientHandler::remove_downstream_connection(DownstreamConnection *dconn) {
 }
 
 namespace {
+uint32_t hash32(const StringRef &s) {
+  /* 32 bit FNV-1a: http://isthe.com/chongo/tech/comp/fnv/ */
+  uint32_t h = 2166136261u;
+  size_t i;
+
+  for (i = 0; i < s.size(); ++i) {
+    h ^= s[i];
+    h += (h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24);
+  }
+
+  return h;
+}
+} // namespace
+
+namespace {
+int32_t calculate_affinity_from_ip(const StringRef &ip) {
+  return hash32(ip) & 0x7fffffff;
+}
+} // namespace
+
+Http2Session *ClientHandler::select_http2_session_with_affinity(
+    const std::shared_ptr<DownstreamAddrGroup> &group, DownstreamAddr *addr) {
+  auto &shared_addr = group->shared_addr;
+
+  if (LOG_ENABLED(INFO)) {
+    CLOG(INFO, this) << "Selected DownstreamAddr=" << addr
+                     << ", index=" << (addr - shared_addr->addrs.data());
+  }
+
+  if (addr->http2_extra_freelist.size()) {
+    auto session = addr->http2_extra_freelist.head;
+    session->remove_from_freelist();
+
+    if (LOG_ENABLED(INFO)) {
+      CLOG(INFO, this) << "Use Http2Session " << session
+                       << " from http2_extra_freelist";
+    }
+
+    if (session->max_concurrency_reached(1)) {
+      if (LOG_ENABLED(INFO)) {
+        CLOG(INFO, this) << "Maximum streams are reached for Http2Session("
+                         << session << ").";
+      }
+    } else {
+      session->add_to_avail_freelist();
+    }
+    return session;
+  }
+
+  auto session = new Http2Session(conn_.loop, worker_->get_cl_ssl_ctx(),
+                                  worker_, group, addr);
+
+  if (LOG_ENABLED(INFO)) {
+    CLOG(INFO, this) << "Create new Http2Session " << session;
+  }
+
+  session->add_to_avail_freelist();
+
+  return session;
+}
+
+namespace {
 // Returns true if load of |lhs| is lighter than that of |rhs|.
 // Currently, we assume that lesser streams means lesser load.
 bool load_lighter(const DownstreamAddr *lhs, const DownstreamAddr *rhs) {
@@ -863,10 +926,41 @@ ClientHandler::get_downstream_connection(Downstream *downstream) {
   auto &group = groups[group_idx];
   auto &shared_addr = group->shared_addr;
 
-  auto proto = PROTO_NONE;
+  if (shared_addr->affinity == AFFINITY_IP) {
+    if (affinity_hash_ == -1) {
+      affinity_hash_ = calculate_affinity_from_ip(StringRef{ipaddr_});
+    }
+
+    auto idx = affinity_hash_ % shared_addr->addrs.size();
+
+    auto &addr = shared_addr->addrs[idx];
+    if (addr.proto == PROTO_HTTP2) {
+      auto http2session = select_http2_session_with_affinity(group, &addr);
+
+      auto dconn = make_unique<Http2DownstreamConnection>(http2session);
+
+      dconn->set_client_handler(this);
+
+      return std::move(dconn);
+    }
+
+    auto &dconn_pool = addr.dconn_pool;
+    auto dconn = dconn_pool->pop_downstream_connection();
+
+    if (!dconn) {
+      dconn = make_unique<HttpDownstreamConnection>(group, idx, conn_.loop,
+                                                    worker_);
+    }
+
+    dconn->set_client_handler(this);
+
+    return dconn;
+  }
 
   auto http1_weight = shared_addr->http1_pri.weight;
   auto http2_weight = shared_addr->http2_pri.weight;
+
+  auto proto = PROTO_NONE;
 
   if (http1_weight > 0 && http2_weight > 0) {
     // We only advance cycle if both weight has nonzero to keep its
@@ -927,7 +1021,8 @@ ClientHandler::get_downstream_connection(Downstream *downstream) {
                        << " Create new one";
     }
 
-    dconn = make_unique<HttpDownstreamConnection>(group, conn_.loop, worker_);
+    dconn =
+        make_unique<HttpDownstreamConnection>(group, -1, conn_.loop, worker_);
   }
 
   dconn->set_client_handler(this);

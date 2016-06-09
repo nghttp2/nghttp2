@@ -148,8 +148,8 @@ void connectcb(struct ev_loop *loop, ev_io *w, int revents) {
 } // namespace
 
 HttpDownstreamConnection::HttpDownstreamConnection(
-    const std::shared_ptr<DownstreamAddrGroup> &group, struct ev_loop *loop,
-    Worker *worker)
+    const std::shared_ptr<DownstreamAddrGroup> &group, ssize_t initial_addr_idx,
+    struct ev_loop *loop, Worker *worker)
     : conn_(loop, -1, nullptr, worker->get_mcpool(),
             worker->get_downstream_config()->timeout.write,
             worker->get_downstream_config()->timeout.read, {}, {}, connectcb,
@@ -164,7 +164,8 @@ HttpDownstreamConnection::HttpDownstreamConnection(
       group_(group),
       addr_(nullptr),
       ioctrl_(&conn_.rlimit),
-      response_htp_{0} {}
+      response_htp_{0},
+      initial_addr_idx_(initial_addr_idx) {}
 
 HttpDownstreamConnection::~HttpDownstreamConnection() {
   if (LOG_ENABLED(INFO)) {
@@ -191,7 +192,13 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
   if (conn_.fd == -1) {
     auto &shared_addr = group_->shared_addr;
     auto &addrs = shared_addr->addrs;
-    auto &next_downstream = shared_addr->next;
+
+    // If session affinity is enabled, we always start with address at
+    // initial_addr_idx_.
+    size_t temp_idx = initial_addr_idx_;
+
+    auto &next_downstream =
+        shared_addr->affinity == AFFINITY_NONE ? shared_addr->next : temp_idx;
     auto end = next_downstream;
     for (;;) {
       auto &addr = addrs[next_downstream];
