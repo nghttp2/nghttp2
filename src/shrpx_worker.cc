@@ -456,7 +456,8 @@ ConnectionHandler *Worker::get_connection_handler() const {
 
 namespace {
 size_t match_downstream_addr_group_host(
-    const Router &router, const std::vector<WildcardPattern> &wildcard_patterns,
+    const Router &router, const Router &rev_wildcard_router,
+    const std::vector<WildcardPattern> &wildcard_patterns,
     const StringRef &host, const StringRef &path,
     const std::vector<std::shared_ptr<DownstreamAddrGroup>> &groups,
     size_t catch_all) {
@@ -486,23 +487,24 @@ size_t match_downstream_addr_group_host(
     return group;
   }
 
-  for (auto it = std::begin(wildcard_patterns);
-       it != std::end(wildcard_patterns); ++it) {
-    /* left most '*' must match at least one character */
-    if (host.size() <= (*it).host.size() ||
-        !util::ends_with(std::begin(host), std::end(host),
-                         std::begin((*it).host), std::end((*it).host))) {
-      continue;
-    }
-    auto group = (*it).router.match(StringRef{}, path);
-    if (group != -1) {
-      // We sorted wildcard_patterns in a way that first match is the
-      // longest host pattern.
-      if (LOG_ENABLED(INFO)) {
-        LOG(INFO) << "Found wildcard pattern with query " << host << path
-                  << ", matched pattern=" << groups[group]->pattern;
+  if (!wildcard_patterns.empty() && !host.empty()) {
+    auto rev_host = std::string{std::begin(host) + 1, std::end(host)};
+    std::reverse(std::begin(rev_host), std::end(rev_host));
+
+    auto wcidx = rev_wildcard_router.match_prefix(
+        StringRef{std::begin(rev_host), std::end(rev_host)});
+    if (wcidx != -1) {
+      auto &wc = wildcard_patterns[wcidx];
+      auto group = wc.router.match(StringRef{}, path);
+      if (group != -1) {
+        // We sorted wildcard_patterns in a way that first match is the
+        // longest host pattern.
+        if (LOG_ENABLED(INFO)) {
+          LOG(INFO) << "Found wildcard pattern with query " << host << path
+                    << ", matched pattern=" << groups[group]->pattern;
+        }
+        return group;
       }
-      return group;
     }
   }
 
@@ -523,7 +525,8 @@ size_t match_downstream_addr_group_host(
 } // namespace
 
 size_t match_downstream_addr_group(
-    const Router &router, const std::vector<WildcardPattern> &wildcard_patterns,
+    const Router &router, const Router &rev_wildcard_router,
+    const std::vector<WildcardPattern> &wildcard_patterns,
     const StringRef &hostport, const StringRef &raw_path,
     const std::vector<std::shared_ptr<DownstreamAddrGroup>> &groups,
     size_t catch_all) {
@@ -539,8 +542,9 @@ size_t match_downstream_addr_group(
   auto path = StringRef{std::begin(raw_path), query};
 
   if (hostport.empty()) {
-    return match_downstream_addr_group_host(router, wildcard_patterns, hostport,
-                                            path, groups, catch_all);
+    return match_downstream_addr_group_host(router, rev_wildcard_router,
+                                            wildcard_patterns, hostport, path,
+                                            groups, catch_all);
   }
 
   StringRef host;
@@ -570,8 +574,9 @@ size_t match_downstream_addr_group(
     util::inp_strlower(low_host);
     host = StringRef{low_host};
   }
-  return match_downstream_addr_group_host(router, wildcard_patterns, host, path,
-                                          groups, catch_all);
+  return match_downstream_addr_group_host(router, rev_wildcard_router,
+                                          wildcard_patterns, host, path, groups,
+                                          catch_all);
 }
 
 void downstream_failure(DownstreamAddr *addr) {

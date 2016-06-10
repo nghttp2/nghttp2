@@ -910,20 +910,22 @@ ClientHandler::get_downstream_connection(Downstream *downstream) {
     group_idx = catch_all;
   } else {
     auto &router = downstreamconf.router;
+    auto &rev_wildcard_router = downstreamconf.rev_wildcard_router;
     auto &wildcard_patterns = downstreamconf.wildcard_patterns;
     if (!req.authority.empty()) {
-      group_idx =
-          match_downstream_addr_group(router, wildcard_patterns, req.authority,
-                                      req.path, groups, catch_all);
+      group_idx = match_downstream_addr_group(router, rev_wildcard_router,
+                                              wildcard_patterns, req.authority,
+                                              req.path, groups, catch_all);
     } else {
       auto h = req.fs.header(http2::HD_HOST);
       if (h) {
-        group_idx = match_downstream_addr_group(
-            router, wildcard_patterns, h->value, req.path, groups, catch_all);
+        group_idx = match_downstream_addr_group(router, rev_wildcard_router,
+                                                wildcard_patterns, h->value,
+                                                req.path, groups, catch_all);
       } else {
-        group_idx =
-            match_downstream_addr_group(router, wildcard_patterns, StringRef{},
-                                        req.path, groups, catch_all);
+        group_idx = match_downstream_addr_group(router, rev_wildcard_router,
+                                                wildcard_patterns, StringRef{},
+                                                req.path, groups, catch_all);
       }
     }
   }

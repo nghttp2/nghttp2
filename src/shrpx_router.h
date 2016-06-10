@@ -67,6 +67,9 @@ public:
   bool add_route(const StringRef &pattern, size_t index);
   // Returns the matched index of pattern.  -1 if there is no match.
   ssize_t match(const StringRef &host, const StringRef &path) const;
+  // Returns the matched index of pattern if a pattern is a suffix of
+  // |s|, otherwise -1.
+  ssize_t match_prefix(const StringRef &s) const;
 
   void add_node(RNode *node, const char *pattern, size_t patlen, size_t index);
 

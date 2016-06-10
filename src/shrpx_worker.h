@@ -280,7 +280,8 @@ private:
 // group.  The catch-all group index is given in |catch_all|.  All
 // patterns are given in |groups|.
 size_t match_downstream_addr_group(
-    const Router &router, const std::vector<WildcardPattern> &wildcard_patterns,
+    const Router &router, const Router &rev_wildcard_router,
+    const std::vector<WildcardPattern> &wildcard_patterns,
     const StringRef &hostport, const StringRef &path,
     const std::vector<std::shared_ptr<DownstreamAddrGroup>> &groups,
     size_t catch_all);

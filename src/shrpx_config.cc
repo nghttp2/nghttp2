@@ -828,6 +828,12 @@ int parse_mapping(Config *config, DownstreamAddrConfig addr,
 
         auto &router = wildcard_patterns.back().router;
         router.add_route(path, idx);
+
+        auto rev_host = host.str();
+        std::reverse(std::begin(rev_host), std::end(rev_host));
+
+        downstreamconf.rev_wildcard_router.add_route(
+            StringRef{rev_host}, wildcard_patterns.size() - 1);
       } else {
         (*it).router.add_route(path, idx);
       }
@@ -2831,21 +2837,6 @@ int configure_downstream_group(Config *config, bool http2_proxy,
     router = Router();
     router.add_route(StringRef{catch_all.pattern}, addr_groups.size());
     addr_groups.push_back(std::move(catch_all));
-  } else {
-    auto &wildcard_patterns = downstreamconf.wildcard_patterns;
-    std::sort(std::begin(wildcard_patterns), std::end(wildcard_patterns),
-              [](const WildcardPattern &lhs, const WildcardPattern &rhs) {
-                return std::lexicographical_compare(
-                    rhs.host.rbegin(), rhs.host.rend(), lhs.host.rbegin(),
-                    lhs.host.rend());
-              });
-    if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "Reverse sorted wildcard hosts (compared from tail to head, "
-                   "and sorted in reverse order):";
-      for (auto &wp : wildcard_patterns) {
-        LOG(INFO) << wp.host;
-      }
-    }
   }
 
   // backward compatibility: override all SNI fields with the option

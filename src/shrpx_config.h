@@ -599,7 +599,7 @@ struct RateLimitConfig {
 };
 
 // Wildcard host pattern routing.  We strips left most '*' from host
-// field.  router includes all path pattern sharing same wildcard
+// field.  router includes all path patterns sharing the same wildcard
 // host.
 struct WildcardPattern {
   WildcardPattern(const StringRef &host)
@@ -616,6 +616,12 @@ struct DownstreamConfig {
     ev_tstamp idle_read;
   } timeout;
   Router router;
+  // Router for reversed wildcard hosts.  Since this router has
+  // wildcard hosts reversed without '*', one should call match()
+  // function with reversed host stripping last character.  This is
+  // because we require at least one character must match for '*'.
+  // The index stored in this router is index of wildcard_patterns.
+  Router rev_wildcard_router;
   std::vector<WildcardPattern> wildcard_patterns;
   std::vector<DownstreamAddrGroupConfig> addr_groups;
   // The index of catch-all group in downstream_addr_groups.

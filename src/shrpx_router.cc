@@ -280,6 +280,57 @@ ssize_t Router::match(const StringRef &host, const StringRef &path) const {
 }
 
 namespace {
+const RNode *match_prefix(const RNode *node, const char *first,
+                          const char *last) {
+  if (first == last) {
+    return nullptr;
+  }
+
+  auto p = first;
+
+  const RNode *ans = nullptr;
+
+  for (;;) {
+    auto next_node = find_next_node(node, *p);
+    if (next_node == nullptr) {
+      return ans;
+    }
+
+    node = next_node;
+
+    auto n = std::min(node->len, static_cast<size_t>(last - p));
+    if (memcmp(node->s, p, n) != 0) {
+      return ans;
+    }
+
+    p += n;
+
+    if (p != last) {
+      if (node->index != -1) {
+        ans = node;
+      }
+      continue;
+    }
+
+    if (node->len == n) {
+      return node;
+    }
+
+    return ans;
+  }
+}
+} // namespace
+
+ssize_t Router::match_prefix(const StringRef &s) const {
+  auto node = ::shrpx::match_prefix(&root_, std::begin(s), std::end(s));
+  if (node == nullptr) {
+    return -1;
+  }
+
+  return node->index;
+}
+
+namespace {
 void dump_node(const RNode *node, int depth) {
   fprintf(stderr, "%*ss='%.*s', len=%zu, index=%zd\n", depth, "",
           (int)node->len, node->s, node->len, node->index);
