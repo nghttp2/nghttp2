@@ -889,6 +889,7 @@ std::unique_ptr<DownstreamConnection>
 ClientHandler::get_downstream_connection(Downstream *downstream) {
   size_t group_idx;
   auto &downstreamconf = *worker_->get_downstream_config();
+  auto &routerconf = downstreamconf.router;
 
   auto catch_all = downstreamconf.addr_group_catch_all;
   auto &groups = worker_->get_downstream_addr_groups();
@@ -909,21 +910,19 @@ ClientHandler::get_downstream_connection(Downstream *downstream) {
     //  have dealt with proxy case already, just use catch-all group.
     group_idx = catch_all;
   } else {
-    auto &router = downstreamconf.router;
-    auto &wildcard_patterns = downstreamconf.wildcard_patterns;
+    auto &balloc = downstream->get_block_allocator();
+
     if (!req.authority.empty()) {
-      group_idx =
-          match_downstream_addr_group(router, wildcard_patterns, req.authority,
-                                      req.path, groups, catch_all);
+      group_idx = match_downstream_addr_group(
+          routerconf, req.authority, req.path, groups, catch_all, balloc);
     } else {
       auto h = req.fs.header(http2::HD_HOST);
       if (h) {
-        group_idx = match_downstream_addr_group(
-            router, wildcard_patterns, h->value, req.path, groups, catch_all);
+        group_idx = match_downstream_addr_group(routerconf, h->value, req.path,
+                                                groups, catch_all, balloc);
       } else {
-        group_idx =
-            match_downstream_addr_group(router, wildcard_patterns, StringRef{},
-                                        req.path, groups, catch_all);
+        group_idx = match_downstream_addr_group(
+            routerconf, StringRef{}, req.path, groups, catch_all, balloc);
       }
     }
   }

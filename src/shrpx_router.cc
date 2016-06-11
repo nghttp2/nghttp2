@@ -280,6 +280,65 @@ ssize_t Router::match(const StringRef &host, const StringRef &path) const {
 }
 
 namespace {
+const RNode *match_prefix(size_t *nread, const RNode *node, const char *first,
+                          const char *last) {
+  if (first == last) {
+    return nullptr;
+  }
+
+  auto p = first;
+
+  for (;;) {
+    auto next_node = find_next_node(node, *p);
+    if (next_node == nullptr) {
+      return nullptr;
+    }
+
+    node = next_node;
+
+    auto n = std::min(node->len, static_cast<size_t>(last - p));
+    if (memcmp(node->s, p, n) != 0) {
+      return nullptr;
+    }
+
+    p += n;
+
+    if (p != last) {
+      if (node->index != -1) {
+        *nread = p - first;
+        return node;
+      }
+      continue;
+    }
+
+    if (node->len == n) {
+      *nread = p - first;
+      return node;
+    }
+
+    return nullptr;
+  }
+}
+} // namespace
+
+ssize_t Router::match_prefix(size_t *nread, const RNode **last_node,
+                             const StringRef &s) const {
+  if (*last_node == nullptr) {
+    *last_node = &root_;
+  }
+
+  auto node =
+      ::shrpx::match_prefix(nread, *last_node, std::begin(s), std::end(s));
+  if (node == nullptr) {
+    return -1;
+  }
+
+  *last_node = node;
+
+  return node->index;
+}
+
+namespace {
 void dump_node(const RNode *node, int depth) {
   fprintf(stderr, "%*ss='%.*s', len=%zu, index=%zd\n", depth, "",
           (int)node->len, node->s, node->len, node->index);

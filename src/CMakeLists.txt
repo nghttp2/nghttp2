@@ -149,6 +149,7 @@ if(ENABLE_APP)
       shrpx_config_test.cc
       shrpx_worker_test.cc
       shrpx_http_test.cc
+      shrpx_router_test.cc
       http2_test.cc
       util_test.cc
       nghttp2_gzip_test.c

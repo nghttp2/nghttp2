@@ -44,6 +44,7 @@
 #include "base64_test.h"
 #include "shrpx_config.h"
 #include "ssl.h"
+#include "shrpx_router_test.h"
 
 static int init_suite1(void) { return 0; }
 
@@ -125,6 +126,9 @@ int main(int argc, char *argv[]) {
                    shrpx::test_shrpx_http_create_forwarded) ||
       !CU_add_test(pSuite, "http_create_via_header_value",
                    shrpx::test_shrpx_http_create_via_header_value) ||
+      !CU_add_test(pSuite, "router_match", shrpx::test_shrpx_router_match) ||
+      !CU_add_test(pSuite, "router_match_prefix",
+                   shrpx::test_shrpx_router_match_prefix) ||
       !CU_add_test(pSuite, "util_streq", shrpx::test_util_streq) ||
       !CU_add_test(pSuite, "util_strieq", shrpx::test_util_strieq) ||
       !CU_add_test(pSuite, "util_inp_strlower",

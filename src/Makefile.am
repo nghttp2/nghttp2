@@ -175,6 +175,7 @@ nghttpx_unittest_SOURCES = shrpx-unittest.cc \
 	shrpx_config_test.cc shrpx_config_test.h \
 	shrpx_worker_test.cc shrpx_worker_test.h \
 	shrpx_http_test.cc shrpx_http_test.h \
+	shrpx_router_test.cc shrpx_router_test.h \
 	http2_test.cc http2_test.h \
 	util_test.cc util_test.h \
 	nghttp2_gzip_test.c nghttp2_gzip_test.h \
