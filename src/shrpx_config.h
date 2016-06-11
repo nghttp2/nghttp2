@@ -609,12 +609,8 @@ struct WildcardPattern {
   Router router;
 };
 
-struct DownstreamConfig {
-  struct {
-    ev_tstamp read;
-    ev_tstamp write;
-    ev_tstamp idle_read;
-  } timeout;
+// Configuration to select backend to forward request
+struct RouterConfig {
   Router router;
   // Router for reversed wildcard hosts.  Since this router has
   // wildcard hosts reversed without '*', one should call match()
@@ -623,6 +619,15 @@ struct DownstreamConfig {
   // The index stored in this router is index of wildcard_patterns.
   Router rev_wildcard_router;
   std::vector<WildcardPattern> wildcard_patterns;
+};
+
+struct DownstreamConfig {
+  struct {
+    ev_tstamp read;
+    ev_tstamp write;
+    ev_tstamp idle_read;
+  } timeout;
+  RouterConfig router;
   std::vector<DownstreamAddrGroupConfig> addr_groups;
   // The index of catch-all group in downstream_addr_groups.
   size_t addr_group_catch_all;

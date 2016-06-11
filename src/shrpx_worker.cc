@@ -456,11 +456,15 @@ ConnectionHandler *Worker::get_connection_handler() const {
 
 namespace {
 size_t match_downstream_addr_group_host(
-    const Router &router, const Router &rev_wildcard_router,
-    const std::vector<WildcardPattern> &wildcard_patterns,
-    const StringRef &host, const StringRef &path,
+    const RouterConfig &routerconf, const StringRef &host,
+    const StringRef &path,
     const std::vector<std::shared_ptr<DownstreamAddrGroup>> &groups,
     size_t catch_all) {
+
+  const auto &router = routerconf.router;
+  const auto &rev_wildcard_router = routerconf.rev_wildcard_router;
+  const auto &wildcard_patterns = routerconf.wildcard_patterns;
+
   if (path.empty() || path[0] != '/') {
     auto group = router.match(host, StringRef::from_lit("/"));
     if (group != -1) {
@@ -541,9 +545,8 @@ size_t match_downstream_addr_group_host(
 } // namespace
 
 size_t match_downstream_addr_group(
-    const Router &router, const Router &rev_wildcard_router,
-    const std::vector<WildcardPattern> &wildcard_patterns,
-    const StringRef &hostport, const StringRef &raw_path,
+    const RouterConfig &routerconf, const StringRef &hostport,
+    const StringRef &raw_path,
     const std::vector<std::shared_ptr<DownstreamAddrGroup>> &groups,
     size_t catch_all) {
   if (std::find(std::begin(hostport), std::end(hostport), '/') !=
@@ -558,9 +561,8 @@ size_t match_downstream_addr_group(
   auto path = StringRef{std::begin(raw_path), query};
 
   if (hostport.empty()) {
-    return match_downstream_addr_group_host(router, rev_wildcard_router,
-                                            wildcard_patterns, hostport, path,
-                                            groups, catch_all);
+    return match_downstream_addr_group_host(routerconf, hostport, path, groups,
+                                            catch_all);
   }
 
   StringRef host;
@@ -590,8 +592,7 @@ size_t match_downstream_addr_group(
     util::inp_strlower(low_host);
     host = StringRef{low_host};
   }
-  return match_downstream_addr_group_host(router, rev_wildcard_router,
-                                          wildcard_patterns, host, path, groups,
+  return match_downstream_addr_group_host(routerconf, host, path, groups,
                                           catch_all);
 }
 

@@ -772,6 +772,11 @@ int parse_mapping(Config *config, DownstreamAddrConfig addr,
   addr.tls = params.tls;
   addr.sni = ImmutableString{std::begin(params.sni), std::end(params.sni)};
 
+  auto &routerconf = downstreamconf.router;
+  auto &router = routerconf.router;
+  auto &rw_router = routerconf.rev_wildcard_router;
+  auto &wildcard_patterns = routerconf.wildcard_patterns;
+
   for (const auto &raw_pattern : mapping) {
     auto done = false;
     std::string pattern;
@@ -817,8 +822,6 @@ int parse_mapping(Config *config, DownstreamAddrConfig addr,
       auto host = StringRef{std::begin(g.pattern) + 1, path_first};
       auto path = StringRef{path_first, std::end(g.pattern)};
 
-      auto &wildcard_patterns = downstreamconf.wildcard_patterns;
-
       auto it = std::find_if(
           std::begin(wildcard_patterns), std::end(wildcard_patterns),
           [&host](const WildcardPattern &wp) { return wp.host == host; });
@@ -832,14 +835,15 @@ int parse_mapping(Config *config, DownstreamAddrConfig addr,
         auto rev_host = host.str();
         std::reverse(std::begin(rev_host), std::end(rev_host));
 
-        downstreamconf.rev_wildcard_router.add_route(
-            StringRef{rev_host}, wildcard_patterns.size() - 1);
+        rw_router.add_route(StringRef{rev_host}, wildcard_patterns.size() - 1);
       } else {
         (*it).router.add_route(path, idx);
       }
-    } else {
-      downstreamconf.router.add_route(StringRef{g.pattern}, idx);
+
+      continue;
     }
+
+    router.add_route(StringRef{g.pattern}, idx);
   }
   return 0;
 }
@@ -2811,7 +2815,8 @@ int configure_downstream_group(Config *config, bool http2_proxy,
                                const TLSConfig &tlsconf) {
   auto &downstreamconf = *config->conn.downstream;
   auto &addr_groups = downstreamconf.addr_groups;
-  auto &router = downstreamconf.router;
+  auto &routerconf = downstreamconf.router;
+  auto &router = routerconf.router;
 
   if (addr_groups.empty()) {
     DownstreamAddrConfig addr{};
@@ -2831,10 +2836,9 @@ int configure_downstream_group(Config *config, bool http2_proxy,
       std::move(std::begin(g.addrs), std::end(g.addrs),
                 std::back_inserter(catch_all.addrs));
     }
-    std::vector<WildcardPattern>().swap(downstreamconf.wildcard_patterns);
     std::vector<DownstreamAddrGroupConfig>().swap(addr_groups);
     // maybe not necessary?
-    router = Router();
+    routerconf = RouterConfig{};
     router.add_route(StringRef{catch_all.pattern}, addr_groups.size());
     addr_groups.push_back(std::move(catch_all));
   }
