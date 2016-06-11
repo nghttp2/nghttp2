@@ -459,7 +459,7 @@ size_t match_downstream_addr_group_host(
     const RouterConfig &routerconf, const StringRef &host,
     const StringRef &path,
     const std::vector<std::shared_ptr<DownstreamAddrGroup>> &groups,
-    size_t catch_all) {
+    size_t catch_all, BlockAllocator &balloc) {
 
   const auto &router = routerconf.router;
   const auto &rev_wildcard_router = routerconf.rev_wildcard_router;
@@ -492,12 +492,14 @@ size_t match_downstream_addr_group_host(
   }
 
   if (!wildcard_patterns.empty() && !host.empty()) {
-    auto rev_host_src = std::string{std::begin(host) + 1, std::end(host)};
-    std::reverse(std::begin(rev_host_src), std::end(rev_host_src));
+    auto rev_host_src = make_byte_ref(balloc, host.size() - 1);
+    auto ep =
+        std::copy(std::begin(host) + 1, std::end(host), rev_host_src.base);
+    std::reverse(rev_host_src.base, ep);
+    auto rev_host = StringRef{rev_host_src.base, ep};
 
     ssize_t best_group = -1;
     const RNode *last_node = nullptr;
-    auto rev_host = StringRef{std::begin(rev_host_src), std::end(rev_host_src)};
 
     for (;;) {
       size_t nread = 0;
@@ -548,7 +550,7 @@ size_t match_downstream_addr_group(
     const RouterConfig &routerconf, const StringRef &hostport,
     const StringRef &raw_path,
     const std::vector<std::shared_ptr<DownstreamAddrGroup>> &groups,
-    size_t catch_all) {
+    size_t catch_all, BlockAllocator &balloc) {
   if (std::find(std::begin(hostport), std::end(hostport), '/') !=
       std::end(hostport)) {
     // We use '/' specially, and if '/' is included in host, it breaks
@@ -562,7 +564,7 @@ size_t match_downstream_addr_group(
 
   if (hostport.empty()) {
     return match_downstream_addr_group_host(routerconf, hostport, path, groups,
-                                            catch_all);
+                                            catch_all, balloc);
   }
 
   StringRef host;
@@ -584,16 +586,17 @@ size_t match_downstream_addr_group(
     host = StringRef{std::begin(hostport), p};
   }
 
-  std::string low_host;
   if (std::find_if(std::begin(host), std::end(host), [](char c) {
         return 'A' <= c || c <= 'Z';
       }) != std::end(host)) {
-    low_host = host.str();
-    util::inp_strlower(low_host);
-    host = StringRef{low_host};
+    auto low_host = make_byte_ref(balloc, host.size() + 1);
+    auto ep = std::copy(std::begin(host), std::end(host), low_host.base);
+    *ep = '\0';
+    util::inp_strlower(low_host.base, ep);
+    host = StringRef{low_host.base, ep};
   }
   return match_downstream_addr_group_host(routerconf, host, path, groups,
-                                          catch_all);
+                                          catch_all, balloc);
 }
 
 void downstream_failure(DownstreamAddr *addr) {

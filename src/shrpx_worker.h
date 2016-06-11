@@ -283,7 +283,7 @@ size_t match_downstream_addr_group(
     const RouterConfig &routerconfig, const StringRef &hostport,
     const StringRef &path,
     const std::vector<std::shared_ptr<DownstreamAddrGroup>> &groups,
-    size_t catch_all);
+    size_t catch_all, BlockAllocator &balloc);
 
 void downstream_failure(DownstreamAddr *addr);
 
