@@ -488,12 +488,23 @@ size_t match_downstream_addr_group_host(
   }
 
   if (!wildcard_patterns.empty() && !host.empty()) {
-    auto rev_host = std::string{std::begin(host) + 1, std::end(host)};
-    std::reverse(std::begin(rev_host), std::end(rev_host));
+    auto rev_host_src = std::string{std::begin(host) + 1, std::end(host)};
+    std::reverse(std::begin(rev_host_src), std::end(rev_host_src));
 
-    auto wcidx = rev_wildcard_router.match_prefix(
-        StringRef{std::begin(rev_host), std::end(rev_host)});
-    if (wcidx != -1) {
+    ssize_t best_group = -1;
+    const RNode *last_node = nullptr;
+    auto rev_host = StringRef{std::begin(rev_host_src), std::end(rev_host_src)};
+
+    for (;;) {
+      size_t nread = 0;
+      auto wcidx =
+          rev_wildcard_router.match_prefix(&nread, &last_node, rev_host);
+      if (wcidx == -1) {
+        break;
+      }
+
+      rev_host = StringRef{std::begin(rev_host) + nread, std::end(rev_host)};
+
       auto &wc = wildcard_patterns[wcidx];
       auto group = wc.router.match(StringRef{}, path);
       if (group != -1) {
@@ -503,8 +514,13 @@ size_t match_downstream_addr_group_host(
           LOG(INFO) << "Found wildcard pattern with query " << host << path
                     << ", matched pattern=" << groups[group]->pattern;
         }
-        return group;
+
+        best_group = group;
       }
+    }
+
+    if (best_group != -1) {
+      return best_group;
     }
   }
 
