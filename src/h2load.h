@@ -298,6 +298,9 @@ struct Client {
   ev_timer conn_inactivity_watcher;
   std::string selected_proto;
   bool new_connection_requested;
+  // true if the current connection will be closed, and no more new
+  // request cannot be processed.
+  bool final;
 
   enum { ERR_CONNECT_FAIL = -100 };
 

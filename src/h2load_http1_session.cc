@@ -57,7 +57,7 @@ namespace {
 int htp_msg_begincb(http_parser *htp) {
   auto session = static_cast<Http1Session *>(htp->data);
 
-  if (session->stream_resp_counter_ >= session->stream_req_counter_) {
+  if (session->stream_resp_counter_ > session->stream_req_counter_) {
     return -1;
   }
 
@@ -82,16 +82,21 @@ int htp_msg_completecb(http_parser *htp) {
   auto session = static_cast<Http1Session *>(htp->data);
   auto client = session->get_client();
 
-  auto final = http_should_keep_alive(htp) == 0;
+  client->final = http_should_keep_alive(htp) == 0;
   auto req_stat = client->get_req_stat(session->stream_resp_counter_);
 
   assert(req_stat);
 
-  client->on_stream_close(session->stream_resp_counter_, true, final);
+  auto config = client->worker->config;
+  if (req_stat->data_offset >= config->data_length) {
+    client->on_stream_close(session->stream_resp_counter_, true, client->final);
+  }
 
   session->stream_resp_counter_ += 2;
 
-  if (final) {
+  if (client->final) {
+    session->stream_req_counter_ = session->stream_resp_counter_;
+
     http_parser_pause(htp, 1);
     // Connection is going down.  If we have still request to do,
     // create new connection and keep on doing the job.
@@ -171,8 +176,12 @@ int Http1Session::submit_request() {
   client_->record_request_time(req_stat);
   client_->wb.write(req.c_str(), req.size());
 
-  // increment for next request
-  stream_req_counter_ += 2;
+  // TODO try read some data here
+
+  if (config->data_fd == -1 || config->data_length == 0) {
+    // increment for next request
+    stream_req_counter_ += 2;
+  }
 
   return 0;
 }
@@ -206,11 +215,58 @@ int Http1Session::on_write() {
   if (complete_) {
     return -1;
   }
+
+  auto config = client_->worker->config;
+  auto req_stat = client_->get_req_stat(stream_req_counter_);
+  if (!req_stat) {
+    return 0;
+  }
+
+  if (req_stat->data_offset < config->data_length) {
+    auto req_stat = client_->get_req_stat(stream_req_counter_);
+    auto &wb = client_->wb;
+
+    ssize_t nread;
+    while ((nread = pread(config->data_fd, wb.last, wb.wleft(),
+                          req_stat->data_offset)) == -1 &&
+           errno == EINTR)
+      ;
+
+    if (nread == -1) {
+      return -1;
+    }
+
+    req_stat->data_offset += nread;
+
+    wb.write(nread);
+
+    if (client_->worker->config->verbose) {
+      std::cout << "[send " << nread << " byte(s)]" << std::endl;
+    }
+
+    if (req_stat->data_offset == config->data_length) {
+      // increment for next request
+      stream_req_counter_ += 2;
+
+      if (stream_resp_counter_ == stream_req_counter_) {
+        // Response has already been received
+        client_->on_stream_close(stream_resp_counter_ - 2, true,
+                                 client_->final);
+      }
+    }
+  }
+
   return 0;
 }
 
 void Http1Session::terminate() { complete_ = true; }
 
 Client *Http1Session::get_client() { return client_; }
+
+size_t Http1Session::max_concurrent_streams() {
+  auto config = client_->worker->config;
+
+  return config->data_fd == -1 ? config->max_concurrent_streams : 1;
+}
 
 } // namespace h2load

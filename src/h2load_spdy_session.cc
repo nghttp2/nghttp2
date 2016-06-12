@@ -282,4 +282,8 @@ void SpdySession::handle_window_update(int32_t stream_id, size_t recvlen) {
   }
 }
 
+size_t SpdySession::max_concurrent_streams() {
+  return (size_t)client_->worker->config->max_concurrent_streams;
+}
+
 } // namespace h2load
