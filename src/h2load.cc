@@ -2217,6 +2217,11 @@ int main(int argc, char **argv) {
     }
   }
 
+  std::string content_length_str;
+  if (config.data_fd != -1) {
+    content_length_str = util::utos(config.data_length);
+  }
+
   auto method_it =
       std::find_if(std::begin(shared_nva), std::end(shared_nva),
                    [](const Header &nv) { return nv.name == ":method"; });
@@ -2247,10 +2252,10 @@ int main(int argc, char **argv) {
       h1req += nv.value;
       h1req += "\r\n";
     }
-    // TODO do this for h2 and spdy too.
-    if (config.data_fd != -1) {
+
+    if (!content_length_str.empty()) {
       h1req += "Content-Length: ";
-      h1req += util::utos(config.data_length);
+      h1req += content_length_str;
       h1req += "\r\n";
     }
     h1req += "\r\n";
@@ -2259,8 +2264,8 @@ int main(int argc, char **argv) {
 
     // For nghttp2
     std::vector<nghttp2_nv> nva;
-    // 1 for :path
-    nva.reserve(1 + shared_nva.size());
+    // 2 for :path, and possible content-length
+    nva.reserve(2 + shared_nva.size());
 
     nva.push_back(http2::make_nv_ls(":path", req));
 
@@ -2268,12 +2273,18 @@ int main(int argc, char **argv) {
       nva.push_back(http2::make_nv(nv.name, nv.value, false));
     }
 
+    if (!content_length_str.empty()) {
+      nva.push_back(http2::make_nv(StringRef::from_lit("content-length"),
+                                   StringRef{content_length_str}));
+    }
+
     config.nva.push_back(std::move(nva));
 
     // For spdylay
     std::vector<const char *> cva;
-    // 2 for :path and :version, 1 for terminal nullptr
-    cva.reserve(2 * (2 + shared_nva.size()) + 1);
+    // 3 for :path, :version, and possible content-length, 1 for
+    // terminal nullptr
+    cva.reserve(2 * (3 + shared_nva.size()) + 1);
 
     cva.push_back(":path");
     cva.push_back(req.c_str());
@@ -2288,6 +2299,12 @@ int main(int argc, char **argv) {
     }
     cva.push_back(":version");
     cva.push_back("HTTP/1.1");
+
+    if (!content_length_str.empty()) {
+      cva.push_back("content-length");
+      cva.push_back(content_length_str.c_str());
+    }
+
     cva.push_back(nullptr);
 
     config.nv.push_back(std::move(cva));
