@@ -169,11 +169,11 @@ ssize_t send_callback(nghttp2_session *session, const uint8_t *data,
   auto client = static_cast<Client *>(user_data);
   auto &wb = client->wb;
 
-  if (wb.wleft() == 0) {
+  if (wb.rleft() >= BACKOFF_WRITE_BUFFER_THRES) {
     return NGHTTP2_ERR_WOULDBLOCK;
   }
 
-  return wb.write(data, length);
+  return wb.append(data, length);
 }
 } // namespace
 

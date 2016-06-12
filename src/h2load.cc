@@ -318,7 +318,8 @@ void client_request_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
 } // namespace
 
 Client::Client(uint32_t id, Worker *worker, size_t req_todo)
-    : cstat{},
+    : wb(&worker->mcpool),
+      cstat{},
       worker(worker),
       ssl(nullptr),
       next_addr(config.addrs),
@@ -910,6 +911,10 @@ int Client::on_read(const uint8_t *data, size_t len) {
 }
 
 int Client::on_write() {
+  if (wb.rleft() >= BACKOFF_WRITE_BUFFER_THRES) {
+    return 0;
+  }
+
   if (session->on_write() != 0) {
     return -1;
   }
@@ -943,28 +948,32 @@ int Client::read_clear() {
 }
 
 int Client::write_clear() {
+  std::array<struct iovec, 2> iov;
+
   for (;;) {
-    if (wb.rleft() > 0) {
-      ssize_t nwrite;
-      while ((nwrite = write(fd, wb.pos, wb.rleft())) == -1 && errno == EINTR)
-        ;
-      if (nwrite == -1) {
-        if (errno == EAGAIN || errno == EWOULDBLOCK) {
-          ev_io_start(worker->loop, &wev);
-          return 0;
-        }
-        return -1;
-      }
-      wb.drain(nwrite);
-      continue;
-    }
-    wb.reset();
     if (on_write() != 0) {
       return -1;
     }
-    if (wb.rleft() == 0) {
+
+    auto iovcnt = wb.riovec(iov.data(), iov.size());
+
+    if (iovcnt == 0) {
       break;
     }
+
+    ssize_t nwrite;
+    while ((nwrite = writev(fd, iov.data(), iovcnt)) == -1 && errno == EINTR)
+      ;
+
+    if (nwrite == -1) {
+      if (errno == EAGAIN || errno == EWOULDBLOCK) {
+        ev_io_start(worker->loop, &wev);
+        return 0;
+      }
+      return -1;
+    }
+
+    wb.drain(nwrite);
   }
 
   ev_io_stop(worker->loop, &wev);
@@ -1057,35 +1066,36 @@ int Client::read_tls() {
 int Client::write_tls() {
   ERR_clear_error();
 
+  struct iovec iov;
+
   for (;;) {
-    if (wb.rleft() > 0) {
-      auto rv = SSL_write(ssl, wb.pos, wb.rleft());
-
-      if (rv <= 0) {
-        auto err = SSL_get_error(ssl, rv);
-        switch (err) {
-        case SSL_ERROR_WANT_READ:
-          // renegotiation started
-          return -1;
-        case SSL_ERROR_WANT_WRITE:
-          ev_io_start(worker->loop, &wev);
-          return 0;
-        default:
-          return -1;
-        }
-      }
-
-      wb.drain(rv);
-
-      continue;
-    }
-    wb.reset();
     if (on_write() != 0) {
       return -1;
     }
-    if (wb.rleft() == 0) {
+
+    auto iovcnt = wb.riovec(&iov, 1);
+
+    if (iovcnt == 0) {
       break;
     }
+
+    auto rv = SSL_write(ssl, iov.iov_base, iov.iov_len);
+
+    if (rv <= 0) {
+      auto err = SSL_get_error(ssl, rv);
+      switch (err) {
+      case SSL_ERROR_WANT_READ:
+        // renegotiation started
+        return -1;
+      case SSL_ERROR_WANT_WRITE:
+        ev_io_start(worker->loop, &wev);
+        return 0;
+      default:
+        return -1;
+      }
+    }
+
+    wb.drain(rv);
   }
 
   ev_io_stop(worker->loop, &wev);

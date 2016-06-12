@@ -112,11 +112,11 @@ ssize_t send_callback(spdylay_session *session, const uint8_t *data,
   auto client = static_cast<Client *>(user_data);
   auto &wb = client->wb;
 
-  if (wb.wleft() == 0) {
+  if (wb.rleft() >= BACKOFF_WRITE_BUFFER_THRES) {
     return SPDYLAY_ERR_DEFERRED;
   }
 
-  return wb.write(data, length);
+  return wb.append(data, length);
 }
 } // namespace
 

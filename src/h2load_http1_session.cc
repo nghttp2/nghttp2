@@ -174,7 +174,7 @@ int Http1Session::submit_request() {
   auto req_stat = client_->get_req_stat(stream_req_counter_);
 
   client_->record_request_time(req_stat);
-  client_->wb.write(req.c_str(), req.size());
+  client_->wb.append(req);
 
   // TODO try read some data here
 
@@ -226,8 +226,12 @@ int Http1Session::on_write() {
     auto req_stat = client_->get_req_stat(stream_req_counter_);
     auto &wb = client_->wb;
 
+    // TODO unfortunately, wb has no interface to use with read(2)
+    // family functions.
+    std::array<uint8_t, 16_k> buf;
+
     ssize_t nread;
-    while ((nread = pread(config->data_fd, wb.last, wb.wleft(),
+    while ((nread = pread(config->data_fd, buf.data(), buf.size(),
                           req_stat->data_offset)) == -1 &&
            errno == EINTR)
       ;
@@ -238,7 +242,7 @@ int Http1Session::on_write() {
 
     req_stat->data_offset += nread;
 
-    wb.write(nread);
+    wb.append(buf.data(), nread);
 
     if (client_->worker->config->verbose) {
       std::cout << "[send " << nread << " byte(s)]" << std::endl;

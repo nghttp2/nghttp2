@@ -50,12 +50,14 @@
 #include <openssl/ssl.h>
 
 #include "http2.h"
-#include "buffer.h"
+#include "memchunk.h"
 #include "template.h"
 
 using namespace nghttp2;
 
 namespace h2load {
+
+constexpr auto BACKOFF_WRITE_BUFFER_THRES = 16_k;
 
 class Session;
 struct Worker;
@@ -225,6 +227,7 @@ struct Sampling {
 };
 
 struct Worker {
+  MemchunkPool mcpool;
   Stats stats;
   Sampling request_times_smp;
   Sampling client_smp;
@@ -267,6 +270,7 @@ struct Stream {
 };
 
 struct Client {
+  DefaultMemchunks wb;
   std::unordered_map<int32_t, Stream> streams;
   ClientStat cstat;
   std::unique_ptr<Session> session;
@@ -293,7 +297,6 @@ struct Client {
   // The client id per worker
   uint32_t id;
   int fd;
-  Buffer<64_k> wb;
   ev_timer conn_active_watcher;
   ev_timer conn_inactivity_watcher;
   std::string selected_proto;
