@@ -1680,7 +1680,9 @@ Options:
               Default: )" << NGHTTP2_CLEARTEXT_PROTO_VERSION_ID << R"(
   -d, --data=<PATH>
               Post FILE to  server.  The request method  is changed to
-              POST.
+              POST.   For  http/1.1 connection,  if  -d  is used,  the
+              maximum number of in-flight pipelined requests is set to
+              1.
   -r, --rate=<N>
               Specifies  the  fixed  rate  at  which  connections  are
               created.   The   rate  must   be  a   positive  integer,
