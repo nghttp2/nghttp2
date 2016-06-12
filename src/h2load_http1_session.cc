@@ -176,14 +176,14 @@ int Http1Session::submit_request() {
   client_->record_request_time(req_stat);
   client_->wb.append(req);
 
-  // TODO try read some data here
-
   if (config->data_fd == -1 || config->data_length == 0) {
     // increment for next request
     stream_req_counter_ += 2;
+
+    return 0;
   }
 
-  return 0;
+  return on_write();
 }
 
 int Http1Session::on_read(const uint8_t *data, size_t len) {
