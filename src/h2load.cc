@@ -269,7 +269,7 @@ bool check_stop_client_request_timeout(Client *client, ev_timer *w) {
   auto nreq = client->req_todo - client->req_started;
 
   if (nreq == 0 ||
-      client->streams.size() >= (size_t)config.max_concurrent_streams) {
+      client->streams.size() >= client->session->max_concurrent_streams()) {
     // no more requests to make, stop timer
     ev_timer_stop(client->worker->loop, w);
     return true;
@@ -330,7 +330,8 @@ Client::Client(uint32_t id, Worker *worker, size_t req_todo)
       req_done(0),
       id(id),
       fd(-1),
-      new_connection_requested(false) {
+      new_connection_requested(false),
+      final(false) {
   ev_io_init(&wev, writecb, 0, EV_WRITE);
   ev_io_init(&rev, readcb, 0, EV_READ);
 
@@ -518,6 +519,8 @@ void Client::disconnect() {
     close(fd);
     fd = -1;
   }
+
+  final = false;
 }
 
 int Client::submit_request() {
@@ -860,7 +863,7 @@ int Client::connection_made() {
 
   if (!config.timing_script) {
     auto nreq =
-        std::min(req_todo - req_started, (size_t)config.max_concurrent_streams);
+        std::min(req_todo - req_started, session->max_concurrent_streams());
     for (; nreq > 0; --nreq) {
       if (submit_request() != 0) {
         process_request_failure();
@@ -2242,6 +2245,12 @@ int main(int argc, char **argv) {
       h1req += nv.name;
       h1req += ": ";
       h1req += nv.value;
+      h1req += "\r\n";
+    }
+    // TODO do this for h2 and spdy too.
+    if (config.data_fd != -1) {
+      h1req += "Content-Length: ";
+      h1req += util::utos(config.data_length);
       h1req += "\r\n";
     }
     h1req += "\r\n";

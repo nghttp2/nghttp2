@@ -289,4 +289,8 @@ void Http2Session::terminate() {
   nghttp2_session_terminate_session(session_, NGHTTP2_NO_ERROR);
 }
 
+size_t Http2Session::max_concurrent_streams() {
+  return (size_t)client_->worker->config->max_concurrent_streams;
+}
+
 } // namespace h2load

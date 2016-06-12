@@ -42,6 +42,7 @@ public:
   virtual int on_read(const uint8_t *data, size_t len);
   virtual int on_write();
   virtual void terminate();
+  virtual size_t max_concurrent_streams();
   Client *get_client();
   int32_t stream_req_counter_;
   int32_t stream_resp_counter_;

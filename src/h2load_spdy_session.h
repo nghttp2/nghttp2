@@ -44,6 +44,7 @@ public:
   virtual int on_read(const uint8_t *data, size_t len);
   virtual int on_write();
   virtual void terminate();
+  virtual size_t max_concurrent_streams();
   void handle_window_update(int32_t stream_id, size_t recvlen);
 
 private:
