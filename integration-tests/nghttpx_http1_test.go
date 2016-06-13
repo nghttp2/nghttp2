@@ -795,16 +795,16 @@ func TestH1H2RespPhaseReturn(t *testing.T) {
 	}
 }
 
-// TestH1APIBackendReplace exercise backendconfig API endpoint
-// routine for successful case.
-func TestH1APIBackendReplace(t *testing.T) {
+// TestH1APIBackendconfig exercise backendconfig API endpoint routine
+// for successful case.
+func TestH1APIBackendconfig(t *testing.T) {
 	st := newServerTesterConnectPort([]string{"-f127.0.0.1,3010;api;no-tls"}, t, func(w http.ResponseWriter, r *http.Request) {
 		t.Fatalf("request should not be forwarded")
 	}, 3010)
 	defer st.Close()
 
 	res, err := st.http1(requestParam{
-		name:   "TestH1APIBackendReplace",
+		name:   "TestH1APIBackendconfig",
 		path:   "/api/v1beta1/backendconfig",
 		method: "PUT",
 		body: []byte(`# comment
@@ -832,16 +832,16 @@ backend=127.0.0.1,3011
 	}
 }
 
-// TestH1APIBackendReplaceQuery exercise backendconfig API endpoint
+// TestH1APIBackendconfigQuery exercise backendconfig API endpoint
 // routine with query.
-func TestH1APIBackendReplaceQuery(t *testing.T) {
+func TestH1APIBackendconfigQuery(t *testing.T) {
 	st := newServerTesterConnectPort([]string{"-f127.0.0.1,3010;api;no-tls"}, t, func(w http.ResponseWriter, r *http.Request) {
 		t.Fatalf("request should not be forwarded")
 	}, 3010)
 	defer st.Close()
 
 	res, err := st.http1(requestParam{
-		name:   "TestH1APIBackendReplaceQuery",
+		name:   "TestH1APIBackendconfigQuery",
 		path:   "/api/v1beta1/backendconfig?foo=bar",
 		method: "PUT",
 		body: []byte(`# comment
@@ -869,16 +869,16 @@ backend=127.0.0.1,3011
 	}
 }
 
-// TestH1APIBackendReplaceBadMethod exercise backendconfig API
-// endpoint routine with bad method.
-func TestH1APIBackendReplaceBadMethod(t *testing.T) {
+// TestH1APIBackendconfigBadMethod exercise backendconfig API endpoint
+// routine with bad method.
+func TestH1APIBackendconfigBadMethod(t *testing.T) {
 	st := newServerTesterConnectPort([]string{"-f127.0.0.1,3010;api;no-tls"}, t, func(w http.ResponseWriter, r *http.Request) {
 		t.Fatalf("request should not be forwarded")
 	}, 3010)
 	defer st.Close()
 
 	res, err := st.http1(requestParam{
-		name:   "TestH1APIBackendReplaceBadMethod",
+		name:   "TestH1APIBackendconfigBadMethod",
 		path:   "/api/v1beta1/backendconfig",
 		method: "GET",
 		body: []byte(`# comment

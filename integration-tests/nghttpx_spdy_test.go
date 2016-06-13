@@ -476,16 +476,16 @@ func TestS3H2RespPhaseReturn(t *testing.T) {
 	}
 }
 
-// TestS3APIBackendReplace exercise backendconfig API endpoint
-// routine for successful case.
-func TestS3APIBackendReplace(t *testing.T) {
+// TestS3APIBackendconfig exercise backendconfig API endpoint routine
+// for successful case.
+func TestS3APIBackendconfig(t *testing.T) {
 	st := newServerTesterTLSConnectPort([]string{"--npn-list=spdy/3.1", "-f127.0.0.1,3010;api"}, t, func(w http.ResponseWriter, r *http.Request) {
 		t.Fatalf("request should not be forwarded")
 	}, 3010)
 	defer st.Close()
 
 	res, err := st.spdy(requestParam{
-		name:   "TestS3APIBackendReplace",
+		name:   "TestS3APIBackendconfig",
 		path:   "/api/v1beta1/backendconfig",
 		method: "PUT",
 		body: []byte(`# comment
@@ -513,16 +513,16 @@ backend=127.0.0.1,3011
 	}
 }
 
-// TestS3APIBackendReplaceQuery exercise backendconfig API endpoint
+// TestS3APIBackendconfigQuery exercise backendconfig API endpoint
 // routine with query.
-func TestS3APIBackendReplaceQuery(t *testing.T) {
+func TestS3APIBackendconfigQuery(t *testing.T) {
 	st := newServerTesterTLSConnectPort([]string{"--npn-list=spdy/3.1", "-f127.0.0.1,3010;api"}, t, func(w http.ResponseWriter, r *http.Request) {
 		t.Fatalf("request should not be forwarded")
 	}, 3010)
 	defer st.Close()
 
 	res, err := st.spdy(requestParam{
-		name:   "TestS3APIBackendReplaceQuery",
+		name:   "TestS3APIBackendconfigQuery",
 		path:   "/api/v1beta1/backendconfig?foo=bar",
 		method: "PUT",
 		body: []byte(`# comment
@@ -550,16 +550,16 @@ backend=127.0.0.1,3011
 	}
 }
 
-// TestS3APIBackendReplaceBadMethod exercise backendconfig API
-// endpoint routine with bad method.
-func TestS3APIBackendReplaceBadMethod(t *testing.T) {
+// TestS3APIBackendconfigBadMethod exercise backendconfig API endpoint
+// routine with bad method.
+func TestS3APIBackendconfigBadMethod(t *testing.T) {
 	st := newServerTesterTLSConnectPort([]string{"--npn-list=spdy/3.1", "-f127.0.0.1,3010;api"}, t, func(w http.ResponseWriter, r *http.Request) {
 		t.Fatalf("request should not be forwarded")
 	}, 3010)
 	defer st.Close()
 
 	res, err := st.spdy(requestParam{
-		name:   "TestS3APIBackendReplaceBadMethod",
+		name:   "TestS3APIBackendconfigBadMethod",
 		path:   "/api/v1beta1/backendconfig",
 		method: "GET",
 		body: []byte(`# comment
