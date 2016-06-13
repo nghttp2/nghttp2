@@ -131,7 +131,11 @@ int APIDownstreamConnection::push_request_headers() {
   auto &req = downstream_->request();
   auto &resp = downstream_->response();
 
-  if (req.path != StringRef::from_lit("/api/v1beta1/backendconfig")) {
+  auto path =
+      StringRef{std::begin(req.path),
+                std::find(std::begin(req.path), std::end(req.path), '?')};
+
+  if (path != StringRef::from_lit("/api/v1beta1/backendconfig")) {
     send_reply(404, API_FAILURE);
 
     return 0;

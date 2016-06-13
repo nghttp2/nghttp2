@@ -1882,6 +1882,43 @@ backend=127.0.0.1,3011
 	}
 }
 
+// TestH2APIBackendReplaceQuery exercise backendconfig API endpoint
+// routine with query.
+func TestH2APIBackendReplaceQuery(t *testing.T) {
+	st := newServerTesterConnectPort([]string{"-f127.0.0.1,3010;api;no-tls"}, t, func(w http.ResponseWriter, r *http.Request) {
+		t.Fatalf("request should not be forwarded")
+	}, 3010)
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name:   "TestH2APIBackendReplaceQuery",
+		path:   "/api/v1beta1/backendconfig?foo=bar",
+		method: "PUT",
+		body: []byte(`# comment
+backend=127.0.0.1,3011
+
+`),
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+	if got, want := res.status, 200; got != want {
+		t.Errorf("res.status: %v; want %v", got, want)
+	}
+
+	var apiResp APIResponse
+	err = json.Unmarshal(res.body, &apiResp)
+	if err != nil {
+		t.Fatalf("Error unmarshaling API response: %v", err)
+	}
+	if got, want := apiResp.Status, "Success"; got != want {
+		t.Errorf("apiResp.Status: %v; want %v", got, want)
+	}
+	if got, want := apiResp.Code, 200; got != want {
+		t.Errorf("apiResp.Status: %v; want %v", got, want)
+	}
+}
+
 // TestH2APIBackendReplaceBadMethod exercise backendconfig API
 // endpoint routine with bad method.
 func TestH2APIBackendReplaceBadMethod(t *testing.T) {

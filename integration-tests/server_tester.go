@@ -379,8 +379,9 @@ func (st *serverTester) http1(rp requestParam) (*serverResponse, error) {
 		if err != nil {
 			st.t.Fatalf("Error parsing URL from st.url %v: %v", st.url, err)
 		}
-		u.Path = rp.path
-		reqURL = u.String()
+		u.Path = ""
+		u.RawQuery = ""
+		reqURL = u.String() + rp.path
 	}
 
 	req, err := http.NewRequest(method, reqURL, body)
