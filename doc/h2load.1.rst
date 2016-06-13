@@ -108,7 +108,9 @@ OPTIONS
 .. option:: -d, --data=<PATH>
 
     Post FILE to  server.  The request method  is changed to
-    POST.
+    POST.   For  http/1.1 connection,  if  :option:`-d`  is used,  the
+    maximum number of in-flight pipelined requests is set to
+    1.
 
 .. option:: -r, --rate=<N>
 

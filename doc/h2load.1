@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "H2LOAD" "1" "June 09, 2016" "1.12.0-DEV" "nghttp2"
+.TH "H2LOAD" "1" "June 14, 2016" "1.12.0-DEV" "nghttp2"
 .SH NAME
 h2load \- HTTP/2 benchmarking tool
 .
@@ -138,7 +138,9 @@ Default: \fBh2c\fP
 .TP
 .B \-d, \-\-data=<PATH>
 Post FILE to  server.  The request method  is changed to
-POST.
+POST.   For  http/1.1 connection,  if  \fI\%\-d\fP  is used,  the
+maximum number of in\-flight pipelined requests is set to
+1.
 .UNINDENT
 .INDENT 0.0
 .TP

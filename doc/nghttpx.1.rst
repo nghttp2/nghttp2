@@ -1574,7 +1574,7 @@ status
     The request was successful.
 
   Failure
-    The request was faield.  No change has been made.
+    The request was failed.  No change has been made.
 
 code
   HTTP status code
@@ -1585,14 +1585,14 @@ some cases where the error has occurred before reaching API endpoint
 
 The following section describes available API endpoints.
 
-PUT /api/v1beta1/backend/replace
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+PUT /api/v1beta1/backendconfig
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-This API replaces the current set of backend servers with the
-requested ones.  The request must carry request body with method PUT
-or POST.  The request body must be nghttpx configuration file format.
-For configuration file format, see `FILES`_ section.  The line
-separator inside the request body must be single LF (0x0A).
+This API replaces the current backend server settings with the
+requested ones.  The request method should be PUT, but POST is also
+acceptable.  The request body must be nghttpx configuration file
+format.  For configuration file format, see `FILES`_ section.  The
+line separator inside the request body must be single LF (0x0A).
 Currently, only :option:`backend <--backend>` option is parsed, the
 others are simply ignored.  The semantics of this API is replace the
 current backend with the backend options in request body.  Describe
