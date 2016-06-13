@@ -482,7 +482,7 @@ status
     The request was successful.
 
   Failure
-    The request was faield.  No change has been made.
+    The request was failed.  No change has been made.
 
 code
   HTTP status code
