@@ -795,7 +795,7 @@ func TestH1H2RespPhaseReturn(t *testing.T) {
 	}
 }
 
-// TestH1APIBackendReplace exercise backend/replace API endpoint
+// TestH1APIBackendReplace exercise backendconfig API endpoint
 // routine for successful case.
 func TestH1APIBackendReplace(t *testing.T) {
 	st := newServerTesterConnectPort([]string{"-f127.0.0.1,3010;api;no-tls"}, t, func(w http.ResponseWriter, r *http.Request) {
@@ -805,7 +805,7 @@ func TestH1APIBackendReplace(t *testing.T) {
 
 	res, err := st.http1(requestParam{
 		name:   "TestH1APIBackendReplace",
-		path:   "/api/v1beta1/backend/replace",
+		path:   "/api/v1beta1/backendconfig",
 		method: "PUT",
 		body: []byte(`# comment
 backend=127.0.0.1,3011
@@ -832,7 +832,7 @@ backend=127.0.0.1,3011
 	}
 }
 
-// TestH1APIBackendReplaceBadMethod exercise backend/replace API
+// TestH1APIBackendReplaceBadMethod exercise backendconfig API
 // endpoint routine with bad method.
 func TestH1APIBackendReplaceBadMethod(t *testing.T) {
 	st := newServerTesterConnectPort([]string{"-f127.0.0.1,3010;api;no-tls"}, t, func(w http.ResponseWriter, r *http.Request) {
@@ -842,7 +842,7 @@ func TestH1APIBackendReplaceBadMethod(t *testing.T) {
 
 	res, err := st.http1(requestParam{
 		name:   "TestH1APIBackendReplaceBadMethod",
-		path:   "/api/v1beta1/backend/replace",
+		path:   "/api/v1beta1/backendconfig",
 		method: "GET",
 		body: []byte(`# comment
 backend=127.0.0.1,3011
@@ -869,8 +869,8 @@ backend=127.0.0.1,3011
 	}
 }
 
-// TestH1APINotFound exercise backend/replace API endpoint routine
-// when API endpoint is not found.
+// TestH1APINotFound exercise backendconfig API endpoint routine when
+// API endpoint is not found.
 func TestH1APINotFound(t *testing.T) {
 	st := newServerTesterConnectPort([]string{"-f127.0.0.1,3010;api;no-tls"}, t, func(w http.ResponseWriter, r *http.Request) {
 		t.Fatalf("request should not be forwarded")

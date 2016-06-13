@@ -476,7 +476,7 @@ func TestS3H2RespPhaseReturn(t *testing.T) {
 	}
 }
 
-// TestS3APIBackendReplace exercise backend/replace API endpoint
+// TestS3APIBackendReplace exercise backendconfig API endpoint
 // routine for successful case.
 func TestS3APIBackendReplace(t *testing.T) {
 	st := newServerTesterTLSConnectPort([]string{"--npn-list=spdy/3.1", "-f127.0.0.1,3010;api"}, t, func(w http.ResponseWriter, r *http.Request) {
@@ -486,7 +486,7 @@ func TestS3APIBackendReplace(t *testing.T) {
 
 	res, err := st.spdy(requestParam{
 		name:   "TestS3APIBackendReplace",
-		path:   "/api/v1beta1/backend/replace",
+		path:   "/api/v1beta1/backendconfig",
 		method: "PUT",
 		body: []byte(`# comment
 backend=127.0.0.1,3011
@@ -513,7 +513,7 @@ backend=127.0.0.1,3011
 	}
 }
 
-// TestS3APIBackendReplaceBadMethod exercise backend/replace API
+// TestS3APIBackendReplaceBadMethod exercise backendconfig API
 // endpoint routine with bad method.
 func TestS3APIBackendReplaceBadMethod(t *testing.T) {
 	st := newServerTesterTLSConnectPort([]string{"--npn-list=spdy/3.1", "-f127.0.0.1,3010;api"}, t, func(w http.ResponseWriter, r *http.Request) {
@@ -523,7 +523,7 @@ func TestS3APIBackendReplaceBadMethod(t *testing.T) {
 
 	res, err := st.spdy(requestParam{
 		name:   "TestS3APIBackendReplaceBadMethod",
-		path:   "/api/v1beta1/backend/replace",
+		path:   "/api/v1beta1/backendconfig",
 		method: "GET",
 		body: []byte(`# comment
 backend=127.0.0.1,3011
@@ -550,8 +550,8 @@ backend=127.0.0.1,3011
 	}
 }
 
-// TestS3APINotFound exercise backend/replace API endpoint routine
-// when API endpoint is not found.
+// TestS3APINotFound exercise backendconfig API endpoint routine when
+// API endpoint is not found.
 func TestS3APINotFound(t *testing.T) {
 	st := newServerTesterTLSConnectPort([]string{"--npn-list=spdy/3.1", "-f127.0.0.1,3010;api"}, t, func(w http.ResponseWriter, r *http.Request) {
 		t.Fatalf("request should not be forwarded")
