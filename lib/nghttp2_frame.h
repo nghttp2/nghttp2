@@ -52,14 +52,12 @@
 #define NGHTTP2_FRAMEBUF_CHUNKLEN                                              \
   (NGHTTP2_FRAME_HDLEN + 1 + NGHTTP2_MAX_PAYLOADLEN)
 
-/* Number of inbound buffer */
-#define NGHTTP2_FRAMEBUF_MAX_NUM 5
-
 /* The default length of DATA frame payload. */
 #define NGHTTP2_DATA_PAYLOADLEN NGHTTP2_MAX_FRAME_SIZE_MIN
 
-/* Maximum headers payload length, calculated in compressed form.
-   This applies to transmission only. */
+/* Maximum headers block size to send, calculated using
+   nghttp2_hd_deflate_bound().  This is the default value, and can be
+   overridden by nghttp2_option_set_max_send_header_block_size(). */
 #define NGHTTP2_MAX_HEADERSLEN 65536
 
 /* The number of bytes for each SETTINGS entry */

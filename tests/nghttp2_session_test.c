@@ -4842,6 +4842,51 @@ void test_nghttp2_submit_headers_continuation(void) {
   nghttp2_session_del(session);
 }
 
+void test_nghttp2_submit_headers_continuation_extra_large(void) {
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+  nghttp2_nv nv[] = {
+      MAKE_NV("h1", ""), MAKE_NV("h1", ""), MAKE_NV("h1", ""),
+      MAKE_NV("h1", ""), MAKE_NV("h1", ""), MAKE_NV("h1", ""),
+  };
+  nghttp2_outbound_item *item;
+  uint8_t data[16384];
+  size_t i;
+  my_user_data ud;
+  nghttp2_option *opt;
+
+  memset(data, '0', sizeof(data));
+  for (i = 0; i < ARRLEN(nv); ++i) {
+    nv[i].valuelen = sizeof(data);
+    nv[i].value = data;
+  }
+
+  memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
+  callbacks.send_callback = null_send_callback;
+  callbacks.on_frame_send_callback = on_frame_send_callback;
+
+  /* The default size of max send header block length is too small to
+     send these header fields.  Expand it. */
+  nghttp2_option_new(&opt);
+  nghttp2_option_set_max_send_header_block_length(opt, 102400);
+
+  CU_ASSERT(0 == nghttp2_session_client_new2(&session, &callbacks, &ud, opt));
+  CU_ASSERT(1 == nghttp2_submit_headers(session, NGHTTP2_FLAG_END_STREAM, -1,
+                                        NULL, nv, ARRLEN(nv), NULL));
+  item = nghttp2_session_get_next_ob_item(session);
+  CU_ASSERT(NGHTTP2_HEADERS == item->frame.hd.type);
+  CU_ASSERT((NGHTTP2_FLAG_END_STREAM | NGHTTP2_FLAG_END_HEADERS) ==
+            item->frame.hd.flags);
+  CU_ASSERT(0 == (item->frame.hd.flags & NGHTTP2_FLAG_PRIORITY));
+
+  ud.frame_send_cb_called = 0;
+  CU_ASSERT(0 == nghttp2_session_send(session));
+  CU_ASSERT(1 == ud.frame_send_cb_called);
+
+  nghttp2_session_del(session);
+  nghttp2_option_del(opt);
+}
+
 void test_nghttp2_submit_priority(void) {
   nghttp2_session *session;
   nghttp2_session_callbacks callbacks;

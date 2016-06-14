@@ -62,13 +62,18 @@ typedef enum {
   NGHTTP2_OPT_MAX_RESERVED_REMOTE_STREAMS = 1 << 4,
   NGHTTP2_OPT_USER_RECV_EXT_TYPES = 1 << 5,
   NGHTTP2_OPT_NO_AUTO_PING_ACK = 1 << 6,
-  NGHTTP2_OPT_BUILTIN_RECV_EXT_TYPES = 1 << 7
+  NGHTTP2_OPT_BUILTIN_RECV_EXT_TYPES = 1 << 7,
+  NGHTTP2_OPT_MAX_SEND_HEADER_BLOCK_LENGTH = 1 << 8,
 } nghttp2_option_flag;
 
 /**
  * Struct to store option values for nghttp2_session.
  */
 struct nghttp2_option {
+  /**
+   * NGHTTP2_OPT_MAX_SEND_HEADER_BLOCK_LENGTH
+   */
+  size_t max_send_header_block_length;
   /**
    * Bitwise OR of nghttp2_option_flag to determine that which fields
    * are specified.

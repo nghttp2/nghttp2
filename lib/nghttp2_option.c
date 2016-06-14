@@ -95,3 +95,9 @@ void nghttp2_option_set_no_auto_ping_ack(nghttp2_option *option, int val) {
   option->opt_set_mask |= NGHTTP2_OPT_NO_AUTO_PING_ACK;
   option->no_auto_ping_ack = val;
 }
+
+void nghttp2_option_set_max_send_header_block_length(nghttp2_option *option,
+                                                     size_t val) {
+  option->opt_set_mask |= NGHTTP2_OPT_MAX_SEND_HEADER_BLOCK_LENGTH;
+  option->max_send_header_block_length = val;
+}

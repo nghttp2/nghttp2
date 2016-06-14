@@ -2415,6 +2415,21 @@ NGHTTP2_EXTERN void nghttp2_option_set_no_auto_ping_ack(nghttp2_option *option,
 /**
  * @function
  *
+ * This option sets the maximum length of header block (a set of
+ * header fields per one HEADERS frame) to send.  The length of a
+ * given set of header fields is calculated using
+ * `nghttp2_hd_deflate_bound()`.  The default value is 64KiB.  If
+ * application attempts to send header fields larger than this limit,
+ * the transmission of the frame fails with error code
+ * :enum:`NGHTTP2_ERR_FRAME_SIZE_ERROR`.
+ */
+NGHTTP2_EXTERN void
+nghttp2_option_set_max_send_header_block_length(nghttp2_option *option,
+                                                size_t val);
+
+/**
+ * @function
+ *
  * Initializes |*session_ptr| for client use.  The all members of
  * |callbacks| are copied to |*session_ptr|.  Therefore |*session_ptr|
  * does not store |callbacks|.  The |user_data| is an arbitrary user

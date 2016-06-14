@@ -389,6 +389,7 @@ static int session_new(nghttp2_session **session_ptr,
                        void *user_data, int server,
                        const nghttp2_option *option, nghttp2_mem *mem) {
   int rv;
+  size_t nbuffer;
 
   if (mem == NULL) {
     mem = nghttp2_mem_default();
@@ -441,16 +442,6 @@ static int session_new(nghttp2_session **session_ptr,
     (*session_ptr)->server = 1;
   }
 
-  /* 1 for Pad Field. */
-  rv = nghttp2_bufs_init3(&(*session_ptr)->aob.framebufs,
-                          NGHTTP2_FRAMEBUF_CHUNKLEN, NGHTTP2_FRAMEBUF_MAX_NUM,
-                          1, NGHTTP2_FRAME_HDLEN + 1, mem);
-  if (rv != 0) {
-    goto fail_aob_framebuf;
-  }
-
-  active_outbound_item_reset(&(*session_ptr)->aob, mem);
-
   init_settings(&(*session_ptr)->remote_settings);
   init_settings(&(*session_ptr)->local_settings);
 
@@ -459,6 +450,8 @@ static int session_new(nghttp2_session **session_ptr,
 
   /* Limit max outgoing concurrent streams to sensible value */
   (*session_ptr)->remote_settings.max_concurrent_streams = 100;
+
+  (*session_ptr)->max_send_header_block_length = NGHTTP2_MAX_HEADERSLEN;
 
   if (option) {
     if ((option->opt_set_mask & NGHTTP2_OPT_NO_AUTO_WINDOW_UPDATE) &&
@@ -504,7 +497,30 @@ static int session_new(nghttp2_session **session_ptr,
         option->no_auto_ping_ack) {
       (*session_ptr)->opt_flags |= NGHTTP2_OPTMASK_NO_AUTO_PING_ACK;
     }
+
+    if (option->opt_set_mask & NGHTTP2_OPT_MAX_SEND_HEADER_BLOCK_LENGTH) {
+      (*session_ptr)->max_send_header_block_length =
+          option->max_send_header_block_length;
+    }
   }
+
+  nbuffer = ((*session_ptr)->max_send_header_block_length +
+             NGHTTP2_FRAMEBUF_CHUNKLEN - 1) /
+            NGHTTP2_FRAMEBUF_CHUNKLEN;
+
+  if (nbuffer == 0) {
+    nbuffer = 1;
+  }
+
+  /* 1 for Pad Field. */
+  rv = nghttp2_bufs_init3(&(*session_ptr)->aob.framebufs,
+                          NGHTTP2_FRAMEBUF_CHUNKLEN, nbuffer, 1,
+                          NGHTTP2_FRAME_HDLEN + 1, mem);
+  if (rv != 0) {
+    goto fail_aob_framebuf;
+  }
+
+  active_outbound_item_reset(&(*session_ptr)->aob, mem);
 
   (*session_ptr)->callbacks = *callbacks;
   (*session_ptr)->user_data = user_data;
@@ -1951,7 +1967,7 @@ static int session_prep_frame(nghttp2_session *session,
             session, frame->headers.nva, frame->headers.nvlen,
             NGHTTP2_PRIORITY_SPECLEN);
 
-        if (estimated_payloadlen > NGHTTP2_MAX_HEADERSLEN) {
+        if (estimated_payloadlen > session->max_send_header_block_length) {
           return NGHTTP2_ERR_FRAME_SIZE_ERROR;
         }
 
@@ -1970,7 +1986,7 @@ static int session_prep_frame(nghttp2_session *session,
             session, frame->headers.nva, frame->headers.nvlen,
             NGHTTP2_PRIORITY_SPECLEN);
 
-        if (estimated_payloadlen > NGHTTP2_MAX_HEADERSLEN) {
+        if (estimated_payloadlen > session->max_send_header_block_length) {
           return NGHTTP2_ERR_FRAME_SIZE_ERROR;
         }
 
@@ -2089,7 +2105,7 @@ static int session_prep_frame(nghttp2_session *session,
       estimated_payloadlen = session_estimate_headers_payload(
           session, frame->push_promise.nva, frame->push_promise.nvlen, 0);
 
-      if (estimated_payloadlen > NGHTTP2_MAX_HEADERSLEN) {
+      if (estimated_payloadlen > session->max_send_header_block_length) {
         return NGHTTP2_ERR_FRAME_SIZE_ERROR;
       }
 
