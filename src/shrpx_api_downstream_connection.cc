@@ -192,8 +192,8 @@ int APIDownstreamConnection::end_upload_data() {
 
   auto output = downstream_->get_request_buf();
 
-  struct iovec iov;
-  auto iovcnt = output->riovec(&iov, 2);
+  std::array<struct iovec, 2> iov;
+  auto iovcnt = output->riovec(iov.data(), 2);
 
   if (iovcnt == 0) {
     send_reply(200, API_SUCCESS);
@@ -210,8 +210,8 @@ int APIDownstreamConnection::end_upload_data() {
     auto len = output->rleft();
     output->remove(large_buf.get(), len);
 
-    iov.iov_base = large_buf.get();
-    iov.iov_len = len;
+    iov[0].iov_base = large_buf.get();
+    iov[0].iov_len = len;
   }
 
   Config config{};
@@ -229,8 +229,8 @@ int APIDownstreamConnection::end_upload_data() {
 
   std::set<StringRef> include_set;
 
-  for (auto first = reinterpret_cast<const uint8_t *>(iov.iov_base),
-            last = first + iov.iov_len;
+  for (auto first = reinterpret_cast<const uint8_t *>(iov[0].iov_base),
+            last = first + iov[0].iov_len;
        first != last;) {
     auto eol = std::find(first, last, '\n');
     if (eol == last) {
