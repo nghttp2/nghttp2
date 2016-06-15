@@ -112,6 +112,8 @@ void ConnectBlocker::offline() {
 void ConnectBlocker::online() {
   ev_timer_stop(loop_, &timer_);
 
+  call_unblock_func();
+
   fail_count_ = 0;
 
   offline_ = false;
