@@ -661,8 +661,6 @@ struct ConnectionConfig {
     // TCP fastopen.  If this is positive, it is passed to
     // setsockopt() along with TCP_FASTOPEN.
     int fastopen;
-    // true if at least one of UpstreamAddr has api enabled
-    bool api;
   } listener;
 
   struct {
@@ -685,6 +683,8 @@ struct ConnectionConfig {
 struct APIConfig {
   // Maximum request body size for one API request
   size_t max_request_body;
+  // true if at least one of UpstreamAddr has api enabled
+  bool enabled;
 };
 
 struct Config {

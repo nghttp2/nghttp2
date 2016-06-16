@@ -120,7 +120,7 @@ ConnectionHandler::ConnectionHandler(struct ev_loop *loop)
       loop_(loop),
       tls_ticket_key_memcached_get_retry_count_(0),
       tls_ticket_key_memcached_fail_count_(0),
-      worker_round_robin_cnt_(get_config()->conn.listener.api ? 1 : 0),
+      worker_round_robin_cnt_(get_config()->api.enabled ? 1 : 0),
       graceful_shutdown_(false) {
   ev_timer_init(&disable_acceptor_timer_, acceptor_disable_cb, 0., 0.);
   disable_acceptor_timer_.data = this;
@@ -268,10 +268,10 @@ int ConnectionHandler::create_worker_thread(size_t num) {
 
   auto &tlsconf = get_config()->tls;
   auto &memcachedconf = get_config()->tls.session_cache.memcached;
-  auto &listenerconf = get_config()->conn.listener;
+  auto &apiconf = get_config()->api;
 
   // We have dedicated worker for API request processing.
-  if (listenerconf.api) {
+  if (apiconf.enabled) {
     ++num;
   }
 
@@ -407,9 +407,9 @@ int ConnectionHandler::handle_connection(int fd, sockaddr *addr, int addrlen,
     }
 
     if (++worker_round_robin_cnt_ == workers_.size()) {
-      auto &listenerconf = get_config()->conn.listener;
+      auto &apiconf = get_config()->api;
 
-      if (listenerconf.api) {
+      if (apiconf.enabled) {
         worker_round_robin_cnt_ = 1;
       } else {
         worker_round_robin_cnt_ = 0;

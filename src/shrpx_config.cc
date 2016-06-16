@@ -1724,6 +1724,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
   }
   case SHRPX_OPTID_FRONTEND: {
     auto &listenerconf = config->conn.listener;
+    auto &apiconf = config->api;
 
     auto addr_end = std::find(std::begin(optarg), std::end(optarg), ';');
     auto src_params = StringRef{addr_end, std::end(optarg)};
@@ -1741,7 +1742,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     addr.alt_mode = params.alt_mode;
 
     if (addr.alt_mode == ALTMODE_API) {
-      listenerconf.api = true;
+      apiconf.enabled = true;
     }
 
     if (util::istarts_with(optarg, SHRPX_UNIX_PATH_PREFIX)) {
