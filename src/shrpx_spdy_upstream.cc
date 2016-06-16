@@ -362,7 +362,9 @@ void SpdyUpstream::initiate_downstream(Downstream *downstream) {
 
   auto &req = downstream->request();
   if (!req.http2_expect_body) {
-    downstream->end_upload_data();
+    if (downstream->end_upload_data() != 0) {
+      rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
+    }
   }
 }
 
@@ -445,7 +447,9 @@ void on_data_recv_callback(spdylay_session *session, uint8_t flags,
     }
 
     downstream->disable_upstream_rtimer();
-    downstream->end_upload_data();
+    if (downstream->end_upload_data() != 0) {
+      upstream->rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
+    }
     downstream->set_request_state(Downstream::MSG_COMPLETE);
   }
 }

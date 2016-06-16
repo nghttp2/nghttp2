@@ -49,6 +49,7 @@
 #include "shrpx_http2_session.h"
 #include "shrpx_connect_blocker.h"
 #include "shrpx_api_downstream_connection.h"
+#include "shrpx_health_monitor_downstream_connection.h"
 #ifdef HAVE_SPDYLAY
 #include "shrpx_spdy_upstream.h"
 #endif // HAVE_SPDYLAY
@@ -899,6 +900,8 @@ ClientHandler::get_downstream_connection(Downstream *downstream) {
   switch (faddr_->alt_mode) {
   case ALTMODE_API:
     return make_unique<APIDownstreamConnection>(worker_);
+  case ALTMODE_HEALTHMON:
+    return make_unique<HealthMonitorDownstreamConnection>();
   }
 
   // Fast path.  If we have one group, it must be catch-all group.

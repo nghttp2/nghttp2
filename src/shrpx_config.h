@@ -321,6 +321,8 @@ enum UpstreamAltMode {
   ALTMODE_NONE,
   // API processing mode
   ALTMODE_API,
+  // Health monitor mode
+  ALTMODE_HEALTHMON,
 };
 
 struct UpstreamAddr {

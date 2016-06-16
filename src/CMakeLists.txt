@@ -110,6 +110,7 @@ if(ENABLE_APP)
     shrpx_signal.cc
     shrpx_router.cc
     shrpx_api_downstream_connection.cc
+    shrpx_health_monitor_downstream_connection.cc
   )
   if(HAVE_SPDYLAY)
     list(APPEND NGHTTPX_SRCS

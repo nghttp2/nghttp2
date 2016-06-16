@@ -630,6 +630,8 @@ int parse_upstream_params(UpstreamParams &out, const StringRef &src_params) {
       out.tls = false;
     } else if (util::strieq_l("api", param)) {
       out.alt_mode = ALTMODE_API;
+    } else if (util::strieq_l("healthmon", param)) {
+      out.alt_mode = ALTMODE_HEALTHMON;
     } else if (!param.empty()) {
       LOG(ERROR) << "frontend: " << param << ": unknown keyword";
       return -1;

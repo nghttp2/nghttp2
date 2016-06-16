@@ -415,7 +415,10 @@ void Http2Upstream::initiate_downstream(Downstream *downstream) {
 
   auto &req = downstream->request();
   if (!req.http2_expect_body) {
-    downstream->end_upload_data();
+    rv = downstream->end_upload_data();
+    if (rv != 0) {
+      rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
+    }
   }
 
   return;
@@ -443,7 +446,10 @@ int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
     if (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
       downstream->disable_upstream_rtimer();
 
-      downstream->end_upload_data();
+      if (downstream->end_upload_data() != 0) {
+        upstream->rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
+      }
+
       downstream->set_request_state(Downstream::MSG_COMPLETE);
     }
 
@@ -465,7 +471,10 @@ int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
     if (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
       downstream->disable_upstream_rtimer();
 
-      downstream->end_upload_data();
+      if (downstream->end_upload_data() != 0) {
+        upstream->rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
+      }
+
       downstream->set_request_state(Downstream::MSG_COMPLETE);
     }
 
