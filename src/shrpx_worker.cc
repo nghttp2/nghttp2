@@ -162,11 +162,15 @@ void Worker::replace_downstream_config(
 
   downstreamconf_ = downstreamconf;
 
-  downstream_addr_groups_ = std::vector<std::shared_ptr<DownstreamAddrGroup>>(
-      downstreamconf->addr_groups.size());
+  // Making a copy is much faster with multiple thread on
+  // backendconfig API call.
+  auto groups = downstreamconf->addr_groups;
 
-  for (size_t i = 0; i < downstreamconf->addr_groups.size(); ++i) {
-    auto &src = downstreamconf->addr_groups[i];
+  downstream_addr_groups_ =
+      std::vector<std::shared_ptr<DownstreamAddrGroup>>(groups.size());
+
+  for (size_t i = 0; i < groups.size(); ++i) {
+    auto &src = groups[i];
     auto &dst = downstream_addr_groups_[i];
 
     dst = std::make_shared<DownstreamAddrGroup>();
