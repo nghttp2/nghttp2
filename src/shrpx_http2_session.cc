@@ -1501,6 +1501,7 @@ int Http2Session::connection_made() {
 #endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 
     if (!next_proto) {
+      downstream_failure(addr_);
       return -1;
     }
 
@@ -1509,6 +1510,7 @@ int Http2Session::connection_made() {
       SSLOG(INFO, this) << "Negotiated next protocol: " << proto;
     }
     if (!util::check_h2_is_selected(proto)) {
+      downstream_failure(addr_);
       return -1;
     }
   }
@@ -1897,6 +1899,8 @@ int Http2Session::tls_handshake() {
   }
 
   if (rv < 0) {
+    downstream_failure(addr_);
+
     return rv;
   }
 
@@ -1906,6 +1910,8 @@ int Http2Session::tls_handshake() {
 
   if (!get_config()->tls.insecure &&
       ssl::check_cert(conn_.tls.ssl, addr_) != 0) {
+    downstream_failure(addr_);
+
     return -1;
   }
 
