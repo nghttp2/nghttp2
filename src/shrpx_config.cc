@@ -2891,7 +2891,7 @@ int configure_downstream_group(Config *config, bool http2_proxy,
     LOG(INFO) << "Catch-all pattern is group " << catch_all_group;
   }
 
-  auto resolve_flags = numeric_addr_only ? AI_NUMERICHOST : 0;
+  auto resolve_flags = numeric_addr_only ? AI_NUMERICHOST | AI_NUMERICSERV : 0;
 
   for (auto &g : addr_groups) {
     for (auto &addr : g.addrs) {
