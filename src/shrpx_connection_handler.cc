@@ -120,7 +120,7 @@ ConnectionHandler::ConnectionHandler(struct ev_loop *loop)
       loop_(loop),
       tls_ticket_key_memcached_get_retry_count_(0),
       tls_ticket_key_memcached_fail_count_(0),
-      worker_round_robin_cnt_(0),
+      worker_round_robin_cnt_(get_config()->conn.listener.api ? 1 : 0),
       graceful_shutdown_(false) {
   ev_timer_init(&disable_acceptor_timer_, acceptor_disable_cb, 0., 0.);
   disable_acceptor_timer_.data = this;
@@ -268,6 +268,12 @@ int ConnectionHandler::create_worker_thread(size_t num) {
 
   auto &tlsconf = get_config()->tls;
   auto &memcachedconf = get_config()->tls.session_cache.memcached;
+  auto &listenerconf = get_config()->conn.listener;
+
+  // We have dedicated worker for API request processing.
+  if (listenerconf.api) {
+    ++num;
+  }
 
   for (size_t i = 0; i < num; ++i) {
     auto loop = ev_loop_new(get_config()->ev_loop_flags);
@@ -300,6 +306,7 @@ int ConnectionHandler::create_worker_thread(size_t num) {
   for (auto &worker : workers_) {
     worker->run_async();
   }
+
 #endif // NOTHREADS
 
   return 0;
@@ -384,11 +391,32 @@ int ConnectionHandler::handle_connection(int fd, sockaddr *addr, int addrlen,
     return 0;
   }
 
-  size_t idx = worker_round_robin_cnt_ % workers_.size();
-  if (LOG_ENABLED(INFO)) {
-    LOG(INFO) << "Dispatch connection to worker #" << idx;
+  Worker *worker;
+
+  if (faddr->api) {
+    worker = workers_[0].get();
+
+    if (LOG_ENABLED(INFO)) {
+      LOG(INFO) << "Dispatch connection to API worker #0";
+    }
+  } else {
+    worker = workers_[worker_round_robin_cnt_].get();
+
+    if (LOG_ENABLED(INFO)) {
+      LOG(INFO) << "Dispatch connection to worker #" << worker_round_robin_cnt_;
+    }
+
+    if (++worker_round_robin_cnt_ == workers_.size()) {
+      auto &listenerconf = get_config()->conn.listener;
+
+      if (listenerconf.api) {
+        worker_round_robin_cnt_ = 1;
+      } else {
+        worker_round_robin_cnt_ = 0;
+      }
+    }
   }
-  ++worker_round_robin_cnt_;
+
   WorkerEvent wev{};
   wev.type = NEW_CONNECTION;
   wev.client_fd = fd;
@@ -396,7 +424,7 @@ int ConnectionHandler::handle_connection(int fd, sockaddr *addr, int addrlen,
   wev.client_addrlen = addrlen;
   wev.faddr = faddr;
 
-  workers_[idx]->send(wev);
+  worker->send(wev);
 
   return 0;
 }

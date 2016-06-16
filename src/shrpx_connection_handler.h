@@ -171,6 +171,8 @@ private:
   // ev_loop for each worker
   std::vector<struct ev_loop *> worker_loops_;
   // Worker instances when multi threaded mode (-nN, N >= 2) is used.
+  // If at least one frontend enables API request, we allocate 1
+  // additional worker dedicated to API request .
   std::vector<std::unique_ptr<Worker>> workers_;
   // mutex for serial event resive buffer handling
   std::mutex serial_event_mu_;

@@ -1738,6 +1738,10 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     addr.tls = params.tls;
     addr.api = params.api;
 
+    if (addr.api) {
+      listenerconf.api = true;
+    }
+
     if (util::istarts_with(optarg, SHRPX_UNIX_PATH_PREFIX)) {
       auto path = std::begin(optarg) + SHRPX_UNIX_PATH_PREFIX.size();
       addr.host = ImmutableString{path, addr_end};
