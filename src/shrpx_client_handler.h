@@ -124,7 +124,7 @@ public:
                        int64_t body_bytes_sent);
   Worker *get_worker() const;
 
-  using ReadBuf = Buffer<8_k>;
+  using ReadBuf = Buffer<16_k>;
 
   ReadBuf *get_rb();
 
