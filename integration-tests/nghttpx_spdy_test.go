@@ -623,3 +623,22 @@ backend=127.0.0.1,3011
 		t.Errorf("apiResp.Status: %v; want %v", got, want)
 	}
 }
+
+// TestS3Healthmon tests health monitor endpoint.
+func TestS3Healthmon(t *testing.T) {
+	st := newServerTesterTLSConnectPort([]string{"--npn-list=spdy/3.1", "-f127.0.0.1,3011;healthmon"}, t, func(w http.ResponseWriter, r *http.Request) {
+		t.Fatalf("request should not be forwarded")
+	}, 3011)
+	defer st.Close()
+
+	res, err := st.spdy(requestParam{
+		name: "TestS3Healthmon",
+		path: "/alpha/bravo",
+	})
+	if err != nil {
+		t.Fatalf("Error st.spdy() = %v", err)
+	}
+	if got, want := res.status, 200; got != want {
+		t.Errorf("res.status: %v; want %v", got, want)
+	}
+}

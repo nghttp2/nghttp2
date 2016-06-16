@@ -1992,3 +1992,22 @@ backend=127.0.0.1,3011
 		t.Errorf("apiResp.Status: %v; want %v", got, want)
 	}
 }
+
+// TestH2Healthmon tests health monitor endpoint.
+func TestH2Healthmon(t *testing.T) {
+	st := newServerTesterConnectPort([]string{"-f127.0.0.1,3011;healthmon;no-tls"}, t, func(w http.ResponseWriter, r *http.Request) {
+		t.Fatalf("request should not be forwarded")
+	}, 3011)
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name: "TestH2Healthmon",
+		path: "/alpha/bravo",
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+	if got, want := res.status, 200; got != want {
+		t.Errorf("res.status: %v; want %v", got, want)
+	}
+}
