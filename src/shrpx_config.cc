@@ -2934,8 +2934,11 @@ int configure_downstream_group(Config *config, bool http2_proxy,
         LOG(FATAL) << "Resolving backend address failed: " << hostport;
         return -1;
       }
-      LOG(NOTICE) << "Resolved backend address: " << hostport << " -> "
+
+      if (LOG_ENABLED(INFO)) {
+        LOG(INFO) << "Resolved backend address: " << hostport << " -> "
                   << util::to_numeric_addr(&addr.addr);
+      }
     }
   }
 
