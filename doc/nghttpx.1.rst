@@ -166,7 +166,7 @@ Connections
 
     Default: ``127.0.0.1,80``
 
-.. option:: -f, --frontend=(<HOST>,<PORT>|unix:<PATH>)[;no-tls]
+.. option:: -f, --frontend=(<HOST>,<PORT>|unix:<PATH>)[[;PARAM]...]
 
     Set  frontend  host and  port.   If  <HOST> is  '\*',  it
     assumes  all addresses  including  both  IPv4 and  IPv6.
@@ -174,6 +174,9 @@ Connections
     name  with  "unix:" (e.g.,  unix:/var/run/nghttpx.sock).
     This  option can  be used  multiple times  to listen  to
     multiple addresses.
+
+    This option  can take  0 or  more parameters,  which are
+    described below.
 
     Optionally, TLS  can be disabled by  specifying "no-tls"
     parameter.  TLS is enabled by default.
@@ -184,6 +187,11 @@ Connections
     Otherwise, someone  may change  the backend  server, and
     break your services,  or expose confidential information
     to the outside the world.
+
+    To  make  this  frontend  as  health  monitor  endpoint,
+    specify  "healthmon"  parameter.   This is  disabled  by
+    default.  Any  requests which come through  this address
+    are replied with 200 HTTP status, without no body.
 
 
     Default: ``*,3000``
