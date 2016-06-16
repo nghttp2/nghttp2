@@ -393,7 +393,7 @@ int ConnectionHandler::handle_connection(int fd, sockaddr *addr, int addrlen,
 
   Worker *worker;
 
-  if (faddr->api) {
+  if (faddr->alt_mode == ALTMODE_API) {
     worker = workers_[0].get();
 
     if (LOG_ENABLED(INFO)) {

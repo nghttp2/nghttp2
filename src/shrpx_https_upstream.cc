@@ -413,11 +413,11 @@ int htp_hdrs_completecb(http_parser *htp) {
 
   auto faddr = handler->get_upstream_addr();
 
-  if (faddr->api) {
+  if (faddr->alt_mode) {
     // Normally, we forward expect: 100-continue to backend server,
     // and let them decide whether responds with 100 Continue or not.
-    // For API endpoint, we have no backend, so just send 100 Continue
-    // here to make the client happy.
+    // For alternative mode, we have no backend, so just send 100
+    // Continue here to make the client happy.
     auto expect = req.fs.header(http2::HD_EXPECT);
     if (expect &&
         util::strieq(expect->value, StringRef::from_lit("100-continue"))) {

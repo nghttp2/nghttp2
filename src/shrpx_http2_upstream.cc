@@ -879,7 +879,8 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
 
   rv = nghttp2_session_server_new2(
       &session_, http2conf.upstream.callbacks, this,
-      faddr->api ? http2conf.upstream.api_option : http2conf.upstream.option);
+      faddr->alt_mode ? http2conf.upstream.alt_mode_option
+                      : http2conf.upstream.option);
 
   assert(rv == 0);
 
@@ -891,7 +892,7 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
   entry[0].value = http2conf.upstream.max_concurrent_streams;
 
   entry[1].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
-  if (faddr->api) {
+  if (faddr->alt_mode) {
     entry[1].value = (1u << 31) - 1;
   } else {
     entry[1].value = (1 << http2conf.upstream.window_bits) - 1;
@@ -905,7 +906,7 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
   }
 
   int32_t window_bits =
-      faddr->api ? 31 : http2conf.upstream.connection_window_bits;
+      faddr->alt_mode ? 31 : http2conf.upstream.connection_window_bits;
 
   if (window_bits != 16) {
     int32_t window_size = (1u << window_bits) - 1;
@@ -1701,7 +1702,7 @@ int Http2Upstream::consume(int32_t stream_id, size_t len) {
 
   auto faddr = handler_->get_upstream_addr();
 
-  if (faddr->api) {
+  if (faddr->alt_mode) {
     return 0;
   }
 

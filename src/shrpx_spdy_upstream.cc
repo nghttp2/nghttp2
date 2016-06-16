@@ -565,7 +565,7 @@ SpdyUpstream::SpdyUpstream(uint16_t version, ClientHandler *handler)
   // going to be deprecated in the future, and the default stream
   // window is large enough for API request body (64KiB), we don't
   // expand window size depending on the options.
-  if (version >= SPDYLAY_PROTO_SPDY3 && !faddr->api) {
+  if (version >= SPDYLAY_PROTO_SPDY3 && !faddr->alt_mode) {
     int val = 1;
     flow_control_ = true;
     initial_window_size_ = 1 << http2conf.upstream.window_bits;

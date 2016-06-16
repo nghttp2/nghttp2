@@ -896,7 +896,8 @@ ClientHandler::get_downstream_connection(Downstream *downstream) {
 
   const auto &req = downstream->request();
 
-  if (faddr_->api) {
+  switch (faddr_->alt_mode) {
+  case ALTMODE_API:
     return make_unique<APIDownstreamConnection>(worker_);
   }
 

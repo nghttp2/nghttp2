@@ -610,8 +610,8 @@ int parse_memcached_connection_params(MemcachedConnectionParams &out,
 } // namespace
 
 struct UpstreamParams {
+  int alt_mode;
   bool tls;
-  bool api;
 };
 
 namespace {
@@ -629,7 +629,7 @@ int parse_upstream_params(UpstreamParams &out, const StringRef &src_params) {
     } else if (util::strieq_l("no-tls", param)) {
       out.tls = false;
     } else if (util::strieq_l("api", param)) {
-      out.api = true;
+      out.alt_mode = ALTMODE_API;
     } else if (!param.empty()) {
       LOG(ERROR) << "frontend: " << param << ": unknown keyword";
       return -1;
@@ -1736,9 +1736,9 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     UpstreamAddr addr{};
     addr.fd = -1;
     addr.tls = params.tls;
-    addr.api = params.api;
+    addr.alt_mode = params.alt_mode;
 
-    if (addr.api) {
+    if (addr.alt_mode == ALTMODE_API) {
       listenerconf.api = true;
     }
 

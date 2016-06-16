@@ -316,6 +316,13 @@ struct AltSvc {
   uint16_t port;
 };
 
+enum UpstreamAltMode {
+  // No alternative mode
+  ALTMODE_NONE,
+  // API processing mode
+  ALTMODE_API,
+};
+
 struct UpstreamAddr {
   // The frontend address (e.g., FQDN, hostname, IP address).  If
   // |host_unix| is true, this is UNIX domain socket path.
@@ -329,12 +336,12 @@ struct UpstreamAddr {
   // For TCP socket, this is either AF_INET or AF_INET6.  For UNIX
   // domain socket, this is 0.
   int family;
+  // Alternate mode
+  int alt_mode;
   // true if |host| contains UNIX domain socket path.
   bool host_unix;
   // true if TLS is enabled.
   bool tls;
-  // true if this is an API endpoint.
-  bool api;
   int fd;
 };
 
@@ -554,7 +561,7 @@ struct Http2Config {
       ev_tstamp settings;
     } timeout;
     nghttp2_option *option;
-    nghttp2_option *api_option;
+    nghttp2_option *alt_mode_option;
     nghttp2_session_callbacks *callbacks;
     size_t window_bits;
     size_t connection_window_bits;
