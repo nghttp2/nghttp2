@@ -66,7 +66,7 @@ public:
   void call_unblock_func();
 
 private:
-  std::mt19937 gen_;
+  std::mt19937 &gen_;
   // Called when blocking is started
   std::function<void()> block_func_;
   // Called when unblocked
