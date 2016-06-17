@@ -447,7 +447,9 @@ int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
       downstream->disable_upstream_rtimer();
 
       if (downstream->end_upload_data() != 0) {
-        upstream->rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
+        if (downstream->get_response_state() != Downstream::MSG_COMPLETE) {
+          upstream->rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
+        }
       }
 
       downstream->set_request_state(Downstream::MSG_COMPLETE);
@@ -472,7 +474,9 @@ int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
       downstream->disable_upstream_rtimer();
 
       if (downstream->end_upload_data() != 0) {
-        upstream->rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
+        if (downstream->get_response_state() != Downstream::MSG_COMPLETE) {
+          upstream->rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
+        }
       }
 
       downstream->set_request_state(Downstream::MSG_COMPLETE);
@@ -522,7 +526,9 @@ int on_data_chunk_recv_callback(nghttp2_session *session, uint8_t flags,
   downstream->reset_upstream_rtimer();
 
   if (downstream->push_upload_data_chunk(data, len) != 0) {
-    upstream->rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
+    if (downstream->get_response_state() != Downstream::MSG_COMPLETE) {
+      upstream->rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
+    }
 
     if (upstream->consume(stream_id, len) != 0) {
       return NGHTTP2_ERR_CALLBACK_FAILURE;

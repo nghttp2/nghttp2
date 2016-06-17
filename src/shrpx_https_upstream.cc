@@ -444,6 +444,12 @@ int htp_bodycb(http_parser *htp, const char *data, size_t len) {
   rv = downstream->push_upload_data_chunk(
       reinterpret_cast<const uint8_t *>(data), len);
   if (rv != 0) {
+    // Ignore error if response has been completed.  We will end up in
+    // htp_msg_completecb, and request will end gracefully.
+    if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
+      return 0;
+    }
+
     return -1;
   }
   return 0;
