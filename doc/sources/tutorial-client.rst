@@ -31,6 +31,17 @@ protocol the library supports::
       return SSL_TLSEXT_ERR_OK;
     }
 
+If you are following TLS related RFC, you know that NPN is not the
+standardized way to negotiate HTTP/2.  NPN itself is not event
+published as RFC.  The standard way to negotiate HTTP/2 is ALPN,
+Application-Layer Protocol Negotiation Extension, defined in `RFC 7301
+<https://tools.ietf.org/html/rfc7301>`_.  The one caveat of ALPN is
+that OpenSSL >= 1.0.2 is required.  We use macro to enable/disable
+ALPN support depending on OpenSSL version.  OpenSSL's ALPN
+implementation does not require callback function like the above.  But
+we have to instruct OpenSSL SSL_CTX to use ALPN, which we'll talk
+about soon.
+
 The callback is added to the SSL_CTX object using
 ``SSL_CTX_set_next_proto_select_cb()``::
 
@@ -46,8 +57,17 @@ The callback is added to the SSL_CTX object using
                               SSL_OP_NO_COMPRESSION |
                               SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION);
       SSL_CTX_set_next_proto_select_cb(ssl_ctx, select_next_proto_cb, NULL);
+
+    #if OPENSSL_VERSION_NUMBER >= 0x10002000L
+      SSL_CTX_set_alpn_protos(ssl_ctx, (const unsigned char *)"\x02h2", 3);
+    #endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
+
       return ssl_ctx;
     }
+
+Here we see ``SSL_CTX_get_alpn_protos()`` function call.  We instructs
+OpenSSL to notify the server that we support h2, ALPN identifier for
+HTTP/2.
 
 The example client defines a couple of structs:
 
@@ -124,7 +144,27 @@ underlying network socket::
       if (events & BEV_EVENT_CONNECTED) {
         int fd = bufferevent_getfd(bev);
         int val = 1;
+        const unsigned char *alpn = NULL;
+        unsigned int alpnlen = 0;
+        SSL *ssl;
+
         fprintf(stderr, "Connected\n");
+
+        ssl = bufferevent_openssl_get_ssl(session_data->bev);
+
+        SSL_get0_next_proto_negotiated(ssl, &alpn, &alpnlen);
+    #if OPENSSL_VERSION_NUMBER >= 0x10002000L
+        if (alpn == NULL) {
+          SSL_get0_alpn_selected(ssl, &alpn, &alpnlen);
+        }
+    #endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
+
+        if (alpn == NULL || alpnlen != 2 || memcmp("h2", alpn, 2) != 0) {
+          fprintf(stderr, "h2 is not negotiated\n");
+          delete_http2_session_data(session_data);
+          return;
+        }
+
         setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, (char *)&val, sizeof(val));
         initialize_nghttp2_session(session_data);
         send_client_connection_header(session_data);
@@ -143,6 +183,9 @@ underlying network socket::
       }
       delete_http2_session_data(session_data);
     }
+
+Here we validate that HTTP/2 is negotiated, and if not, drop
+connection.
 
 For ``BEV_EVENT_EOF``, ``BEV_EVENT_ERROR``, and ``BEV_EVENT_TIMEOUT``
 events, we just simply tear down the connection.

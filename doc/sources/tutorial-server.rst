@@ -25,7 +25,17 @@ application protocols the server supports to a client.  In this
 example program, when creating the ``SSL_CTX`` object, we store the
 application protocol name in the wire format of NPN in a statically
 allocated buffer. This is safe because we only create one ``SSL_CTX``
-object in the program's entire lifetime::
+object in the program's entire lifetime.
+
+If you are following TLS related RFC, you know that NPN is not the
+standardized way to negotiate HTTP/2.  NPN itself is not even
+published as RFC.  The standard way to negotiate HTTP/2 is ALPN,
+Application-Layer Protocol Negotiation Extension, defined in `RFC 7301
+<https://tools.ietf.org/html/rfc7301>`_.  The one caveat of ALPN is
+that OpenSSL >= 1.0.2 is required.  We use macro to enable/disable
+ALPN support depending on OpenSSL version.  In ALPN, client sends the
+list of supported application protocols, and server selects one of
+them.  We provide the callback for it::
 
     static unsigned char next_proto_list[256];
     static size_t next_proto_list_len;
@@ -36,6 +46,22 @@ object in the program's entire lifetime::
       *len = (unsigned int)next_proto_list_len;
       return SSL_TLSEXT_ERR_OK;
     }
+
+    #if OPENSSL_VERSION_NUMBER >= 0x10002000L
+    static int alpn_select_proto_cb(SSL *ssl _U_, const unsigned char **out,
+                                    unsigned char *outlen, const unsigned char *in,
+                                    unsigned int inlen, void *arg _U_) {
+      int rv;
+
+      rv = nghttp2_select_next_protocol((unsigned char **)out, outlen, in, inlen);
+
+      if (rv != 1) {
+        return SSL_TLSEXT_ERR_NOACK;
+      }
+
+      return SSL_TLSEXT_ERR_OK;
+    }
+    #endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 
     static SSL_CTX *create_ssl_ctx(const char *key_file, const char *cert_file) {
       SSL_CTX *ssl_ctx;
@@ -51,6 +77,11 @@ object in the program's entire lifetime::
       next_proto_list_len = 1 + NGHTTP2_PROTO_VERSION_ID_LEN;
 
       SSL_CTX_set_next_protos_advertised_cb(ssl_ctx, next_proto_cb, NULL);
+
+    #if OPENSSL_VERSION_NUMBER >= 0x10002000L
+      SSL_CTX_set_alpn_select_cb(ssl_ctx, alpn_select_proto_cb, NULL);
+    #endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
+
       return ssl_ctx;
     }
 
@@ -63,6 +94,11 @@ exported in the identifier :macro:`NGHTTP2_PROTO_VERSION_ID`. The
 OpenSSL implementation, we just assign the pointer to the NPN buffers
 we filled in earlier. The NPN callback function is set to the
 ``SSL_CTX`` object using ``SSL_CTX_set_next_protos_advertised_cb()``.
+
+In ``alpn_select_proto_cb()``, we use `nghttp2_select_next_protocol()`
+to select application protocol.  The `nghttp2_select_next_protocol()`
+returns 1 only if it selected h2 (ALPN identifier for HTTP/2), and out
+parameters were assigned accordingly.
 
 Next, let's take a look at the main structures used by the example
 application:
@@ -167,11 +203,31 @@ underlying network socket::
     static void eventcb(struct bufferevent *bev _U_, short events, void *ptr) {
       http2_session_data *session_data = (http2_session_data *)ptr;
       if (events & BEV_EVENT_CONNECTED) {
+        const unsigned char *alpn = NULL;
+        unsigned int alpnlen = 0;
+        SSL *ssl;
+
         fprintf(stderr, "%s connected\n", session_data->client_addr);
+
+        ssl = bufferevent_openssl_get_ssl(session_data->bev);
+
+        SSL_get0_next_proto_negotiated(ssl, &alpn, &alpnlen);
+    #if OPENSSL_VERSION_NUMBER >= 0x10002000L
+        if (alpn == NULL) {
+          SSL_get0_alpn_selected(ssl, &alpn, &alpnlen);
+        }
+    #endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
+
+        if (alpn == NULL || alpnlen != 2 || memcmp("h2", alpn, 2) != 0) {
+          fprintf(stderr, "%s h2 is not negotiated\n", session_data->client_addr);
+          delete_http2_session_data(session_data);
+          return;
+        }
 
         initialize_nghttp2_session(session_data);
 
-        if (send_server_connection_header(session_data) != 0) {
+        if (send_server_connection_header(session_data) != 0 ||
+            session_send(session_data) != 0) {
           delete_http2_session_data(session_data);
           return;
         }
@@ -187,6 +243,9 @@ underlying network socket::
       }
       delete_http2_session_data(session_data);
     }
+
+Here we validate that HTTP/2 is negotiated, and if not, drop
+connection.
 
 For the ``BEV_EVENT_EOF``, ``BEV_EVENT_ERROR``, and
 ``BEV_EVENT_TIMEOUT`` events, we just simply tear down the connection.
