@@ -116,6 +116,22 @@ static int next_proto_cb(SSL *s _U_, const unsigned char **data,
   return SSL_TLSEXT_ERR_OK;
 }
 
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+static int alpn_select_proto_cb(SSL *ssl _U_, const unsigned char **out,
+                                unsigned char *outlen, const unsigned char *in,
+                                unsigned int inlen, void *arg _U_) {
+  int rv;
+
+  rv = nghttp2_select_next_protocol((unsigned char **)out, outlen, in, inlen);
+
+  if (rv != 1) {
+    return SSL_TLSEXT_ERR_NOACK;
+  }
+
+  return SSL_TLSEXT_ERR_OK;
+}
+#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
+
 /* Create SSL_CTX. */
 static SSL_CTX *create_ssl_ctx(const char *key_file, const char *cert_file) {
   SSL_CTX *ssl_ctx;
@@ -152,6 +168,11 @@ static SSL_CTX *create_ssl_ctx(const char *key_file, const char *cert_file) {
   next_proto_list_len = 1 + NGHTTP2_PROTO_VERSION_ID_LEN;
 
   SSL_CTX_set_next_protos_advertised_cb(ssl_ctx, next_proto_cb, NULL);
+
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+  SSL_CTX_set_alpn_select_cb(ssl_ctx, alpn_select_proto_cb, NULL);
+#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
+
   return ssl_ctx;
 }
 
@@ -640,11 +661,31 @@ static void writecb(struct bufferevent *bev, void *ptr) {
 static void eventcb(struct bufferevent *bev _U_, short events, void *ptr) {
   http2_session_data *session_data = (http2_session_data *)ptr;
   if (events & BEV_EVENT_CONNECTED) {
+    const unsigned char *alpn = NULL;
+    unsigned int alpnlen = 0;
+    SSL *ssl;
+
     fprintf(stderr, "%s connected\n", session_data->client_addr);
+
+    ssl = bufferevent_openssl_get_ssl(session_data->bev);
+
+    SSL_get0_next_proto_negotiated(ssl, &alpn, &alpnlen);
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+    if (alpn == NULL) {
+      SSL_get0_alpn_selected(ssl, &alpn, &alpnlen);
+    }
+#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
+
+    if (alpn == NULL || alpnlen != 2 || memcmp("h2", alpn, 2) != 0) {
+      fprintf(stderr, "%s h2 is not negotiated\n", session_data->client_addr);
+      delete_http2_session_data(session_data);
+      return;
+    }
 
     initialize_nghttp2_session(session_data);
 
-    if (send_server_connection_header(session_data) != 0) {
+    if (send_server_connection_header(session_data) != 0 ||
+        session_send(session_data) != 0) {
       delete_http2_session_data(session_data);
       return;
     }
