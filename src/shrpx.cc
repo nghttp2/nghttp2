@@ -1354,7 +1354,8 @@ Connections:
               multiple addresses.
 
               This option  can take  0 or  more parameters,  which are
-              described below.
+              described  below.   Note   that  "api"  and  "healthmon"
+              parameters are mutually exclusive.
 
               Optionally, TLS  can be disabled by  specifying "no-tls"
               parameter.  TLS is enabled by default.

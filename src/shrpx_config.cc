@@ -629,8 +629,16 @@ int parse_upstream_params(UpstreamParams &out, const StringRef &src_params) {
     } else if (util::strieq_l("no-tls", param)) {
       out.tls = false;
     } else if (util::strieq_l("api", param)) {
+      if (out.alt_mode && out.alt_mode != ALTMODE_API) {
+        LOG(ERROR) << "frontend: api and healthmon are mutually exclusive";
+        return -1;
+      }
       out.alt_mode = ALTMODE_API;
     } else if (util::strieq_l("healthmon", param)) {
+      if (out.alt_mode && out.alt_mode != ALTMODE_HEALTHMON) {
+        LOG(ERROR) << "frontend: api and healthmon are mutually exclusive";
+        return -1;
+      }
       out.alt_mode = ALTMODE_HEALTHMON;
     } else if (!param.empty()) {
       LOG(ERROR) << "frontend: " << param << ": unknown keyword";
