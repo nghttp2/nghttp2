@@ -6682,17 +6682,12 @@ int nghttp2_session_add_window_update(nghttp2_session *session, uint8_t flags,
 static void
 session_append_inflight_settings(nghttp2_session *session,
                                  nghttp2_inflight_settings *settings) {
-  nghttp2_inflight_settings *i;
+  nghttp2_inflight_settings **i;
 
-  if (!session->inflight_settings_head) {
-    session->inflight_settings_head = settings;
-    return;
-  }
-
-  for (i = session->inflight_settings_head; i->next; i = i->next)
+  for (i = &session->inflight_settings_head; *i; i = &(*i)->next)
     ;
 
-  i->next = settings;
+  *i = settings;
 }
 
 int nghttp2_session_add_settings(nghttp2_session *session, uint8_t flags,
