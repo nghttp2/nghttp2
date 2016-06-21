@@ -6761,9 +6761,9 @@ int nghttp2_session_add_settings(nghttp2_session *session, uint8_t flags,
 
   if (flags & NGHTTP2_FLAG_ACK) {
     ++session->obq_flood_counter_;
+  } else {
+    session_append_inflight_settings(session, inflight_settings);
   }
-
-  session_append_inflight_settings(session, inflight_settings);
 
   /* Extract NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS and ENABLE_PUSH
      here.  We use it to refuse the incoming stream and PUSH_PROMISE
