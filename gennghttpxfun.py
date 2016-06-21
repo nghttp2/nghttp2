@@ -133,6 +133,7 @@ OPTIONS = [
     "frontend-http2-settings-timeout",
     "backend-http2-settings-timeout",
     "api-max-request-body",
+    "backend-max-backoff",
 ]
 
 LOGVARS = [

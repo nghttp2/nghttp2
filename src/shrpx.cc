@@ -1176,6 +1176,7 @@ void fill_default_config() {
       timeoutconf.write = 30_s;
       // Timeout for pooled (idle) connections
       timeoutconf.idle_read = 2_s;
+      timeoutconf.max_backoff = 120_s;
     }
 
     downstreamconf.connections_per_host = 8;
@@ -1548,6 +1549,18 @@ Timeout:
               backend server.
               Default: )"
       << util::duration_str(get_config()->http2.downstream.timeout.settings)
+      << R"(
+  --backend-max-backoff=<DURATION>
+              Specify  maximum backoff  interval.  This  is used  when
+              doing health  check against offline backend  (see "fail"
+              parameter  in --backend  option).   It is  also used  to
+              limit  the  maximum   interval  to  temporarily  disable
+              backend  when nghttpx  failed to  connect to  it.  These
+              intervals are calculated  using exponential backoff, and
+              consecutive failed attempts increase the interval.  This
+              option caps its maximum value.
+              Default: )"
+      << util::duration_str(get_config()->conn.downstream->timeout.max_backoff)
       << R"(
 
 SSL/TLS:
@@ -2488,6 +2501,7 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_BACKEND_HTTP2_SETTINGS_TIMEOUT.c_str(), required_argument,
          &flag, 125},
         {SHRPX_OPT_API_MAX_REQUEST_BODY.c_str(), required_argument, &flag, 126},
+        {SHRPX_OPT_BACKEND_MAX_BACKOFF.c_str(), required_argument, &flag, 127},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -3080,6 +3094,10 @@ int main(int argc, char **argv) {
       case 126:
         // --api-max-request-body
         cmdcfgs.emplace_back(SHRPX_OPT_API_MAX_REQUEST_BODY, StringRef{optarg});
+        break;
+      case 127:
+        // --backend-max-backoff
+        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_MAX_BACKOFF, StringRef{optarg});
         break;
       default:
         break;

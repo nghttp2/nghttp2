@@ -1290,6 +1290,11 @@ int option_lookup_token(const char *name, size_t namelen) {
         return SHRPX_OPTID_TLS_TICKET_KEY_FILE;
       }
       break;
+    case 'f':
+      if (util::strieq_l("backend-max-backof", name, 18)) {
+        return SHRPX_OPTID_BACKEND_MAX_BACKOFF;
+      }
+      break;
     case 'r':
       if (util::strieq_l("add-response-heade", name, 18)) {
         return SHRPX_OPTID_ADD_RESPONSE_HEADER;
@@ -2629,6 +2634,9 @@ int parse_config(Config *config, int optid, const StringRef &opt,
                           optarg);
   case SHRPX_OPTID_API_MAX_REQUEST_BODY:
     return parse_uint_with_unit(&config->api.max_request_body, opt, optarg);
+  case SHRPX_OPTID_BACKEND_MAX_BACKOFF:
+    return parse_duration(&config->conn.downstream->timeout.max_backoff, opt,
+                          optarg);
   case SHRPX_OPTID_CONF:
     LOG(WARN) << "conf: ignored";
 

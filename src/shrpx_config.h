@@ -282,6 +282,8 @@ constexpr auto SHRPX_OPT_BACKEND_HTTP2_SETTINGS_TIMEOUT =
     StringRef::from_lit("backend-http2-settings-timeout");
 constexpr auto SHRPX_OPT_API_MAX_REQUEST_BODY =
     StringRef::from_lit("api-max-request-body");
+constexpr auto SHRPX_OPT_BACKEND_MAX_BACKOFF =
+    StringRef::from_lit("backend-max-backoff");
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
@@ -635,6 +637,10 @@ struct DownstreamConfig {
     ev_tstamp read;
     ev_tstamp write;
     ev_tstamp idle_read;
+    // The maximum backoff while checking health check for offline
+    // backend or while detaching failed backend from load balancing
+    // group temporarily.
+    ev_tstamp max_backoff;
   } timeout;
   RouterConfig router;
   std::vector<DownstreamAddrGroupConfig> addr_groups;
@@ -748,6 +754,7 @@ enum {
   SHRPX_OPTID_BACKEND_IPV4,
   SHRPX_OPTID_BACKEND_IPV6,
   SHRPX_OPTID_BACKEND_KEEP_ALIVE_TIMEOUT,
+  SHRPX_OPTID_BACKEND_MAX_BACKOFF,
   SHRPX_OPTID_BACKEND_NO_TLS,
   SHRPX_OPTID_BACKEND_READ_TIMEOUT,
   SHRPX_OPTID_BACKEND_REQUEST_BUFFER,
