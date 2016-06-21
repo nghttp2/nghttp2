@@ -35,6 +35,17 @@
 extern "C" {
 #endif
 
+/* For Win32 application, use type NGHTTP2_SSIZE_T instead of
+   ssize_t. */
+#if defined(WIN32)
+#pragma once
+#include <basetsd.h>
+typedef SSIZE_T NGHTTP2_SSIZE_T;
+#if !defined(BUILDING_NGHTTP2)
+#define ssize_t NGHTTP2_SSIZE_T
+#endif
+#endif
+
 #include <stdlib.h>
 #if defined(_MSC_VER) && (_MSC_VER < 1800)
 /* MSVC < 2013 does not have inttypes.h because it is not C99
@@ -5002,6 +5013,12 @@ NGHTTP2_EXTERN int32_t nghttp2_stream_get_weight(nghttp2_stream *stream);
  */
 NGHTTP2_EXTERN int32_t
 nghttp2_stream_get_sum_dependency_weight(nghttp2_stream *stream);
+
+#if defined(WIN32)
+#if !defined(BUILDING_NGHTTP2)
+#undef ssize_t
+#endif
+#endif
 
 #ifdef __cplusplus
 }
