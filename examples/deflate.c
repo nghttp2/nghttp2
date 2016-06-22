@@ -109,9 +109,9 @@ static void deflate(nghttp2_hd_deflater *deflater,
   printf("Input (%zu byte(s)):\n\n", sum);
 
   for (i = 0; i < nvlen; ++i) {
-    fwrite(nva[i].name, nva[i].namelen, 1, stdout);
+    fwrite(nva[i].name, 1, nva[i].namelen, stdout);
     printf(": ");
-    fwrite(nva[i].value, nva[i].valuelen, 1, stdout);
+    fwrite(nva[i].value, 1, nva[i].valuelen, stdout);
     printf("\n");
   }
 
@@ -186,9 +186,9 @@ int inflate_header_block(nghttp2_hd_inflater *inflater, uint8_t *in,
     inlen -= proclen;
 
     if (inflate_flags & NGHTTP2_HD_INFLATE_EMIT) {
-      fwrite(nv.name, nv.namelen, 1, stderr);
+      fwrite(nv.name, 1, nv.namelen, stderr);
       fprintf(stderr, ": ");
-      fwrite(nv.value, nv.valuelen, 1, stderr);
+      fwrite(nv.value, 1, nv.valuelen, stderr);
       fprintf(stderr, "\n");
     }
 

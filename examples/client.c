@@ -219,9 +219,9 @@ static int on_frame_send_callback(nghttp2_session *session,
       const nghttp2_nv *nva = frame->headers.nva;
       printf("[INFO] C ----------------------------> S (HEADERS)\n");
       for (i = 0; i < frame->headers.nvlen; ++i) {
-        fwrite(nva[i].name, nva[i].namelen, 1, stdout);
+        fwrite(nva[i].name, 1, nva[i].namelen, stdout);
         printf(": ");
-        fwrite(nva[i].value, nva[i].valuelen, 1, stdout);
+        fwrite(nva[i].value, 1, nva[i].valuelen, stdout);
         printf("\n");
       }
     }
@@ -249,9 +249,9 @@ static int on_frame_recv_callback(nghttp2_session *session,
       if (req) {
         printf("[INFO] C <---------------------------- S (HEADERS)\n");
         for (i = 0; i < frame->headers.nvlen; ++i) {
-          fwrite(nva[i].name, nva[i].namelen, 1, stdout);
+          fwrite(nva[i].name, 1, nva[i].namelen, stdout);
           printf(": ");
-          fwrite(nva[i].value, nva[i].valuelen, 1, stdout);
+          fwrite(nva[i].value, 1, nva[i].valuelen, stdout);
           printf("\n");
         }
       }

@@ -179,9 +179,9 @@ static void delete_http2_session_data(http2_session_data *session_data) {
 
 static void print_header(FILE *f, const uint8_t *name, size_t namelen,
                          const uint8_t *value, size_t valuelen) {
-  fwrite(name, namelen, 1, f);
+  fwrite(name, 1, namelen, f);
   fprintf(f, ": ");
-  fwrite(value, valuelen, 1, f);
+  fwrite(value, 1, valuelen, f);
   fprintf(f, "\n");
 }
 
@@ -272,7 +272,7 @@ static int on_data_chunk_recv_callback(nghttp2_session *session _U_,
                                        void *user_data) {
   http2_session_data *session_data = (http2_session_data *)user_data;
   if (session_data->stream_data->stream_id == stream_id) {
-    fwrite(data, len, 1, stdout);
+    fwrite(data, 1, len, stdout);
   }
   return 0;
 }

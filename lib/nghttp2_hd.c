@@ -994,7 +994,7 @@ static int emit_string(nghttp2_bufs *bufs, const uint8_t *str, size_t len) {
   blocklen = count_encoded_length(enclen, 7);
 
   DEBUGF(fprintf(stderr, "deflatehd: emit string str="));
-  DEBUGF(fwrite(str, len, 1, stderr));
+  DEBUGF(fwrite(str, 1, len, stderr));
   DEBUGF(fprintf(stderr, ", length=%zu, huffman=%d, encoded_length=%zu\n", len,
                  huffman, enclen));
 
