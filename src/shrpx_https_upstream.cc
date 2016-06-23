@@ -76,6 +76,8 @@ int htp_msg_begin(http_parser *htp) {
 
   upstream->attach_downstream(std::move(downstream));
 
+  handler->stop_read_timer();
+
   return 0;
 }
 } // namespace
@@ -287,8 +289,6 @@ int htp_hdrs_completecb(http_parser *htp) {
 
   auto handler = upstream->get_client_handler();
 
-  handler->signal_reset_upstream_conn_rtimer();
-
   auto downstream = upstream->get_downstream();
   auto &req = downstream->request();
 
@@ -436,10 +436,6 @@ namespace {
 int htp_bodycb(http_parser *htp, const char *data, size_t len) {
   int rv;
   auto upstream = static_cast<HttpsUpstream *>(htp->data);
-  auto handler = upstream->get_client_handler();
-
-  handler->signal_reset_upstream_conn_rtimer();
-
   auto downstream = upstream->get_downstream();
   rv = downstream->push_upload_data_chunk(
       reinterpret_cast<const uint8_t *>(data), len);
@@ -668,6 +664,8 @@ int HttpsUpstream::on_write() {
       if (handler_->get_should_close_after_write()) {
         return 0;
       }
+
+      handler_->repeat_read_timer();
 
       return resume_read(SHRPX_NO_BUFFER, nullptr, 0);
     }

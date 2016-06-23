@@ -314,7 +314,8 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
     // we may set read timer cb to idle_timeoutcb.  Reset again.
     conn_.rt.repeat = downstreamconf.timeout.read;
     ev_set_cb(&conn_.rt, timeoutcb);
-    ev_timer_again(conn_.loop, &conn_.rt);
+    ev_timer_stop(conn_.loop, &conn_.rt);
+
     ev_set_cb(&conn_.rev, readcb);
   }
 
@@ -892,7 +893,6 @@ http_parser_settings htp_hooks = {
 } // namespace
 
 int HttpDownstreamConnection::read_clear() {
-  ev_timer_again(conn_.loop, &conn_.rt);
   std::array<uint8_t, 16_k> buf;
   int rv;
 
@@ -918,8 +918,6 @@ int HttpDownstreamConnection::read_clear() {
 }
 
 int HttpDownstreamConnection::write_clear() {
-  ev_timer_again(conn_.loop, &conn_.rt);
-
   auto upstream = downstream_->get_upstream();
   auto input = downstream_->get_request_buf();
 
@@ -1007,7 +1005,6 @@ int HttpDownstreamConnection::tls_handshake() {
 int HttpDownstreamConnection::read_tls() {
   ERR_clear_error();
 
-  ev_timer_again(conn_.loop, &conn_.rt);
   std::array<uint8_t, 16_k> buf;
   int rv;
 
@@ -1034,8 +1031,6 @@ int HttpDownstreamConnection::read_tls() {
 
 int HttpDownstreamConnection::write_tls() {
   ERR_clear_error();
-
-  ev_timer_again(conn_.loop, &conn_.rt);
 
   auto upstream = downstream_->get_upstream();
   auto input = downstream_->get_request_buf();

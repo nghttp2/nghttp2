@@ -88,7 +88,7 @@ public:
   struct ev_loop *get_loop() const;
   void reset_upstream_read_timeout(ev_tstamp t);
   void reset_upstream_write_timeout(ev_tstamp t);
-  void signal_reset_upstream_conn_rtimer();
+
   int validate_next_proto();
   const std::string &get_ipaddr() const;
   const std::string &get_port() const;
@@ -151,6 +151,9 @@ public:
 
   const UpstreamAddr *get_upstream_addr() const;
 
+  void repeat_read_timer();
+  void stop_read_timer();
+
 private:
   Connection conn_;
   ev_timer reneg_shutdown_timer_;
@@ -173,7 +176,6 @@ private:
   size_t left_connhd_len_;
   int32_t affinity_hash_;
   bool should_close_after_write_;
-  bool reset_conn_rtimer_required_;
   ReadBuf rb_;
 };
 

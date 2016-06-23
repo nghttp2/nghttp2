@@ -138,6 +138,9 @@ int Http2Upstream::upgrade_upstream(HttpsUpstream *http) {
   downstream_queue_.add_pending(std::move(downstream));
   downstream_queue_.mark_active(ptr);
 
+  // TODO This might not be necessary
+  handler_->stop_read_timer();
+
   if (LOG_ENABLED(INFO)) {
     ULOG(INFO, this) << "Connection upgraded to HTTP/2";
   }
@@ -431,9 +434,6 @@ int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
     verbose_on_frame_recv_callback(session, frame, user_data);
   }
   auto upstream = static_cast<Http2Upstream *>(user_data);
-  auto handler = upstream->get_client_handler();
-
-  handler->signal_reset_upstream_conn_rtimer();
 
   switch (frame->hd.type) {
   case NGHTTP2_DATA: {
@@ -1374,6 +1374,8 @@ int Http2Upstream::error_reply(Downstream *downstream,
 void Http2Upstream::add_pending_downstream(
     std::unique_ptr<Downstream> downstream) {
   downstream_queue_.add_pending(std::move(downstream));
+
+  handler_->stop_read_timer();
 }
 
 void Http2Upstream::remove_downstream(Downstream *downstream) {
@@ -1388,6 +1390,11 @@ void Http2Upstream::remove_downstream(Downstream *downstream) {
 
   if (next_downstream) {
     initiate_downstream(next_downstream);
+  }
+
+  if (downstream_queue_.get_downstreams() == nullptr) {
+    // There is no downstream at the moment.  Start idle timer now.
+    handler_->repeat_read_timer();
   }
 }
 

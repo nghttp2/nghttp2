@@ -145,8 +145,6 @@ void on_ctrl_recv_callback(spdylay_session *session, spdylay_frame_type type,
   auto upstream = static_cast<SpdyUpstream *>(user_data);
   auto handler = upstream->get_client_handler();
 
-  handler->signal_reset_upstream_conn_rtimer();
-
   switch (type) {
   case SPDYLAY_SYN_STREAM: {
     if (LOG_ENABLED(INFO)) {
@@ -440,9 +438,6 @@ void on_data_recv_callback(spdylay_session *session, uint8_t flags,
   auto upstream = static_cast<SpdyUpstream *>(user_data);
   auto downstream = static_cast<Downstream *>(
       spdylay_session_get_stream_user_data(session, stream_id));
-  auto handler = upstream->get_client_handler();
-
-  handler->signal_reset_upstream_conn_rtimer();
 
   if (downstream && (flags & SPDYLAY_DATA_FLAG_FIN)) {
     if (!downstream->validate_request_recv_body_length()) {
@@ -1003,6 +998,8 @@ Downstream *SpdyUpstream::add_pending_downstream(int32_t stream_id) {
 
   downstream_queue_.add_pending(std::move(downstream));
 
+  handler_->stop_read_timer();
+
   return res;
 }
 
@@ -1018,6 +1015,10 @@ void SpdyUpstream::remove_downstream(Downstream *downstream) {
 
   if (next_downstream) {
     initiate_downstream(next_downstream);
+  }
+
+  if (downstream_queue_.get_downstreams() == nullptr) {
+    handler_->repeat_read_timer();
   }
 }
 

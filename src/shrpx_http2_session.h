@@ -203,6 +203,9 @@ public:
   // shutdown the connection.
   void check_retire();
 
+  void repeat_read_timer();
+  void stop_read_timer();
+
   enum {
     // Disconnected
     DISCONNECTED,
