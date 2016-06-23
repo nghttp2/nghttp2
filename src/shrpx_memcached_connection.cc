@@ -281,8 +281,6 @@ int MemcachedConnection::write_tls() {
     return 0;
   }
 
-  ev_timer_again(conn_.loop, &conn_.rt);
-
   if (sendq_.empty()) {
     conn_.wlimit.stopw();
     ev_timer_stop(conn_.loop, &conn_.wt);
@@ -354,8 +352,6 @@ int MemcachedConnection::write_clear() {
   if (!connected_) {
     return 0;
   }
-
-  ev_timer_again(conn_.loop, &conn_.rt);
 
   if (sendq_.empty()) {
     conn_.wlimit.stopw();
