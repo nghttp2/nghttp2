@@ -532,12 +532,6 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
 
   conn_handler.cancel_ocsp_update();
 
-#ifdef HAVE_NEVERBLEED
-  if (nb && nb->daemon_pid != -1) {
-    kill(nb->daemon_pid, SIGTERM);
-  }
-#endif // HAVE_NEVERBLEED
-
   return 0;
 }
 
