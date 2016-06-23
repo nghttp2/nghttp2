@@ -169,6 +169,8 @@ func newServerTesterInternal(src_args []string, t *testing.T, handler http.Handl
 
 	retry := 0
 	for {
+		time.Sleep(50 * time.Millisecond)
+
 		var conn net.Conn
 		var err error
 		if frontendTLS {
@@ -190,7 +192,6 @@ func newServerTesterInternal(src_args []string, t *testing.T, handler http.Handl
 				st.Close()
 				st.t.Fatalf("Error server is not responding too long; server command-line arguments may be invalid")
 			}
-			time.Sleep(150 * time.Millisecond)
 			continue
 		}
 		if frontendTLS {
@@ -296,6 +297,7 @@ type requestParam struct {
 	body        []byte              // request body
 	trailer     []hpack.HeaderField // trailer part
 	httpUpgrade bool                // true if upgraded to HTTP/2 through HTTP Upgrade
+	noEndStream bool                // true if END_STREAM should not be sent
 }
 
 // wrapper for request body to set trailer part
@@ -470,7 +472,7 @@ func (st *serverTester) spdy(rp requestParam) (*serverResponse, error) {
 	}
 
 	var synStreamFlags spdy.ControlFlags
-	if len(rp.body) == 0 {
+	if len(rp.body) == 0 && !rp.noEndStream {
 		synStreamFlags = spdy.ControlFlagFin
 	}
 	if err := st.spdyFr.WriteFrame(&spdy.SynStreamFrame{
@@ -484,9 +486,13 @@ func (st *serverTester) spdy(rp requestParam) (*serverResponse, error) {
 	}
 
 	if len(rp.body) != 0 {
+		var dataFlags spdy.DataFlags
+		if !rp.noEndStream {
+			dataFlags = spdy.DataFlagFin
+		}
 		if err := st.spdyFr.WriteFrame(&spdy.DataFrame{
 			StreamId: id,
-			Flags:    spdy.DataFlagFin,
+			Flags:    dataFlags,
 			Data:     rp.body,
 		}); err != nil {
 			return nil, err
@@ -599,7 +605,7 @@ func (st *serverTester) http2(rp requestParam) (*serverResponse, error) {
 
 		err := st.fr.WriteHeaders(http2.HeadersFrameParam{
 			StreamID:      id,
-			EndStream:     len(rp.body) == 0 && len(rp.trailer) == 0,
+			EndStream:     len(rp.body) == 0 && len(rp.trailer) == 0 && !rp.noEndStream,
 			EndHeaders:    true,
 			BlockFragment: st.headerBlkBuf.Bytes(),
 		})
@@ -609,7 +615,7 @@ func (st *serverTester) http2(rp requestParam) (*serverResponse, error) {
 
 		if len(rp.body) != 0 {
 			// TODO we assume rp.body fits in 1 frame
-			if err := st.fr.WriteData(id, len(rp.trailer) == 0, rp.body); err != nil {
+			if err := st.fr.WriteData(id, len(rp.trailer) == 0 && !rp.noEndStream, rp.body); err != nil {
 				return nil, err
 			}
 		}

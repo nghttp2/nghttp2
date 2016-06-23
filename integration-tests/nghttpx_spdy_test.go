@@ -642,3 +642,23 @@ func TestS3Healthmon(t *testing.T) {
 		t.Errorf("res.status: %v; want %v", got, want)
 	}
 }
+
+// TestS3ResponseBeforeRequestEnd tests the situation where response
+// ends before request body finishes.
+func TestS3ResponseBeforeRequestEnd(t *testing.T) {
+	st := newServerTesterTLS([]string{"--npn-list=spdy/3.1", "--mruby-file=" + testDir + "/req-return.rb"}, t, func(w http.ResponseWriter, r *http.Request) {
+		t.Fatal("request should not be forwarded")
+	})
+	defer st.Close()
+
+	res, err := st.spdy(requestParam{
+		name:        "TestS3ResponseBeforeRequestEnd",
+		noEndStream: true,
+	})
+	if err != nil {
+		t.Fatalf("Error st.spdy() = %v", err)
+	}
+	if got, want := res.status, 404; got != want {
+		t.Errorf("res.status: %v; want %v", got, want)
+	}
+}

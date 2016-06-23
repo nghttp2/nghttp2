@@ -2011,3 +2011,23 @@ func TestH2Healthmon(t *testing.T) {
 		t.Errorf("res.status: %v; want %v", got, want)
 	}
 }
+
+// TestH2ResponseBeforeRequestEnd tests the situation where response
+// ends before request body finishes.
+func TestH2ResponseBeforeRequestEnd(t *testing.T) {
+	st := newServerTester([]string{"--mruby-file=" + testDir + "/req-return.rb"}, t, func(w http.ResponseWriter, r *http.Request) {
+		t.Fatal("request should not be forwarded")
+	})
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name:        "TestH2ResponseBeforeRequestEnd",
+		noEndStream: true,
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+	if got, want := res.status, 404; got != want {
+		t.Errorf("res.status: %v; want %v", got, want)
+	}
+}

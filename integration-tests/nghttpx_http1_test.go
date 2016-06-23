@@ -961,3 +961,30 @@ func TestH1Healthmon(t *testing.T) {
 		t.Errorf("res.status: %v; want %v", got, want)
 	}
 }
+
+// TestH1ResponseBeforeRequestEnd tests the situation where response
+// ends before request body finishes.
+func TestH1ResponseBeforeRequestEnd(t *testing.T) {
+	st := newServerTester([]string{"--mruby-file=" + testDir + "/req-return.rb"}, t, func(w http.ResponseWriter, r *http.Request) {
+		t.Fatal("request should not be forwarded")
+	})
+	defer st.Close()
+
+	if _, err := io.WriteString(st.conn, fmt.Sprintf(`POST / HTTP/1.1
+Host: %v
+Test-Case: TestH1ResponseBeforeRequestEnd
+Content-Length: 1000000
+
+`, st.authority)); err != nil {
+		t.Fatalf("Error io.WriteString() = %v", err)
+	}
+
+	resp, err := http.ReadResponse(bufio.NewReader(st.conn), nil)
+	if err != nil {
+		t.Fatalf("Error http.ReadResponse() = %v", err)
+	}
+
+	if got, want := resp.StatusCode, 404; got != want {
+		t.Errorf("status: %v; want %v", got, want)
+	}
+}
