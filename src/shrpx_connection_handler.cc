@@ -878,4 +878,8 @@ void ConnectionHandler::send_serial_event(SerialEvent ev) {
   ev_async_send(loop_, &serial_event_asyncev_);
 }
 
+SSL_CTX *ConnectionHandler::get_ssl_ctx(size_t idx) const {
+  return all_ssl_ctx_[idx];
+}
+
 } // namespace shrpx

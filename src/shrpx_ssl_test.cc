@@ -36,83 +36,133 @@ namespace shrpx {
 
 void test_shrpx_ssl_create_lookup_tree(void) {
   auto tree = make_unique<ssl::CertLookupTree>();
-  SSL_CTX *ctxs[] = {
-      SSL_CTX_new(SSLv23_method()), SSL_CTX_new(SSLv23_method()),
-      SSL_CTX_new(SSLv23_method()), SSL_CTX_new(SSLv23_method()),
-      SSL_CTX_new(SSLv23_method()), SSL_CTX_new(SSLv23_method()),
-      SSL_CTX_new(SSLv23_method()), SSL_CTX_new(SSLv23_method()),
-      SSL_CTX_new(SSLv23_method()), SSL_CTX_new(SSLv23_method())};
 
   constexpr StringRef hostnames[] = {
-      StringRef::from_lit("example.com"),
-      StringRef::from_lit("www.example.org"),
-      StringRef::from_lit("*www.example.org"),
-      StringRef::from_lit("x*.host.domain"),
-      StringRef::from_lit("*yy.host.domain"),
-      StringRef::from_lit("nghttp2.sourceforge.net"),
-      StringRef::from_lit("sourceforge.net"),
-      StringRef::from_lit("sourceforge.net"), // duplicate
-      StringRef::from_lit("*.foo.bar"),       // oo.bar is suffix of *.foo.bar
-      StringRef::from_lit("oo.bar")};
-  auto num = array_size(ctxs);
-  for (size_t i = 0; i < num; ++i) {
-    tree->add_cert(ctxs[i], hostnames[i]);
+      StringRef::from_lit("example.com"),             // 0
+      StringRef::from_lit("www.example.org"),         // 1
+      StringRef::from_lit("*www.example.org"),        // 2
+      StringRef::from_lit("xy*.host.domain"),         // 3
+      StringRef::from_lit("*yy.host.domain"),         // 4
+      StringRef::from_lit("nghttp2.sourceforge.net"), // 5
+      StringRef::from_lit("sourceforge.net"),         // 6
+      StringRef::from_lit("sourceforge.net"),         // 7, duplicate
+      StringRef::from_lit("*.foo.bar"), // 8, oo.bar is suffix of *.foo.bar
+      StringRef::from_lit("oo.bar")     // 9
+  };
+  auto num = array_size(hostnames);
+
+  for (size_t idx = 0; idx < num; ++idx) {
+    tree->add_cert(hostnames[idx], idx);
   }
 
-  CU_ASSERT(ctxs[0] == tree->lookup(hostnames[0]));
-  CU_ASSERT(ctxs[1] == tree->lookup(hostnames[1]));
-  CU_ASSERT(ctxs[2] == tree->lookup(StringRef::from_lit("2www.example.org")));
-  CU_ASSERT(nullptr == tree->lookup(StringRef::from_lit("www2.example.org")));
-  CU_ASSERT(ctxs[3] == tree->lookup(StringRef::from_lit("x1.host.domain")));
+  tree->dump();
+
+  CU_ASSERT(0 == tree->lookup(hostnames[0]));
+  CU_ASSERT(1 == tree->lookup(hostnames[1]));
+  CU_ASSERT(2 == tree->lookup(StringRef::from_lit("2www.example.org")));
+  CU_ASSERT(-1 == tree->lookup(StringRef::from_lit("www2.example.org")));
+  CU_ASSERT(3 == tree->lookup(StringRef::from_lit("xy1.host.domain")));
   // Does not match *yy.host.domain, because * must match at least 1
   // character.
-  CU_ASSERT(nullptr == tree->lookup(StringRef::from_lit("yy.Host.domain")));
-  CU_ASSERT(ctxs[4] == tree->lookup(StringRef::from_lit("zyy.host.domain")));
-  CU_ASSERT(nullptr == tree->lookup(StringRef{}));
-  CU_ASSERT(ctxs[5] == tree->lookup(hostnames[5]));
-  CU_ASSERT(ctxs[6] == tree->lookup(hostnames[6]));
+  CU_ASSERT(-1 == tree->lookup(StringRef::from_lit("yy.host.domain")));
+  CU_ASSERT(4 == tree->lookup(StringRef::from_lit("xyy.host.domain")));
+  CU_ASSERT(-1 == tree->lookup(StringRef{}));
+  CU_ASSERT(5 == tree->lookup(hostnames[5]));
+  CU_ASSERT(6 == tree->lookup(hostnames[6]));
   constexpr char h6[] = "pdylay.sourceforge.net";
   for (int i = 0; i < 7; ++i) {
-    CU_ASSERT(0 == tree->lookup(StringRef{h6 + i, str_size(h6) - i}));
+    CU_ASSERT(-1 == tree->lookup(StringRef{h6 + i, str_size(h6) - i}));
   }
-  CU_ASSERT(ctxs[8] == tree->lookup(StringRef::from_lit("x.foo.bar")));
-  CU_ASSERT(ctxs[9] == tree->lookup(hostnames[9]));
+  CU_ASSERT(8 == tree->lookup(StringRef::from_lit("x.foo.bar")));
+  CU_ASSERT(9 == tree->lookup(hostnames[9]));
 
-  for (size_t i = 0; i < num; ++i) {
-    SSL_CTX_free(ctxs[i]);
-  }
-
-  SSL_CTX *ctxs2[] = {
-      SSL_CTX_new(SSLv23_method()), SSL_CTX_new(SSLv23_method()),
-      SSL_CTX_new(SSLv23_method()), SSL_CTX_new(SSLv23_method())};
   constexpr StringRef names[] = {
-      StringRef::from_lit("rab"), StringRef::from_lit("zab"),
-      StringRef::from_lit("zzub"), StringRef::from_lit("ab")};
-  num = array_size(ctxs2);
+      StringRef::from_lit("rab"),  // 1
+      StringRef::from_lit("zab"),  // 2
+      StringRef::from_lit("zzub"), // 3
+      StringRef::from_lit("ab")    // 4
+  };
+  num = array_size(names);
 
   tree = make_unique<ssl::CertLookupTree>();
-  for (size_t i = 0; i < num; ++i) {
-    tree->add_cert(ctxs2[i], names[i]);
+  for (size_t idx = 0; idx < num; ++idx) {
+    tree->add_cert(names[idx], idx);
   }
   for (size_t i = 0; i < num; ++i) {
-    CU_ASSERT(ctxs2[i] == tree->lookup(names[i]));
-  }
-
-  for (size_t i = 0; i < num; ++i) {
-    SSL_CTX_free(ctxs2[i]);
+    CU_ASSERT(i == tree->lookup(names[i]));
   }
 }
 
-void test_shrpx_ssl_cert_lookup_tree_add_cert_from_file(void) {
-  int rv;
-  ssl::CertLookupTree tree;
-  auto ssl_ctx = SSL_CTX_new(SSLv23_method());
-  const char certfile[] = NGHTTP2_TESTS_DIR "/testdata/cacert.pem";
-  rv = ssl::cert_lookup_tree_add_cert_from_file(&tree, ssl_ctx, certfile);
-  CU_ASSERT(0 == rv);
-  CU_ASSERT(ssl_ctx == tree.lookup(StringRef::from_lit("localhost")));
+namespace {
+X509 *load_certificate(const char *filename) {
+  auto bio = BIO_new(BIO_s_file());
+  if (!bio) {
+    fprintf(stderr, "BIO_new() failed\n");
+    return nullptr;
+  }
+  auto bio_deleter = defer(BIO_vfree, bio);
+  if (!BIO_read_filename(bio, filename)) {
+    fprintf(stderr, "Could not read certificate file '%s'\n", filename);
+    return nullptr;
+  }
+  auto cert = PEM_read_bio_X509(bio, nullptr, nullptr, nullptr);
+  if (!cert) {
+    fprintf(stderr, "Could not read X509 structure from file '%s'\n", filename);
+    return nullptr;
+  }
 
-  SSL_CTX_free(ssl_ctx);
+  return cert;
+}
+} // namespace
+
+// We use cfssl to generate key pairs.
+//
+// CA self-signed key pairs generation:
+//
+//   $ cfssl genkey -initca ca.nghttp2.org.csr.json | \
+//     cfssljson -bare ca.nghttp2.org
+//
+// Create CSR:
+//
+//   $ cfssl genkey test.nghttp2.org.csr.json | cfssljson -bare test.nghttp2.org
+//   $ cfssl genkey test.example.com.csr.json | cfssljson -bare test.example.com
+//
+// Sign CSR:
+//
+//   $ cfssl sign -ca ca.nghttp2.org.pem -ca-key ca.nghttp2.org-key.pem \
+//     -config=ca-config.json -profile=server test.nghttp2.org.csr | \
+//     cfssljson -bare test.nghttp2.org
+//
+//   $ cfssl sign -ca ca.nghttp2.org.pem -ca-key ca.nghttp2.org-key.pem \
+//     -config=ca-config.json -profile=server test.example.com.csr | \
+//     cfssljson -bare test.example.com
+//
+void test_shrpx_ssl_cert_lookup_tree_add_cert_from_x509(void) {
+  int rv;
+
+  constexpr char nghttp2_certfile[] = NGHTTP2_SRC_DIR "/test.nghttp2.org.pem";
+  auto nghttp2_cert = load_certificate(nghttp2_certfile);
+  auto nghttp2_cert_deleter = defer(X509_free, nghttp2_cert);
+
+  constexpr char examples_certfile[] = NGHTTP2_SRC_DIR "/test.example.com.pem";
+  auto examples_cert = load_certificate(examples_certfile);
+  auto examples_cert_deleter = defer(X509_free, examples_cert);
+
+  ssl::CertLookupTree tree;
+
+  rv = ssl::cert_lookup_tree_add_cert_from_x509(&tree, 0, nghttp2_cert);
+
+  CU_ASSERT(0 == rv);
+
+  rv = ssl::cert_lookup_tree_add_cert_from_x509(&tree, 1, examples_cert);
+
+  CU_ASSERT(0 == rv);
+
+  CU_ASSERT(-1 == tree.lookup(StringRef::from_lit("not-used.nghttp2.org")));
+  CU_ASSERT(0 == tree.lookup(StringRef::from_lit("test.nghttp2.org")));
+  CU_ASSERT(0 == tree.lookup(StringRef::from_lit("w.test.nghttp2.org")));
+  CU_ASSERT(0 == tree.lookup(StringRef::from_lit("www.test.nghttp2.org")));
+  CU_ASSERT(1 == tree.lookup(StringRef::from_lit("test.example.com")));
 }
 
 template <size_t N, size_t M>

@@ -40,6 +40,7 @@
 #endif // HAVE_NEVERBLEED
 
 #include "network.h"
+#include "shrpx_router.h"
 
 namespace shrpx {
 
@@ -103,73 +104,69 @@ int check_cert(SSL *ssl, const DownstreamAddr *addr);
 void get_altnames(X509 *cert, std::vector<std::string> &dns_names,
                   std::vector<std::string> &ip_addrs, std::string &common_name);
 
-// CertLookupTree forms lookup tree to get SSL_CTX whose DNS or
-// commonName matches hostname in query. The tree is patricia trie
-// data structure formed from the tail of the hostname pattern. Each
-// CertNode contains part of hostname str member in range [first,
-// last) member and the next member contains the following CertNode
-// pointers ('following' means character before the current one). The
-// CertNode where a hostname pattern ends contains its SSL_CTX pointer
-// in the ssl_ctx member.  For wildcard hostname pattern, we store the
-// its pattern and SSL_CTX in CertNode one before first "*" found from
-// the tail.
-//
-// When querying SSL_CTX with particular hostname, we match from its
-// tail in our lookup tree. If the query goes to the first character
-// of the hostname and current CertNode has non-NULL ssl_ctx member,
-// then it is the exact match. The ssl_ctx member is returned.  Along
-// the way, if CertNode which contains non-empty wildcard_certs member
-// is encountered, wildcard hostname matching is performed against
-// them. If there is a match, its SSL_CTX is returned. If none
-// matches, query is continued to the next character.
+struct WildcardRevPrefix {
+  WildcardRevPrefix(const StringRef &prefix, size_t idx)
+      : prefix(std::begin(prefix), std::end(prefix)), idx(idx) {}
 
-struct WildcardCert {
-  SSL_CTX *ssl_ctx;
-  const char *hostname;
-  size_t hostnamelen;
+  // "Prefix" of wildcard pattern.  It is reversed from original form.
+  // For example, if the original wildcard is "test*.nghttp2.org",
+  // prefix would be "tset".
+  ImmutableString prefix;
+  // The index of SSL_CTX.  See ConnectionHandler::get_ssl_ctx().
+  size_t idx;
 };
 
-struct CertNode {
-  // list of wildcard domain name and its SSL_CTX pair, the wildcard
-  // '*' appears in this position.
-  std::vector<WildcardCert> wildcard_certs;
-  // Next CertNode index of CertLookupTree::nodes
-  std::vector<std::unique_ptr<CertNode>> next;
-  // SSL_CTX for exact match
-  SSL_CTX *ssl_ctx;
-  const char *str;
-  // [first, last) in the reverse direction in str, first >=
-  // last. This indices only work for str member.
-  int first, last;
+struct WildcardPattern {
+  // Wildcard host sharing only suffix is probably rare, so we just do
+  // linear search.
+  std::vector<WildcardRevPrefix> rev_prefix;
 };
 
 class CertLookupTree {
 public:
   CertLookupTree();
 
-  // Adds |ssl_ctx| with hostname pattern |hostname| to the lookup
-  // tree.
-  void add_cert(SSL_CTX *ssl_ctx, const StringRef &hostname);
+  // Adds hostname pattern |hostname| to the lookup tree, associating
+  // value |index|.  When the queried host matches this pattern,
+  // |index| is returned.  We support wildcard pattern.  The left most
+  // '*' is considered as wildcard character, and it must match at
+  // least one character.  If the same pattern has been already added,
+  // this function is noop.
+  //
+  // The caller should lower-case |hostname| since this function does
+  // do that, and lookup function performs case-sensitive match.
+  //
+  // TODO Treat wildcard pattern described as RFC 6125.
+  void add_cert(const StringRef &hostname, size_t index);
 
-  // Looks up SSL_CTX using the given |hostname|.  If more than one
-  // SSL_CTX which matches the query, it is undefined which one is
-  // returned.  The |hostname| must be NULL-terminated.  If no
-  // matching SSL_CTX found, returns NULL.
-  SSL_CTX *lookup(const StringRef &hostname);
+  // Looks up index using the given |hostname|.  The exact match takes
+  // precedence over wildcard match.  For wildcard match, longest
+  // match (sum of matched suffix and prefix length in bytes) is
+  // preferred, breaking a tie with longer suffix.
+  //
+  // The caller should lower-case |hostname| since this function
+  // performs case-sensitive match.
+  ssize_t lookup(const StringRef &hostname);
+
+  // Dumps the contents of this lookup tree to stderr.
+  void dump() const;
 
 private:
-  CertNode root_;
-  // Stores pointers to copied hostname when adding hostname and
-  // ssl_ctx pair.
-  std::vector<std::unique_ptr<char[]>> hosts_;
+  // Exact match
+  Router router_;
+  // Wildcard reversed suffix match.  The returned index is into
+  // wildcard_patterns_.
+  Router rev_wildcard_router_;
+  // Stores wildcard suffix patterns.
+  std::vector<WildcardPattern> wildcard_patterns_;
 };
 
-// Adds |ssl_ctx| to lookup tree |lt| using hostnames read from
-// |certfile|. The subjectAltNames and commonName are considered as
-// eligible hostname. This function returns 0 if it succeeds, or -1.
-// Even if no ssl_ctx is added to tree, this function returns 0.
-int cert_lookup_tree_add_cert_from_file(CertLookupTree *lt, SSL_CTX *ssl_ctx,
-                                        const char *certfile);
+// Adds hostnames in |cert| to lookup tree |lt|.  The subjectAltNames
+// and commonName are considered as eligible hostname.  If there is at
+// least one dNSName in subjectAltNames, commonName is not considered.
+// This function returns 0 if it succeeds, or -1.
+int cert_lookup_tree_add_cert_from_x509(CertLookupTree *lt, size_t idx,
+                                        X509 *cert);
 
 // Returns true if |proto| is included in the
 // protocol list |protos|.

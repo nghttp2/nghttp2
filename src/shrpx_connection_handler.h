@@ -146,6 +146,9 @@ public:
                                 ev_timer *w);
   void schedule_next_tls_ticket_key_memcached_get(ev_timer *w);
   SSL_CTX *create_tls_ticket_key_memcached_ssl_ctx();
+  // Returns the SSL_CTX at all_ssl_ctx_[idx].  This does not perform
+  // array bound checking.
+  SSL_CTX *get_ssl_ctx(size_t idx) const;
 
 #ifdef HAVE_NEVERBLEED
   void set_neverbleed(std::unique_ptr<neverbleed_t> nb);

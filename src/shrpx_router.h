@@ -67,6 +67,9 @@ public:
   bool add_route(const StringRef &pattern, size_t index);
   // Returns the matched index of pattern.  -1 if there is no match.
   ssize_t match(const StringRef &host, const StringRef &path) const;
+  // Returns the matched index of pattern |s|.  -1 if there is no
+  // match.
+  ssize_t match(const StringRef &s) const;
   // Returns the matched index of pattern if a pattern is a suffix of
   // |s|, otherwise -1.  If |*last_node| is not nullptr, it specifies
   // the first node to start matching.  If it is nullptr, match will

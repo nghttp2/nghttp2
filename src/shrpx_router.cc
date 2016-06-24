@@ -279,6 +279,22 @@ ssize_t Router::match(const StringRef &host, const StringRef &path) const {
   return node->index;
 }
 
+ssize_t Router::match(const StringRef &s) const {
+  const RNode *node;
+  size_t offset;
+
+  node = match_complete(&offset, &root_, std::begin(s), std::end(s));
+  if (node == nullptr) {
+    return -1;
+  }
+
+  if (node->len != offset) {
+    return -1;
+  }
+
+  return node->index;
+}
+
 namespace {
 const RNode *match_prefix(size_t *nread, const RNode *node, const char *first,
                           const char *last) {

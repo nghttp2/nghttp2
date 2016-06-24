@@ -32,7 +32,7 @@
 namespace shrpx {
 
 void test_shrpx_ssl_create_lookup_tree(void);
-void test_shrpx_ssl_cert_lookup_tree_add_cert_from_file(void);
+void test_shrpx_ssl_cert_lookup_tree_add_cert_from_x509(void);
 void test_shrpx_ssl_tls_hostname_match(void);
 
 } // namespace shrpx

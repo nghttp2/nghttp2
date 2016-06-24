@@ -22,7 +22,10 @@
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 SUBDIRS = includes
 
-EXTRA_DIST = CMakeLists.txt
+EXTRA_DIST = \
+	CMakeLists.txt \
+	test.example.com.pem \
+	test.nghttp2.org.pem
 
 bin_PROGRAMS =
 check_PROGRAMS =
@@ -187,7 +190,7 @@ nghttpx_unittest_SOURCES = shrpx-unittest.cc \
 	template_test.cc template_test.h \
 	base64_test.cc base64_test.h
 nghttpx_unittest_CPPFLAGS = ${AM_CPPFLAGS} \
-	-DNGHTTP2_TESTS_DIR=\"$(top_srcdir)/tests\"
+	-DNGHTTP2_SRC_DIR=\"$(top_srcdir)/src\"
 nghttpx_unittest_LDADD = libnghttpx.a ${LDADD} @CUNIT_LIBS@ @TESTLDADD@
 
 if HAVE_MRUBY
