@@ -398,8 +398,6 @@ int LiveCheck::read_tls() {
 }
 
 int LiveCheck::write_tls() {
-  ev_timer_again(conn_.loop, &conn_.rt);
-
   ERR_clear_error();
 
   struct iovec iov;
@@ -466,8 +464,6 @@ int LiveCheck::read_clear() {
 }
 
 int LiveCheck::write_clear() {
-  ev_timer_again(conn_.loop, &conn_.rt);
-
   struct iovec iov;
 
   for (;;) {
