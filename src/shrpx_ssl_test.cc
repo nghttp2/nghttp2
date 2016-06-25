@@ -93,28 +93,6 @@ void test_shrpx_ssl_create_lookup_tree(void) {
   }
 }
 
-namespace {
-X509 *load_certificate(const char *filename) {
-  auto bio = BIO_new(BIO_s_file());
-  if (!bio) {
-    fprintf(stderr, "BIO_new() failed\n");
-    return nullptr;
-  }
-  auto bio_deleter = defer(BIO_vfree, bio);
-  if (!BIO_read_filename(bio, filename)) {
-    fprintf(stderr, "Could not read certificate file '%s'\n", filename);
-    return nullptr;
-  }
-  auto cert = PEM_read_bio_X509(bio, nullptr, nullptr, nullptr);
-  if (!cert) {
-    fprintf(stderr, "Could not read X509 structure from file '%s'\n", filename);
-    return nullptr;
-  }
-
-  return cert;
-}
-} // namespace
-
 // We use cfssl to generate key pairs.
 //
 // CA self-signed key pairs generation:
@@ -141,11 +119,11 @@ void test_shrpx_ssl_cert_lookup_tree_add_cert_from_x509(void) {
   int rv;
 
   constexpr char nghttp2_certfile[] = NGHTTP2_SRC_DIR "/test.nghttp2.org.pem";
-  auto nghttp2_cert = load_certificate(nghttp2_certfile);
+  auto nghttp2_cert = ssl::load_certificate(nghttp2_certfile);
   auto nghttp2_cert_deleter = defer(X509_free, nghttp2_cert);
 
   constexpr char examples_certfile[] = NGHTTP2_SRC_DIR "/test.example.com.pem";
-  auto examples_cert = load_certificate(examples_certfile);
+  auto examples_cert = ssl::load_certificate(examples_certfile);
   auto examples_cert_deleter = defer(X509_free, examples_cert);
 
   ssl::CertLookupTree tree;

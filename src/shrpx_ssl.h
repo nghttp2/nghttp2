@@ -236,6 +236,10 @@ void try_cache_tls_session(TLSSessionCache &cache, const Address &addr,
 // found associated to |addr|, nullptr will be returned.
 SSL_SESSION *reuse_tls_session(const TLSSessionCache &addr);
 
+// Loads certificate form file |filename|.  The caller should delete
+// the returned object using X509_free().
+X509 *load_certificate(const char *filename);
+
 } // namespace ssl
 
 } // namespace shrpx

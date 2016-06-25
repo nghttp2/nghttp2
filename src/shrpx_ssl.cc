@@ -1318,6 +1318,26 @@ bool upstream_tls_enabled() {
                      [](const UpstreamAddr &faddr) { return faddr.tls; });
 }
 
+X509 *load_certificate(const char *filename) {
+  auto bio = BIO_new(BIO_s_file());
+  if (!bio) {
+    fprintf(stderr, "BIO_new() failed\n");
+    return nullptr;
+  }
+  auto bio_deleter = defer(BIO_vfree, bio);
+  if (!BIO_read_filename(bio, filename)) {
+    fprintf(stderr, "Could not read certificate file '%s'\n", filename);
+    return nullptr;
+  }
+  auto cert = PEM_read_bio_X509(bio, nullptr, nullptr, nullptr);
+  if (!cert) {
+    fprintf(stderr, "Could not read X509 structure from file '%s'\n", filename);
+    return nullptr;
+  }
+
+  return cert;
+}
+
 SSL_CTX *setup_server_ssl_context(std::vector<SSL_CTX *> &all_ssl_ctx,
                                   CertLookupTree *cert_tree
 #ifdef HAVE_NEVERBLEED
@@ -1351,25 +1371,41 @@ SSL_CTX *setup_server_ssl_context(std::vector<SSL_CTX *> &all_ssl_ctx,
     return ssl_ctx;
   }
 
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+  auto cert = SSL_CTX_get0_certificate(ssl_ctx);
+#else
+  auto cert = load_certificate(tlsconf.cert_file.c_str());
+  auto cert_deleter = defer(X509_free, cert);
+#endif
+
   if (ssl::cert_lookup_tree_add_cert_from_x509(
-          cert_tree, all_ssl_ctx.size() - 1,
-          SSL_CTX_get0_certificate(ssl_ctx)) == -1) {
+          cert_tree, all_ssl_ctx.size() - 1, cert) == -1) {
     LOG(FATAL) << "Failed to add default certificate.";
     DIE();
   }
 
   for (auto &keycert : tlsconf.subcerts) {
+    auto &priv_key_file = keycert.first;
+    auto &cert_file = keycert.second;
+
     auto ssl_ctx =
-        ssl::create_ssl_context(keycert.first.c_str(), keycert.second.c_str()
+        ssl::create_ssl_context(priv_key_file.c_str(), cert_file.c_str()
 #ifdef HAVE_NEVERBLEED
                                                            ,
                                 nb
 #endif // HAVE_NEVERBLEED
                                 );
     all_ssl_ctx.push_back(ssl_ctx);
+
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+    auto cert = SSL_CTX_get0_certificate(ssl_ctx);
+#else
+    auto cert = load_certificate(cert_file.c_str());
+    auto cert_deleter = defer(X509_free, cert);
+#endif
+
     if (ssl::cert_lookup_tree_add_cert_from_x509(
-            cert_tree, all_ssl_ctx.size() - 1,
-            SSL_CTX_get0_certificate(ssl_ctx)) == -1) {
+            cert_tree, all_ssl_ctx.size() - 1, cert) == -1) {
       LOG(FATAL) << "Failed to add sub certificate.";
       DIE();
     }
