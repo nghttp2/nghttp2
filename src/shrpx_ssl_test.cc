@@ -97,7 +97,7 @@ void test_shrpx_ssl_create_lookup_tree(void) {
 //
 // CA self-signed key pairs generation:
 //
-//   $ cfssl genkey -initca ca.nghttp2.org.csr.json | \
+//   $ cfssl genkey -initca ca.nghttp2.org.csr.json |
 //     cfssljson -bare ca.nghttp2.org
 //
 // Create CSR:
@@ -107,12 +107,12 @@ void test_shrpx_ssl_create_lookup_tree(void) {
 //
 // Sign CSR:
 //
-//   $ cfssl sign -ca ca.nghttp2.org.pem -ca-key ca.nghttp2.org-key.pem \
-//     -config=ca-config.json -profile=server test.nghttp2.org.csr | \
+//   $ cfssl sign -ca ca.nghttp2.org.pem -ca-key ca.nghttp2.org-key.pem
+//     -config=ca-config.json -profile=server test.nghttp2.org.csr |
 //     cfssljson -bare test.nghttp2.org
 //
-//   $ cfssl sign -ca ca.nghttp2.org.pem -ca-key ca.nghttp2.org-key.pem \
-//     -config=ca-config.json -profile=server test.example.com.csr | \
+//   $ cfssl sign -ca ca.nghttp2.org.pem -ca-key ca.nghttp2.org-key.pem
+//     -config=ca-config.json -profile=server test.example.com.csr |
 //     cfssljson -bare test.example.com
 //
 void test_shrpx_ssl_cert_lookup_tree_add_cert_from_x509(void) {
