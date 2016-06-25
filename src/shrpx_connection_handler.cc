@@ -202,10 +202,10 @@ void ConnectionHandler::worker_replace_downstream(
 }
 
 int ConnectionHandler::create_single_worker() {
-  auto cert_tree = ssl::create_cert_lookup_tree();
-  auto sv_ssl_ctx = ssl::setup_server_ssl_context(all_ssl_ctx_, cert_tree
+  cert_tree_ = ssl::create_cert_lookup_tree();
+  auto sv_ssl_ctx = ssl::setup_server_ssl_context(all_ssl_ctx_, cert_tree_.get()
 #ifdef HAVE_NEVERBLEED
-                                                  ,
+                                                                    ,
                                                   nb_.get()
 #endif // HAVE_NEVERBLEED
                                                       );
@@ -234,7 +234,7 @@ int ConnectionHandler::create_single_worker() {
   }
 
   single_worker_ = make_unique<Worker>(
-      loop_, sv_ssl_ctx, cl_ssl_ctx, session_cache_ssl_ctx, cert_tree,
+      loop_, sv_ssl_ctx, cl_ssl_ctx, session_cache_ssl_ctx, cert_tree_.get(),
       ticket_keys_, this, get_config()->conn.downstream);
 #ifdef HAVE_MRUBY
   if (single_worker_->create_mruby_context() != 0) {
@@ -249,10 +249,10 @@ int ConnectionHandler::create_worker_thread(size_t num) {
 #ifndef NOTHREADS
   assert(workers_.size() == 0);
 
-  auto cert_tree = ssl::create_cert_lookup_tree();
-  auto sv_ssl_ctx = ssl::setup_server_ssl_context(all_ssl_ctx_, cert_tree
+  cert_tree_ = ssl::create_cert_lookup_tree();
+  auto sv_ssl_ctx = ssl::setup_server_ssl_context(all_ssl_ctx_, cert_tree_.get()
 #ifdef HAVE_NEVERBLEED
-                                                  ,
+                                                                    ,
                                                   nb_.get()
 #endif // HAVE_NEVERBLEED
                                                       );
@@ -289,7 +289,7 @@ int ConnectionHandler::create_worker_thread(size_t num) {
       all_ssl_ctx_.push_back(session_cache_ssl_ctx);
     }
     auto worker = make_unique<Worker>(
-        loop, sv_ssl_ctx, cl_ssl_ctx, session_cache_ssl_ctx, cert_tree,
+        loop, sv_ssl_ctx, cl_ssl_ctx, session_cache_ssl_ctx, cert_tree_.get(),
         ticket_keys_, this, get_config()->conn.downstream);
 #ifdef HAVE_MRUBY
     if (worker->create_mruby_context() != 0) {

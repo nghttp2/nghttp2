@@ -212,7 +212,7 @@ void setup_downstream_http1_alpn(SSL *ssl);
 
 // Creates CertLookupTree.  If frontend is configured not to use TLS,
 // this function returns nullptr.
-CertLookupTree *create_cert_lookup_tree();
+std::unique_ptr<CertLookupTree> create_cert_lookup_tree();
 
 SSL *create_ssl(SSL_CTX *ssl_ctx);
 

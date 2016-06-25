@@ -1444,11 +1444,11 @@ void setup_downstream_http1_alpn(SSL *ssl) {
 #endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 }
 
-CertLookupTree *create_cert_lookup_tree() {
+std::unique_ptr<CertLookupTree> create_cert_lookup_tree() {
   if (!upstream_tls_enabled() || get_config()->tls.subcerts.empty()) {
     return nullptr;
   }
-  return new ssl::CertLookupTree();
+  return make_unique<CertLookupTree>();
 }
 
 namespace {

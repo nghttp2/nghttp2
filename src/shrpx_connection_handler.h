@@ -61,6 +61,12 @@ struct TicketKeys;
 class MemcachedDispatcher;
 struct UpstreamAddr;
 
+namespace ssl {
+
+class CertLookupTree;
+
+} // namespace ssl
+
 struct OCSPUpdateContext {
   // ocsp response buffer
   std::vector<uint8_t> resp;
@@ -184,6 +190,7 @@ private:
   // Worker instance used when single threaded mode (-n1) is used.
   // Otherwise, nullptr and workers_ has instances of Worker instead.
   std::unique_ptr<Worker> single_worker_;
+  std::unique_ptr<ssl::CertLookupTree> cert_tree_;
   std::unique_ptr<MemcachedDispatcher> tls_ticket_key_memcached_dispatcher_;
   // Current TLS session ticket keys.  Note that TLS connection does
   // not refer to this field directly.  They use TicketKeys object in
