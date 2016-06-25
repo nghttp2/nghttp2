@@ -89,7 +89,7 @@ void test_shrpx_ssl_create_lookup_tree(void) {
     tree->add_cert(names[idx], idx);
   }
   for (size_t i = 0; i < num; ++i) {
-    CU_ASSERT(i == tree->lookup(names[i]));
+    CU_ASSERT((ssize_t)i == tree->lookup(names[i]));
   }
 }
 
