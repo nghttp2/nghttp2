@@ -243,10 +243,11 @@ private:
   std::future<void> fut_;
 #endif // NOTHREADS
   std::mutex m_;
-  std::vector<WorkerEvent> q_;
+  std::deque<WorkerEvent> q_;
   std::mt19937 randgen_;
   ev_async w_;
   ev_timer mcpool_clear_timer_;
+  ev_timer proc_wev_timer_;
   MemchunkPool mcpool_;
   WorkerStat worker_stat_;
 
