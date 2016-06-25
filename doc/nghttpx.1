@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTPX" "1" "June 17, 2016" "1.12.0-DEV" "nghttp2"
+.TH "NGHTTPX" "1" "June 26, 2016" "1.12.0-DEV" "nghttp2"
 .SH NAME
 nghttpx \- HTTP/2 proxy
 .
@@ -192,7 +192,8 @@ This  option can  be used  multiple times  to listen  to
 multiple addresses.
 .sp
 This option  can take  0 or  more parameters,  which are
-described below.
+described  below.   Note   that  "api"  and  "healthmon"
+parameters are mutually exclusive.
 .sp
 Optionally, TLS  can be disabled by  specifying "no\-tls"
 parameter.  TLS is enabled by default.
@@ -484,6 +485,20 @@ Specify  timeout before  SETTINGS ACK  is received  from
 backend server.
 .sp
 Default: \fB10s\fP
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-backend\-max\-backoff=<DURATION>
+Specify  maximum backoff  interval.  This  is used  when
+doing health  check against offline backend  (see "fail"
+parameter  in \fI\%\-\-backend\fP  option).   It is  also used  to
+limit  the  maximum   interval  to  temporarily  disable
+backend  when nghttpx  failed to  connect to  it.  These
+intervals are calculated  using exponential backoff, and
+consecutive failed attempts increase the interval.  This
+option caps its maximum value.
+.sp
+Default: \fB2m\fP
 .UNINDENT
 .SS SSL/TLS
 .INDENT 0.0

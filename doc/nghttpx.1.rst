@@ -176,7 +176,8 @@ Connections
     multiple addresses.
 
     This option  can take  0 or  more parameters,  which are
-    described below.
+    described  below.   Note   that  "api"  and  "healthmon"
+    parameters are mutually exclusive.
 
     Optionally, TLS  can be disabled by  specifying "no-tls"
     parameter.  TLS is enabled by default.
@@ -443,6 +444,19 @@ Timeout
     backend server.
 
     Default: ``10s``
+
+.. option:: --backend-max-backoff=<DURATION>
+
+    Specify  maximum backoff  interval.  This  is used  when
+    doing health  check against offline backend  (see "fail"
+    parameter  in :option:`--backend`  option).   It is  also used  to
+    limit  the  maximum   interval  to  temporarily  disable
+    backend  when nghttpx  failed to  connect to  it.  These
+    intervals are calculated  using exponential backoff, and
+    consecutive failed attempts increase the interval.  This
+    option caps its maximum value.
+
+    Default: ``2m``
 
 
 SSL/TLS
