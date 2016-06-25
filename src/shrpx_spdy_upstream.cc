@@ -143,7 +143,6 @@ namespace {
 void on_ctrl_recv_callback(spdylay_session *session, spdylay_frame_type type,
                            spdylay_frame *frame, void *user_data) {
   auto upstream = static_cast<SpdyUpstream *>(user_data);
-  auto handler = upstream->get_client_handler();
 
   switch (type) {
   case SPDYLAY_SYN_STREAM: {
@@ -287,6 +286,7 @@ void on_ctrl_recv_callback(spdylay_session *session, spdylay_frame_type type,
     downstream->set_request_state(Downstream::HEADER_COMPLETE);
 
 #ifdef HAVE_MRUBY
+    auto handler = upstream->get_client_handler();
     auto worker = handler->get_worker();
     auto mruby_ctx = worker->get_mruby_context();
 
