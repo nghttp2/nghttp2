@@ -1338,7 +1338,7 @@ Connections:
               "affinity"  parameter  to   all  backend  explicitly  if
               session affinity  is desired.  The session  affinity may
               break if one of the backend gets unreachable, or backend
-              settings are reload or replaced by API.
+              settings are reloaded or replaced by API.
 
               Since ";" and ":" are  used as delimiter, <PATTERN> must
               not  contain these  characters.  Since  ";" has  special
