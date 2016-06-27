@@ -1371,12 +1371,14 @@ SSL_CTX *setup_server_ssl_context(std::vector<SSL_CTX *> &all_ssl_ctx,
     return ssl_ctx;
   }
 
-#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+#if !defined(LIBRESSL_VERSION_NUMBER) && OPENSSL_VERSION_NUMBER >= 0x10002000L
   auto cert = SSL_CTX_get0_certificate(ssl_ctx);
-#else  // OPENSSL_VERSION_NUMBER < 0x10002000L
+#else  // defined(LIBRESSL_VERSION_NUMBER) || OPENSSL_VERSION_NUMBER <
+  // 0x10002000L
   auto cert = load_certificate(tlsconf.cert_file.c_str());
   auto cert_deleter = defer(X509_free, cert);
-#endif // OPENSSL_VERSION_NUMBER < 0x10002000L
+#endif // defined(LIBRESSL_VERSION_NUMBER) || OPENSSL_VERSION_NUMBER <
+       // 0x10002000L
 
   if (ssl::cert_lookup_tree_add_cert_from_x509(
           cert_tree, all_ssl_ctx.size() - 1, cert) == -1) {
@@ -1397,12 +1399,14 @@ SSL_CTX *setup_server_ssl_context(std::vector<SSL_CTX *> &all_ssl_ctx,
                                 );
     all_ssl_ctx.push_back(ssl_ctx);
 
-#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+#if !defined(LIBRESSL_VERSION_NUMBER) && OPENSSL_VERSION_NUMBER >= 0x10002000L
     auto cert = SSL_CTX_get0_certificate(ssl_ctx);
-#else  // OPENSSL_VERSION_NUMBER < 0x10002000L
+#else  // defined(LIBRESSL_VERSION_NUMBER) || OPENSSL_VERSION_NUMBER <
+    // 0x10002000L
     auto cert = load_certificate(cert_file.c_str());
     auto cert_deleter = defer(X509_free, cert);
-#endif // OPENSSL_VERSION_NUMBER < 0x10002000L
+#endif // defined(LIBRESSL_VERSION_NUMBER) || OPENSSL_VERSION_NUMBER <
+       // 0x10002000L
 
     if (ssl::cert_lookup_tree_add_cert_from_x509(
             cert_tree, all_ssl_ctx.size() - 1, cert) == -1) {
