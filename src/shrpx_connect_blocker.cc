@@ -80,7 +80,8 @@ void ConnectBlocker::on_failure() {
 
   ++fail_count_;
 
-  auto base_backoff = pow(MULTIPLIER, std::min(MAX_BACKOFF_EXP, fail_count_));
+  auto base_backoff = pow(
+      MULTIPLIER, static_cast<double>(std::min(MAX_BACKOFF_EXP, fail_count_)));
   auto dist = std::uniform_real_distribution<>(-JITTER * base_backoff,
                                                JITTER * base_backoff);
 
