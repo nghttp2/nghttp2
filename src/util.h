@@ -677,6 +677,9 @@ OutputIterator copy_lit(OutputIterator it, CharT(&s)[N]) {
   return std::copy_n(s, N - 1, it);
 }
 
+// Returns x**y
+double int_pow(double x, size_t y);
+
 } // namespace util
 
 } // namespace nghttp2

@@ -157,8 +157,8 @@ constexpr auto JITTER = 0.2;
 } // namespace
 
 void LiveCheck::schedule() {
-  auto base_backoff = pow(
-      MULTIPLIER, static_cast<double>(std::min(fail_count_, MAX_BACKOFF_EXP)));
+  auto base_backoff =
+      util::int_pow(MULTIPLIER, std::min(fail_count_, MAX_BACKOFF_EXP));
   auto dist = std::uniform_real_distribution<>(-JITTER * base_backoff,
                                                JITTER * base_backoff);
 

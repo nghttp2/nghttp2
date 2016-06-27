@@ -1316,6 +1316,15 @@ StringRef percent_decode(BlockAllocator &balloc, const StringRef &src) {
   return StringRef{iov.base, p};
 }
 
+// Returns x**y
+double int_pow(double x, size_t y) {
+  auto res = 1.;
+  for (; y; --y) {
+    res *= x;
+  }
+  return res;
+}
+
 } // namespace util
 
 } // namespace nghttp2
