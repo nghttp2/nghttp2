@@ -39,7 +39,7 @@ link_libraries(
 if(ENABLE_APP)
   set(HELPER_OBJECTS
     util.cc
-    http2.cc timegm.c app_helper.cc nghttp2_gzip.c
+    http2.cc timegm.c app_helper.cc nghttp2_gzip.c cache_digest.cc
   )
 
   # nghttp client
@@ -111,6 +111,7 @@ if(ENABLE_APP)
     shrpx_router.cc
     shrpx_api_downstream_connection.cc
     shrpx_health_monitor_downstream_connection.cc
+    cache_digest.cc
   )
   if(HAVE_SPDYLAY)
     list(APPEND NGHTTPX_SRCS
@@ -159,6 +160,7 @@ if(ENABLE_APP)
       memchunk_test.cc
       template_test.cc
       base64_test.cc
+      cache_digest_test.cc
     )
     add_executable(nghttpx-unittest EXCLUDE_FROM_ALL
       ${NGHTTPX_UNITTEST_SOURCES}

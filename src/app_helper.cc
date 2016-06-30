@@ -106,6 +106,8 @@ std::string strframetype(uint8_t type) {
     return "WINDOW_UPDATE";
   case NGHTTP2_ALTSVC:
     return "ALTSVC";
+  case NGHTTP2_DRAFT_CACHE_DIGEST:
+    return "CACHE_DIGSET";
   }
 
   std::string s = "extension(0x";

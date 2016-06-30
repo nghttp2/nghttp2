@@ -41,6 +41,11 @@
 
 namespace nghttp2 {
 
+enum nghttp2_draft_frame_type {
+  // draft-kazuho-h2-cache-digest-01
+  NGHTTP2_DRAFT_CACHE_DIGEST = 0xf1
+};
+
 int verbose_on_header_callback(nghttp2_session *session,
                                const nghttp2_frame *frame, const uint8_t *name,
                                size_t namelen, const uint8_t *value,

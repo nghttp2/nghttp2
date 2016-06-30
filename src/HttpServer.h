@@ -153,6 +153,12 @@ struct Stream {
 
 class Sessions;
 
+struct CacheDigest {
+  std::vector<uint64_t> keys;
+  uint32_t logn;
+  uint32_t logp;
+};
+
 class Http2Handler {
 public:
   Http2Handler(Sessions *sessions, int fd, SSL *ssl, int64_t session_id);
@@ -206,6 +212,15 @@ public:
 
   WriteBuf *get_wb();
 
+  std::vector<uint8_t> &get_extbuf();
+
+  // Sets given cache digest.  Overwrites existing one if any.
+  void set_cache_digest(const StringRef &origin,
+                        std::unique_ptr<CacheDigest> cache_digest);
+  // Returns true if |uri| is included in cache digest.
+  bool cache_digest_includes(const StringRef &origin,
+                             const StringRef &uri) const;
+
 private:
   ev_io wev_;
   ev_io rev_;
@@ -213,6 +228,10 @@ private:
   std::map<int32_t, std::unique_ptr<Stream>> id2stream_;
   WriteBuf wb_;
   std::function<int(Http2Handler &)> read_, write_;
+  // Received cache digest hash keys per origin
+  std::map<std::string, std::unique_ptr<CacheDigest>> origin_cache_digest_;
+  // Buffer for extension frame payload
+  std::vector<uint8_t> extbuf_;
   int64_t session_id_;
   nghttp2_session *session_;
   Sessions *sessions_;

@@ -64,10 +64,10 @@ if ENABLE_APP
 bin_PROGRAMS += nghttp nghttpd nghttpx
 
 HELPER_OBJECTS = util.cc \
-	http2.cc timegm.c app_helper.cc nghttp2_gzip.c
+	http2.cc timegm.c app_helper.cc nghttp2_gzip.c cache_digest.cc
 HELPER_HFILES = util.h \
 	http2.h timegm.h app_helper.h nghttp2_config.h \
-	nghttp2_gzip.h network.h
+	nghttp2_gzip.h network.h cache_digest.h
 
 HTML_PARSER_OBJECTS =
 HTML_PARSER_HFILES = HtmlParser.h
@@ -138,7 +138,8 @@ NGHTTPX_SRCS = \
 	shrpx_api_downstream_connection.cc shrpx_api_downstream_connection.h \
 	shrpx_health_monitor_downstream_connection.cc \
 	shrpx_health_monitor_downstream_connection.h \
-	buffer.h memchunk.h template.h allocator.h
+	buffer.h memchunk.h template.h allocator.h \
+	cache_digest.cc cache_digest.h
 
 if HAVE_SPDYLAY
 NGHTTPX_SRCS += shrpx_spdy_upstream.cc shrpx_spdy_upstream.h
@@ -188,7 +189,8 @@ nghttpx_unittest_SOURCES = shrpx-unittest.cc \
 	buffer_test.cc buffer_test.h \
 	memchunk_test.cc memchunk_test.h \
 	template_test.cc template_test.h \
-	base64_test.cc base64_test.h
+	base64_test.cc base64_test.h \
+	cache_digest_test.cc cache_digest_test.h
 nghttpx_unittest_CPPFLAGS = ${AM_CPPFLAGS} \
 	-DNGHTTP2_SRC_DIR=\"$(top_srcdir)/src\"
 nghttpx_unittest_LDADD = libnghttpx.a ${LDADD} @CUNIT_LIBS@ @TESTLDADD@

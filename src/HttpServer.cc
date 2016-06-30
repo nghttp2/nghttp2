@@ -62,6 +62,7 @@
 #include "util.h"
 #include "ssl.h"
 #include "template.h"
+#include "cache_digest.h"
 
 #ifndef O_BINARY
 #define O_BINARY (0)
@@ -825,10 +826,22 @@ int Http2Handler::on_write() { return write_(*this); }
 int Http2Handler::connection_made() {
   int r;
 
-  r = nghttp2_session_server_new(&session_, sessions_->get_callbacks(), this);
+  nghttp2_option *opt;
+  r = nghttp2_option_new(&opt);
 
   if (r != 0) {
-    return r;
+    return -1;
+  }
+
+  nghttp2_option_set_user_recv_extension_type(opt, NGHTTP2_DRAFT_CACHE_DIGEST);
+
+  r = nghttp2_session_server_new2(&session_, sessions_->get_callbacks(), this,
+                                  opt);
+
+  nghttp2_option_del(opt);
+
+  if (r != 0) {
+    return -1;
   }
 
   auto config = sessions_->get_config();
@@ -852,7 +865,7 @@ int Http2Handler::connection_made() {
 
   r = nghttp2_submit_settings(session_, NGHTTP2_FLAG_NONE, entry.data(), niv);
   if (r != 0) {
-    return r;
+    return -1;
   }
 
   if (config->connection_window_bits != -1) {
@@ -860,7 +873,7 @@ int Http2Handler::connection_made() {
         session_, NGHTTP2_FLAG_NONE, 0,
         (1 << config->connection_window_bits) - 1);
     if (r != 0) {
-      return r;
+      return -1;
     }
   }
 
@@ -1062,6 +1075,39 @@ void Http2Handler::remove_settings_timer() {
 
 void Http2Handler::terminate_session(uint32_t error_code) {
   nghttp2_session_terminate_session(session_, error_code);
+}
+
+std::vector<uint8_t> &Http2Handler::get_extbuf() { return extbuf_; }
+
+void Http2Handler::set_cache_digest(const StringRef &authority,
+                                    std::unique_ptr<CacheDigest> cache_digest) {
+  origin_cache_digest_[authority.str()] = std::move(cache_digest);
+}
+
+bool Http2Handler::cache_digest_includes(const StringRef &authority,
+                                         const StringRef &uri) const {
+  uint64_t key;
+  int rv;
+
+  auto it = origin_cache_digest_.find(authority.str());
+
+  if (it == std::end(origin_cache_digest_)) {
+    return false;
+  }
+
+  auto &cache_digest = (*it).second;
+
+  auto key_nbits = cache_digest->logn + cache_digest->logp;
+
+  rv = cache_digest_hash(key, key_nbits, uri);
+
+  if (rv != 0) {
+    return false;
+  }
+
+  const auto &keys = cache_digest->keys;
+
+  return std::binary_search(std::begin(keys), std::end(keys), key);
 }
 
 ssize_t file_read_callback(nghttp2_session *session, int32_t stream_id,
@@ -1542,9 +1588,53 @@ int hd_on_frame_recv_callback(nghttp2_session *session,
       hd->remove_settings_timer();
     }
     break;
+  case NGHTTP2_DRAFT_CACHE_DIGEST: {
+    auto stream = hd->get_stream(frame->hd.stream_id);
+    if (!stream) {
+      return 0;
+    }
+
+    auto &header = stream->header;
+
+    hd->set_cache_digest(header.authority,
+                         std::unique_ptr<CacheDigest>(
+                             static_cast<CacheDigest *>(frame->ext.payload)));
+
+    break;
+  }
   default:
     break;
   }
+  return 0;
+}
+} // namespace
+
+namespace {
+int before_frame_send_callback(nghttp2_session *session,
+                               const nghttp2_frame *frame, void *user_data) {
+  auto hd = static_cast<Http2Handler *>(user_data);
+
+  if (frame->hd.type != NGHTTP2_PUSH_PROMISE) {
+    return 0;
+  }
+
+  auto promised_stream = hd->get_stream(frame->push_promise.promised_stream_id);
+
+  if (promised_stream == nullptr) {
+    return 0;
+  }
+
+  auto &header = promised_stream->header;
+
+  auto uri = header.scheme.str();
+  uri += "://";
+  uri += header.authority;
+  uri += header.path;
+
+  if (hd->cache_digest_includes(header.authority, StringRef{uri})) {
+    return NGHTTP2_ERR_CANCEL;
+  }
+
   return 0;
 }
 } // namespace
@@ -1722,6 +1812,46 @@ int on_stream_close_callback(nghttp2_session *session, int32_t stream_id,
 } // namespace
 
 namespace {
+int on_extension_chunk_recv_callback(nghttp2_session *session,
+                                     const nghttp2_frame_hd *frame_hd,
+                                     const uint8_t *data, size_t len,
+                                     void *user_data) {
+  auto hd = static_cast<Http2Handler *>(user_data);
+
+  auto &buf = hd->get_extbuf();
+  buf.insert(std::end(buf), data, data + len);
+
+  return 0;
+}
+} // namespace
+
+namespace {
+int unpack_extension_callback(nghttp2_session *session, void **payload,
+                              const nghttp2_frame_hd *frame_hd,
+                              void *user_data) {
+  int rv;
+  auto hd = static_cast<Http2Handler *>(user_data);
+
+  auto cache_digest = make_unique<CacheDigest>();
+
+  auto &buf = hd->get_extbuf();
+
+  rv = cache_digest_decode(cache_digest->keys, cache_digest->logn,
+                           cache_digest->logp, buf.data(), buf.size());
+
+  buf.clear();
+
+  if (rv != 0) {
+    return NGHTTP2_ERR_CANCEL;
+  }
+
+  *payload = cache_digest.release();
+
+  return 0;
+}
+} // namespace
+
+namespace {
 void fill_callback(nghttp2_session_callbacks *callbacks, const Config *config) {
   nghttp2_session_callbacks_set_on_stream_close_callback(
       callbacks, on_stream_close_callback);
@@ -1756,6 +1886,15 @@ void fill_callback(nghttp2_session_callbacks *callbacks, const Config *config) {
     nghttp2_session_callbacks_set_select_padding_callback(
         callbacks, select_padding_callback);
   }
+
+  nghttp2_session_callbacks_set_unpack_extension_callback(
+      callbacks, unpack_extension_callback);
+
+  nghttp2_session_callbacks_set_on_extension_chunk_recv_callback(
+      callbacks, on_extension_chunk_recv_callback);
+
+  nghttp2_session_callbacks_set_before_frame_send_callback(
+      callbacks, before_frame_send_callback);
 }
 } // namespace
 

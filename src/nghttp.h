@@ -64,6 +64,7 @@ struct Config {
 
   Headers headers;
   Headers trailer;
+  std::vector<std::string> cache_digest_uris;
   std::string certfile;
   std::string keyfile;
   std::string datafile;
@@ -74,6 +75,7 @@ struct Config {
   size_t padding;
   size_t max_concurrent_streams;
   ssize_t peer_max_concurrent_streams;
+  uint32_t cache_digest_bits;
   int32_t weight;
   int multiply;
   // milliseconds
@@ -283,6 +285,8 @@ struct HttpClient {
   // true if the response message of HTTP Upgrade request is fully
   // received. It is not relevant the upgrade succeeds, or not.
   bool upgrade_response_complete;
+  // true if cache digest was sent or there is no need to send it.
+  bool cache_digest_sent;
   // SETTINGS payload sent as token68 in HTTP Upgrade
   std::array<uint8_t, 128> settings_payload;
 

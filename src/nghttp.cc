@@ -59,6 +59,7 @@
 #include "base64.h"
 #include "ssl.h"
 #include "template.h"
+#include "cache_digest.h"
 
 #ifndef O_BINARY
 #define O_BINARY (0)
@@ -98,6 +99,7 @@ Config::Config()
       padding(0),
       max_concurrent_streams(100),
       peer_max_concurrent_streams(100),
+      cache_digest_bits(7),
       weight(NGHTTP2_DEFAULT_WEIGHT),
       multiply(1),
       timeout(0.),
@@ -544,7 +546,8 @@ HttpClient::HttpClient(const nghttp2_session_callbacks *callbacks,
       state(ClientState::IDLE),
       upgrade_response_status_code(0),
       fd(-1),
-      upgrade_response_complete(false) {
+      upgrade_response_complete(false),
+      cache_digest_sent(false) {
   ev_io_init(&wev, writecb, 0, EV_WRITE);
   ev_io_init(&rev, readcb, 0, EV_READ);
 
@@ -1997,6 +2000,8 @@ int before_frame_send_callback(nghttp2_session *session,
 namespace {
 int on_frame_send_callback(nghttp2_session *session, const nghttp2_frame *frame,
                            void *user_data) {
+  int rv;
+
   if (config.verbose) {
     verbose_on_frame_send_callback(session, frame, user_data);
   }
@@ -2015,6 +2020,19 @@ int on_frame_send_callback(nghttp2_session *session, const nghttp2_frame *frame,
   // If this request is using Expect/Continue, start its ContinueTimer.
   if (req->continue_timer) {
     req->continue_timer->start();
+  }
+
+  auto client = get_client(user_data);
+
+  if (!client->cache_digest_sent && !config.cache_digest_uris.empty()) {
+    client->cache_digest_sent = true;
+
+    rv = nghttp2_submit_extension(session, NGHTTP2_DRAFT_CACHE_DIGEST,
+                                  NGHTTP2_FLAG_NONE, frame->hd.stream_id, NULL);
+
+    if (nghttp2_is_fatal(rv)) {
+      return NGHTTP2_ERR_CALLBACK_FAILURE;
+    }
   }
 
   return 0;
@@ -2364,6 +2382,35 @@ ssize_t file_read_callback(nghttp2_session *session, int32_t stream_id,
 } // namespace
 
 namespace {
+ssize_t pack_cache_digest_frame(nghttp2_session *session, uint8_t *buf,
+                                size_t len, const nghttp2_frame *frame,
+                                void *user_data) {
+  ssize_t encodedlen;
+
+  encodedlen = cache_digest_encode(buf, len, config.cache_digest_uris,
+                                   config.cache_digest_bits);
+
+  if (encodedlen == -1) {
+    return NGHTTP2_ERR_CANCEL;
+  }
+
+  return encodedlen;
+}
+} // namespace
+
+namespace {
+ssize_t pack_extension_callback(nghttp2_session *session, uint8_t *buf,
+                                size_t len, const nghttp2_frame *frame,
+                                void *user_data) {
+  if (frame->hd.type != NGHTTP2_DRAFT_CACHE_DIGEST) {
+    return NGHTTP2_ERR_CANCEL;
+  }
+
+  return pack_cache_digest_frame(session, buf, len, frame, user_data);
+}
+} // namespace
+
+namespace {
 int run(char **uris, int n) {
   nghttp2_session_callbacks *callbacks;
 
@@ -2406,6 +2453,9 @@ int run(char **uris, int n) {
     nghttp2_session_callbacks_set_select_padding_callback(
         callbacks, select_padding_callback);
   }
+
+  nghttp2_session_callbacks_set_pack_extension_callback(
+      callbacks, pack_extension_callback);
 
   std::string prev_scheme;
   std::string prev_host;
@@ -2632,6 +2682,13 @@ Options:
               (up to  a short  timeout)  until the server sends  a 100
               Continue interim response. This option is ignored unless
               combined with the -d option.
+  -C, --cache-digest-uri=<URI>
+              Add  <URI> to  cache digest.   Use this  option multiple
+              times to add more than 1 URI to cache digest.
+  --cache-digest-bits=<N>
+              Set the number  of bits to specify the  probability of a
+              false positive that is acceptable, expressed as "1/<N>".
+              Default: 7
   --version   Display version information and exit.
   -h, --help  Display this help and exit.
 
@@ -2672,6 +2729,7 @@ int main(int argc, char **argv) {
         {"header-table-size", required_argument, nullptr, 'c'},
         {"padding", required_argument, nullptr, 'b'},
         {"har", required_argument, nullptr, 'r'},
+        {"cache-digest-uri", required_argument, nullptr, 'C'},
         {"cert", required_argument, &flag, 1},
         {"key", required_argument, &flag, 2},
         {"color", no_argument, &flag, 3},
@@ -2684,14 +2742,18 @@ int main(int argc, char **argv) {
         {"no-push", no_argument, &flag, 11},
         {"max-concurrent-streams", required_argument, &flag, 12},
         {"expect-continue", no_argument, &flag, 13},
+        {"cache-digest-bits", required_argument, &flag, 14},
         {nullptr, 0, nullptr, 0}};
     int option_index = 0;
-    int c = getopt_long(argc, argv, "M:Oab:c:d:gm:np:r:hH:vst:uw:W:",
+    int c = getopt_long(argc, argv, "C:M:Oab:c:d:gm:np:r:hH:vst:uw:W:",
                         long_options, &option_index);
     if (c == -1) {
       break;
     }
     switch (c) {
+    case 'C':
+      config.cache_digest_uris.push_back(optarg);
+      break;
     case 'M':
       // peer-max-concurrent-streams option
       config.peer_max_concurrent_streams = strtoul(optarg, nullptr, 10);
@@ -2885,6 +2947,18 @@ int main(int argc, char **argv) {
         // expect-continue option
         config.expect_continue = true;
         break;
+      case 14: {
+        // cache-digest-bits
+        auto n = strtoul(optarg, nullptr, 10);
+        if (n <= 0 || n >= 32) {
+          std::cerr
+              << "--cache-digest-bits: specify in the range [1, 31], inclusive"
+              << std::endl;
+          exit(EXIT_FAILURE);
+        }
+        config.cache_digest_bits = n;
+        break;
+      }
       }
       break;
     default:

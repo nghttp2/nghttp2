@@ -45,6 +45,7 @@
 #include "shrpx_config.h"
 #include "ssl.h"
 #include "shrpx_router_test.h"
+#include "cache_digest_test.h"
 
 static int init_suite1(void) { return 0; }
 
@@ -198,7 +199,9 @@ int main(int argc, char *argv[]) {
       !CU_add_test(pSuite, "template_string_ref",
                    nghttp2::test_template_string_ref) ||
       !CU_add_test(pSuite, "base64_encode", nghttp2::test_base64_encode) ||
-      !CU_add_test(pSuite, "base64_decode", nghttp2::test_base64_decode)) {
+      !CU_add_test(pSuite, "base64_decode", nghttp2::test_base64_decode) ||
+      !CU_add_test(pSuite, "cache_digest_encode_decode",
+                   nghttp2::test_cache_digest_encode_decode)) {
     CU_cleanup_registry();
     return CU_get_error();
   }

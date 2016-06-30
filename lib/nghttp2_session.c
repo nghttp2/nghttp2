@@ -5653,7 +5653,6 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
                                iframe->frame.hd.type)) {
           if (!session->callbacks.unpack_extension_callback) {
             /* Silently ignore unknown frame type. */
-
             busy = 1;
 
             iframe->state = NGHTTP2_IB_IGN_PAYLOAD;
