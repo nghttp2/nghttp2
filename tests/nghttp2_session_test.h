@@ -151,6 +151,7 @@ void test_nghttp2_session_create_idle_stream(void);
 void test_nghttp2_session_repeated_priority_change(void);
 void test_nghttp2_session_repeated_priority_submission(void);
 void test_nghttp2_session_set_local_window_size(void);
+void test_nghttp2_session_cancel_from_before_frame_send(void);
 void test_nghttp2_http_mandatory_headers(void);
 void test_nghttp2_http_content_length(void);
 void test_nghttp2_http_content_length_mismatch(void);

@@ -57,6 +57,7 @@ typedef struct {
   nghttp2_frame_hd recv_frame_hd;
   int frame_send_cb_called;
   uint8_t sent_frame_type;
+  int before_frame_send_cb_called;
   int frame_not_send_cb_called;
   uint8_t not_sent_frame_type;
   int not_sent_error;
@@ -207,6 +208,14 @@ static int on_frame_not_send_callback(nghttp2_session *session _U_,
   ud->not_sent_frame_type = frame->hd.type;
   ud->not_sent_error = lib_error;
   return 0;
+}
+
+static int cancel_before_frame_send_callback(nghttp2_session *session _U_,
+                                             const nghttp2_frame *frame _U_,
+                                             void *user_data) {
+  my_user_data *ud = (my_user_data *)user_data;
+  ++ud->before_frame_send_cb_called;
+  return NGHTTP2_ERR_CANCEL;
 }
 
 static int on_data_chunk_recv_callback(nghttp2_session *session _U_,
@@ -9544,6 +9553,62 @@ void test_nghttp2_session_set_local_window_size(void) {
   CU_ASSERT(1 == item->frame.window_update.window_size_increment);
 
   CU_ASSERT(0 == nghttp2_session_send(session));
+
+  nghttp2_session_del(session);
+}
+
+void test_nghttp2_session_cancel_from_before_frame_send(void) {
+  int rv;
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+  my_user_data ud;
+  nghttp2_settings_entry iv;
+  nghttp2_data_provider data_prd;
+
+  memset(&callbacks, 0, sizeof(callbacks));
+
+  callbacks.before_frame_send_callback = cancel_before_frame_send_callback;
+  callbacks.on_frame_not_send_callback = on_frame_not_send_callback;
+  callbacks.send_callback = null_send_callback;
+
+  nghttp2_session_client_new(&session, &callbacks, &ud);
+
+  iv.settings_id = 0;
+  iv.value = 1000000009;
+
+  rv = nghttp2_submit_settings(session, NGHTTP2_FLAG_NONE, &iv, 1);
+
+  CU_ASSERT(0 == rv);
+
+  ud.frame_send_cb_called = 0;
+  ud.before_frame_send_cb_called = 0;
+  ud.frame_not_send_cb_called = 0;
+
+  rv = nghttp2_session_send(session);
+
+  CU_ASSERT(0 == rv);
+  CU_ASSERT(0 == ud.frame_send_cb_called);
+  CU_ASSERT(1 == ud.before_frame_send_cb_called);
+  CU_ASSERT(1 == ud.frame_not_send_cb_called);
+
+  data_prd.source.ptr = NULL;
+  data_prd.read_callback = temporal_failure_data_source_read_callback;
+
+  rv = nghttp2_submit_request(session, NULL, reqnv, ARRLEN(reqnv), &data_prd,
+                              NULL);
+
+  CU_ASSERT(rv > 0);
+
+  ud.frame_send_cb_called = 0;
+  ud.before_frame_send_cb_called = 0;
+  ud.frame_not_send_cb_called = 0;
+
+  rv = nghttp2_session_send(session);
+
+  CU_ASSERT(0 == rv);
+  CU_ASSERT(0 == ud.frame_send_cb_called);
+  CU_ASSERT(1 == ud.before_frame_send_cb_called);
+  CU_ASSERT(1 == ud.frame_not_send_cb_called);
 
   nghttp2_session_del(session);
 }

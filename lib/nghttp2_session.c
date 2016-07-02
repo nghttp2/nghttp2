@@ -2364,6 +2364,10 @@ static int session_call_before_frame_send(nghttp2_session *session,
   if (session->callbacks.before_frame_send_callback) {
     rv = session->callbacks.before_frame_send_callback(session, frame,
                                                        session->user_data);
+    if (rv == NGHTTP2_ERR_CANCEL) {
+      return rv;
+    }
+
     if (rv != 0) {
       return NGHTTP2_ERR_CALLBACK_FAILURE;
     }
@@ -3003,6 +3007,51 @@ static ssize_t nghttp2_session_mem_send_internal(nghttp2_session *session,
         rv = session_call_before_frame_send(session, frame);
         if (nghttp2_is_fatal(rv)) {
           return rv;
+        }
+
+        if (rv == NGHTTP2_ERR_CANCEL) {
+          int32_t opened_stream_id = 0;
+          uint32_t error_code = NGHTTP2_INTERNAL_ERROR;
+
+          if (session->callbacks.on_frame_not_send_callback) {
+            if (session->callbacks.on_frame_not_send_callback(
+                    session, frame, rv, session->user_data) != 0) {
+              return NGHTTP2_ERR_CALLBACK_FAILURE;
+            }
+          }
+
+          /* We have to close stream opened by canceled request
+             HEADERS or PUSH_PROMISE. */
+          switch (item->frame.hd.type) {
+          case NGHTTP2_HEADERS:
+            if (item->frame.headers.cat == NGHTTP2_HCAT_REQUEST) {
+              opened_stream_id = item->frame.hd.stream_id;
+              /* We don't have to check
+                 item->aux_data.headers.canceled since it has already
+                 been checked. */
+              /* Set error_code to REFUSED_STREAM so that application
+                 can send request again. */
+              error_code = NGHTTP2_REFUSED_STREAM;
+            }
+            break;
+          case NGHTTP2_PUSH_PROMISE:
+            opened_stream_id = item->frame.push_promise.promised_stream_id;
+            break;
+          }
+          if (opened_stream_id) {
+            /* careful not to override rv */
+            int rv2;
+            rv2 = nghttp2_session_close_stream(session, opened_stream_id,
+                                               error_code);
+
+            if (nghttp2_is_fatal(rv2)) {
+              return rv2;
+            }
+          }
+
+          active_outbound_item_reset(aob, mem);
+
+          break;
         }
       } else {
         DEBUGF(fprintf(stderr, "send: next frame: DATA\n"));

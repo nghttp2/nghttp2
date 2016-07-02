@@ -1454,9 +1454,19 @@ typedef int (*nghttp2_on_data_chunk_recv_callback)(nghttp2_session *session,
  * `nghttp2_session_server_new()`.
  *
  * The implementation of this function must return 0 if it succeeds.
- * If nonzero is returned, it is treated as fatal error and
- * `nghttp2_session_send()` and `nghttp2_session_mem_send()` functions
- * immediately return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.
+ * It can also return :enum:`NGHTTP2_ERR_CANCEL` to cancel the
+ * transmission of the given frame.
+ *
+ * If there is a fatal error while executing this callback, the
+ * implementation should return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`,
+ * which makes `nghttp2_session_send()` and
+ * `nghttp2_session_mem_send()` functions immediately return
+ * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.
+ *
+ * If the other value is returned, it is treated as if
+ * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE` is returned.  But the
+ * implementation should not rely on this since the library may define
+ * new return value to extend its capability.
  *
  * To set this callback to :type:`nghttp2_session_callbacks`, use
  * `nghttp2_session_callbacks_set_before_frame_send_callback()`.
