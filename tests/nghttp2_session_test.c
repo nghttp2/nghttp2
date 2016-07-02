@@ -9564,6 +9564,8 @@ void test_nghttp2_session_cancel_from_before_frame_send(void) {
   my_user_data ud;
   nghttp2_settings_entry iv;
   nghttp2_data_provider data_prd;
+  int32_t stream_id;
+  nghttp2_stream *stream;
 
   memset(&callbacks, 0, sizeof(callbacks));
 
@@ -9594,10 +9596,10 @@ void test_nghttp2_session_cancel_from_before_frame_send(void) {
   data_prd.source.ptr = NULL;
   data_prd.read_callback = temporal_failure_data_source_read_callback;
 
-  rv = nghttp2_submit_request(session, NULL, reqnv, ARRLEN(reqnv), &data_prd,
-                              NULL);
+  stream_id = nghttp2_submit_request(session, NULL, reqnv, ARRLEN(reqnv),
+                                     &data_prd, NULL);
 
-  CU_ASSERT(rv > 0);
+  CU_ASSERT(stream_id > 0);
 
   ud.frame_send_cb_called = 0;
   ud.before_frame_send_cb_called = 0;
@@ -9609,6 +9611,36 @@ void test_nghttp2_session_cancel_from_before_frame_send(void) {
   CU_ASSERT(0 == ud.frame_send_cb_called);
   CU_ASSERT(1 == ud.before_frame_send_cb_called);
   CU_ASSERT(1 == ud.frame_not_send_cb_called);
+
+  stream = nghttp2_session_get_stream_raw(session, stream_id);
+
+  CU_ASSERT(NULL == stream);
+
+  nghttp2_session_del(session);
+
+  nghttp2_session_server_new(&session, &callbacks, &ud);
+
+  open_recv_stream(session, 1);
+
+  stream_id = nghttp2_submit_push_promise(session, NGHTTP2_FLAG_NONE, 1, reqnv,
+                                          ARRLEN(reqnv), NULL);
+
+  CU_ASSERT(stream_id > 0);
+
+  ud.frame_send_cb_called = 0;
+  ud.before_frame_send_cb_called = 0;
+  ud.frame_not_send_cb_called = 0;
+
+  rv = nghttp2_session_send(session);
+
+  CU_ASSERT(0 == rv);
+  CU_ASSERT(0 == ud.frame_send_cb_called);
+  CU_ASSERT(1 == ud.before_frame_send_cb_called);
+  CU_ASSERT(1 == ud.frame_not_send_cb_called);
+
+  stream = nghttp2_session_get_stream_raw(session, stream_id);
+
+  CU_ASSERT(NULL == stream);
 
   nghttp2_session_del(session);
 }
