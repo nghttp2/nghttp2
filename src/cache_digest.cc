@@ -162,7 +162,7 @@ ssize_t cache_digest_encode(uint8_t *data, size_t datalen,
   }
 
   uint32_t p = 1;
-  for (auto i = 0; i < logp; ++i, p *= 2)
+  for (uint32_t i = 0; i < logp; ++i, p *= 2)
     ;
 
   for (; n < uris.size(); n *= 2, ++logn)
@@ -363,10 +363,10 @@ int cache_digest_decode(std::vector<uint64_t> &keys, uint32_t &logn,
 
   uint32_t n = 1, p = 1;
 
-  for (auto i = 0; i < logn; n *= 2, ++i)
+  for (uint32_t i = 0; i < logn; n *= 2, ++i)
     ;
 
-  for (auto i = 0; i < logp; p *= 2, ++i)
+  for (uint32_t i = 0; i < logp; p *= 2, ++i)
     ;
 
   uint64_t c = std::numeric_limits<uint64_t>::max();
@@ -385,7 +385,7 @@ int cache_digest_decode(std::vector<uint64_t> &keys, uint32_t &logn,
       return -1;
     }
 
-    if ((end - last) * 8 < b + logp) {
+    if ((end - last) * 8 < static_cast<intptr_t>(b + logp)) {
       return -1;
     }
 
