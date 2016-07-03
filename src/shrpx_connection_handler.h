@@ -32,6 +32,7 @@
 #include <sys/socket.h>
 #endif // HAVE_SYS_SOCKET_H
 
+#include <mutex>
 #include <memory>
 #include <vector>
 #include <random>
