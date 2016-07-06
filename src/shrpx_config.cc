@@ -2830,12 +2830,49 @@ StringRef strproto(shrpx_proto proto) {
   assert(0);
 }
 
+namespace {
+// Consistent hashing method described in
+// https://github.com/RJ/ketama.  Generate 160 32-bit hashes per |s|,
+// which is usually backend address.  The each hash is associated to
+// index of backend address.  When all hashes for every backend
+// address are calculated, sort it in ascending order of hash.  To
+// choose the index, compute 32-bit hash based on client IP address,
+// and do lower bound search in the array. The returned index is the
+// backend to use.
+int compute_affinity_hash(std::vector<AffinityHash> &res, size_t idx,
+                          const StringRef &s) {
+  int rv;
+  std::array<uint8_t, 32> buf;
+
+  for (auto i = 0; i < 20; ++i) {
+    auto t = s.str();
+    t += i;
+
+    rv = util::sha256(buf.data(), StringRef{t});
+    if (rv != 0) {
+      return -1;
+    }
+
+    for (int i = 0; i < 8; ++i) {
+      auto h = (buf[4 * i] << 24) | (buf[4 * i + 1] << 16) |
+               (buf[4 * i + 2] << 8) | buf[4 * i + 3];
+
+      res.emplace_back(idx, h);
+    }
+  }
+
+  return 0;
+}
+} // namespace
+
 // Configures the following member in |config|:
 // conn.downstream_router, conn.downstream.addr_groups,
 // conn.downstream.addr_group_catch_all.
 int configure_downstream_group(Config *config, bool http2_proxy,
                                bool numeric_addr_only,
                                const TLSConfig &tlsconf) {
+  int rv;
+
   auto &downstreamconf = *config->conn.downstream;
   auto &addr_groups = downstreamconf.addr_groups;
   auto &routerconf = downstreamconf.router;
@@ -2958,6 +2995,25 @@ int configure_downstream_group(Config *config, bool http2_proxy,
         LOG(INFO) << "Resolved backend address: " << hostport << " -> "
                   << util::to_numeric_addr(&addr.addr);
       }
+    }
+
+    if (g.affinity == AFFINITY_IP) {
+      size_t idx = 0;
+      for (auto &addr : g.addrs) {
+        auto p = reinterpret_cast<uint8_t *>(&addr.addr.su);
+        rv = compute_affinity_hash(g.affinity_hash, idx,
+                                   StringRef{p, addr.addr.len});
+        if (rv != 0) {
+          return -1;
+        }
+
+        ++idx;
+      }
+
+      std::sort(std::begin(g.affinity_hash), std::end(g.affinity_hash),
+                [](const AffinityHash &lhs, const AffinityHash &rhs) {
+                  return lhs.hash < rhs.hash;
+                });
     }
   }
 

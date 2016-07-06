@@ -192,6 +192,7 @@ void Worker::replace_downstream_config(
 
     shared_addr->addrs.resize(src.addrs.size());
     shared_addr->affinity = src.affinity;
+    shared_addr->affinity_hash = src.affinity_hash;
 
     size_t num_http1 = 0;
     size_t num_http2 = 0;

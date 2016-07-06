@@ -370,12 +370,24 @@ struct DownstreamAddrConfig {
   bool tls;
 };
 
+// Mapping hash to idx which is an index into
+// DownstreamAddrGroupConfig::addrs.
+struct AffinityHash {
+  AffinityHash(size_t idx, uint32_t hash) : idx(idx), hash(hash) {}
+
+  size_t idx;
+  uint32_t hash;
+};
+
 struct DownstreamAddrGroupConfig {
   DownstreamAddrGroupConfig(const StringRef &pattern)
       : pattern(pattern.c_str(), pattern.size()), affinity(AFFINITY_NONE) {}
 
   ImmutableString pattern;
   std::vector<DownstreamAddrConfig> addrs;
+  // Bunch of session affinity hash.  Only used if affinity ==
+  // AFFINITY_IP.
+  std::vector<AffinityHash> affinity_hash;
   // Session affinity
   shrpx_session_affinity affinity;
 };

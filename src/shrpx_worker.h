@@ -127,6 +127,9 @@ struct WeightedPri {
 
 struct SharedDownstreamAddr {
   std::vector<DownstreamAddr> addrs;
+  // Bunch of session affinity hash.  Only used if affinity ==
+  // AFFINITY_IP.
+  std::vector<AffinityHash> affinity_hash;
   // List of Http2Session which is not fully utilized (i.e., the
   // server advertized maximum concurrency is not reached).  We will
   // coalesce as much stream as possible in one Http2Session to fully
