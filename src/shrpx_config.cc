@@ -2854,8 +2854,10 @@ int compute_affinity_hash(std::vector<AffinityHash> &res, size_t idx,
     }
 
     for (int i = 0; i < 8; ++i) {
-      auto h = (buf[4 * i] << 24) | (buf[4 * i + 1] << 16) |
-               (buf[4 * i + 2] << 8) | buf[4 * i + 3];
+      auto h = (static_cast<uint32_t>(buf[4 * i]) << 24) |
+               (static_cast<uint32_t>(buf[4 * i + 1]) << 16) |
+               (static_cast<uint32_t>(buf[4 * i + 2]) << 8) |
+               static_cast<uint32_t>(buf[4 * i + 3]);
 
       res.emplace_back(idx, h);
     }
