@@ -75,8 +75,9 @@ int compute_hash_values(std::vector<uint64_t> &hash_values,
     v = (static_cast<uint64_t>(md[24]) << 56) +
         (static_cast<uint64_t>(md[25]) << 48) +
         (static_cast<uint64_t>(md[26]) << 40) +
-        (static_cast<uint64_t>(md[27]) << 32) + (md[28] << 24) +
-        (md[29] << 16) + (md[30] << 8) + md[31];
+        (static_cast<uint64_t>(md[27]) << 32) +
+        (static_cast<uint64_t>(md[28]) << 24) + (md[29] << 16) + (md[30] << 8) +
+        md[31];
     v &= mask;
 
     *p++ = v;
@@ -252,8 +253,9 @@ int cache_digest_hash(uint64_t &key, size_t nbits, const StringRef &s) {
   key = (static_cast<uint64_t>(md[24]) << 56) +
         (static_cast<uint64_t>(md[25]) << 48) +
         (static_cast<uint64_t>(md[26]) << 40) +
-        (static_cast<uint64_t>(md[27]) << 32) + (md[28] << 24) +
-        (md[29] << 16) + (md[30] << 8) + md[31];
+        (static_cast<uint64_t>(md[27]) << 32) +
+        (static_cast<uint64_t>(md[28]) << 24) + (md[29] << 16) + (md[30] << 8) +
+        md[31];
 
   key &= mask;
 
