@@ -101,7 +101,7 @@ struct SerialEvent {
 
 class ConnectionHandler {
 public:
-  ConnectionHandler(struct ev_loop *loop);
+  ConnectionHandler(struct ev_loop *loop, std::mt19937 &gen);
   ~ConnectionHandler();
   int handle_connection(int fd, sockaddr *addr, int addrlen,
                         const UpstreamAddr *faddr);

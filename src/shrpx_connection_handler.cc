@@ -110,12 +110,8 @@ void serial_event_async_cb(struct ev_loop *loop, ev_async *w, int revent) {
 }
 } // namespace
 
-namespace {
-std::random_device rd;
-} // namespace
-
-ConnectionHandler::ConnectionHandler(struct ev_loop *loop)
-    : gen_(rd()),
+ConnectionHandler::ConnectionHandler(struct ev_loop *loop, std::mt19937 &gen)
+    : gen_(gen),
       single_worker_(nullptr),
       loop_(loop),
       tls_ticket_key_memcached_get_retry_count_(0),
@@ -736,6 +732,14 @@ ConnectionHandler::get_tls_ticket_key_memcached_dispatcher() const {
   return tls_ticket_key_memcached_dispatcher_.get();
 }
 
+// Use the similar backoff algorithm described in
+// https://github.com/grpc/grpc/blob/master/doc/connection-backoff.md
+namespace {
+constexpr size_t MAX_BACKOFF_EXP = 10;
+constexpr auto MULTIPLIER = 3.2;
+constexpr auto JITTER = 0.2;
+} // namespace
+
 void ConnectionHandler::on_tls_ticket_key_network_error(ev_timer *w) {
   if (++tls_ticket_key_memcached_get_retry_count_ >=
       get_config()->tls.ticket.memcached.max_retry) {
@@ -746,15 +750,19 @@ void ConnectionHandler::on_tls_ticket_key_network_error(ev_timer *w) {
     return;
   }
 
-  auto dist = std::uniform_int_distribution<int>(
-      1, std::min(60, 1 << tls_ticket_key_memcached_get_retry_count_));
-  auto t = dist(gen_);
+  auto base_backoff = util::int_pow(
+      MULTIPLIER,
+      std::min(MAX_BACKOFF_EXP, tls_ticket_key_memcached_get_retry_count_));
+  auto dist = std::uniform_real_distribution<>(-JITTER * base_backoff,
+                                               JITTER * base_backoff);
+
+  auto backoff = base_backoff + dist(gen_);
 
   LOG(WARN)
       << "Memcached: tls ticket get failed due to network error, retrying in "
-      << t << " seconds";
+      << backoff << " seconds";
 
-  ev_timer_set(w, t, 0.);
+  ev_timer_set(w, backoff, 0.);
   ev_timer_start(loop_, w);
 }
 
