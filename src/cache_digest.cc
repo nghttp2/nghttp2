@@ -162,15 +162,10 @@ ssize_t cache_digest_encode(uint8_t *data, size_t datalen,
     return -1;
   }
 
-  uint32_t p = 1;
-  for (uint32_t i = 0; i < logp; ++i, p *= 2)
-    ;
-
   for (; n < uris.size(); n *= 2, ++logn)
     ;
 
   if (n - uris.size() > uris.size() - n / 2) {
-    n /= 2;
     --logn;
   }
 
@@ -203,8 +198,8 @@ ssize_t cache_digest_encode(uint8_t *data, size_t datalen,
       continue;
     }
     auto d = v - c - 1;
-    auto q = d / p;
-    auto r = d % p;
+    auto q = d >> logp;
+    auto r = d & ((1u << logp) - 1);
 
     std::tie(last, b) = append_0bit(last, b, q);
     std::tie(last, b) = append_single_1bit(last, b);
@@ -363,14 +358,6 @@ int cache_digest_decode(std::vector<uint64_t> &keys, uint32_t &logn,
   std::tie(last, b) = read_uint32(logn, 5, last, b);
   std::tie(last, b) = read_uint32(logp, 5, last, b);
 
-  uint32_t n = 1, p = 1;
-
-  for (uint32_t i = 0; i < logn; n *= 2, ++i)
-    ;
-
-  for (uint32_t i = 0; i < logp; p *= 2, ++i)
-    ;
-
   uint64_t c = std::numeric_limits<uint64_t>::max();
 
   for (;;) {
@@ -393,7 +380,7 @@ int cache_digest_decode(std::vector<uint64_t> &keys, uint32_t &logn,
 
     std::tie(last, b) = read_uint32(r, logp, last, b);
 
-    auto d = static_cast<uint64_t>(q) * p + r;
+    auto d = (static_cast<uint64_t>(q) << logp) + r;
 
     c += d + 1;
 
