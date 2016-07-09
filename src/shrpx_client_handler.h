@@ -174,8 +174,11 @@ private:
   Worker *worker_;
   // The number of bytes of HTTP/2 client connection header to read
   size_t left_connhd_len_;
-  int32_t affinity_hash_;
+  // hash for session affinity using client IP
+  uint32_t affinity_hash_;
   bool should_close_after_write_;
+  // true if affinity_hash_ is computed
+  bool affinity_hash_computed_;
   ReadBuf rb_;
 };
 

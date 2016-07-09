@@ -54,8 +54,11 @@
 #include <iostream>
 #include <fstream>
 
+#include <openssl/evp.h>
+
 #include <nghttp2/nghttp2.h>
 
+#include "ssl_compat.h"
 #include "timegm.h"
 
 namespace nghttp2 {
@@ -1323,6 +1326,59 @@ double int_pow(double x, size_t y) {
     res *= x;
   }
   return res;
+}
+
+uint32_t hash32(const StringRef &s) {
+  /* 32 bit FNV-1a: http://isthe.com/chongo/tech/comp/fnv/ */
+  uint32_t h = 2166136261u;
+  size_t i;
+
+  for (i = 0; i < s.size(); ++i) {
+    h ^= s[i];
+    h += (h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24);
+  }
+
+  return h;
+}
+
+#if !OPENSSL_101_API
+namespace {
+EVP_MD_CTX *EVP_MD_CTX_new(void) { return EVP_MD_CTX_create(); }
+} // namespace
+
+namespace {
+void EVP_MD_CTX_free(EVP_MD_CTX *ctx) { EVP_MD_CTX_destroy(ctx); }
+} // namespace
+#endif
+
+int sha256(uint8_t *res, const StringRef &s) {
+  int rv;
+
+  auto ctx = EVP_MD_CTX_new();
+  if (ctx == nullptr) {
+    return -1;
+  }
+
+  auto ctx_deleter = defer(EVP_MD_CTX_free, ctx);
+
+  rv = EVP_DigestInit_ex(ctx, EVP_sha256(), nullptr);
+  if (rv != 1) {
+    return -1;
+  }
+
+  rv = EVP_DigestUpdate(ctx, s.c_str(), s.size());
+  if (rv != 1) {
+    return -1;
+  }
+
+  unsigned int mdlen = 32;
+
+  rv = EVP_DigestFinal_ex(ctx, res, &mdlen);
+  if (rv != 1) {
+    return -1;
+  }
+
+  return 0;
 }
 
 } // namespace util

@@ -34,6 +34,7 @@
 
 #include "shrpx_connection.h"
 #include "shrpx_ssl.h"
+#include "shrpx_connect_blocker.h"
 #include "buffer.h"
 #include "network.h"
 
@@ -96,7 +97,7 @@ class MemcachedConnection {
 public:
   MemcachedConnection(const Address *addr, struct ev_loop *loop,
                       SSL_CTX *ssl_ctx, const StringRef &sni_name,
-                      MemchunkPool *mcpool);
+                      MemchunkPool *mcpool, std::mt19937 &gen);
   ~MemcachedConnection();
 
   void disconnect();
@@ -126,6 +127,8 @@ public:
 
   int noop();
 
+  void reconnect_or_fail();
+
 private:
   Connection conn_;
   std::deque<std::unique_ptr<MemcachedRequest>> recvq_;
@@ -134,11 +137,13 @@ private:
   std::function<int(MemcachedConnection &)> do_read_, do_write_;
   std::string sni_name_;
   ssl::TLSSessionCache tls_session_cache_;
+  ConnectBlocker connect_blocker_;
   MemcachedParseState parse_state_;
   const Address *addr_;
   SSL_CTX *ssl_ctx_;
   // Sum of the bytes to be transmitted in sendbufv_.
   size_t sendsum_;
+  size_t try_count_;
   bool connected_;
   Buffer<8_k> recvbuf_;
 };

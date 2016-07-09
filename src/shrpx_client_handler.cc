@@ -386,8 +386,9 @@ ClientHandler::ClientHandler(Worker *worker, int fd, SSL *ssl,
       faddr_(faddr),
       worker_(worker),
       left_connhd_len_(NGHTTP2_CLIENT_MAGIC_LEN),
-      affinity_hash_(-1),
-      should_close_after_write_(false) {
+      affinity_hash_(0),
+      should_close_after_write_(false),
+      affinity_hash_computed_(false) {
 
   ++worker_->get_worker_stat()->num_connections;
 
@@ -674,23 +675,21 @@ void ClientHandler::remove_downstream_connection(DownstreamConnection *dconn) {
 }
 
 namespace {
-uint32_t hash32(const StringRef &s) {
-  /* 32 bit FNV-1a: http://isthe.com/chongo/tech/comp/fnv/ */
-  uint32_t h = 2166136261u;
-  size_t i;
+// Computes 32bits hash for session affinity for IP address |ip|.
+uint32_t compute_affinity_from_ip(const StringRef &ip) {
+  int rv;
+  std::array<uint8_t, 32> buf;
 
-  for (i = 0; i < s.size(); ++i) {
-    h ^= s[i];
-    h += (h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24);
+  rv = util::sha256(buf.data(), ip);
+  if (rv != 0) {
+    // Not sure when sha256 failed.  Just fall back to another
+    // function.
+    return util::hash32(ip);
   }
 
-  return h;
-}
-} // namespace
-
-namespace {
-int32_t calculate_affinity_from_ip(const StringRef &ip) {
-  return hash32(ip) & 0x7fffffff;
+  return (static_cast<uint32_t>(buf[0]) << 24) |
+         (static_cast<uint32_t>(buf[1]) << 16) |
+         (static_cast<uint32_t>(buf[2]) << 8) | static_cast<uint32_t>(buf[3]);
 }
 } // namespace
 
@@ -918,11 +917,22 @@ ClientHandler::get_downstream_connection(Downstream *downstream) {
   auto &shared_addr = group->shared_addr;
 
   if (shared_addr->affinity == AFFINITY_IP) {
-    if (affinity_hash_ == -1) {
-      affinity_hash_ = calculate_affinity_from_ip(StringRef{ipaddr_});
+    if (!affinity_hash_computed_) {
+      affinity_hash_ = compute_affinity_from_ip(StringRef{ipaddr_});
+      affinity_hash_computed_ = true;
     }
 
-    auto idx = affinity_hash_ % shared_addr->addrs.size();
+    const auto &affinity_hash = shared_addr->affinity_hash;
+
+    auto it = std::lower_bound(
+        std::begin(affinity_hash), std::end(affinity_hash), affinity_hash_,
+        [](const AffinityHash &lhs, uint32_t rhs) { return lhs.hash < rhs; });
+
+    if (it == std::end(affinity_hash)) {
+      it = std::begin(affinity_hash);
+    }
+
+    auto idx = (*it).idx;
 
     auto &addr = shared_addr->addrs[idx];
     if (addr.proto == PROTO_HTTP2) {

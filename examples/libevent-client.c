@@ -594,9 +594,6 @@ int main(int argc, char **argv) {
   act.sa_handler = SIG_IGN;
   sigaction(SIGPIPE, &act, NULL);
 
-#ifndef OPENSSL_IS_BORINGSSL
-  OPENSSL_config(NULL);
-#endif /* OPENSSL_IS_BORINGSSL */
   SSL_load_error_strings();
   SSL_library_init();
 

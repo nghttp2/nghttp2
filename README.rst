@@ -176,6 +176,23 @@ To compile the source code, gcc >= 4.8.3 or clang >= 3.4 is required.
    applications were not built, then using ``--enable-app`` may find
    that cause, such as the missing dependency.
 
+Notes for building on Windows (MSVC)
+------------------------------------
+
+The easiest way to build native Windows nghttp2 dll is use
+[cmake](https://cmake.org/).  The free version of [Visual C++ Build
+Tools](http://landinghub.visualstudio.com/visual-cpp-build-tools)
+works fine.
+
+1. Install cmake for windows
+2. Open "Visual C++ ... Native Build Tool Command Prompt", and inside
+   nghttp2 directly, run ``cmake``.
+3. Then run ``cmake --build`` to build library.
+4. nghttp2.dll, nghttp2.lib, nghttp2.exp are placed under lib directory.
+
+Note that the above steps most likely produce nghttp2 library only.
+No bundled applications are compiled.
+
 Notes for building on Windows (Mingw/Cygwin)
 --------------------------------------------
 

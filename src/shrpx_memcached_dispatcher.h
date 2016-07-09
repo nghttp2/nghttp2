@@ -28,6 +28,7 @@
 #include "shrpx.h"
 
 #include <memory>
+#include <random>
 
 #include <ev.h>
 
@@ -45,7 +46,7 @@ class MemcachedDispatcher {
 public:
   MemcachedDispatcher(const Address *addr, struct ev_loop *loop,
                       SSL_CTX *ssl_ctx, const StringRef &sni_name,
-                      MemchunkPool *mcpool);
+                      MemchunkPool *mcpool, std::mt19937 &gen);
   ~MemcachedDispatcher();
 
   int add_request(std::unique_ptr<MemcachedRequest> req);

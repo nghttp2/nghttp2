@@ -147,7 +147,7 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
     session_cache_memcached_dispatcher_ = make_unique<MemcachedDispatcher>(
         &session_cacheconf.memcached.addr, loop,
         tls_session_cache_memcached_ssl_ctx,
-        StringRef{session_cacheconf.memcached.host}, &mcpool_);
+        StringRef{session_cacheconf.memcached.host}, &mcpool_, randgen_);
   }
 
   replace_downstream_config(std::move(downstreamconf));
@@ -192,6 +192,7 @@ void Worker::replace_downstream_config(
 
     shared_addr->addrs.resize(src.addrs.size());
     shared_addr->affinity = src.affinity;
+    shared_addr->affinity_hash = src.affinity_hash;
 
     size_t num_http1 = 0;
     size_t num_http2 = 0;

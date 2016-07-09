@@ -680,6 +680,12 @@ OutputIterator copy_lit(OutputIterator it, CharT(&s)[N]) {
 // Returns x**y
 double int_pow(double x, size_t y);
 
+uint32_t hash32(const StringRef &s);
+
+// Computes SHA-256 of |s|, and stores it in |buf|.  This function
+// returns 0 if it succeeds, or -1.
+int sha256(uint8_t *buf, const StringRef &s);
+
 } // namespace util
 
 } // namespace nghttp2
