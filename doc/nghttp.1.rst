@@ -208,7 +208,9 @@ implementation.
 
 When connection is established, nghttp sends 5 PRIORITY frames to idle
 streams 3, 5, 7, 9 and 11 to create "anchor" nodes in dependency
-tree::
+tree:
+
+.. code-block:: text
 
                       +-----+
                       |id=0 |

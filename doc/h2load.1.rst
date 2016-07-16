@@ -120,7 +120,7 @@ OPTIONS
     rate period.   The maximum  number of connections  to be
     made  is  given  in  :option:`-c`   option.   This  rate  will  be
     distributed among  threads as  evenly as  possible.  For
-    example,  with   :option:`-t2`  and   :option:`\-r4`,  each  thread   gets  2
+    example,  with   :option:`-t`\2  and   :option:`-r`\4,  each  thread   gets  2
     connections per period.  When the rate is 0, the program
     will run  as it  normally does, creating  connections at
     whatever variable rate it  wants.  The default value for
