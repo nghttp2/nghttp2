@@ -48,12 +48,16 @@ explicitly.
 The backend is supposed to be Web server.  For example, to make
 nghttpx listen to encrypted HTTP/2 requests at port 8443, and a
 backend Web server is configured to listen to HTTP request at port
-8080 in the same host, run nghttpx command-line like this::
+8080 in the same host, run nghttpx command-line like this:
+
+.. code-block:: text
 
     $ nghttpx -f0.0.0.0,8443 -b127.0.0.1,8080 /path/to/server.key /path/to/server.crt
 
 Then HTTP/2 enabled client can access to the nghttpx in HTTP/2.  For
-example, you can send GET request to the server using nghttp::
+example, you can send GET request to the server using nghttp:
+
+.. code-block:: text
 
     $ nghttp -nv https://localhost:8443/
 
@@ -89,7 +93,9 @@ connection, use :option:`--backend` option, and specify ``h2`` in
 For example, to make nghttpx listen to encrypted HTTP/2 requests at
 port 8443, and a backend HTTP proxy server is configured to listen to
 HTTP/1 request at port 8080 in the same host, run nghttpx command-line
-like this::
+like this:
+
+.. code-block:: text
 
     $ nghttpx -s -f'*,8443' -b127.0.0.1,8080 /path/to/server.key /path/to/server.crt
 
@@ -118,13 +124,17 @@ to proxy.pac file, something like this:
 
     file:///path/to/proxy.pac
 
-For Chromium, use following command-line::
+For Chromium, use following command-line:
+
+.. code-block:: text
 
     $ google-chrome --proxy-pac-url=file:///path/to/proxy.pac --use-npn
 
 As HTTP/1 proxy server, Squid may work as out-of-box.  Traffic server
 requires to be configured as forward proxy.  Here is the minimum
-configuration items to edit::
+configuration items to edit:
+
+.. code-block:: text
 
     CONFIG proxy.config.reverse_proxy.enabled INT 0
     CONFIG proxy.config.url_remap.remap_required INT 0
@@ -152,9 +162,9 @@ Enable SSL/TLS on memcached connection
 --------------------------------------
 
 By default, memcached connection is not encrypted.  To enable
-encryption, use :option:`--tls-ticket-key-memcached-tls` for TLS
-ticket key, and use :option:`--tls-session-cache-memcached-tls` for
-TLS session cache.
+encryption, use ``tls`` keyword in
+:option:`--tls-ticket-key-memcached` for TLS ticket key, and
+:option:`--tls-session-cache-memcached` for TLS session cache.
 
 Specifying additional server certificates
 -----------------------------------------

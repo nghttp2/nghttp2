@@ -140,7 +140,9 @@ HTTP/2 servers
    Python 3.4 or later is required to use these objects.  To
    explicitly configure nghttp2 build to use Python 3.4, specify the
    ``PYTHON`` variable to the path to Python 3.4 executable when
-   invoking configure script like this::
+   invoking configure script like this:
+
+   .. code-block:: text
 
        $ ./configure PYTHON=/usr/bin/python3.4
 

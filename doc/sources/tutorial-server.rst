@@ -10,7 +10,9 @@ archive or repository.
 
 This simple server takes 3 arguments: The port number to listen on,
 the path to your SSL/TLS private key file, and the path to your
-certificate file.  The synopsis is::
+certificate file.  The synopsis is:
+
+.. code-block:: text
 
     $ libevent-server PORT /path/to/server.key /path/to/server.crt
 

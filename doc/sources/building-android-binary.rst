@@ -17,7 +17,9 @@ installed in the following way.  First, let us introduce
 under ``$ANDROID_HOME/toolchain``.  An user can freely choose the path
 for ``ANDROID_HOME``.  For example, to install toolchain under
 ``$ANDROID_HOME/toolchain``, do this in the the directory where NDK is
-unpacked::
+unpacked:
+
+.. code-block:: text
 
     $ build/tools/make-standalone-toolchain.sh \
       --install-dir=$ANDROID_HOME/toolchain \
@@ -45,7 +47,9 @@ spdylay as well.
 
 Before running ``android-config`` and ``android-make``,
 ``ANDROID_HOME`` environment variable must be set to point to the
-correct path.  Also add ``$ANDROID_HOME/toolchain/bin`` to ``PATH``::
+correct path.  Also add ``$ANDROID_HOME/toolchain/bin`` to ``PATH``:
+
+.. code-block:: text
 
     $ export PATH=$PATH:$ANDROID_HOME/toolchain/bin
 
@@ -159,6 +163,8 @@ then ``android-make`` to compile nghttp2 source files.
 
 If all went well, application binaries, such as nghttpx, are created
 under src directory.  Strip debugging information from the binary
-using the following command::
+using the following command:
+
+.. code-block:: text
 
     $ arm-linux-androideabi-strip src/nghttpx
