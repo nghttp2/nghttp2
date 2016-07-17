@@ -132,24 +132,24 @@ To configure spdylay, use the following script:
     #!/bin/sh -e
 
     if [ -z "$ANDROID_HOME" ]; then
-	echo 'No $ANDROID_HOME specified.'
-	exit 1
+        echo 'No $ANDROID_HOME specified.'
+        exit 1
     fi
     PREFIX=$ANDROID_HOME/usr/local
     TOOLCHAIN=$ANDROID_HOME/toolchain
     PATH=$TOOLCHAIN/bin:$PATH
 
     ./configure \
-	--disable-shared \
-	--host=arm-linux-androideabi \
-	--build=`dpkg-architecture -qDEB_BUILD_GNU_TYPE` \
-	--prefix=$PREFIX \
-	--without-libxml2 \
-	--disable-src \
-	--disable-examples \
-	CPPFLAGS="-I$PREFIX/include" \
-	PKG_CONFIG_LIBDIR="$PREFIX/lib/pkgconfig" \
-	LDFLAGS="-L$PREFIX/lib"
+        --disable-shared \
+        --host=arm-linux-androideabi \
+        --build=`dpkg-architecture -qDEB_BUILD_GNU_TYPE` \
+        --prefix=$PREFIX \
+        --without-libxml2 \
+        --disable-src \
+        --disable-examples \
+        CPPFLAGS="-I$PREFIX/include" \
+        PKG_CONFIG_LIBDIR="$PREFIX/lib/pkgconfig" \
+        LDFLAGS="-L$PREFIX/lib"
 
 And run ``make install`` to build and install.
 
