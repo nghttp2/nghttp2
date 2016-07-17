@@ -21,17 +21,12 @@ unpacked:
 
 .. code-block:: text
 
-    $ build/tools/make-standalone-toolchain.sh \
-      --install-dir=$ANDROID_HOME/toolchain \
-      --toolchain=arm-linux-androideabi-4.9 \
-      --llvm-version=3.5 \
-      --platform=android-16
+    $ build/tools/make_standalone_toolchain.py \
+      --arch arm --api 16 --stl gnustl
+      --install-dir $ANDROID_HOME/toolchain
 
-The additional flag ``--system=linux-x86_64`` may be required if you
-are using x86_64 system.
-
-The platform level is not important here because we don't use Android
-specific C/C++ API.
+The API level (``--api``) is not important here because we don't use
+Android specific C/C++ API.
 
 The dependent libraries, such as OpenSSL and libev should be built
 with the toolchain and installed under ``$ANDROID_HOME/usr/local``.
