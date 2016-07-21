@@ -33,6 +33,26 @@
 namespace nghttp2 {
 
 namespace {
+// Truncates |md| to |nbits| bits counting from MSB.  |nbits| is
+// guaranteed to be less than or equal to 62.
+uint64_t truncate_hash(const uint8_t *md, uint32_t nbits) {
+  uint64_t v;
+
+  v = (static_cast<uint64_t>(md[0]) << 56) +
+      (static_cast<uint64_t>(md[1]) << 48) +
+      (static_cast<uint64_t>(md[2]) << 40) +
+      (static_cast<uint64_t>(md[3]) << 32) +
+      (static_cast<uint64_t>(md[4]) << 24) +
+      (static_cast<uint64_t>(md[5]) << 16) +
+      (static_cast<uint64_t>(md[6]) << 8) + static_cast<uint64_t>(md[31]);
+
+  v >>= 64 - nbits;
+
+  return v;
+}
+} // namespace
+
+namespace {
 int compute_hash_values(std::vector<uint64_t> &hash_values,
                         const std::vector<std::string> &uris, uint32_t nbits) {
   int rv;
@@ -40,8 +60,6 @@ int compute_hash_values(std::vector<uint64_t> &hash_values,
   if (nbits > 62) {
     return -1;
   }
-
-  uint64_t mask = (static_cast<uint64_t>(1) << nbits) - 1;
 
   auto ctx = EVP_MD_CTX_create();
 
@@ -70,18 +88,7 @@ int compute_hash_values(std::vector<uint64_t> &hash_values,
 
     assert(len == 32);
 
-    uint64_t v;
-
-    v = (static_cast<uint64_t>(md[24]) << 56) +
-        (static_cast<uint64_t>(md[25]) << 48) +
-        (static_cast<uint64_t>(md[26]) << 40) +
-        (static_cast<uint64_t>(md[27]) << 32) +
-        (static_cast<uint64_t>(md[28]) << 24) +
-        (static_cast<uint64_t>(md[29]) << 16) +
-        (static_cast<uint64_t>(md[30]) << 8) + static_cast<uint64_t>(md[31]);
-    v &= mask;
-
-    *p++ = v;
+    *p++ = truncate_hash(md.data(), nbits);
   }
 
   EVP_MD_CTX_destroy(ctx);
@@ -219,7 +226,6 @@ ssize_t cache_digest_encode(uint8_t *data, size_t datalen,
 
 int cache_digest_hash(uint64_t &key, size_t nbits, const StringRef &s) {
   int rv;
-  uint64_t mask = (static_cast<uint64_t>(1) << nbits) - 1;
 
   std::array<uint8_t, 32> md;
 
@@ -246,15 +252,7 @@ int cache_digest_hash(uint64_t &key, size_t nbits, const StringRef &s) {
 
   EVP_MD_CTX_destroy(ctx);
 
-  key = (static_cast<uint64_t>(md[24]) << 56) +
-        (static_cast<uint64_t>(md[25]) << 48) +
-        (static_cast<uint64_t>(md[26]) << 40) +
-        (static_cast<uint64_t>(md[27]) << 32) +
-        (static_cast<uint64_t>(md[28]) << 24) +
-        (static_cast<uint64_t>(md[29]) << 16) +
-        (static_cast<uint64_t>(md[30]) << 8) + static_cast<uint64_t>(md[31]);
-
-  key &= mask;
+  key = truncate_hash(md.data(), nbits);
 
   return 0;
 }
