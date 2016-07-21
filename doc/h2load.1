@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "H2LOAD" "1" "June 26, 2016" "1.12.0" "nghttp2"
+.TH "H2LOAD" "1" "Jul 21, 2016" "1.13.0" "nghttp2"
 .SH NAME
 h2load \- HTTP/2 benchmarking tool
 .
@@ -151,7 +151,7 @@ representing the  number of  connections to be  made per
 rate period.   The maximum  number of connections  to be
 made  is  given  in  \fI\%\-c\fP   option.   This  rate  will  be
 distributed among  threads as  evenly as  possible.  For
-example,  with   \fB\-t2\fP  and   \fB\-r4\fP,  each  thread   gets  2
+example,  with   \fI\%\-t\fP2  and   \fI\%\-r\fP4,  each  thread   gets  2
 connections per period.  When the rate is 0, the program
 will run  as it  normally does, creating  connections at
 whatever variable rate it  wants.  The default value for
@@ -414,7 +414,7 @@ performance.  To set smaller flow control window, use \fI\%\-w\fP and
 window size described in HTTP/2 and SPDY protocol specification.
 .SH SEE ALSO
 .sp
-\fInghttp(1)\fP, \fInghttpd(1)\fP, \fInghttpx(1)\fP
+\fBnghttp(1)\fP, \fBnghttpd(1)\fP, \fBnghttpx(1)\fP
 .SH AUTHOR
 Tatsuhiro Tsujikawa
 .SH COPYRIGHT

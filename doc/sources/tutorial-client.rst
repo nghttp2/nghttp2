@@ -7,7 +7,9 @@ the end of this page.  It also resides in the examples directory in
 the archive or repository.
 
 This simple client takes a single HTTPS URI and retrieves the resource
-at the URI. The synopsis is::
+at the URI. The synopsis is:
+
+.. code-block:: text
 
     $ libevent-client HTTPS_URI
 

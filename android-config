@@ -39,9 +39,8 @@ PATH="$TOOLCHAIN"/bin:"$PATH"
     --without-libxml2 \
     --disable-python-bindings \
     --disable-examples \
-    --enable-werror \
-    CC="$TOOLCHAIN"/bin/clang \
-    CXX="$TOOLCHAIN"/bin/clang++ \
+    CC="$TOOLCHAIN"/bin/arm-linux-androideabi-gcc \
+    CXX="$TOOLCHAIN"/bin/arm-linux-androideabi-g++ \
     CPPFLAGS="-fPIE -I$PREFIX/include" \
     PKG_CONFIG_LIBDIR="$PREFIX/lib/pkgconfig" \
     LDFLAGS="-fPIE -pie -L$PREFIX/lib"

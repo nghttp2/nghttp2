@@ -1199,7 +1199,7 @@ backend server and extracts URI-reference with parameter
 and pushes those URIs to the frontend client. Here is a sample Link
 header field to initiate server push:
 
-.. code-block:: http
+.. code-block:: text
 
   Link: </fonts/font.woff>; rel=preload
   Link: </css/theme.css>; rel=preload

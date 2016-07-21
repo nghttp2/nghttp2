@@ -179,10 +179,10 @@ To compile the source code, gcc >= 4.8.3 or clang >= 3.4 is required.
 Notes for building on Windows (MSVC)
 ------------------------------------
 
-The easiest way to build native Windows nghttp2 dll is use
-[cmake](https://cmake.org/).  The free version of [Visual C++ Build
-Tools](http://landinghub.visualstudio.com/visual-cpp-build-tools)
-works fine.
+The easiest way to build native Windows nghttp2 dll is use `cmake
+<https://cmake.org/>`_.  The free version of `Visual C++ Build Tools
+<http://landinghub.visualstudio.com/visual-cpp-build-tools>`_ works
+fine.
 
 1. Install cmake for windows
 2. Open "Visual C++ ... Native Build Tool Command Prompt", and inside
