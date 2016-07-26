@@ -96,9 +96,9 @@ Config::Config()
     : header_table_size(-1),
       min_header_table_size(std::numeric_limits<uint32_t>::max()),
       padding(0),
+      next_weight_idx(0),
       max_concurrent_streams(100),
       peer_max_concurrent_streams(100),
-      weight(NGHTTP2_DEFAULT_WEIGHT),
       multiply(1),
       timeout(0.),
       window_bits(-1),
@@ -1124,23 +1124,25 @@ int HttpClient::connection_made() {
       return -1;
     }
 
-    if (need_upgrade()) {
+    if (need_upgrade() && !reqvec[0]->data_prd) {
       // Amend the priority because we cannot send priority in
       // HTTP/1.1 Upgrade.
       auto &anchor = anchors[ANCHOR_FOLLOWERS];
-      nghttp2_priority_spec_init(&pri_spec, anchor.stream_id, config.weight, 0);
+      nghttp2_priority_spec_init(&pri_spec, anchor.stream_id,
+                                 reqvec[0]->pri_spec.weight, 0);
 
       rv = nghttp2_submit_priority(session, NGHTTP2_FLAG_NONE, 1, &pri_spec);
       if (rv != 0) {
         return -1;
       }
     }
-  } else if (need_upgrade() && config.weight != NGHTTP2_DEFAULT_WEIGHT) {
-    // Amend the priority because we cannot send priority in
-    // HTTP/1.1 Upgrade.
+  } else if (need_upgrade() && !reqvec[0]->data_prd &&
+             reqvec[0]->pri_spec.weight != NGHTTP2_DEFAULT_WEIGHT) {
+    // Amend the priority because we cannot send priority in HTTP/1.1
+    // Upgrade.
     nghttp2_priority_spec pri_spec;
 
-    nghttp2_priority_spec_init(&pri_spec, 0, config.weight, 0);
+    nghttp2_priority_spec_init(&pri_spec, 0, reqvec[0]->pri_spec.weight, 0);
 
     rv = nghttp2_submit_priority(session, NGHTTP2_FLAG_NONE, 1, &pri_spec);
     if (rv != 0) {
@@ -2179,11 +2181,11 @@ const char *const CIPHER_LIST =
 } // namespace
 
 namespace {
-int communicate(
-    const std::string &scheme, const std::string &host, uint16_t port,
-    std::vector<std::tuple<std::string, nghttp2_data_provider *, int64_t>>
-        requests,
-    const nghttp2_session_callbacks *callbacks) {
+int communicate(const std::string &scheme, const std::string &host,
+                uint16_t port,
+                std::vector<std::tuple<std::string, nghttp2_data_provider *,
+                                       int64_t, int32_t>> requests,
+                const nghttp2_session_callbacks *callbacks) {
   int result = 0;
   auto loop = EV_DEFAULT;
   SSL_CTX *ssl_ctx = nullptr;
@@ -2239,16 +2241,17 @@ int communicate(
   {
     HttpClient client{callbacks, loop, ssl_ctx};
 
-    nghttp2_priority_spec pri_spec;
     int32_t dep_stream_id = 0;
 
     if (!config.no_dep) {
       dep_stream_id = anchors[ANCHOR_FOLLOWERS].stream_id;
     }
 
-    nghttp2_priority_spec_init(&pri_spec, dep_stream_id, config.weight, 0);
+    for (auto &req : requests) {
+      nghttp2_priority_spec pri_spec;
 
-    for (auto req : requests) {
+      nghttp2_priority_spec_init(&pri_spec, dep_stream_id, std::get<3>(req), 0);
+
       for (int i = 0; i < config.multiply; ++i) {
         client.add_request(std::get<0>(req), std::get<1>(req), std::get<2>(req),
                            pri_spec);
@@ -2479,16 +2482,18 @@ int run(char **uris, int n) {
     data_prd.source.fd = data_fd;
     data_prd.read_callback = file_read_callback;
   }
-  std::vector<std::tuple<std::string, nghttp2_data_provider *, int64_t>>
-      requests;
+  std::vector<std::tuple<std::string, nghttp2_data_provider *, int64_t,
+                         int32_t>> requests;
   for (int i = 0; i < n; ++i) {
     http_parser_url u{};
     auto uri = strip_fragment(uris[i]);
     if (http_parser_parse_url(uri.c_str(), uri.size(), 0, &u) != 0) {
+      ++config.next_weight_idx;
       std::cerr << "[ERROR] Could not parse URI " << uri << std::endl;
       continue;
     }
     if (!util::has_uri_field(u, UF_SCHEMA)) {
+      ++config.next_weight_idx;
       std::cerr << "[ERROR] URI " << uri << " does not have scheme part"
                 << std::endl;
       continue;
@@ -2511,7 +2516,8 @@ int run(char **uris, int n) {
       prev_port = port;
     }
     requests.emplace_back(uri, data_fd == -1 ? nullptr : &data_prd,
-                          data_stat.st_size);
+                          data_stat.st_size,
+                          config.weight[config.next_weight_idx++]);
   }
   if (!requests.empty()) {
     if (communicate(prev_scheme, prev_host, prev_port, std::move(requests),
@@ -2593,10 +2599,14 @@ Options:
               if the request URI has https scheme.  If -d is used, the
               HTTP upgrade request is performed with OPTIONS method.
   -p, --weight=<WEIGHT>
-              Sets priority group weight.  The valid value range is
+              Sets  weight of  given  URI.  This  option  can be  used
+              multiple times, and  N-th -p option sets  weight of N-th
+              URI in the command line.  If  the number of -p option is
+              less than the number of URI, the last -p option value is
+              repeated.  If there is no -p option, default weight, 16,
+              is assumed.  The valid value range is
               [)" << NGHTTP2_MIN_WEIGHT << ", " << NGHTTP2_MAX_WEIGHT
       << R"(], inclusive.
-              Default: )" << NGHTTP2_DEFAULT_WEIGHT << R"(
   -M, --peer-max-concurrent-streams=<N>
               Use  <N>  as  SETTINGS_MAX_CONCURRENT_STREAMS  value  of
               remote endpoint as if it  is received in SETTINGS frame.
@@ -2712,7 +2722,7 @@ int main(int argc, char **argv) {
       errno = 0;
       auto n = strtoul(optarg, nullptr, 10);
       if (errno == 0 && NGHTTP2_MIN_WEIGHT <= n && n <= NGHTTP2_MAX_WEIGHT) {
-        config.weight = n;
+        config.weight.push_back(n);
       } else {
         std::cerr << "-p: specify the integer in the range ["
                   << NGHTTP2_MIN_WEIGHT << ", " << NGHTTP2_MAX_WEIGHT
@@ -2891,6 +2901,14 @@ int main(int argc, char **argv) {
       break;
     }
   }
+
+  int32_t weight_to_fill;
+  if (config.weight.empty()) {
+    weight_to_fill = NGHTTP2_DEFAULT_WEIGHT;
+  } else {
+    weight_to_fill = config.weight.back();
+  }
+  config.weight.insert(std::end(config.weight), argc - optind, weight_to_fill);
 
   set_color_output(color || isatty(fileno(stdout)));
 
