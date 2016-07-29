@@ -650,6 +650,16 @@ AC_CHECK_FUNCS([ \
 AC_CHECK_FUNC([timerfd_create],
               [have_timerfd_create=yes], [have_timerfd_create=no])
 
+# Explicitly check for availability of ALPN for human
+
+save_LDFLAGS=$LDFLAGS
+
+LDFLAGS="$LDFLAGS $OPENSSL_LIBS"
+
+AC_CHECK_FUNC([SSL_CTX_set_alpn_select_cb], [have_alpn=yes], [have_alpn=no])
+
+LDFLAGS=$save_LDFLAGS
+
 # For cygwin: we can link initgroups, so AC_CHECK_FUNCS succeeds, but
 # cygwin disables initgroups due to feature test macro magic with our
 # configuration.  FreeBSD declares initgroups() in unistd.h.
@@ -867,4 +877,5 @@ AC_MSG_NOTICE([summary of build options:
       Examples:       ${enable_examples}
       Python bindings:${enable_python_bindings}
       Threading:      ${enable_threads}
+      ALPN:           ${have_alpn}
 ])
