@@ -144,6 +144,11 @@ Consult Traffic server `documentation
 to know how to configure traffic server as forward proxy and its
 security implications.
 
+ALPN support
+------------
+
+ALPN support requires OpenSSL >= 1.0.2.
+
 Disable frontend SSL/TLS
 ------------------------
 
