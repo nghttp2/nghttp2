@@ -73,8 +73,6 @@ struct Config {
   int64_t header_table_size;
   int64_t min_header_table_size;
   size_t padding;
-  // the next index into weight.
-  size_t next_weight_idx;
   size_t max_concurrent_streams;
   ssize_t peer_max_concurrent_streams;
   int multiply;

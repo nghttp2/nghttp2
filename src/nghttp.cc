@@ -96,7 +96,6 @@ Config::Config()
     : header_table_size(-1),
       min_header_table_size(std::numeric_limits<uint32_t>::max()),
       padding(0),
-      next_weight_idx(0),
       max_concurrent_streams(100),
       peer_max_concurrent_streams(100),
       multiply(1),
@@ -2484,16 +2483,19 @@ int run(char **uris, int n) {
   }
   std::vector<std::tuple<std::string, nghttp2_data_provider *, int64_t,
                          int32_t>> requests;
+
+  size_t next_weight_idx = 0;
+
   for (int i = 0; i < n; ++i) {
     http_parser_url u{};
     auto uri = strip_fragment(uris[i]);
     if (http_parser_parse_url(uri.c_str(), uri.size(), 0, &u) != 0) {
-      ++config.next_weight_idx;
+      ++next_weight_idx;
       std::cerr << "[ERROR] Could not parse URI " << uri << std::endl;
       continue;
     }
     if (!util::has_uri_field(u, UF_SCHEMA)) {
-      ++config.next_weight_idx;
+      ++next_weight_idx;
       std::cerr << "[ERROR] URI " << uri << " does not have scheme part"
                 << std::endl;
       continue;
@@ -2516,8 +2518,7 @@ int run(char **uris, int n) {
       prev_port = port;
     }
     requests.emplace_back(uri, data_fd == -1 ? nullptr : &data_prd,
-                          data_stat.st_size,
-                          config.weight[config.next_weight_idx++]);
+                          data_stat.st_size, config.weight[next_weight_idx++]);
   }
   if (!requests.empty()) {
     if (communicate(prev_scheme, prev_host, prev_port, std::move(requests),
