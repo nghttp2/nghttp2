@@ -660,11 +660,8 @@ int create_tcp_server_socket(UpstreamAddr &faddr,
 } // namespace
 
 namespace {
-int create_acceptor_socket() {
+std::vector<InheritedAddr> get_inherited_addr_from_env() {
   int rv;
-
-  auto &listenerconf = mod_config()->conn.listener;
-
   std::vector<InheritedAddr> iaddrs;
 
   {
@@ -806,6 +803,26 @@ int create_acceptor_socket() {
     }
   }
 
+  return iaddrs;
+}
+} // namespace
+
+namespace {
+void closeUnusedInheritedAddr(const std::vector<InheritedAddr> &iaddrs) {
+  for (auto &ia : iaddrs) {
+    if (ia.used) {
+      continue;
+    }
+
+    close(ia.fd);
+  }
+}
+} // namespace
+
+namespace {
+int create_acceptor_socket(std::vector<InheritedAddr> &iaddrs) {
+  auto &listenerconf = mod_config()->conn.listener;
+
   for (auto &addr : listenerconf.addrs) {
     if (addr.host_unix) {
       if (create_unix_domain_server_socket(addr, iaddrs) != 0) {
@@ -827,14 +844,6 @@ int create_acceptor_socket() {
     if (create_tcp_server_socket(addr, iaddrs) != 0) {
       return -1;
     }
-  }
-
-  for (auto &ia : iaddrs) {
-    if (ia.used) {
-      continue;
-    }
-
-    close(ia.fd);
   }
 
   return 0;
@@ -957,9 +966,13 @@ int event_loop() {
     util::make_socket_closeonexec(fd);
   }
 
-  if (create_acceptor_socket() != 0) {
+  auto iaddrs = get_inherited_addr_from_env();
+
+  if (create_acceptor_socket(iaddrs) != 0) {
     return -1;
   }
+
+  closeUnusedInheritedAddr(iaddrs);
 
   auto loop = ev_default_loop(get_config()->ev_loop_flags);
 
