@@ -2517,7 +2517,7 @@ int process_options(Config *config,
 
 namespace {
 // Closes file descriptor which are opened for listeners in config,
-// and which are not inherited from |iaddrs|.
+// and are not inherited from |iaddrs|.
 void close_not_inherited_fd(Config *config,
                             const std::vector<InheritedAddr> &iaddrs) {
   auto &listenerconf = config->conn.listener;
