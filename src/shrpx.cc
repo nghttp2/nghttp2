@@ -805,13 +805,14 @@ namespace {
 std::vector<InheritedAddr>
 get_inherited_addr_from_config(const Config *config) {
   int rv;
-  std::vector<InheritedAddr> iaddrs;
 
   auto &listenerconf = config->conn.listener;
 
+  std::vector<InheritedAddr> iaddrs(listenerconf.addrs.size());
+
+  size_t idx = 0;
   for (auto &addr : listenerconf.addrs) {
-    iaddrs.emplace_back();
-    auto &iaddr = iaddrs.back();
+    auto &iaddr = iaddrs[idx++];
 
     if (addr.host_unix) {
       iaddr.host = addr.host;
@@ -1093,8 +1094,11 @@ int create_ipc_socket(std::array<int, 2> &ipc_fd) {
 namespace {
 // Creates worker process, and returns PID of worker process.  On
 // success, file descriptor for IPC (send only) is assigned to
-// |main_ipc_fd|.
-pid_t fork_worker_process(int &main_ipc_fd) {
+// |main_ipc_fd|.  In child process, we will close file descriptors
+// which are inherited from previous configuration/process, but not
+// used in the current configuration.
+pid_t fork_worker_process(int &main_ipc_fd,
+                          const std::vector<InheritedAddr> &iaddrs) {
   int rv;
   sigset_t oldset;
 
@@ -1124,6 +1128,8 @@ pid_t fork_worker_process(int &main_ipc_fd) {
     // Remove all WorkerProcesses to stop any registered watcher on
     // default loop.
     worker_process_remove_all();
+
+    close_unused_inherited_addr(iaddrs);
 
     shrpx_signal_set_worker_proc_ign_handler();
 
@@ -1212,7 +1218,7 @@ int event_loop() {
 
   int ipc_fd;
 
-  auto pid = fork_worker_process(ipc_fd);
+  auto pid = fork_worker_process(ipc_fd, {});
 
   if (pid == -1) {
     return -1;
@@ -2506,6 +2512,27 @@ int process_options(Config *config,
 } // namespace
 
 namespace {
+// Closes file descriptor which are opened for listeners in config,
+// and which are not inherited from |iaddrs|.
+void close_not_inherited_fd(Config *config,
+                            const std::vector<InheritedAddr> &iaddrs) {
+  auto &listenerconf = config->conn.listener;
+
+  for (auto &addr : listenerconf.addrs) {
+    auto inherited = std::find_if(
+        std::begin(iaddrs), std::end(iaddrs),
+        [&addr](const InheritedAddr &iaddr) { return addr.fd == iaddr.fd; });
+
+    if (inherited != std::end(iaddrs)) {
+      continue;
+    }
+
+    close(addr.fd);
+  }
+}
+} // namespace
+
+namespace {
 void reload_config(WorkerProcess *wp) {
   int rv;
 
@@ -2519,6 +2546,8 @@ void reload_config(WorkerProcess *wp) {
   new_config->conf_path = cur_config->conf_path;
   // daemon option is ignored here.
   new_config->daemon = cur_config->daemon;
+  // loop is reused, and ev_loop_flags gets ignored
+  new_config->ev_loop_flags = cur_config->ev_loop_flags;
 
   rv = process_options(new_config.get(), suconfig.cmdcfgs);
   if (rv != 0) {
@@ -2529,23 +2558,32 @@ void reload_config(WorkerProcess *wp) {
   auto iaddrs = get_inherited_addr_from_config(cur_config);
 
   if (create_acceptor_socket(new_config.get(), iaddrs) != 0) {
+    close_not_inherited_fd(new_config.get(), iaddrs);
     return;
   }
 
-  // TODO may leak socket if we get error later in this function
-
-  // TODO loop is reused, and new_config->ev_loop_flags gets ignored
-
-  auto loop = wp->loop;
+  // According to libev documentation, flags are ignored since we have
+  // already created first default loop.
+  auto loop = ev_default_loop(new_config->ev_loop_flags);
 
   int ipc_fd;
 
-  auto pid = fork_worker_process(ipc_fd);
+  // fork_worker_process and forked child process assumes new
+  // configuration can be obtained from get_config().
+
+  auto old_config = replace_config(new_config.get());
+
+  auto pid = fork_worker_process(ipc_fd, iaddrs);
 
   if (pid == -1) {
     LOG(ERROR) << "Failed to process new configuration";
+    close_not_inherited_fd(new_config.get(), iaddrs);
+    replace_config(old_config);
     return;
   }
+
+  new_config.release();
+  delete_config(old_config);
 
   close_unused_inherited_addr(iaddrs);
 
@@ -2556,14 +2594,6 @@ void reload_config(WorkerProcess *wp) {
   last_wp->shutdown_signal_watchers();
 
   worker_process_add(make_unique<WorkerProcess>(loop, pid, ipc_fd));
-
-  auto old_config = replace_config(new_config.release());
-
-  assert(cur_config == old_config);
-
-  delete_config(old_config);
-
-  // Now we use new configuration
 
   if (!get_config()->pid_file.empty()) {
     save_pid();
