@@ -271,7 +271,7 @@ void worker_process_kill(int signum) {
     }
     kill(s->worker_pid, signum);
   }
-  worker_processes.clear();
+  worker_process_remove_all();
 }
 } // namespace
 
@@ -355,7 +355,7 @@ void save_pid() {
 } // namespace
 
 namespace {
-void exec_binary(WorkerProcess *wp) {
+void exec_binary() {
   int rv;
   sigset_t oldset;
 
@@ -527,7 +527,7 @@ void signal_cb(struct ev_loop *loop, ev_signal *w, int revents) {
     reopen_log(wp);
     return;
   case EXEC_BINARY_SIGNAL:
-    exec_binary(wp);
+    exec_binary();
     return;
   case GRACEFUL_SHUTDOWN_SIGNAL:
     ipc_send(wp, SHRPX_IPC_GRACEFUL_SHUTDOWN);
