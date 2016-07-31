@@ -34,6 +34,7 @@ namespace shrpx {
 constexpr int REOPEN_LOG_SIGNAL = SIGUSR1;
 constexpr int EXEC_BINARY_SIGNAL = SIGUSR2;
 constexpr int GRACEFUL_SHUTDOWN_SIGNAL = SIGQUIT;
+constexpr int RELOAD_SIGNAL = SIGHUP;
 
 // Blocks all signals.  The previous signal mask is stored into
 // |oldset| if it is not nullptr.  This function returns 0 if it

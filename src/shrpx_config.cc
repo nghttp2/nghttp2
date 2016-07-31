@@ -60,16 +60,44 @@
 namespace shrpx {
 
 namespace {
-Config *config = nullptr;
+std::unique_ptr<Config> config;
 } // namespace
 
 constexpr auto SHRPX_UNIX_PATH_PREFIX = StringRef::from_lit("unix:");
 
-const Config *get_config() { return config; }
+const Config *get_config() { return config.get(); }
 
-Config *mod_config() { return config; }
+Config *mod_config() { return config.get(); }
 
-void create_config() { config = new Config(); }
+std::unique_ptr<Config> replace_config(std::unique_ptr<Config> another) {
+  config.swap(another);
+  return another;
+}
+
+void create_config() { config = make_unique<Config>(); }
+
+Config::~Config() {
+  auto &upstreamconf = http2.upstream;
+
+  nghttp2_option_del(upstreamconf.option);
+  nghttp2_option_del(upstreamconf.alt_mode_option);
+  nghttp2_session_callbacks_del(upstreamconf.callbacks);
+
+  auto &downstreamconf = http2.downstream;
+
+  nghttp2_option_del(downstreamconf.option);
+  nghttp2_session_callbacks_del(downstreamconf.callbacks);
+
+  auto &dumpconf = http2.upstream.debug.dump;
+
+  if (dumpconf.request_header) {
+    fclose(dumpconf.request_header);
+  }
+
+  if (dumpconf.response_header) {
+    fclose(dumpconf.response_header);
+  }
+}
 
 TicketKeys::~TicketKeys() {
   /* Erase keys from memory */
@@ -2398,7 +2426,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     }
 
     included_set.insert(optarg);
-    auto rv = load_config(optarg.c_str(), included_set);
+    auto rv = load_config(config, optarg.c_str(), included_set);
     included_set.erase(optarg);
 
     if (rv != 0) {
@@ -2648,7 +2676,8 @@ int parse_config(Config *config, int optid, const StringRef &opt,
   return -1;
 }
 
-int load_config(const char *filename, std::set<StringRef> &include_set) {
+int load_config(Config *config, const char *filename,
+                std::set<StringRef> &include_set) {
   std::ifstream in(filename, std::ios::binary);
   if (!in) {
     LOG(ERROR) << "Could not open config file " << filename;
@@ -2669,7 +2698,7 @@ int load_config(const char *filename, std::set<StringRef> &include_set) {
     }
     *eq = '\0';
 
-    if (parse_config(mod_config(), StringRef{std::begin(line), eq},
+    if (parse_config(config, StringRef{std::begin(line), eq},
                      StringRef{eq + 1, std::end(line)}, include_set) != 0) {
       return -1;
     }

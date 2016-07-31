@@ -181,8 +181,8 @@ bool check_http2_requirement(SSL *ssl);
 // passed to SSL_CTX_set_options().
 long int create_tls_proto_mask(const std::vector<std::string> &tls_proto_list);
 
-std::vector<unsigned char>
-set_alpn_prefs(const std::vector<std::string> &protos);
+int set_alpn_prefs(std::vector<unsigned char> &out,
+                   const std::vector<std::string> &protos);
 
 // Setups server side SSL_CTX.  This function inspects get_config()
 // and if upstream_no_tls is true, returns nullptr.  Otherwise

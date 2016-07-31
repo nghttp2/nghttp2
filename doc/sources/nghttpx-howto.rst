@@ -236,6 +236,9 @@ all existing frontend connections are done, the current process will
 exit.  At this point, only new nghttpx process exists and serves
 incoming requests.
 
+If you want to just reload configuration file without executing new
+binary, send SIGHUP to nghttpx master process.
+
 Re-opening log files
 --------------------
 

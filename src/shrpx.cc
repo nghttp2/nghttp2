@@ -130,21 +130,162 @@ constexpr auto ENV_ACCEPT_PREFIX = StringRef::from_lit("NGHTTPX_ACCEPT_");
 #endif
 #endif
 
-struct SignalServer {
-  SignalServer() : ipc_fd{{-1, -1}}, worker_process_pid(-1) {}
-  ~SignalServer() {
-    if (ipc_fd[0] != -1) {
-      close(ipc_fd[0]);
-    }
-    if (ipc_fd[1] != -1) {
-      shutdown(ipc_fd[1], SHUT_WR);
-      close(ipc_fd[1]);
+// This configuration is fixed at the first startup of the main
+// process, and does not change after subsequent reloadings.
+struct StartupConfig {
+  // This contains all options given in command-line.
+  std::vector<std::pair<StringRef, StringRef>> cmdcfgs;
+  // The current working directory where this process started.
+  char *cwd;
+  // The pointer to original argv (not sure why we have this?)
+  char **original_argv;
+  // The pointer to argv, this is a deep copy of original argv.
+  char **argv;
+  // The number of elements in argv.
+  int argc;
+};
+
+namespace {
+StartupConfig suconfig;
+} // namespace
+
+struct InheritedAddr {
+  // IP address if TCP socket.  Otherwise, UNIX domain socket path.
+  ImmutableString host;
+  uint16_t port;
+  // true if UNIX domain socket path
+  bool host_unix;
+  int fd;
+  bool used;
+};
+
+namespace {
+std::random_device rd;
+} // namespace
+
+namespace {
+void signal_cb(struct ev_loop *loop, ev_signal *w, int revents);
+} // namespace
+
+namespace {
+void worker_process_child_cb(struct ev_loop *loop, ev_child *w, int revents);
+} // namespace
+
+struct WorkerProcess {
+  WorkerProcess(struct ev_loop *loop, pid_t worker_pid, int ipc_fd)
+      : loop(loop), worker_pid(worker_pid), ipc_fd(ipc_fd) {
+    ev_signal_init(&reopen_log_signalev, signal_cb, REOPEN_LOG_SIGNAL);
+    reopen_log_signalev.data = this;
+    ev_signal_start(loop, &reopen_log_signalev);
+
+    ev_signal_init(&exec_binary_signalev, signal_cb, EXEC_BINARY_SIGNAL);
+    exec_binary_signalev.data = this;
+    ev_signal_start(loop, &exec_binary_signalev);
+
+    ev_signal_init(&graceful_shutdown_signalev, signal_cb,
+                   GRACEFUL_SHUTDOWN_SIGNAL);
+    graceful_shutdown_signalev.data = this;
+    ev_signal_start(loop, &graceful_shutdown_signalev);
+
+    ev_signal_init(&reload_signalev, signal_cb, RELOAD_SIGNAL);
+    reload_signalev.data = this;
+    ev_signal_start(loop, &reload_signalev);
+
+    ev_child_init(&worker_process_childev, worker_process_child_cb, worker_pid,
+                  0);
+    worker_process_childev.data = this;
+    ev_child_start(loop, &worker_process_childev);
+  }
+
+  ~WorkerProcess() {
+    shutdown_signal_watchers();
+
+    ev_child_stop(loop, &worker_process_childev);
+
+    if (ipc_fd != -1) {
+      shutdown(ipc_fd, SHUT_WR);
+      close(ipc_fd);
     }
   }
 
-  std::array<int, 2> ipc_fd;
-  pid_t worker_process_pid;
+  void shutdown_signal_watchers() {
+    ev_signal_stop(loop, &reopen_log_signalev);
+    ev_signal_stop(loop, &exec_binary_signalev);
+    ev_signal_stop(loop, &graceful_shutdown_signalev);
+    ev_signal_stop(loop, &reload_signalev);
+  }
+
+  ev_signal reopen_log_signalev;
+  ev_signal exec_binary_signalev;
+  ev_signal graceful_shutdown_signalev;
+  ev_signal reload_signalev;
+  ev_child worker_process_childev;
+  struct ev_loop *loop;
+  pid_t worker_pid;
+  int ipc_fd;
 };
+
+namespace {
+void reload_config(WorkerProcess *wp);
+} // namespace
+
+namespace {
+std::deque<std::unique_ptr<WorkerProcess>> worker_processes;
+} // namespace
+
+namespace {
+void worker_process_add(std::unique_ptr<WorkerProcess> wp) {
+  worker_processes.push_back(std::move(wp));
+}
+} // namespace
+
+namespace {
+void worker_process_remove(const WorkerProcess *wp) {
+  for (auto it = std::begin(worker_processes); it != std::end(worker_processes);
+       ++it) {
+    auto &s = *it;
+
+    if (s.get() != wp) {
+      continue;
+    }
+
+    worker_processes.erase(it);
+    break;
+  }
+}
+} // namespace
+
+namespace {
+void worker_process_remove_all() {
+  std::deque<std::unique_ptr<WorkerProcess>>().swap(worker_processes);
+}
+} // namespace
+
+namespace {
+// Send signal |signum| to all worker processes, and clears
+// worker_processes.
+void worker_process_kill(int signum) {
+  for (auto &s : worker_processes) {
+    if (s->worker_pid == -1) {
+      continue;
+    }
+    kill(s->worker_pid, signum);
+  }
+  worker_process_remove_all();
+}
+} // namespace
+
+namespace {
+// Returns the last PID of worker process.  Returns -1 if there is no
+// worker process at the moment.
+int worker_process_last_pid() {
+  if (worker_processes.empty()) {
+    return -1;
+  }
+
+  return worker_processes.back()->worker_pid;
+}
+} // namespace
 
 namespace {
 int chown_to_running_user(const char *path) {
@@ -153,7 +294,7 @@ int chown_to_running_user(const char *path) {
 } // namespace
 
 namespace {
-void save_pid() {
+int save_pid() {
   constexpr auto SUFFIX = StringRef::from_lit(".XXXXXX");
   auto &pid_file = get_config()->pid_file;
 
@@ -172,7 +313,7 @@ void save_pid() {
     auto error = errno;
     LOG(ERROR) << "Could not save PID to file " << pid_file << ": "
                << strerror(error);
-    exit(EXIT_FAILURE);
+    return -1;
   }
 
   auto content = util::utos(get_config()->pid) + '\n';
@@ -181,14 +322,14 @@ void save_pid() {
     auto error = errno;
     LOG(ERROR) << "Could not save PID to file " << pid_file << ": "
                << strerror(error);
-    exit(EXIT_FAILURE);
+    return -1;
   }
 
   if (fsync(fd) == -1) {
     auto error = errno;
     LOG(ERROR) << "Could not save PID to file " << pid_file << ": "
                << strerror(error);
-    exit(EXIT_FAILURE);
+    return -1;
   }
 
   close(fd);
@@ -200,7 +341,7 @@ void save_pid() {
 
     unlink(temp_path);
 
-    exit(EXIT_FAILURE);
+    return -1;
   }
 
   if (get_config()->uid != 0) {
@@ -210,11 +351,13 @@ void save_pid() {
                 << " failed: " << strerror(error);
     }
   }
+
+  return 0;
 }
 } // namespace
 
 namespace {
-void exec_binary(SignalServer *ssv) {
+void exec_binary() {
   int rv;
   sigset_t oldset;
 
@@ -260,21 +403,21 @@ void exec_binary(SignalServer *ssv) {
     _Exit(EXIT_FAILURE);
   }
 
-  auto exec_path = util::get_exec_path(get_config()->argc, get_config()->argv,
-                                       get_config()->cwd);
+  auto exec_path =
+      util::get_exec_path(suconfig.argc, suconfig.argv, suconfig.cwd);
 
   if (!exec_path) {
     LOG(ERROR) << "Could not resolve the executable path";
     _Exit(EXIT_FAILURE);
   }
 
-  auto argv = make_unique<char *[]>(get_config()->argc + 1);
+  auto argv = make_unique<char *[]>(suconfig.argc + 1);
 
   argv[0] = exec_path;
-  for (int i = 1; i < get_config()->argc; ++i) {
-    argv[i] = get_config()->argv[i];
+  for (int i = 1; i < suconfig.argc; ++i) {
+    argv[i] = suconfig.argv[i];
   }
-  argv[get_config()->argc] = nullptr;
+  argv[suconfig.argc] = nullptr;
 
   size_t envlen = 0;
   for (char **p = environ; *p; ++p, ++envlen)
@@ -344,10 +487,9 @@ void exec_binary(SignalServer *ssv) {
 } // namespace
 
 namespace {
-void ipc_send(SignalServer *ssv, uint8_t ipc_event) {
+void ipc_send(WorkerProcess *wp, uint8_t ipc_event) {
   ssize_t nwrite;
-  while ((nwrite = write(ssv->ipc_fd[1], &ipc_event, 1)) == -1 &&
-         errno == EINTR)
+  while ((nwrite = write(wp->ipc_fd, &ipc_event, 1)) == -1 && errno == EINTR)
     ;
 
   if (nwrite < 0) {
@@ -365,35 +507,38 @@ void ipc_send(SignalServer *ssv, uint8_t ipc_event) {
 } // namespace
 
 namespace {
-void reopen_log(SignalServer *ssv) {
+void reopen_log(WorkerProcess *wp) {
   LOG(NOTICE) << "Reopening log files: master process";
 
   (void)reopen_log_files();
   redirect_stderr_to_errorlog();
-  ipc_send(ssv, SHRPX_IPC_REOPEN_LOG);
+  ipc_send(wp, SHRPX_IPC_REOPEN_LOG);
 }
 } // namespace
 
 namespace {
 void signal_cb(struct ev_loop *loop, ev_signal *w, int revents) {
-  auto ssv = static_cast<SignalServer *>(w->data);
-  if (ssv->worker_process_pid == -1) {
+  auto wp = static_cast<WorkerProcess *>(w->data);
+  if (wp->worker_pid == -1) {
     ev_break(loop);
     return;
   }
 
   switch (w->signum) {
   case REOPEN_LOG_SIGNAL:
-    reopen_log(ssv);
+    reopen_log(wp);
     return;
   case EXEC_BINARY_SIGNAL:
-    exec_binary(ssv);
+    exec_binary();
     return;
   case GRACEFUL_SHUTDOWN_SIGNAL:
-    ipc_send(ssv, SHRPX_IPC_GRACEFUL_SHUTDOWN);
+    ipc_send(wp, SHRPX_IPC_GRACEFUL_SHUTDOWN);
+    return;
+  case RELOAD_SIGNAL:
+    reload_config(wp);
     return;
   default:
-    kill(ssv->worker_process_pid, w->signum);
+    worker_process_kill(w->signum);
     ev_break(loop);
     return;
   }
@@ -402,23 +547,19 @@ void signal_cb(struct ev_loop *loop, ev_signal *w, int revents) {
 
 namespace {
 void worker_process_child_cb(struct ev_loop *loop, ev_child *w, int revents) {
+  auto wp = static_cast<WorkerProcess *>(w->data);
+
   log_chld(w->rpid, w->rstatus, "Worker process");
 
-  ev_child_stop(loop, w);
+  auto pid = wp->worker_pid;
 
-  ev_break(loop);
+  worker_process_remove(wp);
+
+  if (worker_process_last_pid() == pid) {
+    ev_break(loop);
+  }
 }
 } // namespace
-
-struct InheritedAddr {
-  // IP address if TCP socket.  Otherwise, UNIX domain socket path.
-  ImmutableString host;
-  uint16_t port;
-  // true if UNIX domain socket path
-  bool host_unix;
-  int fd;
-  bool used;
-};
 
 namespace {
 int create_unix_domain_server_socket(UpstreamAddr &faddr,
@@ -660,11 +801,73 @@ int create_tcp_server_socket(UpstreamAddr &faddr,
 } // namespace
 
 namespace {
-int create_acceptor_socket() {
+// Returns array of InheritedAddr constructed from |config|.  This
+// function is intended to be used when reloading configuration, and
+// |config| is usually a current configuration.
+std::vector<InheritedAddr>
+get_inherited_addr_from_config(const Config *config) {
   int rv;
 
-  auto &listenerconf = mod_config()->conn.listener;
+  auto &listenerconf = config->conn.listener;
 
+  std::vector<InheritedAddr> iaddrs(listenerconf.addrs.size());
+
+  size_t idx = 0;
+  for (auto &addr : listenerconf.addrs) {
+    auto &iaddr = iaddrs[idx++];
+
+    if (addr.host_unix) {
+      iaddr.host = addr.host;
+      iaddr.host_unix = true;
+      iaddr.fd = addr.fd;
+
+      continue;
+    }
+
+    iaddr.port = addr.port;
+    iaddr.fd = addr.fd;
+
+    // We have to getsockname/getnameinfo for fd, since we may have
+    // '*' appear in addr.host, which makes comparison against "real"
+    // address fail.
+
+    sockaddr_union su;
+    socklen_t salen = sizeof(su);
+
+    // We already added entry to iaddrs.  Even if we got errors, we
+    // don't remove it.  This is required because we have to close the
+    // socket if it is not reused.  The empty host name usually does
+    // not match anything.
+
+    if (getsockname(addr.fd, &su.sa, &salen) != 0) {
+      auto error = errno;
+      LOG(WARN) << "getsockname() syscall failed (fd=" << addr.fd
+                << "): " << strerror(error);
+      continue;
+    }
+
+    std::array<char, NI_MAXHOST> host;
+    rv = getnameinfo(&su.sa, salen, host.data(), host.size(), nullptr, 0,
+                     NI_NUMERICHOST);
+    if (rv != 0) {
+      LOG(WARN) << "getnameinfo() failed (fd=" << addr.fd
+                << "): " << gai_strerror(rv);
+      continue;
+    }
+
+    iaddr.host = host.data();
+  }
+
+  return iaddrs;
+}
+} // namespace
+
+namespace {
+// Returns array of InheritedAddr constructed from environment
+// variables.  This function handles the old environment variable
+// names used in 1.7.0 or earlier.
+std::vector<InheritedAddr> get_inherited_addr_from_env() {
+  int rv;
   std::vector<InheritedAddr> iaddrs;
 
   {
@@ -806,13 +1009,34 @@ int create_acceptor_socket() {
     }
   }
 
+  return iaddrs;
+}
+} // namespace
+
+namespace {
+// Closes all sockets which are not reused.
+void close_unused_inherited_addr(const std::vector<InheritedAddr> &iaddrs) {
+  for (auto &ia : iaddrs) {
+    if (ia.used) {
+      continue;
+    }
+
+    close(ia.fd);
+  }
+}
+} // namespace
+
+namespace {
+int create_acceptor_socket(Config *config, std::vector<InheritedAddr> &iaddrs) {
+  auto &listenerconf = config->conn.listener;
+
   for (auto &addr : listenerconf.addrs) {
     if (addr.host_unix) {
       if (create_unix_domain_server_socket(addr, iaddrs) != 0) {
         return -1;
       }
 
-      if (get_config()->uid != 0) {
+      if (config->uid != 0) {
         // fd is not associated to inode, so we cannot use fchown(2)
         // here.  https://lkml.org/lkml/2004/11/1/84
         if (chown_to_running_user(addr.host.c_str()) == -1) {
@@ -827,14 +1051,6 @@ int create_acceptor_socket() {
     if (create_tcp_server_socket(addr, iaddrs) != 0) {
       return -1;
     }
-  }
-
-  for (auto &ia : iaddrs) {
-    if (ia.used) {
-      continue;
-    }
-
-    close(ia.fd);
   }
 
   return 0;
@@ -852,14 +1068,56 @@ int call_daemon() {
 } // namespace
 
 namespace {
-pid_t fork_worker_process(SignalServer *ssv) {
+// Opens IPC socket used to communicate with worker proess.  The
+// communication is unidirectional; that is main process sends
+// messages to the worker process.  On success, ipc_fd[0] is for
+// reading, and ipc_fd[1] for writing, just like pipe(2).
+int create_ipc_socket(std::array<int, 2> &ipc_fd) {
+  int rv;
+
+  rv = pipe(ipc_fd.data());
+  if (rv == -1) {
+    auto error = errno;
+    LOG(WARN) << "Failed to create pipe to communicate worker process: "
+              << strerror(error);
+    return -1;
+  }
+
+  for (int i = 0; i < 2; ++i) {
+    auto fd = ipc_fd[i];
+    util::make_socket_nonblocking(fd);
+    util::make_socket_closeonexec(fd);
+  }
+
+  return 0;
+}
+} // namespace
+
+namespace {
+// Creates worker process, and returns PID of worker process.  On
+// success, file descriptor for IPC (send only) is assigned to
+// |main_ipc_fd|.  In child process, we will close file descriptors
+// which are inherited from previous configuration/process, but not
+// used in the current configuration.
+pid_t fork_worker_process(int &main_ipc_fd,
+                          const std::vector<InheritedAddr> &iaddrs) {
   int rv;
   sigset_t oldset;
+
+  std::array<int, 2> ipc_fd;
+
+  rv = create_ipc_socket(ipc_fd);
+  if (rv != 0) {
+    return -1;
+  }
 
   rv = shrpx_signal_block_all(&oldset);
   if (rv != 0) {
     auto error = errno;
     LOG(ERROR) << "Blocking all signals failed: " << strerror(error);
+
+    close(ipc_fd[0]);
+    close(ipc_fd[1]);
 
     return -1;
   }
@@ -868,6 +1126,12 @@ pid_t fork_worker_process(SignalServer *ssv) {
 
   if (pid == 0) {
     ev_loop_fork(EV_DEFAULT);
+
+    // Remove all WorkerProcesses to stop any registered watcher on
+    // default loop.
+    worker_process_remove_all();
+
+    close_unused_inherited_addr(iaddrs);
 
     shrpx_signal_set_worker_proc_ign_handler();
 
@@ -879,8 +1143,8 @@ pid_t fork_worker_process(SignalServer *ssv) {
       _Exit(EXIT_FAILURE);
     }
 
-    close(ssv->ipc_fd[1]);
-    WorkerProcessConfig wpconf{ssv->ipc_fd[0]};
+    close(ipc_fd[1]);
+    WorkerProcessConfig wpconf{ipc_fd[0]};
     rv = worker_process_event_loop(&wpconf);
     if (rv != 0) {
       LOG(FATAL) << "Worker process returned error";
@@ -909,10 +1173,15 @@ pid_t fork_worker_process(SignalServer *ssv) {
   }
 
   if (pid == -1) {
+    close(ipc_fd[0]);
+    close(ipc_fd[1]);
+
     return -1;
   }
 
-  close(ssv->ipc_fd[0]);
+  close(ipc_fd[0]);
+
+  main_ipc_fd = ipc_fd[1];
 
   LOG(NOTICE) << "Worker process [" << pid << "] spawned";
 
@@ -922,8 +1191,6 @@ pid_t fork_worker_process(SignalServer *ssv) {
 
 namespace {
 int event_loop() {
-  int rv;
-
   shrpx_signal_set_master_proc_ign_handler();
 
   if (get_config()->daemon) {
@@ -941,51 +1208,25 @@ int event_loop() {
     redirect_stderr_to_errorlog();
   }
 
-  SignalServer ssv;
+  auto iaddrs = get_inherited_addr_from_env();
 
-  rv = pipe(ssv.ipc_fd.data());
-  if (rv == -1) {
-    auto error = errno;
-    LOG(WARN) << "Failed to create pipe to communicate worker process: "
-              << strerror(error);
+  if (create_acceptor_socket(mod_config(), iaddrs) != 0) {
     return -1;
   }
 
-  for (int i = 0; i < 2; ++i) {
-    auto fd = ssv.ipc_fd[i];
-    util::make_socket_nonblocking(fd);
-    util::make_socket_closeonexec(fd);
-  }
-
-  if (create_acceptor_socket() != 0) {
-    return -1;
-  }
+  close_unused_inherited_addr(iaddrs);
 
   auto loop = ev_default_loop(get_config()->ev_loop_flags);
 
-  auto pid = fork_worker_process(&ssv);
+  int ipc_fd;
+
+  auto pid = fork_worker_process(ipc_fd, {});
 
   if (pid == -1) {
     return -1;
   }
 
-  ssv.worker_process_pid = pid;
-
-  constexpr auto signals = std::array<int, 3>{
-      {REOPEN_LOG_SIGNAL, EXEC_BINARY_SIGNAL, GRACEFUL_SHUTDOWN_SIGNAL}};
-  auto sigevs = std::array<ev_signal, signals.size()>();
-
-  for (size_t i = 0; i < signals.size(); ++i) {
-    auto sigev = &sigevs[i];
-    ev_signal_init(sigev, signal_cb, signals[i]);
-    sigev->data = &ssv;
-    ev_signal_start(loop, sigev);
-  }
-
-  ev_child worker_process_childev;
-  ev_child_init(&worker_process_childev, worker_process_child_cb, pid, 0);
-  worker_process_childev.data = nullptr;
-  ev_child_start(loop, &worker_process_childev);
+  worker_process_add(make_unique<WorkerProcess>(loop, pid, ipc_fd));
 
   // Write PID file when we are ready to accept connection from peer.
   // This makes easier to write restart script for nghttpx.  Because
@@ -1030,18 +1271,18 @@ constexpr auto DEFAULT_ACCESSLOG_FORMAT = StringRef::from_lit(
 } // namespace
 
 namespace {
-void fill_default_config() {
-  *mod_config() = {};
+void fill_default_config(Config *config) {
+  *config = {};
 
-  mod_config()->num_worker = 1;
-  mod_config()->conf_path = "/etc/nghttpx/nghttpx.conf";
-  mod_config()->pid = getpid();
+  config->num_worker = 1;
+  config->conf_path = "/etc/nghttpx/nghttpx.conf";
+  config->pid = getpid();
 
   if (ev_supported_backends() & ~ev_recommended_backends() & EVBACKEND_KQUEUE) {
-    mod_config()->ev_loop_flags = ev_recommended_backends() | EVBACKEND_KQUEUE;
+    config->ev_loop_flags = ev_recommended_backends() | EVBACKEND_KQUEUE;
   }
 
-  auto &tlsconf = mod_config()->tls;
+  auto &tlsconf = config->tls;
   {
     auto &ticketconf = tlsconf.ticket;
     {
@@ -1076,7 +1317,7 @@ void fill_default_config() {
 
   tlsconf.session_timeout = std::chrono::hours(12);
 
-  auto &httpconf = mod_config()->http;
+  auto &httpconf = config->http;
   httpconf.server_name =
       StringRef::from_lit("nghttpx nghttp2/" NGHTTP2_VERSION);
   httpconf.no_host_rewrite = true;
@@ -1085,7 +1326,7 @@ void fill_default_config() {
   httpconf.response_header_field_buffer = 64_k;
   httpconf.max_response_header_fields = 500;
 
-  auto &http2conf = mod_config()->http2;
+  auto &http2conf = config->http2;
   {
     auto &upstreamconf = http2conf.upstream;
 
@@ -1130,7 +1371,7 @@ void fill_default_config() {
     nghttp2_option_set_peer_max_concurrent_streams(downstreamconf.option, 100);
   }
 
-  auto &loggingconf = mod_config()->logging;
+  auto &loggingconf = config->logging;
   {
     auto &accessconf = loggingconf.access;
     accessconf.format = parse_log_format(DEFAULT_ACCESSLOG_FORMAT);
@@ -1141,7 +1382,7 @@ void fill_default_config() {
 
   loggingconf.syslog_facility = LOG_DAEMON;
 
-  auto &connconf = mod_config()->conn;
+  auto &connconf = config->conn;
   {
     auto &listenerconf = connconf.listener;
     {
@@ -1185,7 +1426,7 @@ void fill_default_config() {
     downstreamconf.family = AF_UNSPEC;
   }
 
-  auto &apiconf = mod_config()->api;
+  auto &apiconf = config->api;
   apiconf.max_request_body = 16_k;
 }
 
@@ -2025,21 +2266,15 @@ Misc:
 } // namespace
 
 namespace {
-void process_options(int argc, char **argv,
-                     std::vector<std::pair<StringRef, StringRef>> &cmdcfgs) {
-  if (conf_exists(get_config()->conf_path.c_str())) {
+int process_options(Config *config,
+                    std::vector<std::pair<StringRef, StringRef>> &cmdcfgs) {
+  if (conf_exists(config->conf_path.c_str())) {
     std::set<StringRef> include_set;
-    if (load_config(get_config()->conf_path.c_str(), include_set) == -1) {
-      LOG(FATAL) << "Failed to load configuration from "
-                 << get_config()->conf_path;
-      exit(EXIT_FAILURE);
+    if (load_config(config, config->conf_path.c_str(), include_set) == -1) {
+      LOG(FATAL) << "Failed to load configuration from " << config->conf_path;
+      return -1;
     }
     assert(include_set.empty());
-  }
-
-  if (argc - optind >= 2) {
-    cmdcfgs.emplace_back(SHRPX_OPT_PRIVATE_KEY_FILE, StringRef{argv[optind++]});
-    cmdcfgs.emplace_back(SHRPX_OPT_CERTIFICATE_FILE, StringRef{argv[optind++]});
   }
 
   // Reopen log files using configurations in file
@@ -2049,16 +2284,16 @@ void process_options(int argc, char **argv,
     std::set<StringRef> include_set;
 
     for (auto &p : cmdcfgs) {
-      if (parse_config(mod_config(), p.first, p.second, include_set) == -1) {
+      if (parse_config(config, p.first, p.second, include_set) == -1) {
         LOG(FATAL) << "Failed to parse command-line argument.";
-        exit(EXIT_FAILURE);
+        return -1;
       }
     }
 
     assert(include_set.empty());
   }
 
-  auto &loggingconf = get_config()->logging;
+  auto &loggingconf = config->logging;
 
   if (loggingconf.access.syslog || loggingconf.error.syslog) {
     openlog("nghttpx", LOG_NDELAY | LOG_NOWAIT | LOG_PID,
@@ -2067,29 +2302,27 @@ void process_options(int argc, char **argv,
 
   if (reopen_log_files() != 0) {
     LOG(FATAL) << "Failed to open log file";
-    exit(EXIT_FAILURE);
+    return -1;
   }
 
   redirect_stderr_to_errorlog();
 
-  if (get_config()->uid != 0) {
+  if (config->uid != 0) {
     if (log_config()->accesslog_fd != -1 &&
-        fchown(log_config()->accesslog_fd, get_config()->uid,
-               get_config()->gid) == -1) {
+        fchown(log_config()->accesslog_fd, config->uid, config->gid) == -1) {
       auto error = errno;
       LOG(WARN) << "Changing owner of access log file failed: "
                 << strerror(error);
     }
     if (log_config()->errorlog_fd != -1 &&
-        fchown(log_config()->errorlog_fd, get_config()->uid,
-               get_config()->gid) == -1) {
+        fchown(log_config()->errorlog_fd, config->uid, config->gid) == -1) {
       auto error = errno;
       LOG(WARN) << "Changing owner of error log file failed: "
                 << strerror(error);
     }
   }
 
-  auto &http2conf = mod_config()->http2;
+  auto &http2conf = config->http2;
   {
     auto &dumpconf = http2conf.upstream.debug.dump;
 
@@ -2100,12 +2333,12 @@ void process_options(int argc, char **argv,
       if (f == nullptr) {
         LOG(FATAL) << "Failed to open http2 upstream request header file: "
                    << path;
-        exit(EXIT_FAILURE);
+        return -1;
       }
 
       dumpconf.request_header = f;
 
-      if (get_config()->uid != 0) {
+      if (config->uid != 0) {
         if (chown_to_running_user(path) == -1) {
           auto error = errno;
           LOG(WARN) << "Changing owner of http2 upstream request header file "
@@ -2121,12 +2354,12 @@ void process_options(int argc, char **argv,
       if (f == nullptr) {
         LOG(FATAL) << "Failed to open http2 upstream response header file: "
                    << path;
-        exit(EXIT_FAILURE);
+        return -1;
       }
 
       dumpconf.response_header = f;
 
-      if (get_config()->uid != 0) {
+      if (config->uid != 0) {
         if (chown_to_running_user(path) == -1) {
           auto error = errno;
           LOG(WARN) << "Changing owner of http2 upstream response header file"
@@ -2136,7 +2369,7 @@ void process_options(int argc, char **argv,
     }
   }
 
-  auto &tlsconf = mod_config()->tls;
+  auto &tlsconf = config->tls;
 
   if (tlsconf.npn_list.empty()) {
     tlsconf.npn_list = util::parse_config_str_list(DEFAULT_NPN_LIST);
@@ -2148,12 +2381,14 @@ void process_options(int argc, char **argv,
 
   tlsconf.tls_proto_mask = ssl::create_tls_proto_mask(tlsconf.tls_proto_list);
 
-  tlsconf.alpn_prefs = ssl::set_alpn_prefs(tlsconf.npn_list);
+  if (ssl::set_alpn_prefs(tlsconf.alpn_prefs, tlsconf.npn_list) != 0) {
+    return -1;
+  }
 
   tlsconf.bio_method = create_bio_method();
 
-  auto &listenerconf = mod_config()->conn.listener;
-  auto &upstreamconf = mod_config()->conn.upstream;
+  auto &listenerconf = config->conn.listener;
+  auto &upstreamconf = config->conn.upstream;
 
   if (listenerconf.addrs.empty()) {
     UpstreamAddr addr{};
@@ -2174,7 +2409,7 @@ void process_options(int argc, char **argv,
       (tlsconf.private_key_file.empty() || tlsconf.cert_file.empty())) {
     print_usage(std::cerr);
     LOG(FATAL) << "Too few arguments";
-    exit(EXIT_FAILURE);
+    return -1;
   }
 
   if (ssl::upstream_tls_enabled() && !tlsconf.ocsp.disabled) {
@@ -2187,18 +2422,18 @@ void process_options(int argc, char **argv,
     }
   }
 
-  if (configure_downstream_group(mod_config(), get_config()->http2_proxy, false,
-                                 tlsconf) != 0) {
-    exit(EXIT_FAILURE);
+  if (configure_downstream_group(config, config->http2_proxy, false, tlsconf) !=
+      0) {
+    return -1;
   }
 
-  auto &proxy = mod_config()->downstream_http_proxy;
+  auto &proxy = config->downstream_http_proxy;
   if (!proxy.host.empty()) {
     auto hostport = util::make_hostport(StringRef{proxy.host}, proxy.port);
     if (resolve_hostname(&proxy.addr, proxy.host.c_str(), proxy.port,
                          AF_UNSPEC) == -1) {
       LOG(FATAL) << "Resolving backend HTTP proxy address failed: " << hostport;
-      exit(EXIT_FAILURE);
+      return -1;
     }
     LOG(NOTICE) << "Backend HTTP proxy address: " << hostport << " -> "
                 << util::to_numeric_addr(&proxy.addr);
@@ -2214,7 +2449,7 @@ void process_options(int argc, char **argv,
         LOG(FATAL)
             << "Resolving memcached address for TLS session cache failed: "
             << hostport;
-        exit(EXIT_FAILURE);
+        return -1;
       }
       LOG(NOTICE) << "Memcached address for TLS session cache: " << hostport
                   << " -> " << util::to_numeric_addr(&memcachedconf.addr);
@@ -2234,7 +2469,7 @@ void process_options(int argc, char **argv,
                            memcachedconf.port, memcachedconf.family) == -1) {
         LOG(FATAL) << "Resolving memcached address for TLS ticket key failed: "
                    << hostport;
-        exit(EXIT_FAILURE);
+        return -1;
       }
       LOG(NOTICE) << "Memcached address for TLS ticket key: " << hostport
                   << " -> " << util::to_numeric_addr(&memcachedconf.addr);
@@ -2245,27 +2480,26 @@ void process_options(int argc, char **argv,
     }
   }
 
-  if (get_config()->rlimit_nofile) {
-    struct rlimit lim = {static_cast<rlim_t>(get_config()->rlimit_nofile),
-                         static_cast<rlim_t>(get_config()->rlimit_nofile)};
+  if (config->rlimit_nofile) {
+    struct rlimit lim = {static_cast<rlim_t>(config->rlimit_nofile),
+                         static_cast<rlim_t>(config->rlimit_nofile)};
     if (setrlimit(RLIMIT_NOFILE, &lim) != 0) {
       auto error = errno;
       LOG(WARN) << "Setting rlimit-nofile failed: " << strerror(error);
     }
   }
 
-  auto &fwdconf = mod_config()->http.forwarded;
+  auto &fwdconf = config->http.forwarded;
 
   if (fwdconf.by_node_type == FORWARDED_NODE_OBFUSCATED &&
       fwdconf.by_obfuscated.empty()) {
-    std::random_device rd;
     std::mt19937 gen(rd());
     auto &dst = fwdconf.by_obfuscated;
     dst = "_";
     dst += util::random_alpha_digit(gen, SHRPX_OBFUSCATED_NODE_LENGTH);
   }
 
-  if (get_config()->http2.upstream.debug.frame_debug) {
+  if (config->http2.upstream.debug.frame_debug) {
     // To make it sync to logging
     set_output(stderr);
     if (isatty(fileno(stdout))) {
@@ -2274,13 +2508,105 @@ void process_options(int argc, char **argv,
     reset_timer();
   }
 
-  mod_config()->http2.upstream.callbacks = create_http2_upstream_callbacks();
-  mod_config()->http2.downstream.callbacks =
-      create_http2_downstream_callbacks();
+  config->http2.upstream.callbacks = create_http2_upstream_callbacks();
+  config->http2.downstream.callbacks = create_http2_downstream_callbacks();
+
+  return 0;
+}
+} // namespace
+
+namespace {
+// Closes file descriptor which are opened for listeners in config,
+// and are not inherited from |iaddrs|.
+void close_not_inherited_fd(Config *config,
+                            const std::vector<InheritedAddr> &iaddrs) {
+  auto &listenerconf = config->conn.listener;
+
+  for (auto &addr : listenerconf.addrs) {
+    auto inherited = std::find_if(
+        std::begin(iaddrs), std::end(iaddrs),
+        [&addr](const InheritedAddr &iaddr) { return addr.fd == iaddr.fd; });
+
+    if (inherited != std::end(iaddrs)) {
+      continue;
+    }
+
+    close(addr.fd);
+  }
+}
+} // namespace
+
+namespace {
+void reload_config(WorkerProcess *wp) {
+  int rv;
+
+  LOG(NOTICE) << "Reloading configuration";
+
+  auto cur_config = get_config();
+  auto new_config = make_unique<Config>();
+
+  fill_default_config(new_config.get());
+
+  new_config->conf_path = cur_config->conf_path;
+  // daemon option is ignored here.
+  new_config->daemon = cur_config->daemon;
+  // loop is reused, and ev_loop_flags gets ignored
+  new_config->ev_loop_flags = cur_config->ev_loop_flags;
+
+  rv = process_options(new_config.get(), suconfig.cmdcfgs);
+  if (rv != 0) {
+    LOG(ERROR) << "Failed to process new configuration";
+    return;
+  }
+
+  auto iaddrs = get_inherited_addr_from_config(cur_config);
+
+  if (create_acceptor_socket(new_config.get(), iaddrs) != 0) {
+    close_not_inherited_fd(new_config.get(), iaddrs);
+    return;
+  }
+
+  // According to libev documentation, flags are ignored since we have
+  // already created first default loop.
+  auto loop = ev_default_loop(new_config->ev_loop_flags);
+
+  int ipc_fd;
+
+  // fork_worker_process and forked child process assumes new
+  // configuration can be obtained from get_config().
+
+  auto old_config = replace_config(std::move(new_config));
+
+  auto pid = fork_worker_process(ipc_fd, iaddrs);
+
+  if (pid == -1) {
+    LOG(ERROR) << "Failed to process new configuration";
+
+    new_config = replace_config(std::move(old_config));
+    close_not_inherited_fd(new_config.get(), iaddrs);
+
+    return;
+  }
+
+  close_unused_inherited_addr(iaddrs);
+
+  // Send last worker process a graceful shutdown notice
+  auto &last_wp = worker_processes.back();
+  ipc_send(last_wp.get(), SHRPX_IPC_GRACEFUL_SHUTDOWN);
+  // We no longer use signals for this worker.
+  last_wp->shutdown_signal_watchers();
+
+  worker_process_add(make_unique<WorkerProcess>(loop, pid, ipc_fd));
+
+  if (!get_config()->pid_file.empty()) {
+    save_pid();
+  }
 }
 } // namespace
 
 int main(int argc, char **argv) {
+  int rv;
+
   nghttp2::ssl::libssl_init();
 
 #ifndef NOTHREADS
@@ -2289,7 +2615,7 @@ int main(int argc, char **argv) {
 
   Log::set_severity_level(NOTICE);
   create_config();
-  fill_default_config();
+  fill_default_config(mod_config());
 
   // make copy of stderr
   util::store_original_fds();
@@ -2298,29 +2624,30 @@ int main(int argc, char **argv) {
   // log errors/warnings while reading configuration files.
   reopen_log_files();
 
-  mod_config()->original_argv = argv;
+  suconfig.original_argv = argv;
 
   // We have to copy argv, since getopt_long may change its content.
-  mod_config()->argc = argc;
-  mod_config()->argv = new char *[argc];
+  suconfig.argc = argc;
+  suconfig.argv = new char *[argc];
 
   for (int i = 0; i < argc; ++i) {
-    mod_config()->argv[i] = strdup(argv[i]);
-    if (mod_config()->argv[i] == nullptr) {
+    suconfig.argv[i] = strdup(argv[i]);
+    if (suconfig.argv[i] == nullptr) {
       auto error = errno;
       LOG(FATAL) << "failed to copy argv: " << strerror(error);
       exit(EXIT_FAILURE);
     }
   }
 
-  mod_config()->cwd = getcwd(nullptr, 0);
-  if (mod_config()->cwd == nullptr) {
+  suconfig.cwd = getcwd(nullptr, 0);
+  if (suconfig.cwd == nullptr) {
     auto error = errno;
     LOG(FATAL) << "failed to get current working directory: errno=" << error;
     exit(EXIT_FAILURE);
   }
 
-  std::vector<std::pair<StringRef, StringRef>> cmdcfgs;
+  auto &cmdcfgs = suconfig.cmdcfgs;
+
   while (1) {
     static int flag = 0;
     static option long_options[] = {
@@ -3108,7 +3435,15 @@ int main(int argc, char **argv) {
     }
   }
 
-  process_options(argc, argv, cmdcfgs);
+  if (argc - optind >= 2) {
+    cmdcfgs.emplace_back(SHRPX_OPT_PRIVATE_KEY_FILE, StringRef{argv[optind++]});
+    cmdcfgs.emplace_back(SHRPX_OPT_CERTIFICATE_FILE, StringRef{argv[optind++]});
+  }
+
+  rv = process_options(mod_config(), cmdcfgs);
+  if (rv != 0) {
+    return -1;
+  }
 
   if (event_loop() != 0) {
     return -1;
