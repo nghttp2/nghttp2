@@ -2571,19 +2571,18 @@ void reload_config(WorkerProcess *wp) {
   // fork_worker_process and forked child process assumes new
   // configuration can be obtained from get_config().
 
-  auto old_config = replace_config(new_config.get());
+  auto old_config = replace_config(std::move(new_config));
 
   auto pid = fork_worker_process(ipc_fd, iaddrs);
 
   if (pid == -1) {
     LOG(ERROR) << "Failed to process new configuration";
+
+    new_config = replace_config(std::move(old_config));
     close_not_inherited_fd(new_config.get(), iaddrs);
-    replace_config(old_config);
+
     return;
   }
-
-  new_config.release();
-  delete_config(old_config);
 
   close_unused_inherited_addr(iaddrs);
 

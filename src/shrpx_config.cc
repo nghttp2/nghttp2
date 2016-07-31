@@ -60,41 +60,35 @@
 namespace shrpx {
 
 namespace {
-Config *config = nullptr;
+std::unique_ptr<Config> config;
 } // namespace
 
 constexpr auto SHRPX_UNIX_PATH_PREFIX = StringRef::from_lit("unix:");
 
-const Config *get_config() { return config; }
+const Config *get_config() { return config.get(); }
 
-Config *mod_config() { return config; }
+Config *mod_config() { return config.get(); }
 
-Config *replace_config(Config *new_config) {
-  std::swap(config, new_config);
-  return new_config;
+std::unique_ptr<Config> replace_config(std::unique_ptr<Config> another) {
+  config.swap(another);
+  return another;
 }
 
-void create_config() { config = new Config(); }
+void create_config() { config = make_unique<Config>(); }
 
-void delete_config(Config *config) {
-  if (config == nullptr) {
-    return;
-  }
-
-  auto &http2conf = config->http2;
-
-  auto &upstreamconf = http2conf.upstream;
+Config::~Config() {
+  auto &upstreamconf = http2.upstream;
 
   nghttp2_option_del(upstreamconf.option);
   nghttp2_option_del(upstreamconf.alt_mode_option);
   nghttp2_session_callbacks_del(upstreamconf.callbacks);
 
-  auto &downstreamconf = http2conf.downstream;
+  auto &downstreamconf = http2.downstream;
 
   nghttp2_option_del(downstreamconf.option);
   nghttp2_session_callbacks_del(downstreamconf.callbacks);
 
-  auto &dumpconf = http2conf.upstream.debug.dump;
+  auto &dumpconf = http2.upstream.debug.dump;
 
   if (dumpconf.request_header) {
     fclose(dumpconf.request_header);
@@ -103,8 +97,6 @@ void delete_config(Config *config) {
   if (dumpconf.response_header) {
     fclose(dumpconf.response_header);
   }
-
-  delete config;
 }
 
 TicketKeys::~TicketKeys() {
