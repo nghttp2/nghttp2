@@ -727,9 +727,6 @@ struct Config {
   uid_t uid;
   gid_t gid;
   pid_t pid;
-  // With reloading feature, we may have multiple worker PIDs at the
-  // given moment.  This field tracks the last worker PID.
-  pid_t last_worker_pid;
   bool verbose;
   bool daemon;
   bool http2_proxy;

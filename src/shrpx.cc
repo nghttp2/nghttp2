@@ -263,6 +263,18 @@ void worker_process_kill(int signum) {
 } // namespace
 
 namespace {
+// Returns the last PID of worker process.  Returns -1 if there is no
+// worker process at the moment.
+int worker_process_last_pid() {
+  if (worker_processes.empty()) {
+    return -1;
+  }
+
+  return worker_processes.back()->worker_pid;
+}
+} // namespace
+
+namespace {
 int chown_to_running_user(const char *path) {
   return chown(path, get_config()->uid, get_config()->gid);
 }
@@ -528,7 +540,7 @@ void worker_process_child_cb(struct ev_loop *loop, ev_child *w, int revents) {
 
   worker_process_remove(wp);
 
-  if (get_config()->last_worker_pid == pid) {
+  if (worker_process_last_pid() == pid) {
     ev_break(loop);
   }
 }
@@ -1195,8 +1207,6 @@ int event_loop() {
 
   worker_process_add(make_unique<WorkerProcess>(loop, pid, ipc_fd));
 
-  mod_config()->last_worker_pid = pid;
-
   // Write PID file when we are ready to accept connection from peer.
   // This makes easier to write restart script for nghttpx.  Because
   // when we know that PID file is recreated, it means we can send
@@ -1246,7 +1256,6 @@ void fill_default_config(Config *config) {
   config->num_worker = 1;
   config->conf_path = "/etc/nghttpx/nghttpx.conf";
   config->pid = getpid();
-  config->last_worker_pid = -1;
 
   if (ev_supported_backends() & ~ev_recommended_backends() & EVBACKEND_KQUEUE) {
     config->ev_loop_flags = ev_recommended_backends() | EVBACKEND_KQUEUE;
@@ -2538,8 +2547,6 @@ void reload_config(WorkerProcess *wp) {
   last_wp->shutdown_signal_watchers();
 
   worker_process_add(make_unique<WorkerProcess>(loop, pid, ipc_fd));
-
-  new_config->last_worker_pid = pid;
 
   auto old_config = replace_config(new_config.release());
 
