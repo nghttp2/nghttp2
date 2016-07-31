@@ -158,8 +158,8 @@ namespace {
 void worker_process_child_cb(struct ev_loop *loop, ev_child *w, int revents);
 } // namespace
 
-struct SignalServer {
-  SignalServer(struct ev_loop *loop, pid_t worker_pid, int ipc_fd)
+struct WorkerProcess {
+  WorkerProcess(struct ev_loop *loop, pid_t worker_pid, int ipc_fd)
       : loop(loop), worker_pid(worker_pid), ipc_fd(ipc_fd) {
     ev_signal_init(&reopen_log_signalev, signal_cb, REOPEN_LOG_SIGNAL);
     reopen_log_signalev.data = this;
@@ -184,7 +184,7 @@ struct SignalServer {
     ev_child_start(loop, &worker_process_childev);
   }
 
-  ~SignalServer() {
+  ~WorkerProcess() {
     shutdown_signal_watchers();
 
     ev_child_stop(loop, &worker_process_childev);
@@ -213,52 +213,52 @@ struct SignalServer {
 };
 
 namespace {
-void reload_config(SignalServer *ssv);
+void reload_config(WorkerProcess *wp);
 } // namespace
 
 namespace {
-std::deque<std::unique_ptr<SignalServer>> signal_servers;
+std::deque<std::unique_ptr<WorkerProcess>> worker_processes;
 } // namespace
 
 namespace {
-void signal_server_add(std::unique_ptr<SignalServer> ssv) {
-  signal_servers.push_back(std::move(ssv));
+void worker_process_add(std::unique_ptr<WorkerProcess> wp) {
+  worker_processes.push_back(std::move(wp));
 }
 } // namespace
 
 namespace {
-void signal_server_remove(const SignalServer *ssv) {
-  for (auto it = std::begin(signal_servers); it != std::end(signal_servers);
+void worker_process_remove(const WorkerProcess *wp) {
+  for (auto it = std::begin(worker_processes); it != std::end(worker_processes);
        ++it) {
     auto &s = *it;
 
-    if (s.get() != ssv) {
+    if (s.get() != wp) {
       continue;
     }
 
-    signal_servers.erase(it);
+    worker_processes.erase(it);
     break;
   }
 }
 } // namespace
 
 namespace {
-void signal_server_remove_all() {
-  std::deque<std::unique_ptr<SignalServer>>().swap(signal_servers);
+void worker_process_remove_all() {
+  std::deque<std::unique_ptr<WorkerProcess>>().swap(worker_processes);
 }
 } // namespace
 
 namespace {
 // Send signal |signum| to all worker processes, and clears
-// signal_servers.
-void signal_server_kill(int signum) {
-  for (auto &s : signal_servers) {
+// worker_processes.
+void worker_process_kill(int signum) {
+  for (auto &s : worker_processes) {
     if (s->worker_pid == -1) {
       continue;
     }
     kill(s->worker_pid, signum);
   }
-  signal_servers.clear();
+  worker_processes.clear();
 }
 } // namespace
 
@@ -330,7 +330,7 @@ void save_pid() {
 } // namespace
 
 namespace {
-void exec_binary(SignalServer *ssv) {
+void exec_binary(WorkerProcess *wp) {
   int rv;
   sigset_t oldset;
 
@@ -460,9 +460,9 @@ void exec_binary(SignalServer *ssv) {
 } // namespace
 
 namespace {
-void ipc_send(SignalServer *ssv, uint8_t ipc_event) {
+void ipc_send(WorkerProcess *wp, uint8_t ipc_event) {
   ssize_t nwrite;
-  while ((nwrite = write(ssv->ipc_fd, &ipc_event, 1)) == -1 && errno == EINTR)
+  while ((nwrite = write(wp->ipc_fd, &ipc_event, 1)) == -1 && errno == EINTR)
     ;
 
   if (nwrite < 0) {
@@ -480,38 +480,38 @@ void ipc_send(SignalServer *ssv, uint8_t ipc_event) {
 } // namespace
 
 namespace {
-void reopen_log(SignalServer *ssv) {
+void reopen_log(WorkerProcess *wp) {
   LOG(NOTICE) << "Reopening log files: master process";
 
   (void)reopen_log_files();
   redirect_stderr_to_errorlog();
-  ipc_send(ssv, SHRPX_IPC_REOPEN_LOG);
+  ipc_send(wp, SHRPX_IPC_REOPEN_LOG);
 }
 } // namespace
 
 namespace {
 void signal_cb(struct ev_loop *loop, ev_signal *w, int revents) {
-  auto ssv = static_cast<SignalServer *>(w->data);
-  if (ssv->worker_pid == -1) {
+  auto wp = static_cast<WorkerProcess *>(w->data);
+  if (wp->worker_pid == -1) {
     ev_break(loop);
     return;
   }
 
   switch (w->signum) {
   case REOPEN_LOG_SIGNAL:
-    reopen_log(ssv);
+    reopen_log(wp);
     return;
   case EXEC_BINARY_SIGNAL:
-    exec_binary(ssv);
+    exec_binary(wp);
     return;
   case GRACEFUL_SHUTDOWN_SIGNAL:
-    ipc_send(ssv, SHRPX_IPC_GRACEFUL_SHUTDOWN);
+    ipc_send(wp, SHRPX_IPC_GRACEFUL_SHUTDOWN);
     return;
   case RELOAD_SIGNAL:
-    reload_config(ssv);
+    reload_config(wp);
     return;
   default:
-    signal_server_kill(w->signum);
+    worker_process_kill(w->signum);
     ev_break(loop);
     return;
   }
@@ -520,13 +520,13 @@ void signal_cb(struct ev_loop *loop, ev_signal *w, int revents) {
 
 namespace {
 void worker_process_child_cb(struct ev_loop *loop, ev_child *w, int revents) {
-  auto ssv = static_cast<SignalServer *>(w->data);
+  auto wp = static_cast<WorkerProcess *>(w->data);
 
   log_chld(w->rpid, w->rstatus, "Worker process");
 
-  auto pid = ssv->worker_pid;
+  auto pid = wp->worker_pid;
 
-  signal_server_remove(ssv);
+  worker_process_remove(wp);
 
   if (get_config()->last_worker_pid == pid) {
     ev_break(loop);
@@ -1096,9 +1096,9 @@ pid_t fork_worker_process(int &main_ipc_fd) {
   if (pid == 0) {
     ev_loop_fork(EV_DEFAULT);
 
-    // Remove all SignalServers to stop any registered watcher on
+    // Remove all WorkerProcesses to stop any registered watcher on
     // default loop.
-    signal_server_remove_all();
+    worker_process_remove_all();
 
     shrpx_signal_set_worker_proc_ign_handler();
 
@@ -1193,7 +1193,7 @@ int event_loop() {
     return -1;
   }
 
-  signal_server_add(make_unique<SignalServer>(loop, pid, ipc_fd));
+  worker_process_add(make_unique<WorkerProcess>(loop, pid, ipc_fd));
 
   mod_config()->last_worker_pid = pid;
 
@@ -2484,7 +2484,7 @@ int process_options(Config *config,
 } // namespace
 
 namespace {
-void reload_config(SignalServer *ssv) {
+void reload_config(WorkerProcess *wp) {
   int rv;
 
   LOG(NOTICE) << "Reloading configuration";
@@ -2518,7 +2518,7 @@ void reload_config(SignalServer *ssv) {
 
   // TODO loop is reused, and new_config->ev_loop_flags gets ignored
 
-  auto loop = ssv->loop;
+  auto loop = wp->loop;
 
   int ipc_fd;
 
@@ -2532,12 +2532,12 @@ void reload_config(SignalServer *ssv) {
   close_unused_inherited_addr(iaddrs);
 
   // Send last worker process a graceful shutdown notice
-  auto &last_ssv = signal_servers.back();
-  ipc_send(last_ssv.get(), SHRPX_IPC_GRACEFUL_SHUTDOWN);
+  auto &last_wp = worker_processes.back();
+  ipc_send(last_wp.get(), SHRPX_IPC_GRACEFUL_SHUTDOWN);
   // We no longer use signals for this worker.
-  last_ssv->shutdown_signal_watchers();
+  last_wp->shutdown_signal_watchers();
 
-  signal_server_add(make_unique<SignalServer>(loop, pid, ipc_fd));
+  worker_process_add(make_unique<WorkerProcess>(loop, pid, ipc_fd));
 
   new_config->last_worker_pid = pid;
 
