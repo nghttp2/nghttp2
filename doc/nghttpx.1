@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTPX" "1" "Jul 21, 2016" "1.13.0" "nghttp2"
+.TH "NGHTTPX" "1" "Jul 31, 2016" "1.14.0-DEV" "nghttp2"
 .SH NAME
 nghttpx \- HTTP/2 proxy
 .
@@ -1278,6 +1278,9 @@ Shutdown gracefully.  First accept pending connections and stop
 accepting connection.  After all connections are handled, nghttpx
 exits.
 .TP
+.B SIGHUP
+Reload configuration file given in \fI\%\-\-conf\fP\&.
+.TP
 .B SIGUSR1
 Reopen log files.
 .TP
@@ -1285,7 +1288,11 @@ Reopen log files.
 Fork and execute nghttpx.  It will execute the binary in the same
 path with same command\-line arguments and environment variables.
 After new process comes up, sending SIGQUIT to the original process
-to perform hot swapping.
+to perform hot swapping.  The difference between SIGUSR2 + SIGQUIT
+and SIGHUP is that former is usually used to execute new binary, and
+the master process is newly spawned.  On the other hand, the latter
+just reloads configuration file, and the same master process
+continues to exist.
 .UNINDENT
 .sp
 \fBNOTE:\fP

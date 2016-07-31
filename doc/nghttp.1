@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTP" "1" "Jul 21, 2016" "1.13.0" "nghttp2"
+.TH "NGHTTP" "1" "Jul 31, 2016" "1.14.0-DEV" "nghttp2"
 .SH NAME
 nghttp \- HTTP/2 client
 .
@@ -142,10 +142,13 @@ HTTP upgrade request is performed with OPTIONS method.
 .INDENT 0.0
 .TP
 .B \-p, \-\-weight=<WEIGHT>
-Sets priority group weight.  The valid value range is
+Sets  weight of  given  URI.  This  option  can be  used
+multiple times, and  N\-th \fI\%\-p\fP option sets  weight of N\-th
+URI in the command line.  If  the number of \fI\%\-p\fP option is
+less than the number of URI, the last \fI\%\-p\fP option value is
+repeated.  If there is no \fI\%\-p\fP option, default weight, 16,
+is assumed.  The valid value range is
 [1, 256], inclusive.
-.sp
-Default: \fB16\fP
 .UNINDENT
 .INDENT 0.0
 .TP

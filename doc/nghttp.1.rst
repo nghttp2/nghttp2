@@ -107,10 +107,13 @@ OPTIONS
 
 .. option:: -p, --weight=<WEIGHT>
 
-    Sets priority group weight.  The valid value range is
+    Sets  weight of  given  URI.  This  option  can be  used
+    multiple times, and  N-th :option:`-p` option sets  weight of N-th
+    URI in the command line.  If  the number of :option:`-p` option is
+    less than the number of URI, the last :option:`-p` option value is
+    repeated.  If there is no :option:`-p` option, default weight, 16,
+    is assumed.  The valid value range is
     [1, 256], inclusive.
-
-    Default: ``16``
 
 .. option:: -M, --peer-max-concurrent-streams=<N>
 
