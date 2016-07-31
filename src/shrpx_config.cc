@@ -69,7 +69,43 @@ const Config *get_config() { return config; }
 
 Config *mod_config() { return config; }
 
+Config *replace_config(Config *new_config) {
+  std::swap(config, new_config);
+  return new_config;
+}
+
 void create_config() { config = new Config(); }
+
+void delete_config(Config *config) {
+  if (config == nullptr) {
+    return;
+  }
+
+  auto &http2conf = config->http2;
+
+  auto &upstreamconf = http2conf.upstream;
+
+  nghttp2_option_del(upstreamconf.option);
+  nghttp2_option_del(upstreamconf.alt_mode_option);
+  nghttp2_session_callbacks_del(upstreamconf.callbacks);
+
+  auto &downstreamconf = http2conf.downstream;
+
+  nghttp2_option_del(downstreamconf.option);
+  nghttp2_session_callbacks_del(downstreamconf.callbacks);
+
+  auto &dumpconf = http2conf.upstream.debug.dump;
+
+  if (dumpconf.request_header) {
+    fclose(dumpconf.request_header);
+  }
+
+  if (dumpconf.response_header) {
+    fclose(dumpconf.response_header);
+  }
+
+  delete config;
+}
 
 TicketKeys::~TicketKeys() {
   /* Erase keys from memory */
@@ -2398,7 +2434,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     }
 
     included_set.insert(optarg);
-    auto rv = load_config(optarg.c_str(), included_set);
+    auto rv = load_config(config, optarg.c_str(), included_set);
     included_set.erase(optarg);
 
     if (rv != 0) {
@@ -2648,7 +2684,8 @@ int parse_config(Config *config, int optid, const StringRef &opt,
   return -1;
 }
 
-int load_config(const char *filename, std::set<StringRef> &include_set) {
+int load_config(Config *config, const char *filename,
+                std::set<StringRef> &include_set) {
   std::ifstream in(filename, std::ios::binary);
   if (!in) {
     LOG(ERROR) << "Could not open config file " << filename;
@@ -2669,7 +2706,7 @@ int load_config(const char *filename, std::set<StringRef> &include_set) {
     }
     *eq = '\0';
 
-    if (parse_config(mod_config(), StringRef{std::begin(line), eq},
+    if (parse_config(config, StringRef{std::begin(line), eq},
                      StringRef{eq + 1, std::end(line)}, include_set) != 0) {
       return -1;
     }
