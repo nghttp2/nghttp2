@@ -130,6 +130,25 @@ constexpr auto ENV_ACCEPT_PREFIX = StringRef::from_lit("NGHTTPX_ACCEPT_");
 #endif
 #endif
 
+// This configuration is fixed at the first startup of the main
+// process, and does not change after subsequent reloadings.
+struct StartupConfig {
+  // This contains all options given in command-line.
+  std::vector<std::pair<StringRef, StringRef>> cmdcfgs;
+  // The current working directory where this process started.
+  char *cwd;
+  // The pointer to original argv (not sure why we have this?)
+  char **original_argv;
+  // The pointer to argv, this is a deep copy of original argv.
+  char **argv;
+  // The number of elements in argv.
+  int argc;
+};
+
+namespace {
+StartupConfig suconfig;
+} // namespace
+
 struct InheritedAddr {
   // IP address if TCP socket.  Otherwise, UNIX domain socket path.
   ImmutableString host;
@@ -142,12 +161,6 @@ struct InheritedAddr {
 
 namespace {
 std::random_device rd;
-} // namespace
-
-namespace {
-// This contains all options given in command-line.  Make it static so
-// that we can use it in reloading.
-std::vector<std::pair<StringRef, StringRef>> cmdcfgs;
 } // namespace
 
 namespace {
@@ -388,21 +401,21 @@ void exec_binary(WorkerProcess *wp) {
     _Exit(EXIT_FAILURE);
   }
 
-  auto exec_path = util::get_exec_path(get_config()->argc, get_config()->argv,
-                                       get_config()->cwd);
+  auto exec_path =
+      util::get_exec_path(suconfig.argc, suconfig.argv, suconfig.cwd);
 
   if (!exec_path) {
     LOG(ERROR) << "Could not resolve the executable path";
     _Exit(EXIT_FAILURE);
   }
 
-  auto argv = make_unique<char *[]>(get_config()->argc + 1);
+  auto argv = make_unique<char *[]>(suconfig.argc + 1);
 
   argv[0] = exec_path;
-  for (int i = 1; i < get_config()->argc; ++i) {
-    argv[i] = get_config()->argv[i];
+  for (int i = 1; i < suconfig.argc; ++i) {
+    argv[i] = suconfig.argv[i];
   }
-  argv[get_config()->argc] = nullptr;
+  argv[suconfig.argc] = nullptr;
 
   size_t envlen = 0;
   for (char **p = environ; *p; ++p, ++envlen)
@@ -2504,18 +2517,14 @@ void reload_config(WorkerProcess *wp) {
   fill_default_config(new_config.get());
 
   new_config->conf_path = cur_config->conf_path;
-  new_config->argc = cur_config->argc;
-  new_config->argv = cur_config->argv;
-  new_config->original_argv = cur_config->original_argv;
-  new_config->cwd = cur_config->cwd;
+  // daemon option is ignored here.
+  new_config->daemon = cur_config->daemon;
 
-  rv = process_options(new_config.get(), cmdcfgs);
+  rv = process_options(new_config.get(), suconfig.cmdcfgs);
   if (rv != 0) {
     LOG(ERROR) << "Failed to process new configuration";
     return;
   }
-
-  // daemon option is ignored here.
 
   auto iaddrs = get_inherited_addr_from_config(cur_config);
 
@@ -2582,27 +2591,29 @@ int main(int argc, char **argv) {
   // log errors/warnings while reading configuration files.
   reopen_log_files();
 
-  mod_config()->original_argv = argv;
+  suconfig.original_argv = argv;
 
   // We have to copy argv, since getopt_long may change its content.
-  mod_config()->argc = argc;
-  mod_config()->argv = new char *[argc];
+  suconfig.argc = argc;
+  suconfig.argv = new char *[argc];
 
   for (int i = 0; i < argc; ++i) {
-    mod_config()->argv[i] = strdup(argv[i]);
-    if (mod_config()->argv[i] == nullptr) {
+    suconfig.argv[i] = strdup(argv[i]);
+    if (suconfig.argv[i] == nullptr) {
       auto error = errno;
       LOG(FATAL) << "failed to copy argv: " << strerror(error);
       exit(EXIT_FAILURE);
     }
   }
 
-  mod_config()->cwd = getcwd(nullptr, 0);
-  if (mod_config()->cwd == nullptr) {
+  suconfig.cwd = getcwd(nullptr, 0);
+  if (suconfig.cwd == nullptr) {
     auto error = errno;
     LOG(FATAL) << "failed to get current working directory: errno=" << error;
     exit(EXIT_FAILURE);
   }
+
+  auto &cmdcfgs = suconfig.cmdcfgs;
 
   while (1) {
     static int flag = 0;

@@ -717,13 +717,9 @@ struct Config {
   ImmutableString conf_path;
   ImmutableString user;
   ImmutableString mruby_file;
-  char **original_argv;
-  char **argv;
-  char *cwd;
   size_t num_worker;
   size_t padding;
   size_t rlimit_nofile;
-  int argc;
   uid_t uid;
   gid_t gid;
   pid_t pid;
