@@ -294,7 +294,7 @@ int chown_to_running_user(const char *path) {
 } // namespace
 
 namespace {
-void save_pid() {
+int save_pid() {
   constexpr auto SUFFIX = StringRef::from_lit(".XXXXXX");
   auto &pid_file = get_config()->pid_file;
 
@@ -313,7 +313,7 @@ void save_pid() {
     auto error = errno;
     LOG(ERROR) << "Could not save PID to file " << pid_file << ": "
                << strerror(error);
-    exit(EXIT_FAILURE);
+    return -1;
   }
 
   auto content = util::utos(get_config()->pid) + '\n';
@@ -322,14 +322,14 @@ void save_pid() {
     auto error = errno;
     LOG(ERROR) << "Could not save PID to file " << pid_file << ": "
                << strerror(error);
-    exit(EXIT_FAILURE);
+    return -1;
   }
 
   if (fsync(fd) == -1) {
     auto error = errno;
     LOG(ERROR) << "Could not save PID to file " << pid_file << ": "
                << strerror(error);
-    exit(EXIT_FAILURE);
+    return -1;
   }
 
   close(fd);
@@ -341,7 +341,7 @@ void save_pid() {
 
     unlink(temp_path);
 
-    exit(EXIT_FAILURE);
+    return -1;
   }
 
   if (get_config()->uid != 0) {
@@ -351,6 +351,8 @@ void save_pid() {
                 << " failed: " << strerror(error);
     }
   }
+
+  return 0;
 }
 } // namespace
 
@@ -2379,7 +2381,9 @@ int process_options(Config *config,
 
   tlsconf.tls_proto_mask = ssl::create_tls_proto_mask(tlsconf.tls_proto_list);
 
-  tlsconf.alpn_prefs = ssl::set_alpn_prefs(tlsconf.npn_list);
+  if (ssl::set_alpn_prefs(tlsconf.alpn_prefs, tlsconf.npn_list) != 0) {
+    return -1;
+  }
 
   tlsconf.bio_method = create_bio_method();
 
