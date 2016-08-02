@@ -3581,7 +3581,7 @@ static int inflate_header_block(nghttp2_session *session, nghttp2_frame *frame,
         if (rv == NGHTTP2_ERR_HTTP_HEADER) {
           DEBUGF(fprintf(
               stderr, "recv: HTTP error: type=%u, id=%d, header %.*s: %.*s\n",
-              frame->hd.type, subject_stream->stream_id, (int)nv.name->len,
+              frame->hd.type, frame->hd.stream_id, (int)nv.name->len,
               nv.name->base, (int)nv.value->len, nv.value->base));
 
           rv = session_call_error_callback(
@@ -3609,7 +3609,7 @@ static int inflate_header_block(nghttp2_session *session, nghttp2_frame *frame,
           /* header is ignored */
           DEBUGF(fprintf(
               stderr, "recv: HTTP ignored: type=%u, id=%d, header %.*s: %.*s\n",
-              frame->hd.type, subject_stream->stream_id, (int)nv.name->len,
+              frame->hd.type, frame->hd.stream_id, (int)nv.name->len,
               nv.name->base, (int)nv.value->len, nv.value->base));
 
           rv2 = session_call_error_callback(
