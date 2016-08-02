@@ -3604,11 +3604,24 @@ static int inflate_header_block(nghttp2_session *session, nghttp2_frame *frame,
         }
 
         if (rv == NGHTTP2_ERR_IGN_HTTP_HEADER) {
+          /* Don't overwrite rv here */
+          int rv2;
           /* header is ignored */
           DEBUGF(fprintf(
               stderr, "recv: HTTP ignored: type=%u, id=%d, header %.*s: %.*s\n",
               frame->hd.type, subject_stream->stream_id, (int)nv.name->len,
               nv.name->base, (int)nv.value->len, nv.value->base));
+
+          rv2 = session_call_error_callback(
+              session,
+              "Ignoring received invalid HTTP header field: frame type: "
+              "%u, stream: %d, name: [%.*s], value: [%.*s]",
+              frame->hd.type, frame->hd.stream_id, (int)nv.name->len,
+              nv.name->base, (int)nv.value->len, nv.value->base);
+
+          if (nghttp2_is_fatal(rv2)) {
+            return rv2;
+          }
         }
       }
       if (rv == 0) {
