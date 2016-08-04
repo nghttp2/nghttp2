@@ -124,6 +124,7 @@ Downstream::Downstream(Upstream *upstream, MemchunkPool *mcpool,
       response_buf_(mcpool),
       upstream_(upstream),
       blocked_link_(nullptr),
+      addr_(nullptr),
       num_retry_(0),
       stream_id_(stream_id),
       assoc_stream_id_(-1),
@@ -942,5 +943,14 @@ void Downstream::add_rcbuf(nghttp2_rcbuf *rcbuf) {
   nghttp2_rcbuf_incref(rcbuf);
   rcbufs_.push_back(rcbuf);
 }
+
+void Downstream::set_downstream_addr_group(
+    const std::shared_ptr<DownstreamAddrGroup> &group) {
+  group_ = group;
+}
+
+void Downstream::set_addr(const DownstreamAddr *addr) { addr_ = addr; }
+
+const DownstreamAddr *Downstream::get_addr() const { return addr_; }
 
 } // namespace shrpx

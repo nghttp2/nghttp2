@@ -49,6 +49,8 @@ namespace shrpx {
 class Upstream;
 class DownstreamConnection;
 struct BlockedLink;
+struct DownstreamAddrGroup;
+struct DownstreamAddr;
 
 class FieldStore {
 public:
@@ -382,6 +384,12 @@ public:
 
   void add_rcbuf(nghttp2_rcbuf *rcbuf);
 
+  void
+  set_downstream_addr_group(const std::shared_ptr<DownstreamAddrGroup> &group);
+  void set_addr(const DownstreamAddr *addr);
+
+  const DownstreamAddr *get_addr() const;
+
   enum {
     EVENT_ERROR = 0x1,
     EVENT_TIMEOUT = 0x2,
@@ -429,6 +437,10 @@ private:
 
   // only used by HTTP/2 or SPDY upstream
   BlockedLink *blocked_link_;
+  // The backend address used to fulfill this request.  These are for
+  // logging purpose.
+  std::shared_ptr<DownstreamAddrGroup> group_;
+  const DownstreamAddr *addr_;
   // How many times we tried in backend connection
   size_t num_retry_;
   // The stream ID in frontend connection

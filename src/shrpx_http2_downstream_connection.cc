@@ -538,7 +538,7 @@ int Http2DownstreamConnection::on_timeout() {
   return submit_rst_stream(downstream_, NGHTTP2_NO_ERROR);
 }
 
-DownstreamAddrGroup *
+const std::shared_ptr<DownstreamAddrGroup> &
 Http2DownstreamConnection::get_downstream_addr_group() const {
   return http2session_->get_downstream_addr_group();
 }

@@ -976,6 +976,10 @@ int on_response_headers(Http2Session *http2session, Downstream *downstream,
   resp.http_major = 2;
   resp.http_minor = 0;
 
+  downstream->set_downstream_addr_group(
+      http2session->get_downstream_addr_group());
+  downstream->set_addr(http2session->get_addr());
+
   if (LOG_ENABLED(INFO)) {
     std::stringstream ss;
     for (auto &nv : nva) {
@@ -2126,8 +2130,9 @@ bool Http2Session::max_concurrency_reached(size_t extra) const {
                  session_, NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS);
 }
 
-DownstreamAddrGroup *Http2Session::get_downstream_addr_group() const {
-  return group_.get();
+const std::shared_ptr<DownstreamAddrGroup> &
+Http2Session::get_downstream_addr_group() const {
+  return group_;
 }
 
 void Http2Session::add_to_avail_freelist() {

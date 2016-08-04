@@ -301,9 +301,10 @@ void APIDownstreamConnection::on_upstream_change(Upstream *uptream) {}
 
 bool APIDownstreamConnection::poolable() const { return false; }
 
-DownstreamAddrGroup *
+const std::shared_ptr<DownstreamAddrGroup> &
 APIDownstreamConnection::get_downstream_addr_group() const {
-  return nullptr;
+  static std::shared_ptr<DownstreamAddrGroup> s;
+  return s;
 }
 
 DownstreamAddr *APIDownstreamConnection::get_addr() const { return nullptr; }

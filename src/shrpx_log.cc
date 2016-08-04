@@ -45,6 +45,7 @@
 
 #include "shrpx_config.h"
 #include "shrpx_downstream.h"
+#include "shrpx_worker.h"
 #include "util.h"
 #include "template.h"
 
@@ -366,6 +367,21 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
       }
       std::tie(p, avail) =
           copy_l(lgsp.tls_info->session_reused ? "r" : ".", avail, p);
+      break;
+    case SHRPX_LOGF_BACKEND_HOST:
+      if (!lgsp.downstream_addr) {
+        std::tie(p, avail) = copy_l("-", avail, p);
+        break;
+      }
+      std::tie(p, avail) = copy(lgsp.downstream_addr->host, avail, p);
+      break;
+    case SHRPX_LOGF_BACKEND_PORT:
+      if (!lgsp.downstream_addr) {
+        std::tie(p, avail) = copy_l("-", avail, p);
+        break;
+      }
+      std::tie(p, avail) =
+          copy(util::utos(lgsp.downstream_addr->port), avail, p);
       break;
     case SHRPX_LOGF_NONE:
       break;

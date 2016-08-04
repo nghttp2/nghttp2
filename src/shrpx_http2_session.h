@@ -162,7 +162,7 @@ public:
 
   DownstreamAddr *get_addr() const;
 
-  DownstreamAddrGroup *get_downstream_addr_group() const;
+  const std::shared_ptr<DownstreamAddrGroup> &get_downstream_addr_group() const;
 
   int handle_downstream_push_promise(Downstream *downstream,
                                      int32_t promised_stream_id);

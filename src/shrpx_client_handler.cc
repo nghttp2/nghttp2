@@ -643,7 +643,7 @@ void ClientHandler::pool_downstream_connection(
 
   dconn->set_client_handler(nullptr);
 
-  auto group = dconn->get_downstream_addr_group();
+  auto &group = dconn->get_downstream_addr_group();
 
   if (LOG_ENABLED(INFO)) {
     CLOG(INFO, this) << "Pooling downstream connection DCONN:" << dconn.get()
@@ -1143,7 +1143,8 @@ void ClientHandler::write_accesslog(Downstream *downstream) {
   upstream_accesslog(
       get_config()->logging.access.format,
       LogSpec{
-          downstream, StringRef{ipaddr_}, http2::to_method_string(req.method),
+          downstream, downstream->get_addr(), StringRef{ipaddr_},
+          http2::to_method_string(req.method),
 
           req.method == HTTP_CONNECT
               ? StringRef(req.authority)
@@ -1176,7 +1177,7 @@ void ClientHandler::write_accesslog(int major, int minor, unsigned int status,
 
   upstream_accesslog(get_config()->logging.access.format,
                      LogSpec{
-                         nullptr, StringRef(ipaddr_),
+                         nullptr, nullptr, StringRef(ipaddr_),
                          StringRef::from_lit("-"), // method
                          StringRef::from_lit("-"), // path,
                          StringRef(alpn_), nghttp2::ssl::get_tls_session_info(

@@ -434,6 +434,14 @@ LogFragmentType log_var_lookup_token(const char *name, size_t namelen) {
         return SHRPX_LOGF_SSL_PROTOCOL;
       }
       break;
+    case 't':
+      if (util::strieq_l("backend_hos", name, 11)) {
+        return SHRPX_LOGF_BACKEND_HOST;
+      }
+      if (util::strieq_l("backend_por", name, 11)) {
+        return SHRPX_LOGF_BACKEND_PORT;
+      }
+      break;
     }
     break;
   case 14:

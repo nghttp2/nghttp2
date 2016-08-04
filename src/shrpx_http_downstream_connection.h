@@ -64,7 +64,8 @@ public:
 
   virtual bool poolable() const;
 
-  virtual DownstreamAddrGroup *get_downstream_addr_group() const;
+  virtual const std::shared_ptr<DownstreamAddrGroup> &
+  get_downstream_addr_group() const;
   virtual DownstreamAddr *get_addr() const;
 
   int read_clear();
