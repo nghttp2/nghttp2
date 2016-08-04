@@ -772,7 +772,7 @@ int nghttp2_session_reprioritize_stream(
                    stream->stream_id));
 
     nghttp2_stream_dep_remove_subtree(dep_stream);
-    rv = nghttp2_stream_dep_add_subtree(&session->root, dep_stream);
+    rv = nghttp2_stream_dep_add_subtree(stream->dep_prev, dep_stream);
     if (rv != 0) {
       return rv;
     }

@@ -4003,22 +4003,23 @@ void test_nghttp2_session_upgrade2(void) {
 void test_nghttp2_session_reprioritize_stream(void) {
   nghttp2_session *session;
   nghttp2_session_callbacks callbacks;
-  my_user_data ud;
   nghttp2_stream *stream;
   nghttp2_stream *dep_stream;
   nghttp2_priority_spec pri_spec;
+  int rv;
 
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
   callbacks.send_callback = block_count_send_callback;
 
-  nghttp2_session_server_new(&session, &callbacks, &ud);
+  nghttp2_session_server_new(&session, &callbacks, NULL);
 
   stream = open_recv_stream(session, 1);
 
   nghttp2_priority_spec_init(&pri_spec, 0, 10, 0);
 
-  nghttp2_session_reprioritize_stream(session, stream, &pri_spec);
+  rv = nghttp2_session_reprioritize_stream(session, stream, &pri_spec);
 
+  CU_ASSERT(0 == rv);
   CU_ASSERT(10 == stream->weight);
   CU_ASSERT(&session->root == stream->dep_prev);
 
@@ -4026,8 +4027,9 @@ void test_nghttp2_session_reprioritize_stream(void) {
 
   nghttp2_priority_spec_init(&pri_spec, 3, 99, 0);
 
-  nghttp2_session_reprioritize_stream(session, stream, &pri_spec);
+  rv = nghttp2_session_reprioritize_stream(session, stream, &pri_spec);
 
+  CU_ASSERT(0 == rv);
   CU_ASSERT(99 == stream->weight);
   CU_ASSERT(3 == stream->dep_prev->stream_id);
 
@@ -4040,16 +4042,18 @@ void test_nghttp2_session_reprioritize_stream(void) {
   /* Change weight */
   pri_spec.weight = 128;
 
-  nghttp2_session_reprioritize_stream(session, stream, &pri_spec);
+  rv = nghttp2_session_reprioritize_stream(session, stream, &pri_spec);
 
+  CU_ASSERT(0 == rv);
   CU_ASSERT(128 == stream->weight);
   CU_ASSERT(dep_stream == stream->dep_prev);
 
   /* Change weight again to test short-path case */
   pri_spec.weight = 100;
 
-  nghttp2_session_reprioritize_stream(session, stream, &pri_spec);
+  rv = nghttp2_session_reprioritize_stream(session, stream, &pri_spec);
 
+  CU_ASSERT(0 == rv);
   CU_ASSERT(100 == stream->weight);
   CU_ASSERT(dep_stream == stream->dep_prev);
   CU_ASSERT(100 == dep_stream->sum_dep_weight);
@@ -4058,8 +4062,9 @@ void test_nghttp2_session_reprioritize_stream(void) {
      root.  Then stream 3 depends on it. */
   nghttp2_priority_spec_init(&pri_spec, 1, 1, 0);
 
-  nghttp2_session_reprioritize_stream(session, dep_stream, &pri_spec);
+  rv = nghttp2_session_reprioritize_stream(session, dep_stream, &pri_spec);
 
+  CU_ASSERT(0 == rv);
   CU_ASSERT(1 == dep_stream->weight);
   CU_ASSERT(stream == dep_stream->dep_prev);
 
@@ -4069,9 +4074,74 @@ void test_nghttp2_session_reprioritize_stream(void) {
 
   nghttp2_priority_spec_init(&pri_spec, 5, 5, 0);
 
-  nghttp2_session_reprioritize_stream(session, stream, &pri_spec);
+  rv = nghttp2_session_reprioritize_stream(session, stream, &pri_spec);
 
+  CU_ASSERT(0 == rv);
   CU_ASSERT(NGHTTP2_DEFAULT_WEIGHT == stream->weight);
+
+  nghttp2_session_del(session);
+
+  nghttp2_session_server_new(&session, &callbacks, NULL);
+
+  /* circular dependency; in case of stream which is not a direct
+     descendant of root.  Use exclusive dependency. */
+  stream = open_recv_stream(session, 1);
+  stream = open_recv_stream_with_dep(session, 3, stream);
+  stream = open_recv_stream_with_dep(session, 5, stream);
+  stream = open_recv_stream_with_dep(session, 7, stream);
+  open_recv_stream_with_dep(session, 9, stream);
+
+  nghttp2_priority_spec_init(&pri_spec, 7, 1, 1);
+
+  stream = nghttp2_session_get_stream(session, 3);
+  rv = nghttp2_session_reprioritize_stream(session, stream, &pri_spec);
+
+  CU_ASSERT(0 == rv);
+  CU_ASSERT(7 == stream->dep_prev->stream_id);
+
+  stream = nghttp2_session_get_stream(session, 7);
+
+  CU_ASSERT(1 == stream->dep_prev->stream_id);
+
+  stream = nghttp2_session_get_stream(session, 9);
+
+  CU_ASSERT(3 == stream->dep_prev->stream_id);
+
+  stream = nghttp2_session_get_stream(session, 5);
+
+  CU_ASSERT(3 == stream->dep_prev->stream_id);
+
+  nghttp2_session_del(session);
+
+  nghttp2_session_server_new(&session, &callbacks, NULL);
+
+  /* circular dependency; in case of stream which is not a direct
+     descendant of root.  Without exclusive dependency. */
+  stream = open_recv_stream(session, 1);
+  stream = open_recv_stream_with_dep(session, 3, stream);
+  stream = open_recv_stream_with_dep(session, 5, stream);
+  stream = open_recv_stream_with_dep(session, 7, stream);
+  open_recv_stream_with_dep(session, 9, stream);
+
+  nghttp2_priority_spec_init(&pri_spec, 7, 1, 0);
+
+  stream = nghttp2_session_get_stream(session, 3);
+  rv = nghttp2_session_reprioritize_stream(session, stream, &pri_spec);
+
+  CU_ASSERT(0 == rv);
+  CU_ASSERT(7 == stream->dep_prev->stream_id);
+
+  stream = nghttp2_session_get_stream(session, 7);
+
+  CU_ASSERT(1 == stream->dep_prev->stream_id);
+
+  stream = nghttp2_session_get_stream(session, 9);
+
+  CU_ASSERT(7 == stream->dep_prev->stream_id);
+
+  stream = nghttp2_session_get_stream(session, 5);
+
+  CU_ASSERT(3 == stream->dep_prev->stream_id);
 
   nghttp2_session_del(session);
 }
