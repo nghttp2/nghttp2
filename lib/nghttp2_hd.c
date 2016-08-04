@@ -1311,7 +1311,7 @@ int nghttp2_hd_inflate_change_table_size(nghttp2_hd_inflater *inflater,
   ((idx) < (context)->hd_table.len + NGHTTP2_STATIC_TABLE_LENGTH)
 
 static size_t get_max_index(nghttp2_hd_context *context) {
-  return context->hd_table.len + NGHTTP2_STATIC_TABLE_LENGTH - 1;
+  return context->hd_table.len + NGHTTP2_STATIC_TABLE_LENGTH;
 }
 
 nghttp2_hd_nv nghttp2_hd_table_get(nghttp2_hd_context *context, size_t idx) {
@@ -1955,7 +1955,7 @@ ssize_t nghttp2_hd_inflate_hd_nv(nghttp2_hd_inflater *inflater,
 
       rfin = 0;
       rv = hd_inflate_read_len(inflater, &rfin, in, last, prefixlen,
-                               get_max_index(&inflater->ctx) + 1);
+                               get_max_index(&inflater->ctx));
       if (rv < 0) {
         goto fail;
       }
