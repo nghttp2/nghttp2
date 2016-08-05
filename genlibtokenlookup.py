@@ -88,7 +88,8 @@ def build_header(headers):
         c = k[-1]
         if c not in ent:
             ent[c] = []
-        ent[c].append(k)
+        if k not in ent[c]:
+            ent[c].append(k)
 
     return res
 
@@ -106,7 +107,7 @@ def gen_enum():
 
 def gen_index_header():
     print '''\
-static inline int32_t lookup_token(const uint8_t *name, size_t namelen) {
+static int32_t lookup_token(const uint8_t *name, size_t namelen) {
   switch (namelen) {'''
     b = build_header(HEADERS)
     for size in sorted(b.keys()):

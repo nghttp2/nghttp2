@@ -186,9 +186,6 @@ static int32_t lookup_token(const uint8_t *name, size_t namelen) {
       if (lstreq(":pat", name, 4)) {
         return NGHTTP2_TOKEN__PATH;
       }
-      if (lstreq(":pat", name, 4)) {
-        return NGHTTP2_TOKEN__PATH;
-      }
       break;
     case 'w':
       if (lstreq("allo", name, 4)) {
@@ -225,14 +222,8 @@ static int32_t lookup_token(const uint8_t *name, size_t namelen) {
       if (lstreq(":metho", name, 6)) {
         return NGHTTP2_TOKEN__METHOD;
       }
-      if (lstreq(":metho", name, 6)) {
-        return NGHTTP2_TOKEN__METHOD;
-      }
       break;
     case 'e':
-      if (lstreq(":schem", name, 6)) {
-        return NGHTTP2_TOKEN__SCHEME;
-      }
       if (lstreq(":schem", name, 6)) {
         return NGHTTP2_TOKEN__SCHEME;
       }
@@ -251,24 +242,6 @@ static int32_t lookup_token(const uint8_t *name, size_t namelen) {
       }
       break;
     case 's':
-      if (lstreq(":statu", name, 6)) {
-        return NGHTTP2_TOKEN__STATUS;
-      }
-      if (lstreq(":statu", name, 6)) {
-        return NGHTTP2_TOKEN__STATUS;
-      }
-      if (lstreq(":statu", name, 6)) {
-        return NGHTTP2_TOKEN__STATUS;
-      }
-      if (lstreq(":statu", name, 6)) {
-        return NGHTTP2_TOKEN__STATUS;
-      }
-      if (lstreq(":statu", name, 6)) {
-        return NGHTTP2_TOKEN__STATUS;
-      }
-      if (lstreq(":statu", name, 6)) {
-        return NGHTTP2_TOKEN__STATUS;
-      }
       if (lstreq(":statu", name, 6)) {
         return NGHTTP2_TOKEN__STATUS;
       }
