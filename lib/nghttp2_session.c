@@ -365,7 +365,7 @@ static void session_inbound_frame_reset(nghttp2_session *session) {
 static void init_settings(nghttp2_settings_storage *settings) {
   settings->header_table_size = NGHTTP2_HD_DEFAULT_MAX_BUFFER_SIZE;
   settings->enable_push = 1;
-  settings->max_concurrent_streams = NGHTTP2_INITIAL_MAX_CONCURRENT_STREAMS;
+  settings->max_concurrent_streams = NGHTTP2_DEFAULT_MAX_CONCURRENT_STREAMS;
   settings->initial_window_size = NGHTTP2_INITIAL_WINDOW_SIZE;
   settings->max_frame_size = NGHTTP2_MAX_FRAME_SIZE_MIN;
   settings->max_header_list_size = UINT32_MAX;
@@ -435,7 +435,7 @@ static int session_new(nghttp2_session **session_ptr,
   (*session_ptr)->remote_last_stream_id = (1u << 31) - 1;
 
   (*session_ptr)->pending_local_max_concurrent_stream =
-      NGHTTP2_INITIAL_MAX_CONCURRENT_STREAMS;
+      NGHTTP2_DEFAULT_MAX_CONCURRENT_STREAMS;
   (*session_ptr)->pending_enable_push = 1;
 
   if (server) {
@@ -1185,13 +1185,11 @@ int nghttp2_session_close_stream(nghttp2_session *session, int32_t stream_id,
        combined with the current active incoming streams to make
        dependency tree work better. */
     nghttp2_session_keep_closed_stream(session, stream);
-
-    rv = nghttp2_session_adjust_closed_stream(session);
   } else {
     rv = nghttp2_session_destroy_stream(session, stream);
-  }
-  if (rv != 0) {
-    return rv;
+    if (rv != 0) {
+      return rv;
+    }
   }
 
   return 0;
@@ -1285,8 +1283,12 @@ int nghttp2_session_adjust_closed_stream(nghttp2_session *session) {
   size_t num_stream_max;
   int rv;
 
-  num_stream_max = nghttp2_min(session->local_settings.max_concurrent_streams,
-                               session->pending_local_max_concurrent_stream);
+  if (session->local_settings.max_concurrent_streams ==
+      NGHTTP2_DEFAULT_MAX_CONCURRENT_STREAMS) {
+    num_stream_max = session->pending_local_max_concurrent_stream;
+  } else {
+    num_stream_max = session->local_settings.max_concurrent_streams;
+  }
 
   DEBUGF(fprintf(stderr, "stream: adjusting kept closed streams "
                          "num_closed_streams=%zu, num_incoming_streams=%zu, "
@@ -3777,13 +3779,6 @@ int nghttp2_session_on_request_headers_received(nghttp2_session *session,
   assert(session->server);
 
   if (!session_is_new_peer_stream_id(session, frame->hd.stream_id)) {
-    /* The spec says if an endpoint receives a HEADERS with invalid
-       stream ID, it MUST issue connection error with error code
-       PROTOCOL_ERROR.  But we could get trailer HEADERS after we have
-       sent RST_STREAM to this stream and peer have not received it.
-       Then connection error is too harsh.  It means that we only use
-       connection error if stream ID refers idle stream.  Therwise we
-       just ignore HEADERS for now. */
     if (frame->hd.stream_id == 0 ||
         nghttp2_session_is_my_stream_id(session, frame->hd.stream_id)) {
       return session_inflate_handle_invalid_connection(
@@ -3791,8 +3786,67 @@ int nghttp2_session_on_request_headers_received(nghttp2_session *session,
           "request HEADERS: invalid stream_id");
     }
 
+    /* RFC 7540 says if an endpoint receives a HEADERS with invalid
+     * stream ID (e.g, numerically smaller than previous), it MUST
+     * issue connection error with error code PROTOCOL_ERROR.  It is a
+     * bit hard to detect this, since we cannot remember all streams
+     * we observed so far.
+     *
+     * You might imagine this is really easy.  But no.  HTTP/2 is
+     * asynchronous protocol, and usually client and server do not
+     * share the complete picture of open/closed stream status.  For
+     * example, after server sends RST_STREAM for a stream, client may
+     * send trailer HEADERS for that stream.  If naive server detects
+     * that, and issued connection error, then it is a bug of server
+     * implementation since client is not wrong if it did not get
+     * RST_STREAM when it issued trailer HEADERS.
+     *
+     * For server session, we remember closed streams as long as the
+     * sum of closed streams and opened streams are under current max
+     * concurrent streams.  We can use these closed streams to detect
+     * the error in some cases.
+     *
+     * If the stream cannot be found in either closed or opened
+     * streams, it is considered to be closed, or it has not exist
+     * (e.g., peer skipped sending the stream).  Actually, it is
+     * impossible to detect which is which, since that information was
+     * lost forever.  For these cases, we send back GOAWAY with
+     * PROTOCOL_ERROR.
+     *
+     * If the stream is found, and we know that it is in half closed
+     * (remote), or closed by peer's explicit action (e.g., received
+     * RST_STREAM from peer, or peer sends HEADERS/DATA frame with
+     * END_STREAM), getting new frame on that stream is clearly error.
+     * In this case, we send GOAWAY with error code STREAM_CLOSED.
+     *
+     * There is one corner case here.  Server can change the max
+     * concurrent streams.  The initial value of max concurrent
+     * streams is unlimited (NGHTTP2_DEFAULT_MAX_CONCURRENT_STREAMS,
+     * which is UINT32_MAX).  When sending out SETTINGS with
+     * MAX_CONCURRENT_STREAMS, we save its value as pending max
+     * concurrent streams, and use it as a cap to remember closed
+     * stream to save memory.  This means that we might not sure that
+     * stream surely closed or has not exist when it is not found in
+     * closed or opened stream.  To workaround this issue, we ignore
+     * incoming frame if the current max concurrent streams is
+     * NGHTTP2_DEFAULT_MAX_CONCURRENT_STREAMS, and pending max
+     * concurrent streams is less than that.
+     */
     stream = nghttp2_session_get_stream_raw(session, frame->hd.stream_id);
-    if (stream && (stream->shut_flags & NGHTTP2_SHUT_RD)) {
+
+    if (!stream) {
+      if (session->local_settings.max_concurrent_streams ==
+              NGHTTP2_DEFAULT_MAX_CONCURRENT_STREAMS &&
+          session->pending_local_max_concurrent_stream <
+              NGHTTP2_DEFAULT_MAX_CONCURRENT_STREAMS) {
+        return NGHTTP2_ERR_IGN_HEADER_BLOCK;
+      }
+
+      return session_inflate_handle_invalid_connection(
+          session, frame, NGHTTP2_ERR_PROTO, "HEADERS: stream does not exist");
+    }
+
+    if (stream->shut_flags & NGHTTP2_SHUT_RD) {
       return session_inflate_handle_invalid_connection(
           session, frame, NGHTTP2_ERR_STREAM_CLOSED, "HEADERS: stream closed");
     }
@@ -5066,7 +5120,25 @@ static int session_on_data_received_fail_fast(nghttp2_session *session) {
   stream = nghttp2_session_get_stream(session, stream_id);
   if (!stream) {
     stream = nghttp2_session_get_stream_raw(session, stream_id);
-    if (stream && (stream->shut_flags & NGHTTP2_SHUT_RD)) {
+
+    if (!stream) {
+      if (session->server) {
+        if (session->local_settings.max_concurrent_streams ==
+                NGHTTP2_DEFAULT_MAX_CONCURRENT_STREAMS &&
+            session->pending_local_max_concurrent_stream <
+                NGHTTP2_DEFAULT_MAX_CONCURRENT_STREAMS) {
+          return NGHTTP2_ERR_IGN_PAYLOAD;
+        }
+
+        failure_reason = "DATA: stream does not exist";
+        error_code = NGHTTP2_PROTOCOL_ERROR;
+        goto fail;
+      }
+
+      return NGHTTP2_ERR_IGN_PAYLOAD;
+    }
+
+    if (stream->shut_flags & NGHTTP2_SHUT_RD) {
       failure_reason = "DATA: stream closed";
       error_code = NGHTTP2_STREAM_CLOSED;
       goto fail;

@@ -97,6 +97,9 @@ typedef struct {
    these frames in this number, it is considered suspicious. */
 #define NGHTTP2_MAX_OBQ_FLOOD_ITEM 10000
 
+/* The default value of maximum number of concurrent streams. */
+#define NGHTTP2_DEFAULT_MAX_CONCURRENT_STREAMS 0xffffffffu
+
 /* Internal state when receiving incoming frame */
 typedef enum {
   /* Receiving frame header */
