@@ -532,7 +532,7 @@ static void hd_map_insert(nghttp2_hd_map *map, nghttp2_hd_entry *ent) {
 
 static nghttp2_hd_entry *hd_map_find(nghttp2_hd_map *map, int *exact_match,
                                      const nghttp2_nv *nv, int32_t token,
-                                     uint32_t hash) {
+                                     uint32_t hash, int name_only) {
   nghttp2_hd_entry *p;
   nghttp2_hd_entry *res = NULL;
 
@@ -545,6 +545,9 @@ static nghttp2_hd_entry *hd_map_find(nghttp2_hd_map *map, int *exact_match,
     }
     if (!res) {
       res = p;
+      if (name_only) {
+        break;
+      }
     }
     if (value_eq(&p->nv, nv)) {
       res = p;
@@ -1148,16 +1151,16 @@ static int add_hd_table_incremental(nghttp2_hd_context *context,
 typedef struct {
   ssize_t index;
   /* Nonzero if both name and value are matched. */
-  uint8_t name_value_match;
+  int name_value_match;
 } search_result;
 
 static search_result search_static_table(const nghttp2_nv *nv, int32_t token,
-                                         int indexing_mode) {
+                                         int name_only) {
   search_result res = {token, 0};
   int i;
   nghttp2_hd_static_entry *ent;
 
-  if (indexing_mode == NGHTTP2_HD_NEVER_INDEXING) {
+  if (name_only) {
     return res;
   }
 
@@ -1182,30 +1185,22 @@ static search_result search_hd_table(nghttp2_hd_context *context,
   search_result res = {-1, 0};
   nghttp2_hd_entry *ent;
   int exact_match;
-
-  if (token >= 0 && token <= NGHTTP2_TOKEN_WWW_AUTHENTICATE) {
-    res = search_static_table(nv, token, indexing_mode);
-    if (res.name_value_match) {
-      return res;
-    }
-  }
+  int name_only = indexing_mode == NGHTTP2_HD_NEVER_INDEXING;
 
   exact_match = 0;
-  ent = hd_map_find(map, &exact_match, nv, token, hash);
-  if (ent == NULL) {
-    return res;
+  ent = hd_map_find(map, &exact_match, nv, token, hash, name_only);
+
+  if (!exact_match && token >= 0 && token <= NGHTTP2_TOKEN_WWW_AUTHENTICATE) {
+    return search_static_table(nv, token, name_only);
   }
 
-  if (res.index != -1 && !exact_match) {
+  if (ent == NULL) {
     return res;
   }
 
   res.index =
       (ssize_t)(context->next_seq - 1 - ent->seq + NGHTTP2_STATIC_TABLE_LENGTH);
-
-  if (exact_match) {
-    res.name_value_match = 1;
-  }
+  res.name_value_match = exact_match;
 
   return res;
 }
