@@ -122,7 +122,7 @@ static int32_t lookup_token(const uint8_t *name, size_t namelen) {
     case '{}':'''.format(c)
             for k in headers:
                 print '''\
-      if (lstreq("{}", name, {})) {{
+      if (memeq("{}", name, {})) {{
         return {};
       }}'''.format(k[:-1], size - 1, to_enum_hd(k))
             print '''\
