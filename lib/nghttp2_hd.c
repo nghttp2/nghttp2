@@ -121,7 +121,7 @@ static int32_t lookup_token(const uint8_t *name, size_t namelen) {
   case 2:
     switch (name[1]) {
     case 'e':
-      if (lstreq("t", name, 1)) {
+      if (memeq("t", name, 1)) {
         return NGHTTP2_TOKEN_TE;
       }
       break;
@@ -130,12 +130,12 @@ static int32_t lookup_token(const uint8_t *name, size_t namelen) {
   case 3:
     switch (name[2]) {
     case 'a':
-      if (lstreq("vi", name, 2)) {
+      if (memeq("vi", name, 2)) {
         return NGHTTP2_TOKEN_VIA;
       }
       break;
     case 'e':
-      if (lstreq("ag", name, 2)) {
+      if (memeq("ag", name, 2)) {
         return NGHTTP2_TOKEN_AGE;
       }
       break;
@@ -144,32 +144,32 @@ static int32_t lookup_token(const uint8_t *name, size_t namelen) {
   case 4:
     switch (name[3]) {
     case 'e':
-      if (lstreq("dat", name, 3)) {
+      if (memeq("dat", name, 3)) {
         return NGHTTP2_TOKEN_DATE;
       }
       break;
     case 'g':
-      if (lstreq("eta", name, 3)) {
+      if (memeq("eta", name, 3)) {
         return NGHTTP2_TOKEN_ETAG;
       }
       break;
     case 'k':
-      if (lstreq("lin", name, 3)) {
+      if (memeq("lin", name, 3)) {
         return NGHTTP2_TOKEN_LINK;
       }
       break;
     case 'm':
-      if (lstreq("fro", name, 3)) {
+      if (memeq("fro", name, 3)) {
         return NGHTTP2_TOKEN_FROM;
       }
       break;
     case 't':
-      if (lstreq("hos", name, 3)) {
+      if (memeq("hos", name, 3)) {
         return NGHTTP2_TOKEN_HOST;
       }
       break;
     case 'y':
-      if (lstreq("var", name, 3)) {
+      if (memeq("var", name, 3)) {
         return NGHTTP2_TOKEN_VARY;
       }
       break;
@@ -178,17 +178,17 @@ static int32_t lookup_token(const uint8_t *name, size_t namelen) {
   case 5:
     switch (name[4]) {
     case 'e':
-      if (lstreq("rang", name, 4)) {
+      if (memeq("rang", name, 4)) {
         return NGHTTP2_TOKEN_RANGE;
       }
       break;
     case 'h':
-      if (lstreq(":pat", name, 4)) {
+      if (memeq(":pat", name, 4)) {
         return NGHTTP2_TOKEN__PATH;
       }
       break;
     case 'w':
-      if (lstreq("allo", name, 4)) {
+      if (memeq("allo", name, 4)) {
         return NGHTTP2_TOKEN_ALLOW;
       }
       break;
@@ -197,20 +197,20 @@ static int32_t lookup_token(const uint8_t *name, size_t namelen) {
   case 6:
     switch (name[5]) {
     case 'e':
-      if (lstreq("cooki", name, 5)) {
+      if (memeq("cooki", name, 5)) {
         return NGHTTP2_TOKEN_COOKIE;
       }
       break;
     case 'r':
-      if (lstreq("serve", name, 5)) {
+      if (memeq("serve", name, 5)) {
         return NGHTTP2_TOKEN_SERVER;
       }
       break;
     case 't':
-      if (lstreq("accep", name, 5)) {
+      if (memeq("accep", name, 5)) {
         return NGHTTP2_TOKEN_ACCEPT;
       }
-      if (lstreq("expec", name, 5)) {
+      if (memeq("expec", name, 5)) {
         return NGHTTP2_TOKEN_EXPECT;
       }
       break;
@@ -219,33 +219,33 @@ static int32_t lookup_token(const uint8_t *name, size_t namelen) {
   case 7:
     switch (name[6]) {
     case 'd':
-      if (lstreq(":metho", name, 6)) {
+      if (memeq(":metho", name, 6)) {
         return NGHTTP2_TOKEN__METHOD;
       }
       break;
     case 'e':
-      if (lstreq(":schem", name, 6)) {
+      if (memeq(":schem", name, 6)) {
         return NGHTTP2_TOKEN__SCHEME;
       }
-      if (lstreq("upgrad", name, 6)) {
+      if (memeq("upgrad", name, 6)) {
         return NGHTTP2_TOKEN_UPGRADE;
       }
       break;
     case 'h':
-      if (lstreq("refres", name, 6)) {
+      if (memeq("refres", name, 6)) {
         return NGHTTP2_TOKEN_REFRESH;
       }
       break;
     case 'r':
-      if (lstreq("refere", name, 6)) {
+      if (memeq("refere", name, 6)) {
         return NGHTTP2_TOKEN_REFERER;
       }
       break;
     case 's':
-      if (lstreq(":statu", name, 6)) {
+      if (memeq(":statu", name, 6)) {
         return NGHTTP2_TOKEN__STATUS;
       }
-      if (lstreq("expire", name, 6)) {
+      if (memeq("expire", name, 6)) {
         return NGHTTP2_TOKEN_EXPIRES;
       }
       break;
@@ -254,17 +254,17 @@ static int32_t lookup_token(const uint8_t *name, size_t namelen) {
   case 8:
     switch (name[7]) {
     case 'e':
-      if (lstreq("if-rang", name, 7)) {
+      if (memeq("if-rang", name, 7)) {
         return NGHTTP2_TOKEN_IF_RANGE;
       }
       break;
     case 'h':
-      if (lstreq("if-matc", name, 7)) {
+      if (memeq("if-matc", name, 7)) {
         return NGHTTP2_TOKEN_IF_MATCH;
       }
       break;
     case 'n':
-      if (lstreq("locatio", name, 7)) {
+      if (memeq("locatio", name, 7)) {
         return NGHTTP2_TOKEN_LOCATION;
       }
       break;
@@ -273,25 +273,25 @@ static int32_t lookup_token(const uint8_t *name, size_t namelen) {
   case 10:
     switch (name[9]) {
     case 'e':
-      if (lstreq("keep-aliv", name, 9)) {
+      if (memeq("keep-aliv", name, 9)) {
         return NGHTTP2_TOKEN_KEEP_ALIVE;
       }
-      if (lstreq("set-cooki", name, 9)) {
+      if (memeq("set-cooki", name, 9)) {
         return NGHTTP2_TOKEN_SET_COOKIE;
       }
       break;
     case 'n':
-      if (lstreq("connectio", name, 9)) {
+      if (memeq("connectio", name, 9)) {
         return NGHTTP2_TOKEN_CONNECTION;
       }
       break;
     case 't':
-      if (lstreq("user-agen", name, 9)) {
+      if (memeq("user-agen", name, 9)) {
         return NGHTTP2_TOKEN_USER_AGENT;
       }
       break;
     case 'y':
-      if (lstreq(":authorit", name, 9)) {
+      if (memeq(":authorit", name, 9)) {
         return NGHTTP2_TOKEN__AUTHORITY;
       }
       break;
@@ -300,7 +300,7 @@ static int32_t lookup_token(const uint8_t *name, size_t namelen) {
   case 11:
     switch (name[10]) {
     case 'r':
-      if (lstreq("retry-afte", name, 10)) {
+      if (memeq("retry-afte", name, 10)) {
         return NGHTTP2_TOKEN_RETRY_AFTER;
       }
       break;
@@ -309,12 +309,12 @@ static int32_t lookup_token(const uint8_t *name, size_t namelen) {
   case 12:
     switch (name[11]) {
     case 'e':
-      if (lstreq("content-typ", name, 11)) {
+      if (memeq("content-typ", name, 11)) {
         return NGHTTP2_TOKEN_CONTENT_TYPE;
       }
       break;
     case 's':
-      if (lstreq("max-forward", name, 11)) {
+      if (memeq("max-forward", name, 11)) {
         return NGHTTP2_TOKEN_MAX_FORWARDS;
       }
       break;
@@ -323,32 +323,32 @@ static int32_t lookup_token(const uint8_t *name, size_t namelen) {
   case 13:
     switch (name[12]) {
     case 'd':
-      if (lstreq("last-modifie", name, 12)) {
+      if (memeq("last-modifie", name, 12)) {
         return NGHTTP2_TOKEN_LAST_MODIFIED;
       }
       break;
     case 'e':
-      if (lstreq("content-rang", name, 12)) {
+      if (memeq("content-rang", name, 12)) {
         return NGHTTP2_TOKEN_CONTENT_RANGE;
       }
       break;
     case 'h':
-      if (lstreq("if-none-matc", name, 12)) {
+      if (memeq("if-none-matc", name, 12)) {
         return NGHTTP2_TOKEN_IF_NONE_MATCH;
       }
       break;
     case 'l':
-      if (lstreq("cache-contro", name, 12)) {
+      if (memeq("cache-contro", name, 12)) {
         return NGHTTP2_TOKEN_CACHE_CONTROL;
       }
       break;
     case 'n':
-      if (lstreq("authorizatio", name, 12)) {
+      if (memeq("authorizatio", name, 12)) {
         return NGHTTP2_TOKEN_AUTHORIZATION;
       }
       break;
     case 's':
-      if (lstreq("accept-range", name, 12)) {
+      if (memeq("accept-range", name, 12)) {
         return NGHTTP2_TOKEN_ACCEPT_RANGES;
       }
       break;
@@ -357,12 +357,12 @@ static int32_t lookup_token(const uint8_t *name, size_t namelen) {
   case 14:
     switch (name[13]) {
     case 'h':
-      if (lstreq("content-lengt", name, 13)) {
+      if (memeq("content-lengt", name, 13)) {
         return NGHTTP2_TOKEN_CONTENT_LENGTH;
       }
       break;
     case 't':
-      if (lstreq("accept-charse", name, 13)) {
+      if (memeq("accept-charse", name, 13)) {
         return NGHTTP2_TOKEN_ACCEPT_CHARSET;
       }
       break;
@@ -371,12 +371,12 @@ static int32_t lookup_token(const uint8_t *name, size_t namelen) {
   case 15:
     switch (name[14]) {
     case 'e':
-      if (lstreq("accept-languag", name, 14)) {
+      if (memeq("accept-languag", name, 14)) {
         return NGHTTP2_TOKEN_ACCEPT_LANGUAGE;
       }
       break;
     case 'g':
-      if (lstreq("accept-encodin", name, 14)) {
+      if (memeq("accept-encodin", name, 14)) {
         return NGHTTP2_TOKEN_ACCEPT_ENCODING;
       }
       break;
@@ -385,23 +385,23 @@ static int32_t lookup_token(const uint8_t *name, size_t namelen) {
   case 16:
     switch (name[15]) {
     case 'e':
-      if (lstreq("content-languag", name, 15)) {
+      if (memeq("content-languag", name, 15)) {
         return NGHTTP2_TOKEN_CONTENT_LANGUAGE;
       }
-      if (lstreq("www-authenticat", name, 15)) {
+      if (memeq("www-authenticat", name, 15)) {
         return NGHTTP2_TOKEN_WWW_AUTHENTICATE;
       }
       break;
     case 'g':
-      if (lstreq("content-encodin", name, 15)) {
+      if (memeq("content-encodin", name, 15)) {
         return NGHTTP2_TOKEN_CONTENT_ENCODING;
       }
       break;
     case 'n':
-      if (lstreq("content-locatio", name, 15)) {
+      if (memeq("content-locatio", name, 15)) {
         return NGHTTP2_TOKEN_CONTENT_LOCATION;
       }
-      if (lstreq("proxy-connectio", name, 15)) {
+      if (memeq("proxy-connectio", name, 15)) {
         return NGHTTP2_TOKEN_PROXY_CONNECTION;
       }
       break;
@@ -410,12 +410,12 @@ static int32_t lookup_token(const uint8_t *name, size_t namelen) {
   case 17:
     switch (name[16]) {
     case 'e':
-      if (lstreq("if-modified-sinc", name, 16)) {
+      if (memeq("if-modified-sinc", name, 16)) {
         return NGHTTP2_TOKEN_IF_MODIFIED_SINCE;
       }
       break;
     case 'g':
-      if (lstreq("transfer-encodin", name, 16)) {
+      if (memeq("transfer-encodin", name, 16)) {
         return NGHTTP2_TOKEN_TRANSFER_ENCODING;
       }
       break;
@@ -424,7 +424,7 @@ static int32_t lookup_token(const uint8_t *name, size_t namelen) {
   case 18:
     switch (name[17]) {
     case 'e':
-      if (lstreq("proxy-authenticat", name, 17)) {
+      if (memeq("proxy-authenticat", name, 17)) {
         return NGHTTP2_TOKEN_PROXY_AUTHENTICATE;
       }
       break;
@@ -433,15 +433,15 @@ static int32_t lookup_token(const uint8_t *name, size_t namelen) {
   case 19:
     switch (name[18]) {
     case 'e':
-      if (lstreq("if-unmodified-sinc", name, 18)) {
+      if (memeq("if-unmodified-sinc", name, 18)) {
         return NGHTTP2_TOKEN_IF_UNMODIFIED_SINCE;
       }
       break;
     case 'n':
-      if (lstreq("content-dispositio", name, 18)) {
+      if (memeq("content-dispositio", name, 18)) {
         return NGHTTP2_TOKEN_CONTENT_DISPOSITION;
       }
-      if (lstreq("proxy-authorizatio", name, 18)) {
+      if (memeq("proxy-authorizatio", name, 18)) {
         return NGHTTP2_TOKEN_PROXY_AUTHORIZATION;
       }
       break;
@@ -450,7 +450,7 @@ static int32_t lookup_token(const uint8_t *name, size_t namelen) {
   case 25:
     switch (name[24]) {
     case 'y':
-      if (lstreq("strict-transport-securit", name, 24)) {
+      if (memeq("strict-transport-securit", name, 24)) {
         return NGHTTP2_TOKEN_STRICT_TRANSPORT_SECURITY;
       }
       break;
@@ -459,7 +459,7 @@ static int32_t lookup_token(const uint8_t *name, size_t namelen) {
   case 27:
     switch (name[26]) {
     case 'n':
-      if (lstreq("access-control-allow-origi", name, 26)) {
+      if (memeq("access-control-allow-origi", name, 26)) {
         return NGHTTP2_TOKEN_ACCESS_CONTROL_ALLOW_ORIGIN;
       }
       break;
