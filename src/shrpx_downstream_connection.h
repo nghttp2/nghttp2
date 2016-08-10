@@ -61,7 +61,8 @@ public:
   // true if this object is poolable.
   virtual bool poolable() const = 0;
 
-  virtual DownstreamAddrGroup *get_downstream_addr_group() const = 0;
+  virtual const std::shared_ptr<DownstreamAddrGroup> &
+  get_downstream_addr_group() const = 0;
   virtual DownstreamAddr *get_addr() const = 0;
 
   void set_client_handler(ClientHandler *client_handler);

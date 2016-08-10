@@ -152,6 +152,8 @@ LOGVARS = [
     "ssl_protocol",
     "ssl_session_id",
     "ssl_session_reused",
+    "backend_host",
+    "backend_port",
 ]
 
 if __name__ == '__main__':

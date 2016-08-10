@@ -668,6 +668,10 @@ typedef enum {
 /**
  * @macro
  *
+ * .. warning::
+ *
+ *   Deprecated.  The initial max concurrent streams is 0xffffffffu.
+ *
  * Default maximum number of incoming concurrent streams.  Use
  * `nghttp2_submit_settings()` with
  * :enum:`NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS` to change the

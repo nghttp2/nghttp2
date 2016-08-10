@@ -95,9 +95,10 @@ void HealthMonitorDownstreamConnection::on_upstream_change(Upstream *uptream) {}
 
 bool HealthMonitorDownstreamConnection::poolable() const { return false; }
 
-DownstreamAddrGroup *
+const std::shared_ptr<DownstreamAddrGroup> &
 HealthMonitorDownstreamConnection::get_downstream_addr_group() const {
-  return nullptr;
+  static std::shared_ptr<DownstreamAddrGroup> s;
+  return s;
 }
 
 DownstreamAddr *HealthMonitorDownstreamConnection::get_addr() const {

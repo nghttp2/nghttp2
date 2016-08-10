@@ -565,7 +565,7 @@ int HttpDownstreamConnection::end_upload_data() {
 
 namespace {
 void remove_from_pool(HttpDownstreamConnection *dconn) {
-  auto group = dconn->get_downstream_addr_group();
+  auto &group = dconn->get_downstream_addr_group();
   auto &shared_addr = group->shared_addr;
 
   if (shared_addr->affinity == AFFINITY_NONE) {
@@ -676,6 +676,11 @@ int htp_hdrs_completecb(http_parser *htp) {
     resp.http_major = 1;
     resp.http_minor = 1;
   }
+
+  auto dconn = downstream->get_downstream_connection();
+
+  downstream->set_downstream_addr_group(dconn->get_downstream_addr_group());
+  downstream->set_addr(dconn->get_addr());
 
   if (resp.fs.parse_content_length() != 0) {
     downstream->set_response_state(Downstream::MSG_BAD_HEADER);
@@ -1192,9 +1197,9 @@ int HttpDownstreamConnection::actual_signal_write() {
 
 int HttpDownstreamConnection::noop() { return 0; }
 
-DownstreamAddrGroup *
+const std::shared_ptr<DownstreamAddrGroup> &
 HttpDownstreamConnection::get_downstream_addr_group() const {
-  return group_.get();
+  return group_;
 }
 
 DownstreamAddr *HttpDownstreamConnection::get_addr() const { return addr_; }

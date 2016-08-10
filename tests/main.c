@@ -308,6 +308,8 @@ int main(int argc _U_, char *argv[] _U_) {
                    test_nghttp2_session_set_local_window_size) ||
       !CU_add_test(pSuite, "session_cancel_from_before_frame_send",
                    test_nghttp2_session_cancel_from_before_frame_send) ||
+      !CU_add_test(pSuite, "session_removed_closed_stream",
+                   test_nghttp2_session_removed_closed_stream) ||
       !CU_add_test(pSuite, "http_mandatory_headers",
                    test_nghttp2_http_mandatory_headers) ||
       !CU_add_test(pSuite, "http_content_length",
