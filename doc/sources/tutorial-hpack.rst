@@ -118,10 +118,6 @@ If *in_final* is zero and the :macro:`NGHTTP2_HD_INFLATE_EMIT` flag is
 not set, it indicates that all given data was processed.  The caller
 is required to pass additional data.
 
-It is important to note that the function may produce one or more
-header fields even if *inlen* is 0 when *in_final* is nonzero, due to
-differential encoding.
-
 Example usage of `nghttp2_hd_inflate_hd()` is shown in the
 `inflate_header_block()` function in `deflate.c`_.
 
