@@ -1677,15 +1677,8 @@ static ssize_t hd_inflate_read(nghttp2_hd_inflater *inflater, nghttp2_buf *buf,
 }
 
 /*
- * Finalize indexed header representation reception. If header is
- * emitted, |*nv_out| is filled with that value and 0 is returned. If
- * no header is emitted, 1 is returned.
- *
- * This function returns either 0 or 1 if it succeeds, or one of the
- * following negative error codes:
- *
- * NGHTTP2_ERR_NOMEM
- *   Out of memory
+ * Finalize indexed header representation reception. header is always
+ * emitted, |*nv_out| is filled with that value and 0 is returned.
  */
 static int hd_inflate_commit_indexed(nghttp2_hd_inflater *inflater,
                                      nghttp2_hd_nv *nv_out) {
@@ -1944,16 +1937,11 @@ ssize_t nghttp2_hd_inflate_hd_nv(nghttp2_hd_inflater *inflater,
         inflater->index = inflater->left;
         --inflater->index;
 
-        rv = hd_inflate_commit_indexed(inflater, nv_out);
-        if (rv < 0) {
-          goto fail;
-        }
+        hd_inflate_commit_indexed(inflater, nv_out);
+
         inflater->state = NGHTTP2_HD_STATE_OPCODE;
-        /* If rv == 1, no header was emitted */
-        if (rv == 0) {
-          *inflate_flags |= NGHTTP2_HD_INFLATE_EMIT;
-          return (ssize_t)(in - first);
-        }
+        *inflate_flags |= NGHTTP2_HD_INFLATE_EMIT;
+        return (ssize_t)(in - first);
       } else {
         inflater->index = inflater->left;
         --inflater->index;
