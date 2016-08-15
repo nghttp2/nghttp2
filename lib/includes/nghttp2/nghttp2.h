@@ -1724,6 +1724,65 @@ typedef int (*nghttp2_on_header_callback2)(nghttp2_session *session,
 /**
  * @functypedef
  *
+ * Callback function invoked when a invalid header name/value pair is
+ * received for the |frame|.
+ *
+ * The parameter and behaviour are similar to
+ * :type:`nghttp2_on_header_callback`.  The difference is that this
+ * callback is only invoked when a invalid header name/value pair is
+ * received which is silently ignored if this callback is not set.
+ * Only invalid regular header field are passed to this callback.  In
+ * other words, invalid pseudo header field is not passed to this
+ * callback.  Also header fields which includes upper cased latter are
+ * also treated as error without passing them to this callback.
+ *
+ * This callback is only considered if HTTP messaging validation is
+ * turned on (which is on by default, see
+ * `nghttp2_option_set_no_http_messaging()`).
+ *
+ * With this callback, application inspects the incoming invalid
+ * field, and it also can reset stream from this callback by returning
+ * :enum:`NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE`, or using
+ * `nghttp2_submit_rst_stream()` directly with the error code of
+ * choice.
+ */
+typedef int (*nghttp2_on_invalid_header_callback)(
+    nghttp2_session *session, const nghttp2_frame *frame, const uint8_t *name,
+    size_t namelen, const uint8_t *value, size_t valuelen, uint8_t flags,
+    void *user_data);
+
+/**
+ * @functypedef
+ *
+ * Callback function invoked when a invalid header name/value pair is
+ * received for the |frame|.
+ *
+ * The parameter and behaviour are similar to
+ * :type:`nghttp2_on_header_callback2`.  The difference is that this
+ * callback is only invoked when a invalid header name/value pair is
+ * received which is silently ignored if this callback is not set.
+ * Only invalid regular header field are passed to this callback.  In
+ * other words, invalid pseudo header field is not passed to this
+ * callback.  Also header fields which includes upper cased latter are
+ * also treated as error without passing them to this callback.
+ *
+ * This callback is only considered if HTTP messaging validation is
+ * turned on (which is on by default, see
+ * `nghttp2_option_set_no_http_messaging()`).
+ *
+ * With this callback, application inspects the incoming invalid
+ * field, and it also can reset stream from this callback by returning
+ * :enum:`NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE`, or using
+ * `nghttp2_submit_rst_stream()` directly with the error code of
+ * choice.
+ */
+typedef int (*nghttp2_on_invalid_header_callback2)(
+    nghttp2_session *session, const nghttp2_frame *frame, nghttp2_rcbuf *name,
+    nghttp2_rcbuf *value, uint8_t flags, void *user_data);
+
+/**
+ * @functypedef
+ *
  * Callback function invoked when the library asks application how
  * many padding bytes are required for the transmission of the
  * |frame|.  The application must choose the total length of payload
@@ -2078,6 +2137,29 @@ NGHTTP2_EXTERN void nghttp2_session_callbacks_set_on_header_callback(
 NGHTTP2_EXTERN void nghttp2_session_callbacks_set_on_header_callback2(
     nghttp2_session_callbacks *cbs,
     nghttp2_on_header_callback2 on_header_callback2);
+
+/**
+ * @function
+ *
+ * Sets callback function invoked when a invalid header name/value
+ * pair is received.  If both
+ * `nghttp2_session_callbacks_set_on_invalid_header_callback()` and
+ * `nghttp2_session_callbacks_set_on_invalid_header_callback2()` are
+ * used to set callbacks, the latter takes the precedence.
+ */
+NGHTTP2_EXTERN void nghttp2_session_callbacks_set_on_invalid_header_callback(
+    nghttp2_session_callbacks *cbs,
+    nghttp2_on_invalid_header_callback on_invalid_header_callback);
+
+/**
+ * @function
+ *
+ * Sets callback function invoked when a invalid header name/value
+ * pair is received.
+ */
+NGHTTP2_EXTERN void nghttp2_session_callbacks_set_on_invalid_header_callback2(
+    nghttp2_session_callbacks *cbs,
+    nghttp2_on_invalid_header_callback2 on_invalid_header_callback2);
 
 /**
  * @function
@@ -2738,12 +2820,13 @@ nghttp2_session_mem_send(nghttp2_session *session, const uint8_t **data_ptr);
  *       taken.  If the frame is either HEADERS or PUSH_PROMISE,
  *       :type:`nghttp2_on_begin_headers_callback` is invoked.  Then
  *       :type:`nghttp2_on_header_callback` is invoked for each header
- *       name/value pair.  After all name/value pairs are emitted
- *       successfully, :type:`nghttp2_on_frame_recv_callback` is
- *       invoked.  For other frames,
- *       :type:`nghttp2_on_frame_recv_callback` is invoked.  If the
- *       reception of the frame triggers the closure of the stream,
- *       :type:`nghttp2_on_stream_close_callback` is invoked.
+ *       name/value pair.  For invalid header field,
+ *       :type:`nghttp2_on_invalid_header_callback` is called.  After
+ *       all name/value pairs are emitted successfully,
+ *       :type:`nghttp2_on_frame_recv_callback` is invoked.  For other
+ *       frames, :type:`nghttp2_on_frame_recv_callback` is invoked.
+ *       If the reception of the frame triggers the closure of the
+ *       stream, :type:`nghttp2_on_stream_close_callback` is invoked.
  *
  *    3. If the received frame is unpacked but is interpreted as
  *       invalid, :type:`nghttp2_on_invalid_frame_recv_callback` is

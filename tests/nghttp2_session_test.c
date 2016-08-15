@@ -70,6 +70,7 @@ typedef struct {
   const nghttp2_frame *frame;
   size_t fixed_sendlen;
   int header_cb_called;
+  int invalid_header_cb_called;
   int begin_headers_cb_called;
   nghttp2_nv nv;
   size_t data_chunk_len;
@@ -392,6 +393,44 @@ static int temporal_failure_on_header_callback(
     void *user_data) {
   on_header_callback(session, frame, name, namelen, value, valuelen, flags,
                      user_data);
+  return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
+}
+
+static int on_invalid_header_callback(nghttp2_session *session _U_,
+                                      const nghttp2_frame *frame,
+                                      const uint8_t *name, size_t namelen,
+                                      const uint8_t *value, size_t valuelen,
+                                      uint8_t flags _U_, void *user_data) {
+  my_user_data *ud = (my_user_data *)user_data;
+  ++ud->invalid_header_cb_called;
+  ud->nv.name = (uint8_t *)name;
+  ud->nv.namelen = namelen;
+  ud->nv.value = (uint8_t *)value;
+  ud->nv.valuelen = valuelen;
+
+  ud->frame = frame;
+  return 0;
+}
+
+static int pause_on_invalid_header_callback(nghttp2_session *session,
+                                            const nghttp2_frame *frame,
+                                            const uint8_t *name, size_t namelen,
+                                            const uint8_t *value,
+                                            size_t valuelen, uint8_t flags,
+                                            void *user_data) {
+  on_invalid_header_callback(session, frame, name, namelen, value, valuelen,
+                             flags, user_data);
+  return NGHTTP2_ERR_PAUSE;
+}
+
+static int reset_on_invalid_header_callback(nghttp2_session *session,
+                                            const nghttp2_frame *frame,
+                                            const uint8_t *name, size_t namelen,
+                                            const uint8_t *value,
+                                            size_t valuelen, uint8_t flags,
+                                            void *user_data) {
+  on_invalid_header_callback(session, frame, name, namelen, value, valuelen,
+                             flags, user_data);
   return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
 }
 
@@ -10613,6 +10652,7 @@ void test_nghttp2_http_ignore_regular_header(void) {
       MAKE_NV(":path", "/"), MAKE_NV(":method", "GET"), MAKE_NV("bar", "buzz")};
   size_t proclen;
   size_t i;
+  nghttp2_outbound_item *item;
 
   mem = nghttp2_mem_default();
   frame_pack_bufs_init(&bufs);
@@ -10629,6 +10669,8 @@ void test_nghttp2_http_ignore_regular_header(void) {
                     bad_reqnv, ARRLEN(bad_reqnv), mem);
 
   CU_ASSERT_FATAL(0 == rv);
+
+  nghttp2_hd_deflate_free(&deflater);
 
   proclen = 0;
 
@@ -10650,7 +10692,61 @@ void test_nghttp2_http_ignore_regular_header(void) {
 
   CU_ASSERT(nghttp2_buf_len(&bufs.head->buf) == proclen);
 
-  nghttp2_hd_deflate_free(&deflater);
+  nghttp2_session_del(session);
+
+  /* use on_invalid_header_callback */
+  callbacks.on_invalid_header_callback = pause_on_invalid_header_callback;
+
+  nghttp2_session_server_new(&session, &callbacks, &ud);
+
+  proclen = 0;
+
+  ud.invalid_header_cb_called = 0;
+
+  for (i = 0; i < 4; ++i) {
+    rv = nghttp2_session_mem_recv(session, bufs.head->buf.pos + proclen,
+                                  nghttp2_buf_len(&bufs.head->buf) - proclen);
+    CU_ASSERT_FATAL(rv > 0);
+    proclen += (size_t)rv;
+    CU_ASSERT(nghttp2_nv_equal(&bad_ansnv[i], &ud.nv));
+  }
+
+  CU_ASSERT(0 == ud.invalid_header_cb_called);
+
+  rv = nghttp2_session_mem_recv(session, bufs.head->buf.pos + proclen,
+                                nghttp2_buf_len(&bufs.head->buf) - proclen);
+
+  CU_ASSERT_FATAL(rv > 0);
+  CU_ASSERT(1 == ud.invalid_header_cb_called);
+  CU_ASSERT(nghttp2_nv_equal(&bad_reqnv[4], &ud.nv));
+
+  proclen += (size_t)rv;
+
+  rv = nghttp2_session_mem_recv(session, bufs.head->buf.pos + proclen,
+                                nghttp2_buf_len(&bufs.head->buf) - proclen);
+
+  CU_ASSERT(rv > 0);
+  CU_ASSERT(nghttp2_nv_equal(&bad_ansnv[4], &ud.nv));
+
+  nghttp2_session_del(session);
+
+  /* make sure that we can reset stream from
+     on_invalid_header_callback */
+  callbacks.on_header_callback = on_header_callback;
+  callbacks.on_invalid_header_callback = reset_on_invalid_header_callback;
+
+  nghttp2_session_server_new(&session, &callbacks, &ud);
+
+  rv = nghttp2_session_mem_recv(session, bufs.head->buf.pos,
+                                nghttp2_buf_len(&bufs.head->buf));
+
+  CU_ASSERT(rv == (ssize_t)nghttp2_buf_len(&bufs.head->buf));
+
+  item = nghttp2_session_get_next_ob_item(session);
+
+  CU_ASSERT(NGHTTP2_RST_STREAM == item->frame.hd.type);
+  CU_ASSERT(1 == item->frame.hd.stream_id);
+
   nghttp2_session_del(session);
   nghttp2_bufs_free(&bufs);
 }
