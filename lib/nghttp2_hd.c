@@ -1503,9 +1503,10 @@ ssize_t nghttp2_hd_deflate_hd(nghttp2_hd_deflater *deflater, uint8_t *buf,
   return (ssize_t)buflen;
 }
 
-ssize_t nghttp2_hd_deflate_hd_vec(nghttp2_hd_deflater *deflater, uint8_t **bufsin,
-                              size_t inlen, size_t buflen, size_t *buflens,
-                              const nghttp2_nv *nv, size_t nvlen) {
+ssize_t nghttp2_hd_deflate_hd_vec(nghttp2_hd_deflater *deflater,
+                                  uint8_t *const *bufsin, size_t inlen,
+                                  size_t buflen, size_t *const buflens,
+                                  const nghttp2_nv *nv, size_t nvlen) {
   nghttp2_bufs bufs;
   int rv;
   nghttp2_mem *mem;
@@ -1711,16 +1712,14 @@ static ssize_t hd_inflate_read(nghttp2_hd_inflater *inflater, nghttp2_buf *buf,
 }
 
 /*
- * Finalize indexed header representation reception. header is always
- * emitted, |*nv_out| is filled with that value and 0 is returned.
+ * Finalize indexed header representation reception.  The referenced
+ * header is always emitted, and |*nv_out| is filled with that value.
  */
-static int hd_inflate_commit_indexed(nghttp2_hd_inflater *inflater,
-                                     nghttp2_hd_nv *nv_out) {
+static void hd_inflate_commit_indexed(nghttp2_hd_inflater *inflater,
+                                      nghttp2_hd_nv *nv_out) {
   nghttp2_hd_nv nv = nghttp2_hd_table_get(&inflater->ctx, inflater->index);
 
   emit_header(nv_out, &nv);
-
-  return 0;
 }
 
 /*

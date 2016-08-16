@@ -244,11 +244,11 @@ nghttp2_priority_spec resolve_dep(int res_type) {
   case REQ_CSS:
   case REQ_JS:
     anchor_id = anchors[ANCHOR_LEADERS].stream_id;
-    weight = 2;
+    weight = 32;
     break;
   case REQ_UNBLOCK_JS:
     anchor_id = anchors[ANCHOR_UNBLOCKED].stream_id;
-    weight = 2;
+    weight = 32;
     break;
   case REQ_IMG:
     anchor_id = anchors[ANCHOR_FOLLOWERS].stream_id;
@@ -256,7 +256,7 @@ nghttp2_priority_spec resolve_dep(int res_type) {
     break;
   default:
     anchor_id = anchors[ANCHOR_FOLLOWERS].stream_id;
-    weight = 2;
+    weight = 32;
   }
 
   nghttp2_priority_spec_init(&pri_spec, anchor_id, weight, 0);

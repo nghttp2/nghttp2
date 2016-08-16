@@ -3345,6 +3345,31 @@ static int session_call_on_header(nghttp2_session *session,
   return 0;
 }
 
+static int session_call_on_invalid_header(nghttp2_session *session,
+                                          const nghttp2_frame *frame,
+                                          const nghttp2_hd_nv *nv) {
+  int rv;
+  if (session->callbacks.on_invalid_header_callback2) {
+    rv = session->callbacks.on_invalid_header_callback2(
+        session, frame, nv->name, nv->value, nv->flags, session->user_data);
+  } else if (session->callbacks.on_invalid_header_callback) {
+    rv = session->callbacks.on_invalid_header_callback(
+        session, frame, nv->name->base, nv->name->len, nv->value->base,
+        nv->value->len, nv->flags, session->user_data);
+  } else {
+    return 0;
+  }
+
+  if (rv == NGHTTP2_ERR_PAUSE || rv == NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE) {
+    return rv;
+  }
+  if (rv != 0) {
+    return NGHTTP2_ERR_CALLBACK_FAILURE;
+  }
+
+  return 0;
+}
+
 static int
 session_call_on_extension_chunk_recv_callback(nghttp2_session *session,
                                               const uint8_t *data, size_t len) {
@@ -3608,6 +3633,14 @@ static int inflate_header_block(nghttp2_session *session, nghttp2_frame *frame,
         if (rv == NGHTTP2_ERR_IGN_HTTP_HEADER) {
           /* Don't overwrite rv here */
           int rv2;
+
+          rv2 = session_call_on_invalid_header(session, frame, &nv);
+          /* This handles NGHTTP2_ERR_PAUSE and
+             NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE as well */
+          if (rv2 != 0) {
+            return rv2;
+          }
+
           /* header is ignored */
           DEBUGF(fprintf(
               stderr, "recv: HTTP ignored: type=%u, id=%d, header %.*s: %.*s\n",

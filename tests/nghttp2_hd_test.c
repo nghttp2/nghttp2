@@ -1265,6 +1265,57 @@ void test_nghttp2_hd_public_api(void) {
   nghttp2_hd_deflate_del(deflater);
 }
 
+void test_nghttp2_hd_deflate_hd_vec(void) {
+  nghttp2_hd_deflater *deflater;
+  nghttp2_hd_inflater *inflater;
+  nghttp2_nv nva[] = {
+      MAKE_NV(":method", "PUT"), MAKE_NV(":scheme", "https"),
+      MAKE_NV(":authority", "localhost:3000"),
+      MAKE_NV(":path", "/usr/foo/alpha/bravo"),
+      MAKE_NV("content-type", "image/png"),
+      MAKE_NV("content-length", "1000000007"),
+  };
+  uint8_t buf[4096];
+  ssize_t blocklen;
+  nghttp2_mem *mem;
+  uint8_t *bufsin[2];
+  size_t buflens[2] = {0};
+  size_t buflen;
+  nghttp2_bufs bufs;
+  nva_out out;
+
+  mem = nghttp2_mem_default();
+
+  nva_out_init(&out);
+
+  nghttp2_hd_deflate_new(&deflater, 4096);
+  nghttp2_hd_inflate_new(&inflater);
+
+  buflen = nghttp2_hd_deflate_bound(deflater, nva, ARRLEN(nva));
+
+  bufsin[0] = &buf[0];
+  bufsin[1] = &buf[buflen / 2];
+
+  blocklen = nghttp2_hd_deflate_hd_vec(deflater, bufsin, ARRLEN(bufsin),
+                                       buflen / 2, buflens, nva, ARRLEN(nva));
+
+  CU_ASSERT(blocklen > 0);
+
+  nghttp2_bufs_wrap_init(&bufs, buf, (size_t)blocklen, mem);
+  bufs.head->buf.last += blocklen;
+
+  CU_ASSERT(blocklen == inflate_hd(inflater, &out, &bufs, 0, mem));
+
+  CU_ASSERT(ARRLEN(nva) == out.nvlen);
+  assert_nv_equal(nva, out.nva, ARRLEN(nva), mem);
+
+  nghttp2_bufs_wrap_free(&bufs);
+
+  nghttp2_hd_inflate_del(inflater);
+  nghttp2_hd_deflate_del(deflater);
+  nva_out_reset(&out, mem);
+}
+
 static size_t encode_length(uint8_t *buf, uint64_t n, size_t prefix) {
   size_t k = (size_t)((1 << prefix) - 1);
   size_t len = 0;

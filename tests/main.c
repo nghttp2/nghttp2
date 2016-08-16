@@ -383,6 +383,8 @@ int main(int argc _U_, char *argv[] _U_) {
       !CU_add_test(pSuite, "hd_no_index", test_nghttp2_hd_no_index) ||
       !CU_add_test(pSuite, "hd_deflate_bound", test_nghttp2_hd_deflate_bound) ||
       !CU_add_test(pSuite, "hd_public_api", test_nghttp2_hd_public_api) ||
+      !CU_add_test(pSuite, "hd_deflate_hd_vec",
+                   test_nghttp2_hd_deflate_hd_vec) ||
       !CU_add_test(pSuite, "hd_decode_length", test_nghttp2_hd_decode_length) ||
       !CU_add_test(pSuite, "hd_huff_encode", test_nghttp2_hd_huff_encode) ||
       !CU_add_test(pSuite, "adjust_local_window_size",

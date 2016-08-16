@@ -87,6 +87,8 @@ APIDOCS= \
 	nghttp2_session_callbacks_set_on_header_callback.rst \
 	nghttp2_session_callbacks_set_on_header_callback2.rst \
 	nghttp2_session_callbacks_set_on_invalid_frame_recv_callback.rst \
+	nghttp2_session_callbacks_set_on_invalid_header_callback.rst \
+	nghttp2_session_callbacks_set_on_invalid_header_callback2.rst \
 	nghttp2_session_callbacks_set_on_stream_close_callback.rst \
 	nghttp2_session_callbacks_set_pack_extension_callback.rst \
 	nghttp2_session_callbacks_set_recv_callback.rst \
