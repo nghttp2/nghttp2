@@ -4602,6 +4602,39 @@ nghttp2_hd_deflate_hd(nghttp2_hd_deflater *deflater, uint8_t *buf,
 /**
  * @function
  *
+ * Deflates the |nva|, which has the |nvlen| name/value pairs, into
+ * the |inlen| size of buf vector |bufsin|, each buf has length |buflen|.
+ * |buflens| is a |inlen| size of array, which will be used to store the writen
+ * size of each chunk. If one chunk is filled up, next chunk will be used.
+ * If |bufsin| is not large enough to store the deflated header block,
+ * this function fails with :enum:`NGHTTP2_ERR_INSUFF_BUFSIZE`.  The
+ * caller should use `nghttp2_hd_deflate_bound()` to know the upper
+ * bound of buffer size required to deflate given header name/value
+ * pairs.
+ *
+ * Once this function fails, subsequent call of this function always
+ * returns :enum:`NGHTTP2_ERR_HEADER_COMP`.
+ *
+ * After this function returns, it is safe to delete the |nva|.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * :enum:`NGHTTP2_ERR_NOMEM`
+ *     Out of memory.
+ * :enum:`NGHTTP2_ERR_HEADER_COMP`
+ *     Deflation process has failed.
+ * :enum:`NGHTTP2_ERR_INSUFF_BUFSIZE`
+ *     The provided |buflen| size is too small to hold the output.
+ */
+NGHTTP2_EXTERN ssize_t
+nghttp2_hd_deflate_hd_vec(nghttp2_hd_deflater *deflater, uint8_t *const *bufsin,
+                          size_t inlen, size_t buflen, size_t *const buflens,
+                          const nghttp2_nv *nva, size_t nvlen);
+
+/**
+ * @function
+ *
  * Returns an upper bound on the compressed size after deflation of
  * |nva| of length |nvlen|.
  */
