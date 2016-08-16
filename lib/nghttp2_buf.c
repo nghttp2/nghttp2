@@ -223,23 +223,26 @@ int nghttp2_bufs_wrap_init(nghttp2_bufs *bufs, uint8_t *begin, size_t len,
   return 0;
 }
 
-int nghttp2_bufs_wrap_init2(nghttp2_bufs *bufs, uint8_t *const *bufs_in,
-                            size_t in_len, size_t buf_len, nghttp2_mem *mem) {
+int nghttp2_bufs_wrap_init2(nghttp2_bufs *bufs, const nghttp2_vec *vec,
+                            size_t veclen, size_t chunklen, nghttp2_mem *mem) {
   size_t i = 0;
   nghttp2_buf_chain *cur_chain;
   nghttp2_buf_chain *head_chain;
   nghttp2_buf_chain **dst_chain = &head_chain;
 
-  head_chain = nghttp2_mem_malloc(mem, sizeof(nghttp2_buf_chain) * in_len);
+  if (veclen == 0 || chunklen == 0) {
+    return nghttp2_bufs_wrap_init(bufs, NULL, 0, mem);
+  }
+
+  head_chain = nghttp2_mem_malloc(mem, sizeof(nghttp2_buf_chain) * veclen);
   if (head_chain == NULL) {
     return NGHTTP2_ERR_NOMEM;
   }
 
-  for (i = 0; i < in_len; ++i) {
-    uint8_t *begin = bufs_in[i];
+  for (i = 0; i < veclen; ++i) {
     cur_chain = &head_chain[i];
     cur_chain->next = NULL;
-    nghttp2_buf_wrap_init(&cur_chain->buf, begin, buf_len);
+    nghttp2_buf_wrap_init(&cur_chain->buf, vec[i].base, vec[i].len);
 
     *dst_chain = cur_chain;
     dst_chain = &cur_chain->next;
@@ -251,10 +254,10 @@ int nghttp2_bufs_wrap_init2(nghttp2_bufs *bufs, uint8_t *const *bufs_in,
   bufs->head = head_chain;
   bufs->cur = bufs->head;
 
-  bufs->chunk_length = buf_len;
-  bufs->chunk_used = in_len;
-  bufs->max_chunk = in_len;
-  bufs->chunk_keep = in_len;
+  bufs->chunk_length = chunklen;
+  bufs->chunk_used = veclen;
+  bufs->max_chunk = veclen;
+  bufs->chunk_keep = veclen;
 
   return 0;
 }
@@ -266,7 +269,6 @@ void nghttp2_bufs_wrap_free(nghttp2_bufs *bufs) {
 
   if (bufs->head) {
     nghttp2_mem_free(bufs->mem, bufs->head);
-    bufs->head = NULL;
   }
 }
 
@@ -292,20 +294,6 @@ size_t nghttp2_bufs_len(nghttp2_bufs *bufs) {
   }
 
   return len;
-}
-
-size_t nghttp2_bufs_len_vec(nghttp2_bufs *bufs, size_t *const buflens) {
-  nghttp2_buf_chain *ci;
-  size_t len, total_len = 0;
-  int i = 0;
-
-  for (ci = bufs->head; ci; ci = ci->next) {
-    len = nghttp2_buf_len(&ci->buf);
-    total_len += len;
-    buflens[i++] = len;
-  }
-
-  return total_len;
 }
 
 static size_t bufs_avail(nghttp2_bufs *bufs) {

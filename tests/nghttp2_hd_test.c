@@ -1278,8 +1278,7 @@ void test_nghttp2_hd_deflate_hd_vec(void) {
   uint8_t buf[4096];
   ssize_t blocklen;
   nghttp2_mem *mem;
-  uint8_t *bufsin[2];
-  size_t buflens[2] = {0};
+  nghttp2_vec vec[2];
   size_t buflen;
   nghttp2_bufs bufs;
   nva_out out;
@@ -1293,11 +1292,13 @@ void test_nghttp2_hd_deflate_hd_vec(void) {
 
   buflen = nghttp2_hd_deflate_bound(deflater, nva, ARRLEN(nva));
 
-  bufsin[0] = &buf[0];
-  bufsin[1] = &buf[buflen / 2];
+  vec[0].base = &buf[0];
+  vec[0].len = buflen / 2;
+  vec[1].base = &buf[buflen / 2];
+  vec[1].len = buflen / 2;
 
-  blocklen = nghttp2_hd_deflate_hd_vec(deflater, bufsin, ARRLEN(bufsin),
-                                       buflen / 2, buflens, nva, ARRLEN(nva));
+  blocklen =
+      nghttp2_hd_deflate_hd_vec(deflater, vec, ARRLEN(vec), nva, ARRLEN(nva));
 
   CU_ASSERT(blocklen > 0);
 
@@ -1314,6 +1315,53 @@ void test_nghttp2_hd_deflate_hd_vec(void) {
   nghttp2_hd_inflate_del(inflater);
   nghttp2_hd_deflate_del(deflater);
   nva_out_reset(&out, mem);
+
+  /* check the case when veclen is 0 */
+  nghttp2_hd_deflate_new(&deflater, 4096);
+  nghttp2_hd_inflate_new(&inflater);
+
+  blocklen = nghttp2_hd_deflate_hd_vec(deflater, NULL, 0, nva, ARRLEN(nva));
+
+  CU_ASSERT(NGHTTP2_ERR_INSUFF_BUFSIZE == blocklen);
+
+  nghttp2_hd_inflate_del(inflater);
+  nghttp2_hd_deflate_del(deflater);
+
+  /* check the case when chunk length is 0 */
+  vec[0].base = NULL;
+  vec[0].len = 0;
+  vec[1].base = NULL;
+  vec[1].len = 0;
+
+  nghttp2_hd_deflate_new(&deflater, 4096);
+  nghttp2_hd_inflate_new(&inflater);
+
+  blocklen =
+      nghttp2_hd_deflate_hd_vec(deflater, vec, ARRLEN(vec), nva, ARRLEN(nva));
+
+  CU_ASSERT(NGHTTP2_ERR_INSUFF_BUFSIZE == blocklen);
+
+  nghttp2_hd_inflate_del(inflater);
+  nghttp2_hd_deflate_del(deflater);
+
+  /* check the case where chunk size differs in each chunk */
+  nghttp2_hd_deflate_new(&deflater, 4096);
+  nghttp2_hd_inflate_new(&inflater);
+
+  buflen = nghttp2_hd_deflate_bound(deflater, nva, ARRLEN(nva));
+
+  vec[0].base = &buf[0];
+  vec[0].len = buflen / 2;
+  vec[1].base = &buf[buflen / 2];
+  vec[1].len = (buflen / 2) - 1;
+
+  blocklen =
+      nghttp2_hd_deflate_hd_vec(deflater, vec, ARRLEN(vec), nva, ARRLEN(nva));
+
+  CU_ASSERT(NGHTTP2_ERR_INVALID_ARGUMENT == blocklen);
+
+  nghttp2_hd_inflate_del(inflater);
+  nghttp2_hd_deflate_del(deflater);
 }
 
 static size_t encode_length(uint8_t *buf, uint64_t n, size_t prefix) {
