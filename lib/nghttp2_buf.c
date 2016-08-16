@@ -223,8 +223,8 @@ int nghttp2_bufs_wrap_init(nghttp2_bufs *bufs, uint8_t *begin, size_t len,
   return 0;
 }
 
-int nghttp2_bufs_wrap_init2(nghttp2_bufs *bufs, uint8_t **bufs_in, size_t in_len,
-                          size_t buf_len, nghttp2_mem *mem) {
+int nghttp2_bufs_wrap_init2(nghttp2_bufs *bufs, uint8_t *const *bufs_in,
+                            size_t in_len, size_t buf_len, nghttp2_mem *mem) {
   size_t i = 0;
   nghttp2_buf_chain *cur_chain;
   nghttp2_buf_chain *pre_chain = NULL;
@@ -305,7 +305,7 @@ size_t nghttp2_bufs_len(nghttp2_bufs *bufs) {
   return len;
 }
 
-size_t nghttp2_bufs_len_vec(nghttp2_bufs *bufs, size_t *buflens) {
+size_t nghttp2_bufs_len_vec(nghttp2_bufs *bufs, size_t *const buflens) {
   nghttp2_buf_chain *ci;
   size_t len, total_len = 0;
   int i = 0;
