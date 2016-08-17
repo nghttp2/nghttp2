@@ -296,12 +296,6 @@ size_t nghttp2_bufs_len(nghttp2_bufs *bufs) {
   return len;
 }
 
-static size_t bufs_avail(nghttp2_bufs *bufs) {
-  return nghttp2_buf_avail(&bufs->cur->buf) +
-         (bufs->chunk_length - bufs->offset) *
-             (bufs->max_chunk - bufs->chunk_used);
-}
-
 static int bufs_alloc_chain(nghttp2_bufs *bufs) {
   int rv;
   nghttp2_buf_chain *chain;
@@ -340,10 +334,6 @@ int nghttp2_bufs_add(nghttp2_bufs *bufs, const void *data, size_t len) {
   size_t nwrite;
   nghttp2_buf *buf;
   const uint8_t *p;
-
-  if (bufs_avail(bufs) < len) {
-    return NGHTTP2_ERR_BUFFER_ERROR;
-  }
 
   p = data;
 
