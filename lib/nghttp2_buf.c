@@ -227,22 +227,17 @@ int nghttp2_bufs_wrap_init2(nghttp2_bufs *bufs, uint8_t *const *bufs_in,
                             size_t in_len, size_t buf_len, nghttp2_mem *mem) {
   size_t i = 0;
   nghttp2_buf_chain *cur_chain;
-  nghttp2_buf_chain *head_chain = NULL;
+  nghttp2_buf_chain *head_chain;
   nghttp2_buf_chain **dst_chain = &head_chain;
+
+  head_chain = nghttp2_mem_malloc(mem, sizeof(nghttp2_buf_chain) * in_len);
+  if (head_chain == NULL) {
+    return NGHTTP2_ERR_NOMEM;
+  }
 
   for (i = 0; i < in_len; ++i) {
     uint8_t *begin = bufs_in[i];
-
-    cur_chain = nghttp2_mem_malloc(mem, sizeof(nghttp2_buf_chain));
-    if (cur_chain == NULL) {
-      while (head_chain) {
-        nghttp2_buf_chain *tmp_chain = head_chain->next;
-        nghttp2_mem_free(mem, head_chain);
-        head_chain = tmp_chain;
-      }
-      return NGHTTP2_ERR_NOMEM;
-    }
-
+    cur_chain = &head_chain[i];
     cur_chain->next = NULL;
     nghttp2_buf_wrap_init(&cur_chain->buf, begin, buf_len);
 
@@ -269,10 +264,9 @@ void nghttp2_bufs_wrap_free(nghttp2_bufs *bufs) {
     return;
   }
 
-  while (bufs->head) {
-    nghttp2_buf_chain *tmp_chain = bufs->head->next;
+  if (bufs->head) {
     nghttp2_mem_free(bufs->mem, bufs->head);
-    bufs->head = tmp_chain;
+    bufs->head = NULL;
   }
 }
 
