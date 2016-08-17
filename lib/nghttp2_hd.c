@@ -1504,18 +1504,30 @@ ssize_t nghttp2_hd_deflate_hd(nghttp2_hd_deflater *deflater, uint8_t *buf,
 }
 
 ssize_t nghttp2_hd_deflate_hd_vec(nghttp2_hd_deflater *deflater,
-                                  uint8_t *const *bufsin, size_t inlen,
-                                  size_t buflen, size_t *const buflens,
+                                  const nghttp2_vec *vec, size_t veclen,
                                   const nghttp2_nv *nv, size_t nvlen) {
   nghttp2_bufs bufs;
   int rv;
   nghttp2_mem *mem;
+  size_t i;
+  size_t buflen;
+  size_t chunklen;
 
-  memset(buflens, 0, sizeof(size_t) * inlen);
+  if (veclen == 0) {
+    chunklen = 0;
+  } else {
+    for (i = 1; i < veclen; ++i) {
+      if (vec[0].len != vec[i].len) {
+        return NGHTTP2_ERR_INVALID_ARGUMENT;
+      }
+    }
+
+    chunklen = vec[0].len;
+  }
 
   mem = deflater->ctx.mem;
 
-  rv = nghttp2_bufs_wrap_init2(&bufs, bufsin, inlen, buflen, mem);
+  rv = nghttp2_bufs_wrap_init2(&bufs, vec, veclen, chunklen, mem);
 
   if (rv != 0) {
     return rv;
@@ -1523,7 +1535,7 @@ ssize_t nghttp2_hd_deflate_hd_vec(nghttp2_hd_deflater *deflater,
 
   rv = nghttp2_hd_deflate_hd_bufs(deflater, &bufs, nv, nvlen);
 
-  buflen = nghttp2_bufs_len_vec(&bufs, buflens);
+  buflen = nghttp2_bufs_len(&bufs);
 
   nghttp2_bufs_wrap_free(&bufs);
 

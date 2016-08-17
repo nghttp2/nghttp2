@@ -211,11 +211,11 @@ int nghttp2_bufs_wrap_init(nghttp2_bufs *bufs, uint8_t *begin, size_t len,
                            nghttp2_mem *mem);
 
 /*
- * Initializes |bufs| using supplied |in_len| size of buf vector |bufs_in|,
- * each buf has length |buf_len|.
- * The buffer size is fixed and no extra chunk buffer is allocated.
- * In other words, max_chunk = chunk_keep = |in_len|.  To free the resource allocated
- * for |bufs|, use nghttp2_bufs_wrap_free().
+ * Initializes |bufs| using supplied |veclen| size of buf vector
+ * |vec|, assuming that each buffer has length |chunklen|.  The buffer
+ * size is fixed and no extra chunk buffer is allocated.  In other
+ * words, max_chunk = chunk_keep = |in_len|.  To free the resource
+ * allocated for |bufs|, use nghttp2_bufs_wrap_free().
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
@@ -223,8 +223,8 @@ int nghttp2_bufs_wrap_init(nghttp2_bufs *bufs, uint8_t *begin, size_t len,
  * NGHTTP2_ERR_NOMEM
  *     Out of memory.
  */
-int nghttp2_bufs_wrap_init2(nghttp2_bufs *bufs, uint8_t *const *bufs_in,
-                            size_t in_len, size_t buf_len, nghttp2_mem *mem);
+int nghttp2_bufs_wrap_init2(nghttp2_bufs *bufs, const nghttp2_vec *vec,
+                            size_t veclen, size_t chunklen, nghttp2_mem *mem);
 
 /*
  * Frees any related resource to the |bufs|.  This function does not
@@ -400,10 +400,5 @@ int nghttp2_bufs_next_present(nghttp2_bufs *bufs);
  * Returns the total buffer length of |bufs|.
  */
 size_t nghttp2_bufs_len(nghttp2_bufs *bufs);
-
-/*
- * Returns the total buffer length of |bufs|, and each buffer length in |buflens|.
- */
-size_t nghttp2_bufs_len_vec(nghttp2_bufs *bufs, size_t *const buflens);
 
 #endif /* NGHTTP2_BUF_H */
