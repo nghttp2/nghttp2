@@ -224,13 +224,13 @@ int nghttp2_bufs_wrap_init(nghttp2_bufs *bufs, uint8_t *begin, size_t len,
 }
 
 int nghttp2_bufs_wrap_init2(nghttp2_bufs *bufs, const nghttp2_vec *vec,
-                            size_t veclen, size_t chunklen, nghttp2_mem *mem) {
+                            size_t veclen, nghttp2_mem *mem) {
   size_t i = 0;
   nghttp2_buf_chain *cur_chain;
   nghttp2_buf_chain *head_chain;
   nghttp2_buf_chain **dst_chain = &head_chain;
 
-  if (veclen == 0 || chunklen == 0) {
+  if (veclen == 0) {
     return nghttp2_bufs_wrap_init(bufs, NULL, 0, mem);
   }
 
@@ -254,7 +254,8 @@ int nghttp2_bufs_wrap_init2(nghttp2_bufs *bufs, const nghttp2_vec *vec,
   bufs->head = head_chain;
   bufs->cur = bufs->head;
 
-  bufs->chunk_length = chunklen;
+  /* We don't use chunk_length since no allocation is expected. */
+  bufs->chunk_length = 0;
   bufs->chunk_used = veclen;
   bufs->max_chunk = veclen;
   bufs->chunk_keep = veclen;

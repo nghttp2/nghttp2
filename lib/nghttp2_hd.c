@@ -1509,25 +1509,11 @@ ssize_t nghttp2_hd_deflate_hd_vec(nghttp2_hd_deflater *deflater,
   nghttp2_bufs bufs;
   int rv;
   nghttp2_mem *mem;
-  size_t i;
   size_t buflen;
-  size_t chunklen;
-
-  if (veclen == 0) {
-    chunklen = 0;
-  } else {
-    for (i = 1; i < veclen; ++i) {
-      if (vec[0].len != vec[i].len) {
-        return NGHTTP2_ERR_INVALID_ARGUMENT;
-      }
-    }
-
-    chunklen = vec[0].len;
-  }
 
   mem = deflater->ctx.mem;
 
-  rv = nghttp2_bufs_wrap_init2(&bufs, vec, veclen, chunklen, mem);
+  rv = nghttp2_bufs_wrap_init2(&bufs, vec, veclen, mem);
 
   if (rv != 0) {
     return rv;

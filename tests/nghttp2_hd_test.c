@@ -1352,14 +1352,24 @@ void test_nghttp2_hd_deflate_hd_vec(void) {
   vec[0].base = &buf[0];
   vec[0].len = buflen / 2;
   vec[1].base = &buf[buflen / 2];
-  vec[1].len = (buflen / 2) - 1;
+  vec[1].len = (buflen / 2) + 1;
 
   blocklen = nghttp2_hd_deflate_hd_vec(deflater, vec, 2, nva, ARRLEN(nva));
 
-  CU_ASSERT(NGHTTP2_ERR_INVALID_ARGUMENT == blocklen);
+  CU_ASSERT(blocklen > 0);
+
+  nghttp2_bufs_wrap_init(&bufs, buf, (size_t)blocklen, mem);
+  bufs.head->buf.last += blocklen;
+
+  CU_ASSERT(blocklen == inflate_hd(inflater, &out, &bufs, 0, mem));
+  CU_ASSERT(ARRLEN(nva) == out.nvlen);
+  assert_nv_equal(nva, out.nva, ARRLEN(nva), mem);
+
+  nghttp2_bufs_wrap_free(&bufs);
 
   nghttp2_hd_inflate_del(inflater);
   nghttp2_hd_deflate_del(deflater);
+  nva_out_reset(&out, mem);
 
   /* check the case where chunk size is 1 */
   nghttp2_hd_deflate_new(&deflater, 4096);

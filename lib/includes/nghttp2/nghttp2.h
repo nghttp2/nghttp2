@@ -4604,14 +4604,12 @@ nghttp2_hd_deflate_hd(nghttp2_hd_deflater *deflater, uint8_t *buf,
  *
  * Deflates the |nva|, which has the |nvlen| name/value pairs, into
  * the |veclen| size of buf vector |vec|.  The each size of buffer
- * must be set in len field of :type:`nghttp2_vec`, and this function
- * assumes all buffer size is equal.  The application is responsible
- * to make sure that this assumption holds.  If one chunk is filled
- * up, next chunk will be used.  If |vec| is not large enough to store
- * the deflated header block, this function fails with
- * :enum:`NGHTTP2_ERR_INSUFF_BUFSIZE`.  The caller should use
- * `nghttp2_hd_deflate_bound()` to know the upper bound of buffer size
- * required to deflate given header name/value pairs.
+ * must be set in len field of :type:`nghttp2_vec`.  If and only if
+ * one chunk is filled up completely, next chunk will be used.  If
+ * |vec| is not large enough to store the deflated header block, this
+ * function fails with :enum:`NGHTTP2_ERR_INSUFF_BUFSIZE`.  The caller
+ * should use `nghttp2_hd_deflate_bound()` to know the upper bound of
+ * buffer size required to deflate given header name/value pairs.
  *
  * Once this function fails, subsequent call of this function always
  * returns :enum:`NGHTTP2_ERR_HEADER_COMP`.
@@ -4627,8 +4625,6 @@ nghttp2_hd_deflate_hd(nghttp2_hd_deflater *deflater, uint8_t *buf,
  *     Deflation process has failed.
  * :enum:`NGHTTP2_ERR_INSUFF_BUFSIZE`
  *     The provided |buflen| size is too small to hold the output.
- * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
- *     The size of each buffer in |nva| is not the same.
  */
 NGHTTP2_EXTERN ssize_t
 nghttp2_hd_deflate_hd_vec(nghttp2_hd_deflater *deflater, const nghttp2_vec *vec,
