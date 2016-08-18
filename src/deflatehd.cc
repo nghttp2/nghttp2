@@ -181,7 +181,9 @@ static int deflate_hd_json(json_t *obj, nghttp2_hd_deflater *deflater,
 static nghttp2_hd_deflater *init_deflater() {
   nghttp2_hd_deflater *deflater;
   nghttp2_hd_deflate_new(&deflater, config.deflate_table_size);
-  nghttp2_hd_deflate_change_table_size(deflater, config.table_size);
+  if (config.table_size != NGHTTP2_DEFAULT_HEADER_TABLE_SIZE) {
+    nghttp2_hd_deflate_change_table_size(deflater, config.table_size);
+  }
   return deflater;
 }
 
