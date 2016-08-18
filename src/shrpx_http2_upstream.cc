@@ -306,8 +306,11 @@ int Http2Upstream::on_request_headers(Downstream *downstream,
     return 0;
   }
 
-  // For HTTP/2 proxy, we request :authority.
-  if (method_token != HTTP_CONNECT && get_config()->http2_proxy && !authority) {
+  auto faddr = handler_->get_upstream_addr();
+
+  // For HTTP/2 proxy, we require :authority.
+  if (method_token != HTTP_CONNECT && get_config()->http2_proxy &&
+      !faddr->alt_mode && !authority) {
     rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
     return 0;
   }
@@ -331,7 +334,7 @@ int Http2Upstream::on_request_headers(Downstream *downstream,
     if (method_token == HTTP_OPTIONS &&
         path->value == StringRef::from_lit("*")) {
       // Server-wide OPTIONS request.  Path is empty.
-    } else if (get_config()->http2_proxy) {
+    } else if (get_config()->http2_proxy && !faddr->alt_mode) {
       req.path = path->value;
     } else {
       req.path = http2::rewrite_clean_path(downstream->get_block_allocator(),

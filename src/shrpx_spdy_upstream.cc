@@ -267,7 +267,11 @@ void on_ctrl_recv_callback(spdylay_session *session, spdylay_frame_type type,
     } else {
       req.scheme = scheme->value;
       req.authority = host->value;
-      if (get_config()->http2_proxy) {
+
+      auto handler = upstream->get_client_handler();
+      auto faddr = handler->get_upstream_addr();
+
+      if (get_config()->http2_proxy && !faddr->alt_mode) {
         req.path = path->value;
       } else if (method_token == HTTP_OPTIONS &&
                  path->value == StringRef::from_lit("*")) {

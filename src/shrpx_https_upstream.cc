@@ -202,7 +202,7 @@ int htp_hdr_valcb(http_parser *htp, const char *data, size_t len) {
 namespace {
 void rewrite_request_host_path_from_uri(BlockAllocator &balloc, Request &req,
                                         const StringRef &uri,
-                                        http_parser_url &u) {
+                                        http_parser_url &u, bool http2_proxy) {
   assert(u.field_set & (1 << UF_HOST));
 
   // As per https://tools.ietf.org/html/rfc7230#section-5.4, we
@@ -271,7 +271,7 @@ void rewrite_request_host_path_from_uri(BlockAllocator &balloc, Request &req,
     }
   }
 
-  if (get_config()->http2_proxy) {
+  if (http2_proxy) {
     req.path = path;
   } else {
     req.path = http2::rewrite_clean_path(balloc, path);
@@ -338,6 +338,7 @@ int htp_hdrs_completecb(http_parser *htp) {
 
   downstream->inspect_http1_request();
 
+  auto faddr = handler->get_upstream_addr();
   auto &balloc = downstream->get_block_allocator();
 
   if (method != HTTP_CONNECT) {
@@ -349,7 +350,7 @@ int htp_hdrs_completecb(http_parser *htp) {
     }
     // checking UF_HOST could be redundant, but just in case ...
     if (!(u.field_set & (1 << UF_SCHEMA)) || !(u.field_set & (1 << UF_HOST))) {
-      if (get_config()->http2_proxy) {
+      if (get_config()->http2_proxy && !faddr->alt_mode) {
         // Request URI should be absolute-form for client proxy mode
         return -1;
       }
@@ -372,7 +373,9 @@ int htp_hdrs_completecb(http_parser *htp) {
         req.scheme = StringRef::from_lit("http");
       }
     } else {
-      rewrite_request_host_path_from_uri(balloc, req, req.path, u);
+      rewrite_request_host_path_from_uri(balloc, req, req.path, u,
+                                         get_config()->http2_proxy &&
+                                             !faddr->alt_mode);
     }
   }
 
@@ -410,8 +413,6 @@ int htp_hdrs_completecb(http_parser *htp) {
   if (rv != 0) {
     return -1;
   }
-
-  auto faddr = handler->get_upstream_addr();
 
   if (faddr->alt_mode) {
     // Normally, we forward expect: 100-continue to backend server,
