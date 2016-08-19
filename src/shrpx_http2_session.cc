@@ -1807,10 +1807,8 @@ int Http2Session::write_noop() { return 0; }
 
 int Http2Session::connected() {
   if (!util::check_socket_connected(conn_.fd)) {
-    if (LOG_ENABLED(INFO)) {
-      SSLOG(INFO, this) << "Backend connect failed; addr="
-                        << util::to_numeric_addr(&addr_->addr);
-    }
+    SSLOG(WARN, this) << "Backend connect failed; addr="
+                      << util::to_numeric_addr(&addr_->addr);
 
     downstream_failure(addr_);
 
@@ -2212,6 +2210,9 @@ void Http2Session::on_timeout() {
     break;
   }
   case CONNECTING: {
+    SSLOG(WARN, this) << "Connect time out; addr="
+                      << util::to_numeric_addr(&addr_->addr);
+
     downstream_failure(addr_);
     break;
   }

@@ -70,12 +70,12 @@ namespace {
 void connect_timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
   auto conn = static_cast<Connection *>(w->data);
   auto dconn = static_cast<HttpDownstreamConnection *>(conn->data);
+  auto addr = dconn->get_addr();
 
-  if (LOG_ENABLED(INFO)) {
-    DCLOG(INFO, dconn) << "Connect time out";
-  }
+  DCLOG(WARN, dconn) << "Connect time out; addr="
+                     << util::to_numeric_addr(&addr->addr);
 
-  downstream_failure(dconn->get_addr());
+  downstream_failure(addr);
 
   auto downstream = dconn->get_downstream();
   auto upstream = downstream->get_upstream();
@@ -1144,10 +1144,8 @@ int HttpDownstreamConnection::connected() {
   if (!util::check_socket_connected(conn_.fd)) {
     conn_.wlimit.stopw();
 
-    if (LOG_ENABLED(INFO)) {
-      DCLOG(INFO, this) << "Backend connect failed; addr="
-                        << util::to_numeric_addr(&addr_->addr);
-    }
+    DCLOG(WARN, this) << "Backend connect failed; addr="
+                      << util::to_numeric_addr(&addr_->addr);
 
     downstream_failure(addr_);
 
