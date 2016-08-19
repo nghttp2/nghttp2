@@ -90,7 +90,10 @@ void connchk_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
 namespace {
 void settings_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
   auto http2session = static_cast<Http2Session *>(w->data);
-  SSLOG(INFO, http2session) << "SETTINGS timeout";
+
+  if (LOG_ENABLED(INFO)) {
+    SSLOG(INFO, http2session) << "SETTINGS timeout";
+  }
 
   downstream_failure(http2session->get_addr());
 
