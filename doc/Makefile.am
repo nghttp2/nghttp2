@@ -108,6 +108,7 @@ APIDOCS= \
 	nghttp2_session_get_effective_local_window_size.rst \
 	nghttp2_session_get_effective_recv_data_length.rst \
 	nghttp2_session_get_last_proc_stream_id.rst \
+	nghttp2_session_get_local_window_size.rst \
 	nghttp2_session_get_next_stream_id.rst \
 	nghttp2_session_get_outbound_queue_size.rst \
 	nghttp2_session_get_remote_settings.rst \
@@ -116,6 +117,7 @@ APIDOCS= \
 	nghttp2_session_get_stream_effective_local_window_size.rst \
 	nghttp2_session_get_stream_effective_recv_data_length.rst \
 	nghttp2_session_get_stream_local_close.rst \
+	nghttp2_session_get_stream_local_window_size.rst \
 	nghttp2_session_get_stream_remote_close.rst \
 	nghttp2_session_get_stream_remote_window_size.rst \
 	nghttp2_session_get_stream_user_data.rst \
