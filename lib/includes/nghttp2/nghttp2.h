@@ -3007,11 +3007,34 @@ nghttp2_session_get_stream_effective_recv_data_length(nghttp2_session *session,
  * `nghttp2_submit_window_update()`.  This function takes into account
  * that and returns effective window size.
  *
+ * This function does not take into account the amount of received
+ * data from the remote endpoint.  Use
+ * `nghttp2_session_get_stream_local_window_size()` to know the amount
+ * of data the remote endpoint can send without receiving stream level
+ * WINDOW_UPDATE frame.  Note that each stream is still subject to the
+ * connection level flow control.
+ *
  * This function returns -1 if it fails.
  */
 NGHTTP2_EXTERN int32_t
 nghttp2_session_get_stream_effective_local_window_size(nghttp2_session *session,
                                                        int32_t stream_id);
+
+/**
+ * @function
+ *
+ * Returns the amount of data that the remote endpoint can send
+ * without receiving stream level WINDOW_UPDATE frame.  It is also
+ * subject to the connection level flow control.  So the actual amount
+ * of data to send is
+ * min(`nghttp2_session_get_stream_local_window_size()`,
+ * `nghttp2_session_get_local_window_size()`).
+ *
+ * This function returns -1 if it fails.
+ */
+NGHTTP2_EXTERN int32_t
+nghttp2_session_get_stream_local_window_size(nghttp2_session *session,
+                                             int32_t stream_id);
 
 /**
  * @function
@@ -3038,10 +3061,30 @@ nghttp2_session_get_effective_recv_data_length(nghttp2_session *session);
  * `nghttp2_submit_window_update()`.  This function takes into account
  * that and returns effective window size.
  *
+ * This function does not take into account the amount of received
+ * data from the remote endpoint.  Use
+ * `nghttp2_session_get_local_window_size()` to know the amount of
+ * data the remote endpoint can send without receiving
+ * connection-level WINDOW_UPDATE frame.  Note that each stream is
+ * still subject to the stream level flow control.
+ *
  * This function returns -1 if it fails.
  */
 NGHTTP2_EXTERN int32_t
 nghttp2_session_get_effective_local_window_size(nghttp2_session *session);
+
+/**
+ * @function
+ *
+ * Returns the amount of data that the remote endpoint can send
+ * without receiving connection level WINDOW_UPDATE frame.  Note that
+ * each stream is still subject to the stream level flow control (see
+ * `nghttp2_session_get_stream_local_window_size()`).
+ *
+ * This function returns -1 if it fails.
+ */
+NGHTTP2_EXTERN int32_t
+nghttp2_session_get_local_window_size(nghttp2_session *session);
 
 /**
  * @function

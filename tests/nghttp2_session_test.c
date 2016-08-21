@@ -5134,6 +5134,7 @@ void test_nghttp2_submit_settings_update_local_window_size(void) {
   nghttp2_stream *stream;
   nghttp2_frame ack_frame;
   nghttp2_mem *mem;
+  nghttp2_option *option;
 
   mem = nghttp2_mem_default();
   nghttp2_frame_settings_init(&ack_frame.settings, NGHTTP2_FLAG_ACK, NULL, 0);
@@ -5166,6 +5167,32 @@ void test_nghttp2_submit_settings_update_local_window_size(void) {
   item = nghttp2_session_get_next_ob_item(session);
   CU_ASSERT(NGHTTP2_WINDOW_UPDATE == item->frame.hd.type);
   CU_ASSERT(32768 == item->frame.window_update.window_size_increment);
+
+  nghttp2_session_del(session);
+
+  /* Without auto-window update */
+  nghttp2_option_new(&option);
+  nghttp2_option_set_no_auto_window_update(option, 1);
+
+  nghttp2_session_server_new2(&session, &callbacks, NULL, option);
+
+  nghttp2_option_del(option);
+
+  stream = open_recv_stream(session, 1);
+  stream->local_window_size = NGHTTP2_INITIAL_WINDOW_SIZE + 100;
+  stream->recv_window_size = 32768;
+
+  CU_ASSERT(0 == nghttp2_submit_settings(session, NGHTTP2_FLAG_NONE, iv, 1));
+  CU_ASSERT(0 == nghttp2_session_send(session));
+  CU_ASSERT(0 == nghttp2_session_on_settings_received(session, &ack_frame, 0));
+
+  stream = nghttp2_session_get_stream(session, 1);
+
+  CU_ASSERT(32768 == stream->recv_window_size);
+  CU_ASSERT(16 * 1024 + 100 == stream->local_window_size);
+  /* Check that we can handle the case where local_window_size <
+     recv_window_size */
+  CU_ASSERT(0 == nghttp2_session_get_stream_local_window_size(session, 1));
 
   nghttp2_session_del(session);
 
@@ -6556,19 +6583,34 @@ void test_nghttp2_session_get_effective_local_window_size(void) {
 
   CU_ASSERT(NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE + 1000 ==
             nghttp2_session_get_effective_local_window_size(session));
+  CU_ASSERT(NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE + 1000 ==
+            nghttp2_session_get_local_window_size(session));
   CU_ASSERT(0 == nghttp2_session_get_effective_recv_data_length(session));
 
   nghttp2_submit_window_update(session, NGHTTP2_FLAG_NONE, 0, -50);
   /* Now session->recv_window_size = -50 */
+  CU_ASSERT(-50 == session->recv_window_size);
+  CU_ASSERT(50 == session->recv_reduction);
   CU_ASSERT(NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE + 950 ==
             nghttp2_session_get_effective_local_window_size(session));
+  CU_ASSERT(NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE + 1000 ==
+            nghttp2_session_get_local_window_size(session));
   CU_ASSERT(0 == nghttp2_session_get_effective_recv_data_length(session));
 
   session->recv_window_size += 50;
+
   /* Now session->recv_window_size = 0 */
+
+  CU_ASSERT(NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE + 950 ==
+            nghttp2_session_get_local_window_size(session));
+
   nghttp2_submit_window_update(session, NGHTTP2_FLAG_NONE, 0, 100);
+  CU_ASSERT(50 == session->recv_window_size);
+  CU_ASSERT(0 == session->recv_reduction);
   CU_ASSERT(NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE + 1050 ==
             nghttp2_session_get_effective_local_window_size(session));
+  CU_ASSERT(NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE + 1000 ==
+            nghttp2_session_get_local_window_size(session));
   CU_ASSERT(50 == nghttp2_session_get_effective_recv_data_length(session));
 
   /* Check stream flow control */
@@ -6577,6 +6619,8 @@ void test_nghttp2_session_get_effective_local_window_size(void) {
 
   CU_ASSERT(NGHTTP2_INITIAL_WINDOW_SIZE + 1000 ==
             nghttp2_session_get_stream_effective_local_window_size(session, 1));
+  CU_ASSERT(NGHTTP2_INITIAL_WINDOW_SIZE + 1000 ==
+            nghttp2_session_get_stream_local_window_size(session, 1));
   CU_ASSERT(0 ==
             nghttp2_session_get_stream_effective_recv_data_length(session, 1));
 
@@ -6584,6 +6628,8 @@ void test_nghttp2_session_get_effective_local_window_size(void) {
   /* Now stream->recv_window_size = -50 */
   CU_ASSERT(NGHTTP2_INITIAL_WINDOW_SIZE + 950 ==
             nghttp2_session_get_stream_effective_local_window_size(session, 1));
+  CU_ASSERT(NGHTTP2_INITIAL_WINDOW_SIZE + 1000 ==
+            nghttp2_session_get_stream_local_window_size(session, 1));
   CU_ASSERT(0 ==
             nghttp2_session_get_stream_effective_recv_data_length(session, 1));
 
@@ -6592,6 +6638,8 @@ void test_nghttp2_session_get_effective_local_window_size(void) {
   nghttp2_submit_window_update(session, NGHTTP2_FLAG_NONE, 1, 100);
   CU_ASSERT(NGHTTP2_INITIAL_WINDOW_SIZE + 1050 ==
             nghttp2_session_get_stream_effective_local_window_size(session, 1));
+  CU_ASSERT(NGHTTP2_INITIAL_WINDOW_SIZE + 1000 ==
+            nghttp2_session_get_stream_local_window_size(session, 1));
   CU_ASSERT(50 ==
             nghttp2_session_get_stream_effective_recv_data_length(session, 1));
 
@@ -9586,7 +9634,11 @@ void test_nghttp2_session_set_local_window_size(void) {
   CU_ASSERT(NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE + 1 ==
             stream->local_window_size);
   CU_ASSERT(4096 == stream->recv_window_size);
+  CU_ASSERT(65536 - 4096 ==
+            nghttp2_session_get_stream_local_window_size(session, 1));
+
   item = nghttp2_session_get_next_ob_item(session);
+
   CU_ASSERT(NGHTTP2_WINDOW_UPDATE == item->frame.hd.type);
   CU_ASSERT(1 == item->frame.window_update.hd.stream_id);
   CU_ASSERT(1 == item->frame.window_update.window_size_increment);
@@ -9599,7 +9651,11 @@ void test_nghttp2_session_set_local_window_size(void) {
   CU_ASSERT(32768 == stream->local_window_size);
   CU_ASSERT(-28672 == stream->recv_window_size);
   CU_ASSERT(32768 == stream->recv_reduction);
+  CU_ASSERT(65536 - 4096 ==
+            nghttp2_session_get_stream_local_window_size(session, 1));
+
   item = nghttp2_session_get_next_ob_item(session);
+
   CU_ASSERT(item == NULL);
 
   /* Increase local window size */
@@ -9608,6 +9664,8 @@ void test_nghttp2_session_set_local_window_size(void) {
   CU_ASSERT(49152 == stream->local_window_size);
   CU_ASSERT(-12288 == stream->recv_window_size);
   CU_ASSERT(16384 == stream->recv_reduction);
+  CU_ASSERT(65536 - 4096 ==
+            nghttp2_session_get_stream_local_window_size(session, 1));
   CU_ASSERT(NULL == nghttp2_session_get_next_ob_item(session));
 
   /* Increase local window again */
@@ -9616,7 +9674,11 @@ void test_nghttp2_session_set_local_window_size(void) {
   CU_ASSERT(65537 == stream->local_window_size);
   CU_ASSERT(4096 == stream->recv_window_size);
   CU_ASSERT(0 == stream->recv_reduction);
+  CU_ASSERT(65537 - 4096 ==
+            nghttp2_session_get_stream_local_window_size(session, 1));
+
   item = nghttp2_session_get_next_ob_item(session);
+
   CU_ASSERT(1 == item->frame.window_update.window_size_increment);
 
   CU_ASSERT(0 == nghttp2_session_send(session));
@@ -9628,7 +9690,10 @@ void test_nghttp2_session_set_local_window_size(void) {
   CU_ASSERT(NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE + 1 ==
             session->local_window_size);
   CU_ASSERT(4096 == session->recv_window_size);
+  CU_ASSERT(65536 - 4096 == nghttp2_session_get_local_window_size(session));
+
   item = nghttp2_session_get_next_ob_item(session);
+
   CU_ASSERT(NGHTTP2_WINDOW_UPDATE == item->frame.hd.type);
   CU_ASSERT(0 == item->frame.window_update.hd.stream_id);
   CU_ASSERT(1 == item->frame.window_update.window_size_increment);
@@ -9641,7 +9706,10 @@ void test_nghttp2_session_set_local_window_size(void) {
   CU_ASSERT(32768 == session->local_window_size);
   CU_ASSERT(-28672 == session->recv_window_size);
   CU_ASSERT(32768 == session->recv_reduction);
+  CU_ASSERT(65536 - 4096 == nghttp2_session_get_local_window_size(session));
+
   item = nghttp2_session_get_next_ob_item(session);
+
   CU_ASSERT(item == NULL);
 
   /* Increase local window size */
@@ -9650,6 +9718,7 @@ void test_nghttp2_session_set_local_window_size(void) {
   CU_ASSERT(49152 == session->local_window_size);
   CU_ASSERT(-12288 == session->recv_window_size);
   CU_ASSERT(16384 == session->recv_reduction);
+  CU_ASSERT(65536 - 4096 == nghttp2_session_get_local_window_size(session));
   CU_ASSERT(NULL == nghttp2_session_get_next_ob_item(session));
 
   /* Increase local window again */
@@ -9658,7 +9727,10 @@ void test_nghttp2_session_set_local_window_size(void) {
   CU_ASSERT(65537 == session->local_window_size);
   CU_ASSERT(4096 == session->recv_window_size);
   CU_ASSERT(0 == session->recv_reduction);
+  CU_ASSERT(65537 - 4096 == nghttp2_session_get_local_window_size(session));
+
   item = nghttp2_session_get_next_ob_item(session);
+
   CU_ASSERT(1 == item->frame.window_update.window_size_increment);
 
   CU_ASSERT(0 == nghttp2_session_send(session));
