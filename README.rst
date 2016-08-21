@@ -1500,6 +1500,17 @@ See `Contribution Guidelines
 <https://nghttp2.org/documentation/contribute.html>`_ for more
 details.
 
+Reporting vulnerability
+-----------------------
+
+If you find a vulnerability in our software, please send the email to
+"tatsuhiro.t at gmail dot com" about its details instead of submitting
+issues on github issue page.  It is a standard practice not to
+disclose vulnerability information publicly until a fixed version is
+released, or mitigation is worked out.
+
+In the future, we may setup a dedicated mail address for this purpose.
+
 Release schedule
 ----------------
 
