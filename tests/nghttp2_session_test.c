@@ -5112,6 +5112,15 @@ void test_nghttp2_submit_settings(void) {
 
   CU_ASSERT(50 == session->pending_local_max_concurrent_stream);
 
+  /* before receiving SETTINGS ACK, local settings have still default
+     values */
+  CU_ASSERT(NGHTTP2_DEFAULT_MAX_CONCURRENT_STREAMS ==
+            nghttp2_session_get_local_settings(
+                session, NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS));
+  CU_ASSERT(NGHTTP2_INITIAL_WINDOW_SIZE ==
+            nghttp2_session_get_local_settings(
+                session, NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE));
+
   nghttp2_frame_settings_init(&ack_frame.settings, NGHTTP2_FLAG_ACK, NULL, 0);
   CU_ASSERT(0 == nghttp2_session_on_settings_received(session, &ack_frame, 0));
   nghttp2_frame_settings_free(&ack_frame.settings, mem);
@@ -5120,6 +5129,12 @@ void test_nghttp2_submit_settings(void) {
   CU_ASSERT(1023 == session->hd_inflater.ctx.hd_table_bufsize_max);
   CU_ASSERT(111 == session->hd_inflater.min_hd_table_bufsize_max);
   CU_ASSERT(50 == session->local_settings.max_concurrent_streams);
+
+  CU_ASSERT(50 == nghttp2_session_get_local_settings(
+                      session, NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS));
+  CU_ASSERT(16 * 1024 == nghttp2_session_get_local_settings(
+                             session, NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE));
+
   /* We just keep the last seen value */
   CU_ASSERT(50 == session->pending_local_max_concurrent_stream);
 

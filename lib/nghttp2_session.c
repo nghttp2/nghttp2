@@ -7237,6 +7237,26 @@ uint32_t nghttp2_session_get_remote_settings(nghttp2_session *session,
   assert(0);
 }
 
+uint32_t nghttp2_session_get_local_settings(nghttp2_session *session,
+                                            nghttp2_settings_id id) {
+  switch (id) {
+  case NGHTTP2_SETTINGS_HEADER_TABLE_SIZE:
+    return session->local_settings.header_table_size;
+  case NGHTTP2_SETTINGS_ENABLE_PUSH:
+    return session->local_settings.enable_push;
+  case NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS:
+    return session->local_settings.max_concurrent_streams;
+  case NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE:
+    return session->local_settings.initial_window_size;
+  case NGHTTP2_SETTINGS_MAX_FRAME_SIZE:
+    return session->local_settings.max_frame_size;
+  case NGHTTP2_SETTINGS_MAX_HEADER_LIST_SIZE:
+    return session->local_settings.max_header_list_size;
+  }
+
+  assert(0);
+}
+
 static int nghttp2_session_upgrade_internal(nghttp2_session *session,
                                             const uint8_t *settings_payload,
                                             size_t settings_payloadlen,
