@@ -189,8 +189,8 @@ int nghttp2_adjust_local_window_size(int32_t *local_window_size_ptr,
          account it in *delta_ptr. */
       *recv_window_size_ptr = recv_reduction_delta;
     }
-    /* recv_reduction_delta must be paied from *delta_ptr, since it
-       was added in window size reduction (see below). */
+    /* recv_reduction_delta must be paid from *delta_ptr, since it was
+       added in window size reduction (see below). */
     *delta_ptr -= recv_reduction_delta;
 
     return 0;
@@ -238,7 +238,7 @@ int nghttp2_increase_local_window_size(int32_t *local_window_size_ptr,
 
   *recv_window_size_ptr += recv_reduction_delta;
 
-  /* recv_reduction_delta must be paied from *delta_ptr, since it was
+  /* recv_reduction_delta must be paid from *delta_ptr, since it was
      added in window size reduction (see below). */
   *delta_ptr -= recv_reduction_delta;
 
