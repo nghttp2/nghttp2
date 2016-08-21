@@ -1512,3 +1512,8 @@ severe security bug fixes.
 
 We have no plan to break API compatibility changes involving soname
 bump, so MAJOR version will stay 1 for the foreseeable future.
+
+License
+-------
+
+The MIT License
