@@ -994,6 +994,8 @@ int HttpDownstreamConnection::tls_handshake() {
 
   auto &connect_blocker = addr_->connect_blocker;
 
+  do_signal_write_ = &HttpDownstreamConnection::actual_signal_write;
+
   connect_blocker->on_success();
 
   ev_set_cb(&conn_.rt, timeoutcb);
@@ -1160,14 +1162,14 @@ int HttpDownstreamConnection::connected() {
 
   ev_set_cb(&conn_.wev, writecb);
 
-  do_signal_write_ = &HttpDownstreamConnection::actual_signal_write;
-
   if (conn_.tls.ssl) {
     do_read_ = &HttpDownstreamConnection::tls_handshake;
     do_write_ = &HttpDownstreamConnection::tls_handshake;
 
     return 0;
   }
+
+  do_signal_write_ = &HttpDownstreamConnection::actual_signal_write;
 
   connect_blocker->on_success();
 
