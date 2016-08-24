@@ -203,14 +203,15 @@ int MemcachedConnection::initiate_connection() {
 }
 
 int MemcachedConnection::connected() {
-  if (!util::check_socket_connected(conn_.fd)) {
+  auto sock_error = util::get_socket_error(conn_.fd);
+  if (sock_error != 0) {
+    MCLOG(WARN, this) << "memcached connect failed; addr="
+                      << util::to_numeric_addr(addr_)
+                      << ": errno=" << sock_error;
+
     connect_blocker_.on_failure();
 
     conn_.wlimit.stopw();
-
-    if (LOG_ENABLED(INFO)) {
-      MCLOG(INFO, this) << "memcached connect failed";
-    }
 
     return -1;
   }

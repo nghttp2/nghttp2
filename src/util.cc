@@ -893,6 +893,16 @@ bool check_socket_connected(int fd) {
   return error == 0;
 }
 
+int get_socket_error(int fd) {
+  int error;
+  socklen_t len = sizeof(error);
+  if (getsockopt(fd, SOL_SOCKET, SO_ERROR, &error, &len) != 0) {
+    return -1;
+  }
+
+  return error;
+}
+
 bool ipv6_numeric_addr(const char *host) {
   uint8_t dst[16];
   return inet_pton(AF_INET6, host, dst) == 1;
