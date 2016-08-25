@@ -706,7 +706,13 @@ struct APIConfig {
 };
 
 struct Config {
+  Config() = default;
   ~Config();
+
+  Config(Config &&) = delete;
+  Config(const Config &&) = delete;
+  Config &operator=(Config &&) = delete;
+  Config &operator=(const Config &&) = delete;
 
   HttpProxy downstream_http_proxy;
   HttpConfig http;

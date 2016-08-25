@@ -1272,8 +1272,6 @@ constexpr auto DEFAULT_ACCESSLOG_FORMAT = StringRef::from_lit(
 
 namespace {
 void fill_default_config(Config *config) {
-  *config = {};
-
   config->num_worker = 1;
   config->conf_path = "/etc/nghttpx/nghttpx.conf";
   config->pid = getpid();
