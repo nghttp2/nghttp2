@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTPX" "1" "Jul 31, 2016" "1.14.0-DEV" "nghttp2"
+.TH "NGHTTPX" "1" "Aug 25, 2016" "1.14.0" "nghttp2"
 .SH NAME
 nghttpx \- HTTP/2 proxy
 .
@@ -938,6 +938,12 @@ $ssl_session_id: session ID for SSL/TLS connection.
 .IP \(bu 2
 $ssl_session_reused:  "r"   if  SSL/TLS   session  was
 reused.  Otherwise, "."
+.IP \(bu 2
+$backend_host:  backend  host   used  to  fulfill  the
+request.  "\-" if backend host is not available.
+.IP \(bu 2
+$backend_port:  backend  port   used  to  fulfill  the
+request.  "\-" if backend host is not available.
 .UNINDENT
 .sp
 The  variable  can  be  enclosed  by  "{"  and  "}"  for
