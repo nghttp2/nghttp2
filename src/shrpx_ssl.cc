@@ -72,6 +72,12 @@ namespace shrpx {
 
 namespace ssl {
 
+#if !OPENSSL_101_API
+const unsigned char *ASN1_STRING_get0_data(ASN1_STRING *x) {
+  return ASN1_STRING_data(x);
+}
+#endif // !OPENSSL_101_API
+
 namespace {
 int next_proto_cb(SSL *s, const unsigned char **data, unsigned int *len,
                   void *arg) {
@@ -1015,7 +1021,7 @@ int verify_hostname(X509 *cert, const StringRef &hostname,
         continue;
       }
 
-      auto name = reinterpret_cast<char *>(ASN1_STRING_data(altname->d.ia5));
+      auto name = ASN1_STRING_get0_data(altname->d.ia5);
       if (!name) {
         continue;
       }
@@ -1235,7 +1241,7 @@ int cert_lookup_tree_add_cert_from_x509(CertLookupTree *lt, size_t idx,
         continue;
       }
 
-      auto name = reinterpret_cast<char *>(ASN1_STRING_data(altname->d.ia5));
+      auto name = ASN1_STRING_get0_data(altname->d.ia5);
       if (!name) {
         continue;
       }
