@@ -257,7 +257,7 @@ public:
       : len(slen), base(copystr(s, s + len)) {}
   explicit ImmutableString(const char *s)
       : len(strlen(s)), base(copystr(s, s + len)) {}
-  ImmutableString(const std::string &s)
+  explicit ImmutableString(const std::string &s)
       : len(s.size()), base(copystr(std::begin(s), std::end(s))) {}
   template <typename InputIt>
   ImmutableString(InputIt first, InputIt last)

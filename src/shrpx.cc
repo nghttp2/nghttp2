@@ -791,7 +791,8 @@ int create_tcp_server_socket(UpstreamAddr &faddr,
   }
 
   faddr.fd = fd;
-  faddr.hostport = util::make_http_hostport(StringRef{host.data()}, faddr.port);
+  faddr.hostport = ImmutableString{
+      util::make_http_hostport(StringRef{host.data()}, faddr.port)};
 
   LOG(NOTICE) << "Listening on " << faddr.hostport
               << (faddr.tls ? ", tls" : "");

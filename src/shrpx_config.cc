@@ -2049,7 +2049,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
       LOG(ERROR) << opt << ": Couldn't read key file's passwd from " << optarg;
       return -1;
     }
-    config->tls.private_key_passwd = passwd;
+    config->tls.private_key_passwd = ImmutableString{passwd};
 
     return 0;
   }
@@ -2958,7 +2958,7 @@ int configure_downstream_group(Config *config, bool http2_proxy,
     auto &sni = tlsconf.backend_sni_name;
     for (auto &addr_group : addr_groups) {
       for (auto &addr : addr_group.addrs) {
-        addr.sni = sni;
+        addr.sni = ImmutableString{sni};
       }
     }
   }
