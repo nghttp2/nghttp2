@@ -73,9 +73,11 @@ namespace shrpx {
 namespace ssl {
 
 #if !OPENSSL_101_API
+namespace {
 const unsigned char *ASN1_STRING_get0_data(ASN1_STRING *x) {
   return ASN1_STRING_data(x);
 }
+} // namespace
 #endif // !OPENSSL_101_API
 
 namespace {
