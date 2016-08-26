@@ -178,6 +178,9 @@ template <typename Memchunk> struct Memchunks {
   }
   size_t append(const std::string &s) { return append(s.c_str(), s.size()); }
   size_t append(const StringRef &s) { return append(s.c_str(), s.size()); }
+  size_t append(const ImmutableString &s) {
+    return append(s.c_str(), s.size());
+  }
   size_t remove(void *dest, size_t count) {
     if (!tail || count == 0) {
       return 0;

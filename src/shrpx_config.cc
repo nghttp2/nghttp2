@@ -1127,6 +1127,11 @@ int option_lookup_token(const char *name, size_t namelen) {
     break;
   case 11:
     switch (name[10]) {
+    case 'e':
+      if (util::strieq_l("server-nam", name, 10)) {
+        return SHRPX_OPTID_SERVER_NAME;
+      }
+      break;
     case 's':
       if (util::strieq_l("backend-tl", name, 10)) {
         return SHRPX_OPTID_BACKEND_TLS;
@@ -2673,6 +2678,11 @@ int parse_config(Config *config, int optid, const StringRef &opt,
   case SHRPX_OPTID_BACKEND_MAX_BACKOFF:
     return parse_duration(&config->conn.downstream->timeout.max_backoff, opt,
                           optarg);
+  case SHRPX_OPTID_SERVER_NAME:
+    config->http.server_name =
+        ImmutableString{std::begin(optarg), std::end(optarg)};
+
+    return 0;
   case SHRPX_OPTID_CONF:
     LOG(WARN) << "conf: ignored";
 

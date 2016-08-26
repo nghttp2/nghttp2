@@ -1317,7 +1317,7 @@ void fill_default_config(Config *config) {
 
   auto &httpconf = config->http;
   httpconf.server_name =
-      StringRef::from_lit("nghttpx nghttp2/" NGHTTP2_VERSION);
+      ImmutableString::from_lit("nghttpx nghttp2/" NGHTTP2_VERSION);
   httpconf.no_host_rewrite = true;
   httpconf.request_header_field_buffer = 64_k;
   httpconf.max_request_header_fields = 100;
@@ -2203,6 +2203,9 @@ HTTP:
               599.  If "*"  is used instead of <CODE>,  it matches all
               HTTP  status  code.  If  error  status  code comes  from
               backend server, the custom error pages are not used.
+  --server-name=<NAME>
+              Change server response header field value to <NAME>.
+              Default: )" << get_config()->http.server_name << R"(
 
 API:
   --api-max-request-body=<SIZE>
@@ -2831,6 +2834,7 @@ int main(int argc, char **argv) {
          &flag, 125},
         {SHRPX_OPT_API_MAX_REQUEST_BODY.c_str(), required_argument, &flag, 126},
         {SHRPX_OPT_BACKEND_MAX_BACKOFF.c_str(), required_argument, &flag, 127},
+        {SHRPX_OPT_SERVER_NAME.c_str(), required_argument, &flag, 128},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -3427,6 +3431,10 @@ int main(int argc, char **argv) {
       case 127:
         // --backend-max-backoff
         cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_MAX_BACKOFF, StringRef{optarg});
+        break;
+      case 128:
+        // --server-name
+        cmdcfgs.emplace_back(SHRPX_OPT_SERVER_NAME, StringRef{optarg});
         break;
       default:
         break;

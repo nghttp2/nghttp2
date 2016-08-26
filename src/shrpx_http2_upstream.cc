@@ -1307,8 +1307,8 @@ int Http2Upstream::send_reply(Downstream *downstream, const uint8_t *body,
   }
 
   if (!resp.fs.header(http2::HD_SERVER)) {
-    nva.push_back(
-        http2::make_nv_ls_nocopy("server", get_config()->http.server_name));
+    nva.push_back(http2::make_nv_ls_nocopy(
+        "server", StringRef{get_config()->http.server_name}));
   }
 
   for (auto &p : httpconf.add_response_headers) {
@@ -1359,7 +1359,8 @@ int Http2Upstream::error_reply(Downstream *downstream,
   auto nva = std::array<nghttp2_nv, 5>{
       {http2::make_nv_ls_nocopy(":status", response_status),
        http2::make_nv_ll("content-type", "text/html; charset=UTF-8"),
-       http2::make_nv_ls_nocopy("server", get_config()->http.server_name),
+       http2::make_nv_ls_nocopy("server",
+                                StringRef{get_config()->http.server_name}),
        http2::make_nv_ls_nocopy("content-length", content_length),
        http2::make_nv_ls_nocopy("date", date)}};
 
@@ -1506,7 +1507,8 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
   http2::copy_headers_to_nva_nocopy(nva, resp.fs.headers());
 
   if (!get_config()->http2_proxy) {
-    nva.push_back(http2::make_nv_ls_nocopy("server", httpconf.server_name));
+    nva.push_back(
+        http2::make_nv_ls_nocopy("server", StringRef{httpconf.server_name}));
   } else {
     auto server = resp.fs.header(http2::HD_SERVER);
     if (server) {

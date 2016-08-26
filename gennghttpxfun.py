@@ -134,6 +134,7 @@ OPTIONS = [
     "backend-http2-settings-timeout",
     "api-max-request-body",
     "backend-max-backoff",
+    "server-name",
 ]
 
 LOGVARS = [

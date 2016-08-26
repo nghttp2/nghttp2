@@ -284,6 +284,7 @@ constexpr auto SHRPX_OPT_API_MAX_REQUEST_BODY =
     StringRef::from_lit("api-max-request-body");
 constexpr auto SHRPX_OPT_BACKEND_MAX_BACKOFF =
     StringRef::from_lit("backend-max-backoff");
+constexpr auto SHRPX_OPT_SERVER_NAME = StringRef::from_lit("server-name");
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
@@ -552,7 +553,7 @@ struct HttpConfig {
   std::vector<ErrorPage> error_pages;
   Headers add_request_headers;
   Headers add_response_headers;
-  StringRef server_name;
+  ImmutableString server_name;
   size_t request_header_field_buffer;
   size_t max_request_header_fields;
   size_t response_header_field_buffer;
@@ -843,6 +844,7 @@ enum {
   SHRPX_OPTID_REQUEST_HEADER_FIELD_BUFFER,
   SHRPX_OPTID_RESPONSE_HEADER_FIELD_BUFFER,
   SHRPX_OPTID_RLIMIT_NOFILE,
+  SHRPX_OPTID_SERVER_NAME,
   SHRPX_OPTID_STREAM_READ_TIMEOUT,
   SHRPX_OPTID_STREAM_WRITE_TIMEOUT,
   SHRPX_OPTID_STRIP_INCOMING_FORWARDED,
