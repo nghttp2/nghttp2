@@ -574,7 +574,7 @@ int create_unix_domain_server_socket(UpstreamAddr &faddr,
                 << (faddr.tls ? ", tls" : "");
     (*found).used = true;
     faddr.fd = (*found).fd;
-    faddr.hostport = "localhost";
+    faddr.hostport = ImmutableString::from_lit("localhost");
 
     return 0;
   }
@@ -639,7 +639,7 @@ int create_unix_domain_server_socket(UpstreamAddr &faddr,
               << (faddr.tls ? ", tls" : "");
 
   faddr.fd = fd;
-  faddr.hostport = "localhost";
+  faddr.hostport = ImmutableString::from_lit("localhost");
 
   return 0;
 }
@@ -791,7 +791,8 @@ int create_tcp_server_socket(UpstreamAddr &faddr,
   }
 
   faddr.fd = fd;
-  faddr.hostport = util::make_http_hostport(StringRef{host.data()}, faddr.port);
+  faddr.hostport = ImmutableString{
+      util::make_http_hostport(StringRef{host.data()}, faddr.port)};
 
   LOG(NOTICE) << "Listening on " << faddr.hostport
               << (faddr.tls ? ", tls" : "");
@@ -855,7 +856,7 @@ get_inherited_addr_from_config(const Config *config) {
       continue;
     }
 
-    iaddr.host = host.data();
+    iaddr.host = ImmutableString{host.data()};
   }
 
   return iaddrs;
@@ -947,7 +948,7 @@ std::vector<InheritedAddr> get_inherited_addr_from_env() {
       }
 
       InheritedAddr addr{};
-      addr.host = path;
+      addr.host = ImmutableString{path};
       addr.host_unix = true;
       addr.fd = static_cast<int>(fd);
       iaddrs.push_back(std::move(addr));
@@ -1001,7 +1002,7 @@ std::vector<InheritedAddr> get_inherited_addr_from_env() {
       }
 
       InheritedAddr addr{};
-      addr.host = host.data();
+      addr.host = ImmutableString{host.data()};
       addr.port = static_cast<uint16_t>(port);
       addr.fd = static_cast<int>(fd);
       iaddrs.push_back(std::move(addr));
@@ -1272,10 +1273,8 @@ constexpr auto DEFAULT_ACCESSLOG_FORMAT = StringRef::from_lit(
 
 namespace {
 void fill_default_config(Config *config) {
-  *config = {};
-
   config->num_worker = 1;
-  config->conf_path = "/etc/nghttpx/nghttpx.conf";
+  config->conf_path = ImmutableString::from_lit("/etc/nghttpx/nghttpx.conf");
   config->pid = getpid();
 
   if (ev_supported_backends() & ~ev_recommended_backends() & EVBACKEND_KQUEUE) {
@@ -1306,7 +1305,8 @@ void fill_default_config(Config *config) {
     auto &ocspconf = tlsconf.ocsp;
     // ocsp update interval = 14400 secs = 4 hours, borrowed from h2o
     ocspconf.update_interval = 4_h;
-    ocspconf.fetch_ocsp_response_file = PKGDATADIR "/fetch-ocsp-response";
+    ocspconf.fetch_ocsp_response_file =
+        ImmutableString::from_lit(PKGDATADIR "/fetch-ocsp-response");
   }
 
   {
@@ -1319,7 +1319,7 @@ void fill_default_config(Config *config) {
 
   auto &httpconf = config->http;
   httpconf.server_name =
-      StringRef::from_lit("nghttpx nghttp2/" NGHTTP2_VERSION);
+      ImmutableString::from_lit("nghttpx nghttp2/" NGHTTP2_VERSION);
   httpconf.no_host_rewrite = true;
   httpconf.request_header_field_buffer = 64_k;
   httpconf.max_request_header_fields = 100;
@@ -1377,7 +1377,7 @@ void fill_default_config(Config *config) {
     accessconf.format = parse_log_format(DEFAULT_ACCESSLOG_FORMAT);
 
     auto &errorconf = loggingconf.error;
-    errorconf.file = "/dev/stderr";
+    errorconf.file = ImmutableString::from_lit("/dev/stderr");
   }
 
   loggingconf.syslog_facility = LOG_DAEMON;
@@ -2205,6 +2205,9 @@ HTTP:
               599.  If "*"  is used instead of <CODE>,  it matches all
               HTTP  status  code.  If  error  status  code comes  from
               backend server, the custom error pages are not used.
+  --server-name=<NAME>
+              Change server response header field value to <NAME>.
+              Default: )" << get_config()->http.server_name << R"(
 
 API:
   --api-max-request-body=<SIZE>
@@ -2396,7 +2399,7 @@ int process_options(Config *config,
 
   if (listenerconf.addrs.empty()) {
     UpstreamAddr addr{};
-    addr.host = "*";
+    addr.host = ImmutableString::from_lit("*");
     addr.port = 3000;
     addr.tls = true;
     addr.family = AF_INET;
@@ -2833,6 +2836,7 @@ int main(int argc, char **argv) {
          &flag, 125},
         {SHRPX_OPT_API_MAX_REQUEST_BODY.c_str(), required_argument, &flag, 126},
         {SHRPX_OPT_BACKEND_MAX_BACKOFF.c_str(), required_argument, &flag, 127},
+        {SHRPX_OPT_SERVER_NAME.c_str(), required_argument, &flag, 128},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -2935,7 +2939,7 @@ int main(int argc, char **argv) {
         break;
       case 12:
         // --conf
-        mod_config()->conf_path = optarg;
+        mod_config()->conf_path = ImmutableString{optarg};
         break;
       case 14:
         // --syslog-facility
@@ -3429,6 +3433,10 @@ int main(int argc, char **argv) {
       case 127:
         // --backend-max-backoff
         cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_MAX_BACKOFF, StringRef{optarg});
+        break;
+      case 128:
+        // --server-name
+        cmdcfgs.emplace_back(SHRPX_OPT_SERVER_NAME, StringRef{optarg});
         break;
       default:
         break;

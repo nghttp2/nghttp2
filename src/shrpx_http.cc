@@ -51,7 +51,7 @@ StringRef create_error_html(BlockAllocator &balloc, unsigned int http_status) {
   return concat_string_ref(
       balloc, StringRef::from_lit(R"(<!DOCTYPE html><html lang="en"><title>)"),
       status_string, StringRef::from_lit("</title><body><h1>"), status_string,
-      StringRef::from_lit("</h1><footer>"), server_name,
+      StringRef::from_lit("</h1><footer>"), StringRef{server_name},
       StringRef::from_lit("</footer></body></html>"));
 }
 

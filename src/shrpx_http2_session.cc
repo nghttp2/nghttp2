@@ -1806,9 +1806,11 @@ int Http2Session::read_noop(const uint8_t *data, size_t datalen) { return 0; }
 int Http2Session::write_noop() { return 0; }
 
 int Http2Session::connected() {
-  if (!util::check_socket_connected(conn_.fd)) {
+  auto sock_error = util::get_socket_error(conn_.fd);
+  if (sock_error != 0) {
     SSLOG(WARN, this) << "Backend connect failed; addr="
-                      << util::to_numeric_addr(&addr_->addr);
+                      << util::to_numeric_addr(&addr_->addr)
+                      << ": errno=" << sock_error;
 
     downstream_failure(addr_);
 

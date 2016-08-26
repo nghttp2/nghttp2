@@ -1127,6 +1127,11 @@ int option_lookup_token(const char *name, size_t namelen) {
     break;
   case 11:
     switch (name[10]) {
+    case 'e':
+      if (util::strieq_l("server-nam", name, 10)) {
+        return SHRPX_OPTID_SERVER_NAME;
+      }
+      break;
     case 's':
       if (util::strieq_l("backend-tl", name, 10)) {
         return SHRPX_OPTID_BACKEND_TLS;
@@ -2027,7 +2032,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
                  << strerror(errno);
       return -1;
     }
-    config->user = pwd->pw_name;
+    config->user = ImmutableString{pwd->pw_name};
     config->uid = pwd->pw_uid;
     config->gid = pwd->pw_gid;
 
@@ -2044,7 +2049,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
       LOG(ERROR) << opt << ": Couldn't read key file's passwd from " << optarg;
       return -1;
     }
-    config->tls.private_key_passwd = passwd;
+    config->tls.private_key_passwd = ImmutableString{passwd};
 
     return 0;
   }
@@ -2479,14 +2484,14 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     switch (optid) {
     case SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED: {
       auto &memcachedconf = config->tls.session_cache.memcached;
-      memcachedconf.host = host;
+      memcachedconf.host = ImmutableString{host};
       memcachedconf.port = port;
       memcachedconf.tls = params.tls;
       break;
     }
     case SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED: {
       auto &memcachedconf = config->tls.ticket.memcached;
-      memcachedconf.host = host;
+      memcachedconf.host = ImmutableString{host};
       memcachedconf.port = port;
       memcachedconf.tls = params.tls;
       break;
@@ -2673,6 +2678,11 @@ int parse_config(Config *config, int optid, const StringRef &opt,
   case SHRPX_OPTID_BACKEND_MAX_BACKOFF:
     return parse_duration(&config->conn.downstream->timeout.max_backoff, opt,
                           optarg);
+  case SHRPX_OPTID_SERVER_NAME:
+    config->http.server_name =
+        ImmutableString{std::begin(optarg), std::end(optarg)};
+
+    return 0;
   case SHRPX_OPTID_CONF:
     LOG(WARN) << "conf: ignored";
 
@@ -2948,7 +2958,7 @@ int configure_downstream_group(Config *config, bool http2_proxy,
     auto &sni = tlsconf.backend_sni_name;
     for (auto &addr_group : addr_groups) {
       for (auto &addr : addr_group.addrs) {
-        addr.sni = sni;
+        addr.sni = ImmutableString{sni};
       }
     }
   }
@@ -2995,7 +3005,7 @@ int configure_downstream_group(Config *config, bool http2_proxy,
         // for AF_UNIX socket, we use "localhost" as host for backend
         // hostport.  This is used as Host header field to backend and
         // not going to be passed to any syscalls.
-        addr.hostport = "localhost";
+        addr.hostport = ImmutableString::from_lit("localhost");
 
         auto path = addr.host.c_str();
         auto pathlen = addr.host.size();

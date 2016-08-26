@@ -994,6 +994,8 @@ int HttpDownstreamConnection::tls_handshake() {
 
   auto &connect_blocker = addr_->connect_blocker;
 
+  do_signal_write_ = &HttpDownstreamConnection::actual_signal_write;
+
   connect_blocker->on_success();
 
   ev_set_cb(&conn_.rt, timeoutcb);
@@ -1141,11 +1143,13 @@ int HttpDownstreamConnection::process_input(const uint8_t *data,
 int HttpDownstreamConnection::connected() {
   auto &connect_blocker = addr_->connect_blocker;
 
-  if (!util::check_socket_connected(conn_.fd)) {
+  auto sock_error = util::get_socket_error(conn_.fd);
+  if (sock_error != 0) {
     conn_.wlimit.stopw();
 
     DCLOG(WARN, this) << "Backend connect failed; addr="
-                      << util::to_numeric_addr(&addr_->addr);
+                      << util::to_numeric_addr(&addr_->addr)
+                      << ": errno=" << sock_error;
 
     downstream_failure(addr_);
 
@@ -1160,14 +1164,14 @@ int HttpDownstreamConnection::connected() {
 
   ev_set_cb(&conn_.wev, writecb);
 
-  do_signal_write_ = &HttpDownstreamConnection::actual_signal_write;
-
   if (conn_.tls.ssl) {
     do_read_ = &HttpDownstreamConnection::tls_handshake;
     do_write_ = &HttpDownstreamConnection::tls_handshake;
 
     return 0;
   }
+
+  do_signal_write_ = &HttpDownstreamConnection::actual_signal_write;
 
   connect_blocker->on_success();
 

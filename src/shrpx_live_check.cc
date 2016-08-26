@@ -259,10 +259,12 @@ int LiveCheck::initiate_connection() {
 }
 
 int LiveCheck::connected() {
-  if (!util::check_socket_connected(conn_.fd)) {
+  auto sock_error = util::get_socket_error(conn_.fd);
+  if (sock_error != 0) {
     if (LOG_ENABLED(INFO)) {
       LOG(INFO) << "Backend connect failed; addr="
-                << util::to_numeric_addr(&addr_->addr);
+                << util::to_numeric_addr(&addr_->addr)
+                << ": errno=" << sock_error;
     }
 
     return -1;

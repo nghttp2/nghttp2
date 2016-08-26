@@ -768,14 +768,12 @@ static size_t entry_room(size_t namelen, size_t valuelen) {
   return NGHTTP2_HD_ENTRY_OVERHEAD + namelen + valuelen;
 }
 
-static int emit_header(nghttp2_hd_nv *nv_out, nghttp2_hd_nv *nv) {
+static void emit_header(nghttp2_hd_nv *nv_out, nghttp2_hd_nv *nv) {
   DEBUGF(fprintf(stderr, "inflatehd: header emission: %s: %s\n", nv->name->base,
                  nv->value->base));
   /* ent->ref may be 0. This happens if the encoder emits literal
      block larger than header table capacity with indexing. */
   *nv_out = *nv;
-
-  return 0;
 }
 
 static size_t count_encoded_length(size_t n, size_t prefix) {

@@ -503,7 +503,7 @@ const request *session_impl::submit(boost::system::error_code &ec,
   }
 
   auto nva = std::vector<nghttp2_nv>();
-  nva.reserve(3 + h.size());
+  nva.reserve(4 + h.size());
   nva.push_back(http2::make_nv_ls(":method", method));
   nva.push_back(http2::make_nv_ls(":scheme", uref.scheme));
   nva.push_back(http2::make_nv_ls(":path", path));

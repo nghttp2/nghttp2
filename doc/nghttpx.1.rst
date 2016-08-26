@@ -847,6 +847,10 @@ Logging
     * $ssl_session_id: session ID for SSL/TLS connection.
     * $ssl_session_reused:  "r"   if  SSL/TLS   session  was
       reused.  Otherwise, "."
+    * $backend_host:  backend  host   used  to  fulfill  the
+      request.  "-" if backend host is not available.
+    * $backend_port:  backend  port   used  to  fulfill  the
+      request.  "-" if backend host is not available.
 
     The  variable  can  be  enclosed  by  "{"  and  "}"  for
     disambiguation (e.g., ${remote_addr}).

@@ -574,6 +574,11 @@ int create_nonblock_socket(int family);
 
 bool check_socket_connected(int fd);
 
+// Returns the error code (errno) by inspecting SO_ERROR of given
+// |fd|.  This function returns the error code if it succeeds, or -1.
+// Returning 0 means no error.
+int get_socket_error(int fd);
+
 // Returns true if |host| is IPv6 numeric address (e.g., ::1)
 bool ipv6_numeric_addr(const char *host);
 
