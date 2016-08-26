@@ -2032,7 +2032,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
                  << strerror(errno);
       return -1;
     }
-    config->user = pwd->pw_name;
+    config->user = ImmutableString{pwd->pw_name};
     config->uid = pwd->pw_uid;
     config->gid = pwd->pw_gid;
 
@@ -2484,14 +2484,14 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     switch (optid) {
     case SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED: {
       auto &memcachedconf = config->tls.session_cache.memcached;
-      memcachedconf.host = host;
+      memcachedconf.host = ImmutableString{host};
       memcachedconf.port = port;
       memcachedconf.tls = params.tls;
       break;
     }
     case SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED: {
       auto &memcachedconf = config->tls.ticket.memcached;
-      memcachedconf.host = host;
+      memcachedconf.host = ImmutableString{host};
       memcachedconf.port = port;
       memcachedconf.tls = params.tls;
       break;
@@ -3005,7 +3005,7 @@ int configure_downstream_group(Config *config, bool http2_proxy,
         // for AF_UNIX socket, we use "localhost" as host for backend
         // hostport.  This is used as Host header field to backend and
         // not going to be passed to any syscalls.
-        addr.hostport = "localhost";
+        addr.hostport = ImmutableString::from_lit("localhost");
 
         auto path = addr.host.c_str();
         auto pathlen = addr.host.size();
