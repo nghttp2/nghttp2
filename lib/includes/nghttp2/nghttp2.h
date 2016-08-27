@@ -1742,9 +1742,11 @@ typedef int (*nghttp2_on_header_callback2)(nghttp2_session *session,
  *
  * With this callback, application inspects the incoming invalid
  * field, and it also can reset stream from this callback by returning
- * :enum:`NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE`, or using
- * `nghttp2_submit_rst_stream()` directly with the error code of
- * choice.
+ * :enum:`NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE`.  By default, the
+ * error code is :enum:`NGHTTP2_INTERNAL_ERROR`.  To change the error
+ * code, call `nghttp2_submit_rst_stream()` with the error code of
+ * choice in addition to returning
+ * :enum:`NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE`.
  */
 typedef int (*nghttp2_on_invalid_header_callback)(
     nghttp2_session *session, const nghttp2_frame *frame, const uint8_t *name,
@@ -1772,9 +1774,11 @@ typedef int (*nghttp2_on_invalid_header_callback)(
  *
  * With this callback, application inspects the incoming invalid
  * field, and it also can reset stream from this callback by returning
- * :enum:`NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE`, or using
- * `nghttp2_submit_rst_stream()` directly with the error code of
- * choice.
+ * :enum:`NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE`.  By default, the
+ * error code is :enum:`NGHTTP2_INTERNAL_ERROR`.  To change the error
+ * code, call `nghttp2_submit_rst_stream()` with the error code of
+ * choice in addition to returning
+ * :enum:`NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE`.
  */
 typedef int (*nghttp2_on_invalid_header_callback2)(
     nghttp2_session *session, const nghttp2_frame *frame, nghttp2_rcbuf *name,
