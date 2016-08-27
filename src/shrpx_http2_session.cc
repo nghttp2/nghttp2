@@ -905,6 +905,47 @@ int on_header_callback2(nghttp2_session *session, const nghttp2_frame *frame,
 } // namespace
 
 namespace {
+int on_invalid_header_callback2(nghttp2_session *session,
+                                const nghttp2_frame *frame, nghttp2_rcbuf *name,
+                                nghttp2_rcbuf *value, uint8_t flags,
+                                void *user_data) {
+  auto http2session = static_cast<Http2Session *>(user_data);
+  auto sd = static_cast<StreamData *>(
+      nghttp2_session_get_stream_user_data(session, frame->hd.stream_id));
+  if (!sd || !sd->dconn) {
+    return 0;
+  }
+  auto downstream = sd->dconn->get_downstream();
+  if (!downstream) {
+    return 0;
+  }
+
+  int32_t stream_id;
+
+  if (frame->hd.type == NGHTTP2_PUSH_PROMISE) {
+    stream_id = frame->push_promise.promised_stream_id;
+  } else {
+    stream_id = frame->hd.stream_id;
+  }
+
+  if (LOG_ENABLED(INFO)) {
+    auto namebuf = nghttp2_rcbuf_get_buf(name);
+    auto valuebuf = nghttp2_rcbuf_get_buf(value);
+
+    SSLOG(INFO, http2session)
+        << "Invalid header field for stream_id=" << stream_id
+        << " in frame type=" << static_cast<uint32_t>(frame->hd.type)
+        << ": name=[" << StringRef{namebuf.base, namebuf.len} << "], value=["
+        << StringRef{valuebuf.base, valuebuf.len} << "]";
+  }
+
+  http2session->submit_rst_stream(stream_id, NGHTTP2_PROTOCOL_ERROR);
+
+  return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
+}
+} // namespace
+
+namespace {
 int on_begin_headers_callback(nghttp2_session *session,
                               const nghttp2_frame *frame, void *user_data) {
   auto http2session = static_cast<Http2Session *>(user_data);
@@ -1485,6 +1526,9 @@ nghttp2_session_callbacks *create_http2_downstream_callbacks() {
 
   nghttp2_session_callbacks_set_on_header_callback2(callbacks,
                                                     on_header_callback2);
+
+  nghttp2_session_callbacks_set_on_invalid_header_callback2(
+      callbacks, on_invalid_header_callback2);
 
   nghttp2_session_callbacks_set_on_begin_headers_callback(
       callbacks, on_begin_headers_callback);
