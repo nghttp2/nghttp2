@@ -7172,6 +7172,26 @@ nghttp2_session_get_stream_effective_local_window_size(nghttp2_session *session,
   return stream->local_window_size;
 }
 
+int32_t nghttp2_session_get_stream_local_window_size(nghttp2_session *session,
+                                                     int32_t stream_id) {
+  nghttp2_stream *stream;
+  int32_t size;
+  stream = nghttp2_session_get_stream(session, stream_id);
+  if (stream == NULL) {
+    return -1;
+  }
+
+  size = stream->local_window_size - stream->recv_window_size;
+
+  /* size could be negative if local endpoint reduced
+     SETTINGS_INITIAL_WINDOW_SIZE */
+  if (size < 0) {
+    return 0;
+  }
+
+  return size;
+}
+
 int32_t
 nghttp2_session_get_effective_recv_data_length(nghttp2_session *session) {
   return session->recv_window_size < 0 ? 0 : session->recv_window_size;
@@ -7180,6 +7200,10 @@ nghttp2_session_get_effective_recv_data_length(nghttp2_session *session) {
 int32_t
 nghttp2_session_get_effective_local_window_size(nghttp2_session *session) {
   return session->local_window_size;
+}
+
+int32_t nghttp2_session_get_local_window_size(nghttp2_session *session) {
+  return session->local_window_size - session->recv_window_size;
 }
 
 int32_t nghttp2_session_get_stream_remote_window_size(nghttp2_session *session,
@@ -7215,6 +7239,26 @@ uint32_t nghttp2_session_get_remote_settings(nghttp2_session *session,
     return session->remote_settings.max_frame_size;
   case NGHTTP2_SETTINGS_MAX_HEADER_LIST_SIZE:
     return session->remote_settings.max_header_list_size;
+  }
+
+  assert(0);
+}
+
+uint32_t nghttp2_session_get_local_settings(nghttp2_session *session,
+                                            nghttp2_settings_id id) {
+  switch (id) {
+  case NGHTTP2_SETTINGS_HEADER_TABLE_SIZE:
+    return session->local_settings.header_table_size;
+  case NGHTTP2_SETTINGS_ENABLE_PUSH:
+    return session->local_settings.enable_push;
+  case NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS:
+    return session->local_settings.max_concurrent_streams;
+  case NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE:
+    return session->local_settings.initial_window_size;
+  case NGHTTP2_SETTINGS_MAX_FRAME_SIZE:
+    return session->local_settings.max_frame_size;
+  case NGHTTP2_SETTINGS_MAX_HEADER_LIST_SIZE:
+    return session->local_settings.max_header_list_size;
   }
 
   assert(0);
@@ -7550,4 +7594,14 @@ int nghttp2_session_create_idle_stream(nghttp2_session *session,
      in nghttp2_session_mem_send or nghttp2_session_mem_recv is
      called. */
   return 0;
+}
+
+size_t
+nghttp2_session_get_hd_inflate_dynamic_table_size(nghttp2_session *session) {
+  return nghttp2_hd_inflate_get_dynamic_table_size(&session->hd_inflater);
+}
+
+size_t
+nghttp2_session_get_hd_deflate_dynamic_table_size(nghttp2_session *session) {
+  return nghttp2_hd_deflate_get_dynamic_table_size(&session->hd_deflater);
 }

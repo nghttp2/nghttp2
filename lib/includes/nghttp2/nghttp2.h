@@ -3016,11 +3016,34 @@ nghttp2_session_get_stream_effective_recv_data_length(nghttp2_session *session,
  * `nghttp2_submit_window_update()`.  This function takes into account
  * that and returns effective window size.
  *
+ * This function does not take into account the amount of received
+ * data from the remote endpoint.  Use
+ * `nghttp2_session_get_stream_local_window_size()` to know the amount
+ * of data the remote endpoint can send without receiving stream level
+ * WINDOW_UPDATE frame.  Note that each stream is still subject to the
+ * connection level flow control.
+ *
  * This function returns -1 if it fails.
  */
 NGHTTP2_EXTERN int32_t
 nghttp2_session_get_stream_effective_local_window_size(nghttp2_session *session,
                                                        int32_t stream_id);
+
+/**
+ * @function
+ *
+ * Returns the amount of flow-controlled payload (e.g., DATA) that the
+ * remote endpoint can send without receiving stream level
+ * WINDOW_UPDATE frame.  It is also subject to the connection level
+ * flow control.  So the actual amount of data to send is
+ * min(`nghttp2_session_get_stream_local_window_size()`,
+ * `nghttp2_session_get_local_window_size()`).
+ *
+ * This function returns -1 if it fails.
+ */
+NGHTTP2_EXTERN int32_t
+nghttp2_session_get_stream_local_window_size(nghttp2_session *session,
+                                             int32_t stream_id);
 
 /**
  * @function
@@ -3047,10 +3070,31 @@ nghttp2_session_get_effective_recv_data_length(nghttp2_session *session);
  * `nghttp2_submit_window_update()`.  This function takes into account
  * that and returns effective window size.
  *
+ * This function does not take into account the amount of received
+ * data from the remote endpoint.  Use
+ * `nghttp2_session_get_local_window_size()` to know the amount of
+ * data the remote endpoint can send without receiving
+ * connection-level WINDOW_UPDATE frame.  Note that each stream is
+ * still subject to the stream level flow control.
+ *
  * This function returns -1 if it fails.
  */
 NGHTTP2_EXTERN int32_t
 nghttp2_session_get_effective_local_window_size(nghttp2_session *session);
+
+/**
+ * @function
+ *
+ * Returns the amount of flow-controlled payload (e.g., DATA) that the
+ * remote endpoint can send without receiving connection level
+ * WINDOW_UPDATE frame.  Note that each stream is still subject to the
+ * stream level flow control (see
+ * `nghttp2_session_get_stream_local_window_size()`).
+ *
+ * This function returns -1 if it fails.
+ */
+NGHTTP2_EXTERN int32_t
+nghttp2_session_get_local_window_size(nghttp2_session *session);
 
 /**
  * @function
@@ -3099,6 +3143,24 @@ nghttp2_session_get_stream_local_close(nghttp2_session *session,
 NGHTTP2_EXTERN int
 nghttp2_session_get_stream_remote_close(nghttp2_session *session,
                                         int32_t stream_id);
+
+/**
+ * @function
+ *
+ * Returns the current dynamic table size of HPACK inflater, including
+ * the overhead 32 bytes per entry described in RFC 7541.
+ */
+NGHTTP2_EXTERN size_t
+nghttp2_session_get_hd_inflate_dynamic_table_size(nghttp2_session *session);
+
+/**
+ * @function
+ *
+ * Returns the current dynamic table size of HPACK deflater including
+ * the overhead 32 bytes per entry described in RFC 7541.
+ */
+NGHTTP2_EXTERN size_t
+nghttp2_session_get_hd_deflate_dynamic_table_size(nghttp2_session *session);
 
 /**
  * @function
@@ -3206,6 +3268,17 @@ NGHTTP2_EXTERN int nghttp2_submit_shutdown_notice(nghttp2_session *session);
 NGHTTP2_EXTERN uint32_t
 nghttp2_session_get_remote_settings(nghttp2_session *session,
                                     nghttp2_settings_id id);
+
+/**
+ * @function
+ *
+ * Returns the value of SETTINGS |id| of local endpoint acknowledged
+ * by the remote endpoint.  The |id| must be one of the values defined
+ * in :enum:`nghttp2_settings_id`.
+ */
+NGHTTP2_EXTERN uint32_t
+nghttp2_session_get_local_settings(nghttp2_session *session,
+                                   nghttp2_settings_id id);
 
 /**
  * @function
