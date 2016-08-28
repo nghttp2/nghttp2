@@ -260,6 +260,7 @@ try:
     import email.utils
     import datetime
     import time
+    import ssl as tls
     from urllib.parse import urlparse
 except ImportError:
     asyncio = None
@@ -293,6 +294,25 @@ def wrap_body(body):
         # assume that callable in the form f(n) returning tuple byte
         # string and flag.
         return body
+
+def negotiated_protocol(ssl_obj):
+    protocol = ssl_obj.selected_alpn_protocol()
+    if protocol:
+        logging.info('alpn, protocol:%s', protocol)
+        return protocol
+
+    protocol = ssl_obj.selected_npn_protocol()
+    if protocol:
+        logging.info('npn, protocol:%s', protocol)
+        return protocol
+
+    return None
+
+def set_application_protocol(ssl_ctx):
+    app_protos = [cnghttp2.NGHTTP2_PROTO_VERSION_ID.decode('utf-8')]
+    ssl_ctx.set_npn_protocols(app_protos)
+    if tls.HAS_ALPN:
+        ssl_ctx.set_alpn_protocols(app_protos)
 
 cdef _get_stream_user_data(cnghttp2.nghttp2_session *session,
                            int32_t stream_id):
@@ -902,6 +922,8 @@ cdef class _HTTP2SessionCore(_HTTP2SessionCoreBase):
         return promised_handler
 
     def connection_lost(self):
+        self._stop_settings_timer()
+
         for handler in self.handlers:
             handler.on_close(cnghttp2.NGHTTP2_INTERNAL_ERROR)
         self.handlers = set()
@@ -1284,8 +1306,8 @@ if asyncio:
                 logging.info('failed to set tcp-nodelay: %s', str(e))
             ssl_ctx = self.transport.get_extra_info('sslcontext')
             if ssl_ctx:
-                protocol = sock.selected_npn_protocol()
-                logging.info('npn, protocol:%s', protocol)
+                ssl_obj = self.transport.get_extra_info('ssl_object')
+                protocol = negotiated_protocol(ssl_obj)
                 if protocol is None or protocol.encode('utf-8') != \
                    cnghttp2.NGHTTP2_PROTO_VERSION_ID:
                     self.transport.abort()
@@ -1346,8 +1368,7 @@ if asyncio:
             self.loop = asyncio.get_event_loop()
 
             if ssl:
-                ssl.set_npn_protocols([cnghttp2.NGHTTP2_PROTO_VERSION_ID\
-                                       .decode('utf-8')])
+                set_application_protocol(ssl)
 
             coro = self.loop.create_server(session_factory,
                                            host=address[0], port=address[1],
@@ -1516,8 +1537,8 @@ if asyncio:
             sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
             ssl_ctx = self.transport.get_extra_info('sslcontext')
             if ssl_ctx:
-                protocol = sock.selected_npn_protocol()
-                logging.info('npn, protocol:%s', protocol)
+                ssl_obj = self.transport.get_extra_info('ssl_object')
+                protocol = negotiated_protocol(ssl_obj)
                 if protocol is None or protocol.encode('utf-8') != \
                    cnghttp2.NGHTTP2_PROTO_VERSION_ID:
                     self.transport.abort()
@@ -1594,8 +1615,7 @@ if asyncio:
                 return self.session
 
             if ssl:
-                ssl.set_npn_protocols([cnghttp2.NGHTTP2_PROTO_VERSION_ID\
-                                       .decode('utf-8')])
+                set_application_protocol(ssl)
 
             self.loop = loop
             if not self.loop:

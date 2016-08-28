@@ -2263,6 +2263,9 @@ static int session_prep_frame(nghttp2_session *session,
     rv = nghttp2_session_pack_data(session, &session->aob.framebufs,
                                    next_readmax, frame, &item->aux_data.data,
                                    stream);
+    if (rv == NGHTTP2_ERR_PAUSE) {
+      return rv;
+    }
     if (rv == NGHTTP2_ERR_DEFERRED) {
       rv = nghttp2_stream_defer_item(stream, NGHTTP2_STREAM_FLAG_DEFERRED_USER);
 
@@ -2918,6 +2921,9 @@ static ssize_t nghttp2_session_mem_send_internal(nghttp2_session *session,
       }
 
       rv = session_prep_frame(session, item);
+      if (rv == NGHTTP2_ERR_PAUSE) {
+        return 0;
+      }
       if (rv == NGHTTP2_ERR_DEFERRED) {
         DEBUGF(fprintf(stderr, "send: frame transmission deferred\n"));
         break;
@@ -7020,7 +7026,8 @@ int nghttp2_session_pack_data(nghttp2_session *session, nghttp2_bufs *bufs,
       &aux_data->data_prd.source, session->user_data);
 
   if (payloadlen == NGHTTP2_ERR_DEFERRED ||
-      payloadlen == NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE) {
+      payloadlen == NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE ||
+      payloadlen == NGHTTP2_ERR_PAUSE) {
     DEBUGF(fprintf(stderr, "send: DATA postponed due to %s\n",
                    nghttp2_strerror((int)payloadlen)));
 

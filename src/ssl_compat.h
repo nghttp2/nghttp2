@@ -24,7 +24,9 @@
  */
 #ifndef OPENSSL_COMPAT_H
 
+#include <openssl/opensslv.h>
+
 #define OPENSSL_101_API                                                        \
-  (!defined(LIBRESSL_VERSION_NUMBER) && OPENSSL_VERSION_NUMBER >= 0x10100005L)
+  (!defined(LIBRESSL_VERSION_NUMBER) && OPENSSL_VERSION_NUMBER >= 0x1010000fL)
 
 #endif // OPENSSL_COMPAT_H

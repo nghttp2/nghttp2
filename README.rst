@@ -1370,7 +1370,7 @@ The extension module is called ``nghttp2``.
 determined by the ``configure`` script.  If the detected Python version is not
 what you expect, specify a path to Python executable in a ``PYTHON``
 variable as an argument to configure script (e.g., ``./configure
-PYTHON=/usr/bin/python3.4``).
+PYTHON=/usr/bin/python3.5``).
 
 The following example code illustrates basic usage of the HPACK compressor
 and decompressor in Python:
