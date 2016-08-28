@@ -77,6 +77,7 @@ typedef struct {
   size_t padlen;
   int begin_frame_cb_called;
   nghttp2_buf scratchbuf;
+  size_t data_source_read_cb_paused;
 } my_user_data;
 
 static const nghttp2_nv reqnv[] = {
@@ -9932,6 +9933,53 @@ void test_nghttp2_session_removed_closed_stream(void) {
   nghttp2_session_del(session);
 
   nghttp2_bufs_free(&bufs);
+}
+
+static ssize_t pause_once_data_source_read_callback(
+    nghttp2_session *session, int32_t stream_id, uint8_t *buf, size_t len,
+    uint32_t *data_flags, nghttp2_data_source *source, void *user_data) {
+  my_user_data *ud = user_data;
+  if (ud->data_source_read_cb_paused == 0) {
+    ++ud->data_source_read_cb_paused;
+    return NGHTTP2_ERR_PAUSE;
+  }
+
+  return fixed_length_data_source_read_callback(session, stream_id, buf, len,
+                                                data_flags, source, user_data);
+}
+
+void test_nghttp2_session_pause_data(void) {
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+  nghttp2_data_provider data_prd;
+  my_user_data ud;
+
+  memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
+  callbacks.send_callback = null_send_callback;
+  callbacks.on_frame_send_callback = on_frame_send_callback;
+
+  data_prd.read_callback = pause_once_data_source_read_callback;
+  ud.data_source_length = NGHTTP2_DATA_PAYLOADLEN;
+
+  nghttp2_session_server_new(&session, &callbacks, &ud);
+
+  open_recv_stream(session, 1);
+
+  CU_ASSERT(
+      0 == nghttp2_submit_data(session, NGHTTP2_FLAG_END_STREAM, 1, &data_prd));
+
+  ud.frame_send_cb_called = 0;
+  ud.data_source_read_cb_paused = 0;
+
+  CU_ASSERT(0 == nghttp2_session_send(session));
+  CU_ASSERT(0 == ud.frame_send_cb_called);
+  CU_ASSERT(NULL == session->aob.item);
+  CU_ASSERT(0 == nghttp2_session_send(session));
+  CU_ASSERT(1 == ud.frame_send_cb_called);
+  CU_ASSERT(NGHTTP2_DATA == ud.sent_frame_type);
+  CU_ASSERT(NULL == nghttp2_session_get_next_ob_item(session));
+
+  nghttp2_session_del(session);
 }
 
 static void check_nghttp2_http_recv_headers_fail(

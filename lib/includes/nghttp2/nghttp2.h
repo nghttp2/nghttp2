@@ -860,8 +860,13 @@ typedef enum {
  * achieved by returning :enum:`NGHTTP2_ERR_DEFERRED` without reading
  * any data in this invocation.  The library removes DATA frame from
  * the outgoing queue temporarily.  To move back deferred DATA frame
- * to outgoing queue, call `nghttp2_session_resume_data()`.  In case
- * of error, there are 2 choices. Returning
+ * to outgoing queue, call `nghttp2_session_resume_data()`.
+ *
+ * If the application just wants to return from
+ * `nghttp2_session_send()` or `nghttp2_session_mem_send()` without
+ * sending anything, return :enum:`NGHTTP2_ERR_PAUSE`.
+ *
+ * In case of error, there are 2 choices. Returning
  * :enum:`NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE` will close the stream
  * by issuing RST_STREAM with :enum:`NGHTTP2_INTERNAL_ERROR`.  If a
  * different error code is desirable, use
