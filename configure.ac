@@ -726,6 +726,7 @@ if test "x$werror" != "xno"; then
     AX_CHECK_COMPILE_FLAG([-Wredundant-decls], [CFLAGS="$CFLAGS -Wredundant-decls"])
     # Only work with Clang for the moment
     AX_CHECK_COMPILE_FLAG([-Wheader-guard], [CFLAGS="$CFLAGS -Wheader-guard"])
+    AX_CHECK_COMPILE_FLAG([-Wsometimes-uninitialized], [CFLAGS="$CFLAGS -Wsometimes-uninitialized"])
 
     # This is required because we pass format string as "const char*.
     AX_CHECK_COMPILE_FLAG([-Wno-format-nonliteral], [CFLAGS="$CFLAGS -Wno-format-nonliteral"])
@@ -735,6 +736,7 @@ if test "x$werror" != "xno"; then
     AX_CHECK_COMPILE_FLAG([-Wall], [CXXFLAGS="$CXXFLAGS -Wall"])
     AX_CHECK_COMPILE_FLAG([-Werror], [CXXFLAGS="$CXXFLAGS -Werror"])
     AX_CHECK_COMPILE_FLAG([-Wformat-security], [CXXFLAGS="$CXXFLAGS -Wformat-security"])
+    AX_CHECK_COMPILE_FLAG([-Wsometimes-uninitialized], [CXXFLAGS="$CXXFLAGS -Wsometimes-uninitialized"])
     AC_LANG_POP()
 fi
 
@@ -831,6 +833,7 @@ AC_MSG_NOTICE([summary of build options:
       C preprocessor: ${CPP}
       CPPFLAGS:       ${CPPFLAGS}
       WARNCFLAGS:     ${WARNCFLAGS}
+      WARNCXXFLAGS:   ${WARNCXXFLAGS}
       CXX1XCXXFLAGS:  ${CXX1XCXXFLAGS}
       EXTRACFLAG:     ${EXTRACFLAG}
       LIBS:           ${LIBS}
