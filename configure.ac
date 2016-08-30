@@ -246,7 +246,7 @@ TESTLDADD=
 # Additional libraries required for programs under src directory.
 APPLDFLAGS=
 
-case "$host" in
+case "$host_os" in
   *android*)
     android_build=yes
     # android does not need -pthread, but needs followng 3 libs for C++
@@ -255,6 +255,12 @@ case "$host" in
   *)
     PTHREAD_LDFLAGS="-pthread"
     APPLDFLAGS="$APPLDFLAGS $PTHREAD_LDFLAGS"
+    ;;
+esac
+
+case "$host_os" in
+  *solaris*)
+    APPLDFLAGS="$APPLDFLAGS -lsocket -lnsl"
     ;;
 esac
 
