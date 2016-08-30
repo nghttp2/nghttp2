@@ -80,12 +80,19 @@ void connect_timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
   auto downstream = dconn->get_downstream();
   auto upstream = downstream->get_upstream();
   auto handler = upstream->get_client_handler();
-  auto &resp = downstream->response();
 
-  // Do this so that dconn is not pooled
-  resp.connection_close = true;
+  downstream->pop_downstream_connection();
 
-  if (upstream->downstream_error(dconn, Downstream::EVENT_TIMEOUT) != 0) {
+  auto ndconn = handler->get_downstream_connection(downstream);
+  if (ndconn) {
+    if (downstream->attach_downstream_connection(std::move(ndconn)) == 0) {
+      return;
+    }
+  }
+
+  downstream->set_request_state(Downstream::CONNECT_FAIL);
+
+  if (upstream->on_downstream_abort_request(downstream, 504) != 0) {
     delete handler;
   }
 }
