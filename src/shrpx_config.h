@@ -285,6 +285,8 @@ constexpr auto SHRPX_OPT_API_MAX_REQUEST_BODY =
 constexpr auto SHRPX_OPT_BACKEND_MAX_BACKOFF =
     StringRef::from_lit("backend-max-backoff");
 constexpr auto SHRPX_OPT_SERVER_NAME = StringRef::from_lit("server-name");
+constexpr auto SHRPX_OPT_NO_SERVER_REWRITE =
+    StringRef::from_lit("no-server-rewrite");
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
@@ -561,6 +563,7 @@ struct HttpConfig {
   bool no_via;
   bool no_location_rewrite;
   bool no_host_rewrite;
+  bool no_server_rewrite;
 };
 
 struct Http2Config {
@@ -832,6 +835,7 @@ enum {
   SHRPX_OPTID_NO_LOCATION_REWRITE,
   SHRPX_OPTID_NO_OCSP,
   SHRPX_OPTID_NO_SERVER_PUSH,
+  SHRPX_OPTID_NO_SERVER_REWRITE,
   SHRPX_OPTID_NO_VIA,
   SHRPX_OPTID_NPN_LIST,
   SHRPX_OPTID_OCSP_UPDATE_INTERVAL,

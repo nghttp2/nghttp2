@@ -1288,6 +1288,9 @@ int option_lookup_token(const char *name, size_t namelen) {
   case 17:
     switch (name[16]) {
     case 'e':
+      if (util::strieq_l("no-server-rewrit", name, 16)) {
+        return SHRPX_OPTID_NO_SERVER_REWRITE;
+      }
       if (util::strieq_l("worker-write-rat", name, 16)) {
         return SHRPX_OPTID_WORKER_WRITE_RATE;
       }
@@ -2681,6 +2684,10 @@ int parse_config(Config *config, int optid, const StringRef &opt,
   case SHRPX_OPTID_SERVER_NAME:
     config->http.server_name =
         ImmutableString{std::begin(optarg), std::end(optarg)};
+
+    return 0;
+  case SHRPX_OPTID_NO_SERVER_REWRITE:
+    config->http.no_server_rewrite = util::strieq_l("yes", optarg);
 
     return 0;
   case SHRPX_OPTID_CONF:

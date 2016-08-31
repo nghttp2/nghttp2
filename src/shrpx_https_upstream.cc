@@ -1078,7 +1078,7 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
     }
   }
 
-  if (!get_config()->http2_proxy) {
+  if (!get_config()->http2_proxy && !httpconf.no_server_rewrite) {
     buf->append("Server: ");
     buf->append(httpconf.server_name);
     buf->append("\r\n");

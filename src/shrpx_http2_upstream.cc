@@ -1537,7 +1537,7 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
 
   http2::copy_headers_to_nva_nocopy(nva, resp.fs.headers());
 
-  if (!get_config()->http2_proxy) {
+  if (!get_config()->http2_proxy && !httpconf.no_server_rewrite) {
     nva.push_back(
         http2::make_nv_ls_nocopy("server", StringRef{httpconf.server_name}));
   } else {

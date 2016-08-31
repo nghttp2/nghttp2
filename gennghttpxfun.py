@@ -135,6 +135,7 @@ OPTIONS = [
     "api-max-request-body",
     "backend-max-backoff",
     "server-name",
+    "no-server-rewrite",
 ]
 
 LOGVARS = [

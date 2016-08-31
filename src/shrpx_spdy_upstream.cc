@@ -1100,7 +1100,7 @@ int SpdyUpstream::on_downstream_header_complete(Downstream *downstream) {
     nv[hdidx++] = hd.value.c_str();
   }
 
-  if (!get_config()->http2_proxy) {
+  if (!get_config()->http2_proxy && !httpconf.no_server_rewrite) {
     nv[hdidx++] = "server";
     nv[hdidx++] = httpconf.server_name.c_str();
   } else {

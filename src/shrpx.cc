@@ -2208,6 +2208,10 @@ HTTP:
   --server-name=<NAME>
               Change server response header field value to <NAME>.
               Default: )" << get_config()->http.server_name << R"(
+  --no-server-rewrite
+              Don't rewrite server header field in default mode.  When
+              --http2-proxy is used, these headers will not be altered
+              regardless of this option.
 
 API:
   --api-max-request-body=<SIZE>
@@ -2837,6 +2841,7 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_API_MAX_REQUEST_BODY.c_str(), required_argument, &flag, 126},
         {SHRPX_OPT_BACKEND_MAX_BACKOFF.c_str(), required_argument, &flag, 127},
         {SHRPX_OPT_SERVER_NAME.c_str(), required_argument, &flag, 128},
+        {SHRPX_OPT_NO_SERVER_REWRITE.c_str(), no_argument, &flag, 129},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -3437,6 +3442,11 @@ int main(int argc, char **argv) {
       case 128:
         // --server-name
         cmdcfgs.emplace_back(SHRPX_OPT_SERVER_NAME, StringRef{optarg});
+        break;
+      case 129:
+        // --no-server-rewrite
+        cmdcfgs.emplace_back(SHRPX_OPT_NO_SERVER_REWRITE,
+                             StringRef::from_lit("yes"));
         break;
       default:
         break;
