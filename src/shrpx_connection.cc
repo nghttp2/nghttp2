@@ -625,8 +625,6 @@ ssize_t Connection::write_tls(const void *data, size_t len) {
     }
   }
 
-  wlimit.drain(rv);
-
   update_tls_warmup_writelen(rv);
 
   return rv;
@@ -677,8 +675,6 @@ ssize_t Connection::read_tls(void *data, size_t len) {
       return SHRPX_ERR_NETWORK;
     }
   }
-
-  rlimit.drain(rv);
 
   return rv;
 }
