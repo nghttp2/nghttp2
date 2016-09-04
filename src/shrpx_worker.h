@@ -46,6 +46,8 @@
 #include "shrpx_downstream_connection_pool.h"
 #include "memchunk.h"
 #include "shrpx_ssl.h"
+#include "shrpx_live_check.h"
+#include "shrpx_connect_blocker.h"
 
 using namespace nghttp2;
 
@@ -53,7 +55,6 @@ namespace shrpx {
 
 class Http2Session;
 class ConnectBlocker;
-class LiveCheck;
 class MemcachedDispatcher;
 struct UpstreamAddr;
 class ConnectionHandler;
@@ -126,6 +127,9 @@ struct WeightedPri {
 };
 
 struct SharedDownstreamAddr {
+  SharedDownstreamAddr()
+      : next{0}, http1_pri{}, http2_pri{}, affinity{AFFINITY_NONE} {}
+
   std::vector<DownstreamAddr> addrs;
   // Bunch of session affinity hash.  Only used if affinity ==
   // AFFINITY_IP.
@@ -156,6 +160,8 @@ struct SharedDownstreamAddr {
 };
 
 struct DownstreamAddrGroup {
+  DownstreamAddrGroup() : retired{false} {};
+
   ImmutableString pattern;
   std::shared_ptr<SharedDownstreamAddr> shared_addr;
   // true if this group is no longer used for new request.  If this is

@@ -35,8 +35,6 @@
 #include "shrpx_client_handler.h"
 #include "shrpx_http2_session.h"
 #include "shrpx_log_config.h"
-#include "shrpx_connect_blocker.h"
-#include "shrpx_live_check.h"
 #include "shrpx_memcached_dispatcher.h"
 #ifdef HAVE_MRUBY
 #include "shrpx_mruby.h"
@@ -186,8 +184,6 @@ void Worker::replace_downstream_config(
     dst = std::make_shared<DownstreamAddrGroup>();
     dst->pattern = src.pattern;
 
-    // TODO for some reason, clang-3.6 which comes with Ubuntu 15.10
-    // does not value initialize with std::make_shared.
     auto shared_addr = std::make_shared<SharedDownstreamAddr>();
 
     shared_addr->addrs.resize(src.addrs.size());

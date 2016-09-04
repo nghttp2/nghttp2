@@ -649,6 +649,15 @@ struct RouterConfig {
 };
 
 struct DownstreamConfig {
+  DownstreamConfig()
+      : timeout{},
+        addr_group_catch_all{0},
+        connections_per_host{0},
+        connections_per_frontend{0},
+        request_buffer_size{0},
+        response_buffer_size{0},
+        family{0} {}
+
   struct {
     ev_tstamp read;
     ev_tstamp write;
