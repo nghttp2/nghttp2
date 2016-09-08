@@ -154,6 +154,8 @@ public:
   void repeat_read_timer();
   void stop_read_timer();
 
+  Connection *get_connection();
+
 private:
   Connection conn_;
   ev_timer reneg_shutdown_timer_;

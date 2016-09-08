@@ -776,7 +776,9 @@ int send_data_callback(nghttp2_session *session, nghttp2_frame *frame,
   // data transferred.
   downstream->response_sent_body_length += length;
 
-  return wb->rleft() >= MAX_BUFFER_SIZE ? NGHTTP2_ERR_PAUSE : 0;
+  auto max_buffer_size = upstream->get_max_buffer_size();
+
+  return wb->rleft() >= max_buffer_size ? NGHTTP2_ERR_PAUSE : 0;
 }
 } // namespace
 
@@ -919,7 +921,8 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
       downstream_queue_(downstream_queue_size(handler->get_worker()),
                         !get_config()->http2_proxy),
       handler_(handler),
-      session_(nullptr) {
+      session_(nullptr),
+      max_buffer_size_(MAX_BUFFER_SIZE) {
   int rv;
 
   auto &http2conf = get_config()->http2;
@@ -955,7 +958,9 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
   }
 
   int32_t window_bits =
-      faddr->alt_mode ? 31 : http2conf.upstream.connection_window_bits;
+      faddr->alt_mode ? 31 : http2conf.upstream.optimize_window_size
+                                 ? 16
+                                 : http2conf.upstream.connection_window_bits;
 
   if (window_bits != 16) {
     int32_t window_size = (1u << window_bits) - 1;
@@ -982,6 +987,25 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
   ev_prepare_init(&prep_, prepare_cb);
   prep_.data = this;
   ev_prepare_start(handler_->get_loop(), &prep_);
+
+#if defined(TCP_INFO) && defined(TCP_NOTSENT_LOWAT)
+  if (http2conf.upstream.optimize_write_buffer_size) {
+    auto conn = handler_->get_connection();
+    conn->tls_dyn_rec_warmup_threshold = 0;
+
+    uint32_t pollout_thres = 1;
+    rv = setsockopt(conn->fd, IPPROTO_TCP, TCP_NOTSENT_LOWAT, &pollout_thres,
+                    static_cast<socklen_t>(sizeof(pollout_thres)));
+
+    if (rv != 0) {
+      if (LOG_ENABLED(INFO)) {
+        auto error = errno;
+        LOG(INFO) << "setsockopt(TCP_NOTSENT_LOWAT, " << pollout_thres
+                  << ") failed: errno=" << error;
+      }
+    }
+  }
+#endif // defined(TCP_INFO) && defined(TCP_NOTSENT_LOWAT)
 
   handler_->reset_upstream_read_timeout(
       get_config()->conn.upstream.timeout.http2_read);
@@ -1032,8 +1056,44 @@ int Http2Upstream::on_read() {
 
 // After this function call, downstream may be deleted.
 int Http2Upstream::on_write() {
+  int rv;
+  auto &http2conf = get_config()->http2;
+
+  if ((http2conf.upstream.optimize_write_buffer_size ||
+       http2conf.upstream.optimize_window_size) &&
+      handler_->get_ssl()) {
+    auto conn = handler_->get_connection();
+    TCPHint hint;
+    rv = conn->get_tcp_hint(&hint);
+    if (rv == 0) {
+      if (http2conf.upstream.optimize_write_buffer_size) {
+        max_buffer_size_ = std::min(MAX_BUFFER_SIZE, hint.write_buffer_size);
+      }
+
+      if (http2conf.upstream.optimize_window_size) {
+        auto faddr = handler_->get_upstream_addr();
+        if (!faddr->alt_mode) {
+          int32_t window_size =
+              (1u << http2conf.upstream.connection_window_bits) - 1;
+          window_size =
+              std::min(static_cast<uint32_t>(window_size), hint.rwin * 2);
+
+          rv = nghttp2_session_set_local_window_size(
+              session_, NGHTTP2_FLAG_NONE, 0, window_size);
+          if (rv != 0) {
+            if (LOG_ENABLED(INFO)) {
+              ULOG(INFO, this)
+                  << "nghttp2_session_set_local_window_size() with window_size="
+                  << window_size << " failed: " << nghttp2_strerror(rv);
+            }
+          }
+        }
+      }
+    }
+  }
+
   for (;;) {
-    if (wb_.rleft() >= MAX_BUFFER_SIZE) {
+    if (wb_.rleft() >= max_buffer_size_) {
       return 0;
     }
 
@@ -1253,10 +1313,26 @@ ssize_t downstream_data_read_callback(nghttp2_session *session,
   auto downstream = static_cast<Downstream *>(source->ptr);
   auto body = downstream->get_response_buf();
   assert(body);
+  auto upstream = static_cast<Http2Upstream *>(user_data);
 
   const auto &resp = downstream->response();
 
   auto nread = std::min(body->rleft(), length);
+
+  auto max_buffer_size = upstream->get_max_buffer_size();
+
+  auto buffer = upstream->get_response_buf();
+
+  if (max_buffer_size <
+      std::min(nread, static_cast<size_t>(256)) + 9 + buffer->rleft()) {
+    if (LOG_ENABLED(INFO)) {
+      ULOG(INFO, upstream) << "Buffer is almost full.  Skip write DATA";
+    }
+    return NGHTTP2_ERR_PAUSE;
+  }
+
+  nread = std::min(nread, max_buffer_size - 9 - buffer->rleft());
+
   auto body_empty = body->rleft() == nread;
 
   *data_flags |= NGHTTP2_DATA_FLAG_NO_COPY;
@@ -2026,5 +2102,7 @@ void Http2Upstream::cancel_premature_downstream(
   }
   downstream_queue_.remove_and_get_blocked(promised_downstream, false);
 }
+
+size_t Http2Upstream::get_max_buffer_size() const { return max_buffer_size_; }
 
 } // namespace shrpx

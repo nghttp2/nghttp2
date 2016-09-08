@@ -66,6 +66,11 @@ struct TLSConnection {
   bool reneg_started;
 };
 
+struct TCPHint {
+  size_t write_buffer_size;
+  uint32_t rwin;
+};
+
 template <typename T> using EVCb = void (*)(struct ev_loop *, T *, int);
 
 using IOCb = EVCb<ev_io>;
@@ -117,6 +122,8 @@ struct Connection {
   void handle_tls_pending_read();
 
   void set_ssl(SSL *ssl);
+
+  int get_tcp_hint(TCPHint *hint) const;
 
   TLSConnection tls;
   ev_io wev;

@@ -1643,6 +1643,11 @@ int option_lookup_token(const char *name, size_t namelen) {
     break;
   case 35:
     switch (name[34]) {
+    case 'e':
+      if (util::strieq_l("frontend-http2-optimize-window-siz", name, 34)) {
+        return SHRPX_OPTID_FRONTEND_HTTP2_OPTIMIZE_WINDOW_SIZE;
+      }
+      break;
     case 'r':
       if (util::strieq_l("frontend-http2-dump-response-heade", name, 34)) {
         return SHRPX_OPTID_FRONTEND_HTTP2_DUMP_RESPONSE_HEADER;
@@ -1705,6 +1710,10 @@ int option_lookup_token(const char *name, size_t namelen) {
   case 41:
     switch (name[40]) {
     case 'e':
+      if (util::strieq_l("frontend-http2-optimize-write-buffer-siz", name,
+                         40)) {
+        return SHRPX_OPTID_FRONTEND_HTTP2_OPTIMIZE_WRITE_BUFFER_SIZE;
+      }
       if (util::strieq_l("tls-ticket-key-memcached-private-key-fil", name,
                          40)) {
         return SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED_PRIVATE_KEY_FILE;
@@ -2688,6 +2697,15 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     return 0;
   case SHRPX_OPTID_NO_SERVER_REWRITE:
     config->http.no_server_rewrite = util::strieq_l("yes", optarg);
+
+    return 0;
+  case SHRPX_OPTID_FRONTEND_HTTP2_OPTIMIZE_WRITE_BUFFER_SIZE:
+    config->http2.upstream.optimize_write_buffer_size =
+        util::strieq_l("yes", optarg);
+
+    return 0;
+  case SHRPX_OPTID_FRONTEND_HTTP2_OPTIMIZE_WINDOW_SIZE:
+    config->http2.upstream.optimize_window_size = util::strieq_l("yes", optarg);
 
     return 0;
   case SHRPX_OPTID_CONF:

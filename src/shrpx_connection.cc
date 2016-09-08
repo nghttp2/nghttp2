@@ -27,6 +27,7 @@
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #endif // HAVE_UNISTD_H
+#include <netinet/tcp.h>
 
 #include <limits>
 
@@ -755,6 +756,57 @@ void Connection::handle_tls_pending_read() {
     return;
   }
   rlimit.handle_tls_pending_read();
+}
+
+int Connection::get_tcp_hint(TCPHint *hint) const {
+#if defined(TCP_INFO) && defined(TCP_NOTSENT_LOWAT)
+  struct tcp_info tcp_info;
+  socklen_t tcp_info_len = sizeof(tcp_info);
+  int rv;
+
+  rv = getsockopt(fd, IPPROTO_TCP, TCP_INFO, &tcp_info, &tcp_info_len);
+
+  if (rv != 0) {
+    return -1;
+  }
+
+  auto avail_packets = tcp_info.tcpi_snd_cwnd > tcp_info.tcpi_unacked
+                           ? tcp_info.tcpi_snd_cwnd - tcp_info.tcpi_unacked
+                           : 0;
+
+  // http://www.slideshare.net/kazuho/programming-tcp-for-responsiveness
+  //
+  // TODO 29 (5 + 8 + 16) is TLS overhead for AES-GCM.  For
+  // CHACHA20_POLY1305, it is 21 since it does not need 8 bytes
+  // explicit nonce.
+  auto writable_size = (avail_packets + 2) * (tcp_info.tcpi_snd_mss - 29);
+  if (writable_size > 16_k) {
+    writable_size = writable_size & ~(16_k - 1);
+  } else {
+    if (writable_size < 536) {
+      LOG(INFO) << "writable_size is too small: " << writable_size;
+    }
+    // TODO is this required?
+    writable_size = std::max(writable_size, static_cast<uint32_t>(536 * 2));
+  }
+
+  if (LOG_ENABLED(INFO)) {
+    LOG(INFO) << "snd_cwnd=" << tcp_info.tcpi_snd_cwnd
+              << ", unacked=" << tcp_info.tcpi_unacked
+              << ", snd_mss=" << tcp_info.tcpi_snd_mss
+              << ", rtt=" << tcp_info.tcpi_rtt << "us"
+              << ", rcv_space=" << tcp_info.tcpi_rcv_space
+              << ", writable=" << writable_size;
+  }
+
+  hint->write_buffer_size = writable_size;
+  // TODO tcpi_rcv_space is considered as rwin, is that correct?
+  hint->rwin = tcp_info.tcpi_rcv_space;
+
+  return 0;
+#else  // !defined(TCP_INFO) || !defined(TCP_NOTSENT_LOWAT)
+  return -1;
+#endif // !defined(TCP_INFO) || !defined(TCP_NOTSENT_LOWAT)
 }
 
 } // namespace shrpx

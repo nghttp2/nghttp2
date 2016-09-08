@@ -2032,6 +2032,27 @@ HTTP/2 and SPDY:
               backend session is relayed  to frontend, and server push
               via Link header field  is also supported.  SPDY frontend
               does not support server push.
+  --frontend-http2-optimize-write-buffer-size
+              (Experimental) Enable write  buffer size optimization in
+              frontend HTTP/2 TLS  connection.  This optimization aims
+              to reduce  write buffer  size so  that it  only contains
+              bytes  which can  send immediately.   This makes  server
+              more responsive to prioritized HTTP/2 stream because the
+              buffering  of lower  priority stream  is reduced.   This
+              option is only effective on recent Linux platform.
+  --frontend-http2-optimize-window-size
+              (Experimental)   Automatically  tune   connection  level
+              window size of frontend  HTTP/2 TLS connection.  If this
+              feature is  enabled, connection window size  starts with
+              the   default  window   size,   65535  bytes.    nghttpx
+              automatically  adjusts connection  window size  based on
+              TCP receiving  window size.  The maximum  window size is
+              capped      by      the     value      specified      by
+              --frontend-http2-connection-window-bits.     Since   the
+              stream is subject to stream level window size, it should
+              be adjusted using --frontend-http2-window-bits option as
+              well.   This option  is only  effective on  recent Linux
+              platform.
 
 Mode:
   (default mode)
@@ -2842,6 +2863,10 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_BACKEND_MAX_BACKOFF.c_str(), required_argument, &flag, 127},
         {SHRPX_OPT_SERVER_NAME.c_str(), required_argument, &flag, 128},
         {SHRPX_OPT_NO_SERVER_REWRITE.c_str(), no_argument, &flag, 129},
+        {SHRPX_OPT_FRONTEND_HTTP2_OPTIMIZE_WRITE_BUFFER_SIZE.c_str(),
+         no_argument, &flag, 130},
+        {SHRPX_OPT_FRONTEND_HTTP2_OPTIMIZE_WINDOW_SIZE.c_str(), no_argument,
+         &flag, 131},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -3446,6 +3471,17 @@ int main(int argc, char **argv) {
       case 129:
         // --no-server-rewrite
         cmdcfgs.emplace_back(SHRPX_OPT_NO_SERVER_REWRITE,
+                             StringRef::from_lit("yes"));
+        break;
+      case 130:
+        // --frontend-http2-optimize-write-buffer-size
+        cmdcfgs.emplace_back(
+            SHRPX_OPT_FRONTEND_HTTP2_OPTIMIZE_WRITE_BUFFER_SIZE,
+            StringRef::from_lit("yes"));
+        break;
+      case 131:
+        // --frontend-http2-optimize-window-size
+        cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_HTTP2_OPTIMIZE_WINDOW_SIZE,
                              StringRef::from_lit("yes"));
         break;
       default:

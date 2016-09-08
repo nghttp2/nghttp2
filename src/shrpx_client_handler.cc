@@ -244,17 +244,21 @@ int ClientHandler::write_tls() {
 
   ERR_clear_error();
 
+  if (on_write() != 0) {
+    return -1;
+  }
+
+  auto iovcnt = upstream_->response_riovec(&iov, 1);
+  if (iovcnt == 0) {
+    conn_.start_tls_write_idle();
+
+    conn_.wlimit.stopw();
+    ev_timer_stop(conn_.loop, &conn_.wt);
+
+    return 0;
+  }
+
   for (;;) {
-    if (on_write() != 0) {
-      return -1;
-    }
-
-    auto iovcnt = upstream_->response_riovec(&iov, 1);
-    if (iovcnt == 0) {
-      conn_.start_tls_write_idle();
-      break;
-    }
-
     auto nwrite = conn_.write_tls(iov.iov_base, iov.iov_len);
     if (nwrite < 0) {
       return -1;
@@ -265,12 +269,12 @@ int ClientHandler::write_tls() {
     }
 
     upstream_->response_drain(nwrite);
+
+    iovcnt = upstream_->response_riovec(&iov, 1);
+    if (iovcnt == 0) {
+      return 0;
+    }
   }
-
-  conn_.wlimit.stopw();
-  ev_timer_stop(conn_.loop, &conn_.wt);
-
-  return 0;
 }
 
 int ClientHandler::upstream_noop() { return 0; }
@@ -1444,5 +1448,7 @@ StringRef ClientHandler::get_forwarded_for() const {
 }
 
 const UpstreamAddr *ClientHandler::get_upstream_addr() const { return faddr_; }
+
+Connection *ClientHandler::get_connection() { return &conn_; };
 
 } // namespace shrpx

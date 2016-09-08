@@ -136,6 +136,8 @@ OPTIONS = [
     "backend-max-backoff",
     "server-name",
     "no-server-rewrite",
+    "frontend-http2-optimize-write-buffer-size",
+    "frontend-http2-optimize-window-size",
 ]
 
 LOGVARS = [
