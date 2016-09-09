@@ -1335,13 +1335,14 @@ void fill_default_config(Config *config) {
       timeoutconf.settings = 10_s;
     }
 
-    // window bits for HTTP/2 and SPDY upstream connection per
-    // stream. 2**16-1 = 64KiB-1, which is HTTP/2 default. Please note
-    // that SPDY/3 default is 64KiB.
-    upstreamconf.window_bits = 16;
-    // HTTP/2 SPDY/3.1 has connection-level flow control. The default
-    // window size for HTTP/2 is 64KiB - 1. SPDY/3's default is 64KiB
-    upstreamconf.connection_window_bits = 16;
+    // window size for HTTP/2 and SPDY upstream connection per stream.
+    // 2**16-1 = 64KiB-1, which is HTTP/2 default.  Please note that
+    // SPDY/3 default is 64KiB.
+    upstreamconf.window_size = 64_k - 1;
+    // HTTP/2 and SPDY/3.1 has connection-level flow control. The
+    // default window size for HTTP/2 is 64KiB - 1.  SPDY/3's default
+    // is 64KiB
+    upstreamconf.connection_window_size = 64_k - 1;
     upstreamconf.max_concurrent_streams = 100;
 
     nghttp2_option_new(&upstreamconf.option);
@@ -1362,8 +1363,8 @@ void fill_default_config(Config *config) {
       timeoutconf.settings = 10_s;
     }
 
-    downstreamconf.window_bits = 16;
-    downstreamconf.connection_window_bits = 30;
+    downstreamconf.window_size = 64_k - 1;
+    downstreamconf.connection_window_size = (1u << 31) - 1;
     downstreamconf.max_concurrent_streams = 100;
 
     nghttp2_option_new(&downstreamconf.option);
@@ -1997,26 +1998,25 @@ HTTP/2 and SPDY:
               concurrent requests are set by a remote server.
               Default: )"
       << get_config()->http2.downstream.max_concurrent_streams << R"(
-  --frontend-http2-window-bits=<N>
-              Sets the  per-stream initial window size  of HTTP/2 SPDY
-              frontend connection.  For HTTP/2,  the size is 2**<N>-1.
-              For SPDY, the size is 2**<N>.
-              Default: )" << get_config()->http2.upstream.window_bits << R"(
-  --frontend-http2-connection-window-bits=<N>
+  --frontend-http2-window-size=<SIZE>
+              Sets the  per-stream initial  window size of  HTTP/2 and
+              SPDY frontend connection.
+              Default: )" << get_config()->http2.upstream.window_size << R"(
+  --frontend-http2-connection-window-size=<SIZE>
               Sets the  per-connection window size of  HTTP/2 and SPDY
-              frontend   connection.    For   HTTP/2,  the   size   is
-              2**<N>-1. For SPDY, the size is 2**<N>.
-              Default: )" << get_config()->http2.upstream.connection_window_bits
+              frontend  connection.  For  SPDY  connection, the  value
+              less than 64KiB is rounded up to 64KiB.
+              Default: )" << get_config()->http2.upstream.connection_window_size
       << R"(
-  --backend-http2-window-bits=<N>
+  --backend-http2-window-size=<SIZE>
               Sets  the   initial  window   size  of   HTTP/2  backend
-              connection to 2**<N>-1.
-              Default: )" << get_config()->http2.downstream.window_bits << R"(
-  --backend-http2-connection-window-bits=<N>
+              connection.
+              Default: )" << get_config()->http2.downstream.window_size << R"(
+  --backend-http2-connection-window-size=<SIZE>
               Sets the  per-connection window  size of  HTTP/2 backend
-              connection to 2**<N>-1.
+              connection.
               Default: )"
-      << get_config()->http2.downstream.connection_window_bits << R"(
+      << get_config()->http2.downstream.connection_window_size << R"(
   --http2-no-cookie-crumbling
               Don't crumble cookie header field.
   --padding=<N>
@@ -2048,9 +2048,9 @@ HTTP/2 and SPDY:
               automatically  adjusts connection  window size  based on
               TCP receiving  window size.  The maximum  window size is
               capped      by      the     value      specified      by
-              --frontend-http2-connection-window-bits.     Since   the
+              --frontend-http2-connection-window-size.     Since   the
               stream is subject to stream level window size, it should
-              be adjusted using --frontend-http2-window-bits option as
+              be adjusted using --frontend-http2-window-size option as
               well.   This option  is only  effective on  recent Linux
               platform.
 
@@ -2867,6 +2867,14 @@ int main(int argc, char **argv) {
          no_argument, &flag, 130},
         {SHRPX_OPT_FRONTEND_HTTP2_OPTIMIZE_WINDOW_SIZE.c_str(), no_argument,
          &flag, 131},
+        {SHRPX_OPT_FRONTEND_HTTP2_WINDOW_SIZE.c_str(), required_argument, &flag,
+         132},
+        {SHRPX_OPT_FRONTEND_HTTP2_CONNECTION_WINDOW_SIZE.c_str(),
+         required_argument, &flag, 133},
+        {SHRPX_OPT_BACKEND_HTTP2_WINDOW_SIZE.c_str(), required_argument, &flag,
+         134},
+        {SHRPX_OPT_BACKEND_HTTP2_CONNECTION_WINDOW_SIZE.c_str(),
+         required_argument, &flag, 135},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -3483,6 +3491,26 @@ int main(int argc, char **argv) {
         // --frontend-http2-optimize-window-size
         cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_HTTP2_OPTIMIZE_WINDOW_SIZE,
                              StringRef::from_lit("yes"));
+        break;
+      case 132:
+        // --frontend-http2-window-size
+        cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_HTTP2_WINDOW_SIZE,
+                             StringRef{optarg});
+        break;
+      case 133:
+        // --frontend-http2-connection-window-size
+        cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_HTTP2_CONNECTION_WINDOW_SIZE,
+                             StringRef{optarg});
+        break;
+      case 134:
+        // --backend-http2-window-size
+        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_HTTP2_WINDOW_SIZE,
+                             StringRef{optarg});
+        break;
+      case 135:
+        // --backend-http2-connection-window-size
+        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_HTTP2_CONNECTION_WINDOW_SIZE,
+                             StringRef{optarg});
         break;
       default:
         break;

@@ -1590,7 +1590,7 @@ int Http2Session::connection_made() {
   entry[0].value = http2conf.downstream.max_concurrent_streams;
 
   entry[1].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
-  entry[1].value = (1 << http2conf.downstream.window_bits) - 1;
+  entry[1].value = http2conf.downstream.window_size;
 
   if (http2conf.no_server_push || get_config()->http2_proxy) {
     entry[nentry].settings_id = NGHTTP2_SETTINGS_ENABLE_PUSH;
@@ -1604,14 +1604,11 @@ int Http2Session::connection_made() {
     return -1;
   }
 
-  if (http2conf.downstream.connection_window_bits != 16) {
-    int32_t window_size =
-        (1 << http2conf.downstream.connection_window_bits) - 1;
-    rv = nghttp2_session_set_local_window_size(session_, NGHTTP2_FLAG_NONE, 0,
-                                               window_size);
-    if (rv != 0) {
-      return -1;
-    }
+  rv = nghttp2_session_set_local_window_size(
+      session_, NGHTTP2_FLAG_NONE, 0,
+      http2conf.downstream.connection_window_size);
+  if (rv != 0) {
+    return -1;
   }
 
   auto must_terminate =

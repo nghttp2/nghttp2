@@ -138,6 +138,10 @@ OPTIONS = [
     "no-server-rewrite",
     "frontend-http2-optimize-write-buffer-size",
     "frontend-http2-optimize-window-size",
+    "frontend-http2-window-size",
+    "frontend-http2-connection-window-size",
+    "backend-http2-window-size",
+    "backend-http2-connection-window-size",
 ]
 
 LOGVARS = [

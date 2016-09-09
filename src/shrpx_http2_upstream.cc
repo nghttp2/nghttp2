@@ -947,7 +947,7 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
   if (faddr->alt_mode) {
     entry[1].value = (1u << 31) - 1;
   } else {
-    entry[1].value = (1 << http2conf.upstream.window_bits) - 1;
+    entry[1].value = http2conf.upstream.window_size;
   }
 
   rv = nghttp2_submit_settings(session_, NGHTTP2_FLAG_NONE, entry.data(),
@@ -957,20 +957,17 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
                       << nghttp2_strerror(rv);
   }
 
-  int32_t window_bits =
-      faddr->alt_mode ? 31 : http2conf.upstream.optimize_window_size
-                                 ? 16
-                                 : http2conf.upstream.connection_window_bits;
+  auto window_size = faddr->alt_mode
+                         ? std::numeric_limits<int32_t>::max()
+                         : http2conf.upstream.connection_window_size;
 
-  if (window_bits != 16) {
-    int32_t window_size = (1u << window_bits) - 1;
-    rv = nghttp2_session_set_local_window_size(session_, NGHTTP2_FLAG_NONE, 0,
-                                               window_size);
+  rv = nghttp2_session_set_local_window_size(session_, NGHTTP2_FLAG_NONE, 0,
+                                             window_size);
 
-    if (rv != 0) {
-      ULOG(ERROR, this) << "nghttp2_submit_window_update() returned error: "
-                        << nghttp2_strerror(rv);
-    }
+  if (rv != 0) {
+    ULOG(ERROR, this)
+        << "nghttp2_session_set_local_window_size() returned error: "
+        << nghttp2_strerror(rv);
   }
 
   // We wait for SETTINGS ACK at least 10 seconds.
@@ -1073,10 +1070,8 @@ int Http2Upstream::on_write() {
       if (http2conf.upstream.optimize_window_size) {
         auto faddr = handler_->get_upstream_addr();
         if (!faddr->alt_mode) {
-          int32_t window_size =
-              (1u << http2conf.upstream.connection_window_bits) - 1;
-          window_size =
-              std::min(static_cast<uint32_t>(window_size), hint.rwin * 2);
+          auto window_size = std::min(http2conf.upstream.connection_window_size,
+                                      static_cast<int32_t>(hint.rwin * 2));
 
           rv = nghttp2_session_set_local_window_size(
               session_, NGHTTP2_FLAG_NONE, 0, window_size);

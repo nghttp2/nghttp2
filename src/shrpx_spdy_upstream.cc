@@ -54,6 +54,28 @@ constexpr size_t MAX_BUFFER_SIZE = 32_k;
 } // namespace
 
 namespace {
+int32_t get_connection_window_size() {
+  return std::max(get_config()->http2.upstream.connection_window_size,
+                  static_cast<int32_t>(64_k));
+}
+} // namespace
+
+namespace {
+int32_t get_window_size() {
+  auto n = get_config()->http2.upstream.window_size;
+
+  // 65535 is the default window size of HTTP/2.  OTOH, the default
+  // window size of SPDY is 65536.  The configuration defaults to
+  // HTTP/2, so if we have 65535, we use 65536 for SPDY.
+  if (n == 65535) {
+    return 64_k;
+  }
+
+  return n;
+}
+} // namespace
+
+namespace {
 ssize_t send_callback(spdylay_session *session, const uint8_t *data, size_t len,
                       int flags, void *user_data) {
   auto upstream = static_cast<SpdyUpstream *>(user_data);
@@ -402,33 +424,27 @@ void on_data_chunk_recv_callback(spdylay_session *session, uint8_t flags,
     return;
   }
 
-  auto &http2conf = get_config()->http2;
-
   // If connection-level window control is not enabled (e.g,
   // spdy/3), spdylay_session_get_recv_data_length() is always
   // returns 0.
   if (spdylay_session_get_recv_data_length(session) >
-      std::max(SPDYLAY_INITIAL_WINDOW_SIZE,
-               1 << http2conf.upstream.connection_window_bits)) {
+      std::max(SPDYLAY_INITIAL_WINDOW_SIZE, get_connection_window_size())) {
     if (LOG_ENABLED(INFO)) {
       ULOG(INFO, upstream) << "Flow control error on connection: "
                            << "recv_window_size="
                            << spdylay_session_get_recv_data_length(session)
-                           << ", window_size="
-                           << (1 << http2conf.upstream.connection_window_bits);
+                           << ", window_size=" << get_connection_window_size();
     }
     spdylay_session_fail_session(session, SPDYLAY_GOAWAY_PROTOCOL_ERROR);
     return;
   }
   if (spdylay_session_get_stream_recv_data_length(session, stream_id) >
-      std::max(SPDYLAY_INITIAL_WINDOW_SIZE,
-               1 << http2conf.upstream.window_bits)) {
+      std::max(SPDYLAY_INITIAL_WINDOW_SIZE, get_window_size())) {
     if (LOG_ENABLED(INFO)) {
       ULOG(INFO, upstream) << "Flow control error: recv_window_size="
                            << spdylay_session_get_stream_recv_data_length(
                                   session, stream_id)
-                           << ", initial_window_size="
-                           << (1 << http2conf.upstream.window_bits);
+                           << ", initial_window_size=" << get_window_size();
     }
     upstream->rst_stream(downstream, SPDYLAY_FLOW_CONTROL_ERROR);
     return;
@@ -574,16 +590,17 @@ SpdyUpstream::SpdyUpstream(uint16_t version, ClientHandler *handler)
   // going to be deprecated in the future, and the default stream
   // window is large enough for API request body (64KiB), we don't
   // expand window size depending on the options.
+  int32_t initial_window_size;
   if (version >= SPDYLAY_PROTO_SPDY3 && !faddr->alt_mode) {
     int val = 1;
     flow_control_ = true;
-    initial_window_size_ = 1 << http2conf.upstream.window_bits;
+    initial_window_size = get_window_size();
     rv = spdylay_session_set_option(
         session_, SPDYLAY_OPT_NO_AUTO_WINDOW_UPDATE2, &val, sizeof(val));
     assert(rv == 0);
   } else {
     flow_control_ = false;
-    initial_window_size_ = 0;
+    initial_window_size = 0;
   }
   // TODO Maybe call from outside?
   std::array<spdylay_settings_entry, 2> entry;
@@ -595,7 +612,7 @@ SpdyUpstream::SpdyUpstream(uint16_t version, ClientHandler *handler)
   if (flow_control_) {
     ++num_entry;
     entry[1].settings_id = SPDYLAY_SETTINGS_INITIAL_WINDOW_SIZE;
-    entry[1].value = initial_window_size_;
+    entry[1].value = initial_window_size;
     entry[1].flags = SPDYLAY_ID_FLAG_SETTINGS_NONE;
   }
 
@@ -603,10 +620,11 @@ SpdyUpstream::SpdyUpstream(uint16_t version, ClientHandler *handler)
                                entry.data(), num_entry);
   assert(rv == 0);
 
+  auto connection_window_size = get_connection_window_size();
+
   if (flow_control_ && version >= SPDYLAY_PROTO_SPDY3_1 &&
-      http2conf.upstream.connection_window_bits > 16) {
-    int32_t delta = (1 << http2conf.upstream.connection_window_bits) -
-                    SPDYLAY_INITIAL_WINDOW_SIZE;
+      connection_window_size > 64_k) {
+    int32_t delta = connection_window_size - SPDYLAY_INITIAL_WINDOW_SIZE;
     rv = spdylay_submit_window_update(session_, 0, delta);
     assert(rv == 0);
   }

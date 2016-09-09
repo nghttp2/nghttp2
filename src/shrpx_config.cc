@@ -320,6 +320,13 @@ int parse_uint_with_unit(T *dest, const StringRef &opt,
     return -1;
   }
 
+  if (std::numeric_limits<T>::max() < n) {
+    LOG(ERROR) << opt
+               << ": too large.  The value should be less than or equal to "
+               << std::numeric_limits<T>::max();
+    return -1;
+  }
+
   *dest = n;
 
   return 0;
@@ -1482,6 +1489,11 @@ int option_lookup_token(const char *name, size_t namelen) {
     break;
   case 25:
     switch (name[24]) {
+    case 'e':
+      if (util::strieq_l("backend-http2-window-siz", name, 24)) {
+        return SHRPX_OPTID_BACKEND_HTTP2_WINDOW_SIZE;
+      }
+      break;
     case 'g':
       if (util::strieq_l("http2-no-cookie-crumblin", name, 24)) {
         return SHRPX_OPTID_HTTP2_NO_COOKIE_CRUMBLING;
@@ -1499,6 +1511,11 @@ int option_lookup_token(const char *name, size_t namelen) {
     break;
   case 26:
     switch (name[25]) {
+    case 'e':
+      if (util::strieq_l("frontend-http2-window-siz", name, 25)) {
+        return SHRPX_OPTID_FRONTEND_HTTP2_WINDOW_SIZE;
+      }
+      break;
     case 's':
       if (util::strieq_l("frontend-http2-window-bit", name, 25)) {
         return SHRPX_OPTID_FRONTEND_HTTP2_WINDOW_BITS;
@@ -1657,6 +1674,11 @@ int option_lookup_token(const char *name, size_t namelen) {
     break;
   case 36:
     switch (name[35]) {
+    case 'e':
+      if (util::strieq_l("backend-http2-connection-window-siz", name, 35)) {
+        return SHRPX_OPTID_BACKEND_HTTP2_CONNECTION_WINDOW_SIZE;
+      }
+      break;
     case 'r':
       if (util::strieq_l("backend-http2-connections-per-worke", name, 35)) {
         return SHRPX_OPTID_BACKEND_HTTP2_CONNECTIONS_PER_WORKER;
@@ -1675,6 +1697,9 @@ int option_lookup_token(const char *name, size_t namelen) {
   case 37:
     switch (name[36]) {
     case 'e':
+      if (util::strieq_l("frontend-http2-connection-window-siz", name, 36)) {
+        return SHRPX_OPTID_FRONTEND_HTTP2_CONNECTION_WINDOW_SIZE;
+      }
       if (util::strieq_l("tls-session-cache-memcached-cert-fil", name, 36)) {
         return SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED_CERT_FILE;
       }
@@ -1964,12 +1989,16 @@ int parse_config(Config *config, int optid, const StringRef &opt,
                           optarg);
   case SHRPX_OPTID_FRONTEND_HTTP2_WINDOW_BITS:
   case SHRPX_OPTID_BACKEND_HTTP2_WINDOW_BITS: {
-    size_t *resp;
+    LOG(WARN) << opt << ": deprecated.  Use "
+              << (optid == SHRPX_OPTID_FRONTEND_HTTP2_WINDOW_BITS
+                      ? SHRPX_OPT_FRONTEND_HTTP2_WINDOW_SIZE
+                      : SHRPX_OPT_BACKEND_HTTP2_WINDOW_SIZE);
+    int32_t *resp;
 
     if (optid == SHRPX_OPTID_FRONTEND_HTTP2_WINDOW_BITS) {
-      resp = &config->http2.upstream.window_bits;
+      resp = &config->http2.upstream.window_size;
     } else {
-      resp = &config->http2.downstream.window_bits;
+      resp = &config->http2.downstream.window_size;
     }
 
     errno = 0;
@@ -1986,18 +2015,25 @@ int parse_config(Config *config, int optid, const StringRef &opt,
       return -1;
     }
 
-    *resp = n;
+    // Make 16 bits to the HTTP/2 default 64KiB - 1.  This is the same
+    // behaviour of previous code.  For SPDY, we adjust this value in
+    // SpdyUpstream to look like the SPDY default.
+    *resp = (1 << n) - 1;
 
     return 0;
   }
   case SHRPX_OPTID_FRONTEND_HTTP2_CONNECTION_WINDOW_BITS:
   case SHRPX_OPTID_BACKEND_HTTP2_CONNECTION_WINDOW_BITS: {
-    size_t *resp;
+    LOG(WARN) << opt << ": deprecated.  Use "
+              << (optid == SHRPX_OPTID_FRONTEND_HTTP2_CONNECTION_WINDOW_BITS
+                      ? SHRPX_OPT_FRONTEND_HTTP2_CONNECTION_WINDOW_SIZE
+                      : SHRPX_OPT_BACKEND_HTTP2_CONNECTION_WINDOW_SIZE);
+    int32_t *resp;
 
     if (optid == SHRPX_OPTID_FRONTEND_HTTP2_CONNECTION_WINDOW_BITS) {
-      resp = &config->http2.upstream.connection_window_bits;
+      resp = &config->http2.upstream.connection_window_size;
     } else {
-      resp = &config->http2.downstream.connection_window_bits;
+      resp = &config->http2.downstream.connection_window_size;
     }
 
     errno = 0;
@@ -2014,7 +2050,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
       return -1;
     }
 
-    *resp = n;
+    *resp = (1 << n) - 1;
 
     return 0;
   }
@@ -2706,6 +2742,34 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     return 0;
   case SHRPX_OPTID_FRONTEND_HTTP2_OPTIMIZE_WINDOW_SIZE:
     config->http2.upstream.optimize_window_size = util::strieq_l("yes", optarg);
+
+    return 0;
+  case SHRPX_OPTID_FRONTEND_HTTP2_WINDOW_SIZE:
+    if (parse_uint_with_unit(&config->http2.upstream.window_size, opt,
+                             optarg) != 0) {
+      return -1;
+    }
+
+    return 0;
+  case SHRPX_OPTID_FRONTEND_HTTP2_CONNECTION_WINDOW_SIZE:
+    if (parse_uint_with_unit(&config->http2.upstream.connection_window_size,
+                             opt, optarg) != 0) {
+      return -1;
+    }
+
+    return 0;
+  case SHRPX_OPTID_BACKEND_HTTP2_WINDOW_SIZE:
+    if (parse_uint_with_unit(&config->http2.downstream.window_size, opt,
+                             optarg) != 0) {
+      return -1;
+    }
+
+    return 0;
+  case SHRPX_OPTID_BACKEND_HTTP2_CONNECTION_WINDOW_SIZE:
+    if (parse_uint_with_unit(&config->http2.downstream.connection_window_size,
+                             opt, optarg) != 0) {
+      return -1;
+    }
 
     return 0;
   case SHRPX_OPTID_CONF:

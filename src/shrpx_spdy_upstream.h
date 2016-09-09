@@ -103,7 +103,6 @@ private:
   DownstreamQueue downstream_queue_;
   ClientHandler *handler_;
   spdylay_session *session_;
-  int32_t initial_window_size_;
   bool flow_control_;
 };
 
