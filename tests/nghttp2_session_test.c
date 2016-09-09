@@ -9971,8 +9971,9 @@ void test_nghttp2_session_removed_closed_stream(void) {
 
   prepare_session_removed_closed_stream(session, &deflater);
 
-  /* Now current max concurrent streams is 2, so receiving frame on
-     stream 3 is treated as connection error */
+  /* Now current max concurrent streams is 2.  Receiving frame on
+     stream 3 is ignored because we have no stream object for stream
+     3. */
   nghttp2_bufs_reset(&bufs);
   rv = pack_headers(&bufs, &deflater, 3,
                     NGHTTP2_FLAG_END_HEADERS | NGHTTP2_FLAG_END_STREAM,
@@ -9987,9 +9988,7 @@ void test_nghttp2_session_removed_closed_stream(void) {
 
   item = nghttp2_session_get_next_ob_item(session);
 
-  CU_ASSERT(NULL != item);
-  CU_ASSERT(NGHTTP2_GOAWAY == item->frame.hd.type);
-  CU_ASSERT(NGHTTP2_PROTOCOL_ERROR == item->frame.goaway.error_code);
+  CU_ASSERT(NULL == item);
 
   nghttp2_hd_deflate_free(&deflater);
   nghttp2_session_del(session);
@@ -10012,9 +10011,7 @@ void test_nghttp2_session_removed_closed_stream(void) {
 
   item = nghttp2_session_get_next_ob_item(session);
 
-  CU_ASSERT(NULL != item);
-  CU_ASSERT(NGHTTP2_GOAWAY == item->frame.hd.type);
-  CU_ASSERT(NGHTTP2_PROTOCOL_ERROR == item->frame.goaway.error_code);
+  CU_ASSERT(NULL == item);
 
   nghttp2_hd_deflate_free(&deflater);
   nghttp2_session_del(session);
