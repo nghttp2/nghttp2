@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTPX" "1" "Aug 25, 2016" "1.14.0" "nghttp2"
+.TH "NGHTTPX" "1" "Sep 10, 2016" "1.15.0-DEV" "nghttp2"
 .SH NAME
 nghttpx \- HTTP/2 proxy
 .
@@ -800,37 +800,36 @@ Default: \fB100\fP
 .UNINDENT
 .INDENT 0.0
 .TP
-.B \-\-frontend\-http2\-window\-bits=<N>
-Sets the  per\-stream initial window size  of HTTP/2 SPDY
-frontend connection.  For HTTP/2,  the size is 2**<N>\-1.
-For SPDY, the size is 2**<N>.
+.B \-\-frontend\-http2\-window\-size=<SIZE>
+Sets the  per\-stream initial  window size of  HTTP/2 and
+SPDY frontend connection.
 .sp
-Default: \fB16\fP
+Default: \fB65535\fP
 .UNINDENT
 .INDENT 0.0
 .TP
-.B \-\-frontend\-http2\-connection\-window\-bits=<N>
+.B \-\-frontend\-http2\-connection\-window\-size=<SIZE>
 Sets the  per\-connection window size of  HTTP/2 and SPDY
-frontend   connection.    For   HTTP/2,  the   size   is
-2**<N>\-1. For SPDY, the size is 2**<N>.
+frontend  connection.  For  SPDY  connection, the  value
+less than 64KiB is rounded up to 64KiB.
 .sp
-Default: \fB16\fP
+Default: \fB65535\fP
 .UNINDENT
 .INDENT 0.0
 .TP
-.B \-\-backend\-http2\-window\-bits=<N>
+.B \-\-backend\-http2\-window\-size=<SIZE>
 Sets  the   initial  window   size  of   HTTP/2  backend
-connection to 2**<N>\-1.
+connection.
 .sp
-Default: \fB16\fP
+Default: \fB65535\fP
 .UNINDENT
 .INDENT 0.0
 .TP
-.B \-\-backend\-http2\-connection\-window\-bits=<N>
+.B \-\-backend\-http2\-connection\-window\-size=<SIZE>
 Sets the  per\-connection window  size of  HTTP/2 backend
-connection to 2**<N>\-1.
+connection.
 .sp
-Default: \fB30\fP
+Default: \fB2147483647\fP
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -855,6 +854,33 @@ HTTP/2 in default mode.  In  this case, server push from
 backend session is relayed  to frontend, and server push
 via Link header field  is also supported.  SPDY frontend
 does not support server push.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-frontend\-http2\-optimize\-write\-buffer\-size
+(Experimental) Enable write  buffer size optimization in
+frontend HTTP/2 TLS  connection.  This optimization aims
+to reduce  write buffer  size so  that it  only contains
+bytes  which can  send immediately.   This makes  server
+more responsive to prioritized HTTP/2 stream because the
+buffering  of lower  priority stream  is reduced.   This
+option is only effective on recent Linux platform.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-frontend\-http2\-optimize\-window\-size
+(Experimental)   Automatically  tune   connection  level
+window size of frontend  HTTP/2 TLS connection.  If this
+feature is  enabled, connection window size  starts with
+the   default  window   size,   65535  bytes.    nghttpx
+automatically  adjusts connection  window size  based on
+TCP receiving  window size.  The maximum  window size is
+capped      by      the     value      specified      by
+\fI\%\-\-frontend\-http2\-connection\-window\-size\fP\&.     Since   the
+stream is subject to stream level window size, it should
+be adjusted using \fI\%\-\-frontend\-http2\-window\-size\fP option as
+well.   This option  is only  effective on  recent Linux
+platform.
 .UNINDENT
 .SS Mode
 .INDENT 0.0
@@ -1128,6 +1154,20 @@ originally  generates  HTTP  error status  code  <CODE>.
 599.  If "*"  is used instead of <CODE>,  it matches all
 HTTP  status  code.  If  error  status  code comes  from
 backend server, the custom error pages are not used.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-server\-name=<NAME>
+Change server response header field value to <NAME>.
+.sp
+Default: \fBnghttpx nghttp2/1.15.0\-DEV\fP
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-no\-server\-rewrite
+Don\(aqt rewrite server header field in default mode.  When
+\fI\%\-\-http2\-proxy\fP is used, these headers will not be altered
+regardless of this option.
 .UNINDENT
 .SS API
 .INDENT 0.0
@@ -1537,6 +1577,11 @@ connection from client.
 .TP
 .B attribute [R] tls_used
 Return true if TLS is used on the connection.
+.UNINDENT
+.INDENT 7.0
+.TP
+.B attribute [R] tls_sni
+Return the TLS SNI value which client sent in this connection.
 .UNINDENT
 .UNINDENT
 .INDENT 0.0

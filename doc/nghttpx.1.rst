@@ -729,35 +729,34 @@ HTTP/2 and SPDY
 
     Default: ``100``
 
-.. option:: --frontend-http2-window-bits=<N>
+.. option:: --frontend-http2-window-size=<SIZE>
 
-    Sets the  per-stream initial window size  of HTTP/2 SPDY
-    frontend connection.  For HTTP/2,  the size is 2\*\*<N>-1.
-    For SPDY, the size is 2\*\*<N>.
+    Sets the  per-stream initial  window size of  HTTP/2 and
+    SPDY frontend connection.
 
-    Default: ``16``
+    Default: ``65535``
 
-.. option:: --frontend-http2-connection-window-bits=<N>
+.. option:: --frontend-http2-connection-window-size=<SIZE>
 
     Sets the  per-connection window size of  HTTP/2 and SPDY
-    frontend   connection.    For   HTTP/2,  the   size   is
-    2**<N>-1. For SPDY, the size is 2\*\*<N>.
+    frontend  connection.  For  SPDY  connection, the  value
+    less than 64KiB is rounded up to 64KiB.
 
-    Default: ``16``
+    Default: ``65535``
 
-.. option:: --backend-http2-window-bits=<N>
+.. option:: --backend-http2-window-size=<SIZE>
 
     Sets  the   initial  window   size  of   HTTP/2  backend
-    connection to 2\*\*<N>-1.
+    connection.
 
-    Default: ``16``
+    Default: ``65535``
 
-.. option:: --backend-http2-connection-window-bits=<N>
+.. option:: --backend-http2-connection-window-size=<SIZE>
 
     Sets the  per-connection window  size of  HTTP/2 backend
-    connection to 2\*\*<N>-1.
+    connection.
 
-    Default: ``30``
+    Default: ``2147483647``
 
 .. option:: --http2-no-cookie-crumbling
 
@@ -779,6 +778,31 @@ HTTP/2 and SPDY
     backend session is relayed  to frontend, and server push
     via Link header field  is also supported.  SPDY frontend
     does not support server push.
+
+.. option:: --frontend-http2-optimize-write-buffer-size
+
+    (Experimental) Enable write  buffer size optimization in
+    frontend HTTP/2 TLS  connection.  This optimization aims
+    to reduce  write buffer  size so  that it  only contains
+    bytes  which can  send immediately.   This makes  server
+    more responsive to prioritized HTTP/2 stream because the
+    buffering  of lower  priority stream  is reduced.   This
+    option is only effective on recent Linux platform.
+
+.. option:: --frontend-http2-optimize-window-size
+
+    (Experimental)   Automatically  tune   connection  level
+    window size of frontend  HTTP/2 TLS connection.  If this
+    feature is  enabled, connection window size  starts with
+    the   default  window   size,   65535  bytes.    nghttpx
+    automatically  adjusts connection  window size  based on
+    TCP receiving  window size.  The maximum  window size is
+    capped      by      the     value      specified      by
+    :option:`--frontend-http2-connection-window-size`\.     Since   the
+    stream is subject to stream level window size, it should
+    be adjusted using :option:`--frontend-http2-window-size` option as
+    well.   This option  is only  effective on  recent Linux
+    platform.
 
 
 Mode
@@ -1018,6 +1042,18 @@ HTTP
     599.  If "*"  is used instead of <CODE>,  it matches all
     HTTP  status  code.  If  error  status  code comes  from
     backend server, the custom error pages are not used.
+
+.. option:: --server-name=<NAME>
+
+    Change server response header field value to <NAME>.
+
+    Default: ``nghttpx nghttp2/1.15.0-DEV``
+
+.. option:: --no-server-rewrite
+
+    Don't rewrite server header field in default mode.  When
+    :option:`--http2-proxy` is used, these headers will not be altered
+    regardless of this option.
 
 
 API
@@ -1408,6 +1444,10 @@ respectively.
     .. rb:attr_reader:: tls_used
 
         Return true if TLS is used on the connection.
+
+    .. rb:attr_reader:: tls_sni
+
+        Return the TLS SNI value which client sent in this connection.
 
 .. rb:class:: Request
 
