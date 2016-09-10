@@ -320,7 +320,8 @@ int parse_uint_with_unit(T *dest, const StringRef &opt,
     return -1;
   }
 
-  if (std::numeric_limits<T>::max() < n) {
+  if (static_cast<uint64_t>(std::numeric_limits<T>::max()) <
+      static_cast<uint64_t>(n)) {
     LOG(ERROR) << opt
                << ": too large.  The value should be less than or equal to "
                << std::numeric_limits<T>::max();
