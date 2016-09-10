@@ -623,7 +623,7 @@ SpdyUpstream::SpdyUpstream(uint16_t version, ClientHandler *handler)
   auto connection_window_size = get_connection_window_size();
 
   if (flow_control_ && version >= SPDYLAY_PROTO_SPDY3_1 &&
-      connection_window_size > 64_k) {
+      connection_window_size > static_cast<int32_t>(64_k)) {
     int32_t delta = connection_window_size - SPDYLAY_INITIAL_WINDOW_SIZE;
     rv = spdylay_submit_window_update(session_, 0, delta);
     assert(rv == 0);
