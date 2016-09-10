@@ -350,11 +350,6 @@ int htp_hdrs_completecb(http_parser *htp) {
     }
     // checking UF_HOST could be redundant, but just in case ...
     if (!(u.field_set & (1 << UF_SCHEMA)) || !(u.field_set & (1 << UF_HOST))) {
-      if (get_config()->http2_proxy && !faddr->alt_mode) {
-        // Request URI should be absolute-form for client proxy mode
-        return -1;
-      }
-
       req.no_authority = true;
 
       if (method == HTTP_OPTIONS && req.path == StringRef::from_lit("*")) {
@@ -394,6 +389,11 @@ int htp_hdrs_completecb(http_parser *htp) {
 #endif // HAVE_MRUBY
 
   // mruby hook may change method value
+
+  if (req.no_authority && get_config()->http2_proxy && !faddr->alt_mode) {
+    // Request URI should be absolute-form for client proxy mode
+    return -1;
+  }
 
   if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
     return 0;
