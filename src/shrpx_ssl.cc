@@ -72,13 +72,13 @@ namespace shrpx {
 
 namespace ssl {
 
-#if !OPENSSL_101_API
+#if !OPENSSL_1_1_API
 namespace {
 const unsigned char *ASN1_STRING_get0_data(ASN1_STRING *x) {
   return ASN1_STRING_data(x);
 }
 } // namespace
-#endif // !OPENSSL_101_API
+#endif // !OPENSSL_1_1_API
 
 namespace {
 int next_proto_cb(SSL *s, const unsigned char **data, unsigned int *len,
@@ -280,11 +280,11 @@ int tls_session_new_cb(SSL *ssl, SSL_SESSION *session) {
 
 namespace {
 SSL_SESSION *tls_session_get_cb(SSL *ssl,
-#if OPENSSL_101_API
+#if OPENSSL_1_1_API
                                 const unsigned char *id,
-#else  // !OPENSSL_101_API
+#else  // !OPENSSL_1_1_API
                                 unsigned char *id,
-#endif // !OPENSSL_101_API
+#endif // !OPENSSL_1_1_API
                                 int idlen, int *copy) {
   auto conn = static_cast<Connection *>(SSL_get_app_data(ssl));
   auto handler = static_cast<ClientHandler *>(conn->data);

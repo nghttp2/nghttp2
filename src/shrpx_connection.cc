@@ -43,13 +43,13 @@ using namespace nghttp2;
 
 namespace shrpx {
 
-#if !OPENSSL_101_API
+#if !OPENSSL_1_1_API
 
 void *BIO_get_data(BIO *bio) { return bio->ptr; }
 void BIO_set_data(BIO *bio, void *ptr) { bio->ptr = ptr; }
 void BIO_set_init(BIO *bio, int init) { bio->init = init; }
 
-#endif // !OPENSSL_101_API
+#endif // !OPENSSL_1_1_API
 
 Connection::Connection(struct ev_loop *loop, int fd, SSL *ssl,
                        MemchunkPool *mcpool, ev_tstamp write_timeout,
@@ -238,14 +238,14 @@ long shrpx_bio_ctrl(BIO *b, int cmd, long num, void *ptr) {
 
 namespace {
 int shrpx_bio_create(BIO *b) {
-#if OPENSSL_101_API
+#if OPENSSL_1_1_API
   BIO_set_init(b, 1);
-#else  // !OPENSSL_101_API
+#else  // !OPENSSL_1_1_API
   b->init = 1;
   b->num = 0;
   b->ptr = nullptr;
   b->flags = 0;
-#endif // !OPENSSL_101_API
+#endif // !OPENSSL_1_1_API
   return 1;
 }
 } // namespace
@@ -256,17 +256,17 @@ int shrpx_bio_destroy(BIO *b) {
     return 0;
   }
 
-#if !OPENSSL_101_API
+#if !OPENSSL_1_1_API
   b->ptr = nullptr;
   b->init = 0;
   b->flags = 0;
-#endif // !OPENSSL_101_API
+#endif // !OPENSSL_1_1_API
 
   return 1;
 }
 } // namespace
 
-#if OPENSSL_101_API
+#if OPENSSL_1_1_API
 
 BIO_METHOD *create_bio_method() {
   auto meth = BIO_meth_new(BIO_TYPE_FD, "nghttpx-bio");
@@ -283,7 +283,7 @@ BIO_METHOD *create_bio_method() {
 
 void delete_bio_method(BIO_METHOD *bio_method) { BIO_meth_free(bio_method); }
 
-#else // !OPENSSL_101_API
+#else // !OPENSSL_1_1_API
 
 BIO_METHOD *create_bio_method() {
   static BIO_METHOD shrpx_bio_method = {
@@ -297,7 +297,7 @@ BIO_METHOD *create_bio_method() {
 
 void delete_bio_method(BIO_METHOD *bio_method) {}
 
-#endif // !OPENSSL_101_API
+#endif // !OPENSSL_1_1_API
 
 void Connection::set_ssl(SSL *ssl) {
   tls.ssl = ssl;

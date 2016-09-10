@@ -1351,7 +1351,7 @@ uint32_t hash32(const StringRef &s) {
   return h;
 }
 
-#if !OPENSSL_101_API
+#if !OPENSSL_1_1_API
 namespace {
 EVP_MD_CTX *EVP_MD_CTX_new(void) { return EVP_MD_CTX_create(); }
 } // namespace
@@ -1359,7 +1359,7 @@ EVP_MD_CTX *EVP_MD_CTX_new(void) { return EVP_MD_CTX_create(); }
 namespace {
 void EVP_MD_CTX_free(EVP_MD_CTX *ctx) { EVP_MD_CTX_destroy(ctx); }
 } // namespace
-#endif
+#endif // !OPENSSL_1_1_API
 
 int sha256(uint8_t *res, const StringRef &s) {
   int rv;

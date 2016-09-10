@@ -54,13 +54,13 @@ const char *const DEFAULT_CIPHER_LIST =
     "SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-"
     "SHA:DES-CBC3-SHA:!DSS";
 
-#if OPENSSL_101_API
+#if OPENSSL_1_1_API
 
 // CRYPTO_LOCK is deprecated as of OpenSSL 1.1.0
 LibsslGlobalLock::LibsslGlobalLock() {}
 LibsslGlobalLock::~LibsslGlobalLock() {}
 
-#else // !OPENSSL_101_API
+#else // !OPENSSL_1_1_API
 
 namespace {
 std::vector<std::mutex> ssl_global_locks;
@@ -91,7 +91,7 @@ LibsslGlobalLock::LibsslGlobalLock() {
 
 LibsslGlobalLock::~LibsslGlobalLock() { ssl_global_locks.clear(); }
 
-#endif // !OPENSSL_101_API
+#endif // !OPENSSL_1_1_API
 
 const char *get_tls_protocol(SSL *ssl) {
   switch (SSL_version(ssl)) {
@@ -166,9 +166,9 @@ bool check_http2_requirement(SSL *ssl) {
 void libssl_init() {
 // OPENSSL_config() is not available in BoringSSL.  It is also
 // deprecated as of OpenSSL 1.1.0.
-#if !defined(OPENSSL_IS_BORINGSSL) && !OPENSSL_101_API
+#if !defined(OPENSSL_IS_BORINGSSL) && !OPENSSL_1_1_API
   OPENSSL_config(nullptr);
-#endif // !defined(OPENSSL_IS_BORINGSSL) && !OPENSSL_101_API
+#endif // !defined(OPENSSL_IS_BORINGSSL) && !OPENSSL_1_1_API
 
   SSL_load_error_strings();
   SSL_library_init();
