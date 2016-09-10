@@ -790,14 +790,14 @@ int Connection::get_tcp_hint(TCPHint *hint) const {
     writable_size = std::max(writable_size, static_cast<uint32_t>(536 * 2));
   }
 
-  if (LOG_ENABLED(INFO)) {
-    LOG(INFO) << "snd_cwnd=" << tcp_info.tcpi_snd_cwnd
-              << ", unacked=" << tcp_info.tcpi_unacked
-              << ", snd_mss=" << tcp_info.tcpi_snd_mss
-              << ", rtt=" << tcp_info.tcpi_rtt << "us"
-              << ", rcv_space=" << tcp_info.tcpi_rcv_space
-              << ", writable=" << writable_size;
-  }
+  // if (LOG_ENABLED(INFO)) {
+  //   LOG(INFO) << "snd_cwnd=" << tcp_info.tcpi_snd_cwnd
+  //             << ", unacked=" << tcp_info.tcpi_unacked
+  //             << ", snd_mss=" << tcp_info.tcpi_snd_mss
+  //             << ", rtt=" << tcp_info.tcpi_rtt << "us"
+  //             << ", rcv_space=" << tcp_info.tcpi_rcv_space
+  //             << ", writable=" << writable_size;
+  // }
 
   hint->write_buffer_size = writable_size;
   // TODO tcpi_rcv_space is considered as rwin, is that correct?
