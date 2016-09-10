@@ -291,6 +291,10 @@ respectively.
 
         Return true if TLS is used on the connection.
 
+    .. rb:attr_reader:: tls_sni
+
+        Return the TLS SNI value which client sent in this connection.
+
 .. rb:class:: Request
 
     Object to represent request from client.  The modification to

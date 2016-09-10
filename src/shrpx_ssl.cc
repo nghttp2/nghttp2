@@ -151,12 +151,6 @@ int servername_callback(SSL *ssl, int *al, void *arg) {
   auto conn = static_cast<Connection *>(SSL_get_app_data(ssl));
   auto handler = static_cast<ClientHandler *>(conn->data);
   auto worker = handler->get_worker();
-  auto cert_tree = worker->get_cert_lookup_tree();
-  if (!cert_tree) {
-    return SSL_TLSEXT_ERR_OK;
-  }
-
-  std::array<uint8_t, NI_MAXHOST> buf;
 
   auto rawhost = SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name);
   if (rawhost == nullptr) {
@@ -165,15 +159,24 @@ int servername_callback(SSL *ssl, int *al, void *arg) {
 
   auto len = strlen(rawhost);
   // NI_MAXHOST includes terminal NULL.
-  if (len == 0 || len + 1 > buf.size()) {
+  if (len == 0 || len + 1 > NI_MAXHOST) {
     return SSL_TLSEXT_ERR_OK;
   }
+
+  std::array<uint8_t, NI_MAXHOST> buf;
 
   auto end_buf = std::copy_n(rawhost, len, std::begin(buf));
 
   util::inp_strlower(std::begin(buf), end_buf);
 
   auto hostname = StringRef{std::begin(buf), end_buf};
+
+  handler->set_tls_sni(hostname);
+
+  auto cert_tree = worker->get_cert_lookup_tree();
+  if (!cert_tree) {
+    return SSL_TLSEXT_ERR_OK;
+  }
 
   auto idx = cert_tree->lookup(hostname);
   if (idx == -1) {

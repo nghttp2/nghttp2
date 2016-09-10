@@ -1451,4 +1451,8 @@ const UpstreamAddr *ClientHandler::get_upstream_addr() const { return faddr_; }
 
 Connection *ClientHandler::get_connection() { return &conn_; };
 
+void ClientHandler::set_tls_sni(const StringRef &sni) { sni_ = sni.str(); }
+
+StringRef ClientHandler::get_tls_sni() const { return StringRef{sni_}; }
+
 } // namespace shrpx

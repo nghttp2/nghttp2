@@ -156,6 +156,12 @@ public:
 
   Connection *get_connection();
 
+  // Stores |sni| which is TLS SNI extension value client sent in this
+  // connection.
+  void set_tls_sni(const StringRef &sni);
+  // Returns TLS SNI extension value client sent in this connection.
+  StringRef get_tls_sni() const;
+
 private:
   Connection conn_;
   ev_timer reneg_shutdown_timer_;
@@ -169,6 +175,8 @@ private:
   // The client address used in "for" parameter of Forwarded header
   // field.
   std::string forwarded_for_;
+  // lowercased TLS SNI which client sent.
+  std::string sni_;
   std::function<int(ClientHandler &)> read_, write_;
   std::function<int(ClientHandler &)> on_read_, on_write_;
   // Address of frontend listening socket
