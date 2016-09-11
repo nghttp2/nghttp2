@@ -288,7 +288,7 @@ int nghttp2_hd_deflate_init(nghttp2_hd_deflater *deflater, nghttp2_mem *mem);
 /*
  * Initializes |deflater| for deflating name/values pairs.
  *
- * The encoder only uses up to |deflate_hd_table_bufsize_max| bytes
+ * The encoder only uses up to |max_deflate_dynamic_table_size| bytes
  * for header table even if the larger value is specified later in
  * nghttp2_hd_change_table_size().
  *
@@ -299,7 +299,7 @@ int nghttp2_hd_deflate_init(nghttp2_hd_deflater *deflater, nghttp2_mem *mem);
  *     Out of memory.
  */
 int nghttp2_hd_deflate_init2(nghttp2_hd_deflater *deflater,
-                             size_t deflate_hd_table_bufsize_max,
+                             size_t max_deflate_dynamic_table_size,
                              nghttp2_mem *mem);
 
 /*
