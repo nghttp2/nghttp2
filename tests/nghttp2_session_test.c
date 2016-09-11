@@ -6666,33 +6666,45 @@ void test_nghttp2_session_set_option(void) {
   nghttp2_session *session;
   nghttp2_session_callbacks callbacks;
   nghttp2_option *option;
-
-  nghttp2_option_new(&option);
-
-  nghttp2_option_set_no_auto_window_update(option, 1);
+  nghttp2_hd_deflater *deflater;
+  int rv;
 
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
+  callbacks.send_callback = null_send_callback;
+
+  /* Test for nghttp2_option_set_no_auto_window_update */
+  nghttp2_option_new(&option);
+  nghttp2_option_set_no_auto_window_update(option, 1);
+
   nghttp2_session_client_new2(&session, &callbacks, NULL, option);
 
   CU_ASSERT(session->opt_flags & NGHTTP2_OPTMASK_NO_AUTO_WINDOW_UPDATE);
 
   nghttp2_session_del(session);
+  nghttp2_option_del(option);
 
+  /* Test for nghttp2_option_set_peer_max_concurrent_streams */
+  nghttp2_option_new(&option);
   nghttp2_option_set_peer_max_concurrent_streams(option, 100);
 
   nghttp2_session_client_new2(&session, &callbacks, NULL, option);
 
   CU_ASSERT(100 == session->remote_settings.max_concurrent_streams);
   nghttp2_session_del(session);
+  nghttp2_option_del(option);
 
+  /* Test for nghttp2_option_set_max_reserved_remote_streams */
+  nghttp2_option_new(&option);
   nghttp2_option_set_max_reserved_remote_streams(option, 99);
 
   nghttp2_session_client_new2(&session, &callbacks, NULL, option);
 
   CU_ASSERT(99 == session->max_incoming_reserved_streams);
   nghttp2_session_del(session);
+  nghttp2_option_del(option);
 
   /* Test for nghttp2_option_set_no_auto_ping_ack */
+  nghttp2_option_new(&option);
   nghttp2_option_set_no_auto_ping_ack(option, 1);
 
   nghttp2_session_client_new2(&session, &callbacks, NULL, option);
@@ -6700,7 +6712,27 @@ void test_nghttp2_session_set_option(void) {
   CU_ASSERT(session->opt_flags & NGHTTP2_OPTMASK_NO_AUTO_PING_ACK);
 
   nghttp2_session_del(session);
+  nghttp2_option_del(option);
 
+  /* Test for nghttp2_option_set_max_deflate_dynamic_table_size */
+  nghttp2_option_new(&option);
+  nghttp2_option_set_max_deflate_dynamic_table_size(option, 0);
+
+  nghttp2_session_client_new2(&session, &callbacks, NULL, option);
+
+  deflater = &session->hd_deflater;
+
+  rv = nghttp2_submit_request(session, NULL, reqnv, ARRLEN(reqnv), NULL, NULL);
+
+  CU_ASSERT(1 == rv);
+
+  rv = nghttp2_session_send(session);
+
+  CU_ASSERT(0 == rv);
+  CU_ASSERT(0 == deflater->deflate_hd_table_bufsize_max);
+  CU_ASSERT(0 == deflater->ctx.hd_table_bufsize);
+
+  nghttp2_session_del(session);
   nghttp2_option_del(option);
 }
 

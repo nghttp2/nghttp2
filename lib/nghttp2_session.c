@@ -390,6 +390,8 @@ static int session_new(nghttp2_session **session_ptr,
                        const nghttp2_option *option, nghttp2_mem *mem) {
   int rv;
   size_t nbuffer;
+  size_t max_deflate_dynamic_table_size =
+      NGHTTP2_HD_DEFAULT_MAX_DEFLATE_BUFFER_SIZE;
 
   if (mem == NULL) {
     mem = nghttp2_mem_default();
@@ -406,19 +408,6 @@ static int session_new(nghttp2_session **session_ptr,
 
   /* next_stream_id is initialized in either
      nghttp2_session_client_new2 or nghttp2_session_server_new2 */
-
-  rv = nghttp2_hd_deflate_init(&(*session_ptr)->hd_deflater, mem);
-  if (rv != 0) {
-    goto fail_hd_deflater;
-  }
-  rv = nghttp2_hd_inflate_init(&(*session_ptr)->hd_inflater, mem);
-  if (rv != 0) {
-    goto fail_hd_inflater;
-  }
-  rv = nghttp2_map_init(&(*session_ptr)->streams, mem);
-  if (rv != 0) {
-    goto fail_map;
-  }
 
   nghttp2_stream_init(&(*session_ptr)->root, 0, NGHTTP2_STREAM_FLAG_NONE,
                       NGHTTP2_STREAM_IDLE, NGHTTP2_DEFAULT_WEIGHT, 0, 0, NULL,
@@ -502,6 +491,24 @@ static int session_new(nghttp2_session **session_ptr,
       (*session_ptr)->max_send_header_block_length =
           option->max_send_header_block_length;
     }
+
+    if (option->opt_set_mask & NGHTTP2_OPT_MAX_DEFLATE_DYNAMIC_TABLE_SIZE) {
+      max_deflate_dynamic_table_size = option->max_deflate_dynamic_table_size;
+    }
+  }
+
+  rv = nghttp2_hd_deflate_init2(&(*session_ptr)->hd_deflater,
+                                max_deflate_dynamic_table_size, mem);
+  if (rv != 0) {
+    goto fail_hd_deflater;
+  }
+  rv = nghttp2_hd_inflate_init(&(*session_ptr)->hd_inflater, mem);
+  if (rv != 0) {
+    goto fail_hd_inflater;
+  }
+  rv = nghttp2_map_init(&(*session_ptr)->streams, mem);
+  if (rv != 0) {
+    goto fail_map;
   }
 
   nbuffer = ((*session_ptr)->max_send_header_block_length +

@@ -2535,6 +2535,19 @@ nghttp2_option_set_max_send_header_block_length(nghttp2_option *option,
 /**
  * @function
  *
+ * This option sets the maximum dynamic table size for deflating
+ * header fields.  The default value is 4KiB.  In HTTP/2, receiver of
+ * deflated header block can specify maximum dynamic table size.  The
+ * actual maximum size is the minimum of the size receiver specified
+ * and this option value.
+ */
+NGHTTP2_EXTERN void
+nghttp2_option_set_max_deflate_dynamic_table_size(nghttp2_option *option,
+                                                  size_t val);
+
+/**
+ * @function
+ *
  * Initializes |*session_ptr| for client use.  The all members of
  * |callbacks| are copied to |*session_ptr|.  Therefore |*session_ptr|
  * does not store |callbacks|.  The |user_data| is an arbitrary user
