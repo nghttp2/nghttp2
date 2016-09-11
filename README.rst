@@ -58,6 +58,11 @@ To build the documentation, you need to install:
 
 * sphinx (http://sphinx-doc.org/)
 
+If you need libnghttp2 (C library) only, then the above packages are
+all you need.  Use ``--enable-lib-only`` to ensure that only
+libnghttp2 is built.  This avoids potential build error related to
+building bundled applications.
+
 To build and run the application programs (``nghttp``, ``nghttpd``,
 ``nghttpx`` and ``h2load``) in the ``src`` directory, the following packages
 are required:
