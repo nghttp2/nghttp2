@@ -1345,14 +1345,21 @@ void fill_default_config(Config *config) {
     upstreamconf.connection_window_size = 64_k - 1;
     upstreamconf.max_concurrent_streams = 100;
 
+    upstreamconf.encoder_dynamic_table_size = 4_k;
+    upstreamconf.decoder_dynamic_table_size = 4_k;
+
     nghttp2_option_new(&upstreamconf.option);
     nghttp2_option_set_no_auto_window_update(upstreamconf.option, 1);
     nghttp2_option_set_no_recv_client_magic(upstreamconf.option, 1);
+    nghttp2_option_set_max_deflate_dynamic_table_size(
+        upstreamconf.option, upstreamconf.encoder_dynamic_table_size);
 
     // For API endpoint, we enable automatic window update.  This is
     // because we are a sink.
     nghttp2_option_new(&upstreamconf.alt_mode_option);
     nghttp2_option_set_no_recv_client_magic(upstreamconf.alt_mode_option, 1);
+    nghttp2_option_set_max_deflate_dynamic_table_size(
+        upstreamconf.alt_mode_option, upstreamconf.encoder_dynamic_table_size);
   }
 
   {
@@ -1367,9 +1374,14 @@ void fill_default_config(Config *config) {
     downstreamconf.connection_window_size = (1u << 31) - 1;
     downstreamconf.max_concurrent_streams = 100;
 
+    downstreamconf.encoder_dynamic_table_size = 4_k;
+    downstreamconf.decoder_dynamic_table_size = 4_k;
+
     nghttp2_option_new(&downstreamconf.option);
     nghttp2_option_set_no_auto_window_update(downstreamconf.option, 1);
     nghttp2_option_set_peer_max_concurrent_streams(downstreamconf.option, 100);
+    nghttp2_option_set_max_deflate_dynamic_table_size(
+        downstreamconf.option, downstreamconf.encoder_dynamic_table_size);
   }
 
   auto &loggingconf = config->logging;
@@ -2053,6 +2065,36 @@ HTTP/2 and SPDY:
               be adjusted using --frontend-http2-window-size option as
               well.   This option  is only  effective on  recent Linux
               platform.
+  --frontend-http2-encoder-dynamic-table-size=<SIZE>
+              Specify the maximum dynamic  table size of HPACK encoder
+              in the frontend HTTP/2 connection.  The decoder (client)
+              specifies  the maximum  dynamic table  size it  accepts.
+              Then the negotiated dynamic table size is the minimum of
+              this option value and the value client specified.
+              Default: )"
+      << util::utos_unit(
+             get_config()->http2.upstream.encoder_dynamic_table_size) << R"(
+  --frontend-http2-decoder-dynamic-table-size=<SIZE>
+              Specify the maximum dynamic  table size of HPACK decoder
+              in the frontend HTTP/2 connection.
+              Default: )"
+      << util::utos_unit(
+             get_config()->http2.upstream.decoder_dynamic_table_size) << R"(
+  --backend-http2-encoder-dynamic-table-size=<SIZE>
+              Specify the maximum dynamic  table size of HPACK encoder
+              in the backend HTTP/2 connection.  The decoder (backend)
+              specifies  the maximum  dynamic table  size it  accepts.
+              Then the negotiated dynamic table size is the minimum of
+              this option value and the value backend specified.
+              Default: )"
+      << util::utos_unit(
+             get_config()->http2.downstream.encoder_dynamic_table_size) << R"(
+  --backend-http2-decoder-dynamic-table-size=<SIZE>
+              Specify the maximum dynamic  table size of HPACK decoder
+              in the backend HTTP/2 connection.
+              Default: )"
+      << util::utos_unit(
+             get_config()->http2.downstream.decoder_dynamic_table_size) << R"(
 
 Mode:
   (default mode)
@@ -2875,6 +2917,14 @@ int main(int argc, char **argv) {
          134},
         {SHRPX_OPT_BACKEND_HTTP2_CONNECTION_WINDOW_SIZE.c_str(),
          required_argument, &flag, 135},
+        {SHRPX_OPT_FRONTEND_HTTP2_ENCODER_DYNAMIC_TABLE_SIZE.c_str(),
+         required_argument, &flag, 136},
+        {SHRPX_OPT_FRONTEND_HTTP2_DECODER_DYNAMIC_TABLE_SIZE.c_str(),
+         required_argument, &flag, 137},
+        {SHRPX_OPT_BACKEND_HTTP2_ENCODER_DYNAMIC_TABLE_SIZE.c_str(),
+         required_argument, &flag, 138},
+        {SHRPX_OPT_BACKEND_HTTP2_DECODER_DYNAMIC_TABLE_SIZE.c_str(),
+         required_argument, &flag, 139},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -3510,6 +3560,28 @@ int main(int argc, char **argv) {
       case 135:
         // --backend-http2-connection-window-size
         cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_HTTP2_CONNECTION_WINDOW_SIZE,
+                             StringRef{optarg});
+        break;
+      case 136:
+        // --frontend-http2-encoder-dynamic-table-size
+        cmdcfgs.emplace_back(
+            SHRPX_OPT_FRONTEND_HTTP2_ENCODER_DYNAMIC_TABLE_SIZE,
+            StringRef{optarg});
+        break;
+      case 137:
+        // --frontend-http2-decoder-dynamic-table-size
+        cmdcfgs.emplace_back(
+            SHRPX_OPT_FRONTEND_HTTP2_DECODER_DYNAMIC_TABLE_SIZE,
+            StringRef{optarg});
+        break;
+      case 138:
+        // --backend-http2-encoder-dynamic-table-size
+        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_HTTP2_ENCODER_DYNAMIC_TABLE_SIZE,
+                             StringRef{optarg});
+        break;
+      case 139:
+        // --backend-http2-decoder-dynamic-table-size
+        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_HTTP2_DECODER_DYNAMIC_TABLE_SIZE,
                              StringRef{optarg});
         break;
       default:

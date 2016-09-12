@@ -939,7 +939,9 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
   flow_control_ = true;
 
   // TODO Maybe call from outside?
-  std::array<nghttp2_settings_entry, 2> entry;
+  std::array<nghttp2_settings_entry, 3> entry;
+  size_t nentry = 2;
+
   entry[0].settings_id = NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS;
   entry[0].value = http2conf.upstream.max_concurrent_streams;
 
@@ -950,8 +952,15 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
     entry[1].value = http2conf.upstream.window_size;
   }
 
+  if (http2conf.upstream.decoder_dynamic_table_size !=
+      NGHTTP2_DEFAULT_HEADER_TABLE_SIZE) {
+    entry[nentry].settings_id = NGHTTP2_SETTINGS_HEADER_TABLE_SIZE;
+    entry[nentry].value = http2conf.upstream.decoder_dynamic_table_size;
+    ++nentry;
+  }
+
   rv = nghttp2_submit_settings(session_, NGHTTP2_FLAG_NONE, entry.data(),
-                               entry.size());
+                               nentry);
   if (rv != 0) {
     ULOG(ERROR, this) << "nghttp2_submit_settings() returned error: "
                       << nghttp2_strerror(rv);
