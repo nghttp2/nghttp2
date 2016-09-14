@@ -770,34 +770,73 @@ Http2Session *ClientHandler::select_http2_session(
   auto &http2_avail_freelist = shared_addr->http2_avail_freelist;
 
   if (http2_avail_freelist.size() >= min) {
-    auto session = http2_avail_freelist.head;
-    session->remove_from_freelist();
+    for (auto session = http2_avail_freelist.head; session;) {
+      auto next = session->dlnext;
 
-    if (LOG_ENABLED(INFO)) {
-      CLOG(INFO, this) << "Use Http2Session " << session
-                       << " from http2_avail_freelist";
-    }
+      session->remove_from_freelist();
 
-    if (session->max_concurrency_reached(1)) {
-      if (LOG_ENABLED(INFO)) {
-        CLOG(INFO, this) << "Maximum streams are reached for Http2Session("
-                         << session << ").";
+      // session may be in graceful shutdown period now.
+      if (session->max_concurrency_reached(0)) {
+        if (LOG_ENABLED(INFO)) {
+          CLOG(INFO, this)
+              << "Maximum streams have been reached for Http2Session("
+              << session << ").  Skip it";
+        }
+
+        session = next;
+
+        continue;
       }
-    } else {
-      session->add_to_avail_freelist();
+
+      if (LOG_ENABLED(INFO)) {
+        CLOG(INFO, this) << "Use Http2Session " << session
+                         << " from http2_avail_freelist";
+      }
+
+      if (session->max_concurrency_reached(1)) {
+        if (LOG_ENABLED(INFO)) {
+          CLOG(INFO, this) << "Maximum streams are reached for Http2Session("
+                           << session << ").";
+        }
+      } else {
+        session->add_to_avail_freelist();
+      }
+      return session;
     }
-    return session;
   }
 
   DownstreamAddr *selected_addr = nullptr;
 
   for (auto &addr : shared_addr->addrs) {
-    if (addr.proto != PROTO_HTTP2 || (addr.http2_extra_freelist.size() == 0 &&
-                                      addr.connect_blocker->blocked())) {
+    if (addr.in_avail || addr.proto != PROTO_HTTP2 ||
+        (addr.http2_extra_freelist.size() == 0 &&
+         addr.connect_blocker->blocked())) {
       continue;
     }
 
-    if (addr.in_avail) {
+    for (auto session = addr.http2_extra_freelist.head; session;) {
+      auto next = session->dlnext;
+
+      // session may be in graceful shutdown period now.
+      if (session->max_concurrency_reached(0)) {
+        if (LOG_ENABLED(INFO)) {
+          CLOG(INFO, this)
+              << "Maximum streams have been reached for Http2Session("
+              << session << ").  Skip it";
+        }
+
+        session->remove_from_freelist();
+
+        session = next;
+
+        continue;
+      }
+
+      break;
+    }
+
+    if (addr.http2_extra_freelist.size() == 0 &&
+        addr.connect_blocker->blocked()) {
       continue;
     }
 

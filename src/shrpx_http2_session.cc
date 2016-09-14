@@ -665,7 +665,6 @@ int Http2Session::submit_request(Http2DownstreamConnection *dconn,
   }
 
   dconn->attach_stream_data(sd.get());
-  dconn->get_downstream()->set_downstream_stream_id(stream_id);
   streams_.append(sd.release());
 
   return 0;
@@ -1396,8 +1395,17 @@ int on_frame_send_callback(nghttp2_session *session, const nghttp2_frame *frame,
 
     auto downstream = sd->dconn->get_downstream();
 
-    if (!downstream ||
-        downstream->get_downstream_stream_id() != frame->hd.stream_id) {
+    if (!downstream) {
+      return 0;
+    }
+
+    if (frame->hd.type == NGHTTP2_HEADERS &&
+        frame->headers.cat == NGHTTP2_HCAT_REQUEST) {
+      assert(downstream->get_downstream_stream_id() == -1);
+
+      downstream->set_downstream_stream_id(frame->hd.stream_id);
+      downstream->set_request_header_sent(true);
+    } else if (downstream->get_downstream_stream_id() != frame->hd.stream_id) {
       return 0;
     }
 
@@ -1422,29 +1430,49 @@ int on_frame_not_send_callback(nghttp2_session *session,
   if (LOG_ENABLED(INFO)) {
     SSLOG(INFO, http2session) << "Failed to send control frame type="
                               << static_cast<uint32_t>(frame->hd.type)
-                              << "lib_error_code=" << lib_error_code << ":"
+                              << ", lib_error_code=" << lib_error_code << ": "
                               << nghttp2_strerror(lib_error_code);
   }
-  if (frame->hd.type == NGHTTP2_HEADERS &&
-      lib_error_code != NGHTTP2_ERR_STREAM_CLOSED &&
-      lib_error_code != NGHTTP2_ERR_STREAM_CLOSING) {
-    // To avoid stream hanging around, flag Downstream::MSG_RESET.
-    auto sd = static_cast<StreamData *>(
-        nghttp2_session_get_stream_user_data(session, frame->hd.stream_id));
-    if (!sd) {
-      return 0;
-    }
-    if (!sd->dconn) {
-      return 0;
-    }
-    auto downstream = sd->dconn->get_downstream();
-    if (!downstream ||
-        downstream->get_downstream_stream_id() != frame->hd.stream_id) {
-      return 0;
-    }
-    downstream->set_response_state(Downstream::MSG_RESET);
-    call_downstream_readcb(http2session, downstream);
+  if (frame->hd.type != NGHTTP2_HEADERS ||
+      lib_error_code == NGHTTP2_ERR_STREAM_CLOSED ||
+      lib_error_code == NGHTTP2_ERR_STREAM_CLOSING) {
+    return 0;
   }
+
+  auto sd = static_cast<StreamData *>(
+      nghttp2_session_get_stream_user_data(session, frame->hd.stream_id));
+  if (!sd) {
+    return 0;
+  }
+  if (!sd->dconn) {
+    return 0;
+  }
+  auto downstream = sd->dconn->get_downstream();
+  if (!downstream) {
+    return 0;
+  }
+
+  if (lib_error_code == NGHTTP2_ERR_START_STREAM_NOT_ALLOWED) {
+    // Migrate to another downstream connection.
+    auto upstream = downstream->get_upstream();
+
+    if (upstream->on_downstream_reset(downstream, false)) {
+      // This should be done for h1 upstream only.  Deleting
+      // ClientHandler for h2 or SPDY upstream may lead to crash.
+      delete upstream->get_client_handler();
+    }
+
+    return 0;
+  }
+
+  if (downstream->get_downstream_stream_id() != frame->hd.stream_id) {
+    return 0;
+  }
+
+  // To avoid stream hanging around, flag Downstream::MSG_RESET.
+  downstream->set_response_state(Downstream::MSG_RESET);
+  call_downstream_readcb(http2session, downstream);
+
   return 0;
 }
 } // namespace
@@ -1815,7 +1843,8 @@ void Http2Session::submit_pending_requests() {
   for (auto dconn = dconns_.head; dconn; dconn = dconn->dlnext) {
     auto downstream = dconn->get_downstream();
 
-    if (!downstream || !downstream->request_submission_ready()) {
+    if (!downstream || !downstream->get_request_pending() ||
+        !downstream->request_submission_ready()) {
       continue;
     }
 
@@ -2153,6 +2182,7 @@ int Http2Session::handle_downstream_push_promise_complete(
   auto upstream = promised_downstream->get_upstream();
 
   promised_downstream->set_request_state(Downstream::MSG_COMPLETE);
+  promised_downstream->set_request_header_sent(true);
 
   if (upstream->on_downstream_push_promise_complete(downstream,
                                                     promised_downstream) != 0) {
