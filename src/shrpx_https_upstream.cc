@@ -1202,9 +1202,11 @@ void HttpsUpstream::on_handler_delete() {
   }
 }
 
-int HttpsUpstream::on_downstream_reset(bool no_retry) {
+int HttpsUpstream::on_downstream_reset(Downstream *downstream, bool no_retry) {
   int rv;
   std::unique_ptr<DownstreamConnection> dconn;
+
+  assert(downstream == downstream_.get());
 
   if (!downstream_->request_submission_ready()) {
     // Return error so that caller can delete handler

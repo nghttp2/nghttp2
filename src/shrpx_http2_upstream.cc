@@ -1812,63 +1812,65 @@ void Http2Upstream::on_handler_delete() {
   }
 }
 
-int Http2Upstream::on_downstream_reset(bool no_retry) {
+int Http2Upstream::on_downstream_reset(Downstream *downstream, bool no_retry) {
   int rv;
 
-  for (auto downstream = downstream_queue_.get_downstreams(); downstream;
-       downstream = downstream->dlnext) {
-    if (downstream->get_dispatch_state() != Downstream::DISPATCH_ACTIVE) {
-      // This is error condition when we failed push_request_headers()
-      // in initiate_downstream().  Otherwise, we have
-      // Downstream::DISPATCH_ACTIVE state, or we did not set
-      // DownstreamConnection.
-      downstream->pop_downstream_connection();
-      continue;
-    }
-
-    if (!downstream->request_submission_ready()) {
-      // pushed stream is handled here
-      rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
-      downstream->pop_downstream_connection();
-      continue;
-    }
-
+  if (downstream->get_dispatch_state() != Downstream::DISPATCH_ACTIVE) {
+    // This is error condition when we failed push_request_headers()
+    // in initiate_downstream().  Otherwise, we have
+    // Downstream::DISPATCH_ACTIVE state, or we did not set
+    // DownstreamConnection.
     downstream->pop_downstream_connection();
+    handler_->signal_write();
 
-    downstream->add_retry();
-
-    std::unique_ptr<DownstreamConnection> dconn;
-
-    if (no_retry || downstream->no_more_retry()) {
-      goto fail;
-    }
-
-    // downstream connection is clean; we can retry with new
-    // downstream connection.
-
-    dconn = handler_->get_downstream_connection(downstream);
-    if (!dconn) {
-      goto fail;
-    }
-
-    rv = downstream->attach_downstream_connection(std::move(dconn));
-    if (rv != 0) {
-      goto fail;
-    }
-
-    rv = downstream->push_request_headers();
-    if (rv != 0) {
-      goto fail;
-    }
-
-    continue;
-
-  fail:
-    if (on_downstream_abort_request(downstream, 503) != 0) {
-      return -1;
-    }
-    downstream->pop_downstream_connection();
+    return 0;
   }
+
+  if (!downstream->request_submission_ready()) {
+    // pushed stream is handled here
+    rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
+    downstream->pop_downstream_connection();
+
+    handler_->signal_write();
+
+    return 0;
+  }
+
+  downstream->pop_downstream_connection();
+
+  downstream->add_retry();
+
+  std::unique_ptr<DownstreamConnection> dconn;
+
+  if (no_retry || downstream->no_more_retry()) {
+    goto fail;
+  }
+
+  // downstream connection is clean; we can retry with new
+  // downstream connection.
+
+  dconn = handler_->get_downstream_connection(downstream);
+  if (!dconn) {
+    goto fail;
+  }
+
+  rv = downstream->attach_downstream_connection(std::move(dconn));
+  if (rv != 0) {
+    goto fail;
+  }
+
+  rv = downstream->push_request_headers();
+  if (rv != 0) {
+    goto fail;
+  }
+
+  return 0;
+
+fail:
+  if (on_downstream_abort_request(downstream, 503) != 0) {
+    rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
+  }
+  downstream->pop_downstream_connection();
 
   handler_->signal_write();
 

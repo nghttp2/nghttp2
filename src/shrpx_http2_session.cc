@@ -264,25 +264,28 @@ int Http2Session::disconnect(bool hard) {
   state_ = DISCONNECTED;
 
   // When deleting Http2DownstreamConnection, it calls this object's
-  // remove_downstream_connection(). The multiple
+  // remove_downstream_connection().  The multiple
   // Http2DownstreamConnection objects belong to the same
-  // ClientHandler object.  So first dump ClientHandler objects.
+  // ClientHandler object if upstream is h2 or SPDY.  So be careful
+  // when you delete ClientHandler here.
   //
   // We allow creating new pending Http2DownstreamConnection with this
   // object.  Upstream::on_downstream_reset() may add
-  // Http2DownstreamConnection.
+  // Http2DownstreamConnection to another Http2Session.
 
-  std::set<ClientHandler *> handlers;
-  for (auto dc = dconns_.head; dc; dc = dc->dlnext) {
-    if (!dc->get_client_handler()) {
-      continue;
+  for (auto dc = dconns_.head; dc;) {
+    auto next = dc->dlnext;
+    auto downstream = dc->get_downstream();
+    auto upstream = downstream->get_upstream();
+
+    // Failure is allowed only for HTTP/1 upstream where upstream is
+    // not shared by multiple Downstreams.
+    if (upstream->on_downstream_reset(downstream, hard) != 0) {
+      delete upstream->get_client_handler();
     }
-    handlers.insert(dc->get_client_handler());
-  }
-  for (auto h : handlers) {
-    if (h->get_upstream()->on_downstream_reset(hard) != 0) {
-      delete h;
-    }
+
+    // dc was deleted
+    dc = next;
   }
 
   auto streams = std::move(streams_);

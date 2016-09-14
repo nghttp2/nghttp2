@@ -72,7 +72,7 @@ public:
   virtual int on_downstream_body_complete(Downstream *downstream);
 
   virtual void on_handler_delete();
-  virtual int on_downstream_reset(bool no_retry);
+  virtual int on_downstream_reset(Downstream *downstream, bool no_retry);
 
   virtual int send_reply(Downstream *downstream, const uint8_t *body,
                          size_t bodylen);
