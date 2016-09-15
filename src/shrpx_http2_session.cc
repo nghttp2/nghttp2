@@ -665,6 +665,7 @@ int Http2Session::submit_request(Http2DownstreamConnection *dconn,
   }
 
   dconn->attach_stream_data(sd.get());
+  dconn->get_downstream()->set_downstream_stream_id(stream_id);
   streams_.append(sd.release());
 
   return 0;
@@ -1382,10 +1383,6 @@ int on_frame_send_callback(nghttp2_session *session, const nghttp2_frame *frame,
   auto http2session = static_cast<Http2Session *>(user_data);
 
   if (frame->hd.type == NGHTTP2_DATA || frame->hd.type == NGHTTP2_HEADERS) {
-    if ((frame->hd.flags & NGHTTP2_FLAG_END_STREAM) == 0) {
-      return 0;
-    }
-
     auto sd = static_cast<StreamData *>(
         nghttp2_session_get_stream_user_data(session, frame->hd.stream_id));
 
@@ -1395,17 +1392,17 @@ int on_frame_send_callback(nghttp2_session *session, const nghttp2_frame *frame,
 
     auto downstream = sd->dconn->get_downstream();
 
-    if (!downstream) {
+    if (!downstream ||
+        downstream->get_downstream_stream_id() != frame->hd.stream_id) {
       return 0;
     }
 
     if (frame->hd.type == NGHTTP2_HEADERS &&
         frame->headers.cat == NGHTTP2_HCAT_REQUEST) {
-      assert(downstream->get_downstream_stream_id() == -1);
-
-      downstream->set_downstream_stream_id(frame->hd.stream_id);
       downstream->set_request_header_sent(true);
-    } else if (downstream->get_downstream_stream_id() != frame->hd.stream_id) {
+    }
+
+    if ((frame->hd.flags & NGHTTP2_FLAG_END_STREAM) == 0) {
       return 0;
     }
 
