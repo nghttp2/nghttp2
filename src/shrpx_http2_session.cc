@@ -737,7 +737,7 @@ int on_stream_close_callback(nghttp2_session *session, int32_t stream_id,
   auto dconn = sd->dconn;
   if (dconn) {
     auto downstream = dconn->get_downstream();
-    if (downstream && downstream->get_downstream_stream_id() == stream_id) {
+    if (downstream) {
       auto upstream = downstream->get_upstream();
 
       if (downstream->get_downstream_stream_id() % 2 == 0 &&
@@ -967,8 +967,7 @@ int on_begin_headers_callback(nghttp2_session *session,
       return 0;
     }
     auto downstream = sd->dconn->get_downstream();
-    if (!downstream ||
-        downstream->get_downstream_stream_id() != frame->hd.stream_id) {
+    if (!downstream) {
       http2session->submit_rst_stream(frame->hd.stream_id,
                                       NGHTTP2_INTERNAL_ERROR);
       return 0;
@@ -1133,8 +1132,7 @@ int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
       return 0;
     }
     auto downstream = sd->dconn->get_downstream();
-    if (!downstream ||
-        downstream->get_downstream_stream_id() != frame->hd.stream_id) {
+    if (!downstream) {
       return 0;
     }
 
@@ -1221,9 +1219,7 @@ int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
         nghttp2_session_get_stream_user_data(session, frame->hd.stream_id));
     if (sd && sd->dconn) {
       auto downstream = sd->dconn->get_downstream();
-      if (downstream &&
-          downstream->get_downstream_stream_id() == frame->hd.stream_id) {
-
+      if (downstream) {
         downstream->set_response_rst_stream_error_code(
             frame->rst_stream.error_code);
         call_downstream_readcb(http2session, downstream);
@@ -1329,9 +1325,7 @@ int on_data_chunk_recv_callback(nghttp2_session *session, uint8_t flags,
     return 0;
   }
   auto downstream = sd->dconn->get_downstream();
-  if (!downstream || downstream->get_downstream_stream_id() != stream_id ||
-      !downstream->expect_response_body()) {
-
+  if (!downstream || !downstream->expect_response_body()) {
     http2session->submit_rst_stream(stream_id, NGHTTP2_INTERNAL_ERROR);
 
     if (http2session->consume(stream_id, len) != 0) {
@@ -1392,8 +1386,7 @@ int on_frame_send_callback(nghttp2_session *session, const nghttp2_frame *frame,
 
     auto downstream = sd->dconn->get_downstream();
 
-    if (!downstream ||
-        downstream->get_downstream_stream_id() != frame->hd.stream_id) {
+    if (!downstream) {
       return 0;
     }
 
@@ -1459,10 +1452,6 @@ int on_frame_not_send_callback(nghttp2_session *session,
       delete upstream->get_client_handler();
     }
 
-    return 0;
-  }
-
-  if (downstream->get_downstream_stream_id() != frame->hd.stream_id) {
     return 0;
   }
 
