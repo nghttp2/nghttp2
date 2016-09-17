@@ -264,25 +264,28 @@ int Http2Session::disconnect(bool hard) {
   state_ = DISCONNECTED;
 
   // When deleting Http2DownstreamConnection, it calls this object's
-  // remove_downstream_connection(). The multiple
+  // remove_downstream_connection().  The multiple
   // Http2DownstreamConnection objects belong to the same
-  // ClientHandler object.  So first dump ClientHandler objects.
+  // ClientHandler object if upstream is h2 or SPDY.  So be careful
+  // when you delete ClientHandler here.
   //
   // We allow creating new pending Http2DownstreamConnection with this
   // object.  Upstream::on_downstream_reset() may add
-  // Http2DownstreamConnection.
+  // Http2DownstreamConnection to another Http2Session.
 
-  std::set<ClientHandler *> handlers;
-  for (auto dc = dconns_.head; dc; dc = dc->dlnext) {
-    if (!dc->get_client_handler()) {
-      continue;
+  for (auto dc = dconns_.head; dc;) {
+    auto next = dc->dlnext;
+    auto downstream = dc->get_downstream();
+    auto upstream = downstream->get_upstream();
+
+    // Failure is allowed only for HTTP/1 upstream where upstream is
+    // not shared by multiple Downstreams.
+    if (upstream->on_downstream_reset(downstream, hard) != 0) {
+      delete upstream->get_client_handler();
     }
-    handlers.insert(dc->get_client_handler());
-  }
-  for (auto h : handlers) {
-    if (h->get_upstream()->on_downstream_reset(hard) != 0) {
-      delete h;
-    }
+
+    // dc was deleted
+    dc = next;
   }
 
   auto streams = std::move(streams_);
@@ -734,46 +737,44 @@ int on_stream_close_callback(nghttp2_session *session, int32_t stream_id,
   auto dconn = sd->dconn;
   if (dconn) {
     auto downstream = dconn->get_downstream();
-    if (downstream && downstream->get_downstream_stream_id() == stream_id) {
-      auto upstream = downstream->get_upstream();
+    auto upstream = downstream->get_upstream();
 
-      if (downstream->get_downstream_stream_id() % 2 == 0 &&
-          downstream->get_request_state() == Downstream::INITIAL) {
-        // Downstream is canceled in backend before it is submitted in
-        // frontend session.
+    if (downstream->get_downstream_stream_id() % 2 == 0 &&
+        downstream->get_request_state() == Downstream::INITIAL) {
+      // Downstream is canceled in backend before it is submitted in
+      // frontend session.
 
-        // This will avoid to send RST_STREAM to backend
-        downstream->set_response_state(Downstream::MSG_RESET);
-        upstream->cancel_premature_downstream(downstream);
-      } else {
-        if (downstream->get_upgraded() &&
-            downstream->get_response_state() == Downstream::HEADER_COMPLETE) {
-          // For tunneled connection, we have to submit RST_STREAM to
-          // upstream *after* whole response body is sent. We just set
-          // MSG_COMPLETE here. Upstream will take care of that.
-          downstream->get_upstream()->on_downstream_body_complete(downstream);
-          downstream->set_response_state(Downstream::MSG_COMPLETE);
-        } else if (error_code == NGHTTP2_NO_ERROR) {
-          switch (downstream->get_response_state()) {
-          case Downstream::MSG_COMPLETE:
-          case Downstream::MSG_BAD_HEADER:
-            break;
-          default:
-            downstream->set_response_state(Downstream::MSG_RESET);
-          }
-        } else if (downstream->get_response_state() !=
-                   Downstream::MSG_BAD_HEADER) {
+      // This will avoid to send RST_STREAM to backend
+      downstream->set_response_state(Downstream::MSG_RESET);
+      upstream->cancel_premature_downstream(downstream);
+    } else {
+      if (downstream->get_upgraded() &&
+          downstream->get_response_state() == Downstream::HEADER_COMPLETE) {
+        // For tunneled connection, we have to submit RST_STREAM to
+        // upstream *after* whole response body is sent. We just set
+        // MSG_COMPLETE here. Upstream will take care of that.
+        downstream->get_upstream()->on_downstream_body_complete(downstream);
+        downstream->set_response_state(Downstream::MSG_COMPLETE);
+      } else if (error_code == NGHTTP2_NO_ERROR) {
+        switch (downstream->get_response_state()) {
+        case Downstream::MSG_COMPLETE:
+        case Downstream::MSG_BAD_HEADER:
+          break;
+        default:
           downstream->set_response_state(Downstream::MSG_RESET);
         }
-        if (downstream->get_response_state() == Downstream::MSG_RESET &&
-            downstream->get_response_rst_stream_error_code() ==
-                NGHTTP2_NO_ERROR) {
-          downstream->set_response_rst_stream_error_code(error_code);
-        }
-        call_downstream_readcb(http2session, downstream);
+      } else if (downstream->get_response_state() !=
+                 Downstream::MSG_BAD_HEADER) {
+        downstream->set_response_state(Downstream::MSG_RESET);
       }
-      // dconn may be deleted
+      if (downstream->get_response_state() == Downstream::MSG_RESET &&
+          downstream->get_response_rst_stream_error_code() ==
+              NGHTTP2_NO_ERROR) {
+        downstream->set_response_rst_stream_error_code(error_code);
+      }
+      call_downstream_readcb(http2session, downstream);
     }
+    // dconn may be deleted
   }
   // The life time of StreamData ends here
   http2session->remove_stream_data(sd);
@@ -803,9 +804,6 @@ int on_header_callback2(nghttp2_session *session, const nghttp2_frame *frame,
     return 0;
   }
   auto downstream = sd->dconn->get_downstream();
-  if (!downstream) {
-    return 0;
-  }
 
   auto namebuf = nghttp2_rcbuf_get_buf(name);
   auto valuebuf = nghttp2_rcbuf_get_buf(value);
@@ -915,10 +913,6 @@ int on_invalid_header_callback2(nghttp2_session *session,
   if (!sd || !sd->dconn) {
     return 0;
   }
-  auto downstream = sd->dconn->get_downstream();
-  if (!downstream) {
-    return 0;
-  }
 
   int32_t stream_id;
 
@@ -959,13 +953,6 @@ int on_begin_headers_callback(nghttp2_session *session,
     auto sd = static_cast<StreamData *>(
         nghttp2_session_get_stream_user_data(session, frame->hd.stream_id));
     if (!sd || !sd->dconn) {
-      http2session->submit_rst_stream(frame->hd.stream_id,
-                                      NGHTTP2_INTERNAL_ERROR);
-      return 0;
-    }
-    auto downstream = sd->dconn->get_downstream();
-    if (!downstream ||
-        downstream->get_downstream_stream_id() != frame->hd.stream_id) {
       http2session->submit_rst_stream(frame->hd.stream_id,
                                       NGHTTP2_INTERNAL_ERROR);
       return 0;
@@ -1130,11 +1117,6 @@ int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
       return 0;
     }
     auto downstream = sd->dconn->get_downstream();
-    if (!downstream ||
-        downstream->get_downstream_stream_id() != frame->hd.stream_id) {
-      return 0;
-    }
-
     auto upstream = downstream->get_upstream();
     rv = upstream->on_downstream_body(downstream, nullptr, 0, true);
     if (rv != 0) {
@@ -1168,10 +1150,6 @@ int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
       return 0;
     }
     auto downstream = sd->dconn->get_downstream();
-
-    if (!downstream) {
-      return 0;
-    }
 
     if (frame->headers.cat == NGHTTP2_HCAT_RESPONSE ||
         frame->headers.cat == NGHTTP2_HCAT_PUSH_RESPONSE) {
@@ -1218,13 +1196,9 @@ int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
         nghttp2_session_get_stream_user_data(session, frame->hd.stream_id));
     if (sd && sd->dconn) {
       auto downstream = sd->dconn->get_downstream();
-      if (downstream &&
-          downstream->get_downstream_stream_id() == frame->hd.stream_id) {
-
-        downstream->set_response_rst_stream_error_code(
-            frame->rst_stream.error_code);
-        call_downstream_readcb(http2session, downstream);
-      }
+      downstream->set_response_rst_stream_error_code(
+          frame->rst_stream.error_code);
+      call_downstream_readcb(http2session, downstream);
     }
     return 0;
   }
@@ -1326,9 +1300,7 @@ int on_data_chunk_recv_callback(nghttp2_session *session, uint8_t flags,
     return 0;
   }
   auto downstream = sd->dconn->get_downstream();
-  if (!downstream || downstream->get_downstream_stream_id() != stream_id ||
-      !downstream->expect_response_body()) {
-
+  if (!downstream->expect_response_body()) {
     http2session->submit_rst_stream(stream_id, NGHTTP2_INTERNAL_ERROR);
 
     if (http2session->consume(stream_id, len) != 0) {
@@ -1380,10 +1352,6 @@ int on_frame_send_callback(nghttp2_session *session, const nghttp2_frame *frame,
   auto http2session = static_cast<Http2Session *>(user_data);
 
   if (frame->hd.type == NGHTTP2_DATA || frame->hd.type == NGHTTP2_HEADERS) {
-    if ((frame->hd.flags & NGHTTP2_FLAG_END_STREAM) == 0) {
-      return 0;
-    }
-
     auto sd = static_cast<StreamData *>(
         nghttp2_session_get_stream_user_data(session, frame->hd.stream_id));
 
@@ -1393,8 +1361,12 @@ int on_frame_send_callback(nghttp2_session *session, const nghttp2_frame *frame,
 
     auto downstream = sd->dconn->get_downstream();
 
-    if (!downstream ||
-        downstream->get_downstream_stream_id() != frame->hd.stream_id) {
+    if (frame->hd.type == NGHTTP2_HEADERS &&
+        frame->headers.cat == NGHTTP2_HCAT_REQUEST) {
+      downstream->set_request_header_sent(true);
+    }
+
+    if ((frame->hd.flags & NGHTTP2_FLAG_END_STREAM) == 0) {
       return 0;
     }
 
@@ -1419,29 +1391,42 @@ int on_frame_not_send_callback(nghttp2_session *session,
   if (LOG_ENABLED(INFO)) {
     SSLOG(INFO, http2session) << "Failed to send control frame type="
                               << static_cast<uint32_t>(frame->hd.type)
-                              << "lib_error_code=" << lib_error_code << ":"
+                              << ", lib_error_code=" << lib_error_code << ": "
                               << nghttp2_strerror(lib_error_code);
   }
-  if (frame->hd.type == NGHTTP2_HEADERS &&
-      lib_error_code != NGHTTP2_ERR_STREAM_CLOSED &&
-      lib_error_code != NGHTTP2_ERR_STREAM_CLOSING) {
-    // To avoid stream hanging around, flag Downstream::MSG_RESET.
-    auto sd = static_cast<StreamData *>(
-        nghttp2_session_get_stream_user_data(session, frame->hd.stream_id));
-    if (!sd) {
-      return 0;
-    }
-    if (!sd->dconn) {
-      return 0;
-    }
-    auto downstream = sd->dconn->get_downstream();
-    if (!downstream ||
-        downstream->get_downstream_stream_id() != frame->hd.stream_id) {
-      return 0;
-    }
-    downstream->set_response_state(Downstream::MSG_RESET);
-    call_downstream_readcb(http2session, downstream);
+  if (frame->hd.type != NGHTTP2_HEADERS ||
+      lib_error_code == NGHTTP2_ERR_STREAM_CLOSED ||
+      lib_error_code == NGHTTP2_ERR_STREAM_CLOSING) {
+    return 0;
   }
+
+  auto sd = static_cast<StreamData *>(
+      nghttp2_session_get_stream_user_data(session, frame->hd.stream_id));
+  if (!sd) {
+    return 0;
+  }
+  if (!sd->dconn) {
+    return 0;
+  }
+  auto downstream = sd->dconn->get_downstream();
+
+  if (lib_error_code == NGHTTP2_ERR_START_STREAM_NOT_ALLOWED) {
+    // Migrate to another downstream connection.
+    auto upstream = downstream->get_upstream();
+
+    if (upstream->on_downstream_reset(downstream, false)) {
+      // This should be done for h1 upstream only.  Deleting
+      // ClientHandler for h2 or SPDY upstream may lead to crash.
+      delete upstream->get_client_handler();
+    }
+
+    return 0;
+  }
+
+  // To avoid stream hanging around, flag Downstream::MSG_RESET.
+  downstream->set_response_state(Downstream::MSG_RESET);
+  call_downstream_readcb(http2session, downstream);
+
   return 0;
 }
 } // namespace
@@ -1819,7 +1804,8 @@ void Http2Session::submit_pending_requests() {
   for (auto dconn = dconns_.head; dconn; dconn = dconn->dlnext) {
     auto downstream = dconn->get_downstream();
 
-    if (!downstream || !downstream->request_submission_ready()) {
+    if (!downstream->get_request_pending() ||
+        !downstream->request_submission_ready()) {
       continue;
     }
 
@@ -2157,6 +2143,7 @@ int Http2Session::handle_downstream_push_promise_complete(
   auto upstream = promised_downstream->get_upstream();
 
   promised_downstream->set_request_state(Downstream::MSG_COMPLETE);
+  promised_downstream->set_request_header_sent(true);
 
   if (upstream->on_downstream_push_promise_complete(downstream,
                                                     promised_downstream) != 0) {

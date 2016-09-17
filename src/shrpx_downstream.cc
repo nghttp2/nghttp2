@@ -137,7 +137,8 @@ Downstream::Downstream(Upstream *upstream, MemchunkPool *mcpool,
       chunked_request_(false),
       chunked_response_(false),
       expect_final_response_(false),
-      request_pending_(false) {
+      request_pending_(false),
+      request_header_sent_(false) {
 
   auto &timeoutconf = get_config()->http2.timeout;
 
@@ -885,7 +886,7 @@ bool Downstream::accesslog_ready() const { return resp_.http_status > 0; }
 
 void Downstream::add_retry() { ++num_retry_; }
 
-bool Downstream::no_more_retry() const { return num_retry_ > 5; }
+bool Downstream::no_more_retry() const { return num_retry_ > 50; }
 
 void Downstream::set_request_downstream_host(const StringRef &host) {
   request_downstream_host_ = host;
@@ -895,10 +896,13 @@ void Downstream::set_request_pending(bool f) { request_pending_ = f; }
 
 bool Downstream::get_request_pending() const { return request_pending_; }
 
+void Downstream::set_request_header_sent(bool f) { request_header_sent_ = f; }
+
 bool Downstream::request_submission_ready() const {
   return (request_state_ == Downstream::HEADER_COMPLETE ||
           request_state_ == Downstream::MSG_COMPLETE) &&
-         request_pending_ && response_state_ == Downstream::INITIAL;
+         (request_pending_ || !request_header_sent_) &&
+         response_state_ == Downstream::INITIAL;
 }
 
 int Downstream::get_dispatch_state() const { return dispatch_state_; }

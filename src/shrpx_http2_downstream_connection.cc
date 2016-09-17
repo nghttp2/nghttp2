@@ -117,11 +117,11 @@ void Http2DownstreamConnection::detach_downstream(Downstream *downstream) {
 
   auto &resp = downstream_->response();
 
-  if (submit_rst_stream(downstream) == 0) {
-    http2session_->signal_write();
-  }
-
   if (downstream_->get_downstream_stream_id() != -1) {
+    if (submit_rst_stream(downstream) == 0) {
+      http2session_->signal_write();
+    }
+
     http2session_->consume(downstream_->get_downstream_stream_id(),
                            resp.unconsumed_body_length);
 

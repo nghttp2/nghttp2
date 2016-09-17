@@ -344,6 +344,10 @@ int HttpDownstreamConnection::push_request_headers() {
 
   auto &httpconf = get_config()->http;
 
+  // Set request_sent to true because we write request into buffer
+  // here.
+  downstream_->set_request_header_sent(true);
+
   // For HTTP/1.0 request, there is no authority in request.  In that
   // case, we use backend server's host nonetheless.
   auto authority = StringRef(downstream_hostport);

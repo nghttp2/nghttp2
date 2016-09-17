@@ -358,7 +358,8 @@ void ConnectionHandler::graceful_shutdown_worker() {
 int ConnectionHandler::handle_connection(int fd, sockaddr *addr, int addrlen,
                                          const UpstreamAddr *faddr) {
   if (LOG_ENABLED(INFO)) {
-    LLOG(INFO, this) << "Accepted connection. fd=" << fd;
+    LLOG(INFO, this) << "Accepted connection from "
+                     << util::numeric_name(addr, addrlen) << ", fd=" << fd;
   }
 
   if (get_config()->num_worker == 1) {
