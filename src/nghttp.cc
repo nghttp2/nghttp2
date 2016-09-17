@@ -2820,16 +2820,21 @@ int main(int argc, char **argv) {
     case 'm':
       config.multiply = strtoul(optarg, nullptr, 10);
       break;
-    case 'c':
-      errno = 0;
-      config.header_table_size = util::parse_uint_with_unit(optarg);
-      if (config.header_table_size == -1) {
+    case 'c': {
+      auto n = util::parse_uint_with_unit(optarg);
+      if (n == -1) {
         std::cerr << "-c: Bad option value: " << optarg << std::endl;
         exit(EXIT_FAILURE);
       }
-      config.min_header_table_size =
-          std::min(config.min_header_table_size, config.header_table_size);
+      if (n > std::numeric_limits<uint32_t>::max()) {
+        std::cerr << "-c: Value too large.  It should be less than or equal to "
+                  << std::numeric_limits<uint32_t>::max() << std::endl;
+        exit(EXIT_FAILURE);
+      }
+      config.header_table_size = n;
+      config.min_header_table_size = std::min(config.min_header_table_size, n);
       break;
+    }
     case '?':
       util::show_candidates(argv[optind - 1], long_options);
       exit(EXIT_FAILURE);
