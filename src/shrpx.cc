@@ -2070,7 +2070,7 @@ HTTP/2 and SPDY:
               in the frontend HTTP/2 connection.  The decoder (client)
               specifies  the maximum  dynamic table  size it  accepts.
               Then the negotiated dynamic table size is the minimum of
-              this option value and the value client specified.
+              this option value and the value which client specified.
               Default: )"
       << util::utos_unit(
              get_config()->http2.upstream.encoder_dynamic_table_size) << R"(
@@ -2085,7 +2085,7 @@ HTTP/2 and SPDY:
               in the backend HTTP/2 connection.  The decoder (backend)
               specifies  the maximum  dynamic table  size it  accepts.
               Then the negotiated dynamic table size is the minimum of
-              this option value and the value backend specified.
+              this option value and the value which backend specified.
               Default: )"
       << util::utos_unit(
              get_config()->http2.downstream.encoder_dynamic_table_size) << R"(
