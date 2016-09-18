@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTP" "1" "Sep 10, 2016" "1.15.0-DEV" "nghttp2"
+.TH "NGHTTP" "1" "Sep 18, 2016" "1.15.0-DEV" "nghttp2"
 .SH NAME
 nghttp \- HTTP/2 client
 .
@@ -167,6 +167,14 @@ given values except  for last one is  strictly less than
 the last  value, that minimum  value is set  in SETTINGS
 frame  payload  before  the   last  value,  to  simulate
 multiple header table size change.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-encoder\-header\-table\-size=<SIZE>
+Specify encoder header table size.  The decoder (server)
+specifies  the maximum  dynamic table  size it  accepts.
+Then the negotiated dynamic table size is the minimum of
+this option value and the value which server specified.
 .UNINDENT
 .INDENT 0.0
 .TP

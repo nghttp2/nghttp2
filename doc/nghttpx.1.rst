@@ -804,6 +804,40 @@ HTTP/2 and SPDY
     well.   This option  is only  effective on  recent Linux
     platform.
 
+.. option:: --frontend-http2-encoder-dynamic-table-size=<SIZE>
+
+    Specify the maximum dynamic  table size of HPACK encoder
+    in the frontend HTTP/2 connection.  The decoder (client)
+    specifies  the maximum  dynamic table  size it  accepts.
+    Then the negotiated dynamic table size is the minimum of
+    this option value and the value which client specified.
+
+    Default: ``4K``
+
+.. option:: --frontend-http2-decoder-dynamic-table-size=<SIZE>
+
+    Specify the maximum dynamic  table size of HPACK decoder
+    in the frontend HTTP/2 connection.
+
+    Default: ``4K``
+
+.. option:: --backend-http2-encoder-dynamic-table-size=<SIZE>
+
+    Specify the maximum dynamic  table size of HPACK encoder
+    in the backend HTTP/2 connection.  The decoder (backend)
+    specifies  the maximum  dynamic table  size it  accepts.
+    Then the negotiated dynamic table size is the minimum of
+    this option value and the value which backend specified.
+
+    Default: ``4K``
+
+.. option:: --backend-http2-decoder-dynamic-table-size=<SIZE>
+
+    Specify the maximum dynamic  table size of HPACK decoder
+    in the backend HTTP/2 connection.
+
+    Default: ``4K``
+
 
 Mode
 ~~~~

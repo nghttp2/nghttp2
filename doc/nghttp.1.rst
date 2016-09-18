@@ -131,6 +131,13 @@ OPTIONS
     frame  payload  before  the   last  value,  to  simulate
     multiple header table size change.
 
+.. option:: --encoder-header-table-size=<SIZE>
+
+    Specify encoder header table size.  The decoder (server)
+    specifies  the maximum  dynamic table  size it  accepts.
+    Then the negotiated dynamic table size is the minimum of
+    this option value and the value which server specified.
+
 .. option:: -b, --padding=<N>
 
     Add at  most <N>  bytes to a  frame payload  as padding.

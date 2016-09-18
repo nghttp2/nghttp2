@@ -70,6 +70,13 @@ OPTIONS
 
     Specify decoder header table size.
 
+.. option:: --encoder-header-table-size=<SIZE>
+
+    Specify encoder header table size.  The decoder (client)
+    specifies  the maximum  dynamic table  size it  accepts.
+    Then the negotiated dynamic table size is the minimum of
+    this option value and the value which client specified.
+
 .. option:: --color
 
     Force colored log output.

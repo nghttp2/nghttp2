@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTPX" "1" "Sep 10, 2016" "1.15.0-DEV" "nghttp2"
+.TH "NGHTTPX" "1" "Sep 18, 2016" "1.15.0-DEV" "nghttp2"
 .SH NAME
 nghttpx \- HTTP/2 proxy
 .
@@ -881,6 +881,44 @@ stream is subject to stream level window size, it should
 be adjusted using \fI\%\-\-frontend\-http2\-window\-size\fP option as
 well.   This option  is only  effective on  recent Linux
 platform.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-frontend\-http2\-encoder\-dynamic\-table\-size=<SIZE>
+Specify the maximum dynamic  table size of HPACK encoder
+in the frontend HTTP/2 connection.  The decoder (client)
+specifies  the maximum  dynamic table  size it  accepts.
+Then the negotiated dynamic table size is the minimum of
+this option value and the value which client specified.
+.sp
+Default: \fB4K\fP
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-frontend\-http2\-decoder\-dynamic\-table\-size=<SIZE>
+Specify the maximum dynamic  table size of HPACK decoder
+in the frontend HTTP/2 connection.
+.sp
+Default: \fB4K\fP
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-backend\-http2\-encoder\-dynamic\-table\-size=<SIZE>
+Specify the maximum dynamic  table size of HPACK encoder
+in the backend HTTP/2 connection.  The decoder (backend)
+specifies  the maximum  dynamic table  size it  accepts.
+Then the negotiated dynamic table size is the minimum of
+this option value and the value which backend specified.
+.sp
+Default: \fB4K\fP
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-backend\-http2\-decoder\-dynamic\-table\-size=<SIZE>
+Specify the maximum dynamic  table size of HPACK decoder
+in the backend HTTP/2 connection.
+.sp
+Default: \fB4K\fP
 .UNINDENT
 .SS Mode
 .INDENT 0.0

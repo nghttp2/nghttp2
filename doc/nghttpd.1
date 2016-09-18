@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTPD" "1" "Sep 10, 2016" "1.15.0-DEV" "nghttp2"
+.TH "NGHTTPD" "1" "Sep 18, 2016" "1.15.0-DEV" "nghttp2"
 .SH NAME
 nghttpd \- HTTP/2 server
 .
@@ -96,6 +96,14 @@ Disable SSL/TLS.
 .TP
 .B \-c, \-\-header\-table\-size=<SIZE>
 Specify decoder header table size.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-encoder\-header\-table\-size=<SIZE>
+Specify encoder header table size.  The decoder (client)
+specifies  the maximum  dynamic table  size it  accepts.
+Then the negotiated dynamic table size is the minimum of
+this option value and the value which client specified.
 .UNINDENT
 .INDENT 0.0
 .TP
