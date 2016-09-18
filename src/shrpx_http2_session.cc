@@ -1569,7 +1569,7 @@ int Http2Session::connection_made() {
     return -1;
   }
 
-  std::array<nghttp2_settings_entry, 3> entry;
+  std::array<nghttp2_settings_entry, 4> entry;
   size_t nentry = 2;
   entry[0].settings_id = NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS;
   entry[0].value = http2conf.downstream.max_concurrent_streams;
@@ -1580,6 +1580,13 @@ int Http2Session::connection_made() {
   if (http2conf.no_server_push || get_config()->http2_proxy) {
     entry[nentry].settings_id = NGHTTP2_SETTINGS_ENABLE_PUSH;
     entry[nentry].value = 0;
+    ++nentry;
+  }
+
+  if (http2conf.downstream.decoder_dynamic_table_size !=
+      NGHTTP2_DEFAULT_HEADER_TABLE_SIZE) {
+    entry[nentry].settings_id = NGHTTP2_SETTINGS_HEADER_TABLE_SIZE;
+    entry[nentry].value = http2conf.downstream.decoder_dynamic_table_size;
     ++nentry;
   }
 

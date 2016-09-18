@@ -96,6 +96,7 @@ Config::Config()
       num_worker(1),
       max_concurrent_streams(100),
       header_table_size(-1),
+      encoder_header_table_size(-1),
       window_bits(-1),
       connection_window_bits(-1),
       port(0),
@@ -231,12 +232,20 @@ public:
         config_(config),
         ssl_ctx_(ssl_ctx),
         callbacks_(nullptr),
+        option_(nullptr),
         next_session_id_(1),
         tstamp_cached_(ev_now(loop)),
         cached_date_(util::http_date(tstamp_cached_)) {
     nghttp2_session_callbacks_new(&callbacks_);
 
     fill_callback(callbacks_, config_);
+
+    nghttp2_option_new(&option_);
+
+    if (config_->encoder_header_table_size != -1) {
+      nghttp2_option_set_max_deflate_dynamic_table_size(
+          option_, config_->encoder_header_table_size);
+    }
 
     ev_timer_init(&release_fd_timer_, release_fd_cb, 0., RELEASE_FD_TIMEOUT);
     release_fd_timer_.data = this;
@@ -246,6 +255,7 @@ public:
     for (auto handler : handlers_) {
       delete handler;
     }
+    nghttp2_option_del(option_);
     nghttp2_session_callbacks_del(callbacks_);
   }
   void add_handler(Http2Handler *handler) { handlers_.insert(handler); }
@@ -283,6 +293,7 @@ public:
     return session_id;
   }
   const nghttp2_session_callbacks *get_callbacks() const { return callbacks_; }
+  const nghttp2_option *get_option() const { return option_; }
   void accept_connection(int fd) {
     util::make_socket_nodelay(fd);
     SSL *ssl = nullptr;
@@ -408,6 +419,7 @@ private:
   const Config *config_;
   SSL_CTX *ssl_ctx_;
   nghttp2_session_callbacks *callbacks_;
+  nghttp2_option *option_;
   ev_timer release_fd_timer_;
   int64_t next_session_id_;
   ev_tstamp tstamp_cached_;
@@ -825,7 +837,8 @@ int Http2Handler::on_write() { return write_(*this); }
 int Http2Handler::connection_made() {
   int r;
 
-  r = nghttp2_session_server_new(&session_, sessions_->get_callbacks(), this);
+  r = nghttp2_session_server_new2(&session_, sessions_->get_callbacks(), this,
+                                  sessions_->get_option());
 
   if (r != 0) {
     return r;

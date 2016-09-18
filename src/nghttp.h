@@ -72,6 +72,7 @@ struct Config {
   nghttp2_option *http2_option;
   int64_t header_table_size;
   int64_t min_header_table_size;
+  int64_t encoder_header_table_size;
   size_t padding;
   size_t max_concurrent_streams;
   ssize_t peer_max_concurrent_streams;

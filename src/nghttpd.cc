@@ -124,6 +124,11 @@ Options:
   --no-tls    Disable SSL/TLS.
   -c, --header-table-size=<SIZE>
               Specify decoder header table size.
+  --encoder-header-table-size=<SIZE>
+              Specify encoder header table size.  The decoder (client)
+              specifies  the maximum  dynamic table  size it  accepts.
+              Then the negotiated dynamic table size is the minimum of
+              this option value and the value which client specified.
   --color     Force colored log output.
   -p, --push=<PATH>=<PUSH_PATH,...>
               Push  resources <PUSH_PATH>s  when <PATH>  is requested.
@@ -219,6 +224,7 @@ int main(int argc, char **argv) {
         {"echo-upload", no_argument, &flag, 8},
         {"mime-types-file", required_argument, &flag, 9},
         {"no-content-length", no_argument, &flag, 10},
+        {"encoder-header-table-size", required_argument, &flag, 11},
         {nullptr, 0, nullptr, 0}};
     int option_index = 0;
     int c = getopt_long(argc, argv, "DVb:c:d:ehm:n:p:va:w:W:", long_options,
@@ -276,14 +282,20 @@ int main(int argc, char **argv) {
     case 'v':
       config.verbose = true;
       break;
-    case 'c':
-      errno = 0;
-      config.header_table_size = util::parse_uint_with_unit(optarg);
-      if (config.header_table_size == -1) {
+    case 'c': {
+      auto n = util::parse_uint_with_unit(optarg);
+      if (n == -1) {
         std::cerr << "-c: Bad option value: " << optarg << std::endl;
         exit(EXIT_FAILURE);
       }
+      if (n > std::numeric_limits<uint32_t>::max()) {
+        std::cerr << "-c: Value too large.  It should be less than or equal to "
+                  << std::numeric_limits<uint32_t>::max() << std::endl;
+        exit(EXIT_FAILURE);
+      }
+      config.header_table_size = n;
       break;
+    }
     case 'p':
       if (parse_push_config(config, optarg) != 0) {
         std::cerr << "-p: Bad option value: " << optarg << std::endl;
@@ -375,6 +387,23 @@ int main(int argc, char **argv) {
         // no-content-length option
         config.no_content_length = true;
         break;
+      case 11: {
+        // encoder-header-table-size option
+        auto n = util::parse_uint_with_unit(optarg);
+        if (n == -1) {
+          std::cerr << "--encoder-header-table-size: Bad option value: "
+                    << optarg << std::endl;
+          exit(EXIT_FAILURE);
+        }
+        if (n > std::numeric_limits<uint32_t>::max()) {
+          std::cerr << "--encoder-header-table-size: Value too large.  It "
+                       "should be less than or equal to "
+                    << std::numeric_limits<uint32_t>::max() << std::endl;
+          exit(EXIT_FAILURE);
+        }
+        config.encoder_header_table_size = n;
+        break;
+      }
       }
       break;
     default:

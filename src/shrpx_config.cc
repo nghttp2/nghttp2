@@ -1733,9 +1733,29 @@ int option_lookup_token(const char *name, size_t namelen) {
       break;
     }
     break;
+  case 40:
+    switch (name[39]) {
+    case 'e':
+      if (util::strieq_l("backend-http2-decoder-dynamic-table-siz", name, 39)) {
+        return SHRPX_OPTID_BACKEND_HTTP2_DECODER_DYNAMIC_TABLE_SIZE;
+      }
+      if (util::strieq_l("backend-http2-encoder-dynamic-table-siz", name, 39)) {
+        return SHRPX_OPTID_BACKEND_HTTP2_ENCODER_DYNAMIC_TABLE_SIZE;
+      }
+      break;
+    }
+    break;
   case 41:
     switch (name[40]) {
     case 'e':
+      if (util::strieq_l("frontend-http2-decoder-dynamic-table-siz", name,
+                         40)) {
+        return SHRPX_OPTID_FRONTEND_HTTP2_DECODER_DYNAMIC_TABLE_SIZE;
+      }
+      if (util::strieq_l("frontend-http2-encoder-dynamic-table-siz", name,
+                         40)) {
+        return SHRPX_OPTID_FRONTEND_HTTP2_ENCODER_DYNAMIC_TABLE_SIZE;
+      }
       if (util::strieq_l("frontend-http2-optimize-write-buffer-siz", name,
                          40)) {
         return SHRPX_OPTID_FRONTEND_HTTP2_OPTIMIZE_WRITE_BUFFER_SIZE;
@@ -2773,6 +2793,38 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     }
 
     return 0;
+  case SHRPX_OPTID_FRONTEND_HTTP2_ENCODER_DYNAMIC_TABLE_SIZE:
+    if (parse_uint_with_unit(&config->http2.upstream.encoder_dynamic_table_size,
+                             opt, optarg) != 0) {
+      return -1;
+    }
+
+    nghttp2_option_set_max_deflate_dynamic_table_size(
+        config->http2.upstream.option,
+        config->http2.upstream.encoder_dynamic_table_size);
+    nghttp2_option_set_max_deflate_dynamic_table_size(
+        config->http2.upstream.alt_mode_option,
+        config->http2.upstream.encoder_dynamic_table_size);
+
+    return 0;
+  case SHRPX_OPTID_FRONTEND_HTTP2_DECODER_DYNAMIC_TABLE_SIZE:
+    return parse_uint_with_unit(
+        &config->http2.upstream.decoder_dynamic_table_size, opt, optarg);
+  case SHRPX_OPTID_BACKEND_HTTP2_ENCODER_DYNAMIC_TABLE_SIZE:
+    if (parse_uint_with_unit(
+            &config->http2.downstream.encoder_dynamic_table_size, opt,
+            optarg) != 0) {
+      return -1;
+    }
+
+    nghttp2_option_set_max_deflate_dynamic_table_size(
+        config->http2.downstream.option,
+        config->http2.downstream.encoder_dynamic_table_size);
+
+    return 0;
+  case SHRPX_OPTID_BACKEND_HTTP2_DECODER_DYNAMIC_TABLE_SIZE:
+    return parse_uint_with_unit(
+        &config->http2.downstream.decoder_dynamic_table_size, opt, optarg);
   case SHRPX_OPTID_CONF:
     LOG(WARN) << "conf: ignored";
 

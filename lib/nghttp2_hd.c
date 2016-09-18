@@ -684,7 +684,7 @@ int nghttp2_hd_deflate_init(nghttp2_hd_deflater *deflater, nghttp2_mem *mem) {
 }
 
 int nghttp2_hd_deflate_init2(nghttp2_hd_deflater *deflater,
-                             size_t deflate_hd_table_bufsize_max,
+                             size_t max_deflate_dynamic_table_size,
                              nghttp2_mem *mem) {
   int rv;
   rv = hd_context_init(&deflater->ctx, mem);
@@ -694,14 +694,14 @@ int nghttp2_hd_deflate_init2(nghttp2_hd_deflater *deflater,
 
   hd_map_init(&deflater->map);
 
-  if (deflate_hd_table_bufsize_max < NGHTTP2_HD_DEFAULT_MAX_BUFFER_SIZE) {
+  if (max_deflate_dynamic_table_size < NGHTTP2_HD_DEFAULT_MAX_BUFFER_SIZE) {
     deflater->notify_table_size_change = 1;
-    deflater->ctx.hd_table_bufsize_max = deflate_hd_table_bufsize_max;
+    deflater->ctx.hd_table_bufsize_max = max_deflate_dynamic_table_size;
   } else {
     deflater->notify_table_size_change = 0;
   }
 
-  deflater->deflate_hd_table_bufsize_max = deflate_hd_table_bufsize_max;
+  deflater->deflate_hd_table_bufsize_max = max_deflate_dynamic_table_size;
   deflater->min_hd_table_bufsize_max = UINT32_MAX;
 
   return 0;
@@ -1225,9 +1225,9 @@ static void hd_context_shrink_table_size(nghttp2_hd_context *context,
   }
 }
 
-int nghttp2_hd_deflate_change_table_size(nghttp2_hd_deflater *deflater,
-                                         size_t settings_hd_table_bufsize_max) {
-  size_t next_bufsize = nghttp2_min(settings_hd_table_bufsize_max,
+int nghttp2_hd_deflate_change_table_size(
+    nghttp2_hd_deflater *deflater, size_t settings_max_dynamic_table_size) {
+  size_t next_bufsize = nghttp2_min(settings_max_dynamic_table_size,
                                     deflater->deflate_hd_table_bufsize_max);
 
   deflater->ctx.hd_table_bufsize_max = next_bufsize;
@@ -1241,8 +1241,8 @@ int nghttp2_hd_deflate_change_table_size(nghttp2_hd_deflater *deflater,
   return 0;
 }
 
-int nghttp2_hd_inflate_change_table_size(nghttp2_hd_inflater *inflater,
-                                         size_t settings_hd_table_bufsize_max) {
+int nghttp2_hd_inflate_change_table_size(
+    nghttp2_hd_inflater *inflater, size_t settings_max_dynamic_table_size) {
   switch (inflater->state) {
   case NGHTTP2_HD_STATE_EXPECT_TABLE_SIZE:
   case NGHTTP2_HD_STATE_INFLATE_START:
@@ -1258,16 +1258,16 @@ int nghttp2_hd_inflate_change_table_size(nghttp2_hd_inflater *inflater,
      strictly smaller than the current negotiated maximum size,
      encoder must send dynamic table size update.  In other cases, we
      cannot expect it to do so. */
-  if (inflater->ctx.hd_table_bufsize_max > settings_hd_table_bufsize_max) {
+  if (inflater->ctx.hd_table_bufsize_max > settings_max_dynamic_table_size) {
     inflater->state = NGHTTP2_HD_STATE_EXPECT_TABLE_SIZE;
     /* Remember minimum value, and validate that encoder sends the
        value less than or equal to this. */
-    inflater->min_hd_table_bufsize_max = settings_hd_table_bufsize_max;
+    inflater->min_hd_table_bufsize_max = settings_max_dynamic_table_size;
   }
 
-  inflater->settings_hd_table_bufsize_max = settings_hd_table_bufsize_max;
+  inflater->settings_hd_table_bufsize_max = settings_max_dynamic_table_size;
 
-  inflater->ctx.hd_table_bufsize_max = settings_hd_table_bufsize_max;
+  inflater->ctx.hd_table_bufsize_max = settings_max_dynamic_table_size;
 
   hd_context_shrink_table_size(&inflater->ctx, NULL);
   return 0;

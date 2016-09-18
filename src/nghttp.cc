@@ -95,6 +95,7 @@ constexpr auto anchors = std::array<Anchor, 5>{{
 Config::Config()
     : header_table_size(-1),
       min_header_table_size(std::numeric_limits<uint32_t>::max()),
+      encoder_header_table_size(-1),
       padding(0),
       max_concurrent_streams(100),
       peer_max_concurrent_streams(100),
@@ -2619,6 +2620,11 @@ Options:
               the last  value, that minimum  value is set  in SETTINGS
               frame  payload  before  the   last  value,  to  simulate
               multiple header table size change.
+  --encoder-header-table-size=<SIZE>
+              Specify encoder header table size.  The decoder (server)
+              specifies  the maximum  dynamic table  size it  accepts.
+              Then the negotiated dynamic table size is the minimum of
+              this option value and the value which server specified.
   -b, --padding=<N>
               Add at  most <N>  bytes to a  frame payload  as padding.
               Specify 0 to disable padding.
@@ -2695,6 +2701,7 @@ int main(int argc, char **argv) {
         {"no-push", no_argument, &flag, 11},
         {"max-concurrent-streams", required_argument, &flag, 12},
         {"expect-continue", no_argument, &flag, 13},
+        {"encoder-header-table-size", required_argument, &flag, 14},
         {nullptr, 0, nullptr, 0}};
     int option_index = 0;
     int c = getopt_long(argc, argv, "M:Oab:c:d:gm:np:r:hH:vst:uw:W:",
@@ -2813,16 +2820,21 @@ int main(int argc, char **argv) {
     case 'm':
       config.multiply = strtoul(optarg, nullptr, 10);
       break;
-    case 'c':
-      errno = 0;
-      config.header_table_size = util::parse_uint_with_unit(optarg);
-      if (config.header_table_size == -1) {
+    case 'c': {
+      auto n = util::parse_uint_with_unit(optarg);
+      if (n == -1) {
         std::cerr << "-c: Bad option value: " << optarg << std::endl;
         exit(EXIT_FAILURE);
       }
-      config.min_header_table_size =
-          std::min(config.min_header_table_size, config.header_table_size);
+      if (n > std::numeric_limits<uint32_t>::max()) {
+        std::cerr << "-c: Value too large.  It should be less than or equal to "
+                  << std::numeric_limits<uint32_t>::max() << std::endl;
+        exit(EXIT_FAILURE);
+      }
+      config.header_table_size = n;
+      config.min_header_table_size = std::min(config.min_header_table_size, n);
       break;
+    }
     case '?':
       util::show_candidates(argv[optind - 1], long_options);
       exit(EXIT_FAILURE);
@@ -2896,6 +2908,23 @@ int main(int argc, char **argv) {
         // expect-continue option
         config.expect_continue = true;
         break;
+      case 14: {
+        // encoder-header-table-size option
+        auto n = util::parse_uint_with_unit(optarg);
+        if (n == -1) {
+          std::cerr << "--encoder-header-table-size: Bad option value: "
+                    << optarg << std::endl;
+          exit(EXIT_FAILURE);
+        }
+        if (n > std::numeric_limits<uint32_t>::max()) {
+          std::cerr << "--encoder-header-table-size: Value too large.  It "
+                       "should be less than or equal to "
+                    << std::numeric_limits<uint32_t>::max() << std::endl;
+          exit(EXIT_FAILURE);
+        }
+        config.encoder_header_table_size = n;
+        break;
+      }
       }
       break;
     default:
@@ -2915,6 +2944,11 @@ int main(int argc, char **argv) {
 
   nghttp2_option_set_peer_max_concurrent_streams(
       config.http2_option, config.peer_max_concurrent_streams);
+
+  if (config.encoder_header_table_size != -1) {
+    nghttp2_option_set_max_deflate_dynamic_table_size(
+        config.http2_option, config.encoder_header_table_size);
+  }
 
   struct sigaction act {};
   act.sa_handler = SIG_IGN;

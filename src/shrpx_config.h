@@ -299,6 +299,14 @@ constexpr auto SHRPX_OPT_BACKEND_HTTP2_WINDOW_SIZE =
     StringRef::from_lit("backend-http2-window-size");
 constexpr auto SHRPX_OPT_BACKEND_HTTP2_CONNECTION_WINDOW_SIZE =
     StringRef::from_lit("backend-http2-connection-window-size");
+constexpr auto SHRPX_OPT_FRONTEND_HTTP2_ENCODER_DYNAMIC_TABLE_SIZE =
+    StringRef::from_lit("frontend-http2-encoder-dynamic-table-size");
+constexpr auto SHRPX_OPT_FRONTEND_HTTP2_DECODER_DYNAMIC_TABLE_SIZE =
+    StringRef::from_lit("frontend-http2-decoder-dynamic-table-size");
+constexpr auto SHRPX_OPT_BACKEND_HTTP2_ENCODER_DYNAMIC_TABLE_SIZE =
+    StringRef::from_lit("backend-http2-encoder-dynamic-table-size");
+constexpr auto SHRPX_OPT_BACKEND_HTTP2_DECODER_DYNAMIC_TABLE_SIZE =
+    StringRef::from_lit("backend-http2-decoder-dynamic-table-size");
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
@@ -595,9 +603,11 @@ struct Http2Config {
     nghttp2_option *option;
     nghttp2_option *alt_mode_option;
     nghttp2_session_callbacks *callbacks;
+    size_t max_concurrent_streams;
+    size_t encoder_dynamic_table_size;
+    size_t decoder_dynamic_table_size;
     int32_t window_size;
     int32_t connection_window_size;
-    size_t max_concurrent_streams;
     bool optimize_write_buffer_size;
     bool optimize_window_size;
   } upstream;
@@ -607,6 +617,8 @@ struct Http2Config {
     } timeout;
     nghttp2_option *option;
     nghttp2_session_callbacks *callbacks;
+    size_t encoder_dynamic_table_size;
+    size_t decoder_dynamic_table_size;
     int32_t window_size;
     int32_t connection_window_size;
     size_t max_concurrent_streams;
@@ -795,6 +807,8 @@ enum {
   SHRPX_OPTID_BACKEND_HTTP2_CONNECTION_WINDOW_BITS,
   SHRPX_OPTID_BACKEND_HTTP2_CONNECTION_WINDOW_SIZE,
   SHRPX_OPTID_BACKEND_HTTP2_CONNECTIONS_PER_WORKER,
+  SHRPX_OPTID_BACKEND_HTTP2_DECODER_DYNAMIC_TABLE_SIZE,
+  SHRPX_OPTID_BACKEND_HTTP2_ENCODER_DYNAMIC_TABLE_SIZE,
   SHRPX_OPTID_BACKEND_HTTP2_MAX_CONCURRENT_STREAMS,
   SHRPX_OPTID_BACKEND_HTTP2_SETTINGS_TIMEOUT,
   SHRPX_OPTID_BACKEND_HTTP2_WINDOW_BITS,
@@ -832,8 +846,10 @@ enum {
   SHRPX_OPTID_FRONTEND_FRAME_DEBUG,
   SHRPX_OPTID_FRONTEND_HTTP2_CONNECTION_WINDOW_BITS,
   SHRPX_OPTID_FRONTEND_HTTP2_CONNECTION_WINDOW_SIZE,
+  SHRPX_OPTID_FRONTEND_HTTP2_DECODER_DYNAMIC_TABLE_SIZE,
   SHRPX_OPTID_FRONTEND_HTTP2_DUMP_REQUEST_HEADER,
   SHRPX_OPTID_FRONTEND_HTTP2_DUMP_RESPONSE_HEADER,
+  SHRPX_OPTID_FRONTEND_HTTP2_ENCODER_DYNAMIC_TABLE_SIZE,
   SHRPX_OPTID_FRONTEND_HTTP2_MAX_CONCURRENT_STREAMS,
   SHRPX_OPTID_FRONTEND_HTTP2_OPTIMIZE_WINDOW_SIZE,
   SHRPX_OPTID_FRONTEND_HTTP2_OPTIMIZE_WRITE_BUFFER_SIZE,

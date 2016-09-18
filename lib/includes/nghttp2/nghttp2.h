@@ -2535,6 +2535,19 @@ nghttp2_option_set_max_send_header_block_length(nghttp2_option *option,
 /**
  * @function
  *
+ * This option sets the maximum dynamic table size for deflating
+ * header fields.  The default value is 4KiB.  In HTTP/2, receiver of
+ * deflated header block can specify maximum dynamic table size.  The
+ * actual maximum size is the minimum of the size receiver specified
+ * and this option value.
+ */
+NGHTTP2_EXTERN void
+nghttp2_option_set_max_deflate_dynamic_table_size(nghttp2_option *option,
+                                                  size_t val);
+
+/**
+ * @function
+ *
  * Initializes |*session_ptr| for client use.  The all members of
  * |callbacks| are copied to |*session_ptr|.  Therefore |*session_ptr|
  * does not store |callbacks|.  The |user_data| is an arbitrary user
@@ -4583,7 +4596,7 @@ typedef struct nghttp2_hd_deflater nghttp2_hd_deflater;
  *
  * Initializes |*deflater_ptr| for deflating name/values pairs.
  *
- * The |deflate_hd_table_bufsize_max| is the upper bound of header
+ * The |max_deflate_dynamic_table_size| is the upper bound of header
  * table size the deflater will use.
  *
  * If this function fails, |*deflater_ptr| is left untouched.
@@ -4594,8 +4607,9 @@ typedef struct nghttp2_hd_deflater nghttp2_hd_deflater;
  * :enum:`NGHTTP2_ERR_NOMEM`
  *     Out of memory.
  */
-NGHTTP2_EXTERN int nghttp2_hd_deflate_new(nghttp2_hd_deflater **deflater_ptr,
-                                          size_t deflate_hd_table_bufsize_max);
+NGHTTP2_EXTERN int
+nghttp2_hd_deflate_new(nghttp2_hd_deflater **deflater_ptr,
+                       size_t max_deflate_dynamic_table_size);
 
 /**
  * @function
@@ -4612,9 +4626,10 @@ NGHTTP2_EXTERN int nghttp2_hd_deflate_new(nghttp2_hd_deflater **deflater_ptr,
  * The library code does not refer to |mem| pointer after this
  * function returns, so the application can safely free it.
  */
-NGHTTP2_EXTERN int nghttp2_hd_deflate_new2(nghttp2_hd_deflater **deflater_ptr,
-                                           size_t deflate_hd_table_bufsize_max,
-                                           nghttp2_mem *mem);
+NGHTTP2_EXTERN int
+nghttp2_hd_deflate_new2(nghttp2_hd_deflater **deflater_ptr,
+                        size_t max_deflate_dynamic_table_size,
+                        nghttp2_mem *mem);
 
 /**
  * @function
@@ -4627,18 +4642,18 @@ NGHTTP2_EXTERN void nghttp2_hd_deflate_del(nghttp2_hd_deflater *deflater);
  * @function
  *
  * Changes header table size of the |deflater| to
- * |settings_hd_table_bufsize_max| bytes.  This may trigger eviction
+ * |settings_max_dynamic_table_size| bytes.  This may trigger eviction
  * in the dynamic table.
  *
- * The |settings_hd_table_bufsize_max| should be the value received in
- * SETTINGS_HEADER_TABLE_SIZE.
+ * The |settings_max_dynamic_table_size| should be the value received
+ * in SETTINGS_HEADER_TABLE_SIZE.
  *
  * The deflater never uses more memory than
- * ``deflate_hd_table_bufsize_max`` bytes specified in
+ * ``max_deflate_dynamic_table_size`` bytes specified in
  * `nghttp2_hd_deflate_new()`.  Therefore, if
- * |settings_hd_table_bufsize_max| > ``deflate_hd_table_bufsize_max``,
- * resulting maximum table size becomes
- * ``deflate_hd_table_bufsize_max``.
+ * |settings_max_dynamic_table_size| >
+ * ``max_deflate_dynamic_table_size``, resulting maximum table size
+ * becomes ``max_deflate_dynamic_table_size``.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
@@ -4648,7 +4663,7 @@ NGHTTP2_EXTERN void nghttp2_hd_deflate_del(nghttp2_hd_deflater *deflater);
  */
 NGHTTP2_EXTERN int
 nghttp2_hd_deflate_change_table_size(nghttp2_hd_deflater *deflater,
-                                     size_t settings_hd_table_bufsize_max);
+                                     size_t settings_max_dynamic_table_size);
 
 /**
  * @function
@@ -4819,8 +4834,8 @@ NGHTTP2_EXTERN void nghttp2_hd_inflate_del(nghttp2_hd_inflater *inflater);
  * Changes header table size in the |inflater|.  This may trigger
  * eviction in the dynamic table.
  *
- * The |settings_hd_table_bufsize_max| should be the value transmitted
- * in SETTINGS_HEADER_TABLE_SIZE.
+ * The |settings_max_dynamic_table_size| should be the value
+ * transmitted in SETTINGS_HEADER_TABLE_SIZE.
  *
  * This function must not be called while header block is being
  * inflated.  In other words, this function must be called after
@@ -4841,7 +4856,7 @@ NGHTTP2_EXTERN void nghttp2_hd_inflate_del(nghttp2_hd_inflater *inflater);
  */
 NGHTTP2_EXTERN int
 nghttp2_hd_inflate_change_table_size(nghttp2_hd_inflater *inflater,
-                                     size_t settings_hd_table_bufsize_max);
+                                     size_t settings_max_dynamic_table_size);
 
 /**
  * @enum
