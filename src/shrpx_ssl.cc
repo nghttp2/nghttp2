@@ -196,8 +196,13 @@ int servername_callback(SSL *ssl, int *al, void *arg) {
 namespace {
 std::shared_ptr<std::vector<uint8_t>>
 get_ocsp_data(TLSContextData *tls_ctx_data) {
+#ifdef HAVE_ATOMIC_STD_SHARED_PTR
+  return std::atomic_load_explicit(&tls_ctx_data->ocsp_data,
+                                   std::memory_order_acquire);
+#else  // !HAVE_ATOMIC_STD_SHARED_PTR
   std::lock_guard<std::mutex> g(tls_ctx_data->mu);
   return tls_ctx_data->ocsp_data;
+#endif // !HAVE_ATOMIC_STD_SHARED_PTR
 }
 } // namespace
 

@@ -234,6 +234,26 @@ std::map<int, int>().emplace(1, 2);
     [have_std_map_emplace=no
      AC_MSG_RESULT([no])])
 
+# Check that std::atomic_* overloads for std::shared_ptr are
+# available.
+AC_MSG_CHECKING([whether std::atomic_* overloads for std::shared_ptr are available])
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM(
+[[
+#include <memory>
+]],
+[[
+auto a = std::make_shared<int>(1000000007);
+auto p = std::atomic_load(&a);
+++*p;
+std::atomic_store(&a, p);
+]])],
+    [AC_DEFINE([HAVE_ATOMIC_STD_SHARED_PTR], [1],
+               [Define to 1 if you have the std::atomic_* overloads for std::shared_ptr.])
+     have_atomic_std_shared_ptr=yes
+     AC_MSG_RESULT([yes])],
+    [have_atomic_std_shared_ptr=no
+     AC_MSG_RESULT([no])])
+
 CXXFLAGS=$save_CXXFLAGS
 
 AC_LANG_POP()

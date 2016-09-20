@@ -63,8 +63,10 @@ struct TLSSessionCache {
 // This struct stores the additional information per SSL_CTX.  This is
 // attached to SSL_CTX using SSL_CTX_set_app_data().
 struct TLSContextData {
+#ifndef HAVE_ATOMIC_STD_SHARED_PTR
   // Protects ocsp_data;
   std::mutex mu;
+#endif // !HAVE_ATOMIC_STD_SHARED_PTR
   // OCSP response
   std::shared_ptr<std::vector<uint8_t>> ocsp_data;
 

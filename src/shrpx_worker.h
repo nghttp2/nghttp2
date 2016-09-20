@@ -274,6 +274,9 @@ private:
   ssl::CertLookupTree *cert_tree_;
   ConnectionHandler *conn_handler_;
 
+#ifndef HAVE_ATOMIC_STD_SHARED_PTR
+  std::mutex ticket_keys_m_;
+#endif // !HAVE_ATOMIC_STD_SHARED_PTR
   std::shared_ptr<TicketKeys> ticket_keys_;
   std::vector<std::shared_ptr<DownstreamAddrGroup>> downstream_addr_groups_;
   // Worker level blocker for downstream connection.  For example,
