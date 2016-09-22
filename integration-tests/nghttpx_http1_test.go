@@ -160,8 +160,9 @@ func TestH1H1GracefulShutdown(t *testing.T) {
 	}
 
 	want := io.EOF
-	if _, err := st.conn.Read(nil); err == nil || err != want {
-		t.Errorf("st.conn.Read(): %v; want %v", err, want)
+	b := make([]byte, 256)
+	if _, err := st.conn.Read(b); err == nil || err != want {
+		t.Errorf("st.conn.Read(): %v; want %v, %v", err, want)
 	}
 }
 
