@@ -706,8 +706,21 @@ Http2Session *ClientHandler::select_http2_session_with_affinity(
                      << ", index=" << (addr - shared_addr->addrs.data());
   }
 
-  if (addr->http2_extra_freelist.size()) {
-    auto session = addr->http2_extra_freelist.head;
+  for (auto session = addr->http2_extra_freelist.head; session;) {
+    auto next = session->dlnext;
+
+    if (session->max_concurrency_reached(0)) {
+      if (LOG_ENABLED(INFO)) {
+        CLOG(INFO, this)
+            << "Maximum streams have been reached for Http2Session(" << session
+            << ").  Skip it";
+      }
+
+      session->remove_from_freelist();
+      session = next;
+
+      continue;
+    }
 
     if (LOG_ENABLED(INFO)) {
       CLOG(INFO, this) << "Use Http2Session " << session
