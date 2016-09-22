@@ -305,6 +305,8 @@ void on_ctrl_recv_callback(spdylay_session *session, spdylay_frame_type type,
 
     if (!(frame->syn_stream.hd.flags & SPDYLAY_CTRL_FLAG_FIN)) {
       req.http2_expect_body = true;
+    } else if (req.fs.content_length == -1) {
+      req.fs.content_length = 0;
     }
 
     downstream->inspect_http2_request();

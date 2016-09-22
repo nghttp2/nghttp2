@@ -372,6 +372,10 @@ int Http2Upstream::on_request_headers(Downstream *downstream,
 
   if (!(frame->hd.flags & NGHTTP2_FLAG_END_STREAM)) {
     req.http2_expect_body = true;
+  } else if (req.fs.content_length == -1) {
+    // If END_STREAM flag is set to HEADERS frame, we are sure that
+    // content-length is 0.
+    req.fs.content_length = 0;
   }
 
   downstream->inspect_http2_request();
@@ -642,6 +646,9 @@ int on_frame_send_callback(nghttp2_session *session, const nghttp2_frame *frame,
 
     req.http_major = 2;
     req.http_minor = 0;
+
+    req.fs.content_length = 0;
+    req.http2_expect_body = false;
 
     auto &promised_balloc = promised_downstream->get_block_allocator();
 
@@ -2071,6 +2078,9 @@ Http2Upstream::on_downstream_push_promise(Downstream *downstream,
 
   promised_req.http_major = 2;
   promised_req.http_minor = 0;
+
+  promised_req.fs.content_length = 0;
+  promised_req.http2_expect_body = false;
 
   auto ptr = promised_downstream.get();
   add_pending_downstream(std::move(promised_downstream));

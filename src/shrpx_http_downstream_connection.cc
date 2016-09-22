@@ -525,7 +525,13 @@ int HttpDownstreamConnection::push_request_headers() {
                       << downstream_->get_stream_id() << "\n" << nhdrs;
   }
 
-  signal_write();
+  // Don't call signal_write() if we anticipate request body.  We call
+  // signal_write() when we received request body chunk, and it
+  // enables us to send headers and data in one writev system call.
+  if (connect_method ||
+      (!req.http2_expect_body && req.fs.content_length == 0)) {
+    signal_write();
+  }
 
   return 0;
 }
