@@ -36,7 +36,7 @@ functions, and it also interacts with it via many API function calls.
 An application can create as many :type:`nghttp2_session` object as it
 wants.  But single :type:`nghttp2_session` object must be used by a
 single thread at the same time.  This is not so hard to enforce since
-most event-based architecture applicatons use is single thread per
+most event-based architecture applications use is single thread per
 core, and handling one connection I/O is done by single thread.
 
 To feed input to :type:`nghttp2_session` object, one can use
