@@ -97,6 +97,9 @@ APIDOCS= \
 	nghttp2_session_callbacks_set_send_callback.rst \
 	nghttp2_session_callbacks_set_send_data_callback.rst \
 	nghttp2_session_callbacks_set_unpack_extension_callback.rst \
+	nghttp2_session_change_stream_priority.rst \
+	nghttp2_session_check_request_allowed.rst \
+	nghttp2_session_check_server_session.rst \
 	nghttp2_session_client_new.rst \
 	nghttp2_session_client_new2.rst \
 	nghttp2_session_client_new3.rst \
@@ -128,9 +131,6 @@ APIDOCS= \
 	nghttp2_session_mem_recv.rst \
 	nghttp2_session_mem_send.rst \
 	nghttp2_session_recv.rst \
-	nghttp2_session_change_stream_priority.rst \
-	nghttp2_session_check_request_allowed.rst \
-	nghttp2_session_check_server_session.rst \
 	nghttp2_session_resume_data.rst \
 	nghttp2_session_send.rst \
 	nghttp2_session_server_new.rst \
