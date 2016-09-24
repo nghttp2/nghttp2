@@ -206,6 +206,10 @@ default transmission order does not fit, it has to schedule frames by
 itself using the callbacks (e.g.,
 :type:`nghttp2_on_frame_send_callback`).
 
+RST_STREAM has special side effect when it is submitted by
+`nghttp2_submit_rst_stream()`.  It cancels all pending HEADERS and
+DATA frames whose stream ID matches the one in the RST_STREAM frame.
+This may cause unexpected behaviour for the application in some cases.
 For example, suppose that application wants to send RST_STREAM after
 sending response HEADERS and DATA.  Because of the reason we mentioned
 above, the following code does not work:
@@ -215,12 +219,12 @@ above, the following code does not work:
     nghttp2_submit_response(...)
     nghttp2_submit_rst_stream(...)
 
-This is because HEADERS submitted by `nghttp2_submit_response()` is
-scheduled after RST_STREAM submitted by `nghttp2_submit_rst_stream()`.
-
+RST_STREAM cancels HEADERS (and DATA), and just RST_STREAM is sent.
 The correct way is use :type:`nghttp2_on_frame_send_callback`, and
 after HEADERS and DATA frames are sent, issue
-`nghttp2_submit_rst_stream()`.
+`nghttp2_submit_rst_stream()`.  FYI,
+:type:`nghttp2_on_frame_not_send_callback` tells you why frames are
+not sent.
 
 Implement user defined HTTP/2 non-critical extensions
 -----------------------------------------------------
