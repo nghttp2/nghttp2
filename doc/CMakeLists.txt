@@ -33,6 +33,7 @@ set(APIDOCS
   nghttp2_option_del.rst
   nghttp2_option_new.rst
   nghttp2_option_set_builtin_recv_extension_type.rst
+  nghttp2_option_set_max_deflate_dynamic_table_size.rst
   nghttp2_option_set_max_reserved_remote_streams.rst
   nghttp2_option_set_max_send_header_block_length.rst
   nghttp2_option_set_no_auto_ping_ack.rst
