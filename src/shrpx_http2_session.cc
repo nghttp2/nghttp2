@@ -860,7 +860,7 @@ int on_header_callback2(nghttp2_session *session, const nghttp2_frame *frame,
         nghttp2_session_get_stream_user_data(session, promised_stream_id));
     if (!promised_sd || !promised_sd->dconn) {
       http2session->submit_rst_stream(promised_stream_id, NGHTTP2_CANCEL);
-      return 0;
+      return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
     }
 
     auto promised_downstream = promised_sd->dconn->get_downstream();
@@ -965,7 +965,7 @@ int on_begin_headers_callback(nghttp2_session *session,
         nghttp2_session_get_stream_user_data(session, frame->hd.stream_id));
     if (!sd || !sd->dconn) {
       http2session->submit_rst_stream(promised_stream_id, NGHTTP2_CANCEL);
-      return 0;
+      return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
     }
 
     auto downstream = sd->dconn->get_downstream();
@@ -976,6 +976,7 @@ int on_begin_headers_callback(nghttp2_session *session,
     if (http2session->handle_downstream_push_promise(downstream,
                                                      promised_stream_id) != 0) {
       http2session->submit_rst_stream(promised_stream_id, NGHTTP2_CANCEL);
+      return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
     }
 
     return 0;
