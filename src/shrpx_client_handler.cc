@@ -376,17 +376,18 @@ int ClientHandler::upstream_http1_connhd_read() {
 }
 
 ClientHandler::ClientHandler(Worker *worker, int fd, SSL *ssl,
-                             const char *ipaddr, const char *port, int family,
-                             const UpstreamAddr *faddr)
-    : conn_(worker->get_loop(), fd, ssl, worker->get_mcpool(),
+                             const StringRef &ipaddr, const StringRef &port,
+                             int family, const UpstreamAddr *faddr)
+    : balloc_(128, 128),
+      conn_(worker->get_loop(), fd, ssl, worker->get_mcpool(),
             get_config()->conn.upstream.timeout.write,
             get_config()->conn.upstream.timeout.read,
             get_config()->conn.upstream.ratelimit.write,
             get_config()->conn.upstream.ratelimit.read, writecb, readcb,
             timeoutcb, this, get_config()->tls.dyn_rec.warmup_threshold,
             get_config()->tls.dyn_rec.idle_timeout, PROTO_NONE),
-      ipaddr_(ipaddr),
-      port_(port),
+      ipaddr_(make_string_ref(balloc_, ipaddr)),
+      port_(make_string_ref(balloc_, port)),
       faddr_(faddr),
       worker_(worker),
       left_connhd_len_(NGHTTP2_CLIENT_MAGIC_LEN),
@@ -416,13 +417,28 @@ ClientHandler::ClientHandler(Worker *worker, int fd, SSL *ssl,
 
   if (fwdconf.params & FORWARDED_FOR) {
     if (fwdconf.for_node_type == FORWARDED_NODE_OBFUSCATED) {
-      forwarded_for_ = "_";
-      forwarded_for_ += util::random_alpha_digit(worker_->get_randgen(),
-                                                 SHRPX_OBFUSCATED_NODE_LENGTH);
+      // 1 for '_'
+      auto len = SHRPX_OBFUSCATED_NODE_LENGTH + 1;
+      // 1 for terminating NUL.
+      auto buf = make_byte_ref(balloc_, len + 1);
+      auto p = buf.base;
+      *p++ = '_';
+      p = util::random_alpha_digit(p, p + len - 1, worker_->get_randgen());
+      *p = '\0';
+
+      forwarded_for_ = StringRef{buf.base, p};
     } else if (family == AF_INET6) {
-      forwarded_for_ = "[";
-      forwarded_for_ += ipaddr_;
-      forwarded_for_ += ']';
+      // 2 for '[' and ']'
+      auto len = 2 + ipaddr_.size();
+      // 1 for terminating NUL.
+      auto buf = make_byte_ref(balloc_, len + 1);
+      auto p = buf.base;
+      *p++ = '[';
+      p = std::copy(std::begin(ipaddr_), std::end(ipaddr_), p);
+      *p++ = ']';
+      *p = '\0';
+
+      forwarded_for_ = StringRef{buf.base, p};
     } else {
       // family == AF_INET or family == AF_UNIX
       forwarded_for_ = ipaddr_;
@@ -441,7 +457,7 @@ void ClientHandler::setup_upstream_io_callback() {
     // upgraded to HTTP/2 through HTTP Upgrade or direct HTTP/2
     // connection.
     upstream_ = make_unique<HttpsUpstream>(this);
-    alpn_ = "http/1.1";
+    alpn_ = StringRef::from_lit("http/1.1");
     read_ = &ClientHandler::read_clear;
     write_ = &ClientHandler::write_clear;
     on_read_ = &ClientHandler::upstream_http1_connhd_read;
@@ -524,7 +540,7 @@ int ClientHandler::validate_next_proto() {
     }
 
     upstream_ = make_unique<HttpsUpstream>(this);
-    alpn_ = "http/1.1";
+    alpn_ = StringRef::from_lit("http/1.1");
 
     // At this point, input buffer is already filled with some bytes.
     // The read callback is not called until new data come. So consume
@@ -555,7 +571,7 @@ int ClientHandler::validate_next_proto() {
     auto http2_upstream = make_unique<Http2Upstream>(this);
 
     upstream_ = std::move(http2_upstream);
-    alpn_.assign(std::begin(proto), std::end(proto));
+    alpn_ = make_string_ref(balloc_, proto);
 
     // At this point, input buffer is already filled with some bytes.
     // The read callback is not called until new data come. So consume
@@ -574,16 +590,16 @@ int ClientHandler::validate_next_proto() {
 
     switch (spdy_version) {
     case SPDYLAY_PROTO_SPDY2:
-      alpn_ = "spdy/2";
+      alpn_ = StringRef::from_lit("spdy/2");
       break;
     case SPDYLAY_PROTO_SPDY3:
-      alpn_ = "spdy/3";
+      alpn_ = StringRef::from_lit("spdy/3");
       break;
     case SPDYLAY_PROTO_SPDY3_1:
-      alpn_ = "spdy/3.1";
+      alpn_ = StringRef::from_lit("spdy/3.1");
       break;
     default:
-      alpn_ = "spdy/unknown";
+      alpn_ = StringRef::from_lit("spdy/unknown");
     }
 
     // At this point, input buffer is already filled with some bytes.
@@ -599,7 +615,7 @@ int ClientHandler::validate_next_proto() {
 
   if (proto == StringRef::from_lit("http/1.1")) {
     upstream_ = make_unique<HttpsUpstream>(this);
-    alpn_ = proto.str();
+    alpn_ = StringRef::from_lit("http/1.1");
 
     // At this point, input buffer is already filled with some bytes.
     // The read callback is not called until new data come. So consume
@@ -629,7 +645,7 @@ int ClientHandler::on_read() {
 }
 int ClientHandler::on_write() { return on_write_(*this); }
 
-const std::string &ClientHandler::get_ipaddr() const { return ipaddr_; }
+const StringRef &ClientHandler::get_ipaddr() const { return ipaddr_; }
 
 bool ClientHandler::get_should_close_after_write() const {
   return should_close_after_write_;
@@ -974,7 +990,7 @@ ClientHandler::get_downstream_connection(Downstream *downstream) {
 
   if (shared_addr->affinity == AFFINITY_IP) {
     if (!affinity_hash_computed_) {
-      affinity_hash_ = compute_affinity_from_ip(StringRef{ipaddr_});
+      affinity_hash_ = compute_affinity_from_ip(ipaddr_);
       affinity_hash_computed_ = true;
     }
 
@@ -1093,7 +1109,7 @@ SSL *ClientHandler::get_ssl() const { return conn_.tls.ssl; }
 
 void ClientHandler::direct_http2_upgrade() {
   upstream_ = make_unique<Http2Upstream>(this);
-  alpn_ = NGHTTP2_CLEARTEXT_PROTO_VERSION_ID;
+  alpn_ = StringRef::from_lit(NGHTTP2_CLEARTEXT_PROTO_VERSION_ID);
   on_read_ = &ClientHandler::upstream_read;
   write_ = &ClientHandler::write_clear;
 }
@@ -1118,7 +1134,7 @@ int ClientHandler::perform_http2_upgrade(HttpsUpstream *http) {
   upstream_.release();
   // TODO We might get other version id in HTTP2-settings, if we
   // support aliasing for h2, but we just use library default for now.
-  alpn_ = NGHTTP2_CLEARTEXT_PROTO_VERSION_ID;
+  alpn_ = StringRef::from_lit(NGHTTP2_CLEARTEXT_PROTO_VERSION_ID);
   on_read_ = &ClientHandler::upstream_http2_connhd_read;
   write_ = &ClientHandler::write_clear;
 
@@ -1199,7 +1215,7 @@ void ClientHandler::write_accesslog(Downstream *downstream) {
   upstream_accesslog(
       get_config()->logging.access.format,
       LogSpec{
-          downstream, downstream->get_addr(), StringRef{ipaddr_},
+          downstream, downstream->get_addr(), ipaddr_,
           http2::to_method_string(req.method),
 
           req.method == HTTP_CONNECT
@@ -1212,15 +1228,14 @@ void ClientHandler::write_accesslog(Downstream *downstream) {
                                 : StringRef::from_lit("-")
                           : StringRef(req.path),
 
-          StringRef(alpn_),
-          nghttp2::ssl::get_tls_session_info(&tls_info, conn_.tls.ssl),
+          alpn_, nghttp2::ssl::get_tls_session_info(&tls_info, conn_.tls.ssl),
 
           std::chrono::system_clock::now(),          // time_now
           downstream->get_request_start_time(),      // request_start_time
           std::chrono::high_resolution_clock::now(), // request_end_time
 
           req.http_major, req.http_minor, resp.http_status,
-          downstream->response_sent_body_length, StringRef(port_), faddr_->port,
+          downstream->response_sent_body_length, port_, faddr_->port,
           get_config()->pid,
       });
 }
@@ -1231,21 +1246,20 @@ void ClientHandler::write_accesslog(int major, int minor, unsigned int status,
   auto highres_now = std::chrono::high_resolution_clock::now();
   nghttp2::ssl::TLSSessionInfo tls_info;
 
-  upstream_accesslog(get_config()->logging.access.format,
-                     LogSpec{
-                         nullptr, nullptr, StringRef(ipaddr_),
-                         StringRef::from_lit("-"), // method
-                         StringRef::from_lit("-"), // path,
-                         StringRef(alpn_), nghttp2::ssl::get_tls_session_info(
-                                               &tls_info, conn_.tls.ssl),
-                         time_now,
-                         highres_now,  // request_start_time TODO is
-                                       // there a better value?
-                         highres_now,  // request_end_time
-                         major, minor, // major, minor
-                         status, body_bytes_sent, StringRef(port_),
-                         faddr_->port, get_config()->pid,
-                     });
+  upstream_accesslog(
+      get_config()->logging.access.format,
+      LogSpec{
+          nullptr, nullptr, ipaddr_,
+          StringRef::from_lit("-"), // method
+          StringRef::from_lit("-"), // path,
+          alpn_, nghttp2::ssl::get_tls_session_info(&tls_info, conn_.tls.ssl),
+          time_now,
+          highres_now,  // request_start_time TODO is
+                        // there a better value?
+          highres_now,  // request_end_time
+          major, minor, // major, minor
+          status, body_bytes_sent, port_, faddr_->port, get_config()->pid,
+      });
 }
 
 ClientHandler::ReadBuf *ClientHandler::get_rb() { return &rb_; }
@@ -1474,8 +1488,9 @@ int ClientHandler::proxy_protocol_read() {
 
   rb_.drain(end + 2 - rb_.pos);
 
-  ipaddr_.assign(src_addr, src_addr + src_addrlen);
-  port_.assign(src_port, src_port + src_portlen);
+  ipaddr_ =
+      make_string_ref(balloc_, StringRef{src_addr, src_addr + src_addrlen});
+  port_ = make_string_ref(balloc_, StringRef{src_port, src_port + src_portlen});
 
   if (LOG_ENABLED(INFO)) {
     CLOG(INFO, this) << "PROXY-protocol-v1: Finished, " << (rb_.pos - first)
@@ -1495,16 +1510,16 @@ StringRef ClientHandler::get_forwarded_by() const {
   return StringRef{faddr_->hostport};
 }
 
-StringRef ClientHandler::get_forwarded_for() const {
-  return StringRef{forwarded_for_};
-}
+StringRef ClientHandler::get_forwarded_for() const { return forwarded_for_; }
 
 const UpstreamAddr *ClientHandler::get_upstream_addr() const { return faddr_; }
 
 Connection *ClientHandler::get_connection() { return &conn_; };
 
-void ClientHandler::set_tls_sni(const StringRef &sni) { sni_ = sni.str(); }
+void ClientHandler::set_tls_sni(const StringRef &sni) {
+  sni_ = make_string_ref(balloc_, sni);
+}
 
-StringRef ClientHandler::get_tls_sni() const { return StringRef{sni_}; }
+StringRef ClientHandler::get_tls_sni() const { return sni_; }
 
 } // namespace shrpx

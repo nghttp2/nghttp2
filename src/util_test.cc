@@ -26,6 +26,7 @@
 
 #include <cstring>
 #include <iostream>
+#include <random>
 
 #include <CUnit/CUnit.h>
 
@@ -526,6 +527,21 @@ void test_util_strifind(void) {
 
   CU_ASSERT(!util::strifind(StringRef::from_lit("nghttp2"),
                             StringRef::from_lit("http1")));
+}
+
+void test_util_random_alpha_digit(void) {
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::array<uint8_t, 19> data;
+
+  auto p = util::random_alpha_digit(std::begin(data), std::end(data), gen);
+
+  CU_ASSERT(std::end(data) == p);
+
+  for (auto b : data) {
+    CU_ASSERT(('A' <= b && b <= 'Z') || ('a' <= b && b <= 'z') ||
+              ('0' <= b && b <= '9'));
+  }
 }
 
 } // namespace shrpx

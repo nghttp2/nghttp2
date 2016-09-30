@@ -37,6 +37,7 @@
 #include "shrpx_connection.h"
 #include "buffer.h"
 #include "memchunk.h"
+#include "allocator.h"
 
 using namespace nghttp2;
 
@@ -54,8 +55,8 @@ struct DownstreamAddr;
 
 class ClientHandler {
 public:
-  ClientHandler(Worker *worker, int fd, SSL *ssl, const char *ipaddr,
-                const char *port, int family, const UpstreamAddr *faddr);
+  ClientHandler(Worker *worker, int fd, SSL *ssl, const StringRef &ipaddr,
+                const StringRef &port, int family, const UpstreamAddr *faddr);
   ~ClientHandler();
 
   int noop();
@@ -90,8 +91,7 @@ public:
   void reset_upstream_write_timeout(ev_tstamp t);
 
   int validate_next_proto();
-  const std::string &get_ipaddr() const;
-  const std::string &get_port() const;
+  const StringRef &get_ipaddr() const;
   bool get_should_close_after_write() const;
   void set_should_close_after_write(bool f);
   Upstream *get_upstream();
@@ -163,20 +163,21 @@ public:
   StringRef get_tls_sni() const;
 
 private:
+  BlockAllocator balloc_;
   Connection conn_;
   ev_timer reneg_shutdown_timer_;
   std::unique_ptr<Upstream> upstream_;
   // IP address of client.  If UNIX domain socket is used, this is
   // "localhost".
-  std::string ipaddr_;
-  std::string port_;
+  StringRef ipaddr_;
+  StringRef port_;
   // The ALPN identifier negotiated for this connection.
-  std::string alpn_;
+  StringRef alpn_;
   // The client address used in "for" parameter of Forwarded header
   // field.
-  std::string forwarded_for_;
+  StringRef forwarded_for_;
   // lowercased TLS SNI which client sent.
-  std::string sni_;
+  StringRef sni_;
   std::function<int(ClientHandler &)> read_, write_;
   std::function<int(ClientHandler &)> on_read_, on_write_;
   // Address of frontend listening socket

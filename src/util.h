@@ -665,16 +665,17 @@ uint64_t get_uint64(const uint8_t *data);
 int read_mime_types(std::map<std::string, std::string> &res,
                     const char *filename);
 
-template <typename Generator>
-std::string random_alpha_digit(Generator &gen, size_t len) {
-  std::string res;
-  res.reserve(len);
+// Fills random alpha and digit byte to the range [|first|, |last|).
+// Returns the one beyond the |last|.
+template <typename OutputIt, typename Generator>
+OutputIt random_alpha_digit(OutputIt first, OutputIt last, Generator &gen) {
+  constexpr uint8_t s[] =
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
   std::uniform_int_distribution<> dis(0, 26 * 2 + 10 - 1);
-  for (; len > 0; --len) {
-    res += "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"[dis(
-        gen)];
+  for (; first != last; ++first) {
+    *first = s[dis(gen)];
   }
-  return res;
+  return first;
 }
 
 template <typename OutputIterator, typename CharT, size_t N>

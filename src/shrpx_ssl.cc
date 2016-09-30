@@ -829,16 +829,16 @@ SSL *create_ssl(SSL_CTX *ssl_ctx) {
 
 ClientHandler *accept_connection(Worker *worker, int fd, sockaddr *addr,
                                  int addrlen, const UpstreamAddr *faddr) {
-  char host[NI_MAXHOST];
-  char service[NI_MAXSERV];
+  std::array<char, NI_MAXHOST> host;
+  std::array<char, NI_MAXSERV> service;
   int rv;
 
   if (addr->sa_family == AF_UNIX) {
-    std::copy_n("localhost", sizeof("localhost"), host);
+    std::copy_n("localhost", sizeof("localhost"), std::begin(host));
     service[0] = '\0';
   } else {
-    rv = getnameinfo(addr, addrlen, host, sizeof(host), service,
-                     sizeof(service), NI_NUMERICHOST | NI_NUMERICSERV);
+    rv = getnameinfo(addr, addrlen, host.data(), host.size(), service.data(),
+                     service.size(), NI_NUMERICHOST | NI_NUMERICSERV);
     if (rv != 0) {
       LOG(ERROR) << "getnameinfo() failed: " << gai_strerror(rv);
 
@@ -867,8 +867,8 @@ ClientHandler *accept_connection(Worker *worker, int fd, sockaddr *addr,
     }
   }
 
-  return new ClientHandler(worker, fd, ssl, host, service, addr->sa_family,
-                           faddr);
+  return new ClientHandler(worker, fd, ssl, StringRef{host.data()},
+                           StringRef{service.data()}, addr->sa_family, faddr);
 }
 
 bool tls_hostname_match(const StringRef &pattern, const StringRef &hostname) {

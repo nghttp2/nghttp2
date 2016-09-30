@@ -2569,8 +2569,10 @@ int process_options(Config *config,
       fwdconf.by_obfuscated.empty()) {
     std::mt19937 gen(rd());
     auto &dst = fwdconf.by_obfuscated;
-    dst = "_";
-    dst += util::random_alpha_digit(gen, SHRPX_OBFUSCATED_NODE_LENGTH);
+    dst.resize(1 + SHRPX_OBFUSCATED_NODE_LENGTH);
+    auto p = std::begin(dst);
+    *p++ = '_';
+    util::random_alpha_digit(p, std::end(dst), gen);
   }
 
   if (config->http2.upstream.debug.frame_debug) {

@@ -357,7 +357,7 @@ int Http2DownstreamConnection::push_request_headers() {
 
   if (xffconf.add) {
     StringRef xff_value;
-    auto addr = StringRef{upstream->get_client_handler()->get_ipaddr()};
+    auto addr = upstream->get_client_handler()->get_ipaddr();
     if (xff) {
       xff_value = concat_string_ref(balloc, xff->value,
                                     StringRef::from_lit(", "), addr);
