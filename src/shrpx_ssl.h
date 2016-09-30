@@ -101,11 +101,6 @@ ClientHandler *accept_connection(Worker *worker, int fd, sockaddr *addr,
 int check_cert(SSL *ssl, const Address *addr, const StringRef &host);
 int check_cert(SSL *ssl, const DownstreamAddr *addr);
 
-// Retrieves DNS and IP address in subjectAltNames and commonName from
-// the |cert|.
-void get_altnames(X509 *cert, std::vector<std::string> &dns_names,
-                  std::vector<std::string> &ip_addrs, std::string &common_name);
-
 struct WildcardRevPrefix {
   WildcardRevPrefix(const StringRef &prefix, size_t idx)
       : prefix(std::begin(prefix), std::end(prefix)), idx(idx) {}
