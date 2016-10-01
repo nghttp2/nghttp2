@@ -175,9 +175,12 @@ void test_util_percent_decode(void) {
 }
 
 void test_util_quote_string(void) {
-  CU_ASSERT("alpha" == util::quote_string("alpha"));
-  CU_ASSERT("" == util::quote_string(""));
-  CU_ASSERT("\\\"alpha\\\"" == util::quote_string("\"alpha\""));
+  BlockAllocator balloc(4096, 4096);
+  CU_ASSERT("alpha" ==
+            util::quote_string(balloc, StringRef::from_lit("alpha")));
+  CU_ASSERT("" == util::quote_string(balloc, StringRef::from_lit("")));
+  CU_ASSERT("\\\"alpha\\\"" ==
+            util::quote_string(balloc, StringRef::from_lit("\"alpha\"")));
 }
 
 void test_util_utox(void) {

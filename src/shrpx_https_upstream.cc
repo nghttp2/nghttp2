@@ -965,10 +965,10 @@ void write_altsvc(DefaultMemchunks *buf, BlockAllocator &balloc,
   buf->append(
       util::percent_encode_token(balloc, StringRef{altsvc.protocol_id}));
   buf->append("=\"");
-  buf->append(util::quote_string(altsvc.host));
-  buf->append(":");
+  buf->append(util::quote_string(balloc, StringRef{altsvc.host}));
+  buf->append(':');
   buf->append(altsvc.service);
-  buf->append("\"");
+  buf->append('"');
 }
 } // namespace
 

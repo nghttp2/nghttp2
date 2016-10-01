@@ -167,25 +167,27 @@ uint32_t hex_to_uint(char c) {
   return c;
 }
 
-std::string quote_string(const std::string &target) {
+StringRef quote_string(BlockAllocator &balloc, const StringRef &target) {
   auto cnt = std::count(std::begin(target), std::end(target), '"');
 
   if (cnt == 0) {
-    return target;
+    return make_string_ref(balloc, target);
   }
 
-  std::string res;
-  res.reserve(target.size() + cnt);
+  auto iov = make_byte_ref(balloc, target.size() + cnt + 1);
+  auto p = iov.base;
 
   for (auto c : target) {
     if (c == '"') {
-      res += "\\\"";
+      *p++ = '\\';
+      *p++ = '"';
     } else {
-      res += c;
+      *p++ = c;
     }
   }
+  *p = '\0';
 
-  return res;
+  return StringRef{iov.base, p};
 }
 
 namespace {
