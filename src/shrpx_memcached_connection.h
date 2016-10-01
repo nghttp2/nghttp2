@@ -135,7 +135,7 @@ private:
   std::deque<std::unique_ptr<MemcachedRequest>> sendq_;
   std::deque<MemcachedSendbuf> sendbufv_;
   std::function<int(MemcachedConnection &)> do_read_, do_write_;
-  std::string sni_name_;
+  StringRef sni_name_;
   ssl::TLSSessionCache tls_session_cache_;
   ConnectBlocker connect_blocker_;
   MemcachedParseState parse_state_;
