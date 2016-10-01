@@ -129,7 +129,7 @@ std::string percent_decode(InputIt first, InputIt last) {
 StringRef percent_decode(BlockAllocator &balloc, const StringRef &src);
 
 // Percent encode |target| if character is not in token or '%'.
-std::string percent_encode_token(const std::string &target);
+StringRef percent_encode_token(BlockAllocator &balloc, const StringRef &target);
 
 // Returns quotedString version of |target|.  Currently, this function
 // just replace '"' with '\"'.

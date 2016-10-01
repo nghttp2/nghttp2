@@ -131,11 +131,10 @@ bool in_attr_char(char c) {
          std::find(std::begin(bad), std::end(bad), c) == std::end(bad);
 }
 
-std::string percent_encode_token(const std::string &target) {
-  std::string dest;
-
-  dest.resize(target.size() * 3);
-  auto p = std::begin(dest);
+StringRef percent_encode_token(BlockAllocator &balloc,
+                               const StringRef &target) {
+  auto iov = make_byte_ref(balloc, target.size() * 3 + 1);
+  auto p = iov.base;
 
   for (auto first = std::begin(target); first != std::end(target); ++first) {
     uint8_t c = *first;
@@ -149,8 +148,10 @@ std::string percent_encode_token(const std::string &target) {
     *p++ = UPPER_XDIGITS[c >> 4];
     *p++ = UPPER_XDIGITS[(c & 0x0f)];
   }
-  dest.resize(p - std::begin(dest));
-  return dest;
+
+  *p = '\0';
+
+  return StringRef{iov.base, p};
 }
 
 uint32_t hex_to_uint(char c) {

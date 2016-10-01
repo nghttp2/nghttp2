@@ -134,10 +134,15 @@ void test_util_to_token68(void) {
 }
 
 void test_util_percent_encode_token(void) {
-  CU_ASSERT("h2" == util::percent_encode_token("h2"));
-  CU_ASSERT("h3~" == util::percent_encode_token("h3~"));
-  CU_ASSERT("100%25" == util::percent_encode_token("100%"));
-  CU_ASSERT("http%202" == util::percent_encode_token("http 2"));
+  BlockAllocator balloc(4096, 4096);
+  CU_ASSERT("h2" ==
+            util::percent_encode_token(balloc, StringRef::from_lit("h2")));
+  CU_ASSERT("h3~" ==
+            util::percent_encode_token(balloc, StringRef::from_lit("h3~")));
+  CU_ASSERT("100%25" ==
+            util::percent_encode_token(balloc, StringRef::from_lit("100%")));
+  CU_ASSERT("http%202" ==
+            util::percent_encode_token(balloc, StringRef::from_lit("http 2")));
 }
 
 void test_util_percent_encode_path(void) {
