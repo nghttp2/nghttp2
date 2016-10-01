@@ -123,7 +123,6 @@ int htp_hdr_keycb(http_parser *htp, const char *data, size_t len) {
   auto downstream = upstream->get_downstream();
   auto &req = downstream->request();
   auto &httpconf = get_config()->http;
-  auto &balloc = downstream->get_block_allocator();
 
   if (req.fs.buffer_size() + len > httpconf.request_header_field_buffer) {
     if (LOG_ENABLED(INFO)) {
@@ -148,9 +147,7 @@ int htp_hdr_keycb(http_parser *htp, const char *data, size_t len) {
             Downstream::HTTP1_REQUEST_HEADER_TOO_LARGE);
         return -1;
       }
-      auto name = http2::copy_lower(balloc, StringRef{data, len});
-      auto token = http2::lookup_token(name);
-      req.fs.add_header_token(name, StringRef{}, false, token);
+      req.fs.alloc_add_header_name(StringRef{data, len});
     }
   } else {
     // trailer part
@@ -164,9 +161,7 @@ int htp_hdr_keycb(http_parser *htp, const char *data, size_t len) {
         }
         return -1;
       }
-      auto name = http2::copy_lower(balloc, StringRef{data, len});
-      auto token = http2::lookup_token(name);
-      req.fs.add_trailer_token(name, StringRef{}, false, token);
+      req.fs.alloc_add_trailer_name(StringRef{data, len});
     }
   }
   return 0;

@@ -33,26 +33,35 @@
 namespace shrpx {
 
 void test_downstream_field_store_append_last_header(void) {
-  BlockAllocator balloc(4096, 4096);
+  BlockAllocator balloc(16, 16);
   FieldStore fs(balloc, 0);
-  fs.add_header_token(StringRef::from_lit("alpha"), StringRef{}, false, -1);
+  fs.alloc_add_header_name(StringRef::from_lit("alpha"));
   auto bravo = StringRef::from_lit("BRAVO");
   fs.append_last_header_key(bravo.c_str(), bravo.size());
+  // Add more characters so that relloc occurs
+  auto golf = StringRef::from_lit("golF0123456789");
+  fs.append_last_header_key(golf.c_str(), golf.size());
+
   auto charlie = StringRef::from_lit("Charlie");
   fs.append_last_header_value(charlie.c_str(), charlie.size());
   auto delta = StringRef::from_lit("deltA");
   fs.append_last_header_value(delta.c_str(), delta.size());
+  // Add more characters so that relloc occurs
+  auto echo = StringRef::from_lit("echo0123456789");
+  fs.append_last_header_value(echo.c_str(), echo.size());
+
   fs.add_header_token(StringRef::from_lit("echo"),
                       StringRef::from_lit("foxtrot"), false, -1);
 
-  auto ans = HeaderRefs{
-      {StringRef::from_lit("alphabravo"), StringRef::from_lit("CharliedeltA")},
-      {StringRef::from_lit("echo"), StringRef::from_lit("foxtrot")}};
+  auto ans =
+      HeaderRefs{{StringRef::from_lit("alphabravogolf0123456789"),
+                  StringRef::from_lit("CharliedeltAecho0123456789")},
+                 {StringRef::from_lit("echo"), StringRef::from_lit("foxtrot")}};
   CU_ASSERT(ans == fs.headers());
 }
 
 void test_downstream_field_store_header(void) {
-  BlockAllocator balloc(4096, 4096);
+  BlockAllocator balloc(16, 16);
   FieldStore fs(balloc, 0);
   fs.add_header_token(StringRef::from_lit("alpha"), StringRef::from_lit("0"),
                       false, -1);

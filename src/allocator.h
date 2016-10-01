@@ -29,6 +29,8 @@
 
 #include <sys/uio.h>
 
+#include <cassert>
+
 #include "template.h"
 
 namespace nghttp2 {
@@ -45,14 +47,18 @@ struct MemBlock {
 
 // BlockAllocator allocates memory block with given size at once, and
 // cuts the region from it when allocation is requested.  If the
-// requested size is larger than given threshold, it will be allocated
-// in a distinct buffer on demand.
+// requested size is larger than given threshold (plus small internal
+// overhead), it will be allocated in a distinct buffer on demand.
+// The |isolation_threshold| must be less than or equal to
+// |block_size|.
 struct BlockAllocator {
   BlockAllocator(size_t block_size, size_t isolation_threshold)
       : retain(nullptr),
         head(nullptr),
         block_size(block_size),
-        isolation_threshold(std::min(block_size, isolation_threshold)) {}
+        isolation_threshold(std::min(block_size, isolation_threshold)) {
+    assert(isolation_threshold <= block_size);
+  }
 
   ~BlockAllocator() { reset(); }
 
@@ -105,20 +111,60 @@ struct BlockAllocator {
   }
 
   void *alloc(size_t size) {
-    if (size >= isolation_threshold) {
-      auto mb = alloc_mem_block(size);
+    if (size + sizeof(size_t) >= isolation_threshold) {
+      auto len = std::max(static_cast<size_t>(16), size);
+      // We will store the allocated size in size_t field.
+      auto mb = alloc_mem_block(len + sizeof(size_t));
+      auto sp = reinterpret_cast<size_t *>(mb->begin);
+      *sp = len;
       mb->last = mb->end;
-      return mb->begin;
+      return mb->begin + sizeof(size_t);
     }
 
-    if (!head || head->end - head->last < static_cast<ssize_t>(size)) {
+    if (!head ||
+        head->end - head->last < static_cast<ssize_t>(size + sizeof(size_t))) {
       head = alloc_mem_block(block_size);
     }
 
-    auto res = head->last;
+    // We will store the allocated size in size_t field.
+    auto res = head->last + sizeof(size_t);
+    auto sp = reinterpret_cast<size_t *>(head->last);
+    *sp = size;
 
     head->last = reinterpret_cast<uint8_t *>(
-        (reinterpret_cast<intptr_t>(head->last + size) + 0xf) & ~0xf);
+        (reinterpret_cast<intptr_t>(res + size) + 0xf) & ~0xf);
+
+    return res;
+  }
+
+  // Returns allocated size for memory pointed by |ptr|.  We assume
+  // that |ptr| was returned from alloc() or realloc().
+  size_t get_alloc_length(void *ptr) {
+    return *reinterpret_cast<size_t *>(static_cast<uint8_t *>(ptr) -
+                                       sizeof(size_t));
+  }
+
+  // Allocates memory of at least |size| bytes.  If |ptr| is nullptr,
+  // this is equivalent to alloc(size).  If |ptr| is not nullptr,
+  // obtain the allocated size for |ptr|, assuming that |ptr| was
+  // returned from alloc() or realloc().  If the allocated size is
+  // greater than or equal to size, |ptr| is returned.  Otherwise,
+  // allocates at least |size| bytes of memory, and the original
+  // content pointed by |ptr| is copied to the newly allocated memory.
+  void *realloc(void *ptr, size_t size) {
+    if (!ptr) {
+      return alloc(size);
+    }
+    auto alloclen = get_alloc_length(ptr);
+    auto p = reinterpret_cast<uint8_t *>(ptr);
+    if (size <= alloclen) {
+      return ptr;
+    }
+
+    auto nalloclen = std::max(size + 1, alloclen * 2);
+
+    auto res = alloc(nalloclen);
+    std::copy_n(p, alloclen, static_cast<uint8_t *>(res));
 
     return res;
   }
@@ -183,6 +229,30 @@ StringRef concat_string_ref(BlockAllocator &alloc, Args &&... args) {
   auto p = dst;
   p = concat_string_ref_copy(p, std::forward<Args>(args)...);
   *p = '\0';
+  return StringRef{dst, len};
+}
+
+// Returns the string which is the concatenation of |value| and |args|
+// in the given order.  The resulting string will be NULL-terminated.
+// This function assumes that the pointer value value.c_str() was
+// obtained from alloc.alloc() or alloc.realloc(), and attempts to use
+// unused memory region by using alloc.realloc().  If value is empty,
+// then just call concat_string_ref().
+template <typename BlockAllocator, typename... Args>
+StringRef realloc_concat_string_ref(BlockAllocator &alloc,
+                                    const StringRef &value, Args &&... args) {
+  if (value.empty()) {
+    return concat_string_ref(alloc, std::forward<Args>(args)...);
+  }
+
+  auto len =
+      value.size() + concat_string_ref_count(0, std::forward<Args>(args)...);
+  auto dst = static_cast<uint8_t *>(
+      alloc.realloc(const_cast<uint8_t *>(value.byte()), len + 1));
+  auto p = dst + value.size();
+  p = concat_string_ref_copy(p, std::forward<Args>(args)...);
+  *p = '\0';
+
   return StringRef{dst, len};
 }
 

@@ -360,20 +360,30 @@ void add_header(bool &key_prev, size_t &sum, HeaderRefs &headers,
 } // namespace
 
 namespace {
+StringRef alloc_header_name(BlockAllocator &balloc, const StringRef &name) {
+  auto iov = make_byte_ref(balloc, name.size() + 1);
+  auto p = iov.base;
+  p = std::copy(std::begin(name), std::end(name), p);
+  util::inp_strlower(iov.base, p);
+  *p = '\0';
+
+  return StringRef{iov.base, p};
+}
+} // namespace
+
+namespace {
 void append_last_header_key(BlockAllocator &balloc, bool &key_prev, size_t &sum,
                             HeaderRefs &headers, const char *data, size_t len) {
   assert(key_prev);
   sum += len;
   auto &item = headers.back();
-  auto iov = make_byte_ref(balloc, item.name.size() + len + 1);
-  auto p = iov.base;
-  p = std::copy(std::begin(item.name), std::end(item.name), p);
-  p = std::copy_n(data, len, p);
-  util::inp_strlower(p - len, p);
-  *p = '\0';
+  auto name =
+      realloc_concat_string_ref(balloc, item.name, StringRef{data, len});
 
-  item.name = StringRef{iov.base, p};
+  auto p = const_cast<uint8_t *>(name.byte());
+  util::inp_strlower(p + name.size() - len, p + name.size());
 
+  item.name = name;
   item.token = http2::lookup_token(item.name);
 }
 } // namespace
@@ -385,7 +395,8 @@ void append_last_header_value(BlockAllocator &balloc, bool &key_prev,
   key_prev = false;
   sum += len;
   auto &item = headers.back();
-  item.value = concat_string_ref(balloc, item.value, StringRef{data, len});
+  item.value =
+      realloc_concat_string_ref(balloc, item.value, StringRef{data, len});
 }
 } // namespace
 
@@ -439,6 +450,12 @@ void FieldStore::add_header_token(const StringRef &name, const StringRef &value,
                     no_index, token);
 }
 
+void FieldStore::alloc_add_header_name(const StringRef &name) {
+  auto name_ref = alloc_header_name(balloc_, name);
+  auto token = http2::lookup_token(name_ref);
+  add_header_token(name_ref, StringRef{}, false, token);
+}
+
 void FieldStore::append_last_header_key(const char *data, size_t len) {
   shrpx::append_last_header_key(balloc_, header_key_prev_, buffer_size_,
                                 headers_, data, len);
@@ -458,6 +475,12 @@ void FieldStore::add_trailer_token(const StringRef &name,
   // fields combined.
   shrpx::add_header(trailer_key_prev_, buffer_size_, trailers_, name, value,
                     no_index, token);
+}
+
+void FieldStore::alloc_add_trailer_name(const StringRef &name) {
+  auto name_ref = alloc_header_name(balloc_, name);
+  auto token = http2::lookup_token(name_ref);
+  add_trailer_token(name_ref, StringRef{}, false, token);
 }
 
 void FieldStore::append_last_trailer_key(const char *data, size_t len) {
