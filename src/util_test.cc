@@ -552,4 +552,12 @@ void test_util_random_alpha_digit(void) {
   }
 }
 
+void test_util_format_hex(void) {
+  BlockAllocator balloc(4096, 4096);
+
+  CU_ASSERT("0ff0" ==
+            util::format_hex(balloc, StringRef::from_lit("\x0f\xf0")));
+  CU_ASSERT("" == util::format_hex(balloc, StringRef::from_lit("")));
+}
+
 } // namespace shrpx

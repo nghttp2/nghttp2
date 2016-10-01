@@ -145,6 +145,8 @@ template <size_t N> std::string format_hex(const std::array<uint8_t, N> &s) {
   return format_hex(s.data(), s.size());
 }
 
+StringRef format_hex(BlockAllocator &balloc, const StringRef &s);
+
 std::string http_date(time_t t);
 
 // Returns given time |t| from epoch in Common Log format (e.g.,

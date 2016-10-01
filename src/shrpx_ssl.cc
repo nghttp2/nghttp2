@@ -243,6 +243,7 @@ int tls_session_new_cb(SSL *ssl, SSL_SESSION *session) {
   auto handler = static_cast<ClientHandler *>(conn->data);
   auto worker = handler->get_worker();
   auto dispatcher = worker->get_session_cache_memcached_dispatcher();
+  auto &balloc = handler->get_block_allocator();
 
   const unsigned char *id;
   unsigned int idlen;
@@ -256,7 +257,8 @@ int tls_session_new_cb(SSL *ssl, SSL_SESSION *session) {
   auto req = make_unique<MemcachedRequest>();
   req->op = MEMCACHED_OP_ADD;
   req->key = MEMCACHED_SESSION_CACHE_KEY_PREFIX.str();
-  req->key += util::format_hex(id, idlen);
+  req->key +=
+      util::format_hex(balloc, StringRef{id, static_cast<size_t>(idlen)});
 
   auto sessionlen = i2d_SSL_SESSION(session, nullptr);
   req->value.resize(sessionlen);
@@ -295,6 +297,7 @@ SSL_SESSION *tls_session_get_cb(SSL *ssl,
   auto handler = static_cast<ClientHandler *>(conn->data);
   auto worker = handler->get_worker();
   auto dispatcher = worker->get_session_cache_memcached_dispatcher();
+  auto &balloc = handler->get_block_allocator();
 
   if (conn->tls.cached_session) {
     if (LOG_ENABLED(INFO)) {
@@ -318,7 +321,8 @@ SSL_SESSION *tls_session_get_cb(SSL *ssl,
   auto req = make_unique<MemcachedRequest>();
   req->op = MEMCACHED_OP_GET;
   req->key = MEMCACHED_SESSION_CACHE_KEY_PREFIX.str();
-  req->key += util::format_hex(id, idlen);
+  req->key +=
+      util::format_hex(balloc, StringRef{id, static_cast<size_t>(idlen)});
   req->cb = [conn](MemcachedRequest *, MemcachedResult res) {
     if (LOG_ENABLED(INFO)) {
       LOG(INFO) << "Memcached: returned status code " << res.status_code;

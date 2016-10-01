@@ -162,6 +162,8 @@ public:
   // Returns TLS SNI extension value client sent in this connection.
   StringRef get_tls_sni() const;
 
+  BlockAllocator &get_block_allocator();
+
 private:
   BlockAllocator balloc_;
   Connection conn_;

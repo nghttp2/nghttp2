@@ -379,6 +379,21 @@ std::string format_hex(const unsigned char *s, size_t len) {
   return res;
 }
 
+StringRef format_hex(BlockAllocator &balloc, const StringRef &s) {
+  auto iov = make_byte_ref(balloc, s.size() * 2 + 1);
+  auto p = iov.base;
+
+  for (auto cc : s) {
+    uint8_t c = cc;
+    *p++ = LOWER_XDIGITS[c >> 4];
+    *p++ = LOWER_XDIGITS[c & 0xf];
+  }
+
+  *p = '\0';
+
+  return StringRef{iov.base, p};
+}
+
 void to_token68(std::string &base64str) {
   std::transform(std::begin(base64str), std::end(base64str),
                  std::begin(base64str), [](char c) {
