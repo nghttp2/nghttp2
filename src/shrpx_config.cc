@@ -2309,7 +2309,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
 
     return 0;
   case SHRPX_OPTID_TLS_PROTO_LIST:
-    config->tls.tls_proto_list = util::parse_config_str_list(optarg);
+    config->tls.tls_proto_list = util::split_str(optarg, ',');
 
     return 0;
   case SHRPX_OPTID_VERIFY_CLIENT:

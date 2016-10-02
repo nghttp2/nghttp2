@@ -2448,8 +2448,7 @@ int process_options(Config *config,
     tlsconf.npn_list = util::split_str(DEFAULT_NPN_LIST, ',');
   }
   if (tlsconf.tls_proto_list.empty()) {
-    tlsconf.tls_proto_list =
-        util::parse_config_str_list(DEFAULT_TLS_PROTO_LIST);
+    tlsconf.tls_proto_list = util::split_str(DEFAULT_TLS_PROTO_LIST, ',');
   }
 
   tlsconf.tls_proto_mask = ssl::create_tls_proto_mask(tlsconf.tls_proto_list);

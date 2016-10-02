@@ -495,7 +495,7 @@ constexpr TLSProtocol TLS_PROTOS[] = {
     TLSProtocol{StringRef::from_lit("TLSv1.1"), SSL_OP_NO_TLSv1_1},
     TLSProtocol{StringRef::from_lit("TLSv1.0"), SSL_OP_NO_TLSv1}};
 
-long int create_tls_proto_mask(const std::vector<std::string> &tls_proto_list) {
+long int create_tls_proto_mask(const std::vector<StringRef> &tls_proto_list) {
   long int res = 0;
 
   for (auto &supported : TLS_PROTOS) {

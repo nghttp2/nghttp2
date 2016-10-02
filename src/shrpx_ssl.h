@@ -176,7 +176,7 @@ bool check_http2_requirement(SSL *ssl);
 // Returns SSL/TLS option mask to disable SSL/TLS protocol version not
 // included in |tls_proto_list|.  The returned mask can be directly
 // passed to SSL_CTX_set_options().
-long int create_tls_proto_mask(const std::vector<std::string> &tls_proto_list);
+long int create_tls_proto_mask(const std::vector<StringRef> &tls_proto_list);
 
 int set_alpn_prefs(std::vector<unsigned char> &out,
                    const std::vector<StringRef> &protos);
