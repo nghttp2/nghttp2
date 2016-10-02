@@ -198,13 +198,16 @@ void Worker::replace_downstream_config(
       auto &dst_addr = shared_addr->addrs[j];
 
       dst_addr.addr = src_addr.addr;
-      dst_addr.host = src_addr.host;
-      dst_addr.hostport = src_addr.hostport;
+      dst_addr.host =
+          make_string_ref(shared_addr->balloc, StringRef{src_addr.host});
+      dst_addr.hostport =
+          make_string_ref(shared_addr->balloc, StringRef{src_addr.hostport});
       dst_addr.port = src_addr.port;
       dst_addr.host_unix = src_addr.host_unix;
       dst_addr.proto = src_addr.proto;
       dst_addr.tls = src_addr.tls;
-      dst_addr.sni = src_addr.sni;
+      dst_addr.sni =
+          make_string_ref(shared_addr->balloc, StringRef{src_addr.sni});
       dst_addr.fall = src_addr.fall;
       dst_addr.rise = src_addr.rise;
 
