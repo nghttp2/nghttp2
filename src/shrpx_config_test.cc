@@ -37,32 +37,34 @@
 namespace shrpx {
 
 void test_shrpx_config_parse_header(void) {
-  auto p = parse_header(StringRef::from_lit("a: b"));
+  BlockAllocator balloc(4096, 4096);
+
+  auto p = parse_header(balloc, StringRef::from_lit("a: b"));
   CU_ASSERT("a" == p.name);
   CU_ASSERT("b" == p.value);
 
-  p = parse_header(StringRef::from_lit("a:  b"));
+  p = parse_header(balloc, StringRef::from_lit("a:  b"));
   CU_ASSERT("a" == p.name);
   CU_ASSERT("b" == p.value);
 
-  p = parse_header(StringRef::from_lit(":a: b"));
+  p = parse_header(balloc, StringRef::from_lit(":a: b"));
   CU_ASSERT(p.name.empty());
 
-  p = parse_header(StringRef::from_lit("a: :b"));
+  p = parse_header(balloc, StringRef::from_lit("a: :b"));
   CU_ASSERT("a" == p.name);
   CU_ASSERT(":b" == p.value);
 
-  p = parse_header(StringRef::from_lit(": b"));
+  p = parse_header(balloc, StringRef::from_lit(": b"));
   CU_ASSERT(p.name.empty());
 
-  p = parse_header(StringRef::from_lit("alpha: bravo charlie"));
+  p = parse_header(balloc, StringRef::from_lit("alpha: bravo charlie"));
   CU_ASSERT("alpha" == p.name);
   CU_ASSERT("bravo charlie" == p.value);
 
-  p = parse_header(StringRef::from_lit("a,: b"));
+  p = parse_header(balloc, StringRef::from_lit("a,: b"));
   CU_ASSERT(p.name.empty());
 
-  p = parse_header(StringRef::from_lit("a: b\x0a"));
+  p = parse_header(balloc, StringRef::from_lit("a: b\x0a"));
   CU_ASSERT(p.name.empty());
 }
 

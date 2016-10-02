@@ -272,29 +272,35 @@ std::string read_passwd_from_file(const StringRef &opt,
 }
 } // namespace
 
-Headers::value_type parse_header(const StringRef &optarg) {
+HeaderRefs::value_type parse_header(BlockAllocator &balloc,
+                                    const StringRef &optarg) {
   auto colon = std::find(std::begin(optarg), std::end(optarg), ':');
 
   if (colon == std::end(optarg) || colon == std::begin(optarg)) {
-    return {"", ""};
+    return {};
   }
 
   auto value = colon + 1;
   for (; *value == '\t' || *value == ' '; ++value)
     ;
 
-  auto p = Header(std::string{std::begin(optarg), colon},
-                  std::string{value, std::end(optarg)});
-  util::inp_strlower(p.name);
+  auto name_iov =
+      make_byte_ref(balloc, std::distance(std::begin(optarg), colon) + 1);
+  auto p = name_iov.base;
+  p = std::copy(std::begin(optarg), colon, p);
+  util::inp_strlower(name_iov.base, p);
+  *p = '\0';
 
-  if (!nghttp2_check_header_name(
-          reinterpret_cast<const uint8_t *>(p.name.c_str()), p.name.size()) ||
-      !nghttp2_check_header_value(
-          reinterpret_cast<const uint8_t *>(p.value.c_str()), p.value.size())) {
-    return Header{};
+  auto nv =
+      HeaderRef(StringRef{name_iov.base, p},
+                make_string_ref(balloc, StringRef{value, std::end(optarg)}));
+
+  if (!nghttp2_check_header_name(nv.name.byte(), nv.name.size()) ||
+      !nghttp2_check_header_value(nv.value.byte(), nv.value.size())) {
+    return {};
   }
 
-  return p;
+  return nv;
 }
 
 template <typename T>
@@ -2389,7 +2395,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
   }
   case SHRPX_OPTID_ADD_REQUEST_HEADER:
   case SHRPX_OPTID_ADD_RESPONSE_HEADER: {
-    auto p = parse_header(optarg);
+    auto p = parse_header(config->balloc, optarg);
     if (p.name.empty()) {
       LOG(ERROR) << opt << ": invalid header field: " << optarg;
       return -1;

@@ -575,8 +575,8 @@ struct HttpConfig {
   } xff;
   std::vector<AltSvc> altsvcs;
   std::vector<ErrorPage> error_pages;
-  Headers add_request_headers;
-  Headers add_response_headers;
+  HeaderRefs add_request_headers;
+  HeaderRefs add_response_headers;
   StringRef server_name;
   size_t request_header_field_buffer;
   size_t max_request_header_fields;
@@ -987,7 +987,8 @@ int load_config(Config *config, const char *filename,
 // like "NAME: VALUE".  We require that NAME is non empty string.  ":"
 // is allowed at the start of the NAME, but NAME == ":" is not
 // allowed.  This function returns pair of NAME and VALUE.
-Headers::value_type parse_header(const StringRef &optarg);
+HeaderRefs::value_type parse_header(BlockAllocator &balloc,
+                                    const StringRef &optarg);
 
 std::vector<LogFragment> parse_log_format(BlockAllocator &balloc,
                                           const StringRef &optarg);
