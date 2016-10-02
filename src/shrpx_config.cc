@@ -2376,16 +2376,16 @@ int parse_config(Config *config, int optid, const StringRef &opt,
 
     AltSvc altsvc{};
 
-    altsvc.protocol_id = tokens[0].str();
+    altsvc.protocol_id = make_string_ref(config->balloc, tokens[0]);
 
     altsvc.port = port;
-    altsvc.service = tokens[1].str();
+    altsvc.service = make_string_ref(config->balloc, tokens[1]);
 
     if (tokens.size() > 2) {
-      altsvc.host = tokens[2].str();
+      altsvc.host = make_string_ref(config->balloc, tokens[2]);
 
       if (tokens.size() > 3) {
-        altsvc.origin = tokens[3].str();
+        altsvc.origin = make_string_ref(config->balloc, tokens[3]);
       }
     }
 

@@ -337,7 +337,7 @@ enum shrpx_forwarded_node_type {
 };
 
 struct AltSvc {
-  std::string protocol_id, host, origin, service;
+  StringRef protocol_id, host, origin, service;
 
   uint16_t port;
 };

@@ -962,10 +962,9 @@ std::unique_ptr<Downstream> HttpsUpstream::pop_downstream() {
 namespace {
 void write_altsvc(DefaultMemchunks *buf, BlockAllocator &balloc,
                   const AltSvc &altsvc) {
-  buf->append(
-      util::percent_encode_token(balloc, StringRef{altsvc.protocol_id}));
+  buf->append(util::percent_encode_token(balloc, altsvc.protocol_id));
   buf->append("=\"");
-  buf->append(util::quote_string(balloc, StringRef{altsvc.host}));
+  buf->append(util::quote_string(balloc, altsvc.host));
   buf->append(':');
   buf->append(altsvc.service);
   buf->append('"');
