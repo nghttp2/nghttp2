@@ -378,7 +378,7 @@ int ClientHandler::upstream_http1_connhd_read() {
 ClientHandler::ClientHandler(Worker *worker, int fd, SSL *ssl,
                              const StringRef &ipaddr, const StringRef &port,
                              int family, const UpstreamAddr *faddr)
-    : balloc_(128, 128),
+    : balloc_(256, 256),
       conn_(worker->get_loop(), fd, ssl, worker->get_mcpool(),
             get_config()->conn.upstream.timeout.write,
             get_config()->conn.upstream.timeout.read,
