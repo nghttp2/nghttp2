@@ -1447,8 +1447,8 @@ SSL_CTX *setup_downstream_client_ssl_context(
 #ifdef HAVE_NEVERBLEED
       nb,
 #endif // HAVE_NEVERBLEED
-      StringRef{tlsconf.cacert}, StringRef{tlsconf.client.cert_file},
-      StringRef{tlsconf.client.private_key_file}, select_next_proto_cb);
+      tlsconf.cacert, tlsconf.client.cert_file, tlsconf.client.private_key_file,
+      select_next_proto_cb);
 }
 
 void setup_downstream_http2_alpn(SSL *ssl) {

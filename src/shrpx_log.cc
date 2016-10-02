@@ -290,7 +290,7 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
       break;
     case SHRPX_LOGF_HTTP:
       if (req) {
-        auto hd = req->fs.header(StringRef(lf.value));
+        auto hd = req->fs.header(lf.value);
         if (hd) {
           std::tie(p, avail) = copy((*hd).value, avail, p);
           break;

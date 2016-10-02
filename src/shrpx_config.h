@@ -353,12 +353,13 @@ enum UpstreamAltMode {
 
 struct UpstreamAddr {
   // The frontend address (e.g., FQDN, hostname, IP address).  If
-  // |host_unix| is true, this is UNIX domain socket path.
-  ImmutableString host;
+  // |host_unix| is true, this is UNIX domain socket path.  This must
+  // be NULL terminated string.
+  StringRef host;
   // For TCP socket, this is <IP address>:<PORT>.  For IPv6 address,
   // address is surrounded by square brackets.  If socket is UNIX
   // domain socket, this is "localhost".
-  ImmutableString hostport;
+  StringRef hostport;
   // frontend port.  0 if |host_unix| is true.
   uint16_t port;
   // For TCP socket, this is either AF_INET or AF_INET6.  For UNIX
@@ -453,10 +454,10 @@ struct TLSConfig {
       uint16_t port;
       // Hostname of memcached server.  This is also used as SNI field
       // if TLS is enabled.
-      ImmutableString host;
+      StringRef host;
       // Client private key and certificate for authentication
-      ImmutableString private_key_file;
-      ImmutableString cert_file;
+      StringRef private_key_file;
+      StringRef cert_file;
       ev_tstamp interval;
       // Maximum number of retries when getting TLS ticket key from
       // mamcached, due to network error.
@@ -482,10 +483,10 @@ struct TLSConfig {
       uint16_t port;
       // Hostname of memcached server.  This is also used as SNI field
       // if TLS is enabled.
-      ImmutableString host;
+      StringRef host;
       // Client private key and certificate for authentication
-      ImmutableString private_key_file;
-      ImmutableString cert_file;
+      StringRef private_key_file;
+      StringRef cert_file;
       // Address family of memcached connection.  One of either
       // AF_INET, AF_INET6 or AF_UNSPEC.
       int family;
@@ -502,7 +503,7 @@ struct TLSConfig {
   // OCSP realted configurations
   struct {
     ev_tstamp update_interval;
-    ImmutableString fetch_ocsp_response_file;
+    StringRef fetch_ocsp_response_file;
     bool disabled;
   } ocsp;
 
@@ -510,14 +511,14 @@ struct TLSConfig {
   struct {
     // Path to file containing CA certificate solely used for client
     // certificate validation
-    ImmutableString cacert;
+    StringRef cacert;
     bool enabled;
   } client_verify;
 
   // Client private key and certificate used in backend connections.
   struct {
-    ImmutableString private_key_file;
-    ImmutableString cert_file;
+    StringRef private_key_file;
+    StringRef cert_file;
   } client;
 
   // The list of (private key file, certificate file) pair
@@ -532,14 +533,14 @@ struct TLSConfig {
   // Bit mask to disable SSL/TLS protocol versions.  This will be
   // passed to SSL_CTX_set_options().
   long int tls_proto_mask;
-  std::string backend_sni_name;
+  StringRef backend_sni_name;
   std::chrono::seconds session_timeout;
-  ImmutableString private_key_file;
-  ImmutableString private_key_passwd;
-  ImmutableString cert_file;
-  ImmutableString dh_param_file;
-  ImmutableString ciphers;
-  ImmutableString cacert;
+  StringRef private_key_file;
+  StringRef private_key_passwd;
+  StringRef cert_file;
+  StringRef dh_param_file;
+  StringRef ciphers;
+  StringRef cacert;
   bool insecure;
   bool no_http2_cipher_black_list;
 };
@@ -557,7 +558,7 @@ struct HttpConfig {
     // obfuscated value used in "by" parameter of Forwarded header
     // field.  This is only used when user defined static obfuscated
     // string is provided.
-    std::string by_obfuscated;
+    StringRef by_obfuscated;
     // bitwise-OR of one or more of shrpx_forwarded_param values.
     uint32_t params;
     // type of value recorded in "by" parameter of Forwarded header
@@ -576,7 +577,7 @@ struct HttpConfig {
   std::vector<ErrorPage> error_pages;
   Headers add_request_headers;
   Headers add_response_headers;
-  ImmutableString server_name;
+  StringRef server_name;
   size_t request_header_field_buffer;
   size_t max_request_header_fields;
   size_t response_header_field_buffer;
@@ -591,8 +592,8 @@ struct Http2Config {
   struct {
     struct {
       struct {
-        ImmutableString request_header_file;
-        ImmutableString response_header_file;
+        StringRef request_header_file;
+        StringRef response_header_file;
         FILE *request_header;
         FILE *response_header;
       } dump;
@@ -635,12 +636,12 @@ struct Http2Config {
 struct LoggingConfig {
   struct {
     std::vector<LogFragment> format;
-    ImmutableString file;
+    StringRef file;
     // Send accesslog to syslog, ignoring accesslog_file.
     bool syslog;
   } access;
   struct {
-    ImmutableString file;
+    StringRef file;
     // Send errorlog to syslog, ignoring errorlog_file.
     bool syslog;
   } error;
@@ -754,7 +755,25 @@ struct APIConfig {
 };
 
 struct Config {
-  Config() = default;
+  Config()
+      : balloc(4096, 4096),
+        downstream_http_proxy{},
+        http{},
+        http2{},
+        tls{},
+        logging{},
+        conn{},
+        api{},
+        num_worker{0},
+        padding{0},
+        rlimit_nofile{0},
+        uid{0},
+        gid{0},
+        pid{0},
+        verbose{false},
+        daemon{false},
+        http2_proxy{false},
+        ev_loop_flags{0} {}
   ~Config();
 
   Config(Config &&) = delete;
@@ -762,6 +781,7 @@ struct Config {
   Config &operator=(Config &&) = delete;
   Config &operator=(const Config &&) = delete;
 
+  BlockAllocator balloc;
   HttpProxy downstream_http_proxy;
   HttpConfig http;
   Http2Config http2;
@@ -769,10 +789,10 @@ struct Config {
   LoggingConfig logging;
   ConnectionConfig conn;
   APIConfig api;
-  ImmutableString pid_file;
-  ImmutableString conf_path;
-  ImmutableString user;
-  ImmutableString mruby_file;
+  StringRef pid_file;
+  StringRef conf_path;
+  StringRef user;
+  StringRef mruby_file;
   size_t num_worker;
   size_t padding;
   size_t rlimit_nofile;
@@ -969,7 +989,8 @@ int load_config(Config *config, const char *filename,
 // allowed.  This function returns pair of NAME and VALUE.
 Headers::value_type parse_header(const StringRef &optarg);
 
-std::vector<LogFragment> parse_log_format(const StringRef &optarg);
+std::vector<LogFragment> parse_log_format(BlockAllocator &balloc,
+                                          const StringRef &optarg);
 
 // Returns string for syslog |facility|.
 StringRef str_syslog_facility(int facility);

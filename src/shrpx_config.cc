@@ -490,7 +490,8 @@ bool var_token(char c) {
 }
 } // namespace
 
-std::vector<LogFragment> parse_log_format(const StringRef &optarg) {
+std::vector<LogFragment> parse_log_format(BlockAllocator &balloc,
+                                          const StringRef &optarg) {
   auto literal_start = std::begin(optarg);
   auto p = literal_start;
   auto eop = std::end(optarg);
@@ -553,8 +554,9 @@ std::vector<LogFragment> parse_log_format(const StringRef &optarg) {
     }
 
     if (literal_start < var_start) {
-      res.emplace_back(SHRPX_LOGF_LITERAL,
-                       ImmutableString(literal_start, var_start));
+      res.emplace_back(
+          SHRPX_LOGF_LITERAL,
+          make_string_ref(balloc, StringRef{literal_start, var_start}));
     }
 
     literal_start = p;
@@ -564,18 +566,24 @@ std::vector<LogFragment> parse_log_format(const StringRef &optarg) {
       continue;
     }
 
-    auto name = std::string(value, var_name + var_namelen);
-    for (auto &c : name) {
-      if (c == '_') {
-        c = '-';
+    {
+      auto iov = make_byte_ref(
+          balloc, std::distance(value, var_name + var_namelen) + 1);
+      auto p = iov.base;
+      p = std::copy(value, var_name + var_namelen, p);
+      for (auto cp = iov.base; cp != p; ++cp) {
+        if (*cp == '_') {
+          *cp = '-';
+        }
       }
+      *p = '\0';
+      res.emplace_back(type, StringRef{iov.base, p});
     }
-
-    res.emplace_back(type, ImmutableString(name));
   }
 
   if (literal_start != eop) {
-    res.emplace_back(SHRPX_LOGF_LITERAL, ImmutableString(literal_start, eop));
+    res.emplace_back(SHRPX_LOGF_LITERAL,
+                     make_string_ref(balloc, StringRef{literal_start, eop}));
   }
 
   return res;
@@ -1877,7 +1885,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
 
     if (util::istarts_with(optarg, SHRPX_UNIX_PATH_PREFIX)) {
       auto path = std::begin(optarg) + SHRPX_UNIX_PATH_PREFIX.size();
-      addr.host = ImmutableString{path, addr_end};
+      addr.host = make_string_ref(config->balloc, StringRef{path, addr_end});
       addr.host_unix = true;
 
       listenerconf.addrs.push_back(std::move(addr));
@@ -1890,7 +1898,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
       return -1;
     }
 
-    addr.host = ImmutableString(host);
+    addr.host = make_string_ref(config->balloc, StringRef{host});
     addr.port = port;
 
     if (util::numeric_host(host, AF_INET)) {
@@ -1987,8 +1995,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
   case SHRPX_OPTID_STREAM_WRITE_TIMEOUT:
     return parse_duration(&config->http2.timeout.stream_write, opt, optarg);
   case SHRPX_OPTID_ACCESSLOG_FILE:
-    config->logging.access.file =
-        ImmutableString{std::begin(optarg), std::end(optarg)};
+    config->logging.access.file = make_string_ref(config->balloc, optarg);
 
     return 0;
   case SHRPX_OPTID_ACCESSLOG_SYSLOG:
@@ -1996,12 +2003,11 @@ int parse_config(Config *config, int optid, const StringRef &opt,
 
     return 0;
   case SHRPX_OPTID_ACCESSLOG_FORMAT:
-    config->logging.access.format = parse_log_format(optarg);
+    config->logging.access.format = parse_log_format(config->balloc, optarg);
 
     return 0;
   case SHRPX_OPTID_ERRORLOG_FILE:
-    config->logging.error.file =
-        ImmutableString{std::begin(optarg), std::end(optarg)};
+    config->logging.error.file = make_string_ref(config->balloc, optarg);
 
     return 0;
   case SHRPX_OPTID_ERRORLOG_SYSLOG:
@@ -2105,11 +2111,11 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     LOG(WARN) << opt << ": deprecated.  Use sni keyword in --backend option.  "
                         "For now, all sni values of all backends are "
                         "overridden by the given value " << optarg;
-    config->tls.backend_sni_name = optarg.str();
+    config->tls.backend_sni_name = make_string_ref(config->balloc, optarg);
 
     return 0;
   case SHRPX_OPTID_PID_FILE:
-    config->pid_file = ImmutableString{std::begin(optarg), std::end(optarg)};
+    config->pid_file = make_string_ref(config->balloc, optarg);
 
     return 0;
   case SHRPX_OPTID_USER: {
@@ -2119,15 +2125,14 @@ int parse_config(Config *config, int optid, const StringRef &opt,
                  << strerror(errno);
       return -1;
     }
-    config->user = ImmutableString{pwd->pw_name};
+    config->user = make_string_ref(config->balloc, StringRef{pwd->pw_name});
     config->uid = pwd->pw_uid;
     config->gid = pwd->pw_gid;
 
     return 0;
   }
   case SHRPX_OPTID_PRIVATE_KEY_FILE:
-    config->tls.private_key_file =
-        ImmutableString{std::begin(optarg), std::end(optarg)};
+    config->tls.private_key_file = make_string_ref(config->balloc, optarg);
 
     return 0;
   case SHRPX_OPTID_PRIVATE_KEY_PASSWD_FILE: {
@@ -2136,18 +2141,17 @@ int parse_config(Config *config, int optid, const StringRef &opt,
       LOG(ERROR) << opt << ": Couldn't read key file's passwd from " << optarg;
       return -1;
     }
-    config->tls.private_key_passwd = ImmutableString{passwd};
+    config->tls.private_key_passwd =
+        make_string_ref(config->balloc, StringRef{passwd});
 
     return 0;
   }
   case SHRPX_OPTID_CERTIFICATE_FILE:
-    config->tls.cert_file =
-        ImmutableString{std::begin(optarg), std::end(optarg)};
+    config->tls.cert_file = make_string_ref(config->balloc, optarg);
 
     return 0;
   case SHRPX_OPTID_DH_PARAM_FILE:
-    config->tls.dh_param_file =
-        ImmutableString{std::begin(optarg), std::end(optarg)};
+    config->tls.dh_param_file = make_string_ref(config->balloc, optarg);
 
     return 0;
   case SHRPX_OPTID_SUBCERT: {
@@ -2203,7 +2207,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     return 0;
   }
   case SHRPX_OPTID_CIPHERS:
-    config->tls.ciphers = ImmutableString{std::begin(optarg), std::end(optarg)};
+    config->tls.ciphers = make_string_ref(config->balloc, optarg);
 
     return 0;
   case SHRPX_OPTID_CLIENT:
@@ -2215,7 +2219,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
 
     return 0;
   case SHRPX_OPTID_CACERT:
-    config->tls.cacert = ImmutableString{std::begin(optarg), std::end(optarg)};
+    config->tls.cacert = make_string_ref(config->balloc, optarg);
 
     return 0;
   case SHRPX_OPTID_BACKEND_IPV4:
@@ -2305,28 +2309,26 @@ int parse_config(Config *config, int optid, const StringRef &opt,
 
     return 0;
   case SHRPX_OPTID_VERIFY_CLIENT_CACERT:
-    config->tls.client_verify.cacert =
-        ImmutableString{std::begin(optarg), std::end(optarg)};
+    config->tls.client_verify.cacert = make_string_ref(config->balloc, optarg);
 
     return 0;
   case SHRPX_OPTID_CLIENT_PRIVATE_KEY_FILE:
     config->tls.client.private_key_file =
-        ImmutableString{std::begin(optarg), std::end(optarg)};
+        make_string_ref(config->balloc, optarg);
 
     return 0;
   case SHRPX_OPTID_CLIENT_CERT_FILE:
-    config->tls.client.cert_file =
-        ImmutableString{std::begin(optarg), std::end(optarg)};
+    config->tls.client.cert_file = make_string_ref(config->balloc, optarg);
 
     return 0;
   case SHRPX_OPTID_FRONTEND_HTTP2_DUMP_REQUEST_HEADER:
     config->http2.upstream.debug.dump.request_header_file =
-        ImmutableString{std::begin(optarg), std::end(optarg)};
+        make_string_ref(config->balloc, optarg);
 
     return 0;
   case SHRPX_OPTID_FRONTEND_HTTP2_DUMP_RESPONSE_HEADER:
     config->http2.upstream.debug.dump.response_header_file =
-        ImmutableString{std::begin(optarg), std::end(optarg)};
+        make_string_ref(config->balloc, optarg);
 
     return 0;
   case SHRPX_OPTID_HTTP2_NO_COOKIE_CRUMBLING:
@@ -2493,7 +2495,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     return 0;
   case SHRPX_OPTID_FETCH_OCSP_RESPONSE_FILE:
     config->tls.ocsp.fetch_ocsp_response_file =
-        ImmutableString{std::begin(optarg), std::end(optarg)};
+        make_string_ref(config->balloc, optarg);
 
     return 0;
   case SHRPX_OPTID_OCSP_UPDATE_INTERVAL:
@@ -2571,14 +2573,14 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     switch (optid) {
     case SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED: {
       auto &memcachedconf = config->tls.session_cache.memcached;
-      memcachedconf.host = ImmutableString{host};
+      memcachedconf.host = make_string_ref(config->balloc, StringRef{host});
       memcachedconf.port = port;
       memcachedconf.tls = params.tls;
       break;
     }
     case SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED: {
       auto &memcachedconf = config->tls.ticket.memcached;
-      memcachedconf.host = ImmutableString{host};
+      memcachedconf.host = make_string_ref(config->balloc, StringRef{host});
       memcachedconf.port = port;
       memcachedconf.tls = params.tls;
       break;
@@ -2621,7 +2623,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
 
   case SHRPX_OPTID_MRUBY_FILE:
 #ifdef HAVE_MRUBY
-    config->mruby_file = ImmutableString{std::begin(optarg), std::end(optarg)};
+    config->mruby_file = make_string_ref(config->balloc, optarg);
 #else  // !HAVE_MRUBY
     LOG(WARN) << opt
               << ": ignored because mruby support is disabled at build time.";
@@ -2680,9 +2682,9 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     case SHRPX_OPTID_FORWARDED_BY:
       fwdconf.by_node_type = static_cast<shrpx_forwarded_node_type>(type);
       if (optarg[0] == '_') {
-        fwdconf.by_obfuscated = optarg.str();
+        fwdconf.by_obfuscated = make_string_ref(config->balloc, optarg);
       } else {
-        fwdconf.by_obfuscated = "";
+        fwdconf.by_obfuscated = StringRef::from_lit("");
       }
       break;
     case SHRPX_OPTID_FORWARDED_FOR:
@@ -2707,12 +2709,12 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     return 0;
   case SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED_CERT_FILE:
     config->tls.session_cache.memcached.cert_file =
-        ImmutableString{std::begin(optarg), std::end(optarg)};
+        make_string_ref(config->balloc, optarg);
 
     return 0;
   case SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED_PRIVATE_KEY_FILE:
     config->tls.session_cache.memcached.private_key_file =
-        ImmutableString{std::begin(optarg), std::end(optarg)};
+        make_string_ref(config->balloc, optarg);
 
     return 0;
   case SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED_TLS:
@@ -2721,12 +2723,12 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     return 0;
   case SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED_CERT_FILE:
     config->tls.ticket.memcached.cert_file =
-        ImmutableString{std::begin(optarg), std::end(optarg)};
+        make_string_ref(config->balloc, optarg);
 
     return 0;
   case SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED_PRIVATE_KEY_FILE:
     config->tls.ticket.memcached.private_key_file =
-        ImmutableString{std::begin(optarg), std::end(optarg)};
+        make_string_ref(config->balloc, optarg);
 
     return 0;
   case SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED_ADDRESS_FAMILY:
@@ -2766,8 +2768,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     return parse_duration(&config->conn.downstream->timeout.max_backoff, opt,
                           optarg);
   case SHRPX_OPTID_SERVER_NAME:
-    config->http.server_name =
-        ImmutableString{std::begin(optarg), std::end(optarg)};
+    config->http.server_name = make_string_ref(config->balloc, optarg);
 
     return 0;
   case SHRPX_OPTID_NO_SERVER_REWRITE:

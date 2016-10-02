@@ -1504,10 +1504,10 @@ StringRef ClientHandler::get_forwarded_by() const {
   auto &fwdconf = get_config()->http.forwarded;
 
   if (fwdconf.by_node_type == FORWARDED_NODE_OBFUSCATED) {
-    return StringRef(fwdconf.by_obfuscated);
+    return fwdconf.by_obfuscated;
   }
 
-  return StringRef{faddr_->hostport};
+  return faddr_->hostport;
 }
 
 StringRef ClientHandler::get_forwarded_for() const { return forwarded_for_; }

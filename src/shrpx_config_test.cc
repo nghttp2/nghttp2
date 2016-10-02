@@ -67,10 +67,13 @@ void test_shrpx_config_parse_header(void) {
 }
 
 void test_shrpx_config_parse_log_format(void) {
-  auto res = parse_log_format(StringRef::from_lit(
-      R"($remote_addr - $remote_user [$time_local] )"
-      R"("$request" $status $body_bytes_sent )"
-      R"("${http_referer}" $http_host "$http_user_agent")"));
+  BlockAllocator balloc(4096, 4096);
+
+  auto res = parse_log_format(
+      balloc, StringRef::from_lit(
+                  R"($remote_addr - $remote_user [$time_local] )"
+                  R"("$request" $status $body_bytes_sent )"
+                  R"("${http_referer}" $http_host "$http_user_agent")"));
   CU_ASSERT(16 == res.size());
 
   CU_ASSERT(SHRPX_LOGF_REMOTE_ADDR == res[0].type);
@@ -115,35 +118,35 @@ void test_shrpx_config_parse_log_format(void) {
   CU_ASSERT(SHRPX_LOGF_LITERAL == res[15].type);
   CU_ASSERT("\"" == res[15].value);
 
-  res = parse_log_format(StringRef::from_lit("$"));
+  res = parse_log_format(balloc, StringRef::from_lit("$"));
 
   CU_ASSERT(1 == res.size());
 
   CU_ASSERT(SHRPX_LOGF_LITERAL == res[0].type);
   CU_ASSERT("$" == res[0].value);
 
-  res = parse_log_format(StringRef::from_lit("${"));
+  res = parse_log_format(balloc, StringRef::from_lit("${"));
 
   CU_ASSERT(1 == res.size());
 
   CU_ASSERT(SHRPX_LOGF_LITERAL == res[0].type);
   CU_ASSERT("${" == res[0].value);
 
-  res = parse_log_format(StringRef::from_lit("${a"));
+  res = parse_log_format(balloc, StringRef::from_lit("${a"));
 
   CU_ASSERT(1 == res.size());
 
   CU_ASSERT(SHRPX_LOGF_LITERAL == res[0].type);
   CU_ASSERT("${a" == res[0].value);
 
-  res = parse_log_format(StringRef::from_lit("${a "));
+  res = parse_log_format(balloc, StringRef::from_lit("${a "));
 
   CU_ASSERT(1 == res.size());
 
   CU_ASSERT(SHRPX_LOGF_LITERAL == res[0].type);
   CU_ASSERT("${a " == res[0].value);
 
-  res = parse_log_format(StringRef::from_lit("$$remote_addr"));
+  res = parse_log_format(balloc, StringRef::from_lit("$$remote_addr"));
 
   CU_ASSERT(2 == res.size());
 

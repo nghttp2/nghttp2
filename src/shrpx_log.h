@@ -137,10 +137,10 @@ enum LogFragmentType {
 };
 
 struct LogFragment {
-  LogFragment(LogFragmentType type, ImmutableString value = ImmutableString())
+  LogFragment(LogFragmentType type, StringRef value = StringRef::from_lit(""))
       : type(type), value(std::move(value)) {}
   LogFragmentType type;
-  ImmutableString value;
+  StringRef value;
 };
 
 struct LogSpec {

@@ -86,6 +86,7 @@
 #include "app_helper.h"
 #include "ssl.h"
 #include "template.h"
+#include "allocator.h"
 
 extern char **environ;
 
@@ -151,7 +152,7 @@ StartupConfig suconfig;
 
 struct InheritedAddr {
   // IP address if TCP socket.  Otherwise, UNIX domain socket path.
-  ImmutableString host;
+  StringRef host;
   uint16_t port;
   // true if UNIX domain socket path
   bool host_unix;
@@ -574,7 +575,7 @@ int create_unix_domain_server_socket(UpstreamAddr &faddr,
                 << (faddr.tls ? ", tls" : "");
     (*found).used = true;
     faddr.fd = (*found).fd;
-    faddr.hostport = ImmutableString::from_lit("localhost");
+    faddr.hostport = StringRef::from_lit("localhost");
 
     return 0;
   }
@@ -639,7 +640,7 @@ int create_unix_domain_server_socket(UpstreamAddr &faddr,
               << (faddr.tls ? ", tls" : "");
 
   faddr.fd = fd;
-  faddr.hostport = ImmutableString::from_lit("localhost");
+  faddr.hostport = StringRef::from_lit("localhost");
 
   return 0;
 }
@@ -791,8 +792,8 @@ int create_tcp_server_socket(UpstreamAddr &faddr,
   }
 
   faddr.fd = fd;
-  faddr.hostport = ImmutableString{
-      util::make_http_hostport(StringRef{host.data()}, faddr.port)};
+  faddr.hostport = util::make_http_hostport(mod_config()->balloc,
+                                            StringRef{host.data()}, faddr.port);
 
   LOG(NOTICE) << "Listening on " << faddr.hostport
               << (faddr.tls ? ", tls" : "");
@@ -805,8 +806,7 @@ namespace {
 // Returns array of InheritedAddr constructed from |config|.  This
 // function is intended to be used when reloading configuration, and
 // |config| is usually a current configuration.
-std::vector<InheritedAddr>
-get_inherited_addr_from_config(const Config *config) {
+std::vector<InheritedAddr> get_inherited_addr_from_config(Config *config) {
   int rv;
 
   auto &listenerconf = config->conn.listener;
@@ -856,7 +856,7 @@ get_inherited_addr_from_config(const Config *config) {
       continue;
     }
 
-    iaddr.host = ImmutableString{host.data()};
+    iaddr.host = make_string_ref(config->balloc, StringRef{host.data()});
   }
 
   return iaddrs;
@@ -867,7 +867,7 @@ namespace {
 // Returns array of InheritedAddr constructed from environment
 // variables.  This function handles the old environment variable
 // names used in 1.7.0 or earlier.
-std::vector<InheritedAddr> get_inherited_addr_from_env() {
+std::vector<InheritedAddr> get_inherited_addr_from_env(Config *config) {
   int rv;
   std::vector<InheritedAddr> iaddrs;
 
@@ -888,15 +888,13 @@ std::vector<InheritedAddr> get_inherited_addr_from_env() {
         }
       }
     } else {
-      auto pathenv = getenv(ENV_UNIX_PATH.c_str());
-      auto fdenv = getenv(ENV_UNIX_FD.c_str());
-      if (pathenv && fdenv) {
+      if (getenv(ENV_UNIX_PATH.c_str()) && getenv(ENV_UNIX_FD.c_str())) {
         auto name = ENV_ACCEPT_PREFIX.str();
         name += '1';
         std::string value = "unix,";
-        value += fdenv;
+        value += getenv(ENV_UNIX_FD.c_str());
         value += ',';
-        value += pathenv;
+        value += getenv(ENV_UNIX_PATH.c_str());
         setenv(name.c_str(), value.c_str(), 0);
       }
     }
@@ -948,7 +946,7 @@ std::vector<InheritedAddr> get_inherited_addr_from_env() {
       }
 
       InheritedAddr addr{};
-      addr.host = ImmutableString{path};
+      addr.host = make_string_ref(config->balloc, StringRef{path});
       addr.host_unix = true;
       addr.fd = static_cast<int>(fd);
       iaddrs.push_back(std::move(addr));
@@ -1002,7 +1000,7 @@ std::vector<InheritedAddr> get_inherited_addr_from_env() {
       }
 
       InheritedAddr addr{};
-      addr.host = ImmutableString{host.data()};
+      addr.host = make_string_ref(config->balloc, StringRef{host.data()});
       addr.port = static_cast<uint16_t>(port);
       addr.fd = static_cast<int>(fd);
       iaddrs.push_back(std::move(addr));
@@ -1209,7 +1207,7 @@ int event_loop() {
     redirect_stderr_to_errorlog();
   }
 
-  auto iaddrs = get_inherited_addr_from_env();
+  auto iaddrs = get_inherited_addr_from_env(mod_config());
 
   if (create_acceptor_socket(mod_config(), iaddrs) != 0) {
     return -1;
@@ -1274,7 +1272,7 @@ constexpr auto DEFAULT_ACCESSLOG_FORMAT = StringRef::from_lit(
 namespace {
 void fill_default_config(Config *config) {
   config->num_worker = 1;
-  config->conf_path = ImmutableString::from_lit("/etc/nghttpx/nghttpx.conf");
+  config->conf_path = StringRef::from_lit("/etc/nghttpx/nghttpx.conf");
   config->pid = getpid();
 
   if (ev_supported_backends() & ~ev_recommended_backends() & EVBACKEND_KQUEUE) {
@@ -1306,7 +1304,7 @@ void fill_default_config(Config *config) {
     // ocsp update interval = 14400 secs = 4 hours, borrowed from h2o
     ocspconf.update_interval = 4_h;
     ocspconf.fetch_ocsp_response_file =
-        ImmutableString::from_lit(PKGDATADIR "/fetch-ocsp-response");
+        StringRef::from_lit(PKGDATADIR "/fetch-ocsp-response");
   }
 
   {
@@ -1319,7 +1317,7 @@ void fill_default_config(Config *config) {
 
   auto &httpconf = config->http;
   httpconf.server_name =
-      ImmutableString::from_lit("nghttpx nghttp2/" NGHTTP2_VERSION);
+      StringRef::from_lit("nghttpx nghttp2/" NGHTTP2_VERSION);
   httpconf.no_host_rewrite = true;
   httpconf.request_header_field_buffer = 64_k;
   httpconf.max_request_header_fields = 100;
@@ -1387,10 +1385,11 @@ void fill_default_config(Config *config) {
   auto &loggingconf = config->logging;
   {
     auto &accessconf = loggingconf.access;
-    accessconf.format = parse_log_format(DEFAULT_ACCESSLOG_FORMAT);
+    accessconf.format =
+        parse_log_format(config->balloc, DEFAULT_ACCESSLOG_FORMAT);
 
     auto &errorconf = loggingconf.error;
-    errorconf.file = ImmutableString::from_lit("/dev/stderr");
+    errorconf.file = StringRef::from_lit("/dev/stderr");
   }
 
   loggingconf.syslog_facility = LOG_DAEMON;
@@ -2466,7 +2465,7 @@ int process_options(Config *config,
 
   if (listenerconf.addrs.empty()) {
     UpstreamAddr addr{};
-    addr.host = ImmutableString::from_lit("*");
+    addr.host = StringRef::from_lit("*");
     addr.port = 3000;
     addr.tls = true;
     addr.family = AF_INET;
@@ -2567,12 +2566,14 @@ int process_options(Config *config,
 
   if (fwdconf.by_node_type == FORWARDED_NODE_OBFUSCATED &&
       fwdconf.by_obfuscated.empty()) {
-    std::mt19937 gen(rd());
-    auto &dst = fwdconf.by_obfuscated;
-    dst.resize(1 + SHRPX_OBFUSCATED_NODE_LENGTH);
-    auto p = std::begin(dst);
+    // 2 for '_' and terminal NULL
+    auto iov = make_byte_ref(config->balloc, SHRPX_OBFUSCATED_NODE_LENGTH + 2);
+    auto p = iov.base;
     *p++ = '_';
-    util::random_alpha_digit(p, std::end(dst), gen);
+    std::mt19937 gen(rd());
+    p = util::random_alpha_digit(p, p + SHRPX_OBFUSCATED_NODE_LENGTH, gen);
+    *p = '\0';
+    fwdconf.by_obfuscated = StringRef{iov.base, p};
   }
 
   if (config->http2.upstream.debug.frame_debug) {
@@ -2618,12 +2619,13 @@ void reload_config(WorkerProcess *wp) {
 
   LOG(NOTICE) << "Reloading configuration";
 
-  auto cur_config = get_config();
+  auto cur_config = mod_config();
   auto new_config = make_unique<Config>();
 
   fill_default_config(new_config.get());
 
-  new_config->conf_path = cur_config->conf_path;
+  new_config->conf_path =
+      make_string_ref(new_config->balloc, cur_config->conf_path);
   // daemon option is ignored here.
   new_config->daemon = cur_config->daemon;
   // loop is reused, and ev_loop_flags gets ignored
@@ -3029,7 +3031,8 @@ int main(int argc, char **argv) {
         break;
       case 12:
         // --conf
-        mod_config()->conf_path = ImmutableString{optarg};
+        mod_config()->conf_path =
+            make_string_ref(mod_config()->balloc, StringRef{optarg});
         break;
       case 14:
         // --syslog-facility
