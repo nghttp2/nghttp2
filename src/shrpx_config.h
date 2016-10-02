@@ -470,7 +470,7 @@ struct TLSConfig {
       int family;
       bool tls;
     } memcached;
-    std::vector<std::string> files;
+    std::vector<StringRef> files;
     const EVP_CIPHER *cipher;
     // true if --tls-ticket-key-cipher is used
     bool cipher_given;
@@ -1006,7 +1006,7 @@ FILE *open_file_for_write(const char *filename);
 // expected file size.  This function returns TicketKey if it
 // succeeds, or nullptr.
 std::unique_ptr<TicketKeys>
-read_tls_ticket_key_file(const std::vector<std::string> &files,
+read_tls_ticket_key_file(const std::vector<StringRef> &files,
                          const EVP_CIPHER *cipher, const EVP_MD *hmac);
 
 // Returns string representation of |proto|.

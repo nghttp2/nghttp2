@@ -151,7 +151,7 @@ bool is_secure(const StringRef &filename) {
 } // namespace
 
 std::unique_ptr<TicketKeys>
-read_tls_ticket_key_file(const std::vector<std::string> &files,
+read_tls_ticket_key_file(const std::vector<StringRef> &files,
                          const EVP_CIPHER *cipher, const EVP_MD *hmac) {
   auto ticket_keys = make_unique<TicketKeys>();
   auto &keys = ticket_keys->keys;
@@ -2451,7 +2451,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
   case SHRPX_OPTID_LISTENER_DISABLE_TIMEOUT:
     return parse_duration(&config->conn.listener.timeout.sleep, opt, optarg);
   case SHRPX_OPTID_TLS_TICKET_KEY_FILE:
-    config->tls.ticket.files.push_back(optarg.str());
+    config->tls.ticket.files.push_back(make_string_ref(config->balloc, optarg));
     return 0;
   case SHRPX_OPTID_RLIMIT_NOFILE: {
     int n;
