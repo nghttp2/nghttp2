@@ -1147,31 +1147,6 @@ std::string dtos(double n) {
   return utos(static_cast<int64_t>(n)) + "." + (f.size() == 1 ? "0" : "") + f;
 }
 
-std::string make_http_hostport(const StringRef &host, uint16_t port) {
-  if (port != 80 && port != 443) {
-    return make_hostport(host, port);
-  }
-
-  auto ipv6 = ipv6_numeric_addr(host.c_str());
-
-  std::string hostport;
-  hostport.resize(host.size() + (ipv6 ? 2 : 0));
-
-  auto p = &hostport[0];
-
-  if (ipv6) {
-    *p++ = '[';
-  }
-
-  p = std::copy_n(host.c_str(), host.size(), p);
-
-  if (ipv6) {
-    *p++ = ']';
-  }
-
-  return hostport;
-}
-
 StringRef make_http_hostport(BlockAllocator &balloc, const StringRef &host,
                              uint16_t port) {
   if (port != 80 && port != 443) {
@@ -1244,7 +1219,7 @@ StringRef make_hostport(BlockAllocator &balloc, const StringRef &host,
 
   *p++ = ':';
 
-  std::copy(std::begin(serv), std::end(serv), p);
+  p = std::copy(std::begin(serv), std::end(serv), p);
 
   *p = '\0';
 

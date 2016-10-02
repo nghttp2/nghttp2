@@ -502,12 +502,15 @@ void test_util_parse_config_str_list(void) {
 }
 
 void test_util_make_http_hostport(void) {
-  CU_ASSERT("localhost" ==
-            util::make_http_hostport(StringRef::from_lit("localhost"), 80));
+  BlockAllocator balloc(4096, 4096);
+
+  CU_ASSERT("localhost" == util::make_http_hostport(
+                               balloc, StringRef::from_lit("localhost"), 80));
   CU_ASSERT("[::1]" ==
-            util::make_http_hostport(StringRef::from_lit("::1"), 443));
-  CU_ASSERT("localhost:3000" ==
-            util::make_http_hostport(StringRef::from_lit("localhost"), 3000));
+            util::make_http_hostport(balloc, StringRef::from_lit("::1"), 443));
+  CU_ASSERT(
+      "localhost:3000" ==
+      util::make_http_hostport(balloc, StringRef::from_lit("localhost"), 3000));
 }
 
 void test_util_make_hostport(void) {
@@ -515,6 +518,12 @@ void test_util_make_hostport(void) {
             util::make_hostport(StringRef::from_lit("localhost"), 80));
   CU_ASSERT("[::1]:443" ==
             util::make_hostport(StringRef::from_lit("::1"), 443));
+
+  BlockAllocator balloc(4096, 4096);
+  CU_ASSERT("localhost:80" ==
+            util::make_hostport(balloc, StringRef::from_lit("localhost"), 80));
+  CU_ASSERT("[::1]:443" ==
+            util::make_hostport(balloc, StringRef::from_lit("::1"), 443));
 }
 
 void test_util_strifind(void) {
