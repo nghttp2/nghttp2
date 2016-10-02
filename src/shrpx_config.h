@@ -522,7 +522,7 @@ struct TLSConfig {
   } client;
 
   // The list of (private key file, certificate file) pair
-  std::vector<std::pair<std::string, std::string>> subcerts;
+  std::vector<std::pair<StringRef, StringRef>> subcerts;
   std::vector<unsigned char> alpn_prefs;
   // list of supported NPN/ALPN protocol strings in the order of
   // preference.

@@ -2182,7 +2182,9 @@ int parse_config(Config *config, int optid, const StringRef &opt,
       return -1;
     }
 
-    config->tls.subcerts.emplace_back(private_key_file.str(), cert_file.str());
+    config->tls.subcerts.emplace_back(
+        make_string_ref(config->balloc, private_key_file),
+        make_string_ref(config->balloc, cert_file));
 
     return 0;
   }
