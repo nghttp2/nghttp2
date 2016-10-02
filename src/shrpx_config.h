@@ -54,6 +54,7 @@
 #include "template.h"
 #include "http2.h"
 #include "network.h"
+#include "allocator.h"
 
 using namespace nghttp2;
 
@@ -375,13 +376,13 @@ struct UpstreamAddr {
 struct DownstreamAddrConfig {
   Address addr;
   // backend address.  If |host_unix| is true, this is UNIX domain
-  // socket path.
-  ImmutableString host;
+  // socket path.  This must be NULL terminated string.
+  StringRef host;
   // <HOST>:<PORT>.  This does not treat 80 and 443 specially.  If
   // |host_unix| is true, this is "localhost".
-  ImmutableString hostport;
+  StringRef hostport;
   // hostname sent as SNI field
-  ImmutableString sni;
+  StringRef sni;
   size_t fall;
   size_t rise;
   // Application protocol used in this group
@@ -404,9 +405,9 @@ struct AffinityHash {
 
 struct DownstreamAddrGroupConfig {
   DownstreamAddrGroupConfig(const StringRef &pattern)
-      : pattern(pattern.c_str(), pattern.size()), affinity(AFFINITY_NONE) {}
+      : pattern(pattern), affinity(AFFINITY_NONE) {}
 
-  ImmutableString pattern;
+  StringRef pattern;
   std::vector<DownstreamAddrConfig> addrs;
   // Bunch of session affinity hash.  Only used if affinity ==
   // AFFINITY_IP.
@@ -655,10 +656,11 @@ struct RateLimitConfig {
 // field.  router includes all path patterns sharing the same wildcard
 // host.
 struct WildcardPattern {
-  WildcardPattern(const StringRef &host)
-      : host(std::begin(host), std::end(host)) {}
+  WildcardPattern(const StringRef &host) : host(host) {}
 
-  ImmutableString host;
+  // This may not be NULL terminated.  Currently it is only used for
+  // comparison.
+  StringRef host;
   Router router;
 };
 
@@ -676,7 +678,8 @@ struct RouterConfig {
 
 struct DownstreamConfig {
   DownstreamConfig()
-      : timeout{},
+      : balloc(1024, 1024),
+        timeout{},
         addr_group_catch_all{0},
         connections_per_host{0},
         connections_per_frontend{0},
@@ -684,6 +687,12 @@ struct DownstreamConfig {
         response_buffer_size{0},
         family{0} {}
 
+  DownstreamConfig(const DownstreamConfig &) = delete;
+  DownstreamConfig(DownstreamConfig &&) = delete;
+  DownstreamConfig &operator=(const DownstreamConfig &) = delete;
+  DownstreamConfig &operator=(DownstreamConfig &&) = delete;
+
+  BlockAllocator balloc;
   struct {
     ev_tstamp read;
     ev_tstamp write;

@@ -1172,6 +1172,32 @@ std::string make_http_hostport(const StringRef &host, uint16_t port) {
   return hostport;
 }
 
+StringRef make_http_hostport(BlockAllocator &balloc, const StringRef &host,
+                             uint16_t port) {
+  if (port != 80 && port != 443) {
+    return make_hostport(balloc, host, port);
+  }
+
+  auto ipv6 = ipv6_numeric_addr(host.c_str());
+
+  auto iov = make_byte_ref(balloc, host.size() + (ipv6 ? 2 : 0) + 1);
+  auto p = iov.base;
+
+  if (ipv6) {
+    *p++ = '[';
+  }
+
+  p = std::copy(std::begin(host), std::end(host), p);
+
+  if (ipv6) {
+    *p++ = ']';
+  }
+
+  *p = '\0';
+
+  return StringRef{iov.base, p};
+}
+
 std::string make_hostport(const StringRef &host, uint16_t port) {
   auto ipv6 = ipv6_numeric_addr(host.c_str());
   auto serv = utos(port);
@@ -1195,6 +1221,34 @@ std::string make_hostport(const StringRef &host, uint16_t port) {
   std::copy_n(serv.c_str(), serv.size(), p);
 
   return hostport;
+}
+
+StringRef make_hostport(BlockAllocator &balloc, const StringRef &host,
+                        uint16_t port) {
+  auto ipv6 = ipv6_numeric_addr(host.c_str());
+  auto serv = utos(port);
+
+  auto iov =
+      make_byte_ref(balloc, host.size() + (ipv6 ? 2 : 0) + 1 + serv.size());
+  auto p = iov.base;
+
+  if (ipv6) {
+    *p++ = '[';
+  }
+
+  p = std::copy(std::begin(host), std::end(host), p);
+
+  if (ipv6) {
+    *p++ = ']';
+  }
+
+  *p++ = ':';
+
+  std::copy(std::begin(serv), std::end(serv), p);
+
+  *p = '\0';
+
+  return StringRef{iov.base, p};
 }
 
 namespace {

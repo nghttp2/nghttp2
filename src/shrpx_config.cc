@@ -804,7 +804,7 @@ namespace {
 // as catch-all.  We also parse protocol specified in |src_proto|.
 //
 // This function returns 0 if it succeeds, or -1.
-int parse_mapping(Config *config, DownstreamAddrConfig addr,
+int parse_mapping(Config *config, DownstreamAddrConfig &addr,
                   const StringRef &src_pattern, const StringRef &src_params) {
   // This returns at least 1 element (it could be empty string).  We
   // will append '/' to all patterns, so it becomes catch-all pattern.
@@ -824,7 +824,7 @@ int parse_mapping(Config *config, DownstreamAddrConfig addr,
   addr.rise = params.rise;
   addr.proto = params.proto;
   addr.tls = params.tls;
-  addr.sni = ImmutableString{std::begin(params.sni), std::end(params.sni)};
+  addr.sni = make_string_ref(downstreamconf.balloc, params.sni);
 
   auto &routerconf = downstreamconf.router;
   auto &router = routerconf.router;
@@ -833,18 +833,31 @@ int parse_mapping(Config *config, DownstreamAddrConfig addr,
 
   for (const auto &raw_pattern : mapping) {
     auto done = false;
-    std::string pattern;
+    StringRef pattern;
     auto slash = std::find(std::begin(raw_pattern), std::end(raw_pattern), '/');
     if (slash == std::end(raw_pattern)) {
-      // This effectively makes empty pattern to "/".
-      pattern.assign(std::begin(raw_pattern), std::end(raw_pattern));
-      util::inp_strlower(pattern);
-      pattern += '/';
+      // This effectively makes empty pattern to "/".  2 for '/' and
+      // terminal NULL character.
+      auto iov = make_byte_ref(downstreamconf.balloc, raw_pattern.size() + 2);
+      auto p = iov.base;
+      p = std::copy(std::begin(raw_pattern), std::end(raw_pattern), p);
+      util::inp_strlower(iov.base, p);
+      *p++ = '/';
+      *p = '\0';
+      pattern = StringRef{iov.base, p};
     } else {
-      pattern.assign(std::begin(raw_pattern), slash);
-      util::inp_strlower(pattern);
-      pattern += http2::normalize_path(StringRef{slash, std::end(raw_pattern)},
-                                       StringRef{});
+      auto path = http2::normalize_path(downstreamconf.balloc,
+                                        StringRef{slash, std::end(raw_pattern)},
+                                        StringRef{});
+      auto iov = make_byte_ref(downstreamconf.balloc,
+                               std::distance(std::begin(raw_pattern), slash) +
+                                   path.size() + 1);
+      auto p = iov.base;
+      p = std::copy(std::begin(raw_pattern), slash, p);
+      util::inp_strlower(iov.base, p);
+      p = std::copy(std::begin(path), std::end(path), p);
+      *p = '\0';
+      pattern = StringRef{iov.base, p};
     }
     for (auto &g : addr_groups) {
       if (g.pattern == pattern) {
@@ -863,7 +876,7 @@ int parse_mapping(Config *config, DownstreamAddrConfig addr,
     }
 
     auto idx = addr_groups.size();
-    addr_groups.emplace_back(StringRef{pattern});
+    addr_groups.emplace_back(pattern);
     auto &g = addr_groups.back();
     g.addrs.push_back(addr);
     g.affinity = params.affinity;
@@ -886,10 +899,13 @@ int parse_mapping(Config *config, DownstreamAddrConfig addr,
         auto &router = wildcard_patterns.back().router;
         router.add_route(path, idx);
 
-        auto rev_host = host.str();
-        std::reverse(std::begin(rev_host), std::end(rev_host));
+        auto iov = make_byte_ref(downstreamconf.balloc, host.size() + 1);
+        auto p = iov.base;
+        p = std::reverse_copy(std::begin(host), std::end(host), p);
+        *p = '\0';
+        auto rev_host = StringRef{iov.base, p};
 
-        rw_router.add_route(StringRef{rev_host}, wildcard_patterns.size() - 1);
+        rw_router.add_route(rev_host, wildcard_patterns.size() - 1);
       } else {
         (*it).router.add_route(path, idx);
       }
@@ -897,7 +913,7 @@ int parse_mapping(Config *config, DownstreamAddrConfig addr,
       continue;
     }
 
-    router.add_route(StringRef{g.pattern}, idx);
+    router.add_route(g.pattern, idx);
   }
   return 0;
 }
@@ -1804,12 +1820,14 @@ int parse_config(Config *config, int optid, const StringRef &opt,
 
   switch (optid) {
   case SHRPX_OPTID_BACKEND: {
+    auto &downstreamconf = *config->conn.downstream;
     auto addr_end = std::find(std::begin(optarg), std::end(optarg), ';');
 
     DownstreamAddrConfig addr{};
     if (util::istarts_with(optarg, SHRPX_UNIX_PATH_PREFIX)) {
       auto path = std::begin(optarg) + SHRPX_UNIX_PATH_PREFIX.size();
-      addr.host = ImmutableString(path, addr_end);
+      addr.host =
+          make_string_ref(downstreamconf.balloc, StringRef{path, addr_end});
       addr.host_unix = true;
     } else {
       if (split_host_port(host, sizeof(host), &port,
@@ -1817,7 +1835,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
         return -1;
       }
 
-      addr.host = ImmutableString(host);
+      addr.host = make_string_ref(downstreamconf.balloc, StringRef{host});
       addr.port = port;
     }
 
@@ -3071,13 +3089,13 @@ int configure_downstream_group(Config *config, bool http2_proxy,
 
   if (addr_groups.empty()) {
     DownstreamAddrConfig addr{};
-    addr.host = ImmutableString::from_lit(DEFAULT_DOWNSTREAM_HOST);
+    addr.host = StringRef::from_lit(DEFAULT_DOWNSTREAM_HOST);
     addr.port = DEFAULT_DOWNSTREAM_PORT;
     addr.proto = PROTO_HTTP1;
 
     DownstreamAddrGroupConfig g(StringRef::from_lit("/"));
     g.addrs.push_back(std::move(addr));
-    router.add_route(StringRef{g.pattern}, addr_groups.size());
+    router.add_route(g.pattern, addr_groups.size());
     addr_groups.push_back(std::move(g));
   } else if (http2_proxy) {
     // We don't support host mapping in these cases.  Move all
@@ -3090,7 +3108,7 @@ int configure_downstream_group(Config *config, bool http2_proxy,
     std::vector<DownstreamAddrGroupConfig>().swap(addr_groups);
     // maybe not necessary?
     routerconf = RouterConfig{};
-    router.add_route(StringRef{catch_all.pattern}, addr_groups.size());
+    router.add_route(catch_all.pattern, addr_groups.size());
     addr_groups.push_back(std::move(catch_all));
   }
 
@@ -3100,7 +3118,7 @@ int configure_downstream_group(Config *config, bool http2_proxy,
     auto &sni = tlsconf.backend_sni_name;
     for (auto &addr_group : addr_groups) {
       for (auto &addr : addr_group.addrs) {
-        addr.sni = ImmutableString{sni};
+        addr.sni = StringRef{sni};
       }
     }
   }
@@ -3147,7 +3165,7 @@ int configure_downstream_group(Config *config, bool http2_proxy,
         // for AF_UNIX socket, we use "localhost" as host for backend
         // hostport.  This is used as Host header field to backend and
         // not going to be passed to any syscalls.
-        addr.hostport = ImmutableString::from_lit("localhost");
+        addr.hostport = StringRef::from_lit("localhost");
 
         auto path = addr.host.c_str();
         auto pathlen = addr.host.size();
@@ -3171,10 +3189,11 @@ int configure_downstream_group(Config *config, bool http2_proxy,
         continue;
       }
 
-      addr.hostport = ImmutableString(
-          util::make_http_hostport(StringRef(addr.host), addr.port));
+      addr.hostport =
+          util::make_http_hostport(downstreamconf.balloc, addr.host, addr.port);
 
-      auto hostport = util::make_hostport(StringRef{addr.host}, addr.port);
+      auto hostport =
+          util::make_hostport(downstreamconf.balloc, addr.host, addr.port);
 
       if (resolve_hostname(&addr.addr, addr.host.c_str(), addr.port,
                            downstreamconf.family, resolve_flags) == -1) {
