@@ -426,7 +426,8 @@ template <typename T> std::string utox(T n) {
 }
 
 void to_token68(std::string &base64str);
-void to_base64(std::string &token68str);
+
+StringRef to_base64(BlockAllocator &balloc, const StringRef &token68str);
 
 void show_candidates(const char *unkopt, option *options);
 

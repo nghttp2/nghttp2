@@ -410,22 +410,32 @@ void to_token68(std::string &base64str) {
                   std::end(base64str));
 }
 
-void to_base64(std::string &token68str) {
-  std::transform(std::begin(token68str), std::end(token68str),
-                 std::begin(token68str), [](char c) {
-                   switch (c) {
-                   case '-':
-                     return '+';
-                   case '_':
-                     return '/';
-                   default:
-                     return c;
-                   }
-                 });
-  if (token68str.size() & 0x3) {
-    token68str.append(4 - (token68str.size() & 0x3), '=');
+StringRef to_base64(BlockAllocator &balloc, const StringRef &token68str) {
+  // At most 3 padding '='
+  auto len = token68str.size() + 3;
+  auto iov = make_byte_ref(balloc, len + 1);
+  auto p = iov.base;
+
+  p = std::transform(std::begin(token68str), std::end(token68str), p,
+                     [](char c) {
+                       switch (c) {
+                       case '-':
+                         return '+';
+                       case '_':
+                         return '/';
+                       default:
+                         return c;
+                       }
+                     });
+
+  auto rem = token68str.size() & 0x3;
+  if (rem) {
+    p = std::fill_n(p, 4 - rem, '=');
   }
-  return;
+
+  *p = '\0';
+
+  return StringRef{iov.base, p};
 }
 
 namespace {

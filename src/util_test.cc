@@ -114,13 +114,12 @@ void test_util_inp_strlower(void) {
 }
 
 void test_util_to_base64(void) {
-  std::string x = "AAA--B_";
-  util::to_base64(x);
-  CU_ASSERT("AAA++B/=" == x);
+  BlockAllocator balloc(4096, 4096);
 
-  x = "AAA--B_B";
-  util::to_base64(x);
-  CU_ASSERT("AAA++B/B" == x);
+  CU_ASSERT("AAA++B/=" ==
+            util::to_base64(balloc, StringRef::from_lit("AAA--B_")));
+  CU_ASSERT("AAA++B/B" ==
+            util::to_base64(balloc, StringRef::from_lit("AAA--B_B")));
 }
 
 void test_util_to_token68(void) {

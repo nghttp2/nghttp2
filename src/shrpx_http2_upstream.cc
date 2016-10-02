@@ -108,15 +108,16 @@ int on_stream_close_callback(nghttp2_session *session, int32_t stream_id,
 int Http2Upstream::upgrade_upstream(HttpsUpstream *http) {
   int rv;
 
-  auto http2_settings = http->get_downstream()->get_http2_settings().str();
-  util::to_base64(http2_settings);
+  auto &balloc = http->get_downstream()->get_block_allocator();
 
-  auto settings_payload =
-      base64::decode(std::begin(http2_settings), std::end(http2_settings));
+  auto http2_settings = http->get_downstream()->get_http2_settings();
+  http2_settings = util::to_base64(balloc, http2_settings);
+
+  auto settings_payload = base64::decode(balloc, std::begin(http2_settings),
+                                         std::end(http2_settings));
 
   rv = nghttp2_session_upgrade2(
-      session_, reinterpret_cast<const uint8_t *>(settings_payload.c_str()),
-      settings_payload.size(),
+      session_, settings_payload.byte(), settings_payload.size(),
       http->get_downstream()->request().method == HTTP_HEAD, nullptr);
   if (rv != 0) {
     if (LOG_ENABLED(INFO)) {
