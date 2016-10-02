@@ -2305,7 +2305,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     LOG(WARN) << opt << ": not implemented yet";
     return 0;
   case SHRPX_OPTID_NPN_LIST:
-    config->tls.npn_list = util::parse_config_str_list(optarg);
+    config->tls.npn_list = util::split_str(optarg, ',');
 
     return 0;
   case SHRPX_OPTID_TLS_PROTO_LIST:

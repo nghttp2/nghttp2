@@ -167,7 +167,7 @@ int cert_lookup_tree_add_cert_from_x509(CertLookupTree *lt, size_t idx,
 
 // Returns true if |proto| is included in the
 // protocol list |protos|.
-bool in_proto_list(const std::vector<std::string> &protos,
+bool in_proto_list(const std::vector<StringRef> &protos,
                    const StringRef &proto);
 
 // Returns true if security requirement for HTTP/2 is fulfilled.
@@ -179,7 +179,7 @@ bool check_http2_requirement(SSL *ssl);
 long int create_tls_proto_mask(const std::vector<std::string> &tls_proto_list);
 
 int set_alpn_prefs(std::vector<unsigned char> &out,
-                   const std::vector<std::string> &protos);
+                   const std::vector<StringRef> &protos);
 
 // Setups server side SSL_CTX.  This function inspects get_config()
 // and if upstream_no_tls is true, returns nullptr.  Otherwise

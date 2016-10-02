@@ -2445,7 +2445,7 @@ int process_options(Config *config,
   auto &tlsconf = config->tls;
 
   if (tlsconf.npn_list.empty()) {
-    tlsconf.npn_list = util::parse_config_str_list(DEFAULT_NPN_LIST);
+    tlsconf.npn_list = util::split_str(DEFAULT_NPN_LIST, ',');
   }
   if (tlsconf.tls_proto_list.empty()) {
     tlsconf.tls_proto_list =

@@ -526,7 +526,7 @@ struct TLSConfig {
   std::vector<unsigned char> alpn_prefs;
   // list of supported NPN/ALPN protocol strings in the order of
   // preference.
-  std::vector<std::string> npn_list;
+  std::vector<StringRef> npn_list;
   // list of supported SSL/TLS protocol strings.
   std::vector<std::string> tls_proto_list;
   BIO_METHOD *bio_method;

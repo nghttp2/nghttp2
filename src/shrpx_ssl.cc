@@ -103,7 +103,7 @@ int verify_callback(int preverify_ok, X509_STORE_CTX *ctx) {
 } // namespace
 
 int set_alpn_prefs(std::vector<unsigned char> &out,
-                   const std::vector<std::string> &protos) {
+                   const std::vector<StringRef> &protos) {
   size_t len = 0;
 
   for (const auto &proto : protos) {
@@ -125,8 +125,7 @@ int set_alpn_prefs(std::vector<unsigned char> &out,
 
   for (const auto &proto : protos) {
     *ptr++ = proto.size();
-    memcpy(ptr, proto.c_str(), proto.size());
-    ptr += proto.size();
+    ptr = std::copy(std::begin(proto), std::end(proto), ptr);
   }
 
   return 0;
@@ -469,8 +468,7 @@ int alpn_select_proto_cb(SSL *ssl, const unsigned char **out,
       auto proto_len = *p;
 
       if (proto_id + proto_len <= end &&
-          util::streq(StringRef{target_proto_id},
-                      StringRef{proto_id, proto_len})) {
+          util::streq(target_proto_id, StringRef{proto_id, proto_len})) {
 
         *out = reinterpret_cast<const unsigned char *>(proto_id);
         *outlen = proto_len;
@@ -1320,10 +1318,10 @@ int cert_lookup_tree_add_cert_from_x509(CertLookupTree *lt, size_t idx,
   return 0;
 }
 
-bool in_proto_list(const std::vector<std::string> &protos,
+bool in_proto_list(const std::vector<StringRef> &protos,
                    const StringRef &needle) {
   for (auto &proto : protos) {
-    if (util::streq(StringRef{proto}, needle)) {
+    if (util::streq(proto, needle)) {
       return true;
     }
   }
