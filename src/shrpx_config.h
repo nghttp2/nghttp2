@@ -439,9 +439,9 @@ struct TicketKeys {
 struct HttpProxy {
   Address addr;
   // host in http proxy URI
-  std::string host;
+  StringRef host;
   // userinfo in http proxy URI, not percent-encoded form
-  std::string userinfo;
+  StringRef userinfo;
   // port in http proxy URI
   uint16_t port;
 };

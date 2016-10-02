@@ -2258,11 +2258,12 @@ int parse_config(Config *config, int optid, const StringRef &opt,
         // Surprisingly, u.field_set & UF_USERINFO is nonzero even if
         // userinfo component is empty string.
         if (!uf.empty()) {
-          proxy.userinfo = util::percent_decode(std::begin(uf), std::end(uf));
+          proxy.userinfo = util::percent_decode(config->balloc, uf);
         }
       }
       if (u.field_set & UF_HOST) {
-        http2::copy_url_component(proxy.host, &u, UF_HOST, optarg.c_str());
+        proxy.host = make_string_ref(
+            config->balloc, util::get_uri_field(optarg.c_str(), u, UF_HOST));
       } else {
         LOG(ERROR) << opt << ": no hostname specified";
         return -1;
