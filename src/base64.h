@@ -29,6 +29,9 @@
 
 #include <string>
 
+#include "template.h"
+#include "allocator.h"
+
 namespace nghttp2 {
 
 namespace base64 {
@@ -87,7 +90,8 @@ InputIt next_decode_input(InputIt first, InputIt last, const int *tbl) {
   return first;
 }
 
-template <typename InputIt> std::string decode(InputIt first, InputIt last) {
+template <typename InputIt, typename OutputIt>
+OutputIt decode(InputIt first, InputIt last, OutputIt d_first) {
   static constexpr int INDEX_TABLE[] = {
       -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
       -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
@@ -104,37 +108,29 @@ template <typename InputIt> std::string decode(InputIt first, InputIt last) {
       -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
       -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
       -1, -1, -1, -1};
-  auto len = last - first;
-  if (len % 4 != 0) {
-    return "";
-  }
-  std::string res;
-  res.resize(len / 4 * 3);
-
-  auto p = std::begin(res);
+  assert(std::distance(first, last) % 4 == 0);
+  auto p = d_first;
   for (; first != last;) {
     uint32_t n = 0;
     for (int i = 1; i <= 4; ++i, ++first) {
       auto idx = INDEX_TABLE[static_cast<size_t>(*first)];
       if (idx == -1) {
         if (i <= 2) {
-          return "";
+          return d_first;
         }
         if (i == 3) {
           if (*first == '=' && *(first + 1) == '=' && first + 2 == last) {
             *p++ = n >> 16;
-            res.resize(p - std::begin(res));
-            return res;
+            return p;
           }
-          return "";
+          return d_first;
         }
         if (*first == '=' && first + 1 == last) {
           *p++ = n >> 16;
           *p++ = n >> 8 & 0xffu;
-          res.resize(p - std::begin(res));
-          return res;
+          return p;
         }
-        return "";
+        return d_first;
       }
 
       n += idx << (24 - i * 6);
@@ -145,7 +141,35 @@ template <typename InputIt> std::string decode(InputIt first, InputIt last) {
     *p++ = n & 0xffu;
   }
 
+  return p;
+}
+
+template <typename InputIt> std::string decode(InputIt first, InputIt last) {
+  auto len = std::distance(first, last);
+  if (len % 4 != 0) {
+    return "";
+  }
+  std::string res;
+  res.resize(len / 4 * 3);
+
+  res.erase(decode(first, last, std::begin(res)), std::end(res));
+
   return res;
+}
+
+template <typename InputIt>
+StringRef decode(BlockAllocator &balloc, InputIt first, InputIt last) {
+  auto len = std::distance(first, last);
+  if (len % 4 != 0) {
+    return StringRef::from_lit("");
+  }
+  auto iov = make_byte_ref(balloc, len / 4 * 3 + 1);
+  auto p = iov.base;
+
+  p = decode(first, last, p);
+  *p = '\0';
+
+  return StringRef{iov.base, p};
 }
 
 } // namespace base64

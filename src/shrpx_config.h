@@ -54,6 +54,7 @@
 #include "template.h"
 #include "http2.h"
 #include "network.h"
+#include "allocator.h"
 
 using namespace nghttp2;
 
@@ -336,7 +337,7 @@ enum shrpx_forwarded_node_type {
 };
 
 struct AltSvc {
-  std::string protocol_id, host, origin, service;
+  StringRef protocol_id, host, origin, service;
 
   uint16_t port;
 };
@@ -352,12 +353,13 @@ enum UpstreamAltMode {
 
 struct UpstreamAddr {
   // The frontend address (e.g., FQDN, hostname, IP address).  If
-  // |host_unix| is true, this is UNIX domain socket path.
-  ImmutableString host;
+  // |host_unix| is true, this is UNIX domain socket path.  This must
+  // be NULL terminated string.
+  StringRef host;
   // For TCP socket, this is <IP address>:<PORT>.  For IPv6 address,
   // address is surrounded by square brackets.  If socket is UNIX
   // domain socket, this is "localhost".
-  ImmutableString hostport;
+  StringRef hostport;
   // frontend port.  0 if |host_unix| is true.
   uint16_t port;
   // For TCP socket, this is either AF_INET or AF_INET6.  For UNIX
@@ -375,13 +377,13 @@ struct UpstreamAddr {
 struct DownstreamAddrConfig {
   Address addr;
   // backend address.  If |host_unix| is true, this is UNIX domain
-  // socket path.
-  ImmutableString host;
+  // socket path.  This must be NULL terminated string.
+  StringRef host;
   // <HOST>:<PORT>.  This does not treat 80 and 443 specially.  If
   // |host_unix| is true, this is "localhost".
-  ImmutableString hostport;
+  StringRef hostport;
   // hostname sent as SNI field
-  ImmutableString sni;
+  StringRef sni;
   size_t fall;
   size_t rise;
   // Application protocol used in this group
@@ -404,9 +406,9 @@ struct AffinityHash {
 
 struct DownstreamAddrGroupConfig {
   DownstreamAddrGroupConfig(const StringRef &pattern)
-      : pattern(pattern.c_str(), pattern.size()), affinity(AFFINITY_NONE) {}
+      : pattern(pattern), affinity(AFFINITY_NONE) {}
 
-  ImmutableString pattern;
+  StringRef pattern;
   std::vector<DownstreamAddrConfig> addrs;
   // Bunch of session affinity hash.  Only used if affinity ==
   // AFFINITY_IP.
@@ -437,9 +439,9 @@ struct TicketKeys {
 struct HttpProxy {
   Address addr;
   // host in http proxy URI
-  std::string host;
+  StringRef host;
   // userinfo in http proxy URI, not percent-encoded form
-  std::string userinfo;
+  StringRef userinfo;
   // port in http proxy URI
   uint16_t port;
 };
@@ -452,10 +454,10 @@ struct TLSConfig {
       uint16_t port;
       // Hostname of memcached server.  This is also used as SNI field
       // if TLS is enabled.
-      ImmutableString host;
+      StringRef host;
       // Client private key and certificate for authentication
-      ImmutableString private_key_file;
-      ImmutableString cert_file;
+      StringRef private_key_file;
+      StringRef cert_file;
       ev_tstamp interval;
       // Maximum number of retries when getting TLS ticket key from
       // mamcached, due to network error.
@@ -468,7 +470,7 @@ struct TLSConfig {
       int family;
       bool tls;
     } memcached;
-    std::vector<std::string> files;
+    std::vector<StringRef> files;
     const EVP_CIPHER *cipher;
     // true if --tls-ticket-key-cipher is used
     bool cipher_given;
@@ -481,10 +483,10 @@ struct TLSConfig {
       uint16_t port;
       // Hostname of memcached server.  This is also used as SNI field
       // if TLS is enabled.
-      ImmutableString host;
+      StringRef host;
       // Client private key and certificate for authentication
-      ImmutableString private_key_file;
-      ImmutableString cert_file;
+      StringRef private_key_file;
+      StringRef cert_file;
       // Address family of memcached connection.  One of either
       // AF_INET, AF_INET6 or AF_UNSPEC.
       int family;
@@ -501,7 +503,7 @@ struct TLSConfig {
   // OCSP realted configurations
   struct {
     ev_tstamp update_interval;
-    ImmutableString fetch_ocsp_response_file;
+    StringRef fetch_ocsp_response_file;
     bool disabled;
   } ocsp;
 
@@ -509,36 +511,36 @@ struct TLSConfig {
   struct {
     // Path to file containing CA certificate solely used for client
     // certificate validation
-    ImmutableString cacert;
+    StringRef cacert;
     bool enabled;
   } client_verify;
 
   // Client private key and certificate used in backend connections.
   struct {
-    ImmutableString private_key_file;
-    ImmutableString cert_file;
+    StringRef private_key_file;
+    StringRef cert_file;
   } client;
 
   // The list of (private key file, certificate file) pair
-  std::vector<std::pair<std::string, std::string>> subcerts;
+  std::vector<std::pair<StringRef, StringRef>> subcerts;
   std::vector<unsigned char> alpn_prefs;
   // list of supported NPN/ALPN protocol strings in the order of
   // preference.
-  std::vector<std::string> npn_list;
+  std::vector<StringRef> npn_list;
   // list of supported SSL/TLS protocol strings.
-  std::vector<std::string> tls_proto_list;
+  std::vector<StringRef> tls_proto_list;
   BIO_METHOD *bio_method;
   // Bit mask to disable SSL/TLS protocol versions.  This will be
   // passed to SSL_CTX_set_options().
   long int tls_proto_mask;
-  std::string backend_sni_name;
+  StringRef backend_sni_name;
   std::chrono::seconds session_timeout;
-  ImmutableString private_key_file;
-  ImmutableString private_key_passwd;
-  ImmutableString cert_file;
-  ImmutableString dh_param_file;
-  ImmutableString ciphers;
-  ImmutableString cacert;
+  StringRef private_key_file;
+  StringRef private_key_passwd;
+  StringRef cert_file;
+  StringRef dh_param_file;
+  StringRef ciphers;
+  StringRef cacert;
   bool insecure;
   bool no_http2_cipher_black_list;
 };
@@ -556,7 +558,7 @@ struct HttpConfig {
     // obfuscated value used in "by" parameter of Forwarded header
     // field.  This is only used when user defined static obfuscated
     // string is provided.
-    std::string by_obfuscated;
+    StringRef by_obfuscated;
     // bitwise-OR of one or more of shrpx_forwarded_param values.
     uint32_t params;
     // type of value recorded in "by" parameter of Forwarded header
@@ -573,9 +575,9 @@ struct HttpConfig {
   } xff;
   std::vector<AltSvc> altsvcs;
   std::vector<ErrorPage> error_pages;
-  Headers add_request_headers;
-  Headers add_response_headers;
-  ImmutableString server_name;
+  HeaderRefs add_request_headers;
+  HeaderRefs add_response_headers;
+  StringRef server_name;
   size_t request_header_field_buffer;
   size_t max_request_header_fields;
   size_t response_header_field_buffer;
@@ -590,8 +592,8 @@ struct Http2Config {
   struct {
     struct {
       struct {
-        ImmutableString request_header_file;
-        ImmutableString response_header_file;
+        StringRef request_header_file;
+        StringRef response_header_file;
         FILE *request_header;
         FILE *response_header;
       } dump;
@@ -634,12 +636,12 @@ struct Http2Config {
 struct LoggingConfig {
   struct {
     std::vector<LogFragment> format;
-    ImmutableString file;
+    StringRef file;
     // Send accesslog to syslog, ignoring accesslog_file.
     bool syslog;
   } access;
   struct {
-    ImmutableString file;
+    StringRef file;
     // Send errorlog to syslog, ignoring errorlog_file.
     bool syslog;
   } error;
@@ -655,10 +657,11 @@ struct RateLimitConfig {
 // field.  router includes all path patterns sharing the same wildcard
 // host.
 struct WildcardPattern {
-  WildcardPattern(const StringRef &host)
-      : host(std::begin(host), std::end(host)) {}
+  WildcardPattern(const StringRef &host) : host(host) {}
 
-  ImmutableString host;
+  // This might not be NULL terminated.  Currently it is only used for
+  // comparison.
+  StringRef host;
   Router router;
 };
 
@@ -676,7 +679,8 @@ struct RouterConfig {
 
 struct DownstreamConfig {
   DownstreamConfig()
-      : timeout{},
+      : balloc(1024, 1024),
+        timeout{},
         addr_group_catch_all{0},
         connections_per_host{0},
         connections_per_frontend{0},
@@ -684,6 +688,16 @@ struct DownstreamConfig {
         response_buffer_size{0},
         family{0} {}
 
+  DownstreamConfig(const DownstreamConfig &) = delete;
+  DownstreamConfig(DownstreamConfig &&) = delete;
+  DownstreamConfig &operator=(const DownstreamConfig &) = delete;
+  DownstreamConfig &operator=(DownstreamConfig &&) = delete;
+
+  // Allocator to allocate memory for Downstream configuration.  Since
+  // we may swap around DownstreamConfig in arbitrary times with API
+  // calls, we should use their own allocator instead of per Config
+  // allocator.
+  BlockAllocator balloc;
   struct {
     ev_tstamp read;
     ev_tstamp write;
@@ -745,7 +759,25 @@ struct APIConfig {
 };
 
 struct Config {
-  Config() = default;
+  Config()
+      : balloc(4096, 4096),
+        downstream_http_proxy{},
+        http{},
+        http2{},
+        tls{},
+        logging{},
+        conn{},
+        api{},
+        num_worker{0},
+        padding{0},
+        rlimit_nofile{0},
+        uid{0},
+        gid{0},
+        pid{0},
+        verbose{false},
+        daemon{false},
+        http2_proxy{false},
+        ev_loop_flags{0} {}
   ~Config();
 
   Config(Config &&) = delete;
@@ -753,6 +785,10 @@ struct Config {
   Config &operator=(Config &&) = delete;
   Config &operator=(const Config &&) = delete;
 
+  // Allocator to allocate memory for this object except for
+  // DownstreamConfig.  Currently, it is used to allocate memory for
+  // strings.
+  BlockAllocator balloc;
   HttpProxy downstream_http_proxy;
   HttpConfig http;
   Http2Config http2;
@@ -760,10 +796,10 @@ struct Config {
   LoggingConfig logging;
   ConnectionConfig conn;
   APIConfig api;
-  ImmutableString pid_file;
-  ImmutableString conf_path;
-  ImmutableString user;
-  ImmutableString mruby_file;
+  StringRef pid_file;
+  StringRef conf_path;
+  StringRef user;
+  StringRef mruby_file;
   size_t num_worker;
   size_t padding;
   size_t rlimit_nofile;
@@ -958,9 +994,11 @@ int load_config(Config *config, const char *filename,
 // like "NAME: VALUE".  We require that NAME is non empty string.  ":"
 // is allowed at the start of the NAME, but NAME == ":" is not
 // allowed.  This function returns pair of NAME and VALUE.
-Headers::value_type parse_header(const StringRef &optarg);
+HeaderRefs::value_type parse_header(BlockAllocator &balloc,
+                                    const StringRef &optarg);
 
-std::vector<LogFragment> parse_log_format(const StringRef &optarg);
+std::vector<LogFragment> parse_log_format(BlockAllocator &balloc,
+                                          const StringRef &optarg);
 
 // Returns string for syslog |facility|.
 StringRef str_syslog_facility(int facility);
@@ -975,7 +1013,7 @@ FILE *open_file_for_write(const char *filename);
 // expected file size.  This function returns TicketKey if it
 // succeeds, or nullptr.
 std::unique_ptr<TicketKeys>
-read_tls_ticket_key_file(const std::vector<std::string> &files,
+read_tls_ticket_key_file(const std::vector<StringRef> &files,
                          const EVP_CIPHER *cipher, const EVP_MD *hmac);
 
 // Returns string representation of |proto|.

@@ -129,11 +129,11 @@ std::string percent_decode(InputIt first, InputIt last) {
 StringRef percent_decode(BlockAllocator &balloc, const StringRef &src);
 
 // Percent encode |target| if character is not in token or '%'.
-std::string percent_encode_token(const std::string &target);
+StringRef percent_encode_token(BlockAllocator &balloc, const StringRef &target);
 
 // Returns quotedString version of |target|.  Currently, this function
 // just replace '"' with '\"'.
-std::string quote_string(const std::string &target);
+StringRef quote_string(BlockAllocator &balloc, const StringRef &target);
 
 std::string format_hex(const unsigned char *s, size_t len);
 
@@ -144,6 +144,8 @@ template <size_t N> std::string format_hex(const unsigned char(&s)[N]) {
 template <size_t N> std::string format_hex(const std::array<uint8_t, N> &s) {
   return format_hex(s.data(), s.size());
 }
+
+StringRef format_hex(BlockAllocator &balloc, const StringRef &s);
 
 std::string http_date(time_t t);
 
@@ -424,7 +426,8 @@ template <typename T> std::string utox(T n) {
 }
 
 void to_token68(std::string &base64str);
-void to_base64(std::string &token68str);
+
+StringRef to_base64(BlockAllocator &balloc, const StringRef &token68str);
 
 void show_candidates(const char *unkopt, option *options);
 
@@ -630,11 +633,15 @@ std::string format_duration(double t);
 // Creates "host:port" string using given |host| and |port|.  If
 // |host| is numeric IPv6 address (e.g., ::1), it is enclosed by "["
 // and "]".  If |port| is 80 or 443, port part is omitted.
-std::string make_http_hostport(const StringRef &host, uint16_t port);
+StringRef make_http_hostport(BlockAllocator &balloc, const StringRef &host,
+                             uint16_t port);
 
 // Just like make_http_hostport(), but doesn't treat 80 and 443
 // specially.
 std::string make_hostport(const StringRef &host, uint16_t port);
+
+StringRef make_hostport(BlockAllocator &balloc, const StringRef &host,
+                        uint16_t port);
 
 // Dumps |src| of length |len| in the format similar to `hexdump -C`.
 void hexdump(FILE *out, const uint8_t *src, size_t len);
@@ -665,16 +672,17 @@ uint64_t get_uint64(const uint8_t *data);
 int read_mime_types(std::map<std::string, std::string> &res,
                     const char *filename);
 
-template <typename Generator>
-std::string random_alpha_digit(Generator &gen, size_t len) {
-  std::string res;
-  res.reserve(len);
+// Fills random alpha and digit byte to the range [|first|, |last|).
+// Returns the one beyond the |last|.
+template <typename OutputIt, typename Generator>
+OutputIt random_alpha_digit(OutputIt first, OutputIt last, Generator &gen) {
+  constexpr uint8_t s[] =
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
   std::uniform_int_distribution<> dis(0, 26 * 2 + 10 - 1);
-  for (; len > 0; --len) {
-    res += "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"[dis(
-        gen)];
+  for (; first != last; ++first) {
+    *first = s[dis(gen)];
   }
-  return res;
+  return first;
 }
 
 template <typename OutputIterator, typename CharT, size_t N>

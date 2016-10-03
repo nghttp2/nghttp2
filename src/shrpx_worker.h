@@ -48,6 +48,7 @@
 #include "shrpx_ssl.h"
 #include "shrpx_live_check.h"
 #include "shrpx_connect_blocker.h"
+#include "allocator.h"
 
 using namespace nghttp2;
 
@@ -75,15 +76,15 @@ struct DownstreamAddr {
   Address addr;
   // backend address.  If |host_unix| is true, this is UNIX domain
   // socket path.
-  ImmutableString host;
-  ImmutableString hostport;
+  StringRef host;
+  StringRef hostport;
   // backend port.  0 if |host_unix| is true.
   uint16_t port;
   // true if |host| contains UNIX domain socket path.
   bool host_unix;
 
   // sni field to send remote server if TLS is enabled.
-  ImmutableString sni;
+  StringRef sni;
 
   std::unique_ptr<ConnectBlocker> connect_blocker;
   std::unique_ptr<LiveCheck> live_check;
@@ -128,8 +129,18 @@ struct WeightedPri {
 
 struct SharedDownstreamAddr {
   SharedDownstreamAddr()
-      : next{0}, http1_pri{}, http2_pri{}, affinity{AFFINITY_NONE} {}
+      : balloc(1024, 1024),
+        next{0},
+        http1_pri{},
+        http2_pri{},
+        affinity{AFFINITY_NONE} {}
 
+  SharedDownstreamAddr(const SharedDownstreamAddr &) = delete;
+  SharedDownstreamAddr(SharedDownstreamAddr &&) = delete;
+  SharedDownstreamAddr &operator=(const SharedDownstreamAddr &) = delete;
+  SharedDownstreamAddr &operator=(SharedDownstreamAddr &&) = delete;
+
+  BlockAllocator balloc;
   std::vector<DownstreamAddr> addrs;
   // Bunch of session affinity hash.  Only used if affinity ==
   // AFFINITY_IP.
@@ -161,6 +172,11 @@ struct SharedDownstreamAddr {
 
 struct DownstreamAddrGroup {
   DownstreamAddrGroup() : retired{false} {};
+
+  DownstreamAddrGroup(const DownstreamAddrGroup &) = delete;
+  DownstreamAddrGroup(DownstreamAddrGroup &&) = delete;
+  DownstreamAddrGroup &operator=(const DownstreamAddrGroup &) = delete;
+  DownstreamAddrGroup &operator=(DownstreamAddrGroup &&) = delete;
 
   ImmutableString pattern;
   std::shared_ptr<SharedDownstreamAddr> shared_addr;

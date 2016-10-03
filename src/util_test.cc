@@ -26,6 +26,7 @@
 
 #include <cstring>
 #include <iostream>
+#include <random>
 
 #include <CUnit/CUnit.h>
 
@@ -113,13 +114,12 @@ void test_util_inp_strlower(void) {
 }
 
 void test_util_to_base64(void) {
-  std::string x = "AAA--B_";
-  util::to_base64(x);
-  CU_ASSERT("AAA++B/=" == x);
+  BlockAllocator balloc(4096, 4096);
 
-  x = "AAA--B_B";
-  util::to_base64(x);
-  CU_ASSERT("AAA++B/B" == x);
+  CU_ASSERT("AAA++B/=" ==
+            util::to_base64(balloc, StringRef::from_lit("AAA--B_")));
+  CU_ASSERT("AAA++B/B" ==
+            util::to_base64(balloc, StringRef::from_lit("AAA--B_B")));
 }
 
 void test_util_to_token68(void) {
@@ -133,10 +133,15 @@ void test_util_to_token68(void) {
 }
 
 void test_util_percent_encode_token(void) {
-  CU_ASSERT("h2" == util::percent_encode_token("h2"));
-  CU_ASSERT("h3~" == util::percent_encode_token("h3~"));
-  CU_ASSERT("100%25" == util::percent_encode_token("100%"));
-  CU_ASSERT("http%202" == util::percent_encode_token("http 2"));
+  BlockAllocator balloc(4096, 4096);
+  CU_ASSERT("h2" ==
+            util::percent_encode_token(balloc, StringRef::from_lit("h2")));
+  CU_ASSERT("h3~" ==
+            util::percent_encode_token(balloc, StringRef::from_lit("h3~")));
+  CU_ASSERT("100%25" ==
+            util::percent_encode_token(balloc, StringRef::from_lit("100%")));
+  CU_ASSERT("http%202" ==
+            util::percent_encode_token(balloc, StringRef::from_lit("http 2")));
 }
 
 void test_util_percent_encode_path(void) {
@@ -169,9 +174,12 @@ void test_util_percent_decode(void) {
 }
 
 void test_util_quote_string(void) {
-  CU_ASSERT("alpha" == util::quote_string("alpha"));
-  CU_ASSERT("" == util::quote_string(""));
-  CU_ASSERT("\\\"alpha\\\"" == util::quote_string("\"alpha\""));
+  BlockAllocator balloc(4096, 4096);
+  CU_ASSERT("alpha" ==
+            util::quote_string(balloc, StringRef::from_lit("alpha")));
+  CU_ASSERT("" == util::quote_string(balloc, StringRef::from_lit("")));
+  CU_ASSERT("\\\"alpha\\\"" ==
+            util::quote_string(balloc, StringRef::from_lit("\"alpha\"")));
 }
 
 void test_util_utox(void) {
@@ -494,12 +502,15 @@ void test_util_parse_config_str_list(void) {
 }
 
 void test_util_make_http_hostport(void) {
-  CU_ASSERT("localhost" ==
-            util::make_http_hostport(StringRef::from_lit("localhost"), 80));
+  BlockAllocator balloc(4096, 4096);
+
+  CU_ASSERT("localhost" == util::make_http_hostport(
+                               balloc, StringRef::from_lit("localhost"), 80));
   CU_ASSERT("[::1]" ==
-            util::make_http_hostport(StringRef::from_lit("::1"), 443));
-  CU_ASSERT("localhost:3000" ==
-            util::make_http_hostport(StringRef::from_lit("localhost"), 3000));
+            util::make_http_hostport(balloc, StringRef::from_lit("::1"), 443));
+  CU_ASSERT(
+      "localhost:3000" ==
+      util::make_http_hostport(balloc, StringRef::from_lit("localhost"), 3000));
 }
 
 void test_util_make_hostport(void) {
@@ -507,6 +518,12 @@ void test_util_make_hostport(void) {
             util::make_hostport(StringRef::from_lit("localhost"), 80));
   CU_ASSERT("[::1]:443" ==
             util::make_hostport(StringRef::from_lit("::1"), 443));
+
+  BlockAllocator balloc(4096, 4096);
+  CU_ASSERT("localhost:80" ==
+            util::make_hostport(balloc, StringRef::from_lit("localhost"), 80));
+  CU_ASSERT("[::1]:443" ==
+            util::make_hostport(balloc, StringRef::from_lit("::1"), 443));
 }
 
 void test_util_strifind(void) {
@@ -526,6 +543,29 @@ void test_util_strifind(void) {
 
   CU_ASSERT(!util::strifind(StringRef::from_lit("nghttp2"),
                             StringRef::from_lit("http1")));
+}
+
+void test_util_random_alpha_digit(void) {
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::array<uint8_t, 19> data;
+
+  auto p = util::random_alpha_digit(std::begin(data), std::end(data), gen);
+
+  CU_ASSERT(std::end(data) == p);
+
+  for (auto b : data) {
+    CU_ASSERT(('A' <= b && b <= 'Z') || ('a' <= b && b <= 'z') ||
+              ('0' <= b && b <= '9'));
+  }
+}
+
+void test_util_format_hex(void) {
+  BlockAllocator balloc(4096, 4096);
+
+  CU_ASSERT("0ff0" ==
+            util::format_hex(balloc, StringRef::from_lit("\x0f\xf0")));
+  CU_ASSERT("" == util::format_hex(balloc, StringRef::from_lit("")));
 }
 
 } // namespace shrpx

@@ -176,6 +176,9 @@ int main(int argc, char *argv[]) {
       !CU_add_test(pSuite, "util_make_hostport",
                    shrpx::test_util_make_hostport) ||
       !CU_add_test(pSuite, "util_strifind", shrpx::test_util_strifind) ||
+      !CU_add_test(pSuite, "util_random_alpha_digit",
+                   shrpx::test_util_random_alpha_digit) ||
+      !CU_add_test(pSuite, "util_format_hex", shrpx::test_util_format_hex) ||
       !CU_add_test(pSuite, "gzip_inflate", test_nghttp2_gzip_inflate) ||
       !CU_add_test(pSuite, "buffer_write", nghttp2::test_buffer_write) ||
       !CU_add_test(pSuite, "pool_recycle", nghttp2::test_pool_recycle) ||

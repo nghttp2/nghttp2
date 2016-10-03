@@ -59,31 +59,40 @@ void test_base64_encode(void) {
 }
 
 void test_base64_decode(void) {
+  BlockAllocator balloc(4096, 4096);
   {
     std::string in = "/w==";
     auto out = base64::decode(std::begin(in), std::end(in));
     CU_ASSERT("\xff" == out);
+    CU_ASSERT("\xff" == base64::decode(balloc, std::begin(in), std::end(in)));
   }
   {
     std::string in = "//4=";
     auto out = base64::decode(std::begin(in), std::end(in));
     CU_ASSERT("\xff\xfe" == out);
+    CU_ASSERT("\xff\xfe" ==
+              base64::decode(balloc, std::begin(in), std::end(in)));
   }
   {
     std::string in = "//79";
     auto out = base64::decode(std::begin(in), std::end(in));
     CU_ASSERT("\xff\xfe\xfd" == out);
+    CU_ASSERT("\xff\xfe\xfd" ==
+              base64::decode(balloc, std::begin(in), std::end(in)));
   }
   {
     std::string in = "//79/A==";
     auto out = base64::decode(std::begin(in), std::end(in));
     CU_ASSERT("\xff\xfe\xfd\xfc" == out);
+    CU_ASSERT("\xff\xfe\xfd\xfc" ==
+              base64::decode(balloc, std::begin(in), std::end(in)));
   }
   {
     // we check the number of valid input must be multiples of 4
     std::string in = "//79=";
     auto out = base64::decode(std::begin(in), std::end(in));
     CU_ASSERT("" == out);
+    CU_ASSERT("" == base64::decode(balloc, std::begin(in), std::end(in)));
   }
   {
     // ending invalid character at the boundary of multiples of 4 is
@@ -91,18 +100,21 @@ void test_base64_decode(void) {
     std::string in = "bmdodHRw\n";
     auto out = base64::decode(std::begin(in), std::end(in));
     CU_ASSERT("" == out);
+    CU_ASSERT("" == base64::decode(balloc, std::begin(in), std::end(in)));
   }
   {
     // after seeing '=', subsequent input must be also '='.
     std::string in = "//79/A=A";
     auto out = base64::decode(std::begin(in), std::end(in));
     CU_ASSERT("" == out);
+    CU_ASSERT("" == base64::decode(balloc, std::begin(in), std::end(in)));
   }
   {
     // additional '=' at the end is bad
     std::string in = "//79/A======";
     auto out = base64::decode(std::begin(in), std::end(in));
     CU_ASSERT("" == out);
+    CU_ASSERT("" == base64::decode(balloc, std::begin(in), std::end(in)));
   }
 }
 

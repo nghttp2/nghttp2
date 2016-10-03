@@ -100,7 +100,7 @@ MemcachedConnection::MemcachedConnection(const Address *addr,
             connectcb, readcb, timeoutcb, this, 0, 0., PROTO_MEMCACHED),
       do_read_(&MemcachedConnection::noop),
       do_write_(&MemcachedConnection::noop),
-      sni_name_(sni_name.str()),
+      sni_name_(sni_name),
       connect_blocker_(gen, loop, [] {}, [] {}),
       parse_state_{},
       addr_(addr),
@@ -268,7 +268,7 @@ int MemcachedConnection::tls_handshake() {
   auto &tlsconf = get_config()->tls;
 
   if (!tlsconf.insecure &&
-      ssl::check_cert(conn_.tls.ssl, addr_, StringRef(sni_name_)) != 0) {
+      ssl::check_cert(conn_.tls.ssl, addr_, sni_name_) != 0) {
     connect_blocker_.on_failure();
     return -1;
   }

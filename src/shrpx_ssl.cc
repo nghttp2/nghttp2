@@ -103,7 +103,7 @@ int verify_callback(int preverify_ok, X509_STORE_CTX *ctx) {
 } // namespace
 
 int set_alpn_prefs(std::vector<unsigned char> &out,
-                   const std::vector<std::string> &protos) {
+                   const std::vector<StringRef> &protos) {
   size_t len = 0;
 
   for (const auto &proto : protos) {
@@ -125,8 +125,7 @@ int set_alpn_prefs(std::vector<unsigned char> &out,
 
   for (const auto &proto : protos) {
     *ptr++ = proto.size();
-    memcpy(ptr, proto.c_str(), proto.size());
-    ptr += proto.size();
+    ptr = std::copy(std::begin(proto), std::end(proto), ptr);
   }
 
   return 0;
@@ -243,6 +242,7 @@ int tls_session_new_cb(SSL *ssl, SSL_SESSION *session) {
   auto handler = static_cast<ClientHandler *>(conn->data);
   auto worker = handler->get_worker();
   auto dispatcher = worker->get_session_cache_memcached_dispatcher();
+  auto &balloc = handler->get_block_allocator();
 
   const unsigned char *id;
   unsigned int idlen;
@@ -256,7 +256,8 @@ int tls_session_new_cb(SSL *ssl, SSL_SESSION *session) {
   auto req = make_unique<MemcachedRequest>();
   req->op = MEMCACHED_OP_ADD;
   req->key = MEMCACHED_SESSION_CACHE_KEY_PREFIX.str();
-  req->key += util::format_hex(id, idlen);
+  req->key +=
+      util::format_hex(balloc, StringRef{id, static_cast<size_t>(idlen)});
 
   auto sessionlen = i2d_SSL_SESSION(session, nullptr);
   req->value.resize(sessionlen);
@@ -295,6 +296,7 @@ SSL_SESSION *tls_session_get_cb(SSL *ssl,
   auto handler = static_cast<ClientHandler *>(conn->data);
   auto worker = handler->get_worker();
   auto dispatcher = worker->get_session_cache_memcached_dispatcher();
+  auto &balloc = handler->get_block_allocator();
 
   if (conn->tls.cached_session) {
     if (LOG_ENABLED(INFO)) {
@@ -318,7 +320,8 @@ SSL_SESSION *tls_session_get_cb(SSL *ssl,
   auto req = make_unique<MemcachedRequest>();
   req->op = MEMCACHED_OP_GET;
   req->key = MEMCACHED_SESSION_CACHE_KEY_PREFIX.str();
-  req->key += util::format_hex(id, idlen);
+  req->key +=
+      util::format_hex(balloc, StringRef{id, static_cast<size_t>(idlen)});
   req->cb = [conn](MemcachedRequest *, MemcachedResult res) {
     if (LOG_ENABLED(INFO)) {
       LOG(INFO) << "Memcached: returned status code " << res.status_code;
@@ -465,8 +468,7 @@ int alpn_select_proto_cb(SSL *ssl, const unsigned char **out,
       auto proto_len = *p;
 
       if (proto_id + proto_len <= end &&
-          util::streq(StringRef{target_proto_id},
-                      StringRef{proto_id, proto_len})) {
+          util::streq(target_proto_id, StringRef{proto_id, proto_len})) {
 
         *out = reinterpret_cast<const unsigned char *>(proto_id);
         *outlen = proto_len;
@@ -493,7 +495,7 @@ constexpr TLSProtocol TLS_PROTOS[] = {
     TLSProtocol{StringRef::from_lit("TLSv1.1"), SSL_OP_NO_TLSv1_1},
     TLSProtocol{StringRef::from_lit("TLSv1.0"), SSL_OP_NO_TLSv1}};
 
-long int create_tls_proto_mask(const std::vector<std::string> &tls_proto_list) {
+long int create_tls_proto_mask(const std::vector<StringRef> &tls_proto_list) {
   long int res = 0;
 
   for (auto &supported : TLS_PROTOS) {
@@ -829,16 +831,16 @@ SSL *create_ssl(SSL_CTX *ssl_ctx) {
 
 ClientHandler *accept_connection(Worker *worker, int fd, sockaddr *addr,
                                  int addrlen, const UpstreamAddr *faddr) {
-  char host[NI_MAXHOST];
-  char service[NI_MAXSERV];
+  std::array<char, NI_MAXHOST> host;
+  std::array<char, NI_MAXSERV> service;
   int rv;
 
   if (addr->sa_family == AF_UNIX) {
-    std::copy_n("localhost", sizeof("localhost"), host);
+    std::copy_n("localhost", sizeof("localhost"), std::begin(host));
     service[0] = '\0';
   } else {
-    rv = getnameinfo(addr, addrlen, host, sizeof(host), service,
-                     sizeof(service), NI_NUMERICHOST | NI_NUMERICSERV);
+    rv = getnameinfo(addr, addrlen, host.data(), host.size(), service.data(),
+                     service.size(), NI_NUMERICHOST | NI_NUMERICSERV);
     if (rv != 0) {
       LOG(ERROR) << "getnameinfo() failed: " << gai_strerror(rv);
 
@@ -867,8 +869,8 @@ ClientHandler *accept_connection(Worker *worker, int fd, sockaddr *addr,
     }
   }
 
-  return new ClientHandler(worker, fd, ssl, host, service, addr->sa_family,
-                           faddr);
+  return new ClientHandler(worker, fd, ssl, StringRef{host.data()},
+                           StringRef{service.data()}, addr->sa_family, faddr);
 }
 
 bool tls_hostname_match(const StringRef &pattern, const StringRef &hostname) {
@@ -1316,10 +1318,10 @@ int cert_lookup_tree_add_cert_from_x509(CertLookupTree *lt, size_t idx,
   return 0;
 }
 
-bool in_proto_list(const std::vector<std::string> &protos,
+bool in_proto_list(const std::vector<StringRef> &protos,
                    const StringRef &needle) {
   for (auto &proto : protos) {
-    if (util::streq(StringRef{proto}, needle)) {
+    if (util::streq(proto, needle)) {
       return true;
     }
   }
@@ -1443,8 +1445,8 @@ SSL_CTX *setup_downstream_client_ssl_context(
 #ifdef HAVE_NEVERBLEED
       nb,
 #endif // HAVE_NEVERBLEED
-      StringRef{tlsconf.cacert}, StringRef{tlsconf.client.cert_file},
-      StringRef{tlsconf.client.private_key_file}, select_next_proto_cb);
+      tlsconf.cacert, tlsconf.client.cert_file, tlsconf.client.private_key_file,
+      select_next_proto_cb);
 }
 
 void setup_downstream_http2_alpn(SSL *ssl) {

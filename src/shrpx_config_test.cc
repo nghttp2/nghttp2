@@ -37,40 +37,45 @@
 namespace shrpx {
 
 void test_shrpx_config_parse_header(void) {
-  auto p = parse_header(StringRef::from_lit("a: b"));
+  BlockAllocator balloc(4096, 4096);
+
+  auto p = parse_header(balloc, StringRef::from_lit("a: b"));
   CU_ASSERT("a" == p.name);
   CU_ASSERT("b" == p.value);
 
-  p = parse_header(StringRef::from_lit("a:  b"));
+  p = parse_header(balloc, StringRef::from_lit("a:  b"));
   CU_ASSERT("a" == p.name);
   CU_ASSERT("b" == p.value);
 
-  p = parse_header(StringRef::from_lit(":a: b"));
+  p = parse_header(balloc, StringRef::from_lit(":a: b"));
   CU_ASSERT(p.name.empty());
 
-  p = parse_header(StringRef::from_lit("a: :b"));
+  p = parse_header(balloc, StringRef::from_lit("a: :b"));
   CU_ASSERT("a" == p.name);
   CU_ASSERT(":b" == p.value);
 
-  p = parse_header(StringRef::from_lit(": b"));
+  p = parse_header(balloc, StringRef::from_lit(": b"));
   CU_ASSERT(p.name.empty());
 
-  p = parse_header(StringRef::from_lit("alpha: bravo charlie"));
+  p = parse_header(balloc, StringRef::from_lit("alpha: bravo charlie"));
   CU_ASSERT("alpha" == p.name);
   CU_ASSERT("bravo charlie" == p.value);
 
-  p = parse_header(StringRef::from_lit("a,: b"));
+  p = parse_header(balloc, StringRef::from_lit("a,: b"));
   CU_ASSERT(p.name.empty());
 
-  p = parse_header(StringRef::from_lit("a: b\x0a"));
+  p = parse_header(balloc, StringRef::from_lit("a: b\x0a"));
   CU_ASSERT(p.name.empty());
 }
 
 void test_shrpx_config_parse_log_format(void) {
-  auto res = parse_log_format(StringRef::from_lit(
-      R"($remote_addr - $remote_user [$time_local] )"
-      R"("$request" $status $body_bytes_sent )"
-      R"("${http_referer}" $http_host "$http_user_agent")"));
+  BlockAllocator balloc(4096, 4096);
+
+  auto res = parse_log_format(
+      balloc, StringRef::from_lit(
+                  R"($remote_addr - $remote_user [$time_local] )"
+                  R"("$request" $status $body_bytes_sent )"
+                  R"("${http_referer}" $http_host "$http_user_agent")"));
   CU_ASSERT(16 == res.size());
 
   CU_ASSERT(SHRPX_LOGF_REMOTE_ADDR == res[0].type);
@@ -115,35 +120,35 @@ void test_shrpx_config_parse_log_format(void) {
   CU_ASSERT(SHRPX_LOGF_LITERAL == res[15].type);
   CU_ASSERT("\"" == res[15].value);
 
-  res = parse_log_format(StringRef::from_lit("$"));
+  res = parse_log_format(balloc, StringRef::from_lit("$"));
 
   CU_ASSERT(1 == res.size());
 
   CU_ASSERT(SHRPX_LOGF_LITERAL == res[0].type);
   CU_ASSERT("$" == res[0].value);
 
-  res = parse_log_format(StringRef::from_lit("${"));
+  res = parse_log_format(balloc, StringRef::from_lit("${"));
 
   CU_ASSERT(1 == res.size());
 
   CU_ASSERT(SHRPX_LOGF_LITERAL == res[0].type);
   CU_ASSERT("${" == res[0].value);
 
-  res = parse_log_format(StringRef::from_lit("${a"));
+  res = parse_log_format(balloc, StringRef::from_lit("${a"));
 
   CU_ASSERT(1 == res.size());
 
   CU_ASSERT(SHRPX_LOGF_LITERAL == res[0].type);
   CU_ASSERT("${a" == res[0].value);
 
-  res = parse_log_format(StringRef::from_lit("${a "));
+  res = parse_log_format(balloc, StringRef::from_lit("${a "));
 
   CU_ASSERT(1 == res.size());
 
   CU_ASSERT(SHRPX_LOGF_LITERAL == res[0].type);
   CU_ASSERT("${a " == res[0].value);
 
-  res = parse_log_format(StringRef::from_lit("$$remote_addr"));
+  res = parse_log_format(balloc, StringRef::from_lit("$$remote_addr"));
 
   CU_ASSERT(2 == res.size());
 
@@ -168,8 +173,8 @@ void test_shrpx_config_read_tls_ticket_key_file(void) {
 
   close(fd1);
   close(fd2);
-  auto ticket_keys =
-      read_tls_ticket_key_file({file1, file2}, EVP_aes_128_cbc(), EVP_sha256());
+  auto ticket_keys = read_tls_ticket_key_file(
+      {StringRef{file1}, StringRef{file2}}, EVP_aes_128_cbc(), EVP_sha256());
   unlink(file1);
   unlink(file2);
   CU_ASSERT(ticket_keys.get() != nullptr);
@@ -211,8 +216,8 @@ void test_shrpx_config_read_tls_ticket_key_file_aes_256(void) {
 
   close(fd1);
   close(fd2);
-  auto ticket_keys =
-      read_tls_ticket_key_file({file1, file2}, EVP_aes_256_cbc(), EVP_sha256());
+  auto ticket_keys = read_tls_ticket_key_file(
+      {StringRef{file1}, StringRef{file2}}, EVP_aes_256_cbc(), EVP_sha256());
   unlink(file1);
   unlink(file2);
   CU_ASSERT(ticket_keys.get() != nullptr);

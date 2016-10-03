@@ -131,11 +131,10 @@ bool in_attr_char(char c) {
          std::find(std::begin(bad), std::end(bad), c) == std::end(bad);
 }
 
-std::string percent_encode_token(const std::string &target) {
-  std::string dest;
-
-  dest.resize(target.size() * 3);
-  auto p = std::begin(dest);
+StringRef percent_encode_token(BlockAllocator &balloc,
+                               const StringRef &target) {
+  auto iov = make_byte_ref(balloc, target.size() * 3 + 1);
+  auto p = iov.base;
 
   for (auto first = std::begin(target); first != std::end(target); ++first) {
     uint8_t c = *first;
@@ -149,8 +148,10 @@ std::string percent_encode_token(const std::string &target) {
     *p++ = UPPER_XDIGITS[c >> 4];
     *p++ = UPPER_XDIGITS[(c & 0x0f)];
   }
-  dest.resize(p - std::begin(dest));
-  return dest;
+
+  *p = '\0';
+
+  return StringRef{iov.base, p};
 }
 
 uint32_t hex_to_uint(char c) {
@@ -166,25 +167,27 @@ uint32_t hex_to_uint(char c) {
   return c;
 }
 
-std::string quote_string(const std::string &target) {
+StringRef quote_string(BlockAllocator &balloc, const StringRef &target) {
   auto cnt = std::count(std::begin(target), std::end(target), '"');
 
   if (cnt == 0) {
-    return target;
+    return make_string_ref(balloc, target);
   }
 
-  std::string res;
-  res.reserve(target.size() + cnt);
+  auto iov = make_byte_ref(balloc, target.size() + cnt + 1);
+  auto p = iov.base;
 
   for (auto c : target) {
     if (c == '"') {
-      res += "\\\"";
+      *p++ = '\\';
+      *p++ = '"';
     } else {
-      res += c;
+      *p++ = c;
     }
   }
+  *p = '\0';
 
-  return res;
+  return StringRef{iov.base, p};
 }
 
 namespace {
@@ -376,6 +379,21 @@ std::string format_hex(const unsigned char *s, size_t len) {
   return res;
 }
 
+StringRef format_hex(BlockAllocator &balloc, const StringRef &s) {
+  auto iov = make_byte_ref(balloc, s.size() * 2 + 1);
+  auto p = iov.base;
+
+  for (auto cc : s) {
+    uint8_t c = cc;
+    *p++ = LOWER_XDIGITS[c >> 4];
+    *p++ = LOWER_XDIGITS[c & 0xf];
+  }
+
+  *p = '\0';
+
+  return StringRef{iov.base, p};
+}
+
 void to_token68(std::string &base64str) {
   std::transform(std::begin(base64str), std::end(base64str),
                  std::begin(base64str), [](char c) {
@@ -392,22 +410,32 @@ void to_token68(std::string &base64str) {
                   std::end(base64str));
 }
 
-void to_base64(std::string &token68str) {
-  std::transform(std::begin(token68str), std::end(token68str),
-                 std::begin(token68str), [](char c) {
-                   switch (c) {
-                   case '-':
-                     return '+';
-                   case '_':
-                     return '/';
-                   default:
-                     return c;
-                   }
-                 });
-  if (token68str.size() & 0x3) {
-    token68str.append(4 - (token68str.size() & 0x3), '=');
+StringRef to_base64(BlockAllocator &balloc, const StringRef &token68str) {
+  // At most 3 padding '='
+  auto len = token68str.size() + 3;
+  auto iov = make_byte_ref(balloc, len + 1);
+  auto p = iov.base;
+
+  p = std::transform(std::begin(token68str), std::end(token68str), p,
+                     [](char c) {
+                       switch (c) {
+                       case '-':
+                         return '+';
+                       case '_':
+                         return '/';
+                       default:
+                         return c;
+                       }
+                     });
+
+  auto rem = token68str.size() & 0x3;
+  if (rem) {
+    p = std::fill_n(p, 4 - rem, '=');
   }
-  return;
+
+  *p = '\0';
+
+  return StringRef{iov.base, p};
 }
 
 namespace {
@@ -1119,29 +1147,30 @@ std::string dtos(double n) {
   return utos(static_cast<int64_t>(n)) + "." + (f.size() == 1 ? "0" : "") + f;
 }
 
-std::string make_http_hostport(const StringRef &host, uint16_t port) {
+StringRef make_http_hostport(BlockAllocator &balloc, const StringRef &host,
+                             uint16_t port) {
   if (port != 80 && port != 443) {
-    return make_hostport(host, port);
+    return make_hostport(balloc, host, port);
   }
 
   auto ipv6 = ipv6_numeric_addr(host.c_str());
 
-  std::string hostport;
-  hostport.resize(host.size() + (ipv6 ? 2 : 0));
-
-  auto p = &hostport[0];
+  auto iov = make_byte_ref(balloc, host.size() + (ipv6 ? 2 : 0) + 1);
+  auto p = iov.base;
 
   if (ipv6) {
     *p++ = '[';
   }
 
-  p = std::copy_n(host.c_str(), host.size(), p);
+  p = std::copy(std::begin(host), std::end(host), p);
 
   if (ipv6) {
     *p++ = ']';
   }
 
-  return hostport;
+  *p = '\0';
+
+  return StringRef{iov.base, p};
 }
 
 std::string make_hostport(const StringRef &host, uint16_t port) {
@@ -1167,6 +1196,34 @@ std::string make_hostport(const StringRef &host, uint16_t port) {
   std::copy_n(serv.c_str(), serv.size(), p);
 
   return hostport;
+}
+
+StringRef make_hostport(BlockAllocator &balloc, const StringRef &host,
+                        uint16_t port) {
+  auto ipv6 = ipv6_numeric_addr(host.c_str());
+  auto serv = utos(port);
+
+  auto iov =
+      make_byte_ref(balloc, host.size() + (ipv6 ? 2 : 0) + 1 + serv.size());
+  auto p = iov.base;
+
+  if (ipv6) {
+    *p++ = '[';
+  }
+
+  p = std::copy(std::begin(host), std::end(host), p);
+
+  if (ipv6) {
+    *p++ = ']';
+  }
+
+  *p++ = ':';
+
+  p = std::copy(std::begin(serv), std::end(serv), p);
+
+  *p = '\0';
+
+  return StringRef{iov.base, p};
 }
 
 namespace {

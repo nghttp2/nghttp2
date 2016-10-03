@@ -108,15 +108,16 @@ int on_stream_close_callback(nghttp2_session *session, int32_t stream_id,
 int Http2Upstream::upgrade_upstream(HttpsUpstream *http) {
   int rv;
 
-  auto http2_settings = http->get_downstream()->get_http2_settings().str();
-  util::to_base64(http2_settings);
+  auto &balloc = http->get_downstream()->get_block_allocator();
 
-  auto settings_payload =
-      base64::decode(std::begin(http2_settings), std::end(http2_settings));
+  auto http2_settings = http->get_downstream()->get_http2_settings();
+  http2_settings = util::to_base64(balloc, http2_settings);
+
+  auto settings_payload = base64::decode(balloc, std::begin(http2_settings),
+                                         std::end(http2_settings));
 
   rv = nghttp2_session_upgrade2(
-      session_, reinterpret_cast<const uint8_t *>(settings_payload.c_str()),
-      settings_payload.size(),
+      session_, settings_payload.byte(), settings_payload.size(),
       http->get_downstream()->request().method == HTTP_HEAD, nullptr);
   if (rv != 0) {
     if (LOG_ENABLED(INFO)) {
@@ -1429,8 +1430,8 @@ int Http2Upstream::send_reply(Downstream *downstream, const uint8_t *body,
   }
 
   if (!resp.fs.header(http2::HD_SERVER)) {
-    nva.push_back(http2::make_nv_ls_nocopy(
-        "server", StringRef{get_config()->http.server_name}));
+    nva.push_back(
+        http2::make_nv_ls_nocopy("server", get_config()->http.server_name));
   }
 
   for (auto &p : httpconf.add_response_headers) {
@@ -1481,8 +1482,7 @@ int Http2Upstream::error_reply(Downstream *downstream,
   auto nva = std::array<nghttp2_nv, 5>{
       {http2::make_nv_ls_nocopy(":status", response_status),
        http2::make_nv_ll("content-type", "text/html; charset=UTF-8"),
-       http2::make_nv_ls_nocopy("server",
-                                StringRef{get_config()->http.server_name}),
+       http2::make_nv_ls_nocopy("server", get_config()->http.server_name),
        http2::make_nv_ls_nocopy("content-length", content_length),
        http2::make_nv_ls_nocopy("date", date)}};
 
@@ -1629,8 +1629,7 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
   http2::copy_headers_to_nva_nocopy(nva, resp.fs.headers());
 
   if (!get_config()->http2_proxy && !httpconf.no_server_rewrite) {
-    nva.push_back(
-        http2::make_nv_ls_nocopy("server", StringRef{httpconf.server_name}));
+    nva.push_back(http2::make_nv_ls_nocopy("server", httpconf.server_name));
   } else {
     auto server = resp.fs.header(http2::HD_SERVER);
     if (server) {
