@@ -423,7 +423,8 @@ ClientHandler::ClientHandler(Worker *worker, int fd, SSL *ssl,
       auto buf = make_byte_ref(balloc_, len + 1);
       auto p = buf.base;
       *p++ = '_';
-      p = util::random_alpha_digit(p, p + len - 1, worker_->get_randgen());
+      p = util::random_alpha_digit(p, p + SHRPX_OBFUSCATED_NODE_LENGTH,
+                                   worker_->get_randgen());
       *p = '\0';
 
       forwarded_for_ = StringRef{buf.base, p};
