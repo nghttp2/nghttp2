@@ -676,7 +676,9 @@ int read_mime_types(std::map<std::string, std::string> &res,
 // Returns the one beyond the |last|.
 template <typename OutputIt, typename Generator>
 OutputIt random_alpha_digit(OutputIt first, OutputIt last, Generator &gen) {
-  constexpr uint8_t s[] =
+  // If we use uint8_t instead char, gcc 6.2.0 complains by shouting
+  // char-array initialized from wide string.
+  constexpr char s[] =
       "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
   std::uniform_int_distribution<> dis(0, 26 * 2 + 10 - 1);
   for (; first != last; ++first) {
