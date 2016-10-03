@@ -888,6 +888,7 @@ std::vector<InheritedAddr> get_inherited_addr_from_env(Config *config) {
         }
       }
     } else {
+      // The return value of getenv may be allocated statically.
       if (getenv(ENV_UNIX_PATH.c_str()) && getenv(ENV_UNIX_FD.c_str())) {
         auto name = ENV_ACCEPT_PREFIX.str();
         name += '1';
