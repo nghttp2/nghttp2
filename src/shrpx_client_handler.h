@@ -165,6 +165,9 @@ public:
   BlockAllocator &get_block_allocator();
 
 private:
+  // Allocator to allocate memory for connection-wide objects.  Make
+  // sure that the allocations must be bounded, and not proportional
+  // to the number of requests.
   BlockAllocator balloc_;
   Connection conn_;
   ev_timer reneg_shutdown_timer_;

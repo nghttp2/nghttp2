@@ -659,7 +659,7 @@ struct RateLimitConfig {
 struct WildcardPattern {
   WildcardPattern(const StringRef &host) : host(host) {}
 
-  // This may not be NULL terminated.  Currently it is only used for
+  // This might not be NULL terminated.  Currently it is only used for
   // comparison.
   StringRef host;
   Router router;
@@ -693,6 +693,10 @@ struct DownstreamConfig {
   DownstreamConfig &operator=(const DownstreamConfig &) = delete;
   DownstreamConfig &operator=(DownstreamConfig &&) = delete;
 
+  // Allocator to allocate memory for Downstream configuration.  Since
+  // we may swap around DownstreamConfig in arbitrary times with API
+  // calls, we should use their own allocator instead of per Config
+  // allocator.
   BlockAllocator balloc;
   struct {
     ev_tstamp read;
@@ -781,6 +785,9 @@ struct Config {
   Config &operator=(Config &&) = delete;
   Config &operator=(const Config &&) = delete;
 
+  // Allocator to allocate memory for this object except for
+  // DownstreamConfig.  Currently, it is used to allocate memory for
+  // strings.
   BlockAllocator balloc;
   HttpProxy downstream_http_proxy;
   HttpConfig http;
