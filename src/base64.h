@@ -108,7 +108,7 @@ OutputIt decode(InputIt first, InputIt last, OutputIt d_first) {
       -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
       -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
       -1, -1, -1, -1};
-
+  assert(std::distance(first, last) % 4 == 0);
   auto p = d_first;
   for (; first != last;) {
     uint32_t n = 0;
