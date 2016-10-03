@@ -2305,14 +2305,24 @@ int parse_config(Config *config, int optid, const StringRef &opt,
   case SHRPX_OPTID_WORKER_WRITE_BURST:
     LOG(WARN) << opt << ": not implemented yet";
     return 0;
-  case SHRPX_OPTID_NPN_LIST:
-    config->tls.npn_list = util::split_str(optarg, ',');
+  case SHRPX_OPTID_NPN_LIST: {
+    auto list = util::split_str(optarg, ',');
+    config->tls.npn_list.resize(list.size());
+    for (size_t i = 0; i < list.size(); ++i) {
+      config->tls.npn_list[i] = make_string_ref(config->balloc, list[i]);
+    }
 
     return 0;
-  case SHRPX_OPTID_TLS_PROTO_LIST:
-    config->tls.tls_proto_list = util::split_str(optarg, ',');
+  }
+  case SHRPX_OPTID_TLS_PROTO_LIST: {
+    auto list = util::split_str(optarg, ',');
+    config->tls.tls_proto_list.resize(list.size());
+    for (size_t i = 0; i < list.size(); ++i) {
+      config->tls.tls_proto_list[i] = make_string_ref(config->balloc, list[i]);
+    }
 
     return 0;
+  }
   case SHRPX_OPTID_VERIFY_CLIENT:
     config->tls.client_verify.enabled = util::strieq_l("yes", optarg);
 
