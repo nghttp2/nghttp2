@@ -2454,7 +2454,8 @@ int parse_config(Config *config, int optid, const StringRef &opt,
   case SHRPX_OPTID_LISTENER_DISABLE_TIMEOUT:
     return parse_duration(&config->conn.listener.timeout.sleep, opt, optarg);
   case SHRPX_OPTID_TLS_TICKET_KEY_FILE:
-    config->tls.ticket.files.push_back(make_string_ref(config->balloc, optarg));
+    config->tls.ticket.files.emplace_back(
+        make_string_ref(config->balloc, optarg));
     return 0;
   case SHRPX_OPTID_RLIMIT_NOFILE: {
     int n;
