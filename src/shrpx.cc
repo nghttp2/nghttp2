@@ -806,7 +806,8 @@ namespace {
 // Returns array of InheritedAddr constructed from |config|.  This
 // function is intended to be used when reloading configuration, and
 // |config| is usually a current configuration.
-std::vector<InheritedAddr> get_inherited_addr_from_config(Config *config) {
+std::vector<InheritedAddr>
+get_inherited_addr_from_config(BlockAllocator &balloc, Config *config) {
   int rv;
 
   auto &listenerconf = config->conn.listener;
@@ -856,7 +857,7 @@ std::vector<InheritedAddr> get_inherited_addr_from_config(Config *config) {
       continue;
     }
 
-    iaddr.host = make_string_ref(config->balloc, StringRef{host.data()});
+    iaddr.host = make_string_ref(balloc, StringRef{host.data()});
   }
 
   return iaddrs;
@@ -2637,7 +2638,7 @@ void reload_config(WorkerProcess *wp) {
     return;
   }
 
-  auto iaddrs = get_inherited_addr_from_config(cur_config);
+  auto iaddrs = get_inherited_addr_from_config(new_config->balloc, cur_config);
 
   if (create_acceptor_socket(new_config.get(), iaddrs) != 0) {
     close_not_inherited_fd(new_config.get(), iaddrs);
