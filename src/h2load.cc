@@ -1780,13 +1780,14 @@ Options:
               http/1.1 for both http and https URI.
   --header-table-size=<SIZE>
               Specify decoder header table size.
-              Default: )" << config.header_table_size << R"(
+              Default: )" << util::utos_unit(config.header_table_size) << R"(
   --encoder-header-table-size=<SIZE>
               Specify encoder header table size.  The decoder (server)
               specifies  the maximum  dynamic table  size it  accepts.
               Then the negotiated dynamic table size is the minimum of
               this option value and the value which server specified.
-              Default: )" << config.encoder_header_table_size << R"(
+              Default: )" << util::utos_unit(config.encoder_header_table_size)
+      << R"(
   -v, --verbose
               Output debug information.
   --version   Display version information and exit.
