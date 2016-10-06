@@ -92,6 +92,8 @@ Config::Config()
       conn_active_timeout(0.),
       conn_inactivity_timeout(0.),
       no_tls_proto(PROTO_HTTP2),
+      header_table_size(4_k),
+      encoder_header_table_size(4_k),
       data_fd(-1),
       port(0),
       default_port(0),
@@ -1586,6 +1588,27 @@ std::unique_ptr<Worker> create_worker(uint32_t id, SSL_CTX *ssl_ctx,
 } // namespace
 
 namespace {
+int parse_header_table_size(uint32_t &dst, const char *opt,
+                            const char *optarg) {
+  auto n = util::parse_uint_with_unit(optarg);
+  if (n == -1) {
+    std::cerr << "--" << opt << ": Bad option value: " << optarg << std::endl;
+    return -1;
+  }
+  if (n > std::numeric_limits<uint32_t>::max()) {
+    std::cerr << "--" << opt
+              << ": Value too large.  It should be less than or equal to "
+              << std::numeric_limits<uint32_t>::max() << std::endl;
+    return -1;
+  }
+
+  dst = n;
+
+  return 0;
+}
+} // namespace
+
+namespace {
 void print_version(std::ostream &out) {
   out << "h2load nghttp2/" NGHTTP2_VERSION << std::endl;
 }
@@ -1755,12 +1778,24 @@ Options:
   --h1        Short        hand         for        --npn-list=http/1.1
               --no-tls-proto=http/1.1,    which   effectively    force
               http/1.1 for both http and https URI.
+  --header-table-size=<SIZE>
+              Specify decoder header table size.
+              Default: )" << config.header_table_size << R"(
+  --encoder-header-table-size=<SIZE>
+              Specify encoder header table size.  The decoder (server)
+              specifies  the maximum  dynamic table  size it  accepts.
+              Then the negotiated dynamic table size is the minimum of
+              this option value and the value which server specified.
+              Default: )" << config.encoder_header_table_size << R"(
   -v, --verbose
               Output debug information.
   --version   Display version information and exit.
   -h, --help  Display this help and exit.
 
 --
+
+  The <SIZE> argument is an integer and an optional unit (e.g., 10K is
+  10 * 1024).  Units are K, M and G (powers of 1024).
 
   The <DURATION> argument is an integer and an optional unit (e.g., 1s
   is 1 second and 500ms is 500 milliseconds).  Units are h, m, s or ms
@@ -1803,6 +1838,8 @@ int main(int argc, char **argv) {
         {"npn-list", required_argument, &flag, 4},
         {"rate-period", required_argument, &flag, 5},
         {"h1", no_argument, &flag, 6},
+        {"header-table-size", required_argument, &flag, 7},
+        {"encoder-header-table-size", required_argument, &flag, 8},
         {nullptr, 0, nullptr, 0}};
     int option_index = 0;
     auto c = getopt_long(argc, argv, "hvW:c:d:m:n:p:t:w:H:i:r:T:N:B:",
@@ -2002,6 +2039,20 @@ int main(int argc, char **argv) {
         config.npn_list =
             util::parse_config_str_list(StringRef::from_lit("http/1.1"));
         config.no_tls_proto = Config::PROTO_HTTP1_1;
+        break;
+      case 7:
+        // --header-table-size
+        if (parse_header_table_size(config.header_table_size,
+                                    "header-table-size", optarg) != 0) {
+          exit(EXIT_FAILURE);
+        }
+        break;
+      case 8:
+        // --encoder-header-table-size
+        if (parse_header_table_size(config.encoder_header_table_size,
+                                    "encoder-header-table-size", optarg) != 0) {
+          exit(EXIT_FAILURE);
+        }
         break;
       }
       break;

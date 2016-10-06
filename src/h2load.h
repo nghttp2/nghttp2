@@ -96,6 +96,8 @@ struct Config {
     PROTO_SPDY3_1,
     PROTO_HTTP1_1
   } no_tls_proto;
+  uint32_t header_table_size;
+  uint32_t encoder_header_table_size;
   // file descriptor for upload data
   int data_fd;
   uint16_t port;

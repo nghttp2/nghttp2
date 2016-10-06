@@ -206,21 +206,40 @@ void Http2Session::on_connect() {
 
   nghttp2_session_callbacks_set_send_callback(callbacks, send_callback);
 
-  nghttp2_session_client_new(&session_, callbacks, client_);
+  nghttp2_option *opt;
 
-  std::array<nghttp2_settings_entry, 2> iv;
+  rv = nghttp2_option_new(&opt);
+  assert(rv == 0);
+
+  auto config = client_->worker->config;
+
+  if (config->encoder_header_table_size != NGHTTP2_DEFAULT_HEADER_TABLE_SIZE) {
+    nghttp2_option_set_max_deflate_dynamic_table_size(
+        opt, config->encoder_header_table_size);
+  }
+
+  nghttp2_session_client_new2(&session_, callbacks, client_, opt);
+
+  nghttp2_option_del(opt);
+
+  std::array<nghttp2_settings_entry, 3> iv;
+  size_t niv = 2;
   iv[0].settings_id = NGHTTP2_SETTINGS_ENABLE_PUSH;
   iv[0].value = 0;
   iv[1].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
-  iv[1].value = (1 << client_->worker->config->window_bits) - 1;
+  iv[1].value = (1 << config->window_bits) - 1;
 
-  rv = nghttp2_submit_settings(session_, NGHTTP2_FLAG_NONE, iv.data(),
-                               iv.size());
+  if (config->header_table_size != NGHTTP2_DEFAULT_HEADER_TABLE_SIZE) {
+    iv[niv].settings_id = NGHTTP2_SETTINGS_HEADER_TABLE_SIZE;
+    iv[niv].value = config->header_table_size;
+    ++niv;
+  }
+
+  rv = nghttp2_submit_settings(session_, NGHTTP2_FLAG_NONE, iv.data(), niv);
 
   assert(rv == 0);
 
-  auto connection_window =
-      (1 << client_->worker->config->connection_window_bits) - 1;
+  auto connection_window = (1 << config->connection_window_bits) - 1;
   nghttp2_session_set_local_window_size(session_, NGHTTP2_FLAG_NONE, 0,
                                         connection_window);
 
