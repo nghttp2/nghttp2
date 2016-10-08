@@ -214,11 +214,12 @@ int APIDownstreamConnection::end_upload_data() {
     iov[0].iov_len = len;
   }
 
-  Config config{};
-  config.conn.downstream = std::make_shared<DownstreamConfig>();
-  const auto &downstreamconf = config.conn.downstream;
+  Config new_config{};
+  new_config.conn.downstream = std::make_shared<DownstreamConfig>();
+  const auto &downstreamconf = new_config.conn.downstream;
 
-  auto &src = get_config()->conn.downstream;
+  auto config = get_config();
+  auto &src = config->conn.downstream;
 
   downstreamconf->timeout = src->timeout;
   downstreamconf->connections_per_host = src->connections_per_host;
@@ -261,7 +262,7 @@ int APIDownstreamConnection::end_upload_data() {
       continue;
     }
 
-    if (parse_config(&config, optid, opt, optval, include_set) != 0) {
+    if (parse_config(&new_config, optid, opt, optval, include_set) != 0) {
       send_reply(400, API_FAILURE);
       return 0;
     }
@@ -269,8 +270,8 @@ int APIDownstreamConnection::end_upload_data() {
     first = ++eol;
   }
 
-  auto &tlsconf = get_config()->tls;
-  if (configure_downstream_group(&config, get_config()->http2_proxy, true,
+  auto &tlsconf = config->tls;
+  if (configure_downstream_group(&new_config, config->http2_proxy, true,
                                  tlsconf) != 0) {
     send_reply(400, API_FAILURE);
     return 0;

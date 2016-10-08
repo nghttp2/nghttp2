@@ -106,14 +106,15 @@ Log::Log(int severity, const char *filename, int linenum)
 
 Log::~Log() {
   int rv;
+  auto config = get_config();
 
-  if (!get_config()) {
+  if (!config) {
     return;
   }
 
   auto lgconf = log_config();
 
-  auto &errorconf = get_config()->logging.error;
+  auto &errorconf = config->logging.error;
 
   if (!log_enabled(severity_) ||
       (lgconf->errorlog_fd == -1 && !errorconf.syslog)) {
@@ -142,12 +143,12 @@ Log::~Log() {
   if (severity_ == NOTICE) {
     rv =
         snprintf(buf, sizeof(buf), "%s PID%d [%s%s%s] %s\n", time_local.c_str(),
-                 get_config()->pid, tty ? SEVERITY_COLOR[severity_] : "",
+                 config->pid, tty ? SEVERITY_COLOR[severity_] : "",
                  SEVERITY_STR[severity_].c_str(), tty ? "\033[0m" : "",
                  stream_.str().c_str());
   } else {
     rv = snprintf(buf, sizeof(buf), "%s PID%d [%s%s%s] %s%s:%d%s %s\n",
-                  time_local.c_str(), get_config()->pid,
+                  time_local.c_str(), config->pid,
                   tty ? SEVERITY_COLOR[severity_] : "",
                   SEVERITY_STR[severity_].c_str(), tty ? "\033[0m" : "",
                   tty ? "\033[1;30m" : "", filename_, linenum_,
@@ -411,8 +412,9 @@ int reopen_log_files() {
   int new_errorlog_fd = -1;
 
   auto lgconf = log_config();
-  auto &accessconf = get_config()->logging.access;
-  auto &errorconf = get_config()->logging.error;
+  auto config = get_config();
+  auto &accessconf = config->logging.access;
+  auto &errorconf = config->logging.error;
 
   if (!accessconf.syslog && !accessconf.file.empty()) {
     new_accesslog_fd = util::open_log_file(accessconf.file.c_str());

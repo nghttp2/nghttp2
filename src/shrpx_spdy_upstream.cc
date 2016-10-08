@@ -165,6 +165,7 @@ namespace {
 void on_ctrl_recv_callback(spdylay_session *session, spdylay_frame_type type,
                            spdylay_frame *frame, void *user_data) {
   auto upstream = static_cast<SpdyUpstream *>(user_data);
+  auto config = get_config();
 
   switch (type) {
   case SPDYLAY_SYN_STREAM: {
@@ -202,7 +203,7 @@ void on_ctrl_recv_callback(spdylay_session *session, spdylay_frame_type type,
       header_buffer += strlen(nv[i]) + strlen(nv[i + 1]);
     }
 
-    auto &httpconf = get_config()->http;
+    auto &httpconf = config->http;
 
     // spdy does not define usage of trailer fields, and we ignores
     // them.
@@ -293,7 +294,7 @@ void on_ctrl_recv_callback(spdylay_session *session, spdylay_frame_type type,
       auto handler = upstream->get_client_handler();
       auto faddr = handler->get_upstream_addr();
 
-      if (get_config()->http2_proxy && !faddr->alt_mode) {
+      if (config->http2_proxy && !faddr->alt_mode) {
         req.path = path->value;
       } else if (method_token == HTTP_OPTIONS &&
                  path->value == StringRef::from_lit("*")) {
@@ -584,7 +585,8 @@ SpdyUpstream::SpdyUpstream(uint16_t version, ClientHandler *handler)
                                   &max_buffer, sizeof(max_buffer));
   assert(rv == 0);
 
-  auto &http2conf = get_config()->http2;
+  auto config = get_config();
+  auto &http2conf = config->http2;
 
   auto faddr = handler_->get_upstream_addr();
 
@@ -632,7 +634,7 @@ SpdyUpstream::SpdyUpstream(uint16_t version, ClientHandler *handler)
   }
 
   handler_->reset_upstream_read_timeout(
-      get_config()->conn.upstream.timeout.http2_read);
+      config->conn.upstream.timeout.http2_read);
 
   handler_->signal_write();
 }
@@ -919,7 +921,8 @@ int SpdyUpstream::send_reply(Downstream *downstream, const uint8_t *body,
 
   const auto &headers = resp.fs.headers();
 
-  auto &httpconf = get_config()->http;
+  auto config = get_config();
+  auto &httpconf = config->http;
 
   auto nva = std::vector<const char *>();
   // 6 for :status, :version and server.  1 for last terminal nullptr.
@@ -948,7 +951,7 @@ int SpdyUpstream::send_reply(Downstream *downstream, const uint8_t *body,
 
   if (!resp.fs.header(http2::HD_SERVER)) {
     nva.push_back("server");
-    nva.push_back(get_config()->http.server_name.c_str());
+    nva.push_back(config->http.server_name.c_str());
   }
 
   for (auto &p : httpconf.add_response_headers) {
@@ -1084,9 +1087,10 @@ int SpdyUpstream::on_downstream_header_complete(Downstream *downstream) {
     DLOG(INFO, downstream) << "HTTP response header completed";
   }
 
-  auto &httpconf = get_config()->http;
+  auto config = get_config();
+  auto &httpconf = config->http;
 
-  if (!get_config()->http2_proxy && !httpconf.no_location_rewrite) {
+  if (!config->http2_proxy && !httpconf.no_location_rewrite) {
     downstream->rewrite_location_response_header(req.scheme);
   }
 

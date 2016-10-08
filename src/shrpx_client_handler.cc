@@ -404,7 +404,9 @@ ClientHandler::ClientHandler(Worker *worker, int fd, SSL *ssl,
   conn_.rlimit.startw();
   ev_timer_again(conn_.loop, &conn_.rt);
 
-  if (get_config()->conn.upstream.accept_proxy_protocol) {
+  auto config = get_config();
+
+  if (config->conn.upstream.accept_proxy_protocol) {
     read_ = &ClientHandler::read_clear;
     write_ = &ClientHandler::noop;
     on_read_ = &ClientHandler::proxy_protocol_read;
@@ -413,7 +415,7 @@ ClientHandler::ClientHandler(Worker *worker, int fd, SSL *ssl,
     setup_upstream_io_callback();
   }
 
-  auto &fwdconf = get_config()->http.forwarded;
+  auto &fwdconf = config->http.forwarded;
 
   if (fwdconf.params & FORWARDED_FOR) {
     if (fwdconf.for_node_type == FORWARDED_NODE_OBFUSCATED) {
@@ -1212,16 +1214,17 @@ void ClientHandler::write_accesslog(Downstream *downstream) {
   const auto &resp = downstream->response();
 
   auto &balloc = downstream->get_block_allocator();
+  auto config = get_config();
 
   upstream_accesslog(
-      get_config()->logging.access.format,
+      config->logging.access.format,
       LogSpec{
           downstream, downstream->get_addr(), ipaddr_,
           http2::to_method_string(req.method),
 
           req.method == HTTP_CONNECT
               ? StringRef(req.authority)
-              : get_config()->http2_proxy
+              : config->http2_proxy
                     ? StringRef(construct_absolute_request_uri(balloc, req))
                     : req.path.empty()
                           ? req.method == HTTP_OPTIONS
@@ -1237,7 +1240,7 @@ void ClientHandler::write_accesslog(Downstream *downstream) {
 
           req.http_major, req.http_minor, resp.http_status,
           downstream->response_sent_body_length, port_, faddr_->port,
-          get_config()->pid,
+          config->pid,
       });
 }
 
@@ -1246,9 +1249,10 @@ void ClientHandler::write_accesslog(int major, int minor, unsigned int status,
   auto time_now = std::chrono::system_clock::now();
   auto highres_now = std::chrono::high_resolution_clock::now();
   nghttp2::ssl::TLSSessionInfo tls_info;
+  auto config = get_config();
 
   upstream_accesslog(
-      get_config()->logging.access.format,
+      config->logging.access.format,
       LogSpec{
           nullptr, nullptr, ipaddr_,
           StringRef::from_lit("-"), // method
@@ -1259,7 +1263,7 @@ void ClientHandler::write_accesslog(int major, int minor, unsigned int status,
                         // there a better value?
           highres_now,  // request_end_time
           major, minor, // major, minor
-          status, body_bytes_sent, port_, faddr_->port, get_config()->pid,
+          status, body_bytes_sent, port_, faddr_->port, config->pid,
       });
 }
 

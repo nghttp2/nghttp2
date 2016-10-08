@@ -215,8 +215,9 @@ int ConnectionHandler::create_single_worker() {
     all_ssl_ctx_.push_back(cl_ssl_ctx);
   }
 
-  auto &tlsconf = get_config()->tls;
-  auto &memcachedconf = get_config()->tls.session_cache.memcached;
+  auto config = get_config();
+  auto &tlsconf = config->tls;
+  auto &memcachedconf = config->tls.session_cache.memcached;
 
   SSL_CTX *session_cache_ssl_ctx = nullptr;
   if (memcachedconf.tls) {
@@ -231,7 +232,7 @@ int ConnectionHandler::create_single_worker() {
 
   single_worker_ = make_unique<Worker>(
       loop_, sv_ssl_ctx, cl_ssl_ctx, session_cache_ssl_ctx, cert_tree_.get(),
-      ticket_keys_, this, get_config()->conn.downstream);
+      ticket_keys_, this, config->conn.downstream);
 #ifdef HAVE_MRUBY
   if (single_worker_->create_mruby_context() != 0) {
     return -1;
@@ -262,9 +263,10 @@ int ConnectionHandler::create_worker_thread(size_t num) {
     all_ssl_ctx_.push_back(cl_ssl_ctx);
   }
 
-  auto &tlsconf = get_config()->tls;
-  auto &memcachedconf = get_config()->tls.session_cache.memcached;
-  auto &apiconf = get_config()->api;
+  auto config = get_config();
+  auto &tlsconf = config->tls;
+  auto &memcachedconf = config->tls.session_cache.memcached;
+  auto &apiconf = config->api;
 
   // We have dedicated worker for API request processing.
   if (apiconf.enabled) {
@@ -272,7 +274,7 @@ int ConnectionHandler::create_worker_thread(size_t num) {
   }
 
   for (size_t i = 0; i < num; ++i) {
-    auto loop = ev_loop_new(get_config()->ev_loop_flags);
+    auto loop = ev_loop_new(config->ev_loop_flags);
 
     SSL_CTX *session_cache_ssl_ctx = nullptr;
     if (memcachedconf.tls) {
@@ -286,7 +288,7 @@ int ConnectionHandler::create_worker_thread(size_t num) {
     }
     auto worker = make_unique<Worker>(
         loop, sv_ssl_ctx, cl_ssl_ctx, session_cache_ssl_ctx, cert_tree_.get(),
-        ticket_keys_, this, get_config()->conn.downstream);
+        ticket_keys_, this, config->conn.downstream);
 #ifdef HAVE_MRUBY
     if (worker->create_mruby_context() != 0) {
       return -1;
@@ -362,8 +364,10 @@ int ConnectionHandler::handle_connection(int fd, sockaddr *addr, int addrlen,
                      << util::numeric_name(addr, addrlen) << ", fd=" << fd;
   }
 
-  if (get_config()->num_worker == 1) {
-    auto &upstreamconf = get_config()->conn.upstream;
+  auto config = get_config();
+
+  if (config->num_worker == 1) {
+    auto &upstreamconf = config->conn.upstream;
     if (single_worker_->get_worker_stat()->num_connections >=
         upstreamconf.worker_connections) {
 
@@ -404,7 +408,7 @@ int ConnectionHandler::handle_connection(int fd, sockaddr *addr, int addrlen,
     }
 
     if (++worker_round_robin_cnt_ == workers_.size()) {
-      auto &apiconf = get_config()->api;
+      auto &apiconf = config->api;
 
       if (apiconf.enabled) {
         worker_round_robin_cnt_ = 1;
@@ -828,8 +832,9 @@ void ConnectionHandler::schedule_next_tls_ticket_key_memcached_get(
 }
 
 SSL_CTX *ConnectionHandler::create_tls_ticket_key_memcached_ssl_ctx() {
-  auto &tlsconf = get_config()->tls;
-  auto &memcachedconf = get_config()->tls.ticket.memcached;
+  auto config = get_config();
+  auto &tlsconf = config->tls;
+  auto &memcachedconf = config->tls.ticket.memcached;
 
   auto ssl_ctx = ssl::create_ssl_client_context(
 #ifdef HAVE_NEVERBLEED

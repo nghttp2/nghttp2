@@ -1561,7 +1561,8 @@ int Http2Session::connection_made() {
     }
   }
 
-  auto &http2conf = get_config()->http2;
+  auto config = get_config();
+  auto &http2conf = config->http2;
 
   rv = nghttp2_session_client_new2(&session_, http2conf.downstream.callbacks,
                                    this, http2conf.downstream.option);
@@ -1578,7 +1579,7 @@ int Http2Session::connection_made() {
   entry[1].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
   entry[1].value = http2conf.downstream.window_size;
 
-  if (http2conf.no_server_push || get_config()->http2_proxy) {
+  if (http2conf.no_server_push || config->http2_proxy) {
     entry[nentry].settings_id = NGHTTP2_SETTINGS_ENABLE_PUSH;
     entry[nentry].value = 0;
     ++nentry;

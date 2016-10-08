@@ -531,7 +531,8 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file
       SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION | SSL_OP_SINGLE_ECDH_USE |
       SSL_OP_SINGLE_DH_USE | SSL_OP_CIPHER_SERVER_PREFERENCE;
 
-  auto &tlsconf = get_config()->tls;
+  auto config = mod_config();
+  auto &tlsconf = config->tls;
 
   SSL_CTX_set_options(ssl_ctx, ssl_opts | tlsconf.tls_proto_mask);
 
@@ -608,7 +609,7 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file
   SSL_CTX_set_mode(ssl_ctx, SSL_MODE_RELEASE_BUFFERS);
   if (!tlsconf.private_key_passwd.empty()) {
     SSL_CTX_set_default_passwd_cb(ssl_ctx, ssl_pem_passwd_cb);
-    SSL_CTX_set_default_passwd_cb_userdata(ssl_ctx, (void *)get_config());
+    SSL_CTX_set_default_passwd_cb_userdata(ssl_ctx, config);
   }
 
 #ifndef HAVE_NEVERBLEED

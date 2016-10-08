@@ -63,19 +63,21 @@ void drop_privileges(
     neverbleed_t *nb
 #endif // HAVE_NEVERBLEED
     ) {
-  if (getuid() == 0 && get_config()->uid != 0) {
-    if (initgroups(get_config()->user.c_str(), get_config()->gid) != 0) {
+  auto config = get_config();
+
+  if (getuid() == 0 && config->uid != 0) {
+    if (initgroups(config->user.c_str(), config->gid) != 0) {
       auto error = errno;
       LOG(FATAL) << "Could not change supplementary groups: "
                  << strerror(error);
       exit(EXIT_FAILURE);
     }
-    if (setgid(get_config()->gid) != 0) {
+    if (setgid(config->gid) != 0) {
       auto error = errno;
       LOG(FATAL) << "Could not change gid: " << strerror(error);
       exit(EXIT_FAILURE);
     }
-    if (setuid(get_config()->uid) != 0) {
+    if (setuid(config->uid) != 0) {
       auto error = errno;
       LOG(FATAL) << "Could not change uid: " << strerror(error);
       exit(EXIT_FAILURE);
@@ -86,7 +88,7 @@ void drop_privileges(
     }
 #ifdef HAVE_NEVERBLEED
     if (nb) {
-      neverbleed_setuidgid(nb, get_config()->user.c_str(), 1);
+      neverbleed_setuidgid(nb, config->user.c_str(), 1);
     }
 #endif // HAVE_NEVERBLEED
   }
@@ -395,7 +397,9 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
 
   ConnectionHandler conn_handler(loop, gen);
 
-  for (auto &addr : get_config()->conn.listener.addrs) {
+  auto config = get_config();
+
+  for (auto &addr : config->conn.listener.addrs) {
     conn_handler.add_acceptor(make_unique<AcceptHandler>(&addr, &conn_handler));
   }
 
@@ -428,7 +432,7 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
 
   ev_timer renew_ticket_key_timer;
   if (ssl::upstream_tls_enabled()) {
-    auto &ticketconf = get_config()->tls.ticket;
+    auto &ticketconf = config->tls.ticket;
     auto &memcachedconf = ticketconf.memcached;
 
     if (!memcachedconf.host.empty()) {
@@ -483,7 +487,7 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
 
   int rv;
 
-  if (get_config()->num_worker == 1) {
+  if (config->num_worker == 1) {
     rv = conn_handler.create_single_worker();
     if (rv != 0) {
       return -1;
@@ -501,7 +505,7 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
     }
 #endif // !NOTHREADS
 
-    rv = conn_handler.create_worker_thread(get_config()->num_worker);
+    rv = conn_handler.create_worker_thread(config->num_worker);
     if (rv != 0) {
       return -1;
     }
@@ -526,7 +530,7 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
   ipcev.data = &conn_handler;
   ev_io_start(loop, &ipcev);
 
-  if (ssl::upstream_tls_enabled() && !get_config()->tls.ocsp.disabled) {
+  if (ssl::upstream_tls_enabled() && !config->tls.ocsp.disabled) {
     conn_handler.proceed_next_cert_ocsp();
   }
 

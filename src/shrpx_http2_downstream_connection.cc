@@ -246,11 +246,11 @@ int Http2DownstreamConnection::push_request_headers() {
 
   auto &balloc = downstream_->get_block_allocator();
 
-  auto &httpconf = get_config()->http;
-  auto &http2conf = get_config()->http2;
+  auto config = get_config();
+  auto &httpconf = config->http;
+  auto &http2conf = config->http2;
 
-  auto no_host_rewrite = httpconf.no_host_rewrite ||
-                         get_config()->http2_proxy ||
+  auto no_host_rewrite = httpconf.no_host_rewrite || config->http2_proxy ||
                          req.method == HTTP_CONNECT;
 
   // http2session_ has already in CONNECTED state, so we can get
@@ -326,7 +326,7 @@ int Http2DownstreamConnection::push_request_headers() {
   if (fwdconf.params) {
     auto params = fwdconf.params;
 
-    if (get_config()->http2_proxy || req.method == HTTP_CONNECT) {
+    if (config->http2_proxy || req.method == HTTP_CONNECT) {
       params &= ~FORWARDED_PROTO;
     }
 
@@ -369,7 +369,7 @@ int Http2DownstreamConnection::push_request_headers() {
     nva.push_back(http2::make_nv_ls_nocopy("x-forwarded-for", xff->value));
   }
 
-  if (!get_config()->http2_proxy && req.method != HTTP_CONNECT) {
+  if (!config->http2_proxy && req.method != HTTP_CONNECT) {
     // We use same protocol with :scheme header field
     nva.push_back(http2::make_nv_ls_nocopy("x-forwarded-proto", req.scheme));
   }

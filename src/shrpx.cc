@@ -291,16 +291,19 @@ int worker_process_last_pid() {
 
 namespace {
 int chown_to_running_user(const char *path) {
-  return chown(path, get_config()->uid, get_config()->gid);
+  auto config = get_config();
+  return chown(path, config->uid, config->gid);
 }
 } // namespace
 
 namespace {
 int save_pid() {
-  constexpr auto SUFFIX = StringRef::from_lit(".XXXXXX");
-  auto &pid_file = get_config()->pid_file;
+  auto config = get_config();
 
-  auto len = get_config()->pid_file.size() + SUFFIX.size();
+  constexpr auto SUFFIX = StringRef::from_lit(".XXXXXX");
+  auto &pid_file = config->pid_file;
+
+  auto len = config->pid_file.size() + SUFFIX.size();
   auto buf = make_unique<char[]>(len + 1);
   auto p = buf.get();
 
@@ -318,7 +321,7 @@ int save_pid() {
     return -1;
   }
 
-  auto content = util::utos(get_config()->pid) + '\n';
+  auto content = util::utos(config->pid) + '\n';
 
   if (write(fd, content.c_str(), content.size()) == -1) {
     auto error = errno;
@@ -346,7 +349,7 @@ int save_pid() {
     return -1;
   }
 
-  if (get_config()->uid != 0) {
+  if (config->uid != 0) {
     if (chown_to_running_user(pid_file.c_str()) == -1) {
       auto error = errno;
       LOG(WARN) << "Changing owner of pid file " << pid_file
@@ -1195,7 +1198,9 @@ namespace {
 int event_loop() {
   shrpx_signal_set_master_proc_ign_handler();
 
-  if (get_config()->daemon) {
+  auto config = mod_config();
+
+  if (config->daemon) {
     if (call_daemon() == -1) {
       auto error = errno;
       LOG(FATAL) << "Failed to daemonize: " << strerror(error);
@@ -1210,15 +1215,15 @@ int event_loop() {
     redirect_stderr_to_errorlog();
   }
 
-  auto iaddrs = get_inherited_addr_from_env(mod_config());
+  auto iaddrs = get_inherited_addr_from_env(config);
 
-  if (create_acceptor_socket(mod_config(), iaddrs) != 0) {
+  if (create_acceptor_socket(config, iaddrs) != 0) {
     return -1;
   }
 
   close_unused_inherited_addr(iaddrs);
 
-  auto loop = ev_default_loop(get_config()->ev_loop_flags);
+  auto loop = ev_default_loop(config->ev_loop_flags);
 
   int ipc_fd;
 
@@ -1234,7 +1239,7 @@ int event_loop() {
   // This makes easier to write restart script for nghttpx.  Because
   // when we know that PID file is recreated, it means we can send
   // QUIT signal to the old process to make it shutdown gracefully.
-  if (!get_config()->pid_file.empty()) {
+  if (!config->pid_file.empty()) {
     save_pid();
   }
 
@@ -1467,6 +1472,8 @@ A reverse proxy for HTTP/2, HTTP/1 and SPDY.)" << std::endl;
 
 namespace {
 void print_help(std::ostream &out) {
+  auto config = get_config();
+
   print_usage(out);
   out << R"(
   <PRIVATE_KEY>
@@ -1637,7 +1644,7 @@ Connections:
               Default: *,3000
   --backlog=<N>
               Set listen backlog size.
-              Default: )" << get_config()->conn.listener.backlog << R"(
+              Default: )" << config->conn.listener.backlog << R"(
   --backend-address-family=(auto|IPv4|IPv6)
               Specify  address  family  of  backend  connections.   If
               "auto" is given, both IPv4  and IPv6 are considered.  If
@@ -1663,29 +1670,25 @@ Connections:
 Performance:
   -n, --workers=<N>
               Set the number of worker threads.
-              Default: )" << get_config()->num_worker << R"(
+              Default: )" << config->num_worker << R"(
   --read-rate=<SIZE>
               Set maximum  average read  rate on  frontend connection.
               Setting 0 to this option means read rate is unlimited.
-              Default: )" << get_config()->conn.upstream.ratelimit.read.rate
-      << R"(
+              Default: )" << config->conn.upstream.ratelimit.read.rate << R"(
   --read-burst=<SIZE>
               Set  maximum read  burst  size  on frontend  connection.
               Setting  0  to this  option  means  read burst  size  is
               unlimited.
-              Default: )" << get_config()->conn.upstream.ratelimit.read.burst
-      << R"(
+              Default: )" << config->conn.upstream.ratelimit.read.burst << R"(
   --write-rate=<SIZE>
               Set maximum  average write rate on  frontend connection.
               Setting 0 to this option means write rate is unlimited.
-              Default: )" << get_config()->conn.upstream.ratelimit.write.rate
-      << R"(
+              Default: )" << config->conn.upstream.ratelimit.write.rate << R"(
   --write-burst=<SIZE>
               Set  maximum write  burst size  on frontend  connection.
               Setting  0 to  this  option means  write  burst size  is
               unlimited.
-              Default: )" << get_config()->conn.upstream.ratelimit.write.burst
-      << R"(
+              Default: )" << config->conn.upstream.ratelimit.write.burst << R"(
   --worker-read-rate=<SIZE>
               Set maximum average read rate on frontend connection per
               worker.  Setting  0 to  this option  means read  rate is
@@ -1709,8 +1712,7 @@ Performance:
   --worker-frontend-connections=<N>
               Set maximum number  of simultaneous connections frontend
               accepts.  Setting 0 means unlimited.
-              Default: )" << get_config()->conn.upstream.worker_connections
-      << R"(
+              Default: )" << config->conn.upstream.worker_connections << R"(
   --backend-connections-per-host=<N>
               Set  maximum number  of  backend concurrent  connections
               (and/or  streams in  case  of HTTP/2)  per origin  host.
@@ -1720,7 +1722,7 @@ Performance:
               HTTP/2).   To  limit  the   number  of  connections  per
               frontend        for       default        mode,       use
               --backend-connections-per-frontend.
-              Default: )" << get_config()->conn.downstream->connections_per_host
+              Default: )" << config->conn.downstream->connections_per_host
       << R"(
   --backend-connections-per-frontend=<N>
               Set  maximum number  of  backend concurrent  connections
@@ -1729,28 +1731,26 @@ Performance:
               unlimited.  To limit the  number of connections per host
               with          --http2-proxy         option,          use
               --backend-connections-per-host.
-              Default: )"
-      << get_config()->conn.downstream->connections_per_frontend << R"(
+              Default: )" << config->conn.downstream->connections_per_frontend
+      << R"(
   --rlimit-nofile=<N>
               Set maximum number of open files (RLIMIT_NOFILE) to <N>.
               If 0 is given, nghttpx does not set the limit.
-              Default: )" << get_config()->rlimit_nofile << R"(
+              Default: )" << config->rlimit_nofile << R"(
   --backend-request-buffer=<SIZE>
               Set buffer size used to store backend request.
               Default: )"
-      << util::utos_unit(get_config()->conn.downstream->request_buffer_size)
-      << R"(
+      << util::utos_unit(config->conn.downstream->request_buffer_size) << R"(
   --backend-response-buffer=<SIZE>
               Set buffer size used to store backend response.
               Default: )"
-      << util::utos_unit(get_config()->conn.downstream->response_buffer_size)
-      << R"(
+      << util::utos_unit(config->conn.downstream->response_buffer_size) << R"(
   --fastopen=<N>
               Enables  "TCP Fast  Open" for  the listening  socket and
               limits the  maximum length for the  queue of connections
               that have not yet completed the three-way handshake.  If
               value is 0 then fast open is disabled.
-              Default: )" << get_config()->conn.listener.fastopen << R"(
+              Default: )" << config->conn.listener.fastopen << R"(
   --no-kqueue Don't use  kqueue.  This  option is only  applicable for
               the platforms  which have kqueue.  For  other platforms,
               this option will be simply ignored.
@@ -1760,57 +1760,53 @@ Timeout:
               Specify  read  timeout  for  HTTP/2  and  SPDY  frontend
               connection.
               Default: )"
-      << util::duration_str(get_config()->conn.upstream.timeout.http2_read)
-      << R"(
+      << util::duration_str(config->conn.upstream.timeout.http2_read) << R"(
   --frontend-read-timeout=<DURATION>
               Specify read timeout for HTTP/1.1 frontend connection.
               Default: )"
-      << util::duration_str(get_config()->conn.upstream.timeout.read) << R"(
+      << util::duration_str(config->conn.upstream.timeout.read) << R"(
   --frontend-write-timeout=<DURATION>
               Specify write timeout for all frontend connections.
               Default: )"
-      << util::duration_str(get_config()->conn.upstream.timeout.write) << R"(
+      << util::duration_str(config->conn.upstream.timeout.write) << R"(
   --stream-read-timeout=<DURATION>
               Specify  read timeout  for HTTP/2  and SPDY  streams.  0
               means no timeout.
               Default: )"
-      << util::duration_str(get_config()->http2.timeout.stream_read) << R"(
+      << util::duration_str(config->http2.timeout.stream_read) << R"(
   --stream-write-timeout=<DURATION>
               Specify write  timeout for  HTTP/2 and SPDY  streams.  0
               means no timeout.
               Default: )"
-      << util::duration_str(get_config()->http2.timeout.stream_write) << R"(
+      << util::duration_str(config->http2.timeout.stream_write) << R"(
   --backend-read-timeout=<DURATION>
               Specify read timeout for backend connection.
               Default: )"
-      << util::duration_str(get_config()->conn.downstream->timeout.read) << R"(
+      << util::duration_str(config->conn.downstream->timeout.read) << R"(
   --backend-write-timeout=<DURATION>
               Specify write timeout for backend connection.
               Default: )"
-      << util::duration_str(get_config()->conn.downstream->timeout.write) << R"(
+      << util::duration_str(config->conn.downstream->timeout.write) << R"(
   --backend-keep-alive-timeout=<DURATION>
               Specify keep-alive timeout for backend connection.
               Default: )"
-      << util::duration_str(get_config()->conn.downstream->timeout.idle_read)
-      << R"(
+      << util::duration_str(config->conn.downstream->timeout.idle_read) << R"(
   --listener-disable-timeout=<DURATION>
               After accepting  connection failed,  connection listener
               is disabled  for a given  amount of time.   Specifying 0
               disables this feature.
               Default: )"
-      << util::duration_str(get_config()->conn.listener.timeout.sleep) << R"(
+      << util::duration_str(config->conn.listener.timeout.sleep) << R"(
   --frontend-http2-setting-timeout=<DURATION>
               Specify  timeout before  SETTINGS ACK  is received  from
               client.
               Default: )"
-      << util::duration_str(get_config()->http2.upstream.timeout.settings)
-      << R"(
+      << util::duration_str(config->http2.upstream.timeout.settings) << R"(
   --backend-http2-settings-timeout=<DURATION>
               Specify  timeout before  SETTINGS ACK  is received  from
               backend server.
               Default: )"
-      << util::duration_str(get_config()->http2.downstream.timeout.settings)
-      << R"(
+      << util::duration_str(config->http2.downstream.timeout.settings) << R"(
   --backend-max-backoff=<DURATION>
               Specify  maximum backoff  interval.  This  is used  when
               doing health  check against offline backend  (see "fail"
@@ -1821,8 +1817,7 @@ Timeout:
               consecutive failed attempts increase the interval.  This
               option caps its maximum value.
               Default: )"
-      << util::duration_str(get_config()->conn.downstream->timeout.max_backoff)
-      << R"(
+      << util::duration_str(config->conn.downstream->timeout.max_backoff) << R"(
 
 SSL/TLS:
   --ciphers=<SUITE>
@@ -1834,7 +1829,7 @@ SSL/TLS:
               in the preference order.  The supported curves depend on
               the  linked  OpenSSL  library.  This  function  requires
               OpenSSL >= 1.0.2.
-              Default: )" << get_config()->tls.ecdh_curves << R"(
+              Default: )" << config->tls.ecdh_curves << R"(
   -k, --insecure
               Don't  verify backend  server's  certificate  if TLS  is
               enabled for backend connections.
@@ -1934,7 +1929,7 @@ SSL/TLS:
   --tls-ticket-key-memcached-interval=<DURATION>
               Set interval to get TLS ticket keys from memcached.
               Default: )"
-      << util::duration_str(get_config()->tls.ticket.memcached.interval) << R"(
+      << util::duration_str(config->tls.ticket.memcached.interval) << R"(
   --tls-ticket-key-memcached-max-retry=<N>
               Set  maximum   number  of  consecutive   retries  before
               abandoning TLS ticket key  retrieval.  If this number is
@@ -1942,11 +1937,11 @@ SSL/TLS:
               "failure" count  is incremented by 1,  which contributed
               to            the            value            controlled
               --tls-ticket-key-memcached-max-fail option.
-              Default: )" << get_config()->tls.ticket.memcached.max_retry << R"(
+              Default: )" << config->tls.ticket.memcached.max_retry << R"(
   --tls-ticket-key-memcached-max-fail=<N>
               Set  maximum   number  of  consecutive   failure  before
               disabling TLS ticket until next scheduled key retrieval.
-              Default: )" << get_config()->tls.ticket.memcached.max_fail << R"(
+              Default: )" << config->tls.ticket.memcached.max_fail << R"(
   --tls-ticket-key-cipher=<CIPHER>
               Specify cipher  to encrypt TLS session  ticket.  Specify
               either   aes-128-cbc   or  aes-256-cbc.    By   default,
@@ -1960,12 +1955,11 @@ SSL/TLS:
   --fetch-ocsp-response-file=<PATH>
               Path to  fetch-ocsp-response script file.  It  should be
               absolute path.
-              Default: )" << get_config()->tls.ocsp.fetch_ocsp_response_file
-      << R"(
+              Default: )" << config->tls.ocsp.fetch_ocsp_response_file << R"(
   --ocsp-update-interval=<DURATION>
               Set interval to update OCSP response cache.
               Default: )"
-      << util::duration_str(get_config()->tls.ocsp.update_interval) << R"(
+      << util::duration_str(config->tls.ocsp.update_interval) << R"(
   --no-ocsp   Disable OCSP stapling.
   --tls-session-cache-memcached=<HOST>,<PORT>[;tls]
               Specify  address of  memcached server  to store  session
@@ -1998,14 +1992,14 @@ SSL/TLS:
               period.   This  behaviour  applies   to  all  TLS  based
               frontends, and TLS HTTP/2 backends.
               Default: )"
-      << util::utos_unit(get_config()->tls.dyn_rec.warmup_threshold) << R"(
+      << util::utos_unit(config->tls.dyn_rec.warmup_threshold) << R"(
   --tls-dyn-rec-idle-timeout=<DURATION>
               Specify TLS dynamic record  size behaviour timeout.  See
               --tls-dyn-rec-warmup-threshold  for   more  information.
               This behaviour  applies to all TLS  based frontends, and
               TLS HTTP/2 backends.
               Default: )"
-      << util::duration_str(get_config()->tls.dyn_rec.idle_timeout) << R"(
+      << util::duration_str(config->tls.dyn_rec.idle_timeout) << R"(
   --no-http2-cipher-black-list
               Allow black  listed cipher  suite on  HTTP/2 connection.
               See  https://tools.ietf.org/html/rfc7540#appendix-A  for
@@ -2015,34 +2009,34 @@ HTTP/2 and SPDY:
   -c, --frontend-http2-max-concurrent-streams=<N>
               Set the maximum number of  the concurrent streams in one
               frontend HTTP/2 and SPDY session.
-              Default:  )"
-      << get_config()->http2.upstream.max_concurrent_streams << R"(
+              Default:  )" << config->http2.upstream.max_concurrent_streams
+      << R"(
   --backend-http2-max-concurrent-streams=<N>
               Set the maximum number of  the concurrent streams in one
               backend  HTTP/2 session.   This sets  maximum number  of
               concurrent opened pushed streams.  The maximum number of
               concurrent requests are set by a remote server.
-              Default: )"
-      << get_config()->http2.downstream.max_concurrent_streams << R"(
+              Default: )" << config->http2.downstream.max_concurrent_streams
+      << R"(
   --frontend-http2-window-size=<SIZE>
               Sets the  per-stream initial  window size of  HTTP/2 and
               SPDY frontend connection.
-              Default: )" << get_config()->http2.upstream.window_size << R"(
+              Default: )" << config->http2.upstream.window_size << R"(
   --frontend-http2-connection-window-size=<SIZE>
               Sets the  per-connection window size of  HTTP/2 and SPDY
               frontend  connection.  For  SPDY  connection, the  value
               less than 64KiB is rounded up to 64KiB.
-              Default: )" << get_config()->http2.upstream.connection_window_size
+              Default: )" << config->http2.upstream.connection_window_size
       << R"(
   --backend-http2-window-size=<SIZE>
               Sets  the   initial  window   size  of   HTTP/2  backend
               connection.
-              Default: )" << get_config()->http2.downstream.window_size << R"(
+              Default: )" << config->http2.downstream.window_size << R"(
   --backend-http2-connection-window-size=<SIZE>
               Sets the  per-connection window  size of  HTTP/2 backend
               connection.
-              Default: )"
-      << get_config()->http2.downstream.connection_window_size << R"(
+              Default: )" << config->http2.downstream.connection_window_size
+      << R"(
   --http2-no-cookie-crumbling
               Don't crumble cookie header field.
   --padding=<N>
@@ -2086,14 +2080,14 @@ HTTP/2 and SPDY:
               Then the negotiated dynamic table size is the minimum of
               this option value and the value which client specified.
               Default: )"
-      << util::utos_unit(
-             get_config()->http2.upstream.encoder_dynamic_table_size) << R"(
+      << util::utos_unit(config->http2.upstream.encoder_dynamic_table_size)
+      << R"(
   --frontend-http2-decoder-dynamic-table-size=<SIZE>
               Specify the maximum dynamic  table size of HPACK decoder
               in the frontend HTTP/2 connection.
               Default: )"
-      << util::utos_unit(
-             get_config()->http2.upstream.decoder_dynamic_table_size) << R"(
+      << util::utos_unit(config->http2.upstream.decoder_dynamic_table_size)
+      << R"(
   --backend-http2-encoder-dynamic-table-size=<SIZE>
               Specify the maximum dynamic  table size of HPACK encoder
               in the backend HTTP/2 connection.  The decoder (backend)
@@ -2101,14 +2095,14 @@ HTTP/2 and SPDY:
               Then the negotiated dynamic table size is the minimum of
               this option value and the value which backend specified.
               Default: )"
-      << util::utos_unit(
-             get_config()->http2.downstream.encoder_dynamic_table_size) << R"(
+      << util::utos_unit(config->http2.downstream.encoder_dynamic_table_size)
+      << R"(
   --backend-http2-decoder-dynamic-table-size=<SIZE>
               Specify the maximum dynamic  table size of HPACK decoder
               in the backend HTTP/2 connection.
               Default: )"
-      << util::utos_unit(
-             get_config()->http2.downstream.decoder_dynamic_table_size) << R"(
+      << util::utos_unit(config->http2.downstream.decoder_dynamic_table_size)
+      << R"(
 
 Mode:
   (default mode)
@@ -2172,14 +2166,14 @@ Logging:
               Set path to write error  log.  To reopen file, send USR1
               signal  to nghttpx.   stderr will  be redirected  to the
               error log file unless --errorlog-syslog is used.
-              Default: )" << get_config()->logging.error.file << R"(
+              Default: )" << config->logging.error.file << R"(
   --errorlog-syslog
               Send  error log  to  syslog.  If  this  option is  used,
               --errorlog-file option is ignored.
   --syslog-facility=<FACILITY>
               Set syslog facility to <FACILITY>.
               Default: )"
-      << str_syslog_facility(get_config()->logging.syslog_facility) << R"(
+      << str_syslog_facility(config->logging.syslog_facility) << R"(
 
 HTTP:
   --add-x-forwarded-for
@@ -2256,25 +2250,24 @@ HTTP:
               bytes.   If  trailer  fields  exist,  they  are  counted
               towards this number.
               Default: )"
-      << util::utos_unit(get_config()->http.request_header_field_buffer) << R"(
+      << util::utos_unit(config->http.request_header_field_buffer) << R"(
   --max-request-header-fields=<N>
               Set  maximum  number  of incoming  HTTP  request  header
               fields.   If  trailer  fields exist,  they  are  counted
               towards this number.
-              Default: )" << get_config()->http.max_request_header_fields << R"(
+              Default: )" << config->http.max_request_header_fields << R"(
   --response-header-field-buffer=<SIZE>
               Set  maximum  buffer  size for  incoming  HTTP  response
               header field list.   This is the sum of  header name and
               value  in  bytes.  If  trailer  fields  exist, they  are
               counted towards this number.
               Default: )"
-      << util::utos_unit(get_config()->http.response_header_field_buffer) << R"(
+      << util::utos_unit(config->http.response_header_field_buffer) << R"(
   --max-response-header-fields=<N>
               Set  maximum number  of  incoming  HTTP response  header
               fields.   If  trailer  fields exist,  they  are  counted
               towards this number.
-              Default: )" << get_config()->http.max_response_header_fields
-      << R"(
+              Default: )" << config->http.max_response_header_fields << R"(
   --error-page=(<CODE>|*)=<PATH>
               Set file path  to custom error page  served when nghttpx
               originally  generates  HTTP  error status  code  <CODE>.
@@ -2284,7 +2277,7 @@ HTTP:
               backend server, the custom error pages are not used.
   --server-name=<NAME>
               Change server response header field value to <NAME>.
-              Default: )" << get_config()->http.server_name << R"(
+              Default: )" << config->http.server_name << R"(
   --no-server-rewrite
               Don't rewrite server header field in default mode.  When
               --http2-proxy is used, these headers will not be altered
@@ -2293,7 +2286,7 @@ HTTP:
 API:
   --api-max-request-body=<SIZE>
               Set the maximum size of request body for API request.
-              Default: )" << util::utos_unit(get_config()->api.max_request_body)
+              Default: )" << util::utos_unit(config->api.max_request_body)
       << R"(
 
 Debug:
@@ -2331,7 +2324,7 @@ Scripting:
 Misc:
   --conf=<PATH>
               Load configuration from <PATH>.
-              Default: )" << get_config()->conf_path << R"(
+              Default: )" << config->conf_path << R"(
   --include=<PATH>
               Load additional configurations from <PATH>.  File <PATH>
               is  read  when  configuration  parser  encountered  this

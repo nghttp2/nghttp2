@@ -344,6 +344,7 @@ int htp_hdrs_completecb(http_parser *htp) {
 
   auto faddr = handler->get_upstream_addr();
   auto &balloc = downstream->get_block_allocator();
+  auto config = get_config();
 
   if (method != HTTP_CONNECT) {
     http_parser_url u{};
@@ -372,9 +373,8 @@ int htp_hdrs_completecb(http_parser *htp) {
         req.scheme = StringRef::from_lit("http");
       }
     } else {
-      rewrite_request_host_path_from_uri(balloc, req, req.path, u,
-                                         get_config()->http2_proxy &&
-                                             !faddr->alt_mode);
+      rewrite_request_host_path_from_uri(
+          balloc, req, req.path, u, config->http2_proxy && !faddr->alt_mode);
     }
   }
 
@@ -394,7 +394,7 @@ int htp_hdrs_completecb(http_parser *htp) {
 
   // mruby hook may change method value
 
-  if (req.no_authority && get_config()->http2_proxy && !faddr->alt_mode) {
+  if (req.no_authority && config->http2_proxy && !faddr->alt_mode) {
     // Request URI should be absolute-form for client proxy mode
     return -1;
   }
@@ -832,6 +832,7 @@ int HttpsUpstream::send_reply(Downstream *downstream, const uint8_t *body,
   const auto &req = downstream->request();
   auto &resp = downstream->response();
   auto &balloc = downstream->get_block_allocator();
+  auto config = get_config();
 
   auto connection_close = false;
 
@@ -875,11 +876,11 @@ int HttpsUpstream::send_reply(Downstream *downstream, const uint8_t *body,
 
   if (!resp.fs.header(http2::HD_SERVER)) {
     output->append("Server: ");
-    output->append(get_config()->http.server_name);
+    output->append(config->http.server_name);
     output->append("\r\n");
   }
 
-  auto &httpconf = get_config()->http;
+  auto &httpconf = config->http;
 
   for (auto &p : httpconf.add_response_headers) {
     output->append(p.name);
@@ -1012,9 +1013,10 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
   buf->append(http2::get_status_string(balloc, resp.http_status));
   buf->append("\r\n");
 
-  auto &httpconf = get_config()->http;
+  auto config = get_config();
+  auto &httpconf = config->http;
 
-  if (!get_config()->http2_proxy && !httpconf.no_location_rewrite) {
+  if (!config->http2_proxy && !httpconf.no_location_rewrite) {
     downstream->rewrite_location_response_header(
         get_client_handler()->get_upstream_scheme());
   }
@@ -1083,7 +1085,7 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
     }
   }
 
-  if (!get_config()->http2_proxy && !httpconf.no_server_rewrite) {
+  if (!config->http2_proxy && !httpconf.no_server_rewrite) {
     buf->append("Server: ");
     buf->append(httpconf.server_name);
     buf->append("\r\n");
