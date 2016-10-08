@@ -1843,12 +1843,21 @@ SSL/TLS:
               Path  to file  that contains  password for  the server's
               private key.   If none is  given and the private  key is
               password protected it'll be requested interactively.
-  --subcert=<KEYPATH>:<CERTPATH>
+  --subcert=<KEYPATH>:<CERTPATH>[[;<PARAM>]...]
               Specify  additional certificate  and  private key  file.
               nghttpx will  choose certificates based on  the hostname
               indicated  by  client  using TLS  SNI  extension.   This
               option  can  be  used  multiple  times.   To  make  OCSP
               stapling work, <CERTPATH> must be absolute path.
+
+              Additional parameter  can be specified in  <PARAM>.  The
+              available <PARAM> is "sct-dir=<DIR>".
+
+              "sct-dir=<DIR>"  specifies the  path to  directory which
+              contains        *.sct        files        for        TLS
+              signed_certificate_timestamp extension (RFC 6962).  This
+              feature   requires   OpenSSL   >=   1.0.2.    See   also
+              --tls-sct-dir option.
   --dh-param-file=<PATH>
               Path to file that contains  DH parameters in PEM format.
               Without  this   option,  DHE   cipher  suites   are  not
@@ -2004,6 +2013,15 @@ SSL/TLS:
               Allow black  listed cipher  suite on  HTTP/2 connection.
               See  https://tools.ietf.org/html/rfc7540#appendix-A  for
               the complete HTTP/2 cipher suites black list.
+  --tls-sct-dir=<DIR>
+              Specifies the  directory where  *.sct files  exist.  All
+              *.sct   files   in  <DIR>   are   read,   and  sent   as
+              extension_data of  TLS signed_certificate_timestamp (RFC
+              6962)  to  client.   These   *.sct  files  are  for  the
+              certificate   specified   in   positional   command-line
+              argument <CERT>, or  certificate option in configuration
+              file.   For   additional  certificates,   use  --subcert
+              option.  This option requires OpenSSL >= 1.0.2.
 
 HTTP/2 and SPDY:
   -c, --frontend-http2-max-concurrent-streams=<N>
@@ -2937,6 +2955,7 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_BACKEND_HTTP2_DECODER_DYNAMIC_TABLE_SIZE.c_str(),
          required_argument, &flag, 139},
         {SHRPX_OPT_ECDH_CURVES.c_str(), required_argument, &flag, 140},
+        {SHRPX_OPT_TLS_SCT_DIR.c_str(), required_argument, &flag, 141},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -3600,6 +3619,10 @@ int main(int argc, char **argv) {
       case 140:
         // --ecdh-curves
         cmdcfgs.emplace_back(SHRPX_OPT_ECDH_CURVES, StringRef{optarg});
+        break;
+      case 141:
+        // --tls-sct-dir
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS_SCT_DIR, StringRef{optarg});
         break;
       default:
         break;

@@ -63,6 +63,9 @@ struct TLSSessionCache {
 // This struct stores the additional information per SSL_CTX.  This is
 // attached to SSL_CTX using SSL_CTX_set_app_data().
 struct TLSContextData {
+  // SCT data formatted so that this can be directly sent as
+  // extension_data of signed_certificate_timestamp.
+  std::vector<uint8_t> sct_data;
 #ifndef HAVE_ATOMIC_STD_SHARED_PTR
   // Protects ocsp_data;
   std::mutex mu;
@@ -75,7 +78,9 @@ struct TLSContextData {
 };
 
 // Create server side SSL_CTX
-SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file
+SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
+                            const std::vector<uint8_t> &sct_data
+
 #ifdef HAVE_NEVERBLEED
                             ,
                             neverbleed_t *nb

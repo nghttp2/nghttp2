@@ -309,6 +309,7 @@ constexpr auto SHRPX_OPT_BACKEND_HTTP2_ENCODER_DYNAMIC_TABLE_SIZE =
 constexpr auto SHRPX_OPT_BACKEND_HTTP2_DECODER_DYNAMIC_TABLE_SIZE =
     StringRef::from_lit("backend-http2-decoder-dynamic-table-size");
 constexpr auto SHRPX_OPT_ECDH_CURVES = StringRef::from_lit("ecdh-curves");
+constexpr auto SHRPX_OPT_TLS_SCT_DIR = StringRef::from_lit("tls-sct-dir");
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
@@ -437,6 +438,18 @@ struct TicketKeys {
   std::vector<TicketKey> keys;
 };
 
+struct TLSCertificate {
+  TLSCertificate(StringRef private_key_file, StringRef cert_file,
+                 std::vector<uint8_t> sct_data)
+      : private_key_file(std::move(private_key_file)),
+        cert_file(std::move(cert_file)),
+        sct_data(std::move(sct_data)) {}
+
+  StringRef private_key_file;
+  StringRef cert_file;
+  std::vector<uint8_t> sct_data;
+};
+
 struct HttpProxy {
   Address addr;
   // host in http proxy URI
@@ -522,14 +535,15 @@ struct TLSConfig {
     StringRef cert_file;
   } client;
 
-  // The list of (private key file, certificate file) pair
-  std::vector<std::pair<StringRef, StringRef>> subcerts;
+  // The list of additional TLS certificate pair
+  std::vector<TLSCertificate> subcerts;
   std::vector<unsigned char> alpn_prefs;
   // list of supported NPN/ALPN protocol strings in the order of
   // preference.
   std::vector<StringRef> npn_list;
   // list of supported SSL/TLS protocol strings.
   std::vector<StringRef> tls_proto_list;
+  std::vector<uint8_t> sct_data;
   BIO_METHOD *bio_method;
   // Bit mask to disable SSL/TLS protocol versions.  This will be
   // passed to SSL_CTX_set_options().
@@ -942,6 +956,7 @@ enum {
   SHRPX_OPTID_TLS_DYN_REC_IDLE_TIMEOUT,
   SHRPX_OPTID_TLS_DYN_REC_WARMUP_THRESHOLD,
   SHRPX_OPTID_TLS_PROTO_LIST,
+  SHRPX_OPTID_TLS_SCT_DIR,
   SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED,
   SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED_ADDRESS_FAMILY,
   SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED_CERT_FILE,

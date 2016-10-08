@@ -209,6 +209,24 @@ from the given file.  In this case, nghttpx does not rotate key
 automatically.  To rotate key, one has to restart nghttpx (see
 SIGNALS).
 
+CERTIFICATE TRANSPARENCY
+------------------------
+
+nghttpx supports TLS ``signed_certificate_timestamp`` extension (`RFC
+6962 <https://tools.ietf.org/html/rfc6962>`_).  The relevant options
+are :option:`--tls-sct-dir` and ``sct-dir`` parameter in
+:option:`--subcert`.  They takes a directory, and nghttpx reads all
+files whose extension is ``.sct`` under the directory.  The ``*.sct``
+files are encoded as ``SignedCertificateTimestamp`` struct described
+in `section 3.2 of RFC 69662
+<https://tools.ietf.org/html/rfc6962#section-3.2>`_.  This format is
+the same one used by `nginx-ct
+<https://github.com/grahamedgecombe/nginx-ct>`_ and `mod_ssl_ct
+<https://httpd.apache.org/docs/trunk/mod/mod_ssl_ct.html>`_.
+`ct-submit <https://github.com/grahamedgecombe/ct-submit>`_ can be
+used to submit certificates to log servers, and obtain the
+``SignedCertificateTimestamp`` struct which can be used with nghttpx.
+
 MRUBY SCRIPTING
 ---------------
 

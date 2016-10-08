@@ -485,6 +485,44 @@ int alpn_select_proto_cb(SSL *ssl, const unsigned char **out,
 } // namespace
 #endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 
+namespace {
+// https://tools.ietf.org/html/rfc6962#section-6
+constexpr unsigned int TLS_EXT_SIGNED_CERTIFICATE_TIMESTAMP = 18;
+} // namespace
+
+namespace {
+int sct_add_cb(SSL *ssl, unsigned int ext_type, const unsigned char **out,
+               size_t *outlen, int *al, void *add_arg) {
+  assert(ext_type == TLS_EXT_SIGNED_CERTIFICATE_TIMESTAMP);
+  auto ssl_ctx = SSL_get_SSL_CTX(ssl);
+  auto tls_ctx_data =
+      static_cast<TLSContextData *>(SSL_CTX_get_app_data(ssl_ctx));
+
+  *out = tls_ctx_data->sct_data.data();
+  *outlen = tls_ctx_data->sct_data.size();
+
+  return 1;
+}
+} // namespace
+
+namespace {
+void sct_free_cb(SSL *ssl, unsigned int ext_type, const unsigned char *out,
+                 void *add_arg) {
+  assert(ext_type == TLS_EXT_SIGNED_CERTIFICATE_TIMESTAMP);
+}
+} // namespace
+
+namespace {
+int sct_parse_cb(SSL *ssl, unsigned int ext_type, const unsigned char *in,
+                 size_t inlen, int *al, void *parse_arg) {
+  assert(ext_type == TLS_EXT_SIGNED_CERTIFICATE_TIMESTAMP);
+  // client SHOULD send 0 length extension_data, but it is still
+  // SHOULD, and not MUST.
+
+  return 1;
+}
+} // namespace
+
 struct TLSProtocol {
   StringRef name;
   long int mask;
@@ -513,7 +551,8 @@ long int create_tls_proto_mask(const std::vector<StringRef> &tls_proto_list) {
   return res;
 }
 
-SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file
+SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
+                            const std::vector<uint8_t> &sct_data
 #ifdef HAVE_NEVERBLEED
                             ,
                             neverbleed_t *nb
@@ -678,8 +717,22 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file
   SSL_CTX_set_alpn_select_cb(ssl_ctx, alpn_select_proto_cb, nullptr);
 #endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 
+#if !LIBRESSL_IN_USE && OPENSSL_VERSION_NUMBER >= 0x10002000L
+  if (!sct_data.empty() &&
+      SSL_extension_supported(TLS_EXT_SIGNED_CERTIFICATE_TIMESTAMP) == 0) {
+    if (SSL_CTX_add_server_custom_ext(
+            ssl_ctx, TLS_EXT_SIGNED_CERTIFICATE_TIMESTAMP, sct_add_cb,
+            sct_free_cb, nullptr, sct_parse_cb, nullptr) != 1) {
+      LOG(FATAL) << "SSL_CTX_add_server_custom_ext failed: "
+                 << ERR_error_string(ERR_get_error(), nullptr);
+      DIE();
+    }
+  }
+#endif // !LIBRESSL_IN_USE && OPENSSL_VERSION_NUMBER >= 0x10002000L
+
   auto tls_ctx_data = new TLSContextData();
   tls_ctx_data->cert_file = cert_file;
+  tls_ctx_data->sct_data = sct_data;
 
   SSL_CTX_set_app_data(ssl_ctx, tls_ctx_data);
 
@@ -1372,13 +1425,14 @@ SSL_CTX *setup_server_ssl_context(std::vector<SSL_CTX *> &all_ssl_ctx,
 
   auto &tlsconf = get_config()->tls;
 
-  auto ssl_ctx = ssl::create_ssl_context(tlsconf.private_key_file.c_str(),
-                                         tlsconf.cert_file.c_str()
+  auto ssl_ctx =
+      ssl::create_ssl_context(tlsconf.private_key_file.c_str(),
+                              tlsconf.cert_file.c_str(), tlsconf.sct_data
 #ifdef HAVE_NEVERBLEED
-                                             ,
-                                         nb
+                              ,
+                              nb
 #endif // HAVE_NEVERBLEED
-                                         );
+                              );
 
   all_ssl_ctx.push_back(ssl_ctx);
 
@@ -1407,24 +1461,21 @@ SSL_CTX *setup_server_ssl_context(std::vector<SSL_CTX *> &all_ssl_ctx,
     DIE();
   }
 
-  for (auto &keycert : tlsconf.subcerts) {
-    auto &priv_key_file = keycert.first;
-    auto &cert_file = keycert.second;
-
-    auto ssl_ctx =
-        ssl::create_ssl_context(priv_key_file.c_str(), cert_file.c_str()
+  for (auto &c : tlsconf.subcerts) {
+    auto ssl_ctx = ssl::create_ssl_context(c.private_key_file.c_str(),
+                                           c.cert_file.c_str(), c.sct_data
 #ifdef HAVE_NEVERBLEED
-                                                           ,
-                                nb
+                                           ,
+                                           nb
 #endif // HAVE_NEVERBLEED
-                                );
+                                           );
     all_ssl_ctx.push_back(ssl_ctx);
 
 #if !defined(LIBRESSL_VERSION_NUMBER) && OPENSSL_VERSION_NUMBER >= 0x10002000L
     auto cert = SSL_CTX_get0_certificate(ssl_ctx);
 #else  // defined(LIBRESSL_VERSION_NUMBER) || OPENSSL_VERSION_NUMBER <
     // 0x10002000L
-    auto cert = load_certificate(cert_file.c_str());
+    auto cert = load_certificate(c.cert_file.c_str());
     auto cert_deleter = defer(X509_free, cert);
 #endif // defined(LIBRESSL_VERSION_NUMBER) || OPENSSL_VERSION_NUMBER <
        // 0x10002000L
