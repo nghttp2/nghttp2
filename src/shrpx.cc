@@ -87,6 +87,7 @@
 #include "ssl.h"
 #include "template.h"
 #include "allocator.h"
+#include "ssl_compat.h"
 
 extern char **environ;
 
@@ -1316,6 +1317,11 @@ void fill_default_config(Config *config) {
   }
 
   tlsconf.session_timeout = std::chrono::hours(12);
+#if OPENSSL_1_1_API
+  tlsconf.ecdh_curves = StringRef::from_lit("X25519:P-256");
+#else  // !OPENSSL_1_1_API
+  tlsconf.ecdh_curves = StringRef::from_lit("P-256");
+#endif // !OPENSSL_1_1_API
 
   auto &httpconf = config->http;
   httpconf.server_name =
@@ -1822,6 +1828,13 @@ SSL/TLS:
   --ciphers=<SUITE>
               Set allowed  cipher list.  The  format of the  string is
               described in OpenSSL ciphers(1).
+  --ecdh-curves=<LIST>
+              Set  supported  curve  list  for  frontend  connections.
+              <LIST> is a  colon separated list of curve  NID or names
+              in the preference order.  The supported curves depend on
+              the  linked  OpenSSL  library.  This  function  requires
+              OpenSSL >= 1.0.2.
+              Default: )" << get_config()->tls.ecdh_curves << R"(
   -k, --insecure
               Don't  verify backend  server's  certificate  if TLS  is
               enabled for backend connections.
@@ -2930,6 +2943,7 @@ int main(int argc, char **argv) {
          required_argument, &flag, 138},
         {SHRPX_OPT_BACKEND_HTTP2_DECODER_DYNAMIC_TABLE_SIZE.c_str(),
          required_argument, &flag, 139},
+        {SHRPX_OPT_ECDH_CURVES.c_str(), required_argument, &flag, 140},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -3589,6 +3603,10 @@ int main(int argc, char **argv) {
         // --backend-http2-decoder-dynamic-table-size
         cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_HTTP2_DECODER_DYNAMIC_TABLE_SIZE,
                              StringRef{optarg});
+        break;
+      case 140:
+        // --ecdh-curves
+        cmdcfgs.emplace_back(SHRPX_OPT_ECDH_CURVES, StringRef{optarg});
         break;
       default:
         break;

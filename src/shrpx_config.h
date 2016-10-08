@@ -308,6 +308,7 @@ constexpr auto SHRPX_OPT_BACKEND_HTTP2_ENCODER_DYNAMIC_TABLE_SIZE =
     StringRef::from_lit("backend-http2-encoder-dynamic-table-size");
 constexpr auto SHRPX_OPT_BACKEND_HTTP2_DECODER_DYNAMIC_TABLE_SIZE =
     StringRef::from_lit("backend-http2-decoder-dynamic-table-size");
+constexpr auto SHRPX_OPT_ECDH_CURVES = StringRef::from_lit("ecdh-curves");
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
@@ -540,6 +541,7 @@ struct TLSConfig {
   StringRef cert_file;
   StringRef dh_param_file;
   StringRef ciphers;
+  StringRef ecdh_curves;
   StringRef cacert;
   bool insecure;
   bool no_http2_cipher_black_list;
@@ -871,6 +873,7 @@ enum {
   SHRPX_OPTID_CONF,
   SHRPX_OPTID_DAEMON,
   SHRPX_OPTID_DH_PARAM_FILE,
+  SHRPX_OPTID_ECDH_CURVES,
   SHRPX_OPTID_ERROR_PAGE,
   SHRPX_OPTID_ERRORLOG_FILE,
   SHRPX_OPTID_ERRORLOG_SYSLOG,

@@ -560,13 +560,18 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file
   }
 
 #ifndef OPENSSL_NO_EC
-
-  // Disabled SSL_CTX_set_ecdh_auto, because computational cost of
-  // chosen curve is much higher than P-256.
-
-  // #if OPENSSL_VERSION_NUMBER >= 0x10002000L
-  //   SSL_CTX_set_ecdh_auto(ssl_ctx, 1);
-  // #else // OPENSSL_VERSION_NUBMER < 0x10002000L
+#if !LIBRESSL_IN_USE && OPENSSL_VERSION_NUMBER >= 0x10002000L
+  if (SSL_CTX_set1_curves_list(ssl_ctx, tlsconf.ecdh_curves.c_str()) != 1) {
+    LOG(FATAL) << "SSL_CTX_set1_curves_list " << tlsconf.ecdh_curves
+               << " failed";
+    DIE();
+  }
+#if !OPENSSL_1_1_API
+  // It looks like we need this function call for OpenSSL 1.0.2.  This
+  // function was deprecated in OpenSSL 1.1.0.
+  SSL_CTX_set_ecdh_auto(ssl_ctx, 1);
+#endif // !OPENSSL_1_1_API
+#else  // LIBRESSL_IN_USE || OPENSSL_VERSION_NUBMER < 0x10002000L
   // Use P-256, which is sufficiently secure at the time of this
   // writing.
   auto ecdh = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
@@ -577,8 +582,7 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file
   }
   SSL_CTX_set_tmp_ecdh(ssl_ctx, ecdh);
   EC_KEY_free(ecdh);
-// #endif // OPENSSL_VERSION_NUBMER < 0x10002000L
-
+#endif // LIBRESSL_IN_USE || OPENSSL_VERSION_NUBMER < 0x10002000L
 #endif // OPENSSL_NO_EC
 
   if (!tlsconf.dh_param_file.empty()) {

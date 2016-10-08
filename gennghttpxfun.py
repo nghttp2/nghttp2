@@ -146,6 +146,7 @@ OPTIONS = [
     "frontend-http2-decoder-dynamic-table-size",
     "backend-http2-encoder-dynamic-table-size",
     "backend-http2-decoder-dynamic-table-size",
+    "ecdh-curves",
 ]
 
 LOGVARS = [

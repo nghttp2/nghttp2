@@ -56,6 +56,7 @@
 #include "shrpx_http.h"
 #include "util.h"
 #include "base64.h"
+#include "ssl_compat.h"
 
 namespace shrpx {
 
@@ -1173,6 +1174,9 @@ int option_lookup_token(const char *name, size_t namelen) {
     case 's':
       if (util::strieq_l("backend-tl", name, 10)) {
         return SHRPX_OPTID_BACKEND_TLS;
+      }
+      if (util::strieq_l("ecdh-curve", name, 10)) {
+        return SHRPX_OPTID_ECDH_CURVES;
       }
       break;
     case 't':
@@ -2864,6 +2868,13 @@ int parse_config(Config *config, int optid, const StringRef &opt,
   case SHRPX_OPTID_BACKEND_HTTP2_DECODER_DYNAMIC_TABLE_SIZE:
     return parse_uint_with_unit(
         &config->http2.downstream.decoder_dynamic_table_size, opt, optarg);
+  case SHRPX_OPTID_ECDH_CURVES:
+#if !LIBRESSL_IN_USE && OPENSSL_VERSION_NUMBER >= 0x10002000L
+    config->tls.ecdh_curves = make_string_ref(config->balloc, optarg);
+#else  // !(!LIBRESSL_IN_USE && OPENSSL_VERSION_NUMBER >= 0x10002000L)
+    LOG(WARN) << opt << ": This option requires OpenSSL >= 1.0.2";
+#endif // !(!LIBRESSL_IN_USE && OPENSSL_VERSION_NUMBER >= 0x10002000L)
+    return 0;
   case SHRPX_OPTID_CONF:
     LOG(WARN) << "conf: ignored";
 
