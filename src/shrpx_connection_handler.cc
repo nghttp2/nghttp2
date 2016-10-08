@@ -44,7 +44,6 @@
 #include "shrpx_accept_handler.h"
 #include "shrpx_memcached_dispatcher.h"
 #include "shrpx_signal.h"
-#include "shrpx_exec.h"
 #include "util.h"
 #include "template.h"
 
@@ -139,7 +138,7 @@ ConnectionHandler::ConnectionHandler(struct ev_loop *loop, std::mt19937 &gen)
   ocsp_.chldev.data = this;
 
   ocsp_.next = 0;
-  ocsp_.fd = -1;
+  ocsp_.proc.rfd = -1;
 
   reset_ocsp();
 }
@@ -496,11 +495,11 @@ bool ConnectionHandler::get_graceful_shutdown() const {
 }
 
 void ConnectionHandler::cancel_ocsp_update() {
-  if (ocsp_.pid == 0) {
+  if (ocsp_.proc.pid == 0) {
     return;
   }
 
-  kill(ocsp_.pid, SIGTERM);
+  kill(ocsp_.proc.pid, SIGTERM);
 }
 
 // inspired by h2o_read_command function from h2o project:
@@ -526,13 +525,12 @@ int ConnectionHandler::start_ocsp_update(const char *cert_file) {
     return -1;
   }
 
-  ocsp_.pid = proc.pid;
-  ocsp_.fd = proc.rfd;
+  ocsp_.proc = proc;
 
-  ev_io_set(&ocsp_.rev, ocsp_.fd, EV_READ);
+  ev_io_set(&ocsp_.rev, ocsp_.proc.rfd, EV_READ);
   ev_io_start(loop_, &ocsp_.rev);
 
-  ev_child_set(&ocsp_.chldev, ocsp_.pid, 0);
+  ev_child_set(&ocsp_.chldev, ocsp_.proc.pid, 0);
   ev_child_start(loop_, &ocsp_.chldev);
 
   return 0;
@@ -542,7 +540,8 @@ void ConnectionHandler::read_ocsp_chunk() {
   std::array<uint8_t, 4_k> buf;
   for (;;) {
     ssize_t n;
-    while ((n = read(ocsp_.fd, buf.data(), buf.size())) == -1 && errno == EINTR)
+    while ((n = read(ocsp_.proc.rfd, buf.data(), buf.size())) == -1 &&
+           errno == EINTR)
       ;
 
     if (n == -1) {
@@ -614,12 +613,12 @@ void ConnectionHandler::handle_ocsp_complete() {
 }
 
 void ConnectionHandler::reset_ocsp() {
-  if (ocsp_.fd != -1) {
-    close(ocsp_.fd);
+  if (ocsp_.proc.rfd != -1) {
+    close(ocsp_.proc.rfd);
   }
 
-  ocsp_.fd = -1;
-  ocsp_.pid = 0;
+  ocsp_.proc.rfd = -1;
+  ocsp_.proc.pid = 0;
   ocsp_.error = 0;
   ocsp_.resp = std::vector<uint8_t>();
 }

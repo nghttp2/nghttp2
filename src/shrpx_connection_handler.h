@@ -50,6 +50,7 @@
 
 #include "shrpx_downstream_connection_pool.h"
 #include "shrpx_config.h"
+#include "shrpx_exec.h"
 
 namespace shrpx {
 
@@ -71,17 +72,15 @@ class CertLookupTree;
 struct OCSPUpdateContext {
   // ocsp response buffer
   std::vector<uint8_t> resp;
+  // Process running fetch-ocsp-response script
+  Process proc;
   // index to ConnectionHandler::all_ssl_ctx_, which points to next
   // SSL_CTX to update ocsp response cache.
   size_t next;
   ev_child chldev;
   ev_io rev;
-  // fd to read response from fetch-ocsp-response script
-  int fd;
   // errno encountered while processing response
   int error;
-  // pid of forked fetch-ocsp-response script process
-  pid_t pid;
 };
 
 // SerialEvent is an event sent from Worker thread.
