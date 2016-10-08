@@ -1323,9 +1323,9 @@ void fill_default_config(Config *config) {
 
   tlsconf.session_timeout = std::chrono::hours(12);
 #if OPENSSL_1_1_API
-  tlsconf.ecdh_curves = StringRef::from_lit("X25519:P-256");
+  tlsconf.ecdh_curves = StringRef::from_lit("X25519:P-256:P-384:P-521");
 #else  // !OPENSSL_1_1_API
-  tlsconf.ecdh_curves = StringRef::from_lit("P-256");
+  tlsconf.ecdh_curves = StringRef::from_lit("P-256:P-384:P-521");
 #endif // !OPENSSL_1_1_API
 
   auto &httpconf = config->http;
