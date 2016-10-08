@@ -44,6 +44,7 @@
 #include "shrpx_accept_handler.h"
 #include "shrpx_memcached_dispatcher.h"
 #include "shrpx_signal.h"
+#include "shrpx_exec.h"
 #include "util.h"
 #include "template.h"
 
@@ -506,7 +507,6 @@ void ConnectionHandler::cancel_ocsp_update() {
 // https://github.com/h2o/h2o
 int ConnectionHandler::start_ocsp_update(const char *cert_file) {
   int rv;
-  int pfd[2];
 
   if (LOG_ENABLED(INFO)) {
     LOG(INFO) << "Start ocsp update for " << cert_file;
@@ -520,92 +520,15 @@ int ConnectionHandler::start_ocsp_update(const char *cert_file) {
           get_config()->tls.ocsp.fetch_ocsp_response_file.c_str()),
       const_cast<char *>(cert_file), nullptr};
 
-#ifdef O_CLOEXEC
-  if (pipe2(pfd, O_CLOEXEC) == -1) {
-    return -1;
-  }
-#else  // !O_CLOEXEC
-  if (pipe(pfd) == -1) {
-    return -1;
-  }
-  util::make_socket_closeonexec(pfd[0]);
-  util::make_socket_closeonexec(pfd[1]);
-#endif // !O_CLOEXEC
-
-  auto closer = defer([&pfd]() {
-    if (pfd[0] != -1) {
-      close(pfd[0]);
-    }
-
-    if (pfd[1] != -1) {
-      close(pfd[1]);
-    }
-  });
-
-  sigset_t oldset;
-
-  rv = shrpx_signal_block_all(&oldset);
+  Process proc;
+  rv = exec_read_command(proc, argv);
   if (rv != 0) {
-    auto error = errno;
-    LOG(ERROR) << "Blocking all signals failed: " << strerror(error);
-
     return -1;
   }
 
-  auto pid = fork();
+  ocsp_.pid = proc.pid;
+  ocsp_.fd = proc.rfd;
 
-  if (pid == 0) {
-    // child process
-    shrpx_signal_unset_worker_proc_ign_handler();
-
-    rv = shrpx_signal_unblock_all();
-    if (rv != 0) {
-      auto error = errno;
-      LOG(FATAL) << "Unblocking all signals failed: " << strerror(error);
-
-      _Exit(EXIT_FAILURE);
-    }
-
-    dup2(pfd[1], 1);
-    close(pfd[0]);
-
-    rv = execv(argv[0], argv);
-    if (rv == -1) {
-      auto error = errno;
-      LOG(ERROR) << "Could not execute ocsp query command: " << argv[0]
-                 << ", execve() faild, errno=" << error;
-      _Exit(EXIT_FAILURE);
-    }
-    // unreachable
-  }
-
-  // parent process
-  if (pid == -1) {
-    auto error = errno;
-    LOG(ERROR) << "Could not execute ocsp query command for " << cert_file
-               << ": " << argv[0] << ", fork() failed, errno=" << error;
-  }
-
-  rv = shrpx_signal_set(&oldset);
-  if (rv != 0) {
-    auto error = errno;
-    LOG(FATAL) << "Restoring all signals failed: " << strerror(error);
-
-    _Exit(EXIT_FAILURE);
-  }
-
-  if (pid == -1) {
-    return -1;
-  }
-
-  close(pfd[1]);
-  pfd[1] = -1;
-
-  ocsp_.pid = pid;
-  ocsp_.fd = pfd[0];
-  pfd[0] = -1;
-
-  util::make_socket_nonblocking(ocsp_.fd);
   ev_io_set(&ocsp_.rev, ocsp_.fd, EV_READ);
   ev_io_start(loop_, &ocsp_.rev);
 
