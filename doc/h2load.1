@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "H2LOAD" "1" "Sep 25, 2016" "1.15.0" "nghttp2"
+.TH "H2LOAD" "1" "Oct 08, 2016" "1.16.0-DEV" "nghttp2"
 .SH NAME
 h2load \- HTTP/2 benchmarking tool
 .
@@ -242,6 +242,23 @@ http/1.1 for both http and https URI.
 .UNINDENT
 .INDENT 0.0
 .TP
+.B \-\-header\-table\-size=<SIZE>
+Specify decoder header table size.
+.sp
+Default: \fB4K\fP
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-encoder\-header\-table\-size=<SIZE>
+Specify encoder header table size.  The decoder (server)
+specifies  the maximum  dynamic table  size it  accepts.
+Then the negotiated dynamic table size is the minimum of
+this option value and the value which server specified.
+.sp
+Default: \fB4K\fP
+.UNINDENT
+.INDENT 0.0
+.TP
 .B \-v, \-\-verbose
 Output debug information.
 .UNINDENT
@@ -255,6 +272,9 @@ Display version information and exit.
 .B \-h, \-\-help
 Display this help and exit.
 .UNINDENT
+.sp
+The <SIZE> argument is an integer and an optional unit (e.g., 10K is
+10 * 1024).  Units are K, M and G (powers of 1024).
 .sp
 The <DURATION> argument is an integer and an optional unit (e.g., 1s
 is 1 second and 500ms is 500 milliseconds).  Units are h, m, s or ms

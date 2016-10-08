@@ -202,6 +202,21 @@ OPTIONS
     :option:`--no-tls-proto`\=http/1.1,    which   effectively    force
     http/1.1 for both http and https URI.
 
+.. option:: --header-table-size=<SIZE>
+
+    Specify decoder header table size.
+
+    Default: ``4K``
+
+.. option:: --encoder-header-table-size=<SIZE>
+
+    Specify encoder header table size.  The decoder (server)
+    specifies  the maximum  dynamic table  size it  accepts.
+    Then the negotiated dynamic table size is the minimum of
+    this option value and the value which server specified.
+
+    Default: ``4K``
+
 .. option:: -v, --verbose
 
     Output debug information.
@@ -215,6 +230,9 @@ OPTIONS
     Display this help and exit.
 
 
+
+The <SIZE> argument is an integer and an optional unit (e.g., 10K is
+10 * 1024).  Units are K, M and G (powers of 1024).
 
 The <DURATION> argument is an integer and an optional unit (e.g., 1s
 is 1 second and 500ms is 500 milliseconds).  Units are h, m, s or ms

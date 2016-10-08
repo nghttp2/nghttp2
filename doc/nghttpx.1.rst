@@ -467,6 +467,16 @@ SSL/TLS
     Set allowed  cipher list.  The  format of the  string is
     described in OpenSSL ciphers(1).
 
+.. option:: --ecdh-curves=<LIST>
+
+    Set  supported  curve  list  for  frontend  connections.
+    <LIST> is a  colon separated list of curve  NID or names
+    in the preference order.  The supported curves depend on
+    the  linked  OpenSSL  library.  This  function  requires
+    OpenSSL >= 1.0.2.
+
+    Default: ``P-256:P-384:P-521``
+
 .. option:: -k, --insecure
 
     Don't  verify backend  server's  certificate  if TLS  is
@@ -1081,7 +1091,7 @@ HTTP
 
     Change server response header field value to <NAME>.
 
-    Default: ``nghttpx nghttp2/1.15.0``
+    Default: ``nghttpx nghttp2/1.16.0-DEV``
 
 .. option:: --no-server-rewrite
 
