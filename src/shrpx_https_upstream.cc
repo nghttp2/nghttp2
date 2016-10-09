@@ -76,7 +76,7 @@ int htp_msg_begin(http_parser *htp) {
 
   upstream->attach_downstream(std::move(downstream));
 
-  handler->stop_read_timer();
+  handler->repeat_read_timer();
 
   return 0;
 }
@@ -291,6 +291,8 @@ int htp_hdrs_completecb(http_parser *htp) {
   req.http_minor = htp->http_minor;
 
   req.connection_close = !http_should_keep_alive(htp);
+
+  handler->stop_read_timer();
 
   auto method = req.method;
 

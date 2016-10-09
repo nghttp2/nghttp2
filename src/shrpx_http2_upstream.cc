@@ -279,6 +279,8 @@ int on_begin_headers_callback(nghttp2_session *session,
 
   downstream->reset_upstream_rtimer();
 
+  handler->repeat_read_timer();
+
   auto &req = downstream->request();
 
   // Although, we deprecated minor version from HTTP/2, we supply
@@ -472,6 +474,7 @@ int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
     verbose_on_frame_recv_callback(session, frame, user_data);
   }
   auto upstream = static_cast<Http2Upstream *>(user_data);
+  auto handler = upstream->get_client_handler();
 
   switch (frame->hd.type) {
   case NGHTTP2_DATA: {
@@ -504,6 +507,8 @@ int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
 
     if (frame->headers.cat == NGHTTP2_HCAT_REQUEST) {
       downstream->reset_upstream_rtimer();
+
+      handler->stop_read_timer();
 
       return upstream->on_request_headers(downstream, frame);
     }
@@ -1506,8 +1511,6 @@ int Http2Upstream::error_reply(Downstream *downstream,
 void Http2Upstream::add_pending_downstream(
     std::unique_ptr<Downstream> downstream) {
   downstream_queue_.add_pending(std::move(downstream));
-
-  handler_->stop_read_timer();
 }
 
 void Http2Upstream::remove_downstream(Downstream *downstream) {
