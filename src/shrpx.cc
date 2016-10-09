@@ -1487,7 +1487,7 @@ Options:
   The options are categorized into several groups.
 
 Connections:
-  -b, --backend=(<HOST>,<PORT>|unix:<PATH>)[;[<PATTERN>[:...]][[;PARAM]...]
+  -b, --backend=(<HOST>,<PORT>|unix:<PATH>)[;[<PATTERN>[:...]][[;<PARAM>]...]
 
               Set  backend  host  and   port.   The  multiple  backend
               addresses are  accepted by repeating this  option.  UNIX
@@ -1614,7 +1614,7 @@ Connections:
 
               Default: )" << DEFAULT_DOWNSTREAM_HOST << ","
       << DEFAULT_DOWNSTREAM_PORT << R"(
-  -f, --frontend=(<HOST>,<PORT>|unix:<PATH>)[[;PARAM]...]
+  -f, --frontend=(<HOST>,<PORT>|unix:<PATH>)[[;<PARAM>]...]
               Set  frontend  host and  port.   If  <HOST> is  '*',  it
               assumes  all addresses  including  both  IPv4 and  IPv6.
               UNIX domain  socket can  be specified by  prefixing path
