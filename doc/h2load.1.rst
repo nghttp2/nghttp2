@@ -74,14 +74,14 @@ OPTIONS
 .. option:: -w, --window-bits=<N>
 
     Sets the stream level initial window size to (2\*\*<N>)-1.
-    For SPDY, 2**<N> is used instead.
+    For SPDY, 2\*\*<N> is used instead.
 
     Default: ``30``
 
 .. option:: -W, --connection-window-bits=<N>
 
     Sets  the  connection  level   initial  window  size  to
-    (2**<N>)-1.  For SPDY, if <N>  is strictly less than 16,
+    (2\*\*<N>)-1.  For SPDY, if <N>  is strictly less than 16,
     this option  is ignored.   Otherwise 2\*\*<N> is  used for
     SPDY.
 

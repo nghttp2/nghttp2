@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTPX" "1" "Oct 08, 2016" "1.16.0-DEV" "nghttp2"
+.TH "NGHTTPX" "1" "Oct 09, 2016" "1.16.0-DEV" "nghttp2"
 .SH NAME
 nghttpx \- HTTP/2 proxy
 .
@@ -55,7 +55,7 @@ The options are categorized into several groups.
 .SS Connections
 .INDENT 0.0
 .TP
-.B \-b, \-\-backend=(<HOST>,<PORT>|unix:<PATH>)[;[<PATTERN>[:...]][[;PARAM]...]
+.B \-b, \-\-backend=(<HOST>,<PORT>|unix:<PATH>)[;[<PATTERN>[:...]][[;<PARAM>]...]
 Set  backend  host  and   port.   The  multiple  backend
 addresses are  accepted by repeating this  option.  UNIX
 domain socket  can be  specified by prefixing  path name
@@ -183,7 +183,7 @@ Default: \fB127.0.0.1,80\fP
 .UNINDENT
 .INDENT 0.0
 .TP
-.B \-f, \-\-frontend=(<HOST>,<PORT>|unix:<PATH>)[[;PARAM]...]
+.B \-f, \-\-frontend=(<HOST>,<PORT>|unix:<PATH>)[[;<PARAM>]...]
 Set  frontend  host and  port.   If  <HOST> is  \(aq*\(aq,  it
 assumes  all addresses  including  both  IPv4 and  IPv6.
 UNIX domain  socket can  be specified by  prefixing path
@@ -542,12 +542,21 @@ password protected it\(aqll be requested interactively.
 .UNINDENT
 .INDENT 0.0
 .TP
-.B \-\-subcert=<KEYPATH>:<CERTPATH>
+.B \-\-subcert=<KEYPATH>:<CERTPATH>[[;<PARAM>]...]
 Specify  additional certificate  and  private key  file.
 nghttpx will  choose certificates based on  the hostname
 indicated  by  client  using TLS  SNI  extension.   This
 option  can  be  used  multiple  times.   To  make  OCSP
 stapling work, <CERTPATH> must be absolute path.
+.sp
+Additional parameter  can be specified in  <PARAM>.  The
+available <PARAM> is "sct\-dir=<DIR>".
+.sp
+"sct\-dir=<DIR>"  specifies the  path to  directory which
+contains        *.sct        files        for        TLS
+signed_certificate_timestamp extension (RFC 6962).  This
+feature   requires   OpenSSL   >=   1.0.2.    See   also
+\fI\%\-\-tls\-sct\-dir\fP option.
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -789,6 +798,18 @@ Default: \fB1s\fP
 Allow black  listed cipher  suite on  HTTP/2 connection.
 See  \fI\%https://tools.ietf.org/html/rfc7540#appendix\-A\fP  for
 the complete HTTP/2 cipher suites black list.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-tls\-sct\-dir=<DIR>
+Specifies the  directory where  *.sct files  exist.  All
+*.sct   files   in  <DIR>   are   read,   and  sent   as
+extension_data of  TLS signed_certificate_timestamp (RFC
+6962)  to  client.   These   *.sct  files  are  for  the
+certificate   specified   in   positional   command\-line
+argument <CERT>, or  certificate option in configuration
+file.   For   additional  certificates,   use  \fI\%\-\-subcert\fP
+option.  This option requires OpenSSL >= 1.0.2.
 .UNINDENT
 .SS HTTP/2 and SPDY
 .INDENT 0.0
@@ -1536,6 +1557,19 @@ If \fI\%\-\-tls\-ticket\-key\-file\fP is given, encryption key is read
 from the given file.  In this case, nghttpx does not rotate key
 automatically.  To rotate key, one has to restart nghttpx (see
 SIGNALS).
+.SH CERTIFICATE TRANSPARENCY
+.sp
+nghttpx supports TLS \fBsigned_certificate_timestamp\fP extension (\fI\%RFC
+6962\fP).  The relevant options
+are \fI\%\-\-tls\-sct\-dir\fP and \fBsct\-dir\fP parameter in
+\fI\%\-\-subcert\fP\&.  They takes a directory, and nghttpx reads all
+files whose extension is \fB\&.sct\fP under the directory.  The \fB*.sct\fP
+files are encoded as \fBSignedCertificateTimestamp\fP struct described
+in \fI\%section 3.2 of RFC 69662\fP\&.  This format is
+the same one used by \fI\%nginx\-ct\fP and \fI\%mod_ssl_ct\fP\&.
+\fI\%ct\-submit\fP can be
+used to submit certificates to log servers, and obtain the
+\fBSignedCertificateTimestamp\fP struct which can be used with nghttpx.
 .SH MRUBY SCRIPTING
 .sp
 \fBWARNING:\fP

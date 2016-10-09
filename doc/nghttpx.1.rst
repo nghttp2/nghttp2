@@ -37,7 +37,7 @@ The options are categorized into several groups.
 Connections
 ~~~~~~~~~~~
 
-.. option:: -b, --backend=(<HOST>,<PORT>|unix:<PATH>)[;[<PATTERN>[:...]][[;PARAM]...]
+.. option:: -b, --backend=(<HOST>,<PORT>|unix:<PATH>)[;[<PATTERN>[:...]][[;<PARAM>]...]
 
 
     Set  backend  host  and   port.   The  multiple  backend
@@ -70,7 +70,7 @@ Connections
 
     Host  can  include "\*"  in  the  left most  position  to
     indicate  wildcard match  (only suffix  match is  done).
-    The "*" must match at least one character.  For example,
+    The "\*" must match at least one character.  For example,
     host    pattern    "\*.nghttp2.org"    matches    against
     "www.nghttp2.org"  and  "git.ngttp2.org", but  does  not
     match  against  "nghttp2.org".   The exact  hosts  match
@@ -166,7 +166,7 @@ Connections
 
     Default: ``127.0.0.1,80``
 
-.. option:: -f, --frontend=(<HOST>,<PORT>|unix:<PATH>)[[;PARAM]...]
+.. option:: -f, --frontend=(<HOST>,<PORT>|unix:<PATH>)[[;<PARAM>]...]
 
     Set  frontend  host and  port.   If  <HOST> is  '\*',  it
     assumes  all addresses  including  both  IPv4 and  IPv6.
@@ -496,13 +496,22 @@ SSL/TLS
     private key.   If none is  given and the private  key is
     password protected it'll be requested interactively.
 
-.. option:: --subcert=<KEYPATH>:<CERTPATH>
+.. option:: --subcert=<KEYPATH>:<CERTPATH>[[;<PARAM>]...]
 
     Specify  additional certificate  and  private key  file.
     nghttpx will  choose certificates based on  the hostname
     indicated  by  client  using TLS  SNI  extension.   This
     option  can  be  used  multiple  times.   To  make  OCSP
     stapling work, <CERTPATH> must be absolute path.
+
+    Additional parameter  can be specified in  <PARAM>.  The
+    available <PARAM> is "sct-dir=<DIR>".
+
+    "sct-dir=<DIR>"  specifies the  path to  directory which
+    contains        \*.sct        files        for        TLS
+    signed_certificate_timestamp extension (RFC 6962).  This
+    feature   requires   OpenSSL   >=   1.0.2.    See   also
+    :option:`--tls-sct-dir` option.
 
 .. option:: --dh-param-file=<PATH>
 
@@ -718,6 +727,17 @@ SSL/TLS
     Allow black  listed cipher  suite on  HTTP/2 connection.
     See  https://tools.ietf.org/html/rfc7540#appendix-A  for
     the complete HTTP/2 cipher suites black list.
+
+.. option:: --tls-sct-dir=<DIR>
+
+    Specifies the  directory where  \*.sct files  exist.  All
+    \*.sct   files   in  <DIR>   are   read,   and  sent   as
+    extension_data of  TLS signed_certificate_timestamp (RFC
+    6962)  to  client.   These   \*.sct  files  are  for  the
+    certificate   specified   in   positional   command-line
+    argument <CERT>, or  certificate option in configuration
+    file.   For   additional  certificates,   use  :option:`--subcert`
+    option.  This option requires OpenSSL >= 1.0.2.
 
 
 HTTP/2 and SPDY
@@ -1083,7 +1103,7 @@ HTTP
     Set file path  to custom error page  served when nghttpx
     originally  generates  HTTP  error status  code  <CODE>.
     <CODE> must be greater than or equal to 400, and at most
-    599.  If "*"  is used instead of <CODE>,  it matches all
+    599.  If "\*"  is used instead of <CODE>,  it matches all
     HTTP  status  code.  If  error  status  code comes  from
     backend server, the custom error pages are not used.
 
@@ -1406,6 +1426,24 @@ If :option:`--tls-ticket-key-file` is given, encryption key is read
 from the given file.  In this case, nghttpx does not rotate key
 automatically.  To rotate key, one has to restart nghttpx (see
 SIGNALS).
+
+CERTIFICATE TRANSPARENCY
+------------------------
+
+nghttpx supports TLS ``signed_certificate_timestamp`` extension (`RFC
+6962 <https://tools.ietf.org/html/rfc6962>`_).  The relevant options
+are :option:`--tls-sct-dir` and ``sct-dir`` parameter in
+:option:`--subcert`.  They takes a directory, and nghttpx reads all
+files whose extension is ``.sct`` under the directory.  The ``*.sct``
+files are encoded as ``SignedCertificateTimestamp`` struct described
+in `section 3.2 of RFC 69662
+<https://tools.ietf.org/html/rfc6962#section-3.2>`_.  This format is
+the same one used by `nginx-ct
+<https://github.com/grahamedgecombe/nginx-ct>`_ and `mod_ssl_ct
+<https://httpd.apache.org/docs/trunk/mod/mod_ssl_ct.html>`_.
+`ct-submit <https://github.com/grahamedgecombe/ct-submit>`_ can be
+used to submit certificates to log servers, and obtain the
+``SignedCertificateTimestamp`` struct which can be used with nghttpx.
 
 MRUBY SCRIPTING
 ---------------
