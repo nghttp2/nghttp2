@@ -112,6 +112,7 @@ if(ENABLE_APP)
     shrpx_api_downstream_connection.cc
     shrpx_health_monitor_downstream_connection.cc
     shrpx_exec.cc
+    xsi_strerror.c
   )
   if(HAVE_SPDYLAY)
     list(APPEND NGHTTPX_SRCS

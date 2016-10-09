@@ -52,6 +52,7 @@
 #include "util.h"
 #include "app_helper.h"
 #include "template.h"
+#include "xsi_strerror.h"
 
 using namespace nghttp2;
 
@@ -63,23 +64,26 @@ void drop_privileges(
     neverbleed_t *nb
 #endif // HAVE_NEVERBLEED
     ) {
+  std::array<char, STRERROR_BUFSIZE> errbuf;
   auto config = get_config();
 
   if (getuid() == 0 && config->uid != 0) {
     if (initgroups(config->user.c_str(), config->gid) != 0) {
       auto error = errno;
       LOG(FATAL) << "Could not change supplementary groups: "
-                 << strerror(error);
+                 << xsi_strerror(error, errbuf.data(), errbuf.size());
       exit(EXIT_FAILURE);
     }
     if (setgid(config->gid) != 0) {
       auto error = errno;
-      LOG(FATAL) << "Could not change gid: " << strerror(error);
+      LOG(FATAL) << "Could not change gid: "
+                 << xsi_strerror(error, errbuf.data(), errbuf.size());
       exit(EXIT_FAILURE);
     }
     if (setuid(config->uid) != 0) {
       auto error = errno;
-      LOG(FATAL) << "Could not change uid: " << strerror(error);
+      LOG(FATAL) << "Could not change uid: "
+                 << xsi_strerror(error, errbuf.data(), errbuf.size());
       exit(EXIT_FAILURE);
     }
     if (setuid(0) != -1) {
@@ -387,6 +391,8 @@ std::random_device rd;
 } // namespace
 
 int worker_process_event_loop(WorkerProcessConfig *wpconf) {
+  std::array<char, STRERROR_BUFSIZE> errbuf;
+
   if (reopen_log_files() != 0) {
     LOG(FATAL) << "Failed to open log file";
     return -1;
@@ -501,7 +507,8 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
 
     rv = pthread_sigmask(SIG_BLOCK, &set, nullptr);
     if (rv != 0) {
-      LOG(ERROR) << "Blocking SIGCHLD failed: " << strerror(rv);
+      LOG(ERROR) << "Blocking SIGCHLD failed: "
+                 << xsi_strerror(rv, errbuf.data(), errbuf.size());
       return -1;
     }
 #endif // !NOTHREADS
@@ -514,7 +521,8 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
 #ifndef NOTHREADS
     rv = pthread_sigmask(SIG_UNBLOCK, &set, nullptr);
     if (rv != 0) {
-      LOG(ERROR) << "Unblocking SIGCHLD failed: " << strerror(rv);
+      LOG(ERROR) << "Unblocking SIGCHLD failed: "
+                 << xsi_strerror(rv, errbuf.data(), errbuf.size());
       return -1;
     }
 #endif // !NOTHREADS

@@ -58,6 +58,7 @@
 #include "util.h"
 #include "base64.h"
 #include "ssl_compat.h"
+#include "xsi_strerror.h"
 
 namespace shrpx {
 
@@ -225,6 +226,8 @@ read_tls_ticket_key_file(const std::vector<StringRef> &files,
 }
 
 FILE *open_file_for_write(const char *filename) {
+  std::array<char, STRERROR_BUFSIZE> errbuf;
+
 #if defined O_CLOEXEC
   auto fd = open(filename, O_WRONLY | O_CLOEXEC | O_CREAT | O_TRUNC,
                  S_IRUSR | S_IWUSR);
@@ -237,14 +240,16 @@ FILE *open_file_for_write(const char *filename) {
   }
 #endif
   if (fd == -1) {
-    LOG(ERROR) << "Failed to open " << filename
-               << " for writing. Cause: " << strerror(errno);
+    auto error = errno;
+    LOG(ERROR) << "Failed to open " << filename << " for writing. Cause: "
+               << xsi_strerror(error, errbuf.data(), errbuf.size());
     return nullptr;
   }
   auto f = fdopen(fd, "wb");
   if (f == nullptr) {
-    LOG(ERROR) << "Failed to open " << filename
-               << " for writing. Cause: " << strerror(errno);
+    auto error = errno;
+    LOG(ERROR) << "Failed to open " << filename << " for writing. Cause: "
+               << xsi_strerror(error, errbuf.data(), errbuf.size());
     return nullptr;
   }
 
@@ -963,6 +968,8 @@ int parse_forwarded_node_type(const StringRef &optarg) {
 namespace {
 int parse_error_page(std::vector<ErrorPage> &error_pages, const StringRef &opt,
                      const StringRef &optarg) {
+  std::array<char, STRERROR_BUFSIZE> errbuf;
+
   auto eq = std::find(std::begin(optarg), std::end(optarg), '=');
   if (eq == std::end(optarg) || eq + 1 == std::end(optarg)) {
     LOG(ERROR) << opt << ": bad value: '" << optarg << "'";
@@ -991,7 +998,8 @@ int parse_error_page(std::vector<ErrorPage> &error_pages, const StringRef &opt,
   auto fd = open(path.c_str(), O_RDONLY);
   if (fd == -1) {
     auto error = errno;
-    LOG(ERROR) << opt << ": " << optarg << ": " << strerror(error);
+    LOG(ERROR) << opt << ": " << optarg << ": "
+               << xsi_strerror(error, errbuf.data(), errbuf.size());
     return -1;
   }
 
@@ -1002,7 +1010,8 @@ int parse_error_page(std::vector<ErrorPage> &error_pages, const StringRef &opt,
     auto n = read(fd, buf.data(), buf.size());
     if (n == -1) {
       auto error = errno;
-      LOG(ERROR) << opt << ": " << optarg << ": " << strerror(error);
+      LOG(ERROR) << opt << ": " << optarg << ": "
+                 << xsi_strerror(error, errbuf.data(), errbuf.size());
       return -1;
     }
     if (n == 0) {
@@ -1068,10 +1077,13 @@ namespace {
 // must be NULL-terminated string.
 int read_tls_sct_from_dir(std::vector<uint8_t> &dst, const StringRef &opt,
                           const StringRef &dir_path) {
+  std::array<char, STRERROR_BUFSIZE> errbuf;
+
   auto dir = opendir(dir_path.c_str());
   if (dir == nullptr) {
     auto error = errno;
-    LOG(ERROR) << opt << ": " << dir_path << ": " << strerror(error);
+    LOG(ERROR) << opt << ": " << dir_path << ": "
+               << xsi_strerror(error, errbuf.data(), errbuf.size());
     return -1;
   }
 
@@ -1088,7 +1100,7 @@ int read_tls_sct_from_dir(std::vector<uint8_t> &dst, const StringRef &opt,
       if (errno != 0) {
         auto error = errno;
         LOG(ERROR) << opt << ": failed to read directory " << dir_path << ": "
-                   << strerror(error);
+                   << xsi_strerror(error, errbuf.data(), errbuf.size());
         return -1;
       }
       break;
@@ -1113,7 +1125,7 @@ int read_tls_sct_from_dir(std::vector<uint8_t> &dst, const StringRef &opt,
     if (fd == -1) {
       auto error = errno;
       LOG(ERROR) << opt << ": failed to read SCT from " << path << ": "
-                 << strerror(error);
+                 << xsi_strerror(error, errbuf.data(), errbuf.size());
       return -1;
     }
 
@@ -1131,7 +1143,7 @@ int read_tls_sct_from_dir(std::vector<uint8_t> &dst, const StringRef &opt,
       if (nread == -1) {
         auto error = errno;
         LOG(ERROR) << opt << ": failed to read SCT data from " << path << ": "
-                   << strerror(error);
+                   << xsi_strerror(error, errbuf.data(), errbuf.size());
         return -1;
       }
 
@@ -2000,6 +2012,7 @@ int parse_config(Config *config, const StringRef &opt, const StringRef &optarg,
 
 int parse_config(Config *config, int optid, const StringRef &opt,
                  const StringRef &optarg, std::set<StringRef> &included_set) {
+  std::array<char, STRERROR_BUFSIZE> errbuf;
   char host[NI_MAXHOST];
   uint16_t port;
 
@@ -2304,7 +2317,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     auto pwd = getpwnam(optarg.c_str());
     if (!pwd) {
       LOG(ERROR) << opt << ": failed to get uid from " << optarg << ": "
-                 << strerror(errno);
+                 << xsi_strerror(errno, errbuf.data(), errbuf.size());
       return -1;
     }
     config->user = make_string_ref(config->balloc, StringRef{pwd->pw_name});

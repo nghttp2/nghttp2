@@ -88,6 +88,7 @@
 #include "template.h"
 #include "allocator.h"
 #include "ssl_compat.h"
+#include "xsi_strerror.h"
 
 extern char **environ;
 
@@ -298,6 +299,7 @@ int chown_to_running_user(const char *path) {
 
 namespace {
 int save_pid() {
+  std::array<char, STRERROR_BUFSIZE> errbuf;
   auto config = get_config();
 
   constexpr auto SUFFIX = StringRef::from_lit(".XXXXXX");
@@ -317,7 +319,7 @@ int save_pid() {
   if (fd == -1) {
     auto error = errno;
     LOG(ERROR) << "Could not save PID to file " << pid_file << ": "
-               << strerror(error);
+               << xsi_strerror(error, errbuf.data(), errbuf.size());
     return -1;
   }
 
@@ -326,14 +328,14 @@ int save_pid() {
   if (write(fd, content.c_str(), content.size()) == -1) {
     auto error = errno;
     LOG(ERROR) << "Could not save PID to file " << pid_file << ": "
-               << strerror(error);
+               << xsi_strerror(error, errbuf.data(), errbuf.size());
     return -1;
   }
 
   if (fsync(fd) == -1) {
     auto error = errno;
     LOG(ERROR) << "Could not save PID to file " << pid_file << ": "
-               << strerror(error);
+               << xsi_strerror(error, errbuf.data(), errbuf.size());
     return -1;
   }
 
@@ -342,7 +344,7 @@ int save_pid() {
   if (rename(temp_path, pid_file.c_str()) == -1) {
     auto error = errno;
     LOG(ERROR) << "Could not save PID to file " << pid_file << ": "
-               << strerror(error);
+               << xsi_strerror(error, errbuf.data(), errbuf.size());
 
     unlink(temp_path);
 
@@ -352,8 +354,8 @@ int save_pid() {
   if (config->uid != 0) {
     if (chown_to_running_user(pid_file.c_str()) == -1) {
       auto error = errno;
-      LOG(WARN) << "Changing owner of pid file " << pid_file
-                << " failed: " << strerror(error);
+      LOG(WARN) << "Changing owner of pid file " << pid_file << " failed: "
+                << xsi_strerror(error, errbuf.data(), errbuf.size());
     }
   }
 
@@ -365,13 +367,15 @@ namespace {
 void exec_binary() {
   int rv;
   sigset_t oldset;
+  std::array<char, STRERROR_BUFSIZE> errbuf;
 
   LOG(NOTICE) << "Executing new binary";
 
   rv = shrpx_signal_block_all(&oldset);
   if (rv != 0) {
     auto error = errno;
-    LOG(ERROR) << "Blocking all signals failed: " << strerror(error);
+    LOG(ERROR) << "Blocking all signals failed: "
+               << xsi_strerror(error, errbuf.data(), errbuf.size());
 
     return;
   }
@@ -388,7 +392,8 @@ void exec_binary() {
 
     if (rv != 0) {
       auto error = errno;
-      LOG(FATAL) << "Restoring signal mask failed: " << strerror(error);
+      LOG(FATAL) << "Restoring signal mask failed: "
+                 << xsi_strerror(error, errbuf.data(), errbuf.size());
 
       exit(EXIT_FAILURE);
     }
@@ -403,7 +408,8 @@ void exec_binary() {
   rv = shrpx_signal_unblock_all();
   if (rv != 0) {
     auto error = errno;
-    LOG(ERROR) << "Unblocking all signals failed: " << strerror(error);
+    LOG(ERROR) << "Unblocking all signals failed: "
+               << xsi_strerror(error, errbuf.data(), errbuf.size());
 
     _Exit(EXIT_FAILURE);
   }
@@ -493,6 +499,7 @@ void exec_binary() {
 
 namespace {
 void ipc_send(WorkerProcess *wp, uint8_t ipc_event) {
+  std::array<char, STRERROR_BUFSIZE> errbuf;
   ssize_t nwrite;
   while ((nwrite = write(wp->ipc_fd, &ipc_event, 1)) == -1 && errno == EINTR)
     ;
@@ -500,7 +507,7 @@ void ipc_send(WorkerProcess *wp, uint8_t ipc_event) {
   if (nwrite < 0) {
     auto error = errno;
     LOG(ERROR) << "Could not send IPC event to worker process: "
-               << strerror(error);
+               << xsi_strerror(error, errbuf.data(), errbuf.size());
     return;
   }
 
@@ -569,6 +576,7 @@ void worker_process_child_cb(struct ev_loop *loop, ev_child *w, int revents) {
 namespace {
 int create_unix_domain_server_socket(UpstreamAddr &faddr,
                                      std::vector<InheritedAddr> &iaddrs) {
+  std::array<char, STRERROR_BUFSIZE> errbuf;
   auto found = std::find_if(
       std::begin(iaddrs), std::end(iaddrs), [&faddr](const InheritedAddr &ia) {
         return !ia.used && ia.host_unix && ia.host == faddr.host;
@@ -588,14 +596,16 @@ int create_unix_domain_server_socket(UpstreamAddr &faddr,
   auto fd = socket(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0);
   if (fd == -1) {
     auto error = errno;
-    LOG(WARN) << "socket() syscall failed: " << strerror(error);
+    LOG(WARN) << "socket() syscall failed: "
+              << xsi_strerror(error, errbuf.data(), errbuf.size());
     return -1;
   }
 #else  // !SOCK_NONBLOCK
   auto fd = socket(AF_UNIX, SOCK_STREAM, 0);
   if (fd == -1) {
     auto error = errno;
-    LOG(WARN) << "socket() syscall failed: " << strerror(error);
+    LOG(WARN) << "socket() syscall failed: "
+              << xsi_strerror(error, errbuf.data(), errbuf.size());
     return -1;
   }
   util::make_socket_nonblocking(fd);
@@ -605,7 +615,7 @@ int create_unix_domain_server_socket(UpstreamAddr &faddr,
                  static_cast<socklen_t>(sizeof(val))) == -1) {
     auto error = errno;
     LOG(WARN) << "Failed to set SO_REUSEADDR option to listener socket: "
-              << strerror(error);
+              << xsi_strerror(error, errbuf.data(), errbuf.size());
     close(fd);
     return -1;
   }
@@ -626,7 +636,8 @@ int create_unix_domain_server_socket(UpstreamAddr &faddr,
 
   if (bind(fd, &addr.sa, sizeof(addr.un)) != 0) {
     auto error = errno;
-    LOG(FATAL) << "Failed to bind UNIX domain socket: " << strerror(error);
+    LOG(FATAL) << "Failed to bind UNIX domain socket: "
+               << xsi_strerror(error, errbuf.data(), errbuf.size());
     close(fd);
     return -1;
   }
@@ -635,7 +646,8 @@ int create_unix_domain_server_socket(UpstreamAddr &faddr,
 
   if (listen(fd, listenerconf.backlog) != 0) {
     auto error = errno;
-    LOG(FATAL) << "Failed to listen to UNIX domain socket: " << strerror(error);
+    LOG(FATAL) << "Failed to listen to UNIX domain socket: "
+               << xsi_strerror(error, errbuf.data(), errbuf.size());
     close(fd);
     return -1;
   }
@@ -653,6 +665,7 @@ int create_unix_domain_server_socket(UpstreamAddr &faddr,
 namespace {
 int create_tcp_server_socket(UpstreamAddr &faddr,
                              std::vector<InheritedAddr> &iaddrs) {
+  std::array<char, STRERROR_BUFSIZE> errbuf;
   int fd = -1;
   int rv;
 
@@ -713,14 +726,16 @@ int create_tcp_server_socket(UpstreamAddr &faddr,
         socket(rp->ai_family, rp->ai_socktype | SOCK_NONBLOCK, rp->ai_protocol);
     if (fd == -1) {
       auto error = errno;
-      LOG(WARN) << "socket() syscall failed: " << strerror(error);
+      LOG(WARN) << "socket() syscall failed: "
+                << xsi_strerror(error, errbuf.data(), errbuf.size());
       continue;
     }
 #else  // !SOCK_NONBLOCK
     fd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
     if (fd == -1) {
       auto error = errno;
-      LOG(WARN) << "socket() syscall failed: " << strerror(error);
+      LOG(WARN) << "socket() syscall failed: "
+                << xsi_strerror(error, errbuf.data(), errbuf.size());
       continue;
     }
     util::make_socket_nonblocking(fd);
@@ -730,7 +745,7 @@ int create_tcp_server_socket(UpstreamAddr &faddr,
                    static_cast<socklen_t>(sizeof(val))) == -1) {
       auto error = errno;
       LOG(WARN) << "Failed to set SO_REUSEADDR option to listener socket: "
-                << strerror(error);
+                << xsi_strerror(error, errbuf.data(), errbuf.size());
       close(fd);
       continue;
     }
@@ -741,7 +756,7 @@ int create_tcp_server_socket(UpstreamAddr &faddr,
                      static_cast<socklen_t>(sizeof(val))) == -1) {
         auto error = errno;
         LOG(WARN) << "Failed to set IPV6_V6ONLY option to listener socket: "
-                  << strerror(error);
+                  << xsi_strerror(error, errbuf.data(), errbuf.size());
         close(fd);
         continue;
       }
@@ -754,7 +769,7 @@ int create_tcp_server_socket(UpstreamAddr &faddr,
                    static_cast<socklen_t>(sizeof(val))) == -1) {
       auto error = errno;
       LOG(WARN) << "Failed to set TCP_DEFER_ACCEPT option to listener socket: "
-                << strerror(error);
+                << xsi_strerror(error, errbuf.data(), errbuf.size());
     }
 #endif // TCP_DEFER_ACCEPT
 
@@ -763,7 +778,8 @@ int create_tcp_server_socket(UpstreamAddr &faddr,
     // ports will fail with permission denied error.
     if (bind(fd, rp->ai_addr, rp->ai_addrlen) == -1) {
       auto error = errno;
-      LOG(WARN) << "bind() syscall failed: " << strerror(error);
+      LOG(WARN) << "bind() syscall failed: "
+                << xsi_strerror(error, errbuf.data(), errbuf.size());
       close(fd);
       continue;
     }
@@ -774,13 +790,14 @@ int create_tcp_server_socket(UpstreamAddr &faddr,
                      static_cast<socklen_t>(sizeof(val))) == -1) {
         auto error = errno;
         LOG(WARN) << "Failed to set TCP_FASTOPEN option to listener socket: "
-                  << strerror(error);
+                  << xsi_strerror(error, errbuf.data(), errbuf.size());
       }
     }
 
     if (listen(fd, listenerconf.backlog) == -1) {
       auto error = errno;
-      LOG(WARN) << "listen() syscall failed: " << strerror(error);
+      LOG(WARN) << "listen() syscall failed: "
+                << xsi_strerror(error, errbuf.data(), errbuf.size());
       close(fd);
       continue;
     }
@@ -812,6 +829,7 @@ namespace {
 // |config| is usually a current configuration.
 std::vector<InheritedAddr>
 get_inherited_addr_from_config(BlockAllocator &balloc, Config *config) {
+  std::array<char, STRERROR_BUFSIZE> errbuf;
   int rv;
 
   auto &listenerconf = config->conn.listener;
@@ -848,7 +866,7 @@ get_inherited_addr_from_config(BlockAllocator &balloc, Config *config) {
     if (getsockname(addr.fd, &su.sa, &salen) != 0) {
       auto error = errno;
       LOG(WARN) << "getsockname() syscall failed (fd=" << addr.fd
-                << "): " << strerror(error);
+                << "): " << xsi_strerror(error, errbuf.data(), errbuf.size());
       continue;
     }
 
@@ -873,6 +891,7 @@ namespace {
 // variables.  This function handles the old environment variable
 // names used in 1.7.0 or earlier.
 std::vector<InheritedAddr> get_inherited_addr_from_env(Config *config) {
+  std::array<char, STRERROR_BUFSIZE> errbuf;
   int rv;
   std::vector<InheritedAddr> iaddrs;
 
@@ -971,7 +990,7 @@ std::vector<InheritedAddr> get_inherited_addr_from_env(Config *config) {
       if (getsockname(fd, &su.sa, &salen) != 0) {
         auto error = errno;
         LOG(WARN) << "getsockname() syscall failed (fd=" << fd
-                  << "): " << strerror(error);
+                  << "): " << xsi_strerror(error, errbuf.data(), errbuf.size());
         close(fd);
         continue;
       }
@@ -1033,6 +1052,7 @@ void close_unused_inherited_addr(const std::vector<InheritedAddr> &iaddrs) {
 
 namespace {
 int create_acceptor_socket(Config *config, std::vector<InheritedAddr> &iaddrs) {
+  std::array<char, STRERROR_BUFSIZE> errbuf;
   auto &listenerconf = config->conn.listener;
 
   for (auto &addr : listenerconf.addrs) {
@@ -1047,7 +1067,8 @@ int create_acceptor_socket(Config *config, std::vector<InheritedAddr> &iaddrs) {
         if (chown_to_running_user(addr.host.c_str()) == -1) {
           auto error = errno;
           LOG(WARN) << "Changing owner of UNIX domain socket " << addr.host
-                    << " failed: " << strerror(error);
+                    << " failed: "
+                    << xsi_strerror(error, errbuf.data(), errbuf.size());
         }
       }
       continue;
@@ -1078,13 +1099,14 @@ namespace {
 // messages to the worker process.  On success, ipc_fd[0] is for
 // reading, and ipc_fd[1] for writing, just like pipe(2).
 int create_ipc_socket(std::array<int, 2> &ipc_fd) {
+  std::array<char, STRERROR_BUFSIZE> errbuf;
   int rv;
 
   rv = pipe(ipc_fd.data());
   if (rv == -1) {
     auto error = errno;
     LOG(WARN) << "Failed to create pipe to communicate worker process: "
-              << strerror(error);
+              << xsi_strerror(error, errbuf.data(), errbuf.size());
     return -1;
   }
 
@@ -1106,6 +1128,7 @@ namespace {
 // used in the current configuration.
 pid_t fork_worker_process(int &main_ipc_fd,
                           const std::vector<InheritedAddr> &iaddrs) {
+  std::array<char, STRERROR_BUFSIZE> errbuf;
   int rv;
   sigset_t oldset;
 
@@ -1119,7 +1142,8 @@ pid_t fork_worker_process(int &main_ipc_fd,
   rv = shrpx_signal_block_all(&oldset);
   if (rv != 0) {
     auto error = errno;
-    LOG(ERROR) << "Blocking all signals failed: " << strerror(error);
+    LOG(ERROR) << "Blocking all signals failed: "
+               << xsi_strerror(error, errbuf.data(), errbuf.size());
 
     close(ipc_fd[0]);
     close(ipc_fd[1]);
@@ -1143,7 +1167,8 @@ pid_t fork_worker_process(int &main_ipc_fd,
     rv = shrpx_signal_unblock_all();
     if (rv != 0) {
       auto error = errno;
-      LOG(FATAL) << "Unblocking all signals failed: " << strerror(error);
+      LOG(FATAL) << "Unblocking all signals failed: "
+                 << xsi_strerror(error, errbuf.data(), errbuf.size());
 
       _Exit(EXIT_FAILURE);
     }
@@ -1166,13 +1191,15 @@ pid_t fork_worker_process(int &main_ipc_fd,
   // parent process
   if (pid == -1) {
     auto error = errno;
-    LOG(ERROR) << "Could not spawn worker process: " << strerror(error);
+    LOG(ERROR) << "Could not spawn worker process: "
+               << xsi_strerror(error, errbuf.data(), errbuf.size());
   }
 
   rv = shrpx_signal_set(&oldset);
   if (rv != 0) {
     auto error = errno;
-    LOG(FATAL) << "Restoring signal mask failed: " << strerror(error);
+    LOG(FATAL) << "Restoring signal mask failed: "
+               << xsi_strerror(error, errbuf.data(), errbuf.size());
 
     exit(EXIT_FAILURE);
   }
@@ -1196,6 +1223,8 @@ pid_t fork_worker_process(int &main_ipc_fd,
 
 namespace {
 int event_loop() {
+  std::array<char, STRERROR_BUFSIZE> errbuf;
+
   shrpx_signal_set_master_proc_ign_handler();
 
   auto config = mod_config();
@@ -1203,7 +1232,8 @@ int event_loop() {
   if (config->daemon) {
     if (call_daemon() == -1) {
       auto error = errno;
-      LOG(FATAL) << "Failed to daemonize: " << strerror(error);
+      LOG(FATAL) << "Failed to daemonize: "
+                 << xsi_strerror(error, errbuf.data(), errbuf.size());
       return -1;
     }
 
@@ -2398,6 +2428,7 @@ Misc:
 namespace {
 int process_options(Config *config,
                     std::vector<std::pair<StringRef, StringRef>> &cmdcfgs) {
+  std::array<char, STRERROR_BUFSIZE> errbuf;
   if (conf_exists(config->conf_path.c_str())) {
     std::set<StringRef> include_set;
     if (load_config(config, config->conf_path.c_str(), include_set) == -1) {
@@ -2442,13 +2473,13 @@ int process_options(Config *config,
         fchown(log_config()->accesslog_fd, config->uid, config->gid) == -1) {
       auto error = errno;
       LOG(WARN) << "Changing owner of access log file failed: "
-                << strerror(error);
+                << xsi_strerror(error, errbuf.data(), errbuf.size());
     }
     if (log_config()->errorlog_fd != -1 &&
         fchown(log_config()->errorlog_fd, config->uid, config->gid) == -1) {
       auto error = errno;
       LOG(WARN) << "Changing owner of error log file failed: "
-                << strerror(error);
+                << xsi_strerror(error, errbuf.data(), errbuf.size());
     }
   }
 
@@ -2472,7 +2503,8 @@ int process_options(Config *config,
         if (chown_to_running_user(path) == -1) {
           auto error = errno;
           LOG(WARN) << "Changing owner of http2 upstream request header file "
-                    << path << " failed: " << strerror(error);
+                    << path << " failed: "
+                    << xsi_strerror(error, errbuf.data(), errbuf.size());
         }
       }
     }
@@ -2493,7 +2525,8 @@ int process_options(Config *config,
         if (chown_to_running_user(path) == -1) {
           auto error = errno;
           LOG(WARN) << "Changing owner of http2 upstream response header file"
-                    << " " << path << " failed: " << strerror(error);
+                    << " " << path << " failed: "
+                    << xsi_strerror(error, errbuf.data(), errbuf.size());
         }
       }
     }
@@ -2614,7 +2647,8 @@ int process_options(Config *config,
                          static_cast<rlim_t>(config->rlimit_nofile)};
     if (setrlimit(RLIMIT_NOFILE, &lim) != 0) {
       auto error = errno;
-      LOG(WARN) << "Setting rlimit-nofile failed: " << strerror(error);
+      LOG(WARN) << "Setting rlimit-nofile failed: "
+                << xsi_strerror(error, errbuf.data(), errbuf.size());
     }
   }
 
@@ -2740,6 +2774,7 @@ void reload_config(WorkerProcess *wp) {
 
 int main(int argc, char **argv) {
   int rv;
+  std::array<char, STRERROR_BUFSIZE> errbuf;
 
   nghttp2::ssl::libssl_init();
 
@@ -2768,7 +2803,8 @@ int main(int argc, char **argv) {
     suconfig.argv[i] = strdup(argv[i]);
     if (suconfig.argv[i] == nullptr) {
       auto error = errno;
-      LOG(FATAL) << "failed to copy argv: " << strerror(error);
+      LOG(FATAL) << "failed to copy argv: "
+                 << xsi_strerror(error, errbuf.data(), errbuf.size());
       exit(EXIT_FAILURE);
     }
   }
