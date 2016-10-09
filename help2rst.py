@@ -160,9 +160,10 @@ DESCRIPTION
         print(line.strip())
 
 def format_text(text):
-    # escape *
-    if len(text) > len(arg_indent):
-        text = text[:len(arg_indent) + 1] + re.sub(r'\*', r'\*', text[len(arg_indent) + 1:])
+    # escape *, but don't escape * if it is used as bullet list.
+    m = re.match(r'^\s*\*\s+', text)
+    if m:
+        text = text[:len(m.group(0))] + re.sub(r'\*', r'\*', text[len(m.group(0)):])
     else:
         text = re.sub(r'\*', r'\*', text)
     # markup option reference
