@@ -485,12 +485,12 @@ int alpn_select_proto_cb(SSL *ssl, const unsigned char **out,
 } // namespace
 #endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 
+#if !LIBRESSL_IN_USE && OPENSSL_VERSION_NUMBER >= 0x10002000L
 namespace {
 // https://tools.ietf.org/html/rfc6962#section-6
 constexpr unsigned int TLS_EXT_SIGNED_CERTIFICATE_TIMESTAMP = 18;
 } // namespace
 
-#if !LIBRESSL_IN_USE && OPENSSL_VERSION_NUMBER >= 0x10002000L
 namespace {
 int sct_add_cb(SSL *ssl, unsigned int ext_type, const unsigned char **out,
                size_t *outlen, int *al, void *add_arg) {
