@@ -1488,7 +1488,7 @@ int Http2Upstream::error_reply(Downstream *downstream,
 
   auto response_status = http2::stringify_status(balloc, status_code);
   auto content_length = util::make_string_ref_uint(balloc, html.size());
-  auto date = make_string_ref(balloc, StringRef{lgconf->time_http_str});
+  auto date = make_string_ref(balloc, lgconf->time_http);
 
   auto nva = std::array<nghttp2_nv, 5>{
       {http2::make_nv_ls_nocopy(":status", response_status),

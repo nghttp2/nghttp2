@@ -933,8 +933,7 @@ void HttpsUpstream::error_reply(unsigned int status_code) {
   output->append("\r\nDate: ");
   auto lgconf = log_config();
   lgconf->update_tstamp(std::chrono::system_clock::now());
-  auto &date = lgconf->time_http_str;
-  output->append(date);
+  output->append(lgconf->time_http);
   output->append("\r\nContent-Type: text/html; "
                  "charset=UTF-8\r\nConnection: close\r\n\r\n");
   output->append(html);

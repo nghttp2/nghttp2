@@ -211,17 +211,20 @@ const char *DAY_OF_WEEK[] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
 } // namespace
 
 std::string http_date(time_t t) {
+  /* Sat, 27 Sep 2014 06:31:15 GMT */
+  std::string res(29, 0);
+  http_date(&res[0], t);
+  return res;
+}
+
+char *http_date(char *res, time_t t) {
   struct tm tms;
-  std::string res;
 
   if (gmtime_r(&t, &tms) == nullptr) {
     return res;
   }
 
-  /* Sat, 27 Sep 2014 06:31:15 GMT */
-  res.resize(29);
-
-  auto p = std::begin(res);
+  auto p = res;
 
   auto s = DAY_OF_WEEK[tms.tm_wday];
   p = std::copy_n(s, 3, p);
@@ -242,22 +245,24 @@ std::string http_date(time_t t) {
   s = " GMT";
   p = std::copy_n(s, 4, p);
 
-  return res;
+  return p;
 }
 
 std::string common_log_date(time_t t) {
+  // 03/Jul/2014:00:19:38 +0900
+  std::string res(26, 0);
+  common_log_date(&res[0], t);
+  return res;
+}
+
+char *common_log_date(char *res, time_t t) {
   struct tm tms;
 
   if (localtime_r(&t, &tms) == nullptr) {
-    return "";
+    return res;
   }
 
-  // Format data like this:
-  // 03/Jul/2014:00:19:38 +0900
-  std::string res;
-  res.resize(26);
-
-  auto p = std::begin(res);
+  auto p = res;
 
   p = cpydig(p, tms.tm_mday, 2);
   *p++ = '/';
@@ -288,24 +293,27 @@ std::string common_log_date(time_t t) {
   p = cpydig(p, gmtoff / 3600, 2);
   p = cpydig(p, (gmtoff % 3600) / 60, 2);
 
-  return res;
+  return p;
 }
 
 std::string iso8601_date(int64_t ms) {
+  // 2014-11-15T12:58:24.741Z
+  // 2014-11-15T12:58:24.741+09:00
+  std::string res(29, 0);
+  auto p = iso8601_date(&res[0], ms);
+  res.resize(p - &res[0]);
+  return res;
+}
+
+char *iso8601_date(char *res, int64_t ms) {
   time_t sec = ms / 1000;
 
   tm tms;
   if (localtime_r(&sec, &tms) == nullptr) {
-    return "";
+    return res;
   }
 
-  // Format data like this:
-  // 2014-11-15T12:58:24.741Z
-  // 2014-11-15T12:58:24.741+09:00
-  std::string res;
-  res.resize(29);
-
-  auto p = std::begin(res);
+  auto p = res;
 
   p = cpydig(p, tms.tm_year + 1900, 4);
   *p++ = '-';
@@ -340,9 +348,7 @@ std::string iso8601_date(int64_t ms) {
     p = cpydig(p, (gmtoff % 3600) / 60, 2);
   }
 
-  res.resize(p - std::begin(res));
-
-  return res;
+  return p;
 }
 
 time_t parse_http_date(const StringRef &s) {

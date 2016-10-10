@@ -62,9 +62,9 @@ void LogConfig::update_tstamp(
 
   time_str_updated_ = now;
 
-  time_local_str = util::format_common_log(now);
-  time_iso8601_str = util::format_iso8601(now);
-  time_http_str = util::format_http_date(now);
+  time_local = util::format_common_log(time_local_buf.data(), now);
+  time_iso8601 = util::format_iso8601(time_iso8601_buf.data(), now);
+  time_http = util::format_http_date(time_http_buf.data(), now);
 }
 
 } // namespace shrpx

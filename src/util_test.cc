@@ -194,6 +194,16 @@ void test_util_utox(void) {
 void test_util_http_date(void) {
   CU_ASSERT("Thu, 01 Jan 1970 00:00:00 GMT" == util::http_date(0));
   CU_ASSERT("Wed, 29 Feb 2012 09:15:16 GMT" == util::http_date(1330506916));
+
+  std::array<char, 30> http_buf;
+
+  CU_ASSERT("Thu, 01 Jan 1970 00:00:00 GMT" ==
+            util::format_http_date(http_buf.data(),
+                                   std::chrono::system_clock::time_point()));
+  CU_ASSERT("Wed, 29 Feb 2012 09:15:16 GMT" ==
+            util::format_http_date(http_buf.data(),
+                                   std::chrono::system_clock::time_point(
+                                       std::chrono::seconds(1330506916))));
 }
 
 void test_util_select_h2(void) {
@@ -445,6 +455,21 @@ void test_util_localtime_date(void) {
                          util::common_log_date(1001939696).c_str());
   CU_ASSERT_STRING_EQUAL("2001-10-02T00:34:56.123+12:00",
                          util::iso8601_date(1001939696000LL + 123).c_str());
+
+  std::array<char, 27> common_buf;
+
+  CU_ASSERT("02/Oct/2001:00:34:56 +1200" ==
+            util::format_common_log(common_buf.data(),
+                                    std::chrono::system_clock::time_point(
+                                        std::chrono::seconds(1001939696))));
+
+  std::array<char, 30> iso8601_buf;
+
+  CU_ASSERT(
+      "2001-10-02T00:34:56.123+12:00" ==
+      util::format_iso8601(iso8601_buf.data(),
+                           std::chrono::system_clock::time_point(
+                               std::chrono::milliseconds(1001939696123LL))));
 
   if (tz) {
     setenv("TZ", tz, 1);

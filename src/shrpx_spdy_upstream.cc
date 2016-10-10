@@ -1003,8 +1003,8 @@ int SpdyUpstream::error_reply(Downstream *downstream,
   const char *nv[] = {":status", status_string.c_str(), ":version", "http/1.1",
                       "content-type", "text/html; charset=UTF-8", "server",
                       get_config()->http.server_name.c_str(), "content-length",
-                      content_length.c_str(), "date",
-                      lgconf->time_http_str.c_str(), nullptr};
+                      content_length.c_str(), "date", lgconf->time_http.c_str(),
+                      nullptr};
 
   rv = spdylay_submit_response(session_, downstream->get_stream_id(), nv,
                                &data_prd);

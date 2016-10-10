@@ -147,15 +147,29 @@ template <size_t N> std::string format_hex(const std::array<uint8_t, N> &s) {
 
 StringRef format_hex(BlockAllocator &balloc, const StringRef &s);
 
+// Returns given time |t| from epoch in HTTP Date format (e.g., Mon,
+// 10 Oct 2016 10:25:58 GMT).
 std::string http_date(time_t t);
+// Writes given time |t| from epoch in HTTP Date format into the
+// buffer pointed by |res|.  The buffer must be at least 29 bytes
+// long.  This function returns the one beyond the last position.
+char *http_date(char *res, time_t t);
 
 // Returns given time |t| from epoch in Common Log format (e.g.,
 // 03/Jul/2014:00:19:38 +0900)
 std::string common_log_date(time_t t);
+// Writes given time |t| from epoch in Common Log format into the
+// buffer pointed by |res|.  The buffer must be at least 26 bytes
+// long.  This function returns the one beyond the last position.
+char *common_log_date(char *res, time_t t);
 
 // Returns given millisecond |ms| from epoch in ISO 8601 format (e.g.,
-// 2014-11-15T12:58:24.741Z)
+// 2014-11-15T12:58:24.741Z or 2014-11-15T12:58:24.741+09:00)
 std::string iso8601_date(int64_t ms);
+// Writes given time |t| from epoch in ISO 8601 format into the buffer
+// pointed by |res|.  The buffer must be at least 29 bytes long.  This
+// function returns the one beyond the last position.
+char *iso8601_date(char *res, int64_t ms);
 
 time_t parse_http_date(const StringRef &s);
 
@@ -536,29 +550,55 @@ std::vector<std::string> parse_config_str_list(const StringRef &s,
 // treated as a part of substring.
 std::vector<StringRef> split_str(const StringRef &s, char delim);
 
-// Returns given time |tp| in Common Log format (e.g.,
-// 03/Jul/2014:00:19:38 +0900)
-// Expected type of |tp| is std::chrono::timepoint
-template <typename T> std::string format_common_log(const T &tp) {
+// Writes given time |tp| in Common Log format (e.g.,
+// 03/Jul/2014:00:19:38 +0900) in buffer pointed by |out|.  The buffer
+// must be at least 27 bytes, including terminal NULL byte.  Expected
+// type of |tp| is std::chrono::time_point.  This function returns
+// StringRef wrapping the buffer pointed by |out|, and this string is
+// terminated by NULL.
+template <typename T> StringRef format_common_log(char *out, const T &tp) {
   auto t =
       std::chrono::duration_cast<std::chrono::seconds>(tp.time_since_epoch());
-  return common_log_date(t.count());
+  auto p = common_log_date(out, t.count());
+  *p = '\0';
+  return StringRef{out, p};
 }
 
 // Returns given time |tp| in ISO 8601 format (e.g.,
-// 2014-11-15T12:58:24.741Z)
-// Expected type of |tp| is std::chrono::timepoint
+// 2014-11-15T12:58:24.741Z or 2014-11-15T12:58:24.741+09:00).
+// Expected type of |tp| is std::chrono::time_point
 template <typename T> std::string format_iso8601(const T &tp) {
   auto t = std::chrono::duration_cast<std::chrono::milliseconds>(
       tp.time_since_epoch());
   return iso8601_date(t.count());
 }
 
-// Returns given time |tp| in HTTP date format.
-template <typename T> std::string format_http_date(const T &tp) {
+// Writes given time |tp| in ISO 8601 format (e.g.,
+// 2014-11-15T12:58:24.741Z or 2014-11-15T12:58:24.741+09:00) in
+// buffer pointed by |out|.  The buffer must be at least 30 bytes,
+// including terminal NULL byte.  Expected type of |tp| is
+// std::chrono::time_point.  This function returns StringRef wrapping
+// the buffer pointed by |out|, and this string is terminated by NULL.
+template <typename T> StringRef format_iso8601(char *out, const T &tp) {
+  auto t = std::chrono::duration_cast<std::chrono::milliseconds>(
+      tp.time_since_epoch());
+  auto p = iso8601_date(out, t.count());
+  *p = '\0';
+  return StringRef{out, p};
+}
+
+// Writes given time |tp| in HTTP Date format (e.g., Mon, 10 Oct 2016
+// 10:25:58 GMT) in buffer pointed by |out|.  The buffer must be at
+// least 30 bytes, including terminal NULL byte.  Expected type of
+// |tp| is std::chrono::time_point.  This function returns StringRef
+// wrapping the buffer pointed by |out|, and this string is terminated
+// by NULL.
+template <typename T> StringRef format_http_date(char *out, const T &tp) {
   auto t =
       std::chrono::duration_cast<std::chrono::seconds>(tp.time_since_epoch());
-  return http_date(t.count());
+  auto p = http_date(out, t.count());
+  *p = '\0';
+  return StringRef{out, p};
 }
 
 // Return the system precision of the template parameter |Clock| as

@@ -138,7 +138,7 @@ Log::~Log() {
   auto tty = lgconf->errorlog_tty;
 
   lgconf->update_tstamp(std::chrono::system_clock::now());
-  auto &time_local = lgconf->time_local_str;
+  auto &time_local = lgconf->time_local;
 
   if (severity_ == NOTICE) {
     rv =
@@ -255,8 +255,8 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
   auto avail = sizeof(buf) - 2;
 
   lgconf->update_tstamp(lgsp.time_now);
-  auto &time_local = lgconf->time_local_str;
-  auto &time_iso8601 = lgconf->time_iso8601_str;
+  auto &time_local = lgconf->time_local;
+  auto &time_iso8601 = lgconf->time_iso8601;
 
   for (auto &lf : lfv) {
     switch (lf.type) {

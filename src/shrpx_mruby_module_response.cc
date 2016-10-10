@@ -230,10 +230,9 @@ mrb_value response_return(mrb_state *mrb, mrb_value self) {
   if (!date) {
     auto lgconf = log_config();
     lgconf->update_tstamp(std::chrono::system_clock::now());
-    resp.fs.add_header_token(
-        StringRef::from_lit("date"),
-        make_string_ref(balloc, StringRef{lgconf->time_http_str}), false,
-        http2::HD_DATE);
+    resp.fs.add_header_token(StringRef::from_lit("date"),
+                             make_string_ref(balloc, lgconf->time_http), false,
+                             http2::HD_DATE);
   }
 
   auto upstream = downstream->get_upstream();
