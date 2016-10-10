@@ -136,7 +136,7 @@ void on_stream_close_callback(spdylay_session *session, int32_t stream_id,
 
   if (downstream->get_request_state() == Downstream::CONNECT_FAIL) {
     upstream->remove_downstream(downstream);
-    // downstrea was deleted
+    // downstream was deleted
 
     return;
   }
@@ -153,7 +153,7 @@ void on_stream_close_callback(spdylay_session *session, int32_t stream_id,
   // If shrpx_downstream::push_request_headers() failed, the
   // error is handled here.
   upstream->remove_downstream(downstream);
-  // downstrea was deleted
+  // downstream was deleted
 
   // How to test this case? Request sufficient large download
   // and make client send RST_STREAM after it gets first DATA
