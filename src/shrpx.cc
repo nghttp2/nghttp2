@@ -1442,6 +1442,7 @@ void fill_default_config(Config *config) {
       timeoutconf.write = 30_s;
       // Timeout for pooled (idle) connections
       timeoutconf.idle_read = 2_s;
+      timeoutconf.connect = 30_s;
       timeoutconf.max_backoff = 120_s;
     }
 
@@ -1787,6 +1788,11 @@ Timeout:
               Specify write timeout for backend connection.
               Default: )"
       << util::duration_str(config->conn.downstream->timeout.write) << R"(
+  --backend-connect-timeout=<DURATION>
+              Specify  timeout before  establishing TCP  connection to
+              backend.
+              Default: )"
+      << util::duration_str(config->conn.downstream->timeout.connect) << R"(
   --backend-keep-alive-timeout=<DURATION>
               Specify keep-alive timeout for backend connection.
               Default: )"
@@ -2956,6 +2962,8 @@ int main(int argc, char **argv) {
          required_argument, &flag, 139},
         {SHRPX_OPT_ECDH_CURVES.c_str(), required_argument, &flag, 140},
         {SHRPX_OPT_TLS_SCT_DIR.c_str(), required_argument, &flag, 141},
+        {SHRPX_OPT_BACKEND_CONNECT_TIMEOUT.c_str(), required_argument, &flag,
+         142},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -3623,6 +3631,11 @@ int main(int argc, char **argv) {
       case 141:
         // --tls-sct-dir
         cmdcfgs.emplace_back(SHRPX_OPT_TLS_SCT_DIR, StringRef{optarg});
+        break;
+      case 142:
+        // --backend-connect-timeout
+        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_CONNECT_TIMEOUT,
+                             StringRef{optarg});
         break;
       default:
         break;

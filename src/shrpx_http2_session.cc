@@ -313,6 +313,8 @@ int Http2Session::initiate_connection() {
     }
   }
 
+  auto &downstreamconf = *get_config()->conn.downstream;
+
   const auto &proxy = get_config()->downstream_http_proxy;
   if (!proxy.host.empty() && state_ == DISCONNECTED) {
     if (LOG_ENABLED(INFO)) {
@@ -351,7 +353,7 @@ int Http2Session::initiate_connection() {
 
     conn_.wlimit.startw();
 
-    // TODO we should have timeout for connection establishment
+    conn_.wt.repeat = downstreamconf.timeout.connect;
     ev_timer_again(conn_.loop, &conn_.wt);
 
     write_ = &Http2Session::connected;
@@ -484,7 +486,8 @@ int Http2Session::initiate_connection() {
     if (state_ != CONNECTED) {
       state_ = CONNECTING;
       conn_.wlimit.startw();
-      // TODO we should have timeout for connection establishment
+
+      conn_.wt.repeat = downstreamconf.timeout.connect;
       ev_timer_again(conn_.loop, &conn_.wt);
     } else {
       conn_.rlimit.startw();
@@ -1856,6 +1859,12 @@ int Http2Session::connected() {
   if (LOG_ENABLED(INFO)) {
     SSLOG(INFO, this) << "Connection established";
   }
+
+  auto &downstreamconf = *get_config()->conn.downstream;
+
+  // Reset timeout for write.  Previously, we set timeout for connect.
+  conn_.wt.repeat = downstreamconf.timeout.write;
+  ev_timer_again(conn_.loop, &conn_.wt);
 
   conn_.rlimit.startw();
 

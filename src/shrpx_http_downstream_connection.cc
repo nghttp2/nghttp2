@@ -315,7 +315,7 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
       break;
     }
 
-    // TODO we should have timeout for connection establishment
+    conn_.wt.repeat = downstreamconf.timeout.connect;
     ev_timer_again(conn_.loop, &conn_.wt);
   } else {
     // we may set read timer cb to idle_timeoutcb.  Reset again.
@@ -1177,6 +1177,12 @@ int HttpDownstreamConnection::connected() {
   if (LOG_ENABLED(INFO)) {
     DCLOG(INFO, this) << "Connected to downstream host";
   }
+
+  auto &downstreamconf = *get_config()->conn.downstream;
+
+  // Reset timeout for write.  Previously, we set timeout for connect.
+  conn_.wt.repeat = downstreamconf.timeout.write;
+  ev_timer_again(conn_.loop, &conn_.wt);
 
   conn_.rlimit.startw();
 

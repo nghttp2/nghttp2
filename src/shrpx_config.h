@@ -310,6 +310,8 @@ constexpr auto SHRPX_OPT_BACKEND_HTTP2_DECODER_DYNAMIC_TABLE_SIZE =
     StringRef::from_lit("backend-http2-decoder-dynamic-table-size");
 constexpr auto SHRPX_OPT_ECDH_CURVES = StringRef::from_lit("ecdh-curves");
 constexpr auto SHRPX_OPT_TLS_SCT_DIR = StringRef::from_lit("tls-sct-dir");
+constexpr auto SHRPX_OPT_BACKEND_CONNECT_TIMEOUT =
+    StringRef::from_lit("backend-connect-timeout");
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
@@ -718,6 +720,7 @@ struct DownstreamConfig {
     ev_tstamp read;
     ev_tstamp write;
     ev_tstamp idle_read;
+    ev_tstamp connect;
     // The maximum backoff while checking health check for offline
     // backend or while detaching failed backend from load balancing
     // group temporarily.
@@ -850,6 +853,7 @@ enum {
   SHRPX_OPTID_API_MAX_REQUEST_BODY,
   SHRPX_OPTID_BACKEND,
   SHRPX_OPTID_BACKEND_ADDRESS_FAMILY,
+  SHRPX_OPTID_BACKEND_CONNECT_TIMEOUT,
   SHRPX_OPTID_BACKEND_CONNECTIONS_PER_FRONTEND,
   SHRPX_OPTID_BACKEND_CONNECTIONS_PER_HOST,
   SHRPX_OPTID_BACKEND_HTTP_PROXY_URI,

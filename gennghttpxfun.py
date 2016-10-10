@@ -148,6 +148,7 @@ OPTIONS = [
     "backend-http2-decoder-dynamic-table-size",
     "ecdh-curves",
     "tls-sct-dir",
+    "backend-connect-timeout",
 ]
 
 LOGVARS = [

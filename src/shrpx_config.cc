@@ -1657,6 +1657,11 @@ int option_lookup_token(const char *name, size_t namelen) {
         return SHRPX_OPTID_BACKEND_RESPONSE_BUFFER;
       }
       break;
+    case 't':
+      if (util::strieq_l("backend-connect-timeou", name, 22)) {
+        return SHRPX_OPTID_BACKEND_CONNECT_TIMEOUT;
+      }
+      break;
     }
     break;
   case 24:
@@ -2162,6 +2167,9 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     return parse_duration(&config->conn.downstream->timeout.read, opt, optarg);
   case SHRPX_OPTID_BACKEND_WRITE_TIMEOUT:
     return parse_duration(&config->conn.downstream->timeout.write, opt, optarg);
+  case SHRPX_OPTID_BACKEND_CONNECT_TIMEOUT:
+    return parse_duration(&config->conn.downstream->timeout.connect, opt,
+                          optarg);
   case SHRPX_OPTID_STREAM_READ_TIMEOUT:
     return parse_duration(&config->http2.timeout.stream_read, opt, optarg);
   case SHRPX_OPTID_STREAM_WRITE_TIMEOUT:
