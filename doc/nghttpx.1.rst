@@ -417,6 +417,13 @@ Timeout
 
     Default: ``30s``
 
+.. option:: --backend-connect-timeout=<DURATION>
+
+    Specify  timeout before  establishing TCP  connection to
+    backend.
+
+    Default: ``30s``
+
 .. option:: --backend-keep-alive-timeout=<DURATION>
 
     Specify keep-alive timeout for backend connection.
