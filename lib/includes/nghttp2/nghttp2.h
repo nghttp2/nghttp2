@@ -45,6 +45,7 @@ extern "C" {
 #include <inttypes.h>
 #endif /* !defined(_MSC_VER) || (_MSC_VER >= 1800) */
 #include <sys/types.h>
+#include <stdarg.h>
 
 #include <nghttp2/nghttp2ver.h>
 
@@ -5237,6 +5238,16 @@ NGHTTP2_EXTERN int32_t nghttp2_stream_get_weight(nghttp2_stream *stream);
  */
 NGHTTP2_EXTERN int32_t
 nghttp2_stream_get_sum_dependency_weight(nghttp2_stream *stream);
+
+/**
+ * @function
+ *
+ * Sets a debug callback called by nghttp2 when built when DEBUGBUILD is
+ * defined. The function is called with arguments suitable for vfprintf.
+ */
+
+typedef void (*nghttp2_debug_cb)(const char *format, va_list args);
+NGHTTP2_EXTERN void set_nghttp2_debug_callback(nghttp2_debug_cb cb);
 
 #ifdef __cplusplus
 }
