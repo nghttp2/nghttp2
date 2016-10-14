@@ -772,8 +772,7 @@ int nghttp2_session_reprioritize_stream(
   if (pri_spec->stream_id == 0) {
     dep_stream = &session->root;
   } else if (nghttp2_stream_dep_find_ancestor(dep_stream, stream)) {
-    DEBUGF("stream: cycle detected, dep_stream(%p)=%d "
-           "stream(%p)=%d\n",
+    DEBUGF("stream: cycle detected, dep_stream(%p)=%d stream(%p)=%d\n",
            dep_stream, dep_stream->stream_id, stream, stream->stream_id);
 
     nghttp2_stream_dep_remove_subtree(dep_stream);
@@ -1290,9 +1289,8 @@ int nghttp2_session_adjust_closed_stream(nghttp2_session *session) {
     num_stream_max = session->local_settings.max_concurrent_streams;
   }
 
-  DEBUGF("stream: adjusting kept closed streams "
-         "num_closed_streams=%zu, num_incoming_streams=%zu, "
-         "max_concurrent_streams=%zu\n",
+  DEBUGF("stream: adjusting kept closed streams num_closed_streams=%zu, "
+         "num_incoming_streams=%zu, max_concurrent_streams=%zu\n",
          session->num_closed_streams, session->num_incoming_streams,
          num_stream_max);
 
@@ -1340,8 +1338,7 @@ int nghttp2_session_adjust_idle_stream(nghttp2_session *session) {
                16, nghttp2_min(session->local_settings.max_concurrent_streams,
                                session->pending_local_max_concurrent_stream)));
 
-  DEBUGF("stream: adjusting kept idle streams "
-         "num_idle_streams=%zu, max=%zu\n",
+  DEBUGF("stream: adjusting kept idle streams num_idle_streams=%zu, max=%zu\n",
          session->num_idle_streams, max);
 
   while (session->num_idle_streams > max) {
@@ -1737,8 +1734,8 @@ static ssize_t
 nghttp2_session_enforce_flow_control_limits(nghttp2_session *session,
                                             nghttp2_stream *stream,
                                             ssize_t requested_window_size) {
-  DEBUGF("send: remote windowsize connection=%d, "
-         "remote maxframsize=%u, stream(id %d)=%d\n",
+  DEBUGF("send: remote windowsize connection=%d, remote maxframsize=%u, "
+         "stream(id %d)=%d\n",
          session->remote_window_size, session->remote_settings.max_frame_size,
          stream->stream_id, stream->remote_window_size);
 
@@ -2968,8 +2965,8 @@ static ssize_t nghttp2_session_mem_send_internal(nghttp2_session *session,
 
         frame = &item->frame;
 
-        DEBUGF("send: next frame: payloadlen=%zu, type=%u, "
-               "flags=0x%02x, stream_id=%d\n",
+        DEBUGF("send: next frame: payloadlen=%zu, type=%u, flags=0x%02x, "
+               "stream_id=%d\n",
                frame->hd.length, frame->hd.type, frame->hd.flags,
                frame->hd.stream_id);
 
@@ -5351,8 +5348,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
       nghttp2_frame_unpack_frame_hd(&iframe->frame.hd, iframe->sbuf.pos);
       iframe->payloadleft = iframe->frame.hd.length;
 
-      DEBUGF("recv: payloadlen=%zu, type=%u, flags=0x%02x, "
-             "stream_id=%d\n",
+      DEBUGF("recv: payloadlen=%zu, type=%u, flags=0x%02x, stream_id=%d\n",
              iframe->frame.hd.length, iframe->frame.hd.type,
              iframe->frame.hd.flags, iframe->frame.hd.stream_id);
 
@@ -6206,14 +6202,13 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
       nghttp2_frame_unpack_frame_hd(&cont_hd, iframe->sbuf.pos);
       iframe->payloadleft = cont_hd.length;
 
-      DEBUGF("recv: payloadlen=%zu, type=%u, flags=0x%02x, "
-             "stream_id=%d\n",
+      DEBUGF("recv: payloadlen=%zu, type=%u, flags=0x%02x, stream_id=%d\n",
              cont_hd.length, cont_hd.type, cont_hd.flags, cont_hd.stream_id);
 
       if (cont_hd.type != NGHTTP2_CONTINUATION ||
           cont_hd.stream_id != iframe->frame.hd.stream_id) {
-        DEBUGF("recv: expected stream_id=%d, type=%d, but "
-               "got stream_id=%d, type=%u\n",
+        DEBUGF("recv: expected stream_id=%d, type=%d, but got stream_id=%d, "
+               "type=%u\n",
                iframe->frame.hd.stream_id, NGHTTP2_CONTINUATION,
                cont_hd.stream_id, cont_hd.type);
         rv = nghttp2_session_terminate_session_with_reason(

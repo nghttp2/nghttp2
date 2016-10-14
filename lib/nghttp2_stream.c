@@ -810,8 +810,7 @@ int nghttp2_stream_dep_insert_subtree(nghttp2_stream *dep_stream,
   nghttp2_stream *si;
   int rv;
 
-  DEBUGF("stream: dep_insert_subtree dep_stream(%p)=%d "
-         "stream(%p)=%d\n",
+  DEBUGF("stream: dep_insert_subtree dep_stream(%p)=%d stream(%p)=%d\n",
          dep_stream, dep_stream->stream_id, stream, stream->stream_id);
 
   stream->sum_dep_weight += dep_stream->sum_dep_weight;
@@ -859,8 +858,7 @@ int nghttp2_stream_dep_add_subtree(nghttp2_stream *dep_stream,
                                    nghttp2_stream *stream) {
   int rv;
 
-  DEBUGF("stream: dep_add_subtree dep_stream(%p)=%d "
-         "stream(%p)=%d\n",
+  DEBUGF("stream: dep_add_subtree dep_stream(%p)=%d stream(%p)=%d\n",
          dep_stream, dep_stream->stream_id, stream, stream->stream_id);
 
   dep_stream->sum_dep_weight += stream->weight;

@@ -1024,8 +1024,7 @@ static int emit_indname_block(nghttp2_bufs *bufs, size_t idx,
     prefixlen = 4;
   }
 
-  DEBUGF("deflatehd: emit indname index=%zu, valuelen=%zu, "
-         "indexing_mode=%d\n",
+  DEBUGF("deflatehd: emit indname index=%zu, valuelen=%zu, indexing_mode=%d\n",
          idx, nv->valuelen, indexing_mode);
 
   blocklen = count_encoded_length(idx + 1, prefixlen);
@@ -1057,9 +1056,9 @@ static int emit_newname_block(nghttp2_bufs *bufs, const nghttp2_nv *nv,
                               int indexing_mode) {
   int rv;
 
-  DEBUGF("deflatehd: emit newname namelen=%zu, valuelen=%zu, "
-         "indexing_mode=%d\n",
-         nv->namelen, nv->valuelen, indexing_mode);
+  DEBUGF(
+      "deflatehd: emit newname namelen=%zu, valuelen=%zu, indexing_mode=%d\n",
+      nv->namelen, nv->valuelen, indexing_mode);
 
   rv = nghttp2_bufs_addb(bufs, pack_first_byte(indexing_mode));
   if (rv != 0) {
@@ -1864,8 +1863,8 @@ ssize_t nghttp2_hd_inflate_hd_nv(nghttp2_hd_inflater *inflater,
     switch (inflater->state) {
     case NGHTTP2_HD_STATE_EXPECT_TABLE_SIZE:
       if ((*in & 0xe0u) != 0x20u) {
-        DEBUGF("inflatehd: header table size change was "
-               "expected, but saw 0x%02x as first byte",
+        DEBUGF("inflatehd: header table size change was expected, but saw "
+               "0x%02x as first byte",
                *in);
         rv = NGHTTP2_ERR_HEADER_COMP;
         goto fail;
@@ -1876,8 +1875,8 @@ ssize_t nghttp2_hd_inflate_hd_nv(nghttp2_hd_inflater *inflater,
       if ((*in & 0xe0u) == 0x20u) {
         DEBUGF("inflatehd: header table size change\n");
         if (inflater->state == NGHTTP2_HD_STATE_OPCODE) {
-          DEBUGF("inflatehd: header table size change must "
-                 "appear at the head of header block\n");
+          DEBUGF("inflatehd: header table size change must appear at the head "
+                 "of header block\n");
           rv = NGHTTP2_ERR_HEADER_COMP;
           goto fail;
         }
