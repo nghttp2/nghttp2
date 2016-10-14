@@ -22,38 +22,31 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#ifndef NGHTTP2_INT_H
-#define NGHTTP2_INT_H
+#include <time.h>
+#include <stdio.h>
+#include "config.h"
+#include <nghttp2/nghttp2.h>
+#include "nghttp2_int.h"
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif /* HAVE_CONFIG_H */
-
-/* Macros, types and constants for internal use */
+static void nghttp2_debug_cb_default(const char *fmt, va_list args)
+{
+    vfprintf(stderr, fmt, args);
+}
+static nghttp2_debug_cb static_debug_callback = &nghttp2_debug_cb_default;
 
 #ifdef DEBUGBUILD
-void nghttp2_debug(const char *format, ...);
-#define DEBUGF(...) nghttp2_debug(__VA_ARGS__)
-#else
-#define DEBUGF(...)                             \
-    do {                                        \
-    } while (0)
+void nghttp2_debug(const char *format, ...)
+{
+  if (static_debug_callback) {
+    va_list args;
+    va_start(args, format);
+    static_debug_callback(format, args);
+    va_end(args);
+  }
+}
 #endif
 
-/* "less" function, return nonzero if |lhs| is less than |rhs|. */
-typedef int (*nghttp2_less)(const void *lhs, const void *rhs);
-
-/* Internal error code. They must be in the range [-499, -100],
-   inclusive. */
-typedef enum {
-  NGHTTP2_ERR_CREDENTIAL_PENDING = -101,
-  NGHTTP2_ERR_IGN_HEADER_BLOCK = -103,
-  NGHTTP2_ERR_IGN_PAYLOAD = -104,
-  /*
-   * Invalid HTTP header field was received but it can be treated as
-   * if it was not received because of compatibility reasons.
-   */
-  NGHTTP2_ERR_IGN_HTTP_HEADER = -105
-} nghttp2_internal_error;
-
-#endif /* NGHTTP2_INT_H */
+void set_nghttp2_debug_callback(nghttp2_debug_cb cb)
+{
+  static_debug_callback = cb;
+}
