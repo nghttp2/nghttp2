@@ -967,8 +967,9 @@ static int emit_string(nghttp2_bufs *bufs, const uint8_t *str, size_t len) {
 
   blocklen = count_encoded_length(enclen, 7);
 
-  DEBUGF("deflatehd: emit string str=%.*s, length=%zu, huffman=%d, encoded_length=%zu\n",
-         (int)len, (const char*)str, len, huffman, enclen);
+  DEBUGF("deflatehd: emit string str=%.*s, length=%zu, huffman=%d, "
+         "encoded_length=%zu\n",
+         (int)len, (const char *)str, len, huffman, enclen);
 
   if (sizeof(sb) < blocklen) {
     return NGHTTP2_ERR_HEADER_COMP;
@@ -1327,8 +1328,8 @@ static int deflate_nv(nghttp2_hd_deflater *deflater, nghttp2_bufs *bufs,
   nghttp2_mem *mem;
   uint32_t hash = 0;
 
-  DEBUGF("deflatehd: deflating %.*s: %.*s\n", (int)nv->namelen,
-         nv->name, (int)nv->valuelen, nv->value);
+  DEBUGF("deflatehd: deflating %.*s: %.*s\n", (int)nv->namelen, nv->name,
+         (int)nv->valuelen, nv->value);
 
   mem = deflater->ctx.mem;
 
@@ -1864,7 +1865,8 @@ ssize_t nghttp2_hd_inflate_hd_nv(nghttp2_hd_inflater *inflater,
     case NGHTTP2_HD_STATE_EXPECT_TABLE_SIZE:
       if ((*in & 0xe0u) != 0x20u) {
         DEBUGF("inflatehd: header table size change was "
-               "expected, but saw 0x%02x as first byte", *in);
+               "expected, but saw 0x%02x as first byte",
+               *in);
         rv = NGHTTP2_ERR_HEADER_COMP;
         goto fail;
       }
@@ -1977,8 +1979,7 @@ ssize_t nghttp2_hd_inflate_hd_nv(nghttp2_hd_inflater *inflater,
       inflater->state = NGHTTP2_HD_STATE_NEWNAME_READ_NAMELEN;
       inflater->left = 0;
       inflater->shift = 0;
-      DEBUGF("inflatehd: huffman encoded=%d\n",
-             inflater->huffman_encoded != 0);
+      DEBUGF("inflatehd: huffman encoded=%d\n", inflater->huffman_encoded != 0);
     /* Fall through */
     case NGHTTP2_HD_STATE_NEWNAME_READ_NAMELEN:
       rfin = 0;
@@ -1988,7 +1989,8 @@ ssize_t nghttp2_hd_inflate_hd_nv(nghttp2_hd_inflater *inflater,
       }
       in += rv;
       if (!rfin) {
-        DEBUGF("inflatehd: integer not fully decoded. current=%zu\n", inflater->left);
+        DEBUGF("inflatehd: integer not fully decoded. current=%zu\n",
+               inflater->left);
 
         goto almost_ok;
       }
@@ -2137,7 +2139,8 @@ ssize_t nghttp2_hd_inflate_hd_nv(nghttp2_hd_inflater *inflater,
     case NGHTTP2_HD_STATE_READ_VALUE:
       rv = hd_inflate_read(inflater, &inflater->valuebuf, in, last);
       if (rv < 0) {
-        DEBUGF("inflatehd: value read failure %zd: %s\n", rv, nghttp2_strerror((int)rv));
+        DEBUGF("inflatehd: value read failure %zd: %s\n", rv,
+               nghttp2_strerror((int)rv));
         goto fail;
       }
 

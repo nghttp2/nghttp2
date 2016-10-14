@@ -153,10 +153,11 @@ static int stream_obq_push(nghttp2_stream *dep_stream, nghttp2_stream *stream) {
     stream_next_cycle(stream, dep_stream->descendant_last_cycle);
     stream->seq = dep_stream->descendant_next_seq++;
 
-    DEBUGF("stream: stream=%d obq push cycle=%d\n", stream->stream_id, stream->cycle);
+    DEBUGF("stream: stream=%d obq push cycle=%d\n", stream->stream_id,
+           stream->cycle);
 
-    DEBUGF("stream: push stream %d to stream %d\n",
-           stream->stream_id, dep_stream->stream_id);
+    DEBUGF("stream: push stream %d to stream %d\n", stream->stream_id,
+           dep_stream->stream_id);
 
     rv = nghttp2_pq_push(&dep_stream->obq, &stream->pq_entry);
     if (rv != 0) {
@@ -183,8 +184,8 @@ static void stream_obq_remove(nghttp2_stream *stream) {
   }
 
   for (; dep_stream; stream = dep_stream, dep_stream = dep_stream->dep_prev) {
-    DEBUGF("stream: remove stream %d from stream %d\n",
-           stream->stream_id, dep_stream->stream_id);
+    DEBUGF("stream: remove stream %d from stream %d\n", stream->stream_id,
+           dep_stream->stream_id);
 
     nghttp2_pq_remove(&dep_stream->obq, &stream->pq_entry);
 
@@ -214,8 +215,8 @@ static int stream_obq_move(nghttp2_stream *dest, nghttp2_stream *src,
     return 0;
   }
 
-  DEBUGF("stream: remove stream %d from stream %d (move)\n",
-         stream->stream_id, src->stream_id);
+  DEBUGF("stream: remove stream %d from stream %d (move)\n", stream->stream_id,
+         src->stream_id);
 
   nghttp2_pq_remove(&src->obq, &stream->pq_entry);
   stream->queued = 0;
@@ -238,8 +239,8 @@ void nghttp2_stream_reschedule(nghttp2_stream *stream) {
 
     nghttp2_pq_push(&dep_stream->obq, &stream->pq_entry);
 
-    DEBUGF("stream: stream=%d obq resched cycle=%d\n",
-           stream->stream_id, stream->cycle);
+    DEBUGF("stream: stream=%d obq resched cycle=%d\n", stream->stream_id,
+           stream->cycle);
 
     dep_stream->last_writelen = stream->last_writelen;
   }
@@ -298,8 +299,8 @@ void nghttp2_stream_change_weight(nghttp2_stream *stream, int32_t weight) {
 
   nghttp2_pq_push(&dep_stream->obq, &stream->pq_entry);
 
-  DEBUGF("stream: stream=%d obq resched cycle=%d\n",
-         stream->stream_id, stream->cycle);
+  DEBUGF("stream: stream=%d obq resched cycle=%d\n", stream->stream_id,
+         stream->cycle);
 }
 
 static nghttp2_stream *stream_last_sib(nghttp2_stream *stream) {
@@ -510,8 +511,8 @@ int nghttp2_stream_detach_item(nghttp2_stream *stream) {
 int nghttp2_stream_defer_item(nghttp2_stream *stream, uint8_t flags) {
   assert(stream->item);
 
-  DEBUGF("stream: stream=%d defer item=%p cause=%02x\n",
-         stream->stream_id, stream->item, flags);
+  DEBUGF("stream: stream=%d defer item=%p cause=%02x\n", stream->stream_id,
+         stream->item, flags);
 
   stream->flags |= flags;
 
@@ -521,8 +522,8 @@ int nghttp2_stream_defer_item(nghttp2_stream *stream, uint8_t flags) {
 int nghttp2_stream_resume_deferred_item(nghttp2_stream *stream, uint8_t flags) {
   assert(stream->item);
 
-  DEBUGF("stream: stream=%d resume item=%p flags=%02x\n",
-         stream->stream_id, stream->item, flags);
+  DEBUGF("stream: stream=%d resume item=%p flags=%02x\n", stream->stream_id,
+         stream->item, flags);
 
   stream->flags = (uint8_t)(stream->flags & ~flags);
 
@@ -591,8 +592,8 @@ int nghttp2_stream_dep_insert(nghttp2_stream *dep_stream,
   nghttp2_stream *si;
   int rv;
 
-  DEBUGF("stream: dep_insert dep_stream(%p)=%d, stream(%p)=%d\n",
-         dep_stream, dep_stream->stream_id, stream, stream->stream_id);
+  DEBUGF("stream: dep_insert dep_stream(%p)=%d, stream(%p)=%d\n", dep_stream,
+         dep_stream->stream_id, stream, stream->stream_id);
 
   stream->sum_dep_weight = dep_stream->sum_dep_weight;
   dep_stream->sum_dep_weight = stream->weight;
@@ -737,8 +738,8 @@ static void unlink_dep(nghttp2_stream *stream) {
 
 void nghttp2_stream_dep_add(nghttp2_stream *dep_stream,
                             nghttp2_stream *stream) {
-  DEBUGF("stream: dep_add dep_stream(%p)=%d, stream(%p)=%d\n",
-         dep_stream, dep_stream->stream_id, stream, stream->stream_id);
+  DEBUGF("stream: dep_add dep_stream(%p)=%d, stream(%p)=%d\n", dep_stream,
+         dep_stream->stream_id, stream, stream->stream_id);
 
   dep_stream->sum_dep_weight += stream->weight;
 
@@ -885,7 +886,8 @@ int nghttp2_stream_dep_add_subtree(nghttp2_stream *dep_stream,
 void nghttp2_stream_dep_remove_subtree(nghttp2_stream *stream) {
   nghttp2_stream *next, *dep_prev;
 
-  DEBUGF("stream: dep_remove_subtree stream(%p)=%d\n", stream, stream->stream_id);
+  DEBUGF("stream: dep_remove_subtree stream(%p)=%d\n", stream,
+         stream->stream_id);
 
   assert(stream->dep_prev);
 

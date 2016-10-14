@@ -774,8 +774,7 @@ int nghttp2_session_reprioritize_stream(
   } else if (nghttp2_stream_dep_find_ancestor(dep_stream, stream)) {
     DEBUGF("stream: cycle detected, dep_stream(%p)=%d "
            "stream(%p)=%d\n",
-           dep_stream, dep_stream->stream_id, stream,
-           stream->stream_id);
+           dep_stream, dep_stream->stream_id, stream, stream->stream_id);
 
     nghttp2_stream_dep_remove_subtree(dep_stream);
     rv = nghttp2_stream_dep_add_subtree(stream->dep_prev, dep_stream);
@@ -1124,8 +1123,7 @@ int nghttp2_session_close_stream(nghttp2_session *session, int32_t stream_id,
     return NGHTTP2_ERR_INVALID_ARGUMENT;
   }
 
-  DEBUGF("stream: stream(%p)=%d close\n", stream,
-         stream->stream_id);
+  DEBUGF("stream: stream(%p)=%d close\n", stream, stream->stream_id);
 
   if (stream->item) {
     nghttp2_outbound_item *item;
@@ -1203,8 +1201,7 @@ int nghttp2_session_destroy_stream(nghttp2_session *session,
   nghttp2_mem *mem;
   int rv;
 
-  DEBUGF("stream: destroy closed stream(%p)=%d\n", stream,
-         stream->stream_id);
+  DEBUGF("stream: destroy closed stream(%p)=%d\n", stream, stream->stream_id);
 
   mem = &session->mem;
 
@@ -1224,8 +1221,8 @@ int nghttp2_session_destroy_stream(nghttp2_session *session,
 
 void nghttp2_session_keep_closed_stream(nghttp2_session *session,
                                         nghttp2_stream *stream) {
-  DEBUGF("stream: keep closed stream(%p)=%d, state=%d\n",
-         stream, stream->stream_id, stream->state);
+  DEBUGF("stream: keep closed stream(%p)=%d, state=%d\n", stream,
+         stream->stream_id, stream->state);
 
   if (session->closed_stream_tail) {
     session->closed_stream_tail->closed_next = stream;
@@ -1258,8 +1255,8 @@ void nghttp2_session_detach_idle_stream(nghttp2_session *session,
                                         nghttp2_stream *stream) {
   nghttp2_stream *prev_stream, *next_stream;
 
-  DEBUGF("stream: detach idle stream(%p)=%d, state=%d\n",
-         stream, stream->stream_id, stream->state);
+  DEBUGF("stream: detach idle stream(%p)=%d, state=%d\n", stream,
+         stream->stream_id, stream->state);
 
   prev_stream = stream->closed_prev;
   next_stream = stream->closed_next;
@@ -1742,9 +1739,8 @@ nghttp2_session_enforce_flow_control_limits(nghttp2_session *session,
                                             ssize_t requested_window_size) {
   DEBUGF("send: remote windowsize connection=%d, "
          "remote maxframsize=%u, stream(id %d)=%d\n",
-         session->remote_window_size,
-         session->remote_settings.max_frame_size, stream->stream_id,
-         stream->remote_window_size);
+         session->remote_window_size, session->remote_settings.max_frame_size,
+         stream->stream_id, stream->remote_window_size);
 
   return nghttp2_min(nghttp2_min(nghttp2_min(requested_window_size,
                                              stream->remote_window_size),
@@ -3275,7 +3271,8 @@ static int session_call_on_frame_received(nghttp2_session *session,
 static int session_call_on_begin_headers(nghttp2_session *session,
                                          nghttp2_frame *frame) {
   int rv;
-  DEBUGF("recv: call on_begin_headers callback stream_id=%d\n", frame->hd.stream_id);
+  DEBUGF("recv: call on_begin_headers callback stream_id=%d\n",
+         frame->hd.stream_id);
   if (session->callbacks.on_begin_headers_callback) {
     rv = session->callbacks.on_begin_headers_callback(session, frame,
                                                       session->user_data);
@@ -3573,9 +3570,9 @@ static int inflate_header_block(nghttp2_session *session, nghttp2_frame *frame,
         rv = nghttp2_http_on_header(session, subject_stream, frame, &nv,
                                     trailer);
         if (rv == NGHTTP2_ERR_HTTP_HEADER) {
-            DEBUGF("recv: HTTP error: type=%u, id=%d, header %.*s: %.*s\n",
-                   frame->hd.type, frame->hd.stream_id, (int)nv.name->len,
-                   nv.name->base, (int)nv.value->len, nv.value->base);
+          DEBUGF("recv: HTTP error: type=%u, id=%d, header %.*s: %.*s\n",
+                 frame->hd.type, frame->hd.stream_id, (int)nv.name->len,
+                 nv.name->base, (int)nv.value->len, nv.value->base);
 
           rv = session_call_error_callback(
               session, "Invalid HTTP header field was received: frame type: "
@@ -5360,8 +5357,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
              iframe->frame.hd.flags, iframe->frame.hd.stream_id);
 
       if (iframe->frame.hd.length > session->local_settings.max_frame_size) {
-        DEBUGF("recv: length is too large %zu > %u\n",
-               iframe->frame.hd.length,
+        DEBUGF("recv: length is too large %zu > %u\n", iframe->frame.hd.length,
                session->local_settings.max_frame_size);
 
         busy = 1;
@@ -5758,9 +5754,8 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
       in += readlen;
       iframe->payloadleft -= readlen;
 
-      DEBUGF("recv: readlen=%zu, payloadleft=%zu, left=%zd\n",
-             readlen, iframe->payloadleft,
-             nghttp2_buf_mark_avail(&iframe->sbuf));
+      DEBUGF("recv: readlen=%zu, payloadleft=%zu, left=%zd\n", readlen,
+             iframe->payloadleft, nghttp2_buf_mark_avail(&iframe->sbuf));
 
       if (nghttp2_buf_mark_avail(&iframe->sbuf)) {
         return in - first;
@@ -6137,7 +6132,8 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
       iframe->payloadleft -= readlen;
       in += readlen;
 
-      DEBUGF("recv: readlen=%zu, payloadleft=%zu\n", readlen, iframe->payloadleft);
+      DEBUGF("recv: readlen=%zu, payloadleft=%zu\n", readlen,
+             iframe->payloadleft);
 
       if (nghttp2_buf_mark_avail(&iframe->sbuf)) {
         break;
@@ -6172,7 +6168,8 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
         in += readlen;
       }
 
-      DEBUGF("recv: readlen=%zu, payloadleft=%zu\n", readlen, iframe->payloadleft);
+      DEBUGF("recv: readlen=%zu, payloadleft=%zu\n", readlen,
+             iframe->payloadleft);
 
       if (iframe->payloadleft) {
         assert(nghttp2_buf_avail(&iframe->lbuf) > 0);
@@ -6211,8 +6208,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
 
       DEBUGF("recv: payloadlen=%zu, type=%u, flags=0x%02x, "
              "stream_id=%d\n",
-             cont_hd.length, cont_hd.type, cont_hd.flags,
-             cont_hd.stream_id);
+             cont_hd.length, cont_hd.type, cont_hd.flags, cont_hd.stream_id);
 
       if (cont_hd.type != NGHTTP2_CONTINUATION ||
           cont_hd.stream_id != iframe->frame.hd.stream_id) {
@@ -6262,9 +6258,8 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
       in += readlen;
       iframe->payloadleft -= readlen;
 
-      DEBUGF("recv: readlen=%zu, payloadleft=%zu, left=%zu\n",
-             readlen, iframe->payloadleft,
-             nghttp2_buf_mark_avail(&iframe->sbuf));
+      DEBUGF("recv: readlen=%zu, payloadleft=%zu, left=%zu\n", readlen,
+             iframe->payloadleft, nghttp2_buf_mark_avail(&iframe->sbuf));
 
       if (nghttp2_buf_mark_avail(&iframe->sbuf)) {
         return in - first;
@@ -6328,7 +6323,8 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
       iframe->payloadleft -= readlen;
       in += readlen;
 
-      DEBUGF("recv: readlen=%zu, payloadleft=%zu\n", readlen, iframe->payloadleft);
+      DEBUGF("recv: readlen=%zu, payloadleft=%zu\n", readlen,
+             iframe->payloadleft);
 
       if (readlen > 0) {
         ssize_t data_readlen;
@@ -6425,7 +6421,8 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
       iframe->payloadleft -= readlen;
       in += readlen;
 
-      DEBUGF("recv: readlen=%zu, payloadleft=%zu\n", readlen, iframe->payloadleft);
+      DEBUGF("recv: readlen=%zu, payloadleft=%zu\n", readlen,
+             iframe->payloadleft);
 
       if (readlen > 0) {
         /* Update connection-level flow control window for ignored
@@ -6462,7 +6459,8 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
       iframe->payloadleft -= readlen;
       in += readlen;
 
-      DEBUGF("recv: readlen=%zu, payloadleft=%zu\n", readlen, iframe->payloadleft);
+      DEBUGF("recv: readlen=%zu, payloadleft=%zu\n", readlen,
+             iframe->payloadleft);
 
       if (readlen > 0) {
         rv = session_call_on_extension_chunk_recv_callback(
@@ -6504,7 +6502,8 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
         in += readlen;
       }
 
-      DEBUGF("recv: readlen=%zu, payloadleft=%zu\n", readlen, iframe->payloadleft);
+      DEBUGF("recv: readlen=%zu, payloadleft=%zu\n", readlen,
+             iframe->payloadleft);
 
       if (iframe->payloadleft) {
         assert(nghttp2_buf_avail(&iframe->lbuf) > 0);
@@ -6919,7 +6918,8 @@ int nghttp2_session_pack_data(nghttp2_session *session, nghttp2_bufs *bufs,
   if (payloadlen == NGHTTP2_ERR_DEFERRED ||
       payloadlen == NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE ||
       payloadlen == NGHTTP2_ERR_PAUSE) {
-    DEBUGF("send: DATA postponed due to %s\n", nghttp2_strerror((int)payloadlen));
+    DEBUGF("send: DATA postponed due to %s\n",
+           nghttp2_strerror((int)payloadlen));
 
     return (int)payloadlen;
   }
