@@ -45,6 +45,7 @@ extern "C" {
 #include <inttypes.h>
 #endif /* !defined(_MSC_VER) || (_MSC_VER >= 1800) */
 #include <sys/types.h>
+#include <stdarg.h>
 
 #include <nghttp2/nghttp2ver.h>
 
@@ -5237,6 +5238,39 @@ NGHTTP2_EXTERN int32_t nghttp2_stream_get_weight(nghttp2_stream *stream);
  */
 NGHTTP2_EXTERN int32_t
 nghttp2_stream_get_sum_dependency_weight(nghttp2_stream *stream);
+
+/**
+ * @functypedef
+ *
+ * Callback function invoked when the library outputs debug logging.
+ * The function is called with arguments suitable for ``vfprintf(3)``
+ *
+ * The debug output is only enabled if the library is built with
+ * ``DEBUGBUILD`` macro defined.
+ */
+typedef void (*nghttp2_debug_vprintf_callback)(const char *format,
+                                               va_list args);
+
+/**
+ * @function
+ *
+ * Sets a debug output callback called by the library when built with
+ * ``DEBUGBUILD`` macro defined.  If this option is not used, debug
+ * log is written into standard error output.
+ *
+ * Note that building with ``DEBUGBUILD`` may cause significant
+ * performance penalty to libnghttp2 because of extra processing.  It
+ * should be used for debugging purpose only.
+ *
+ * .. Warning::
+ *
+ *   Building with ``DEBUGBUILD`` may cause significant performance
+ *   penalty to libnghttp2 because of extra processing.  It should be
+ *   used for debugging purpose only.  We write this two times because
+ *   this is important.
+ */
+NGHTTP2_EXTERN void nghttp2_set_debug_vprintf_callback(
+    nghttp2_debug_vprintf_callback debug_vprintf_callback);
 
 #ifdef __cplusplus
 }

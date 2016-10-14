@@ -32,6 +32,7 @@
 #include "nghttp2_helper.h"
 #include "nghttp2_net.h"
 #include "nghttp2_priority_spec.h"
+#include "nghttp2_debug.h"
 
 void nghttp2_frame_pack_frame_hd(uint8_t *buf, const nghttp2_frame_hd *hd) {
   nghttp2_put_uint32be(&buf[0], (uint32_t)(hd->length << 8));
@@ -252,8 +253,7 @@ static int frame_pack_headers_shared(nghttp2_bufs *bufs,
   hd = *frame_hd;
   hd.length = nghttp2_buf_len(buf);
 
-  DEBUGF(fprintf(stderr, "send: HEADERS/PUSH_PROMISE, payloadlen=%zu\n",
-                 hd.length));
+  DEBUGF("send: HEADERS/PUSH_PROMISE, payloadlen=%zu\n", hd.length);
 
   /* We have multiple frame buffers, which means one or more
      CONTINUATION frame is involved. Remove END_HEADERS flag from the
@@ -278,8 +278,7 @@ static int frame_pack_headers_shared(nghttp2_bufs *bufs,
 
       hd.length = nghttp2_buf_len(buf);
 
-      DEBUGF(fprintf(stderr, "send: int CONTINUATION, payloadlen=%zu\n",
-                     hd.length));
+      DEBUGF("send: int CONTINUATION, payloadlen=%zu\n", hd.length);
 
       buf->pos -= NGHTTP2_FRAME_HDLEN;
       nghttp2_frame_pack_frame_hd(buf->pos, &hd);
@@ -290,8 +289,7 @@ static int frame_pack_headers_shared(nghttp2_bufs *bufs,
     /* Set END_HEADERS flag for last CONTINUATION */
     hd.flags = NGHTTP2_FLAG_END_HEADERS;
 
-    DEBUGF(fprintf(stderr, "send: last CONTINUATION, payloadlen=%zu\n",
-                   hd.length));
+    DEBUGF("send: last CONTINUATION, payloadlen=%zu\n", hd.length);
 
     buf->pos -= NGHTTP2_FRAME_HDLEN;
     nghttp2_frame_pack_frame_hd(buf->pos, &hd);
@@ -930,7 +928,7 @@ static void frame_set_pad(nghttp2_buf *buf, size_t padlen, int framehd_only) {
   size_t trail_padlen;
   size_t newlen;
 
-  DEBUGF(fprintf(stderr, "send: padlen=%zu, shift left 1 bytes\n", padlen));
+  DEBUGF("send: padlen=%zu, shift left 1 bytes\n", padlen);
 
   memmove(buf->pos - 1, buf->pos, NGHTTP2_FRAME_HDLEN);
 
@@ -960,7 +958,7 @@ int nghttp2_frame_add_pad(nghttp2_bufs *bufs, nghttp2_frame_hd *hd,
   nghttp2_buf *buf;
 
   if (padlen == 0) {
-    DEBUGF(fprintf(stderr, "send: padlen = 0, nothing to do\n"));
+    DEBUGF("send: padlen = 0, nothing to do\n");
 
     return 0;
   }
@@ -994,8 +992,7 @@ int nghttp2_frame_add_pad(nghttp2_bufs *bufs, nghttp2_frame_hd *hd,
   hd->length += padlen;
   hd->flags |= NGHTTP2_FLAG_PADDED;
 
-  DEBUGF(fprintf(stderr, "send: final payloadlen=%zu, padlen=%zu\n", hd->length,
-                 padlen));
+  DEBUGF("send: final payloadlen=%zu, padlen=%zu\n", hd->length, padlen);
 
   return 0;
 }
