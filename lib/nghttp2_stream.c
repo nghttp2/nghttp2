@@ -29,6 +29,7 @@
 
 #include "nghttp2_session.h"
 #include "nghttp2_helper.h"
+#include "nghttp2_debug.h"
 
 /* Maximum distance between any two stream's cycle in the same
    prirority queue.  Imagine stream A's cycle is A, and stream B's

@@ -30,6 +30,7 @@
 
 #include "nghttp2_helper.h"
 #include "nghttp2_int.h"
+#include "nghttp2_debug.h"
 
 /* Make scalar initialization form of nghttp2_hd_entry */
 #define MAKE_STATIC_ENT(N, V, T, H)                                            \

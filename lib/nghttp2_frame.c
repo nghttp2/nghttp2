@@ -32,6 +32,7 @@
 #include "nghttp2_helper.h"
 #include "nghttp2_net.h"
 #include "nghttp2_priority_spec.h"
+#include "nghttp2_debug.h"
 
 void nghttp2_frame_pack_frame_hd(uint8_t *buf, const nghttp2_frame_hd *hd) {
   nghttp2_put_uint32be(&buf[0], (uint32_t)(hd->length << 8));

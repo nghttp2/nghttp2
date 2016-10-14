@@ -64,7 +64,8 @@ HFILES = nghttp2_pq.h nghttp2_int.h nghttp2_map.h nghttp2_queue.h \
 	nghttp2_callbacks.h \
 	nghttp2_mem.h \
 	nghttp2_http.h \
-	nghttp2_rcbuf.h
+	nghttp2_rcbuf.h \
+	nghttp2_debug.h
 
 libnghttp2_la_SOURCES = $(HFILES) $(OBJECTS)
 libnghttp2_la_LDFLAGS = -no-undefined \

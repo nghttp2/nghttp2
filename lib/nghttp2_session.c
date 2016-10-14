@@ -36,6 +36,7 @@
 #include "nghttp2_option.h"
 #include "nghttp2_http.h"
 #include "nghttp2_pq.h"
+#include "nghttp2_debug.h"
 
 /*
  * Returns non-zero if the number of outgoing opened streams is larger

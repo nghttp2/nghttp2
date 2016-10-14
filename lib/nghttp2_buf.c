@@ -27,6 +27,7 @@
 #include <stdio.h>
 
 #include "nghttp2_helper.h"
+#include "nghttp2_debug.h"
 
 void nghttp2_buf_init(nghttp2_buf *buf) {
   buf->begin = NULL;

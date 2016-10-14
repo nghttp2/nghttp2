@@ -1,7 +1,7 @@
 /*
  * nghttp2 - HTTP/2 C Library
  *
- * Copyright (c) 2012 Tatsuhiro Tsujikawa
+ * Copyright (c) 2016 Tatsuhiro Tsujikawa
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -22,31 +22,37 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#include <time.h>
-#include <stdio.h>
-#include "config.h"
-#include <nghttp2/nghttp2.h>
-#include "nghttp2_int.h"
+#include "nghttp2_debug.h"
 
-static void nghttp2_debug_cb_default(const char *fmt, va_list args)
-{
-    vfprintf(stderr, fmt, args);
-}
-static nghttp2_debug_cb static_debug_callback = &nghttp2_debug_cb_default;
+#include <stdio.h>
 
 #ifdef DEBUGBUILD
-void nghttp2_debug(const char *format, ...)
-{
-  if (static_debug_callback) {
+
+static void nghttp2_default_debug_vfprintf_callback(const char *fmt,
+                                                    va_list args) {
+  vfprintf(stderr, fmt, args);
+}
+
+static nghttp2_debug_vprintf_callback static_debug_vprintf_callback =
+    nghttp2_default_debug_vfprintf_callback;
+
+void nghttp2_debug_vprintf(const char *format, ...) {
+  if (static_debug_vprintf_callback) {
     va_list args;
     va_start(args, format);
-    static_debug_callback(format, args);
+    static_debug_vprintf_callback(format, args);
     va_end(args);
   }
 }
-#endif
 
-void set_nghttp2_debug_callback(nghttp2_debug_cb cb)
-{
-  static_debug_callback = cb;
+void nghttp2_set_debug_vprintf_callback(
+    nghttp2_debug_vprintf_callback debug_vprintf_callback) {
+  static_debug_vprintf_callback = debug_vprintf_callback;
 }
+
+#else /* !DEBUGBUILD */
+
+void nghttp2_set_debug_vprintf_callback(
+    nghttp2_debug_vprintf_callback debug_vprintf_callback _U_) {}
+
+#endif /* !DEBUGBUILD */
