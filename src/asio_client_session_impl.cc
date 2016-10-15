@@ -521,13 +521,13 @@ const request *session_impl::submit(boost::system::error_code &ec,
   if (cb) {
     strm->request().impl().on_read(std::move(cb));
     prd.source.ptr = strm.get();
-    prd.read_callback =
-        [](nghttp2_session *session, int32_t stream_id, uint8_t *buf,
-           size_t length, uint32_t *data_flags, nghttp2_data_source *source,
-           void *user_data) -> ssize_t {
-          auto strm = static_cast<stream *>(source->ptr);
-          return strm->request().impl().call_on_read(buf, length, data_flags);
-        };
+    prd.read_callback = [](nghttp2_session *session, int32_t stream_id,
+                           uint8_t *buf, size_t length, uint32_t *data_flags,
+                           nghttp2_data_source *source,
+                           void *user_data) -> ssize_t {
+      auto strm = static_cast<stream *>(source->ptr);
+      return strm->request().impl().call_on_read(buf, length, data_flags);
+    };
     prdptr = &prd;
   }
 

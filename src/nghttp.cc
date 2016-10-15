@@ -89,7 +89,8 @@ enum {
 
 namespace {
 constexpr auto anchors = std::array<Anchor, 5>{{
-    {3, 0, 201}, {5, 0, 101}, {7, 0, 1}, {9, 7, 1}, {11, 3, 1}, }};
+    {3, 0, 201}, {5, 0, 101}, {7, 0, 1}, {9, 7, 1}, {11, 3, 1},
+}};
 } // namespace
 
 Config::Config()
@@ -1441,13 +1442,14 @@ void HttpClient::output_har(FILE *outfile) {
   auto entries = json_array();
   json_object_set_new(log, "entries", entries);
 
-  auto dns_delta =
-      std::chrono::duration_cast<std::chrono::microseconds>(
-          timing.domain_lookup_end_time - timing.start_time).count() /
-      1000.0;
+  auto dns_delta = std::chrono::duration_cast<std::chrono::microseconds>(
+                       timing.domain_lookup_end_time - timing.start_time)
+                       .count() /
+                   1000.0;
   auto connect_delta =
       std::chrono::duration_cast<std::chrono::microseconds>(
-          timing.connect_end_time - timing.domain_lookup_end_time).count() /
+          timing.connect_end_time - timing.domain_lookup_end_time)
+          .count() /
       1000.0;
 
   for (size_t i = 0; i < reqvec.size(); ++i) {
@@ -1468,20 +1470,23 @@ void HttpClient::output_har(FILE *outfile) {
                            std::chrono::system_clock::duration>(
                            req_timing.request_start_time - timing.start_time);
 
-    auto wait_delta = std::chrono::duration_cast<std::chrono::microseconds>(
-                          req_timing.response_start_time -
-                          req_timing.request_start_time).count() /
-                      1000.0;
-    auto receive_delta = std::chrono::duration_cast<std::chrono::microseconds>(
-                             req_timing.response_end_time -
-                             req_timing.response_start_time).count() /
-                         1000.0;
+    auto wait_delta =
+        std::chrono::duration_cast<std::chrono::microseconds>(
+            req_timing.response_start_time - req_timing.request_start_time)
+            .count() /
+        1000.0;
+    auto receive_delta =
+        std::chrono::duration_cast<std::chrono::microseconds>(
+            req_timing.response_end_time - req_timing.response_start_time)
+            .count() /
+        1000.0;
 
     auto time_sum =
         std::chrono::duration_cast<std::chrono::microseconds>(
             (i == 0) ? (req_timing.response_end_time - timing.start_time)
                      : (req_timing.response_end_time -
-                        req_timing.request_start_time)).count() /
+                        req_timing.request_start_time))
+            .count() /
         1000.0;
 
     json_object_set_new(
@@ -2114,7 +2119,8 @@ see http://www.w3.org/TR/resource-timing/#processing-model
 
 sorted by 'complete'
 
-id  responseEnd requestStart  process code size request path)" << std::endl;
+id  responseEnd requestStart  process code size request path)"
+            << std::endl;
 
   const auto &base = client.timing.connect_end_time;
   for (const auto &req : reqs) {
@@ -2146,7 +2152,7 @@ int client_select_next_proto_cb(SSL *ssl, unsigned char **out,
     print_timer();
     std::cout << "[NPN] server offers:" << std::endl;
   }
-  for (unsigned int i = 0; i < inlen; i += in [i] + 1) {
+  for (unsigned int i = 0; i < inlen; i += in[i] + 1) {
     if (config.verbose) {
       std::cout << "          * ";
       std::cout.write(reinterpret_cast<const char *>(&in[i + 1]), in[i]);
@@ -2181,11 +2187,12 @@ const char *const CIPHER_LIST =
 } // namespace
 
 namespace {
-int communicate(const std::string &scheme, const std::string &host,
-                uint16_t port,
-                std::vector<std::tuple<std::string, nghttp2_data_provider *,
-                                       int64_t, int32_t>> requests,
-                const nghttp2_session_callbacks *callbacks) {
+int communicate(
+    const std::string &scheme, const std::string &host, uint16_t port,
+    std::vector<
+        std::tuple<std::string, nghttp2_data_provider *, int64_t, int32_t>>
+        requests,
+    const nghttp2_session_callbacks *callbacks) {
   int result = 0;
   auto loop = EV_DEFAULT;
   SSL_CTX *ssl_ctx = nullptr;
@@ -2482,8 +2489,9 @@ int run(char **uris, int n) {
     data_prd.source.fd = data_fd;
     data_prd.read_callback = file_read_callback;
   }
-  std::vector<std::tuple<std::string, nghttp2_data_provider *, int64_t,
-                         int32_t>> requests;
+  std::vector<
+      std::tuple<std::string, nghttp2_data_provider *, int64_t, int32_t>>
+      requests;
 
   size_t next_weight_idx = 0;
 
@@ -2540,7 +2548,8 @@ void print_version(std::ostream &out) {
 namespace {
 void print_usage(std::ostream &out) {
   out << R"(Usage: nghttp [OPTIONS]... <URI>...
-HTTP/2 client)" << std::endl;
+HTTP/2 client)"
+      << std::endl;
 }
 } // namespace
 
@@ -2607,8 +2616,8 @@ Options:
               less than the number of URI, the last -p option value is
               repeated.  If there is no -p option, default weight, 16,
               is assumed.  The valid value range is
-              [)" << NGHTTP2_MIN_WEIGHT << ", " << NGHTTP2_MAX_WEIGHT
-      << R"(], inclusive.
+              [)"
+      << NGHTTP2_MIN_WEIGHT << ", " << NGHTTP2_MAX_WEIGHT << R"(], inclusive.
   -M, --peer-max-concurrent-streams=<N>
               Use  <N>  as  SETTINGS_MAX_CONCURRENT_STREAMS  value  of
               remote endpoint as if it  is received in SETTINGS frame.
@@ -2660,7 +2669,8 @@ Options:
   The <DURATION> argument is an integer and an optional unit (e.g., 1s
   is 1 second and 500ms is 500 milliseconds).  Units are h, m, s or ms
   (hours, minutes, seconds and milliseconds, respectively).  If a unit
-  is omitted, a second is used as unit.)" << std::endl;
+  is omitted, a second is used as unit.)"
+      << std::endl;
 }
 } // namespace
 

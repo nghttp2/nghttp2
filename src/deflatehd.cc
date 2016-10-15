@@ -369,7 +369,8 @@ OPTIONS:
                       buffer.
                       Default: 4096
     -d, --dump-header-table
-                      Output dynamic header table.)" << std::endl;
+                      Output dynamic header table.)"
+            << std::endl;
 }
 
 static struct option long_options[] = {

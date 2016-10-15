@@ -345,13 +345,13 @@ int http2_handler::start_response(stream &strm) {
   auto &req = strm.request().impl();
   if (::nghttp2::http2::expect_response_body(req.method(), res.status_code())) {
     prd.source.ptr = &strm;
-    prd.read_callback =
-        [](nghttp2_session *session, int32_t stream_id, uint8_t *buf,
-           size_t length, uint32_t *data_flags, nghttp2_data_source *source,
-           void *user_data) -> ssize_t {
-          auto &strm = *static_cast<stream *>(source->ptr);
-          return strm.response().impl().call_read(buf, length, data_flags);
-        };
+    prd.read_callback = [](nghttp2_session *session, int32_t stream_id,
+                           uint8_t *buf, size_t length, uint32_t *data_flags,
+                           nghttp2_data_source *source,
+                           void *user_data) -> ssize_t {
+      auto &strm = *static_cast<stream *>(source->ptr);
+      return strm.response().impl().call_read(buf, length, data_flags);
+    };
     prd_ptr = &prd;
   }
   rv = nghttp2_submit_response(session_, strm.get_stream_id(), nva.data(),

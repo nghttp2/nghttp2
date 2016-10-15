@@ -334,7 +334,8 @@ void print_frame(print_type ptype, const nghttp2_frame *frame) {
             frame->goaway.error_code,
             static_cast<unsigned int>(frame->goaway.opaque_data_len),
             util::ascii_dump(frame->goaway.opaque_data,
-                             frame->goaway.opaque_data_len).c_str());
+                             frame->goaway.opaque_data_len)
+                .c_str());
     break;
   case NGHTTP2_WINDOW_UPDATE:
     print_frame_attr_indent();

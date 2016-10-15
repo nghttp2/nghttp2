@@ -130,8 +130,8 @@ void server::start_accept(boost::asio::ssl::context &tls_context,
 
   acceptor.async_accept(
       new_connection->socket().lowest_layer(),
-      [this, &tls_context, &acceptor, &mux, new_connection](
-          const boost::system::error_code &e) {
+      [this, &tls_context, &acceptor, &mux,
+       new_connection](const boost::system::error_code &e) {
         if (!e) {
           new_connection->socket().lowest_layer().set_option(
               tcp::no_delay(true));

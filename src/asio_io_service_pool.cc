@@ -58,7 +58,7 @@ void io_service_pool::run(bool asynchronous) {
   // Create a pool of threads to run all of the io_services.
   for (std::size_t i = 0; i < io_services_.size(); ++i) {
     futures_.push_back(std::async(std::launch::async,
-                                  (size_t (boost::asio::io_service::*)(void)) &
+                                  (size_t(boost::asio::io_service::*)(void)) &
                                       boost::asio::io_service::run,
                                   io_services_[i]));
   }

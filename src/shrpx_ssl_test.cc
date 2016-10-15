@@ -144,8 +144,8 @@ void test_shrpx_ssl_cert_lookup_tree_add_cert_from_x509(void) {
 }
 
 template <size_t N, size_t M>
-bool tls_hostname_match_wrapper(const char(&pattern)[N],
-                                const char(&hostname)[M]) {
+bool tls_hostname_match_wrapper(const char (&pattern)[N],
+                                const char (&hostname)[M]) {
   return ssl::tls_hostname_match(StringRef{pattern, N}, StringRef{hostname, M});
 }
 

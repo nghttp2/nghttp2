@@ -33,7 +33,7 @@
 
 #define MAKE_NV(K, V)                                                          \
   {                                                                            \
-    (uint8_t *) K, (uint8_t *)V, sizeof(K) - 1, sizeof(V) - 1,                 \
+    (uint8_t *)K, (uint8_t *)V, sizeof(K) - 1, sizeof(V) - 1,                  \
         NGHTTP2_NV_FLAG_NONE                                                   \
   }
 

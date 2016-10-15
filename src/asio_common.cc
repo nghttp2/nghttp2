@@ -113,22 +113,22 @@ generator_cb file_generator(const std::string &path) {
 generator_cb file_generator_from_fd(int fd) {
   auto d = defer_shared(close, fd);
 
-  return [fd, d](uint8_t *buf, size_t len, uint32_t *data_flags)
-      -> generator_cb::result_type {
-        ssize_t n;
-        while ((n = read(fd, buf, len)) == -1 && errno == EINTR)
-          ;
+  return [fd, d](uint8_t *buf, size_t len,
+                 uint32_t *data_flags) -> generator_cb::result_type {
+    ssize_t n;
+    while ((n = read(fd, buf, len)) == -1 && errno == EINTR)
+      ;
 
-        if (n == -1) {
-          return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
-        }
+    if (n == -1) {
+      return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
+    }
 
-        if (n == 0) {
-          *data_flags |= NGHTTP2_DATA_FLAG_EOF;
-        }
+    if (n == 0) {
+      *data_flags |= NGHTTP2_DATA_FLAG_EOF;
+    }
 
-        return n;
-      };
+    return n;
+  };
 }
 
 bool check_path(const std::string &path) { return util::check_path(path); }

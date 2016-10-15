@@ -149,20 +149,20 @@ nghttp2_nv make_nv_nocopy(const StringRef &name, const StringRef &value,
 
 // Create nghttp2_nv from string literal |name| and |value|.
 template <size_t N, size_t M>
-constexpr nghttp2_nv make_nv_ll(const char(&name)[N], const char(&value)[M]) {
+constexpr nghttp2_nv make_nv_ll(const char (&name)[N], const char (&value)[M]) {
   return {(uint8_t *)name, (uint8_t *)value, N - 1, M - 1,
           NGHTTP2_NV_FLAG_NO_COPY_NAME | NGHTTP2_NV_FLAG_NO_COPY_VALUE};
 }
 
 // Create nghttp2_nv from string literal |name| and c-string |value|.
 template <size_t N>
-nghttp2_nv make_nv_lc(const char(&name)[N], const char *value) {
+nghttp2_nv make_nv_lc(const char (&name)[N], const char *value) {
   return {(uint8_t *)name, (uint8_t *)value, N - 1, strlen(value),
           NGHTTP2_NV_FLAG_NO_COPY_NAME};
 }
 
 template <size_t N>
-nghttp2_nv make_nv_lc_nocopy(const char(&name)[N], const char *value) {
+nghttp2_nv make_nv_lc_nocopy(const char (&name)[N], const char *value) {
   return {(uint8_t *)name, (uint8_t *)value, N - 1, strlen(value),
           NGHTTP2_NV_FLAG_NO_COPY_NAME | NGHTTP2_NV_FLAG_NO_COPY_VALUE};
 }
@@ -170,19 +170,19 @@ nghttp2_nv make_nv_lc_nocopy(const char(&name)[N], const char *value) {
 // Create nghttp2_nv from string literal |name| and std::string
 // |value|.
 template <size_t N>
-nghttp2_nv make_nv_ls(const char(&name)[N], const std::string &value) {
+nghttp2_nv make_nv_ls(const char (&name)[N], const std::string &value) {
   return {(uint8_t *)name, (uint8_t *)value.c_str(), N - 1, value.size(),
           NGHTTP2_NV_FLAG_NO_COPY_NAME};
 }
 
 template <size_t N>
-nghttp2_nv make_nv_ls_nocopy(const char(&name)[N], const std::string &value) {
+nghttp2_nv make_nv_ls_nocopy(const char (&name)[N], const std::string &value) {
   return {(uint8_t *)name, (uint8_t *)value.c_str(), N - 1, value.size(),
           NGHTTP2_NV_FLAG_NO_COPY_NAME | NGHTTP2_NV_FLAG_NO_COPY_VALUE};
 }
 
 template <size_t N>
-nghttp2_nv make_nv_ls_nocopy(const char(&name)[N], const StringRef &value) {
+nghttp2_nv make_nv_ls_nocopy(const char (&name)[N], const StringRef &value) {
   return {(uint8_t *)name, (uint8_t *)value.c_str(), N - 1, value.size(),
           NGHTTP2_NV_FLAG_NO_COPY_NAME | NGHTTP2_NV_FLAG_NO_COPY_VALUE};
 }

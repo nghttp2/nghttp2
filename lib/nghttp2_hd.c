@@ -35,8 +35,8 @@
 /* Make scalar initialization form of nghttp2_hd_entry */
 #define MAKE_STATIC_ENT(N, V, T, H)                                            \
   {                                                                            \
-    { NULL, NULL, (uint8_t *)(N), sizeof((N)) - 1, -1 }                        \
-    , {NULL, NULL, (uint8_t *)(V), sizeof((V)) - 1, -1},                       \
+    {NULL, NULL, (uint8_t *)(N), sizeof((N)) - 1, -1},                         \
+        {NULL, NULL, (uint8_t *)(V), sizeof((V)) - 1, -1},                     \
         {(uint8_t *)(N), (uint8_t *)(V), sizeof((N)) - 1, sizeof((V)) - 1, 0}, \
         T, H                                                                   \
   }
@@ -1296,7 +1296,8 @@ static const nghttp2_nv *nghttp2_hd_table_get2(nghttp2_hd_context *context,
   assert(INDEX_RANGE_VALID(context, idx));
   if (idx >= NGHTTP2_STATIC_TABLE_LENGTH) {
     return &hd_ringbuf_get(&context->hd_table,
-                           idx - NGHTTP2_STATIC_TABLE_LENGTH)->cnv;
+                           idx - NGHTTP2_STATIC_TABLE_LENGTH)
+                ->cnv;
   }
 
   return &static_table[idx].cnv;

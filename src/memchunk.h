@@ -99,10 +99,8 @@ template <typename Memchunk> struct Memchunks {
   Memchunks(Pool<Memchunk> *pool)
       : pool(pool), head(nullptr), tail(nullptr), len(0) {}
   Memchunks(const Memchunks &) = delete;
-  Memchunks(Memchunks &&other) noexcept : pool(other.pool),
-                                          head(other.head),
-                                          tail(other.tail),
-                                          len(other.len) {
+  Memchunks(Memchunks &&other) noexcept
+      : pool(other.pool), head(other.head), tail(other.tail), len(other.len) {
     // keep other.pool
     other.head = other.tail = nullptr;
     other.len = 0;
@@ -173,7 +171,7 @@ template <typename Memchunk> struct Memchunks {
 
     return count;
   }
-  template <size_t N> size_t append(const char(&s)[N]) {
+  template <size_t N> size_t append(const char (&s)[N]) {
     return append(s, N - 1);
   }
   size_t append(const std::string &s) { return append(s.c_str(), s.size()); }
