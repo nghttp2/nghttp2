@@ -5258,6 +5258,9 @@ typedef void (*nghttp2_debug_vprintf_callback)(const char *format,
  * ``DEBUGBUILD`` macro defined.  If this option is not used, debug
  * log is written into standard error output.
  *
+ * For builds without ``DEBUGBUILD`` macro defined, this function is
+ * noop.
+ *
  * Note that building with ``DEBUGBUILD`` may cause significant
  * performance penalty to libnghttp2 because of extra processing.  It
  * should be used for debugging purpose only.
