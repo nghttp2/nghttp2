@@ -1433,7 +1433,7 @@ static size_t encode_length(uint8_t *buf, uint64_t n, size_t prefix) {
 void test_nghttp2_hd_decode_length(void) {
   uint32_t out;
   size_t shift;
-  int final;
+  int fin;
   uint8_t buf[16];
   uint8_t *bufp;
   size_t len;
@@ -1443,39 +1443,39 @@ void test_nghttp2_hd_decode_length(void) {
   memset(buf, 0, sizeof(buf));
   len = encode_length(buf, UINT32_MAX, 7);
 
-  rv = nghttp2_hd_decode_length(&out, &shift, &final, 0, 0, buf, buf + len, 7);
+  rv = nghttp2_hd_decode_length(&out, &shift, &fin, 0, 0, buf, buf + len, 7);
 
   CU_ASSERT((ssize_t)len == rv);
-  CU_ASSERT(0 != final);
+  CU_ASSERT(0 != fin);
   CU_ASSERT(UINT32_MAX == out);
 
   /* Make sure that we can decode integer if we feed 1 byte at a
      time */
   out = 0;
   shift = 0;
-  final = 0;
+  fin = 0;
   bufp = buf;
 
   for (i = 0; i < len; ++i, ++bufp) {
-    rv = nghttp2_hd_decode_length(&out, &shift, &final, out, shift, bufp,
+    rv = nghttp2_hd_decode_length(&out, &shift, &fin, out, shift, bufp,
                                   bufp + 1, 7);
 
     CU_ASSERT(rv == 1);
 
-    if (final) {
+    if (fin) {
       break;
     }
   }
 
   CU_ASSERT(i == len - 1);
-  CU_ASSERT(0 != final);
+  CU_ASSERT(0 != fin);
   CU_ASSERT(UINT32_MAX == out);
 
   /* Check overflow case */
   memset(buf, 0, sizeof(buf));
   len = encode_length(buf, 1ll << 32, 7);
 
-  rv = nghttp2_hd_decode_length(&out, &shift, &final, 0, 0, buf, buf + len, 7);
+  rv = nghttp2_hd_decode_length(&out, &shift, &fin, 0, 0, buf, buf + len, 7);
 
   CU_ASSERT(-1 == rv);
 }
