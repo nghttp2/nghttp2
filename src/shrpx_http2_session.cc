@@ -1058,8 +1058,8 @@ int on_response_headers(Http2Session *http2session, Downstream *downstream,
     }
     downstream->set_request_state(Downstream::HEADER_COMPLETE);
     if (LOG_ENABLED(INFO)) {
-      SSLOG(INFO, http2session)
-          << "HTTP upgrade success. stream_id=" << frame->hd.stream_id;
+      SSLOG(INFO, http2session) << "HTTP upgrade success. stream_id="
+                                << frame->hd.stream_id;
     }
   } else {
     auto content_length = resp.fs.header(http2::HD_CONTENT_LENGTH);

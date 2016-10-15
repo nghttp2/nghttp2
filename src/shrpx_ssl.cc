@@ -864,8 +864,8 @@ SSL_CTX *create_ssl_client_context(
     if (neverbleed_load_private_key_file(nb, ssl_ctx, private_key_file.c_str(),
                                          errbuf.data()) != 1) {
       LOG(FATAL) << "neverbleed_load_private_key_file: could not load client "
-                    "private key from " << private_key_file << ": "
-                 << errbuf.data();
+                    "private key from "
+                 << private_key_file << ": " << errbuf.data();
       DIE();
     }
 #endif // HAVE_NEVERBLEED
@@ -881,8 +881,8 @@ SSL_CTX *create_ssl_client_context(
 SSL *create_ssl(SSL_CTX *ssl_ctx) {
   auto ssl = SSL_new(ssl_ctx);
   if (!ssl) {
-    LOG(ERROR) << "SSL_new() failed: " << ERR_error_string(ERR_get_error(),
-                                                           nullptr);
+    LOG(ERROR) << "SSL_new() failed: "
+               << ERR_error_string(ERR_get_error(), nullptr);
     return nullptr;
   }
 

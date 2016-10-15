@@ -2082,7 +2082,7 @@ int alpn_select_proto_cb(SSL *ssl, const unsigned char **out,
     std::cout << "[ALPN] client offers:" << std::endl;
   }
   if (config->verbose) {
-    for (unsigned int i = 0; i < inlen; i += in [i] + 1) {
+    for (unsigned int i = 0; i < inlen; i += in[i] + 1) {
       std::cout << " * ";
       std::cout.write(reinterpret_cast<const char *>(&in[i + 1]), in[i]);
       std::cout << std::endl;

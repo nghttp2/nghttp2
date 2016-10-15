@@ -39,7 +39,7 @@ using namespace nghttp2;
 
 #define MAKE_NV(K, V)                                                          \
   {                                                                            \
-    (uint8_t *) K, (uint8_t *)V, sizeof(K) - 1, sizeof(V) - 1,                 \
+    (uint8_t *)K, (uint8_t *)V, sizeof(K) - 1, sizeof(V) - 1,                  \
         NGHTTP2_NV_FLAG_NONE                                                   \
   }
 
@@ -107,12 +107,8 @@ void test_http2_add_header(void) {
 }
 
 void test_http2_get_header(void) {
-  auto nva = Headers{{"alpha", "1"},
-                     {"bravo", "2"},
-                     {"bravo", "3"},
-                     {"charlie", "4"},
-                     {"delta", "5"},
-                     {"echo", "6"},
+  auto nva = Headers{{"alpha", "1"},         {"bravo", "2"}, {"bravo", "3"},
+                     {"charlie", "4"},       {"delta", "5"}, {"echo", "6"},
                      {"content-length", "7"}};
   const Headers::value_type *rv;
   rv = http2::get_header(nva, "delta");

@@ -614,8 +614,8 @@ ssize_t Connection::write_tls(const void *data, size_t len) {
       return 0;
     case SSL_ERROR_SSL:
       if (LOG_ENABLED(INFO)) {
-        LOG(INFO) << "SSL_write: " << ERR_error_string(ERR_get_error(),
-                                                       nullptr);
+        LOG(INFO) << "SSL_write: "
+                  << ERR_error_string(ERR_get_error(), nullptr);
       }
       return SHRPX_ERR_NETWORK;
     default:

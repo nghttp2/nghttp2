@@ -2285,12 +2285,14 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     return 0;
   case SHRPX_OPTID_BACKEND_NO_TLS:
     LOG(WARN) << opt << ": deprecated.  backend connection is not encrypted by "
-                        "default.  See also " << SHRPX_OPT_BACKEND_TLS;
+                        "default.  See also "
+              << SHRPX_OPT_BACKEND_TLS;
     return 0;
   case SHRPX_OPTID_BACKEND_TLS_SNI_FIELD:
     LOG(WARN) << opt << ": deprecated.  Use sni keyword in --backend option.  "
                         "For now, all sni values of all backends are "
-                        "overridden by the given value " << optarg;
+                        "overridden by the given value "
+              << optarg;
     config->tls.backend_sni_name = make_string_ref(config->balloc, optarg);
 
     return 0;

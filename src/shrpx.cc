@@ -1467,7 +1467,8 @@ void print_version(std::ostream &out) {
 namespace {
 void print_usage(std::ostream &out) {
   out << R"(Usage: nghttpx [OPTIONS]... [<PRIVATE_KEY> <CERT>]
-A reverse proxy for HTTP/2, HTTP/1 and SPDY.)" << std::endl;
+A reverse proxy for HTTP/2, HTTP/1 and SPDY.)"
+      << std::endl;
 }
 } // namespace
 
@@ -1613,8 +1614,8 @@ Connections:
               not  contain these  characters.  Since  ";" has  special
               meaning in shell, the option value must be quoted.
 
-              Default: )" << DEFAULT_DOWNSTREAM_HOST << ","
-      << DEFAULT_DOWNSTREAM_PORT << R"(
+              Default: )"
+      << DEFAULT_DOWNSTREAM_HOST << "," << DEFAULT_DOWNSTREAM_PORT << R"(
   -f, --frontend=(<HOST>,<PORT>|unix:<PATH>)[[;<PARAM>]...]
               Set  frontend  host and  port.   If  <HOST> is  '*',  it
               assumes  all addresses  including  both  IPv4 and  IPv6.
@@ -1645,7 +1646,8 @@ Connections:
               Default: *,3000
   --backlog=<N>
               Set listen backlog size.
-              Default: )" << config->conn.listener.backlog << R"(
+              Default: )"
+      << config->conn.listener.backlog << R"(
   --backend-address-family=(auto|IPv4|IPv6)
               Specify  address  family  of  backend  connections.   If
               "auto" is given, both IPv4  and IPv6 are considered.  If
@@ -1671,25 +1673,30 @@ Connections:
 Performance:
   -n, --workers=<N>
               Set the number of worker threads.
-              Default: )" << config->num_worker << R"(
+              Default: )"
+      << config->num_worker << R"(
   --read-rate=<SIZE>
               Set maximum  average read  rate on  frontend connection.
               Setting 0 to this option means read rate is unlimited.
-              Default: )" << config->conn.upstream.ratelimit.read.rate << R"(
+              Default: )"
+      << config->conn.upstream.ratelimit.read.rate << R"(
   --read-burst=<SIZE>
               Set  maximum read  burst  size  on frontend  connection.
               Setting  0  to this  option  means  read burst  size  is
               unlimited.
-              Default: )" << config->conn.upstream.ratelimit.read.burst << R"(
+              Default: )"
+      << config->conn.upstream.ratelimit.read.burst << R"(
   --write-rate=<SIZE>
               Set maximum  average write rate on  frontend connection.
               Setting 0 to this option means write rate is unlimited.
-              Default: )" << config->conn.upstream.ratelimit.write.rate << R"(
+              Default: )"
+      << config->conn.upstream.ratelimit.write.rate << R"(
   --write-burst=<SIZE>
               Set  maximum write  burst size  on frontend  connection.
               Setting  0 to  this  option means  write  burst size  is
               unlimited.
-              Default: )" << config->conn.upstream.ratelimit.write.burst << R"(
+              Default: )"
+      << config->conn.upstream.ratelimit.write.burst << R"(
   --worker-read-rate=<SIZE>
               Set maximum average read rate on frontend connection per
               worker.  Setting  0 to  this option  means read  rate is
@@ -1713,7 +1720,8 @@ Performance:
   --worker-frontend-connections=<N>
               Set maximum number  of simultaneous connections frontend
               accepts.  Setting 0 means unlimited.
-              Default: )" << config->conn.upstream.worker_connections << R"(
+              Default: )"
+      << config->conn.upstream.worker_connections << R"(
   --backend-connections-per-host=<N>
               Set  maximum number  of  backend concurrent  connections
               (and/or  streams in  case  of HTTP/2)  per origin  host.
@@ -1723,8 +1731,8 @@ Performance:
               HTTP/2).   To  limit  the   number  of  connections  per
               frontend        for       default        mode,       use
               --backend-connections-per-frontend.
-              Default: )" << config->conn.downstream->connections_per_host
-      << R"(
+              Default: )"
+      << config->conn.downstream->connections_per_host << R"(
   --backend-connections-per-frontend=<N>
               Set  maximum number  of  backend concurrent  connections
               (and/or streams  in case of HTTP/2)  per frontend.  This
@@ -1732,12 +1740,13 @@ Performance:
               unlimited.  To limit the  number of connections per host
               with          --http2-proxy         option,          use
               --backend-connections-per-host.
-              Default: )" << config->conn.downstream->connections_per_frontend
-      << R"(
+              Default: )"
+      << config->conn.downstream->connections_per_frontend << R"(
   --rlimit-nofile=<N>
               Set maximum number of open files (RLIMIT_NOFILE) to <N>.
               If 0 is given, nghttpx does not set the limit.
-              Default: )" << config->rlimit_nofile << R"(
+              Default: )"
+      << config->rlimit_nofile << R"(
   --backend-request-buffer=<SIZE>
               Set buffer size used to store backend request.
               Default: )"
@@ -1751,7 +1760,8 @@ Performance:
               limits the  maximum length for the  queue of connections
               that have not yet completed the three-way handshake.  If
               value is 0 then fast open is disabled.
-              Default: )" << config->conn.listener.fastopen << R"(
+              Default: )"
+      << config->conn.listener.fastopen << R"(
   --no-kqueue Don't use  kqueue.  This  option is only  applicable for
               the platforms  which have kqueue.  For  other platforms,
               this option will be simply ignored.
@@ -1835,7 +1845,8 @@ SSL/TLS:
               in the preference order.  The supported curves depend on
               the  linked  OpenSSL  library.  This  function  requires
               OpenSSL >= 1.0.2.
-              Default: )" << config->tls.ecdh_curves << R"(
+              Default: )"
+      << config->tls.ecdh_curves << R"(
   -k, --insecure
               Don't  verify backend  server's  certificate  if TLS  is
               enabled for backend connections.
@@ -1875,7 +1886,8 @@ SSL/TLS:
               NPN.  The parameter must be  delimited by a single comma
               only  and any  white spaces  are  treated as  a part  of
               protocol string.
-              Default: )" << DEFAULT_NPN_LIST << R"(
+              Default: )"
+      << DEFAULT_NPN_LIST << R"(
   --verify-client
               Require and verify client certificate.
   --verify-client-cacert=<PATH>
@@ -1898,7 +1910,8 @@ SSL/TLS:
               protocol list advertised by client does not overlap this
               list,  you  will  receive  the  error  message  "unknown
               protocol".
-              Default: )" << DEFAULT_TLS_PROTO_LIST << R"(
+              Default: )"
+      << DEFAULT_TLS_PROTO_LIST << R"(
   --tls-ticket-key-file=<PATH>
               Path to file that contains  random data to construct TLS
               session ticket  parameters.  If aes-128-cbc is  given in
@@ -1952,11 +1965,13 @@ SSL/TLS:
               "failure" count  is incremented by 1,  which contributed
               to            the            value            controlled
               --tls-ticket-key-memcached-max-fail option.
-              Default: )" << config->tls.ticket.memcached.max_retry << R"(
+              Default: )"
+      << config->tls.ticket.memcached.max_retry << R"(
   --tls-ticket-key-memcached-max-fail=<N>
               Set  maximum   number  of  consecutive   failure  before
               disabling TLS ticket until next scheduled key retrieval.
-              Default: )" << config->tls.ticket.memcached.max_fail << R"(
+              Default: )"
+      << config->tls.ticket.memcached.max_fail << R"(
   --tls-ticket-key-cipher=<CIPHER>
               Specify cipher  to encrypt TLS session  ticket.  Specify
               either   aes-128-cbc   or  aes-256-cbc.    By   default,
@@ -1970,7 +1985,8 @@ SSL/TLS:
   --fetch-ocsp-response-file=<PATH>
               Path to  fetch-ocsp-response script file.  It  should be
               absolute path.
-              Default: )" << config->tls.ocsp.fetch_ocsp_response_file << R"(
+              Default: )"
+      << config->tls.ocsp.fetch_ocsp_response_file << R"(
   --ocsp-update-interval=<DURATION>
               Set interval to update OCSP response cache.
               Default: )"
@@ -2033,34 +2049,36 @@ HTTP/2 and SPDY:
   -c, --frontend-http2-max-concurrent-streams=<N>
               Set the maximum number of  the concurrent streams in one
               frontend HTTP/2 and SPDY session.
-              Default:  )" << config->http2.upstream.max_concurrent_streams
-      << R"(
+              Default:  )"
+      << config->http2.upstream.max_concurrent_streams << R"(
   --backend-http2-max-concurrent-streams=<N>
               Set the maximum number of  the concurrent streams in one
               backend  HTTP/2 session.   This sets  maximum number  of
               concurrent opened pushed streams.  The maximum number of
               concurrent requests are set by a remote server.
-              Default: )" << config->http2.downstream.max_concurrent_streams
-      << R"(
+              Default: )"
+      << config->http2.downstream.max_concurrent_streams << R"(
   --frontend-http2-window-size=<SIZE>
               Sets the  per-stream initial  window size of  HTTP/2 and
               SPDY frontend connection.
-              Default: )" << config->http2.upstream.window_size << R"(
+              Default: )"
+      << config->http2.upstream.window_size << R"(
   --frontend-http2-connection-window-size=<SIZE>
               Sets the  per-connection window size of  HTTP/2 and SPDY
               frontend  connection.  For  SPDY  connection, the  value
               less than 64KiB is rounded up to 64KiB.
-              Default: )" << config->http2.upstream.connection_window_size
-      << R"(
+              Default: )"
+      << config->http2.upstream.connection_window_size << R"(
   --backend-http2-window-size=<SIZE>
               Sets  the   initial  window   size  of   HTTP/2  backend
               connection.
-              Default: )" << config->http2.downstream.window_size << R"(
+              Default: )"
+      << config->http2.downstream.window_size << R"(
   --backend-http2-connection-window-size=<SIZE>
               Sets the  per-connection window  size of  HTTP/2 backend
               connection.
-              Default: )" << config->http2.downstream.connection_window_size
-      << R"(
+              Default: )"
+      << config->http2.downstream.connection_window_size << R"(
   --http2-no-cookie-crumbling
               Don't crumble cookie header field.
   --padding=<N>
@@ -2185,12 +2203,14 @@ Logging:
               The  variable  can  be  enclosed  by  "{"  and  "}"  for
               disambiguation (e.g., ${remote_addr}).
 
-              Default: )" << DEFAULT_ACCESSLOG_FORMAT << R"(
+              Default: )"
+      << DEFAULT_ACCESSLOG_FORMAT << R"(
   --errorlog-file=<PATH>
               Set path to write error  log.  To reopen file, send USR1
               signal  to nghttpx.   stderr will  be redirected  to the
               error log file unless --errorlog-syslog is used.
-              Default: )" << config->logging.error.file << R"(
+              Default: )"
+      << config->logging.error.file << R"(
   --errorlog-syslog
               Send  error log  to  syslog.  If  this  option is  used,
               --errorlog-file option is ignored.
@@ -2279,7 +2299,8 @@ HTTP:
               Set  maximum  number  of incoming  HTTP  request  header
               fields.   If  trailer  fields exist,  they  are  counted
               towards this number.
-              Default: )" << config->http.max_request_header_fields << R"(
+              Default: )"
+      << config->http.max_request_header_fields << R"(
   --response-header-field-buffer=<SIZE>
               Set  maximum  buffer  size for  incoming  HTTP  response
               header field list.   This is the sum of  header name and
@@ -2291,7 +2312,8 @@ HTTP:
               Set  maximum number  of  incoming  HTTP response  header
               fields.   If  trailer  fields exist,  they  are  counted
               towards this number.
-              Default: )" << config->http.max_response_header_fields << R"(
+              Default: )"
+      << config->http.max_response_header_fields << R"(
   --error-page=(<CODE>|*)=<PATH>
               Set file path  to custom error page  served when nghttpx
               originally  generates  HTTP  error status  code  <CODE>.
@@ -2301,7 +2323,8 @@ HTTP:
               backend server, the custom error pages are not used.
   --server-name=<NAME>
               Change server response header field value to <NAME>.
-              Default: )" << config->http.server_name << R"(
+              Default: )"
+      << config->http.server_name << R"(
   --no-server-rewrite
               Don't rewrite server header field in default mode.  When
               --http2-proxy is used, these headers will not be altered
@@ -2310,8 +2333,8 @@ HTTP:
 API:
   --api-max-request-body=<SIZE>
               Set the maximum size of request body for API request.
-              Default: )" << util::utos_unit(config->api.max_request_body)
-      << R"(
+              Default: )"
+      << util::utos_unit(config->api.max_request_body) << R"(
 
 Debug:
   --frontend-http2-dump-request-header=<PATH>
@@ -2348,7 +2371,8 @@ Scripting:
 Misc:
   --conf=<PATH>
               Load configuration from <PATH>.
-              Default: )" << config->conf_path << R"(
+              Default: )"
+      << config->conf_path << R"(
   --include=<PATH>
               Load additional configurations from <PATH>.  File <PATH>
               is  read  when  configuration  parser  encountered  this
@@ -2366,7 +2390,8 @@ Misc:
   The <DURATION> argument is an integer and an optional unit (e.g., 1s
   is 1 second and 500ms is 500 milliseconds).  Units are h, m, s or ms
   (hours, minutes, seconds and milliseconds, respectively).  If a unit
-  is omitted, a second is used as unit.)" << std::endl;
+  is omitted, a second is used as unit.)"
+      << std::endl;
 }
 } // namespace
 

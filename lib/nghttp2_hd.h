@@ -372,7 +372,7 @@ int nghttp2_hd_emit_table_size(nghttp2_bufs *bufs, size_t table_size);
 nghttp2_hd_nv nghttp2_hd_table_get(nghttp2_hd_context *context, size_t index);
 
 /* For unittesting purpose */
-ssize_t nghttp2_hd_decode_length(uint32_t *res, size_t *shift_ptr, int *final,
+ssize_t nghttp2_hd_decode_length(uint32_t *res, size_t *shift_ptr, int *fin,
                                  uint32_t initial, size_t shift, uint8_t *in,
                                  uint8_t *last, size_t prefix);
 
@@ -410,8 +410,8 @@ void nghttp2_hd_huff_decode_context_init(nghttp2_hd_huff_decode_context *ctx);
  * will be written to |buf|.  This function assumes that |buf| has the
  * enough room to store the decoded byte string.
  *
- * The caller must set the |final| to nonzero if the given input is
- * the final block.
+ * The caller must set the |fin| to nonzero if the given input is the
+ * final block.
  *
  * This function returns the number of read bytes from the |in|.
  *
@@ -425,6 +425,6 @@ void nghttp2_hd_huff_decode_context_init(nghttp2_hd_huff_decode_context *ctx);
  */
 ssize_t nghttp2_hd_huff_decode(nghttp2_hd_huff_decode_context *ctx,
                                nghttp2_buf *buf, const uint8_t *src,
-                               size_t srclen, int final);
+                               size_t srclen, int fin);
 
 #endif /* NGHTTP2_HD_H */

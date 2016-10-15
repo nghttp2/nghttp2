@@ -74,10 +74,12 @@ public:
 
   virtual void start_connect(tcp::resolver::iterator endpoint_it) = 0;
   virtual tcp::socket &socket() = 0;
-  virtual void read_socket(std::function<
-      void(const boost::system::error_code &ec, std::size_t n)> h) = 0;
-  virtual void write_socket(std::function<
-      void(const boost::system::error_code &ec, std::size_t n)> h) = 0;
+  virtual void read_socket(
+      std::function<void(const boost::system::error_code &ec, std::size_t n)>
+          h) = 0;
+  virtual void write_socket(
+      std::function<void(const boost::system::error_code &ec, std::size_t n)>
+          h) = 0;
   virtual void shutdown_socket() = 0;
 
   void shutdown();

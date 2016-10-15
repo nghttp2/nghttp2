@@ -137,7 +137,7 @@ StringRef quote_string(BlockAllocator &balloc, const StringRef &target);
 
 std::string format_hex(const unsigned char *s, size_t len);
 
-template <size_t N> std::string format_hex(const unsigned char(&s)[N]) {
+template <size_t N> std::string format_hex(const unsigned char (&s)[N]) {
   return format_hex(s, N);
 }
 
@@ -232,7 +232,7 @@ template <typename S, typename T> bool istarts_with(const S &a, const T &b) {
 }
 
 template <typename T, typename CharT, size_t N>
-bool istarts_with_l(const T &a, const CharT(&b)[N]) {
+bool istarts_with_l(const T &a, const CharT (&b)[N]) {
   return istarts_with(a.begin(), a.end(), b, b + N - 1);
 }
 
@@ -250,7 +250,7 @@ template <typename T, typename S> bool ends_with(const T &a, const S &b) {
 }
 
 template <typename T, typename CharT, size_t N>
-bool ends_with_l(const T &a, const CharT(&b)[N]) {
+bool ends_with_l(const T &a, const CharT (&b)[N]) {
   return ends_with(a.begin(), a.end(), b, b + N - 1);
 }
 
@@ -268,7 +268,7 @@ template <typename T, typename S> bool iends_with(const T &a, const S &b) {
 }
 
 template <typename T, typename CharT, size_t N>
-bool iends_with_l(const T &a, const CharT(&b)[N]) {
+bool iends_with_l(const T &a, const CharT (&b)[N]) {
   return iends_with(a.begin(), a.end(), b, b + N - 1);
 }
 
@@ -286,12 +286,12 @@ template <typename T, typename S> bool strieq(const T &a, const S &b) {
 }
 
 template <typename CharT, typename InputIt, size_t N>
-bool strieq_l(const CharT(&a)[N], InputIt b, size_t blen) {
+bool strieq_l(const CharT (&a)[N], InputIt b, size_t blen) {
   return strieq(a, a + (N - 1), b, b + blen);
 }
 
 template <typename CharT, size_t N, typename T>
-bool strieq_l(const CharT(&a)[N], const T &b) {
+bool strieq_l(const CharT (&a)[N], const T &b) {
   return strieq(a, a + (N - 1), b.begin(), b.end());
 }
 
@@ -308,12 +308,12 @@ template <typename T, typename S> bool streq(const T &a, const S &b) {
 }
 
 template <typename CharT, typename InputIt, size_t N>
-bool streq_l(const CharT(&a)[N], InputIt b, size_t blen) {
+bool streq_l(const CharT (&a)[N], InputIt b, size_t blen) {
   return streq(a, a + (N - 1), b, b + blen);
 }
 
 template <typename CharT, size_t N, typename T>
-bool streq_l(const CharT(&a)[N], const T &b) {
+bool streq_l(const CharT (&a)[N], const T &b) {
   return streq(a, a + (N - 1), b.begin(), b.end());
 }
 
@@ -728,7 +728,7 @@ OutputIt random_alpha_digit(OutputIt first, OutputIt last, Generator &gen) {
 }
 
 template <typename OutputIterator, typename CharT, size_t N>
-OutputIterator copy_lit(OutputIterator it, CharT(&s)[N]) {
+OutputIterator copy_lit(OutputIterator it, CharT (&s)[N]) {
   return std::copy_n(s, N - 1, it);
 }
 

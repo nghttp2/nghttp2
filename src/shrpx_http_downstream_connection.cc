@@ -523,7 +523,8 @@ int HttpDownstreamConnection::push_request_headers() {
       nhdrs = http::colorizeHeaders(nhdrs.c_str());
     }
     DCLOG(INFO, this) << "HTTP request headers. stream_id="
-                      << downstream_->get_stream_id() << "\n" << nhdrs;
+                      << downstream_->get_stream_id() << "\n"
+                      << nhdrs;
   }
 
   // Don't call signal_write() if we anticipate request body.  We call
@@ -791,8 +792,8 @@ int ensure_max_header_fields(const Downstream *downstream,
 
   if (resp.fs.num_fields() >= httpconf.max_response_header_fields) {
     if (LOG_ENABLED(INFO)) {
-      DLOG(INFO, downstream)
-          << "Too many header field num=" << resp.fs.num_fields() + 1;
+      DLOG(INFO, downstream) << "Too many header field num="
+                             << resp.fs.num_fields() + 1;
     }
     return -1;
   }

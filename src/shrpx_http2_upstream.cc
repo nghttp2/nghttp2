@@ -309,7 +309,8 @@ int Http2Upstream::on_request_headers(Downstream *downstream,
       ss << TTY_HTTP_HD << nv.name << TTY_RST << ": " << nv.value << "\n";
     }
     ULOG(INFO, this) << "HTTP request headers. stream_id="
-                     << downstream->get_stream_id() << "\n" << ss.str();
+                     << downstream->get_stream_id() << "\n"
+                     << ss.str();
   }
 
   auto config = get_config();
@@ -1814,7 +1815,8 @@ void Http2Upstream::log_response_headers(
        << StringRef{nv.value, nv.valuelen} << "\n";
   }
   ULOG(INFO, this) << "HTTP response headers. stream_id="
-                   << downstream->get_stream_id() << "\n" << ss.str();
+                   << downstream->get_stream_id() << "\n"
+                   << ss.str();
 }
 
 int Http2Upstream::on_timeout(Downstream *downstream) {
@@ -2001,7 +2003,8 @@ int Http2Upstream::submit_push_promise(const StringRef &scheme,
          << StringRef{nv.value, nv.valuelen} << "\n";
     }
     ULOG(INFO, this) << "HTTP push request headers. promised_stream_id="
-                     << promised_stream_id << "\n" << ss.str();
+                     << promised_stream_id << "\n"
+                     << ss.str();
   }
 
   return 0;

@@ -66,11 +66,11 @@ make_array(T &&... t) {
       sizeof...(T)>{{std::forward<T>(t)...}};
 }
 
-template <typename T, size_t N> constexpr size_t array_size(T(&)[N]) {
+template <typename T, size_t N> constexpr size_t array_size(T (&)[N]) {
   return N;
 }
 
-template <typename T, size_t N> constexpr size_t str_size(T(&)[N]) {
+template <typename T, size_t N> constexpr size_t str_size(T (&)[N]) {
   return N - 1;
 }
 
@@ -264,8 +264,8 @@ public:
       : len(std::distance(first, last)), base(copystr(first, last)) {}
   ImmutableString(const ImmutableString &other)
       : len(other.len), base(copystr(std::begin(other), std::end(other))) {}
-  ImmutableString(ImmutableString &&other) noexcept : len(other.len),
-                                                      base(other.base) {
+  ImmutableString(ImmutableString &&other) noexcept
+      : len(other.len), base(other.base) {
     other.len = 0;
     other.base = "";
   }
@@ -300,7 +300,7 @@ public:
     return *this;
   }
 
-  template <size_t N> static ImmutableString from_lit(const char(&s)[N]) {
+  template <size_t N> static ImmutableString from_lit(const char (&s)[N]) {
     return ImmutableString(s, N - 1);
   }
 
@@ -427,7 +427,7 @@ public:
       : base(reinterpret_cast<const char *>(first)),
         len(std::distance(first, last)) {}
   template <typename CharT, size_t N>
-  constexpr static StringRef from_lit(const CharT(&s)[N]) {
+  constexpr static StringRef from_lit(const CharT (&s)[N]) {
     return StringRef{s, N - 1};
   }
   static StringRef from_maybe_nullptr(const char *s) {

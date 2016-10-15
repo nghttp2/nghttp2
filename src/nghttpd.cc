@@ -142,7 +142,8 @@ Options:
   -m, --max-concurrent-streams=<N>
               Set the maximum number of  the concurrent streams in one
               HTTP/2 session.
-              Default: )" << config.max_concurrent_streams << R"(
+              Default: )"
+      << config.max_concurrent_streams << R"(
   -n, --workers=<N>
               Set the number of worker threads.
               Default: 1
@@ -173,7 +174,8 @@ Options:
   --mime-types-file=<PATH>
               Path  to file  that contains  MIME media  types and  the
               extensions that represent them.
-              Default: )" << config.mime_types_file << R"(
+              Default: )"
+      << config.mime_types_file << R"(
   --no-content-length
               Don't send content-length header field.
   --version   Display version information and exit.
@@ -182,7 +184,8 @@ Options:
 --
 
   The <SIZE> argument is an integer and an optional unit (e.g., 10K is
-  10 * 1024).  Units are K, M and G (powers of 1024).)" << std::endl;
+  10 * 1024).  Units are K, M and G (powers of 1024).)"
+      << std::endl;
 }
 } // namespace
 

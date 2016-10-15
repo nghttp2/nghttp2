@@ -209,7 +209,7 @@ std::pair<OutputIterator, size_t> copy(const ImmutableString &src, size_t avail,
 
 namespace {
 template <size_t N, typename OutputIterator>
-std::pair<OutputIterator, size_t> copy_l(const char(&src)[N], size_t avail,
+std::pair<OutputIterator, size_t> copy_l(const char (&src)[N], size_t avail,
                                          OutputIterator oitr) {
   return copy(src, N - 1, avail, oitr);
 }
@@ -320,7 +320,8 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
       break;
     case SHRPX_LOGF_REQUEST_TIME: {
       auto t = std::chrono::duration_cast<std::chrono::milliseconds>(
-                   lgsp.request_end_time - lgsp.request_start_time).count();
+                   lgsp.request_end_time - lgsp.request_start_time)
+                   .count();
 
       auto frac = util::utos(t % 1000);
       auto sec = util::utos(t / 1000);

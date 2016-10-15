@@ -35,8 +35,8 @@
 /* Make scalar initialization form of nghttp2_hd_entry */
 #define MAKE_STATIC_ENT(N, V, T, H)                                            \
   {                                                                            \
-    { NULL, NULL, (uint8_t *)(N), sizeof((N)) - 1, -1 }                        \
-    , {NULL, NULL, (uint8_t *)(V), sizeof((V)) - 1, -1},                       \
+    {NULL, NULL, (uint8_t *)(N), sizeof((N)) - 1, -1},                         \
+        {NULL, NULL, (uint8_t *)(V), sizeof((V)) - 1, -1},                     \
         {(uint8_t *)(N), (uint8_t *)(V), sizeof((N)) - 1, sizeof((V)) - 1, 0}, \
         T, H                                                                   \
   }
@@ -828,7 +828,7 @@ static size_t encode_length(uint8_t *buf, size_t n, size_t prefix) {
  * If the |initial| is nonzero, it is used as a initial value, this
  * function assumes the |in| starts with intermediate data.
  *
- * An entire integer is decoded successfully, decoded, the |*final| is
+ * An entire integer is decoded successfully, decoded, the |*fin| is
  * set to nonzero.
  *
  * This function stores the decoded integer in |*res| if it succeed,
@@ -836,7 +836,7 @@ static size_t encode_length(uint8_t *buf, size_t n, size_t prefix) {
  * in the next call will be stored in |*shift_ptr|) and returns number
  * of bytes processed, or returns -1, indicating decoding error.
  */
-static ssize_t decode_length(uint32_t *res, size_t *shift_ptr, int *final,
+static ssize_t decode_length(uint32_t *res, size_t *shift_ptr, int *fin,
                              uint32_t initial, size_t shift, const uint8_t *in,
                              const uint8_t *last, size_t prefix) {
   uint32_t k = (uint8_t)((1 << prefix) - 1);
@@ -844,12 +844,12 @@ static ssize_t decode_length(uint32_t *res, size_t *shift_ptr, int *final,
   const uint8_t *start = in;
 
   *shift_ptr = 0;
-  *final = 0;
+  *fin = 0;
 
   if (n == 0) {
     if ((*in & k) != k) {
       *res = (*in) & k;
-      *final = 1;
+      *fin = 1;
       return 1;
     }
 
@@ -891,7 +891,7 @@ static ssize_t decode_length(uint32_t *res, size_t *shift_ptr, int *final,
   }
 
   *res = n;
-  *final = 1;
+  *fin = 1;
   return (ssize_t)(in + 1 - start);
 }
 
@@ -1296,7 +1296,8 @@ static const nghttp2_nv *nghttp2_hd_table_get2(nghttp2_hd_context *context,
   assert(INDEX_RANGE_VALID(context, idx));
   if (idx >= NGHTTP2_STATIC_TABLE_LENGTH) {
     return &hd_ringbuf_get(&context->hd_table,
-                           idx - NGHTTP2_STATIC_TABLE_LENGTH)->cnv;
+                           idx - NGHTTP2_STATIC_TABLE_LENGTH)
+                ->cnv;
   }
 
   return &static_table[idx].cnv;
@@ -1665,13 +1666,13 @@ static ssize_t hd_inflate_read_huff(nghttp2_hd_inflater *inflater,
                                     nghttp2_buf *buf, const uint8_t *in,
                                     const uint8_t *last) {
   ssize_t readlen;
-  int final = 0;
+  int fin = 0;
   if ((size_t)(last - in) >= inflater->left) {
     last = in + inflater->left;
-    final = 1;
+    fin = 1;
   }
   readlen = nghttp2_hd_huff_decode(&inflater->huff_decode_ctx, buf, in,
-                                   (size_t)(last - in), final);
+                                   (size_t)(last - in), fin);
 
   if (readlen < 0) {
     DEBUGF("inflatehd: huffman decoding failed\n");
@@ -2269,10 +2270,10 @@ int nghttp2_hd_emit_table_size(nghttp2_bufs *bufs, size_t table_size) {
   return emit_table_size(bufs, table_size);
 }
 
-ssize_t nghttp2_hd_decode_length(uint32_t *res, size_t *shift_ptr, int *final,
+ssize_t nghttp2_hd_decode_length(uint32_t *res, size_t *shift_ptr, int *fin,
                                  uint32_t initial, size_t shift, uint8_t *in,
                                  uint8_t *last, size_t prefix) {
-  return decode_length(res, shift_ptr, final, initial, shift, in, last, prefix);
+  return decode_length(res, shift_ptr, fin, initial, shift, in, last, prefix);
 }
 
 static size_t hd_get_num_table_entries(nghttp2_hd_context *context) {

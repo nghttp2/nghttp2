@@ -246,7 +246,8 @@ The output of this program can be used as input for deflatehd.
 
 OPTIONS:
     -d, --dump-header-table
-                      Output dynamic header table.)" << std::endl;
+                      Output dynamic header table.)"
+            << std::endl;
   ;
 }
 
