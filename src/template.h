@@ -79,7 +79,7 @@ template <typename T, size_t N> constexpr size_t str_size(T (&)[N]) {
 template <typename F, typename... T> struct Defer {
   Defer(F &&f, T &&... t)
       : f(std::bind(std::forward<F>(f), std::forward<T>(t)...)) {}
-  Defer(Defer &&o) : f(std::move(o.f)) {}
+  Defer(Defer &&o) noexcept : f(std::move(o.f)) {}
   ~Defer() { f(); }
 
   using ResultType = typename std::result_of<typename std::decay<F>::type(
@@ -104,12 +104,13 @@ template <typename T> struct DList {
   DList(const DList &) = delete;
   DList &operator=(const DList &) = delete;
 
-  DList(DList &&other) : head(other.head), tail(other.tail), len(other.len) {
+  DList(DList &&other) noexcept
+      : head(other.head), tail(other.tail), len(other.len) {
     other.head = other.tail = nullptr;
     other.len = 0;
   }
 
-  DList &operator=(DList &&other) {
+  DList &operator=(DList &&other) noexcept {
     if (this == &other) {
       return *this;
     }
