@@ -212,6 +212,7 @@ nghttpx automatically rewrites location response header field if the
 following all conditions satisfy:
 
 * In the default mode (:option:`--http2-proxy` is not used)
+* :option:`--no-location-rewrite` is not used
 * URI in location header field is an absolute URI
 * URI in location header field includes non empty host component.
 * host (without port) in URI in location header field must match the
