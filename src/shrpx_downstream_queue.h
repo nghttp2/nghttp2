@@ -51,14 +51,23 @@ struct BlockedLink {
 class DownstreamQueue {
 public:
   struct HostEntry {
+    HostEntry(ImmutableString &&key);
+
+    HostEntry(HostEntry &&) = default;
+    HostEntry &operator=(HostEntry &&) = default;
+
+    HostEntry(const HostEntry &) = delete;
+    HostEntry &operator=(const HostEntry &) = delete;
+
+    // Key that associates this object
+    ImmutableString key;
     // Set of stream ID that blocked by conn_max_per_host_.
     DList<BlockedLink> blocked;
     // The number of connections currently made to this host.
     size_t num_active;
-    HostEntry();
   };
 
-  using HostEntryMap = std::map<std::string, HostEntry>;
+  using HostEntryMap = std::map<StringRef, HostEntry, std::less<StringRef>>;
 
   // conn_max_per_host == 0 means no limit for downstream connection.
   DownstreamQueue(size_t conn_max_per_host = 0, bool unified_host = true);
@@ -86,14 +95,14 @@ public:
   Downstream *remove_and_get_blocked(Downstream *downstream,
                                      bool next_blocked = true);
   Downstream *get_downstreams() const;
-  HostEntry &find_host_entry(const std::string &host);
-  std::string make_host_key(const StringRef &host) const;
-  std::string make_host_key(Downstream *downstream) const;
+  HostEntry &find_host_entry(const StringRef &host);
+  StringRef make_host_key(const StringRef &host) const;
+  StringRef make_host_key(Downstream *downstream) const;
 
 private:
   // Per target host structure to keep track of the number of
   // connections to the same host.
-  std::map<std::string, HostEntry> host_entries_;
+  HostEntryMap host_entries_;
   DList<Downstream> downstreams_;
   // Maximum number of concurrent connections to the same host.
   size_t conn_max_per_host_;
