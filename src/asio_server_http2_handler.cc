@@ -404,7 +404,8 @@ void http2_handler::stream_error(int32_t stream_id, uint32_t error_code) {
 
 void http2_handler::signal_write() {
   if (!inside_callback_) {
-    initiate_write();
+    auto self = shared_from_this();
+    io_service_.post([self]() { self->initiate_write(); });
   }
 }
 
