@@ -29,6 +29,8 @@
 #include <config.h>
 #endif /* HAVE_CONFIG_H */
 
+#include <stddef.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
@@ -44,7 +46,7 @@ extern "C" {
  * sufficient to include error message, and |buflen| > 0, empty string
  * is written to |buf|.  This function returns |buf|.
  */
-char *xsi_strerror(int errnum, char *buf, unsigned long buflen);
+char *xsi_strerror(int errnum, char *buf, size_t buflen);
 
 #ifdef __cplusplus
 }
