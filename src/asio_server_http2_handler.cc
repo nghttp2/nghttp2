@@ -245,6 +245,7 @@ http2_handler::http2_handler(boost::asio::io_service &io_service,
       buf_(nullptr),
       buflen_(0),
       inside_callback_(false),
+      write_signaled_(false),
       tstamp_cached_(time(nullptr)),
       formatted_date_(util::http_date(tstamp_cached_)) {}
 
@@ -403,13 +404,17 @@ void http2_handler::stream_error(int32_t stream_id, uint32_t error_code) {
 }
 
 void http2_handler::signal_write() {
-  if (!inside_callback_) {
+  if (!inside_callback_ && !write_signaled_) {
+    write_signaled_ = true;
     auto self = shared_from_this();
     io_service_.post([self]() { self->initiate_write(); });
   }
 }
 
-void http2_handler::initiate_write() { writefun_(); }
+void http2_handler::initiate_write() {
+  write_signaled_ = false;
+  writefun_();
+}
 
 void http2_handler::resume(stream &strm) {
   nghttp2_session_resume_data(session_, strm.get_stream_id());

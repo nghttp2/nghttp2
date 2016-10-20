@@ -160,6 +160,9 @@ private:
   const uint8_t *buf_;
   std::size_t buflen_;
   bool inside_callback_;
+  // true if we have pending on_write call.  This avoids repeated call
+  // of io_service::post.
+  bool write_signaled_;
   time_t tstamp_cached_;
   std::string formatted_date_;
 };
