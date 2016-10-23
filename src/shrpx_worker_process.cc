@@ -392,6 +392,7 @@ std::random_device rd;
 
 int worker_process_event_loop(WorkerProcessConfig *wpconf) {
   std::array<char, STRERROR_BUFSIZE> errbuf;
+  (void)errbuf;
 
   if (reopen_log_files() != 0) {
     LOG(FATAL) << "Failed to open log file";
