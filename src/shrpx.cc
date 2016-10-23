@@ -1245,13 +1245,15 @@ int event_loop() {
     redirect_stderr_to_errorlog();
   }
 
-  auto iaddrs = get_inherited_addr_from_env(config);
+  {
+    auto iaddrs = get_inherited_addr_from_env(config);
 
-  if (create_acceptor_socket(config, iaddrs) != 0) {
-    return -1;
+    if (create_acceptor_socket(config, iaddrs) != 0) {
+      return -1;
+    }
+
+    close_unused_inherited_addr(iaddrs);
   }
-
-  close_unused_inherited_addr(iaddrs);
 
   auto loop = ev_default_loop(config->ev_loop_flags);
 
