@@ -3723,7 +3723,7 @@ int main(int argc, char **argv) {
 
   LOG(NOTICE) << "Shutdown momentarily";
 
-  delete log_config();
+  delete_log_config();
 
   return 0;
 }
