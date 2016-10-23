@@ -413,10 +413,10 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
 
 #ifdef HAVE_NEVERBLEED
   {
-    std::array<char, NEVERBLEED_ERRBUF_SIZE> errbuf;
+    std::array<char, NEVERBLEED_ERRBUF_SIZE> nb_errbuf;
     auto nb = make_unique<neverbleed_t>();
-    if (neverbleed_init(nb.get(), errbuf.data()) != 0) {
-      LOG(FATAL) << "neverbleed_init failed: " << errbuf.data();
+    if (neverbleed_init(nb.get(), nb_errbuf.data()) != 0) {
+      LOG(FATAL) << "neverbleed_init failed: " << nb_errbuf.data();
       return -1;
     }
 
