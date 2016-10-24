@@ -1129,6 +1129,8 @@ int read_tls_sct_from_dir(std::vector<uint8_t> &dst, const StringRef &opt,
       return -1;
     }
 
+    auto closer = defer(close, fd);
+
     // 2 bytes length field for this SCT.
     auto len_idx = std::distance(std::begin(dst), std::end(dst));
     dst.insert(std::end(dst), 2, 0);
