@@ -378,7 +378,14 @@ int ClientHandler::upstream_http1_connhd_read() {
 ClientHandler::ClientHandler(Worker *worker, int fd, SSL *ssl,
                              const StringRef &ipaddr, const StringRef &port,
                              int family, const UpstreamAddr *faddr)
-    : balloc_(256, 256),
+    : // We use balloc_ for TLS session ID (64), ipaddr (IPv6) (39),
+      // port (5), forwarded-for (IPv6) (41), alpn (5), proxyproto
+      // ipaddr (15), proxyproto port (5), sni (32, estimated).  we
+      // need terminal NULL byte for each.  We also require 8 bytes
+      // header for each allocation.  We align at 16 bytes boundary,
+      // so the required space is 64 + 48 + 16 + 48 + 16 + 16 + 16 +
+      // 32 + 8 + 8 * 8 = 328.
+      balloc_(512, 512),
       conn_(worker->get_loop(), fd, ssl, worker->get_mcpool(),
             get_config()->conn.upstream.timeout.write,
             get_config()->conn.upstream.timeout.read,
