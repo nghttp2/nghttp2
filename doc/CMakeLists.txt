@@ -122,6 +122,7 @@ set(APIDOCS
   nghttp2_session_upgrade2.rst
   nghttp2_session_want_read.rst
   nghttp2_session_want_write.rst
+  nghttp2_set_debug_vprintf_callback.rst
   nghttp2_stream_get_first_child.rst
   nghttp2_stream_get_next_sibling.rst
   nghttp2_stream_get_parent.rst
