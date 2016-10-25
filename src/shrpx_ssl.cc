@@ -608,11 +608,11 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
                << " failed";
     DIE();
   }
-#if !OPENSSL_1_1_API
+#if !defined(OPENSSL_IS_BORINGSSL) && !OPENSSL_1_1_API
   // It looks like we need this function call for OpenSSL 1.0.2.  This
-  // function was deprecated in OpenSSL 1.1.0.
+  // function was deprecated in OpenSSL 1.1.0 and BoringSSL.
   SSL_CTX_set_ecdh_auto(ssl_ctx, 1);
-#endif // !OPENSSL_1_1_API
+#endif // !defined(OPENSSL_IS_BORINGSSL) && !OPENSSL_1_1_API
 #else  // LIBRESSL_IN_USE || OPENSSL_VERSION_NUBMER < 0x10002000L
   // Use P-256, which is sufficiently secure at the time of this
   // writing.
