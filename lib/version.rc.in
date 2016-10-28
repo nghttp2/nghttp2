@@ -22,7 +22,7 @@ BLOCK "StringFileInfo"
 BEGIN
   BLOCK "040904b0"
   BEGIN
-	VALUE "CompanyName",      "http://tatsuhiro-t.github.io/nghttp2/"
+	VALUE "CompanyName",      "https://nghttp2.org/"
 	VALUE "FileDescription",  "nghttp2; HTTP/2 C library"
 	VALUE "FileVersion",      VER_STR
 	VALUE "InternalName",     "nghttp2" DBG
