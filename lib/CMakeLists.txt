@@ -26,8 +26,19 @@ set(NGHTTP2_SOURCES
   nghttp2_debug.c
 )
 
+set(NGHTTP2_RES "")
+
+if(WIN32)
+  configure_file(
+    version.rc.in
+    ${CMAKE_CURRENT_BINARY_DIR}/version.rc
+    @ONLY)
+
+  set(NGHTTP2_RES ${CMAKE_CURRENT_BINARY_DIR}/version.rc)
+endif()
+
 # Public shared library
-add_library(nghttp2 SHARED ${NGHTTP2_SOURCES})
+add_library(nghttp2 SHARED ${NGHTTP2_SOURCES} ${NGHTTP2_RES})
 set_target_properties(nghttp2 PROPERTIES
   COMPILE_FLAGS "${WARNCFLAGS}"
   VERSION ${LT_VERSION} SOVERSION ${LT_SOVERSION}
