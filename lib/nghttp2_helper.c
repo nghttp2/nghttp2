@@ -503,6 +503,10 @@ int nghttp2_check_header_value(const uint8_t *value, size_t len) {
 }
 
 uint8_t *nghttp2_cpymem(uint8_t *dest, const void *src, size_t len) {
+  if (len == 0) {
+    return dest;
+  }
+
   memcpy(dest, src, len);
 
   return dest + len;

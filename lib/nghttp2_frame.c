@@ -869,7 +869,9 @@ int nghttp2_nv_array_copy(nghttp2_nv **nva_ptr, const nghttp2_nv *nva,
       p->name = nva[i].name;
       p->namelen = nva[i].namelen;
     } else {
-      memcpy(data, nva[i].name, nva[i].namelen);
+      if (nva[i].namelen) {
+        memcpy(data, nva[i].name, nva[i].namelen);
+      }
       p->name = data;
       p->namelen = nva[i].namelen;
       data[p->namelen] = '\0';
@@ -881,7 +883,9 @@ int nghttp2_nv_array_copy(nghttp2_nv **nva_ptr, const nghttp2_nv *nva,
       p->value = nva[i].value;
       p->valuelen = nva[i].valuelen;
     } else {
-      memcpy(data, nva[i].value, nva[i].valuelen);
+      if (nva[i].valuelen) {
+        memcpy(data, nva[i].value, nva[i].valuelen);
+      }
       p->value = data;
       p->valuelen = nva[i].valuelen;
       data[p->valuelen] = '\0';
