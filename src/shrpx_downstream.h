@@ -76,7 +76,6 @@ public:
   // Returns pointer to the header field with the name |name|.  If
   // multiple header have |name| as name, return last occurrence from
   // the beginning.  If no such header is found, returns nullptr.
-  // This function must be called after headers are indexed
   const HeaderRefs::value_type *header(int32_t token) const;
   HeaderRefs::value_type *header(int32_t token);
   // Returns pointer to the header field with the name |name|.  If no
