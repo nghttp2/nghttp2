@@ -918,7 +918,9 @@ int SpdyUpstream::send_reply(Downstream *downstream, const uint8_t *body,
   const auto &resp = downstream->response();
   auto &balloc = downstream->get_block_allocator();
 
-  auto status_string = http2::get_status_string(balloc, resp.http_status);
+  auto status_line = concat_string_ref(
+      balloc, http2::stringify_status(balloc, resp.http_status),
+      StringRef::from_lit(" "), http2::get_reason_phrase(resp.http_status));
 
   const auto &headers = resp.fs.headers();
 
@@ -931,7 +933,7 @@ int SpdyUpstream::send_reply(Downstream *downstream, const uint8_t *body,
               httpconf.add_response_headers.size() * 2 + 1);
 
   nva.push_back(":status");
-  nva.push_back(status_string.c_str());
+  nva.push_back(status_line.c_str());
   nva.push_back(":version");
   nva.push_back("HTTP/1.1");
 
@@ -999,9 +1001,11 @@ int SpdyUpstream::error_reply(Downstream *downstream,
   lgconf->update_tstamp(std::chrono::system_clock::now());
 
   auto content_length = util::make_string_ref_uint(balloc, html.size());
-  auto status_string = http2::get_status_string(balloc, status_code);
+  auto status_line = concat_string_ref(
+      balloc, http2::stringify_status(balloc, status_code),
+      StringRef::from_lit(" "), http2::get_reason_phrase(status_code));
 
-  const char *nv[] = {":status",        status_string.c_str(),
+  const char *nv[] = {":status",        status_line.c_str(),
                       ":version",       "http/1.1",
                       "content-type",   "text/html; charset=UTF-8",
                       "server",         get_config()->http.server_name.c_str(),
@@ -1104,9 +1108,11 @@ int SpdyUpstream::on_downstream_header_complete(Downstream *downstream) {
 
   size_t hdidx = 0;
   std::string via_value;
-  auto status_string = http2::get_status_string(balloc, resp.http_status);
+  auto status_line = concat_string_ref(
+      balloc, http2::stringify_status(balloc, resp.http_status),
+      StringRef::from_lit(" "), http2::get_reason_phrase(resp.http_status));
   nv[hdidx++] = ":status";
-  nv[hdidx++] = status_string.c_str();
+  nv[hdidx++] = status_line.c_str();
   nv[hdidx++] = ":version";
   nv[hdidx++] = "HTTP/1.1";
   for (auto &hd : resp.fs.headers()) {

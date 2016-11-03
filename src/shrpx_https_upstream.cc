@@ -863,7 +863,9 @@ int HttpsUpstream::send_reply(Downstream *downstream, const uint8_t *body,
   auto output = downstream->get_response_buf();
 
   output->append("HTTP/1.1 ");
-  output->append(http2::get_status_string(balloc, resp.http_status));
+  output->append(http2::stringify_status(balloc, resp.http_status));
+  output->append(' ');
+  output->append(http2::get_reason_phrase(resp.http_status));
   output->append("\r\n");
 
   for (auto &kv : resp.fs.headers()) {
@@ -923,8 +925,9 @@ void HttpsUpstream::error_reply(unsigned int status_code) {
   auto output = downstream->get_response_buf();
 
   output->append("HTTP/1.1 ");
-  auto status_str = http2::get_status_string(balloc, status_code);
-  output->append(status_str);
+  output->append(http2::stringify_status(balloc, status_code));
+  output->append(' ');
+  output->append(http2::get_reason_phrase(status_code));
   output->append("\r\nServer: ");
   output->append(get_config()->http.server_name);
   output->append("\r\nContent-Length: ");
@@ -1011,7 +1014,9 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
   buf->append(".");
   buf->append(util::utos(req.http_minor));
   buf->append(" ");
-  buf->append(http2::get_status_string(balloc, resp.http_status));
+  buf->append(http2::stringify_status(balloc, resp.http_status));
+  buf->append(' ');
+  buf->append(http2::get_reason_phrase(resp.http_status));
   buf->append("\r\n");
 
   auto config = get_config();

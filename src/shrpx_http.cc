@@ -45,11 +45,14 @@ StringRef create_error_html(BlockAllocator &balloc, unsigned int http_status) {
     }
   }
 
-  auto status_string = http2::get_status_string(balloc, http_status);
+  auto status_string = http2::stringify_status(balloc, http_status);
+  auto reason_phrase = http2::get_reason_phrase(http_status);
 
   return concat_string_ref(
       balloc, StringRef::from_lit(R"(<!DOCTYPE html><html lang="en"><title>)"),
-      status_string, StringRef::from_lit("</title><body><h1>"), status_string,
+      status_string, StringRef::from_lit(" "), reason_phrase,
+      StringRef::from_lit("</title><body><h1>"), status_string,
+      StringRef::from_lit(" "), reason_phrase,
       StringRef::from_lit("</h1><footer>"), httpconf.server_name,
       StringRef::from_lit("</footer></body></html>"));
 }

@@ -36,11 +36,16 @@ std::string create_html(int status_code) {
   BlockAllocator balloc(1024, 1024);
   std::string res;
   res.reserve(512);
-  auto status = ::nghttp2::http2::get_status_string(balloc, status_code);
+  auto status_string = ::nghttp2::http2::stringify_status(balloc, status_code);
+  auto reason_phrase = ::nghttp2::http2::get_reason_phrase(status_code);
   res += R"(<!DOCTYPE html><html lang="en"><title>)";
-  res += status;
+  res += status_string;
+  res += ' ';
+  res += reason_phrase;
   res += "</title><body><h1>";
-  res += status;
+  res += status_string;
+  res += ' ';
+  res += reason_phrase;
   res += "</h1></body></html>";
   return res;
 }

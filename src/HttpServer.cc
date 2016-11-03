@@ -1921,13 +1921,18 @@ namespace {
 FileEntry make_status_body(int status, uint16_t port) {
   BlockAllocator balloc(1024, 1024);
 
-  auto status_string = http2::get_status_string(balloc, status);
+  auto status_string = http2::stringify_status(balloc, status);
+  auto reason_pharase = http2::get_reason_phrase(status);
 
   std::string body;
   body = "<html><head><title>";
   body += status_string;
+  body += ' ';
+  body += reason_pharase;
   body += "</title></head><body><h1>";
   body += status_string;
+  body += ' ';
+  body += reason_pharase;
   body += "</h1><hr><address>";
   body += NGHTTPD_SERVER;
   body += " at port ";
