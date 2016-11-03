@@ -218,7 +218,7 @@ mrb_value request_mod_header(mrb_state *mrb, mrb_value self, bool repl) {
   check_phase(mrb, data->phase, PHASE_REQUEST);
 
   mrb_value key, values;
-  mrb_get_args(mrb, "oo", &key, &values);
+  mrb_get_args(mrb, "So", &key, &values);
 
   if (RSTRING_LEN(key) == 0) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "empty key is not allowed");
@@ -251,10 +251,14 @@ mrb_value request_mod_header(mrb_state *mrb, mrb_value self, bool repl) {
     headers.resize(p);
   }
 
-  if (mrb_obj_is_instance_of(mrb, values, mrb->array_class)) {
+  if (mrb_array_p(values)) {
     auto n = mrb_ary_len(mrb, values);
     for (int i = 0; i < n; ++i) {
       auto value = mrb_ary_ref(mrb, values, i);
+      if (!mrb_string_p(value)) {
+        mrb_raise(mrb, E_RUNTIME_ERROR, "value must be string");
+      }
+
       req.fs.add_header_token(
           keyref,
           make_string_ref(balloc,
@@ -262,13 +266,15 @@ mrb_value request_mod_header(mrb_state *mrb, mrb_value self, bool repl) {
                                     static_cast<size_t>(RSTRING_LEN(value))}),
           false, token);
     }
-  } else if (!mrb_nil_p(values)) {
+  } else if (mrb_string_p(values)) {
     req.fs.add_header_token(
         keyref,
         make_string_ref(balloc,
                         StringRef{RSTRING_PTR(values),
                                   static_cast<size_t>(RSTRING_LEN(values))}),
         false, token);
+  } else {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "value must be string");
   }
 
   return mrb_nil_value();
