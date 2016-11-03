@@ -466,7 +466,10 @@ void FieldStore::append_last_header_value(const char *data, size_t len) {
                                   headers_, data, len);
 }
 
-void FieldStore::clear_headers() { headers_.clear(); }
+void FieldStore::clear_headers() {
+  headers_.clear();
+  header_key_prev_ = false;
+}
 
 void FieldStore::add_trailer_token(const StringRef &name,
                                    const StringRef &value, bool no_index,
