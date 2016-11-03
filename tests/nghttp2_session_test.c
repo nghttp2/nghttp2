@@ -10200,6 +10200,10 @@ void test_nghttp2_http_mandatory_headers(void) {
                                     MAKE_NV("content-length", "0")};
   const nghttp2_nv badhd_resnv[] = {MAKE_NV(":status", "200"),
                                     MAKE_NV("connection", "close")};
+  const nghttp2_nv cl1xx_resnv[] = {MAKE_NV(":status", "100"),
+                                    MAKE_NV("content-length", "0")};
+  const nghttp2_nv cl204_resnv[] = {MAKE_NV(":status", "204"),
+                                    MAKE_NV("content-length", "0")};
 
   /* test case for request */
   const nghttp2_nv nopath_reqnv[] = {MAKE_NV(":scheme", "https"),
@@ -10297,6 +10301,16 @@ void test_nghttp2_http_mandatory_headers(void) {
   check_nghttp2_http_recv_headers_fail(session, &deflater, 15,
                                        NGHTTP2_STREAM_OPENING, badhd_resnv,
                                        ARRLEN(badhd_resnv));
+
+  /* response header has content-length with 100 status code */
+  check_nghttp2_http_recv_headers_fail(session, &deflater, 17,
+                                       NGHTTP2_STREAM_OPENING, cl1xx_resnv,
+                                       ARRLEN(cl1xx_resnv));
+
+  /* response header has content-length with 204 status code */
+  check_nghttp2_http_recv_headers_fail(session, &deflater, 19,
+                                       NGHTTP2_STREAM_OPENING, cl204_resnv,
+                                       ARRLEN(cl204_resnv));
 
   nghttp2_hd_deflate_free(&deflater);
 
@@ -11001,6 +11015,7 @@ void test_nghttp2_http_record_request_method(void) {
   nghttp2_bufs bufs;
   nghttp2_hd_deflater deflater;
   nghttp2_mem *mem;
+  nghttp2_outbound_item *item;
 
   mem = nghttp2_mem_default();
   frame_pack_bufs_init(&bufs);
@@ -11032,6 +11047,14 @@ void test_nghttp2_http_record_request_method(void) {
 
   CU_ASSERT((NGHTTP2_HTTP_FLAG_METH_CONNECT & stream->http_flags) > 0);
   CU_ASSERT(-1 == stream->content_length);
+
+  /* content-length is now allowed in 200 response to a CONNECT
+     request */
+  item = nghttp2_session_get_next_ob_item(session);
+
+  CU_ASSERT(NULL != item);
+  CU_ASSERT(NGHTTP2_RST_STREAM == item->frame.hd.type);
+  CU_ASSERT(NGHTTP2_PROTOCOL_ERROR == item->frame.rst_stream.error_code);
 
   nghttp2_hd_deflate_free(&deflater);
   nghttp2_session_del(session);
