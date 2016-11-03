@@ -173,6 +173,11 @@ parsed as 64 bit signed integer.  The sum of data length in the
 following DATA frames must match with the number in "Content-Length"
 header field if it is present (this does not include padding bytes).
 
+RFC 7230 says that server must not send "Content-Length" in any
+response with 1xx, and 204 status code.  It also says that
+"Content-Length" is not allowed in any response with 200 status code
+to a CONNECT request.  nghttp2 enforces them as well.
+
 Any deviation results in stream error of type PROTOCOL_ERROR.  If
 error is found in PUSH_PROMISE frame, stream error is raised against
 promised stream.
