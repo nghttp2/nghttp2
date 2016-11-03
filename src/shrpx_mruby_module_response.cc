@@ -141,7 +141,7 @@ mrb_value response_mod_header(mrb_state *mrb, mrb_value self, bool repl) {
   if (mrb_obj_is_instance_of(mrb, values, mrb->array_class)) {
     auto n = mrb_ary_len(mrb, values);
     for (int i = 0; i < n; ++i) {
-      auto value = mrb_ary_entry(values, i);
+      auto value = mrb_ary_ref(mrb, values, i);
       resp.fs.add_header_token(
           keyref,
           make_string_ref(balloc,
