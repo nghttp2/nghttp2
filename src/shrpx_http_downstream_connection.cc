@@ -701,6 +701,18 @@ int htp_hdrs_completecb(http_parser *htp) {
   downstream->set_downstream_addr_group(dconn->get_downstream_addr_group());
   downstream->set_addr(dconn->get_addr());
 
+  // Server MUST NOT send Transfer-Encoding with a status code 1xx or
+  // 204.  Also server MUST NOT send Transfer-Encoding with a status
+  // code 200 to a CONNECT request.  Same holds true with
+  // Content-Length.
+  if (resp.http_status == 204 || resp.http_status / 100 == 1 ||
+      (resp.http_status == 200 && req.method == HTTP_CONNECT)) {
+    if (resp.fs.header(http2::HD_CONTENT_LENGTH) ||
+        resp.fs.header(http2::HD_TRANSFER_ENCODING)) {
+      return -1;
+    }
+  }
+
   if (resp.fs.parse_content_length() != 0) {
     downstream->set_response_state(Downstream::MSG_BAD_HEADER);
     return -1;

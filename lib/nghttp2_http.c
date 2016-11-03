@@ -250,6 +250,11 @@ static int http_response_on_header(nghttp2_stream *stream, nghttp2_hd_nv *nv,
     break;
   }
   case NGHTTP2_TOKEN_CONTENT_LENGTH: {
+    if (stream->status_code == 204 || stream->status_code / 100 == 1 ||
+        (stream->status_code == 200 &&
+         (stream->http_flags & NGHTTP2_HTTP_FLAG_METH_CONNECT))) {
+      return NGHTTP2_ERR_HTTP_HEADER;
+    }
     if (stream->content_length != -1) {
       return NGHTTP2_ERR_HTTP_HEADER;
     }

@@ -201,6 +201,7 @@ namespace {
 mrb_value response_return(mrb_state *mrb, mrb_value self) {
   auto data = static_cast<MRubyAssocData *>(mrb->ud);
   auto downstream = data->downstream;
+  auto &req = downstream->request();
   auto &resp = downstream->response();
   int rv;
 
@@ -226,16 +227,28 @@ mrb_value response_return(mrb_state *mrb, mrb_value self) {
     bodylen = vallen;
   }
 
-  auto content_length = util::make_string_ref_uint(balloc, bodylen);
-
   auto cl = resp.fs.header(http2::HD_CONTENT_LENGTH);
-  if (cl) {
-    cl->value = content_length;
+
+  if (resp.http_status == 204 ||
+      (resp.http_status == 200 && req.method == HTTP_CONNECT)) {
+    if (cl) {
+      // Delete content-length here
+      cl->name = StringRef{};
+    }
+
+    resp.fs.content_length = -1;
   } else {
-    resp.fs.add_header_token(StringRef::from_lit("content-length"),
-                             content_length, false, http2::HD_CONTENT_LENGTH);
+    auto content_length = util::make_string_ref_uint(balloc, vallen);
+
+    if (cl) {
+      cl->value = content_length;
+    } else {
+      resp.fs.add_header_token(StringRef::from_lit("content-length"),
+                               content_length, false, http2::HD_CONTENT_LENGTH);
+    }
+
+    resp.fs.content_length = vallen;
   }
-  resp.fs.content_length = bodylen;
 
   auto date = resp.fs.header(http2::HD_DATE);
   if (!date) {
