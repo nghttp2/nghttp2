@@ -116,11 +116,16 @@ mrb_value response_mod_header(mrb_state *mrb, mrb_value self, bool repl) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "empty key is not allowed");
   }
 
+  auto ai = mrb_gc_arena_save(mrb);
+
   key = mrb_funcall(mrb, key, "downcase", 0);
 
   auto keyref =
       make_string_ref(balloc, StringRef{RSTRING_PTR(key),
                                         static_cast<size_t>(RSTRING_LEN(key))});
+
+  mrb_gc_arena_restore(mrb, ai);
+
   auto token = http2::lookup_token(keyref.byte(), keyref.size());
 
   if (repl) {
