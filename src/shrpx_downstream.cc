@@ -350,10 +350,8 @@ void Downstream::crumble_request_cookie(std::vector<nghttp2_nv> &nva) {
 }
 
 namespace {
-void add_header(bool &key_prev, size_t &sum, HeaderRefs &headers,
-                const StringRef &name, const StringRef &value, bool no_index,
-                int32_t token) {
-  key_prev = true;
+void add_header(size_t &sum, HeaderRefs &headers, const StringRef &name,
+                const StringRef &value, bool no_index, int32_t token) {
   sum += name.size() + value.size();
   headers.emplace_back(name, value, no_index, token);
 }
@@ -446,14 +444,14 @@ const HeaderRefs::value_type *FieldStore::header(const StringRef &name) const {
 
 void FieldStore::add_header_token(const StringRef &name, const StringRef &value,
                                   bool no_index, int32_t token) {
-  shrpx::add_header(header_key_prev_, buffer_size_, headers_, name, value,
-                    no_index, token);
+  shrpx::add_header(buffer_size_, headers_, name, value, no_index, token);
 }
 
 void FieldStore::alloc_add_header_name(const StringRef &name) {
   auto name_ref = alloc_header_name(balloc_, name);
   auto token = http2::lookup_token(name_ref);
   add_header_token(name_ref, StringRef{}, false, token);
+  header_key_prev_ = true;
 }
 
 void FieldStore::append_last_header_key(const char *data, size_t len) {
@@ -476,14 +474,14 @@ void FieldStore::add_trailer_token(const StringRef &name,
                                    int32_t token) {
   // Header size limit should be applied to all header and trailer
   // fields combined.
-  shrpx::add_header(trailer_key_prev_, buffer_size_, trailers_, name, value,
-                    no_index, token);
+  shrpx::add_header(buffer_size_, trailers_, name, value, no_index, token);
 }
 
 void FieldStore::alloc_add_trailer_name(const StringRef &name) {
   auto name_ref = alloc_header_name(balloc_, name);
   auto token = http2::lookup_token(name_ref);
   add_trailer_token(name_ref, StringRef{}, false, token);
+  trailer_key_prev_ = true;
 }
 
 void FieldStore::append_last_trailer_key(const char *data, size_t len) {
