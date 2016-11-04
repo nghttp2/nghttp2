@@ -918,9 +918,7 @@ int SpdyUpstream::send_reply(Downstream *downstream, const uint8_t *body,
   const auto &resp = downstream->response();
   auto &balloc = downstream->get_block_allocator();
 
-  auto status_line = concat_string_ref(
-      balloc, http2::stringify_status(balloc, resp.http_status),
-      StringRef::from_lit(" "), http2::get_reason_phrase(resp.http_status));
+  auto status_line = http2::stringify_status(balloc, resp.http_status);
 
   const auto &headers = resp.fs.headers();
 
@@ -1001,9 +999,7 @@ int SpdyUpstream::error_reply(Downstream *downstream,
   lgconf->update_tstamp(std::chrono::system_clock::now());
 
   auto content_length = util::make_string_ref_uint(balloc, html.size());
-  auto status_line = concat_string_ref(
-      balloc, http2::stringify_status(balloc, status_code),
-      StringRef::from_lit(" "), http2::get_reason_phrase(status_code));
+  auto status_line = http2::stringify_status(balloc, status_code);
 
   const char *nv[] = {":status",        status_line.c_str(),
                       ":version",       "http/1.1",
@@ -1108,9 +1104,8 @@ int SpdyUpstream::on_downstream_header_complete(Downstream *downstream) {
 
   size_t hdidx = 0;
   std::string via_value;
-  auto status_line = concat_string_ref(
-      balloc, http2::stringify_status(balloc, resp.http_status),
-      StringRef::from_lit(" "), http2::get_reason_phrase(resp.http_status));
+  auto status_line = http2::stringify_status(balloc, resp.http_status);
+
   nv[hdidx++] = ":status";
   nv[hdidx++] = status_line.c_str();
   nv[hdidx++] = ":version";
