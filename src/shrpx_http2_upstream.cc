@@ -1617,7 +1617,7 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
   nva.push_back(http2::make_nv_ls_nocopy(":status", response_status));
 
   if (downstream->get_non_final_response()) {
-    http2::copy_headers_to_nva(nva, resp.fs.headers());
+    http2::copy_headers_to_nva_nocopy(nva, resp.fs.headers());
 
     if (LOG_ENABLED(INFO)) {
       log_response_headers(downstream, nva);
