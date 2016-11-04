@@ -1013,7 +1013,7 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
   buf->append(util::utos(req.http_major));
   buf->append(".");
   buf->append(util::utos(req.http_minor));
-  buf->append(" ");
+  buf->append(' ');
   buf->append(http2::stringify_status(balloc, resp.http_status));
   buf->append(' ');
   buf->append(http2::get_reason_phrase(resp.http_status));

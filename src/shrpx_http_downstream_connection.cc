@@ -366,7 +366,7 @@ int HttpDownstreamConnection::push_request_headers() {
   // Assume that method and request path do not contain \r\n.
   auto meth = http2::to_method_string(req.method);
   buf->append(meth);
-  buf->append(" ");
+  buf->append(' ');
 
   if (connect_method) {
     buf->append(authority);
