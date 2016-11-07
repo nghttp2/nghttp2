@@ -796,6 +796,30 @@ func TestH1H2RespPhaseReturn(t *testing.T) {
 	}
 }
 
+// TestH1H2TE tests that "te: trailers" header is forwarded to HTTP/2
+// backend server by stripping other encodings.
+func TestH1H2TE(t *testing.T) {
+	st := newServerTester([]string{"--http2-bridge"}, t, func(w http.ResponseWriter, r *http.Request) {
+		if got, want := r.Header.Get("te"), "trailers"; got != want {
+			t.Errorf("te: %v; want %v", got, want)
+		}
+	})
+	defer st.Close()
+
+	res, err := st.http1(requestParam{
+		name: "TestH1H2TE",
+		header: []hpack.HeaderField{
+			pair("te", "foo,trailers,bar"),
+		},
+	})
+	if err != nil {
+		t.Fatalf("Error st.http1() = %v", err)
+	}
+	if got, want := res.status, 200; got != want {
+		t.Errorf("status: %v; want %v", got, want)
+	}
+}
+
 // TestH1APIBackendconfig exercise backendconfig API endpoint routine
 // for successful case.
 func TestH1APIBackendconfig(t *testing.T) {
