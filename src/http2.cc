@@ -1670,7 +1670,7 @@ bool contains_trailers(const StringRef &s) {
 
   for (auto p = std::begin(s), end = std::end(s);; ++p) {
     p = std::find_if(p, end, [](char c) { return c != ' ' && c != '\t'; });
-    if (p == end || end - p < trailers.size()) {
+    if (p == end || static_cast<size_t>(end - p) < trailers.size()) {
       return false;
     }
     if (util::strieq(trailers, StringRef{p, p + trailers.size()})) {
