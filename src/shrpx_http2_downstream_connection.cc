@@ -402,7 +402,7 @@ int Http2DownstreamConnection::push_request_headers() {
   // HTTP/1 upstream request can contain keyword other than
   // "trailers".  We just forward "trailers".
   // TODO more strict handling required here.
-  if (te && util::strifind(te->value, StringRef::from_lit("trailers"))) {
+  if (te && http2::contains_trailers(te->value)) {
     nva.push_back(http2::make_nv_ll("te", "trailers"));
   }
 

@@ -962,4 +962,20 @@ void test_http2_construct_push_component(void) {
   CU_ASSERT("/b/?q=a" == path);
 }
 
+void test_http2_contains_trailers(void) {
+  CU_ASSERT(!http2::contains_trailers(StringRef::from_lit("")));
+  CU_ASSERT(http2::contains_trailers(StringRef::from_lit("trailers")));
+  // Match must be case-insensitive.
+  CU_ASSERT(http2::contains_trailers(StringRef::from_lit("TRAILERS")));
+  CU_ASSERT(!http2::contains_trailers(StringRef::from_lit("trailer")));
+  CU_ASSERT(!http2::contains_trailers(StringRef::from_lit("trailers  3")));
+  CU_ASSERT(http2::contains_trailers(StringRef::from_lit("trailers,")));
+  CU_ASSERT(http2::contains_trailers(StringRef::from_lit("trailers,foo")));
+  CU_ASSERT(http2::contains_trailers(StringRef::from_lit("foo,trailers")));
+  CU_ASSERT(http2::contains_trailers(StringRef::from_lit("foo,trailers,bar")));
+  CU_ASSERT(
+      http2::contains_trailers(StringRef::from_lit("foo, trailers ,bar")));
+  CU_ASSERT(http2::contains_trailers(StringRef::from_lit(",trailers")));
+}
+
 } // namespace shrpx

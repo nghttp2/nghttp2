@@ -1665,6 +1665,31 @@ StringRef copy_lower(BlockAllocator &balloc, const StringRef &src) {
   return StringRef{iov.base, p};
 }
 
+bool contains_trailers(const StringRef &s) {
+  constexpr auto trailers = StringRef::from_lit("trailers");
+
+  for (auto p = std::begin(s), end = std::end(s);; ++p) {
+    p = std::find_if(p, end, [](char c) { return c != ' ' && c != '\t'; });
+    if (p == end || end - p < trailers.size()) {
+      return false;
+    }
+    if (util::strieq(trailers, StringRef{p, p + trailers.size()})) {
+      // Make sure that there is no character other than white spaces
+      // before next "," or end of string.
+      p = std::find_if(p + trailers.size(), end,
+                       [](char c) { return c != ' ' && c != '\t'; });
+      if (p == end || *p == ',') {
+        return true;
+      }
+    }
+    // Skip to next ",".
+    p = std::find_if(p, end, [](char c) { return c == ','; });
+    if (p == end) {
+      return false;
+    }
+  }
+}
+
 } // namespace http2
 
 } // namespace nghttp2

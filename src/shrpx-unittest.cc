@@ -102,6 +102,8 @@ int main(int argc, char *argv[]) {
                    shrpx::test_http2_get_pure_path_component) ||
       !CU_add_test(pSuite, "http2_construct_push_component",
                    shrpx::test_http2_construct_push_component) ||
+      !CU_add_test(pSuite, "http2_contains_trailers",
+                   shrpx::test_http2_contains_trailers) ||
       !CU_add_test(pSuite, "downstream_field_store_append_last_header",
                    shrpx::test_downstream_field_store_append_last_header) ||
       !CU_add_test(pSuite, "downstream_field_store_header",

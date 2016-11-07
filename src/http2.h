@@ -384,6 +384,9 @@ int construct_push_component(BlockAllocator &balloc, StringRef &scheme,
 // Copies |src| and return its lower-cased version.
 StringRef copy_lower(BlockAllocator &balloc, const StringRef &src);
 
+// Returns true if te header field value |s| contains "trailers".
+bool contains_trailers(const StringRef &s);
+
 } // namespace http2
 
 } // namespace nghttp2
