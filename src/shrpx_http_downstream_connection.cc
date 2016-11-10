@@ -561,6 +561,8 @@ int HttpDownstreamConnection::push_upload_data_chunk(const uint8_t *data,
 }
 
 int HttpDownstreamConnection::end_upload_data() {
+  signal_write();
+
   if (!downstream_->get_chunked_request()) {
     return 0;
   }
@@ -576,8 +578,6 @@ int HttpDownstreamConnection::end_upload_data() {
     http2::build_http1_headers_from_headers(output, trailers);
     output->append("\r\n");
   }
-
-  signal_write();
 
   return 0;
 }
