@@ -864,6 +864,11 @@ static ssize_t decode_length(uint32_t *res, size_t *shift_ptr, int *fin,
   for (; in != last; ++in, shift += 7) {
     uint32_t add = *in & 0x7f;
 
+    if (shift >= 32) {
+      DEBUGF("inflate: shift exponent overflow\n");
+      return -1;
+    }
+
     if ((UINT32_MAX >> shift) < add) {
       DEBUGF("inflate: integer overflow on shift\n");
       return -1;
