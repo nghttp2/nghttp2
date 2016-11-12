@@ -1492,6 +1492,19 @@ void test_nghttp2_hd_decode_length(void) {
   rv = nghttp2_hd_decode_length(&out, &shift, &fin, 0, 0, buf, buf + len, 7);
 
   CU_ASSERT(-1 == rv);
+
+  /* Check the case that shift goes beyond 32 bits */
+  buf[0] = 255;
+  buf[1] = 128;
+  buf[2] = 128;
+  buf[3] = 128;
+  buf[4] = 128;
+  buf[5] = 128;
+  buf[6] = 1;
+
+  rv = nghttp2_hd_decode_length(&out, &shift, &fin, 0, 0, buf, buf + 7, 8);
+
+  CU_ASSERT(-1 == rv);
 }
 
 void test_nghttp2_hd_huff_encode(void) {
