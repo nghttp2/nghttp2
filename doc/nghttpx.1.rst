@@ -482,7 +482,7 @@ SSL/TLS
     the  linked  OpenSSL  library.  This  function  requires
     OpenSSL >= 1.0.2.
 
-    Default: ``P-256:P-384:P-521``
+    Default: ``X25519:P-256:P-384:P-521``
 
 .. option:: -k, --insecure
 
@@ -1118,7 +1118,7 @@ HTTP
 
     Change server response header field value to <NAME>.
 
-    Default: ``nghttpx nghttp2/1.16.0``
+    Default: ``nghttpx nghttp2/1.17.0-DEV``
 
 .. option:: --no-server-rewrite
 

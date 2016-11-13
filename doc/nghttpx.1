@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTPX" "1" "Oct 24, 2016" "1.16.0" "nghttp2"
+.TH "NGHTTPX" "1" "Nov 13, 2016" "1.17.0-DEV" "nghttp2"
 .SH NAME
 nghttpx \- HTTP/2 proxy
 .
@@ -524,7 +524,7 @@ in the preference order.  The supported curves depend on
 the  linked  OpenSSL  library.  This  function  requires
 OpenSSL >= 1.0.2.
 .sp
-Default: \fBP\-256:P\-384:P\-521\fP
+Default: \fBX25519:P\-256:P\-384:P\-521\fP
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -1238,7 +1238,7 @@ backend server, the custom error pages are not used.
 .B \-\-server\-name=<NAME>
 Change server response header field value to <NAME>.
 .sp
-Default: \fBnghttpx nghttp2/1.16.0\fP
+Default: \fBnghttpx nghttp2/1.17.0\-DEV\fP
 .UNINDENT
 .INDENT 0.0
 .TP
