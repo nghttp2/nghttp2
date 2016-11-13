@@ -29,7 +29,7 @@ project(nghttp2 VERSION 1.16.90)
 # See versioning rule:
 #  http://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
 set(LT_CURRENT  26)
-set(LT_REVISION 0)
+set(LT_REVISION 1)
 set(LT_AGE      12)
 
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
