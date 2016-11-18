@@ -819,7 +819,6 @@ int htp_hdr_keycb(http_parser *htp, const char *data, size_t len) {
   auto downstream = static_cast<Downstream *>(htp->data);
   auto &resp = downstream->response();
   auto &httpconf = get_config()->http;
-  auto &balloc = downstream->get_block_allocator();
 
   if (ensure_header_field_buffer(downstream, httpconf, len) != 0) {
     return -1;
@@ -832,9 +831,7 @@ int htp_hdr_keycb(http_parser *htp, const char *data, size_t len) {
       if (ensure_max_header_fields(downstream, httpconf) != 0) {
         return -1;
       }
-      auto name = http2::copy_lower(balloc, StringRef{data, len});
-      auto token = http2::lookup_token(name);
-      resp.fs.add_header_token(name, StringRef{}, false, token);
+      resp.fs.alloc_add_header_name(StringRef{data, len});
     }
   } else {
     // trailer part
@@ -847,9 +844,7 @@ int htp_hdr_keycb(http_parser *htp, const char *data, size_t len) {
         // wrong place or crash if trailer fields are currently empty.
         return -1;
       }
-      auto name = http2::copy_lower(balloc, StringRef{data, len});
-      auto token = http2::lookup_token(name);
-      resp.fs.add_trailer_token(name, StringRef{}, false, token);
+      resp.fs.alloc_add_trailer_name(StringRef{data, len});
     }
   }
   return 0;
