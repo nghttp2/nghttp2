@@ -249,7 +249,15 @@ http2_handler::http2_handler(boost::asio::io_service &io_service,
       tstamp_cached_(time(nullptr)),
       formatted_date_(util::http_date(tstamp_cached_)) {}
 
-http2_handler::~http2_handler() { nghttp2_session_del(session_); }
+http2_handler::~http2_handler() {
+  for (auto &p : streams_) {
+    auto &strm = p.second;
+    strm->response().impl().call_on_close(NGHTTP2_INTERNAL_ERROR);
+    close_stream(strm->get_stream_id());
+  }
+
+  nghttp2_session_del(session_);
+}
 
 const std::string &http2_handler::http_date() {
   auto t = time(nullptr);
