@@ -111,6 +111,10 @@ void timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
   auto conn = static_cast<Connection *>(w->data);
   auto http2session = static_cast<Http2Session *>(conn->data);
 
+  if (w == &conn->rt && !conn->expired_rt()) {
+    return;
+  }
+
   if (LOG_ENABLED(INFO)) {
     SSLOG(INFO, http2session) << "Timeout";
   }
@@ -491,10 +495,7 @@ int Http2Session::initiate_connection() {
       ev_timer_again(conn_.loop, &conn_.wt);
     } else {
       conn_.rlimit.startw();
-
-      if (addr_->num_dconn == 0) {
-        ev_timer_again(conn_.loop, &conn_.rt);
-      }
+      conn_.again_rt();
     }
 
     return 0;
@@ -615,8 +616,6 @@ int Http2Session::downstream_connect_proxy() {
 void Http2Session::add_downstream_connection(Http2DownstreamConnection *dconn) {
   dconns_.append(dconn);
   ++addr_->num_dconn;
-
-  stop_read_timer();
 }
 
 void Http2Session::remove_downstream_connection(
@@ -624,10 +623,6 @@ void Http2Session::remove_downstream_connection(
   --addr_->num_dconn;
   dconns_.remove(dconn);
   dconn->detach_stream_data();
-
-  if (addr_->num_dconn == 0) {
-    repeat_read_timer();
-  }
 
   if (LOG_ENABLED(INFO)) {
     SSLOG(INFO, this) << "Remove downstream";
@@ -1867,6 +1862,7 @@ int Http2Session::connected() {
   ev_timer_again(conn_.loop, &conn_.wt);
 
   conn_.rlimit.startw();
+  conn_.again_rt();
 
   read_ = &Http2Session::read_clear;
   write_ = &Http2Session::write_clear;
@@ -1891,6 +1887,8 @@ int Http2Session::connected() {
 }
 
 int Http2Session::read_clear() {
+  conn_.last_read = ev_now(conn_.loop);
+
   std::array<uint8_t, 16_k> buf;
 
   for (;;) {
@@ -1911,6 +1909,8 @@ int Http2Session::read_clear() {
 }
 
 int Http2Session::write_clear() {
+  conn_.last_read = ev_now(conn_.loop);
+
   std::array<struct iovec, MAX_WR_IOVCNT> iov;
 
   for (;;) {
@@ -1945,7 +1945,7 @@ int Http2Session::write_clear() {
 }
 
 int Http2Session::tls_handshake() {
-  ev_timer_again(conn_.loop, &conn_.rt);
+  conn_.last_read = ev_now(conn_.loop);
 
   ERR_clear_error();
 
@@ -1992,6 +1992,8 @@ int Http2Session::tls_handshake() {
 }
 
 int Http2Session::read_tls() {
+  conn_.last_read = ev_now(conn_.loop);
+
   std::array<uint8_t, 16_k> buf;
 
   ERR_clear_error();
@@ -2014,6 +2016,8 @@ int Http2Session::read_tls() {
 }
 
 int Http2Session::write_tls() {
+  conn_.last_read = ev_now(conn_.loop);
+
   ERR_clear_error();
 
   struct iovec iov;
@@ -2280,11 +2284,5 @@ void Http2Session::check_retire() {
 
   signal_write();
 }
-
-void Http2Session::repeat_read_timer() {
-  ev_timer_again(conn_.loop, &conn_.rt);
-}
-
-void Http2Session::stop_read_timer() { ev_timer_stop(conn_.loop, &conn_.rt); }
 
 } // namespace shrpx

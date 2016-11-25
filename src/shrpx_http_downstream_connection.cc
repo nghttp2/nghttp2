@@ -48,6 +48,10 @@ void timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
   auto conn = static_cast<Connection *>(w->data);
   auto dconn = static_cast<HttpDownstreamConnection *>(conn->data);
 
+  if (w == &conn->rt && !conn->expired_rt()) {
+    return;
+  }
+
   if (LOG_ENABLED(INFO)) {
     DCLOG(INFO, dconn) << "Time out";
   }
@@ -319,9 +323,13 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
     ev_timer_again(conn_.loop, &conn_.wt);
   } else {
     // we may set read timer cb to idle_timeoutcb.  Reset again.
-    conn_.rt.repeat = downstreamconf.timeout.read;
     ev_set_cb(&conn_.rt, timeoutcb);
-    ev_timer_stop(conn_.loop, &conn_.rt);
+    if (conn_.read_timeout < downstreamconf.timeout.read) {
+      conn_.read_timeout = downstreamconf.timeout.read;
+      conn_.last_read = ev_now(conn_.loop);
+    } else {
+      conn_.again_rt(downstreamconf.timeout.read);
+    }
 
     ev_set_cb(&conn_.rev, readcb);
   }
@@ -617,6 +625,9 @@ namespace {
 void idle_timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
   auto conn = static_cast<Connection *>(w->data);
   auto dconn = static_cast<HttpDownstreamConnection *>(conn->data);
+
+  // We don't have to check conn->expired_rt() since we restart timer
+  // when connection gets idle.
   if (LOG_ENABLED(INFO)) {
     DCLOG(INFO, dconn) << "Idle connection timeout";
   }
@@ -637,9 +648,13 @@ void HttpDownstreamConnection::detach_downstream(Downstream *downstream) {
 
   auto &downstreamconf = *worker_->get_downstream_config();
 
-  conn_.rt.repeat = downstreamconf.timeout.idle_read;
   ev_set_cb(&conn_.rt, idle_timeoutcb);
-  ev_timer_again(conn_.loop, &conn_.rt);
+  if (conn_.read_timeout < downstreamconf.timeout.idle_read) {
+    conn_.read_timeout = downstreamconf.timeout.idle_read;
+    conn_.last_read = ev_now(conn_.loop);
+  } else {
+    conn_.again_rt(downstreamconf.timeout.idle_read);
+  }
 
   conn_.wlimit.stopw();
   ev_timer_stop(conn_.loop, &conn_.wt);
@@ -924,6 +939,8 @@ http_parser_settings htp_hooks = {
 } // namespace
 
 int HttpDownstreamConnection::read_clear() {
+  conn_.last_read = ev_now(conn_.loop);
+
   std::array<uint8_t, 16_k> buf;
   int rv;
 
@@ -949,6 +966,8 @@ int HttpDownstreamConnection::read_clear() {
 }
 
 int HttpDownstreamConnection::write_clear() {
+  conn_.last_read = ev_now(conn_.loop);
+
   auto upstream = downstream_->get_upstream();
   auto input = downstream_->get_request_buf();
 
@@ -986,7 +1005,7 @@ int HttpDownstreamConnection::write_clear() {
 int HttpDownstreamConnection::tls_handshake() {
   ERR_clear_error();
 
-  ev_timer_again(conn_.loop, &conn_.rt);
+  conn_.last_read = ev_now(conn_.loop);
 
   auto rv = conn_.tls_handshake();
   if (rv == SHRPX_ERR_INPROGRESS) {
@@ -1036,6 +1055,8 @@ int HttpDownstreamConnection::tls_handshake() {
 }
 
 int HttpDownstreamConnection::read_tls() {
+  conn_.last_read = ev_now(conn_.loop);
+
   ERR_clear_error();
 
   std::array<uint8_t, 16_k> buf;
@@ -1063,6 +1084,8 @@ int HttpDownstreamConnection::read_tls() {
 }
 
 int HttpDownstreamConnection::write_tls() {
+  conn_.last_read = ev_now(conn_.loop);
+
   ERR_clear_error();
 
   auto upstream = downstream_->get_upstream();
@@ -1193,6 +1216,7 @@ int HttpDownstreamConnection::connected() {
   ev_timer_again(conn_.loop, &conn_.wt);
 
   conn_.rlimit.startw();
+  conn_.again_rt();
 
   ev_set_cb(&conn_.wev, writecb);
 

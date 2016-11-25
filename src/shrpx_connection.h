@@ -125,6 +125,17 @@ struct Connection {
 
   int get_tcp_hint(TCPHint *hint) const;
 
+  // These functions are provided for read timer which is frequently
+  // restarted.  We do a trick to make a bit more efficient than just
+  // calling ev_timer_again().
+
+  // Restarts read timer with timeout value |t|.
+  void again_rt(ev_tstamp t);
+  // Restarts read timer without chainging timeout.
+  void again_rt();
+  // Returns true if read timer expired.
+  bool expired_rt();
+
   TLSConnection tls;
   ev_io wev;
   ev_io rev;
@@ -141,6 +152,11 @@ struct Connection {
   // used in this object at the moment.  The rest of the program may
   // use this value when it is useful.
   shrpx_proto proto;
+  // The point of time when last read is observed.  Note: sinde we use
+  // |rt| as idle timer, the activity is not limited to read.
+  ev_tstamp last_read;
+  // Timeout for read timer |rt|.
+  ev_tstamp read_timeout;
 };
 
 // Creates BIO_method shared by all SSL objects.  If nghttp2 is built

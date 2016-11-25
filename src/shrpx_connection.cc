@@ -67,7 +67,9 @@ Connection::Connection(struct ev_loop *loop, int fd, SSL *ssl,
       fd(fd),
       tls_dyn_rec_warmup_threshold(tls_dyn_rec_warmup_threshold),
       tls_dyn_rec_idle_timeout(tls_dyn_rec_idle_timeout),
-      proto(proto) {
+      proto(proto),
+      last_read(0.),
+      read_timeout(read_timeout) {
 
   ev_io_init(&wev, writecb, fd, EV_WRITE);
   ev_io_init(&rev, readcb, fd, EV_READ);
@@ -807,6 +809,29 @@ int Connection::get_tcp_hint(TCPHint *hint) const {
 #else  // !defined(TCP_INFO) || !defined(TCP_NOTSENT_LOWAT)
   return -1;
 #endif // !defined(TCP_INFO) || !defined(TCP_NOTSENT_LOWAT)
+}
+
+void Connection::again_rt(ev_tstamp t) {
+  read_timeout = t;
+  rt.repeat = t;
+  ev_timer_again(loop, &rt);
+  last_read = ev_now(loop);
+}
+
+void Connection::again_rt() {
+  rt.repeat = read_timeout;
+  ev_timer_again(loop, &rt);
+  last_read = ev_now(loop);
+}
+
+bool Connection::expired_rt() {
+  auto delta = read_timeout - (ev_now(loop) - last_read);
+  if (delta < 1e-9) {
+    return true;
+  }
+  rt.repeat = delta;
+  ev_timer_again(loop, &rt);
+  return false;
 }
 
 } // namespace shrpx
