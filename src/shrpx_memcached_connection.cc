@@ -305,13 +305,6 @@ int MemcachedConnection::write_tls() {
     return 0;
   }
 
-  if (sendq_.empty()) {
-    conn_.wlimit.stopw();
-    ev_timer_stop(conn_.loop, &conn_.wt);
-
-    return 0;
-  }
-
   conn_.last_read = ev_now(conn_.loop);
 
   std::array<struct iovec, MAX_WR_IOVCNT> iov;
@@ -376,13 +369,6 @@ int MemcachedConnection::read_tls() {
 
 int MemcachedConnection::write_clear() {
   if (!connected_) {
-    return 0;
-  }
-
-  if (sendq_.empty()) {
-    conn_.wlimit.stopw();
-    ev_timer_stop(conn_.loop, &conn_.wt);
-
     return 0;
   }
 
