@@ -66,6 +66,10 @@ void timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
   auto conn = static_cast<Connection *>(w->data);
   auto live_check = static_cast<LiveCheck *>(conn->data);
 
+  if (w == &conn->rt && !conn->expired_rt()) {
+    return;
+  }
+
   live_check->on_failure();
 }
 } // namespace
@@ -283,6 +287,7 @@ int LiveCheck::connected() {
   ev_timer_again(conn_.loop, &conn_.wt);
 
   conn_.rlimit.startw();
+  conn_.again_rt();
 
   if (conn_.tls.ssl) {
     read_ = &LiveCheck::tls_handshake;
@@ -310,7 +315,7 @@ int LiveCheck::connected() {
 }
 
 int LiveCheck::tls_handshake() {
-  ev_timer_again(conn_.loop, &conn_.rt);
+  conn_.last_read = ev_now(conn_.loop);
 
   ERR_clear_error();
 
@@ -385,7 +390,7 @@ int LiveCheck::tls_handshake() {
 }
 
 int LiveCheck::read_tls() {
-  ev_timer_again(conn_.loop, &conn_.rt);
+  conn_.last_read = ev_now(conn_.loop);
 
   std::array<uint8_t, 4_k> buf;
 
@@ -409,6 +414,8 @@ int LiveCheck::read_tls() {
 }
 
 int LiveCheck::write_tls() {
+  conn_.last_read = ev_now(conn_.loop);
+
   ERR_clear_error();
 
   struct iovec iov;
@@ -453,7 +460,7 @@ int LiveCheck::write_tls() {
 }
 
 int LiveCheck::read_clear() {
-  ev_timer_again(conn_.loop, &conn_.rt);
+  conn_.last_read = ev_now(conn_.loop);
 
   std::array<uint8_t, 4_k> buf;
 
@@ -475,6 +482,8 @@ int LiveCheck::read_clear() {
 }
 
 int LiveCheck::write_clear() {
+  conn_.last_read = ev_now(conn_.loop);
+
   struct iovec iov;
 
   for (;;) {
