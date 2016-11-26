@@ -481,22 +481,21 @@ int Http2Session::initiate_connection() {
       }
     }
 
-    write_ = &Http2Session::connected;
-
     on_write_ = &Http2Session::downstream_write;
     on_read_ = &Http2Session::downstream_read;
 
     // We have been already connected when no TLS and proxy is used.
-    if (state_ != CONNECTED) {
-      state_ = CONNECTING;
-      conn_.wlimit.startw();
-
-      conn_.wt.repeat = downstreamconf.timeout.connect;
-      ev_timer_again(conn_.loop, &conn_.wt);
-    } else {
-      conn_.rlimit.startw();
-      conn_.again_rt();
+    if (state_ == PROXY_CONNECTED) {
+      return connected();
     }
+
+    write_ = &Http2Session::connected;
+
+    state_ = CONNECTING;
+    conn_.wlimit.startw();
+
+    conn_.wt.repeat = downstreamconf.timeout.connect;
+    ev_timer_again(conn_.loop, &conn_.wt);
 
     return 0;
   }
