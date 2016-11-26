@@ -42,6 +42,10 @@ void timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
   auto conn = static_cast<Connection *>(w->data);
   auto mconn = static_cast<MemcachedConnection *>(conn->data);
 
+  if (w == &conn->rt && !conn->expired_rt()) {
+    return;
+  }
+
   if (LOG_ENABLED(INFO)) {
     MCLOG(INFO, mconn) << "Time out";
   }
@@ -225,6 +229,8 @@ int MemcachedConnection::connected() {
   ev_set_cb(&conn_.wev, writecb);
 
   if (conn_.tls.ssl) {
+    conn_.again_rt();
+
     do_read_ = &MemcachedConnection::tls_handshake;
     do_write_ = &MemcachedConnection::tls_handshake;
 
@@ -249,7 +255,7 @@ int MemcachedConnection::on_read() { return do_read_(*this); }
 int MemcachedConnection::tls_handshake() {
   ERR_clear_error();
 
-  ev_timer_again(conn_.loop, &conn_.rt);
+  conn_.last_read = ev_now(conn_.loop);
 
   auto rv = conn_.tls_handshake();
   if (rv == SHRPX_ERR_INPROGRESS) {
@@ -306,6 +312,8 @@ int MemcachedConnection::write_tls() {
     return 0;
   }
 
+  conn_.last_read = ev_now(conn_.loop);
+
   std::array<struct iovec, MAX_WR_IOVCNT> iov;
   std::array<uint8_t, 16_k> buf;
 
@@ -343,9 +351,7 @@ int MemcachedConnection::read_tls() {
     return 0;
   }
 
-  if (ev_is_active(&conn_.rt)) {
-    ev_timer_again(conn_.loop, &conn_.rt);
-  }
+  conn_.last_read = ev_now(conn_.loop);
 
   for (;;) {
     auto nread = conn_.read_tls(recvbuf_.last, recvbuf_.wleft());
@@ -380,6 +386,8 @@ int MemcachedConnection::write_clear() {
     return 0;
   }
 
+  conn_.last_read = ev_now(conn_.loop);
+
   std::array<struct iovec, MAX_WR_IOVCNT> iov;
 
   for (; !sendq_.empty();) {
@@ -406,9 +414,7 @@ int MemcachedConnection::read_clear() {
     return 0;
   }
 
-  if (ev_is_active(&conn_.rt)) {
-    ev_timer_again(conn_.loop, &conn_.rt);
-  }
+  conn_.last_read = ev_now(conn_.loop);
 
   for (;;) {
     auto nread = conn_.read_clear(recvbuf_.last, recvbuf_.wleft());
@@ -669,7 +675,7 @@ void MemcachedConnection::drain_send_queue(size_t nwrite) {
   if (recvq_.empty()) {
     ev_timer_stop(conn_.loop, &conn_.rt);
   } else if (!ev_is_active(&conn_.rt)) {
-    ev_timer_again(conn_.loop, &conn_.rt);
+    conn_.again_rt();
   }
 }
 
