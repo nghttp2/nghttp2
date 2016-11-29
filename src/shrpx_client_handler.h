@@ -132,6 +132,8 @@ public:
   RateLimit *get_wlimit();
 
   void signal_write();
+  // Use this for HTTP/1 frontend since it produces better result.
+  void signal_write_no_wait();
   ev_io *get_wev();
 
   void setup_upstream_io_callback();

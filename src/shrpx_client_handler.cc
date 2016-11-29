@@ -1278,6 +1278,10 @@ ClientHandler::ReadBuf *ClientHandler::get_rb() { return &rb_; }
 
 void ClientHandler::signal_write() { conn_.wlimit.startw(); }
 
+void ClientHandler::signal_write_no_wait() {
+  ev_feed_event(conn_.loop, &conn_.wev, EV_WRITE);
+}
+
 RateLimit *ClientHandler::get_rlimit() { return &conn_.rlimit; }
 RateLimit *ClientHandler::get_wlimit() { return &conn_.wlimit; }
 
