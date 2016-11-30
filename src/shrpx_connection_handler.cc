@@ -499,7 +499,23 @@ void ConnectionHandler::cancel_ocsp_update() {
     return;
   }
 
-  kill(ocsp_.proc.pid, SIGTERM);
+  int rv;
+
+  rv = kill(ocsp_.proc.pid, SIGTERM);
+  if (rv != 0) {
+    auto error = errno;
+    LOG(ERROR) << "Could not send signal to OCSP query process: errno="
+               << error;
+  }
+
+  while ((rv = waitpid(ocsp_.proc.pid, nullptr, 0)) == -1 && errno == EINTR)
+    ;
+  if (rv == -1) {
+    auto error = errno;
+    LOG(ERROR) << "Error occurred while we were waiting for the completion of "
+                  "OCSP query process: errno="
+               << error;
+  }
 }
 
 // inspired by h2o_read_command function from h2o project:

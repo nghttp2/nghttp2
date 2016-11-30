@@ -29,6 +29,7 @@
 #include <unistd.h>
 #endif // HAVE_UNISTD_H
 #include <sys/resource.h>
+#include <sys/wait.h>
 #include <grp.h>
 
 #include <cinttypes>
@@ -551,6 +552,28 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
   ev_run(loop, 0);
 
   conn_handler.cancel_ocsp_update();
+
+#ifdef HAVE_NEVERBLEED
+  if (nb) {
+    assert(nb->daemon_pid > 0);
+
+    rv = kill(nb->daemon_pid, SIGTERM);
+    if (rv != 0) {
+      auto error = errno;
+      LOG(ERROR) << "Could not send signal to neverbleed daemon: errno="
+                 << error;
+    }
+
+    while ((rv = waitpid(nb->daemon_pid, nullptr, 0)) == -1 && errno == EINTR)
+      ;
+    if (rv == -1) {
+      auto error = errno;
+      LOG(ERROR) << "Error occurred while we were waiting for the completion "
+                    "of neverbleed process: errno="
+                 << error;
+    }
+  }
+#endif // HAVE_NEVERBLEED
 
   return 0;
 }
