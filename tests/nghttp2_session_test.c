@@ -10204,6 +10204,8 @@ void test_nghttp2_http_mandatory_headers(void) {
                                     MAKE_NV("content-length", "0")};
   const nghttp2_nv cl204_resnv[] = {MAKE_NV(":status", "204"),
                                     MAKE_NV("content-length", "0")};
+  const nghttp2_nv clnonzero204_resnv[] = {MAKE_NV(":status", "204"),
+                                           MAKE_NV("content-length", "100")};
 
   /* test case for request */
   const nghttp2_nv nopath_reqnv[] = {MAKE_NV(":scheme", "https"),
@@ -10307,10 +10309,16 @@ void test_nghttp2_http_mandatory_headers(void) {
                                        NGHTTP2_STREAM_OPENING, cl1xx_resnv,
                                        ARRLEN(cl1xx_resnv));
 
-  /* response header has content-length with 204 status code */
-  check_nghttp2_http_recv_headers_fail(session, &deflater, 19,
-                                       NGHTTP2_STREAM_OPENING, cl204_resnv,
-                                       ARRLEN(cl204_resnv));
+  /* response header has 0 content-length with 204 status code */
+  check_nghttp2_http_recv_headers_ok(session, &deflater, 19,
+                                     NGHTTP2_STREAM_OPENING, cl204_resnv,
+                                     ARRLEN(cl204_resnv));
+
+  /* response header has nonzero content-length with 204 status
+     code */
+  check_nghttp2_http_recv_headers_fail(
+      session, &deflater, 21, NGHTTP2_STREAM_OPENING, clnonzero204_resnv,
+      ARRLEN(clnonzero204_resnv));
 
   nghttp2_hd_deflate_free(&deflater);
 
