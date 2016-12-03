@@ -233,7 +233,7 @@ mrb_value response_return(mrb_state *mrb, mrb_value self) {
       (resp.http_status == 200 && req.method == HTTP_CONNECT)) {
     if (cl) {
       // Delete content-length here
-      cl->name = StringRef{};
+      http2::erase_header(cl);
     }
 
     resp.fs.content_length = -1;

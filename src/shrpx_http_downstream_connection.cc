@@ -720,15 +720,33 @@ int htp_hdrs_completecb(http_parser *htp) {
   // 204.  Also server MUST NOT send Transfer-Encoding with a status
   // code 200 to a CONNECT request.  Same holds true with
   // Content-Length.
-  if (resp.http_status == 204 || resp.http_status / 100 == 1 ||
-      (resp.http_status == 200 && req.method == HTTP_CONNECT)) {
+  if (resp.http_status == 204) {
+    if (resp.fs.header(http2::HD_TRANSFER_ENCODING)) {
+      return -1;
+    }
+    // Some server send content-length: 0 for 204.  Until they get
+    // fixed, we accept, but ignore it.
+
+    // Calling parse_content_length() detects duplicated
+    // content-length header fields.
+    if (resp.fs.parse_content_length() != 0) {
+      return -1;
+    }
+    if (resp.fs.content_length != 0) {
+      return -1;
+    }
+    if (resp.fs.content_length == 0) {
+      auto cl = resp.fs.header(http2::HD_CONTENT_LENGTH);
+      assert(cl);
+      http2::erase_header(cl);
+    }
+  } else if (resp.http_status / 100 == 1 ||
+             (resp.http_status == 200 && req.method == HTTP_CONNECT)) {
     if (resp.fs.header(http2::HD_CONTENT_LENGTH) ||
         resp.fs.header(http2::HD_TRANSFER_ENCODING)) {
       return -1;
     }
-  }
-
-  if (resp.fs.parse_content_length() != 0) {
+  } else if (resp.fs.parse_content_length() != 0) {
     downstream->set_response_state(Downstream::MSG_BAD_HEADER);
     return -1;
   }

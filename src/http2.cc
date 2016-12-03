@@ -477,6 +477,11 @@ void dump_nv(FILE *out, const HeaderRefs &nva) {
   fflush(out);
 }
 
+void erase_header(HeaderRef *hd) {
+  hd->name = StringRef{};
+  hd->token = -1;
+}
+
 StringRef rewrite_location_uri(BlockAllocator &balloc, const StringRef &uri,
                                const http_parser_url &u,
                                const StringRef &match_host,
