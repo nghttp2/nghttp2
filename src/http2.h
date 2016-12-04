@@ -227,6 +227,9 @@ void dump_nv(FILE *out, const Headers &nva);
 
 void dump_nv(FILE *out, const HeaderRefs &nva);
 
+// Ereases header in |hd|.
+void erase_header(HeaderRef *hd);
+
 // Rewrites redirection URI which usually appears in location header
 // field. The |uri| is the URI in the location header field. The |u|
 // stores the result of parsed |uri|. The |request_authority| is the

@@ -46,7 +46,13 @@ typedef enum {
    * Invalid HTTP header field was received but it can be treated as
    * if it was not received because of compatibility reasons.
    */
-  NGHTTP2_ERR_IGN_HTTP_HEADER = -105
+  NGHTTP2_ERR_IGN_HTTP_HEADER = -105,
+  /*
+   * Invalid HTTP header field was received, and it is ignored.
+   * Unlike NGHTTP2_ERR_IGN_HTTP_HEADER, this does not invoke
+   * nghttp2_on_invalid_header_callback.
+   */
+  NGHTTP2_ERR_REMOVE_HTTP_HEADER = -106
 } nghttp2_internal_error;
 
 #endif /* NGHTTP2_INT_H */

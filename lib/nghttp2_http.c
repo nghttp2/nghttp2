@@ -250,7 +250,21 @@ static int http_response_on_header(nghttp2_stream *stream, nghttp2_hd_nv *nv,
     break;
   }
   case NGHTTP2_TOKEN_CONTENT_LENGTH: {
-    if (stream->status_code == 204 || stream->status_code / 100 == 1 ||
+    if (stream->status_code == 204) {
+      /* content-length header field in 204 response is prohibited by
+         RFC 7230.  But some widely used servers send content-length:
+         0.  Until they get fixed, we ignore it. */
+      if (stream->content_length != -1) {
+        /* Found multiple content-length field */
+        return NGHTTP2_ERR_HTTP_HEADER;
+      }
+      if (!lstrieq("0", nv->value->base, nv->value->len)) {
+        return NGHTTP2_ERR_HTTP_HEADER;
+      }
+      stream->content_length = 0;
+      return NGHTTP2_ERR_REMOVE_HTTP_HEADER;
+    }
+    if (stream->status_code / 100 == 1 ||
         (stream->status_code == 200 &&
          (stream->http_flags & NGHTTP2_HTTP_FLAG_METH_CONNECT))) {
       return NGHTTP2_ERR_HTTP_HEADER;
