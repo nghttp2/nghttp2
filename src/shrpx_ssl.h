@@ -104,7 +104,10 @@ ClientHandler *accept_connection(Worker *worker, int fd, sockaddr *addr,
 
 // Check peer's certificate against given |address| and |host|.
 int check_cert(SSL *ssl, const Address *addr, const StringRef &host);
-int check_cert(SSL *ssl, const DownstreamAddr *addr);
+// Check peer's certificate against given host name described in
+// |addr| and numeric address in |raddr|.  Note that |raddr| might not
+// point to &addr->addr.
+int check_cert(SSL *ssl, const DownstreamAddr *addr, const Address *raddr);
 
 struct WildcardRevPrefix {
   WildcardRevPrefix(const StringRef &prefix, size_t idx)

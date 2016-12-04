@@ -75,11 +75,12 @@ void connect_timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
   auto conn = static_cast<Connection *>(w->data);
   auto dconn = static_cast<HttpDownstreamConnection *>(conn->data);
   auto addr = dconn->get_addr();
+  auto raddr = dconn->get_raddr();
 
   DCLOG(WARN, dconn) << "Connect time out; addr="
-                     << util::to_numeric_addr(&addr->addr);
+                     << util::to_numeric_addr(raddr);
 
-  downstream_failure(addr);
+  downstream_failure(addr, raddr);
 
   auto downstream = dconn->get_downstream();
   auto upstream = downstream->get_upstream();
@@ -182,12 +183,33 @@ HttpDownstreamConnection::~HttpDownstreamConnection() {
   if (LOG_ENABLED(INFO)) {
     DCLOG(INFO, this) << "Deleted";
   }
+
+  if (dns_query_) {
+    auto dns_tracker = worker_->get_dns_tracker();
+    dns_tracker->cancel(dns_query_.get());
+  }
 }
 
 int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
+  int rv;
+
   if (LOG_ENABLED(INFO)) {
     DCLOG(INFO, this) << "Attaching to DOWNSTREAM:" << downstream;
   }
+
+  downstream_ = downstream;
+
+  rv = initiate_connection();
+  if (rv != 0) {
+    downstream_ = nullptr;
+    return rv;
+  }
+
+  return 0;
+}
+
+int HttpDownstreamConnection::initiate_connection() {
+  int rv;
 
   auto worker_blocker = worker_->get_connect_blocker();
   if (worker_blocker->blocked()) {
@@ -212,42 +234,136 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
         shared_addr->affinity == AFFINITY_NONE ? shared_addr->next : temp_idx;
     auto end = next_downstream;
     for (;;) {
-      auto &addr = addrs[next_downstream];
+      auto check_dns_result = dns_query_.get() != nullptr;
 
-      if (++next_downstream >= addrs.size()) {
-        next_downstream = 0;
-      }
+      DownstreamAddr *addr;
+      if (check_dns_result) {
+        addr = addr_;
+        addr_ = nullptr;
+        assert(addr);
+        assert(addr->dns);
+      } else {
+        assert(addr_ == nullptr);
+        addr = &addrs[next_downstream];
 
-      if (addr.proto != PROTO_HTTP1) {
-        if (end == next_downstream) {
-          return SHRPX_ERR_NETWORK;
+        if (++next_downstream >= addrs.size()) {
+          next_downstream = 0;
         }
 
-        continue;
+        if (addr->proto != PROTO_HTTP1) {
+          if (end == next_downstream) {
+            return SHRPX_ERR_NETWORK;
+          }
+
+          continue;
+        }
       }
 
-      auto &connect_blocker = addr.connect_blocker;
+      auto &connect_blocker = addr->connect_blocker;
 
       if (connect_blocker->blocked()) {
         if (LOG_ENABLED(INFO)) {
-          DCLOG(INFO, this) << "Backend server "
-                            << util::to_numeric_addr(&addr.addr)
-                            << " was not available temporarily";
+          DCLOG(INFO, this) << "Backend server " << addr->host << ":"
+                            << addr->port << " was not available temporarily";
         }
 
-        if (end == next_downstream) {
+        if (check_dns_result) {
+          dns_query_.reset();
+        } else if (end == next_downstream) {
           return SHRPX_ERR_NETWORK;
         }
 
         continue;
       }
 
-      conn_.fd = util::create_nonblock_socket(addr.addr.su.storage.ss_family);
+      Address *raddr;
+
+      if (addr->dns) {
+        if (!check_dns_result) {
+          auto dns_query = make_unique<DNSQuery>(
+              addr->host, [this](int status, const Address *result) {
+                int rv;
+
+                if (status == DNS_STATUS_OK) {
+                  *this->resolved_addr_ = *result;
+                }
+
+                rv = this->initiate_connection();
+                if (rv != 0) {
+                  // This callback destroys |this|.
+                  auto downstream = this->downstream_;
+                  auto upstream = downstream->get_upstream();
+                  auto handler = upstream->get_client_handler();
+
+                  downstream->pop_downstream_connection();
+
+                  auto ndconn = handler->get_downstream_connection(downstream);
+                  if (ndconn) {
+                    if (downstream->attach_downstream_connection(
+                            std::move(ndconn)) == 0) {
+                      return;
+                    }
+                  }
+
+                  downstream->set_request_state(Downstream::CONNECT_FAIL);
+
+                  if (upstream->on_downstream_abort_request(downstream, 503) !=
+                      0) {
+                    delete handler;
+                  }
+                  return;
+                }
+              });
+
+          auto dns_tracker = worker_->get_dns_tracker();
+
+          if (!resolved_addr_) {
+            resolved_addr_ = make_unique<Address>();
+          }
+          rv = dns_tracker->resolve(resolved_addr_.get(), dns_query.get());
+          switch (rv) {
+          case DNS_STATUS_ERROR:
+            downstream_failure(addr, nullptr);
+            if (end == next_downstream) {
+              return SHRPX_ERR_NETWORK;
+            }
+            continue;
+          case DNS_STATUS_RUNNING:
+            dns_query_ = std::move(dns_query);
+            // Remember current addr
+            addr_ = addr;
+            return 0;
+          case DNS_STATUS_OK:
+            break;
+          default:
+            assert(0);
+          }
+        } else {
+          switch (dns_query_->status) {
+          case DNS_STATUS_ERROR:
+            dns_query_.reset();
+            downstream_failure(addr, nullptr);
+            continue;
+          case DNS_STATUS_OK:
+            dns_query_.reset();
+            break;
+          default:
+            assert(0);
+          }
+        }
+
+        raddr = resolved_addr_.get();
+        util::set_port(*resolved_addr_, addr->port);
+      } else {
+        raddr = &addr->addr;
+      }
+
+      conn_.fd = util::create_nonblock_socket(raddr->su.storage.ss_family);
 
       if (conn_.fd == -1) {
         auto error = errno;
         DCLOG(WARN, this) << "socket() failed; addr="
-                          << util::to_numeric_addr(&addr.addr)
+                          << util::to_numeric_addr(raddr)
                           << ", errno=" << error;
 
         worker_blocker->on_failure();
@@ -257,20 +373,19 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
 
       worker_blocker->on_success();
 
-      int rv;
-      rv = connect(conn_.fd, &addr.addr.su.sa, addr.addr.len);
+      rv = connect(conn_.fd, &raddr->su.sa, raddr->len);
       if (rv != 0 && errno != EINPROGRESS) {
         auto error = errno;
         DCLOG(WARN, this) << "connect() failed; addr="
-                          << util::to_numeric_addr(&addr.addr)
+                          << util::to_numeric_addr(raddr)
                           << ", errno=" << error;
 
-        downstream_failure(&addr);
+        downstream_failure(addr, raddr);
 
         close(conn_.fd);
         conn_.fd = -1;
 
-        if (end == next_downstream) {
+        if (!check_dns_result && end == next_downstream) {
           return SHRPX_ERR_NETWORK;
         }
 
@@ -282,7 +397,8 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
         DCLOG(INFO, this) << "Connecting to downstream server";
       }
 
-      addr_ = &addr;
+      addr_ = addr;
+      raddr_ = raddr;
 
       if (addr_->tls) {
         assert(ssl_ctx_);
@@ -333,8 +449,6 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
 
     ev_set_cb(&conn_.rev, readcb);
   }
-
-  downstream_ = downstream;
 
   http_parser_init(&response_htp_, HTTP_RESPONSE);
   response_htp_.data = downstream_;
@@ -1031,7 +1145,7 @@ int HttpDownstreamConnection::tls_handshake() {
   }
 
   if (rv < 0) {
-    downstream_failure(addr_);
+    downstream_failure(addr_, raddr_);
 
     return rv;
   }
@@ -1041,8 +1155,8 @@ int HttpDownstreamConnection::tls_handshake() {
   }
 
   if (!get_config()->tls.insecure &&
-      ssl::check_cert(conn_.tls.ssl, addr_) != 0) {
-    downstream_failure(addr_);
+      ssl::check_cert(conn_.tls.ssl, addr_, raddr_) != 0) {
+    downstream_failure(addr_, raddr_);
 
     return -1;
   }
@@ -1050,7 +1164,7 @@ int HttpDownstreamConnection::tls_handshake() {
   if (!SSL_session_reused(conn_.tls.ssl)) {
     auto session = SSL_get0_session(conn_.tls.ssl);
     if (session) {
-      ssl::try_cache_tls_session(addr_->tls_session_cache, addr_->addr, session,
+      ssl::try_cache_tls_session(addr_->tls_session_cache, *raddr_, session,
                                  ev_now(conn_.loop));
     }
   }
@@ -1215,10 +1329,10 @@ int HttpDownstreamConnection::connected() {
     conn_.wlimit.stopw();
 
     DCLOG(WARN, this) << "Backend connect failed; addr="
-                      << util::to_numeric_addr(&addr_->addr)
+                      << util::to_numeric_addr(raddr_)
                       << ": errno=" << sock_error;
 
-    downstream_failure(addr_);
+    downstream_failure(addr_, raddr_);
 
     return -1;
   }
@@ -1281,5 +1395,7 @@ HttpDownstreamConnection::get_downstream_addr_group() const {
 DownstreamAddr *HttpDownstreamConnection::get_addr() const { return addr_; }
 
 bool HttpDownstreamConnection::poolable() const { return !group_->retired; }
+
+const Address *HttpDownstreamConnection::get_raddr() const { return raddr_; }
 
 } // namespace shrpx

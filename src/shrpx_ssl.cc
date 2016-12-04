@@ -1171,10 +1171,10 @@ int check_cert(SSL *ssl, const Address *addr, const StringRef &host) {
   return 0;
 }
 
-int check_cert(SSL *ssl, const DownstreamAddr *addr) {
+int check_cert(SSL *ssl, const DownstreamAddr *addr, const Address *raddr) {
   auto hostname =
       addr->sni.empty() ? StringRef{addr->host} : StringRef{addr->sni};
-  return check_cert(ssl, &addr->addr, hostname);
+  return check_cert(ssl, raddr, hostname);
 }
 
 CertLookupTree::CertLookupTree() {}

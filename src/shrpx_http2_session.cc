@@ -95,7 +95,7 @@ void settings_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
     SSLOG(INFO, http2session) << "SETTINGS timeout";
   }
 
-  downstream_failure(http2session->get_addr());
+  downstream_failure(http2session->get_addr(), http2session->get_raddr());
 
   if (http2session->terminate_session(NGHTTP2_SETTINGS_TIMEOUT) != 0) {
     delete http2session;
@@ -202,6 +202,7 @@ Http2Session::Http2Session(struct ev_loop *loop, SSL_CTX *ssl_ctx,
       group_(group),
       addr_(addr),
       session_(nullptr),
+      raddr_(nullptr),
       state_(DISCONNECTED),
       connection_check_state_(CONNECTION_CHECK_NONE),
       freelist_zone_(FREELIST_ZONE_NONE) {
@@ -243,6 +244,11 @@ int Http2Session::disconnect(bool hard) {
   session_ = nullptr;
 
   wb_.reset();
+
+  if (dns_query_) {
+    auto dns_tracker = worker_->get_dns_tracker();
+    dns_tracker->cancel(dns_query_.get());
+  }
 
   conn_.rlimit.stopw();
   conn_.wlimit.stopw();
@@ -302,12 +308,47 @@ int Http2Session::disconnect(bool hard) {
   return 0;
 }
 
+int Http2Session::resolve_name() {
+  int rv;
+
+  auto dns_query = make_unique<DNSQuery>(
+      addr_->host, [this](int status, const Address *result) {
+        int rv;
+
+        if (status == DNS_STATUS_OK) {
+          *resolved_addr_ = *result;
+          util::set_port(*this->resolved_addr_, this->addr_->port);
+        }
+
+        rv = this->initiate_connection();
+        if (rv != 0) {
+          delete this;
+        }
+      });
+  resolved_addr_ = make_unique<Address>();
+  auto dns_tracker = worker_->get_dns_tracker();
+  rv = dns_tracker->resolve(resolved_addr_.get(), dns_query.get());
+  switch (rv) {
+  case DNS_STATUS_ERROR:
+    return -1;
+  case DNS_STATUS_RUNNING:
+    dns_query_ = std::move(dns_query);
+    state_ = RESOLVING_NAME;
+    return 0;
+  case DNS_STATUS_OK:
+    util::set_port(*resolved_addr_, addr_->port);
+    return 0;
+  default:
+    assert(0);
+  }
+}
+
 int Http2Session::initiate_connection() {
   int rv = 0;
 
   auto worker_blocker = worker_->get_connect_blocker();
 
-  if (state_ == DISCONNECTED) {
+  if (state_ == DISCONNECTED || state_ == RESOLVING_NAME) {
     if (worker_blocker->blocked()) {
       if (LOG_ENABLED(INFO)) {
         SSLOG(INFO, this)
@@ -350,6 +391,8 @@ int Http2Session::initiate_connection() {
       return -1;
     }
 
+    raddr_ = &proxy.addr;
+
     worker_blocker->on_success();
 
     ev_io_set(&conn_.rev, conn_.fd, EV_READ);
@@ -374,36 +417,68 @@ int Http2Session::initiate_connection() {
     return 0;
   }
 
-  if (state_ == DISCONNECTED || state_ == PROXY_CONNECTED) {
+  if (state_ == DISCONNECTED || state_ == PROXY_CONNECTED ||
+      state_ == RESOLVING_NAME) {
     if (LOG_ENABLED(INFO)) {
-      SSLOG(INFO, this) << "Connecting to downstream server";
+      if (state_ != RESOLVING_NAME) {
+        SSLOG(INFO, this) << "Connecting to downstream server";
+      }
     }
     if (addr_->tls) {
       assert(ssl_ctx_);
 
-      auto ssl = ssl::create_ssl(ssl_ctx_);
-      if (!ssl) {
-        return -1;
+      if (state_ != RESOLVING_NAME) {
+        auto ssl = ssl::create_ssl(ssl_ctx_);
+        if (!ssl) {
+          return -1;
+        }
+
+        ssl::setup_downstream_http2_alpn(ssl);
+
+        conn_.set_ssl(ssl);
+
+        auto sni_name =
+            addr_->sni.empty() ? StringRef{addr_->host} : StringRef{addr_->sni};
+
+        if (!util::numeric_host(sni_name.c_str())) {
+          // TLS extensions: SNI. There is no documentation about the return
+          // code for this function (actually this is macro wrapping SSL_ctrl
+          // at the time of this writing).
+          SSL_set_tlsext_host_name(conn_.tls.ssl, sni_name.c_str());
+        }
+
+        auto tls_session = ssl::reuse_tls_session(addr_->tls_session_cache);
+        if (tls_session) {
+          SSL_set_session(conn_.tls.ssl, tls_session);
+          SSL_SESSION_free(tls_session);
+        }
       }
 
-      ssl::setup_downstream_http2_alpn(ssl);
-
-      conn_.set_ssl(ssl);
-
-      auto sni_name =
-          addr_->sni.empty() ? StringRef{addr_->host} : StringRef{addr_->sni};
-
-      if (!util::numeric_host(sni_name.c_str())) {
-        // TLS extensions: SNI. There is no documentation about the return
-        // code for this function (actually this is macro wrapping SSL_ctrl
-        // at the time of this writing).
-        SSL_set_tlsext_host_name(conn_.tls.ssl, sni_name.c_str());
+      if (state_ == DISCONNECTED) {
+        if (addr_->dns) {
+          rv = resolve_name();
+          if (rv != 0) {
+            downstream_failure(addr_, nullptr);
+            return -1;
+          }
+          if (state_ == RESOLVING_NAME) {
+            return 0;
+          }
+          raddr_ = resolved_addr_.get();
+        } else {
+          raddr_ = &addr_->addr;
+        }
       }
 
-      auto tls_session = ssl::reuse_tls_session(addr_->tls_session_cache);
-      if (tls_session) {
-        SSL_set_session(conn_.tls.ssl, tls_session);
-        SSL_SESSION_free(tls_session);
+      if (state_ == RESOLVING_NAME) {
+        if (dns_query_->status == DNS_STATUS_ERROR) {
+          downstream_failure(addr_, nullptr);
+          return -1;
+        }
+        assert(dns_query_->status == DNS_STATUS_OK);
+        state_ = DISCONNECTED;
+        dns_query_.reset();
+        raddr_ = resolved_addr_.get();
       }
 
       // If state_ == PROXY_CONNECTED, we has connected to the proxy
@@ -411,12 +486,11 @@ int Http2Session::initiate_connection() {
       if (state_ == DISCONNECTED) {
         assert(conn_.fd == -1);
 
-        conn_.fd =
-            util::create_nonblock_socket(addr_->addr.su.storage.ss_family);
+        conn_.fd = util::create_nonblock_socket(raddr_->su.storage.ss_family);
         if (conn_.fd == -1) {
           auto error = errno;
           SSLOG(WARN, this)
-              << "socket() failed; addr=" << util::to_numeric_addr(&addr_->addr)
+              << "socket() failed; addr=" << util::to_numeric_addr(raddr_)
               << ", errno=" << error;
 
           worker_blocker->on_failure();
@@ -427,15 +501,14 @@ int Http2Session::initiate_connection() {
 
         rv = connect(conn_.fd,
                      // TODO maybe not thread-safe?
-                     const_cast<sockaddr *>(&addr_->addr.su.sa),
-                     addr_->addr.len);
+                     const_cast<sockaddr *>(&raddr_->su.sa), raddr_->len);
         if (rv != 0 && errno != EINPROGRESS) {
           auto error = errno;
-          SSLOG(WARN, this) << "connect() failed; addr="
-                            << util::to_numeric_addr(&addr_->addr)
-                            << ", errno=" << error;
+          SSLOG(WARN, this)
+              << "connect() failed; addr=" << util::to_numeric_addr(raddr_)
+              << ", errno=" << error;
 
-          downstream_failure(addr_);
+          downstream_failure(addr_, raddr_);
           return -1;
         }
 
@@ -447,15 +520,42 @@ int Http2Session::initiate_connection() {
     } else {
       if (state_ == DISCONNECTED) {
         // Without TLS and proxy.
+        if (addr_->dns) {
+          rv = resolve_name();
+          if (rv != 0) {
+            downstream_failure(addr_, nullptr);
+            return -1;
+          }
+          if (state_ == RESOLVING_NAME) {
+            return 0;
+          }
+          raddr_ = resolved_addr_.get();
+        } else {
+          raddr_ = &addr_->addr;
+        }
+      }
+
+      if (state_ == RESOLVING_NAME) {
+        if (dns_query_->status == DNS_STATUS_ERROR) {
+          downstream_failure(addr_, nullptr);
+          return -1;
+        }
+        assert(dns_query_->status == DNS_STATUS_OK);
+        state_ = DISCONNECTED;
+        dns_query_.reset();
+        raddr_ = resolved_addr_.get();
+      }
+
+      if (state_ == DISCONNECTED) {
+        // Without TLS and proxy.
         assert(conn_.fd == -1);
 
-        conn_.fd =
-            util::create_nonblock_socket(addr_->addr.su.storage.ss_family);
+        conn_.fd = util::create_nonblock_socket(raddr_->su.storage.ss_family);
 
         if (conn_.fd == -1) {
           auto error = errno;
           SSLOG(WARN, this)
-              << "socket() failed; addr=" << util::to_numeric_addr(&addr_->addr)
+              << "socket() failed; addr=" << util::to_numeric_addr(raddr_)
               << ", errno=" << error;
 
           worker_blocker->on_failure();
@@ -464,15 +564,15 @@ int Http2Session::initiate_connection() {
 
         worker_blocker->on_success();
 
-        rv = connect(conn_.fd, const_cast<sockaddr *>(&addr_->addr.su.sa),
-                     addr_->addr.len);
+        rv = connect(conn_.fd, const_cast<sockaddr *>(&raddr_->su.sa),
+                     raddr_->len);
         if (rv != 0 && errno != EINPROGRESS) {
           auto error = errno;
-          SSLOG(WARN, this) << "connect() failed; addr="
-                            << util::to_numeric_addr(&addr_->addr)
-                            << ", errno=" << error;
+          SSLOG(WARN, this)
+              << "connect() failed; addr=" << util::to_numeric_addr(raddr_)
+              << ", errno=" << error;
 
-          downstream_failure(addr_);
+          downstream_failure(addr_, raddr_);
           return -1;
         }
 
@@ -1544,7 +1644,7 @@ int Http2Session::connection_made() {
 #endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 
     if (!next_proto) {
-      downstream_failure(addr_);
+      downstream_failure(addr_, raddr_);
       return -1;
     }
 
@@ -1553,7 +1653,7 @@ int Http2Session::connection_made() {
       SSLOG(INFO, this) << "Negotiated next protocol: " << proto;
     }
     if (!util::check_h2_is_selected(proto)) {
-      downstream_failure(addr_);
+      downstream_failure(addr_, raddr_);
       return -1;
     }
   }
@@ -1842,10 +1942,10 @@ int Http2Session::connected() {
   auto sock_error = util::get_socket_error(conn_.fd);
   if (sock_error != 0) {
     SSLOG(WARN, this) << "Backend connect failed; addr="
-                      << util::to_numeric_addr(&addr_->addr)
+                      << util::to_numeric_addr(raddr_)
                       << ": errno=" << sock_error;
 
-    downstream_failure(addr_);
+    downstream_failure(addr_, raddr_);
 
     return -1;
   }
@@ -1955,7 +2055,7 @@ int Http2Session::tls_handshake() {
   }
 
   if (rv < 0) {
-    downstream_failure(addr_);
+    downstream_failure(addr_, raddr_);
 
     return rv;
   }
@@ -1965,8 +2065,8 @@ int Http2Session::tls_handshake() {
   }
 
   if (!get_config()->tls.insecure &&
-      ssl::check_cert(conn_.tls.ssl, addr_) != 0) {
-    downstream_failure(addr_);
+      ssl::check_cert(conn_.tls.ssl, addr_, raddr_) != 0) {
+    downstream_failure(addr_, raddr_);
 
     return -1;
   }
@@ -1974,8 +2074,8 @@ int Http2Session::tls_handshake() {
   if (!SSL_session_reused(conn_.tls.ssl)) {
     auto tls_session = SSL_get0_session(conn_.tls.ssl);
     if (tls_session) {
-      ssl::try_cache_tls_session(addr_->tls_session_cache, addr_->addr,
-                                 tls_session, ev_now(conn_.loop));
+      ssl::try_cache_tls_session(addr_->tls_session_cache, *raddr_, tls_session,
+                                 ev_now(conn_.loop));
     }
   }
 
@@ -2262,9 +2362,9 @@ void Http2Session::on_timeout() {
   }
   case CONNECTING: {
     SSLOG(WARN, this) << "Connect time out; addr="
-                      << util::to_numeric_addr(&addr_->addr);
+                      << util::to_numeric_addr(raddr_);
 
-    downstream_failure(addr_);
+    downstream_failure(addr_, raddr_);
     break;
   }
   }
@@ -2283,5 +2383,7 @@ void Http2Session::check_retire() {
 
   signal_write();
 }
+
+const Address *Http2Session::get_raddr() const { return raddr_; }
 
 } // namespace shrpx

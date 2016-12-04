@@ -114,6 +114,7 @@ LiveCheck::LiveCheck(struct ev_loop *loop, SSL_CTX *ssl_ctx, Worker *worker,
       ssl_ctx_(ssl_ctx),
       addr_(addr),
       session_(nullptr),
+      raddr_(nullptr),
       success_count_(0),
       fail_count_(0),
       settings_ack_received_(false),
@@ -134,6 +135,16 @@ LiveCheck::~LiveCheck() {
 }
 
 void LiveCheck::disconnect() {
+  if (dns_query_) {
+    auto dns_tracker = worker_->get_dns_tracker();
+
+    dns_tracker->cancel(dns_query_.get());
+  }
+
+  dns_query_.reset();
+  // We can reuse resolved_addr_
+  raddr_ = nullptr;
+
   conn_.rlimit.stopw();
   conn_.wlimit.stopw();
 
@@ -190,7 +201,7 @@ int LiveCheck::initiate_connection() {
     return -1;
   }
 
-  if (addr_->tls) {
+  if (!dns_query_ && addr_->tls) {
     assert(ssl_ctx_);
 
     auto ssl = ssl::create_ssl(ssl_ctx_);
@@ -212,20 +223,71 @@ int LiveCheck::initiate_connection() {
     conn_.set_ssl(ssl);
   }
 
-  conn_.fd = util::create_nonblock_socket(addr_->addr.su.storage.ss_family);
+  if (addr_->dns) {
+    if (!dns_query_) {
+      auto dns_query = make_unique<DNSQuery>(
+          addr_->host, [this](int status, const Address *result) {
+            int rv;
+
+            if (status == DNS_STATUS_OK) {
+              *this->resolved_addr_ = *result;
+            }
+            rv = this->initiate_connection();
+            if (rv != 0) {
+              this->on_failure();
+            }
+          });
+      auto dns_tracker = worker_->get_dns_tracker();
+
+      if (!resolved_addr_) {
+        resolved_addr_ = make_unique<Address>();
+      }
+
+      rv = dns_tracker->resolve(resolved_addr_.get(), dns_query.get());
+      switch (rv) {
+      case DNS_STATUS_ERROR:
+        return -1;
+      case DNS_STATUS_RUNNING:
+        dns_query_ = std::move(dns_query);
+        return 0;
+      case DNS_STATUS_OK:
+        break;
+      default:
+        assert(0);
+      }
+    } else {
+      switch (dns_query_->status) {
+      case DNS_STATUS_ERROR:
+        dns_query_.reset();
+        return -1;
+      case DNS_STATUS_OK:
+        dns_query_.reset();
+        break;
+      default:
+        assert(0);
+      }
+    }
+
+    util::set_port(*resolved_addr_, addr_->port);
+    raddr_ = resolved_addr_.get();
+  } else {
+    raddr_ = &addr_->addr;
+  }
+
+  conn_.fd = util::create_nonblock_socket(raddr_->su.storage.ss_family);
 
   if (conn_.fd == -1) {
     auto error = errno;
-    LOG(WARN) << "socket() failed; addr=" << util::to_numeric_addr(&addr_->addr)
+    LOG(WARN) << "socket() failed; addr=" << util::to_numeric_addr(raddr_)
               << ", errno=" << error;
     return -1;
   }
 
-  rv = connect(conn_.fd, &addr_->addr.su.sa, addr_->addr.len);
+  rv = connect(conn_.fd, &raddr_->su.sa, raddr_->len);
   if (rv != 0 && errno != EINPROGRESS) {
     auto error = errno;
-    LOG(WARN) << "connect() failed; addr="
-              << util::to_numeric_addr(&addr_->addr) << ", errno=" << error;
+    LOG(WARN) << "connect() failed; addr=" << util::to_numeric_addr(raddr_)
+              << ", errno=" << error;
 
     close(conn_.fd);
     conn_.fd = -1;
@@ -269,8 +331,7 @@ int LiveCheck::connected() {
   if (sock_error != 0) {
     if (LOG_ENABLED(INFO)) {
       LOG(INFO) << "Backend connect failed; addr="
-                << util::to_numeric_addr(&addr_->addr)
-                << ": errno=" << sock_error;
+                << util::to_numeric_addr(raddr_) << ": errno=" << sock_error;
     }
 
     return -1;
@@ -334,15 +395,15 @@ int LiveCheck::tls_handshake() {
   }
 
   if (!get_config()->tls.insecure &&
-      ssl::check_cert(conn_.tls.ssl, addr_) != 0) {
+      ssl::check_cert(conn_.tls.ssl, addr_, raddr_) != 0) {
     return -1;
   }
 
   if (!SSL_session_reused(conn_.tls.ssl)) {
     auto tls_session = SSL_get0_session(conn_.tls.ssl);
     if (tls_session) {
-      ssl::try_cache_tls_session(addr_->tls_session_cache, addr_->addr,
-                                 tls_session, ev_now(conn_.loop));
+      ssl::try_cache_tls_session(addr_->tls_session_cache, *raddr_, tls_session,
+                                 ev_now(conn_.loop));
     }
   }
 
@@ -601,7 +662,7 @@ void LiveCheck::on_failure() {
   ++fail_count_;
 
   if (LOG_ENABLED(INFO)) {
-    LOG(INFO) << "Liveness check for " << util::to_numeric_addr(&addr_->addr)
+    LOG(INFO) << "Liveness check for " << addr_->host << ":" << addr_->port
               << " failed " << fail_count_ << " time(s) in a row";
   }
 
@@ -615,7 +676,7 @@ void LiveCheck::on_success() {
   fail_count_ = 0;
 
   if (LOG_ENABLED(INFO)) {
-    LOG(INFO) << "Liveness check for " << util::to_numeric_addr(&addr_->addr)
+    LOG(INFO) << "Liveness check for " << addr_->host << ":" << addr_->port
               << " succeeded " << success_count_ << " time(s) in a row";
   }
 

@@ -42,6 +42,7 @@ namespace shrpx {
 
 class Worker;
 struct DownstreamAddr;
+struct DNSQuery;
 
 class LiveCheck {
 public:
@@ -102,6 +103,13 @@ private:
   // Address of remote endpoint
   DownstreamAddr *addr_;
   nghttp2_session *session_;
+  // Actual remote address used to contact backend.  This is initially
+  // nullptr, and may point to either &addr_->addr, or
+  // resolved_addr_.get().
+  const Address *raddr_;
+  // Resolved IP address if dns parameter is used
+  std::unique_ptr<Address> resolved_addr_;
+  std::unique_ptr<DNSQuery> dns_query_;
   // The number of successful connect attempt in a row.
   size_t success_count_;
   // The number of unsuccessful connect attempt in a row.

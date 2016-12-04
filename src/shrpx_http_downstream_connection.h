@@ -39,6 +39,7 @@ class DownstreamConnectionPool;
 class Worker;
 struct DownstreamAddrGroup;
 struct DownstreamAddr;
+struct DNSQuery;
 
 class HttpDownstreamConnection : public DownstreamConnection {
 public:
@@ -68,6 +69,8 @@ public:
   get_downstream_addr_group() const;
   virtual DownstreamAddr *get_addr() const;
 
+  int initiate_connection();
+
   int read_clear();
   int write_clear();
   int read_tls();
@@ -79,6 +82,9 @@ public:
   int connected();
   void signal_write();
   int actual_signal_write();
+
+  // Returns address used to connect to backend.  Could be nullptr.
+  const Address *get_raddr() const;
 
   int noop();
 
@@ -92,6 +98,13 @@ private:
   std::shared_ptr<DownstreamAddrGroup> group_;
   // Address of remote endpoint
   DownstreamAddr *addr_;
+  // Actual remote address used to contact backend.  This is initially
+  // nullptr, and may point to either &addr_->addr, or
+  // resolved_addr_.get().
+  const Address *raddr_;
+  // Resolved IP address if dns parameter is used
+  std::unique_ptr<Address> resolved_addr_;
+  std::unique_ptr<DNSQuery> dns_query_;
   IOControl ioctrl_;
   http_parser response_htp_;
   ssize_t initial_addr_idx_;

@@ -728,6 +728,7 @@ struct DownstreamParams {
   shrpx_proto proto;
   shrpx_session_affinity affinity;
   bool tls;
+  bool dns;
 };
 
 namespace {
@@ -801,6 +802,8 @@ int parse_downstream_params(DownstreamParams &out,
         LOG(ERROR) << "backend: affinity: value must be either none or ip";
         return -1;
       }
+    } else if (util::strieq_l("dns", param)) {
+      out.dns = true;
     } else if (!param.empty()) {
       LOG(ERROR) << "backend: " << param << ": unknown keyword";
       return -1;
@@ -841,11 +844,17 @@ int parse_mapping(Config *config, DownstreamAddrConfig &addr,
     return -1;
   }
 
+  if (addr.host_unix && params.dns) {
+    LOG(ERROR) << "backend: dns: cannot be used for UNIX domain socket";
+    return -1;
+  }
+
   addr.fall = params.fall;
   addr.rise = params.rise;
   addr.proto = params.proto;
   addr.tls = params.tls;
   addr.sni = make_string_ref(downstreamconf.balloc, params.sni);
+  addr.dns = params.dns;
 
   auto &routerconf = downstreamconf.router;
   auto &router = routerconf.router;
@@ -3442,24 +3451,38 @@ int configure_downstream_group(Config *config, bool http2_proxy,
       auto hostport =
           util::make_hostport(downstreamconf.balloc, addr.host, addr.port);
 
-      if (resolve_hostname(&addr.addr, addr.host.c_str(), addr.port,
-                           downstreamconf.family, resolve_flags) == -1) {
-        LOG(FATAL) << "Resolving backend address failed: " << hostport;
-        return -1;
-      }
+      if (!addr.dns) {
+        if (resolve_hostname(&addr.addr, addr.host.c_str(), addr.port,
+                             downstreamconf.family, resolve_flags) == -1) {
+          LOG(FATAL) << "Resolving backend address failed: " << hostport;
+          return -1;
+        }
 
-      if (LOG_ENABLED(INFO)) {
-        LOG(INFO) << "Resolved backend address: " << hostport << " -> "
-                  << util::to_numeric_addr(&addr.addr);
+        if (LOG_ENABLED(INFO)) {
+          LOG(INFO) << "Resolved backend address: " << hostport << " -> "
+                    << util::to_numeric_addr(&addr.addr);
+        }
+      } else {
+        LOG(INFO) << "Resolving backend address " << hostport
+                  << " takes place dynamically";
       }
     }
 
     if (g.affinity == AFFINITY_IP) {
       size_t idx = 0;
       for (auto &addr : g.addrs) {
-        auto p = reinterpret_cast<uint8_t *>(&addr.addr.su);
-        rv = compute_affinity_hash(g.affinity_hash, idx,
-                                   StringRef{p, addr.addr.len});
+        StringRef key;
+        if (addr.dns) {
+          if (addr.host_unix) {
+            key = addr.host;
+          } else {
+            key = addr.hostport;
+          }
+        } else {
+          auto p = reinterpret_cast<uint8_t *>(&addr.addr.su);
+          key = StringRef{p, addr.addr.len};
+        }
+        rv = compute_affinity_hash(g.affinity_hash, idx, key);
         if (rv != 0) {
           return -1;
         }

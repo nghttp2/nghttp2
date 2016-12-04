@@ -666,6 +666,17 @@ std::string to_numeric_addr(const Address *addr) {
   return s;
 }
 
+void set_port(Address &addr, uint16_t port) {
+  switch (addr.su.storage.ss_family) {
+  case AF_INET:
+    addr.su.in.sin_port = htons(port);
+    break;
+  case AF_INET6:
+    addr.su.in6.sin6_port = htons(port);
+    break;
+  }
+}
+
 static int STDERR_COPY = -1;
 static int STDOUT_COPY = -1;
 

@@ -1587,13 +1587,13 @@ Connections:
               Several parameters <PARAM> are accepted after <PATTERN>.
               The  parameters are  delimited  by  ";".  The  available
               parameters       are:      "proto=<PROTO>",       "tls",
-              "sni=<SNI_HOST>",     "fall=<N>",    "rise=<N>",     and
-              "affinity=<METHOD>".  The parameter consists of keyword,
-              and optionally followed by  "=" and value.  For example,
-              the parameter "proto=h2" consists of the keyword "proto"
-              and  value "h2".   The parameter  "tls" consists  of the
-              keyword   "tls"  without   value.   Each   parameter  is
-              described as follows.
+              "sni=<SNI_HOST>",         "fall=<N>",        "rise=<N>",
+              "affinity=<METHOD>", and "dns".   The parameter consists
+              of keyword,  and optionally  followed by "="  and value.
+              For example,  the parameter  "proto=h2" consists  of the
+              keyword  "proto" and  value "h2".   The parameter  "tls"
+              consists  of  the  keyword "tls"  without  value.   Each
+              parameter is described as follows.
 
               The backend application protocol  can be specified using
               optional  "proto"   parameter,  and   in  the   form  of
@@ -1641,6 +1641,14 @@ Connections:
               session affinity  is desired.  The session  affinity may
               break if one of the backend gets unreachable, or backend
               settings are reloaded or replaced by API.
+
+              By default, name resolution of backend host name is done
+              at  start  up,  or reloading  configuration.   If  "dns"
+              parameter   is  given,   name  resolution   takes  place
+              dynamically.  This is useful  if backend address changes
+              frequently.   If  "dns"  is given,  name  resolution  of
+              backend   host   name   at  start   up,   or   reloading
+              configuration is skipped.
 
               Since ";" and ":" are  used as delimiter, <PATTERN> must
               not  contain these  characters.  Since  ";" has  special

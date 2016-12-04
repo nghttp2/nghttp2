@@ -379,6 +379,7 @@ struct UpstreamAddr {
 };
 
 struct DownstreamAddrConfig {
+  // Resolved address if |dns| is false
   Address addr;
   // backend address.  If |host_unix| is true, this is UNIX domain
   // socket path.  This must be NULL terminated string.
@@ -397,6 +398,8 @@ struct DownstreamAddrConfig {
   // true if |host| contains UNIX domain socket path.
   bool host_unix;
   bool tls;
+  // true if dynamic DNS is enabled
+  bool dns;
 };
 
 // Mapping hash to idx which is an index into

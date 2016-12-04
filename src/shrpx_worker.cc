@@ -92,7 +92,7 @@ bool match_shared_downstream_addr(
       auto &b = rhs->addrs[i];
       if (a.host == b.host && a.port == b.port && a.host_unix == b.host_unix &&
           a.proto == b.proto && a.tls == b.tls && a.sni == b.sni &&
-          a.fall == b.fall && a.rise == b.rise) {
+          a.fall == b.fall && a.rise == b.rise && a.dns == b.dns) {
         break;
       }
     }
@@ -120,6 +120,7 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
                std::shared_ptr<DownstreamConfig> downstreamconf)
     : randgen_(rd()),
       worker_stat_{},
+      dns_tracker_(loop),
       loop_(loop),
       sv_ssl_ctx_(sv_ssl_ctx),
       cl_ssl_ctx_(cl_ssl_ctx),
@@ -209,6 +210,7 @@ void Worker::replace_downstream_config(
       dst_addr.sni = make_string_ref(shared_addr->balloc, src_addr.sni);
       dst_addr.fall = src_addr.fall;
       dst_addr.rise = src_addr.rise;
+      dst_addr.dns = src_addr.dns;
 
       auto shared_addr_ptr = shared_addr.get();
 
@@ -490,6 +492,8 @@ ConnectionHandler *Worker::get_connection_handler() const {
   return conn_handler_;
 }
 
+DNSTracker *Worker::get_dns_tracker() { return &dns_tracker_; }
+
 namespace {
 size_t match_downstream_addr_group_host(
     const RouterConfig &routerconf, const StringRef &host,
@@ -635,7 +639,7 @@ size_t match_downstream_addr_group(
                                           catch_all, balloc);
 }
 
-void downstream_failure(DownstreamAddr *addr) {
+void downstream_failure(DownstreamAddr *addr, const Address *raddr) {
   const auto &connect_blocker = addr->connect_blocker;
 
   if (connect_blocker->in_offline()) {
@@ -651,8 +655,15 @@ void downstream_failure(DownstreamAddr *addr) {
   auto fail_count = connect_blocker->get_fail_count();
 
   if (fail_count >= addr->fall) {
-    LOG(WARN) << "Could not connect to " << util::to_numeric_addr(&addr->addr)
-              << " " << fail_count << " times in a row; considered as offline";
+    if (raddr) {
+      LOG(WARN) << "Could not connect to " << util::to_numeric_addr(raddr)
+                << " " << fail_count
+                << " times in a row; considered as offline";
+    } else {
+      LOG(WARN) << "Could not connect to " << addr->host << ":" << addr->port
+                << " " << fail_count
+                << " times in a row; considered as offline";
+    }
 
     connect_blocker->offline();
 

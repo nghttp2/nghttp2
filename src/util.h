@@ -478,6 +478,9 @@ std::string numeric_name(const struct sockaddr *sa, socklen_t salen);
 // IPv6 address, address is enclosed by square brackets ([]).
 std::string to_numeric_addr(const Address *addr);
 
+// Sets |port| to |addr|.
+void set_port(Address &addr, uint16_t port);
+
 // Makes internal copy of stderr (and possibly stdout in the future),
 // which is then used as pointer to /dev/stderr or /proc/self/fd/2
 void store_original_fds();
