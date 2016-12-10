@@ -28,6 +28,7 @@ addons:
     - libevent-dev
     - libjansson-dev
     - libjemalloc-dev
+    - libc-ares-dev
     - cmake
     - cmake-data
 before_install:
