@@ -371,7 +371,7 @@ if test "x${have_openssl}" = "xno"; then
 fi
 
 # c-ares (for src)
-PKG_CHECK_MODULES([LIBCARES], [libcares >= 1.11.0], [have_libcares=yes],
+PKG_CHECK_MODULES([LIBCARES], [libcares >= 1.7.5], [have_libcares=yes],
                   [have_libcares=no])
 if test "x${have_libcares}" = "xno"; then
   AC_MSG_NOTICE($LIBCARES_PKG_ERRORS)
