@@ -281,22 +281,17 @@ void DNSResolver::on_result(int status, hostent *hostent) {
 
   if (status != ARES_SUCCESS) {
     if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "Address lookup for " << name_
+      LOG(INFO) << "Name lookup for " << name_
                 << " failed: " << ares_strerror(status);
     }
     status_ = DNS_STATUS_ERROR;
     return;
   }
 
-  if (LOG_ENABLED(INFO)) {
-    LOG(INFO) << "Address lookup for " << name_ << " succeeded";
-  }
-
-  status_ = DNS_STATUS_OK;
-
   switch (hostent->h_addrtype) {
   case AF_INET:
     for (auto ap = hostent->h_addr_list; *ap; ++ap) {
+      status_ = DNS_STATUS_OK;
       result_.len = sizeof(result_.su.in);
       result_.su.in = {};
       result_.su.in.sin_family = AF_INET;
@@ -304,11 +299,12 @@ void DNSResolver::on_result(int status, hostent *hostent) {
       result_.su.in.sin_len = sizeof(result_.su.in);
 #endif // HAVE_SOCKADDR_IN_SIN_LEN
       memcpy(&result_.su.in.sin_addr, *ap, sizeof(result_.su.in.sin_addr));
-      return;
+      break;
     }
     break;
   case AF_INET6:
     for (auto ap = hostent->h_addr_list; *ap; ++ap) {
+      status_ = DNS_STATUS_OK;
       result_.len = sizeof(result_.su.in6);
       result_.su.in6 = {};
       result_.su.in6.sin6_family = AF_INET6;
@@ -316,12 +312,21 @@ void DNSResolver::on_result(int status, hostent *hostent) {
       result_.su.in6.sin6_len = sizeof(result_.su.in6);
 #endif // HAVE_SOCKADDR_IN6_SIN6_LEN
       memcpy(&result_.su.in6.sin6_addr, *ap, sizeof(result_.su.in6.sin6_addr));
-      return;
+      break;
     }
     break;
+  default:
+    assert(0);
   }
 
-  // Somehow we got unsupported address family
+  if (status_ == DNS_STATUS_OK) {
+    if (LOG_ENABLED(INFO)) {
+      LOG(INFO) << "Name lookup succeeded: " << name_ << " -> "
+                << util::numeric_name(&result_.su.sa, result_.len);
+    }
+    return;
+  }
+
   status_ = DNS_STATUS_ERROR;
 }
 
