@@ -23,6 +23,7 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 #include "shrpx_dns_tracker.h"
+#include "shrpx_config.h"
 #include "util.h"
 
 namespace shrpx {
@@ -43,18 +44,16 @@ DNSTracker::~DNSTracker() {
   }
 }
 
-namespace {
-constexpr auto DNS_TTL = 30_s;
-} // namespace
-
 ResolverEntry DNSTracker::make_entry(std::unique_ptr<DualDNSResolver> resolv,
                                      ImmutableString host, int status,
                                      const Address *result) {
+  auto &dnsconf = get_config()->dns;
+
   auto ent = ResolverEntry{};
   ent.resolv = std::move(resolv);
   ent.host = std::move(host);
   ent.status = status;
-  ent.expiry = ev_now(loop_) + DNS_TTL;
+  ent.expiry = ev_now(loop_) + dnsconf.timeout.cache;
   if (result) {
     ent.result = *result;
   }
@@ -233,9 +232,11 @@ void DNSTracker::add_to_qlist(ResolverEntry &ent, DNSQuery *dnsq) {
       cb(status, result);
     }
 
+    auto &dnsconf = get_config()->dns;
+
     ent.resolv.reset();
     ent.status = status;
-    ent.expiry = ev_now(loop) + DNS_TTL;
+    ent.expiry = ev_now(loop) + dnsconf.timeout.cache;
     if (ent.status == DNS_STATUS_OK) {
       ent.result = *result;
     }

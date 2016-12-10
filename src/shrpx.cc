@@ -1486,6 +1486,12 @@ void fill_default_config(Config *config) {
 
   auto &apiconf = config->api;
   apiconf.max_request_body = 16_k;
+
+  auto &dnsconf = config->dns;
+  {
+    auto &timeoutconf = dnsconf.timeout;
+    timeoutconf.cache = 10_s;
+  }
 }
 
 } // namespace
@@ -2376,6 +2382,13 @@ API:
               Default: )"
       << util::utos_unit(config->api.max_request_body) << R"(
 
+DNS:
+  --dns-cache-timeout=<DURATION>
+              Set duration that cached DNS results remain valid.  Note
+              that nghttpx caches the unsuccessful results as well.
+              Default: )"
+      << util::duration_str(config->dns.timeout.cache) << R"(
+
 Debug:
   --frontend-http2-dump-request-header=<PATH>
               Dumps request headers received by HTTP/2 frontend to the
@@ -3035,6 +3048,7 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_TLS_SCT_DIR.c_str(), required_argument, &flag, 141},
         {SHRPX_OPT_BACKEND_CONNECT_TIMEOUT.c_str(), required_argument, &flag,
          142},
+        {SHRPX_OPT_DNS_CACHE_TIMEOUT.c_str(), required_argument, &flag, 143},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -3707,6 +3721,10 @@ int main(int argc, char **argv) {
         // --backend-connect-timeout
         cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_CONNECT_TIMEOUT,
                              StringRef{optarg});
+        break;
+      case 143:
+        // --dns-cache-timeout
+        cmdcfgs.emplace_back(SHRPX_OPT_DNS_CACHE_TIMEOUT, StringRef{optarg});
         break;
       default:
         break;

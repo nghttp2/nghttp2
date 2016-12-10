@@ -312,6 +312,8 @@ constexpr auto SHRPX_OPT_ECDH_CURVES = StringRef::from_lit("ecdh-curves");
 constexpr auto SHRPX_OPT_TLS_SCT_DIR = StringRef::from_lit("tls-sct-dir");
 constexpr auto SHRPX_OPT_BACKEND_CONNECT_TIMEOUT =
     StringRef::from_lit("backend-connect-timeout");
+constexpr auto SHRPX_OPT_DNS_CACHE_TIMEOUT =
+    StringRef::from_lit("dns-cache-timeout");
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
@@ -780,6 +782,12 @@ struct APIConfig {
   bool enabled;
 };
 
+struct DNSConfig {
+  struct {
+    ev_tstamp cache;
+  } timeout;
+};
+
 struct Config {
   Config()
       : balloc(4096, 4096),
@@ -790,6 +798,7 @@ struct Config {
         logging{},
         conn{},
         api{},
+        dns{},
         num_worker{0},
         padding{0},
         rlimit_nofile{0},
@@ -818,6 +827,7 @@ struct Config {
   LoggingConfig logging;
   ConnectionConfig conn;
   APIConfig api;
+  DNSConfig dns;
   StringRef pid_file;
   StringRef conf_path;
   StringRef user;
@@ -894,6 +904,7 @@ enum {
   SHRPX_OPTID_CONF,
   SHRPX_OPTID_DAEMON,
   SHRPX_OPTID_DH_PARAM_FILE,
+  SHRPX_OPTID_DNS_CACHE_TIMEOUT,
   SHRPX_OPTID_ECDH_CURVES,
   SHRPX_OPTID_ERROR_PAGE,
   SHRPX_OPTID_ERRORLOG_FILE,

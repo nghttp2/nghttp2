@@ -149,6 +149,7 @@ OPTIONS = [
     "ecdh-curves",
     "tls-sct-dir",
     "backend-connect-timeout",
+    "dns-cache-timeout",
 ]
 
 LOGVARS = [

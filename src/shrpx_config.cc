@@ -1531,6 +1531,9 @@ int option_lookup_token(const char *name, size_t namelen) {
       }
       break;
     case 't':
+      if (util::strieq_l("dns-cache-timeou", name, 16)) {
+        return SHRPX_OPTID_DNS_CACHE_TIMEOUT;
+      }
       if (util::strieq_l("worker-read-burs", name, 16)) {
         return SHRPX_OPTID_WORKER_READ_BURST;
       }
@@ -3099,6 +3102,8 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     LOG(WARN) << opt << ": This option requires OpenSSL >= 1.0.2";
     return 0;
 #endif // !(!LIBRESSL_IN_USE && OPENSSL_VERSION_NUMBER >= 0x10002000L)
+  case SHRPX_OPTID_DNS_CACHE_TIMEOUT:
+    return parse_duration(&config->dns.timeout.cache, opt, optarg);
   case SHRPX_OPTID_CONF:
     LOG(WARN) << "conf: ignored";
 
