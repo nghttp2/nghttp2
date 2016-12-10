@@ -1491,7 +1491,9 @@ void fill_default_config(Config *config) {
   {
     auto &timeoutconf = dnsconf.timeout;
     timeoutconf.cache = 10_s;
+    timeoutconf.lookup = 5_s;
   }
+  dnsconf.max_try = 2;
 }
 
 } // namespace
@@ -2388,6 +2390,18 @@ DNS:
               that nghttpx caches the unsuccessful results as well.
               Default: )"
       << util::duration_str(config->dns.timeout.cache) << R"(
+  --dns-lookup-timeout=<DURATION>
+              Set timeout that  DNS server is given to  respond to the
+              initial  DNS  query.  For  the  2nd  and later  queries,
+              server is  given time based  on this timeout, and  it is
+              scaled linearly.
+              Default: )"
+      << util::duration_str(config->dns.timeout.lookup) << R"(
+  --dns-max-try=<N>
+              Set the number of DNS query before nghttpx gives up name
+              lookup.
+              Default: )"
+      << config->dns.max_try << R"(
 
 Debug:
   --frontend-http2-dump-request-header=<PATH>
@@ -3049,6 +3063,8 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_BACKEND_CONNECT_TIMEOUT.c_str(), required_argument, &flag,
          142},
         {SHRPX_OPT_DNS_CACHE_TIMEOUT.c_str(), required_argument, &flag, 143},
+        {SHRPX_OPT_DNS_LOOKUP_TIMEOUT.c_str(), required_argument, &flag, 144},
+        {SHRPX_OPT_DNS_MAX_TRY.c_str(), required_argument, &flag, 145},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -3725,6 +3741,14 @@ int main(int argc, char **argv) {
       case 143:
         // --dns-cache-timeout
         cmdcfgs.emplace_back(SHRPX_OPT_DNS_CACHE_TIMEOUT, StringRef{optarg});
+        break;
+      case 144:
+        // --dns-lookup-timeou
+        cmdcfgs.emplace_back(SHRPX_OPT_DNS_LOOKUP_TIMEOUT, StringRef{optarg});
+        break;
+      case 145:
+        // --dns-max-try
+        cmdcfgs.emplace_back(SHRPX_OPT_DNS_MAX_TRY, StringRef{optarg});
         break;
       default:
         break;

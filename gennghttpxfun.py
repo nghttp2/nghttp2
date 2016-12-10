@@ -150,6 +150,8 @@ OPTIONS = [
     "tls-sct-dir",
     "backend-connect-timeout",
     "dns-cache-timeout",
+    "dns-lookup-timeout",
+    "dns-max-try",
 ]
 
 LOGVARS = [

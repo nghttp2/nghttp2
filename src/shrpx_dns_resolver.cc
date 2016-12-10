@@ -29,6 +29,7 @@
 
 #include "shrpx_log.h"
 #include "shrpx_connection.h"
+#include "shrpx_config.h"
 
 namespace shrpx {
 
@@ -145,11 +146,15 @@ int DNSResolver::resolve(const StringRef &name, int family) {
 
   int rv;
 
+  auto &dnsconf = get_config()->dns;
+
   ares_options opts{};
   opts.sock_state_cb = sock_state_cb;
   opts.sock_state_cb_data = this;
+  opts.timeout = static_cast<int>(dnsconf.timeout.lookup * 1000);
+  opts.tries = dnsconf.max_try;
 
-  auto optmask = ARES_OPT_SOCK_STATE_CB;
+  auto optmask = ARES_OPT_SOCK_STATE_CB | ARES_OPT_TIMEOUTMS | ARES_OPT_TRIES;
 
   ares_channel chan;
   rv = ares_init_options(&chan, &opts, optmask);

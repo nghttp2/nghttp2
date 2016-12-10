@@ -1370,6 +1370,9 @@ int option_lookup_token(const char *name, size_t namelen) {
       }
       break;
     case 'y':
+      if (util::strieq_l("dns-max-tr", name, 10)) {
+        return SHRPX_OPTID_DNS_MAX_TRY;
+      }
       if (util::strieq_l("http2-prox", name, 10)) {
         return SHRPX_OPTID_HTTP2_PROXY;
       }
@@ -1548,6 +1551,9 @@ int option_lookup_token(const char *name, size_t namelen) {
       }
       break;
     case 't':
+      if (util::strieq_l("dns-lookup-timeou", name, 17)) {
+        return SHRPX_OPTID_DNS_LOOKUP_TIMEOUT;
+      }
       if (util::strieq_l("worker-write-burs", name, 17)) {
         return SHRPX_OPTID_WORKER_WRITE_BURST;
       }
@@ -3104,6 +3110,22 @@ int parse_config(Config *config, int optid, const StringRef &opt,
 #endif // !(!LIBRESSL_IN_USE && OPENSSL_VERSION_NUMBER >= 0x10002000L)
   case SHRPX_OPTID_DNS_CACHE_TIMEOUT:
     return parse_duration(&config->dns.timeout.cache, opt, optarg);
+  case SHRPX_OPTID_DNS_LOOKUP_TIMEOUT:
+    return parse_duration(&config->dns.timeout.lookup, opt, optarg);
+  case SHRPX_OPTID_DNS_MAX_TRY: {
+    int n;
+    if (parse_uint(&n, opt, optarg) != 0) {
+      return -1;
+    }
+
+    if (n > 5) {
+      LOG(ERROR) << opt << ": must be smaller than or equal to 5";
+      return -1;
+    }
+
+    config->dns.max_try = n;
+    return 0;
+  }
   case SHRPX_OPTID_CONF:
     LOG(WARN) << "conf: ignored";
 

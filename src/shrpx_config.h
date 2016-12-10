@@ -314,6 +314,9 @@ constexpr auto SHRPX_OPT_BACKEND_CONNECT_TIMEOUT =
     StringRef::from_lit("backend-connect-timeout");
 constexpr auto SHRPX_OPT_DNS_CACHE_TIMEOUT =
     StringRef::from_lit("dns-cache-timeout");
+constexpr auto SHRPX_OPT_DNS_LOOKUP_TIMEOUT =
+    StringRef::from_lit("dns-lookup-timeout");
+constexpr auto SHRPX_OPT_DNS_MAX_TRY = StringRef::from_lit("dns-max-try");
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
@@ -785,7 +788,11 @@ struct APIConfig {
 struct DNSConfig {
   struct {
     ev_tstamp cache;
+    ev_tstamp lookup;
   } timeout;
+  // The number of tries name resolver makes before abandoning
+  // request.
+  size_t max_try;
 };
 
 struct Config {
@@ -905,6 +912,8 @@ enum {
   SHRPX_OPTID_DAEMON,
   SHRPX_OPTID_DH_PARAM_FILE,
   SHRPX_OPTID_DNS_CACHE_TIMEOUT,
+  SHRPX_OPTID_DNS_LOOKUP_TIMEOUT,
+  SHRPX_OPTID_DNS_MAX_TRY,
   SHRPX_OPTID_ECDH_CURVES,
   SHRPX_OPTID_ERROR_PAGE,
   SHRPX_OPTID_ERRORLOG_FILE,
