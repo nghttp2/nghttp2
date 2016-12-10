@@ -70,7 +70,7 @@ are required:
 * OpenSSL >= 1.0.1
 * libev >= 4.11
 * zlib >= 1.2.3
-* libc-ares >= 1.10.0
+* libc-ares >= 1.7.5
 
 ALPN support requires OpenSSL >= 1.0.2 (released 22 January 2015).
 LibreSSL >= 2.2.0 can be used instead of OpenSSL, but OpenSSL has more
