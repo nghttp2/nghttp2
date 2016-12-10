@@ -19,6 +19,7 @@ include_directories(
   ${LIBXML2_INCLUDE_DIRS}
   ${LIBEV_INCLUDE_DIRS}
   ${OPENSSL_INCLUDE_DIRS}
+  ${LIBCARES_INCLUDE_DIRS}
   ${JANSSON_INCLUDE_DIRS}
   ${ZLIB_INCLUDE_DIRS}
 )
@@ -31,6 +32,7 @@ link_libraries(
   ${LIBXML2_LIBRARIES}
   ${LIBEV_LIBRARIES}
   ${OPENSSL_LIBRARIES}
+  ${LIBCARES_LIBRARIES}
   ${JANSSON_LIBRARIES}
   ${ZLIB_LIBRARIES}
   ${APP_LIBRARIES}
@@ -112,6 +114,9 @@ if(ENABLE_APP)
     shrpx_api_downstream_connection.cc
     shrpx_health_monitor_downstream_connection.cc
     shrpx_exec.cc
+    shrpx_dns_resolver.cc
+    shrpx_dual_dns_resolver.cc
+    shrpx_dns_tracker.cc
     xsi_strerror.c
   )
   if(HAVE_SPDYLAY)
