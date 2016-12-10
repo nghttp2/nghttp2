@@ -39,6 +39,8 @@
 
 #include <ev.h>
 
+#include <ares.h>
+
 #include "shrpx_config.h"
 #include "shrpx_connection_handler.h"
 #include "shrpx_log_config.h"
@@ -392,11 +394,18 @@ std::random_device rd;
 } // namespace
 
 int worker_process_event_loop(WorkerProcessConfig *wpconf) {
+  int rv;
   std::array<char, STRERROR_BUFSIZE> errbuf;
   (void)errbuf;
 
   if (reopen_log_files() != 0) {
     LOG(FATAL) << "Failed to open log file";
+    return -1;
+  }
+
+  rv = ares_library_init(ARES_LIB_INIT_ALL);
+  if (rv != 0) {
+    LOG(FATAL) << "ares_library_init failed: " << ares_strerror(rv);
     return -1;
   }
 
@@ -494,8 +503,6 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
     }
   }
 
-  int rv;
-
   if (config->num_worker == 1) {
     rv = conn_handler.create_single_worker();
     if (rv != 0) {
@@ -574,6 +581,8 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
     }
   }
 #endif // HAVE_NEVERBLEED
+
+  ares_library_cleanup();
 
   return 0;
 }
