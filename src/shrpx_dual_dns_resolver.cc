@@ -78,7 +78,7 @@ int DualDNSResolver::get_status(Address *result) const {
   if (rv4 == DNS_STATUS_RUNNING || rv6 == DNS_STATUS_RUNNING) {
     return DNS_STATUS_RUNNING;
   }
-  if (rv4 == DNS_STATUS_ERROR && rv6 == DNS_STATUS_ERROR) {
+  if (rv4 == DNS_STATUS_ERROR || rv6 == DNS_STATUS_ERROR) {
     return DNS_STATUS_ERROR;
   }
   return DNS_STATUS_IDLE;
