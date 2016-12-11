@@ -1767,10 +1767,10 @@ The replacement is done instantly without breaking existing
 connections or requests.  It also avoids any process creation as is
 the case with hot swapping with signals.
 
-The one limitation is that only numeric IP address is allowd in
-:option:`backend <--backend>` in request body while non numeric
-hostname is allowed in command-line or configuration file is read
-using :option:`--conf`.
+The one limitation is that only numeric IP address is allowed in
+:option:`backend <--backend>` in request body unless "dns" parameter
+is missing while non numeric hostname is allowed in command-line or
+configuration file is read using :option:`--conf`.
 
 SEE ALSO
 --------

@@ -312,6 +312,11 @@ constexpr auto SHRPX_OPT_ECDH_CURVES = StringRef::from_lit("ecdh-curves");
 constexpr auto SHRPX_OPT_TLS_SCT_DIR = StringRef::from_lit("tls-sct-dir");
 constexpr auto SHRPX_OPT_BACKEND_CONNECT_TIMEOUT =
     StringRef::from_lit("backend-connect-timeout");
+constexpr auto SHRPX_OPT_DNS_CACHE_TIMEOUT =
+    StringRef::from_lit("dns-cache-timeout");
+constexpr auto SHRPX_OPT_DNS_LOOKUP_TIMEOUT =
+    StringRef::from_lit("dns-lookup-timeout");
+constexpr auto SHRPX_OPT_DNS_MAX_TRY = StringRef::from_lit("dns-max-try");
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
@@ -379,6 +384,7 @@ struct UpstreamAddr {
 };
 
 struct DownstreamAddrConfig {
+  // Resolved address if |dns| is false
   Address addr;
   // backend address.  If |host_unix| is true, this is UNIX domain
   // socket path.  This must be NULL terminated string.
@@ -397,6 +403,8 @@ struct DownstreamAddrConfig {
   // true if |host| contains UNIX domain socket path.
   bool host_unix;
   bool tls;
+  // true if dynamic DNS is enabled
+  bool dns;
 };
 
 // Mapping hash to idx which is an index into
@@ -777,6 +785,16 @@ struct APIConfig {
   bool enabled;
 };
 
+struct DNSConfig {
+  struct {
+    ev_tstamp cache;
+    ev_tstamp lookup;
+  } timeout;
+  // The number of tries name resolver makes before abandoning
+  // request.
+  size_t max_try;
+};
+
 struct Config {
   Config()
       : balloc(4096, 4096),
@@ -787,6 +805,7 @@ struct Config {
         logging{},
         conn{},
         api{},
+        dns{},
         num_worker{0},
         padding{0},
         rlimit_nofile{0},
@@ -815,6 +834,7 @@ struct Config {
   LoggingConfig logging;
   ConnectionConfig conn;
   APIConfig api;
+  DNSConfig dns;
   StringRef pid_file;
   StringRef conf_path;
   StringRef user;
@@ -891,6 +911,9 @@ enum {
   SHRPX_OPTID_CONF,
   SHRPX_OPTID_DAEMON,
   SHRPX_OPTID_DH_PARAM_FILE,
+  SHRPX_OPTID_DNS_CACHE_TIMEOUT,
+  SHRPX_OPTID_DNS_LOOKUP_TIMEOUT,
+  SHRPX_OPTID_DNS_MAX_TRY,
   SHRPX_OPTID_ECDH_CURVES,
   SHRPX_OPTID_ERROR_PAGE,
   SHRPX_OPTID_ERRORLOG_FILE,

@@ -45,7 +45,8 @@ EXTRA_DIST = nghttpx.conf.sample proxy.pac.sample android-config android-make \
 	cmake/Version.cmake \
 	cmake/FindCython.cmake \
 	cmake/FindLibevent.cmake \
-	cmake/FindJansson.cmake
+	cmake/FindJansson.cmake \
+	cmake/FindLibcares.cmake
 
 .PHONY: clang-format
 

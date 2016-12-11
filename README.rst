@@ -70,6 +70,7 @@ are required:
 * OpenSSL >= 1.0.1
 * libev >= 4.11
 * zlib >= 1.2.3
+* libc-ares >= 1.7.5
 
 ALPN support requires OpenSSL >= 1.0.2 (released 22 January 2015).
 LibreSSL >= 2.2.0 can be used instead of OpenSSL, but OpenSSL has more
@@ -115,7 +116,7 @@ If you are using Ubuntu 14.04 LTS (trusty) or Debian 7.0 (wheezy) and above run 
 
     sudo apt-get install g++ make binutils autoconf automake autotools-dev libtool pkg-config \
       zlib1g-dev libcunit1-dev libssl-dev libxml2-dev libev-dev libevent-dev libjansson-dev \
-      libjemalloc-dev cython python3-dev python-setuptools
+      libc-ares-dev libjemalloc-dev cython python3-dev python-setuptools
 
 From Ubuntu 15.10, spdylay has been available as a package named
 `libspdylay-dev`.  For the earlier Ubuntu release, you need to build

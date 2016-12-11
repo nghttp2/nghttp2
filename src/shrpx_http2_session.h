@@ -50,6 +50,7 @@ class Http2DownstreamConnection;
 class Worker;
 struct DownstreamAddrGroup;
 struct DownstreamAddr;
+struct DNSQuery;
 
 struct StreamData {
   StreamData *dlnext, *dlprev;
@@ -81,6 +82,7 @@ public:
   // associated ClientHandlers will be deleted.
   int disconnect(bool hard = false);
   int initiate_connection();
+  int resolve_name();
 
   void add_downstream_connection(Http2DownstreamConnection *dconn);
   void remove_downstream_connection(Http2DownstreamConnection *dconn);
@@ -203,6 +205,9 @@ public:
   // shutdown the connection.
   void check_retire();
 
+  // Returns address used to connect to backend.  Could be nullptr.
+  const Address *get_raddr() const;
+
   enum {
     // Disconnected
     DISCONNECTED,
@@ -218,6 +223,8 @@ public:
     CONNECTED,
     // Connection is started to fail
     CONNECT_FAILING,
+    // Resolving host name
+    RESOLVING_NAME,
   };
 
   enum {
@@ -259,6 +266,13 @@ private:
   // Address of remote endpoint
   DownstreamAddr *addr_;
   nghttp2_session *session_;
+  // Actual remote address used to contact backend.  This is initially
+  // nullptr, and may point to either &addr_->addr,
+  // resolved_addr_.get(), or HTTP proxy's address structure.
+  const Address *raddr_;
+  // Resolved IP address if dns parameter is used
+  std::unique_ptr<Address> resolved_addr_;
+  std::unique_ptr<DNSQuery> dns_query_;
   int state_;
   int connection_check_state_;
   int freelist_zone_;

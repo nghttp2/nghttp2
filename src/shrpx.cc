@@ -1486,6 +1486,14 @@ void fill_default_config(Config *config) {
 
   auto &apiconf = config->api;
   apiconf.max_request_body = 16_k;
+
+  auto &dnsconf = config->dns;
+  {
+    auto &timeoutconf = dnsconf.timeout;
+    timeoutconf.cache = 10_s;
+    timeoutconf.lookup = 5_s;
+  }
+  dnsconf.max_try = 2;
 }
 
 } // namespace
@@ -1587,13 +1595,13 @@ Connections:
               Several parameters <PARAM> are accepted after <PATTERN>.
               The  parameters are  delimited  by  ";".  The  available
               parameters       are:      "proto=<PROTO>",       "tls",
-              "sni=<SNI_HOST>",     "fall=<N>",    "rise=<N>",     and
-              "affinity=<METHOD>".  The parameter consists of keyword,
-              and optionally followed by  "=" and value.  For example,
-              the parameter "proto=h2" consists of the keyword "proto"
-              and  value "h2".   The parameter  "tls" consists  of the
-              keyword   "tls"  without   value.   Each   parameter  is
-              described as follows.
+              "sni=<SNI_HOST>",         "fall=<N>",        "rise=<N>",
+              "affinity=<METHOD>", and "dns".   The parameter consists
+              of keyword,  and optionally  followed by "="  and value.
+              For example,  the parameter  "proto=h2" consists  of the
+              keyword  "proto" and  value "h2".   The parameter  "tls"
+              consists  of  the  keyword "tls"  without  value.   Each
+              parameter is described as follows.
 
               The backend application protocol  can be specified using
               optional  "proto"   parameter,  and   in  the   form  of
@@ -1641,6 +1649,14 @@ Connections:
               session affinity  is desired.  The session  affinity may
               break if one of the backend gets unreachable, or backend
               settings are reloaded or replaced by API.
+
+              By default, name resolution of backend host name is done
+              at  start  up,  or reloading  configuration.   If  "dns"
+              parameter   is  given,   name  resolution   takes  place
+              dynamically.  This is useful  if backend address changes
+              frequently.   If  "dns"  is given,  name  resolution  of
+              backend   host   name   at  start   up,   or   reloading
+              configuration is skipped.
 
               Since ";" and ":" are  used as delimiter, <PATTERN> must
               not  contain these  characters.  Since  ";" has  special
@@ -2368,6 +2384,25 @@ API:
               Default: )"
       << util::utos_unit(config->api.max_request_body) << R"(
 
+DNS:
+  --dns-cache-timeout=<DURATION>
+              Set duration that cached DNS results remain valid.  Note
+              that nghttpx caches the unsuccessful results as well.
+              Default: )"
+      << util::duration_str(config->dns.timeout.cache) << R"(
+  --dns-lookup-timeout=<DURATION>
+              Set timeout that  DNS server is given to  respond to the
+              initial  DNS  query.  For  the  2nd  and later  queries,
+              server is  given time based  on this timeout, and  it is
+              scaled linearly.
+              Default: )"
+      << util::duration_str(config->dns.timeout.lookup) << R"(
+  --dns-max-try=<N>
+              Set the number of DNS query before nghttpx gives up name
+              lookup.
+              Default: )"
+      << config->dns.max_try << R"(
+
 Debug:
   --frontend-http2-dump-request-header=<PATH>
               Dumps request headers received by HTTP/2 frontend to the
@@ -3027,6 +3062,9 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_TLS_SCT_DIR.c_str(), required_argument, &flag, 141},
         {SHRPX_OPT_BACKEND_CONNECT_TIMEOUT.c_str(), required_argument, &flag,
          142},
+        {SHRPX_OPT_DNS_CACHE_TIMEOUT.c_str(), required_argument, &flag, 143},
+        {SHRPX_OPT_DNS_LOOKUP_TIMEOUT.c_str(), required_argument, &flag, 144},
+        {SHRPX_OPT_DNS_MAX_TRY.c_str(), required_argument, &flag, 145},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -3699,6 +3737,18 @@ int main(int argc, char **argv) {
         // --backend-connect-timeout
         cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_CONNECT_TIMEOUT,
                              StringRef{optarg});
+        break;
+      case 143:
+        // --dns-cache-timeout
+        cmdcfgs.emplace_back(SHRPX_OPT_DNS_CACHE_TIMEOUT, StringRef{optarg});
+        break;
+      case 144:
+        // --dns-lookup-timeou
+        cmdcfgs.emplace_back(SHRPX_OPT_DNS_LOOKUP_TIMEOUT, StringRef{optarg});
+        break;
+      case 145:
+        // --dns-max-try
+        cmdcfgs.emplace_back(SHRPX_OPT_DNS_MAX_TRY, StringRef{optarg});
         break;
       default:
         break;

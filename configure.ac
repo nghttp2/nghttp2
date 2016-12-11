@@ -370,6 +370,13 @@ if test "x${have_openssl}" = "xno"; then
   AC_MSG_NOTICE($OPENSSL_PKG_ERRORS)
 fi
 
+# c-ares (for src)
+PKG_CHECK_MODULES([LIBCARES], [libcares >= 1.7.5], [have_libcares=yes],
+                  [have_libcares=no])
+if test "x${have_libcares}" = "xno"; then
+  AC_MSG_NOTICE($LIBCARES_PKG_ERRORS)
+fi
+
 # libevent_openssl (for examples)
 # 2.0.8 is required because we use evconnlistener_set_error_cb()
 PKG_CHECK_MODULES([LIBEVENT_OPENSSL], [libevent_openssl >= 2.0.8],
@@ -479,13 +486,14 @@ if test "x${request_asio_lib}" = "xyes"; then
   fi
 fi
 
-# The nghttp, nghttpd and nghttpx under src depend on zlib, OpenSSL
-# and libev
+# The nghttp, nghttpd and nghttpx under src depend on zlib, OpenSSL,
+# libev, and libc-ares.
 enable_app=no
 if test "x${request_app}" != "xno" &&
    test "x${have_zlib}" = "xyes" &&
    test "x${have_openssl}" = "xyes" &&
-   test "x${have_libev}" = "xyes"; then
+   test "x${have_libev}" = "xyes" &&
+   test "x${have_libcares}" = "xyes"; then
   enable_app=yes
 fi
 
@@ -639,6 +647,26 @@ AC_SYS_LARGEFILE
 
 AC_CHECK_MEMBER([struct tm.tm_gmtoff], [have_struct_tm_tm_gmtoff=yes],
                 [have_struct_tm_tm_gmtoff=no], [[#include <time.h>]])
+
+AC_CHECK_MEMBER([struct sockaddr_in.sin_len],
+                [AC_DEFINE([HAVE_SOCKADDR_IN_SIN_LEN],[1],
+                  [Define to 1 if struct sockaddr_in has sin_len member.])],
+                [],
+                [[
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+]])
+
+AC_CHECK_MEMBER([struct sockaddr_in6.sin6_len],
+                [AC_DEFINE([HAVE_SOCKADDR_IN6_SIN6_LEN],[1],
+                  [Define to 1 if struct sockaddr_in6 has sin6_len member.])],
+                [],
+                [[
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+]])
 
 if test "x$have_struct_tm_tm_gmtoff" = "xyes"; then
   AC_DEFINE([HAVE_STRUCT_TM_TM_GMTOFF], [1],
@@ -890,6 +918,7 @@ AC_MSG_NOTICE([summary of build options:
       OpenSSL:        ${have_openssl} (CFLAGS='${OPENSSL_CFLAGS}' LIBS='${OPENSSL_LIBS}')
       Libxml2:        ${have_libxml2} (CFLAGS='${XML_CPPFLAGS}' LIBS='${XML_LIBS}')
       Libev:          ${have_libev} (CFLAGS='${LIBEV_CFLAGS}' LIBS='${LIBEV_LIBS}')
+      Libc-ares       ${have_libcares} (CFLAGS='${LIBCARES_CFLAGS}' LIBS='${LIBCARES_LIBS}')
       Libevent(SSL):  ${have_libevent_openssl} (CFLAGS='${LIBEVENT_OPENSSL_CFLAGS}' LIBS='${LIBEVENT_OPENSSL_LIBS}')
       Spdylay:        ${have_spdylay} (CFLAGS='${LIBSPDYLAY_CFLAGS}' LIBS='${LIBSPDYLAY_LIBS}')
       Jansson:        ${have_jansson} (CFLAGS='${JANSSON_CFLAGS}' LIBS='${JANSSON_LIBS}')

@@ -1369,6 +1369,42 @@ func TestH2H1ProxyProtocolV1InvalidID(t *testing.T) {
 	}
 }
 
+// TestH2H1ExternalDNS tests that DNS resolution using external DNS
+// with HTTP/1 backend works.
+func TestH2H1ExternalDNS(t *testing.T) {
+	st := newServerTester([]string{"--external-dns"}, t, noopHandler)
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name: "TestH2H1ExternalDNS",
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+
+	if got, want := res.status, 200; got != want {
+		t.Errorf("status = %v; want %v", got, want)
+	}
+}
+
+// TestH2H1DNS tests that DNS resolution without external DNS with
+// HTTP/1 backend works.
+func TestH2H1DNS(t *testing.T) {
+	st := newServerTester([]string{"--dns"}, t, noopHandler)
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name: "TestH2H1DNS",
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+
+	if got, want := res.status, 200; got != want {
+		t.Errorf("status = %v; want %v", got, want)
+	}
+}
+
 // TestH2H1GracefulShutdown tests graceful shutdown.
 func TestH2H1GracefulShutdown(t *testing.T) {
 	st := newServerTester(nil, t, noopHandler)
@@ -1842,6 +1878,42 @@ func TestH2H2RespPhaseReturn(t *testing.T) {
 
 	if got, want := string(res.body), "Hello World from resp"; got != want {
 		t.Errorf("body = %v; want %v", got, want)
+	}
+}
+
+// TestH2H2ExternalDNS tests that DNS resolution using external DNS
+// with HTTP/2 backend works.
+func TestH2H2ExternalDNS(t *testing.T) {
+	st := newServerTester([]string{"--http2-bridge", "--external-dns"}, t, noopHandler)
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name: "TestH2H2ExternalDNS",
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+
+	if got, want := res.status, 200; got != want {
+		t.Errorf("status = %v; want %v", got, want)
+	}
+}
+
+// TestH2H2DNS tests that DNS resolution without external DNS with
+// HTTP/2 backend works.
+func TestH2H2DNS(t *testing.T) {
+	st := newServerTester([]string{"--http2-bridge", "--dns"}, t, noopHandler)
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name: "TestH2H2DNS",
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+
+	if got, want := res.status, 200; got != want {
+		t.Errorf("status = %v; want %v", got, want)
 	}
 }
 

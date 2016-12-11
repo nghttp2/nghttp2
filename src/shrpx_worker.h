@@ -48,6 +48,7 @@
 #include "shrpx_ssl.h"
 #include "shrpx_live_check.h"
 #include "shrpx_connect_blocker.h"
+#include "shrpx_dns_tracker.h"
 #include "allocator.h"
 
 using namespace nghttp2;
@@ -112,6 +113,8 @@ struct DownstreamAddr {
   shrpx_proto proto;
   // true if TLS is used in this backend
   bool tls;
+  // true if dynamic DNS is enabled
+  bool dns;
 };
 
 // Simplified weighted fair queuing.  Actually we don't use queue here
@@ -263,6 +266,8 @@ public:
 
   ConnectionHandler *get_connection_handler() const;
 
+  DNSTracker *get_dns_tracker();
+
 private:
 #ifndef NOTHREADS
   std::future<void> fut_;
@@ -275,6 +280,7 @@ private:
   ev_timer proc_wev_timer_;
   MemchunkPool mcpool_;
   WorkerStat worker_stat_;
+  DNSTracker dns_tracker_;
 
   std::shared_ptr<DownstreamConfig> downstreamconf_;
   std::unique_ptr<MemcachedDispatcher> session_cache_memcached_dispatcher_;
@@ -314,7 +320,10 @@ size_t match_downstream_addr_group(
     const std::vector<std::shared_ptr<DownstreamAddrGroup>> &groups,
     size_t catch_all, BlockAllocator &balloc);
 
-void downstream_failure(DownstreamAddr *addr);
+// Calls this function if connecting to backend failed.  |raddr| is
+// the actual address used to connect to backend, and it could be
+// nullptr.  This function may schedule live check.
+void downstream_failure(DownstreamAddr *addr, const Address *raddr);
 
 } // namespace shrpx
 
