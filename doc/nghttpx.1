@@ -1971,9 +1971,9 @@ connections or requests.  It also avoids any process creation as is
 the case with hot swapping with signals.
 .sp
 The one limitation is that only numeric IP address is allowd in
-\fI\%backend\fP in request body while non numeric
-hostname is allowed in command\-line or configuration file is read
-using \fI\%\-\-conf\fP\&.
+\fI\%backend\fP in request body unless "dns" parameter
+is used while non numeric hostname is allowed in command\-line or
+configuration file is read using \fI\%\-\-conf\fP\&.
 .SH SEE ALSO
 .sp
 \fBnghttp(1)\fP, \fBnghttpd(1)\fP, \fBh2load(1)\fP
