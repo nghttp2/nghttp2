@@ -101,10 +101,17 @@ func newServerTesterInternal(src_args []string, t *testing.T, handler http.Handl
 	args := []string{}
 
 	backendTLS := false
+	dns := false
+	externalDNS := false
 	for _, k := range src_args {
 		switch k {
 		case "--http2-bridge":
 			backendTLS = true
+		case "--dns":
+			dns = true
+		case "--external-dns":
+			dns = true
+			externalDNS = true
 		default:
 			args = append(args, k)
 		}
@@ -117,7 +124,7 @@ func newServerTesterInternal(src_args []string, t *testing.T, handler http.Handl
 		ts.TLS = new(tls.Config)
 		ts.TLS.NextProtos = append(ts.TLS.NextProtos, "h2")
 		ts.StartTLS()
-		args = append(args, "-k", "--backend-tls")
+		args = append(args, "-k")
 	} else {
 		ts.Start()
 	}
@@ -134,9 +141,23 @@ func newServerTesterInternal(src_args []string, t *testing.T, handler http.Handl
 
 	// URL.Host looks like "127.0.0.1:8080", but we want
 	// "127.0.0.1,8080"
-	b := "-b" + strings.Replace(backendURL.Host, ":", ",", -1)
+	b := "-b"
+	if !externalDNS {
+		b += fmt.Sprintf("%v;", strings.Replace(backendURL.Host, ":", ",", -1))
+	} else {
+		sep := strings.LastIndex(backendURL.Host, ":")
+		if sep == -1 {
+			t.Fatalf("backendURL.Host %v does not contain separator ':'", backendURL.Host)
+		}
+		// We use awesome service xip.io.
+		b += fmt.Sprintf("%v.xip.io,%v;", backendURL.Host[:sep], backendURL.Host[sep+1:])
+	}
+
 	if backendTLS {
-		b += ";;proto=h2;tls"
+		b += ";proto=h2;tls"
+	}
+	if dns {
+		b += ";dns"
 	}
 
 	noTLS := "no-tls"
