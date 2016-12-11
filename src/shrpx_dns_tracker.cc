@@ -65,7 +65,12 @@ ResolverEntry DNSTracker::make_entry(std::unique_ptr<DualDNSResolver> resolv,
   ent.resolv = std::move(resolv);
   ent.host = std::move(host);
   ent.status = status;
-  ent.expiry = ev_now(loop_) + dnsconf.timeout.cache;
+  switch (status) {
+  case DNS_STATUS_ERROR:
+  case DNS_STATUS_OK:
+    ent.expiry = ev_now(loop_) + dnsconf.timeout.cache;
+    break;
+  }
   if (result) {
     ent.result = *result;
   }
@@ -75,8 +80,16 @@ ResolverEntry DNSTracker::make_entry(std::unique_ptr<DualDNSResolver> resolv,
 void DNSTracker::update_entry(ResolverEntry &ent,
                               std::unique_ptr<DualDNSResolver> resolv,
                               int status, const Address *result) {
+  auto &dnsconf = get_config()->dns;
+
   ent.resolv = std::move(resolv);
   ent.status = status;
+  switch (status) {
+  case DNS_STATUS_ERROR:
+  case DNS_STATUS_OK:
+    ent.expiry = ev_now(loop_) + dnsconf.timeout.cache;
+    break;
+  }
   if (result) {
     ent.result = *result;
   }
