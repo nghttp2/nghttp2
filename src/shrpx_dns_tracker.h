@@ -88,6 +88,10 @@ public:
   int resolve(Address *result, DNSQuery *dnsq);
   // Cancels name lookup requested by |dnsq|.
   void cancel(DNSQuery *dnsq);
+  // Removes expired entries from ents_.
+  void gc();
+  // Starts GC timer.
+  void start_gc_timer();
 
 private:
   ResolverEntry make_entry(std::unique_ptr<DualDNSResolver> resolv,
@@ -100,6 +104,10 @@ private:
   void add_to_qlist(ResolverEntry &ent, DNSQuery *dnsq);
 
   std::map<StringRef, ResolverEntry> ents_;
+  // Periodically iterates ents_, and removes expired entries to avoid
+  // excessive use of memory.  Since only backend API can potentially
+  // increase memory consumption, interval could be very long.
+  ev_timer gc_timer_;
   struct ev_loop *loop_;
 };
 

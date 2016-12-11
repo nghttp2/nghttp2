@@ -28,9 +28,21 @@
 
 namespace shrpx {
 
-DNSTracker::DNSTracker(struct ev_loop *loop) : loop_(loop) {}
+namespace {
+void gccb(struct ev_loop *loop, ev_timer *w, int revents) {
+  auto dns_tracker = static_cast<DNSTracker *>(w->data);
+  dns_tracker->gc();
+}
+} // namespace
+
+DNSTracker::DNSTracker(struct ev_loop *loop) : loop_(loop) {
+  ev_timer_init(&gc_timer_, gccb, 0., 12_h);
+  gc_timer_.data = this;
+}
 
 DNSTracker::~DNSTracker() {
+  ev_timer_stop(loop_, &gc_timer_);
+
   for (auto &p : ents_) {
     auto &qlist = p.second.qlist;
     while (!qlist.empty()) {
@@ -94,6 +106,8 @@ int DNSTracker::resolve(Address *result, DNSQuery *dnsq) {
       ents_.emplace(host, make_entry(nullptr, std::move(host_copy),
                                      DNS_STATUS_ERROR, nullptr));
 
+      start_gc_timer();
+
       return DNS_STATUS_ERROR;
     }
 
@@ -107,6 +121,8 @@ int DNSTracker::resolve(Address *result, DNSQuery *dnsq) {
       ents_.emplace(host, make_entry(nullptr, std::move(host_copy),
                                      DNS_STATUS_ERROR, nullptr));
 
+      start_gc_timer();
+
       return DNS_STATUS_ERROR;
     }
     case DNS_STATUS_OK: {
@@ -118,6 +134,8 @@ int DNSTracker::resolve(Address *result, DNSQuery *dnsq) {
       ents_.emplace(host, make_entry(nullptr, std::move(host_copy),
                                      DNS_STATUS_OK, result));
 
+      start_gc_timer();
+
       return DNS_STATUS_OK;
     }
     case DNS_STATUS_RUNNING: {
@@ -126,6 +144,8 @@ int DNSTracker::resolve(Address *result, DNSQuery *dnsq) {
       auto p = ents_.emplace(host,
                              make_entry(std::move(resolv), std::move(host_copy),
                                         DNS_STATUS_RUNNING, nullptr));
+
+      start_gc_timer();
 
       auto &ent = (*p.first).second;
 
@@ -258,6 +278,35 @@ void DNSTracker::cancel(DNSQuery *dnsq) {
   auto &ent = (*it).second;
   ent.qlist.remove(dnsq);
   dnsq->in_qlist = false;
+}
+
+void DNSTracker::start_gc_timer() {
+  if (ev_is_active(&gc_timer_)) {
+    return;
+  }
+
+  ev_timer_again(loop_, &gc_timer_);
+}
+
+void DNSTracker::gc() {
+  if (LOG_ENABLED(INFO)) {
+    LOG(INFO) << "Starting removing expired DNS cache entries";
+  }
+
+  auto now = ev_now(loop_);
+  for (auto it = std::begin(ents_); it != std::end(ents_);) {
+    auto &ent = (*it).second;
+    if (ent.expiry >= now) {
+      ++it;
+      continue;
+    }
+
+    it = ents_.erase(it);
+  }
+
+  if (ents_.empty()) {
+    ev_timer_stop(loop_, &gc_timer_);
+  }
 }
 
 } // namespace shrpx
