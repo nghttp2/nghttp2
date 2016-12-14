@@ -729,13 +729,6 @@ AC_CHECK_DECLS([initgroups], [], [], [[
   #include <grp.h>
 ]])
 
-# Checks for epoll availability, primarily for examples/tiny-nghttpd
-AX_HAVE_EPOLL([have_epoll=yes], [have_epoll=no])
-
-AM_CONDITIONAL([ENABLE_TINY_NGHTTPD],
-               [ test "x${have_epoll}" = "xyes" &&
-                 test "x${have_timerfd_create}" = "xyes"])
-
 save_CFLAGS=$CFLAGS
 save_CXXFLAGS=$CXXFLAGS
 
