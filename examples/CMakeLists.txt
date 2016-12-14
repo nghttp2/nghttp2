@@ -29,10 +29,6 @@ if(ENABLE_EXAMPLES)
   add_executable(libevent-server  libevent-server.c $<TARGET_OBJECTS:http-parser>)
   add_executable(deflate          deflate.c $<TARGET_OBJECTS:http-parser>)
 
-  if(ENABLE_TINY_NGHTTPD)
-    add_executable(tiny-nghttpd tiny-nghttpd.c $<TARGET_OBJECTS:http-parser>)
-  endif()
-
   if(ENABLE_ASIO_LIB)
     foreach(name asio-sv asio-sv2 asio-cl asio-cl2)
       add_executable(${name} ${name}.cc $<TARGET_OBJECTS:http-parser>)
