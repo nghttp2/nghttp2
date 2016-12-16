@@ -343,10 +343,9 @@ requests, do this:
    backend=serv1,3000;/;proto=h2
    backend=serv1,3000;/ws/;proto=http/1.1
 
-Note that the backends share the same pattern must have the same
-backend protocol.  The default backend protocol is HTTP/1.1.
+The default backend protocol is HTTP/1.1.
 
-TLS can be enabed per pattern basis:
+TLS can be enabled per pattern basis:
 
 .. code-block:: text
 
