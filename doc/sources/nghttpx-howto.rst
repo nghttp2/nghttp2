@@ -368,7 +368,7 @@ parameter in :option:`--backend` option, like so:
    backend=foo.example.com;;dns
 
 nghttpx will cache resolved addresses for certain period of time.  To
-change this cache period, use :option:`--dns-cache-cache-timeout`.
+change this cache period, use :option:`--dns-cache-timeout`.
 
 Migration from nghttpx v1.8.0 or earlier
 ----------------------------------------
