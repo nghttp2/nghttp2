@@ -41,7 +41,7 @@ AM_CPPFLAGS = \
 	-I$(top_srcdir)/src/includes \
 	-I$(top_srcdir)/third-party \
 	@LIBSPDYLAY_CFLAGS@ \
-	@XML_CPPFLAGS@	\
+	@LIBXML2_CFLAGS@ \
 	@LIBEV_CFLAGS@ \
 	@OPENSSL_CFLAGS@ \
 	@LIBCARES_CFLAGS@ \
@@ -53,7 +53,7 @@ LDADD = $(top_builddir)/lib/libnghttp2.la \
 	$(top_builddir)/third-party/libhttp-parser.la \
 	@JEMALLOC_LIBS@ \
 	@LIBSPDYLAY_LIBS@ \
-	@XML_LIBS@ \
+	@LIBXML2_LIBS@ \
 	@LIBEV_LIBS@ \
 	@OPENSSL_LIBS@ \
 	@LIBCARES_LIBS@ \

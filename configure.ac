@@ -396,15 +396,12 @@ else
 fi
 
 # libxml2 (for src/nghttp)
-have_libxml2=no
-if test "x${request_libxml2}" != "xno"; then
-  m4_ifdef([AM_PATH_XML2],
-    [AM_PATH_XML2(2.7.7, [have_libxml2=yes], [have_libxml2=no])],
-    [AC_MSG_WARN([configure was created without libxml2 detection macro; libxml2 detection is disabled])])
-
-  if test "x${have_libxml2}" = "xyes"; then
-    AC_DEFINE([HAVE_LIBXML2], [1], [Define to 1 if you have `libxml2` library.])
-  fi
+PKG_CHECK_MODULES([LIBXML2], [libxml-2.0 >= 2.7.7],
+                  [have_libxml2=yes], [have_libxml2=no])
+if test "x${have_libxml2}" = "xyes"; then
+  AC_DEFINE([HAVE_LIBXML2], [1], [Define to 1 if you have `libxml2` library.])
+else
+  AC_MSG_NOTICE($LIBXML2_PKG_ERRORS)
 fi
 
 if test "x${request_libxml2}" = "xyes" &&
@@ -909,7 +906,7 @@ AC_MSG_NOTICE([summary of build options:
       Failmalloc:     ${enable_failmalloc}
     Libs:
       OpenSSL:        ${have_openssl} (CFLAGS='${OPENSSL_CFLAGS}' LIBS='${OPENSSL_LIBS}')
-      Libxml2:        ${have_libxml2} (CFLAGS='${XML_CPPFLAGS}' LIBS='${XML_LIBS}')
+      Libxml2:        ${have_libxml2} (CFLAGS='${LIBXML2_CPPFLAGS}' LIBS='${LIBXML2_LIBS}')
       Libev:          ${have_libev} (CFLAGS='${LIBEV_CFLAGS}' LIBS='${LIBEV_LIBS}')
       Libc-ares       ${have_libcares} (CFLAGS='${LIBCARES_CFLAGS}' LIBS='${LIBCARES_LIBS}')
       Libevent(SSL):  ${have_libevent_openssl} (CFLAGS='${LIBEVENT_OPENSSL_CFLAGS}' LIBS='${LIBEVENT_OPENSSL_LIBS}')
