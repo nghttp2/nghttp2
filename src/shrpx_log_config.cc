@@ -23,6 +23,12 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 #include "shrpx_log_config.h"
+
+#include <unistd.h>
+
+#include <thread>
+#include <sstream>
+
 #include "util.h"
 
 using namespace nghttp2;
@@ -30,7 +36,14 @@ using namespace nghttp2;
 namespace shrpx {
 
 LogConfig::LogConfig()
-    : accesslog_fd(-1), errorlog_fd(-1), errorlog_tty(false) {}
+    : pid(getpid()), accesslog_fd(-1), errorlog_fd(-1), errorlog_tty(false) {
+  auto tid = std::this_thread::get_id();
+  auto tid_hash =
+      util::hash32(StringRef{reinterpret_cast<uint8_t *>(&tid),
+                             reinterpret_cast<uint8_t *>(&tid) + sizeof(tid)});
+  thread_id = util::format_hex(reinterpret_cast<uint8_t *>(&tid_hash),
+                               sizeof(tid_hash));
+}
 
 #ifndef NOTHREADS
 #ifdef HAVE_THREAD_LOCAL
