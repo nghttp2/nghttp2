@@ -293,32 +293,29 @@ void DNSResolver::on_result(int status, hostent *hostent) {
     return;
   }
 
+  auto ap = *hostent->h_addr_list;
+  assert(ap);
+
   switch (hostent->h_addrtype) {
   case AF_INET:
-    for (auto ap = hostent->h_addr_list; *ap; ++ap) {
-      status_ = DNS_STATUS_OK;
-      result_.len = sizeof(result_.su.in);
-      result_.su.in = {};
-      result_.su.in.sin_family = AF_INET;
+    status_ = DNS_STATUS_OK;
+    result_.len = sizeof(result_.su.in);
+    result_.su.in = {};
+    result_.su.in.sin_family = AF_INET;
 #ifdef HAVE_SOCKADDR_IN_SIN_LEN
-      result_.su.in.sin_len = sizeof(result_.su.in);
+    result_.su.in.sin_len = sizeof(result_.su.in);
 #endif // HAVE_SOCKADDR_IN_SIN_LEN
-      memcpy(&result_.su.in.sin_addr, *ap, sizeof(result_.su.in.sin_addr));
-      break;
-    }
+    memcpy(&result_.su.in.sin_addr, ap, sizeof(result_.su.in.sin_addr));
     break;
   case AF_INET6:
-    for (auto ap = hostent->h_addr_list; *ap; ++ap) {
-      status_ = DNS_STATUS_OK;
-      result_.len = sizeof(result_.su.in6);
-      result_.su.in6 = {};
-      result_.su.in6.sin6_family = AF_INET6;
+    status_ = DNS_STATUS_OK;
+    result_.len = sizeof(result_.su.in6);
+    result_.su.in6 = {};
+    result_.su.in6.sin6_family = AF_INET6;
 #ifdef HAVE_SOCKADDR_IN6_SIN6_LEN
-      result_.su.in6.sin6_len = sizeof(result_.su.in6);
+    result_.su.in6.sin6_len = sizeof(result_.su.in6);
 #endif // HAVE_SOCKADDR_IN6_SIN6_LEN
-      memcpy(&result_.su.in6.sin6_addr, *ap, sizeof(result_.su.in6.sin6_addr));
-      break;
-    }
+    memcpy(&result_.su.in6.sin6_addr, ap, sizeof(result_.su.in6.sin6_addr));
     break;
   default:
     assert(0);
