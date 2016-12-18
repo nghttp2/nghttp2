@@ -112,7 +112,8 @@ void stop_ev(struct ev_loop *loop,
 } // namespace
 
 DNSResolver::DNSResolver(struct ev_loop *loop)
-    : loop_(loop),
+    : result_{},
+      loop_(loop),
       channel_(nullptr),
       family_(AF_UNSPEC),
       status_(DNS_STATUS_IDLE) {

@@ -175,6 +175,7 @@ HttpDownstreamConnection::HttpDownstreamConnection(
       ssl_ctx_(worker->get_cl_ssl_ctx()),
       group_(group),
       addr_(nullptr),
+      raddr_(nullptr),
       ioctrl_(&conn_.rlimit),
       response_htp_{0},
       initial_addr_idx_(initial_addr_idx) {}
