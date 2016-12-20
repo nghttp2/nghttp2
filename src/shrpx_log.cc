@@ -138,22 +138,14 @@ Log::~Log() {
   auto tty = lgconf->errorlog_tty;
 
   lgconf->update_tstamp(std::chrono::system_clock::now());
-  auto &time_local = lgconf->time_local;
 
-  if (severity_ == NOTICE) {
-    rv =
-        snprintf(buf, sizeof(buf), "%s PID%d [%s%s%s] %s\n", time_local.c_str(),
-                 config->pid, tty ? SEVERITY_COLOR[severity_] : "",
-                 SEVERITY_STR[severity_].c_str(), tty ? "\033[0m" : "",
-                 stream_.str().c_str());
-  } else {
-    rv = snprintf(buf, sizeof(buf), "%s PID%d [%s%s%s] %s%s:%d%s %s\n",
-                  time_local.c_str(), config->pid,
-                  tty ? SEVERITY_COLOR[severity_] : "",
-                  SEVERITY_STR[severity_].c_str(), tty ? "\033[0m" : "",
-                  tty ? "\033[1;30m" : "", filename_, linenum_,
-                  tty ? "\033[0m" : "", stream_.str().c_str());
-  }
+  // Error log format: <datetime> <master-pid> <current-pid>
+  // <thread-id> <level> (<filename>:<line>) <msg>
+  rv = snprintf(buf, sizeof(buf), "%s %d %d %s %s%s%s (%s:%d) %s\n",
+                lgconf->time_iso8601.c_str(), config->pid, lgconf->pid,
+                lgconf->thread_id.c_str(), tty ? SEVERITY_COLOR[severity_] : "",
+                SEVERITY_STR[severity_].c_str(), tty ? "\033[0m" : "",
+                filename_, linenum_, stream_.str().c_str());
 
   if (rv < 0) {
     return;
