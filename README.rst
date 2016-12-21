@@ -150,6 +150,7 @@ used:
 
 .. code-block:: text
 
+    $ git submodule update --init
     $ autoreconf -i
     $ automake
     $ autoconf
@@ -160,8 +161,7 @@ To compile the source code, gcc >= 4.8.3 or clang >= 3.4 is required.
 
 .. note::
 
-   To enable mruby support in nghttpx, run ``git submodule update
-   --init`` before running configure script, and use ``--with-mruby``
+   To enable mruby support in nghttpx, and use ``--with-mruby``
    configure option.
 
 .. note::
