@@ -28,10 +28,11 @@ unpacked:
 The API level (``--api``) is not important here because we don't use
 Android specific C/C++ API.
 
-The dependent libraries, such as OpenSSL and libev should be built
-with the toolchain and installed under ``$ANDROID_HOME/usr/local``.
-We recommend to build these libraries as static library to make the
-deployment easier.  libxml2 support is currently disabled.
+The dependent libraries, such as OpenSSL, libev, and c-ares should be
+built with the toolchain and installed under
+``$ANDROID_HOME/usr/local``.  We recommend to build these libraries as
+static library to make the deployment easier.  libxml2 support is
+currently disabled.
 
 Although zlib comes with Android NDK, it seems not to be a part of
 public API, so we have to built it for our own.  That also provides us
@@ -95,6 +96,26 @@ patch, to configure libev, use the following script:
         LDFLAGS=-L$PREFIX/lib
 
 And run ``make install`` to build and install.
+
+To configure c-ares, use the following script:
+
+.. code-block:: sh
+
+    #!/bin/sh -e
+
+    if [ -z "$ANDROID_HOME" ]; then
+        echo 'No $ANDROID_HOME specified.'
+        exit 1
+    fi
+    PREFIX=$ANDROID_HOME/usr/local
+    TOOLCHAIN=$ANDROID_HOME/toolchain
+    PATH=$TOOLCHAIN/bin:$PATH
+
+    ./configure \
+        --host=arm-linux-androideabi \
+        --build=`dpkg-architecture -qDEB_BUILD_GNU_TYPE` \
+        --prefix=$PREFIX \
+        --disable-shared
 
 To configure zlib, use the following script:
 
