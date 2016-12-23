@@ -1852,7 +1852,8 @@ Timeout:
               Default: )"
       << util::duration_str(config->conn.downstream->timeout.connect) << R"(
   --backend-keep-alive-timeout=<DURATION>
-              Specify keep-alive timeout for backend connection.
+              Specify   keep-alive   timeout    for   backend   HTTP/1
+              connection.
               Default: )"
       << util::duration_str(config->conn.downstream->timeout.idle_read) << R"(
   --listener-disable-timeout=<DURATION>
