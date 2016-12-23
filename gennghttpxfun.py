@@ -152,6 +152,7 @@ OPTIONS = [
     "dns-cache-timeout",
     "dns-lookup-timeout",
     "dns-max-try",
+    "frontend-keep-alive-timeout",
 ]
 
 LOGVARS = [

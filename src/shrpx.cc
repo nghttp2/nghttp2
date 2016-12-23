@@ -1461,6 +1461,9 @@ void fill_default_config(Config *config) {
 
       // Write timeout for HTTP2/non-HTTP2 upstream connection
       timeoutconf.write = 30_s;
+
+      // Keep alive timeout for HTTP/1 upstream connection
+      timeoutconf.idle_read = 1_min;
     }
   }
 
@@ -1828,6 +1831,11 @@ Timeout:
               Specify write timeout for all frontend connections.
               Default: )"
       << util::duration_str(config->conn.upstream.timeout.write) << R"(
+  --frontend-keep-alive-timeout=<DURATION>
+              Specify   keep-alive   timeout   for   frontend   HTTP/1
+              connection.
+              Default: )"
+      << util::duration_str(config->conn.upstream.timeout.idle_read) << R"(
   --stream-read-timeout=<DURATION>
               Specify  read timeout  for HTTP/2  and SPDY  streams.  0
               means no timeout.
@@ -3066,6 +3074,8 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_DNS_CACHE_TIMEOUT.c_str(), required_argument, &flag, 143},
         {SHRPX_OPT_DNS_LOOKUP_TIMEOUT.c_str(), required_argument, &flag, 144},
         {SHRPX_OPT_DNS_MAX_TRY.c_str(), required_argument, &flag, 145},
+        {SHRPX_OPT_FRONTEND_KEEP_ALIVE_TIMEOUT.c_str(), required_argument,
+         &flag, 146},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -3750,6 +3760,11 @@ int main(int argc, char **argv) {
       case 145:
         // --dns-max-try
         cmdcfgs.emplace_back(SHRPX_OPT_DNS_MAX_TRY, StringRef{optarg});
+        break;
+      case 146:
+        // --frontend-keep-alive-timeout
+        cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_KEEP_ALIVE_TIMEOUT,
+                             StringRef{optarg});
         break;
       default:
         break;
