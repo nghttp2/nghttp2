@@ -699,7 +699,10 @@ int HttpsUpstream::resume_read(IOCtrlReason reason, Downstream *downstream,
     // Process remaining data in input buffer here because these bytes
     // are not notified by readcb until new data arrive.
     http_parser_pause(&htp_, 0);
-    return on_read();
+
+    auto conn = handler_->get_connection();
+    ev_feed_event(conn->loop, &conn->rev, EV_READ);
+    return 0;
   }
 
   return 0;
