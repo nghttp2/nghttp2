@@ -317,6 +317,8 @@ constexpr auto SHRPX_OPT_DNS_CACHE_TIMEOUT =
 constexpr auto SHRPX_OPT_DNS_LOOKUP_TIMEOUT =
     StringRef::from_lit("dns-lookup-timeout");
 constexpr auto SHRPX_OPT_DNS_MAX_TRY = StringRef::from_lit("dns-max-try");
+constexpr auto SHRPX_OPT_FRONTEND_KEEP_ALIVE_TIMEOUT =
+    StringRef::from_lit("frontend-keep-alive-timeout");
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
@@ -766,6 +768,7 @@ struct ConnectionConfig {
       ev_tstamp http2_read;
       ev_tstamp read;
       ev_tstamp write;
+      ev_tstamp idle_read;
     } timeout;
     struct {
       RateLimitConfig read;
@@ -937,6 +940,7 @@ enum {
   SHRPX_OPTID_FRONTEND_HTTP2_SETTINGS_TIMEOUT,
   SHRPX_OPTID_FRONTEND_HTTP2_WINDOW_BITS,
   SHRPX_OPTID_FRONTEND_HTTP2_WINDOW_SIZE,
+  SHRPX_OPTID_FRONTEND_KEEP_ALIVE_TIMEOUT,
   SHRPX_OPTID_FRONTEND_NO_TLS,
   SHRPX_OPTID_FRONTEND_READ_TIMEOUT,
   SHRPX_OPTID_FRONTEND_WRITE_TIMEOUT,

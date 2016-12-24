@@ -76,6 +76,11 @@ int htp_msg_begin(http_parser *htp) {
 
   upstream->attach_downstream(std::move(downstream));
 
+  auto conn = handler->get_connection();
+  auto &upstreamconf = get_config()->conn.upstream;
+
+  conn->rt.repeat = upstreamconf.timeout.read;
+
   handler->repeat_read_timer();
 
   return 0;
@@ -671,6 +676,11 @@ int HttpsUpstream::on_write() {
       if (handler_->get_should_close_after_write()) {
         return 0;
       }
+
+      auto conn = handler_->get_connection();
+      auto &upstreamconf = get_config()->conn.upstream;
+
+      conn->rt.repeat = upstreamconf.timeout.idle_read;
 
       handler_->repeat_read_timer();
 
