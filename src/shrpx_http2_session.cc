@@ -2022,7 +2022,12 @@ int Http2Session::write_clear() {
       }
 
       if (nwrite < 0) {
-        return nwrite;
+        // We may have pending data in receive buffer which may
+        // contain part of response body.  So keep reading.  Invoke
+        // read event to get read(2) error just in case.
+        ev_feed_event(conn_.loop, &conn_.rev, EV_READ);
+        wb_.drain(wb_.rleft());
+        break;
       }
 
       wb_.drain(nwrite);
@@ -2132,7 +2137,12 @@ int Http2Session::write_tls() {
       }
 
       if (nwrite < 0) {
-        return nwrite;
+        // We may have pending data in receive buffer which may
+        // contain part of response body.  So keep reading.  Invoke
+        // read event to get read(2) error just in case.
+        ev_feed_event(conn_.loop, &conn_.rev, EV_READ);
+        wb_.drain(wb_.rleft());
+        break;
       }
 
       wb_.drain(nwrite);

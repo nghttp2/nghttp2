@@ -1184,7 +1184,9 @@ int HttpsUpstream::on_downstream_body_complete(Downstream *downstream) {
     resp.connection_close = true;
   }
 
-  if (req.connection_close || resp.connection_close) {
+  if (req.connection_close || resp.connection_close ||
+      // To avoid to stall upload body
+      downstream->get_request_state() != Downstream::MSG_COMPLETE) {
     auto handler = get_client_handler();
     handler->set_should_close_after_write(true);
   }
