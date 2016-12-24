@@ -1197,7 +1197,9 @@ int HttpsUpstream::on_downstream_body_complete(Downstream *downstream) {
     resp.connection_close = true;
   }
 
-  if (req.connection_close || resp.connection_close) {
+  if (req.connection_close || resp.connection_close ||
+      // To avoid to stall upload body
+      downstream->get_request_state() != Downstream::MSG_COMPLETE) {
     auto handler = get_client_handler();
     handler->set_should_close_after_write(true);
   }
@@ -1234,12 +1236,22 @@ int HttpsUpstream::on_downstream_reset(Downstream *downstream, bool no_retry) {
 
   assert(downstream == downstream_.get());
 
+  downstream_->pop_downstream_connection();
+
   if (!downstream_->request_submission_ready()) {
+    switch (downstream_->get_response_state()) {
+    case Downstream::MSG_COMPLETE:
+      // We have got all response body already.  Send it off.
+      return 0;
+    case Downstream::INITIAL:
+      if (on_downstream_abort_request(downstream_.get(), 503) != 0) {
+        return -1;
+      }
+      return 0;
+    }
     // Return error so that caller can delete handler
     return -1;
   }
-
-  downstream_->pop_downstream_connection();
 
   downstream_->add_retry();
 

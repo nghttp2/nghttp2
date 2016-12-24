@@ -1854,6 +1854,11 @@ int Http2Upstream::on_downstream_reset(Downstream *downstream, bool no_retry) {
   }
 
   if (!downstream->request_submission_ready()) {
+    if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
+      // We have got all response body already.  Send it off.
+      downstream->pop_downstream_connection();
+      return 0;
+    }
     // pushed stream is handled here
     rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
     downstream->pop_downstream_connection();
