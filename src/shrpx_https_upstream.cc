@@ -766,7 +766,7 @@ int HttpsUpstream::downstream_write(DownstreamConnection *dconn) {
   }
 
   if (rv != 0) {
-    return -1;
+    return rv;
   }
 
   return 0;

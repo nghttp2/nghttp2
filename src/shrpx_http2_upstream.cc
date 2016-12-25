@@ -1212,7 +1212,7 @@ int Http2Upstream::downstream_write(DownstreamConnection *dconn) {
     return downstream_error(dconn, Downstream::EVENT_ERROR);
   }
   if (rv != 0) {
-    return -1;
+    return rv;
   }
   return 0;
 }
