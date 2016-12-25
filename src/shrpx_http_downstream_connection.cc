@@ -200,7 +200,8 @@ HttpDownstreamConnection::HttpDownstreamConnection(
       ioctrl_(&conn_.rlimit),
       response_htp_{0},
       initial_addr_idx_(initial_addr_idx),
-      reuse_first_write_done_(true) {}
+      reuse_first_write_done_(true),
+      reusable_(true) {}
 
 HttpDownstreamConnection::~HttpDownstreamConnection() {
   if (LOG_ENABLED(INFO)) {
@@ -1157,7 +1158,8 @@ int HttpDownstreamConnection::write_clear() {
       // part of response body.  So keep reading.  Invoke read event
       // to get read(2) error just in case.
       ev_feed_event(conn_.loop, &conn_.rev, EV_READ);
-      input->drain(input->rleft());
+      do_write_ = &HttpDownstreamConnection::noop;
+      reusable_ = false;
       break;
     }
 
@@ -1285,7 +1287,8 @@ int HttpDownstreamConnection::write_tls() {
       // part of response body.  So keep reading.  Invoke read event
       // to get read(2) error just in case.
       ev_feed_event(conn_.loop, &conn_.rev, EV_READ);
-      input->drain(input->rleft());
+      do_write_ = &HttpDownstreamConnection::noop;
+      reusable_ = false;
       break;
     }
 
@@ -1445,7 +1448,9 @@ HttpDownstreamConnection::get_downstream_addr_group() const {
 
 DownstreamAddr *HttpDownstreamConnection::get_addr() const { return addr_; }
 
-bool HttpDownstreamConnection::poolable() const { return !group_->retired; }
+bool HttpDownstreamConnection::poolable() const {
+  return !group_->retired && reusable_;
+}
 
 const Address *HttpDownstreamConnection::get_raddr() const { return raddr_; }
 

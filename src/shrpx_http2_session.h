@@ -114,6 +114,9 @@ public:
   int tls_handshake();
   int read_tls();
   int write_tls();
+  // This is a special write function which just stop write event
+  // watcher.
+  int write_void();
 
   int downstream_read_proxy(const uint8_t *data, size_t datalen);
   int downstream_connect_proxy();
