@@ -118,6 +118,35 @@ void readcb(struct ev_loop *loop, ev_io *w, int revents) {
 } // namespace
 
 namespace {
+void backend_retry(Downstream *downstream) {
+  auto upstream = downstream->get_upstream();
+  auto handler = upstream->get_client_handler();
+
+  downstream->add_retry();
+
+  if (downstream->no_more_retry()) {
+    delete handler;
+    return;
+  }
+
+  downstream->pop_downstream_connection();
+
+  auto ndconn = handler->get_downstream_connection(downstream);
+  if (ndconn) {
+    if (downstream->attach_downstream_connection(std::move(ndconn)) == 0) {
+      return;
+    }
+  }
+
+  downstream->set_request_state(Downstream::CONNECT_FAIL);
+
+  if (upstream->on_downstream_abort_request(downstream, 503) != 0) {
+    delete handler;
+  }
+}
+} // namespace
+
+namespace {
 void writecb(struct ev_loop *loop, ev_io *w, int revents) {
   int rv;
   auto conn = static_cast<Connection *>(w->data);
@@ -128,20 +157,7 @@ void writecb(struct ev_loop *loop, ev_io *w, int revents) {
 
   rv = upstream->downstream_write(dconn);
   if (rv == SHRPX_ERR_RETRY) {
-    downstream->pop_downstream_connection();
-
-    auto ndconn = handler->get_downstream_connection(downstream);
-    if (ndconn) {
-      if (downstream->attach_downstream_connection(std::move(ndconn)) == 0) {
-        return;
-      }
-    }
-
-    downstream->set_request_state(Downstream::CONNECT_FAIL);
-
-    if (upstream->on_downstream_abort_request(downstream, 503) != 0) {
-      delete handler;
-    }
+    backend_retry(downstream);
     return;
   }
 
@@ -156,23 +172,8 @@ void connectcb(struct ev_loop *loop, ev_io *w, int revents) {
   auto conn = static_cast<Connection *>(w->data);
   auto dconn = static_cast<HttpDownstreamConnection *>(conn->data);
   auto downstream = dconn->get_downstream();
-  auto upstream = downstream->get_upstream();
-  auto handler = upstream->get_client_handler();
   if (dconn->connected() != 0) {
-    downstream->pop_downstream_connection();
-
-    auto ndconn = handler->get_downstream_connection(downstream);
-    if (ndconn) {
-      if (downstream->attach_downstream_connection(std::move(ndconn)) == 0) {
-        return;
-      }
-    }
-
-    downstream->set_request_state(Downstream::CONNECT_FAIL);
-
-    if (upstream->on_downstream_abort_request(downstream, 503) != 0) {
-      delete handler;
-    }
+    backend_retry(downstream);
     return;
   }
   writecb(loop, w, revents);
@@ -314,26 +315,7 @@ int HttpDownstreamConnection::initiate_connection() {
                 if (rv != 0) {
                   // This callback destroys |this|.
                   auto downstream = this->downstream_;
-                  auto upstream = downstream->get_upstream();
-                  auto handler = upstream->get_client_handler();
-
-                  downstream->pop_downstream_connection();
-
-                  auto ndconn = handler->get_downstream_connection(downstream);
-                  if (ndconn) {
-                    if (downstream->attach_downstream_connection(
-                            std::move(ndconn)) == 0) {
-                      return;
-                    }
-                  }
-
-                  downstream->set_request_state(Downstream::CONNECT_FAIL);
-
-                  if (upstream->on_downstream_abort_request(downstream, 503) !=
-                      0) {
-                    delete handler;
-                  }
-                  return;
+                  backend_retry(downstream);
                 }
               });
 
