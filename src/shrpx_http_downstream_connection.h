@@ -112,6 +112,8 @@ private:
   // true if first write of reused connection succeeded.  For
   // convenience, this is initialized as true.
   bool reuse_first_write_done_;
+  // true if this object can be reused
+  bool reusable_;
 };
 
 } // namespace shrpx

@@ -2026,7 +2026,7 @@ int Http2Session::write_clear() {
         // contain part of response body.  So keep reading.  Invoke
         // read event to get read(2) error just in case.
         ev_feed_event(conn_.loop, &conn_.rev, EV_READ);
-        wb_.drain(wb_.rleft());
+        write_ = &Http2Session::write_void;
         break;
       }
 
@@ -2141,7 +2141,7 @@ int Http2Session::write_tls() {
         // contain part of response body.  So keep reading.  Invoke
         // read event to get read(2) error just in case.
         ev_feed_event(conn_.loop, &conn_.rev, EV_READ);
-        wb_.drain(wb_.rleft());
+        write_ = &Http2Session::write_void;
         break;
       }
 
@@ -2162,6 +2162,11 @@ int Http2Session::write_tls() {
   conn_.wlimit.stopw();
   ev_timer_stop(conn_.loop, &conn_.wt);
 
+  return 0;
+}
+
+int Http2Session::write_void() {
+  conn_.wlimit.stopw();
   return 0;
 }
 
