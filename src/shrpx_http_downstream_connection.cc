@@ -118,14 +118,50 @@ void readcb(struct ev_loop *loop, ev_io *w, int revents) {
 } // namespace
 
 namespace {
+void backend_retry(Downstream *downstream) {
+  auto upstream = downstream->get_upstream();
+  auto handler = upstream->get_client_handler();
+
+  downstream->add_retry();
+
+  if (downstream->no_more_retry()) {
+    delete handler;
+    return;
+  }
+
+  downstream->pop_downstream_connection();
+
+  auto ndconn = handler->get_downstream_connection(downstream);
+  if (ndconn) {
+    if (downstream->attach_downstream_connection(std::move(ndconn)) == 0) {
+      return;
+    }
+  }
+
+  downstream->set_request_state(Downstream::CONNECT_FAIL);
+
+  if (upstream->on_downstream_abort_request(downstream, 503) != 0) {
+    delete handler;
+  }
+}
+} // namespace
+
+namespace {
 void writecb(struct ev_loop *loop, ev_io *w, int revents) {
+  int rv;
   auto conn = static_cast<Connection *>(w->data);
   auto dconn = static_cast<HttpDownstreamConnection *>(conn->data);
   auto downstream = dconn->get_downstream();
   auto upstream = downstream->get_upstream();
   auto handler = upstream->get_client_handler();
 
-  if (upstream->downstream_write(dconn) != 0) {
+  rv = upstream->downstream_write(dconn);
+  if (rv == SHRPX_ERR_RETRY) {
+    backend_retry(downstream);
+    return;
+  }
+
+  if (rv != 0) {
     delete handler;
   }
 }
@@ -136,23 +172,8 @@ void connectcb(struct ev_loop *loop, ev_io *w, int revents) {
   auto conn = static_cast<Connection *>(w->data);
   auto dconn = static_cast<HttpDownstreamConnection *>(conn->data);
   auto downstream = dconn->get_downstream();
-  auto upstream = downstream->get_upstream();
-  auto handler = upstream->get_client_handler();
   if (dconn->connected() != 0) {
-    downstream->pop_downstream_connection();
-
-    auto ndconn = handler->get_downstream_connection(downstream);
-    if (ndconn) {
-      if (downstream->attach_downstream_connection(std::move(ndconn)) == 0) {
-        return;
-      }
-    }
-
-    downstream->set_request_state(Downstream::CONNECT_FAIL);
-
-    if (upstream->on_downstream_abort_request(downstream, 503) != 0) {
-      delete handler;
-    }
+    backend_retry(downstream);
     return;
   }
   writecb(loop, w, revents);
@@ -178,7 +199,8 @@ HttpDownstreamConnection::HttpDownstreamConnection(
       raddr_(nullptr),
       ioctrl_(&conn_.rlimit),
       response_htp_{0},
-      initial_addr_idx_(initial_addr_idx) {}
+      initial_addr_idx_(initial_addr_idx),
+      reuse_first_write_done_(true) {}
 
 HttpDownstreamConnection::~HttpDownstreamConnection() {
   if (LOG_ENABLED(INFO)) {
@@ -293,26 +315,7 @@ int HttpDownstreamConnection::initiate_connection() {
                 if (rv != 0) {
                   // This callback destroys |this|.
                   auto downstream = this->downstream_;
-                  auto upstream = downstream->get_upstream();
-                  auto handler = upstream->get_client_handler();
-
-                  downstream->pop_downstream_connection();
-
-                  auto ndconn = handler->get_downstream_connection(downstream);
-                  if (ndconn) {
-                    if (downstream->attach_downstream_connection(
-                            std::move(ndconn)) == 0) {
-                      return;
-                    }
-                  }
-
-                  downstream->set_request_state(Downstream::CONNECT_FAIL);
-
-                  if (upstream->on_downstream_abort_request(downstream, 503) !=
-                      0) {
-                    delete handler;
-                  }
-                  return;
+                  backend_retry(downstream);
                 }
               });
 
@@ -449,6 +452,9 @@ int HttpDownstreamConnection::initiate_connection() {
     }
 
     ev_set_cb(&conn_.rev, readcb);
+
+    do_write_ = &HttpDownstreamConnection::write_reuse_first;
+    reuse_first_write_done_ = false;
   }
 
   http_parser_init(&response_htp_, HTTP_RESPONSE);
@@ -458,6 +464,10 @@ int HttpDownstreamConnection::initiate_connection() {
 }
 
 int HttpDownstreamConnection::push_request_headers() {
+  if (downstream_->get_request_header_sent()) {
+    return 0;
+  }
+
   const auto &downstream_hostport = addr_->hostport;
   const auto &req = downstream_->request();
 
@@ -1071,6 +1081,30 @@ http_parser_settings htp_hooks = {
 };
 } // namespace
 
+int HttpDownstreamConnection::write_reuse_first() {
+  int rv;
+
+  if (conn_.tls.ssl) {
+    rv = write_tls();
+  } else {
+    rv = write_clear();
+  }
+
+  if (rv != 0) {
+    return SHRPX_ERR_RETRY;
+  }
+
+  if (conn_.tls.ssl) {
+    do_write_ = &HttpDownstreamConnection::write_tls;
+  } else {
+    do_write_ = &HttpDownstreamConnection::write_clear;
+  }
+
+  reuse_first_write_done_ = true;
+
+  return 0;
+}
+
 int HttpDownstreamConnection::read_clear() {
   conn_.last_read = ev_now(conn_.loop);
 
@@ -1116,6 +1150,9 @@ int HttpDownstreamConnection::write_clear() {
     }
 
     if (nwrite < 0) {
+      if (!reuse_first_write_done_) {
+        return nwrite;
+      }
       // We may have pending data in receive buffer which may contain
       // part of response body.  So keep reading.  Invoke read event
       // to get read(2) error just in case.
@@ -1241,6 +1278,9 @@ int HttpDownstreamConnection::write_tls() {
     }
 
     if (nwrite < 0) {
+      if (!reuse_first_write_done_) {
+        return nwrite;
+      }
       // We may have pending data in receive buffer which may contain
       // part of response body.  So keep reading.  Invoke read event
       // to get read(2) error just in case.

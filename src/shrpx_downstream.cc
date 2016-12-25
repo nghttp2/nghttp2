@@ -922,6 +922,10 @@ bool Downstream::get_request_pending() const { return request_pending_; }
 
 void Downstream::set_request_header_sent(bool f) { request_header_sent_ = f; }
 
+bool Downstream::get_request_header_sent() const {
+  return request_header_sent_;
+}
+
 bool Downstream::request_submission_ready() const {
   return (request_state_ == Downstream::HEADER_COMPLETE ||
           request_state_ == Downstream::MSG_COMPLETE) &&

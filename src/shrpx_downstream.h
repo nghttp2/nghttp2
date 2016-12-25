@@ -312,6 +312,7 @@ public:
   void set_request_pending(bool f);
   bool get_request_pending() const;
   void set_request_header_sent(bool f);
+  bool get_request_header_sent() const;
   // Returns true if request is ready to be submitted to downstream.
   // When sending pending request, get_request_pending() should be
   // checked too because this function may return true when
