@@ -399,6 +399,13 @@ Timeout
 
     Default: ``30s``
 
+.. option:: --frontend-keep-alive-timeout=<DURATION>
+
+    Specify   keep-alive   timeout   for   frontend   HTTP/1
+    connection.
+
+    Default: ``1m``
+
 .. option:: --stream-read-timeout=<DURATION>
 
     Specify  read timeout  for HTTP/2  and SPDY  streams.  0
@@ -434,7 +441,8 @@ Timeout
 
 .. option:: --backend-keep-alive-timeout=<DURATION>
 
-    Specify keep-alive timeout for backend connection.
+    Specify   keep-alive   timeout    for   backend   HTTP/1
+    connection.
 
     Default: ``2s``
 
@@ -1126,7 +1134,7 @@ HTTP
 
     Change server response header field value to <NAME>.
 
-    Default: ``nghttpx nghttp2/1.18.0-DEV``
+    Default: ``nghttpx nghttp2/1.18.0``
 
 .. option:: --no-server-rewrite
 
@@ -1300,6 +1308,33 @@ FILES
 
   :option:`--conf` option cannot be used in the configuration file and
   will be ignored if specified.
+
+Error log
+  Error log is written to stderr by default.  It can be configured
+  using :option:`--errorlog-file`.  The format of log message is as
+  follows:
+
+  <datetime> <master-pid> <current-pid> <thread-id> <level> (<filename>:<line>) <msg>
+
+  <datetime>
+    It is a conbination of date and time when the log is written.  It
+    is in ISO 8601 format.
+
+  <master-pid>
+    It is a master process ID.
+
+  <current-pid>
+    It is a process ID which writes this log.
+
+  <thread-id>
+    It is a thread ID which writes this log.  It would be unique
+    within <current-pid>.
+
+  <filename> and <line>
+    They are source file name, and line number which produce this log.
+
+  <msg>
+    It is a log message body.
 
 SIGNALS
 -------

@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTPX" "1" "Dec 11, 2016" "1.18.0-DEV" "nghttp2"
+.TH "NGHTTPX" "1" "Dec 27, 2016" "1.18.0" "nghttp2"
 .SH NAME
 nghttpx \- HTTP/2 proxy
 .
@@ -434,6 +434,14 @@ Default: \fB30s\fP
 .UNINDENT
 .INDENT 0.0
 .TP
+.B \-\-frontend\-keep\-alive\-timeout=<DURATION>
+Specify   keep\-alive   timeout   for   frontend   HTTP/1
+connection.
+.sp
+Default: \fB1m\fP
+.UNINDENT
+.INDENT 0.0
+.TP
 .B \-\-stream\-read\-timeout=<DURATION>
 Specify  read timeout  for HTTP/2  and SPDY  streams.  0
 means no timeout.
@@ -473,7 +481,8 @@ Default: \fB30s\fP
 .INDENT 0.0
 .TP
 .B \-\-backend\-keep\-alive\-timeout=<DURATION>
-Specify keep\-alive timeout for backend connection.
+Specify   keep\-alive   timeout    for   backend   HTTP/1
+connection.
 .sp
 Default: \fB2s\fP
 .UNINDENT
@@ -1246,7 +1255,7 @@ backend server, the custom error pages are not used.
 .B \-\-server\-name=<NAME>
 Change server response header field value to <NAME>.
 .sp
-Default: \fBnghttpx nghttp2/1.18.0\-DEV\fP
+Default: \fBnghttpx nghttp2/1.18.0\fP
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -1428,6 +1437,35 @@ positional arguments in command\-line, use \fBprivate\-key\-file\fP and
 .sp
 \fI\%\-\-conf\fP option cannot be used in the configuration file and
 will be ignored if specified.
+.TP
+.B Error log
+Error log is written to stderr by default.  It can be configured
+using \fI\%\-\-errorlog\-file\fP\&.  The format of log message is as
+follows:
+.sp
+<datetime> <master\-pid> <current\-pid> <thread\-id> <level> (<filename>:<line>) <msg>
+.INDENT 7.0
+.TP
+.B <datetime>
+It is a conbination of date and time when the log is written.  It
+is in ISO 8601 format.
+.TP
+.B <master\-pid>
+It is a master process ID.
+.TP
+.B <current\-pid>
+It is a process ID which writes this log.
+.TP
+.B <thread\-id>
+It is a thread ID which writes this log.  It would be unique
+within <current\-pid>.
+.TP
+.B <filename> and <line>
+They are source file name, and line number which produce this log.
+.TP
+.B <msg>
+It is a log message body.
+.UNINDENT
 .UNINDENT
 .SH SIGNALS
 .INDENT 0.0
