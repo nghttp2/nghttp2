@@ -99,6 +99,7 @@ namespace {
 void timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
   auto resolv = static_cast<DNSResolver *>(w->data);
   resolv->on_timeout();
+  process_result(resolv);
 }
 } // namespace
 
@@ -215,7 +216,9 @@ void DNSResolver::reset_timeout() {
   if (tv == nullptr) {
     return;
   }
-  timer_.repeat = tv->tv_sec + tv->tv_usec / 1000000.;
+  // To avoid that timer_.repeat becomes 0, which makes ev_timer_again
+  // useless, add tiny fraction of time.
+  timer_.repeat = tv->tv_sec + tv->tv_usec / 1000000. + 1e-9;
   ev_timer_again(loop_, &timer_);
 }
 
