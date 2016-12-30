@@ -99,6 +99,7 @@ namespace {
 void timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
   auto resolv = static_cast<DNSResolver *>(w->data);
   resolv->on_timeout();
+  process_result(resolv);
 }
 } // namespace
 
