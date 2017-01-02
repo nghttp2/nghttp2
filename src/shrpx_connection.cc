@@ -95,7 +95,8 @@ Connection::~Connection() { disconnect(); }
 
 void Connection::disconnect() {
   if (tls.ssl) {
-    SSL_set_shutdown(tls.ssl, SSL_RECEIVED_SHUTDOWN);
+    SSL_set_shutdown(tls.ssl,
+                     SSL_get_shutdown(tls.ssl) | SSL_RECEIVED_SHUTDOWN);
     ERR_clear_error();
 
     if (tls.cached_session) {

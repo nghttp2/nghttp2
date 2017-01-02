@@ -509,7 +509,7 @@ void Client::disconnect() {
   ev_io_stop(worker->loop, &wev);
   ev_io_stop(worker->loop, &rev);
   if (ssl) {
-    SSL_set_shutdown(ssl, SSL_RECEIVED_SHUTDOWN);
+    SSL_set_shutdown(ssl, SSL_get_shutdown(ssl) | SSL_RECEIVED_SHUTDOWN);
     ERR_clear_error();
 
     if (SSL_shutdown(ssl) != 1) {

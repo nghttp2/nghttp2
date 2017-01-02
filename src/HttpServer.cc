@@ -557,7 +557,7 @@ Http2Handler::~Http2Handler() {
   on_session_closed(this, session_id_);
   nghttp2_session_del(session_);
   if (ssl_) {
-    SSL_set_shutdown(ssl_, SSL_RECEIVED_SHUTDOWN);
+    SSL_set_shutdown(ssl_, SSL_get_shutdown(ssl_) | SSL_RECEIVED_SHUTDOWN);
     ERR_clear_error();
     SSL_shutdown(ssl_);
   }

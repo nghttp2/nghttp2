@@ -701,7 +701,7 @@ void HttpClient::disconnect() {
   session = nullptr;
 
   if (ssl) {
-    SSL_set_shutdown(ssl, SSL_RECEIVED_SHUTDOWN);
+    SSL_set_shutdown(ssl, SSL_get_shutdown(ssl) | SSL_RECEIVED_SHUTDOWN);
     ERR_clear_error();
     SSL_shutdown(ssl);
     SSL_free(ssl);
