@@ -634,6 +634,8 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
 
   SSL_CTX_set_options(ssl_ctx, ssl_opts | tlsconf.tls_proto_mask);
 
+  SSL_CTX_set_max_proto_version(ssl_ctx, TLS1_3_VERSION);
+
   const unsigned char sid_ctx[] = "shrpx";
   SSL_CTX_set_session_id_context(ssl_ctx, sid_ctx, sizeof(sid_ctx) - 1);
   SSL_CTX_set_session_cache_mode(ssl_ctx, SSL_SESS_CACHE_SERVER);
@@ -865,6 +867,8 @@ SSL_CTX *create_ssl_client_context(
   auto &tlsconf = get_config()->tls;
 
   SSL_CTX_set_options(ssl_ctx, ssl_opts | tlsconf.tls_proto_mask);
+
+  SSL_CTX_set_max_proto_version(ssl_ctx, TLS1_3_VERSION);
 
   if (SSL_CTX_set_cipher_list(ssl_ctx, tlsconf.client.ciphers.c_str()) == 0) {
     LOG(FATAL) << "SSL_CTX_set_cipher_list " << tlsconf.client.ciphers

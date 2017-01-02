@@ -83,6 +83,8 @@ const char *get_tls_protocol(SSL *ssl) {
     return "SSLv2";
   case SSL3_VERSION:
     return "SSLv3";
+  case TLS1_3_VERSION:
+    return "TLSv1.3";
   case TLS1_2_VERSION:
     return "TLSv1.2";
   case TLS1_1_VERSION:
@@ -140,7 +142,7 @@ bool check_http2_cipher_black_list(SSL *ssl) {
 bool check_http2_tls_version(SSL *ssl) {
   auto tls_ver = SSL_version(ssl);
 
-  return tls_ver == TLS1_2_VERSION;
+  return tls_ver >= TLS1_2_VERSION;
 }
 
 bool check_http2_requirement(SSL *ssl) {

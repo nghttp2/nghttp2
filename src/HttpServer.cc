@@ -2121,6 +2121,7 @@ int HttpServer::run() {
     SSL_CTX_set_options(ssl_ctx, ssl_opts);
     SSL_CTX_set_mode(ssl_ctx, SSL_MODE_AUTO_RETRY);
     SSL_CTX_set_mode(ssl_ctx, SSL_MODE_RELEASE_BUFFERS);
+    SSL_CTX_set_max_version(ssl_ctx, TLS1_3_VERSION);
 
     if (SSL_CTX_set_cipher_list(ssl_ctx, ssl::DEFAULT_CIPHER_LIST) == 0) {
       std::cerr << ERR_error_string(ERR_get_error(), nullptr) << std::endl;
