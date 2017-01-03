@@ -1694,6 +1694,10 @@ Connections:
               default.  Any  requests which come through  this address
               are replied with 200 HTTP status, without no body.
 
+              To  accept   PROXY  protocol   version  1   on  frontend
+              connection,  specify  "proxyproto" parameter.   This  is
+              disabled by default.
+
               Default: *,3000
   --backlog=<N>
               Set listen backlog size.
@@ -1718,8 +1722,6 @@ Connections:
               timeouts when connecting and  making CONNECT request can
               be     specified    by     --backend-read-timeout    and
               --backend-write-timeout options.
-  --accept-proxy-protocol
-              Accept PROXY protocol version 1 on frontend connection.
 
 Performance:
   -n, --workers=<N>

@@ -382,6 +382,8 @@ struct UpstreamAddr {
   bool host_unix;
   // true if TLS is enabled.
   bool tls;
+  // true if client is supposed to send PROXY protocol v1 header.
+  bool accept_proxy_protocol;
   int fd;
 };
 
@@ -775,6 +777,7 @@ struct ConnectionConfig {
       RateLimitConfig write;
     } ratelimit;
     size_t worker_connections;
+    // Deprecated.  See UpstreamAddr.accept_proxy_protocol.
     bool accept_proxy_protocol;
   } upstream;
 

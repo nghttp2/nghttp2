@@ -413,7 +413,8 @@ ClientHandler::ClientHandler(Worker *worker, int fd, SSL *ssl,
 
   auto config = get_config();
 
-  if (config->conn.upstream.accept_proxy_protocol) {
+  if (faddr_->accept_proxy_protocol ||
+      config->conn.upstream.accept_proxy_protocol) {
     read_ = &ClientHandler::read_clear;
     write_ = &ClientHandler::noop;
     on_read_ = &ClientHandler::proxy_protocol_read;

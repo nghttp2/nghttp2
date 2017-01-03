@@ -103,6 +103,7 @@ func newServerTesterInternal(src_args []string, t *testing.T, handler http.Handl
 	backendTLS := false
 	dns := false
 	externalDNS := false
+	acceptProxyProtocol := false
 	for _, k := range src_args {
 		switch k {
 		case "--http2-bridge":
@@ -112,6 +113,8 @@ func newServerTesterInternal(src_args []string, t *testing.T, handler http.Handl
 		case "--external-dns":
 			dns = true
 			externalDNS = true
+		case "--accept-proxy-protocol":
+			acceptProxyProtocol = true
 		default:
 			args = append(args, k)
 		}
@@ -160,12 +163,17 @@ func newServerTesterInternal(src_args []string, t *testing.T, handler http.Handl
 		b += ";dns"
 	}
 
-	noTLS := "no-tls"
+	noTLS := ";no-tls"
 	if frontendTLS {
 		noTLS = ""
 	}
 
-	args = append(args, fmt.Sprintf("-f127.0.0.1,%v;%v", serverPort, noTLS), b,
+	var proxyProto string
+	if acceptProxyProtocol {
+		proxyProto = ";proxyproto"
+	}
+
+	args = append(args, fmt.Sprintf("-f127.0.0.1,%v%v%v", serverPort, noTLS, proxyProto), b,
 		"--errorlog-file="+logDir+"/log.txt", "-LINFO")
 
 	authority := fmt.Sprintf("127.0.0.1:%v", connectPort)
