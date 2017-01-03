@@ -677,6 +677,7 @@ int parse_memcached_connection_params(MemcachedConnectionParams &out,
 struct UpstreamParams {
   int alt_mode;
   bool tls;
+  bool proxyproto;
 };
 
 namespace {
@@ -705,6 +706,8 @@ int parse_upstream_params(UpstreamParams &out, const StringRef &src_params) {
         return -1;
       }
       out.alt_mode = ALTMODE_HEALTHMON;
+    } else if (util::strieq_l("proxyproto", param)) {
+      out.proxyproto = true;
     } else if (!param.empty()) {
       LOG(ERROR) << "frontend: " << param << ": unknown keyword";
       return -1;
@@ -2091,6 +2094,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     addr.fd = -1;
     addr.tls = params.tls;
     addr.alt_mode = params.alt_mode;
+    addr.accept_proxy_protocol = params.proxyproto;
 
     if (addr.alt_mode == ALTMODE_API) {
       apiconf.enabled = true;
@@ -2883,6 +2887,8 @@ int parse_config(Config *config, int optid, const StringRef &opt,
 #endif // !HAVE_MRUBY
     return 0;
   case SHRPX_OPTID_ACCEPT_PROXY_PROTOCOL:
+    LOG(WARN) << opt << ": deprecated.  Use proxyproto keyword in "
+              << SHRPX_OPT_FRONTEND << " instead.";
     config->conn.upstream.accept_proxy_protocol = util::strieq_l("yes", optarg);
 
     return 0;
