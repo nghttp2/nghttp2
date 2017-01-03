@@ -298,7 +298,13 @@ void DNSResolver::on_result(int status, hostent *hostent) {
   }
 
   auto ap = *hostent->h_addr_list;
-  assert(ap);
+  if (!ap) {
+    if (LOG_ENABLED(INFO)) {
+      LOG(INFO) << "Name lookup for " << name_ << "failed: no address returned";
+    }
+    status_ = DNS_STATUS_ERROR;
+    return;
+  }
 
   switch (hostent->h_addrtype) {
   case AF_INET:
