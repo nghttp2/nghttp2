@@ -99,6 +99,11 @@ To mitigate heap fragmentation in long running server programs
 
 * jemalloc
 
+  .. note::
+
+     Alpine Linux currently does not support malloc replacement
+     due to musl limitations. See details in issue `#762 <https://github.com/nghttp2/nghttp2/issues/762>`_.
+
 libnghttp2_asio C++ library requires the following packages:
 
 * libboost-dev >= 1.54.0
