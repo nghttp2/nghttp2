@@ -365,7 +365,7 @@ int32_t nghttp2_submit_push_promise(nghttp2_session *session, uint8_t flags _U_,
   return promised_stream_id;
 }
 
-int nghttp2_submit_window_update(nghttp2_session *session, uint8_t flags,
+int nghttp2_submit_window_update(nghttp2_session *session, uint8_t flags _U_,
                                  int32_t stream_id,
                                  int32_t window_size_increment) {
   int rv;
@@ -373,7 +373,6 @@ int nghttp2_submit_window_update(nghttp2_session *session, uint8_t flags,
   if (window_size_increment == 0) {
     return 0;
   }
-  flags = 0;
   if (stream_id == 0) {
     rv = nghttp2_adjust_local_window_size(
         &session->local_window_size, &session->recv_window_size,
@@ -404,14 +403,14 @@ int nghttp2_submit_window_update(nghttp2_session *session, uint8_t flags,
           nghttp2_max(0, stream->consumed_size - window_size_increment);
     }
 
-    return nghttp2_session_add_window_update(session, flags, stream_id,
+    return nghttp2_session_add_window_update(session, 0, stream_id,
                                              window_size_increment);
   }
   return 0;
 }
 
 int nghttp2_session_set_local_window_size(nghttp2_session *session,
-                                          uint8_t flags, int32_t stream_id,
+                                          uint8_t flags _U_, int32_t stream_id,
                                           int32_t window_size) {
   int32_t window_size_increment;
   nghttp2_stream *stream;
@@ -420,8 +419,6 @@ int nghttp2_session_set_local_window_size(nghttp2_session *session,
   if (window_size < 0) {
     return NGHTTP2_ERR_INVALID_ARGUMENT;
   }
-
-  flags = 0;
 
   if (stream_id == 0) {
     window_size_increment = window_size - session->local_window_size;
@@ -472,7 +469,7 @@ int nghttp2_session_set_local_window_size(nghttp2_session *session,
   }
 
   if (window_size_increment > 0) {
-    return nghttp2_session_add_window_update(session, flags, stream_id,
+    return nghttp2_session_add_window_update(session, 0, stream_id,
                                              window_size_increment);
   }
 
