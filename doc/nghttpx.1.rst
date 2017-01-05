@@ -1134,7 +1134,7 @@ HTTP
 
     Change server response header field value to <NAME>.
 
-    Default: ``nghttpx nghttp2/1.18.0``
+    Default: ``nghttpx nghttp2/1.18.1``
 
 .. option:: --no-server-rewrite
 
