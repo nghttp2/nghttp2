@@ -720,15 +720,17 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
 #endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 
 #if !LIBRESSL_IN_USE && OPENSSL_VERSION_NUMBER >= 0x10002000L
+  // SSL_extension_supported(TLS_EXT_SIGNED_CERTIFICATE_TIMESTAMP)
+  // returns 1, which means OpenSSL internally handles it.  But
+  // OpenSSL handles signed_certificate_timestamp extension specially,
+  // and it lets custom handler to process the extension.
   if (!sct_data.empty() &&
-      SSL_extension_supported(TLS_EXT_SIGNED_CERTIFICATE_TIMESTAMP) == 0) {
-    if (SSL_CTX_add_server_custom_ext(
-            ssl_ctx, TLS_EXT_SIGNED_CERTIFICATE_TIMESTAMP, sct_add_cb,
-            sct_free_cb, nullptr, sct_parse_cb, nullptr) != 1) {
-      LOG(FATAL) << "SSL_CTX_add_server_custom_ext failed: "
-                 << ERR_error_string(ERR_get_error(), nullptr);
-      DIE();
-    }
+      SSL_CTX_add_server_custom_ext(
+          ssl_ctx, TLS_EXT_SIGNED_CERTIFICATE_TIMESTAMP, sct_add_cb,
+          sct_free_cb, nullptr, sct_parse_cb, nullptr) != 1) {
+    LOG(FATAL) << "SSL_CTX_add_server_custom_ext failed: "
+               << ERR_error_string(ERR_get_error(), nullptr);
+    DIE();
   }
 #endif // !LIBRESSL_IN_USE && OPENSSL_VERSION_NUMBER >= 0x10002000L
 
