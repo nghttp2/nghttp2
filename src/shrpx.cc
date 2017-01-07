@@ -2112,6 +2112,13 @@ SSL/TLS:
               are skipped.  The default  enabled cipher list might not
               contain any PSK cipher suite.  In that case, desired PSK
               cipher suites must be enabled using --ciphers option.
+  --client-psk-secrets=<PATH>
+              Read PSK identity and secrets from <PATH>.  This is used
+              for backend connection.  The each  line of input file is
+              formatted  as <identity>:<hex-secret>,  where <identity>
+              is PSK identity, and <hex-secret>  is secret in hex.  An
+              empty line, and line which  starts with '#' are skipped.
+              The first identity and secret pair encountered is used.
 
 HTTP/2 and SPDY:
   -c, --frontend-http2-max-concurrent-streams=<N>
@@ -3088,6 +3095,7 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_FRONTEND_KEEP_ALIVE_TIMEOUT.c_str(), required_argument,
          &flag, 146},
         {SHRPX_OPT_PSK_SECRETS.c_str(), required_argument, &flag, 147},
+        {SHRPX_OPT_CLIENT_PSK_SECRETS.c_str(), required_argument, &flag, 148},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -3781,6 +3789,10 @@ int main(int argc, char **argv) {
       case 147:
         // --psk-secrets
         cmdcfgs.emplace_back(SHRPX_OPT_PSK_SECRETS, StringRef{optarg});
+        break;
+      case 148:
+        // --client-psk-secrets
+        cmdcfgs.emplace_back(SHRPX_OPT_CLIENT_PSK_SECRETS, StringRef{optarg});
         break;
       default:
         break;

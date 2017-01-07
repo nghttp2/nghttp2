@@ -320,6 +320,8 @@ constexpr auto SHRPX_OPT_DNS_MAX_TRY = StringRef::from_lit("dns-max-try");
 constexpr auto SHRPX_OPT_FRONTEND_KEEP_ALIVE_TIMEOUT =
     StringRef::from_lit("frontend-keep-alive-timeout");
 constexpr auto SHRPX_OPT_PSK_SECRETS = StringRef::from_lit("psk-secrets");
+constexpr auto SHRPX_OPT_CLIENT_PSK_SECRETS =
+    StringRef::from_lit("client-psk-secrets");
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
@@ -549,6 +551,13 @@ struct TLSConfig {
     StringRef private_key_file;
     StringRef cert_file;
   } client;
+
+  // Client PSK configuration
+  struct {
+    // identity must be NULL terminated string.
+    StringRef identity;
+    StringRef secret;
+  } client_psk;
 
   // PSK secrets.  The key is identity, and the associated value is
   // its secret.
@@ -918,6 +927,7 @@ enum {
   SHRPX_OPTID_CLIENT_CERT_FILE,
   SHRPX_OPTID_CLIENT_PRIVATE_KEY_FILE,
   SHRPX_OPTID_CLIENT_PROXY,
+  SHRPX_OPTID_CLIENT_PSK_SECRETS,
   SHRPX_OPTID_CONF,
   SHRPX_OPTID_DAEMON,
   SHRPX_OPTID_DH_PARAM_FILE,

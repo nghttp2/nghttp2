@@ -549,6 +549,39 @@ unsigned int psk_server_cb(SSL *ssl, const char *identity, unsigned char *psk,
 }
 } // namespace
 
+namespace {
+unsigned int psk_client_cb(SSL *ssl, const char *hint, char *identity_out,
+                           unsigned int max_identity_len, unsigned char *psk,
+                           unsigned int max_psk_len) {
+  auto config = get_config();
+  auto &tlsconf = config->tls;
+
+  auto &identity = tlsconf.client_psk.identity;
+  auto &secret = tlsconf.client_psk.secret;
+
+  if (identity.empty()) {
+    return 0;
+  }
+
+  if (identity.size() + 1 > max_identity_len) {
+    LOG(ERROR) << "The size of PSK identity is " << identity.size()
+               << ", but the acceptable maximum size is " << max_identity_len;
+    return 0;
+  }
+
+  if (secret.size() > max_psk_len) {
+    LOG(ERROR) << "The size of PSK secret is " << secret.size()
+               << ", but the acceptable maximum size is " << max_psk_len;
+    return 0;
+  }
+
+  *std::copy(std::begin(identity), std::end(identity), identity_out) = '\0';
+  std::copy(std::begin(secret), std::end(secret), psk);
+
+  return (unsigned int)secret.size();
+}
+} // namespace
+
 struct TLSProtocol {
   StringRef name;
   long int mask;
@@ -899,6 +932,8 @@ SSL_CTX *create_ssl_client_context(
 #endif // HAVE_NEVERBLEED
   }
 
+  SSL_CTX_set_psk_client_callback(ssl_ctx, psk_client_cb);
+
   // NPN selection callback.  This is required to set SSL_CTX because
   // OpenSSL does not offer SSL_set_next_proto_select_cb.
   SSL_CTX_set_next_proto_select_cb(ssl_ctx, next_proto_select_cb, nullptr);
@@ -1181,8 +1216,10 @@ int verify_hostname(X509 *cert, const StringRef &hostname,
 int check_cert(SSL *ssl, const Address *addr, const StringRef &host) {
   auto cert = SSL_get_peer_certificate(ssl);
   if (!cert) {
-    LOG(ERROR) << "No certificate found";
-    return -1;
+    // By the protocol definition, TLS server always sends certificate
+    // if it has.  If certificate cannot be retrieved, authentication
+    // without certificate is used, such as PSK.
+    return 0;
   }
   auto cert_deleter = defer(X509_free, cert);
   auto verify_res = SSL_get_verify_result(ssl);
