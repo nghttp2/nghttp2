@@ -153,6 +153,7 @@ OPTIONS = [
     "dns-lookup-timeout",
     "dns-max-try",
     "frontend-keep-alive-timeout",
+    "psk-secrets",
 ]
 
 LOGVARS = [

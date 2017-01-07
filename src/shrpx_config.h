@@ -319,6 +319,7 @@ constexpr auto SHRPX_OPT_DNS_LOOKUP_TIMEOUT =
 constexpr auto SHRPX_OPT_DNS_MAX_TRY = StringRef::from_lit("dns-max-try");
 constexpr auto SHRPX_OPT_FRONTEND_KEEP_ALIVE_TIMEOUT =
     StringRef::from_lit("frontend-keep-alive-timeout");
+constexpr auto SHRPX_OPT_PSK_SECRETS = StringRef::from_lit("psk-secrets");
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
@@ -549,6 +550,9 @@ struct TLSConfig {
     StringRef cert_file;
   } client;
 
+  // PSK secrets.  The key is identity, and the associated value is
+  // its secret.
+  std::map<StringRef, StringRef> psk_secrets;
   // The list of additional TLS certificate pair
   std::vector<TLSCertificate> subcerts;
   std::vector<unsigned char> alpn_prefs;
@@ -975,6 +979,7 @@ enum {
   SHRPX_OPTID_PID_FILE,
   SHRPX_OPTID_PRIVATE_KEY_FILE,
   SHRPX_OPTID_PRIVATE_KEY_PASSWD_FILE,
+  SHRPX_OPTID_PSK_SECRETS,
   SHRPX_OPTID_READ_BURST,
   SHRPX_OPTID_READ_RATE,
   SHRPX_OPTID_REQUEST_HEADER_FIELD_BUFFER,

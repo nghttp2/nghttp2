@@ -82,6 +82,9 @@ inline bool is_hex_digit(const char c) {
   return is_digit(c) || ('A' <= c && c <= 'F') || ('a' <= c && c <= 'f');
 }
 
+// Returns true if |s| is hex string.
+bool is_hex_string(const StringRef &s);
+
 bool in_rfc3986_unreserved_chars(const char c);
 
 bool in_rfc3986_sub_delims(const char c);
@@ -146,6 +149,11 @@ template <size_t N> std::string format_hex(const std::array<uint8_t, N> &s) {
 }
 
 StringRef format_hex(BlockAllocator &balloc, const StringRef &s);
+
+// decode_hex decodes hex string |s|, returns the decoded byte string.
+// This function assumes |s| is hex string, that is is_hex_string(s)
+// == true.
+StringRef decode_hex(BlockAllocator &balloc, const StringRef &s);
 
 // Returns given time |t| from epoch in HTTP Date format (e.g., Mon,
 // 10 Oct 2016 10:25:58 GMT).

@@ -525,6 +525,30 @@ int sct_parse_cb(SSL *ssl, unsigned int ext_type, const unsigned char *in,
 } // namespace
 #endif // !LIBRESSL_IN_USE && OPENSSL_VERSION_NUMBER >= 0x10002000L
 
+namespace {
+unsigned int psk_server_cb(SSL *ssl, const char *identity, unsigned char *psk,
+                           unsigned int max_psk_len) {
+  auto config = get_config();
+  auto &tlsconf = config->tls;
+
+  auto it = tlsconf.psk_secrets.find(StringRef{identity});
+  if (it == std::end(tlsconf.psk_secrets)) {
+    return 0;
+  }
+
+  auto &secret = (*it).second;
+  if (secret.size() > max_psk_len) {
+    LOG(ERROR) << "The size of PSK secret is " << secret.size()
+               << ", but the acceptable maximum size is" << max_psk_len;
+    return 0;
+  }
+
+  std::copy(std::begin(secret), std::end(secret), psk);
+
+  return static_cast<unsigned int>(secret.size());
+}
+} // namespace
+
 struct TLSProtocol {
   StringRef name;
   long int mask;
@@ -733,6 +757,8 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
     DIE();
   }
 #endif // !LIBRESSL_IN_USE && OPENSSL_VERSION_NUMBER >= 0x10002000L
+
+  SSL_CTX_set_psk_server_callback(ssl_ctx, psk_server_cb);
 
   auto tls_ctx_data = new TLSContextData();
   tls_ctx_data->cert_file = cert_file;

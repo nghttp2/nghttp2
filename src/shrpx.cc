@@ -2103,6 +2103,15 @@ SSL/TLS:
               argument <CERT>, or  certificate option in configuration
               file.   For   additional  certificates,   use  --subcert
               option.  This option requires OpenSSL >= 1.0.2.
+  --psk-secrets=<PATH>
+              Read list of PSK identity and secrets from <PATH>.  This
+              is used for frontend connection.  The each line of input
+              file  is  formatted  as  <identity>:<hex-secret>,  where
+              <identity> is  PSK identity, and <hex-secret>  is secret
+              in hex.  An  empty line, and line which  starts with '#'
+              are skipped.  The default  enabled cipher list might not
+              contain any PSK cipher suite.  In that case, desired PSK
+              cipher suites must be enabled using --ciphers option.
 
 HTTP/2 and SPDY:
   -c, --frontend-http2-max-concurrent-streams=<N>
@@ -3078,6 +3087,7 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_DNS_MAX_TRY.c_str(), required_argument, &flag, 145},
         {SHRPX_OPT_FRONTEND_KEEP_ALIVE_TIMEOUT.c_str(), required_argument,
          &flag, 146},
+        {SHRPX_OPT_PSK_SECRETS.c_str(), required_argument, &flag, 147},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -3767,6 +3777,10 @@ int main(int argc, char **argv) {
         // --frontend-keep-alive-timeout
         cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_KEEP_ALIVE_TIMEOUT,
                              StringRef{optarg});
+        break;
+      case 147:
+        // --psk-secrets
+        cmdcfgs.emplace_back(SHRPX_OPT_PSK_SECRETS, StringRef{optarg});
         break;
       default:
         break;
