@@ -141,7 +141,10 @@ void Connection::disconnect() {
 
 void Connection::prepare_client_handshake() { SSL_set_connect_state(tls.ssl); }
 
-void Connection::prepare_server_handshake() { SSL_set_accept_state(tls.ssl); }
+void Connection::prepare_server_handshake() {
+  SSL_set_accept_state(tls.ssl);
+  tls.server_handshake = true;
+}
 
 // BIO implementation is inspired by openldap implementation:
 // http://www.openldap.org/devel/cvsweb.cgi/~checkout~/libraries/libldap/tls_o.c
@@ -530,7 +533,15 @@ int Connection::check_http2_requirement() {
     }
     return -1;
   }
-  if (!get_config()->tls.no_http2_cipher_black_list &&
+
+  auto check_black_list = false;
+  if (tls.server_handshake) {
+    check_black_list = !get_config()->tls.no_http2_cipher_black_list;
+  } else {
+    check_black_list = !get_config()->tls.client.no_http2_cipher_black_list;
+  }
+
+  if (check_black_list &&
       nghttp2::ssl::check_http2_cipher_black_list(tls.ssl)) {
     if (LOG_ENABLED(INFO)) {
       LOG(INFO) << "The negotiated cipher suite is in HTTP/2 cipher suite "

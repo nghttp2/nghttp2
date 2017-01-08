@@ -2091,9 +2091,15 @@ SSL/TLS:
               Default: )"
       << util::duration_str(config->tls.dyn_rec.idle_timeout) << R"(
   --no-http2-cipher-black-list
-              Allow black  listed cipher  suite on  HTTP/2 connection.
-              See  https://tools.ietf.org/html/rfc7540#appendix-A  for
-              the complete HTTP/2 cipher suites black list.
+              Allow  black  listed  cipher suite  on  frontend  HTTP/2
+              connection.                                          See
+              https://tools.ietf.org/html/rfc7540#appendix-A  for  the
+              complete HTTP/2 cipher suites black list.
+  --client-no-http2-cipher-black-list
+              Allow  black  listed  cipher  suite  on  backend  HTTP/2
+              connection.                                          See
+              https://tools.ietf.org/html/rfc7540#appendix-A  for  the
+              complete HTTP/2 cipher suites black list.
   --tls-sct-dir=<DIR>
               Specifies the  directory where  *.sct files  exist.  All
               *.sct   files   in  <DIR>   are   read,   and  sent   as
@@ -3096,6 +3102,8 @@ int main(int argc, char **argv) {
          &flag, 146},
         {SHRPX_OPT_PSK_SECRETS.c_str(), required_argument, &flag, 147},
         {SHRPX_OPT_CLIENT_PSK_SECRETS.c_str(), required_argument, &flag, 148},
+        {SHRPX_OPT_CLIENT_NO_HTTP2_CIPHER_BLACK_LIST.c_str(), no_argument,
+         &flag, 149},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -3793,6 +3801,11 @@ int main(int argc, char **argv) {
       case 148:
         // --client-psk-secrets
         cmdcfgs.emplace_back(SHRPX_OPT_CLIENT_PSK_SECRETS, StringRef{optarg});
+        break;
+      case 149:
+        // --client-no-http2-cipher-black-list
+        cmdcfgs.emplace_back(SHRPX_OPT_CLIENT_NO_HTTP2_CIPHER_BLACK_LIST,
+                             StringRef::from_lit("yes"));
         break;
       default:
         break;

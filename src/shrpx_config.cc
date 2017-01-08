@@ -2004,6 +2004,11 @@ int option_lookup_token(const char *name, size_t namelen) {
         return SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED_MAX_FAIL;
       }
       break;
+    case 't':
+      if (util::strieq_l("client-no-http2-cipher-black-lis", name, 32)) {
+        return SHRPX_OPTID_CLIENT_NO_HTTP2_CIPHER_BLACK_LIST;
+      }
+      break;
     }
     break;
   case 34:
@@ -3274,6 +3279,11 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     return parse_psk_secrets(config, optarg);
   case SHRPX_OPTID_CLIENT_PSK_SECRETS:
     return parse_client_psk_secrets(config, optarg);
+  case SHRPX_OPTID_CLIENT_NO_HTTP2_CIPHER_BLACK_LIST:
+    config->tls.client.no_http2_cipher_black_list =
+        util::strieq_l("yes", optarg);
+
+    return 0;
   case SHRPX_OPTID_CONF:
     LOG(WARN) << "conf: ignored";
 

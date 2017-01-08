@@ -155,6 +155,7 @@ OPTIONS = [
     "frontend-keep-alive-timeout",
     "psk-secrets",
     "client-psk-secrets",
+    "client-no-http2-cipher-black-list",
 ]
 
 LOGVARS = [
