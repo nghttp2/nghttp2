@@ -2120,14 +2120,25 @@ SSL/TLS:
               in hex.  An  empty line, and line which  starts with '#'
               are skipped.  The default  enabled cipher list might not
               contain any PSK cipher suite.  In that case, desired PSK
-              cipher suites must be enabled using --ciphers option.
+              cipher suites  must be  enabled using  --ciphers option.
+              The  desired PSK  cipher suite  may be  black listed  by
+              HTTP/2.   To  use  those   cipher  suites  with  HTTP/2,
+              consider  to  use  --no-http2-cipher-black-list  option.
+              But be aware its implications.
   --client-psk-secrets=<PATH>
               Read PSK identity and secrets from <PATH>.  This is used
               for backend connection.  The each  line of input file is
               formatted  as <identity>:<hex-secret>,  where <identity>
               is PSK identity, and <hex-secret>  is secret in hex.  An
               empty line, and line which  starts with '#' are skipped.
-              The first identity and secret pair encountered is used.
+              The first identity and  secret pair encountered is used.
+              The default  enabled cipher  list might not  contain any
+              PSK  cipher suite.   In  that case,  desired PSK  cipher
+              suites  must be  enabled using  --client-ciphers option.
+              The  desired PSK  cipher suite  may be  black listed  by
+              HTTP/2.   To  use  those   cipher  suites  with  HTTP/2,
+              consider   to  use   --client-no-http2-cipher-black-list
+              option.  But be aware its implications.
 
 HTTP/2 and SPDY:
   -c, --frontend-http2-max-concurrent-streams=<N>
