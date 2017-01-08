@@ -595,7 +595,8 @@ void print_server_tmp_key(SSL *ssl) {
 
   std::cout << "Server Temp Key: ";
 
-  switch (EVP_PKEY_id(key)) {
+  auto pkey_id = EVP_PKEY_id(key);
+  switch (pkey_id) {
   case EVP_PKEY_RSA:
     std::cout << "RSA " << EVP_PKEY_bits(key) << " bits" << std::endl;
     break;
@@ -615,6 +616,10 @@ void print_server_tmp_key(SSL *ssl) {
               << std::endl;
     break;
   }
+  default:
+    std::cout << OBJ_nid2sn(pkey_id) << " " << EVP_PKEY_bits(key) << " bits"
+              << std::endl;
+    break;
   }
 #endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 }
