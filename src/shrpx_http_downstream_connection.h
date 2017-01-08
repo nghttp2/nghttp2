@@ -91,8 +91,8 @@ public:
 
 private:
   Connection conn_;
-  std::function<int(HttpDownstreamConnection &)> do_read_, do_write_,
-      do_signal_write_;
+  std::function<int(HttpDownstreamConnection &)> on_read_, on_write_,
+      signal_write_;
   Worker *worker_;
   // nullptr if TLS is not used.
   SSL_CTX *ssl_ctx_;

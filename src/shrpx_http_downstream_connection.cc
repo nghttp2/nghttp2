@@ -189,9 +189,9 @@ HttpDownstreamConnection::HttpDownstreamConnection(
             readcb, connect_timeoutcb, this,
             get_config()->tls.dyn_rec.warmup_threshold,
             get_config()->tls.dyn_rec.idle_timeout, PROTO_HTTP1),
-      do_read_(&HttpDownstreamConnection::noop),
-      do_write_(&HttpDownstreamConnection::noop),
-      do_signal_write_(&HttpDownstreamConnection::noop),
+      on_read_(&HttpDownstreamConnection::noop),
+      on_write_(&HttpDownstreamConnection::noop),
+      signal_write_(&HttpDownstreamConnection::noop),
       worker_(worker),
       ssl_ctx_(worker->get_cl_ssl_ctx()),
       group_(group),
@@ -454,7 +454,7 @@ int HttpDownstreamConnection::initiate_connection() {
 
     ev_set_cb(&conn_.rev, readcb);
 
-    do_write_ = &HttpDownstreamConnection::write_reuse_first;
+    on_write_ = &HttpDownstreamConnection::write_reuse_first;
     reuse_first_write_done_ = false;
   }
 
@@ -1096,9 +1096,9 @@ int HttpDownstreamConnection::write_reuse_first() {
   }
 
   if (conn_.tls.ssl) {
-    do_write_ = &HttpDownstreamConnection::write_tls;
+    on_write_ = &HttpDownstreamConnection::write_tls;
   } else {
-    do_write_ = &HttpDownstreamConnection::write_clear;
+    on_write_ = &HttpDownstreamConnection::write_clear;
   }
 
   reuse_first_write_done_ = true;
@@ -1158,7 +1158,7 @@ int HttpDownstreamConnection::write_clear() {
       // part of response body.  So keep reading.  Invoke read event
       // to get read(2) error just in case.
       ev_feed_event(conn_.loop, &conn_.rev, EV_READ);
-      do_write_ = &HttpDownstreamConnection::noop;
+      on_write_ = &HttpDownstreamConnection::noop;
       reusable_ = false;
       break;
     }
@@ -1216,15 +1216,15 @@ int HttpDownstreamConnection::tls_handshake() {
 
   auto &connect_blocker = addr_->connect_blocker;
 
-  do_signal_write_ = &HttpDownstreamConnection::actual_signal_write;
+  signal_write_ = &HttpDownstreamConnection::actual_signal_write;
 
   connect_blocker->on_success();
 
   ev_set_cb(&conn_.rt, timeoutcb);
   ev_set_cb(&conn_.wt, timeoutcb);
 
-  do_read_ = &HttpDownstreamConnection::read_tls;
-  do_write_ = &HttpDownstreamConnection::write_tls;
+  on_read_ = &HttpDownstreamConnection::read_tls;
+  on_write_ = &HttpDownstreamConnection::write_tls;
 
   // TODO Check negotiated ALPN
 
@@ -1287,7 +1287,7 @@ int HttpDownstreamConnection::write_tls() {
       // part of response body.  So keep reading.  Invoke read event
       // to get read(2) error just in case.
       ev_feed_event(conn_.loop, &conn_.rev, EV_READ);
-      do_write_ = &HttpDownstreamConnection::noop;
+      on_write_ = &HttpDownstreamConnection::noop;
       reusable_ = false;
       break;
     }
@@ -1407,32 +1407,32 @@ int HttpDownstreamConnection::connected() {
   ev_set_cb(&conn_.wev, writecb);
 
   if (conn_.tls.ssl) {
-    do_read_ = &HttpDownstreamConnection::tls_handshake;
-    do_write_ = &HttpDownstreamConnection::tls_handshake;
+    on_read_ = &HttpDownstreamConnection::tls_handshake;
+    on_write_ = &HttpDownstreamConnection::tls_handshake;
 
     return 0;
   }
 
-  do_signal_write_ = &HttpDownstreamConnection::actual_signal_write;
+  signal_write_ = &HttpDownstreamConnection::actual_signal_write;
 
   connect_blocker->on_success();
 
   ev_set_cb(&conn_.rt, timeoutcb);
   ev_set_cb(&conn_.wt, timeoutcb);
 
-  do_read_ = &HttpDownstreamConnection::read_clear;
-  do_write_ = &HttpDownstreamConnection::write_clear;
+  on_read_ = &HttpDownstreamConnection::read_clear;
+  on_write_ = &HttpDownstreamConnection::write_clear;
 
   return 0;
 }
 
-int HttpDownstreamConnection::on_read() { return do_read_(*this); }
+int HttpDownstreamConnection::on_read() { return on_read_(*this); }
 
-int HttpDownstreamConnection::on_write() { return do_write_(*this); }
+int HttpDownstreamConnection::on_write() { return on_write_(*this); }
 
 void HttpDownstreamConnection::on_upstream_change(Upstream *upstream) {}
 
-void HttpDownstreamConnection::signal_write() { do_signal_write_(*this); }
+void HttpDownstreamConnection::signal_write() { signal_write_(*this); }
 
 int HttpDownstreamConnection::actual_signal_write() {
   ev_feed_event(conn_.loop, &conn_.wev, EV_WRITE);
