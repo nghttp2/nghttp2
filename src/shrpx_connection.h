@@ -64,6 +64,8 @@ struct TLSConnection {
   int handshake_state;
   bool initial_handshake_done;
   bool reneg_started;
+  // true if ssl is prepared to do handshake as server.
+  bool server_handshake;
 };
 
 struct TCPHint {
