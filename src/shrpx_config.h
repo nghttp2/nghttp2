@@ -324,6 +324,7 @@ constexpr auto SHRPX_OPT_CLIENT_PSK_SECRETS =
     StringRef::from_lit("client-psk-secrets");
 constexpr auto SHRPX_OPT_CLIENT_NO_HTTP2_CIPHER_BLACK_LIST =
     StringRef::from_lit("client-no-http2-cipher-black-list");
+constexpr auto SHRPX_OPT_CLIENT_CIPHERS = StringRef::from_lit("client-ciphers");
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
@@ -558,6 +559,7 @@ struct TLSConfig {
     } psk;
     StringRef private_key_file;
     StringRef cert_file;
+    StringRef ciphers;
     bool no_http2_cipher_black_list;
   } client;
 
@@ -927,6 +929,7 @@ enum {
   SHRPX_OPTID_CIPHERS,
   SHRPX_OPTID_CLIENT,
   SHRPX_OPTID_CLIENT_CERT_FILE,
+  SHRPX_OPTID_CLIENT_CIPHERS,
   SHRPX_OPTID_CLIENT_NO_HTTP2_CIPHER_BLACK_LIST,
   SHRPX_OPTID_CLIENT_PRIVATE_KEY_FILE,
   SHRPX_OPTID_CLIENT_PROXY,

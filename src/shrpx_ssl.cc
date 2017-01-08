@@ -874,8 +874,8 @@ SSL_CTX *create_ssl_client_context(
   SSL_CTX_set_options(ssl_ctx, ssl_opts | tlsconf.tls_proto_mask);
 
   const char *ciphers;
-  if (!tlsconf.ciphers.empty()) {
-    ciphers = tlsconf.ciphers.c_str();
+  if (!tlsconf.client.ciphers.empty()) {
+    ciphers = tlsconf.client.ciphers.c_str();
   } else {
     ciphers = nghttp2::ssl::DEFAULT_CIPHER_LIST;
   }

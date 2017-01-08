@@ -1896,8 +1896,11 @@ Timeout:
 
 SSL/TLS:
   --ciphers=<SUITE>
-              Set allowed  cipher list.  The  format of the  string is
-              described in OpenSSL ciphers(1).
+              Set allowed  cipher list  for frontend  connection.  The
+              format of the string is described in OpenSSL ciphers(1).
+  --client-ciphers=<SUITE>
+              Set  allowed cipher  list for  backend connection.   The
+              format of the string is described in OpenSSL ciphers(1).
   --ecdh-curves=<LIST>
               Set  supported  curve  list  for  frontend  connections.
               <LIST> is a  colon separated list of curve  NID or names
@@ -3104,6 +3107,7 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_CLIENT_PSK_SECRETS.c_str(), required_argument, &flag, 148},
         {SHRPX_OPT_CLIENT_NO_HTTP2_CIPHER_BLACK_LIST.c_str(), no_argument,
          &flag, 149},
+        {SHRPX_OPT_CLIENT_CIPHERS.c_str(), required_argument, &flag, 150},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -3806,6 +3810,10 @@ int main(int argc, char **argv) {
         // --client-no-http2-cipher-black-list
         cmdcfgs.emplace_back(SHRPX_OPT_CLIENT_NO_HTTP2_CIPHER_BLACK_LIST,
                              StringRef::from_lit("yes"));
+        break;
+      case 150:
+        // --client-ciphers
+        cmdcfgs.emplace_back(SHRPX_OPT_CLIENT_CIPHERS, StringRef{optarg});
         break;
       default:
         break;

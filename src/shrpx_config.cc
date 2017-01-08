@@ -1585,6 +1585,9 @@ int option_lookup_token(const char *name, size_t namelen) {
       if (util::strieq_l("backend-no-tl", name, 13)) {
         return SHRPX_OPTID_BACKEND_NO_TLS;
       }
+      if (util::strieq_l("client-cipher", name, 13)) {
+        return SHRPX_OPTID_CLIENT_CIPHERS;
+      }
       break;
     case 't':
       if (util::strieq_l("tls-proto-lis", name, 13)) {
@@ -3282,6 +3285,10 @@ int parse_config(Config *config, int optid, const StringRef &opt,
   case SHRPX_OPTID_CLIENT_NO_HTTP2_CIPHER_BLACK_LIST:
     config->tls.client.no_http2_cipher_black_list =
         util::strieq_l("yes", optarg);
+
+    return 0;
+  case SHRPX_OPTID_CLIENT_CIPHERS:
+    config->tls.client.ciphers = make_string_ref(config->balloc, optarg);
 
     return 0;
   case SHRPX_OPTID_CONF:
