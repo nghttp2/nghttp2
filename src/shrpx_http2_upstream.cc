@@ -1055,7 +1055,7 @@ int Http2Upstream::on_read() {
   auto rlimit = handler_->get_rlimit();
 
   if (rb->rleft()) {
-    rv = nghttp2_session_mem_recv(session_, rb->pos, rb->rleft());
+    rv = nghttp2_session_mem_recv(session_, rb->pos(), rb->rleft());
     if (rv < 0) {
       if (rv != NGHTTP2_ERR_BAD_CLIENT_MAGIC) {
         ULOG(ERROR, this) << "nghttp2_session_mem_recv() returned error: "
