@@ -546,18 +546,17 @@ struct TLSConfig {
     bool enabled;
   } client_verify;
 
-  // Client private key and certificate used in backend connections.
+  // Client (backend connection) TLS configuration.
   struct {
+    // Client PSK configuration
+    struct {
+      // identity must be NULL terminated string.
+      StringRef identity;
+      StringRef secret;
+    } psk;
     StringRef private_key_file;
     StringRef cert_file;
   } client;
-
-  // Client PSK configuration
-  struct {
-    // identity must be NULL terminated string.
-    StringRef identity;
-    StringRef secret;
-  } client_psk;
 
   // PSK secrets.  The key is identity, and the associated value is
   // its secret.

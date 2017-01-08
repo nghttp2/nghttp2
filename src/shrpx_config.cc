@@ -1265,7 +1265,7 @@ int parse_psk_secrets(Config *config, const StringRef &path) {
 
 namespace {
 // Reads PSK secrets from path, and parses each line.  The result is
-// directly stored into config->tls.client_psk.  This function returns
+// directly stored into config->tls.client.psk.  This function returns
 // 0 if it succeeds, or -1.
 int parse_client_psk_secrets(Config *config, const StringRef &path) {
   auto &tlsconf = config->tls;
@@ -1310,10 +1310,10 @@ int parse_client_psk_secrets(Config *config, const StringRef &path) {
       return -1;
     }
 
-    tlsconf.client_psk.identity =
+    tlsconf.client.psk.identity =
         make_string_ref(config->balloc, StringRef{std::begin(line), sep_it});
 
-    tlsconf.client_psk.secret =
+    tlsconf.client.psk.secret =
         util::decode_hex(config->balloc, StringRef{sep_it + 1, std::end(line)});
 
     return 0;

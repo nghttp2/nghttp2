@@ -556,8 +556,8 @@ unsigned int psk_client_cb(SSL *ssl, const char *hint, char *identity_out,
   auto config = get_config();
   auto &tlsconf = config->tls;
 
-  auto &identity = tlsconf.client_psk.identity;
-  auto &secret = tlsconf.client_psk.secret;
+  auto &identity = tlsconf.client.psk.identity;
+  auto &secret = tlsconf.client.psk.secret;
 
   if (identity.empty()) {
     return 0;
