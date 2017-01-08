@@ -525,6 +525,63 @@ int sct_parse_cb(SSL *ssl, unsigned int ext_type, const unsigned char *in,
 } // namespace
 #endif // !LIBRESSL_IN_USE && OPENSSL_VERSION_NUMBER >= 0x10002000L
 
+namespace {
+unsigned int psk_server_cb(SSL *ssl, const char *identity, unsigned char *psk,
+                           unsigned int max_psk_len) {
+  auto config = get_config();
+  auto &tlsconf = config->tls;
+
+  auto it = tlsconf.psk_secrets.find(StringRef{identity});
+  if (it == std::end(tlsconf.psk_secrets)) {
+    return 0;
+  }
+
+  auto &secret = (*it).second;
+  if (secret.size() > max_psk_len) {
+    LOG(ERROR) << "The size of PSK secret is " << secret.size()
+               << ", but the acceptable maximum size is" << max_psk_len;
+    return 0;
+  }
+
+  std::copy(std::begin(secret), std::end(secret), psk);
+
+  return static_cast<unsigned int>(secret.size());
+}
+} // namespace
+
+namespace {
+unsigned int psk_client_cb(SSL *ssl, const char *hint, char *identity_out,
+                           unsigned int max_identity_len, unsigned char *psk,
+                           unsigned int max_psk_len) {
+  auto config = get_config();
+  auto &tlsconf = config->tls;
+
+  auto &identity = tlsconf.client_psk.identity;
+  auto &secret = tlsconf.client_psk.secret;
+
+  if (identity.empty()) {
+    return 0;
+  }
+
+  if (identity.size() + 1 > max_identity_len) {
+    LOG(ERROR) << "The size of PSK identity is " << identity.size()
+               << ", but the acceptable maximum size is " << max_identity_len;
+    return 0;
+  }
+
+  if (secret.size() > max_psk_len) {
+    LOG(ERROR) << "The size of PSK secret is " << secret.size()
+               << ", but the acceptable maximum size is " << max_psk_len;
+    return 0;
+  }
+
+  *std::copy(std::begin(identity), std::end(identity), identity_out) = '\0';
+  std::copy(std::begin(secret), std::end(secret), psk);
+
+  return (unsigned int)secret.size();
+}
+} // namespace
+
 struct TLSProtocol {
   StringRef name;
   long int mask;
@@ -734,6 +791,8 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
   }
 #endif // !LIBRESSL_IN_USE && OPENSSL_VERSION_NUMBER >= 0x10002000L
 
+  SSL_CTX_set_psk_server_callback(ssl_ctx, psk_server_cb);
+
   auto tls_ctx_data = new TLSContextData();
   tls_ctx_data->cert_file = cert_file;
   tls_ctx_data->sct_data = sct_data;
@@ -872,6 +931,8 @@ SSL_CTX *create_ssl_client_context(
     }
 #endif // HAVE_NEVERBLEED
   }
+
+  SSL_CTX_set_psk_client_callback(ssl_ctx, psk_client_cb);
 
   // NPN selection callback.  This is required to set SSL_CTX because
   // OpenSSL does not offer SSL_set_next_proto_select_cb.
@@ -1155,8 +1216,10 @@ int verify_hostname(X509 *cert, const StringRef &hostname,
 int check_cert(SSL *ssl, const Address *addr, const StringRef &host) {
   auto cert = SSL_get_peer_certificate(ssl);
   if (!cert) {
-    LOG(ERROR) << "No certificate found";
-    return -1;
+    // By the protocol definition, TLS server always sends certificate
+    // if it has.  If certificate cannot be retrieved, authentication
+    // without certificate is used, such as PSK.
+    return 0;
   }
   auto cert_deleter = defer(X509_free, cert);
   auto verify_res = SSL_get_verify_result(ssl);

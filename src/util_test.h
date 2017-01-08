@@ -64,6 +64,8 @@ void test_util_make_hostport(void);
 void test_util_strifind(void);
 void test_util_random_alpha_digit(void);
 void test_util_format_hex(void);
+void test_util_is_hex_string(void);
+void test_util_decode_hex(void);
 
 } // namespace shrpx
 
