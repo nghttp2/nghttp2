@@ -1702,24 +1702,9 @@ int Http2Session::connection_made() {
     return -1;
   }
 
-  auto must_terminate =
-      addr_->tls && !nghttp2::ssl::check_http2_requirement(conn_.tls.ssl);
-
   reset_connection_check_timer(CONNCHK_TIMEOUT);
 
-  if (must_terminate) {
-    if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "TLSv1.2 was not negotiated. HTTP/2 must not be negotiated.";
-    }
-
-    rv = terminate_session(NGHTTP2_INADEQUATE_SECURITY);
-
-    if (rv != 0) {
-      return -1;
-    }
-  } else {
-    submit_pending_requests();
-  }
+  submit_pending_requests();
 
   signal_write();
   return 0;
