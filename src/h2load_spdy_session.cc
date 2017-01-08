@@ -113,7 +113,7 @@ ssize_t send_callback(spdylay_session *session, const uint8_t *data,
   auto &wb = client->wb;
 
   if (wb.rleft() >= BACKOFF_WRITE_BUFFER_THRES) {
-    return SPDYLAY_ERR_DEFERRED;
+    return SPDYLAY_ERR_WOULDBLOCK;
   }
 
   return wb.append(data, length);
