@@ -1288,7 +1288,7 @@ int parse_client_psk_secrets(Config *config, const StringRef &path) {
     auto sep_it = std::find(std::begin(line), std::end(line), ':');
     if (sep_it == std::end(line)) {
       LOG(ERROR) << SHRPX_OPT_CLIENT_PSK_SECRETS
-                 << ": could not fine separator at line " << lineno;
+                 << ": could not find separator at line " << lineno;
       return -1;
     }
 
