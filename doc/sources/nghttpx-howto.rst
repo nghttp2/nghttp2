@@ -370,6 +370,22 @@ parameter in :option:`--backend` option, like so:
 nghttpx will cache resolved addresses for certain period of time.  To
 change this cache period, use :option:`--dns-cache-timeout`.
 
+Migration from nghttpx v1.18.x or earlier
+-----------------------------------------
+
+As of nghttpx v1.19.0, :option:`--ciphers` option only changes cipher
+list for frontend TLS connection.  In order to change cipher list for
+backend connection, use :option:`--client-ciphers` option.
+
+Similarly, :option:`--no-http2-cipher-black-list` option only disables
+HTTP/2 cipher black list for frontend connection.  In order to disable
+HTTP/2 cipher black list for backend connection, use
+:option:`--client-no-http2-cipher-black-list` option.
+
+``--accept-proxy-protocol`` option was deprecated.  Instead, use
+``proxyproto`` parameter in :option:`--frontend` option to enable
+PROXY protocol support per frontend.
+
 Migration from nghttpx v1.8.0 or earlier
 ----------------------------------------
 
