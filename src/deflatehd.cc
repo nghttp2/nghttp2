@@ -373,7 +373,7 @@ OPTIONS:
             << std::endl;
 }
 
-static struct option long_options[] = {
+constexpr static struct option long_options[] = {
     {"http1text", no_argument, nullptr, 't'},
     {"table-size", required_argument, nullptr, 's'},
     {"deflate-table-size", required_argument, nullptr, 'S'},

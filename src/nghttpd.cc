@@ -202,7 +202,7 @@ int main(int argc, char **argv) {
 
   while (1) {
     static int flag = 0;
-    static option long_options[] = {
+    constexpr static option long_options[] = {
         {"address", required_argument, nullptr, 'a'},
         {"daemon", no_argument, nullptr, 'D'},
         {"htdocs", required_argument, nullptr, 'd'},

@@ -251,7 +251,7 @@ OPTIONS:
   ;
 }
 
-static struct option long_options[] = {
+constexpr static struct option long_options[] = {
     {"dump-header-table", no_argument, nullptr, 'd'}, {nullptr, 0, nullptr, 0}};
 
 int main(int argc, char **argv) {

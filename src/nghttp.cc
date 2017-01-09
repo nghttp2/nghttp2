@@ -2680,7 +2680,7 @@ int main(int argc, char **argv) {
   bool color = false;
   while (1) {
     static int flag = 0;
-    static option long_options[] = {
+    constexpr static option long_options[] = {
         {"verbose", no_argument, nullptr, 'v'},
         {"null-out", no_argument, nullptr, 'n'},
         {"remote-name", no_argument, nullptr, 'O'},

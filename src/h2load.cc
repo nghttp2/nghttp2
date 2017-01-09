@@ -1839,7 +1839,7 @@ int main(int argc, char **argv) {
   bool nreqs_set_manually = false;
   while (1) {
     static int flag = 0;
-    static option long_options[] = {
+    constexpr static option long_options[] = {
         {"requests", required_argument, nullptr, 'n'},
         {"clients", required_argument, nullptr, 'c'},
         {"data", required_argument, nullptr, 'd'},
