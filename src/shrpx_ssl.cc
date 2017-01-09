@@ -250,7 +250,7 @@ int tls_session_new_cb(SSL *ssl, SSL_SESSION *session) {
   id = SSL_SESSION_get_id(session, &idlen);
 
   if (LOG_ENABLED(INFO)) {
-    LOG(INFO) << "Memached: cache session, id=" << util::format_hex(id, idlen);
+    LOG(INFO) << "Memcached: cache session, id=" << util::format_hex(id, idlen);
   }
 
   auto req = make_unique<MemcachedRequest>();
