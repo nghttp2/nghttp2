@@ -505,7 +505,7 @@ int htp_msg_completecb(http_parser *htp) {
 } // namespace
 
 namespace {
-http_parser_settings htp_hooks = {
+constexpr http_parser_settings htp_hooks = {
     htp_msg_begin,       // http_cb      on_message_begin;
     htp_uricb,           // http_data_cb on_url;
     nullptr,             // http_data_cb on_status;

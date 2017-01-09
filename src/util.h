@@ -184,7 +184,7 @@ time_t parse_http_date(const StringRef &s);
 char upcase(char c);
 
 inline char lowcase(char c) {
-  static unsigned char tbl[] = {
+  constexpr static unsigned char tbl[] = {
       0,   1,   2,   3,   4,   5,   6,   7,   8,   9,   10,  11,  12,  13,  14,
       15,  16,  17,  18,  19,  20,  21,  22,  23,  24,  25,  26,  27,  28,  29,
       30,  31,  32,  33,  34,  35,  36,  37,  38,  39,  40,  41,  42,  43,  44,
@@ -451,7 +451,7 @@ void to_token68(std::string &base64str);
 
 StringRef to_base64(BlockAllocator &balloc, const StringRef &token68str);
 
-void show_candidates(const char *unkopt, option *options);
+void show_candidates(const char *unkopt, const option *options);
 
 bool has_uri_field(const http_parser_url &u, http_parser_url_fields field);
 

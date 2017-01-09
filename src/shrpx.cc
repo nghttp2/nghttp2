@@ -2911,7 +2911,7 @@ int main(int argc, char **argv) {
 
   while (1) {
     static int flag = 0;
-    static option long_options[] = {
+    static constexpr option long_options[] = {
         {SHRPX_OPT_DAEMON.c_str(), no_argument, nullptr, 'D'},
         {SHRPX_OPT_LOG_LEVEL.c_str(), required_argument, nullptr, 'L'},
         {SHRPX_OPT_BACKEND.c_str(), required_argument, nullptr, 'b'},

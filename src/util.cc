@@ -472,7 +472,7 @@ int levenshtein(const char *a, int alen, const char *b, int blen, int swapcost,
 }
 } // namespace
 
-void show_candidates(const char *unkopt, option *options) {
+void show_candidates(const char *unkopt, const option *options) {
   for (; *unkopt == '-'; ++unkopt)
     ;
   if (*unkopt == '\0') {
