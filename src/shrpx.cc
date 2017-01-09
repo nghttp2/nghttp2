@@ -487,7 +487,7 @@ void exec_binary() {
   }
 
   // restores original stderr
-  util::restore_original_fds();
+  restore_original_fds();
 
   if (execve(argv[0], argv.get(), envp.get()) == -1) {
     auto error = errno;
@@ -2878,7 +2878,7 @@ int main(int argc, char **argv) {
   fill_default_config(mod_config());
 
   // make copy of stderr
-  util::store_original_fds();
+  store_original_fds();
 
   // First open log files with default configuration, so that we can
   // log errors/warnings while reading configuration files.

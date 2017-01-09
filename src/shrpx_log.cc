@@ -33,7 +33,11 @@
 #ifdef HAVE_INTTYPES_H
 #include <inttypes.h>
 #endif // HAVE_INTTYPES_H
-
+#include <sys/types.h>
+#include <sys/stat.h>
+#ifdef HAVE_FCNTL_H
+#include <fcntl.h>
+#endif // HAVE_FCNTL_H
 #include <sys/wait.h>
 
 #include <cerrno>
@@ -410,7 +414,7 @@ int reopen_log_files() {
   auto &errorconf = config->logging.error;
 
   if (!accessconf.syslog && !accessconf.file.empty()) {
-    new_accesslog_fd = util::open_log_file(accessconf.file.c_str());
+    new_accesslog_fd = open_log_file(accessconf.file.c_str());
 
     if (new_accesslog_fd == -1) {
       LOG(ERROR) << "Failed to open accesslog file " << accessconf.file;
@@ -419,7 +423,7 @@ int reopen_log_files() {
   }
 
   if (!errorconf.syslog && !errorconf.file.empty()) {
-    new_errorlog_fd = util::open_log_file(errorconf.file.c_str());
+    new_errorlog_fd = open_log_file(errorconf.file.c_str());
 
     if (new_errorlog_fd == -1) {
       if (lgconf->errorlog_fd != -1) {
@@ -433,8 +437,8 @@ int reopen_log_files() {
     }
   }
 
-  util::close_log_file(lgconf->accesslog_fd);
-  util::close_log_file(lgconf->errorlog_fd);
+  close_log_file(lgconf->accesslog_fd);
+  close_log_file(lgconf->errorlog_fd);
 
   lgconf->accesslog_fd = new_accesslog_fd;
   lgconf->errorlog_fd = new_errorlog_fd;
@@ -476,6 +480,62 @@ void redirect_stderr_to_errorlog() {
   }
 
   dup2(lgconf->errorlog_fd, STDERR_FILENO);
+}
+
+namespace {
+int STDERR_COPY = -1;
+int STDOUT_COPY = -1;
+} // namespace
+
+void store_original_fds() {
+  // consider dup'ing stdout too
+  STDERR_COPY = dup(STDERR_FILENO);
+  STDOUT_COPY = STDOUT_FILENO;
+  // no race here, since it is called early
+  util::make_socket_closeonexec(STDERR_COPY);
+}
+
+void restore_original_fds() { dup2(STDERR_COPY, STDERR_FILENO); }
+
+void close_log_file(int &fd) {
+  if (fd != STDERR_COPY && fd != STDOUT_COPY && fd != -1) {
+    close(fd);
+  }
+  fd = -1;
+}
+
+int open_log_file(const char *path) {
+
+  if (strcmp(path, "/dev/stdout") == 0 ||
+      strcmp(path, "/proc/self/fd/1") == 0) {
+    return STDOUT_COPY;
+  }
+
+  if (strcmp(path, "/dev/stderr") == 0 ||
+      strcmp(path, "/proc/self/fd/2") == 0) {
+    return STDERR_COPY;
+  }
+#if defined O_CLOEXEC
+
+  auto fd = open(path, O_WRONLY | O_APPEND | O_CREAT | O_CLOEXEC,
+                 S_IRUSR | S_IWUSR | S_IRGRP);
+#else // !O_CLOEXEC
+
+  auto fd =
+      open(path, O_WRONLY | O_APPEND | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP);
+
+  // We get race condition if execve is called at the same time.
+  if (fd != -1) {
+    util::make_socket_closeonexec(fd);
+  }
+
+#endif // !O_CLOEXEC
+
+  if (fd == -1) {
+    return -1;
+  }
+
+  return fd;
 }
 
 } // namespace shrpx

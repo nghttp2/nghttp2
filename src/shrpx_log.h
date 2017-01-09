@@ -173,6 +173,24 @@ void log_chld(pid_t pid, int rstatus, const char *msg);
 
 void redirect_stderr_to_errorlog();
 
+// Makes internal copy of stderr (and possibly stdout in the future),
+// which is then used as pointer to /dev/stderr or /proc/self/fd/2
+void store_original_fds();
+
+// Restores the original stderr that was stored with copy_original_fds
+// Used just before execv
+void restore_original_fds();
+
+// Closes |fd| which was returned by open_log_file (see below)
+// and sets it to -1. In the case that |fd| points to stdout or
+// stderr, or is -1, the descriptor is not closed (but still set to -1).
+void close_log_file(int &fd);
+
+// Opens |path| with O_APPEND enabled.  If file does not exist, it is
+// created first.  This function returns file descriptor referring the
+// opened file if it succeeds, or -1.
+int open_log_file(const char *path);
+
 } // namespace shrpx
 
 #endif // SHRPX_LOG_H

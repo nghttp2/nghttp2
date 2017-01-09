@@ -678,60 +678,6 @@ void set_port(Address &addr, uint16_t port) {
   }
 }
 
-static int STDERR_COPY = -1;
-static int STDOUT_COPY = -1;
-
-void store_original_fds() {
-  // consider dup'ing stdout too
-  STDERR_COPY = dup(STDERR_FILENO);
-  STDOUT_COPY = STDOUT_FILENO;
-  // no race here, since it is called early
-  make_socket_closeonexec(STDERR_COPY);
-}
-
-void restore_original_fds() { dup2(STDERR_COPY, STDERR_FILENO); }
-
-void close_log_file(int &fd) {
-  if (fd != STDERR_COPY && fd != STDOUT_COPY && fd != -1) {
-    close(fd);
-  }
-  fd = -1;
-}
-
-int open_log_file(const char *path) {
-
-  if (strcmp(path, "/dev/stdout") == 0 ||
-      strcmp(path, "/proc/self/fd/1") == 0) {
-    return STDOUT_COPY;
-  }
-
-  if (strcmp(path, "/dev/stderr") == 0 ||
-      strcmp(path, "/proc/self/fd/2") == 0) {
-    return STDERR_COPY;
-  }
-#if defined O_CLOEXEC
-
-  auto fd = open(path, O_WRONLY | O_APPEND | O_CREAT | O_CLOEXEC,
-                 S_IRUSR | S_IWUSR | S_IRGRP);
-#else // !O_CLOEXEC
-
-  auto fd =
-      open(path, O_WRONLY | O_APPEND | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP);
-
-  // We get race condition if execve is called at the same time.
-  if (fd != -1) {
-    make_socket_closeonexec(fd);
-  }
-
-#endif // !O_CLOEXEC
-
-  if (fd == -1) {
-    return -1;
-  }
-
-  return fd;
-}
-
 std::string ascii_dump(const uint8_t *data, size_t len) {
   std::string res;
 
