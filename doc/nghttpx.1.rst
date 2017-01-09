@@ -202,6 +202,10 @@ Connections
     default.  Any  requests which come through  this address
     are replied with 200 HTTP status, without no body.
 
+    To  accept   PROXY  protocol   version  1   on  frontend
+    connection,  specify  "proxyproto" parameter.   This  is
+    disabled by default.
+
 
     Default: ``*,3000``
 
@@ -234,10 +238,6 @@ Connections
     timeouts when connecting and  making CONNECT request can
     be     specified    by     :option:`--backend-read-timeout`    and
     :option:`--backend-write-timeout` options.
-
-.. option:: --accept-proxy-protocol
-
-    Accept PROXY protocol version 1 on frontend connection.
 
 
 Performance
@@ -487,8 +487,17 @@ SSL/TLS
 
 .. option:: --ciphers=<SUITE>
 
-    Set allowed  cipher list.  The  format of the  string is
-    described in OpenSSL ciphers(1).
+    Set allowed  cipher list  for frontend  connection.  The
+    format of the string is described in OpenSSL ciphers(1).
+
+    Default: ``ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA:ECDHE-RSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-RSA-AES256-SHA256:DHE-RSA-AES256-SHA:ECDHE-ECDSA-DES-CBC3-SHA:ECDHE-RSA-DES-CBC3-SHA:EDH-RSA-DES-CBC3-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA:DES-CBC3-SHA:!DSS``
+
+.. option:: --client-ciphers=<SUITE>
+
+    Set  allowed cipher  list for  backend connection.   The
+    format of the string is described in OpenSSL ciphers(1).
+
+    Default: ``ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA:ECDHE-RSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-RSA-AES256-SHA256:DHE-RSA-AES256-SHA:ECDHE-ECDSA-DES-CBC3-SHA:ECDHE-RSA-DES-CBC3-SHA:EDH-RSA-DES-CBC3-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA:DES-CBC3-SHA:!DSS``
 
 .. option:: --ecdh-curves=<LIST>
 
@@ -747,9 +756,17 @@ SSL/TLS
 
 .. option:: --no-http2-cipher-black-list
 
-    Allow black  listed cipher  suite on  HTTP/2 connection.
-    See  https://tools.ietf.org/html/rfc7540#appendix-A  for
-    the complete HTTP/2 cipher suites black list.
+    Allow  black  listed  cipher suite  on  frontend  HTTP/2
+    connection.                                          See
+    https://tools.ietf.org/html/rfc7540#appendix-A  for  the
+    complete HTTP/2 cipher suites black list.
+
+.. option:: --client-no-http2-cipher-black-list
+
+    Allow  black  listed  cipher  suite  on  backend  HTTP/2
+    connection.                                          See
+    https://tools.ietf.org/html/rfc7540#appendix-A  for  the
+    complete HTTP/2 cipher suites black list.
 
 .. option:: --tls-sct-dir=<DIR>
 
@@ -761,6 +778,37 @@ SSL/TLS
     argument <CERT>, or  certificate option in configuration
     file.   For   additional  certificates,   use  :option:`--subcert`
     option.  This option requires OpenSSL >= 1.0.2.
+
+.. option:: --psk-secrets=<PATH>
+
+    Read list of PSK identity and secrets from <PATH>.  This
+    is used for frontend connection.  The each line of input
+    file  is  formatted  as  <identity>:<hex-secret>,  where
+    <identity> is  PSK identity, and <hex-secret>  is secret
+    in hex.  An  empty line, and line which  starts with '#'
+    are skipped.  The default  enabled cipher list might not
+    contain any PSK cipher suite.  In that case, desired PSK
+    cipher suites  must be  enabled using  :option:`--ciphers` option.
+    The  desired PSK  cipher suite  may be  black listed  by
+    HTTP/2.   To  use  those   cipher  suites  with  HTTP/2,
+    consider  to  use  :option:`--no-http2-cipher-black-list`  option.
+    But be aware its implications.
+
+.. option:: --client-psk-secrets=<PATH>
+
+    Read PSK identity and secrets from <PATH>.  This is used
+    for backend connection.  The each  line of input file is
+    formatted  as <identity>:<hex-secret>,  where <identity>
+    is PSK identity, and <hex-secret>  is secret in hex.  An
+    empty line, and line which  starts with '#' are skipped.
+    The first identity and  secret pair encountered is used.
+    The default  enabled cipher  list might not  contain any
+    PSK  cipher suite.   In  that case,  desired PSK  cipher
+    suites  must be  enabled using  :option:`--client-ciphers` option.
+    The  desired PSK  cipher suite  may be  black listed  by
+    HTTP/2.   To  use  those   cipher  suites  with  HTTP/2,
+    consider   to  use   :option:`--client-no-http2-cipher-black-list`
+    option.  But be aware its implications.
 
 
 HTTP/2 and SPDY
@@ -1134,7 +1182,7 @@ HTTP
 
     Change server response header field value to <NAME>.
 
-    Default: ``nghttpx nghttp2/1.18.0``
+    Default: ``nghttpx nghttp2/1.19.0-DEV``
 
 .. option:: --no-server-rewrite
 

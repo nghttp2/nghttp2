@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTPX" "1" "Dec 27, 2016" "1.18.0" "nghttp2"
+.TH "NGHTTPX" "1" "Jan 09, 2017" "1.19.0-DEV" "nghttp2"
 .SH NAME
 nghttpx \- HTTP/2 proxy
 .
@@ -218,6 +218,10 @@ specify  "healthmon"  parameter.   This is  disabled  by
 default.  Any  requests which come through  this address
 are replied with 200 HTTP status, without no body.
 .sp
+To  accept   PROXY  protocol   version  1   on  frontend
+connection,  specify  "proxyproto" parameter.   This  is
+disabled by default.
+.sp
 Default: \fB*,3000\fP
 .UNINDENT
 .INDENT 0.0
@@ -252,11 +256,6 @@ handshake with  the downstream through the  tunnel.  The
 timeouts when connecting and  making CONNECT request can
 be     specified    by     \fI\%\-\-backend\-read\-timeout\fP    and
 \fI\%\-\-backend\-write\-timeout\fP options.
-.UNINDENT
-.INDENT 0.0
-.TP
-.B \-\-accept\-proxy\-protocol
-Accept PROXY protocol version 1 on frontend connection.
 .UNINDENT
 .SS Performance
 .INDENT 0.0
@@ -529,8 +528,18 @@ Default: \fB2m\fP
 .INDENT 0.0
 .TP
 .B \-\-ciphers=<SUITE>
-Set allowed  cipher list.  The  format of the  string is
-described in OpenSSL ciphers(1).
+Set allowed  cipher list  for frontend  connection.  The
+format of the string is described in OpenSSL ciphers(1).
+.sp
+Default: \fBECDHE\-ECDSA\-CHACHA20\-POLY1305:ECDHE\-RSA\-CHACHA20\-POLY1305:ECDHE\-ECDSA\-AES128\-GCM\-SHA256:ECDHE\-RSA\-AES128\-GCM\-SHA256:ECDHE\-ECDSA\-AES256\-GCM\-SHA384:ECDHE\-RSA\-AES256\-GCM\-SHA384:DHE\-RSA\-AES128\-GCM\-SHA256:DHE\-RSA\-AES256\-GCM\-SHA384:ECDHE\-ECDSA\-AES128\-SHA256:ECDHE\-RSA\-AES128\-SHA256:ECDHE\-ECDSA\-AES128\-SHA:ECDHE\-RSA\-AES256\-SHA384:ECDHE\-RSA\-AES128\-SHA:ECDHE\-ECDSA\-AES256\-SHA384:ECDHE\-ECDSA\-AES256\-SHA:ECDHE\-RSA\-AES256\-SHA:DHE\-RSA\-AES128\-SHA256:DHE\-RSA\-AES128\-SHA:DHE\-RSA\-AES256\-SHA256:DHE\-RSA\-AES256\-SHA:ECDHE\-ECDSA\-DES\-CBC3\-SHA:ECDHE\-RSA\-DES\-CBC3\-SHA:EDH\-RSA\-DES\-CBC3\-SHA:AES128\-GCM\-SHA256:AES256\-GCM\-SHA384:AES128\-SHA256:AES256\-SHA256:AES128\-SHA:AES256\-SHA:DES\-CBC3\-SHA:!DSS\fP
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-client\-ciphers=<SUITE>
+Set  allowed cipher  list for  backend connection.   The
+format of the string is described in OpenSSL ciphers(1).
+.sp
+Default: \fBECDHE\-ECDSA\-CHACHA20\-POLY1305:ECDHE\-RSA\-CHACHA20\-POLY1305:ECDHE\-ECDSA\-AES128\-GCM\-SHA256:ECDHE\-RSA\-AES128\-GCM\-SHA256:ECDHE\-ECDSA\-AES256\-GCM\-SHA384:ECDHE\-RSA\-AES256\-GCM\-SHA384:DHE\-RSA\-AES128\-GCM\-SHA256:DHE\-RSA\-AES256\-GCM\-SHA384:ECDHE\-ECDSA\-AES128\-SHA256:ECDHE\-RSA\-AES128\-SHA256:ECDHE\-ECDSA\-AES128\-SHA:ECDHE\-RSA\-AES256\-SHA384:ECDHE\-RSA\-AES128\-SHA:ECDHE\-ECDSA\-AES256\-SHA384:ECDHE\-ECDSA\-AES256\-SHA:ECDHE\-RSA\-AES256\-SHA:DHE\-RSA\-AES128\-SHA256:DHE\-RSA\-AES128\-SHA:DHE\-RSA\-AES256\-SHA256:DHE\-RSA\-AES256\-SHA:ECDHE\-ECDSA\-DES\-CBC3\-SHA:ECDHE\-RSA\-DES\-CBC3\-SHA:EDH\-RSA\-DES\-CBC3\-SHA:AES128\-GCM\-SHA256:AES256\-GCM\-SHA384:AES128\-SHA256:AES256\-SHA256:AES128\-SHA:AES256\-SHA:DES\-CBC3\-SHA:!DSS\fP
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -820,9 +829,18 @@ Default: \fB1s\fP
 .INDENT 0.0
 .TP
 .B \-\-no\-http2\-cipher\-black\-list
-Allow black  listed cipher  suite on  HTTP/2 connection.
-See  \fI\%https://tools.ietf.org/html/rfc7540#appendix\-A\fP  for
-the complete HTTP/2 cipher suites black list.
+Allow  black  listed  cipher suite  on  frontend  HTTP/2
+connection.                                          See
+\fI\%https://tools.ietf.org/html/rfc7540#appendix\-A\fP  for  the
+complete HTTP/2 cipher suites black list.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-client\-no\-http2\-cipher\-black\-list
+Allow  black  listed  cipher  suite  on  backend  HTTP/2
+connection.                                          See
+\fI\%https://tools.ietf.org/html/rfc7540#appendix\-A\fP  for  the
+complete HTTP/2 cipher suites black list.
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -835,6 +853,39 @@ certificate   specified   in   positional   command\-line
 argument <CERT>, or  certificate option in configuration
 file.   For   additional  certificates,   use  \fI\%\-\-subcert\fP
 option.  This option requires OpenSSL >= 1.0.2.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-psk\-secrets=<PATH>
+Read list of PSK identity and secrets from <PATH>.  This
+is used for frontend connection.  The each line of input
+file  is  formatted  as  <identity>:<hex\-secret>,  where
+<identity> is  PSK identity, and <hex\-secret>  is secret
+in hex.  An  empty line, and line which  starts with \(aq#\(aq
+are skipped.  The default  enabled cipher list might not
+contain any PSK cipher suite.  In that case, desired PSK
+cipher suites  must be  enabled using  \fI\%\-\-ciphers\fP option.
+The  desired PSK  cipher suite  may be  black listed  by
+HTTP/2.   To  use  those   cipher  suites  with  HTTP/2,
+consider  to  use  \fI\%\-\-no\-http2\-cipher\-black\-list\fP  option.
+But be aware its implications.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-client\-psk\-secrets=<PATH>
+Read PSK identity and secrets from <PATH>.  This is used
+for backend connection.  The each  line of input file is
+formatted  as <identity>:<hex\-secret>,  where <identity>
+is PSK identity, and <hex\-secret>  is secret in hex.  An
+empty line, and line which  starts with \(aq#\(aq are skipped.
+The first identity and  secret pair encountered is used.
+The default  enabled cipher  list might not  contain any
+PSK  cipher suite.   In  that case,  desired PSK  cipher
+suites  must be  enabled using  \fI\%\-\-client\-ciphers\fP option.
+The  desired PSK  cipher suite  may be  black listed  by
+HTTP/2.   To  use  those   cipher  suites  with  HTTP/2,
+consider   to  use   \fI\%\-\-client\-no\-http2\-cipher\-black\-list\fP
+option.  But be aware its implications.
 .UNINDENT
 .SS HTTP/2 and SPDY
 .INDENT 0.0
@@ -1255,7 +1306,7 @@ backend server, the custom error pages are not used.
 .B \-\-server\-name=<NAME>
 Change server response header field value to <NAME>.
 .sp
-Default: \fBnghttpx nghttp2/1.18.0\fP
+Default: \fBnghttpx nghttp2/1.19.0\-DEV\fP
 .UNINDENT
 .INDENT 0.0
 .TP
