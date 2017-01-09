@@ -417,7 +417,7 @@ public:
   explicit StringRef(const char *s) : base(s), len(strlen(s)) {}
   constexpr StringRef(const char *s, size_t n) : base(s), len(n) {}
   template <typename CharT>
-  StringRef(const CharT *s, size_t n)
+  constexpr StringRef(const CharT *s, size_t n)
       : base(reinterpret_cast<const char *>(s)), len(n) {}
   template <typename InputIt>
   StringRef(InputIt first, InputIt last)
