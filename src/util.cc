@@ -205,9 +205,10 @@ Iterator cpydig(Iterator d, uint32_t n, size_t len) {
 } // namespace
 
 namespace {
-const char *MONTH[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                       "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
-const char *DAY_OF_WEEK[] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
+constexpr const char *MONTH[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                                 "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+constexpr const char *DAY_OF_WEEK[] = {"Sun", "Mon", "Tue", "Wed",
+                                       "Thu", "Fri", "Sat"};
 } // namespace
 
 std::string http_date(time_t t) {
@@ -369,7 +370,7 @@ char upcase(char c) {
 }
 
 namespace {
-const char LOWER_XDIGITS[] = "0123456789abcdef";
+constexpr char LOWER_XDIGITS[] = "0123456789abcdef";
 } // namespace
 
 std::string format_hex(const unsigned char *s, size_t len) {
