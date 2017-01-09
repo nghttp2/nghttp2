@@ -1354,6 +1354,9 @@ void fill_default_config(Config *config) {
   }
 
   tlsconf.session_timeout = std::chrono::hours(12);
+  tlsconf.ciphers = StringRef::from_lit(nghttp2::ssl::DEFAULT_CIPHER_LIST);
+  tlsconf.client.ciphers =
+      StringRef::from_lit(nghttp2::ssl::DEFAULT_CIPHER_LIST);
 #if OPENSSL_1_1_API
   tlsconf.ecdh_curves = StringRef::from_lit("X25519:P-256:P-384:P-521");
 #else  // !OPENSSL_1_1_API
@@ -1898,9 +1901,13 @@ SSL/TLS:
   --ciphers=<SUITE>
               Set allowed  cipher list  for frontend  connection.  The
               format of the string is described in OpenSSL ciphers(1).
+              Default: )"
+      << config->tls.ciphers << R"(
   --client-ciphers=<SUITE>
               Set  allowed cipher  list for  backend connection.   The
               format of the string is described in OpenSSL ciphers(1).
+              Default: )"
+      << config->tls.client.ciphers << R"(
   --ecdh-curves=<LIST>
               Set  supported  curve  list  for  frontend  connections.
               <LIST> is a  colon separated list of curve  NID or names

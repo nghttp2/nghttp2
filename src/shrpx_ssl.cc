@@ -645,15 +645,8 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
 
   SSL_CTX_set_timeout(ssl_ctx, tlsconf.session_timeout.count());
 
-  const char *ciphers;
-  if (!tlsconf.ciphers.empty()) {
-    ciphers = tlsconf.ciphers.c_str();
-  } else {
-    ciphers = nghttp2::ssl::DEFAULT_CIPHER_LIST;
-  }
-
-  if (SSL_CTX_set_cipher_list(ssl_ctx, ciphers) == 0) {
-    LOG(FATAL) << "SSL_CTX_set_cipher_list " << ciphers
+  if (SSL_CTX_set_cipher_list(ssl_ctx, tlsconf.ciphers.c_str()) == 0) {
+    LOG(FATAL) << "SSL_CTX_set_cipher_list " << tlsconf.ciphers
                << " failed: " << ERR_error_string(ERR_get_error(), nullptr);
     DIE();
   }
@@ -873,14 +866,8 @@ SSL_CTX *create_ssl_client_context(
 
   SSL_CTX_set_options(ssl_ctx, ssl_opts | tlsconf.tls_proto_mask);
 
-  const char *ciphers;
-  if (!tlsconf.client.ciphers.empty()) {
-    ciphers = tlsconf.client.ciphers.c_str();
-  } else {
-    ciphers = nghttp2::ssl::DEFAULT_CIPHER_LIST;
-  }
-  if (SSL_CTX_set_cipher_list(ssl_ctx, ciphers) == 0) {
-    LOG(FATAL) << "SSL_CTX_set_cipher_list " << ciphers
+  if (SSL_CTX_set_cipher_list(ssl_ctx, tlsconf.client.ciphers.c_str()) == 0) {
+    LOG(FATAL) << "SSL_CTX_set_cipher_list " << tlsconf.client.ciphers
                << " failed: " << ERR_error_string(ERR_get_error(), nullptr);
     DIE();
   }
