@@ -406,6 +406,10 @@ such PSK cipher suite with HTTP/2, disable HTTP/2 cipher black list by
 using :option:`--no-http2-cipher-black-list` option.  But you should
 understand its implications.
 
+At the time of writing, even if only PSK cipher suites are specified
+in :option:`--ciphers` option, certificate and private key are still
+required.
+
 For backend connection, use :option:`--client-psk-secrets` option to
 specify a file which contains single PSK identity and secret.  The
 format is the same as the file used by :option:`--psk-secrets`
