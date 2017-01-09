@@ -505,8 +505,14 @@ int Connection::write_tls_pending_handshake() {
 
   if (LOG_ENABLED(INFO)) {
     LOG(INFO) << "SSL/TLS handshake completed";
-    if (SSL_session_reused(tls.ssl)) {
-      LOG(INFO) << "SSL/TLS session reused";
+    nghttp2::ssl::TLSSessionInfo tls_info{};
+    if (nghttp2::ssl::get_tls_session_info(&tls_info, tls.ssl)) {
+      LOG(INFO) << "cipher=" << tls_info.cipher
+                << " protocol=" << tls_info.protocol
+                << " resumption=" << (tls_info.session_reused ? "yes" : "no")
+                << " session_id="
+                << util::format_hex(tls_info.session_id,
+                                    tls_info.session_id_length);
     }
   }
 
