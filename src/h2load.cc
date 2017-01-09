@@ -79,7 +79,8 @@ bool recorded(const std::chrono::steady_clock::time_point &t) {
 } // namespace
 
 Config::Config()
-    : data_length(-1),
+    : ciphers(ssl::DEFAULT_CIPHER_LIST),
+      data_length(-1),
       addrs(nullptr),
       nreqs(1),
       nclients(1),
@@ -1702,6 +1703,8 @@ Options:
   --ciphers=<SUITE>
               Set allowed  cipher list.  The  format of the  string is
               described in OpenSSL ciphers(1).
+              Default: )"
+      << config.ciphers << R"(
   -p, --no-tls-proto=<PROTOID>
               Specify ALPN identifier of the  protocol to be used when
               accessing http URI without SSL/TLS.)";
@@ -2246,15 +2249,8 @@ int main(int argc, char **argv) {
   SSL_CTX_set_mode(ssl_ctx, SSL_MODE_AUTO_RETRY);
   SSL_CTX_set_mode(ssl_ctx, SSL_MODE_RELEASE_BUFFERS);
 
-  const char *ciphers;
-  if (config.ciphers.empty()) {
-    ciphers = ssl::DEFAULT_CIPHER_LIST;
-  } else {
-    ciphers = config.ciphers.c_str();
-  }
-
-  if (SSL_CTX_set_cipher_list(ssl_ctx, ciphers) == 0) {
-    std::cerr << "SSL_CTX_set_cipher_list with " << ciphers
+  if (SSL_CTX_set_cipher_list(ssl_ctx, config.ciphers.c_str()) == 0) {
+    std::cerr << "SSL_CTX_set_cipher_list with " << config.ciphers
               << " failed: " << ERR_error_string(ERR_get_error(), nullptr)
               << std::endl;
     exit(EXIT_FAILURE);
