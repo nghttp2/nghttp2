@@ -532,7 +532,7 @@ int HttpsUpstream::on_read() {
   // callback chain called by http_parser_execute()
   if (downstream && downstream->get_upgraded()) {
 
-    auto rv = downstream->push_upload_data_chunk(rb->pos, rb->rleft());
+    auto rv = downstream->push_upload_data_chunk(rb->pos(), rb->rleft());
 
     if (rv != 0) {
       return -1;
@@ -565,8 +565,9 @@ int HttpsUpstream::on_read() {
   }
 
   // http_parser_execute() does nothing once it entered error state.
-  auto nread = http_parser_execute(
-      &htp_, &htp_hooks, reinterpret_cast<const char *>(rb->pos), rb->rleft());
+  auto nread = http_parser_execute(&htp_, &htp_hooks,
+                                   reinterpret_cast<const char *>(rb->pos()),
+                                   rb->rleft());
 
   rb->drain(nread);
   rlimit->startw();

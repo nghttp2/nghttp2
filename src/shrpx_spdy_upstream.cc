@@ -105,7 +105,7 @@ ssize_t recv_callback(spdylay_session *session, uint8_t *buf, size_t len,
 
   auto nread = std::min(rb->rleft(), len);
 
-  memcpy(buf, rb->pos, nread);
+  memcpy(buf, rb->pos(), nread);
   rb->drain(nread);
   rlimit->startw();
 
