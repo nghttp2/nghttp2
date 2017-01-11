@@ -296,11 +296,15 @@ int on_begin_headers_callback(nghttp2_session *session,
 
 int Http2Upstream::on_request_headers(Downstream *downstream,
                                       const nghttp2_frame *frame) {
+  auto lgconf = log_config();
+  lgconf->update_tstamp(std::chrono::system_clock::now());
+  auto &req = downstream->request();
+  req.tstamp = lgconf->tstamp;
+
   if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
     return 0;
   }
 
-  auto &req = downstream->request();
   auto &nva = req.fs.headers();
 
   if (LOG_ENABLED(INFO)) {
@@ -1489,7 +1493,7 @@ int Http2Upstream::error_reply(Downstream *downstream,
 
   auto response_status = http2::stringify_status(balloc, status_code);
   auto content_length = util::make_string_ref_uint(balloc, html.size());
-  auto date = make_string_ref(balloc, lgconf->time_http);
+  auto date = make_string_ref(balloc, lgconf->tstamp->time_http);
 
   auto nva = std::array<nghttp2_nv, 5>{
       {http2::make_nv_ls_nocopy(":status", response_status),

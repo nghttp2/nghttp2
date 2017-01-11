@@ -151,7 +151,6 @@ struct LogSpec {
   StringRef path;
   StringRef alpn;
   const nghttp2::ssl::TLSSessionInfo *tls_info;
-  std::chrono::system_clock::time_point time_now;
   std::chrono::high_resolution_clock::time_point request_start_time;
   std::chrono::high_resolution_clock::time_point request_end_time;
   int major, minor;

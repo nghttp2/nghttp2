@@ -181,6 +181,10 @@ void on_ctrl_recv_callback(spdylay_session *session, spdylay_frame_type type,
 
     auto &balloc = downstream->get_block_allocator();
 
+    auto lgconf = log_config();
+    lgconf->update_tstamp(std::chrono::system_clock::now());
+    req.tstamp = lgconf->tstamp;
+
     downstream->reset_upstream_rtimer();
 
     auto nv = frame->syn_stream.nv;
@@ -1006,7 +1010,7 @@ int SpdyUpstream::error_reply(Downstream *downstream,
                       "content-type",   "text/html; charset=UTF-8",
                       "server",         get_config()->http.server_name.c_str(),
                       "content-length", content_length.c_str(),
-                      "date",           lgconf->time_http.c_str(),
+                      "date",           lgconf->tstamp->time_http.c_str(),
                       nullptr};
 
   rv = spdylay_submit_response(session_, downstream->get_stream_id(), nv,

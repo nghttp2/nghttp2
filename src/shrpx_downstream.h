@@ -152,6 +152,8 @@ struct Request {
   }
 
   FieldStore fs;
+  // Timestamp when all request header fields are received.
+  std::shared_ptr<Timestamp> tstamp;
   // Request scheme.  For HTTP/2, this is :scheme header field value.
   // For HTTP/1.1, this is deduced from URI or connection.
   StringRef scheme;

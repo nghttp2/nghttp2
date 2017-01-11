@@ -1230,11 +1230,17 @@ StringRef construct_absolute_request_uri(BlockAllocator &balloc,
 
 void ClientHandler::write_accesslog(Downstream *downstream) {
   nghttp2::ssl::TLSSessionInfo tls_info;
-  const auto &req = downstream->request();
+  auto &req = downstream->request();
   const auto &resp = downstream->response();
 
   auto &balloc = downstream->get_block_allocator();
   auto config = get_config();
+
+  if (!req.tstamp) {
+    auto lgconf = log_config();
+    lgconf->update_tstamp(std::chrono::system_clock::now());
+    req.tstamp = lgconf->tstamp;
+  }
 
   upstream_accesslog(
       config->logging.access.format,
@@ -1253,37 +1259,12 @@ void ClientHandler::write_accesslog(Downstream *downstream) {
                           : StringRef(req.path),
 
           alpn_, nghttp2::ssl::get_tls_session_info(&tls_info, conn_.tls.ssl),
-
-          std::chrono::system_clock::now(),          // time_now
           downstream->get_request_start_time(),      // request_start_time
           std::chrono::high_resolution_clock::now(), // request_end_time
 
           req.http_major, req.http_minor, resp.http_status,
           downstream->response_sent_body_length, port_, faddr_->port,
           config->pid,
-      });
-}
-
-void ClientHandler::write_accesslog(int major, int minor, unsigned int status,
-                                    int64_t body_bytes_sent) {
-  auto time_now = std::chrono::system_clock::now();
-  auto highres_now = std::chrono::high_resolution_clock::now();
-  nghttp2::ssl::TLSSessionInfo tls_info;
-  auto config = get_config();
-
-  upstream_accesslog(
-      config->logging.access.format,
-      LogSpec{
-          nullptr, nullptr, ipaddr_,
-          StringRef::from_lit("-"), // method
-          StringRef::from_lit("-"), // path,
-          alpn_, nghttp2::ssl::get_tls_session_info(&tls_info, conn_.tls.ssl),
-          time_now,
-          highres_now,  // request_start_time TODO is
-                        // there a better value?
-          highres_now,  // request_end_time
-          major, minor, // major, minor
-          status, body_bytes_sent, port_, faddr_->port, config->pid,
       });
 }
 
