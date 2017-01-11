@@ -2307,6 +2307,10 @@ Logging:
 
               Default: )"
       << DEFAULT_ACCESSLOG_FORMAT << R"(
+  --accesslog-write-early
+              Write  access  log  when   response  header  fields  are
+              received   from  backend   rather   than  when   request
+              transaction finishes.
   --errorlog-file=<PATH>
               Set path to write error  log.  To reopen file, send USR1
               signal  to nghttpx.   stderr will  be redirected  to the
@@ -3126,6 +3130,7 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_CLIENT_NO_HTTP2_CIPHER_BLACK_LIST.c_str(), no_argument,
          &flag, 149},
         {SHRPX_OPT_CLIENT_CIPHERS.c_str(), required_argument, &flag, 150},
+        {SHRPX_OPT_ACCESSLOG_WRITE_EARLY.c_str(), no_argument, &flag, 151},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -3832,6 +3837,11 @@ int main(int argc, char **argv) {
       case 150:
         // --client-ciphers
         cmdcfgs.emplace_back(SHRPX_OPT_CLIENT_CIPHERS, StringRef{optarg});
+        break;
+      case 151:
+        // --accesslog-write-early
+        cmdcfgs.emplace_back(SHRPX_OPT_ACCESSLOG_WRITE_EARLY,
+                             StringRef::from_lit("yes"));
         break;
       default:
         break;

@@ -1090,10 +1090,14 @@ int on_response_headers(Http2Session *http2session, Downstream *downstream,
   int rv;
 
   auto upstream = downstream->get_upstream();
+  auto handler = upstream->get_client_handler();
   const auto &req = downstream->request();
   auto &resp = downstream->response();
 
   auto &nva = resp.fs.headers();
+
+  auto config = get_config();
+  auto &loggingconf = config->logging;
 
   downstream->set_expect_final_response(false);
 
@@ -1147,7 +1151,7 @@ int on_response_headers(Http2Session *http2session, Downstream *downstream,
     // On upgrade sucess, both ends can send data
     if (upstream->resume_read(SHRPX_NO_BUFFER, downstream, 0) != 0) {
       // If resume_read fails, just drop connection. Not ideal.
-      delete upstream->get_client_handler();
+      delete handler;
       return -1;
     }
     downstream->set_request_state(Downstream::HEADER_COMPLETE);
@@ -1182,6 +1186,11 @@ int on_response_headers(Http2Session *http2session, Downstream *downstream,
 
   if (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
     resp.headers_only = true;
+  }
+
+  if (loggingconf.access.write_early && downstream->accesslog_ready()) {
+    handler->write_accesslog(downstream);
+    downstream->set_accesslog_written(true);
   }
 
   rv = upstream->on_downstream_header_complete(downstream);

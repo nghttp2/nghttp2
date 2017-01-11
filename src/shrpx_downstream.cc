@@ -138,7 +138,8 @@ Downstream::Downstream(Upstream *upstream, MemchunkPool *mcpool,
       chunked_response_(false),
       expect_final_response_(false),
       request_pending_(false),
-      request_header_sent_(false) {
+      request_header_sent_(false),
+      accesslog_written_(false) {
 
   auto &timeoutconf = get_config()->http2.timeout;
 
@@ -906,7 +907,9 @@ void Downstream::disable_downstream_wtimer() {
   disable_timer(loop, &downstream_wtimer_);
 }
 
-bool Downstream::accesslog_ready() const { return resp_.http_status > 0; }
+bool Downstream::accesslog_ready() const {
+  return !accesslog_written_ && resp_.http_status > 0;
+}
 
 void Downstream::add_retry() { ++num_retry_; }
 
@@ -984,5 +987,7 @@ void Downstream::set_downstream_addr_group(
 void Downstream::set_addr(const DownstreamAddr *addr) { addr_ = addr; }
 
 const DownstreamAddr *Downstream::get_addr() const { return addr_; }
+
+void Downstream::set_accesslog_written(bool f) { accesslog_written_ = f; }
 
 } // namespace shrpx

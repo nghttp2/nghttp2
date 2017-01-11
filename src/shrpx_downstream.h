@@ -406,6 +406,8 @@ public:
 
   const DownstreamAddr *get_addr() const;
 
+  void set_accesslog_written(bool f);
+
   enum {
     EVENT_ERROR = 0x1,
     EVENT_TIMEOUT = 0x2,
@@ -489,6 +491,8 @@ private:
   bool request_pending_;
   // true if downstream request header is considered to be sent.
   bool request_header_sent_;
+  // true if access.log has been written.
+  bool accesslog_written_;
 };
 
 } // namespace shrpx
