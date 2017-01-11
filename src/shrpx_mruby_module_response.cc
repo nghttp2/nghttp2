@@ -255,8 +255,8 @@ mrb_value response_return(mrb_state *mrb, mrb_value self) {
     auto lgconf = log_config();
     lgconf->update_tstamp(std::chrono::system_clock::now());
     resp.fs.add_header_token(StringRef::from_lit("date"),
-                             make_string_ref(balloc, lgconf->time_http), false,
-                             http2::HD_DATE);
+                             make_string_ref(balloc, lgconf->tstamp->time_http),
+                             false, http2::HD_DATE);
   }
 
   auto upstream = downstream->get_upstream();

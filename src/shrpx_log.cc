@@ -146,7 +146,7 @@ Log::~Log() {
   // Error log format: <datetime> <master-pid> <current-pid>
   // <thread-id> <level> (<filename>:<line>) <msg>
   rv = snprintf(buf, sizeof(buf), "%s %d %d %s %s%s%s (%s:%d) %s\n",
-                lgconf->time_iso8601.c_str(), config->pid, lgconf->pid,
+                lgconf->tstamp->time_iso8601.c_str(), config->pid, lgconf->pid,
                 lgconf->thread_id.c_str(), tty ? SEVERITY_COLOR[severity_] : "",
                 SEVERITY_STR[severity_].c_str(), tty ? "\033[0m" : "",
                 filename_, linenum_, stream_.str().c_str());
@@ -242,17 +242,11 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
 
   auto downstream = lgsp.downstream;
 
-  const Request *req = nullptr;
-  if (downstream) {
-    req = &downstream->request();
-  }
+  const auto &req = downstream->request();
+  const auto &tstamp = req.tstamp;
 
   auto p = buf;
   auto avail = sizeof(buf) - 2;
-
-  lgconf->update_tstamp(lgsp.time_now);
-  auto &time_local = lgconf->time_local;
-  auto &time_iso8601 = lgconf->time_iso8601;
 
   for (auto &lf : lfv) {
     switch (lf.type) {
@@ -263,10 +257,10 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
       std::tie(p, avail) = copy(lgsp.remote_addr, avail, p);
       break;
     case SHRPX_LOGF_TIME_LOCAL:
-      std::tie(p, avail) = copy(time_local, avail, p);
+      std::tie(p, avail) = copy(tstamp->time_local, avail, p);
       break;
     case SHRPX_LOGF_TIME_ISO8601:
-      std::tie(p, avail) = copy(time_iso8601, avail, p);
+      std::tie(p, avail) = copy(tstamp->time_iso8601, avail, p);
       break;
     case SHRPX_LOGF_REQUEST:
       std::tie(p, avail) = copy(lgsp.method, avail, p);
@@ -285,24 +279,21 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
     case SHRPX_LOGF_BODY_BYTES_SENT:
       std::tie(p, avail) = copy(util::utos(lgsp.body_bytes_sent), avail, p);
       break;
-    case SHRPX_LOGF_HTTP:
-      if (req) {
-        auto hd = req->fs.header(lf.value);
-        if (hd) {
-          std::tie(p, avail) = copy((*hd).value, avail, p);
-          break;
-        }
+    case SHRPX_LOGF_HTTP: {
+      auto hd = req.fs.header(lf.value);
+      if (hd) {
+        std::tie(p, avail) = copy((*hd).value, avail, p);
+        break;
       }
 
       std::tie(p, avail) = copy_l("-", avail, p);
 
       break;
+    }
     case SHRPX_LOGF_AUTHORITY:
-      if (req) {
-        if (!req->authority.empty()) {
-          std::tie(p, avail) = copy(req->authority, avail, p);
-          break;
-        }
+      if (!req.authority.empty()) {
+        std::tie(p, avail) = copy(req.authority, avail, p);
+        break;
       }
 
       std::tie(p, avail) = copy_l("-", avail, p);

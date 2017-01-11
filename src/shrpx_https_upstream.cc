@@ -292,6 +292,10 @@ int htp_hdrs_completecb(http_parser *htp) {
   auto downstream = upstream->get_downstream();
   auto &req = downstream->request();
 
+  auto lgconf = log_config();
+  lgconf->update_tstamp(std::chrono::system_clock::now());
+  req.tstamp = lgconf->tstamp;
+
   req.http_major = htp->http_major;
   req.http_minor = htp->http_minor;
 
@@ -950,7 +954,7 @@ void HttpsUpstream::error_reply(unsigned int status_code) {
   output->append("\r\nDate: ");
   auto lgconf = log_config();
   lgconf->update_tstamp(std::chrono::system_clock::now());
-  output->append(lgconf->time_http);
+  output->append(lgconf->tstamp->time_http);
   output->append("\r\nContent-Type: text/html; "
                  "charset=UTF-8\r\nConnection: close\r\n\r\n");
   output->append(html);

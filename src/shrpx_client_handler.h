@@ -118,10 +118,6 @@ public:
   // must not be nullptr.
   void write_accesslog(Downstream *downstream);
 
-  // Writes upstream accesslog.  This function is used if
-  // corresponding Downstream object is not available.
-  void write_accesslog(int major, int minor, unsigned int status,
-                       int64_t body_bytes_sent);
   Worker *get_worker() const;
 
   using ReadBuf = DefaultMemchunkBuffer;
