@@ -229,8 +229,47 @@ std::pair<OutputIterator, size_t> copy_hex_low(const uint8_t *src,
 }
 } // namespace
 
+namespace {
+// Construct absolute request URI from |Request|, mainly to log
+// request URI for proxy request (HTTP/2 proxy or client proxy).  This
+// is mostly same routine found in
+// HttpDownstreamConnection::push_request_headers(), but vastly
+// simplified since we only care about absolute URI.
+StringRef construct_absolute_request_uri(BlockAllocator &balloc,
+                                         const Request &req) {
+  if (req.authority.empty()) {
+    return req.path;
+  }
+
+  auto len = req.authority.size() + req.path.size();
+  if (req.scheme.empty()) {
+    len += str_size("http://");
+  } else {
+    len += req.scheme.size() + str_size("://");
+  }
+
+  auto iov = make_byte_ref(balloc, len + 1);
+  auto p = iov.base;
+
+  if (req.scheme.empty()) {
+    // We may have to log the request which lacks scheme (e.g.,
+    // http/1.1 with origin form).
+    p = util::copy_lit(p, "http://");
+  } else {
+    p = std::copy(std::begin(req.scheme), std::end(req.scheme), p);
+    p = util::copy_lit(p, "://");
+  }
+  p = std::copy(std::begin(req.authority), std::end(req.authority), p);
+  p = std::copy(std::begin(req.path), std::end(req.path), p);
+  *p = '\0';
+
+  return StringRef{iov.base, p};
+}
+} // namespace
+
 void upstream_accesslog(const std::vector<LogFragment> &lfv,
                         const LogSpec &lgsp) {
+  auto config = get_config();
   auto lgconf = log_config();
   auto &accessconf = get_config()->logging.access;
 
@@ -243,7 +282,21 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
   auto downstream = lgsp.downstream;
 
   const auto &req = downstream->request();
+  const auto &resp = downstream->response();
   const auto &tstamp = req.tstamp;
+  auto &balloc = downstream->get_block_allocator();
+
+  auto downstream_addr = downstream->get_addr();
+  auto method = http2::to_method_string(req.method);
+  auto path = req.method == HTTP_CONNECT
+                  ? req.authority
+                  : config->http2_proxy
+                        ? construct_absolute_request_uri(balloc, req)
+                        : req.path.empty()
+                              ? req.method == HTTP_OPTIONS
+                                    ? StringRef::from_lit("*")
+                                    : StringRef::from_lit("-")
+                              : req.path;
 
   auto p = buf;
   auto avail = sizeof(buf) - 2;
@@ -263,21 +316,22 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
       std::tie(p, avail) = copy(tstamp->time_iso8601, avail, p);
       break;
     case SHRPX_LOGF_REQUEST:
-      std::tie(p, avail) = copy(lgsp.method, avail, p);
+      std::tie(p, avail) = copy(method, avail, p);
       std::tie(p, avail) = copy_l(" ", avail, p);
-      std::tie(p, avail) = copy(lgsp.path, avail, p);
+      std::tie(p, avail) = copy(path, avail, p);
       std::tie(p, avail) = copy_l(" HTTP/", avail, p);
-      std::tie(p, avail) = copy(util::utos(lgsp.major), avail, p);
-      if (lgsp.major < 2) {
+      std::tie(p, avail) = copy(util::utos(req.http_major), avail, p);
+      if (req.http_major < 2) {
         std::tie(p, avail) = copy_l(".", avail, p);
-        std::tie(p, avail) = copy(util::utos(lgsp.minor), avail, p);
+        std::tie(p, avail) = copy(util::utos(req.http_minor), avail, p);
       }
       break;
     case SHRPX_LOGF_STATUS:
-      std::tie(p, avail) = copy(util::utos(lgsp.status), avail, p);
+      std::tie(p, avail) = copy(util::utos(resp.http_status), avail, p);
       break;
     case SHRPX_LOGF_BODY_BYTES_SENT:
-      std::tie(p, avail) = copy(util::utos(lgsp.body_bytes_sent), avail, p);
+      std::tie(p, avail) =
+          copy(util::utos(downstream->response_sent_body_length), avail, p);
       break;
     case SHRPX_LOGF_HTTP: {
       auto hd = req.fs.header(lf.value);
@@ -307,7 +361,7 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
       break;
     case SHRPX_LOGF_REQUEST_TIME: {
       auto t = std::chrono::duration_cast<std::chrono::milliseconds>(
-                   lgsp.request_end_time - lgsp.request_start_time)
+                   lgsp.request_end_time - downstream->get_request_start_time())
                    .count();
 
       auto frac = util::utos(t % 1000);
@@ -358,19 +412,18 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
           copy_l(lgsp.tls_info->session_reused ? "r" : ".", avail, p);
       break;
     case SHRPX_LOGF_BACKEND_HOST:
-      if (!lgsp.downstream_addr) {
+      if (!downstream_addr) {
         std::tie(p, avail) = copy_l("-", avail, p);
         break;
       }
-      std::tie(p, avail) = copy(lgsp.downstream_addr->host, avail, p);
+      std::tie(p, avail) = copy(downstream_addr->host, avail, p);
       break;
     case SHRPX_LOGF_BACKEND_PORT:
-      if (!lgsp.downstream_addr) {
+      if (!downstream_addr) {
         std::tie(p, avail) = copy_l("-", avail, p);
         break;
       }
-      std::tie(p, avail) =
-          copy(util::utos(lgsp.downstream_addr->port), avail, p);
+      std::tie(p, avail) = copy(util::utos(downstream_addr->port), avail, p);
       break;
     case SHRPX_LOGF_NONE:
       break;

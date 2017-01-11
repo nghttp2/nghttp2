@@ -1190,50 +1190,10 @@ void ClientHandler::start_immediate_shutdown() {
   ev_timer_start(conn_.loop, &reneg_shutdown_timer_);
 }
 
-namespace {
-// Construct absolute request URI from |Request|, mainly to log
-// request URI for proxy request (HTTP/2 proxy or client proxy).  This
-// is mostly same routine found in
-// HttpDownstreamConnection::push_request_headers(), but vastly
-// simplified since we only care about absolute URI.
-StringRef construct_absolute_request_uri(BlockAllocator &balloc,
-                                         const Request &req) {
-  if (req.authority.empty()) {
-    return req.path;
-  }
-
-  auto len = req.authority.size() + req.path.size();
-  if (req.scheme.empty()) {
-    len += str_size("http://");
-  } else {
-    len += req.scheme.size() + str_size("://");
-  }
-
-  auto iov = make_byte_ref(balloc, len + 1);
-  auto p = iov.base;
-
-  if (req.scheme.empty()) {
-    // We may have to log the request which lacks scheme (e.g.,
-    // http/1.1 with origin form).
-    p = util::copy_lit(p, "http://");
-  } else {
-    p = std::copy(std::begin(req.scheme), std::end(req.scheme), p);
-    p = util::copy_lit(p, "://");
-  }
-  p = std::copy(std::begin(req.authority), std::end(req.authority), p);
-  p = std::copy(std::begin(req.path), std::end(req.path), p);
-  *p = '\0';
-
-  return StringRef{iov.base, p};
-}
-} // namespace
-
 void ClientHandler::write_accesslog(Downstream *downstream) {
   nghttp2::ssl::TLSSessionInfo tls_info;
   auto &req = downstream->request();
-  const auto &resp = downstream->response();
 
-  auto &balloc = downstream->get_block_allocator();
   auto config = get_config();
 
   if (!req.tstamp) {
@@ -1245,26 +1205,10 @@ void ClientHandler::write_accesslog(Downstream *downstream) {
   upstream_accesslog(
       config->logging.access.format,
       LogSpec{
-          downstream, downstream->get_addr(), ipaddr_,
-          http2::to_method_string(req.method),
-
-          req.method == HTTP_CONNECT
-              ? StringRef(req.authority)
-              : config->http2_proxy
-                    ? StringRef(construct_absolute_request_uri(balloc, req))
-                    : req.path.empty()
-                          ? req.method == HTTP_OPTIONS
-                                ? StringRef::from_lit("*")
-                                : StringRef::from_lit("-")
-                          : StringRef(req.path),
-
-          alpn_, nghttp2::ssl::get_tls_session_info(&tls_info, conn_.tls.ssl),
-          downstream->get_request_start_time(),      // request_start_time
+          downstream, ipaddr_, alpn_,
+          nghttp2::ssl::get_tls_session_info(&tls_info, conn_.tls.ssl),
           std::chrono::high_resolution_clock::now(), // request_end_time
-
-          req.http_major, req.http_minor, resp.http_status,
-          downstream->response_sent_body_length, port_, faddr_->port,
-          config->pid,
+          port_, faddr_->port, config->pid,
       });
 }
 
