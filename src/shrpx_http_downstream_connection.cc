@@ -822,9 +822,13 @@ namespace {
 int htp_hdrs_completecb(http_parser *htp) {
   auto downstream = static_cast<Downstream *>(htp->data);
   auto upstream = downstream->get_upstream();
+  auto handler = upstream->get_client_handler();
   const auto &req = downstream->request();
   auto &resp = downstream->response();
   int rv;
+
+  auto config = get_config();
+  auto &loggingconf = config->logging;
 
   resp.http_status = htp->status_code;
   resp.http_major = htp->http_major;
@@ -909,6 +913,11 @@ int htp_hdrs_completecb(http_parser *htp) {
     downstream->set_chunked_response(false);
   } else if (!downstream->expect_response_body()) {
     downstream->set_chunked_response(false);
+  }
+
+  if (loggingconf.access.write_early && downstream->accesslog_ready()) {
+    handler->write_accesslog(downstream);
+    downstream->set_accesslog_written(true);
   }
 
   if (upstream->on_downstream_header_complete(downstream) != 0) {

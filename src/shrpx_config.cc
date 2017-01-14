@@ -1786,6 +1786,11 @@ int option_lookup_token(const char *name, size_t namelen) {
         return SHRPX_OPTID_FRONTEND_READ_TIMEOUT;
       }
       break;
+    case 'y':
+      if (util::strieq_l("accesslog-write-earl", name, 20)) {
+        return SHRPX_OPTID_ACCESSLOG_WRITE_EARLY;
+      }
+      break;
     }
     break;
   case 22:
@@ -3289,6 +3294,10 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     return 0;
   case SHRPX_OPTID_CLIENT_CIPHERS:
     config->tls.client.ciphers = make_string_ref(config->balloc, optarg);
+
+    return 0;
+  case SHRPX_OPTID_ACCESSLOG_WRITE_EARLY:
+    config->logging.access.write_early = util::strieq_l("yes", optarg);
 
     return 0;
   case SHRPX_OPTID_CONF:

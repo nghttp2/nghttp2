@@ -325,6 +325,8 @@ constexpr auto SHRPX_OPT_CLIENT_PSK_SECRETS =
 constexpr auto SHRPX_OPT_CLIENT_NO_HTTP2_CIPHER_BLACK_LIST =
     StringRef::from_lit("client-no-http2-cipher-black-list");
 constexpr auto SHRPX_OPT_CLIENT_CIPHERS = StringRef::from_lit("client-ciphers");
+constexpr auto SHRPX_OPT_ACCESSLOG_WRITE_EARLY =
+    StringRef::from_lit("accesslog-write-early");
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
@@ -686,6 +688,9 @@ struct LoggingConfig {
     StringRef file;
     // Send accesslog to syslog, ignoring accesslog_file.
     bool syslog;
+    // Write accesslog when response headers are received from
+    // backend, rather than response body is received and sent.
+    bool write_early;
   } access;
   struct {
     StringRef file;
@@ -888,6 +893,7 @@ enum {
   SHRPX_OPTID_ACCESSLOG_FILE,
   SHRPX_OPTID_ACCESSLOG_FORMAT,
   SHRPX_OPTID_ACCESSLOG_SYSLOG,
+  SHRPX_OPTID_ACCESSLOG_WRITE_EARLY,
   SHRPX_OPTID_ADD_FORWARDED,
   SHRPX_OPTID_ADD_REQUEST_HEADER,
   SHRPX_OPTID_ADD_RESPONSE_HEADER,
