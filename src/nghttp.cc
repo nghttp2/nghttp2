@@ -1596,20 +1596,32 @@ void update_html_parser(HttpClient *client, Request *req, const uint8_t *data,
     auto res_type = p.second;
 
     http_parser_url u{};
-    if (http_parser_parse_url(uri.c_str(), uri.size(), 0, &u) == 0 &&
-        util::fieldeq(uri.c_str(), u, req->uri.c_str(), req->u, UF_SCHEMA) &&
-        util::fieldeq(uri.c_str(), u, req->uri.c_str(), req->u, UF_HOST) &&
-        util::porteq(uri.c_str(), u, req->uri.c_str(), req->u)) {
-      // No POST data for assets
-      auto pri_spec = resolve_dep(res_type);
+    if (http_parser_parse_url(uri.c_str(), uri.size(), 0, &u) == 0) {
 
-      if (client->add_request(uri, nullptr, 0, pri_spec, req->level + 1)) {
-
-        submit_request(client, config.headers, client->reqvec.back().get());
+      const char *host_string = nullptr;
+      auto found =
+          std::find_if(std::begin(req->req_nva), std::end(req->req_nva),
+                       [](const Header &nv) {
+                         return ":authority" == nv.name || "host" == nv.name;
+                       });
+      if (found != std::end(config.headers)) {
+        host_string = (*found).value.c_str();
       }
+
+      if(util::fieldeq(uri.c_str(), u, req->uri.c_str(), req->u, UF_SCHEMA) &&
+        (util::fieldeq(uri.c_str(), u, req->uri.c_str(), req->u, UF_HOST) ||
+        (host_string!= nullptr && util::fieldeq(uri.c_str(), u, UF_HOST, host_string))) &&
+        util::porteq(uri.c_str(), u, req->uri.c_str(), req->u)) {
+          // No POST data for assets
+          auto pri_spec = resolve_dep(res_type);
+
+          if (client->add_request(uri, nullptr, 0, pri_spec, req->level + 1)) {
+            submit_request(client, config.headers, client->reqvec.back().get());
+          }
+      }
+    req->html_parser->clear_links();
     }
   }
-  req->html_parser->clear_links();
 }
 } // namespace
 
