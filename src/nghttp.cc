@@ -157,7 +157,6 @@ Request::Request(const std::string &uri, const http_parser_url &u,
       data_offset(0),
       response_len(0),
       inflater(nullptr),
-      html_parser(nullptr),
       data_prd(data_prd),
       header_buffer_size(0),
       stream_id(-1),
@@ -168,10 +167,7 @@ Request::Request(const std::string &uri, const http_parser_url &u,
   http2::init_hdidx(req_hdidx);
 }
 
-Request::~Request() {
-  nghttp2_gzip_inflate_del(inflater);
-  delete html_parser;
-}
+Request::~Request() { nghttp2_gzip_inflate_del(inflater); }
 
 void Request::init_inflater() {
   int rv;
@@ -228,7 +224,7 @@ void Request::init_html_parser() {
     base_uri += util::get_uri_field(uri.c_str(), u, UF_QUERY);
   }
 
-  html_parser = new HtmlParser(base_uri);
+  html_parser = make_unique<HtmlParser>(base_uri);
 }
 
 int Request::update_html_parser(const uint8_t *data, size_t len, int fin) {

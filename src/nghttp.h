@@ -176,7 +176,7 @@ struct Request {
   // Number of bytes received from server
   int64_t response_len;
   nghttp2_gzip *inflater;
-  HtmlParser *html_parser;
+  std::unique_ptr<HtmlParser> html_parser;
   const nghttp2_data_provider *data_prd;
   size_t header_buffer_size;
   int32_t stream_id;
