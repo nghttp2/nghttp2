@@ -555,20 +555,16 @@ bool fieldeq(const char *uri1, const http_parser_url &u1, const char *uri2,
 
 bool fieldeq(const char *uri, const http_parser_url &u,
              http_parser_url_fields field, const char *t) {
+  return fieldeq(uri, u, field, StringRef{t});
+}
+
+bool fieldeq(const char *uri, const http_parser_url &u,
+             http_parser_url_fields field, const StringRef &t) {
   if (!has_uri_field(u, field)) {
-    if (!t[0]) {
-      return true;
-    } else {
-      return false;
-    }
-  } else if (!t[0]) {
-    return false;
+    return t.empty();
   }
-  int i, len = u.field_data[field].len;
-  const char *p = uri + u.field_data[field].off;
-  for (i = 0; i < len && t[i] && p[i] == t[i]; ++i)
-    ;
-  return i == len && !t[i];
+  auto &f = u.field_data[field];
+  return StringRef{uri + f.off, f.len} == t;
 }
 
 StringRef get_uri_field(const char *uri, const http_parser_url &u,

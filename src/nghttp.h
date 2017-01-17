@@ -69,6 +69,8 @@ struct Config {
   std::string keyfile;
   std::string datafile;
   std::string harfile;
+  std::string scheme_override;
+  std::string host_override;
   nghttp2_option *http2_option;
   int64_t header_table_size;
   int64_t min_header_table_size;
@@ -82,6 +84,7 @@ struct Config {
   int window_bits;
   int connection_window_bits;
   int verbose;
+  uint16_t port_override;
   bool null_out;
   bool remote_name;
   bool get_assets;
@@ -150,6 +153,15 @@ struct Request {
   void record_request_start_time();
   void record_response_start_time();
   void record_response_end_time();
+
+  // Returns scheme taking into account overridden scheme.
+  StringRef get_real_scheme() const;
+  // Returns request host, without port, taking into account
+  // overridden host.
+  StringRef get_real_host() const;
+  // Returns request port, taking into account overridden host, port,
+  // and scheme.
+  uint16_t get_real_port() const;
 
   Headers res_nva;
   Headers req_nva;
