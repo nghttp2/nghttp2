@@ -1600,7 +1600,7 @@ void update_html_parser(HttpClient *client, Request *req, const uint8_t *data,
 
       const char *host_string = nullptr;
       auto found =
-          std::find_if(std::begin(req->req_nva), std::end(req->req_nva),
+          std::find_if(std::begin(config.headers), std::end(config.headers),
                        [](const Header &nv) {
                          return ":authority" == nv.name || "host" == nv.name;
                        });
