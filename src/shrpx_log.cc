@@ -163,51 +163,48 @@ Log::~Log() {
 
 namespace {
 template <typename OutputIterator>
-std::pair<OutputIterator, size_t> copy(const char *src, size_t srclen,
-                                       size_t avail, OutputIterator oitr) {
-  auto nwrite = std::min(srclen, avail);
-  auto noitr = std::copy_n(src, nwrite, oitr);
-  return std::make_pair(noitr, avail - nwrite);
+std::pair<OutputIterator, OutputIterator> copy(const char *src, size_t srclen,
+                                               OutputIterator d_first,
+                                               OutputIterator d_last) {
+  auto nwrite =
+      std::min(static_cast<size_t>(std::distance(d_first, d_last)), srclen);
+  return std::make_pair(std::copy_n(src, nwrite, d_first), d_last);
 }
 } // namespace
 
 namespace {
 template <typename OutputIterator>
-std::pair<OutputIterator, size_t> copy(const char *src, size_t avail,
-                                       OutputIterator oitr) {
-  return copy(src, strlen(src), avail, oitr);
+std::pair<OutputIterator, OutputIterator>
+copy(const char *src, OutputIterator d_first, OutputIterator d_last) {
+  return copy(src, strlen(src), d_first, d_last);
 }
 } // namespace
 
 namespace {
 template <typename OutputIterator>
-std::pair<OutputIterator, size_t> copy(const std::string &src, size_t avail,
-                                       OutputIterator oitr) {
-  return copy(src.c_str(), src.size(), avail, oitr);
-}
-} // namespace
-
-namespace {
-template <typename OutputIterator>
-std::pair<OutputIterator, size_t> copy(const StringRef &src, size_t avail,
-                                       OutputIterator oitr) {
-  return copy(src.c_str(), src.size(), avail, oitr);
-}
-} // namespace
-
-namespace {
-template <typename OutputIterator>
-std::pair<OutputIterator, size_t> copy(const ImmutableString &src, size_t avail,
-                                       OutputIterator oitr) {
-  return copy(src.c_str(), src.size(), avail, oitr);
+std::pair<OutputIterator, OutputIterator>
+copy(const StringRef &src, OutputIterator d_first, OutputIterator d_last) {
+  return copy(src.c_str(), src.size(), d_first, d_last);
 }
 } // namespace
 
 namespace {
 template <size_t N, typename OutputIterator>
-std::pair<OutputIterator, size_t> copy_l(const char (&src)[N], size_t avail,
-                                         OutputIterator oitr) {
-  return copy(src, N - 1, avail, oitr);
+std::pair<OutputIterator, OutputIterator>
+copy_l(const char (&src)[N], OutputIterator d_first, OutputIterator d_last) {
+  return copy(src, N - 1, d_first, d_last);
+}
+} // namespace
+
+namespace {
+template <typename OutputIterator>
+std::pair<OutputIterator, OutputIterator> copy(char c, OutputIterator d_first,
+                                               OutputIterator d_last) {
+  if (d_first == d_last) {
+    return std::make_pair(d_last, d_last);
+  }
+  *d_first++ = c;
+  return std::make_pair(d_first, d_last);
 }
 } // namespace
 
@@ -217,15 +214,29 @@ const char LOWER_XDIGITS[] = "0123456789abcdef";
 
 namespace {
 template <typename OutputIterator>
-std::pair<OutputIterator, size_t> copy_hex_low(const uint8_t *src,
-                                               size_t srclen, size_t avail,
-                                               OutputIterator oitr) {
-  auto nwrite = std::min(srclen * 2, avail) / 2;
-  for (auto i = 0u; i < nwrite; ++i) {
-    *oitr++ = LOWER_XDIGITS[src[i] >> 4];
-    *oitr++ = LOWER_XDIGITS[src[i] & 0xf];
+std::pair<OutputIterator, OutputIterator>
+copy_hex_low(const uint8_t *src, size_t srclen, OutputIterator d_first,
+             OutputIterator d_last) {
+  auto nwrite = std::min(static_cast<size_t>(std::distance(d_first, d_last)),
+                         srclen * 2) /
+                2;
+  for (size_t i = 0; i < nwrite; ++i) {
+    *d_first++ = LOWER_XDIGITS[src[i] >> 4];
+    *d_first++ = LOWER_XDIGITS[src[i] & 0xf];
   }
-  return std::make_pair(oitr, avail - nwrite);
+  return std::make_pair(d_first, d_last);
+}
+} // namespace
+
+namespace {
+template <typename OutputIterator, typename T>
+std::pair<OutputIterator, OutputIterator> copy(T n, OutputIterator d_first,
+                                               OutputIterator d_last) {
+  if (static_cast<size_t>(std::distance(d_first, d_last)) <
+      str_size("18446744073709551615")) {
+    return std::make_pair(d_last, d_last);
+  }
+  return std::make_pair(util::utos(d_first, n), d_last);
 }
 } // namespace
 
@@ -277,7 +288,7 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
     return;
   }
 
-  char buf[4_k];
+  std::array<char, 4_k> buf;
 
   auto downstream = lgsp.downstream;
 
@@ -298,132 +309,129 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
                                     : StringRef::from_lit("-")
                               : req.path;
 
-  auto p = buf;
-  auto avail = sizeof(buf) - 2;
+  auto p = std::begin(buf);
+  auto last = std::end(buf) - 2;
 
   for (auto &lf : lfv) {
     switch (lf.type) {
     case SHRPX_LOGF_LITERAL:
-      std::tie(p, avail) = copy(lf.value, avail, p);
+      std::tie(p, last) = copy(lf.value, p, last);
       break;
     case SHRPX_LOGF_REMOTE_ADDR:
-      std::tie(p, avail) = copy(lgsp.remote_addr, avail, p);
+      std::tie(p, last) = copy(lgsp.remote_addr, p, last);
       break;
     case SHRPX_LOGF_TIME_LOCAL:
-      std::tie(p, avail) = copy(tstamp->time_local, avail, p);
+      std::tie(p, last) = copy(tstamp->time_local, p, last);
       break;
     case SHRPX_LOGF_TIME_ISO8601:
-      std::tie(p, avail) = copy(tstamp->time_iso8601, avail, p);
+      std::tie(p, last) = copy(tstamp->time_iso8601, p, last);
       break;
     case SHRPX_LOGF_REQUEST:
-      std::tie(p, avail) = copy(method, avail, p);
-      std::tie(p, avail) = copy_l(" ", avail, p);
-      std::tie(p, avail) = copy(path, avail, p);
-      std::tie(p, avail) = copy_l(" HTTP/", avail, p);
-      std::tie(p, avail) = copy(util::utos(req.http_major), avail, p);
+      std::tie(p, last) = copy(method, p, last);
+      std::tie(p, last) = copy(' ', p, last);
+      std::tie(p, last) = copy(path, p, last);
+      std::tie(p, last) = copy_l(" HTTP/", p, last);
+      std::tie(p, last) = copy(req.http_major, p, last);
       if (req.http_major < 2) {
-        std::tie(p, avail) = copy_l(".", avail, p);
-        std::tie(p, avail) = copy(util::utos(req.http_minor), avail, p);
+        std::tie(p, last) = copy('.', p, last);
+        std::tie(p, last) = copy(req.http_minor, p, last);
       }
       break;
     case SHRPX_LOGF_STATUS:
-      std::tie(p, avail) = copy(util::utos(resp.http_status), avail, p);
+      std::tie(p, last) = copy(resp.http_status, p, last);
       break;
     case SHRPX_LOGF_BODY_BYTES_SENT:
-      std::tie(p, avail) =
-          copy(util::utos(downstream->response_sent_body_length), avail, p);
+      std::tie(p, last) = copy(downstream->response_sent_body_length, p, last);
       break;
     case SHRPX_LOGF_HTTP: {
       auto hd = req.fs.header(lf.value);
       if (hd) {
-        std::tie(p, avail) = copy((*hd).value, avail, p);
+        std::tie(p, last) = copy((*hd).value, p, last);
         break;
       }
 
-      std::tie(p, avail) = copy_l("-", avail, p);
+      std::tie(p, last) = copy('-', p, last);
 
       break;
     }
     case SHRPX_LOGF_AUTHORITY:
       if (!req.authority.empty()) {
-        std::tie(p, avail) = copy(req.authority, avail, p);
+        std::tie(p, last) = copy(req.authority, p, last);
         break;
       }
 
-      std::tie(p, avail) = copy_l("-", avail, p);
+      std::tie(p, last) = copy('-', p, last);
 
       break;
     case SHRPX_LOGF_REMOTE_PORT:
-      std::tie(p, avail) = copy(lgsp.remote_port, avail, p);
+      std::tie(p, last) = copy(lgsp.remote_port, p, last);
       break;
     case SHRPX_LOGF_SERVER_PORT:
-      std::tie(p, avail) = copy(util::utos(lgsp.server_port), avail, p);
+      std::tie(p, last) = copy(lgsp.server_port, p, last);
       break;
     case SHRPX_LOGF_REQUEST_TIME: {
       auto t = std::chrono::duration_cast<std::chrono::milliseconds>(
                    lgsp.request_end_time - downstream->get_request_start_time())
                    .count();
-
-      auto frac = util::utos(t % 1000);
-      auto sec = util::utos(t / 1000);
-      if (frac.size() < 3) {
-        frac = std::string(3 - frac.size(), '0') + frac;
+      std::tie(p, last) = copy(t / 1000, p, last);
+      std::tie(p, last) = copy('.', p, last);
+      auto frac = t % 1000;
+      if (frac < 100) {
+        auto n = frac < 10 ? 2 : 1;
+        std::tie(p, last) = copy("000", n, p, last);
       }
-      sec += '.';
-      sec += frac;
-
-      std::tie(p, avail) = copy(sec, avail, p);
-    } break;
+      std::tie(p, last) = copy(frac, p, last);
+      break;
+    }
     case SHRPX_LOGF_PID:
-      std::tie(p, avail) = copy(util::utos(lgsp.pid), avail, p);
+      std::tie(p, last) = copy(lgsp.pid, p, last);
       break;
     case SHRPX_LOGF_ALPN:
-      std::tie(p, avail) = copy(lgsp.alpn, avail, p);
+      std::tie(p, last) = copy(lgsp.alpn, p, last);
       break;
     case SHRPX_LOGF_SSL_CIPHER:
       if (!lgsp.tls_info) {
-        std::tie(p, avail) = copy_l("-", avail, p);
+        std::tie(p, last) = copy('-', p, last);
         break;
       }
-      std::tie(p, avail) = copy(lgsp.tls_info->cipher, avail, p);
+      std::tie(p, last) = copy(lgsp.tls_info->cipher, p, last);
       break;
     case SHRPX_LOGF_SSL_PROTOCOL:
       if (!lgsp.tls_info) {
-        std::tie(p, avail) = copy_l("-", avail, p);
+        std::tie(p, last) = copy('-', p, last);
         break;
       }
-      std::tie(p, avail) = copy(lgsp.tls_info->protocol, avail, p);
+      std::tie(p, last) = copy(lgsp.tls_info->protocol, p, last);
       break;
     case SHRPX_LOGF_SSL_SESSION_ID:
       if (!lgsp.tls_info || lgsp.tls_info->session_id_length == 0) {
-        std::tie(p, avail) = copy_l("-", avail, p);
+        std::tie(p, last) = copy('-', p, last);
         break;
       }
-      std::tie(p, avail) =
-          copy_hex_low(lgsp.tls_info->session_id,
-                       lgsp.tls_info->session_id_length, avail, p);
+      std::tie(p, last) = copy_hex_low(
+          lgsp.tls_info->session_id, lgsp.tls_info->session_id_length, p, last);
       break;
     case SHRPX_LOGF_SSL_SESSION_REUSED:
       if (!lgsp.tls_info) {
-        std::tie(p, avail) = copy_l("-", avail, p);
+        std::tie(p, last) = copy('-', p, last);
         break;
       }
-      std::tie(p, avail) =
-          copy_l(lgsp.tls_info->session_reused ? "r" : ".", avail, p);
+      std::tie(p, last) =
+          copy(lgsp.tls_info->session_reused ? 'r' : '.', p, last);
       break;
     case SHRPX_LOGF_BACKEND_HOST:
       if (!downstream_addr) {
-        std::tie(p, avail) = copy_l("-", avail, p);
+        std::tie(p, last) = copy('-', p, last);
         break;
       }
-      std::tie(p, avail) = copy(downstream_addr->host, avail, p);
+      std::tie(p, last) = copy(downstream_addr->host, p, last);
       break;
     case SHRPX_LOGF_BACKEND_PORT:
       if (!downstream_addr) {
-        std::tie(p, avail) = copy_l("-", avail, p);
+        std::tie(p, last) = copy('-', p, last);
         break;
       }
-      std::tie(p, avail) = copy(util::utos(downstream_addr->port), avail, p);
+      std::tie(p, last) = copy(downstream_addr->port, p, last);
       break;
     case SHRPX_LOGF_NONE:
       break;
@@ -435,15 +443,16 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
   *p = '\0';
 
   if (accessconf.syslog) {
-    syslog(LOG_INFO, "%s", buf);
+    syslog(LOG_INFO, "%s", buf.data());
 
     return;
   }
 
   *p++ = '\n';
 
-  auto nwrite = p - buf;
-  while (write(lgconf->accesslog_fd, buf, nwrite) == -1 && errno == EINTR)
+  auto nwrite = std::distance(std::begin(buf), p);
+  while (write(lgconf->accesslog_fd, buf.data(), nwrite) == -1 &&
+         errno == EINTR)
     ;
 }
 
