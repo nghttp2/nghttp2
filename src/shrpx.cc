@@ -1447,7 +1447,7 @@ void fill_default_config(Config *config) {
     auto &listenerconf = connconf.listener;
     {
       // Default accept() backlog
-      listenerconf.backlog = 512;
+      listenerconf.backlog = 65536;
       listenerconf.timeout.sleep = 30_s;
     }
   }
