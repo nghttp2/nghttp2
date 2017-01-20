@@ -58,14 +58,14 @@ using namespace nghttp2;
 namespace shrpx {
 
 namespace {
-const StringRef SEVERITY_STR[] = {
+constexpr StringRef SEVERITY_STR[] = {
     StringRef::from_lit("INFO"), StringRef::from_lit("NOTICE"),
     StringRef::from_lit("WARN"), StringRef::from_lit("ERROR"),
     StringRef::from_lit("FATAL")};
 } // namespace
 
 namespace {
-const char *SEVERITY_COLOR[] = {
+constexpr const char *SEVERITY_COLOR[] = {
     "\033[1;32m", // INFO
     "\033[1;36m", // NOTICE
     "\033[1;33m", // WARN
@@ -209,7 +209,7 @@ std::pair<OutputIterator, OutputIterator> copy(char c, OutputIterator d_first,
 } // namespace
 
 namespace {
-const char LOWER_XDIGITS[] = "0123456789abcdef";
+constexpr char LOWER_XDIGITS[] = "0123456789abcdef";
 } // namespace
 
 namespace {
