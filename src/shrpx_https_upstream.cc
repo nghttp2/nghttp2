@@ -1029,7 +1029,7 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
 
   buf->append("HTTP/");
   buf->append(util::utos(req.http_major));
-  buf->append(".");
+  buf->append('.');
   buf->append(util::utos(req.http_minor));
   buf->append(' ');
   buf->append(http2::stringify_status(balloc, resp.http_status));
