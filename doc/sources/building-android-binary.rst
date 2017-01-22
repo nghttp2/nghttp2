@@ -22,7 +22,7 @@ unpacked:
 .. code-block:: text
 
     $ build/tools/make_standalone_toolchain.py \
-      --arch arm --api 16 --stl gnustl
+      --arch arm --api 16 --stl gnustl \
       --install-dir $ANDROID_HOME/toolchain
 
 The API level (``--api``) is not important here because we don't use
