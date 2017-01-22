@@ -83,7 +83,7 @@ int exec_read_command(Process &proc, char *const argv[]) {
       auto error = errno;
       LOG(FATAL) << "Unblocking all signals failed: errno=" << error;
 
-      _Exit(EXIT_FAILURE);
+      nghttp2_Exit(EXIT_FAILURE);
     }
 
     dup2(pfd[1], 1);
@@ -94,7 +94,7 @@ int exec_read_command(Process &proc, char *const argv[]) {
       auto error = errno;
       LOG(ERROR) << "Could not execute command: " << argv[0]
                  << ", execve() faild, errno=" << error;
-      _Exit(EXIT_FAILURE);
+      nghttp2_Exit(EXIT_FAILURE);
     }
     // unreachable
   }
@@ -111,7 +111,7 @@ int exec_read_command(Process &proc, char *const argv[]) {
     auto error = errno;
     LOG(FATAL) << "Restoring all signals failed: errno=" << error;
 
-    _Exit(EXIT_FAILURE);
+    nghttp2_Exit(EXIT_FAILURE);
   }
 
   if (pid == -1) {

@@ -411,7 +411,7 @@ void exec_binary() {
     LOG(ERROR) << "Unblocking all signals failed: "
                << xsi_strerror(error, errbuf.data(), errbuf.size());
 
-    _Exit(EXIT_FAILURE);
+    nghttp2_Exit(EXIT_FAILURE);
   }
 
   auto exec_path =
@@ -419,7 +419,7 @@ void exec_binary() {
 
   if (!exec_path) {
     LOG(ERROR) << "Could not resolve the executable path";
-    _Exit(EXIT_FAILURE);
+    nghttp2_Exit(EXIT_FAILURE);
   }
 
   auto argv = make_unique<char *[]>(suconfig.argc + 1);
@@ -492,7 +492,7 @@ void exec_binary() {
   if (execve(argv[0], argv.get(), envp.get()) == -1) {
     auto error = errno;
     LOG(ERROR) << "execve failed: errno=" << error;
-    _Exit(EXIT_FAILURE);
+    nghttp2_Exit(EXIT_FAILURE);
   }
 }
 } // namespace
@@ -1170,7 +1170,7 @@ pid_t fork_worker_process(int &main_ipc_fd,
       LOG(FATAL) << "Unblocking all signals failed: "
                  << xsi_strerror(error, errbuf.data(), errbuf.size());
 
-      _Exit(EXIT_FAILURE);
+      nghttp2_Exit(EXIT_FAILURE);
     }
 
     close(ipc_fd[1]);
@@ -1179,13 +1179,13 @@ pid_t fork_worker_process(int &main_ipc_fd,
     if (rv != 0) {
       LOG(FATAL) << "Worker process returned error";
 
-      _Exit(EXIT_FAILURE);
+      nghttp2_Exit(EXIT_FAILURE);
     }
 
     LOG(NOTICE) << "Worker process shutting down momentarily";
 
-    // call exit(...) instead of _Exit to get leak sanitizer report
-    _Exit(EXIT_SUCCESS);
+    // call exit(...) instead of nghttp2_Exit to get leak sanitizer report
+    nghttp2_Exit(EXIT_SUCCESS);
   }
 
   // parent process

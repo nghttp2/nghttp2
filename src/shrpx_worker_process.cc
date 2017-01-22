@@ -161,7 +161,7 @@ void ipc_readcb(struct ev_loop *loop, ev_io *w, int revents) {
   if (nread == 0) {
     // IPC socket closed.  Perform immediate shutdown.
     LOG(FATAL) << "IPC socket is closed.  Perform immediate shutdown.";
-    _Exit(EXIT_FAILURE);
+    nghttp2_Exit(EXIT_FAILURE);
   }
 
   for (ssize_t i = 0; i < nread; ++i) {
@@ -384,7 +384,7 @@ void nb_child_cb(struct ev_loop *loop, ev_child *w, int revents) {
 
   LOG(FATAL) << "neverbleed process exitted; aborting now";
 
-  _Exit(EXIT_FAILURE);
+  nghttp2_Exit(EXIT_FAILURE);
 }
 } // namespace
 #endif // HAVE_NEVERBLEED
