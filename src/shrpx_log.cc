@@ -233,7 +233,7 @@ template <typename OutputIterator, typename T>
 std::pair<OutputIterator, OutputIterator> copy(T n, OutputIterator d_first,
                                                OutputIterator d_last) {
   if (static_cast<size_t>(std::distance(d_first, d_last)) <
-      str_size("18446744073709551615")) {
+      NGHTTP2_MAX_UINT64_DIGITS) {
     return std::make_pair(d_last, d_last);
   }
   return std::make_pair(util::utos(d_first, n), d_last);

@@ -70,6 +70,8 @@ constexpr auto NGHTTP2_H2_14 = StringRef::from_lit("h2-14");
 constexpr auto NGHTTP2_H1_1_ALPN = StringRef::from_lit("\x8http/1.1");
 constexpr auto NGHTTP2_H1_1 = StringRef::from_lit("http/1.1");
 
+constexpr size_t NGHTTP2_MAX_UINT64_DIGITS = str_size("18446744073709551615");
+
 namespace util {
 
 inline bool is_alpha(const char c) {
@@ -382,7 +384,7 @@ template <typename T, typename OutputIt> OutputIt utos(OutputIt dst, T n) {
 
 template <typename T>
 StringRef make_string_ref_uint(BlockAllocator &balloc, T n) {
-  auto iov = make_byte_ref(balloc, str_size("18446744073709551615") + 1);
+  auto iov = make_byte_ref(balloc, NGHTTP2_MAX_UINT64_DIGITS + 1);
   auto p = iov.base;
   p = util::utos(p, n);
   *p = '\0';
