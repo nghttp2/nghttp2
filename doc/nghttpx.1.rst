@@ -213,7 +213,7 @@ Connections
 
     Set listen backlog size.
 
-    Default: ``512``
+    Default: ``65536``
 
 .. option:: --backend-address-family=(auto|IPv4|IPv6)
 
@@ -1016,6 +1016,12 @@ Logging
 
 
     Default: ``$remote_addr - - [$time_local] "$request" $status $body_bytes_sent "$http_referer" "$http_user_agent"``
+
+.. option:: --accesslog-write-early
+
+    Write  access  log  when   response  header  fields  are
+    received   from  backend   rather   than  when   request
+    transaction finishes.
 
 .. option:: --errorlog-file=<PATH>
 

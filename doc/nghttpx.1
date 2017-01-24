@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTPX" "1" "Jan 09, 2017" "1.19.0-DEV" "nghttp2"
+.TH "NGHTTPX" "1" "Jan 24, 2017" "1.19.0-DEV" "nghttp2"
 .SH NAME
 nghttpx \- HTTP/2 proxy
 .
@@ -229,7 +229,7 @@ Default: \fB*,3000\fP
 .B \-\-backlog=<N>
 Set listen backlog size.
 .sp
-Default: \fB512\fP
+Default: \fB65536\fP
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -1122,6 +1122,13 @@ The  variable  can  be  enclosed  by  "{"  and  "}"  for
 disambiguation (e.g., ${remote_addr}).
 .sp
 Default: \fB$remote_addr \- \- [$time_local] "$request" $status $body_bytes_sent "$http_referer" "$http_user_agent"\fP
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-accesslog\-write\-early
+Write  access  log  when   response  header  fields  are
+received   from  backend   rather   than  when   request
+transaction finishes.
 .UNINDENT
 .INDENT 0.0
 .TP
