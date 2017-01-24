@@ -1051,17 +1051,24 @@ nghttp2_stream *nghttp2_session_open_stream(nghttp2_session *session,
     flags |= NGHTTP2_STREAM_FLAG_PUSH;
   }
 
-  nghttp2_stream_init(stream, stream_id, flags, initial_state, pri_spec->weight,
-                      (int32_t)session->remote_settings.initial_window_size,
-                      (int32_t)session->local_settings.initial_window_size,
-                      stream_user_data, mem);
-
   if (stream_alloc) {
+    nghttp2_stream_init(stream, stream_id, flags, initial_state,
+                        pri_spec->weight,
+                        (int32_t)session->remote_settings.initial_window_size,
+                        (int32_t)session->local_settings.initial_window_size,
+                        stream_user_data, mem);
+
     rv = nghttp2_map_insert(&session->streams, &stream->map_entry);
     if (rv != 0) {
+      nghttp2_stream_free(stream);
       nghttp2_mem_free(mem, stream);
       return NULL;
     }
+  } else {
+    stream->flags = flags;
+    stream->state = initial_state;
+    stream->weight = pri_spec->weight;
+    stream->stream_user_data = stream_user_data;
   }
 
   switch (initial_state) {
