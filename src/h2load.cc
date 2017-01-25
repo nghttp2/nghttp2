@@ -544,7 +544,8 @@ int Client::submit_request() {
 }
 
 void Client::process_timedout_streams() {
-  for (auto &req_stat : worker->stats.req_stats) {
+  for (auto &p : streams) {
+    auto &req_stat = p.second.req_stat;
     if (!req_stat.completed) {
       req_stat.stream_close_time = std::chrono::steady_clock::now();
     }
