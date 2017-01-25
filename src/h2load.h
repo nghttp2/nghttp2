@@ -292,6 +292,11 @@ struct Client {
   ClientState state;
   // The number of requests this client has to issue.
   size_t req_todo;
+  // The number of requests left to issue
+  size_t req_left;
+  // The number of requests currently have started, but not abandoned
+  // or finished.
+  size_t req_inflight;
   // The number of requests this client has issued so far.
   size_t req_started;
   // The number of requests this client has done so far.

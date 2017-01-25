@@ -100,7 +100,7 @@ int htp_msg_completecb(http_parser *htp) {
     http_parser_pause(htp, 1);
     // Connection is going down.  If we have still request to do,
     // create new connection and keep on doing the job.
-    if (client->req_started < client->req_todo) {
+    if (client->req_left) {
       client->try_new_connection();
     }
 
