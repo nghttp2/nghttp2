@@ -41,6 +41,33 @@ FILES
   :option:`--conf` option cannot be used in the configuration file and
   will be ignored if specified.
 
+Error log
+  Error log is written to stderr by default.  It can be configured
+  using :option:`--errorlog-file`.  The format of log message is as
+  follows:
+
+  <datetime> <master-pid> <current-pid> <thread-id> <level> (<filename>:<line>) <msg>
+
+  <datetime>
+    It is a conbination of date and time when the log is written.  It
+    is in ISO 8601 format.
+
+  <master-pid>
+    It is a master process ID.
+
+  <current-pid>
+    It is a process ID which writes this log.
+
+  <thread-id>
+    It is a thread ID which writes this log.  It would be unique
+    within <current-pid>.
+
+  <filename> and <line>
+    They are source file name, and line number which produce this log.
+
+  <msg>
+    It is a log message body.
+
 SIGNALS
 -------
 
@@ -49,6 +76,9 @@ SIGQUIT
   accepting connection.  After all connections are handled, nghttpx
   exits.
 
+SIGHUP
+  Reload configuration file given in :option:`--conf`.
+
 SIGUSR1
   Reopen log files.
 
@@ -56,7 +86,11 @@ SIGUSR2
   Fork and execute nghttpx.  It will execute the binary in the same
   path with same command-line arguments and environment variables.
   After new process comes up, sending SIGQUIT to the original process
-  to perform hot swapping.
+  to perform hot swapping.  The difference between SIGUSR2 + SIGQUIT
+  and SIGHUP is that former is usually used to execute new binary, and
+  the master process is newly spawned.  On the other hand, the latter
+  just reloads configuration file, and the same master process
+  continues to exist.
 
 .. note::
 
@@ -85,7 +119,7 @@ backend server and extracts URI-reference with parameter
 and pushes those URIs to the frontend client. Here is a sample Link
 header field to initiate server push:
 
-.. code-block:: http
+.. code-block:: text
 
   Link: </fonts/font.woff>; rel=preload
   Link: </css/theme.css>; rel=preload
@@ -98,12 +132,12 @@ Currently, the following restriction is applied for server push:
 This limitation may be loosened in the future release.
 
 nghttpx also supports server push if both frontend and backend are
-HTTP/2 (which implies :option:`--http2-bridge` or :option:`--client`).
-In this case, in addition to server push via Link header field, server
-push from backend is relayed to frontend HTTP/2 session.
+HTTP/2 in default mode.  In this case, in addition to server push via
+Link header field, server push from backend is forwarded to frontend
+HTTP/2 session.
 
-HTTP/2 server push will be disabled if :option:`--http2-proxy` or
-:option:`--client-proxy` is used.
+HTTP/2 server push will be disabled if :option:`--http2-proxy` is
+used.
 
 UNIX DOMAIN SOCKET
 ------------------
@@ -150,6 +184,10 @@ insert serialized session data to memcached with
 as a memcached entry key, with expiry time 12 hours.  Session timeout
 is set to 12 hours.
 
+By default, connections to memcached server are not encrypted.  To
+enable encryption, use ``tls`` keyword in
+:option:`--tls-session-cache-memcached` option.
+
 TLS SESSION TICKET RESUMPTION
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -189,10 +227,32 @@ used, LEN must be 48.  If
 keys.  The key appeared first is used as encryption key.  All the
 remaining keys are used as decryption only.
 
+By default, connections to memcached server are not encrypted.  To
+enable encryption, use ``tls`` keyword in
+:option:`--tls-ticket-key-memcached` option.
+
 If :option:`--tls-ticket-key-file` is given, encryption key is read
 from the given file.  In this case, nghttpx does not rotate key
 automatically.  To rotate key, one has to restart nghttpx (see
 SIGNALS).
+
+CERTIFICATE TRANSPARENCY
+------------------------
+
+nghttpx supports TLS ``signed_certificate_timestamp`` extension (`RFC
+6962 <https://tools.ietf.org/html/rfc6962>`_).  The relevant options
+are :option:`--tls-sct-dir` and ``sct-dir`` parameter in
+:option:`--subcert`.  They takes a directory, and nghttpx reads all
+files whose extension is ``.sct`` under the directory.  The ``*.sct``
+files are encoded as ``SignedCertificateTimestamp`` struct described
+in `section 3.2 of RFC 69662
+<https://tools.ietf.org/html/rfc6962#section-3.2>`_.  This format is
+the same one used by `nginx-ct
+<https://github.com/grahamedgecombe/nginx-ct>`_ and `mod_ssl_ct
+<https://httpd.apache.org/docs/trunk/mod/mod_ssl_ct.html>`_.
+`ct-submit <https://github.com/grahamedgecombe/ct-submit>`_ can be
+used to submit certificates to log servers, and obtain the
+``SignedCertificateTimestamp`` struct which can be used with nghttpx.
 
 MRUBY SCRIPTING
 ---------------
@@ -257,7 +317,28 @@ respectively.
 
     .. rb:attr_reader:: remote_addr
 
-        Return IP address of a remote client.
+        Return IP address of a remote client.  If connection is made
+        via UNIX domain socket, this returns the string "localhost".
+
+    .. rb:attr_reader:: server_addr
+
+        Return address of server that accepted the connection.  This
+	is a string which specified in :option:`--frontend` option,
+	excluding port number, and not a resolved IP address.  For
+	UNIX domain socket, this is a path to UNIX domain socket.
+
+    .. rb:attr_reader:: server_port
+
+        Return port number of the server frontend which accepted the
+        connection from client.
+
+    .. rb:attr_reader:: tls_used
+
+        Return true if TLS is used on the connection.
+
+    .. rb:attr_reader:: tls_sni
+
+        Return the TLS SNI value which client sent in this connection.
 
 .. rb:class:: Request
 
@@ -293,7 +374,13 @@ respectively.
 
         Request path, including query component (i.e., /index.html).
         On assignment, copy of given value is assigned.  The path does
-        not include authority component of URI.
+        not include authority component of URI.  This may include
+        query component.  nghttpx makes certain normalization for
+        path.  It decodes percent-encoding for unreserved characters
+        (see https://tools.ietf.org/html/rfc3986#section-2.3), and
+        resolves ".." and ".".  But it may leave characters which
+        should be percent-encoded as is. So be careful when comparing
+        path against desired string.
 
     .. rb:attr_reader:: headers
 
@@ -320,7 +407,7 @@ respectively.
 
         Clear all existing request header fields.
 
-    .. rb:method:: push uri
+    .. rb:method:: push(uri)
 
         Initiate to push resource identified by *uri*.  Only HTTP/2
         protocol supports this feature.  For the other protocols, this
@@ -430,6 +517,62 @@ addresses:
     end
 
     App.new
+
+API ENDPOINTS
+-------------
+
+nghttpx exposes API endpoints to manipulate it via HTTP based API.  By
+default, API endpoint is disabled.  To enable it, add a dedicated
+frontend for API using :option:`--frontend` option with "api"
+parameter.  All requests which come from this frontend address, will
+be treated as API request.
+
+The response is normally JSON dictionary, and at least includes the
+following keys:
+
+status
+  The status of the request processing.  The following values are
+  defined:
+
+  Success
+    The request was successful.
+
+  Failure
+    The request was failed.  No change has been made.
+
+code
+  HTTP status code
+
+We wrote "normally", since nghttpx may return ordinal HTML response in
+some cases where the error has occurred before reaching API endpoint
+(e.g., header field is too large).
+
+The following section describes available API endpoints.
+
+PUT /api/v1beta1/backendconfig
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This API replaces the current backend server settings with the
+requested ones.  The request method should be PUT, but POST is also
+acceptable.  The request body must be nghttpx configuration file
+format.  For configuration file format, see `FILES`_ section.  The
+line separator inside the request body must be single LF (0x0A).
+Currently, only :option:`backend <--backend>` option is parsed, the
+others are simply ignored.  The semantics of this API is replace the
+current backend with the backend options in request body.  Describe
+the desired set of backend severs, and nghttpx makes it happen.  If
+there is no :option:`backend <--backend>` option is found in request
+body, the current set of backend is replaced with the :option:`backend
+<--backend>` option's default value, which is ``127.0.0.1,80``.
+
+The replacement is done instantly without breaking existing
+connections or requests.  It also avoids any process creation as is
+the case with hot swapping with signals.
+
+The one limitation is that only numeric IP address is allowd in
+:option:`backend <--backend>` in request body unless "dns" parameter
+is used while non numeric hostname is allowed in command-line or
+configuration file is read using :option:`--conf`.
 
 SEE ALSO
 --------

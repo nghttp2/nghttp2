@@ -39,12 +39,14 @@
 
 #include "util.h"
 #include "memchunk.h"
+#include "template.h"
+#include "allocator.h"
 
 namespace nghttp2 {
 
 struct Header {
   Header(std::string name, std::string value, bool no_index = false,
-         int16_t token = -1)
+         int32_t token = -1)
       : name(std::move(name)),
         value(std::move(value)),
         token(token),
@@ -62,21 +64,44 @@ struct Header {
 
   std::string name;
   std::string value;
-  int16_t token;
+  int32_t token;
+  bool no_index;
+};
+
+struct HeaderRef {
+  HeaderRef(const StringRef &name, const StringRef &value,
+            bool no_index = false, int32_t token = -1)
+      : name(name), value(value), token(token), no_index(no_index) {}
+
+  HeaderRef() : token(-1), no_index(false) {}
+
+  bool operator==(const HeaderRef &other) const {
+    return name == other.name && value == other.value;
+  }
+
+  bool operator<(const HeaderRef &rhs) const {
+    return name < rhs.name || (name == rhs.name && value < rhs.value);
+  }
+
+  StringRef name;
+  StringRef value;
+  int32_t token;
   bool no_index;
 };
 
 using Headers = std::vector<Header>;
+using HeaderRefs = std::vector<HeaderRef>;
 
 namespace http2 {
 
-std::string get_status_string(unsigned int status_code);
+// Returns reason-phrase for given |status code|.  If there is no
+// known reason-phrase for the given code, returns empty string.
+StringRef get_reason_phrase(unsigned int status_code);
 
-// Returns string version of |status_code|.  This function can handle
-// only predefined status code.  Otherwise, returns nullptr.
-const char *stringify_status(unsigned int status_code);
+// Returns string version of |status_code|. (e.g., "404")
+StringRef stringify_status(BlockAllocator &balloc, unsigned int status_code);
 
-void capitalize(DefaultMemchunks *buf, const std::string &s);
+void capitalize(DefaultMemchunks *buf, const StringRef &s);
 
 // Returns true if |value| is LWS
 bool lws(const char *value);
@@ -89,25 +114,22 @@ void copy_url_component(std::string &dest, const http_parser_url *u, int field,
 
 Headers::value_type to_header(const uint8_t *name, size_t namelen,
                               const uint8_t *value, size_t valuelen,
-                              bool no_index, int16_t token);
+                              bool no_index, int32_t token);
 
 // Add name/value pairs to |nva|.  If |no_index| is true, this
 // name/value pair won't be indexed when it is forwarded to the next
 // hop.  This function strips white spaces around |value|.
 void add_header(Headers &nva, const uint8_t *name, size_t namelen,
                 const uint8_t *value, size_t valuelen, bool no_index,
-                int16_t token);
+                int32_t token);
 
 // Returns pointer to the entry in |nva| which has name |name|.  If
 // more than one entries which have the name |name|, last occurrence
 // in |nva| is returned.  If no such entry exist, returns nullptr.
 const Headers::value_type *get_header(const Headers &nva, const char *name);
 
-// Returns nv->second if nv is not nullptr. Otherwise, returns "".
-std::string value_to_str(const Headers::value_type *nv);
-
 // Returns true if the value of |nv| is not empty.
-bool non_empty_value(const Headers::value_type *nv);
+bool non_empty_value(const HeaderRefs::value_type *nv);
 
 // Creates nghttp2_nv using |name| and |value| and returns it. The
 // returned value only references the data pointer to name.c_str() and
@@ -116,25 +138,31 @@ bool non_empty_value(const Headers::value_type *nv);
 nghttp2_nv make_nv(const std::string &name, const std::string &value,
                    bool no_index = false);
 
+nghttp2_nv make_nv(const StringRef &name, const StringRef &value,
+                   bool no_index = false);
+
 nghttp2_nv make_nv_nocopy(const std::string &name, const std::string &value,
+                          bool no_index = false);
+
+nghttp2_nv make_nv_nocopy(const StringRef &name, const StringRef &value,
                           bool no_index = false);
 
 // Create nghttp2_nv from string literal |name| and |value|.
 template <size_t N, size_t M>
-constexpr nghttp2_nv make_nv_ll(const char(&name)[N], const char(&value)[M]) {
+constexpr nghttp2_nv make_nv_ll(const char (&name)[N], const char (&value)[M]) {
   return {(uint8_t *)name, (uint8_t *)value, N - 1, M - 1,
           NGHTTP2_NV_FLAG_NO_COPY_NAME | NGHTTP2_NV_FLAG_NO_COPY_VALUE};
 }
 
 // Create nghttp2_nv from string literal |name| and c-string |value|.
 template <size_t N>
-nghttp2_nv make_nv_lc(const char(&name)[N], const char *value) {
+nghttp2_nv make_nv_lc(const char (&name)[N], const char *value) {
   return {(uint8_t *)name, (uint8_t *)value, N - 1, strlen(value),
           NGHTTP2_NV_FLAG_NO_COPY_NAME};
 }
 
 template <size_t N>
-nghttp2_nv make_nv_lc_nocopy(const char(&name)[N], const char *value) {
+nghttp2_nv make_nv_lc_nocopy(const char (&name)[N], const char *value) {
   return {(uint8_t *)name, (uint8_t *)value, N - 1, strlen(value),
           NGHTTP2_NV_FLAG_NO_COPY_NAME | NGHTTP2_NV_FLAG_NO_COPY_VALUE};
 }
@@ -142,19 +170,19 @@ nghttp2_nv make_nv_lc_nocopy(const char(&name)[N], const char *value) {
 // Create nghttp2_nv from string literal |name| and std::string
 // |value|.
 template <size_t N>
-nghttp2_nv make_nv_ls(const char(&name)[N], const std::string &value) {
+nghttp2_nv make_nv_ls(const char (&name)[N], const std::string &value) {
   return {(uint8_t *)name, (uint8_t *)value.c_str(), N - 1, value.size(),
           NGHTTP2_NV_FLAG_NO_COPY_NAME};
 }
 
 template <size_t N>
-nghttp2_nv make_nv_ls_nocopy(const char(&name)[N], const std::string &value) {
+nghttp2_nv make_nv_ls_nocopy(const char (&name)[N], const std::string &value) {
   return {(uint8_t *)name, (uint8_t *)value.c_str(), N - 1, value.size(),
           NGHTTP2_NV_FLAG_NO_COPY_NAME | NGHTTP2_NV_FLAG_NO_COPY_VALUE};
 }
 
 template <size_t N>
-nghttp2_nv make_nv_ls_nocopy(const char(&name)[N], const StringRef &value) {
+nghttp2_nv make_nv_ls_nocopy(const char (&name)[N], const StringRef &value) {
   return {(uint8_t *)name, (uint8_t *)value.c_str(), N - 1, value.size(),
           NGHTTP2_NV_FLAG_NO_COPY_NAME | NGHTTP2_NV_FLAG_NO_COPY_VALUE};
 }
@@ -163,19 +191,20 @@ nghttp2_nv make_nv_ls_nocopy(const char(&name)[N], const StringRef &value) {
 // before this call (its element's token field is assigned).  Certain
 // headers, including disallowed headers in HTTP/2 spec and headers
 // which require special handling (i.e. via), are not copied.
-void copy_headers_to_nva(std::vector<nghttp2_nv> &nva, const Headers &headers);
+void copy_headers_to_nva(std::vector<nghttp2_nv> &nva,
+                         const HeaderRefs &headers);
 
 // Just like copy_headers_to_nva(), but this adds
 // NGHTTP2_NV_FLAG_NO_COPY_NAME and NGHTTP2_NV_FLAG_NO_COPY_VALUE.
 void copy_headers_to_nva_nocopy(std::vector<nghttp2_nv> &nva,
-                                const Headers &headers);
+                                const HeaderRefs &headers);
 
 // Appends HTTP/1.1 style header lines to |buf| from headers in
 // |headers|.  |headers| must be indexed before this call (its
 // element's token field is assigned).  Certain headers, which
 // requires special handling (i.e. via and cookie), are not appended.
 void build_http1_headers_from_headers(DefaultMemchunks *buf,
-                                      const Headers &headers);
+                                      const HeaderRefs &headers);
 
 // Return positive window_size_increment if WINDOW_UPDATE should be
 // sent for the stream |stream_id|. If |stream_id| == 0, this function
@@ -196,6 +225,11 @@ void dump_nv(FILE *out, const nghttp2_nv *nva, size_t nvlen);
 // Dumps name/value pairs in |nva| to |out|.
 void dump_nv(FILE *out, const Headers &nva);
 
+void dump_nv(FILE *out, const HeaderRefs &nva);
+
+// Ereases header in |hd|.
+void erase_header(HeaderRef *hd);
+
 // Rewrites redirection URI which usually appears in location header
 // field. The |uri| is the URI in the location header field. The |u|
 // stores the result of parsed |uri|. The |request_authority| is the
@@ -209,11 +243,11 @@ void dump_nv(FILE *out, const Headers &nva);
 // This function returns the new rewritten URI on success. If the
 // location URI is not subject to the rewrite, this function returns
 // emtpy string.
-std::string rewrite_location_uri(const std::string &uri,
-                                 const http_parser_url &u,
-                                 const std::string &match_host,
-                                 const std::string &request_authority,
-                                 const std::string &upstream_scheme);
+StringRef rewrite_location_uri(BlockAllocator &balloc, const StringRef &uri,
+                               const http_parser_url &u,
+                               const StringRef &match_host,
+                               const StringRef &request_authority,
+                               const StringRef &upstream_scheme);
 
 // Checks the header name/value pair using nghttp2_check_header_name()
 // and nghttp2_check_header_value(). If both function returns nonzero,
@@ -222,7 +256,7 @@ int check_nv(const uint8_t *name, size_t namelen, const uint8_t *value,
              size_t valuelen);
 
 // Returns parsed HTTP status code.  Returns -1 on failure.
-int parse_http_status_code(const std::string &src);
+int parse_http_status_code(const StringRef &src);
 
 // Header fields to be indexed, except HD_MAXIDX which is convenient
 // member to get maximum value.
@@ -271,59 +305,43 @@ using HeaderIndex = std::array<int16_t, HD_MAXIDX>;
 // Only headers we are interested in are tokenized.  If header name
 // cannot be tokenized, returns -1.
 int lookup_token(const uint8_t *name, size_t namelen);
-int lookup_token(const std::string &name);
+int lookup_token(const StringRef &name);
 
 // Initializes |hdidx|, header index.  The |hdidx| must point to the
 // array containing at least HD_MAXIDX elements.
 void init_hdidx(HeaderIndex &hdidx);
 // Indexes header |token| using index |idx|.
-void index_header(HeaderIndex &hdidx, int16_t token, size_t idx);
-
-// Returns true if HTTP/2 request pseudo header |token| is not indexed
-// yet and not -1.
-bool check_http2_request_pseudo_header(const HeaderIndex &hdidx, int16_t token);
-
-// Returns true if HTTP/2 response pseudo header |token| is not
-// indexed yet and not -1.
-bool check_http2_response_pseudo_header(const HeaderIndex &hdidx,
-                                        int16_t token);
-
-// Returns true if header field denoted by |token| is allowed for
-// HTTP/2.
-bool http2_header_allowed(int16_t token);
-
-// Returns true that |hdidx| contains mandatory HTTP/2 request
-// headers.
-bool http2_mandatory_request_headers_presence(const HeaderIndex &hdidx);
+void index_header(HeaderIndex &hdidx, int32_t token, size_t idx);
 
 // Returns header denoted by |token| using index |hdidx|.
-const Headers::value_type *get_header(const HeaderIndex &hdidx, int16_t token,
+const Headers::value_type *get_header(const HeaderIndex &hdidx, int32_t token,
                                       const Headers &nva);
 
-Headers::value_type *get_header(const HeaderIndex &hdidx, int16_t token,
+Headers::value_type *get_header(const HeaderIndex &hdidx, int32_t token,
                                 Headers &nva);
 
 struct LinkHeader {
-  // The region of URI is [uri.first, uri.second).
-  std::pair<const char *, const char *> uri;
+  // The region of URI.  This might not be NULL-terminated.
+  StringRef uri;
 };
 
-// Returns next URI-reference in Link header field value |src| of
-// length |len|.  If no URI-reference found after searching all input,
-// returned uri field is empty.  This imply that empty URI-reference
-// is ignored during parsing.
-std::vector<LinkHeader> parse_link_header(const char *src, size_t len);
+// Returns next URI-reference in Link header field value |src|.  If no
+// URI-reference found after searching all input, returned uri field
+// is empty.  This imply that empty URI-reference is ignored during
+// parsing.
+std::vector<LinkHeader> parse_link_header(const StringRef &src);
 
-// Constructs path by combining base path |base_path| of length
-// |base_pathlen| with another path |rel_path| of length
-// |rel_pathlen|.  The base path and another path can have optional
+// Constructs path by combining base path |base_path| with another
+// path |rel_path|.  The base path and another path can have optional
 // query component.  This function assumes |base_path| is normalized.
 // In other words, it does not contain ".." or "."  path components
 // and starts with "/" if it is not empty.
-std::string path_join(const char *base_path, size_t base_pathlen,
-                      const char *base_query, size_t base_querylen,
-                      const char *rel_path, size_t rel_pathlen,
-                      const char *rel_query, size_t rel_querylen);
+std::string path_join(const StringRef &base, const StringRef &base_query,
+                      const StringRef &rel_path, const StringRef &rel_query);
+
+StringRef path_join(BlockAllocator &balloc, const StringRef &base_path,
+                    const StringRef &base_query, const StringRef &rel_path,
+                    const StringRef &rel_query);
 
 // true if response has body, taking into account the request method
 // and status code.
@@ -337,74 +355,40 @@ bool expect_response_body(int status_code);
 // Only methods defined in http-parser/http-parser.h (http_method) are
 // tokenized.  If method name cannot be tokenized, returns -1.
 int lookup_method_token(const uint8_t *name, size_t namelen);
-int lookup_method_token(const std::string &name);
+int lookup_method_token(const StringRef &name);
 
-const char *to_method_string(int method_token);
+// Returns string  representation of |method_token|.  This  is wrapper
+// function over http_method_str  from http-parser.  If |method_token|
+// is not known to http-parser, "<unknown>" is returned.  The returned
+// StringRef is guaranteed to be NULL-terminated.
+StringRef to_method_string(int method_token);
 
-template <typename InputIt>
-std::string normalize_path(InputIt first, InputIt last) {
-  // First, decode %XX for unreserved characters, then do
-  // http2::join_path
-  std::string result;
-  // We won't find %XX if length is less than 3.
-  if (last - first < 3) {
-    result.assign(first, last);
-  } else {
-    for (; first < last - 2;) {
-      if (*first == '%') {
-        if (util::is_hex_digit(*(first + 1)) &&
-            util::is_hex_digit(*(first + 2))) {
-          auto c = (util::hex_to_uint(*(first + 1)) << 4) +
-                   util::hex_to_uint(*(first + 2));
-          if (util::in_rfc3986_unreserved_chars(c)) {
-            result += c;
-            first += 3;
-            continue;
-          }
-          result += '%';
-          result += util::upcase(*(first + 1));
-          result += util::upcase(*(first + 2));
-          first += 3;
-          continue;
-        }
-      }
-      result += *first++;
-    }
-    result.append(first, last);
-  }
-  return path_join(nullptr, 0, nullptr, 0, result.c_str(), result.size(),
-                   nullptr, 0);
-}
+StringRef normalize_path(BlockAllocator &balloc, const StringRef &path,
+                         const StringRef &query);
 
-template <typename InputIt>
-std::string rewrite_clean_path(InputIt first, InputIt last) {
-  if (first == last || *first != '/') {
-    return std::string(first, last);
-  }
-  // probably, not necessary most of the case, but just in case.
-  auto fragment = std::find(first, last, '#');
-  auto query = std::find(first, fragment, '?');
-  auto path = normalize_path(first, query);
-  if (query != fragment) {
-    path.append(query, fragment);
-  }
-  return path;
-}
+std::string normalize_path(const StringRef &path, const StringRef &query);
 
-// Stores path component of |uri| in *base.  Its extracted length is
-// stored in *baselen.  The extracted path does not include query
-// component.  This function returns 0 if it succeeds, or -1.
-int get_pure_path_component(const char **base, size_t *baselen,
-                            const std::string &uri);
+StringRef rewrite_clean_path(BlockAllocator &balloc, const StringRef &src);
 
-// Deduces scheme, authority and path from given |uri| of length
-// |len|, and stores them in |scheme|, |authority|, and |path|
-// respectively.  If |uri| is relative path, path resolution is taken
-// palce using path given in |base| of length |baselen|.  This
-// function returns 0 if it succeeds, or -1.
-int construct_push_component(std::string &scheme, std::string &authority,
-                             std::string &path, const char *base,
-                             size_t baselen, const char *uri, size_t len);
+// Returns path component of |uri|.  The returned path does not
+// include query component.  This function returns empty string if it
+// fails.
+StringRef get_pure_path_component(const StringRef &uri);
+
+// Deduces scheme, authority and path from given |uri|, and stores
+// them in |scheme|, |authority|, and |path| respectively.  If |uri|
+// is relative path, path resolution takes place using path given in
+// |base| of length |baselen|.  This function returns 0 if it
+// succeeds, or -1.
+int construct_push_component(BlockAllocator &balloc, StringRef &scheme,
+                             StringRef &authority, StringRef &path,
+                             const StringRef &base, const StringRef &uri);
+
+// Copies |src| and return its lower-cased version.
+StringRef copy_lower(BlockAllocator &balloc, const StringRef &src);
+
+// Returns true if te header field value |s| contains "trailers".
+bool contains_trailers(const StringRef &s);
 
 } // namespace http2
 

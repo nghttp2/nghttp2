@@ -66,11 +66,11 @@ make_array(T &&... t) {
       sizeof...(T)>{{std::forward<T>(t)...}};
 }
 
-template <typename T, size_t N> constexpr size_t array_size(T(&)[N]) {
+template <typename T, size_t N> constexpr size_t array_size(T (&)[N]) {
   return N;
 }
 
-template <typename T, size_t N> constexpr size_t str_size(T(&)[N]) {
+template <typename T, size_t N> constexpr size_t str_size(T (&)[N]) {
   return N - 1;
 }
 
@@ -79,7 +79,7 @@ template <typename T, size_t N> constexpr size_t str_size(T(&)[N]) {
 template <typename F, typename... T> struct Defer {
   Defer(F &&f, T &&... t)
       : f(std::bind(std::forward<F>(f), std::forward<T>(t)...)) {}
-  Defer(Defer &&o) : f(std::move(o.f)) {}
+  Defer(Defer &&o) noexcept : f(std::move(o.f)) {}
   ~Defer() { f(); }
 
   using ResultType = typename std::result_of<typename std::decay<F>::type(
@@ -99,27 +99,33 @@ template <typename T, typename F> bool test_flags(T t, F flags) {
 // T *dlnext, which point to previous element and next element in the
 // list respectively.
 template <typename T> struct DList {
-  DList() : head(nullptr), tail(nullptr) {}
+  DList() : head(nullptr), tail(nullptr), len(0) {}
 
   DList(const DList &) = delete;
-
   DList &operator=(const DList &) = delete;
 
-  DList(DList &&other) : head(other.head), tail(other.tail) {
+  DList(DList &&other) noexcept
+      : head(other.head), tail(other.tail), len(other.len) {
     other.head = other.tail = nullptr;
+    other.len = 0;
   }
 
-  DList &operator=(DList &&other) {
+  DList &operator=(DList &&other) noexcept {
     if (this == &other) {
       return *this;
     }
     head = other.head;
     tail = other.tail;
+    len = other.len;
+
     other.head = other.tail = nullptr;
+    other.len = 0;
+
     return *this;
   }
 
   void append(T *t) {
+    ++len;
     if (tail) {
       tail->dlnext = t;
       t->dlprev = tail;
@@ -130,6 +136,7 @@ template <typename T> struct DList {
   }
 
   void remove(T *t) {
+    --len;
     auto p = t->dlprev;
     auto n = t->dlnext;
     if (p) {
@@ -149,7 +156,10 @@ template <typename T> struct DList {
 
   bool empty() const { return head == nullptr; }
 
+  size_t size() const { return len; }
+
   T *head, *tail;
+  size_t len;
 };
 
 template <typename T> void dlist_delete_all(DList<T> &dl) {
@@ -241,20 +251,22 @@ public:
   using const_reference = const value_type &;
   using const_pointer = const value_type *;
   using const_iterator = const_pointer;
+  using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
   ImmutableString() : len(0), base("") {}
   ImmutableString(const char *s, size_t slen)
-      : len(slen), base(copystr(s, len)) {}
-  ImmutableString(const char *s) : len(strlen(s)), base(copystr(s, len)) {}
-  ImmutableString(const std::string &s)
-      : len(s.size()), base(copystr(s.c_str(), s.size())) {}
+      : len(slen), base(copystr(s, s + len)) {}
+  explicit ImmutableString(const char *s)
+      : len(strlen(s)), base(copystr(s, s + len)) {}
+  explicit ImmutableString(const std::string &s)
+      : len(s.size()), base(copystr(std::begin(s), std::end(s))) {}
   template <typename InputIt>
   ImmutableString(InputIt first, InputIt last)
-      : len(std::distance(first, last)), base(copystr(first, len)) {}
+      : len(std::distance(first, last)), base(copystr(first, last)) {}
   ImmutableString(const ImmutableString &other)
-      : len(other.len), base(copystr(other.base, other.len)) {}
-  ImmutableString(ImmutableString &&other) noexcept : len(other.len),
-                                                      base(other.base) {
+      : len(other.len), base(copystr(std::begin(other), std::end(other))) {}
+  ImmutableString(ImmutableString &&other) noexcept
+      : len(other.len), base(other.base) {
     other.len = 0;
     other.base = "";
   }
@@ -272,7 +284,7 @@ public:
       delete[] base;
     }
     len = other.len;
-    base = copystr(other.base, other.len);
+    base = copystr(std::begin(other), std::end(other));
     return *this;
   }
   ImmutableString &operator=(ImmutableString &&other) noexcept {
@@ -289,7 +301,7 @@ public:
     return *this;
   }
 
-  template <size_t N> static ImmutableString from_lit(const char(&s)[N]) {
+  template <size_t N> static ImmutableString from_lit(const char (&s)[N]) {
     return ImmutableString(s, N - 1);
   }
 
@@ -299,18 +311,28 @@ public:
   const_iterator end() const { return base + len; };
   const_iterator cend() const { return base + len; };
 
+  const_reverse_iterator rbegin() const {
+    return const_reverse_iterator{base + len};
+  }
+  const_reverse_iterator crbegin() const {
+    return const_reverse_iterator{base + len};
+  }
+
+  const_reverse_iterator rend() const { return const_reverse_iterator{base}; }
+  const_reverse_iterator crend() const { return const_reverse_iterator{base}; }
+
   const char *c_str() const { return base; }
   size_type size() const { return len; }
   bool empty() const { return len == 0; }
   const_reference operator[](size_type pos) const { return *(base + pos); }
 
 private:
-  const char *copystr(const char *s, size_t slen) {
-    if (slen == 0) {
+  template <typename InputIt> const char *copystr(InputIt first, InputIt last) {
+    if (first == last) {
       return "";
     }
-    auto res = new char[slen + 1];
-    *std::copy_n(s, slen, res) = '\0';
+    auto res = new char[std::distance(first, last) + 1];
+    *std::copy(first, last, res) = '\0';
     return res;
   }
 
@@ -386,37 +408,74 @@ public:
   using const_reference = const value_type &;
   using const_pointer = const value_type *;
   using const_iterator = const_pointer;
+  using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
-  StringRef() : base(""), len(0) {}
+  constexpr StringRef() : base(""), len(0) {}
   explicit StringRef(const std::string &s) : base(s.c_str()), len(s.size()) {}
   explicit StringRef(const ImmutableString &s)
       : base(s.c_str()), len(s.size()) {}
-  StringRef(const char *s) : base(s), len(strlen(s)) {}
-  StringRef(const char *s, size_t n) : base(s), len(n) {}
+  explicit StringRef(const char *s) : base(s), len(strlen(s)) {}
+  constexpr StringRef(const char *s, size_t n) : base(s), len(n) {}
+  template <typename CharT>
+  constexpr StringRef(const CharT *s, size_t n)
+      : base(reinterpret_cast<const char *>(s)), len(n) {}
   template <typename InputIt>
   StringRef(InputIt first, InputIt last)
-      : base(first), len(std::distance(first, last)) {}
-  template <size_t N> static StringRef from_lit(const char(&s)[N]) {
-    return StringRef(s, N - 1);
+      : base(reinterpret_cast<const char *>(&*first)),
+        len(std::distance(first, last)) {}
+  template <typename InputIt>
+  StringRef(InputIt *first, InputIt *last)
+      : base(reinterpret_cast<const char *>(first)),
+        len(std::distance(first, last)) {}
+  template <typename CharT, size_t N>
+  constexpr static StringRef from_lit(const CharT (&s)[N]) {
+    return StringRef{s, N - 1};
+  }
+  static StringRef from_maybe_nullptr(const char *s) {
+    if (s == nullptr) {
+      return StringRef();
+    }
+
+    return StringRef(s);
   }
 
-  const_iterator begin() const { return base; };
-  const_iterator cbegin() const { return base; };
+  constexpr const_iterator begin() const { return base; };
+  constexpr const_iterator cbegin() const { return base; };
 
-  const_iterator end() const { return base + len; };
-  const_iterator cend() const { return base + len; };
+  constexpr const_iterator end() const { return base + len; };
+  constexpr const_iterator cend() const { return base + len; };
 
-  const char *c_str() const { return base; }
-  size_type size() const { return len; }
-  bool empty() const { return len == 0; }
-  const_reference operator[](size_type pos) const { return *(base + pos); }
+  const_reverse_iterator rbegin() const {
+    return const_reverse_iterator{base + len};
+  }
+  const_reverse_iterator crbegin() const {
+    return const_reverse_iterator{base + len};
+  }
+
+  const_reverse_iterator rend() const { return const_reverse_iterator{base}; }
+  const_reverse_iterator crend() const { return const_reverse_iterator{base}; }
+
+  constexpr const char *c_str() const { return base; }
+  constexpr size_type size() const { return len; }
+  constexpr bool empty() const { return len == 0; }
+  constexpr const_reference operator[](size_type pos) const {
+    return *(base + pos);
+  }
 
   std::string str() const { return std::string(base, len); }
+  const uint8_t *byte() const {
+    return reinterpret_cast<const uint8_t *>(base);
+  }
 
 private:
   const char *base;
   size_type len;
 };
+
+inline bool operator==(const StringRef &lhs, const StringRef &rhs) {
+  return lhs.size() == rhs.size() &&
+         std::equal(std::begin(lhs), std::end(lhs), std::begin(rhs));
+}
 
 inline bool operator==(const StringRef &lhs, const std::string &rhs) {
   return lhs.size() == rhs.size() &&
@@ -432,8 +491,21 @@ inline bool operator==(const StringRef &lhs, const char *rhs) {
          std::equal(std::begin(lhs), std::end(lhs), rhs);
 }
 
+inline bool operator==(const StringRef &lhs, const ImmutableString &rhs) {
+  return lhs.size() == rhs.size() &&
+         std::equal(std::begin(lhs), std::end(lhs), std::begin(rhs));
+}
+
+inline bool operator==(const ImmutableString &lhs, const StringRef &rhs) {
+  return rhs == lhs;
+}
+
 inline bool operator==(const char *lhs, const StringRef &rhs) {
   return rhs == lhs;
+}
+
+inline bool operator!=(const StringRef &lhs, const StringRef &rhs) {
+  return !(lhs == rhs);
 }
 
 inline bool operator!=(const StringRef &lhs, const std::string &rhs) {
@@ -450,6 +522,11 @@ inline bool operator!=(const StringRef &lhs, const char *rhs) {
 
 inline bool operator!=(const char *lhs, const StringRef &rhs) {
   return !(rhs == lhs);
+}
+
+inline bool operator<(const StringRef &lhs, const StringRef &rhs) {
+  return std::lexicographical_compare(std::begin(lhs), std::end(lhs),
+                                      std::begin(rhs), std::end(rhs));
 }
 
 inline std::ostream &operator<<(std::ostream &o, const StringRef &s) {

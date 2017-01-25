@@ -49,7 +49,7 @@
 
 #include "http-parser/http_parser.h"
 
-#include "buffer.h"
+#include "memchunk.h"
 #include "http2.h"
 #include "nghttp2_gzip.h"
 #include "template.h"
@@ -64,23 +64,27 @@ struct Config {
 
   Headers headers;
   Headers trailer;
+  std::vector<int32_t> weight;
   std::string certfile;
   std::string keyfile;
   std::string datafile;
   std::string harfile;
+  std::string scheme_override;
+  std::string host_override;
   nghttp2_option *http2_option;
   int64_t header_table_size;
   int64_t min_header_table_size;
+  int64_t encoder_header_table_size;
   size_t padding;
   size_t max_concurrent_streams;
   ssize_t peer_max_concurrent_streams;
-  int32_t weight;
   int multiply;
   // milliseconds
   ev_tstamp timeout;
   int window_bits;
   int connection_window_bits;
   int verbose;
+  uint16_t port_override;
   bool null_out;
   bool remote_name;
   bool get_assets;
@@ -91,6 +95,7 @@ struct Config {
   bool no_dep;
   bool hexdump;
   bool no_push;
+  bool expect_continue;
 };
 
 enum class RequestState { INITIAL, ON_REQUEST, ON_RESPONSE, ON_COMPLETE };
@@ -109,6 +114,23 @@ struct RequestTiming {
   RequestTiming() : state(RequestState::INITIAL) {}
 };
 
+struct Request; // forward declaration for ContinueTimer
+
+struct ContinueTimer {
+  ContinueTimer(struct ev_loop *loop, Request *req);
+  ~ContinueTimer();
+
+  void start();
+  void stop();
+
+  // Schedules an immediate run of the continue callback on the loop, if the
+  // callback has not already been run
+  void dispatch_continue();
+
+  struct ev_loop *loop;
+  ev_timer timer;
+};
+
 struct Request {
   // For pushed request, |uri| is empty and |u| is zero-cleared.
   Request(const std::string &uri, const http_parser_url &u,
@@ -125,15 +147,21 @@ struct Request {
 
   bool is_ipv6_literal_addr() const;
 
-  bool response_pseudo_header_allowed(int16_t token) const;
-  bool push_request_pseudo_header_allowed(int16_t token) const;
-
-  Headers::value_type *get_res_header(int16_t token);
-  Headers::value_type *get_req_header(int16_t token);
+  Headers::value_type *get_res_header(int32_t token);
+  Headers::value_type *get_req_header(int32_t token);
 
   void record_request_start_time();
   void record_response_start_time();
   void record_response_end_time();
+
+  // Returns scheme taking into account overridden scheme.
+  StringRef get_real_scheme() const;
+  // Returns request host, without port, taking into account
+  // overridden host.
+  StringRef get_real_host() const;
+  // Returns request port, taking into account overridden host, port,
+  // and scheme.
+  uint16_t get_real_port() const;
 
   Headers res_nva;
   Headers req_nva;
@@ -148,8 +176,9 @@ struct Request {
   // Number of bytes received from server
   int64_t response_len;
   nghttp2_gzip *inflater;
-  HtmlParser *html_parser;
+  std::unique_ptr<HtmlParser> html_parser;
   const nghttp2_data_provider *data_prd;
+  size_t header_buffer_size;
   int32_t stream_id;
   int status;
   // Recursion level: 0: first entity, 1: entity linked from first entity
@@ -158,6 +187,8 @@ struct Request {
   // used for incoming PUSH_PROMISE
   http2::HeaderIndex req_hdidx;
   bool expect_final_response;
+  // only assigned if this request is using Expect/Continue
+  std::unique_ptr<ContinueTimer> continue_timer;
 };
 
 struct SessionTiming {
@@ -223,6 +254,8 @@ struct HttpClient {
   void output_har(FILE *outfile);
 #endif // HAVE_JANSSON
 
+  MemchunkPool mcpool;
+  DefaultMemchunks wb;
   std::vector<std::unique_ptr<Request>> reqvec;
   // Insert path already added in reqvec to prevent multiple request
   // for 1 resource.
@@ -263,7 +296,6 @@ struct HttpClient {
   // true if the response message of HTTP Upgrade request is fully
   // received. It is not relevant the upgrade succeeds, or not.
   bool upgrade_response_complete;
-  Buffer<64_k> wb;
   // SETTINGS payload sent as token68 in HTTP Upgrade
   std::array<uint8_t, 128> settings_payload;
 

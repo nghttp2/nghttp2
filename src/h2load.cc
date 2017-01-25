@@ -79,12 +79,13 @@ bool recorded(const std::chrono::steady_clock::time_point &t) {
 } // namespace
 
 Config::Config()
-    : data_length(-1),
+    : ciphers(ssl::DEFAULT_CIPHER_LIST),
+      data_length(-1),
       addrs(nullptr),
       nreqs(1),
       nclients(1),
       nthreads(1),
-      max_concurrent_streams(-1),
+      max_concurrent_streams(1),
       window_bits(30),
       connection_window_bits(30),
       rate(0),
@@ -92,17 +93,23 @@ Config::Config()
       conn_active_timeout(0.),
       conn_inactivity_timeout(0.),
       no_tls_proto(PROTO_HTTP2),
+      header_table_size(4_k),
+      encoder_header_table_size(4_k),
       data_fd(-1),
       port(0),
       default_port(0),
       verbose(false),
-      timing_script(false) {}
+      timing_script(false),
+      base_uri_unix(false),
+      unix_addr{} {}
 
 Config::~Config() {
-  if (base_uri_unix) {
-    delete addrs;
-  } else {
-    freeaddrinfo(addrs);
+  if (addrs) {
+    if (base_uri_unix) {
+      delete addrs;
+    } else {
+      freeaddrinfo(addrs);
+    }
   }
 
   if (data_fd != -1) {
@@ -200,7 +207,9 @@ void readcb(struct ev_loop *loop, ev_io *w, int revents) {
   auto client = static_cast<Client *>(w->data);
   client->restart_timeout();
   if (client->do_read() != 0) {
-    client->fail();
+    if (client->try_again_or_fail() == 0) {
+      return;
+    }
     delete client;
     return;
   }
@@ -260,10 +269,8 @@ void conn_timeout_cb(EV_P_ ev_timer *w, int revents) {
 
 namespace {
 bool check_stop_client_request_timeout(Client *client, ev_timer *w) {
-  auto nreq = client->req_todo - client->req_started;
-
-  if (nreq == 0 ||
-      client->streams.size() >= (size_t)config.max_concurrent_streams) {
+  if (client->req_left == 0 ||
+      client->streams.size() >= client->session->max_concurrent_streams()) {
     // no more requests to make, stop timer
     ev_timer_stop(client->worker->loop, w);
     return true;
@@ -312,7 +319,8 @@ void client_request_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
 } // namespace
 
 Client::Client(uint32_t id, Worker *worker, size_t req_todo)
-    : cstat{},
+    : wb(&worker->mcpool),
+      cstat{},
       worker(worker),
       ssl(nullptr),
       next_addr(config.addrs),
@@ -320,11 +328,14 @@ Client::Client(uint32_t id, Worker *worker, size_t req_todo)
       reqidx(0),
       state(CLIENT_IDLE),
       req_todo(req_todo),
+      req_left(req_todo),
+      req_inflight(0),
       req_started(0),
       req_done(0),
       id(id),
       fd(-1),
-      new_connection_requested(false) {
+      new_connection_requested(false),
+      final(false) {
   ev_io_init(&wev, writecb, 0, EV_WRITE);
   ev_io_init(&rev, readcb, 0, EV_READ);
 
@@ -451,29 +462,34 @@ void Client::restart_timeout() {
   }
 }
 
-void Client::fail() {
+int Client::try_again_or_fail() {
   disconnect();
 
   if (new_connection_requested) {
     new_connection_requested = false;
-    if (req_started < req_todo) {
+    if (req_left) {
       // At the moment, we don't have a facility to re-start request
       // already in in-flight.  Make them fail.
-      auto req_abandoned = req_started - req_done;
+      worker->stats.req_failed += req_inflight;
+      worker->stats.req_error += req_inflight;
 
-      worker->stats.req_failed += req_abandoned;
-      worker->stats.req_error += req_abandoned;
-      worker->stats.req_done += req_abandoned;
-
-      req_done = req_started;
+      req_inflight = 0;
 
       // Keep using current address
       if (connect() == 0) {
-        return;
+        return 0;
       }
       std::cerr << "client could not connect to host" << std::endl;
     }
   }
+
+  process_abandoned_streams();
+
+  return -1;
+}
+
+void Client::fail() {
+  disconnect();
 
   process_abandoned_streams();
 }
@@ -491,7 +507,7 @@ void Client::disconnect() {
   ev_io_stop(worker->loop, &wev);
   ev_io_stop(worker->loop, &rev);
   if (ssl) {
-    SSL_set_shutdown(ssl, SSL_RECEIVED_SHUTDOWN);
+    SSL_set_shutdown(ssl, SSL_get_shutdown(ssl) | SSL_RECEIVED_SHUTDOWN);
     ERR_clear_error();
 
     if (SSL_shutdown(ssl) != 1) {
@@ -504,19 +520,23 @@ void Client::disconnect() {
     close(fd);
     fd = -1;
   }
+
+  final = false;
 }
 
 int Client::submit_request() {
-  ++worker->stats.req_started;
   if (session->submit_request() != 0) {
     return -1;
   }
 
+  ++worker->stats.req_started;
+  --req_left;
   ++req_started;
+  ++req_inflight;
 
   // if an active timeout is set and this is the last request to be submitted
   // on this connection, start the active timeout.
-  if (worker->config->conn_active_timeout > 0. && req_started >= req_todo) {
+  if (worker->config->conn_active_timeout > 0. && req_left == 0) {
     ev_timer_start(worker->loop, &conn_active_watcher);
   }
 
@@ -524,40 +544,36 @@ int Client::submit_request() {
 }
 
 void Client::process_timedout_streams() {
-  for (auto &req_stat : worker->stats.req_stats) {
+  for (auto &p : streams) {
+    auto &req_stat = p.second.req_stat;
     if (!req_stat.completed) {
       req_stat.stream_close_time = std::chrono::steady_clock::now();
     }
   }
 
-  auto req_timed_out = req_todo - req_done;
-  worker->stats.req_timedout += req_timed_out;
+  worker->stats.req_timedout += req_inflight;
 
   process_abandoned_streams();
 }
 
 void Client::process_abandoned_streams() {
-  auto req_abandoned = req_todo - req_done;
+  auto req_abandoned = req_inflight + req_left;
 
   worker->stats.req_failed += req_abandoned;
   worker->stats.req_error += req_abandoned;
-  worker->stats.req_done += req_abandoned;
 
-  req_done = req_todo;
+  req_inflight = 0;
+  req_left = 0;
 }
 
 void Client::process_request_failure() {
-  auto req_abandoned = req_todo - req_started;
+  worker->stats.req_failed += req_left;
+  worker->stats.req_error += req_left;
 
-  worker->stats.req_failed += req_abandoned;
-  worker->stats.req_error += req_abandoned;
-  worker->stats.req_done += req_abandoned;
+  req_left = 0;
 
-  req_done += req_abandoned;
-
-  if (req_done == req_todo) {
+  if (req_inflight == 0) {
     terminate_session();
-    return;
   }
 }
 
@@ -575,7 +591,8 @@ void print_server_tmp_key(SSL *ssl) {
 
   std::cout << "Server Temp Key: ";
 
-  switch (EVP_PKEY_id(key)) {
+  auto pkey_id = EVP_PKEY_id(key);
+  switch (pkey_id) {
   case EVP_PKEY_RSA:
     std::cout << "RSA " << EVP_PKEY_bits(key) << " bits" << std::endl;
     break;
@@ -595,6 +612,10 @@ void print_server_tmp_key(SSL *ssl) {
               << std::endl;
     break;
   }
+  default:
+    std::cout << OBJ_nid2sn(pkey_id) << " " << EVP_PKEY_bits(key) << " bits"
+              << std::endl;
+    break;
   }
 #endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 }
@@ -685,6 +706,9 @@ void Client::on_status_code(int32_t stream_id, uint16_t status) {
 }
 
 void Client::on_stream_close(int32_t stream_id, bool success, bool final) {
+  ++req_done;
+  --req_inflight;
+
   auto req_stat = get_req_stat(stream_id);
   if (!req_stat) {
     return;
@@ -715,22 +739,18 @@ void Client::on_stream_close(int32_t stream_id, bool success, bool final) {
   }
 
   ++worker->stats.req_done;
-  ++req_done;
 
   worker->report_progress();
   streams.erase(stream_id);
-  if (req_done == req_todo) {
+  if (req_left == 0 && req_inflight == 0) {
     terminate_session();
     return;
   }
 
-  if (!config.timing_script && !final) {
-    if (req_started < req_todo) {
-      if (submit_request() != 0) {
-        process_request_failure();
-      }
-      return;
-    }
+  if (!config.timing_script && !final && req_left > 0 &&
+      submit_request() != 0) {
+    process_request_failure();
+    return;
   }
 }
 
@@ -758,9 +778,10 @@ int Client::connection_made() {
 #endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 
     if (next_proto) {
-      if (util::check_h2_is_selected(next_proto, next_proto_len)) {
+      auto proto = StringRef{next_proto, next_proto_len};
+      if (util::check_h2_is_selected(proto)) {
         session = make_unique<Http2Session>(this);
-      } else if (util::streq_l(NGHTTP2_H1_1, next_proto, next_proto_len)) {
+      } else if (util::streq(NGHTTP2_H1_1, proto)) {
         session = make_unique<Http1Session>(this);
       }
 #ifdef HAVE_SPDYLAY
@@ -774,20 +795,18 @@ int Client::connection_made() {
 
       // Just assign next_proto to selected_proto anyway to show the
       // negotiation result.
-      selected_proto.assign(next_proto, next_proto + next_proto_len);
+      selected_proto = proto.str();
     } else {
       std::cout << "No protocol negotiated. Fallback behaviour may be activated"
                 << std::endl;
 
       for (const auto &proto : config.npn_list) {
-        if (std::equal(NGHTTP2_H1_1_ALPN,
-                       NGHTTP2_H1_1_ALPN + str_size(NGHTTP2_H1_1_ALPN),
-                       proto.c_str())) {
+        if (util::streq(NGHTTP2_H1_1_ALPN, StringRef{proto})) {
           std::cout
               << "Server does not support NPN/ALPN. Falling back to HTTP/1.1."
               << std::endl;
           session = make_unique<Http1Session>(this);
-          selected_proto = NGHTTP2_H1_1;
+          selected_proto = NGHTTP2_H1_1.str();
           break;
         }
       }
@@ -815,7 +834,7 @@ int Client::connection_made() {
       break;
     case Config::PROTO_HTTP1_1:
       session = make_unique<Http1Session>(this);
-      selected_proto = NGHTTP2_H1_1;
+      selected_proto = NGHTTP2_H1_1.str();
       break;
 #ifdef HAVE_SPDYLAY
     case Config::PROTO_SPDY2:
@@ -846,8 +865,7 @@ int Client::connection_made() {
   record_connect_time();
 
   if (!config.timing_script) {
-    auto nreq =
-        std::min(req_todo - req_started, (size_t)config.max_concurrent_streams);
+    auto nreq = std::min(req_left, session->max_concurrent_streams());
     for (; nreq > 0; --nreq) {
       if (submit_request() != 0) {
         process_request_failure();
@@ -894,6 +912,10 @@ int Client::on_read(const uint8_t *data, size_t len) {
 }
 
 int Client::on_write() {
+  if (wb.rleft() >= BACKOFF_WRITE_BUFFER_THRES) {
+    return 0;
+  }
+
   if (session->on_write() != 0) {
     return -1;
   }
@@ -927,28 +949,32 @@ int Client::read_clear() {
 }
 
 int Client::write_clear() {
+  std::array<struct iovec, 2> iov;
+
   for (;;) {
-    if (wb.rleft() > 0) {
-      ssize_t nwrite;
-      while ((nwrite = write(fd, wb.pos, wb.rleft())) == -1 && errno == EINTR)
-        ;
-      if (nwrite == -1) {
-        if (errno == EAGAIN || errno == EWOULDBLOCK) {
-          ev_io_start(worker->loop, &wev);
-          return 0;
-        }
-        return -1;
-      }
-      wb.drain(nwrite);
-      continue;
-    }
-    wb.reset();
     if (on_write() != 0) {
       return -1;
     }
-    if (wb.rleft() == 0) {
+
+    auto iovcnt = wb.riovec(iov.data(), iov.size());
+
+    if (iovcnt == 0) {
       break;
     }
+
+    ssize_t nwrite;
+    while ((nwrite = writev(fd, iov.data(), iovcnt)) == -1 && errno == EINTR)
+      ;
+
+    if (nwrite == -1) {
+      if (errno == EAGAIN || errno == EWOULDBLOCK) {
+        ev_io_start(worker->loop, &wev);
+        return 0;
+      }
+      return -1;
+    }
+
+    wb.drain(nwrite);
   }
 
   ev_io_stop(worker->loop, &wev);
@@ -1041,35 +1067,36 @@ int Client::read_tls() {
 int Client::write_tls() {
   ERR_clear_error();
 
+  struct iovec iov;
+
   for (;;) {
-    if (wb.rleft() > 0) {
-      auto rv = SSL_write(ssl, wb.pos, wb.rleft());
-
-      if (rv <= 0) {
-        auto err = SSL_get_error(ssl, rv);
-        switch (err) {
-        case SSL_ERROR_WANT_READ:
-          // renegotiation started
-          return -1;
-        case SSL_ERROR_WANT_WRITE:
-          ev_io_start(worker->loop, &wev);
-          return 0;
-        default:
-          return -1;
-        }
-      }
-
-      wb.drain(rv);
-
-      continue;
-    }
-    wb.reset();
     if (on_write() != 0) {
       return -1;
     }
-    if (wb.rleft() == 0) {
+
+    auto iovcnt = wb.riovec(&iov, 1);
+
+    if (iovcnt == 0) {
       break;
     }
+
+    auto rv = SSL_write(ssl, iov.iov_base, iov.iov_len);
+
+    if (rv <= 0) {
+      auto err = SSL_get_error(ssl, rv);
+      switch (err) {
+      case SSL_ERROR_WANT_READ:
+        // renegotiation started
+        return -1;
+      case SSL_ERROR_WANT_WRITE:
+        ev_io_start(worker->loop, &wev);
+        return 0;
+      default:
+        return -1;
+      }
+    }
+
+    wb.drain(rv);
   }
 
   ev_io_stop(worker->loop, &wev);
@@ -1123,10 +1150,20 @@ void Client::signal_write() { ev_io_start(worker->loop, &wev); }
 
 void Client::try_new_connection() { new_connection_requested = true; }
 
+namespace {
+int get_ev_loop_flags() {
+  if (ev_supported_backends() & ~ev_recommended_backends() & EVBACKEND_KQUEUE) {
+    return ev_recommended_backends() | EVBACKEND_KQUEUE;
+  }
+
+  return 0;
+}
+} // namespace
+
 Worker::Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t req_todo, size_t nclients,
                size_t rate, size_t max_samples, Config *config)
     : stats(req_todo, nclients),
-      loop(ev_loop_new(0)),
+      loop(ev_loop_new(get_ev_loop_flags())),
       ssl_ctx(ssl_ctx),
       config(config),
       id(id),
@@ -1301,7 +1338,8 @@ process_time_stats(const std::vector<std::unique_ptr<Worker>> &workers) {
       }
       request_times.push_back(
           std::chrono::duration_cast<std::chrono::duration<double>>(
-              req_stat.stream_close_time - req_stat.request_time).count());
+              req_stat.stream_close_time - req_stat.request_time)
+              .count());
     }
 
     const auto &stat = w->stats;
@@ -1310,7 +1348,8 @@ process_time_stats(const std::vector<std::unique_ptr<Worker>> &workers) {
       if (recorded(cstat.client_start_time) &&
           recorded(cstat.client_end_time)) {
         auto t = std::chrono::duration_cast<std::chrono::duration<double>>(
-                     cstat.client_end_time - cstat.client_start_time).count();
+                     cstat.client_end_time - cstat.client_start_time)
+                     .count();
         if (t > 1e-9) {
           rps_values.push_back(cstat.req_success / t);
         }
@@ -1324,7 +1363,8 @@ process_time_stats(const std::vector<std::unique_ptr<Worker>> &workers) {
 
       connect_times.push_back(
           std::chrono::duration_cast<std::chrono::duration<double>>(
-              cstat.connect_time - cstat.connect_start_time).count());
+              cstat.connect_time - cstat.connect_start_time)
+              .count());
 
       if (!recorded(cstat.ttfb)) {
         continue;
@@ -1332,7 +1372,8 @@ process_time_stats(const std::vector<std::unique_ptr<Worker>> &workers) {
 
       ttfb_times.push_back(
           std::chrono::duration_cast<std::chrono::duration<double>>(
-              cstat.ttfb - cstat.connect_start_time).count());
+              cstat.ttfb - cstat.connect_start_time)
+              .count());
     }
   }
 
@@ -1384,7 +1425,7 @@ std::string get_reqline(const char *uri, const http_parser_url &u) {
   std::string reqline;
 
   if (util::has_uri_field(u, UF_PATH)) {
-    reqline = util::get_uri_field(uri, u, UF_PATH);
+    reqline = util::get_uri_field(uri, u, UF_PATH).str();
   } else {
     reqline = "/";
   }
@@ -1418,15 +1459,15 @@ constexpr char UNIX_PATH_PREFIX[] = "unix:";
 } // namespace
 
 namespace {
-bool parse_base_uri(std::string base_uri) {
+bool parse_base_uri(const StringRef &base_uri) {
   http_parser_url u{};
   if (http_parser_parse_url(base_uri.c_str(), base_uri.size(), 0, &u) != 0 ||
       !util::has_uri_field(u, UF_SCHEMA) || !util::has_uri_field(u, UF_HOST)) {
     return false;
   }
 
-  config.scheme = util::get_uri_field(base_uri.c_str(), u, UF_SCHEMA);
-  config.host = util::get_uri_field(base_uri.c_str(), u, UF_HOST);
+  config.scheme = util::get_uri_field(base_uri.c_str(), u, UF_SCHEMA).str();
+  config.host = util::get_uri_field(base_uri.c_str(), u, UF_HOST).str();
   config.default_port = util::get_default_port(base_uri.c_str(), u);
   if (util::has_uri_field(u, UF_PORT)) {
     config.port = u.port;
@@ -1451,7 +1492,7 @@ std::vector<std::string> parse_uris(std::vector<std::string>::iterator first,
 
   if (!config.has_base_uri()) {
 
-    if (!parse_base_uri(*first)) {
+    if (!parse_base_uri(StringRef{*first})) {
       std::cerr << "invalid URI: " << *first << std::endl;
       exit(EXIT_FAILURE);
     }
@@ -1550,6 +1591,27 @@ std::unique_ptr<Worker> create_worker(uint32_t id, SSL_CTX *ssl_ctx,
 } // namespace
 
 namespace {
+int parse_header_table_size(uint32_t &dst, const char *opt,
+                            const char *optarg) {
+  auto n = util::parse_uint_with_unit(optarg);
+  if (n == -1) {
+    std::cerr << "--" << opt << ": Bad option value: " << optarg << std::endl;
+    return -1;
+  }
+  if (n > std::numeric_limits<uint32_t>::max()) {
+    std::cerr << "--" << opt
+              << ": Value too large.  It should be less than or equal to "
+              << std::numeric_limits<uint32_t>::max() << std::endl;
+    return -1;
+  }
+
+  dst = n;
+
+  return 0;
+}
+} // namespace
+
+namespace {
 void print_version(std::ostream &out) {
   out << "h2load nghttp2/" NGHTTP2_VERSION << std::endl;
 }
@@ -1558,7 +1620,8 @@ void print_version(std::ostream &out) {
 namespace {
 void print_usage(std::ostream &out) {
   out << R"(Usage: h2load [OPTIONS]... [URI]...
-benchmarking tool for HTTP/2 and SPDY server)" << std::endl;
+benchmarking tool for HTTP/2 and SPDY server)"
+      << std::endl;
 }
 } // namespace
 
@@ -1590,14 +1653,17 @@ Options:
               with --timing-script-file option,  this option specifies
               the number of requests  each client performs rather than
               the number of requests across all clients.
-              Default: )" << config.nreqs << R"(
+              Default: )"
+      << config.nreqs << R"(
   -c, --clients=<N>
               Number  of concurrent  clients.   With  -r option,  this
               specifies the maximum number of connections to be made.
-              Default: )" << config.nclients << R"(
+              Default: )"
+      << config.nclients << R"(
   -t, --threads=<N>
               Number of native threads.
-              Default: )" << config.nthreads << R"(
+              Default: )"
+      << config.nthreads << R"(
   -i, --input-file=<PATH>
               Path of a file with multiple URIs are separated by EOLs.
               This option will disable URIs getting from command-line.
@@ -1616,18 +1682,22 @@ Options:
   -w, --window-bits=<N>
               Sets the stream level initial window size to (2**<N>)-1.
               For SPDY, 2**<N> is used instead.
-              Default: )" << config.window_bits << R"(
+              Default: )"
+      << config.window_bits << R"(
   -W, --connection-window-bits=<N>
               Sets  the  connection  level   initial  window  size  to
               (2**<N>)-1.  For SPDY, if <N>  is strictly less than 16,
               this option  is ignored.   Otherwise 2**<N> is  used for
               SPDY.
-              Default: )" << config.connection_window_bits << R"(
+              Default: )"
+      << config.connection_window_bits << R"(
   -H, --header=<HEADER>
               Add/Override a header to the requests.
   --ciphers=<SUITE>
               Set allowed  cipher list.  The  format of the  string is
               described in OpenSSL ciphers(1).
+              Default: )"
+      << config.ciphers << R"(
   -p, --no-tls-proto=<PROTOID>
               Specify ALPN identifier of the  protocol to be used when
               accessing http URI without SSL/TLS.)";
@@ -1640,11 +1710,15 @@ Options:
               Available protocols: )";
 #endif // !HAVE_SPDYLAY
   out << NGHTTP2_CLEARTEXT_PROTO_VERSION_ID << R"( and
-              )" << NGHTTP2_H1_1 << R"(
-              Default: )" << NGHTTP2_CLEARTEXT_PROTO_VERSION_ID << R"(
+              )"
+      << NGHTTP2_H1_1 << R"(
+              Default: )"
+      << NGHTTP2_CLEARTEXT_PROTO_VERSION_ID << R"(
   -d, --data=<PATH>
               Post FILE to  server.  The request method  is changed to
-              POST.
+              POST.   For  http/1.1 connection,  if  -d  is used,  the
+              maximum number of in-flight pipelined requests is set to
+              1.
   -r, --rate=<N>
               Specifies  the  fixed  rate  at  which  connections  are
               created.   The   rate  must   be  a   positive  integer,
@@ -1713,10 +1787,22 @@ Options:
               NPN.  The parameter must be  delimited by a single comma
               only  and any  white spaces  are  treated as  a part  of
               protocol string.
-              Default: )" << DEFAULT_NPN_LIST << R"(
+              Default: )"
+      << DEFAULT_NPN_LIST << R"(
   --h1        Short        hand         for        --npn-list=http/1.1
               --no-tls-proto=http/1.1,    which   effectively    force
               http/1.1 for both http and https URI.
+  --header-table-size=<SIZE>
+              Specify decoder header table size.
+              Default: )"
+      << util::utos_unit(config.header_table_size) << R"(
+  --encoder-header-table-size=<SIZE>
+              Specify encoder header table size.  The decoder (server)
+              specifies  the maximum  dynamic table  size it  accepts.
+              Then the negotiated dynamic table size is the minimum of
+              this option value and the value which server specified.
+              Default: )"
+      << util::utos_unit(config.encoder_header_table_size) << R"(
   -v, --verbose
               Output debug information.
   --version   Display version information and exit.
@@ -1724,10 +1810,14 @@ Options:
 
 --
 
+  The <SIZE> argument is an integer and an optional unit (e.g., 10K is
+  10 * 1024).  Units are K, M and G (powers of 1024).
+
   The <DURATION> argument is an integer and an optional unit (e.g., 1s
   is 1 second and 500ms is 500 milliseconds).  Units are h, m, s or ms
   (hours, minutes, seconds and milliseconds, respectively).  If a unit
-  is omitted, a second is used as unit.)" << std::endl;
+  is omitted, a second is used as unit.)"
+      << std::endl;
 }
 } // namespace
 
@@ -1742,7 +1832,7 @@ int main(int argc, char **argv) {
   bool nreqs_set_manually = false;
   while (1) {
     static int flag = 0;
-    static option long_options[] = {
+    constexpr static option long_options[] = {
         {"requests", required_argument, nullptr, 'n'},
         {"clients", required_argument, nullptr, 'c'},
         {"data", required_argument, nullptr, 'd'},
@@ -1765,6 +1855,8 @@ int main(int argc, char **argv) {
         {"npn-list", required_argument, &flag, 4},
         {"rate-period", required_argument, &flag, 5},
         {"h1", no_argument, &flag, 6},
+        {"header-table-size", required_argument, &flag, 7},
+        {"encoder-header-table-size", required_argument, &flag, 8},
         {nullptr, 0, nullptr, 0}};
     int option_index = 0;
     auto c = getopt_long(argc, argv, "hvW:c:d:m:n:p:t:w:H:i:r:T:N:B:",
@@ -1842,24 +1934,27 @@ int main(int argc, char **argv) {
     case 'i':
       config.ifile = optarg;
       break;
-    case 'p':
-      if (util::strieq(NGHTTP2_CLEARTEXT_PROTO_VERSION_ID, optarg)) {
+    case 'p': {
+      auto proto = StringRef{optarg};
+      if (util::strieq(StringRef::from_lit(NGHTTP2_CLEARTEXT_PROTO_VERSION_ID),
+                       proto)) {
         config.no_tls_proto = Config::PROTO_HTTP2;
-      } else if (util::strieq(NGHTTP2_H1_1, optarg)) {
+      } else if (util::strieq(NGHTTP2_H1_1, proto)) {
         config.no_tls_proto = Config::PROTO_HTTP1_1;
 #ifdef HAVE_SPDYLAY
-      } else if (util::strieq("spdy/2", optarg)) {
+      } else if (util::strieq_l("spdy/2", proto)) {
         config.no_tls_proto = Config::PROTO_SPDY2;
-      } else if (util::strieq("spdy/3", optarg)) {
+      } else if (util::strieq_l("spdy/3", proto)) {
         config.no_tls_proto = Config::PROTO_SPDY3;
-      } else if (util::strieq("spdy/3.1", optarg)) {
+      } else if (util::strieq_l("spdy/3.1", proto)) {
         config.no_tls_proto = Config::PROTO_SPDY3_1;
 #endif // HAVE_SPDYLAY
       } else {
-        std::cerr << "-p: unsupported protocol " << optarg << std::endl;
+        std::cerr << "-p: unsupported protocol " << proto << std::endl;
         exit(EXIT_FAILURE);
       }
       break;
+    }
     case 'r':
       config.rate = strtoul(optarg, nullptr, 10);
       if (config.rate == 0) {
@@ -1885,18 +1980,19 @@ int main(int argc, char **argv) {
       }
       break;
     case 'B': {
+      auto arg = StringRef{optarg};
       config.base_uri = "";
       config.base_uri_unix = false;
 
-      if (util::istarts_with_l(optarg, UNIX_PATH_PREFIX)) {
+      if (util::istarts_with_l(arg, UNIX_PATH_PREFIX)) {
         // UNIX domain socket path
         sockaddr_un un;
 
-        auto path = optarg + str_size(UNIX_PATH_PREFIX);
-        auto pathlen = strlen(optarg) - str_size(UNIX_PATH_PREFIX);
+        auto path = StringRef{std::begin(arg) + str_size(UNIX_PATH_PREFIX),
+                              std::end(arg)};
 
-        if (pathlen == 0 || pathlen + 1 > sizeof(un.sun_path)) {
-          std::cerr << "--base-uri: invalid UNIX domain socket path: " << optarg
+        if (path.size() == 0 || path.size() + 1 > sizeof(un.sun_path)) {
+          std::cerr << "--base-uri: invalid UNIX domain socket path: " << arg
                     << std::endl;
           exit(EXIT_FAILURE);
         }
@@ -1904,18 +2000,19 @@ int main(int argc, char **argv) {
         config.base_uri_unix = true;
 
         auto &unix_addr = config.unix_addr;
-        std::copy_n(path, pathlen + 1, unix_addr.sun_path);
+        std::copy(std::begin(path), std::end(path), unix_addr.sun_path);
+        unix_addr.sun_path[path.size()] = '\0';
         unix_addr.sun_family = AF_UNIX;
 
         break;
       }
 
-      if (!parse_base_uri(optarg)) {
-        std::cerr << "--base-uri: invalid base URI: " << optarg << std::endl;
+      if (!parse_base_uri(arg)) {
+        std::cerr << "--base-uri: invalid base URI: " << arg << std::endl;
         exit(EXIT_FAILURE);
       }
 
-      config.base_uri = optarg;
+      config.base_uri = arg.str();
       break;
     }
     case 'v':
@@ -1944,7 +2041,7 @@ int main(int argc, char **argv) {
         break;
       case 4:
         // npn-list option
-        config.npn_list = util::parse_config_str_list(optarg);
+        config.npn_list = util::parse_config_str_list(StringRef{optarg});
         break;
       case 5:
         // rate-period
@@ -1956,8 +2053,23 @@ int main(int argc, char **argv) {
         break;
       case 6:
         // --h1
-        config.npn_list = util::parse_config_str_list("http/1.1");
+        config.npn_list =
+            util::parse_config_str_list(StringRef::from_lit("http/1.1"));
         config.no_tls_proto = Config::PROTO_HTTP1_1;
+        break;
+      case 7:
+        // --header-table-size
+        if (parse_header_table_size(config.header_table_size,
+                                    "header-table-size", optarg) != 0) {
+          exit(EXIT_FAILURE);
+        }
+        break;
+      case 8:
+        // --encoder-header-table-size
+        if (parse_header_table_size(config.encoder_header_table_size,
+                                    "encoder-header-table-size", optarg) != 0) {
+          exit(EXIT_FAILURE);
+        }
         break;
       }
       break;
@@ -1980,7 +2092,8 @@ int main(int argc, char **argv) {
   }
 
   if (config.npn_list.empty()) {
-    config.npn_list = util::parse_config_str_list(DEFAULT_NPN_LIST);
+    config.npn_list =
+        util::parse_config_str_list(StringRef::from_lit(DEFAULT_NPN_LIST));
   }
 
   // serialize the APLN tokens
@@ -2025,7 +2138,8 @@ int main(int argc, char **argv) {
         if (config.nreqs > uris.size()) {
           std::cerr << "-n: the number of requests must be less than or equal "
                        "to the number of timing script entries. Setting number "
-                       "of requests to " << uris.size() << std::endl;
+                       "of requests to "
+                    << uris.size() << std::endl;
 
           config.nreqs = uris.size();
         }
@@ -2075,7 +2189,8 @@ int main(int argc, char **argv) {
 
   if (config.nclients < config.nthreads) {
     std::cerr << "-c, -t: the number of clients must be greater than or equal "
-                 "to the number of threads." << std::endl;
+                 "to the number of threads."
+              << std::endl;
     exit(EXIT_FAILURE);
   }
 
@@ -2088,7 +2203,8 @@ int main(int argc, char **argv) {
 
     if (config.rate > config.nclients) {
       std::cerr << "-r, -c: the connection rate must be smaller than or equal "
-                   "to the number of clients." << std::endl;
+                   "to the number of clients."
+                << std::endl;
       exit(EXIT_FAILURE);
     }
   }
@@ -2126,15 +2242,8 @@ int main(int argc, char **argv) {
   SSL_CTX_set_mode(ssl_ctx, SSL_MODE_AUTO_RETRY);
   SSL_CTX_set_mode(ssl_ctx, SSL_MODE_RELEASE_BUFFERS);
 
-  const char *ciphers;
-  if (config.ciphers.empty()) {
-    ciphers = ssl::DEFAULT_CIPHER_LIST;
-  } else {
-    ciphers = config.ciphers.c_str();
-  }
-
-  if (SSL_CTX_set_cipher_list(ssl_ctx, ciphers) == 0) {
-    std::cerr << "SSL_CTX_set_cipher_list with " << ciphers
+  if (SSL_CTX_set_cipher_list(ssl_ctx, config.ciphers.c_str()) == 0) {
+    std::cerr << "SSL_CTX_set_cipher_list with " << config.ciphers
               << " failed: " << ERR_error_string(ERR_get_error(), nullptr)
               << std::endl;
     exit(EXIT_FAILURE);
@@ -2184,6 +2293,11 @@ int main(int argc, char **argv) {
     }
   }
 
+  std::string content_length_str;
+  if (config.data_fd != -1) {
+    content_length_str = util::utos(config.data_length);
+  }
+
   auto method_it =
       std::find_if(std::begin(shared_nva), std::end(shared_nva),
                    [](const Header &nv) { return nv.name == ":method"; });
@@ -2214,14 +2328,20 @@ int main(int argc, char **argv) {
       h1req += nv.value;
       h1req += "\r\n";
     }
+
+    if (!content_length_str.empty()) {
+      h1req += "Content-Length: ";
+      h1req += content_length_str;
+      h1req += "\r\n";
+    }
     h1req += "\r\n";
 
     config.h1reqs.push_back(std::move(h1req));
 
     // For nghttp2
     std::vector<nghttp2_nv> nva;
-    // 1 for :path
-    nva.reserve(1 + shared_nva.size());
+    // 2 for :path, and possible content-length
+    nva.reserve(2 + shared_nva.size());
 
     nva.push_back(http2::make_nv_ls(":path", req));
 
@@ -2229,12 +2349,18 @@ int main(int argc, char **argv) {
       nva.push_back(http2::make_nv(nv.name, nv.value, false));
     }
 
+    if (!content_length_str.empty()) {
+      nva.push_back(http2::make_nv(StringRef::from_lit("content-length"),
+                                   StringRef{content_length_str}));
+    }
+
     config.nva.push_back(std::move(nva));
 
     // For spdylay
     std::vector<const char *> cva;
-    // 2 for :path and :version, 1 for terminal nullptr
-    cva.reserve(2 * (2 + shared_nva.size()) + 1);
+    // 3 for :path, :version, and possible content-length, 1 for
+    // terminal nullptr
+    cva.reserve(2 * (3 + shared_nva.size()) + 1);
 
     cva.push_back(":path");
     cva.push_back(req.c_str());
@@ -2249,6 +2375,12 @@ int main(int argc, char **argv) {
     }
     cva.push_back(":version");
     cva.push_back("HTTP/1.1");
+
+    if (!content_length_str.empty()) {
+      cva.push_back("content-length");
+      cva.push_back(content_length_str.c_str());
+    }
+
     cva.push_back(nullptr);
 
     config.nv.push_back(std::move(cva));
@@ -2412,26 +2544,29 @@ int main(int argc, char **argv) {
   }
 
   std::cout << std::fixed << std::setprecision(2) << R"(
-finished in )" << util::format_duration(duration) << ", " << rps << " req/s, "
+finished in )"
+            << util::format_duration(duration) << ", " << rps << " req/s, "
             << util::utos_funit(bps) << R"(B/s
-requests: )" << stats.req_todo << " total, " << stats.req_started
-            << " started, " << stats.req_done << " done, "
-            << stats.req_status_success << " succeeded, " << stats.req_failed
-            << " failed, " << stats.req_error << " errored, "
-            << stats.req_timedout << R"( timeout
-status codes: )" << stats.status[2] << " 2xx, " << stats.status[3] << " 3xx, "
+requests: )" << stats.req_todo
+            << " total, " << stats.req_started << " started, " << stats.req_done
+            << " done, " << stats.req_status_success << " succeeded, "
+            << stats.req_failed << " failed, " << stats.req_error
+            << " errored, " << stats.req_timedout << R"( timeout
+status codes: )"
+            << stats.status[2] << " 2xx, " << stats.status[3] << " 3xx, "
             << stats.status[4] << " 4xx, " << stats.status[5] << R"( 5xx
-traffic: )" << util::utos_funit(stats.bytes_total) << "B (" << stats.bytes_total
-            << ") total, " << util::utos_funit(stats.bytes_head) << "B ("
-            << stats.bytes_head << ") headers (space savings "
-            << header_space_savings * 100 << "%), "
-            << util::utos_funit(stats.bytes_body) << "B (" << stats.bytes_body
-            << R"() data
+traffic: )" << util::utos_funit(stats.bytes_total)
+            << "B (" << stats.bytes_total << ") total, "
+            << util::utos_funit(stats.bytes_head) << "B (" << stats.bytes_head
+            << ") headers (space savings " << header_space_savings * 100
+            << "%), " << util::utos_funit(stats.bytes_body) << "B ("
+            << stats.bytes_body << R"() data
                      min         max         mean         sd        +/- sd
-time for request: )" << std::setw(10) << util::format_duration(ts.request.min)
-            << "  " << std::setw(10) << util::format_duration(ts.request.max)
-            << "  " << std::setw(10) << util::format_duration(ts.request.mean)
-            << "  " << std::setw(10) << util::format_duration(ts.request.sd)
+time for request: )"
+            << std::setw(10) << util::format_duration(ts.request.min) << "  "
+            << std::setw(10) << util::format_duration(ts.request.max) << "  "
+            << std::setw(10) << util::format_duration(ts.request.mean) << "  "
+            << std::setw(10) << util::format_duration(ts.request.sd)
             << std::setw(9) << util::dtos(ts.request.within_sd) << "%"
             << "\ntime for connect: " << std::setw(10)
             << util::format_duration(ts.connect.min) << "  " << std::setw(10)

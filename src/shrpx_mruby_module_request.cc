@@ -70,7 +70,7 @@ mrb_value request_get_method(mrb_state *mrb, mrb_value self) {
   const auto &req = downstream->request();
   auto method = http2::to_method_string(req.method);
 
-  return mrb_str_new_cstr(mrb, method);
+  return mrb_str_new(mrb, method.c_str(), method.size());
 }
 } // namespace
 
@@ -116,6 +116,8 @@ mrb_value request_set_authority(mrb_state *mrb, mrb_value self) {
   auto downstream = data->downstream;
   auto &req = downstream->request();
 
+  auto &balloc = downstream->get_block_allocator();
+
   check_phase(mrb, data->phase, PHASE_REQUEST);
 
   const char *authority;
@@ -125,7 +127,8 @@ mrb_value request_set_authority(mrb_state *mrb, mrb_value self) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "authority must not be empty string");
   }
 
-  req.authority.assign(authority, n);
+  req.authority =
+      make_string_ref(balloc, StringRef{authority, static_cast<size_t>(n)});
 
   return self;
 }
@@ -147,6 +150,8 @@ mrb_value request_set_scheme(mrb_state *mrb, mrb_value self) {
   auto downstream = data->downstream;
   auto &req = downstream->request();
 
+  auto &balloc = downstream->get_block_allocator();
+
   check_phase(mrb, data->phase, PHASE_REQUEST);
 
   const char *scheme;
@@ -156,7 +161,8 @@ mrb_value request_set_scheme(mrb_state *mrb, mrb_value self) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "scheme must not be empty string");
   }
 
-  req.scheme.assign(scheme, n);
+  req.scheme =
+      make_string_ref(balloc, StringRef{scheme, static_cast<size_t>(n)});
 
   return self;
 }
@@ -178,13 +184,16 @@ mrb_value request_set_path(mrb_state *mrb, mrb_value self) {
   auto downstream = data->downstream;
   auto &req = downstream->request();
 
+  auto &balloc = downstream->get_block_allocator();
+
   check_phase(mrb, data->phase, PHASE_REQUEST);
 
   const char *path;
   mrb_int pathlen;
   mrb_get_args(mrb, "s", &path, &pathlen);
 
-  req.path.assign(path, pathlen);
+  req.path =
+      make_string_ref(balloc, StringRef{path, static_cast<size_t>(pathlen)});
 
   return self;
 }
@@ -204,47 +213,69 @@ mrb_value request_mod_header(mrb_state *mrb, mrb_value self, bool repl) {
   auto data = static_cast<MRubyAssocData *>(mrb->ud);
   auto downstream = data->downstream;
   auto &req = downstream->request();
+  auto &balloc = downstream->get_block_allocator();
 
   check_phase(mrb, data->phase, PHASE_REQUEST);
 
   mrb_value key, values;
-  mrb_get_args(mrb, "oo", &key, &values);
+  mrb_get_args(mrb, "So", &key, &values);
 
   if (RSTRING_LEN(key) == 0) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "empty key is not allowed");
   }
 
+  auto ai = mrb_gc_arena_save(mrb);
+
   key = mrb_funcall(mrb, key, "downcase", 0);
+
+  auto keyref =
+      make_string_ref(balloc, StringRef{RSTRING_PTR(key),
+                                        static_cast<size_t>(RSTRING_LEN(key))});
+
+  mrb_gc_arena_restore(mrb, ai);
+
+  auto token = http2::lookup_token(keyref.byte(), keyref.size());
 
   if (repl) {
     size_t p = 0;
     auto &headers = req.fs.headers();
     for (size_t i = 0; i < headers.size(); ++i) {
-      auto &hd = headers[i];
-      if (util::streq(std::begin(hd.name), hd.name.size(), RSTRING_PTR(key),
-                      RSTRING_LEN(key))) {
+      auto &kv = headers[i];
+      if (kv.name == keyref) {
         continue;
       }
       if (i != p) {
-        headers[p++] = std::move(hd);
+        headers[p++] = std::move(kv);
       }
     }
     headers.resize(p);
   }
 
-  if (mrb_obj_is_instance_of(mrb, values, mrb->array_class)) {
+  if (mrb_array_p(values)) {
     auto n = mrb_ary_len(mrb, values);
     for (int i = 0; i < n; ++i) {
-      auto value = mrb_ary_entry(values, i);
-      req.fs.add_header(std::string(RSTRING_PTR(key), RSTRING_LEN(key)),
-                        std::string(RSTRING_PTR(value), RSTRING_LEN(value)));
-    }
-  } else if (!mrb_nil_p(values)) {
-    req.fs.add_header(std::string(RSTRING_PTR(key), RSTRING_LEN(key)),
-                      std::string(RSTRING_PTR(values), RSTRING_LEN(values)));
-  }
+      auto value = mrb_ary_ref(mrb, values, i);
+      if (!mrb_string_p(value)) {
+        mrb_raise(mrb, E_RUNTIME_ERROR, "value must be string");
+      }
 
-  data->request_headers_dirty = true;
+      req.fs.add_header_token(
+          keyref,
+          make_string_ref(balloc,
+                          StringRef{RSTRING_PTR(value),
+                                    static_cast<size_t>(RSTRING_LEN(value))}),
+          false, token);
+    }
+  } else if (mrb_string_p(values)) {
+    req.fs.add_header_token(
+        keyref,
+        make_string_ref(balloc,
+                        StringRef{RSTRING_PTR(values),
+                                  static_cast<size_t>(RSTRING_LEN(values))}),
+        false, token);
+  } else {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "value must be string");
+  }
 
   return mrb_nil_value();
 }
@@ -286,7 +317,7 @@ mrb_value request_push(mrb_state *mrb, mrb_value self) {
   mrb_int len;
   mrb_get_args(mrb, "s", &uri, &len);
 
-  upstream->initiate_push(downstream, uri, len);
+  upstream->initiate_push(downstream, StringRef{uri, static_cast<size_t>(len)});
 
   return mrb_nil_value();
 }

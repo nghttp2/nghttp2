@@ -27,15 +27,32 @@
 
 #include "shrpx.h"
 
+#include <sys/types.h>
+
 #include <chrono>
+
+#include "template.h"
+
+using namespace nghttp2;
 
 namespace shrpx {
 
+struct Timestamp {
+  Timestamp(const std::chrono::system_clock::time_point &tp);
+
+  std::array<char, sizeof("03/Jul/2014:00:19:38 +0900")> time_local_buf;
+  std::array<char, sizeof("2014-11-15T12:58:24.741+09:00")> time_iso8601_buf;
+  std::array<char, sizeof("Mon, 10 Oct 2016 10:25:58 GMT")> time_http_buf;
+  StringRef time_local;
+  StringRef time_iso8601;
+  StringRef time_http;
+};
+
 struct LogConfig {
-  std::chrono::system_clock::time_point time_str_updated_;
-  std::string time_local_str;
-  std::string time_iso8601_str;
-  std::string time_http_str;
+  std::chrono::system_clock::time_point time_str_updated;
+  std::shared_ptr<Timestamp> tstamp;
+  std::string thread_id;
+  pid_t pid;
   int accesslog_fd;
   int errorlog_fd;
   // true if errorlog_fd is referring to a terminal.
@@ -47,7 +64,10 @@ struct LogConfig {
 
 // We need LogConfig per thread to avoid data race around opening file
 // descriptor for log files.
-extern LogConfig *log_config(void);
+LogConfig *log_config();
+
+// Deletes log_config
+void delete_log_config();
 
 } // namespace shrpx
 

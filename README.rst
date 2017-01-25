@@ -58,13 +58,19 @@ To build the documentation, you need to install:
 
 * sphinx (http://sphinx-doc.org/)
 
-To build and run the application programs (``nghttp``, ``nghttpd`` and
-``nghttpx``) in the ``src`` directory, the following packages are
-required:
+If you need libnghttp2 (C library) only, then the above packages are
+all you need.  Use ``--enable-lib-only`` to ensure that only
+libnghttp2 is built.  This avoids potential build error related to
+building bundled applications.
+
+To build and run the application programs (``nghttp``, ``nghttpd``,
+``nghttpx`` and ``h2load``) in the ``src`` directory, the following packages
+are required:
 
 * OpenSSL >= 1.0.1
-* libev >= 4.15
+* libev >= 4.11
 * zlib >= 1.2.3
+* libc-ares >= 1.7.5
 
 ALPN support requires OpenSSL >= 1.0.2 (released 22 January 2015).
 LibreSSL >= 2.2.0 can be used instead of OpenSSL, but OpenSSL has more
@@ -93,6 +99,11 @@ To mitigate heap fragmentation in long running server programs
 
 * jemalloc
 
+  .. note::
+
+     Alpine Linux currently does not support malloc replacement
+     due to musl limitations. See details in issue `#762 <https://github.com/nghttp2/nghttp2/issues/762>`_.
+
 libnghttp2_asio C++ library requires the following packages:
 
 * libboost-dev >= 1.54.0
@@ -104,14 +115,17 @@ The Python bindings require the following packages:
 * python >= 2.7
 * python-setuptools
 
-If you are using Ubuntu 14.04 LTS (trusty) or Debian 7.0 (wheezy) and above run the following to install the needed packages::
+If you are using Ubuntu 14.04 LTS (trusty) or Debian 7.0 (wheezy) and above run the following to install the needed packages:
+
+.. code-block:: text
 
     sudo apt-get install g++ make binutils autoconf automake autotools-dev libtool pkg-config \
       zlib1g-dev libcunit1-dev libssl-dev libxml2-dev libev-dev libevent-dev libjansson-dev \
-      libjemalloc-dev cython python3-dev python-setuptools
+      libc-ares-dev libjemalloc-dev cython python3-dev python-setuptools
 
-spdylay is not packaged in Ubuntu, so you need to build it yourself:
-http://tatsuhiro-t.github.io/spdylay/
+From Ubuntu 15.10, spdylay has been available as a package named
+`libspdylay-dev`.  For the earlier Ubuntu release, you need to build
+it yourself: http://tatsuhiro-t.github.io/spdylay/
 
 To enable mruby support for nghttpx, `mruby
 <https://github.com/mruby/mruby>`_ is required.  We need to build
@@ -137,8 +151,11 @@ Building from git
 -----------------
 
 Building from git is easy, but please be sure that at least autoconf 2.68 is
-used::
+used:
 
+.. code-block:: text
+
+    $ git submodule update --init
     $ autoreconf -i
     $ automake
     $ autoconf
@@ -149,8 +166,7 @@ To compile the source code, gcc >= 4.8.3 or clang >= 3.4 is required.
 
 .. note::
 
-   To enable mruby support in nghttpx, run ``git submodule update
-   --init`` before running configure script, and use ``--with-mruby``
+   To enable mruby support in nghttpx, and use ``--with-mruby``
    configure option.
 
 .. note::
@@ -159,6 +175,34 @@ To compile the source code, gcc >= 4.8.3 or clang >= 3.4 is required.
    disable multi-threading in nghttpd, nghttpx and h2load to prevent
    them from crashing. A patch is welcome to make multi threading work
    on Mac OS X platform.
+
+.. note::
+
+   To compile the associated applications (nghttp, nghttpd, nghttpx
+   and h2load), you must use the ``--enable-app`` configure option and
+   ensure that the specified requirements above are met.  Normally,
+   configure script checks required dependencies to build these
+   applications, and enable ``--enable-app`` automatically, so you
+   don't have to use it explicitly.  But if you found that
+   applications were not built, then using ``--enable-app`` may find
+   that cause, such as the missing dependency.
+
+Notes for building on Windows (MSVC)
+------------------------------------
+
+The easiest way to build native Windows nghttp2 dll is use `cmake
+<https://cmake.org/>`_.  The free version of `Visual C++ Build Tools
+<http://landinghub.visualstudio.com/visual-cpp-build-tools>`_ works
+fine.
+
+1. Install cmake for windows
+2. Open "Visual C++ ... Native Build Tool Command Prompt", and inside
+   nghttp2 directly, run ``cmake``.
+3. Then run ``cmake --build`` to build library.
+4. nghttp2.dll, nghttp2.lib, nghttp2.exp are placed under lib directory.
+
+Note that the above steps most likely produce nghttp2 library only.
+No bundled applications are compiled.
 
 Notes for building on Windows (Mingw/Cygwin)
 --------------------------------------------
@@ -176,7 +220,9 @@ Secondly, you need to undefine the macro ``__STRICT_ANSI__``, if you
 not, the functions ``fdopen``, ``fileno`` and ``strptime`` will not
 available.
 
-the sample command like this::
+the sample command like this:
+
+.. code-block:: text
 
     $ export CFLAGS="-U__STRICT_ANSI__ -I$libev_PREFIX/include -L$libev_PREFIX/lib"
     $ export CXXFLAGS=$CFLAGS
@@ -194,7 +240,9 @@ Building the documentation
 
    Documentation is still incomplete.
 
-To build the documentation, run::
+To build the documentation, run:
+
+.. code-block:: text
 
     $ make html
 
@@ -223,12 +271,16 @@ its testing framework.  We depend on the following libraries:
 * https://github.com/tatsuhiro-t/spdy
 
 To download the above packages, after settings ``GOPATH``, run the
-following command under ``integration-tests`` directory::
+following command under ``integration-tests`` directory:
+
+.. code-block:: text
 
     $ make itprep
 
 To run the tests, run the following command under
-``integration-tests`` directory::
+``integration-tests`` directory:
+
+.. code-block:: text
 
     $ make it
 
@@ -349,7 +401,9 @@ nghttp - client
 with prior knowledge, HTTP Upgrade and NPN/ALPN TLS extension.
 
 It has verbose output mode for framing information.  Here is sample
-output from ``nghttp`` client::
+output from ``nghttp`` client:
+
+.. code-block:: text
 
     $ nghttp -nv https://nghttp2.org
     [  0.190] Connected
@@ -432,7 +486,9 @@ output from ``nghttp`` client::
     [  0.228] send GOAWAY frame <length=8, flags=0x00, stream_id=0>
 	      (last_stream_id=2, error_code=NO_ERROR(0x00), opaque_data(0)=[])
 
-The HTTP Upgrade is performed like so::
+The HTTP Upgrade is performed like so:
+
+.. code-block:: text
 
     $ nghttp -nvu http://nghttp2.org
     [  0.011] Connected
@@ -528,7 +584,9 @@ The HTTP Upgrade is performed like so::
 	      (last_stream_id=2, error_code=NO_ERROR(0x00), opaque_data(0)=[])
 
 Using the ``-s`` option, ``nghttp`` prints out some timing information for
-requests, sorted by completion time::
+requests, sorted by completion time:
+
+.. code-block:: text
 
     $ nghttp -nas https://nghttp2.org/
     ***** Statistics *****
@@ -572,7 +630,9 @@ HTTP/2 connections.  No HTTP Upgrade is supported.
 The ``-p`` option allows users to configure server push.
 
 Just like ``nghttp``, it has a verbose output mode for framing
-information.  Here is sample output from ``nghttpd``::
+information.  Here is sample output from ``nghttpd``:
+
+.. code-block:: text
 
     $ nghttpd --no-tls -v 8080
     IPv4: listen 0.0.0.0:8080
@@ -635,50 +695,58 @@ nghttpx - proxy
 HTTP/1.1, and powers http://nghttp2.org and supports HTTP/2 server
 push.
 
+We reworked ``nghttpx`` command-line interface, and as a result, there
+are several incompatibles from 1.8.0 or earlier.  This is necessary to
+extend its capability, and secure the further feature enhancements in
+the future release.  Please read `Migration from nghttpx v1.8.0 or
+earlier
+<https://nghttp2.org/documentation/nghttpx-howto.html#migration-from-nghttpx-v1-8-0-or-earlier>`_
+to know how to migrate from earlier releases.
+
 ``nghttpx`` implements `important performance-oriented features
 <https://istlsfastyet.com/#server-performance>`_ in TLS, such as
 session IDs, session tickets (with automatic key rotation), OCSP
 stapling, dynamic record sizing, ALPN/NPN, forward secrecy and SPDY &
-HTTP/2.
+HTTP/2.  ``nghttpx`` also offers the functionality to share session
+cache and ticket keys among multiple ``nghttpx`` instances via
+memcached.
 
-``nghttpx`` has several operational modes:
+``nghttpx`` has 2 operation modes:
 
-================== ============================ ============== =============
-Mode option        Frontend                     Backend        Note
-================== ============================ ============== =============
-default mode       HTTP/2, SPDY, HTTP/1.1 (TLS) HTTP/1.1       Reverse proxy
-``--http2-proxy``  HTTP/2, SPDY, HTTP/1.1 (TLS) HTTP/1.1       SPDY proxy
-``--http2-bridge`` HTTP/2, SPDY, HTTP/1.1 (TLS) HTTP/2 (TLS)
-``--client``       HTTP/2, HTTP/1.1             HTTP/2 (TLS)
-``--client-proxy`` HTTP/2, HTTP/1.1             HTTP/2 (TLS)   Forward proxy
-================== ============================ ============== =============
+================== ====================== ================ =============
+Mode option        Frontend               Backend          Note
+================== ====================== ================ =============
+default mode       HTTP/2, SPDY, HTTP/1.1 HTTP/1.1, HTTP/2 Reverse proxy
+``--http2-proxy``  HTTP/2, SPDY, HTTP/1.1 HTTP/1.1, HTTP/2 Forward proxy
+================== ====================== ================ =============
 
 The interesting mode at the moment is the default mode.  It works like
 a reverse proxy and listens for HTTP/2, SPDY and HTTP/1.1 and can be
 deployed as a SSL/TLS terminator for existing web server.
 
-The default mode, ``--http2-proxy`` and ``--http2-bridge`` modes use
-SSL/TLS in the frontend connection by default.  To disable SSL/TLS,
-use the ``--frontend-no-tls`` option.  If that option is used, SPDY is
-disabled in the frontend and incoming HTTP/1.1 connections can be
-upgraded to HTTP/2 through HTTP Upgrade.
-
-The ``--http2-bridge``, ``--client`` and ``--client-proxy`` modes use
-SSL/TLS in the backend connection by default.  To disable SSL/TLS, use
-the ``--backend-no-tls`` option.
+In all modes, the frontend connections are encrypted by SSL/TLS by
+default.  To disable encryption, use the ``no-tls`` keyword in
+``--frontend`` option.  If encryption is disabled, SPDY is disabled in
+the frontend and incoming HTTP/1.1 connections can be upgraded to
+HTTP/2 through HTTP Upgrade.  On the other hard, backend connections
+are not encrypted by default.  To encrypt backend connections, use
+``tls`` keyword in ``--backend`` option.
 
 ``nghttpx`` supports a configuration file.  See the ``--conf`` option and
 sample configuration file ``nghttpx.conf.sample``.
 
-In the default mode, (without any of ``--http2-proxy``,
-``--http2-bridge``, ``--client-proxy`` and ``--client`` options),
-``nghttpx`` works as reverse proxy to the backend server::
+In the default mode, ``nghttpx`` works as reverse proxy to the backend
+server:
 
-    Client <-- (HTTP/2, SPDY, HTTP/1.1) --> nghttpx <-- (HTTP/1.1) --> Web Server
+.. code-block:: text
+
+    Client <-- (HTTP/2, SPDY, HTTP/1.1) --> nghttpx <-- (HTTP/1.1, HTTP/2) --> Web Server
                                           [reverse proxy]
 
-With the ``--http2-proxy`` option, it works as a so called secure proxy (aka
-SPDY proxy)::
+With the ``--http2-proxy`` option, it works as forward proxy, and it
+is so called secure HTTP/2 proxy (aka SPDY proxy):
+
+.. code-block:: text
 
     Client <-- (HTTP/2, SPDY, HTTP/1.1) --> nghttpx <-- (HTTP/1.1) --> Proxy
                                            [secure proxy]          (e.g., Squid, ATS)
@@ -686,9 +754,9 @@ SPDY proxy)::
 The ``Client`` in the above example needs to be configured to use
 ``nghttpx`` as secure proxy.
 
-At the time of this writing, Chrome is the only browser which supports
-secure proxy.  One way to configure Chrome to use a secure proxy is
-to create a proxy.pac script like this:
+At the time of this writing, both Chrome and Firefox support secure
+HTTP/2 proxy.  One way to configure Chrome to use a secure proxy is to
+create a proxy.pac script like this:
 
 .. code-block:: javascript
 
@@ -700,42 +768,18 @@ to create a proxy.pac script like this:
 machine nghttpx is running on.  Please note that Chrome requires a valid
 certificate for secure proxy.
 
-Then run Chrome with the following arguments::
+Then run Chrome with the following arguments:
+
+.. code-block:: text
 
     $ google-chrome --proxy-pac-url=file:///path/to/proxy.pac --use-npn
 
-With ``--http2-bridge``, it accepts HTTP/2, SPDY and HTTP/1.1
-connections and communicates with the backend in HTTP/2::
-
-    Client <-- (HTTP/2, SPDY, HTTP/1.1) --> nghttpx <-- (HTTP/2) --> Web or HTTP/2 Proxy etc
-                                                                         (e.g., nghttpx -s)
-
-With ``--client-proxy``, it works as a forward proxy and expects
-that the backend is an HTTP/2 proxy::
-
-    Client <-- (HTTP/2, HTTP/1.1) --> nghttpx <-- (HTTP/2) --> HTTP/2 Proxy
-                                     [forward proxy]               (e.g., nghttpx -s)
-
-The ``Client`` needs to be configured to use nghttpx as a forward
-proxy.  The frontend HTTP/1.1 connection can be upgraded to HTTP/2
-through HTTP Upgrade.  With the above configuration, one can use
-HTTP/1.1 client to access and test their HTTP/2 servers.
-
-With ``--client``, it works as a reverse proxy and expects that
-the backend is an HTTP/2 Web server::
-
-    Client <-- (HTTP/2, HTTP/1.1) --> nghttpx <-- (HTTP/2) --> Web Server
-                                    [reverse proxy]
-
-The frontend HTTP/1.1 connection can be upgraded to HTTP/2
-through HTTP Upgrade.
-
-For the operation modes which talk to the backend in HTTP/2 over
-SSL/TLS, the backend connections can be tunneled through an HTTP proxy.
+The backend HTTP/2 connections can be tunneled through an HTTP proxy.
 The proxy is specified using ``--backend-http-proxy-uri``.  The
-following figure illustrates the example of the ``--http2-bridge`` and
-``--backend-http-proxy-uri`` options to talk to the outside HTTP/2
-proxy through an HTTP proxy::
+following figure illustrates how nghttpx talks to the outside HTTP/2
+proxy through an HTTP proxy:
+
+.. code-block:: text
 
     Client <-- (HTTP/2, SPDY, HTTP/1.1) --> nghttpx <-- (HTTP/2) --
 
@@ -749,7 +793,9 @@ The ``h2load`` program is a benchmarking tool for HTTP/2 and SPDY.
 The SPDY support is enabled if the program was built with the spdylay
 library.  The UI of ``h2load`` is heavily inspired by ``weighttp``
 (https://github.com/lighttpd/weighttp).  The typical usage is as
-follows::
+follows:
+
+.. code-block:: text
 
     $ h2load -n100000 -c100 -m100 https://localhost:8443/
     starting benchmark...
@@ -837,7 +883,9 @@ Example:
 With the ``-t`` option, the program can accept more familiar HTTP/1 style
 header field blocks.  Each header set is delimited by an empty line:
 
-Example::
+Example:
+
+.. code-block:: text
 
     :method: GET
     :scheme: https
@@ -1333,7 +1381,7 @@ The extension module is called ``nghttp2``.
 determined by the ``configure`` script.  If the detected Python version is not
 what you expect, specify a path to Python executable in a ``PYTHON``
 variable as an argument to configure script (e.g., ``./configure
-PYTHON=/usr/bin/python3.4``).
+PYTHON=/usr/bin/python3.5``).
 
 The following example code illustrates basic usage of the HPACK compressor
 and decompressor in Python:
@@ -1463,6 +1511,17 @@ See `Contribution Guidelines
 <https://nghttp2.org/documentation/contribute.html>`_ for more
 details.
 
+Reporting vulnerability
+-----------------------
+
+If you find a vulnerability in our software, please send the email to
+"tatsuhiro.t at gmail dot com" about its details instead of submitting
+issues on github issue page.  It is a standard practice not to
+disclose vulnerability information publicly until a fixed version is
+released, or mitigation is worked out.
+
+In the future, we may setup a dedicated mail address for this purpose.
+
 Release schedule
 ----------------
 
@@ -1475,3 +1534,8 @@ severe security bug fixes.
 
 We have no plan to break API compatibility changes involving soname
 bump, so MAJOR version will stay 1 for the foreseeable future.
+
+License
+-------
+
+The MIT License

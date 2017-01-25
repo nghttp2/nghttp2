@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTP" "1" "January 25, 2016" "1.7.0" "nghttp2"
+.TH "NGHTTP" "1" "Jan 25, 2017" "1.19.0" "nghttp2"
 .SH NAME
 nghttp \- HTTP/2 client
 .
@@ -142,10 +142,13 @@ HTTP upgrade request is performed with OPTIONS method.
 .INDENT 0.0
 .TP
 .B \-p, \-\-weight=<WEIGHT>
-Sets priority group weight.  The valid value range is
+Sets  weight of  given  URI.  This  option  can be  used
+multiple times, and  N\-th \fI\%\-p\fP option sets  weight of N\-th
+URI in the command line.  If  the number of \fI\%\-p\fP option is
+less than the number of URI, the last \fI\%\-p\fP option value is
+repeated.  If there is no \fI\%\-p\fP option, default weight, 16,
+is assumed.  The valid value range is
 [1, 256], inclusive.
-.sp
-Default: \fB16\fP
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -164,6 +167,14 @@ given values except  for last one is  strictly less than
 the last  value, that minimum  value is set  in SETTINGS
 frame  payload  before  the   last  value,  to  simulate
 multiple header table size change.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-encoder\-header\-table\-size=<SIZE>
+Specify encoder header table size.  The decoder (server)
+specifies  the maximum  dynamic table  size it  accepts.
+Then the negotiated dynamic table size is the minimum of
+this option value and the value which server specified.
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -214,6 +225,14 @@ Disable server push.
 .B \-\-max\-concurrent\-streams=<N>
 The  number of  concurrent  pushed  streams this  client
 accepts.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-expect\-continue
+Perform an Expect/Continue handshake:  wait to send DATA
+(up to  a short  timeout)  until the server sends  a 100
+Continue interim response. This option is ignored unless
+combined with the \fI\%\-d\fP option.
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -292,7 +311,7 @@ stream 11 with the weight 12.  The other resources (e.g., icon) depend
 on stream 11 with the weight 2.
 .SH SEE ALSO
 .sp
-\fInghttpd(1)\fP, \fInghttpx(1)\fP, \fIh2load(1)\fP
+\fBnghttpd(1)\fP, \fBnghttpx(1)\fP, \fBh2load(1)\fP
 .SH AUTHOR
 Tatsuhiro Tsujikawa
 .SH COPYRIGHT

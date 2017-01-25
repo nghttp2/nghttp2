@@ -66,13 +66,13 @@ enum { IO_NONE, WANT_READ, WANT_WRITE };
 
 #define MAKE_NV(NAME, VALUE)                                                   \
   {                                                                            \
-    (uint8_t *) NAME, (uint8_t *)VALUE, sizeof(NAME) - 1, sizeof(VALUE) - 1,   \
+    (uint8_t *)NAME, (uint8_t *)VALUE, sizeof(NAME) - 1, sizeof(VALUE) - 1,    \
         NGHTTP2_NV_FLAG_NONE                                                   \
   }
 
 #define MAKE_NV_CS(NAME, VALUE)                                                \
   {                                                                            \
-    (uint8_t *) NAME, (uint8_t *)VALUE, sizeof(NAME) - 1, strlen(VALUE),       \
+    (uint8_t *)NAME, (uint8_t *)VALUE, sizeof(NAME) - 1, strlen(VALUE),        \
         NGHTTP2_NV_FLAG_NONE                                                   \
   }
 
@@ -219,9 +219,9 @@ static int on_frame_send_callback(nghttp2_session *session,
       const nghttp2_nv *nva = frame->headers.nva;
       printf("[INFO] C ----------------------------> S (HEADERS)\n");
       for (i = 0; i < frame->headers.nvlen; ++i) {
-        fwrite(nva[i].name, nva[i].namelen, 1, stdout);
+        fwrite(nva[i].name, 1, nva[i].namelen, stdout);
         printf(": ");
-        fwrite(nva[i].value, nva[i].valuelen, 1, stdout);
+        fwrite(nva[i].value, 1, nva[i].valuelen, stdout);
         printf("\n");
       }
     }
@@ -249,9 +249,9 @@ static int on_frame_recv_callback(nghttp2_session *session,
       if (req) {
         printf("[INFO] C <---------------------------- S (HEADERS)\n");
         for (i = 0; i < frame->headers.nvlen; ++i) {
-          fwrite(nva[i].name, nva[i].namelen, 1, stdout);
+          fwrite(nva[i].name, 1, nva[i].namelen, stdout);
           printf(": ");
-          fwrite(nva[i].value, nva[i].valuelen, 1, stdout);
+          fwrite(nva[i].value, 1, nva[i].valuelen, stdout);
           printf("\n");
         }
       }
@@ -288,8 +288,6 @@ static int on_stream_close_callback(nghttp2_session *session, int32_t stream_id,
   }
   return 0;
 }
-
-#define MAX_OUTLEN 4096
 
 /*
  * The implementation of nghttp2_on_data_chunk_recv_callback type. We
@@ -459,11 +457,12 @@ static void ctl_poll(struct pollfd *pollfd, struct Connection *connection) {
 static void submit_request(struct Connection *connection, struct Request *req) {
   int32_t stream_id;
   /* Make sure that the last item is NULL */
-  const nghttp2_nv nva[] = {
-      MAKE_NV(":method", "GET"), MAKE_NV_CS(":path", req->path),
-      MAKE_NV(":scheme", "https"), MAKE_NV_CS(":authority", req->hostport),
-      MAKE_NV("accept", "*/*"),
-      MAKE_NV("user-agent", "nghttp2/" NGHTTP2_VERSION)};
+  const nghttp2_nv nva[] = {MAKE_NV(":method", "GET"),
+                            MAKE_NV_CS(":path", req->path),
+                            MAKE_NV(":scheme", "https"),
+                            MAKE_NV_CS(":authority", req->hostport),
+                            MAKE_NV("accept", "*/*"),
+                            MAKE_NV("user-agent", "nghttp2/" NGHTTP2_VERSION)};
 
   stream_id = nghttp2_submit_request(connection->session, NULL, nva,
                                      sizeof(nva) / sizeof(nva[0]), NULL, req);
@@ -564,7 +563,11 @@ static void fetch_uri(const struct URI *uri) {
     diec("nghttp2_session_client_new", rv);
   }
 
-  nghttp2_submit_settings(connection.session, NGHTTP2_FLAG_NONE, NULL, 0);
+  rv = nghttp2_submit_settings(connection.session, NGHTTP2_FLAG_NONE, NULL, 0);
+
+  if (rv != 0) {
+    diec("nghttp2_submit_settings", rv);
+  }
 
   /* Submit the HTTP request to the outbound queue. */
   submit_request(&connection, &req);
@@ -693,9 +696,6 @@ int main(int argc, char **argv) {
   act.sa_handler = SIG_IGN;
   sigaction(SIGPIPE, &act, 0);
 
-#ifndef OPENSSL_IS_BORINGSSL
-  OPENSSL_config(NULL);
-#endif /* OPENSSL_IS_BORINGSSL */
   SSL_load_error_strings();
   SSL_library_init();
 

@@ -8,7 +8,8 @@ nghttp2 - HTTP/2 C Library
 
 This is an implementation of Hypertext Transfer Protocol version 2.
 
-The project is hosted at `github.com/tatsuhiro-t/nghttp2 <https://github.com/tatsuhiro-t/nghttp2>`_.
+The project is hosted at `github.com/nghttp2/nghttp2
+<https://github.com/nghttp2/nghttp2>`_.
 
 Contents:
 
@@ -36,17 +37,18 @@ Contents:
    asio_http2_server.h
    asio_http2_client.h
    asio_http2.h
-   Source <https://github.com/tatsuhiro-t/nghttp2>
-   Issues <https://github.com/tatsuhiro-t/nghttp2/issues>
+   Source <https://github.com/nghttp2/nghttp2>
+   Issues <https://github.com/nghttp2/nghttp2/issues>
    nghttp2.org <https://nghttp2.org/>
 
 Released Versions
 =================
 
-https://github.com/tatsuhiro-t/nghttp2/releases
+https://github.com/nghttp2/nghttp2/releases
 
 Resources
 ---------
 
 * HTTP/2 https://tools.ietf.org/html/rfc7540
 * HPACK https://tools.ietf.org/html/rfc7541
+* HTTP Alternative Services https://tools.ietf.org/html/rfc7838

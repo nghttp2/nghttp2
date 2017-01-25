@@ -34,11 +34,12 @@ namespace shrpx {
 class ClientHandler;
 class Upstream;
 class Downstream;
-class DownstreamConnectionPool;
+struct DownstreamAddrGroup;
+struct DownstreamAddr;
 
 class DownstreamConnection {
 public:
-  DownstreamConnection(DownstreamConnectionPool *dconn_pool);
+  DownstreamConnection();
   virtual ~DownstreamConnection();
   virtual int attach_downstream(Downstream *downstream) = 0;
   virtual void detach_downstream(Downstream *downstream) = 0;
@@ -56,18 +57,19 @@ public:
   virtual int on_timeout() { return 0; }
 
   virtual void on_upstream_change(Upstream *uptream) = 0;
-  virtual size_t get_group() const = 0;
 
   // true if this object is poolable.
   virtual bool poolable() const = 0;
 
+  virtual const std::shared_ptr<DownstreamAddrGroup> &
+  get_downstream_addr_group() const = 0;
+  virtual DownstreamAddr *get_addr() const = 0;
+
   void set_client_handler(ClientHandler *client_handler);
   ClientHandler *get_client_handler();
   Downstream *get_downstream();
-  DownstreamConnectionPool *get_dconn_pool() const;
 
 protected:
-  DownstreamConnectionPool *dconn_pool_;
   ClientHandler *client_handler_;
   Downstream *downstream_;
 };

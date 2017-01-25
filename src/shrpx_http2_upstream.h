@@ -78,11 +78,10 @@ public:
   virtual int on_downstream_body_complete(Downstream *downstream);
 
   virtual void on_handler_delete();
-  virtual int on_downstream_reset(bool no_retry);
+  virtual int on_downstream_reset(Downstream *downstream, bool no_retry);
   virtual int send_reply(Downstream *downstream, const uint8_t *body,
                          size_t bodylen);
-  virtual int initiate_push(Downstream *downstream, const char *uri,
-                            size_t len);
+  virtual int initiate_push(Downstream *downstream, const StringRef &uri);
   virtual int response_riovec(struct iovec *iov, int iovcnt) const;
   virtual void response_drain(size_t n);
   virtual bool response_empty() const;
@@ -112,17 +111,14 @@ public:
   void check_shutdown();
 
   int prepare_push_promise(Downstream *downstream);
-  int submit_push_promise(const std::string &scheme,
-                          const std::string &authority, const std::string &path,
-                          Downstream *downstream);
+  int submit_push_promise(const StringRef &scheme, const StringRef &authority,
+                          const StringRef &path, Downstream *downstream);
 
   int on_request_headers(Downstream *downstream, const nghttp2_frame *frame);
 
   DefaultMemchunks *get_response_buf();
 
-  // Changes stream priority of |downstream|, which is assumed to be a
-  // pushed stream.
-  int adjust_pushed_stream_priority(Downstream *downstream);
+  size_t get_max_buffer_size() const;
 
 private:
   DefaultMemchunks wb_;
@@ -133,8 +129,8 @@ private:
   ev_prepare prep_;
   ClientHandler *handler_;
   nghttp2_session *session_;
+  size_t max_buffer_size_;
   bool flow_control_;
-  bool shutdown_handled_;
 };
 
 nghttp2_session_callbacks *create_http2_upstream_callbacks();

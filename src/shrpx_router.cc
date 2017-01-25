@@ -35,7 +35,9 @@ RNode::RNode() : s(nullptr), len(0), index(-1) {}
 RNode::RNode(const char *s, size_t len, size_t index)
     : s(s), len(len), index(index) {}
 
-Router::Router() : root_{} {}
+Router::Router() : balloc_(1024, 1024), root_{} {}
+
+Router::~Router() {}
 
 namespace {
 RNode *find_next_node(const RNode *node, char c) {
@@ -62,25 +64,26 @@ void add_next_node(RNode *node, std::unique_ptr<RNode> new_node) {
 
 void Router::add_node(RNode *node, const char *pattern, size_t patlen,
                       size_t index) {
-  auto new_node = make_unique<RNode>(pattern, patlen, index);
+  auto pat = make_string_ref(balloc_, StringRef{pattern, patlen});
+  auto new_node = make_unique<RNode>(pat.c_str(), pat.size(), index);
   add_next_node(node, std::move(new_node));
 }
 
-bool Router::add_route(const char *pattern, size_t patlen, size_t index) {
+bool Router::add_route(const StringRef &pattern, size_t index) {
   auto node = &root_;
   size_t i = 0;
 
   for (;;) {
     auto next_node = find_next_node(node, pattern[i]);
     if (next_node == nullptr) {
-      add_node(node, pattern + i, patlen - i, index);
+      add_node(node, pattern.c_str() + i, pattern.size() - i, index);
       return true;
     }
 
     node = next_node;
 
-    auto slen = patlen - i;
-    auto s = pattern + i;
+    auto slen = pattern.size() - i;
+    auto s = pattern.c_str() + i;
     auto n = std::min(node->len, slen);
     size_t j;
     for (j = 0; j < n && node->s[j] == s[j]; ++j)
@@ -125,8 +128,8 @@ bool Router::add_route(const char *pattern, size_t patlen, size_t index) {
 
     i += j;
 
-    assert(patlen > i);
-    add_node(node, pattern + i, patlen - i, index);
+    assert(pattern.size() > i);
+    add_node(node, pattern.c_str() + i, pattern.size() - i, index);
 
     return true;
   }
@@ -259,21 +262,94 @@ const RNode *match_partial(const RNode *node, size_t offset, const char *first,
 }
 } // namespace
 
-ssize_t Router::match(const std::string &host, const char *path,
-                      size_t pathlen) const {
+ssize_t Router::match(const StringRef &host, const StringRef &path) const {
   const RNode *node;
   size_t offset;
 
-  node =
-      match_complete(&offset, &root_, host.c_str(), host.c_str() + host.size());
+  node = match_complete(&offset, &root_, std::begin(host), std::end(host));
   if (node == nullptr) {
     return -1;
   }
 
-  node = match_partial(node, offset, path, path + pathlen);
+  node = match_partial(node, offset, std::begin(path), std::end(path));
   if (node == nullptr || node == &root_) {
     return -1;
   }
+
+  return node->index;
+}
+
+ssize_t Router::match(const StringRef &s) const {
+  const RNode *node;
+  size_t offset;
+
+  node = match_complete(&offset, &root_, std::begin(s), std::end(s));
+  if (node == nullptr) {
+    return -1;
+  }
+
+  if (node->len != offset) {
+    return -1;
+  }
+
+  return node->index;
+}
+
+namespace {
+const RNode *match_prefix(size_t *nread, const RNode *node, const char *first,
+                          const char *last) {
+  if (first == last) {
+    return nullptr;
+  }
+
+  auto p = first;
+
+  for (;;) {
+    auto next_node = find_next_node(node, *p);
+    if (next_node == nullptr) {
+      return nullptr;
+    }
+
+    node = next_node;
+
+    auto n = std::min(node->len, static_cast<size_t>(last - p));
+    if (memcmp(node->s, p, n) != 0) {
+      return nullptr;
+    }
+
+    p += n;
+
+    if (p != last) {
+      if (node->index != -1) {
+        *nread = p - first;
+        return node;
+      }
+      continue;
+    }
+
+    if (node->len == n) {
+      *nread = p - first;
+      return node;
+    }
+
+    return nullptr;
+  }
+}
+} // namespace
+
+ssize_t Router::match_prefix(size_t *nread, const RNode **last_node,
+                             const StringRef &s) const {
+  if (*last_node == nullptr) {
+    *last_node = &root_;
+  }
+
+  auto node =
+      ::shrpx::match_prefix(nread, *last_node, std::begin(s), std::end(s));
+  if (node == nullptr) {
+    return -1;
+  }
+
+  *last_node = node;
 
   return node->index;
 }

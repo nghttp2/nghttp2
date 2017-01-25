@@ -59,13 +59,26 @@ typedef enum {
   NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS = 1 << 1,
   NGHTTP2_OPT_NO_RECV_CLIENT_MAGIC = 1 << 2,
   NGHTTP2_OPT_NO_HTTP_MESSAGING = 1 << 3,
-  NGHTTP2_OPT_MAX_RESERVED_REMOTE_STREAMS = 1 << 4
+  NGHTTP2_OPT_MAX_RESERVED_REMOTE_STREAMS = 1 << 4,
+  NGHTTP2_OPT_USER_RECV_EXT_TYPES = 1 << 5,
+  NGHTTP2_OPT_NO_AUTO_PING_ACK = 1 << 6,
+  NGHTTP2_OPT_BUILTIN_RECV_EXT_TYPES = 1 << 7,
+  NGHTTP2_OPT_MAX_SEND_HEADER_BLOCK_LENGTH = 1 << 8,
+  NGHTTP2_OPT_MAX_DEFLATE_DYNAMIC_TABLE_SIZE = 1 << 9,
 } nghttp2_option_flag;
 
 /**
  * Struct to store option values for nghttp2_session.
  */
 struct nghttp2_option {
+  /**
+   * NGHTTP2_OPT_MAX_SEND_HEADER_BLOCK_LENGTH
+   */
+  size_t max_send_header_block_length;
+  /**
+   * NGHTTP2_OPT_MAX_DEFLATE_DYNAMIC_TABLE_SIZE
+   */
+  size_t max_deflate_dynamic_table_size;
   /**
    * Bitwise OR of nghttp2_option_flag to determine that which fields
    * are specified.
@@ -80,6 +93,10 @@ struct nghttp2_option {
    */
   uint32_t max_reserved_remote_streams;
   /**
+   * NGHTTP2_OPT_BUILTIN_RECV_EXT_TYPES
+   */
+  uint32_t builtin_recv_ext_types;
+  /**
    * NGHTTP2_OPT_NO_AUTO_WINDOW_UPDATE
    */
   int no_auto_window_update;
@@ -91,6 +108,14 @@ struct nghttp2_option {
    * NGHTTP2_OPT_NO_HTTP_MESSAGING
    */
   int no_http_messaging;
+  /**
+   * NGHTTP2_OPT_NO_AUTO_PING_ACK
+   */
+  int no_auto_ping_ack;
+  /**
+   * NGHTTP2_OPT_USER_RECV_EXT_TYPES
+   */
+  uint8_t user_recv_ext_types[32];
 };
 
 #endif /* NGHTTP2_OPTION_H */

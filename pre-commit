@@ -12,7 +12,7 @@ if [ -z "$CLANGFORMATDIFF" ]; then
     CLANGFORMATDIFF=clang-format-diff.py
 fi
 
-errors=`git diff-index --cached --diff-filter=ACMR -p HEAD -- | $CLANGFORMATDIFF -p1`
+errors=`git diff-index --cached --diff-filter=ACMR -p HEAD lib src examples tests | $CLANGFORMATDIFF -p1`
 
 if [ -n "$errors" ]; then
     echo "$errors"

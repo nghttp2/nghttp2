@@ -211,9 +211,10 @@ int32_t nghttp2_submit_headers(nghttp2_session *session, uint8_t flags,
                                    nvlen, NULL, stream_user_data);
 }
 
-int nghttp2_submit_ping(nghttp2_session *session, uint8_t flags _U_,
+int nghttp2_submit_ping(nghttp2_session *session, uint8_t flags,
                         const uint8_t *opaque_data) {
-  return nghttp2_session_add_ping(session, NGHTTP2_FLAG_NONE, opaque_data);
+  flags &= NGHTTP2_FLAG_ACK;
+  return nghttp2_session_add_ping(session, flags, opaque_data);
 }
 
 int nghttp2_submit_priority(nghttp2_session *session, uint8_t flags _U_,
@@ -364,7 +365,7 @@ int32_t nghttp2_submit_push_promise(nghttp2_session *session, uint8_t flags _U_,
   return promised_stream_id;
 }
 
-int nghttp2_submit_window_update(nghttp2_session *session, uint8_t flags,
+int nghttp2_submit_window_update(nghttp2_session *session, uint8_t flags _U_,
                                  int32_t stream_id,
                                  int32_t window_size_increment) {
   int rv;
@@ -372,7 +373,6 @@ int nghttp2_submit_window_update(nghttp2_session *session, uint8_t flags,
   if (window_size_increment == 0) {
     return 0;
   }
-  flags = 0;
   if (stream_id == 0) {
     rv = nghttp2_adjust_local_window_size(
         &session->local_window_size, &session->recv_window_size,
@@ -403,10 +403,161 @@ int nghttp2_submit_window_update(nghttp2_session *session, uint8_t flags,
           nghttp2_max(0, stream->consumed_size - window_size_increment);
     }
 
-    return nghttp2_session_add_window_update(session, flags, stream_id,
+    return nghttp2_session_add_window_update(session, 0, stream_id,
                                              window_size_increment);
   }
   return 0;
+}
+
+int nghttp2_session_set_local_window_size(nghttp2_session *session,
+                                          uint8_t flags _U_, int32_t stream_id,
+                                          int32_t window_size) {
+  int32_t window_size_increment;
+  nghttp2_stream *stream;
+  int rv;
+
+  if (window_size < 0) {
+    return NGHTTP2_ERR_INVALID_ARGUMENT;
+  }
+
+  if (stream_id == 0) {
+    window_size_increment = window_size - session->local_window_size;
+
+    if (window_size_increment == 0) {
+      return 0;
+    }
+
+    if (window_size_increment < 0) {
+      return nghttp2_adjust_local_window_size(
+          &session->local_window_size, &session->recv_window_size,
+          &session->recv_reduction, &window_size_increment);
+    }
+
+    rv = nghttp2_increase_local_window_size(
+        &session->local_window_size, &session->recv_window_size,
+        &session->recv_reduction, &window_size_increment);
+
+    if (rv != 0) {
+      return rv;
+    }
+  } else {
+    stream = nghttp2_session_get_stream(session, stream_id);
+
+    if (stream == NULL) {
+      return 0;
+    }
+
+    window_size_increment = window_size - stream->local_window_size;
+
+    if (window_size_increment == 0) {
+      return 0;
+    }
+
+    if (window_size_increment < 0) {
+      return nghttp2_adjust_local_window_size(
+          &stream->local_window_size, &stream->recv_window_size,
+          &stream->recv_reduction, &window_size_increment);
+    }
+
+    rv = nghttp2_increase_local_window_size(
+        &stream->local_window_size, &stream->recv_window_size,
+        &stream->recv_reduction, &window_size_increment);
+
+    if (rv != 0) {
+      return rv;
+    }
+  }
+
+  if (window_size_increment > 0) {
+    return nghttp2_session_add_window_update(session, 0, stream_id,
+                                             window_size_increment);
+  }
+
+  return 0;
+}
+
+int nghttp2_submit_altsvc(nghttp2_session *session, uint8_t flags _U_,
+                          int32_t stream_id, const uint8_t *origin,
+                          size_t origin_len, const uint8_t *field_value,
+                          size_t field_value_len) {
+  nghttp2_mem *mem;
+  uint8_t *buf, *p;
+  uint8_t *origin_copy;
+  uint8_t *field_value_copy;
+  nghttp2_outbound_item *item;
+  nghttp2_frame *frame;
+  nghttp2_ext_altsvc *altsvc;
+  int rv;
+
+  mem = &session->mem;
+
+  if (!session->server) {
+    return NGHTTP2_ERR_INVALID_STATE;
+  }
+
+  if (2 + origin_len + field_value_len > NGHTTP2_MAX_PAYLOADLEN) {
+    return NGHTTP2_ERR_INVALID_ARGUMENT;
+  }
+
+  if (stream_id == 0) {
+    if (origin_len == 0) {
+      return NGHTTP2_ERR_INVALID_ARGUMENT;
+    }
+  } else if (origin_len != 0) {
+    return NGHTTP2_ERR_INVALID_ARGUMENT;
+  }
+
+  buf = nghttp2_mem_malloc(mem, origin_len + field_value_len + 2);
+  if (buf == NULL) {
+    return NGHTTP2_ERR_NOMEM;
+  }
+
+  p = buf;
+
+  origin_copy = p;
+  if (origin_len) {
+    p = nghttp2_cpymem(p, origin, origin_len);
+  }
+  *p++ = '\0';
+
+  field_value_copy = p;
+  if (field_value_len) {
+    p = nghttp2_cpymem(p, field_value, field_value_len);
+  }
+  *p++ = '\0';
+
+  item = nghttp2_mem_malloc(mem, sizeof(nghttp2_outbound_item));
+  if (item == NULL) {
+    rv = NGHTTP2_ERR_NOMEM;
+    goto fail_item_malloc;
+  }
+
+  nghttp2_outbound_item_init(item);
+
+  item->aux_data.ext.builtin = 1;
+
+  altsvc = &item->ext_frame_payload.altsvc;
+
+  frame = &item->frame;
+  frame->ext.payload = altsvc;
+
+  nghttp2_frame_altsvc_init(&frame->ext, stream_id, origin_copy, origin_len,
+                            field_value_copy, field_value_len);
+
+  rv = nghttp2_session_add_item(session, item);
+  if (rv != 0) {
+    nghttp2_frame_altsvc_free(&frame->ext, mem);
+    nghttp2_mem_free(mem, item);
+
+    return rv;
+  }
+
+  return 0;
+
+fail_item_malloc:
+  free(buf);
+
+  return rv;
 }
 
 static uint8_t set_request_flags(const nghttp2_priority_spec *pri_spec,
@@ -529,4 +680,41 @@ ssize_t nghttp2_pack_settings_payload(uint8_t *buf, size_t buflen,
   }
 
   return (ssize_t)nghttp2_frame_pack_settings_payload(buf, iv, niv);
+}
+
+int nghttp2_submit_extension(nghttp2_session *session, uint8_t type,
+                             uint8_t flags, int32_t stream_id, void *payload) {
+  int rv;
+  nghttp2_outbound_item *item;
+  nghttp2_frame *frame;
+  nghttp2_mem *mem;
+
+  mem = &session->mem;
+
+  if (type <= NGHTTP2_CONTINUATION) {
+    return NGHTTP2_ERR_INVALID_ARGUMENT;
+  }
+
+  if (!session->callbacks.pack_extension_callback) {
+    return NGHTTP2_ERR_INVALID_STATE;
+  }
+
+  item = nghttp2_mem_malloc(mem, sizeof(nghttp2_outbound_item));
+  if (item == NULL) {
+    return NGHTTP2_ERR_NOMEM;
+  }
+
+  nghttp2_outbound_item_init(item);
+
+  frame = &item->frame;
+  nghttp2_frame_extension_init(&frame->ext, type, flags, stream_id, payload);
+
+  rv = nghttp2_session_add_item(session, item);
+  if (rv != 0) {
+    nghttp2_frame_extension_free(&frame->ext);
+    nghttp2_mem_free(mem, item);
+    return rv;
+  }
+
+  return 0;
 }

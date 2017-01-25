@@ -83,6 +83,10 @@ int unpack_frame(nghttp2_frame *frame, const uint8_t *in, size_t len) {
     nghttp2_frame_unpack_window_update_payload(&frame->window_update, payload,
                                                payloadlen);
     break;
+  case NGHTTP2_ALTSVC:
+    assert(payloadlen > 2);
+    nghttp2_frame_unpack_altsvc_payload2(&frame->ext, payload, payloadlen, mem);
+    break;
   default:
     /* Must not be reachable */
     assert(0);
@@ -154,14 +158,14 @@ ssize_t inflate_hd(nghttp2_hd_inflater *inflater, nva_out *out,
   nghttp2_buf_chain *ci;
   nghttp2_buf *buf;
   nghttp2_buf bp;
-  int final;
+  int fin;
   size_t processed;
 
   processed = 0;
 
   for (ci = bufs->head; ci; ci = ci->next) {
     buf = &ci->buf;
-    final = nghttp2_buf_len(buf) == 0 || ci->next == NULL;
+    fin = nghttp2_buf_len(buf) == 0 || ci->next == NULL;
     bp = *buf;
 
     if (offset) {
@@ -174,8 +178,8 @@ ssize_t inflate_hd(nghttp2_hd_inflater *inflater, nva_out *out,
 
     for (;;) {
       inflate_flags = 0;
-      rv = nghttp2_hd_inflate_hd(inflater, &nv, &inflate_flags, bp.pos,
-                                 nghttp2_buf_len(&bp), final);
+      rv = nghttp2_hd_inflate_hd2(inflater, &nv, &inflate_flags, bp.pos,
+                                  nghttp2_buf_len(&bp), fin);
 
       if (rv < 0) {
         return rv;

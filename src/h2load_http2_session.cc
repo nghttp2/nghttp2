@@ -149,8 +149,13 @@ ssize_t file_read_callback(nghttp2_session *session, int32_t stream_id,
 
   req_stat->data_offset += nread;
 
-  if (nread == 0 || req_stat->data_offset == config->data_length) {
+  if (req_stat->data_offset == config->data_length) {
     *data_flags |= NGHTTP2_DATA_FLAG_EOF;
+    return nread;
+  }
+
+  if (req_stat->data_offset > config->data_length || nread == 0) {
+    return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
   }
 
   return nread;
@@ -164,11 +169,11 @@ ssize_t send_callback(nghttp2_session *session, const uint8_t *data,
   auto client = static_cast<Client *>(user_data);
   auto &wb = client->wb;
 
-  if (wb.wleft() == 0) {
+  if (wb.rleft() >= BACKOFF_WRITE_BUFFER_THRES) {
     return NGHTTP2_ERR_WOULDBLOCK;
   }
 
-  return wb.write(data, length);
+  return wb.append(data, length);
 }
 } // namespace
 
@@ -201,26 +206,42 @@ void Http2Session::on_connect() {
 
   nghttp2_session_callbacks_set_send_callback(callbacks, send_callback);
 
-  nghttp2_session_client_new(&session_, callbacks, client_);
+  nghttp2_option *opt;
 
-  std::array<nghttp2_settings_entry, 2> iv;
+  rv = nghttp2_option_new(&opt);
+  assert(rv == 0);
+
+  auto config = client_->worker->config;
+
+  if (config->encoder_header_table_size != NGHTTP2_DEFAULT_HEADER_TABLE_SIZE) {
+    nghttp2_option_set_max_deflate_dynamic_table_size(
+        opt, config->encoder_header_table_size);
+  }
+
+  nghttp2_session_client_new2(&session_, callbacks, client_, opt);
+
+  nghttp2_option_del(opt);
+
+  std::array<nghttp2_settings_entry, 3> iv;
+  size_t niv = 2;
   iv[0].settings_id = NGHTTP2_SETTINGS_ENABLE_PUSH;
   iv[0].value = 0;
   iv[1].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
-  iv[1].value = (1 << client_->worker->config->window_bits) - 1;
+  iv[1].value = (1 << config->window_bits) - 1;
 
-  rv = nghttp2_submit_settings(session_, NGHTTP2_FLAG_NONE, iv.data(),
-                               iv.size());
+  if (config->header_table_size != NGHTTP2_DEFAULT_HEADER_TABLE_SIZE) {
+    iv[niv].settings_id = NGHTTP2_SETTINGS_HEADER_TABLE_SIZE;
+    iv[niv].value = config->header_table_size;
+    ++niv;
+  }
+
+  rv = nghttp2_submit_settings(session_, NGHTTP2_FLAG_NONE, iv.data(), niv);
 
   assert(rv == 0);
 
-  auto extra_connection_window =
-      (1 << client_->worker->config->connection_window_bits) - 1 -
-      NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE;
-  if (extra_connection_window != 0) {
-    nghttp2_submit_window_update(session_, NGHTTP2_FLAG_NONE, 0,
-                                 extra_connection_window);
-  }
+  auto connection_window = (1 << config->connection_window_bits) - 1;
+  nghttp2_session_set_local_window_size(session_, NGHTTP2_FLAG_NONE, 0,
+                                        connection_window);
 
   client_->signal_write();
 }
@@ -285,6 +306,10 @@ int Http2Session::on_write() {
 
 void Http2Session::terminate() {
   nghttp2_session_terminate_session(session_, NGHTTP2_NO_ERROR);
+}
+
+size_t Http2Session::max_concurrent_streams() {
+  return (size_t)client_->worker->config->max_concurrent_streams;
 }
 
 } // namespace h2load

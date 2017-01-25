@@ -25,7 +25,7 @@
 # clean-local in parallel build.
 .NOTPARALLEL:
 
-EXTRA_DIST = cnghttp2.pxd nghttp2.pyx
+EXTRA_DIST = cnghttp2.pxd nghttp2.pyx CMakeLists.txt install-python.cmake.in
 
 if ENABLE_PYTHON_BINDINGS
 

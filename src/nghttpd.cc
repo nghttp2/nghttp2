@@ -124,6 +124,11 @@ Options:
   --no-tls    Disable SSL/TLS.
   -c, --header-table-size=<SIZE>
               Specify decoder header table size.
+  --encoder-header-table-size=<SIZE>
+              Specify encoder header table size.  The decoder (client)
+              specifies  the maximum  dynamic table  size it  accepts.
+              Then the negotiated dynamic table size is the minimum of
+              this option value and the value which client specified.
   --color     Force colored log output.
   -p, --push=<PATH>=<PUSH_PATH,...>
               Push  resources <PUSH_PATH>s  when <PATH>  is requested.
@@ -137,7 +142,8 @@ Options:
   -m, --max-concurrent-streams=<N>
               Set the maximum number of  the concurrent streams in one
               HTTP/2 session.
-              Default: )" << config.max_concurrent_streams << R"(
+              Default: )"
+      << config.max_concurrent_streams << R"(
   -n, --workers=<N>
               Set the number of worker threads.
               Default: 1
@@ -168,7 +174,8 @@ Options:
   --mime-types-file=<PATH>
               Path  to file  that contains  MIME media  types and  the
               extensions that represent them.
-              Default: )" << config.mime_types_file << R"(
+              Default: )"
+      << config.mime_types_file << R"(
   --no-content-length
               Don't send content-length header field.
   --version   Display version information and exit.
@@ -177,7 +184,8 @@ Options:
 --
 
   The <SIZE> argument is an integer and an optional unit (e.g., 10K is
-  10 * 1024).  Units are K, M and G (powers of 1024).)" << std::endl;
+  10 * 1024).  Units are K, M and G (powers of 1024).)"
+      << std::endl;
 }
 } // namespace
 
@@ -194,7 +202,7 @@ int main(int argc, char **argv) {
 
   while (1) {
     static int flag = 0;
-    static option long_options[] = {
+    constexpr static option long_options[] = {
         {"address", required_argument, nullptr, 'a'},
         {"daemon", no_argument, nullptr, 'D'},
         {"htdocs", required_argument, nullptr, 'd'},
@@ -219,11 +227,11 @@ int main(int argc, char **argv) {
         {"echo-upload", no_argument, &flag, 8},
         {"mime-types-file", required_argument, &flag, 9},
         {"no-content-length", no_argument, &flag, 10},
+        {"encoder-header-table-size", required_argument, &flag, 11},
         {nullptr, 0, nullptr, 0}};
     int option_index = 0;
     int c = getopt_long(argc, argv, "DVb:c:d:ehm:n:p:va:w:W:", long_options,
                         &option_index);
-    char *end;
     if (c == -1) {
       break;
     }
@@ -256,11 +264,12 @@ int main(int argc, char **argv) {
       config.max_concurrent_streams = n;
       break;
     }
-    case 'n':
+    case 'n': {
 #ifdef NOTHREADS
       std::cerr << "-n: WARNING: Threading disabled at build time, "
                 << "no threads created." << std::endl;
 #else
+      char *end;
       errno = 0;
       config.num_worker = strtoul(optarg, &end, 10);
       if (errno == ERANGE || *end != '\0' || config.num_worker == 0) {
@@ -269,20 +278,27 @@ int main(int argc, char **argv) {
       }
 #endif // NOTHREADS
       break;
+    }
     case 'h':
       print_help(std::cout);
       exit(EXIT_SUCCESS);
     case 'v':
       config.verbose = true;
       break;
-    case 'c':
-      errno = 0;
-      config.header_table_size = util::parse_uint_with_unit(optarg);
-      if (config.header_table_size == -1) {
+    case 'c': {
+      auto n = util::parse_uint_with_unit(optarg);
+      if (n == -1) {
         std::cerr << "-c: Bad option value: " << optarg << std::endl;
         exit(EXIT_FAILURE);
       }
+      if (n > std::numeric_limits<uint32_t>::max()) {
+        std::cerr << "-c: Value too large.  It should be less than or equal to "
+                  << std::numeric_limits<uint32_t>::max() << std::endl;
+        exit(EXIT_FAILURE);
+      }
+      config.header_table_size = n;
       break;
+    }
     case 'p':
       if (parse_push_config(config, optarg) != 0) {
         std::cerr << "-p: Bad option value: " << optarg << std::endl;
@@ -374,6 +390,23 @@ int main(int argc, char **argv) {
         // no-content-length option
         config.no_content_length = true;
         break;
+      case 11: {
+        // encoder-header-table-size option
+        auto n = util::parse_uint_with_unit(optarg);
+        if (n == -1) {
+          std::cerr << "--encoder-header-table-size: Bad option value: "
+                    << optarg << std::endl;
+          exit(EXIT_FAILURE);
+        }
+        if (n > std::numeric_limits<uint32_t>::max()) {
+          std::cerr << "--encoder-header-table-size: Value too large.  It "
+                       "should be less than or equal to "
+                    << std::numeric_limits<uint32_t>::max() << std::endl;
+          exit(EXIT_FAILURE);
+        }
+        config.encoder_header_table_size = n;
+        break;
+      }
       }
       break;
     default:
@@ -418,6 +451,15 @@ int main(int argc, char **argv) {
       std::cerr << "--mime-types-file: Could not open mime types file: "
                 << config.mime_types_file << std::endl;
     }
+  }
+
+  auto &trailer_names = config.trailer_names;
+  for (auto &h : config.trailer) {
+    trailer_names += h.name;
+    trailer_names += ", ";
+  }
+  if (trailer_names.size() >= 2) {
+    trailer_names.resize(trailer_names.size() - 2);
   }
 
   set_color_output(color || isatty(fileno(stdout)));

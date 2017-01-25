@@ -64,6 +64,13 @@ struct TLSConnection {
   int handshake_state;
   bool initial_handshake_done;
   bool reneg_started;
+  // true if ssl is prepared to do handshake as server.
+  bool server_handshake;
+};
+
+struct TCPHint {
+  size_t write_buffer_size;
+  uint32_t rwin;
 };
 
 template <typename T> using EVCb = void (*)(struct ev_loop *, T *, int);
@@ -77,7 +84,7 @@ struct Connection {
              const RateLimitConfig &write_limit,
              const RateLimitConfig &read_limit, IOCb writecb, IOCb readcb,
              TimerCb timeoutcb, void *data, size_t tls_dyn_rec_warmup_threshold,
-             ev_tstamp tls_dyn_rec_idle_timeout);
+             ev_tstamp tls_dyn_rec_idle_timeout, shrpx_proto proto);
   ~Connection();
 
   void disconnect();
@@ -118,6 +125,19 @@ struct Connection {
 
   void set_ssl(SSL *ssl);
 
+  int get_tcp_hint(TCPHint *hint) const;
+
+  // These functions are provided for read timer which is frequently
+  // restarted.  We do a trick to make a bit more efficient than just
+  // calling ev_timer_again().
+
+  // Restarts read timer with timeout value |t|.
+  void again_rt(ev_tstamp t);
+  // Restarts read timer without chainging timeout.
+  void again_rt();
+  // Returns true if read timer expired.
+  bool expired_rt();
+
   TLSConnection tls;
   ev_io wev;
   ev_io rev;
@@ -125,15 +145,30 @@ struct Connection {
   ev_timer rt;
   RateLimit wlimit;
   RateLimit rlimit;
-  IOCb writecb;
-  IOCb readcb;
-  TimerCb timeoutcb;
   struct ev_loop *loop;
   void *data;
   int fd;
   size_t tls_dyn_rec_warmup_threshold;
   ev_tstamp tls_dyn_rec_idle_timeout;
+  // Application protocol used over the connection.  This field is not
+  // used in this object at the moment.  The rest of the program may
+  // use this value when it is useful.
+  shrpx_proto proto;
+  // The point of time when last read is observed.  Note: sinde we use
+  // |rt| as idle timer, the activity is not limited to read.
+  ev_tstamp last_read;
+  // Timeout for read timer |rt|.
+  ev_tstamp read_timeout;
 };
+
+// Creates BIO_method shared by all SSL objects.  If nghttp2 is built
+// with OpenSSL < 1.1.0, this returns statically allocated object.
+// Otherwise, it returns new BIO_METHOD object every time.
+BIO_METHOD *create_bio_method();
+
+// Deletes given |bio_method|.  If nghttp2 is built with OpenSSL <
+// 1.1.0, this function is noop.
+void delete_bio_method(BIO_METHOD *bio_method);
 
 } // namespace shrpx
 

@@ -25,6 +25,10 @@
 #ifndef NGHTTP2_SESSION_TEST_H
 #define NGHTTP2_SESSION_TEST_H
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif /* HAVE_CONFIG_H */
+
 void test_nghttp2_session_recv(void);
 void test_nghttp2_session_recv_invalid_stream_id(void);
 void test_nghttp2_session_recv_invalid_frame(void);
@@ -40,6 +44,8 @@ void test_nghttp2_session_recv_unknown_frame(void);
 void test_nghttp2_session_recv_unexpected_continuation(void);
 void test_nghttp2_session_recv_settings_header_table_size(void);
 void test_nghttp2_session_recv_too_large_frame_length(void);
+void test_nghttp2_session_recv_extension(void);
+void test_nghttp2_session_recv_altsvc(void);
 void test_nghttp2_session_continue(void);
 void test_nghttp2_session_add_frame(void);
 void test_nghttp2_session_on_request_headers_received(void);
@@ -55,6 +61,7 @@ void test_nghttp2_session_on_goaway_received(void);
 void test_nghttp2_session_on_window_update_received(void);
 void test_nghttp2_session_on_data_received(void);
 void test_nghttp2_session_on_data_received_fail_fast(void);
+void test_nghttp2_session_on_altsvc_received(void);
 void test_nghttp2_session_send_headers_start_stream(void);
 void test_nghttp2_session_send_headers_reply(void);
 void test_nghttp2_session_send_headers_frame_size_error(void);
@@ -80,6 +87,7 @@ void test_nghttp2_submit_headers_reply(void);
 void test_nghttp2_submit_headers_push_reply(void);
 void test_nghttp2_submit_headers(void);
 void test_nghttp2_submit_headers_continuation(void);
+void test_nghttp2_submit_headers_continuation_extra_large(void);
 void test_nghttp2_submit_priority(void);
 void test_nghttp2_submit_settings(void);
 void test_nghttp2_submit_settings_update_local_window_size(void);
@@ -89,6 +97,8 @@ void test_nghttp2_submit_window_update(void);
 void test_nghttp2_submit_window_update_local_window_size(void);
 void test_nghttp2_submit_shutdown_notice(void);
 void test_nghttp2_submit_invalid_nv(void);
+void test_nghttp2_submit_extension(void);
+void test_nghttp2_submit_altsvc(void);
 void test_nghttp2_session_open_stream(void);
 void test_nghttp2_session_open_stream_with_idle_stream_dep(void);
 void test_nghttp2_session_get_next_ob_item(void);
@@ -140,6 +150,10 @@ void test_nghttp2_session_change_stream_priority(void);
 void test_nghttp2_session_create_idle_stream(void);
 void test_nghttp2_session_repeated_priority_change(void);
 void test_nghttp2_session_repeated_priority_submission(void);
+void test_nghttp2_session_set_local_window_size(void);
+void test_nghttp2_session_cancel_from_before_frame_send(void);
+void test_nghttp2_session_removed_closed_stream(void);
+void test_nghttp2_session_pause_data(void);
 void test_nghttp2_http_mandatory_headers(void);
 void test_nghttp2_http_content_length(void);
 void test_nghttp2_http_content_length_mismatch(void);

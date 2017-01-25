@@ -36,11 +36,16 @@
 namespace shrpx {
 
 class DownstreamConnectionPool;
+class Worker;
+struct DownstreamAddrGroup;
+struct DownstreamAddr;
+struct DNSQuery;
 
 class HttpDownstreamConnection : public DownstreamConnection {
 public:
-  HttpDownstreamConnection(DownstreamConnectionPool *dconn_pool, size_t group,
-                           struct ev_loop *loop);
+  HttpDownstreamConnection(const std::shared_ptr<DownstreamAddrGroup> &group,
+                           ssize_t initial_addr_idx, struct ev_loop *loop,
+                           Worker *worker);
   virtual ~HttpDownstreamConnection();
   virtual int attach_downstream(Downstream *downstream);
   virtual void detach_downstream(Downstream *downstream);
@@ -57,21 +62,58 @@ public:
   virtual int on_write();
 
   virtual void on_upstream_change(Upstream *upstream);
-  virtual size_t get_group() const;
 
-  virtual bool poolable() const { return true; }
+  virtual bool poolable() const;
 
-  int on_connect();
+  virtual const std::shared_ptr<DownstreamAddrGroup> &
+  get_downstream_addr_group() const;
+  virtual DownstreamAddr *get_addr() const;
+
+  int initiate_connection();
+
+  int write_reuse_first();
+  int read_clear();
+  int write_clear();
+  int read_tls();
+  int write_tls();
+
+  int process_input(const uint8_t *data, size_t datalen);
+  int tls_handshake();
+
+  int connected();
   void signal_write();
+  int actual_signal_write();
+
+  // Returns address used to connect to backend.  Could be nullptr.
+  const Address *get_raddr() const;
+
+  int noop();
 
 private:
   Connection conn_;
+  std::function<int(HttpDownstreamConnection &)> on_read_, on_write_,
+      signal_write_;
+  Worker *worker_;
+  // nullptr if TLS is not used.
+  SSL_CTX *ssl_ctx_;
+  std::shared_ptr<DownstreamAddrGroup> group_;
+  // Address of remote endpoint
+  DownstreamAddr *addr_;
+  // Actual remote address used to contact backend.  This is initially
+  // nullptr, and may point to either &addr_->addr, or
+  // resolved_addr_.get().
+  const Address *raddr_;
+  // Resolved IP address if dns parameter is used
+  std::unique_ptr<Address> resolved_addr_;
+  std::unique_ptr<DNSQuery> dns_query_;
   IOControl ioctrl_;
   http_parser response_htp_;
-  size_t group_;
-  // index of get_config()->downstream_addrs this object is using
-  size_t addr_idx_;
-  bool connected_;
+  ssize_t initial_addr_idx_;
+  // true if first write of reused connection succeeded.  For
+  // convenience, this is initialized as true.
+  bool reuse_first_write_done_;
+  // true if this object can be reused
+  bool reusable_;
 };
 
 } // namespace shrpx

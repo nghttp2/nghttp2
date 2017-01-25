@@ -2,6 +2,7 @@ package nghttp2
 
 import (
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/hpack"
@@ -568,26 +569,26 @@ func TestH2H1InvalidRequestCL(t *testing.T) {
 	}
 }
 
-// TestH2H1ConnectFailure tests that server handles the situation that
-// connection attempt to HTTP/1 backend failed.
-func TestH2H1ConnectFailure(t *testing.T) {
-	st := newServerTester(nil, t, noopHandler)
-	defer st.Close()
+// // TestH2H1ConnectFailure tests that server handles the situation that
+// // connection attempt to HTTP/1 backend failed.
+// func TestH2H1ConnectFailure(t *testing.T) {
+// 	st := newServerTester(nil, t, noopHandler)
+// 	defer st.Close()
 
-	// shutdown backend server to simulate backend connect failure
-	st.ts.Close()
+// 	// shutdown backend server to simulate backend connect failure
+// 	st.ts.Close()
 
-	res, err := st.http2(requestParam{
-		name: "TestH2H1ConnectFailure",
-	})
-	if err != nil {
-		t.Fatalf("Error st.http2() = %v", err)
-	}
-	want := 503
-	if got := res.status; got != want {
-		t.Errorf("status: %v; want %v", got, want)
-	}
-}
+// 	res, err := st.http2(requestParam{
+// 		name: "TestH2H1ConnectFailure",
+// 	})
+// 	if err != nil {
+// 		t.Fatalf("Error st.http2() = %v", err)
+// 	}
+// 	want := 503
+// 	if got := res.status; got != want {
+// 		t.Errorf("status: %v; want %v", got, want)
+// 	}
+// }
 
 // TestH2H1InvalidMethod tests that server rejects invalid method with
 // 501.
@@ -1368,6 +1369,42 @@ func TestH2H1ProxyProtocolV1InvalidID(t *testing.T) {
 	}
 }
 
+// TestH2H1ExternalDNS tests that DNS resolution using external DNS
+// with HTTP/1 backend works.
+func TestH2H1ExternalDNS(t *testing.T) {
+	st := newServerTester([]string{"--external-dns"}, t, noopHandler)
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name: "TestH2H1ExternalDNS",
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+
+	if got, want := res.status, 200; got != want {
+		t.Errorf("status = %v; want %v", got, want)
+	}
+}
+
+// TestH2H1DNS tests that DNS resolution without external DNS with
+// HTTP/1 backend works.
+func TestH2H1DNS(t *testing.T) {
+	st := newServerTester([]string{"--dns"}, t, noopHandler)
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name: "TestH2H1DNS",
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+
+	if got, want := res.status, 200; got != want {
+		t.Errorf("status = %v; want %v", got, want)
+	}
+}
+
 // TestH2H1GracefulShutdown tests graceful shutdown.
 func TestH2H1GracefulShutdown(t *testing.T) {
 	st := newServerTester(nil, t, noopHandler)
@@ -1486,26 +1523,26 @@ func TestH2H2InvalidResponseCL(t *testing.T) {
 	}
 }
 
-// TestH2H2ConnectFailure tests that server handles the situation that
-// connection attempt to HTTP/2 backend failed.
-func TestH2H2ConnectFailure(t *testing.T) {
-	st := newServerTester([]string{"--http2-bridge"}, t, noopHandler)
-	defer st.Close()
+// // TestH2H2ConnectFailure tests that server handles the situation that
+// // connection attempt to HTTP/2 backend failed.
+// func TestH2H2ConnectFailure(t *testing.T) {
+// 	st := newServerTester([]string{"--http2-bridge"}, t, noopHandler)
+// 	defer st.Close()
 
-	// simulate backend connect attempt failure
-	st.ts.Close()
+// 	// simulate backend connect attempt failure
+// 	st.ts.Close()
 
-	res, err := st.http2(requestParam{
-		name: "TestH2H2ConnectFailure",
-	})
-	if err != nil {
-		t.Fatalf("Error st.http2() = %v", err)
-	}
-	want := 503
-	if got := res.status; got != want {
-		t.Errorf("status: %v; want %v", got, want)
-	}
-}
+// 	res, err := st.http2(requestParam{
+// 		name: "TestH2H2ConnectFailure",
+// 	})
+// 	if err != nil {
+// 		t.Fatalf("Error st.http2() = %v", err)
+// 	}
+// 	want := 503
+// 	if got := res.status; got != want {
+// 		t.Errorf("status: %v; want %v", got, want)
+// 	}
+// }
 
 // TestH2H2HostRewrite tests that server rewrites host header field
 func TestH2H2HostRewrite(t *testing.T) {
@@ -1841,5 +1878,228 @@ func TestH2H2RespPhaseReturn(t *testing.T) {
 
 	if got, want := string(res.body), "Hello World from resp"; got != want {
 		t.Errorf("body = %v; want %v", got, want)
+	}
+}
+
+// TestH2H2ExternalDNS tests that DNS resolution using external DNS
+// with HTTP/2 backend works.
+func TestH2H2ExternalDNS(t *testing.T) {
+	st := newServerTester([]string{"--http2-bridge", "--external-dns"}, t, noopHandler)
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name: "TestH2H2ExternalDNS",
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+
+	if got, want := res.status, 200; got != want {
+		t.Errorf("status = %v; want %v", got, want)
+	}
+}
+
+// TestH2H2DNS tests that DNS resolution without external DNS with
+// HTTP/2 backend works.
+func TestH2H2DNS(t *testing.T) {
+	st := newServerTester([]string{"--http2-bridge", "--dns"}, t, noopHandler)
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name: "TestH2H2DNS",
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+
+	if got, want := res.status, 200; got != want {
+		t.Errorf("status = %v; want %v", got, want)
+	}
+}
+
+// TestH2APIBackendconfig exercise backendconfig API endpoint routine
+// for successful case.
+func TestH2APIBackendconfig(t *testing.T) {
+	st := newServerTesterConnectPort([]string{"-f127.0.0.1,3010;api;no-tls"}, t, func(w http.ResponseWriter, r *http.Request) {
+		t.Fatalf("request should not be forwarded")
+	}, 3010)
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name:   "TestH2APIBackendconfig",
+		path:   "/api/v1beta1/backendconfig",
+		method: "PUT",
+		body: []byte(`# comment
+backend=127.0.0.1,3011
+
+`),
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+	if got, want := res.status, 200; got != want {
+		t.Errorf("res.status: %v; want %v", got, want)
+	}
+
+	var apiResp APIResponse
+	err = json.Unmarshal(res.body, &apiResp)
+	if err != nil {
+		t.Fatalf("Error unmarshaling API response: %v", err)
+	}
+	if got, want := apiResp.Status, "Success"; got != want {
+		t.Errorf("apiResp.Status: %v; want %v", got, want)
+	}
+	if got, want := apiResp.Code, 200; got != want {
+		t.Errorf("apiResp.Status: %v; want %v", got, want)
+	}
+}
+
+// TestH2APIBackendconfigQuery exercise backendconfig API endpoint
+// routine with query.
+func TestH2APIBackendconfigQuery(t *testing.T) {
+	st := newServerTesterConnectPort([]string{"-f127.0.0.1,3010;api;no-tls"}, t, func(w http.ResponseWriter, r *http.Request) {
+		t.Fatalf("request should not be forwarded")
+	}, 3010)
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name:   "TestH2APIBackendconfigQuery",
+		path:   "/api/v1beta1/backendconfig?foo=bar",
+		method: "PUT",
+		body: []byte(`# comment
+backend=127.0.0.1,3011
+
+`),
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+	if got, want := res.status, 200; got != want {
+		t.Errorf("res.status: %v; want %v", got, want)
+	}
+
+	var apiResp APIResponse
+	err = json.Unmarshal(res.body, &apiResp)
+	if err != nil {
+		t.Fatalf("Error unmarshaling API response: %v", err)
+	}
+	if got, want := apiResp.Status, "Success"; got != want {
+		t.Errorf("apiResp.Status: %v; want %v", got, want)
+	}
+	if got, want := apiResp.Code, 200; got != want {
+		t.Errorf("apiResp.Status: %v; want %v", got, want)
+	}
+}
+
+// TestH2APIBackendconfigBadMethod exercise backendconfig API endpoint
+// routine with bad method.
+func TestH2APIBackendconfigBadMethod(t *testing.T) {
+	st := newServerTesterConnectPort([]string{"-f127.0.0.1,3010;api;no-tls"}, t, func(w http.ResponseWriter, r *http.Request) {
+		t.Fatalf("request should not be forwarded")
+	}, 3010)
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name:   "TestH2APIBackendconfigBadMethod",
+		path:   "/api/v1beta1/backendconfig",
+		method: "GET",
+		body: []byte(`# comment
+backend=127.0.0.1,3011
+
+`),
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+	if got, want := res.status, 405; got != want {
+		t.Errorf("res.status: %v; want %v", got, want)
+	}
+
+	var apiResp APIResponse
+	err = json.Unmarshal(res.body, &apiResp)
+	if err != nil {
+		t.Fatalf("Error unmarshaling API response: %v", err)
+	}
+	if got, want := apiResp.Status, "Failure"; got != want {
+		t.Errorf("apiResp.Status: %v; want %v", got, want)
+	}
+	if got, want := apiResp.Code, 405; got != want {
+		t.Errorf("apiResp.Status: %v; want %v", got, want)
+	}
+}
+
+// TestH2APINotFound exercise backendconfig API endpoint routine when
+// API endpoint is not found.
+func TestH2APINotFound(t *testing.T) {
+	st := newServerTesterConnectPort([]string{"-f127.0.0.1,3010;api;no-tls"}, t, func(w http.ResponseWriter, r *http.Request) {
+		t.Fatalf("request should not be forwarded")
+	}, 3010)
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name:   "TestH2APINotFound",
+		path:   "/api/notfound",
+		method: "GET",
+		body: []byte(`# comment
+backend=127.0.0.1,3011
+
+`),
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+	if got, want := res.status, 404; got != want {
+		t.Errorf("res.status: %v; want %v", got, want)
+	}
+
+	var apiResp APIResponse
+	err = json.Unmarshal(res.body, &apiResp)
+	if err != nil {
+		t.Fatalf("Error unmarshaling API response: %v", err)
+	}
+	if got, want := apiResp.Status, "Failure"; got != want {
+		t.Errorf("apiResp.Status: %v; want %v", got, want)
+	}
+	if got, want := apiResp.Code, 404; got != want {
+		t.Errorf("apiResp.Status: %v; want %v", got, want)
+	}
+}
+
+// TestH2Healthmon tests health monitor endpoint.
+func TestH2Healthmon(t *testing.T) {
+	st := newServerTesterConnectPort([]string{"-f127.0.0.1,3011;healthmon;no-tls"}, t, func(w http.ResponseWriter, r *http.Request) {
+		t.Fatalf("request should not be forwarded")
+	}, 3011)
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name: "TestH2Healthmon",
+		path: "/alpha/bravo",
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+	if got, want := res.status, 200; got != want {
+		t.Errorf("res.status: %v; want %v", got, want)
+	}
+}
+
+// TestH2ResponseBeforeRequestEnd tests the situation where response
+// ends before request body finishes.
+func TestH2ResponseBeforeRequestEnd(t *testing.T) {
+	st := newServerTester([]string{"--mruby-file=" + testDir + "/req-return.rb"}, t, func(w http.ResponseWriter, r *http.Request) {
+		t.Fatal("request should not be forwarded")
+	})
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name:        "TestH2ResponseBeforeRequestEnd",
+		noEndStream: true,
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+	if got, want := res.status, 404; got != want {
+		t.Errorf("res.status: %v; want %v", got, want)
 	}
 }

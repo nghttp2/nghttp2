@@ -1,33 +1,43 @@
+.. program:: h2load
+
 h2load - HTTP/2 benchmarking tool - HOW-TO
 ==========================================
 
-h2load is benchmarking tool for HTTP/2 and HTTP/1.1.  If built with
-spdylay (http://tatsuhiro-t.github.io/spdylay/) library, it also
-supports SPDY protocol.  It supports SSL/TLS and clear text for all
-supported protocols.
+:doc:`h2load.1` is benchmarking tool for HTTP/2 and HTTP/1.1.  If
+built with spdylay (http://tatsuhiro-t.github.io/spdylay/) library, it
+also supports SPDY protocol.  It supports SSL/TLS and clear text for
+all supported protocols.
+
+Compiling from source
+---------------------
+
+h2load is compiled alongside nghttp2 and requires that the
+``--enable-apps`` flag is passed to ``./configure`` and `required
+dependencies <https://github.com/nghttp2/nghttp2#requirements>`_ are
+available during compilation. For details on compiling, see `nghttp2:
+Building from Git
+<https://github.com/nghttp2/nghttp2#building-from-git>`_.
 
 Basic Usage
 -----------
 
 In order to set benchmark settings, specify following 3 options.
 
-``-n``
+:option:`-n`
     The number of total requests.  Default: 1
 
-``-c``
+:option:`-c`
     The number of concurrent clients.  Default: 1
 
-``-m``
-   The max concurrent streams to issue per client.
-   If ``auto`` is given, the number of given URIs is used.
-   Default: ``auto``
+:option:`-m`
+   The max concurrent streams to issue per client.  Default: 1
 
 For SSL/TLS connection, the protocol will be negotiated via ALPN/NPN.
-You can set specific protocols in ``--npn-list`` option.  For
+You can set specific protocols in :option:`--npn-list` option.  For
 cleartext connection, the default protocol is HTTP/2.  To change the
-protocol in cleartext connection, use ``--no-tls-proto`` option.  For
-convenience, ``--h1`` option forces HTTP/1.1 for both cleartext and
-SSL/TLS connections.
+protocol in cleartext connection, use :option:`--no-tls-proto` option.
+For convenience, :option:`--h1` option forces HTTP/1.1 for both
+cleartext and SSL/TLS connections.
 
 Here is a command-line to perform benchmark to URI \https://localhost
 using total 100000 requests, 100 concurrent clients and 10 max
@@ -62,11 +72,11 @@ benchmarking results.  By default, h2load uses large enough flow
 control window, which effectively disables flow control.  To adjust
 receiver flow control window size, there are following options:
 
-``-w``
+:option:`-w`
    Sets  the stream  level  initial  window size  to
    (2**<N>)-1.  For SPDY, 2**<N> is used instead.
 
-``-W``
+:option:`-W`
    Sets the connection level  initial window size to
    (2**<N>)-1.  For  SPDY, if  <N> is  strictly less
    than  16,  this  option  is  ignored.   Otherwise
@@ -76,17 +86,17 @@ Multi-Threading
 ---------------
 
 Sometimes benchmarking client itself becomes a bottleneck.  To remedy
-this situation, use ``-t`` option to specify the number of native
+this situation, use :option:`-t` option to specify the number of native
 thread to use.
 
-``-t``
+:option:`-t`
     The number of native threads. Default: 1
 
 Selecting protocol for clear text
 ---------------------------------
 
 By default, if \http:// URI is given, HTTP/2 protocol is used.  To
-change the protocol to use for clear text, use ``-p`` option.
+change the protocol to use for clear text, use :option:`-p` option.
 
 Multiple URIs
 -------------
@@ -97,3 +107,12 @@ If multiple URIs are specified, they are used in round robin manner.
 
     Please note that h2load uses scheme, host and port in the first URI
     and ignores those parts in the rest of the URIs.
+
+UNIX domain socket
+------------------
+
+To request against UNIX domain socket, use :option:`--base-uri`, and
+specify ``unix:`` followed by the path to UNIX domain socket.  For
+example, if UNIX domain socket is ``/tmp/nghttpx.sock``, use
+``--base-uri=unix:/tmp/nghttpx.sock``.  h2load uses scheme, host and
+port in the first URI in command-line or input file.

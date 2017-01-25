@@ -21,6 +21,8 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+EXTRA_DIST = CMakeLists.txt
+
 if ENABLE_EXAMPLES
 
 AM_CFLAGS = $(WARNCFLAGS)
@@ -48,14 +50,6 @@ libevent_client_SOURCES = libevent-client.c
 libevent_server_SOURCES = libevent-server.c
 
 deflate_SOURCES = deflate.c
-
-if ENABLE_TINY_NGHTTPD
-
-noinst_PROGRAMS += tiny-nghttpd
-
-tiny_nghttpd_SOURCES = tiny-nghttpd.c
-
-endif # ENABLE_TINY_NGHTTPD
 
 if ENABLE_ASIO_LIB
 

@@ -30,6 +30,8 @@
 #include <vector>
 #include <memory>
 
+#include "allocator.h"
+
 namespace shrpx {
 
 struct RNode {
@@ -55,17 +57,36 @@ struct RNode {
 class Router {
 public:
   Router();
-  // Adds route |pattern| of size |patlen| with its |index|.
-  bool add_route(const char *pattern, size_t patlen, size_t index);
+  ~Router();
+  Router(Router &&) = default;
+  Router(const Router &) = delete;
+  Router &operator=(Router &&) = default;
+  Router &operator=(const Router &) = delete;
+
+  // Adds route |pattern| with its |index|.
+  bool add_route(const StringRef &pattern, size_t index);
   // Returns the matched index of pattern.  -1 if there is no match.
-  ssize_t match(const std::string &host, const char *path,
-                size_t pathlen) const;
+  ssize_t match(const StringRef &host, const StringRef &path) const;
+  // Returns the matched index of pattern |s|.  -1 if there is no
+  // match.
+  ssize_t match(const StringRef &s) const;
+  // Returns the matched index of pattern if a pattern is a suffix of
+  // |s|, otherwise -1.  If |*last_node| is not nullptr, it specifies
+  // the first node to start matching.  If it is nullptr, match will
+  // start from scratch.  When the match was found (the return value
+  // is not -1), |*nread| has the number of bytes matched in |s|, and
+  // |*last_node| has the last matched node.  One can continue to
+  // match the longer pattern using the returned |*last_node| to the
+  // another invocation of this function until it returns -1.
+  ssize_t match_prefix(size_t *nread, const RNode **last_node,
+                       const StringRef &s) const;
 
   void add_node(RNode *node, const char *pattern, size_t patlen, size_t index);
 
   void dump() const;
 
 private:
+  BlockAllocator balloc_;
   // The root node of Patricia tree.  This is special node and its s
   // field is nulptr, and len field is 0.
   RNode root_;

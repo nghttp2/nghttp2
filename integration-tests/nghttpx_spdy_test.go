@@ -1,6 +1,7 @@
 package nghttp2
 
 import (
+	"encoding/json"
 	"github.com/tatsuhiro-t/spdy"
 	"golang.org/x/net/http2/hpack"
 	"net/http"
@@ -384,26 +385,26 @@ func TestS3H1RespPhaseReturn(t *testing.T) {
 	}
 }
 
-// TestS3H2ConnectFailure tests that server handles the situation that
-// connection attempt to HTTP/2 backend failed.
-func TestS3H2ConnectFailure(t *testing.T) {
-	st := newServerTesterTLS([]string{"--npn-list=spdy/3.1", "--http2-bridge"}, t, noopHandler)
-	defer st.Close()
+// // TestS3H2ConnectFailure tests that server handles the situation that
+// // connection attempt to HTTP/2 backend failed.
+// func TestS3H2ConnectFailure(t *testing.T) {
+// 	st := newServerTesterTLS([]string{"--npn-list=spdy/3.1", "--http2-bridge"}, t, noopHandler)
+// 	defer st.Close()
 
-	// simulate backend connect attempt failure
-	st.ts.Close()
+// 	// simulate backend connect attempt failure
+// 	st.ts.Close()
 
-	res, err := st.spdy(requestParam{
-		name: "TestS3H2ConnectFailure",
-	})
-	if err != nil {
-		t.Fatalf("Error st.spdy() = %v", err)
-	}
-	want := 503
-	if got := res.status; got != want {
-		t.Errorf("status: %v; want %v", got, want)
-	}
-}
+// 	res, err := st.spdy(requestParam{
+// 		name: "TestS3H2ConnectFailure",
+// 	})
+// 	if err != nil {
+// 		t.Fatalf("Error st.spdy() = %v", err)
+// 	}
+// 	want := 503
+// 	if got := res.status; got != want {
+// 		t.Errorf("status: %v; want %v", got, want)
+// 	}
+// }
 
 // TestS3H2ReqPhaseReturn tests mruby request phase hook returns
 // custom response.
@@ -472,5 +473,192 @@ func TestS3H2RespPhaseReturn(t *testing.T) {
 
 	if got, want := string(res.body), "Hello World from resp"; got != want {
 		t.Errorf("body = %v; want %v", got, want)
+	}
+}
+
+// TestS3APIBackendconfig exercise backendconfig API endpoint routine
+// for successful case.
+func TestS3APIBackendconfig(t *testing.T) {
+	st := newServerTesterTLSConnectPort([]string{"--npn-list=spdy/3.1", "-f127.0.0.1,3010;api"}, t, func(w http.ResponseWriter, r *http.Request) {
+		t.Fatalf("request should not be forwarded")
+	}, 3010)
+	defer st.Close()
+
+	res, err := st.spdy(requestParam{
+		name:   "TestS3APIBackendconfig",
+		path:   "/api/v1beta1/backendconfig",
+		method: "PUT",
+		body: []byte(`# comment
+backend=127.0.0.1,3011
+
+`),
+	})
+	if err != nil {
+		t.Fatalf("Error st.spdy() = %v", err)
+	}
+	if got, want := res.status, 200; got != want {
+		t.Errorf("res.status: %v; want %v", got, want)
+	}
+
+	var apiResp APIResponse
+	err = json.Unmarshal(res.body, &apiResp)
+	if err != nil {
+		t.Fatalf("Error unmarshaling API response: %v", err)
+	}
+	if got, want := apiResp.Status, "Success"; got != want {
+		t.Errorf("apiResp.Status: %v; want %v", got, want)
+	}
+	if got, want := apiResp.Code, 200; got != want {
+		t.Errorf("apiResp.Status: %v; want %v", got, want)
+	}
+}
+
+// TestS3APIBackendconfigQuery exercise backendconfig API endpoint
+// routine with query.
+func TestS3APIBackendconfigQuery(t *testing.T) {
+	st := newServerTesterTLSConnectPort([]string{"--npn-list=spdy/3.1", "-f127.0.0.1,3010;api"}, t, func(w http.ResponseWriter, r *http.Request) {
+		t.Fatalf("request should not be forwarded")
+	}, 3010)
+	defer st.Close()
+
+	res, err := st.spdy(requestParam{
+		name:   "TestS3APIBackendconfigQuery",
+		path:   "/api/v1beta1/backendconfig?foo=bar",
+		method: "PUT",
+		body: []byte(`# comment
+backend=127.0.0.1,3011
+
+`),
+	})
+	if err != nil {
+		t.Fatalf("Error st.spdy() = %v", err)
+	}
+	if got, want := res.status, 200; got != want {
+		t.Errorf("res.status: %v; want %v", got, want)
+	}
+
+	var apiResp APIResponse
+	err = json.Unmarshal(res.body, &apiResp)
+	if err != nil {
+		t.Fatalf("Error unmarshaling API response: %v", err)
+	}
+	if got, want := apiResp.Status, "Success"; got != want {
+		t.Errorf("apiResp.Status: %v; want %v", got, want)
+	}
+	if got, want := apiResp.Code, 200; got != want {
+		t.Errorf("apiResp.Status: %v; want %v", got, want)
+	}
+}
+
+// TestS3APIBackendconfigBadMethod exercise backendconfig API endpoint
+// routine with bad method.
+func TestS3APIBackendconfigBadMethod(t *testing.T) {
+	st := newServerTesterTLSConnectPort([]string{"--npn-list=spdy/3.1", "-f127.0.0.1,3010;api"}, t, func(w http.ResponseWriter, r *http.Request) {
+		t.Fatalf("request should not be forwarded")
+	}, 3010)
+	defer st.Close()
+
+	res, err := st.spdy(requestParam{
+		name:   "TestS3APIBackendconfigBadMethod",
+		path:   "/api/v1beta1/backendconfig",
+		method: "GET",
+		body: []byte(`# comment
+backend=127.0.0.1,3011
+
+`),
+	})
+	if err != nil {
+		t.Fatalf("Error st.spdy() = %v", err)
+	}
+	if got, want := res.status, 405; got != want {
+		t.Errorf("res.status: %v; want %v", got, want)
+	}
+
+	var apiResp APIResponse
+	err = json.Unmarshal(res.body, &apiResp)
+	if err != nil {
+		t.Fatalf("Error unmarshaling API response: %v", err)
+	}
+	if got, want := apiResp.Status, "Failure"; got != want {
+		t.Errorf("apiResp.Status: %v; want %v", got, want)
+	}
+	if got, want := apiResp.Code, 405; got != want {
+		t.Errorf("apiResp.Status: %v; want %v", got, want)
+	}
+}
+
+// TestS3APINotFound exercise backendconfig API endpoint routine when
+// API endpoint is not found.
+func TestS3APINotFound(t *testing.T) {
+	st := newServerTesterTLSConnectPort([]string{"--npn-list=spdy/3.1", "-f127.0.0.1,3010;api"}, t, func(w http.ResponseWriter, r *http.Request) {
+		t.Fatalf("request should not be forwarded")
+	}, 3010)
+	defer st.Close()
+
+	res, err := st.spdy(requestParam{
+		name:   "TestS3APINotFound",
+		path:   "/api/notfound",
+		method: "GET",
+		body: []byte(`# comment
+backend=127.0.0.1,3011
+
+`),
+	})
+	if err != nil {
+		t.Fatalf("Error st.spdy() = %v", err)
+	}
+	if got, want := res.status, 404; got != want {
+		t.Errorf("res.status: %v; want %v", got, want)
+	}
+
+	var apiResp APIResponse
+	err = json.Unmarshal(res.body, &apiResp)
+	if err != nil {
+		t.Fatalf("Error unmarshaling API response: %v", err)
+	}
+	if got, want := apiResp.Status, "Failure"; got != want {
+		t.Errorf("apiResp.Status: %v; want %v", got, want)
+	}
+	if got, want := apiResp.Code, 404; got != want {
+		t.Errorf("apiResp.Status: %v; want %v", got, want)
+	}
+}
+
+// TestS3Healthmon tests health monitor endpoint.
+func TestS3Healthmon(t *testing.T) {
+	st := newServerTesterTLSConnectPort([]string{"--npn-list=spdy/3.1", "-f127.0.0.1,3011;healthmon"}, t, func(w http.ResponseWriter, r *http.Request) {
+		t.Fatalf("request should not be forwarded")
+	}, 3011)
+	defer st.Close()
+
+	res, err := st.spdy(requestParam{
+		name: "TestS3Healthmon",
+		path: "/alpha/bravo",
+	})
+	if err != nil {
+		t.Fatalf("Error st.spdy() = %v", err)
+	}
+	if got, want := res.status, 200; got != want {
+		t.Errorf("res.status: %v; want %v", got, want)
+	}
+}
+
+// TestS3ResponseBeforeRequestEnd tests the situation where response
+// ends before request body finishes.
+func TestS3ResponseBeforeRequestEnd(t *testing.T) {
+	st := newServerTesterTLS([]string{"--npn-list=spdy/3.1", "--mruby-file=" + testDir + "/req-return.rb"}, t, func(w http.ResponseWriter, r *http.Request) {
+		t.Fatal("request should not be forwarded")
+	})
+	defer st.Close()
+
+	res, err := st.spdy(requestParam{
+		name:        "TestS3ResponseBeforeRequestEnd",
+		noEndStream: true,
+	})
+	if err != nil {
+		t.Fatalf("Error st.spdy() = %v", err)
+	}
+	if got, want := res.status, 404; got != want {
+		t.Errorf("res.status: %v; want %v", got, want)
 	}
 }

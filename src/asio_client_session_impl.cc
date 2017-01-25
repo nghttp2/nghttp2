@@ -183,6 +183,12 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
     if (token == http2::HD__STATUS) {
       res.status_code(util::parse_uint(value, valuelen));
     } else {
+      if (res.header_buffer_size() + namelen + valuelen > 64_k) {
+        nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE,
+                                  frame->hd.stream_id, NGHTTP2_INTERNAL_ERROR);
+        break;
+      }
+      res.update_header_buffer_size(namelen + valuelen);
 
       if (token == http2::HD_CONTENT_LENGTH) {
         res.content_length(util::parse_uint(value, valuelen));
@@ -223,6 +229,13 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
       }
     // fall through
     default:
+      if (req.header_buffer_size() + namelen + valuelen > 64_k) {
+        nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE,
+                                  frame->hd.stream_id, NGHTTP2_INTERNAL_ERROR);
+        break;
+      }
+      req.update_header_buffer_size(namelen + valuelen);
+
       req.header().emplace(
           std::string(name, name + namelen),
           header_value{std::string(value, value + valuelen),
@@ -360,9 +373,8 @@ bool session_impl::setup_session() {
        {NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE, window_size}}};
   nghttp2_submit_settings(session_, NGHTTP2_FLAG_NONE, iv.data(), iv.size());
   // increase connection window size up to window_size
-  nghttp2_submit_window_update(session_, NGHTTP2_FLAG_NONE, 0,
-                               window_size -
-                                   NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE);
+  nghttp2_session_set_local_window_size(session_, NGHTTP2_FLAG_NONE, 0,
+                                        window_size);
   return true;
 }
 
@@ -491,7 +503,7 @@ const request *session_impl::submit(boost::system::error_code &ec,
   }
 
   auto nva = std::vector<nghttp2_nv>();
-  nva.reserve(3 + h.size());
+  nva.reserve(4 + h.size());
   nva.push_back(http2::make_nv_ls(":method", method));
   nva.push_back(http2::make_nv_ls(":scheme", uref.scheme));
   nva.push_back(http2::make_nv_ls(":path", path));
@@ -509,13 +521,13 @@ const request *session_impl::submit(boost::system::error_code &ec,
   if (cb) {
     strm->request().impl().on_read(std::move(cb));
     prd.source.ptr = strm.get();
-    prd.read_callback =
-        [](nghttp2_session *session, int32_t stream_id, uint8_t *buf,
-           size_t length, uint32_t *data_flags, nghttp2_data_source *source,
-           void *user_data) -> ssize_t {
-          auto strm = static_cast<stream *>(source->ptr);
-          return strm->request().impl().call_on_read(buf, length, data_flags);
-        };
+    prd.read_callback = [](nghttp2_session *session, int32_t stream_id,
+                           uint8_t *buf, size_t length, uint32_t *data_flags,
+                           nghttp2_data_source *source,
+                           void *user_data) -> ssize_t {
+      auto strm = static_cast<stream *>(source->ptr);
+      return strm->request().impl().call_on_read(buf, length, data_flags);
+    };
     prdptr = &prd;
   }
 

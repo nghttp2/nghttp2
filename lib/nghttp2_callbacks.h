@@ -91,6 +91,14 @@ struct nghttp2_session_callbacks {
    * received.
    */
   nghttp2_on_header_callback on_header_callback;
+  nghttp2_on_header_callback2 on_header_callback2;
+  /**
+   * Callback function invoked when a invalid header name/value pair
+   * is received which is silently ignored if these callbacks are not
+   * set.
+   */
+  nghttp2_on_invalid_header_callback on_invalid_header_callback;
+  nghttp2_on_invalid_header_callback2 on_invalid_header_callback2;
   /**
    * Callback function invoked when the library asks application how
    * many padding bytes are required for the transmission of the given
@@ -107,6 +115,10 @@ struct nghttp2_session_callbacks {
    */
   nghttp2_on_begin_frame_callback on_begin_frame_callback;
   nghttp2_send_data_callback send_data_callback;
+  nghttp2_pack_extension_callback pack_extension_callback;
+  nghttp2_unpack_extension_callback unpack_extension_callback;
+  nghttp2_on_extension_chunk_recv_callback on_extension_chunk_recv_callback;
+  nghttp2_error_callback error_callback;
 };
 
 #endif /* NGHTTP2_CALLBACKS_H */

@@ -29,6 +29,7 @@
 #include <unistd.h>
 #endif // HAVE_UNISTD_H
 #include <sys/resource.h>
+#include <sys/wait.h>
 #include <grp.h>
 
 #include <cinttypes>
@@ -37,6 +38,8 @@
 #include <openssl/rand.h>
 
 #include <ev.h>
+
+#include <ares.h>
 
 #include "shrpx_config.h"
 #include "shrpx_connection_handler.h"
@@ -52,6 +55,7 @@
 #include "util.h"
 #include "app_helper.h"
 #include "template.h"
+#include "xsi_strerror.h"
 
 using namespace nghttp2;
 
@@ -63,21 +67,26 @@ void drop_privileges(
     neverbleed_t *nb
 #endif // HAVE_NEVERBLEED
     ) {
-  if (getuid() == 0 && get_config()->uid != 0) {
-    if (initgroups(get_config()->user.get(), get_config()->gid) != 0) {
+  std::array<char, STRERROR_BUFSIZE> errbuf;
+  auto config = get_config();
+
+  if (getuid() == 0 && config->uid != 0) {
+    if (initgroups(config->user.c_str(), config->gid) != 0) {
       auto error = errno;
       LOG(FATAL) << "Could not change supplementary groups: "
-                 << strerror(error);
+                 << xsi_strerror(error, errbuf.data(), errbuf.size());
       exit(EXIT_FAILURE);
     }
-    if (setgid(get_config()->gid) != 0) {
+    if (setgid(config->gid) != 0) {
       auto error = errno;
-      LOG(FATAL) << "Could not change gid: " << strerror(error);
+      LOG(FATAL) << "Could not change gid: "
+                 << xsi_strerror(error, errbuf.data(), errbuf.size());
       exit(EXIT_FAILURE);
     }
-    if (setuid(get_config()->uid) != 0) {
+    if (setuid(config->uid) != 0) {
       auto error = errno;
-      LOG(FATAL) << "Could not change uid: " << strerror(error);
+      LOG(FATAL) << "Could not change uid: "
+                 << xsi_strerror(error, errbuf.data(), errbuf.size());
       exit(EXIT_FAILURE);
     }
     if (setuid(0) != -1) {
@@ -86,7 +95,7 @@ void drop_privileges(
     }
 #ifdef HAVE_NEVERBLEED
     if (nb) {
-      neverbleed_setuidgid(nb, get_config()->user.get(), 1);
+      neverbleed_setuidgid(nb, config->user.c_str(), 1);
     }
 #endif // HAVE_NEVERBLEED
   }
@@ -152,7 +161,7 @@ void ipc_readcb(struct ev_loop *loop, ev_io *w, int revents) {
   if (nread == 0) {
     // IPC socket closed.  Perform immediate shutdown.
     LOG(FATAL) << "IPC socket is closed.  Perform immediate shutdown.";
-    _Exit(EXIT_FAILURE);
+    nghttp2_Exit(EXIT_FAILURE);
   }
 
   for (ssize_t i = 0; i < nread; ++i) {
@@ -217,7 +226,8 @@ void renew_ticket_key_cb(struct ev_loop *loop, ev_timer *w, int revents) {
 
     auto max_tickets =
         static_cast<size_t>(std::chrono::duration_cast<std::chrono::hours>(
-                                get_config()->tls.session_timeout).count());
+                                get_config()->tls.session_timeout)
+                                .count());
 
     new_keys.resize(std::min(max_tickets, old_keys.size() + 1));
     std::copy_n(std::begin(old_keys), new_keys.size() - 1,
@@ -341,13 +351,13 @@ void memcached_get_ticket_key_cb(struct ev_loop *loop, ev_timer *w,
       key.hmac = EVP_sha256();
       key.hmac_keylen = hmac_keylen;
 
-      std::copy_n(p, key.data.name.size(), key.data.name.data());
+      std::copy_n(p, key.data.name.size(), std::begin(key.data.name));
       p += key.data.name.size();
 
-      std::copy_n(p, enc_keylen, key.data.enc_key.data());
+      std::copy_n(p, enc_keylen, std::begin(key.data.enc_key));
       p += enc_keylen;
 
-      std::copy_n(p, hmac_keylen, key.data.hmac_key.data());
+      std::copy_n(p, hmac_keylen, std::begin(key.data.hmac_key));
       p += hmac_keylen;
 
       ticket_keys->keys.push_back(std::move(key));
@@ -374,33 +384,49 @@ void nb_child_cb(struct ev_loop *loop, ev_child *w, int revents) {
 
   LOG(FATAL) << "neverbleed process exitted; aborting now";
 
-  _Exit(EXIT_FAILURE);
+  nghttp2_Exit(EXIT_FAILURE);
 }
 } // namespace
 #endif // HAVE_NEVERBLEED
 
+namespace {
+std::random_device rd;
+} // namespace
+
 int worker_process_event_loop(WorkerProcessConfig *wpconf) {
+  int rv;
+  std::array<char, STRERROR_BUFSIZE> errbuf;
+  (void)errbuf;
+
   if (reopen_log_files() != 0) {
     LOG(FATAL) << "Failed to open log file";
     return -1;
   }
 
+  rv = ares_library_init(ARES_LIB_INIT_ALL);
+  if (rv != 0) {
+    LOG(FATAL) << "ares_library_init failed: " << ares_strerror(rv);
+    return -1;
+  }
+
   auto loop = EV_DEFAULT;
 
-  ConnectionHandler conn_handler(loop);
+  auto gen = std::mt19937(rd());
 
-  for (auto &addr : get_config()->conn.listener.addrs) {
+  ConnectionHandler conn_handler(loop, gen);
+
+  auto config = get_config();
+
+  for (auto &addr : config->conn.listener.addrs) {
     conn_handler.add_acceptor(make_unique<AcceptHandler>(&addr, &conn_handler));
   }
 
-  auto &upstreamconf = get_config()->conn.upstream;
-
 #ifdef HAVE_NEVERBLEED
-  if (!upstreamconf.no_tls || ssl::downstream_tls_enabled()) {
-    std::array<char, NEVERBLEED_ERRBUF_SIZE> errbuf;
+  {
+    std::array<char, NEVERBLEED_ERRBUF_SIZE> nb_errbuf;
     auto nb = make_unique<neverbleed_t>();
-    if (neverbleed_init(nb.get(), errbuf.data()) != 0) {
-      LOG(FATAL) << "neverbleed_init failed: " << errbuf.data();
+    if (neverbleed_init(nb.get(), nb_errbuf.data()) != 0) {
+      LOG(FATAL) << "neverbleed_init failed: " << nb_errbuf.data();
       return -1;
     }
 
@@ -420,13 +446,24 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
 
 #endif // HAVE_NEVERBLEED
 
-  ev_timer renew_ticket_key_timer;
-  if (!upstreamconf.no_tls) {
-    auto &ticketconf = get_config()->tls.ticket;
+  MemchunkPool mcpool;
 
-    if (ticketconf.memcached.host) {
+  ev_timer renew_ticket_key_timer;
+  if (ssl::upstream_tls_enabled()) {
+    auto &ticketconf = config->tls.ticket;
+    auto &memcachedconf = ticketconf.memcached;
+
+    if (!memcachedconf.host.empty()) {
+      SSL_CTX *ssl_ctx = nullptr;
+
+      if (memcachedconf.tls) {
+        ssl_ctx = conn_handler.create_tls_ticket_key_memcached_ssl_ctx();
+      }
+
       conn_handler.set_tls_ticket_key_memcached_dispatcher(
-          make_unique<MemcachedDispatcher>(&ticketconf.memcached.addr, loop));
+          make_unique<MemcachedDispatcher>(
+              &ticketconf.memcached.addr, loop, ssl_ctx,
+              StringRef{memcachedconf.host}, &mcpool, gen));
 
       ev_timer_init(&renew_ticket_key_timer, memcached_get_ticket_key_cb, 0.,
                     0.);
@@ -466,9 +503,7 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
     }
   }
 
-  int rv;
-
-  if (get_config()->num_worker == 1) {
+  if (config->num_worker == 1) {
     rv = conn_handler.create_single_worker();
     if (rv != 0) {
       return -1;
@@ -481,12 +516,13 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
 
     rv = pthread_sigmask(SIG_BLOCK, &set, nullptr);
     if (rv != 0) {
-      LOG(ERROR) << "Blocking SIGCHLD failed: " << strerror(rv);
+      LOG(ERROR) << "Blocking SIGCHLD failed: "
+                 << xsi_strerror(rv, errbuf.data(), errbuf.size());
       return -1;
     }
 #endif // !NOTHREADS
 
-    rv = conn_handler.create_worker_thread(get_config()->num_worker);
+    rv = conn_handler.create_worker_thread(config->num_worker);
     if (rv != 0) {
       return -1;
     }
@@ -494,7 +530,8 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
 #ifndef NOTHREADS
     rv = pthread_sigmask(SIG_UNBLOCK, &set, nullptr);
     if (rv != 0) {
-      LOG(ERROR) << "Unblocking SIGCHLD failed: " << strerror(rv);
+      LOG(ERROR) << "Unblocking SIGCHLD failed: "
+                 << xsi_strerror(rv, errbuf.data(), errbuf.size());
       return -1;
     }
 #endif // !NOTHREADS
@@ -511,7 +548,7 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
   ipcev.data = &conn_handler;
   ev_io_start(loop, &ipcev);
 
-  if (!upstreamconf.no_tls && !get_config()->tls.ocsp.disabled) {
+  if (ssl::upstream_tls_enabled() && !config->tls.ocsp.disabled) {
     conn_handler.proceed_next_cert_ocsp();
   }
 
@@ -524,10 +561,28 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
   conn_handler.cancel_ocsp_update();
 
 #ifdef HAVE_NEVERBLEED
-  if (nb && nb->daemon_pid != -1) {
-    kill(nb->daemon_pid, SIGTERM);
+  if (nb) {
+    assert(nb->daemon_pid > 0);
+
+    rv = kill(nb->daemon_pid, SIGTERM);
+    if (rv != 0) {
+      auto error = errno;
+      LOG(ERROR) << "Could not send signal to neverbleed daemon: errno="
+                 << error;
+    }
+
+    while ((rv = waitpid(nb->daemon_pid, nullptr, 0)) == -1 && errno == EINTR)
+      ;
+    if (rv == -1) {
+      auto error = errno;
+      LOG(ERROR) << "Error occurred while we were waiting for the completion "
+                    "of neverbleed process: errno="
+                 << error;
+    }
   }
 #endif // HAVE_NEVERBLEED
+
+  ares_library_cleanup();
 
   return 0;
 }

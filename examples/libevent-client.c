@@ -179,9 +179,9 @@ static void delete_http2_session_data(http2_session_data *session_data) {
 
 static void print_header(FILE *f, const uint8_t *name, size_t namelen,
                          const uint8_t *value, size_t valuelen) {
-  fwrite(name, namelen, 1, f);
+  fwrite(name, 1, namelen, f);
   fprintf(f, ": ");
-  fwrite(value, valuelen, 1, f);
+  fwrite(value, 1, valuelen, f);
   fprintf(f, "\n");
 }
 
@@ -272,7 +272,7 @@ static int on_data_chunk_recv_callback(nghttp2_session *session _U_,
                                        void *user_data) {
   http2_session_data *session_data = (http2_session_data *)user_data;
   if (session_data->stream_data->stream_id == stream_id) {
-    fwrite(data, len, 1, stdout);
+    fwrite(data, 1, len, stdout);
   }
   return 0;
 }
@@ -287,7 +287,7 @@ static int on_stream_close_callback(nghttp2_session *session, int32_t stream_id,
   int rv;
 
   if (session_data->stream_data->stream_id == stream_id) {
-    fprintf(stderr, "Stream %d closed with error_code=%d\n", stream_id,
+    fprintf(stderr, "Stream %d closed with error_code=%u\n", stream_id,
             error_code);
     rv = nghttp2_session_terminate_session(session, NGHTTP2_NO_ERROR);
     if (rv != 0) {
@@ -322,6 +322,11 @@ static SSL_CTX *create_ssl_ctx(void) {
                           SSL_OP_NO_COMPRESSION |
                           SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION);
   SSL_CTX_set_next_proto_select_cb(ssl_ctx, select_next_proto_cb, NULL);
+
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+  SSL_CTX_set_alpn_protos(ssl_ctx, (const unsigned char *)"\x02h2", 3);
+#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
+
   return ssl_ctx;
 }
 
@@ -378,13 +383,13 @@ static void send_client_connection_header(http2_session_data *session_data) {
 
 #define MAKE_NV(NAME, VALUE, VALUELEN)                                         \
   {                                                                            \
-    (uint8_t *) NAME, (uint8_t *)VALUE, sizeof(NAME) - 1, VALUELEN,            \
+    (uint8_t *)NAME, (uint8_t *)VALUE, sizeof(NAME) - 1, VALUELEN,             \
         NGHTTP2_NV_FLAG_NONE                                                   \
   }
 
 #define MAKE_NV2(NAME, VALUE)                                                  \
   {                                                                            \
-    (uint8_t *) NAME, (uint8_t *)VALUE, sizeof(NAME) - 1, sizeof(VALUE) - 1,   \
+    (uint8_t *)NAME, (uint8_t *)VALUE, sizeof(NAME) - 1, sizeof(VALUE) - 1,    \
         NGHTTP2_NV_FLAG_NONE                                                   \
   }
 
@@ -475,7 +480,27 @@ static void eventcb(struct bufferevent *bev, short events, void *ptr) {
   if (events & BEV_EVENT_CONNECTED) {
     int fd = bufferevent_getfd(bev);
     int val = 1;
+    const unsigned char *alpn = NULL;
+    unsigned int alpnlen = 0;
+    SSL *ssl;
+
     fprintf(stderr, "Connected\n");
+
+    ssl = bufferevent_openssl_get_ssl(session_data->bev);
+
+    SSL_get0_next_proto_negotiated(ssl, &alpn, &alpnlen);
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+    if (alpn == NULL) {
+      SSL_get0_alpn_selected(ssl, &alpn, &alpnlen);
+    }
+#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
+
+    if (alpn == NULL || alpnlen != 2 || memcmp("h2", alpn, 2) != 0) {
+      fprintf(stderr, "h2 is not negotiated\n");
+      delete_http2_session_data(session_data);
+      return;
+    }
+
     setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, (char *)&val, sizeof(val));
     initialize_nghttp2_session(session_data);
     send_client_connection_header(session_data);
@@ -569,9 +594,6 @@ int main(int argc, char **argv) {
   act.sa_handler = SIG_IGN;
   sigaction(SIGPIPE, &act, NULL);
 
-#ifndef OPENSSL_IS_BORINGSSL
-  OPENSSL_config(NULL);
-#endif /* OPENSSL_IS_BORINGSSL */
   SSL_load_error_strings();
   SSL_library_init();
 

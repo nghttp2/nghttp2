@@ -101,6 +101,10 @@ int main(int argc _U_, char *argv[] _U_) {
                    test_nghttp2_session_recv_settings_header_table_size) ||
       !CU_add_test(pSuite, "session_recv_too_large_frame_length",
                    test_nghttp2_session_recv_too_large_frame_length) ||
+      !CU_add_test(pSuite, "session_recv_extension",
+                   test_nghttp2_session_recv_extension) ||
+      !CU_add_test(pSuite, "session_recv_altsvc",
+                   test_nghttp2_session_recv_altsvc) ||
       !CU_add_test(pSuite, "session_continue", test_nghttp2_session_continue) ||
       !CU_add_test(pSuite, "session_add_frame",
                    test_nghttp2_session_add_frame) ||
@@ -130,6 +134,8 @@ int main(int argc _U_, char *argv[] _U_) {
                    test_nghttp2_session_on_data_received) ||
       !CU_add_test(pSuite, "session_on_data_received_fail_fast",
                    test_nghttp2_session_on_data_received_fail_fast) ||
+      !CU_add_test(pSuite, "session_on_altsvc_received",
+                   test_nghttp2_session_on_altsvc_received) ||
       !CU_add_test(pSuite, "session_send_headers_start_stream",
                    test_nghttp2_session_send_headers_start_stream) ||
       !CU_add_test(pSuite, "session_send_headers_reply",
@@ -177,6 +183,8 @@ int main(int argc _U_, char *argv[] _U_) {
       !CU_add_test(pSuite, "submit_headers", test_nghttp2_submit_headers) ||
       !CU_add_test(pSuite, "submit_headers_continuation",
                    test_nghttp2_submit_headers_continuation) ||
+      !CU_add_test(pSuite, "submit_headers_continuation_extra_large",
+                   test_nghttp2_submit_headers_continuation_extra_large) ||
       !CU_add_test(pSuite, "submit_priority", test_nghttp2_submit_priority) ||
       !CU_add_test(pSuite, "session_submit_settings",
                    test_nghttp2_submit_settings) ||
@@ -194,6 +202,8 @@ int main(int argc _U_, char *argv[] _U_) {
                    test_nghttp2_submit_shutdown_notice) ||
       !CU_add_test(pSuite, "submit_invalid_nv",
                    test_nghttp2_submit_invalid_nv) ||
+      !CU_add_test(pSuite, "submit_extension", test_nghttp2_submit_extension) ||
+      !CU_add_test(pSuite, "submit_altsvc", test_nghttp2_submit_altsvc) ||
       !CU_add_test(pSuite, "session_open_stream",
                    test_nghttp2_session_open_stream) ||
       !CU_add_test(pSuite, "session_open_stream_with_idle_stream_dep",
@@ -294,6 +304,14 @@ int main(int argc _U_, char *argv[] _U_) {
                    test_nghttp2_session_repeated_priority_change) ||
       !CU_add_test(pSuite, "session_repeated_priority_submission",
                    test_nghttp2_session_repeated_priority_submission) ||
+      !CU_add_test(pSuite, "session_set_local_window_size",
+                   test_nghttp2_session_set_local_window_size) ||
+      !CU_add_test(pSuite, "session_cancel_from_before_frame_send",
+                   test_nghttp2_session_cancel_from_before_frame_send) ||
+      !CU_add_test(pSuite, "session_removed_closed_stream",
+                   test_nghttp2_session_removed_closed_stream) ||
+      !CU_add_test(pSuite, "session_pause_data",
+                   test_nghttp2_session_pause_data) ||
       !CU_add_test(pSuite, "http_mandatory_headers",
                    test_nghttp2_http_mandatory_headers) ||
       !CU_add_test(pSuite, "http_content_length",
@@ -331,6 +349,8 @@ int main(int argc _U_, char *argv[] _U_) {
                    test_nghttp2_frame_pack_goaway) ||
       !CU_add_test(pSuite, "frame_pack_window_update",
                    test_nghttp2_frame_pack_window_update) ||
+      !CU_add_test(pSuite, "frame_pack_altsvc",
+                   test_nghttp2_frame_pack_altsvc) ||
       !CU_add_test(pSuite, "nv_array_copy", test_nghttp2_nv_array_copy) ||
       !CU_add_test(pSuite, "iv_check", test_nghttp2_iv_check) ||
       !CU_add_test(pSuite, "hd_deflate", test_nghttp2_hd_deflate) ||
@@ -365,6 +385,8 @@ int main(int argc _U_, char *argv[] _U_) {
       !CU_add_test(pSuite, "hd_no_index", test_nghttp2_hd_no_index) ||
       !CU_add_test(pSuite, "hd_deflate_bound", test_nghttp2_hd_deflate_bound) ||
       !CU_add_test(pSuite, "hd_public_api", test_nghttp2_hd_public_api) ||
+      !CU_add_test(pSuite, "hd_deflate_hd_vec",
+                   test_nghttp2_hd_deflate_hd_vec) ||
       !CU_add_test(pSuite, "hd_decode_length", test_nghttp2_hd_decode_length) ||
       !CU_add_test(pSuite, "hd_huff_encode", test_nghttp2_hd_huff_encode) ||
       !CU_add_test(pSuite, "adjust_local_window_size",

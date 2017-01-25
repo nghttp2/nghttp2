@@ -45,7 +45,7 @@ void acceptcb(struct ev_loop *loop, ev_io *w, int revent) {
 }
 } // namespace
 
-AcceptHandler::AcceptHandler(const FrontendAddr *faddr, ConnectionHandler *h)
+AcceptHandler::AcceptHandler(const UpstreamAddr *faddr, ConnectionHandler *h)
     : conn_hnr_(h), faddr_(faddr) {
   ev_io_init(&wev_, acceptcb, faddr_->fd, EV_READ);
   wev_.data = this;
@@ -58,51 +58,49 @@ AcceptHandler::~AcceptHandler() {
 }
 
 void AcceptHandler::accept_connection() {
-  for (;;) {
-    sockaddr_union sockaddr;
-    socklen_t addrlen = sizeof(sockaddr);
+  sockaddr_union sockaddr;
+  socklen_t addrlen = sizeof(sockaddr);
 
 #ifdef HAVE_ACCEPT4
-    auto cfd = accept4(faddr_->fd, &sockaddr.sa, &addrlen,
-                       SOCK_NONBLOCK | SOCK_CLOEXEC);
-#else // !HAVE_ACCEPT4
-    auto cfd = accept(faddr_->fd, &sockaddr.sa, &addrlen);
+  auto cfd =
+      accept4(faddr_->fd, &sockaddr.sa, &addrlen, SOCK_NONBLOCK | SOCK_CLOEXEC);
+#else  // !HAVE_ACCEPT4
+  auto cfd = accept(faddr_->fd, &sockaddr.sa, &addrlen);
 #endif // !HAVE_ACCEPT4
 
-    if (cfd == -1) {
-      switch (errno) {
-      case EINTR:
-      case ENETDOWN:
-      case EPROTO:
-      case ENOPROTOOPT:
-      case EHOSTDOWN:
+  if (cfd == -1) {
+    switch (errno) {
+    case EINTR:
+    case ENETDOWN:
+    case EPROTO:
+    case ENOPROTOOPT:
+    case EHOSTDOWN:
 #ifdef ENONET
-      case ENONET:
+    case ENONET:
 #endif // ENONET
-      case EHOSTUNREACH:
-      case EOPNOTSUPP:
-      case ENETUNREACH:
-        continue;
-      case EMFILE:
-      case ENFILE:
-        LOG(WARN) << "acceptor: running out file descriptor; disable acceptor "
-                     "temporarily";
-        conn_hnr_->sleep_acceptor(get_config()->conn.listener.timeout.sleep);
-        break;
-      }
-
-      break;
+    case EHOSTUNREACH:
+    case EOPNOTSUPP:
+    case ENETUNREACH:
+      return;
+    case EMFILE:
+    case ENFILE:
+      LOG(WARN) << "acceptor: running out file descriptor; disable acceptor "
+                   "temporarily";
+      conn_hnr_->sleep_acceptor(get_config()->conn.listener.timeout.sleep);
+      return;
+    default:
+      return;
     }
+  }
 
 #ifndef HAVE_ACCEPT4
-    util::make_socket_nonblocking(cfd);
-    util::make_socket_closeonexec(cfd);
+  util::make_socket_nonblocking(cfd);
+  util::make_socket_closeonexec(cfd);
 #endif // !HAVE_ACCEPT4
 
-    util::make_socket_nodelay(cfd);
+  util::make_socket_nodelay(cfd);
 
-    conn_hnr_->handle_connection(cfd, &sockaddr.sa, addrlen, faddr_);
-  }
+  conn_hnr_->handle_connection(cfd, &sockaddr.sa, addrlen, faddr_);
 }
 
 void AcceptHandler::enable() { ev_io_start(conn_hnr_->get_loop(), &wev_); }

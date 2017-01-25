@@ -25,6 +25,10 @@
 #ifndef NGHTTP2_HD_TEST_H
 #define NGHTTP2_HD_TEST_H
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif /* HAVE_CONFIG_H */
+
 void test_nghttp2_hd_deflate(void);
 void test_nghttp2_hd_deflate_same_indexed_repr(void);
 void test_nghttp2_hd_inflate_indexed(void);
@@ -43,6 +47,7 @@ void test_nghttp2_hd_deflate_inflate(void);
 void test_nghttp2_hd_no_index(void);
 void test_nghttp2_hd_deflate_bound(void);
 void test_nghttp2_hd_public_api(void);
+void test_nghttp2_hd_deflate_hd_vec(void);
 void test_nghttp2_hd_decode_length(void);
 void test_nghttp2_hd_huff_encode(void);
 

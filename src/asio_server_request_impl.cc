@@ -28,7 +28,7 @@ namespace nghttp2 {
 namespace asio_http2 {
 namespace server {
 
-request_impl::request_impl() : strm_(nullptr) {}
+request_impl::request_impl() : strm_(nullptr), header_buffer_size_(0) {}
 
 const header_map &request_impl::header() const { return header_; }
 
@@ -60,6 +60,12 @@ const boost::asio::ip::tcp::endpoint &request_impl::remote_endpoint() const {
 
 void request_impl::remote_endpoint(boost::asio::ip::tcp::endpoint ep) {
   remote_ep_ = std::move(ep);
+}
+
+size_t request_impl::header_buffer_size() const { return header_buffer_size_; }
+
+void request_impl::update_header_buffer_size(size_t len) {
+  header_buffer_size_ += len;
 }
 
 } // namespace server

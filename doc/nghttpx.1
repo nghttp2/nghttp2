@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTPX" "1" "January 25, 2016" "1.7.0" "nghttp2"
+.TH "NGHTTPX" "1" "Jan 25, 2017" "1.19.0" "nghttp2"
 .SH NAME
 nghttpx \- HTTP/2 proxy
 .
@@ -39,15 +39,15 @@ A reverse proxy for HTTP/2, HTTP/1 and SPDY.
 .INDENT 0.0
 .TP
 .B <PRIVATE_KEY>
-Set path  to server\(aqs private key.   Required unless \fI\%\-p\fP,
-\fI\%\-\-client\fP or \fI\%\-\-frontend\-no\-tls\fP are given.
+Set  path  to  server\(aqs private  key.   Required  unless
+"no\-tls" parameter is used in \fI\%\-\-frontend\fP option.
 .UNINDENT
 .INDENT 0.0
 .TP
 .B <CERT>
-Set path  to server\(aqs certificate.  Required  unless \fI\%\-p\fP,
-\fI\%\-\-client\fP or  \fI\%\-\-frontend\-no\-tls\fP are given.  To  make OCSP
-stapling work, this must be absolute path.
+Set  path  to  server\(aqs  certificate.   Required  unless
+"no\-tls"  parameter is  used in  \fI\%\-\-frontend\fP option.   To
+make OCSP stapling work, this must be an absolute path.
 .UNINDENT
 .SH OPTIONS
 .sp
@@ -55,38 +55,46 @@ The options are categorized into several groups.
 .SS Connections
 .INDENT 0.0
 .TP
-.B \-b, \-\-backend=(<HOST>,<PORT>|unix:<PATH>)[;<PATTERN>[:...]]
+.B \-b, \-\-backend=(<HOST>,<PORT>|unix:<PATH>)[;[<PATTERN>[:...]][[;<PARAM>]...]
 Set  backend  host  and   port.   The  multiple  backend
 addresses are  accepted by repeating this  option.  UNIX
 domain socket  can be  specified by prefixing  path name
 with "unix:" (e.g., unix:/var/run/backend.sock).
 .sp
 Optionally, if <PATTERN>s are given, the backend address
-is only used  if request matches the pattern.   If \fI\%\-s\fP or
-\fI\%\-p\fP  is  used,  <PATTERN>s   are  ignored.   The  pattern
-matching  is closely  designed to  ServeMux in  net/http
-package of Go  programming language.  <PATTERN> consists
-of path, host + path or  just host.  The path must start
-with "\fI/\fP".  If  it ends with "\fI/\fP", it  matches all request
-path in  its subtree.  To  deal with the request  to the
-directory without  trailing slash,  the path  which ends
-with "\fI/\fP" also matches the  request path which only lacks
-trailing \(aq\fI/\fP\(aq  (e.g., path  "\fI/foo/\fP" matches  request path
-"\fI/foo\fP").  If it does not end with "\fI/\fP", it performs exact
-match against  the request path.   If host is  given, it
-performs exact match against  the request host.  If host
-alone  is given,  "\fI/\fP"  is  appended to  it,  so that  it
-matches  all   request  paths  under  the   host  (e.g.,
-specifying "nghttp2.org" equals to "nghttp2.org/").
+is  only  used  if  request  matches  the  pattern.   If
+\fI\%\-\-http2\-proxy\fP  is  used,  <PATTERN>s are  ignored.   The
+pattern  matching is  closely  designed  to ServeMux  in
+net/http package of  Go programming language.  <PATTERN>
+consists of  path, host +  path or just host.   The path
+must start  with "\fI/\fP".  If  it ends with "\fI/\fP",  it matches
+all  request path  in  its subtree.   To  deal with  the
+request  to the  directory without  trailing slash,  the
+path which ends  with "\fI/\fP" also matches  the request path
+which  only  lacks  trailing  \(aq\fI/\fP\(aq  (e.g.,  path  "\fI/foo/\fP"
+matches request path  "\fI/foo\fP").  If it does  not end with
+"\fI/\fP", it  performs exact match against  the request path.
+If host  is given, it  performs exact match  against the
+request host.  If  host alone is given,  "\fI/\fP" is appended
+to it,  so that it  matches all request paths  under the
+host   (e.g.,   specifying   "nghttp2.org"   equals   to
+"nghttp2.org/").
 .sp
 Patterns with  host take  precedence over  patterns with
 just path.   Then, longer patterns take  precedence over
-shorter  ones,  breaking  a  tie by  the  order  of  the
-appearance in the configuration.
+shorter ones.
 .sp
-If <PATTERN> is  omitted, "\fI/\fP" is used  as pattern, which
-matches  all  request  paths (catch\-all  pattern).   The
-catch\-all backend must be given.
+Host  can  include "*"  in  the  left most  position  to
+indicate  wildcard match  (only suffix  match is  done).
+The "*" must match at least one character.  For example,
+host    pattern    "*.nghttp2.org"    matches    against
+"www.nghttp2.org"  and  "git.ngttp2.org", but  does  not
+match  against  "nghttp2.org".   The exact  hosts  match
+takes precedence over the wildcard hosts match.
+.sp
+If <PATTERN> is omitted or  empty string, "\fI/\fP" is used as
+pattern,  which  matches  all request  paths  (catch\-all
+pattern).  The catch\-all backend must be given.
 .sp
 When doing  a match, nghttpx made  some normalization to
 pattern, request host and path.  For host part, they are
@@ -109,6 +117,72 @@ and \fI\%\-b\fP\(aq127.0.0.1,8080;www.nghttp2.org\(aq.
 The backend addresses sharing same <PATTERN> are grouped
 together forming  load balancing  group.
 .sp
+Several parameters <PARAM> are accepted after <PATTERN>.
+The  parameters are  delimited  by  ";".  The  available
+parameters       are:      "proto=<PROTO>",       "tls",
+"sni=<SNI_HOST>",         "fall=<N>",        "rise=<N>",
+"affinity=<METHOD>", and "dns".   The parameter consists
+of keyword,  and optionally  followed by "="  and value.
+For example,  the parameter  "proto=h2" consists  of the
+keyword  "proto" and  value "h2".   The parameter  "tls"
+consists  of  the  keyword "tls"  without  value.   Each
+parameter is described as follows.
+.sp
+The backend application protocol  can be specified using
+optional  "proto"   parameter,  and   in  the   form  of
+"proto=<PROTO>".  <PROTO> should be one of the following
+list  without  quotes:  "h2", "http/1.1".   The  default
+value of <PROTO> is  "http/1.1".  Note that usually "h2"
+refers to HTTP/2  over TLS.  But in this  option, it may
+mean HTTP/2  over cleartext TCP unless  "tls" keyword is
+used (see below).
+.sp
+TLS  can   be  enabled  by  specifying   optional  "tls"
+parameter.  TLS is not enabled by default.
+.sp
+With "sni=<SNI_HOST>" parameter, it can override the TLS
+SNI  field  value  with  given  <SNI_HOST>.   This  will
+default to the backend <HOST> name
+.sp
+The  feature  to detect  whether  backend  is online  or
+offline can be enabled  using optional "fall" and "rise"
+parameters.   Using  "fall=<N>"  parameter,  if  nghttpx
+cannot connect  to a  this backend <N>  times in  a row,
+this  backend  is  assumed  to be  offline,  and  it  is
+excluded from load balancing.  If <N> is 0, this backend
+never  be excluded  from load  balancing whatever  times
+nghttpx cannot connect  to it, and this  is the default.
+There is  also "rise=<N>" parameter.  After  backend was
+excluded from load balancing group, nghttpx periodically
+attempts to make a connection to the failed backend, and
+if the  connection is made  successfully <N> times  in a
+row, the backend is assumed to  be online, and it is now
+eligible  for load  balancing target.   If <N>  is 0,  a
+backend  is permanently  offline, once  it goes  in that
+state, and this is the default behaviour.
+.sp
+The     session     affinity    is     enabled     using
+"affinity=<METHOD>"  parameter.   If  "ip" is  given  in
+<METHOD>, client  IP based session affinity  is enabled.
+If  "none" is  given  in <METHOD>,  session affinity  is
+disabled, and this is the default.  The session affinity
+is enabled per  <PATTERN>.  If at least  one backend has
+"affinity" parameter,  and its  <METHOD> is  not "none",
+session  affinity is  enabled  for  all backend  servers
+sharing  the  same  <PATTERN>.   It is  advised  to  set
+"affinity"  parameter  to   all  backend  explicitly  if
+session affinity  is desired.  The session  affinity may
+break if one of the backend gets unreachable, or backend
+settings are reloaded or replaced by API.
+.sp
+By default, name resolution of backend host name is done
+at  start  up,  or reloading  configuration.   If  "dns"
+parameter   is  given,   name  resolution   takes  place
+dynamically.  This is useful  if backend address changes
+frequently.   If  "dns"  is given,  name  resolution  of
+backend   host   name   at  start   up,   or   reloading
+configuration is skipped.
+.sp
 Since ";" and ":" are  used as delimiter, <PATTERN> must
 not  contain these  characters.  Since  ";" has  special
 meaning in shell, the option value must be quoted.
@@ -117,11 +191,36 @@ Default: \fB127.0.0.1,80\fP
 .UNINDENT
 .INDENT 0.0
 .TP
-.B \-f, \-\-frontend=(<HOST>,<PORT>|unix:<PATH>)
+.B \-f, \-\-frontend=(<HOST>,<PORT>|unix:<PATH>)[[;<PARAM>]...]
 Set  frontend  host and  port.   If  <HOST> is  \(aq*\(aq,  it
 assumes  all addresses  including  both  IPv4 and  IPv6.
 UNIX domain  socket can  be specified by  prefixing path
-name with "unix:" (e.g., unix:/var/run/nghttpx.sock)
+name  with  "unix:" (e.g.,  unix:/var/run/nghttpx.sock).
+This  option can  be used  multiple times  to listen  to
+multiple addresses.
+.sp
+This option  can take  0 or  more parameters,  which are
+described  below.   Note   that  "api"  and  "healthmon"
+parameters are mutually exclusive.
+.sp
+Optionally, TLS  can be disabled by  specifying "no\-tls"
+parameter.  TLS is enabled by default.
+.sp
+To  make this  frontend as  API endpoint,  specify "api"
+parameter.   This   is  disabled  by  default.    It  is
+important  to  limit the  access  to  the API  frontend.
+Otherwise, someone  may change  the backend  server, and
+break your services,  or expose confidential information
+to the outside the world.
+.sp
+To  make  this  frontend  as  health  monitor  endpoint,
+specify  "healthmon"  parameter.   This is  disabled  by
+default.  Any  requests which come through  this address
+are replied with 200 HTTP status, without no body.
+.sp
+To  accept   PROXY  protocol   version  1   on  frontend
+connection,  specify  "proxyproto" parameter.   This  is
+disabled by default.
 .sp
 Default: \fB*,3000\fP
 .UNINDENT
@@ -130,17 +229,17 @@ Default: \fB*,3000\fP
 .B \-\-backlog=<N>
 Set listen backlog size.
 .sp
-Default: \fB512\fP
+Default: \fB65536\fP
 .UNINDENT
 .INDENT 0.0
 .TP
-.B \-\-backend\-ipv4
-Resolve backend hostname to IPv4 address only.
-.UNINDENT
-.INDENT 0.0
-.TP
-.B \-\-backend\-ipv6
-Resolve backend hostname to IPv6 address only.
+.B \-\-backend\-address\-family=(auto|IPv4|IPv6)
+Specify  address  family  of  backend  connections.   If
+"auto" is given, both IPv4  and IPv6 are considered.  If
+"IPv4" is  given, only  IPv4 address is  considered.  If
+"IPv6" is given, only IPv6 address is considered.
+.sp
+Default: \fBauto\fP
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -157,11 +256,6 @@ handshake with  the downstream through the  tunnel.  The
 timeouts when connecting and  making CONNECT request can
 be     specified    by     \fI\%\-\-backend\-read\-timeout\fP    and
 \fI\%\-\-backend\-write\-timeout\fP options.
-.UNINDENT
-.INDENT 0.0
-.TP
-.B \-\-accept\-proxy\-protocol
-Accept PROXY protocol version 1 on frontend connection.
 .UNINDENT
 .SS Performance
 .INDENT 0.0
@@ -251,37 +345,27 @@ Default: \fB0\fP
 .UNINDENT
 .INDENT 0.0
 .TP
-.B \-\-backend\-http2\-connections\-per\-worker=<N>
-Set   maximum   number   of  backend   HTTP/2   physical
-connections  per  worker.   If  pattern is  used  in  \fI\%\-b\fP
-option, this limit is applied  to each pattern group (in
-other  words, each  pattern group  can have  maximum <N>
-HTTP/2  connections).  The  default  value  is 0,  which
-means  that  the value  is  adjusted  to the  number  of
-backend addresses.  If pattern  is used, this adjustment
-is done for each pattern group.
-.UNINDENT
-.INDENT 0.0
-.TP
-.B \-\-backend\-http1\-connections\-per\-host=<N>
-Set   maximum  number   of  backend   concurrent  HTTP/1
-connections per origin host.   This option is meaningful
-when \fI\%\-s\fP option  is used.  The origin  host is determined
-by  authority  portion  of request  URI  (or  :authority
-header  field  for  HTTP/2).   To limit  the  number  of
-connections   per  frontend   for   default  mode,   use
-\fI\%\-\-backend\-http1\-connections\-per\-frontend\fP\&.
+.B \-\-backend\-connections\-per\-host=<N>
+Set  maximum number  of  backend concurrent  connections
+(and/or  streams in  case  of HTTP/2)  per origin  host.
+This option  is meaningful when \fI\%\-\-http2\-proxy\fP  option is
+used.   The  origin  host  is  determined  by  authority
+portion of  request URI (or :authority  header field for
+HTTP/2).   To  limit  the   number  of  connections  per
+frontend        for       default        mode,       use
+\fI\%\-\-backend\-connections\-per\-frontend\fP\&.
 .sp
 Default: \fB8\fP
 .UNINDENT
 .INDENT 0.0
 .TP
-.B \-\-backend\-http1\-connections\-per\-frontend=<N>
-Set   maximum  number   of  backend   concurrent  HTTP/1
-connections per frontend.  This  option is only used for
-default mode.   0 means unlimited.  To  limit the number
-of connections  per host for  HTTP/2 or SPDY  proxy mode
-(\-s option), use \fI\%\-\-backend\-http1\-connections\-per\-host\fP\&.
+.B \-\-backend\-connections\-per\-frontend=<N>
+Set  maximum number  of  backend concurrent  connections
+(and/or streams  in case of HTTP/2)  per frontend.  This
+option  is   only  used  for  default   mode.   0  means
+unlimited.  To limit the  number of connections per host
+with          \fI\%\-\-http2\-proxy\fP         option,          use
+\fI\%\-\-backend\-connections\-per\-host\fP\&.
 .sp
 Default: \fB0\fP
 .UNINDENT
@@ -317,6 +401,13 @@ value is 0 then fast open is disabled.
 .sp
 Default: \fB0\fP
 .UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-no\-kqueue
+Don\(aqt use  kqueue.  This  option is only  applicable for
+the platforms  which have kqueue.  For  other platforms,
+this option will be simply ignored.
+.UNINDENT
 .SS Timeout
 .INDENT 0.0
 .TP
@@ -339,6 +430,14 @@ Default: \fB1m\fP
 Specify write timeout for all frontend connections.
 .sp
 Default: \fB30s\fP
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-frontend\-keep\-alive\-timeout=<DURATION>
+Specify   keep\-alive   timeout   for   frontend   HTTP/1
+connection.
+.sp
+Default: \fB1m\fP
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -372,8 +471,17 @@ Default: \fB30s\fP
 .UNINDENT
 .INDENT 0.0
 .TP
+.B \-\-backend\-connect\-timeout=<DURATION>
+Specify  timeout before  establishing TCP  connection to
+backend.
+.sp
+Default: \fB30s\fP
+.UNINDENT
+.INDENT 0.0
+.TP
 .B \-\-backend\-keep\-alive\-timeout=<DURATION>
-Specify keep\-alive timeout for backend connection.
+Specify   keep\-alive   timeout    for   backend   HTTP/1
+connection.
 .sp
 Default: \fB2s\fP
 .UNINDENT
@@ -386,29 +494,78 @@ disables this feature.
 .sp
 Default: \fB30s\fP
 .UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-frontend\-http2\-setting\-timeout=<DURATION>
+Specify  timeout before  SETTINGS ACK  is received  from
+client.
+.sp
+Default: \fB10s\fP
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-backend\-http2\-settings\-timeout=<DURATION>
+Specify  timeout before  SETTINGS ACK  is received  from
+backend server.
+.sp
+Default: \fB10s\fP
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-backend\-max\-backoff=<DURATION>
+Specify  maximum backoff  interval.  This  is used  when
+doing health  check against offline backend  (see "fail"
+parameter  in \fI\%\-\-backend\fP  option).   It is  also used  to
+limit  the  maximum   interval  to  temporarily  disable
+backend  when nghttpx  failed to  connect to  it.  These
+intervals are calculated  using exponential backoff, and
+consecutive failed attempts increase the interval.  This
+option caps its maximum value.
+.sp
+Default: \fB2m\fP
+.UNINDENT
 .SS SSL/TLS
 .INDENT 0.0
 .TP
 .B \-\-ciphers=<SUITE>
-Set allowed  cipher list.  The  format of the  string is
-described in OpenSSL ciphers(1).
+Set allowed  cipher list  for frontend  connection.  The
+format of the string is described in OpenSSL ciphers(1).
+.sp
+Default: \fBECDHE\-ECDSA\-CHACHA20\-POLY1305:ECDHE\-RSA\-CHACHA20\-POLY1305:ECDHE\-ECDSA\-AES128\-GCM\-SHA256:ECDHE\-RSA\-AES128\-GCM\-SHA256:ECDHE\-ECDSA\-AES256\-GCM\-SHA384:ECDHE\-RSA\-AES256\-GCM\-SHA384:DHE\-RSA\-AES128\-GCM\-SHA256:DHE\-RSA\-AES256\-GCM\-SHA384:ECDHE\-ECDSA\-AES128\-SHA256:ECDHE\-RSA\-AES128\-SHA256:ECDHE\-ECDSA\-AES128\-SHA:ECDHE\-RSA\-AES256\-SHA384:ECDHE\-RSA\-AES128\-SHA:ECDHE\-ECDSA\-AES256\-SHA384:ECDHE\-ECDSA\-AES256\-SHA:ECDHE\-RSA\-AES256\-SHA:DHE\-RSA\-AES128\-SHA256:DHE\-RSA\-AES128\-SHA:DHE\-RSA\-AES256\-SHA256:DHE\-RSA\-AES256\-SHA:ECDHE\-ECDSA\-DES\-CBC3\-SHA:ECDHE\-RSA\-DES\-CBC3\-SHA:EDH\-RSA\-DES\-CBC3\-SHA:AES128\-GCM\-SHA256:AES256\-GCM\-SHA384:AES128\-SHA256:AES256\-SHA256:AES128\-SHA:AES256\-SHA:DES\-CBC3\-SHA:!DSS\fP
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-client\-ciphers=<SUITE>
+Set  allowed cipher  list for  backend connection.   The
+format of the string is described in OpenSSL ciphers(1).
+.sp
+Default: \fBECDHE\-ECDSA\-CHACHA20\-POLY1305:ECDHE\-RSA\-CHACHA20\-POLY1305:ECDHE\-ECDSA\-AES128\-GCM\-SHA256:ECDHE\-RSA\-AES128\-GCM\-SHA256:ECDHE\-ECDSA\-AES256\-GCM\-SHA384:ECDHE\-RSA\-AES256\-GCM\-SHA384:DHE\-RSA\-AES128\-GCM\-SHA256:DHE\-RSA\-AES256\-GCM\-SHA384:ECDHE\-ECDSA\-AES128\-SHA256:ECDHE\-RSA\-AES128\-SHA256:ECDHE\-ECDSA\-AES128\-SHA:ECDHE\-RSA\-AES256\-SHA384:ECDHE\-RSA\-AES128\-SHA:ECDHE\-ECDSA\-AES256\-SHA384:ECDHE\-ECDSA\-AES256\-SHA:ECDHE\-RSA\-AES256\-SHA:DHE\-RSA\-AES128\-SHA256:DHE\-RSA\-AES128\-SHA:DHE\-RSA\-AES256\-SHA256:DHE\-RSA\-AES256\-SHA:ECDHE\-ECDSA\-DES\-CBC3\-SHA:ECDHE\-RSA\-DES\-CBC3\-SHA:EDH\-RSA\-DES\-CBC3\-SHA:AES128\-GCM\-SHA256:AES256\-GCM\-SHA384:AES128\-SHA256:AES256\-SHA256:AES128\-SHA:AES256\-SHA:DES\-CBC3\-SHA:!DSS\fP
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-ecdh\-curves=<LIST>
+Set  supported  curve  list  for  frontend  connections.
+<LIST> is a  colon separated list of curve  NID or names
+in the preference order.  The supported curves depend on
+the  linked  OpenSSL  library.  This  function  requires
+OpenSSL >= 1.0.2.
+.sp
+Default: \fBX25519:P\-256:P\-384:P\-521\fP
 .UNINDENT
 .INDENT 0.0
 .TP
 .B \-k, \-\-insecure
-Don\(aqt  verify   backend  server\(aqs  certificate   if  \fI\%\-p\fP,
-\fI\%\-\-client\fP    or    \fI\%\-\-http2\-bridge\fP     are    given    and
-\fI\%\-\-backend\-no\-tls\fP is not given.
+Don\(aqt  verify backend  server\(aqs  certificate  if TLS  is
+enabled for backend connections.
 .UNINDENT
 .INDENT 0.0
 .TP
 .B \-\-cacert=<PATH>
-Set path to trusted CA  certificate file if \fI\%\-p\fP, \fI\%\-\-client\fP
-or \fI\%\-\-http2\-bridge\fP are given  and \fI\%\-\-backend\-no\-tls\fP is not
-given.  The file must be  in PEM format.  It can contain
-multiple  certificates.    If  the  linked   OpenSSL  is
-configured to  load system  wide certificates,  they are
-loaded at startup regardless of this option.
+Set path to trusted CA  certificate file used in backend
+TLS connections.   The file must  be in PEM  format.  It
+can  contain  multiple   certificates.   If  the  linked
+OpenSSL is configured to  load system wide certificates,
+they are loaded at startup regardless of this option.
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -419,18 +576,21 @@ password protected it\(aqll be requested interactively.
 .UNINDENT
 .INDENT 0.0
 .TP
-.B \-\-subcert=<KEYPATH>:<CERTPATH>
+.B \-\-subcert=<KEYPATH>:<CERTPATH>[[;<PARAM>]...]
 Specify  additional certificate  and  private key  file.
 nghttpx will  choose certificates based on  the hostname
 indicated  by  client  using TLS  SNI  extension.   This
 option  can  be  used  multiple  times.   To  make  OCSP
 stapling work, <CERTPATH> must be absolute path.
-.UNINDENT
-.INDENT 0.0
-.TP
-.B \-\-backend\-tls\-sni\-field=<HOST>
-Explicitly  set the  content of  the TLS  SNI extension.
-This will default to the backend HOST name.
+.sp
+Additional parameter  can be specified in  <PARAM>.  The
+available <PARAM> is "sct\-dir=<DIR>".
+.sp
+"sct\-dir=<DIR>"  specifies the  path to  directory which
+contains        *.sct        files        for        TLS
+signed_certificate_timestamp extension (RFC 6962).  This
+feature   requires   OpenSSL   >=   1.0.2.    See   also
+\fI\%\-\-tls\-sct\-dir\fP option.
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -517,17 +677,30 @@ required.
 .UNINDENT
 .INDENT 0.0
 .TP
-.B \-\-tls\-ticket\-key\-memcached=<HOST>,<PORT>
-Specify  address of  memcached server  to store  session
-cache.   This  enables  shared TLS  ticket  key  between
-multiple nghttpx  instances.  nghttpx  does not  set TLS
-ticket  key  to  memcached.   The  external  ticket  key
-generator  is required.   nghttpx just  gets TLS  ticket
-keys from  memcached, and  use them,  possibly replacing
-current set of keys.  It is  up to extern TLS ticket key
-generator to  rotate keys frequently.  See  "TLS SESSION
-TICKET RESUMPTION"  section in  manual page to  know the
-data format in memcached entry.
+.B \-\-tls\-ticket\-key\-memcached=<HOST>,<PORT>[;tls]
+Specify address  of memcached  server to get  TLS ticket
+keys for  session resumption.   This enables  shared TLS
+ticket key between  multiple nghttpx instances.  nghttpx
+does not set TLS ticket  key to memcached.  The external
+ticket key generator is required.  nghttpx just gets TLS
+ticket  keys  from  memcached, and  use  them,  possibly
+replacing current set  of keys.  It is up  to extern TLS
+ticket  key generator  to rotate  keys frequently.   See
+"TLS SESSION  TICKET RESUMPTION" section in  manual page
+to know the data format in memcached entry.  Optionally,
+memcached  connection  can  be  encrypted  with  TLS  by
+specifying "tls" parameter.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-tls\-ticket\-key\-memcached\-address\-family=(auto|IPv4|IPv6)
+Specify address  family of memcached connections  to get
+TLS ticket keys.  If "auto" is given, both IPv4 and IPv6
+are considered.   If "IPv4" is given,  only IPv4 address
+is considered.  If "IPv6" is given, only IPv6 address is
+considered.
+.sp
+Default: \fBauto\fP
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -565,6 +738,18 @@ aes\-128\-cbc is used.
 .UNINDENT
 .INDENT 0.0
 .TP
+.B \-\-tls\-ticket\-key\-memcached\-cert\-file=<PATH>
+Path to client certificate  for memcached connections to
+get TLS ticket keys.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-tls\-ticket\-key\-memcached\-private\-key\-file=<PATH>
+Path to client private  key for memcached connections to
+get TLS ticket keys.
+.UNINDENT
+.INDENT 0.0
+.TP
 .B \-\-fetch\-ocsp\-response\-file=<PATH>
 Path to  fetch\-ocsp\-response script file.  It  should be
 absolute path.
@@ -585,10 +770,35 @@ Disable OCSP stapling.
 .UNINDENT
 .INDENT 0.0
 .TP
-.B \-\-tls\-session\-cache\-memcached=<HOST>,<PORT>
+.B \-\-tls\-session\-cache\-memcached=<HOST>,<PORT>[;tls]
 Specify  address of  memcached server  to store  session
 cache.   This  enables   shared  session  cache  between
-multiple nghttpx instances.
+multiple   nghttpx  instances.    Optionally,  memcached
+connection can be encrypted with TLS by specifying "tls"
+parameter.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-tls\-session\-cache\-memcached\-address\-family=(auto|IPv4|IPv6)
+Specify address family of memcached connections to store
+session cache.  If  "auto" is given, both  IPv4 and IPv6
+are considered.   If "IPv4" is given,  only IPv4 address
+is considered.  If "IPv6" is given, only IPv6 address is
+considered.
+.sp
+Default: \fBauto\fP
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-tls\-session\-cache\-memcached\-cert\-file=<PATH>
+Path to client certificate  for memcached connections to
+store session cache.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-tls\-session\-cache\-memcached\-private\-key\-file=<PATH>
+Path to client private  key for memcached connections to
+store session cache.
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -616,58 +826,118 @@ TLS HTTP/2 backends.
 .sp
 Default: \fB1s\fP
 .UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-no\-http2\-cipher\-black\-list
+Allow  black  listed  cipher suite  on  frontend  HTTP/2
+connection.                                          See
+\fI\%https://tools.ietf.org/html/rfc7540#appendix\-A\fP  for  the
+complete HTTP/2 cipher suites black list.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-client\-no\-http2\-cipher\-black\-list
+Allow  black  listed  cipher  suite  on  backend  HTTP/2
+connection.                                          See
+\fI\%https://tools.ietf.org/html/rfc7540#appendix\-A\fP  for  the
+complete HTTP/2 cipher suites black list.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-tls\-sct\-dir=<DIR>
+Specifies the  directory where  *.sct files  exist.  All
+*.sct   files   in  <DIR>   are   read,   and  sent   as
+extension_data of  TLS signed_certificate_timestamp (RFC
+6962)  to  client.   These   *.sct  files  are  for  the
+certificate   specified   in   positional   command\-line
+argument <CERT>, or  certificate option in configuration
+file.   For   additional  certificates,   use  \fI\%\-\-subcert\fP
+option.  This option requires OpenSSL >= 1.0.2.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-psk\-secrets=<PATH>
+Read list of PSK identity and secrets from <PATH>.  This
+is used for frontend connection.  The each line of input
+file  is  formatted  as  <identity>:<hex\-secret>,  where
+<identity> is  PSK identity, and <hex\-secret>  is secret
+in hex.  An  empty line, and line which  starts with \(aq#\(aq
+are skipped.  The default  enabled cipher list might not
+contain any PSK cipher suite.  In that case, desired PSK
+cipher suites  must be  enabled using  \fI\%\-\-ciphers\fP option.
+The  desired PSK  cipher suite  may be  black listed  by
+HTTP/2.   To  use  those   cipher  suites  with  HTTP/2,
+consider  to  use  \fI\%\-\-no\-http2\-cipher\-black\-list\fP  option.
+But be aware its implications.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-client\-psk\-secrets=<PATH>
+Read PSK identity and secrets from <PATH>.  This is used
+for backend connection.  The each  line of input file is
+formatted  as <identity>:<hex\-secret>,  where <identity>
+is PSK identity, and <hex\-secret>  is secret in hex.  An
+empty line, and line which  starts with \(aq#\(aq are skipped.
+The first identity and  secret pair encountered is used.
+The default  enabled cipher  list might not  contain any
+PSK  cipher suite.   In  that case,  desired PSK  cipher
+suites  must be  enabled using  \fI\%\-\-client\-ciphers\fP option.
+The  desired PSK  cipher suite  may be  black listed  by
+HTTP/2.   To  use  those   cipher  suites  with  HTTP/2,
+consider   to  use   \fI\%\-\-client\-no\-http2\-cipher\-black\-list\fP
+option.  But be aware its implications.
+.UNINDENT
 .SS HTTP/2 and SPDY
 .INDENT 0.0
 .TP
-.B \-c, \-\-http2\-max\-concurrent\-streams=<N>
+.B \-c, \-\-frontend\-http2\-max\-concurrent\-streams=<N>
 Set the maximum number of  the concurrent streams in one
-HTTP/2 and SPDY session.
+frontend HTTP/2 and SPDY session.
+.sp
+Default: \(ga\(ga 100\(ga\(ga
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-backend\-http2\-max\-concurrent\-streams=<N>
+Set the maximum number of  the concurrent streams in one
+backend  HTTP/2 session.   This sets  maximum number  of
+concurrent opened pushed streams.  The maximum number of
+concurrent requests are set by a remote server.
 .sp
 Default: \fB100\fP
 .UNINDENT
 .INDENT 0.0
 .TP
-.B \-\-frontend\-http2\-window\-bits=<N>
-Sets the  per\-stream initial window size  of HTTP/2 SPDY
-frontend connection.  For HTTP/2,  the size is 2**<N>\-1.
-For SPDY, the size is 2**<N>.
+.B \-\-frontend\-http2\-window\-size=<SIZE>
+Sets the  per\-stream initial  window size of  HTTP/2 and
+SPDY frontend connection.
 .sp
-Default: \fB16\fP
+Default: \fB65535\fP
 .UNINDENT
 .INDENT 0.0
 .TP
-.B \-\-frontend\-http2\-connection\-window\-bits=<N>
+.B \-\-frontend\-http2\-connection\-window\-size=<SIZE>
 Sets the  per\-connection window size of  HTTP/2 and SPDY
-frontend   connection.    For   HTTP/2,  the   size   is
-2**<N>\-1. For SPDY, the size is 2**<N>.
+frontend  connection.  For  SPDY  connection, the  value
+less than 64KiB is rounded up to 64KiB.
 .sp
-Default: \fB16\fP
+Default: \fB65535\fP
 .UNINDENT
 .INDENT 0.0
 .TP
-.B \-\-frontend\-no\-tls
-Disable SSL/TLS on frontend connections.
-.UNINDENT
-.INDENT 0.0
-.TP
-.B \-\-backend\-http2\-window\-bits=<N>
+.B \-\-backend\-http2\-window\-size=<SIZE>
 Sets  the   initial  window   size  of   HTTP/2  backend
-connection to 2**<N>\-1.
+connection.
 .sp
-Default: \fB16\fP
+Default: \fB65535\fP
 .UNINDENT
 .INDENT 0.0
 .TP
-.B \-\-backend\-http2\-connection\-window\-bits=<N>
+.B \-\-backend\-http2\-connection\-window\-size=<SIZE>
 Sets the  per\-connection window  size of  HTTP/2 backend
-connection to 2**<N>\-1.
+connection.
 .sp
-Default: \fB16\fP
-.UNINDENT
-.INDENT 0.0
-.TP
-.B \-\-backend\-no\-tls
-Disable SSL/TLS on backend connections.
+Default: \fB2147483647\fP
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -688,52 +958,91 @@ protocol security.
 Disable HTTP/2 server push.  Server push is supported by
 default mode and HTTP/2  frontend via Link header field.
 It is  also supported if  both frontend and  backend are
-HTTP/2 (which implies  \fI\%\-\-http2\-bridge\fP or \fI\%\-\-client\fP mode).
-In  this  case,  server  push from  backend  session  is
-relayed  to frontend,  and server  push via  Link header
-field is  also supported.   HTTP SPDY frontend  does not
-support server push.
+HTTP/2 in default mode.  In  this case, server push from
+backend session is relayed  to frontend, and server push
+via Link header field  is also supported.  SPDY frontend
+does not support server push.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-frontend\-http2\-optimize\-write\-buffer\-size
+(Experimental) Enable write  buffer size optimization in
+frontend HTTP/2 TLS  connection.  This optimization aims
+to reduce  write buffer  size so  that it  only contains
+bytes  which can  send immediately.   This makes  server
+more responsive to prioritized HTTP/2 stream because the
+buffering  of lower  priority stream  is reduced.   This
+option is only effective on recent Linux platform.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-frontend\-http2\-optimize\-window\-size
+(Experimental)   Automatically  tune   connection  level
+window size of frontend  HTTP/2 TLS connection.  If this
+feature is  enabled, connection window size  starts with
+the   default  window   size,   65535  bytes.    nghttpx
+automatically  adjusts connection  window size  based on
+TCP receiving  window size.  The maximum  window size is
+capped      by      the     value      specified      by
+\fI\%\-\-frontend\-http2\-connection\-window\-size\fP\&.     Since   the
+stream is subject to stream level window size, it should
+be adjusted using \fI\%\-\-frontend\-http2\-window\-size\fP option as
+well.   This option  is only  effective on  recent Linux
+platform.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-frontend\-http2\-encoder\-dynamic\-table\-size=<SIZE>
+Specify the maximum dynamic  table size of HPACK encoder
+in the frontend HTTP/2 connection.  The decoder (client)
+specifies  the maximum  dynamic table  size it  accepts.
+Then the negotiated dynamic table size is the minimum of
+this option value and the value which client specified.
+.sp
+Default: \fB4K\fP
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-frontend\-http2\-decoder\-dynamic\-table\-size=<SIZE>
+Specify the maximum dynamic  table size of HPACK decoder
+in the frontend HTTP/2 connection.
+.sp
+Default: \fB4K\fP
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-backend\-http2\-encoder\-dynamic\-table\-size=<SIZE>
+Specify the maximum dynamic  table size of HPACK encoder
+in the backend HTTP/2 connection.  The decoder (backend)
+specifies  the maximum  dynamic table  size it  accepts.
+Then the negotiated dynamic table size is the minimum of
+this option value and the value which backend specified.
+.sp
+Default: \fB4K\fP
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-backend\-http2\-decoder\-dynamic\-table\-size=<SIZE>
+Specify the maximum dynamic  table size of HPACK decoder
+in the backend HTTP/2 connection.
+.sp
+Default: \fB4K\fP
 .UNINDENT
 .SS Mode
 .INDENT 0.0
 .TP
 .B (default mode)
-Accept  HTTP/2,  SPDY  and HTTP/1.1  over  SSL/TLS.   If
-\fI\%\-\-frontend\-no\-tls\fP is  used, accept HTTP/2  and HTTP/1.1.
-The  incoming HTTP/1.1  connection  can  be upgraded  to
-HTTP/2  through  HTTP  Upgrade.   The  protocol  to  the
-backend is HTTP/1.1.
+Accept HTTP/2, SPDY and HTTP/1.1 over SSL/TLS.  "no\-tls"
+parameter is  used in  \fI\%\-\-frontend\fP option,  accept HTTP/2
+and HTTP/1.1 over cleartext  TCP.  The incoming HTTP/1.1
+connection  can  be  upgraded  to  HTTP/2  through  HTTP
+Upgrade.
 .UNINDENT
 .INDENT 0.0
 .TP
 .B \-s, \-\-http2\-proxy
-Like default mode, but enable secure proxy mode.
-.UNINDENT
-.INDENT 0.0
-.TP
-.B \-\-http2\-bridge
-Like default  mode, but communicate with  the backend in
-HTTP/2 over SSL/TLS.  Thus  the incoming all connections
-are converted  to HTTP/2  connection and relayed  to the
-backend.  See \fI\%\-\-backend\-http\-proxy\-uri\fP option if you are
-behind  the proxy  and want  to connect  to the  outside
-HTTP/2 proxy.
-.UNINDENT
-.INDENT 0.0
-.TP
-.B \-\-client
-Accept  HTTP/2   and  HTTP/1.1  without   SSL/TLS.   The
-incoming HTTP/1.1  connection can be upgraded  to HTTP/2
-connection through  HTTP Upgrade.   The protocol  to the
-backend is HTTP/2.   To use nghttpx as  a forward proxy,
-use \fI\%\-p\fP option instead.
-.UNINDENT
-.INDENT 0.0
-.TP
-.B \-p, \-\-client\-proxy
-Like \fI\%\-\-client\fP  option, but it also  requires the request
-path from frontend must be an absolute URI, suitable for
-use as a forward proxy.
+Like default mode, but enable forward proxy.  This is so
+called HTTP/2 proxy mode.
 .UNINDENT
 .SS Logging
 .INDENT 0.0
@@ -801,12 +1110,25 @@ $ssl_session_id: session ID for SSL/TLS connection.
 .IP \(bu 2
 $ssl_session_reused:  "r"   if  SSL/TLS   session  was
 reused.  Otherwise, "."
+.IP \(bu 2
+$backend_host:  backend  host   used  to  fulfill  the
+request.  "\-" if backend host is not available.
+.IP \(bu 2
+$backend_port:  backend  port   used  to  fulfill  the
+request.  "\-" if backend host is not available.
 .UNINDENT
 .sp
 The  variable  can  be  enclosed  by  "{"  and  "}"  for
 disambiguation (e.g., ${remote_addr}).
 .sp
 Default: \fB$remote_addr \- \- [$time_local] "$request" $status $body_bytes_sent "$http_referer" "$http_user_agent"\fP
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-accesslog\-write\-early
+Write  access  log  when   response  header  fields  are
+received   from  backend   rather   than  when   request
+transaction finishes.
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -868,11 +1190,12 @@ Specify the parameter value sent out with "by" parameter
 of Forwarded  header field.   If "obfuscated"  is given,
 the string is randomly generated at startup.  If "ip" is
 given,   the  interface   address  of   the  connection,
-including  port number,  is  sent  with "by"  parameter.
-User can also specify the static obfuscated string.  The
-limitation  is that  it must  start with  "_", and  only
-consists of  character set [A\-Za\-z0\-9._\-],  as described
-in RFC 7239.
+including port number, is  sent with "by" parameter.  In
+case of UNIX domain  socket, "localhost" is used instead
+of address and  port.  User can also  specify the static
+obfuscated string.  The limitation is that it must start
+with   "_",  and   only   consists   of  character   set
+[A\-Za\-z0\-9._\-], as described in RFC 7239.
 .sp
 Default: \fBobfuscated\fP
 .UNINDENT
@@ -884,7 +1207,8 @@ parameter of Forwarded header field.  If "obfuscated" is
 given, the string is  randomly generated for each client
 connection.  If "ip" is given, the remote client address
 of  the connection,  without port  number, is  sent with
-"for" parameter.
+"for"  parameter.   In  case   of  UNIX  domain  socket,
+"localhost" is used instead of address.
 .sp
 Default: \fBobfuscated\fP
 .UNINDENT
@@ -897,18 +1221,16 @@ is received, it is left unaltered.
 .INDENT 0.0
 .TP
 .B \-\-no\-location\-rewrite
-Don\(aqt rewrite  location header field  on \fI\%\-\-http2\-bridge\fP,
-\fI\%\-\-client\fP  and  default   mode.   For  \fI\%\-\-http2\-proxy\fP  and
-\fI\%\-\-client\-proxy\fP mode,  location header field will  not be
-altered regardless of this option.
+Don\(aqt  rewrite location  header field  in default  mode.
+When \fI\%\-\-http2\-proxy\fP  is used, location header  field will
+not be altered regardless of this option.
 .UNINDENT
 .INDENT 0.0
 .TP
 .B \-\-host\-rewrite
-Rewrite   host   and   :authority   header   fields   on
-\fI\%\-\-http2\-bridge\fP,   \fI\%\-\-client\fP   and  default   mode.    For
-\fI\%\-\-http2\-proxy\fP  and  \fI\%\-\-client\-proxy\fP mode,  these  headers
-will not be altered regardless of this option.
+Rewrite  host and  :authority header  fields in  default
+mode.  When  \fI\%\-\-http2\-proxy\fP is  used, these  headers will
+not be altered regardless of this option.
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -940,21 +1262,100 @@ Example: \fI\%\-\-add\-response\-header\fP="foo: bar"
 .UNINDENT
 .INDENT 0.0
 .TP
-.B \-\-header\-field\-buffer=<SIZE>
+.B \-\-request\-header\-field\-buffer=<SIZE>
 Set maximum buffer size for incoming HTTP request header
 field list.  This is the sum of header name and value in
-bytes.
+bytes.   If  trailer  fields  exist,  they  are  counted
+towards this number.
 .sp
 Default: \fB64K\fP
 .UNINDENT
 .INDENT 0.0
 .TP
-.B \-\-max\-header\-fields=<N>
+.B \-\-max\-request\-header\-fields=<N>
 Set  maximum  number  of incoming  HTTP  request  header
-fields, which  appear in one request  or response header
-field list.
+fields.   If  trailer  fields exist,  they  are  counted
+towards this number.
 .sp
 Default: \fB100\fP
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-response\-header\-field\-buffer=<SIZE>
+Set  maximum  buffer  size for  incoming  HTTP  response
+header field list.   This is the sum of  header name and
+value  in  bytes.  If  trailer  fields  exist, they  are
+counted towards this number.
+.sp
+Default: \fB64K\fP
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-max\-response\-header\-fields=<N>
+Set  maximum number  of  incoming  HTTP response  header
+fields.   If  trailer  fields exist,  they  are  counted
+towards this number.
+.sp
+Default: \fB500\fP
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-error\-page=(<CODE>|*)=<PATH>
+Set file path  to custom error page  served when nghttpx
+originally  generates  HTTP  error status  code  <CODE>.
+<CODE> must be greater than or equal to 400, and at most
+599.  If "*"  is used instead of <CODE>,  it matches all
+HTTP  status  code.  If  error  status  code comes  from
+backend server, the custom error pages are not used.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-server\-name=<NAME>
+Change server response header field value to <NAME>.
+.sp
+Default: \fBnghttpx nghttp2/1.19.0\fP
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-no\-server\-rewrite
+Don\(aqt rewrite server header field in default mode.  When
+\fI\%\-\-http2\-proxy\fP is used, these headers will not be altered
+regardless of this option.
+.UNINDENT
+.SS API
+.INDENT 0.0
+.TP
+.B \-\-api\-max\-request\-body=<SIZE>
+Set the maximum size of request body for API request.
+.sp
+Default: \fB16K\fP
+.UNINDENT
+.SS DNS
+.INDENT 0.0
+.TP
+.B \-\-dns\-cache\-timeout=<DURATION>
+Set duration that cached DNS results remain valid.  Note
+that nghttpx caches the unsuccessful results as well.
+.sp
+Default: \fB10s\fP
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-dns\-lookup\-timeout=<DURATION>
+Set timeout that  DNS server is given to  respond to the
+initial  DNS  query.  For  the  2nd  and later  queries,
+server is  given time based  on this timeout, and  it is
+scaled linearly.
+.sp
+Default: \fB5s\fP
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-dns\-max\-try=<N>
+Set the number of DNS query before nghttpx gives up name
+lookup.
+.sp
+Default: \fB2\fP
 .UNINDENT
 .SS Debug
 .INDENT 0.0
@@ -1094,6 +1495,35 @@ positional arguments in command\-line, use \fBprivate\-key\-file\fP and
 .sp
 \fI\%\-\-conf\fP option cannot be used in the configuration file and
 will be ignored if specified.
+.TP
+.B Error log
+Error log is written to stderr by default.  It can be configured
+using \fI\%\-\-errorlog\-file\fP\&.  The format of log message is as
+follows:
+.sp
+<datetime> <master\-pid> <current\-pid> <thread\-id> <level> (<filename>:<line>) <msg>
+.INDENT 7.0
+.TP
+.B <datetime>
+It is a conbination of date and time when the log is written.  It
+is in ISO 8601 format.
+.TP
+.B <master\-pid>
+It is a master process ID.
+.TP
+.B <current\-pid>
+It is a process ID which writes this log.
+.TP
+.B <thread\-id>
+It is a thread ID which writes this log.  It would be unique
+within <current\-pid>.
+.TP
+.B <filename> and <line>
+They are source file name, and line number which produce this log.
+.TP
+.B <msg>
+It is a log message body.
+.UNINDENT
 .UNINDENT
 .SH SIGNALS
 .INDENT 0.0
@@ -1103,6 +1533,9 @@ Shutdown gracefully.  First accept pending connections and stop
 accepting connection.  After all connections are handled, nghttpx
 exits.
 .TP
+.B SIGHUP
+Reload configuration file given in \fI\%\-\-conf\fP\&.
+.TP
 .B SIGUSR1
 Reopen log files.
 .TP
@@ -1110,7 +1543,11 @@ Reopen log files.
 Fork and execute nghttpx.  It will execute the binary in the same
 path with same command\-line arguments and environment variables.
 After new process comes up, sending SIGQUIT to the original process
-to perform hot swapping.
+to perform hot swapping.  The difference between SIGUSR2 + SIGQUIT
+and SIGHUP is that former is usually used to execute new binary, and
+the master process is newly spawned.  On the other hand, the latter
+just reloads configuration file, and the same master process
+continues to exist.
 .UNINDENT
 .sp
 \fBNOTE:\fP
@@ -1160,12 +1597,12 @@ associated stream\(aqs status code must be 200.
 This limitation may be loosened in the future release.
 .sp
 nghttpx also supports server push if both frontend and backend are
-HTTP/2 (which implies \fI\%\-\-http2\-bridge\fP or \fI\%\-\-client\fP).
-In this case, in addition to server push via Link header field, server
-push from backend is relayed to frontend HTTP/2 session.
+HTTP/2 in default mode.  In this case, in addition to server push via
+Link header field, server push from backend is forwarded to frontend
+HTTP/2 session.
 .sp
-HTTP/2 server push will be disabled if \fI\%\-\-http2\-proxy\fP or
-\fI\%\-\-client\-proxy\fP is used.
+HTTP/2 server push will be disabled if \fI\%\-\-http2\-proxy\fP is
+used.
 .SH UNIX DOMAIN SOCKET
 .sp
 nghttpx supports UNIX domain socket with a filename for both frontend
@@ -1203,6 +1640,10 @@ insert serialized session data to memcached with
 \fBnghttpx:tls\-session\-cache:\fP + lowercased hex string of session ID
 as a memcached entry key, with expiry time 12 hours.  Session timeout
 is set to 12 hours.
+.sp
+By default, connections to memcached server are not encrypted.  To
+enable encryption, use \fBtls\fP keyword in
+\fI\%\-\-tls\-session\-cache\-memcached\fP option.
 .SS TLS SESSION TICKET RESUMPTION
 .sp
 By default, session ticket is shared by all worker threads.  The
@@ -1247,10 +1688,27 @@ used, LEN must be 48.  If
 keys.  The key appeared first is used as encryption key.  All the
 remaining keys are used as decryption only.
 .sp
+By default, connections to memcached server are not encrypted.  To
+enable encryption, use \fBtls\fP keyword in
+\fI\%\-\-tls\-ticket\-key\-memcached\fP option.
+.sp
 If \fI\%\-\-tls\-ticket\-key\-file\fP is given, encryption key is read
 from the given file.  In this case, nghttpx does not rotate key
 automatically.  To rotate key, one has to restart nghttpx (see
 SIGNALS).
+.SH CERTIFICATE TRANSPARENCY
+.sp
+nghttpx supports TLS \fBsigned_certificate_timestamp\fP extension (\fI\%RFC
+6962\fP).  The relevant options
+are \fI\%\-\-tls\-sct\-dir\fP and \fBsct\-dir\fP parameter in
+\fI\%\-\-subcert\fP\&.  They takes a directory, and nghttpx reads all
+files whose extension is \fB\&.sct\fP under the directory.  The \fB*.sct\fP
+files are encoded as \fBSignedCertificateTimestamp\fP struct described
+in \fI\%section 3.2 of RFC 69662\fP\&.  This format is
+the same one used by \fI\%nginx\-ct\fP and \fI\%mod_ssl_ct\fP\&.
+\fI\%ct\-submit\fP can be
+used to submit certificates to log servers, and obtain the
+\fBSignedCertificateTimestamp\fP struct which can be used with nghttpx.
 .SH MRUBY SCRIPTING
 .sp
 \fBWARNING:\fP
@@ -1320,7 +1778,32 @@ Return the current phase.
 .INDENT 7.0
 .TP
 .B attribute [R] remote_addr
-Return IP address of a remote client.
+Return IP address of a remote client.  If connection is made
+via UNIX domain socket, this returns the string "localhost".
+.UNINDENT
+.INDENT 7.0
+.TP
+.B attribute [R] server_addr
+Return address of server that accepted the connection.  This
+is a string which specified in \fI\%\-\-frontend\fP option,
+excluding port number, and not a resolved IP address.  For
+UNIX domain socket, this is a path to UNIX domain socket.
+.UNINDENT
+.INDENT 7.0
+.TP
+.B attribute [R] server_port
+Return port number of the server frontend which accepted the
+connection from client.
+.UNINDENT
+.INDENT 7.0
+.TP
+.B attribute [R] tls_used
+Return true if TLS is used on the connection.
+.UNINDENT
+.INDENT 7.0
+.TP
+.B attribute [R] tls_sni
+Return the TLS SNI value which client sent in this connection.
 .UNINDENT
 .UNINDENT
 .INDENT 0.0
@@ -1363,7 +1846,13 @@ value is assigned.
 .B attribute [R/W] path
 Request path, including query component (i.e., /index.html).
 On assignment, copy of given value is assigned.  The path does
-not include authority component of URI.
+not include authority component of URI.  This may include
+query component.  nghttpx makes certain normalization for
+path.  It decodes percent\-encoding for unreserved characters
+(see \fI\%https://tools.ietf.org/html/rfc3986#section\-2.3\fP), and
+resolves ".." and ".".  But it may leave characters which
+should be percent\-encoded as is. So be careful when comparing
+path against desired string.
 .UNINDENT
 .INDENT 7.0
 .TP
@@ -1396,7 +1885,7 @@ Clear all existing request header fields.
 .UNINDENT
 .INDENT 7.0
 .TP
-.B push uri
+.B push(uri)
 Initiate to push resource identified by \fIuri\fP\&.  Only HTTP/2
 protocol supports this feature.  For the other protocols, this
 method is noop.  \fIuri\fP can be absolute URI, absolute path or
@@ -1526,9 +2015,64 @@ App.new
 .fi
 .UNINDENT
 .UNINDENT
+.SH API ENDPOINTS
+.sp
+nghttpx exposes API endpoints to manipulate it via HTTP based API.  By
+default, API endpoint is disabled.  To enable it, add a dedicated
+frontend for API using \fI\%\-\-frontend\fP option with "api"
+parameter.  All requests which come from this frontend address, will
+be treated as API request.
+.sp
+The response is normally JSON dictionary, and at least includes the
+following keys:
+.INDENT 0.0
+.TP
+.B status
+The status of the request processing.  The following values are
+defined:
+.INDENT 7.0
+.TP
+.B Success
+The request was successful.
+.TP
+.B Failure
+The request was failed.  No change has been made.
+.UNINDENT
+.TP
+.B code
+HTTP status code
+.UNINDENT
+.sp
+We wrote "normally", since nghttpx may return ordinal HTML response in
+some cases where the error has occurred before reaching API endpoint
+(e.g., header field is too large).
+.sp
+The following section describes available API endpoints.
+.SS PUT /api/v1beta1/backendconfig
+.sp
+This API replaces the current backend server settings with the
+requested ones.  The request method should be PUT, but POST is also
+acceptable.  The request body must be nghttpx configuration file
+format.  For configuration file format, see \fI\%FILES\fP section.  The
+line separator inside the request body must be single LF (0x0A).
+Currently, only \fI\%backend\fP option is parsed, the
+others are simply ignored.  The semantics of this API is replace the
+current backend with the backend options in request body.  Describe
+the desired set of backend severs, and nghttpx makes it happen.  If
+there is no \fI\%backend\fP option is found in request
+body, the current set of backend is replaced with the \fI\%backend\fP option\(aqs default value, which is \fB127.0.0.1,80\fP\&.
+.sp
+The replacement is done instantly without breaking existing
+connections or requests.  It also avoids any process creation as is
+the case with hot swapping with signals.
+.sp
+The one limitation is that only numeric IP address is allowd in
+\fI\%backend\fP in request body unless "dns" parameter
+is used while non numeric hostname is allowed in command\-line or
+configuration file is read using \fI\%\-\-conf\fP\&.
 .SH SEE ALSO
 .sp
-\fInghttp(1)\fP, \fInghttpd(1)\fP, \fIh2load(1)\fP
+\fBnghttp(1)\fP, \fBnghttpd(1)\fP, \fBh2load(1)\fP
 .SH AUTHOR
 Tatsuhiro Tsujikawa
 .SH COPYRIGHT

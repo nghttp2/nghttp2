@@ -70,6 +70,13 @@ OPTIONS
 
     Specify decoder header table size.
 
+.. option:: --encoder-header-table-size=<SIZE>
+
+    Specify encoder header table size.  The decoder (client)
+    specifies  the maximum  dynamic table  size it  accepts.
+    Then the negotiated dynamic table size is the minimum of
+    this option value and the value which client specified.
+
 .. option:: --color
 
     Force colored log output.
@@ -103,6 +110,15 @@ OPTIONS
 .. option:: -e, --error-gzip
 
     Make error response gzipped.
+
+.. option:: -w, --window-bits=<N>
+
+    Sets the stream level initial window size to 2\*\*<N>-1.
+
+.. option:: -W, --connection-window-bits=<N>
+
+    Sets  the  connection  level   initial  window  size  to
+    2\*\*<N>-1.
 
 .. option:: --dh-param-file=<PATH>
 

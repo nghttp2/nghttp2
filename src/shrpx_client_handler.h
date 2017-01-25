@@ -37,6 +37,7 @@
 #include "shrpx_connection.h"
 #include "buffer.h"
 #include "memchunk.h"
+#include "allocator.h"
 
 using namespace nghttp2;
 
@@ -49,11 +50,13 @@ class ConnectBlocker;
 class DownstreamConnectionPool;
 class Worker;
 struct WorkerStat;
+struct DownstreamAddrGroup;
+struct DownstreamAddr;
 
 class ClientHandler {
 public:
-  ClientHandler(Worker *worker, int fd, SSL *ssl, const char *ipaddr,
-                const char *port, int family, const FrontendAddr *faddr);
+  ClientHandler(Worker *worker, int fd, SSL *ssl, const StringRef &ipaddr,
+                const StringRef &port, int family, const UpstreamAddr *faddr);
   ~ClientHandler();
 
   int noop();
@@ -86,9 +89,9 @@ public:
   struct ev_loop *get_loop() const;
   void reset_upstream_read_timeout(ev_tstamp t);
   void reset_upstream_write_timeout(ev_tstamp t);
+
   int validate_next_proto();
-  const std::string &get_ipaddr() const;
-  const std::string &get_port() const;
+  const StringRef &get_ipaddr() const;
   bool get_should_close_after_write() const;
   void set_should_close_after_write(bool f);
   Upstream *get_upstream();
@@ -99,7 +102,6 @@ public:
   get_downstream_connection(Downstream *downstream);
   MemchunkPool *get_mcpool();
   SSL *get_ssl() const;
-  ConnectBlocker *get_connect_blocker() const;
   // Call this function when HTTP/2 connection header is received at
   // the start of the connection.
   void direct_http2_upgrade();
@@ -109,20 +111,16 @@ public:
   int perform_http2_upgrade(HttpsUpstream *http);
   bool get_http2_upgrade_allowed() const;
   // Returns upstream scheme, either "http" or "https"
-  std::string get_upstream_scheme() const;
+  StringRef get_upstream_scheme() const;
   void start_immediate_shutdown();
 
   // Writes upstream accesslog using |downstream|.  The |downstream|
   // must not be nullptr.
   void write_accesslog(Downstream *downstream);
 
-  // Writes upstream accesslog.  This function is used if
-  // corresponding Downstream object is not available.
-  void write_accesslog(int major, int minor, unsigned int status,
-                       int64_t body_bytes_sent);
   Worker *get_worker() const;
 
-  using ReadBuf = Buffer<8_k>;
+  using ReadBuf = DefaultMemchunkBuffer;
 
   ReadBuf *get_rb();
 
@@ -130,40 +128,72 @@ public:
   RateLimit *get_wlimit();
 
   void signal_write();
+  // Use this for HTTP/1 frontend since it produces better result.
+  void signal_write_no_wait();
   ev_io *get_wev();
 
   void setup_upstream_io_callback();
 
   // Returns string suitable for use in "by" parameter of Forwarded
   // header field.
-  StringRef get_forwarded_by();
+  StringRef get_forwarded_by() const;
   // Returns string suitable for use in "for" parameter of Forwarded
   // header field.
-  const std::string &get_forwarded_for() const;
+  StringRef get_forwarded_for() const;
+
+  Http2Session *
+  select_http2_session(const std::shared_ptr<DownstreamAddrGroup> &group);
+
+  Http2Session *select_http2_session_with_affinity(
+      const std::shared_ptr<DownstreamAddrGroup> &group, DownstreamAddr *addr);
+
+  const UpstreamAddr *get_upstream_addr() const;
+
+  void repeat_read_timer();
+  void stop_read_timer();
+
+  Connection *get_connection();
+
+  // Stores |sni| which is TLS SNI extension value client sent in this
+  // connection.
+  void set_tls_sni(const StringRef &sni);
+  // Returns TLS SNI extension value client sent in this connection.
+  StringRef get_tls_sni() const;
+
+  BlockAllocator &get_block_allocator();
 
 private:
+  // Allocator to allocate memory for connection-wide objects.  Make
+  // sure that the allocations must be bounded, and not proportional
+  // to the number of requests.
+  BlockAllocator balloc_;
+  DefaultMemchunkBuffer rb_;
   Connection conn_;
   ev_timer reneg_shutdown_timer_;
   std::unique_ptr<Upstream> upstream_;
-  std::unique_ptr<std::vector<ssize_t>> pinned_http2sessions_;
   // IP address of client.  If UNIX domain socket is used, this is
   // "localhost".
-  std::string ipaddr_;
-  std::string port_;
+  StringRef ipaddr_;
+  StringRef port_;
   // The ALPN identifier negotiated for this connection.
-  std::string alpn_;
+  StringRef alpn_;
   // The client address used in "for" parameter of Forwarded header
   // field.
-  std::string forwarded_for_;
+  StringRef forwarded_for_;
+  // lowercased TLS SNI which client sent.
+  StringRef sni_;
   std::function<int(ClientHandler &)> read_, write_;
   std::function<int(ClientHandler &)> on_read_, on_write_;
   // Address of frontend listening socket
-  const FrontendAddr *faddr_;
+  const UpstreamAddr *faddr_;
   Worker *worker_;
   // The number of bytes of HTTP/2 client connection header to read
   size_t left_connhd_len_;
+  // hash for session affinity using client IP
+  uint32_t affinity_hash_;
   bool should_close_after_write_;
-  ReadBuf rb_;
+  // true if affinity_hash_ is computed
+  bool affinity_hash_computed_;
 };
 
 } // namespace shrpx

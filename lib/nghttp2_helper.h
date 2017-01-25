@@ -90,6 +90,22 @@ int nghttp2_adjust_local_window_size(int32_t *local_window_size_ptr,
                                      int32_t *delta_ptr);
 
 /*
+ * This function works like nghttp2_adjust_local_window_size().  The
+ * difference is that this function assumes *delta_ptr >= 0, and
+ * *recv_window_size_ptr is not decreased by *delta_ptr.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * NGHTTP2_ERR_FLOW_CONTROL
+ *     local_window_size overflow or gets negative.
+ */
+int nghttp2_increase_local_window_size(int32_t *local_window_size_ptr,
+                                       int32_t *recv_window_size_ptr,
+                                       int32_t *recv_reduction_ptr,
+                                       int32_t *delta_ptr);
+
+/*
  * Returns non-zero if the function decided that WINDOW_UPDATE should
  * be sent.
  */

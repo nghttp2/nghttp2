@@ -27,13 +27,17 @@
 
 #include "shrpx.h"
 
+#include <random>
+
 #include <ev.h>
 
 namespace shrpx {
 
 class ConnectBlocker {
 public:
-  ConnectBlocker(struct ev_loop *loop);
+  ConnectBlocker(std::mt19937 &gen, struct ev_loop *loop,
+                 std::function<void()> block_func,
+                 std::function<void()> unblock_func);
   ~ConnectBlocker();
 
   // Returns true if making connection is not allowed.
@@ -41,14 +45,39 @@ public:
   // Call this function if connect operation succeeded.  This will
   // reset sleep_ to minimum value.
   void on_success();
-  // Call this function if connect operation failed.  This will start
-  // timer and blocks connection establishment for sleep_ seconds.
+  // Call this function if connect operations failed.  This will start
+  // timer and blocks connection establishment with exponential
+  // backoff.
   void on_failure();
 
+  size_t get_fail_count() const;
+
+  // Peer is now considered offline.  This effectively means that the
+  // connection is blocked until online() is called.
+  void offline();
+
+  // Peer is now considered online
+  void online();
+
+  // Returns true if peer is considered offline.
+  bool in_offline() const;
+
+  void call_block_func();
+  void call_unblock_func();
+
 private:
+  std::mt19937 &gen_;
+  // Called when blocking is started
+  std::function<void()> block_func_;
+  // Called when unblocked
+  std::function<void()> unblock_func_;
   ev_timer timer_;
   struct ev_loop *loop_;
-  ev_tstamp sleep_;
+  // The number of consecutive connection failure.  Reset to 0 on
+  // success.
+  size_t fail_count_;
+  // true if peer is considered offline.
+  bool offline_;
 };
 
 } // namespace

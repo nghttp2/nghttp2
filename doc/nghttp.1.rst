@@ -107,10 +107,13 @@ OPTIONS
 
 .. option:: -p, --weight=<WEIGHT>
 
-    Sets priority group weight.  The valid value range is
+    Sets  weight of  given  URI.  This  option  can be  used
+    multiple times, and  N-th :option:`-p` option sets  weight of N-th
+    URI in the command line.  If  the number of :option:`-p` option is
+    less than the number of URI, the last :option:`-p` option value is
+    repeated.  If there is no :option:`-p` option, default weight, 16,
+    is assumed.  The valid value range is
     [1, 256], inclusive.
-
-    Default: ``16``
 
 .. option:: -M, --peer-max-concurrent-streams=<N>
 
@@ -127,6 +130,13 @@ OPTIONS
     the last  value, that minimum  value is set  in SETTINGS
     frame  payload  before  the   last  value,  to  simulate
     multiple header table size change.
+
+.. option:: --encoder-header-table-size=<SIZE>
+
+    Specify encoder header table size.  The decoder (server)
+    specifies  the maximum  dynamic table  size it  accepts.
+    Then the negotiated dynamic table size is the minimum of
+    this option value and the value which server specified.
 
 .. option:: -b, --padding=<N>
 
@@ -169,6 +179,13 @@ OPTIONS
     The  number of  concurrent  pushed  streams this  client
     accepts.
 
+.. option:: --expect-continue
+
+    Perform an Expect/Continue handshake:  wait to send DATA
+    (up to  a short  timeout)  until the server sends  a 100
+    Continue interim response. This option is ignored unless
+    combined with the :option:`-d` option.
+
 .. option:: --version
 
     Display version information and exit.
@@ -201,7 +218,9 @@ implementation.
 
 When connection is established, nghttp sends 5 PRIORITY frames to idle
 streams 3, 5, 7, 9 and 11 to create "anchor" nodes in dependency
-tree::
+tree:
+
+.. code-block:: text
 
                       +-----+
                       |id=0 |

@@ -156,7 +156,7 @@ void test_template_string_ref(void) {
   CU_ASSERT(5 == from_lit.size());
 
   // from ImmutableString
-  ImmutableString im = "bravo";
+  auto im = ImmutableString::from_lit("bravo");
 
   StringRef imref(im);
 

@@ -92,6 +92,53 @@ mrb_value env_get_remote_addr(mrb_state *mrb, mrb_value self) {
 }
 } // namespace
 
+namespace {
+mrb_value env_get_server_port(mrb_state *mrb, mrb_value self) {
+  auto data = static_cast<MRubyAssocData *>(mrb->ud);
+  auto downstream = data->downstream;
+  auto upstream = downstream->get_upstream();
+  auto handler = upstream->get_client_handler();
+  auto faddr = handler->get_upstream_addr();
+
+  return mrb_fixnum_value(faddr->port);
+}
+} // namespace
+
+namespace {
+mrb_value env_get_server_addr(mrb_state *mrb, mrb_value self) {
+  auto data = static_cast<MRubyAssocData *>(mrb->ud);
+  auto downstream = data->downstream;
+  auto upstream = downstream->get_upstream();
+  auto handler = upstream->get_client_handler();
+  auto faddr = handler->get_upstream_addr();
+
+  return mrb_str_new(mrb, faddr->host.c_str(), faddr->host.size());
+}
+} // namespace
+
+namespace {
+mrb_value env_get_tls_used(mrb_state *mrb, mrb_value self) {
+  auto data = static_cast<MRubyAssocData *>(mrb->ud);
+  auto downstream = data->downstream;
+  auto upstream = downstream->get_upstream();
+  auto handler = upstream->get_client_handler();
+
+  return handler->get_ssl() ? mrb_true_value() : mrb_false_value();
+}
+} // namespace
+
+namespace {
+mrb_value env_get_tls_sni(mrb_state *mrb, mrb_value self) {
+  auto data = static_cast<MRubyAssocData *>(mrb->ud);
+  auto downstream = data->downstream;
+  auto upstream = downstream->get_upstream();
+  auto handler = upstream->get_client_handler();
+  auto sni = handler->get_tls_sni();
+
+  return mrb_str_new(mrb, sni.c_str(), sni.size());
+}
+} // namespace
+
 void init_env_class(mrb_state *mrb, RClass *module) {
   auto env_class =
       mrb_define_class_under(mrb, module, "Env", mrb->object_class);
@@ -102,6 +149,14 @@ void init_env_class(mrb_state *mrb, RClass *module) {
   mrb_define_method(mrb, env_class, "ctx", env_get_ctx, MRB_ARGS_NONE());
   mrb_define_method(mrb, env_class, "phase", env_get_phase, MRB_ARGS_NONE());
   mrb_define_method(mrb, env_class, "remote_addr", env_get_remote_addr,
+                    MRB_ARGS_NONE());
+  mrb_define_method(mrb, env_class, "server_addr", env_get_server_addr,
+                    MRB_ARGS_NONE());
+  mrb_define_method(mrb, env_class, "server_port", env_get_server_port,
+                    MRB_ARGS_NONE());
+  mrb_define_method(mrb, env_class, "tls_used", env_get_tls_used,
+                    MRB_ARGS_NONE());
+  mrb_define_method(mrb, env_class, "tls_sni", env_get_tls_sni,
                     MRB_ARGS_NONE());
 }
 

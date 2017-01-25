@@ -39,6 +39,7 @@ setup(
                                            '@top_srcdir@/lib/includes',
                                            '@top_builddir@/lib/includes'],
                              library_dirs=['@top_builddir@/lib/.libs',
+                                           '@top_builddir@/lib',
                                            '@top_builddir@'],
                              libraries=LIBS)],
     long_description='TBD'

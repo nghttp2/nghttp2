@@ -39,23 +39,27 @@ HtmlParser::HtmlParser(const std::string &base_uri)
 HtmlParser::~HtmlParser() { htmlFreeParserCtxt(parser_ctx_); }
 
 namespace {
-const char *get_attr(const xmlChar **attrs, const char *name) {
+StringRef get_attr(const xmlChar **attrs, const StringRef &name) {
   if (attrs == nullptr) {
-    return nullptr;
+    return StringRef{};
   }
   for (; *attrs; attrs += 2) {
-    if (util::strieq(reinterpret_cast<const char *>(attrs[0]), name)) {
-      return reinterpret_cast<const char *>(attrs[1]);
+    if (util::strieq(StringRef{attrs[0], strlen(reinterpret_cast<const char *>(
+                                             attrs[0]))},
+                     name)) {
+      return StringRef{attrs[1],
+                       strlen(reinterpret_cast<const char *>(attrs[1]))};
     }
   }
-  return nullptr;
+  return StringRef{};
 }
 } // namespace
 
 namespace {
-void add_link(ParserData *parser_data, const char *uri, ResourceType res_type) {
+void add_link(ParserData *parser_data, const StringRef &uri,
+              ResourceType res_type) {
   auto u = xmlBuildURI(
-      reinterpret_cast<const xmlChar *>(uri),
+      reinterpret_cast<const xmlChar *>(uri.c_str()),
       reinterpret_cast<const xmlChar *>(parser_data->base_uri.c_str()));
   if (u) {
     parser_data->links.push_back(
@@ -66,32 +70,34 @@ void add_link(ParserData *parser_data, const char *uri, ResourceType res_type) {
 } // namespace
 
 namespace {
-void start_element_func(void *user_data, const xmlChar *name,
+void start_element_func(void *user_data, const xmlChar *src_name,
                         const xmlChar **attrs) {
   auto parser_data = static_cast<ParserData *>(user_data);
-  if (util::strieq(reinterpret_cast<const char *>(name), "head")) {
+  auto name =
+      StringRef{src_name, strlen(reinterpret_cast<const char *>(src_name))};
+  if (util::strieq_l("head", name)) {
     ++parser_data->inside_head;
   }
-  if (util::strieq(reinterpret_cast<const char *>(name), "link")) {
-    auto rel_attr = get_attr(attrs, "rel");
-    auto href_attr = get_attr(attrs, "href");
-    if (!href_attr) {
+  if (util::strieq_l("link", name)) {
+    auto rel_attr = get_attr(attrs, StringRef::from_lit("rel"));
+    auto href_attr = get_attr(attrs, StringRef::from_lit("href"));
+    if (rel_attr.empty() || href_attr.empty()) {
       return;
     }
-    if (util::strieq(rel_attr, "shortcut icon")) {
+    if (util::strieq_l("shortcut icon", rel_attr)) {
       add_link(parser_data, href_attr, REQ_OTHERS);
-    } else if (util::strieq(rel_attr, "stylesheet")) {
+    } else if (util::strieq_l("stylesheet", rel_attr)) {
       add_link(parser_data, href_attr, REQ_CSS);
     }
-  } else if (util::strieq(reinterpret_cast<const char *>(name), "img")) {
-    auto src_attr = get_attr(attrs, "src");
-    if (!src_attr) {
+  } else if (util::strieq_l("img", name)) {
+    auto src_attr = get_attr(attrs, StringRef::from_lit("src"));
+    if (src_attr.empty()) {
       return;
     }
     add_link(parser_data, src_attr, REQ_IMG);
-  } else if (util::strieq(reinterpret_cast<const char *>(name), "script")) {
-    auto src_attr = get_attr(attrs, "src");
-    if (!src_attr) {
+  } else if (util::strieq_l("script", name)) {
+    auto src_attr = get_attr(attrs, StringRef::from_lit("src"));
+    if (src_attr.empty()) {
       return;
     }
     if (parser_data->inside_head) {
@@ -106,7 +112,9 @@ void start_element_func(void *user_data, const xmlChar *name,
 namespace {
 void end_element_func(void *user_data, const xmlChar *name) {
   auto parser_data = static_cast<ParserData *>(user_data);
-  if (util::strieq(reinterpret_cast<const char *>(name), "head")) {
+  if (util::strieq_l(
+          "head",
+          StringRef{name, strlen(reinterpret_cast<const char *>(name))})) {
     --parser_data->inside_head;
   }
 }

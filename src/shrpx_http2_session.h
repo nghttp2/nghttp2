@@ -48,26 +48,41 @@ namespace shrpx {
 
 class Http2DownstreamConnection;
 class Worker;
-class ConnectBlocker;
+struct DownstreamAddrGroup;
+struct DownstreamAddr;
+struct DNSQuery;
 
 struct StreamData {
   StreamData *dlnext, *dlprev;
   Http2DownstreamConnection *dconn;
 };
 
+enum FreelistZone {
+  // Http2Session object is not linked in any freelist.
+  FREELIST_ZONE_NONE,
+  // Http2Session object is linked in group scope
+  // http2_avail_freelist.
+  FREELIST_ZONE_AVAIL,
+  // Http2Session object is linked in address scope
+  // http2_extra_freelist.
+  FREELIST_ZONE_EXTRA,
+  // Http2Session object is about to be deleted, and it does not
+  // belong to any linked list.
+  FREELIST_ZONE_GONE
+};
+
 class Http2Session {
 public:
-  Http2Session(struct ev_loop *loop, SSL_CTX *ssl_ctx,
-               ConnectBlocker *connect_blocker, Worker *worker, size_t group,
-               size_t idx);
+  Http2Session(struct ev_loop *loop, SSL_CTX *ssl_ctx, Worker *worker,
+               const std::shared_ptr<DownstreamAddrGroup> &group,
+               DownstreamAddr *addr);
   ~Http2Session();
-
-  int check_cert();
 
   // If hard is true, all pending requests are abandoned and
   // associated ClientHandlers will be deleted.
   int disconnect(bool hard = false);
   int initiate_connection();
+  int resolve_name();
 
   void add_downstream_connection(Http2DownstreamConnection *dconn);
   void remove_downstream_connection(Http2DownstreamConnection *dconn);
@@ -83,8 +98,6 @@ public:
 
   nghttp2_session *get_session() const;
 
-  bool get_flow_control() const;
-
   int resume_data(Http2DownstreamConnection *dconn);
 
   int connection_made();
@@ -92,7 +105,7 @@ public:
   int do_read();
   int do_write();
 
-  int on_read();
+  int on_read(const uint8_t *data, size_t datalen);
   int on_write();
 
   int connected();
@@ -101,14 +114,19 @@ public:
   int tls_handshake();
   int read_tls();
   int write_tls();
+  // This is a special write function which just stop write event
+  // watcher.
+  int write_void();
 
-  int downstream_read_proxy();
+  int downstream_read_proxy(const uint8_t *data, size_t datalen);
   int downstream_connect_proxy();
 
-  int downstream_read();
+  int downstream_read(const uint8_t *data, size_t datalen);
   int downstream_write();
 
   int noop();
+  int read_noop(const uint8_t *data, size_t datalen);
+  int write_noop();
 
   void signal_write();
 
@@ -147,16 +165,51 @@ public:
 
   void submit_pending_requests();
 
-  size_t get_addr_idx() const;
+  DownstreamAddr *get_addr() const;
 
-  size_t get_group() const;
-
-  size_t get_index() const;
+  const std::shared_ptr<DownstreamAddrGroup> &get_downstream_addr_group() const;
 
   int handle_downstream_push_promise(Downstream *downstream,
                                      int32_t promised_stream_id);
   int handle_downstream_push_promise_complete(Downstream *downstream,
                                               Downstream *promised_downstream);
+
+  // Returns number of downstream connections, including pushed
+  // streams.
+  size_t get_num_dconns() const;
+
+  // Adds to group scope http2_avail_freelist.
+  void add_to_avail_freelist();
+  // Adds to address scope http2_extra_freelist.
+  void add_to_extra_freelist();
+
+  // Removes this object from any freelist.  If this object is not
+  // linked from any freelist, this function does nothing.
+  void remove_from_freelist();
+
+  // Removes this object form any freelist, and marks this object as
+  // not schedulable.
+  void exclude_from_scheduling();
+
+  // Returns true if the maximum concurrency is reached.  In other
+  // words, the number of currently participated streams in this
+  // session is equal or greater than the max concurrent streams limit
+  // advertised by server.  If |extra| is nonzero, it is added to the
+  // number of current concurrent streams when comparing against
+  // server initiated concurrency limit.
+  bool max_concurrency_reached(size_t extra = 0) const;
+
+  DefaultMemchunks *get_request_buf();
+
+  void on_timeout();
+
+  // This is called periodically using ev_prepare watcher, and if
+  // group_ is retired (backend has been replaced), send GOAWAY to
+  // shutdown the connection.
+  void check_retire();
+
+  // Returns address used to connect to backend.  Could be nullptr.
+  const Address *get_raddr() const;
 
   enum {
     // Disconnected
@@ -173,6 +226,8 @@ public:
     CONNECTED,
     // Connection is started to fail
     CONNECT_FAILING,
+    // Resolving host name
+    RESOLVING_NAME,
   };
 
   enum {
@@ -185,40 +240,45 @@ public:
   };
 
   using ReadBuf = Buffer<8_k>;
-  using WriteBuf = Buffer<32768>;
+
+  Http2Session *dlnext, *dlprev;
 
 private:
   Connection conn_;
+  DefaultMemchunks wb_;
   ev_timer settings_timer_;
   // This timer has 2 purpose: when it first timeout, set
   // connection_check_state_ = CONNECTION_CHECK_REQUIRED.  After
   // connection check has started, this timer is started again and
   // traps PING ACK timeout.
   ev_timer connchk_timer_;
+  // timer to initiate connection.  usually, this fires immediately.
+  ev_timer initiate_connection_timer_;
+  ev_prepare prep_;
   DList<Http2DownstreamConnection> dconns_;
   DList<StreamData> streams_;
   std::function<int(Http2Session &)> read_, write_;
-  std::function<int(Http2Session &)> on_read_, on_write_;
+  std::function<int(Http2Session &, const uint8_t *, size_t)> on_read_;
+  std::function<int(Http2Session &)> on_write_;
   // Used to parse the response from HTTP proxy
   std::unique_ptr<http_parser> proxy_htp_;
   Worker *worker_;
-  ConnectBlocker *connect_blocker_;
   // NULL if no TLS is configured
   SSL_CTX *ssl_ctx_;
+  std::shared_ptr<DownstreamAddrGroup> group_;
+  // Address of remote endpoint
+  DownstreamAddr *addr_;
   nghttp2_session *session_;
-  const uint8_t *data_pending_;
-  size_t data_pendinglen_;
-  // index of get_config()->downstream_addrs this object uses
-  size_t addr_idx_;
-  size_t group_;
-  // index inside group, this is used to pin frontend to certain
-  // HTTP/2 backend for better throughput.
-  size_t index_;
+  // Actual remote address used to contact backend.  This is initially
+  // nullptr, and may point to either &addr_->addr,
+  // resolved_addr_.get(), or HTTP proxy's address structure.
+  const Address *raddr_;
+  // Resolved IP address if dns parameter is used
+  std::unique_ptr<Address> resolved_addr_;
+  std::unique_ptr<DNSQuery> dns_query_;
   int state_;
   int connection_check_state_;
-  bool flow_control_;
-  WriteBuf wb_;
-  ReadBuf rb_;
+  int freelist_zone_;
 };
 
 nghttp2_session_callbacks *create_http2_downstream_callbacks();

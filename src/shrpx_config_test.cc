@@ -37,40 +37,45 @@
 namespace shrpx {
 
 void test_shrpx_config_parse_header(void) {
-  auto p = parse_header("a: b");
-  CU_ASSERT("a" == p.first);
-  CU_ASSERT("b" == p.second);
+  BlockAllocator balloc(4096, 4096);
 
-  p = parse_header("a:  b");
-  CU_ASSERT("a" == p.first);
-  CU_ASSERT("b" == p.second);
+  auto p = parse_header(balloc, StringRef::from_lit("a: b"));
+  CU_ASSERT("a" == p.name);
+  CU_ASSERT("b" == p.value);
 
-  p = parse_header(":a: b");
-  CU_ASSERT(p.first.empty());
+  p = parse_header(balloc, StringRef::from_lit("a:  b"));
+  CU_ASSERT("a" == p.name);
+  CU_ASSERT("b" == p.value);
 
-  p = parse_header("a: :b");
-  CU_ASSERT("a" == p.first);
-  CU_ASSERT(":b" == p.second);
+  p = parse_header(balloc, StringRef::from_lit(":a: b"));
+  CU_ASSERT(p.name.empty());
 
-  p = parse_header(": b");
-  CU_ASSERT(p.first.empty());
+  p = parse_header(balloc, StringRef::from_lit("a: :b"));
+  CU_ASSERT("a" == p.name);
+  CU_ASSERT(":b" == p.value);
 
-  p = parse_header("alpha: bravo charlie");
-  CU_ASSERT("alpha" == p.first);
-  CU_ASSERT("bravo charlie" == p.second);
+  p = parse_header(balloc, StringRef::from_lit(": b"));
+  CU_ASSERT(p.name.empty());
 
-  p = parse_header("a,: b");
-  CU_ASSERT(p.first.empty());
+  p = parse_header(balloc, StringRef::from_lit("alpha: bravo charlie"));
+  CU_ASSERT("alpha" == p.name);
+  CU_ASSERT("bravo charlie" == p.value);
 
-  p = parse_header("a: b\x0a");
-  CU_ASSERT(p.first.empty());
+  p = parse_header(balloc, StringRef::from_lit("a,: b"));
+  CU_ASSERT(p.name.empty());
+
+  p = parse_header(balloc, StringRef::from_lit("a: b\x0a"));
+  CU_ASSERT(p.name.empty());
 }
 
 void test_shrpx_config_parse_log_format(void) {
-  auto res =
-      parse_log_format(R"($remote_addr - $remote_user [$time_local] )"
-                       R"("$request" $status $body_bytes_sent )"
-                       R"("${http_referer}" $http_host "$http_user_agent")");
+  BlockAllocator balloc(4096, 4096);
+
+  auto res = parse_log_format(
+      balloc, StringRef::from_lit(
+                  R"($remote_addr - $remote_user [$time_local] )"
+                  R"("$request" $status $body_bytes_sent )"
+                  R"("${http_referer}" $http_host "$http_user_agent")"));
   CU_ASSERT(16 == res.size());
 
   CU_ASSERT(SHRPX_LOGF_REMOTE_ADDR == res[0].type);
@@ -115,35 +120,35 @@ void test_shrpx_config_parse_log_format(void) {
   CU_ASSERT(SHRPX_LOGF_LITERAL == res[15].type);
   CU_ASSERT("\"" == res[15].value);
 
-  res = parse_log_format("$");
+  res = parse_log_format(balloc, StringRef::from_lit("$"));
 
   CU_ASSERT(1 == res.size());
 
   CU_ASSERT(SHRPX_LOGF_LITERAL == res[0].type);
   CU_ASSERT("$" == res[0].value);
 
-  res = parse_log_format("${");
+  res = parse_log_format(balloc, StringRef::from_lit("${"));
 
   CU_ASSERT(1 == res.size());
 
   CU_ASSERT(SHRPX_LOGF_LITERAL == res[0].type);
   CU_ASSERT("${" == res[0].value);
 
-  res = parse_log_format("${a");
+  res = parse_log_format(balloc, StringRef::from_lit("${a"));
 
   CU_ASSERT(1 == res.size());
 
   CU_ASSERT(SHRPX_LOGF_LITERAL == res[0].type);
   CU_ASSERT("${a" == res[0].value);
 
-  res = parse_log_format("${a ");
+  res = parse_log_format(balloc, StringRef::from_lit("${a "));
 
   CU_ASSERT(1 == res.size());
 
   CU_ASSERT(SHRPX_LOGF_LITERAL == res[0].type);
   CU_ASSERT("${a " == res[0].value);
 
-  res = parse_log_format("$$remote_addr");
+  res = parse_log_format(balloc, StringRef::from_lit("$$remote_addr"));
 
   CU_ASSERT(2 == res.size());
 
@@ -168,8 +173,8 @@ void test_shrpx_config_read_tls_ticket_key_file(void) {
 
   close(fd1);
   close(fd2);
-  auto ticket_keys =
-      read_tls_ticket_key_file({file1, file2}, EVP_aes_128_cbc(), EVP_sha256());
+  auto ticket_keys = read_tls_ticket_key_file(
+      {StringRef{file1}, StringRef{file2}}, EVP_aes_128_cbc(), EVP_sha256());
   unlink(file1);
   unlink(file2);
   CU_ASSERT(ticket_keys.get() != nullptr);
@@ -211,8 +216,8 @@ void test_shrpx_config_read_tls_ticket_key_file_aes_256(void) {
 
   close(fd1);
   close(fd2);
-  auto ticket_keys =
-      read_tls_ticket_key_file({file1, file2}, EVP_aes_256_cbc(), EVP_sha256());
+  auto ticket_keys = read_tls_ticket_key_file(
+      {StringRef{file1}, StringRef{file2}}, EVP_aes_256_cbc(), EVP_sha256());
   unlink(file1);
   unlink(file2);
   CU_ASSERT(ticket_keys.get() != nullptr);
@@ -236,122 +241,6 @@ void test_shrpx_config_read_tls_ticket_key_file_aes_256(void) {
   CU_ASSERT(std::equal(std::begin(key->data.hmac_key),
                        std::end(key->data.hmac_key),
                        "a..............................b"));
-}
-
-void test_shrpx_config_match_downstream_addr_group(void) {
-  auto groups = std::vector<DownstreamAddrGroup>{
-      {"nghttp2.org/"},
-      {"nghttp2.org/alpha/bravo/"},
-      {"nghttp2.org/alpha/charlie"},
-      {"nghttp2.org/delta%3A"},
-      {"www.nghttp2.org/"},
-      {"[::1]/"},
-      {"nghttp2.org/alpha/bravo/delta"},
-      // Check that match is done in the single node
-      {"example.com/alpha/bravo"},
-      {"192.168.0.1/alpha/"},
-  };
-
-  Router router;
-
-  for (size_t i = 0; i < groups.size(); ++i) {
-    auto &g = groups[i];
-    router.add_route(g.pattern.get(), strlen(g.pattern.get()), i);
-  }
-
-  CU_ASSERT(0 == match_downstream_addr_group(router, "nghttp2.org", "/", groups,
-                                             255));
-
-  // port is removed
-  CU_ASSERT(0 == match_downstream_addr_group(router, "nghttp2.org:8080", "/",
-                                             groups, 255));
-
-  // host is case-insensitive
-  CU_ASSERT(4 == match_downstream_addr_group(router, "WWW.nghttp2.org",
-                                             "/alpha", groups, 255));
-
-  CU_ASSERT(1 == match_downstream_addr_group(router, "nghttp2.org",
-                                             "/alpha/bravo/", groups, 255));
-
-  // /alpha/bravo also matches /alpha/bravo/
-  CU_ASSERT(1 == match_downstream_addr_group(router, "nghttp2.org",
-                                             "/alpha/bravo", groups, 255));
-
-  // path part is case-sensitive
-  CU_ASSERT(0 == match_downstream_addr_group(router, "nghttp2.org",
-                                             "/Alpha/bravo", groups, 255));
-
-  CU_ASSERT(1 == match_downstream_addr_group(router, "nghttp2.org",
-                                             "/alpha/bravo/charlie", groups,
-                                             255));
-
-  CU_ASSERT(2 == match_downstream_addr_group(router, "nghttp2.org",
-                                             "/alpha/charlie", groups, 255));
-
-  // pattern which does not end with '/' must match its entirely.  So
-  // this matches to group 0, not group 2.
-  CU_ASSERT(0 == match_downstream_addr_group(router, "nghttp2.org",
-                                             "/alpha/charlie/", groups, 255));
-
-  CU_ASSERT(255 == match_downstream_addr_group(router, "example.org", "/",
-                                               groups, 255));
-
-  CU_ASSERT(255 == match_downstream_addr_group(router, "", "/", groups, 255));
-
-  CU_ASSERT(255 ==
-            match_downstream_addr_group(router, "", "alpha", groups, 255));
-
-  CU_ASSERT(255 ==
-            match_downstream_addr_group(router, "foo/bar", "/", groups, 255));
-
-  // If path is "*", only match with host + "/".
-  CU_ASSERT(0 == match_downstream_addr_group(router, "nghttp2.org", "*", groups,
-                                             255));
-
-  CU_ASSERT(5 ==
-            match_downstream_addr_group(router, "[::1]", "/", groups, 255));
-  CU_ASSERT(
-      5 == match_downstream_addr_group(router, "[::1]:8080", "/", groups, 255));
-  CU_ASSERT(255 ==
-            match_downstream_addr_group(router, "[::1", "/", groups, 255));
-  CU_ASSERT(255 ==
-            match_downstream_addr_group(router, "[::1]8000", "/", groups, 255));
-
-  // Check the case where adding route extends tree
-  CU_ASSERT(6 == match_downstream_addr_group(
-                     router, "nghttp2.org", "/alpha/bravo/delta", groups, 255));
-
-  CU_ASSERT(1 == match_downstream_addr_group(router, "nghttp2.org",
-                                             "/alpha/bravo/delta/", groups,
-                                             255));
-
-  // Check the case where query is done in a single node
-  CU_ASSERT(7 == match_downstream_addr_group(router, "example.com",
-                                             "/alpha/bravo", groups, 255));
-
-  CU_ASSERT(255 == match_downstream_addr_group(router, "example.com",
-                                               "/alpha/bravo/", groups, 255));
-
-  CU_ASSERT(255 == match_downstream_addr_group(router, "example.com", "/alpha",
-                                               groups, 255));
-
-  // Check the case where quey is done in a single node
-  CU_ASSERT(8 == match_downstream_addr_group(router, "192.168.0.1", "/alpha",
-                                             groups, 255));
-
-  CU_ASSERT(8 == match_downstream_addr_group(router, "192.168.0.1", "/alpha/",
-                                             groups, 255));
-
-  CU_ASSERT(8 == match_downstream_addr_group(router, "192.168.0.1",
-                                             "/alpha/bravo", groups, 255));
-
-  CU_ASSERT(255 == match_downstream_addr_group(router, "192.168.0.1", "/alph",
-                                               groups, 255));
-
-  CU_ASSERT(255 == match_downstream_addr_group(router, "192.168.0.1", "/",
-                                               groups, 255));
-
-  router.dump();
 }
 
 } // namespace shrpx

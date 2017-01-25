@@ -50,12 +50,14 @@
 #include <openssl/ssl.h>
 
 #include "http2.h"
-#include "buffer.h"
+#include "memchunk.h"
 #include "template.h"
 
 using namespace nghttp2;
 
 namespace h2load {
+
+constexpr auto BACKOFF_WRITE_BUFFER_THRES = 16_k;
 
 class Session;
 struct Worker;
@@ -94,6 +96,8 @@ struct Config {
     PROTO_SPDY3_1,
     PROTO_HTTP1_1
   } no_tls_proto;
+  uint32_t header_table_size;
+  uint32_t encoder_header_table_size;
   // file descriptor for upload data
   int data_fd;
   uint16_t port;
@@ -225,6 +229,7 @@ struct Sampling {
 };
 
 struct Worker {
+  MemchunkPool mcpool;
   Stats stats;
   Sampling request_times_smp;
   Sampling client_smp;
@@ -267,6 +272,7 @@ struct Stream {
 };
 
 struct Client {
+  DefaultMemchunks wb;
   std::unordered_map<int32_t, Stream> streams;
   ClientStat cstat;
   std::unique_ptr<Session> session;
@@ -286,6 +292,11 @@ struct Client {
   ClientState state;
   // The number of requests this client has to issue.
   size_t req_todo;
+  // The number of requests left to issue
+  size_t req_left;
+  // The number of requests currently have started, but not abandoned
+  // or finished.
+  size_t req_inflight;
   // The number of requests this client has issued so far.
   size_t req_started;
   // The number of requests this client has done so far.
@@ -293,11 +304,13 @@ struct Client {
   // The client id per worker
   uint32_t id;
   int fd;
-  Buffer<64_k> wb;
   ev_timer conn_active_watcher;
   ev_timer conn_inactivity_watcher;
   std::string selected_proto;
   bool new_connection_requested;
+  // true if the current connection will be closed, and no more new
+  // request cannot be processed.
+  bool final;
 
   enum { ERR_CONNECT_FAIL = -100 };
 
@@ -307,6 +320,12 @@ struct Client {
   int connect();
   void disconnect();
   void fail();
+  // Call this function when do_read() returns -1.  This function
+  // tries to connect to the remote host again if it is requested.  If
+  // so, this function returns 0, and this object should be retained.
+  // Otherwise, this function returns -1, and this object should be
+  // deleted.
+  int try_again_or_fail();
   void timeout();
   void restart_timeout();
   int submit_request();

@@ -27,7 +27,7 @@ We use clang-format to format source code consistently.  The
 clang-format configuration file .clang-format is located at the root
 directory.  Since clang-format produces slightly different results
 between versions, we currently use clang-format which comes with
-clang-3.6.
+clang-3.9.
 
 To detect any violation to the coding style, we recommend to setup git
 pre-commit hook to check coding style of the changes you introduced.
@@ -35,7 +35,7 @@ The pre-commit file is located at the root directory.  Copy it under
 .git/hooks and make sure that it is executable.  The pre-commit script
 uses clang-format-diff.py to detect any style errors.  If it is not in
 your PATH or it exists under different name (e.g.,
-clang-format-diff-3.6 in debian), either add it to PATH variable or
+clang-format-diff-3.9 in debian), either add it to PATH variable or
 add git option ``clangformatdiff.binary`` to point to the script.
 
 For emacs users, integrating clang-format to emacs is very easy.

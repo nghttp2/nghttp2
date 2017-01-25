@@ -78,15 +78,16 @@ header data.  To initialize the object, use
 
     int nghttp2_hd_inflate_new(nghttp2_hd_inflater **inflater_ptr);
 
-To inflate header data, use `nghttp2_hd_inflate_hd()`::
+To inflate header data, use `nghttp2_hd_inflate_hd2()`::
 
-    ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
-                                  nghttp2_nv *nv_out, int *inflate_flags,
-                                  uint8_t *in, size_t inlen, int in_final);
+    ssize_t nghttp2_hd_inflate_hd2(nghttp2_hd_inflater *inflater,
+                                   nghttp2_nv *nv_out, int *inflate_flags,
+                                   const uint8_t *in, size_t inlen,
+                                   int in_final);
 
-`nghttp2_hd_inflate_hd()` reads a stream of bytes and outputs a single
-header field at a time. Multiple calls are normally required to read a
-full stream of bytes and output all of the header fields.
+`nghttp2_hd_inflate_hd2()` reads a stream of bytes and outputs a
+single header field at a time. Multiple calls are normally required to
+read a full stream of bytes and output all of the header fields.
 
 The *inflater* is the inflater object initialized above.  The *nv_out*
 is a pointer to a :type:`nghttp2_nv` into which one header field may
@@ -118,11 +119,7 @@ If *in_final* is zero and the :macro:`NGHTTP2_HD_INFLATE_EMIT` flag is
 not set, it indicates that all given data was processed.  The caller
 is required to pass additional data.
 
-It is important to note that the function may produce one or more
-header fields even if *inlen* is 0 when *in_final* is nonzero, due to
-differential encoding.
-
-Example usage of `nghttp2_hd_inflate_hd()` is shown in the
+Example usage of `nghttp2_hd_inflate_hd2()` is shown in the
 `inflate_header_block()` function in `deflate.c`_.
 
 Finally, to delete a :type:`nghttp2_hd_inflater` object, use

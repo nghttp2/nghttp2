@@ -246,11 +246,12 @@ The output of this program can be used as input for deflatehd.
 
 OPTIONS:
     -d, --dump-header-table
-                      Output dynamic header table.)" << std::endl;
+                      Output dynamic header table.)"
+            << std::endl;
   ;
 }
 
-static struct option long_options[] = {
+constexpr static struct option long_options[] = {
     {"dump-header-table", no_argument, nullptr, 'd'}, {nullptr, 0, nullptr, 0}};
 
 int main(int argc, char **argv) {

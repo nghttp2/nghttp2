@@ -19,14 +19,14 @@ A reverse proxy for HTTP/2, HTTP/1 and SPDY.
 .. describe:: <PRIVATE_KEY>
 
     
-    Set path  to server's private key.   Required unless :option:`-p`\,
-    :option:`--client` or :option:`\--frontend-no-tls` are given.
+    Set  path  to  server's private  key.   Required  unless
+    "no-tls" parameter is used in :option:`--frontend` option.
 
 .. describe:: <CERT>
 
-    Set path  to server's certificate.  Required  unless :option:`-p`\,
-    :option:`--client` or  :option:`\--frontend-no-tls` are given.  To  make OCSP
-    stapling work, this must be absolute path.
+    Set  path  to  server's  certificate.   Required  unless
+    "no-tls"  parameter is  used in  :option:`--frontend` option.   To
+    make OCSP stapling work, this must be an absolute path.
 
 
 OPTIONS
@@ -37,7 +37,8 @@ The options are categorized into several groups.
 Connections
 ~~~~~~~~~~~
 
-.. option:: -b, --backend=(<HOST>,<PORT>|unix:<PATH>)[;<PATTERN>[:...]]
+.. option:: -b, --backend=(<HOST>,<PORT>|unix:<PATH>)[;[<PATTERN>[:...]][[;<PARAM>]...]
+
 
     Set  backend  host  and   port.   The  multiple  backend
     addresses are  accepted by repeating this  option.  UNIX
@@ -45,31 +46,39 @@ Connections
     with "unix:" (e.g., unix:/var/run/backend.sock).
 
     Optionally, if <PATTERN>s are given, the backend address
-    is only used  if request matches the pattern.   If :option:`-s` or
-    :option:`-p`  is  used,  <PATTERN>s   are  ignored.   The  pattern
-    matching  is closely  designed to  ServeMux in  net/http
-    package of Go  programming language.  <PATTERN> consists
-    of path, host + path or  just host.  The path must start
-    with "*/*".  If  it ends with "*/*", it  matches all request
-    path in  its subtree.  To  deal with the request  to the
-    directory without  trailing slash,  the path  which ends
-    with "*/*" also matches the  request path which only lacks
-    trailing '*/*'  (e.g., path  "*/foo/*" matches  request path
-    "*/foo*").  If it does not end with "*/*", it performs exact
-    match against  the request path.   If host is  given, it
-    performs exact match against  the request host.  If host
-    alone  is given,  "*/*"  is  appended to  it,  so that  it
-    matches  all   request  paths  under  the   host  (e.g.,
-    specifying "nghttp2.org" equals to "nghttp2.org/").
+    is  only  used  if  request  matches  the  pattern.   If
+    :option:`--http2-proxy`  is  used,  <PATTERN>s are  ignored.   The
+    pattern  matching is  closely  designed  to ServeMux  in
+    net/http package of  Go programming language.  <PATTERN>
+    consists of  path, host +  path or just host.   The path
+    must start  with "*/*".  If  it ends with "*/*",  it matches
+    all  request path  in  its subtree.   To  deal with  the
+    request  to the  directory without  trailing slash,  the
+    path which ends  with "*/*" also matches  the request path
+    which  only  lacks  trailing  '*/*'  (e.g.,  path  "*/foo/*"
+    matches request path  "*/foo*").  If it does  not end with
+    "*/*", it  performs exact match against  the request path.
+    If host  is given, it  performs exact match  against the
+    request host.  If  host alone is given,  "*/*" is appended
+    to it,  so that it  matches all request paths  under the
+    host   (e.g.,   specifying   "nghttp2.org"   equals   to
+    "nghttp2.org/").
 
     Patterns with  host take  precedence over  patterns with
     just path.   Then, longer patterns take  precedence over
-    shorter  ones,  breaking  a  tie by  the  order  of  the
-    appearance in the configuration.
+    shorter ones.
 
-    If <PATTERN> is  omitted, "*/*" is used  as pattern, which
-    matches  all  request  paths (catch-all  pattern).   The
-    catch-all backend must be given.
+    Host  can  include "\*"  in  the  left most  position  to
+    indicate  wildcard match  (only suffix  match is  done).
+    The "\*" must match at least one character.  For example,
+    host    pattern    "\*.nghttp2.org"    matches    against
+    "www.nghttp2.org"  and  "git.ngttp2.org", but  does  not
+    match  against  "nghttp2.org".   The exact  hosts  match
+    takes precedence over the wildcard hosts match.
+
+    If <PATTERN> is omitted or  empty string, "*/*" is used as
+    pattern,  which  matches  all request  paths  (catch-all
+    pattern).  The catch-all backend must be given.
 
     When doing  a match, nghttpx made  some normalization to
     pattern, request host and path.  For host part, they are
@@ -92,6 +101,72 @@ Connections
     The backend addresses sharing same <PATTERN> are grouped
     together forming  load balancing  group.
 
+    Several parameters <PARAM> are accepted after <PATTERN>.
+    The  parameters are  delimited  by  ";".  The  available
+    parameters       are:      "proto=<PROTO>",       "tls",
+    "sni=<SNI_HOST>",         "fall=<N>",        "rise=<N>",
+    "affinity=<METHOD>", and "dns".   The parameter consists
+    of keyword,  and optionally  followed by "="  and value.
+    For example,  the parameter  "proto=h2" consists  of the
+    keyword  "proto" and  value "h2".   The parameter  "tls"
+    consists  of  the  keyword "tls"  without  value.   Each
+    parameter is described as follows.
+
+    The backend application protocol  can be specified using
+    optional  "proto"   parameter,  and   in  the   form  of
+    "proto=<PROTO>".  <PROTO> should be one of the following
+    list  without  quotes:  "h2", "http/1.1".   The  default
+    value of <PROTO> is  "http/1.1".  Note that usually "h2"
+    refers to HTTP/2  over TLS.  But in this  option, it may
+    mean HTTP/2  over cleartext TCP unless  "tls" keyword is
+    used (see below).
+
+    TLS  can   be  enabled  by  specifying   optional  "tls"
+    parameter.  TLS is not enabled by default.
+
+    With "sni=<SNI_HOST>" parameter, it can override the TLS
+    SNI  field  value  with  given  <SNI_HOST>.   This  will
+    default to the backend <HOST> name
+
+    The  feature  to detect  whether  backend  is online  or
+    offline can be enabled  using optional "fall" and "rise"
+    parameters.   Using  "fall=<N>"  parameter,  if  nghttpx
+    cannot connect  to a  this backend <N>  times in  a row,
+    this  backend  is  assumed  to be  offline,  and  it  is
+    excluded from load balancing.  If <N> is 0, this backend
+    never  be excluded  from load  balancing whatever  times
+    nghttpx cannot connect  to it, and this  is the default.
+    There is  also "rise=<N>" parameter.  After  backend was
+    excluded from load balancing group, nghttpx periodically
+    attempts to make a connection to the failed backend, and
+    if the  connection is made  successfully <N> times  in a
+    row, the backend is assumed to  be online, and it is now
+    eligible  for load  balancing target.   If <N>  is 0,  a
+    backend  is permanently  offline, once  it goes  in that
+    state, and this is the default behaviour.
+
+    The     session     affinity    is     enabled     using
+    "affinity=<METHOD>"  parameter.   If  "ip" is  given  in
+    <METHOD>, client  IP based session affinity  is enabled.
+    If  "none" is  given  in <METHOD>,  session affinity  is
+    disabled, and this is the default.  The session affinity
+    is enabled per  <PATTERN>.  If at least  one backend has
+    "affinity" parameter,  and its  <METHOD> is  not "none",
+    session  affinity is  enabled  for  all backend  servers
+    sharing  the  same  <PATTERN>.   It is  advised  to  set
+    "affinity"  parameter  to   all  backend  explicitly  if
+    session affinity  is desired.  The session  affinity may
+    break if one of the backend gets unreachable, or backend
+    settings are reloaded or replaced by API.
+
+    By default, name resolution of backend host name is done
+    at  start  up,  or reloading  configuration.   If  "dns"
+    parameter   is  given,   name  resolution   takes  place
+    dynamically.  This is useful  if backend address changes
+    frequently.   If  "dns"  is given,  name  resolution  of
+    backend   host   name   at  start   up,   or   reloading
+    configuration is skipped.
+
     Since ";" and ":" are  used as delimiter, <PATTERN> must
     not  contain these  characters.  Since  ";" has  special
     meaning in shell, the option value must be quoted.
@@ -99,12 +174,38 @@ Connections
 
     Default: ``127.0.0.1,80``
 
-.. option:: -f, --frontend=(<HOST>,<PORT>|unix:<PATH>)
+.. option:: -f, --frontend=(<HOST>,<PORT>|unix:<PATH>)[[;<PARAM>]...]
 
     Set  frontend  host and  port.   If  <HOST> is  '\*',  it
     assumes  all addresses  including  both  IPv4 and  IPv6.
     UNIX domain  socket can  be specified by  prefixing path
-    name with "unix:" (e.g., unix:/var/run/nghttpx.sock)
+    name  with  "unix:" (e.g.,  unix:/var/run/nghttpx.sock).
+    This  option can  be used  multiple times  to listen  to
+    multiple addresses.
+
+    This option  can take  0 or  more parameters,  which are
+    described  below.   Note   that  "api"  and  "healthmon"
+    parameters are mutually exclusive.
+
+    Optionally, TLS  can be disabled by  specifying "no-tls"
+    parameter.  TLS is enabled by default.
+
+    To  make this  frontend as  API endpoint,  specify "api"
+    parameter.   This   is  disabled  by  default.    It  is
+    important  to  limit the  access  to  the API  frontend.
+    Otherwise, someone  may change  the backend  server, and
+    break your services,  or expose confidential information
+    to the outside the world.
+
+    To  make  this  frontend  as  health  monitor  endpoint,
+    specify  "healthmon"  parameter.   This is  disabled  by
+    default.  Any  requests which come through  this address
+    are replied with 200 HTTP status, without no body.
+
+    To  accept   PROXY  protocol   version  1   on  frontend
+    connection,  specify  "proxyproto" parameter.   This  is
+    disabled by default.
+
 
     Default: ``*,3000``
 
@@ -112,15 +213,16 @@ Connections
 
     Set listen backlog size.
 
-    Default: ``512``
+    Default: ``65536``
 
-.. option:: --backend-ipv4
+.. option:: --backend-address-family=(auto|IPv4|IPv6)
 
-    Resolve backend hostname to IPv4 address only.
+    Specify  address  family  of  backend  connections.   If
+    "auto" is given, both IPv4  and IPv6 are considered.  If
+    "IPv4" is  given, only  IPv4 address is  considered.  If
+    "IPv6" is given, only IPv6 address is considered.
 
-.. option:: --backend-ipv6
-
-    Resolve backend hostname to IPv6 address only.
+    Default: ``auto``
 
 .. option:: --backend-http-proxy-uri=<URI>
 
@@ -136,10 +238,6 @@ Connections
     timeouts when connecting and  making CONNECT request can
     be     specified    by     :option:`--backend-read-timeout`    and
     :option:`--backend-write-timeout` options.
-
-.. option:: --accept-proxy-protocol
-
-    Accept PROXY protocol version 1 on frontend connection.
 
 
 Performance
@@ -220,36 +318,27 @@ Performance
 
     Default: ``0``
 
-.. option:: --backend-http2-connections-per-worker=<N>
+.. option:: --backend-connections-per-host=<N>
 
-    Set   maximum   number   of  backend   HTTP/2   physical
-    connections  per  worker.   If  pattern is  used  in  :option:`-b`
-    option, this limit is applied  to each pattern group (in
-    other  words, each  pattern group  can have  maximum <N>
-    HTTP/2  connections).  The  default  value  is 0,  which
-    means  that  the value  is  adjusted  to the  number  of
-    backend addresses.  If pattern  is used, this adjustment
-    is done for each pattern group.
-
-.. option:: --backend-http1-connections-per-host=<N>
-
-    Set   maximum  number   of  backend   concurrent  HTTP/1
-    connections per origin host.   This option is meaningful
-    when :option:`-s` option  is used.  The origin  host is determined
-    by  authority  portion  of request  URI  (or  :authority
-    header  field  for  HTTP/2).   To limit  the  number  of
-    connections   per  frontend   for   default  mode,   use
-    :option:`--backend-http1-connections-per-frontend`\.
+    Set  maximum number  of  backend concurrent  connections
+    (and/or  streams in  case  of HTTP/2)  per origin  host.
+    This option  is meaningful when :option:`--http2-proxy`  option is
+    used.   The  origin  host  is  determined  by  authority
+    portion of  request URI (or :authority  header field for
+    HTTP/2).   To  limit  the   number  of  connections  per
+    frontend        for       default        mode,       use
+    :option:`--backend-connections-per-frontend`\.
 
     Default: ``8``
 
-.. option:: --backend-http1-connections-per-frontend=<N>
+.. option:: --backend-connections-per-frontend=<N>
 
-    Set   maximum  number   of  backend   concurrent  HTTP/1
-    connections per frontend.  This  option is only used for
-    default mode.   0 means unlimited.  To  limit the number
-    of connections  per host for  HTTP/2 or SPDY  proxy mode
-    (-s option), use :option:`--backend-http1-connections-per-host`\.
+    Set  maximum number  of  backend concurrent  connections
+    (and/or streams  in case of HTTP/2)  per frontend.  This
+    option  is   only  used  for  default   mode.   0  means
+    unlimited.  To limit the  number of connections per host
+    with          :option:`--http2-proxy`         option,          use
+    :option:`--backend-connections-per-host`\.
 
     Default: ``0``
 
@@ -281,6 +370,13 @@ Performance
 
     Default: ``0``
 
+.. option:: --no-kqueue
+
+    Don't use  kqueue.  This  option is only  applicable for
+    the platforms  which have kqueue.  For  other platforms,
+    this option will be simply ignored.
+
+
 Timeout
 ~~~~~~~
 
@@ -302,6 +398,13 @@ Timeout
     Specify write timeout for all frontend connections.
 
     Default: ``30s``
+
+.. option:: --frontend-keep-alive-timeout=<DURATION>
+
+    Specify   keep-alive   timeout   for   frontend   HTTP/1
+    connection.
+
+    Default: ``1m``
 
 .. option:: --stream-read-timeout=<DURATION>
 
@@ -329,9 +432,17 @@ Timeout
 
     Default: ``30s``
 
+.. option:: --backend-connect-timeout=<DURATION>
+
+    Specify  timeout before  establishing TCP  connection to
+    backend.
+
+    Default: ``30s``
+
 .. option:: --backend-keep-alive-timeout=<DURATION>
 
-    Specify keep-alive timeout for backend connection.
+    Specify   keep-alive   timeout    for   backend   HTTP/1
+    connection.
 
     Default: ``2s``
 
@@ -343,29 +454,73 @@ Timeout
 
     Default: ``30s``
 
+.. option:: --frontend-http2-setting-timeout=<DURATION>
+
+    Specify  timeout before  SETTINGS ACK  is received  from
+    client.
+
+    Default: ``10s``
+
+.. option:: --backend-http2-settings-timeout=<DURATION>
+
+    Specify  timeout before  SETTINGS ACK  is received  from
+    backend server.
+
+    Default: ``10s``
+
+.. option:: --backend-max-backoff=<DURATION>
+
+    Specify  maximum backoff  interval.  This  is used  when
+    doing health  check against offline backend  (see "fail"
+    parameter  in :option:`--backend`  option).   It is  also used  to
+    limit  the  maximum   interval  to  temporarily  disable
+    backend  when nghttpx  failed to  connect to  it.  These
+    intervals are calculated  using exponential backoff, and
+    consecutive failed attempts increase the interval.  This
+    option caps its maximum value.
+
+    Default: ``2m``
+
 
 SSL/TLS
 ~~~~~~~
 
 .. option:: --ciphers=<SUITE>
 
-    Set allowed  cipher list.  The  format of the  string is
-    described in OpenSSL ciphers(1).
+    Set allowed  cipher list  for frontend  connection.  The
+    format of the string is described in OpenSSL ciphers(1).
+
+    Default: ``ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA:ECDHE-RSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-RSA-AES256-SHA256:DHE-RSA-AES256-SHA:ECDHE-ECDSA-DES-CBC3-SHA:ECDHE-RSA-DES-CBC3-SHA:EDH-RSA-DES-CBC3-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA:DES-CBC3-SHA:!DSS``
+
+.. option:: --client-ciphers=<SUITE>
+
+    Set  allowed cipher  list for  backend connection.   The
+    format of the string is described in OpenSSL ciphers(1).
+
+    Default: ``ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA:ECDHE-RSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-RSA-AES256-SHA256:DHE-RSA-AES256-SHA:ECDHE-ECDSA-DES-CBC3-SHA:ECDHE-RSA-DES-CBC3-SHA:EDH-RSA-DES-CBC3-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA:DES-CBC3-SHA:!DSS``
+
+.. option:: --ecdh-curves=<LIST>
+
+    Set  supported  curve  list  for  frontend  connections.
+    <LIST> is a  colon separated list of curve  NID or names
+    in the preference order.  The supported curves depend on
+    the  linked  OpenSSL  library.  This  function  requires
+    OpenSSL >= 1.0.2.
+
+    Default: ``X25519:P-256:P-384:P-521``
 
 .. option:: -k, --insecure
 
-    Don't  verify   backend  server's  certificate   if  :option:`-p`\,
-    :option:`--client`    or    :option:`\--http2-bridge`     are    given    and
-    :option:`--backend-no-tls` is not given.
+    Don't  verify backend  server's  certificate  if TLS  is
+    enabled for backend connections.
 
 .. option:: --cacert=<PATH>
 
-    Set path to trusted CA  certificate file if :option:`-p`\, :option:`--client`
-    or :option:`--http2-bridge` are given  and :option:`\--backend-no-tls` is not
-    given.  The file must be  in PEM format.  It can contain
-    multiple  certificates.    If  the  linked   OpenSSL  is
-    configured to  load system  wide certificates,  they are
-    loaded at startup regardless of this option.
+    Set path to trusted CA  certificate file used in backend
+    TLS connections.   The file must  be in PEM  format.  It
+    can  contain  multiple   certificates.   If  the  linked
+    OpenSSL is configured to  load system wide certificates,
+    they are loaded at startup regardless of this option.
 
 .. option:: --private-key-passwd-file=<PATH>
 
@@ -373,7 +528,7 @@ SSL/TLS
     private key.   If none is  given and the private  key is
     password protected it'll be requested interactively.
 
-.. option:: --subcert=<KEYPATH>:<CERTPATH>
+.. option:: --subcert=<KEYPATH>:<CERTPATH>[[;<PARAM>]...]
 
     Specify  additional certificate  and  private key  file.
     nghttpx will  choose certificates based on  the hostname
@@ -381,10 +536,14 @@ SSL/TLS
     option  can  be  used  multiple  times.   To  make  OCSP
     stapling work, <CERTPATH> must be absolute path.
 
-.. option:: --backend-tls-sni-field=<HOST>
+    Additional parameter  can be specified in  <PARAM>.  The
+    available <PARAM> is "sct-dir=<DIR>".
 
-    Explicitly  set the  content of  the TLS  SNI extension.
-    This will default to the backend HOST name.
+    "sct-dir=<DIR>"  specifies the  path to  directory which
+    contains        \*.sct        files        for        TLS
+    signed_certificate_timestamp extension (RFC 6962).  This
+    feature   requires   OpenSSL   >=   1.0.2.    See   also
+    :option:`--tls-sct-dir` option.
 
 .. option:: --dh-param-file=<PATH>
 
@@ -461,18 +620,30 @@ SSL/TLS
     ticket  key sharing  between  nghttpx  instances is  not
     required.
 
-.. option:: --tls-ticket-key-memcached=<HOST>,<PORT>
+.. option:: --tls-ticket-key-memcached=<HOST>,<PORT>[;tls]
 
-    Specify  address of  memcached server  to store  session
-    cache.   This  enables  shared TLS  ticket  key  between
-    multiple nghttpx  instances.  nghttpx  does not  set TLS
-    ticket  key  to  memcached.   The  external  ticket  key
-    generator  is required.   nghttpx just  gets TLS  ticket
-    keys from  memcached, and  use them,  possibly replacing
-    current set of keys.  It is  up to extern TLS ticket key
-    generator to  rotate keys frequently.  See  "TLS SESSION
-    TICKET RESUMPTION"  section in  manual page to  know the
-    data format in memcached entry.
+    Specify address  of memcached  server to get  TLS ticket
+    keys for  session resumption.   This enables  shared TLS
+    ticket key between  multiple nghttpx instances.  nghttpx
+    does not set TLS ticket  key to memcached.  The external
+    ticket key generator is required.  nghttpx just gets TLS
+    ticket  keys  from  memcached, and  use  them,  possibly
+    replacing current set  of keys.  It is up  to extern TLS
+    ticket  key generator  to rotate  keys frequently.   See
+    "TLS SESSION  TICKET RESUMPTION" section in  manual page
+    to know the data format in memcached entry.  Optionally,
+    memcached  connection  can  be  encrypted  with  TLS  by
+    specifying "tls" parameter.
+
+.. option:: --tls-ticket-key-memcached-address-family=(auto|IPv4|IPv6)
+
+    Specify address  family of memcached connections  to get
+    TLS ticket keys.  If "auto" is given, both IPv4 and IPv6
+    are considered.   If "IPv4" is given,  only IPv4 address
+    is considered.  If "IPv6" is given, only IPv6 address is
+    considered.
+
+    Default: ``auto``
 
 .. option:: --tls-ticket-key-memcached-interval=<DURATION>
 
@@ -504,6 +675,16 @@ SSL/TLS
     either   aes-128-cbc   or  aes-256-cbc.    By   default,
     aes-128-cbc is used.
 
+.. option:: --tls-ticket-key-memcached-cert-file=<PATH>
+
+    Path to client certificate  for memcached connections to
+    get TLS ticket keys.
+
+.. option:: --tls-ticket-key-memcached-private-key-file=<PATH>
+
+    Path to client private  key for memcached connections to
+    get TLS ticket keys.
+
 .. option:: --fetch-ocsp-response-file=<PATH>
 
     Path to  fetch-ocsp-response script file.  It  should be
@@ -521,11 +702,33 @@ SSL/TLS
 
     Disable OCSP stapling.
 
-.. option:: --tls-session-cache-memcached=<HOST>,<PORT>
+.. option:: --tls-session-cache-memcached=<HOST>,<PORT>[;tls]
 
     Specify  address of  memcached server  to store  session
     cache.   This  enables   shared  session  cache  between
-    multiple nghttpx instances.
+    multiple   nghttpx  instances.    Optionally,  memcached
+    connection can be encrypted with TLS by specifying "tls"
+    parameter.
+
+.. option:: --tls-session-cache-memcached-address-family=(auto|IPv4|IPv6)
+
+    Specify address family of memcached connections to store
+    session cache.  If  "auto" is given, both  IPv4 and IPv6
+    are considered.   If "IPv4" is given,  only IPv4 address
+    is considered.  If "IPv6" is given, only IPv6 address is
+    considered.
+
+    Default: ``auto``
+
+.. option:: --tls-session-cache-memcached-cert-file=<PATH>
+
+    Path to client certificate  for memcached connections to
+    store session cache.
+
+.. option:: --tls-session-cache-memcached-private-key-file=<PATH>
+
+    Path to client private  key for memcached connections to
+    store session cache.
 
 .. option:: --tls-dyn-rec-warmup-threshold=<SIZE>
 
@@ -551,54 +754,110 @@ SSL/TLS
 
     Default: ``1s``
 
+.. option:: --no-http2-cipher-black-list
+
+    Allow  black  listed  cipher suite  on  frontend  HTTP/2
+    connection.                                          See
+    https://tools.ietf.org/html/rfc7540#appendix-A  for  the
+    complete HTTP/2 cipher suites black list.
+
+.. option:: --client-no-http2-cipher-black-list
+
+    Allow  black  listed  cipher  suite  on  backend  HTTP/2
+    connection.                                          See
+    https://tools.ietf.org/html/rfc7540#appendix-A  for  the
+    complete HTTP/2 cipher suites black list.
+
+.. option:: --tls-sct-dir=<DIR>
+
+    Specifies the  directory where  \*.sct files  exist.  All
+    \*.sct   files   in  <DIR>   are   read,   and  sent   as
+    extension_data of  TLS signed_certificate_timestamp (RFC
+    6962)  to  client.   These   \*.sct  files  are  for  the
+    certificate   specified   in   positional   command-line
+    argument <CERT>, or  certificate option in configuration
+    file.   For   additional  certificates,   use  :option:`--subcert`
+    option.  This option requires OpenSSL >= 1.0.2.
+
+.. option:: --psk-secrets=<PATH>
+
+    Read list of PSK identity and secrets from <PATH>.  This
+    is used for frontend connection.  The each line of input
+    file  is  formatted  as  <identity>:<hex-secret>,  where
+    <identity> is  PSK identity, and <hex-secret>  is secret
+    in hex.  An  empty line, and line which  starts with '#'
+    are skipped.  The default  enabled cipher list might not
+    contain any PSK cipher suite.  In that case, desired PSK
+    cipher suites  must be  enabled using  :option:`--ciphers` option.
+    The  desired PSK  cipher suite  may be  black listed  by
+    HTTP/2.   To  use  those   cipher  suites  with  HTTP/2,
+    consider  to  use  :option:`--no-http2-cipher-black-list`  option.
+    But be aware its implications.
+
+.. option:: --client-psk-secrets=<PATH>
+
+    Read PSK identity and secrets from <PATH>.  This is used
+    for backend connection.  The each  line of input file is
+    formatted  as <identity>:<hex-secret>,  where <identity>
+    is PSK identity, and <hex-secret>  is secret in hex.  An
+    empty line, and line which  starts with '#' are skipped.
+    The first identity and  secret pair encountered is used.
+    The default  enabled cipher  list might not  contain any
+    PSK  cipher suite.   In  that case,  desired PSK  cipher
+    suites  must be  enabled using  :option:`--client-ciphers` option.
+    The  desired PSK  cipher suite  may be  black listed  by
+    HTTP/2.   To  use  those   cipher  suites  with  HTTP/2,
+    consider   to  use   :option:`--client-no-http2-cipher-black-list`
+    option.  But be aware its implications.
+
 
 HTTP/2 and SPDY
 ~~~~~~~~~~~~~~~
 
-.. option:: -c, --http2-max-concurrent-streams=<N>
+.. option:: -c, --frontend-http2-max-concurrent-streams=<N>
 
     Set the maximum number of  the concurrent streams in one
-    HTTP/2 and SPDY session.
+    frontend HTTP/2 and SPDY session.
+
+    Default: `` 100``
+
+.. option:: --backend-http2-max-concurrent-streams=<N>
+
+    Set the maximum number of  the concurrent streams in one
+    backend  HTTP/2 session.   This sets  maximum number  of
+    concurrent opened pushed streams.  The maximum number of
+    concurrent requests are set by a remote server.
 
     Default: ``100``
 
-.. option:: --frontend-http2-window-bits=<N>
+.. option:: --frontend-http2-window-size=<SIZE>
 
-    Sets the  per-stream initial window size  of HTTP/2 SPDY
-    frontend connection.  For HTTP/2,  the size is 2\*\*<N>-1.
-    For SPDY, the size is 2\*\*<N>.
+    Sets the  per-stream initial  window size of  HTTP/2 and
+    SPDY frontend connection.
 
-    Default: ``16``
+    Default: ``65535``
 
-.. option:: --frontend-http2-connection-window-bits=<N>
+.. option:: --frontend-http2-connection-window-size=<SIZE>
 
     Sets the  per-connection window size of  HTTP/2 and SPDY
-    frontend   connection.    For   HTTP/2,  the   size   is
-    2**<N>-1. For SPDY, the size is 2\*\*<N>.
+    frontend  connection.  For  SPDY  connection, the  value
+    less than 64KiB is rounded up to 64KiB.
 
-    Default: ``16``
+    Default: ``65535``
 
-.. option:: --frontend-no-tls
-
-    Disable SSL/TLS on frontend connections.
-
-.. option:: --backend-http2-window-bits=<N>
+.. option:: --backend-http2-window-size=<SIZE>
 
     Sets  the   initial  window   size  of   HTTP/2  backend
-    connection to 2\*\*<N>-1.
+    connection.
 
-    Default: ``16``
+    Default: ``65535``
 
-.. option:: --backend-http2-connection-window-bits=<N>
+.. option:: --backend-http2-connection-window-size=<SIZE>
 
     Sets the  per-connection window  size of  HTTP/2 backend
-    connection to 2\*\*<N>-1.
+    connection.
 
-    Default: ``16``
-
-.. option:: --backend-no-tls
-
-    Disable SSL/TLS on backend connections.
+    Default: ``2147483647``
 
 .. option:: --http2-no-cookie-crumbling
 
@@ -616,11 +875,69 @@ HTTP/2 and SPDY
     Disable HTTP/2 server push.  Server push is supported by
     default mode and HTTP/2  frontend via Link header field.
     It is  also supported if  both frontend and  backend are
-    HTTP/2 (which implies  :option:`--http2-bridge` or :option:`\--client` mode).
-    In  this  case,  server  push from  backend  session  is
-    relayed  to frontend,  and server  push via  Link header
-    field is  also supported.   HTTP SPDY frontend  does not
-    support server push.
+    HTTP/2 in default mode.  In  this case, server push from
+    backend session is relayed  to frontend, and server push
+    via Link header field  is also supported.  SPDY frontend
+    does not support server push.
+
+.. option:: --frontend-http2-optimize-write-buffer-size
+
+    (Experimental) Enable write  buffer size optimization in
+    frontend HTTP/2 TLS  connection.  This optimization aims
+    to reduce  write buffer  size so  that it  only contains
+    bytes  which can  send immediately.   This makes  server
+    more responsive to prioritized HTTP/2 stream because the
+    buffering  of lower  priority stream  is reduced.   This
+    option is only effective on recent Linux platform.
+
+.. option:: --frontend-http2-optimize-window-size
+
+    (Experimental)   Automatically  tune   connection  level
+    window size of frontend  HTTP/2 TLS connection.  If this
+    feature is  enabled, connection window size  starts with
+    the   default  window   size,   65535  bytes.    nghttpx
+    automatically  adjusts connection  window size  based on
+    TCP receiving  window size.  The maximum  window size is
+    capped      by      the     value      specified      by
+    :option:`--frontend-http2-connection-window-size`\.     Since   the
+    stream is subject to stream level window size, it should
+    be adjusted using :option:`--frontend-http2-window-size` option as
+    well.   This option  is only  effective on  recent Linux
+    platform.
+
+.. option:: --frontend-http2-encoder-dynamic-table-size=<SIZE>
+
+    Specify the maximum dynamic  table size of HPACK encoder
+    in the frontend HTTP/2 connection.  The decoder (client)
+    specifies  the maximum  dynamic table  size it  accepts.
+    Then the negotiated dynamic table size is the minimum of
+    this option value and the value which client specified.
+
+    Default: ``4K``
+
+.. option:: --frontend-http2-decoder-dynamic-table-size=<SIZE>
+
+    Specify the maximum dynamic  table size of HPACK decoder
+    in the frontend HTTP/2 connection.
+
+    Default: ``4K``
+
+.. option:: --backend-http2-encoder-dynamic-table-size=<SIZE>
+
+    Specify the maximum dynamic  table size of HPACK encoder
+    in the backend HTTP/2 connection.  The decoder (backend)
+    specifies  the maximum  dynamic table  size it  accepts.
+    Then the negotiated dynamic table size is the minimum of
+    this option value and the value which backend specified.
+
+    Default: ``4K``
+
+.. option:: --backend-http2-decoder-dynamic-table-size=<SIZE>
+
+    Specify the maximum dynamic  table size of HPACK decoder
+    in the backend HTTP/2 connection.
+
+    Default: ``4K``
 
 
 Mode
@@ -629,38 +946,16 @@ Mode
 .. describe:: (default mode)
 
     
-    Accept  HTTP/2,  SPDY  and HTTP/1.1  over  SSL/TLS.   If
-    :option:`--frontend-no-tls` is  used, accept HTTP/2  and HTTP/1.1.
-    The  incoming HTTP/1.1  connection  can  be upgraded  to
-    HTTP/2  through  HTTP  Upgrade.   The  protocol  to  the
-    backend is HTTP/1.1.
+    Accept HTTP/2, SPDY and HTTP/1.1 over SSL/TLS.  "no-tls"
+    parameter is  used in  :option:`--frontend` option,  accept HTTP/2
+    and HTTP/1.1 over cleartext  TCP.  The incoming HTTP/1.1
+    connection  can  be  upgraded  to  HTTP/2  through  HTTP
+    Upgrade.
 
 .. option:: -s, --http2-proxy
 
-    Like default mode, but enable secure proxy mode.
-
-.. option:: --http2-bridge
-
-    Like default  mode, but communicate with  the backend in
-    HTTP/2 over SSL/TLS.  Thus  the incoming all connections
-    are converted  to HTTP/2  connection and relayed  to the
-    backend.  See :option:`--backend-http-proxy-uri` option if you are
-    behind  the proxy  and want  to connect  to the  outside
-    HTTP/2 proxy.
-
-.. option:: --client
-
-    Accept  HTTP/2   and  HTTP/1.1  without   SSL/TLS.   The
-    incoming HTTP/1.1  connection can be upgraded  to HTTP/2
-    connection through  HTTP Upgrade.   The protocol  to the
-    backend is HTTP/2.   To use nghttpx as  a forward proxy,
-    use :option:`-p` option instead.
-
-.. option:: -p, --client-proxy
-
-    Like :option:`--client`  option, but it also  requires the request
-    path from frontend must be an absolute URI, suitable for
-    use as a forward proxy.
+    Like default mode, but enable forward proxy.  This is so
+    called HTTP/2 proxy mode.
 
 
 Logging
@@ -711,12 +1006,22 @@ Logging
     * $ssl_session_id: session ID for SSL/TLS connection.
     * $ssl_session_reused:  "r"   if  SSL/TLS   session  was
       reused.  Otherwise, "."
+    * $backend_host:  backend  host   used  to  fulfill  the
+      request.  "-" if backend host is not available.
+    * $backend_port:  backend  port   used  to  fulfill  the
+      request.  "-" if backend host is not available.
 
     The  variable  can  be  enclosed  by  "{"  and  "}"  for
     disambiguation (e.g., ${remote_addr}).
 
 
     Default: ``$remote_addr - - [$time_local] "$request" $status $body_bytes_sent "$http_referer" "$http_user_agent"``
+
+.. option:: --accesslog-write-early
+
+    Write  access  log  when   response  header  fields  are
+    received   from  backend   rather   than  when   request
+    transaction finishes.
 
 .. option:: --errorlog-file=<PATH>
 
@@ -773,11 +1078,12 @@ HTTP
     of Forwarded  header field.   If "obfuscated"  is given,
     the string is randomly generated at startup.  If "ip" is
     given,   the  interface   address  of   the  connection,
-    including  port number,  is  sent  with "by"  parameter.
-    User can also specify the static obfuscated string.  The
-    limitation  is that  it must  start with  "_", and  only
-    consists of  character set [A-Za-z0-9._-],  as described
-    in RFC 7239.
+    including port number, is  sent with "by" parameter.  In
+    case of UNIX domain  socket, "localhost" is used instead
+    of address and  port.  User can also  specify the static
+    obfuscated string.  The limitation is that it must start
+    with   "_",  and   only   consists   of  character   set
+    [A-Za-z0-9._-], as described in RFC 7239.
 
     Default: ``obfuscated``
 
@@ -788,7 +1094,8 @@ HTTP
     given, the string is  randomly generated for each client
     connection.  If "ip" is given, the remote client address
     of  the connection,  without port  number, is  sent with
-    "for" parameter.
+    "for"  parameter.   In  case   of  UNIX  domain  socket,
+    "localhost" is used instead of address.
 
     Default: ``obfuscated``
 
@@ -799,17 +1106,15 @@ HTTP
 
 .. option:: --no-location-rewrite
 
-    Don't rewrite  location header field  on :option:`--http2-bridge`\,
-    :option:`--client`  and  default   mode.   For  :option:`\--http2-proxy`  and
-    :option:`--client-proxy` mode,  location header field will  not be
-    altered regardless of this option.
+    Don't  rewrite location  header field  in default  mode.
+    When :option:`--http2-proxy`  is used, location header  field will
+    not be altered regardless of this option.
 
 .. option:: --host-rewrite
 
-    Rewrite   host   and   :authority   header   fields   on
-    :option:`--http2-bridge`\,   :option:`--client`   and  default   mode.    For
-    :option:`--http2-proxy`  and  :option:`\--client-proxy` mode,  these  headers
-    will not be altered regardless of this option.
+    Rewrite  host and  :authority header  fields in  default
+    mode.  When  :option:`--http2-proxy` is  used, these  headers will
+    not be altered regardless of this option.
 
 .. option:: --altsvc=<PROTOID,PORT[,HOST,[ORIGIN]]>
 
@@ -836,21 +1141,97 @@ HTTP
     used several  times to  specify multiple  header fields.
     Example: :option:`--add-response-header`\="foo: bar"
 
-.. option:: --header-field-buffer=<SIZE>
+.. option:: --request-header-field-buffer=<SIZE>
 
     Set maximum buffer size for incoming HTTP request header
     field list.  This is the sum of header name and value in
-    bytes.
+    bytes.   If  trailer  fields  exist,  they  are  counted
+    towards this number.
 
     Default: ``64K``
 
-.. option:: --max-header-fields=<N>
+.. option:: --max-request-header-fields=<N>
 
     Set  maximum  number  of incoming  HTTP  request  header
-    fields, which  appear in one request  or response header
-    field list.
+    fields.   If  trailer  fields exist,  they  are  counted
+    towards this number.
 
     Default: ``100``
+
+.. option:: --response-header-field-buffer=<SIZE>
+
+    Set  maximum  buffer  size for  incoming  HTTP  response
+    header field list.   This is the sum of  header name and
+    value  in  bytes.  If  trailer  fields  exist, they  are
+    counted towards this number.
+
+    Default: ``64K``
+
+.. option:: --max-response-header-fields=<N>
+
+    Set  maximum number  of  incoming  HTTP response  header
+    fields.   If  trailer  fields exist,  they  are  counted
+    towards this number.
+
+    Default: ``500``
+
+.. option:: --error-page=(<CODE>|*)=<PATH>
+
+    Set file path  to custom error page  served when nghttpx
+    originally  generates  HTTP  error status  code  <CODE>.
+    <CODE> must be greater than or equal to 400, and at most
+    599.  If "\*"  is used instead of <CODE>,  it matches all
+    HTTP  status  code.  If  error  status  code comes  from
+    backend server, the custom error pages are not used.
+
+.. option:: --server-name=<NAME>
+
+    Change server response header field value to <NAME>.
+
+    Default: ``nghttpx nghttp2/1.19.0``
+
+.. option:: --no-server-rewrite
+
+    Don't rewrite server header field in default mode.  When
+    :option:`--http2-proxy` is used, these headers will not be altered
+    regardless of this option.
+
+
+API
+~~~
+
+.. option:: --api-max-request-body=<SIZE>
+
+    Set the maximum size of request body for API request.
+
+    Default: ``16K``
+
+
+DNS
+~~~
+
+.. option:: --dns-cache-timeout=<DURATION>
+
+    Set duration that cached DNS results remain valid.  Note
+    that nghttpx caches the unsuccessful results as well.
+
+    Default: ``10s``
+
+.. option:: --dns-lookup-timeout=<DURATION>
+
+    Set timeout that  DNS server is given to  respond to the
+    initial  DNS  query.  For  the  2nd  and later  queries,
+    server is  given time based  on this timeout, and  it is
+    scaled linearly.
+
+    Default: ``5s``
+
+.. option:: --dns-max-try=<N>
+
+    Set the number of DNS query before nghttpx gives up name
+    lookup.
+
+    Default: ``2``
 
 
 Debug
@@ -982,6 +1363,33 @@ FILES
   :option:`--conf` option cannot be used in the configuration file and
   will be ignored if specified.
 
+Error log
+  Error log is written to stderr by default.  It can be configured
+  using :option:`--errorlog-file`.  The format of log message is as
+  follows:
+
+  <datetime> <master-pid> <current-pid> <thread-id> <level> (<filename>:<line>) <msg>
+
+  <datetime>
+    It is a conbination of date and time when the log is written.  It
+    is in ISO 8601 format.
+
+  <master-pid>
+    It is a master process ID.
+
+  <current-pid>
+    It is a process ID which writes this log.
+
+  <thread-id>
+    It is a thread ID which writes this log.  It would be unique
+    within <current-pid>.
+
+  <filename> and <line>
+    They are source file name, and line number which produce this log.
+
+  <msg>
+    It is a log message body.
+
 SIGNALS
 -------
 
@@ -990,6 +1398,9 @@ SIGQUIT
   accepting connection.  After all connections are handled, nghttpx
   exits.
 
+SIGHUP
+  Reload configuration file given in :option:`--conf`.
+
 SIGUSR1
   Reopen log files.
 
@@ -997,7 +1408,11 @@ SIGUSR2
   Fork and execute nghttpx.  It will execute the binary in the same
   path with same command-line arguments and environment variables.
   After new process comes up, sending SIGQUIT to the original process
-  to perform hot swapping.
+  to perform hot swapping.  The difference between SIGUSR2 + SIGQUIT
+  and SIGHUP is that former is usually used to execute new binary, and
+  the master process is newly spawned.  On the other hand, the latter
+  just reloads configuration file, and the same master process
+  continues to exist.
 
 .. note::
 
@@ -1026,7 +1441,7 @@ backend server and extracts URI-reference with parameter
 and pushes those URIs to the frontend client. Here is a sample Link
 header field to initiate server push:
 
-.. code-block:: http
+.. code-block:: text
 
   Link: </fonts/font.woff>; rel=preload
   Link: </css/theme.css>; rel=preload
@@ -1039,12 +1454,12 @@ Currently, the following restriction is applied for server push:
 This limitation may be loosened in the future release.
 
 nghttpx also supports server push if both frontend and backend are
-HTTP/2 (which implies :option:`--http2-bridge` or :option:`--client`).
-In this case, in addition to server push via Link header field, server
-push from backend is relayed to frontend HTTP/2 session.
+HTTP/2 in default mode.  In this case, in addition to server push via
+Link header field, server push from backend is forwarded to frontend
+HTTP/2 session.
 
-HTTP/2 server push will be disabled if :option:`--http2-proxy` or
-:option:`--client-proxy` is used.
+HTTP/2 server push will be disabled if :option:`--http2-proxy` is
+used.
 
 UNIX DOMAIN SOCKET
 ------------------
@@ -1091,6 +1506,10 @@ insert serialized session data to memcached with
 as a memcached entry key, with expiry time 12 hours.  Session timeout
 is set to 12 hours.
 
+By default, connections to memcached server are not encrypted.  To
+enable encryption, use ``tls`` keyword in
+:option:`--tls-session-cache-memcached` option.
+
 TLS SESSION TICKET RESUMPTION
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -1130,10 +1549,32 @@ used, LEN must be 48.  If
 keys.  The key appeared first is used as encryption key.  All the
 remaining keys are used as decryption only.
 
+By default, connections to memcached server are not encrypted.  To
+enable encryption, use ``tls`` keyword in
+:option:`--tls-ticket-key-memcached` option.
+
 If :option:`--tls-ticket-key-file` is given, encryption key is read
 from the given file.  In this case, nghttpx does not rotate key
 automatically.  To rotate key, one has to restart nghttpx (see
 SIGNALS).
+
+CERTIFICATE TRANSPARENCY
+------------------------
+
+nghttpx supports TLS ``signed_certificate_timestamp`` extension (`RFC
+6962 <https://tools.ietf.org/html/rfc6962>`_).  The relevant options
+are :option:`--tls-sct-dir` and ``sct-dir`` parameter in
+:option:`--subcert`.  They takes a directory, and nghttpx reads all
+files whose extension is ``.sct`` under the directory.  The ``*.sct``
+files are encoded as ``SignedCertificateTimestamp`` struct described
+in `section 3.2 of RFC 69662
+<https://tools.ietf.org/html/rfc6962#section-3.2>`_.  This format is
+the same one used by `nginx-ct
+<https://github.com/grahamedgecombe/nginx-ct>`_ and `mod_ssl_ct
+<https://httpd.apache.org/docs/trunk/mod/mod_ssl_ct.html>`_.
+`ct-submit <https://github.com/grahamedgecombe/ct-submit>`_ can be
+used to submit certificates to log servers, and obtain the
+``SignedCertificateTimestamp`` struct which can be used with nghttpx.
 
 MRUBY SCRIPTING
 ---------------
@@ -1198,7 +1639,28 @@ respectively.
 
     .. rb:attr_reader:: remote_addr
 
-        Return IP address of a remote client.
+        Return IP address of a remote client.  If connection is made
+        via UNIX domain socket, this returns the string "localhost".
+
+    .. rb:attr_reader:: server_addr
+
+        Return address of server that accepted the connection.  This
+	is a string which specified in :option:`--frontend` option,
+	excluding port number, and not a resolved IP address.  For
+	UNIX domain socket, this is a path to UNIX domain socket.
+
+    .. rb:attr_reader:: server_port
+
+        Return port number of the server frontend which accepted the
+        connection from client.
+
+    .. rb:attr_reader:: tls_used
+
+        Return true if TLS is used on the connection.
+
+    .. rb:attr_reader:: tls_sni
+
+        Return the TLS SNI value which client sent in this connection.
 
 .. rb:class:: Request
 
@@ -1234,7 +1696,13 @@ respectively.
 
         Request path, including query component (i.e., /index.html).
         On assignment, copy of given value is assigned.  The path does
-        not include authority component of URI.
+        not include authority component of URI.  This may include
+        query component.  nghttpx makes certain normalization for
+        path.  It decodes percent-encoding for unreserved characters
+        (see https://tools.ietf.org/html/rfc3986#section-2.3), and
+        resolves ".." and ".".  But it may leave characters which
+        should be percent-encoded as is. So be careful when comparing
+        path against desired string.
 
     .. rb:attr_reader:: headers
 
@@ -1261,7 +1729,7 @@ respectively.
 
         Clear all existing request header fields.
 
-    .. rb:method:: push uri
+    .. rb:method:: push(uri)
 
         Initiate to push resource identified by *uri*.  Only HTTP/2
         protocol supports this feature.  For the other protocols, this
@@ -1371,6 +1839,62 @@ addresses:
     end
 
     App.new
+
+API ENDPOINTS
+-------------
+
+nghttpx exposes API endpoints to manipulate it via HTTP based API.  By
+default, API endpoint is disabled.  To enable it, add a dedicated
+frontend for API using :option:`--frontend` option with "api"
+parameter.  All requests which come from this frontend address, will
+be treated as API request.
+
+The response is normally JSON dictionary, and at least includes the
+following keys:
+
+status
+  The status of the request processing.  The following values are
+  defined:
+
+  Success
+    The request was successful.
+
+  Failure
+    The request was failed.  No change has been made.
+
+code
+  HTTP status code
+
+We wrote "normally", since nghttpx may return ordinal HTML response in
+some cases where the error has occurred before reaching API endpoint
+(e.g., header field is too large).
+
+The following section describes available API endpoints.
+
+PUT /api/v1beta1/backendconfig
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This API replaces the current backend server settings with the
+requested ones.  The request method should be PUT, but POST is also
+acceptable.  The request body must be nghttpx configuration file
+format.  For configuration file format, see `FILES`_ section.  The
+line separator inside the request body must be single LF (0x0A).
+Currently, only :option:`backend <--backend>` option is parsed, the
+others are simply ignored.  The semantics of this API is replace the
+current backend with the backend options in request body.  Describe
+the desired set of backend severs, and nghttpx makes it happen.  If
+there is no :option:`backend <--backend>` option is found in request
+body, the current set of backend is replaced with the :option:`backend
+<--backend>` option's default value, which is ``127.0.0.1,80``.
+
+The replacement is done instantly without breaking existing
+connections or requests.  It also avoids any process creation as is
+the case with hot swapping with signals.
+
+The one limitation is that only numeric IP address is allowd in
+:option:`backend <--backend>` in request body unless "dns" parameter
+is used while non numeric hostname is allowed in command-line or
+configuration file is read using :option:`--conf`.
 
 SEE ALSO
 --------

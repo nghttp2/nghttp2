@@ -32,6 +32,7 @@
 #include <sys/socket.h>
 #endif // HAVE_SYS_SOCKET_H
 
+#include <mutex>
 #include <memory>
 #include <vector>
 #include <random>
@@ -48,6 +49,8 @@
 #endif // HAVE_NEVERBLEED
 
 #include "shrpx_downstream_connection_pool.h"
+#include "shrpx_config.h"
+#include "shrpx_exec.h"
 
 namespace shrpx {
 
@@ -58,30 +61,49 @@ class Worker;
 struct WorkerStat;
 struct TicketKeys;
 class MemcachedDispatcher;
-struct FrontendAddr;
+struct UpstreamAddr;
+
+namespace ssl {
+
+class CertLookupTree;
+
+} // namespace ssl
 
 struct OCSPUpdateContext {
   // ocsp response buffer
   std::vector<uint8_t> resp;
+  // Process running fetch-ocsp-response script
+  Process proc;
   // index to ConnectionHandler::all_ssl_ctx_, which points to next
   // SSL_CTX to update ocsp response cache.
   size_t next;
   ev_child chldev;
   ev_io rev;
-  // fd to read response from fetch-ocsp-response script
-  int fd;
   // errno encountered while processing response
   int error;
-  // pid of forked fetch-ocsp-response script process
-  pid_t pid;
+};
+
+// SerialEvent is an event sent from Worker thread.
+enum SerialEventType {
+  SEV_NONE,
+  SEV_REPLACE_DOWNSTREAM,
+};
+
+struct SerialEvent {
+  // ctor for event uses DownstreamConfig
+  SerialEvent(int type, const std::shared_ptr<DownstreamConfig> &downstreamconf)
+      : type(type), downstreamconf(downstreamconf) {}
+
+  int type;
+  std::shared_ptr<DownstreamConfig> downstreamconf;
 };
 
 class ConnectionHandler {
 public:
-  ConnectionHandler(struct ev_loop *loop);
+  ConnectionHandler(struct ev_loop *loop, std::mt19937 &gen);
   ~ConnectionHandler();
   int handle_connection(int fd, sockaddr *addr, int addrlen,
-                        const FrontendAddr *faddr);
+                        const UpstreamAddr *faddr);
   // Creates Worker object for single threaded configuration.
   int create_single_worker();
   // Creates |num| Worker objects for multi threaded configuration.
@@ -129,11 +151,26 @@ public:
   on_tls_ticket_key_get_success(const std::shared_ptr<TicketKeys> &ticket_keys,
                                 ev_timer *w);
   void schedule_next_tls_ticket_key_memcached_get(ev_timer *w);
+  SSL_CTX *create_tls_ticket_key_memcached_ssl_ctx();
+  // Returns the SSL_CTX at all_ssl_ctx_[idx].  This does not perform
+  // array bound checking.
+  SSL_CTX *get_ssl_ctx(size_t idx) const;
 
 #ifdef HAVE_NEVERBLEED
   void set_neverbleed(std::unique_ptr<neverbleed_t> nb);
   neverbleed_t *get_neverbleed() const;
 #endif // HAVE_NEVERBLEED
+
+  // Send SerialEvent SEV_REPLACE_DOWNSTREAM to this object.
+  void send_replace_downstream(
+      const std::shared_ptr<DownstreamConfig> &downstreamconf);
+  // Internal function to send |ev| to this object.
+  void send_serial_event(SerialEvent ev);
+  // Handles SerialEvents received.
+  void handle_serial_event();
+  // Sends WorkerEvent to make them replace downstream.
+  void
+  worker_replace_downstream(std::shared_ptr<DownstreamConfig> downstreamconf);
 
 private:
   // Stores all SSL_CTX objects.
@@ -143,10 +180,17 @@ private:
   // ev_loop for each worker
   std::vector<struct ev_loop *> worker_loops_;
   // Worker instances when multi threaded mode (-nN, N >= 2) is used.
+  // If at least one frontend enables API request, we allocate 1
+  // additional worker dedicated to API request .
   std::vector<std::unique_ptr<Worker>> workers_;
+  // mutex for serial event resive buffer handling
+  std::mutex serial_event_mu_;
+  // SerialEvent receive buffer
+  std::vector<SerialEvent> serial_events_;
   // Worker instance used when single threaded mode (-n1) is used.
   // Otherwise, nullptr and workers_ has instances of Worker instead.
   std::unique_ptr<Worker> single_worker_;
+  std::unique_ptr<ssl::CertLookupTree> cert_tree_;
   std::unique_ptr<MemcachedDispatcher> tls_ticket_key_memcached_dispatcher_;
   // Current TLS session ticket keys.  Note that TLS connection does
   // not refer to this field directly.  They use TicketKeys object in
@@ -160,6 +204,7 @@ private:
   ev_timer disable_acceptor_timer_;
   ev_timer ocsp_timer_;
   ev_async thread_join_asyncev_;
+  ev_async serial_event_asyncev_;
 #ifndef NOTHREADS
   std::future<void> thread_join_fut_;
 #endif // NOTHREADS

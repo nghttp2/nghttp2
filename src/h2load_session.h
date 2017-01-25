@@ -50,6 +50,8 @@ public:
   virtual int on_write() = 0;
   // Called when the underlying session must be terminated.
   virtual void terminate() = 0;
+  // Return the maximum concurrency per connection
+  virtual size_t max_concurrent_streams() = 0;
 };
 
 } // namespace h2load

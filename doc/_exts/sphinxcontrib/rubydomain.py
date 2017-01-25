@@ -15,6 +15,7 @@ from docutils import nodes
 from docutils.parsers.rst import directives
 
 from sphinx import addnodes
+from sphinx import version_info
 from sphinx.roles import XRefRole
 from sphinx.locale import l_, _
 from sphinx.domains import Domain, ObjType, Index
@@ -231,8 +232,8 @@ class RubyObject(ObjectDescription):
 
         indextext = self.get_index_text(modname, name_cls)
         if indextext:
-            self.indexnode['entries'].append(('single', indextext,
-                                              fullname, fullname))
+            self.indexnode['entries'].append(
+                _make_index('single', indextext, fullname, fullname))
 
     def before_content(self):
         # needed for automatic qualification of members (reset in subclasses)
@@ -415,11 +416,19 @@ class RubyModule(Directive):
         # modindex currently
         if not noindex:
             indextext = _('%s (module)') % modname
-            inode = addnodes.index(entries=[('single', indextext,
-                                             'module-' + modname, modname)])
+            inode = addnodes.index(entries=[_make_index(
+                'single', indextext, 'module-' + modname, modname)])
             ret.append(inode)
         return ret
 
+def _make_index(entrytype, entryname, target, ignored, key=None):
+    # Sphinx 1.4 introduced backward incompatible changes, it now
+    # requires 5 tuples.  Last one is categorization key.  See
+    # http://www.sphinx-doc.org/en/stable/extdev/nodes.html#sphinx.addnodes.index
+    if version_info >= (1, 4, 0, '', 0):
+        return (entrytype, entryname, target, ignored, key)
+    else:
+        return (entrytype, entryname, target, ignored)
 
 class RubyCurrentModule(Directive):
     """

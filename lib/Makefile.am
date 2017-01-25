@@ -22,7 +22,7 @@
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 SUBDIRS = includes
 
-EXTRA_DIST = Makefile.msvc
+EXTRA_DIST = Makefile.msvc CMakeLists.txt version.rc.in
 
 AM_CFLAGS = $(WARNCFLAGS) $(EXTRACFLAG)
 AM_CPPFLAGS = -I$(srcdir)/includes -I$(builddir)/includes -DBUILDING_NGHTTP2 \
@@ -47,7 +47,9 @@ OBJECTS = nghttp2_pq.c nghttp2_map.c nghttp2_queue.c \
 	nghttp2_option.c \
 	nghttp2_callbacks.c \
 	nghttp2_mem.c \
-	nghttp2_http.c
+	nghttp2_http.c \
+	nghttp2_rcbuf.c \
+	nghttp2_debug.c
 
 HFILES = nghttp2_pq.h nghttp2_int.h nghttp2_map.h nghttp2_queue.h \
 	nghttp2_frame.h \
@@ -61,7 +63,9 @@ HFILES = nghttp2_pq.h nghttp2_int.h nghttp2_map.h nghttp2_queue.h \
 	nghttp2_option.h \
 	nghttp2_callbacks.h \
 	nghttp2_mem.h \
-	nghttp2_http.h
+	nghttp2_http.h \
+	nghttp2_rcbuf.h \
+	nghttp2_debug.h
 
 libnghttp2_la_SOURCES = $(HFILES) $(OBJECTS)
 libnghttp2_la_LDFLAGS = -no-undefined \

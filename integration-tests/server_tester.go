@@ -6,10 +6,10 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/hpack"
 	"github.com/tatsuhiro-t/go-nghttp2"
 	"github.com/tatsuhiro-t/spdy"
+	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/hpack"
 	"golang.org/x/net/websocket"
 	"io"
 	"io/ioutil"
@@ -29,7 +29,8 @@ import (
 const (
 	serverBin  = buildDir + "/src/nghttpx"
 	serverPort = 3009
-	testDir    = buildDir + "/integration-tests"
+	testDir    = sourceDir + "/integration-tests"
+	logDir     = buildDir + "/integration-tests"
 )
 
 func pair(name, value string) hpack.HeaderField {
@@ -65,34 +66,57 @@ type serverTester struct {
 // newServerTester creates test context for plain TCP frontend
 // connection.
 func newServerTester(args []string, t *testing.T, handler http.HandlerFunc) *serverTester {
-	return newServerTesterInternal(args, t, handler, false, nil)
+	return newServerTesterInternal(args, t, handler, false, serverPort, nil)
+}
+
+func newServerTesterConnectPort(args []string, t *testing.T, handler http.HandlerFunc, port int) *serverTester {
+	return newServerTesterInternal(args, t, handler, false, port, nil)
 }
 
 func newServerTesterHandler(args []string, t *testing.T, handler http.Handler) *serverTester {
-	return newServerTesterInternal(args, t, handler, false, nil)
+	return newServerTesterInternal(args, t, handler, false, serverPort, nil)
 }
 
 // newServerTester creates test context for TLS frontend connection.
 func newServerTesterTLS(args []string, t *testing.T, handler http.HandlerFunc) *serverTester {
-	return newServerTesterInternal(args, t, handler, true, nil)
+	return newServerTesterInternal(args, t, handler, true, serverPort, nil)
+}
+
+func newServerTesterTLSConnectPort(args []string, t *testing.T, handler http.HandlerFunc, port int) *serverTester {
+	return newServerTesterInternal(args, t, handler, true, port, nil)
 }
 
 // newServerTester creates test context for TLS frontend connection
 // with given clientConfig
 func newServerTesterTLSConfig(args []string, t *testing.T, handler http.HandlerFunc, clientConfig *tls.Config) *serverTester {
-	return newServerTesterInternal(args, t, handler, true, clientConfig)
+	return newServerTesterInternal(args, t, handler, true, serverPort, clientConfig)
 }
 
 // newServerTesterInternal creates test context.  If frontendTLS is
-// true, set up TLS frontend connection.
-func newServerTesterInternal(args []string, t *testing.T, handler http.Handler, frontendTLS bool, clientConfig *tls.Config) *serverTester {
+// true, set up TLS frontend connection.  connectPort is the server
+// side port where client connection is made.
+func newServerTesterInternal(src_args []string, t *testing.T, handler http.Handler, frontendTLS bool, connectPort int, clientConfig *tls.Config) *serverTester {
 	ts := httptest.NewUnstartedServer(handler)
 
+	args := []string{}
+
 	backendTLS := false
-	for _, k := range args {
+	dns := false
+	externalDNS := false
+	acceptProxyProtocol := false
+	for _, k := range src_args {
 		switch k {
 		case "--http2-bridge":
 			backendTLS = true
+		case "--dns":
+			dns = true
+		case "--external-dns":
+			dns = true
+			externalDNS = true
+		case "--accept-proxy-protocol":
+			acceptProxyProtocol = true
+		default:
+			args = append(args, k)
 		}
 	}
 	if backendTLS {
@@ -101,7 +125,7 @@ func newServerTesterInternal(args []string, t *testing.T, handler http.Handler, 
 		// NextProtos separately for ts.TLS.  NextProtos set
 		// in nghttp2.ConfigureServer is effectively ignored.
 		ts.TLS = new(tls.Config)
-		ts.TLS.NextProtos = append(ts.TLS.NextProtos, "h2-14")
+		ts.TLS.NextProtos = append(ts.TLS.NextProtos, "h2")
 		ts.StartTLS()
 		args = append(args, "-k")
 	} else {
@@ -111,8 +135,6 @@ func newServerTesterInternal(args []string, t *testing.T, handler http.Handler, 
 	if frontendTLS {
 		scheme = "https"
 		args = append(args, testDir+"/server.key", testDir+"/server.crt")
-	} else {
-		args = append(args, "--frontend-no-tls")
 	}
 
 	backendURL, err := url.Parse(ts.URL)
@@ -122,11 +144,39 @@ func newServerTesterInternal(args []string, t *testing.T, handler http.Handler, 
 
 	// URL.Host looks like "127.0.0.1:8080", but we want
 	// "127.0.0.1,8080"
-	b := "-b" + strings.Replace(backendURL.Host, ":", ",", -1)
-	args = append(args, fmt.Sprintf("-f127.0.0.1,%v", serverPort), b,
-		"--errorlog-file="+testDir+"/log.txt", "-LINFO")
+	b := "-b"
+	if !externalDNS {
+		b += fmt.Sprintf("%v;", strings.Replace(backendURL.Host, ":", ",", -1))
+	} else {
+		sep := strings.LastIndex(backendURL.Host, ":")
+		if sep == -1 {
+			t.Fatalf("backendURL.Host %v does not contain separator ':'", backendURL.Host)
+		}
+		// We use awesome service xip.io.
+		b += fmt.Sprintf("%v.xip.io,%v;", backendURL.Host[:sep], backendURL.Host[sep+1:])
+	}
 
-	authority := fmt.Sprintf("127.0.0.1:%v", serverPort)
+	if backendTLS {
+		b += ";proto=h2;tls"
+	}
+	if dns {
+		b += ";dns"
+	}
+
+	noTLS := ";no-tls"
+	if frontendTLS {
+		noTLS = ""
+	}
+
+	var proxyProto string
+	if acceptProxyProtocol {
+		proxyProto = ";proxyproto"
+	}
+
+	args = append(args, fmt.Sprintf("-f127.0.0.1,%v%v%v", serverPort, noTLS, proxyProto), b,
+		"--errorlog-file="+logDir+"/log.txt", "-LINFO")
+
+	authority := fmt.Sprintf("127.0.0.1:%v", connectPort)
 
 	st := &serverTester{
 		cmd:          exec.Command(serverBin, args...),
@@ -148,6 +198,8 @@ func newServerTesterInternal(args []string, t *testing.T, handler http.Handler, 
 
 	retry := 0
 	for {
+		time.Sleep(50 * time.Millisecond)
+
 		var conn net.Conn
 		var err error
 		if frontendTLS {
@@ -158,7 +210,7 @@ func newServerTesterInternal(args []string, t *testing.T, handler http.Handler, 
 				tlsConfig = clientConfig
 			}
 			tlsConfig.InsecureSkipVerify = true
-			tlsConfig.NextProtos = []string{"h2-14", "spdy/3.1"}
+			tlsConfig.NextProtos = []string{"h2", "spdy/3.1"}
 			conn, err = tls.Dial("tcp", authority, tlsConfig)
 		} else {
 			conn, err = net.Dial("tcp", authority)
@@ -169,7 +221,6 @@ func newServerTesterInternal(args []string, t *testing.T, handler http.Handler, 
 				st.Close()
 				st.t.Fatalf("Error server is not responding too long; server command-line arguments may be invalid")
 			}
-			time.Sleep(150 * time.Millisecond)
 			continue
 		}
 		if frontendTLS {
@@ -275,6 +326,7 @@ type requestParam struct {
 	body        []byte              // request body
 	trailer     []hpack.HeaderField // trailer part
 	httpUpgrade bool                // true if upgraded to HTTP/2 through HTTP Upgrade
+	noEndStream bool                // true if END_STREAM should not be sent
 }
 
 // wrapper for request body to set trailer part
@@ -358,8 +410,9 @@ func (st *serverTester) http1(rp requestParam) (*serverResponse, error) {
 		if err != nil {
 			st.t.Fatalf("Error parsing URL from st.url %v: %v", st.url, err)
 		}
-		u.Path = rp.path
-		reqURL = u.String()
+		u.Path = ""
+		u.RawQuery = ""
+		reqURL = u.String() + rp.path
 	}
 
 	req, err := http.NewRequest(method, reqURL, body)
@@ -448,7 +501,7 @@ func (st *serverTester) spdy(rp requestParam) (*serverResponse, error) {
 	}
 
 	var synStreamFlags spdy.ControlFlags
-	if len(rp.body) == 0 {
+	if len(rp.body) == 0 && !rp.noEndStream {
 		synStreamFlags = spdy.ControlFlagFin
 	}
 	if err := st.spdyFr.WriteFrame(&spdy.SynStreamFrame{
@@ -462,9 +515,13 @@ func (st *serverTester) spdy(rp requestParam) (*serverResponse, error) {
 	}
 
 	if len(rp.body) != 0 {
+		var dataFlags spdy.DataFlags
+		if !rp.noEndStream {
+			dataFlags = spdy.DataFlagFin
+		}
 		if err := st.spdyFr.WriteFrame(&spdy.DataFrame{
 			StreamId: id,
-			Flags:    spdy.DataFlagFin,
+			Flags:    dataFlags,
 			Data:     rp.body,
 		}); err != nil {
 			return nil, err
@@ -577,7 +634,7 @@ func (st *serverTester) http2(rp requestParam) (*serverResponse, error) {
 
 		err := st.fr.WriteHeaders(http2.HeadersFrameParam{
 			StreamID:      id,
-			EndStream:     len(rp.body) == 0 && len(rp.trailer) == 0,
+			EndStream:     len(rp.body) == 0 && len(rp.trailer) == 0 && !rp.noEndStream,
 			EndHeaders:    true,
 			BlockFragment: st.headerBlkBuf.Bytes(),
 		})
@@ -587,7 +644,7 @@ func (st *serverTester) http2(rp requestParam) (*serverResponse, error) {
 
 		if len(rp.body) != 0 {
 			// TODO we assume rp.body fits in 1 frame
-			if err := st.fr.WriteData(id, len(rp.trailer) == 0, rp.body); err != nil {
+			if err := st.fr.WriteData(id, len(rp.trailer) == 0 && !rp.noEndStream, rp.body); err != nil {
 				return nil, err
 			}
 		}
@@ -734,3 +791,8 @@ func cloneHeader(h http.Header) http.Header {
 }
 
 func noopHandler(w http.ResponseWriter, r *http.Request) {}
+
+type APIResponse struct {
+	Status string `json:"status,omitempty"`
+	Code   int    `json:"code,omitempty"`
+}

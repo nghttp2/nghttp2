@@ -25,6 +25,10 @@
 #ifndef NGHTTP2_MAP_TEST_H
 #define NGHTTP2_MAP_TEST_H
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif /* HAVE_CONFIG_H */
+
 void test_nghttp2_map(void);
 void test_nghttp2_map_functional(void);
 void test_nghttp2_map_each_free(void);

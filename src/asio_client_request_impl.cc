@@ -32,7 +32,7 @@ namespace nghttp2 {
 namespace asio_http2 {
 namespace client {
 
-request_impl::request_impl() : strm_(nullptr) {}
+request_impl::request_impl() : strm_(nullptr), header_buffer_size_(0) {}
 
 void request_impl::write_trailer(header_map h) {
   auto sess = strm_->session();
@@ -104,6 +104,12 @@ uri_ref &request_impl::uri() { return uri_; }
 void request_impl::method(std::string s) { method_ = std::move(s); }
 
 const std::string &request_impl::method() const { return method_; }
+
+size_t request_impl::header_buffer_size() const { return header_buffer_size_; }
+
+void request_impl::update_header_buffer_size(size_t len) {
+  header_buffer_size_ += len;
+}
 
 } // namespace client
 } // namespace asio_http2

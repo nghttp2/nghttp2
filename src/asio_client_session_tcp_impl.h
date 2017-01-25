@@ -44,10 +44,12 @@ public:
 
   virtual void start_connect(tcp::resolver::iterator endpoint_it);
   virtual tcp::socket &socket();
-  virtual void read_socket(std::function<
-      void(const boost::system::error_code &ec, std::size_t n)> h);
-  virtual void write_socket(std::function<
-      void(const boost::system::error_code &ec, std::size_t n)> h);
+  virtual void read_socket(
+      std::function<void(const boost::system::error_code &ec, std::size_t n)>
+          h);
+  virtual void write_socket(
+      std::function<void(const boost::system::error_code &ec, std::size_t n)>
+          h);
   virtual void shutdown_socket();
 
 private:

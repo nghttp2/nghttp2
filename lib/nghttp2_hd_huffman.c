@@ -64,15 +64,44 @@ static ssize_t huff_encode_sym(nghttp2_bufs *bufs, size_t *avail_ptr,
     code <<= 8 - (nbits & 0x7);
   }
 
-  /* we lose at most 3 bytes, but it is not critical in practice */
   if (*avail_ptr < (nbits + 7) / 8) {
-    rv = nghttp2_bufs_advance(bufs);
+    /* slow path */
+    if (nbits > 24) {
+      rv = nghttp2_bufs_addb(bufs, (uint8_t)(code >> 24));
+      if (rv != 0) {
+        return rv;
+      }
+      nbits -= 8;
+    }
+    if (nbits > 16) {
+      rv = nghttp2_bufs_addb(bufs, (uint8_t)(code >> 16));
+      if (rv != 0) {
+        return rv;
+      }
+      nbits -= 8;
+    }
+    if (nbits > 8) {
+      rv = nghttp2_bufs_addb(bufs, (uint8_t)(code >> 8));
+      if (rv != 0) {
+        return rv;
+      }
+      nbits -= 8;
+    }
+    if (nbits == 8) {
+      rv = nghttp2_bufs_addb(bufs, (uint8_t)code);
+      if (rv != 0) {
+        return rv;
+      }
+      *avail_ptr = nghttp2_bufs_cur_avail(bufs);
+      return 8;
+    }
+
+    rv = nghttp2_bufs_addb_hold(bufs, (uint8_t)code);
     if (rv != 0) {
       return rv;
     }
     *avail_ptr = nghttp2_bufs_cur_avail(bufs);
-    /* we assume that we at least 3 buffer space available */
-    assert(*avail_ptr >= 3);
+    return (ssize_t)(8 - nbits);
   }
 
   /* fast path, since most code is less than 8 */
@@ -166,31 +195,10 @@ void nghttp2_hd_huff_decode_context_init(nghttp2_hd_huff_decode_context *ctx) {
   ctx->accept = 1;
 }
 
-/* Use macro to make the code simpler..., but error case is tricky.
-   We spent most of the CPU in decoding, so we are doing this
-   thing. */
-#define hd_huff_decode_sym_emit(bufs, sym, avail)                              \
-  do {                                                                         \
-    if ((avail)) {                                                             \
-      nghttp2_bufs_fast_addb((bufs), (sym));                                   \
-      --(avail);                                                               \
-    } else {                                                                   \
-      rv = nghttp2_bufs_addb((bufs), (sym));                                   \
-      if (rv != 0) {                                                           \
-        return rv;                                                             \
-      }                                                                        \
-      (avail) = nghttp2_bufs_cur_avail((bufs));                                \
-    }                                                                          \
-  } while (0)
-
 ssize_t nghttp2_hd_huff_decode(nghttp2_hd_huff_decode_context *ctx,
-                               nghttp2_bufs *bufs, const uint8_t *src,
+                               nghttp2_buf *buf, const uint8_t *src,
                                size_t srclen, int final) {
   size_t i;
-  int rv;
-  size_t avail;
-
-  avail = nghttp2_bufs_cur_avail(bufs);
 
   /* We use the decoding algorithm described in
      http://graphics.ics.uci.edu/pub/Prefix.pdf */
@@ -202,8 +210,7 @@ ssize_t nghttp2_hd_huff_decode(nghttp2_hd_huff_decode_context *ctx,
       return NGHTTP2_ERR_HEADER_COMP;
     }
     if (t->flags & NGHTTP2_HUFF_SYM) {
-      /* this is macro, and may return from this function on error */
-      hd_huff_decode_sym_emit(bufs, t->sym, avail);
+      *buf->last++ = t->sym;
     }
 
     t = &huff_decode_table[t->state][src[i] & 0xf];
@@ -211,8 +218,7 @@ ssize_t nghttp2_hd_huff_decode(nghttp2_hd_huff_decode_context *ctx,
       return NGHTTP2_ERR_HEADER_COMP;
     }
     if (t->flags & NGHTTP2_HUFF_SYM) {
-      /* this is macro, and may return from this function on error */
-      hd_huff_decode_sym_emit(bufs, t->sym, avail);
+      *buf->last++ = t->sym;
     }
 
     ctx->state = t->state;

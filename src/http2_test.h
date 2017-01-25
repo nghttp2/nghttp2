@@ -40,15 +40,13 @@ void test_http2_rewrite_location_uri(void);
 void test_http2_parse_http_status_code(void);
 void test_http2_index_header(void);
 void test_http2_lookup_token(void);
-void test_http2_check_http2_pseudo_header(void);
-void test_http2_http2_header_allowed(void);
-void test_http2_mandatory_request_headers_presence(void);
 void test_http2_parse_link_header(void);
 void test_http2_path_join(void);
 void test_http2_normalize_path(void);
 void test_http2_rewrite_clean_path(void);
 void test_http2_get_pure_path_component(void);
 void test_http2_construct_push_component(void);
+void test_http2_contains_trailers(void);
 
 } // namespace shrpx
 

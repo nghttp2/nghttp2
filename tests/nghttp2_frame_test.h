@@ -25,6 +25,10 @@
 #ifndef NGHTTP2_FRAME_TEST_H
 #define NGHTTP2_FRAME_TEST_H
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif /* HAVE_CONFIG_H */
+
 void test_nghttp2_frame_pack_headers(void);
 void test_nghttp2_frame_pack_headers_frame_too_large(void);
 void test_nghttp2_frame_pack_priority(void);
@@ -34,6 +38,7 @@ void test_nghttp2_frame_pack_push_promise(void);
 void test_nghttp2_frame_pack_ping(void);
 void test_nghttp2_frame_pack_goaway(void);
 void test_nghttp2_frame_pack_window_update(void);
+void test_nghttp2_frame_pack_altsvc(void);
 void test_nghttp2_nv_array_copy(void);
 void test_nghttp2_iv_check(void);
 

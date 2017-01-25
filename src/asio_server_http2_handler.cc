@@ -105,6 +105,13 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
     }
   // fall through
   default:
+    if (req.header_buffer_size() + namelen + valuelen > 64_k) {
+      nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, frame->hd.stream_id,
+                                NGHTTP2_INTERNAL_ERROR);
+      break;
+    }
+    req.update_header_buffer_size(namelen + valuelen);
+
     req.header().emplace(std::string(name, name + namelen),
                          header_value{std::string(value, value + valuelen),
                                       (flags & NGHTTP2_NV_FLAG_NO_INDEX) != 0});
@@ -238,10 +245,19 @@ http2_handler::http2_handler(boost::asio::io_service &io_service,
       buf_(nullptr),
       buflen_(0),
       inside_callback_(false),
+      write_signaled_(false),
       tstamp_cached_(time(nullptr)),
       formatted_date_(util::http_date(tstamp_cached_)) {}
 
-http2_handler::~http2_handler() { nghttp2_session_del(session_); }
+http2_handler::~http2_handler() {
+  for (auto &p : streams_) {
+    auto &strm = p.second;
+    strm->response().impl().call_on_close(NGHTTP2_INTERNAL_ERROR);
+    close_stream(strm->get_stream_id());
+  }
+
+  nghttp2_session_del(session_);
+}
 
 const std::string &http2_handler::http_date() {
   auto t = time(nullptr);
@@ -338,13 +354,13 @@ int http2_handler::start_response(stream &strm) {
   auto &req = strm.request().impl();
   if (::nghttp2::http2::expect_response_body(req.method(), res.status_code())) {
     prd.source.ptr = &strm;
-    prd.read_callback =
-        [](nghttp2_session *session, int32_t stream_id, uint8_t *buf,
-           size_t length, uint32_t *data_flags, nghttp2_data_source *source,
-           void *user_data) -> ssize_t {
-          auto &strm = *static_cast<stream *>(source->ptr);
-          return strm.response().impl().call_read(buf, length, data_flags);
-        };
+    prd.read_callback = [](nghttp2_session *session, int32_t stream_id,
+                           uint8_t *buf, size_t length, uint32_t *data_flags,
+                           nghttp2_data_source *source,
+                           void *user_data) -> ssize_t {
+      auto &strm = *static_cast<stream *>(source->ptr);
+      return strm.response().impl().call_read(buf, length, data_flags);
+    };
     prd_ptr = &prd;
   }
   rv = nghttp2_submit_response(session_, strm.get_stream_id(), nva.data(),
@@ -396,12 +412,17 @@ void http2_handler::stream_error(int32_t stream_id, uint32_t error_code) {
 }
 
 void http2_handler::signal_write() {
-  if (!inside_callback_) {
-    initiate_write();
+  if (!inside_callback_ && !write_signaled_) {
+    write_signaled_ = true;
+    auto self = shared_from_this();
+    io_service_.post([self]() { self->initiate_write(); });
   }
 }
 
-void http2_handler::initiate_write() { writefun_(); }
+void http2_handler::initiate_write() {
+  write_signaled_ = false;
+  writefun_();
+}
 
 void http2_handler::resume(stream &strm) {
   nghttp2_session_resume_data(session_, strm.get_stream_id());

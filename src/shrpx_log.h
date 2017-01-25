@@ -85,6 +85,7 @@ using namespace nghttp2;
 namespace shrpx {
 
 class Downstream;
+struct DownstreamAddr;
 
 enum SeverityLevel { INFO, NOTICE, WARN, ERROR, FATAL };
 
@@ -97,7 +98,7 @@ public:
     return *this;
   }
   static void set_severity_level(int severity);
-  static int set_severity_level_by_name(const char *name);
+  static int set_severity_level_by_name(const StringRef &name);
   static bool log_enabled(int severity) { return severity >= severity_thres_; }
 
 private:
@@ -131,28 +132,23 @@ enum LogFragmentType {
   SHRPX_LOGF_SSL_PROTOCOL,
   SHRPX_LOGF_SSL_SESSION_ID,
   SHRPX_LOGF_SSL_SESSION_REUSED,
+  SHRPX_LOGF_BACKEND_HOST,
+  SHRPX_LOGF_BACKEND_PORT,
 };
 
 struct LogFragment {
-  LogFragment(LogFragmentType type, ImmutableString value = ImmutableString())
+  LogFragment(LogFragmentType type, StringRef value = StringRef::from_lit(""))
       : type(type), value(std::move(value)) {}
   LogFragmentType type;
-  ImmutableString value;
+  StringRef value;
 };
 
 struct LogSpec {
   Downstream *downstream;
   StringRef remote_addr;
-  StringRef method;
-  StringRef path;
   StringRef alpn;
   const nghttp2::ssl::TLSSessionInfo *tls_info;
-  std::chrono::system_clock::time_point time_now;
-  std::chrono::high_resolution_clock::time_point request_start_time;
   std::chrono::high_resolution_clock::time_point request_end_time;
-  int major, minor;
-  unsigned int status;
-  int64_t body_bytes_sent;
   StringRef remote_port;
   uint16_t server_port;
   pid_t pid;
@@ -168,6 +164,24 @@ int reopen_log_files();
 void log_chld(pid_t pid, int rstatus, const char *msg);
 
 void redirect_stderr_to_errorlog();
+
+// Makes internal copy of stderr (and possibly stdout in the future),
+// which is then used as pointer to /dev/stderr or /proc/self/fd/2
+void store_original_fds();
+
+// Restores the original stderr that was stored with copy_original_fds
+// Used just before execv
+void restore_original_fds();
+
+// Closes |fd| which was returned by open_log_file (see below)
+// and sets it to -1. In the case that |fd| points to stdout or
+// stderr, or is -1, the descriptor is not closed (but still set to -1).
+void close_log_file(int &fd);
+
+// Opens |path| with O_APPEND enabled.  If file does not exist, it is
+// created first.  This function returns file descriptor referring the
+// opened file if it succeeds, or -1.
+int open_log_file(const char *path);
 
 } // namespace shrpx
 

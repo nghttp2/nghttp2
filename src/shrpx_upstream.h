@@ -57,10 +57,11 @@ public:
   virtual int on_downstream_body_complete(Downstream *downstream) = 0;
 
   virtual void on_handler_delete() = 0;
-  // Called when downstream connection is reset.  Currently this is
-  // only used by Http2Session.  If |no_retry| is true, another
-  // connection attempt using new DownstreamConnection is not allowed.
-  virtual int on_downstream_reset(bool no_retry) = 0;
+  // Called when downstream connection for |downstream| is reset.
+  // Currently this is only used by Http2Session.  If |no_retry| is
+  // true, another connection attempt using new DownstreamConnection
+  // is not allowed.
+  virtual int on_downstream_reset(Downstream *downstream, bool no_retry) = 0;
 
   virtual void pause_read(IOCtrlReason reason) = 0;
   virtual int resume_read(IOCtrlReason reason, Downstream *downstream,
@@ -68,8 +69,10 @@ public:
   virtual int send_reply(Downstream *downstream, const uint8_t *body,
                          size_t bodylen) = 0;
 
-  virtual int initiate_push(Downstream *downstream, const char *uri,
-                            size_t len) = 0;
+  // Starts server push.  The |downstream| is an associated stream for
+  // the pushed resource.  This function returns 0 if it succeeds,
+  // otherwise -1.
+  virtual int initiate_push(Downstream *downstream, const StringRef &uri) = 0;
 
   // Fills response data in |iov| whose capacity is |iovcnt|.  Returns
   // the number of iovs filled.

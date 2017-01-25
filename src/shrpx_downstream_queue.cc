@@ -31,7 +31,8 @@
 
 namespace shrpx {
 
-DownstreamQueue::HostEntry::HostEntry() : num_active(0) {}
+DownstreamQueue::HostEntry::HostEntry(ImmutableString &&key)
+    : key(std::move(key)), num_active(0) {}
 
 DownstreamQueue::DownstreamQueue(size_t conn_max_per_host, bool unified_host)
     : conn_max_per_host_(conn_max_per_host == 0
@@ -57,28 +58,28 @@ void DownstreamQueue::mark_failure(Downstream *downstream) {
 }
 
 DownstreamQueue::HostEntry &
-DownstreamQueue::find_host_entry(const std::string &host) {
+DownstreamQueue::find_host_entry(const StringRef &host) {
   auto itr = host_entries_.find(host);
   if (itr == std::end(host_entries_)) {
+    auto key = ImmutableString{std::begin(host), std::end(host)};
+    auto key_ref = StringRef{key};
 #ifdef HAVE_STD_MAP_EMPLACE
-    std::tie(itr, std::ignore) = host_entries_.emplace(host, HostEntry());
+    std::tie(itr, std::ignore) =
+        host_entries_.emplace(key_ref, HostEntry(std::move(key)));
 #else  // !HAVE_STD_MAP_EMPLACE
     // for g++-4.7
-    std::tie(itr, std::ignore) =
-        host_entries_.insert(std::make_pair(host, HostEntry()));
+    std::tie(itr, std::ignore) = host_entries_.insert(
+        std::make_pair(key_ref, HostEntry(std::move(key))));
 #endif // !HAVE_STD_MAP_EMPLACE
   }
   return (*itr).second;
 }
 
-const std::string &
-DownstreamQueue::make_host_key(const std::string &host) const {
-  static std::string empty_key;
-  return unified_host_ ? empty_key : host;
+StringRef DownstreamQueue::make_host_key(const StringRef &host) const {
+  return unified_host_ ? StringRef{} : host;
 }
 
-const std::string &
-DownstreamQueue::make_host_key(Downstream *downstream) const {
+StringRef DownstreamQueue::make_host_key(Downstream *downstream) const {
   return make_host_key(downstream->request().authority);
 }
 
@@ -99,7 +100,7 @@ void DownstreamQueue::mark_blocked(Downstream *downstream) {
   ent.blocked.append(link);
 }
 
-bool DownstreamQueue::can_activate(const std::string &host) const {
+bool DownstreamQueue::can_activate(const StringRef &host) const {
   auto itr = host_entries_.find(make_host_key(host));
   if (itr == std::end(host_entries_)) {
     return true;
@@ -111,7 +112,7 @@ bool DownstreamQueue::can_activate(const std::string &host) const {
 namespace {
 bool remove_host_entry_if_empty(const DownstreamQueue::HostEntry &ent,
                                 DownstreamQueue::HostEntryMap &host_entries,
-                                const std::string &host) {
+                                const StringRef &host) {
   if (ent.blocked.empty() && ent.num_active == 0) {
     host_entries.erase(host);
     return true;
@@ -127,7 +128,7 @@ Downstream *DownstreamQueue::remove_and_get_blocked(Downstream *downstream,
 
   downstreams_.remove(downstream);
 
-  auto &host = make_host_key(downstream);
+  auto host = make_host_key(downstream);
   auto &ent = find_host_entry(host);
 
   if (downstream->get_dispatch_state() == Downstream::DISPATCH_ACTIVE) {

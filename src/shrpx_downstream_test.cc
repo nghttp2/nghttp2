@@ -32,56 +32,71 @@
 
 namespace shrpx {
 
-void test_downstream_field_store_index_headers(void) {
-  FieldStore fs(0);
-  fs.add_header("1", "0");
-  fs.add_header("2", "1");
-  fs.add_header("Charlie", "2");
-  fs.add_header("Alpha", "3");
-  fs.add_header("Delta", "4");
-  fs.add_header("BravO", "5");
-  fs.add_header(":method", "6");
-  fs.add_header(":authority", "7");
-  fs.index_headers();
+void test_downstream_field_store_append_last_header(void) {
+  BlockAllocator balloc(16, 16);
+  FieldStore fs(balloc, 0);
+  fs.alloc_add_header_name(StringRef::from_lit("alpha"));
+  auto bravo = StringRef::from_lit("BRAVO");
+  fs.append_last_header_key(bravo.c_str(), bravo.size());
+  // Add more characters so that relloc occurs
+  auto golf = StringRef::from_lit("golF0123456789");
+  fs.append_last_header_key(golf.c_str(), golf.size());
 
-  auto ans = Headers{{"1", "0"},
-                     {"2", "1"},
-                     {"charlie", "2"},
-                     {"alpha", "3"},
-                     {"delta", "4"},
-                     {"bravo", "5"},
-                     {":method", "6"},
-                     {":authority", "7"}};
+  auto charlie = StringRef::from_lit("Charlie");
+  fs.append_last_header_value(charlie.c_str(), charlie.size());
+  auto delta = StringRef::from_lit("deltA");
+  fs.append_last_header_value(delta.c_str(), delta.size());
+  // Add more characters so that relloc occurs
+  auto echo = StringRef::from_lit("echo0123456789");
+  fs.append_last_header_value(echo.c_str(), echo.size());
+
+  fs.add_header_token(StringRef::from_lit("echo"),
+                      StringRef::from_lit("foxtrot"), false, -1);
+
+  auto ans =
+      HeaderRefs{{StringRef::from_lit("alphabravogolf0123456789"),
+                  StringRef::from_lit("CharliedeltAecho0123456789")},
+                 {StringRef::from_lit("echo"), StringRef::from_lit("foxtrot")}};
   CU_ASSERT(ans == fs.headers());
 }
 
 void test_downstream_field_store_header(void) {
-  FieldStore fs(0);
-  fs.add_header("alpha", "0");
-  fs.add_header(":authority", "1");
-  fs.add_header("content-length", "2");
-  fs.index_headers();
+  BlockAllocator balloc(16, 16);
+  FieldStore fs(balloc, 0);
+  fs.add_header_token(StringRef::from_lit("alpha"), StringRef::from_lit("0"),
+                      false, -1);
+  fs.add_header_token(StringRef::from_lit(":authority"),
+                      StringRef::from_lit("1"), false, http2::HD__AUTHORITY);
+  fs.add_header_token(StringRef::from_lit("content-length"),
+                      StringRef::from_lit("2"), false,
+                      http2::HD_CONTENT_LENGTH);
 
   // By token
-  CU_ASSERT(Header(":authority", "1") == *fs.header(http2::HD__AUTHORITY));
+  CU_ASSERT(HeaderRef(StringRef{":authority"}, StringRef{"1"}) ==
+            *fs.header(http2::HD__AUTHORITY));
   CU_ASSERT(nullptr == fs.header(http2::HD__METHOD));
 
   // By name
-  CU_ASSERT(Header("alpha", "0") == *fs.header("alpha"));
-  CU_ASSERT(nullptr == fs.header("bravo"));
+  CU_ASSERT(HeaderRef(StringRef{"alpha"}, StringRef{"0"}) ==
+            *fs.header(StringRef::from_lit("alpha")));
+  CU_ASSERT(nullptr == fs.header(StringRef::from_lit("bravo")));
 }
 
 void test_downstream_crumble_request_cookie(void) {
   Downstream d(nullptr, nullptr, 0);
   auto &req = d.request();
-  req.fs.add_header(":method", "get");
-  req.fs.add_header(":path", "/");
-  auto val = "alpha; bravo; ; ;; charlie;;";
-  req.fs.add_header(
-      reinterpret_cast<const uint8_t *>("cookie"), sizeof("cookie") - 1,
-      reinterpret_cast<const uint8_t *>(val), strlen(val), true, -1);
-  req.fs.add_header("cookie", ";delta");
-  req.fs.add_header("cookie", "echo");
+  req.fs.add_header_token(StringRef::from_lit(":method"),
+                          StringRef::from_lit("get"), false, -1);
+  req.fs.add_header_token(StringRef::from_lit(":path"),
+                          StringRef::from_lit("/"), false, -1);
+  req.fs.add_header_token(StringRef::from_lit("cookie"),
+                          StringRef::from_lit("alpha; bravo; ; ;; charlie;;"),
+                          true, http2::HD_COOKIE);
+  req.fs.add_header_token(StringRef::from_lit("cookie"),
+                          StringRef::from_lit(";delta"), false,
+                          http2::HD_COOKIE);
+  req.fs.add_header_token(StringRef::from_lit("cookie"),
+                          StringRef::from_lit("echo"), false, http2::HD_COOKIE);
 
   std::vector<nghttp2_nv> nva;
   d.crumble_request_cookie(nva);
@@ -91,19 +106,20 @@ void test_downstream_crumble_request_cookie(void) {
   CU_ASSERT(5 == nva.size());
   CU_ASSERT(5 == num_cookies);
 
-  Headers cookies;
+  HeaderRefs cookies;
   std::transform(std::begin(nva), std::end(nva), std::back_inserter(cookies),
                  [](const nghttp2_nv &nv) {
-                   return Header(std::string(nv.name, nv.name + nv.namelen),
-                                 std::string(nv.value, nv.value + nv.valuelen),
-                                 nv.flags & NGHTTP2_NV_FLAG_NO_INDEX);
+                   return HeaderRef(StringRef{nv.name, nv.namelen},
+                                    StringRef{nv.value, nv.valuelen},
+                                    nv.flags & NGHTTP2_NV_FLAG_NO_INDEX);
                  });
 
-  Headers ans = {{"cookie", "alpha"},
-                 {"cookie", "bravo"},
-                 {"cookie", "charlie"},
-                 {"cookie", "delta"},
-                 {"cookie", "echo"}};
+  HeaderRefs ans = {
+      {StringRef::from_lit("cookie"), StringRef::from_lit("alpha")},
+      {StringRef::from_lit("cookie"), StringRef::from_lit("bravo")},
+      {StringRef::from_lit("cookie"), StringRef::from_lit("charlie")},
+      {StringRef::from_lit("cookie"), StringRef::from_lit("delta")},
+      {StringRef::from_lit("cookie"), StringRef::from_lit("echo")}};
 
   CU_ASSERT(ans == cookies);
   CU_ASSERT(cookies[0].no_index);
@@ -114,12 +130,23 @@ void test_downstream_crumble_request_cookie(void) {
 void test_downstream_assemble_request_cookie(void) {
   Downstream d(nullptr, nullptr, 0);
   auto &req = d.request();
-  req.fs.add_header(":method", "get");
-  req.fs.add_header(":path", "/");
-  req.fs.add_header("cookie", "alpha");
-  req.fs.add_header("cookie", "bravo;");
-  req.fs.add_header("cookie", "charlie; ");
-  req.fs.add_header("cookie", "delta;;");
+
+  req.fs.add_header_token(StringRef::from_lit(":method"),
+                          StringRef::from_lit("get"), false, -1);
+  req.fs.add_header_token(StringRef::from_lit(":path"),
+                          StringRef::from_lit("/"), false, -1);
+  req.fs.add_header_token(StringRef::from_lit("cookie"),
+                          StringRef::from_lit("alpha"), false,
+                          http2::HD_COOKIE);
+  req.fs.add_header_token(StringRef::from_lit("cookie"),
+                          StringRef::from_lit("bravo;"), false,
+                          http2::HD_COOKIE);
+  req.fs.add_header_token(StringRef::from_lit("cookie"),
+                          StringRef::from_lit("charlie; "), false,
+                          http2::HD_COOKIE);
+  req.fs.add_header_token(StringRef::from_lit("cookie"),
+                          StringRef::from_lit("delta;;"), false,
+                          http2::HD_COOKIE);
   CU_ASSERT("alpha; bravo; charlie; delta" == d.assemble_request_cookie());
 }
 
@@ -127,11 +154,12 @@ void test_downstream_rewrite_location_response_header(void) {
   Downstream d(nullptr, nullptr, 0);
   auto &req = d.request();
   auto &resp = d.response();
-  d.set_request_downstream_host("localhost2");
-  req.authority = "localhost:8443";
-  resp.fs.add_header("location", "http://localhost2:3000/");
-  resp.fs.index_headers();
-  d.rewrite_location_response_header("https");
+  d.set_request_downstream_host(StringRef::from_lit("localhost2"));
+  req.authority = StringRef::from_lit("localhost:8443");
+  resp.fs.add_header_token(StringRef::from_lit("location"),
+                           StringRef::from_lit("http://localhost2:3000/"),
+                           false, http2::HD_LOCATION);
+  d.rewrite_location_response_header(StringRef::from_lit("https"));
   auto location = resp.fs.header(http2::HD_LOCATION);
   CU_ASSERT("https://localhost:8443/" == (*location).value);
 }

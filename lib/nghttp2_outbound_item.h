@@ -87,11 +87,19 @@ typedef struct {
   uint8_t flags;
 } nghttp2_goaway_aux_data;
 
+/* struct used for extension frame */
+typedef struct {
+  /* nonzero if this extension frame is serialized by library
+     function, instead of user-defined callbacks. */
+  uint8_t builtin;
+} nghttp2_ext_aux_data;
+
 /* Additional data which cannot be stored in nghttp2_frame struct */
 typedef union {
   nghttp2_data_aux_data data;
   nghttp2_headers_aux_data headers;
   nghttp2_goaway_aux_data goaway;
+  nghttp2_ext_aux_data ext;
 } nghttp2_aux_data;
 
 struct nghttp2_outbound_item;
@@ -99,6 +107,9 @@ typedef struct nghttp2_outbound_item nghttp2_outbound_item;
 
 struct nghttp2_outbound_item {
   nghttp2_frame frame;
+  /* Storage for extension frame payload.  frame->ext.payload points
+     to this structure to avoid frequent memory allocation. */
+  nghttp2_ext_frame_payload ext_frame_payload;
   nghttp2_aux_data aux_data;
   /* The priority used in priority comparion.  Smaller is served
      ealier.  For PING, SETTINGS and non-DATA frames (excluding

@@ -52,14 +52,12 @@
 #define NGHTTP2_FRAMEBUF_CHUNKLEN                                              \
   (NGHTTP2_FRAME_HDLEN + 1 + NGHTTP2_MAX_PAYLOADLEN)
 
-/* Number of inbound buffer */
-#define NGHTTP2_FRAMEBUF_MAX_NUM 5
-
 /* The default length of DATA frame payload. */
 #define NGHTTP2_DATA_PAYLOADLEN NGHTTP2_MAX_FRAME_SIZE_MIN
 
-/* Maximum headers payload length, calculated in compressed form.
-   This applies to transmission only. */
+/* Maximum headers block size to send, calculated using
+   nghttp2_hd_deflate_bound().  This is the default value, and can be
+   overridden by nghttp2_option_set_max_send_header_block_size(). */
 #define NGHTTP2_MAX_HEADERSLEN 65536
 
 /* The number of bytes for each SETTINGS entry */
@@ -72,7 +70,7 @@
 #define NGHTTP2_MAX_PADLEN 256
 
 /* Union of extension frame payload */
-typedef union { int dummy; } nghttp2_ext_frame_payload;
+typedef union { nghttp2_ext_altsvc altsvc; } nghttp2_ext_frame_payload;
 
 void nghttp2_frame_pack_frame_hd(uint8_t *buf, const nghttp2_frame_hd *hd);
 
@@ -215,18 +213,12 @@ void nghttp2_frame_unpack_settings_entry(nghttp2_settings_entry *iv,
                                          const uint8_t *payload);
 
 /*
- * Makes a copy of |iv| in frame->settings.iv. The |niv| is assigned
- * to frame->settings.niv.
- *
- * This function returns 0 if it succeeds or one of the following
- * negative error codes:
- *
- * NGHTTP2_ERR_NOMEM
- *     Out of memory.
+ * Initializes payload of frame->settings.  The |frame| takes
+ * ownership of |iv|.
  */
-int nghttp2_frame_unpack_settings_payload(nghttp2_settings *frame,
-                                          nghttp2_settings_entry *iv,
-                                          size_t niv, nghttp2_mem *mem);
+void nghttp2_frame_unpack_settings_payload(nghttp2_settings *frame,
+                                           nghttp2_settings_entry *iv,
+                                           size_t niv);
 
 /*
  * Unpacks SETTINGS payload into |*iv_ptr|. The number of entries are
@@ -368,6 +360,45 @@ void nghttp2_frame_unpack_window_update_payload(nghttp2_window_update *frame,
                                                 size_t payloadlen);
 
 /*
+ * Packs ALTSVC frame |frame| in wire frame format and store it in
+ * |bufs|.
+ *
+ * The caller must make sure that nghttp2_bufs_reset(bufs) is called
+ * before calling this function.
+ *
+ * This function always succeeds and returns 0.
+ */
+int nghttp2_frame_pack_altsvc(nghttp2_bufs *bufs, nghttp2_extension *ext);
+
+/*
+ * Unpacks ALTSVC wire format into |frame|.  The |payload| of
+ * |payloadlen| bytes contains frame payload.  This function assumes
+ * that frame->payload points to the nghttp2_ext_altsvc object.
+ *
+ * This function always succeeds and returns 0.
+ */
+void nghttp2_frame_unpack_altsvc_payload(nghttp2_extension *frame,
+                                         size_t origin_len, uint8_t *payload,
+                                         size_t payloadlen);
+
+/*
+ * Unpacks ALTSVC wire format into |frame|.  This function only exists
+ * for unit test.  After allocating buffer for fields, this function
+ * internally calls nghttp2_frame_unpack_altsvc_payload().
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * NGHTTP2_ERR_NOMEM
+ *     Out of memory.
+ * NGHTTP2_ERR_FRAME_SIZE_ERROR
+ *     The payload is too small.
+ */
+int nghttp2_frame_unpack_altsvc_payload2(nghttp2_extension *frame,
+                                         const uint8_t *payload,
+                                         size_t payloadlen, nghttp2_mem *mem);
+
+/*
  * Initializes HEADERS frame |frame| with given values.  |frame| takes
  * ownership of |nva|, so caller must not free it. If |stream_id| is
  * not assigned yet, it must be -1.
@@ -438,6 +469,31 @@ void nghttp2_frame_window_update_init(nghttp2_window_update *frame,
                                       int32_t window_size_increment);
 
 void nghttp2_frame_window_update_free(nghttp2_window_update *frame);
+
+void nghttp2_frame_extension_init(nghttp2_extension *frame, uint8_t type,
+                                  uint8_t flags, int32_t stream_id,
+                                  void *payload);
+
+void nghttp2_frame_extension_free(nghttp2_extension *frame);
+
+/*
+ * Initializes ALTSVC frame |frame| with given values.  This function
+ * assumes that frame->payload points to nghttp2_ext_altsvc object.
+ * Also |origin| and |field_value| are allocated in single buffer,
+ * starting |origin|.  On success, this function takes ownership of
+ * |origin|, so caller must not free it.
+ */
+void nghttp2_frame_altsvc_init(nghttp2_extension *frame, int32_t stream_id,
+                               uint8_t *origin, size_t origin_len,
+                               uint8_t *field_value, size_t field_value_len);
+
+/*
+ * Frees up resources under |frame|.  This function does not free
+ * nghttp2_ext_altsvc object pointed by frame->payload.  This function
+ * only frees origin pointed by nghttp2_ext_altsvc.origin.  Therefore,
+ * other fields must be allocated in the same buffer with origin.
+ */
+void nghttp2_frame_altsvc_free(nghttp2_extension *frame, nghttp2_mem *mem);
 
 /*
  * Returns the number of padding bytes after payload.  The total

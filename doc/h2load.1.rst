@@ -74,14 +74,14 @@ OPTIONS
 .. option:: -w, --window-bits=<N>
 
     Sets the stream level initial window size to (2\*\*<N>)-1.
-    For SPDY, 2**<N> is used instead.
+    For SPDY, 2\*\*<N> is used instead.
 
     Default: ``30``
 
 .. option:: -W, --connection-window-bits=<N>
 
     Sets  the  connection  level   initial  window  size  to
-    (2**<N>)-1.  For SPDY, if <N>  is strictly less than 16,
+    (2\*\*<N>)-1.  For SPDY, if <N>  is strictly less than 16,
     this option  is ignored.   Otherwise 2\*\*<N> is  used for
     SPDY.
 
@@ -96,6 +96,8 @@ OPTIONS
     Set allowed  cipher list.  The  format of the  string is
     described in OpenSSL ciphers(1).
 
+    Default: ``ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA:ECDHE-RSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-RSA-AES256-SHA256:DHE-RSA-AES256-SHA:ECDHE-ECDSA-DES-CBC3-SHA:ECDHE-RSA-DES-CBC3-SHA:EDH-RSA-DES-CBC3-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA:DES-CBC3-SHA:!DSS``
+
 .. option:: -p, --no-tls-proto=<PROTOID>
 
     Specify ALPN identifier of the  protocol to be used when
@@ -108,7 +110,9 @@ OPTIONS
 .. option:: -d, --data=<PATH>
 
     Post FILE to  server.  The request method  is changed to
-    POST.
+    POST.   For  http/1.1 connection,  if  :option:`-d`  is used,  the
+    maximum number of in-flight pipelined requests is set to
+    1.
 
 .. option:: -r, --rate=<N>
 
@@ -118,7 +122,7 @@ OPTIONS
     rate period.   The maximum  number of connections  to be
     made  is  given  in  :option:`-c`   option.   This  rate  will  be
     distributed among  threads as  evenly as  possible.  For
-    example,  with   :option:`-t2`  and   :option:`\-r4`,  each  thread   gets  2
+    example,  with   :option:`-t`\2  and   :option:`-r`\4,  each  thread   gets  2
     connections per period.  When the rate is 0, the program
     will run  as it  normally does, creating  connections at
     whatever variable rate it  wants.  The default value for
@@ -200,6 +204,21 @@ OPTIONS
     :option:`--no-tls-proto`\=http/1.1,    which   effectively    force
     http/1.1 for both http and https URI.
 
+.. option:: --header-table-size=<SIZE>
+
+    Specify decoder header table size.
+
+    Default: ``4K``
+
+.. option:: --encoder-header-table-size=<SIZE>
+
+    Specify encoder header table size.  The decoder (server)
+    specifies  the maximum  dynamic table  size it  accepts.
+    Then the negotiated dynamic table size is the minimum of
+    this option value and the value which server specified.
+
+    Default: ``4K``
+
 .. option:: -v, --verbose
 
     Output debug information.
@@ -213,6 +232,9 @@ OPTIONS
     Display this help and exit.
 
 
+
+The <SIZE> argument is an integer and an optional unit (e.g., 10K is
+10 * 1024).  Units are K, M and G (powers of 1024).
 
 The <DURATION> argument is an integer and an optional unit (e.g., 1s
 is 1 second and 500ms is 500 milliseconds).  Units are h, m, s or ms

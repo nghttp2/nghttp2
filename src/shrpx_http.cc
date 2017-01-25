@@ -35,85 +35,97 @@ namespace shrpx {
 
 namespace http {
 
-std::string create_error_html(unsigned int status_code) {
-  std::string res;
-  res.reserve(512);
-  auto status = http2::get_status_string(status_code);
-  res += R"(<!DOCTYPE html><html lang="en"><title>)";
-  res += status;
-  res += "</title><body><h1>";
-  res += status;
-  res += "</h1><footer>";
-  const auto &server_name = get_config()->http.server_name;
-  res.append(server_name.c_str(), server_name.size());
-  res += "</footer></body></html>";
-  return res;
-}
+StringRef create_error_html(BlockAllocator &balloc, unsigned int http_status) {
+  auto &httpconf = get_config()->http;
 
-std::string create_via_header_value(int major, int minor) {
-  std::string hdrs;
-  hdrs += static_cast<char>(major + '0');
-  if (major < 2) {
-    hdrs += '.';
-    hdrs += static_cast<char>(minor + '0');
+  const auto &error_pages = httpconf.error_pages;
+  for (const auto &page : error_pages) {
+    if (page.http_status == 0 || page.http_status == http_status) {
+      return StringRef{std::begin(page.content), std::end(page.content)};
+    }
   }
-  hdrs += " nghttpx";
-  return hdrs;
+
+  auto status_string = http2::stringify_status(balloc, http_status);
+  auto reason_phrase = http2::get_reason_phrase(http_status);
+
+  return concat_string_ref(
+      balloc, StringRef::from_lit(R"(<!DOCTYPE html><html lang="en"><title>)"),
+      status_string, StringRef::from_lit(" "), reason_phrase,
+      StringRef::from_lit("</title><body><h1>"), status_string,
+      StringRef::from_lit(" "), reason_phrase,
+      StringRef::from_lit("</h1><footer>"), httpconf.server_name,
+      StringRef::from_lit("</footer></body></html>"));
 }
 
-std::string create_forwarded(int params, const StringRef &node_by,
-                             const std::string &node_for,
-                             const std::string &host,
-                             const std::string &proto) {
-  std::string res;
+StringRef create_forwarded(BlockAllocator &balloc, int params,
+                           const StringRef &node_by, const StringRef &node_for,
+                           const StringRef &host, const StringRef &proto) {
+  size_t len = 0;
+  if ((params & FORWARDED_BY) && !node_by.empty()) {
+    len += str_size("by=\"") + node_by.size() + str_size("\";");
+  }
+  if ((params & FORWARDED_FOR) && !node_for.empty()) {
+    len += str_size("for=\"") + node_for.size() + str_size("\";");
+  }
+  if ((params & FORWARDED_HOST) && !host.empty()) {
+    len += str_size("host=\"") + host.size() + str_size("\";");
+  }
+  if ((params & FORWARDED_PROTO) && !proto.empty()) {
+    len += str_size("proto=") + proto.size() + str_size(";");
+  }
+
+  auto iov = make_byte_ref(balloc, len + 1);
+  auto p = iov.base;
+
   if ((params & FORWARDED_BY) && !node_by.empty()) {
     // This must be quoted-string unless it is obfuscated version
     // (which starts with "_") or some special value (e.g.,
     // "localhost" for UNIX domain socket), since ':' is not allowed
     // in token.  ':' is used to separate host and port.
     if (node_by[0] == '_' || node_by[0] == 'l') {
-      res += "by=";
-      res += node_by;
-      res += ";";
+      p = util::copy_lit(p, "by=");
+      p = std::copy(std::begin(node_by), std::end(node_by), p);
+      p = util::copy_lit(p, ";");
     } else {
-      res += "by=\"";
-      res += node_by;
-      res += "\";";
+      p = util::copy_lit(p, "by=\"");
+      p = std::copy(std::begin(node_by), std::end(node_by), p);
+      p = util::copy_lit(p, "\";");
     }
   }
   if ((params & FORWARDED_FOR) && !node_for.empty()) {
     // We only quote IPv6 literal address only, which starts with '['.
     if (node_for[0] == '[') {
-      res += "for=\"";
-      res += node_for;
-      res += "\";";
+      p = util::copy_lit(p, "for=\"");
+      p = std::copy(std::begin(node_for), std::end(node_for), p);
+      p = util::copy_lit(p, "\";");
     } else {
-      res += "for=";
-      res += node_for;
-      res += ";";
+      p = util::copy_lit(p, "for=");
+      p = std::copy(std::begin(node_for), std::end(node_for), p);
+      p = util::copy_lit(p, ";");
     }
   }
   if ((params & FORWARDED_HOST) && !host.empty()) {
     // Just be quoted to skip checking characters.
-    res += "host=\"";
-    res += host;
-    res += "\";";
+    p = util::copy_lit(p, "host=\"");
+    p = std::copy(std::begin(host), std::end(host), p);
+    p = util::copy_lit(p, "\";");
   }
   if ((params & FORWARDED_PROTO) && !proto.empty()) {
     // Scheme production rule only allow characters which are all in
     // token.
-    res += "proto=";
-    res += proto;
-    res += ";";
+    p = util::copy_lit(p, "proto=");
+    p = std::copy(std::begin(proto), std::end(proto), p);
+    *p++ = ';';
   }
 
-  if (res.empty()) {
-    return res;
+  if (iov.base == p) {
+    return StringRef{};
   }
 
-  res.erase(res.size() - 1);
+  --p;
+  *p = '\0';
 
-  return res;
+  return StringRef{iov.base, p};
 }
 
 std::string colorizeHeaders(const char *hdrs) {

@@ -39,21 +39,37 @@
 #include <neverbleed.h>
 #endif // HAVE_NEVERBLEED
 
+#include "network.h"
+#include "shrpx_router.h"
+
 namespace shrpx {
 
 class ClientHandler;
 class Worker;
 class DownstreamConnectionPool;
 struct DownstreamAddr;
-struct FrontendAddr;
+struct UpstreamAddr;
 
 namespace ssl {
+
+struct TLSSessionCache {
+  // ASN1 representation of SSL_SESSION object.  See
+  // i2d_SSL_SESSION(3SSL).
+  std::vector<uint8_t> session_data;
+  // The last time stamp when this cache entry is created or updated.
+  ev_tstamp last_updated;
+};
 
 // This struct stores the additional information per SSL_CTX.  This is
 // attached to SSL_CTX using SSL_CTX_set_app_data().
 struct TLSContextData {
+  // SCT data formatted so that this can be directly sent as
+  // extension_data of signed_certificate_timestamp.
+  std::vector<uint8_t> sct_data;
+#ifndef HAVE_ATOMIC_STD_SHARED_PTR
   // Protects ocsp_data;
   std::mutex mu;
+#endif // !HAVE_ATOMIC_STD_SHARED_PTR
   // OCSP response
   std::shared_ptr<std::vector<uint8_t>> ocsp_data;
 
@@ -62,105 +78,105 @@ struct TLSContextData {
 };
 
 // Create server side SSL_CTX
-SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file
+SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
+                            const std::vector<uint8_t> &sct_data
+
 #ifdef HAVE_NEVERBLEED
                             ,
                             neverbleed_t *nb
 #endif // HAVE_NEVERBLEED
                             );
 
-// Create client side SSL_CTX
+// Create client side SSL_CTX.  This does not configure ALPN settings.
+// |next_proto_select_cb| is for NPN.
 SSL_CTX *create_ssl_client_context(
 #ifdef HAVE_NEVERBLEED
-    neverbleed_t *nb
+    neverbleed_t *nb,
 #endif // HAVE_NEVERBLEED
-    );
+    const StringRef &cacert, const StringRef &cert_file,
+    const StringRef &private_key_file,
+    int (*next_proto_select_cb)(SSL *s, unsigned char **out,
+                                unsigned char *outlen, const unsigned char *in,
+                                unsigned int inlen, void *arg));
 
 ClientHandler *accept_connection(Worker *worker, int fd, sockaddr *addr,
-                                 int addrlen, const FrontendAddr *faddr);
+                                 int addrlen, const UpstreamAddr *faddr);
 
-// Check peer's certificate against first downstream address in
-// Config::downstream_addrs.  We only consider first downstream since
-// we use this function for HTTP/2 downstream link only.
-int check_cert(SSL *ssl, const DownstreamAddr *addr);
+// Check peer's certificate against given |address| and |host|.
+int check_cert(SSL *ssl, const Address *addr, const StringRef &host);
+// Check peer's certificate against given host name described in
+// |addr| and numeric address in |raddr|.  Note that |raddr| might not
+// point to &addr->addr.
+int check_cert(SSL *ssl, const DownstreamAddr *addr, const Address *raddr);
 
-// Retrieves DNS and IP address in subjectAltNames and commonName from
-// the |cert|.
-void get_altnames(X509 *cert, std::vector<std::string> &dns_names,
-                  std::vector<std::string> &ip_addrs, std::string &common_name);
+struct WildcardRevPrefix {
+  WildcardRevPrefix(const StringRef &prefix, size_t idx)
+      : prefix(std::begin(prefix), std::end(prefix)), idx(idx) {}
 
-// CertLookupTree forms lookup tree to get SSL_CTX whose DNS or
-// commonName matches hostname in query. The tree is patricia trie
-// data structure formed from the tail of the hostname pattern. Each
-// CertNode contains part of hostname str member in range [first,
-// last) member and the next member contains the following CertNode
-// pointers ('following' means character before the current one). The
-// CertNode where a hostname pattern ends contains its SSL_CTX pointer
-// in the ssl_ctx member.  For wildcard hostname pattern, we store the
-// its pattern and SSL_CTX in CertNode one before first "*" found from
-// the tail.
-//
-// When querying SSL_CTX with particular hostname, we match from its
-// tail in our lookup tree. If the query goes to the first character
-// of the hostname and current CertNode has non-NULL ssl_ctx member,
-// then it is the exact match. The ssl_ctx member is returned.  Along
-// the way, if CertNode which contains non-empty wildcard_certs member
-// is encountered, wildcard hostname matching is performed against
-// them. If there is a match, its SSL_CTX is returned. If none
-// matches, query is continued to the next character.
-
-struct WildcardCert {
-  SSL_CTX *ssl_ctx;
-  char *hostname;
-  size_t hostnamelen;
+  // "Prefix" of wildcard pattern.  It is reversed from original form.
+  // For example, if the original wildcard is "test*.nghttp2.org",
+  // prefix would be "tset".
+  ImmutableString prefix;
+  // The index of SSL_CTX.  See ConnectionHandler::get_ssl_ctx().
+  size_t idx;
 };
 
-struct CertNode {
-  // list of wildcard domain name and its SSL_CTX pair, the wildcard
-  // '*' appears in this position.
-  std::vector<WildcardCert> wildcard_certs;
-  // Next CertNode index of CertLookupTree::nodes
-  std::vector<std::unique_ptr<CertNode>> next;
-  // SSL_CTX for exact match
-  SSL_CTX *ssl_ctx;
-  char *str;
-  // [first, last) in the reverse direction in str, first >=
-  // last. This indices only work for str member.
-  int first, last;
+struct WildcardPattern {
+  // Wildcard host sharing only suffix is probably rare, so we just do
+  // linear search.
+  std::vector<WildcardRevPrefix> rev_prefix;
 };
 
 class CertLookupTree {
 public:
   CertLookupTree();
 
-  // Adds |ssl_ctx| with hostname pattern |hostname| with length |len|
-  // to the lookup tree.  The |hostname| must be NULL-terminated.
-  void add_cert(SSL_CTX *ssl_ctx, const char *hostname, size_t len);
+  // Adds hostname pattern |hostname| to the lookup tree, associating
+  // value |index|.  When the queried host matches this pattern,
+  // |index| is returned.  We support wildcard pattern.  The left most
+  // '*' is considered as wildcard character, and it must match at
+  // least one character.  If the same pattern has been already added,
+  // this function is noop.
+  //
+  // The caller should lower-case |hostname| since this function does
+  // do that, and lookup function performs case-sensitive match.
+  //
+  // TODO Treat wildcard pattern described as RFC 6125.
+  void add_cert(const StringRef &hostname, size_t index);
 
-  // Looks up SSL_CTX using the given |hostname| with length |len|.
-  // If more than one SSL_CTX which matches the query, it is undefined
-  // which one is returned.  The |hostname| must be NULL-terminated.
-  // If no matching SSL_CTX found, returns NULL.
-  SSL_CTX *lookup(const char *hostname, size_t len);
+  // Looks up index using the given |hostname|.  The exact match takes
+  // precedence over wildcard match.  For wildcard match, longest
+  // match (sum of matched suffix and prefix length in bytes) is
+  // preferred, breaking a tie with longer suffix.
+  //
+  // The caller should lower-case |hostname| since this function
+  // performs case-sensitive match.
+  ssize_t lookup(const StringRef &hostname);
+
+  // Dumps the contents of this lookup tree to stderr.
+  void dump() const;
 
 private:
-  CertNode root_;
-  // Stores pointers to copied hostname when adding hostname and
-  // ssl_ctx pair.
-  std::vector<std::unique_ptr<char[]>> hosts_;
+  // Exact match
+  Router router_;
+  // Wildcard reversed suffix match.  The returned index is into
+  // wildcard_patterns_.
+  Router rev_wildcard_router_;
+  // Stores wildcard suffix patterns.
+  std::vector<WildcardPattern> wildcard_patterns_;
 };
 
-// Adds |ssl_ctx| to lookup tree |lt| using hostnames read from
-// |certfile|. The subjectAltNames and commonName are considered as
-// eligible hostname. This function returns 0 if it succeeds, or -1.
-// Even if no ssl_ctx is added to tree, this function returns 0.
-int cert_lookup_tree_add_cert_from_file(CertLookupTree *lt, SSL_CTX *ssl_ctx,
-                                        const char *certfile);
+// Adds hostnames in |cert| to lookup tree |lt|.  The subjectAltNames
+// and commonName are considered as eligible hostname.  If there is at
+// least one dNSName in subjectAltNames, commonName is not considered.
+// This function returns 0 if it succeeds, or -1.
+int cert_lookup_tree_add_cert_from_x509(CertLookupTree *lt, size_t idx,
+                                        X509 *cert);
 
-// Returns true if |needle| which has |len| bytes is included in the
+// Returns true if |proto| is included in the
 // protocol list |protos|.
-bool in_proto_list(const std::vector<std::string> &protos,
-                   const unsigned char *needle, size_t len);
+bool in_proto_list(const std::vector<StringRef> &protos,
+                   const StringRef &proto);
 
 // Returns true if security requirement for HTTP/2 is fulfilled.
 bool check_http2_requirement(SSL *ssl);
@@ -168,10 +184,10 @@ bool check_http2_requirement(SSL *ssl);
 // Returns SSL/TLS option mask to disable SSL/TLS protocol version not
 // included in |tls_proto_list|.  The returned mask can be directly
 // passed to SSL_CTX_set_options().
-long int create_tls_proto_mask(const std::vector<std::string> &tls_proto_list);
+long int create_tls_proto_mask(const std::vector<StringRef> &tls_proto_list);
 
-std::vector<unsigned char>
-set_alpn_prefs(const std::vector<std::string> &protos);
+int set_alpn_prefs(std::vector<unsigned char> &out,
+                   const std::vector<StringRef> &protos);
 
 // Setups server side SSL_CTX.  This function inspects get_config()
 // and if upstream_no_tls is true, returns nullptr.  Otherwise
@@ -187,30 +203,47 @@ SSL_CTX *setup_server_ssl_context(std::vector<SSL_CTX *> &all_ssl_ctx,
 #endif // HAVE_NEVERBLEED
                                   );
 
-// Setups client side SSL_CTX.  This function inspects get_config()
-// and if downstream_no_tls is true, returns nullptr.  Otherwise, only
-// construct SSL_CTX if either client_mode or http2_bridge is true.
-SSL_CTX *setup_client_ssl_context(
+// Setups client side SSL_CTX.
+SSL_CTX *setup_downstream_client_ssl_context(
 #ifdef HAVE_NEVERBLEED
     neverbleed_t *nb
 #endif // HAVE_NEVERBLEED
     );
 
+// Sets ALPN settings in |SSL| suitable for HTTP/2 use.
+void setup_downstream_http2_alpn(SSL *ssl);
+// Sets ALPN settings in |SSL| suitable for HTTP/1.1 use.
+void setup_downstream_http1_alpn(SSL *ssl);
+
 // Creates CertLookupTree.  If frontend is configured not to use TLS,
 // this function returns nullptr.
-CertLookupTree *create_cert_lookup_tree();
+std::unique_ptr<CertLookupTree> create_cert_lookup_tree();
 
 SSL *create_ssl(SSL_CTX *ssl_ctx);
 
-// Returns true if SSL/TLS is enabled on downstream
-bool downstream_tls_enabled();
+// Returns true if SSL/TLS is enabled on upstream
+bool upstream_tls_enabled();
 
-// Performs TLS hostname match.  |pattern| of length |plen| can
-// contain wildcard character '*', which matches prefix of target
-// hostname.  There are several restrictions to make wildcard work.
-// The matching algorithm is based on RFC 6125.
-bool tls_hostname_match(const char *pattern, size_t plen, const char *hostname,
-                        size_t hlen);
+// Performs TLS hostname match.  |pattern| can contain wildcard
+// character '*', which matches prefix of target hostname.  There are
+// several restrictions to make wildcard work.  The matching algorithm
+// is based on RFC 6125.
+bool tls_hostname_match(const StringRef &pattern, const StringRef &hostname);
+
+// Caches |session| which is associated to remote address |addr|.
+// |session| is serialized into ASN1 representation, and stored.  |t|
+// is used as a time stamp.  Depending on the existing cache's time
+// stamp, |session| might not be cached.
+void try_cache_tls_session(TLSSessionCache &cache, const Address &addr,
+                           SSL_SESSION *session, ev_tstamp t);
+
+// Returns cached session associated |addr|.  If no cache entry is
+// found associated to |addr|, nullptr will be returned.
+SSL_SESSION *reuse_tls_session(const TLSSessionCache &addr);
+
+// Loads certificate form file |filename|.  The caller should delete
+// the returned object using X509_free().
+X509 *load_certificate(const char *filename);
 
 } // namespace ssl
 

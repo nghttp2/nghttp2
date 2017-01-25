@@ -25,7 +25,7 @@ dnl Do not change user variables!
 dnl http://www.gnu.org/software/automake/manual/html_node/Flag-Variables-Ordering.html
 
 AC_PREREQ(2.61)
-AC_INIT([nghttp2], [1.7.1-DEV], [t-tujikawa@users.sourceforge.net])
+AC_INIT([nghttp2], [1.20.0-DEV], [t-tujikawa@users.sourceforge.net])
 AC_CONFIG_AUX_DIR([.])
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_HEADERS([config.h])
@@ -40,15 +40,13 @@ AC_CANONICAL_TARGET
 
 AM_INIT_AUTOMAKE([subdir-objects])
 
-# AM_EXTRA_RECURSIVE_TARGETS requires automake 1.13 or higher
-m4_ifdef([AM_EXTRA_RECURSIVE_TARGETS], [AM_EXTRA_RECURSIVE_TARGETS([it itprep])])
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 
 dnl See versioning rule:
 dnl  http://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
-AC_SUBST(LT_CURRENT, 18)
-AC_SUBST(LT_REVISION, 1)
-AC_SUBST(LT_AGE, 4)
+AC_SUBST(LT_CURRENT, 26)
+AC_SUBST(LT_REVISION, 4)
+AC_SUBST(LT_AGE, 12)
 
 major=`echo $PACKAGE_VERSION |cut -d. -f1 | sed -e "s/[^0-9]//g"`
 minor=`echo $PACKAGE_VERSION |cut -d. -f2 | sed -e "s/[^0-9]//g"`
@@ -76,7 +74,7 @@ AC_ARG_ENABLE([threads],
 
 AC_ARG_ENABLE([app],
     [AS_HELP_STRING([--enable-app],
-                    [Build applications (nghttp, nghttpd and nghttpx) [default=check]])],
+                    [Build applications (nghttp, nghttpd, nghttpx and h2load) [default=check]])],
     [request_app=$enableval], [request_app=check])
 
 AC_ARG_ENABLE([hpack-tools],
@@ -185,8 +183,8 @@ if test "x$GCC" = "xyes" -o "x$CC" = "xclang" ; then
   AC_DEFINE([_U_], [__attribute__((unused))], [Hint to the compiler that a function parameters is not used])
   AC_DEFINE([NGHTTP2_NORETURN], [__attribute__((noreturn))], [Hint to the compiler that a function never return])
 else
-  AC_DEFINE([_U_], , [Hint to the compiler that a function parameters is not use  AC_DEFINE([NGHTTP2_NORETURN], , [Hint to the compiler that a function never return])
-d])
+  AC_DEFINE([_U_], , [Hint to the compiler that a function parameter is not used])
+  AC_DEFINE([NGHTTP2_NORETURN], , [Hint to the compiler that a function never return])
 fi
 
 save_CXXFLAGS="$CXXFLAGS"
@@ -236,6 +234,41 @@ std::map<int, int>().emplace(1, 2);
     [have_std_map_emplace=no
      AC_MSG_RESULT([no])])
 
+# Check that std::atomic_* overloads for std::shared_ptr are
+# available.
+AC_MSG_CHECKING([whether std::atomic_* overloads for std::shared_ptr are available])
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM(
+[[
+#include <memory>
+]],
+[[
+auto a = std::make_shared<int>(1000000007);
+auto p = std::atomic_load(&a);
+++*p;
+std::atomic_store(&a, p);
+]])],
+    [AC_DEFINE([HAVE_ATOMIC_STD_SHARED_PTR], [1],
+               [Define to 1 if you have the std::atomic_* overloads for std::shared_ptr.])
+     have_atomic_std_shared_ptr=yes
+     AC_MSG_RESULT([yes])],
+    [have_atomic_std_shared_ptr=no
+     AC_MSG_RESULT([no])])
+
+# Check that thread_local storage specifier is available
+AC_MSG_CHECKING([whether thread_local storage class specifier is available.])
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM(
+,
+[[
+thread_local int a = 0;
+(void)a;
+]])],
+    [AC_DEFINE([HAVE_THREAD_LOCAL], [1],
+               [Define to 1 if you have thread_local storage specifier.])
+     have_thread_local=yes
+     AC_MSG_RESULT([yes])],
+    [have_Thread_local=no
+     AC_MSG_RESULT([no])])
+
 CXXFLAGS=$save_CXXFLAGS
 
 AC_LANG_POP()
@@ -248,7 +281,7 @@ TESTLDADD=
 # Additional libraries required for programs under src directory.
 APPLDFLAGS=
 
-case "$host" in
+case "$host_os" in
   *android*)
     android_build=yes
     # android does not need -pthread, but needs followng 3 libs for C++
@@ -257,6 +290,12 @@ case "$host" in
   *)
     PTHREAD_LDFLAGS="-pthread"
     APPLDFLAGS="$APPLDFLAGS $PTHREAD_LDFLAGS"
+    ;;
+esac
+
+case "$host_os" in
+  *solaris*)
+    APPLDFLAGS="$APPLDFLAGS -lsocket -lnsl"
     ;;
 esac
 
@@ -331,6 +370,13 @@ if test "x${have_openssl}" = "xno"; then
   AC_MSG_NOTICE($OPENSSL_PKG_ERRORS)
 fi
 
+# c-ares (for src)
+PKG_CHECK_MODULES([LIBCARES], [libcares >= 1.7.5], [have_libcares=yes],
+                  [have_libcares=no])
+if test "x${have_libcares}" = "xno"; then
+  AC_MSG_NOTICE($LIBCARES_PKG_ERRORS)
+fi
+
 # libevent_openssl (for examples)
 # 2.0.8 is required because we use evconnlistener_set_error_cb()
 PKG_CHECK_MODULES([LIBEVENT_OPENSSL], [libevent_openssl >= 2.0.8],
@@ -350,12 +396,12 @@ else
 fi
 
 # libxml2 (for src/nghttp)
-have_libxml2=no
-if test "x${request_libxml2}" != "xno"; then
-  AM_PATH_XML2(2.7.7, [have_libxml2=yes], [have_libxml2=no])
-  if test "x${have_libxml2}" = "xyes"; then
-    AC_DEFINE([HAVE_LIBXML2], [1], [Define to 1 if you have `libxml2` library.])
-  fi
+PKG_CHECK_MODULES([LIBXML2], [libxml-2.0 >= 2.7.7],
+                  [have_libxml2=yes], [have_libxml2=no])
+if test "x${have_libxml2}" = "xyes"; then
+  AC_DEFINE([HAVE_LIBXML2], [1], [Define to 1 if you have `libxml2` library.])
+else
+  AC_MSG_NOTICE($LIBXML2_PKG_ERRORS)
 fi
 
 if test "x${request_libxml2}" = "xyes" &&
@@ -437,13 +483,14 @@ if test "x${request_asio_lib}" = "xyes"; then
   fi
 fi
 
-# The nghttp, nghttpd and nghttpx under src depend on zlib, OpenSSL
-# and libev
+# The nghttp, nghttpd and nghttpx under src depend on zlib, OpenSSL,
+# libev, and libc-ares.
 enable_app=no
 if test "x${request_app}" != "xno" &&
    test "x${have_zlib}" = "xyes" &&
    test "x${have_openssl}" = "xyes" &&
-   test "x${have_libev}" = "xyes"; then
+   test "x${have_libev}" = "xyes" &&
+   test "x${have_libcares}" = "xyes"; then
   enable_app=yes
 fi
 
@@ -598,6 +645,26 @@ AC_SYS_LARGEFILE
 AC_CHECK_MEMBER([struct tm.tm_gmtoff], [have_struct_tm_tm_gmtoff=yes],
                 [have_struct_tm_tm_gmtoff=no], [[#include <time.h>]])
 
+AC_CHECK_MEMBER([struct sockaddr_in.sin_len],
+                [AC_DEFINE([HAVE_SOCKADDR_IN_SIN_LEN],[1],
+                  [Define to 1 if struct sockaddr_in has sin_len member.])],
+                [],
+                [[
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+]])
+
+AC_CHECK_MEMBER([struct sockaddr_in6.sin6_len],
+                [AC_DEFINE([HAVE_SOCKADDR_IN6_SIN6_LEN],[1],
+                  [Define to 1 if struct sockaddr_in6 has sin6_len member.])],
+                [],
+                [[
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+]])
+
 if test "x$have_struct_tm_tm_gmtoff" = "xyes"; then
   AC_DEFINE([HAVE_STRUCT_TM_TM_GMTOFF], [1],
             [Define to 1 if you have `struct tm.tm_gmtoff` member.])
@@ -651,15 +718,13 @@ AC_CHECK_FUNC([timerfd_create],
 
 # For cygwin: we can link initgroups, so AC_CHECK_FUNCS succeeds, but
 # cygwin disables initgroups due to feature test macro magic with our
-# configuration.
-AC_CHECK_DECLS([initgroups], [], [], [[#include <grp.h>]])
-
-# Checks for epoll availability, primarily for examples/tiny-nghttpd
-AX_HAVE_EPOLL([have_epoll=yes], [have_epoll=no])
-
-AM_CONDITIONAL([ENABLE_TINY_NGHTTPD],
-               [ test "x${have_epoll}" = "xyes" &&
-                 test "x${have_timerfd_create}" = "xyes"])
+# configuration.  FreeBSD declares initgroups() in unistd.h.
+AC_CHECK_DECLS([initgroups], [], [], [[
+  #ifdef HAVE_UNISTD_H
+  # include <unistd.h>
+  #endif
+  #include <grp.h>
+]])
 
 save_CFLAGS=$CFLAGS
 save_CXXFLAGS=$CXXFLAGS
@@ -714,12 +779,17 @@ if test "x$werror" != "xno"; then
     AX_CHECK_COMPILE_FLAG([-Wredundant-decls], [CFLAGS="$CFLAGS -Wredundant-decls"])
     # Only work with Clang for the moment
     AX_CHECK_COMPILE_FLAG([-Wheader-guard], [CFLAGS="$CFLAGS -Wheader-guard"])
+    AX_CHECK_COMPILE_FLAG([-Wsometimes-uninitialized], [CFLAGS="$CFLAGS -Wsometimes-uninitialized"])
+
+    # This is required because we pass format string as "const char*.
+    AX_CHECK_COMPILE_FLAG([-Wno-format-nonliteral], [CFLAGS="$CFLAGS -Wno-format-nonliteral"])
 
     # For C++ compiler
     AC_LANG_PUSH(C++)
     AX_CHECK_COMPILE_FLAG([-Wall], [CXXFLAGS="$CXXFLAGS -Wall"])
     AX_CHECK_COMPILE_FLAG([-Werror], [CXXFLAGS="$CXXFLAGS -Werror"])
     AX_CHECK_COMPILE_FLAG([-Wformat-security], [CXXFLAGS="$CXXFLAGS -Wformat-security"])
+    AX_CHECK_COMPILE_FLAG([-Wsometimes-uninitialized], [CXXFLAGS="$CXXFLAGS -Wsometimes-uninitialized"])
     AC_LANG_POP()
 fi
 
@@ -816,6 +886,7 @@ AC_MSG_NOTICE([summary of build options:
       C preprocessor: ${CPP}
       CPPFLAGS:       ${CPPFLAGS}
       WARNCFLAGS:     ${WARNCFLAGS}
+      WARNCXXFLAGS:   ${WARNCXXFLAGS}
       CXX1XCXXFLAGS:  ${CXX1XCXXFLAGS}
       EXTRACFLAG:     ${EXTRACFLAG}
       LIBS:           ${LIBS}
@@ -835,8 +906,9 @@ AC_MSG_NOTICE([summary of build options:
       Failmalloc:     ${enable_failmalloc}
     Libs:
       OpenSSL:        ${have_openssl} (CFLAGS='${OPENSSL_CFLAGS}' LIBS='${OPENSSL_LIBS}')
-      Libxml2:        ${have_libxml2} (CFLAGS='${XML_CPPFLAGS}' LIBS='${XML_LIBS}')
+      Libxml2:        ${have_libxml2} (CFLAGS='${LIBXML2_CPPFLAGS}' LIBS='${LIBXML2_LIBS}')
       Libev:          ${have_libev} (CFLAGS='${LIBEV_CFLAGS}' LIBS='${LIBEV_LIBS}')
+      Libc-ares       ${have_libcares} (CFLAGS='${LIBCARES_CFLAGS}' LIBS='${LIBCARES_LIBS}')
       Libevent(SSL):  ${have_libevent_openssl} (CFLAGS='${LIBEVENT_OPENSSL_CFLAGS}' LIBS='${LIBEVENT_OPENSSL_LIBS}')
       Spdylay:        ${have_spdylay} (CFLAGS='${LIBSPDYLAY_CFLAGS}' LIBS='${LIBSPDYLAY_LIBS}')
       Jansson:        ${have_jansson} (CFLAGS='${JANSSON_CFLAGS}' LIBS='${JANSSON_LIBS}')
