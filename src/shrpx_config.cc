@@ -1494,12 +1494,10 @@ int option_lookup_token(const char *name, size_t namelen) {
       if (util::strieq_l("ecdh-curve", name, 10)) {
         return SHRPX_OPTID_ECDH_CURVES;
       }
-#if !LIBRESSL_IN_USE
       if (util::strieq_l("psk-secret", name, 10)) {
         return SHRPX_OPTID_PSK_SECRETS;
       }
       break;
-#endif
     case 't':
       if (util::strieq_l("write-burs", name, 10)) {
         return SHRPX_OPTID_WRITE_BURST;
@@ -1689,13 +1687,11 @@ int option_lookup_token(const char *name, size_t namelen) {
         return SHRPX_OPTID_ADD_REQUEST_HEADER;
       }
       break;
-#if !LIBRESSL_IN_USE
     case 's':
       if (util::strieq_l("client-psk-secret", name, 17)) {
         return SHRPX_OPTID_CLIENT_PSK_SECRETS;
       }
       break;
-#endif // !LIBRESSL_IN_USE
     case 't':
       if (util::strieq_l("dns-lookup-timeou", name, 17)) {
         return SHRPX_OPTID_DNS_LOOKUP_TIMEOUT;
@@ -3291,12 +3287,24 @@ int parse_config(Config *config, int optid, const StringRef &opt,
   case SHRPX_OPTID_FRONTEND_KEEP_ALIVE_TIMEOUT:
     return parse_duration(&config->conn.upstream.timeout.idle_read, opt,
                           optarg);
-#if !LIBRESSL_IN_USE
   case SHRPX_OPTID_PSK_SECRETS:
+#if !LIBRESSL_IN_USE
     return parse_psk_secrets(config, optarg);
+#else  // LIBRESSL_IN_USE
+    LOG(WARN)
+        << opt
+        << ": ignored because underlying TLS library does not support PSK";
+    return 0;
+#endif // LIBRESSL_IN_USE
   case SHRPX_OPTID_CLIENT_PSK_SECRETS:
+#if !LIBRESSL_IN_USE
     return parse_client_psk_secrets(config, optarg);
-#endif // !LIBRESSL_IN_USE
+#else  // LIBRESSL_IN_USE
+    LOG(WARN)
+        << opt
+        << ": ignored because underlying TLS library does not support PSK";
+    return 0;
+#endif // LIBRESSL_IN_USE
   case SHRPX_OPTID_CLIENT_NO_HTTP2_CIPHER_BLACK_LIST:
     config->tls.client.no_http2_cipher_black_list =
         util::strieq_l("yes", optarg);

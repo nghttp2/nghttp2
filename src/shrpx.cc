@@ -2119,7 +2119,6 @@ SSL/TLS:
               argument <CERT>, or  certificate option in configuration
               file.   For   additional  certificates,   use  --subcert
               option.  This option requires OpenSSL >= 1.0.2.
-#if !LIBRESSL_IN_USE
   --psk-secrets=<PATH>
               Read list of PSK identity and secrets from <PATH>.  This
               is used for frontend connection.  The each line of input
@@ -2147,7 +2146,6 @@ SSL/TLS:
               HTTP/2.   To  use  those   cipher  suites  with  HTTP/2,
               consider   to  use   --client-no-http2-cipher-black-list
               option.  But be aware its implications.
-#endif // !LIBRESSL_IN_USE
 
 HTTP/2 and SPDY:
   -c, --frontend-http2-max-concurrent-streams=<N>
@@ -3127,10 +3125,8 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_DNS_MAX_TRY.c_str(), required_argument, &flag, 145},
         {SHRPX_OPT_FRONTEND_KEEP_ALIVE_TIMEOUT.c_str(), required_argument,
          &flag, 146},
-#if !LIBRESSL_IN_USE
         {SHRPX_OPT_PSK_SECRETS.c_str(), required_argument, &flag, 147},
         {SHRPX_OPT_CLIENT_PSK_SECRETS.c_str(), required_argument, &flag, 148},
-#endif
         {SHRPX_OPT_CLIENT_NO_HTTP2_CIPHER_BLACK_LIST.c_str(), no_argument,
          &flag, 149},
         {SHRPX_OPT_CLIENT_CIPHERS.c_str(), required_argument, &flag, 150},
@@ -3825,7 +3821,6 @@ int main(int argc, char **argv) {
         cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_KEEP_ALIVE_TIMEOUT,
                              StringRef{optarg});
         break;
-#if !LIBRESSL_IN_USE
       case 147:
         // --psk-secrets
         cmdcfgs.emplace_back(SHRPX_OPT_PSK_SECRETS, StringRef{optarg});
@@ -3834,7 +3829,6 @@ int main(int argc, char **argv) {
         // --client-psk-secrets
         cmdcfgs.emplace_back(SHRPX_OPT_CLIENT_PSK_SECRETS, StringRef{optarg});
         break;
-#endif // !LIBRESSL_IN_USE
       case 149:
         // --client-no-http2-cipher-black-list
         cmdcfgs.emplace_back(SHRPX_OPT_CLIENT_NO_HTTP2_CIPHER_BLACK_LIST,
