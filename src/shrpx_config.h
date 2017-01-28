@@ -430,7 +430,9 @@ struct AffinityHash {
 
 struct DownstreamAddrGroupConfig {
   DownstreamAddrGroupConfig(const StringRef &pattern)
-      : pattern(pattern), affinity(AFFINITY_NONE) {}
+      : pattern(pattern),
+        affinity(AFFINITY_NONE),
+        require_upstream_tls(false) {}
 
   StringRef pattern;
   std::vector<DownstreamAddrConfig> addrs;
@@ -439,6 +441,8 @@ struct DownstreamAddrGroupConfig {
   std::vector<AffinityHash> affinity_hash;
   // Session affinity
   shrpx_session_affinity affinity;
+  // true if this group requires that client connection must be TLS.
+  bool require_upstream_tls;
 };
 
 struct TicketKey {

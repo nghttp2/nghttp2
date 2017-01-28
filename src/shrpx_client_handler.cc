@@ -1008,6 +1008,13 @@ ClientHandler::get_downstream_connection(Downstream *downstream) {
     CLOG(INFO, this) << "Downstream address group_idx: " << group_idx;
   }
 
+  if (groups[group_idx]->shared_addr->require_upstream_tls && !conn_.tls.ssl) {
+    CLOG(INFO, this) << "Downstream address group " << group_idx
+                     << " requires frontend TLS connection.  Send request to "
+                        "catch-all group.";
+    group_idx = catch_all;
+  }
+
   auto &group = groups[group_idx];
   auto &shared_addr = group->shared_addr;
 

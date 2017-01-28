@@ -732,6 +732,7 @@ struct DownstreamParams {
   shrpx_session_affinity affinity;
   bool tls;
   bool dns;
+  bool frontend_tls;
 };
 
 namespace {
@@ -807,6 +808,8 @@ int parse_downstream_params(DownstreamParams &out,
       }
     } else if (util::strieq_l("dns", param)) {
       out.dns = true;
+    } else if (util::strieq_l("frontend-tls", param)) {
+      out.frontend_tls = true;
     } else if (!param.empty()) {
       LOG(ERROR) << "backend: " << param << ": unknown keyword";
       return -1;
@@ -899,6 +902,11 @@ int parse_mapping(Config *config, DownstreamAddrConfig &addr,
         if (params.affinity != AFFINITY_NONE) {
           g.affinity = params.affinity;
         }
+        // If at least one backend requires frontend TLS connection,
+        // enable it for all backends sharing the same pattern.
+        if (params.frontend_tls) {
+          g.require_upstream_tls = true;
+        }
         g.addrs.push_back(addr);
         done = true;
         break;
@@ -913,6 +921,7 @@ int parse_mapping(Config *config, DownstreamAddrConfig &addr,
     auto &g = addr_groups.back();
     g.addrs.push_back(addr);
     g.affinity = params.affinity;
+    g.require_upstream_tls = params.frontend_tls;
 
     if (pattern[0] == '*') {
       // wildcard pattern
@@ -3622,6 +3631,12 @@ int configure_downstream_group(Config *config, bool http2_proxy,
 
   if (catch_all_group == -1) {
     LOG(FATAL) << "backend: No catch-all backend address is configured";
+    return -1;
+  }
+
+  if (addr_groups[catch_all_group].require_upstream_tls) {
+    LOG(FATAL)
+        << "backend: Catch-all backend cannot have frontend-tls parameter";
     return -1;
   }
 
