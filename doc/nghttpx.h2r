@@ -549,11 +549,11 @@ some cases where the error has occurred before reaching API endpoint
 
 The following section describes available API endpoints.
 
-PUT /api/v1beta1/backendconfig
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+POST /api/v1beta1/backendconfig
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 This API replaces the current backend server settings with the
-requested ones.  The request method should be PUT, but POST is also
+requested ones.  The request method should be POST, but PUT is also
 acceptable.  The request body must be nghttpx configuration file
 format.  For configuration file format, see `FILES`_ section.  The
 line separator inside the request body must be single LF (0x0A).
