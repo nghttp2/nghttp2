@@ -949,8 +949,9 @@ void HttpsUpstream::error_reply(unsigned int status_code) {
   output->append("\r\nServer: ");
   output->append(get_config()->http.server_name);
   output->append("\r\nContent-Length: ");
-  auto cl = util::utos(html.size());
-  output->append(cl);
+  std::array<uint8_t, NGHTTP2_MAX_UINT64_DIGITS> intbuf;
+  output->append(StringRef{std::begin(intbuf),
+                           util::utos(std::begin(intbuf), html.size())});
   output->append("\r\nDate: ");
   auto lgconf = log_config();
   lgconf->update_tstamp(std::chrono::system_clock::now());
@@ -1026,11 +1027,14 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
   auto connect_method = req.method == HTTP_CONNECT;
 
   auto buf = downstream->get_response_buf();
+  std::array<uint8_t, NGHTTP2_MAX_UINT64_DIGITS> intbuf;
 
   buf->append("HTTP/");
-  buf->append(util::utos(req.http_major));
+  buf->append(StringRef{std::begin(intbuf),
+                        util::utos(std::begin(intbuf), req.http_major)});
   buf->append('.');
-  buf->append(util::utos(req.http_minor));
+  buf->append(StringRef{std::begin(intbuf),
+                        util::utos(std::begin(intbuf), req.http_minor)});
   buf->append(' ');
   buf->append(http2::stringify_status(balloc, resp.http_status));
   buf->append(' ');
