@@ -219,7 +219,6 @@ if(ENABLE_ASIO_LIB)
     ssl.cc
     timegm.c
     asio_common.cc
-    asio_io_service_pool.cc
     asio_server_http2.cc
     asio_server_http2_impl.cc
     asio_server.cc

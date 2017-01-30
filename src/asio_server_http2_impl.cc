@@ -37,8 +37,8 @@ namespace asio_http2 {
 
 namespace server {
 
-http2_impl::http2_impl()
-    : num_threads_(1),
+http2_impl::http2_impl(boost::asio::io_service &service)
+    : service_(service),
       backlog_(-1),
       tls_handshake_timeout_(boost::posix_time::seconds(60)),
       read_timeout_(boost::posix_time::seconds(60)) {}
@@ -47,12 +47,10 @@ boost::system::error_code http2_impl::listen_and_serve(
     boost::system::error_code &ec, boost::asio::ssl::context *tls_context,
     const std::string &address, const std::string &port, bool asynchronous) {
   server_.reset(
-      new server(num_threads_, tls_handshake_timeout_, read_timeout_));
+      new server(service_, tls_handshake_timeout_, read_timeout_));
   return server_->listen_and_serve(ec, tls_context, address, port, backlog_,
                                    mux_, asynchronous);
 }
-
-void http2_impl::num_threads(size_t num_threads) { num_threads_ = num_threads; }
 
 void http2_impl::backlog(int backlog) { backlog_ = backlog; }
 
@@ -70,13 +68,6 @@ bool http2_impl::handle(std::string pattern, request_cb cb) {
 }
 
 void http2_impl::stop() { return server_->stop(); }
-
-void http2_impl::join() { return server_->join(); }
-
-const std::vector<std::shared_ptr<boost::asio::io_service>> &
-http2_impl::io_services() const {
-  return server_->io_services();
-}
 
 } // namespace server
 
