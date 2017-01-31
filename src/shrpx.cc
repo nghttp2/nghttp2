@@ -1602,12 +1602,12 @@ Connections:
               The  parameters are  delimited  by  ";".  The  available
               parameters       are:      "proto=<PROTO>",       "tls",
               "sni=<SNI_HOST>",         "fall=<N>",        "rise=<N>",
-              "affinity=<METHOD>", and "dns".   The parameter consists
-              of keyword,  and optionally  followed by "="  and value.
-              For example,  the parameter  "proto=h2" consists  of the
-              keyword  "proto" and  value "h2".   The parameter  "tls"
-              consists  of  the  keyword "tls"  without  value.   Each
-              parameter is described as follows.
+              "affinity=<METHOD>",  "dns",  and  "frontend-tls".   The
+              parameter consists  of keyword, and  optionally followed
+              by "=" and value.  For example, the parameter "proto=h2"
+              consists  of the  keyword "proto"  and value  "h2".  The
+              parameter "tls"  consists of  the keyword  "tls" without
+              value.  Each parameter is described as follows.
 
               The backend application protocol  can be specified using
               optional  "proto"   parameter,  and   in  the   form  of
@@ -1663,6 +1663,17 @@ Connections:
               frequently.   If  "dns"  is given,  name  resolution  of
               backend   host   name   at  start   up,   or   reloading
               configuration is skipped.
+
+              If "frontend-tls" parameter is used, the matched backend
+              requires frontend TLS connection.   In other words, even
+              if pattern  is matched,  frontend connection is  not TLS
+              protected, the request is  forwarded to one of catch-all
+              backends.   For this  reason,  catch-all backend  cannot
+              have "frontend-tls" parameter.  If  at least one backend
+              has  "frontend-tls" parameter,  this feature  is enabled
+              for all backend servers  sharing the same <PATTERN>.  It
+              is  advised  to  set  "frontend-tls"  parameter  to  all
+              backends explicitly if this feature is desired.
 
               Since ";" and ":" are  used as delimiter, <PATTERN> must
               not  contain these  characters.  Since  ";" has  special
