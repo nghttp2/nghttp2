@@ -253,7 +253,6 @@ http2_handler::~http2_handler() {
   for (auto &p : streams_) {
     auto &strm = p.second;
     strm->response().impl().call_on_close(NGHTTP2_INTERNAL_ERROR);
-    close_stream(strm->get_stream_id());
   }
 
   nghttp2_session_del(session_);
