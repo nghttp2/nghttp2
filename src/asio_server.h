@@ -44,10 +44,9 @@
 #include <memory>
 
 #include <boost/noncopyable.hpp>
+#include <boost/asio/io_service.hpp>
 
 #include <nghttp2/asio_http2_server.h>
-
-#include "asio_io_service_pool.h"
 
 namespace nghttp2 {
 
@@ -63,7 +62,7 @@ using ssl_socket = boost::asio::ssl::stream<tcp::socket>;
 
 class server : private boost::noncopyable {
 public:
-  explicit server(std::size_t io_service_pool_size,
+  explicit server(boost::asio::io_service &service,
                   const boost::posix_time::time_duration &tls_handshake_timeout,
                   const boost::posix_time::time_duration &read_timeout);
 
@@ -91,10 +90,7 @@ private:
                                             const std::string &address,
                                             const std::string &port,
                                             int backlog);
-
-  /// The pool of io_service objects used to perform asynchronous
-  /// operations.
-  io_service_pool io_service_pool_;
+  boost::asio::io_service &service_;
 
   /// Acceptor used to listen for incoming connections.
   std::vector<tcp::acceptor> acceptors_;
