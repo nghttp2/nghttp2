@@ -170,8 +170,9 @@ void server::start_accept(tcp::acceptor &acceptor, serve_mux &mux) {
           new_connection->start_read_deadline();
           new_connection->start();
         }
-
-        start_accept(acceptor, mux);
+        if (acceptor.is_open()) {
+          start_accept(acceptor, mux);
+        }
       });
 }
 
