@@ -115,24 +115,39 @@ void test_shrpx_ssl_create_lookup_tree(void) {
 //     -config=ca-config.json -profile=server test.example.com.csr |
 //     cfssljson -bare test.example.com
 //
-void test_shrpx_ssl_cert_lookup_tree_add_cert_from_x509(void) {
+void test_shrpx_ssl_cert_lookup_tree_add_ssl_ctx(void) {
   int rv;
 
   constexpr char nghttp2_certfile[] = NGHTTP2_SRC_DIR "/test.nghttp2.org.pem";
-  auto nghttp2_cert = ssl::load_certificate(nghttp2_certfile);
-  auto nghttp2_cert_deleter = defer(X509_free, nghttp2_cert);
+  auto nghttp2_ssl_ctx = SSL_CTX_new(SSLv23_server_method());
+  auto nghttp2_ssl_ctx_del = defer(SSL_CTX_free, nghttp2_ssl_ctx);
+  auto nghttp2_tls_ctx_data = make_unique<ssl::TLSContextData>();
+  nghttp2_tls_ctx_data->cert_file = nghttp2_certfile;
+  SSL_CTX_set_app_data(nghttp2_ssl_ctx, nghttp2_tls_ctx_data.get());
+  rv = SSL_CTX_use_certificate_chain_file(nghttp2_ssl_ctx, nghttp2_certfile);
+
+  CU_ASSERT(1 == rv);
 
   constexpr char examples_certfile[] = NGHTTP2_SRC_DIR "/test.example.com.pem";
-  auto examples_cert = ssl::load_certificate(examples_certfile);
-  auto examples_cert_deleter = defer(X509_free, examples_cert);
+  auto examples_ssl_ctx = SSL_CTX_new(SSLv23_server_method());
+  auto examples_ssl_ctx_del = defer(SSL_CTX_free, examples_ssl_ctx);
+  auto examples_tls_ctx_data = make_unique<ssl::TLSContextData>();
+  examples_tls_ctx_data->cert_file = examples_certfile;
+  SSL_CTX_set_app_data(examples_ssl_ctx, examples_tls_ctx_data.get());
+  rv = SSL_CTX_use_certificate_chain_file(examples_ssl_ctx, examples_certfile);
+
+  CU_ASSERT(1 == rv);
 
   ssl::CertLookupTree tree;
+  std::vector<std::vector<SSL_CTX *>> indexed_ssl_ctx;
 
-  rv = ssl::cert_lookup_tree_add_cert_from_x509(&tree, 0, nghttp2_cert);
+  rv = ssl::cert_lookup_tree_add_ssl_ctx(&tree, indexed_ssl_ctx,
+                                         nghttp2_ssl_ctx);
 
   CU_ASSERT(0 == rv);
 
-  rv = ssl::cert_lookup_tree_add_cert_from_x509(&tree, 1, examples_cert);
+  rv = ssl::cert_lookup_tree_add_ssl_ctx(&tree, indexed_ssl_ctx,
+                                         examples_ssl_ctx);
 
   CU_ASSERT(0 == rv);
 

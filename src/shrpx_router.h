@@ -63,8 +63,9 @@ public:
   Router &operator=(Router &&) = default;
   Router &operator=(const Router &) = delete;
 
-  // Adds route |pattern| with its |index|.
-  bool add_route(const StringRef &pattern, size_t index);
+  // Adds route |pattern| with its |index|.  If same pattern has
+  // already been added, the existing index is returned.
+  size_t add_route(const StringRef &pattern, size_t index);
   // Returns the matched index of pattern.  -1 if there is no match.
   ssize_t match(const StringRef &host, const StringRef &path) const;
   // Returns the matched index of pattern |s|.  -1 if there is no

@@ -69,7 +69,7 @@ void Router::add_node(RNode *node, const char *pattern, size_t patlen,
   add_next_node(node, std::move(new_node));
 }
 
-bool Router::add_route(const StringRef &pattern, size_t index) {
+size_t Router::add_route(const StringRef &pattern, size_t index) {
   auto node = &root_;
   size_t i = 0;
 
@@ -77,7 +77,7 @@ bool Router::add_route(const StringRef &pattern, size_t index) {
     auto next_node = find_next_node(node, pattern[i]);
     if (next_node == nullptr) {
       add_node(node, pattern.c_str() + i, pattern.size() - i, index);
-      return true;
+      return index;
     }
 
     node = next_node;
@@ -93,11 +93,11 @@ bool Router::add_route(const StringRef &pattern, size_t index) {
       if (slen == node->len) {
         // Complete match
         if (node->index != -1) {
-          // Don't allow duplicate
-          return false;
+          // Return the existing index for duplicates.
+          return node->index;
         }
         node->index = index;
-        return true;
+        return index;
       }
 
       if (slen > node->len) {
@@ -122,7 +122,7 @@ bool Router::add_route(const StringRef &pattern, size_t index) {
 
       if (slen == j) {
         node->index = index;
-        return true;
+        return index;
       }
     }
 
@@ -131,7 +131,7 @@ bool Router::add_route(const StringRef &pattern, size_t index) {
     assert(pattern.size() > i);
     add_node(node, pattern.c_str() + i, pattern.size() - i, index);
 
-    return true;
+    return index;
   }
 }
 

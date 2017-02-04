@@ -199,12 +199,13 @@ void ConnectionHandler::worker_replace_downstream(
 
 int ConnectionHandler::create_single_worker() {
   cert_tree_ = ssl::create_cert_lookup_tree();
-  auto sv_ssl_ctx = ssl::setup_server_ssl_context(all_ssl_ctx_, cert_tree_.get()
+  auto sv_ssl_ctx = ssl::setup_server_ssl_context(
+      all_ssl_ctx_, indexed_ssl_ctx_, cert_tree_.get()
 #ifdef HAVE_NEVERBLEED
-                                                                    ,
-                                                  nb_.get()
+                                          ,
+      nb_.get()
 #endif // HAVE_NEVERBLEED
-                                                      );
+          );
   auto cl_ssl_ctx = ssl::setup_downstream_client_ssl_context(
 #ifdef HAVE_NEVERBLEED
       nb_.get()
@@ -247,12 +248,13 @@ int ConnectionHandler::create_worker_thread(size_t num) {
   assert(workers_.size() == 0);
 
   cert_tree_ = ssl::create_cert_lookup_tree();
-  auto sv_ssl_ctx = ssl::setup_server_ssl_context(all_ssl_ctx_, cert_tree_.get()
+  auto sv_ssl_ctx = ssl::setup_server_ssl_context(
+      all_ssl_ctx_, indexed_ssl_ctx_, cert_tree_.get()
 #ifdef HAVE_NEVERBLEED
-                                                                    ,
-                                                  nb_.get()
+                                          ,
+      nb_.get()
 #endif // HAVE_NEVERBLEED
-                                                      );
+          );
   auto cl_ssl_ctx = ssl::setup_downstream_client_ssl_context(
 #ifdef HAVE_NEVERBLEED
       nb_.get()
@@ -839,6 +841,11 @@ void ConnectionHandler::send_serial_event(SerialEvent ev) {
 
 SSL_CTX *ConnectionHandler::get_ssl_ctx(size_t idx) const {
   return all_ssl_ctx_[idx];
+}
+
+const std::vector<SSL_CTX *> &
+ConnectionHandler::get_indexed_ssl_ctx(size_t idx) const {
+  return indexed_ssl_ctx_[idx];
 }
 
 } // namespace shrpx

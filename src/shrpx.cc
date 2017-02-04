@@ -1943,9 +1943,14 @@ SSL/TLS:
   --subcert=<KEYPATH>:<CERTPATH>[[;<PARAM>]...]
               Specify  additional certificate  and  private key  file.
               nghttpx will  choose certificates based on  the hostname
-              indicated  by  client  using TLS  SNI  extension.   This
-              option  can  be  used  multiple  times.   To  make  OCSP
-              stapling work, <CERTPATH> must be absolute path.
+              indicated by client using TLS SNI extension.  If nghttpx
+              is  built with  OpenSSL >=  1.0.2, signature  algorithms
+              (e.g., ECDSA+SHA256, RSA+SHA256) presented by client are
+              also taken  into consideration.  This allows  nghttpx to
+              send ECDSA certificate to  modern clients, while sending
+              RSA based certificate to older clients.  This option can
+              be  used multiple  times.  To  make OCSP  stapling work,
+              <CERTPATH> must be absolute path.
 
               Additional parameter  can be specified in  <PARAM>.  The
               available <PARAM> is "sct-dir=<DIR>".
