@@ -55,9 +55,9 @@ StringRef get_attr(const xmlChar **attrs, const StringRef &name) {
 }
 } // namespace
 
-
 namespace {
-ResourceType get_resource_type_for_preload_as(const StringRef &attribute_value) {
+ResourceType
+get_resource_type_for_preload_as(const StringRef &attribute_value) {
   if (util::strieq_l("image", attribute_value)) {
     return REQ_IMG;
   } else if (util::strieq_l("style", attribute_value)) {
@@ -69,7 +69,6 @@ ResourceType get_resource_type_for_preload_as(const StringRef &attribute_value) 
   }
 }
 } // namespace
-
 
 namespace {
 void add_link(ParserData *parser_data, const StringRef &uri,
@@ -109,7 +108,8 @@ void start_element_func(void *user_data, const xmlChar *src_name,
       if (as_attr.empty()) {
         return;
       }
-      add_link(parser_data, href_attr, get_resource_type_for_preload_as(as_attr));
+      add_link(parser_data, href_attr,
+               get_resource_type_for_preload_as(as_attr));
     }
   } else if (util::strieq_l("img", name)) {
     auto src_attr = get_attr(attrs, StringRef::from_lit("src"));
