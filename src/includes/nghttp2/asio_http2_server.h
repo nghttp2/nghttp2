@@ -132,7 +132,7 @@ class http2_impl;
 
 class http2 {
 public:
-  http2();
+  http2(boost::asio::io_service &service);
   ~http2();
 
   http2(http2 &&other) noexcept;
@@ -190,10 +190,6 @@ public:
   // equivalent .- and ..-free URL.
   bool handle(std::string pattern, request_cb cb);
 
-  // Sets number of native threads to handle incoming HTTP request.
-  // It defaults to 1.
-  void num_threads(size_t num_threads);
-
   // Sets the maximum length to which the queue of pending
   // connections.
   void backlog(int backlog);
@@ -206,13 +202,6 @@ public:
 
   // Gracefully stop http2 server
   void stop();
-
-  // Join on http2 server and wait for it to fully stop
-  void join();
-
-  // Get access to the io_service objects.
-  const std::vector<std::shared_ptr<boost::asio::io_service>> &
-  io_services() const;
 
 private:
   std::unique_ptr<http2_impl> impl_;
