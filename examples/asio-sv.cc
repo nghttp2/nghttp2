@@ -36,11 +36,24 @@
 
 #include <iostream>
 #include <string>
+#include <thread>
 
 #include <nghttp2/asio_http2_server.h>
 
 using namespace nghttp2::asio_http2;
 using namespace nghttp2::asio_http2::server;
+
+namespace {
+void run_forever(boost::asio::io_service &io_service, size_t num_threads) {
+  std::vector<std::thread> ts;
+  for (size_t i = 0; i < num_threads; ++i) {
+    ts.emplace_back([&io_service]() { io_service.run(); });
+  }
+  for (auto &t : ts) {
+    t.join();
+  }
+}
+} // namespace
 
 int main(int argc, char *argv[]) {
   try {
@@ -58,9 +71,9 @@ int main(int argc, char *argv[]) {
     std::string port = argv[2];
     std::size_t num_threads = std::stoi(argv[3]);
 
-    http2 server;
+    boost::asio::io_service io_service;
 
-    server.num_threads(num_threads);
+    http2 server(io_service);
 
     server.handle("/", [](const request &req, const response &res) {
       res.write_head(200, {{"foo", {"bar"}}});
@@ -136,11 +149,16 @@ int main(int argc, char *argv[]) {
       if (server.listen_and_serve(ec, tls, addr, port)) {
         std::cerr << "error: " << ec.message() << std::endl;
       }
+
+      run_forever(io_service, num_threads);
     } else {
       if (server.listen_and_serve(ec, addr, port)) {
         std::cerr << "error: " << ec.message() << std::endl;
       }
+
+      run_forever(io_service, num_threads);
     }
+
   } catch (std::exception &e) {
     std::cerr << "exception: " << e.what() << "\n";
   }
