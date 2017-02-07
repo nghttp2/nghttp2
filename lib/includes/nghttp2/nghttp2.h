@@ -863,6 +863,11 @@ typedef enum {
  * the outgoing queue temporarily.  To move back deferred DATA frame
  * to outgoing queue, call `nghttp2_session_resume_data()`.
  *
+ * By default, |length| is limited to 16KiB at maximum.  If peer
+ * allows larger frames, application can enlarge transmission buffer
+ * size.  See :type:`nghttp2_data_source_read_length_callback` for
+ * more details.
+ *
  * If the application just wants to return from
  * `nghttp2_session_send()` or `nghttp2_session_mem_send()` without
  * sending anything, return :enum:`NGHTTP2_ERR_PAUSE`.
