@@ -183,9 +183,34 @@ int servername_callback(SSL *ssl, int *al, void *arg) {
   }
 
   auto conn_handler = worker->get_connection_handler();
-  auto ssl_ctx = conn_handler->get_ssl_ctx(idx);
 
-  SSL_set_SSL_CTX(ssl, ssl_ctx);
+  const auto &ssl_ctx_list = conn_handler->get_indexed_ssl_ctx(idx);
+  assert(!ssl_ctx_list.empty());
+
+#if !defined(OPENSSL_IS_BORINGSSL) && !defined(LIBRESSL_VERSION_NUMBER) &&     \
+    OPENSSL_VERSION_NUMBER >= 0x10002000L
+  // boringssl removed SSL_get_sigalgs.
+  auto num_sigalg =
+      SSL_get_sigalgs(ssl, 0, nullptr, nullptr, nullptr, nullptr, nullptr);
+
+  for (auto i = 0; i < num_sigalg; ++i) {
+    int sigalg;
+    SSL_get_sigalgs(ssl, i, nullptr, nullptr, &sigalg, nullptr, nullptr);
+    for (auto ssl_ctx : ssl_ctx_list) {
+      auto cert = SSL_CTX_get0_certificate(ssl_ctx);
+      // X509_get_signature_nid is available since OpenSSL 1.0.2.
+      auto cert_sigalg = X509_get_signature_nid(cert);
+
+      if (sigalg == cert_sigalg) {
+        SSL_set_SSL_CTX(ssl, ssl_ctx);
+        return SSL_TLSEXT_ERR_OK;
+      }
+    }
+  }
+#endif // !defined(OPENSSL_IS_BORINGSSL) && !defined(LIBRESSL_VERSION_NUMBER) &&
+       // OPENSSL_VERSION_NUMBER >= 0x10002000L
+
+  SSL_set_SSL_CTX(ssl, ssl_ctx_list[0]);
 
   return SSL_TLSEXT_ERR_OK;
 }
@@ -1239,12 +1264,12 @@ int check_cert(SSL *ssl, const DownstreamAddr *addr, const Address *raddr) {
 
 CertLookupTree::CertLookupTree() {}
 
-void CertLookupTree::add_cert(const StringRef &hostname, size_t idx) {
+ssize_t CertLookupTree::add_cert(const StringRef &hostname, size_t idx) {
   std::array<uint8_t, NI_MAXHOST> buf;
 
   // NI_MAXHOST includes terminal NULL byte
   if (hostname.empty() || hostname.size() + 1 > buf.size()) {
-    return;
+    return -1;
   }
 
   auto wildcard_it = std::find(std::begin(hostname), std::end(hostname), '*');
@@ -1260,8 +1285,8 @@ void CertLookupTree::add_cert(const StringRef &hostname, size_t idx) {
 
     WildcardPattern *wpat;
 
-    if (!rev_wildcard_router_.add_route(rev_suffix,
-                                        wildcard_patterns_.size())) {
+    if (wildcard_patterns_.size() !=
+        rev_wildcard_router_.add_route(rev_suffix, wildcard_patterns_.size())) {
       auto wcidx = rev_wildcard_router_.match(rev_suffix);
 
       assert(wcidx != -1);
@@ -1277,12 +1302,18 @@ void CertLookupTree::add_cert(const StringRef &hostname, size_t idx) {
                                                   std::end(wildcard_prefix),
                                                   std::begin(buf))};
 
+    for (auto &p : wpat->rev_prefix) {
+      if (p.prefix == rev_prefix) {
+        return p.idx;
+      }
+    }
+
     wpat->rev_prefix.emplace_back(rev_prefix, idx);
 
-    return;
+    return idx;
   }
 
-  router_.add_route(hostname, idx);
+  return router_.add_route(hostname, idx);
 }
 
 ssize_t CertLookupTree::lookup(const StringRef &hostname) {
@@ -1357,9 +1388,23 @@ void CertLookupTree::dump() const {
   rev_wildcard_router_.dump();
 }
 
-int cert_lookup_tree_add_cert_from_x509(CertLookupTree *lt, size_t idx,
-                                        X509 *cert) {
+int cert_lookup_tree_add_ssl_ctx(
+    CertLookupTree *lt, std::vector<std::vector<SSL_CTX *>> &indexed_ssl_ctx,
+    SSL_CTX *ssl_ctx) {
   std::array<uint8_t, NI_MAXHOST> buf;
+
+#if !defined(LIBRESSL_VERSION_NUMBER) && OPENSSL_VERSION_NUMBER >= 0x10002000L
+  auto cert = SSL_CTX_get0_certificate(ssl_ctx);
+#else  // defined(LIBRESSL_VERSION_NUMBER) || OPENSSL_VERSION_NUMBER <
+  // 0x10002000L
+  auto tls_ctx_data =
+      static_cast<TLSContextData *>(SSL_CTX_get_app_data(ssl_ctx));
+  auto cert = load_certificate(tls_ctx_data->cert_file);
+  auto cert_deleter = defer(X509_free, cert);
+#endif // defined(LIBRESSL_VERSION_NUMBER) || OPENSSL_VERSION_NUMBER <
+       // 0x10002000L
+
+  auto idx = indexed_ssl_ctx.size();
 
   auto altnames = static_cast<GENERAL_NAMES *>(
       X509_get_ext_d2i(cert, NID_subject_alt_name, nullptr, nullptr));
@@ -1403,7 +1448,17 @@ int cert_lookup_tree_add_cert_from_x509(CertLookupTree *lt, size_t idx,
       auto end_buf = std::copy_n(name, len, std::begin(buf));
       util::inp_strlower(std::begin(buf), end_buf);
 
-      lt->add_cert(StringRef{std::begin(buf), end_buf}, idx);
+      auto nidx = lt->add_cert(StringRef{std::begin(buf), end_buf}, idx);
+      if (nidx == -1) {
+        continue;
+      }
+      idx = nidx;
+      if (idx < indexed_ssl_ctx.size()) {
+        indexed_ssl_ctx[idx].push_back(ssl_ctx);
+      } else {
+        assert(idx == indexed_ssl_ctx.size());
+        indexed_ssl_ctx.emplace_back(std::vector<SSL_CTX *>{ssl_ctx});
+      }
     }
 
     // Don't bother CN if we have dNSName.
@@ -1433,7 +1488,17 @@ int cert_lookup_tree_add_cert_from_x509(CertLookupTree *lt, size_t idx,
 
   util::inp_strlower(std::begin(buf), end_buf);
 
-  lt->add_cert(StringRef{std::begin(buf), end_buf}, idx);
+  auto nidx = lt->add_cert(StringRef{std::begin(buf), end_buf}, idx);
+  if (nidx == -1) {
+    return 0;
+  }
+  idx = nidx;
+  if (idx < indexed_ssl_ctx.size()) {
+    indexed_ssl_ctx[idx].push_back(ssl_ctx);
+  } else {
+    assert(idx == indexed_ssl_ctx.size());
+    indexed_ssl_ctx.emplace_back(std::vector<SSL_CTX *>{ssl_ctx});
+  }
 
   return 0;
 }
@@ -1474,13 +1539,15 @@ X509 *load_certificate(const char *filename) {
   return cert;
 }
 
-SSL_CTX *setup_server_ssl_context(std::vector<SSL_CTX *> &all_ssl_ctx,
-                                  CertLookupTree *cert_tree
+SSL_CTX *
+setup_server_ssl_context(std::vector<SSL_CTX *> &all_ssl_ctx,
+                         std::vector<std::vector<SSL_CTX *>> &indexed_ssl_ctx,
+                         CertLookupTree *cert_tree
 #ifdef HAVE_NEVERBLEED
-                                  ,
-                                  neverbleed_t *nb
+                         ,
+                         neverbleed_t *nb
 #endif // HAVE_NEVERBLEED
-                                  ) {
+                         ) {
   if (!upstream_tls_enabled()) {
     return nullptr;
   }
@@ -1508,17 +1575,8 @@ SSL_CTX *setup_server_ssl_context(std::vector<SSL_CTX *> &all_ssl_ctx,
     return ssl_ctx;
   }
 
-#if !defined(LIBRESSL_VERSION_NUMBER) && OPENSSL_VERSION_NUMBER >= 0x10002000L
-  auto cert = SSL_CTX_get0_certificate(ssl_ctx);
-#else  // defined(LIBRESSL_VERSION_NUMBER) || OPENSSL_VERSION_NUMBER <
-  // 0x10002000L
-  auto cert = load_certificate(tlsconf.cert_file.c_str());
-  auto cert_deleter = defer(X509_free, cert);
-#endif // defined(LIBRESSL_VERSION_NUMBER) || OPENSSL_VERSION_NUMBER <
-       // 0x10002000L
-
-  if (ssl::cert_lookup_tree_add_cert_from_x509(
-          cert_tree, all_ssl_ctx.size() - 1, cert) == -1) {
+  if (ssl::cert_lookup_tree_add_ssl_ctx(cert_tree, indexed_ssl_ctx, ssl_ctx) ==
+      -1) {
     LOG(FATAL) << "Failed to add default certificate.";
     DIE();
   }
@@ -1533,17 +1591,8 @@ SSL_CTX *setup_server_ssl_context(std::vector<SSL_CTX *> &all_ssl_ctx,
                                            );
     all_ssl_ctx.push_back(ssl_ctx);
 
-#if !defined(LIBRESSL_VERSION_NUMBER) && OPENSSL_VERSION_NUMBER >= 0x10002000L
-    auto cert = SSL_CTX_get0_certificate(ssl_ctx);
-#else  // defined(LIBRESSL_VERSION_NUMBER) || OPENSSL_VERSION_NUMBER <
-    // 0x10002000L
-    auto cert = load_certificate(c.cert_file.c_str());
-    auto cert_deleter = defer(X509_free, cert);
-#endif // defined(LIBRESSL_VERSION_NUMBER) || OPENSSL_VERSION_NUMBER <
-       // 0x10002000L
-
-    if (ssl::cert_lookup_tree_add_cert_from_x509(
-            cert_tree, all_ssl_ctx.size() - 1, cert) == -1) {
+    if (ssl::cert_lookup_tree_add_ssl_ctx(cert_tree, indexed_ssl_ctx,
+                                          ssl_ctx) == -1) {
       LOG(FATAL) << "Failed to add sub certificate.";
       DIE();
     }

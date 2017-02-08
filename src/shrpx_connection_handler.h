@@ -156,6 +156,8 @@ public:
   // array bound checking.
   SSL_CTX *get_ssl_ctx(size_t idx) const;
 
+  const std::vector<SSL_CTX *> &get_indexed_ssl_ctx(size_t idx) const;
+
 #ifdef HAVE_NEVERBLEED
   void set_neverbleed(std::unique_ptr<neverbleed_t> nb);
   neverbleed_t *get_neverbleed() const;
@@ -175,6 +177,12 @@ public:
 private:
   // Stores all SSL_CTX objects.
   std::vector<SSL_CTX *> all_ssl_ctx_;
+  // Stores all SSL_CTX objects in a way that its index is stored in
+  // cert_tree.  The SSL_CTXs stored in the same index share the same
+  // hostname, but could have different signature algorithm.  The
+  // selection among them are performed by hostname presented by SNI,
+  // and signature algorithm presented by client.
+  std::vector<std::vector<SSL_CTX *>> indexed_ssl_ctx_;
   OCSPUpdateContext ocsp_;
   std::mt19937 gen_;
   // ev_loop for each worker
