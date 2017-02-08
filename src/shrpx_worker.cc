@@ -313,7 +313,7 @@ void Worker::run_async() {
   fut_ = std::async(std::launch::async, [this] {
     (void)reopen_log_files();
     ev_run(loop_);
-    delete log_config();
+    delete_log_config();
   });
 #endif // !NOTHREADS
 }
