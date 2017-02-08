@@ -482,6 +482,18 @@ respectively.
         existing header fields, and then add required header fields.
         It is an error to call this method twice for a given request.
 
+    .. rb:method:: send_info(status, headers)
+
+        Send non-final (informational) response to a client.  *status*
+        must be in the range [100, 199], inclusive.  *headers* is a
+        hash containing response header fields.  Its key must be a
+        string, and the associated value must be either string or
+        array of strings.  Since this is not a final response, even if
+        this method is invoked, request is still forwarded to a
+        backend unless :rb:meth:`Nghttpx::Response#return` is called.
+        This method can be called multiple times.  It cannot be called
+        after :rb:meth:`Nghttpx::Response#return` is called.
+
 MRUBY EXAMPLES
 ~~~~~~~~~~~~~~
 
