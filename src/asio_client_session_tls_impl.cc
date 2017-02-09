@@ -56,7 +56,7 @@ void session_tls_impl::start_connect(tcp::resolver::iterator endpoint_it) {
           return;
         }
 
-		self->socket_.async_handshake(
+        self->socket_.async_handshake(
             boost::asio::ssl::stream_base::client,
             [self, endpoint_it](const boost::system::error_code &ec) {
               if (self->stopped()) {

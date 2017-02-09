@@ -73,7 +73,7 @@ void session_impl::start_resolve(const std::string &host,
 
   resolver_.async_resolve({host, service},
                           [self](const boost::system::error_code &ec,
-                                       tcp::resolver::iterator endpoint_it) {
+                                 tcp::resolver::iterator endpoint_it) {
                             if (ec) {
                               self->not_connected(ec);
                               return;
@@ -598,7 +598,7 @@ void session_impl::do_read() {
   auto self = this->shared_from_this();
 
   read_socket([self](const boost::system::error_code &ec,
-                           std::size_t bytes_transferred) {
+                     std::size_t bytes_transferred) {
     if (ec) {
       if (!self->should_stop()) {
         self->call_error_cb(ec);
@@ -610,8 +610,8 @@ void session_impl::do_read() {
     {
       callback_guard cg(*self);
 
-      auto rv =
-          nghttp2_session_mem_recv(self->session_, self->rb_.data(), bytes_transferred);
+      auto rv = nghttp2_session_mem_recv(self->session_, self->rb_.data(),
+                                         bytes_transferred);
 
       if (rv != static_cast<ssize_t>(bytes_transferred)) {
         self->call_error_cb(make_error_code(
@@ -694,19 +694,18 @@ void session_impl::do_write() {
 
   auto self = this->shared_from_this();
 
-  write_socket(
-      [self](const boost::system::error_code &ec, std::size_t n) {
-        if (ec) {
-          self->call_error_cb(ec);
-          self->stop();
-          return;
-        }
+  write_socket([self](const boost::system::error_code &ec, std::size_t n) {
+    if (ec) {
+      self->call_error_cb(ec);
+      self->stop();
+      return;
+    }
 
-        self->wblen_ = 0;
-        self->writing_ = false;
+    self->wblen_ = 0;
+    self->writing_ = false;
 
-        self->do_write();
-      });
+    self->do_write();
+  });
 }
 
 void session_impl::stop() {
