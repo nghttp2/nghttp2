@@ -69,17 +69,17 @@ void session_impl::start_resolve(const std::string &host,
                                  const std::string &service) {
   deadline_.expires_from_now(connect_timeout_);
 
-  auto self = this->shared_from_this();
+  auto self = shared_from_this();
 
   resolver_.async_resolve({host, service},
-                          [this, self](const boost::system::error_code &ec,
+                          [self](const boost::system::error_code &ec,
                                        tcp::resolver::iterator endpoint_it) {
                             if (ec) {
-                              not_connected(ec);
+                              self->not_connected(ec);
                               return;
                             }
 
-                            start_connect(endpoint_it);
+                            self->start_connect(endpoint_it);
                           });
 
   deadline_.async_wait(std::bind(&session_impl::handle_deadline, self));
@@ -597,38 +597,38 @@ void session_impl::do_read() {
 
   auto self = this->shared_from_this();
 
-  read_socket([this, self](const boost::system::error_code &ec,
+  read_socket([self](const boost::system::error_code &ec,
                            std::size_t bytes_transferred) {
     if (ec) {
-      if (!should_stop()) {
-        call_error_cb(ec);
+      if (!self->should_stop()) {
+        self->call_error_cb(ec);
       }
-      stop();
+      self->stop();
       return;
     }
 
     {
-      callback_guard cg(*this);
+      callback_guard cg(*self);
 
       auto rv =
-          nghttp2_session_mem_recv(session_, rb_.data(), bytes_transferred);
+          nghttp2_session_mem_recv(self->session_, self->rb_.data(), bytes_transferred);
 
       if (rv != static_cast<ssize_t>(bytes_transferred)) {
-        call_error_cb(make_error_code(
+        self->call_error_cb(make_error_code(
             static_cast<nghttp2_error>(rv < 0 ? rv : NGHTTP2_ERR_PROTO)));
-        stop();
+        self->stop();
         return;
       }
     }
 
-    do_write();
+    self->do_write();
 
-    if (should_stop()) {
-      stop();
+    if (self->should_stop()) {
+      self->stop();
       return;
     }
 
-    do_read();
+    self->do_read();
   });
 }
 
@@ -695,17 +695,17 @@ void session_impl::do_write() {
   auto self = this->shared_from_this();
 
   write_socket(
-      [this, self](const boost::system::error_code &ec, std::size_t n) {
+      [self](const boost::system::error_code &ec, std::size_t n) {
         if (ec) {
-          call_error_cb(ec);
-          stop();
+          self->call_error_cb(ec);
+          self->stop();
           return;
         }
 
-        wblen_ = 0;
-        writing_ = false;
+        self->wblen_ = 0;
+        self->writing_ = false;
 
-        do_write();
+        self->do_write();
       });
 }
 
