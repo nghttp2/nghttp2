@@ -120,15 +120,17 @@ The Python bindings require the following packages:
 * python >= 2.7
 * python-setuptools
 
-If you are using Ubuntu 14.04 LTS (trusty) or Debian 7.0 (wheezy) and above run the following to install the needed packages:
+If you are using Ubuntu 16.04 LTS (Xenial Xerus) or Debian 8 (jessie)
+and above, run the following to install the required packages:
 
 .. code-block:: text
 
     sudo apt-get install g++ make binutils autoconf automake autotools-dev libtool pkg-config \
       zlib1g-dev libcunit1-dev libssl-dev libxml2-dev libev-dev libevent-dev libjansson-dev \
-      libc-ares-dev libjemalloc-dev cython python3-dev python-setuptools
+      libc-ares-dev libjemalloc-dev libsystemd-dev libspdylay-dev \
+      cython python3-dev python-setuptools
 
-From Ubuntu 15.10, spdylay has been available as a package named
+Since Ubuntu 15.10, spdylay has been available as a package named
 `libspdylay-dev`.  For the earlier Ubuntu release, you need to build
 it yourself: http://tatsuhiro-t.github.io/spdylay/
 
