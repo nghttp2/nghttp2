@@ -71,6 +71,12 @@ void drop_privileges(
   auto config = get_config();
 
   if (getuid() == 0 && config->uid != 0) {
+#ifdef HAVE_NEVERBLEED
+    if (nb) {
+      neverbleed_setuidgid(nb, config->user.c_str(), 1);
+    }
+#endif // HAVE_NEVERBLEED
+
     if (initgroups(config->user.c_str(), config->gid) != 0) {
       auto error = errno;
       LOG(FATAL) << "Could not change supplementary groups: "
@@ -93,11 +99,6 @@ void drop_privileges(
       LOG(FATAL) << "Still have root privileges?";
       exit(EXIT_FAILURE);
     }
-#ifdef HAVE_NEVERBLEED
-    if (nb) {
-      neverbleed_setuidgid(nb, config->user.c_str(), 1);
-    }
-#endif // HAVE_NEVERBLEED
   }
 }
 } // namespace
