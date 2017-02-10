@@ -122,6 +122,11 @@ AC_ARG_WITH([spdylay],
                     [Use spdylay [default=check]])],
     [request_spdylay=$withval], [request_spdylay=check])
 
+AC_ARG_WITH([systemd],
+    [AS_HELP_STRING([--with-systemd],
+                    [Enable systemd support in nghttpx [default=check]])],
+    [request_systemd=$withval], [request_systemd=check])
+
 AC_ARG_WITH([mruby],
     [AS_HELP_STRING([--with-mruby],
                     [Use mruby [default=no]])],
@@ -396,16 +401,23 @@ else
 fi
 
 
-#  libsystemd
-PKG_CHECK_MODULES([SYSTEMD], [libsystemd >= 209], [have_libsystemd=yes],
-                  [have_libsystemd=no])
-if test "x${have_libsystemd}" = "xyes"; then
-  AC_DEFINE([HAVE_LIBSYSTEMD], [1],
-	    [Define to 1 if you have `libsystemd` library.])
-else
-  AC_MSG_NOTICE($SYSTEMD_PKG_ERRORS)
+#  libsystemd (for src/nghttpx)
+have_libsystemd=no
+if test "x${request_systemd}" != "xno"; then
+  PKG_CHECK_MODULES([SYSTEMD], [libsystemd >= 209], [have_libsystemd=yes],
+                    [have_libsystemd=no])
+  if test "x${have_libsystemd}" = "xyes"; then
+    AC_DEFINE([HAVE_LIBSYSTEMD], [1],
+              [Define to 1 if you have `libsystemd` library.])
+  else
+    AC_MSG_NOTICE($SYSTEMD_PKG_ERRORS)
+  fi
 fi
 
+if test "x${request_systemd}" = "xyes" &&
+   test "x${have_libsystemd}" != "xyes"; then
+  AC_MSG_ERROR([systemd was requested (--with-systemd) but not found])
+fi
 
 # libxml2 (for src/nghttp)
 PKG_CHECK_MODULES([LIBXML2], [libxml-2.0 >= 2.7.7],
