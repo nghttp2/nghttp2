@@ -938,7 +938,7 @@ AC_MSG_NOTICE([summary of build options:
       Jansson:        ${have_jansson} (CFLAGS='${JANSSON_CFLAGS}' LIBS='${JANSSON_LIBS}')
       Jemalloc:       ${have_jemalloc} (LIBS='${JEMALLOC_LIBS}')
       Zlib:           ${have_zlib} (CFLAGS='${ZLIB_CFLAGS}' LIBS='${ZLIB_LIBS}')
-      systemd:        ${have_libsystemd} (LIBS='${SYSTEMD_LIBS}')
+      Systemd:        ${have_libsystemd} (CFLAGS='${SYSTEMD_CFLAGS}' LIBS='${SYSTEMD_LIBS}')
       Boost CPPFLAGS: ${BOOST_CPPFLAGS}
       Boost LDFLAGS:  ${BOOST_LDFLAGS}
       Boost::ASIO:    ${BOOST_ASIO_LIB}
