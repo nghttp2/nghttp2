@@ -86,6 +86,11 @@ resource) in ``nghttp``, the following package is required:
 
 * libxml2 >= 2.7.7
 
+To enable systemd support in nghttpx, the following package is
+required:
+
+* libsystemd-dev >= 209
+
 The HPACK tools require the following package:
 
 * jansson >= 2.5
