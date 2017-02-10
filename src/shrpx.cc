@@ -1110,7 +1110,7 @@ namespace {
 int call_daemon() {
 #ifdef __sgi
   return _daemonize(0, 0, 0, 0);
-#else  // !__sgi
+#else // !__sgi
 #ifdef HAVE_LIBSYSTEMD
   if (sd_booted() && (getenv("NOTIFY_SOCKET") != NULL)) {
     LOG(NOTICE) << "Daemonising disabled under systemd";
