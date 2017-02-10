@@ -62,6 +62,9 @@ public:
   void run(bool asynchronous = false);
 
   /// Stop all io_service objects in the pool.
+  void force_stop();
+
+  /// Destroy all work objects to signals end of work
   void stop();
 
   /// Join on all io_service objects in the pool.
