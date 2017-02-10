@@ -1112,7 +1112,7 @@ int call_daemon() {
   return _daemonize(0, 0, 0, 0);
 #else // !__sgi
 #ifdef HAVE_LIBSYSTEMD
-  if (sd_booted() && (getenv("NOTIFY_SOCKET") != NULL)) {
+  if (sd_booted() && (getenv("NOTIFY_SOCKET") != nullptr)) {
     LOG(NOTICE) << "Daemonising disabled under systemd";
     chdir("/");
     return 0;
