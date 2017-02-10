@@ -395,6 +395,18 @@ else
   AC_MSG_NOTICE($JANSSON_PKG_ERRORS)
 fi
 
+
+#  libsystemd
+PKG_CHECK_MODULES([SYSTEMD], [libsystemd >= 209], [have_libsystemd=yes],
+                  [have_libsystemd=no])
+if test "x${have_libsystemd}" = "xyes"; then
+  AC_DEFINE([HAVE_LIBSYSTEMD], [1],
+	    [Define to 1 if you have `libsystemd` library.])
+else
+  AC_MSG_NOTICE($SYSTEMD_PKG_ERRORS)
+fi
+
+
 # libxml2 (for src/nghttp)
 PKG_CHECK_MODULES([LIBXML2], [libxml-2.0 >= 2.7.7],
                   [have_libxml2=yes], [have_libxml2=no])
@@ -914,6 +926,7 @@ AC_MSG_NOTICE([summary of build options:
       Jansson:        ${have_jansson} (CFLAGS='${JANSSON_CFLAGS}' LIBS='${JANSSON_LIBS}')
       Jemalloc:       ${have_jemalloc} (LIBS='${JEMALLOC_LIBS}')
       Zlib:           ${have_zlib} (CFLAGS='${ZLIB_CFLAGS}' LIBS='${ZLIB_LIBS}')
+      systemd:        ${have_libsystemd} (LIBS='${SYSTEMD_LIBS}')
       Boost CPPFLAGS: ${BOOST_CPPFLAGS}
       Boost LDFLAGS:  ${BOOST_LDFLAGS}
       Boost::ASIO:    ${BOOST_ASIO_LIB}

@@ -57,6 +57,7 @@ LDADD = $(top_builddir)/lib/libnghttp2.la \
 	@LIBEV_LIBS@ \
 	@OPENSSL_LIBS@ \
 	@LIBCARES_LIBS@ \
+	@SYSTEMD_LIBS@ \
 	@JANSSON_LIBS@ \
 	@ZLIB_LIBS@ \
 	@APPLDFLAGS@

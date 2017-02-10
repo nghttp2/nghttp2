@@ -56,6 +56,9 @@
 #include <sys/time.h>
 #endif // HAVE_SYS_TIME_H
 #include <sys/resource.h>
+#ifdef HAVE_LIBSYSTEMD
+#include <systemd/sd-daemon.h>
+#endif // HAVE_LIBSYSTEMD
 
 #include <cinttypes>
 #include <limits>
@@ -364,12 +367,26 @@ int save_pid() {
 } // namespace
 
 namespace {
+void shrpx_sd_notifyf(int unset_environment, const char *format, ...) {
+#ifdef HAVE_LIBSYSTEMD
+  va_list args;
+
+  va_start(args, format);
+  sd_notifyf(unset_environment, format, va_arg(args, char *));
+  va_end(args);
+#endif // HAVE_LIBSYSTEMD
+}
+} // namespace
+
+namespace {
 void exec_binary() {
   int rv;
   sigset_t oldset;
   std::array<char, STRERROR_BUFSIZE> errbuf;
 
   LOG(NOTICE) << "Executing new binary";
+
+  shrpx_sd_notifyf(0, "RELOADING=1");
 
   rv = shrpx_signal_block_all(&oldset);
   if (rv != 0) {
@@ -386,6 +403,9 @@ void exec_binary() {
     if (pid == -1) {
       auto error = errno;
       LOG(ERROR) << "fork() failed errno=" << error;
+    } else {
+      // update PID tracking information in systemd
+      shrpx_sd_notifyf(0, "MAINPID=%d\n", pid);
     }
 
     rv = shrpx_signal_set(&oldset);
@@ -488,6 +508,9 @@ void exec_binary() {
 
   // restores original stderr
   restore_original_fds();
+
+  // reloading finished
+  shrpx_sd_notifyf(0, "READY=1");
 
   if (execve(argv[0], argv.get(), envp.get()) == -1) {
     auto error = errno;
@@ -1088,6 +1111,13 @@ int call_daemon() {
 #ifdef __sgi
   return _daemonize(0, 0, 0, 0);
 #else  // !__sgi
+#ifdef HAVE_LIBSYSTEMD
+  if (sd_booted() && (getenv("NOTIFY_SOCKET") != NULL)) {
+    LOG(NOTICE) << "Daemonising disabled under systemd";
+    chdir("/");
+    return 0;
+  }
+#endif // HAVE_LIBSYSTEMD
   return daemon(0, 0);
 #endif // !__sgi
 }
@@ -1245,6 +1275,9 @@ int event_loop() {
     redirect_stderr_to_errorlog();
   }
 
+  // update systemd PID tracking
+  shrpx_sd_notifyf(0, "MAINPID=%d\n", config->pid);
+
   {
     auto iaddrs = get_inherited_addr_from_env(config);
 
@@ -1274,6 +1307,9 @@ int event_loop() {
   if (!config->pid_file.empty()) {
     save_pid();
   }
+
+  // ready to serve requests
+  shrpx_sd_notifyf(0, "READY=1");
 
   ev_run(loop, 0);
 
