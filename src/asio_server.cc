@@ -164,7 +164,7 @@ void server::start_accept(boost::asio::ssl::context &tls_context,
 
 void server::start_accept(tcp::acceptor &acceptor, serve_mux &mux) {
 
-   if (!acceptor.is_open()) {
+  if (!acceptor.is_open()) {
     return;
   }
 
