@@ -335,6 +335,12 @@ int htp_hdrs_completecb(http_parser *htp) {
 
   auto host = req.fs.header(http2::HD_HOST);
 
+  if (req.http_major > 1 || req.http_minor > 1) {
+    req.http_major = 1;
+    req.http_minor = 1;
+    return -1;
+  }
+
   if (req.http_major == 1 && req.http_minor == 1 && !host) {
     return -1;
   }
@@ -1027,14 +1033,10 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
   auto connect_method = req.method == HTTP_CONNECT;
 
   auto buf = downstream->get_response_buf();
-  std::array<uint8_t, NGHTTP2_MAX_UINT64_DIGITS> intbuf;
-
   buf->append("HTTP/");
-  buf->append(StringRef{std::begin(intbuf),
-                        util::utos(std::begin(intbuf), req.http_major)});
+  buf->append('0' + req.http_major);
   buf->append('.');
-  buf->append(StringRef{std::begin(intbuf),
-                        util::utos(std::begin(intbuf), req.http_minor)});
+  buf->append('0' + req.http_minor);
   buf->append(' ');
   buf->append(http2::stringify_status(balloc, resp.http_status));
   buf->append(' ');
