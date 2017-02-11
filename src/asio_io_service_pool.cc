@@ -75,11 +75,16 @@ void io_service_pool::join() {
   }
 }
 
-void io_service_pool::stop() {
+void io_service_pool::force_stop() {
   // Explicitly stop all io_services.
   for (auto &iosv : io_services_) {
     iosv->stop();
   }
+}
+
+void io_service_pool::stop() {
+  // Destroy all work objects to signals end of work
+  work_.clear();
 }
 
 boost::asio::io_service &io_service_pool::get_io_service() {
