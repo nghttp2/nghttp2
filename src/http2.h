@@ -101,8 +101,6 @@ StringRef get_reason_phrase(unsigned int status_code);
 // Returns string version of |status_code|. (e.g., "404")
 StringRef stringify_status(BlockAllocator &balloc, unsigned int status_code);
 
-void capitalize(DefaultMemchunks *buf, const StringRef &s);
-
 // Returns true if |value| is LWS
 bool lws(const char *value);
 

@@ -238,17 +238,6 @@ StringRef stringify_status(BlockAllocator &balloc, unsigned int status_code) {
   }
 }
 
-void capitalize(DefaultMemchunks *buf, const StringRef &s) {
-  buf->append(util::upcase(s[0]));
-  for (size_t i = 1; i < s.size(); ++i) {
-    if (s[i - 1] == '-') {
-      buf->append(util::upcase(s[i]));
-    } else {
-      buf->append(s[i]);
-    }
-  }
-}
-
 bool lws(const char *value) {
   for (; *value; ++value) {
     switch (*value) {
@@ -417,7 +406,7 @@ void build_http1_headers_from_headers(DefaultMemchunks *buf,
     case HD_X_FORWARDED_PROTO:
       continue;
     }
-    capitalize(buf, kv.name);
+    buf->append(kv.name);
     buf->append(": ");
     buf->append(kv.value);
     buf->append("\r\n");
