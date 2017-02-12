@@ -187,15 +187,15 @@ void test_http2_build_http1_headers_from_headers(void) {
   DefaultMemchunks buf(&pool);
   http2::build_http1_headers_from_headers(&buf, headers);
   auto hdrs = std::string(buf.head->pos, buf.head->last);
-  CU_ASSERT("alpha: 0\r\n"
-            "bravo: 1\r\n"
-            "delta: 4\r\n"
-            "expect: 5\r\n"
-            "foxtrot: 6\r\n"
-            "tango: 7\r\n"
-            "te: 8\r\n"
-            "te: 9\r\n"
-            "zulu: 12\r\n" == hdrs);
+  CU_ASSERT("Alpha: 0\r\n"
+            "Bravo: 1\r\n"
+            "Delta: 4\r\n"
+            "Expect: 5\r\n"
+            "Foxtrot: 6\r\n"
+            "Tango: 7\r\n"
+            "Te: 8\r\n"
+            "Te: 9\r\n"
+            "Zulu: 12\r\n" == hdrs);
 }
 
 void test_http2_lws(void) {

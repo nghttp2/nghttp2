@@ -896,7 +896,7 @@ int HttpsUpstream::send_reply(Downstream *downstream, const uint8_t *body,
     if (kv.name.empty() || kv.name[0] == ':') {
       continue;
     }
-    output->append(kv.name);
+    http2::capitalize(output, kv.name);
     output->append(": ");
     output->append(kv.value);
     output->append("\r\n");
