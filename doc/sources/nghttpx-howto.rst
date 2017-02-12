@@ -229,12 +229,18 @@ Hot swapping
 nghttpx supports hot swapping using signals.  The hot swapping in
 nghttpx is multi step process.  First send USR2 signal to nghttpx
 process.  It will do fork and execute new executable, using same
-command-line arguments and environment variables.  At this point, both
-current and new processes can accept requests.  To gracefully shutdown
-current process, send QUIT signal to current nghttpx process.  When
-all existing frontend connections are done, the current process will
-exit.  At this point, only new nghttpx process exists and serves
-incoming requests.
+command-line arguments and environment variables.
+
+As of nghttpx version 1.20.0, that is all you have to do.  The new
+master process sends QUIT signal to the original process, when it is
+ready to serve requests, to shut it down gracefully.
+
+For earlier versions of nghttpx, you have to do one more thing.  At
+this point, both current and new processes can accept requests.  To
+gracefully shutdown current process, send QUIT signal to current
+nghttpx process.  When all existing frontend connections are done, the
+current process will exit.  At this point, only new nghttpx process
+exists and serves incoming requests.
 
 If you want to just reload configuration file without executing new
 binary, send SIGHUP to nghttpx master process.

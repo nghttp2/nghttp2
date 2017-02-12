@@ -83,14 +83,18 @@ SIGUSR1
   Reopen log files.
 
 SIGUSR2
+
   Fork and execute nghttpx.  It will execute the binary in the same
-  path with same command-line arguments and environment variables.
-  After new process comes up, sending SIGQUIT to the original process
-  to perform hot swapping.  The difference between SIGUSR2 + SIGQUIT
-  and SIGHUP is that former is usually used to execute new binary, and
-  the master process is newly spawned.  On the other hand, the latter
-  just reloads configuration file, and the same master process
-  continues to exist.
+  path with same command-line arguments and environment variables.  As
+  of nghttpx version 1.20.0, the new master process sends SIGQUIT to
+  the original master process when it is ready to serve requests.  For
+  the earlier versions of nghttpx, user has to send SIGQUIT to the
+  original master process.
+
+  The difference between SIGUSR2 (+ SIGQUIT) and SIGHUP is that former
+  is usually used to execute new binary, and the master process is
+  newly spawned.  On the other hand, the latter just reloads
+  configuration file, and the same master process continues to exist.
 
 .. note::
 
