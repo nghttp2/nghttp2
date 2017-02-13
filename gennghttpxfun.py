@@ -158,6 +158,8 @@ OPTIONS = [
     "client-no-http2-cipher-black-list",
     "client-ciphers",
     "accesslog-write-early",
+    "tls-min-proto-version",
+    "tls-max-proto-version",
 ]
 
 LOGVARS = [

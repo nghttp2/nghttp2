@@ -327,6 +327,10 @@ constexpr auto SHRPX_OPT_CLIENT_NO_HTTP2_CIPHER_BLACK_LIST =
 constexpr auto SHRPX_OPT_CLIENT_CIPHERS = StringRef::from_lit("client-ciphers");
 constexpr auto SHRPX_OPT_ACCESSLOG_WRITE_EARLY =
     StringRef::from_lit("accesslog-write-early");
+constexpr auto SHRPX_OPT_TLS_MIN_PROTO_VERSION =
+    StringRef::from_lit("tls-min-proto-version");
+constexpr auto SHRPX_OPT_TLS_MAX_PROTO_VERSION =
+    StringRef::from_lit("tls-max-proto-version");
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
@@ -594,6 +598,10 @@ struct TLSConfig {
   StringRef ciphers;
   StringRef ecdh_curves;
   StringRef cacert;
+  // The minimum and maximum TLS version.  These values are defined in
+  // OpenSSL header file.
+  int min_proto_version;
+  int max_proto_version;
   bool insecure;
   bool no_http2_cipher_black_list;
 };
@@ -1020,6 +1028,8 @@ enum {
   SHRPX_OPTID_SYSLOG_FACILITY,
   SHRPX_OPTID_TLS_DYN_REC_IDLE_TIMEOUT,
   SHRPX_OPTID_TLS_DYN_REC_WARMUP_THRESHOLD,
+  SHRPX_OPTID_TLS_MAX_PROTO_VERSION,
+  SHRPX_OPTID_TLS_MIN_PROTO_VERSION,
   SHRPX_OPTID_TLS_PROTO_LIST,
   SHRPX_OPTID_TLS_SCT_DIR,
   SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED,

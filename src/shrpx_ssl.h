@@ -258,6 +258,11 @@ SSL_SESSION *reuse_tls_session(const TLSSessionCache &addr);
 // the returned object using X509_free().
 X509 *load_certificate(const char *filename);
 
+// Returns TLS version from |v|.  The returned value is defined in
+// OpenSSL header file.  This function returns -1 if |v| is not valid
+// TLS version string.
+int proto_version_from_string(const StringRef &v);
+
 } // namespace ssl
 
 } // namespace shrpx
