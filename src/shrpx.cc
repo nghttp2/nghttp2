@@ -1427,8 +1427,10 @@ void fill_default_config(Config *config) {
   tlsconf.ciphers = StringRef::from_lit(nghttp2::ssl::DEFAULT_CIPHER_LIST);
   tlsconf.client.ciphers =
       StringRef::from_lit(nghttp2::ssl::DEFAULT_CIPHER_LIST);
-  tlsconf.min_proto_version = TLS1_1_VERSION;
-  tlsconf.max_proto_version = TLS1_2_VERSION;
+  tlsconf.min_proto_version =
+      ssl::proto_version_from_string(DEFAULT_TLS_MIN_PROTO_VERSION);
+  tlsconf.max_proto_version =
+      ssl::proto_version_from_string(DEFAULT_TLS_MAX_PROTO_VERSION);
 #if OPENSSL_1_1_API
   tlsconf.ecdh_curves = StringRef::from_lit("X25519:P-256:P-384:P-521");
 #else  // !OPENSSL_1_1_API
