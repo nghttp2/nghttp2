@@ -639,55 +639,6 @@ long int create_tls_proto_mask(const std::vector<StringRef> &tls_proto_list) {
   return res;
 }
 
-#if defined(OPENSSL_IS_BORINGSSL)
-namespace {
-int ssl_ctx_set_proto_versions(SSL_CTX *ssl_ctx, int min, int max) {
-  SSL_CTX_set_min_version(ssl_ctx, min);
-  SSL_CTX_set_max_version(ssl_ctx, max);
-  return 0;
-}
-} // namespace
-#elif OPENSSL_1_1_API
-namespace {
-int ssl_ctx_set_proto_versions(SSL_CTX *ssl_ctx, int min, int max) {
-  if (SSL_CTX_set_min_proto_version(ssl_ctx, min) != 1 ||
-      SSL_CTX_set_max_proto_version(ssl_ctx, max) != 1) {
-    return -1;
-  }
-  return 0;
-}
-} // namespace
-#else  // !OPENSSL_1_1_API
-namespace {
-int ssl_ctx_set_proto_versions(SSL_CTX *ssl_ctx, int min, int max) {
-  long int opts = 0;
-
-  // TODO We depends on the ordering of protocol version macro in
-  // OpenSSL.
-  if (min > TLS1_VERSION) {
-    opts |= SSL_OP_NO_TLSv1;
-  }
-  if (min > TLS1_1_VERSION) {
-    opts |= SSL_OP_NO_TLSv1_1;
-  }
-  if (min > TLS1_2_VERSION) {
-    opts |= SSL_OP_NO_TLSv1_2;
-  }
-
-  if (max < TLS1_2_VERSION) {
-    opts |= SSL_OP_NO_TLSv1_2;
-  }
-  if (max < TLS1_1_VERSION) {
-    opts |= SSL_OP_NO_TLSv1_1;
-  }
-
-  SSL_CTX_set_options(ssl_ctx, opts);
-
-  return 0;
-}
-} // namespace
-#endif // !OPENSSL_1_1_API
-
 SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
                             const std::vector<uint8_t> &sct_data
 #ifdef HAVE_NEVERBLEED
@@ -712,10 +663,9 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
 
   SSL_CTX_set_options(ssl_ctx, ssl_opts | tlsconf.tls_proto_mask);
 
-  if (ssl_ctx_set_proto_versions(ssl_ctx, tlsconf.min_proto_version,
-                                 tlsconf.max_proto_version) != 0) {
-    LOG(FATAL) << "Could not set TLS protocol version: "
-               << ERR_error_string(ERR_get_error(), nullptr);
+  if (nghttp2::ssl::ssl_ctx_set_proto_versions(
+          ssl_ctx, tlsconf.min_proto_version, tlsconf.max_proto_version) != 0) {
+    LOG(FATAL) << "Could not set TLS protocol version";
     DIE();
   }
 
@@ -953,10 +903,9 @@ SSL_CTX *create_ssl_client_context(
 
   SSL_CTX_set_options(ssl_ctx, ssl_opts | tlsconf.tls_proto_mask);
 
-  if (ssl_ctx_set_proto_versions(ssl_ctx, tlsconf.min_proto_version,
-                                 tlsconf.max_proto_version) != 0) {
-    LOG(FATAL) << "Could not set TLS protocol version: "
-               << ERR_error_string(ERR_get_error(), nullptr);
+  if (nghttp2::ssl::ssl_ctx_set_proto_versions(
+          ssl_ctx, tlsconf.min_proto_version, tlsconf.max_proto_version) != 0) {
+    LOG(FATAL) << "Could not set TLS protocol version";
     DIE();
   }
 
@@ -1742,6 +1691,11 @@ SSL_SESSION *reuse_tls_session(const TLSSessionCache &cache) {
 }
 
 int proto_version_from_string(const StringRef &v) {
+#ifdef TLS1_3_VERSION
+  if (util::strieq_l("TLSv1.3", v)) {
+    return TLS1_3_VERSION;
+  }
+#endif // TLS1_3_VERSION
   if (util::strieq_l("TLSv1.2", v)) {
     return TLS1_2_VERSION;
   }

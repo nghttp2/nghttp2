@@ -2122,6 +2122,13 @@ int HttpServer::run() {
     SSL_CTX_set_mode(ssl_ctx, SSL_MODE_AUTO_RETRY);
     SSL_CTX_set_mode(ssl_ctx, SSL_MODE_RELEASE_BUFFERS);
 
+    if (nghttp2::ssl::ssl_ctx_set_proto_versions(
+            ssl_ctx, nghttp2::ssl::NGHTTP2_TLS_MIN_VERSION,
+            nghttp2::ssl::NGHTTP2_TLS_MAX_VERSION) != 0) {
+      std::cerr << "Could not set TLS versions" << std::endl;
+      return -1;
+    }
+
     if (SSL_CTX_set_cipher_list(ssl_ctx, ssl::DEFAULT_CIPHER_LIST) == 0) {
       std::cerr << ERR_error_string(ERR_get_error(), nullptr) << std::endl;
       return -1;

@@ -2242,6 +2242,13 @@ int main(int argc, char **argv) {
   SSL_CTX_set_mode(ssl_ctx, SSL_MODE_AUTO_RETRY);
   SSL_CTX_set_mode(ssl_ctx, SSL_MODE_RELEASE_BUFFERS);
 
+  if (nghttp2::ssl::ssl_ctx_set_proto_versions(
+          ssl_ctx, nghttp2::ssl::NGHTTP2_TLS_MIN_VERSION,
+          nghttp2::ssl::NGHTTP2_TLS_MAX_VERSION) != 0) {
+    std::cerr << "Could not set TLS versions" << std::endl;
+    exit(EXIT_FAILURE);
+  }
+
   if (SSL_CTX_set_cipher_list(ssl_ctx, config.ciphers.c_str()) == 0) {
     std::cerr << "SSL_CTX_set_cipher_list with " << config.ciphers
               << " failed: " << ERR_error_string(ERR_get_error(), nullptr)

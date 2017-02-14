@@ -83,6 +83,10 @@ const char *get_tls_protocol(SSL *ssl) {
     return "SSLv2";
   case SSL3_VERSION:
     return "SSLv3";
+#ifdef TLS1_3_VERSION
+  case TLS1_3_VERSION:
+    return "TLSv1.3";
+#endif // TLS1_3_VERSION
   case TLS1_2_VERSION:
     return "TLSv1.2";
   case TLS1_1_VERSION:
@@ -157,6 +161,45 @@ void libssl_init() {
   SSL_load_error_strings();
   SSL_library_init();
   OpenSSL_add_all_algorithms();
+}
+
+int ssl_ctx_set_proto_versions(SSL_CTX *ssl_ctx, int min, int max) {
+#if OPENSSL_1_1_API
+  if (SSL_CTX_set_min_proto_version(ssl_ctx, min) != 1 ||
+      SSL_CTX_set_max_proto_version(ssl_ctx, max) != 1) {
+    return -1;
+  }
+  return 0;
+#elif defined(OPENSSL_IS_BORINGSSL)
+  SSL_CTX_set_min_version(ssl_ctx, min);
+  SSL_CTX_set_max_version(ssl_ctx, max);
+  return 0;
+#else  // !defined(OPENSSL_IS_BORINGSSL)
+  long int opts = 0;
+
+  // TODO We depends on the ordering of protocol version macro in
+  // OpenSSL.
+  if (min > TLS1_VERSION) {
+    opts |= SSL_OP_NO_TLSv1;
+  }
+  if (min > TLS1_1_VERSION) {
+    opts |= SSL_OP_NO_TLSv1_1;
+  }
+  if (min > TLS1_2_VERSION) {
+    opts |= SSL_OP_NO_TLSv1_2;
+  }
+
+  if (max < TLS1_2_VERSION) {
+    opts |= SSL_OP_NO_TLSv1_2;
+  }
+  if (max < TLS1_1_VERSION) {
+    opts |= SSL_OP_NO_TLSv1_1;
+  }
+
+  SSL_CTX_set_options(ssl_ctx, opts);
+
+  return 0;
+#endif // !defined(OPENSSL_IS_BORINGSSL)
 }
 
 } // namespace ssl
