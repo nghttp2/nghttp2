@@ -105,12 +105,12 @@ Connections
     The  parameters are  delimited  by  ";".  The  available
     parameters       are:      "proto=<PROTO>",       "tls",
     "sni=<SNI_HOST>",         "fall=<N>",        "rise=<N>",
-    "affinity=<METHOD>", and "dns".   The parameter consists
-    of keyword,  and optionally  followed by "="  and value.
-    For example,  the parameter  "proto=h2" consists  of the
-    keyword  "proto" and  value "h2".   The parameter  "tls"
-    consists  of  the  keyword "tls"  without  value.   Each
-    parameter is described as follows.
+    "affinity=<METHOD>",  "dns",  and  "frontend-tls".   The
+    parameter consists  of keyword, and  optionally followed
+    by "=" and value.  For example, the parameter "proto=h2"
+    consists  of the  keyword "proto"  and value  "h2".  The
+    parameter "tls"  consists of  the keyword  "tls" without
+    value.  Each parameter is described as follows.
 
     The backend application protocol  can be specified using
     optional  "proto"   parameter,  and   in  the   form  of
@@ -166,6 +166,17 @@ Connections
     frequently.   If  "dns"  is given,  name  resolution  of
     backend   host   name   at  start   up,   or   reloading
     configuration is skipped.
+
+    If "frontend-tls" parameter is used, the matched backend
+    requires frontend TLS connection.   In other words, even
+    if pattern  is matched,  frontend connection is  not TLS
+    protected, the request is  forwarded to one of catch-all
+    backends.   For this  reason,  catch-all backend  cannot
+    have "frontend-tls" parameter.  If  at least one backend
+    has  "frontend-tls" parameter,  this feature  is enabled
+    for all backend servers  sharing the same <PATTERN>.  It
+    is  advised  to  set  "frontend-tls"  parameter  to  all
+    backends explicitly if this feature is desired.
 
     Since ";" and ":" are  used as delimiter, <PATTERN> must
     not  contain these  characters.  Since  ";" has  special
@@ -532,9 +543,14 @@ SSL/TLS
 
     Specify  additional certificate  and  private key  file.
     nghttpx will  choose certificates based on  the hostname
-    indicated  by  client  using TLS  SNI  extension.   This
-    option  can  be  used  multiple  times.   To  make  OCSP
-    stapling work, <CERTPATH> must be absolute path.
+    indicated by client using TLS SNI extension.  If nghttpx
+    is  built with  OpenSSL >=  1.0.2, signature  algorithms
+    (e.g., ECDSA+SHA256, RSA+SHA256) presented by client are
+    also taken  into consideration.  This allows  nghttpx to
+    send ECDSA certificate to  modern clients, while sending
+    RSA based certificate to older clients.  This option can
+    be  used multiple  times.  To  make OCSP  stapling work,
+    <CERTPATH> must be absolute path.
 
     Additional parameter  can be specified in  <PARAM>.  The
     available <PARAM> is "sct-dir=<DIR>".
@@ -582,19 +598,29 @@ SSL/TLS
     Path to  file that  contains client certificate  used in
     backend client authentication.
 
-.. option:: --tls-proto-list=<LIST>
+.. option:: --tls-min-proto-version=<VER>
 
-    Comma delimited list of  SSL/TLS protocol to be enabled.
-    The following protocols  are available: TLSv1.2, TLSv1.1
-    and   TLSv1.0.    The   name   matching   is   done   in
-    case-insensitive   manner.    The  parameter   must   be
-    delimited by  a single comma  only and any  white spaces
-    are  treated  as a  part  of  protocol string.   If  the
-    protocol list advertised by client does not overlap this
-    list,  you  will  receive  the  error  message  "unknown
-    protocol".
+    Specify   minimum  SSL/TLS   protocol.   The   following
+    protocols are  available: TLSv1.2, TLSv1.1  and TLSv1.0.
+    The name  matching is  done in  case-insensitive manner.
+    The   versions   between   :option:`--tls-min-proto-version`   and
+    :option:`--tls-max-proto-version`  are enabled.   If the  protocol
+    list advertised  by client does not  overlap this range,
+    you will receive the error message "unknown protocol".
 
-    Default: ``TLSv1.2,TLSv1.1``
+    Default: ``TLSv1.1``
+
+.. option:: --tls-max-proto-version=<VER>
+
+    Specify   maximum  SSL/TLS   protocol.   The   following
+    protocols are  available: TLSv1.2, TLSv1.1  and TLSv1.0.
+    The name  matching is  done in  case-insensitive manner.
+    The   versions   between   :option:`--tls-min-proto-version`   and
+    :option:`--tls-max-proto-version`  are enabled.   If the  protocol
+    list advertised  by client does not  overlap this range,
+    you will receive the error message "unknown protocol".
+
+    Default: ``TLSv1.2``
 
 .. option:: --tls-ticket-key-file=<PATH>
 
@@ -1188,7 +1214,7 @@ HTTP
 
     Change server response header field value to <NAME>.
 
-    Default: ``nghttpx nghttp2/1.19.0``
+    Default: ``nghttpx nghttp2/1.20.0-DEV``
 
 .. option:: --no-server-rewrite
 
@@ -1405,14 +1431,18 @@ SIGUSR1
   Reopen log files.
 
 SIGUSR2
+
   Fork and execute nghttpx.  It will execute the binary in the same
-  path with same command-line arguments and environment variables.
-  After new process comes up, sending SIGQUIT to the original process
-  to perform hot swapping.  The difference between SIGUSR2 + SIGQUIT
-  and SIGHUP is that former is usually used to execute new binary, and
-  the master process is newly spawned.  On the other hand, the latter
-  just reloads configuration file, and the same master process
-  continues to exist.
+  path with same command-line arguments and environment variables.  As
+  of nghttpx version 1.20.0, the new master process sends SIGQUIT to
+  the original master process when it is ready to serve requests.  For
+  the earlier versions of nghttpx, user has to send SIGQUIT to the
+  original master process.
+
+  The difference between SIGUSR2 (+ SIGQUIT) and SIGHUP is that former
+  is usually used to execute new binary, and the master process is
+  newly spawned.  On the other hand, the latter just reloads
+  configuration file, and the same master process continues to exist.
 
 .. note::
 
@@ -1804,6 +1834,18 @@ respectively.
         existing header fields, and then add required header fields.
         It is an error to call this method twice for a given request.
 
+    .. rb:method:: send_info(status, headers)
+
+        Send non-final (informational) response to a client.  *status*
+        must be in the range [100, 199], inclusive.  *headers* is a
+        hash containing response header fields.  Its key must be a
+        string, and the associated value must be either string or
+        array of strings.  Since this is not a final response, even if
+        this method is invoked, request is still forwarded to a
+        backend unless :rb:meth:`Nghttpx::Response#return` is called.
+        This method can be called multiple times.  It cannot be called
+        after :rb:meth:`Nghttpx::Response#return` is called.
+
 MRUBY EXAMPLES
 ~~~~~~~~~~~~~~
 
@@ -1871,11 +1913,11 @@ some cases where the error has occurred before reaching API endpoint
 
 The following section describes available API endpoints.
 
-PUT /api/v1beta1/backendconfig
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+POST /api/v1beta1/backendconfig
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 This API replaces the current backend server settings with the
-requested ones.  The request method should be PUT, but POST is also
+requested ones.  The request method should be POST, but PUT is also
 acceptable.  The request body must be nghttpx configuration file
 format.  For configuration file format, see `FILES`_ section.  The
 line separator inside the request body must be single LF (0x0A).
