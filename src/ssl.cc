@@ -140,7 +140,7 @@ bool check_http2_cipher_black_list(SSL *ssl) {
 bool check_http2_tls_version(SSL *ssl) {
   auto tls_ver = SSL_version(ssl);
 
-  return tls_ver == TLS1_2_VERSION;
+  return tls_ver >= TLS1_2_VERSION;
 }
 
 bool check_http2_requirement(SSL *ssl) {
