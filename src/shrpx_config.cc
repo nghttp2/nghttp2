@@ -638,6 +638,21 @@ int parse_duration(ev_tstamp *dest, const StringRef &opt,
 }
 } // namespace
 
+namespace {
+int parse_tls_proto_version(int &dest, const StringRef &opt,
+                            const StringRef &optarg) {
+  auto v = ssl::proto_version_from_string(optarg);
+  if (v == -1) {
+    LOG(ERROR) << opt << ": invalid TLS protocol version: " << optarg;
+    return -1;
+  }
+
+  dest = v;
+
+  return 0;
+}
+} // namespace
+
 struct MemcachedConnectionParams {
   bool tls;
 };
@@ -1786,6 +1801,14 @@ int option_lookup_token(const char *name, size_t namelen) {
         return SHRPX_OPTID_ACCEPT_PROXY_PROTOCOL;
       }
       break;
+    case 'n':
+      if (util::strieq_l("tls-max-proto-versio", name, 20)) {
+        return SHRPX_OPTID_TLS_MAX_PROTO_VERSION;
+      }
+      if (util::strieq_l("tls-min-proto-versio", name, 20)) {
+        return SHRPX_OPTID_TLS_MIN_PROTO_VERSION;
+      }
+      break;
     case 'r':
       if (util::strieq_l("tls-ticket-key-ciphe", name, 20)) {
         return SHRPX_OPTID_TLS_TICKET_KEY_CIPHER;
@@ -2710,6 +2733,8 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     return 0;
   }
   case SHRPX_OPTID_TLS_PROTO_LIST: {
+    LOG(WARN) << opt << ": deprecated.  Use tls-min-proto-version and "
+                        "tls-max-proto-version instead.";
     auto list = util::split_str(optarg, ',');
     config->tls.tls_proto_list.resize(list.size());
     for (size_t i = 0; i < list.size(); ++i) {
@@ -3327,6 +3352,10 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     config->logging.access.write_early = util::strieq_l("yes", optarg);
 
     return 0;
+  case SHRPX_OPTID_TLS_MIN_PROTO_VERSION:
+    return parse_tls_proto_version(config->tls.min_proto_version, opt, optarg);
+  case SHRPX_OPTID_TLS_MAX_PROTO_VERSION:
+    return parse_tls_proto_version(config->tls.max_proto_version, opt, optarg);
   case SHRPX_OPTID_CONF:
     LOG(WARN) << "conf: ignored";
 

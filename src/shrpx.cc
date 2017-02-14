@@ -1368,7 +1368,8 @@ constexpr auto DEFAULT_NPN_LIST = StringRef::from_lit("h2,h2-16,h2-14,"
 } // namespace
 
 namespace {
-constexpr auto DEFAULT_TLS_PROTO_LIST = StringRef::from_lit("TLSv1.2,TLSv1.1");
+constexpr auto DEFAULT_TLS_MIN_PROTO_VERSION = StringRef::from_lit("TLSv1.1");
+constexpr auto DEFAULT_TLS_MAX_PROTO_VERSION = StringRef::from_lit("TLSv1.2");
 } // namespace
 
 namespace {
@@ -1426,6 +1427,8 @@ void fill_default_config(Config *config) {
   tlsconf.ciphers = StringRef::from_lit(nghttp2::ssl::DEFAULT_CIPHER_LIST);
   tlsconf.client.ciphers =
       StringRef::from_lit(nghttp2::ssl::DEFAULT_CIPHER_LIST);
+  tlsconf.min_proto_version = TLS1_1_VERSION;
+  tlsconf.max_proto_version = TLS1_2_VERSION;
 #if OPENSSL_1_1_API
   tlsconf.ecdh_curves = StringRef::from_lit("X25519:P-256:P-384:P-521");
 #else  // !OPENSSL_1_1_API
@@ -2054,18 +2057,26 @@ SSL/TLS:
   --client-cert-file=<PATH>
               Path to  file that  contains client certificate  used in
               backend client authentication.
-  --tls-proto-list=<LIST>
-              Comma delimited list of  SSL/TLS protocol to be enabled.
-              The following protocols  are available: TLSv1.2, TLSv1.1
-              and   TLSv1.0.    The   name   matching   is   done   in
-              case-insensitive   manner.    The  parameter   must   be
-              delimited by  a single comma  only and any  white spaces
-              are  treated  as a  part  of  protocol string.   If  the
-              protocol list advertised by client does not overlap this
-              list,  you  will  receive  the  error  message  "unknown
-              protocol".
+  --tls-min-proto-version=<VER>
+              Specify   minimum  SSL/TLS   protocol.   The   following
+              protocols are  available: TLSv1.2, TLSv1.1  and TLSv1.0.
+              The name  matching is  done in  case-insensitive manner.
+              The   versions   between   --tls-min-proto-version   and
+              --tls-max-proto-version  are enabled.   If the  protocol
+              list advertised  by client does not  overlap this range,
+              you will receive the error message "unknown protocol".
               Default: )"
-      << DEFAULT_TLS_PROTO_LIST << R"(
+      << DEFAULT_TLS_MIN_PROTO_VERSION << R"(
+  --tls-max-proto-version=<VER>
+              Specify   maximum  SSL/TLS   protocol.   The   following
+              protocols are  available: TLSv1.2, TLSv1.1  and TLSv1.0.
+              The name  matching is  done in  case-insensitive manner.
+              The   versions   between   --tls-min-proto-version   and
+              --tls-max-proto-version  are enabled.   If the  protocol
+              list advertised  by client does not  overlap this range,
+              you will receive the error message "unknown protocol".
+              Default: )"
+      << DEFAULT_TLS_MAX_PROTO_VERSION << R"(
   --tls-ticket-key-file=<PATH>
               Path to file that contains  random data to construct TLS
               session ticket  parameters.  If aes-128-cbc is  given in
@@ -2717,11 +2728,18 @@ int process_options(Config *config,
   if (tlsconf.npn_list.empty()) {
     tlsconf.npn_list = util::split_str(DEFAULT_NPN_LIST, ',');
   }
-  if (tlsconf.tls_proto_list.empty()) {
-    tlsconf.tls_proto_list = util::split_str(DEFAULT_TLS_PROTO_LIST, ',');
+
+  if (!tlsconf.tls_proto_list.empty()) {
+    tlsconf.tls_proto_mask = ssl::create_tls_proto_mask(tlsconf.tls_proto_list);
   }
 
-  tlsconf.tls_proto_mask = ssl::create_tls_proto_mask(tlsconf.tls_proto_list);
+  // TODO We depends on the ordering of protocol version macro in
+  // OpenSSL.
+  if (tlsconf.min_proto_version > tlsconf.max_proto_version) {
+    LOG(ERROR) << "tls-max-proto-version must be equal to or larger than "
+                  "tls-min-proto-version";
+    return -1;
+  }
 
   if (ssl::set_alpn_prefs(tlsconf.alpn_prefs, tlsconf.npn_list) != 0) {
     return -1;
@@ -3216,6 +3234,10 @@ int main(int argc, char **argv) {
          &flag, 149},
         {SHRPX_OPT_CLIENT_CIPHERS.c_str(), required_argument, &flag, 150},
         {SHRPX_OPT_ACCESSLOG_WRITE_EARLY.c_str(), no_argument, &flag, 151},
+        {SHRPX_OPT_TLS_MIN_PROTO_VERSION.c_str(), required_argument, &flag,
+         152},
+        {SHRPX_OPT_TLS_MAX_PROTO_VERSION.c_str(), required_argument, &flag,
+         153},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -3927,6 +3949,16 @@ int main(int argc, char **argv) {
         // --accesslog-write-early
         cmdcfgs.emplace_back(SHRPX_OPT_ACCESSLOG_WRITE_EARLY,
                              StringRef::from_lit("yes"));
+        break;
+      case 152:
+        // --tls-min-proto-version
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS_MIN_PROTO_VERSION,
+                             StringRef{optarg});
+        break;
+      case 153:
+        // --tls-max-proto-version
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS_MAX_PROTO_VERSION,
+                             StringRef{optarg});
         break;
       default:
         break;
