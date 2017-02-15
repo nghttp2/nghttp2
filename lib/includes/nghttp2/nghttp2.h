@@ -2554,6 +2554,16 @@ nghttp2_option_set_max_deflate_dynamic_table_size(nghttp2_option *option,
 /**
  * @function
  *
+ * This option prevents the library from retaining closed streams to
+ * maintain the priority tree.  If this option is set to nonzero,
+ * applications can discard closed stream completely to save memory.
+ */
+NGHTTP2_EXTERN void nghttp2_option_set_no_closed_streams(nghttp2_option *option,
+                                                         int val);
+
+/**
+ * @function
+ *
  * Initializes |*session_ptr| for client use.  The all members of
  * |callbacks| are copied to |*session_ptr|.  Therefore |*session_ptr|
  * does not store |callbacks|.  The |user_data| is an arbitrary user

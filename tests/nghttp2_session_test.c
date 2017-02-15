@@ -10098,6 +10098,28 @@ void test_nghttp2_session_pause_data(void) {
   nghttp2_session_del(session);
 }
 
+void test_nghttp2_session_no_closed_streams(void) {
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+  nghttp2_option *option;
+
+  memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
+
+  nghttp2_option_new(&option);
+  nghttp2_option_set_no_closed_streams(option, 1);
+
+  nghttp2_session_server_new2(&session, &callbacks, NULL, option);
+
+  open_recv_stream(session, 1);
+
+  nghttp2_session_close_stream(session, 1, NGHTTP2_NO_ERROR);
+
+  CU_ASSERT(0 == session->num_closed_streams);
+
+  nghttp2_session_del(session);
+  nghttp2_option_del(option);
+}
+
 static void check_nghttp2_http_recv_headers_fail(
     nghttp2_session *session, nghttp2_hd_deflater *deflater, int32_t stream_id,
     int stream_state, const nghttp2_nv *nva, size_t nvlen) {

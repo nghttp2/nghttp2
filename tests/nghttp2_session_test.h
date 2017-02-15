@@ -154,6 +154,7 @@ void test_nghttp2_session_set_local_window_size(void);
 void test_nghttp2_session_cancel_from_before_frame_send(void);
 void test_nghttp2_session_removed_closed_stream(void);
 void test_nghttp2_session_pause_data(void);
+void test_nghttp2_session_no_closed_streams(void);
 void test_nghttp2_http_mandatory_headers(void);
 void test_nghttp2_http_content_length(void);
 void test_nghttp2_http_content_length_mismatch(void);

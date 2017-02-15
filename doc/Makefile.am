@@ -62,6 +62,7 @@ APIDOCS= \
 	nghttp2_option_set_max_send_header_block_length.rst \
 	nghttp2_option_set_no_auto_ping_ack.rst \
 	nghttp2_option_set_no_auto_window_update.rst \
+	nghttp2_option_set_no_closed_streams.rst \
 	nghttp2_option_set_no_http_messaging.rst \
 	nghttp2_option_set_no_recv_client_magic.rst \
 	nghttp2_option_set_peer_max_concurrent_streams.rst \
