@@ -7036,7 +7036,7 @@ int nghttp2_session_resume_data(nghttp2_session *session, int32_t stream_id) {
     return rv;
   }
 
-  return rv;
+  return 0;
 }
 
 size_t nghttp2_session_get_outbound_queue_size(nghttp2_session *session) {
