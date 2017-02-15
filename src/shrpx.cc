@@ -1369,7 +1369,11 @@ constexpr auto DEFAULT_NPN_LIST = StringRef::from_lit("h2,h2-16,h2-14,"
 
 namespace {
 constexpr auto DEFAULT_TLS_MIN_PROTO_VERSION = StringRef::from_lit("TLSv1.1");
+#ifdef TLS1_3_VERSION
+constexpr auto DEFAULT_TLS_MAX_PROTO_VERSION = StringRef::from_lit("TLSv1.3");
+#else  // !TLS1_3_VERSION
 constexpr auto DEFAULT_TLS_MAX_PROTO_VERSION = StringRef::from_lit("TLSv1.2");
+#endif // !TLS1_3_VERSION
 } // namespace
 
 namespace {
@@ -1427,8 +1431,10 @@ void fill_default_config(Config *config) {
   tlsconf.ciphers = StringRef::from_lit(nghttp2::ssl::DEFAULT_CIPHER_LIST);
   tlsconf.client.ciphers =
       StringRef::from_lit(nghttp2::ssl::DEFAULT_CIPHER_LIST);
-  tlsconf.min_proto_version = TLS1_1_VERSION;
-  tlsconf.max_proto_version = TLS1_2_VERSION;
+  tlsconf.min_proto_version =
+      ssl::proto_version_from_string(DEFAULT_TLS_MIN_PROTO_VERSION);
+  tlsconf.max_proto_version =
+      ssl::proto_version_from_string(DEFAULT_TLS_MAX_PROTO_VERSION);
 #if OPENSSL_1_1_API
   tlsconf.ecdh_curves = StringRef::from_lit("X25519:P-256:P-384:P-521");
 #else  // !OPENSSL_1_1_API
@@ -2058,23 +2064,33 @@ SSL/TLS:
               Path to  file that  contains client certificate  used in
               backend client authentication.
   --tls-min-proto-version=<VER>
-              Specify   minimum  SSL/TLS   protocol.   The   following
-              protocols are  available: TLSv1.2, TLSv1.1  and TLSv1.0.
-              The name  matching is  done in  case-insensitive manner.
-              The   versions   between   --tls-min-proto-version   and
-              --tls-max-proto-version  are enabled.   If the  protocol
-              list advertised  by client does not  overlap this range,
-              you will receive the error message "unknown protocol".
+              Specify minimum SSL/TLS protocol.   The name matching is
+              done in  case-insensitive manner.  The  versions between
+              --tls-min-proto-version and  --tls-max-proto-version are
+              enabled.  If the protocol list advertised by client does
+              not  overlap  this range,  you  will  receive the  error
+              message "unknown protocol".  The available versions are:
+              )"
+#ifdef TLS1_3_VERSION
+                             "TLSv1.3, "
+#endif // TLS1_3_VERSION
+                             "TLSv1.2, TLSv1.1, and TLSv1.0"
+                             R"(
               Default: )"
       << DEFAULT_TLS_MIN_PROTO_VERSION << R"(
   --tls-max-proto-version=<VER>
-              Specify   maximum  SSL/TLS   protocol.   The   following
-              protocols are  available: TLSv1.2, TLSv1.1  and TLSv1.0.
-              The name  matching is  done in  case-insensitive manner.
-              The   versions   between   --tls-min-proto-version   and
-              --tls-max-proto-version  are enabled.   If the  protocol
-              list advertised  by client does not  overlap this range,
-              you will receive the error message "unknown protocol".
+              Specify maximum SSL/TLS protocol.   The name matching is
+              done in  case-insensitive manner.  The  versions between
+              --tls-min-proto-version and  --tls-max-proto-version are
+              enabled.  If the protocol list advertised by client does
+              not  overlap  this range,  you  will  receive the  error
+              message "unknown protocol".  The available versions are:
+              )"
+#ifdef TLS1_3_VERSION
+                                          "TLSv1.3, "
+#endif // TLS1_3_VERSION
+                                          "TLSv1.2, TLSv1.1, and TLSv1.0"
+                                          R"(
               Default: )"
       << DEFAULT_TLS_MAX_PROTO_VERSION << R"(
   --tls-ticket-key-file=<PATH>

@@ -2246,6 +2246,15 @@ int communicate(
     SSL_CTX_set_options(ssl_ctx, ssl_opts);
     SSL_CTX_set_mode(ssl_ctx, SSL_MODE_AUTO_RETRY);
     SSL_CTX_set_mode(ssl_ctx, SSL_MODE_RELEASE_BUFFERS);
+
+    if (nghttp2::ssl::ssl_ctx_set_proto_versions(
+            ssl_ctx, nghttp2::ssl::NGHTTP2_TLS_MIN_VERSION,
+            nghttp2::ssl::NGHTTP2_TLS_MAX_VERSION) != 0) {
+      std::cerr << "[ERROR] Could not set TLS versions" << std::endl;
+      result = -1;
+      goto fin;
+    }
+
     if (SSL_CTX_set_cipher_list(ssl_ctx, ssl::DEFAULT_CIPHER_LIST) == 0) {
       std::cerr << "[ERROR] " << ERR_error_string(ERR_get_error(), nullptr)
                 << std::endl;

@@ -49,7 +49,25 @@ public:
 // suites by mozilla.
 //
 // https://wiki.mozilla.org/Security/Server_Side_TLS
+//
+// Plus TLSv1.3 cipher suites if defined.
 constexpr char DEFAULT_CIPHER_LIST[] =
+#ifdef TLS1_3_TXT_AES_256_GCM_SHA384
+    TLS1_3_TXT_AES_256_GCM_SHA384
+    ":"
+#endif // TLS1_3_TXT_AES_256_GCM_SHA384
+#ifdef TLS1_3_TXT_CHACHA20_POLY1305_SHA256
+    TLS1_3_TXT_CHACHA20_POLY1305_SHA256 ":"
+#endif // TLS1_3_TXT_CHACHA20_POLY1305_SHA256
+#ifdef TLS1_3_TXT_AES_128_GCM_SHA256
+    TLS1_3_TXT_AES_128_GCM_SHA256 ":"
+#endif // TLS1_3_TXT_AES_128_GCM_SHA256
+#ifdef TLS1_3_TXT_AES_128_CCM_SHA256
+    TLS1_3_TXT_AES_128_CCM_SHA256 ":"
+#endif // TLS1_3_TXT_AES_128_CCM_SHA256
+#ifdef TLS1_3_TXT_AES_128_CCM_8_SHA256
+    TLS1_3_TXT_AES_128_CCM_8_SHA256 ":"
+#endif // TLS1_3_TXT_AES_128_CCM_8_SHA256
     "ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-"
     "AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-"
     "SHA384:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-"
@@ -60,6 +78,13 @@ constexpr char DEFAULT_CIPHER_LIST[] =
     "ECDSA-DES-CBC3-SHA:ECDHE-RSA-DES-CBC3-SHA:EDH-RSA-DES-CBC3-SHA:AES128-GCM-"
     "SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-"
     "SHA:DES-CBC3-SHA:!DSS";
+
+constexpr auto NGHTTP2_TLS_MIN_VERSION = TLS1_VERSION;
+#ifdef TLS1_3_VERSION
+constexpr auto NGHTTP2_TLS_MAX_VERSION = TLS1_3_VERSION;
+#else // !TLS1_3_VERSION
+constexpr auto NGHTTP2_TLS_MAX_VERSION = TLS1_2_VERSION;
+#endif // !TLS1_3_VERSION
 
 const char *get_tls_protocol(SSL *ssl);
 
@@ -90,6 +115,10 @@ bool check_http2_requirement(SSL *ssl);
 
 // Initializes OpenSSL library
 void libssl_init();
+
+// Sets TLS min and max versions to |ssl_ctx|.  This function returns
+// 0 if it succeeds, or -1.
+int ssl_ctx_set_proto_versions(SSL_CTX *ssl_ctx, int min, int max);
 
 } // namespace ssl
 
