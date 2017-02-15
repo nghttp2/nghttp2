@@ -83,11 +83,14 @@ public:
   get_downstream_addr_group() const;
   virtual DownstreamAddr *get_addr() const;
 
-  int send_reply(unsigned int http_status, int api_status);
+  int send_reply(unsigned int http_status, int api_status,
+                 const StringRef &data = StringRef{});
   int error_method_not_allowed();
 
   // Handles backendconfig API request.
   int handle_backendconfig();
+  // Handles configrevision API request.
+  int handle_configrevision();
 
 private:
   Worker *worker_;
