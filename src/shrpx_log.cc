@@ -141,7 +141,7 @@ Log::~Log() {
   char buf[4_k];
   auto tty = lgconf->errorlog_tty;
 
-  lgconf->update_tstamp(std::chrono::system_clock::now());
+  lgconf->update_tstamp_millis(std::chrono::system_clock::now());
 
   // Error log format: <datetime> <master-pid> <current-pid>
   // <thread-id> <level> (<filename>:<line>) <msg>

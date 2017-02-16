@@ -59,6 +59,11 @@ struct LogConfig {
   bool errorlog_tty;
 
   LogConfig();
+  // Updates time stamp if difference between time_str_updated and now
+  // is 1 or more milliseconds.
+  void update_tstamp_millis(const std::chrono::system_clock::time_point &now);
+  // Updates time stamp if difference between time_str_updated and
+  // now, converted to time_t, is 1 or more seconds.
   void update_tstamp(const std::chrono::system_clock::time_point &now);
 };
 

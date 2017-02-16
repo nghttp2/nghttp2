@@ -96,6 +96,20 @@ LogConfig *log_config() { return config.get(); }
 void delete_log_config() {}
 #endif // NOTHREADS
 
+void LogConfig::update_tstamp_millis(
+    const std::chrono::system_clock::time_point &now) {
+  if (std::chrono::duration_cast<std::chrono::milliseconds>(
+          now.time_since_epoch()) ==
+      std::chrono::duration_cast<std::chrono::milliseconds>(
+          time_str_updated.time_since_epoch())) {
+    return;
+  }
+
+  time_str_updated = now;
+
+  tstamp = std::make_shared<Timestamp>(now);
+}
+
 void LogConfig::update_tstamp(
     const std::chrono::system_clock::time_point &now) {
   auto t0 = std::chrono::system_clock::to_time_t(time_str_updated);
