@@ -606,7 +606,7 @@ unsigned int psk_client_cb(SSL *ssl, const char *hint, char *identity_out,
   *std::copy(std::begin(identity), std::end(identity), identity_out) = '\0';
   std::copy(std::begin(secret), std::end(secret), psk);
 
-  return (unsigned int)secret.size();
+  return static_cast<unsigned int>(secret.size());
 }
 } // namespace
 #endif // !LIBRESSL_IN_USE
