@@ -27,6 +27,7 @@
 
 #include "shrpx.h"
 
+#include <cinttypes>
 #include <vector>
 
 #include <ev.h>
