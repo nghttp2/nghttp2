@@ -3631,7 +3631,7 @@ int configure_downstream_group(Config *config, bool http2_proxy,
     auto &sni = tlsconf.backend_sni_name;
     for (auto &addr_group : addr_groups) {
       for (auto &addr : addr_group.addrs) {
-        addr.sni = StringRef{sni};
+        addr.sni = sni;
       }
     }
   }
