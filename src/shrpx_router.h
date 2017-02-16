@@ -32,6 +32,8 @@
 
 #include "allocator.h"
 
+using namespace nghttp2;
+
 namespace shrpx {
 
 struct RNode {

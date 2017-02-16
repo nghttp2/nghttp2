@@ -45,6 +45,7 @@
 #include "shrpx_config.h"
 #include "ssl.h"
 #include "shrpx_router_test.h"
+#include "shrpx_log.h"
 
 static int init_suite1(void) { return 0; }
 

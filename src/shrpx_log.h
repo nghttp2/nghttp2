@@ -34,6 +34,7 @@
 #include <vector>
 #include <chrono>
 
+#include "shrpx_config.h"
 #include "shrpx_log_config.h"
 #include "ssl.h"
 #include "template.h"
@@ -157,13 +158,13 @@ struct LogSpec {
 void upstream_accesslog(const std::vector<LogFragment> &lf,
                         const LogSpec &lgsp);
 
-int reopen_log_files();
+int reopen_log_files(const LoggingConfig &loggingconf);
 
 // Logs message when process whose pid is |pid| and exist status is
 // |rstatus| exited.  The |msg| is prepended to the log message.
 void log_chld(pid_t pid, int rstatus, const char *msg);
 
-void redirect_stderr_to_errorlog();
+void redirect_stderr_to_errorlog(const LoggingConfig &loggingconf);
 
 // Makes internal copy of stderr (and possibly stdout in the future),
 // which is then used as pointer to /dev/stderr or /proc/self/fd/2

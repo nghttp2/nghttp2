@@ -29,8 +29,6 @@
 
 #include <mruby.h>
 
-using namespace nghttp2;
-
 namespace shrpx {
 
 namespace mruby {

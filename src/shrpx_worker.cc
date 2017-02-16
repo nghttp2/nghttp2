@@ -311,7 +311,7 @@ void Worker::wait() {
 void Worker::run_async() {
 #ifndef NOTHREADS
   fut_ = std::async(std::launch::async, [this] {
-    (void)reopen_log_files();
+    (void)reopen_log_files(get_config()->logging);
     ev_run(loop_);
     delete_log_config();
   });
@@ -349,7 +349,9 @@ void Worker::process_events() {
 
   ev_timer_start(loop_, &proc_wev_timer_);
 
-  auto worker_connections = get_config()->conn.upstream.worker_connections;
+  auto config = get_config();
+
+  auto worker_connections = config->conn.upstream.worker_connections;
 
   switch (wev.type) {
   case NEW_CONNECTION: {
@@ -390,7 +392,7 @@ void Worker::process_events() {
     WLOG(NOTICE, this) << "Reopening log files: worker process (thread " << this
                        << ")";
 
-    reopen_log_files();
+    reopen_log_files(config->logging);
 
     break;
   case GRACEFUL_SHUTDOWN:

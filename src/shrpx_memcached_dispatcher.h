@@ -37,6 +37,8 @@
 #include "memchunk.h"
 #include "network.h"
 
+using namespace nghttp2;
+
 namespace shrpx {
 
 struct MemcachedRequest;

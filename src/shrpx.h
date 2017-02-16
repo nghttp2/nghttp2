@@ -42,8 +42,6 @@
 #define nghttp2_Exit(status) _Exit(status)
 #endif // HAVE__EXIT
 
-#include "shrpx_log.h"
-
 #define DIE() nghttp2_Exit(EXIT_FAILURE)
 
 #if defined(HAVE_DECL_INITGROUPS) && !HAVE_DECL_INITGROUPS

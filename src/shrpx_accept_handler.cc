@@ -32,6 +32,7 @@
 
 #include "shrpx_connection_handler.h"
 #include "shrpx_config.h"
+#include "shrpx_log.h"
 #include "util.h"
 
 using namespace nghttp2;

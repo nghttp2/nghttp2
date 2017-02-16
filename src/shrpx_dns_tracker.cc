@@ -24,6 +24,7 @@
  */
 #include "shrpx_dns_tracker.h"
 #include "shrpx_config.h"
+#include "shrpx_log.h"
 #include "util.h"
 
 namespace shrpx {

@@ -28,6 +28,7 @@
 #include "shrpx.h"
 
 #include <random>
+#include <functional>
 
 #include <ev.h>
 

@@ -456,15 +456,14 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
     ;
 }
 
-int reopen_log_files() {
+int reopen_log_files(const LoggingConfig &loggingconf) {
   int res = 0;
   int new_accesslog_fd = -1;
   int new_errorlog_fd = -1;
 
   auto lgconf = log_config();
-  auto config = get_config();
-  auto &accessconf = config->logging.access;
-  auto &errorconf = config->logging.error;
+  auto &accessconf = loggingconf.access;
+  auto &errorconf = loggingconf.error;
 
   if (!accessconf.syslog && !accessconf.file.empty()) {
     new_accesslog_fd = open_log_file(accessconf.file.c_str());
@@ -524,9 +523,9 @@ void log_chld(pid_t pid, int rstatus, const char *msg) {
               << (signalstr.empty() ? "" : signalstr.c_str());
 }
 
-void redirect_stderr_to_errorlog() {
+void redirect_stderr_to_errorlog(const LoggingConfig &loggingconf) {
   auto lgconf = log_config();
-  auto &errorconf = get_config()->logging.error;
+  auto &errorconf = loggingconf.error;
 
   if (errorconf.syslog || lgconf->errorlog_fd == -1) {
     return;

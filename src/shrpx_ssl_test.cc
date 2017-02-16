@@ -27,6 +27,7 @@
 #include <CUnit/CUnit.h>
 
 #include "shrpx_ssl.h"
+#include "shrpx_log.h"
 #include "util.h"
 #include "template.h"
 

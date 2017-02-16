@@ -41,6 +41,7 @@
 #endif // HAVE_MRUBY
 #include "shrpx_worker.h"
 #include "shrpx_http2_session.h"
+#include "shrpx_log.h"
 #include "http2.h"
 #include "util.h"
 #include "template.h"

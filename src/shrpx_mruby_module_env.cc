@@ -33,6 +33,7 @@
 #include "shrpx_client_handler.h"
 #include "shrpx_mruby.h"
 #include "shrpx_mruby_module.h"
+#include "shrpx_log.h"
 
 namespace shrpx {
 

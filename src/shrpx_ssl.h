@@ -40,6 +40,7 @@
 #endif // HAVE_NEVERBLEED
 
 #include "network.h"
+#include "shrpx_config.h"
 #include "shrpx_router.h"
 
 namespace shrpx {
@@ -235,7 +236,7 @@ std::unique_ptr<CertLookupTree> create_cert_lookup_tree();
 SSL *create_ssl(SSL_CTX *ssl_ctx);
 
 // Returns true if SSL/TLS is enabled on upstream
-bool upstream_tls_enabled();
+bool upstream_tls_enabled(const ConnectionConfig &connconf);
 
 // Performs TLS hostname match.  |pattern| can contain wildcard
 // character '*', which matches prefix of target hostname.  There are

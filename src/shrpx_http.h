@@ -34,6 +34,8 @@
 #include "util.h"
 #include "allocator.h"
 
+using namespace nghttp2;
+
 namespace shrpx {
 
 namespace http {

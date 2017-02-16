@@ -85,6 +85,7 @@
 #include "shrpx_process.h"
 #include "shrpx_signal.h"
 #include "shrpx_connection.h"
+#include "shrpx_log.h"
 #include "util.h"
 #include "app_helper.h"
 #include "ssl.h"
@@ -300,13 +301,6 @@ int worker_process_last_pid() {
 } // namespace
 
 namespace {
-int chown_to_running_user(const char *path) {
-  auto config = get_config();
-  return chown(path, config->uid, config->gid);
-}
-} // namespace
-
-namespace {
 int save_pid() {
   std::array<char, STRERROR_BUFSIZE> errbuf;
   auto config = get_config();
@@ -361,7 +355,7 @@ int save_pid() {
   }
 
   if (config->uid != 0) {
-    if (chown_to_running_user(pid_file.c_str()) == -1) {
+    if (chown(pid_file.c_str(), config->uid, config->gid) == -1) {
       auto error = errno;
       LOG(WARN) << "Changing owner of pid file " << pid_file << " failed: "
                 << xsi_strerror(error, errbuf.data(), errbuf.size());
@@ -558,8 +552,11 @@ namespace {
 void reopen_log(WorkerProcess *wp) {
   LOG(NOTICE) << "Reopening log files: master process";
 
-  (void)reopen_log_files();
-  redirect_stderr_to_errorlog();
+  auto config = get_config();
+  auto &loggingconf = config->logging;
+
+  (void)reopen_log_files(loggingconf);
+  redirect_stderr_to_errorlog(loggingconf);
   ipc_send(wp, SHRPX_IPC_REOPEN_LOG);
 }
 } // namespace
@@ -1112,7 +1109,7 @@ int create_acceptor_socket(Config *config, std::vector<InheritedAddr> &iaddrs) {
       if (config->uid != 0) {
         // fd is not associated to inode, so we cannot use fchown(2)
         // here.  https://lkml.org/lkml/2004/11/1/84
-        if (chown_to_running_user(addr.host.c_str()) == -1) {
+        if (chown(addr.host.c_str(), config->uid, config->gid) == -1) {
           auto error = errno;
           LOG(WARN) << "Changing owner of UNIX domain socket " << addr.host
                     << " failed: "
@@ -1297,7 +1294,7 @@ int event_loop() {
 
     // daemon redirects stderr file descriptor to /dev/null, so we
     // need this.
-    redirect_stderr_to_errorlog();
+    redirect_stderr_to_errorlog(config->logging);
   }
 
   // update systemd PID tracking
@@ -2646,7 +2643,7 @@ int process_options(Config *config,
   }
 
   // Reopen log files using configurations in file
-  reopen_log_files();
+  reopen_log_files(config->logging);
 
   {
     std::set<StringRef> include_set;
@@ -2668,12 +2665,12 @@ int process_options(Config *config,
             loggingconf.syslog_facility);
   }
 
-  if (reopen_log_files() != 0) {
+  if (reopen_log_files(config->logging) != 0) {
     LOG(FATAL) << "Failed to open log file";
     return -1;
   }
 
-  redirect_stderr_to_errorlog();
+  redirect_stderr_to_errorlog(loggingconf);
 
   if (config->uid != 0) {
     if (log_config()->accesslog_fd != -1 &&
@@ -2707,7 +2704,7 @@ int process_options(Config *config,
       dumpconf.request_header = f;
 
       if (config->uid != 0) {
-        if (chown_to_running_user(path) == -1) {
+        if (chown(path, config->uid, config->gid) == -1) {
           auto error = errno;
           LOG(WARN) << "Changing owner of http2 upstream request header file "
                     << path << " failed: "
@@ -2729,7 +2726,7 @@ int process_options(Config *config,
       dumpconf.response_header = f;
 
       if (config->uid != 0) {
-        if (chown_to_running_user(path) == -1) {
+        if (chown(path, config->uid, config->gid) == -1) {
           auto error = errno;
           LOG(WARN) << "Changing owner of http2 upstream response header file"
                     << " " << path << " failed: "
@@ -2781,14 +2778,14 @@ int process_options(Config *config,
     upstreamconf.worker_connections = std::numeric_limits<size_t>::max();
   }
 
-  if (ssl::upstream_tls_enabled() &&
+  if (ssl::upstream_tls_enabled(config->conn) &&
       (tlsconf.private_key_file.empty() || tlsconf.cert_file.empty())) {
     print_usage(std::cerr);
     LOG(FATAL) << "Too few arguments";
     return -1;
   }
 
-  if (ssl::upstream_tls_enabled() && !tlsconf.ocsp.disabled) {
+  if (ssl::upstream_tls_enabled(config->conn) && !tlsconf.ocsp.disabled) {
     struct stat buf;
     if (stat(tlsconf.ocsp.fetch_ocsp_response_file.c_str(), &buf) != 0) {
       tlsconf.ocsp.disabled = true;
@@ -3005,7 +3002,7 @@ int main(int argc, char **argv) {
 
   // First open log files with default configuration, so that we can
   // log errors/warnings while reading configuration files.
-  reopen_log_files();
+  reopen_log_files(get_config()->logging);
 
   suconfig.original_argv = argv;
 

@@ -34,6 +34,7 @@
 
 #include "shrpx_worker.h"
 #include "shrpx_connect_blocker.h"
+#include "shrpx_log.h"
 
 namespace shrpx {
 

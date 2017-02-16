@@ -1525,8 +1525,8 @@ bool in_proto_list(const std::vector<StringRef> &protos,
   return false;
 }
 
-bool upstream_tls_enabled() {
-  const auto &faddrs = get_config()->conn.listener.addrs;
+bool upstream_tls_enabled(const ConnectionConfig &connconf) {
+  const auto &faddrs = connconf.listener.addrs;
   return std::any_of(std::begin(faddrs), std::end(faddrs),
                      [](const UpstreamAddr &faddr) { return faddr.tls; });
 }
@@ -1560,11 +1560,13 @@ setup_server_ssl_context(std::vector<SSL_CTX *> &all_ssl_ctx,
                          neverbleed_t *nb
 #endif // HAVE_NEVERBLEED
                          ) {
-  if (!upstream_tls_enabled()) {
+  auto config = get_config();
+
+  if (!upstream_tls_enabled(config->conn)) {
     return nullptr;
   }
 
-  auto &tlsconf = get_config()->tls;
+  auto &tlsconf = config->tls;
 
   auto ssl_ctx =
       ssl::create_ssl_context(tlsconf.private_key_file.c_str(),
@@ -1644,7 +1646,8 @@ void setup_downstream_http1_alpn(SSL *ssl) {
 }
 
 std::unique_ptr<CertLookupTree> create_cert_lookup_tree() {
-  if (!upstream_tls_enabled() || get_config()->tls.subcerts.empty()) {
+  auto config = get_config();
+  if (!upstream_tls_enabled(config->conn) || config->tls.subcerts.empty()) {
     return nullptr;
   }
   return make_unique<CertLookupTree>();

@@ -49,6 +49,7 @@ class HttpsUpstream;
 class ConnectBlocker;
 class DownstreamConnectionPool;
 class Worker;
+class Downstream;
 struct WorkerStat;
 struct DownstreamAddrGroup;
 struct DownstreamAddr;

@@ -33,6 +33,7 @@
 #include <CUnit/CUnit.h>
 
 #include "shrpx_config.h"
+#include "shrpx_log.h"
 
 namespace shrpx {
 

@@ -29,6 +29,7 @@
 #include "shrpx_downstream.h"
 #include "shrpx_worker.h"
 #include "shrpx_connection_handler.h"
+#include "shrpx_log.h"
 
 namespace shrpx {
 

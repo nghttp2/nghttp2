@@ -26,6 +26,7 @@
 
 #include <cerrno>
 
+#include "shrpx_log.h"
 #include "template.h"
 
 using namespace nghttp2;

@@ -27,6 +27,7 @@
 #include "shrpx_memcached_request.h"
 #include "shrpx_memcached_connection.h"
 #include "shrpx_config.h"
+#include "shrpx_log.h"
 
 namespace shrpx {
 

@@ -27,6 +27,7 @@
 #include <limits>
 
 #include "shrpx_connection.h"
+#include "shrpx_log.h"
 
 namespace shrpx {
 

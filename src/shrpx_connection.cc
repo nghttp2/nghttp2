@@ -35,6 +35,7 @@
 
 #include "shrpx_ssl.h"
 #include "shrpx_memcached_request.h"
+#include "shrpx_log.h"
 #include "memchunk.h"
 #include "util.h"
 #include "ssl_compat.h"

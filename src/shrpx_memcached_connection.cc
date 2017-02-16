@@ -33,6 +33,7 @@
 #include "shrpx_memcached_result.h"
 #include "shrpx_config.h"
 #include "shrpx_ssl.h"
+#include "shrpx_log.h"
 #include "util.h"
 
 namespace shrpx {

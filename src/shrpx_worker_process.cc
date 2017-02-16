@@ -52,6 +52,7 @@
 #include "shrpx_memcached_request.h"
 #include "shrpx_process.h"
 #include "shrpx_ssl.h"
+#include "shrpx_log.h"
 #include "util.h"
 #include "app_helper.h"
 #include "template.h"
@@ -137,8 +138,11 @@ namespace {
 void reopen_log(ConnectionHandler *conn_handler) {
   LOG(NOTICE) << "Reopening log files: worker process (thread main)";
 
-  (void)reopen_log_files();
-  redirect_stderr_to_errorlog();
+  auto config = get_config();
+  auto &loggingconf = config->logging;
+
+  (void)reopen_log_files(loggingconf);
+  redirect_stderr_to_errorlog(loggingconf);
 
   if (get_config()->num_worker > 1) {
     conn_handler->worker_reopen_log_files();
@@ -399,7 +403,9 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
   std::array<char, STRERROR_BUFSIZE> errbuf;
   (void)errbuf;
 
-  if (reopen_log_files() != 0) {
+  auto config = get_config();
+
+  if (reopen_log_files(config->logging) != 0) {
     LOG(FATAL) << "Failed to open log file";
     return -1;
   }
@@ -415,8 +421,6 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
   auto gen = std::mt19937(rd());
 
   ConnectionHandler conn_handler(loop, gen);
-
-  auto config = get_config();
 
   for (auto &addr : config->conn.listener.addrs) {
     conn_handler.add_acceptor(make_unique<AcceptHandler>(&addr, &conn_handler));
@@ -450,7 +454,7 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
   MemchunkPool mcpool;
 
   ev_timer renew_ticket_key_timer;
-  if (ssl::upstream_tls_enabled()) {
+  if (ssl::upstream_tls_enabled(config->conn)) {
     auto &ticketconf = config->tls.ticket;
     auto &memcachedconf = ticketconf.memcached;
 
@@ -549,7 +553,7 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
   ipcev.data = &conn_handler;
   ev_io_start(loop, &ipcev);
 
-  if (ssl::upstream_tls_enabled() && !config->tls.ocsp.disabled) {
+  if (ssl::upstream_tls_enabled(config->conn) && !config->tls.ocsp.disabled) {
     conn_handler.proceed_next_cert_ocsp();
   }
 

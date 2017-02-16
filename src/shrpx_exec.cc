@@ -27,6 +27,7 @@
 #include <cerrno>
 
 #include "shrpx_signal.h"
+#include "shrpx_log.h"
 #include "util.h"
 #include "template.h"
 

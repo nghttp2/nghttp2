@@ -44,6 +44,7 @@
 #include "shrpx_accept_handler.h"
 #include "shrpx_memcached_dispatcher.h"
 #include "shrpx_signal.h"
+#include "shrpx_log.h"
 #include "util.h"
 #include "template.h"
 
@@ -351,7 +352,7 @@ void ConnectionHandler::graceful_shutdown_worker() {
   ev_async_start(loop_, &thread_join_asyncev_);
 
   thread_join_fut_ = std::async(std::launch::async, [this]() {
-    (void)reopen_log_files();
+    (void)reopen_log_files(get_config()->logging);
     join_worker();
     ev_async_send(get_loop(), &thread_join_asyncev_);
     delete_log_config();

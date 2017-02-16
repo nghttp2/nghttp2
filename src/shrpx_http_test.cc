@@ -34,6 +34,7 @@
 
 #include "shrpx_http.h"
 #include "shrpx_config.h"
+#include "shrpx_log.h"
 
 namespace shrpx {
 

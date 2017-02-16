@@ -48,6 +48,7 @@ namespace shrpx {
 
 class Http2DownstreamConnection;
 class Worker;
+class Downstream;
 struct DownstreamAddrGroup;
 struct DownstreamAddr;
 struct DNSQuery;
