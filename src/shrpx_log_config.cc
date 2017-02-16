@@ -112,9 +112,10 @@ void LogConfig::update_tstamp_millis(
 
 void LogConfig::update_tstamp(
     const std::chrono::system_clock::time_point &now) {
-  auto t0 = std::chrono::system_clock::to_time_t(time_str_updated);
-  auto t1 = std::chrono::system_clock::to_time_t(now);
-  if (t0 == t1) {
+  if (std::chrono::duration_cast<std::chrono::seconds>(
+          now.time_since_epoch()) ==
+      std::chrono::duration_cast<std::chrono::seconds>(
+          time_str_updated.time_since_epoch())) {
     return;
   }
 
