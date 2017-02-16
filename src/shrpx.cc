@@ -2780,8 +2780,9 @@ int process_options(Config *config,
 
   if (ssl::upstream_tls_enabled(config->conn) &&
       (tlsconf.private_key_file.empty() || tlsconf.cert_file.empty())) {
-    print_usage(std::cerr);
-    LOG(FATAL) << "Too few arguments";
+    LOG(FATAL) << "TLS private key and certificate files are required.  "
+                  "Specify them in command-line, or in configuration file "
+                  "using private-key-file and certificate-file options.";
     return -1;
   }
 
