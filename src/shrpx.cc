@@ -454,7 +454,8 @@ void exec_binary() {
   for (char **p = environ; *p; ++p, ++envlen)
     ;
 
-  auto &listenerconf = get_config()->conn.listener;
+  auto config = get_config();
+  auto &listenerconf = config->conn.listener;
 
   // 2 for ENV_ORIG_PID and terminal nullptr.
   auto envp = make_unique<char *[]>(envlen + listenerconf.addrs.size() + 2);
@@ -482,7 +483,7 @@ void exec_binary() {
 
   auto ipc_fd_str = ENV_ORIG_PID.str();
   ipc_fd_str += '=';
-  ipc_fd_str += util::utos(get_config()->pid);
+  ipc_fd_str += util::utos(config->pid);
   envp[envidx++] = const_cast<char *>(ipc_fd_str.c_str());
 
   for (size_t i = 0; i < envlen; ++i) {
