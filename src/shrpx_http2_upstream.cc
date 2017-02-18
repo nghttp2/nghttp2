@@ -434,9 +434,25 @@ void Http2Upstream::start_downstream(Downstream *downstream) {
 void Http2Upstream::initiate_downstream(Downstream *downstream) {
   int rv;
 
-  auto dconn = handler_->get_downstream_connection(downstream);
-  if (!dconn ||
-      (rv = downstream->attach_downstream_connection(std::move(dconn))) != 0) {
+  auto dconn = handler_->get_downstream_connection(rv, downstream);
+  if (!dconn) {
+    if (rv == SHRPX_ERR_TLS_REQUIRED) {
+      rv = redirect_to_https(downstream);
+    } else {
+      rv = error_reply(downstream, 503);
+    }
+    if (rv != 0) {
+      rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
+    }
+
+    downstream->set_request_state(Downstream::CONNECT_FAIL);
+    downstream_queue_.mark_failure(downstream);
+
+    return;
+  }
+
+  rv = downstream->attach_downstream_connection(std::move(dconn));
+  if (rv != 0) {
     // downstream connection fails, send error page
     if (error_reply(downstream, 503) != 0) {
       rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
@@ -1792,6 +1808,52 @@ int Http2Upstream::on_downstream_abort_request(Downstream *downstream,
   return 0;
 }
 
+int Http2Upstream::on_downstream_abort_request_with_https_redirect(
+    Downstream *downstream) {
+  int rv;
+
+  rv = redirect_to_https(downstream);
+  if (rv != 0) {
+    return -1;
+  }
+
+  handler_->signal_write();
+  return 0;
+}
+
+int Http2Upstream::redirect_to_https(Downstream *downstream) {
+  auto &req = downstream->request();
+  if (req.method == HTTP_CONNECT || req.scheme != "http") {
+    return error_reply(downstream, 400);
+  }
+
+  auto authority = util::extract_host(req.authority);
+  if (authority.empty()) {
+    return error_reply(downstream, 400);
+  }
+
+  auto &balloc = downstream->get_block_allocator();
+  auto config = get_config();
+  auto &httpconf = config->http;
+
+  StringRef loc;
+  if (httpconf.redirect_https_port == StringRef::from_lit("443")) {
+    loc = concat_string_ref(balloc, StringRef::from_lit("https://"), authority,
+                            req.path);
+  } else {
+    loc = concat_string_ref(balloc, StringRef::from_lit("https://"), authority,
+                            StringRef::from_lit(":"),
+                            httpconf.redirect_https_port, req.path);
+  }
+
+  auto &resp = downstream->response();
+  resp.http_status = 308;
+  resp.fs.add_header_token(StringRef::from_lit("location"), loc, false,
+                           http2::HD_LOCATION);
+
+  return send_reply(downstream, nullptr, 0);
+}
+
 int Http2Upstream::consume(int32_t stream_id, size_t len) {
   int rv;
 
@@ -1879,6 +1941,8 @@ int Http2Upstream::on_downstream_reset(Downstream *downstream, bool no_retry) {
 
   std::unique_ptr<DownstreamConnection> dconn;
 
+  rv = 0;
+
   if (no_retry || downstream->no_more_retry()) {
     goto fail;
   }
@@ -1886,7 +1950,7 @@ int Http2Upstream::on_downstream_reset(Downstream *downstream, bool no_retry) {
   // downstream connection is clean; we can retry with new
   // downstream connection.
 
-  dconn = handler_->get_downstream_connection(downstream);
+  dconn = handler_->get_downstream_connection(rv, downstream);
   if (!dconn) {
     goto fail;
   }
@@ -1904,7 +1968,12 @@ int Http2Upstream::on_downstream_reset(Downstream *downstream, bool no_retry) {
   return 0;
 
 fail:
-  if (on_downstream_abort_request(downstream, 503) != 0) {
+  if (rv == SHRPX_ERR_TLS_REQUIRED) {
+    rv = on_downstream_abort_request_with_https_redirect(downstream);
+  } else {
+    rv = on_downstream_abort_request(downstream, 503);
+  }
+  if (rv != 0) {
     rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
   }
   downstream->pop_downstream_connection();

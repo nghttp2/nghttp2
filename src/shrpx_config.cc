@@ -747,7 +747,7 @@ struct DownstreamParams {
   shrpx_session_affinity affinity;
   bool tls;
   bool dns;
-  bool frontend_tls;
+  bool redirect_if_not_tls;
 };
 
 namespace {
@@ -823,8 +823,8 @@ int parse_downstream_params(DownstreamParams &out,
       }
     } else if (util::strieq_l("dns", param)) {
       out.dns = true;
-    } else if (util::strieq_l("frontend-tls", param)) {
-      out.frontend_tls = true;
+    } else if (util::strieq_l("redirect-if-not-tls", param)) {
+      out.redirect_if_not_tls = true;
     } else if (!param.empty()) {
       LOG(ERROR) << "backend: " << param << ": unknown keyword";
       return -1;
@@ -919,8 +919,8 @@ int parse_mapping(Config *config, DownstreamAddrConfig &addr,
         }
         // If at least one backend requires frontend TLS connection,
         // enable it for all backends sharing the same pattern.
-        if (params.frontend_tls) {
-          g.require_upstream_tls = true;
+        if (params.redirect_if_not_tls) {
+          g.redirect_if_not_tls = true;
         }
         g.addrs.push_back(addr);
         done = true;
@@ -936,7 +936,7 @@ int parse_mapping(Config *config, DownstreamAddrConfig &addr,
     auto &g = addr_groups.back();
     g.addrs.push_back(addr);
     g.affinity = params.affinity;
-    g.require_upstream_tls = params.frontend_tls;
+    g.redirect_if_not_tls = params.redirect_if_not_tls;
 
     if (pattern[0] == '*') {
       // wildcard pattern
@@ -1753,6 +1753,9 @@ int option_lookup_token(const char *name, size_t namelen) {
       }
       break;
     case 't':
+      if (util::strieq_l("redirect-https-por", name, 18)) {
+        return SHRPX_OPTID_REDIRECT_HTTPS_PORT;
+      }
       if (util::strieq_l("stream-read-timeou", name, 18)) {
         return SHRPX_OPTID_STREAM_READ_TIMEOUT;
       }
@@ -3356,6 +3359,16 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     return parse_tls_proto_version(config->tls.min_proto_version, opt, optarg);
   case SHRPX_OPTID_TLS_MAX_PROTO_VERSION:
     return parse_tls_proto_version(config->tls.max_proto_version, opt, optarg);
+  case SHRPX_OPTID_REDIRECT_HTTPS_PORT: {
+    auto n = util::parse_uint(optarg);
+    if (n == -1 || n < 0 || n > 65535) {
+      LOG(ERROR) << opt << ": bad value.  Specify an integer in the range [0, "
+                           "65535], inclusive";
+      return -1;
+    }
+    config->http.redirect_https_port = optarg;
+    return 0;
+  }
   case SHRPX_OPTID_CONF:
     LOG(WARN) << "conf: ignored";
 
@@ -3660,12 +3673,6 @@ int configure_downstream_group(Config *config, bool http2_proxy,
 
   if (catch_all_group == -1) {
     LOG(FATAL) << "backend: No catch-all backend address is configured";
-    return -1;
-  }
-
-  if (addr_groups[catch_all_group].require_upstream_tls) {
-    LOG(FATAL)
-        << "backend: Catch-all backend cannot have frontend-tls parameter";
     return -1;
   }
 

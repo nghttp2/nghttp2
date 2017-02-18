@@ -66,6 +66,7 @@ void test_util_random_alpha_digit(void);
 void test_util_format_hex(void);
 void test_util_is_hex_string(void);
 void test_util_decode_hex(void);
+void test_util_extract_host(void);
 
 } // namespace shrpx
 

@@ -160,6 +160,7 @@ OPTIONS = [
     "accesslog-write-early",
     "tls-min-proto-version",
     "tls-max-proto-version",
+    "redirect-https-port",
 ]
 
 LOGVARS = [

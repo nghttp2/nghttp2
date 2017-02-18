@@ -331,6 +331,8 @@ constexpr auto SHRPX_OPT_TLS_MIN_PROTO_VERSION =
     StringRef::from_lit("tls-min-proto-version");
 constexpr auto SHRPX_OPT_TLS_MAX_PROTO_VERSION =
     StringRef::from_lit("tls-max-proto-version");
+constexpr auto SHRPX_OPT_REDIRECT_HTTPS_PORT =
+    StringRef::from_lit("redirect-https-port");
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
@@ -434,9 +436,7 @@ struct AffinityHash {
 
 struct DownstreamAddrGroupConfig {
   DownstreamAddrGroupConfig(const StringRef &pattern)
-      : pattern(pattern),
-        affinity(AFFINITY_NONE),
-        require_upstream_tls(false) {}
+      : pattern(pattern), affinity(AFFINITY_NONE), redirect_if_not_tls(false) {}
 
   StringRef pattern;
   std::vector<DownstreamAddrConfig> addrs;
@@ -445,8 +445,9 @@ struct DownstreamAddrGroupConfig {
   std::vector<AffinityHash> affinity_hash;
   // Session affinity
   shrpx_session_affinity affinity;
-  // true if this group requires that client connection must be TLS.
-  bool require_upstream_tls;
+  // true if this group requires that client connection must be TLS,
+  // and the request must be redirected to https URI.
+  bool redirect_if_not_tls;
 };
 
 struct TicketKey {
@@ -639,6 +640,9 @@ struct HttpConfig {
   HeaderRefs add_request_headers;
   HeaderRefs add_response_headers;
   StringRef server_name;
+  // Port number which appears in Location header field when https
+  // redirect is made.
+  StringRef redirect_https_port;
   size_t request_header_field_buffer;
   size_t max_request_header_fields;
   size_t response_header_field_buffer;
@@ -1016,6 +1020,7 @@ enum {
   SHRPX_OPTID_PSK_SECRETS,
   SHRPX_OPTID_READ_BURST,
   SHRPX_OPTID_READ_RATE,
+  SHRPX_OPTID_REDIRECT_HTTPS_PORT,
   SHRPX_OPTID_REQUEST_HEADER_FIELD_BUFFER,
   SHRPX_OPTID_RESPONSE_HEADER_FIELD_BUFFER,
   SHRPX_OPTID_RLIMIT_NOFILE,

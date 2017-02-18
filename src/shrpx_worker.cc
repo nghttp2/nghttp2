@@ -77,7 +77,7 @@ bool match_shared_downstream_addr(
   }
 
   if (lhs->affinity != rhs->affinity ||
-      lhs->require_upstream_tls != rhs->require_upstream_tls) {
+      lhs->redirect_if_not_tls != rhs->redirect_if_not_tls) {
     return false;
   }
 
@@ -192,7 +192,7 @@ void Worker::replace_downstream_config(
     shared_addr->addrs.resize(src.addrs.size());
     shared_addr->affinity = src.affinity;
     shared_addr->affinity_hash = src.affinity_hash;
-    shared_addr->require_upstream_tls = src.require_upstream_tls;
+    shared_addr->redirect_if_not_tls = src.redirect_if_not_tls;
 
     size_t num_http1 = 0;
     size_t num_http2 = 0;

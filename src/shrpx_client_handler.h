@@ -99,8 +99,12 @@ public:
 
   void pool_downstream_connection(std::unique_ptr<DownstreamConnection> dconn);
   void remove_downstream_connection(DownstreamConnection *dconn);
+  // Returns DownstreamConnection object based on request path.  This
+  // function returns non-null DownstreamConnection, and assigns 0 to
+  // |err| if it succeeds, or returns nullptr, and assigns negative
+  // error code to |err|.
   std::unique_ptr<DownstreamConnection>
-  get_downstream_connection(Downstream *downstream);
+  get_downstream_connection(int &err, Downstream *downstream);
   MemchunkPool *get_mcpool();
   SSL *get_ssl() const;
   // Call this function when HTTP/2 connection header is received at
