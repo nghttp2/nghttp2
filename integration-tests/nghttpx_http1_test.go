@@ -339,7 +339,7 @@ func TestH1H1HeaderFieldBufferPath(t *testing.T) {
 	// The value 100 is chosen so that sum of header fields bytes
 	// does not exceed it.  We use > 100 bytes URI to exceed this
 	// limit.
-	st := newServerTester([]string{"--header-field-buffer=100"}, t, func(w http.ResponseWriter, r *http.Request) {
+	st := newServerTester([]string{"--request-header-field-buffer=100"}, t, func(w http.ResponseWriter, r *http.Request) {
 		t.Fatal("execution path should not be here")
 	})
 	defer st.Close()
@@ -359,7 +359,7 @@ func TestH1H1HeaderFieldBufferPath(t *testing.T) {
 // TestH1H1HeaderFieldBuffer tests that request with header fields
 // larger than configured buffer size is rejected.
 func TestH1H1HeaderFieldBuffer(t *testing.T) {
-	st := newServerTester([]string{"--header-field-buffer=10"}, t, func(w http.ResponseWriter, r *http.Request) {
+	st := newServerTester([]string{"--request-header-field-buffer=10"}, t, func(w http.ResponseWriter, r *http.Request) {
 		t.Fatal("execution path should not be here")
 	})
 	defer st.Close()
@@ -378,7 +378,7 @@ func TestH1H1HeaderFieldBuffer(t *testing.T) {
 // TestH1H1HeaderFields tests that request with header fields more
 // than configured number is rejected.
 func TestH1H1HeaderFields(t *testing.T) {
-	st := newServerTester([]string{"--max-header-fields=1"}, t, func(w http.ResponseWriter, r *http.Request) {
+	st := newServerTester([]string{"--max-request-header-fields=1"}, t, func(w http.ResponseWriter, r *http.Request) {
 		t.Fatal("execution path should not be here")
 	})
 	defer st.Close()

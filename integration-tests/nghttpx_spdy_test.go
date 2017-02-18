@@ -174,7 +174,7 @@ func TestS3H1NoVia(t *testing.T) {
 // TestS3H1HeaderFieldBuffer tests that request with header fields
 // larger than configured buffer size is rejected.
 func TestS3H1HeaderFieldBuffer(t *testing.T) {
-	st := newServerTesterTLS([]string{"--npn-list=spdy/3.1", "--header-field-buffer=10"}, t, func(w http.ResponseWriter, r *http.Request) {
+	st := newServerTesterTLS([]string{"--npn-list=spdy/3.1", "--request-header-field-buffer=10"}, t, func(w http.ResponseWriter, r *http.Request) {
 		t.Fatal("execution path should not be here")
 	})
 	defer st.Close()
@@ -193,7 +193,7 @@ func TestS3H1HeaderFieldBuffer(t *testing.T) {
 // TestS3H1HeaderFields tests that request with header fields more
 // than configured number is rejected.
 func TestS3H1HeaderFields(t *testing.T) {
-	st := newServerTesterTLS([]string{"--npn-list=spdy/3.1", "--max-header-fields=1"}, t, func(w http.ResponseWriter, r *http.Request) {
+	st := newServerTesterTLS([]string{"--npn-list=spdy/3.1", "--max-request-header-fields=1"}, t, func(w http.ResponseWriter, r *http.Request) {
 		t.Fatal("execution path should not be here")
 	})
 	defer st.Close()

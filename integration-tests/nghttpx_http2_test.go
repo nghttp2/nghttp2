@@ -829,7 +829,7 @@ func TestH2H1RequestTrailer(t *testing.T) {
 // TestH2H1HeaderFieldBuffer tests that request with header fields
 // larger than configured buffer size is rejected.
 func TestH2H1HeaderFieldBuffer(t *testing.T) {
-	st := newServerTester([]string{"--header-field-buffer=10"}, t, func(w http.ResponseWriter, r *http.Request) {
+	st := newServerTester([]string{"--request-header-field-buffer=10"}, t, func(w http.ResponseWriter, r *http.Request) {
 		t.Fatal("execution path should not be here")
 	})
 	defer st.Close()
@@ -848,7 +848,7 @@ func TestH2H1HeaderFieldBuffer(t *testing.T) {
 // TestH2H1HeaderFields tests that request with header fields more
 // than configured number is rejected.
 func TestH2H1HeaderFields(t *testing.T) {
-	st := newServerTester([]string{"--max-header-fields=1"}, t, func(w http.ResponseWriter, r *http.Request) {
+	st := newServerTester([]string{"--max-request-header-fields=1"}, t, func(w http.ResponseWriter, r *http.Request) {
 		t.Fatal("execution path should not be here")
 	})
 	defer st.Close()
