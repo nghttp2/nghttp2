@@ -17,6 +17,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"os/exec"
 	"sort"
 	"strconv"
@@ -191,6 +192,9 @@ func newServerTesterInternal(src_args []string, t *testing.T, handler http.Handl
 		spdyFrCh:     make(chan spdy.Frame),
 		errCh:        make(chan error),
 	}
+
+	st.cmd.Stdout = os.Stdout
+	st.cmd.Stderr = os.Stderr
 
 	if err := st.cmd.Start(); err != nil {
 		st.t.Fatalf("Error starting %v: %v", serverBin, err)
