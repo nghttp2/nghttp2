@@ -105,12 +105,12 @@ Connections
     The  parameters are  delimited  by  ";".  The  available
     parameters       are:      "proto=<PROTO>",       "tls",
     "sni=<SNI_HOST>",         "fall=<N>",        "rise=<N>",
-    "affinity=<METHOD>",  "dns",  and  "frontend-tls".   The
-    parameter consists  of keyword, and  optionally followed
-    by "=" and value.  For example, the parameter "proto=h2"
-    consists  of the  keyword "proto"  and value  "h2".  The
-    parameter "tls"  consists of  the keyword  "tls" without
-    value.  Each parameter is described as follows.
+    "affinity=<METHOD>",  "dns", and  "redirect-if-not-tls".
+    The  parameter  consists   of  keyword,  and  optionally
+    followed by  "=" and value.  For  example, the parameter
+    "proto=h2"  consists of  the keyword  "proto" and  value
+    "h2".  The parameter "tls" consists of the keyword "tls"
+    without value.  Each parameter is described as follows.
 
     The backend application protocol  can be specified using
     optional  "proto"   parameter,  and   in  the   form  of
@@ -167,16 +167,18 @@ Connections
     backend   host   name   at  start   up,   or   reloading
     configuration is skipped.
 
-    If "frontend-tls" parameter is used, the matched backend
-    requires frontend TLS connection.   In other words, even
-    if pattern  is matched,  frontend connection is  not TLS
-    protected, the request is  forwarded to one of catch-all
-    backends.   For this  reason,  catch-all backend  cannot
-    have "frontend-tls" parameter.  If  at least one backend
-    has  "frontend-tls" parameter,  this feature  is enabled
-    for all backend servers  sharing the same <PATTERN>.  It
-    is  advised  to  set  "frontend-tls"  parameter  to  all
-    backends explicitly if this feature is desired.
+    If "redirect-if-not-tls" parameter  is used, the matched
+    backend  requires   that  frontend  connection   is  TLS
+    encrypted.  If it isn't, nghttpx responds to the request
+    with 308  status code, and  https URI the  client should
+    use instead  is included in Location  header field.  The
+    port number in  redirect URI is 443 by  default, and can
+    be  changed using  :option:`--redirect-https-port` option.   If at
+    least one  backend has  "redirect-if-not-tls" parameter,
+    this feature is enabled  for all backend servers sharing
+    the   same   <PATTERN>.    It    is   advised   to   set
+    "redirect-if-no-tls"    parameter   to    all   backends
+    explicitly if this feature is desired.
 
     Since ";" and ":" are  used as delimiter, <PATTERN> must
     not  contain these  characters.  Since  ";" has  special
@@ -600,25 +602,25 @@ SSL/TLS
 
 .. option:: --tls-min-proto-version=<VER>
 
-    Specify   minimum  SSL/TLS   protocol.   The   following
-    protocols are  available: TLSv1.2, TLSv1.1  and TLSv1.0.
-    The name  matching is  done in  case-insensitive manner.
-    The   versions   between   :option:`--tls-min-proto-version`   and
-    :option:`--tls-max-proto-version`  are enabled.   If the  protocol
-    list advertised  by client does not  overlap this range,
-    you will receive the error message "unknown protocol".
+    Specify minimum SSL/TLS protocol.   The name matching is
+    done in  case-insensitive manner.  The  versions between
+    :option:`--tls-min-proto-version` and  :option:`\--tls-max-proto-version` are
+    enabled.  If the protocol list advertised by client does
+    not  overlap  this range,  you  will  receive the  error
+    message "unknown protocol".  The available versions are:
+    TLSv1.2, TLSv1.1, and TLSv1.0
 
     Default: ``TLSv1.1``
 
 .. option:: --tls-max-proto-version=<VER>
 
-    Specify   maximum  SSL/TLS   protocol.   The   following
-    protocols are  available: TLSv1.2, TLSv1.1  and TLSv1.0.
-    The name  matching is  done in  case-insensitive manner.
-    The   versions   between   :option:`--tls-min-proto-version`   and
-    :option:`--tls-max-proto-version`  are enabled.   If the  protocol
-    list advertised  by client does not  overlap this range,
-    you will receive the error message "unknown protocol".
+    Specify maximum SSL/TLS protocol.   The name matching is
+    done in  case-insensitive manner.  The  versions between
+    :option:`--tls-min-proto-version` and  :option:`\--tls-max-proto-version` are
+    enabled.  If the protocol list advertised by client does
+    not  overlap  this range,  you  will  receive the  error
+    message "unknown protocol".  The available versions are:
+    TLSv1.2, TLSv1.1, and TLSv1.0
 
     Default: ``TLSv1.2``
 
@@ -1221,6 +1223,14 @@ HTTP
     Don't rewrite server header field in default mode.  When
     :option:`--http2-proxy` is used, these headers will not be altered
     regardless of this option.
+
+.. option:: --redirect-https-port=<PORT>
+
+    Specify the port number which appears in Location header
+    field  when  redirect  to  HTTPS  URI  is  made  due  to
+    "redirect-if-not-tls" parameter in :option:`--backend` option.
+
+    Default: ``443``
 
 
 API
@@ -1907,6 +1917,9 @@ status
 code
   HTTP status code
 
+Additionally, depending on the API endpoint, ``data`` key may be
+present, and its value contains the API endpoint specific data.
+
 We wrote "normally", since nghttpx may return ordinal HTML response in
 some cases where the error has occurred before reaching API endpoint
 (e.g., header field is too large).
@@ -1937,6 +1950,23 @@ The one limitation is that only numeric IP address is allowd in
 :option:`backend <--backend>` in request body unless "dns" parameter
 is used while non numeric hostname is allowed in command-line or
 configuration file is read using :option:`--conf`.
+
+GET /api/v1beta1/configrevision
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This API returns configuration revision of the current nghttpx.  The
+configuration revision is opaque string, and it changes after each
+reloading by SIGHUP.  With this API, an external application knows
+that whether nghttpx has finished reloading its configuration by
+comparing the configuration revisions between before and after
+reloading.
+
+This API returns response including ``data`` key.  Its value is JSON
+object, and it contains at least the following key:
+
+configRevision
+  The configuration revision of the current nghttpx
+
 
 SEE ALSO
 --------
