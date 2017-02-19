@@ -101,10 +101,8 @@ func newServerTesterInternal(src_args []string, t *testing.T, handler http.Handl
 
 	args := []string{}
 
-	backendTLS := false
-	dns := false
-	externalDNS := false
-	acceptProxyProtocol := false
+	var backendTLS, dns, externalDNS, acceptProxyProtocol, redirectIfNotTLS bool
+
 	for _, k := range src_args {
 		switch k {
 		case "--http2-bridge":
@@ -116,6 +114,8 @@ func newServerTesterInternal(src_args []string, t *testing.T, handler http.Handl
 			externalDNS = true
 		case "--accept-proxy-protocol":
 			acceptProxyProtocol = true
+		case "--redirect-if-not-tls":
+			redirectIfNotTLS = true
 		default:
 			args = append(args, k)
 		}
@@ -162,6 +162,10 @@ func newServerTesterInternal(src_args []string, t *testing.T, handler http.Handl
 	}
 	if dns {
 		b += ";dns"
+	}
+
+	if redirectIfNotTLS {
+		b += ";redirect-if-not-tls"
 	}
 
 	noTLS := ";no-tls"

@@ -51,6 +51,8 @@ public:
   virtual int on_timeout(Downstream *downstream);
   virtual int on_downstream_abort_request(Downstream *downstream,
                                           unsigned int status_code);
+  virtual int
+  on_downstream_abort_request_with_https_redirect(Downstream *downstream);
   virtual ClientHandler *get_client_handler() const;
   virtual int downstream_read(DownstreamConnection *dconn);
   virtual int downstream_write(DownstreamConnection *dconn);

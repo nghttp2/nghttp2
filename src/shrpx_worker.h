@@ -137,7 +137,7 @@ struct SharedDownstreamAddr {
         http1_pri{},
         http2_pri{},
         affinity{AFFINITY_NONE},
-        require_upstream_tls{false} {}
+        redirect_if_not_tls{false} {}
 
   SharedDownstreamAddr(const SharedDownstreamAddr &) = delete;
   SharedDownstreamAddr(SharedDownstreamAddr &&) = delete;
@@ -172,8 +172,9 @@ struct SharedDownstreamAddr {
   WeightedPri http2_pri;
   // Session affinity
   shrpx_session_affinity affinity;
-  // true if this group requires that client connection must be TLS.
-  bool require_upstream_tls;
+  // true if this group requires that client connection must be TLS,
+  // and the request must be redirected to https URI.
+  bool redirect_if_not_tls;
 };
 
 struct DownstreamAddrGroup {

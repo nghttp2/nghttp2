@@ -1432,6 +1432,26 @@ StringRef decode_hex(BlockAllocator &balloc, const StringRef &s) {
   return StringRef{iov.base, p};
 }
 
+StringRef extract_host(const StringRef &hostport) {
+  if (hostport[0] == '[') {
+    // assume this is IPv6 numeric address
+    auto p = std::find(std::begin(hostport), std::end(hostport), ']');
+    if (p == std::end(hostport)) {
+      return StringRef{};
+    }
+    if (p + 1 < std::end(hostport) && *(p + 1) != ':') {
+      return StringRef{};
+    }
+    return StringRef{std::begin(hostport), p + 1};
+  }
+
+  auto p = std::find(std::begin(hostport), std::end(hostport), ':');
+  if (p == std::begin(hostport)) {
+    return StringRef{};
+  }
+  return StringRef{std::begin(hostport), p};
+}
+
 } // namespace util
 
 } // namespace nghttp2

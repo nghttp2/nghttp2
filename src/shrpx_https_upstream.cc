@@ -421,10 +421,18 @@ int htp_hdrs_completecb(http_parser *htp) {
     return 0;
   }
 
-  auto dconn = handler->get_downstream_connection(downstream);
+  auto dconn = handler->get_downstream_connection(rv, downstream);
 
-  if (!dconn ||
-      (rv = downstream->attach_downstream_connection(std::move(dconn))) != 0) {
+  if (!dconn) {
+    if (rv == SHRPX_ERR_TLS_REQUIRED) {
+      upstream->redirect_to_https(downstream);
+    }
+    downstream->set_request_state(Downstream::CONNECT_FAIL);
+
+    return -1;
+  }
+
+  if (downstream->attach_downstream_connection(std::move(dconn)) != 0) {
     downstream->set_request_state(Downstream::CONNECT_FAIL);
 
     return -1;
@@ -1225,6 +1233,52 @@ int HttpsUpstream::on_downstream_abort_request(Downstream *downstream,
   return 0;
 }
 
+int HttpsUpstream::on_downstream_abort_request_with_https_redirect(
+    Downstream *downstream) {
+  redirect_to_https(downstream);
+  handler_->signal_write_no_wait();
+  return 0;
+}
+
+int HttpsUpstream::redirect_to_https(Downstream *downstream) {
+  auto &req = downstream->request();
+  if (req.method == HTTP_CONNECT || req.scheme != "http" ||
+      req.authority.empty()) {
+    error_reply(400);
+    return 0;
+  }
+
+  auto authority = util::extract_host(req.authority);
+  if (authority.empty()) {
+    error_reply(400);
+    return 0;
+  }
+
+  auto &balloc = downstream->get_block_allocator();
+  auto config = get_config();
+  auto &httpconf = config->http;
+
+  StringRef loc;
+  if (httpconf.redirect_https_port == StringRef::from_lit("443")) {
+    loc = concat_string_ref(balloc, StringRef::from_lit("https://"), authority,
+                            req.path);
+  } else {
+    loc = concat_string_ref(balloc, StringRef::from_lit("https://"), authority,
+                            StringRef::from_lit(":"),
+                            httpconf.redirect_https_port, req.path);
+  }
+
+  auto &resp = downstream->response();
+  resp.http_status = 308;
+  resp.fs.add_header_token(StringRef::from_lit("location"), loc, false,
+                           http2::HD_LOCATION);
+  resp.fs.add_header_token(StringRef::from_lit("connection"),
+                           StringRef::from_lit("close"), false,
+                           http2::HD_CONNECTION);
+
+  return send_reply(downstream, nullptr, 0);
+}
+
 void HttpsUpstream::log_response_headers(DefaultMemchunks *buf) const {
   std::string nhdrs;
   for (auto chunk = buf->head; chunk; chunk = chunk->next) {
@@ -1267,11 +1321,13 @@ int HttpsUpstream::on_downstream_reset(Downstream *downstream, bool no_retry) {
 
   downstream_->add_retry();
 
+  rv = 0;
+
   if (no_retry || downstream_->no_more_retry()) {
     goto fail;
   }
 
-  dconn = handler_->get_downstream_connection(downstream_.get());
+  dconn = handler_->get_downstream_connection(rv, downstream_.get());
   if (!dconn) {
     goto fail;
   }
@@ -1289,7 +1345,12 @@ int HttpsUpstream::on_downstream_reset(Downstream *downstream, bool no_retry) {
   return 0;
 
 fail:
-  if (on_downstream_abort_request(downstream_.get(), 503) != 0) {
+  if (rv == SHRPX_ERR_TLS_REQUIRED) {
+    rv = on_downstream_abort_request_with_https_redirect(downstream);
+  } else {
+    rv = on_downstream_abort_request(downstream_.get(), 503);
+  }
+  if (rv != 0) {
     return -1;
   }
   downstream_->pop_downstream_connection();

@@ -45,6 +45,10 @@ public:
   virtual int on_timeout(Downstream *downstream) { return 0; };
   virtual int on_downstream_abort_request(Downstream *downstream,
                                           unsigned int status_code) = 0;
+  // Called when the current request is aborted without forwarding it
+  // to backend, and it should be redirected to https URI.
+  virtual int
+  on_downstream_abort_request_with_https_redirect(Downstream *downstream) = 0;
   virtual int downstream_read(DownstreamConnection *dconn) = 0;
   virtual int downstream_write(DownstreamConnection *dconn) = 0;
   virtual int downstream_eof(DownstreamConnection *dconn) = 0;

@@ -739,6 +739,11 @@ uint32_t hash32(const StringRef &s);
 // returns 0 if it succeeds, or -1.
 int sha256(uint8_t *buf, const StringRef &s);
 
+// Returns host from |hostport|.  If host cannot be found in
+// |hostport|, returns empty string.  The returned string might not be
+// NULL-terminated.
+StringRef extract_host(const StringRef &hostport);
+
 } // namespace util
 
 } // namespace nghttp2

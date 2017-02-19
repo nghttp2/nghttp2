@@ -961,7 +961,7 @@ uint32_t next_cycle(const WeightedPri &pri) {
 } // namespace
 
 std::unique_ptr<DownstreamConnection>
-ClientHandler::get_downstream_connection(Downstream *downstream) {
+ClientHandler::get_downstream_connection(int &err, Downstream *downstream) {
   size_t group_idx;
   auto &downstreamconf = *worker_->get_downstream_config();
   auto &routerconf = downstreamconf.router;
@@ -970,6 +970,8 @@ ClientHandler::get_downstream_connection(Downstream *downstream) {
   auto &groups = worker_->get_downstream_addr_groups();
 
   const auto &req = downstream->request();
+
+  err = 0;
 
   switch (faddr_->alt_mode) {
   case ALTMODE_API:
@@ -1009,11 +1011,13 @@ ClientHandler::get_downstream_connection(Downstream *downstream) {
     CLOG(INFO, this) << "Downstream address group_idx: " << group_idx;
   }
 
-  if (groups[group_idx]->shared_addr->require_upstream_tls && !conn_.tls.ssl) {
-    CLOG(INFO, this) << "Downstream address group " << group_idx
-                     << " requires frontend TLS connection.  Send request to "
-                        "catch-all group.";
-    group_idx = catch_all;
+  if (groups[group_idx]->shared_addr->redirect_if_not_tls && !conn_.tls.ssl) {
+    if (LOG_ENABLED(INFO)) {
+      CLOG(INFO, this) << "Downstream address group " << group_idx
+                       << " requires frontend TLS connection.";
+    }
+    err = SHRPX_ERR_TLS_REQUIRED;
+    return nullptr;
   }
 
   auto &group = groups[group_idx];
@@ -1087,6 +1091,7 @@ ClientHandler::get_downstream_connection(Downstream *downstream) {
       CLOG(INFO, this) << "No working downstream address found";
     }
 
+    err = -1;
     return nullptr;
   }
 
@@ -1099,6 +1104,7 @@ ClientHandler::get_downstream_connection(Downstream *downstream) {
     auto http2session = select_http2_session(group);
 
     if (http2session == nullptr) {
+      err = -1;
       return nullptr;
     }
 

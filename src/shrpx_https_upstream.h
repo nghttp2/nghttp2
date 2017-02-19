@@ -50,6 +50,8 @@ public:
   virtual int on_event();
   virtual int on_downstream_abort_request(Downstream *downstream,
                                           unsigned int status_code);
+  virtual int
+  on_downstream_abort_request_with_https_redirect(Downstream *downstream);
   virtual ClientHandler *get_client_handler() const;
 
   virtual int downstream_read(DownstreamConnection *dconn);
@@ -91,6 +93,7 @@ public:
 
   void reset_current_header_length();
   void log_response_headers(DefaultMemchunks *buf) const;
+  int redirect_to_https(Downstream *downstream);
 
 private:
   ClientHandler *handler_;

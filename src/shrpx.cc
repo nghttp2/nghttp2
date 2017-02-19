@@ -1447,6 +1447,7 @@ void fill_default_config(Config *config) {
   httpconf.max_request_header_fields = 100;
   httpconf.response_header_field_buffer = 64_k;
   httpconf.max_response_header_fields = 500;
+  httpconf.redirect_https_port = StringRef::from_lit("443");
 
   auto &http2conf = config->http2;
   {
@@ -1678,12 +1679,12 @@ Connections:
               The  parameters are  delimited  by  ";".  The  available
               parameters       are:      "proto=<PROTO>",       "tls",
               "sni=<SNI_HOST>",         "fall=<N>",        "rise=<N>",
-              "affinity=<METHOD>",  "dns",  and  "frontend-tls".   The
-              parameter consists  of keyword, and  optionally followed
-              by "=" and value.  For example, the parameter "proto=h2"
-              consists  of the  keyword "proto"  and value  "h2".  The
-              parameter "tls"  consists of  the keyword  "tls" without
-              value.  Each parameter is described as follows.
+              "affinity=<METHOD>",  "dns", and  "redirect-if-not-tls".
+              The  parameter  consists   of  keyword,  and  optionally
+              followed by  "=" and value.  For  example, the parameter
+              "proto=h2"  consists of  the keyword  "proto" and  value
+              "h2".  The parameter "tls" consists of the keyword "tls"
+              without value.  Each parameter is described as follows.
 
               The backend application protocol  can be specified using
               optional  "proto"   parameter,  and   in  the   form  of
@@ -1740,16 +1741,18 @@ Connections:
               backend   host   name   at  start   up,   or   reloading
               configuration is skipped.
 
-              If "frontend-tls" parameter is used, the matched backend
-              requires frontend TLS connection.   In other words, even
-              if pattern  is matched,  frontend connection is  not TLS
-              protected, the request is  forwarded to one of catch-all
-              backends.   For this  reason,  catch-all backend  cannot
-              have "frontend-tls" parameter.  If  at least one backend
-              has  "frontend-tls" parameter,  this feature  is enabled
-              for all backend servers  sharing the same <PATTERN>.  It
-              is  advised  to  set  "frontend-tls"  parameter  to  all
-              backends explicitly if this feature is desired.
+              If "redirect-if-not-tls" parameter  is used, the matched
+              backend  requires   that  frontend  connection   is  TLS
+              encrypted.  If it isn't, nghttpx responds to the request
+              with 308  status code, and  https URI the  client should
+              use instead  is included in Location  header field.  The
+              port number in  redirect URI is 443 by  default, and can
+              be  changed using  --redirect-https-port option.   If at
+              least one  backend has  "redirect-if-not-tls" parameter,
+              this feature is enabled  for all backend servers sharing
+              the   same   <PATTERN>.    It    is   advised   to   set
+              "redirect-if-no-tls"    parameter   to    all   backends
+              explicitly if this feature is desired.
 
               Since ";" and ":" are  used as delimiter, <PATTERN> must
               not  contain these  characters.  Since  ";" has  special
@@ -2545,6 +2548,12 @@ HTTP:
               Don't rewrite server header field in default mode.  When
               --http2-proxy is used, these headers will not be altered
               regardless of this option.
+  --redirect-https-port=<PORT>
+              Specify the port number which appears in Location header
+              field  when  redirect  to  HTTPS  URI  is  made  due  to
+              "redirect-if-not-tls" parameter in --backend option.
+              Default: )"
+      << config->http.redirect_https_port << R"(
 
 API:
   --api-max-request-body=<SIZE>
@@ -3253,6 +3262,7 @@ int main(int argc, char **argv) {
          152},
         {SHRPX_OPT_TLS_MAX_PROTO_VERSION.c_str(), required_argument, &flag,
          153},
+        {SHRPX_OPT_REDIRECT_HTTPS_PORT.c_str(), required_argument, &flag, 154},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -3974,6 +3984,10 @@ int main(int argc, char **argv) {
         // --tls-max-proto-version
         cmdcfgs.emplace_back(SHRPX_OPT_TLS_MAX_PROTO_VERSION,
                              StringRef{optarg});
+        break;
+      case 154:
+        // --redirect-https-port
+        cmdcfgs.emplace_back(SHRPX_OPT_REDIRECT_HTTPS_PORT, StringRef{optarg});
         break;
       default:
         break;

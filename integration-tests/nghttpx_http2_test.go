@@ -1405,6 +1405,49 @@ func TestH2H1DNS(t *testing.T) {
 	}
 }
 
+// TestH2H1HTTPSRedirect tests that the request to the backend which
+// requires TLS is redirected to https URI.
+func TestH2H1HTTPSRedirect(t *testing.T) {
+	st := newServerTester([]string{"--redirect-if-not-tls"}, t, noopHandler)
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name: "TestH2H1HTTPSRedirect",
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+
+	if got, want := res.status, 308; got != want {
+		t.Errorf("status = %v; want %v", got, want)
+	}
+	if got, want := res.header.Get("location"), "https://127.0.0.1/"; got != want {
+		t.Errorf("location: %v; want %v", got, want)
+	}
+}
+
+// TestH2H1HTTPSRedirectPort tests that the request to the backend
+// which requires TLS is redirected to https URI with given port.
+func TestH2H1HTTPSRedirectPort(t *testing.T) {
+	st := newServerTester([]string{"--redirect-if-not-tls", "--redirect-https-port=8443"}, t, noopHandler)
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		path: "/foo?bar",
+		name: "TestH2H1HTTPSRedirectPort",
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+
+	if got, want := res.status, 308; got != want {
+		t.Errorf("status = %v; want %v", got, want)
+	}
+	if got, want := res.header.Get("location"), "https://127.0.0.1:8443/foo?bar"; got != want {
+		t.Errorf("location: %v; want %v", got, want)
+	}
+}
+
 // TestH2H1GracefulShutdown tests graceful shutdown.
 func TestH2H1GracefulShutdown(t *testing.T) {
 	st := newServerTester(nil, t, noopHandler)

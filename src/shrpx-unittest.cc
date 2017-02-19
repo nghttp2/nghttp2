@@ -185,6 +185,8 @@ int main(int argc, char *argv[]) {
       !CU_add_test(pSuite, "util_is_hex_string",
                    shrpx::test_util_is_hex_string) ||
       !CU_add_test(pSuite, "util_decode_hex", shrpx::test_util_decode_hex) ||
+      !CU_add_test(pSuite, "util_extract_host",
+                   shrpx::test_util_extract_host) ||
       !CU_add_test(pSuite, "gzip_inflate", test_nghttp2_gzip_inflate) ||
       !CU_add_test(pSuite, "buffer_write", nghttp2::test_buffer_write) ||
       !CU_add_test(pSuite, "pool_recycle", nghttp2::test_pool_recycle) ||
