@@ -974,6 +974,43 @@ backend=127.0.0.1,3011
 	}
 }
 
+// TestH1APIConfigrevision tests configrevision API.
+func TestH1APIConfigrevision(t *testing.T) {
+	st := newServerTesterConnectPort([]string{"-f127.0.0.1,3010;api;no-tls"}, t, func(w http.ResponseWriter, r *http.Request) {
+		t.Fatalf("request should not be forwarded")
+	}, 3010)
+	defer st.Close()
+
+	res, err := st.http1(requestParam{
+		name:   "TestH1APIConfigrevision",
+		path:   "/api/v1beta1/configrevision",
+		method: "GET",
+	})
+	if err != nil {
+		t.Fatalf("Error st.http1() = %v", err)
+	}
+	if got, want := res.status, 200; got != want {
+		t.Errorf("res.status: %v; want = %v", got, want)
+	}
+
+	var apiResp APIResponse
+	d := json.NewDecoder(bytes.NewBuffer(res.body))
+	d.UseNumber()
+	err = d.Decode(&apiResp)
+	if err != nil {
+		t.Fatalf("Error unmarshalling API response: %v", err)
+	}
+	if got, want := apiResp.Status, "Success"; got != want {
+		t.Errorf("apiResp.Status: %v; want %v", got, want)
+	}
+	if got, want := apiResp.Code, 200; got != want {
+		t.Errorf("apiResp.Status: %v; want %v", got, want)
+	}
+	if got, want := apiResp.Data["configRevision"], json.Number("0"); got != want {
+		t.Errorf(`apiResp.Data["configRevision"]: %v %t; want %v`, got, got, want)
+	}
+}
+
 // TestH1APINotFound exercise backendconfig API endpoint routine when
 // API endpoint is not found.
 func TestH1APINotFound(t *testing.T) {

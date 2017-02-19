@@ -33,8 +33,31 @@
 
 namespace shrpx {
 
+namespace {
+// List of API endpoints
+const APIEndpoint apis[] = {
+    APIEndpoint{
+        StringRef::from_lit("/api/v1beta1/backendconfig"), true,
+        (1 << API_METHOD_POST) | (1 << API_METHOD_PUT),
+        &APIDownstreamConnection::handle_backendconfig,
+    },
+    APIEndpoint{
+        StringRef::from_lit("/api/v1beta1/configrevision"), true,
+        (1 << API_METHOD_GET), &APIDownstreamConnection::handle_configrevision,
+    },
+};
+} // namespace
+
+namespace {
+// The method string.  This must be same order of APIMethod.
+constexpr StringRef API_METHOD_STRING[] = {
+    StringRef::from_lit("GET"), StringRef::from_lit("POST"),
+    StringRef::from_lit("PUT"),
+};
+} // namespace
+
 APIDownstreamConnection::APIDownstreamConnection(Worker *worker)
-    : worker_(worker), abandoned_(false) {}
+    : worker_(worker), api_(nullptr), shutdown_read_(false) {}
 
 APIDownstreamConnection::~APIDownstreamConnection() {}
 
@@ -63,8 +86,8 @@ enum {
 };
 
 int APIDownstreamConnection::send_reply(unsigned int http_status,
-                                        int api_status) {
-  abandoned_ = true;
+                                        int api_status, const StringRef &data) {
+  shutdown_read_ = true;
 
   auto upstream = downstream_->get_upstream();
 
@@ -93,7 +116,8 @@ int APIDownstreamConnection::send_reply(unsigned int http_status,
 
   // 3 is the number of digits in http_status, assuming it is 3 digits
   // number.
-  auto buflen = M1.size() + M2.size() + M3.size() + api_status_str.size() + 3;
+  auto buflen = M1.size() + M2.size() + M3.size() + data.size() +
+                api_status_str.size() + 3;
 
   auto buf = make_byte_ref(balloc, buflen);
   auto p = buf.base;
@@ -102,6 +126,7 @@ int APIDownstreamConnection::send_reply(unsigned int http_status,
   p = std::copy(std::begin(api_status_str), std::end(api_status_str), p);
   p = std::copy(std::begin(M2), std::end(M2), p);
   p = util::utos(p, http_status);
+  p = std::copy(std::begin(data), std::end(data), p);
   p = std::copy(std::begin(M3), std::end(M3), p);
 
   buf.len = p - buf.base;
@@ -128,25 +153,68 @@ int APIDownstreamConnection::send_reply(unsigned int http_status,
   return 0;
 }
 
+namespace {
+const APIEndpoint *lookup_api(const StringRef &path) {
+  switch (path.size()) {
+  case 26:
+    switch (path[25]) {
+    case 'g':
+      if (util::streq_l("/api/v1beta1/backendconfi", std::begin(path), 25)) {
+        return &apis[0];
+      }
+      break;
+    }
+    break;
+  case 27:
+    switch (path[26]) {
+    case 'n':
+      if (util::streq_l("/api/v1beta1/configrevisio", std::begin(path), 26)) {
+        return &apis[1];
+      }
+      break;
+    }
+    break;
+  }
+  return nullptr;
+}
+} // namespace
+
 int APIDownstreamConnection::push_request_headers() {
   auto &req = downstream_->request();
-  auto &resp = downstream_->response();
 
   auto path =
       StringRef{std::begin(req.path),
                 std::find(std::begin(req.path), std::end(req.path), '?')};
 
-  if (path != StringRef::from_lit("/api/v1beta1/backendconfig")) {
+  api_ = lookup_api(path);
+
+  if (!api_) {
     send_reply(404, API_FAILURE);
 
     return 0;
   }
 
-  if (req.method != HTTP_POST && req.method != HTTP_PUT) {
-    resp.fs.add_header_token(StringRef::from_lit("allow"),
-                             StringRef::from_lit("POST, PUT"), false, -1);
-    send_reply(405, API_FAILURE);
-
+  switch (req.method) {
+  case HTTP_GET:
+    if (!(api_->allowed_methods & (1 << API_METHOD_GET))) {
+      error_method_not_allowed();
+      return 0;
+    }
+    break;
+  case HTTP_POST:
+    if (!(api_->allowed_methods & (1 << API_METHOD_POST))) {
+      error_method_not_allowed();
+      return 0;
+    }
+    break;
+  case HTTP_PUT:
+    if (!(api_->allowed_methods & (1 << API_METHOD_PUT))) {
+      error_method_not_allowed();
+      return 0;
+    }
+    break;
+  default:
+    error_method_not_allowed();
     return 0;
   }
 
@@ -161,9 +229,42 @@ int APIDownstreamConnection::push_request_headers() {
   return 0;
 }
 
+int APIDownstreamConnection::error_method_not_allowed() {
+  auto &resp = downstream_->response();
+
+  size_t len = 0;
+  for (uint8_t i = 0; i < API_METHOD_MAX; ++i) {
+    if (api_->allowed_methods & (1 << i)) {
+      // The length of method + ", "
+      len += API_METHOD_STRING[i].size() + 2;
+    }
+  }
+
+  assert(len > 0);
+
+  auto &balloc = downstream_->get_block_allocator();
+
+  auto iov = make_byte_ref(balloc, len + 1);
+  auto p = iov.base;
+  for (uint8_t i = 0; i < API_METHOD_MAX; ++i) {
+    if (api_->allowed_methods & (1 << i)) {
+      auto &s = API_METHOD_STRING[i];
+      p = std::copy(std::begin(s), std::end(s), p);
+      p = std::copy_n(", ", 2, p);
+    }
+  }
+
+  p -= 2;
+  *p = '\0';
+
+  resp.fs.add_header_token(StringRef::from_lit("allow"), StringRef{iov.base, p},
+                           false, -1);
+  return send_reply(405, API_FAILURE);
+}
+
 int APIDownstreamConnection::push_upload_data_chunk(const uint8_t *data,
                                                     size_t datalen) {
-  if (abandoned_) {
+  if (shutdown_read_ || !api_->require_body) {
     return 0;
   }
 
@@ -187,10 +288,14 @@ int APIDownstreamConnection::push_upload_data_chunk(const uint8_t *data,
 }
 
 int APIDownstreamConnection::end_upload_data() {
-  if (abandoned_) {
+  if (shutdown_read_) {
     return 0;
   }
 
+  return api_->handler(*this);
+}
+
+int APIDownstreamConnection::handle_backendconfig() {
   auto output = downstream_->get_request_buf();
 
   std::array<struct iovec, 2> iov;
@@ -283,6 +388,25 @@ int APIDownstreamConnection::end_upload_data() {
   conn_handler->send_replace_downstream(downstreamconf);
 
   send_reply(200, API_SUCCESS);
+
+  return 0;
+}
+
+int APIDownstreamConnection::handle_configrevision() {
+  auto config = get_config();
+  auto &balloc = downstream_->get_block_allocator();
+
+  // Construct the following string:
+  //   ,
+  //   "data":{
+  //     "configRevision": N
+  //   }
+  auto data = concat_string_ref(
+      balloc, StringRef::from_lit(R"(,"data":{"configRevision":)"),
+      util::make_string_ref_uint(balloc, config->config_revision),
+      StringRef::from_lit("}"));
+
+  send_reply(200, API_SUCCESS, data);
 
   return 0;
 }

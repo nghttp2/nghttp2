@@ -850,6 +850,7 @@ struct Config {
         conn{},
         api{},
         dns{},
+        config_revision{0},
         num_worker{0},
         padding{0},
         rlimit_nofile{0},
@@ -883,6 +884,13 @@ struct Config {
   StringRef conf_path;
   StringRef user;
   StringRef mruby_file;
+  // The revision of configuration which is opaque string, and changes
+  // on each configuration reloading.  This does not change on
+  // backendconfig API call.  This value is returned in health check
+  // as "nghttpx-conf-rev" response header field.  The external
+  // program can check this value to know whether reloading has
+  // completed or not.
+  uint64_t config_revision;
   size_t num_worker;
   size_t padding;
   size_t rlimit_nofile;

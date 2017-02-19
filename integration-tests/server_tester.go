@@ -801,6 +801,7 @@ func cloneHeader(h http.Header) http.Header {
 func noopHandler(w http.ResponseWriter, r *http.Request) {}
 
 type APIResponse struct {
-	Status string `json:"status,omitempty"`
-	Code   int    `json:"code,omitempty"`
+	Status string                 `json:"status,omitempty"`
+	Code   int                    `json:"code,omitempty"`
+	Data   map[string]interface{} `json:"data,omitempty"`
 }

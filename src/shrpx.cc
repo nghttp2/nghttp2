@@ -2942,6 +2942,7 @@ void reload_config(WorkerProcess *wp) {
   new_config->daemon = cur_config->daemon;
   // loop is reused, and ev_loop_flags gets ignored
   new_config->ev_loop_flags = cur_config->ev_loop_flags;
+  new_config->config_revision = cur_config->config_revision + 1;
 
   rv = process_options(new_config.get(), suconfig.cmdcfgs);
   if (rv != 0) {

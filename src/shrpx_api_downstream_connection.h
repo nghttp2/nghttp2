@@ -26,10 +26,35 @@
 #define SHRPX_API_DOWNSTREAM_CONNECTION_H
 
 #include "shrpx_downstream_connection.h"
+#include "template.h"
+
+using namespace nghttp2;
 
 namespace shrpx {
 
 class Worker;
+
+// If new method is added, don't forget to update API_METHOD_STRING as
+// well.
+enum APIMethod {
+  API_METHOD_GET,
+  API_METHOD_POST,
+  API_METHOD_PUT,
+  API_METHOD_MAX,
+};
+
+class APIDownstreamConnection;
+
+struct APIEndpoint {
+  // Endpoint path.  It must start with "/api/".
+  StringRef path;
+  // true if we evaluate request body.
+  bool require_body;
+  // Allowed methods.  This is bitwise OR of one or more of (1 <<
+  // APIMethod value).
+  uint8_t allowed_methods;
+  std::function<int(APIDownstreamConnection &)> handler;
+};
 
 class APIDownstreamConnection : public DownstreamConnection {
 public:
@@ -58,11 +83,21 @@ public:
   get_downstream_addr_group() const;
   virtual DownstreamAddr *get_addr() const;
 
-  int send_reply(unsigned int http_status, int api_status);
+  int send_reply(unsigned int http_status, int api_status,
+                 const StringRef &data = StringRef{});
+  int error_method_not_allowed();
+
+  // Handles backendconfig API request.
+  int handle_backendconfig();
+  // Handles configrevision API request.
+  int handle_configrevision();
 
 private:
   Worker *worker_;
-  bool abandoned_;
+  // This points to the requested APIEndpoint struct.
+  const APIEndpoint *api_;
+  // true if we stop reading request body.
+  bool shutdown_read_;
 };
 
 } // namespace shrpx
