@@ -95,12 +95,17 @@ public:
   void log_response_headers(DefaultMemchunks *buf) const;
   int redirect_to_https(Downstream *downstream);
 
+  // Called when new request has started.
+  void on_start_request();
+
 private:
   ClientHandler *handler_;
   http_parser htp_;
   size_t current_header_length_;
   std::unique_ptr<Downstream> downstream_;
   IOControl ioctrl_;
+  // The number of requests seen so far.
+  size_t num_requests_;
 };
 
 } // namespace shrpx

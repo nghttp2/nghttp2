@@ -1448,6 +1448,7 @@ void fill_default_config(Config *config) {
   httpconf.response_header_field_buffer = 64_k;
   httpconf.max_response_header_fields = 500;
   httpconf.redirect_https_port = StringRef::from_lit("443");
+  httpconf.max_requests = std::numeric_limits<size_t>::max();
 
   auto &http2conf = config->http2;
   {
@@ -2581,6 +2582,13 @@ DNS:
               lookup.
               Default: )"
       << config->dns.max_try << R"(
+  --frontend-max-requests=<N>
+              The number  of requests that single  frontend connection
+              can process.  For HTTP/2, this  is the number of streams
+              in  one  HTTP/2 connection.   For  HTTP/1,  this is  the
+              number of keep alive requests.  This is hint to nghttpx,
+              and it  may allow additional few  requests.  The default
+              value is unlimited.
 
 Debug:
   --frontend-http2-dump-request-header=<PATH>
@@ -3266,6 +3274,8 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_TLS_MAX_PROTO_VERSION.c_str(), required_argument, &flag,
          153},
         {SHRPX_OPT_REDIRECT_HTTPS_PORT.c_str(), required_argument, &flag, 154},
+        {SHRPX_OPT_FRONTEND_MAX_REQUESTS.c_str(), required_argument, &flag,
+         155},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -3991,6 +4001,11 @@ int main(int argc, char **argv) {
       case 154:
         // --redirect-https-port
         cmdcfgs.emplace_back(SHRPX_OPT_REDIRECT_HTTPS_PORT, StringRef{optarg});
+        break;
+      case 155:
+        // --frontend-max-requests
+        cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_MAX_REQUESTS,
+                             StringRef{optarg});
         break;
       default:
         break;

@@ -1817,6 +1817,11 @@ int option_lookup_token(const char *name, size_t namelen) {
         return SHRPX_OPTID_TLS_TICKET_KEY_CIPHER;
       }
       break;
+    case 's':
+      if (util::strieq_l("frontend-max-request", name, 20)) {
+        return SHRPX_OPTID_FRONTEND_MAX_REQUESTS;
+      }
+      break;
     case 't':
       if (util::strieq_l("backend-write-timeou", name, 20)) {
         return SHRPX_OPTID_BACKEND_WRITE_TIMEOUT;
@@ -3369,6 +3374,8 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     config->http.redirect_https_port = optarg;
     return 0;
   }
+  case SHRPX_OPTID_FRONTEND_MAX_REQUESTS:
+    return parse_uint(&config->http.max_requests, opt, optarg);
   case SHRPX_OPTID_CONF:
     LOG(WARN) << "conf: ignored";
 

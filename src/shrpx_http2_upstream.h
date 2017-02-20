@@ -111,11 +111,15 @@ public:
 
   void submit_goaway();
   void check_shutdown();
+  // Starts graceful shutdown period.
+  void start_graceful_shutdown();
 
   int prepare_push_promise(Downstream *downstream);
   int submit_push_promise(const StringRef &scheme, const StringRef &authority,
                           const StringRef &path, Downstream *downstream);
 
+  // Called when new request has started.
+  void on_start_request(const nghttp2_frame *frame);
   int on_request_headers(Downstream *downstream, const nghttp2_frame *frame);
 
   DefaultMemchunks *get_response_buf();
@@ -134,6 +138,8 @@ private:
   ClientHandler *handler_;
   nghttp2_session *session_;
   size_t max_buffer_size_;
+  // The number of requests seen so far.
+  size_t num_requests_;
   bool flow_control_;
 };
 

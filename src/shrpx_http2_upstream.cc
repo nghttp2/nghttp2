@@ -271,16 +271,21 @@ int on_begin_headers_callback(nghttp2_session *session,
                          << frame->hd.stream_id;
   }
 
-  auto handler = upstream->get_client_handler();
+  upstream->on_start_request(frame);
 
-  auto downstream = make_unique<Downstream>(upstream, handler->get_mcpool(),
+  return 0;
+}
+} // namespace
+
+void Http2Upstream::on_start_request(const nghttp2_frame *frame) {
+  auto downstream = make_unique<Downstream>(this, handler_->get_mcpool(),
                                             frame->hd.stream_id);
-  nghttp2_session_set_stream_user_data(session, frame->hd.stream_id,
+  nghttp2_session_set_stream_user_data(session_, frame->hd.stream_id,
                                        downstream.get());
 
   downstream->reset_upstream_rtimer();
 
-  handler->repeat_read_timer();
+  handler_->repeat_read_timer();
 
   auto &req = downstream->request();
 
@@ -289,11 +294,16 @@ int on_begin_headers_callback(nghttp2_session *session,
   req.http_major = 2;
   req.http_minor = 0;
 
-  upstream->add_pending_downstream(std::move(downstream));
+  add_pending_downstream(std::move(downstream));
 
-  return 0;
+  ++num_requests_;
+
+  auto config = get_config();
+  auto &httpconf = config->http;
+  if (httpconf.max_requests <= num_requests_) {
+    start_graceful_shutdown();
+  }
 }
-} // namespace
 
 int Http2Upstream::on_request_headers(Downstream *downstream,
                                       const nghttp2_frame *frame) {
@@ -873,8 +883,6 @@ void Http2Upstream::submit_goaway() {
 }
 
 void Http2Upstream::check_shutdown() {
-  int rv;
-
   auto worker = handler_->get_worker();
 
   if (!worker->get_graceful_shutdown()) {
@@ -882,6 +890,15 @@ void Http2Upstream::check_shutdown() {
   }
 
   ev_prepare_stop(handler_->get_loop(), &prep_);
+
+  start_graceful_shutdown();
+}
+
+void Http2Upstream::start_graceful_shutdown() {
+  int rv;
+  if (ev_is_active(&shutdown_timer_)) {
+    return;
+  }
 
   rv = nghttp2_submit_shutdown_notice(session_);
   if (rv != 0) {
@@ -965,7 +982,8 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
                         !get_config()->http2_proxy),
       handler_(handler),
       session_(nullptr),
-      max_buffer_size_(MAX_BUFFER_SIZE) {
+      max_buffer_size_(MAX_BUFFER_SIZE),
+      num_requests_(0) {
   int rv;
 
   auto config = get_config();

@@ -52,7 +52,8 @@ namespace shrpx {
 HttpsUpstream::HttpsUpstream(ClientHandler *handler)
     : handler_(handler),
       current_header_length_(0),
-      ioctrl_(handler->get_rlimit()) {
+      ioctrl_(handler->get_rlimit()),
+      num_requests_(0) {
   http_parser_init(&htp_, HTTP_REQUEST);
   htp_.data = this;
 }
@@ -63,27 +64,30 @@ void HttpsUpstream::reset_current_header_length() {
   current_header_length_ = 0;
 }
 
-namespace {
-int htp_msg_begin(http_parser *htp) {
-  auto upstream = static_cast<HttpsUpstream *>(htp->data);
+void HttpsUpstream::on_start_request() {
   if (LOG_ENABLED(INFO)) {
-    ULOG(INFO, upstream) << "HTTP request started";
+    ULOG(INFO, this) << "HTTP request started";
   }
-  upstream->reset_current_header_length();
+  reset_current_header_length();
 
-  auto handler = upstream->get_client_handler();
+  auto downstream = make_unique<Downstream>(this, handler_->get_mcpool(), 0);
 
-  auto downstream = make_unique<Downstream>(upstream, handler->get_mcpool(), 0);
+  attach_downstream(std::move(downstream));
 
-  upstream->attach_downstream(std::move(downstream));
-
-  auto conn = handler->get_connection();
+  auto conn = handler_->get_connection();
   auto &upstreamconf = get_config()->conn.upstream;
 
   conn->rt.repeat = upstreamconf.timeout.read;
 
-  handler->repeat_read_timer();
+  handler_->repeat_read_timer();
 
+  ++num_requests_;
+}
+
+namespace {
+int htp_msg_begin(http_parser *htp) {
+  auto upstream = static_cast<HttpsUpstream *>(htp->data);
+  upstream->on_start_request();
   return 0;
 }
 } // namespace
@@ -868,12 +872,14 @@ int HttpsUpstream::send_reply(Downstream *downstream, const uint8_t *body,
   auto &resp = downstream->response();
   auto &balloc = downstream->get_block_allocator();
   auto config = get_config();
+  auto &httpconf = config->http;
 
   auto connection_close = false;
 
   auto worker = handler_->get_worker();
 
-  if (worker->get_graceful_shutdown()) {
+  if (httpconf.max_requests <= num_requests_ &&
+      worker->get_graceful_shutdown()) {
     resp.fs.add_header_token(StringRef::from_lit("connection"),
                              StringRef::from_lit("close"), false,
                              http2::HD_CONNECTION);
@@ -916,8 +922,6 @@ int HttpsUpstream::send_reply(Downstream *downstream, const uint8_t *body,
     output->append(config->http.server_name);
     output->append("\r\n");
   }
-
-  auto &httpconf = config->http;
 
   for (auto &p : httpconf.add_response_headers) {
     output->append(p.name);
@@ -1078,7 +1082,8 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
 
   // after graceful shutdown commenced, add connection: close header
   // field.
-  if (worker->get_graceful_shutdown()) {
+  if (httpconf.max_requests <= num_requests_ ||
+      worker->get_graceful_shutdown()) {
     resp.connection_close = true;
   }
 

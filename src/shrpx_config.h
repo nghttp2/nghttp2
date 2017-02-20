@@ -333,6 +333,8 @@ constexpr auto SHRPX_OPT_TLS_MAX_PROTO_VERSION =
     StringRef::from_lit("tls-max-proto-version");
 constexpr auto SHRPX_OPT_REDIRECT_HTTPS_PORT =
     StringRef::from_lit("redirect-https-port");
+constexpr auto SHRPX_OPT_FRONTEND_MAX_REQUESTS =
+    StringRef::from_lit("frontend-max-requests");
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
@@ -647,6 +649,7 @@ struct HttpConfig {
   size_t max_request_header_fields;
   size_t response_header_field_buffer;
   size_t max_response_header_fields;
+  size_t max_requests;
   bool no_via;
   bool no_location_rewrite;
   bool no_host_rewrite;
@@ -994,6 +997,7 @@ enum {
   SHRPX_OPTID_FRONTEND_HTTP2_WINDOW_BITS,
   SHRPX_OPTID_FRONTEND_HTTP2_WINDOW_SIZE,
   SHRPX_OPTID_FRONTEND_KEEP_ALIVE_TIMEOUT,
+  SHRPX_OPTID_FRONTEND_MAX_REQUESTS,
   SHRPX_OPTID_FRONTEND_NO_TLS,
   SHRPX_OPTID_FRONTEND_READ_TIMEOUT,
   SHRPX_OPTID_FRONTEND_WRITE_TIMEOUT,
