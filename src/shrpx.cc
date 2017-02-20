@@ -1485,6 +1485,8 @@ void fill_default_config(Config *config) {
         upstreamconf.alt_mode_option, upstreamconf.encoder_dynamic_table_size);
   }
 
+  http2conf.timeout.stream_write = 1_min;
+
   {
     auto &downstreamconf = http2conf.downstream;
 
