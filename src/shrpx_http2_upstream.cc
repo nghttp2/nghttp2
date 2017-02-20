@@ -803,7 +803,11 @@ int send_data_callback(nghttp2_session *session, nghttp2_frame *frame,
 
   wb->append(PADDING.data(), padlen);
 
-  downstream->reset_upstream_wtimer();
+  if (body->rleft() == 0) {
+    downstream->disable_upstream_wtimer();
+  } else {
+    downstream->reset_upstream_wtimer();
+  }
 
   if (length > 0 && downstream->resume_read(SHRPX_NO_BUFFER, length) != 0) {
     return NGHTTP2_ERR_CALLBACK_FAILURE;
@@ -1413,6 +1417,7 @@ ssize_t downstream_data_read_callback(nghttp2_session *session,
   }
 
   if (nread == 0 && ((*data_flags) & NGHTTP2_DATA_FLAG_EOF) == 0) {
+    downstream->disable_upstream_wtimer();
     return NGHTTP2_ERR_DEFERRED;
   }
 
@@ -1485,6 +1490,10 @@ int Http2Upstream::send_reply(Downstream *downstream, const uint8_t *body,
 
   downstream->set_response_state(Downstream::MSG_COMPLETE);
 
+  if (data_prd_ptr) {
+    downstream->reset_upstream_wtimer();
+  }
+
   return 0;
 }
 
@@ -1526,6 +1535,8 @@ int Http2Upstream::error_reply(Downstream *downstream,
                       << nghttp2_strerror(rv);
     return -1;
   }
+
+  downstream->reset_upstream_wtimer();
 
   return 0;
 }
@@ -1733,6 +1744,10 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
     return -1;
   }
 
+  if (data_prdptr) {
+    downstream->reset_upstream_wtimer();
+  }
+
   return 0;
 }
 
@@ -1892,7 +1907,8 @@ int Http2Upstream::on_timeout(Downstream *downstream) {
                      << downstream->get_stream_id();
   }
 
-  rst_stream(downstream, NGHTTP2_NO_ERROR);
+  rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
+  handler_->signal_write();
 
   return 0;
 }

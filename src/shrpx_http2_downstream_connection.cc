@@ -422,22 +422,27 @@ int Http2DownstreamConnection::push_request_headers() {
 
   auto transfer_encoding = req.fs.header(http2::HD_TRANSFER_ENCODING);
 
+  nghttp2_data_provider *data_prdptr = nullptr;
+  nghttp2_data_provider data_prd;
+
   // Add body as long as transfer-encoding is given even if
   // req.fs.content_length == 0 to forward trailer fields.
   if (req.method == HTTP_CONNECT || transfer_encoding ||
       req.fs.content_length > 0 || req.http2_expect_body) {
     // Request-body is expected.
-    nghttp2_data_provider data_prd{{}, http2_data_read_callback};
-    rv = http2session_->submit_request(this, nva.data(), nva.size(), &data_prd);
-  } else {
-    rv = http2session_->submit_request(this, nva.data(), nva.size(), nullptr);
+    data_prd = {{}, http2_data_read_callback};
+    data_prdptr = &data_prd;
   }
+
+  rv = http2session_->submit_request(this, nva.data(), nva.size(), data_prdptr);
   if (rv != 0) {
     DCLOG(FATAL, this) << "nghttp2_submit_request() failed";
     return -1;
   }
 
-  downstream_->reset_downstream_wtimer();
+  if (data_prdptr) {
+    downstream_->reset_downstream_wtimer();
+  }
 
   http2session_->signal_write();
   return 0;

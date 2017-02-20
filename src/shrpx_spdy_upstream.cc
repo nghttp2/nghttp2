@@ -981,6 +981,10 @@ int SpdyUpstream::send_reply(Downstream *downstream, const uint8_t *body,
 
   downstream->set_response_state(Downstream::MSG_COMPLETE);
 
+  if (data_prd_ptr) {
+    downstream->reset_upstream_wtimer();
+  }
+
   return 0;
 }
 
@@ -1021,6 +1025,8 @@ int SpdyUpstream::error_reply(Downstream *downstream,
                       << spdylay_strerror(rv);
     return -1;
   }
+
+  downstream->reset_upstream_wtimer();
 
   return 0;
 }
@@ -1190,6 +1196,8 @@ int SpdyUpstream::on_downstream_header_complete(Downstream *downstream) {
     return -1;
   }
 
+  downstream->reset_upstream_wtimer();
+
   return 0;
 }
 
@@ -1297,6 +1305,8 @@ int SpdyUpstream::on_timeout(Downstream *downstream) {
   }
 
   rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
+
+  handler_->signal_write();
 
   return 0;
 }
