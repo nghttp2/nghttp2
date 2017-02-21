@@ -162,6 +162,7 @@ OPTIONS = [
     "tls-max-proto-version",
     "redirect-https-port",
     "frontend-max-requests",
+    "single-thread",
 ]
 
 LOGVARS = [

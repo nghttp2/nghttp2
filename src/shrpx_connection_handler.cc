@@ -333,7 +333,7 @@ void ConnectionHandler::join_worker() {
 }
 
 void ConnectionHandler::graceful_shutdown_worker() {
-  if (get_config()->num_worker == 1) {
+  if (single_worker_) {
     return;
   }
 
@@ -369,7 +369,7 @@ int ConnectionHandler::handle_connection(int fd, sockaddr *addr, int addrlen,
 
   auto config = get_config();
 
-  if (config->num_worker == 1) {
+  if (single_worker_) {
     auto &upstreamconf = config->conn.upstream;
     if (single_worker_->get_worker_stat()->num_connections >=
         upstreamconf.worker_connections) {

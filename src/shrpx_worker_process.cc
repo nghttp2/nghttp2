@@ -123,9 +123,9 @@ void graceful_shutdown(ConnectionHandler *conn_handler) {
 
   conn_handler->graceful_shutdown_worker();
 
-  if (get_config()->num_worker == 1) {
-    if (conn_handler->get_single_worker()->get_worker_stat()->num_connections ==
-        0) {
+  auto single_worker = conn_handler->get_single_worker();
+  if (single_worker) {
+    if (single_worker->get_worker_stat()->num_connections == 0) {
       ev_break(conn_handler->get_loop());
     }
 
@@ -144,9 +144,7 @@ void reopen_log(ConnectionHandler *conn_handler) {
   (void)reopen_log_files(loggingconf);
   redirect_stderr_to_errorlog(loggingconf);
 
-  if (get_config()->num_worker > 1) {
-    conn_handler->worker_reopen_log_files();
-  }
+  conn_handler->worker_reopen_log_files();
 }
 } // namespace
 
@@ -508,7 +506,7 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
     }
   }
 
-  if (config->num_worker == 1) {
+  if (config->single_thread) {
     rv = conn_handler.create_single_worker();
     if (rv != 0) {
       return -1;

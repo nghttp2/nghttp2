@@ -1573,6 +1573,9 @@ int option_lookup_token(const char *name, size_t namelen) {
       if (util::strieq_l("add-forwarde", name, 12)) {
         return SHRPX_OPTID_ADD_FORWARDED;
       }
+      if (util::strieq_l("single-threa", name, 12)) {
+        return SHRPX_OPTID_SINGLE_THREAD;
+      }
       break;
     case 'e':
       if (util::strieq_l("dh-param-fil", name, 12)) {
@@ -3376,6 +3379,10 @@ int parse_config(Config *config, int optid, const StringRef &opt,
   }
   case SHRPX_OPTID_FRONTEND_MAX_REQUESTS:
     return parse_uint(&config->http.max_requests, opt, optarg);
+  case SHRPX_OPTID_SINGLE_THREAD:
+    config->single_thread = util::strieq_l("yes", optarg);
+
+    return 0;
   case SHRPX_OPTID_CONF:
     LOG(WARN) << "conf: ignored";
 

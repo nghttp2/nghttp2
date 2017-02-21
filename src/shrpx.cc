@@ -1387,6 +1387,10 @@ void fill_default_config(Config *config) {
   config->conf_path = StringRef::from_lit("/etc/nghttpx/nghttpx.conf");
   config->pid = getpid();
 
+#ifdef NOTHREADS
+  config->single_thread = true;
+#endif // NOTHREADS
+
   if (ev_supported_backends() & ~ev_recommended_backends() & EVBACKEND_KQUEUE) {
     config->ev_loop_flags = ev_recommended_backends() | EVBACKEND_KQUEUE;
   }
@@ -1824,6 +1828,12 @@ Performance:
               Set the number of worker threads.
               Default: )"
       << config->num_worker << R"(
+  --single-thread
+              Run everything in one  thread inside the worker process.
+              This   feature   is   provided  for   better   debugging
+              experience,  or  for  the platforms  which  lack  thread
+              support.   If  threading  is disabled,  this  option  is
+              always enabled.
   --read-rate=<SIZE>
               Set maximum  average read  rate on  frontend connection.
               Setting 0 to this option means read rate is unlimited.
@@ -2707,6 +2717,11 @@ int process_options(Config *config,
     }
   }
 
+  if (config->single_thread) {
+    LOG(WARN) << "single-thread: Set workers to 1";
+    config->num_worker = 1;
+  }
+
   auto &http2conf = config->http2;
   {
     auto &dumpconf = http2conf.upstream.debug.dump;
@@ -3276,6 +3291,7 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_REDIRECT_HTTPS_PORT.c_str(), required_argument, &flag, 154},
         {SHRPX_OPT_FRONTEND_MAX_REQUESTS.c_str(), required_argument, &flag,
          155},
+        {SHRPX_OPT_SINGLE_THREAD.c_str(), no_argument, &flag, 156},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -4006,6 +4022,11 @@ int main(int argc, char **argv) {
         // --frontend-max-requests
         cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_MAX_REQUESTS,
                              StringRef{optarg});
+        break;
+      case 156:
+        // --single-thread
+        cmdcfgs.emplace_back(SHRPX_OPT_SINGLE_THREAD,
+                             StringRef::from_lit("yes"));
         break;
       default:
         break;

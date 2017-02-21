@@ -335,6 +335,7 @@ constexpr auto SHRPX_OPT_REDIRECT_HTTPS_PORT =
     StringRef::from_lit("redirect-https-port");
 constexpr auto SHRPX_OPT_FRONTEND_MAX_REQUESTS =
     StringRef::from_lit("frontend-max-requests");
+constexpr auto SHRPX_OPT_SINGLE_THREAD = StringRef::from_lit("single-thread");
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
@@ -863,6 +864,7 @@ struct Config {
         verbose{false},
         daemon{false},
         http2_proxy{false},
+        single_thread{false},
         ev_loop_flags{0} {}
   ~Config();
 
@@ -903,6 +905,7 @@ struct Config {
   bool verbose;
   bool daemon;
   bool http2_proxy;
+  bool single_thread;
   // flags passed to ev_default_loop() and ev_loop_new()
   int ev_loop_flags;
 };
@@ -1037,6 +1040,7 @@ enum {
   SHRPX_OPTID_RESPONSE_HEADER_FIELD_BUFFER,
   SHRPX_OPTID_RLIMIT_NOFILE,
   SHRPX_OPTID_SERVER_NAME,
+  SHRPX_OPTID_SINGLE_THREAD,
   SHRPX_OPTID_STREAM_READ_TIMEOUT,
   SHRPX_OPTID_STREAM_WRITE_TIMEOUT,
   SHRPX_OPTID_STRIP_INCOMING_FORWARDED,
