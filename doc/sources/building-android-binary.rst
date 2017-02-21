@@ -38,9 +38,6 @@ Although zlib comes with Android NDK, it seems not to be a part of
 public API, so we have to built it for our own.  That also provides us
 proper .pc file as a bonus.
 
-If SPDY support is required for nghttpx and h2load, build and install
-spdylay as well.
-
 Before running ``android-config`` and ``android-make``,
 ``ANDROID_HOME`` environment variable must be set to point to the
 correct path.  Also add ``$ANDROID_HOME/toolchain/bin`` to ``PATH``:
@@ -143,34 +140,6 @@ To configure zlib, use the following script:
         --libdir=$PREFIX/lib \
         --includedir=$PREFIX/include \
         --static
-
-And run ``make install`` to build and install.
-
-To configure spdylay, use the following script:
-
-.. code-block:: sh
-
-    #!/bin/sh -e
-
-    if [ -z "$ANDROID_HOME" ]; then
-        echo 'No $ANDROID_HOME specified.'
-        exit 1
-    fi
-    PREFIX=$ANDROID_HOME/usr/local
-    TOOLCHAIN=$ANDROID_HOME/toolchain
-    PATH=$TOOLCHAIN/bin:$PATH
-
-    ./configure \
-        --disable-shared \
-        --host=arm-linux-androideabi \
-        --build=`dpkg-architecture -qDEB_BUILD_GNU_TYPE` \
-        --prefix=$PREFIX \
-        --without-libxml2 \
-        --disable-src \
-        --disable-examples \
-        CPPFLAGS="-I$PREFIX/include" \
-        PKG_CONFIG_LIBDIR="$PREFIX/lib/pkgconfig" \
-        LDFLAGS="-L$PREFIX/lib"
 
 And run ``make install`` to build and install.
 
