@@ -878,7 +878,7 @@ int HttpsUpstream::send_reply(Downstream *downstream, const uint8_t *body,
 
   auto worker = handler_->get_worker();
 
-  if (httpconf.max_requests <= num_requests_ &&
+  if (httpconf.max_requests <= num_requests_ ||
       worker->get_graceful_shutdown()) {
     resp.fs.add_header_token(StringRef::from_lit("connection"),
                              StringRef::from_lit("close"), false,
