@@ -119,8 +119,8 @@ AC_ARG_WITH([jemalloc],
 
 AC_ARG_WITH([spdylay],
     [AS_HELP_STRING([--with-spdylay],
-                    [Use spdylay [default=check]])],
-    [request_spdylay=$withval], [request_spdylay=check])
+                    [Use spdylay [default=no]])],
+    [request_spdylay=$withval], [request_spdylay=no])
 
 AC_ARG_WITH([systemd],
     [AS_HELP_STRING([--with-systemd],
