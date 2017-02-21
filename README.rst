@@ -81,6 +81,9 @@ To enable the SPDY protocol in the application program ``nghttpx`` and
 
 * spdylay >= 1.3.2
 
+We no longer recommend to build nghttp2 with SPDY protocol support
+enabled.  SPDY support will be removed soon.
+
 To enable ``-a`` option (getting linked assets from the downloaded
 resource) in ``nghttp``, the following package is required:
 
