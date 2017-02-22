@@ -601,7 +601,9 @@ configuration revision is opaque string, and it changes after each
 reloading by SIGHUP.  With this API, an external application knows
 that whether nghttpx has finished reloading its configuration by
 comparing the configuration revisions between before and after
-reloading.
+reloading.  It is recommended to disable persistent (keep-alive)
+connection for this purpose in order to avoid to send a request using
+the reused connection which may bound to an old process.
 
 This API returns response including ``data`` key.  Its value is JSON
 object, and it contains at least the following key:
