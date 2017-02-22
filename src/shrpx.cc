@@ -1444,8 +1444,7 @@ void fill_default_config(Config *config) {
 #endif // !OPENSSL_1_1_API
 
   auto &httpconf = config->http;
-  httpconf.server_name =
-      StringRef::from_lit("nghttpx nghttp2/" NGHTTP2_VERSION);
+  httpconf.server_name = StringRef::from_lit("nghttpx");
   httpconf.no_host_rewrite = true;
   httpconf.request_header_field_buffer = 64_k;
   httpconf.max_request_header_fields = 100;
