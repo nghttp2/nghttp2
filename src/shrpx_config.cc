@@ -2428,12 +2428,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     return 0;
   case SHRPX_OPTID_FASTOPEN: {
     int n;
-    if (parse_int(&n, opt, optarg.c_str()) != 0) {
-      return -1;
-    }
-
-    if (n < 0) {
-      LOG(ERROR) << opt << ": " << optarg << " is not allowed";
+    if (parse_uint(&n, opt, optarg) != 0) {
       return -1;
     }
 
@@ -2629,13 +2624,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
   }
   case SHRPX_OPTID_BACKLOG: {
     int n;
-    if (parse_int(&n, opt, optarg.c_str()) != 0) {
-      return -1;
-    }
-
-    if (n < -1) {
-      LOG(ERROR) << opt << ": " << optarg << " is not allowed";
-
+    if (parse_uint(&n, opt, optarg) != 0) {
       return -1;
     }
 
