@@ -2426,16 +2426,8 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     config->logging.error.syslog = util::strieq_l("yes", optarg);
 
     return 0;
-  case SHRPX_OPTID_FASTOPEN: {
-    int n;
-    if (parse_uint(&n, opt, optarg) != 0) {
-      return -1;
-    }
-
-    config->conn.listener.fastopen = n;
-
-    return 0;
-  }
+  case SHRPX_OPTID_FASTOPEN:
+    return parse_uint(&config->conn.listener.fastopen, opt, optarg);
   case SHRPX_OPTID_BACKEND_KEEP_ALIVE_TIMEOUT:
     return parse_duration(&config->conn.downstream->timeout.idle_read, opt,
                           optarg);
@@ -2622,16 +2614,8 @@ int parse_config(Config *config, int optid, const StringRef &opt,
 
     return 0;
   }
-  case SHRPX_OPTID_BACKLOG: {
-    int n;
-    if (parse_uint(&n, opt, optarg) != 0) {
-      return -1;
-    }
-
-    config->conn.listener.backlog = n;
-
-    return 0;
-  }
+  case SHRPX_OPTID_BACKLOG:
+    return parse_uint(&config->conn.listener.backlog, opt, optarg);
   case SHRPX_OPTID_CIPHERS:
     config->tls.ciphers = make_string_ref(config->balloc, optarg);
 
