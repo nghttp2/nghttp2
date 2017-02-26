@@ -262,6 +262,14 @@ Performance
 
     Default: ``1``
 
+.. option:: --single-thread
+
+    Run everything in one  thread inside the worker process.
+    This   feature   is   provided  for   better   debugging
+    experience,  or  for  the platforms  which  lack  thread
+    support.   If  threading  is disabled,  this  option  is
+    always enabled.
+
 .. option:: --read-rate=<SIZE>
 
     Set maximum  average read  rate on  frontend connection.
@@ -431,7 +439,7 @@ Timeout
     Specify write  timeout for  HTTP/2 and SPDY  streams.  0
     means no timeout.
 
-    Default: ``0``
+    Default: ``1m``
 
 .. option:: --backend-read-timeout=<DURATION>
 
@@ -578,7 +586,7 @@ SSL/TLS
     only  and any  white spaces  are  treated as  a part  of
     protocol string.
 
-    Default: ``h2,h2-16,h2-14,spdy/3.1,http/1.1``
+    Default: ``h2,h2-16,h2-14,http/1.1``
 
 .. option:: --verify-client
 
@@ -1216,7 +1224,7 @@ HTTP
 
     Change server response header field value to <NAME>.
 
-    Default: ``nghttpx nghttp2/1.20.0-DEV``
+    Default: ``nghttpx``
 
 .. option:: --no-server-rewrite
 
@@ -1268,6 +1276,15 @@ DNS
     lookup.
 
     Default: ``2``
+
+.. option:: --frontend-max-requests=<N>
+
+    The number  of requests that single  frontend connection
+    can process.  For HTTP/2, this  is the number of streams
+    in  one  HTTP/2 connection.   For  HTTP/1,  this is  the
+    number of keep alive requests.  This is hint to nghttpx,
+    and it  may allow additional few  requests.  The default
+    value is unlimited.
 
 
 Debug
@@ -1959,7 +1976,9 @@ configuration revision is opaque string, and it changes after each
 reloading by SIGHUP.  With this API, an external application knows
 that whether nghttpx has finished reloading its configuration by
 comparing the configuration revisions between before and after
-reloading.
+reloading.  It is recommended to disable persistent (keep-alive)
+connection for this purpose in order to avoid to send a request using
+the reused connection which may bound to an old process.
 
 This API returns response including ``data`` key.  Its value is JSON
 object, and it contains at least the following key:

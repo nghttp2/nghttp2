@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTPX" "1" "Feb 20, 2017" "1.20.0-DEV" "nghttp2"
+.TH "NGHTTPX" "1" "Feb 26, 2017" "1.20.0" "nghttp2"
 .SH NAME
 nghttpx \- HTTP/2 proxy
 .
@@ -280,6 +280,15 @@ Default: \fB1\fP
 .UNINDENT
 .INDENT 0.0
 .TP
+.B \-\-single\-thread
+Run everything in one  thread inside the worker process.
+This   feature   is   provided  for   better   debugging
+experience,  or  for  the platforms  which  lack  thread
+support.   If  threading  is disabled,  this  option  is
+always enabled.
+.UNINDENT
+.INDENT 0.0
+.TP
 .B \-\-read\-rate=<SIZE>
 Set maximum  average read  rate on  frontend connection.
 Setting 0 to this option means read rate is unlimited.
@@ -466,7 +475,7 @@ Default: \fB0\fP
 Specify write  timeout for  HTTP/2 and SPDY  streams.  0
 means no timeout.
 .sp
-Default: \fB0\fP
+Default: \fB1m\fP
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -627,7 +636,7 @@ NPN.  The parameter must be  delimited by a single comma
 only  and any  white spaces  are  treated as  a part  of
 protocol string.
 .sp
-Default: \fBh2,h2\-16,h2\-14,spdy/3.1,http/1.1\fP
+Default: \fBh2,h2\-16,h2\-14,http/1.1\fP
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -1342,7 +1351,7 @@ backend server, the custom error pages are not used.
 .B \-\-server\-name=<NAME>
 Change server response header field value to <NAME>.
 .sp
-Default: \fBnghttpx nghttp2/1.20.0\-DEV\fP
+Default: \fBnghttpx\fP
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -1394,6 +1403,16 @@ Set the number of DNS query before nghttpx gives up name
 lookup.
 .sp
 Default: \fB2\fP
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-frontend\-max\-requests=<N>
+The number  of requests that single  frontend connection
+can process.  For HTTP/2, this  is the number of streams
+in  one  HTTP/2 connection.   For  HTTP/1,  this is  the
+number of keep alive requests.  This is hint to nghttpx,
+and it  may allow additional few  requests.  The default
+value is unlimited.
 .UNINDENT
 .SS Debug
 .INDENT 0.0
@@ -2138,7 +2157,9 @@ configuration revision is opaque string, and it changes after each
 reloading by SIGHUP.  With this API, an external application knows
 that whether nghttpx has finished reloading its configuration by
 comparing the configuration revisions between before and after
-reloading.
+reloading.  It is recommended to disable persistent (keep\-alive)
+connection for this purpose in order to avoid to send a request using
+the reused connection which may bound to an old process.
 .sp
 This API returns response including \fBdata\fP key.  Its value is JSON
 object, and it contains at least the following key:

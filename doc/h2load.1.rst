@@ -102,7 +102,7 @@ OPTIONS
 
     Specify ALPN identifier of the  protocol to be used when
     accessing http URI without SSL/TLS.
-    Available protocols: spdy/2, spdy/3, spdy/3.1, h2c and
+    Available protocols: h2c and
     http/1.1
 
     Default: ``h2c``
@@ -196,7 +196,7 @@ OPTIONS
     only  and any  white spaces  are  treated as  a part  of
     protocol string.
 
-    Default: ``h2,h2-16,h2-14,spdy/3.1,spdy/3,spdy/2,http/1.1``
+    Default: ``h2,h2-16,h2-14,http/1.1``
 
 .. option:: --h1
 
