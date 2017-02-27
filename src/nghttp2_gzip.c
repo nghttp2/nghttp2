@@ -72,6 +72,7 @@ int nghttp2_gzip_inflate(nghttp2_gzip *inflater, uint8_t *out,
   switch (rv) {
   case Z_STREAM_END:
     inflater->finished = 1;
+  /* FALL THROUGH */
   case Z_OK:
   case Z_BUF_ERROR:
     return 0;
