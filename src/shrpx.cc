@@ -1209,6 +1209,12 @@ pid_t fork_worker_process(int &main_ipc_fd,
   if (pid == 0) {
     ev_loop_fork(EV_DEFAULT);
 
+    auto config = get_config();
+
+    for (auto &addr : config->conn.listener.addrs) {
+      util::make_socket_closeonexec(addr.fd);
+    }
+
     // Remove all WorkerProcesses to stop any registered watcher on
     // default loop.
     worker_process_remove_all();
