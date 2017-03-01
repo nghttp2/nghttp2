@@ -598,8 +598,8 @@ void ConnectionHandler::handle_ocsp_complete() {
   auto status = WEXITSTATUS(rstatus);
   if (ocsp_.error || !WIFEXITED(rstatus) || status != 0) {
     LOG(WARN) << "ocsp query command for " << tls_ctx_data->cert_file
-              << " failed: error=" << ocsp_.error << ", rstatus=" << rstatus
-              << ", status=" << status;
+              << " failed: error=" << ocsp_.error << ", rstatus=" << std::hex
+              << rstatus << std::dec << ", status=" << status;
     ++ocsp_.next;
     proceed_next_cert_ocsp();
     return;
