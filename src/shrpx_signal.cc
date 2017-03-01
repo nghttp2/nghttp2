@@ -94,7 +94,7 @@ int shrpx_signal_set(sigset_t *set) {
 
 namespace {
 template <typename Signals>
-void signal_set_handler(void (*handler)(int), Signals &&sigs) {
+int signal_set_handler(void (*handler)(int), Signals &&sigs) {
   struct sigaction act {};
   act.sa_handler = handler;
   sigemptyset(&act.sa_mask);
@@ -102,11 +102,10 @@ void signal_set_handler(void (*handler)(int), Signals &&sigs) {
   for (auto sig : sigs) {
     rv = sigaction(sig, &act, nullptr);
     if (rv != 0) {
-      auto error = errno;
-      LOG(WARN) << "sigaction() with signal " << sig
-                << " failed: errno=" << error;
+      return -1;
     }
   }
+  return 0;
 }
 } // namespace
 
@@ -120,20 +119,20 @@ constexpr auto worker_proc_ign_signals =
                         GRACEFUL_SHUTDOWN_SIGNAL, RELOAD_SIGNAL, SIGPIPE}};
 } // namespace
 
-void shrpx_signal_set_master_proc_ign_handler() {
-  signal_set_handler(SIG_IGN, master_proc_ign_signals);
+int shrpx_signal_set_master_proc_ign_handler() {
+  return signal_set_handler(SIG_IGN, master_proc_ign_signals);
 }
 
-void shrpx_signal_unset_master_proc_ign_handler() {
-  signal_set_handler(SIG_DFL, master_proc_ign_signals);
+int shrpx_signal_unset_master_proc_ign_handler() {
+  return signal_set_handler(SIG_DFL, master_proc_ign_signals);
 }
 
-void shrpx_signal_set_worker_proc_ign_handler() {
-  signal_set_handler(SIG_IGN, worker_proc_ign_signals);
+int shrpx_signal_set_worker_proc_ign_handler() {
+  return signal_set_handler(SIG_IGN, worker_proc_ign_signals);
 }
 
-void shrpx_signal_unset_worker_proc_ign_handler() {
-  signal_set_handler(SIG_DFL, worker_proc_ign_signals);
+int shrpx_signal_unset_worker_proc_ign_handler() {
+  return signal_set_handler(SIG_DFL, worker_proc_ign_signals);
 }
 
 } // namespace shrpx

@@ -76,14 +76,16 @@ int exec_read_command(Process &proc, char *const argv[]) {
   auto pid = fork();
 
   if (pid == 0) {
+    // This is multithreaded program, and we are allowed to use only
+    // async-signal-safe functions here.
+
     // child process
     shrpx_signal_unset_worker_proc_ign_handler();
 
     rv = shrpx_signal_unblock_all();
     if (rv != 0) {
-      auto error = errno;
-      LOG(FATAL) << "Unblocking all signals failed: errno=" << error;
-
+      constexpr char msg[] = "Unblocking all signals failed\n";
+      write(STDERR_FILENO, msg, str_size(msg));
       nghttp2_Exit(EXIT_FAILURE);
     }
 
@@ -92,9 +94,8 @@ int exec_read_command(Process &proc, char *const argv[]) {
 
     rv = execv(argv[0], argv);
     if (rv == -1) {
-      auto error = errno;
-      LOG(ERROR) << "Could not execute command: " << argv[0]
-                 << ", execve() faild, errno=" << error;
+      constexpr char msg[] = "Could not execute command\n";
+      write(STDERR_FILENO, msg, str_size(msg));
       nghttp2_Exit(EXIT_FAILURE);
     }
     // unreachable
