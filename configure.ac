@@ -142,6 +142,11 @@ AC_ARG_WITH([cython],
                     [Use cython in given PATH])],
     [cython_path=$withval], [])
 
+AC_ARG_WITH([openssl],
+    [AS_HELP_STRING([--with-openssl=PATH],
+                    [Use openssl in given PATH])],
+    [openssl_path=$withval], [])
+
 dnl Define variables
 AC_ARG_VAR([CYTHON], [the Cython executable])
 
@@ -174,6 +179,24 @@ if test "x${cython_path}" = "x"; then
 else
   CYTHON=${cython_path}
   AC_SUBST([CYTHON])
+fi
+
+AC_MSG_CHECKING([for user-provided OpenSSL base directory])
+if test "x${openssl_path}" != "x"; then
+  ap_openssl_base="`cd ${openssl_path}; pwd`"
+
+  if test "x${ap_openssl_base}" = "x"; then
+    AC_MSG_RESULT(none)
+  else
+    AC_MSG_RESULT($ap_openssl_base)
+
+    dnl Prepend location of user-provided OpenSSL package config to PKG_CONFIG_PATH
+    saved_PKG_CONFIG_PATH="$PKG_CONFIG_PATH"
+    if test -f "${ap_openssl_base}/lib/pkgconfig/openssl.pc"; then
+      PKG_CONFIG_PATH="${ap_openssl_base}/lib/pkgconfig${PKG_CONFIG_PATH+:}${PKG_CONFIG_PATH}"
+      export PKG_CONFIG_PATH
+    fi
+  fi
 fi
 
 #
