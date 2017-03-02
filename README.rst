@@ -197,6 +197,27 @@ To compile the source code, gcc >= 4.8.3 or clang >= 3.4 is required.
    applications were not built, then using ``--enable-app`` may find
    that cause, such as the missing dependency.
 
+.. note::
+
+   In order to detect third party libraries, pkg-config is used
+   (however we don't use pkg-config for some libraries (e.g., libev)).
+   By default, pkg-config searches *.pc file in the standard locations
+   (e.g., /usr/lib/pkgconfig).  If it is necessary to use *.pc file in
+   the custom location, specify paths to ``PKG_CONFIG_PATH``
+   environment variable, and pass it to configure script, like so:
+
+   .. code-block:: text
+
+       $ ./configure PKG_CONFIG_PATH=/path/to/pkgconfig
+
+   For pkg-config managed libraries, ``*_CFLAG`` and ``*_LIBS``
+   environment variables are defined (e.g., ``OPENSSL_CFLAGS``,
+   ``OPENSSL_LIBS``).  Specifying non-empty string to these variables
+   completely overrides pkg-config.  In other words, if they are
+   specified, pkg-config is not used for detection, and user is
+   responsible to specify the correct values to these variables.  For
+   complete list of these variables, run ``./configure -h``.
+
 Notes for building on Windows (MSVC)
 ------------------------------------
 
