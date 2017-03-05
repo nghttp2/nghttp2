@@ -152,15 +152,17 @@ bool check_http2_requirement(SSL *ssl) {
 }
 
 void libssl_init() {
-// OPENSSL_config() is not available in BoringSSL.  It is also
-// deprecated as of OpenSSL 1.1.0.
-#if !defined(OPENSSL_IS_BORINGSSL) && !OPENSSL_1_1_API
+#if OPENSSL_1_1_API
+// No explicit initialization is required.
+#else // !OPENSSL_1_1_API
+// OPENSSL_config() is not available in BoringSSL.
+#if !defined(OPENSSL_IS_BORINGSSL)
   OPENSSL_config(nullptr);
-#endif // !defined(OPENSSL_IS_BORINGSSL) && !OPENSSL_1_1_API
-
+#endif // !defined(OPENSSL_IS_BORINGSSL)
   SSL_load_error_strings();
   SSL_library_init();
   OpenSSL_add_all_algorithms();
+#endif // !OPENSSL_1_1_API
 }
 
 int ssl_ctx_set_proto_versions(SSL_CTX *ssl_ctx, int min, int max) {
