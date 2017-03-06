@@ -1632,8 +1632,7 @@ Connections:
               with "unix:" (e.g., unix:/var/run/backend.sock).
 
               Optionally, if <PATTERN>s are given, the backend address
-              is  only  used  if  request  matches  the  pattern.   If
-              --http2-proxy  is  used,  <PATTERN>s are  ignored.   The
+              is  only  used  if  request matches  the  pattern.   The
               pattern  matching is  closely  designed  to ServeMux  in
               net/http package of  Go programming language.  <PATTERN>
               consists of  path, host +  path or just host.   The path
@@ -1648,7 +1647,10 @@ Connections:
               request host.  If  host alone is given,  "/" is appended
               to it,  so that it  matches all request paths  under the
               host   (e.g.,   specifying   "nghttp2.org"   equals   to
-              "nghttp2.org/").
+              "nghttp2.org/").  CONNECT  method is  treated specially.
+              It does  not have path,  and we don't allow  empty path.
+              To workaround  this, we  assume that CONNECT  method has
+              "/" as path.
 
               Patterns with  host take  precedence over  patterns with
               just path.   Then, longer patterns take  precedence over

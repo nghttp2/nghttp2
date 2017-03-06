@@ -3610,19 +3610,6 @@ int configure_downstream_group(Config *config, bool http2_proxy,
     g.addrs.push_back(std::move(addr));
     router.add_route(g.pattern, addr_groups.size());
     addr_groups.push_back(std::move(g));
-  } else if (http2_proxy) {
-    // We don't support host mapping in these cases.  Move all
-    // non-catch-all patterns to catch-all pattern.
-    DownstreamAddrGroupConfig catch_all(StringRef::from_lit("/"));
-    for (auto &g : addr_groups) {
-      std::move(std::begin(g.addrs), std::end(g.addrs),
-                std::back_inserter(catch_all.addrs));
-    }
-    std::vector<DownstreamAddrGroupConfig>().swap(addr_groups);
-    // maybe not necessary?
-    routerconf = RouterConfig{};
-    router.add_route(catch_all.pattern, addr_groups.size());
-    addr_groups.push_back(std::move(catch_all));
   }
 
   // backward compatibility: override all SNI fields with the option

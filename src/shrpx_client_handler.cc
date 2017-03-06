@@ -980,18 +980,19 @@ ClientHandler::get_downstream_connection(int &err, Downstream *downstream) {
     return make_unique<HealthMonitorDownstreamConnection>();
   }
 
+  auto &balloc = downstream->get_block_allocator();
+
   // Fast path.  If we have one group, it must be catch-all group.
   // proxy mode falls in this case.
   if (groups.size() == 1) {
     group_idx = 0;
   } else if (req.method == HTTP_CONNECT) {
-    //  We don't know how to treat CONNECT request in host-path
-    //  mapping.  It most likely appears in proxy scenario.  Since we
-    //  have dealt with proxy case already, just use catch-all group.
-    group_idx = catch_all;
+    // CONNECT method does not have path.  But we requires path in
+    // host-path mapping.  As workaround, we assume that path is "/".
+    group_idx = match_downstream_addr_group(routerconf, req.authority,
+                                            StringRef::from_lit("/"), groups,
+                                            catch_all, balloc);
   } else {
-    auto &balloc = downstream->get_block_allocator();
-
     if (!req.authority.empty()) {
       group_idx = match_downstream_addr_group(
           routerconf, req.authority, req.path, groups, catch_all, balloc);

@@ -207,7 +207,7 @@ int htp_hdr_valcb(http_parser *htp, const char *data, size_t len) {
 namespace {
 void rewrite_request_host_path_from_uri(BlockAllocator &balloc, Request &req,
                                         const StringRef &uri,
-                                        http_parser_url &u, bool http2_proxy) {
+                                        http_parser_url &u) {
   assert(u.field_set & (1 << UF_HOST));
 
   // As per https://tools.ietf.org/html/rfc7230#section-5.4, we
@@ -276,11 +276,7 @@ void rewrite_request_host_path_from_uri(BlockAllocator &balloc, Request &req,
     }
   }
 
-  if (http2_proxy) {
-    req.path = path;
-  } else {
-    req.path = http2::rewrite_clean_path(balloc, path);
-  }
+  req.path = http2::rewrite_clean_path(balloc, path);
 }
 } // namespace
 
@@ -395,8 +391,7 @@ int htp_hdrs_completecb(http_parser *htp) {
         req.scheme = StringRef::from_lit("http");
       }
     } else {
-      rewrite_request_host_path_from_uri(
-          balloc, req, req.path, u, config->http2_proxy && !faddr->alt_mode);
+      rewrite_request_host_path_from_uri(balloc, req, req.path, u);
     }
   }
 
