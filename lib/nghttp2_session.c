@@ -5289,6 +5289,10 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
     return rv;
   }
 
+  if (!nghttp2_session_want_read(session)) {
+    return (ssize_t)inlen;
+  }
+
   for (;;) {
     switch (iframe->state) {
     case NGHTTP2_IB_READ_CLIENT_MAGIC:
@@ -6609,21 +6613,12 @@ int nghttp2_session_want_write(nghttp2_session *session) {
    * response HEADERS and concurrent stream limit is reached, we don't
    * want to write them.
    */
-
-  if (session->aob.item == NULL &&
-      nghttp2_outbound_queue_top(&session->ob_urgent) == NULL &&
-      nghttp2_outbound_queue_top(&session->ob_reg) == NULL &&
-      (nghttp2_pq_empty(&session->root.obq) ||
-       session->remote_window_size == 0) &&
-      (nghttp2_outbound_queue_top(&session->ob_syn) == NULL ||
-       session_is_outgoing_concurrent_streams_max(session))) {
-    return 0;
-  }
-
-  /* If there is no active streams and GOAWAY has been sent or
-     received, we are done with this session. */
-  return (session->goaway_flags &
-          (NGHTTP2_GOAWAY_SENT | NGHTTP2_GOAWAY_RECV)) == 0;
+  return session->aob.item || nghttp2_outbound_queue_top(&session->ob_urgent) ||
+         nghttp2_outbound_queue_top(&session->ob_reg) ||
+         (!nghttp2_pq_empty(&session->root.obq) &&
+          session->remote_window_size > 0) ||
+         (nghttp2_outbound_queue_top(&session->ob_syn) &&
+          !session_is_outgoing_concurrent_streams_max(session));
 }
 
 int nghttp2_session_add_ping(nghttp2_session *session, uint8_t flags,
