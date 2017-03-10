@@ -319,7 +319,7 @@ void Connection::set_ssl(SSL *ssl) {
 namespace {
 // We should buffer at least full encrypted TLS record here.
 // Theoretically, peer can send client hello in several TLS records,
-// which could exeed this limit, but it is not portable, and we don't
+// which could exceed this limit, but it is not portable, and we don't
 // have to handle such exotic behaviour.
 bool read_buffer_full(DefaultPeekMemchunks &rbuf) {
   return rbuf.rleft_buffered() >= 20_k;
