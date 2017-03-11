@@ -44,7 +44,7 @@ static void deflate(nghttp2_hd_deflater *deflater,
 static int inflate_header_block(nghttp2_hd_inflater *inflater, uint8_t *in,
                                 size_t inlen, int final);
 
-int main(int argc _U_, char **argv _U_) {
+int main() {
   int rv;
   nghttp2_hd_deflater *deflater;
   nghttp2_hd_inflater *inflater;

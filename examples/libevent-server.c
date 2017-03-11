@@ -109,18 +109,23 @@ struct app_context {
 static unsigned char next_proto_list[256];
 static size_t next_proto_list_len;
 
-static int next_proto_cb(SSL *s _U_, const unsigned char **data,
-                         unsigned int *len, void *arg _U_) {
+static int next_proto_cb(SSL *ssl, const unsigned char **data,
+                         unsigned int *len, void *arg) {
+  (void)ssl;
+  (void)arg;
+
   *data = next_proto_list;
   *len = (unsigned int)next_proto_list_len;
   return SSL_TLSEXT_ERR_OK;
 }
 
 #if OPENSSL_VERSION_NUMBER >= 0x10002000L
-static int alpn_select_proto_cb(SSL *ssl _U_, const unsigned char **out,
+static int alpn_select_proto_cb(SSL *ssl, const unsigned char **out,
                                 unsigned char *outlen, const unsigned char *in,
-                                unsigned int inlen, void *arg _U_) {
+                                unsigned int inlen, void *arg) {
   int rv;
+  (void)ssl;
+  (void)arg;
 
   rv = nghttp2_select_next_protocol((unsigned char **)out, outlen, in, inlen);
 
@@ -197,8 +202,10 @@ static void add_stream(http2_session_data *session_data,
   }
 }
 
-static void remove_stream(http2_session_data *session_data _U_,
+static void remove_stream(http2_session_data *session_data,
                           http2_stream_data *stream_data) {
+  (void)session_data;
+
   stream_data->prev->next = stream_data->next;
   if (stream_data->next) {
     stream_data->next->prev = stream_data->prev;
@@ -309,10 +316,13 @@ static int session_recv(http2_session_data *session_data) {
   return 0;
 }
 
-static ssize_t send_callback(nghttp2_session *session _U_, const uint8_t *data,
-                             size_t length, int flags _U_, void *user_data) {
+static ssize_t send_callback(nghttp2_session *session, const uint8_t *data,
+                             size_t length, int flags, void *user_data) {
   http2_session_data *session_data = (http2_session_data *)user_data;
   struct bufferevent *bev = session_data->bev;
+  (void)session;
+  (void)flags;
+
   /* Avoid excessive buffering in server side. */
   if (evbuffer_get_length(bufferevent_get_output(session_data->bev)) >=
       OUTPUT_WOULDBLOCK_THRESHOLD) {
@@ -375,13 +385,17 @@ static char *percent_decode(const uint8_t *value, size_t valuelen) {
   return res;
 }
 
-static ssize_t file_read_callback(nghttp2_session *session _U_,
-                                  int32_t stream_id _U_, uint8_t *buf,
-                                  size_t length, uint32_t *data_flags,
+static ssize_t file_read_callback(nghttp2_session *session, int32_t stream_id,
+                                  uint8_t *buf, size_t length,
+                                  uint32_t *data_flags,
                                   nghttp2_data_source *source,
-                                  void *user_data _U_) {
+                                  void *user_data) {
   int fd = source->fd;
   ssize_t r;
+  (void)session;
+  (void)stream_id;
+  (void)user_data;
+
   while ((r = read(fd, buf, length)) == -1 && errno == EINTR)
     ;
   if (r == -1) {
@@ -454,10 +468,12 @@ static int error_reply(nghttp2_session *session,
 static int on_header_callback(nghttp2_session *session,
                               const nghttp2_frame *frame, const uint8_t *name,
                               size_t namelen, const uint8_t *value,
-                              size_t valuelen, uint8_t flags _U_,
-                              void *user_data _U_) {
+                              size_t valuelen, uint8_t flags, void *user_data) {
   http2_stream_data *stream_data;
   const char PATH[] = ":path";
+  (void)flags;
+  (void)user_data;
+
   switch (frame->hd.type) {
   case NGHTTP2_HEADERS:
     if (frame->headers.cat != NGHTTP2_HCAT_REQUEST) {
@@ -570,9 +586,10 @@ static int on_frame_recv_callback(nghttp2_session *session,
 }
 
 static int on_stream_close_callback(nghttp2_session *session, int32_t stream_id,
-                                    uint32_t error_code _U_, void *user_data) {
+                                    uint32_t error_code, void *user_data) {
   http2_session_data *session_data = (http2_session_data *)user_data;
   http2_stream_data *stream_data;
+  (void)error_code;
 
   stream_data = nghttp2_session_get_stream_user_data(session, stream_id);
   if (!stream_data) {
@@ -625,8 +642,10 @@ static int send_server_connection_header(http2_session_data *session_data) {
 
 /* readcb for bufferevent after client connection header was
    checked. */
-static void readcb(struct bufferevent *bev _U_, void *ptr) {
+static void readcb(struct bufferevent *bev, void *ptr) {
   http2_session_data *session_data = (http2_session_data *)ptr;
+  (void)bev;
+
   if (session_recv(session_data) != 0) {
     delete_http2_session_data(session_data);
     return;
@@ -658,12 +677,13 @@ static void writecb(struct bufferevent *bev, void *ptr) {
 }
 
 /* eventcb for bufferevent */
-static void eventcb(struct bufferevent *bev _U_, short events, void *ptr) {
+static void eventcb(struct bufferevent *bev, short events, void *ptr) {
   http2_session_data *session_data = (http2_session_data *)ptr;
   if (events & BEV_EVENT_CONNECTED) {
     const unsigned char *alpn = NULL;
     unsigned int alpnlen = 0;
     SSL *ssl;
+    (void)bev;
 
     fprintf(stderr, "%s connected\n", session_data->client_addr);
 
@@ -703,10 +723,11 @@ static void eventcb(struct bufferevent *bev _U_, short events, void *ptr) {
 }
 
 /* callback for evconnlistener */
-static void acceptcb(struct evconnlistener *listener _U_, int fd,
+static void acceptcb(struct evconnlistener *listener, int fd,
                      struct sockaddr *addr, int addrlen, void *arg) {
   app_context *app_ctx = (app_context *)arg;
   http2_session_data *session_data;
+  (void)listener;
 
   session_data = create_http2_session_data(app_ctx, fd, addr, addrlen);
 

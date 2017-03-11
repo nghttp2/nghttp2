@@ -3394,8 +3394,7 @@ static int session_call_unpack_extension_callback(nghttp2_session *session) {
  * NGHTTP2_ERR_NOMEM
  *   Out of memory.
  */
-static int session_handle_frame_size_error(nghttp2_session *session,
-                                           nghttp2_frame *frame _U_) {
+static int session_handle_frame_size_error(nghttp2_session *session) {
   /* TODO Currently no callback is called for this error, because we
      call this callback before reading any payload */
   return nghttp2_session_terminate_session(session, NGHTTP2_FRAME_SIZE_ERROR);
@@ -3991,8 +3990,7 @@ static int session_process_headers_frame(nghttp2_session *session) {
   nghttp2_frame *frame = &iframe->frame;
   nghttp2_stream *stream;
 
-  rv = nghttp2_frame_unpack_headers_payload(&frame->headers, iframe->sbuf.pos,
-                                            nghttp2_buf_len(&iframe->sbuf));
+  rv = nghttp2_frame_unpack_headers_payload(&frame->headers, iframe->sbuf.pos);
 
   if (rv != 0) {
     return nghttp2_session_terminate_session_with_reason(
@@ -4082,8 +4080,7 @@ static int session_process_priority_frame(nghttp2_session *session) {
   nghttp2_inbound_frame *iframe = &session->iframe;
   nghttp2_frame *frame = &iframe->frame;
 
-  nghttp2_frame_unpack_priority_payload(&frame->priority, iframe->sbuf.pos,
-                                        nghttp2_buf_len(&iframe->sbuf));
+  nghttp2_frame_unpack_priority_payload(&frame->priority, iframe->sbuf.pos);
 
   return nghttp2_session_on_priority_received(session, frame);
 }
@@ -4124,8 +4121,7 @@ static int session_process_rst_stream_frame(nghttp2_session *session) {
   nghttp2_inbound_frame *iframe = &session->iframe;
   nghttp2_frame *frame = &iframe->frame;
 
-  nghttp2_frame_unpack_rst_stream_payload(&frame->rst_stream, iframe->sbuf.pos,
-                                          nghttp2_buf_len(&iframe->sbuf));
+  nghttp2_frame_unpack_rst_stream_payload(&frame->rst_stream, iframe->sbuf.pos);
 
   return nghttp2_session_on_rst_stream_received(session, frame);
 }
@@ -4597,8 +4593,8 @@ static int session_process_push_promise_frame(nghttp2_session *session) {
   nghttp2_inbound_frame *iframe = &session->iframe;
   nghttp2_frame *frame = &iframe->frame;
 
-  rv = nghttp2_frame_unpack_push_promise_payload(
-      &frame->push_promise, iframe->sbuf.pos, nghttp2_buf_len(&iframe->sbuf));
+  rv = nghttp2_frame_unpack_push_promise_payload(&frame->push_promise,
+                                                 iframe->sbuf.pos);
 
   if (rv != 0) {
     return nghttp2_session_terminate_session_with_reason(
@@ -4632,8 +4628,7 @@ static int session_process_ping_frame(nghttp2_session *session) {
   nghttp2_inbound_frame *iframe = &session->iframe;
   nghttp2_frame *frame = &iframe->frame;
 
-  nghttp2_frame_unpack_ping_payload(&frame->ping, iframe->sbuf.pos,
-                                    nghttp2_buf_len(&iframe->sbuf));
+  nghttp2_frame_unpack_ping_payload(&frame->ping, iframe->sbuf.pos);
 
   return nghttp2_session_on_ping_received(session, frame);
 }
@@ -4674,9 +4669,9 @@ static int session_process_goaway_frame(nghttp2_session *session) {
   nghttp2_inbound_frame *iframe = &session->iframe;
   nghttp2_frame *frame = &iframe->frame;
 
-  nghttp2_frame_unpack_goaway_payload(
-      &frame->goaway, iframe->sbuf.pos, nghttp2_buf_len(&iframe->sbuf),
-      iframe->lbuf.pos, nghttp2_buf_len(&iframe->lbuf));
+  nghttp2_frame_unpack_goaway_payload(&frame->goaway, iframe->sbuf.pos,
+                                      iframe->lbuf.pos,
+                                      nghttp2_buf_len(&iframe->lbuf));
 
   nghttp2_buf_wrap_init(&iframe->lbuf, NULL, 0);
 
@@ -4759,8 +4754,8 @@ static int session_process_window_update_frame(nghttp2_session *session) {
   nghttp2_inbound_frame *iframe = &session->iframe;
   nghttp2_frame *frame = &iframe->frame;
 
-  nghttp2_frame_unpack_window_update_payload(
-      &frame->window_update, iframe->sbuf.pos, nghttp2_buf_len(&iframe->sbuf));
+  nghttp2_frame_unpack_window_update_payload(&frame->window_update,
+                                             iframe->sbuf.pos);
 
   return nghttp2_session_on_window_update_received(session, frame);
 }
@@ -6128,7 +6123,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
     case NGHTTP2_IB_FRAME_SIZE_ERROR:
       DEBUGF("recv: [IB_FRAME_SIZE_ERROR]\n");
 
-      rv = session_handle_frame_size_error(session, &iframe->frame);
+      rv = session_handle_frame_size_error(session);
       if (nghttp2_is_fatal(rv)) {
         return rv;
       }
