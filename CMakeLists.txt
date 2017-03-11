@@ -110,19 +110,9 @@ foreach(_build_type "Release" "MinSizeRel" "RelWithDebInfo")
   endforeach()
 endforeach()
 
-#
-# If we're running GCC or clang define _U_ to be "__attribute__((unused))"
-# so we can use _U_ to flag unused function parameters and not get warnings
-# about them. Otherwise, define _U_ to be an empty string so that _U_ used
-# to flag an unused function parameters will compile with other compilers.
-#
-# XXX - similar hints for other compilers?
-#
 if(CMAKE_C_COMPILER_ID MATCHES "GNU" OR CMAKE_C_COMPILER_ID MATCHES "Clang")
-  set(HINT_UNUSED_PARAM   "__attribute__((unused))")
   set(HINT_NORETURN       "__attribute__((noreturn))")
 else()
-  set(HINT_UNUSED_PARAM)
   set(HINT_NORETURN)
 endif()
 

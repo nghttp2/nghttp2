@@ -59,29 +59,39 @@ static void data_feed_init(data_feed *df, nghttp2_bufs *bufs) {
   df->datalimit = df->data + data_length;
 }
 
-static ssize_t null_send_callback(nghttp2_session *session _U_,
-                                  const uint8_t *data _U_, size_t len,
-                                  int flags _U_, void *user_data _U_) {
+static ssize_t null_send_callback(nghttp2_session *session, const uint8_t *data,
+                                  size_t len, int flags, void *user_data) {
+  (void)session;
+  (void)data;
+  (void)flags;
+  (void)user_data;
+
   return (ssize_t)len;
 }
 
-static ssize_t data_feed_recv_callback(nghttp2_session *session _U_,
-                                       uint8_t *data, size_t len, int flags _U_,
-                                       void *user_data) {
+static ssize_t data_feed_recv_callback(nghttp2_session *session, uint8_t *data,
+                                       size_t len, int flags, void *user_data) {
   data_feed *df = ((my_user_data *)user_data)->df;
   size_t avail = (size_t)(df->datalimit - df->datamark);
   size_t wlen = nghttp2_min(avail, len);
+  (void)session;
+  (void)flags;
+
   memcpy(data, df->datamark, wlen);
   df->datamark += wlen;
   return (ssize_t)wlen;
 }
 
 static ssize_t fixed_length_data_source_read_callback(
-    nghttp2_session *session _U_, int32_t stream_id _U_, uint8_t *buf _U_,
-    size_t len, uint32_t *data_flags, nghttp2_data_source *source _U_,
-    void *user_data) {
+    nghttp2_session *session, int32_t stream_id, uint8_t *buf, size_t len,
+    uint32_t *data_flags, nghttp2_data_source *source, void *user_data) {
   my_user_data *ud = (my_user_data *)user_data;
   size_t wlen;
+  (void)session;
+  (void)stream_id;
+  (void)buf;
+  (void)source;
+
   if (len < ud->data_source_length) {
     wlen = len;
   } else {

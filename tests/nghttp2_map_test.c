@@ -100,7 +100,12 @@ static void shuffle(int *a, int n) {
   }
 }
 
-static int eachfun(nghttp2_map_entry *entry _U_, void *ptr _U_) { return 0; }
+static int eachfun(nghttp2_map_entry *entry, void *ptr) {
+  (void)entry;
+  (void)ptr;
+
+  return 0;
+}
 
 #define NUM_ENT 6000
 static strentry arr[NUM_ENT];

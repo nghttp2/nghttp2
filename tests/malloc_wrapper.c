@@ -39,19 +39,29 @@ int nghttp2_nmalloc = 0;
     }                                                                          \
   } while (0)
 
-static void *my_malloc(size_t size, void *mud _U_) {
+static void *my_malloc(size_t size, void *mud) {
+  (void)mud;
+
   CHECK_PREREQ;
   return malloc(size);
 }
 
-static void my_free(void *ptr, void *mud _U_) { free(ptr); }
+static void my_free(void *ptr, void *mud) {
+  (void)mud;
 
-static void *my_calloc(size_t nmemb, size_t size, void *mud _U_) {
+  free(ptr);
+}
+
+static void *my_calloc(size_t nmemb, size_t size, void *mud) {
+  (void)mud;
+
   CHECK_PREREQ;
   return calloc(nmemb, size);
 }
 
-static void *my_realloc(void *ptr, size_t size, void *mud _U_) {
+static void *my_realloc(void *ptr, size_t size, void *mud) {
+  (void)mud;
+
   CHECK_PREREQ;
   return realloc(ptr, size);
 }

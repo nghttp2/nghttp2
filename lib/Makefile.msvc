@@ -62,7 +62,7 @@ AR		 := lib
 #LD		 := xilink
 #AR		 := xilib
 RC		 := rc
-CFLAGS   := -I./includes -Dssize_t=long -D_U_=""
+CFLAGS   := -I./includes -Dssize_t=long
 
 CFLAGS_R := -nologo -MD  -W3 -Z7 -DBUILDING_NGHTTP2
 CFLAGS_D := -nologo -MDd -W3 -Z7 -DBUILDING_NGHTTP2 \

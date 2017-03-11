@@ -53,16 +53,14 @@ int unpack_frame(nghttp2_frame *frame, const uint8_t *in, size_t len) {
   switch (frame->hd.type) {
   case NGHTTP2_HEADERS:
     payloadoff = ((frame->hd.flags & NGHTTP2_FLAG_PADDED) > 0);
-    rv = nghttp2_frame_unpack_headers_payload(
-        &frame->headers, payload + payloadoff, payloadlen - payloadoff);
+    rv = nghttp2_frame_unpack_headers_payload(&frame->headers,
+                                              payload + payloadoff);
     break;
   case NGHTTP2_PRIORITY:
-    nghttp2_frame_unpack_priority_payload(&frame->priority, payload,
-                                          payloadlen);
+    nghttp2_frame_unpack_priority_payload(&frame->priority, payload);
     break;
   case NGHTTP2_RST_STREAM:
-    nghttp2_frame_unpack_rst_stream_payload(&frame->rst_stream, payload,
-                                            payloadlen);
+    nghttp2_frame_unpack_rst_stream_payload(&frame->rst_stream, payload);
     break;
   case NGHTTP2_SETTINGS:
     rv = nghttp2_frame_unpack_settings_payload2(
@@ -70,18 +68,17 @@ int unpack_frame(nghttp2_frame *frame, const uint8_t *in, size_t len) {
     break;
   case NGHTTP2_PUSH_PROMISE:
     rv = nghttp2_frame_unpack_push_promise_payload(&frame->push_promise,
-                                                   payload, payloadlen);
+                                                   payload);
     break;
   case NGHTTP2_PING:
-    nghttp2_frame_unpack_ping_payload(&frame->ping, payload, payloadlen);
+    nghttp2_frame_unpack_ping_payload(&frame->ping, payload);
     break;
   case NGHTTP2_GOAWAY:
     nghttp2_frame_unpack_goaway_payload2(&frame->goaway, payload, payloadlen,
                                          mem);
     break;
   case NGHTTP2_WINDOW_UPDATE:
-    nghttp2_frame_unpack_window_update_payload(&frame->window_update, payload,
-                                               payloadlen);
+    nghttp2_frame_unpack_window_update_payload(&frame->window_update, payload);
     break;
   case NGHTTP2_ALTSVC:
     assert(payloadlen > 2);

@@ -449,8 +449,8 @@ static void validate_tree(nghttp2_stream *stream) {
   check_sum_dep(stream);
   check_dep_prev(stream);
 }
-#else /* !STREAM_DEP_DEBUG */
-static void validate_tree(nghttp2_stream *stream _U_) {}
+#else  /* !STREAM_DEP_DEBUG */
+static void validate_tree(nghttp2_stream *stream) { (void)stream; }
 #endif /* !STREAM_DEP_DEBUG*/
 
 static int stream_update_dep_on_attach_item(nghttp2_stream *stream) {
