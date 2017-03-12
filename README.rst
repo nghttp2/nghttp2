@@ -201,10 +201,11 @@ To compile the source code, gcc >= 4.8.3 or clang >= 3.4 is required.
 
    In order to detect third party libraries, pkg-config is used
    (however we don't use pkg-config for some libraries (e.g., libev)).
-   By default, pkg-config searches *.pc file in the standard locations
-   (e.g., /usr/lib/pkgconfig).  If it is necessary to use *.pc file in
-   the custom location, specify paths to ``PKG_CONFIG_PATH``
-   environment variable, and pass it to configure script, like so:
+   By default, pkg-config searches ``*.pc`` file in the standard
+   locations (e.g., /usr/lib/pkgconfig).  If it is necessary to use
+   ``*.pc`` file in the custom location, specify paths to
+   ``PKG_CONFIG_PATH`` environment variable, and pass it to configure
+   script, like so:
 
    .. code-block:: text
 
