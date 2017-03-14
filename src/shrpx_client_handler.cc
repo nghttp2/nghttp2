@@ -1231,14 +1231,6 @@ ClientHandler::ReadBuf *ClientHandler::get_rb() { return &rb_; }
 
 void ClientHandler::signal_write() { conn_.wlimit.startw(); }
 
-void ClientHandler::signal_write_no_wait() {
-  // ev_feed_event works without starting watcher.  But rate limiter
-  // requires active watcher.  Without that, we might not send pending
-  // data.  Also ClientHandler::write_tls requires it.
-  conn_.wlimit.startw();
-  ev_feed_event(conn_.loop, &conn_.wev, EV_WRITE);
-}
-
 RateLimit *ClientHandler::get_rlimit() { return &conn_.rlimit; }
 RateLimit *ClientHandler::get_wlimit() { return &conn_.wlimit; }
 
