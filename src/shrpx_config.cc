@@ -63,21 +63,22 @@
 namespace shrpx {
 
 namespace {
-std::unique_ptr<Config> config;
+Config *config;
 } // namespace
 
 constexpr auto SHRPX_UNIX_PATH_PREFIX = StringRef::from_lit("unix:");
 
-const Config *get_config() { return config.get(); }
+const Config *get_config() { return config; }
 
-Config *mod_config() { return config.get(); }
+Config *mod_config() { return config; }
 
 std::unique_ptr<Config> replace_config(std::unique_ptr<Config> another) {
-  config.swap(another);
-  return another;
+  auto p = config;
+  config = another.release();
+  return std::unique_ptr<Config>(p);
 }
 
-void create_config() { config = make_unique<Config>(); }
+void create_config() { config = new Config(); }
 
 Config::~Config() {
   auto &upstreamconf = http2.upstream;
