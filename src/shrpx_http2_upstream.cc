@@ -1360,7 +1360,7 @@ int Http2Upstream::rst_stream(Downstream *downstream, uint32_t error_code) {
   if (rv < NGHTTP2_ERR_FATAL) {
     ULOG(FATAL, this) << "nghttp2_submit_rst_stream() failed: "
                       << nghttp2_strerror(rv);
-    DIE();
+    return -1;
   }
   return 0;
 }

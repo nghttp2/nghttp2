@@ -854,7 +854,7 @@ int SpdyUpstream::rst_stream(Downstream *downstream, int status_code) {
   if (rv < SPDYLAY_ERR_FATAL) {
     ULOG(FATAL, this) << "spdylay_submit_rst_stream() failed: "
                       << spdylay_strerror(rv);
-    DIE();
+    return -1;
   }
   return 0;
 }

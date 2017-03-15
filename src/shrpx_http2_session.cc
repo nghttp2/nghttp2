@@ -602,7 +602,8 @@ int Http2Session::initiate_connection() {
   }
 
   // Unreachable
-  DIE();
+  assert(0);
+
   return 0;
 }
 
