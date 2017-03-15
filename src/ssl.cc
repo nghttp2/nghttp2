@@ -42,12 +42,11 @@ namespace ssl {
 
 // CRYPTO_LOCK is deprecated as of OpenSSL 1.1.0
 LibsslGlobalLock::LibsslGlobalLock() {}
-LibsslGlobalLock::~LibsslGlobalLock() {}
 
 #else // !OPENSSL_1_1_API
 
 namespace {
-std::vector<std::mutex> ssl_global_locks;
+std::mutex *ssl_global_locks;
 } // namespace
 
 namespace {
@@ -61,19 +60,17 @@ void ssl_locking_cb(int mode, int type, const char *file, int line) {
 } // namespace
 
 LibsslGlobalLock::LibsslGlobalLock() {
-  if (!ssl_global_locks.empty()) {
+  if (ssl_global_locks) {
     std::cerr << "OpenSSL global lock has been already set" << std::endl;
     assert(0);
   }
-  ssl_global_locks = std::vector<std::mutex>(CRYPTO_num_locks());
+  ssl_global_locks = new std::mutex[CRYPTO_num_locks()];
   // CRYPTO_set_id_callback(ssl_thread_id); OpenSSL manual says that
   // if threadid_func is not specified using
   // CRYPTO_THREADID_set_callback(), then default implementation is
   // used. We use this default one.
   CRYPTO_set_locking_callback(ssl_locking_cb);
 }
-
-LibsslGlobalLock::~LibsslGlobalLock() { ssl_global_locks.clear(); }
 
 #endif // !OPENSSL_1_1_API
 

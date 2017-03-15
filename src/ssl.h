@@ -40,7 +40,6 @@ namespace ssl {
 class LibsslGlobalLock {
 public:
   LibsslGlobalLock();
-  ~LibsslGlobalLock();
   LibsslGlobalLock(const LibsslGlobalLock &) = delete;
   LibsslGlobalLock &operator=(const LibsslGlobalLock &) = delete;
 };
