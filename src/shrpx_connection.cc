@@ -293,13 +293,13 @@ void delete_bio_method(BIO_METHOD *bio_method) { BIO_meth_free(bio_method); }
 #else // !OPENSSL_1_1_API
 
 BIO_METHOD *create_bio_method() {
-  static BIO_METHOD shrpx_bio_method = {
+  static auto meth = new BIO_METHOD{
       BIO_TYPE_FD,    "nghttpx-bio",    shrpx_bio_write,
       shrpx_bio_read, shrpx_bio_puts,   shrpx_bio_gets,
       shrpx_bio_ctrl, shrpx_bio_create, shrpx_bio_destroy,
   };
 
-  return &shrpx_bio_method;
+  return meth;
 }
 
 void delete_bio_method(BIO_METHOD *bio_method) {}

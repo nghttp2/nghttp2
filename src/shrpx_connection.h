@@ -161,9 +161,7 @@ struct Connection {
   ev_tstamp read_timeout;
 };
 
-// Creates BIO_method shared by all SSL objects.  If nghttp2 is built
-// with OpenSSL < 1.1.0, this returns statically allocated object.
-// Otherwise, it returns new BIO_METHOD object every time.
+// Creates BIO_method shared by all SSL objects.
 BIO_METHOD *create_bio_method();
 
 // Deletes given |bio_method|.  If nghttp2 is built with OpenSSL <
