@@ -288,8 +288,6 @@ BIO_METHOD *create_bio_method() {
   return meth;
 }
 
-void delete_bio_method(BIO_METHOD *bio_method) { BIO_meth_free(bio_method); }
-
 #else // !OPENSSL_1_1_API
 
 BIO_METHOD *create_bio_method() {
@@ -301,8 +299,6 @@ BIO_METHOD *create_bio_method() {
 
   return meth;
 }
-
-void delete_bio_method(BIO_METHOD *bio_method) {}
 
 #endif // !OPENSSL_1_1_API
 
