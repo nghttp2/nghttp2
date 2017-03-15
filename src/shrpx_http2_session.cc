@@ -54,8 +54,8 @@ using namespace nghttp2;
 namespace shrpx {
 
 namespace {
-const ev_tstamp CONNCHK_TIMEOUT = 5.;
-const ev_tstamp CONNCHK_PING_TIMEOUT = 1.;
+constexpr ev_tstamp CONNCHK_TIMEOUT = 5.;
+constexpr ev_tstamp CONNCHK_PING_TIMEOUT = 1.;
 } // namespace
 
 namespace {
