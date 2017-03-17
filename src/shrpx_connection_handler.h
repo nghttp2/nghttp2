@@ -184,7 +184,7 @@ private:
   // and signature algorithm presented by client.
   std::vector<std::vector<SSL_CTX *>> indexed_ssl_ctx_;
   OCSPUpdateContext ocsp_;
-  std::mt19937 gen_;
+  std::mt19937 &gen_;
   // ev_loop for each worker
   std::vector<struct ev_loop *> worker_loops_;
   // Worker instances when multi threaded mode (-nN, N >= 2) is used.
