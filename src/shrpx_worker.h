@@ -223,7 +223,8 @@ public:
          ssl::CertLookupTree *cert_tree,
          const std::shared_ptr<TicketKeys> &ticket_keys,
          ConnectionHandler *conn_handler,
-         std::shared_ptr<DownstreamConfig> downstreamconf);
+         std::shared_ptr<DownstreamConfig> downstreamconf,
+         std::mt19937 randgen);
   ~Worker();
   void run_async();
   void wait();

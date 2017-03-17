@@ -232,9 +232,11 @@ int ConnectionHandler::create_single_worker() {
     all_ssl_ctx_.push_back(session_cache_ssl_ctx);
   }
 
+  std::random_device rd;
+
   single_worker_ = make_unique<Worker>(
       loop_, sv_ssl_ctx, cl_ssl_ctx, session_cache_ssl_ctx, cert_tree_.get(),
-      ticket_keys_, this, config->conn.downstream);
+      ticket_keys_, this, config->conn.downstream, util::make_mt19937(rd));
 #ifdef HAVE_MRUBY
   if (single_worker_->create_mruby_context() != 0) {
     return -1;
@@ -276,6 +278,8 @@ int ConnectionHandler::create_worker_thread(size_t num) {
     ++num;
   }
 
+  std::random_device rd;
+
   for (size_t i = 0; i < num; ++i) {
     auto loop = ev_loop_new(config->ev_loop_flags);
 
@@ -291,7 +295,7 @@ int ConnectionHandler::create_worker_thread(size_t num) {
     }
     auto worker = make_unique<Worker>(
         loop, sv_ssl_ctx, cl_ssl_ctx, session_cache_ssl_ctx, cert_tree_.get(),
-        ticket_keys_, this, config->conn.downstream);
+        ticket_keys_, this, config->conn.downstream, util::make_mt19937(rd));
 #ifdef HAVE_MRUBY
     if (worker->create_mruby_context() != 0) {
       return -1;

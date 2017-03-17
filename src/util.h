@@ -744,6 +744,9 @@ int sha256(uint8_t *buf, const StringRef &s);
 // NULL-terminated.
 StringRef extract_host(const StringRef &hostport);
 
+// Returns new std::mt19937 object, seeded by |rd|.
+std::mt19937 make_mt19937(std::random_device &rd);
+
 } // namespace util
 
 } // namespace nghttp2

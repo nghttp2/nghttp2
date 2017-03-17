@@ -1452,6 +1452,8 @@ StringRef extract_host(const StringRef &hostport) {
   return StringRef{std::begin(hostport), p};
 }
 
+std::mt19937 make_mt19937(std::random_device &rd) { return std::mt19937(rd()); }
+
 } // namespace util
 
 } // namespace nghttp2

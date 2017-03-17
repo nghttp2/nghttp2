@@ -173,10 +173,6 @@ struct InheritedAddr {
 };
 
 namespace {
-std::random_device rd;
-} // namespace
-
-namespace {
 void signal_cb(struct ev_loop *loop, ev_signal *w, int revents);
 } // namespace
 
@@ -2914,7 +2910,8 @@ int process_options(Config *config,
     auto iov = make_byte_ref(config->balloc, SHRPX_OBFUSCATED_NODE_LENGTH + 2);
     auto p = iov.base;
     *p++ = '_';
-    std::mt19937 gen(rd());
+    std::random_device rd;
+    auto gen = util::make_mt19937(rd);
     p = util::random_alpha_digit(p, p + SHRPX_OBFUSCATED_NODE_LENGTH, gen);
     *p = '\0';
     fwdconf.by_obfuscated = StringRef{iov.base, p};
