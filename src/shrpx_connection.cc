@@ -126,7 +126,20 @@ void Connection::disconnect() {
   }
 
   if (fd != -1) {
-    shutdown(fd, SHUT_WR);
+    // At least for Linux, shutdown both sides, and continue to read
+    // until it gets EOF or error in order to avoid TCP RST.
+    shutdown(fd, SHUT_RDWR);
+#ifdef __linux__
+    std::array<uint8_t, 16_k> b;
+    for (;;) {
+      ssize_t n;
+      while ((n = read(fd, b.data(), b.size())) == -1 && errno == EINTR)
+        ;
+      if (n <= 0) {
+        break;
+      }
+    }
+#endif // __linux__
     close(fd);
     fd = -1;
   }
