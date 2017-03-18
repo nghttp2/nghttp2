@@ -730,6 +730,10 @@ ssize_t Connection::write_clear(const void *data, size_t len) {
 
   wlimit.drain(nwrite);
 
+  if (ev_is_active(&wt)) {
+    ev_timer_again(loop, &wt);
+  }
+
   return nwrite;
 }
 
@@ -752,6 +756,10 @@ ssize_t Connection::writev_clear(struct iovec *iov, int iovcnt) {
   }
 
   wlimit.drain(nwrite);
+
+  if (ev_is_active(&wt)) {
+    ev_timer_again(loop, &wt);
+  }
 
   return nwrite;
 }
