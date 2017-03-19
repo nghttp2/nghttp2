@@ -542,7 +542,7 @@ int HttpsUpstream::on_read() {
   auto rlimit = handler_->get_rlimit();
   auto downstream = get_downstream();
 
-  if (rb->rleft() == 0) {
+  if (rb->rleft() == 0 || handler_->get_should_close_after_write()) {
     return 0;
   }
 
