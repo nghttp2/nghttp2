@@ -323,6 +323,10 @@ SSL_SESSION *tls_session_get_cb(SSL *ssl,
   auto dispatcher = worker->get_session_cache_memcached_dispatcher();
   auto &balloc = handler->get_block_allocator();
 
+  if (idlen == 0) {
+    return nullptr;
+  }
+
   if (conn->tls.cached_session) {
     if (LOG_ENABLED(INFO)) {
       LOG(INFO) << "Memcached: found cached session, id="
