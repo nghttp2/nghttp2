@@ -269,6 +269,12 @@ int tls_session_new_cb(SSL *ssl, SSL_SESSION *session) {
   auto dispatcher = worker->get_session_cache_memcached_dispatcher();
   auto &balloc = handler->get_block_allocator();
 
+#ifdef TLS1_3_VERSION
+  if (SSL_version(ssl) == TLS1_3_VERSION) {
+    return 0;
+  }
+#endif // TLS1_3_VERSION
+
   const unsigned char *id;
   unsigned int idlen;
 
