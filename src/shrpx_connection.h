@@ -154,7 +154,7 @@ struct Connection {
   // used in this object at the moment.  The rest of the program may
   // use this value when it is useful.
   shrpx_proto proto;
-  // The point of time when last read is observed.  Note: sinde we use
+  // The point of time when last read is observed.  Note: since we use
   // |rt| as idle timer, the activity is not limited to read.
   ev_tstamp last_read;
   // Timeout for read timer |rt|.
