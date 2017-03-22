@@ -109,6 +109,8 @@ private:
   bool setup_session();
   void call_error_cb(const boost::system::error_code &ec);
   void handle_deadline();
+  void start_ping();
+  void handle_ping(const boost::system::error_code &ec);
 
   boost::asio::io_service &io_service_;
   tcp::resolver resolver_;
@@ -121,6 +123,8 @@ private:
   boost::asio::deadline_timer deadline_;
   boost::posix_time::time_duration connect_timeout_;
   boost::posix_time::time_duration read_timeout_;
+
+  boost::asio::deadline_timer ping_;
 
   nghttp2_session *session_;
 

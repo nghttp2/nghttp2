@@ -45,6 +45,7 @@ session_impl::session_impl(
       io_service_(io_service),
       resolver_(io_service),
       deadline_(io_service),
+      ping_(io_service),
       connect_timeout_(connect_timeout),
       read_timeout_(boost::posix_time::seconds(60)),
       session_(nullptr),
@@ -83,6 +84,7 @@ void session_impl::start_resolve(const std::string &host,
                           });
 
   deadline_.async_wait(std::bind(&session_impl::handle_deadline, self));
+  start_ping();
 }
 
 void session_impl::handle_deadline() {
@@ -100,6 +102,27 @@ void session_impl::handle_deadline() {
 
   deadline_.async_wait(
       std::bind(&session_impl::handle_deadline, this->shared_from_this()));
+}
+
+void handle_ping2(const boost::system::error_code &ec, int) {}
+
+void session_impl::start_ping() {
+  ping_.expires_from_now(boost::posix_time::seconds(30));
+  ping_.async_wait(std::bind(&session_impl::handle_ping, shared_from_this(),
+                             std::placeholders::_1));
+}
+
+void session_impl::handle_ping(const boost::system::error_code &ec) {
+  if (stopped_ || ec == boost::asio::error::operation_aborted ||
+      !streams_.empty()) {
+    return;
+  }
+
+  nghttp2_submit_ping(session_, NGHTTP2_FLAG_NONE, nullptr);
+
+  signal_write();
+
+  start_ping();
 }
 
 void session_impl::connected(tcp::resolver::iterator endpoint_it) {
@@ -433,6 +456,9 @@ std::unique_ptr<stream> session_impl::pop_stream(int32_t stream_id) {
   }
   auto strm = std::move((*it).second);
   streams_.erase(it);
+  if (streams_.empty()) {
+    start_ping();
+  }
   return strm;
 }
 
@@ -441,6 +467,7 @@ stream *session_impl::create_push_stream(int32_t stream_id) {
   strm->stream_id(stream_id);
   auto p = streams_.emplace(stream_id, std::move(strm));
   assert(p.second);
+  ping_.cancel();
   return (*p.first).second.get();
 }
 
@@ -544,6 +571,7 @@ const request *session_impl::submit(boost::system::error_code &ec,
 
   auto p = streams_.emplace(stream_id, std::move(strm));
   assert(p.second);
+  ping_.cancel();
   return &(*p.first).second->request();
 }
 
@@ -715,6 +743,7 @@ void session_impl::stop() {
 
   shutdown_socket();
   deadline_.cancel();
+  ping_.cancel();
   stopped_ = true;
 }
 
