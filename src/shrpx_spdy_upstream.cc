@@ -261,9 +261,11 @@ void on_ctrl_recv_callback(spdylay_session *session, spdylay_frame_type type,
       return;
     }
 
-    if (std::find_if(std::begin(host->value), std::end(host->value),
+    auto authority = is_connect ? path : host;
+
+    if (std::find_if(std::begin(authority->value), std::end(authority->value),
                      [](char c) { return c == '"' || c == '\\'; }) !=
-        std::end(host->value)) {
+        std::end(authority->value)) {
       if (upstream->error_reply(downstream, 400) != 0) {
         ULOG(FATAL, upstream) << "error_reply failed";
       }
