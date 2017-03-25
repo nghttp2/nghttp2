@@ -241,6 +241,105 @@ std::pair<OutputIterator, OutputIterator> copy(T n, OutputIterator d_first,
 } // namespace
 
 namespace {
+// 1 means that character must be escaped as "\xNN", where NN is ascii
+// code of the character in hex notation.
+constexpr uint8_t ESCAPE_TBL[] = {
+    1 /* NUL  */, 1 /* SOH  */, 1 /* STX  */, 1 /* ETX  */, 1 /* EOT  */,
+    1 /* ENQ  */, 1 /* ACK  */, 1 /* BEL  */, 1 /* BS   */, 1 /* HT   */,
+    1 /* LF   */, 1 /* VT   */, 1 /* FF   */, 1 /* CR   */, 1 /* SO   */,
+    1 /* SI   */, 1 /* DLE  */, 1 /* DC1  */, 1 /* DC2  */, 1 /* DC3  */,
+    1 /* DC4  */, 1 /* NAK  */, 1 /* SYN  */, 1 /* ETB  */, 1 /* CAN  */,
+    1 /* EM   */, 1 /* SUB  */, 1 /* ESC  */, 1 /* FS   */, 1 /* GS   */,
+    1 /* RS   */, 1 /* US   */, 0 /* SPC  */, 0 /* !    */, 1 /* "    */,
+    0 /* #    */, 0 /* $    */, 0 /* %    */, 0 /* &    */, 0 /* '    */,
+    0 /* (    */, 0 /* )    */, 0 /* *    */, 0 /* +    */, 0 /* ,    */,
+    0 /* -    */, 0 /* .    */, 0 /* /    */, 0 /* 0    */, 0 /* 1    */,
+    0 /* 2    */, 0 /* 3    */, 0 /* 4    */, 0 /* 5    */, 0 /* 6    */,
+    0 /* 7    */, 0 /* 8    */, 0 /* 9    */, 0 /* :    */, 0 /* ;    */,
+    0 /* <    */, 0 /* =    */, 0 /* >    */, 0 /* ?    */, 0 /* @    */,
+    0 /* A    */, 0 /* B    */, 0 /* C    */, 0 /* D    */, 0 /* E    */,
+    0 /* F    */, 0 /* G    */, 0 /* H    */, 0 /* I    */, 0 /* J    */,
+    0 /* K    */, 0 /* L    */, 0 /* M    */, 0 /* N    */, 0 /* O    */,
+    0 /* P    */, 0 /* Q    */, 0 /* R    */, 0 /* S    */, 0 /* T    */,
+    0 /* U    */, 0 /* V    */, 0 /* W    */, 0 /* X    */, 0 /* Y    */,
+    0 /* Z    */, 0 /* [    */, 1 /* \    */, 0 /* ]    */, 0 /* ^    */,
+    0 /* _    */, 0 /* `    */, 0 /* a    */, 0 /* b    */, 0 /* c    */,
+    0 /* d    */, 0 /* e    */, 0 /* f    */, 0 /* g    */, 0 /* h    */,
+    0 /* i    */, 0 /* j    */, 0 /* k    */, 0 /* l    */, 0 /* m    */,
+    0 /* n    */, 0 /* o    */, 0 /* p    */, 0 /* q    */, 0 /* r    */,
+    0 /* s    */, 0 /* t    */, 0 /* u    */, 0 /* v    */, 0 /* w    */,
+    0 /* x    */, 0 /* y    */, 0 /* z    */, 0 /* {    */, 0 /* |    */,
+    0 /* }    */, 0 /* ~    */, 1 /* DEL  */, 1 /* 0x80 */, 1 /* 0x81 */,
+    1 /* 0x82 */, 1 /* 0x83 */, 1 /* 0x84 */, 1 /* 0x85 */, 1 /* 0x86 */,
+    1 /* 0x87 */, 1 /* 0x88 */, 1 /* 0x89 */, 1 /* 0x8a */, 1 /* 0x8b */,
+    1 /* 0x8c */, 1 /* 0x8d */, 1 /* 0x8e */, 1 /* 0x8f */, 1 /* 0x90 */,
+    1 /* 0x91 */, 1 /* 0x92 */, 1 /* 0x93 */, 1 /* 0x94 */, 1 /* 0x95 */,
+    1 /* 0x96 */, 1 /* 0x97 */, 1 /* 0x98 */, 1 /* 0x99 */, 1 /* 0x9a */,
+    1 /* 0x9b */, 1 /* 0x9c */, 1 /* 0x9d */, 1 /* 0x9e */, 1 /* 0x9f */,
+    1 /* 0xa0 */, 1 /* 0xa1 */, 1 /* 0xa2 */, 1 /* 0xa3 */, 1 /* 0xa4 */,
+    1 /* 0xa5 */, 1 /* 0xa6 */, 1 /* 0xa7 */, 1 /* 0xa8 */, 1 /* 0xa9 */,
+    1 /* 0xaa */, 1 /* 0xab */, 1 /* 0xac */, 1 /* 0xad */, 1 /* 0xae */,
+    1 /* 0xaf */, 1 /* 0xb0 */, 1 /* 0xb1 */, 1 /* 0xb2 */, 1 /* 0xb3 */,
+    1 /* 0xb4 */, 1 /* 0xb5 */, 1 /* 0xb6 */, 1 /* 0xb7 */, 1 /* 0xb8 */,
+    1 /* 0xb9 */, 1 /* 0xba */, 1 /* 0xbb */, 1 /* 0xbc */, 1 /* 0xbd */,
+    1 /* 0xbe */, 1 /* 0xbf */, 1 /* 0xc0 */, 1 /* 0xc1 */, 1 /* 0xc2 */,
+    1 /* 0xc3 */, 1 /* 0xc4 */, 1 /* 0xc5 */, 1 /* 0xc6 */, 1 /* 0xc7 */,
+    1 /* 0xc8 */, 1 /* 0xc9 */, 1 /* 0xca */, 1 /* 0xcb */, 1 /* 0xcc */,
+    1 /* 0xcd */, 1 /* 0xce */, 1 /* 0xcf */, 1 /* 0xd0 */, 1 /* 0xd1 */,
+    1 /* 0xd2 */, 1 /* 0xd3 */, 1 /* 0xd4 */, 1 /* 0xd5 */, 1 /* 0xd6 */,
+    1 /* 0xd7 */, 1 /* 0xd8 */, 1 /* 0xd9 */, 1 /* 0xda */, 1 /* 0xdb */,
+    1 /* 0xdc */, 1 /* 0xdd */, 1 /* 0xde */, 1 /* 0xdf */, 1 /* 0xe0 */,
+    1 /* 0xe1 */, 1 /* 0xe2 */, 1 /* 0xe3 */, 1 /* 0xe4 */, 1 /* 0xe5 */,
+    1 /* 0xe6 */, 1 /* 0xe7 */, 1 /* 0xe8 */, 1 /* 0xe9 */, 1 /* 0xea */,
+    1 /* 0xeb */, 1 /* 0xec */, 1 /* 0xed */, 1 /* 0xee */, 1 /* 0xef */,
+    1 /* 0xf0 */, 1 /* 0xf1 */, 1 /* 0xf2 */, 1 /* 0xf3 */, 1 /* 0xf4 */,
+    1 /* 0xf5 */, 1 /* 0xf6 */, 1 /* 0xf7 */, 1 /* 0xf8 */, 1 /* 0xf9 */,
+    1 /* 0xfa */, 1 /* 0xfb */, 1 /* 0xfc */, 1 /* 0xfd */, 1 /* 0xfe */,
+    1 /* 0xff */,
+};
+} // namespace
+
+namespace {
+template <typename OutputIterator>
+std::pair<OutputIterator, OutputIterator>
+copy_escape(const char *src, size_t srclen, OutputIterator d_first,
+            OutputIterator d_last) {
+  auto safe_first = src;
+  for (auto p = src; p != src + srclen && d_first != d_last; ++p) {
+    unsigned char c = *p;
+    if (!ESCAPE_TBL[c]) {
+      continue;
+    }
+
+    auto n =
+        std::min(std::distance(d_first, d_last), std::distance(safe_first, p));
+    d_first = std::copy_n(safe_first, n, d_first);
+    if (std::distance(d_first, d_last) < 4) {
+      return std::make_pair(d_first, d_last);
+    }
+    *d_first++ = '\\';
+    *d_first++ = 'x';
+    *d_first++ = LOWER_XDIGITS[c >> 4];
+    *d_first++ = LOWER_XDIGITS[c & 0xf];
+    safe_first = p + 1;
+  }
+
+  auto n = std::min(std::distance(d_first, d_last),
+                    std::distance(safe_first, src + srclen));
+  return std::make_pair(std::copy_n(safe_first, n, d_first), d_last);
+}
+} // namespace
+
+namespace {
+template <typename OutputIterator>
+std::pair<OutputIterator, OutputIterator> copy_escape(const StringRef &src,
+                                                      OutputIterator d_first,
+                                                      OutputIterator d_last) {
+  return copy_escape(src.c_str(), src.size(), d_first, d_last);
+}
+} // namespace
+
+namespace {
 // Construct absolute request URI from |Request|, mainly to log
 // request URI for proxy request (HTTP/2 proxy or client proxy).  This
 // is mostly same routine found in
@@ -329,7 +428,7 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
     case SHRPX_LOGF_REQUEST:
       std::tie(p, last) = copy(method, p, last);
       std::tie(p, last) = copy(' ', p, last);
-      std::tie(p, last) = copy(path, p, last);
+      std::tie(p, last) = copy_escape(path, p, last);
       std::tie(p, last) = copy_l(" HTTP/", p, last);
       std::tie(p, last) = copy(req.http_major, p, last);
       if (req.http_major < 2) {
@@ -346,7 +445,7 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
     case SHRPX_LOGF_HTTP: {
       auto hd = req.fs.header(lf.value);
       if (hd) {
-        std::tie(p, last) = copy((*hd).value, p, last);
+        std::tie(p, last) = copy_escape((*hd).value, p, last);
         break;
       }
 
@@ -387,7 +486,7 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
       std::tie(p, last) = copy(lgsp.pid, p, last);
       break;
     case SHRPX_LOGF_ALPN:
-      std::tie(p, last) = copy(lgsp.alpn, p, last);
+      std::tie(p, last) = copy_escape(lgsp.alpn, p, last);
       break;
     case SHRPX_LOGF_SSL_CIPHER:
       if (!lgsp.tls_info) {
