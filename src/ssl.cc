@@ -162,17 +162,13 @@ void libssl_init() {
 }
 
 int ssl_ctx_set_proto_versions(SSL_CTX *ssl_ctx, int min, int max) {
-#if OPENSSL_1_1_API
+#if OPENSSL_1_1_API || defined(OPENSSL_IS_BORINGSSL)
   if (SSL_CTX_set_min_proto_version(ssl_ctx, min) != 1 ||
       SSL_CTX_set_max_proto_version(ssl_ctx, max) != 1) {
     return -1;
   }
   return 0;
-#elif defined(OPENSSL_IS_BORINGSSL)
-  SSL_CTX_set_min_version(ssl_ctx, min);
-  SSL_CTX_set_max_version(ssl_ctx, max);
-  return 0;
-#else  // !defined(OPENSSL_IS_BORINGSSL)
+#else  // !OPENSSL_1_1_API && !defined(OPENSSL_IS_BORINGSSL)
   long int opts = 0;
 
   // TODO We depends on the ordering of protocol version macro in
@@ -197,7 +193,7 @@ int ssl_ctx_set_proto_versions(SSL_CTX *ssl_ctx, int min, int max) {
   SSL_CTX_set_options(ssl_ctx, opts);
 
   return 0;
-#endif // !defined(OPENSSL_IS_BORINGSSL)
+#endif // !OPENSSL_1_1_API && !defined(OPENSSL_IS_BORINGSSL)
 }
 
 } // namespace ssl
