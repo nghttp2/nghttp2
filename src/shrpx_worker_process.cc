@@ -412,8 +412,7 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
 
   auto loop = EV_DEFAULT;
 
-  std::random_device rd;
-  auto gen = util::make_mt19937(rd);
+  auto gen = util::make_mt19937();
 
   ConnectionHandler conn_handler(loop, gen);
 

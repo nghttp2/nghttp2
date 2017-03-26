@@ -2908,8 +2908,7 @@ int process_options(Config *config,
     auto iov = make_byte_ref(config->balloc, SHRPX_OBFUSCATED_NODE_LENGTH + 2);
     auto p = iov.base;
     *p++ = '_';
-    std::random_device rd;
-    auto gen = util::make_mt19937(rd);
+    auto gen = util::make_mt19937();
     p = util::random_alpha_digit(p, p + SHRPX_OBFUSCATED_NODE_LENGTH, gen);
     *p = '\0';
     fwdconf.by_obfuscated = StringRef{iov.base, p};

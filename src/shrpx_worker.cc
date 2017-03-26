@@ -114,9 +114,8 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
                ssl::CertLookupTree *cert_tree,
                const std::shared_ptr<TicketKeys> &ticket_keys,
                ConnectionHandler *conn_handler,
-               std::shared_ptr<DownstreamConfig> downstreamconf,
-               std::mt19937 randgen)
-    : randgen_(std::move(randgen)),
+               std::shared_ptr<DownstreamConfig> downstreamconf)
+    : randgen_(util::make_mt19937()),
       worker_stat_{},
       dns_tracker_(loop),
       loop_(loop),
