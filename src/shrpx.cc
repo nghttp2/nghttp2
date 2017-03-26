@@ -626,16 +626,16 @@ int create_unix_domain_server_socket(UpstreamAddr &faddr,
   auto fd = socket(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0);
   if (fd == -1) {
     auto error = errno;
-    LOG(WARN) << "socket() syscall failed: "
-              << xsi_strerror(error, errbuf.data(), errbuf.size());
+    LOG(FATAL) << "socket() syscall failed: "
+               << xsi_strerror(error, errbuf.data(), errbuf.size());
     return -1;
   }
 #else  // !SOCK_NONBLOCK
   auto fd = socket(AF_UNIX, SOCK_STREAM, 0);
   if (fd == -1) {
     auto error = errno;
-    LOG(WARN) << "socket() syscall failed: "
-              << xsi_strerror(error, errbuf.data(), errbuf.size());
+    LOG(FATAL) << "socket() syscall failed: "
+               << xsi_strerror(error, errbuf.data(), errbuf.size());
     return -1;
   }
   util::make_socket_nonblocking(fd);
@@ -644,8 +644,8 @@ int create_unix_domain_server_socket(UpstreamAddr &faddr,
   if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &val,
                  static_cast<socklen_t>(sizeof(val))) == -1) {
     auto error = errno;
-    LOG(WARN) << "Failed to set SO_REUSEADDR option to listener socket: "
-              << xsi_strerror(error, errbuf.data(), errbuf.size());
+    LOG(FATAL) << "Failed to set SO_REUSEADDR option to listener socket: "
+               << xsi_strerror(error, errbuf.data(), errbuf.size());
     close(fd);
     return -1;
   }
@@ -716,11 +716,9 @@ int create_tcp_server_socket(UpstreamAddr &faddr,
   addrinfo *res, *rp;
   rv = getaddrinfo(node, service.c_str(), &hints, &res);
   if (rv != 0) {
-    if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "Unable to get IPv" << (faddr.family == AF_INET ? "4" : "6")
-                << " address for " << faddr.host << ", port " << faddr.port
-                << ": " << gai_strerror(rv);
-    }
+    LOG(FATAL) << "Unable to get IPv" << (faddr.family == AF_INET ? "4" : "6")
+               << " address for " << faddr.host << ", port " << faddr.port
+               << ": " << gai_strerror(rv);
     return -1;
   }
 
@@ -836,8 +834,8 @@ int create_tcp_server_socket(UpstreamAddr &faddr,
   }
 
   if (!rp) {
-    LOG(WARN) << "Listening " << (faddr.family == AF_INET ? "IPv4" : "IPv6")
-              << " socket failed";
+    LOG(FATAL) << "Listening " << (faddr.family == AF_INET ? "IPv4" : "IPv6")
+               << " socket failed";
 
     return -1;
   }
