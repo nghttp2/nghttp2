@@ -1596,7 +1596,7 @@ void fill_default_config(Config *config) {
 
 namespace {
 void print_version(std::ostream &out) {
-  out << get_config()->http.server_name.c_str() << std::endl;
+  out << "nghttpx nghttp2/" NGHTTP2_VERSION << std::endl;
 }
 } // namespace
 
