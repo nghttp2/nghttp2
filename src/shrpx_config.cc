@@ -3761,6 +3761,13 @@ int resolve_hostname(Address *addr, const char *hostname, uint16_t port,
   addrinfo *res;
 
   rv = getaddrinfo(hostname, service.c_str(), &hints, &res);
+#ifdef AI_ADDRCONFIG
+  if (rv != 0) {
+    // Retry without AI_ADDRCONFIG
+    hints.ai_flags &= ~AI_ADDRCONFIG;
+    rv = getaddrinfo(hostname, service.c_str(), &hints, &res);
+  }
+#endif // AI_ADDRCONFIG
   if (rv != 0) {
     LOG(FATAL) << "Unable to resolve address for " << hostname << ": "
                << gai_strerror(rv);

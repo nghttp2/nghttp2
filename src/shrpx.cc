@@ -715,6 +715,13 @@ int create_tcp_server_socket(UpstreamAddr &faddr,
 
   addrinfo *res, *rp;
   rv = getaddrinfo(node, service.c_str(), &hints, &res);
+#ifdef AI_ADDRCONFIG
+  if (rv != 0) {
+    // Retry without AI_ADDRCONFIG
+    hints.ai_flags &= ~AI_ADDRCONFIG;
+    rv = getaddrinfo(node, service.c_str(), &hints, &res);
+  }
+#endif // AI_ADDRCONFIG
   if (rv != 0) {
     LOG(FATAL) << "Unable to get IPv" << (faddr.family == AF_INET ? "4" : "6")
                << " address for " << faddr.host << ", port " << faddr.port
