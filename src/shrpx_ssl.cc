@@ -804,6 +804,7 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
   SSL_CTX_set_tlsext_ticket_key_cb(ssl_ctx, ticket_key_cb);
 #ifndef OPENSSL_IS_BORINGSSL
   SSL_CTX_set_tlsext_status_cb(ssl_ctx, ocsp_resp_cb);
+  SSL_CTX_set_early_data_enabled(ssl_ctx, 1);
 #endif // OPENSSL_IS_BORINGSSL
   SSL_CTX_set_info_callback(ssl_ctx, info_callback);
 
