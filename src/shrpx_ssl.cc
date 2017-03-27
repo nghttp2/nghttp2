@@ -807,6 +807,10 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
 #endif // OPENSSL_IS_BORINGSSL
   SSL_CTX_set_info_callback(ssl_ctx, info_callback);
 
+#ifdef OPENSSL_IS_BORINGSSL
+  SSL_CTX_set_early_data_enabled(ssl_ctx, 1);
+#endif // OPENSSL_IS_BORINGSSL
+
   // NPN advertisement
   SSL_CTX_set_next_protos_advertised_cb(ssl_ctx, next_proto_cb, nullptr);
 #if OPENSSL_VERSION_NUMBER >= 0x10002000L
