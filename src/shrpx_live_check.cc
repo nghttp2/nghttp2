@@ -222,6 +222,7 @@ int LiveCheck::initiate_connection() {
     }
 
     conn_.set_ssl(ssl);
+    conn_.tls.client_session_cache = &addr_->tls_session_cache;
   }
 
   if (addr_->dns) {
@@ -398,14 +399,6 @@ int LiveCheck::tls_handshake() {
   if (!get_config()->tls.insecure &&
       ssl::check_cert(conn_.tls.ssl, addr_, raddr_) != 0) {
     return -1;
-  }
-
-  if (!SSL_session_reused(conn_.tls.ssl)) {
-    auto tls_session = SSL_get0_session(conn_.tls.ssl);
-    if (tls_session) {
-      ssl::try_cache_tls_session(addr_->tls_session_cache, *raddr_, tls_session,
-                                 ev_now(conn_.loop));
-    }
   }
 
   // Check negotiated ALPN

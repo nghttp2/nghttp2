@@ -262,6 +262,20 @@ constexpr auto MEMCACHED_SESSION_CACHE_KEY_PREFIX =
     StringRef::from_lit("nghttpx:tls-session-cache:");
 
 namespace {
+int tls_session_client_new_cb(SSL *ssl, SSL_SESSION *session) {
+  auto conn = static_cast<Connection *>(SSL_get_app_data(ssl));
+  if (conn->tls.client_session_cache == nullptr) {
+    return 0;
+  }
+
+  try_cache_tls_session(conn->tls.client_session_cache, session,
+                        ev_now(conn->loop));
+
+  return 0;
+}
+} // namespace
+
+namespace {
 int tls_session_new_cb(SSL *ssl, SSL_SESSION *session) {
   auto conn = static_cast<Connection *>(SSL_get_app_data(ssl));
   auto handler = static_cast<ClientHandler *>(conn->data);
@@ -916,6 +930,10 @@ SSL_CTX *create_ssl_client_context(
   auto &tlsconf = get_config()->tls;
 
   SSL_CTX_set_options(ssl_ctx, ssl_opts | tlsconf.tls_proto_mask);
+
+  SSL_CTX_set_session_cache_mode(ssl_ctx, SSL_SESS_CACHE_CLIENT |
+                                              SSL_SESS_CACHE_NO_INTERNAL_STORE);
+  SSL_CTX_sess_set_new_cb(ssl_ctx, tls_session_client_new_cb);
 
   if (nghttp2::ssl::ssl_ctx_set_proto_versions(
           ssl_ctx, tlsconf.min_proto_version, tlsconf.max_proto_version) != 0) {
@@ -1678,24 +1696,22 @@ std::vector<uint8_t> serialize_ssl_session(SSL_SESSION *session) {
 }
 } // namespace
 
-void try_cache_tls_session(TLSSessionCache &cache, const Address &addr,
-                           SSL_SESSION *session, ev_tstamp t) {
-  if (cache.last_updated + 1_min > t) {
+void try_cache_tls_session(TLSSessionCache *cache, SSL_SESSION *session,
+                           ev_tstamp t) {
+  if (cache->last_updated + 1_min > t) {
     if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "Cache for addr=" << util::to_numeric_addr(&addr)
-                << " is still host.  Not updating.";
+      LOG(INFO) << "Client session cache entry is still fresh.";
     }
     return;
   }
 
   if (LOG_ENABLED(INFO)) {
-    LOG(INFO) << "Update cache entry for SSL_SESSION=" << session
-              << ", addr=" << util::to_numeric_addr(&addr)
-              << ", timestamp=" << std::fixed << std::setprecision(6) << t;
+    LOG(INFO) << "Update client cache entry "
+              << "timestamp = " << std::fixed << std::setprecision(6) << t;
   }
 
-  cache.session_data = serialize_ssl_session(session);
-  cache.last_updated = t;
+  cache->session_data = serialize_ssl_session(session);
+  cache->last_updated = t;
 }
 
 SSL_SESSION *reuse_tls_session(const TLSSessionCache &cache) {

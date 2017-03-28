@@ -244,12 +244,12 @@ bool upstream_tls_enabled(const ConnectionConfig &connconf);
 // is based on RFC 6125.
 bool tls_hostname_match(const StringRef &pattern, const StringRef &hostname);
 
-// Caches |session| which is associated to remote address |addr|.
-// |session| is serialized into ASN1 representation, and stored.  |t|
-// is used as a time stamp.  Depending on the existing cache's time
-// stamp, |session| might not be cached.
-void try_cache_tls_session(TLSSessionCache &cache, const Address &addr,
-                           SSL_SESSION *session, ev_tstamp t);
+// Caches |session|.  |session| is serialized into ASN1
+// representation, and stored.  |t| is used as a time stamp.
+// Depending on the existing cache's time stamp, |session| might not
+// be cached.
+void try_cache_tls_session(TLSSessionCache *cache, SSL_SESSION *session,
+                           ev_tstamp t);
 
 // Returns cached session associated |addr|.  If no cache entry is
 // found associated to |addr|, nullptr will be returned.

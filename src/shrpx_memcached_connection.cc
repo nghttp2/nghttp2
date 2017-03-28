@@ -155,6 +155,7 @@ int MemcachedConnection::initiate_connection() {
       return -1;
     }
     conn_.set_ssl(ssl);
+    conn_.tls.client_session_cache = &tls_session_cache_;
   }
 
   conn_.fd = util::create_nonblock_socket(addr_->su.storage.ss_family);
@@ -278,14 +279,6 @@ int MemcachedConnection::tls_handshake() {
       ssl::check_cert(conn_.tls.ssl, addr_, sni_name_) != 0) {
     connect_blocker_.on_failure();
     return -1;
-  }
-
-  if (!SSL_session_reused(conn_.tls.ssl)) {
-    auto tls_session = SSL_get0_session(conn_.tls.ssl);
-    if (tls_session) {
-      ssl::try_cache_tls_session(tls_session_cache_, *addr_, tls_session,
-                                 ev_now(conn_.loop));
-    }
   }
 
   ev_timer_stop(conn_.loop, &conn_.rt);

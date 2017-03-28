@@ -431,6 +431,7 @@ int HttpDownstreamConnection::initiate_connection() {
         ssl::setup_downstream_http1_alpn(ssl);
 
         conn_.set_ssl(ssl);
+        conn_.tls.client_session_cache = &addr_->tls_session_cache;
 
         auto sni_name =
             addr_->sni.empty() ? StringRef{addr_->host} : StringRef{addr_->sni};
@@ -1227,14 +1228,6 @@ int HttpDownstreamConnection::tls_handshake() {
     downstream_failure(addr_, raddr_);
 
     return -1;
-  }
-
-  if (!SSL_session_reused(conn_.tls.ssl)) {
-    auto session = SSL_get0_session(conn_.tls.ssl);
-    if (session) {
-      ssl::try_cache_tls_session(addr_->tls_session_cache, *raddr_, session,
-                                 ev_now(conn_.loop));
-    }
   }
 
   auto &connect_blocker = addr_->connect_blocker;

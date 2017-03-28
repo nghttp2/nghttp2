@@ -437,6 +437,7 @@ int Http2Session::initiate_connection() {
         ssl::setup_downstream_http2_alpn(ssl);
 
         conn_.set_ssl(ssl);
+        conn_.tls.client_session_cache = &addr_->tls_session_cache;
 
         auto sni_name =
             addr_->sni.empty() ? StringRef{addr_->host} : StringRef{addr_->sni};
@@ -2074,14 +2075,6 @@ int Http2Session::tls_handshake() {
     downstream_failure(addr_, raddr_);
 
     return -1;
-  }
-
-  if (!SSL_session_reused(conn_.tls.ssl)) {
-    auto tls_session = SSL_get0_session(conn_.tls.ssl);
-    if (tls_session) {
-      ssl::try_cache_tls_session(addr_->tls_session_cache, *raddr_, tls_session,
-                                 ev_now(conn_.loop));
-    }
   }
 
   read_ = &Http2Session::read_tls;
