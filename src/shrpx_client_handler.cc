@@ -96,10 +96,6 @@ void readcb(struct ev_loop *loop, ev_io *w, int revents) {
     delete handler;
     return;
   }
-  if (handler->do_write() != 0) {
-    delete handler;
-    return;
-  }
 }
 } // namespace
 

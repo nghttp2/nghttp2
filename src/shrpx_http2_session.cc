@@ -138,13 +138,6 @@ void readcb(struct ev_loop *loop, ev_io *w, int revents) {
     return;
   }
   http2session->connection_alive();
-
-  rv = http2session->do_write();
-  if (rv != 0) {
-    delete http2session;
-
-    return;
-  }
 }
 } // namespace
 
@@ -1995,7 +1988,7 @@ int Http2Session::read_clear() {
     auto nread = conn_.read_clear(buf.data(), buf.size());
 
     if (nread == 0) {
-      return 0;
+      return write_clear();
     }
 
     if (nread < 0) {
@@ -2099,7 +2092,7 @@ int Http2Session::read_tls() {
     auto nread = conn_.read_tls(buf.data(), buf.size());
 
     if (nread == 0) {
-      return 0;
+      return write_tls();
     }
 
     if (nread < 0) {
