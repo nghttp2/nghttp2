@@ -84,7 +84,6 @@ void session_impl::start_resolve(const std::string &host,
                           });
 
   deadline_.async_wait(std::bind(&session_impl::handle_deadline, self));
-  start_ping();
 }
 
 void session_impl::handle_deadline() {
@@ -134,6 +133,8 @@ void session_impl::connected(tcp::resolver::iterator endpoint_it) {
 
   do_write();
   do_read();
+
+  start_ping();
 
   auto &connect_cb = on_connect();
   if (connect_cb) {
