@@ -152,7 +152,7 @@ void backend_retry(Downstream *downstream) {
   if (rv == SHRPX_ERR_TLS_REQUIRED) {
     rv = upstream->on_downstream_abort_request_with_https_redirect(downstream);
   } else {
-    rv = upstream->on_downstream_abort_request(downstream, 503);
+    rv = upstream->on_downstream_abort_request(downstream, 502);
   }
 
   if (rv != 0) {

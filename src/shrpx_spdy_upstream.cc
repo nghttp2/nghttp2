@@ -1382,7 +1382,7 @@ int SpdyUpstream::on_downstream_reset(Downstream *downstream, bool no_retry) {
   return 0;
 
 fail:
-  if (on_downstream_abort_request(downstream, 503) != 0) {
+  if (on_downstream_abort_request(downstream, 502) != 0) {
     rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
   }
   downstream->pop_downstream_connection();

@@ -631,7 +631,7 @@ int HttpsUpstream::on_read() {
       status_code = downstream->response().http_status;
       if (status_code == 0) {
         if (downstream->get_request_state() == Downstream::CONNECT_FAIL) {
-          status_code = 503;
+          status_code = 502;
         } else if (downstream->get_request_state() ==
                    Downstream::HTTP1_REQUEST_HEADER_TOO_LARGE) {
           status_code = 431;
@@ -1310,7 +1310,7 @@ int HttpsUpstream::on_downstream_reset(Downstream *downstream, bool no_retry) {
       // We have got all response body already.  Send it off.
       return 0;
     case Downstream::INITIAL:
-      if (on_downstream_abort_request(downstream_.get(), 503) != 0) {
+      if (on_downstream_abort_request(downstream_.get(), 502) != 0) {
         return -1;
       }
       return 0;
@@ -1348,7 +1348,7 @@ fail:
   if (rv == SHRPX_ERR_TLS_REQUIRED) {
     rv = on_downstream_abort_request_with_https_redirect(downstream);
   } else {
-    rv = on_downstream_abort_request(downstream_.get(), 503);
+    rv = on_downstream_abort_request(downstream_.get(), 502);
   }
   if (rv != 0) {
     return -1;

@@ -449,7 +449,7 @@ void Http2Upstream::initiate_downstream(Downstream *downstream) {
     if (rv == SHRPX_ERR_TLS_REQUIRED) {
       rv = redirect_to_https(downstream);
     } else {
-      rv = error_reply(downstream, 503);
+      rv = error_reply(downstream, 502);
     }
     if (rv != 0) {
       rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
@@ -464,7 +464,7 @@ void Http2Upstream::initiate_downstream(Downstream *downstream) {
   rv = downstream->attach_downstream_connection(std::move(dconn));
   if (rv != 0) {
     // downstream connection fails, send error page
-    if (error_reply(downstream, 503) != 0) {
+    if (error_reply(downstream, 502) != 0) {
       rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
     }
 
@@ -477,7 +477,7 @@ void Http2Upstream::initiate_downstream(Downstream *downstream) {
   rv = downstream->push_request_headers();
   if (rv != 0) {
 
-    if (error_reply(downstream, 503) != 0) {
+    if (error_reply(downstream, 502) != 0) {
       rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
     }
 
@@ -2005,7 +2005,7 @@ fail:
   if (rv == SHRPX_ERR_TLS_REQUIRED) {
     rv = on_downstream_abort_request_with_https_redirect(downstream);
   } else {
-    rv = on_downstream_abort_request(downstream, 503);
+    rv = on_downstream_abort_request(downstream, 502);
   }
   if (rv != 0) {
     rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
