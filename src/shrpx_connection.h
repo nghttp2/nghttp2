@@ -56,6 +56,8 @@ enum {
 struct TLSConnection {
   DefaultMemchunks wbuf;
   DefaultPeekMemchunks rbuf;
+  // Stores TLSv1.3 early data.
+  DefaultMemchunks earlybuf;
   SSL *ssl;
   SSL_SESSION *cached_session;
   MemcachedRequest *cached_session_lookup_req;
@@ -74,6 +76,12 @@ struct TLSConnection {
   // true if ssl is initialized as server, and client requested
   // signed_certificate_timestamp extension.
   bool sct_requested;
+  // true if TLSv1.3 early data has been completely received.  Since
+  // SSL_read_early_data acts like SSL_do_handshake, this field may be
+  // true even if the negotiated TLS version is TLSv1.2 or earlier.
+  // This value is also true if this is client side connection for
+  // convenience.
+  bool early_data_finish;
 };
 
 struct TCPHint {
