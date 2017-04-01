@@ -53,7 +53,7 @@
 #include "http-parser/http_parser.h"
 
 #include "shrpx_log.h"
-#include "shrpx_ssl.h"
+#include "shrpx_tls.h"
 #include "shrpx_http.h"
 #include "util.h"
 #include "base64.h"
@@ -642,7 +642,7 @@ int parse_duration(ev_tstamp *dest, const StringRef &opt,
 namespace {
 int parse_tls_proto_version(int &dest, const StringRef &opt,
                             const StringRef &optarg) {
-  auto v = ssl::proto_version_from_string(optarg);
+  auto v = tls::proto_version_from_string(optarg);
   if (v == -1) {
     LOG(ERROR) << opt << ": invalid TLS protocol version: " << optarg;
     return -1;

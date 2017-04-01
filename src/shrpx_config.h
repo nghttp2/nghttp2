@@ -64,11 +64,11 @@ struct LogFragment;
 class ConnectBlocker;
 class Http2Session;
 
-namespace ssl {
+namespace tls {
 
 class CertLookupTree;
 
-} // namespace ssl
+} // namespace tls
 
 constexpr auto SHRPX_OPT_PRIVATE_KEY_FILE =
     StringRef::from_lit("private-key-file");

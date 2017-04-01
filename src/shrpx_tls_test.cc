@@ -22,11 +22,11 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#include "shrpx_ssl_test.h"
+#include "shrpx_tls_test.h"
 
 #include <CUnit/CUnit.h>
 
-#include "shrpx_ssl.h"
+#include "shrpx_tls.h"
 #include "shrpx_log.h"
 #include "util.h"
 #include "template.h"
@@ -35,8 +35,8 @@ using namespace nghttp2;
 
 namespace shrpx {
 
-void test_shrpx_ssl_create_lookup_tree(void) {
-  auto tree = make_unique<ssl::CertLookupTree>();
+void test_shrpx_tls_create_lookup_tree(void) {
+  auto tree = make_unique<tls::CertLookupTree>();
 
   constexpr StringRef hostnames[] = {
       StringRef::from_lit("example.com"),             // 0
@@ -85,7 +85,7 @@ void test_shrpx_ssl_create_lookup_tree(void) {
   };
   num = array_size(names);
 
-  tree = make_unique<ssl::CertLookupTree>();
+  tree = make_unique<tls::CertLookupTree>();
   for (size_t idx = 0; idx < num; ++idx) {
     tree->add_cert(names[idx], idx);
   }
@@ -116,13 +116,13 @@ void test_shrpx_ssl_create_lookup_tree(void) {
 //     -config=ca-config.json -profile=server test.example.com.csr |
 //     cfssljson -bare test.example.com
 //
-void test_shrpx_ssl_cert_lookup_tree_add_ssl_ctx(void) {
+void test_shrpx_tls_cert_lookup_tree_add_ssl_ctx(void) {
   int rv;
 
   constexpr char nghttp2_certfile[] = NGHTTP2_SRC_DIR "/test.nghttp2.org.pem";
   auto nghttp2_ssl_ctx = SSL_CTX_new(SSLv23_server_method());
   auto nghttp2_ssl_ctx_del = defer(SSL_CTX_free, nghttp2_ssl_ctx);
-  auto nghttp2_tls_ctx_data = make_unique<ssl::TLSContextData>();
+  auto nghttp2_tls_ctx_data = make_unique<tls::TLSContextData>();
   nghttp2_tls_ctx_data->cert_file = nghttp2_certfile;
   SSL_CTX_set_app_data(nghttp2_ssl_ctx, nghttp2_tls_ctx_data.get());
   rv = SSL_CTX_use_certificate_chain_file(nghttp2_ssl_ctx, nghttp2_certfile);
@@ -132,22 +132,22 @@ void test_shrpx_ssl_cert_lookup_tree_add_ssl_ctx(void) {
   constexpr char examples_certfile[] = NGHTTP2_SRC_DIR "/test.example.com.pem";
   auto examples_ssl_ctx = SSL_CTX_new(SSLv23_server_method());
   auto examples_ssl_ctx_del = defer(SSL_CTX_free, examples_ssl_ctx);
-  auto examples_tls_ctx_data = make_unique<ssl::TLSContextData>();
+  auto examples_tls_ctx_data = make_unique<tls::TLSContextData>();
   examples_tls_ctx_data->cert_file = examples_certfile;
   SSL_CTX_set_app_data(examples_ssl_ctx, examples_tls_ctx_data.get());
   rv = SSL_CTX_use_certificate_chain_file(examples_ssl_ctx, examples_certfile);
 
   CU_ASSERT(1 == rv);
 
-  ssl::CertLookupTree tree;
+  tls::CertLookupTree tree;
   std::vector<std::vector<SSL_CTX *>> indexed_ssl_ctx;
 
-  rv = ssl::cert_lookup_tree_add_ssl_ctx(&tree, indexed_ssl_ctx,
+  rv = tls::cert_lookup_tree_add_ssl_ctx(&tree, indexed_ssl_ctx,
                                          nghttp2_ssl_ctx);
 
   CU_ASSERT(0 == rv);
 
-  rv = ssl::cert_lookup_tree_add_ssl_ctx(&tree, indexed_ssl_ctx,
+  rv = tls::cert_lookup_tree_add_ssl_ctx(&tree, indexed_ssl_ctx,
                                          examples_ssl_ctx);
 
   CU_ASSERT(0 == rv);
@@ -162,10 +162,10 @@ void test_shrpx_ssl_cert_lookup_tree_add_ssl_ctx(void) {
 template <size_t N, size_t M>
 bool tls_hostname_match_wrapper(const char (&pattern)[N],
                                 const char (&hostname)[M]) {
-  return ssl::tls_hostname_match(StringRef{pattern, N}, StringRef{hostname, M});
+  return tls::tls_hostname_match(StringRef{pattern, N}, StringRef{hostname, M});
 }
 
-void test_shrpx_ssl_tls_hostname_match(void) {
+void test_shrpx_tls_tls_hostname_match(void) {
   CU_ASSERT(tls_hostname_match_wrapper("example.com", "example.com"));
   CU_ASSERT(tls_hostname_match_wrapper("example.com", "EXAMPLE.com"));
 

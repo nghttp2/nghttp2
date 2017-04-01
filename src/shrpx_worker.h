@@ -45,7 +45,7 @@
 #include "shrpx_config.h"
 #include "shrpx_downstream_connection_pool.h"
 #include "memchunk.h"
-#include "shrpx_ssl.h"
+#include "shrpx_tls.h"
 #include "shrpx_live_check.h"
 #include "shrpx_connect_blocker.h"
 #include "shrpx_dns_tracker.h"
@@ -69,9 +69,9 @@ class MRubyContext;
 } // namespace mruby
 #endif // HAVE_MRUBY
 
-namespace ssl {
+namespace tls {
 class CertLookupTree;
-} // namespace ssl
+} // namespace tls
 
 struct DownstreamAddr {
   Address addr;
@@ -95,7 +95,7 @@ struct DownstreamAddr {
   size_t fall;
   size_t rise;
   // Client side TLS session cache
-  ssl::TLSSessionCache tls_session_cache;
+  tls::TLSSessionCache tls_session_cache;
   // Http2Session object created for this address.  This list chains
   // all Http2Session objects that is not in group scope
   // http2_avail_freelist, and is not reached in maximum concurrency.
@@ -220,7 +220,7 @@ class Worker {
 public:
   Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
          SSL_CTX *tls_session_cache_memcached_ssl_ctx,
-         ssl::CertLookupTree *cert_tree,
+         tls::CertLookupTree *cert_tree,
          const std::shared_ptr<TicketKeys> &ticket_keys,
          ConnectionHandler *conn_handler,
          std::shared_ptr<DownstreamConfig> downstreamconf);
@@ -230,7 +230,7 @@ public:
   void process_events();
   void send(const WorkerEvent &event);
 
-  ssl::CertLookupTree *get_cert_lookup_tree() const;
+  tls::CertLookupTree *get_cert_lookup_tree() const;
 
   // These 2 functions make a lock m_ to get/set ticket keys
   // atomically.
@@ -297,7 +297,7 @@ private:
   // get_config()->tls_ctx_per_worker == true.
   SSL_CTX *sv_ssl_ctx_;
   SSL_CTX *cl_ssl_ctx_;
-  ssl::CertLookupTree *cert_tree_;
+  tls::CertLookupTree *cert_tree_;
   ConnectionHandler *conn_handler_;
 
 #ifndef HAVE_ATOMIC_STD_SHARED_PTR

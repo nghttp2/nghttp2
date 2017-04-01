@@ -76,7 +76,7 @@
 #include <nghttp2/nghttp2.h>
 
 #include "shrpx_config.h"
-#include "shrpx_ssl.h"
+#include "shrpx_tls.h"
 #include "shrpx_log_config.h"
 #include "shrpx_worker.h"
 #include "shrpx_http2_upstream.h"
@@ -1441,9 +1441,9 @@ void fill_default_config(Config *config) {
   tlsconf.client.ciphers =
       StringRef::from_lit(nghttp2::tls::DEFAULT_CIPHER_LIST);
   tlsconf.min_proto_version =
-      ssl::proto_version_from_string(DEFAULT_TLS_MIN_PROTO_VERSION);
+      tls::proto_version_from_string(DEFAULT_TLS_MIN_PROTO_VERSION);
   tlsconf.max_proto_version =
-      ssl::proto_version_from_string(DEFAULT_TLS_MAX_PROTO_VERSION);
+      tls::proto_version_from_string(DEFAULT_TLS_MAX_PROTO_VERSION);
 #if OPENSSL_1_1_API || defined(OPENSSL_IS_BORINGSSL)
   tlsconf.ecdh_curves = StringRef::from_lit("X25519:P-256:P-384:P-521");
 #else  // !OPENSSL_1_1_API && !defined(OPENSSL_IS_BORINGSSL)
@@ -2786,7 +2786,7 @@ int process_options(Config *config,
   }
 
   if (!tlsconf.tls_proto_list.empty()) {
-    tlsconf.tls_proto_mask = ssl::create_tls_proto_mask(tlsconf.tls_proto_list);
+    tlsconf.tls_proto_mask = tls::create_tls_proto_mask(tlsconf.tls_proto_list);
   }
 
   // TODO We depends on the ordering of protocol version macro in
@@ -2797,7 +2797,7 @@ int process_options(Config *config,
     return -1;
   }
 
-  if (ssl::set_alpn_prefs(tlsconf.alpn_prefs, tlsconf.npn_list) != 0) {
+  if (tls::set_alpn_prefs(tlsconf.alpn_prefs, tlsconf.npn_list) != 0) {
     return -1;
   }
 
@@ -2821,7 +2821,7 @@ int process_options(Config *config,
     upstreamconf.worker_connections = std::numeric_limits<size_t>::max();
   }
 
-  if (ssl::upstream_tls_enabled(config->conn) &&
+  if (tls::upstream_tls_enabled(config->conn) &&
       (tlsconf.private_key_file.empty() || tlsconf.cert_file.empty())) {
     LOG(FATAL) << "TLS private key and certificate files are required.  "
                   "Specify them in command-line, or in configuration file "
@@ -2829,7 +2829,7 @@ int process_options(Config *config,
     return -1;
   }
 
-  if (ssl::upstream_tls_enabled(config->conn) && !tlsconf.ocsp.disabled) {
+  if (tls::upstream_tls_enabled(config->conn) && !tlsconf.ocsp.disabled) {
     struct stat buf;
     if (stat(tlsconf.ocsp.fetch_ocsp_response_file.c_str(), &buf) != 0) {
       tlsconf.ocsp.disabled = true;

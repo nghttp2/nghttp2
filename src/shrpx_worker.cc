@@ -30,7 +30,7 @@
 
 #include <memory>
 
-#include "shrpx_ssl.h"
+#include "shrpx_tls.h"
 #include "shrpx_log.h"
 #include "shrpx_client_handler.h"
 #include "shrpx_http2_session.h"
@@ -111,7 +111,7 @@ bool match_shared_downstream_addr(
 
 Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
                SSL_CTX *tls_session_cache_memcached_ssl_ctx,
-               ssl::CertLookupTree *cert_tree,
+               tls::CertLookupTree *cert_tree,
                const std::shared_ptr<TicketKeys> &ticket_keys,
                ConnectionHandler *conn_handler,
                std::shared_ptr<DownstreamConfig> downstreamconf)
@@ -368,7 +368,7 @@ void Worker::process_events() {
     }
 
     auto client_handler =
-        ssl::accept_connection(this, wev.client_fd, &wev.client_addr.sa,
+        tls::accept_connection(this, wev.client_fd, &wev.client_addr.sa,
                                wev.client_addrlen, wev.faddr);
     if (!client_handler) {
       if (LOG_ENABLED(INFO)) {
@@ -416,7 +416,7 @@ void Worker::process_events() {
   }
 }
 
-ssl::CertLookupTree *Worker::get_cert_lookup_tree() const { return cert_tree_; }
+tls::CertLookupTree *Worker::get_cert_lookup_tree() const { return cert_tree_; }
 
 std::shared_ptr<TicketKeys> Worker::get_ticket_keys() {
 #ifdef HAVE_ATOMIC_STD_SHARED_PTR

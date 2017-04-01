@@ -32,7 +32,7 @@
 #include "shrpx_memcached_request.h"
 #include "shrpx_memcached_result.h"
 #include "shrpx_config.h"
-#include "shrpx_ssl.h"
+#include "shrpx_tls.h"
 #include "shrpx_log.h"
 #include "util.h"
 
@@ -150,7 +150,7 @@ int MemcachedConnection::initiate_connection() {
   assert(conn_.fd == -1);
 
   if (ssl_ctx_) {
-    auto ssl = ssl::create_ssl(ssl_ctx_);
+    auto ssl = tls::create_ssl(ssl_ctx_);
     if (!ssl) {
       return -1;
     }
@@ -184,7 +184,7 @@ int MemcachedConnection::initiate_connection() {
       SSL_set_tlsext_host_name(conn_.tls.ssl, sni_name_.c_str());
     }
 
-    auto session = ssl::reuse_tls_session(tls_session_cache_);
+    auto session = tls::reuse_tls_session(tls_session_cache_);
     if (session) {
       SSL_set_session(conn_.tls.ssl, session);
       SSL_SESSION_free(session);
@@ -276,7 +276,7 @@ int MemcachedConnection::tls_handshake() {
   auto &tlsconf = get_config()->tls;
 
   if (!tlsconf.insecure &&
-      ssl::check_cert(conn_.tls.ssl, addr_, sni_name_) != 0) {
+      tls::check_cert(conn_.tls.ssl, addr_, sni_name_) != 0) {
     connect_blocker_.on_failure();
     return -1;
   }

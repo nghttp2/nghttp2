@@ -25,7 +25,7 @@
 #include "shrpx_live_check.h"
 #include "shrpx_worker.h"
 #include "shrpx_connect_blocker.h"
-#include "shrpx_ssl.h"
+#include "shrpx_tls.h"
 #include "shrpx_log.h"
 
 namespace shrpx {
@@ -205,17 +205,17 @@ int LiveCheck::initiate_connection() {
   if (!dns_query_ && addr_->tls) {
     assert(ssl_ctx_);
 
-    auto ssl = ssl::create_ssl(ssl_ctx_);
+    auto ssl = tls::create_ssl(ssl_ctx_);
     if (!ssl) {
       return -1;
     }
 
     switch (addr_->proto) {
     case PROTO_HTTP1:
-      ssl::setup_downstream_http1_alpn(ssl);
+      tls::setup_downstream_http1_alpn(ssl);
       break;
     case PROTO_HTTP2:
-      ssl::setup_downstream_http2_alpn(ssl);
+      tls::setup_downstream_http2_alpn(ssl);
       break;
     default:
       assert(0);
@@ -304,7 +304,7 @@ int LiveCheck::initiate_connection() {
       SSL_set_tlsext_host_name(conn_.tls.ssl, sni_name.c_str());
     }
 
-    auto session = ssl::reuse_tls_session(addr_->tls_session_cache);
+    auto session = tls::reuse_tls_session(addr_->tls_session_cache);
     if (session) {
       SSL_set_session(conn_.tls.ssl, session);
       SSL_SESSION_free(session);
@@ -397,7 +397,7 @@ int LiveCheck::tls_handshake() {
   }
 
   if (!get_config()->tls.insecure &&
-      ssl::check_cert(conn_.tls.ssl, addr_, raddr_) != 0) {
+      tls::check_cert(conn_.tls.ssl, addr_, raddr_) != 0) {
     return -1;
   }
 

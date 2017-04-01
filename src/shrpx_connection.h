@@ -41,9 +41,9 @@ namespace shrpx {
 
 struct MemcachedRequest;
 
-namespace ssl {
+namespace tls {
 struct TLSSessionCache;
-} // namespace ssl
+} // namespace tls
 
 enum {
   TLS_CONN_NORMAL,
@@ -59,7 +59,7 @@ struct TLSConnection {
   SSL *ssl;
   SSL_SESSION *cached_session;
   MemcachedRequest *cached_session_lookup_req;
-  ssl::TLSSessionCache *client_session_cache;
+  tls::TLSSessionCache *client_session_cache;
   ev_tstamp last_write_idle;
   size_t warmup_writelen;
   // length passed to SSL_write and SSL_read last time.  This is

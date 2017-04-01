@@ -35,7 +35,7 @@
 #include "shrpx_downstream_connection_pool.h"
 #include "shrpx_worker.h"
 #include "shrpx_http2_session.h"
-#include "shrpx_ssl.h"
+#include "shrpx_tls.h"
 #include "shrpx_log.h"
 #include "http2.h"
 #include "util.h"
@@ -423,12 +423,12 @@ int HttpDownstreamConnection::initiate_connection() {
       if (addr_->tls) {
         assert(ssl_ctx_);
 
-        auto ssl = ssl::create_ssl(ssl_ctx_);
+        auto ssl = tls::create_ssl(ssl_ctx_);
         if (!ssl) {
           return -1;
         }
 
-        ssl::setup_downstream_http1_alpn(ssl);
+        tls::setup_downstream_http1_alpn(ssl);
 
         conn_.set_ssl(ssl);
         conn_.tls.client_session_cache = &addr_->tls_session_cache;
@@ -439,7 +439,7 @@ int HttpDownstreamConnection::initiate_connection() {
           SSL_set_tlsext_host_name(conn_.tls.ssl, sni_name.c_str());
         }
 
-        auto session = ssl::reuse_tls_session(addr_->tls_session_cache);
+        auto session = tls::reuse_tls_session(addr_->tls_session_cache);
         if (session) {
           SSL_set_session(conn_.tls.ssl, session);
           SSL_SESSION_free(session);
@@ -1224,7 +1224,7 @@ int HttpDownstreamConnection::tls_handshake() {
   }
 
   if (!get_config()->tls.insecure &&
-      ssl::check_cert(conn_.tls.ssl, addr_, raddr_) != 0) {
+      tls::check_cert(conn_.tls.ssl, addr_, raddr_) != 0) {
     downstream_failure(addr_, raddr_);
 
     return -1;

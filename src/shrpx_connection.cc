@@ -33,7 +33,7 @@
 
 #include <openssl/err.h>
 
-#include "shrpx_ssl.h"
+#include "shrpx_tls.h"
 #include "shrpx_memcached_request.h"
 #include "shrpx_log.h"
 #include "memchunk.h"
@@ -360,7 +360,7 @@ int Connection::tls_handshake() {
     auto ssl_opts = SSL_get_options(tls.ssl);
     SSL_free(tls.ssl);
 
-    auto ssl = ssl::create_ssl(ssl_ctx);
+    auto ssl = tls::create_ssl(ssl_ctx);
     if (!ssl) {
       return -1;
     }

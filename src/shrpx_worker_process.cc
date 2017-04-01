@@ -51,7 +51,7 @@
 #include "shrpx_memcached_dispatcher.h"
 #include "shrpx_memcached_request.h"
 #include "shrpx_process.h"
-#include "shrpx_ssl.h"
+#include "shrpx_tls.h"
 #include "shrpx_log.h"
 #include "util.h"
 #include "app_helper.h"
@@ -448,7 +448,7 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
   MemchunkPool mcpool;
 
   ev_timer renew_ticket_key_timer;
-  if (ssl::upstream_tls_enabled(config->conn)) {
+  if (tls::upstream_tls_enabled(config->conn)) {
     auto &ticketconf = config->tls.ticket;
     auto &memcachedconf = ticketconf.memcached;
 
@@ -547,7 +547,7 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
   ipcev.data = &conn_handler;
   ev_io_start(loop, &ipcev);
 
-  if (ssl::upstream_tls_enabled(config->conn) && !config->tls.ocsp.disabled) {
+  if (tls::upstream_tls_enabled(config->conn) && !config->tls.ocsp.disabled) {
     conn_handler.proceed_next_cert_ocsp();
   }
 

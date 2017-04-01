@@ -33,7 +33,7 @@
 #include <ev.h>
 
 #include "shrpx_connection.h"
-#include "shrpx_ssl.h"
+#include "shrpx_tls.h"
 #include "shrpx_connect_blocker.h"
 #include "buffer.h"
 #include "network.h"
@@ -136,7 +136,7 @@ private:
   std::deque<MemcachedSendbuf> sendbufv_;
   std::function<int(MemcachedConnection &)> do_read_, do_write_;
   StringRef sni_name_;
-  ssl::TLSSessionCache tls_session_cache_;
+  tls::TLSSessionCache tls_session_cache_;
   ConnectBlocker connect_blocker_;
   MemcachedParseState parse_state_;
   const Address *addr_;

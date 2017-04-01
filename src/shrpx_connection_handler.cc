@@ -35,7 +35,7 @@
 #include <random>
 
 #include "shrpx_client_handler.h"
-#include "shrpx_ssl.h"
+#include "shrpx_tls.h"
 #include "shrpx_worker.h"
 #include "shrpx_config.h"
 #include "shrpx_http2_session.h"
@@ -154,7 +154,7 @@ ConnectionHandler::~ConnectionHandler() {
 
   for (auto ssl_ctx : all_ssl_ctx_) {
     auto tls_ctx_data =
-        static_cast<ssl::TLSContextData *>(SSL_CTX_get_app_data(ssl_ctx));
+        static_cast<tls::TLSContextData *>(SSL_CTX_get_app_data(ssl_ctx));
     if (tls_ctx_data) {
       delete tls_ctx_data;
     }
@@ -199,15 +199,15 @@ void ConnectionHandler::worker_replace_downstream(
 }
 
 int ConnectionHandler::create_single_worker() {
-  cert_tree_ = ssl::create_cert_lookup_tree();
-  auto sv_ssl_ctx = ssl::setup_server_ssl_context(
+  cert_tree_ = tls::create_cert_lookup_tree();
+  auto sv_ssl_ctx = tls::setup_server_ssl_context(
       all_ssl_ctx_, indexed_ssl_ctx_, cert_tree_.get()
 #ifdef HAVE_NEVERBLEED
                                           ,
       nb_.get()
 #endif // HAVE_NEVERBLEED
           );
-  auto cl_ssl_ctx = ssl::setup_downstream_client_ssl_context(
+  auto cl_ssl_ctx = tls::setup_downstream_client_ssl_context(
 #ifdef HAVE_NEVERBLEED
       nb_.get()
 #endif // HAVE_NEVERBLEED
@@ -223,7 +223,7 @@ int ConnectionHandler::create_single_worker() {
 
   SSL_CTX *session_cache_ssl_ctx = nullptr;
   if (memcachedconf.tls) {
-    session_cache_ssl_ctx = ssl::create_ssl_client_context(
+    session_cache_ssl_ctx = tls::create_ssl_client_context(
 #ifdef HAVE_NEVERBLEED
         nb_.get(),
 #endif // HAVE_NEVERBLEED
@@ -248,15 +248,15 @@ int ConnectionHandler::create_worker_thread(size_t num) {
 #ifndef NOTHREADS
   assert(workers_.size() == 0);
 
-  cert_tree_ = ssl::create_cert_lookup_tree();
-  auto sv_ssl_ctx = ssl::setup_server_ssl_context(
+  cert_tree_ = tls::create_cert_lookup_tree();
+  auto sv_ssl_ctx = tls::setup_server_ssl_context(
       all_ssl_ctx_, indexed_ssl_ctx_, cert_tree_.get()
 #ifdef HAVE_NEVERBLEED
                                           ,
       nb_.get()
 #endif // HAVE_NEVERBLEED
           );
-  auto cl_ssl_ctx = ssl::setup_downstream_client_ssl_context(
+  auto cl_ssl_ctx = tls::setup_downstream_client_ssl_context(
 #ifdef HAVE_NEVERBLEED
       nb_.get()
 #endif // HAVE_NEVERBLEED
@@ -281,7 +281,7 @@ int ConnectionHandler::create_worker_thread(size_t num) {
 
     SSL_CTX *session_cache_ssl_ctx = nullptr;
     if (memcachedconf.tls) {
-      session_cache_ssl_ctx = ssl::create_ssl_client_context(
+      session_cache_ssl_ctx = tls::create_ssl_client_context(
 #ifdef HAVE_NEVERBLEED
           nb_.get(),
 #endif // HAVE_NEVERBLEED
@@ -384,7 +384,7 @@ int ConnectionHandler::handle_connection(int fd, sockaddr *addr, int addrlen,
     }
 
     auto client =
-        ssl::accept_connection(single_worker_.get(), fd, addr, addrlen, faddr);
+        tls::accept_connection(single_worker_.get(), fd, addr, addrlen, faddr);
     if (!client) {
       LLOG(ERROR, this) << "ClientHandler creation failed";
 
@@ -592,7 +592,7 @@ void ConnectionHandler::handle_ocsp_complete() {
 
   auto ssl_ctx = all_ssl_ctx_[ocsp_.next];
   auto tls_ctx_data =
-      static_cast<ssl::TLSContextData *>(SSL_CTX_get_app_data(ssl_ctx));
+      static_cast<tls::TLSContextData *>(SSL_CTX_get_app_data(ssl_ctx));
 
   auto rstatus = ocsp_.chldev.rstatus;
   auto status = WEXITSTATUS(rstatus);
@@ -655,7 +655,7 @@ void ConnectionHandler::proceed_next_cert_ocsp() {
 
     auto ssl_ctx = all_ssl_ctx_[ocsp_.next];
     auto tls_ctx_data =
-        static_cast<ssl::TLSContextData *>(SSL_CTX_get_app_data(ssl_ctx));
+        static_cast<tls::TLSContextData *>(SSL_CTX_get_app_data(ssl_ctx));
 
     // client SSL_CTX is also included in all_ssl_ctx_, but has no
     // tls_ctx_data.
@@ -777,7 +777,7 @@ SSL_CTX *ConnectionHandler::create_tls_ticket_key_memcached_ssl_ctx() {
   auto &tlsconf = config->tls;
   auto &memcachedconf = config->tls.ticket.memcached;
 
-  auto ssl_ctx = ssl::create_ssl_client_context(
+  auto ssl_ctx = tls::create_ssl_client_context(
 #ifdef HAVE_NEVERBLEED
       nb_.get(),
 #endif // HAVE_NEVERBLEED

@@ -98,7 +98,7 @@ if(ENABLE_APP)
     shrpx_log.cc
     shrpx_http.cc
     shrpx_io_control.cc
-    shrpx_ssl.cc
+    shrpx_tls.cc
     shrpx_worker.cc
     shrpx_log_config.cc
     shrpx_connect_blocker.cc
@@ -152,7 +152,7 @@ if(ENABLE_APP)
   if(HAVE_CUNIT)
     set(NGHTTPX_UNITTEST_SOURCES
       shrpx-unittest.cc
-      shrpx_ssl_test.cc
+      shrpx_tls_test.cc
       shrpx_downstream_test.cc
       shrpx_config_test.cc
       shrpx_worker_test.cc

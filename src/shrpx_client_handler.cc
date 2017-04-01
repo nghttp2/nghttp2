@@ -42,7 +42,7 @@
 #include "shrpx_config.h"
 #include "shrpx_http_downstream_connection.h"
 #include "shrpx_http2_downstream_connection.h"
-#include "shrpx_ssl.h"
+#include "shrpx_tls.h"
 #include "shrpx_worker.h"
 #include "shrpx_downstream_connection_pool.h"
 #include "shrpx_downstream.h"
@@ -576,7 +576,7 @@ int ClientHandler::validate_next_proto() {
     CLOG(INFO, this) << "The negotiated next protocol: " << proto;
   }
 
-  if (!ssl::in_proto_list(get_config()->tls.npn_list, proto)) {
+  if (!tls::in_proto_list(get_config()->tls.npn_list, proto)) {
     if (LOG_ENABLED(INFO)) {
       CLOG(INFO, this) << "The negotiated protocol is not supported: " << proto;
     }

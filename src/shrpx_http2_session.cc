@@ -39,7 +39,7 @@
 #include "shrpx_error.h"
 #include "shrpx_http2_downstream_connection.h"
 #include "shrpx_client_handler.h"
-#include "shrpx_ssl.h"
+#include "shrpx_tls.h"
 #include "shrpx_http.h"
 #include "shrpx_worker.h"
 #include "shrpx_connect_blocker.h"
@@ -422,12 +422,12 @@ int Http2Session::initiate_connection() {
       assert(ssl_ctx_);
 
       if (state_ != RESOLVING_NAME) {
-        auto ssl = ssl::create_ssl(ssl_ctx_);
+        auto ssl = tls::create_ssl(ssl_ctx_);
         if (!ssl) {
           return -1;
         }
 
-        ssl::setup_downstream_http2_alpn(ssl);
+        tls::setup_downstream_http2_alpn(ssl);
 
         conn_.set_ssl(ssl);
         conn_.tls.client_session_cache = &addr_->tls_session_cache;
@@ -442,7 +442,7 @@ int Http2Session::initiate_connection() {
           SSL_set_tlsext_host_name(conn_.tls.ssl, sni_name.c_str());
         }
 
-        auto tls_session = ssl::reuse_tls_session(addr_->tls_session_cache);
+        auto tls_session = tls::reuse_tls_session(addr_->tls_session_cache);
         if (tls_session) {
           SSL_set_session(conn_.tls.ssl, tls_session);
           SSL_SESSION_free(tls_session);
@@ -2064,7 +2064,7 @@ int Http2Session::tls_handshake() {
   }
 
   if (!get_config()->tls.insecure &&
-      ssl::check_cert(conn_.tls.ssl, addr_, raddr_) != 0) {
+      tls::check_cert(conn_.tls.ssl, addr_, raddr_) != 0) {
     downstream_failure(addr_, raddr_);
 
     return -1;

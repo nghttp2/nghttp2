@@ -22,8 +22,8 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#ifndef SHRPX_SSL_TEST_H
-#define SHRPX_SSL_TEST_H
+#ifndef SHRPX_TLS_TEST_H
+#define SHRPX_TLS_TEST_H
 
 #ifdef HAVE_CONFIG_H
 #include <config.h>
@@ -31,10 +31,10 @@
 
 namespace shrpx {
 
-void test_shrpx_ssl_create_lookup_tree(void);
-void test_shrpx_ssl_cert_lookup_tree_add_ssl_ctx(void);
-void test_shrpx_ssl_tls_hostname_match(void);
+void test_shrpx_tls_create_lookup_tree(void);
+void test_shrpx_tls_cert_lookup_tree_add_ssl_ctx(void);
+void test_shrpx_tls_tls_hostname_match(void);
 
 } // namespace shrpx
 
-#endif // SHRPX_SSL_TEST_H
+#endif // SHRPX_TLS_TEST_H

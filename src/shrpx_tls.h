@@ -22,8 +22,8 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#ifndef SHRPX_SSL_H
-#define SHRPX_SSL_H
+#ifndef SHRPX_TLS_H
+#define SHRPX_TLS_H
 
 #include "shrpx.h"
 
@@ -51,7 +51,7 @@ class DownstreamConnectionPool;
 struct DownstreamAddr;
 struct UpstreamAddr;
 
-namespace ssl {
+namespace tls {
 
 struct TLSSessionCache {
   // ASN1 representation of SSL_SESSION object.  See
@@ -264,8 +264,8 @@ X509 *load_certificate(const char *filename);
 // TLS version string.
 int proto_version_from_string(const StringRef &v);
 
-} // namespace ssl
+} // namespace tls
 
 } // namespace shrpx
 
-#endif // SHRPX_SSL_H
+#endif // SHRPX_TLS_H

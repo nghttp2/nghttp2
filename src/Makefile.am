@@ -122,7 +122,7 @@ NGHTTPX_SRCS = \
 	shrpx_log.cc shrpx_log.h \
 	shrpx_http.cc shrpx_http.h \
 	shrpx_io_control.cc shrpx_io_control.h \
-	shrpx_ssl.cc shrpx_ssl.h \
+	shrpx_tls.cc shrpx_tls.h \
 	shrpx_worker.cc shrpx_worker.h \
 	shrpx_log_config.cc shrpx_log_config.h \
 	shrpx_connect_blocker.cc shrpx_connect_blocker.h \
@@ -183,7 +183,7 @@ endif # HAVE_NEVERBLEED
 if HAVE_CUNIT
 check_PROGRAMS += nghttpx-unittest
 nghttpx_unittest_SOURCES = shrpx-unittest.cc \
-	shrpx_ssl_test.cc shrpx_ssl_test.h \
+	shrpx_tls_test.cc shrpx_tls_test.h \
 	shrpx_downstream_test.cc shrpx_downstream_test.h \
 	shrpx_config_test.cc shrpx_config_test.h \
 	shrpx_worker_test.cc shrpx_worker_test.h \
