@@ -731,6 +731,26 @@ ssize_t Connection::read_tls(void *data, size_t len) {
   if (tls.earlybuf.rleft()) {
     return tls.earlybuf.remove(data, len);
   }
+#endif // OPENSSL_1_1_1_API
+
+  // SSL_read requires the same arguments (buf pointer and its
+  // length) on SSL_ERROR_WANT_READ or SSL_ERROR_WANT_WRITE.
+  // rlimit_.avail() or rlimit_.avail() may return different length
+  // than the length previously passed to SSL_read, which violates
+  // OpenSSL assumption.  To avoid this, we keep last legnth passed
+  // to SSL_read to tls_last_readlen_ if SSL_read indicated I/O
+  // blocking.
+  if (tls.last_readlen == 0) {
+    len = std::min(len, rlimit.avail());
+    if (len == 0) {
+      return 0;
+    }
+  } else {
+    len = tls.last_readlen;
+    tls.last_readlen = 0;
+  }
+
+#if OPENSSL_1_1_1_API
   if (!tls.early_data_finish) {
     // TLSv1.3 handshake is still going on.
     size_t nread;
@@ -740,6 +760,7 @@ ssize_t Connection::read_tls(void *data, size_t len) {
       switch (err) {
       case SSL_ERROR_WANT_READ:
       case SSL_ERROR_WANT_WRITE: // TODO Probably not required.
+        tls.last_readlen = len;
         return 0;
       case SSL_ERROR_SSL:
         if (LOG_ENABLED(INFO)) {
@@ -770,23 +791,6 @@ ssize_t Connection::read_tls(void *data, size_t len) {
     return nread;
   }
 #endif // OPENSSL_1_1_1_API
-
-  // SSL_read requires the same arguments (buf pointer and its
-  // length) on SSL_ERROR_WANT_READ or SSL_ERROR_WANT_WRITE.
-  // rlimit_.avail() or rlimit_.avail() may return different length
-  // than the length previously passed to SSL_read, which violates
-  // OpenSSL assumption.  To avoid this, we keep last legnth passed
-  // to SSL_read to tls_last_readlen_ if SSL_read indicated I/O
-  // blocking.
-  if (tls.last_readlen == 0) {
-    len = std::min(len, rlimit.avail());
-    if (len == 0) {
-      return 0;
-    }
-  } else {
-    len = tls.last_readlen;
-    tls.last_readlen = 0;
-  }
 
   auto rv = SSL_read(tls.ssl, data, len);
 
