@@ -962,6 +962,10 @@ SSL_CTX *create_ssl_client_context(
     }
   }
 
+  if (!tlsconf.insecure) {
+    SSL_CTX_set_verify(ssl_ctx, SSL_VERIFY_PEER, nullptr);
+  }
+
   if (!cert_file.empty()) {
     if (SSL_CTX_use_certificate_chain_file(ssl_ctx, cert_file.c_str()) != 1) {
 
@@ -1284,12 +1288,6 @@ int check_cert(SSL *ssl, const Address *addr, const StringRef &host) {
     return 0;
   }
   auto cert_deleter = defer(X509_free, cert);
-  auto verify_res = SSL_get_verify_result(ssl);
-  if (verify_res != X509_V_OK) {
-    LOG(ERROR) << "Certificate verification failed: "
-               << X509_verify_cert_error_string(verify_res);
-    return -1;
-  }
 
   if (verify_hostname(cert, host, addr) != 0) {
     LOG(ERROR) << "Certificate verification failed: hostname does not match";
