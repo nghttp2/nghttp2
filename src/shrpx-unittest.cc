@@ -43,7 +43,7 @@
 #include "shrpx_http_test.h"
 #include "base64_test.h"
 #include "shrpx_config.h"
-#include "ssl.h"
+#include "tls.h"
 #include "shrpx_router_test.h"
 #include "shrpx_log.h"
 
@@ -55,7 +55,7 @@ int main(int argc, char *argv[]) {
   CU_pSuite pSuite = NULL;
   unsigned int num_tests_failed;
 
-  nghttp2::ssl::libssl_init();
+  nghttp2::tls::libssl_init();
 
   shrpx::create_config();
 

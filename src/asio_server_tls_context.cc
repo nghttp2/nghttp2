@@ -28,7 +28,7 @@
 
 #include <boost/asio/ssl.hpp>
 
-#include "ssl.h"
+#include "tls.h"
 #include "util.h"
 
 namespace nghttp2 {
@@ -72,7 +72,7 @@ configure_tls_context_easy(boost::system::error_code &ec,
   SSL_CTX_set_mode(ctx, SSL_MODE_AUTO_RETRY);
   SSL_CTX_set_mode(ctx, SSL_MODE_RELEASE_BUFFERS);
 
-  SSL_CTX_set_cipher_list(ctx, ssl::DEFAULT_CIPHER_LIST);
+  SSL_CTX_set_cipher_list(ctx, tls::DEFAULT_CIPHER_LIST);
 
 #ifndef OPENSSL_NO_EC
   auto ecdh = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);

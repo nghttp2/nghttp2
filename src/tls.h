@@ -22,8 +22,8 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#ifndef SSL_H
-#define SSL_H
+#ifndef TLS_H
+#define TLS_H
 
 #include "nghttp2_config.h"
 
@@ -33,7 +33,7 @@
 
 namespace nghttp2 {
 
-namespace ssl {
+namespace tls {
 
 // Acquire OpenSSL global lock to share SSL_CTX across multiple
 // threads. The constructor acquires lock and destructor unlocks.
@@ -113,8 +113,8 @@ void libssl_init();
 // 0 if it succeeds, or -1.
 int ssl_ctx_set_proto_versions(SSL_CTX *ssl_ctx, int min, int max);
 
-} // namespace ssl
+} // namespace tls
 
 } // namespace nghttp2
 
-#endif // SSL_H
+#endif // TLS_H

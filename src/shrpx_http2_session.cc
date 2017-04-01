@@ -47,7 +47,7 @@
 #include "http2.h"
 #include "util.h"
 #include "base64.h"
-#include "ssl.h"
+#include "tls.h"
 
 using namespace nghttp2;
 

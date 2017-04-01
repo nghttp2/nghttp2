@@ -60,7 +60,7 @@
 #include "app_helper.h"
 #include "http2.h"
 #include "util.h"
-#include "ssl.h"
+#include "tls.h"
 #include "template.h"
 
 #ifndef O_BINARY
@@ -877,7 +877,7 @@ int Http2Handler::connection_made() {
     }
   }
 
-  if (ssl_ && !nghttp2::ssl::check_http2_requirement(ssl_)) {
+  if (ssl_ && !nghttp2::tls::check_http2_requirement(ssl_)) {
     terminate_session(NGHTTP2_INADEQUATE_SECURITY);
   }
 
@@ -2122,14 +2122,14 @@ int HttpServer::run() {
     SSL_CTX_set_mode(ssl_ctx, SSL_MODE_AUTO_RETRY);
     SSL_CTX_set_mode(ssl_ctx, SSL_MODE_RELEASE_BUFFERS);
 
-    if (nghttp2::ssl::ssl_ctx_set_proto_versions(
-            ssl_ctx, nghttp2::ssl::NGHTTP2_TLS_MIN_VERSION,
-            nghttp2::ssl::NGHTTP2_TLS_MAX_VERSION) != 0) {
+    if (nghttp2::tls::ssl_ctx_set_proto_versions(
+            ssl_ctx, nghttp2::tls::NGHTTP2_TLS_MIN_VERSION,
+            nghttp2::tls::NGHTTP2_TLS_MAX_VERSION) != 0) {
       std::cerr << "Could not set TLS versions" << std::endl;
       return -1;
     }
 
-    if (SSL_CTX_set_cipher_list(ssl_ctx, ssl::DEFAULT_CIPHER_LIST) == 0) {
+    if (SSL_CTX_set_cipher_list(ssl_ctx, tls::DEFAULT_CIPHER_LIST) == 0) {
       std::cerr << ERR_error_string(ERR_get_error(), nullptr) << std::endl;
       return -1;
     }

@@ -56,7 +56,7 @@
 #endif // HAVE_SPDYLAY
 #include "util.h"
 #include "template.h"
-#include "ssl.h"
+#include "tls.h"
 
 using namespace nghttp2;
 
@@ -1202,7 +1202,7 @@ void ClientHandler::start_immediate_shutdown() {
 }
 
 void ClientHandler::write_accesslog(Downstream *downstream) {
-  nghttp2::ssl::TLSSessionInfo tls_info;
+  nghttp2::tls::TLSSessionInfo tls_info;
   auto &req = downstream->request();
 
   auto config = get_config();
@@ -1217,7 +1217,7 @@ void ClientHandler::write_accesslog(Downstream *downstream) {
       config->logging.access.format,
       LogSpec{
           downstream, ipaddr_, alpn_,
-          nghttp2::ssl::get_tls_session_info(&tls_info, conn_.tls.ssl),
+          nghttp2::tls::get_tls_session_info(&tls_info, conn_.tls.ssl),
           std::chrono::high_resolution_clock::now(), // request_end_time
           port_, faddr_->port, config->pid,
       });

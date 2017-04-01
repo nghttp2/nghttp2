@@ -62,7 +62,7 @@
 #include "shrpx_memcached_dispatcher.h"
 #include "shrpx_connection_handler.h"
 #include "util.h"
-#include "ssl.h"
+#include "tls.h"
 #include "template.h"
 #include "ssl_compat.h"
 
@@ -687,7 +687,7 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
 
   SSL_CTX_set_options(ssl_ctx, ssl_opts | tlsconf.tls_proto_mask);
 
-  if (nghttp2::ssl::ssl_ctx_set_proto_versions(
+  if (nghttp2::tls::ssl_ctx_set_proto_versions(
           ssl_ctx, tlsconf.min_proto_version, tlsconf.max_proto_version) != 0) {
     LOG(FATAL) << "Could not set TLS protocol version";
     DIE();
@@ -934,7 +934,7 @@ SSL_CTX *create_ssl_client_context(
                                               SSL_SESS_CACHE_NO_INTERNAL_STORE);
   SSL_CTX_sess_set_new_cb(ssl_ctx, tls_session_client_new_cb);
 
-  if (nghttp2::ssl::ssl_ctx_set_proto_versions(
+  if (nghttp2::tls::ssl_ctx_set_proto_versions(
           ssl_ctx, tlsconf.min_proto_version, tlsconf.max_proto_version) != 0) {
     LOG(FATAL) << "Could not set TLS protocol version";
     DIE();

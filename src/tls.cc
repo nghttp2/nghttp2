@@ -22,7 +22,7 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#include "ssl.h"
+#include "tls.h"
 
 #include <cassert>
 #include <vector>
@@ -36,7 +36,7 @@
 
 namespace nghttp2 {
 
-namespace ssl {
+namespace tls {
 
 #if OPENSSL_1_1_API
 
@@ -196,6 +196,6 @@ int ssl_ctx_set_proto_versions(SSL_CTX *ssl_ctx, int min, int max) {
 #endif // !OPENSSL_1_1_API && !defined(OPENSSL_IS_BORINGSSL)
 }
 
-} // namespace ssl
+} // namespace tls
 
 } // namespace nghttp2

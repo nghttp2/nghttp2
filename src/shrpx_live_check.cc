@@ -768,7 +768,7 @@ int LiveCheck::connection_made() {
   }
 
   auto must_terminate =
-      addr_->tls && !nghttp2::ssl::check_http2_requirement(conn_.tls.ssl);
+      addr_->tls && !nghttp2::tls::check_http2_requirement(conn_.tls.ssl);
 
   if (must_terminate) {
     if (LOG_ENABLED(INFO)) {

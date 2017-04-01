@@ -81,10 +81,10 @@ endif # HAVE_LIBXML2
 
 nghttp_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} nghttp.cc nghttp.h \
 	${HTML_PARSER_OBJECTS} ${HTML_PARSER_HFILES} \
-	ssl.cc ssl.h
+	tls.cc tls.h
 
 nghttpd_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} nghttpd.cc \
-	ssl.cc ssl.h \
+	tls.cc tls.h \
 	HttpServer.cc HttpServer.h
 
 bin_PROGRAMS += h2load
@@ -92,7 +92,7 @@ bin_PROGRAMS += h2load
 h2load_SOURCES = util.cc util.h \
 	http2.cc http2.h h2load.cc h2load.h \
 	timegm.c timegm.h \
-	ssl.cc ssl.h \
+	tls.cc tls.h \
 	h2load_session.h \
 	h2load_http2_session.cc h2load_http2_session.h \
 	h2load_http1_session.cc h2load_http1_session.h
@@ -104,7 +104,7 @@ endif # HAVE_SPDYLAY
 NGHTTPX_SRCS = \
 	util.cc util.h http2.cc http2.h timegm.c timegm.h base64.h \
 	app_helper.cc app_helper.h \
-	ssl.cc ssl.h \
+	tls.cc tls.h \
 	shrpx_config.cc shrpx_config.h \
 	shrpx_error.h \
 	shrpx_accept_handler.cc shrpx_accept_handler.h \
@@ -240,7 +240,7 @@ lib_LTLIBRARIES = libnghttp2_asio.la
 
 libnghttp2_asio_la_SOURCES = \
 	util.cc util.h http2.cc http2.h \
-	ssl.cc ssl.h \
+	tls.cc tls.h \
 	ssl_compat.h \
 	timegm.c timegm.h \
 	asio_common.cc asio_common.h \

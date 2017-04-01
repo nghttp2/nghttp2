@@ -502,8 +502,8 @@ int Connection::write_tls_pending_handshake() {
 
   if (LOG_ENABLED(INFO)) {
     LOG(INFO) << "SSL/TLS handshake completed";
-    nghttp2::ssl::TLSSessionInfo tls_info{};
-    if (nghttp2::ssl::get_tls_session_info(&tls_info, tls.ssl)) {
+    nghttp2::tls::TLSSessionInfo tls_info{};
+    if (nghttp2::tls::get_tls_session_info(&tls_info, tls.ssl)) {
       LOG(INFO) << "cipher=" << tls_info.cipher
                 << " protocol=" << tls_info.protocol
                 << " resumption=" << (tls_info.session_reused ? "yes" : "no")
@@ -530,7 +530,7 @@ int Connection::check_http2_requirement() {
       !util::check_h2_is_selected(StringRef{next_proto, next_proto_len})) {
     return 0;
   }
-  if (!nghttp2::ssl::check_http2_tls_version(tls.ssl)) {
+  if (!nghttp2::tls::check_http2_tls_version(tls.ssl)) {
     if (LOG_ENABLED(INFO)) {
       LOG(INFO) << "TLSv1.2 was not negotiated.  HTTP/2 must not be used.";
     }
@@ -545,7 +545,7 @@ int Connection::check_http2_requirement() {
   }
 
   if (check_black_list &&
-      nghttp2::ssl::check_http2_cipher_black_list(tls.ssl)) {
+      nghttp2::tls::check_http2_cipher_black_list(tls.ssl)) {
     if (LOG_ENABLED(INFO)) {
       LOG(INFO) << "The negotiated cipher suite is in HTTP/2 cipher suite "
                    "black list.  HTTP/2 must not be used.";

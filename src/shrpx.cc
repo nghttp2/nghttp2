@@ -88,7 +88,7 @@
 #include "shrpx_log.h"
 #include "util.h"
 #include "app_helper.h"
-#include "ssl.h"
+#include "tls.h"
 #include "template.h"
 #include "allocator.h"
 #include "ssl_compat.h"
@@ -1437,9 +1437,9 @@ void fill_default_config(Config *config) {
   }
 
   tlsconf.session_timeout = std::chrono::hours(12);
-  tlsconf.ciphers = StringRef::from_lit(nghttp2::ssl::DEFAULT_CIPHER_LIST);
+  tlsconf.ciphers = StringRef::from_lit(nghttp2::tls::DEFAULT_CIPHER_LIST);
   tlsconf.client.ciphers =
-      StringRef::from_lit(nghttp2::ssl::DEFAULT_CIPHER_LIST);
+      StringRef::from_lit(nghttp2::tls::DEFAULT_CIPHER_LIST);
   tlsconf.min_proto_version =
       ssl::proto_version_from_string(DEFAULT_TLS_MIN_PROTO_VERSION);
   tlsconf.max_proto_version =
@@ -3032,10 +3032,10 @@ int main(int argc, char **argv) {
   int rv;
   std::array<char, STRERROR_BUFSIZE> errbuf;
 
-  nghttp2::ssl::libssl_init();
+  nghttp2::tls::libssl_init();
 
 #ifndef NOTHREADS
-  nghttp2::ssl::LibsslGlobalLock lock;
+  nghttp2::tls::LibsslGlobalLock lock;
 #endif // NOTHREADS
 
   Log::set_severity_level(NOTICE);

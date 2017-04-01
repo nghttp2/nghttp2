@@ -48,7 +48,7 @@
 #include "app_helper.h"
 #include "HttpServer.h"
 #include "util.h"
-#include "ssl.h"
+#include "tls.h"
 
 namespace nghttp2 {
 
@@ -190,10 +190,10 @@ Options:
 } // namespace
 
 int main(int argc, char **argv) {
-  ssl::libssl_init();
+  tls::libssl_init();
 
 #ifndef NOTHREADS
-  ssl::LibsslGlobalLock lock;
+  tls::LibsslGlobalLock lock;
 #endif // NOTHREADS
 
   Config config;

@@ -48,7 +48,7 @@ if(ENABLE_APP)
   set(NGHTTP_SOURCES
     ${HELPER_OBJECTS}
     nghttp.cc
-    ssl.cc
+    tls.cc
   )
   if(HAVE_LIBXML2)
     list(APPEND NGHTTP_SOURCES HtmlParser.cc)
@@ -58,7 +58,7 @@ if(ENABLE_APP)
   set(NGHTTPD_SOURCES
     ${HELPER_OBJECTS}
     nghttpd.cc
-    ssl.cc
+    tls.cc
     HttpServer.cc
   )
 
@@ -67,7 +67,7 @@ if(ENABLE_APP)
     util.cc
     http2.cc h2load.cc
     timegm.c
-    ssl.cc
+    tls.cc
     h2load_http2_session.cc
     h2load_http1_session.cc
   )
@@ -82,7 +82,7 @@ if(ENABLE_APP)
   set(NGHTTPX_SRCS
     util.cc http2.cc timegm.c
     app_helper.cc
-    ssl.cc
+    tls.cc
     shrpx_config.cc
     shrpx_accept_handler.cc
     shrpx_connection_handler.cc
@@ -216,7 +216,7 @@ endif()
 if(ENABLE_ASIO_LIB)
   set(NGHTTP2_ASIO_SOURCES
     util.cc http2.cc
-    ssl.cc
+    tls.cc
     timegm.c
     asio_common.cc
     asio_io_service_pool.cc

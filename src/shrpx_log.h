@@ -36,7 +36,7 @@
 
 #include "shrpx_config.h"
 #include "shrpx_log_config.h"
-#include "ssl.h"
+#include "tls.h"
 #include "template.h"
 
 using namespace nghttp2;
@@ -148,7 +148,7 @@ struct LogSpec {
   Downstream *downstream;
   StringRef remote_addr;
   StringRef alpn;
-  const nghttp2::ssl::TLSSessionInfo *tls_info;
+  const nghttp2::tls::TLSSessionInfo *tls_info;
   std::chrono::high_resolution_clock::time_point request_end_time;
   StringRef remote_port;
   uint16_t server_port;
