@@ -517,6 +517,13 @@ int ticket_key_cb(SSL *ssl, unsigned char *key_name, unsigned char *iv,
 
 namespace {
 void info_callback(const SSL *ssl, int where, int ret) {
+#ifdef TLS1_3_VERSION
+  // TLSv1.3 has no renegotiation.
+  if (SSL_version(ssl) == TLS1_3_VERSION) {
+    return;
+  }
+#endif // TLS1_3_VERSION
+
   // To mitigate possible DOS attack using lots of renegotiations, we
   // disable renegotiation. Since OpenSSL does not provide an easy way
   // to disable it, we check that renegotiation is started in this
