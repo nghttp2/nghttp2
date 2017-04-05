@@ -266,7 +266,7 @@ func (st *serverTester) Close() {
 		done := make(chan struct{})
 		go func() {
 			st.cmd.Wait()
-			done <- struct{}{}
+			close(done)
 		}()
 
 		st.cmd.Process.Signal(syscall.SIGQUIT)
