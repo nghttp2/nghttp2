@@ -337,6 +337,10 @@ constexpr auto SHRPX_OPT_FRONTEND_MAX_REQUESTS =
     StringRef::from_lit("frontend-max-requests");
 constexpr auto SHRPX_OPT_SINGLE_THREAD = StringRef::from_lit("single-thread");
 constexpr auto SHRPX_OPT_SINGLE_PROCESS = StringRef::from_lit("single-process");
+constexpr auto SHRPX_OPT_NO_ADD_X_FORWARDED_PROTO =
+    StringRef::from_lit("no-add-x-forwarded-proto");
+constexpr auto SHRPX_OPT_NO_STRIP_INCOMING_X_FORWARDED_PROTO =
+    StringRef::from_lit("no-strip-incoming-x-forwarded-proto");
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
@@ -639,6 +643,10 @@ struct HttpConfig {
     bool add;
     bool strip_incoming;
   } xff;
+  struct {
+    bool add;
+    bool strip_incoming;
+  } xfp;
   std::vector<AltSvc> altsvcs;
   std::vector<ErrorPage> error_pages;
   HeaderRefs add_request_headers;
@@ -1023,6 +1031,7 @@ enum {
   SHRPX_OPTID_MAX_REQUEST_HEADER_FIELDS,
   SHRPX_OPTID_MAX_RESPONSE_HEADER_FIELDS,
   SHRPX_OPTID_MRUBY_FILE,
+  SHRPX_OPTID_NO_ADD_X_FORWARDED_PROTO,
   SHRPX_OPTID_NO_HOST_REWRITE,
   SHRPX_OPTID_NO_HTTP2_CIPHER_BLACK_LIST,
   SHRPX_OPTID_NO_KQUEUE,
@@ -1030,6 +1039,7 @@ enum {
   SHRPX_OPTID_NO_OCSP,
   SHRPX_OPTID_NO_SERVER_PUSH,
   SHRPX_OPTID_NO_SERVER_REWRITE,
+  SHRPX_OPTID_NO_STRIP_INCOMING_X_FORWARDED_PROTO,
   SHRPX_OPTID_NO_VIA,
   SHRPX_OPTID_NPN_LIST,
   SHRPX_OPTID_OCSP_UPDATE_INTERVAL,

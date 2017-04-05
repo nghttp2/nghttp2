@@ -371,8 +371,24 @@ int Http2DownstreamConnection::push_request_headers() {
   }
 
   if (!config->http2_proxy && req.method != HTTP_CONNECT) {
-    // We use same protocol with :scheme header field
-    nva.push_back(http2::make_nv_ls_nocopy("x-forwarded-proto", req.scheme));
+    auto &xfpconf = httpconf.xfp;
+    auto xfp = xfpconf.strip_incoming
+                   ? nullptr
+                   : req.fs.header(http2::HD_X_FORWARDED_PROTO);
+
+    if (xfpconf.add) {
+      StringRef xfp_value;
+      // We use same protocol with :scheme header field
+      if (xfp) {
+        xfp_value = concat_string_ref(balloc, xfp->value,
+                                      StringRef::from_lit(", "), req.scheme);
+      } else {
+        xfp_value = req.scheme;
+      }
+      nva.push_back(http2::make_nv_ls_nocopy("x-forwarded-proto", xfp_value));
+    } else if (xfp) {
+      nva.push_back(http2::make_nv_ls_nocopy("x-forwarded-proto", xfp->value));
+    }
   }
 
   auto via = req.fs.header(http2::HD_VIA);

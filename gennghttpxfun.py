@@ -164,6 +164,8 @@ OPTIONS = [
     "frontend-max-requests",
     "single-thread",
     "single-process",
+    "no-add-x-forwarded-proto",
+    "no-strip-incoming-x-forwarded-proto",
 ]
 
 LOGVARS = [
