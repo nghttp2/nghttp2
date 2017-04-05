@@ -163,7 +163,7 @@ OPTIONS = [
     "redirect-https-port",
     "frontend-max-requests",
     "single-thread",
-    "no-add-x-forwarded-proto",
+    "add-x-forwarded-proto",
     "strip-incoming-x-forwarded-proto",
 ]
 
