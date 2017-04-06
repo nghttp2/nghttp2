@@ -340,6 +340,7 @@ constexpr auto SHRPX_OPT_ADD_X_FORWARDED_PROTO =
     StringRef::from_lit("add-x-forwarded-proto");
 constexpr auto SHRPX_OPT_STRIP_INCOMING_X_FORWARDED_PROTO =
     StringRef::from_lit("strip-incoming-x-forwarded-proto");
+constexpr auto SHRPX_OPT_SINGLE_PROCESS = StringRef::from_lit("single-process");
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
@@ -872,6 +873,7 @@ struct Config {
         verbose{false},
         daemon{false},
         http2_proxy{false},
+        single_process{false},
         single_thread{false},
         ev_loop_flags{0} {}
   ~Config();
@@ -913,6 +915,9 @@ struct Config {
   bool verbose;
   bool daemon;
   bool http2_proxy;
+  // Run nghttpx in single process mode.  With this mode, signal
+  // handling is omitted.
+  bool single_process;
   bool single_thread;
   // flags passed to ev_default_loop() and ev_loop_new()
   int ev_loop_flags;
@@ -1049,6 +1054,7 @@ enum {
   SHRPX_OPTID_RESPONSE_HEADER_FIELD_BUFFER,
   SHRPX_OPTID_RLIMIT_NOFILE,
   SHRPX_OPTID_SERVER_NAME,
+  SHRPX_OPTID_SINGLE_PROCESS,
   SHRPX_OPTID_SINGLE_THREAD,
   SHRPX_OPTID_STREAM_READ_TIMEOUT,
   SHRPX_OPTID_STREAM_WRITE_TIMEOUT,

@@ -1620,6 +1620,9 @@ int option_lookup_token(const char *name, size_t namelen) {
       if (util::strieq_l("client-cipher", name, 13)) {
         return SHRPX_OPTID_CLIENT_CIPHERS;
       }
+      if (util::strieq_l("single-proces", name, 13)) {
+        return SHRPX_OPTID_SINGLE_PROCESS;
+      }
       break;
     case 't':
       if (util::strieq_l("tls-proto-lis", name, 13)) {
@@ -3373,6 +3376,10 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     return 0;
   case SHRPX_OPTID_STRIP_INCOMING_X_FORWARDED_PROTO:
     config->http.xfp.strip_incoming = util::strieq_l("yes", optarg);
+
+    return 0;
+  case SHRPX_OPTID_SINGLE_PROCESS:
+    config->single_process = util::strieq_l("yes", optarg);
 
     return 0;
   case SHRPX_OPTID_CONF:

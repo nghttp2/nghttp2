@@ -1205,12 +1205,16 @@ pid_t fork_worker_process(int &main_ipc_fd,
     return -1;
   }
 
-  auto pid = fork();
+  auto config = get_config();
+
+  pid_t pid = 0;
+
+  if (!config->single_process) {
+    pid = fork();
+  }
 
   if (pid == 0) {
     ev_loop_fork(EV_DEFAULT);
-
-    auto config = get_config();
 
     for (auto &addr : config->conn.listener.addrs) {
       util::make_socket_closeonexec(addr.fd);
@@ -1230,22 +1234,37 @@ pid_t fork_worker_process(int &main_ipc_fd,
       LOG(FATAL) << "Unblocking all signals failed: "
                  << xsi_strerror(error, errbuf.data(), errbuf.size());
 
-      nghttp2_Exit(EXIT_FAILURE);
+      if (config->single_process) {
+        exit(EXIT_FAILURE);
+      } else {
+        nghttp2_Exit(EXIT_FAILURE);
+      }
     }
 
-    close(ipc_fd[1]);
+    if (!config->single_process) {
+      close(ipc_fd[1]);
+    }
+
     WorkerProcessConfig wpconf{ipc_fd[0]};
     rv = worker_process_event_loop(&wpconf);
     if (rv != 0) {
       LOG(FATAL) << "Worker process returned error";
 
-      nghttp2_Exit(EXIT_FAILURE);
+      if (config->single_process) {
+        exit(EXIT_FAILURE);
+      } else {
+        nghttp2_Exit(EXIT_FAILURE);
+      }
     }
 
     LOG(NOTICE) << "Worker process shutting down momentarily";
 
     // call exit(...) instead of nghttp2_Exit to get leak sanitizer report
-    nghttp2_Exit(EXIT_SUCCESS);
+    if (config->single_process) {
+      exit(EXIT_SUCCESS);
+    } else {
+      nghttp2_Exit(EXIT_SUCCESS);
+    }
   }
 
   // parent process
@@ -1322,7 +1341,7 @@ int event_loop() {
 
   auto loop = ev_default_loop(config->ev_loop_flags);
 
-  int ipc_fd;
+  int ipc_fd = 0;
 
   auto pid = fork_worker_process(ipc_fd, {});
 
@@ -2641,6 +2660,14 @@ Process:
   --user=<USER>
               Run this program as <USER>.   This option is intended to
               be used to drop root privileges.
+  --single-process
+              Run this program in a  single process mode for debugging
+              purpose.  Without this option,  nghttpx creates at least
+              2  processes:  master  and worker  processes.   If  this
+              option is  used, master  and worker  are unified  into a
+              single process.  nghttpx still spawns additional process
+              if neverbleed is used.  In  the single process mode, the
+              signal handling feature is disabled.
 
 Scripting:
   --mruby-file=<PATH>
@@ -3000,7 +3027,7 @@ void reload_config(WorkerProcess *wp) {
   // already created first default loop.
   auto loop = ev_default_loop(new_config->ev_loop_flags);
 
-  int ipc_fd;
+  int ipc_fd = 0;
 
   // fork_worker_process and forked child process assumes new
   // configuration can be obtained from get_config().
@@ -3309,6 +3336,7 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_ADD_X_FORWARDED_PROTO.c_str(), no_argument, &flag, 157},
         {SHRPX_OPT_STRIP_INCOMING_X_FORWARDED_PROTO.c_str(), no_argument, &flag,
          158},
+        {SHRPX_OPT_SINGLE_PROCESS.c_str(), no_argument, &flag, 159},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -4053,6 +4081,11 @@ int main(int argc, char **argv) {
       case 158:
         // --strip-incoming-x-forwarded-proto
         cmdcfgs.emplace_back(SHRPX_OPT_STRIP_INCOMING_X_FORWARDED_PROTO,
+                             StringRef::from_lit("yes"));
+        break;
+      case 159:
+        // --single-process
+        cmdcfgs.emplace_back(SHRPX_OPT_SINGLE_PROCESS,
                              StringRef::from_lit("yes"));
         break;
       default:

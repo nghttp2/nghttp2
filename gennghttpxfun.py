@@ -165,6 +165,7 @@ OPTIONS = [
     "single-thread",
     "add-x-forwarded-proto",
     "strip-incoming-x-forwarded-proto",
+    "single-process",
 ]
 
 LOGVARS = [
