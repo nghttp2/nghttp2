@@ -1094,6 +1094,16 @@ HTTP
     Strip X-Forwarded-For  header field from  inbound client
     requests.
 
+.. option:: --add-x-forwarded-proto
+
+    Append  X-Forwarded-Proto header  field  to the  backend
+    request.
+
+.. option:: --strip-incoming-x-forwarded-proto
+
+    Strip X-Forwarded-Proto header field from inbound client
+    requests.
+
 .. option:: --add-forwarded=<LIST>
 
     Append RFC  7239 Forwarded header field  with parameters
@@ -1331,6 +1341,16 @@ Process
 
     Run this program as <USER>.   This option is intended to
     be used to drop root privileges.
+
+.. option:: --single-process
+
+    Run this program in a  single process mode for debugging
+    purpose.  Without this option,  nghttpx creates at least
+    2  processes:  master  and worker  processes.   If  this
+    option is  used, master  and worker  are unified  into a
+    single process.  nghttpx still spawns additional process
+    if neverbleed is used.  In  the single process mode, the
+    signal handling feature is disabled.
 
 
 Scripting
