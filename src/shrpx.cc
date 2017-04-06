@@ -2466,6 +2466,12 @@ HTTP:
   --strip-incoming-x-forwarded-for
               Strip X-Forwarded-For  header field from  inbound client
               requests.
+  --add-x-forwarded-proto
+              Append  X-Forwarded-Proto header  field  to the  backend
+              request.
+  --strip-incoming-x-forwarded-proto
+              Strip X-Forwarded-Proto header field from inbound client
+              requests.
   --add-forwarded=<LIST>
               Append RFC  7239 Forwarded header field  with parameters
               specified in comma delimited list <LIST>.  The supported
@@ -3300,6 +3306,9 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_FRONTEND_MAX_REQUESTS.c_str(), required_argument, &flag,
          155},
         {SHRPX_OPT_SINGLE_THREAD.c_str(), no_argument, &flag, 156},
+        {SHRPX_OPT_ADD_X_FORWARDED_PROTO.c_str(), no_argument, &flag, 157},
+        {SHRPX_OPT_STRIP_INCOMING_X_FORWARDED_PROTO.c_str(), no_argument, &flag,
+         158},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -4034,6 +4043,16 @@ int main(int argc, char **argv) {
       case 156:
         // --single-thread
         cmdcfgs.emplace_back(SHRPX_OPT_SINGLE_THREAD,
+                             StringRef::from_lit("yes"));
+        break;
+      case 157:
+        // --add-x-forwarded-proto
+        cmdcfgs.emplace_back(SHRPX_OPT_ADD_X_FORWARDED_PROTO,
+                             StringRef::from_lit("yes"));
+        break;
+      case 158:
+        // --strip-incoming-x-forwarded-proto
+        cmdcfgs.emplace_back(SHRPX_OPT_STRIP_INCOMING_X_FORWARDED_PROTO,
                              StringRef::from_lit("yes"));
         break;
       default:

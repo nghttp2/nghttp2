@@ -1816,6 +1816,11 @@ int option_lookup_token(const char *name, size_t namelen) {
         return SHRPX_OPTID_TLS_MIN_PROTO_VERSION;
       }
       break;
+    case 'o':
+      if (util::strieq_l("add-x-forwarded-prot", name, 20)) {
+        return SHRPX_OPTID_ADD_X_FORWARDED_PROTO;
+      }
+      break;
     case 'r':
       if (util::strieq_l("tls-ticket-key-ciphe", name, 20)) {
         return SHRPX_OPTID_TLS_TICKET_KEY_CIPHER;
@@ -2046,6 +2051,11 @@ int option_lookup_token(const char *name, size_t namelen) {
     case 'd':
       if (util::strieq_l("backend-connections-per-fronten", name, 31)) {
         return SHRPX_OPTID_BACKEND_CONNECTIONS_PER_FRONTEND;
+      }
+      break;
+    case 'o':
+      if (util::strieq_l("strip-incoming-x-forwarded-prot", name, 31)) {
+        return SHRPX_OPTID_STRIP_INCOMING_X_FORWARDED_PROTO;
       }
       break;
     }
@@ -3355,6 +3365,14 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     return parse_uint(&config->http.max_requests, opt, optarg);
   case SHRPX_OPTID_SINGLE_THREAD:
     config->single_thread = util::strieq_l("yes", optarg);
+
+    return 0;
+  case SHRPX_OPTID_ADD_X_FORWARDED_PROTO:
+    config->http.xfp.add = util::strieq_l("yes", optarg);
+
+    return 0;
+  case SHRPX_OPTID_STRIP_INCOMING_X_FORWARDED_PROTO:
+    config->http.xfp.strip_incoming = util::strieq_l("yes", optarg);
 
     return 0;
   case SHRPX_OPTID_CONF:
