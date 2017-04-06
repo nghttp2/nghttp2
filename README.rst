@@ -210,8 +210,8 @@ Building nghttp2 from release tar archive
 
 The nghttp2 project regularly releases tar archives which includes
 nghttp2 source code, and generated build files.  They can be
-downloaded from
-[Releases](https://github.com/nghttp2/nghttp2/releases) page.
+downloaded from `Releases
+<https://github.com/nghttp2/nghttp2/releases>`_ page.
 
 Building nghttp2 from git requires autotools development packages.
 Building from tar archives does not require them, and thus it is much
