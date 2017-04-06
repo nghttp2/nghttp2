@@ -157,22 +157,8 @@ minimizes the risk of private key leakage when serious bug like
 Heartbleed is exploited.  The neverbleed is disabled by default.  To
 enable it, use ``--with-neverbleed`` configure option.
 
-Building from git
------------------
-
-Building from git is easy, but please be sure that at least autoconf 2.68 is
-used:
-
-.. code-block:: text
-
-    $ git submodule update --init
-    $ autoreconf -i
-    $ automake
-    $ autoconf
-    $ ./configure
-    $ make
-
-To compile the source code, gcc >= 4.8.3 or clang >= 3.4 is required.
+In ordre to compile the source code, gcc >= 4.8.3 or clang >= 3.4 is
+required.
 
 .. note::
 
@@ -218,6 +204,40 @@ To compile the source code, gcc >= 4.8.3 or clang >= 3.4 is required.
    specified, pkg-config is not used for detection, and user is
    responsible to specify the correct values to these variables.  For
    complete list of these variables, run ``./configure -h``.
+
+Building nghttp2 from release tar archive
+-----------------------------------------
+
+The nghttp2 project regularly releases tar archives which includes
+nghttp2 source code, and generated build files.  They can be
+downloaded from
+[Releases](https://github.com/nghttp2/nghttp2/releases) page.
+
+Building nghttp2 from git requires autotools development packages.
+Building from tar archives does not require them, and thus it is much
+easier.  The usual build step is as follows:
+
+.. code-block:: text
+
+    $ tar xf nghttp2-X.Y.Z.tar.bz2
+    $ cd nghttp2-X.Y.Z
+    $ ./configure
+    $ make
+
+Building from git
+-----------------
+
+Building from git is easy, but please be sure that at least autoconf 2.68 is
+used:
+
+.. code-block:: text
+
+    $ git submodule update --init
+    $ autoreconf -i
+    $ automake
+    $ autoconf
+    $ ./configure
+    $ make
 
 Notes for building on Windows (MSVC)
 ------------------------------------
