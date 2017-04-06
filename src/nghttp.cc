@@ -646,6 +646,11 @@ int HttpClient::resolve_host(const std::string &host, uint16_t port) {
   return 0;
 }
 
+namespace {
+// Just returns 1 to continue handshake.
+int verify_cb(int preverify_ok, X509_STORE_CTX *ctx) { return 1; }
+} // namespace
+
 int HttpClient::initiate_connection() {
   int rv;
 
@@ -674,6 +679,17 @@ int HttpClient::initiate_connection() {
       // value for the SNI extension
       const auto &host_string =
           config.host_override.empty() ? host : config.host_override;
+
+#if (!defined(LIBRESSL_VERSION_NUMBER) &&                                      \
+     OPENSSL_VERSION_NUMBER >= 0x10002000L) ||                                 \
+    defined(OPENSSL_IS_BORINGSSL)
+      auto param = SSL_get0_param(ssl);
+      X509_VERIFY_PARAM_set_hostflags(param, 0);
+      X509_VERIFY_PARAM_set1_host(param, host_string.c_str(),
+                                  host_string.size());
+#endif // (!defined(LIBRESSL_VERSION_NUMBER) && OPENSSL_VERSION_NUMBER >=
+       // 0x10002000L) || defined(OPENSSL_IS_BORINGSSL)
+      SSL_set_verify(ssl, SSL_VERIFY_PEER, verify_cb);
 
       if (!util::numeric_host(host_string.c_str())) {
         SSL_set_tlsext_host_name(ssl, host_string.c_str());
@@ -1294,6 +1310,12 @@ int HttpClient::tls_handshake() {
 
   readfn = &HttpClient::read_tls;
   writefn = &HttpClient::write_tls;
+
+  auto verify_res = SSL_get_verify_result(ssl);
+  if (verify_res != X509_V_OK) {
+    std::cerr << "[WARNING] Certificate verification failed: "
+              << X509_verify_cert_error_string(verify_res) << std::endl;
+  }
 
   if (connection_made() != 0) {
     return -1;
@@ -2246,6 +2268,11 @@ int communicate(
     SSL_CTX_set_options(ssl_ctx, ssl_opts);
     SSL_CTX_set_mode(ssl_ctx, SSL_MODE_AUTO_RETRY);
     SSL_CTX_set_mode(ssl_ctx, SSL_MODE_RELEASE_BUFFERS);
+
+    if (SSL_CTX_set_default_verify_paths(ssl_ctx) != 1) {
+      std::cerr << "[WARNING] Could not load system trusted CA certificates: "
+                << ERR_error_string(ERR_get_error(), nullptr) << std::endl;
+    }
 
     if (nghttp2::tls::ssl_ctx_set_proto_versions(
             ssl_ctx, nghttp2::tls::NGHTTP2_TLS_MIN_VERSION,
