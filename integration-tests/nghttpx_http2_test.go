@@ -1548,6 +1548,26 @@ func TestH2H1HTTPSRedirectPort(t *testing.T) {
 	}
 }
 
+// TestH2H1Code204 tests that 204 response without content-length, and
+// transfer-encoding is valid.
+func TestH2H1Code204(t *testing.T) {
+	st := newServerTester(nil, t, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	})
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name: "TestH2H1Code204",
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+
+	if got, want := res.status, 204; got != want {
+		t.Errorf("status = %v; want %v", got, want)
+	}
+}
+
 // TestH2H1GracefulShutdown tests graceful shutdown.
 func TestH2H1GracefulShutdown(t *testing.T) {
 	st := newServerTester(nil, t, noopHandler)
@@ -2155,6 +2175,26 @@ func TestH2H2DNS(t *testing.T) {
 	}
 
 	if got, want := res.status, 200; got != want {
+		t.Errorf("status = %v; want %v", got, want)
+	}
+}
+
+// TestH2H2Code204 tests that 204 response without content-length, and
+// transfer-encoding is valid.
+func TestH2H2Code204(t *testing.T) {
+	st := newServerTester([]string{"--http2-bridge"}, t, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	})
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name: "TestH2H2Code204",
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+
+	if got, want := res.status, 204; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 }
