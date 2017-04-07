@@ -1568,6 +1568,106 @@ func TestH2H1Code204(t *testing.T) {
 	}
 }
 
+// TestH2H1Code204CL0 tests that 204 response with content-length: 0
+// is allowed.
+func TestH2H1Code204CL0(t *testing.T) {
+	st := newServerTester(nil, t, func(w http.ResponseWriter, r *http.Request) {
+		hj, ok := w.(http.Hijacker)
+		if !ok {
+			http.Error(w, "Could not hijack the connection", http.StatusInternalServerError)
+			return
+		}
+		conn, bufrw, err := hj.Hijack()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		defer conn.Close()
+		bufrw.WriteString("HTTP/1.1 204\r\nContent-Length: 0\r\n\r\n")
+		bufrw.Flush()
+	})
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name: "TestH2H1Code204CL0",
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+
+	if got, want := res.status, 204; got != want {
+		t.Errorf("status = %v; want %v", got, want)
+	}
+
+	if got, found := res.header["Content-Length"]; found {
+		t.Errorf("Content-Length = %v, want nothing", got)
+	}
+}
+
+// TestH2H1Code204CLNonzero tests that 204 response with nonzero
+// content-length is not allowed.
+func TestH2H1Code204CLNonzero(t *testing.T) {
+	st := newServerTester(nil, t, func(w http.ResponseWriter, r *http.Request) {
+		hj, ok := w.(http.Hijacker)
+		if !ok {
+			http.Error(w, "Could not hijack the connection", http.StatusInternalServerError)
+			return
+		}
+		conn, bufrw, err := hj.Hijack()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		defer conn.Close()
+		bufrw.WriteString("HTTP/1.1 204\r\nContent-Length: 1\r\n\r\n")
+		bufrw.Flush()
+	})
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name: "TestH2H1Code204CLNonzero",
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+
+	if got, want := res.status, 502; got != want {
+		t.Errorf("status = %v; want %v", got, want)
+	}
+}
+
+// TestH2H1Code204TE tests that 204 response with transfer-encoding is
+// not allowed.
+func TestH2H1Code204TE(t *testing.T) {
+	st := newServerTester(nil, t, func(w http.ResponseWriter, r *http.Request) {
+		hj, ok := w.(http.Hijacker)
+		if !ok {
+			http.Error(w, "Could not hijack the connection", http.StatusInternalServerError)
+			return
+		}
+		conn, bufrw, err := hj.Hijack()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		defer conn.Close()
+		bufrw.WriteString("HTTP/1.1 204\r\nTransfer-Encoding: chunked\r\n\r\n")
+		bufrw.Flush()
+	})
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name: "TestH2H1Code204TE",
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+
+	if got, want := res.status, 502; got != want {
+		t.Errorf("status = %v; want %v", got, want)
+	}
+}
+
 // TestH2H1GracefulShutdown tests graceful shutdown.
 func TestH2H1GracefulShutdown(t *testing.T) {
 	st := newServerTester(nil, t, noopHandler)
