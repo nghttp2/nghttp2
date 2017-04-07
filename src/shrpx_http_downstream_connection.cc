@@ -876,13 +876,12 @@ int htp_hdrs_completecb(http_parser *htp) {
     if (resp.fs.parse_content_length() != 0) {
       return -1;
     }
-    if (resp.fs.content_length != 0) {
-      return -1;
-    }
     if (resp.fs.content_length == 0) {
       auto cl = resp.fs.header(http2::HD_CONTENT_LENGTH);
       assert(cl);
       http2::erase_header(cl);
+    } else if (resp.fs.content_length != -1) {
+      return -1;
     }
   } else if (resp.http_status / 100 == 1 ||
              (resp.http_status == 200 && req.method == HTTP_CONNECT)) {
