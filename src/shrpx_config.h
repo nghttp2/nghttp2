@@ -336,10 +336,6 @@ constexpr auto SHRPX_OPT_REDIRECT_HTTPS_PORT =
 constexpr auto SHRPX_OPT_FRONTEND_MAX_REQUESTS =
     StringRef::from_lit("frontend-max-requests");
 constexpr auto SHRPX_OPT_SINGLE_THREAD = StringRef::from_lit("single-thread");
-constexpr auto SHRPX_OPT_ADD_X_FORWARDED_PROTO =
-    StringRef::from_lit("add-x-forwarded-proto");
-constexpr auto SHRPX_OPT_STRIP_INCOMING_X_FORWARDED_PROTO =
-    StringRef::from_lit("strip-incoming-x-forwarded-proto");
 constexpr auto SHRPX_OPT_SINGLE_PROCESS = StringRef::from_lit("single-process");
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
@@ -643,10 +639,6 @@ struct HttpConfig {
     bool add;
     bool strip_incoming;
   } xff;
-  struct {
-    bool add;
-    bool strip_incoming;
-  } xfp;
   std::vector<AltSvc> altsvcs;
   std::vector<ErrorPage> error_pages;
   HeaderRefs add_request_headers;
@@ -941,7 +933,6 @@ enum {
   SHRPX_OPTID_ADD_REQUEST_HEADER,
   SHRPX_OPTID_ADD_RESPONSE_HEADER,
   SHRPX_OPTID_ADD_X_FORWARDED_FOR,
-  SHRPX_OPTID_ADD_X_FORWARDED_PROTO,
   SHRPX_OPTID_ALTSVC,
   SHRPX_OPTID_API_MAX_REQUEST_BODY,
   SHRPX_OPTID_BACKEND,
@@ -1060,7 +1051,6 @@ enum {
   SHRPX_OPTID_STREAM_WRITE_TIMEOUT,
   SHRPX_OPTID_STRIP_INCOMING_FORWARDED,
   SHRPX_OPTID_STRIP_INCOMING_X_FORWARDED_FOR,
-  SHRPX_OPTID_STRIP_INCOMING_X_FORWARDED_PROTO,
   SHRPX_OPTID_SUBCERT,
   SHRPX_OPTID_SYSLOG_FACILITY,
   SHRPX_OPTID_TLS_DYN_REC_IDLE_TIMEOUT,
