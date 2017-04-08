@@ -435,15 +435,6 @@ such PSK cipher suite with HTTP/2, disable HTTP/2 cipher black list by
 using :option:`--client-no-http2-cipher-black-list` option.  But you
 should understand its implications.
 
-Migration from nghttpx v1.21.x or earlier
------------------------------------------
-
-As of nghttpx v1.22.0, it does not strip and append X-Forwarded-Proto
-header field by default.  In order to recover the previous behaviour,
-that is always strip incoming X-Forwarded-Proto and append its own,
-use :option:`--add-x-forwarded-proto` and
-:option:`--strip-incoming-x-forwarded-proto` options.
-
 Migration from nghttpx v1.18.x or earlier
 -----------------------------------------
 
