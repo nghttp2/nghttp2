@@ -1094,15 +1094,18 @@ HTTP
     Strip X-Forwarded-For  header field from  inbound client
     requests.
 
-.. option:: --add-x-forwarded-proto
+.. option:: --no-add-x-forwarded-proto
 
-    Append  X-Forwarded-Proto header  field  to the  backend
-    request.
+    Don't append  additional X-Forwarded-Proto  header field
+    to  the   backend  request.   If  inbound   client  sets
+    X-Forwarded-Proto,                                   and
+    :option:`--no-strip-incoming-x-forwarded-proto`  option  is  used,
+    they are passed to the backend.
 
-.. option:: --strip-incoming-x-forwarded-proto
+.. option:: --no-strip-incoming-x-forwarded-proto
 
-    Strip X-Forwarded-Proto header field from inbound client
-    requests.
+    Don't strip X-Forwarded-Proto  header field from inbound
+    client requests.
 
 .. option:: --add-forwarded=<LIST>
 
