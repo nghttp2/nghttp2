@@ -554,6 +554,11 @@ int sct_add_cb(SSL *ssl, unsigned int ext_type, unsigned int context,
               << ", context=" << std::hex << context;
   }
 
+  // We only have SCTs for leaf certificate.
+  if (chainidx != 0) {
+    return 0;
+  }
+
   auto ssl_ctx = SSL_get_SSL_CTX(ssl);
   auto tls_ctx_data =
       static_cast<TLSContextData *>(SSL_CTX_get_app_data(ssl_ctx));
