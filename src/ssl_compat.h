@@ -35,4 +35,7 @@
 #define OPENSSL_1_1_API                                                        \
   (!LIBRESSL_IN_USE && OPENSSL_VERSION_NUMBER >= 0x1010000fL)
 
+#define OPENSSL_1_1_1_API                                                      \
+  (!LIBRESSL_IN_USE && OPENSSL_VERSION_NUMBER >= 0x10101000L)
+
 #endif // OPENSSL_COMPAT_H
