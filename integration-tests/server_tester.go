@@ -153,8 +153,8 @@ func newServerTesterInternal(src_args []string, t *testing.T, handler http.Handl
 		if sep == -1 {
 			t.Fatalf("backendURL.Host %v does not contain separator ':'", backendURL.Host)
 		}
-		// We use awesome service xip.io.
-		b += fmt.Sprintf("%v.xip.io,%v;", backendURL.Host[:sep], backendURL.Host[sep+1:])
+		// We use awesome service nip.io.
+		b += fmt.Sprintf("%v.nip.io,%v;", backendURL.Host[:sep], backendURL.Host[sep+1:])
 	}
 
 	if backendTLS {
