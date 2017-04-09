@@ -71,6 +71,9 @@ struct TLSConnection {
   bool reneg_started;
   // true if ssl is prepared to do handshake as server.
   bool server_handshake;
+  // true if ssl is initialized as server, and client requested
+  // signed_certificate_timestamp extension.
+  bool sct_requested;
 };
 
 struct TCPHint {

@@ -534,16 +534,26 @@ int alpn_select_proto_cb(SSL *ssl, const unsigned char **out,
 } // namespace
 #endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 
-#if !LIBRESSL_IN_USE && OPENSSL_VERSION_NUMBER >= 0x10002000L
-namespace {
-// https://tools.ietf.org/html/rfc6962#section-6
-constexpr unsigned int TLS_EXT_SIGNED_CERTIFICATE_TIMESTAMP = 18;
-} // namespace
+#ifndef TLSEXT_TYPE_signed_certificate_timestamp
+#define TLSEXT_TYPE_signed_certificate_timestamp 18
+#endif // !TLSEXT_TYPE_signed_certificate_timestamp
 
 namespace {
-int sct_add_cb(SSL *ssl, unsigned int ext_type, const unsigned char **out,
-               size_t *outlen, int *al, void *add_arg) {
-  assert(ext_type == TLS_EXT_SIGNED_CERTIFICATE_TIMESTAMP);
+int sct_add_cb(SSL *ssl, unsigned int ext_type, unsigned int context,
+               const unsigned char **out, size_t *outlen, X509 *x,
+               size_t chainidx, int *al, void *add_arg) {
+  assert(ext_type == TLSEXT_TYPE_signed_certificate_timestamp);
+
+  auto conn = static_cast<Connection *>(SSL_get_app_data(ssl));
+  if (!conn->tls.sct_requested) {
+    return 0;
+  }
+
+  if (LOG_ENABLED(INFO)) {
+    LOG(INFO) << "sct_add_cb is called, chainidx=" << chainidx << ", x=" << x
+              << ", context=" << std::hex << context;
+  }
+
   auto ssl_ctx = SSL_get_SSL_CTX(ssl);
   auto tls_ctx_data =
       static_cast<TLSContextData *>(SSL_CTX_get_app_data(ssl_ctx));
@@ -556,23 +566,59 @@ int sct_add_cb(SSL *ssl, unsigned int ext_type, const unsigned char **out,
 } // namespace
 
 namespace {
-void sct_free_cb(SSL *ssl, unsigned int ext_type, const unsigned char *out,
-                 void *add_arg) {
-  assert(ext_type == TLS_EXT_SIGNED_CERTIFICATE_TIMESTAMP);
+void sct_free_cb(SSL *ssl, unsigned int ext_type, unsigned int context,
+                 const unsigned char *out, void *add_arg) {
+  assert(ext_type == TLSEXT_TYPE_signed_certificate_timestamp);
 }
 } // namespace
 
 namespace {
-int sct_parse_cb(SSL *ssl, unsigned int ext_type, const unsigned char *in,
-                 size_t inlen, int *al, void *parse_arg) {
-  assert(ext_type == TLS_EXT_SIGNED_CERTIFICATE_TIMESTAMP);
+int sct_parse_cb(SSL *ssl, unsigned int ext_type, unsigned int context,
+                 const unsigned char *in, size_t inlen, X509 *x,
+                 size_t chainidx, int *al, void *parse_arg) {
+  assert(ext_type == TLSEXT_TYPE_signed_certificate_timestamp);
   // client SHOULD send 0 length extension_data, but it is still
   // SHOULD, and not MUST.
+
+  // For TLSv1.3 Certificate message, sct_add_cb is called even if
+  // client has not sent signed_certificate_timestamp extension in its
+  // ClientHello.  Explicitly remember that client has included it
+  // here.
+  auto conn = static_cast<Connection *>(SSL_get_app_data(ssl));
+  conn->tls.sct_requested = true;
 
   return 1;
 }
 } // namespace
-#endif // !LIBRESSL_IN_USE && OPENSSL_VERSION_NUMBER >= 0x10002000L
+
+#if !LIBRESSL_IN_USE && OPENSSL_VERSION_NUMBER >= 0x10002000L &&               \
+    !OPENSSL_1_1_1_API
+
+namespace {
+int legacy_sct_add_cb(SSL *ssl, unsigned int ext_type,
+                      const unsigned char **out, size_t *outlen, int *al,
+                      void *add_arg) {
+  return sct_add_cb(ssl, ext_type, 0, out, outlen, nullptr, 0, al, add_arg);
+}
+} // namespace
+
+namespace {
+void legacy_sct_free_cb(SSL *ssl, unsigned int ext_type,
+                        const unsigned char *out, void *add_arg) {
+  sct_free_cb(ssl, ext_type, 0, out, add_arg);
+}
+} // namespace
+
+namespace {
+int legacy_sct_parse_cb(SSL *ssl, unsigned int ext_type,
+                        const unsigned char *in, size_t inlen, int *al,
+                        void *parse_arg) {
+  return sct_parse_cb(ssl, ext_type, 0, in, inlen, nullptr, 0, al, parse_arg);
+}
+} // namespace
+
+#endif // !LIBRESSL_IN_USE && OPENSSL_VERSION_NUMBER >= 0x10002000L &&
+       // !OPENSSL_1_1_1_API
 
 #if !LIBRESSL_IN_USE
 namespace {
@@ -832,17 +878,35 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
 #endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 
 #if !LIBRESSL_IN_USE && OPENSSL_VERSION_NUMBER >= 0x10002000L
-  // SSL_extension_supported(TLS_EXT_SIGNED_CERTIFICATE_TIMESTAMP)
+  // SSL_extension_supported(TLSEXT_TYPE_signed_certificate_timestamp)
   // returns 1, which means OpenSSL internally handles it.  But
   // OpenSSL handles signed_certificate_timestamp extension specially,
   // and it lets custom handler to process the extension.
-  if (!sct_data.empty() &&
-      SSL_CTX_add_server_custom_ext(
-          ssl_ctx, TLS_EXT_SIGNED_CERTIFICATE_TIMESTAMP, sct_add_cb,
-          sct_free_cb, nullptr, sct_parse_cb, nullptr) != 1) {
-    LOG(FATAL) << "SSL_CTX_add_server_custom_ext failed: "
-               << ERR_error_string(ERR_get_error(), nullptr);
-    DIE();
+  if (!sct_data.empty()) {
+#if OPENSSL_1_1_1_API
+    // It is not entirely clear to me that SSL_EXT_CLIENT_HELLO is
+    // required here.  sct_parse_cb is called without
+    // SSL_EXT_CLIENT_HELLO being set.  But the passed context value
+    // is SSL_EXT_CLIENT_HELLO.
+    if (SSL_CTX_add_custom_ext(
+            ssl_ctx, TLSEXT_TYPE_signed_certificate_timestamp,
+            SSL_EXT_CLIENT_HELLO | SSL_EXT_TLS1_2_SERVER_HELLO |
+                SSL_EXT_TLS1_3_CERTIFICATE | SSL_EXT_IGNORE_ON_RESUMPTION,
+            sct_add_cb, sct_free_cb, nullptr, sct_parse_cb, nullptr) != 1) {
+      LOG(FATAL) << "SSL_CTX_add_custom_ext failed: "
+                 << ERR_error_string(ERR_get_error(), nullptr);
+      DIE();
+    }
+#else  // !OPENSSL_1_1_1_API
+    if (SSL_CTX_add_server_custom_ext(
+            ssl_ctx, TLSEXT_TYPE_signed_certificate_timestamp,
+            legacy_sct_add_cb, legacy_sct_free_cb, nullptr, legacy_sct_parse_cb,
+            nullptr) != 1) {
+      LOG(FATAL) << "SSL_CTX_add_server_custom_ext failed: "
+                 << ERR_error_string(ERR_get_error(), nullptr);
+      DIE();
+    }
+#endif // !OPENSSL_1_1_1_API
   }
 #endif // !LIBRESSL_IN_USE && OPENSSL_VERSION_NUMBER >= 0x10002000L
 

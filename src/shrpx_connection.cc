@@ -123,6 +123,7 @@ void Connection::disconnect() {
     tls.handshake_state = 0;
     tls.initial_handshake_done = false;
     tls.reneg_started = false;
+    tls.sct_requested = false;
   }
 
   if (fd != -1) {
