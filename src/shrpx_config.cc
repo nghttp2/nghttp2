@@ -1905,6 +1905,11 @@ int option_lookup_token(const char *name, size_t namelen) {
         return SHRPX_OPTID_FETCH_OCSP_RESPONSE_FILE;
       }
       break;
+    case 'o':
+      if (util::strieq_l("no-add-x-forwarded-prot", name, 23)) {
+        return SHRPX_OPTID_NO_ADD_X_FORWARDED_PROTO;
+      }
+      break;
     case 't':
       if (util::strieq_l("listener-disable-timeou", name, 23)) {
         return SHRPX_OPTID_LISTENER_DISABLE_TIMEOUT;
@@ -2099,6 +2104,11 @@ int option_lookup_token(const char *name, size_t namelen) {
     case 'e':
       if (util::strieq_l("frontend-http2-optimize-window-siz", name, 34)) {
         return SHRPX_OPTID_FRONTEND_HTTP2_OPTIMIZE_WINDOW_SIZE;
+      }
+      break;
+    case 'o':
+      if (util::strieq_l("no-strip-incoming-x-forwarded-prot", name, 34)) {
+        return SHRPX_OPTID_NO_STRIP_INCOMING_X_FORWARDED_PROTO;
       }
       break;
     case 'r':
@@ -3362,6 +3372,14 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     return 0;
   case SHRPX_OPTID_SINGLE_PROCESS:
     config->single_process = util::strieq_l("yes", optarg);
+
+    return 0;
+  case SHRPX_OPTID_NO_ADD_X_FORWARDED_PROTO:
+    config->http.xfp.add = !util::strieq_l("yes", optarg);
+
+    return 0;
+  case SHRPX_OPTID_NO_STRIP_INCOMING_X_FORWARDED_PROTO:
+    config->http.xfp.strip_incoming = !util::strieq_l("yes", optarg);
 
     return 0;
   case SHRPX_OPTID_CONF:

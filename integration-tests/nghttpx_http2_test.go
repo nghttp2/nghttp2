@@ -35,6 +35,105 @@ func TestH2H1PlainGET(t *testing.T) {
 	}
 }
 
+// TestH2H1AddXfp tests that server appends :scheme to the existing
+// x-forwarded-proto header field.
+func TestH2H1AddXfp(t *testing.T) {
+	st := newServerTester([]string{"--no-strip-incoming-x-forwarded-proto"}, t, func(w http.ResponseWriter, r *http.Request) {
+		xfp := r.Header.Get("X-Forwarded-Proto")
+		if got, want := xfp, "foo, http"; got != want {
+			t.Errorf("X-Forwarded-Proto = %q; want %q", got, want)
+		}
+	})
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name: "TestH2H1AddXfp",
+		header: []hpack.HeaderField{
+			pair("x-forwarded-proto", "foo"),
+		},
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+	if got, want := res.status, 200; got != want {
+		t.Errorf("status = %v; want %v", got, want)
+	}
+}
+
+// TestH2H1NoAddXfp tests that server does not append :scheme to the
+// existing x-forwarded-proto header field.
+func TestH2H1NoAddXfp(t *testing.T) {
+	st := newServerTester([]string{"--no-add-x-forwarded-proto", "--no-strip-incoming-x-forwarded-proto"}, t, func(w http.ResponseWriter, r *http.Request) {
+		xfp := r.Header.Get("X-Forwarded-Proto")
+		if got, want := xfp, "foo"; got != want {
+			t.Errorf("X-Forwarded-Proto = %q; want %q", got, want)
+		}
+	})
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name: "TestH2H1NoAddXfp",
+		header: []hpack.HeaderField{
+			pair("x-forwarded-proto", "foo"),
+		},
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+	if got, want := res.status, 200; got != want {
+		t.Errorf("status = %v; want %v", got, want)
+	}
+}
+
+// TestH2H1StripXfp tests that server strips incoming
+// x-forwarded-proto header field.
+func TestH2H1StripXfp(t *testing.T) {
+	st := newServerTester(nil, t, func(w http.ResponseWriter, r *http.Request) {
+		xfp := r.Header.Get("X-Forwarded-Proto")
+		if got, want := xfp, "http"; got != want {
+			t.Errorf("X-Forwarded-Proto = %q; want %q", got, want)
+		}
+	})
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name: "TestH2H1StripXfp",
+		header: []hpack.HeaderField{
+			pair("x-forwarded-proto", "foo"),
+		},
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+	if got, want := res.status, 200; got != want {
+		t.Errorf("status = %v; want %v", got, want)
+	}
+}
+
+// TestH2H1StripNoAddXfp tests that server strips incoming
+// x-forwarded-proto header field, and does not add another.
+func TestH2H1StripNoAddXfp(t *testing.T) {
+	st := newServerTester([]string{"--no-add-x-forwarded-proto"}, t, func(w http.ResponseWriter, r *http.Request) {
+		if got, found := r.Header["X-Forwarded-Proto"]; found {
+			t.Errorf("X-Forwarded-Proto = %q; want nothing", got)
+		}
+	})
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name: "TestH2H1StripNoAddXfp",
+		header: []hpack.HeaderField{
+			pair("x-forwarded-proto", "foo"),
+		},
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+	if got, want := res.status, 200; got != want {
+		t.Errorf("status = %v; want %v", got, want)
+	}
+}
+
 // TestH2H1AddXff tests that server generates X-Forwarded-For header
 // field when forwarding request to backend.
 func TestH2H1AddXff(t *testing.T) {
@@ -1770,6 +1869,105 @@ func TestH2H2TLSXfp(t *testing.T) {
 	}
 	if got, want := res.status, 200; got != want {
 		t.Errorf("res.status: %v; want %v", got, want)
+	}
+}
+
+// TestH2H2AddXfp tests that server appends :scheme to the existing
+// x-forwarded-proto header field.
+func TestH2H2AddXfp(t *testing.T) {
+	st := newServerTesterTLS([]string{"--http2-bridge", "--no-strip-incoming-x-forwarded-proto"}, t, func(w http.ResponseWriter, r *http.Request) {
+		xfp := r.Header.Get("X-Forwarded-Proto")
+		if got, want := xfp, "foo, http"; got != want {
+			t.Errorf("X-Forwarded-Proto = %q; want %q", got, want)
+		}
+	})
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name: "TestH2H2AddXfp",
+		header: []hpack.HeaderField{
+			pair("x-forwarded-proto", "foo"),
+		},
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+	if got, want := res.status, 200; got != want {
+		t.Errorf("status = %v; want %v", got, want)
+	}
+}
+
+// TestH2H2NoAddXfp tests that server does not append :scheme to the
+// existing x-forwarded-proto header field.
+func TestH2H2NoAddXfp(t *testing.T) {
+	st := newServerTesterTLS([]string{"--http2-bridge", "--no-add-x-forwarded-proto", "--no-strip-incoming-x-forwarded-proto"}, t, func(w http.ResponseWriter, r *http.Request) {
+		xfp := r.Header.Get("X-Forwarded-Proto")
+		if got, want := xfp, "foo"; got != want {
+			t.Errorf("X-Forwarded-Proto = %q; want %q", got, want)
+		}
+	})
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name: "TestH2H2NoAddXfp",
+		header: []hpack.HeaderField{
+			pair("x-forwarded-proto", "foo"),
+		},
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+	if got, want := res.status, 200; got != want {
+		t.Errorf("status = %v; want %v", got, want)
+	}
+}
+
+// TestH2H2StripXfp tests that server strips incoming
+// x-forwarded-proto header field.
+func TestH2H2StripXfp(t *testing.T) {
+	st := newServerTesterTLS([]string{"--http2-bridge"}, t, func(w http.ResponseWriter, r *http.Request) {
+		xfp := r.Header.Get("X-Forwarded-Proto")
+		if got, want := xfp, "http"; got != want {
+			t.Errorf("X-Forwarded-Proto = %q; want %q", got, want)
+		}
+	})
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name: "TestH2H2StripXfp",
+		header: []hpack.HeaderField{
+			pair("x-forwarded-proto", "foo"),
+		},
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+	if got, want := res.status, 200; got != want {
+		t.Errorf("status = %v; want %v", got, want)
+	}
+}
+
+// TestH2H2StripNoAddXfp tests that server strips incoming
+// x-forwarded-proto header field, and does not add another.
+func TestH2H2StripNoAddXfp(t *testing.T) {
+	st := newServerTesterTLS([]string{"--http2-bridge", "--no-add-x-forwarded-proto"}, t, func(w http.ResponseWriter, r *http.Request) {
+		if got, found := r.Header["X-Forwarded-Proto"]; found {
+			t.Errorf("X-Forwarded-Proto = %q; want nothing", got)
+		}
+	})
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name: "TestH2H2StripNoAddXfp",
+		header: []hpack.HeaderField{
+			pair("x-forwarded-proto", "foo"),
+		},
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+	if got, want := res.status, 200; got != want {
+		t.Errorf("status = %v; want %v", got, want)
 	}
 }
 

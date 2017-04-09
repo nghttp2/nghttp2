@@ -1478,6 +1478,8 @@ void fill_default_config(Config *config) {
   httpconf.max_response_header_fields = 500;
   httpconf.redirect_https_port = StringRef::from_lit("443");
   httpconf.max_requests = std::numeric_limits<size_t>::max();
+  httpconf.xfp.add = true;
+  httpconf.xfp.strip_incoming = true;
 
   auto &http2conf = config->http2;
   {
@@ -2485,6 +2487,15 @@ HTTP:
   --strip-incoming-x-forwarded-for
               Strip X-Forwarded-For  header field from  inbound client
               requests.
+  --no-add-x-forwarded-proto
+              Don't append  additional X-Forwarded-Proto  header field
+              to  the   backend  request.   If  inbound   client  sets
+              X-Forwarded-Proto,                                   and
+              --no-strip-incoming-x-forwarded-proto  option  is  used,
+              they are passed to the backend.
+  --no-strip-incoming-x-forwarded-proto
+              Don't strip X-Forwarded-Proto  header field from inbound
+              client requests.
   --add-forwarded=<LIST>
               Append RFC  7239 Forwarded header field  with parameters
               specified in comma delimited list <LIST>.  The supported
@@ -3327,6 +3338,9 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_FRONTEND_MAX_REQUESTS.c_str(), required_argument, &flag,
          155},
         {SHRPX_OPT_SINGLE_THREAD.c_str(), no_argument, &flag, 156},
+        {SHRPX_OPT_NO_ADD_X_FORWARDED_PROTO.c_str(), no_argument, &flag, 157},
+        {SHRPX_OPT_NO_STRIP_INCOMING_X_FORWARDED_PROTO.c_str(), no_argument,
+         &flag, 158},
         {SHRPX_OPT_SINGLE_PROCESS.c_str(), no_argument, &flag, 159},
         {nullptr, 0, nullptr, 0}};
 
@@ -4062,6 +4076,16 @@ int main(int argc, char **argv) {
       case 156:
         // --single-thread
         cmdcfgs.emplace_back(SHRPX_OPT_SINGLE_THREAD,
+                             StringRef::from_lit("yes"));
+        break;
+      case 157:
+        // --no-add-x-forwarded-proto
+        cmdcfgs.emplace_back(SHRPX_OPT_NO_ADD_X_FORWARDED_PROTO,
+                             StringRef::from_lit("yes"));
+        break;
+      case 158:
+        // --no-strip-incoming-x-forwarded-proto
+        cmdcfgs.emplace_back(SHRPX_OPT_NO_STRIP_INCOMING_X_FORWARDED_PROTO,
                              StringRef::from_lit("yes"));
         break;
       case 159:
