@@ -479,7 +479,7 @@ std::unique_ptr<stream> session_impl::create_stream() {
 const request *session_impl::submit(boost::system::error_code &ec,
                                     const std::string &method,
                                     const std::string &uri, generator_cb cb,
-                                    header_map h) {
+                                    header_map h, priority_spec prio) {
   ec.clear();
 
   if (stopped_) {
@@ -559,7 +559,7 @@ const request *session_impl::submit(boost::system::error_code &ec,
     prdptr = &prd;
   }
 
-  auto stream_id = nghttp2_submit_request(session_, nullptr, nva.data(),
+  auto stream_id = nghttp2_submit_request(session_, prio.get(), nva.data(),
                                           nva.size(), prdptr, strm.get());
   if (stream_id < 0) {
     ec = make_error_code(static_cast<nghttp2_error>(stream_id));

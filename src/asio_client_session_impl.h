@@ -70,7 +70,7 @@ public:
 
   const request *submit(boost::system::error_code &ec,
                         const std::string &method, const std::string &uri,
-                        generator_cb cb, header_map h);
+                        generator_cb cb, header_map h, priority_spec spec);
 
   virtual void start_connect(tcp::resolver::iterator endpoint_it) = 0;
   virtual tcp::socket &socket() = 0;
