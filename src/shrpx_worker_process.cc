@@ -275,8 +275,7 @@ void memcached_get_ticket_key_cb(struct ev_loop *loop, ev_timer *w,
   auto req = make_unique<MemcachedRequest>();
   req->key = "nghttpx:tls-ticket-key";
   req->op = MEMCACHED_OP_GET;
-  req->cb = [conn_handler, dispatcher, w](MemcachedRequest *req,
-                                          MemcachedResult res) {
+  req->cb = [conn_handler, w](MemcachedRequest *req, MemcachedResult res) {
     switch (res.status_code) {
     case MEMCACHED_ERR_NO_ERROR:
       break;
