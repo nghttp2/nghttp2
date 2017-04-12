@@ -96,28 +96,47 @@ boost::asio::io_service &session::io_service() const {
 
 const request *session::submit(boost::system::error_code &ec,
                                const std::string &method,
-                               const std::string &uri, header_map h) const {
-  return impl_->submit(ec, method, uri, generator_cb(), std::move(h));
+                               const std::string &uri, header_map h,
+                               priority_spec prio) const {
+  return impl_->submit(ec, method, uri, generator_cb(), std::move(h),
+                       std::move(prio));
 }
 
 const request *session::submit(boost::system::error_code &ec,
                                const std::string &method,
                                const std::string &uri, std::string data,
-                               header_map h) const {
+                               header_map h, priority_spec prio) const {
   return impl_->submit(ec, method, uri, string_generator(std::move(data)),
-                       std::move(h));
+                       std::move(h), std::move(prio));
 }
 
 const request *session::submit(boost::system::error_code &ec,
                                const std::string &method,
                                const std::string &uri, generator_cb cb,
-                               header_map h) const {
-  return impl_->submit(ec, method, uri, std::move(cb), std::move(h));
+                               header_map h, priority_spec prio) const {
+  return impl_->submit(ec, method, uri, std::move(cb), std::move(h),
+                       std::move(prio));
 }
 
 void session::read_timeout(const boost::posix_time::time_duration &t) {
   impl_->read_timeout(t);
 }
+
+priority_spec::priority_spec(const int32_t stream_id, const int32_t weight,
+                             const bool exclusive)
+    : valid_(true) {
+  nghttp2_priority_spec_init(&spec_, stream_id, weight, exclusive);
+}
+
+const nghttp2_priority_spec *priority_spec::get() const {
+  if (!valid_) {
+    return nullptr;
+  }
+
+  return &spec_;
+}
+
+const bool priority_spec::valid() const { return valid_; }
 
 } // namespace client
 } // namespace asio_http2
