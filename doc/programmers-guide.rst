@@ -152,10 +152,8 @@ field-value production rules described in `RFC 7230, section
 Additionally, all field name must be lower cased.  While the pseudo
 header fields must satisfy these rules, we just ignore illegal regular
 headers (this means that these header fields are not passed to
-application callback).  This is because these illegal header fields
-are floating around in existing internet and resetting stream just
-because of this may break many web sites.  This is especially true if
-we forward to or translate from HTTP/1 traffic.
+application callback).  If application wants to treat these headers as
+error, use `nghttp2_on_invalid_header_callback <https://nghttp2.org/documentation/types.html#c.nghttp2_on_invalid_header_callback>`_.
 
 For "http" or "https" URIs, ":path" pseudo header fields must start
 with "/".  The only exception is OPTIONS request, in that case, "*" is
