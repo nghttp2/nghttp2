@@ -185,16 +185,6 @@ static void run_nghttp2_session_send(void) {
   if (rv != 0) {
     goto fail;
   }
-  /* Sending against half-closed stream */
-  rv = nghttp2_submit_headers(session, NGHTTP2_FLAG_NONE, 3, NULL, nv,
-                              ARRLEN(nv), NULL);
-  if (rv != 0) {
-    goto fail;
-  }
-  rv = nghttp2_submit_data(session, NGHTTP2_FLAG_END_STREAM, 3, &data_prd);
-  if (rv != 0) {
-    goto fail;
-  }
   rv = nghttp2_submit_ping(session, NGHTTP2_FLAG_NONE, NULL);
   if (rv != 0) {
     goto fail;
@@ -276,8 +266,10 @@ static void run_nghttp2_session_recv(void) {
   nghttp2_hd_deflater deflater;
   nghttp2_frame frame;
   nghttp2_bufs bufs;
-  nghttp2_nv nv[] = {MAKE_NV(":authority", "example.org"),
-                     MAKE_NV(":scheme", "https")};
+  nghttp2_nv nv[] = {
+      MAKE_NV(":method", "GET"), MAKE_NV(":scheme", "https"),
+      MAKE_NV(":authority", "example.org"), MAKE_NV(":path", "/"),
+  };
   nghttp2_settings_entry iv[2];
   my_user_data ud;
   data_feed df;
@@ -296,22 +288,51 @@ static void run_nghttp2_session_recv(void) {
   ud.df = &df;
 
   nghttp2_failmalloc_pause();
-  nvlen = ARRLEN(nv);
-  nghttp2_nv_array_copy(&nva, nv, nvlen, nghttp2_mem_fm());
   nghttp2_hd_deflate_init(&deflater, nghttp2_mem_fm());
   nghttp2_session_server_new3(&session, &callbacks, &ud, NULL,
                               nghttp2_mem_fm());
+
+  /* Client preface */
+  nghttp2_bufs_add(&bufs, NGHTTP2_CLIENT_MAGIC, NGHTTP2_CLIENT_MAGIC_LEN);
+  data_feed_init(&df, &bufs);
+  nghttp2_bufs_reset(&bufs);
   nghttp2_failmalloc_unpause();
 
-  /* HEADERS */
+  rv = nghttp2_session_recv(session);
+  if (rv != 0) {
+    goto fail;
+  }
+
   nghttp2_failmalloc_pause();
+  /* SETTINGS */
+  iv[0].settings_id = NGHTTP2_SETTINGS_HEADER_TABLE_SIZE;
+  iv[0].value = 4096;
+  iv[1].settings_id = NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS;
+  iv[1].value = 100;
+  nghttp2_frame_settings_init(&frame.settings, NGHTTP2_FLAG_NONE,
+                              nghttp2_frame_iv_copy(iv, 2, nghttp2_mem_fm()),
+                              2);
+  nghttp2_frame_pack_settings(&bufs, &frame.settings);
+  nghttp2_frame_settings_free(&frame.settings, nghttp2_mem_fm());
+  data_feed_init(&df, &bufs);
+  nghttp2_bufs_reset(&bufs);
+  nghttp2_failmalloc_unpause();
+
+  rv = nghttp2_session_recv(session);
+  if (rv != 0) {
+    goto fail;
+  }
+
+  nghttp2_failmalloc_pause();
+  /* HEADERS */
+  nvlen = ARRLEN(nv);
+  nghttp2_nv_array_copy(&nva, nv, nvlen, nghttp2_mem_fm());
   nghttp2_frame_headers_init(&frame.headers, NGHTTP2_FLAG_END_STREAM, 1,
                              NGHTTP2_HCAT_REQUEST, NULL, nva, nvlen);
   nghttp2_frame_pack_headers(&bufs, &frame.headers, &deflater);
   nghttp2_frame_headers_free(&frame.headers, nghttp2_mem_fm());
   data_feed_init(&df, &bufs);
   nghttp2_bufs_reset(&bufs);
-
   nghttp2_failmalloc_unpause();
 
   rv = nghttp2_session_recv(session);
@@ -339,26 +360,6 @@ static void run_nghttp2_session_recv(void) {
   nghttp2_frame_rst_stream_init(&frame.rst_stream, 1, NGHTTP2_PROTOCOL_ERROR);
   nghttp2_frame_pack_rst_stream(&bufs, &frame.rst_stream);
   nghttp2_frame_rst_stream_free(&frame.rst_stream);
-  nghttp2_bufs_reset(&bufs);
-
-  nghttp2_failmalloc_unpause();
-
-  rv = nghttp2_session_recv(session);
-  if (rv != 0) {
-    goto fail;
-  }
-
-  /* SETTINGS */
-  nghttp2_failmalloc_pause();
-  iv[0].settings_id = NGHTTP2_SETTINGS_HEADER_TABLE_SIZE;
-  iv[0].value = 4096;
-  iv[1].settings_id = NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS;
-  iv[1].value = 100;
-  nghttp2_frame_settings_init(&frame.settings, NGHTTP2_FLAG_NONE,
-                              nghttp2_frame_iv_copy(iv, 2, nghttp2_mem_fm()),
-                              2);
-  nghttp2_frame_pack_settings(&bufs, &frame.settings);
-  nghttp2_frame_settings_free(&frame.settings, nghttp2_mem_fm());
   nghttp2_bufs_reset(&bufs);
 
   nghttp2_failmalloc_unpause();
