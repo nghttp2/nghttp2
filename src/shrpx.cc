@@ -1665,14 +1665,16 @@ Connections:
               which  only  lacks  trailing  '/'  (e.g.,  path  "/foo/"
               matches request path  "/foo").  If it does  not end with
               "/", it  performs exact match against  the request path.
-              If host  is given, it  performs exact match  against the
-              request host.  If  host alone is given,  "/" is appended
-              to it,  so that it  matches all request paths  under the
-              host   (e.g.,   specifying   "nghttp2.org"   equals   to
-              "nghttp2.org/").  CONNECT  method is  treated specially.
-              It does  not have path,  and we don't allow  empty path.
-              To workaround  this, we  assume that CONNECT  method has
-              "/" as path.
+              If  host  is given,  it  performs  a match  against  the
+              request host.   For a  request received on  the frontend
+              lister  with "sni-fwd"  parameter enabled,  SNI host  is
+              used instead of a request host.  If host alone is given,
+              "/" is  appended to it,  so that it matches  all request
+              paths  under the  host  (e.g., specifying  "nghttp2.org"
+              equals  to "nghttp2.org/").   CONNECT method  is treated
+              specially.  It  does not have  path, and we  don't allow
+              empty path.  To workaround  this, we assume that CONNECT
+              method has "/" as path.
 
               Patterns with  host take  precedence over  patterns with
               just path.   Then, longer patterns take  precedence over
@@ -1810,6 +1812,11 @@ Connections:
 
               Optionally, TLS  can be disabled by  specifying "no-tls"
               parameter.  TLS is enabled by default.
+
+              If "sni-fwd" parameter is  used, when performing a match
+              to select a backend server,  SNI host name received from
+              the client  is used  instead of  the request  host.  See
+              --backend option about the pattern match.
 
               To  make this  frontend as  API endpoint,  specify "api"
               parameter.   This   is  disabled  by  default.    It  is

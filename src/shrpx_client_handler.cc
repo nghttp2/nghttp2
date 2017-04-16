@@ -979,29 +979,30 @@ ClientHandler::get_downstream_connection(int &err, Downstream *downstream) {
   auto &balloc = downstream->get_block_allocator();
 
   // Fast path.  If we have one group, it must be catch-all group.
-  // proxy mode falls in this case.
   if (groups.size() == 1) {
     group_idx = 0;
-  } else if (req.method == HTTP_CONNECT) {
-    // CONNECT method does not have path.  But we requires path in
-    // host-path mapping.  As workaround, we assume that path is "/".
-    group_idx = match_downstream_addr_group(routerconf, req.authority,
-                                            StringRef::from_lit("/"), groups,
-                                            catch_all, balloc);
   } else {
-    if (!req.authority.empty()) {
-      group_idx = match_downstream_addr_group(
-          routerconf, req.authority, req.path, groups, catch_all, balloc);
+    StringRef authority;
+    if (faddr_->sni_fwd) {
+      authority = sni_;
+    } else if (!req.authority.empty()) {
+      authority = req.authority;
     } else {
       auto h = req.fs.header(http2::HD_HOST);
       if (h) {
-        group_idx = match_downstream_addr_group(routerconf, h->value, req.path,
-                                                groups, catch_all, balloc);
-      } else {
-        group_idx = match_downstream_addr_group(
-            routerconf, StringRef{}, req.path, groups, catch_all, balloc);
+        authority = h->value;
       }
     }
+
+    StringRef path;
+    // CONNECT method does not have path.  But we requires path in
+    // host-path mapping.  As workaround, we assume that path is "/".
+    if (req.method != HTTP_CONNECT) {
+      path = req.path;
+    }
+
+    group_idx = match_downstream_addr_group(routerconf, authority, path, groups,
+                                            catch_all, balloc);
   }
 
   if (LOG_ENABLED(INFO)) {

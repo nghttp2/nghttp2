@@ -693,6 +693,7 @@ int parse_memcached_connection_params(MemcachedConnectionParams &out,
 struct UpstreamParams {
   int alt_mode;
   bool tls;
+  bool sni_fwd;
   bool proxyproto;
 };
 
@@ -708,6 +709,8 @@ int parse_upstream_params(UpstreamParams &out, const StringRef &src_params) {
 
     if (util::strieq_l("tls", param)) {
       out.tls = true;
+    } else if (util::strieq_l("sni-fwd", param)) {
+      out.sni_fwd = true;
     } else if (util::strieq_l("no-tls", param)) {
       out.tls = false;
     } else if (util::strieq_l("api", param)) {
@@ -2296,9 +2299,15 @@ int parse_config(Config *config, int optid, const StringRef &opt,
       return -1;
     }
 
+    if (params.sni_fwd && !params.tls) {
+      LOG(ERROR) << "frontend: sni_fwd requires tls";
+      return -1;
+    }
+
     UpstreamAddr addr{};
     addr.fd = -1;
     addr.tls = params.tls;
+    addr.sni_fwd = params.sni_fwd;
     addr.alt_mode = params.alt_mode;
     addr.accept_proxy_protocol = params.proxyproto;
 
