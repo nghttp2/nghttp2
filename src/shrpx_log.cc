@@ -488,21 +488,21 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
     case SHRPX_LOGF_ALPN:
       std::tie(p, last) = copy_escape(lgsp.alpn, p, last);
       break;
-    case SHRPX_LOGF_SSL_CIPHER:
+    case SHRPX_LOGF_TLS_CIPHER:
       if (!lgsp.tls_info) {
         std::tie(p, last) = copy('-', p, last);
         break;
       }
       std::tie(p, last) = copy(lgsp.tls_info->cipher, p, last);
       break;
-    case SHRPX_LOGF_SSL_PROTOCOL:
+    case SHRPX_LOGF_TLS_PROTOCOL:
       if (!lgsp.tls_info) {
         std::tie(p, last) = copy('-', p, last);
         break;
       }
       std::tie(p, last) = copy(lgsp.tls_info->protocol, p, last);
       break;
-    case SHRPX_LOGF_SSL_SESSION_ID:
+    case SHRPX_LOGF_TLS_SESSION_ID:
       if (!lgsp.tls_info || lgsp.tls_info->session_id_length == 0) {
         std::tie(p, last) = copy('-', p, last);
         break;
@@ -510,7 +510,7 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
       std::tie(p, last) = copy_hex_low(
           lgsp.tls_info->session_id, lgsp.tls_info->session_id_length, p, last);
       break;
-    case SHRPX_LOGF_SSL_SESSION_REUSED:
+    case SHRPX_LOGF_TLS_SESSION_REUSED:
       if (!lgsp.tls_info) {
         std::tie(p, last) = copy('-', p, last);
         break;
