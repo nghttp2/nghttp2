@@ -383,6 +383,7 @@ int htp_hdrs_completecb(http_parser *htp) {
 
       if (host) {
         req.authority = host->value;
+        req.no_authority = false;
       }
 
       if (handler->get_ssl()) {
