@@ -419,6 +419,9 @@ LogFragmentType log_var_lookup_token(const char *name, size_t namelen) {
       if (util::strieq_l("ssl_ciphe", name, 9)) {
         return SHRPX_LOGF_SSL_CIPHER;
       }
+      if (util::strieq_l("tls_ciphe", name, 9)) {
+        return SHRPX_LOGF_TLS_CIPHER;
+      }
       break;
     }
     break;
@@ -455,6 +458,9 @@ LogFragmentType log_var_lookup_token(const char *name, size_t namelen) {
       if (util::strieq_l("ssl_protoco", name, 11)) {
         return SHRPX_LOGF_SSL_PROTOCOL;
       }
+      if (util::strieq_l("tls_protoco", name, 11)) {
+        return SHRPX_LOGF_TLS_PROTOCOL;
+      }
       break;
     case 't':
       if (util::strieq_l("backend_hos", name, 11)) {
@@ -471,6 +477,9 @@ LogFragmentType log_var_lookup_token(const char *name, size_t namelen) {
     case 'd':
       if (util::strieq_l("ssl_session_i", name, 13)) {
         return SHRPX_LOGF_SSL_SESSION_ID;
+      }
+      if (util::strieq_l("tls_session_i", name, 13)) {
+        return SHRPX_LOGF_TLS_SESSION_ID;
       }
       break;
     }
@@ -489,6 +498,9 @@ LogFragmentType log_var_lookup_token(const char *name, size_t namelen) {
     case 'd':
       if (util::strieq_l("ssl_session_reuse", name, 17)) {
         return SHRPX_LOGF_SSL_SESSION_REUSED;
+      }
+      if (util::strieq_l("tls_session_reuse", name, 17)) {
+        return SHRPX_LOGF_TLS_SESSION_REUSED;
       }
       break;
     }
