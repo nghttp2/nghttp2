@@ -505,18 +505,6 @@ size_t match_downstream_addr_group_host(
   const auto &rev_wildcard_router = routerconf.rev_wildcard_router;
   const auto &wildcard_patterns = routerconf.wildcard_patterns;
 
-  if (path.empty() || path[0] != '/') {
-    auto group = router.match(host, StringRef::from_lit("/"));
-    if (group != -1) {
-      if (LOG_ENABLED(INFO)) {
-        LOG(INFO) << "Found pattern with query " << host
-                  << ", matched pattern=" << groups[group]->pattern;
-      }
-      return group;
-    }
-    return catch_all;
-  }
-
   if (LOG_ENABLED(INFO)) {
     LOG(INFO) << "Perform mapping selection, using host=" << host
               << ", path=" << path;
@@ -601,6 +589,10 @@ size_t match_downstream_addr_group(
   auto fragment = std::find(std::begin(raw_path), std::end(raw_path), '#');
   auto query = std::find(std::begin(raw_path), fragment, '?');
   auto path = StringRef{std::begin(raw_path), query};
+
+  if (path.empty() || path[0] != '/') {
+    path = StringRef::from_lit("/");
+  }
 
   if (hostport.empty()) {
     return match_downstream_addr_group_host(routerconf, hostport, path, groups,

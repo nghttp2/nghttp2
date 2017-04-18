@@ -197,6 +197,10 @@ void test_shrpx_worker_match_downstream_addr_group(void) {
   g2->pattern = ImmutableString::from_lit(".nghttp2.org");
   groups.push_back(std::move(g2));
 
+  auto g3 = std::make_shared<DownstreamAddrGroup>();
+  g3->pattern = ImmutableString::from_lit(".local");
+  groups.push_back(std::move(g3));
+
   wp.emplace_back(StringRef::from_lit("git.nghttp2.org"));
   wcrouter.add_route(StringRef::from_lit("gro.2ptthgn.tig"), 0);
   wp.back().router.add_route(StringRef::from_lit("/echo/"), 10);
@@ -205,6 +209,10 @@ void test_shrpx_worker_match_downstream_addr_group(void) {
   wcrouter.add_route(StringRef::from_lit("gro.2ptthgn."), 1);
   wp.back().router.add_route(StringRef::from_lit("/echo/"), 11);
   wp.back().router.add_route(StringRef::from_lit("/echo/foxtrot"), 12);
+
+  wp.emplace_back(StringRef::from_lit(".local"));
+  wcrouter.add_route(StringRef::from_lit("lacol."), 2);
+  wp.back().router.add_route(StringRef::from_lit("/"), 13);
 
   CU_ASSERT(11 == match_downstream_addr_group(
                       routerconf, StringRef::from_lit("git.nghttp2.org"),
@@ -230,6 +238,10 @@ void test_shrpx_worker_match_downstream_addr_group(void) {
   CU_ASSERT(0 == match_downstream_addr_group(
                      routerconf, StringRef::from_lit("nghttp2.org"),
                      StringRef::from_lit("/echo"), groups, 255, balloc));
+
+  CU_ASSERT(13 == match_downstream_addr_group(
+                      routerconf, StringRef::from_lit("test.local"),
+                      StringRef{}, groups, 255, balloc));
 }
 
 } // namespace shrpx
