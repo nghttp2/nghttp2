@@ -2447,10 +2447,10 @@ Logging:
               * $alpn: ALPN identifier of the protocol which generates
                 the response.   For HTTP/1,  ALPN is  always http/1.1,
                 regardless of minor version.
-              * $ssl_cipher: cipher used for SSL/TLS connection.
-              * $ssl_protocol: protocol for SSL/TLS connection.
-              * $ssl_session_id: session ID for SSL/TLS connection.
-              * $ssl_session_reused:  "r"   if  SSL/TLS   session  was
+              * $tls_cipher: cipher used for SSL/TLS connection.
+              * $tls_protocol: protocol for SSL/TLS connection.
+              * $tls_session_id: session ID for SSL/TLS connection.
+              * $tls_session_reused:  "r"   if  SSL/TLS   session  was
                 reused.  Otherwise, "."
               * $backend_host:  backend  host   used  to  fulfill  the
                 request.  "-" if backend host is not available.
