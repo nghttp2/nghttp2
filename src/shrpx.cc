@@ -2452,6 +2452,7 @@ Logging:
               * $tls_session_id: session ID for SSL/TLS connection.
               * $tls_session_reused:  "r"   if  SSL/TLS   session  was
                 reused.  Otherwise, "."
+              * $tls_sni: SNI server name for SSL/TLS connection.
               * $backend_host:  backend  host   used  to  fulfill  the
                 request.  "-" if backend host is not available.
               * $backend_port:  backend  port   used  to  fulfill  the

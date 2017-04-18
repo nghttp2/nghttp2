@@ -1216,7 +1216,7 @@ void ClientHandler::write_accesslog(Downstream *downstream) {
   upstream_accesslog(
       config->logging.access.format,
       LogSpec{
-          downstream, ipaddr_, alpn_,
+          downstream, ipaddr_, alpn_, sni_,
           nghttp2::tls::get_tls_session_info(&tls_info, conn_.tls.ssl),
           std::chrono::high_resolution_clock::now(), // request_end_time
           port_, faddr_->port, config->pid,

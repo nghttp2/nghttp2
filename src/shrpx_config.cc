@@ -401,6 +401,11 @@ LogFragmentType log_var_lookup_token(const char *name, size_t namelen) {
     break;
   case 7:
     switch (name[6]) {
+    case 'i':
+      if (util::strieq_l("tls_sn", name, 6)) {
+        return SHRPX_LOGF_TLS_SNI;
+      }
+      break;
     case 't':
       if (util::strieq_l("reques", name, 6)) {
         return SHRPX_LOGF_REQUEST;
