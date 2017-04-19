@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTPX" "1" "Apr 09, 2017" "1.22.0-DEV" "nghttp2"
+.TH "NGHTTPX" "1" "Apr 19, 2017" "1.22.0-DEV" "nghttp2"
 .SH NAME
 nghttpx \- HTTP/2 proxy
 .
@@ -73,14 +73,16 @@ path which ends  with "\fI/\fP" also matches  the request path
 which  only  lacks  trailing  \(aq\fI/\fP\(aq  (e.g.,  path  "\fI/foo/\fP"
 matches request path  "\fI/foo\fP").  If it does  not end with
 "\fI/\fP", it  performs exact match against  the request path.
-If host  is given, it  performs exact match  against the
-request host.  If  host alone is given,  "\fI/\fP" is appended
-to it,  so that it  matches all request paths  under the
-host   (e.g.,   specifying   "nghttp2.org"   equals   to
-"nghttp2.org/").  CONNECT  method is  treated specially.
-It does  not have path,  and we don\(aqt allow  empty path.
-To workaround  this, we  assume that CONNECT  method has
-"\fI/\fP" as path.
+If  host  is given,  it  performs  a match  against  the
+request host.   For a  request received on  the frontend
+lister  with "sni\-fwd"  parameter enabled,  SNI host  is
+used instead of a request host.  If host alone is given,
+"\fI/\fP" is  appended to it,  so that it matches  all request
+paths  under the  host  (e.g., specifying  "nghttp2.org"
+equals  to "nghttp2.org/").   CONNECT method  is treated
+specially.  It  does not have  path, and we  don\(aqt allow
+empty path.  To workaround  this, we assume that CONNECT
+method has "\fI/\fP" as path.
 .sp
 Patterns with  host take  precedence over  patterns with
 just path.   Then, longer patterns take  precedence over
@@ -220,6 +222,11 @@ parameters are mutually exclusive.
 .sp
 Optionally, TLS  can be disabled by  specifying "no\-tls"
 parameter.  TLS is enabled by default.
+.sp
+If "sni\-fwd" parameter is  used, when performing a match
+to select a backend server,  SNI host name received from
+the client  is used  instead of  the request  host.  See
+\fI\%\-\-backend\fP option about the pattern match.
 .sp
 To  make this  frontend as  API endpoint,  specify "api"
 parameter.   This   is  disabled  by  default.    It  is
@@ -1142,14 +1149,16 @@ $alpn: ALPN identifier of the protocol which generates
 the response.   For HTTP/1,  ALPN is  always http/1.1,
 regardless of minor version.
 .IP \(bu 2
-$ssl_cipher: cipher used for SSL/TLS connection.
+$tls_cipher: cipher used for SSL/TLS connection.
 .IP \(bu 2
-$ssl_protocol: protocol for SSL/TLS connection.
+$tls_protocol: protocol for SSL/TLS connection.
 .IP \(bu 2
-$ssl_session_id: session ID for SSL/TLS connection.
+$tls_session_id: session ID for SSL/TLS connection.
 .IP \(bu 2
-$ssl_session_reused:  "r"   if  SSL/TLS   session  was
+$tls_session_reused:  "r"   if  SSL/TLS   session  was
 reused.  Otherwise, "."
+.IP \(bu 2
+$tls_sni: SNI server name for SSL/TLS connection.
 .IP \(bu 2
 $backend_host:  backend  host   used  to  fulfill  the
 request.  "\-" if backend host is not available.
