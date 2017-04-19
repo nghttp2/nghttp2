@@ -404,6 +404,9 @@ struct UpstreamAddr {
   bool host_unix;
   // true if TLS is enabled.
   bool tls;
+  // true if SNI host should be used as a host when selecting backend
+  // server.
+  bool sni_fwd;
   // true if client is supposed to send PROXY protocol v1 header.
   bool accept_proxy_protocol;
   int fd;
