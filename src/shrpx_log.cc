@@ -518,6 +518,13 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
       std::tie(p, last) =
           copy(lgsp.tls_info->session_reused ? 'r' : '.', p, last);
       break;
+    case SHRPX_LOGF_TLS_SNI:
+      if (lgsp.sni.empty()) {
+        std::tie(p, last) = copy('-', p, last);
+        break;
+      }
+      std::tie(p, last) = copy_escape(lgsp.sni, p, last);
+      break;
     case SHRPX_LOGF_BACKEND_HOST:
       if (!downstream_addr) {
         std::tie(p, last) = copy('-', p, last);

@@ -188,6 +188,7 @@ LOGVARS = [
     "tls_protocol",
     "tls_session_id",
     "tls_session_reused",
+    "tls_sni",
     "backend_host",
     "backend_port",
 ]
