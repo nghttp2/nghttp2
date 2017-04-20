@@ -2718,6 +2718,7 @@ int process_options(Config *config,
                     std::vector<std::pair<StringRef, StringRef>> &cmdcfgs) {
   std::array<char, STRERROR_BUFSIZE> errbuf;
   if (conf_exists(config->conf_path.c_str())) {
+    LOG(NOTICE) << "Loading configuration from " << config->conf_path;
     std::set<StringRef> include_set;
     if (load_config(config, config->conf_path.c_str(), include_set) == -1) {
       LOG(FATAL) << "Failed to load configuration from " << config->conf_path;
