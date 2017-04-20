@@ -2688,7 +2688,9 @@ Scripting:
 
 Misc:
   --conf=<PATH>
-              Load configuration from <PATH>.
+              Load  configuration  from   <PATH>.   Please  note  that
+              nghttpx always  tries to read the  default configuration
+              file if --conf is not given.
               Default: )"
       << config->conf_path << R"(
   --include=<PATH>
