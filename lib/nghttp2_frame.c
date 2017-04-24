@@ -763,6 +763,71 @@ int nghttp2_frame_unpack_altsvc_payload2(nghttp2_extension *frame,
   return 0;
 }
 
+int nghttp2_frame_pack_origin(nghttp2_bufs *bufs, nghttp2_extension *frame) {
+  int rv;
+  nghttp2_buf *buf;
+  nghttp2_ext_origin *origin_frame;
+
+  origin_frame = frame->payload;
+
+  buf = &bufs->head->buf;
+
+  assert(nghttp2_buf_avail(buf) >= 2 + origin_frame->origin_len);
+
+  buf->pos -= NGHTTP2_FRAME_HDLEN;
+
+  nghttp2_frame_pack_frame_hd(buf->pos, &frame->hd);
+
+  nghttp2_put_uint16be(buf->last, (uint16_t)origin_frame->origin_len);
+  buf->last += 2;
+
+  rv = nghttp2_bufs_add(bufs, origin_frame->origin, origin_frame->origin_len);
+
+  assert(rv == 0);
+
+  return 0;
+}
+
+void nghttp2_frame_unpack_origin_payload(nghttp2_extension *frame,
+                                         size_t origin_len, uint8_t *payload,
+                                         size_t payloadlen) {
+  nghttp2_ext_origin *origin_frame;
+  uint8_t *p;
+
+  origin_frame = frame->payload;
+  p = payload;
+
+  origin_frame->origin = p;
+
+  p += origin_len;
+
+  origin_frame->origin_len = origin_len;
+}
+
+int nghttp2_frame_unpack_origin_payload2(nghttp2_extension *frame,
+                                         const uint8_t *payload,
+                                         size_t payloadlen, nghttp2_mem *mem) {
+  uint8_t *buf;
+  size_t origin_len;
+
+  if (payloadlen < 2) {
+    return NGHTTP2_FRAME_SIZE_ERROR;
+  }
+
+  origin_len = nghttp2_get_uint16(payload);
+
+  buf = nghttp2_mem_malloc(mem, payloadlen - 2);
+  if (!buf) {
+    return NGHTTP2_ERR_NOMEM;
+  }
+
+  nghttp2_cpymem(buf, payload + 2, payloadlen - 2);
+
+  nghttp2_frame_unpack_origin_payload(frame, origin_len, buf, payloadlen - 2);
+
+  return 0;
+}
+
 nghttp2_settings_entry *nghttp2_frame_iv_copy(const nghttp2_settings_entry *iv,
                                               size_t niv, nghttp2_mem *mem) {
   nghttp2_settings_entry *iv_copy;
