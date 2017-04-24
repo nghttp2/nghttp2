@@ -1377,7 +1377,9 @@ Misc
 
 .. option:: --conf=<PATH>
 
-    Load configuration from <PATH>.
+    Load  configuration  from   <PATH>.   Please  note  that
+    nghttpx always  tries to read the  default configuration
+    file if :option:`--conf` is not given.
 
     Default: ``/etc/nghttpx/nghttpx.conf``
 

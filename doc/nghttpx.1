@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTPX" "1" "Apr 19, 2017" "1.22.0-DEV" "nghttp2"
+.TH "NGHTTPX" "1" "Apr 24, 2017" "1.22.0" "nghttp2"
 .SH NAME
 nghttpx \- HTTP/2 proxy
 .
@@ -1505,7 +1505,9 @@ Set mruby script file
 .INDENT 0.0
 .TP
 .B \-\-conf=<PATH>
-Load configuration from <PATH>.
+Load  configuration  from   <PATH>.   Please  note  that
+nghttpx always  tries to read the  default configuration
+file if \fI\%\-\-conf\fP is not given.
 .sp
 Default: \fB/etc/nghttpx/nghttpx.conf\fP
 .UNINDENT
