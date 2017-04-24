@@ -597,7 +597,12 @@ typedef enum {
    * The ALTSVC frame, which is defined in `RFC 7383
    * <https://tools.ietf.org/html/rfc7838#section-4>`_.
    */
-  NGHTTP2_ALTSVC = 0x0a
+  NGHTTP2_ALTSVC = 0x0a,
+  /**
+   * The ORIGIN frame, whic is defined in `RFC XXXX
+   * https://tools.ietf.org/html/draft-ietf-httpbis-origin-frame-03#section-2`_.
+   */
+  NGHTTP2_ORIGIN = 0x0c
 } nghttp2_frame_type;
 
 /**
@@ -4476,6 +4481,66 @@ NGHTTP2_EXTERN int nghttp2_submit_altsvc(nghttp2_session *session,
                                          size_t origin_len,
                                          const uint8_t *field_value,
                                          size_t field_value_len);
+
+/**
+ * @struct
+ *
+ * The payload of ORIGIN frame.  ORIGIN frame is a non-critical
+ * extension to HTTP/2.  If this frame is received, and
+ * `nghttp2_option_set_user_recv_extension_type()` is not set, and
+ * `nghttp2_option_set_builtin_recv_extension_type()` is set for
+ * :enum:`NGHTTP2_ORIGIN`, ``nghttp2_extension.payload`` will point to
+ * this struct.
+ *
+ * It has the following members:
+ */
+typedef struct {
+  /**
+   * The pointer to an origin which the sender believes this connection is or
+   * could be
+   * authoritative for. This is not necessarily NULL-terminated.
+   */
+  uint8_t *origin;
+  /**
+   * The length of the |origin|.
+   */
+  size_t origin_len;
+} nghttp2_ext_origin;
+
+/**
+ * @function
+ *
+ * Submits ORIGIN frame.
+ *
+ * ORIGIN frame is a non-critical extension to HTTP/2, and defined in
+ * `RFC XXX
+ * <https://tools.ietf.org/html/draft-ietf-httpbis-origin-frame-03#section-2>`_.
+ *
+ * The |flags| is currently ignored and should be
+ * :enum:`NGHTTP2_FLAG_NONE`.
+ *
+ * The |origin| points to the origin which the sender believes this connection
+ * is or could be
+   * authoritative for
+ *
+ * The ORIGIN frame is only usable from server side.  If this function
+ * is invoked with client side session, this function returns
+ * :enum:`NGHTTP2_ERR_INVALID_STATE`.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * :enum:`NGHTTP2_ERR_NOMEM`
+ *     Out of memory
+ * :enum:`NGHTTP2_ERR_INVALID_STATE`
+ *     The function is called from client side session
+ * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
+ *     The |origin_len| is larger than
+ *     16382.
+ */
+NGHTTP2_EXTERN int nghttp2_submit_origin(nghttp2_session *session,
+                                         uint8_t flags, const uint8_t *origin,
+                                         size_t origin_len);
 
 /**
  * @function

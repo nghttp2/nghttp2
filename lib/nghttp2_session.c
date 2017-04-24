@@ -337,6 +337,12 @@ static void session_inbound_frame_reset(nghttp2_session *session) {
         }
         nghttp2_frame_altsvc_free(&iframe->frame.ext, mem);
         break;
+      case NGHTTP2_ORIGIN:
+        if ((session->builtin_recv_ext_types & NGHTTP2_TYPEMASK_ORIGIN) == 0) {
+          break;
+        }
+        nghttp2_frame_origin_free(&iframe->frame.ext, mem);
+        break;
       }
     }
 
@@ -5746,7 +5752,37 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
 
             iframe->state = NGHTTP2_IB_READ_NBYTE;
             inbound_frame_set_mark(iframe, 2);
+          case NGHTTP2_ORIGIN:
+            if ((session->builtin_recv_ext_types & NGHTTP2_TYPEMASK_ORIGIN) ==
+                0) {
+              busy = 1;
+              iframe->state = NGHTTP2_IB_IGN_PAYLOAD;
+              break;
+            }
 
+            DEBUGF("recv: ORIGIN\n");
+
+            iframe->frame.hd.flags = NGHTTP2_FLAG_NONE;
+            iframe->frame.ext.payload = &iframe->ext_frame_payload.origin;
+
+            if (session->server) {
+              busy = 1;
+              iframe->state = NGHTTP2_IB_IGN_PAYLOAD;
+              break;
+            }
+
+            if (iframe->payloadleft < 2) {
+              busy = 1;
+              iframe->state = NGHTTP2_IB_FRAME_SIZE_ERROR;
+              break;
+            }
+
+            busy = 1;
+
+            iframe->state = NGHTTP2_IB_READ_NBYTE;
+            inbound_frame_set_mark(iframe, 2);
+
+            break;
             break;
           default:
             busy = 1;

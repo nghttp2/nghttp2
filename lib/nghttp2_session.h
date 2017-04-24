@@ -61,7 +61,8 @@ typedef enum {
  */
 typedef enum {
   NGHTTP2_TYPEMASK_NONE = 0,
-  NGHTTP2_TYPEMASK_ALTSVC = 1 << 0
+  NGHTTP2_TYPEMASK_ALTSVC = 1 << 0,
+  NGHTTP2_TYPEMASK_ORIGIN = 2 << 0
 } nghttp2_typemask;
 
 typedef enum {
