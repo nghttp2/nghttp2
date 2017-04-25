@@ -792,15 +792,10 @@ void nghttp2_frame_unpack_origin_payload(nghttp2_extension *frame,
                                          size_t origin_len, uint8_t *payload,
                                          size_t payloadlen) {
   nghttp2_ext_origin *origin_frame;
-  uint8_t *p;
+  (void)payloadlen;
 
   origin_frame = frame->payload;
-  p = payload;
-
-  origin_frame->origin = p;
-
-  p += origin_len;
-
+  origin_frame->origin = payload;
   origin_frame->origin_len = origin_len;
 }
 
