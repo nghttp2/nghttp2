@@ -624,7 +624,7 @@ int nghttp2_submit_origin(nghttp2_session *session, uint8_t flags,
 
   rv = nghttp2_session_add_item(session, item);
   if (rv != 0) {
-    nghttp2_frame_altsvc_free(&frame->ext, mem);
+    nghttp2_frame_origin_free(&frame->ext, mem);
     nghttp2_mem_free(mem, item);
 
     return rv;
