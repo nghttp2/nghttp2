@@ -362,6 +362,7 @@ void print_frame(print_type ptype, const nghttp2_frame *frame) {
   default:
     break;
   }
+}
 } // namespace
 
 int verbose_on_header_callback(nghttp2_session *session,
