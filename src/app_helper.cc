@@ -106,6 +106,8 @@ std::string strframetype(uint8_t type) {
     return "WINDOW_UPDATE";
   case NGHTTP2_ALTSVC:
     return "ALTSVC";
+  case NGHTTP2_ORIGIN:
+    return "ORIGIN";
   }
 
   std::string s = "extension(0x";
@@ -350,10 +352,16 @@ void print_frame(print_type ptype, const nghttp2_frame *frame) {
             static_cast<int>(altsvc->field_value_len), altsvc->field_value);
     break;
   }
+  case NGHTTP2_ORIGIN: {
+    auto origin_frame = static_cast<nghttp2_ext_origin *>(frame->ext.payload);
+    print_frame_attr_indent();
+    fprintf(outfile, "(origin=[%.*s])\n",
+            static_cast<int>(origin_frame->origin_len), origin_frame->origin);
+    break;
+  }
   default:
     break;
   }
-}
 } // namespace
 
 int verbose_on_header_callback(nghttp2_session *session,
