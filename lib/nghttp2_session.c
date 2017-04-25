@@ -4898,7 +4898,7 @@ static int session_process_origin_frame(nghttp2_session *session) {
       &frame->ext, nghttp2_get_uint16(iframe->sbuf.pos), iframe->lbuf.pos,
       nghttp2_buf_len(&iframe->lbuf));
 
-  /* nghttp2_frame_unpack_altsvc_payload steals buffer from
+  /* nghttp2_frame_unpack_origin_payload steals buffer from
      iframe->lbuf */
   nghttp2_buf_wrap_init(&iframe->lbuf, NULL, 0);
 
