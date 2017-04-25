@@ -431,7 +431,6 @@ void nghttp2_frame_unpack_origin_payload(nghttp2_extension *frame,
 int nghttp2_frame_unpack_origin_payload2(nghttp2_extension *frame,
                                          const uint8_t *payload,
                                          size_t payloadlen, nghttp2_mem *mem);
-
 /*
  * Initializes HEADERS frame |frame| with given values.  |frame| takes
  * ownership of |nva|, so caller must not free it. If |stream_id| is
