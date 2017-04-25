@@ -1757,14 +1757,6 @@ static int session_predicate_origin_send(nghttp2_session *session,
     return 0;
   }
 
-  stream = nghttp2_session_get_stream(session, stream_id);
-  if (stream == NULL) {
-    return NGHTTP2_ERR_STREAM_CLOSED;
-  }
-  if (stream->state == NGHTTP2_STREAM_CLOSING) {
-    return NGHTTP2_ERR_STREAM_CLOSING;
-  }
-
   return 0;
 }
 
@@ -4874,17 +4866,8 @@ int nghttp2_session_on_origin_received(nghttp2_session *session,
 
   /* session->server case has been excluded */
 
-  if (frame->hd.stream_id == 0) {
+  if (frame->hd.stream_id != 0) {
     return 0;
-  } else {
-    stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
-    if (!stream) {
-      return 0;
-    }
-
-    if (stream->state == NGHTTP2_STREAM_CLOSING) {
-      return 0;
-    }
   }
 
   return session_call_on_frame_received(session, frame);
@@ -6110,6 +6093,9 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
 
         DEBUGF("recv: origin_len=%zu\n", origin_len);
 
+        /*
+         * TODO: figure out why this check fails
+         */
         if (2 + origin_len > iframe->payloadleft) {
           busy = 1;
           iframe->state = NGHTTP2_IB_FRAME_SIZE_ERROR;
