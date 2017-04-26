@@ -1524,13 +1524,14 @@ static int session_predicate_response_headers_send(nghttp2_session *session,
   if (nghttp2_session_is_my_stream_id(session, stream->stream_id)) {
     return NGHTTP2_ERR_INVALID_STREAM_ID;
   }
-  if (stream->state == NGHTTP2_STREAM_OPENING) {
+  switch (stream->state) {
+  case NGHTTP2_STREAM_OPENING:
     return 0;
-  }
-  if (stream->state == NGHTTP2_STREAM_CLOSING) {
+  case NGHTTP2_STREAM_CLOSING:
     return NGHTTP2_ERR_STREAM_CLOSING;
+  default:
+    return NGHTTP2_ERR_INVALID_STREAM_STATE;
   }
-  return NGHTTP2_ERR_INVALID_STREAM_STATE;
 }
 
 /*
@@ -1573,9 +1574,6 @@ session_predicate_push_response_headers_send(nghttp2_session *session,
   if (stream->state != NGHTTP2_STREAM_RESERVED) {
     return NGHTTP2_ERR_PROTO;
   }
-  if (stream->state == NGHTTP2_STREAM_CLOSING) {
-    return NGHTTP2_ERR_STREAM_CLOSING;
-  }
   if (session->goaway_flags & NGHTTP2_GOAWAY_RECV) {
     return NGHTTP2_ERR_START_STREAM_NOT_ALLOWED;
   }
@@ -1610,19 +1608,18 @@ static int session_predicate_headers_send(nghttp2_session *session,
     return rv;
   }
   assert(stream);
-  if (nghttp2_session_is_my_stream_id(session, stream->stream_id)) {
-    if (stream->state == NGHTTP2_STREAM_CLOSING) {
-      return NGHTTP2_ERR_STREAM_CLOSING;
-    }
+
+  switch (stream->state) {
+  case NGHTTP2_STREAM_OPENED:
     return 0;
-  }
-  if (stream->state == NGHTTP2_STREAM_OPENED) {
-    return 0;
-  }
-  if (stream->state == NGHTTP2_STREAM_CLOSING) {
+  case NGHTTP2_STREAM_CLOSING:
     return NGHTTP2_ERR_STREAM_CLOSING;
+  default:
+    if (nghttp2_session_is_my_stream_id(session, stream->stream_id)) {
+      return 0;
+    }
+    return NGHTTP2_ERR_INVALID_STREAM_STATE;
   }
-  return NGHTTP2_ERR_INVALID_STREAM_STATE;
 }
 
 /*
