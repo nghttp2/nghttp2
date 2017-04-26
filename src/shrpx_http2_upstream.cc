@@ -1418,7 +1418,7 @@ ssize_t downstream_data_read_callback(nghttp2_session *session,
       if (!trailers.empty()) {
         std::vector<nghttp2_nv> nva;
         nva.reserve(trailers.size());
-        http2::copy_headers_to_nva_nocopy(nva, trailers);
+        http2::copy_headers_to_nva_nocopy(nva, trailers, http2::HDOP_STRIP_ALL);
         if (!nva.empty()) {
           rv = nghttp2_submit_trailer(session, stream_id, nva.data(),
                                       nva.size());
@@ -1667,7 +1667,8 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
   nva.push_back(http2::make_nv_ls_nocopy(":status", response_status));
 
   if (downstream->get_non_final_response()) {
-    http2::copy_headers_to_nva_nocopy(nva, resp.fs.headers());
+    http2::copy_headers_to_nva_nocopy(nva, resp.fs.headers(),
+                                      http2::HDOP_STRIP_ALL);
 
     if (LOG_ENABLED(INFO)) {
       log_response_headers(downstream, nva);
@@ -1687,7 +1688,8 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
     return 0;
   }
 
-  http2::copy_headers_to_nva_nocopy(nva, resp.fs.headers());
+  http2::copy_headers_to_nva_nocopy(
+      nva, resp.fs.headers(), http2::HDOP_STRIP_ALL & ~http2::HDOP_STRIP_VIA);
 
   if (!config->http2_proxy && !httpconf.no_server_rewrite) {
     nva.push_back(http2::make_nv_ls_nocopy("server", httpconf.server_name));

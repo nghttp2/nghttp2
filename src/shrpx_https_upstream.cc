@@ -1059,9 +1059,10 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
         get_client_handler()->get_upstream_scheme());
   }
 
-  http2::build_http1_headers_from_headers(buf, resp.fs.headers());
-
   if (downstream->get_non_final_response()) {
+    http2::build_http1_headers_from_headers(buf, resp.fs.headers(),
+                                            http2::HDOP_STRIP_ALL);
+
     buf->append("\r\n");
 
     if (LOG_ENABLED(INFO)) {
@@ -1072,6 +1073,9 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
 
     return 0;
   }
+
+  http2::build_http1_headers_from_headers(
+      buf, resp.fs.headers(), http2::HDOP_STRIP_ALL & ~http2::HDOP_STRIP_VIA);
 
   auto worker = handler_->get_worker();
 
@@ -1205,7 +1209,8 @@ int HttpsUpstream::on_downstream_body_complete(Downstream *downstream) {
       output->append("0\r\n\r\n");
     } else {
       output->append("0\r\n");
-      http2::build_http1_headers_from_headers(output, trailers);
+      http2::build_http1_headers_from_headers(output, trailers,
+                                              http2::HDOP_STRIP_ALL);
       output->append("\r\n");
     }
   }

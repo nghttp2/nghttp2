@@ -358,15 +358,21 @@ nghttp2_nv make_nv_nocopy(const StringRef &name, const StringRef &value,
 
 namespace {
 void copy_headers_to_nva_internal(std::vector<nghttp2_nv> &nva,
-                                  const HeaderRefs &headers, uint8_t nv_flags) {
-  for (auto &kv : headers) {
-    if (kv.name.empty() || kv.name[0] == ':') {
+                                  const HeaderRefs &headers, uint8_t nv_flags,
+                                  uint32_t flags) {
+  auto it_forwarded = std::end(headers);
+  auto it_xff = std::end(headers);
+  auto it_xfp = std::end(headers);
+  auto it_via = std::end(headers);
+
+  for (auto it = std::begin(headers); it != std::end(headers); ++it) {
+    auto kv = &(*it);
+    if (kv->name.empty() || kv->name[0] == ':') {
       continue;
     }
-    switch (kv.token) {
+    switch (kv->token) {
     case HD_COOKIE:
     case HD_CONNECTION:
-    case HD_FORWARDED:
     case HD_HOST:
     case HD_HTTP2_SETTINGS:
     case HD_KEEP_ALIVE:
@@ -375,51 +381,157 @@ void copy_headers_to_nva_internal(std::vector<nghttp2_nv> &nva,
     case HD_TE:
     case HD_TRANSFER_ENCODING:
     case HD_UPGRADE:
-    case HD_VIA:
-    case HD_X_FORWARDED_FOR:
-    case HD_X_FORWARDED_PROTO:
       continue;
+    case HD_FORWARDED:
+      if (flags & HDOP_STRIP_FORWARDED) {
+        continue;
+      }
+
+      if (it_forwarded == std::end(headers)) {
+        it_forwarded = it;
+        continue;
+      }
+
+      kv = &(*it_forwarded);
+      it_forwarded = it;
+      break;
+    case HD_X_FORWARDED_FOR:
+      if (flags & HDOP_STRIP_X_FORWARDED_FOR) {
+        continue;
+      }
+
+      if (it_xff == std::end(headers)) {
+        it_xff = it;
+        continue;
+      }
+
+      kv = &(*it_xff);
+      it_xff = it;
+      break;
+    case HD_X_FORWARDED_PROTO:
+      if (flags & HDOP_STRIP_X_FORWARDED_PROTO) {
+        continue;
+      }
+
+      if (it_xfp == std::end(headers)) {
+        it_xfp = it;
+        continue;
+      }
+
+      kv = &(*it_xfp);
+      it_xfp = it;
+      break;
+    case HD_VIA:
+      if (flags & HDOP_STRIP_VIA) {
+        continue;
+      }
+
+      if (it_via == std::end(headers)) {
+        it_via = it;
+        continue;
+      }
+
+      kv = &(*it_via);
+      it_via = it;
+      break;
     }
-    nva.push_back(make_nv_internal(kv.name, kv.value, kv.no_index, nv_flags));
+    nva.push_back(
+        make_nv_internal(kv->name, kv->value, kv->no_index, nv_flags));
   }
 }
 } // namespace
 
 void copy_headers_to_nva(std::vector<nghttp2_nv> &nva,
-                         const HeaderRefs &headers) {
-  copy_headers_to_nva_internal(nva, headers, NGHTTP2_NV_FLAG_NONE);
+                         const HeaderRefs &headers, uint32_t flags) {
+  copy_headers_to_nva_internal(nva, headers, NGHTTP2_NV_FLAG_NONE, flags);
 }
 
 void copy_headers_to_nva_nocopy(std::vector<nghttp2_nv> &nva,
-                                const HeaderRefs &headers) {
+                                const HeaderRefs &headers, uint32_t flags) {
   copy_headers_to_nva_internal(nva, headers, NGHTTP2_NV_FLAG_NO_COPY_NAME |
-                                                 NGHTTP2_NV_FLAG_NO_COPY_VALUE);
+                                                 NGHTTP2_NV_FLAG_NO_COPY_VALUE,
+                               flags);
 }
 
 void build_http1_headers_from_headers(DefaultMemchunks *buf,
-                                      const HeaderRefs &headers) {
-  for (auto &kv : headers) {
-    if (kv.name.empty() || kv.name[0] == ':') {
+                                      const HeaderRefs &headers,
+                                      uint32_t flags) {
+  auto it_forwarded = std::end(headers);
+  auto it_xff = std::end(headers);
+  auto it_xfp = std::end(headers);
+  auto it_via = std::end(headers);
+
+  for (auto it = std::begin(headers); it != std::end(headers); ++it) {
+    auto kv = &(*it);
+    if (kv->name.empty() || kv->name[0] == ':') {
       continue;
     }
-    switch (kv.token) {
+    switch (kv->token) {
     case HD_CONNECTION:
     case HD_COOKIE:
-    case HD_FORWARDED:
     case HD_HOST:
     case HD_HTTP2_SETTINGS:
     case HD_KEEP_ALIVE:
     case HD_PROXY_CONNECTION:
     case HD_SERVER:
     case HD_UPGRADE:
-    case HD_VIA:
-    case HD_X_FORWARDED_FOR:
-    case HD_X_FORWARDED_PROTO:
       continue;
+    case HD_FORWARDED:
+      if (flags & HDOP_STRIP_FORWARDED) {
+        continue;
+      }
+
+      if (it_forwarded == std::end(headers)) {
+        it_forwarded = it;
+        continue;
+      }
+
+      kv = &(*it_forwarded);
+      it_forwarded = it;
+      break;
+    case HD_X_FORWARDED_FOR:
+      if (flags & HDOP_STRIP_X_FORWARDED_FOR) {
+        continue;
+      }
+
+      if (it_xff == std::end(headers)) {
+        it_xff = it;
+        continue;
+      }
+
+      kv = &(*it_xff);
+      it_xff = it;
+      break;
+    case HD_X_FORWARDED_PROTO:
+      if (flags & HDOP_STRIP_X_FORWARDED_PROTO) {
+        continue;
+      }
+
+      if (it_xfp == std::end(headers)) {
+        it_xfp = it;
+        continue;
+      }
+
+      kv = &(*it_xfp);
+      it_xfp = it;
+      break;
+    case HD_VIA:
+      if (flags & HDOP_STRIP_VIA) {
+        continue;
+      }
+
+      if (it_via == std::end(headers)) {
+        it_via = it;
+        continue;
+      }
+
+      kv = &(*it_via);
+      it_via = it;
+      break;
     }
-    capitalize(buf, kv.name);
+    capitalize(buf, kv->name);
     buf->append(": ");
-    buf->append(kv.value);
+    buf->append(kv->value);
     buf->append("\r\n");
   }
 }

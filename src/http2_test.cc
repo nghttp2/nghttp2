@@ -150,11 +150,33 @@ auto headers = HeaderRefs{
     {StringRef::from_lit("zulu"), StringRef::from_lit("12")}};
 } // namespace
 
+namespace {
+auto headers2 = HeaderRefs{
+    {StringRef::from_lit("x-forwarded-for"), StringRef::from_lit("xff1"), false,
+     http2::HD_X_FORWARDED_FOR},
+    {StringRef::from_lit("x-forwarded-for"), StringRef::from_lit("xff2"), false,
+     http2::HD_X_FORWARDED_FOR},
+    {StringRef::from_lit("x-forwarded-proto"), StringRef::from_lit("xfp1"),
+     false, http2::HD_X_FORWARDED_PROTO},
+    {StringRef::from_lit("x-forwarded-proto"), StringRef::from_lit("xfp2"),
+     false, http2::HD_X_FORWARDED_PROTO},
+    {StringRef::from_lit("forwarded"), StringRef::from_lit("fwd1"), false,
+     http2::HD_FORWARDED},
+    {StringRef::from_lit("forwarded"), StringRef::from_lit("fwd2"), false,
+     http2::HD_FORWARDED},
+    {StringRef::from_lit("via"), StringRef::from_lit("via1"), false,
+     http2::HD_VIA},
+    {StringRef::from_lit("via"), StringRef::from_lit("via2"), false,
+     http2::HD_VIA},
+};
+} // namespace
+
 void test_http2_copy_headers_to_nva(void) {
   auto ans = std::vector<int>{0, 1, 4, 5, 6, 7, 12};
   std::vector<nghttp2_nv> nva;
 
-  http2::copy_headers_to_nva_nocopy(nva, headers);
+  http2::copy_headers_to_nva_nocopy(nva, headers,
+                                    http2::HDOP_STRIP_X_FORWARDED_FOR);
   CU_ASSERT(7 == nva.size());
   for (size_t i = 0; i < ans.size(); ++i) {
     check_nv(headers[ans[i]], &nva[i]);
@@ -169,7 +191,7 @@ void test_http2_copy_headers_to_nva(void) {
   }
 
   nva.clear();
-  http2::copy_headers_to_nva(nva, headers);
+  http2::copy_headers_to_nva(nva, headers, http2::HDOP_STRIP_X_FORWARDED_FOR);
   CU_ASSERT(7 == nva.size());
   for (size_t i = 0; i < ans.size(); ++i) {
     check_nv(headers[ans[i]], &nva[i]);
@@ -180,12 +202,27 @@ void test_http2_copy_headers_to_nva(void) {
       CU_ASSERT(NGHTTP2_NV_FLAG_NONE == nva[i].flags);
     }
   }
+
+  nva.clear();
+
+  auto ans2 = std::vector<int>{0, 2, 4, 6};
+  http2::copy_headers_to_nva(nva, headers2, http2::HDOP_NONE);
+  CU_ASSERT(ans2.size() == nva.size());
+  for (size_t i = 0; i < ans2.size(); ++i) {
+    check_nv(headers2[ans2[i]], &nva[i]);
+  }
+
+  nva.clear();
+
+  http2::copy_headers_to_nva(nva, headers2, http2::HDOP_STRIP_ALL);
+  CU_ASSERT(nva.empty());
 }
 
 void test_http2_build_http1_headers_from_headers(void) {
   MemchunkPool pool;
   DefaultMemchunks buf(&pool);
-  http2::build_http1_headers_from_headers(&buf, headers);
+  http2::build_http1_headers_from_headers(&buf, headers,
+                                          http2::HDOP_STRIP_X_FORWARDED_FOR);
   auto hdrs = std::string(buf.head->pos, buf.head->last);
   CU_ASSERT("Alpha: 0\r\n"
             "Bravo: 1\r\n"
@@ -196,6 +233,21 @@ void test_http2_build_http1_headers_from_headers(void) {
             "Te: 8\r\n"
             "Te: 9\r\n"
             "Zulu: 12\r\n" == hdrs);
+
+  buf.reset();
+
+  http2::build_http1_headers_from_headers(&buf, headers2, http2::HDOP_NONE);
+  hdrs = std::string(buf.head->pos, buf.head->last);
+  CU_ASSERT("X-Forwarded-For: xff1\r\n"
+            "X-Forwarded-Proto: xfp1\r\n"
+            "Forwarded: fwd1\r\n"
+            "Via: via1\r\n" == hdrs);
+
+  buf.reset();
+
+  http2::build_http1_headers_from_headers(&buf, headers2,
+                                          http2::HDOP_STRIP_ALL);
+  CU_ASSERT(0 == buf.rleft());
 }
 
 void test_http2_lws(void) {
