@@ -3411,6 +3411,27 @@ static uint32_t get_error_code_from_lib_error_code(int lib_error_code) {
   }
 }
 
+/*
+ * Calls on_invalid_frame_recv_callback if it is set to |session|.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * NGHTTP2_ERR_CALLBACK_FAILURE
+ *   User defined callback function fails.
+ */
+static int session_call_on_invalid_frame_recv_callback(nghttp2_session *session,
+                                                       nghttp2_frame *frame,
+                                                       int lib_error_code) {
+  if (session->callbacks.on_invalid_frame_recv_callback) {
+    if (session->callbacks.on_invalid_frame_recv_callback(
+            session, frame, lib_error_code, session->user_data) != 0) {
+      return NGHTTP2_ERR_CALLBACK_FAILURE;
+    }
+  }
+  return 0;
+}
+
 static int session_handle_invalid_stream2(nghttp2_session *session,
                                           int32_t stream_id,
                                           nghttp2_frame *frame,
@@ -4761,11 +4782,13 @@ int nghttp2_session_on_altsvc_received(nghttp2_session *session,
 
   if (frame->hd.stream_id == 0) {
     if (altsvc->origin_len == 0) {
-      return 0;
+      return session_call_on_invalid_frame_recv_callback(session, frame,
+                                                         NGHTTP2_ERR_PROTO);
     }
   } else {
     if (altsvc->origin_len > 0) {
-      return 0;
+      return session_call_on_invalid_frame_recv_callback(session, frame,
+                                                         NGHTTP2_ERR_PROTO);
     }
 
     stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
@@ -4776,6 +4799,11 @@ int nghttp2_session_on_altsvc_received(nghttp2_session *session,
     if (stream->state == NGHTTP2_STREAM_CLOSING) {
       return 0;
     }
+  }
+
+  if (altsvc->field_value_len == 0) {
+    return session_call_on_invalid_frame_recv_callback(session, frame,
+                                                       NGHTTP2_ERR_PROTO);
   }
 
   return session_call_on_frame_received(session, frame);
@@ -5940,7 +5968,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
 
         DEBUGF("recv: origin_len=%zu\n", origin_len);
 
-        if (2 + origin_len > iframe->payloadleft) {
+        if (origin_len > iframe->payloadleft) {
           busy = 1;
           iframe->state = NGHTTP2_IB_FRAME_SIZE_ERROR;
           break;
