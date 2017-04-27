@@ -809,9 +809,12 @@ int Connection::get_tcp_hint(TCPHint *hint) const {
   // For TLSv1.3, AES-GCM and CHACHA20_POLY1305 overhead are now 22
   // bytes (5 (header) + 1 (ContentType) + 16 (tag)).
   size_t tls_overhead;
+#ifdef TLS1_3_VERSION
   if (SSL_version(tls.ssl) == TLS1_3_VERSION) {
     tls_overhead = 22;
-  } else {
+  } else
+#endif // TLS1_3_VERSION
+  {
     tls_overhead = 29;
   }
 
