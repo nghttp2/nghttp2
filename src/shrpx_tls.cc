@@ -153,13 +153,13 @@ int servername_callback(SSL *ssl, int *al, void *arg) {
 
   auto rawhost = SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name);
   if (rawhost == nullptr) {
-    return SSL_TLSEXT_ERR_OK;
+    return SSL_TLSEXT_ERR_NOACK;
   }
 
   auto len = strlen(rawhost);
   // NI_MAXHOST includes terminal NULL.
   if (len == 0 || len + 1 > NI_MAXHOST) {
-    return SSL_TLSEXT_ERR_OK;
+    return SSL_TLSEXT_ERR_NOACK;
   }
 
   std::array<uint8_t, NI_MAXHOST> buf;
@@ -170,17 +170,14 @@ int servername_callback(SSL *ssl, int *al, void *arg) {
 
   auto hostname = StringRef{std::begin(buf), end_buf};
 
-  handler->set_tls_sni(hostname);
-
   auto cert_tree = worker->get_cert_lookup_tree();
-  if (!cert_tree) {
-    return SSL_TLSEXT_ERR_OK;
-  }
 
   auto idx = cert_tree->lookup(hostname);
   if (idx == -1) {
-    return SSL_TLSEXT_ERR_OK;
+    return SSL_TLSEXT_ERR_NOACK;
   }
+
+  handler->set_tls_sni(hostname);
 
   auto conn_handler = worker->get_connection_handler();
 
@@ -1675,15 +1672,7 @@ setup_server_ssl_context(std::vector<SSL_CTX *> &all_ssl_ctx,
 
   all_ssl_ctx.push_back(ssl_ctx);
 
-  if (tlsconf.subcerts.empty()) {
-    return ssl_ctx;
-  }
-
-  if (!cert_tree) {
-    LOG(WARN) << "We have multiple additional certificates (--subcert), but "
-                 "cert_tree is not given.  SNI may not work.";
-    return ssl_ctx;
-  }
+  assert(cert_tree);
 
   if (cert_lookup_tree_add_ssl_ctx(cert_tree, indexed_ssl_ctx, ssl_ctx) == -1) {
     LOG(FATAL) << "Failed to add default certificate.";
@@ -1742,7 +1731,7 @@ void setup_downstream_http1_alpn(SSL *ssl) {
 
 std::unique_ptr<CertLookupTree> create_cert_lookup_tree() {
   auto config = get_config();
-  if (!upstream_tls_enabled(config->conn) || config->tls.subcerts.empty()) {
+  if (!upstream_tls_enabled(config->conn)) {
     return nullptr;
   }
   return make_unique<CertLookupTree>();
