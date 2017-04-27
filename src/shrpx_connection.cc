@@ -801,11 +801,22 @@ int Connection::get_tcp_hint(TCPHint *hint) const {
                            : 0;
 
   // http://www.slideshare.net/kazuho/programming-tcp-for-responsiveness
+
+  // TODO 29 (5 (header) + 8 (explicit nonce) + 16 (tag)) is TLS
+  // overhead for AES-GCM.  For CHACHA20_POLY1305, it is 21 since it
+  // does not need 8 bytes explicit nonce.
   //
-  // TODO 29 (5 + 8 + 16) is TLS overhead for AES-GCM.  For
-  // CHACHA20_POLY1305, it is 21 since it does not need 8 bytes
-  // explicit nonce.
-  auto writable_size = (avail_packets + 2) * (tcp_info.tcpi_snd_mss - 29);
+  // For TLSv1.3, AES-GCM and CHACHA20_POLY1305 overhead are now 22
+  // bytes (5 (header) + 1 (ContentType) + 16 (tag)).
+  size_t tls_overhead;
+  if (SSL_version(tls.ssl) == TLS1_3_VERSION) {
+    tls_overhead = 22;
+  } else {
+    tls_overhead = 29;
+  }
+
+  auto writable_size =
+      (avail_packets + 2) * (tcp_info.tcpi_snd_mss - tls_overhead);
   if (writable_size > 16_k) {
     writable_size = writable_size & ~(16_k - 1);
   } else {
@@ -813,7 +824,7 @@ int Connection::get_tcp_hint(TCPHint *hint) const {
       LOG(INFO) << "writable_size is too small: " << writable_size;
     }
     // TODO is this required?
-    writable_size = std::max(writable_size, static_cast<uint32_t>(536 * 2));
+    writable_size = std::max(writable_size, static_cast<size_t>(536 * 2));
   }
 
   // if (LOG_ENABLED(INFO)) {
