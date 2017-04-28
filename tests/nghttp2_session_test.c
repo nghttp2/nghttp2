@@ -11104,9 +11104,12 @@ void test_nghttp2_http_ignore_regular_header(void) {
   rv = nghttp2_session_mem_recv(session, bufs.head->buf.pos + proclen,
                                 nghttp2_buf_len(&bufs.head->buf) - proclen);
   CU_ASSERT_FATAL(rv > 0);
-  /* header field "foo" must be ignored because it has illegal value.
-     So we have "bar" header field for 5th header. */
-  CU_ASSERT(nghttp2_nv_equal(&bad_ansnv[4], &ud.nv));
+  /* Without on_invalid_frame_recv_callback, bad header causes stream
+     reset */
+  item = nghttp2_session_get_next_ob_item(session);
+
+  CU_ASSERT(NGHTTP2_RST_STREAM == item->frame.hd.type);
+
   proclen += (size_t)rv;
 
   CU_ASSERT(nghttp2_buf_len(&bufs.head->buf) == proclen);
