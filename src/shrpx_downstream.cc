@@ -157,6 +157,8 @@ Downstream::Downstream(Upstream *upstream, MemchunkPool *mcpool,
   upstream_wtimer_.data = this;
   downstream_rtimer_.data = this;
   downstream_wtimer_.data = this;
+
+  rcbufs_.reserve(32);
 }
 
 Downstream::~Downstream() {
