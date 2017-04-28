@@ -96,6 +96,7 @@ struct Config {
   bool hexdump;
   bool no_push;
   bool expect_continue;
+  bool verify_peer;
 };
 
 enum class RequestState { INITIAL, ON_REQUEST, ON_RESPONSE, ON_COMPLETE };

@@ -116,7 +116,8 @@ Config::Config()
       no_dep(false),
       hexdump(false),
       no_push(false),
-      expect_continue(false) {
+      expect_continue(false),
+      verify_peer(true) {
   nghttp2_option_new(&http2_option);
   nghttp2_option_set_peer_max_concurrent_streams(http2_option,
                                                  peer_max_concurrent_streams);
@@ -1311,10 +1312,12 @@ int HttpClient::tls_handshake() {
   readfn = &HttpClient::read_tls;
   writefn = &HttpClient::write_tls;
 
-  auto verify_res = SSL_get_verify_result(ssl);
-  if (verify_res != X509_V_OK) {
-    std::cerr << "[WARNING] Certificate verification failed: "
-              << X509_verify_cert_error_string(verify_res) << std::endl;
+  if (config.verify_peer) {
+    auto verify_res = SSL_get_verify_result(ssl);
+    if (verify_res != X509_V_OK) {
+      std::cerr << "[WARNING] Certificate verification failed: "
+                << X509_verify_cert_error_string(verify_res) << std::endl;
+    }
   }
 
   if (connection_made() != 0) {
@@ -2728,6 +2731,9 @@ Options:
               (up to  a short  timeout)  until the server sends  a 100
               Continue interim response. This option is ignored unless
               combined with the -d option.
+  -y, --no-verify-peer
+              Suppress  warning  on  server  certificate  verification
+              failure.
   --version   Display version information and exit.
   -h, --help  Display this help and exit.
 
@@ -2769,6 +2775,7 @@ int main(int argc, char **argv) {
         {"header-table-size", required_argument, nullptr, 'c'},
         {"padding", required_argument, nullptr, 'b'},
         {"har", required_argument, nullptr, 'r'},
+        {"no-verify-peer", no_argument, nullptr, 'y'},
         {"cert", required_argument, &flag, 1},
         {"key", required_argument, &flag, 2},
         {"color", no_argument, &flag, 3},
@@ -2784,7 +2791,7 @@ int main(int argc, char **argv) {
         {"encoder-header-table-size", required_argument, &flag, 14},
         {nullptr, 0, nullptr, 0}};
     int option_index = 0;
-    int c = getopt_long(argc, argv, "M:Oab:c:d:gm:np:r:hH:vst:uw:W:",
+    int c = getopt_long(argc, argv, "M:Oab:c:d:gm:np:r:hH:vst:uw:yW:",
                         long_options, &option_index);
     if (c == -1) {
       break;
@@ -2915,6 +2922,9 @@ int main(int argc, char **argv) {
       config.min_header_table_size = std::min(config.min_header_table_size, n);
       break;
     }
+    case 'y':
+      config.verify_peer = false;
+      break;
     case '?':
       util::show_candidates(argv[optind - 1], long_options);
       exit(EXIT_FAILURE);
