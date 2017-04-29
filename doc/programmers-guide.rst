@@ -116,7 +116,10 @@ briefly describe what the library does in this area.  In the following
 description, without loss of generality we omit CONTINUATION frame
 since they must follow HEADERS frame and are processed atomically.  In
 other words, they are just one big HEADERS frame.  To disable these
-validations, use `nghttp2_option_set_no_http_messaging()`.
+validations, use `nghttp2_option_set_no_http_messaging()`.  Please
+note that disabling this feature does not change the fundamental
+client and server model of HTTP.  That is, even if the validation is
+disabled, only client can send requests.
 
 For HTTP request, including those carried by PUSH_PROMISE, HTTP
 message starts with one HEADERS frame containing request headers.  It

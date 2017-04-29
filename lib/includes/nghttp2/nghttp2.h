@@ -2448,7 +2448,10 @@ nghttp2_option_set_no_recv_client_magic(nghttp2_option *option, int val);
  * <https://tools.ietf.org/html/rfc7540#section-8>`_.  See
  * :ref:`http-messaging` section for details.  For those applications
  * who use nghttp2 library as non-HTTP use, give nonzero to |val| to
- * disable this enforcement.
+ * disable this enforcement.  Please note that disabling this feature
+ * does not change the fundamental client and server model of HTTP.
+ * That is, even if the validation is disabled, only client can send
+ * requests.
  */
 NGHTTP2_EXTERN void nghttp2_option_set_no_http_messaging(nghttp2_option *option,
                                                          int val);
