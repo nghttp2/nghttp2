@@ -759,7 +759,6 @@ ssize_t Connection::read_tls(void *data, size_t len) {
       auto err = SSL_get_error(tls.ssl, rv);
       switch (err) {
       case SSL_ERROR_WANT_READ:
-      case SSL_ERROR_WANT_WRITE: // TODO Probably not required.
         tls.last_readlen = len;
         return 0;
       case SSL_ERROR_SSL:
