@@ -2,7 +2,7 @@ Building Android binary
 =======================
 
 In this article, we briefly describe how to build Android binary using
-`Android NDK <http://developer.android.com/tools/sdk/ndk/index.html>`_
+`Android NDK <https://developer.android.com/ndk/index.html>`_
 cross-compiler on Debian Linux.
 
 The easiest way to build android binary is use Dockerfile.android.
