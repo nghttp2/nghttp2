@@ -2197,8 +2197,9 @@ int HttpServer::run() {
       return -1;
     }
     if (config_->verify_client) {
-      SSL_CTX_set_verify(ssl_ctx, SSL_VERIFY_PEER | SSL_VERIFY_CLIENT_ONCE |
-                                      SSL_VERIFY_FAIL_IF_NO_PEER_CERT,
+      SSL_CTX_set_verify(ssl_ctx,
+                         SSL_VERIFY_PEER | SSL_VERIFY_CLIENT_ONCE |
+                             SSL_VERIFY_FAIL_IF_NO_PEER_CERT,
                          verify_callback);
     }
 

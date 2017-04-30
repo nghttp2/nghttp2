@@ -880,8 +880,8 @@ ssize_t spdy_data_read_callback(spdylay_session *session, int32_t stream_id,
     } else {
       // For tunneling, issue RST_STREAM to finish the stream.
       if (LOG_ENABLED(INFO)) {
-        ULOG(INFO, upstream) << "RST_STREAM to tunneled stream stream_id="
-                             << stream_id;
+        ULOG(INFO, upstream)
+            << "RST_STREAM to tunneled stream stream_id=" << stream_id;
       }
       upstream->rst_stream(
           downstream, infer_upstream_rst_stream_status_code(

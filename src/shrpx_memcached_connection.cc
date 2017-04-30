@@ -538,8 +538,8 @@ int MemcachedConnection::parse_packet() {
 
       if (LOG_ENABLED(INFO)) {
         if (parse_state_.status_code) {
-          MCLOG(INFO, this) << "response returned error status: "
-                            << parse_state_.status_code;
+          MCLOG(INFO, this)
+              << "response returned error status: " << parse_state_.status_code;
         }
       }
 

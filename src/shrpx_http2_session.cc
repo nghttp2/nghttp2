@@ -816,9 +816,9 @@ int on_stream_close_callback(nghttp2_session *session, int32_t stream_id,
                              uint32_t error_code, void *user_data) {
   auto http2session = static_cast<Http2Session *>(user_data);
   if (LOG_ENABLED(INFO)) {
-    SSLOG(INFO, http2session) << "Stream stream_id=" << stream_id
-                              << " is being closed with error code "
-                              << error_code;
+    SSLOG(INFO, http2session)
+        << "Stream stream_id=" << stream_id
+        << " is being closed with error code " << error_code;
   }
   auto sd = static_cast<StreamData *>(
       nghttp2_session_get_stream_user_data(session, stream_id));
@@ -1152,8 +1152,8 @@ int on_response_headers(Http2Session *http2session, Downstream *downstream,
     }
     downstream->set_request_state(Downstream::HEADER_COMPLETE);
     if (LOG_ENABLED(INFO)) {
-      SSLOG(INFO, http2session) << "HTTP upgrade success. stream_id="
-                                << frame->hd.stream_id;
+      SSLOG(INFO, http2session)
+          << "HTTP upgrade success. stream_id=" << frame->hd.stream_id;
     }
   } else {
     auto content_length = resp.fs.header(http2::HD_CONTENT_LENGTH);

@@ -5590,8 +5590,8 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
           iframe->max_niv =
               iframe->frame.hd.length / NGHTTP2_FRAME_SETTINGS_ENTRY_LENGTH + 1;
 
-          iframe->iv = nghttp2_mem_malloc(mem, sizeof(nghttp2_settings_entry) *
-                                                   iframe->max_niv);
+          iframe->iv = nghttp2_mem_malloc(
+              mem, sizeof(nghttp2_settings_entry) * iframe->max_niv);
 
           if (!iframe->iv) {
             return NGHTTP2_ERR_NOMEM;
@@ -6054,9 +6054,10 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
 
           /* Use promised stream ID for PUSH_PROMISE */
           rv = nghttp2_session_add_rst_stream(
-              session, iframe->frame.hd.type == NGHTTP2_PUSH_PROMISE
-                           ? iframe->frame.push_promise.promised_stream_id
-                           : iframe->frame.hd.stream_id,
+              session,
+              iframe->frame.hd.type == NGHTTP2_PUSH_PROMISE
+                  ? iframe->frame.push_promise.promised_stream_id
+                  : iframe->frame.hd.stream_id,
               NGHTTP2_INTERNAL_ERROR);
           if (nghttp2_is_fatal(rv)) {
             return rv;

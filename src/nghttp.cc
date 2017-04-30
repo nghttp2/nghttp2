@@ -2791,8 +2791,9 @@ int main(int argc, char **argv) {
         {"encoder-header-table-size", required_argument, &flag, 14},
         {nullptr, 0, nullptr, 0}};
     int option_index = 0;
-    int c = getopt_long(argc, argv, "M:Oab:c:d:m:np:r:hH:vst:uw:yW:",
-                        long_options, &option_index);
+    int c =
+        getopt_long(argc, argv, "M:Oab:c:d:m:np:r:hH:vst:uw:yW:", long_options,
+                    &option_index);
     if (c == -1) {
       break;
     }

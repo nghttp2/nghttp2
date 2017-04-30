@@ -1006,8 +1006,8 @@ int ensure_max_header_fields(const Downstream *downstream,
 
   if (resp.fs.num_fields() >= httpconf.max_response_header_fields) {
     if (LOG_ENABLED(INFO)) {
-      DLOG(INFO, downstream) << "Too many header field num="
-                             << resp.fs.num_fields() + 1;
+      DLOG(INFO, downstream)
+          << "Too many header field num=" << resp.fs.num_fields() + 1;
     }
     return -1;
   }

@@ -150,8 +150,8 @@ int htp_hdr_keycb(http_parser *htp, const char *data, size_t len) {
     } else {
       if (req.fs.num_fields() >= httpconf.max_request_header_fields) {
         if (LOG_ENABLED(INFO)) {
-          ULOG(INFO, upstream) << "Too many header field num="
-                               << req.fs.num_fields() + 1;
+          ULOG(INFO, upstream)
+              << "Too many header field num=" << req.fs.num_fields() + 1;
         }
         downstream->set_request_state(
             Downstream::HTTP1_REQUEST_HEADER_TOO_LARGE);
@@ -166,8 +166,8 @@ int htp_hdr_keycb(http_parser *htp, const char *data, size_t len) {
     } else {
       if (req.fs.num_fields() >= httpconf.max_request_header_fields) {
         if (LOG_ENABLED(INFO)) {
-          ULOG(INFO, upstream) << "Too many header field num="
-                               << req.fs.num_fields() + 1;
+          ULOG(INFO, upstream)
+              << "Too many header field num=" << req.fs.num_fields() + 1;
         }
         return -1;
       }

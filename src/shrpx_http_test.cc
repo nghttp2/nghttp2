@@ -43,8 +43,9 @@ void test_shrpx_http_create_forwarded(void) {
 
   CU_ASSERT("by=\"example.com:3000\";for=\"[::1]\";host=\"www.example.com\";"
             "proto=https" ==
-            http::create_forwarded(balloc, FORWARDED_BY | FORWARDED_FOR |
-                                               FORWARDED_HOST | FORWARDED_PROTO,
+            http::create_forwarded(balloc,
+                                   FORWARDED_BY | FORWARDED_FOR |
+                                       FORWARDED_HOST | FORWARDED_PROTO,
                                    StringRef::from_lit("example.com:3000"),
                                    StringRef::from_lit("[::1]"),
                                    StringRef::from_lit("www.example.com"),
@@ -68,11 +69,12 @@ void test_shrpx_http_create_forwarded(void) {
                 StringRef::from_lit("[::1]"), StringRef::from_lit("_hidden"),
                 StringRef::from_lit(""), StringRef::from_lit("")));
 
-  CU_ASSERT("" == http::create_forwarded(
-                      balloc, FORWARDED_BY | FORWARDED_FOR | FORWARDED_HOST |
-                                  FORWARDED_PROTO,
-                      StringRef::from_lit(""), StringRef::from_lit(""),
-                      StringRef::from_lit(""), StringRef::from_lit("")));
+  CU_ASSERT("" ==
+            http::create_forwarded(
+                balloc,
+                FORWARDED_BY | FORWARDED_FOR | FORWARDED_HOST | FORWARDED_PROTO,
+                StringRef::from_lit(""), StringRef::from_lit(""),
+                StringRef::from_lit(""), StringRef::from_lit("")));
 }
 
 void test_shrpx_http_create_via_header_value(void) {

@@ -448,9 +448,9 @@ void copy_headers_to_nva(std::vector<nghttp2_nv> &nva,
 
 void copy_headers_to_nva_nocopy(std::vector<nghttp2_nv> &nva,
                                 const HeaderRefs &headers, uint32_t flags) {
-  copy_headers_to_nva_internal(nva, headers, NGHTTP2_NV_FLAG_NO_COPY_NAME |
-                                                 NGHTTP2_NV_FLAG_NO_COPY_VALUE,
-                               flags);
+  copy_headers_to_nva_internal(
+      nva, headers,
+      NGHTTP2_NV_FLAG_NO_COPY_NAME | NGHTTP2_NV_FLAG_NO_COPY_VALUE, flags);
 }
 
 void build_http1_headers_from_headers(DefaultMemchunks *buf,
@@ -1624,9 +1624,9 @@ StringRef path_join(BlockAllocator &balloc, const StringRef &base_path,
                     const StringRef &base_query, const StringRef &rel_path,
                     const StringRef &rel_query) {
   auto res = make_byte_ref(
-      balloc, std::max(static_cast<size_t>(1), base_path.size()) +
-                  rel_path.size() + 1 +
-                  std::max(base_query.size(), rel_query.size()) + 1);
+      balloc,
+      std::max(static_cast<size_t>(1), base_path.size()) + rel_path.size() + 1 +
+          std::max(base_query.size(), rel_query.size()) + 1);
   auto p = res.base;
 
   if (rel_path.empty()) {

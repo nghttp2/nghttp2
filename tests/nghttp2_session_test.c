@@ -6484,8 +6484,8 @@ void test_nghttp2_session_flow_control_data_recv(void) {
 
   nghttp2_frame_pack_frame_hd(data, &hd);
   CU_ASSERT(NGHTTP2_MAX_PAYLOADLEN + NGHTTP2_FRAME_HDLEN ==
-            nghttp2_session_mem_recv(session, data, NGHTTP2_MAX_PAYLOADLEN +
-                                                        NGHTTP2_FRAME_HDLEN));
+            nghttp2_session_mem_recv(
+                session, data, NGHTTP2_MAX_PAYLOADLEN + NGHTTP2_FRAME_HDLEN));
 
   item = nghttp2_session_get_next_ob_item(session);
   /* Since this is the last frame, stream-level WINDOW_UPDATE is not
@@ -6503,8 +6503,8 @@ void test_nghttp2_session_flow_control_data_recv(void) {
      sending DATA frames. Without calculating connection-level window,
      the subsequent flow control gets confused. */
   CU_ASSERT(NGHTTP2_MAX_PAYLOADLEN + NGHTTP2_FRAME_HDLEN ==
-            nghttp2_session_mem_recv(session, data, NGHTTP2_MAX_PAYLOADLEN +
-                                                        NGHTTP2_FRAME_HDLEN));
+            nghttp2_session_mem_recv(
+                session, data, NGHTTP2_MAX_PAYLOADLEN + NGHTTP2_FRAME_HDLEN));
 
   item = nghttp2_session_get_next_ob_item(session);
   CU_ASSERT(NGHTTP2_WINDOW_UPDATE == item->frame.hd.type);
