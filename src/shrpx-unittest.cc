@@ -130,6 +130,8 @@ int main(int argc, char *argv[]) {
       !CU_add_test(pSuite, "http_create_via_header_value",
                    shrpx::test_shrpx_http_create_via_header_value) ||
       !CU_add_test(pSuite, "router_match", shrpx::test_shrpx_router_match) ||
+      !CU_add_test(pSuite, "router_match_wildcard",
+                   shrpx::test_shrpx_router_match_wildcard) ||
       !CU_add_test(pSuite, "router_match_prefix",
                    shrpx::test_shrpx_router_match_prefix) ||
       !CU_add_test(pSuite, "util_streq", shrpx::test_util_streq) ||
