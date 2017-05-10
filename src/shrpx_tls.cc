@@ -534,6 +534,103 @@ void info_callback(const SSL *ssl, int where, int ret) {
 }
 } // namespace
 
+#if OPENSSL_1_1_1_API
+constexpr auto MEMCACHED_ANTI_REPLY_KEY_PREFIX =
+    StringRef::from_lit("nghttpx:anti-reply:");
+
+namespace {
+int early_cb(SSL *ssl, int *al, void *arg) {
+  auto conn = static_cast<Connection *>(SSL_get_app_data(ssl));
+  if (conn->tls.early_cb_called) {
+    return 1;
+  }
+
+  conn->tls.early_cb_called = true;
+
+  const unsigned char *ext;
+  size_t extlen;
+
+  if (!SSL_early_get0_ext(conn->tls.ssl, TLSEXT_TYPE_early_data, &ext,
+                          &extlen)) {
+    if (LOG_ENABLED(INFO)) {
+      LOG(INFO) << "early_data extension does not exist";
+    }
+    return 1;
+  }
+
+  if (!SSL_early_get0_ext(conn->tls.ssl, TLSEXT_TYPE_psk, &ext, &extlen)) {
+    if (LOG_ENABLED(INFO)) {
+      LOG(INFO) << "pre_shared_key extension does not exist";
+    }
+    return 1;
+  }
+
+  std::array<uint8_t, 32> md;
+  unsigned int mdlen;
+  if (EVP_DigestFinal_ex(conn->tls.ch_md_ctx, md.data(), &mdlen) == 0) {
+    LOG(ERROR) << "EVP_DigestFinal_ex failed";
+    return 0;
+  }
+  assert(md.size() == mdlen);
+
+  auto handler = static_cast<ClientHandler *>(conn->data);
+  auto worker = handler->get_worker();
+  auto dispatcher = worker->get_anti_replay_memcached_dispatcher();
+  auto &balloc = handler->get_block_allocator();
+
+  auto &tlsconf = get_config()->tls;
+
+  auto hex_md =
+      util::format_hex(balloc, StringRef{std::begin(md), std::end(md)});
+
+  if (tlsconf.anti_replay.memcached.host.empty()) {
+    return 1;
+  }
+
+  auto req = make_unique<MemcachedRequest>();
+  req->op = MEMCACHED_OP_ADD;
+  req->key = MEMCACHED_ANTI_REPLY_KEY_PREFIX.str();
+  req->key += hex_md;
+
+  // TODO No value at the moment
+
+  // Set the same timeout value for session with the hope that
+  // OpenSSL library invalidates the outdated ticket.
+  req->expiry = tlsconf.session_timeout.count();
+  req->cb = [conn](MemcachedRequest *req, MemcachedResult res) {
+    if (LOG_ENABLED(INFO)) {
+      LOG(INFO) << "Memcached: ClientHello anti-replay registration done.  key="
+                << req->key << ", status_code=" << res.status_code;
+    }
+
+    // We might stop reading, so start it again
+    conn->rlimit.startw();
+    ev_timer_again(conn->loop, &conn->rt);
+
+    conn->wlimit.startw();
+    ev_timer_again(conn->loop, &conn->wt);
+
+    conn->tls.anti_replay_req = nullptr;
+
+    if (res.status_code != 0) {
+      // If we cannot add key/value, just disable 0-RTT early data.
+      // Note that memcached atomically adds key/value.
+      conn->tls.early_data_finish = true;
+    }
+
+    conn->tls.handshake_state = TLS_CONN_NORMAL;
+  };
+
+  conn->tls.handshake_state = TLS_CONN_WAIT_FOR_ANTI_REPLAY;
+  conn->tls.anti_replay_req = req.get();
+
+  dispatcher->add_request(std::move(req));
+
+  return -1;
+}
+} // namespace
+#endif // OPENSSL_1_1_1_API
+
 #if OPENSSL_VERSION_NUMBER >= 0x10002000L
 namespace {
 int alpn_select_proto_cb(SSL *ssl, const unsigned char **out,
@@ -919,6 +1016,10 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
   SSL_CTX_set_tlsext_status_cb(ssl_ctx, ocsp_resp_cb);
 #endif // OPENSSL_IS_BORINGSSL
   SSL_CTX_set_info_callback(ssl_ctx, info_callback);
+
+#if OPENSSL_1_1_1_API
+  SSL_CTX_set_early_cb(ssl_ctx, early_cb, nullptr);
+#endif // OPENSSL_1_1_1_API
 
 #ifdef OPENSSL_IS_BORINGSSL
   SSL_CTX_set_early_data_enabled(ssl_ctx, 1);

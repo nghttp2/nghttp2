@@ -38,7 +38,6 @@
 #include "shrpx_log.h"
 #include "memchunk.h"
 #include "util.h"
-#include "ssl_compat.h"
 
 using namespace nghttp2;
 
@@ -93,7 +92,15 @@ Connection::Connection(struct ev_loop *loop, int fd, SSL *ssl,
   }
 }
 
-Connection::~Connection() { disconnect(); }
+Connection::~Connection() {
+  disconnect();
+
+#if OPENSSL_1_1_1_API
+  if (tls.ch_md_ctx) {
+    EVP_MD_CTX_free(tls.ch_md_ctx);
+  }
+#endif // OPENSSL_1_1_1_API
+}
 
 void Connection::disconnect() {
   if (tls.ssl) {
@@ -111,9 +118,20 @@ void Connection::disconnect() {
       tls.cached_session_lookup_req = nullptr;
     }
 
+    if (tls.anti_replay_req) {
+      tls.anti_replay_req->canceled = true;
+      tls.anti_replay_req = nullptr;
+    }
+
     SSL_shutdown(tls.ssl);
     SSL_free(tls.ssl);
     tls.ssl = nullptr;
+
+#if OPENSSL_1_1_1_API
+    if (tls.ch_md_ctx) {
+      EVP_MD_CTX_reset(tls.ch_md_ctx);
+    }
+#endif // OPENSSL_1_1_1_API
 
     tls.wbuf.reset();
     tls.rbuf.reset();
@@ -126,6 +144,7 @@ void Connection::disconnect() {
     tls.reneg_started = false;
     tls.sct_requested = false;
     tls.early_data_finish = false;
+    tls.early_cb_called = false;
   }
 
   if (fd != -1) {
@@ -152,6 +171,14 @@ void Connection::prepare_client_handshake() {
 void Connection::prepare_server_handshake() {
   SSL_set_accept_state(tls.ssl);
   tls.server_handshake = true;
+
+#if OPENSSL_1_1_1_API
+  if (!tls.ch_md_ctx) {
+    tls.ch_md_ctx = EVP_MD_CTX_new();
+  }
+
+  EVP_DigestInit_ex(tls.ch_md_ctx, EVP_sha256(), nullptr);
+#endif // OPENSSL_1_1_1_API
 }
 
 // BIO implementation is inspired by openldap implementation:
@@ -225,7 +252,19 @@ int shrpx_bio_read(BIO *b, char *buf, int len) {
     return -1;
   }
 
-  return rbuf.remove(buf, len);
+  len = rbuf.remove(buf, len);
+
+  if (conn->tls.early_cb_called) {
+    return len;
+  }
+
+#if OPENSSL_1_1_1_API
+  if (EVP_DigestUpdate(conn->tls.ch_md_ctx, buf, len) == 0) {
+    return -1;
+  }
+#endif // OPENSSL_1_1_1_API
+
+  return len;
 }
 } // namespace
 
@@ -355,6 +394,7 @@ int Connection::tls_handshake() {
 
   switch (tls.handshake_state) {
   case TLS_CONN_WAIT_FOR_SESSION_CACHE:
+  case TLS_CONN_WAIT_FOR_ANTI_REPLAY:
     return SHRPX_ERR_INPROGRESS;
   case TLS_CONN_GOT_SESSION_CACHE: {
     // Use the same trick invented by @kazuho in h2o project.
@@ -401,15 +441,27 @@ int Connection::tls_handshake() {
 
       rv = SSL_read_early_data(tls.ssl, buf.data(), buf.size(), &nread);
       if (rv == SSL_READ_EARLY_DATA_ERROR) {
+        if (SSL_get_error(tls.ssl, rv) == SSL_ERROR_WANT_EARLY) {
+          if (LOG_ENABLED(INFO)) {
+            LOG(INFO)
+                << "tls: early_cb returns negative return value; handshake "
+                   "interrupted";
+          }
+          break;
+        }
+
         // If we have early data, and server sends ServerHello, assume
         // that handshake is completed in server side, and start
         // processing request.  If we don't exit handshake code here,
         // server waits for EndOfEarlyData and Finished message from
         // client, which voids the purpose of 0-RTT data.  The left
         // over of handshake is done through write_tls or read_tls.
-        rv = (tls.handshake_state == TLS_CONN_WRITE_STARTED ||
-              tls.wbuf.rleft()) &&
-             tls.earlybuf.rleft();
+        if ((tls.handshake_state == TLS_CONN_WRITE_STARTED ||
+             tls.wbuf.rleft()) &&
+            tls.earlybuf.rleft()) {
+          rv = 1;
+        }
+
         break;
       }
 
@@ -454,6 +506,9 @@ int Connection::tls_handshake() {
       }
       break;
     case SSL_ERROR_WANT_WRITE:
+#if OPENSSL_1_1_1_API
+    case SSL_ERROR_WANT_EARLY:
+#endif // OPENSSL_1_1_1_API
       break;
     case SSL_ERROR_SSL:
       if (LOG_ENABLED(INFO)) {
@@ -469,7 +524,8 @@ int Connection::tls_handshake() {
     }
   }
 
-  if (tls.handshake_state == TLS_CONN_WAIT_FOR_SESSION_CACHE) {
+  if (tls.handshake_state == TLS_CONN_WAIT_FOR_SESSION_CACHE ||
+      tls.handshake_state == TLS_CONN_WAIT_FOR_ANTI_REPLAY) {
     if (LOG_ENABLED(INFO)) {
       LOG(INFO) << "tls: handshake is still in progress";
     }

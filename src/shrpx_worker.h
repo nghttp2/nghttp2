@@ -221,6 +221,7 @@ class Worker {
 public:
   Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
          SSL_CTX *tls_session_cache_memcached_ssl_ctx,
+         SSL_CTX *tls_anti_replay_memcached_ssl_ctx,
          tls::CertLookupTree *cert_tree,
          const std::shared_ptr<TicketKeys> &ticket_keys,
          ConnectionHandler *conn_handler,
@@ -250,6 +251,7 @@ public:
   void schedule_clear_mcpool();
 
   MemcachedDispatcher *get_session_cache_memcached_dispatcher();
+  MemcachedDispatcher *get_anti_replay_memcached_dispatcher() const;
 
   std::mt19937 &get_randgen();
 
@@ -289,6 +291,7 @@ private:
 
   std::shared_ptr<DownstreamConfig> downstreamconf_;
   std::unique_ptr<MemcachedDispatcher> session_cache_memcached_dispatcher_;
+  std::unique_ptr<MemcachedDispatcher> anti_replay_memcached_dispatcher_;
 #ifdef HAVE_MRUBY
   std::unique_ptr<mruby::MRubyContext> mruby_ctx_;
 #endif // HAVE_MRUBY

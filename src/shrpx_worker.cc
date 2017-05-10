@@ -118,6 +118,7 @@ bool match_shared_downstream_addr(
 
 Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
                SSL_CTX *tls_session_cache_memcached_ssl_ctx,
+               SSL_CTX *tls_anti_replay_memcached_ssl_ctx,
                tls::CertLookupTree *cert_tree,
                const std::shared_ptr<TicketKeys> &ticket_keys,
                ConnectionHandler *conn_handler,
@@ -151,6 +152,15 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
         &session_cacheconf.memcached.addr, loop,
         tls_session_cache_memcached_ssl_ctx,
         StringRef{session_cacheconf.memcached.host}, &mcpool_, randgen_);
+  }
+
+  auto &anti_replayconf = get_config()->tls.anti_replay;
+
+  if (!anti_replayconf.memcached.host.empty()) {
+    anti_replay_memcached_dispatcher_ = make_unique<MemcachedDispatcher>(
+        &anti_replayconf.memcached.addr, loop,
+        tls_anti_replay_memcached_ssl_ctx, anti_replayconf.memcached.host,
+        &mcpool_, randgen_);
   }
 
   replace_downstream_config(std::move(downstreamconf));
@@ -472,6 +482,10 @@ MemchunkPool *Worker::get_mcpool() { return &mcpool_; }
 
 MemcachedDispatcher *Worker::get_session_cache_memcached_dispatcher() {
   return session_cache_memcached_dispatcher_.get();
+}
+
+MemcachedDispatcher *Worker::get_anti_replay_memcached_dispatcher() const {
+  return anti_replay_memcached_dispatcher_.get();
 }
 
 std::mt19937 &Worker::get_randgen() { return randgen_; }

@@ -2072,6 +2072,11 @@ int option_lookup_token(const char *name, size_t namelen) {
     break;
   case 25:
     switch (name[24]) {
+    case 'd':
+      if (util::strieq_l("tls-anti-replay-memcache", name, 24)) {
+        return SHRPX_OPTID_TLS_ANTI_REPLAY_MEMCACHED;
+      }
+      break;
     case 'e':
       if (util::strieq_l("backend-http2-window-siz", name, 24)) {
         return SHRPX_OPTID_BACKEND_HTTP2_WINDOW_SIZE;
@@ -2255,6 +2260,9 @@ int option_lookup_token(const char *name, size_t namelen) {
       if (util::strieq_l("frontend-http2-optimize-window-siz", name, 34)) {
         return SHRPX_OPTID_FRONTEND_HTTP2_OPTIMIZE_WINDOW_SIZE;
       }
+      if (util::strieq_l("tls-anti-replay-memcached-cert-fil", name, 34)) {
+        return SHRPX_OPTID_TLS_ANTI_REPLAY_MEMCACHED_CERT_FILE;
+      }
       break;
     case 'o':
       if (util::strieq_l("no-strip-incoming-x-forwarded-prot", name, 34)) {
@@ -2338,6 +2346,11 @@ int option_lookup_token(const char *name, size_t namelen) {
         return SHRPX_OPTID_BACKEND_HTTP2_ENCODER_DYNAMIC_TABLE_SIZE;
       }
       break;
+    case 'y':
+      if (util::strieq_l("tls-anti-replay-memcached-address-famil", name, 39)) {
+        return SHRPX_OPTID_TLS_ANTI_REPLAY_MEMCACHED_ADDRESS_FAMILY;
+      }
+      break;
     }
     break;
   case 41:
@@ -2364,6 +2377,12 @@ int option_lookup_token(const char *name, size_t namelen) {
     break;
   case 42:
     switch (name[41]) {
+    case 'e':
+      if (util::strieq_l("tls-anti-replay-memcached-private-key-fil", name,
+                         41)) {
+        return SHRPX_OPTID_TLS_ANTI_REPLAY_MEMCACHED_PRIVATE_KEY_FILE;
+      }
+      break;
     case 'y':
       if (util::strieq_l("tls-session-cache-memcached-address-famil", name,
                          41)) {
@@ -3153,7 +3172,8 @@ int parse_config(Config *config, int optid, const StringRef &opt,
 
     return 0;
   case SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED:
-  case SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED: {
+  case SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED:
+  case SHRPX_OPTID_TLS_ANTI_REPLAY_MEMCACHED: {
     auto addr_end = std::find(std::begin(optarg), std::end(optarg), ';');
     auto src_params = StringRef{addr_end, std::end(optarg)};
 
@@ -3178,6 +3198,13 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     }
     case SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED: {
       auto &memcachedconf = config->tls.ticket.memcached;
+      memcachedconf.host = make_string_ref(config->balloc, StringRef{host});
+      memcachedconf.port = port;
+      memcachedconf.tls = params.tls;
+      break;
+    }
+    case SHRPX_OPTID_TLS_ANTI_REPLAY_MEMCACHED: {
+      auto &memcachedconf = config->tls.anti_replay.memcached;
       memcachedconf.host = make_string_ref(config->balloc, StringRef{host});
       memcachedconf.port = port;
       memcachedconf.tls = params.tls;
@@ -3331,12 +3358,25 @@ int parse_config(Config *config, int optid, const StringRef &opt,
         make_string_ref(config->balloc, optarg);
 
     return 0;
+  case SHRPX_OPTID_TLS_ANTI_REPLAY_MEMCACHED_CERT_FILE:
+    config->tls.anti_replay.memcached.cert_file =
+        make_string_ref(config->balloc, optarg);
+
+    return 0;
+  case SHRPX_OPTID_TLS_ANTI_REPLAY_MEMCACHED_PRIVATE_KEY_FILE:
+    config->tls.anti_replay.memcached.private_key_file =
+        make_string_ref(config->balloc, optarg);
+
+    return 0;
   case SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED_ADDRESS_FAMILY:
     return parse_address_family(&config->tls.ticket.memcached.family, opt,
                                 optarg);
   case SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED_ADDRESS_FAMILY:
     return parse_address_family(&config->tls.session_cache.memcached.family,
                                 opt, optarg);
+  case SHRPX_OPTID_TLS_ANTI_REPLAY_MEMCACHED_ADDRESS_FAMILY:
+    return parse_address_family(&config->tls.anti_replay.memcached.family, opt,
+                                optarg);
   case SHRPX_OPTID_BACKEND_ADDRESS_FAMILY:
     return parse_address_family(&config->conn.downstream->family, opt, optarg);
   case SHRPX_OPTID_FRONTEND_HTTP2_MAX_CONCURRENT_STREAMS:

@@ -1438,6 +1438,12 @@ void fill_default_config(Config *config) {
       memcachedconf.family = AF_UNSPEC;
     }
 
+    auto &anti_replayconf = tlsconf.anti_replay;
+    {
+      auto &memcachedconf = anti_replayconf.memcached;
+      memcachedconf.family = AF_UNSPEC;
+    }
+
     ticketconf.cipher = EVP_aes_128_cbc();
   }
 
@@ -2284,6 +2290,25 @@ SSL/TLS:
   --tls-session-cache-memcached-private-key-file=<PATH>
               Path to client private  key for memcached connections to
               store session cache.
+  --tls-anti-replay-memcached=<HOST>,<PORT>[;tls]
+              Specify address of memcached server to store ClientHello
+              to avoid  0-RTT early data replay.   This enables shared
+              storage between multiple nghttpx instances.  Optionally,
+              memcached  connection  can  be  encrypted  with  TLS  by
+              specifying "tls" parameter.
+  --tls-anti-replay-memcached-address-family=(auto|IPv4|IPv6)
+              Specify address family of memcached connections to store
+              ClientHello to avoid 0-RTT early data replay.  If "auto"
+              is given, both IPv4 and  IPv6 are considered.  If "IPv4"
+              is given, only IPv4 address is considered.  If "IPv6" is
+              given, only IPv6 address is considered.
+              Default: auto
+  --tls-anti-replay-memcached-cert-file=<PATH>
+              Path to client certificate  for memcached connections to
+              store ClientHello to avoid 0-RTT early data replay.
+  --tls-anti-replay-memcached-private-key-file=<PATH>
+              Path to client private  key for memcached connections to
+              store ClientHello to avoid 0-RTT early data replay.
   --tls-dyn-rec-warmup-threshold=<SIZE>
               Specify the  threshold size for TLS  dynamic record size
               behaviour.  During  a TLS  session, after  the threshold
@@ -2995,6 +3020,26 @@ int process_options(Config *config,
     }
   }
 
+  {
+    auto &memcachedconf = tlsconf.anti_replay.memcached;
+    if (!memcachedconf.host.empty()) {
+      auto hostport = util::make_hostport(StringRef{memcachedconf.host},
+                                          memcachedconf.port);
+      if (resolve_hostname(&memcachedconf.addr, memcachedconf.host.c_str(),
+                           memcachedconf.port, memcachedconf.family) == -1) {
+        LOG(FATAL) << "Resolving memcached address for TLS anti-replay failed: "
+                   << hostport;
+        return -1;
+      }
+      LOG(NOTICE) << "Memcached address for TLS anti-replay: " << hostport
+                  << " -> " << util::to_numeric_addr(&memcachedconf.addr);
+      if (memcachedconf.tls) {
+        LOG(NOTICE) << "Connection to memcached for TLS anti-replay will be "
+                       "encrypted by TLS";
+      }
+    }
+  }
+
   if (config->rlimit_nofile) {
     struct rlimit lim = {static_cast<rlim_t>(config->rlimit_nofile),
                          static_cast<rlim_t>(config->rlimit_nofile)};
@@ -3404,6 +3449,14 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_NO_STRIP_INCOMING_X_FORWARDED_PROTO.c_str(), no_argument,
          &flag, 158},
         {SHRPX_OPT_SINGLE_PROCESS.c_str(), no_argument, &flag, 159},
+        {SHRPX_OPT_TLS_ANTI_REPLAY_MEMCACHED.c_str(), required_argument, &flag,
+         160},
+        {SHRPX_OPT_TLS_ANTI_REPLAY_MEMCACHED_ADDRESS_FAMILY.c_str(),
+         required_argument, &flag, 161},
+        {SHRPX_OPT_TLS_ANTI_REPLAY_MEMCACHED_CERT_FILE.c_str(),
+         required_argument, &flag, 162},
+        {SHRPX_OPT_TLS_ANTI_REPLAY_MEMCACHED_PRIVATE_KEY_FILE.c_str(),
+         required_argument, &flag, 163},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -4164,6 +4217,27 @@ int main(int argc, char **argv) {
         // --single-process
         cmdcfgs.emplace_back(SHRPX_OPT_SINGLE_PROCESS,
                              StringRef::from_lit("yes"));
+        break;
+      case 160:
+        // --tls-anti-replay-memcached
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS_ANTI_REPLAY_MEMCACHED,
+                             StringRef{optarg});
+        break;
+      case 161:
+        // --tls-anti-replay-memcached-address-family
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS_ANTI_REPLAY_MEMCACHED_ADDRESS_FAMILY,
+                             StringRef{optarg});
+        break;
+      case 162:
+        // --tls-anti-replay-memcached-cert-file
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS_ANTI_REPLAY_MEMCACHED_CERT_FILE,
+                             StringRef{optarg});
+        break;
+      case 163:
+        // --tls-anti-replay-memcached-private-key-file
+        cmdcfgs.emplace_back(
+            SHRPX_OPT_TLS_ANTI_REPLAY_MEMCACHED_PRIVATE_KEY_FILE,
+            StringRef{optarg});
         break;
       default:
         break;

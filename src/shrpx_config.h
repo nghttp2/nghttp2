@@ -343,6 +343,14 @@ constexpr auto SHRPX_OPT_NO_STRIP_INCOMING_X_FORWARDED_PROTO =
     StringRef::from_lit("no-strip-incoming-x-forwarded-proto");
 constexpr auto SHRPX_OPT_OCSP_STARTUP = StringRef::from_lit("ocsp-startup");
 constexpr auto SHRPX_OPT_NO_VERIFY_OCSP = StringRef::from_lit("no-verify-ocsp");
+constexpr auto SHRPX_OPT_TLS_ANTI_REPLAY_MEMCACHED =
+    StringRef::from_lit("tls-anti-replay-memcached");
+constexpr auto SHRPX_OPT_TLS_ANTI_REPLAY_MEMCACHED_CERT_FILE =
+    StringRef::from_lit("tls-anti-replay-memcached-cert-file");
+constexpr auto SHRPX_OPT_TLS_ANTI_REPLAY_MEMCACHED_PRIVATE_KEY_FILE =
+    StringRef::from_lit("tls-anti-replay-memcached-private-key-file");
+constexpr auto SHRPX_OPT_TLS_ANTI_REPLAY_MEMCACHED_ADDRESS_FAMILY =
+    StringRef::from_lit("tls-anti-replay-memcached-address-family");
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
@@ -576,6 +584,23 @@ struct TLSConfig {
       bool tls;
     } memcached;
   } session_cache;
+
+  struct {
+    struct {
+      Address addr;
+      uint16_t port;
+      // Hostname of memcached server.  This is also used as SNI field
+      // if TLS is enabled.
+      StringRef host;
+      // Client private key and certificate for authentication
+      StringRef private_key_file;
+      StringRef cert_file;
+      // Address family of memcached connection.  One of either
+      // AF_INET, AF_INET6 or AF_UNSPEC.
+      int family;
+      bool tls;
+    } memcached;
+  } anti_replay;
 
   // Dynamic record sizing configurations
   struct {
@@ -1097,6 +1122,10 @@ enum {
   SHRPX_OPTID_STRIP_INCOMING_X_FORWARDED_FOR,
   SHRPX_OPTID_SUBCERT,
   SHRPX_OPTID_SYSLOG_FACILITY,
+  SHRPX_OPTID_TLS_ANTI_REPLAY_MEMCACHED,
+  SHRPX_OPTID_TLS_ANTI_REPLAY_MEMCACHED_ADDRESS_FAMILY,
+  SHRPX_OPTID_TLS_ANTI_REPLAY_MEMCACHED_CERT_FILE,
+  SHRPX_OPTID_TLS_ANTI_REPLAY_MEMCACHED_PRIVATE_KEY_FILE,
   SHRPX_OPTID_TLS_DYN_REC_IDLE_TIMEOUT,
   SHRPX_OPTID_TLS_DYN_REC_WARMUP_THRESHOLD,
   SHRPX_OPTID_TLS_MAX_PROTO_VERSION,

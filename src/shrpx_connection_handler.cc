@@ -235,9 +235,24 @@ int ConnectionHandler::create_single_worker() {
     }
   }
 
+  SSL_CTX *anti_replay_ssl_ctx = nullptr;
+  {
+    auto &memcachedconf = config->tls.anti_replay.memcached;
+
+    if (memcachedconf.tls) {
+      anti_replay_ssl_ctx = tls::create_ssl_client_context(
+#ifdef HAVE_NEVERBLEED
+          nb_.get(),
+#endif // HAVE_NEVERBLEED
+          tlsconf.cacert, memcachedconf.cert_file,
+          memcachedconf.private_key_file, nullptr);
+      all_ssl_ctx_.push_back(anti_replay_ssl_ctx);
+    }
+  }
+
   single_worker_ = make_unique<Worker>(
-      loop_, sv_ssl_ctx, cl_ssl_ctx, session_cache_ssl_ctx, cert_tree_.get(),
-      ticket_keys_, this, config->conn.downstream);
+      loop_, sv_ssl_ctx, cl_ssl_ctx, session_cache_ssl_ctx, anti_replay_ssl_ctx,
+      cert_tree_.get(), ticket_keys_, this, config->conn.downstream);
 #ifdef HAVE_MRUBY
   if (single_worker_->create_mruby_context() != 0) {
     return -1;
@@ -293,12 +308,28 @@ int ConnectionHandler::create_worker_thread(size_t num) {
     }
   }
 
+  SSL_CTX *anti_replay_ssl_ctx = nullptr;
+  {
+    auto &memcachedconf = config->tls.anti_replay.memcached;
+
+    if (memcachedconf.tls) {
+      anti_replay_ssl_ctx = tls::create_ssl_client_context(
+#ifdef HAVE_NEVERBLEED
+          nb_.get(),
+#endif // HAVE_NEVERBLEED
+          tlsconf.cacert, memcachedconf.cert_file,
+          memcachedconf.private_key_file, nullptr);
+      all_ssl_ctx_.push_back(anti_replay_ssl_ctx);
+    }
+  }
+
   for (size_t i = 0; i < num; ++i) {
     auto loop = ev_loop_new(config->ev_loop_flags);
 
-    auto worker = make_unique<Worker>(
-        loop, sv_ssl_ctx, cl_ssl_ctx, session_cache_ssl_ctx, cert_tree_.get(),
-        ticket_keys_, this, config->conn.downstream);
+    auto worker =
+        make_unique<Worker>(loop, sv_ssl_ctx, cl_ssl_ctx, session_cache_ssl_ctx,
+                            anti_replay_ssl_ctx, cert_tree_.get(), ticket_keys_,
+                            this, config->conn.downstream);
 #ifdef HAVE_MRUBY
     if (worker->create_mruby_context() != 0) {
       return -1;

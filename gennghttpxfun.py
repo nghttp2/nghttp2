@@ -168,6 +168,10 @@ OPTIONS = [
     "no-strip-incoming-x-forwarded-proto",
     "ocsp-startup",
     "no-verify-ocsp",
+    "tls-anti-replay-memcached",
+    "tls-anti-replay-memcached-cert-file",
+    "tls-anti-replay-memcached-private-key-file",
+    "tls-anti-replay-memcached-address-family",
 ]
 
 LOGVARS = [

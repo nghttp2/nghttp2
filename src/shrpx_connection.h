@@ -32,10 +32,12 @@
 #include <ev.h>
 
 #include <openssl/ssl.h>
+#include <openssl/evp.h>
 
 #include "shrpx_rate_limit.h"
 #include "shrpx_error.h"
 #include "memchunk.h"
+#include "ssl_compat.h"
 
 namespace shrpx {
 
@@ -50,6 +52,7 @@ enum {
   TLS_CONN_WAIT_FOR_SESSION_CACHE,
   TLS_CONN_GOT_SESSION_CACHE,
   TLS_CONN_CANCEL_SESSION_CACHE,
+  TLS_CONN_WAIT_FOR_ANTI_REPLAY,
   TLS_CONN_WRITE_STARTED,
 };
 
@@ -62,6 +65,11 @@ struct TLSConnection {
   SSL_SESSION *cached_session;
   MemcachedRequest *cached_session_lookup_req;
   tls::TLSSessionCache *client_session_cache;
+#if OPENSSL_1_1_1_API
+  // Message digest context to calculate ClientHello for anti-replay.
+  EVP_MD_CTX *ch_md_ctx;
+#endif // !OPENSSL_1_1_1_API
+  MemcachedRequest *anti_replay_req;
   ev_tstamp last_write_idle;
   size_t warmup_writelen;
   // length passed to SSL_write and SSL_read last time.  This is
@@ -82,6 +90,8 @@ struct TLSConnection {
   // This value is also true if this is client side connection for
   // convenience.
   bool early_data_finish;
+  // true if early_cb gets called.
+  bool early_cb_called;
 };
 
 struct TCPHint {
