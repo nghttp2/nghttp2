@@ -967,6 +967,12 @@ int parse_mapping(Config *config, DownstreamAddrConfig &addr,
       auto host = StringRef{std::begin(g.pattern) + 1, path_first};
       auto path = StringRef{path_first, std::end(g.pattern)};
 
+      auto path_is_wildcard = false;
+      if (path[path.size() - 1] == '*') {
+        path = StringRef{std::begin(path), std::begin(path) + path.size() - 1};
+        path_is_wildcard = true;
+      }
+
       auto it = std::find_if(
           std::begin(wildcard_patterns), std::end(wildcard_patterns),
           [&host](const WildcardPattern &wp) { return wp.host == host; });
@@ -975,7 +981,7 @@ int parse_mapping(Config *config, DownstreamAddrConfig &addr,
         wildcard_patterns.emplace_back(host);
 
         auto &router = wildcard_patterns.back().router;
-        router.add_route(path, idx);
+        router.add_route(path, idx, path_is_wildcard);
 
         auto iov = make_byte_ref(downstreamconf.balloc, host.size() + 1);
         auto p = iov.base;
@@ -985,13 +991,20 @@ int parse_mapping(Config *config, DownstreamAddrConfig &addr,
 
         rw_router.add_route(rev_host, wildcard_patterns.size() - 1);
       } else {
-        (*it).router.add_route(path, idx);
+        (*it).router.add_route(path, idx, path_is_wildcard);
       }
 
       continue;
     }
 
-    router.add_route(g.pattern, idx);
+    auto path_is_wildcard = false;
+    if (pattern[pattern.size() - 1] == '*') {
+      pattern = StringRef{std::begin(pattern),
+                          std::begin(pattern) + pattern.size() - 1};
+      path_is_wildcard = true;
+    }
+
+    router.add_route(pattern, idx, path_is_wildcard);
   }
   return 0;
 }

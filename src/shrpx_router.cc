@@ -31,10 +31,10 @@
 
 namespace shrpx {
 
-RNode::RNode() : s(nullptr), len(0), index(-1) {}
+RNode::RNode() : s(nullptr), len(0), index(-1), wildcard_index(-1) {}
 
-RNode::RNode(const char *s, size_t len, size_t index)
-    : s(s), len(len), index(index) {}
+RNode::RNode(const char *s, size_t len, ssize_t index, ssize_t wildcard_index)
+    : s(s), len(len), index(index), wildcard_index(wildcard_index) {}
 
 Router::Router() : balloc_(1024, 1024), root_{} {}
 
@@ -64,21 +64,30 @@ void add_next_node(RNode *node, std::unique_ptr<RNode> new_node) {
 } // namespace
 
 void Router::add_node(RNode *node, const char *pattern, size_t patlen,
-                      size_t index) {
+                      ssize_t index, ssize_t wildcard_index) {
   auto pat = make_string_ref(balloc_, StringRef{pattern, patlen});
-  auto new_node = make_unique<RNode>(pat.c_str(), pat.size(), index);
+  auto new_node =
+      make_unique<RNode>(pat.c_str(), pat.size(), index, wildcard_index);
   add_next_node(node, std::move(new_node));
 }
 
-size_t Router::add_route(const StringRef &pattern, size_t index) {
+size_t Router::add_route(const StringRef &pattern, size_t idx, bool wildcard) {
+  ssize_t index = -1, wildcard_index = -1;
+  if (wildcard) {
+    wildcard_index = idx;
+  } else {
+    index = idx;
+  }
+
   auto node = &root_;
   size_t i = 0;
 
   for (;;) {
     auto next_node = find_next_node(node, pattern[i]);
     if (next_node == nullptr) {
-      add_node(node, pattern.c_str() + i, pattern.size() - i, index);
-      return index;
+      add_node(node, pattern.c_str() + i, pattern.size() - i, index,
+               wildcard_index);
+      return idx;
     }
 
     node = next_node;
@@ -93,12 +102,22 @@ size_t Router::add_route(const StringRef &pattern, size_t index) {
       // The common prefix was matched
       if (slen == node->len) {
         // Complete match
-        if (node->index != -1) {
-          // Return the existing index for duplicates.
-          return node->index;
+        if (index != -1) {
+          if (node->index != -1) {
+            // Return the existing index for duplicates.
+            return node->index;
+          }
+          node->index = index;
+          return idx;
         }
-        node->index = index;
-        return index;
+
+        assert(wildcard_index != -1);
+
+        if (node->wildcard_index != -1) {
+          return node->wildcard_index;
+        }
+        node->wildcard_index = wildcard_index;
+        return idx;
       }
 
       if (slen > node->len) {
@@ -112,27 +131,30 @@ size_t Router::add_route(const StringRef &pattern, size_t index) {
     if (node->len > j) {
       // node must be split into 2 nodes.  new_node is now the child
       // of node.
-      auto new_node =
-          make_unique<RNode>(&node->s[j], node->len - j, node->index);
+      auto new_node = make_unique<RNode>(&node->s[j], node->len - j,
+                                         node->index, node->wildcard_index);
       std::swap(node->next, new_node->next);
 
       node->len = j;
       node->index = -1;
+      node->wildcard_index = -1;
 
       add_next_node(node, std::move(new_node));
 
       if (slen == j) {
         node->index = index;
-        return index;
+        node->wildcard_index = wildcard_index;
+        return idx;
       }
     }
 
     i += j;
 
     assert(pattern.size() > i);
-    add_node(node, pattern.c_str() + i, pattern.size() - i, index);
+    add_node(node, pattern.c_str() + i, pattern.size() - i, index,
+             wildcard_index);
 
-    return index;
+    return idx;
   }
 }
 
@@ -169,8 +191,10 @@ const RNode *match_complete(size_t *offset, const RNode *node,
 } // namespace
 
 namespace {
-const RNode *match_partial(const RNode *node, size_t offset, const char *first,
-                           const char *last) {
+const RNode *match_partial(bool *pattern_is_wildcard, const RNode *node,
+                           size_t offset, const char *first, const char *last) {
+  *pattern_is_wildcard = false;
+
   if (first == last) {
     if (node->len == offset) {
       return node;
@@ -207,8 +231,12 @@ const RNode *match_partial(const RNode *node, size_t offset, const char *first,
       return nullptr;
     }
 
-    if (node->index != -1 && node->s[node->len - 1] == '/') {
+    if (node->wildcard_index != -1) {
       found_node = node;
+      *pattern_is_wildcard = true;
+    } else if (node->index != -1 && node->s[node->len - 1] == '/') {
+      found_node = node;
+      *pattern_is_wildcard = false;
     }
 
     assert(node->len == offset + n);
@@ -233,6 +261,7 @@ const RNode *match_partial(const RNode *node, size_t offset, const char *first,
       if (node->len == n) {
         // Complete match with this node
         if (node->index != -1) {
+          *pattern_is_wildcard = false;
           return node;
         }
 
@@ -246,16 +275,21 @@ const RNode *match_partial(const RNode *node, size_t offset, const char *first,
       // pattern is "/foo/" and path is "/foo", we consider they
       // match.
       if (node->index != -1 && n + 1 == node->len && node->s[n] == '/') {
+        *pattern_is_wildcard = false;
         return node;
       }
 
       return found_node;
     }
 
-    // This is the case when pattern which ends with "/" is included
-    // in query.
-    if (node->index != -1 && node->s[node->len - 1] == '/') {
+    if (node->wildcard_index != -1) {
       found_node = node;
+      *pattern_is_wildcard = true;
+    } else if (node->index != -1 && node->s[node->len - 1] == '/') {
+      // This is the case when pattern which ends with "/" is included
+      // in query.
+      found_node = node;
+      *pattern_is_wildcard = false;
     }
 
     assert(node->len == n);
@@ -272,12 +306,14 @@ ssize_t Router::match(const StringRef &host, const StringRef &path) const {
     return -1;
   }
 
-  node = match_partial(node, offset, std::begin(path), std::end(path));
+  bool pattern_is_wildcard;
+  node = match_partial(&pattern_is_wildcard, node, offset, std::begin(path),
+                       std::end(path));
   if (node == nullptr || node == &root_) {
     return -1;
   }
 
-  return node->index;
+  return pattern_is_wildcard ? node->wildcard_index : node->index;
 }
 
 ssize_t Router::match(const StringRef &s) const {

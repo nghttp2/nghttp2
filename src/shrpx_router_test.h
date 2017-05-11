@@ -32,6 +32,7 @@
 namespace shrpx {
 
 void test_shrpx_router_match(void);
+void test_shrpx_router_match_wildcard(void);
 void test_shrpx_router_match_prefix(void);
 
 } // namespace shrpx

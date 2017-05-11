@@ -38,7 +38,7 @@ namespace shrpx {
 
 struct RNode {
   RNode();
-  RNode(const char *s, size_t len, size_t index);
+  RNode(const char *s, size_t len, ssize_t index, ssize_t wildcard_index);
   RNode(RNode &&) = default;
   RNode(const RNode &) = delete;
   RNode &operator=(RNode &&) = default;
@@ -54,6 +54,10 @@ struct RNode {
   // Index of pattern if match ends in this node.  Note that we don't
   // store duplicated pattern.
   ssize_t index;
+  // Index of wildcard pattern if query includes this node as prefix
+  // and it still has suffix to match.  Note that we don't store
+  // duplicated pattern.
+  ssize_t wildcard_index;
 };
 
 class Router {
@@ -66,8 +70,13 @@ public:
   Router &operator=(const Router &) = delete;
 
   // Adds route |pattern| with its |index|.  If same pattern has
-  // already been added, the existing index is returned.
-  size_t add_route(const StringRef &pattern, size_t index);
+  // already been added, the existing index is returned.  If
+  // |wildcard| is true, |pattern| is considered as wildcard pattern,
+  // and all paths which have the |pattern| as prefix and are strictly
+  // longer than |pattern| match.  The wildcard pattern only works
+  // with match(const StringRef&, const StringRef&).
+  size_t add_route(const StringRef &pattern, size_t index,
+                   bool wildcard = false);
   // Returns the matched index of pattern.  -1 if there is no match.
   ssize_t match(const StringRef &host, const StringRef &path) const;
   // Returns the matched index of pattern |s|.  -1 if there is no
@@ -84,7 +93,8 @@ public:
   ssize_t match_prefix(size_t *nread, const RNode **last_node,
                        const StringRef &s) const;
 
-  void add_node(RNode *node, const char *pattern, size_t patlen, size_t index);
+  void add_node(RNode *node, const char *pattern, size_t patlen, ssize_t index,
+                ssize_t wildcard_index);
 
   void dump() const;
 

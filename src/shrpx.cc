@@ -1688,6 +1688,18 @@ Connections:
               match  against  "nghttp2.org".   The exact  hosts  match
               takes precedence over the wildcard hosts match.
 
+              If path  part ends with  "*", it is treated  as wildcard
+              path.  The  wildcard path  behaves differently  from the
+              normal path.  For normal path,  match is made around the
+              boundary of path component  separator,"/".  On the other
+              hand, the wildcard  path does not take  into account the
+              path component  separator.  All paths which  include the
+              wildcard  path  without  last  "*" as  prefix,  and  are
+              strictly longer than wildcard  path without last "*" are
+              matched.  "*"  must match  at least one  character.  For
+              example,  the   pattern  "/foo*"  matches   "/foo/"  and
+              "/foobar".  But it does not match "/foo", or "/fo".
+
               If <PATTERN> is omitted or  empty string, "/" is used as
               pattern,  which  matches  all request  paths  (catch-all
               pattern).  The catch-all backend must be given.
