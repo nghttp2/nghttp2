@@ -285,6 +285,18 @@ If you want to compile the applications under ``examples/``, you need
 to remove or rename the ``event.h`` from libev's installation, because
 it conflicts with libevent's installation.
 
+Notes for installation on Linux systems
+--------------------------------------------
+After installing nghttp2 tool suite with ``make install`` one might experience a similar error:
+
+.. code-block:: text
+
+    nghttpx: error while loading shared libraries: libnghttp2.so.14: cannot open shared object file: No such file or directory
+
+This means that the tool is unable to locate the ``libnghttp2.so`` shared library.
+
+To update the shared library cache run ``sudo ldconfig``.
+
 Building the documentation
 --------------------------
 
