@@ -152,11 +152,11 @@ header fields must not appear: "Connection", "Keep-Alive",
 Each header field name and value must obey the field-name and
 field-value production rules described in `RFC 7230, section
 3.2. <https://tools.ietf.org/html/rfc7230#section-3.2>`_.
-Additionally, all field name must be lower cased.  While the pseudo
-header fields must satisfy these rules, we just ignore illegal regular
-headers (this means that these header fields are not passed to
-application callback).  If application wants to treat these headers as
-error, use `nghttp2_on_invalid_header_callback <https://nghttp2.org/documentation/types.html#c.nghttp2_on_invalid_header_callback>`_.
+Additionally, all field name must be lower cased.  The invalid header
+fields are treated as stream error, and that stream is reset.  If
+application wants to treat these headers in their own way, use
+`nghttp2_on_invalid_header_callback
+<https://nghttp2.org/documentation/types.html#c.nghttp2_on_invalid_header_callback>`_.
 
 For "http" or "https" URIs, ":path" pseudo header fields must start
 with "/".  The only exception is OPTIONS request, in that case, "*" is
