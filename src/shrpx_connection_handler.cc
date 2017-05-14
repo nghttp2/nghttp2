@@ -268,7 +268,6 @@ int ConnectionHandler::create_worker_thread(size_t num) {
 
   auto config = get_config();
   auto &tlsconf = config->tls;
-  auto &memcachedconf = config->tls.session_cache.memcached;
   auto &apiconf = config->api;
 
   // We have dedicated worker for API request processing.
@@ -276,10 +275,10 @@ int ConnectionHandler::create_worker_thread(size_t num) {
     ++num;
   }
 
-  for (size_t i = 0; i < num; ++i) {
-    auto loop = ev_loop_new(config->ev_loop_flags);
+  SSL_CTX *session_cache_ssl_ctx = nullptr;
+  {
+    auto &memcachedconf = config->tls.session_cache.memcached;
 
-    SSL_CTX *session_cache_ssl_ctx = nullptr;
     if (memcachedconf.tls) {
       session_cache_ssl_ctx = tls::create_ssl_client_context(
 #ifdef HAVE_NEVERBLEED
@@ -289,6 +288,11 @@ int ConnectionHandler::create_worker_thread(size_t num) {
           memcachedconf.private_key_file, nullptr);
       all_ssl_ctx_.push_back(session_cache_ssl_ctx);
     }
+  }
+
+  for (size_t i = 0; i < num; ++i) {
+    auto loop = ev_loop_new(config->ev_loop_flags);
+
     auto worker = make_unique<Worker>(
         loop, sv_ssl_ctx, cl_ssl_ctx, session_cache_ssl_ctx, cert_tree_.get(),
         ticket_keys_, this, config->conn.downstream);
