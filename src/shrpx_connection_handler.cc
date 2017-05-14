@@ -219,17 +219,19 @@ int ConnectionHandler::create_single_worker() {
 
   auto config = get_config();
   auto &tlsconf = config->tls;
-  auto &memcachedconf = config->tls.session_cache.memcached;
 
   SSL_CTX *session_cache_ssl_ctx = nullptr;
-  if (memcachedconf.tls) {
-    session_cache_ssl_ctx = tls::create_ssl_client_context(
+  {
+    auto &memcachedconf = config->tls.session_cache.memcached;
+    if (memcachedconf.tls) {
+      session_cache_ssl_ctx = tls::create_ssl_client_context(
 #ifdef HAVE_NEVERBLEED
-        nb_.get(),
+          nb_.get(),
 #endif // HAVE_NEVERBLEED
-        tlsconf.cacert, memcachedconf.cert_file, memcachedconf.private_key_file,
-        nullptr);
-    all_ssl_ctx_.push_back(session_cache_ssl_ctx);
+          tlsconf.cacert, memcachedconf.cert_file,
+          memcachedconf.private_key_file, nullptr);
+      all_ssl_ctx_.push_back(session_cache_ssl_ctx);
+    }
   }
 
   single_worker_ = make_unique<Worker>(
