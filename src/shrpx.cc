@@ -1486,6 +1486,7 @@ void fill_default_config(Config *config) {
   httpconf.max_requests = std::numeric_limits<size_t>::max();
   httpconf.xfp.add = true;
   httpconf.xfp.strip_incoming = true;
+  httpconf.zero_rtt_uniq.strip_incoming = true;
 
   auto &http2conf = config->http2;
   {
@@ -2615,6 +2616,9 @@ HTTP:
               Default: obfuscated
   --no-via    Don't append to  Via header field.  If  Via header field
               is received, it is left unaltered.
+  --no-strip-incoming-nghttpx-0rtt-uniq
+              Don't strip nghttpx-0rtt-uniq  header field from inbound
+              client requests.
   --no-location-rewrite
               Don't  rewrite location  header field  in default  mode.
               When --http2-proxy  is used, location header  field will
@@ -3457,6 +3461,8 @@ int main(int argc, char **argv) {
          required_argument, &flag, 162},
         {SHRPX_OPT_TLS_ANTI_REPLAY_MEMCACHED_PRIVATE_KEY_FILE.c_str(),
          required_argument, &flag, 163},
+        {SHRPX_OPT_NO_STRIP_INCOMING_NGHTTPX_0RTT_UNIQ.c_str(), no_argument,
+         &flag, 164},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -4238,6 +4244,11 @@ int main(int argc, char **argv) {
         cmdcfgs.emplace_back(
             SHRPX_OPT_TLS_ANTI_REPLAY_MEMCACHED_PRIVATE_KEY_FILE,
             StringRef{optarg});
+        break;
+      case 164:
+        // --no-strip-incoming-nghttpx-0rtt-uniq
+        cmdcfgs.emplace_back(SHRPX_OPT_NO_STRIP_INCOMING_NGHTTPX_0RTT_UNIQ,
+                             StringRef::from_lit("yes"));
         break;
       default:
         break;

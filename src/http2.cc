@@ -434,6 +434,11 @@ void copy_headers_to_nva_internal(std::vector<nghttp2_nv> &nva,
       kv = &(*it_via);
       it_via = it;
       break;
+    case HD_NGHTTPX_0RTT_UNIQ:
+      if (flags & HDOP_STRIP_NGHTTPX_ZERO_RTT_UNIQ) {
+        continue;
+      }
+      break;
     }
     nva.push_back(
         make_nv_internal(kv->name, kv->value, kv->no_index, nv_flags));
@@ -918,6 +923,11 @@ int lookup_token(const uint8_t *name, size_t namelen) {
     case 'o':
       if (util::streq_l("x-forwarded-prot", name, 16)) {
         return HD_X_FORWARDED_PROTO;
+      }
+      break;
+    case 'q':
+      if (util::streq_l("nghttpx-0rtt-uni", name, 16)) {
+        return HD_NGHTTPX_0RTT_UNIQ;
       }
       break;
     }

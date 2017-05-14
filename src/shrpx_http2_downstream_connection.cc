@@ -271,7 +271,7 @@ int Http2DownstreamConnection::push_request_headers() {
     num_cookies = downstream_->count_crumble_request_cookie();
   }
 
-  // 9 means:
+  // 10 means:
   // 1. :method
   // 2. :scheme
   // 3. :path
@@ -281,8 +281,9 @@ int Http2DownstreamConnection::push_request_headers() {
   // 7. x-forwarded-proto (optional)
   // 8. te (optional)
   // 9. forwarded (optional)
+  // 10. nghttpx-0rtt-uniq (optional)
   auto nva = std::vector<nghttp2_nv>();
-  nva.reserve(req.fs.headers().size() + 9 + num_cookies +
+  nva.reserve(req.fs.headers().size() + 10 + num_cookies +
               httpconf.add_request_headers.size());
 
   nva.push_back(
@@ -311,11 +312,15 @@ int Http2DownstreamConnection::push_request_headers() {
   auto &fwdconf = httpconf.forwarded;
   auto &xffconf = httpconf.xff;
   auto &xfpconf = httpconf.xfp;
+  auto &zero_rtt_uniqconf = httpconf.zero_rtt_uniq;
 
   uint32_t build_flags =
       (fwdconf.strip_incoming ? http2::HDOP_STRIP_FORWARDED : 0) |
       (xffconf.strip_incoming ? http2::HDOP_STRIP_X_FORWARDED_FOR : 0) |
-      (xfpconf.strip_incoming ? http2::HDOP_STRIP_X_FORWARDED_PROTO : 0);
+      (xfpconf.strip_incoming ? http2::HDOP_STRIP_X_FORWARDED_PROTO : 0) |
+      (zero_rtt_uniqconf.strip_incoming
+           ? http2::HDOP_STRIP_NGHTTPX_ZERO_RTT_UNIQ
+           : 0);
 
   http2::copy_headers_to_nva_nocopy(nva, req.fs.headers(), build_flags);
 
@@ -325,6 +330,15 @@ int Http2DownstreamConnection::push_request_headers() {
 
   auto upstream = downstream_->get_upstream();
   auto handler = upstream->get_client_handler();
+
+#if OPENSSL_1_1_1_API
+  auto conn = handler->get_connection();
+
+  if (!SSL_is_init_finished(conn->tls.ssl)) {
+    nva.push_back(
+        http2::make_nv_ls_nocopy("nghttpx-0rtt-uniq", conn->tls.ch_hex_md));
+  }
+#endif // OPENSSL_1_1_1_API
 
   auto fwd =
       fwdconf.strip_incoming ? nullptr : req.fs.header(http2::HD_FORWARDED);

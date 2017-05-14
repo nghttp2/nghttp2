@@ -580,7 +580,7 @@ int early_cb(SSL *ssl, int *al, void *arg) {
 
   auto &tlsconf = get_config()->tls;
 
-  auto hex_md =
+  conn->tls.ch_hex_md =
       util::format_hex(balloc, StringRef{std::begin(md), std::end(md)});
 
   if (tlsconf.anti_replay.memcached.host.empty()) {
@@ -590,7 +590,7 @@ int early_cb(SSL *ssl, int *al, void *arg) {
   auto req = make_unique<MemcachedRequest>();
   req->op = MEMCACHED_OP_ADD;
   req->key = MEMCACHED_ANTI_REPLY_KEY_PREFIX.str();
-  req->key += hex_md;
+  req->key += conn->tls.ch_hex_md;
 
   // TODO No value at the moment
 

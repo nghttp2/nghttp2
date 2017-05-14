@@ -31,6 +31,7 @@ HEADERS = [
     "user-agent",
     "date",
     "content-type",
+    "nghttpx-0rtt-uniq",
     # disallowed h1 headers
     'connection',
     'keep-alive',

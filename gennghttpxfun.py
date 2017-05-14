@@ -172,6 +172,7 @@ OPTIONS = [
     "tls-anti-replay-memcached-cert-file",
     "tls-anti-replay-memcached-private-key-file",
     "tls-anti-replay-memcached-address-family",
+    "no-strip-incoming-nghttpx-0rtt-uniq",
 ]
 
 LOGVARS = [

@@ -535,11 +535,15 @@ int HttpDownstreamConnection::push_request_headers() {
   auto &fwdconf = httpconf.forwarded;
   auto &xffconf = httpconf.xff;
   auto &xfpconf = httpconf.xfp;
+  auto &zero_rtt_uniqconf = httpconf.zero_rtt_uniq;
 
   uint32_t build_flags =
       (fwdconf.strip_incoming ? http2::HDOP_STRIP_FORWARDED : 0) |
       (xffconf.strip_incoming ? http2::HDOP_STRIP_X_FORWARDED_FOR : 0) |
-      (xfpconf.strip_incoming ? http2::HDOP_STRIP_X_FORWARDED_PROTO : 0);
+      (xfpconf.strip_incoming ? http2::HDOP_STRIP_X_FORWARDED_PROTO : 0) |
+      (zero_rtt_uniqconf.strip_incoming
+           ? http2::HDOP_STRIP_NGHTTPX_ZERO_RTT_UNIQ
+           : 0);
 
   http2::build_http1_headers_from_headers(buf, req.fs.headers(), build_flags);
 
@@ -579,6 +583,16 @@ int HttpDownstreamConnection::push_request_headers() {
 
   auto upstream = downstream_->get_upstream();
   auto handler = upstream->get_client_handler();
+
+#if OPENSSL_1_1_1_API
+  auto conn = handler->get_connection();
+
+  if (!SSL_is_init_finished(conn->tls.ssl)) {
+    buf->append("Nghttpx-0rtt-uniq: ");
+    buf->append(conn->tls.ch_hex_md);
+    buf->append("\r\n");
+  }
+#endif // OPENSSL_1_1_1_API
 
   auto fwd =
       fwdconf.strip_incoming ? nullptr : req.fs.header(http2::HD_FORWARDED);

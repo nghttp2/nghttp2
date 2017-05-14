@@ -203,9 +203,13 @@ enum HeaderBuildOp {
   // Via header fields must be stripped.  If this flag is not set, all
   // Via header fields other than last one are added.
   HDOP_STRIP_VIA = 1 << 3,
+  // nghttpx-0rtt-uniq header fields must be stripped.  If this flag
+  // is not set, all nghttpx-0rtt-uniq header fields are added.
+  HDOP_STRIP_NGHTTPX_ZERO_RTT_UNIQ = 1 << 4,
   // Strip above all header fields.
   HDOP_STRIP_ALL = HDOP_STRIP_FORWARDED | HDOP_STRIP_X_FORWARDED_FOR |
-                   HDOP_STRIP_X_FORWARDED_PROTO | HDOP_STRIP_VIA,
+                   HDOP_STRIP_X_FORWARDED_PROTO | HDOP_STRIP_VIA |
+                   HDOP_STRIP_NGHTTPX_ZERO_RTT_UNIQ,
 };
 
 // Appends headers in |headers| to |nv|.  |headers| must be indexed
@@ -312,6 +316,7 @@ enum {
   HD_KEEP_ALIVE,
   HD_LINK,
   HD_LOCATION,
+  HD_NGHTTPX_0RTT_UNIQ,
   HD_PROXY_CONNECTION,
   HD_SERVER,
   HD_TE,

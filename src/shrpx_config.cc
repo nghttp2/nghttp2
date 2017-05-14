@@ -2269,6 +2269,11 @@ int option_lookup_token(const char *name, size_t namelen) {
         return SHRPX_OPTID_NO_STRIP_INCOMING_X_FORWARDED_PROTO;
       }
       break;
+    case 'q':
+      if (util::strieq_l("no-strip-incoming-nghttpx-0rtt-uni", name, 34)) {
+        return SHRPX_OPTID_NO_STRIP_INCOMING_NGHTTPX_0RTT_UNIQ;
+      }
+      break;
     case 'r':
       if (util::strieq_l("frontend-http2-dump-response-heade", name, 34)) {
         return SHRPX_OPTID_FRONTEND_HTTP2_DUMP_RESPONSE_HEADER;
@@ -3589,6 +3594,10 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     return 0;
   case SHRPX_OPTID_NO_VERIFY_OCSP:
     config->tls.ocsp.no_verify = util::strieq_l("yes", optarg);
+
+    return 0;
+  case SHRPX_OPTID_NO_STRIP_INCOMING_NGHTTPX_0RTT_UNIQ:
+    config->http.zero_rtt_uniq.strip_incoming = !util::strieq_l("yes", optarg);
 
     return 0;
   case SHRPX_OPTID_CONF:

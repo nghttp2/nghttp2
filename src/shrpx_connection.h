@@ -61,6 +61,8 @@ struct TLSConnection {
   DefaultPeekMemchunks rbuf;
   // Stores TLSv1.3 early data.
   DefaultMemchunks earlybuf;
+  // Message digest of ClientHello in hex string.
+  StringRef ch_hex_md;
   SSL *ssl;
   SSL_SESSION *cached_session;
   MemcachedRequest *cached_session_lookup_req;
