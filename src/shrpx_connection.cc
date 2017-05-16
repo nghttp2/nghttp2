@@ -145,6 +145,7 @@ void Connection::disconnect() {
     tls.sct_requested = false;
     tls.early_data_finish = false;
     tls.early_cb_called = false;
+    tls.postpone_early_data = false;
   }
 
   if (fd != -1) {
@@ -456,7 +457,8 @@ int Connection::tls_handshake() {
         // server waits for EndOfEarlyData and Finished message from
         // client, which voids the purpose of 0-RTT data.  The left
         // over of handshake is done through write_tls or read_tls.
-        if ((tls.handshake_state == TLS_CONN_WRITE_STARTED ||
+        if (!tls.postpone_early_data &&
+            (tls.handshake_state == TLS_CONN_WRITE_STARTED ||
              tls.wbuf.rleft()) &&
             tls.earlybuf.rleft()) {
           rv = 1;
@@ -478,7 +480,8 @@ int Connection::tls_handshake() {
         }
         tls.early_data_finish = true;
         // The same reason stated above.
-        if ((tls.handshake_state == TLS_CONN_WRITE_STARTED ||
+        if (!tls.postpone_early_data &&
+            (tls.handshake_state == TLS_CONN_WRITE_STARTED ||
              tls.wbuf.rleft()) &&
             tls.earlybuf.rleft()) {
           rv = 1;

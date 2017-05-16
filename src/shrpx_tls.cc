@@ -613,9 +613,10 @@ int early_cb(SSL *ssl, int *al, void *arg) {
     conn->tls.anti_replay_req = nullptr;
 
     if (res.status_code != 0) {
-      // If we cannot add key/value, just disable 0-RTT early data.
-      // Note that memcached atomically adds key/value.
-      conn->tls.early_data_finish = true;
+      // If we cannot add key/value, just postpone processing 0-RTT
+      // early data until handshake finishes.  Note that memcached
+      // atomically adds key/value.
+      conn->tls.postpone_early_data = true;
     }
 
     conn->tls.handshake_state = TLS_CONN_NORMAL;

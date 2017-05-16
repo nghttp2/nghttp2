@@ -94,6 +94,9 @@ struct TLSConnection {
   bool early_data_finish;
   // true if early_cb gets called.
   bool early_cb_called;
+  // true if processing early data should be postponed until handshake
+  // finishes.
+  bool postpone_early_data;
 };
 
 struct TCPHint {
