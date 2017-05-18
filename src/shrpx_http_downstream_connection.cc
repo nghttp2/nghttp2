@@ -1307,7 +1307,10 @@ int HttpDownstreamConnection::write_tls() {
 
   while (input->rleft() > 0) {
     auto iovcnt = input->riovec(&iov, 1);
-    assert(iovcnt == 1);
+    if (iovcnt != 1) {
+      assert(0);
+      return -1;
+    }
     auto nwrite = conn_.write_tls(iov.iov_base, iov.iov_len);
 
     if (nwrite == 0) {

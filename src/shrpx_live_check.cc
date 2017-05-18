@@ -478,7 +478,10 @@ int LiveCheck::write_tls() {
   for (;;) {
     if (wb_.rleft() > 0) {
       auto iovcnt = wb_.riovec(&iov, 1);
-      assert(iovcnt == 1);
+      if (iovcnt != 1) {
+        assert(0);
+        return -1;
+      }
       auto nwrite = conn_.write_tls(iov.iov_base, iov.iov_len);
 
       if (nwrite == 0) {
@@ -544,7 +547,10 @@ int LiveCheck::write_clear() {
   for (;;) {
     if (wb_.rleft() > 0) {
       auto iovcnt = wb_.riovec(&iov, 1);
-      assert(iovcnt == 1);
+      if (iovcnt != 1) {
+        assert(0);
+        return -1;
+      }
       auto nwrite = conn_.write_clear(iov.iov_base, iov.iov_len);
 
       if (nwrite == 0) {

@@ -158,6 +158,8 @@ Downstream *DownstreamQueue::remove_and_get_blocked(Downstream *downstream,
 
   auto next_downstream = link->downstream;
   auto link2 = next_downstream->detach_blocked_link();
+  // This is required with --disable-assert.
+  (void)link2;
   assert(link2 == link);
   ent.blocked.remove(link);
   delete link;

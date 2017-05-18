@@ -250,6 +250,7 @@ int DNSTracker::resolve(Address *result, DNSQuery *dnsq) {
     return DNS_STATUS_OK;
   default:
     assert(0);
+    abort();
   }
 }
 

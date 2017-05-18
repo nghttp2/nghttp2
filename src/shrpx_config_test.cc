@@ -163,14 +163,14 @@ void test_shrpx_config_parse_log_format(void) {
 void test_shrpx_config_read_tls_ticket_key_file(void) {
   char file1[] = "/tmp/nghttpx-unittest.XXXXXX";
   auto fd1 = mkstemp(file1);
-  assert(fd1 != -1);
-  assert(48 ==
-         write(fd1, "0..............12..............34..............5", 48));
+  CU_ASSERT(fd1 != -1);
+  CU_ASSERT(48 ==
+            write(fd1, "0..............12..............34..............5", 48));
   char file2[] = "/tmp/nghttpx-unittest.XXXXXX";
   auto fd2 = mkstemp(file2);
-  assert(fd2 != -1);
-  assert(48 ==
-         write(fd2, "6..............78..............9a..............b", 48));
+  CU_ASSERT(fd2 != -1);
+  CU_ASSERT(48 ==
+            write(fd2, "6..............78..............9a..............b", 48));
 
   close(fd1);
   close(fd2);
@@ -204,16 +204,18 @@ void test_shrpx_config_read_tls_ticket_key_file(void) {
 void test_shrpx_config_read_tls_ticket_key_file_aes_256(void) {
   char file1[] = "/tmp/nghttpx-unittest.XXXXXX";
   auto fd1 = mkstemp(file1);
-  assert(fd1 != -1);
-  assert(80 == write(fd1, "0..............12..............................34..."
-                          "...........................5",
-                     80));
+  CU_ASSERT(fd1 != -1);
+  CU_ASSERT(80 == write(fd1,
+                        "0..............12..............................34..."
+                        "...........................5",
+                        80));
   char file2[] = "/tmp/nghttpx-unittest.XXXXXX";
   auto fd2 = mkstemp(file2);
-  assert(fd2 != -1);
-  assert(80 == write(fd2, "6..............78..............................9a..."
-                          "...........................b",
-                     80));
+  CU_ASSERT(fd2 != -1);
+  CU_ASSERT(80 == write(fd2,
+                        "6..............78..............................9a..."
+                        "...........................b",
+                        80));
 
   close(fd1);
   close(fd2);
