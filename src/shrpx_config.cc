@@ -3613,6 +3613,7 @@ StringRef strproto(shrpx_proto proto) {
 
   // gcc needs this.
   assert(0);
+  abort();
 }
 
 namespace {

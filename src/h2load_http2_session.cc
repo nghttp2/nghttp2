@@ -180,6 +180,9 @@ ssize_t send_callback(nghttp2_session *session, const uint8_t *data,
 void Http2Session::on_connect() {
   int rv;
 
+  // This is required with --disable-assert.
+  (void)rv;
+
   nghttp2_session_callbacks *callbacks;
 
   nghttp2_session_callbacks_new(&callbacks);

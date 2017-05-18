@@ -204,6 +204,7 @@ int DNSResolver::handle_event(int rfd, int wfd) {
   default:
     // Unreachable
     assert(0);
+    abort();
   }
 }
 

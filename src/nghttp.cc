@@ -172,6 +172,8 @@ Request::~Request() { nghttp2_gzip_inflate_del(inflater); }
 
 void Request::init_inflater() {
   int rv;
+  // This is required with --disable-assert.
+  (void)rv;
   rv = nghttp2_gzip_inflate_new(&inflater);
   assert(rv == 0);
 }
