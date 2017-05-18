@@ -118,7 +118,8 @@ ConnectionHandler::ConnectionHandler(struct ev_loop *loop, std::mt19937 &gen)
       tls_ticket_key_memcached_get_retry_count_(0),
       tls_ticket_key_memcached_fail_count_(0),
       worker_round_robin_cnt_(get_config()->api.enabled ? 1 : 0),
-      graceful_shutdown_(false) {
+      graceful_shutdown_(false),
+      enable_acceptor_on_ocsp_completion_(false) {
   ev_timer_init(&disable_acceptor_timer_, acceptor_disable_cb, 0., 0.);
   disable_acceptor_timer_.data = this;
 
@@ -504,6 +505,9 @@ bool ConnectionHandler::get_graceful_shutdown() const {
 }
 
 void ConnectionHandler::cancel_ocsp_update() {
+  enable_acceptor_on_ocsp_completion_ = false;
+  ev_timer_stop(loop_, &ocsp_timer_);
+
   if (ocsp_.proc.pid == 0) {
     return;
   }
@@ -656,6 +660,12 @@ void ConnectionHandler::proceed_next_cert_ocsp() {
       // We have updated all ocsp response, and schedule next update.
       ev_timer_set(&ocsp_timer_, get_config()->tls.ocsp.update_interval, 0.);
       ev_timer_start(loop_, &ocsp_timer_);
+
+      if (enable_acceptor_on_ocsp_completion_) {
+        enable_acceptor_on_ocsp_completion_ = false;
+        enable_acceptor();
+      }
+
       return;
     }
 
@@ -853,6 +863,10 @@ SSL_CTX *ConnectionHandler::get_ssl_ctx(size_t idx) const {
 const std::vector<SSL_CTX *> &
 ConnectionHandler::get_indexed_ssl_ctx(size_t idx) const {
   return indexed_ssl_ctx_[idx];
+}
+
+void ConnectionHandler::set_enable_acceptor_on_ocsp_completion(bool f) {
+  enable_acceptor_on_ocsp_completion_ = f;
 }
 
 } // namespace shrpx

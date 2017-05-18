@@ -547,6 +547,11 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
   ev_io_start(loop, &ipcev);
 
   if (tls::upstream_tls_enabled(config->conn) && !config->tls.ocsp.disabled) {
+    if (config->tls.ocsp.startup) {
+      conn_handler.set_enable_acceptor_on_ocsp_completion(true);
+      conn_handler.disable_acceptor();
+    }
+
     conn_handler.proceed_next_cert_ocsp();
   }
 

@@ -1591,6 +1591,11 @@ int option_lookup_token(const char *name, size_t namelen) {
         return SHRPX_OPTID_HTTP2_BRIDGE;
       }
       break;
+    case 'p':
+      if (util::strieq_l("ocsp-startu", name, 11)) {
+        return SHRPX_OPTID_OCSP_STARTUP;
+      }
+      break;
     case 'y':
       if (util::strieq_l("client-prox", name, 11)) {
         return SHRPX_OPTID_CLIENT_PROXY;
@@ -3419,6 +3424,10 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     return 0;
   case SHRPX_OPTID_NO_STRIP_INCOMING_X_FORWARDED_PROTO:
     config->http.xfp.strip_incoming = !util::strieq_l("yes", optarg);
+
+    return 0;
+  case SHRPX_OPTID_OCSP_STARTUP:
+    config->tls.ocsp.startup = util::strieq_l("yes", optarg);
 
     return 0;
   case SHRPX_OPTID_CONF:
