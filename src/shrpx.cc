@@ -2234,6 +2234,12 @@ SSL/TLS:
               Set interval to update OCSP response cache.
               Default: )"
       << util::duration_str(config->tls.ocsp.update_interval) << R"(
+  --ocsp-startup
+              Start  accepting connections  after initial  attempts to
+              get OCSP responses  finish.  It does not  matter some of
+              the  attempts  fail.  This  feature  is  useful if  OCSP
+              responses   must    be   available    before   accepting
+              connections.
   --no-ocsp   Disable OCSP stapling.
   --tls-session-cache-memcached=<HOST>,<PORT>[;tls]
               Specify  address of  memcached server  to store  session
@@ -3183,6 +3189,7 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_BACKEND_HTTP_PROXY_URI.c_str(), required_argument, &flag,
          26},
         {SHRPX_OPT_BACKEND_NO_TLS.c_str(), no_argument, &flag, 27},
+        {SHRPX_OPT_OCSP_STARTUP.c_str(), no_argument, &flag, 28},
         {SHRPX_OPT_FRONTEND_NO_TLS.c_str(), no_argument, &flag, 29},
         {SHRPX_OPT_BACKEND_TLS_SNI_FIELD.c_str(), required_argument, &flag, 31},
         {SHRPX_OPT_DH_PARAM_FILE.c_str(), required_argument, &flag, 33},
@@ -3531,6 +3538,11 @@ int main(int argc, char **argv) {
       case 27:
         // --backend-no-tls
         cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_NO_TLS,
+                             StringRef::from_lit("yes"));
+        break;
+      case 28:
+        // --ocsp-startup
+        cmdcfgs.emplace_back(SHRPX_OPT_OCSP_STARTUP,
                              StringRef::from_lit("yes"));
         break;
       case 29:

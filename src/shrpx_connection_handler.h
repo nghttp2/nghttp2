@@ -174,6 +174,8 @@ public:
   void
   worker_replace_downstream(std::shared_ptr<DownstreamConfig> downstreamconf);
 
+  void set_enable_acceptor_on_ocsp_completion(bool f);
+
 private:
   // Stores all SSL_CTX objects.
   std::vector<SSL_CTX *> all_ssl_ctx_;
@@ -220,6 +222,9 @@ private:
   size_t tls_ticket_key_memcached_fail_count_;
   unsigned int worker_round_robin_cnt_;
   bool graceful_shutdown_;
+  // true if acceptors should be enabled after the initial ocsp update
+  // has finished.
+  bool enable_acceptor_on_ocsp_completion_;
 };
 
 } // namespace shrpx
