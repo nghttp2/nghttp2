@@ -7150,6 +7150,7 @@ uint32_t nghttp2_session_get_remote_settings(nghttp2_session *session,
   }
 
   assert(0);
+  abort(); /* if NDEBUG is set */
 }
 
 uint32_t nghttp2_session_get_local_settings(nghttp2_session *session,
@@ -7170,6 +7171,7 @@ uint32_t nghttp2_session_get_local_settings(nghttp2_session *session,
   }
 
   assert(0);
+  abort(); /* if NDEBUG is set */
 }
 
 static int nghttp2_session_upgrade_internal(nghttp2_session *session,
