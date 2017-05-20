@@ -154,9 +154,9 @@ void test_shrpx_tls_cert_lookup_tree_add_ssl_ctx(void) {
 
   CU_ASSERT(-1 == tree.lookup(StringRef::from_lit("not-used.nghttp2.org")));
   CU_ASSERT(0 == tree.lookup(StringRef::from_lit("test.nghttp2.org")));
-  CU_ASSERT(0 == tree.lookup(StringRef::from_lit("w.test.nghttp2.org")));
-  CU_ASSERT(0 == tree.lookup(StringRef::from_lit("www.test.nghttp2.org")));
-  CU_ASSERT(1 == tree.lookup(StringRef::from_lit("test.example.com")));
+  CU_ASSERT(1 == tree.lookup(StringRef::from_lit("w.test.nghttp2.org")));
+  CU_ASSERT(2 == tree.lookup(StringRef::from_lit("www.test.nghttp2.org")));
+  CU_ASSERT(3 == tree.lookup(StringRef::from_lit("test.example.com")));
 }
 
 template <size_t N, size_t M>

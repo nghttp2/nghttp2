@@ -1511,8 +1511,6 @@ int cert_lookup_tree_add_ssl_ctx(
 #endif // defined(LIBRESSL_VERSION_NUMBER) || OPENSSL_VERSION_NUMBER <
        // 0x10002000L
 
-  auto idx = indexed_ssl_ctx.size();
-
   auto altnames = static_cast<GENERAL_NAMES *>(
       X509_get_ext_d2i(cert, NID_subject_alt_name, nullptr, nullptr));
   if (altnames) {
@@ -1555,11 +1553,12 @@ int cert_lookup_tree_add_ssl_ctx(
       auto end_buf = std::copy_n(name, len, std::begin(buf));
       util::inp_strlower(std::begin(buf), end_buf);
 
-      auto nidx = lt->add_cert(StringRef{std::begin(buf), end_buf}, idx);
-      if (nidx == -1) {
+      auto idx = lt->add_cert(StringRef{std::begin(buf), end_buf},
+                              indexed_ssl_ctx.size());
+      if (idx == -1) {
         continue;
       }
-      idx = nidx;
+
       if (idx < indexed_ssl_ctx.size()) {
         indexed_ssl_ctx[idx].push_back(ssl_ctx);
       } else {
@@ -1595,11 +1594,12 @@ int cert_lookup_tree_add_ssl_ctx(
 
   util::inp_strlower(std::begin(buf), end_buf);
 
-  auto nidx = lt->add_cert(StringRef{std::begin(buf), end_buf}, idx);
-  if (nidx == -1) {
+  auto idx =
+      lt->add_cert(StringRef{std::begin(buf), end_buf}, indexed_ssl_ctx.size());
+  if (idx == -1) {
     return 0;
   }
-  idx = nidx;
+
   if (idx < indexed_ssl_ctx.size()) {
     indexed_ssl_ctx[idx].push_back(ssl_ctx);
   } else {
