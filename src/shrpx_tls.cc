@@ -186,19 +186,26 @@ int servername_callback(SSL *ssl, int *al, void *arg) {
 
 #if !defined(OPENSSL_IS_BORINGSSL) && !defined(LIBRESSL_VERSION_NUMBER) &&     \
     OPENSSL_VERSION_NUMBER >= 0x10002000L
-  // boringssl removed SSL_get_sigalgs.
-  auto num_sigalg =
-      SSL_get_sigalgs(ssl, 0, nullptr, nullptr, nullptr, nullptr, nullptr);
+  auto num_shared_curves = SSL_get_shared_curve(ssl, -1);
 
-  for (auto i = 0; i < num_sigalg; ++i) {
-    int sigalg;
-    SSL_get_sigalgs(ssl, i, nullptr, nullptr, &sigalg, nullptr, nullptr);
+  for (auto i = 0; i < num_shared_curves; ++i) {
+    auto shared_curve = SSL_get_shared_curve(ssl, i);
+
     for (auto ssl_ctx : ssl_ctx_list) {
       auto cert = SSL_CTX_get0_certificate(ssl_ctx);
-      // X509_get_signature_nid is available since OpenSSL 1.0.2.
-      auto cert_sigalg = X509_get_signature_nid(cert);
+      auto pubkey = X509_get0_pubkey(cert);
+      if (EVP_PKEY_base_id(pubkey) != EVP_PKEY_EC) {
+        continue;
+      }
+      auto eckey = EVP_PKEY_get0_EC_KEY(pubkey);
+      if (eckey == nullptr) {
+        continue;
+      }
 
-      if (sigalg == cert_sigalg) {
+      auto ecgroup = EC_KEY_get0_group(eckey);
+      auto cert_curve = EC_GROUP_get_curve_name(ecgroup);
+
+      if (shared_curve == cert_curve) {
         SSL_set_SSL_CTX(ssl, ssl_ctx);
         return SSL_TLSEXT_ERR_OK;
       }
