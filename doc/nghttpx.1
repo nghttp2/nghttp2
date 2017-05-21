@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTPX" "1" "Apr 24, 2017" "1.22.0" "nghttp2"
+.TH "NGHTTPX" "1" "May 21, 2017" "1.23.0-DEV" "nghttp2"
 .SH NAME
 nghttpx \- HTTP/2 proxy
 .
@@ -95,6 +95,18 @@ host    pattern    "*.nghttp2.org"    matches    against
 "www.nghttp2.org"  and  "git.ngttp2.org", but  does  not
 match  against  "nghttp2.org".   The exact  hosts  match
 takes precedence over the wildcard hosts match.
+.sp
+If path  part ends with  "*", it is treated  as wildcard
+path.  The  wildcard path  behaves differently  from the
+normal path.  For normal path,  match is made around the
+boundary of path component  separator,"\fI/\fP".  On the other
+hand, the wildcard  path does not take  into account the
+path component  separator.  All paths which  include the
+wildcard  path  without  last  "*" as  prefix,  and  are
+strictly longer than wildcard  path without last "*" are
+matched.  "*"  must match  at least one  character.  For
+example,  the   pattern  "\fI/foo*\fP"  matches   "\fI/foo/\fP"  and
+"\fI/foobar\fP".  But it does not match "\fI/foo\fP", or "\fI/fo\fP".
 .sp
 If <PATTERN> is omitted or  empty string, "\fI/\fP" is used as
 pattern,  which  matches  all request  paths  (catch\-all
@@ -611,12 +623,12 @@ password protected it\(aqll be requested interactively.
 Specify  additional certificate  and  private key  file.
 nghttpx will  choose certificates based on  the hostname
 indicated by client using TLS SNI extension.  If nghttpx
-is  built with  OpenSSL >=  1.0.2, signature  algorithms
-(e.g., ECDSA+SHA256, RSA+SHA256) presented by client are
-also taken  into consideration.  This allows  nghttpx to
-send ECDSA certificate to  modern clients, while sending
-RSA based certificate to older clients.  This option can
-be  used multiple  times.  To  make OCSP  stapling work,
+is  built with  OpenSSL  >= 1.0.2,  the shared  elliptic
+curves (e.g., P\-256) between  client and server are also
+taken into  consideration.  This allows nghttpx  to send
+ECDSA certificate  to modern clients, while  sending RSA
+based certificate to older  clients.  This option can be
+used  multiple  times.   To  make  OCSP  stapling  work,
 <CERTPATH> must be absolute path.
 .sp
 Additional parameter  can be specified in  <PARAM>.  The
@@ -809,6 +821,15 @@ Default: \fB/usr/local/share/nghttp2/fetch\-ocsp\-response\fP
 Set interval to update OCSP response cache.
 .sp
 Default: \fB4h\fP
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-ocsp\-startup
+Start  accepting connections  after initial  attempts to
+get OCSP responses  finish.  It does not  matter some of
+the  attempts  fail.  This  feature  is  useful if  OCSP
+responses   must    be   available    before   accepting
+connections.
 .UNINDENT
 .INDENT 0.0
 .TP

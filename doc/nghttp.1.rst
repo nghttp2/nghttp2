@@ -186,6 +186,11 @@ OPTIONS
     Continue interim response. This option is ignored unless
     combined with the :option:`-d` option.
 
+.. option:: -y, --no-verify-peer
+
+    Suppress  warning  on  server  certificate  verification
+    failure.
+
 .. option:: --version
 
     Display version information and exit.
