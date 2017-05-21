@@ -381,6 +381,8 @@ int Connection::tls_handshake() {
     break;
   }
 
+  ERR_clear_error();
+
   auto rv = SSL_do_handshake(tls.ssl);
 
   if (rv <= 0) {
@@ -615,6 +617,8 @@ ssize_t Connection::write_tls(const void *data, size_t len) {
 
   tls.last_write_idle = -1.;
 
+  ERR_clear_error();
+
   auto rv = SSL_write(tls.ssl, data, len);
 
   if (rv <= 0) {
@@ -666,6 +670,8 @@ ssize_t Connection::read_tls(void *data, size_t len) {
     len = tls.last_readlen;
     tls.last_readlen = 0;
   }
+
+  ERR_clear_error();
 
   auto rv = SSL_read(tls.ssl, data, len);
 
