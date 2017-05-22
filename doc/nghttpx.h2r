@@ -171,6 +171,22 @@ be customized using :option:`--fetch-ocsp-response-file` option.
 If OCSP query is failed, previous OCSP response, if any, is continued
 to be used.
 
+:option:`--fetch-ocsp-response-file` option provides wide range of
+possibility to manage OCSP response.  It can take an arbitrary script
+or executable.  The requirement is that it supports the command-line
+interface of ``fetch-ocsp-response`` script, and it must return a
+valid DER encoded OCSP response on success.  It must return exit code
+0 on success, and 75 for temporary error, and the other error code for
+generic failure.  For large cluster of servers, it is not efficient
+for each server to perform OCSP query using ``fetch-ocsp-response``.
+Instead, you can retrieve OCSP response in some way, and store it in a
+disk or a shared database.  Then specify a program in
+:option:`--fetch-ocsp-response-file` to fetch it from those stores.
+This could provide a way to share the OCSP response between fleet of
+servers, and also any OCSP query strategy can be applied which may be
+beyond the ability of nghttpx itself or ``fetch-ocsp-response``
+script.
+
 TLS SESSION RESUMPTION
 ----------------------
 
