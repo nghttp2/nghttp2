@@ -42,34 +42,34 @@ void test_pool_recycle(void) {
 
   auto m1 = pool.get();
 
-  CU_ASSERT(m1 == pool.pool.get());
+  CU_ASSERT(m1 == pool.pool);
   CU_ASSERT(MemchunkPool::value_type::size == pool.poolsize);
   CU_ASSERT(nullptr == pool.freelist);
 
   auto m2 = pool.get();
 
-  CU_ASSERT(m2 == pool.pool.get());
+  CU_ASSERT(m2 == pool.pool);
   CU_ASSERT(2 * MemchunkPool::value_type::size == pool.poolsize);
   CU_ASSERT(nullptr == pool.freelist);
-  CU_ASSERT(m1 == m2->knext.get());
-  CU_ASSERT(nullptr == m1->knext.get());
+  CU_ASSERT(m1 == m2->knext);
+  CU_ASSERT(nullptr == m1->knext);
 
   auto m3 = pool.get();
 
-  CU_ASSERT(m3 == pool.pool.get());
+  CU_ASSERT(m3 == pool.pool);
   CU_ASSERT(3 * MemchunkPool::value_type::size == pool.poolsize);
   CU_ASSERT(nullptr == pool.freelist);
 
   pool.recycle(m3);
 
-  CU_ASSERT(m3 == pool.pool.get());
+  CU_ASSERT(m3 == pool.pool);
   CU_ASSERT(3 * MemchunkPool::value_type::size == pool.poolsize);
   CU_ASSERT(m3 == pool.freelist);
 
   auto m4 = pool.get();
 
   CU_ASSERT(m3 == m4);
-  CU_ASSERT(m4 == pool.pool.get());
+  CU_ASSERT(m4 == pool.pool);
   CU_ASSERT(3 * MemchunkPool::value_type::size == pool.poolsize);
   CU_ASSERT(nullptr == pool.freelist);
 
