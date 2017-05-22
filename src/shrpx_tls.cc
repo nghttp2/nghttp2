@@ -193,17 +193,34 @@ int servername_callback(SSL *ssl, int *al, void *arg) {
 
     for (auto ssl_ctx : ssl_ctx_list) {
       auto cert = SSL_CTX_get0_certificate(ssl_ctx);
+
+#if OPENSSL_1_1_API
       auto pubkey = X509_get0_pubkey(cert);
+#else  // !OPENSSL_1_1_API
+      auto pubkey = X509_get_pubkey(cert);
+#endif // !OPENSSL_1_1_API
+
       if (EVP_PKEY_base_id(pubkey) != EVP_PKEY_EC) {
         continue;
       }
+
+#if OPENSSL_1_1_API
       auto eckey = EVP_PKEY_get0_EC_KEY(pubkey);
+#else  // !OPENSSL_1_1_API
+      auto eckey = EVP_PKEY_get1_EC_KEY(pubkey);
+#endif // !OPENSSL_1_1_API
+
       if (eckey == nullptr) {
         continue;
       }
 
       auto ecgroup = EC_KEY_get0_group(eckey);
       auto cert_curve = EC_GROUP_get_curve_name(ecgroup);
+
+#if !OPENSSL_1_1_API
+      EC_KEY_free(eckey);
+      EVP_PKEY_free(pubkey);
+#endif // !OPENSSL_1_1_API
 
       if (shared_curve == cert_curve) {
         SSL_set_SSL_CTX(ssl, ssl_ctx);
