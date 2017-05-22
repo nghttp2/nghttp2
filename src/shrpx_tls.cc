@@ -1583,10 +1583,10 @@ int cert_lookup_tree_add_ssl_ctx(
         continue;
       }
 
-      if (idx < indexed_ssl_ctx.size()) {
+      if (static_cast<size_t>(idx) < indexed_ssl_ctx.size()) {
         indexed_ssl_ctx[idx].push_back(ssl_ctx);
       } else {
-        assert(idx == indexed_ssl_ctx.size());
+        assert(static_cast<size_t>(idx) == indexed_ssl_ctx.size());
         indexed_ssl_ctx.emplace_back(std::vector<SSL_CTX *>{ssl_ctx});
       }
     }
@@ -1624,10 +1624,10 @@ int cert_lookup_tree_add_ssl_ctx(
     return 0;
   }
 
-  if (idx < indexed_ssl_ctx.size()) {
+  if (static_cast<size_t>(idx) < indexed_ssl_ctx.size()) {
     indexed_ssl_ctx[idx].push_back(ssl_ctx);
   } else {
-    assert(idx == indexed_ssl_ctx.size());
+    assert(static_cast<size_t>(idx) == indexed_ssl_ctx.size());
     indexed_ssl_ctx.emplace_back(std::vector<SSL_CTX *>{ssl_ctx});
   }
 
