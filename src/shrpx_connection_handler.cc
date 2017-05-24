@@ -620,8 +620,9 @@ void ConnectionHandler::handle_ocsp_complete() {
               << " finished successfully";
   }
 
+  if (tls::verify_ocsp_response(ssl_ctx, ocsp_.resp.data(),
+                                ocsp_.resp.size()) == 0) {
 #ifndef OPENSSL_IS_BORINGSSL
-  {
 #ifdef HAVE_ATOMIC_STD_SHARED_PTR
     std::atomic_store_explicit(
         &tls_ctx_data->ocsp_data,
@@ -632,10 +633,10 @@ void ConnectionHandler::handle_ocsp_complete() {
     tls_ctx_data->ocsp_data =
         std::make_shared<std::vector<uint8_t>>(std::move(ocsp_.resp));
 #endif // !HAVE_ATOMIC_STD_SHARED_PTR
-  }
 #else  // OPENSSL_IS_BORINGSSL
-  SSL_CTX_set_ocsp_response(ssl_ctx, ocsp_.resp.data(), ocsp_.resp.size());
+    SSL_CTX_set_ocsp_response(ssl_ctx, ocsp_.resp.data(), ocsp_.resp.size());
 #endif // OPENSSL_IS_BORINGSSL
+  }
 
   ++ocsp_.next;
   proceed_next_cert_ocsp();
