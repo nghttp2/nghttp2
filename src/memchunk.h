@@ -50,23 +50,21 @@ namespace nghttp2 {
 #endif // !defined(IOV_MAX) || IOV_MAX >= DEFAULT_WR_IOVCNT
 
 template <size_t N> struct Memchunk {
-  Memchunk(std::unique_ptr<Memchunk> next_chunk)
-      : pos(std::begin(buf)),
-        last(pos),
-        knext(std::move(next_chunk)),
-        next(nullptr) {}
+  Memchunk(Memchunk *next_chunk)
+      : pos(std::begin(buf)), last(pos), knext(next_chunk), next(nullptr) {}
   size_t len() const { return last - pos; }
   size_t left() const { return std::end(buf) - last; }
   void reset() { pos = last = std::begin(buf); }
   std::array<uint8_t, N> buf;
   uint8_t *pos, *last;
-  std::unique_ptr<Memchunk> knext;
+  Memchunk *knext;
   Memchunk *next;
   static const size_t size = N;
 };
 
 template <typename T> struct Pool {
   Pool() : pool(nullptr), freelist(nullptr), poolsize(0) {}
+  ~Pool() { clear(); }
   T *get() {
     if (freelist) {
       auto m = freelist;
@@ -76,9 +74,9 @@ template <typename T> struct Pool {
       return m;
     }
 
-    pool = make_unique<T>(std::move(pool));
+    pool = new T{pool};
     poolsize += T::size;
-    return pool.get();
+    return pool;
   }
   void recycle(T *m) {
     m->next = freelist;
@@ -86,11 +84,16 @@ template <typename T> struct Pool {
   }
   void clear() {
     freelist = nullptr;
+    for (auto p = pool; p;) {
+      auto knext = p->knext;
+      delete p;
+      p = knext;
+    }
     pool = nullptr;
     poolsize = 0;
   }
   using value_type = T;
-  std::unique_ptr<T> pool;
+  T *pool;
   T *freelist;
   size_t poolsize;
 };
