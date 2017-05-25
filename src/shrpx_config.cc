@@ -1651,6 +1651,11 @@ int option_lookup_token(const char *name, size_t namelen) {
         return SHRPX_OPTID_NO_SERVER_PUSH;
       }
       break;
+    case 'p':
+      if (util::strieq_l("no-verify-ocs", name, 13)) {
+        return SHRPX_OPTID_NO_VERIFY_OCSP;
+      }
+      break;
     case 's':
       if (util::strieq_l("backend-no-tl", name, 13)) {
         return SHRPX_OPTID_BACKEND_NO_TLS;
@@ -3428,6 +3433,10 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     return 0;
   case SHRPX_OPTID_OCSP_STARTUP:
     config->tls.ocsp.startup = util::strieq_l("yes", optarg);
+
+    return 0;
+  case SHRPX_OPTID_NO_VERIFY_OCSP:
+    config->tls.ocsp.no_verify = util::strieq_l("yes", optarg);
 
     return 0;
   case SHRPX_OPTID_CONF:

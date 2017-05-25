@@ -45,6 +45,7 @@
 #include <openssl/x509v3.h>
 #include <openssl/rand.h>
 #include <openssl/dh.h>
+#include <openssl/ocsp.h>
 
 #include <nghttp2/nghttp2.h>
 
@@ -1816,6 +1817,84 @@ int proto_version_from_string(const StringRef &v) {
     return TLS1_VERSION;
   }
   return -1;
+}
+
+int verify_ocsp_response(SSL_CTX *ssl_ctx, const uint8_t *ocsp_resp,
+                         size_t ocsp_resplen) {
+#if !defined(LIBRESSL_VERSION_NUMBER) && OPENSSL_VERSION_NUMBER >= 0x10002000L
+  int rv;
+
+  STACK_OF(X509) * chain_certs;
+  SSL_CTX_get0_chain_certs(ssl_ctx, &chain_certs);
+
+  auto resp = d2i_OCSP_RESPONSE(nullptr, &ocsp_resp, ocsp_resplen);
+  if (resp == nullptr) {
+    LOG(ERROR) << "d2i_OCSP_RESPONSE failed";
+    return -1;
+  }
+  auto resp_deleter = defer(OCSP_RESPONSE_free, resp);
+
+  ERR_clear_error();
+
+  auto bs = OCSP_response_get1_basic(resp);
+  if (bs == nullptr) {
+    LOG(ERROR) << "OCSP_response_get1_basic failed: "
+               << ERR_error_string(ERR_get_error(), nullptr);
+    return -1;
+  }
+  auto bs_deleter = defer(OCSP_BASICRESP_free, bs);
+
+  ERR_clear_error();
+
+  rv = OCSP_basic_verify(bs, chain_certs, nullptr, OCSP_TRUSTOTHER);
+
+  if (rv != 1) {
+    LOG(ERROR) << "OCSP_basic_verify failed: "
+               << ERR_error_string(ERR_get_error(), nullptr);
+    return -1;
+  }
+
+  auto sresp = OCSP_resp_get0(bs, 0);
+  if (sresp == nullptr) {
+    LOG(ERROR) << "OCSP response verification failed: no single response";
+    return -1;
+  }
+
+#if OPENSSL_1_1_API
+  auto certid = OCSP_SINGLERESP_get0_id(sresp);
+#else  // !OPENSSL_1_1_API
+  auto certid = sresp->certId;
+#endif // !OPENSSL_1_1_API
+  assert(certid != nullptr);
+
+  ASN1_INTEGER *serial;
+  rv = OCSP_id_get0_info(nullptr, nullptr, nullptr, &serial,
+                         const_cast<OCSP_CERTID *>(certid));
+  if (rv != 1) {
+    LOG(ERROR) << "OCSP_id_get0_info failed";
+    return -1;
+  }
+
+  if (serial == nullptr) {
+    LOG(ERROR) << "OCSP response does not contain serial number";
+    return -1;
+  }
+
+  auto cert = SSL_CTX_get0_certificate(ssl_ctx);
+  auto cert_serial = X509_get_serialNumber(cert);
+
+  if (ASN1_INTEGER_cmp(cert_serial, serial)) {
+    LOG(ERROR) << "OCSP verification serial numbers do not match";
+    return -1;
+  }
+
+  if (LOG_ENABLED(INFO)) {
+    LOG(INFO) << "OCSP verification succeeded";
+  }
+#endif // !defined(LIBRESSL_VERSION_NUMBER) && OPENSSL_VERSION_NUMBER >=
+       // 0x10002000L
+
+  return 0;
 }
 
 } // namespace tls
