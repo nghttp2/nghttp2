@@ -620,7 +620,11 @@ void ConnectionHandler::handle_ocsp_complete() {
               << " finished successfully";
   }
 
-  if (tls::verify_ocsp_response(ssl_ctx, ocsp_.resp.data(),
+  auto config = get_config();
+  auto &tlsconf = config->tls;
+
+  if (tlsconf.ocsp.no_verify ||
+      tls::verify_ocsp_response(ssl_ctx, ocsp_.resp.data(),
                                 ocsp_.resp.size()) == 0) {
 #ifndef OPENSSL_IS_BORINGSSL
 #ifdef HAVE_ATOMIC_STD_SHARED_PTR

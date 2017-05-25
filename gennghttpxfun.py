@@ -167,6 +167,7 @@ OPTIONS = [
     "no-add-x-forwarded-proto",
     "no-strip-incoming-x-forwarded-proto",
     "ocsp-startup",
+    "no-verify-ocsp",
 ]
 
 LOGVARS = [

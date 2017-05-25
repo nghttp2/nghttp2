@@ -2240,6 +2240,8 @@ SSL/TLS:
               the  attempts  fail.  This  feature  is  useful if  OCSP
               responses   must    be   available    before   accepting
               connections.
+  --no-verify-ocsp
+              nghttpx does not verify OCSP response.
   --no-ocsp   Disable OCSP stapling.
   --tls-session-cache-memcached=<HOST>,<PORT>[;tls]
               Specify  address of  memcached server  to store  session
@@ -3191,6 +3193,7 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_BACKEND_NO_TLS.c_str(), no_argument, &flag, 27},
         {SHRPX_OPT_OCSP_STARTUP.c_str(), no_argument, &flag, 28},
         {SHRPX_OPT_FRONTEND_NO_TLS.c_str(), no_argument, &flag, 29},
+        {SHRPX_OPT_NO_VERIFY_OCSP.c_str(), no_argument, &flag, 30},
         {SHRPX_OPT_BACKEND_TLS_SNI_FIELD.c_str(), required_argument, &flag, 31},
         {SHRPX_OPT_DH_PARAM_FILE.c_str(), required_argument, &flag, 33},
         {SHRPX_OPT_READ_RATE.c_str(), required_argument, &flag, 34},
@@ -3548,6 +3551,11 @@ int main(int argc, char **argv) {
       case 29:
         // --frontend-no-tls
         cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_NO_TLS,
+                             StringRef::from_lit("yes"));
+        break;
+      case 30:
+        // --no-verify-ocsp
+        cmdcfgs.emplace_back(SHRPX_OPT_NO_VERIFY_OCSP,
                              StringRef::from_lit("yes"));
         break;
       case 31:
