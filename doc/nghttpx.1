@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTPX" "1" "May 21, 2017" "1.23.0-DEV" "nghttp2"
+.TH "NGHTTPX" "1" "May 26, 2017" "1.23.0" "nghttp2"
 .SH NAME
 nghttpx \- HTTP/2 proxy
 .
@@ -830,6 +830,11 @@ get OCSP responses  finish.  It does not  matter some of
 the  attempts  fail.  This  feature  is  useful if  OCSP
 responses   must    be   available    before   accepting
 connections.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-no\-verify\-ocsp
+nghttpx does not verify OCSP response.
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -1751,6 +1756,22 @@ be customized using \fI\%\-\-fetch\-ocsp\-response\-file\fP option.
 .sp
 If OCSP query is failed, previous OCSP response, if any, is continued
 to be used.
+.sp
+\fI\%\-\-fetch\-ocsp\-response\-file\fP option provides wide range of
+possibility to manage OCSP response.  It can take an arbitrary script
+or executable.  The requirement is that it supports the command\-line
+interface of \fBfetch\-ocsp\-response\fP script, and it must return a
+valid DER encoded OCSP response on success.  It must return exit code
+0 on success, and 75 for temporary error, and the other error code for
+generic failure.  For large cluster of servers, it is not efficient
+for each server to perform OCSP query using \fBfetch\-ocsp\-response\fP\&.
+Instead, you can retrieve OCSP response in some way, and store it in a
+disk or a shared database.  Then specify a program in
+\fI\%\-\-fetch\-ocsp\-response\-file\fP to fetch it from those stores.
+This could provide a way to share the OCSP response between fleet of
+servers, and also any OCSP query strategy can be applied which may be
+beyond the ability of nghttpx itself or \fBfetch\-ocsp\-response\fP
+script.
 .SH TLS SESSION RESUMPTION
 .sp
 nghttpx supports TLS session resumption through both session ID and
