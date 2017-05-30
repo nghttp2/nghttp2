@@ -1844,9 +1844,12 @@ int verify_ocsp_response(SSL_CTX *ssl_ctx, const uint8_t *ocsp_resp,
   }
   auto bs_deleter = defer(OCSP_BASICRESP_free, bs);
 
+  auto store = X509_STORE_new();
+  auto store_deleter = defer(X509_STORE_free, store);
+
   ERR_clear_error();
 
-  rv = OCSP_basic_verify(bs, chain_certs, nullptr, OCSP_TRUSTOTHER);
+  rv = OCSP_basic_verify(bs, chain_certs, store, OCSP_TRUSTOTHER);
 
   if (rv != 1) {
     LOG(ERROR) << "OCSP_basic_verify failed: "
