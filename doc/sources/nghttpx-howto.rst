@@ -297,12 +297,30 @@ When you write this option in command-line, you should enclose
 argument with single or double quotes, since the character ``;`` has a
 special meaning in shell.
 
-To route, request to request path whose prefix is ``/foo`` to backend
-server ``[::1]:8080``, you can write like so:
+To route, request to request path ``/foo`` to backend server
+``[::1]:8080``, you can write like so:
 
 .. code-block:: text
 
    backend=::1,8080;/foo
+
+If the last character of path pattern is ``/``, all request paths
+which start with that pattern match:
+
+.. code-block:: text
+
+   backend=::1,8080;/bar/
+
+The request path ``/bar/buzz`` matches the ``/bar/``.
+
+You can use ``*`` at the end of the path pattern to make it wildcard
+pattern.  ``*`` must match at least one character:
+
+.. code-block:: text
+
+   backend=::1,8080;/sample*
+
+The request path ``/sample1/foo`` matches the ``/sample*`` pattern.
 
 Of course, you can specify both host and request path at the same
 time:
