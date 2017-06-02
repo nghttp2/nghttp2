@@ -201,9 +201,7 @@ ssize_t http2_data_read_callback(nghttp2_session *session, int32_t stream_id,
     if (!trailers.empty()) {
       std::vector<nghttp2_nv> nva;
       nva.reserve(trailers.size());
-      // We cannot use nocopy version, since nva may be touched after
-      // Downstream object is deleted.
-      http2::copy_headers_to_nva(nva, trailers, http2::HDOP_STRIP_ALL);
+      http2::copy_headers_to_nva_nocopy(nva, trailers, http2::HDOP_STRIP_ALL);
       if (!nva.empty()) {
         rv = nghttp2_submit_trailer(session, stream_id, nva.data(), nva.size());
         if (rv != 0) {
