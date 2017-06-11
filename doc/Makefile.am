@@ -267,7 +267,7 @@ apiref.rst: \
 $(APIDOCS): apiref.rst
 
 clean-local:
-	[ $(srcdir) = $(builddir) ] || for i in $(RST_FILES); do [ -e $(builddir)/$$i ] && rm -f $(builddir)/$$i; done
+	if [ $(srcdir) != $(builddir) ]; then for i in $(RST_FILES); do rm -f $(builddir)/$$i; done fi
 	-rm -f apiref.rst
 	-rm -f $(APIDOCS)
 	-rm -rf $(BUILDDIR)/*
