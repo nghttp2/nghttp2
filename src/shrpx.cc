@@ -1392,7 +1392,7 @@ constexpr auto DEFAULT_NPN_LIST = StringRef::from_lit("h2,h2-16,h2-14,"
 } // namespace
 
 namespace {
-constexpr auto DEFAULT_TLS_MIN_PROTO_VERSION = StringRef::from_lit("TLSv1.1");
+constexpr auto DEFAULT_TLS_MIN_PROTO_VERSION = StringRef::from_lit("TLSv1.2");
 #ifdef TLS1_3_VERSION
 constexpr auto DEFAULT_TLS_MAX_PROTO_VERSION = StringRef::from_lit("TLSv1.3");
 #else  // !TLS1_3_VERSION
@@ -2131,7 +2131,11 @@ SSL/TLS:
               --tls-min-proto-version and  --tls-max-proto-version are
               enabled.  If the protocol list advertised by client does
               not  overlap  this range,  you  will  receive the  error
-              message "unknown protocol".  The available versions are:
+              message "unknown protocol".  If a protocol version lower
+              than TLSv1.2 is specified, make sure that the compatible
+              ciphers are  included in --ciphers option.   The default
+              cipher  list  only   includes  ciphers  compatible  with
+              TLSv1.2 or above.  The available versions are:
               )"
 #ifdef TLS1_3_VERSION
                              "TLSv1.3, "
