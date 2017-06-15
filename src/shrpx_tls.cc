@@ -829,6 +829,22 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
   }
 
   SSL_CTX_set_mode(ssl_ctx, SSL_MODE_RELEASE_BUFFERS);
+
+  if (SSL_CTX_set_default_verify_paths(ssl_ctx) != 1) {
+    LOG(WARN) << "Could not load system trusted ca certificates: "
+              << ERR_error_string(ERR_get_error(), nullptr);
+  }
+
+  if (!tlsconf.cacert.empty()) {
+    if (SSL_CTX_load_verify_locations(ssl_ctx, tlsconf.cacert.c_str(),
+                                      nullptr) != 1) {
+      LOG(FATAL) << "Could not load trusted ca certificates from "
+                 << tlsconf.cacert << ": "
+                 << ERR_error_string(ERR_get_error(), nullptr);
+      DIE();
+    }
+  }
+
   if (!tlsconf.private_key_passwd.empty()) {
     SSL_CTX_set_default_passwd_cb(ssl_ctx, ssl_pem_passwd_cb);
     SSL_CTX_set_default_passwd_cb_userdata(ssl_ctx, config);
@@ -1844,12 +1860,11 @@ int verify_ocsp_response(SSL_CTX *ssl_ctx, const uint8_t *ocsp_resp,
   }
   auto bs_deleter = defer(OCSP_BASICRESP_free, bs);
 
-  auto store = X509_STORE_new();
-  auto store_deleter = defer(X509_STORE_free, store);
+  auto store = SSL_CTX_get_cert_store(ssl_ctx);
 
   ERR_clear_error();
 
-  rv = OCSP_basic_verify(bs, chain_certs, store, OCSP_TRUSTOTHER);
+  rv = OCSP_basic_verify(bs, chain_certs, store, 0);
 
   if (rv != 1) {
     LOG(ERROR) << "OCSP_basic_verify failed: "

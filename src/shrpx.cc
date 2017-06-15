@@ -2071,11 +2071,14 @@ SSL/TLS:
               Don't  verify backend  server's  certificate  if TLS  is
               enabled for backend connections.
   --cacert=<PATH>
-              Set path to trusted CA  certificate file used in backend
-              TLS connections.   The file must  be in PEM  format.  It
-              can  contain  multiple   certificates.   If  the  linked
-              OpenSSL is configured to  load system wide certificates,
-              they are loaded at startup regardless of this option.
+              Set path to trusted CA  certificate file.  It is used in
+              backend  TLS connections  to verify  peer's certificate.
+              It is also used to  verify OCSP response from the script
+              set by --fetch-ocsp-response-file.  The  file must be in
+              PEM format.   It can contain multiple  certificates.  If
+              the  linked OpenSSL  is configured  to load  system wide
+              certificates, they  are loaded at startup  regardless of
+              this option.
   --private-key-passwd-file=<PATH>
               Path  to file  that contains  password for  the server's
               private key.   If none is  given and the private  key is
