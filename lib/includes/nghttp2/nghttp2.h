@@ -3809,9 +3809,8 @@ nghttp2_submit_response(nghttp2_session *session, int32_t stream_id,
  * Submits trailer fields HEADERS against the stream |stream_id|.
  *
  * The |nva| is an array of name/value pair :type:`nghttp2_nv` with
- * |nvlen| elements.  The application is responsible not to include
- * pseudo-header fields (header field whose name starts with ":") in
- * |nva|.
+ * |nvlen| elements.  The application must not include pseudo-header
+ * fields (headers whose names starts with ":") in |nva|.
  *
  * This function creates copies of all name/value pairs in |nva|.  It
  * also lower-cases all names in |nva|.  The order of elements in
