@@ -157,7 +157,7 @@ minimizes the risk of private key leakage when serious bug like
 Heartbleed is exploited.  The neverbleed is disabled by default.  To
 enable it, use ``--with-neverbleed`` configure option.
 
-In ordre to compile the source code, gcc >= 4.8.3 or clang >= 3.4 is
+In order to compile the source code, gcc >= 4.8.3 or clang >= 3.4 is
 required.
 
 .. note::
