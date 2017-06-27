@@ -405,16 +405,9 @@ int htp_msg_begincb(http_parser *htp) {
 } // namespace
 
 namespace {
-int htp_statuscb(http_parser *htp, const char *at, size_t length) {
-  auto client = static_cast<HttpClient *>(htp->data);
-  client->upgrade_response_status_code = htp->status_code;
-  return 0;
-}
-} // namespace
-
-namespace {
 int htp_msg_completecb(http_parser *htp) {
   auto client = static_cast<HttpClient *>(htp->data);
+  client->upgrade_response_status_code = htp->status_code;
   client->upgrade_response_complete = true;
   return 0;
 }
@@ -424,7 +417,7 @@ namespace {
 constexpr http_parser_settings htp_hooks = {
     htp_msg_begincb,   // http_cb      on_message_begin;
     nullptr,           // http_data_cb on_url;
-    htp_statuscb,      // http_data_cb on_status;
+    nullptr,           // http_data_cb on_status;
     nullptr,           // http_data_cb on_header_field;
     nullptr,           // http_data_cb on_header_value;
     nullptr,           // http_cb      on_headers_complete;
