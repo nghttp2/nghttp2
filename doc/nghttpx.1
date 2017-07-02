@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTPX" "1" "May 26, 2017" "1.23.0" "nghttp2"
+.TH "NGHTTPX" "1" "Jul 02, 2017" "1.24.0" "nghttp2"
 .SH NAME
 nghttpx \- HTTP/2 proxy
 .
@@ -604,11 +604,14 @@ enabled for backend connections.
 .INDENT 0.0
 .TP
 .B \-\-cacert=<PATH>
-Set path to trusted CA  certificate file used in backend
-TLS connections.   The file must  be in PEM  format.  It
-can  contain  multiple   certificates.   If  the  linked
-OpenSSL is configured to  load system wide certificates,
-they are loaded at startup regardless of this option.
+Set path to trusted CA  certificate file.  It is used in
+backend  TLS connections  to verify  peer\(aqs certificate.
+It is also used to  verify OCSP response from the script
+set by \fI\%\-\-fetch\-ocsp\-response\-file\fP\&.  The  file must be in
+PEM format.   It can contain multiple  certificates.  If
+the  linked OpenSSL  is configured  to load  system wide
+certificates, they  are loaded at startup  regardless of
+this option.
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -691,10 +694,14 @@ done in  case\-insensitive manner.  The  versions between
 \fI\%\-\-tls\-min\-proto\-version\fP and  \fI\%\-\-tls\-max\-proto\-version\fP are
 enabled.  If the protocol list advertised by client does
 not  overlap  this range,  you  will  receive the  error
-message "unknown protocol".  The available versions are:
+message "unknown protocol".  If a protocol version lower
+than TLSv1.2 is specified, make sure that the compatible
+ciphers are  included in \fI\%\-\-ciphers\fP option.   The default
+cipher  list  only   includes  ciphers  compatible  with
+TLSv1.2 or above.  The available versions are:
 TLSv1.2, TLSv1.1, and TLSv1.0
 .sp
-Default: \fBTLSv1.1\fP
+Default: \fBTLSv1.2\fP
 .UNINDENT
 .INDENT 0.0
 .TP

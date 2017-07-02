@@ -558,11 +558,14 @@ SSL/TLS
 
 .. option:: --cacert=<PATH>
 
-    Set path to trusted CA  certificate file used in backend
-    TLS connections.   The file must  be in PEM  format.  It
-    can  contain  multiple   certificates.   If  the  linked
-    OpenSSL is configured to  load system wide certificates,
-    they are loaded at startup regardless of this option.
+    Set path to trusted CA  certificate file.  It is used in
+    backend  TLS connections  to verify  peer's certificate.
+    It is also used to  verify OCSP response from the script
+    set by :option:`--fetch-ocsp-response-file`\.  The  file must be in
+    PEM format.   It can contain multiple  certificates.  If
+    the  linked OpenSSL  is configured  to load  system wide
+    certificates, they  are loaded at startup  regardless of
+    this option.
 
 .. option:: --private-key-passwd-file=<PATH>
 
@@ -636,10 +639,14 @@ SSL/TLS
     :option:`--tls-min-proto-version` and  :option:`\--tls-max-proto-version` are
     enabled.  If the protocol list advertised by client does
     not  overlap  this range,  you  will  receive the  error
-    message "unknown protocol".  The available versions are:
+    message "unknown protocol".  If a protocol version lower
+    than TLSv1.2 is specified, make sure that the compatible
+    ciphers are  included in :option:`--ciphers` option.   The default
+    cipher  list  only   includes  ciphers  compatible  with
+    TLSv1.2 or above.  The available versions are:
     TLSv1.2, TLSv1.1, and TLSv1.0
 
-    Default: ``TLSv1.1``
+    Default: ``TLSv1.2``
 
 .. option:: --tls-max-proto-version=<VER>
 
