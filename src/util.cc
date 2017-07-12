@@ -1103,8 +1103,9 @@ std::string format_duration(double t) {
 }
 
 std::string dtos(double n) {
-  auto f = utos(static_cast<int64_t>(round(100. * n)) % 100);
-  return utos(static_cast<int64_t>(n)) + "." + (f.size() == 1 ? "0" : "") + f;
+  auto m = llround(100. * n);
+  auto f = utos(m % 100);
+  return utos(m / 100) + "." + (f.size() == 1 ? "0" : "") + f;
 }
 
 StringRef make_http_hostport(BlockAllocator &balloc, const StringRef &host,
