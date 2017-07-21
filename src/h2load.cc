@@ -90,6 +90,7 @@ Config::Config()
       connection_window_bits(30),
       rate(0),
       rate_period(1.0),
+      warm_up_time(0.0),
       conn_active_timeout(0.),
       conn_inactivity_timeout(0.),
       no_tls_proto(PROTO_HTTP2),
@@ -252,6 +253,52 @@ void rate_period_timeout_w_cb(struct ev_loop *loop, ev_timer *w, int revents) {
 } // namespace
 
 namespace {
+  // Called when the warmup duration for infinite number of requests are over
+  void warmup_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
+    auto client = static_cast<Client *>(w->data);
+    
+    client->warmup = 2;
+    
+    ev_timer_stop(client->worker->loop, &client->warmup_watcher);
+    std::cout << "Warm-up phase is over." << std::endl;
+    
+    client->worker->stats.req_started -= client->req_started;
+    client->worker->stats.req_done -= client->req_done;
+    // we also need to adjust the failed and errored
+    client->req_todo = 0;
+    client->req_left = 1;
+    client->req_inflight = 0;
+    client->req_started = 0;
+    client->req_done = 0;
+    
+    client->record_client_start_time();
+    client->clear_connect_times();
+    client->record_connect_start_time();
+    
+    std::cout << "Main benchmark duration is started." << std::endl;
+    ev_timer_start(client->worker->loop, &client->duration_watcher);
+    
+    return;
+  }
+}
+
+namespace {
+  // Called when the duration for infinite number of requests are over
+  void duration_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
+    auto client = static_cast<Client *>(w->data);
+    
+    ev_timer_stop(client->worker->loop, &client->duration_watcher);
+  
+    client->req_todo = client->req_done; // there was no definitie "todo"
+    client->worker->stats.req_todo += client->req_todo;
+    client->req_inflight = 0;
+    client->req_left = 0;
+    client->warmup = 3;
+    return;
+  }
+}
+
+namespace {
 // Called when an a connection has been inactive for a set period of time
 // or a fixed amount of time after all requests have been made on a
 // connection
@@ -336,6 +383,9 @@ Client::Client(uint32_t id, Worker *worker, size_t req_todo)
       fd(-1),
       new_connection_requested(false),
       final(false) {
+  if (req_todo == 0) {//this means infinite number of requests are to be made
+    req_left = 1;
+  }
   ev_io_init(&wev, writecb, 0, EV_WRITE);
   ev_io_init(&rev, readcb, 0, EV_READ);
 
@@ -352,6 +402,24 @@ Client::Client(uint32_t id, Worker *worker, size_t req_todo)
 
   ev_timer_init(&request_timeout_watcher, client_request_timeout_cb, 0., 0.);
   request_timeout_watcher.data = this;
+
+  // In general, warmup is set to main duration phase. 
+  // This is needed when there will be no warm-up and normal rate-period test
+  // will be provided
+  warmup = 2;
+
+  if (worker->config->warm_up_time > 0) {
+    ev_timer_init(&duration_watcher, duration_timeout_cb, 
+                  worker->config->rate_period, 0.);
+    duration_watcher.data = this;
+    
+    ev_timer_init(&warmup_watcher, warmup_timeout_cb, 
+                  worker->config->warm_up_time, 0.);
+    warmup_watcher.data = this;
+
+    // By default, it is not in warmup phase
+    warmup = 0;
+  }
 }
 
 Client::~Client() {
@@ -407,9 +475,16 @@ int Client::make_socket(addrinfo *addr) {
 int Client::connect() {
   int rv;
 
-  record_client_start_time();
-  clear_connect_times();
-  record_connect_start_time();
+  if (worker->config->warm_up_time == 0 || warmup == 2) {
+    record_client_start_time();
+    clear_connect_times();
+    record_connect_start_time();
+  }
+  else if (warmup == 0) {
+    warmup = 1; // warmup phase is on
+    std::cout << "Warm-up started: " << id << std::endl;
+    ev_timer_start(worker->loop, &warmup_watcher);
+  }
 
   if (worker->config->conn_inactivity_timeout > 0.) {
     ev_timer_again(worker->loop, &conn_inactivity_watcher);
@@ -467,13 +542,17 @@ int Client::try_again_or_fail() {
 
   if (new_connection_requested) {
     new_connection_requested = false;
-    if (req_left) {
-      // At the moment, we don't have a facility to re-start request
-      // already in in-flight.  Make them fail.
-      worker->stats.req_failed += req_inflight;
-      worker->stats.req_error += req_inflight;
 
-      req_inflight = 0;
+    if (req_left) {
+
+      if (warmup == 2) {
+        // At the moment, we don't have a facility to re-start request
+        // already in in-flight.  Make them fail.
+        worker->stats.req_failed += req_inflight;
+        worker->stats.req_error += req_inflight;
+
+        req_inflight = 0;
+      }
 
       // Keep using current address
       if (connect() == 0) {
@@ -529,11 +608,18 @@ int Client::submit_request() {
     return -1;
   }
 
-  ++worker->stats.req_started;
-  --req_left;
-  ++req_started;
-  ++req_inflight;
+  if (warmup == 2) {
+    ++worker->stats.req_started;
+  }
 
+  if(worker->config->warm_up_time == 0) {
+    --req_left;
+  }
+  if (warmup == 2) {
+    ++req_started;
+    ++req_inflight;
+  }
+  
   // if an active timeout is set and this is the last request to be submitted
   // on this connection, start the active timeout.
   if (worker->config->conn_active_timeout > 0. && req_left == 0) {
@@ -551,30 +637,37 @@ void Client::process_timedout_streams() {
     }
   }
 
-  worker->stats.req_timedout += req_inflight;
+  if (warmup == 2) {
+    worker->stats.req_timedout += req_inflight;
+  }
 
   process_abandoned_streams();
 }
 
 void Client::process_abandoned_streams() {
-  auto req_abandoned = req_inflight + req_left;
+  if (warmup == 2) {
+    auto req_abandoned = req_inflight + req_left;
 
-  worker->stats.req_failed += req_abandoned;
-  worker->stats.req_error += req_abandoned;
+    worker->stats.req_failed += req_abandoned;
+    worker->stats.req_error += req_abandoned;
 
-  req_inflight = 0;
-  req_left = 0;
+    req_inflight = 0;
+    req_left = 0;
+  }
 }
 
 void Client::process_request_failure() {
-  worker->stats.req_failed += req_left;
-  worker->stats.req_error += req_left;
+  if (warmup == 2) {
+    worker->stats.req_failed += req_left;
+    worker->stats.req_error += req_left;
 
-  req_left = 0;
+    req_left = 0;
+  }
 
   if (req_inflight == 0) {
     terminate_session();
   }
+  std::cout << "Process Request Failure:" << worker->stats.req_failed << std::endl;
 }
 
 namespace {
@@ -669,6 +762,31 @@ void Client::on_header(int32_t stream_id, const uint8_t *name, size_t namelen,
       }
     }
 
+    if (warmup == 2) {
+      if (status >= 200 && status < 300) {
+        ++worker->stats.status[2];
+        stream.status_success = 1;
+      } else if (status < 400) {
+        ++worker->stats.status[3];
+        stream.status_success = 1;
+      } else if (status < 600) {
+        ++worker->stats.status[status / 100];
+        stream.status_success = 0;
+      } else {
+        stream.status_success = 0;
+      }
+    }
+  }
+}
+
+void Client::on_status_code(int32_t stream_id, uint16_t status) {
+  auto itr = streams.find(stream_id);
+  if (itr == std::end(streams)) {
+    return;
+  }
+  auto &stream = (*itr).second;
+
+  if (warmup == 2) {
     if (status >= 200 && status < 300) {
       ++worker->stats.status[2];
       stream.status_success = 1;
@@ -684,61 +802,42 @@ void Client::on_header(int32_t stream_id, const uint8_t *name, size_t namelen,
   }
 }
 
-void Client::on_status_code(int32_t stream_id, uint16_t status) {
-  auto itr = streams.find(stream_id);
-  if (itr == std::end(streams)) {
-    return;
-  }
-  auto &stream = (*itr).second;
-
-  if (status >= 200 && status < 300) {
-    ++worker->stats.status[2];
-    stream.status_success = 1;
-  } else if (status < 400) {
-    ++worker->stats.status[3];
-    stream.status_success = 1;
-  } else if (status < 600) {
-    ++worker->stats.status[status / 100];
-    stream.status_success = 0;
-  } else {
-    stream.status_success = 0;
-  }
-}
-
 void Client::on_stream_close(int32_t stream_id, bool success, bool final) {
-  ++req_done;
-  --req_inflight;
+  if (warmup == 2) {
+    ++req_done;
+    if (req_inflight > 0) {
+      --req_inflight;
+    }
+    auto req_stat = get_req_stat(stream_id);
+    if (!req_stat) {
+      return;
+    }
 
-  auto req_stat = get_req_stat(stream_id);
-  if (!req_stat) {
-    return;
-  }
+    req_stat->stream_close_time = std::chrono::steady_clock::now();
+    if (success) {
+      req_stat->completed = true;
+      ++worker->stats.req_success;
+      ++cstat.req_success;
+      
+      if (streams[stream_id].status_success == 1) {
+        ++worker->stats.req_status_success;
+      } else {
+        ++worker->stats.req_failed;
+      }
 
-  req_stat->stream_close_time = std::chrono::steady_clock::now();
-  if (success) {
-    req_stat->completed = true;
-    ++worker->stats.req_success;
-    ++cstat.req_success;
+      if (sampling_should_pick(worker->request_times_smp)) {
+        sampling_advance_point(worker->request_times_smp);
+        worker->sample_req_stat(req_stat);
+      }
 
-    if (streams[stream_id].status_success == 1) {
-      ++worker->stats.req_status_success;
+      // Count up in successful cases only
+      ++worker->request_times_smp.n;
     } else {
       ++worker->stats.req_failed;
+      ++worker->stats.req_error;
     }
-
-    if (sampling_should_pick(worker->request_times_smp)) {
-      sampling_advance_point(worker->request_times_smp);
-      worker->sample_req_stat(req_stat);
-    }
-
-    // Count up in successful cases only
-    ++worker->request_times_smp.n;
-  } else {
-    ++worker->stats.req_failed;
-    ++worker->stats.req_error;
+    ++worker->stats.req_done;
   }
-
-  ++worker->stats.req_done;
 
   worker->report_progress();
   streams.erase(stream_id);
@@ -906,7 +1005,9 @@ int Client::on_read(const uint8_t *data, size_t len) {
   if (rv != 0) {
     return -1;
   }
-  worker->stats.bytes_total += len;
+  if (warmup == 2) {
+    worker->stats.bytes_total += len;
+  }
   signal_write();
   return 0;
 }
@@ -1136,7 +1237,7 @@ void Client::record_client_start_time() {
   if (recorded(cstat.client_start_time)) {
     return;
   }
-
+  
   cstat.client_start_time = std::chrono::steady_clock::now();
 }
 
@@ -1207,6 +1308,7 @@ void Worker::run() {
         ++req_todo;
         --nreqs_rem;
       }
+
       auto client = make_unique<Client>(next_client_id++, this, req_todo);
       if (client->connect() != 0) {
         std::cerr << "client could not connect to host" << std::endl;
@@ -1737,6 +1839,9 @@ Options:
               length of the period in time.  This option is ignored if
               the rate option is not used.  The default value for this
               option is 1s.
+  --warm-up-time=<DURATION>
+              Specifies the  time  period  before  starting the actual
+              measurements, in  case  of  duration-based benchmarking.
   -T, --connection-active-timeout=<DURATION>
               Specifies  the maximum  time that  h2load is  willing to
               keep a  connection open,  regardless of the  activity on
@@ -1857,6 +1962,7 @@ int main(int argc, char **argv) {
         {"h1", no_argument, &flag, 6},
         {"header-table-size", required_argument, &flag, 7},
         {"encoder-header-table-size", required_argument, &flag, 8},
+        {"warm-up-time", required_argument, &flag, 9},
         {nullptr, 0, nullptr, 0}};
     int option_index = 0;
     auto c =
@@ -2072,6 +2178,14 @@ int main(int argc, char **argv) {
           exit(EXIT_FAILURE);
         }
         break;
+      case 9:
+        // --warm-up-time
+        config.warm_up_time = util::parse_duration_with_unit(optarg);
+        if (!std::isfinite(config.warm_up_time)) {
+          std::cerr << "--warm-up-time: value error " << optarg << std::endl;
+          exit(EXIT_FAILURE);
+        }
+        break;
       }
       break;
     default:
@@ -2157,7 +2271,7 @@ int main(int argc, char **argv) {
     exit(EXIT_FAILURE);
   }
 
-  if (config.nreqs == 0) {
+  if (config.nreqs == 0 && !config.is_rate_mode()) {
     std::cerr << "-n: the number of requests must be strictly greater than 0."
               << std::endl;
     exit(EXIT_FAILURE);
@@ -2182,7 +2296,7 @@ int main(int argc, char **argv) {
 
   // With timing script, we don't distribute config.nreqs to each
   // client or thread.
-  if (!config.timing_script && config.nreqs < config.nclients) {
+  if (!config.timing_script && config.nreqs < config.nclients && !(config.is_rate_mode() && config.nreqs == 0)) {
     std::cerr << "-n, -c: the number of requests must be greater than or "
               << "equal to the clients." << std::endl;
     exit(EXIT_FAILURE);
@@ -2528,7 +2642,7 @@ int main(int argc, char **argv) {
   // Requests which have not been issued due to connection errors, are
   // counted towards req_failed and req_error.
   auto req_not_issued =
-      stats.req_todo - stats.req_status_success - stats.req_failed;
+      (stats.req_todo - stats.req_status_success - stats.req_failed);
   stats.req_failed += req_not_issued;
   stats.req_error += req_not_issued;
 
@@ -2539,10 +2653,17 @@ int main(int argc, char **argv) {
   double rps = 0;
   int64_t bps = 0;
   if (duration.count() > 0) {
-    auto secd = std::chrono::duration_cast<
-        std::chrono::duration<double, std::chrono::seconds::period>>(duration);
-    rps = stats.req_success / secd.count();
-    bps = stats.bytes_total / secd.count();
+    if (config.warm_up_time > 0) {
+      // we only want to consider the rate-period if warm-up is given
+      rps = stats.req_success / config.rate_period;
+      bps = stats.bytes_total / config.rate_period;
+    }
+    else {
+      auto secd = std::chrono::duration_cast<
+          std::chrono::duration<double, std::chrono::seconds::period>>(duration);
+      rps = stats.req_success / secd.count();
+      bps = stats.bytes_total / secd.count();
+    }
   }
 
   double header_space_savings = 0.;
