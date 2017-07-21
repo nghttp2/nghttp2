@@ -85,6 +85,8 @@ struct Config {
   // rate at which connections should be made
   size_t rate;
   ev_tstamp rate_period;
+  // amount of time to wait before starting measurements
+  ev_tstamp warm_up_time;
   // amount of time to wait for activity on a given connection
   ev_tstamp conn_active_timeout;
   // amount of time to wait after the last request is made on a connection
@@ -306,11 +308,21 @@ struct Client {
   int fd;
   ev_timer conn_active_watcher;
   ev_timer conn_inactivity_watcher;
+  // This is only active when there are theoretically infinite number of requests
+  ev_timer duration_watcher;
+  ev_timer warmup_watcher;
   std::string selected_proto;
   bool new_connection_requested;
   // true if the current connection will be closed, and no more new
   // request cannot be processed.
   bool final;
+  // This variable tells us whether the client is in warmup phase or not or is over
+  // 0 - Not in warm-up phase, this is the initial state in timing experiment
+  // 1 - In warmup phase. This happens after the first connect. 
+  //   - All statistics are skipped/reversed in this phase
+  // 2 - Main duration phase, in timing experiment; Otherwise, the normal phase
+  // 3 - Main duration is over
+  int warmup;
 
   enum { ERR_CONNECT_FAIL = -100 };
 
