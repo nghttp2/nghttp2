@@ -2003,7 +2003,7 @@ int main(int argc, char **argv) {
         {"rate", required_argument, nullptr, 'r'},
         {"connection-active-timeout", required_argument, nullptr, 'T'},
         {"connection-inactivity-timeout", required_argument, nullptr, 'N'},
-        {"duration", required_argument, &flag, 'D'},
+        {"duration", required_argument, nullptr, 'D'},
         {"timing-script-file", required_argument, &flag, 3},
         {"base-uri", required_argument, nullptr, 'B'},
         {"npn-list", required_argument, &flag, 4},
