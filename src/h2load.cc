@@ -778,7 +778,6 @@ void Client::on_header(int32_t stream_id, const uint8_t *name, size_t namelen,
 }
 
 void Client::on_status_code(int32_t stream_id, uint16_t status) {
-
   auto itr = streams.find(stream_id);
   if (itr == std::end(streams)) {
     return;
