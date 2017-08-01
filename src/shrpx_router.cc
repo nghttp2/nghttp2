@@ -94,7 +94,7 @@ size_t Router::add_route(const StringRef &pattern, size_t idx, bool wildcard) {
 
     auto slen = pattern.size() - i;
     auto s = pattern.c_str() + i;
-    auto n = std::min(node->len, slen);
+    auto n = (std::min)(node->len, slen);
     size_t j;
     for (j = 0; j < n && node->s[j] == s[j]; ++j)
       ;
@@ -177,7 +177,7 @@ const RNode *match_complete(size_t *offset, const RNode *node,
 
     node = next_node;
 
-    auto n = std::min(node->len, static_cast<size_t>(last - p));
+    auto n = (std::min)(node->len, static_cast<size_t>(last - p));
     if (memcmp(node->s, p, n) != 0) {
       return nullptr;
     }
@@ -207,7 +207,7 @@ const RNode *match_partial(bool *pattern_is_wildcard, const RNode *node,
   const RNode *found_node = nullptr;
 
   if (offset > 0) {
-    auto n = std::min(node->len - offset, static_cast<size_t>(last - first));
+    auto n = (std::min)(node->len - offset, static_cast<size_t>(last - first));
     if (memcmp(node->s + offset, first, n) != 0) {
       return nullptr;
     }
@@ -250,7 +250,7 @@ const RNode *match_partial(bool *pattern_is_wildcard, const RNode *node,
 
     node = next_node;
 
-    auto n = std::min(node->len, static_cast<size_t>(last - p));
+    auto n = (std::min)(node->len, static_cast<size_t>(last - p));
     if (memcmp(node->s, p, n) != 0) {
       return found_node;
     }
@@ -349,7 +349,7 @@ const RNode *match_prefix(size_t *nread, const RNode *node, const char *first,
 
     node = next_node;
 
-    auto n = std::min(node->len, static_cast<size_t>(last - p));
+    auto n = (std::min)(node->len, static_cast<size_t>(last - p));
     if (memcmp(node->s, p, n) != 0) {
       return nullptr;
     }

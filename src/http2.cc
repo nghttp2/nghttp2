@@ -1625,8 +1625,8 @@ StringRef path_join(BlockAllocator &balloc, const StringRef &base_path,
                     const StringRef &rel_query) {
   auto res = make_byte_ref(
       balloc,
-      std::max(static_cast<size_t>(1), base_path.size()) + rel_path.size() + 1 +
-          std::max(base_query.size(), rel_query.size()) + 1);
+      (std::max)(static_cast<size_t>(1), base_path.size()) + rel_path.size() + 1 +
+          (std::max)(base_query.size(), rel_query.size()) + 1);
   auto p = res.base;
 
   if (rel_path.empty()) {

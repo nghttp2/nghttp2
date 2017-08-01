@@ -309,7 +309,7 @@ int MemcachedConnection::write_tls() {
     auto p = std::begin(buf);
     for (size_t i = 0; i < iovcnt; ++i) {
       auto &v = iov[i];
-      auto n = std::min(static_cast<size_t>(std::end(buf) - p), v.iov_len);
+      auto n = (std::min)(static_cast<size_t>(std::end(buf) - p), v.iov_len);
       p = std::copy_n(static_cast<uint8_t *>(v.iov_base), n, p);
       if (p == std::end(buf)) {
         break;
@@ -506,7 +506,7 @@ int MemcachedConnection::parse_packet() {
     }
     case MEMCACHED_PARSE_EXTRA: {
       // We don't use extra for now. Just read and forget.
-      auto n = std::min(static_cast<size_t>(recvbuf_.last - in),
+      auto n = (std::min)(static_cast<size_t>(recvbuf_.last - in),
                         parse_state_.read_left);
 
       parse_state_.read_left -= n;
@@ -524,7 +524,7 @@ int MemcachedConnection::parse_packet() {
       break;
     }
     case MEMCACHED_PARSE_VALUE: {
-      auto n = std::min(static_cast<size_t>(recvbuf_.last - in),
+      auto n = (std::min)(static_cast<size_t>(recvbuf_.last - in),
                         parse_state_.read_left);
 
       parse_state_.value.insert(std::end(parse_state_.value), in, in + n);
@@ -636,10 +636,10 @@ void MemcachedConnection::drain_send_queue(size_t nwrite) {
       continue;
     }
     assert(buf.req == req.get());
-    auto n = std::min(static_cast<size_t>(nwrite), buf.headbuf.rleft());
+    auto n = (std::min)(static_cast<size_t>(nwrite), buf.headbuf.rleft());
     buf.headbuf.drain(n);
     nwrite -= n;
-    n = std::min(static_cast<size_t>(nwrite), buf.send_value_left);
+    n = (std::min)(static_cast<size_t>(nwrite), buf.send_value_left);
     buf.send_value_left -= n;
     nwrite -= n;
 

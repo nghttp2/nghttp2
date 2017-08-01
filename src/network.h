@@ -33,7 +33,15 @@
 #ifdef HAVE_SYS_SOCKET_H
 #include <sys/socket.h>
 #endif // HAVE_SYS_SOCKET_H
+#ifdef WIN32
+#include <winsock2.h>
+#include <io.h>
+#include <windows.h>
+#include <direct.h> 
+#include <Ws2tcpip.h>
+#else
 #include <sys/un.h>
+#endif
 #ifdef HAVE_NETINET_IN_H
 #include <netinet/in.h>
 #endif // HAVE_NETINET_IN_H
@@ -48,7 +56,9 @@ union sockaddr_union {
   sockaddr sa;
   sockaddr_in6 in6;
   sockaddr_in in;
+ #ifndef WIN32 
   sockaddr_un un;
+ #endif 
 };
 
 struct Address {

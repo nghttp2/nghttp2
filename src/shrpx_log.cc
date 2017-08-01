@@ -155,7 +155,7 @@ Log::~Log() {
     return;
   }
 
-  auto nwrite = std::min(static_cast<size_t>(rv), sizeof(buf) - 1);
+  auto nwrite = (std::min)(static_cast<size_t>(rv), sizeof(buf) - 1);
 
   while (write(lgconf->errorlog_fd, buf, nwrite) == -1 && errno == EINTR)
     ;
@@ -167,7 +167,7 @@ std::pair<OutputIterator, OutputIterator> copy(const char *src, size_t srclen,
                                                OutputIterator d_first,
                                                OutputIterator d_last) {
   auto nwrite =
-      std::min(static_cast<size_t>(std::distance(d_first, d_last)), srclen);
+      (std::min)(static_cast<size_t>(std::distance(d_first, d_last)), srclen);
   return std::make_pair(std::copy_n(src, nwrite, d_first), d_last);
 }
 } // namespace
@@ -217,7 +217,7 @@ template <typename OutputIterator>
 std::pair<OutputIterator, OutputIterator>
 copy_hex_low(const uint8_t *src, size_t srclen, OutputIterator d_first,
              OutputIterator d_last) {
-  auto nwrite = std::min(static_cast<size_t>(std::distance(d_first, d_last)),
+  auto nwrite = (std::min)(static_cast<size_t>(std::distance(d_first, d_last)),
                          srclen * 2) /
                 2;
   for (size_t i = 0; i < nwrite; ++i) {
@@ -312,7 +312,7 @@ copy_escape(const char *src, size_t srclen, OutputIterator d_first,
     }
 
     auto n =
-        std::min(std::distance(d_first, d_last), std::distance(safe_first, p));
+        (std::min)(std::distance(d_first, d_last), std::distance(safe_first, p));
     d_first = std::copy_n(safe_first, n, d_first);
     if (std::distance(d_first, d_last) < 4) {
       return std::make_pair(d_first, d_last);
@@ -324,7 +324,7 @@ copy_escape(const char *src, size_t srclen, OutputIterator d_first,
     safe_first = p + 1;
   }
 
-  auto n = std::min(std::distance(d_first, d_last),
+  auto n = (std::min)(std::distance(d_first, d_last),
                     std::distance(safe_first, src + srclen));
   return std::make_pair(std::copy_n(safe_first, n, d_first), d_last);
 }

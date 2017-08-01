@@ -67,7 +67,7 @@ void RateLimit::drain(size_t n) {
   if (rate_ == 0) {
     return;
   }
-  n = std::min(avail_, n);
+  n = (std::min)(avail_, n);
   avail_ -= n;
   if (avail_ == 0) {
     ev_io_stop(loop_, w_);

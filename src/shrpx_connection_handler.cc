@@ -726,7 +726,7 @@ void ConnectionHandler::on_tls_ticket_key_network_error(ev_timer *w) {
 
   auto base_backoff = util::int_pow(
       MULTIPLIER,
-      std::min(MAX_BACKOFF_EXP, tls_ticket_key_memcached_get_retry_count_));
+      (std::min)(MAX_BACKOFF_EXP, tls_ticket_key_memcached_get_retry_count_));
   auto dist = std::uniform_real_distribution<>(-JITTER * base_backoff,
                                                JITTER * base_backoff);
 

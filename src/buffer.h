@@ -42,24 +42,24 @@ template <size_t N> struct Buffer {
   // Writes up to min(wleft(), |count|) bytes from buffer pointed by
   // |src|.  Returns number of bytes written.
   size_t write(const void *src, size_t count) {
-    count = std::min(count, wleft());
+    count = (std::min)(count, wleft());
     auto p = static_cast<const uint8_t *>(src);
     last = std::copy_n(p, count, last);
     return count;
   }
   size_t write(size_t count) {
-    count = std::min(count, wleft());
+    count = (std::min)(count, wleft());
     last += count;
     return count;
   }
   // Drains min(rleft(), |count|) bytes from start of the buffer.
   size_t drain(size_t count) {
-    count = std::min(count, rleft());
+    count = (std::min)(count, rleft());
     pos += count;
     return count;
   }
   size_t drain_reset(size_t count) {
-    count = std::min(count, rleft());
+    count = (std::min)(count, rleft());
     std::copy(pos + count, last, std::begin(buf));
     last = std::begin(buf) + (last - (pos + count));
     pos = std::begin(buf);

@@ -1750,7 +1750,7 @@ namespace {
 ssize_t select_padding_callback(nghttp2_session *session,
                                 const nghttp2_frame *frame, size_t max_payload,
                                 void *user_data) {
-  return std::min(max_payload, frame->hd.length + config.padding);
+  return (std::min)(max_payload, frame->hd.length + config.padding);
 }
 } // namespace
 
@@ -2915,7 +2915,7 @@ int main(int argc, char **argv) {
         exit(EXIT_FAILURE);
       }
       config.header_table_size = n;
-      config.min_header_table_size = std::min(config.min_header_table_size, n);
+      config.min_header_table_size = (std::min)(config.min_header_table_size, n);
       break;
     }
     case 'y':

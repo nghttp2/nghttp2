@@ -30,7 +30,7 @@
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #endif // HAVE_UNISTD_H
-#include <getopt.h>
+#include "getopt.h"
 #ifdef HAVE_NETDB_H
 #include <netdb.h>
 #endif // HAVE_NETDB_H
