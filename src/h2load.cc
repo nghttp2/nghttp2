@@ -228,11 +228,6 @@ void rate_period_timeout_w_cb(struct ev_loop *loop, ev_timer *w, int revents) {
   auto nclients_per_second = worker->rate;
   auto conns_remaining = worker->nclients - worker->nconns_made;
   auto nclients = std::min(nclients_per_second, conns_remaining);
-  if (worker->config->is_timing_based_mode() > 0) {
-    worker->current_phase = Phase::INITIAL_IDLE;
-  } else {
-    worker->current_phase = Phase::MAIN_DURATION;
-  }
 
   for (size_t i = 0; i < nclients; ++i) {
     auto req_todo = worker->nreqs_per_client;
@@ -746,9 +741,6 @@ void Client::on_request(int32_t stream_id) { streams[stream_id] = Stream(); }
 
 void Client::on_header(int32_t stream_id, const uint8_t *name, size_t namelen,
                        const uint8_t *value, size_t valuelen) {
-  if (worker->current_phase != Phase::MAIN_DURATION) {
-    return;
-  }
   auto itr = streams.find(stream_id);
   if (itr == std::end(streams)) {
     return;
@@ -786,9 +778,6 @@ void Client::on_header(int32_t stream_id, const uint8_t *name, size_t namelen,
 }
 
 void Client::on_status_code(int32_t stream_id, uint16_t status) {
-  if (worker->current_phase != Phase::MAIN_DURATION) {
-    return;
-  }
 
   auto itr = streams.find(stream_id);
   if (itr == std::end(streams)) {
@@ -812,7 +801,6 @@ void Client::on_status_code(int32_t stream_id, uint16_t status) {
 
 void Client::on_stream_close(int32_t stream_id, bool success, bool final) {
   if (worker->current_phase == Phase::MAIN_DURATION) {
-    ++req_done;
     if (req_inflight > 0) {
       --req_inflight;
     }
@@ -845,6 +833,7 @@ void Client::on_stream_close(int32_t stream_id, bool success, bool final) {
       ++worker->stats.req_error;
     }
     ++worker->stats.req_done;
+    ++req_done;
   }
 
   worker->report_progress();
@@ -1289,6 +1278,12 @@ Worker::Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t req_todo, size_t nclients,
     progress_interval = std::max(static_cast<size_t>(1), req_todo / 10);
   } else {
     progress_interval = std::max(static_cast<size_t>(1), nclients / 10);
+  }
+
+  if (config->is_timing_based_mode() > 0) {
+    current_phase = Phase::INITIAL_IDLE;
+  } else {
+    current_phase = Phase::MAIN_DURATION;
   }
 
   // Below timeout is not needed in case of timing-based benchmarking
