@@ -746,7 +746,7 @@ void Client::on_header(int32_t stream_id, const uint8_t *name, size_t namelen,
     return;
   }
   auto &stream = (*itr).second;
-  
+
   if (worker->current_phase != Phase::MAIN_DURATION) {
     // If the stream is for warm-up phase, then mark as a success
     // But we do not update the count for 2xx, 3xx, etc status codes
@@ -754,7 +754,7 @@ void Client::on_header(int32_t stream_id, const uint8_t *name, size_t namelen,
     stream.status_success = 1;
     return;
   }
-  
+
   if (stream.status_success == -1 && namelen == 7 &&
       util::streq_l(":status", name, namelen)) {
     int status = 0;
@@ -827,14 +827,12 @@ void Client::on_stream_close(int32_t stream_id, bool success, bool final) {
       req_stat->completed = true;
       ++worker->stats.req_success;
       ++cstat.req_success;
-      
+
       if (streams[stream_id].status_success == 1) {
         ++worker->stats.req_status_success;
       } else {
-        // These requests are initialized and their statuses are changed
         ++worker->stats.req_failed;
       }
-      // If statuses are not changed from -1, that means
 
       if (sampling_should_pick(worker->request_times_smp)) {
         sampling_advance_point(worker->request_times_smp);
@@ -1295,12 +1293,6 @@ Worker::Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t req_todo, size_t nclients,
     progress_interval = std::max(static_cast<size_t>(1), nclients / 10);
   }
 
-  if (config->is_timing_based_mode() > 0) {
-    current_phase = Phase::INITIAL_IDLE;
-  } else {
-    current_phase = Phase::MAIN_DURATION;
-  }
-
   // Below timeout is not needed in case of timing-based benchmarking
   // create timer that will go off every rate_period
   ev_timer_init(&timeout_watcher, rate_period_timeout_w_cb, 0.,
@@ -1319,6 +1311,9 @@ Worker::Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t req_todo, size_t nclients,
     ev_timer_init(&warmup_watcher, warmup_timeout_cb, 
                   config->warm_up_time, 0.);
     warmup_watcher.data = this;
+    current_phase = Phase::INITIAL_IDLE;    
+  } else {
+    current_phase = Phase::MAIN_DURATION;
   }
 }
 
