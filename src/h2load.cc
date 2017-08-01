@@ -746,6 +746,15 @@ void Client::on_header(int32_t stream_id, const uint8_t *name, size_t namelen,
     return;
   }
   auto &stream = (*itr).second;
+  
+  if (worker->current_phase != Phase::MAIN_DURATION) {
+    // If the stream is for warm-up phase, then mark as a success
+    // But we do not update the count for 2xx, 3xx, etc status codes
+    // Same has been done in on_status_code function
+    stream.status_success = 1;
+    return;
+  }
+  
   if (stream.status_success == -1 && namelen == 7 &&
       util::streq_l(":status", name, namelen)) {
     int status = 0;
@@ -784,6 +793,11 @@ void Client::on_status_code(int32_t stream_id, uint16_t status) {
   }
   auto &stream = (*itr).second;
 
+  if (worker->current_phase != Phase::MAIN_DURATION) {
+    stream.status_success = 1;
+    return;
+  }
+
   if (status >= 200 && status < 300) {
     ++worker->stats.status[2];
     stream.status_success = 1;
@@ -817,8 +831,10 @@ void Client::on_stream_close(int32_t stream_id, bool success, bool final) {
       if (streams[stream_id].status_success == 1) {
         ++worker->stats.req_status_success;
       } else {
+        // These requests are initialized and their statuses are changed
         ++worker->stats.req_failed;
       }
+      // If statuses are not changed from -1, that means
 
       if (sampling_should_pick(worker->request_times_smp)) {
         sampling_advance_point(worker->request_times_smp);
