@@ -83,10 +83,14 @@ template <size_t N> struct Memchunk {
   void reset() { pos = last = std::begin(buf); }
   std::array<uint8_t, N> buf;
 
+#if defined(_MSC_VER)
   std::_Array_iterator<uint8_t, N> pos;
   std::_Array_iterator<uint8_t, N> last;
-
- // uint8_t *pos, *last;
+#else
+  uint8_t *pos, *last;
+#endif
+  
+  
   Memchunk *knext;
   Memchunk *next;
   static const size_t size = N;
