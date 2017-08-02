@@ -1308,10 +1308,9 @@ Worker::Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t req_todo, size_t nclients,
   if (config->is_timing_based_mode()) {
     duration_watcher.data = this;
 
-    ev_timer_init(&warmup_watcher, warmup_timeout_cb, 
-                  config->warm_up_time, 0.);
+    ev_timer_init(&warmup_watcher, warmup_timeout_cb, config->warm_up_time, 0.);
     warmup_watcher.data = this;
-    current_phase = Phase::INITIAL_IDLE;    
+    current_phase = Phase::INITIAL_IDLE;
   } else {
     current_phase = Phase::MAIN_DURATION;
   }
