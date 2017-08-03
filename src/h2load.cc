@@ -239,18 +239,25 @@ void rate_period_timeout_w_cb(struct ev_loop *loop, ev_timer *w, int revents) {
         make_unique<Client>(worker->next_client_id++, worker, req_todo);
 
     ++worker->nconns_made;
-    worker->clients.push_back(client.get());
 
     if (client->connect() != 0) {
       std::cerr << "client could not connect to host" << std::endl;
       client->fail();
     } else {
+      if (worker->config->is_timing_based_mode()) {
+        worker->clients.push_back(client.get());
+      }
       client.release();
     }
     worker->report_rate_progress();
   }
-  if (worker->nconns_made >= worker->nclients) {
-    ev_timer_stop(worker->loop, w);
+  if (!worker->config->is_timing_based_mode()) {
+    if (worker->nconns_made >= worker->nclients) {
+      ev_timer_stop(worker->loop, w);
+    }
+  } else {
+    // To check whether all created clients are pushed correctly
+    assert(worker->nclients == worker->clients.size());
   }
 }
 } // namespace
@@ -845,6 +852,8 @@ void Client::on_stream_close(int32_t stream_id, bool success, bool final) {
       ++worker->stats.req_failed;
       ++worker->stats.req_error;
     }
+    // To avoid overflow error
+    assert(worker->stats.req_done <= worker->max_samples);
     ++worker->stats.req_done;
     ++req_done;
   }
@@ -974,7 +983,9 @@ int Client::connection_made() {
   record_connect_time();
 
   if (!config.timing_script) {
-    auto nreq = std::min(req_left, session->max_concurrent_streams());
+    auto nreq = config.is_timing_based_mode() ? 
+      std::max(req_left, session->max_concurrent_streams()) : 
+      std::min(req_left, session->max_concurrent_streams());
     for (; nreq > 0; --nreq) {
       if (submit_request() != 0) {
         process_request_failure();
@@ -1299,8 +1310,13 @@ Worker::Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t req_todo, size_t nclients,
                 config->rate_period);
   timeout_watcher.data = this;
 
-  stats.req_stats.reserve(std::min(req_todo, max_samples));
-  stats.client_stats.reserve(std::min(nclients, max_samples));
+  if (config->is_timing_based_mode()) {
+    stats.req_stats.reserve(std::max(req_todo, max_samples));
+    stats.client_stats.reserve(std::max(nclients, max_samples));
+  } else {
+    stats.req_stats.reserve(std::min(req_todo, max_samples));
+    stats.client_stats.reserve(std::min(nclients, max_samples));
+  }
 
   sampling_init(request_times_smp, req_todo, max_samples);
   sampling_init(client_smp, nclients, max_samples);
