@@ -260,7 +260,7 @@ void rate_period_timeout_w_cb(struct ev_loop *loop, ev_timer *w, int revents) {
     assert(worker->nclients == worker->clients.size());
   }
 }
-} // namespace
+}  // namespace
 
 namespace {
 // Called when the duration for infinite number of requests are over
@@ -983,9 +983,9 @@ int Client::connection_made() {
   record_connect_time();
 
   if (!config.timing_script) {
-    auto nreq = config.is_timing_based_mode() ? 
-      std::max(req_left, session->max_concurrent_streams()) : 
-      std::min(req_left, session->max_concurrent_streams());
+    auto nreq = config.is_timing_based_mode()
+                    ? std::max(req_left, session->max_concurrent_streams())
+                    : std::min(req_left, session->max_concurrent_streams());
     for (; nreq > 0; --nreq) {
       if (submit_request() != 0) {
         process_request_failure();
