@@ -193,6 +193,7 @@ void writecb(struct ev_loop *loop, ev_io *w, int revents) {
     rv = client->connect();
     if (rv != 0) {
       client->fail();
+      client->worker->free_client(client);
       delete client;
       return;
     }
@@ -200,6 +201,7 @@ void writecb(struct ev_loop *loop, ev_io *w, int revents) {
   }
   if (rv != 0) {
     client->fail();
+    client->worker->free_client(client);
     delete client;
   }
 }
@@ -213,6 +215,7 @@ void readcb(struct ev_loop *loop, ev_io *w, int revents) {
     if (client->try_again_or_fail() == 0) {
       return;
     }
+    client->worker->free_client(client);
     delete client;
     return;
   }
@@ -245,9 +248,10 @@ void rate_period_timeout_w_cb(struct ev_loop *loop, ev_timer *w, int revents) {
       client->fail();
     } else {
       if (worker->config->is_timing_based_mode()) {
-        worker->clients.push_back(client.get());
+        worker->clients.push_back(client.release());
+      } else {
+        client.release();
       }
-      client.release();
     }
     worker->report_rate_progress();
   }
@@ -268,10 +272,12 @@ void duration_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
   auto worker = static_cast<Worker *>(w->data);
 
   for (auto client: worker->clients) {
-    client->req_todo = client->req_done; // there was no finite "req_todo"
-    worker->stats.req_todo += client->req_todo;
-    client->req_inflight = 0;
-    client->req_left = 0;
+    if (client) {
+      client->req_todo = client->req_done; // there was no finite "req_todo"
+      worker->stats.req_todo += client->req_todo;
+      client->req_inflight = 0;
+      client->req_left = 0;
+    }
   }
 
   worker->current_phase = Phase::DURATION_OVER;
@@ -296,15 +302,17 @@ void warmup_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
   assert(worker->stats.req_done == 0);
 
   for (auto client : worker->clients) {
-    assert(client->req_todo == 0);
-    assert(client->req_left == 1);
-    assert(client->req_inflight == 0);
-    assert(client->req_started == 0);
-    assert(client->req_done == 0);
+    if (client) {
+      assert(client->req_todo == 0);
+      assert(client->req_left == 1);
+      assert(client->req_inflight == 0);
+      assert(client->req_started == 0);
+      assert(client->req_done == 0);
 
-    client->record_client_start_time();
-    client->clear_connect_times();
-    client->record_connect_start_time();
+      client->record_client_start_time();
+      client->clear_connect_times();
+      client->record_connect_start_time();
+    }
   }
 
   worker->current_phase = Phase::MAIN_DURATION;
@@ -1339,8 +1347,20 @@ Worker::~Worker() {
 
 void Worker::stop_all_clients() {
   for (auto client : clients) {
-    if (client->session) {
+    if (client && client->session) {
       client->terminate_session();
+    }
+  }
+}
+
+void Worker::free_client(Client* deleted_client) {
+  for (auto& client : clients) {
+    if (client == deleted_client) {
+      client->req_todo = client->req_done;
+      stats.req_todo += client->req_todo;
+      auto index = &client - &clients[0];
+      clients[index] = NULL;
+      return;
     }
   }
 }
