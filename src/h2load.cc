@@ -271,15 +271,6 @@ namespace {
 void duration_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
   auto worker = static_cast<Worker *>(w->data);
 
-  for (auto client: worker->clients) {
-    if (client) {
-      client->req_todo = client->req_done; // there was no finite "req_todo"
-      worker->stats.req_todo += client->req_todo;
-      client->req_inflight = 0;
-      client->req_left = 0;
-    }
-  }
-
   worker->current_phase = Phase::DURATION_OVER;
 
   std::cout << "Main benchmark duration is over for thread #" << worker->id
@@ -316,9 +307,6 @@ void warmup_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
   }
 
   worker->current_phase = Phase::MAIN_DURATION;
-
-  ev_timer_init(&worker->duration_watcher, duration_timeout_cb, 
-                worker->config->duration, 0.);
   
   ev_timer_start(worker->loop, &worker->duration_watcher);
 }
@@ -1329,11 +1317,13 @@ Worker::Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t req_todo, size_t nclients,
   sampling_init(request_times_smp, req_todo, max_samples);
   sampling_init(client_smp, nclients, max_samples);
 
-  if (config->is_timing_based_mode()) {
-    duration_watcher.data = this;
+  ev_timer_init(&duration_watcher, duration_timeout_cb, config->duration, 0.);
+  duration_watcher.data = this;
 
-    ev_timer_init(&warmup_watcher, warmup_timeout_cb, config->warm_up_time, 0.);
-    warmup_watcher.data = this;
+  ev_timer_init(&warmup_watcher, warmup_timeout_cb, config->warm_up_time, 0.);
+  warmup_watcher.data = this;
+
+  if (config->is_timing_based_mode()) {
     current_phase = Phase::INITIAL_IDLE;
   } else {
     current_phase = Phase::MAIN_DURATION;
@@ -1342,6 +1332,8 @@ Worker::Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t req_todo, size_t nclients,
 
 Worker::~Worker() {
   ev_timer_stop(loop, &timeout_watcher);
+  ev_timer_stop(loop, &duration_watcher);
+  ev_timer_stop(loop, &warmup_watcher);
   ev_loop_destroy(loop);
 }
 
@@ -1353,8 +1345,8 @@ void Worker::stop_all_clients() {
   }
 }
 
-void Worker::free_client(Client* deleted_client) {
-  for (auto& client : clients) {
+void Worker::free_client(Client *deleted_client) {
+  for (auto &client : clients) {
     if (client == deleted_client) {
       client->req_todo = client->req_done;
       stats.req_todo += client->req_todo;
