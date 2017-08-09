@@ -1113,13 +1113,44 @@ func TestH2H1Upgrade(t *testing.T) {
 	}
 }
 
+// TestH2H1ProxyProtocolV1ForwardedForObfuscated tests that Forwarded
+// header field includes obfuscated address even if PROXY protocol
+// version 1 containing TCP4 entry is accepted.
+func TestH2H1ProxyProtocolV1ForwardedForObfuscated(t *testing.T) {
+	pattern := fmt.Sprintf(`^for=_[^;]+$`)
+	validFwd := regexp.MustCompile(pattern)
+	st := newServerTester([]string{"--accept-proxy-protocol", "--add-x-forwarded-for", "--add-forwarded=for", "--forwarded-for=obfuscated"}, t, func(w http.ResponseWriter, r *http.Request) {
+		if got := r.Header.Get("Forwarded"); !validFwd.MatchString(got) {
+			t.Errorf("Forwarded: %v; want pattern %v", got, pattern)
+		}
+	})
+	defer st.Close()
+
+	st.conn.Write([]byte("PROXY TCP4 192.168.0.2 192.168.0.100 12345 8080\r\n"))
+
+	res, err := st.http2(requestParam{
+		name: "TestH2H1ProxyProtocolV1ForwardedForObfuscated",
+	})
+
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+
+	if got, want := res.status, 200; got != want {
+		t.Errorf("res.status: %v; want %v", got, want)
+	}
+}
+
 // TestH2H1ProxyProtocolV1TCP4 tests PROXY protocol version 1
 // containing TCP4 entry is accepted and X-Forwarded-For contains
 // advertised src address.
 func TestH2H1ProxyProtocolV1TCP4(t *testing.T) {
-	st := newServerTester([]string{"--accept-proxy-protocol", "--add-x-forwarded-for"}, t, func(w http.ResponseWriter, r *http.Request) {
+	st := newServerTester([]string{"--accept-proxy-protocol", "--add-x-forwarded-for", "--add-forwarded=for", "--forwarded-for=ip"}, t, func(w http.ResponseWriter, r *http.Request) {
 		if got, want := r.Header.Get("X-Forwarded-For"), "192.168.0.2"; got != want {
 			t.Errorf("X-Forwarded-For: %v; want %v", got, want)
+		}
+		if got, want := r.Header.Get("Forwarded"), "for=192.168.0.2"; got != want {
+			t.Errorf("Forwarded: %v; want %v", got, want)
 		}
 	})
 	defer st.Close()
@@ -1143,9 +1174,12 @@ func TestH2H1ProxyProtocolV1TCP4(t *testing.T) {
 // containing TCP6 entry is accepted and X-Forwarded-For contains
 // advertised src address.
 func TestH2H1ProxyProtocolV1TCP6(t *testing.T) {
-	st := newServerTester([]string{"--accept-proxy-protocol", "--add-x-forwarded-for"}, t, func(w http.ResponseWriter, r *http.Request) {
+	st := newServerTester([]string{"--accept-proxy-protocol", "--add-x-forwarded-for", "--add-forwarded=for", "--forwarded-for=ip"}, t, func(w http.ResponseWriter, r *http.Request) {
 		if got, want := r.Header.Get("X-Forwarded-For"), "2001:0db8:85a3:0000:0000:8a2e:0370:7334"; got != want {
 			t.Errorf("X-Forwarded-For: %v; want %v", got, want)
+		}
+		if got, want := r.Header.Get("Forwarded"), `for="[2001:0db8:85a3:0000:0000:8a2e:0370:7334]"`; got != want {
+			t.Errorf("Forwarded: %v; want %v", got, want)
 		}
 	})
 	defer st.Close()
@@ -1168,9 +1202,12 @@ func TestH2H1ProxyProtocolV1TCP6(t *testing.T) {
 // TestH2H1ProxyProtocolV1Unknown tests PROXY protocol version 1
 // containing UNKNOWN entry is accepted.
 func TestH2H1ProxyProtocolV1Unknown(t *testing.T) {
-	st := newServerTester([]string{"--accept-proxy-protocol", "--add-x-forwarded-for"}, t, func(w http.ResponseWriter, r *http.Request) {
+	st := newServerTester([]string{"--accept-proxy-protocol", "--add-x-forwarded-for", "--add-forwarded=for", "--forwarded-for=ip"}, t, func(w http.ResponseWriter, r *http.Request) {
 		if got, notWant := r.Header.Get("X-Forwarded-For"), "192.168.0.2"; got == notWant {
 			t.Errorf("X-Forwarded-For: %v")
+		}
+		if got, notWant := r.Header.Get("Forwarded"), "for=192.168.0.2"; got == notWant {
+			t.Errorf("Forwarded: %v")
 		}
 	})
 	defer st.Close()

@@ -445,22 +445,29 @@ ClientHandler::ClientHandler(Worker *worker, int fd, SSL *ssl,
       *p = '\0';
 
       forwarded_for_ = StringRef{buf.base, p};
-    } else if (family == AF_INET6) {
-      // 2 for '[' and ']'
-      auto len = 2 + ipaddr_.size();
-      // 1 for terminating NUL.
-      auto buf = make_byte_ref(balloc_, len + 1);
-      auto p = buf.base;
-      *p++ = '[';
-      p = std::copy(std::begin(ipaddr_), std::end(ipaddr_), p);
-      *p++ = ']';
-      *p = '\0';
-
-      forwarded_for_ = StringRef{buf.base, p};
-    } else {
-      // family == AF_INET or family == AF_UNIX
-      forwarded_for_ = ipaddr_;
+    } else if (!faddr_->accept_proxy_protocol &&
+               !config->conn.upstream.accept_proxy_protocol) {
+      init_forwarded_for(family, ipaddr_);
     }
+  }
+}
+
+void ClientHandler::init_forwarded_for(int family, const StringRef &ipaddr) {
+  if (family == AF_INET6) {
+    // 2 for '[' and ']'
+    auto len = 2 + ipaddr.size();
+    // 1 for terminating NUL.
+    auto buf = make_byte_ref(balloc_, len + 1);
+    auto p = buf.base;
+    *p++ = '[';
+    p = std::copy(std::begin(ipaddr), std::end(ipaddr), p);
+    *p++ = ']';
+    *p = '\0';
+
+    forwarded_for_ = StringRef{buf.base, p};
+  } else {
+    // family == AF_INET or family == AF_UNIX
+    forwarded_for_ = ipaddr;
   }
 }
 
@@ -1457,6 +1464,14 @@ int ClientHandler::proxy_protocol_read() {
   if (LOG_ENABLED(INFO)) {
     CLOG(INFO, this) << "PROXY-protocol-v1: Finished, " << (rb_.pos() - first)
                      << " bytes read";
+  }
+
+  auto config = get_config();
+  auto &fwdconf = config->http.forwarded;
+
+  if ((fwdconf.params & FORWARDED_FOR) &&
+      fwdconf.for_node_type == FORWARDED_NODE_IP) {
+    init_forwarded_for(family, ipaddr_);
   }
 
   return on_proxy_protocol_finish();

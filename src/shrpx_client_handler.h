@@ -125,6 +125,9 @@ public:
 
   Worker *get_worker() const;
 
+  // Initializes forwarded_for_.
+  void init_forwarded_for(int family, const StringRef &ipaddr);
+
   using ReadBuf = DefaultMemchunkBuffer;
 
   ReadBuf *get_rb();
