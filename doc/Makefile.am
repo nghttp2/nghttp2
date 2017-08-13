@@ -74,6 +74,7 @@ APIDOCS= \
 	nghttp2_rcbuf_decref.rst \
 	nghttp2_rcbuf_get_buf.rst \
 	nghttp2_rcbuf_incref.rst \
+	nghttp2_rcbuf_is_static.rst \
 	nghttp2_select_next_protocol.rst \
 	nghttp2_session_callbacks_del.rst \
 	nghttp2_session_callbacks_new.rst \
