@@ -7,11 +7,8 @@ if(ENABLE_EXAMPLES)
     COMPILE_FLAGS "${WARNCXXFLAGS} ${CXX1XCXXFLAGS}")
 
   include_directories(
-    ${CMAKE_SOURCE_DIR}
-    ${CMAKE_SOURCE_DIR}/lib/includes
-    ${CMAKE_BINARY_DIR}/lib/includes
-    ${CMAKE_SOURCE_DIR}/src/includes
-    ${CMAKE_SOURCE_DIR}/third-party
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    "${CMAKE_CURRENT_SOURCE_DIR}/../third-party"
 
     ${LIBEVENT_INCLUDE_DIRS}
     ${OPENSSL_INCLUDE_DIRS}
