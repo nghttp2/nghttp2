@@ -52,7 +52,7 @@ RUN export CROSS_COMPILE=$TOOLCHAIN/bin/arm-linux-androideabi- && \
     make && make install_sw
 
 WORKDIR /root/build
-RUN curl -L -O curl -L -O http://dist.schmorp.de/libev/Attic/libev-$LIBEV_VERSION.tar.gz && \
+RUN curl -L -O http://dist.schmorp.de/libev/Attic/libev-$LIBEV_VERSION.tar.gz && \
     curl -L -O https://gist.github.com/tatsuhiro-t/48c45f08950f587180ed/raw/80a8f003b5d1091eae497c5995bbaa68096e739b/libev-4.19-android.patch && \
     tar xf libev-$LIBEV_VERSION.tar.gz && \
     rm libev-$LIBEV_VERSION.tar.gz
@@ -92,7 +92,7 @@ RUN HOST=arm-linux-androideabi \
 WORKDIR /root/build
 RUN curl -L -O https://c-ares.haxx.se/download/c-ares-$CARES_VERSION.tar.gz && \
     tar xf c-ares-$CARES_VERSION.tar.gz && \
-    rm c-ares-$CARES_VERSION.tar.gz 
+    rm c-ares-$CARES_VERSION.tar.gz
 
 WORKDIR /root/build/c-ares-$CARES_VERSION
 RUN ./configure \
