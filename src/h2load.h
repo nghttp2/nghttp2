@@ -85,6 +85,10 @@ struct Config {
   // rate at which connections should be made
   size_t rate;
   ev_tstamp rate_period;
+  // amount of time for main measurements in timing-based test
+  ev_tstamp duration;
+  // amount of time to wait before starting measurements in timing-based test
+  ev_tstamp warm_up_time;
   // amount of time to wait for activity on a given connection
   ev_tstamp conn_active_timeout;
   // amount of time to wait after the last request is made on a connection
@@ -118,6 +122,7 @@ struct Config {
   ~Config();
 
   bool is_rate_mode() const;
+  bool is_timing_based_mode() const;
   bool has_base_uri() const;
 };
 
@@ -215,6 +220,15 @@ struct Stats {
 
 enum ClientState { CLIENT_IDLE, CLIENT_CONNECTED };
 
+// This type tells whether the client is in warmup phase or not or is over
+enum class Phase {
+  INITIAL_IDLE,  // Initial idle state before warm-up phase
+  WARM_UP,       // Warm up phase when no measurements are done
+  MAIN_DURATION, // Main measurement phase; if timing-based
+                 // test is not run, this is the default phase
+  DURATION_OVER  // This phase occurs after the measurements are over
+};
+
 struct Client;
 
 // We use reservoir sampling method
@@ -250,6 +264,15 @@ struct Worker {
   ev_timer timeout_watcher;
   // The next client ID this worker assigns
   uint32_t next_client_id;
+  // Keeps track of the current phase (for timing-based experiment) for the
+  // worker
+  Phase current_phase;
+  // We need to keep track of the clients in order to stop them when needed
+  std::vector<Client *> clients;
+  // This is only active when there is not a bounded number of requests
+  // specified
+  ev_timer duration_watcher;
+  ev_timer warmup_watcher;
 
   Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t nreq_todo, size_t nclients,
          size_t rate, size_t max_samples, Config *config);
@@ -260,6 +283,10 @@ struct Worker {
   void sample_client_stat(ClientStat *cstat);
   void report_progress();
   void report_rate_progress();
+  // This function calls the destructors of all the clients.
+  void stop_all_clients();
+  // This function frees a client from the list of clients for this Worker.
+  void free_client(Client *);
 };
 
 struct Stream {
