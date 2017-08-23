@@ -58,7 +58,7 @@ RUN curl -L -O http://dist.schmorp.de/libev/Attic/libev-$LIBEV_VERSION.tar.gz &&
     rm libev-$LIBEV_VERSION.tar.gz
 
 WORKDIR /root/build/libev-$LIBEV_VERSION
-RUN patch -p1 < ../libev-$LIBEV_VERSION-android.patch && \
+RUN patch -p1 < ../libev-4.19-android.patch && \
     ./configure \
     --host=arm-linux-androideabi \
     --build=`dpkg-architecture -qDEB_BUILD_GNU_TYPE` \
