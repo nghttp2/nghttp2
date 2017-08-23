@@ -1812,7 +1812,9 @@ Options:
               Number of  requests across all  clients.  If it  is used
               with --timing-script-file option,  this option specifies
               the number of requests  each client performs rather than
-              the number of requests across all clients.
+              the number of requests  across all clients.  This option
+              is ignored if timing-based  benchmarking is enabled (see
+              --duration option).
               Default: )"
       << config.nreqs << R"(
   -c, --clients=<N>
@@ -2343,8 +2345,9 @@ int main(int argc, char **argv) {
   }
 
   if (config.nreqs == 0 && !config.is_timing_based_mode()) {
-    std::cerr << "-n: the number of requests must be strictly greater than 0,"
-              << "timing-based test is not being run." << std::endl;
+    std::cerr << "-n: the number of requests must be strictly greater than 0 "
+                 "if timing-based test is not being run."
+              << std::endl;
     exit(EXIT_FAILURE);
   }
 
@@ -2381,11 +2384,7 @@ int main(int argc, char **argv) {
   }
 
   if (config.is_timing_based_mode()) {
-    if (config.nreqs != 0) {
-      std::cerr << "-n: the number of requests needs to be zero (0) for timing-"
-                << "based test. Default value is 1." << std::endl;
-      exit(EXIT_FAILURE);
-    }
+    config.nreqs = 0;
   }
 
   if (config.is_rate_mode()) {
