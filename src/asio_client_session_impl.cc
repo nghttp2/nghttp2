@@ -473,7 +473,7 @@ stream *session_impl::create_push_stream(int32_t stream_id) {
 }
 
 std::unique_ptr<stream> session_impl::create_stream() {
-  return make_unique<stream>(this);
+  return nghttp2::make_unique<stream>(this);
 }
 
 const request *session_impl::submit(boost::system::error_code &ec,

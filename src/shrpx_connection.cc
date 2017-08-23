@@ -605,8 +605,8 @@ ssize_t Connection::write_tls(const void *data, size_t len) {
   // this, we keep last legnth passed to SSL_write to
   // tls.last_writelen if SSL_write indicated I/O blocking.
   if (tls.last_writelen == 0) {
-    len = std::min(len, wlimit.avail());
-    len = std::min(len, get_tls_write_limit());
+    len = (std::min)(len, wlimit.avail());
+    len = (std::min)(len, get_tls_write_limit());
     if (len == 0) {
       return 0;
     }
@@ -662,7 +662,7 @@ ssize_t Connection::read_tls(void *data, size_t len) {
   // to SSL_read to tls_last_readlen_ if SSL_read indicated I/O
   // blocking.
   if (tls.last_readlen == 0) {
-    len = std::min(len, rlimit.avail());
+    len = (std::min)(len, rlimit.avail());
     if (len == 0) {
       return 0;
     }
@@ -705,7 +705,7 @@ ssize_t Connection::read_tls(void *data, size_t len) {
 }
 
 ssize_t Connection::write_clear(const void *data, size_t len) {
-  len = std::min(len, wlimit.avail());
+  len = (std::min)(len, wlimit.avail());
   if (len == 0) {
     return 0;
   }
@@ -759,7 +759,7 @@ ssize_t Connection::writev_clear(struct iovec *iov, int iovcnt) {
 }
 
 ssize_t Connection::read_clear(void *data, size_t len) {
-  len = std::min(len, rlimit.avail());
+  len = (std::min)(len, rlimit.avail());
   if (len == 0) {
     return 0;
   }
@@ -833,7 +833,7 @@ int Connection::get_tcp_hint(TCPHint *hint) const {
       LOG(INFO) << "writable_size is too small: " << writable_size;
     }
     // TODO is this required?
-    writable_size = std::max(writable_size, static_cast<size_t>(536 * 2));
+    writable_size = (std::max)(writable_size, static_cast<size_t>(536 * 2));
   }
 
   // if (LOG_ENABLED(INFO)) {

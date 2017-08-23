@@ -181,7 +181,7 @@ ssize_t http2_data_read_callback(nghttp2_session *session, int32_t stream_id,
   const auto &req = downstream->request();
   auto input = downstream->get_request_buf();
 
-  auto nread = std::min(input->rleft(), length);
+  auto nread = (std::min)(input->rleft(), length);
   auto input_empty = input->rleft() == nread;
 
   *data_flags |= NGHTTP2_DATA_FLAG_NO_COPY;

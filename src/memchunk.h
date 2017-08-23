@@ -28,7 +28,11 @@
 #include "nghttp2_config.h"
 
 #include <limits.h>
+#ifdef WIN32
+#include <io.h>
+#else
 #include <sys/uio.h>
+#endif // WIN32
 
 #include <cassert>
 #include <cstring>
@@ -39,7 +43,29 @@
 
 #include "template.h"
 
+
 namespace nghttp2 {
+
+
+#ifdef WIN32
+
+struct iovec {                    /* Scatter/gather array items */
+  void  *iov_base;              /* Starting address */
+  size_t iov_len;               /* Number of bytes to transfer */
+       };
+
+struct msghdr {
+  void         *msg_name;       /* optional address */
+  socklen_t     msg_namelen;    /* size of address */
+  struct iovec *msg_iov;        /* scatter/gather array */
+  size_t        msg_iovlen;     /* # elements in msg_iov */
+  void         *msg_control;    /* ancillary data, see below */
+  socklen_t     msg_controllen; /* ancillary data buffer len */
+  int           msg_flags;      /* flags on received message */
+}; 
+
+#endif
+
 
 #define DEFAULT_WR_IOVCNT 16
 
@@ -56,7 +82,15 @@ template <size_t N> struct Memchunk {
   size_t left() const { return std::end(buf) - last; }
   void reset() { pos = last = std::begin(buf); }
   std::array<uint8_t, N> buf;
+
+#if defined(_MSC_VER)
+  std::_Array_iterator<uint8_t, N> pos;
+  std::_Array_iterator<uint8_t, N> last;
+#else
   uint8_t *pos, *last;
+#endif
+  
+  
   Memchunk *knext;
   Memchunk *next;
   static const size_t size = N;
@@ -160,7 +194,7 @@ template <typename Memchunk> struct Memchunks {
     }
 
     for (;;) {
-      auto n = std::min(static_cast<size_t>(last - first), tail->left());
+      auto n = (std::min)(static_cast<size_t>(last - first), tail->left());
       tail->last = std::copy_n(first, n, tail->last);
       first += n;
       len += n;
@@ -194,7 +228,7 @@ template <typename Memchunk> struct Memchunks {
 
     while (m) {
       auto next = m->next;
-      auto n = std::min(static_cast<size_t>(last - first), m->len());
+      auto n = (std::min)(static_cast<size_t>(last - first), m->len());
 
       assert(m->len());
       first = std::copy_n(m->pos, n, first);
@@ -223,7 +257,7 @@ template <typename Memchunk> struct Memchunks {
 
     while (m) {
       auto next = m->next;
-      auto n = std::min(left, m->len());
+      auto n = (std::min)(left, m->len());
 
       assert(m->len());
       dest.append(m->pos, n);
@@ -248,7 +282,7 @@ template <typename Memchunk> struct Memchunks {
     auto m = head;
     while (m) {
       auto next = m->next;
-      auto n = std::min(count, m->len());
+      auto n = (std::min)(count, m->len());
       m->pos += n;
       count -= n;
       len -= n;
@@ -362,7 +396,7 @@ template <typename Memchunk> struct PeekMemchunks {
     auto last = first + count;
 
     for (;;) {
-      auto n = std::min(last - first, cur_last - cur_pos);
+      auto n = (std::min)(last - first, cur_last - cur_pos);
 
       first = std::copy_n(cur_pos, n, first);
       cur_pos += n;
@@ -427,7 +461,7 @@ inline int limit_iovec(struct iovec *iov, int iovcnt, size_t max) {
     return 0;
   }
   for (int i = 0; i < iovcnt; ++i) {
-    auto d = std::min(max, iov[i].iov_len);
+    auto d = (std::min)(max, iov[i].iov_len);
     iov[i].iov_len = d;
     max -= d;
     if (max == 0) {
@@ -500,23 +534,23 @@ template <typename Memchunk> struct MemchunkBuffer {
   size_t rleft() const { return chunk->len(); }
   size_t wleft() const { return chunk->left(); }
   size_t write(const void *src, size_t count) {
-    count = std::min(count, wleft());
+    count = (std::min)(count, wleft());
     auto p = static_cast<const uint8_t *>(src);
     chunk->last = std::copy_n(p, count, chunk->last);
     return count;
   }
   size_t write(size_t count) {
-    count = std::min(count, wleft());
+    count = (std::min)(count, wleft());
     chunk->last += count;
     return count;
   }
   size_t drain(size_t count) {
-    count = std::min(count, rleft());
+    count = (std::min)(count, rleft());
     chunk->pos += count;
     return count;
   }
   size_t drain_reset(size_t count) {
-    count = std::min(count, rleft());
+    count = (std::min)(count, rleft());
     std::copy(chunk->pos + count, chunk->last, std::begin(chunk->buf));
     chunk->last = std::begin(chunk->buf) + (chunk->last - (chunk->pos + count));
     chunk->pos = std::begin(chunk->buf);

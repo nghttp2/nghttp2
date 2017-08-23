@@ -41,7 +41,12 @@
 #ifdef HAVE_NETINET_IN_H
 #include <netinet/in.h>
 #endif // HAVE_NETINET_IN_H
+#ifdef WIN32
+#include <stdio.h>
+#include <limits>
+#else
 #include <netinet/tcp.h>
+#endif
 #ifdef HAVE_ARPA_INET_H
 #include <arpa/inet.h>
 #endif // HAVE_ARPA_INET_H
@@ -60,6 +65,32 @@
 
 #include "ssl_compat.h"
 #include "timegm.h"
+
+
+#ifdef WIN32
+#include <time.h>
+#include <iomanip>
+#include <sstream>
+
+extern "C" char* strptime(const char* s,
+  const char* f,
+  struct tm* tm) {
+  // Isn't the C++ standard lib nice? std::get_time is defined such that its
+  // format parameters are the exact same as strptime. Of course, we have to
+  // create a string stream first, and imbue it with the current C locale, and
+  // we also have to make sure we return the right things if it fails, or
+  // if it succeeds, but this is still far simpler an implementation than any
+  // of the versions in any of the C standard libraries.
+  std::istringstream input(s);
+  input.imbue(std::locale(setlocale(LC_ALL, nullptr)));
+  input >> std::get_time(tm, f);
+  if (input.fail()) {
+    return nullptr;
+  }
+  return (char*)(s + input.tellg());
+}
+#endif
+
 
 namespace nghttp2 {
 
@@ -221,9 +252,15 @@ std::string http_date(time_t t) {
 char *http_date(char *res, time_t t) {
   struct tm tms;
 
-  if (gmtime_r(&t, &tms) == nullptr) {
+#ifdef WIN32
+  if (gmtime_s( &tms,&t) !=0) {
     return res;
   }
+#else
+  if (gmtime_r(&t, &tms) == nullptr) {
+    return res;
+  } 
+#endif
 
   auto p = res;
 
@@ -259,9 +296,15 @@ std::string common_log_date(time_t t) {
 char *common_log_date(char *res, time_t t) {
   struct tm tms;
 
+#ifdef WIN32
+  if (localtime_s(&tms, &t) != 0) {
+    return res;
+  }
+#else
   if (localtime_r(&t, &tms) == nullptr) {
     return res;
   }
+#endif
 
   auto p = res;
 
@@ -310,9 +353,16 @@ char *iso8601_date(char *res, int64_t ms) {
   time_t sec = ms / 1000;
 
   tm tms;
+
+#ifdef WIN32
+  if (localtime_s(&tms, &sec) != 0) {
+    return res;
+  }
+#else
   if (localtime_r(&sec, &tms) == nullptr) {
     return res;
   }
+#endif
 
   auto p = res;
 
@@ -462,10 +512,10 @@ int levenshtein(const char *a, int alen, const char *b, int blen, int swapcost,
       dp[0][j] = dp[1][j - 1] + (a[i - 1] == b[j - 1] ? 0 : subcost);
       if (i >= 2 && j >= 2 && a[i - 1] != b[j - 1] && a[i - 2] == b[j - 1] &&
           a[i - 1] == b[j - 2]) {
-        dp[0][j] = std::min(dp[0][j], dp[2][j - 2] + swapcost);
+        dp[0][j] = (std::min)(dp[0][j], dp[2][j - 2] + swapcost);
       }
-      dp[0][j] = std::min(dp[0][j],
-                          std::min(dp[1][j] + delcost, dp[0][j - 1] + addcost));
+      dp[0][j] = (std::min)(dp[0][j],
+                          (std::min)(dp[1][j] + delcost, dp[0][j - 1] + addcost));
     }
     std::rotate(std::begin(dp), std::begin(dp) + 2, std::end(dp));
   }
@@ -628,10 +678,13 @@ std::string numeric_name(const struct sockaddr *sa, socklen_t salen) {
 
 std::string to_numeric_addr(const Address *addr) {
   auto family = addr->su.storage.ss_family;
+  
+#ifndef WIN32
   if (family == AF_UNIX) {
     return addr->su.un.sun_path;
   }
-
+#endif
+  
   std::array<char, NI_MAXHOST> host;
   std::array<char, NI_MAXSERV> serv;
   auto rv =
@@ -818,6 +871,11 @@ std::vector<std::string> parse_config_str_list(const StringRef &s, char delim) {
 }
 
 int make_socket_closeonexec(int fd) {
+  
+#ifdef WIN32
+  return 0;
+#else
+
   int flags;
   int rv;
   while ((flags = fcntl(fd, F_GETFD)) == -1 && errno == EINTR)
@@ -825,16 +883,25 @@ int make_socket_closeonexec(int fd) {
   while ((rv = fcntl(fd, F_SETFD, flags | FD_CLOEXEC)) == -1 && errno == EINTR)
     ;
   return rv;
+#endif
 }
 
 int make_socket_nonblocking(int fd) {
   int flags;
+
+#ifdef WIN32
+  u_long non_blk = 1;
+  return ioctlsocket(fd, FIONBIO, &non_blk);
+
+#else
+
   int rv;
   while ((flags = fcntl(fd, F_GETFL, 0)) == -1 && errno == EINTR)
     ;
   while ((rv = fcntl(fd, F_SETFL, flags | O_NONBLOCK)) == -1 && errno == EINTR)
     ;
   return rv;
+#endif
 }
 
 int make_socket_nodelay(int fd) {
@@ -874,7 +941,7 @@ int create_nonblock_socket(int family) {
 bool check_socket_connected(int fd) {
   int error;
   socklen_t len = sizeof(error);
-  if (getsockopt(fd, SOL_SOCKET, SO_ERROR, &error, &len) != 0) {
+  if (getsockopt(fd, SOL_SOCKET, SO_ERROR, (char *)&error, &len) != 0) {
     return false;
   }
 
@@ -884,7 +951,7 @@ bool check_socket_connected(int fd) {
 int get_socket_error(int fd) {
   int error;
   socklen_t len = sizeof(error);
-  if (getsockopt(fd, SOL_SOCKET, SO_ERROR, &error, &len) != 0) {
+  if (getsockopt(fd, SOL_SOCKET, SO_ERROR, (char *)&error, &len) != 0) {
     return -1;
   }
 
@@ -904,7 +971,7 @@ std::pair<int64_t, size_t> parse_uint_digits(const void *ss, size_t len) {
   if (len == 0) {
     return {-1, 0};
   }
-  constexpr int64_t max = std::numeric_limits<int64_t>::max();
+  constexpr int64_t max = (std::numeric_limits<int64_t>::max)();
   for (i = 0; i < len; ++i) {
     if ('0' <= s[i] && s[i] <= '9') {
       if (n > max / 10) {
@@ -964,7 +1031,7 @@ int64_t parse_uint_with_unit(const uint8_t *s, size_t len) {
   default:
     return -1;
   }
-  constexpr int64_t max = std::numeric_limits<int64_t>::max();
+  constexpr int64_t max = (std::numeric_limits<int64_t>::max)();
   if (n > max / mul) {
     return -1;
   }
@@ -1003,7 +1070,7 @@ double parse_duration_with_unit(const StringRef &s) {
 }
 
 double parse_duration_with_unit(const uint8_t *s, size_t len) {
-  constexpr auto max = std::numeric_limits<int64_t>::max();
+  constexpr auto max = (std::numeric_limits<int64_t>::max)();
   int64_t n;
   size_t i;
 
@@ -1189,7 +1256,7 @@ StringRef make_hostport(BlockAllocator &balloc, const StringRef &host,
 
 namespace {
 void hexdump8(FILE *out, const uint8_t *first, const uint8_t *last) {
-  auto stop = std::min(first + 8, last);
+  auto stop = (std::min)(first + 8, last);
   for (auto k = first; k != stop; ++k) {
     fprintf(out, "%02x ", *k);
   }
@@ -1213,7 +1280,7 @@ void hexdump(FILE *out, const uint8_t *src, size_t len) {
   auto i = src;
   for (;;) {
     auto nextlen =
-        std::min(static_cast<size_t>(16), static_cast<size_t>(end - i));
+        (std::min)(static_cast<size_t>(16), static_cast<size_t>(end - i));
     if (nextlen == buflen &&
         std::equal(std::begin(buf), std::begin(buf) + buflen, i)) {
       // as long as adjacent 16 bytes block are the same, we just
@@ -1233,9 +1300,9 @@ void hexdump(FILE *out, const uint8_t *src, size_t len) {
     }
     fputs("  ", out);
     hexdump8(out, i, end);
-    hexdump8(out, i + 8, std::max(i + 8, end));
+    hexdump8(out, i + 8, (std::max)(i + 8, end));
     fputc('|', out);
-    auto stop = std::min(i + 16, end);
+    auto stop = (std::min)(i + 16, end);
     buflen = stop - i;
     auto p = buf.data();
     for (; i != stop; ++i) {

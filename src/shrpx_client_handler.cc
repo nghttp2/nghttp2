@@ -307,7 +307,7 @@ int ClientHandler::upstream_write() {
 }
 
 int ClientHandler::upstream_http2_connhd_read() {
-  auto nread = std::min(left_connhd_len_, rb_.rleft());
+  auto nread = (std::min)(left_connhd_len_, rb_.rleft());
   if (memcmp(NGHTTP2_CLIENT_MAGIC + NGHTTP2_CLIENT_MAGIC_LEN - left_connhd_len_,
              rb_.pos(), nread) != 0) {
     // There is no downgrade path here. Just drop the connection.
@@ -336,7 +336,7 @@ int ClientHandler::upstream_http2_connhd_read() {
 }
 
 int ClientHandler::upstream_http1_connhd_read() {
-  auto nread = std::min(left_connhd_len_, rb_.rleft());
+  auto nread = (std::min)(left_connhd_len_, rb_.rleft());
   if (memcmp(NGHTTP2_CLIENT_MAGIC + NGHTTP2_CLIENT_MAGIC_LEN - left_connhd_len_,
              rb_.pos(), nread) != 0) {
     if (LOG_ENABLED(INFO)) {
@@ -959,7 +959,7 @@ bool pri_less(const WeightedPri &lhs, const WeightedPri &rhs) {
 
 namespace {
 uint32_t next_cycle(const WeightedPri &pri) {
-  return pri.cycle + WEIGHT_MAX / std::min(WEIGHT_MAX, pri.weight);
+  return pri.cycle + WEIGHT_MAX / (std::min)(WEIGHT_MAX, pri.weight);
 }
 } // namespace
 
@@ -1303,7 +1303,7 @@ int ClientHandler::proxy_protocol_read() {
 
   constexpr size_t MAX_PROXY_LINELEN = 107;
 
-  auto bufend = rb_.pos() + std::min(MAX_PROXY_LINELEN, rb_.rleft());
+  auto bufend = rb_.pos() + (std::min)(MAX_PROXY_LINELEN, rb_.rleft());
 
   auto end =
       std::find_first_of(rb_.pos(), bufend, std::begin(chrs), std::end(chrs));

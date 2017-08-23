@@ -73,7 +73,7 @@ int EvbufferBuffer::write_buffer() {
   for (auto pos = buf_, end = buf_ + buflen_; pos < end;) {
     // To avoid merging chunks in evbuffer, we first add to temporal
     // buffer bucket_ and then move its chain to evbuffer_.
-    auto nwrite = std::min(end - pos, limit_);
+    auto nwrite = (std::min)(end - pos, limit_);
     auto rv = evbuffer_add(bucket_, pos, nwrite);
     if (rv == -1) {
       return -1;

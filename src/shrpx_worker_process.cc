@@ -232,7 +232,7 @@ void renew_ticket_key_cb(struct ev_loop *loop, ev_timer *w, int revents) {
                                 get_config()->tls.session_timeout)
                                 .count());
 
-    new_keys.resize(std::min(max_tickets, old_keys.size() + 1));
+    new_keys.resize((std::min)(max_tickets, old_keys.size() + 1));
     std::copy_n(std::begin(old_keys), new_keys.size() - 1,
                 std::begin(new_keys) + 1);
   } else {

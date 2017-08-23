@@ -1032,7 +1032,7 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
       faddr->alt_mode
           ? std::numeric_limits<int32_t>::max()
           : http2conf.upstream.optimize_window_size
-                ? std::min(http2conf.upstream.connection_window_size,
+                ? (std::min)(http2conf.upstream.connection_window_size,
                            NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE)
                 : http2conf.upstream.connection_window_size;
 
@@ -1140,13 +1140,13 @@ int Http2Upstream::on_write() {
     rv = conn->get_tcp_hint(&hint);
     if (rv == 0) {
       if (http2conf.upstream.optimize_write_buffer_size) {
-        max_buffer_size_ = std::min(MAX_BUFFER_SIZE, hint.write_buffer_size);
+        max_buffer_size_ = (std::min)(MAX_BUFFER_SIZE, hint.write_buffer_size);
       }
 
       if (http2conf.upstream.optimize_window_size) {
         auto faddr = handler_->get_upstream_addr();
         if (!faddr->alt_mode) {
-          auto window_size = std::min(http2conf.upstream.connection_window_size,
+          auto window_size = (std::min)(http2conf.upstream.connection_window_size,
                                       static_cast<int32_t>(hint.rwin * 2));
 
           rv = nghttp2_session_set_local_window_size(
@@ -1388,21 +1388,21 @@ ssize_t downstream_data_read_callback(nghttp2_session *session,
 
   const auto &resp = downstream->response();
 
-  auto nread = std::min(body->rleft(), length);
+  auto nread = (std::min)(body->rleft(), length);
 
   auto max_buffer_size = upstream->get_max_buffer_size();
 
   auto buffer = upstream->get_response_buf();
 
   if (max_buffer_size <
-      std::min(nread, static_cast<size_t>(256)) + 9 + buffer->rleft()) {
+      (std::min)(nread, static_cast<size_t>(256)) + 9 + buffer->rleft()) {
     if (LOG_ENABLED(INFO)) {
       ULOG(INFO, upstream) << "Buffer is almost full.  Skip write DATA";
     }
     return NGHTTP2_ERR_PAUSE;
   }
 
-  nread = std::min(nread, max_buffer_size - 9 - buffer->rleft());
+  nread = (std::min)(nread, max_buffer_size - 9 - buffer->rleft());
 
   auto body_empty = body->rleft() == nread;
 

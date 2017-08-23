@@ -56,7 +56,7 @@ constexpr size_t MAX_BUFFER_SIZE = 32_k;
 
 namespace {
 int32_t get_connection_window_size() {
-  return std::max(get_config()->http2.upstream.connection_window_size,
+  return (std::max)(get_config()->http2.upstream.connection_window_size,
                   static_cast<int32_t>(64_k));
 }
 } // namespace
@@ -104,7 +104,7 @@ ssize_t recv_callback(spdylay_session *session, uint8_t *buf, size_t len,
     return SPDYLAY_ERR_WOULDBLOCK;
   }
 
-  auto nread = std::min(rb->rleft(), len);
+  auto nread = (std::min)(rb->rleft(), len);
 
   memcpy(buf, rb->pos(), nread);
   rb->drain(nread);
@@ -439,7 +439,7 @@ void on_data_chunk_recv_callback(spdylay_session *session, uint8_t flags,
   // spdy/3), spdylay_session_get_recv_data_length() is always
   // returns 0.
   if (spdylay_session_get_recv_data_length(session) >
-      std::max(SPDYLAY_INITIAL_WINDOW_SIZE, get_connection_window_size())) {
+      (std::max)(SPDYLAY_INITIAL_WINDOW_SIZE, get_connection_window_size())) {
     if (LOG_ENABLED(INFO)) {
       ULOG(INFO, upstream) << "Flow control error on connection: "
                            << "recv_window_size="
@@ -450,7 +450,7 @@ void on_data_chunk_recv_callback(spdylay_session *session, uint8_t flags,
     return;
   }
   if (spdylay_session_get_stream_recv_data_length(session, stream_id) >
-      std::max(SPDYLAY_INITIAL_WINDOW_SIZE, get_window_size())) {
+      (std::max)(SPDYLAY_INITIAL_WINDOW_SIZE, get_window_size())) {
     if (LOG_ENABLED(INFO)) {
       ULOG(INFO, upstream) << "Flow control error: recv_window_size="
                            << spdylay_session_get_stream_recv_data_length(

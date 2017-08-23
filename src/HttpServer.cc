@@ -586,7 +586,7 @@ void Http2Handler::start_settings_timer() {
 
 int Http2Handler::fill_wb() {
   if (data_pending_) {
-    auto n = std::min(wb_.wleft(), data_pendinglen_);
+    auto n = (std::min)(wb_.wleft(), data_pendinglen_);
     wb_.write(data_pending_, n);
     if (n < data_pendinglen_) {
       data_pending_ += n;
@@ -1084,7 +1084,7 @@ ssize_t file_read_callback(nghttp2_session *session, int32_t stream_id,
   auto hd = static_cast<Http2Handler *>(user_data);
   auto stream = hd->get_stream(stream_id);
 
-  auto nread = std::min(stream->body_length - stream->body_offset,
+  auto nread = (std::min)(stream->body_length - stream->body_offset,
                         static_cast<int64_t>(length));
 
   *data_flags |= NGHTTP2_DATA_FLAG_NO_COPY;
@@ -1583,7 +1583,7 @@ int hd_on_frame_send_callback(nghttp2_session *session,
 
     if (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
       remove_stream_write_timeout(stream);
-    } else if (std::min(nghttp2_session_get_stream_remote_window_size(
+    } else if ((std::min)(nghttp2_session_get_stream_remote_window_size(
                             session, frame->hd.stream_id),
                         nghttp2_session_get_remote_window_size(session)) <= 0) {
       // If stream is blocked by flow control, enable write timeout.
@@ -1681,7 +1681,7 @@ ssize_t select_padding_callback(nghttp2_session *session,
                                 const nghttp2_frame *frame, size_t max_payload,
                                 void *user_data) {
   auto hd = static_cast<Http2Handler *>(user_data);
-  return std::min(max_payload, frame->hd.length + hd->get_config()->padding);
+  return (std::min)(max_payload, frame->hd.length + hd->get_config()->padding);
 }
 } // namespace
 

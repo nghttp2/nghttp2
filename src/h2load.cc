@@ -203,7 +203,7 @@ void rate_period_timeout_w_cb(struct ev_loop *loop, ev_timer *w, int revents) {
   auto worker = static_cast<Worker *>(w->data);
   auto nclients_per_second = worker->rate;
   auto conns_remaining = worker->nclients - worker->nconns_made;
-  auto nclients = std::min(nclients_per_second, conns_remaining);
+  auto nclients = (std::min)(nclients_per_second, conns_remaining);
 
   for (size_t i = 0; i < nclients; ++i) {
     auto req_todo = worker->nreqs_per_client;
@@ -838,7 +838,7 @@ int Client::connection_made() {
   record_connect_time();
 
   if (!config.timing_script) {
-    auto nreq = std::min(req_left, session->max_concurrent_streams());
+    auto nreq = (std::min)(req_left, session->max_concurrent_streams());
     for (; nreq > 0; --nreq) {
       if (submit_request() != 0) {
         process_request_failure();
@@ -1150,9 +1150,9 @@ Worker::Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t req_todo, size_t nclients,
       max_samples(max_samples),
       next_client_id(0) {
   if (!config->is_rate_mode()) {
-    progress_interval = std::max(static_cast<size_t>(1), req_todo / 10);
+    progress_interval = (std::max)(static_cast<size_t>(1), req_todo / 10);
   } else {
-    progress_interval = std::max(static_cast<size_t>(1), nclients / 10);
+    progress_interval = (std::max)(static_cast<size_t>(1), nclients / 10);
   }
 
   // create timer that will go off every rate_period
@@ -1160,8 +1160,8 @@ Worker::Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t req_todo, size_t nclients,
                 config->rate_period);
   timeout_watcher.data = this;
 
-  stats.req_stats.reserve(std::min(req_todo, max_samples));
-  stats.client_stats.reserve(std::min(nclients, max_samples));
+  stats.req_stats.reserve((std::min)(req_todo, max_samples));
+  stats.client_stats.reserve((std::min)(nclients, max_samples));
 
   sampling_init(request_times_smp, max_samples);
   sampling_init(client_smp, max_samples);
@@ -1273,8 +1273,8 @@ SDStat compute_time_stat(const std::vector<double> &samples,
                     std::numeric_limits<double>::min()};
   for (const auto &t : samples) {
     ++n;
-    res.min = std::min(res.min, t);
-    res.max = std::max(res.max, t);
+    res.min = (std::min)(res.min, t);
+    res.max = (std::max)(res.max, t);
     sum += t;
 
     auto na = a + (t - a) / n;
@@ -2407,7 +2407,7 @@ int main(int argc, char **argv) {
   ssize_t rate_per_thread_rem = config.rate % config.nthreads;
 
   size_t max_samples_per_thread =
-      std::max(static_cast<size_t>(256), MAX_SAMPLES / config.nthreads);
+      (std::max)(static_cast<size_t>(256), MAX_SAMPLES / config.nthreads);
 
   std::mutex mu;
   std::condition_variable cv;

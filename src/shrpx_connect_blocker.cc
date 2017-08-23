@@ -82,14 +82,14 @@ void ConnectBlocker::on_failure() {
   ++fail_count_;
 
   auto base_backoff =
-      util::int_pow(MULTIPLIER, std::min(MAX_BACKOFF_EXP, fail_count_));
+      util::int_pow(MULTIPLIER, (std::min)(MAX_BACKOFF_EXP, fail_count_));
   auto dist = std::uniform_real_distribution<>(-JITTER * base_backoff,
                                                JITTER * base_backoff);
 
   auto &downstreamconf = *get_config()->conn.downstream;
 
   auto backoff =
-      std::min(downstreamconf.timeout.max_backoff, base_backoff + dist(gen_));
+      (std::min)(downstreamconf.timeout.max_backoff, base_backoff + dist(gen_));
 
   LOG(WARN) << "Could not connect " << fail_count_
             << " times in a row; sleep for " << backoff << " seconds";

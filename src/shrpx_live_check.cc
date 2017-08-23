@@ -174,14 +174,14 @@ constexpr auto JITTER = 0.2;
 
 void LiveCheck::schedule() {
   auto base_backoff =
-      util::int_pow(MULTIPLIER, std::min(fail_count_, MAX_BACKOFF_EXP));
+      util::int_pow(MULTIPLIER, (std::min)(fail_count_, MAX_BACKOFF_EXP));
   auto dist = std::uniform_real_distribution<>(-JITTER * base_backoff,
                                                JITTER * base_backoff);
 
   auto &downstreamconf = *get_config()->conn.downstream;
 
   auto backoff =
-      std::min(downstreamconf.timeout.max_backoff, base_backoff + dist(gen_));
+      (std::min)(downstreamconf.timeout.max_backoff, base_backoff + dist(gen_));
 
   ev_timer_set(&backoff_timer_, backoff, 0.);
   ev_timer_start(conn_.loop, &backoff_timer_);
