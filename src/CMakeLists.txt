@@ -8,11 +8,8 @@ set_source_files_properties(${cxx_sources} PROPERTIES
   COMPILE_FLAGS "${WARNCXXFLAGS} ${CXX1XCXXFLAGS}")
 
 include_directories(
-  "${CMAKE_SOURCE_DIR}/lib/includes"
-  "${CMAKE_BINARY_DIR}/lib/includes"
-  "${CMAKE_SOURCE_DIR}/lib"
-  "${CMAKE_SOURCE_DIR}/src/includes"
-  "${CMAKE_SOURCE_DIR}/third-party"
+  "${CMAKE_CURRENT_SOURCE_DIR}/includes"
+  "${CMAKE_CURRENT_SOURCE_DIR}/../third-party"
 
   ${JEMALLOC_INCLUDE_DIRS}
   ${SPDYLAY_INCLUDE_DIRS}
@@ -251,6 +248,11 @@ if(ENABLE_ASIO_LIB)
   target_include_directories(nghttp2_asio PRIVATE
     ${OPENSSL_INCLUDE_DIRS}
     ${Boost_INCLUDE_DIRS}
+  )
+  target_include_directories(nghttp2_asio INTERFACE
+    "${CMAKE_CURRENT_BINARY_DIR}/../lib/includes"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../lib/includes"
+    "${CMAKE_CURRENT_SOURCE_DIR}/includes"
   )
   target_link_libraries(nghttp2_asio
     nghttp2
