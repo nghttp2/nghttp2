@@ -221,12 +221,12 @@ struct Stats {
 enum ClientState { CLIENT_IDLE, CLIENT_CONNECTED };
 
 // This type tells whether the client is in warmup phase or not or is over
-enum class Phase { 
-  INITIAL_IDLE, // Initial idle state before warm-up phase
-  WARM_UP, // Warm up phase when no measurements are done
+enum class Phase {
+  INITIAL_IDLE,  // Initial idle state before warm-up phase
+  WARM_UP,       // Warm up phase when no measurements are done
   MAIN_DURATION, // Main measurement phase; if timing-based
                  // test is not run, this is the default phase
-  DURATION_OVER // This phase occurs after the measurements are over
+  DURATION_OVER  // This phase occurs after the measurements are over
 };
 
 struct Client;
@@ -264,11 +264,13 @@ struct Worker {
   ev_timer timeout_watcher;
   // The next client ID this worker assigns
   uint32_t next_client_id;
-  // Keeps track of the current phase (for timing-based experiment) for the worker
+  // Keeps track of the current phase (for timing-based experiment) for the
+  // worker
   Phase current_phase;
   // We need to keep track of the clients in order to stop them when needed
-  std::vector<Client*> clients;
-  // This is only active when there is not a bounded number of requests specified
+  std::vector<Client *> clients;
+  // This is only active when there is not a bounded number of requests
+  // specified
   ev_timer duration_watcher;
   ev_timer warmup_watcher;
 
@@ -284,7 +286,7 @@ struct Worker {
   // This function calls the destructors of all the clients.
   void stop_all_clients();
   // This function frees a client from the list of clients for this Worker.
-  void free_client(Client*);
+  void free_client(Client *);
 };
 
 struct Stream {
