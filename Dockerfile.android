@@ -95,8 +95,7 @@ RUN curl -L -O https://c-ares.haxx.se/download/c-ares-$CARES_VERSION.tar.gz && \
     rm c-ares-$CARES_VERSION.tar.gz 
 
 WORKDIR /root/build/c-ares-$CARES_VERSION
-RUN cd $ANDROID_HOME/c-ares-$CARES_VERSION && \
-    ./configure \
+RUN ./configure \
       --host=arm-linux-androideabi \
       --build=`dpkg-architecture -qDEB_BUILD_GNU_TYPE` \
       --prefix=$PREFIX \
