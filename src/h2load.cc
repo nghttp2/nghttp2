@@ -822,8 +822,6 @@ void Client::on_stream_close(int32_t stream_id, bool success, bool final) {
       ++worker->stats.req_failed;
       ++worker->stats.req_error;
     }
-    // To avoid overflow error
-    assert(worker->stats.req_done <= worker->max_samples);
     ++worker->stats.req_done;
     ++req_done;
   }
