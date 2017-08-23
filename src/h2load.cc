@@ -813,10 +813,7 @@ void Client::on_stream_close(int32_t stream_id, bool success, bool final) {
         ++worker->stats.req_failed;
       }
 
-      if (sampling_should_pick(worker->request_times_smp)) {
-        sampling_advance_point(worker->request_times_smp);
-        worker->sample_req_stat(req_stat);
-      }
+      worker->sample_req_stat(req_stat);
 
       // Count up in successful cases only
       ++worker->request_times_smp.n;
