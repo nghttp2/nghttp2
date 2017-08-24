@@ -309,8 +309,7 @@ void conn_timeout_cb(EV_P_ ev_timer *w, int revents) {
 
 namespace {
 bool check_stop_client_request_timeout(Client *client, ev_timer *w) {
-  if (client->req_left == 0 ||
-      client->streams.size() >= client->session->max_concurrent_streams()) {
+  if (client->req_left == 0) {
     // no more requests to make, stop timer
     ev_timer_stop(client->worker->loop, w);
     return true;
@@ -323,6 +322,11 @@ bool check_stop_client_request_timeout(Client *client, ev_timer *w) {
 namespace {
 void client_request_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
   auto client = static_cast<Client *>(w->data);
+
+  if (client->streams.size() >= (size_t)config.max_concurrent_streams) {
+    ev_timer_stop(client->worker->loop, w);
+    return;
+  }
 
   if (client->submit_request() != 0) {
     ev_timer_stop(client->worker->loop, w);
@@ -833,10 +837,14 @@ void Client::on_stream_close(int32_t stream_id, bool success, bool final) {
     return;
   }
 
-  if (!config.timing_script && !final && req_left > 0 &&
-      submit_request() != 0) {
-    process_request_failure();
-    return;
+  if (!final && req_left > 0) {
+    if (config.timing_script) {
+      if (!ev_is_active(&request_timeout_watcher)) {
+        ev_feed_event(worker->loop, &request_timeout_watcher, EV_TIMER);
+      }
+    } else if (submit_request() != 0) {
+      process_request_failure();
+    }
   }
 }
 
