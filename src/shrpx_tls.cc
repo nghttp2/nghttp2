@@ -45,7 +45,9 @@
 #include <openssl/x509v3.h>
 #include <openssl/rand.h>
 #include <openssl/dh.h>
+#ifndef OPENSSL_NO_OCSP
 #include <openssl/ocsp.h>
+#endif // OPENSSL_NO_OCSP
 
 #include <nghttp2/nghttp2.h>
 
@@ -1544,7 +1546,7 @@ int cert_lookup_tree_add_ssl_ctx(
 #if !defined(LIBRESSL_VERSION_NUMBER) && OPENSSL_VERSION_NUMBER >= 0x10002000L
   auto cert = SSL_CTX_get0_certificate(ssl_ctx);
 #else  // defined(LIBRESSL_VERSION_NUMBER) || OPENSSL_VERSION_NUMBER <
-  // 0x10002000L
+       // 0x10002000L
   auto tls_ctx_data =
       static_cast<TLSContextData *>(SSL_CTX_get_app_data(ssl_ctx));
   auto cert = load_certificate(tls_ctx_data->cert_file);
@@ -1837,7 +1839,9 @@ int proto_version_from_string(const StringRef &v) {
 
 int verify_ocsp_response(SSL_CTX *ssl_ctx, const uint8_t *ocsp_resp,
                          size_t ocsp_resplen) {
-#if !defined(LIBRESSL_VERSION_NUMBER) && OPENSSL_VERSION_NUMBER >= 0x10002000L
+
+#if !defined(OPENSSL_NO_OCSP) && !defined(LIBRESSL_VERSION_NUMBER) &&          \
+    OPENSSL_VERSION_NUMBER >= 0x10002000L
   int rv;
 
   STACK_OF(X509) * chain_certs;
@@ -1909,8 +1913,8 @@ int verify_ocsp_response(SSL_CTX *ssl_ctx, const uint8_t *ocsp_resp,
   if (LOG_ENABLED(INFO)) {
     LOG(INFO) << "OCSP verification succeeded";
   }
-#endif // !defined(LIBRESSL_VERSION_NUMBER) && OPENSSL_VERSION_NUMBER >=
-       // 0x10002000L
+#endif // !defined(OPENSSL_NO_OCSP) && !defined(LIBRESSL_VERSION_NUMBER)
+       // && OPENSSL_VERSION_NUMBER >= 0x10002000L
 
   return 0;
 }
