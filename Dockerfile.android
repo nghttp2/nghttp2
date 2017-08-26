@@ -49,7 +49,7 @@ RUN curl -L -O https://www.openssl.org/source/openssl-$OPENSSL_VERSION.tar.gz &&
 WORKDIR /root/build/openssl-$OPENSSL_VERSION
 RUN export CROSS_COMPILE=$TOOLCHAIN/bin/arm-linux-androideabi- && \
     ./Configure --prefix=$PREFIX android && \
-    make && make install_sw
+    make install_sw
 
 WORKDIR /root/build
 RUN curl -L -O http://dist.schmorp.de/libev/Attic/libev-$LIBEV_VERSION.tar.gz && \
@@ -116,11 +116,10 @@ RUN autoreconf -i && \
     --disable-python-bindings \
     --disable-examples \
     --disable-threads \
-    LIBSPDYLAY_CFLAGS=-I$PREFIX/usr/local/include \
-    LIBSPDYLAY_LIBS="-L$PREFIX/usr/local/lib -lspdylay" \
-    CPPFLAGS="-fPIE -I$PREFIX/include" \
-    CXXFLAGS="-fno-strict-aliasing" \
-    PKG_CONFIG_LIBDIR="$PREFIX/lib/pkgconfig" \
-    LDFLAGS="-fPIE -pie -L$PREFIX/lib" && \
+      CC="$TOOLCHAIN"/bin/arm-linux-androideabi-clang \
+      CXX="$TOOLCHAIN"/bin/arm-linux-androideabi-clang++ \
+      CPPFLAGS="-fPIE -I$PREFIX/include" \
+      PKG_CONFIG_LIBDIR="$PREFIX/lib/pkgconfig" \
+      LDFLAGS="-fPIE -pie -L$PREFIX/lib" && \
     make && \
     arm-linux-androideabi-strip src/nghttpx src/nghttpd src/nghttp
