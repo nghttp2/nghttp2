@@ -49,7 +49,7 @@ RUN curl -L -O https://www.openssl.org/source/openssl-$OPENSSL_VERSION.tar.gz &&
 WORKDIR /root/build/openssl-$OPENSSL_VERSION
 RUN export CROSS_COMPILE=$TOOLCHAIN/bin/arm-linux-androideabi- && \
     ./Configure --prefix=$PREFIX android && \
-    make install_sw
+    make && make install_sw
 
 WORKDIR /root/build
 RUN curl -L -O http://dist.schmorp.de/libev/Attic/libev-$LIBEV_VERSION.tar.gz && \
