@@ -26,7 +26,7 @@ protocol selection will be done via ALPN or NPN.
 
 To turn off encryption on frontend connection, use ``no-tls`` keyword
 in :option:`--frontend` option.  In this case, SPDY protocol is not
-available even if spdylay library is liked to nghttpx.  HTTP/2 and
+available even if spdylay library is linked to nghttpx.  HTTP/2 and
 HTTP/1 are available on the frontend, and an HTTP/1 connection can be
 upgraded to HTTP/2 using HTTP Upgrade.  Starting HTTP/2 connection by
 sending HTTP/2 connection preface is also supported.
@@ -45,17 +45,17 @@ that default backend protocol is HTTP/1.1.  To use HTTP/2 in backend,
 you have to specify ``h2`` in ``proto`` keyword in :option:`--backend`
 explicitly.
 
-The backend is supposed to be Web server.  For example, to make
+The backend is supposed to be a Web server.  For example, to make
 nghttpx listen to encrypted HTTP/2 requests at port 8443, and a
-backend Web server is configured to listen to HTTP request at port
-8080 in the same host, run nghttpx command-line like this:
+backend Web server is configured to listen to HTTP requests at port
+8080 on the same host, run nghttpx command-line like this:
 
 .. code-block:: text
 
     $ nghttpx -f0.0.0.0,8443 -b127.0.0.1,8080 /path/to/server.key /path/to/server.crt
 
-Then HTTP/2 enabled client can access to the nghttpx in HTTP/2.  For
-example, you can send GET request to the server using nghttp:
+Then an HTTP/2 enabled client can access the nghttpx server using HTTP/2.  For
+example, you can send a GET request using nghttp:
 
 .. code-block:: text
 
@@ -66,19 +66,19 @@ HTTP/2 proxy mode
 
 If nghttpx is invoked with :option:`--http2-proxy` (or its shorthand
 :option:`-s`) option, it operates in HTTP/2 proxy mode.  The supported
-protocols in frontend and backend connections are the same in `default
-mode`_.  The difference is that this mode acts like forward proxy and
-assumes the backend is HTTP proxy server (e.g., Squid, Apache Traffic
-Server).  HTTP/1 request must include absolute URI in request line.
+protocols in frontend and backend connections are the same as in `default
+mode`_.  The difference is that this mode acts like a forward proxy and
+assumes the backend is an HTTP proxy server (e.g., Squid, Apache Traffic
+Server).  HTTP/1 requests must include an absolute URI in request line.
 
-By default, frontend connection is encrypted.  So this mode is also
+By default, the frontend connection is encrypted.  So this mode is also
 called secure proxy.  If nghttpx is linked with spdylay, it supports
 SPDY protocols and it works as so called SPDY proxy.
 
-To turn off encryption on frontend connection, use ``no-tls`` keyword
+To turn off encryption on the frontend connection, use ``no-tls`` keyword
 in :option:`--frontend` option.
 
-The backend must be HTTP proxy server.  nghttpx supports multiple
+The backend must be an HTTP proxy server.  nghttpx supports multiple
 backend server addresses.  It translates incoming requests to HTTP
 request to backend server.  The backend server performs real proxy
 work for each request, for example, dispatching requests to the origin
@@ -92,7 +92,7 @@ connection, use :option:`--backend` option, and specify ``h2`` in
 
 For example, to make nghttpx listen to encrypted HTTP/2 requests at
 port 8443, and a backend HTTP proxy server is configured to listen to
-HTTP/1 request at port 8080 in the same host, run nghttpx command-line
+HTTP/1 requests at port 8080 on the same host, run nghttpx command-line
 like this:
 
 .. code-block:: text
