@@ -34,7 +34,9 @@ OPTIONS
     Number of  requests across all  clients.  If it  is used
     with :option:`--timing-script-file` option,  this option specifies
     the number of requests  each client performs rather than
-    the number of requests across all clients.
+    the number of requests  across all clients.  This option
+    is ignored if timing-based  benchmarking is enabled (see
+    :option:`--duration` option).
 
     Default: ``1``
 
@@ -135,6 +137,17 @@ OPTIONS
     length of the period in time.  This option is ignored if
     the rate option is not used.  The default value for this
     option is 1s.
+
+.. option:: -D, --duration=<N>
+
+    Specifies the main duration for the measurements in case
+    of timing-based benchmarking.
+
+.. option:: --warm-up-time=<DURATION>
+
+    Specifies the  time  period  before  starting the actual
+    measurements, in  case  of  timing-based benchmarking.
+    Needs to provided along with :option:`-D` option.
 
 .. option:: -T, --connection-active-timeout=<DURATION>
 

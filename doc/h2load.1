@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "H2LOAD" "1" "Aug 18, 2017" "1.25.0" "nghttp2"
+.TH "H2LOAD" "1" "Sep 20, 2017" "1.26.0" "nghttp2"
 .SH NAME
 h2load \- HTTP/2 benchmarking tool
 .
@@ -54,7 +54,9 @@ scheme, host or port values.
 Number of  requests across all  clients.  If it  is used
 with \fI\%\-\-timing\-script\-file\fP option,  this option specifies
 the number of requests  each client performs rather than
-the number of requests across all clients.
+the number of requests  across all clients.  This option
+is ignored if timing\-based  benchmarking is enabled (see
+\fI\%\-\-duration\fP option).
 .sp
 Default: \fB1\fP
 .UNINDENT
@@ -167,6 +169,19 @@ The period  must be a positive  number, representing the
 length of the period in time.  This option is ignored if
 the rate option is not used.  The default value for this
 option is 1s.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-D, \-\-duration=<N>
+Specifies the main duration for the measurements in case
+of timing\-based benchmarking.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-warm\-up\-time=<DURATION>
+Specifies the  time  period  before  starting the actual
+measurements, in  case  of  timing\-based benchmarking.
+Needs to provided along with \fI\%\-D\fP option.
 .UNINDENT
 .INDENT 0.0
 .TP
