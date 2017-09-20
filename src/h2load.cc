@@ -1374,7 +1374,7 @@ void sample(Sampling &smp, Stats &stats, Stat *s) {
     stats.push_back(*s);
     return;
   }
-  auto d = std::uniform_int_distribution<>(0, smp.n - 1);
+  auto d = std::uniform_int_distribution<unsigned long>(0, smp.n - 1);
   auto i = d(gen);
   if (i < smp.max_samples) {
     stats[i] = *s;
