@@ -1546,7 +1546,7 @@ int cert_lookup_tree_add_ssl_ctx(
 #if !defined(LIBRESSL_VERSION_NUMBER) && OPENSSL_VERSION_NUMBER >= 0x10002000L
   auto cert = SSL_CTX_get0_certificate(ssl_ctx);
 #else  // defined(LIBRESSL_VERSION_NUMBER) || OPENSSL_VERSION_NUMBER <
-       // 0x10002000L
+  // 0x10002000L
   auto tls_ctx_data =
       static_cast<TLSContextData *>(SSL_CTX_get_app_data(ssl_ctx));
   auto cert = load_certificate(tls_ctx_data->cert_file);
