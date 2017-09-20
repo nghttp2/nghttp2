@@ -8,7 +8,7 @@ _h2load()
     _get_comp_words_by_ref cur prev
     case $cur in
         -*)
-            COMPREPLY=( $( compgen -W '--connection-window-bits --clients --verbose --ciphers --rate --no-tls-proto --header-table-size --requests --base-uri --h1 --threads --npn-list --rate-period --data --version --connection-inactivity-timeout --timing-script-file --encoder-header-table-size --max-concurrent-streams --connection-active-timeout --input-file --help --window-bits --header ' -- "$cur" ) )
+            COMPREPLY=( $( compgen -W '--connection-window-bits --clients --verbose --ciphers --rate --no-tls-proto --header-table-size --requests --base-uri --h1 --threads --npn-list --rate-period --data --version --connection-inactivity-timeout --timing-script-file --encoder-header-table-size --max-concurrent-streams --connection-active-timeout --input-file --help --window-bits --warm-up-time --duration --header ' -- "$cur" ) )
             ;;
         *)
             _filedir
