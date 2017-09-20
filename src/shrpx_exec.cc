@@ -84,7 +84,7 @@ int exec_read_command(Process &proc, char *const argv[]) {
 
     rv = shrpx_signal_unblock_all();
     if (rv != 0) {
-      constexpr char msg[] = "Unblocking all signals failed\n";
+      static constexpr char msg[] = "Unblocking all signals failed\n";
       while (write(STDERR_FILENO, msg, str_size(msg)) == -1 && errno == EINTR)
         ;
       nghttp2_Exit(EXIT_FAILURE);
@@ -95,7 +95,7 @@ int exec_read_command(Process &proc, char *const argv[]) {
 
     rv = execv(argv[0], argv);
     if (rv == -1) {
-      constexpr char msg[] = "Could not execute command\n";
+      static constexpr char msg[] = "Could not execute command\n";
       while (write(STDERR_FILENO, msg, str_size(msg)) == -1 && errno == EINTR)
         ;
       nghttp2_Exit(EXIT_FAILURE);
