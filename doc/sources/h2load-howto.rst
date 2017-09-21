@@ -64,6 +64,25 @@ The benchmarking result looks like this:
 See the h2load manual page :ref:`h2load-1-output` section for the
 explanation of the above numbers.
 
+Timing-based load-testing
+-------------------------
+
+As of v1.26.0, h2load supports timing-based load-testing.  This method
+performs load-testing in terms of a given duration instead of a
+pre-defined number of requests. The new option :option:`--duration`
+specifies how long the load-testing takes. For example,
+``--duration=10`` makes h2load perform load-testing against a server
+for 10 seconds. You can also specify a “warming-up” period with
+:option:`--warm-up-time`. If :option:`--duration` is used,
+:option:`-n` option is ignored.
+
+The following command performs load-testing for 10 seconds after 5
+seconds warming up period:
+
+.. code-block:: text
+
+    $ h2load -c100 -m100 --duration=10 --warm-up-time=5 https://localhost
+
 Flow Control
 ------------
 
