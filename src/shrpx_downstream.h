@@ -348,6 +348,9 @@ public:
   // True if the response is non-final (1xx status code).  Note that
   // if connection was upgraded, 101 status code is treated as final.
   bool get_non_final_response() const;
+  // True if protocol version used by client supports non final
+  // response.  Only HTTP/1.1 and HTTP/2 clients support it.
+  bool supports_non_final_response() const;
   void set_expect_final_response(bool f);
   bool get_expect_final_response() const;
 

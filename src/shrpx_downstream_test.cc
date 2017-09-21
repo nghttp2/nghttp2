@@ -164,4 +164,29 @@ void test_downstream_rewrite_location_response_header(void) {
   CU_ASSERT("https://localhost:8443/" == (*location).value);
 }
 
+void test_downstream_supports_non_final_response(void) {
+  Downstream d(nullptr, nullptr, 0);
+  auto &req = d.request();
+
+  req.http_major = 2;
+  req.http_minor = 0;
+
+  CU_ASSERT(d.supports_non_final_response());
+
+  req.http_major = 1;
+  req.http_minor = 1;
+
+  CU_ASSERT(d.supports_non_final_response());
+
+  req.http_major = 1;
+  req.http_minor = 0;
+
+  CU_ASSERT(!d.supports_non_final_response());
+
+  req.http_major = 0;
+  req.http_minor = 9;
+
+  CU_ASSERT(!d.supports_non_final_response());
+}
+
 } // namespace shrpx
