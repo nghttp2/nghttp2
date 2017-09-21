@@ -115,6 +115,8 @@ int main(int argc, char *argv[]) {
                    shrpx::test_downstream_assemble_request_cookie) ||
       !CU_add_test(pSuite, "downstream_rewrite_location_response_header",
                    shrpx::test_downstream_rewrite_location_response_header) ||
+      !CU_add_test(pSuite, "downstream_supports_non_final_response",
+                   shrpx::test_downstream_supports_non_final_response) ||
       !CU_add_test(pSuite, "config_parse_header",
                    shrpx::test_shrpx_config_parse_header) ||
       !CU_add_test(pSuite, "config_parse_log_format",

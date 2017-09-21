@@ -743,6 +743,10 @@ bool Downstream::get_non_final_response() const {
   return !upgraded_ && resp_.http_status / 100 == 1;
 }
 
+bool Downstream::supports_non_final_response() const {
+  return req_.http_major == 2 || (req_.http_major == 1 && req_.http_minor == 1);
+}
+
 bool Downstream::get_upgraded() const { return upgraded_; }
 
 bool Downstream::get_http2_upgrade_request() const {

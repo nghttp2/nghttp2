@@ -1022,6 +1022,11 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
   auto &resp = downstream->response();
   auto &balloc = downstream->get_block_allocator();
 
+  if (!downstream->supports_non_final_response()) {
+    resp.fs.clear_headers();
+    return 0;
+  }
+
 #ifdef HAVE_MRUBY
   if (!downstream->get_non_final_response()) {
     auto worker = handler_->get_worker();
