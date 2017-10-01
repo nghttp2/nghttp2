@@ -26,6 +26,7 @@
 
 #include <cassert>
 #include <cerrno>
+#include <iostream>
 
 #include "h2load.h"
 #include "util.h"
@@ -52,6 +53,15 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
   }
   client->on_header(frame->hd.stream_id, name, namelen, value, valuelen);
   client->worker->stats.bytes_head_decomp += namelen + valuelen;
+
+  if (client->worker->config->verbose) {
+    std::cout << "[stream_id=" << frame->hd.stream_id << "] ";
+    std::cout.write(reinterpret_cast<const char *>(name), namelen);
+    std::cout << ": ";
+    std::cout.write(reinterpret_cast<const char *>(value), valuelen);
+    std::cout << "\n";
+  }
+
   return 0;
 }
 } // namespace
