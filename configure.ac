@@ -410,7 +410,7 @@ if test "x${request_systemd}" = "xyes" &&
 fi
 
 # libxml2 (for src/nghttp)
-PKG_CHECK_MODULES([LIBXML2], [libxml-2.0 >= 2.7.7],
+PKG_CHECK_MODULES([LIBXML2], [libxml-2.0 >= 2.6.26],
                   [have_libxml2=yes], [have_libxml2=no])
 if test "x${have_libxml2}" = "xyes"; then
   AC_DEFINE([HAVE_LIBXML2], [1], [Define to 1 if you have `libxml2` library.])
