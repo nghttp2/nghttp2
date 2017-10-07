@@ -87,7 +87,7 @@ enabled.  SPDY support will be removed soon.
 To enable ``-a`` option (getting linked assets from the downloaded
 resource) in ``nghttp``, the following package is required:
 
-* libxml2 >= 2.7.7
+* libxml2 >= 2.6.26
 
 To enable systemd support in nghttpx, the following package is
 required:

@@ -79,7 +79,7 @@ else()
   set(ENABLE_PYTHON_BINDINGS_DEFAULT OFF)
 endif()
 
-find_package(LibXml2 2.7.7)
+find_package(LibXml2 2.6.26)
 set(WITH_LIBXML2_DEFAULT    ${LIBXML2_FOUND})
 find_package(Jemalloc)
 set(WITH_JEMALLOC_DEFAULT   ${JEMALLOC_FOUND})
