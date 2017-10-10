@@ -23,8 +23,8 @@ following compiler/linker flags:
 
 .. code-block:: text
 
-    CPPFLAGS="-fsanitize-coverage=edge -fsanitize=addres"
-    LDFLAGS="-fsanitize-coverage=edge -fsanitize=addres"
+    CPPFLAGS="-fsanitize-coverage=edge -fsanitize=address"
+    LDFLAGS="-fsanitize-coverage=edge -fsanitize=address"
 
 Then, fuzz_target.cc can be built using the following command:
 
