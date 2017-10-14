@@ -72,25 +72,23 @@ namespace util {
 
 #ifdef _WIN32
 // inet_pton-wrapper for Windows
-static int inet_pton(int af, const char *src, void *dst)
-{
+static int inet_pton(int af, const char *src, void *dst) {
 #if _WIN32_WINNT >= 0x0600
-   return InetPtonA(af, src, dst);
+  return InetPtonA(af, src, dst);
 #else
   // the function takes a 'char*', so we need to make a copy
   char addr[INET6_ADDRSTRLEN + 1];
   strncpy(addr, src, sizeof(addr));
-  addr[sizeof(addr)-1] = 0;
+  addr[sizeof(addr) - 1] = 0;
 
   int size = sizeof(struct in6_addr);
 
   if (WSAStringToAddress(addr, af, NULL, (LPSOCKADDR)dst, &size) == 0)
-     return 1;
+    return 1;
   return 0;
 #endif
 }
 #endif // _WIN32
-
 
 const char UPPER_XDIGITS[] = "0123456789ABCDEF";
 
@@ -383,8 +381,9 @@ char *iso8601_date(char *res, int64_t ms) {
 namespace bt = boost::posix_time;
 // one-time definition of the locale that is used to parse UTC strings
 // (note that the time_input_facet is ref-counted and deleted automatically)
-static const std::locale ptime_locale(std::locale::classic(),
-                                      new bt::time_input_facet("%a, %d %b %Y %H:%M:%S GMT"));
+static const std::locale
+    ptime_locale(std::locale::classic(),
+                 new bt::time_input_facet("%a, %d %b %Y %H:%M:%S GMT"));
 #endif //_WIN32
 
 time_t parse_http_date(const StringRef &s) {
@@ -395,7 +394,7 @@ time_t parse_http_date(const StringRef &s) {
   bt::ptime ltime;
   sstr >> ltime;
   if (!sstr)
-     return 0;
+    return 0;
 
   return boost::posix_time::to_time_t(ltime);
 #else
@@ -936,7 +935,7 @@ int create_nonblock_socket(int family) {
 bool check_socket_connected(int fd) {
   int error;
   socklen_t len = sizeof(error);
-  if (getsockopt(fd, SOL_SOCKET, SO_ERROR, (char*)&error, &len) != 0) {
+  if (getsockopt(fd, SOL_SOCKET, SO_ERROR, (char *)&error, &len) != 0) {
     return false;
   }
 
@@ -946,7 +945,7 @@ bool check_socket_connected(int fd) {
 int get_socket_error(int fd) {
   int error;
   socklen_t len = sizeof(error);
-  if (getsockopt(fd, SOL_SOCKET, SO_ERROR, (char*)&error, &len) != 0) {
+  if (getsockopt(fd, SOL_SOCKET, SO_ERROR, (char *)&error, &len) != 0) {
     return -1;
   }
 
