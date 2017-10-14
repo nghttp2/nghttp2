@@ -35,9 +35,9 @@
 #endif // HAVE_SYS_SOCKET_H
 #ifdef _WIN32
 #include <ws2tcpip.h>
-#else
+#else // !_WIN32
 #include <sys/un.h>
-#endif // _WIN32
+#endif // !_WIN32
 #ifdef HAVE_NETINET_IN_H
 #include <netinet/in.h>
 #endif // HAVE_NETINET_IN_H

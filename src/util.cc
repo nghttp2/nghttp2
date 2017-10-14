@@ -44,9 +44,9 @@
 #ifdef _WIN32
 #include <ws2tcpip.h>
 #include <boost/date_time/posix_time/posix_time.hpp>
-#else
+#else // !_WIN32
 #include <netinet/tcp.h>
-#endif // _WIN32
+#endif // !_WIN32
 #ifdef HAVE_ARPA_INET_H
 #include <arpa/inet.h>
 #endif // HAVE_ARPA_INET_H
@@ -397,14 +397,14 @@ time_t parse_http_date(const StringRef &s) {
     return 0;
 
   return boost::posix_time::to_time_t(ltime);
-#else
+#else  // !_WIN32
   tm tm{};
   char *r = strptime(s.c_str(), "%a, %d %b %Y %H:%M:%S GMT", &tm);
   if (r == 0) {
     return 0;
   }
   return nghttp2_timegm_without_yday(&tm);
-#endif // _WIN32
+#endif // !_WIN32
 }
 
 char upcase(char c) {
@@ -869,7 +869,7 @@ int make_socket_closeonexec(int fd) {
 #ifdef _WIN32
   (void)fd;
   return 0;
-#else
+#else  // !_WIN32
   int flags;
   int rv;
   while ((flags = fcntl(fd, F_GETFD)) == -1 && errno == EINTR)
@@ -877,7 +877,7 @@ int make_socket_closeonexec(int fd) {
   while ((rv = fcntl(fd, F_SETFD, flags | FD_CLOEXEC)) == -1 && errno == EINTR)
     ;
   return rv;
-#endif // _WIN32
+#endif // !_WIN32
 }
 
 int make_socket_nonblocking(int fd) {
@@ -887,13 +887,13 @@ int make_socket_nonblocking(int fd) {
   u_long mode = 1;
 
   rv = ioctlsocket(fd, FIONBIO, &mode);
-#else
+#else  // !_WIN32
   int flags;
   while ((flags = fcntl(fd, F_GETFL, 0)) == -1 && errno == EINTR)
     ;
   while ((rv = fcntl(fd, F_SETFL, flags | O_NONBLOCK)) == -1 && errno == EINTR)
     ;
-#endif // _WIN32
+#endif // !_WIN32
 
   return rv;
 }

@@ -34,9 +34,9 @@ struct iovec {
   void *iov_base; /* Pointer to data.  */
   size_t iov_len; /* Length of data.  */
 };
-#else
+#else // !_WIN32
 #include <sys/uio.h>
-#endif // _WIN32
+#endif // !_WIN32
 
 #include <cassert>
 #include <cstring>
