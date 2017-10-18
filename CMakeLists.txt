@@ -106,7 +106,7 @@ endif()
 foreach(_build_type "Release" "MinSizeRel" "RelWithDebInfo")
   foreach(_lang C CXX)
     string(TOUPPER "CMAKE_${_lang}_FLAGS_${_build_type}" _var)
-    string(REGEX REPLACE "(^| )[/-]D *NDEBUG($| )" "" ${_var} "${${_var}}")
+    string(REGEX REPLACE "(^| )[/-]D *NDEBUG($| )" " " ${_var} "${${_var}}")
   endforeach()
 endforeach()
 
