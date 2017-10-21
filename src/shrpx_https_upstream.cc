@@ -1022,7 +1022,8 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
   auto &resp = downstream->response();
   auto &balloc = downstream->get_block_allocator();
 
-  if (!downstream->supports_non_final_response()) {
+  if (downstream->get_non_final_response() &&
+      !downstream->supports_non_final_response()) {
     resp.fs.clear_headers();
     return 0;
   }
