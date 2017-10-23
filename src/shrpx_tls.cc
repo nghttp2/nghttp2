@@ -558,6 +558,8 @@ int alpn_select_proto_cb(SSL *ssl, const unsigned char **out,
 } // namespace
 #endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 
+#if !LIBRESSL_IN_USE && OPENSSL_VERSION_NUMBER >= 0x10002000L
+
 #ifndef TLSEXT_TYPE_signed_certificate_timestamp
 #define TLSEXT_TYPE_signed_certificate_timestamp 18
 #endif // !TLSEXT_TYPE_signed_certificate_timestamp
@@ -620,8 +622,7 @@ int sct_parse_cb(SSL *ssl, unsigned int ext_type, unsigned int context,
 }
 } // namespace
 
-#if !LIBRESSL_IN_USE && OPENSSL_VERSION_NUMBER >= 0x10002000L &&               \
-    !OPENSSL_1_1_1_API
+#if !OPENSSL_1_1_1_API
 
 namespace {
 int legacy_sct_add_cb(SSL *ssl, unsigned int ext_type,
@@ -646,8 +647,8 @@ int legacy_sct_parse_cb(SSL *ssl, unsigned int ext_type,
 }
 } // namespace
 
-#endif // !LIBRESSL_IN_USE && OPENSSL_VERSION_NUMBER >= 0x10002000L &&
-       // !OPENSSL_1_1_1_API
+#endif // !OPENSSL_1_1_1_API
+#endif // !LIBRESSL_IN_USE && OPENSSL_VERSION_NUMBER >= 0x10002000L
 
 #if !LIBRESSL_IN_USE
 namespace {
