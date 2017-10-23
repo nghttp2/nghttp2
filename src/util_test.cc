@@ -473,6 +473,7 @@ void test_util_localtime_date(void) {
 
   if (tz) {
     setenv("TZ", tz, 1);
+    free(tz);
   } else {
     unsetenv("TZ");
   }
