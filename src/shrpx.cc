@@ -1772,16 +1772,28 @@ Connections:
               The     session     affinity    is     enabled     using
               "affinity=<METHOD>"  parameter.   If  "ip" is  given  in
               <METHOD>, client  IP based session affinity  is enabled.
-              If  "none" is  given  in <METHOD>,  session affinity  is
-              disabled, and this is the default.  The session affinity
-              is enabled per  <PATTERN>.  If at least  one backend has
-              "affinity" parameter,  and its  <METHOD> is  not "none",
-              session  affinity is  enabled  for  all backend  servers
-              sharing  the  same  <PATTERN>.   It is  advised  to  set
-              "affinity"  parameter  to   all  backend  explicitly  if
-              session affinity  is desired.  The session  affinity may
-              break if one of the backend gets unreachable, or backend
-              settings are reloaded or replaced by API.
+              If "cookie"  is given in <METHOD>,  cookie based session
+              affinity is  enabled.  If  "none" is given  in <METHOD>,
+              session affinity  is disabled, and this  is the default.
+              The session  affinity is  enabled per <PATTERN>.   If at
+              least  one backend  has  "affinity"  parameter, and  its
+              <METHOD> is not "none",  session affinity is enabled for
+              all backend  servers sharing the same  <PATTERN>.  It is
+              advised  to  set  "affinity" parameter  to  all  backend
+              explicitly if session affinity  is desired.  The session
+              affinity  may   break  if   one  of  the   backend  gets
+              unreachable,  or   backend  settings  are   reloaded  or
+              replaced by API.
+
+              If   "affinity=cookie"    is   used,    the   additional
+              configuration                is                required.
+              "affinity-cookie-name=<NAME>" must be  used to specify a
+              name     of     cookie      to     use.      Optionally,
+              "affinity-cookie-path=<PATH>" can  be used to  specify a
+              path which cookie is applied.  The Secure attribute of a
+              cookie is determined by a  request scheme.  If a request
+              scheme  is  "https",  then Secure  attribute  is  added.
+              Otherwise, it is not added.
 
               By default, name resolution of backend host name is done
               at  start  up,  or reloading  configuration.   If  "dns"

@@ -96,8 +96,8 @@ bool in_token(char c);
 
 bool in_attr_char(char c);
 
-// Returns integer corresponding to hex notation |c|.  It is undefined
-// if is_hex_digit(c) is false.
+// Returns integer corresponding to hex notation |c|.  If
+// is_hex_digit(c) is false, it returns 256.
 uint32_t hex_to_uint(char c);
 
 std::string percent_encode(const unsigned char *target, size_t len);
@@ -151,6 +151,19 @@ template <size_t N> std::string format_hex(const std::array<uint8_t, N> &s) {
 }
 
 StringRef format_hex(BlockAllocator &balloc, const StringRef &s);
+
+static constexpr char LOWER_XDIGITS[] = "0123456789abcdef";
+
+template <typename OutputIt>
+OutputIt format_hex(OutputIt it, const StringRef &s) {
+  for (auto cc : s) {
+    uint8_t c = cc;
+    *it++ = LOWER_XDIGITS[c >> 4];
+    *it++ = LOWER_XDIGITS[c & 0xf];
+  }
+
+  return it;
+}
 
 // decode_hex decodes hex string |s|, returns the decoded byte string.
 // This function assumes |s| is hex string, that is is_hex_string(s)
