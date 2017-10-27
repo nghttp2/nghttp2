@@ -189,4 +189,38 @@ void test_downstream_supports_non_final_response(void) {
   CU_ASSERT(!d.supports_non_final_response());
 }
 
+void test_downstream_find_affinity_cookie(void) {
+  Downstream d(nullptr, nullptr, 0);
+
+  auto &req = d.request();
+  req.fs.add_header_token(StringRef::from_lit("cookie"), StringRef{}, false,
+                          http2::HD_COOKIE);
+  req.fs.add_header_token(StringRef::from_lit("cookie"),
+                          StringRef::from_lit("a=b;;c=d"), false,
+                          http2::HD_COOKIE);
+  req.fs.add_header_token(StringRef::from_lit("content-length"),
+                          StringRef::from_lit("599"), false,
+                          http2::HD_CONTENT_LENGTH);
+  req.fs.add_header_token(StringRef::from_lit("cookie"),
+                          StringRef::from_lit("lb=deadbeef;LB=f1f2f3f4"), false,
+                          http2::HD_COOKIE);
+  req.fs.add_header_token(StringRef::from_lit("cookie"),
+                          StringRef::from_lit("short=e1e2e3e"), false,
+                          http2::HD_COOKIE);
+
+  uint32_t aff;
+
+  aff = d.find_affinity_cookie(StringRef::from_lit("lb"));
+
+  CU_ASSERT(0xdeadbeef == aff);
+
+  aff = d.find_affinity_cookie(StringRef::from_lit("LB"));
+
+  CU_ASSERT(0xf1f2f3f4 == aff);
+
+  aff = d.find_affinity_cookie(StringRef::from_lit("short"));
+
+  CU_ASSERT(0 == aff);
+}
+
 } // namespace shrpx
