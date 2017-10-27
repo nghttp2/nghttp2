@@ -101,7 +101,7 @@ func newServerTesterInternal(src_args []string, t *testing.T, handler http.Handl
 
 	args := []string{}
 
-	var backendTLS, dns, externalDNS, acceptProxyProtocol, redirectIfNotTLS bool
+	var backendTLS, dns, externalDNS, acceptProxyProtocol, redirectIfNotTLS, affinityCookie, alpnH1 bool
 
 	for _, k := range src_args {
 		switch k {
@@ -116,6 +116,10 @@ func newServerTesterInternal(src_args []string, t *testing.T, handler http.Handl
 			acceptProxyProtocol = true
 		case "--redirect-if-not-tls":
 			redirectIfNotTLS = true
+		case "--affinity-cookie":
+			affinityCookie = true
+		case "--alpn-h1":
+			alpnH1 = true
 		default:
 			args = append(args, k)
 		}
@@ -168,6 +172,10 @@ func newServerTesterInternal(src_args []string, t *testing.T, handler http.Handl
 		b += ";redirect-if-not-tls"
 	}
 
+	if affinityCookie {
+		b += ";affinity=cookie;affinity-cookie-name=affinity;affinity-cookie-path=/foo/bar"
+	}
+
 	noTLS := ";no-tls"
 	if frontendTLS {
 		noTLS = ""
@@ -218,7 +226,11 @@ func newServerTesterInternal(src_args []string, t *testing.T, handler http.Handl
 				tlsConfig = clientConfig
 			}
 			tlsConfig.InsecureSkipVerify = true
-			tlsConfig.NextProtos = []string{"h2", "spdy/3.1"}
+			if alpnH1 {
+				tlsConfig.NextProtos = []string{"http/1.1"}
+			} else {
+				tlsConfig.NextProtos = []string{"h2", "spdy/3.1"}
+			}
 			conn, err = tls.Dial("tcp", authority, tlsConfig)
 		} else {
 			conn, err = net.Dial("tcp", authority)
