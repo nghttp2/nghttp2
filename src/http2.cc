@@ -1598,7 +1598,7 @@ template <typename InputIt> InputIt eat_file(InputIt first, InputIt last) {
   for (; p != first && *(p - 1) != '/'; --p)
     ;
   if (p == first) {
-    // this should not happend in normal case, where we expect path
+    // this should not happened in normal case, where we expect path
     // starts with '/'
     *first++ = '/';
     return first;

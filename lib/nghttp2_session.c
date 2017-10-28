@@ -2183,7 +2183,7 @@ static int session_prep_frame(nghttp2_session *session,
        closed. */
     stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
 
-    /* predicte should fail if stream is NULL. */
+    /* predicate should fail if stream is NULL. */
     rv = session_predicate_push_promise_send(session, stream);
     if (rv != 0) {
       return rv;
@@ -3781,7 +3781,7 @@ int nghttp2_session_on_request_headers_received(nghttp2_session *session,
         session, frame, NGHTTP2_ERR_PROTO, "request HEADERS: stream_id == 0");
   }
 
-  /* If client recieves idle stream from server, it is invalid
+  /* If client receives idle stream from server, it is invalid
      regardless stream ID is even or odd.  This is because client is
      not expected to receive request from server. */
   if (!session->server) {
@@ -5588,7 +5588,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
         if (iframe->payloadleft) {
           nghttp2_settings_entry *min_header_table_size_entry;
 
-          /* We allocate iv with addtional one entry, to store the
+          /* We allocate iv with additional one entry, to store the
              minimum header table size. */
           iframe->max_niv =
               iframe->frame.hd.length / NGHTTP2_FRAME_SETTINGS_ENTRY_LENGTH + 1;

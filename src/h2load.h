@@ -144,7 +144,7 @@ struct ClientStat {
   // time client end (i.e., client somehow processed all requests it
   // is responsible for, and disconnected)
   std::chrono::steady_clock::time_point client_end_time;
-  // The number of requests completed successfull, but not necessarily
+  // The number of requests completed successful, but not necessarily
   // means successful HTTP status code.
   size_t req_success;
 
@@ -185,7 +185,7 @@ struct Stats {
   size_t req_started;
   // The number of requests finished
   size_t req_done;
-  // The number of requests completed successfull, but not necessarily
+  // The number of requests completed successful, but not necessarily
   // means successful HTTP status code.
   size_t req_success;
   // The number of requests marked as success.  HTTP status code is

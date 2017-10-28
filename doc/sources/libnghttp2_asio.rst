@@ -290,7 +290,7 @@ Normally, client does not stop even after all requests are done unless
 connection is lost.  To stop client, call
 ``nghttp2::asio_http2::server::session::shutdown()``.
 
-Recieve server push and enable SSL/TLS
+Receive server push and enable SSL/TLS
 ++++++++++++++++++++++++++++++++++++++
 
 .. code-block:: cpp

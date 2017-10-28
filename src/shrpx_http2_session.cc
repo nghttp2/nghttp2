@@ -1145,7 +1145,7 @@ int on_response_headers(Http2Session *http2session, Downstream *downstream,
 
   if (downstream->get_upgraded()) {
     resp.connection_close = true;
-    // On upgrade sucess, both ends can send data
+    // On upgrade success, both ends can send data
     if (upstream->resume_read(SHRPX_NO_BUFFER, downstream, 0) != 0) {
       // If resume_read fails, just drop connection. Not ideal.
       delete handler;

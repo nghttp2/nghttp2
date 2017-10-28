@@ -313,7 +313,7 @@ void nghttp2_hd_deflate_free(nghttp2_hd_deflater *deflater);
  *
  * This function expands |bufs| as necessary to store the result. If
  * buffers is full and the process still requires more space, this
- * funtion fails and returns NGHTTP2_ERR_HEADER_COMP.
+ * function fails and returns NGHTTP2_ERR_HEADER_COMP.
  *
  * After this function returns, it is safe to delete the |nva|.
  *

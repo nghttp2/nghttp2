@@ -938,7 +938,7 @@ void test_nghttp2_session_recv_data(void) {
   stream = open_sent_stream2(session, 1, NGHTTP2_STREAM_CLOSING);
 
   /* Set initial window size 16383 to check stream flow control,
-     isolating it from the conneciton flow control */
+     isolating it from the connection flow control */
   stream->local_window_size = 16383;
 
   ud.data_chunk_recv_cb_called = 0;

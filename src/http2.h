@@ -268,7 +268,7 @@ void erase_header(HeaderRef *hd);
 //
 // This function returns the new rewritten URI on success. If the
 // location URI is not subject to the rewrite, this function returns
-// emtpy string.
+// empty string.
 StringRef rewrite_location_uri(BlockAllocator &balloc, const StringRef &uri,
                                const http_parser_url &u,
                                const StringRef &match_host,

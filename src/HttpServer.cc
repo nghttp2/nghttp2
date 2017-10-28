@@ -1779,7 +1779,7 @@ struct ClientInfo {
 struct Worker {
   std::unique_ptr<Sessions> sessions;
   ev_async w;
-  // protectes q
+  // protects q
   std::mutex m;
   std::deque<ClientInfo> q;
 };

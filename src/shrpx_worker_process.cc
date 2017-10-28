@@ -116,7 +116,7 @@ void graceful_shutdown(ConnectionHandler *conn_handler) {
 
   conn_handler->disable_acceptor();
 
-  // After disabling accepting new connection, disptach incoming
+  // After disabling accepting new connection, dispatch incoming
   // connection in backlog.
 
   conn_handler->accept_pending_connection();
