@@ -510,6 +510,24 @@ LogFragmentType log_var_lookup_token(const char *name, size_t namelen) {
       break;
     }
     break;
+  case 22:
+    switch (name[21]) {
+    case 't':
+      if (util::strieq_l("tls_client_fingerprin", name, 21)) {
+        return SHRPX_LOGF_TLS_CLIENT_FINGERPRINT;
+      }
+      break;
+    }
+    break;
+  case 23:
+    switch (name[22]) {
+    case 'e':
+      if (util::strieq_l("tls_client_subject_nam", name, 22)) {
+        return SHRPX_LOGF_TLS_CLIENT_SUBJECT_NAME;
+      }
+      break;
+    }
+    break;
   }
   return SHRPX_LOGF_NONE;
 }
