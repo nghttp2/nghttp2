@@ -533,6 +533,45 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
       }
       std::tie(p, last) = copy_escape(lgsp.sni, p, last);
       break;
+    case SHRPX_LOGF_TLS_CLIENT_FINGERPRINT: {
+      if (!lgsp.ssl) {
+        std::tie(p, last) = copy('-', p, last);
+        break;
+      }
+      auto x = SSL_get_peer_certificate(lgsp.ssl);
+      if (!x) {
+        std::tie(p, last) = copy('-', p, last);
+        break;
+      }
+      std::array<uint8_t, 32> buf;
+      auto len = tls::get_x509_fingerprint(buf.data(), buf.size(), x);
+      X509_free(x);
+      if (len <= 0) {
+        std::tie(p, last) = copy('-', p, last);
+        break;
+      }
+      std::tie(p, last) = copy_hex_low(buf.data(), len, p, last);
+      break;
+    }
+    case SHRPX_LOGF_TLS_CLIENT_SUBJECT_NAME: {
+      if (!lgsp.ssl) {
+        std::tie(p, last) = copy('-', p, last);
+        break;
+      }
+      auto x = SSL_get_peer_certificate(lgsp.ssl);
+      if (!x) {
+        std::tie(p, last) = copy('-', p, last);
+        break;
+      }
+      auto name = tls::get_x509_subject_name(balloc, x);
+      X509_free(x);
+      if (name.empty()) {
+        std::tie(p, last) = copy('-', p, last);
+        break;
+      }
+      std::tie(p, last) = copy(name, p, last);
+      break;
+    }
     case SHRPX_LOGF_BACKEND_HOST:
       if (!downstream_addr) {
         std::tie(p, last) = copy('-', p, last);
