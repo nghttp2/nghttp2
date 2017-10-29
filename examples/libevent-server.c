@@ -250,6 +250,7 @@ static http2_session_data *create_http2_session_data(app_context *app_ctx,
   session_data->bev = bufferevent_openssl_socket_new(
       app_ctx->evbase, fd, ssl, BUFFEREVENT_SSL_ACCEPTING,
       BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);
+  bufferevent_enable(session_data->bev, EV_READ | EV_WRITE);
   rv = getnameinfo(addr, (socklen_t)addrlen, host, sizeof(host), NULL, 0,
                    NI_NUMERICHOST);
   if (rv != 0) {
