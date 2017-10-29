@@ -1667,7 +1667,7 @@ Connections:
               "/", it  performs exact match against  the request path.
               If  host  is given,  it  performs  a match  against  the
               request host.   For a  request received on  the frontend
-              lister  with "sni-fwd"  parameter enabled,  SNI host  is
+              listener with  "sni-fwd" parameter enabled, SNI  host is
               used instead of a request host.  If host alone is given,
               "/" is  appended to it,  so that it matches  all request
               paths  under the  host  (e.g., specifying  "nghttp2.org"

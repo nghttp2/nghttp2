@@ -49,7 +49,7 @@ Error log
   <datetime> <master-pid> <current-pid> <thread-id> <level> (<filename>:<line>) <msg>
 
   <datetime>
-    It is a conbination of date and time when the log is written.  It
+    It is a combination of date and time when the log is written.  It
     is in ISO 8601 format.
 
   <master-pid>
@@ -200,7 +200,7 @@ By default, session ID is shared by all worker threads.
 
 If :option:`--tls-session-cache-memcached` is given, nghttpx will
 insert serialized session data to memcached with
-``nghttpx:tls-session-cache:`` + lowercased hex string of session ID
+``nghttpx:tls-session-cache:`` + lowercase hex string of session ID
 as a memcached entry key, with expiry time 12 hours.  Session timeout
 is set to 12 hours.
 
@@ -612,7 +612,7 @@ The replacement is done instantly without breaking existing
 connections or requests.  It also avoids any process creation as is
 the case with hot swapping with signals.
 
-The one limitation is that only numeric IP address is allowd in
+The one limitation is that only numeric IP address is allowed in
 :option:`backend <--backend>` in request body unless "dns" parameter
 is used while non numeric hostname is allowed in command-line or
 configuration file is read using :option:`--conf`.
