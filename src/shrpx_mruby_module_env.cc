@@ -34,6 +34,7 @@
 #include "shrpx_mruby.h"
 #include "shrpx_mruby_module.h"
 #include "shrpx_log.h"
+#include "shrpx_tls.h"
 
 namespace shrpx {
 
@@ -140,6 +141,61 @@ mrb_value env_get_tls_sni(mrb_state *mrb, mrb_value self) {
 }
 } // namespace
 
+namespace {
+mrb_value env_get_tls_client_fingerprint(mrb_state *mrb, mrb_value self) {
+  auto data = static_cast<MRubyAssocData *>(mrb->ud);
+  auto downstream = data->downstream;
+  auto upstream = downstream->get_upstream();
+  auto handler = upstream->get_client_handler();
+  auto ssl = handler->get_ssl();
+
+  if (!ssl) {
+    return mrb_str_new_static(mrb, "", 0);
+  }
+
+  auto x = SSL_get_peer_certificate(ssl);
+  if (!x) {
+    return mrb_str_new_static(mrb, "", 0);
+  }
+
+  // Fingerprint is SHA-256, so we need 32 bytes buffer.
+  std::array<uint8_t, 32> buf;
+  auto slen = tls::get_x509_fingerprint(buf.data(), buf.size(), x);
+  if (slen == -1) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "could not compute client fingerprint");
+  }
+
+  // TODO Use template version of format_hex
+  auto &balloc = downstream->get_block_allocator();
+  auto f = util::format_hex(balloc,
+                            StringRef{std::begin(buf), std::begin(buf) + slen});
+  return mrb_str_new(mrb, f.c_str(), f.size());
+}
+} // namespace
+
+namespace {
+mrb_value env_get_tls_client_subject_name(mrb_state *mrb, mrb_value self) {
+  auto data = static_cast<MRubyAssocData *>(mrb->ud);
+  auto downstream = data->downstream;
+  auto upstream = downstream->get_upstream();
+  auto handler = upstream->get_client_handler();
+  auto ssl = handler->get_ssl();
+
+  if (!ssl) {
+    return mrb_str_new_static(mrb, "", 0);
+  }
+
+  auto x = SSL_get_peer_certificate(ssl);
+  if (!x) {
+    return mrb_str_new_static(mrb, "", 0);
+  }
+
+  auto &balloc = downstream->get_block_allocator();
+  auto name = tls::get_x509_subject_name(balloc, x);
+  return mrb_str_new(mrb, name.c_str(), name.size());
+}
+} // namespace
+
 void init_env_class(mrb_state *mrb, RClass *module) {
   auto env_class =
       mrb_define_class_under(mrb, module, "Env", mrb->object_class);
@@ -159,6 +215,10 @@ void init_env_class(mrb_state *mrb, RClass *module) {
                     MRB_ARGS_NONE());
   mrb_define_method(mrb, env_class, "tls_sni", env_get_tls_sni,
                     MRB_ARGS_NONE());
+  mrb_define_method(mrb, env_class, "tls_client_fingerprint",
+                    env_get_tls_client_fingerprint, MRB_ARGS_NONE());
+  mrb_define_method(mrb, env_class, "tls_client_subject_name",
+                    env_get_tls_client_subject_name, MRB_ARGS_NONE());
 }
 
 } // namespace mruby

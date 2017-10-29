@@ -1920,6 +1920,37 @@ int verify_ocsp_response(SSL_CTX *ssl_ctx, const uint8_t *ocsp_resp,
   return 0;
 }
 
+ssize_t get_x509_fingerprint(uint8_t *dst, size_t dstlen, X509 *x) {
+  assert(dstlen >= 32);
+  unsigned int len = dstlen;
+  if (X509_digest(x, EVP_sha256(), dst, &len) != 1) {
+    return -1;
+  }
+  return len;
+}
+
+StringRef get_x509_subject_name(BlockAllocator &balloc, X509 *x) {
+  auto nm = X509_get_subject_name(x);
+
+  auto b = BIO_new(BIO_s_mem());
+  if (!b) {
+    return StringRef{};
+  }
+
+  // Not documented, but it seems that X509_NAME_print_ex returns the
+  // number of bytes written into b.
+  auto slen = X509_NAME_print_ex(b, nm, 0, XN_FLAG_RFC2253);
+  if (slen <= 0) {
+    return StringRef{};
+  }
+
+  auto iov = make_byte_ref(balloc, slen + 1);
+  BIO_read(b, iov.base, slen);
+  BIO_free(b);
+  iov.base[slen] = '\0';
+  return StringRef{iov.base, static_cast<size_t>(slen)};
+}
+
 } // namespace tls
 
 } // namespace shrpx

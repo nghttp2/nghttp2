@@ -269,6 +269,15 @@ int proto_version_from_string(const StringRef &v);
 int verify_ocsp_response(SSL_CTX *ssl_ctx, const uint8_t *ocsp_resp,
                          size_t ocsp_resplen);
 
+// Stores SHA-256 fingerprint of |x| in |dst| of length |dstlen|.
+// |dstlen| must be larger than 32 bytes.  This function returns the
+// number of bytes written in |dst|, or -1.
+ssize_t get_x509_fingerprint(uint8_t *dst, size_t dstlen, X509 *x);
+
+// Returns subject name of |x|.  If this function fails to get subject
+// name, it returns an empty string.
+StringRef get_x509_subject_name(BlockAllocator &balloc, X509 *x);
+
 } // namespace tls
 
 } // namespace shrpx
