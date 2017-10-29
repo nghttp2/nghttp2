@@ -282,6 +282,14 @@ MRUBY SCRIPTING
   The current mruby extension API is experimental and not frozen.  The
   API is subject to change in the future release.
 
+.. warning::
+
+  Almost all string value returned from method, or attribute is a
+  fresh new mruby string, which involves memory allocation, and
+  copies.  Therefore, it is strongly recommended to store a return
+  value in a local variable, and use it, instead of calling method or
+  accessing attribute repeatedly.
+
 nghttpx allows users to extend its capability using mruby scripts.
 nghttpx has 2 hook points to execute mruby script: request phase and
 response phase.  The request phase hook is invoked after all request
