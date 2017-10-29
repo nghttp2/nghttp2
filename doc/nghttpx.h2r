@@ -328,7 +328,7 @@ respectively.
     .. rb:attr_reader:: ctx
 
         Return Ruby hash object.  It persists until request finishes.
-        So values set in request phase hoo can be retrieved in
+        So values set in request phase hook can be retrieved in
         response phase hook.
 
     .. rb:attr_reader:: phase
