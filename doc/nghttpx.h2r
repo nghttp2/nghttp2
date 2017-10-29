@@ -376,6 +376,26 @@ respectively.
 
         Return the subject name of a client certificate.
 
+    .. rb:attr_reader:: tls_cipher
+
+        Return a TLS cipher negotiated in this connection.
+
+    .. rb:attr_reader:: tls_protocol
+
+        Return a TLS protocol version negotiated in this connection.
+
+    .. rb:attr_reader:: tls_session_id
+
+        Return a session ID for this connection in hex string.
+
+    .. rb:attr_reader:: tls_session_reused
+
+        Return true if, and only if a SSL/TLS session is reused.
+
+    .. rb:attr_reader:: alpn
+
+        Return ALPN identifier negotiated in this connection.
+
 .. rb:class:: Request
 
     Object to represent request from client.  The modification to
