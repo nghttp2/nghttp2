@@ -166,6 +166,9 @@ public:
   // Returns TLS SNI extension value client sent in this connection.
   StringRef get_tls_sni() const;
 
+  // Returns ALPN negotiated in this connection.
+  StringRef get_alpn() const;
+
   BlockAllocator &get_block_allocator();
 
 private:

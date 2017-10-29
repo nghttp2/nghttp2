@@ -198,6 +198,92 @@ mrb_value env_get_tls_client_subject_name(mrb_state *mrb, mrb_value self) {
 }
 } // namespace
 
+namespace {
+mrb_value env_get_tls_cipher(mrb_state *mrb, mrb_value self) {
+  auto data = static_cast<MRubyAssocData *>(mrb->ud);
+  auto downstream = data->downstream;
+  auto upstream = downstream->get_upstream();
+  auto handler = upstream->get_client_handler();
+  auto ssl = handler->get_ssl();
+
+  if (!ssl) {
+    return mrb_str_new_static(mrb, "", 0);
+  }
+
+  return mrb_str_new_cstr(mrb, SSL_get_cipher_name(ssl));
+}
+} // namespace
+
+namespace {
+mrb_value env_get_tls_protocol(mrb_state *mrb, mrb_value self) {
+  auto data = static_cast<MRubyAssocData *>(mrb->ud);
+  auto downstream = data->downstream;
+  auto upstream = downstream->get_upstream();
+  auto handler = upstream->get_client_handler();
+  auto ssl = handler->get_ssl();
+
+  if (!ssl) {
+    return mrb_str_new_static(mrb, "", 0);
+  }
+
+  return mrb_str_new_cstr(mrb, nghttp2::tls::get_tls_protocol(ssl));
+}
+} // namespace
+
+namespace {
+mrb_value env_get_tls_session_id(mrb_state *mrb, mrb_value self) {
+  auto data = static_cast<MRubyAssocData *>(mrb->ud);
+  auto downstream = data->downstream;
+  auto upstream = downstream->get_upstream();
+  auto handler = upstream->get_client_handler();
+  auto ssl = handler->get_ssl();
+
+  if (!ssl) {
+    return mrb_str_new_static(mrb, "", 0);
+  }
+
+  auto session = SSL_get_session(ssl);
+  if (!session) {
+    return mrb_str_new_static(mrb, "", 0);
+  }
+
+  unsigned int session_id_length = 0;
+  auto session_id = SSL_SESSION_get_id(session, &session_id_length);
+
+  // TODO Use template version of util::format_hex.
+  auto &balloc = downstream->get_block_allocator();
+  auto id = util::format_hex(balloc, StringRef{session_id, session_id_length});
+  return mrb_str_new(mrb, id.c_str(), id.size());
+}
+} // namespace
+
+namespace {
+mrb_value env_get_tls_session_reused(mrb_state *mrb, mrb_value self) {
+  auto data = static_cast<MRubyAssocData *>(mrb->ud);
+  auto downstream = data->downstream;
+  auto upstream = downstream->get_upstream();
+  auto handler = upstream->get_client_handler();
+  auto ssl = handler->get_ssl();
+
+  if (!ssl) {
+    return mrb_false_value();
+  }
+
+  return SSL_session_reused(ssl) ? mrb_true_value() : mrb_false_value();
+}
+} // namespace
+
+namespace {
+mrb_value env_get_alpn(mrb_state *mrb, mrb_value self) {
+  auto data = static_cast<MRubyAssocData *>(mrb->ud);
+  auto downstream = data->downstream;
+  auto upstream = downstream->get_upstream();
+  auto handler = upstream->get_client_handler();
+  auto alpn = handler->get_alpn();
+  return mrb_str_new(mrb, alpn.c_str(), alpn.size());
+}
+} // namespace
+
 void init_env_class(mrb_state *mrb, RClass *module) {
   auto env_class =
       mrb_define_class_under(mrb, module, "Env", mrb->object_class);
@@ -221,6 +307,15 @@ void init_env_class(mrb_state *mrb, RClass *module) {
                     env_get_tls_client_fingerprint, MRB_ARGS_NONE());
   mrb_define_method(mrb, env_class, "tls_client_subject_name",
                     env_get_tls_client_subject_name, MRB_ARGS_NONE());
+  mrb_define_method(mrb, env_class, "tls_cipher", env_get_tls_cipher,
+                    MRB_ARGS_NONE());
+  mrb_define_method(mrb, env_class, "tls_protocol", env_get_tls_protocol,
+                    MRB_ARGS_NONE());
+  mrb_define_method(mrb, env_class, "tls_session_id", env_get_tls_session_id,
+                    MRB_ARGS_NONE());
+  mrb_define_method(mrb, env_class, "tls_session_reused",
+                    env_get_tls_session_reused, MRB_ARGS_NONE());
+  mrb_define_method(mrb, env_class, "alpn", env_get_alpn, MRB_ARGS_NONE());
 }
 
 } // namespace mruby

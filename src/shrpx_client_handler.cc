@@ -1481,6 +1481,8 @@ void ClientHandler::set_tls_sni(const StringRef &sni) {
 
 StringRef ClientHandler::get_tls_sni() const { return sni_; }
 
+StringRef ClientHandler::get_alpn() const { return alpn_; }
+
 BlockAllocator &ClientHandler::get_block_allocator() { return balloc_; }
 
 } // namespace shrpx
