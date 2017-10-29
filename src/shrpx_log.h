@@ -154,7 +154,7 @@ struct LogSpec {
   StringRef remote_addr;
   StringRef alpn;
   StringRef sni;
-  const nghttp2::tls::TLSSessionInfo *tls_info;
+  SSL *ssl;
   std::chrono::high_resolution_clock::time_point request_end_time;
   StringRef remote_port;
   uint16_t server_port;

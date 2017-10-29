@@ -407,6 +407,8 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
                                     ? StringRef::from_lit("*")
                                     : StringRef::from_lit("-")
                               : req.path;
+  nghttp2::tls::TLSSessionInfo tls_info;
+  nghttp2::tls::get_tls_session_info(&tls_info, lgsp.ssl);
 
   auto p = std::begin(buf);
   auto last = std::end(buf) - 2;
@@ -489,34 +491,33 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
       std::tie(p, last) = copy_escape(lgsp.alpn, p, last);
       break;
     case SHRPX_LOGF_TLS_CIPHER:
-      if (!lgsp.tls_info) {
+      if (!lgsp.ssl) {
         std::tie(p, last) = copy('-', p, last);
         break;
       }
-      std::tie(p, last) = copy(lgsp.tls_info->cipher, p, last);
+      std::tie(p, last) = copy(tls_info.cipher, p, last);
       break;
     case SHRPX_LOGF_TLS_PROTOCOL:
-      if (!lgsp.tls_info) {
+      if (!lgsp.ssl) {
         std::tie(p, last) = copy('-', p, last);
         break;
       }
-      std::tie(p, last) = copy(lgsp.tls_info->protocol, p, last);
+      std::tie(p, last) = copy(tls_info.protocol, p, last);
       break;
     case SHRPX_LOGF_TLS_SESSION_ID:
-      if (!lgsp.tls_info || lgsp.tls_info->session_id_length == 0) {
+      if (!lgsp.ssl || tls_info.session_id_length == 0) {
         std::tie(p, last) = copy('-', p, last);
         break;
       }
-      std::tie(p, last) = copy_hex_low(
-          lgsp.tls_info->session_id, lgsp.tls_info->session_id_length, p, last);
+      std::tie(p, last) = copy_hex_low(tls_info.session_id,
+                                       tls_info.session_id_length, p, last);
       break;
     case SHRPX_LOGF_TLS_SESSION_REUSED:
-      if (!lgsp.tls_info) {
+      if (!lgsp.ssl) {
         std::tie(p, last) = copy('-', p, last);
         break;
       }
-      std::tie(p, last) =
-          copy(lgsp.tls_info->session_reused ? 'r' : '.', p, last);
+      std::tie(p, last) = copy(tls_info.session_reused ? 'r' : '.', p, last);
       break;
     case SHRPX_LOGF_TLS_SNI:
       if (lgsp.sni.empty()) {
