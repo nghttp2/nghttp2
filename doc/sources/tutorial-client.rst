@@ -124,6 +124,7 @@ remote server. It's defined as::
       bev = bufferevent_openssl_socket_new(
           evbase, -1, ssl, BUFFEREVENT_SSL_CONNECTING,
           BEV_OPT_DEFER_CALLBACKS | BEV_OPT_CLOSE_ON_FREE);
+      bufferevent_enable(bev, EV_READ | EV_WRITE);
       bufferevent_setcb(bev, readcb, writecb, eventcb, session_data);
       rv = bufferevent_socket_connect_hostname(bev, session_data->dnsbase,
                                                AF_UNSPEC, host, port);
