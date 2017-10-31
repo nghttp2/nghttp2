@@ -245,26 +245,45 @@ if(ENABLE_ASIO_LIB)
     asio_client_tls_context.cc
   )
 
+  set(NGHTTP2_ASIO_RES "")
+
+  if(WIN32)
+    configure_file(
+      nghttp2_asio.rc.in
+      ${CMAKE_CURRENT_BINARY_DIR}/nghttp2_asio.rc
+      @ONLY)
+
+    set(NGHTTP2_ASIO_RES ${CMAKE_CURRENT_BINARY_DIR}/nghttp2_asio.rc)
+  endif()
+
   add_library(nghttp2_asio SHARED
      ${NGHTTP2_ASIO_SOURCES}
+     ${NGHTTP2_ASIO_RES}
      $<TARGET_OBJECTS:http-parser>
   )
+
+  set_target_properties(nghttp2 PROPERTIES
+    COMPILE_FLAGS "${WARNCFLAGS}"
+    VERSION ${LT_VERSION} SOVERSION ${LT_SOVERSION}
+    CXX_VISIBILITY_PRESET hidden
+  )
+
   target_include_directories(nghttp2_asio PRIVATE
     ${OPENSSL_INCLUDE_DIRS}
     ${Boost_INCLUDE_DIRS}
   )
+
   target_include_directories(nghttp2_asio INTERFACE
     "${CMAKE_CURRENT_BINARY_DIR}/../lib/includes"
     "${CMAKE_CURRENT_SOURCE_DIR}/../lib/includes"
     "${CMAKE_CURRENT_SOURCE_DIR}/includes"
   )
+
   target_link_libraries(nghttp2_asio
     nghttp2
     ${OPENSSL_LIBRARIES}
     ${Boost_LIBRARIES}
   )
-  set_target_properties(nghttp2_asio PROPERTIES
-    VERSION 1.0.0 SOVERSION 1)
 
   install(TARGETS nghttp2_asio
     DESTINATION "${CMAKE_INSTALL_LIBDIR}")
