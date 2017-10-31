@@ -36,7 +36,7 @@ namespace server {
 class request_impl;
 class response_impl;
 
-class request {
+class NGHTTP2_EXTERN request {
 public:
   // Application must not call this directly.
   request();
@@ -66,7 +66,7 @@ private:
   std::unique_ptr<request_impl> impl_;
 };
 
-class response {
+class NGHTTP2_EXTERN response {
 public:
   // Application must not call this directly.
   response();
@@ -130,7 +130,7 @@ typedef std::function<void(const request &, const response &)> request_cb;
 
 class http2_impl;
 
-class http2 {
+class NGHTTP2_EXTERN http2 {
 public:
   http2();
   ~http2();

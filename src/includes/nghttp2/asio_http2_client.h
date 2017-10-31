@@ -35,7 +35,7 @@ namespace client {
 
 class response_impl;
 
-class response {
+class NGHTTP2_EXTERN response {
 public:
   // Application must not call this directly.
   response();
@@ -71,7 +71,7 @@ using connect_cb =
 
 class request_impl;
 
-class request {
+class NGHTTP2_EXTERN request {
 public:
   // Application must not call this directly.
   request();
@@ -119,7 +119,7 @@ private:
 };
 
 // Wrapper around an nghttp2_priority_spec.
-class priority_spec {
+class NGHTTP2_EXTERN priority_spec {
 public:
   // The default ctor is used only by sentinel values.
   priority_spec() = default;
@@ -142,7 +142,7 @@ private:
 
 class session_impl;
 
-class session {
+class NGHTTP2_EXTERN session {
 public:
   // Starts HTTP/2 session by connecting to |host| and |service|
   // (e.g., "80") using clear text TCP connection with connect timeout
@@ -229,6 +229,7 @@ private:
 // configure |tls_ctx| for client use.  Currently, we just set NPN
 // callback for HTTP/2.
 boost::system::error_code
+NGHTTP2_EXTERN
 configure_tls_context(boost::system::error_code &ec,
                       boost::asio::ssl::context &tls_ctx);
 

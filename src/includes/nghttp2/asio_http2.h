@@ -55,7 +55,7 @@ struct header_value {
 // header fields.  The header field name must be lower-cased.
 using header_map = std::multimap<std::string, header_value>;
 
-const boost::system::error_category &nghttp2_category() noexcept;
+const boost::system::error_category& NGHTTP2_EXTERN nghttp2_category() noexcept;
 
 struct uri_ref {
   std::string scheme;
@@ -95,29 +95,29 @@ typedef std::function<ssize_t(uint8_t *buf, std::size_t len,
 
 // Convenient function to create function to read file denoted by
 // |path|.  This can be passed to response::end().
-generator_cb file_generator(const std::string &path);
+generator_cb NGHTTP2_EXTERN file_generator(const std::string &path);
 
 // Like file_generator(const std::string&), but it takes opened file
 // descriptor.  The passed descriptor will be closed when returned
 // function object is destroyed.
-generator_cb file_generator_from_fd(int fd);
+generator_cb NGHTTP2_EXTERN file_generator_from_fd(int fd);
 
 // Validates path so that it does not contain directory traversal
 // vector.  Returns true if path is safe.  The |path| must start with
 // "/" otherwise returns false.  This function should be called after
 // percent-decode was performed.
-bool check_path(const std::string &path);
+bool NGHTTP2_EXTERN check_path(const std::string &path);
 
 // Performs percent-decode against string |s|.
-std::string percent_decode(const std::string &s);
+std::string NGHTTP2_EXTERN percent_decode(const std::string &s);
 
 // Returns HTTP date representation of current posix time |t|.
-std::string http_date(int64_t t);
+std::string NGHTTP2_EXTERN http_date(int64_t t);
 
 // Parses |uri| and extract scheme, host and service.  The service is
 // port component of URI (e.g., "8443") if available, otherwise it is
 // scheme (e.g., "https").
-boost::system::error_code host_service_from_uri(boost::system::error_code &ec,
+boost::system::error_code NGHTTP2_EXTERN host_service_from_uri(boost::system::error_code &ec,
                                                 std::string &scheme,
                                                 std::string &host,
                                                 std::string &service,
