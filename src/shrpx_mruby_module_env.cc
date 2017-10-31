@@ -160,7 +160,8 @@ mrb_value env_get_tls_client_fingerprint(mrb_state *mrb, mrb_value self) {
 
   // Fingerprint is SHA-256, so we need 32 bytes buffer.
   std::array<uint8_t, 32> buf;
-  auto slen = tls::get_x509_fingerprint(buf.data(), buf.size(), x);
+  auto slen =
+      tls::get_x509_fingerprint(buf.data(), buf.size(), x, EVP_sha256());
   X509_free(x);
   if (slen == -1) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "could not compute client fingerprint");
