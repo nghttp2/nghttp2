@@ -2482,8 +2482,10 @@ Logging:
                 the response.   For HTTP/1,  ALPN is  always http/1.1,
                 regardless of minor version.
               * $tls_cipher: cipher used for SSL/TLS connection.
-              * $tls_client_fingerprint: SHA-256 fingerprint of client
-                certificate.
+              * $tls_client_fingerprint_sha256: SHA-256 fingerprint of
+                client certificate.
+              * $tls_client_fingerprint_sha1:  SHA-1   fingerprint  of
+                client certificate.
               * $tls_client_subject_name:   subject  name   in  client
                 certificate.
               * $tls_protocol: protocol for SSL/TLS connection.
