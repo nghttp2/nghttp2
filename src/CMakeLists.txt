@@ -1,5 +1,9 @@
 add_subdirectory(includes)
 
+if(MSVC)
+    add_definitions(-DNOMINMAX)
+endif()
+
 file(GLOB c_sources *.c)
 set_source_files_properties(${c_sources} PROPERTIES
   COMPILE_FLAGS "${WARNCFLAGS}")
