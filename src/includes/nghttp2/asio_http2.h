@@ -55,7 +55,7 @@ struct header_value {
 // header fields.  The header field name must be lower-cased.
 using header_map = std::multimap<std::string, header_value>;
 
-const boost::system::error_category& NGHTTP2_EXTERN nghttp2_category() noexcept;
+const boost::system::error_category NGHTTP2_EXTERN &nghttp2_category() noexcept;
 
 struct uri_ref {
   std::string scheme;

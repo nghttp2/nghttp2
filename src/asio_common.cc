@@ -27,6 +27,10 @@
 #include <fcntl.h>
 #include <memory>
 
+#ifdef _WIN32
+#include  <io.h>
+#endif
+
 #include "util.h"
 #include "template.h"
 #include "http2.h"
@@ -103,7 +107,11 @@ std::shared_ptr<Defer<F, T...>> defer_shared(F &&f, T &&... t) {
 }
 
 generator_cb file_generator(const std::string &path) {
+#ifdef _WIN32
+  auto fd = _open(path.c_str(), _O_RDONLY);
+#else
   auto fd = open(path.c_str(), O_RDONLY);
+#endif // WIN32  
   if (fd == -1) {
     return generator_cb();
   }
