@@ -533,7 +533,8 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
       }
       std::tie(p, last) = copy_escape(lgsp.sni, p, last);
       break;
-    case SHRPX_LOGF_TLS_CLIENT_FINGERPRINT: {
+    case SHRPX_LOGF_TLS_CLIENT_FINGERPRINT_SHA1:
+    case SHRPX_LOGF_TLS_CLIENT_FINGERPRINT_SHA256: {
       if (!lgsp.ssl) {
         std::tie(p, last) = copy('-', p, last);
         break;
@@ -544,7 +545,10 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
         break;
       }
       std::array<uint8_t, 32> buf;
-      auto len = tls::get_x509_fingerprint(buf.data(), buf.size(), x);
+      auto len = tls::get_x509_fingerprint(
+          buf.data(), buf.size(), x,
+          lf.type == SHRPX_LOGF_TLS_CLIENT_FINGERPRINT_SHA256 ? EVP_sha256()
+                                                              : EVP_sha1());
       X509_free(x);
       if (len <= 0) {
         std::tie(p, last) = copy('-', p, last);

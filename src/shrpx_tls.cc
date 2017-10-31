@@ -1920,10 +1920,10 @@ int verify_ocsp_response(SSL_CTX *ssl_ctx, const uint8_t *ocsp_resp,
   return 0;
 }
 
-ssize_t get_x509_fingerprint(uint8_t *dst, size_t dstlen, X509 *x) {
-  assert(dstlen >= 32);
+ssize_t get_x509_fingerprint(uint8_t *dst, size_t dstlen, const X509 *x,
+                             const EVP_MD *md) {
   unsigned int len = dstlen;
-  if (X509_digest(x, EVP_sha256(), dst, &len) != 1) {
+  if (X509_digest(x, md, dst, &len) != 1) {
     return -1;
   }
   return len;

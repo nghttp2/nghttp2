@@ -368,9 +368,13 @@ respectively.
 
         Return the TLS SNI value which client sent in this connection.
 
-    .. rb:attr_reader:: tls_client_fingerprint
+    .. rb:attr_reader:: tls_client_fingerprint_sha256
 
         Return the SHA-256 fingerprint of a client certificate.
+
+    .. rb:attr_reader:: tls_client_fingerprint_sha1
+
+        Return the SHA-1 fingerprint of a client certificate.
 
     .. rb:attr_reader:: tls_client_subject_name
 
