@@ -189,7 +189,7 @@ uint32_t hex_to_uint(char c) {
   if (c <= 'z') {
     return c - 'a' + 10;
   }
-  return c;
+  return 256;
 }
 
 StringRef quote_string(BlockAllocator &balloc, const StringRef &target) {
@@ -414,10 +414,6 @@ char upcase(char c) {
     return c;
   }
 }
-
-namespace {
-constexpr char LOWER_XDIGITS[] = "0123456789abcdef";
-} // namespace
 
 std::string format_hex(const unsigned char *s, size_t len) {
   std::string res;

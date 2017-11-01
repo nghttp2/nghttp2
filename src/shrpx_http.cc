@@ -164,6 +164,41 @@ ssize_t select_padding_callback(nghttp2_session *session,
   return std::min(max_payload, frame->hd.length + get_config()->padding);
 }
 
+StringRef create_affinity_cookie(BlockAllocator &balloc, const StringRef &name,
+                                 uint32_t affinity_cookie,
+                                 const StringRef &path, bool secure) {
+  static constexpr auto PATH_PREFIX = StringRef::from_lit("; Path=");
+  static constexpr auto SECURE = StringRef::from_lit("; Secure");
+  // <name>=<value>[; Path=<path>][; Secure]
+  size_t len = name.size() + 1 + 8;
+
+  if (!path.empty()) {
+    len += PATH_PREFIX.size() + path.size();
+  }
+  if (secure) {
+    len += SECURE.size();
+  }
+
+  auto iov = make_byte_ref(balloc, len + 1);
+  auto p = iov.base;
+  p = std::copy(std::begin(name), std::end(name), p);
+  *p++ = '=';
+  affinity_cookie = htonl(affinity_cookie);
+  p = util::format_hex(p,
+                       StringRef{reinterpret_cast<uint8_t *>(&affinity_cookie),
+                                 reinterpret_cast<uint8_t *>(&affinity_cookie) +
+                                     sizeof(affinity_cookie)});
+  if (!path.empty()) {
+    p = std::copy(std::begin(PATH_PREFIX), std::end(PATH_PREFIX), p);
+    p = std::copy(std::begin(path), std::end(path), p);
+  }
+  if (secure) {
+    p = std::copy(std::begin(SECURE), std::end(SECURE), p);
+  }
+  *p = '\0';
+  return StringRef{iov.base, p};
+}
+
 } // namespace http
 
 } // namespace shrpx

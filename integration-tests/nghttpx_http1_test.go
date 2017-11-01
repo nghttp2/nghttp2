@@ -9,6 +9,7 @@ import (
 	"golang.org/x/net/websocket"
 	"io"
 	"net/http"
+	"regexp"
 	"syscall"
 	"testing"
 	"time"
@@ -124,6 +125,54 @@ Content-Length: 0
 // 		t.Errorf("status: %v; want %v", got, want)
 // 	}
 // }
+
+// TestH1H1AffinityCookie tests that affinity cookie is sent back in
+// cleartext http.
+func TestH1H1AffinityCookie(t *testing.T) {
+	st := newServerTester([]string{"--affinity-cookie"}, t, noopHandler)
+	defer st.Close()
+
+	res, err := st.http1(requestParam{
+		name: "TestH1H1AffinityCookie",
+	})
+	if err != nil {
+		t.Fatalf("Error st.http1() = %v", err)
+	}
+
+	if got, want := res.status, 200; got != want {
+		t.Errorf("status = %v; want %v", got, want)
+	}
+
+	const pattern = `affinity=[0-9a-f]{8}; Path=/foo/bar`
+	validCookie := regexp.MustCompile(pattern)
+	if got := res.header.Get("Set-Cookie"); !validCookie.MatchString(got) {
+		t.Errorf("Set-Cookie: %v; want pattern %v", got, pattern)
+	}
+}
+
+// TestH1H1AffinityCookieTLS tests that affinity cookie is sent back
+// in https.
+func TestH1H1AffinityCookieTLS(t *testing.T) {
+	st := newServerTesterTLS([]string{"--alpn-h1", "--affinity-cookie"}, t, noopHandler)
+	defer st.Close()
+
+	res, err := st.http1(requestParam{
+		name: "TestH1H1AffinityCookieTLS",
+	})
+	if err != nil {
+		t.Fatalf("Error st.http1() = %v", err)
+	}
+
+	if got, want := res.status, 200; got != want {
+		t.Errorf("status = %v; want %v", got, want)
+	}
+
+	const pattern = `affinity=[0-9a-f]{8}; Path=/foo/bar; Secure`
+	validCookie := regexp.MustCompile(pattern)
+	if got := res.header.Get("Set-Cookie"); !validCookie.MatchString(got) {
+		t.Errorf("Set-Cookie: %v; want pattern %v", got, pattern)
+	}
+}
 
 // TestH1H1GracefulShutdown tests graceful shutdown.
 func TestH1H1GracefulShutdown(t *testing.T) {

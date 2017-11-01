@@ -699,7 +699,7 @@ void ClientHandler::pool_downstream_connection(
 
   auto &shared_addr = group->shared_addr;
 
-  if (shared_addr->affinity == AFFINITY_NONE) {
+  if (shared_addr->affinity.type == AFFINITY_NONE) {
     auto &dconn_pool = group->shared_addr->dconn_pool;
     dconn_pool.add_downstream_connection(std::move(dconn));
 
@@ -947,6 +947,24 @@ uint32_t next_cycle(const WeightedPri &pri) {
 }
 } // namespace
 
+uint32_t ClientHandler::get_affinity_cookie(Downstream *downstream,
+                                            const StringRef &cookie_name) {
+  auto h = downstream->find_affinity_cookie(cookie_name);
+  if (h) {
+    return h;
+  }
+
+  auto d = std::uniform_int_distribution<uint32_t>(
+      1, std::numeric_limits<uint32_t>::max());
+  auto rh = d(worker_->get_randgen());
+  h = util::hash32(StringRef{reinterpret_cast<uint8_t *>(&rh),
+                             reinterpret_cast<uint8_t *>(&rh) + sizeof(rh)});
+
+  downstream->renew_affinity_cookie(h);
+
+  return h;
+}
+
 std::unique_ptr<DownstreamConnection>
 ClientHandler::get_downstream_connection(int &err, Downstream *downstream) {
   size_t group_idx;
@@ -1012,16 +1030,27 @@ ClientHandler::get_downstream_connection(int &err, Downstream *downstream) {
   auto &group = groups[group_idx];
   auto &shared_addr = group->shared_addr;
 
-  if (shared_addr->affinity == AFFINITY_IP) {
-    if (!affinity_hash_computed_) {
-      affinity_hash_ = compute_affinity_from_ip(ipaddr_);
-      affinity_hash_computed_ = true;
+  if (shared_addr->affinity.type != AFFINITY_NONE) {
+    uint32_t hash;
+    switch (shared_addr->affinity.type) {
+    case AFFINITY_IP:
+      if (!affinity_hash_computed_) {
+        affinity_hash_ = compute_affinity_from_ip(ipaddr_);
+        affinity_hash_computed_ = true;
+      }
+      hash = affinity_hash_;
+      break;
+    case AFFINITY_COOKIE:
+      hash = get_affinity_cookie(downstream, shared_addr->affinity.cookie.name);
+      break;
+    default:
+      assert(0);
     }
 
     const auto &affinity_hash = shared_addr->affinity_hash;
 
     auto it = std::lower_bound(
-        std::begin(affinity_hash), std::end(affinity_hash), affinity_hash_,
+        std::begin(affinity_hash), std::end(affinity_hash), hash,
         [](const AffinityHash &lhs, uint32_t rhs) { return lhs.hash < rhs; });
 
     if (it == std::end(affinity_hash)) {

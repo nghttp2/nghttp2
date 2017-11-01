@@ -1147,6 +1147,23 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
     }
   }
 
+  if (req.method != HTTP_CONNECT || !downstream->get_upgraded()) {
+    auto affinity_cookie = downstream->get_affinity_cookie_to_send();
+    if (affinity_cookie) {
+      auto dconn = downstream->get_downstream_connection();
+      assert(dconn);
+      auto &group = dconn->get_downstream_addr_group();
+      auto &shared_addr = group->shared_addr;
+      auto &cookieconf = shared_addr->affinity.cookie;
+      auto cookie_str =
+          http::create_affinity_cookie(balloc, cookieconf.name, affinity_cookie,
+                                       cookieconf.path, req.scheme == "https");
+      buf->append("Set-Cookie: ");
+      buf->append(cookie_str);
+      buf->append("\r\n");
+    }
+  }
+
   auto via = resp.fs.header(http2::HD_VIA);
   if (httpconf.no_via) {
     if (via) {

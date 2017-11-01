@@ -66,6 +66,13 @@ ssize_t select_padding_callback(nghttp2_session *session,
                                 const nghttp2_frame *frame, size_t max_payload,
                                 void *user_data);
 
+// Creates set-cookie-string for cookie based affinity.  If |path| is
+// not empty, "; <path>" is added.  If |secure| is true, "; Secure" is
+// added.
+StringRef create_affinity_cookie(BlockAllocator &balloc, const StringRef &name,
+                                 uint32_t affinity_cookie,
+                                 const StringRef &path, bool secure);
+
 } // namespace http
 
 } // namespace shrpx
