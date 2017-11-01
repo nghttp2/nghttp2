@@ -308,8 +308,7 @@ StringRef Downstream::assemble_request_cookie() {
 size_t Downstream::count_crumble_request_cookie() {
   size_t n = 0;
   for (auto &kv : req_.fs.headers()) {
-    if (kv.name.size() != 6 || kv.name[5] != 'e' ||
-        !util::streq_l("cooki", kv.name.c_str(), 5)) {
+    if (kv.token != http2::HD_COOKIE) {
       continue;
     }
 
@@ -329,8 +328,7 @@ size_t Downstream::count_crumble_request_cookie() {
 
 void Downstream::crumble_request_cookie(std::vector<nghttp2_nv> &nva) {
   for (auto &kv : req_.fs.headers()) {
-    if (kv.name.size() != 6 || kv.name[5] != 'e' ||
-        !util::streq_l("cooki", kv.name.c_str(), 5)) {
+    if (kv.token != http2::HD_COOKIE) {
       continue;
     }
 
