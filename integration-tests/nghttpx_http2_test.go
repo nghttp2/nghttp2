@@ -1204,10 +1204,10 @@ func TestH2H1ProxyProtocolV1TCP6(t *testing.T) {
 func TestH2H1ProxyProtocolV1Unknown(t *testing.T) {
 	st := newServerTester([]string{"--accept-proxy-protocol", "--add-x-forwarded-for", "--add-forwarded=for", "--forwarded-for=ip"}, t, func(w http.ResponseWriter, r *http.Request) {
 		if got, notWant := r.Header.Get("X-Forwarded-For"), "192.168.0.2"; got == notWant {
-			t.Errorf("X-Forwarded-For: %v")
+			t.Errorf("X-Forwarded-For: %v; want something else", got)
 		}
 		if got, notWant := r.Header.Get("Forwarded"), "for=192.168.0.2"; got == notWant {
-			t.Errorf("Forwarded: %v")
+			t.Errorf("Forwarded: %v; want something else", got)
 		}
 	})
 	defer st.Close()
