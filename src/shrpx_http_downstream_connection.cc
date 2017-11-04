@@ -92,7 +92,8 @@ void connect_timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
   int rv;
   auto ndconn = handler->get_downstream_connection(rv, downstream);
   if (ndconn) {
-    if (downstream->attach_downstream_connection(std::move(ndconn)) == 0) {
+    if (downstream->attach_downstream_connection(std::move(ndconn)) == 0 &&
+        downstream->push_request_headers() == 0) {
       return;
     }
   }
@@ -142,7 +143,8 @@ void backend_retry(Downstream *downstream) {
   int rv;
   auto ndconn = handler->get_downstream_connection(rv, downstream);
   if (ndconn) {
-    if (downstream->attach_downstream_connection(std::move(ndconn)) == 0) {
+    if (downstream->attach_downstream_connection(std::move(ndconn)) == 0 &&
+        downstream->push_request_headers() == 0) {
       return;
     }
   }
@@ -483,6 +485,7 @@ int HttpDownstreamConnection::initiate_connection() {
 
 int HttpDownstreamConnection::push_request_headers() {
   if (downstream_->get_request_header_sent()) {
+    signal_write();
     return 0;
   }
 
