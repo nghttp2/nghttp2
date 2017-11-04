@@ -405,6 +405,28 @@ like so:
 
    frontend=*,443;proxyproto
 
+Session affinity
+----------------
+
+Two kinds of session affinity are available: client IP, and HTTP
+Cookie.
+
+To enable client IP based affinity, specify ``affinity=ip`` parameter
+in :option:`--backend` option.  If PROXY protocol is enabled, then an
+address obtained from PROXY protocol is taken into consideration.
+
+To enable HTTP Cookie based affinity, specify ``affinity=cookie``
+parameter, and specify a name of cookie in ``affinity-cookie-name``
+parameter.  Optionally, a Path attribute can be specified in
+``affinity-cookie-path`` parameter:
+
+.. code-block:: text
+
+   backend=127.0.0.1,3000;;affinity=cookie;affinity-cookie-name=nghttpxlb;affinity-cookie-path=/
+
+Secure attribute of cookie is set if client connection is protected by
+TLS.
+
 PSK cipher suites
 -----------------
 
