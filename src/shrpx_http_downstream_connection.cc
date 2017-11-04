@@ -72,62 +72,8 @@ void timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
 } // namespace
 
 namespace {
-void connect_timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
-  auto conn = static_cast<Connection *>(w->data);
-  auto dconn = static_cast<HttpDownstreamConnection *>(conn->data);
-  auto addr = dconn->get_addr();
-  auto raddr = dconn->get_raddr();
-
-  DCLOG(WARN, dconn) << "Connect time out; addr="
-                     << util::to_numeric_addr(raddr);
-
-  downstream_failure(addr, raddr);
-
-  auto downstream = dconn->get_downstream();
-  auto upstream = downstream->get_upstream();
-  auto handler = upstream->get_client_handler();
-
-  downstream->pop_downstream_connection();
-
-  int rv;
-  auto ndconn = handler->get_downstream_connection(rv, downstream);
-  if (ndconn) {
-    if (downstream->attach_downstream_connection(std::move(ndconn)) == 0 &&
-        downstream->push_request_headers() == 0) {
-      return;
-    }
-  }
-
-  downstream->set_request_state(Downstream::CONNECT_FAIL);
-
-  if (rv == SHRPX_ERR_TLS_REQUIRED) {
-    rv = upstream->on_downstream_abort_request_with_https_redirect(downstream);
-  } else {
-    rv = upstream->on_downstream_abort_request(downstream, 504);
-  }
-
-  if (rv != 0) {
-    delete handler;
-  }
-}
-} // namespace
-
-namespace {
-void readcb(struct ev_loop *loop, ev_io *w, int revents) {
-  auto conn = static_cast<Connection *>(w->data);
-  auto dconn = static_cast<HttpDownstreamConnection *>(conn->data);
-  auto downstream = dconn->get_downstream();
-  auto upstream = downstream->get_upstream();
-  auto handler = upstream->get_client_handler();
-
-  if (upstream->downstream_read(dconn) != 0) {
-    delete handler;
-  }
-}
-} // namespace
-
-namespace {
-void backend_retry(Downstream *downstream) {
+void retry_downstream_connection(Downstream *downstream,
+                                 unsigned int status_code) {
   auto upstream = downstream->get_upstream();
   auto handler = upstream->get_client_handler();
 
@@ -154,12 +100,50 @@ void backend_retry(Downstream *downstream) {
   if (rv == SHRPX_ERR_TLS_REQUIRED) {
     rv = upstream->on_downstream_abort_request_with_https_redirect(downstream);
   } else {
-    rv = upstream->on_downstream_abort_request(downstream, 502);
+    rv = upstream->on_downstream_abort_request(downstream, status_code);
   }
 
   if (rv != 0) {
     delete handler;
   }
+}
+} // namespace
+
+namespace {
+void connect_timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
+  auto conn = static_cast<Connection *>(w->data);
+  auto dconn = static_cast<HttpDownstreamConnection *>(conn->data);
+  auto addr = dconn->get_addr();
+  auto raddr = dconn->get_raddr();
+
+  DCLOG(WARN, dconn) << "Connect time out; addr="
+                     << util::to_numeric_addr(raddr);
+
+  downstream_failure(addr, raddr);
+
+  auto downstream = dconn->get_downstream();
+
+  retry_downstream_connection(downstream, 504);
+}
+} // namespace
+
+namespace {
+void readcb(struct ev_loop *loop, ev_io *w, int revents) {
+  auto conn = static_cast<Connection *>(w->data);
+  auto dconn = static_cast<HttpDownstreamConnection *>(conn->data);
+  auto downstream = dconn->get_downstream();
+  auto upstream = downstream->get_upstream();
+  auto handler = upstream->get_client_handler();
+
+  if (upstream->downstream_read(dconn) != 0) {
+    delete handler;
+  }
+}
+} // namespace
+
+namespace {
+void backend_retry(Downstream *downstream) {
+  retry_downstream_connection(downstream, 502);
 }
 } // namespace
 
