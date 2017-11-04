@@ -389,7 +389,7 @@ parameter in :option:`--backend` option, like so:
 
 .. code-block:: text
 
-   backend=foo.example.com;;dns
+   backend=foo.example.com,80;;dns
 
 nghttpx will cache resolved addresses for certain period of time.  To
 change this cache period, use :option:`--dns-cache-timeout`.
