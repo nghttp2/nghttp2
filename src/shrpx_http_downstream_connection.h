@@ -44,7 +44,7 @@ struct DNSQuery;
 class HttpDownstreamConnection : public DownstreamConnection {
 public:
   HttpDownstreamConnection(const std::shared_ptr<DownstreamAddrGroup> &group,
-                           ssize_t initial_addr_idx, struct ev_loop *loop,
+                           size_t initial_addr_idx, struct ev_loop *loop,
                            Worker *worker);
   virtual ~HttpDownstreamConnection();
   virtual int attach_downstream(Downstream *downstream);
@@ -109,9 +109,8 @@ private:
   IOControl ioctrl_;
   http_parser response_htp_;
   // Index to backend address.  If client affinity is enabled, it is
-  // the index to affinity_hash.  Otherwise, it is the index to the
-  // backend addresses.
-  ssize_t initial_addr_idx_;
+  // the index to affinity_hash.  Otherwise, it is 0, and not used.
+  size_t initial_addr_idx_;
   // true if first write of reused connection succeeded.  For
   // convenience, this is initialized as true.
   bool reuse_first_write_done_;

@@ -182,7 +182,7 @@ void connectcb(struct ev_loop *loop, ev_io *w, int revents) {
 } // namespace
 
 HttpDownstreamConnection::HttpDownstreamConnection(
-    const std::shared_ptr<DownstreamAddrGroup> &group, ssize_t initial_addr_idx,
+    const std::shared_ptr<DownstreamAddrGroup> &group, size_t initial_addr_idx,
     struct ev_loop *loop, Worker *worker)
     : conn_(loop, -1, nullptr, worker->get_mcpool(),
             worker->get_downstream_config()->timeout.write,

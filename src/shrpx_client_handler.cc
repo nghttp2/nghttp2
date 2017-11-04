@@ -1171,7 +1171,7 @@ ClientHandler::get_downstream_connection(int &err, Downstream *downstream) {
     }
 
     dconn =
-        make_unique<HttpDownstreamConnection>(group, -1, conn_.loop, worker_);
+        make_unique<HttpDownstreamConnection>(group, 0, conn_.loop, worker_);
   }
 
   dconn->set_client_handler(this);
