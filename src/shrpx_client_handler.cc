@@ -1057,7 +1057,8 @@ ClientHandler::get_downstream_connection(int &err, Downstream *downstream) {
       it = std::begin(affinity_hash);
     }
 
-    auto aff_idx = std::distance(std::begin(affinity_hash), it);
+    auto aff_idx =
+        static_cast<size_t>(std::distance(std::begin(affinity_hash), it));
     auto idx = (*it).idx;
     auto addr = &shared_addr->addrs[idx];
 
