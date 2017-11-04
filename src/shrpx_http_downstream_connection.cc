@@ -270,10 +270,16 @@ int HttpDownstreamConnection::initiate_connection() {
         assert(addr->dns);
       } else {
         assert(addr_ == nullptr);
-        addr = &addrs[next_downstream];
-
-        if (++next_downstream >= addrs.size()) {
-          next_downstream = 0;
+        if (shared_addr->affinity.type == AFFINITY_NONE) {
+          addr = &addrs[next_downstream];
+          if (++next_downstream >= addrs.size()) {
+            next_downstream = 0;
+          }
+        } else {
+          addr = &addrs[shared_addr->affinity_hash[next_downstream].idx];
+          if (++next_downstream >= shared_addr->affinity_hash.size()) {
+            next_downstream = 0;
+          }
         }
 
         if (addr->proto != PROTO_HTTP1) {

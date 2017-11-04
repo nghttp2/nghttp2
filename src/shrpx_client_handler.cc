@@ -1057,11 +1057,31 @@ ClientHandler::get_downstream_connection(int &err, Downstream *downstream) {
       it = std::begin(affinity_hash);
     }
 
+    auto aff_idx = std::distance(std::begin(affinity_hash), it);
     auto idx = (*it).idx;
+    auto addr = &shared_addr->addrs[idx];
 
-    auto &addr = shared_addr->addrs[idx];
-    if (addr.proto == PROTO_HTTP2) {
-      auto http2session = select_http2_session_with_affinity(group, &addr);
+    if (addr->connect_blocker->blocked()) {
+      size_t i;
+      for (i = aff_idx + 1; i != aff_idx; ++i) {
+        if (i == shared_addr->affinity_hash.size()) {
+          i = 0;
+        }
+        addr = &shared_addr->addrs[shared_addr->affinity_hash[i].idx];
+        if (addr->connect_blocker->blocked()) {
+          continue;
+        }
+        break;
+      }
+      if (i == aff_idx) {
+        err = -1;
+        return nullptr;
+      }
+      aff_idx = i;
+    }
+
+    if (addr->proto == PROTO_HTTP2) {
+      auto http2session = select_http2_session_with_affinity(group, addr);
 
       auto dconn = make_unique<Http2DownstreamConnection>(http2session);
 
@@ -1070,11 +1090,11 @@ ClientHandler::get_downstream_connection(int &err, Downstream *downstream) {
       return std::move(dconn);
     }
 
-    auto &dconn_pool = addr.dconn_pool;
+    auto &dconn_pool = addr->dconn_pool;
     auto dconn = dconn_pool->pop_downstream_connection();
 
     if (!dconn) {
-      dconn = make_unique<HttpDownstreamConnection>(group, idx, conn_.loop,
+      dconn = make_unique<HttpDownstreamConnection>(group, aff_idx, conn_.loop,
                                                     worker_);
     }
 

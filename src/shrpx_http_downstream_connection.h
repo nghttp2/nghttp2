@@ -108,6 +108,9 @@ private:
   std::unique_ptr<DNSQuery> dns_query_;
   IOControl ioctrl_;
   http_parser response_htp_;
+  // Index to backend address.  If client affinity is enabled, it is
+  // the index to affinity_hash.  Otherwise, it is the index to the
+  // backend addresses.
   ssize_t initial_addr_idx_;
   // true if first write of reused connection succeeded.  For
   // convenience, this is initialized as true.
