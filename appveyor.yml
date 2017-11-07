@@ -44,7 +44,7 @@ install:
   - cmd: mkdir C:\zlib\install
   - cmd: cd C:\zlib\build
   - cmd: cmake -G "%CMAKE_GENERATOR%" -D CMAKE_INSTALL_PREFIX=C:\zlib\install C:\zlib\zlib-1.2.11
-  - cmd: cmake --build . --config %CONFIGURATION%
+  - cmd: cmake --build . --config %CONFIGURATION% --target INSTALL
   - cmd: dir C:\zlib\install
 
 #---------------------------------#
