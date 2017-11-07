@@ -46,8 +46,6 @@ install:
   - cmd: cmake -G "%CMAKE_GENERATOR%" -D CMAKE_INSTALL_PREFIX=C:\zlib\install C:\zlib\zlib-1.2.11
   - cmd: cmake --build . --config %CONFIGURATION%
   - cmd: dir C:\zlib\install
-  # install Win-Flex-Bison
-  #- cmd: cinst winflexbison -y
 
 #---------------------------------#
 #       build configuration       #
