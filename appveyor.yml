@@ -24,9 +24,9 @@ skip_tags: true
 #    environment configuration    #
 #---------------------------------#
 
-environment:
-  configuration: Debug
+configuration: Debug
 
+environment:
   matrix:
    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
      platform: x64
