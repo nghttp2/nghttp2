@@ -35,6 +35,15 @@ environment:
 
 # scripts that run after cloning repository
 install:
+  # install zlib
+  - cmd: mkdir c:\zlib
+  - appveyor DownloadFile "https://github.com/madler/zlib/archive/v1.2.9.zip" -FileName zlib.zip
+  - 7z x zlib.zip -oC:\zlib
+  - cmd: mkdir C:\zlib_build
+  - cmd: cd C:\zlib_build
+  - cmd: cmake -G "%CMAKE_GENERATOR%" C:\zlib\
+  - cmd: cmake --build --config %CONFIGURATION% .
+  - cmd: dir
   # install Win-Flex-Bison
   #- cmd: cinst winflexbison -y
 
@@ -44,12 +53,12 @@ install:
 
 # scripts to run before build
 before_build:
-  - echo %CMAKE_GENERATOR%
-  - echo %APPVEYOR_BUILD_FOLDER%
-  - echo %CONFIGURATION%
-  - mkdir C:\build
-  - cd C:\build
-  - cmake -G "%CMAKE_GENERATOR%" %APPVEYOR_BUILD_FOLDER%
+  - cmd: echo %CMAKE_GENERATOR%
+  - cmd: echo %APPVEYOR_BUILD_FOLDER%
+  - cmd: echo %CONFIGURATION%
+  - cmd: mkdir C:\build
+  - cmd: cd C:\build
+  - cmd: cmake -G "%CMAKE_GENERATOR%" %APPVEYOR_BUILD_FOLDER%
 
 # scripts to run *after* solution is built and *before* automatic packaging occurs (web apps, NuGet packages, Azure Cloud Services)
 # before_package:
