@@ -37,11 +37,11 @@ environment:
 install:
   # install zlib
   - cmd: mkdir c:\zlib
-  - appveyor DownloadFile "https://github.com/madler/zlib/archive/v1.2.9.zip" -FileName zlib.zip
+  - appveyor DownloadFile "https://github.com/madler/zlib/archive/v1.2.11.zip" -FileName zlib.zip
   - 7z x zlib.zip -oC:\zlib
-  - cmd: mkdir C:\zlib_build
-  - cmd: cd C:\zlib_build
-  - cmd: cmake -G "%CMAKE_GENERATOR%" C:\zlib\
+  - cmd: mkdir C:\zlib\build
+  - cmd: cd C:\zlib\build
+  - cmd: cmake -G "%CMAKE_GENERATOR%" C:\zlib\zlib-1.2.11
   - cmd: cmake --build --config %CONFIGURATION% .
   - cmd: dir
   # install Win-Flex-Bison
