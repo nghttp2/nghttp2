@@ -30,7 +30,7 @@ environment:
   matrix:
    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
      platform: x64
-     CMAKE_GENERATOR: Visual Studio 14 2015 Win64
+     CMAKE_GENERATOR: "Visual Studio 14 2015 Win64"
    
 
 # scripts that run after cloning repository
@@ -49,7 +49,7 @@ before_build:
   - echo %CONFIGURATION%
   - mkdir C:\build
   - cd C:\build
-  - cmake -G \"%CMAKE_GENERATOR%\" %APPVEYOR_BUILD_FOLDER%
+  - cmake -G %CMAKE_GENERATOR% %APPVEYOR_BUILD_FOLDER%
 
 # scripts to run *after* solution is built and *before* automatic packaging occurs (web apps, NuGet packages, Azure Cloud Services)
 # before_package:
