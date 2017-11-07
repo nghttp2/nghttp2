@@ -44,6 +44,7 @@ install:
 
 # scripts to run before build
 before_build:
+  - echo %CMAKE_GENERATOR%
   - mkdir C:\build
   - cd C:\build
   - cmake -G %CMAKE_GENERATOR% %APPVEYOR_BUILD_FOLDER%
