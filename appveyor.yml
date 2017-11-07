@@ -8,9 +8,6 @@
 #      general configuration      #
 #---------------------------------#
 
-# version format
-#version: 0.10.{build}
-
 # branches to build
 branches:
   # blacklist
@@ -35,6 +32,10 @@ environment:
 
 # scripts that run after cloning repository
 install:
+  - cmd: echo %CMAKE_GENERATOR%
+  - cmd: echo %APPVEYOR_BUILD_FOLDER%
+  - cmd: echo %CONFIGURATION%
+
   # install zlib
   - cmd: mkdir c:\zlib
   - appveyor DownloadFile "https://github.com/madler/zlib/archive/v1.2.11.zip" -FileName zlib.zip
@@ -42,7 +43,7 @@ install:
   - cmd: mkdir C:\zlib\build
   - cmd: cd C:\zlib\build
   - cmd: cmake -G "%CMAKE_GENERATOR%" C:\zlib\zlib-1.2.11
-  - cmd: cmake --build --config %CONFIGURATION% .
+  - cmd: cmake --build . --config %CONFIGURATION%
   - cmd: dir
   # install Win-Flex-Bison
   #- cmd: cinst winflexbison -y
@@ -53,9 +54,6 @@ install:
 
 # scripts to run before build
 before_build:
-  - cmd: echo %CMAKE_GENERATOR%
-  - cmd: echo %APPVEYOR_BUILD_FOLDER%
-  - cmd: echo %CONFIGURATION%
   - cmd: mkdir C:\build
   - cmd: cd C:\build
   - cmd: cmake -G "%CMAKE_GENERATOR%" %APPVEYOR_BUILD_FOLDER%
