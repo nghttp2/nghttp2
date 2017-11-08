@@ -28,6 +28,7 @@ environment:
    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
      platform: x64
      CMAKE_GENERATOR: Visual Studio 14 2015 Win64
+     BOOST_ROOT: C:\Libraries\boost_1_63_0
    
 
 # scripts that run after cloning repository
@@ -50,7 +51,7 @@ install:
   - cmd: dir C:\zlib\install
   
   # set boost
-  - cmd: dir C:\Libraries\
+  - cmd: dir %BOOST_ROOT%
 
 #---------------------------------#
 #       build configuration       #
@@ -60,7 +61,7 @@ install:
 before_build:
   - cmd: mkdir C:\build
   - cmd: cd C:\build
-  - cmd: cmake -G "%CMAKE_GENERATOR%" -D ZLIB_ROOT=C:\zlib\install -D ENABLE_ASIO_LIB=ON %APPVEYOR_BUILD_FOLDER%
+  - cmd: cmake -G "%CMAKE_GENERATOR%" -D ZLIB_ROOT=C:\zlib\install -D BOOST_ROOT=%BOOST_ROOT% -D ENABLE_ASIO_LIB=ON %APPVEYOR_BUILD_FOLDER%
 
 # scripts to run *after* solution is built and *before* automatic packaging occurs (web apps, NuGet packages, Azure Cloud Services)
 # before_package:
