@@ -35,6 +35,7 @@ install:
   - cmd: echo %CMAKE_GENERATOR%
   - cmd: echo %APPVEYOR_BUILD_FOLDER%
   - cmd: echo %CONFIGURATION%
+  - cmd: echo %PATH%
 
   # install zlib
   - cmd: mkdir c:\zlib
@@ -47,6 +48,9 @@ install:
   - cmd: cmake --build . --config %CONFIGURATION% --target INSTALL
   - cmd: set PATH=%PATH%;C:\zlib\install\bin
   - cmd: dir C:\zlib\install
+  
+  # set boost
+  - cmd: dir C:\Libraries\
 
 #---------------------------------#
 #       build configuration       #
