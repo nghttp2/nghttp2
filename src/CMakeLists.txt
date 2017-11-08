@@ -284,6 +284,10 @@ if(ENABLE_ASIO_LIB)
     ${OPENSSL_LIBRARIES}
     ${Boost_LIBRARIES}
   )
+  
+  if(WIN32)
+    target_compile_definitions(nghttp2_asio PRIVATE -DBOOST_ALL_NO_LIB)
+  endif()
 
   install(TARGETS nghttp2_asio
     DESTINATION "${CMAKE_INSTALL_LIBDIR}")
