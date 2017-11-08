@@ -21,7 +21,10 @@ skip_tags: true
 #    environment configuration    #
 #---------------------------------#
 
-configuration: Debug
+#configuration: Debug
+configuration:
+  - Debug
+  - Release
 
 environment:
   matrix:
@@ -49,9 +52,6 @@ install:
   - cmd: cmake --build . --config %CONFIGURATION% --target INSTALL
   - cmd: set PATH=%PATH%;C:\zlib\install\bin
   
-  # set boost
-  - cmd: dir %BOOST_ROOT%\lib64-msvc-14.0
-
 #---------------------------------#
 #       build configuration       #
 #---------------------------------#
@@ -60,7 +60,7 @@ install:
 before_build:
   - cmd: mkdir C:\build
   - cmd: cd C:\build
-  - cmd: cmake -G "%CMAKE_GENERATOR%" -D ZLIB_ROOT=C:\zlib\install -D BOOST_ROOT=%BOOST_ROOT% -D Boost_USE_STATIC_LIBS=ON -D ENABLE_ASIO_LIB=ON -D ENABLE_APP=ON %APPVEYOR_BUILD_FOLDER%
+  - cmd: cmake -G "%CMAKE_GENERATOR%" -D ZLIB_ROOT=C:\zlib\install -D BOOST_ROOT=%BOOST_ROOT% -D Boost_USE_STATIC_LIBS=ON -D ENABLE_ASIO_LIB=ON %APPVEYOR_BUILD_FOLDER%
 
 # scripts to run *after* solution is built and *before* automatic packaging occurs (web apps, NuGet packages, Azure Cloud Services)
 # before_package:
