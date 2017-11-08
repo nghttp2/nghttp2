@@ -48,10 +48,9 @@ install:
   - cmd: cmake -G "%CMAKE_GENERATOR%" -D CMAKE_INSTALL_PREFIX=C:\zlib\install C:\zlib\zlib-1.2.11
   - cmd: cmake --build . --config %CONFIGURATION% --target INSTALL
   - cmd: set PATH=%PATH%;C:\zlib\install\bin
-  - cmd: dir C:\zlib\install
   
   # set boost
-  - cmd: dir %BOOST_ROOT%
+  - cmd: dir %BOOST_ROOT%\lib64-msvc-14.0
 
 #---------------------------------#
 #       build configuration       #
