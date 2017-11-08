@@ -21,10 +21,9 @@ skip_tags: true
 #    environment configuration    #
 #---------------------------------#
 
-configuration: Debug
-#configuration:
-#  - Debug
-#  - Release
+configuration:
+  - Debug
+  - Release
 
 environment:
   matrix:
