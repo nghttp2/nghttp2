@@ -1204,10 +1204,10 @@ func TestH2H1ProxyProtocolV1TCP6(t *testing.T) {
 func TestH2H1ProxyProtocolV1Unknown(t *testing.T) {
 	st := newServerTester([]string{"--accept-proxy-protocol", "--add-x-forwarded-for", "--add-forwarded=for", "--forwarded-for=ip"}, t, func(w http.ResponseWriter, r *http.Request) {
 		if got, notWant := r.Header.Get("X-Forwarded-For"), "192.168.0.2"; got == notWant {
-			t.Errorf("X-Forwarded-For: %v")
+			t.Errorf("X-Forwarded-For: %v; want something else", got)
 		}
 		if got, notWant := r.Header.Get("Forwarded"), "for=192.168.0.2"; got == notWant {
-			t.Errorf("Forwarded: %v")
+			t.Errorf("Forwarded: %v; want something else", got)
 		}
 	})
 	defer st.Close()
@@ -1702,6 +1702,55 @@ func TestH2H1Code204TE(t *testing.T) {
 
 	if got, want := res.status, 502; got != want {
 		t.Errorf("status = %v; want %v", got, want)
+	}
+}
+
+// TestH2H1AffinityCookie tests that affinity cookie is sent back in
+// cleartext http.
+func TestH2H1AffinityCookie(t *testing.T) {
+	st := newServerTester([]string{"--affinity-cookie"}, t, noopHandler)
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name: "TestH2H1AffinityCookie",
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+
+	if got, want := res.status, 200; got != want {
+		t.Errorf("status = %v; want %v", got, want)
+	}
+
+	const pattern = `affinity=[0-9a-f]{8}; Path=/foo/bar`
+	validCookie := regexp.MustCompile(pattern)
+	if got := res.header.Get("Set-Cookie"); !validCookie.MatchString(got) {
+		t.Errorf("Set-Cookie: %v; want pattern %v", got, pattern)
+	}
+}
+
+// TestH2H1AffinityCookieTLS tests that affinity cookie is sent back
+// in https.
+func TestH2H1AffinityCookieTLS(t *testing.T) {
+	st := newServerTesterTLS([]string{"--affinity-cookie"}, t, noopHandler)
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name:   "TestH2H1AffinityCookieTLS",
+		scheme: "https",
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+
+	if got, want := res.status, 200; got != want {
+		t.Errorf("status = %v; want %v", got, want)
+	}
+
+	const pattern = `affinity=[0-9a-f]{8}; Path=/foo/bar; Secure`
+	validCookie := regexp.MustCompile(pattern)
+	if got := res.header.Get("Set-Cookie"); !validCookie.MatchString(got) {
+		t.Errorf("Set-Cookie: %v; want pattern %v", got, pattern)
 	}
 }
 

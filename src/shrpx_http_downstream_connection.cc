@@ -72,6 +72,44 @@ void timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
 } // namespace
 
 namespace {
+void retry_downstream_connection(Downstream *downstream,
+                                 unsigned int status_code) {
+  auto upstream = downstream->get_upstream();
+  auto handler = upstream->get_client_handler();
+
+  downstream->add_retry();
+
+  if (downstream->no_more_retry()) {
+    delete handler;
+    return;
+  }
+
+  downstream->pop_downstream_connection();
+
+  int rv;
+  auto ndconn = handler->get_downstream_connection(rv, downstream);
+  if (ndconn) {
+    if (downstream->attach_downstream_connection(std::move(ndconn)) == 0 &&
+        downstream->push_request_headers() == 0) {
+      return;
+    }
+  }
+
+  downstream->set_request_state(Downstream::CONNECT_FAIL);
+
+  if (rv == SHRPX_ERR_TLS_REQUIRED) {
+    rv = upstream->on_downstream_abort_request_with_https_redirect(downstream);
+  } else {
+    rv = upstream->on_downstream_abort_request(downstream, status_code);
+  }
+
+  if (rv != 0) {
+    delete handler;
+  }
+}
+} // namespace
+
+namespace {
 void connect_timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
   auto conn = static_cast<Connection *>(w->data);
   auto dconn = static_cast<HttpDownstreamConnection *>(conn->data);
@@ -84,30 +122,8 @@ void connect_timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
   downstream_failure(addr, raddr);
 
   auto downstream = dconn->get_downstream();
-  auto upstream = downstream->get_upstream();
-  auto handler = upstream->get_client_handler();
 
-  downstream->pop_downstream_connection();
-
-  int rv;
-  auto ndconn = handler->get_downstream_connection(rv, downstream);
-  if (ndconn) {
-    if (downstream->attach_downstream_connection(std::move(ndconn)) == 0) {
-      return;
-    }
-  }
-
-  downstream->set_request_state(Downstream::CONNECT_FAIL);
-
-  if (rv == SHRPX_ERR_TLS_REQUIRED) {
-    rv = upstream->on_downstream_abort_request_with_https_redirect(downstream);
-  } else {
-    rv = upstream->on_downstream_abort_request(downstream, 504);
-  }
-
-  if (rv != 0) {
-    delete handler;
-  }
+  retry_downstream_connection(downstream, 504);
 }
 } // namespace
 
@@ -127,37 +143,7 @@ void readcb(struct ev_loop *loop, ev_io *w, int revents) {
 
 namespace {
 void backend_retry(Downstream *downstream) {
-  auto upstream = downstream->get_upstream();
-  auto handler = upstream->get_client_handler();
-
-  downstream->add_retry();
-
-  if (downstream->no_more_retry()) {
-    delete handler;
-    return;
-  }
-
-  downstream->pop_downstream_connection();
-
-  int rv;
-  auto ndconn = handler->get_downstream_connection(rv, downstream);
-  if (ndconn) {
-    if (downstream->attach_downstream_connection(std::move(ndconn)) == 0) {
-      return;
-    }
-  }
-
-  downstream->set_request_state(Downstream::CONNECT_FAIL);
-
-  if (rv == SHRPX_ERR_TLS_REQUIRED) {
-    rv = upstream->on_downstream_abort_request_with_https_redirect(downstream);
-  } else {
-    rv = upstream->on_downstream_abort_request(downstream, 502);
-  }
-
-  if (rv != 0) {
-    delete handler;
-  }
+  retry_downstream_connection(downstream, 502);
 }
 } // namespace
 
@@ -196,7 +182,7 @@ void connectcb(struct ev_loop *loop, ev_io *w, int revents) {
 } // namespace
 
 HttpDownstreamConnection::HttpDownstreamConnection(
-    const std::shared_ptr<DownstreamAddrGroup> &group, ssize_t initial_addr_idx,
+    const std::shared_ptr<DownstreamAddrGroup> &group, size_t initial_addr_idx,
     struct ev_loop *loop, Worker *worker)
     : conn_(loop, -1, nullptr, worker->get_mcpool(),
             worker->get_downstream_config()->timeout.write,
@@ -269,8 +255,9 @@ int HttpDownstreamConnection::initiate_connection() {
     // initial_addr_idx_.
     size_t temp_idx = initial_addr_idx_;
 
-    auto &next_downstream =
-        shared_addr->affinity == AFFINITY_NONE ? shared_addr->next : temp_idx;
+    auto &next_downstream = shared_addr->affinity.type == AFFINITY_NONE
+                                ? shared_addr->next
+                                : temp_idx;
     auto end = next_downstream;
     for (;;) {
       auto check_dns_result = dns_query_.get() != nullptr;
@@ -283,10 +270,16 @@ int HttpDownstreamConnection::initiate_connection() {
         assert(addr->dns);
       } else {
         assert(addr_ == nullptr);
-        addr = &addrs[next_downstream];
-
-        if (++next_downstream >= addrs.size()) {
-          next_downstream = 0;
+        if (shared_addr->affinity.type == AFFINITY_NONE) {
+          addr = &addrs[next_downstream];
+          if (++next_downstream >= addrs.size()) {
+            next_downstream = 0;
+          }
+        } else {
+          addr = &addrs[shared_addr->affinity_hash[next_downstream].idx];
+          if (++next_downstream >= shared_addr->affinity_hash.size()) {
+            next_downstream = 0;
+          }
         }
 
         if (addr->proto != PROTO_HTTP1) {
@@ -482,6 +475,7 @@ int HttpDownstreamConnection::initiate_connection() {
 
 int HttpDownstreamConnection::push_request_headers() {
   if (downstream_->get_request_header_sent()) {
+    signal_write();
     return 0;
   }
 
@@ -757,7 +751,7 @@ void remove_from_pool(HttpDownstreamConnection *dconn) {
   auto &group = dconn->get_downstream_addr_group();
   auto &shared_addr = group->shared_addr;
 
-  if (shared_addr->affinity == AFFINITY_NONE) {
+  if (shared_addr->affinity.type == AFFINITY_NONE) {
     auto &dconn_pool =
         dconn->get_downstream_addr_group()->shared_addr->dconn_pool;
     dconn_pool.remove_downstream_connection(dconn);

@@ -389,7 +389,7 @@ parameter in :option:`--backend` option, like so:
 
 .. code-block:: text
 
-   backend=foo.example.com;;dns
+   backend=foo.example.com,80;;dns
 
 nghttpx will cache resolved addresses for certain period of time.  To
 change this cache period, use :option:`--dns-cache-timeout`.
@@ -404,6 +404,28 @@ like so:
 .. code-block:: text
 
    frontend=*,443;proxyproto
+
+Session affinity
+----------------
+
+Two kinds of session affinity are available: client IP, and HTTP
+Cookie.
+
+To enable client IP based affinity, specify ``affinity=ip`` parameter
+in :option:`--backend` option.  If PROXY protocol is enabled, then an
+address obtained from PROXY protocol is taken into consideration.
+
+To enable HTTP Cookie based affinity, specify ``affinity=cookie``
+parameter, and specify a name of cookie in ``affinity-cookie-name``
+parameter.  Optionally, a Path attribute can be specified in
+``affinity-cookie-path`` parameter:
+
+.. code-block:: text
+
+   backend=127.0.0.1,3000;;affinity=cookie;affinity-cookie-name=nghttpxlb;affinity-cookie-path=/
+
+Secure attribute of cookie is set if client connection is protected by
+TLS.
 
 PSK cipher suites
 -----------------

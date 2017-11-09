@@ -33,6 +33,7 @@ namespace shrpx {
 
 void test_shrpx_http_create_forwarded(void);
 void test_shrpx_http_create_via_header_value(void);
+void test_shrpx_http_create_affinity_cookie(void);
 
 } // namespace shrpx
 

@@ -91,4 +91,31 @@ void test_shrpx_http_create_via_header_value(void) {
   CU_ASSERT(("2 nghttpx" == StringRef{std::begin(buf), end}));
 }
 
+void test_shrpx_http_create_affinity_cookie(void) {
+  BlockAllocator balloc(1024, 1024);
+  StringRef c;
+
+  c = http::create_affinity_cookie(balloc, StringRef::from_lit("cookie-val"),
+                                   0xf1e2d3c4u, StringRef{}, false);
+
+  CU_ASSERT("cookie-val=f1e2d3c4" == c);
+
+  c = http::create_affinity_cookie(balloc, StringRef::from_lit("alpha"),
+                                   0x00000000u, StringRef{}, true);
+
+  CU_ASSERT("alpha=00000000; Secure" == c);
+
+  c = http::create_affinity_cookie(balloc, StringRef::from_lit("bravo"),
+                                   0x01111111u, StringRef::from_lit("bar"),
+                                   false);
+
+  CU_ASSERT("bravo=01111111; Path=bar" == c);
+
+  c = http::create_affinity_cookie(balloc, StringRef::from_lit("charlie"),
+                                   0x01111111u, StringRef::from_lit("bar"),
+                                   true);
+
+  CU_ASSERT("charlie=01111111; Path=bar; Secure" == c);
+}
+
 } // namespace shrpx

@@ -99,8 +99,6 @@ void AcceptHandler::accept_connection() {
   util::make_socket_closeonexec(cfd);
 #endif // !HAVE_ACCEPT4
 
-  util::make_socket_nodelay(cfd);
-
   conn_hnr_->handle_connection(cfd, &sockaddr.sa, addrlen, faddr_);
 }
 

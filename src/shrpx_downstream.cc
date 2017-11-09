@@ -131,6 +131,7 @@ Downstream::Downstream(Upstream *upstream, MemchunkPool *mcpool,
       assoc_stream_id_(-1),
       downstream_stream_id_(-1),
       response_rst_stream_error_code_(NGHTTP2_NO_ERROR),
+      affinity_cookie_(0),
       request_state_(INITIAL),
       response_state_(INITIAL),
       dispatch_state_(DISPATCH_NONE),
@@ -140,7 +141,8 @@ Downstream::Downstream(Upstream *upstream, MemchunkPool *mcpool,
       expect_final_response_(false),
       request_pending_(false),
       request_header_sent_(false),
-      accesslog_written_(false) {
+      accesslog_written_(false),
+      new_affinity_cookie_(false) {
 
   auto &timeoutconf = get_config()->http2.timeout;
 
@@ -305,11 +307,53 @@ StringRef Downstream::assemble_request_cookie() {
   return StringRef{iov.base, p};
 }
 
+uint32_t Downstream::find_affinity_cookie(const StringRef &name) {
+  for (auto &kv : req_.fs.headers()) {
+    if (kv.token != http2::HD_COOKIE) {
+      continue;
+    }
+
+    for (auto it = std::begin(kv.value); it != std::end(kv.value);) {
+      if (*it == '\t' || *it == ' ' || *it == ';') {
+        ++it;
+        continue;
+      }
+
+      auto end = std::find(it, std::end(kv.value), '=');
+      if (end == std::end(kv.value)) {
+        return 0;
+      }
+
+      if (!util::streq(name, StringRef{it, end})) {
+        it = std::find(it, std::end(kv.value), ';');
+        continue;
+      }
+
+      it = std::find(end + 1, std::end(kv.value), ';');
+      auto val = StringRef{end + 1, it};
+      if (val.size() != 8) {
+        return 0;
+      }
+      uint32_t h = 0;
+      for (auto c : val) {
+        auto n = util::hex_to_uint(c);
+        if (n == 256) {
+          return 0;
+        }
+        h <<= 4;
+        h += n;
+      }
+      affinity_cookie_ = h;
+      return h;
+    }
+  }
+  return 0;
+}
+
 size_t Downstream::count_crumble_request_cookie() {
   size_t n = 0;
   for (auto &kv : req_.fs.headers()) {
-    if (kv.name.size() != 6 || kv.name[5] != 'e' ||
-        !util::streq_l("cooki", kv.name.c_str(), 5)) {
+    if (kv.token != http2::HD_COOKIE) {
       continue;
     }
 
@@ -329,8 +373,7 @@ size_t Downstream::count_crumble_request_cookie() {
 
 void Downstream::crumble_request_cookie(std::vector<nghttp2_nv> &nva) {
   for (auto &kv : req_.fs.headers()) {
-    if (kv.name.size() != 6 || kv.name[5] != 'e' ||
-        !util::streq_l("cooki", kv.name.c_str(), 5)) {
+    if (kv.token != http2::HD_COOKIE) {
       continue;
     }
 
@@ -996,5 +1039,17 @@ void Downstream::set_addr(const DownstreamAddr *addr) { addr_ = addr; }
 const DownstreamAddr *Downstream::get_addr() const { return addr_; }
 
 void Downstream::set_accesslog_written(bool f) { accesslog_written_ = f; }
+
+void Downstream::renew_affinity_cookie(uint32_t h) {
+  affinity_cookie_ = h;
+  new_affinity_cookie_ = true;
+}
+
+uint32_t Downstream::get_affinity_cookie_to_send() const {
+  if (new_affinity_cookie_) {
+    return affinity_cookie_;
+  }
+  return 0;
+}
 
 } // namespace shrpx

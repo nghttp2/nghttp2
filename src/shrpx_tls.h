@@ -269,10 +269,12 @@ int proto_version_from_string(const StringRef &v);
 int verify_ocsp_response(SSL_CTX *ssl_ctx, const uint8_t *ocsp_resp,
                          size_t ocsp_resplen);
 
-// Stores SHA-256 fingerprint of |x| in |dst| of length |dstlen|.
-// |dstlen| must be larger than 32 bytes.  This function returns the
-// number of bytes written in |dst|, or -1.
-ssize_t get_x509_fingerprint(uint8_t *dst, size_t dstlen, X509 *x);
+// Stores fingerprint of |x| in |dst| of length |dstlen|.  |md|
+// specifies hash function to use, and |dstlen| must be large enough
+// to include hash value (e.g., 32 bytes for SHA-256).  This function
+// returns the number of bytes written in |dst|, or -1.
+ssize_t get_x509_fingerprint(uint8_t *dst, size_t dstlen, const X509 *x,
+                             const EVP_MD *md);
 
 // Returns subject name of |x|.  If this function fails to get subject
 // name, it returns an empty string.
