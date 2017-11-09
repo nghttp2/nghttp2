@@ -1,23 +1,18 @@
 language: cpp
 dist: trusty
-sudo: required
+sudo: false
 
 env:
-# matrix:
   - CI_BUILD=cmake
   - CI_BUILD=autotools
 
-compiler:
-  - clang
-  - gcc
-  
 matrix:
   include:
   - os: linux
+    compiler: gcc
     addons:
       apt:
-        sources:
-          - ubuntu-toolchain-r-test
+        sources: ['ubuntu-toolchain-r-test']
         packages:
           - g++-7
           - autoconf
