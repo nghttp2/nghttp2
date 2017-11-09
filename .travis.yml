@@ -3,15 +3,16 @@ dist: trusty
 sudo: required
 
 env:
-  matrix:
-    - CI_BUILD=cmake
-    - CI_BUILD=autotools
+# matrix:
+  - CI_BUILD=cmake
+  - CI_BUILD=autotools
 
 compiler:
   - clang
   - gcc
   
 matrix:
+  include:
   - os: linux
     addons:
       apt:
