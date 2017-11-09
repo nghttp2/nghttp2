@@ -337,6 +337,12 @@ static void session_inbound_frame_reset(nghttp2_session *session) {
         }
         nghttp2_frame_altsvc_free(&iframe->frame.ext, mem);
         break;
+      case NGHTTP2_ORIGIN:
+        if ((session->builtin_recv_ext_types & NGHTTP2_TYPEMASK_ORIGIN) == 0) {
+          break;
+        }
+        nghttp2_frame_origin_free(&iframe->frame.ext, mem);
+        break;
       }
     }
 
@@ -1739,6 +1745,21 @@ static int session_predicate_altsvc_send(nghttp2_session *session,
   return 0;
 }
 
+static int session_predicate_origin_send(nghttp2_session *session,
+                                         int32_t stream_id) {
+  nghttp2_stream *stream;
+
+  if (session_is_closing(session)) {
+    return NGHTTP2_ERR_SESSION_CLOSING;
+  }
+
+  if (stream_id != 0) {
+    return 0;
+  }
+
+  return 0;
+}
+
 /* Take into account settings max frame size and both connection-level
    flow control here */
 static ssize_t
@@ -2268,6 +2289,15 @@ static int session_prep_frame(nghttp2_session *session,
       }
 
       nghttp2_frame_pack_altsvc(&session->aob.framebufs, &frame->ext);
+
+      return 0;
+    case NGHTTP2_ORIGIN:
+      rv = session_predicate_origin_send(session, frame->hd.stream_id);
+      if (rv != 0) {
+        return rv;
+      }
+
+      nghttp2_frame_pack_origin(&session->aob.framebufs, &frame->ext);
 
       return 0;
     default:
@@ -4827,6 +4857,37 @@ static int session_process_altsvc_frame(nghttp2_session *session) {
   return nghttp2_session_on_altsvc_received(session, frame);
 }
 
+int nghttp2_session_on_origin_received(nghttp2_session *session,
+                                       nghttp2_frame *frame) {
+  nghttp2_ext_origin *origin_frame;
+  nghttp2_stream *stream;
+
+  origin_frame = frame->ext.payload;
+
+  /* session->server case has been excluded */
+
+  if (frame->hd.stream_id != 0) {
+    return 0;
+  }
+
+  return session_call_on_frame_received(session, frame);
+}
+
+static int session_process_origin_frame(nghttp2_session *session) {
+  nghttp2_inbound_frame *iframe = &session->iframe;
+  nghttp2_frame *frame = &iframe->frame;
+
+  nghttp2_frame_unpack_origin_payload(
+      &frame->ext, nghttp2_get_uint16(iframe->sbuf.pos), iframe->lbuf.pos,
+      nghttp2_buf_len(&iframe->lbuf));
+
+  /* nghttp2_frame_unpack_origin_payload steals buffer from
+     iframe->lbuf */
+  nghttp2_buf_wrap_init(&iframe->lbuf, NULL, 0);
+
+  return nghttp2_session_on_origin_received(session, frame);
+}
+
 static int session_process_extension_frame(nghttp2_session *session) {
   int rv;
   nghttp2_inbound_frame *iframe = &session->iframe;
@@ -5746,6 +5807,36 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
 
             iframe->state = NGHTTP2_IB_READ_NBYTE;
             inbound_frame_set_mark(iframe, 2);
+            break;
+          case NGHTTP2_ORIGIN:
+            if ((session->builtin_recv_ext_types & NGHTTP2_TYPEMASK_ORIGIN) ==
+                0) {
+              busy = 1;
+              iframe->state = NGHTTP2_IB_IGN_PAYLOAD;
+              break;
+            }
+
+            DEBUGF("recv: ORIGIN\n");
+
+            iframe->frame.hd.flags = NGHTTP2_FLAG_NONE;
+            iframe->frame.ext.payload = &iframe->ext_frame_payload.origin;
+
+            if (session->server) {
+              busy = 1;
+              iframe->state = NGHTTP2_IB_IGN_PAYLOAD;
+              break;
+            }
+
+            if (iframe->payloadleft < 2) {
+              busy = 1;
+              iframe->state = NGHTTP2_IB_FRAME_SIZE_ERROR;
+              break;
+            }
+
+            busy = 1;
+
+            iframe->state = NGHTTP2_IB_READ_NBYTE;
+            inbound_frame_set_mark(iframe, 2);
 
             break;
           default:
@@ -5992,6 +6083,40 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
         busy = 1;
 
         iframe->state = NGHTTP2_IB_READ_ALTSVC_PAYLOAD;
+
+        break;
+      }
+      case NGHTTP2_ORIGIN: {
+        size_t origin_len;
+
+        origin_len = nghttp2_get_uint16(iframe->sbuf.pos);
+
+        DEBUGF("recv: origin_len=%zu\n", origin_len);
+
+        /*
+         * TODO: figure out why this check fails
+         */
+        if (2 + origin_len > iframe->payloadleft) {
+          busy = 1;
+          iframe->state = NGHTTP2_IB_FRAME_SIZE_ERROR;
+          break;
+        }
+
+        if (iframe->frame.hd.length > 2) {
+          iframe->raw_lbuf =
+              nghttp2_mem_malloc(mem, iframe->frame.hd.length - 2);
+
+          if (iframe->raw_lbuf == NULL) {
+            return NGHTTP2_ERR_NOMEM;
+          }
+
+          nghttp2_buf_wrap_init(&iframe->lbuf, iframe->raw_lbuf,
+                                iframe->frame.hd.length);
+        }
+
+        busy = 1;
+
+        iframe->state = NGHTTP2_IB_READ_ORIGIN_PAYLOAD;
 
         break;
       }
@@ -6541,6 +6666,36 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
       }
 
       rv = session_process_altsvc_frame(session);
+
+      if (nghttp2_is_fatal(rv)) {
+        return rv;
+      }
+
+      session_inbound_frame_reset(session);
+
+      break;
+    case NGHTTP2_IB_READ_ORIGIN_PAYLOAD:
+      DEBUGF("recv: [IB_READ_ORIGIN_PAYLOAD]\n");
+
+      readlen = inbound_frame_payload_readlen(iframe, in, last);
+
+      if (readlen > 0) {
+        iframe->lbuf.last = nghttp2_cpymem(iframe->lbuf.last, in, readlen);
+
+        iframe->payloadleft -= readlen;
+        in += readlen;
+      }
+
+      DEBUGF("recv: readlen=%zu, payloadleft=%zu\n", readlen,
+             iframe->payloadleft);
+
+      if (iframe->payloadleft) {
+        assert(nghttp2_buf_avail(&iframe->lbuf) > 0);
+
+        break;
+      }
+
+      rv = session_process_origin_frame(session);
 
       if (nghttp2_is_fatal(rv)) {
         return rv;
