@@ -1,35 +1,41 @@
+language: cpp
 dist: trusty
+sudo: required
+
 env:
   matrix:
     - CI_BUILD=cmake
     - CI_BUILD=autotools
-language: cpp
+
 compiler:
   - clang
   - gcc
-sudo: required
-addons:
-  apt:
-    sources:
-    - ubuntu-toolchain-r-test
-    packages:
-    - g++-7
-    - autoconf
-    - automake
-    - autotools-dev
-    - libtool
-    - pkg-config
-    - zlib1g-dev
-    - libcunit1-dev
-    - libssl-dev
-    - libxml2-dev
-    - libev-dev
-    - libevent-dev
-    - libjansson-dev
-    - libjemalloc-dev
-    - libc-ares-dev
-    - cmake
-    - cmake-data
+  
+matrix:
+  - os: linux
+  addons:
+    apt:
+      sources:
+        - ubuntu-toolchain-r-test
+      packages:
+        - g++-7
+        - autoconf
+        - automake
+        - autotools-dev
+        - libtool
+        - pkg-config
+        - zlib1g-dev
+        - libcunit1-dev
+        - libssl-dev
+        - libxml2-dev
+        - libev-dev
+        - libevent-dev
+        - libjansson-dev
+        - libjemalloc-dev
+        - libc-ares-dev
+        - cmake
+        - cmake-data
+        
 before_install:
   - $CC --version
   - if [ "$CXX" = "g++" ]; then export CXX="g++-7" CC="gcc-7"; fi
