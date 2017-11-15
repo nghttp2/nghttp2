@@ -557,6 +557,7 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
       std::tie(p, last) = copy_hex_low(buf.data(), len, p, last);
       break;
     }
+    case SHRPX_LOGF_TLS_CLIENT_ISSUER_NAME:
     case SHRPX_LOGF_TLS_CLIENT_SUBJECT_NAME: {
       if (!lgsp.ssl) {
         std::tie(p, last) = copy('-', p, last);
@@ -567,7 +568,9 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
         std::tie(p, last) = copy('-', p, last);
         break;
       }
-      auto name = tls::get_x509_subject_name(balloc, x);
+      auto name = lf.type == SHRPX_LOGF_TLS_CLIENT_ISSUER_NAME
+                      ? tls::get_x509_issuer_name(balloc, x)
+                      : tls::get_x509_subject_name(balloc, x);
       X509_free(x);
       if (name.empty()) {
         std::tie(p, last) = copy('-', p, last);

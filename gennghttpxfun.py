@@ -194,6 +194,7 @@ LOGVARS = [
     "tls_client_fingerprint_sha256",
     "tls_client_fingerprint_sha1",
     "tls_client_subject_name",
+    "tls_client_issuer_name",
     "backend_host",
     "backend_port",
 ]

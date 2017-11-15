@@ -2500,6 +2500,8 @@ Logging:
                 client certificate.
               * $tls_client_subject_name:   subject  name   in  client
                 certificate.
+              * $tls_client_issuer_name:   issuer   name   in   client
+                certificate.
               * $tls_protocol: protocol for SSL/TLS connection.
               * $tls_session_id: session ID for SSL/TLS connection.
               * $tls_session_reused:  "r"   if  SSL/TLS   session  was
