@@ -510,6 +510,15 @@ LogFragmentType log_var_lookup_token(const char *name, size_t namelen) {
       break;
     }
     break;
+  case 22:
+    switch (name[21]) {
+    case 'e':
+      if (util::strieq_l("tls_client_issuer_nam", name, 21)) {
+        return SHRPX_LOGF_TLS_CLIENT_ISSUER_NAME;
+      }
+      break;
+    }
+    break;
   case 23:
     switch (name[22]) {
     case 'e':

@@ -1929,9 +1929,8 @@ ssize_t get_x509_fingerprint(uint8_t *dst, size_t dstlen, const X509 *x,
   return len;
 }
 
-StringRef get_x509_subject_name(BlockAllocator &balloc, X509 *x) {
-  auto nm = X509_get_subject_name(x);
-
+namespace {
+StringRef get_x509_name(BlockAllocator &balloc, X509_NAME *nm) {
   auto b = BIO_new(BIO_s_mem());
   if (!b) {
     return StringRef{};
@@ -1949,6 +1948,15 @@ StringRef get_x509_subject_name(BlockAllocator &balloc, X509 *x) {
   BIO_free(b);
   iov.base[slen] = '\0';
   return StringRef{iov.base, static_cast<size_t>(slen)};
+}
+} // namespace
+
+StringRef get_x509_subject_name(BlockAllocator &balloc, X509 *x) {
+  return get_x509_name(balloc, X509_get_subject_name(x));
+}
+
+StringRef get_x509_issuer_name(BlockAllocator &balloc, X509 *x) {
+  return get_x509_name(balloc, X509_get_issuer_name(x));
 }
 
 } // namespace tls

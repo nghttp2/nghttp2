@@ -280,6 +280,10 @@ ssize_t get_x509_fingerprint(uint8_t *dst, size_t dstlen, const X509 *x,
 // name, it returns an empty string.
 StringRef get_x509_subject_name(BlockAllocator &balloc, X509 *x);
 
+// Returns issuer name of |x|.  If this function fails to get issuer
+// name, it returns an empty string.
+StringRef get_x509_issuer_name(BlockAllocator &balloc, X509 *x);
+
 } // namespace tls
 
 } // namespace shrpx
