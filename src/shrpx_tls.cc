@@ -1959,6 +1959,13 @@ StringRef get_x509_issuer_name(BlockAllocator &balloc, X509 *x) {
   return get_x509_name(balloc, X509_get_issuer_name(x));
 }
 
+#ifdef WORDS_BIGENDIAN
+#define bswap64(N) (N)
+#else /* !WORDS_BIGENDIAN */
+#define bswap64(N)                                                             \
+  ((uint64_t)(ntohl((uint32_t)(N))) << 32 | ntohl((uint32_t)((N) >> 32)))
+#endif /* !WORDS_BIGENDIAN */
+
 StringRef get_x509_serial(BlockAllocator &balloc, X509 *x) {
 #if OPENSSL_1_1_API
   auto sn = X509_get0_serialNumber(x);
@@ -1967,14 +1974,9 @@ StringRef get_x509_serial(BlockAllocator &balloc, X509 *x) {
     return StringRef{};
   }
 
-  auto iov = make_byte_ref(balloc, 16 + 7 + 1);
-  auto p = iov.base;
-  for (int i = 56; i >= 0; i -= 8) {
-    auto a = r >> i;
-    *p++ = util::LOWER_XDIGITS[(a >> 4) & 0xf];
-    *p++ = util::LOWER_XDIGITS[a & 0xf];
-    *p++ = ':';
-  }
+  r = bswap64(r);
+  return util::format_hex(
+      balloc, StringRef{reinterpret_cast<uint8_t *>(&r), sizeof(r)});
 #else  // !OPENSSL_1_1_API
   auto sn = X509_get_serialNumber(x);
   auto bn = BN_new();
@@ -1987,16 +1989,8 @@ StringRef get_x509_serial(BlockAllocator &balloc, X509 *x) {
   auto n = BN_bn2bin(bn, b.data());
   assert(n == b.size());
 
-  auto iov = make_byte_ref(balloc, 16 + 7 + 1);
-  auto p = iov.base;
-  for (auto c : b) {
-    *p++ = util::LOWER_XDIGITS[c >> 4];
-    *p++ = util::LOWER_XDIGITS[c & 0xf];
-    *p++ = ':';
-  }
+  return util::format_hex(balloc, StringRef{std::begin(b), std::end(b)});
 #endif // !OPENSSL_1_1_API
-  *--p = '\0';
-  return StringRef{iov.base, p};
 }
 
 } // namespace tls

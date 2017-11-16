@@ -284,8 +284,7 @@ StringRef get_x509_subject_name(BlockAllocator &balloc, X509 *x);
 // name, it returns an empty string.
 StringRef get_x509_issuer_name(BlockAllocator &balloc, X509 *x);
 
-// Returns serial number of |x| in format like
-// "ff:ff:ff:ff:ff:ff:ff:ff".  If this function fails to get serial
+// Returns serial number of |x|.  If this function fails to get serial
 // number, it returns an empty string.  number
 StringRef get_x509_serial(BlockAllocator &balloc, X509 *x);
 

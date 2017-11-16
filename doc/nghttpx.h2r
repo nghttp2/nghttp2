@@ -386,8 +386,7 @@ respectively.
 
     .. rb:attr_reader:: tls_client_serial
 
-        Return the serial number of a client certificate in a format
-        like "ff:ff:ff:ff:ff:ff:ff:ff".
+        Return the serial number of a client certificate.
 
     .. rb:attr_reader:: tls_cipher
 
