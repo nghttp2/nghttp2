@@ -236,6 +236,30 @@ mrb_value env_get_tls_client_issuer_name(mrb_state *mrb, mrb_value self) {
 } // namespace
 
 namespace {
+mrb_value env_get_tls_client_serial(mrb_state *mrb, mrb_value self) {
+  auto data = static_cast<MRubyAssocData *>(mrb->ud);
+  auto downstream = data->downstream;
+  auto upstream = downstream->get_upstream();
+  auto handler = upstream->get_client_handler();
+  auto ssl = handler->get_ssl();
+
+  if (!ssl) {
+    return mrb_str_new_static(mrb, "", 0);
+  }
+
+  auto x = SSL_get_peer_certificate(ssl);
+  if (!x) {
+    return mrb_str_new_static(mrb, "", 0);
+  }
+
+  auto &balloc = downstream->get_block_allocator();
+  auto sn = tls::get_x509_serial(balloc, x);
+  X509_free(x);
+  return mrb_str_new(mrb, sn.c_str(), sn.size());
+}
+} // namespace
+
+namespace {
 mrb_value env_get_tls_cipher(mrb_state *mrb, mrb_value self) {
   auto data = static_cast<MRubyAssocData *>(mrb->ud);
   auto downstream = data->downstream;
@@ -348,6 +372,8 @@ void init_env_class(mrb_state *mrb, RClass *module) {
                     env_get_tls_client_issuer_name, MRB_ARGS_NONE());
   mrb_define_method(mrb, env_class, "tls_client_subject_name",
                     env_get_tls_client_subject_name, MRB_ARGS_NONE());
+  mrb_define_method(mrb, env_class, "tls_client_serial",
+                    env_get_tls_client_serial, MRB_ARGS_NONE());
   mrb_define_method(mrb, env_class, "tls_cipher", env_get_tls_cipher,
                     MRB_ARGS_NONE());
   mrb_define_method(mrb, env_class, "tls_protocol", env_get_tls_protocol,

@@ -1959,6 +1959,46 @@ StringRef get_x509_issuer_name(BlockAllocator &balloc, X509 *x) {
   return get_x509_name(balloc, X509_get_issuer_name(x));
 }
 
+StringRef get_x509_serial(BlockAllocator &balloc, X509 *x) {
+#if OPENSSL_1_1_API
+  auto sn = X509_get0_serialNumber(x);
+  uint64_t r;
+  if (ASN1_INTEGER_get_uint64(&r, sn) != 1) {
+    return StringRef{};
+  }
+
+  auto iov = make_byte_ref(balloc, 16 + 7 + 1);
+  auto p = iov.base;
+  for (int i = 56; i >= 0; i -= 8) {
+    auto a = r >> i;
+    *p++ = util::LOWER_XDIGITS[(a >> 4) & 0xf];
+    *p++ = util::LOWER_XDIGITS[a & 0xf];
+    *p++ = ':';
+  }
+#else  // !OPENSSL_1_1_API
+  auto sn = X509_get_serialNumber(x);
+  auto bn = BN_new();
+  auto bn_d = defer(BN_free, bn);
+  if (!ASN1_INTEGER_to_BN(sn, bn)) {
+    return StringRef{};
+  }
+
+  std::array<uint8_t, 8> b;
+  auto n = BN_bn2bin(bn, b.data());
+  assert(n == b.size());
+
+  auto iov = make_byte_ref(balloc, 16 + 7 + 1);
+  auto p = iov.base;
+  for (auto c : b) {
+    *p++ = util::LOWER_XDIGITS[c >> 4];
+    *p++ = util::LOWER_XDIGITS[c & 0xf];
+    *p++ = ':';
+  }
+#endif // !OPENSSL_1_1_API
+  *--p = '\0';
+  return StringRef{iov.base, p};
+}
+
 } // namespace tls
 
 } // namespace shrpx

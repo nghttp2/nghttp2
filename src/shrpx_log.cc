@@ -579,6 +579,25 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
       std::tie(p, last) = copy(name, p, last);
       break;
     }
+    case SHRPX_LOGF_TLS_CLIENT_SERIAL: {
+      if (!lgsp.ssl) {
+        std::tie(p, last) = copy('-', p, last);
+        break;
+      }
+      auto x = SSL_get_peer_certificate(lgsp.ssl);
+      if (!x) {
+        std::tie(p, last) = copy('-', p, last);
+        break;
+      }
+      auto sn = tls::get_x509_serial(balloc, x);
+      X509_free(x);
+      if (sn.empty()) {
+        std::tie(p, last) = copy('-', p, last);
+        break;
+      }
+      std::tie(p, last) = copy(sn, p, last);
+      break;
+    }
     case SHRPX_LOGF_BACKEND_HOST:
       if (!downstream_addr) {
         std::tie(p, last) = copy('-', p, last);
