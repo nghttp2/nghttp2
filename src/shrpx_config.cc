@@ -498,6 +498,15 @@ LogFragmentType log_var_lookup_token(const char *name, size_t namelen) {
       break;
     }
     break;
+  case 17:
+    switch (name[16]) {
+    case 'l':
+      if (util::strieq_l("tls_client_seria", name, 16)) {
+        return SHRPX_LOGF_TLS_CLIENT_SERIAL;
+      }
+      break;
+    }
+    break;
   case 18:
     switch (name[17]) {
     case 'd':
