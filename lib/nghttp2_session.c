@@ -148,14 +148,16 @@ static int check_ext_type_set(const uint8_t *ext_types, uint8_t type) {
 }
 
 static int session_call_error_callback(nghttp2_session *session,
-                                       const char *fmt, ...) {
+                                       int lib_error_code, const char *fmt,
+                                       ...) {
   size_t bufsize;
   va_list ap;
   char *buf;
   int rv;
   nghttp2_mem *mem;
 
-  if (!session->callbacks.error_callback) {
+  if (!session->callbacks.error_callback &&
+      !session->callbacks.error_callback2) {
     return 0;
   }
 
@@ -189,8 +191,13 @@ static int session_call_error_callback(nghttp2_session *session,
     return 0;
   }
 
-  rv = session->callbacks.error_callback(session, buf, (size_t)rv,
-                                         session->user_data);
+  if (session->callbacks.error_callback2) {
+    rv = session->callbacks.error_callback2(session, lib_error_code, buf,
+                                            (size_t)rv, session->user_data);
+  } else {
+    rv = session->callbacks.error_callback(session, buf, (size_t)rv,
+                                           session->user_data);
+  }
 
   nghttp2_mem_free(mem, buf);
 
@@ -3608,7 +3615,7 @@ static int inflate_header_block(nghttp2_session *session, nghttp2_frame *frame,
                    nv.name->base, (int)nv.value->len, nv.value->base);
 
             rv2 = session_call_error_callback(
-                session,
+                session, NGHTTP2_ERR_HTTP_HEADER,
                 "Ignoring received invalid HTTP header field: frame type: "
                 "%u, stream: %d, name: [%.*s], value: [%.*s]",
                 frame->hd.type, frame->hd.stream_id, (int)nv.name->len,
@@ -3626,8 +3633,9 @@ static int inflate_header_block(nghttp2_session *session, nghttp2_frame *frame,
                  nv.name->base, (int)nv.value->len, nv.value->base);
 
           rv = session_call_error_callback(
-              session, "Invalid HTTP header field was received: frame type: "
-                       "%u, stream: %d, name: [%.*s], value: [%.*s]",
+              session, NGHTTP2_ERR_HTTP_HEADER,
+              "Invalid HTTP header field was received: frame type: "
+              "%u, stream: %d, name: [%.*s], value: [%.*s]",
               frame->hd.type, frame->hd.stream_id, (int)nv.name->len,
               nv.name->base, (int)nv.value->len, nv.value->base);
 
@@ -5345,9 +5353,10 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
         iframe->state = NGHTTP2_IB_IGN_ALL;
 
         rv = session_call_error_callback(
-            session, "Remote peer returned unexpected data while we expected "
-                     "SETTINGS frame.  Perhaps, peer does not support HTTP/2 "
-                     "properly.");
+            session, NGHTTP2_ERR_SETTINGS_EXPECTED,
+            "Remote peer returned unexpected data while we expected "
+            "SETTINGS frame.  Perhaps, peer does not support HTTP/2 "
+            "properly.");
 
         if (nghttp2_is_fatal(rv)) {
           return rv;
