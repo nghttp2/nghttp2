@@ -28,7 +28,6 @@ addons:
       - libjansson-dev
       - libjemalloc-dev
       - libc-ares-dev
-      - boost-dev
       - cmake
       - cmake-data
         
@@ -38,6 +37,11 @@ before_install:
   - $CC --version
   - go version
   - cmake --version
+  # Install Boost
+  - cd ~
+  - wget -O boost.tar.bz2 https://dl.bintray.com/boostorg/release/1.65.1/source/boost_1_65_1.tar.bz2
+  - tar --bzip2 xf boost.tar.bz2
+  - ls -l
 before_script:
   # Now build nghttp2
   - if [[ "${CI_BUILD}" = "autotools" ]]; then autoreconf -i; fi
