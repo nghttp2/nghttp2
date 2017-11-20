@@ -4,8 +4,8 @@ sudo: false
 
 env:
   - CI_BUILD=cmake CI_BUILD_TYPE=Debug
-  - CI_BUILD=cmake CI_BUILD_TYPE=Release
-  - CI_BUILD=autotools
+#  - CI_BUILD=cmake CI_BUILD_TYPE=Release
+#  - CI_BUILD=autotools
 
 compiler: gcc
 
@@ -40,7 +40,7 @@ before_install:
   # Install Boost
   - cd ~
   - wget -O boost.tar.bz2 https://dl.bintray.com/boostorg/release/1.65.1/source/boost_1_65_1.tar.bz2
-  - tar --bzip2 xf boost.tar.bz2
+  - tar --bzip2 -xf boost.tar.bz2
   - ls -l
 before_script:
   # Now build nghttp2
