@@ -28,6 +28,7 @@ addons:
       - libjansson-dev
       - libjemalloc-dev
       - libc-ares-dev
+      - boost-dev
       - cmake
       - cmake-data
         
