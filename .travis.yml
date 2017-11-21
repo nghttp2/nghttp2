@@ -45,7 +45,7 @@ before_install:
   - cd boost_1_65_1/tools/build
   - ./bootstrap.sh
   - ./b2 install --prefix=${HOME}/b2
-  - export PATH=${HOME}/b2:${PATH}
+  - export PATH=${HOME}/b2/bin:${PATH}
   - cd ${HOME}
   - b2 -v
 before_script:
