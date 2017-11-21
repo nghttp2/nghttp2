@@ -199,6 +199,18 @@ StringRef create_affinity_cookie(BlockAllocator &balloc, const StringRef &name,
   return StringRef{iov.base, p};
 }
 
+bool require_cookie_secure_attribute(shrpx_cookie_secure secure,
+                                     const StringRef &scheme) {
+  switch (secure) {
+  case COOKIE_SECURE_AUTO:
+    return scheme == "https";
+  case COOKIE_SECURE_YES:
+    return true;
+  default:
+    return false;
+  }
+}
+
 } // namespace http
 
 } // namespace shrpx

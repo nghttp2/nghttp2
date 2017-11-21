@@ -901,6 +901,19 @@ int parse_downstream_params(DownstreamParams &out,
     } else if (util::istarts_with_l(param, "affinity-cookie-path=")) {
       out.affinity.cookie.path =
           StringRef{first + str_size("affinity-cookie-path="), end};
+    } else if (util::istarts_with_l(param, "affinity-cookie-secure=")) {
+      auto valstr = StringRef{first + str_size("affinity-cookie-secure="), end};
+      if (util::strieq_l("auto", valstr)) {
+        out.affinity.cookie.secure = COOKIE_SECURE_AUTO;
+      } else if (util::strieq_l("yes", valstr)) {
+        out.affinity.cookie.secure = COOKIE_SECURE_YES;
+      } else if (util::strieq_l("no", valstr)) {
+        out.affinity.cookie.secure = COOKIE_SECURE_NO;
+      } else {
+        LOG(ERROR) << "backend: affinity-cookie-secure: value must be one of "
+                      "auto, yes, and no";
+        return -1;
+      }
     } else if (util::strieq_l("dns", param)) {
       out.dns = true;
     } else if (util::strieq_l("redirect-if-not-tls", param)) {
@@ -1011,10 +1024,13 @@ int parse_mapping(Config *config, DownstreamAddrConfig &addr,
                 g.affinity.cookie.path = make_string_ref(
                     downstreamconf.balloc, params.affinity.cookie.path);
               }
+              g.affinity.cookie.secure = params.affinity.cookie.secure;
             }
           } else if (g.affinity.type != params.affinity.type ||
                      g.affinity.cookie.name != params.affinity.cookie.name ||
-                     g.affinity.cookie.path != params.affinity.cookie.path) {
+                     g.affinity.cookie.path != params.affinity.cookie.path ||
+                     g.affinity.cookie.secure !=
+                         params.affinity.cookie.secure) {
             LOG(ERROR) << "backend: affinity: multiple different affinity "
                           "configurations found in a single group";
             return -1;
@@ -1046,6 +1062,7 @@ int parse_mapping(Config *config, DownstreamAddrConfig &addr,
         g.affinity.cookie.path =
             make_string_ref(downstreamconf.balloc, params.affinity.cookie.path);
       }
+      g.affinity.cookie.secure = params.affinity.cookie.secure;
     }
     g.redirect_if_not_tls = params.redirect_if_not_tls;
 

@@ -1790,10 +1790,14 @@ Connections:
               "affinity-cookie-name=<NAME>" must be  used to specify a
               name     of     cookie      to     use.      Optionally,
               "affinity-cookie-path=<PATH>" can  be used to  specify a
-              path which cookie is applied.  The Secure attribute of a
-              cookie is determined by a  request scheme.  If a request
-              scheme  is  "https",  then Secure  attribute  is  added.
-              Otherwise, it is not added.
+              path   which   cookie    is   applied.    The   optional
+              "affinity-cookie-secure=<SECURE>"  controls  the  Secure
+              attribute of a cookie.  The default value is "auto", and
+              the Secure attribute is  determined by a request scheme.
+              If a request scheme is "https", then Secure attribute is
+              set.  Otherwise, it  is not set.  If  <SECURE> is "yes",
+              the  Secure attribute  is  always set.   If <SECURE>  is
+              "no", the Secure attribute is always omitted.
 
               By default, name resolution of backend host name is done
               at  start  up,  or reloading  configuration.   If  "dns"
