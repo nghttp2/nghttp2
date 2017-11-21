@@ -83,7 +83,8 @@ bool match_shared_downstream_addr(
 
   if (lhs->affinity.type == AFFINITY_COOKIE &&
       (lhs->affinity.cookie.name != rhs->affinity.cookie.name ||
-       lhs->affinity.cookie.path != rhs->affinity.cookie.path)) {
+       lhs->affinity.cookie.path != rhs->affinity.cookie.path ||
+       lhs->affinity.cookie.secure != rhs->affinity.cookie.secure)) {
     return false;
   }
 
@@ -200,6 +201,7 @@ void Worker::replace_downstream_config(
         shared_addr->affinity.cookie.path =
             make_string_ref(shared_addr->balloc, src.affinity.cookie.path);
       }
+      shared_addr->affinity.cookie.secure = src.affinity.cookie.secure;
     }
     shared_addr->affinity_hash = src.affinity_hash;
     shared_addr->redirect_if_not_tls = src.redirect_if_not_tls;

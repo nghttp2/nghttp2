@@ -1708,9 +1708,10 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
       auto &group = dconn->get_downstream_addr_group();
       auto &shared_addr = group->shared_addr;
       auto &cookieconf = shared_addr->affinity.cookie;
-      auto cookie_str =
-          http::create_affinity_cookie(balloc, cookieconf.name, affinity_cookie,
-                                       cookieconf.path, req.scheme == "https");
+      auto secure =
+          http::require_cookie_secure_attribute(cookieconf.secure, req.scheme);
+      auto cookie_str = http::create_affinity_cookie(
+          balloc, cookieconf.name, affinity_cookie, cookieconf.path, secure);
       nva.push_back(http2::make_nv_ls_nocopy("set-cookie", cookie_str));
     }
   }
