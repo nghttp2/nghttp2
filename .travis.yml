@@ -37,11 +37,17 @@ before_install:
   - $CC --version
   - go version
   - cmake --version
-  # Install Boost
-  - cd ~
+  # Install Boost.Build
+  - cd ${HOME}
   - wget -O boost.tar.bz2 https://dl.bintray.com/boostorg/release/1.65.1/source/boost_1_65_1.tar.bz2
   - tar --bzip2 -xf boost.tar.bz2
-  - ls -l
+  - rm boost.tar.bz2
+  - cd boost_1_65_1/tools/build
+  - ./bootstrap.sh
+  - ./b2 install --prefix=${HOME}/b2
+  - export PATH=${HOME}/b2:${PATH}
+  - cd ${HOME}
+  - b2 -v
 before_script:
   # Now build nghttp2
   - if [[ "${CI_BUILD}" = "autotools" ]]; then autoreconf -i; fi
