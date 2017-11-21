@@ -957,8 +957,8 @@ nghttp2_session_callbacks *create_http2_upstream_callbacks() {
   }
 
   if (config->http2.upstream.debug.frame_debug) {
-    nghttp2_session_callbacks_set_error_callback(callbacks,
-                                                 verbose_error_callback);
+    nghttp2_session_callbacks_set_error_callback2(callbacks,
+                                                  verbose_error_callback);
   }
 
   return callbacks;

@@ -425,8 +425,8 @@ int verbose_on_data_chunk_recv_callback(nghttp2_session *session, uint8_t flags,
   return 0;
 }
 
-int verbose_error_callback(nghttp2_session *session, const char *msg,
-                           size_t len, void *user_data) {
+int verbose_error_callback(nghttp2_session *session, int lib_error_code,
+                           const char *msg, size_t len, void *user_data) {
   print_timer();
   fprintf(outfile, " [ERROR] %.*s\n", (int)len, msg);
   fflush(outfile);
