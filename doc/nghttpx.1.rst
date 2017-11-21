@@ -182,10 +182,14 @@ Connections
     "affinity-cookie-name=<NAME>" must be  used to specify a
     name     of     cookie      to     use.      Optionally,
     "affinity-cookie-path=<PATH>" can  be used to  specify a
-    path which cookie is applied.  The Secure attribute of a
-    cookie is determined by a  request scheme.  If a request
-    scheme  is  "https",  then Secure  attribute  is  added.
-    Otherwise, it is not added.
+    path   which   cookie    is   applied.    The   optional
+    "affinity-cookie-secure=<SECURE>"  controls  the  Secure
+    attribute of a cookie.  The default value is "auto", and
+    the Secure attribute is  determined by a request scheme.
+    If a request scheme is "https", then Secure attribute is
+    set.  Otherwise, it  is not set.  If  <SECURE> is "yes",
+    the  Secure attribute  is  always set.   If <SECURE>  is
+    "no", the Secure attribute is always omitted.
 
     By default, name resolution of backend host name is done
     at  start  up,  or reloading  configuration.   If  "dns"
@@ -1096,6 +1100,10 @@ Logging
       client certificate.
     * $tls_client_subject_name:   subject  name   in  client
       certificate.
+    * $tls_client_issuer_name:   issuer   name   in   client
+      certificate.
+    * $tls_client_serial:    serial    number   in    client
+      certificate.
     * $tls_protocol: protocol for SSL/TLS connection.
     * $tls_session_id: session ID for SSL/TLS connection.
     * $tls_session_reused:  "r"   if  SSL/TLS   session  was
@@ -1835,9 +1843,17 @@ respectively.
 
         Return the SHA-1 fingerprint of a client certificate.
 
+    .. rb:attr_reader:: tls_client_issuer_name
+
+        Return the issuer name of a client certificate.
+
     .. rb:attr_reader:: tls_client_subject_name
 
         Return the subject name of a client certificate.
+
+    .. rb:attr_reader:: tls_client_serial
+
+        Return the serial number of a client certificate.
 
     .. rb:attr_reader:: tls_cipher
 
