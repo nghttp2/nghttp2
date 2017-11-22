@@ -3,7 +3,10 @@ dist: trusty
 sudo: false
 
 env:
-  - CI_BUILD=cmake CI_BUILD_TYPE=Debug
+  global:
+    - BOOST_VERSION=1_65_1
+  matrix:
+    - CI_BUILD=cmake CI_BUILD_TYPE=Debug
 #  - CI_BUILD=cmake CI_BUILD_TYPE=Release
 #  - CI_BUILD=autotools
 
@@ -39,10 +42,10 @@ before_install:
   - cmake --version
   # Install Boost.Build
   - cd ${HOME}
-  - wget -O boost.tar.bz2 https://dl.bintray.com/boostorg/release/1.65.1/source/boost_1_65_1.tar.bz2
+  - wget -O boost.tar.bz2 https://dl.bintray.com/boostorg/release/`echo -n ${BOOST_VERSION} | sed 's/_/./g'`/source/boost_${BOOST_VERSION}.tar.bz2
   - tar --bzip2 -xf boost.tar.bz2
   - rm boost.tar.bz2
-  - cd boost_1_65_1/tools/build
+  - cd boost_${BOOST_VERSION}/tools/build
   - ./bootstrap.sh
   - ./b2 install --prefix=${HOME}/b2
   - export PATH=${HOME}/b2/bin:${PATH}
