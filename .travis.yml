@@ -64,7 +64,7 @@ before_install:
     variant=${CI_BUILD_TYPE,,}
     toolset=gcc
     "
-  - b2 ${B2_OPTIONS} ${B2_PROPERTIES} install
+  - ./b2 ${B2_OPTIONS} ${B2_PROPERTIES} install
   - ls -l ${HOME}/boost
 before_script:
   # Now build nghttp2
