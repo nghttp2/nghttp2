@@ -46,8 +46,8 @@ before_install:
   - tar --bzip2 -xf boost.tar.bz2
   - rm boost.tar.bz2
   # Build and install Boost
-  - echo -n "using gcc : : g++-7 ;" > tools/build/src/user-config.jam
   - cd boost_${BOOST_VERSION}
+  - echo -n 'using gcc : : g++-7 ;' > tools/build/src/user-config.jam
   - ./bootstrap.sh --with-toolset=gcc
   - export B2_OPTIONS="
     --with-system
