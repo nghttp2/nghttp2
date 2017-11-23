@@ -2156,7 +2156,7 @@ int HttpServer::run() {
     }
     SSL_CTX_set_tmp_ecdh(ssl_ctx, ecdh);
     EC_KEY_free(ecdh);
-// #endif // OPENSSL_VERSION_NUBMER < 0x10002000L
+    // #endif // OPENSSL_VERSION_NUBMER < 0x10002000L
 
 #endif // OPENSSL_NO_EC
 

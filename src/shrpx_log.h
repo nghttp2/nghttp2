@@ -62,9 +62,9 @@ using namespace nghttp2;
 
 // Upstream log
 #define ULOG(SEVERITY, UPSTREAM)                                               \
-  (shrpx::Log(SEVERITY, __FILE__, __LINE__)                                    \
-   << "[UPSTREAM:" << UPSTREAM << "]"                                          \
-                                  " ")
+  (shrpx::Log(SEVERITY, __FILE__, __LINE__) << "[UPSTREAM:" << UPSTREAM        \
+                                            << "]"                             \
+                                               " ")
 
 // Downstream log
 #define DLOG(SEVERITY, DOWNSTREAM)                                             \

@@ -38,12 +38,14 @@ namespace {
 const std::array<APIEndpoint, 2> &apis() {
   static const auto apis = new std::array<APIEndpoint, 2>{{
       APIEndpoint{
-          StringRef::from_lit("/api/v1beta1/backendconfig"), true,
+          StringRef::from_lit("/api/v1beta1/backendconfig"),
+          true,
           (1 << API_METHOD_POST) | (1 << API_METHOD_PUT),
           &APIDownstreamConnection::handle_backendconfig,
       },
       APIEndpoint{
-          StringRef::from_lit("/api/v1beta1/configrevision"), true,
+          StringRef::from_lit("/api/v1beta1/configrevision"),
+          true,
           (1 << API_METHOD_GET),
           &APIDownstreamConnection::handle_configrevision,
       },
@@ -56,7 +58,8 @@ const std::array<APIEndpoint, 2> &apis() {
 namespace {
 // The method string.  This must be same order of APIMethod.
 constexpr StringRef API_METHOD_STRING[] = {
-    StringRef::from_lit("GET"), StringRef::from_lit("POST"),
+    StringRef::from_lit("GET"),
+    StringRef::from_lit("POST"),
     StringRef::from_lit("PUT"),
 };
 } // namespace

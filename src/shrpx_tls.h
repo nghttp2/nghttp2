@@ -86,7 +86,7 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
                             ,
                             neverbleed_t *nb
 #endif // HAVE_NEVERBLEED
-                            );
+);
 
 // Create client side SSL_CTX.  This does not configure ALPN settings.
 // |next_proto_select_cb| is for NPN.
@@ -215,14 +215,14 @@ setup_server_ssl_context(std::vector<SSL_CTX *> &all_ssl_ctx,
                          ,
                          neverbleed_t *nb
 #endif // HAVE_NEVERBLEED
-                         );
+);
 
 // Setups client side SSL_CTX.
 SSL_CTX *setup_downstream_client_ssl_context(
 #ifdef HAVE_NEVERBLEED
     neverbleed_t *nb
 #endif // HAVE_NEVERBLEED
-    );
+);
 
 // Sets ALPN settings in |SSL| suitable for HTTP/2 use.
 void setup_downstream_http2_alpn(SSL *ssl);

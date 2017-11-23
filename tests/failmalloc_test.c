@@ -267,8 +267,10 @@ static void run_nghttp2_session_recv(void) {
   nghttp2_frame frame;
   nghttp2_bufs bufs;
   nghttp2_nv nv[] = {
-      MAKE_NV(":method", "GET"), MAKE_NV(":scheme", "https"),
-      MAKE_NV(":authority", "example.org"), MAKE_NV(":path", "/"),
+      MAKE_NV(":method", "GET"),
+      MAKE_NV(":scheme", "https"),
+      MAKE_NV(":authority", "example.org"),
+      MAKE_NV(":path", "/"),
   };
   nghttp2_settings_entry iv[2];
   my_user_data ud;

@@ -402,11 +402,10 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
                   ? req.authority
                   : config->http2_proxy
                         ? construct_absolute_request_uri(balloc, req)
-                        : req.path.empty()
-                              ? req.method == HTTP_OPTIONS
-                                    ? StringRef::from_lit("*")
-                                    : StringRef::from_lit("-")
-                              : req.path;
+                        : req.path.empty() ? req.method == HTTP_OPTIONS
+                                                 ? StringRef::from_lit("*")
+                                                 : StringRef::from_lit("-")
+                                           : req.path;
 
   auto p = std::begin(buf);
   auto last = std::end(buf) - 2;

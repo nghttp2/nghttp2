@@ -273,6 +273,6 @@ ByteRef make_byte_ref(BlockAllocator &alloc, size_t size) {
   return {dst, size};
 }
 
-} // namespace aria2
+} // namespace nghttp2
 
 #endif // ALLOCATOR_H

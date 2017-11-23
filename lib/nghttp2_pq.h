@@ -35,7 +35,9 @@
 
 /* Implementation of priority queue */
 
-typedef struct { size_t index; } nghttp2_pq_entry;
+typedef struct {
+  size_t index;
+} nghttp2_pq_entry;
 
 typedef struct {
   /* The pointer to the pointer to the item stored */

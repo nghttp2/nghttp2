@@ -745,7 +745,7 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
                             ,
                             neverbleed_t *nb
 #endif // HAVE_NEVERBLEED
-                            ) {
+) {
   auto ssl_ctx = SSL_CTX_new(SSLv23_server_method());
   if (!ssl_ctx) {
     LOG(FATAL) << ERR_error_string(ERR_get_error(), nullptr);
@@ -1041,8 +1041,8 @@ SSL_CTX *create_ssl_client_context(
 
   SSL_CTX_set_options(ssl_ctx, ssl_opts | tlsconf.tls_proto_mask);
 
-  SSL_CTX_set_session_cache_mode(
-      ssl_ctx, SSL_SESS_CACHE_CLIENT | SSL_SESS_CACHE_NO_INTERNAL_STORE);
+  SSL_CTX_set_session_cache_mode(ssl_ctx, SSL_SESS_CACHE_CLIENT |
+                                              SSL_SESS_CACHE_NO_INTERNAL_STORE);
   SSL_CTX_sess_set_new_cb(ssl_ctx, tls_session_client_new_cb);
 
   if (nghttp2::tls::ssl_ctx_set_proto_versions(
@@ -1698,7 +1698,7 @@ setup_server_ssl_context(std::vector<SSL_CTX *> &all_ssl_ctx,
                          ,
                          neverbleed_t *nb
 #endif // HAVE_NEVERBLEED
-                         ) {
+) {
   auto config = get_config();
 
   if (!upstream_tls_enabled(config->conn)) {
@@ -1713,7 +1713,7 @@ setup_server_ssl_context(std::vector<SSL_CTX *> &all_ssl_ctx,
                                     ,
                                     nb
 #endif // HAVE_NEVERBLEED
-                                    );
+  );
 
   all_ssl_ctx.push_back(ssl_ctx);
 
@@ -1731,7 +1731,7 @@ setup_server_ssl_context(std::vector<SSL_CTX *> &all_ssl_ctx,
                                       ,
                                       nb
 #endif // HAVE_NEVERBLEED
-                                      );
+    );
     all_ssl_ctx.push_back(ssl_ctx);
 
     if (cert_lookup_tree_add_ssl_ctx(cert_tree, indexed_ssl_ctx, ssl_ctx) ==
@@ -1748,7 +1748,7 @@ SSL_CTX *setup_downstream_client_ssl_context(
 #ifdef HAVE_NEVERBLEED
     neverbleed_t *nb
 #endif // HAVE_NEVERBLEED
-    ) {
+) {
   auto &tlsconf = get_config()->tls;
 
   return create_ssl_client_context(

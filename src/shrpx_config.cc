@@ -2673,14 +2673,16 @@ int parse_config(Config *config, int optid, const StringRef &opt,
               << SHRPX_OPT_FRONTEND;
     return 0;
   case SHRPX_OPTID_BACKEND_NO_TLS:
-    LOG(WARN) << opt << ": deprecated.  backend connection is not encrypted by "
-                        "default.  See also "
+    LOG(WARN) << opt
+              << ": deprecated.  backend connection is not encrypted by "
+                 "default.  See also "
               << SHRPX_OPT_BACKEND_TLS;
     return 0;
   case SHRPX_OPTID_BACKEND_TLS_SNI_FIELD:
-    LOG(WARN) << opt << ": deprecated.  Use sni keyword in --backend option.  "
-                        "For now, all sni values of all backends are "
-                        "overridden by the given value "
+    LOG(WARN) << opt
+              << ": deprecated.  Use sni keyword in --backend option.  "
+                 "For now, all sni values of all backends are "
+                 "overridden by the given value "
               << optarg;
     config->tls.backend_sni_name = make_string_ref(config->balloc, optarg);
 
@@ -2791,8 +2793,9 @@ int parse_config(Config *config, int optid, const StringRef &opt,
 
     return 0;
   case SHRPX_OPTID_CLIENT:
-    LOG(ERROR) << opt << ": deprecated.  Use frontend=<addr>,<port>;no-tls, "
-                         "backend=<addr>,<port>;;proto=h2;tls";
+    LOG(ERROR) << opt
+               << ": deprecated.  Use frontend=<addr>,<port>;no-tls, "
+                  "backend=<addr>,<port>;;proto=h2;tls";
     return -1;
   case SHRPX_OPTID_INSECURE:
     config->tls.insecure = util::strieq_l("yes", optarg);
@@ -2887,8 +2890,9 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     return 0;
   }
   case SHRPX_OPTID_TLS_PROTO_LIST: {
-    LOG(WARN) << opt << ": deprecated.  Use tls-min-proto-version and "
-                        "tls-max-proto-version instead.";
+    LOG(WARN) << opt
+              << ": deprecated.  Use tls-min-proto-version and "
+                 "tls-max-proto-version instead.";
     auto list = util::split_str(optarg, ',');
     config->tls.tls_proto_list.resize(list.size());
     for (size_t i = 0; i < list.size(); ++i) {
@@ -3513,8 +3517,9 @@ int parse_config(Config *config, int optid, const StringRef &opt,
   case SHRPX_OPTID_REDIRECT_HTTPS_PORT: {
     auto n = util::parse_uint(optarg);
     if (n == -1 || n < 0 || n > 65535) {
-      LOG(ERROR) << opt << ": bad value.  Specify an integer in the range [0, "
-                           "65535], inclusive";
+      LOG(ERROR) << opt
+                 << ": bad value.  Specify an integer in the range [0, "
+                    "65535], inclusive";
       return -1;
     }
     config->http.redirect_https_port = optarg;

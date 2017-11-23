@@ -548,9 +548,8 @@ static int session_new(nghttp2_session **session_ptr,
   if (nghttp2_enable_strict_preface) {
     nghttp2_inbound_frame *iframe = &(*session_ptr)->iframe;
 
-    if (server &&
-        ((*session_ptr)->opt_flags & NGHTTP2_OPTMASK_NO_RECV_CLIENT_MAGIC) ==
-            0) {
+    if (server && ((*session_ptr)->opt_flags &
+                   NGHTTP2_OPTMASK_NO_RECV_CLIENT_MAGIC) == 0) {
       iframe->state = NGHTTP2_IB_READ_CLIENT_MAGIC;
       iframe->payloadleft = NGHTTP2_CLIENT_MAGIC_LEN;
     } else {
@@ -5602,8 +5601,8 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
           iframe->max_niv =
               iframe->frame.hd.length / NGHTTP2_FRAME_SETTINGS_ENTRY_LENGTH + 1;
 
-          iframe->iv = nghttp2_mem_malloc(
-              mem, sizeof(nghttp2_settings_entry) * iframe->max_niv);
+          iframe->iv = nghttp2_mem_malloc(mem, sizeof(nghttp2_settings_entry) *
+                                                   iframe->max_niv);
 
           if (!iframe->iv) {
             return NGHTTP2_ERR_NOMEM;

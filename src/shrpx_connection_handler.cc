@@ -207,12 +207,12 @@ int ConnectionHandler::create_single_worker() {
                                           ,
       nb_.get()
 #endif // HAVE_NEVERBLEED
-          );
+  );
   auto cl_ssl_ctx = tls::setup_downstream_client_ssl_context(
 #ifdef HAVE_NEVERBLEED
       nb_.get()
 #endif // HAVE_NEVERBLEED
-          );
+  );
 
   if (cl_ssl_ctx) {
     all_ssl_ctx_.push_back(cl_ssl_ctx);
@@ -258,12 +258,12 @@ int ConnectionHandler::create_worker_thread(size_t num) {
                                           ,
       nb_.get()
 #endif // HAVE_NEVERBLEED
-          );
+  );
   auto cl_ssl_ctx = tls::setup_downstream_client_ssl_context(
 #ifdef HAVE_NEVERBLEED
       nb_.get()
 #endif // HAVE_NEVERBLEED
-          );
+  );
 
   if (cl_ssl_ctx) {
     all_ssl_ctx_.push_back(cl_ssl_ctx);
