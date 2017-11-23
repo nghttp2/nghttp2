@@ -40,17 +40,32 @@ before_install:
   - $CC --version
   - go version
   - cmake --version
-  # Install Boost.Build
+  # Download Boost
   - cd ${HOME}
   - wget -O boost.tar.bz2 https://dl.bintray.com/boostorg/release/`echo -n ${BOOST_VERSION} | sed 's/_/./g'`/source/boost_${BOOST_VERSION}.tar.bz2
   - tar --bzip2 -xf boost.tar.bz2
   - rm boost.tar.bz2
-  - cd boost_${BOOST_VERSION}/tools/build
-  - ./bootstrap.sh
-  - ./b2 install --prefix=${HOME}/b2
-  - export PATH=${HOME}/b2/bin:${PATH}
-  - cd ${HOME}
-  - b2 -v
+  # Build and install Boost
+  - echo -n "using gcc : : g++-7 ;" > tools/build/src/user-config.jam
+  - cd boost_${BOOST_VERSION}
+  - ./bootstrap.sh --with-toolset=gcc
+  - export B2_OPTIONS="
+    --with-system
+    --with-thread
+    --with-date_time
+    --with-regex
+    --with-serialization
+    --build-type=minimal
+    --prefix=${HOME}/boost
+    "
+  - export B2_PROPERTIES="
+    threading=multi
+    link-static
+    variant=${CI_BUILD_TYPE,,}
+    toolset=gcc
+    "
+  - b2 ${B2_OPTIONS} ${B2_PROPERTIES} install
+  - ls -l ${HOME}/boost
 before_script:
   # Now build nghttp2
   - if [[ "${CI_BUILD}" = "autotools" ]]; then autoreconf -i; fi
