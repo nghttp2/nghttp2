@@ -4,7 +4,7 @@ sudo: false
 
 env:
   global:
-    - BOOST_VERSION=1_65_1
+    - CI_BOOST_VERSION=1_65_1
   matrix:
     - CI_BUILD=cmake CI_BUILD_TYPE=Debug
 #  - CI_BUILD=cmake CI_BUILD_TYPE=Release
@@ -42,30 +42,34 @@ before_install:
   - cmake --version
   # Download Boost
   - cd ${HOME}
-  - wget -O boost.tar.bz2 https://dl.bintray.com/boostorg/release/`echo -n ${BOOST_VERSION} | sed 's/_/./g'`/source/boost_${BOOST_VERSION}.tar.bz2
+  - wget -O boost.tar.bz2 https://dl.bintray.com/boostorg/release/`echo -n ${CI_BOOST_VERSION} | sed 's/_/./g'`/source/boost_${CI_BOOST_VERSION}.tar.bz2
   - tar --bzip2 -xf boost.tar.bz2
   - rm boost.tar.bz2
   # Build and install Boost
-  - cd boost_${BOOST_VERSION}
+  - cd boost_${CI_BOOST_VERSION}
   - "echo -n 'using gcc : : g++-7 ;' > tools/build/src/user-config.jam"
   - ./bootstrap.sh --with-toolset=gcc
-  - export B2_OPTIONS="
+  - export CI_B2_OPTIONS="
     --with-system
     --with-thread
     --with-date_time
     --with-regex
     --with-serialization
     --build-type=minimal
-    --prefix=${HOME}/boost
+    --stagedir=${HOME}/boost
     "
-  - export B2_PROPERTIES="
+  - export CI_B2_PROPERTIES="
     threading=multi
     link=static
     variant=${CI_BUILD_TYPE,,}
     toolset=gcc
     "
-  - ./b2 ${B2_OPTIONS} ${B2_PROPERTIES} install
-  - ls -l ${HOME}/boost
+  - mkdir -p ${HOME}/boost/include
+  - ./b2 ${CI_B2_OPTIONS} ${CI_B2_PROPERTIES} stage
+  - mv ${HOME}/boost_${CI_BOOST_VERSION}/boost ${HOME}/boost/include/
+  - ls -l ${HOME}/boost/include/boost
+  - ls -l ${HOME}/boost/libs
+  - echo ${TRAVIS_BUILD_DIR}
 before_script:
   # Now build nghttp2
   - if [[ "${CI_BUILD}" = "autotools" ]]; then autoreconf -i; fi
