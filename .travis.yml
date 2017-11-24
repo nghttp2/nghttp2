@@ -4,7 +4,7 @@ sudo: false
 
 env:
   global:
-    - CI_BOOST_VERSION=1_65_1
+    - CI_BOOST_VERSION=1.65.1
   matrix:
     - CI_BUILD=cmake CI_BUILD_TYPE=Debug
 #  - CI_BUILD=cmake CI_BUILD_TYPE=Release
@@ -35,18 +35,19 @@ addons:
       - cmake-data
         
 before_install:
+  - cd ${HOME}
   - $CC --version
   - if [[ "$CXX" = "g++" ]]; then export CXX="g++-7" CC="gcc-7"; fi
   - $CC --version
   - go version
   - cmake --version
   # Download Boost
-  - cd ${HOME}
-  - wget -O boost.tar.bz2 https://dl.bintray.com/boostorg/release/`echo -n ${CI_BOOST_VERSION} | sed 's/_/./g'`/source/boost_${CI_BOOST_VERSION}.tar.bz2
+  - export CI_BOOST_VERSION_=`echo -n ${CI_BOOST_VERSION} | sed 's/\./_/g'`
+  - wget -O boost.tar.bz2 https://dl.bintray.com/boostorg/release/${CI_BOOST_VERSION}/source/boost_${CI_BOOST_VERSION_}.tar.bz2
   - tar --bzip2 -xf boost.tar.bz2
   - rm boost.tar.bz2
   # Build and install Boost
-  - cd boost_${CI_BOOST_VERSION}
+  - cd boost_${CI_BOOST_VERSION_}
   - "echo -n 'using gcc : : g++-7 ;' > tools/build/src/user-config.jam"
   - ./bootstrap.sh --with-toolset=gcc
   - export CI_B2_OPTIONS="
@@ -66,7 +67,7 @@ before_install:
     "
   - mkdir -p ${HOME}/boost/include
   - ./b2 ${CI_B2_OPTIONS} ${CI_B2_PROPERTIES} stage
-  - mv ${HOME}/boost_${CI_BOOST_VERSION}/boost ${HOME}/boost/include/
+  - mv ${HOME}/boost_${CI_BOOST_VERSION_}/boost ${HOME}/boost/include/
 before_script:
   # Now build nghttp2
   - if [[ "${CI_BUILD}" = "autotools" ]]; then autoreconf -i; fi
