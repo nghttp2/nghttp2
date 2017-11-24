@@ -60,7 +60,7 @@ before_install:
     "
   - export B2_PROPERTIES="
     threading=multi
-    link-static
+    link=static
     variant=${CI_BUILD_TYPE,,}
     toolset=gcc
     "
