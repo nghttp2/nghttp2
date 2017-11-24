@@ -68,16 +68,20 @@ before_install:
   - ./b2 ${CI_B2_OPTIONS} ${CI_B2_PROPERTIES} stage
   - mv ${HOME}/boost_${CI_BOOST_VERSION}/boost ${HOME}/boost/include/
   - ls -l ${HOME}/boost/include/boost
-  - ls -l ${HOME}/boost/libs
+  - ls -l ${HOME}/boost/lib
   - echo ${TRAVIS_BUILD_DIR}
 before_script:
   # Now build nghttp2
+  - 
+  -
   - if [[ "${CI_BUILD}" = "autotools" ]]; then autoreconf -i; fi
-  - git submodule update --init
   - if [[ "${CI_BUILD}" = "autotools" ]]; then ./configure --with-mruby; fi
+  - if [[ "${CI_BUILD}" = "cmake" ]]; then mkdir -p ${HOME}/build
+  - if [[ "${CI_BUILD}" = "cmake" ]]; then cd -p ${HOME}/build
   - if [[ "${CI_BUILD}" = "cmake" ]]; then
-    cmake
+    cmake ${TRAVIS_BUILD_DIR}
     -DCMAKE_BUILD_TYPE=${CI_BUILD_TYPE}
+    -DBOOST_ROOT=${HOME}/boost
     -DENABLE_ASIO_LIB=ON
     -DENABLE_WERROR=1
     -DWITH_MRUBY=1
