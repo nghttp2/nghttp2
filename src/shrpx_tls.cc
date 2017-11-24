@@ -550,15 +550,16 @@ int early_cb(SSL *ssl, int *al, void *arg) {
   const unsigned char *ext;
   size_t extlen;
 
-  if (!SSL_early_get0_ext(conn->tls.ssl, TLSEXT_TYPE_early_data, &ext,
-                          &extlen)) {
+  if (!SSL_client_hello_get0_ext(conn->tls.ssl, TLSEXT_TYPE_early_data, &ext,
+                                 &extlen)) {
     if (LOG_ENABLED(INFO)) {
       LOG(INFO) << "early_data extension does not exist";
     }
     return 1;
   }
 
-  if (!SSL_early_get0_ext(conn->tls.ssl, TLSEXT_TYPE_psk, &ext, &extlen)) {
+  if (!SSL_client_hello_get0_ext(conn->tls.ssl, TLSEXT_TYPE_psk, &ext,
+                                 &extlen)) {
     if (LOG_ENABLED(INFO)) {
       LOG(INFO) << "pre_shared_key extension does not exist";
     }
@@ -1019,7 +1020,7 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
   SSL_CTX_set_info_callback(ssl_ctx, info_callback);
 
 #if OPENSSL_1_1_1_API
-  SSL_CTX_set_early_cb(ssl_ctx, early_cb, nullptr);
+  SSL_CTX_set_client_hello_cb(ssl_ctx, early_cb, nullptr);
 #endif // OPENSSL_1_1_1_API
 
 #ifdef OPENSSL_IS_BORINGSSL

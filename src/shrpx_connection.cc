@@ -442,7 +442,7 @@ int Connection::tls_handshake() {
 
       rv = SSL_read_early_data(tls.ssl, buf.data(), buf.size(), &nread);
       if (rv == SSL_READ_EARLY_DATA_ERROR) {
-        if (SSL_get_error(tls.ssl, rv) == SSL_ERROR_WANT_EARLY) {
+        if (SSL_get_error(tls.ssl, rv) == SSL_ERROR_WANT_CLIENT_HELLO_CB) {
           if (LOG_ENABLED(INFO)) {
             LOG(INFO)
                 << "tls: early_cb returns negative return value; handshake "
@@ -510,7 +510,7 @@ int Connection::tls_handshake() {
       break;
     case SSL_ERROR_WANT_WRITE:
 #if OPENSSL_1_1_1_API
-    case SSL_ERROR_WANT_EARLY:
+    case SSL_ERROR_WANT_CLIENT_HELLO_CB:
 #endif // OPENSSL_1_1_1_API
       break;
     case SSL_ERROR_SSL:
