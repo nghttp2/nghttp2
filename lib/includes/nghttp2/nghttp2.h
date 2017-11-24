@@ -4757,8 +4757,8 @@ nghttp2_hd_deflate_change_table_size(nghttp2_hd_deflater *deflater,
  *
  * After this function returns, it is safe to delete the |nva|.
  *
- * This function returns 0 if it succeeds, or one of the following
- * negative error codes:
+ * This function returns the number of bytes written to |buf| if it
+ * succeeds, or one of the following negative error codes:
  *
  * :enum:`NGHTTP2_ERR_NOMEM`
  *     Out of memory.
@@ -4789,8 +4789,8 @@ NGHTTP2_EXTERN ssize_t nghttp2_hd_deflate_hd(nghttp2_hd_deflater *deflater,
  *
  * After this function returns, it is safe to delete the |nva|.
  *
- * This function returns 0 if it succeeds, or one of the following
- * negative error codes:
+ * This function returns the number of bytes written to |vec| if it
+ * succeeds, or one of the following negative error codes:
  *
  * :enum:`NGHTTP2_ERR_NOMEM`
  *     Out of memory.
