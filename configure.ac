@@ -119,7 +119,7 @@ AC_ARG_WITH([jemalloc],
 
 AC_ARG_WITH([spdylay],
     [AS_HELP_STRING([--with-spdylay],
-                    [Use spdylay [default=no]])],
+                    [(Deprecated) Use spdylay [default=no]])],
     [request_spdylay=$withval], [request_spdylay=no])
 
 AC_ARG_WITH([systemd],
@@ -949,3 +949,7 @@ AC_MSG_NOTICE([summary of build options:
       Python bindings:${enable_python_bindings}
       Threading:      ${enable_threads}
 ])
+
+if test "x${have_spdylay}" == "xyes"; then
+  AC_MSG_WARN([spdylay support was deprecated, and will be removed in v1.29.0.])
+fi
