@@ -5,6 +5,7 @@ sudo: false
 env:
   global:
     - CI_BOOST_VERSION=1.65.1
+    - CI_CMAKE_VERSION=3.10.0
   matrix:
     - CI_BUILD=cmake CI_BUILD_TYPE=Debug
 #  - CI_BUILD=cmake CI_BUILD_TYPE=Release
@@ -31,8 +32,6 @@ addons:
       - libjansson-dev
       - libjemalloc-dev
       - libc-ares-dev
-      - cmake
-      - cmake-data
         
 before_install:
   - cd ${HOME}
@@ -40,6 +39,17 @@ before_install:
   - if [[ "$CXX" = "g++" ]]; then export CXX="g++-7" CC="gcc-7"; fi
   - $CC --version
   - go version
+  # Insatll CMake
+  - |
+    if [[ "${TRAVIS_OS_NAME}" == "linux" ]]; then
+      mkdir -p ${HOME}/cmake
+      CI_CMAKE_VERSION_SHORT=`echo -n ${CI_CMAKE_VERSION} | awk -F. '{print $1 "." $2}'`
+      CI_CMAKE_URL="https://cmake.org/files/v{CI_CMAKE_VERSION_SHORT}/cmake-${CI_CMAKE_VERSION}-Linux-x86_64.tar.gz"    
+      travis_retry wget --no-check-certificate --quiet -O - ${CMAKE_URL} | tar --strip-components=1 -xz -C ${HOME}/cmake
+      export PATH=${HOME}/cmake/bin:${PATH}
+    else
+      brew upgrade cmake || brew install cmake
+    fi
   - cmake --version
   # Download Boost
   - export CI_BOOST_VERSION_=`echo -n ${CI_BOOST_VERSION} | sed 's/\./_/g'`
@@ -68,6 +78,7 @@ before_install:
   - mkdir -p ${HOME}/boost/include
   - ./b2 ${CI_B2_OPTIONS} ${CI_B2_PROPERTIES} stage
   - mv ${HOME}/boost_${CI_BOOST_VERSION_}/boost ${HOME}/boost/include/
+  
 before_script:
   # Now build nghttp2
   - if [[ "${CI_BUILD}" = "autotools" ]]; then autoreconf -i; fi
