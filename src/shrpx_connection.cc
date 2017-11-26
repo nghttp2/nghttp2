@@ -407,9 +407,12 @@ int Connection::tls_handshake() {
         // server waits for EndOfEarlyData and Finished message from
         // client, which voids the purpose of 0-RTT data.  The left
         // over of handshake is done through write_tls or read_tls.
-        rv = (tls.handshake_state == TLS_CONN_WRITE_STARTED ||
-              tls.wbuf.rleft()) &&
-             tls.earlybuf.rleft();
+        if ((tls.handshake_state == TLS_CONN_WRITE_STARTED ||
+             tls.wbuf.rleft()) &&
+            tls.earlybuf.rleft()) {
+          rv = 1;
+        }
+
         break;
       }
 
