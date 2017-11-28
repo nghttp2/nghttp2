@@ -87,12 +87,12 @@ before_script:
   - if [[ "${CI_BUILD}" = "cmake" ]]; then cd ${HOME}/build; fi
   - if [[ "${CI_BUILD}" = "cmake" ]]; then
     cmake ${TRAVIS_BUILD_DIR}
-    -DCMAKE_BUILD_TYPE=${CI_BUILD_TYPE}
-    -DBOOST_ROOT=${HOME}/boost
-    -DENABLE_ASIO_LIB=1
-    -DENABLE_WERROR=1
-    -DWITH_MRUBY=1
-    -DWITH_NEVERBLEED=1
+    -D CMAKE_BUILD_TYPE=${CI_BUILD_TYPE}
+    -D BOOST_ROOT=${HOME}/boost
+    -D ENABLE_ASIO_LIB=ON
+    -D ENABLE_WERROR=ON
+    -D WITH_MRUBY=ON
+    -D WITH_NEVERBLEED=ON
     ; fi
 script:
   - if [ "$CI_BUILD" = "autotools" ]; then make distcheck DISTCHECK_CONFIGURE_FLAGS="--with-mruby --with-neverbleed --enable-werror CPPFLAGS=-fsanitize=address LDFLAGS=\"-fsanitize=address -fuse-ld=gold\""; fi
