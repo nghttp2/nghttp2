@@ -83,17 +83,17 @@ before_script:
   # Now build nghttp2
   - if [[ "${CI_BUILD}" = "autotools" ]]; then autoreconf -i; fi
   - if [[ "${CI_BUILD}" = "autotools" ]]; then ./configure --with-mruby; fi
-  - if [[ "${CI_BUILD}" = "cmake" ]]; then mkdir -p ${HOME}/build; fi
-  - if [[ "${CI_BUILD}" = "cmake" ]]; then cd ${HOME}/build; fi
-  - if [[ "${CI_BUILD}" = "cmake" ]]; then
-    cmake ${TRAVIS_BUILD_DIR}
+  - export CI_CMAKE_OPTIONS="
     -D CMAKE_BUILD_TYPE=${CI_BUILD_TYPE}
     -D BOOST_ROOT=${HOME}/boost
     -D ENABLE_ASIO_LIB=ON
     -D ENABLE_WERROR=ON
     -D WITH_MRUBY=ON
     -D WITH_NEVERBLEED=ON
-    ; fi
+    "
+  - if [[ "${CI_BUILD}" = "cmake" ]]; then mkdir -p ${HOME}/build; fi
+  - if [[ "${CI_BUILD}" = "cmake" ]]; then cd ${HOME}/build; fi
+  - if [[ "${CI_BUILD}" = "cmake" ]]; then cmake ${TRAVIS_BUILD_DIR} ${CI_CMAKE_OPTIONS}; fi
 script:
   - if [ "$CI_BUILD" = "autotools" ]; then make distcheck DISTCHECK_CONFIGURE_FLAGS="--with-mruby --with-neverbleed --enable-werror CPPFLAGS=-fsanitize=address LDFLAGS=\"-fsanitize=address -fuse-ld=gold\""; fi
   - if [ "$CI_BUILD" = "cmake" ]; then make check; fi
