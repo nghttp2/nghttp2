@@ -93,7 +93,7 @@ before_script:
     "
   - if [[ "${CI_BUILD}" = "cmake" ]]; then mkdir -p ${HOME}/build; fi
   - if [[ "${CI_BUILD}" = "cmake" ]]; then cd ${HOME}/build; fi
-  - if [[ "${CI_BUILD}" = "cmake" ]]; then cmake ${TRAVIS_BUILD_DIR} ${CI_CMAKE_OPTIONS}; fi
+  - if [[ "${CI_BUILD}" = "cmake" ]]; then cmake ${CI_CMAKE_OPTIONS} ${TRAVIS_BUILD_DIR}; fi
 script:
   - if [ "$CI_BUILD" = "autotools" ]; then make distcheck DISTCHECK_CONFIGURE_FLAGS="--with-mruby --with-neverbleed --enable-werror CPPFLAGS=-fsanitize=address LDFLAGS=\"-fsanitize=address -fuse-ld=gold\""; fi
   - if [ "$CI_BUILD" = "cmake" ]; then make check; fi
