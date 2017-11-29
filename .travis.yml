@@ -96,7 +96,11 @@ before_script:
   - if [[ "${CI_BUILD}" = "cmake" ]]; then cmake ${CI_CMAKE_OPTIONS} ${TRAVIS_BUILD_DIR}; fi
 script:
   - if [ "$CI_BUILD" = "autotools" ]; then make distcheck DISTCHECK_CONFIGURE_FLAGS="--with-mruby --with-neverbleed --enable-werror CPPFLAGS=-fsanitize=address LDFLAGS=\"-fsanitize=address -fuse-ld=gold\""; fi
-  - if [ "$CI_BUILD" = "cmake" ]; then make check; fi
+  - |
+    if [ "$CI_BUILD" = "cmake" ]; then
+      cmake --build .
+      ctest --output-on-failure
+    fi
   # As of April, 23, 2016, golang http2 build fails, probably because
   # the default go version is too old.
   # - cd integration-tests
