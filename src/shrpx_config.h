@@ -1139,20 +1139,26 @@ int option_lookup_token(const char *name, size_t namelen);
 // stored into the object pointed by |config|. This function returns 0
 // if it succeeds, or -1.  The |included_set| contains the all paths
 // already included while processing this configuration, to avoid loop
-// in --include option.
+// in --include option.  The |pattern_addr_indexer| contains a pair of
+// pattern of backend, and its index in DownstreamConfig::addr_groups.
+// It is introduced to speed up loading configuration file with lots
+// of backends.
 int parse_config(Config *config, const StringRef &opt, const StringRef &optarg,
-                 std::set<StringRef> &included_set);
+                 std::set<StringRef> &included_set,
+                 std::map<StringRef, size_t> &pattern_addr_indexer);
 
 // Similar to parse_config() above, but additional |optid| which
 // should be the return value of option_lookup_token(opt).
 int parse_config(Config *config, int optid, const StringRef &opt,
-                 const StringRef &optarg, std::set<StringRef> &included_set);
+                 const StringRef &optarg, std::set<StringRef> &included_set,
+                 std::map<StringRef, size_t> &pattern_addr_indexer);
 
 // Loads configurations from |filename| and stores them in |config|.
 // This function returns 0 if it succeeds, or -1.  See parse_config()
 // for |include_set|.
 int load_config(Config *config, const char *filename,
-                std::set<StringRef> &include_set);
+                std::set<StringRef> &include_set,
+                std::map<StringRef, size_t> &pattern_addr_indexer);
 
 // Parses header field in |optarg|.  We expect header field is formed
 // like "NAME: VALUE".  We require that NAME is non empty string.  ":"
