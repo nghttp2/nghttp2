@@ -23,7 +23,6 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 #include "shrpx_api_downstream_connection.h"
-
 #include "shrpx_client_handler.h"
 #include "shrpx_upstream.h"
 #include "shrpx_downstream.h"
@@ -343,6 +342,7 @@ int APIDownstreamConnection::handle_backendconfig() {
   downstreamconf->family = src->family;
 
   std::set<StringRef> include_set;
+  std::map<StringRef, size_t> pattern_addr_indexer;
 
   for (auto first = reinterpret_cast<const uint8_t *>(iov[0].iov_base),
             last = first + iov[0].iov_len;
@@ -376,7 +376,8 @@ int APIDownstreamConnection::handle_backendconfig() {
       continue;
     }
 
-    if (parse_config(&new_config, optid, opt, optval, include_set) != 0) {
+    if (parse_config(&new_config, optid, opt, optval, include_set,
+                     pattern_addr_indexer) != 0) {
       send_reply(400, API_FAILURE);
       return 0;
     }

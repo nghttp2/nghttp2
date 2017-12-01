@@ -943,6 +943,7 @@ namespace {
 //
 // This function returns 0 if it succeeds, or -1.
 int parse_mapping(Config *config, DownstreamAddrConfig &addr,
+                  std::map<StringRef, size_t> &pattern_addr_indexer,
                   const StringRef &src_pattern, const StringRef &src_params) {
   // This returns at least 1 element (it could be empty string).  We
   // will append '/' to all patterns, so it becomes catch-all pattern.
@@ -983,7 +984,6 @@ int parse_mapping(Config *config, DownstreamAddrConfig &addr,
   auto &wildcard_patterns = routerconf.wildcard_patterns;
 
   for (const auto &raw_pattern : mapping) {
-    auto done = false;
     StringRef pattern;
     auto slash = std::find(std::begin(raw_pattern), std::end(raw_pattern), '/');
     if (slash == std::end(raw_pattern)) {
@@ -1010,47 +1010,43 @@ int parse_mapping(Config *config, DownstreamAddrConfig &addr,
       *p = '\0';
       pattern = StringRef{iov.base, p};
     }
-    for (auto &g : addr_groups) {
-      if (g.pattern == pattern) {
-        // Last value wins if we have multiple different affinity
-        // value under one group.
-        if (params.affinity.type != AFFINITY_NONE) {
-          if (g.affinity.type == AFFINITY_NONE) {
-            g.affinity.type = params.affinity.type;
-            if (params.affinity.type == AFFINITY_COOKIE) {
-              g.affinity.cookie.name = make_string_ref(
-                  downstreamconf.balloc, params.affinity.cookie.name);
-              if (!params.affinity.cookie.path.empty()) {
-                g.affinity.cookie.path = make_string_ref(
-                    downstreamconf.balloc, params.affinity.cookie.path);
-              }
-              g.affinity.cookie.secure = params.affinity.cookie.secure;
+    auto it = pattern_addr_indexer.find(pattern);
+    if (it != std::end(pattern_addr_indexer)) {
+      auto &g = addr_groups[(*it).second];
+      // Last value wins if we have multiple different affinity
+      // value under one group.
+      if (params.affinity.type != AFFINITY_NONE) {
+        if (g.affinity.type == AFFINITY_NONE) {
+          g.affinity.type = params.affinity.type;
+          if (params.affinity.type == AFFINITY_COOKIE) {
+            g.affinity.cookie.name = make_string_ref(
+                downstreamconf.balloc, params.affinity.cookie.name);
+            if (!params.affinity.cookie.path.empty()) {
+              g.affinity.cookie.path = make_string_ref(
+                  downstreamconf.balloc, params.affinity.cookie.path);
             }
-          } else if (g.affinity.type != params.affinity.type ||
-                     g.affinity.cookie.name != params.affinity.cookie.name ||
-                     g.affinity.cookie.path != params.affinity.cookie.path ||
-                     g.affinity.cookie.secure !=
-                         params.affinity.cookie.secure) {
-            LOG(ERROR) << "backend: affinity: multiple different affinity "
-                          "configurations found in a single group";
-            return -1;
+            g.affinity.cookie.secure = params.affinity.cookie.secure;
           }
+        } else if (g.affinity.type != params.affinity.type ||
+                   g.affinity.cookie.name != params.affinity.cookie.name ||
+                   g.affinity.cookie.path != params.affinity.cookie.path ||
+                   g.affinity.cookie.secure != params.affinity.cookie.secure) {
+          LOG(ERROR) << "backend: affinity: multiple different affinity "
+                        "configurations found in a single group";
+          return -1;
         }
-        // If at least one backend requires frontend TLS connection,
-        // enable it for all backends sharing the same pattern.
-        if (params.redirect_if_not_tls) {
-          g.redirect_if_not_tls = true;
-        }
-        g.addrs.push_back(addr);
-        done = true;
-        break;
       }
-    }
-    if (done) {
+      // If at least one backend requires frontend TLS connection,
+      // enable it for all backends sharing the same pattern.
+      if (params.redirect_if_not_tls) {
+        g.redirect_if_not_tls = true;
+      }
+      g.addrs.push_back(addr);
       continue;
     }
 
     auto idx = addr_groups.size();
+    pattern_addr_indexer.emplace(pattern, idx);
     addr_groups.emplace_back(pattern);
     auto &g = addr_groups.back();
     g.addrs.push_back(addr);
@@ -2387,13 +2383,16 @@ int option_lookup_token(const char *name, size_t namelen) {
 }
 
 int parse_config(Config *config, const StringRef &opt, const StringRef &optarg,
-                 std::set<StringRef> &included_set) {
+                 std::set<StringRef> &included_set,
+                 std::map<StringRef, size_t> &pattern_addr_indexer) {
   auto optid = option_lookup_token(opt.c_str(), opt.size());
-  return parse_config(config, optid, opt, optarg, included_set);
+  return parse_config(config, optid, opt, optarg, included_set,
+                      pattern_addr_indexer);
 }
 
 int parse_config(Config *config, int optid, const StringRef &opt,
-                 const StringRef &optarg, std::set<StringRef> &included_set) {
+                 const StringRef &optarg, std::set<StringRef> &included_set,
+                 std::map<StringRef, size_t> &pattern_addr_indexer) {
   std::array<char, STRERROR_BUFSIZE> errbuf;
   char host[NI_MAXHOST];
   uint16_t port;
@@ -2425,7 +2424,8 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     auto params =
         mapping_end == std::end(optarg) ? mapping_end : mapping_end + 1;
 
-    if (parse_mapping(config, addr, StringRef{mapping, mapping_end},
+    if (parse_mapping(config, addr, pattern_addr_indexer,
+                      StringRef{mapping, mapping_end},
                       StringRef{params, std::end(optarg)}) != 0) {
       return -1;
     }
@@ -3126,7 +3126,8 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     }
 
     included_set.insert(optarg);
-    auto rv = load_config(config, optarg.c_str(), included_set);
+    auto rv =
+        load_config(config, optarg.c_str(), included_set, pattern_addr_indexer);
     included_set.erase(optarg);
 
     if (rv != 0) {
@@ -3563,7 +3564,8 @@ int parse_config(Config *config, int optid, const StringRef &opt,
 }
 
 int load_config(Config *config, const char *filename,
-                std::set<StringRef> &include_set) {
+                std::set<StringRef> &include_set,
+                std::map<StringRef, size_t> &pattern_addr_indexer) {
   std::ifstream in(filename, std::ios::binary);
   if (!in) {
     LOG(ERROR) << "Could not open config file " << filename;
@@ -3585,7 +3587,8 @@ int load_config(Config *config, const char *filename,
     *eq = '\0';
 
     if (parse_config(config, StringRef{std::begin(line), eq},
-                     StringRef{eq + 1, std::end(line)}, include_set) != 0) {
+                     StringRef{eq + 1, std::end(line)}, include_set,
+                     pattern_addr_indexer) != 0) {
       return -1;
     }
   }
