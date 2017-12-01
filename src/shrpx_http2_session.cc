@@ -577,11 +577,11 @@ int Http2Session::initiate_connection() {
       }
     }
 
-    on_write_ = &Http2Session::downstream_write;
-    on_read_ = &Http2Session::downstream_read;
-
     // We have been already connected when no TLS and proxy is used.
     if (state_ == PROXY_CONNECTED) {
+      on_read_ = &Http2Session::read_noop;
+      on_write_ = &Http2Session::write_noop;
+
       return connected();
     }
 
@@ -1641,6 +1641,9 @@ int Http2Session::connection_made() {
   int rv;
 
   state_ = Http2Session::CONNECTED;
+
+  on_write_ = &Http2Session::downstream_write;
+  on_read_ = &Http2Session::downstream_read;
 
   if (addr_->tls) {
     const unsigned char *next_proto = nullptr;
