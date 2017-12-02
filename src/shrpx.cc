@@ -1602,7 +1602,7 @@ void fill_default_config(Config *config) {
   }
 
   auto &apiconf = config->api;
-  apiconf.max_request_body = 16_k;
+  apiconf.max_request_body = 32_m;
 
   auto &dnsconf = config->dns;
   {
