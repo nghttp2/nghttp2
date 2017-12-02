@@ -34,6 +34,9 @@
 /* Define to 1 if you have the `accept4` function. */
 #cmakedefine HAVE_ACCEPT4 1
 
+/* Define to 1 if you have the `mkostemp` function. */
+#cmakedefine HAVE_MKOSTEMP 1
+
 /* Define to 1 if you have the `initgroups` function. */
 #cmakedefine01 HAVE_DECL_INITGROUPS
 

@@ -302,6 +302,7 @@ check_type_size("time_t"  SIZEOF_TIME_T)
 include(CheckFunctionExists)
 check_function_exists(_Exit     HAVE__EXIT)
 check_function_exists(accept4   HAVE_ACCEPT4)
+check_function_exists(mkostemp  HAVE_MKOSTEMP)
 
 include(CheckSymbolExists)
 # XXX does this correctly detect initgroups (un)availability on cygwin?
