@@ -168,7 +168,7 @@ if(ENABLE_APP)
       template_test.cc
       base64_test.cc
     )
-    add_executable(nghttpx-unittest EXCLUDE_FROM_ALL
+    add_executable(nghttpx-unittest
       ${NGHTTPX_UNITTEST_SOURCES}
       $<TARGET_OBJECTS:http-parser>
     )

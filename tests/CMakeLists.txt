@@ -23,7 +23,7 @@ if(HAVE_CUNIT)
     nghttp2_buf_test.c
   )
 
-  add_executable(main EXCLUDE_FROM_ALL
+  add_executable(main
     ${MAIN_SOURCES}
   )
   target_include_directories(main PRIVATE ${CUNIT_INCLUDE_DIRS})
@@ -40,7 +40,7 @@ if(HAVE_CUNIT)
       malloc_wrapper.c
       nghttp2_test_helper.c
     )
-    add_executable(failmalloc EXCLUDE_FROM_ALL
+    add_executable(failmalloc
       ${FAILMALLOC_SOURCES}
     )
     target_link_libraries(failmalloc
