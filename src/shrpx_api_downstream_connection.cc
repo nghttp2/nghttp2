@@ -23,6 +23,12 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 #include "shrpx_api_downstream_connection.h"
+
+#include <sys/mman.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <cstdlib>
+
 #include "shrpx_client_handler.h"
 #include "shrpx_upstream.h"
 #include "shrpx_downstream.h"
@@ -64,9 +70,13 @@ constexpr StringRef API_METHOD_STRING[] = {
 } // namespace
 
 APIDownstreamConnection::APIDownstreamConnection(Worker *worker)
-    : worker_(worker), api_(nullptr), shutdown_read_(false) {}
+    : worker_(worker), api_(nullptr), fd_(-1), shutdown_read_(false) {}
 
-APIDownstreamConnection::~APIDownstreamConnection() {}
+APIDownstreamConnection::~APIDownstreamConnection() {
+  if (fd_ != -1) {
+    close(fd_);
+  }
+}
 
 int APIDownstreamConnection::attach_downstream(Downstream *downstream) {
   if (LOG_ENABLED(INFO)) {
@@ -233,6 +243,28 @@ int APIDownstreamConnection::push_request_headers() {
     return 0;
   }
 
+  switch (req.method) {
+  case HTTP_POST:
+  case HTTP_PUT: {
+    char tempname[] = "/tmp/nghttpx-api.XXXXXX";
+#ifdef HAVE_MKOSTEMP
+    fd_ = mkostemp(tempname, O_CLOEXEC);
+#else  // !HAVE_MKOSTEMP
+    fd_ = mkstemp(tempname);
+#endif // !HAVE_MKOSTEMP
+    if (fd_ == -1) {
+      send_reply(500, API_FAILURE);
+
+      return 0;
+    }
+#ifndef HAVE_MKOSTEMP
+    util::make_socket_closeonexec(fd_);
+#endif // HAVE_MKOSTEMP
+    unlink(tempname);
+    break;
+  }
+  }
+
   return 0;
 }
 
@@ -275,17 +307,25 @@ int APIDownstreamConnection::push_upload_data_chunk(const uint8_t *data,
     return 0;
   }
 
-  auto output = downstream_->get_request_buf();
-
+  auto &req = downstream_->request();
   auto &apiconf = get_config()->api;
 
-  if (output->rleft() + datalen > apiconf.max_request_body) {
+  if (static_cast<size_t>(req.recv_body_length) > apiconf.max_request_body) {
     send_reply(413, API_FAILURE);
 
     return 0;
   }
 
-  output->append(data, datalen);
+  ssize_t nwrite;
+  while ((nwrite = write(fd_, data, datalen)) == -1 && errno == EINTR)
+    ;
+  if (nwrite == -1) {
+    auto error = errno;
+    LOG(ERROR) << "Could not write API request body: errno=" << error;
+    send_reply(500, API_FAILURE);
+
+    return 0;
+  }
 
   // We don't have to call Upstream::resume_read() here, because
   // request buffer is effectively unlimited.  Actually, we cannot
@@ -303,29 +343,20 @@ int APIDownstreamConnection::end_upload_data() {
 }
 
 int APIDownstreamConnection::handle_backendconfig() {
-  auto output = downstream_->get_request_buf();
+  auto &req = downstream_->request();
 
-  std::array<struct iovec, 2> iov;
-  auto iovcnt = output->riovec(iov.data(), 2);
-
-  if (iovcnt == 0) {
+  if (req.recv_body_length == 0) {
     send_reply(200, API_SUCCESS);
 
     return 0;
   }
 
-  std::unique_ptr<uint8_t[]> large_buf;
-
-  // If data spans in multiple chunks, pull them up into one
-  // contiguous buffer.
-  if (iovcnt > 1) {
-    large_buf = make_unique<uint8_t[]>(output->rleft());
-    auto len = output->rleft();
-    output->remove(large_buf.get(), len);
-
-    iov[0].iov_base = large_buf.get();
-    iov[0].iov_len = len;
+  auto rp = mmap(nullptr, req.recv_body_length, PROT_READ, MAP_SHARED, fd_, 0);
+  if (rp == reinterpret_cast<void *>(-1)) {
+    send_reply(500, API_FAILURE);
   }
+
+  auto unmapper = defer(munmap, rp, req.recv_body_length);
 
   Config new_config{};
   new_config.conn.downstream = std::make_shared<DownstreamConfig>();
@@ -344,8 +375,8 @@ int APIDownstreamConnection::handle_backendconfig() {
   std::set<StringRef> include_set;
   std::map<StringRef, size_t> pattern_addr_indexer;
 
-  for (auto first = reinterpret_cast<const uint8_t *>(iov[0].iov_base),
-            last = first + iov[0].iov_len;
+  for (auto first = reinterpret_cast<const uint8_t *>(rp),
+            last = first + req.recv_body_length;
        first != last;) {
     auto eol = std::find(first, last, '\n');
     if (eol == last) {

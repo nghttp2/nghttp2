@@ -96,6 +96,8 @@ private:
   Worker *worker_;
   // This points to the requested APIEndpoint struct.
   const APIEndpoint *api_;
+  // The file descriptor for temporary file to store request body.
+  int fd_;
   // true if we stop reading request body.
   bool shutdown_read_;
 };

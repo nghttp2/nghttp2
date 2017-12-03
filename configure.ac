@@ -713,6 +713,7 @@ AC_CHECK_FUNCS([ \
   memchr \
   memmove \
   memset \
+  mkostemp \
   socket \
   sqrt \
   strchr \
