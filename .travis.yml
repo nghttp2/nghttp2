@@ -100,7 +100,7 @@ script:
   - if [ "$CI_BUILD" = "autotools" ]; then make distcheck DISTCHECK_CONFIGURE_FLAGS="--with-mruby --with-neverbleed --enable-werror CPPFLAGS=-fsanitize=address LDFLAGS=\"-fsanitize=address -fuse-ld=gold\""; fi
   - |
     if [ "$CI_BUILD" = "cmake" ]; then
-      cmake --build .
+      cmake --build . --target all
       ctest --output-on-failure
     fi
   # As of April, 23, 2016, golang http2 build fails, probably because
