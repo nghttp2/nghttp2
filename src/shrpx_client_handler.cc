@@ -804,40 +804,61 @@ bool load_lighter(const DownstreamAddr *lhs, const DownstreamAddr *rhs) {
 Http2Session *ClientHandler::select_http2_session(
     const std::shared_ptr<DownstreamAddrGroup> &group) {
   auto &shared_addr = group->shared_addr;
-  auto &http2_avail_freelist = shared_addr->http2_avail_freelist;
 
-  for (auto session = http2_avail_freelist.head; session;) {
-    auto next = session->dlnext;
-
-    session->remove_from_freelist();
-
-    // session may be in graceful shutdown period now.
-    if (session->max_concurrency_reached(0)) {
-      if (LOG_ENABLED(INFO)) {
-        CLOG(INFO, this)
-            << "Maximum streams have been reached for Http2Session(" << session
-            << ").  Skip it";
-      }
-
-      session = next;
-
+  // First count the working backend addresses.
+  size_t min = 0;
+  for (const auto &addr : shared_addr->addrs) {
+    if (addr.proto != PROTO_HTTP2 || addr.connect_blocker->blocked()) {
       continue;
     }
 
+    ++min;
+  }
+
+  if (min == 0) {
     if (LOG_ENABLED(INFO)) {
-      CLOG(INFO, this) << "Use Http2Session " << session
-                       << " from http2_avail_freelist";
+      CLOG(INFO, this) << "No working backend address found";
     }
 
-    if (session->max_concurrency_reached(1)) {
-      if (LOG_ENABLED(INFO)) {
-        CLOG(INFO, this) << "Maximum streams are reached for Http2Session("
-                         << session << ").";
+    return nullptr;
+  }
+
+  auto &http2_avail_freelist = shared_addr->http2_avail_freelist;
+
+  if (http2_avail_freelist.size() >= min) {
+    for (auto session = http2_avail_freelist.head; session;) {
+      auto next = session->dlnext;
+
+      session->remove_from_freelist();
+
+      // session may be in graceful shutdown period now.
+      if (session->max_concurrency_reached(0)) {
+        if (LOG_ENABLED(INFO)) {
+          CLOG(INFO, this)
+              << "Maximum streams have been reached for Http2Session("
+              << session << ").  Skip it";
+        }
+
+        session = next;
+
+        continue;
       }
-    } else {
-      session->add_to_avail_freelist();
+
+      if (LOG_ENABLED(INFO)) {
+        CLOG(INFO, this) << "Use Http2Session " << session
+                         << " from http2_avail_freelist";
+      }
+
+      if (session->max_concurrency_reached(1)) {
+        if (LOG_ENABLED(INFO)) {
+          CLOG(INFO, this) << "Maximum streams are reached for Http2Session("
+                           << session << ").";
+        }
+      } else {
+        session->add_to_avail_freelist();
+      }
+      return session;
     }
-    return session;
   }
 
   DownstreamAddr *selected_addr = nullptr;
@@ -880,12 +901,7 @@ Http2Session *ClientHandler::select_http2_session(
     }
   }
 
-  if (selected_addr == nullptr) {
-    if (LOG_ENABLED(INFO)) {
-      CLOG(INFO, this) << "No working backend address found";
-    }
-    return nullptr;
-  }
+  assert(selected_addr);
 
   if (LOG_ENABLED(INFO)) {
     CLOG(INFO, this) << "Selected DownstreamAddr=" << selected_addr
