@@ -891,11 +891,6 @@ Http2Session *ClientHandler::select_http2_session(
       break;
     }
 
-    if (addr.http2_extra_freelist.size() == 0 &&
-        addr.connect_blocker->blocked()) {
-      continue;
-    }
-
     if (selected_addr == nullptr || load_lighter(&addr, selected_addr)) {
       selected_addr = &addr;
     }
