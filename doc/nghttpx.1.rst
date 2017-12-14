@@ -1328,7 +1328,7 @@ API
 
     Set the maximum size of request body for API request.
 
-    Default: ``16K``
+    Default: ``32M``
 
 
 DNS
