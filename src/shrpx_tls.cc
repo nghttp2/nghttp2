@@ -149,6 +149,8 @@ int ssl_pem_passwd_cb(char *buf, int size, int rwflag, void *user_data) {
 } // namespace
 
 namespace {
+// *al is set to SSL_AD_UNRECOGNIZED_NAME by openssl, so we don't have
+// to set it explicitly.
 int servername_callback(SSL *ssl, int *al, void *arg) {
   auto conn = static_cast<Connection *>(SSL_get_app_data(ssl));
   auto handler = static_cast<ClientHandler *>(conn->data);
