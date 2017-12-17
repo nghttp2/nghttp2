@@ -2630,8 +2630,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     }
 
     // Make 16 bits to the HTTP/2 default 64KiB - 1.  This is the same
-    // behaviour of previous code.  For SPDY, we adjust this value in
-    // SpdyUpstream to look like the SPDY default.
+    // behaviour of previous code.
     *resp = (1 << n) - 1;
 
     return 0;

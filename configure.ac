@@ -117,11 +117,6 @@ AC_ARG_WITH([jemalloc],
                     [Use jemalloc [default=check]])],
     [request_jemalloc=$withval], [request_jemalloc=check])
 
-AC_ARG_WITH([spdylay],
-    [AS_HELP_STRING([--with-spdylay],
-                    [(Deprecated) Use spdylay [default=no]])],
-    [request_spdylay=$withval], [request_spdylay=no])
-
 AC_ARG_WITH([systemd],
     [AS_HELP_STRING([--with-systemd],
                     [Enable systemd support in nghttpx [default=check]])],
@@ -457,26 +452,6 @@ if test "x${request_jemalloc}" = "xyes" &&
    test "x${have_jemalloc}" != "xyes"; then
   AC_MSG_ERROR([jemalloc was requested (--with-jemalloc) but not found])
 fi
-
-# spdylay (for src/nghttpx and src/h2load)
-have_spdylay=no
-if test "x${request_spdylay}" != "xno"; then
-  PKG_CHECK_MODULES([LIBSPDYLAY], [libspdylay >= 1.3.2],
-                    [have_spdylay=yes], [have_spdylay=no])
-  if test "x${have_spdylay}" = "xyes"; then
-    AC_DEFINE([HAVE_SPDYLAY], [1], [Define to 1 if you have `spdylay` library.])
-  else
-    AC_MSG_NOTICE($LIBSPDYLAY_PKG_ERRORS)
-    AC_MSG_NOTICE([The SPDY support in nghttpx and h2load will be disabled.])
-  fi
-fi
-
-if test "x${request_spdylay}" = "xyes" &&
-   test "x${have_spdylay}" != "xyes"; then
-  AC_MSG_ERROR([spdylay was requested (--with-spdylay) but not found])
-fi
-
-AM_CONDITIONAL([HAVE_SPDYLAY], [ test "x${have_spdylay}" = "xyes" ])
 
 # Check Boost Asio library
 have_asio_lib=no
@@ -928,7 +903,6 @@ AC_MSG_NOTICE([summary of build options:
       Libev:          ${have_libev} (CFLAGS='${LIBEV_CFLAGS}' LIBS='${LIBEV_LIBS}')
       Libc-ares       ${have_libcares} (CFLAGS='${LIBCARES_CFLAGS}' LIBS='${LIBCARES_LIBS}')
       Libevent(SSL):  ${have_libevent_openssl} (CFLAGS='${LIBEVENT_OPENSSL_CFLAGS}' LIBS='${LIBEVENT_OPENSSL_LIBS}')
-      Spdylay:        ${have_spdylay} (CFLAGS='${LIBSPDYLAY_CFLAGS}' LIBS='${LIBSPDYLAY_LIBS}')
       Jansson:        ${have_jansson} (CFLAGS='${JANSSON_CFLAGS}' LIBS='${JANSSON_LIBS}')
       Jemalloc:       ${have_jemalloc} (LIBS='${JEMALLOC_LIBS}')
       Zlib:           ${have_zlib} (CFLAGS='${ZLIB_CFLAGS}' LIBS='${ZLIB_LIBS}')
@@ -950,7 +924,3 @@ AC_MSG_NOTICE([summary of build options:
       Python bindings:${enable_python_bindings}
       Threading:      ${enable_threads}
 ])
-
-if test "x${have_spdylay}" == "xyes"; then
-  AC_MSG_WARN([spdylay support was deprecated, and will be removed in v1.29.0.])
-fi

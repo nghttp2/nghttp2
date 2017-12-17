@@ -51,9 +51,6 @@
 #include "shrpx_api_downstream_connection.h"
 #include "shrpx_health_monitor_downstream_connection.h"
 #include "shrpx_log.h"
-#ifdef HAVE_SPDYLAY
-#include "shrpx_spdy_upstream.h"
-#endif // HAVE_SPDYLAY
 #include "util.h"
 #include "template.h"
 #include "tls.h"
@@ -607,36 +604,6 @@ int ClientHandler::validate_next_proto() {
 
     return 0;
   }
-
-#ifdef HAVE_SPDYLAY
-  auto spdy_version = spdylay_npn_get_version(proto.byte(), proto.size());
-  if (spdy_version) {
-    upstream_ = make_unique<SpdyUpstream>(spdy_version, this);
-
-    switch (spdy_version) {
-    case SPDYLAY_PROTO_SPDY2:
-      alpn_ = StringRef::from_lit("spdy/2");
-      break;
-    case SPDYLAY_PROTO_SPDY3:
-      alpn_ = StringRef::from_lit("spdy/3");
-      break;
-    case SPDYLAY_PROTO_SPDY3_1:
-      alpn_ = StringRef::from_lit("spdy/3.1");
-      break;
-    default:
-      alpn_ = StringRef::from_lit("spdy/unknown");
-    }
-
-    // At this point, input buffer is already filled with some bytes.
-    // The read callback is not called until new data come. So consume
-    // input buffer here.
-    if (on_read() != 0) {
-      return -1;
-    }
-
-    return 0;
-  }
-#endif // HAVE_SPDYLAY
 
   if (proto == StringRef::from_lit("http/1.1")) {
     upstream_ = make_unique<HttpsUpstream>(this);

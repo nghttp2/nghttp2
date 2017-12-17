@@ -1384,11 +1384,8 @@ bool conf_exists(const char *path) {
 } // namespace
 
 namespace {
-constexpr auto DEFAULT_NPN_LIST = StringRef::from_lit("h2,h2-16,h2-14,"
-#ifdef HAVE_SPDYLAY
-                                                      "spdy/3.1,"
-#endif // HAVE_SPDYLAY
-                                                      "http/1.1");
+constexpr auto DEFAULT_NPN_LIST =
+    StringRef::from_lit("h2,h2-16,h2-14,http/1.1");
 } // namespace
 
 namespace {
@@ -1490,13 +1487,11 @@ void fill_default_config(Config *config) {
       timeoutconf.settings = 10_s;
     }
 
-    // window size for HTTP/2 and SPDY upstream connection per stream.
-    // 2**16-1 = 64KiB-1, which is HTTP/2 default.  Please note that
-    // SPDY/3 default is 64KiB.
+    // window size for HTTP/2 upstream connection per stream.  2**16-1
+    // = 64KiB-1, which is HTTP/2 default.
     upstreamconf.window_size = 64_k - 1;
-    // HTTP/2 and SPDY/3.1 has connection-level flow control. The
-    // default window size for HTTP/2 is 64KiB - 1.  SPDY/3's default
-    // is 64KiB
+    // HTTP/2 has connection-level flow control. The default window
+    // size for HTTP/2 is 64KiB - 1.
     upstreamconf.connection_window_size = 64_k - 1;
     upstreamconf.max_concurrent_streams = 100;
 
@@ -1624,7 +1619,7 @@ void print_version(std::ostream &out) {
 namespace {
 void print_usage(std::ostream &out) {
   out << R"(Usage: nghttpx [OPTIONS]... [<PRIVATE_KEY> <CERT>]
-A reverse proxy for HTTP/2, HTTP/1 and SPDY.)"
+A reverse proxy for HTTP/2, and HTTP/1.)"
       << std::endl;
 }
 } // namespace
@@ -1990,8 +1985,7 @@ Performance:
 
 Timeout:
   --frontend-http2-read-timeout=<DURATION>
-              Specify  read  timeout  for  HTTP/2  and  SPDY  frontend
-              connection.
+              Specify read timeout for HTTP/2 frontend connection.
               Default: )"
       << util::duration_str(config->conn.upstream.timeout.http2_read) << R"(
   --frontend-read-timeout=<DURATION>
@@ -2008,13 +2002,13 @@ Timeout:
               Default: )"
       << util::duration_str(config->conn.upstream.timeout.idle_read) << R"(
   --stream-read-timeout=<DURATION>
-              Specify  read timeout  for HTTP/2  and SPDY  streams.  0
-              means no timeout.
+              Specify  read timeout  for HTTP/2  streams.  0  means no
+              timeout.
               Default: )"
       << util::duration_str(config->http2.timeout.stream_read) << R"(
   --stream-write-timeout=<DURATION>
-              Specify write  timeout for  HTTP/2 and SPDY  streams.  0
-              means no timeout.
+              Specify write  timeout for  HTTP/2 streams.  0  means no
+              timeout.
               Default: )"
       << util::duration_str(config->http2.timeout.stream_write) << R"(
   --backend-read-timeout=<DURATION>
@@ -2351,10 +2345,10 @@ SSL/TLS:
               consider   to  use   --client-no-http2-cipher-black-list
               option.  But be aware its implications.
 
-HTTP/2 and SPDY:
+HTTP/2:
   -c, --frontend-http2-max-concurrent-streams=<N>
               Set the maximum number of  the concurrent streams in one
-              frontend HTTP/2 and SPDY session.
+              frontend HTTP/2 session.
               Default:  )"
       << config->http2.upstream.max_concurrent_streams << R"(
   --backend-http2-max-concurrent-streams=<N>
@@ -2365,14 +2359,13 @@ HTTP/2 and SPDY:
               Default: )"
       << config->http2.downstream.max_concurrent_streams << R"(
   --frontend-http2-window-size=<SIZE>
-              Sets the  per-stream initial  window size of  HTTP/2 and
-              SPDY frontend connection.
+              Sets  the  per-stream  initial  window  size  of  HTTP/2
+              frontend connection.
               Default: )"
       << config->http2.upstream.window_size << R"(
   --frontend-http2-connection-window-size=<SIZE>
-              Sets the  per-connection window size of  HTTP/2 and SPDY
-              frontend  connection.  For  SPDY  connection, the  value
-              less than 64KiB is rounded up to 64KiB.
+              Sets the  per-connection window size of  HTTP/2 frontend
+              connection.
               Default: )"
       << config->http2.upstream.connection_window_size << R"(
   --backend-http2-window-size=<SIZE>
@@ -2398,8 +2391,7 @@ HTTP/2 and SPDY:
               It is  also supported if  both frontend and  backend are
               HTTP/2 in default mode.  In  this case, server push from
               backend session is relayed  to frontend, and server push
-              via Link header field  is also supported.  SPDY frontend
-              does not support server push.
+              via Link header field is also supported.
   --frontend-http2-optimize-write-buffer-size
               (Experimental) Enable write  buffer size optimization in
               frontend HTTP/2 TLS  connection.  This optimization aims
@@ -2454,7 +2446,7 @@ HTTP/2 and SPDY:
 
 Mode:
   (default mode)
-              Accept HTTP/2, SPDY and HTTP/1.1 over SSL/TLS.  "no-tls"
+              Accept  HTTP/2,  and  HTTP/1.1 over  SSL/TLS.   "no-tls"
               parameter is  used in  --frontend option,  accept HTTP/2
               and HTTP/1.1 over cleartext  TCP.  The incoming HTTP/1.1
               connection  can  be  upgraded  to  HTTP/2  through  HTTP
