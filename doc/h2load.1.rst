@@ -14,7 +14,7 @@ SYNOPSIS
 DESCRIPTION
 -----------
 
-benchmarking tool for HTTP/2 and SPDY server
+benchmarking tool for HTTP/2 server
 
 .. describe:: <URI>
 
@@ -76,16 +76,13 @@ OPTIONS
 .. option:: -w, --window-bits=<N>
 
     Sets the stream level initial window size to (2\*\*<N>)-1.
-    For SPDY, 2\*\*<N> is used instead.
 
     Default: ``30``
 
 .. option:: -W, --connection-window-bits=<N>
 
     Sets  the  connection  level   initial  window  size  to
-    (2\*\*<N>)-1.  For SPDY, if <N>  is strictly less than 16,
-    this option  is ignored.   Otherwise 2\*\*<N> is  used for
-    SPDY.
+    (2\*\*<N>)-1.
 
     Default: ``30``
 
@@ -104,8 +101,7 @@ OPTIONS
 
     Specify ALPN identifier of the  protocol to be used when
     accessing http URI without SSL/TLS.
-    Available protocols: h2c and
-    http/1.1
+    Available protocols: h2c and http/1.1
 
     Default: ``h2c``
 
@@ -297,8 +293,7 @@ traffic
     used for header fields after decompression.  The ``space savings``
     is calculated  by (1 - ``headers``  / ``decompressed(headers)``) *
     100.  For HTTP/1.1, this is usually  0.00%, since it does not have
-    header compression.  For HTTP/2 and SPDY, it shows some insightful
-    numbers.
+    header compression.  For HTTP/2, it shows some insightful numbers.
   data
     The number of response body bytes received from the server.
 
@@ -366,7 +361,7 @@ h2load sets large flow control window by default, and effectively
 disables flow control to avoid under utilization of server
 performance.  To set smaller flow control window, use :option:`-w` and
 :option:`-W` options.  For example, use ``-w16 -W16`` to set default
-window size described in HTTP/2 and SPDY protocol specification.
+window size described in HTTP/2 protocol specification.
 
 SEE ALSO
 --------

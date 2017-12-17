@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTPX" "1" "Dec 14, 2017" "1.29.0-DEV" "nghttp2"
+.TH "NGHTTPX" "1" "Dec 17, 2017" "1.29.0-DEV" "nghttp2"
 .SH NAME
 nghttpx \- HTTP/2 proxy
 .
@@ -35,7 +35,7 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 \fBnghttpx\fP [OPTIONS]... [<PRIVATE_KEY> <CERT>]
 .SH DESCRIPTION
 .sp
-A reverse proxy for HTTP/2, HTTP/1 and SPDY.
+A reverse proxy for HTTP/2, and HTTP/1.
 .INDENT 0.0
 .TP
 .B <PRIVATE_KEY>
@@ -471,8 +471,7 @@ this option will be simply ignored.
 .INDENT 0.0
 .TP
 .B \-\-frontend\-http2\-read\-timeout=<DURATION>
-Specify  read  timeout  for  HTTP/2  and  SPDY  frontend
-connection.
+Specify read timeout for HTTP/2 frontend connection.
 .sp
 Default: \fB3m\fP
 .UNINDENT
@@ -501,16 +500,16 @@ Default: \fB1m\fP
 .INDENT 0.0
 .TP
 .B \-\-stream\-read\-timeout=<DURATION>
-Specify  read timeout  for HTTP/2  and SPDY  streams.  0
-means no timeout.
+Specify  read timeout  for HTTP/2  streams.  0  means no
+timeout.
 .sp
 Default: \fB0\fP
 .UNINDENT
 .INDENT 0.0
 .TP
 .B \-\-stream\-write\-timeout=<DURATION>
-Specify write  timeout for  HTTP/2 and SPDY  streams.  0
-means no timeout.
+Specify write  timeout for  HTTP/2 streams.  0  means no
+timeout.
 .sp
 Default: \fB1m\fP
 .UNINDENT
@@ -983,12 +982,12 @@ HTTP/2.   To  use  those   cipher  suites  with  HTTP/2,
 consider   to  use   \fI\%\-\-client\-no\-http2\-cipher\-black\-list\fP
 option.  But be aware its implications.
 .UNINDENT
-.SS HTTP/2 and SPDY
+.SS HTTP/2
 .INDENT 0.0
 .TP
 .B \-c, \-\-frontend\-http2\-max\-concurrent\-streams=<N>
 Set the maximum number of  the concurrent streams in one
-frontend HTTP/2 and SPDY session.
+frontend HTTP/2 session.
 .sp
 Default: \(ga\(ga 100\(ga\(ga
 .UNINDENT
@@ -1005,17 +1004,16 @@ Default: \fB100\fP
 .INDENT 0.0
 .TP
 .B \-\-frontend\-http2\-window\-size=<SIZE>
-Sets the  per\-stream initial  window size of  HTTP/2 and
-SPDY frontend connection.
+Sets  the  per\-stream  initial  window  size  of  HTTP/2
+frontend connection.
 .sp
 Default: \fB65535\fP
 .UNINDENT
 .INDENT 0.0
 .TP
 .B \-\-frontend\-http2\-connection\-window\-size=<SIZE>
-Sets the  per\-connection window size of  HTTP/2 and SPDY
-frontend  connection.  For  SPDY  connection, the  value
-less than 64KiB is rounded up to 64KiB.
+Sets the  per\-connection window size of  HTTP/2 frontend
+connection.
 .sp
 Default: \fB65535\fP
 .UNINDENT
@@ -1056,8 +1054,7 @@ default mode and HTTP/2  frontend via Link header field.
 It is  also supported if  both frontend and  backend are
 HTTP/2 in default mode.  In  this case, server push from
 backend session is relayed  to frontend, and server push
-via Link header field  is also supported.  SPDY frontend
-does not support server push.
+via Link header field is also supported.
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -1128,7 +1125,7 @@ Default: \fB4K\fP
 .INDENT 0.0
 .TP
 .B (default mode)
-Accept HTTP/2, SPDY and HTTP/1.1 over SSL/TLS.  "no\-tls"
+Accept  HTTP/2,  and  HTTP/1.1 over  SSL/TLS.   "no\-tls"
 parameter is  used in  \fI\%\-\-frontend\fP option,  accept HTTP/2
 and HTTP/1.1 over cleartext  TCP.  The incoming HTTP/1.1
 connection  can  be  upgraded  to  HTTP/2  through  HTTP
