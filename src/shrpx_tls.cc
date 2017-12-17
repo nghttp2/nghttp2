@@ -51,10 +51,6 @@
 
 #include <nghttp2/nghttp2.h>
 
-#ifdef HAVE_SPDYLAY
-#include <spdylay/spdylay.h>
-#endif // HAVE_SPDYLAY
-
 #include "shrpx_log.h"
 #include "shrpx_client_handler.h"
 #include "shrpx_config.h"

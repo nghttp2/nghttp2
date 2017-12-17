@@ -46,19 +46,12 @@
 #include <future>
 #include <random>
 
-#ifdef HAVE_SPDYLAY
-#include <spdylay/spdylay.h>
-#endif // HAVE_SPDYLAY
-
 #include <openssl/err.h>
 
 #include "http-parser/http_parser.h"
 
 #include "h2load_http1_session.h"
 #include "h2load_http2_session.h"
-#ifdef HAVE_SPDYLAY
-#include "h2load_spdy_session.h"
-#endif // HAVE_SPDYLAY
 #include "tls.h"
 #include "http2.h"
 #include "util.h"
@@ -878,14 +871,6 @@ int Client::connection_made() {
       } else if (util::streq(NGHTTP2_H1_1, proto)) {
         session = make_unique<Http1Session>(this);
       }
-#ifdef HAVE_SPDYLAY
-      else {
-        auto spdy_version = spdylay_npn_get_version(next_proto, next_proto_len);
-        if (spdy_version) {
-          session = make_unique<SpdySession>(this, spdy_version);
-        }
-      }
-#endif // HAVE_SPDYLAY
 
       // Just assign next_proto to selected_proto anyway to show the
       // negotiation result.
@@ -930,20 +915,6 @@ int Client::connection_made() {
       session = make_unique<Http1Session>(this);
       selected_proto = NGHTTP2_H1_1.str();
       break;
-#ifdef HAVE_SPDYLAY
-    case Config::PROTO_SPDY2:
-      session = make_unique<SpdySession>(this, SPDYLAY_PROTO_SPDY2);
-      selected_proto = "spdy/2";
-      break;
-    case Config::PROTO_SPDY3:
-      session = make_unique<SpdySession>(this, SPDYLAY_PROTO_SPDY3);
-      selected_proto = "spdy/3";
-      break;
-    case Config::PROTO_SPDY3_1:
-      session = make_unique<SpdySession>(this, SPDYLAY_PROTO_SPDY3_1);
-      selected_proto = "spdy/3.1";
-      break;
-#endif // HAVE_SPDYLAY
     default:
       // unreachable
       assert(0);
@@ -1788,17 +1759,13 @@ void print_version(std::ostream &out) {
 namespace {
 void print_usage(std::ostream &out) {
   out << R"(Usage: h2load [OPTIONS]... [URI]...
-benchmarking tool for HTTP/2 and SPDY server)"
+benchmarking tool for HTTP/2 server)"
       << std::endl;
 }
 } // namespace
 
 namespace {
-constexpr char DEFAULT_NPN_LIST[] = "h2,h2-16,h2-14"
-#ifdef HAVE_SPDYLAY
-                                    ",spdy/3.1,spdy/3,spdy/2"
-#endif // HAVE_SPDYLAY
-                                    ",http/1.1";
+constexpr char DEFAULT_NPN_LIST[] = "h2,h2-16,h2-14,http/1.1";
 } // namespace
 
 namespace {
@@ -1849,14 +1816,11 @@ Options:
               Default: 1
   -w, --window-bits=<N>
               Sets the stream level initial window size to (2**<N>)-1.
-              For SPDY, 2**<N> is used instead.
               Default: )"
       << config.window_bits << R"(
   -W, --connection-window-bits=<N>
               Sets  the  connection  level   initial  window  size  to
-              (2**<N>)-1.  For SPDY, if <N>  is strictly less than 16,
-              this option  is ignored.   Otherwise 2**<N> is  used for
-              SPDY.
+              (2**<N>)-1.
               Default: )" << config.connection_window_bits << R"(
   -H, --header=<HEADER>
               Add/Override a header to the requests.
@@ -1867,17 +1831,9 @@ Options:
       << config.ciphers << R"(
   -p, --no-tls-proto=<PROTOID>
               Specify ALPN identifier of the  protocol to be used when
-              accessing http URI without SSL/TLS.)";
-
-#ifdef HAVE_SPDYLAY
-  out << R"(
-              Available protocols: spdy/2, spdy/3, spdy/3.1, )";
-#else  // !HAVE_SPDYLAY
-  out << R"(
-              Available protocols: )";
-#endif // !HAVE_SPDYLAY
-  out << NGHTTP2_CLEARTEXT_PROTO_VERSION_ID << R"( and
-              )" << NGHTTP2_H1_1 << R"(
+              accessing http URI without SSL/TLS.
+              Available protocols: )" << NGHTTP2_CLEARTEXT_PROTO_VERSION_ID
+      << R"( and )" << NGHTTP2_H1_1 << R"(
               Default: )"
       << NGHTTP2_CLEARTEXT_PROTO_VERSION_ID << R"(
   -d, --data=<PATH>
@@ -2115,14 +2071,6 @@ int main(int argc, char **argv) {
         config.no_tls_proto = Config::PROTO_HTTP2;
       } else if (util::strieq(NGHTTP2_H1_1, proto)) {
         config.no_tls_proto = Config::PROTO_HTTP1_1;
-#ifdef HAVE_SPDYLAY
-      } else if (util::strieq_l("spdy/2", proto)) {
-        config.no_tls_proto = Config::PROTO_SPDY2;
-      } else if (util::strieq_l("spdy/3", proto)) {
-        config.no_tls_proto = Config::PROTO_SPDY3;
-      } else if (util::strieq_l("spdy/3.1", proto)) {
-        config.no_tls_proto = Config::PROTO_SPDY3_1;
-#endif // HAVE_SPDYLAY
       } else {
         std::cerr << "-p: unsupported protocol " << proto << std::endl;
         exit(EXIT_FAILURE);
@@ -2507,7 +2455,6 @@ int main(int argc, char **argv) {
 
   config.h1reqs.reserve(reqlines.size());
   config.nva.reserve(reqlines.size());
-  config.nv.reserve(reqlines.size());
 
   for (auto &req : reqlines) {
     // For HTTP/1.1
@@ -2557,35 +2504,6 @@ int main(int argc, char **argv) {
     }
 
     config.nva.push_back(std::move(nva));
-
-    // For spdylay
-    std::vector<const char *> cva;
-    // 3 for :path, :version, and possible content-length, 1 for
-    // terminal nullptr
-    cva.reserve(2 * (3 + shared_nva.size()) + 1);
-
-    cva.push_back(":path");
-    cva.push_back(req.c_str());
-
-    for (auto &nv : shared_nva) {
-      if (nv.name == ":authority") {
-        cva.push_back(":host");
-      } else {
-        cva.push_back(nv.name.c_str());
-      }
-      cva.push_back(nv.value.c_str());
-    }
-    cva.push_back(":version");
-    cva.push_back("HTTP/1.1");
-
-    if (!content_length_str.empty()) {
-      cva.push_back("content-length");
-      cva.push_back(content_length_str.c_str());
-    }
-
-    cva.push_back(nullptr);
-
-    config.nv.push_back(std::move(cva));
   }
 
   // Don't DOS our server!

@@ -469,7 +469,7 @@ private:
   Upstream *upstream_;
   std::unique_ptr<DownstreamConnection> dconn_;
 
-  // only used by HTTP/2 or SPDY upstream
+  // only used by HTTP/2 upstream
   BlockedLink *blocked_link_;
   // The backend address used to fulfill this request.  These are for
   // logging purpose.
@@ -492,7 +492,7 @@ private:
   int request_state_;
   // response state
   int response_state_;
-  // only used by HTTP/2 or SPDY upstream
+  // only used by HTTP/2 upstream
   int dispatch_state_;
   // true if the connection is upgraded (HTTP Upgrade or CONNECT),
   // excluding upgrade to HTTP/2.

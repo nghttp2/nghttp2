@@ -24,7 +24,6 @@
 GO_FILES = \
 	nghttpx_http1_test.go \
 	nghttpx_http2_test.go \
-	nghttpx_spdy_test.go \
 	server_tester.go
 
 EXTRA_DIST = \
@@ -43,7 +42,6 @@ EXTRA_DIST = \
 itprep:
 	go get -d -v golang.org/x/net/http2
 	go get -d -v github.com/tatsuhiro-t/go-nghttp2
-	go get -d -v github.com/tatsuhiro-t/spdy
 	go get -d -v golang.org/x/net/websocket
 
 it:

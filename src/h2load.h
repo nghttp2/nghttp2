@@ -64,7 +64,6 @@ struct Worker;
 
 struct Config {
   std::vector<std::vector<nghttp2_nv>> nva;
-  std::vector<std::vector<const char *>> nv;
   std::vector<std::string> h1reqs;
   std::vector<ev_tstamp> timings;
   nghttp2::Headers custom_headers;
@@ -93,13 +92,7 @@ struct Config {
   ev_tstamp conn_active_timeout;
   // amount of time to wait after the last request is made on a connection
   ev_tstamp conn_inactivity_timeout;
-  enum {
-    PROTO_HTTP2,
-    PROTO_SPDY2,
-    PROTO_SPDY3,
-    PROTO_SPDY3_1,
-    PROTO_HTTP1_1
-  } no_tls_proto;
+  enum { PROTO_HTTP2, PROTO_HTTP1_1 } no_tls_proto;
   uint32_t header_table_size;
   uint32_t encoder_header_table_size;
   // file descriptor for upload data
