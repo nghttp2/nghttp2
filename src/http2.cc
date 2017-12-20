@@ -36,6 +36,8 @@ StringRef get_reason_phrase(unsigned int status_code) {
     return StringRef::from_lit("Continue");
   case 101:
     return StringRef::from_lit("Switching Protocols");
+  case 103:
+    return StringRef::from_lit("Early Hints");
   case 200:
     return StringRef::from_lit("OK");
   case 201:
@@ -140,6 +142,8 @@ StringRef stringify_status(BlockAllocator &balloc, unsigned int status_code) {
     return StringRef::from_lit("100");
   case 101:
     return StringRef::from_lit("101");
+  case 103:
+    return StringRef::from_lit("103");
   case 200:
     return StringRef::from_lit("200");
   case 201:
