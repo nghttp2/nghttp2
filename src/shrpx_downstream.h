@@ -32,6 +32,7 @@
 #include <string>
 #include <memory>
 #include <chrono>
+#include <algorithm>
 
 #include <ev.h>
 
@@ -207,7 +208,40 @@ struct Response {
     unconsumed_body_length -= len;
   }
 
+  // returns true if a resource denoted by scheme, authority, and path
+  // has already been pushed.
+  bool is_resource_pushed(const StringRef &scheme, const StringRef &authority,
+                          const StringRef &path) const {
+    if (!pushed_resources) {
+      return false;
+    }
+    return std::find(std::begin(*pushed_resources), std::end(*pushed_resources),
+                     std::make_tuple(scheme, authority, path)) !=
+           std::end(*pushed_resources);
+  }
+
+  // remember that a resource denoted by scheme, authority, and path
+  // is pushed.
+  void resource_pushed(const StringRef &scheme, const StringRef &authority,
+                       const StringRef &path) {
+    if (!pushed_resources) {
+      pushed_resources = make_unique<
+          std::vector<std::tuple<StringRef, StringRef, StringRef>>>();
+    }
+    pushed_resources->emplace_back(scheme, authority, path);
+  }
+
   FieldStore fs;
+  // array of the tuple of scheme, authority, and path of pushed
+  // resource.  This is required because RFC 8297 says that server
+  // typically includes header fields appeared in non-final response
+  // header fields in final response header fields.  Without checking
+  // that a particular resource has already been pushed, or not, we
+  // end up pushing the same resource at least twice.  It is unknown
+  // that we should use more complex data structure (e.g., std::set)
+  // to find the resources faster.
+  std::unique_ptr<std::vector<std::tuple<StringRef, StringRef, StringRef>>>
+      pushed_resources;
   // the length of response body received so far
   int64_t recv_body_length;
   // The number of bytes not consumed by the application yet.  This is
