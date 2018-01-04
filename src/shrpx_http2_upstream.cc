@@ -2039,7 +2039,7 @@ int Http2Upstream::prepare_push_promise(Downstream *downstream) {
   int rv;
 
   const auto &req = downstream->request();
-  const auto &resp = downstream->response();
+  auto &resp = downstream->response();
 
   auto base = http2::get_pure_path_component(req.path);
   if (base.empty()) {
@@ -2069,10 +2069,16 @@ int Http2Upstream::prepare_push_promise(Downstream *downstream) {
         authority = req.authority;
       }
 
+      if (resp.is_resource_pushed(scheme, authority, path)) {
+        continue;
+      }
+
       rv = submit_push_promise(scheme, authority, path, downstream);
       if (rv != 0) {
         return -1;
       }
+
+      resp.resource_pushed(scheme, authority, path);
     }
   }
   return 0;
@@ -2182,11 +2188,19 @@ int Http2Upstream::initiate_push(Downstream *downstream, const StringRef &uri) {
     authority = req.authority;
   }
 
+  auto &resp = downstream->response();
+
+  if (resp.is_resource_pushed(scheme, authority, path)) {
+    return 0;
+  }
+
   rv = submit_push_promise(scheme, authority, path, downstream);
 
   if (rv != 0) {
     return -1;
   }
+
+  resp.resource_pushed(scheme, authority, path);
 
   return 0;
 }
