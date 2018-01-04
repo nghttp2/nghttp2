@@ -556,28 +556,20 @@ int ClientHandler::validate_next_proto() {
   }
 #endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 
-  if (next_proto == nullptr) {
+  StringRef proto;
+
+  if (next_proto) {
+    proto = StringRef{next_proto, next_proto_len};
+
+    if (LOG_ENABLED(INFO)) {
+      CLOG(INFO, this) << "The negotiated next protocol: " << proto;
+    }
+  } else {
     if (LOG_ENABLED(INFO)) {
       CLOG(INFO, this) << "No protocol negotiated. Fallback to HTTP/1.1";
     }
 
-    upstream_ = make_unique<HttpsUpstream>(this);
-    alpn_ = StringRef::from_lit("http/1.1");
-
-    // At this point, input buffer is already filled with some bytes.
-    // The read callback is not called until new data come. So consume
-    // input buffer here.
-    if (on_read() != 0) {
-      return -1;
-    }
-
-    return 0;
-  }
-
-  auto proto = StringRef{next_proto, next_proto_len};
-
-  if (LOG_ENABLED(INFO)) {
-    CLOG(INFO, this) << "The negotiated next protocol: " << proto;
+    proto = StringRef::from_lit("http/1.1");
   }
 
   if (!tls::in_proto_list(get_config()->tls.npn_list, proto)) {
