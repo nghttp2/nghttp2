@@ -2225,8 +2225,9 @@ static int session_prep_frame(nghttp2_session *session,
       assert(session->obq_flood_counter_ > 0);
       --session->obq_flood_counter_;
     }
-
-    if (session_is_closing(session)) {
+    /* PING frame is allowed to be sent unless termination GOAWAY is
+       sent */
+    if (session->goaway_flags & NGHTTP2_GOAWAY_TERM_ON_SEND) {
       return NGHTTP2_ERR_SESSION_CLOSING;
     }
     nghttp2_frame_pack_ping(&session->aob.framebufs, &frame->ping);
