@@ -70,10 +70,10 @@ void proc_wev_cb(struct ev_loop *loop, ev_timer *w, int revents) {
 
 // DownstreamKey is used to index SharedDownstreamAddr in order to
 // find the same configuration.
-using DownstreamKey =
-    std::tuple<std::vector<std::tuple<StringRef, StringRef, size_t, size_t,
-                                      shrpx_proto, uint16_t, bool, bool, bool>>,
-               bool, int, StringRef, StringRef, int>;
+using DownstreamKey = std::tuple<
+    std::vector<std::tuple<StringRef, StringRef, size_t, size_t, shrpx_proto,
+                           uint16_t, bool, bool, bool, bool>>,
+    bool, int, StringRef, StringRef, int>;
 
 namespace {
 DownstreamKey create_downstream_key(
@@ -93,6 +93,7 @@ DownstreamKey create_downstream_key(
     std::get<6>(*p) = a.host_unix;
     std::get<7>(*p) = a.tls;
     std::get<8>(*p) = a.dns;
+    std::get<9>(*p) = a.upgrade_scheme;
     ++p;
   }
   std::sort(std::begin(addrs), std::end(addrs));
@@ -220,6 +221,7 @@ void Worker::replace_downstream_config(
       dst_addr.fall = src_addr.fall;
       dst_addr.rise = src_addr.rise;
       dst_addr.dns = src_addr.dns;
+      dst_addr.upgrade_scheme = src_addr.upgrade_scheme;
 
       auto shared_addr_ptr = shared_addr.get();
 

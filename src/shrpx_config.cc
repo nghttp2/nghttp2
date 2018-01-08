@@ -814,6 +814,7 @@ struct DownstreamParams {
   bool tls;
   bool dns;
   bool redirect_if_not_tls;
+  bool upgrade_scheme;
 };
 
 namespace {
@@ -918,6 +919,8 @@ int parse_downstream_params(DownstreamParams &out,
       out.dns = true;
     } else if (util::strieq_l("redirect-if-not-tls", param)) {
       out.redirect_if_not_tls = true;
+    } else if (util::strieq_l("upgrade-scheme", param)) {
+      out.upgrade_scheme = true;
     } else if (!param.empty()) {
       LOG(ERROR) << "backend: " << param << ": unknown keyword";
       return -1;
@@ -977,6 +980,7 @@ int parse_mapping(Config *config, DownstreamAddrConfig &addr,
   addr.tls = params.tls;
   addr.sni = make_string_ref(downstreamconf.balloc, params.sni);
   addr.dns = params.dns;
+  addr.upgrade_scheme = params.upgrade_scheme;
 
   auto &routerconf = downstreamconf.router;
   auto &router = routerconf.router;
