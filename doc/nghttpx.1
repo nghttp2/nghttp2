@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTPX" "1" "Dec 19, 2017" "1.29.0" "nghttp2"
+.TH "NGHTTPX" "1" "Feb 02, 2018" "1.30.0" "nghttp2"
 .SH NAME
 nghttpx \- HTTP/2 proxy
 .
@@ -227,6 +227,13 @@ this feature is enabled  for all backend servers sharing
 the   same   <PATTERN>.    It    is   advised   to   set
 "redirect\-if\-no\-tls"    parameter   to    all   backends
 explicitly if this feature is desired.
+.sp
+If "upgrade\-scheme"  parameter is used along  with "tls"
+parameter, HTTP/2 :scheme pseudo header field is changed
+to "https" from "http" when forwarding a request to this
+particular backend.  This is  a workaround for a backend
+server  which  requires  "https" :scheme  pseudo  header
+field on TLS encrypted connection.
 .sp
 Since ";" and ":" are  used as delimiter, <PATTERN> must
 not  contain these  characters.  Since  ";" has  special
