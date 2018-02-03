@@ -388,6 +388,16 @@ respectively.
 
         Return the serial number of a client certificate.
 
+    .. rb:attr_reader:: tls_client_not_before
+
+        Return the start date of a client certificate in seconds since
+        the epoch.
+
+    .. rb:attr_reader:: tls_client_not_after
+
+        Return the end date of a client certificate in seconds since
+        the epoch.
+
     .. rb:attr_reader:: tls_cipher
 
         Return a TLS cipher negotiated in this connection.

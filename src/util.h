@@ -196,6 +196,11 @@ char *iso8601_date(char *res, int64_t ms);
 
 time_t parse_http_date(const StringRef &s);
 
+// Parses time formatted as "MMM DD HH:MM:SS YYYY [GMT]" (e.g., Feb 3
+// 00:55:52 2015 GMT), which is specifically used by OpenSSL
+// ASN1_TIME_print().
+time_t parse_openssl_asn1_time_print(const StringRef &s);
+
 char upcase(char c);
 
 inline char lowcase(char c) {
