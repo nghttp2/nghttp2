@@ -1934,6 +1934,8 @@ StringRef get_x509_name(BlockAllocator &balloc, X509_NAME *nm) {
     return StringRef{};
   }
 
+  auto b_deleter = defer(BIO_free, b);
+
   // Not documented, but it seems that X509_NAME_print_ex returns the
   // number of bytes written into b.
   auto slen = X509_NAME_print_ex(b, nm, 0, XN_FLAG_RFC2253);
@@ -1943,7 +1945,6 @@ StringRef get_x509_name(BlockAllocator &balloc, X509_NAME *nm) {
 
   auto iov = make_byte_ref(balloc, slen + 1);
   BIO_read(b, iov.base, slen);
-  BIO_free(b);
   iov.base[slen] = '\0';
   return StringRef{iov.base, static_cast<size_t>(slen)};
 }
