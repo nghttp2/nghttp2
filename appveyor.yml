@@ -84,6 +84,7 @@ before_build:
 # to run your custom scripts instead of automatic MSBuild
 build_script:
   - cmd: cmake --build . --config %CONFIGURATION%
+  - cmd: ctest --output-on-failure --build-config %CONFIGURATION%
 
 # to disable automatic builds
 # build: off
