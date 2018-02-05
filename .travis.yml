@@ -44,43 +44,30 @@ before_install:
     if [[ "${TRAVIS_OS_NAME}" == "linux" ]]; then
       mkdir -p ${HOME}/cmake
       CI_CMAKE_VERSION_SHORT=`echo -n ${CI_CMAKE_VERSION} | awk -F. '{print $1 "." $2}'`
-      CI_CMAKE_URL="https://cmake.org/files/v${CI_CMAKE_VERSION_SHORT}/cmake-${CI_CMAKE_VERSION}-Linux-x86_64.tar.gz"    
+      CI_CMAKE_URL="https://cmake.org/files/v${CI_CMAKE_VERSION_SHORT}/cmake-${CI_CMAKE_VERSION}-Linux-x86_64.tar.gz"
       travis_retry wget --no-check-certificate --quiet -O - ${CI_CMAKE_URL} | tar --strip-components=1 -xz -C ${HOME}/cmake
       export PATH=${HOME}/cmake/bin:${PATH}
     else
       brew upgrade cmake || brew install cmake
     fi
   - cmake --version
-  # Download Boost
-  - export CI_BOOST_VERSION_=`echo -n ${CI_BOOST_VERSION} | sed 's/\./_/g'`
-  - wget -O boost.tar.bz2 https://dl.bintray.com/boostorg/release/${CI_BOOST_VERSION}/source/boost_${CI_BOOST_VERSION_}.tar.bz2
-  - tar --bzip2 -xf boost.tar.bz2
-  - rm boost.tar.bz2
-  # Build and install Boost
-  - cd boost_${CI_BOOST_VERSION_}
-  - "echo -n 'using gcc : : g++-7 ;' > tools/build/src/user-config.jam"
-  - ./bootstrap.sh --with-toolset=gcc
-  - export CI_B2_OPTIONS="
-    --with-system
-    --with-thread
-    --with-date_time
-    --with-regex
-    --with-serialization
-    --build-type=minimal
-    --stagedir=${HOME}/boost
-    "
-  - export CI_B2_PROPERTIES="
-    threading=multi
-    link=static
-    variant=${CI_BUILD_TYPE,,}
-    toolset=gcc
-    cxxflags=-fPIC
-    cflags=-fPIC
-    "
-  - mkdir -p ${HOME}/boost/include
-  - ./b2 ${CI_B2_OPTIONS} ${CI_B2_PROPERTIES} stage
-  - mv ${HOME}/boost_${CI_BOOST_VERSION_}/boost ${HOME}/boost/include/
   
+  - | # Download Boost
+    if [[ 1 ]]; then
+      CI_BOOST_VERSION_=`echo -n ${CI_BOOST_VERSION} | sed 's/\./_/g'`
+      CI_BOOST_URL="https://dl.bintray.com/boostorg/release/${CI_BOOST_VERSION}/source/boost_${CI_BOOST_VERSION_}.tar.gz"
+      travis_retry wget --no-check-certificate --quiet -O - ${CI_BOOST_URL} | tar --strip-components -xz -C ${HOME}/boost_source
+    fi
+  - | # Build and install Boost
+    if [[ 1 ]]; then
+      cd ${HOME}/boost_source
+      "echo -n 'using gcc : : g++-7 ;' > tools/build/src/user-config.jam"
+      ./bootstrap.sh --with-toolset=gcc
+      CI_B2_OPTIONS="--with-system --with-thread --with-date_time --with-regex --with-serialization --build-type=minimal --stagedir=${HOME}/boost"
+      CI_B2_PROPERTIES="threading=multi link=static variant=${CI_BUILD_TYPE,,} toolset=gcc compileflags=-fPIC"
+      ./b2 ${CI_B2_OPTIONS} ${CI_B2_PROPERTIES} stage
+      mv ${HOME}/boost_source/boost ${HOME}/boost/include/
+    fi
 before_script:
   # Now build nghttp2
   - if [[ "${CI_BUILD}" = "autotools" ]]; then autoreconf -i; fi
