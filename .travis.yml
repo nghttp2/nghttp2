@@ -56,7 +56,7 @@ before_install:
     if [[ 1 ]]; then
       CI_BOOST_VERSION_=`echo -n ${CI_BOOST_VERSION} | sed 's/\./_/g'`
       CI_BOOST_URL="https://dl.bintray.com/boostorg/release/${CI_BOOST_VERSION}/source/boost_${CI_BOOST_VERSION_}.tar.gz"
-      travis_retry wget --no-check-certificate --quiet -O - ${CI_BOOST_URL} | tar --strip-components -xz -C ${HOME}/boost_source
+      travis_retry wget --no-check-certificate --quiet -O - ${CI_BOOST_URL} | tar --strip-components=1 -xz -C ${HOME}/boost_source
     fi
   - | # Build and install Boost
     if [[ 1 ]]; then
