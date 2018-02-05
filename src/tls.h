@@ -75,7 +75,7 @@ constexpr char DEFAULT_CIPHER_LIST[] =
 constexpr auto NGHTTP2_TLS_MIN_VERSION = TLS1_VERSION;
 #ifdef TLS1_3_VERSION
 constexpr auto NGHTTP2_TLS_MAX_VERSION = TLS1_3_VERSION;
-#else // !TLS1_3_VERSION
+#else  // !TLS1_3_VERSION
 constexpr auto NGHTTP2_TLS_MAX_VERSION = TLS1_2_VERSION;
 #endif // !TLS1_3_VERSION
 

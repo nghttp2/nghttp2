@@ -3,10 +3,8 @@
 h2load - HTTP/2 benchmarking tool - HOW-TO
 ==========================================
 
-:doc:`h2load.1` is benchmarking tool for HTTP/2 and HTTP/1.1.  If
-built with spdylay (http://tatsuhiro-t.github.io/spdylay/) library, it
-also supports SPDY protocol.  It supports SSL/TLS and clear text for
-all supported protocols.
+:doc:`h2load.1` is benchmarking tool for HTTP/2 and HTTP/1.1.  It
+supports SSL/TLS and clear text for all supported protocols.
 
 Compiling from source
 ---------------------
@@ -86,20 +84,18 @@ seconds warming up period:
 Flow Control
 ------------
 
-HTTP/2 and SPDY/3 or later employ flow control and it may affect
-benchmarking results.  By default, h2load uses large enough flow
-control window, which effectively disables flow control.  To adjust
-receiver flow control window size, there are following options:
+HTTP/2 has flow control and it may affect benchmarking results.  By
+default, h2load uses large enough flow control window, which
+effectively disables flow control.  To adjust receiver flow control
+window size, there are following options:
 
 :option:`-w`
    Sets  the stream  level  initial  window size  to
-   (2**<N>)-1.  For SPDY, 2**<N> is used instead.
+   (2**<N>)-1.
 
 :option:`-W`
    Sets the connection level  initial window size to
-   (2**<N>)-1.  For  SPDY, if  <N> is  strictly less
-   than  16,  this  option  is  ignored.   Otherwise
-   2**<N> is used for SPDY.
+   (2**<N>)-1.
 
 Multi-Threading
 ---------------

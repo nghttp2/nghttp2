@@ -498,6 +498,15 @@ LogFragmentType log_var_lookup_token(const char *name, size_t namelen) {
       break;
     }
     break;
+  case 17:
+    switch (name[16]) {
+    case 'l':
+      if (util::strieq_l("tls_client_seria", name, 16)) {
+        return SHRPX_LOGF_TLS_CLIENT_SERIAL;
+      }
+      break;
+    }
+    break;
   case 18:
     switch (name[17]) {
     case 'd':
@@ -506,6 +515,15 @@ LogFragmentType log_var_lookup_token(const char *name, size_t namelen) {
       }
       if (util::strieq_l("tls_session_reuse", name, 17)) {
         return SHRPX_LOGF_TLS_SESSION_REUSED;
+      }
+      break;
+    }
+    break;
+  case 22:
+    switch (name[21]) {
+    case 'e':
+      if (util::strieq_l("tls_client_issuer_nam", name, 21)) {
+        return SHRPX_LOGF_TLS_CLIENT_ISSUER_NAME;
       }
       break;
     }
@@ -883,6 +901,19 @@ int parse_downstream_params(DownstreamParams &out,
     } else if (util::istarts_with_l(param, "affinity-cookie-path=")) {
       out.affinity.cookie.path =
           StringRef{first + str_size("affinity-cookie-path="), end};
+    } else if (util::istarts_with_l(param, "affinity-cookie-secure=")) {
+      auto valstr = StringRef{first + str_size("affinity-cookie-secure="), end};
+      if (util::strieq_l("auto", valstr)) {
+        out.affinity.cookie.secure = COOKIE_SECURE_AUTO;
+      } else if (util::strieq_l("yes", valstr)) {
+        out.affinity.cookie.secure = COOKIE_SECURE_YES;
+      } else if (util::strieq_l("no", valstr)) {
+        out.affinity.cookie.secure = COOKIE_SECURE_NO;
+      } else {
+        LOG(ERROR) << "backend: affinity-cookie-secure: value must be one of "
+                      "auto, yes, and no";
+        return -1;
+      }
     } else if (util::strieq_l("dns", param)) {
       out.dns = true;
     } else if (util::strieq_l("redirect-if-not-tls", param)) {
@@ -912,6 +943,7 @@ namespace {
 //
 // This function returns 0 if it succeeds, or -1.
 int parse_mapping(Config *config, DownstreamAddrConfig &addr,
+                  std::map<StringRef, size_t> &pattern_addr_indexer,
                   const StringRef &src_pattern, const StringRef &src_params) {
   // This returns at least 1 element (it could be empty string).  We
   // will append '/' to all patterns, so it becomes catch-all pattern.
@@ -952,7 +984,6 @@ int parse_mapping(Config *config, DownstreamAddrConfig &addr,
   auto &wildcard_patterns = routerconf.wildcard_patterns;
 
   for (const auto &raw_pattern : mapping) {
-    auto done = false;
     StringRef pattern;
     auto slash = std::find(std::begin(raw_pattern), std::end(raw_pattern), '/');
     if (slash == std::end(raw_pattern)) {
@@ -979,44 +1010,43 @@ int parse_mapping(Config *config, DownstreamAddrConfig &addr,
       *p = '\0';
       pattern = StringRef{iov.base, p};
     }
-    for (auto &g : addr_groups) {
-      if (g.pattern == pattern) {
-        // Last value wins if we have multiple different affinity
-        // value under one group.
-        if (params.affinity.type != AFFINITY_NONE) {
-          if (g.affinity.type == AFFINITY_NONE) {
-            g.affinity.type = params.affinity.type;
-            if (params.affinity.type == AFFINITY_COOKIE) {
-              g.affinity.cookie.name = make_string_ref(
-                  downstreamconf.balloc, params.affinity.cookie.name);
-              if (!params.affinity.cookie.path.empty()) {
-                g.affinity.cookie.path = make_string_ref(
-                    downstreamconf.balloc, params.affinity.cookie.path);
-              }
+    auto it = pattern_addr_indexer.find(pattern);
+    if (it != std::end(pattern_addr_indexer)) {
+      auto &g = addr_groups[(*it).second];
+      // Last value wins if we have multiple different affinity
+      // value under one group.
+      if (params.affinity.type != AFFINITY_NONE) {
+        if (g.affinity.type == AFFINITY_NONE) {
+          g.affinity.type = params.affinity.type;
+          if (params.affinity.type == AFFINITY_COOKIE) {
+            g.affinity.cookie.name = make_string_ref(
+                downstreamconf.balloc, params.affinity.cookie.name);
+            if (!params.affinity.cookie.path.empty()) {
+              g.affinity.cookie.path = make_string_ref(
+                  downstreamconf.balloc, params.affinity.cookie.path);
             }
-          } else if (g.affinity.type != params.affinity.type ||
-                     g.affinity.cookie.name != params.affinity.cookie.name ||
-                     g.affinity.cookie.path != params.affinity.cookie.path) {
-            LOG(ERROR) << "backend: affinity: multiple different affinity "
-                          "configurations found in a single group";
-            return -1;
+            g.affinity.cookie.secure = params.affinity.cookie.secure;
           }
+        } else if (g.affinity.type != params.affinity.type ||
+                   g.affinity.cookie.name != params.affinity.cookie.name ||
+                   g.affinity.cookie.path != params.affinity.cookie.path ||
+                   g.affinity.cookie.secure != params.affinity.cookie.secure) {
+          LOG(ERROR) << "backend: affinity: multiple different affinity "
+                        "configurations found in a single group";
+          return -1;
         }
-        // If at least one backend requires frontend TLS connection,
-        // enable it for all backends sharing the same pattern.
-        if (params.redirect_if_not_tls) {
-          g.redirect_if_not_tls = true;
-        }
-        g.addrs.push_back(addr);
-        done = true;
-        break;
       }
-    }
-    if (done) {
+      // If at least one backend requires frontend TLS connection,
+      // enable it for all backends sharing the same pattern.
+      if (params.redirect_if_not_tls) {
+        g.redirect_if_not_tls = true;
+      }
+      g.addrs.push_back(addr);
       continue;
     }
 
     auto idx = addr_groups.size();
+    pattern_addr_indexer.emplace(pattern, idx);
     addr_groups.emplace_back(pattern);
     auto &g = addr_groups.back();
     g.addrs.push_back(addr);
@@ -1028,6 +1058,7 @@ int parse_mapping(Config *config, DownstreamAddrConfig &addr,
         g.affinity.cookie.path =
             make_string_ref(downstreamconf.balloc, params.affinity.cookie.path);
       }
+      g.affinity.cookie.secure = params.affinity.cookie.secure;
     }
     g.redirect_if_not_tls = params.redirect_if_not_tls;
 
@@ -2352,13 +2383,16 @@ int option_lookup_token(const char *name, size_t namelen) {
 }
 
 int parse_config(Config *config, const StringRef &opt, const StringRef &optarg,
-                 std::set<StringRef> &included_set) {
+                 std::set<StringRef> &included_set,
+                 std::map<StringRef, size_t> &pattern_addr_indexer) {
   auto optid = option_lookup_token(opt.c_str(), opt.size());
-  return parse_config(config, optid, opt, optarg, included_set);
+  return parse_config(config, optid, opt, optarg, included_set,
+                      pattern_addr_indexer);
 }
 
 int parse_config(Config *config, int optid, const StringRef &opt,
-                 const StringRef &optarg, std::set<StringRef> &included_set) {
+                 const StringRef &optarg, std::set<StringRef> &included_set,
+                 std::map<StringRef, size_t> &pattern_addr_indexer) {
   std::array<char, STRERROR_BUFSIZE> errbuf;
   char host[NI_MAXHOST];
   uint16_t port;
@@ -2390,7 +2424,8 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     auto params =
         mapping_end == std::end(optarg) ? mapping_end : mapping_end + 1;
 
-    if (parse_mapping(config, addr, StringRef{mapping, mapping_end},
+    if (parse_mapping(config, addr, pattern_addr_indexer,
+                      StringRef{mapping, mapping_end},
                       StringRef{params, std::end(optarg)}) != 0) {
       return -1;
     }
@@ -2595,8 +2630,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     }
 
     // Make 16 bits to the HTTP/2 default 64KiB - 1.  This is the same
-    // behaviour of previous code.  For SPDY, we adjust this value in
-    // SpdyUpstream to look like the SPDY default.
+    // behaviour of previous code.
     *resp = (1 << n) - 1;
 
     return 0;
@@ -2638,14 +2672,16 @@ int parse_config(Config *config, int optid, const StringRef &opt,
               << SHRPX_OPT_FRONTEND;
     return 0;
   case SHRPX_OPTID_BACKEND_NO_TLS:
-    LOG(WARN) << opt << ": deprecated.  backend connection is not encrypted by "
-                        "default.  See also "
+    LOG(WARN) << opt
+              << ": deprecated.  backend connection is not encrypted by "
+                 "default.  See also "
               << SHRPX_OPT_BACKEND_TLS;
     return 0;
   case SHRPX_OPTID_BACKEND_TLS_SNI_FIELD:
-    LOG(WARN) << opt << ": deprecated.  Use sni keyword in --backend option.  "
-                        "For now, all sni values of all backends are "
-                        "overridden by the given value "
+    LOG(WARN) << opt
+              << ": deprecated.  Use sni keyword in --backend option.  "
+                 "For now, all sni values of all backends are "
+                 "overridden by the given value "
               << optarg;
     config->tls.backend_sni_name = make_string_ref(config->balloc, optarg);
 
@@ -2756,8 +2792,9 @@ int parse_config(Config *config, int optid, const StringRef &opt,
 
     return 0;
   case SHRPX_OPTID_CLIENT:
-    LOG(ERROR) << opt << ": deprecated.  Use frontend=<addr>,<port>;no-tls, "
-                         "backend=<addr>,<port>;;proto=h2;tls";
+    LOG(ERROR) << opt
+               << ": deprecated.  Use frontend=<addr>,<port>;no-tls, "
+                  "backend=<addr>,<port>;;proto=h2;tls";
     return -1;
   case SHRPX_OPTID_INSECURE:
     config->tls.insecure = util::strieq_l("yes", optarg);
@@ -2852,8 +2889,9 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     return 0;
   }
   case SHRPX_OPTID_TLS_PROTO_LIST: {
-    LOG(WARN) << opt << ": deprecated.  Use tls-min-proto-version and "
-                        "tls-max-proto-version instead.";
+    LOG(WARN) << opt
+              << ": deprecated.  Use tls-min-proto-version and "
+                 "tls-max-proto-version instead.";
     auto list = util::split_str(optarg, ',');
     config->tls.tls_proto_list.resize(list.size());
     for (size_t i = 0; i < list.size(); ++i) {
@@ -3087,7 +3125,8 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     }
 
     included_set.insert(optarg);
-    auto rv = load_config(config, optarg.c_str(), included_set);
+    auto rv =
+        load_config(config, optarg.c_str(), included_set, pattern_addr_indexer);
     included_set.erase(optarg);
 
     if (rv != 0) {
@@ -3478,8 +3517,9 @@ int parse_config(Config *config, int optid, const StringRef &opt,
   case SHRPX_OPTID_REDIRECT_HTTPS_PORT: {
     auto n = util::parse_uint(optarg);
     if (n == -1 || n < 0 || n > 65535) {
-      LOG(ERROR) << opt << ": bad value.  Specify an integer in the range [0, "
-                           "65535], inclusive";
+      LOG(ERROR) << opt
+                 << ": bad value.  Specify an integer in the range [0, "
+                    "65535], inclusive";
       return -1;
     }
     config->http.redirect_https_port = optarg;
@@ -3523,7 +3563,8 @@ int parse_config(Config *config, int optid, const StringRef &opt,
 }
 
 int load_config(Config *config, const char *filename,
-                std::set<StringRef> &include_set) {
+                std::set<StringRef> &include_set,
+                std::map<StringRef, size_t> &pattern_addr_indexer) {
   std::ifstream in(filename, std::ios::binary);
   if (!in) {
     LOG(ERROR) << "Could not open config file " << filename;
@@ -3545,7 +3586,8 @@ int load_config(Config *config, const char *filename,
     *eq = '\0';
 
     if (parse_config(config, StringRef{std::begin(line), eq},
-                     StringRef{eq + 1, std::end(line)}, include_set) != 0) {
+                     StringRef{eq + 1, std::end(line)}, include_set,
+                     pattern_addr_indexer) != 0) {
       return -1;
     }
   }

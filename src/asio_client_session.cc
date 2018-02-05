@@ -140,4 +140,4 @@ const bool priority_spec::valid() const { return valid_; }
 
 } // namespace client
 } // namespace asio_http2
-} // nghttp2
+} // namespace nghttp2

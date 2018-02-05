@@ -756,4 +756,4 @@ void session_impl::read_timeout(const boost::posix_time::time_duration &t) {
 
 } // namespace client
 } // namespace asio_http2
-} // nghttp2
+} // namespace nghttp2

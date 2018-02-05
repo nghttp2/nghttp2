@@ -45,8 +45,9 @@ session_tls_impl::~session_tls_impl() {}
 void session_tls_impl::start_connect(tcp::resolver::iterator endpoint_it) {
   auto self = std::static_pointer_cast<session_tls_impl>(shared_from_this());
   boost::asio::async_connect(
-      socket(), endpoint_it, [self](const boost::system::error_code &ec,
-                                    tcp::resolver::iterator endpoint_it) {
+      socket(), endpoint_it,
+      [self](const boost::system::error_code &ec,
+             tcp::resolver::iterator endpoint_it) {
         if (self->stopped()) {
           return;
         }

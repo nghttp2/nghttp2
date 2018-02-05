@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "H2LOAD" "1" "Nov 04, 2017" "1.28.0-DEV" "nghttp2"
+.TH "H2LOAD" "1" "Dec 19, 2017" "1.29.0" "nghttp2"
 .SH NAME
 h2load \- HTTP/2 benchmarking tool
 .
@@ -35,7 +35,7 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 \fBh2load\fP [OPTIONS]... [URI]...
 .SH DESCRIPTION
 .sp
-benchmarking tool for HTTP/2 and SPDY server
+benchmarking tool for HTTP/2 server
 .INDENT 0.0
 .TP
 .B <URI>
@@ -101,7 +101,6 @@ Default: \fB1\fP
 .TP
 .B \-w, \-\-window\-bits=<N>
 Sets the stream level initial window size to (2**<N>)\-1.
-For SPDY, 2**<N> is used instead.
 .sp
 Default: \fB30\fP
 .UNINDENT
@@ -109,9 +108,7 @@ Default: \fB30\fP
 .TP
 .B \-W, \-\-connection\-window\-bits=<N>
 Sets  the  connection  level   initial  window  size  to
-(2**<N>)\-1.  For SPDY, if <N>  is strictly less than 16,
-this option  is ignored.   Otherwise 2**<N> is  used for
-SPDY.
+(2**<N>)\-1.
 .sp
 Default: \fB30\fP
 .UNINDENT
@@ -133,8 +130,7 @@ Default: \fBECDHE\-ECDSA\-AES256\-GCM\-SHA384:ECDHE\-RSA\-AES256\-GCM\-SHA384:EC
 .B \-p, \-\-no\-tls\-proto=<PROTOID>
 Specify ALPN identifier of the  protocol to be used when
 accessing http URI without SSL/TLS.
-Available protocols: h2c and
-http/1.1
+Available protocols: h2c and http/1.1
 .sp
 Default: \fBh2c\fP
 .UNINDENT
@@ -350,8 +346,7 @@ compression.  Let \fBdecompressed(headers)\fP to the number of bytes
 used for header fields after decompression.  The \fBspace savings\fP
 is calculated  by (1 \- \fBheaders\fP  / \fBdecompressed(headers)\fP) *
 100.  For HTTP/1.1, this is usually  0.00%, since it does not have
-header compression.  For HTTP/2 and SPDY, it shows some insightful
-numbers.
+header compression.  For HTTP/2, it shows some insightful numbers.
 .TP
 .B data
 The number of response body bytes received from the server.
@@ -448,7 +443,7 @@ h2load sets large flow control window by default, and effectively
 disables flow control to avoid under utilization of server
 performance.  To set smaller flow control window, use \fI\%\-w\fP and
 \fI\%\-W\fP options.  For example, use \fB\-w16 \-W16\fP to set default
-window size described in HTTP/2 and SPDY protocol specification.
+window size described in HTTP/2 protocol specification.
 .SH SEE ALSO
 .sp
 \fBnghttp(1)\fP, \fBnghttpd(1)\fP, \fBnghttpx(1)\fP

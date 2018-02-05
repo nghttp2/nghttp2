@@ -402,11 +402,10 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
                   ? req.authority
                   : config->http2_proxy
                         ? construct_absolute_request_uri(balloc, req)
-                        : req.path.empty()
-                              ? req.method == HTTP_OPTIONS
-                                    ? StringRef::from_lit("*")
-                                    : StringRef::from_lit("-")
-                              : req.path;
+                        : req.path.empty() ? req.method == HTTP_OPTIONS
+                                                 ? StringRef::from_lit("*")
+                                                 : StringRef::from_lit("-")
+                                           : req.path;
 
   auto p = std::begin(buf);
   auto last = std::end(buf) - 2;
@@ -557,6 +556,7 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
       std::tie(p, last) = copy_hex_low(buf.data(), len, p, last);
       break;
     }
+    case SHRPX_LOGF_TLS_CLIENT_ISSUER_NAME:
     case SHRPX_LOGF_TLS_CLIENT_SUBJECT_NAME: {
       if (!lgsp.ssl) {
         std::tie(p, last) = copy('-', p, last);
@@ -567,13 +567,34 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
         std::tie(p, last) = copy('-', p, last);
         break;
       }
-      auto name = tls::get_x509_subject_name(balloc, x);
+      auto name = lf.type == SHRPX_LOGF_TLS_CLIENT_ISSUER_NAME
+                      ? tls::get_x509_issuer_name(balloc, x)
+                      : tls::get_x509_subject_name(balloc, x);
       X509_free(x);
       if (name.empty()) {
         std::tie(p, last) = copy('-', p, last);
         break;
       }
       std::tie(p, last) = copy(name, p, last);
+      break;
+    }
+    case SHRPX_LOGF_TLS_CLIENT_SERIAL: {
+      if (!lgsp.ssl) {
+        std::tie(p, last) = copy('-', p, last);
+        break;
+      }
+      auto x = SSL_get_peer_certificate(lgsp.ssl);
+      if (!x) {
+        std::tie(p, last) = copy('-', p, last);
+        break;
+      }
+      auto sn = tls::get_x509_serial(balloc, x);
+      X509_free(x);
+      if (sn.empty()) {
+        std::tie(p, last) = copy('-', p, last);
+        break;
+      }
+      std::tie(p, last) = copy(sn, p, last);
       break;
     }
     case SHRPX_LOGF_BACKEND_HOST:

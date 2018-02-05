@@ -376,9 +376,17 @@ respectively.
 
         Return the SHA-1 fingerprint of a client certificate.
 
+    .. rb:attr_reader:: tls_client_issuer_name
+
+        Return the issuer name of a client certificate.
+
     .. rb:attr_reader:: tls_client_subject_name
 
         Return the subject name of a client certificate.
+
+    .. rb:attr_reader:: tls_client_serial
+
+        Return the serial number of a client certificate.
 
     .. rb:attr_reader:: tls_cipher
 

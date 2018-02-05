@@ -31,6 +31,7 @@
 
 #include <nghttp2/nghttp2.h>
 
+#include "shrpx_config.h"
 #include "util.h"
 #include "allocator.h"
 
@@ -72,6 +73,11 @@ ssize_t select_padding_callback(nghttp2_session *session,
 StringRef create_affinity_cookie(BlockAllocator &balloc, const StringRef &name,
                                  uint32_t affinity_cookie,
                                  const StringRef &path, bool secure);
+
+// Returns true if |secure| indicates that Secure attribute should be
+// set.
+bool require_cookie_secure_attribute(shrpx_cookie_secure secure,
+                                     const StringRef &scheme);
 
 } // namespace http
 

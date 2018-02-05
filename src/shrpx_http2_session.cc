@@ -270,8 +270,8 @@ int Http2Session::disconnect(bool hard) {
   // When deleting Http2DownstreamConnection, it calls this object's
   // remove_downstream_connection().  The multiple
   // Http2DownstreamConnection objects belong to the same
-  // ClientHandler object if upstream is h2 or SPDY.  So be careful
-  // when you delete ClientHandler here.
+  // ClientHandler object if upstream is h2.  So be careful when you
+  // delete ClientHandler here.
   //
   // We allow creating new pending Http2DownstreamConnection with this
   // object.  Upstream::on_downstream_reset() may add
@@ -577,11 +577,11 @@ int Http2Session::initiate_connection() {
       }
     }
 
-    on_write_ = &Http2Session::downstream_write;
-    on_read_ = &Http2Session::downstream_read;
-
     // We have been already connected when no TLS and proxy is used.
     if (state_ == PROXY_CONNECTED) {
+      on_read_ = &Http2Session::read_noop;
+      on_write_ = &Http2Session::write_noop;
+
       return connected();
     }
 
@@ -1520,7 +1520,7 @@ int on_frame_not_send_callback(nghttp2_session *session,
 
     if (upstream->on_downstream_reset(downstream, false)) {
       // This should be done for h1 upstream only.  Deleting
-      // ClientHandler for h2 or SPDY upstream may lead to crash.
+      // ClientHandler for h2 upstream may lead to crash.
       delete upstream->get_client_handler();
     }
 
@@ -1641,6 +1641,9 @@ int Http2Session::connection_made() {
   int rv;
 
   state_ = Http2Session::CONNECTED;
+
+  on_write_ = &Http2Session::downstream_write;
+  on_read_ = &Http2Session::downstream_read;
 
   if (addr_->tls) {
     const unsigned char *next_proto = nullptr;

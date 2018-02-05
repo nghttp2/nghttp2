@@ -24,15 +24,15 @@
 
 cmake_minimum_required(VERSION 3.0)
 # XXX using 1.8.90 instead of 1.9.0-DEV
-project(nghttp2 VERSION 1.27.90)
+project(nghttp2 VERSION 1.29.90)
 
 # See versioning rule:
 #  http://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
-set(LT_CURRENT  28)
-set(LT_REVISION 0)
-set(LT_AGE      14)
+set(LT_CURRENT  29)
+set(LT_REVISION 1)
+set(LT_AGE      15)
 
-set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
 include(Version)
 
 math(EXPR LT_SOVERSION "${LT_CURRENT} - ${LT_AGE}")
@@ -302,6 +302,7 @@ check_type_size("time_t"  SIZEOF_TIME_T)
 include(CheckFunctionExists)
 check_function_exists(_Exit     HAVE__EXIT)
 check_function_exists(accept4   HAVE_ACCEPT4)
+check_function_exists(mkostemp  HAVE_MKOSTEMP)
 
 include(CheckSymbolExists)
 # XXX does this correctly detect initgroups (un)availability on cygwin?

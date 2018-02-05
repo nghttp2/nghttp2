@@ -155,7 +155,7 @@ void print_nv(nghttp2_nv *nva, size_t nvlen) {
     print_nv(nva);
   }
 }
-} // namelen
+} // namespace
 
 void print_timer() {
   auto millis = get_timer();
@@ -327,8 +327,9 @@ void print_frame(print_type ptype, const nghttp2_frame *frame) {
     break;
   case NGHTTP2_GOAWAY:
     print_frame_attr_indent();
-    fprintf(outfile, "(last_stream_id=%d, error_code=%s(0x%02x), "
-                     "opaque_data(%u)=[%s])\n",
+    fprintf(outfile,
+            "(last_stream_id=%d, error_code=%s(0x%02x), "
+            "opaque_data(%u)=[%s])\n",
             frame->goaway.last_stream_id,
             nghttp2_http2_strerror(frame->goaway.error_code),
             frame->goaway.error_code,
@@ -425,8 +426,8 @@ int verbose_on_data_chunk_recv_callback(nghttp2_session *session, uint8_t flags,
   return 0;
 }
 
-int verbose_error_callback(nghttp2_session *session, const char *msg,
-                           size_t len, void *user_data) {
+int verbose_error_callback(nghttp2_session *session, int lib_error_code,
+                           const char *msg, size_t len, void *user_data) {
   print_timer();
   fprintf(outfile, " [ERROR] %.*s\n", (int)len, msg);
   fflush(outfile);

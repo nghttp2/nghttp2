@@ -67,7 +67,7 @@ void drop_privileges(
 #ifdef HAVE_NEVERBLEED
     neverbleed_t *nb
 #endif // HAVE_NEVERBLEED
-    ) {
+) {
   std::array<char, STRERROR_BUFSIZE> errbuf;
   auto config = get_config();
 
@@ -539,7 +539,7 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
 #ifdef HAVE_NEVERBLEED
       nb
 #endif // HAVE_NEVERBLEED
-      );
+  );
 
   ev_io ipcev;
   ev_io_init(&ipcev, ipc_readcb, wpconf->ipc_fd, EV_READ);

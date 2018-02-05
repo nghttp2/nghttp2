@@ -36,6 +36,8 @@ StringRef get_reason_phrase(unsigned int status_code) {
     return StringRef::from_lit("Continue");
   case 101:
     return StringRef::from_lit("Switching Protocols");
+  case 103:
+    return StringRef::from_lit("Early Hints");
   case 200:
     return StringRef::from_lit("OK");
   case 201:
@@ -140,6 +142,8 @@ StringRef stringify_status(BlockAllocator &balloc, unsigned int status_code) {
     return StringRef::from_lit("100");
   case 101:
     return StringRef::from_lit("101");
+  case 103:
+    return StringRef::from_lit("103");
   case 200:
     return StringRef::from_lit("200");
   case 201:
@@ -1624,9 +1628,9 @@ StringRef path_join(BlockAllocator &balloc, const StringRef &base_path,
                     const StringRef &base_query, const StringRef &rel_path,
                     const StringRef &rel_query) {
   auto res = make_byte_ref(
-      balloc,
-      std::max(static_cast<size_t>(1), base_path.size()) + rel_path.size() + 1 +
-          std::max(base_query.size(), rel_query.size()) + 1);
+      balloc, std::max(static_cast<size_t>(1), base_path.size()) +
+                  rel_path.size() + 1 +
+                  std::max(base_query.size(), rel_query.size()) + 1);
   auto p = res.base;
 
   if (rel_path.empty()) {

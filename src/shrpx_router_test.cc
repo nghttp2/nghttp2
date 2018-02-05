@@ -105,41 +105,32 @@ void test_shrpx_router_match_wildcard(void) {
     router.add_route(p.pattern, p.idx, p.wildcard);
   }
 
-  CU_ASSERT(0 ==
-            router.match(StringRef::from_lit("nghttp2.org"),
-                         StringRef::from_lit("/")));
+  CU_ASSERT(0 == router.match(StringRef::from_lit("nghttp2.org"),
+                              StringRef::from_lit("/")));
 
-  CU_ASSERT(1 ==
-            router.match(StringRef::from_lit("nghttp2.org"),
-                         StringRef::from_lit("/a")));
+  CU_ASSERT(1 == router.match(StringRef::from_lit("nghttp2.org"),
+                              StringRef::from_lit("/a")));
 
-  CU_ASSERT(1 ==
-            router.match(StringRef::from_lit("nghttp2.org"),
-                         StringRef::from_lit("/charlie")));
+  CU_ASSERT(1 == router.match(StringRef::from_lit("nghttp2.org"),
+                              StringRef::from_lit("/charlie")));
 
-  CU_ASSERT(2 ==
-            router.match(StringRef::from_lit("nghttp2.org"),
-                         StringRef::from_lit("/alpha")));
+  CU_ASSERT(2 == router.match(StringRef::from_lit("nghttp2.org"),
+                              StringRef::from_lit("/alpha")));
 
-  CU_ASSERT(2 ==
-            router.match(StringRef::from_lit("nghttp2.org"),
-                         StringRef::from_lit("/alpha/")));
+  CU_ASSERT(2 == router.match(StringRef::from_lit("nghttp2.org"),
+                              StringRef::from_lit("/alpha/")));
 
-  CU_ASSERT(3 ==
-            router.match(StringRef::from_lit("nghttp2.org"),
-                         StringRef::from_lit("/alpha/b")));
+  CU_ASSERT(3 == router.match(StringRef::from_lit("nghttp2.org"),
+                              StringRef::from_lit("/alpha/b")));
 
-  CU_ASSERT(4 ==
-            router.match(StringRef::from_lit("nghttp2.org"),
-                         StringRef::from_lit("/bravo")));
+  CU_ASSERT(4 == router.match(StringRef::from_lit("nghttp2.org"),
+                              StringRef::from_lit("/bravo")));
 
-  CU_ASSERT(5 ==
-            router.match(StringRef::from_lit("nghttp2.org"),
-                         StringRef::from_lit("/bravocharlie")));
+  CU_ASSERT(5 == router.match(StringRef::from_lit("nghttp2.org"),
+                              StringRef::from_lit("/bravocharlie")));
 
-  CU_ASSERT(5 ==
-            router.match(StringRef::from_lit("nghttp2.org"),
-                         StringRef::from_lit("/bravo/")));
+  CU_ASSERT(5 == router.match(StringRef::from_lit("nghttp2.org"),
+                              StringRef::from_lit("/bravo/")));
 }
 
 void test_shrpx_router_match_prefix(void) {

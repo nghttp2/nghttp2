@@ -89,7 +89,11 @@ enum {
 
 namespace {
 constexpr auto anchors = std::array<Anchor, 5>{{
-    {3, 0, 201}, {5, 0, 101}, {7, 0, 1}, {9, 7, 1}, {11, 3, 1},
+    {3, 0, 201},
+    {5, 0, 101},
+    {7, 0, 1},
+    {9, 7, 1},
+    {11, 3, 1},
 }};
 } // namespace
 
@@ -2458,8 +2462,8 @@ int run(char **uris, int n) {
     nghttp2_session_callbacks_set_on_invalid_frame_recv_callback(
         callbacks, verbose_on_invalid_frame_recv_callback);
 
-    nghttp2_session_callbacks_set_error_callback(callbacks,
-                                                 verbose_error_callback);
+    nghttp2_session_callbacks_set_error_callback2(callbacks,
+                                                  verbose_error_callback);
   }
 
   nghttp2_session_callbacks_set_on_data_chunk_recv_callback(

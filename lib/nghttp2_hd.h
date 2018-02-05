@@ -211,7 +211,9 @@ typedef struct {
 
 #define HD_MAP_SIZE 128
 
-typedef struct { nghttp2_hd_entry *table[HD_MAP_SIZE]; } nghttp2_hd_map;
+typedef struct {
+  nghttp2_hd_entry *table[HD_MAP_SIZE];
+} nghttp2_hd_map;
 
 struct nghttp2_hd_deflater {
   nghttp2_hd_context ctx;

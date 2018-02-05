@@ -46,19 +46,12 @@
 #include <future>
 #include <random>
 
-#ifdef HAVE_SPDYLAY
-#include <spdylay/spdylay.h>
-#endif // HAVE_SPDYLAY
-
 #include <openssl/err.h>
 
 #include "http-parser/http_parser.h"
 
 #include "h2load_http1_session.h"
 #include "h2load_http2_session.h"
-#ifdef HAVE_SPDYLAY
-#include "h2load_spdy_session.h"
-#endif // HAVE_SPDYLAY
 #include "tls.h"
 #include "http2.h"
 #include "util.h"
@@ -878,14 +871,6 @@ int Client::connection_made() {
       } else if (util::streq(NGHTTP2_H1_1, proto)) {
         session = make_unique<Http1Session>(this);
       }
-#ifdef HAVE_SPDYLAY
-      else {
-        auto spdy_version = spdylay_npn_get_version(next_proto, next_proto_len);
-        if (spdy_version) {
-          session = make_unique<SpdySession>(this, spdy_version);
-        }
-      }
-#endif // HAVE_SPDYLAY
 
       // Just assign next_proto to selected_proto anyway to show the
       // negotiation result.
@@ -930,20 +915,6 @@ int Client::connection_made() {
       session = make_unique<Http1Session>(this);
       selected_proto = NGHTTP2_H1_1.str();
       break;
-#ifdef HAVE_SPDYLAY
-    case Config::PROTO_SPDY2:
-      session = make_unique<SpdySession>(this, SPDYLAY_PROTO_SPDY2);
-      selected_proto = "spdy/2";
-      break;
-    case Config::PROTO_SPDY3:
-      session = make_unique<SpdySession>(this, SPDYLAY_PROTO_SPDY3);
-      selected_proto = "spdy/3";
-      break;
-    case Config::PROTO_SPDY3_1:
-      session = make_unique<SpdySession>(this, SPDYLAY_PROTO_SPDY3_1);
-      selected_proto = "spdy/3.1";
-      break;
-#endif // HAVE_SPDYLAY
     default:
       // unreachable
       assert(0);
@@ -1788,17 +1759,13 @@ void print_version(std::ostream &out) {
 namespace {
 void print_usage(std::ostream &out) {
   out << R"(Usage: h2load [OPTIONS]... [URI]...
-benchmarking tool for HTTP/2 and SPDY server)"
+benchmarking tool for HTTP/2 server)"
       << std::endl;
 }
 } // namespace
 
 namespace {
-constexpr char DEFAULT_NPN_LIST[] = "h2,h2-16,h2-14"
-#ifdef HAVE_SPDYLAY
-                                    ",spdy/3.1,spdy/3,spdy/2"
-#endif // HAVE_SPDYLAY
-                                    ",http/1.1";
+constexpr char DEFAULT_NPN_LIST[] = "h2,h2-16,h2-14,http/1.1";
 } // namespace
 
 namespace {
@@ -1828,12 +1795,10 @@ Options:
   -c, --clients=<N>
               Number  of concurrent  clients.   With  -r option,  this
               specifies the maximum number of connections to be made.
-              Default: )"
-      << config.nclients << R"(
+              Default: )" << config.nclients << R"(
   -t, --threads=<N>
               Number of native threads.
-              Default: )"
-      << config.nthreads << R"(
+              Default: )" << config.nthreads << R"(
   -i, --input-file=<PATH>
               Path of a file with multiple URIs are separated by EOLs.
               This option will disable URIs getting from command-line.
@@ -1851,16 +1816,12 @@ Options:
               Default: 1
   -w, --window-bits=<N>
               Sets the stream level initial window size to (2**<N>)-1.
-              For SPDY, 2**<N> is used instead.
               Default: )"
       << config.window_bits << R"(
   -W, --connection-window-bits=<N>
               Sets  the  connection  level   initial  window  size  to
-              (2**<N>)-1.  For SPDY, if <N>  is strictly less than 16,
-              this option  is ignored.   Otherwise 2**<N> is  used for
-              SPDY.
-              Default: )"
-      << config.connection_window_bits << R"(
+              (2**<N>)-1.
+              Default: )" << config.connection_window_bits << R"(
   -H, --header=<HEADER>
               Add/Override a header to the requests.
   --ciphers=<SUITE>
@@ -1870,18 +1831,9 @@ Options:
       << config.ciphers << R"(
   -p, --no-tls-proto=<PROTOID>
               Specify ALPN identifier of the  protocol to be used when
-              accessing http URI without SSL/TLS.)";
-
-#ifdef HAVE_SPDYLAY
-  out << R"(
-              Available protocols: spdy/2, spdy/3, spdy/3.1, )";
-#else  // !HAVE_SPDYLAY
-  out << R"(
-              Available protocols: )";
-#endif // !HAVE_SPDYLAY
-  out << NGHTTP2_CLEARTEXT_PROTO_VERSION_ID << R"( and
-              )"
-      << NGHTTP2_H1_1 << R"(
+              accessing http URI without SSL/TLS.
+              Available protocols: )" << NGHTTP2_CLEARTEXT_PROTO_VERSION_ID
+      << R"( and )" << NGHTTP2_H1_1 << R"(
               Default: )"
       << NGHTTP2_CLEARTEXT_PROTO_VERSION_ID << R"(
   -d, --data=<PATH>
@@ -1964,8 +1916,7 @@ Options:
               NPN.  The parameter must be  delimited by a single comma
               only  and any  white spaces  are  treated as  a part  of
               protocol string.
-              Default: )"
-      << DEFAULT_NPN_LIST << R"(
+              Default: )" << DEFAULT_NPN_LIST << R"(
   --h1        Short        hand         for        --npn-list=http/1.1
               --no-tls-proto=http/1.1,    which   effectively    force
               http/1.1 for both http and https URI.
@@ -1993,8 +1944,7 @@ Options:
   The <DURATION> argument is an integer and an optional unit (e.g., 1s
   is 1 second and 500ms is 500 milliseconds).  Units are h, m, s or ms
   (hours, minutes, seconds and milliseconds, respectively).  If a unit
-  is omitted, a second is used as unit.)"
-      << std::endl;
+  is omitted, a second is used as unit.)" << std::endl;
 }
 } // namespace
 
@@ -2121,14 +2071,6 @@ int main(int argc, char **argv) {
         config.no_tls_proto = Config::PROTO_HTTP2;
       } else if (util::strieq(NGHTTP2_H1_1, proto)) {
         config.no_tls_proto = Config::PROTO_HTTP1_1;
-#ifdef HAVE_SPDYLAY
-      } else if (util::strieq_l("spdy/2", proto)) {
-        config.no_tls_proto = Config::PROTO_SPDY2;
-      } else if (util::strieq_l("spdy/3", proto)) {
-        config.no_tls_proto = Config::PROTO_SPDY3;
-      } else if (util::strieq_l("spdy/3.1", proto)) {
-        config.no_tls_proto = Config::PROTO_SPDY3_1;
-#endif // HAVE_SPDYLAY
       } else {
         std::cerr << "-p: unsupported protocol " << proto << std::endl;
         exit(EXIT_FAILURE);
@@ -2513,7 +2455,6 @@ int main(int argc, char **argv) {
 
   config.h1reqs.reserve(reqlines.size());
   config.nva.reserve(reqlines.size());
-  config.nv.reserve(reqlines.size());
 
   for (auto &req : reqlines) {
     // For HTTP/1.1
@@ -2563,35 +2504,6 @@ int main(int argc, char **argv) {
     }
 
     config.nva.push_back(std::move(nva));
-
-    // For spdylay
-    std::vector<const char *> cva;
-    // 3 for :path, :version, and possible content-length, 1 for
-    // terminal nullptr
-    cva.reserve(2 * (3 + shared_nva.size()) + 1);
-
-    cva.push_back(":path");
-    cva.push_back(req.c_str());
-
-    for (auto &nv : shared_nva) {
-      if (nv.name == ":authority") {
-        cva.push_back(":host");
-      } else {
-        cva.push_back(nv.name.c_str());
-      }
-      cva.push_back(nv.value.c_str());
-    }
-    cva.push_back(":version");
-    cva.push_back("HTTP/1.1");
-
-    if (!content_length_str.empty()) {
-      cva.push_back("content-length");
-      cva.push_back(content_length_str.c_str());
-    }
-
-    cva.push_back(nullptr);
-
-    config.nv.push_back(std::move(cva));
   }
 
   // Don't DOS our server!
@@ -2762,14 +2674,14 @@ int main(int argc, char **argv) {
 finished in )"
             << util::format_duration(duration) << ", " << rps << " req/s, "
             << util::utos_funit(bps) << R"(B/s
-requests: )" << stats.req_todo
-            << " total, " << stats.req_started << " started, " << stats.req_done
-            << " done, " << stats.req_status_success << " succeeded, "
-            << stats.req_failed << " failed, " << stats.req_error
-            << " errored, " << stats.req_timedout << R"( timeout
-status codes: )"
-            << stats.status[2] << " 2xx, " << stats.status[3] << " 3xx, "
-            << stats.status[4] << " 4xx, " << stats.status[5] << R"( 5xx
+requests: )" << stats.req_todo << " total, "
+            << stats.req_started << " started, " << stats.req_done << " done, "
+            << stats.req_status_success << " succeeded, " << stats.req_failed
+            << " failed, " << stats.req_error << " errored, "
+            << stats.req_timedout << R"( timeout
+status codes: )" << stats.status[2] << " 2xx, "
+            << stats.status[3] << " 3xx, " << stats.status[4] << " 4xx, "
+            << stats.status[5] << R"( 5xx
 traffic: )" << util::utos_funit(stats.bytes_total)
             << "B (" << stats.bytes_total << ") total, "
             << util::utos_funit(stats.bytes_head) << "B (" << stats.bytes_head
@@ -2777,12 +2689,12 @@ traffic: )" << util::utos_funit(stats.bytes_total)
             << "%), " << util::utos_funit(stats.bytes_body) << "B ("
             << stats.bytes_body << R"() data
                      min         max         mean         sd        +/- sd
-time for request: )"
-            << std::setw(10) << util::format_duration(ts.request.min) << "  "
-            << std::setw(10) << util::format_duration(ts.request.max) << "  "
-            << std::setw(10) << util::format_duration(ts.request.mean) << "  "
-            << std::setw(10) << util::format_duration(ts.request.sd)
-            << std::setw(9) << util::dtos(ts.request.within_sd) << "%"
+time for request: )" << std::setw(10)
+            << util::format_duration(ts.request.min) << "  " << std::setw(10)
+            << util::format_duration(ts.request.max) << "  " << std::setw(10)
+            << util::format_duration(ts.request.mean) << "  " << std::setw(10)
+            << util::format_duration(ts.request.sd) << std::setw(9)
+            << util::dtos(ts.request.within_sd) << "%"
             << "\ntime for connect: " << std::setw(10)
             << util::format_duration(ts.connect.min) << "  " << std::setw(10)
             << util::format_duration(ts.connect.max) << "  " << std::setw(10)

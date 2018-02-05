@@ -4,10 +4,10 @@ nghttpx - HTTP/2 proxy - HOW-TO
 ===============================
 
 :doc:`nghttpx.1` is a proxy translating protocols between HTTP/2 and
-other protocols (e.g., HTTP/1, SPDY).  It operates in several modes
-and each mode may require additional programs to work with.  This
-article describes each operation mode and explains the intended
-use-cases.  It also covers some useful options later.
+other protocols (e.g., HTTP/1).  It operates in several modes and each
+mode may require additional programs to work with.  This article
+describes each operation mode and explains the intended use-cases.  It
+also covers some useful options later.
 
 Default mode
 ------------
@@ -15,9 +15,7 @@ Default mode
 If nghttpx is invoked without :option:`--http2-proxy`, it operates in
 default mode.  In this mode, it works as reverse proxy (gateway) for
 both HTTP/2 and HTTP/1 clients to backend servers.  This is also known
-as "HTTP/2 router".  If nghttpx is linked with spdylay library and
-frontend connection is SSL/TLS, the frontend also supports SPDY
-protocol.
+as "HTTP/2 router".
 
 By default, frontend connection is encrypted using SSL/TLS.  So
 server's private key and certificate must be supplied to the command
@@ -25,11 +23,10 @@ line (or through configuration file).  In this case, the frontend
 protocol selection will be done via ALPN or NPN.
 
 To turn off encryption on frontend connection, use ``no-tls`` keyword
-in :option:`--frontend` option.  In this case, SPDY protocol is not
-available even if spdylay library is linked to nghttpx.  HTTP/2 and
-HTTP/1 are available on the frontend, and an HTTP/1 connection can be
-upgraded to HTTP/2 using HTTP Upgrade.  Starting HTTP/2 connection by
-sending HTTP/2 connection preface is also supported.
+in :option:`--frontend` option.  HTTP/2 and HTTP/1 are available on
+the frontend, and an HTTP/1 connection can be upgraded to HTTP/2 using
+HTTP Upgrade.  Starting HTTP/2 connection by sending HTTP/2 connection
+preface is also supported.
 
 nghttpx can listen on multiple frontend addresses.  This is achieved
 by using multiple :option:`--frontend` options.  For each frontend
@@ -71,9 +68,8 @@ mode`_.  The difference is that this mode acts like a forward proxy and
 assumes the backend is an HTTP proxy server (e.g., Squid, Apache Traffic
 Server).  HTTP/1 requests must include an absolute URI in request line.
 
-By default, the frontend connection is encrypted.  So this mode is also
-called secure proxy.  If nghttpx is linked with spdylay, it supports
-SPDY protocols and it works as so called SPDY proxy.
+By default, the frontend connection is encrypted.  So this mode is
+also called secure proxy.
 
 To turn off encryption on the frontend connection, use ``no-tls`` keyword
 in :option:`--frontend` option.
@@ -102,8 +98,8 @@ like this:
 At the time of this writing, Firefox 41 and Chromium v46 can use
 nghttpx as HTTP/2 proxy.
 
-To make Firefox or Chromium use nghttpx as HTTP/2 or SPDY proxy, user
-has to create proxy.pac script file like this:
+To make Firefox or Chromium use nghttpx as HTTP/2 proxy, user has to
+create proxy.pac script file like this:
 
 .. code-block:: javascript
 

@@ -174,8 +174,7 @@ Options:
   --mime-types-file=<PATH>
               Path  to file  that contains  MIME media  types and  the
               extensions that represent them.
-              Default: )"
-      << config.mime_types_file << R"(
+              Default: )" << config.mime_types_file << R"(
   --no-content-length
               Don't send content-length header field.
   --version   Display version information and exit.
