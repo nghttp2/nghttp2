@@ -61,8 +61,9 @@ before_install:
     fi
   - | # Build and install Boost
     if [[ 1 ]]; then
+      mkdir -p ${HOME}/boost/include
       cd ${HOME}/boost_source
-      "echo -n 'using gcc : : g++-7 ;' > tools/build/src/user-config.jam"
+      "echo -n \"using gcc : : g++-7 ;\" > tools/build/src/user-config.jam"
       ./bootstrap.sh --with-toolset=gcc
       CI_B2_OPTIONS="--with-system --with-thread --with-date_time --with-regex --with-serialization --build-type=minimal --stagedir=${HOME}/boost"
       CI_B2_PROPERTIES="threading=multi link=static variant=${CI_BUILD_TYPE,,} toolset=gcc compileflags=-fPIC"
