@@ -79,7 +79,7 @@ before_script:
 
 script:
   - if [[ "$CI_BUILD" = "autotools" ]]; then make distcheck DISTCHECK_CONFIGURE_FLAGS="--with-mruby --with-neverbleed --enable-werror CPPFLAGS=-fsanitize=address LDFLAGS=\"-fsanitize=address -fuse-ld=gold\""; fi
-  - if [[ "${CI_BUILD}" = "autotools" ]]; then cat /home/travis/build/odant/nghttp2/nghttp2-1.31.0-DEV/_build/config.log; fi
+#  - if [[ "${CI_BUILD}" = "autotools" ]]; then cat /home/travis/build/odant/nghttp2/nghttp2-1.31.0-DEV/_build/config.log; fi
 
   - if [[ "$CI_BUILD" = "cmake" ]]; then cmake --build . --target all; fi
   - if [[ "$CI_BUILD" = "cmake" ]]; then ctest --output-on-failure; fi
