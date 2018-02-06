@@ -4,6 +4,7 @@ sudo: false
 
 env:
   global:
+    - LSAN_OPTIONS="verbosity=1:log_threads=1"
     - CI_BOOST_VERSION=1.65.1
     - CI_CMAKE_VERSION=3.10.0
   matrix:
