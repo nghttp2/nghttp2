@@ -1,6 +1,6 @@
 language: cpp
 dist: trusty
-sudo: required
+sudo: false
 
 env:
   global:
