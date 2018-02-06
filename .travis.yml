@@ -9,7 +9,7 @@ env:
   matrix:
     - CI_BUILD=cmake CI_BUILD_TYPE=Debug
 #  - CI_BUILD=cmake CI_BUILD_TYPE=Release
-    - CI_BUILD=autotools
+    - CI_BUILD=autotools CI_BUILD_TYPE=Debug
 
 compiler: gcc
 
