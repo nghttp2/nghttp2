@@ -115,6 +115,10 @@ struct DownstreamAddr {
   bool tls;
   // true if dynamic DNS is enabled
   bool dns;
+  // true if :scheme pseudo header field should be upgraded to secure
+  // variant (e.g., "https") when forwarding request to a backend
+  // connected by TLS connection.
+  bool upgrade_scheme;
 };
 
 // Simplified weighted fair queuing.  Actually we don't use queue here

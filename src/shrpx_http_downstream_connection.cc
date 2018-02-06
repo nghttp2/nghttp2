@@ -782,8 +782,10 @@ void idle_timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
   auto conn = static_cast<Connection *>(w->data);
   auto dconn = static_cast<HttpDownstreamConnection *>(conn->data);
 
-  // We don't have to check conn->expired_rt() since we restart timer
-  // when connection gets idle.
+  if (w == &conn->rt && !conn->expired_rt()) {
+    return;
+  }
+
   if (LOG_ENABLED(INFO)) {
     DCLOG(INFO, dconn) << "Idle connection timeout";
   }

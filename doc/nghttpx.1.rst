@@ -212,6 +212,13 @@ Connections
     "redirect-if-no-tls"    parameter   to    all   backends
     explicitly if this feature is desired.
 
+    If "upgrade-scheme"  parameter is used along  with "tls"
+    parameter, HTTP/2 :scheme pseudo header field is changed
+    to "https" from "http" when forwarding a request to this
+    particular backend.  This is  a workaround for a backend
+    server  which  requires  "https" :scheme  pseudo  header
+    field on TLS encrypted connection.
+
     Since ";" and ":" are  used as delimiter, <PATTERN> must
     not  contain these  characters.  Since  ";" has  special
     meaning in shell, the option value must be quoted.

@@ -138,8 +138,9 @@ mrb_value response_mod_header(mrb_state *mrb, mrb_value self, bool repl) {
         continue;
       }
       if (i != p) {
-        headers[p++] = std::move(kv);
+        headers[p] = std::move(kv);
       }
+      ++p;
     }
     headers.resize(p);
   }

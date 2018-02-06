@@ -291,7 +291,14 @@ int Http2DownstreamConnection::push_request_headers() {
   if (req.method != HTTP_CONNECT) {
     assert(!req.scheme.empty());
 
-    nva.push_back(http2::make_nv_ls_nocopy(":scheme", req.scheme));
+    auto addr = http2session_->get_addr();
+    assert(addr);
+    // We will handle more protocol scheme upgrade in the future.
+    if (addr->tls && addr->upgrade_scheme && req.scheme == "http") {
+      nva.push_back(http2::make_nv_ll(":scheme", "https"));
+    } else {
+      nva.push_back(http2::make_nv_ls_nocopy(":scheme", req.scheme));
+    }
 
     if (req.method == HTTP_OPTIONS && req.path.empty()) {
       nva.push_back(http2::make_nv_ll(":path", "*"));
