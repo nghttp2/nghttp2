@@ -7,7 +7,7 @@ env:
     - CI_BOOST_VERSION=1.65.1
     - CI_CMAKE_VERSION=3.10.0
   matrix:
-    - CI_BUILD=cmake CI_BUILD_TYPE=Debug
+#    - CI_BUILD=cmake CI_BUILD_TYPE=Debug
 #  - CI_BUILD=cmake CI_BUILD_TYPE=Release
     - CI_BUILD=autotools CI_BUILD_TYPE=Debug
 
@@ -40,31 +40,31 @@ before_install:
   - $CC --version
   - go version
   # Install CMake
-  - |
-    if [[ "${TRAVIS_OS_NAME}" == "linux" ]]; then
-      mkdir -p ${HOME}/cmake
-      CI_CMAKE_VERSION_SHORT=`echo -n ${CI_CMAKE_VERSION} | awk -F. '{print $1 "." $2}'`
-      CI_CMAKE_URL="https://cmake.org/files/v${CI_CMAKE_VERSION_SHORT}/cmake-${CI_CMAKE_VERSION}-Linux-x86_64.tar.gz"
-      travis_retry wget --no-check-certificate --quiet -O - ${CI_CMAKE_URL} | tar --strip-components=1 -xz -C ${HOME}/cmake
-      export PATH=${HOME}/cmake/bin:${PATH}
-    else
-      brew upgrade cmake || brew install cmake
-    fi
-  - cmake --version
+#  - |
+#    if [[ "${TRAVIS_OS_NAME}" == "linux" ]]; then
+#      mkdir -p ${HOME}/cmake
+#      CI_CMAKE_VERSION_SHORT=`echo -n ${CI_CMAKE_VERSION} | awk -F. '{print $1 "." $2}'`
+#      CI_CMAKE_URL="https://cmake.org/files/v${CI_CMAKE_VERSION_SHORT}/cmake-${CI_CMAKE_VERSION}-Linux-x86_64.tar.gz"
+#      travis_retry wget --no-check-certificate --quiet -O - ${CI_CMAKE_URL} | tar --strip-components=1 -xz -C ${HOME}/cmake
+#      export PATH=${HOME}/cmake/bin:${PATH}
+#    else
+#      brew upgrade cmake || brew install cmake
+#    fi
+#  - cmake --version
   # Download Boost
-  - mkdir -p ${HOME}/boost_source
-  - CI_BOOST_VERSION_=`echo -n ${CI_BOOST_VERSION} | sed 's/\./_/g'`
-  - CI_BOOST_URL="https://dl.bintray.com/boostorg/release/${CI_BOOST_VERSION}/source/boost_${CI_BOOST_VERSION_}.tar.gz"
-  - travis_retry wget --no-check-certificate --quiet -O - ${CI_BOOST_URL} | tar --strip-components=1 -xz -C ${HOME}/boost_source
+#  - mkdir -p ${HOME}/boost_source
+#  - CI_BOOST_VERSION_=`echo -n ${CI_BOOST_VERSION} | sed 's/\./_/g'`
+#  - CI_BOOST_URL="https://dl.bintray.com/boostorg/release/${CI_BOOST_VERSION}/source/boost_${CI_BOOST_VERSION_}.tar.gz"
+#  - travis_retry wget --no-check-certificate --quiet -O - ${CI_BOOST_URL} | tar --strip-components=1 -xz -C ${HOME}/boost_source
   # Build Boost
-  - mkdir -p ${HOME}/boost/include
-  - cd ${HOME}/boost_source
-  - "echo -n \"using gcc : : g++-7 ;\" > tools/build/src/user-config.jam"
-  - ./bootstrap.sh --with-toolset=gcc
-  - CI_B2_OPTIONS="--with-system --with-thread --with-date_time --with-regex --with-serialization --build-type=minimal --stagedir=${HOME}/boost"
-  - CI_B2_PROPERTIES="threading=multi link=static variant=${CI_BUILD_TYPE,,} toolset=gcc cflags=-fPIC cxxflags=-fPIC"
-  - ./b2 ${CI_B2_OPTIONS} ${CI_B2_PROPERTIES} stage
-  - mv ${HOME}/boost_source/boost ${HOME}/boost/include/
+#  - mkdir -p ${HOME}/boost/include
+#  - cd ${HOME}/boost_source
+#  - "echo -n \"using gcc : : g++-7 ;\" > tools/build/src/user-config.jam"
+#  - ./bootstrap.sh --with-toolset=gcc
+#  - CI_B2_OPTIONS="--with-system --with-thread --with-date_time --with-regex --with-serialization --build-type=minimal --stagedir=${HOME}/boost"
+#  - CI_B2_PROPERTIES="threading=multi link=static variant=${CI_BUILD_TYPE,,} toolset=gcc cflags=-fPIC cxxflags=-fPIC"
+#  - ./b2 ${CI_B2_OPTIONS} ${CI_B2_PROPERTIES} stage
+#  - mv ${HOME}/boost_source/boost ${HOME}/boost/include/
 
 before_script:
   - if [[ "${CI_BUILD}" = "autotools" ]]; then cd ${TRAVIS_BUILD_DIR}; fi
