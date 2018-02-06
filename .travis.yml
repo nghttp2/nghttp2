@@ -15,7 +15,8 @@ compiler: gcc
 
 addons:
   apt:
-    sources: ['ubuntu-toolchain-r-test']
+    sources:
+      - ubuntu-toolchain-r-test
     packages:
       - g++-7
       - autoconf
@@ -34,7 +35,6 @@ addons:
       - libc-ares-dev
 
 before_install:
-  - cd ${HOME}
   - $CC --version
   - if [[ "$CXX" = "g++" ]]; then export CXX="g++-7" CC="gcc-7"; fi
   - $CC --version
