@@ -32,7 +32,7 @@ addons:
       - libjansson-dev
       - libjemalloc-dev
       - libc-ares-dev
-        
+
 before_install:
   - cd ${HOME}
   - $CC --version
@@ -51,25 +51,22 @@ before_install:
       brew upgrade cmake || brew install cmake
     fi
   - cmake --version
-  
-  #- | # Download Boost
-  #  if [[ 1 ]]; then
+    # Download Boost
   - mkdir -p ${HOME}/boost_source
   - CI_BOOST_VERSION_=`echo -n ${CI_BOOST_VERSION} | sed 's/\./_/g'`
   - CI_BOOST_URL="https://dl.bintray.com/boostorg/release/${CI_BOOST_VERSION}/source/boost_${CI_BOOST_VERSION_}.tar.gz"
   - travis_retry wget --no-check-certificate --quiet -O - ${CI_BOOST_URL} | tar --strip-components=1 -xz -C ${HOME}/boost_source
-  #  fi
-  - | # Build and install Boost
-    if [[ 1 ]]; then
-      mkdir -p ${HOME}/boost/include
-      cd ${HOME}/boost_source
-      "echo -n \"using gcc : : g++-7 ;\" > tools/build/src/user-config.jam"
-      ./bootstrap.sh --with-toolset=gcc
-      CI_B2_OPTIONS="--with-system --with-thread --with-date_time --with-regex --with-serialization --build-type=minimal --stagedir=${HOME}/boost"
-      CI_B2_PROPERTIES="threading=multi link=static variant=${CI_BUILD_TYPE,,} toolset=gcc compileflags=-fPIC"
-      ./b2 ${CI_B2_OPTIONS} ${CI_B2_PROPERTIES} stage
-      mv ${HOME}/boost_source/boost ${HOME}/boost/include/
-    fi
+  # Build Boost
+
+  - mkdir -p ${HOME}/boost/include
+  - cd ${HOME}/boost_source
+  - "echo -n \"using gcc : : g++-7 ;\" > tools/build/src/user-config.jam"
+  - ./bootstrap.sh --with-toolset=gcc
+  - CI_B2_OPTIONS="--with-system --with-thread --with-date_time --with-regex --with-serialization --build-type=minimal --stagedir=${HOME}/boost"
+  - CI_B2_PROPERTIES="threading=multi link=static variant=${CI_BUILD_TYPE,,} toolset=gcc cflags=-fPIC cxxflags=-fPIC"
+  - ./b2 ${CI_B2_OPTIONS} ${CI_B2_PROPERTIES} stage
+  - mv ${HOME}/boost_source/boost ${HOME}/boost/include/
+
 before_script:
   # Now build nghttp2
   - if [[ "${CI_BUILD}" = "autotools" ]]; then autoreconf -i; fi
