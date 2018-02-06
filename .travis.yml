@@ -67,6 +67,7 @@ before_install:
   - mv ${HOME}/boost_source/boost ${HOME}/boost/include/
 
 before_script:
+  - if [[ "${CI_BUILD}" = "autotools" ]]; cd ${TRAVIS_BUILD_DIR}; fi
   - if [[ "${CI_BUILD}" = "autotools" ]]; then autoreconf -i; fi
   - if [[ "${CI_BUILD}" = "autotools" ]]; then ./configure --with-mruby; fi
 
