@@ -9,7 +9,7 @@ env:
   matrix:
     - CI_BUILD=cmake CI_BUILD_TYPE=Debug
 #  - CI_BUILD=cmake CI_BUILD_TYPE=Release
-#  - CI_BUILD=autotools
+    - CI_BUILD=autotools
 
 compiler: gcc
 
@@ -51,13 +51,12 @@ before_install:
       brew upgrade cmake || brew install cmake
     fi
   - cmake --version
-    # Download Boost
+  # Download Boost
   - mkdir -p ${HOME}/boost_source
   - CI_BOOST_VERSION_=`echo -n ${CI_BOOST_VERSION} | sed 's/\./_/g'`
   - CI_BOOST_URL="https://dl.bintray.com/boostorg/release/${CI_BOOST_VERSION}/source/boost_${CI_BOOST_VERSION_}.tar.gz"
   - travis_retry wget --no-check-certificate --quiet -O - ${CI_BOOST_URL} | tar --strip-components=1 -xz -C ${HOME}/boost_source
   # Build Boost
-
   - mkdir -p ${HOME}/boost/include
   - cd ${HOME}/boost_source
   - "echo -n \"using gcc : : g++-7 ;\" > tools/build/src/user-config.jam"
@@ -68,27 +67,20 @@ before_install:
   - mv ${HOME}/boost_source/boost ${HOME}/boost/include/
 
 before_script:
-  # Now build nghttp2
   - if [[ "${CI_BUILD}" = "autotools" ]]; then autoreconf -i; fi
   - if [[ "${CI_BUILD}" = "autotools" ]]; then ./configure --with-mruby; fi
-  - export CI_CMAKE_OPTIONS="
-    -D CMAKE_BUILD_TYPE=${CI_BUILD_TYPE}
-    -D BOOST_ROOT=${HOME}/boost
-    -D ENABLE_ASIO_LIB=ON
-    -D ENABLE_WERROR=ON
-    -D WITH_MRUBY=ON
-    -D WITH_NEVERBLEED=ON
-    "
+
+  - CI_CMAKE_OPTIONS="-DCMAKE_BUILD_TYPE=${CI_BUILD_TYPE} -DBOOST_ROOT=${HOME}/boost -DENABLE_ASIO_LIB=ON -DENABLE_WERROR=ON -DWITH_MRUBY=ON -DWITH_NEVERBLEED=ON"
   - if [[ "${CI_BUILD}" = "cmake" ]]; then mkdir -p ${HOME}/build; fi
   - if [[ "${CI_BUILD}" = "cmake" ]]; then cd ${HOME}/build; fi
   - if [[ "${CI_BUILD}" = "cmake" ]]; then cmake ${CI_CMAKE_OPTIONS} ${TRAVIS_BUILD_DIR}; fi
+
 script:
-  - if [ "$CI_BUILD" = "autotools" ]; then make distcheck DISTCHECK_CONFIGURE_FLAGS="--with-mruby --with-neverbleed --enable-werror CPPFLAGS=-fsanitize=address LDFLAGS=\"-fsanitize=address -fuse-ld=gold\""; fi
-  - |
-    if [ "$CI_BUILD" = "cmake" ]; then
-      cmake --build . --target all
-      ctest --output-on-failure
-    fi
+  - if [[ "$CI_BUILD" = "autotools" ]]; then make distcheck DISTCHECK_CONFIGURE_FLAGS="--with-mruby --with-neverbleed --enable-werror CPPFLAGS=-fsanitize=address LDFLAGS=\"-fsanitize=address -fuse-ld=gold\""; fi
+
+  - if [[ "$CI_BUILD" = "cmake" ]]; then cmake --build . --target all; fi
+  - if [[ "$CI_BUILD" = "cmake" ]]; then ctest --output-on-failure; fi
+
   # As of April, 23, 2016, golang http2 build fails, probably because
   # the default go version is too old.
   # - cd integration-tests
