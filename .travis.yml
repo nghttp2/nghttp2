@@ -39,7 +39,7 @@ before_install:
   - if [[ "$CXX" = "g++" ]]; then export CXX="g++-7" CC="gcc-7"; fi
   - $CC --version
   - go version
-  # Insatll CMake
+  # Install CMake
   - |
     if [[ "${TRAVIS_OS_NAME}" == "linux" ]]; then
       mkdir -p ${HOME}/cmake
