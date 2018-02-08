@@ -2137,6 +2137,11 @@ SSL/TLS:
               Path  to file  that contains  CA certificates  to verify
               client certificate.  The file must be in PEM format.  It
               can contain multiple certificates.
+  --verify-client-tolerate-expired
+              Accept  expired  client  certificate.   Operator  should
+              handle  the expired  client  certificate  by some  means
+              (e.g.,  mruby  script).   Otherwise, this  option  might
+              cause a security risk.
   --client-private-key-file=<PATH>
               Path to  file that contains  client private key  used in
               backend client authentication.
@@ -3406,6 +3411,8 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_NO_STRIP_INCOMING_X_FORWARDED_PROTO.c_str(), no_argument,
          &flag, 158},
         {SHRPX_OPT_SINGLE_PROCESS.c_str(), no_argument, &flag, 159},
+        {SHRPX_OPT_VERIFY_CLIENT_TOLERATE_EXPIRED.c_str(), no_argument, &flag,
+         160},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -4165,6 +4172,11 @@ int main(int argc, char **argv) {
       case 159:
         // --single-process
         cmdcfgs.emplace_back(SHRPX_OPT_SINGLE_PROCESS,
+                             StringRef::from_lit("yes"));
+        break;
+      case 160:
+        // --verify-client-tolerate-expired
+        cmdcfgs.emplace_back(SHRPX_OPT_VERIFY_CLIENT_TOLERATE_EXPIRED,
                              StringRef::from_lit("yes"));
         break;
       default:
