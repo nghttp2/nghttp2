@@ -407,6 +407,15 @@ time_t parse_http_date(const StringRef &s) {
 #endif // !_WIN32
 }
 
+time_t parse_openssl_asn1_time_print(const StringRef &s) {
+  tm tm{};
+  auto r = strptime(s.c_str(), "%b %d %H:%M:%S %Y GMT", &tm);
+  if (r == nullptr) {
+    return 0;
+  }
+  return nghttp2_timegm_without_yday(&tm);
+}
+
 char upcase(char c) {
   if ('a' <= c && c <= 'z') {
     return c - 'a' + 'A';

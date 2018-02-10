@@ -260,6 +260,58 @@ mrb_value env_get_tls_client_serial(mrb_state *mrb, mrb_value self) {
 } // namespace
 
 namespace {
+mrb_value env_get_tls_client_not_before(mrb_state *mrb, mrb_value self) {
+  auto data = static_cast<MRubyAssocData *>(mrb->ud);
+  auto downstream = data->downstream;
+  auto upstream = downstream->get_upstream();
+  auto handler = upstream->get_client_handler();
+  auto ssl = handler->get_ssl();
+
+  if (!ssl) {
+    return mrb_fixnum_value(0);
+  }
+
+  auto x = SSL_get_peer_certificate(ssl);
+  if (!x) {
+    return mrb_fixnum_value(0);
+  }
+
+  time_t t;
+  if (tls::get_x509_not_before(t, x) != 0) {
+    return mrb_fixnum_value(0);
+  }
+
+  return mrb_fixnum_value(t);
+}
+} // namespace
+
+namespace {
+mrb_value env_get_tls_client_not_after(mrb_state *mrb, mrb_value self) {
+  auto data = static_cast<MRubyAssocData *>(mrb->ud);
+  auto downstream = data->downstream;
+  auto upstream = downstream->get_upstream();
+  auto handler = upstream->get_client_handler();
+  auto ssl = handler->get_ssl();
+
+  if (!ssl) {
+    return mrb_fixnum_value(0);
+  }
+
+  auto x = SSL_get_peer_certificate(ssl);
+  if (!x) {
+    return mrb_fixnum_value(0);
+  }
+
+  time_t t;
+  if (tls::get_x509_not_after(t, x) != 0) {
+    return mrb_fixnum_value(0);
+  }
+
+  return mrb_fixnum_value(t);
+}
+} // namespace
+
+namespace {
 mrb_value env_get_tls_cipher(mrb_state *mrb, mrb_value self) {
   auto data = static_cast<MRubyAssocData *>(mrb->ud);
   auto downstream = data->downstream;
@@ -374,6 +426,10 @@ void init_env_class(mrb_state *mrb, RClass *module) {
                     env_get_tls_client_subject_name, MRB_ARGS_NONE());
   mrb_define_method(mrb, env_class, "tls_client_serial",
                     env_get_tls_client_serial, MRB_ARGS_NONE());
+  mrb_define_method(mrb, env_class, "tls_client_not_before",
+                    env_get_tls_client_not_before, MRB_ARGS_NONE());
+  mrb_define_method(mrb, env_class, "tls_client_not_after",
+                    env_get_tls_client_not_after, MRB_ARGS_NONE());
   mrb_define_method(mrb, env_class, "tls_cipher", env_get_tls_cipher,
                     MRB_ARGS_NONE());
   mrb_define_method(mrb, env_class, "tls_protocol", env_get_tls_protocol,
