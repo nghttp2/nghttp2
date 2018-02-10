@@ -168,6 +168,7 @@ OPTIONS = [
     "no-strip-incoming-x-forwarded-proto",
     "ocsp-startup",
     "no-verify-ocsp",
+    "verify-client-tolerate-expired",
 ]
 
 LOGVARS = [

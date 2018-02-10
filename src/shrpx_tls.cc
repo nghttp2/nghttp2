@@ -95,6 +95,12 @@ int verify_callback(int preverify_ok, X509_STORE_CTX *ctx) {
   if (!preverify_ok) {
     int err = X509_STORE_CTX_get_error(ctx);
     int depth = X509_STORE_CTX_get_error_depth(ctx);
+    if (err == X509_V_ERR_CERT_HAS_EXPIRED && depth == 0 &&
+        get_config()->tls.client_verify.tolerate_expired) {
+      LOG(INFO) << "The client certificate has expired, but is accepted by "
+                   "configuration";
+      return 1;
+    }
     LOG(ERROR) << "client certificate verify error:num=" << err << ":"
                << X509_verify_cert_error_string(err) << ":depth=" << depth;
   }
