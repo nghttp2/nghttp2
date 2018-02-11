@@ -15,9 +15,9 @@ cd ${HOME}/boost_source
 #  - "if [[ "$CC" = "gcc" ]]; then echo -n \"using gcc \: \: g++-7 ;\" > tools/build/src/user-config.jam; fi"
 #  - "if [[ "$CC" = "clang" ]]; then echo -n \"using clang \: \: clang++ ;\" > tools/build/src/user-config.jam; fi"
 echo "using clang : : clang++ ;" > tools/build/src/user-config.jam
-./bootstrap.sh
+./bootstrap.sh --with-toolset=clang
 CI_B2_OPTIONS="--with-system --with-thread --with-date_time --with-regex --with-serialization --build-type=minimal --stagedir=${CI_BOOST_ROOT}"
-CI_B2_PROPERTIES="threading=multi link=static variant=${CI_BUILD_TYPE,,} cflags=-fPIC cxxflags=-fPIC"
+CI_B2_PROPERTIES="threading=multi link=static variant=${CI_BUILD_TYPE,,} cflags=-fPIC cxxflags=-fPIC" toolset=clang
 ./b2 ${CI_B2_OPTIONS} ${CI_B2_PROPERTIES} stage
 mv ${HOME}/boost_source/boost ${CI_BOOST_ROOT}/include/
 
