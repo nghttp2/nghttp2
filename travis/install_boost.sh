@@ -22,5 +22,5 @@ CI_B2_PROPERTIES="threading=multi link=static variant=${CI_BUILD_TYPE,,} cflags=
 mv ${HOME}/boost_source/boost ${CI_BOOST_ROOT}/include/
 
 cd ${_startup_dir}
-unset ${_startup_dir}
+unset _startup_dir
 
