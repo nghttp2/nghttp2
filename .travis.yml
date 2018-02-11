@@ -12,7 +12,7 @@ env:
 
 compiler:
   - clang
-#  - gcc
+  - gcc
 
 addons:
   apt:
