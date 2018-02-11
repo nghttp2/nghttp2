@@ -37,7 +37,7 @@ addons:
 
 before_install:
   - $CC --version
-  - if [[ "$CXX" = "g++" ]]; then export CXX="g++-7" CC="gcc-7"; fi
+  - if [[ "$CC" = "gcc" ]]; then export CXX="g++-7" CC="gcc-7"; fi
   - $CC --version
   - go version
   # Install CMake
@@ -60,10 +60,11 @@ before_install:
   # Build Boost
   - mkdir -p ${HOME}/boost/include
   - cd ${HOME}/boost_source
-  - "echo -n \"using gcc : : g++-7 ;\" > tools/build/src/user-config.jam"
-  - ./bootstrap.sh --with-toolset=gcc
+  - if [[ "$CC" = "gcc" ]]; then "echo -n \"using gcc : : g++-7 ;\" > tools/build/src/user-config.jam"; fi
+  - if [[ "$CC" = "clang" ]]; then "echo -n \"using clang : : clang++ ;\" > tools/build/src/user-config.jam"; fi
+  - ./bootstrap.sh
   - CI_B2_OPTIONS="--with-system --with-thread --with-date_time --with-regex --with-serialization --build-type=minimal --stagedir=${HOME}/boost"
-  - CI_B2_PROPERTIES="threading=multi link=static variant=${CI_BUILD_TYPE,,} toolset=gcc cflags=-fPIC cxxflags=-fPIC"
+  - CI_B2_PROPERTIES="threading=multi link=static variant=${CI_BUILD_TYPE,,} cflags=-fPIC cxxflags=-fPIC"
   - ./b2 ${CI_B2_OPTIONS} ${CI_B2_PROPERTIES} stage
   - mv ${HOME}/boost_source/boost ${HOME}/boost/include/
 
