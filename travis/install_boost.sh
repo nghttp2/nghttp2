@@ -14,7 +14,7 @@ mkdir -p ${HOME}/boost/include
 cd ${HOME}/boost_source
 #  - "if [[ "$CC" = "gcc" ]]; then echo -n \"using gcc \: \: g++-7 ;\" > tools/build/src/user-config.jam; fi"
 #  - "if [[ "$CC" = "clang" ]]; then echo -n \"using clang \: \: clang++ ;\" > tools/build/src/user-config.jam; fi"
-echo -n \"using clang : : clang++ ;\" > tools/build/src/user-config.jam
+echo "using clang : : clang++ ;" > tools/build/src/user-config.jam
 ./bootstrap.sh
 CI_B2_OPTIONS="--with-system --with-thread --with-date_time --with-regex --with-serialization --build-type=minimal --stagedir=${CI_BOOST_ROOT}"
 CI_B2_PROPERTIES="threading=multi link=static variant=${CI_BUILD_TYPE,,} cflags=-fPIC cxxflags=-fPIC"
