@@ -18,7 +18,7 @@ cd ${HOME}/boost_source
 if [[ $CXX == g++* ]]; then
     CI_B2_TOOLSET="gcc"
 fi
-if [[ "$CXX" = clang* ]]; then
+if [[ "$CXX" == clang* ]]; then
     CI_B2_TOOLSET="clang"
 fi
 
