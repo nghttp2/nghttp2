@@ -36,9 +36,11 @@ addons:
       - libc-ares-dev
 
 before_install:
-  - $CC --version
-  - if [[ "$CC" = "gcc" ]]; then export CXX="g++-7" CC="gcc-7"; fi
-  - $CC --version
+  - ${CC} --version
+  - ${CXX} --version
+  - if [[ "$CC" = "gcc" ]]; then echo "Switch gcc version"; export CXX="g++-7" CC="gcc-7"; fi
+  - ${CC} --version
+  - ${CXX} --version
   - go version
   # Install CMake
   - |

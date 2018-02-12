@@ -28,7 +28,7 @@ echo -n "using ${CI_B2_TOOLSET} : : ${CXX} ;" > tools/build/src/user-config.jam;
 
 CI_B2_OPTIONS="--with-system --with-thread --with-date_time --with-regex --with-serialization --build-type=minimal --stagedir=${CI_BOOST_ROOT}"
 CI_B2_PROPERTIES="threading=multi link=static variant=${CI_BUILD_TYPE,,} cflags=-fPIC cxxflags=-fPIC" toolset=${CI_B2_TOOLSET}
-./b2 ${CI_B2_OPTIONS} ${CI_B2_PROPERTIES} stage
+./b2 -d2 -q ${CI_B2_OPTIONS} ${CI_B2_PROPERTIES} stage
 mv ${HOME}/boost_source/boost ${CI_BOOST_ROOT}/include/
 
 cd ${_startup_dir}
