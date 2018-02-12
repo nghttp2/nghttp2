@@ -22,7 +22,7 @@ if [[ "$CXX" == clang* ]]; then
     CI_B2_TOOLSET="clang"
 fi
 
-echo -n "using ${CI_B2_TOOLSET} : : ${CXX} ;" > tools/build/src/user-config.jam;
+echo "using ${CI_B2_TOOLSET} : : ${CXX} ;" > tools/build/src/user-config.jam;
 
 ./bootstrap.sh --with-toolset=${CI_B2_TOOLSET}
 
