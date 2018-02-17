@@ -923,7 +923,9 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
 #endif // OPENSSL_IS_BORINGSSL
 
   // NPN advertisement
+#ifndef OPENSSL_NO_NEXTPROTONEG
   SSL_CTX_set_next_protos_advertised_cb(ssl_ctx, next_proto_cb, nullptr);
+#endif
 #if OPENSSL_VERSION_NUMBER >= 0x10002000L
   // ALPN selection callback
   SSL_CTX_set_alpn_select_cb(ssl_ctx, alpn_select_proto_cb, nullptr);
@@ -1118,7 +1120,9 @@ SSL_CTX *create_ssl_client_context(
 
   // NPN selection callback.  This is required to set SSL_CTX because
   // OpenSSL does not offer SSL_set_next_proto_select_cb.
+#ifndef OPENSSL_NO_NEXTPROTONEG
   SSL_CTX_set_next_proto_select_cb(ssl_ctx, next_proto_select_cb, nullptr);
+#endif
 
   return ssl_ctx;
 }
