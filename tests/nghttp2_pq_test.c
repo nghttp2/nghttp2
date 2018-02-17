@@ -127,8 +127,10 @@ static int node_less(const void *lhs, const void *rhs) {
   return ln->key < rn->key;
 }
 
-static int node_update(nghttp2_pq_entry *item, void *arg _U_) {
+static int node_update(nghttp2_pq_entry *item, void *arg) {
   node *nd = (node *)item;
+  (void)arg;
+
   if ((nd->key % 2) == 0) {
     nd->key *= -1;
     return 1;

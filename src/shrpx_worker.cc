@@ -30,7 +30,7 @@
 
 #include <memory>
 
-#include "shrpx_ssl.h"
+#include "shrpx_tls.h"
 #include "shrpx_log.h"
 #include "shrpx_client_handler.h"
 #include "shrpx_http2_session.h"
@@ -68,57 +68,55 @@ void proc_wev_cb(struct ev_loop *loop, ev_timer *w, int revents) {
 }
 } // namespace
 
+// DownstreamKey is used to index SharedDownstreamAddr in order to
+// find the same configuration.
+using DownstreamKey = std::tuple<
+    std::vector<std::tuple<StringRef, StringRef, size_t, size_t, shrpx_proto,
+                           uint16_t, bool, bool, bool, bool>>,
+    bool, int, StringRef, StringRef, int>;
+
 namespace {
-bool match_shared_downstream_addr(
-    const std::shared_ptr<SharedDownstreamAddr> &lhs,
-    const std::shared_ptr<SharedDownstreamAddr> &rhs) {
-  if (lhs->addrs.size() != rhs->addrs.size()) {
-    return false;
+DownstreamKey create_downstream_key(
+    const std::shared_ptr<SharedDownstreamAddr> &shared_addr) {
+  DownstreamKey dkey;
+
+  auto &addrs = std::get<0>(dkey);
+  addrs.resize(shared_addr->addrs.size());
+  auto p = std::begin(addrs);
+  for (auto &a : shared_addr->addrs) {
+    std::get<0>(*p) = a.host;
+    std::get<1>(*p) = a.sni;
+    std::get<2>(*p) = a.fall;
+    std::get<3>(*p) = a.rise;
+    std::get<4>(*p) = a.proto;
+    std::get<5>(*p) = a.port;
+    std::get<6>(*p) = a.host_unix;
+    std::get<7>(*p) = a.tls;
+    std::get<8>(*p) = a.dns;
+    std::get<9>(*p) = a.upgrade_scheme;
+    ++p;
   }
+  std::sort(std::begin(addrs), std::end(addrs));
 
-  if (lhs->affinity != rhs->affinity) {
-    return false;
-  }
+  std::get<1>(dkey) = shared_addr->redirect_if_not_tls;
 
-  auto used = std::vector<bool>(lhs->addrs.size());
+  auto &affinity = shared_addr->affinity;
+  std::get<2>(dkey) = affinity.type;
+  std::get<3>(dkey) = affinity.cookie.name;
+  std::get<4>(dkey) = affinity.cookie.path;
+  std::get<5>(dkey) = affinity.cookie.secure;
 
-  for (auto &a : lhs->addrs) {
-    size_t i;
-    for (i = 0; i < rhs->addrs.size(); ++i) {
-      if (used[i]) {
-        continue;
-      }
-
-      auto &b = rhs->addrs[i];
-      if (a.host == b.host && a.port == b.port && a.host_unix == b.host_unix &&
-          a.proto == b.proto && a.tls == b.tls && a.sni == b.sni &&
-          a.fall == b.fall && a.rise == b.rise && a.dns == b.dns) {
-        break;
-      }
-    }
-
-    if (i == rhs->addrs.size()) {
-      return false;
-    }
-
-    used[i] = true;
-  }
-
-  return true;
+  return dkey;
 }
-} // namespace
-
-namespace {
-std::random_device rd;
 } // namespace
 
 Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
                SSL_CTX *tls_session_cache_memcached_ssl_ctx,
-               ssl::CertLookupTree *cert_tree,
+               tls::CertLookupTree *cert_tree,
                const std::shared_ptr<TicketKeys> &ticket_keys,
                ConnectionHandler *conn_handler,
                std::shared_ptr<DownstreamConfig> downstreamconf)
-    : randgen_(rd()),
+    : randgen_(util::make_mt19937()),
       worker_stat_{},
       dns_tracker_(loop),
       loop_(loop),
@@ -159,7 +157,7 @@ void Worker::replace_downstream_config(
 
     auto &shared_addr = g->shared_addr;
 
-    if (shared_addr->affinity == AFFINITY_NONE) {
+    if (shared_addr->affinity.type == AFFINITY_NONE) {
       shared_addr->dconn_pool.remove_all();
       continue;
     }
@@ -178,6 +176,8 @@ void Worker::replace_downstream_config(
   downstream_addr_groups_ =
       std::vector<std::shared_ptr<DownstreamAddrGroup>>(groups.size());
 
+  std::map<DownstreamKey, size_t> addr_groups_indexer;
+
   for (size_t i = 0; i < groups.size(); ++i) {
     auto &src = groups[i];
     auto &dst = downstream_addr_groups_[i];
@@ -189,8 +189,18 @@ void Worker::replace_downstream_config(
     auto shared_addr = std::make_shared<SharedDownstreamAddr>();
 
     shared_addr->addrs.resize(src.addrs.size());
-    shared_addr->affinity = src.affinity;
+    shared_addr->affinity.type = src.affinity.type;
+    if (src.affinity.type == AFFINITY_COOKIE) {
+      shared_addr->affinity.cookie.name =
+          make_string_ref(shared_addr->balloc, src.affinity.cookie.name);
+      if (!src.affinity.cookie.path.empty()) {
+        shared_addr->affinity.cookie.path =
+            make_string_ref(shared_addr->balloc, src.affinity.cookie.path);
+      }
+      shared_addr->affinity.cookie.secure = src.affinity.cookie.secure;
+    }
     shared_addr->affinity_hash = src.affinity_hash;
+    shared_addr->redirect_if_not_tls = src.redirect_if_not_tls;
 
     size_t num_http1 = 0;
     size_t num_http2 = 0;
@@ -211,6 +221,7 @@ void Worker::replace_downstream_config(
       dst_addr.fall = src_addr.fall;
       dst_addr.rise = src_addr.rise;
       dst_addr.dns = src_addr.dns;
+      dst_addr.upgrade_scheme = src_addr.upgrade_scheme;
 
       auto shared_addr_ptr = shared_addr.get();
 
@@ -254,14 +265,11 @@ void Worker::replace_downstream_config(
 
     // share the connection if patterns have the same set of backend
     // addresses.
-    auto end = std::begin(downstream_addr_groups_) + i;
-    auto it = std::find_if(
-        std::begin(downstream_addr_groups_), end,
-        [&shared_addr](const std::shared_ptr<DownstreamAddrGroup> &group) {
-          return match_shared_downstream_addr(group->shared_addr, shared_addr);
-        });
 
-    if (it == end) {
+    auto dkey = create_downstream_key(shared_addr);
+    auto it = addr_groups_indexer.find(dkey);
+
+    if (it == std::end(addr_groups_indexer)) {
       if (LOG_ENABLED(INFO)) {
         LOG(INFO) << "number of http/1.1 backend: " << num_http1
                   << ", number of h2 backend: " << num_http2;
@@ -270,19 +278,22 @@ void Worker::replace_downstream_config(
       shared_addr->http1_pri.weight = num_http1;
       shared_addr->http2_pri.weight = num_http2;
 
-      if (shared_addr->affinity != AFFINITY_NONE) {
+      if (shared_addr->affinity.type != AFFINITY_NONE) {
         for (auto &addr : shared_addr->addrs) {
           addr.dconn_pool = make_unique<DownstreamConnectionPool>();
         }
       }
 
       dst->shared_addr = shared_addr;
+
+      addr_groups_indexer.emplace(std::move(dkey), i);
     } else {
+      auto &g = *(std::begin(downstream_addr_groups_) + (*it).second);
       if (LOG_ENABLED(INFO)) {
         LOG(INFO) << dst->pattern << " shares the same backend group with "
-                  << (*it)->pattern;
+                  << g->pattern;
       }
-      dst->shared_addr = (*it)->shared_addr;
+      dst->shared_addr = g->shared_addr;
     }
   }
 }
@@ -309,9 +320,9 @@ void Worker::wait() {
 void Worker::run_async() {
 #ifndef NOTHREADS
   fut_ = std::async(std::launch::async, [this] {
-    (void)reopen_log_files();
+    (void)reopen_log_files(get_config()->logging);
     ev_run(loop_);
-    delete log_config();
+    delete_log_config();
   });
 #endif // !NOTHREADS
 }
@@ -347,7 +358,9 @@ void Worker::process_events() {
 
   ev_timer_start(loop_, &proc_wev_timer_);
 
-  auto worker_connections = get_config()->conn.upstream.worker_connections;
+  auto config = get_config();
+
+  auto worker_connections = config->conn.upstream.worker_connections;
 
   switch (wev.type) {
   case NEW_CONNECTION: {
@@ -368,7 +381,7 @@ void Worker::process_events() {
     }
 
     auto client_handler =
-        ssl::accept_connection(this, wev.client_fd, &wev.client_addr.sa,
+        tls::accept_connection(this, wev.client_fd, &wev.client_addr.sa,
                                wev.client_addrlen, wev.faddr);
     if (!client_handler) {
       if (LOG_ENABLED(INFO)) {
@@ -388,7 +401,7 @@ void Worker::process_events() {
     WLOG(NOTICE, this) << "Reopening log files: worker process (thread " << this
                        << ")";
 
-    reopen_log_files();
+    reopen_log_files(config->logging);
 
     break;
   case GRACEFUL_SHUTDOWN:
@@ -416,7 +429,7 @@ void Worker::process_events() {
   }
 }
 
-ssl::CertLookupTree *Worker::get_cert_lookup_tree() const { return cert_tree_; }
+tls::CertLookupTree *Worker::get_cert_lookup_tree() const { return cert_tree_; }
 
 std::shared_ptr<TicketKeys> Worker::get_ticket_keys() {
 #ifdef HAVE_ATOMIC_STD_SHARED_PTR
@@ -505,18 +518,6 @@ size_t match_downstream_addr_group_host(
   const auto &rev_wildcard_router = routerconf.rev_wildcard_router;
   const auto &wildcard_patterns = routerconf.wildcard_patterns;
 
-  if (path.empty() || path[0] != '/') {
-    auto group = router.match(host, StringRef::from_lit("/"));
-    if (group != -1) {
-      if (LOG_ENABLED(INFO)) {
-        LOG(INFO) << "Found pattern with query " << host
-                  << ", matched pattern=" << groups[group]->pattern;
-      }
-      return group;
-    }
-    return catch_all;
-  }
-
   if (LOG_ENABLED(INFO)) {
     LOG(INFO) << "Perform mapping selection, using host=" << host
               << ", path=" << path;
@@ -601,6 +602,10 @@ size_t match_downstream_addr_group(
   auto fragment = std::find(std::begin(raw_path), std::end(raw_path), '#');
   auto query = std::find(std::begin(raw_path), fragment, '?');
   auto path = StringRef{std::begin(raw_path), query};
+
+  if (path.empty() || path[0] != '/') {
+    path = StringRef::from_lit("/");
+  }
 
   if (hostport.empty()) {
     return match_downstream_addr_group_host(routerconf, hostport, path, groups,

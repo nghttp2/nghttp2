@@ -14,7 +14,7 @@ SYNOPSIS
 DESCRIPTION
 -----------
 
-A reverse proxy for HTTP/2, HTTP/1 and SPDY.
+A reverse proxy for HTTP/2, and HTTP/1.
 
 .. describe:: <PRIVATE_KEY>
 
@@ -46,8 +46,7 @@ Connections
     with "unix:" (e.g., unix:/var/run/backend.sock).
 
     Optionally, if <PATTERN>s are given, the backend address
-    is  only  used  if  request  matches  the  pattern.   If
-    :option:`--http2-proxy`  is  used,  <PATTERN>s are  ignored.   The
+    is  only  used  if  request matches  the  pattern.   The
     pattern  matching is  closely  designed  to ServeMux  in
     net/http package of  Go programming language.  <PATTERN>
     consists of  path, host +  path or just host.   The path
@@ -58,11 +57,16 @@ Connections
     which  only  lacks  trailing  '*/*'  (e.g.,  path  "*/foo/*"
     matches request path  "*/foo*").  If it does  not end with
     "*/*", it  performs exact match against  the request path.
-    If host  is given, it  performs exact match  against the
-    request host.  If  host alone is given,  "*/*" is appended
-    to it,  so that it  matches all request paths  under the
-    host   (e.g.,   specifying   "nghttp2.org"   equals   to
-    "nghttp2.org/").
+    If  host  is given,  it  performs  a match  against  the
+    request host.   For a  request received on  the frontend
+    listener with  "sni-fwd" parameter enabled, SNI  host is
+    used instead of a request host.  If host alone is given,
+    "*/*" is  appended to it,  so that it matches  all request
+    paths  under the  host  (e.g., specifying  "nghttp2.org"
+    equals  to "nghttp2.org/").   CONNECT method  is treated
+    specially.  It  does not have  path, and we  don't allow
+    empty path.  To workaround  this, we assume that CONNECT
+    method has "*/*" as path.
 
     Patterns with  host take  precedence over  patterns with
     just path.   Then, longer patterns take  precedence over
@@ -75,6 +79,18 @@ Connections
     "www.nghttp2.org"  and  "git.ngttp2.org", but  does  not
     match  against  "nghttp2.org".   The exact  hosts  match
     takes precedence over the wildcard hosts match.
+
+    If path  part ends with  "\*", it is treated  as wildcard
+    path.  The  wildcard path  behaves differently  from the
+    normal path.  For normal path,  match is made around the
+    boundary of path component  separator,"*/*".  On the other
+    hand, the wildcard  path does not take  into account the
+    path component  separator.  All paths which  include the
+    wildcard  path  without  last  "\*" as  prefix,  and  are
+    strictly longer than wildcard  path without last "\*" are
+    matched.  "\*"  must match  at least one  character.  For
+    example,  the   pattern  "*/foo\**"  matches   "*/foo/*"  and
+    "*/foobar*".  But it does not match "*/foo*", or "*/fo*".
 
     If <PATTERN> is omitted or  empty string, "*/*" is used as
     pattern,  which  matches  all request  paths  (catch-all
@@ -105,12 +121,12 @@ Connections
     The  parameters are  delimited  by  ";".  The  available
     parameters       are:      "proto=<PROTO>",       "tls",
     "sni=<SNI_HOST>",         "fall=<N>",        "rise=<N>",
-    "affinity=<METHOD>", and "dns".   The parameter consists
-    of keyword,  and optionally  followed by "="  and value.
-    For example,  the parameter  "proto=h2" consists  of the
-    keyword  "proto" and  value "h2".   The parameter  "tls"
-    consists  of  the  keyword "tls"  without  value.   Each
-    parameter is described as follows.
+    "affinity=<METHOD>",  "dns", and  "redirect-if-not-tls".
+    The  parameter  consists   of  keyword,  and  optionally
+    followed by  "=" and value.  For  example, the parameter
+    "proto=h2"  consists of  the keyword  "proto" and  value
+    "h2".  The parameter "tls" consists of the keyword "tls"
+    without value.  Each parameter is described as follows.
 
     The backend application protocol  can be specified using
     optional  "proto"   parameter,  and   in  the   form  of
@@ -148,16 +164,32 @@ Connections
     The     session     affinity    is     enabled     using
     "affinity=<METHOD>"  parameter.   If  "ip" is  given  in
     <METHOD>, client  IP based session affinity  is enabled.
-    If  "none" is  given  in <METHOD>,  session affinity  is
-    disabled, and this is the default.  The session affinity
-    is enabled per  <PATTERN>.  If at least  one backend has
-    "affinity" parameter,  and its  <METHOD> is  not "none",
-    session  affinity is  enabled  for  all backend  servers
-    sharing  the  same  <PATTERN>.   It is  advised  to  set
-    "affinity"  parameter  to   all  backend  explicitly  if
-    session affinity  is desired.  The session  affinity may
-    break if one of the backend gets unreachable, or backend
-    settings are reloaded or replaced by API.
+    If "cookie"  is given in <METHOD>,  cookie based session
+    affinity is  enabled.  If  "none" is given  in <METHOD>,
+    session affinity  is disabled, and this  is the default.
+    The session  affinity is  enabled per <PATTERN>.   If at
+    least  one backend  has  "affinity"  parameter, and  its
+    <METHOD> is not "none",  session affinity is enabled for
+    all backend  servers sharing the same  <PATTERN>.  It is
+    advised  to  set  "affinity" parameter  to  all  backend
+    explicitly if session affinity  is desired.  The session
+    affinity  may   break  if   one  of  the   backend  gets
+    unreachable,  or   backend  settings  are   reloaded  or
+    replaced by API.
+
+    If   "affinity=cookie"    is   used,    the   additional
+    configuration                is                required.
+    "affinity-cookie-name=<NAME>" must be  used to specify a
+    name     of     cookie      to     use.      Optionally,
+    "affinity-cookie-path=<PATH>" can  be used to  specify a
+    path   which   cookie    is   applied.    The   optional
+    "affinity-cookie-secure=<SECURE>"  controls  the  Secure
+    attribute of a cookie.  The default value is "auto", and
+    the Secure attribute is  determined by a request scheme.
+    If a request scheme is "https", then Secure attribute is
+    set.  Otherwise, it  is not set.  If  <SECURE> is "yes",
+    the  Secure attribute  is  always set.   If <SECURE>  is
+    "no", the Secure attribute is always omitted.
 
     By default, name resolution of backend host name is done
     at  start  up,  or reloading  configuration.   If  "dns"
@@ -166,6 +198,26 @@ Connections
     frequently.   If  "dns"  is given,  name  resolution  of
     backend   host   name   at  start   up,   or   reloading
     configuration is skipped.
+
+    If "redirect-if-not-tls" parameter  is used, the matched
+    backend  requires   that  frontend  connection   is  TLS
+    encrypted.  If it isn't, nghttpx responds to the request
+    with 308  status code, and  https URI the  client should
+    use instead  is included in Location  header field.  The
+    port number in  redirect URI is 443 by  default, and can
+    be  changed using  :option:`--redirect-https-port` option.   If at
+    least one  backend has  "redirect-if-not-tls" parameter,
+    this feature is enabled  for all backend servers sharing
+    the   same   <PATTERN>.    It    is   advised   to   set
+    "redirect-if-no-tls"    parameter   to    all   backends
+    explicitly if this feature is desired.
+
+    If "upgrade-scheme"  parameter is used along  with "tls"
+    parameter, HTTP/2 :scheme pseudo header field is changed
+    to "https" from "http" when forwarding a request to this
+    particular backend.  This is  a workaround for a backend
+    server  which  requires  "https" :scheme  pseudo  header
+    field on TLS encrypted connection.
 
     Since ";" and ":" are  used as delimiter, <PATTERN> must
     not  contain these  characters.  Since  ";" has  special
@@ -189,6 +241,11 @@ Connections
 
     Optionally, TLS  can be disabled by  specifying "no-tls"
     parameter.  TLS is enabled by default.
+
+    If "sni-fwd" parameter is  used, when performing a match
+    to select a backend server,  SNI host name received from
+    the client  is used  instead of  the request  host.  See
+    :option:`--backend` option about the pattern match.
 
     To  make this  frontend as  API endpoint,  specify "api"
     parameter.   This   is  disabled  by  default.    It  is
@@ -248,6 +305,14 @@ Performance
     Set the number of worker threads.
 
     Default: ``1``
+
+.. option:: --single-thread
+
+    Run everything in one  thread inside the worker process.
+    This   feature   is   provided  for   better   debugging
+    experience,  or  for  the platforms  which  lack  thread
+    support.   If  threading  is disabled,  this  option  is
+    always enabled.
 
 .. option:: --read-rate=<SIZE>
 
@@ -382,8 +447,7 @@ Timeout
 
 .. option:: --frontend-http2-read-timeout=<DURATION>
 
-    Specify  read  timeout  for  HTTP/2  and  SPDY  frontend
-    connection.
+    Specify read timeout for HTTP/2 frontend connection.
 
     Default: ``3m``
 
@@ -408,17 +472,17 @@ Timeout
 
 .. option:: --stream-read-timeout=<DURATION>
 
-    Specify  read timeout  for HTTP/2  and SPDY  streams.  0
-    means no timeout.
+    Specify  read timeout  for HTTP/2  streams.  0  means no
+    timeout.
 
     Default: ``0``
 
 .. option:: --stream-write-timeout=<DURATION>
 
-    Specify write  timeout for  HTTP/2 and SPDY  streams.  0
-    means no timeout.
+    Specify write  timeout for  HTTP/2 streams.  0  means no
+    timeout.
 
-    Default: ``0``
+    Default: ``1m``
 
 .. option:: --backend-read-timeout=<DURATION>
 
@@ -490,14 +554,14 @@ SSL/TLS
     Set allowed  cipher list  for frontend  connection.  The
     format of the string is described in OpenSSL ciphers(1).
 
-    Default: ``ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA:ECDHE-RSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-RSA-AES256-SHA256:DHE-RSA-AES256-SHA:ECDHE-ECDSA-DES-CBC3-SHA:ECDHE-RSA-DES-CBC3-SHA:EDH-RSA-DES-CBC3-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA:DES-CBC3-SHA:!DSS``
+    Default: ``ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256``
 
 .. option:: --client-ciphers=<SUITE>
 
     Set  allowed cipher  list for  backend connection.   The
     format of the string is described in OpenSSL ciphers(1).
 
-    Default: ``ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA:ECDHE-RSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-RSA-AES256-SHA256:DHE-RSA-AES256-SHA:ECDHE-ECDSA-DES-CBC3-SHA:ECDHE-RSA-DES-CBC3-SHA:EDH-RSA-DES-CBC3-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA:DES-CBC3-SHA:!DSS``
+    Default: ``ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256``
 
 .. option:: --ecdh-curves=<LIST>
 
@@ -516,11 +580,14 @@ SSL/TLS
 
 .. option:: --cacert=<PATH>
 
-    Set path to trusted CA  certificate file used in backend
-    TLS connections.   The file must  be in PEM  format.  It
-    can  contain  multiple   certificates.   If  the  linked
-    OpenSSL is configured to  load system wide certificates,
-    they are loaded at startup regardless of this option.
+    Set path to trusted CA  certificate file.  It is used in
+    backend  TLS connections  to verify  peer's certificate.
+    It is also used to  verify OCSP response from the script
+    set by :option:`--fetch-ocsp-response-file`\.  The  file must be in
+    PEM format.   It can contain multiple  certificates.  If
+    the  linked OpenSSL  is configured  to load  system wide
+    certificates, they  are loaded at startup  regardless of
+    this option.
 
 .. option:: --private-key-passwd-file=<PATH>
 
@@ -532,9 +599,14 @@ SSL/TLS
 
     Specify  additional certificate  and  private key  file.
     nghttpx will  choose certificates based on  the hostname
-    indicated  by  client  using TLS  SNI  extension.   This
-    option  can  be  used  multiple  times.   To  make  OCSP
-    stapling work, <CERTPATH> must be absolute path.
+    indicated by client using TLS SNI extension.  If nghttpx
+    is  built with  OpenSSL  >= 1.0.2,  the shared  elliptic
+    curves (e.g., P-256) between  client and server are also
+    taken into  consideration.  This allows nghttpx  to send
+    ECDSA certificate  to modern clients, while  sending RSA
+    based certificate to older  clients.  This option can be
+    used  multiple  times.   To  make  OCSP  stapling  work,
+    <CERTPATH> must be absolute path.
 
     Additional parameter  can be specified in  <PARAM>.  The
     available <PARAM> is "sct-dir=<DIR>".
@@ -560,7 +632,7 @@ SSL/TLS
     only  and any  white spaces  are  treated as  a part  of
     protocol string.
 
-    Default: ``h2,h2-16,h2-14,spdy/3.1,http/1.1``
+    Default: ``h2,h2-16,h2-14,http/1.1``
 
 .. option:: --verify-client
 
@@ -582,19 +654,33 @@ SSL/TLS
     Path to  file that  contains client certificate  used in
     backend client authentication.
 
-.. option:: --tls-proto-list=<LIST>
+.. option:: --tls-min-proto-version=<VER>
 
-    Comma delimited list of  SSL/TLS protocol to be enabled.
-    The following protocols  are available: TLSv1.2, TLSv1.1
-    and   TLSv1.0.    The   name   matching   is   done   in
-    case-insensitive   manner.    The  parameter   must   be
-    delimited by  a single comma  only and any  white spaces
-    are  treated  as a  part  of  protocol string.   If  the
-    protocol list advertised by client does not overlap this
-    list,  you  will  receive  the  error  message  "unknown
-    protocol".
+    Specify minimum SSL/TLS protocol.   The name matching is
+    done in  case-insensitive manner.  The  versions between
+    :option:`--tls-min-proto-version` and  :option:`\--tls-max-proto-version` are
+    enabled.  If the protocol list advertised by client does
+    not  overlap  this range,  you  will  receive the  error
+    message "unknown protocol".  If a protocol version lower
+    than TLSv1.2 is specified, make sure that the compatible
+    ciphers are  included in :option:`--ciphers` option.   The default
+    cipher  list  only   includes  ciphers  compatible  with
+    TLSv1.2 or above.  The available versions are:
+    TLSv1.2, TLSv1.1, and TLSv1.0
 
-    Default: ``TLSv1.2,TLSv1.1``
+    Default: ``TLSv1.2``
+
+.. option:: --tls-max-proto-version=<VER>
+
+    Specify maximum SSL/TLS protocol.   The name matching is
+    done in  case-insensitive manner.  The  versions between
+    :option:`--tls-min-proto-version` and  :option:`\--tls-max-proto-version` are
+    enabled.  If the protocol list advertised by client does
+    not  overlap  this range,  you  will  receive the  error
+    message "unknown protocol".  The available versions are:
+    TLSv1.2, TLSv1.1, and TLSv1.0
+
+    Default: ``TLSv1.2``
 
 .. option:: --tls-ticket-key-file=<PATH>
 
@@ -697,6 +783,18 @@ SSL/TLS
     Set interval to update OCSP response cache.
 
     Default: ``4h``
+
+.. option:: --ocsp-startup
+
+    Start  accepting connections  after initial  attempts to
+    get OCSP responses  finish.  It does not  matter some of
+    the  attempts  fail.  This  feature  is  useful if  OCSP
+    responses   must    be   available    before   accepting
+    connections.
+
+.. option:: --no-verify-ocsp
+
+    nghttpx does not verify OCSP response.
 
 .. option:: --no-ocsp
 
@@ -811,13 +909,13 @@ SSL/TLS
     option.  But be aware its implications.
 
 
-HTTP/2 and SPDY
-~~~~~~~~~~~~~~~
+HTTP/2
+~~~~~~
 
 .. option:: -c, --frontend-http2-max-concurrent-streams=<N>
 
     Set the maximum number of  the concurrent streams in one
-    frontend HTTP/2 and SPDY session.
+    frontend HTTP/2 session.
 
     Default: `` 100``
 
@@ -832,16 +930,15 @@ HTTP/2 and SPDY
 
 .. option:: --frontend-http2-window-size=<SIZE>
 
-    Sets the  per-stream initial  window size of  HTTP/2 and
-    SPDY frontend connection.
+    Sets  the  per-stream  initial  window  size  of  HTTP/2
+    frontend connection.
 
     Default: ``65535``
 
 .. option:: --frontend-http2-connection-window-size=<SIZE>
 
-    Sets the  per-connection window size of  HTTP/2 and SPDY
-    frontend  connection.  For  SPDY  connection, the  value
-    less than 64KiB is rounded up to 64KiB.
+    Sets the  per-connection window size of  HTTP/2 frontend
+    connection.
 
     Default: ``65535``
 
@@ -877,8 +974,7 @@ HTTP/2 and SPDY
     It is  also supported if  both frontend and  backend are
     HTTP/2 in default mode.  In  this case, server push from
     backend session is relayed  to frontend, and server push
-    via Link header field  is also supported.  SPDY frontend
-    does not support server push.
+    via Link header field is also supported.
 
 .. option:: --frontend-http2-optimize-write-buffer-size
 
@@ -946,7 +1042,7 @@ Mode
 .. describe:: (default mode)
 
     
-    Accept HTTP/2, SPDY and HTTP/1.1 over SSL/TLS.  "no-tls"
+    Accept  HTTP/2,  and  HTTP/1.1 over  SSL/TLS.   "no-tls"
     parameter is  used in  :option:`--frontend` option,  accept HTTP/2
     and HTTP/1.1 over cleartext  TCP.  The incoming HTTP/1.1
     connection  can  be  upgraded  to  HTTP/2  through  HTTP
@@ -1001,11 +1097,22 @@ Logging
     * $alpn: ALPN identifier of the protocol which generates
       the response.   For HTTP/1,  ALPN is  always http/1.1,
       regardless of minor version.
-    * $ssl_cipher: cipher used for SSL/TLS connection.
-    * $ssl_protocol: protocol for SSL/TLS connection.
-    * $ssl_session_id: session ID for SSL/TLS connection.
-    * $ssl_session_reused:  "r"   if  SSL/TLS   session  was
+    * $tls_cipher: cipher used for SSL/TLS connection.
+    * $tls_client_fingerprint_sha256: SHA-256 fingerprint of
+      client certificate.
+    * $tls_client_fingerprint_sha1:  SHA-1   fingerprint  of
+      client certificate.
+    * $tls_client_subject_name:   subject  name   in  client
+      certificate.
+    * $tls_client_issuer_name:   issuer   name   in   client
+      certificate.
+    * $tls_client_serial:    serial    number   in    client
+      certificate.
+    * $tls_protocol: protocol for SSL/TLS connection.
+    * $tls_session_id: session ID for SSL/TLS connection.
+    * $tls_session_reused:  "r"   if  SSL/TLS   session  was
       reused.  Otherwise, "."
+    * $tls_sni: SNI server name for SSL/TLS connection.
     * $backend_host:  backend  host   used  to  fulfill  the
       request.  "-" if backend host is not available.
     * $backend_port:  backend  port   used  to  fulfill  the
@@ -1055,6 +1162,19 @@ HTTP
 
     Strip X-Forwarded-For  header field from  inbound client
     requests.
+
+.. option:: --no-add-x-forwarded-proto
+
+    Don't append  additional X-Forwarded-Proto  header field
+    to  the   backend  request.   If  inbound   client  sets
+    X-Forwarded-Proto,                                   and
+    :option:`--no-strip-incoming-x-forwarded-proto`  option  is  used,
+    they are passed to the backend.
+
+.. option:: --no-strip-incoming-x-forwarded-proto
+
+    Don't strip X-Forwarded-Proto  header field from inbound
+    client requests.
 
 .. option:: --add-forwarded=<LIST>
 
@@ -1188,13 +1308,21 @@ HTTP
 
     Change server response header field value to <NAME>.
 
-    Default: ``nghttpx nghttp2/1.19.0``
+    Default: ``nghttpx``
 
 .. option:: --no-server-rewrite
 
     Don't rewrite server header field in default mode.  When
     :option:`--http2-proxy` is used, these headers will not be altered
     regardless of this option.
+
+.. option:: --redirect-https-port=<PORT>
+
+    Specify the port number which appears in Location header
+    field  when  redirect  to  HTTPS  URI  is  made  due  to
+    "redirect-if-not-tls" parameter in :option:`--backend` option.
+
+    Default: ``443``
 
 
 API
@@ -1204,7 +1332,7 @@ API
 
     Set the maximum size of request body for API request.
 
-    Default: ``16K``
+    Default: ``32M``
 
 
 DNS
@@ -1232,6 +1360,15 @@ DNS
     lookup.
 
     Default: ``2``
+
+.. option:: --frontend-max-requests=<N>
+
+    The number  of requests that single  frontend connection
+    can process.  For HTTP/2, this  is the number of streams
+    in  one  HTTP/2 connection.   For  HTTP/1,  this is  the
+    number of keep alive requests.  This is hint to nghttpx,
+    and it  may allow additional few  requests.  The default
+    value is unlimited.
 
 
 Debug
@@ -1277,6 +1414,16 @@ Process
     Run this program as <USER>.   This option is intended to
     be used to drop root privileges.
 
+.. option:: --single-process
+
+    Run this program in a  single process mode for debugging
+    purpose.  Without this option,  nghttpx creates at least
+    2  processes:  master  and worker  processes.   If  this
+    option is  used, master  and worker  are unified  into a
+    single process.  nghttpx still spawns additional process
+    if neverbleed is used.  In  the single process mode, the
+    signal handling feature is disabled.
+
 
 Scripting
 ~~~~~~~~~
@@ -1291,7 +1438,9 @@ Misc
 
 .. option:: --conf=<PATH>
 
-    Load configuration from <PATH>.
+    Load  configuration  from   <PATH>.   Please  note  that
+    nghttpx always  tries to read the  default configuration
+    file if :option:`--conf` is not given.
 
     Default: ``/etc/nghttpx/nghttpx.conf``
 
@@ -1371,7 +1520,7 @@ Error log
   <datetime> <master-pid> <current-pid> <thread-id> <level> (<filename>:<line>) <msg>
 
   <datetime>
-    It is a conbination of date and time when the log is written.  It
+    It is a combination of date and time when the log is written.  It
     is in ISO 8601 format.
 
   <master-pid>
@@ -1405,14 +1554,18 @@ SIGUSR1
   Reopen log files.
 
 SIGUSR2
+
   Fork and execute nghttpx.  It will execute the binary in the same
-  path with same command-line arguments and environment variables.
-  After new process comes up, sending SIGQUIT to the original process
-  to perform hot swapping.  The difference between SIGUSR2 + SIGQUIT
-  and SIGHUP is that former is usually used to execute new binary, and
-  the master process is newly spawned.  On the other hand, the latter
-  just reloads configuration file, and the same master process
-  continues to exist.
+  path with same command-line arguments and environment variables.  As
+  of nghttpx version 1.20.0, the new master process sends SIGQUIT to
+  the original master process when it is ready to serve requests.  For
+  the earlier versions of nghttpx, user has to send SIGQUIT to the
+  original master process.
+
+  The difference between SIGUSR2 (+ SIGQUIT) and SIGHUP is that former
+  is usually used to execute new binary, and the master process is
+  newly spawned.  On the other hand, the latter just reloads
+  configuration file, and the same master process continues to exist.
 
 .. note::
 
@@ -1489,6 +1642,22 @@ be customized using :option:`--fetch-ocsp-response-file` option.
 If OCSP query is failed, previous OCSP response, if any, is continued
 to be used.
 
+:option:`--fetch-ocsp-response-file` option provides wide range of
+possibility to manage OCSP response.  It can take an arbitrary script
+or executable.  The requirement is that it supports the command-line
+interface of ``fetch-ocsp-response`` script, and it must return a
+valid DER encoded OCSP response on success.  It must return exit code
+0 on success, and 75 for temporary error, and the other error code for
+generic failure.  For large cluster of servers, it is not efficient
+for each server to perform OCSP query using ``fetch-ocsp-response``.
+Instead, you can retrieve OCSP response in some way, and store it in a
+disk or a shared database.  Then specify a program in
+:option:`--fetch-ocsp-response-file` to fetch it from those stores.
+This could provide a way to share the OCSP response between fleet of
+servers, and also any OCSP query strategy can be applied which may be
+beyond the ability of nghttpx itself or ``fetch-ocsp-response``
+script.
+
 TLS SESSION RESUMPTION
 ----------------------
 
@@ -1502,7 +1671,7 @@ By default, session ID is shared by all worker threads.
 
 If :option:`--tls-session-cache-memcached` is given, nghttpx will
 insert serialized session data to memcached with
-``nghttpx:tls-session-cache:`` + lowercased hex string of session ID
+``nghttpx:tls-session-cache:`` + lowercase hex string of session ID
 as a memcached entry key, with expiry time 12 hours.  Session timeout
 is set to 12 hours.
 
@@ -1584,6 +1753,14 @@ MRUBY SCRIPTING
   The current mruby extension API is experimental and not frozen.  The
   API is subject to change in the future release.
 
+.. warning::
+
+  Almost all string value returned from method, or attribute is a
+  fresh new mruby string, which involves memory allocation, and
+  copies.  Therefore, it is strongly recommended to store a return
+  value in a local variable, and use it, instead of calling method or
+  accessing attribute repeatedly.
+
 nghttpx allows users to extend its capability using mruby scripts.
 nghttpx has 2 hook points to execute mruby script: request phase and
 response phase.  The request phase hook is invoked after all request
@@ -1630,7 +1807,7 @@ respectively.
     .. rb:attr_reader:: ctx
 
         Return Ruby hash object.  It persists until request finishes.
-        So values set in request phase hoo can be retrieved in
+        So values set in request phase hook can be retrieved in
         response phase hook.
 
     .. rb:attr_reader:: phase
@@ -1661,6 +1838,46 @@ respectively.
     .. rb:attr_reader:: tls_sni
 
         Return the TLS SNI value which client sent in this connection.
+
+    .. rb:attr_reader:: tls_client_fingerprint_sha256
+
+        Return the SHA-256 fingerprint of a client certificate.
+
+    .. rb:attr_reader:: tls_client_fingerprint_sha1
+
+        Return the SHA-1 fingerprint of a client certificate.
+
+    .. rb:attr_reader:: tls_client_issuer_name
+
+        Return the issuer name of a client certificate.
+
+    .. rb:attr_reader:: tls_client_subject_name
+
+        Return the subject name of a client certificate.
+
+    .. rb:attr_reader:: tls_client_serial
+
+        Return the serial number of a client certificate.
+
+    .. rb:attr_reader:: tls_cipher
+
+        Return a TLS cipher negotiated in this connection.
+
+    .. rb:attr_reader:: tls_protocol
+
+        Return a TLS protocol version negotiated in this connection.
+
+    .. rb:attr_reader:: tls_session_id
+
+        Return a session ID for this connection in hex string.
+
+    .. rb:attr_reader:: tls_session_reused
+
+        Return true if, and only if a SSL/TLS session is reused.
+
+    .. rb:attr_reader:: alpn
+
+        Return ALPN identifier negotiated in this connection.
 
 .. rb:class:: Request
 
@@ -1804,6 +2021,18 @@ respectively.
         existing header fields, and then add required header fields.
         It is an error to call this method twice for a given request.
 
+    .. rb:method:: send_info(status, headers)
+
+        Send non-final (informational) response to a client.  *status*
+        must be in the range [100, 199], inclusive.  *headers* is a
+        hash containing response header fields.  Its key must be a
+        string, and the associated value must be either string or
+        array of strings.  Since this is not a final response, even if
+        this method is invoked, request is still forwarded to a
+        backend unless :rb:meth:`Nghttpx::Response#return` is called.
+        This method can be called multiple times.  It cannot be called
+        after :rb:meth:`Nghttpx::Response#return` is called.
+
 MRUBY EXAMPLES
 ~~~~~~~~~~~~~~
 
@@ -1865,17 +2094,20 @@ status
 code
   HTTP status code
 
+Additionally, depending on the API endpoint, ``data`` key may be
+present, and its value contains the API endpoint specific data.
+
 We wrote "normally", since nghttpx may return ordinal HTML response in
 some cases where the error has occurred before reaching API endpoint
 (e.g., header field is too large).
 
 The following section describes available API endpoints.
 
-PUT /api/v1beta1/backendconfig
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+POST /api/v1beta1/backendconfig
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 This API replaces the current backend server settings with the
-requested ones.  The request method should be PUT, but POST is also
+requested ones.  The request method should be POST, but PUT is also
 acceptable.  The request body must be nghttpx configuration file
 format.  For configuration file format, see `FILES`_ section.  The
 line separator inside the request body must be single LF (0x0A).
@@ -1891,10 +2123,29 @@ The replacement is done instantly without breaking existing
 connections or requests.  It also avoids any process creation as is
 the case with hot swapping with signals.
 
-The one limitation is that only numeric IP address is allowd in
+The one limitation is that only numeric IP address is allowed in
 :option:`backend <--backend>` in request body unless "dns" parameter
 is used while non numeric hostname is allowed in command-line or
 configuration file is read using :option:`--conf`.
+
+GET /api/v1beta1/configrevision
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This API returns configuration revision of the current nghttpx.  The
+configuration revision is opaque string, and it changes after each
+reloading by SIGHUP.  With this API, an external application knows
+that whether nghttpx has finished reloading its configuration by
+comparing the configuration revisions between before and after
+reloading.  It is recommended to disable persistent (keep-alive)
+connection for this purpose in order to avoid to send a request using
+the reused connection which may bound to an old process.
+
+This API returns response including ``data`` key.  Its value is JSON
+object, and it contains at least the following key:
+
+configRevision
+  The configuration revision of the current nghttpx
+
 
 SEE ALSO
 --------

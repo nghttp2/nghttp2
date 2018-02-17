@@ -24,6 +24,7 @@
  */
 #include "shrpx_dns_tracker.h"
 #include "shrpx_config.h"
+#include "shrpx_log.h"
 #include "util.h"
 
 namespace shrpx {
@@ -249,6 +250,7 @@ int DNSTracker::resolve(Address *result, DNSQuery *dnsq) {
     return DNS_STATUS_OK;
   default:
     assert(0);
+    abort();
   }
 }
 

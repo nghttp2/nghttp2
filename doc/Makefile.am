@@ -62,6 +62,7 @@ APIDOCS= \
 	nghttp2_option_set_max_send_header_block_length.rst \
 	nghttp2_option_set_no_auto_ping_ack.rst \
 	nghttp2_option_set_no_auto_window_update.rst \
+	nghttp2_option_set_no_closed_streams.rst \
 	nghttp2_option_set_no_http_messaging.rst \
 	nghttp2_option_set_no_recv_client_magic.rst \
 	nghttp2_option_set_peer_max_concurrent_streams.rst \
@@ -73,12 +74,14 @@ APIDOCS= \
 	nghttp2_rcbuf_decref.rst \
 	nghttp2_rcbuf_get_buf.rst \
 	nghttp2_rcbuf_incref.rst \
+	nghttp2_rcbuf_is_static.rst \
 	nghttp2_select_next_protocol.rst \
 	nghttp2_session_callbacks_del.rst \
 	nghttp2_session_callbacks_new.rst \
 	nghttp2_session_callbacks_set_before_frame_send_callback.rst \
 	nghttp2_session_callbacks_set_data_source_read_length_callback.rst \
 	nghttp2_session_callbacks_set_error_callback.rst \
+	nghttp2_session_callbacks_set_error_callback2.rst \
 	nghttp2_session_callbacks_set_on_begin_frame_callback.rst \
 	nghttp2_session_callbacks_set_on_begin_headers_callback.rst \
 	nghttp2_session_callbacks_set_on_data_chunk_recv_callback.rst \
@@ -266,7 +269,7 @@ apiref.rst: \
 $(APIDOCS): apiref.rst
 
 clean-local:
-	[ $(srcdir) = $(builddir) ] || for i in $(RST_FILES); do [ -e $(builddir)/$$i ] && rm -f $(builddir)/$$i; done
+	if [ $(srcdir) != $(builddir) ]; then for i in $(RST_FILES); do rm -f $(builddir)/$$i; done fi
 	-rm -f apiref.rst
 	-rm -f $(APIDOCS)
 	-rm -rf $(BUILDDIR)/*

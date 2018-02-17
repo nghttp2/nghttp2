@@ -63,11 +63,11 @@ struct TicketKeys;
 class MemcachedDispatcher;
 struct UpstreamAddr;
 
-namespace ssl {
+namespace tls {
 
 class CertLookupTree;
 
-} // namespace ssl
+} // namespace tls
 
 struct OCSPUpdateContext {
   // ocsp response buffer
@@ -156,6 +156,8 @@ public:
   // array bound checking.
   SSL_CTX *get_ssl_ctx(size_t idx) const;
 
+  const std::vector<SSL_CTX *> &get_indexed_ssl_ctx(size_t idx) const;
+
 #ifdef HAVE_NEVERBLEED
   void set_neverbleed(std::unique_ptr<neverbleed_t> nb);
   neverbleed_t *get_neverbleed() const;
@@ -172,11 +174,19 @@ public:
   void
   worker_replace_downstream(std::shared_ptr<DownstreamConfig> downstreamconf);
 
+  void set_enable_acceptor_on_ocsp_completion(bool f);
+
 private:
   // Stores all SSL_CTX objects.
   std::vector<SSL_CTX *> all_ssl_ctx_;
+  // Stores all SSL_CTX objects in a way that its index is stored in
+  // cert_tree.  The SSL_CTXs stored in the same index share the same
+  // hostname, but could have different signature algorithm.  The
+  // selection among them are performed by hostname presented by SNI,
+  // and signature algorithm presented by client.
+  std::vector<std::vector<SSL_CTX *>> indexed_ssl_ctx_;
   OCSPUpdateContext ocsp_;
-  std::mt19937 gen_;
+  std::mt19937 &gen_;
   // ev_loop for each worker
   std::vector<struct ev_loop *> worker_loops_;
   // Worker instances when multi threaded mode (-nN, N >= 2) is used.
@@ -190,7 +200,7 @@ private:
   // Worker instance used when single threaded mode (-n1) is used.
   // Otherwise, nullptr and workers_ has instances of Worker instead.
   std::unique_ptr<Worker> single_worker_;
-  std::unique_ptr<ssl::CertLookupTree> cert_tree_;
+  std::unique_ptr<tls::CertLookupTree> cert_tree_;
   std::unique_ptr<MemcachedDispatcher> tls_ticket_key_memcached_dispatcher_;
   // Current TLS session ticket keys.  Note that TLS connection does
   // not refer to this field directly.  They use TicketKeys object in
@@ -212,6 +222,9 @@ private:
   size_t tls_ticket_key_memcached_fail_count_;
   unsigned int worker_round_robin_cnt_;
   bool graceful_shutdown_;
+  // true if acceptors should be enabled after the initial ocsp update
+  // has finished.
+  bool enable_acceptor_on_ocsp_completion_;
 };
 
 } // namespace shrpx

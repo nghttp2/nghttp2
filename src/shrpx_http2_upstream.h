@@ -54,6 +54,8 @@ public:
   virtual int on_timeout(Downstream *downstream);
   virtual int on_downstream_abort_request(Downstream *downstream,
                                           unsigned int status_code);
+  virtual int
+  on_downstream_abort_request_with_https_redirect(Downstream *downstream);
   virtual ClientHandler *get_client_handler() const;
 
   virtual int downstream_read(DownstreamConnection *dconn);
@@ -109,16 +111,22 @@ public:
 
   void submit_goaway();
   void check_shutdown();
+  // Starts graceful shutdown period.
+  void start_graceful_shutdown();
 
   int prepare_push_promise(Downstream *downstream);
   int submit_push_promise(const StringRef &scheme, const StringRef &authority,
                           const StringRef &path, Downstream *downstream);
 
+  // Called when new request has started.
+  void on_start_request(const nghttp2_frame *frame);
   int on_request_headers(Downstream *downstream, const nghttp2_frame *frame);
 
   DefaultMemchunks *get_response_buf();
 
   size_t get_max_buffer_size() const;
+
+  int redirect_to_https(Downstream *downstream);
 
 private:
   DefaultMemchunks wb_;
@@ -130,6 +138,8 @@ private:
   ClientHandler *handler_;
   nghttp2_session *session_;
   size_t max_buffer_size_;
+  // The number of requests seen so far.
+  size_t num_requests_;
   bool flow_control_;
 };
 

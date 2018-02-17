@@ -27,7 +27,9 @@
 
 #include "nghttp2_config.h"
 
+#ifndef _WIN32
 #include <sys/uio.h>
+#endif // !_WIN32
 
 #include <cassert>
 
@@ -271,6 +273,6 @@ ByteRef make_byte_ref(BlockAllocator &alloc, size_t size) {
   return {dst, size};
 }
 
-} // namespace aria2
+} // namespace nghttp2
 
 #endif // ALLOCATOR_H

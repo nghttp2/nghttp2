@@ -27,8 +27,6 @@
 
 #include "shrpx.h"
 
-using namespace nghttp2;
-
 namespace shrpx {
 
 class ConnectionHandler;

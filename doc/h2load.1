@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "H2LOAD" "1" "Jan 25, 2017" "1.19.0" "nghttp2"
+.TH "H2LOAD" "1" "Feb 02, 2018" "1.30.0" "nghttp2"
 .SH NAME
 h2load \- HTTP/2 benchmarking tool
 .
@@ -35,7 +35,7 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 \fBh2load\fP [OPTIONS]... [URI]...
 .SH DESCRIPTION
 .sp
-benchmarking tool for HTTP/2 and SPDY server
+benchmarking tool for HTTP/2 server
 .INDENT 0.0
 .TP
 .B <URI>
@@ -54,7 +54,9 @@ scheme, host or port values.
 Number of  requests across all  clients.  If it  is used
 with \fI\%\-\-timing\-script\-file\fP option,  this option specifies
 the number of requests  each client performs rather than
-the number of requests across all clients.
+the number of requests  across all clients.  This option
+is ignored if timing\-based  benchmarking is enabled (see
+\fI\%\-\-duration\fP option).
 .sp
 Default: \fB1\fP
 .UNINDENT
@@ -99,7 +101,6 @@ Default: \fB1\fP
 .TP
 .B \-w, \-\-window\-bits=<N>
 Sets the stream level initial window size to (2**<N>)\-1.
-For SPDY, 2**<N> is used instead.
 .sp
 Default: \fB30\fP
 .UNINDENT
@@ -107,9 +108,7 @@ Default: \fB30\fP
 .TP
 .B \-W, \-\-connection\-window\-bits=<N>
 Sets  the  connection  level   initial  window  size  to
-(2**<N>)\-1.  For SPDY, if <N>  is strictly less than 16,
-this option  is ignored.   Otherwise 2**<N> is  used for
-SPDY.
+(2**<N>)\-1.
 .sp
 Default: \fB30\fP
 .UNINDENT
@@ -124,15 +123,14 @@ Add/Override a header to the requests.
 Set allowed  cipher list.  The  format of the  string is
 described in OpenSSL ciphers(1).
 .sp
-Default: \fBECDHE\-ECDSA\-CHACHA20\-POLY1305:ECDHE\-RSA\-CHACHA20\-POLY1305:ECDHE\-ECDSA\-AES128\-GCM\-SHA256:ECDHE\-RSA\-AES128\-GCM\-SHA256:ECDHE\-ECDSA\-AES256\-GCM\-SHA384:ECDHE\-RSA\-AES256\-GCM\-SHA384:DHE\-RSA\-AES128\-GCM\-SHA256:DHE\-RSA\-AES256\-GCM\-SHA384:ECDHE\-ECDSA\-AES128\-SHA256:ECDHE\-RSA\-AES128\-SHA256:ECDHE\-ECDSA\-AES128\-SHA:ECDHE\-RSA\-AES256\-SHA384:ECDHE\-RSA\-AES128\-SHA:ECDHE\-ECDSA\-AES256\-SHA384:ECDHE\-ECDSA\-AES256\-SHA:ECDHE\-RSA\-AES256\-SHA:DHE\-RSA\-AES128\-SHA256:DHE\-RSA\-AES128\-SHA:DHE\-RSA\-AES256\-SHA256:DHE\-RSA\-AES256\-SHA:ECDHE\-ECDSA\-DES\-CBC3\-SHA:ECDHE\-RSA\-DES\-CBC3\-SHA:EDH\-RSA\-DES\-CBC3\-SHA:AES128\-GCM\-SHA256:AES256\-GCM\-SHA384:AES128\-SHA256:AES256\-SHA256:AES128\-SHA:AES256\-SHA:DES\-CBC3\-SHA:!DSS\fP
+Default: \fBECDHE\-ECDSA\-AES256\-GCM\-SHA384:ECDHE\-RSA\-AES256\-GCM\-SHA384:ECDHE\-ECDSA\-CHACHA20\-POLY1305:ECDHE\-RSA\-CHACHA20\-POLY1305:ECDHE\-ECDSA\-AES128\-GCM\-SHA256:ECDHE\-RSA\-AES128\-GCM\-SHA256:ECDHE\-ECDSA\-AES256\-SHA384:ECDHE\-RSA\-AES256\-SHA384:ECDHE\-ECDSA\-AES128\-SHA256:ECDHE\-RSA\-AES128\-SHA256\fP
 .UNINDENT
 .INDENT 0.0
 .TP
 .B \-p, \-\-no\-tls\-proto=<PROTOID>
 Specify ALPN identifier of the  protocol to be used when
 accessing http URI without SSL/TLS.
-Available protocols: spdy/2, spdy/3, spdy/3.1, h2c and
-http/1.1
+Available protocols: h2c and http/1.1
 .sp
 Default: \fBh2c\fP
 .UNINDENT
@@ -167,6 +165,19 @@ The period  must be a positive  number, representing the
 length of the period in time.  This option is ignored if
 the rate option is not used.  The default value for this
 option is 1s.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-D, \-\-duration=<N>
+Specifies the main duration for the measurements in case
+of timing\-based benchmarking.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-warm\-up\-time=<DURATION>
+Specifies the  time  period  before  starting the actual
+measurements, in  case  of  timing\-based benchmarking.
+Needs to provided along with \fI\%\-D\fP option.
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -233,7 +244,7 @@ NPN.  The parameter must be  delimited by a single comma
 only  and any  white spaces  are  treated as  a part  of
 protocol string.
 .sp
-Default: \fBh2,h2\-16,h2\-14,spdy/3.1,spdy/3,spdy/2,http/1.1\fP
+Default: \fBh2,h2\-16,h2\-14,http/1.1\fP
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -335,8 +346,7 @@ compression.  Let \fBdecompressed(headers)\fP to the number of bytes
 used for header fields after decompression.  The \fBspace savings\fP
 is calculated  by (1 \- \fBheaders\fP  / \fBdecompressed(headers)\fP) *
 100.  For HTTP/1.1, this is usually  0.00%, since it does not have
-header compression.  For HTTP/2 and SPDY, it shows some insightful
-numbers.
+header compression.  For HTTP/2, it shows some insightful numbers.
 .TP
 .B data
 The number of response body bytes received from the server.
@@ -433,7 +443,7 @@ h2load sets large flow control window by default, and effectively
 disables flow control to avoid under utilization of server
 performance.  To set smaller flow control window, use \fI\%\-w\fP and
 \fI\%\-W\fP options.  For example, use \fB\-w16 \-W16\fP to set default
-window size described in HTTP/2 and SPDY protocol specification.
+window size described in HTTP/2 protocol specification.
 .SH SEE ALSO
 .sp
 \fBnghttp(1)\fP, \fBnghttpd(1)\fP, \fBnghttpx(1)\fP

@@ -8,11 +8,8 @@ set_source_files_properties(${cxx_sources} PROPERTIES
   COMPILE_FLAGS "${WARNCXXFLAGS} ${CXX1XCXXFLAGS}")
 
 include_directories(
-  "${CMAKE_SOURCE_DIR}/lib/includes"
-  "${CMAKE_BINARY_DIR}/lib/includes"
-  "${CMAKE_SOURCE_DIR}/lib"
-  "${CMAKE_SOURCE_DIR}/src/includes"
-  "${CMAKE_SOURCE_DIR}/third-party"
+  "${CMAKE_CURRENT_SOURCE_DIR}/includes"
+  "${CMAKE_CURRENT_SOURCE_DIR}/../third-party"
 
   ${JEMALLOC_INCLUDE_DIRS}
   ${SPDYLAY_INCLUDE_DIRS}
@@ -48,7 +45,7 @@ if(ENABLE_APP)
   set(NGHTTP_SOURCES
     ${HELPER_OBJECTS}
     nghttp.cc
-    ssl.cc
+    tls.cc
   )
   if(HAVE_LIBXML2)
     list(APPEND NGHTTP_SOURCES HtmlParser.cc)
@@ -58,7 +55,7 @@ if(ENABLE_APP)
   set(NGHTTPD_SOURCES
     ${HELPER_OBJECTS}
     nghttpd.cc
-    ssl.cc
+    tls.cc
     HttpServer.cc
   )
 
@@ -67,7 +64,7 @@ if(ENABLE_APP)
     util.cc
     http2.cc h2load.cc
     timegm.c
-    ssl.cc
+    tls.cc
     h2load_http2_session.cc
     h2load_http1_session.cc
   )
@@ -82,7 +79,7 @@ if(ENABLE_APP)
   set(NGHTTPX_SRCS
     util.cc http2.cc timegm.c
     app_helper.cc
-    ssl.cc
+    tls.cc
     shrpx_config.cc
     shrpx_accept_handler.cc
     shrpx_connection_handler.cc
@@ -98,7 +95,7 @@ if(ENABLE_APP)
     shrpx_log.cc
     shrpx_http.cc
     shrpx_io_control.cc
-    shrpx_ssl.cc
+    shrpx_tls.cc
     shrpx_worker.cc
     shrpx_log_config.cc
     shrpx_connect_blocker.cc
@@ -152,7 +149,7 @@ if(ENABLE_APP)
   if(HAVE_CUNIT)
     set(NGHTTPX_UNITTEST_SOURCES
       shrpx-unittest.cc
-      shrpx_ssl_test.cc
+      shrpx_tls_test.cc
       shrpx_downstream_test.cc
       shrpx_config_test.cc
       shrpx_worker_test.cc
@@ -216,7 +213,7 @@ endif()
 if(ENABLE_ASIO_LIB)
   set(NGHTTP2_ASIO_SOURCES
     util.cc http2.cc
-    ssl.cc
+    tls.cc
     timegm.c
     asio_common.cc
     asio_io_service_pool.cc
@@ -251,6 +248,11 @@ if(ENABLE_ASIO_LIB)
   target_include_directories(nghttp2_asio PRIVATE
     ${OPENSSL_INCLUDE_DIRS}
     ${Boost_INCLUDE_DIRS}
+  )
+  target_include_directories(nghttp2_asio INTERFACE
+    "${CMAKE_CURRENT_BINARY_DIR}/../lib/includes"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../lib/includes"
+    "${CMAKE_CURRENT_SOURCE_DIR}/includes"
   )
   target_link_libraries(nghttp2_asio
     nghttp2

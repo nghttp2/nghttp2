@@ -38,6 +38,7 @@
 #include "shrpx_http.h"
 #include "shrpx_http2_session.h"
 #include "shrpx_worker.h"
+#include "shrpx_log.h"
 #include "http2.h"
 #include "util.h"
 
@@ -200,9 +201,7 @@ ssize_t http2_data_read_callback(nghttp2_session *session, int32_t stream_id,
     if (!trailers.empty()) {
       std::vector<nghttp2_nv> nva;
       nva.reserve(trailers.size());
-      // We cannot use nocopy version, since nva may be touched after
-      // Downstream object is deleted.
-      http2::copy_headers_to_nva(nva, trailers);
+      http2::copy_headers_to_nva_nocopy(nva, trailers, http2::HDOP_STRIP_ALL);
       if (!nva.empty()) {
         rv = nghttp2_submit_trailer(session, stream_id, nva.data(), nva.size());
         if (rv != 0) {
@@ -292,7 +291,14 @@ int Http2DownstreamConnection::push_request_headers() {
   if (req.method != HTTP_CONNECT) {
     assert(!req.scheme.empty());
 
-    nva.push_back(http2::make_nv_ls_nocopy(":scheme", req.scheme));
+    auto addr = http2session_->get_addr();
+    assert(addr);
+    // We will handle more protocol scheme upgrade in the future.
+    if (addr->tls && addr->upgrade_scheme && req.scheme == "http") {
+      nva.push_back(http2::make_nv_ll(":scheme", "https"));
+    } else {
+      nva.push_back(http2::make_nv_ls_nocopy(":scheme", req.scheme));
+    }
 
     if (req.method == HTTP_OPTIONS && req.path.empty()) {
       nva.push_back(http2::make_nv_ll(":path", "*"));
@@ -309,7 +315,16 @@ int Http2DownstreamConnection::push_request_headers() {
     nva.push_back(http2::make_nv_ls_nocopy(":authority", authority));
   }
 
-  http2::copy_headers_to_nva_nocopy(nva, req.fs.headers());
+  auto &fwdconf = httpconf.forwarded;
+  auto &xffconf = httpconf.xff;
+  auto &xfpconf = httpconf.xfp;
+
+  uint32_t build_flags =
+      (fwdconf.strip_incoming ? http2::HDOP_STRIP_FORWARDED : 0) |
+      (xffconf.strip_incoming ? http2::HDOP_STRIP_X_FORWARDED_FOR : 0) |
+      (xfpconf.strip_incoming ? http2::HDOP_STRIP_X_FORWARDED_PROTO : 0);
+
+  http2::copy_headers_to_nva_nocopy(nva, req.fs.headers(), build_flags);
 
   if (!http2conf.no_cookie_crumbling) {
     downstream_->crumble_request_cookie(nva);
@@ -317,8 +332,6 @@ int Http2DownstreamConnection::push_request_headers() {
 
   auto upstream = downstream_->get_upstream();
   auto handler = upstream->get_client_handler();
-
-  auto &fwdconf = httpconf.forwarded;
 
   auto fwd =
       fwdconf.strip_incoming ? nullptr : req.fs.header(http2::HD_FORWARDED);
@@ -350,8 +363,6 @@ int Http2DownstreamConnection::push_request_headers() {
     nva.push_back(http2::make_nv_ls_nocopy("forwarded", fwd->value));
   }
 
-  auto &xffconf = httpconf.xff;
-
   auto xff = xffconf.strip_incoming ? nullptr
                                     : req.fs.header(http2::HD_X_FORWARDED_FOR);
 
@@ -370,8 +381,23 @@ int Http2DownstreamConnection::push_request_headers() {
   }
 
   if (!config->http2_proxy && req.method != HTTP_CONNECT) {
-    // We use same protocol with :scheme header field
-    nva.push_back(http2::make_nv_ls_nocopy("x-forwarded-proto", req.scheme));
+    auto xfp = xfpconf.strip_incoming
+                   ? nullptr
+                   : req.fs.header(http2::HD_X_FORWARDED_PROTO);
+
+    if (xfpconf.add) {
+      StringRef xfp_value;
+      // We use same protocol with :scheme header field
+      if (xfp) {
+        xfp_value = concat_string_ref(balloc, xfp->value,
+                                      StringRef::from_lit(", "), req.scheme);
+      } else {
+        xfp_value = req.scheme;
+      }
+      nva.push_back(http2::make_nv_ls_nocopy("x-forwarded-proto", xfp_value));
+    } else if (xfp) {
+      nva.push_back(http2::make_nv_ls_nocopy("x-forwarded-proto", xfp->value));
+    }
   }
 
   auto via = req.fs.header(http2::HD_VIA);
@@ -421,22 +447,27 @@ int Http2DownstreamConnection::push_request_headers() {
 
   auto transfer_encoding = req.fs.header(http2::HD_TRANSFER_ENCODING);
 
+  nghttp2_data_provider *data_prdptr = nullptr;
+  nghttp2_data_provider data_prd;
+
   // Add body as long as transfer-encoding is given even if
   // req.fs.content_length == 0 to forward trailer fields.
   if (req.method == HTTP_CONNECT || transfer_encoding ||
       req.fs.content_length > 0 || req.http2_expect_body) {
     // Request-body is expected.
-    nghttp2_data_provider data_prd{{}, http2_data_read_callback};
-    rv = http2session_->submit_request(this, nva.data(), nva.size(), &data_prd);
-  } else {
-    rv = http2session_->submit_request(this, nva.data(), nva.size(), nullptr);
+    data_prd = {{}, http2_data_read_callback};
+    data_prdptr = &data_prd;
   }
+
+  rv = http2session_->submit_request(this, nva.data(), nva.size(), data_prdptr);
   if (rv != 0) {
     DCLOG(FATAL, this) << "nghttp2_submit_request() failed";
     return -1;
   }
 
-  downstream_->reset_downstream_wtimer();
+  if (data_prdptr) {
+    downstream_->reset_downstream_wtimer();
+  }
 
   http2session_->signal_write();
   return 0;

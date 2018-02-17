@@ -522,6 +522,7 @@ void test_nghttp2_nv_array_copy(void) {
   bignv.namelen = strlen("echo");
   bignv.valuelen = (1 << 14) - 1;
   bignv.value = mem->malloc(bignv.valuelen, NULL);
+  bignv.flags = NGHTTP2_NV_FLAG_NONE;
   memset(bignv.value, '0', bignv.valuelen);
 
   rv = nghttp2_nv_array_copy(&nva, NULL, 0, mem);

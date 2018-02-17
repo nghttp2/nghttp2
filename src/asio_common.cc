@@ -24,6 +24,7 @@
  */
 #include "asio_common.h"
 
+#include <fcntl.h>
 #include <memory>
 
 #include "util.h"

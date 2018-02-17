@@ -57,7 +57,7 @@
 #include "HtmlParser.h"
 #include "util.h"
 #include "base64.h"
-#include "ssl.h"
+#include "tls.h"
 #include "template.h"
 
 #ifndef O_BINARY
@@ -89,7 +89,11 @@ enum {
 
 namespace {
 constexpr auto anchors = std::array<Anchor, 5>{{
-    {3, 0, 201}, {5, 0, 101}, {7, 0, 1}, {9, 7, 1}, {11, 3, 1},
+    {3, 0, 201},
+    {5, 0, 101},
+    {7, 0, 1},
+    {9, 7, 1},
+    {11, 3, 1},
 }};
 } // namespace
 
@@ -116,7 +120,8 @@ Config::Config()
       no_dep(false),
       hexdump(false),
       no_push(false),
-      expect_continue(false) {
+      expect_continue(false),
+      verify_peer(true) {
   nghttp2_option_new(&http2_option);
   nghttp2_option_set_peer_max_concurrent_streams(http2_option,
                                                  peer_max_concurrent_streams);
@@ -171,6 +176,8 @@ Request::~Request() { nghttp2_gzip_inflate_del(inflater); }
 
 void Request::init_inflater() {
   int rv;
+  // This is required with --disable-assert.
+  (void)rv;
   rv = nghttp2_gzip_inflate_new(&inflater);
   assert(rv == 0);
 }
@@ -402,16 +409,9 @@ int htp_msg_begincb(http_parser *htp) {
 } // namespace
 
 namespace {
-int htp_statuscb(http_parser *htp, const char *at, size_t length) {
-  auto client = static_cast<HttpClient *>(htp->data);
-  client->upgrade_response_status_code = htp->status_code;
-  return 0;
-}
-} // namespace
-
-namespace {
 int htp_msg_completecb(http_parser *htp) {
   auto client = static_cast<HttpClient *>(htp->data);
+  client->upgrade_response_status_code = htp->status_code;
   client->upgrade_response_complete = true;
   return 0;
 }
@@ -421,7 +421,7 @@ namespace {
 constexpr http_parser_settings htp_hooks = {
     htp_msg_begincb,   // http_cb      on_message_begin;
     nullptr,           // http_data_cb on_url;
-    htp_statuscb,      // http_data_cb on_status;
+    nullptr,           // http_data_cb on_status;
     nullptr,           // http_data_cb on_header_field;
     nullptr,           // http_data_cb on_header_value;
     nullptr,           // http_cb      on_headers_complete;
@@ -646,6 +646,11 @@ int HttpClient::resolve_host(const std::string &host, uint16_t port) {
   return 0;
 }
 
+namespace {
+// Just returns 1 to continue handshake.
+int verify_cb(int preverify_ok, X509_STORE_CTX *ctx) { return 1; }
+} // namespace
+
 int HttpClient::initiate_connection() {
   int rv;
 
@@ -674,6 +679,17 @@ int HttpClient::initiate_connection() {
       // value for the SNI extension
       const auto &host_string =
           config.host_override.empty() ? host : config.host_override;
+
+#if (!defined(LIBRESSL_VERSION_NUMBER) &&                                      \
+     OPENSSL_VERSION_NUMBER >= 0x10002000L) ||                                 \
+    defined(OPENSSL_IS_BORINGSSL)
+      auto param = SSL_get0_param(ssl);
+      X509_VERIFY_PARAM_set_hostflags(param, 0);
+      X509_VERIFY_PARAM_set1_host(param, host_string.c_str(),
+                                  host_string.size());
+#endif // (!defined(LIBRESSL_VERSION_NUMBER) && OPENSSL_VERSION_NUMBER >=
+       // 0x10002000L) || defined(OPENSSL_IS_BORINGSSL)
+      SSL_set_verify(ssl, SSL_VERIFY_PEER, verify_cb);
 
       if (!util::numeric_host(host_string.c_str())) {
         SSL_set_tlsext_host_name(ssl, host_string.c_str());
@@ -1294,6 +1310,14 @@ int HttpClient::tls_handshake() {
 
   readfn = &HttpClient::read_tls;
   writefn = &HttpClient::write_tls;
+
+  if (config.verify_peer) {
+    auto verify_res = SSL_get_verify_result(ssl);
+    if (verify_res != X509_V_OK) {
+      std::cerr << "[WARNING] Certificate verification failed: "
+                << X509_verify_cert_error_string(verify_res) << std::endl;
+    }
+  }
 
   if (connection_made() != 0) {
     return -1;
@@ -2246,7 +2270,21 @@ int communicate(
     SSL_CTX_set_options(ssl_ctx, ssl_opts);
     SSL_CTX_set_mode(ssl_ctx, SSL_MODE_AUTO_RETRY);
     SSL_CTX_set_mode(ssl_ctx, SSL_MODE_RELEASE_BUFFERS);
-    if (SSL_CTX_set_cipher_list(ssl_ctx, ssl::DEFAULT_CIPHER_LIST) == 0) {
+
+    if (SSL_CTX_set_default_verify_paths(ssl_ctx) != 1) {
+      std::cerr << "[WARNING] Could not load system trusted CA certificates: "
+                << ERR_error_string(ERR_get_error(), nullptr) << std::endl;
+    }
+
+    if (nghttp2::tls::ssl_ctx_set_proto_versions(
+            ssl_ctx, nghttp2::tls::NGHTTP2_TLS_MIN_VERSION,
+            nghttp2::tls::NGHTTP2_TLS_MAX_VERSION) != 0) {
+      std::cerr << "[ERROR] Could not set TLS versions" << std::endl;
+      result = -1;
+      goto fin;
+    }
+
+    if (SSL_CTX_set_cipher_list(ssl_ctx, tls::DEFAULT_CIPHER_LIST) == 0) {
       std::cerr << "[ERROR] " << ERR_error_string(ERR_get_error(), nullptr)
                 << std::endl;
       result = -1;
@@ -2424,8 +2462,8 @@ int run(char **uris, int n) {
     nghttp2_session_callbacks_set_on_invalid_frame_recv_callback(
         callbacks, verbose_on_invalid_frame_recv_callback);
 
-    nghttp2_session_callbacks_set_error_callback(callbacks,
-                                                 verbose_error_callback);
+    nghttp2_session_callbacks_set_error_callback2(callbacks,
+                                                  verbose_error_callback);
   }
 
   nghttp2_session_callbacks_set_on_data_chunk_recv_callback(
@@ -2692,6 +2730,9 @@ Options:
               (up to  a short  timeout)  until the server sends  a 100
               Continue interim response. This option is ignored unless
               combined with the -d option.
+  -y, --no-verify-peer
+              Suppress  warning  on  server  certificate  verification
+              failure.
   --version   Display version information and exit.
   -h, --help  Display this help and exit.
 
@@ -2709,7 +2750,7 @@ Options:
 } // namespace
 
 int main(int argc, char **argv) {
-  ssl::libssl_init();
+  tls::libssl_init();
 
   bool color = false;
   while (1) {
@@ -2733,6 +2774,7 @@ int main(int argc, char **argv) {
         {"header-table-size", required_argument, nullptr, 'c'},
         {"padding", required_argument, nullptr, 'b'},
         {"har", required_argument, nullptr, 'r'},
+        {"no-verify-peer", no_argument, nullptr, 'y'},
         {"cert", required_argument, &flag, 1},
         {"key", required_argument, &flag, 2},
         {"color", no_argument, &flag, 3},
@@ -2748,8 +2790,9 @@ int main(int argc, char **argv) {
         {"encoder-header-table-size", required_argument, &flag, 14},
         {nullptr, 0, nullptr, 0}};
     int option_index = 0;
-    int c = getopt_long(argc, argv, "M:Oab:c:d:gm:np:r:hH:vst:uw:W:",
-                        long_options, &option_index);
+    int c =
+        getopt_long(argc, argv, "M:Oab:c:d:m:np:r:hH:vst:uw:yW:", long_options,
+                    &option_index);
     if (c == -1) {
       break;
     }
@@ -2879,6 +2922,9 @@ int main(int argc, char **argv) {
       config.min_header_table_size = std::min(config.min_header_table_size, n);
       break;
     }
+    case 'y':
+      config.verify_peer = false;
+      break;
     case '?':
       util::show_candidates(argv[optind - 1], long_options);
       exit(EXIT_FAILURE);

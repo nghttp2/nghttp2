@@ -24,18 +24,59 @@
  */
 #include "shrpx_api_downstream_connection.h"
 
+#include <sys/mman.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <cstdlib>
+
 #include "shrpx_client_handler.h"
 #include "shrpx_upstream.h"
 #include "shrpx_downstream.h"
 #include "shrpx_worker.h"
 #include "shrpx_connection_handler.h"
+#include "shrpx_log.h"
 
 namespace shrpx {
 
-APIDownstreamConnection::APIDownstreamConnection(Worker *worker)
-    : worker_(worker), abandoned_(false) {}
+namespace {
+// List of API endpoints
+const std::array<APIEndpoint, 2> &apis() {
+  static const auto apis = new std::array<APIEndpoint, 2>{{
+      APIEndpoint{
+          StringRef::from_lit("/api/v1beta1/backendconfig"),
+          true,
+          (1 << API_METHOD_POST) | (1 << API_METHOD_PUT),
+          &APIDownstreamConnection::handle_backendconfig,
+      },
+      APIEndpoint{
+          StringRef::from_lit("/api/v1beta1/configrevision"),
+          true,
+          (1 << API_METHOD_GET),
+          &APIDownstreamConnection::handle_configrevision,
+      },
+  }};
 
-APIDownstreamConnection::~APIDownstreamConnection() {}
+  return *apis;
+}
+} // namespace
+
+namespace {
+// The method string.  This must be same order of APIMethod.
+constexpr StringRef API_METHOD_STRING[] = {
+    StringRef::from_lit("GET"),
+    StringRef::from_lit("POST"),
+    StringRef::from_lit("PUT"),
+};
+} // namespace
+
+APIDownstreamConnection::APIDownstreamConnection(Worker *worker)
+    : worker_(worker), api_(nullptr), fd_(-1), shutdown_read_(false) {}
+
+APIDownstreamConnection::~APIDownstreamConnection() {
+  if (fd_ != -1) {
+    close(fd_);
+  }
+}
 
 int APIDownstreamConnection::attach_downstream(Downstream *downstream) {
   if (LOG_ENABLED(INFO)) {
@@ -62,8 +103,8 @@ enum {
 };
 
 int APIDownstreamConnection::send_reply(unsigned int http_status,
-                                        int api_status) {
-  abandoned_ = true;
+                                        int api_status, const StringRef &data) {
+  shutdown_read_ = true;
 
   auto upstream = downstream_->get_upstream();
 
@@ -92,7 +133,8 @@ int APIDownstreamConnection::send_reply(unsigned int http_status,
 
   // 3 is the number of digits in http_status, assuming it is 3 digits
   // number.
-  auto buflen = M1.size() + M2.size() + M3.size() + api_status_str.size() + 3;
+  auto buflen = M1.size() + M2.size() + M3.size() + data.size() +
+                api_status_str.size() + 3;
 
   auto buf = make_byte_ref(balloc, buflen);
   auto p = buf.base;
@@ -101,6 +143,7 @@ int APIDownstreamConnection::send_reply(unsigned int http_status,
   p = std::copy(std::begin(api_status_str), std::end(api_status_str), p);
   p = std::copy(std::begin(M2), std::end(M2), p);
   p = util::utos(p, http_status);
+  p = std::copy(std::begin(data), std::end(data), p);
   p = std::copy(std::begin(M3), std::end(M3), p);
 
   buf.len = p - buf.base;
@@ -127,25 +170,68 @@ int APIDownstreamConnection::send_reply(unsigned int http_status,
   return 0;
 }
 
+namespace {
+const APIEndpoint *lookup_api(const StringRef &path) {
+  switch (path.size()) {
+  case 26:
+    switch (path[25]) {
+    case 'g':
+      if (util::streq_l("/api/v1beta1/backendconfi", std::begin(path), 25)) {
+        return &apis()[0];
+      }
+      break;
+    }
+    break;
+  case 27:
+    switch (path[26]) {
+    case 'n':
+      if (util::streq_l("/api/v1beta1/configrevisio", std::begin(path), 26)) {
+        return &apis()[1];
+      }
+      break;
+    }
+    break;
+  }
+  return nullptr;
+}
+} // namespace
+
 int APIDownstreamConnection::push_request_headers() {
   auto &req = downstream_->request();
-  auto &resp = downstream_->response();
 
   auto path =
       StringRef{std::begin(req.path),
                 std::find(std::begin(req.path), std::end(req.path), '?')};
 
-  if (path != StringRef::from_lit("/api/v1beta1/backendconfig")) {
+  api_ = lookup_api(path);
+
+  if (!api_) {
     send_reply(404, API_FAILURE);
 
     return 0;
   }
 
-  if (req.method != HTTP_POST && req.method != HTTP_PUT) {
-    resp.fs.add_header_token(StringRef::from_lit("allow"),
-                             StringRef::from_lit("POST, PUT"), false, -1);
-    send_reply(405, API_FAILURE);
-
+  switch (req.method) {
+  case HTTP_GET:
+    if (!(api_->allowed_methods & (1 << API_METHOD_GET))) {
+      error_method_not_allowed();
+      return 0;
+    }
+    break;
+  case HTTP_POST:
+    if (!(api_->allowed_methods & (1 << API_METHOD_POST))) {
+      error_method_not_allowed();
+      return 0;
+    }
+    break;
+  case HTTP_PUT:
+    if (!(api_->allowed_methods & (1 << API_METHOD_PUT))) {
+      error_method_not_allowed();
+      return 0;
+    }
+    break;
+  default:
+    error_method_not_allowed();
     return 0;
   }
 
@@ -157,26 +243,89 @@ int APIDownstreamConnection::push_request_headers() {
     return 0;
   }
 
+  switch (req.method) {
+  case HTTP_POST:
+  case HTTP_PUT: {
+    char tempname[] = "/tmp/nghttpx-api.XXXXXX";
+#ifdef HAVE_MKOSTEMP
+    fd_ = mkostemp(tempname, O_CLOEXEC);
+#else  // !HAVE_MKOSTEMP
+    fd_ = mkstemp(tempname);
+#endif // !HAVE_MKOSTEMP
+    if (fd_ == -1) {
+      send_reply(500, API_FAILURE);
+
+      return 0;
+    }
+#ifndef HAVE_MKOSTEMP
+    util::make_socket_closeonexec(fd_);
+#endif // HAVE_MKOSTEMP
+    unlink(tempname);
+    break;
+  }
+  }
+
   return 0;
+}
+
+int APIDownstreamConnection::error_method_not_allowed() {
+  auto &resp = downstream_->response();
+
+  size_t len = 0;
+  for (uint8_t i = 0; i < API_METHOD_MAX; ++i) {
+    if (api_->allowed_methods & (1 << i)) {
+      // The length of method + ", "
+      len += API_METHOD_STRING[i].size() + 2;
+    }
+  }
+
+  assert(len > 0);
+
+  auto &balloc = downstream_->get_block_allocator();
+
+  auto iov = make_byte_ref(balloc, len + 1);
+  auto p = iov.base;
+  for (uint8_t i = 0; i < API_METHOD_MAX; ++i) {
+    if (api_->allowed_methods & (1 << i)) {
+      auto &s = API_METHOD_STRING[i];
+      p = std::copy(std::begin(s), std::end(s), p);
+      p = std::copy_n(", ", 2, p);
+    }
+  }
+
+  p -= 2;
+  *p = '\0';
+
+  resp.fs.add_header_token(StringRef::from_lit("allow"), StringRef{iov.base, p},
+                           false, -1);
+  return send_reply(405, API_FAILURE);
 }
 
 int APIDownstreamConnection::push_upload_data_chunk(const uint8_t *data,
                                                     size_t datalen) {
-  if (abandoned_) {
+  if (shutdown_read_ || !api_->require_body) {
     return 0;
   }
 
-  auto output = downstream_->get_request_buf();
-
+  auto &req = downstream_->request();
   auto &apiconf = get_config()->api;
 
-  if (output->rleft() + datalen > apiconf.max_request_body) {
+  if (static_cast<size_t>(req.recv_body_length) > apiconf.max_request_body) {
     send_reply(413, API_FAILURE);
 
     return 0;
   }
 
-  output->append(data, datalen);
+  ssize_t nwrite;
+  while ((nwrite = write(fd_, data, datalen)) == -1 && errno == EINTR)
+    ;
+  if (nwrite == -1) {
+    auto error = errno;
+    LOG(ERROR) << "Could not write API request body: errno=" << error;
+    send_reply(500, API_FAILURE);
+
+    return 0;
+  }
 
   // We don't have to call Upstream::resume_read() here, because
   // request buffer is effectively unlimited.  Actually, we cannot
@@ -186,33 +335,28 @@ int APIDownstreamConnection::push_upload_data_chunk(const uint8_t *data,
 }
 
 int APIDownstreamConnection::end_upload_data() {
-  if (abandoned_) {
+  if (shutdown_read_) {
     return 0;
   }
 
-  auto output = downstream_->get_request_buf();
+  return api_->handler(*this);
+}
 
-  std::array<struct iovec, 2> iov;
-  auto iovcnt = output->riovec(iov.data(), 2);
+int APIDownstreamConnection::handle_backendconfig() {
+  auto &req = downstream_->request();
 
-  if (iovcnt == 0) {
+  if (req.recv_body_length == 0) {
     send_reply(200, API_SUCCESS);
 
     return 0;
   }
 
-  std::unique_ptr<uint8_t[]> large_buf;
-
-  // If data spans in multiple chunks, pull them up into one
-  // contiguous buffer.
-  if (iovcnt > 1) {
-    large_buf = make_unique<uint8_t[]>(output->rleft());
-    auto len = output->rleft();
-    output->remove(large_buf.get(), len);
-
-    iov[0].iov_base = large_buf.get();
-    iov[0].iov_len = len;
+  auto rp = mmap(nullptr, req.recv_body_length, PROT_READ, MAP_SHARED, fd_, 0);
+  if (rp == reinterpret_cast<void *>(-1)) {
+    send_reply(500, API_FAILURE);
   }
+
+  auto unmapper = defer(munmap, rp, req.recv_body_length);
 
   Config new_config{};
   new_config.conn.downstream = std::make_shared<DownstreamConfig>();
@@ -229,9 +373,10 @@ int APIDownstreamConnection::end_upload_data() {
   downstreamconf->family = src->family;
 
   std::set<StringRef> include_set;
+  std::map<StringRef, size_t> pattern_addr_indexer;
 
-  for (auto first = reinterpret_cast<const uint8_t *>(iov[0].iov_base),
-            last = first + iov[0].iov_len;
+  for (auto first = reinterpret_cast<const uint8_t *>(rp),
+            last = first + req.recv_body_length;
        first != last;) {
     auto eol = std::find(first, last, '\n');
     if (eol == last) {
@@ -262,7 +407,8 @@ int APIDownstreamConnection::end_upload_data() {
       continue;
     }
 
-    if (parse_config(&new_config, optid, opt, optval, include_set) != 0) {
+    if (parse_config(&new_config, optid, opt, optval, include_set,
+                     pattern_addr_indexer) != 0) {
       send_reply(400, API_FAILURE);
       return 0;
     }
@@ -282,6 +428,25 @@ int APIDownstreamConnection::end_upload_data() {
   conn_handler->send_replace_downstream(downstreamconf);
 
   send_reply(200, API_SUCCESS);
+
+  return 0;
+}
+
+int APIDownstreamConnection::handle_configrevision() {
+  auto config = get_config();
+  auto &balloc = downstream_->get_block_allocator();
+
+  // Construct the following string:
+  //   ,
+  //   "data":{
+  //     "configRevision": N
+  //   }
+  auto data = concat_string_ref(
+      balloc, StringRef::from_lit(R"(,"data":{"configRevision":)"),
+      util::make_string_ref_uint(balloc, config->config_revision),
+      StringRef::from_lit("}"));
+
+  send_reply(200, API_SUCCESS, data);
 
   return 0;
 }

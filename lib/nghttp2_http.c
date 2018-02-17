@@ -521,8 +521,10 @@ int nghttp2_http_on_response_headers(nghttp2_stream *stream) {
   return 0;
 }
 
-int nghttp2_http_on_trailer_headers(nghttp2_stream *stream _U_,
+int nghttp2_http_on_trailer_headers(nghttp2_stream *stream,
                                     nghttp2_frame *frame) {
+  (void)stream;
+
   if ((frame->hd.flags & NGHTTP2_FLAG_END_STREAM) == 0) {
     return -1;
   }

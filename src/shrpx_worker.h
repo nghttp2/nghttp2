@@ -45,7 +45,7 @@
 #include "shrpx_config.h"
 #include "shrpx_downstream_connection_pool.h"
 #include "memchunk.h"
-#include "shrpx_ssl.h"
+#include "shrpx_tls.h"
 #include "shrpx_live_check.h"
 #include "shrpx_connect_blocker.h"
 #include "shrpx_dns_tracker.h"
@@ -69,9 +69,9 @@ class MRubyContext;
 } // namespace mruby
 #endif // HAVE_MRUBY
 
-namespace ssl {
+namespace tls {
 class CertLookupTree;
-} // namespace ssl
+} // namespace tls
 
 struct DownstreamAddr {
   Address addr;
@@ -95,7 +95,7 @@ struct DownstreamAddr {
   size_t fall;
   size_t rise;
   // Client side TLS session cache
-  ssl::TLSSessionCache tls_session_cache;
+  tls::TLSSessionCache tls_session_cache;
   // Http2Session object created for this address.  This list chains
   // all Http2Session objects that is not in group scope
   // http2_avail_freelist, and is not reached in maximum concurrency.
@@ -115,6 +115,10 @@ struct DownstreamAddr {
   bool tls;
   // true if dynamic DNS is enabled
   bool dns;
+  // true if :scheme pseudo header field should be upgraded to secure
+  // variant (e.g., "https") when forwarding request to a backend
+  // connected by TLS connection.
+  bool upgrade_scheme;
 };
 
 // Simplified weighted fair queuing.  Actually we don't use queue here
@@ -133,10 +137,11 @@ struct WeightedPri {
 struct SharedDownstreamAddr {
   SharedDownstreamAddr()
       : balloc(1024, 1024),
+        affinity{AFFINITY_NONE},
         next{0},
         http1_pri{},
         http2_pri{},
-        affinity{AFFINITY_NONE} {}
+        redirect_if_not_tls{false} {}
 
   SharedDownstreamAddr(const SharedDownstreamAddr &) = delete;
   SharedDownstreamAddr(SharedDownstreamAddr &&) = delete;
@@ -149,7 +154,7 @@ struct SharedDownstreamAddr {
   // AFFINITY_IP.
   std::vector<AffinityHash> affinity_hash;
   // List of Http2Session which is not fully utilized (i.e., the
-  // server advertized maximum concurrency is not reached).  We will
+  // server advertised maximum concurrency is not reached).  We will
   // coalesce as much stream as possible in one Http2Session to fully
   // utilize TCP connection.
   //
@@ -160,6 +165,8 @@ struct SharedDownstreamAddr {
   // wise.
   DList<Http2Session> http2_avail_freelist;
   DownstreamConnectionPool dconn_pool;
+  // Configuration for session affinity
+  AffinityConfig affinity;
   // Next http/1.1 downstream address index in addrs.
   size_t next;
   // http1_pri and http2_pri are used to which protocols are used
@@ -170,7 +177,9 @@ struct SharedDownstreamAddr {
   WeightedPri http1_pri;
   WeightedPri http2_pri;
   // Session affinity
-  shrpx_session_affinity affinity;
+  // true if this group requires that client connection must be TLS,
+  // and the request must be redirected to https URI.
+  bool redirect_if_not_tls;
 };
 
 struct DownstreamAddrGroup {
@@ -216,7 +225,7 @@ class Worker {
 public:
   Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
          SSL_CTX *tls_session_cache_memcached_ssl_ctx,
-         ssl::CertLookupTree *cert_tree,
+         tls::CertLookupTree *cert_tree,
          const std::shared_ptr<TicketKeys> &ticket_keys,
          ConnectionHandler *conn_handler,
          std::shared_ptr<DownstreamConfig> downstreamconf);
@@ -226,7 +235,7 @@ public:
   void process_events();
   void send(const WorkerEvent &event);
 
-  ssl::CertLookupTree *get_cert_lookup_tree() const;
+  tls::CertLookupTree *get_cert_lookup_tree() const;
 
   // These 2 functions make a lock m_ to get/set ticket keys
   // atomically.
@@ -293,7 +302,7 @@ private:
   // get_config()->tls_ctx_per_worker == true.
   SSL_CTX *sv_ssl_ctx_;
   SSL_CTX *cl_ssl_ctx_;
-  ssl::CertLookupTree *cert_tree_;
+  tls::CertLookupTree *cert_tree_;
   ConnectionHandler *conn_handler_;
 
 #ifndef HAVE_ATOMIC_STD_SHARED_PTR

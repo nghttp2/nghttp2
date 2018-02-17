@@ -34,6 +34,7 @@
 #include "shrpx_client_handler.h"
 #include "shrpx_mruby.h"
 #include "shrpx_mruby_module.h"
+#include "shrpx_log.h"
 #include "util.h"
 #include "http2.h"
 
@@ -137,8 +138,9 @@ mrb_value response_mod_header(mrb_state *mrb, mrb_value self, bool repl) {
         continue;
       }
       if (i != p) {
-        headers[p++] = std::move(kv);
+        headers[p] = std::move(kv);
       }
+      ++p;
     }
     headers.resize(p);
   }
@@ -274,6 +276,91 @@ mrb_value response_return(mrb_state *mrb, mrb_value self) {
 }
 } // namespace
 
+namespace {
+mrb_value response_send_info(mrb_state *mrb, mrb_value self) {
+  auto data = static_cast<MRubyAssocData *>(mrb->ud);
+  auto downstream = data->downstream;
+  auto &resp = downstream->response();
+  int rv;
+
+  if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "response has already been committed");
+  }
+
+  mrb_int http_status;
+  mrb_value hash;
+  mrb_get_args(mrb, "iH", &http_status, &hash);
+
+  if (http_status / 100 != 1) {
+    mrb_raise(mrb, E_RUNTIME_ERROR,
+              "status_code must be in range [100, 199], inclusive");
+  }
+
+  auto &balloc = downstream->get_block_allocator();
+
+  auto keys = mrb_hash_keys(mrb, hash);
+  auto keyslen = mrb_ary_len(mrb, keys);
+
+  for (int i = 0; i < keyslen; ++i) {
+    auto key = mrb_ary_ref(mrb, keys, i);
+    if (!mrb_string_p(key)) {
+      mrb_raise(mrb, E_RUNTIME_ERROR, "key must be string");
+    }
+
+    auto values = mrb_hash_get(mrb, hash, key);
+
+    auto ai = mrb_gc_arena_save(mrb);
+
+    key = mrb_funcall(mrb, key, "downcase", 0);
+
+    auto keyref = make_string_ref(
+        balloc,
+        StringRef{RSTRING_PTR(key), static_cast<size_t>(RSTRING_LEN(key))});
+
+    mrb_gc_arena_restore(mrb, ai);
+
+    auto token = http2::lookup_token(keyref.byte(), keyref.size());
+
+    if (mrb_array_p(values)) {
+      auto n = mrb_ary_len(mrb, values);
+      for (int i = 0; i < n; ++i) {
+        auto value = mrb_ary_ref(mrb, values, i);
+        if (!mrb_string_p(value)) {
+          mrb_raise(mrb, E_RUNTIME_ERROR, "value must be string");
+        }
+
+        resp.fs.add_header_token(
+            keyref,
+            make_string_ref(balloc,
+                            StringRef{RSTRING_PTR(value),
+                                      static_cast<size_t>(RSTRING_LEN(value))}),
+            false, token);
+      }
+    } else if (mrb_string_p(values)) {
+      resp.fs.add_header_token(
+          keyref,
+          make_string_ref(balloc,
+                          StringRef{RSTRING_PTR(values),
+                                    static_cast<size_t>(RSTRING_LEN(values))}),
+          false, token);
+    } else {
+      mrb_raise(mrb, E_RUNTIME_ERROR, "value must be string");
+    }
+  }
+
+  resp.http_status = http_status;
+
+  auto upstream = downstream->get_upstream();
+
+  rv = upstream->on_downstream_header_complete(downstream);
+  if (rv != 0) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "could not send non-final response");
+  }
+
+  return self;
+}
+} // namespace
+
 void init_response_class(mrb_state *mrb, RClass *module) {
   auto response_class =
       mrb_define_class_under(mrb, module, "Response", mrb->object_class);
@@ -298,6 +385,8 @@ void init_response_class(mrb_state *mrb, RClass *module) {
                     response_clear_headers, MRB_ARGS_NONE());
   mrb_define_method(mrb, response_class, "return", response_return,
                     MRB_ARGS_OPT(1));
+  mrb_define_method(mrb, response_class, "send_info", response_send_info,
+                    MRB_ARGS_REQ(2));
 }
 
 } // namespace mruby

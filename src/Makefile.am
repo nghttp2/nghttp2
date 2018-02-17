@@ -40,7 +40,6 @@ AM_CPPFLAGS = \
 	-I$(top_srcdir)/lib \
 	-I$(top_srcdir)/src/includes \
 	-I$(top_srcdir)/third-party \
-	@LIBSPDYLAY_CFLAGS@ \
 	@LIBXML2_CFLAGS@ \
 	@LIBEV_CFLAGS@ \
 	@OPENSSL_CFLAGS@ \
@@ -52,11 +51,11 @@ AM_CPPFLAGS = \
 LDADD = $(top_builddir)/lib/libnghttp2.la \
 	$(top_builddir)/third-party/libhttp-parser.la \
 	@JEMALLOC_LIBS@ \
-	@LIBSPDYLAY_LIBS@ \
 	@LIBXML2_LIBS@ \
 	@LIBEV_LIBS@ \
 	@OPENSSL_LIBS@ \
 	@LIBCARES_LIBS@ \
+	@SYSTEMD_LIBS@ \
 	@JANSSON_LIBS@ \
 	@ZLIB_LIBS@ \
 	@APPLDFLAGS@
@@ -80,10 +79,10 @@ endif # HAVE_LIBXML2
 
 nghttp_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} nghttp.cc nghttp.h \
 	${HTML_PARSER_OBJECTS} ${HTML_PARSER_HFILES} \
-	ssl.cc ssl.h
+	tls.cc tls.h
 
 nghttpd_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} nghttpd.cc \
-	ssl.cc ssl.h \
+	tls.cc tls.h \
 	HttpServer.cc HttpServer.h
 
 bin_PROGRAMS += h2load
@@ -91,19 +90,15 @@ bin_PROGRAMS += h2load
 h2load_SOURCES = util.cc util.h \
 	http2.cc http2.h h2load.cc h2load.h \
 	timegm.c timegm.h \
-	ssl.cc ssl.h \
+	tls.cc tls.h \
 	h2load_session.h \
 	h2load_http2_session.cc h2load_http2_session.h \
 	h2load_http1_session.cc h2load_http1_session.h
 
-if HAVE_SPDYLAY
-h2load_SOURCES += h2load_spdy_session.cc h2load_spdy_session.h
-endif # HAVE_SPDYLAY
-
 NGHTTPX_SRCS = \
 	util.cc util.h http2.cc http2.h timegm.c timegm.h base64.h \
 	app_helper.cc app_helper.h \
-	ssl.cc ssl.h \
+	tls.cc tls.h \
 	shrpx_config.cc shrpx_config.h \
 	shrpx_error.h \
 	shrpx_accept_handler.cc shrpx_accept_handler.h \
@@ -121,7 +116,7 @@ NGHTTPX_SRCS = \
 	shrpx_log.cc shrpx_log.h \
 	shrpx_http.cc shrpx_http.h \
 	shrpx_io_control.cc shrpx_io_control.h \
-	shrpx_ssl.cc shrpx_ssl.h \
+	shrpx_tls.cc shrpx_tls.h \
 	shrpx_worker.cc shrpx_worker.h \
 	shrpx_log_config.cc shrpx_log_config.h \
 	shrpx_connect_blocker.cc shrpx_connect_blocker.h \
@@ -146,10 +141,6 @@ NGHTTPX_SRCS = \
 	shrpx_dns_tracker.cc shrpx_dns_tracker.h \
 	buffer.h memchunk.h template.h allocator.h \
 	xsi_strerror.c xsi_strerror.h
-
-if HAVE_SPDYLAY
-NGHTTPX_SRCS += shrpx_spdy_upstream.cc shrpx_spdy_upstream.h
-endif # HAVE_SPDYLAY
 
 if HAVE_MRUBY
 NGHTTPX_SRCS += \
@@ -182,7 +173,7 @@ endif # HAVE_NEVERBLEED
 if HAVE_CUNIT
 check_PROGRAMS += nghttpx-unittest
 nghttpx_unittest_SOURCES = shrpx-unittest.cc \
-	shrpx_ssl_test.cc shrpx_ssl_test.h \
+	shrpx_tls_test.cc shrpx_tls_test.h \
 	shrpx_downstream_test.cc shrpx_downstream_test.h \
 	shrpx_config_test.cc shrpx_config_test.h \
 	shrpx_worker_test.cc shrpx_worker_test.h \
@@ -239,7 +230,7 @@ lib_LTLIBRARIES = libnghttp2_asio.la
 
 libnghttp2_asio_la_SOURCES = \
 	util.cc util.h http2.cc http2.h \
-	ssl.cc ssl.h \
+	tls.cc tls.h \
 	ssl_compat.h \
 	timegm.c timegm.h \
 	asio_common.cc asio_common.h \

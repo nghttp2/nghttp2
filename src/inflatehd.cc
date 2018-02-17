@@ -48,7 +48,9 @@
 
 namespace nghttp2 {
 
-typedef struct { int dump_header_table; } inflate_config;
+typedef struct {
+  int dump_header_table;
+} inflate_config;
 
 static inflate_config config;
 

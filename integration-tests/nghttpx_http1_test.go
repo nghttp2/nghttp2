@@ -9,6 +9,7 @@ import (
 	"golang.org/x/net/websocket"
 	"io"
 	"net/http"
+	"regexp"
 	"syscall"
 	"testing"
 	"time"
@@ -125,6 +126,54 @@ Content-Length: 0
 // 	}
 // }
 
+// TestH1H1AffinityCookie tests that affinity cookie is sent back in
+// cleartext http.
+func TestH1H1AffinityCookie(t *testing.T) {
+	st := newServerTester([]string{"--affinity-cookie"}, t, noopHandler)
+	defer st.Close()
+
+	res, err := st.http1(requestParam{
+		name: "TestH1H1AffinityCookie",
+	})
+	if err != nil {
+		t.Fatalf("Error st.http1() = %v", err)
+	}
+
+	if got, want := res.status, 200; got != want {
+		t.Errorf("status = %v; want %v", got, want)
+	}
+
+	const pattern = `affinity=[0-9a-f]{8}; Path=/foo/bar`
+	validCookie := regexp.MustCompile(pattern)
+	if got := res.header.Get("Set-Cookie"); !validCookie.MatchString(got) {
+		t.Errorf("Set-Cookie: %v; want pattern %v", got, pattern)
+	}
+}
+
+// TestH1H1AffinityCookieTLS tests that affinity cookie is sent back
+// in https.
+func TestH1H1AffinityCookieTLS(t *testing.T) {
+	st := newServerTesterTLS([]string{"--alpn-h1", "--affinity-cookie"}, t, noopHandler)
+	defer st.Close()
+
+	res, err := st.http1(requestParam{
+		name: "TestH1H1AffinityCookieTLS",
+	})
+	if err != nil {
+		t.Fatalf("Error st.http1() = %v", err)
+	}
+
+	if got, want := res.status, 200; got != want {
+		t.Errorf("status = %v; want %v", got, want)
+	}
+
+	const pattern = `affinity=[0-9a-f]{8}; Path=/foo/bar; Secure`
+	validCookie := regexp.MustCompile(pattern)
+	if got := res.header.Get("Set-Cookie"); !validCookie.MatchString(got) {
+		t.Errorf("Set-Cookie: %v; want pattern %v", got, pattern)
+	}
+}
+
 // TestH1H1GracefulShutdown tests graceful shutdown.
 func TestH1H1GracefulShutdown(t *testing.T) {
 	st := newServerTester(nil, t, noopHandler)
@@ -162,7 +211,7 @@ func TestH1H1GracefulShutdown(t *testing.T) {
 	want := io.EOF
 	b := make([]byte, 256)
 	if _, err := st.conn.Read(b); err == nil || err != want {
-		t.Errorf("st.conn.Read(): %v; want %v, %v", err, want)
+		t.Errorf("st.conn.Read(): %v; want %v", err, want)
 	}
 }
 
@@ -339,7 +388,7 @@ func TestH1H1HeaderFieldBufferPath(t *testing.T) {
 	// The value 100 is chosen so that sum of header fields bytes
 	// does not exceed it.  We use > 100 bytes URI to exceed this
 	// limit.
-	st := newServerTester([]string{"--header-field-buffer=100"}, t, func(w http.ResponseWriter, r *http.Request) {
+	st := newServerTester([]string{"--request-header-field-buffer=100"}, t, func(w http.ResponseWriter, r *http.Request) {
 		t.Fatal("execution path should not be here")
 	})
 	defer st.Close()
@@ -359,7 +408,7 @@ func TestH1H1HeaderFieldBufferPath(t *testing.T) {
 // TestH1H1HeaderFieldBuffer tests that request with header fields
 // larger than configured buffer size is rejected.
 func TestH1H1HeaderFieldBuffer(t *testing.T) {
-	st := newServerTester([]string{"--header-field-buffer=10"}, t, func(w http.ResponseWriter, r *http.Request) {
+	st := newServerTester([]string{"--request-header-field-buffer=10"}, t, func(w http.ResponseWriter, r *http.Request) {
 		t.Fatal("execution path should not be here")
 	})
 	defer st.Close()
@@ -378,7 +427,7 @@ func TestH1H1HeaderFieldBuffer(t *testing.T) {
 // TestH1H1HeaderFields tests that request with header fields more
 // than configured number is rejected.
 func TestH1H1HeaderFields(t *testing.T) {
-	st := newServerTester([]string{"--max-header-fields=1"}, t, func(w http.ResponseWriter, r *http.Request) {
+	st := newServerTester([]string{"--max-request-header-fields=1"}, t, func(w http.ResponseWriter, r *http.Request) {
 		t.Fatal("execution path should not be here")
 	})
 	defer st.Close()
@@ -530,6 +579,49 @@ func TestH1H1RespPhaseReturn(t *testing.T) {
 
 	if got, want := string(res.body), "Hello World from resp"; got != want {
 		t.Errorf("body = %v; want %v", got, want)
+	}
+}
+
+// TestH1H1HTTPSRedirect tests that the request to the backend which
+// requires TLS is redirected to https URI.
+func TestH1H1HTTPSRedirect(t *testing.T) {
+	st := newServerTester([]string{"--redirect-if-not-tls"}, t, noopHandler)
+	defer st.Close()
+
+	res, err := st.http1(requestParam{
+		name: "TestH1H1HTTPSRedirect",
+	})
+	if err != nil {
+		t.Fatalf("Error st.http1() = %v", err)
+	}
+
+	if got, want := res.status, 308; got != want {
+		t.Errorf("status = %v; want %v", got, want)
+	}
+	if got, want := res.header.Get("location"), "https://127.0.0.1/"; got != want {
+		t.Errorf("location: %v; want %v", got, want)
+	}
+}
+
+// TestH1H1HTTPSRedirectPort tests that the request to the backend
+// which requires TLS is redirected to https URI with given port.
+func TestH1H1HTTPSRedirectPort(t *testing.T) {
+	st := newServerTester([]string{"--redirect-if-not-tls", "--redirect-https-port=8443"}, t, noopHandler)
+	defer st.Close()
+
+	res, err := st.http1(requestParam{
+		path: "/foo?bar",
+		name: "TestH1H1HTTPSRedirectPort",
+	})
+	if err != nil {
+		t.Fatalf("Error st.http1() = %v", err)
+	}
+
+	if got, want := res.status, 308; got != want {
+		t.Errorf("status = %v; want %v", got, want)
+	}
+	if got, want := res.header.Get("location"), "https://127.0.0.1:8443/foo?bar"; got != want {
+		t.Errorf("location: %v; want %v", got, want)
 	}
 }
 
@@ -928,6 +1020,43 @@ backend=127.0.0.1,3011
 	}
 	if got, want := apiResp.Code, 405; got != want {
 		t.Errorf("apiResp.Status: %v; want %v", got, want)
+	}
+}
+
+// TestH1APIConfigrevision tests configrevision API.
+func TestH1APIConfigrevision(t *testing.T) {
+	st := newServerTesterConnectPort([]string{"-f127.0.0.1,3010;api;no-tls"}, t, func(w http.ResponseWriter, r *http.Request) {
+		t.Fatalf("request should not be forwarded")
+	}, 3010)
+	defer st.Close()
+
+	res, err := st.http1(requestParam{
+		name:   "TestH1APIConfigrevision",
+		path:   "/api/v1beta1/configrevision",
+		method: "GET",
+	})
+	if err != nil {
+		t.Fatalf("Error st.http1() = %v", err)
+	}
+	if got, want := res.status, 200; got != want {
+		t.Errorf("res.status: %v; want = %v", got, want)
+	}
+
+	var apiResp APIResponse
+	d := json.NewDecoder(bytes.NewBuffer(res.body))
+	d.UseNumber()
+	err = d.Decode(&apiResp)
+	if err != nil {
+		t.Fatalf("Error unmarshalling API response: %v", err)
+	}
+	if got, want := apiResp.Status, "Success"; got != want {
+		t.Errorf("apiResp.Status: %v; want %v", got, want)
+	}
+	if got, want := apiResp.Code, 200; got != want {
+		t.Errorf("apiResp.Status: %v; want %v", got, want)
+	}
+	if got, want := apiResp.Data["configRevision"], json.Number("0"); got != want {
+		t.Errorf(`apiResp.Data["configRevision"]: %v %t; want %v`, got, got, want)
 	}
 }
 

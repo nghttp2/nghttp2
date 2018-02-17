@@ -473,6 +473,7 @@ void test_util_localtime_date(void) {
 
   if (tz) {
     setenv("TZ", tz, 1);
+    free(tz);
   } else {
     unsetenv("TZ");
   }
@@ -607,6 +608,24 @@ void test_util_decode_hex(void) {
   CU_ASSERT("\x0f\xf0" ==
             util::decode_hex(balloc, StringRef::from_lit("0ff0")));
   CU_ASSERT("" == util::decode_hex(balloc, StringRef{}));
+}
+
+void test_util_extract_host(void) {
+  CU_ASSERT(StringRef::from_lit("foo") ==
+            util::extract_host(StringRef::from_lit("foo")));
+  CU_ASSERT(StringRef::from_lit("foo") ==
+            util::extract_host(StringRef::from_lit("foo:")));
+  CU_ASSERT(StringRef::from_lit("foo") ==
+            util::extract_host(StringRef::from_lit("foo:0")));
+  CU_ASSERT(StringRef::from_lit("[::1]") ==
+            util::extract_host(StringRef::from_lit("[::1]")));
+  CU_ASSERT(StringRef::from_lit("[::1]") ==
+            util::extract_host(StringRef::from_lit("[::1]:")));
+
+  CU_ASSERT(util::extract_host(StringRef::from_lit(":foo")).empty());
+  CU_ASSERT(util::extract_host(StringRef::from_lit("[::1")).empty());
+  CU_ASSERT(util::extract_host(StringRef::from_lit("[::1]0")).empty());
+  CU_ASSERT(util::extract_host(StringRef{}).empty());
 }
 
 } // namespace shrpx

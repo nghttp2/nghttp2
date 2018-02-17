@@ -64,7 +64,6 @@ struct Worker;
 
 struct Config {
   std::vector<std::vector<nghttp2_nv>> nva;
-  std::vector<std::vector<const char *>> nv;
   std::vector<std::string> h1reqs;
   std::vector<ev_tstamp> timings;
   nghttp2::Headers custom_headers;
@@ -85,17 +84,15 @@ struct Config {
   // rate at which connections should be made
   size_t rate;
   ev_tstamp rate_period;
+  // amount of time for main measurements in timing-based test
+  ev_tstamp duration;
+  // amount of time to wait before starting measurements in timing-based test
+  ev_tstamp warm_up_time;
   // amount of time to wait for activity on a given connection
   ev_tstamp conn_active_timeout;
   // amount of time to wait after the last request is made on a connection
   ev_tstamp conn_inactivity_timeout;
-  enum {
-    PROTO_HTTP2,
-    PROTO_SPDY2,
-    PROTO_SPDY3,
-    PROTO_SPDY3_1,
-    PROTO_HTTP1_1
-  } no_tls_proto;
+  enum { PROTO_HTTP2, PROTO_HTTP1_1 } no_tls_proto;
   uint32_t header_table_size;
   uint32_t encoder_header_table_size;
   // file descriptor for upload data
@@ -118,6 +115,7 @@ struct Config {
   ~Config();
 
   bool is_rate_mode() const;
+  bool is_timing_based_mode() const;
   bool has_base_uri() const;
 };
 
@@ -139,7 +137,7 @@ struct ClientStat {
   // time client end (i.e., client somehow processed all requests it
   // is responsible for, and disconnected)
   std::chrono::steady_clock::time_point client_end_time;
-  // The number of requests completed successfull, but not necessarily
+  // The number of requests completed successful, but not necessarily
   // means successful HTTP status code.
   size_t req_success;
 
@@ -180,7 +178,7 @@ struct Stats {
   size_t req_started;
   // The number of requests finished
   size_t req_done;
-  // The number of requests completed successfull, but not necessarily
+  // The number of requests completed successful, but not necessarily
   // means successful HTTP status code.
   size_t req_success;
   // The number of requests marked as success.  HTTP status code is
@@ -215,15 +213,21 @@ struct Stats {
 
 enum ClientState { CLIENT_IDLE, CLIENT_CONNECTED };
 
+// This type tells whether the client is in warmup phase or not or is over
+enum class Phase {
+  INITIAL_IDLE,  // Initial idle state before warm-up phase
+  WARM_UP,       // Warm up phase when no measurements are done
+  MAIN_DURATION, // Main measurement phase; if timing-based
+                 // test is not run, this is the default phase
+  DURATION_OVER  // This phase occurs after the measurements are over
+};
+
 struct Client;
 
-// We use systematic sampling method
+// We use reservoir sampling method
 struct Sampling {
-  // sampling interval
-  double interval;
-  // cumulative value of interval, and the next point is the integer
-  // rounded up from this value.
-  double point;
+  // maximum number of samples
+  size_t max_samples;
   // number of samples seen, including discarded samples.
   size_t n;
 };
@@ -253,6 +257,15 @@ struct Worker {
   ev_timer timeout_watcher;
   // The next client ID this worker assigns
   uint32_t next_client_id;
+  // Keeps track of the current phase (for timing-based experiment) for the
+  // worker
+  Phase current_phase;
+  // We need to keep track of the clients in order to stop them when needed
+  std::vector<Client *> clients;
+  // This is only active when there is not a bounded number of requests
+  // specified
+  ev_timer duration_watcher;
+  ev_timer warmup_watcher;
 
   Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t nreq_todo, size_t nclients,
          size_t rate, size_t max_samples, Config *config);
@@ -263,6 +276,10 @@ struct Worker {
   void sample_client_stat(ClientStat *cstat);
   void report_progress();
   void report_rate_progress();
+  // This function calls the destructors of all the clients.
+  void stop_all_clients();
+  // This function frees a client from the list of clients for this Worker.
+  void free_client(Client *);
 };
 
 struct Stream {

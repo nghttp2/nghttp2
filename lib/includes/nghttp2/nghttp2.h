@@ -388,6 +388,11 @@ typedef enum {
    */
   NGHTTP2_ERR_CANCEL = -535,
   /**
+   * When a local endpoint expects to receive SETTINGS frame, it
+   * receives an other type of frame.
+   */
+  NGHTTP2_ERR_SETTINGS_EXPECTED = -536,
+  /**
    * The errors < :enum:`NGHTTP2_ERR_FATAL` mean that the library is
    * under unexpected condition and processing was terminated (e.g.,
    * out of memory).  If application receives this error code, it must
@@ -468,6 +473,15 @@ NGHTTP2_EXTERN void nghttp2_rcbuf_decref(nghttp2_rcbuf *rcbuf);
  * Returns the underlying buffer managed by |rcbuf|.
  */
 NGHTTP2_EXTERN nghttp2_vec nghttp2_rcbuf_get_buf(nghttp2_rcbuf *rcbuf);
+
+/**
+ * @function
+ *
+ * Returns nonzero if the underlying buffer is statically allocated,
+ * and 0 otherwise. This can be useful for language bindings that wish
+ * to avoid creating duplicate strings for these buffers.
+ */
+NGHTTP2_EXTERN int nghttp2_rcbuf_is_static(const nghttp2_rcbuf *rcbuf);
 
 /**
  * @enum
@@ -862,6 +876,11 @@ typedef enum {
  * any data in this invocation.  The library removes DATA frame from
  * the outgoing queue temporarily.  To move back deferred DATA frame
  * to outgoing queue, call `nghttp2_session_resume_data()`.
+ *
+ * By default, |length| is limited to 16KiB at maximum.  If peer
+ * allows larger frames, application can enlarge transmission buffer
+ * size.  See :type:`nghttp2_data_source_read_length_callback` for
+ * more details.
  *
  * If the application just wants to return from
  * `nghttp2_session_send()` or `nghttp2_session_mem_send()` without
@@ -1736,11 +1755,12 @@ typedef int (*nghttp2_on_header_callback2)(nghttp2_session *session,
  * The parameter and behaviour are similar to
  * :type:`nghttp2_on_header_callback`.  The difference is that this
  * callback is only invoked when a invalid header name/value pair is
- * received which is silently ignored if this callback is not set.
- * Only invalid regular header field are passed to this callback.  In
- * other words, invalid pseudo header field is not passed to this
- * callback.  Also header fields which includes upper cased latter are
- * also treated as error without passing them to this callback.
+ * received which is treated as stream error if this callback is not
+ * set.  Only invalid regular header field are passed to this
+ * callback.  In other words, invalid pseudo header field is not
+ * passed to this callback.  Also header fields which includes upper
+ * cased latter are also treated as error without passing them to this
+ * callback.
  *
  * This callback is only considered if HTTP messaging validation is
  * turned on (which is on by default, see
@@ -1749,10 +1769,13 @@ typedef int (*nghttp2_on_header_callback2)(nghttp2_session *session,
  * With this callback, application inspects the incoming invalid
  * field, and it also can reset stream from this callback by returning
  * :enum:`NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE`.  By default, the
- * error code is :enum:`NGHTTP2_INTERNAL_ERROR`.  To change the error
+ * error code is :enum:`NGHTTP2_PROTOCOL_ERROR`.  To change the error
  * code, call `nghttp2_submit_rst_stream()` with the error code of
  * choice in addition to returning
  * :enum:`NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE`.
+ *
+ * If 0 is returned, the header field is ignored, and the stream is
+ * not reset.
  */
 typedef int (*nghttp2_on_invalid_header_callback)(
     nghttp2_session *session, const nghttp2_frame *frame, const uint8_t *name,
@@ -1969,6 +1992,9 @@ typedef ssize_t (*nghttp2_pack_extension_callback)(nghttp2_session *session,
  * of length |len|.  |len| does not include the sentinel NULL
  * character.
  *
+ * This function is deprecated.  The new application should use
+ * :type:`nghttp2_error_callback2`.
+ *
  * The format of error message may change between nghttp2 library
  * versions.  The application should not depend on the particular
  * format.
@@ -1984,6 +2010,33 @@ typedef ssize_t (*nghttp2_pack_extension_callback)(nghttp2_session *session,
  */
 typedef int (*nghttp2_error_callback)(nghttp2_session *session, const char *msg,
                                       size_t len, void *user_data);
+
+/**
+ * @functypedef
+ *
+ * Callback function invoked when library provides the error code, and
+ * message.  This callback is solely for debugging purpose.
+ * |lib_error_code| is one of error code defined in
+ * :enum:`nghttp2_error`.  The |msg| is typically NULL-terminated
+ * string of length |len|, and intended for human consumption.  |len|
+ * does not include the sentinel NULL character.
+ *
+ * The format of error message may change between nghttp2 library
+ * versions.  The application should not depend on the particular
+ * format.
+ *
+ * Normally, application should return 0 from this callback.  If fatal
+ * error occurred while doing something in this callback, application
+ * should return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.  In this case,
+ * library will return immediately with return value
+ * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.  Currently, if nonzero value
+ * is returned from this callback, they are treated as
+ * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`, but application should not
+ * rely on this details.
+ */
+typedef int (*nghttp2_error_callback2)(nghttp2_session *session,
+                                       int lib_error_code, const char *msg,
+                                       size_t len, void *user_data);
 
 struct nghttp2_session_callbacks;
 
@@ -2249,9 +2302,29 @@ nghttp2_session_callbacks_set_on_extension_chunk_recv_callback(
  *
  * Sets callback function invoked when library tells error message to
  * the application.
+ *
+ * This function is deprecated.  The new application should use
+ * `nghttp2_session_callbacks_set_error_callback2()`.
+ *
+ * If both :type:`nghttp2_error_callback` and
+ * :type:`nghttp2_error_callback2` are set, the latter takes
+ * precedence.
  */
 NGHTTP2_EXTERN void nghttp2_session_callbacks_set_error_callback(
     nghttp2_session_callbacks *cbs, nghttp2_error_callback error_callback);
+
+/**
+ * @function
+ *
+ * Sets callback function invoked when library tells error code, and
+ * message to the application.
+ *
+ * If both :type:`nghttp2_error_callback` and
+ * :type:`nghttp2_error_callback2` are set, the latter takes
+ * precedence.
+ */
+NGHTTP2_EXTERN void nghttp2_session_callbacks_set_error_callback2(
+    nghttp2_session_callbacks *cbs, nghttp2_error_callback2 error_callback2);
 
 /**
  * @functypedef
@@ -2443,7 +2516,10 @@ nghttp2_option_set_no_recv_client_magic(nghttp2_option *option, int val);
  * <https://tools.ietf.org/html/rfc7540#section-8>`_.  See
  * :ref:`http-messaging` section for details.  For those applications
  * who use nghttp2 library as non-HTTP use, give nonzero to |val| to
- * disable this enforcement.
+ * disable this enforcement.  Please note that disabling this feature
+ * does not change the fundamental client and server model of HTTP.
+ * That is, even if the validation is disabled, only client can send
+ * requests.
  */
 NGHTTP2_EXTERN void nghttp2_option_set_no_http_messaging(nghttp2_option *option,
                                                          int val);
@@ -2545,6 +2621,16 @@ nghttp2_option_set_max_send_header_block_length(nghttp2_option *option,
 NGHTTP2_EXTERN void
 nghttp2_option_set_max_deflate_dynamic_table_size(nghttp2_option *option,
                                                   size_t val);
+
+/**
+ * @function
+ *
+ * This option prevents the library from retaining closed streams to
+ * maintain the priority tree.  If this option is set to nonzero,
+ * applications can discard closed stream completely to save memory.
+ */
+NGHTTP2_EXTERN void nghttp2_option_set_no_closed_streams(nghttp2_option *option,
+                                                         int val);
 
 /**
  * @function
@@ -3566,7 +3652,7 @@ NGHTTP2_EXTERN int nghttp2_session_upgrade2(nghttp2_session *session,
  * Serializes the SETTINGS values |iv| in the |buf|.  The size of the
  * |buf| is specified by |buflen|.  The number of entries in the |iv|
  * array is given by |niv|.  The required space in |buf| for the |niv|
- * entries is ``8*niv`` bytes and if the given buffer is too small, an
+ * entries is ``6*niv`` bytes and if the given buffer is too small, an
  * error is returned.  This function is used mainly for creating a
  * SETTINGS payload to be sent with the ``HTTP2-Settings`` header
  * field in an HTTP Upgrade request.  The data written in |buf| is NOT
@@ -3787,9 +3873,8 @@ nghttp2_submit_response(nghttp2_session *session, int32_t stream_id,
  * Submits trailer fields HEADERS against the stream |stream_id|.
  *
  * The |nva| is an array of name/value pair :type:`nghttp2_nv` with
- * |nvlen| elements.  The application is responsible not to include
- * pseudo-header fields (header field whose name starts with ":") in
- * |nva|.
+ * |nvlen| elements.  The application must not include pseudo-header
+ * fields (headers whose names starts with ":") in |nva|.
  *
  * This function creates copies of all name/value pairs in |nva|.  It
  * also lower-cases all names in |nva|.  The order of elements in
@@ -4672,8 +4757,8 @@ nghttp2_hd_deflate_change_table_size(nghttp2_hd_deflater *deflater,
  *
  * After this function returns, it is safe to delete the |nva|.
  *
- * This function returns 0 if it succeeds, or one of the following
- * negative error codes:
+ * This function returns the number of bytes written to |buf| if it
+ * succeeds, or one of the following negative error codes:
  *
  * :enum:`NGHTTP2_ERR_NOMEM`
  *     Out of memory.
@@ -4704,8 +4789,8 @@ NGHTTP2_EXTERN ssize_t nghttp2_hd_deflate_hd(nghttp2_hd_deflater *deflater,
  *
  * After this function returns, it is safe to delete the |nva|.
  *
- * This function returns 0 if it succeeds, or one of the following
- * negative error codes:
+ * This function returns the number of bytes written to |vec| if it
+ * succeeds, or one of the following negative error codes:
  *
  * :enum:`NGHTTP2_ERR_NOMEM`
  *     Out of memory.

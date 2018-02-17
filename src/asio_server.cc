@@ -124,6 +124,11 @@ boost::system::error_code server::bind_and_listen(boost::system::error_code &ec,
 
 void server::start_accept(boost::asio::ssl::context &tls_context,
                           tcp::acceptor &acceptor, serve_mux &mux) {
+
+  if (!acceptor.is_open()) {
+    return;
+  }
+
   auto new_connection = std::make_shared<connection<ssl_socket>>(
       mux, tls_handshake_timeout_, read_timeout_,
       io_service_pool_.get_io_service(), tls_context);
@@ -158,6 +163,11 @@ void server::start_accept(boost::asio::ssl::context &tls_context,
 }
 
 void server::start_accept(tcp::acceptor &acceptor, serve_mux &mux) {
+
+  if (!acceptor.is_open()) {
+    return;
+  }
+
   auto new_connection = std::make_shared<connection<tcp::socket>>(
       mux, tls_handshake_timeout_, read_timeout_,
       io_service_pool_.get_io_service());
@@ -170,16 +180,17 @@ void server::start_accept(tcp::acceptor &acceptor, serve_mux &mux) {
           new_connection->start_read_deadline();
           new_connection->start();
         }
-
-        start_accept(acceptor, mux);
+        if (acceptor.is_open()) {
+          start_accept(acceptor, mux);
+        }
       });
 }
 
 void server::stop() {
-  io_service_pool_.stop();
   for (auto &acceptor : acceptors_) {
     acceptor.close();
   }
+  io_service_pool_.stop();
 }
 
 void server::join() { io_service_pool_.join(); }

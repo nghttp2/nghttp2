@@ -62,11 +62,11 @@ ASIOCPPFLAGS = ${AM_CPPFLAGS} ${BOOST_CPPFLAGS}
 ASIOLDADD = $(top_builddir)/lib/libnghttp2.la \
 	$(top_builddir)/src/libnghttp2_asio.la @JEMALLOC_LIBS@ \
 	$(top_builddir)/third-party/libhttp-parser.la \
+	@OPENSSL_LIBS@ \
 	${BOOST_LDFLAGS} \
 	${BOOST_ASIO_LIB} \
 	${BOOST_THREAD_LIB} \
 	${BOOST_SYSTEM_LIB} \
-	@OPENSSL_LIBS@ \
 	@APPLDFLAGS@
 
 asio_sv_SOURCES = asio-sv.cc

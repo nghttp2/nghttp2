@@ -32,12 +32,14 @@
 #include <string>
 #include <memory>
 #include <chrono>
+#include <algorithm>
 
 #include <ev.h>
 
 #include <nghttp2/nghttp2.h>
 
 #include "shrpx_io_control.h"
+#include "shrpx_log_config.h"
 #include "http2.h"
 #include "memchunk.h"
 #include "allocator.h"
@@ -206,7 +208,40 @@ struct Response {
     unconsumed_body_length -= len;
   }
 
+  // returns true if a resource denoted by scheme, authority, and path
+  // has already been pushed.
+  bool is_resource_pushed(const StringRef &scheme, const StringRef &authority,
+                          const StringRef &path) const {
+    if (!pushed_resources) {
+      return false;
+    }
+    return std::find(std::begin(*pushed_resources), std::end(*pushed_resources),
+                     std::make_tuple(scheme, authority, path)) !=
+           std::end(*pushed_resources);
+  }
+
+  // remember that a resource denoted by scheme, authority, and path
+  // is pushed.
+  void resource_pushed(const StringRef &scheme, const StringRef &authority,
+                       const StringRef &path) {
+    if (!pushed_resources) {
+      pushed_resources = make_unique<
+          std::vector<std::tuple<StringRef, StringRef, StringRef>>>();
+    }
+    pushed_resources->emplace_back(scheme, authority, path);
+  }
+
   FieldStore fs;
+  // array of the tuple of scheme, authority, and path of pushed
+  // resource.  This is required because RFC 8297 says that server
+  // typically includes header fields appeared in non-final response
+  // header fields in final response header fields.  Without checking
+  // that a particular resource has already been pushed, or not, we
+  // end up pushing the same resource at least twice.  It is unknown
+  // that we should use more complex data structure (e.g., std::set)
+  // to find the resources faster.
+  std::unique_ptr<std::vector<std::tuple<StringRef, StringRef, StringRef>>>
+      pushed_resources;
   // the length of response body received so far
   int64_t recv_body_length;
   // The number of bytes not consumed by the application yet.  This is
@@ -251,7 +286,7 @@ public:
   // Returns true if upgrade (HTTP Upgrade or CONNECT) is succeeded.
   // This should not depend on inspect_http1_response().
   void check_upgrade_fulfilled();
-  // Returns true if the upgrade is succeded as a result of the call
+  // Returns true if the upgrade is succeeded as a result of the call
   // check_upgrade_fulfilled().  HTTP/2 Upgrade is excluded.
   bool get_upgraded() const;
   // Inspects HTTP/2 request.
@@ -347,6 +382,9 @@ public:
   // True if the response is non-final (1xx status code).  Note that
   // if connection was upgraded, 101 status code is treated as final.
   bool get_non_final_response() const;
+  // True if protocol version used by client supports non final
+  // response.  Only HTTP/1.1 and HTTP/2 clients support it.
+  bool supports_non_final_response() const;
   void set_expect_final_response(bool f);
   bool get_expect_final_response() const;
 
@@ -408,6 +446,18 @@ public:
 
   void set_accesslog_written(bool f);
 
+  // Finds affinity cookie from request header fields.  The name of
+  // cookie is given in |name|.  If an affinity cookie is found, it is
+  // assigned to a member function, and is returned.  If it is not
+  // found, or is malformed, returns 0.
+  uint32_t find_affinity_cookie(const StringRef &name);
+  // Set |h| as affinity cookie.
+  void renew_affinity_cookie(uint32_t h);
+  // Returns affinity cookie to send.  If it does not need to be sent,
+  // for example, because the value is retrieved from a request header
+  // field, returns 0.
+  uint32_t get_affinity_cookie_to_send() const;
+
   enum {
     EVENT_ERROR = 0x1,
     EVENT_TIMEOUT = 0x2,
@@ -453,7 +503,7 @@ private:
   Upstream *upstream_;
   std::unique_ptr<DownstreamConnection> dconn_;
 
-  // only used by HTTP/2 or SPDY upstream
+  // only used by HTTP/2 upstream
   BlockedLink *blocked_link_;
   // The backend address used to fulfill this request.  These are for
   // logging purpose.
@@ -470,11 +520,13 @@ private:
   int32_t downstream_stream_id_;
   // RST_STREAM error_code from downstream HTTP2 connection
   uint32_t response_rst_stream_error_code_;
+  // An affinity cookie value.
+  uint32_t affinity_cookie_;
   // request state
   int request_state_;
   // response state
   int response_state_;
-  // only used by HTTP/2 or SPDY upstream
+  // only used by HTTP/2 upstream
   int dispatch_state_;
   // true if the connection is upgraded (HTTP Upgrade or CONNECT),
   // excluding upgrade to HTTP/2.
@@ -493,6 +545,8 @@ private:
   bool request_header_sent_;
   // true if access.log has been written.
   bool accesslog_written_;
+  // true if affinity cookie is generated for this request.
+  bool new_affinity_cookie_;
 };
 
 } // namespace shrpx

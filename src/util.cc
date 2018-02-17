@@ -41,7 +41,12 @@
 #ifdef HAVE_NETINET_IN_H
 #include <netinet/in.h>
 #endif // HAVE_NETINET_IN_H
+#ifdef _WIN32
+#include <ws2tcpip.h>
+#include <boost/date_time/posix_time/posix_time.hpp>
+#else // !_WIN32
 #include <netinet/tcp.h>
+#endif // !_WIN32
 #ifdef HAVE_ARPA_INET_H
 #include <arpa/inet.h>
 #endif // HAVE_ARPA_INET_H
@@ -64,6 +69,26 @@
 namespace nghttp2 {
 
 namespace util {
+
+#ifdef _WIN32
+// inet_pton-wrapper for Windows
+static int inet_pton(int af, const char *src, void *dst) {
+#if _WIN32_WINNT >= 0x0600
+  return InetPtonA(af, src, dst);
+#else
+  // the function takes a 'char*', so we need to make a copy
+  char addr[INET6_ADDRSTRLEN + 1];
+  strncpy(addr, src, sizeof(addr));
+  addr[sizeof(addr) - 1] = 0;
+
+  int size = sizeof(struct in6_addr);
+
+  if (WSAStringToAddress(addr, af, NULL, (LPSOCKADDR)dst, &size) == 0)
+    return 1;
+  return 0;
+#endif
+}
+#endif // _WIN32
 
 const char UPPER_XDIGITS[] = "0123456789ABCDEF";
 
@@ -164,7 +189,7 @@ uint32_t hex_to_uint(char c) {
   if (c <= 'z') {
     return c - 'a' + 10;
   }
-  return c;
+  return 256;
 }
 
 StringRef quote_string(BlockAllocator &balloc, const StringRef &target) {
@@ -352,10 +377,40 @@ char *iso8601_date(char *res, int64_t ms) {
   return p;
 }
 
+#ifdef _WIN32
+namespace bt = boost::posix_time;
+// one-time definition of the locale that is used to parse UTC strings
+// (note that the time_input_facet is ref-counted and deleted automatically)
+static const std::locale
+    ptime_locale(std::locale::classic(),
+                 new bt::time_input_facet("%a, %d %b %Y %H:%M:%S GMT"));
+#endif //_WIN32
+
 time_t parse_http_date(const StringRef &s) {
+#ifdef _WIN32
+  // there is no strptime - use boost
+  std::stringstream sstr(s.str());
+  sstr.imbue(ptime_locale);
+  bt::ptime ltime;
+  sstr >> ltime;
+  if (!sstr)
+    return 0;
+
+  return boost::posix_time::to_time_t(ltime);
+#else  // !_WIN32
   tm tm{};
   char *r = strptime(s.c_str(), "%a, %d %b %Y %H:%M:%S GMT", &tm);
   if (r == 0) {
+    return 0;
+  }
+  return nghttp2_timegm_without_yday(&tm);
+#endif // !_WIN32
+}
+
+time_t parse_openssl_asn1_time_print(const StringRef &s) {
+  tm tm{};
+  auto r = strptime(s.c_str(), "%b %d %H:%M:%S %Y GMT", &tm);
+  if (r == nullptr) {
     return 0;
   }
   return nghttp2_timegm_without_yday(&tm);
@@ -368,10 +423,6 @@ char upcase(char c) {
     return c;
   }
 }
-
-namespace {
-constexpr char LOWER_XDIGITS[] = "0123456789abcdef";
-} // namespace
 
 std::string format_hex(const unsigned char *s, size_t len) {
   std::string res;
@@ -628,9 +679,11 @@ std::string numeric_name(const struct sockaddr *sa, socklen_t salen) {
 
 std::string to_numeric_addr(const Address *addr) {
   auto family = addr->su.storage.ss_family;
+#ifndef _WIN32
   if (family == AF_UNIX) {
     return addr->su.un.sun_path;
   }
+#endif // !_WIN32
 
   std::array<char, NI_MAXHOST> host;
   std::array<char, NI_MAXSERV> serv;
@@ -818,6 +871,10 @@ std::vector<std::string> parse_config_str_list(const StringRef &s, char delim) {
 }
 
 int make_socket_closeonexec(int fd) {
+#ifdef _WIN32
+  (void)fd;
+  return 0;
+#else  // !_WIN32
   int flags;
   int rv;
   while ((flags = fcntl(fd, F_GETFD)) == -1 && errno == EINTR)
@@ -825,15 +882,24 @@ int make_socket_closeonexec(int fd) {
   while ((rv = fcntl(fd, F_SETFD, flags | FD_CLOEXEC)) == -1 && errno == EINTR)
     ;
   return rv;
+#endif // !_WIN32
 }
 
 int make_socket_nonblocking(int fd) {
-  int flags;
   int rv;
+
+#ifdef _WIN32
+  u_long mode = 1;
+
+  rv = ioctlsocket(fd, FIONBIO, &mode);
+#else  // !_WIN32
+  int flags;
   while ((flags = fcntl(fd, F_GETFL, 0)) == -1 && errno == EINTR)
     ;
   while ((rv = fcntl(fd, F_SETFL, flags | O_NONBLOCK)) == -1 && errno == EINTR)
     ;
+#endif // !_WIN32
+
   return rv;
 }
 
@@ -874,7 +940,7 @@ int create_nonblock_socket(int family) {
 bool check_socket_connected(int fd) {
   int error;
   socklen_t len = sizeof(error);
-  if (getsockopt(fd, SOL_SOCKET, SO_ERROR, &error, &len) != 0) {
+  if (getsockopt(fd, SOL_SOCKET, SO_ERROR, (char *)&error, &len) != 0) {
     return false;
   }
 
@@ -884,7 +950,7 @@ bool check_socket_connected(int fd) {
 int get_socket_error(int fd) {
   int error;
   socklen_t len = sizeof(error);
-  if (getsockopt(fd, SOL_SOCKET, SO_ERROR, &error, &len) != 0) {
+  if (getsockopt(fd, SOL_SOCKET, SO_ERROR, (char *)&error, &len) != 0) {
     return -1;
   }
 
@@ -1103,8 +1169,9 @@ std::string format_duration(double t) {
 }
 
 std::string dtos(double n) {
-  auto f = utos(static_cast<int64_t>(round(100. * n)) % 100);
-  return utos(static_cast<int64_t>(n)) + "." + (f.size() == 1 ? "0" : "") + f;
+  auto m = llround(100. * n);
+  auto f = utos(m % 100);
+  return utos(m / 100) + "." + (f.size() == 1 ? "0" : "") + f;
 }
 
 StringRef make_http_hostport(BlockAllocator &balloc, const StringRef &host,
@@ -1430,6 +1497,31 @@ StringRef decode_hex(BlockAllocator &balloc, const StringRef &s) {
   }
   *p = '\0';
   return StringRef{iov.base, p};
+}
+
+StringRef extract_host(const StringRef &hostport) {
+  if (hostport[0] == '[') {
+    // assume this is IPv6 numeric address
+    auto p = std::find(std::begin(hostport), std::end(hostport), ']');
+    if (p == std::end(hostport)) {
+      return StringRef{};
+    }
+    if (p + 1 < std::end(hostport) && *(p + 1) != ':') {
+      return StringRef{};
+    }
+    return StringRef{std::begin(hostport), p + 1};
+  }
+
+  auto p = std::find(std::begin(hostport), std::end(hostport), ':');
+  if (p == std::begin(hostport)) {
+    return StringRef{};
+  }
+  return StringRef{std::begin(hostport), p};
+}
+
+std::mt19937 make_mt19937() {
+  std::random_device rd;
+  return std::mt19937(rd());
 }
 
 } // namespace util

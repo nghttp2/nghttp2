@@ -31,6 +31,7 @@
 #include "shrpx_config.h"
 #include "shrpx_mruby_module.h"
 #include "shrpx_downstream_connection.h"
+#include "shrpx_log.h"
 
 namespace shrpx {
 

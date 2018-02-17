@@ -34,6 +34,7 @@
 #include "shrpx_client_handler.h"
 #include "shrpx_mruby.h"
 #include "shrpx_mruby_module.h"
+#include "shrpx_log.h"
 #include "util.h"
 #include "http2.h"
 
@@ -245,8 +246,9 @@ mrb_value request_mod_header(mrb_state *mrb, mrb_value self, bool repl) {
         continue;
       }
       if (i != p) {
-        headers[p++] = std::move(kv);
+        headers[p] = std::move(kv);
       }
+      ++p;
     }
     headers.resize(p);
   }

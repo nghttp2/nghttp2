@@ -31,8 +31,11 @@
 
 #include <nghttp2/nghttp2.h>
 
+#include "shrpx_config.h"
 #include "util.h"
 #include "allocator.h"
+
+using namespace nghttp2;
 
 namespace shrpx {
 
@@ -63,6 +66,18 @@ std::string colorizeHeaders(const char *hdrs);
 ssize_t select_padding_callback(nghttp2_session *session,
                                 const nghttp2_frame *frame, size_t max_payload,
                                 void *user_data);
+
+// Creates set-cookie-string for cookie based affinity.  If |path| is
+// not empty, "; <path>" is added.  If |secure| is true, "; Secure" is
+// added.
+StringRef create_affinity_cookie(BlockAllocator &balloc, const StringRef &name,
+                                 uint32_t affinity_cookie,
+                                 const StringRef &path, bool secure);
+
+// Returns true if |secure| indicates that Secure attribute should be
+// set.
+bool require_cookie_secure_attribute(shrpx_cookie_secure secure,
+                                     const StringRef &scheme);
 
 } // namespace http
 

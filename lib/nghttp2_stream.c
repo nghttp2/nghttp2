@@ -366,8 +366,9 @@ static void check_queued(nghttp2_stream *stream) {
         }
       }
       if (queued == 0) {
-        fprintf(stderr, "stream(%p)=%d, stream->queued == 1, and "
-                        "!stream_active(), but no descendants is queued\n",
+        fprintf(stderr,
+                "stream(%p)=%d, stream->queued == 1, and "
+                "!stream_active(), but no descendants is queued\n",
                 stream, stream->stream_id);
         assert(0);
       }
@@ -378,9 +379,10 @@ static void check_queued(nghttp2_stream *stream) {
     }
   } else {
     if (stream_active(stream) || !nghttp2_pq_empty(&stream->obq)) {
-      fprintf(stderr, "stream(%p) = %d, stream->queued == 0, but "
-                      "stream_active(stream) == %d and "
-                      "nghttp2_pq_size(&stream->obq) = %zu\n",
+      fprintf(stderr,
+              "stream(%p) = %d, stream->queued == 0, but "
+              "stream_active(stream) == %d and "
+              "nghttp2_pq_size(&stream->obq) = %zu\n",
               stream, stream->stream_id, stream_active(stream),
               nghttp2_pq_size(&stream->obq));
       assert(0);
@@ -449,8 +451,8 @@ static void validate_tree(nghttp2_stream *stream) {
   check_sum_dep(stream);
   check_dep_prev(stream);
 }
-#else /* !STREAM_DEP_DEBUG */
-static void validate_tree(nghttp2_stream *stream _U_) {}
+#else  /* !STREAM_DEP_DEBUG */
+static void validate_tree(nghttp2_stream *stream) { (void)stream; }
 #endif /* !STREAM_DEP_DEBUG*/
 
 static int stream_update_dep_on_attach_item(nghttp2_stream *stream) {

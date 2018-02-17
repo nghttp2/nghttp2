@@ -25,7 +25,7 @@ dnl Do not change user variables!
 dnl http://www.gnu.org/software/automake/manual/html_node/Flag-Variables-Ordering.html
 
 AC_PREREQ(2.61)
-AC_INIT([nghttp2], [1.20.0-DEV], [t-tujikawa@users.sourceforge.net])
+AC_INIT([nghttp2], [1.31.0-DEV], [t-tujikawa@users.sourceforge.net])
 AC_CONFIG_AUX_DIR([.])
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_HEADERS([config.h])
@@ -44,9 +44,9 @@ m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 
 dnl See versioning rule:
 dnl  http://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
-AC_SUBST(LT_CURRENT, 26)
-AC_SUBST(LT_REVISION, 4)
-AC_SUBST(LT_AGE, 12)
+AC_SUBST(LT_CURRENT, 29)
+AC_SUBST(LT_REVISION, 2)
+AC_SUBST(LT_AGE, 15)
 
 major=`echo $PACKAGE_VERSION |cut -d. -f1 | sed -e "s/[^0-9]//g"`
 minor=`echo $PACKAGE_VERSION |cut -d. -f2 | sed -e "s/[^0-9]//g"`
@@ -117,10 +117,10 @@ AC_ARG_WITH([jemalloc],
                     [Use jemalloc [default=check]])],
     [request_jemalloc=$withval], [request_jemalloc=check])
 
-AC_ARG_WITH([spdylay],
-    [AS_HELP_STRING([--with-spdylay],
-                    [Use spdylay [default=check]])],
-    [request_spdylay=$withval], [request_spdylay=check])
+AC_ARG_WITH([systemd],
+    [AS_HELP_STRING([--with-systemd],
+                    [Enable systemd support in nghttpx [default=check]])],
+    [request_systemd=$withval], [request_systemd=check])
 
 AC_ARG_WITH([mruby],
     [AS_HELP_STRING([--with-mruby],
@@ -171,19 +171,9 @@ else
   AC_SUBST([CYTHON])
 fi
 
-#
-# If we're running GCC or clang define _U_ to be "__attribute__((unused))"
-# so we can use _U_ to flag unused function parameters and not get warnings
-# about them. Otherwise, define _U_ to be an empty string so that _U_ used
-# to flag an unused function parameters will compile with other compilers.
-#
-# XXX - similar hints for other compilers?
-#
 if test "x$GCC" = "xyes" -o "x$CC" = "xclang" ; then
-  AC_DEFINE([_U_], [__attribute__((unused))], [Hint to the compiler that a function parameters is not used])
   AC_DEFINE([NGHTTP2_NORETURN], [__attribute__((noreturn))], [Hint to the compiler that a function never return])
 else
-  AC_DEFINE([_U_], , [Hint to the compiler that a function parameter is not used])
   AC_DEFINE([NGHTTP2_NORETURN], , [Hint to the compiler that a function never return])
 fi
 
@@ -395,8 +385,27 @@ else
   AC_MSG_NOTICE($JANSSON_PKG_ERRORS)
 fi
 
+
+#  libsystemd (for src/nghttpx)
+have_libsystemd=no
+if test "x${request_systemd}" != "xno"; then
+  PKG_CHECK_MODULES([SYSTEMD], [libsystemd >= 209], [have_libsystemd=yes],
+                    [have_libsystemd=no])
+  if test "x${have_libsystemd}" = "xyes"; then
+    AC_DEFINE([HAVE_LIBSYSTEMD], [1],
+              [Define to 1 if you have `libsystemd` library.])
+  else
+    AC_MSG_NOTICE($SYSTEMD_PKG_ERRORS)
+  fi
+fi
+
+if test "x${request_systemd}" = "xyes" &&
+   test "x${have_libsystemd}" != "xyes"; then
+  AC_MSG_ERROR([systemd was requested (--with-systemd) but not found])
+fi
+
 # libxml2 (for src/nghttp)
-PKG_CHECK_MODULES([LIBXML2], [libxml-2.0 >= 2.7.7],
+PKG_CHECK_MODULES([LIBXML2], [libxml-2.0 >= 2.6.26],
                   [have_libxml2=yes], [have_libxml2=no])
 if test "x${have_libxml2}" = "xyes"; then
   AC_DEFINE([HAVE_LIBXML2], [1], [Define to 1 if you have `libxml2` library.])
@@ -443,26 +452,6 @@ if test "x${request_jemalloc}" = "xyes" &&
    test "x${have_jemalloc}" != "xyes"; then
   AC_MSG_ERROR([jemalloc was requested (--with-jemalloc) but not found])
 fi
-
-# spdylay (for src/nghttpx and src/h2load)
-have_spdylay=no
-if test "x${request_spdylay}" != "xno"; then
-  PKG_CHECK_MODULES([LIBSPDYLAY], [libspdylay >= 1.3.2],
-                    [have_spdylay=yes], [have_spdylay=no])
-  if test "x${have_spdylay}" = "xyes"; then
-    AC_DEFINE([HAVE_SPDYLAY], [1], [Define to 1 if you have `spdylay` library.])
-  else
-    AC_MSG_NOTICE($LIBSPDYLAY_PKG_ERRORS)
-    AC_MSG_NOTICE([The SPDY support in nghttpx and h2load will be disabled.])
-  fi
-fi
-
-if test "x${request_spdylay}" = "xyes" &&
-   test "x${have_spdylay}" != "xyes"; then
-  AC_MSG_ERROR([spdylay was requested (--with-spdylay) but not found])
-fi
-
-AM_CONDITIONAL([HAVE_SPDYLAY], [ test "x${have_spdylay}" = "xyes" ])
 
 # Check Boost Asio library
 have_asio_lib=no
@@ -699,6 +688,7 @@ AC_CHECK_FUNCS([ \
   memchr \
   memmove \
   memset \
+  mkostemp \
   socket \
   sqrt \
   strchr \
@@ -790,6 +780,9 @@ if test "x$werror" != "xno"; then
     AX_CHECK_COMPILE_FLAG([-Werror], [CXXFLAGS="$CXXFLAGS -Werror"])
     AX_CHECK_COMPILE_FLAG([-Wformat-security], [CXXFLAGS="$CXXFLAGS -Wformat-security"])
     AX_CHECK_COMPILE_FLAG([-Wsometimes-uninitialized], [CXXFLAGS="$CXXFLAGS -Wsometimes-uninitialized"])
+    # Disable noexcept-type warning of g++-7.  This is not harmful as
+    # long as all source files are compiled with the same compiler.
+    AX_CHECK_COMPILE_FLAG([-Wno-noexcept-type], [CXXFLAGS="$CXXFLAGS -Wno-noexcept-type"])
     AC_LANG_POP()
 fi
 
@@ -910,10 +903,10 @@ AC_MSG_NOTICE([summary of build options:
       Libev:          ${have_libev} (CFLAGS='${LIBEV_CFLAGS}' LIBS='${LIBEV_LIBS}')
       Libc-ares       ${have_libcares} (CFLAGS='${LIBCARES_CFLAGS}' LIBS='${LIBCARES_LIBS}')
       Libevent(SSL):  ${have_libevent_openssl} (CFLAGS='${LIBEVENT_OPENSSL_CFLAGS}' LIBS='${LIBEVENT_OPENSSL_LIBS}')
-      Spdylay:        ${have_spdylay} (CFLAGS='${LIBSPDYLAY_CFLAGS}' LIBS='${LIBSPDYLAY_LIBS}')
       Jansson:        ${have_jansson} (CFLAGS='${JANSSON_CFLAGS}' LIBS='${JANSSON_LIBS}')
       Jemalloc:       ${have_jemalloc} (LIBS='${JEMALLOC_LIBS}')
       Zlib:           ${have_zlib} (CFLAGS='${ZLIB_CFLAGS}' LIBS='${ZLIB_LIBS}')
+      Systemd:        ${have_libsystemd} (CFLAGS='${SYSTEMD_CFLAGS}' LIBS='${SYSTEMD_LIBS}')
       Boost CPPFLAGS: ${BOOST_CPPFLAGS}
       Boost LDFLAGS:  ${BOOST_LDFLAGS}
       Boost::ASIO:    ${BOOST_ASIO_LIB}

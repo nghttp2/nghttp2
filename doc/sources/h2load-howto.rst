@@ -3,16 +3,14 @@
 h2load - HTTP/2 benchmarking tool - HOW-TO
 ==========================================
 
-:doc:`h2load.1` is benchmarking tool for HTTP/2 and HTTP/1.1.  If
-built with spdylay (http://tatsuhiro-t.github.io/spdylay/) library, it
-also supports SPDY protocol.  It supports SSL/TLS and clear text for
-all supported protocols.
+:doc:`h2load.1` is benchmarking tool for HTTP/2 and HTTP/1.1.  It
+supports SSL/TLS and clear text for all supported protocols.
 
 Compiling from source
 ---------------------
 
 h2load is compiled alongside nghttp2 and requires that the
-``--enable-apps`` flag is passed to ``./configure`` and `required
+``--enable-app`` flag is passed to ``./configure`` and `required
 dependencies <https://github.com/nghttp2/nghttp2#requirements>`_ are
 available during compilation. For details on compiling, see `nghttp2:
 Building from Git
@@ -64,23 +62,40 @@ The benchmarking result looks like this:
 See the h2load manual page :ref:`h2load-1-output` section for the
 explanation of the above numbers.
 
+Timing-based load-testing
+-------------------------
+
+As of v1.26.0, h2load supports timing-based load-testing.  This method
+performs load-testing in terms of a given duration instead of a
+pre-defined number of requests. The new option :option:`--duration`
+specifies how long the load-testing takes. For example,
+``--duration=10`` makes h2load perform load-testing against a server
+for 10 seconds. You can also specify a “warming-up” period with
+:option:`--warm-up-time`. If :option:`--duration` is used,
+:option:`-n` option is ignored.
+
+The following command performs load-testing for 10 seconds after 5
+seconds warming up period:
+
+.. code-block:: text
+
+    $ h2load -c100 -m100 --duration=10 --warm-up-time=5 https://localhost
+
 Flow Control
 ------------
 
-HTTP/2 and SPDY/3 or later employ flow control and it may affect
-benchmarking results.  By default, h2load uses large enough flow
-control window, which effectively disables flow control.  To adjust
-receiver flow control window size, there are following options:
+HTTP/2 has flow control and it may affect benchmarking results.  By
+default, h2load uses large enough flow control window, which
+effectively disables flow control.  To adjust receiver flow control
+window size, there are following options:
 
 :option:`-w`
    Sets  the stream  level  initial  window size  to
-   (2**<N>)-1.  For SPDY, 2**<N> is used instead.
+   (2**<N>)-1.
 
 :option:`-W`
    Sets the connection level  initial window size to
-   (2**<N>)-1.  For  SPDY, if  <N> is  strictly less
-   than  16,  this  option  is  ignored.   Otherwise
-   2**<N> is used for SPDY.
+   (2**<N>)-1.
 
 Multi-Threading
 ---------------

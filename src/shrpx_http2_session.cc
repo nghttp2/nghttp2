@@ -39,22 +39,23 @@
 #include "shrpx_error.h"
 #include "shrpx_http2_downstream_connection.h"
 #include "shrpx_client_handler.h"
-#include "shrpx_ssl.h"
+#include "shrpx_tls.h"
 #include "shrpx_http.h"
 #include "shrpx_worker.h"
 #include "shrpx_connect_blocker.h"
+#include "shrpx_log.h"
 #include "http2.h"
 #include "util.h"
 #include "base64.h"
-#include "ssl.h"
+#include "tls.h"
 
 using namespace nghttp2;
 
 namespace shrpx {
 
 namespace {
-const ev_tstamp CONNCHK_TIMEOUT = 5.;
-const ev_tstamp CONNCHK_PING_TIMEOUT = 1.;
+constexpr ev_tstamp CONNCHK_TIMEOUT = 5.;
+constexpr ev_tstamp CONNCHK_PING_TIMEOUT = 1.;
 } // namespace
 
 namespace {
@@ -137,13 +138,6 @@ void readcb(struct ev_loop *loop, ev_io *w, int revents) {
     return;
   }
   http2session->connection_alive();
-
-  rv = http2session->do_write();
-  if (rv != 0) {
-    delete http2session;
-
-    return;
-  }
 }
 } // namespace
 
@@ -276,8 +270,8 @@ int Http2Session::disconnect(bool hard) {
   // When deleting Http2DownstreamConnection, it calls this object's
   // remove_downstream_connection().  The multiple
   // Http2DownstreamConnection objects belong to the same
-  // ClientHandler object if upstream is h2 or SPDY.  So be careful
-  // when you delete ClientHandler here.
+  // ClientHandler object if upstream is h2.  So be careful when you
+  // delete ClientHandler here.
   //
   // We allow creating new pending Http2DownstreamConnection with this
   // object.  Upstream::on_downstream_reset() may add
@@ -340,6 +334,7 @@ int Http2Session::resolve_name() {
     return 0;
   default:
     assert(0);
+    abort();
   }
 }
 
@@ -428,14 +423,15 @@ int Http2Session::initiate_connection() {
       assert(ssl_ctx_);
 
       if (state_ != RESOLVING_NAME) {
-        auto ssl = ssl::create_ssl(ssl_ctx_);
+        auto ssl = tls::create_ssl(ssl_ctx_);
         if (!ssl) {
           return -1;
         }
 
-        ssl::setup_downstream_http2_alpn(ssl);
+        tls::setup_downstream_http2_alpn(ssl);
 
         conn_.set_ssl(ssl);
+        conn_.tls.client_session_cache = &addr_->tls_session_cache;
 
         auto sni_name =
             addr_->sni.empty() ? StringRef{addr_->host} : StringRef{addr_->sni};
@@ -447,7 +443,7 @@ int Http2Session::initiate_connection() {
           SSL_set_tlsext_host_name(conn_.tls.ssl, sni_name.c_str());
         }
 
-        auto tls_session = ssl::reuse_tls_session(addr_->tls_session_cache);
+        auto tls_session = tls::reuse_tls_session(addr_->tls_session_cache);
         if (tls_session) {
           SSL_set_session(conn_.tls.ssl, tls_session);
           SSL_SESSION_free(tls_session);
@@ -581,11 +577,11 @@ int Http2Session::initiate_connection() {
       }
     }
 
-    on_write_ = &Http2Session::downstream_write;
-    on_read_ = &Http2Session::downstream_read;
-
     // We have been already connected when no TLS and proxy is used.
     if (state_ == PROXY_CONNECTED) {
+      on_read_ = &Http2Session::read_noop;
+      on_write_ = &Http2Session::write_noop;
+
       return connected();
     }
 
@@ -601,7 +597,8 @@ int Http2Session::initiate_connection() {
   }
 
   // Unreachable
-  DIE();
+  assert(0);
+
   return 0;
 }
 
@@ -820,9 +817,9 @@ int on_stream_close_callback(nghttp2_session *session, int32_t stream_id,
                              uint32_t error_code, void *user_data) {
   auto http2session = static_cast<Http2Session *>(user_data);
   if (LOG_ENABLED(INFO)) {
-    SSLOG(INFO, http2session) << "Stream stream_id=" << stream_id
-                              << " is being closed with error code "
-                              << error_code;
+    SSLOG(INFO, http2session)
+        << "Stream stream_id=" << stream_id
+        << " is being closed with error code " << error_code;
   }
   auto sd = static_cast<StreamData *>(
       nghttp2_session_get_stream_user_data(session, stream_id));
@@ -1148,7 +1145,7 @@ int on_response_headers(Http2Session *http2session, Downstream *downstream,
 
   if (downstream->get_upgraded()) {
     resp.connection_close = true;
-    // On upgrade sucess, both ends can send data
+    // On upgrade success, both ends can send data
     if (upstream->resume_read(SHRPX_NO_BUFFER, downstream, 0) != 0) {
       // If resume_read fails, just drop connection. Not ideal.
       delete handler;
@@ -1156,8 +1153,8 @@ int on_response_headers(Http2Session *http2session, Downstream *downstream,
     }
     downstream->set_request_state(Downstream::HEADER_COMPLETE);
     if (LOG_ENABLED(INFO)) {
-      SSLOG(INFO, http2session) << "HTTP upgrade success. stream_id="
-                                << frame->hd.stream_id;
+      SSLOG(INFO, http2session)
+          << "HTTP upgrade success. stream_id=" << frame->hd.stream_id;
     }
   } else {
     auto content_length = resp.fs.header(http2::HD_CONTENT_LENGTH);
@@ -1523,7 +1520,7 @@ int on_frame_not_send_callback(nghttp2_session *session,
 
     if (upstream->on_downstream_reset(downstream, false)) {
       // This should be done for h1 upstream only.  Deleting
-      // ClientHandler for h2 or SPDY upstream may lead to crash.
+      // ClientHandler for h2 upstream may lead to crash.
       delete upstream->get_client_handler();
     }
 
@@ -1571,7 +1568,11 @@ int send_data_callback(nghttp2_session *session, nghttp2_frame *frame,
 
   wb->append(PADDING.data(), padlen);
 
-  downstream->reset_downstream_wtimer();
+  if (input->rleft() == 0) {
+    downstream->disable_downstream_wtimer();
+  } else {
+    downstream->reset_downstream_wtimer();
+  }
 
   if (length > 0) {
     // This is important because it will handle flow control
@@ -1640,6 +1641,9 @@ int Http2Session::connection_made() {
   int rv;
 
   state_ = Http2Session::CONNECTED;
+
+  on_write_ = &Http2Session::downstream_write;
+  on_read_ = &Http2Session::downstream_read;
 
   if (addr_->tls) {
     const unsigned char *next_proto = nullptr;
@@ -1988,7 +1992,7 @@ int Http2Session::read_clear() {
     auto nread = conn_.read_clear(buf.data(), buf.size());
 
     if (nread == 0) {
-      return 0;
+      return write_clear();
     }
 
     if (nread < 0) {
@@ -2064,18 +2068,10 @@ int Http2Session::tls_handshake() {
   }
 
   if (!get_config()->tls.insecure &&
-      ssl::check_cert(conn_.tls.ssl, addr_, raddr_) != 0) {
+      tls::check_cert(conn_.tls.ssl, addr_, raddr_) != 0) {
     downstream_failure(addr_, raddr_);
 
     return -1;
-  }
-
-  if (!SSL_session_reused(conn_.tls.ssl)) {
-    auto tls_session = SSL_get0_session(conn_.tls.ssl);
-    if (tls_session) {
-      ssl::try_cache_tls_session(addr_->tls_session_cache, *raddr_, tls_session,
-                                 ev_now(conn_.loop));
-    }
   }
 
   read_ = &Http2Session::read_tls;
@@ -2100,7 +2096,7 @@ int Http2Session::read_tls() {
     auto nread = conn_.read_tls(buf.data(), buf.size());
 
     if (nread == 0) {
-      return 0;
+      return write_tls();
     }
 
     if (nread < 0) {
@@ -2123,7 +2119,10 @@ int Http2Session::write_tls() {
   for (;;) {
     if (wb_.rleft() > 0) {
       auto iovcnt = wb_.riovec(&iov, 1);
-      assert(iovcnt == 1);
+      if (iovcnt != 1) {
+        assert(0);
+        return -1;
+      }
       auto nwrite = conn_.write_tls(iov.iov_base, iov.iov_len);
 
       if (nwrite == 0) {

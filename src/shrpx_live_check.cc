@@ -25,7 +25,8 @@
 #include "shrpx_live_check.h"
 #include "shrpx_worker.h"
 #include "shrpx_connect_blocker.h"
-#include "shrpx_ssl.h"
+#include "shrpx_tls.h"
+#include "shrpx_log.h"
 
 namespace shrpx {
 
@@ -204,23 +205,24 @@ int LiveCheck::initiate_connection() {
   if (!dns_query_ && addr_->tls) {
     assert(ssl_ctx_);
 
-    auto ssl = ssl::create_ssl(ssl_ctx_);
+    auto ssl = tls::create_ssl(ssl_ctx_);
     if (!ssl) {
       return -1;
     }
 
     switch (addr_->proto) {
     case PROTO_HTTP1:
-      ssl::setup_downstream_http1_alpn(ssl);
+      tls::setup_downstream_http1_alpn(ssl);
       break;
     case PROTO_HTTP2:
-      ssl::setup_downstream_http2_alpn(ssl);
+      tls::setup_downstream_http2_alpn(ssl);
       break;
     default:
       assert(0);
     }
 
     conn_.set_ssl(ssl);
+    conn_.tls.client_session_cache = &addr_->tls_session_cache;
   }
 
   if (addr_->dns) {
@@ -302,7 +304,7 @@ int LiveCheck::initiate_connection() {
       SSL_set_tlsext_host_name(conn_.tls.ssl, sni_name.c_str());
     }
 
-    auto session = ssl::reuse_tls_session(addr_->tls_session_cache);
+    auto session = tls::reuse_tls_session(addr_->tls_session_cache);
     if (session) {
       SSL_set_session(conn_.tls.ssl, session);
       SSL_SESSION_free(session);
@@ -395,16 +397,8 @@ int LiveCheck::tls_handshake() {
   }
 
   if (!get_config()->tls.insecure &&
-      ssl::check_cert(conn_.tls.ssl, addr_, raddr_) != 0) {
+      tls::check_cert(conn_.tls.ssl, addr_, raddr_) != 0) {
     return -1;
-  }
-
-  if (!SSL_session_reused(conn_.tls.ssl)) {
-    auto tls_session = SSL_get0_session(conn_.tls.ssl);
-    if (tls_session) {
-      ssl::try_cache_tls_session(addr_->tls_session_cache, *raddr_, tls_session,
-                                 ev_now(conn_.loop));
-    }
   }
 
   // Check negotiated ALPN
@@ -484,7 +478,10 @@ int LiveCheck::write_tls() {
   for (;;) {
     if (wb_.rleft() > 0) {
       auto iovcnt = wb_.riovec(&iov, 1);
-      assert(iovcnt == 1);
+      if (iovcnt != 1) {
+        assert(0);
+        return -1;
+      }
       auto nwrite = conn_.write_tls(iov.iov_base, iov.iov_len);
 
       if (nwrite == 0) {
@@ -550,7 +547,10 @@ int LiveCheck::write_clear() {
   for (;;) {
     if (wb_.rleft() > 0) {
       auto iovcnt = wb_.riovec(&iov, 1);
-      assert(iovcnt == 1);
+      if (iovcnt != 1) {
+        assert(0);
+        return -1;
+      }
       auto nwrite = conn_.write_clear(iov.iov_base, iov.iov_len);
 
       if (nwrite == 0) {
@@ -774,7 +774,7 @@ int LiveCheck::connection_made() {
   }
 
   auto must_terminate =
-      addr_->tls && !nghttp2::ssl::check_http2_requirement(conn_.tls.ssl);
+      addr_->tls && !nghttp2::tls::check_http2_requirement(conn_.tls.ssl);
 
   if (must_terminate) {
     if (LOG_ENABLED(INFO)) {

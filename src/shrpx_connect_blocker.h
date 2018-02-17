@@ -28,6 +28,7 @@
 #include "shrpx.h"
 
 #include <random>
+#include <functional>
 
 #include <ev.h>
 
@@ -80,6 +81,6 @@ private:
   bool offline_;
 };
 
-} // namespace
+} // namespace shrpx
 
 #endif // SHRPX_CONNECT_BLOCKER_H

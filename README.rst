@@ -4,10 +4,10 @@ nghttp2 - HTTP/2 C Library
 This is an implementation of the Hypertext Transfer Protocol version 2
 in C.
 
-The framing layer of HTTP/2 is implemented as a reusable C
-library.  On top of that, we have implemented an HTTP/2 client, server
-and proxy.  We have also developed load test and benchmarking tools for
-HTTP/2 and SPDY.
+The framing layer of HTTP/2 is implemented as a reusable C library.
+On top of that, we have implemented an HTTP/2 client, server and
+proxy.  We have also developed load test and benchmarking tools for
+HTTP/2.
 
 An HPACK encoder and decoder are available as a public API.
 
@@ -34,8 +34,8 @@ implementation.
 
 * https://nghttp2.org/ (TLS + ALPN/NPN)
 
-  This endpoint supports ``h2``, ``h2-16``, ``h2-14``, ``spdy/3.1``
-  and ``http/1.1`` via ALPN/NPN and requires TLSv1.2 for HTTP/2
+  This endpoint supports ``h2``, ``h2-16``, ``h2-14``, and
+  ``http/1.1`` via ALPN/NPN and requires TLSv1.2 for HTTP/2
   connection.
 
 * http://nghttp2.org/ (HTTP Upgrade and HTTP/2 Direct)
@@ -76,15 +76,15 @@ ALPN support requires OpenSSL >= 1.0.2 (released 22 January 2015).
 LibreSSL >= 2.2.0 can be used instead of OpenSSL, but OpenSSL has more
 features than LibreSSL at the time of this writing.
 
-To enable the SPDY protocol in the application program ``nghttpx`` and
-``h2load``, the following package is required:
-
-* spdylay >= 1.3.2
-
 To enable ``-a`` option (getting linked assets from the downloaded
 resource) in ``nghttp``, the following package is required:
 
-* libxml2 >= 2.7.7
+* libxml2 >= 2.6.26
+
+To enable systemd support in nghttpx, the following package is
+required:
+
+* libsystemd-dev >= 209
 
 The HPACK tools require the following package:
 
@@ -115,17 +115,15 @@ The Python bindings require the following packages:
 * python >= 2.7
 * python-setuptools
 
-If you are using Ubuntu 14.04 LTS (trusty) or Debian 7.0 (wheezy) and above run the following to install the needed packages:
+If you are using Ubuntu 16.04 LTS (Xenial Xerus) or Debian 8 (jessie)
+and above, run the following to install the required packages:
 
 .. code-block:: text
 
     sudo apt-get install g++ make binutils autoconf automake autotools-dev libtool pkg-config \
       zlib1g-dev libcunit1-dev libssl-dev libxml2-dev libev-dev libevent-dev libjansson-dev \
-      libc-ares-dev libjemalloc-dev cython python3-dev python-setuptools
-
-From Ubuntu 15.10, spdylay has been available as a package named
-`libspdylay-dev`.  For the earlier Ubuntu release, you need to build
-it yourself: http://tatsuhiro-t.github.io/spdylay/
+      libc-ares-dev libjemalloc-dev libsystemd-dev \
+      cython python3-dev python-setuptools
 
 To enable mruby support for nghttpx, `mruby
 <https://github.com/mruby/mruby>`_ is required.  We need to build
@@ -147,22 +145,8 @@ minimizes the risk of private key leakage when serious bug like
 Heartbleed is exploited.  The neverbleed is disabled by default.  To
 enable it, use ``--with-neverbleed`` configure option.
 
-Building from git
------------------
-
-Building from git is easy, but please be sure that at least autoconf 2.68 is
-used:
-
-.. code-block:: text
-
-    $ git submodule update --init
-    $ autoreconf -i
-    $ automake
-    $ autoconf
-    $ ./configure
-    $ make
-
-To compile the source code, gcc >= 4.8.3 or clang >= 3.4 is required.
+In order to compile the source code, gcc >= 4.8.3 or clang >= 3.4 is
+required.
 
 .. note::
 
@@ -186,6 +170,62 @@ To compile the source code, gcc >= 4.8.3 or clang >= 3.4 is required.
    don't have to use it explicitly.  But if you found that
    applications were not built, then using ``--enable-app`` may find
    that cause, such as the missing dependency.
+
+.. note::
+
+   In order to detect third party libraries, pkg-config is used
+   (however we don't use pkg-config for some libraries (e.g., libev)).
+   By default, pkg-config searches ``*.pc`` file in the standard
+   locations (e.g., /usr/lib/pkgconfig).  If it is necessary to use
+   ``*.pc`` file in the custom location, specify paths to
+   ``PKG_CONFIG_PATH`` environment variable, and pass it to configure
+   script, like so:
+
+   .. code-block:: text
+
+       $ ./configure PKG_CONFIG_PATH=/path/to/pkgconfig
+
+   For pkg-config managed libraries, ``*_CFLAG`` and ``*_LIBS``
+   environment variables are defined (e.g., ``OPENSSL_CFLAGS``,
+   ``OPENSSL_LIBS``).  Specifying non-empty string to these variables
+   completely overrides pkg-config.  In other words, if they are
+   specified, pkg-config is not used for detection, and user is
+   responsible to specify the correct values to these variables.  For
+   complete list of these variables, run ``./configure -h``.
+
+Building nghttp2 from release tar archive
+-----------------------------------------
+
+The nghttp2 project regularly releases tar archives which includes
+nghttp2 source code, and generated build files.  They can be
+downloaded from `Releases
+<https://github.com/nghttp2/nghttp2/releases>`_ page.
+
+Building nghttp2 from git requires autotools development packages.
+Building from tar archives does not require them, and thus it is much
+easier.  The usual build step is as follows:
+
+.. code-block:: text
+
+    $ tar xf nghttp2-X.Y.Z.tar.bz2
+    $ cd nghttp2-X.Y.Z
+    $ ./configure
+    $ make
+
+Building from git
+-----------------
+
+Building from git is easy, but please be sure that at least autoconf 2.68 is
+used:
+
+.. code-block:: text
+
+    $ git submodule update --init
+    $ autoreconf -i
+    $ automake
+    $ autoconf
+    $ ./configure
+    $ make
 
 Notes for building on Windows (MSVC)
 ------------------------------------
@@ -233,6 +273,18 @@ If you want to compile the applications under ``examples/``, you need
 to remove or rename the ``event.h`` from libev's installation, because
 it conflicts with libevent's installation.
 
+Notes for installation on Linux systems
+--------------------------------------------
+After installing nghttp2 tool suite with ``make install`` one might experience a similar error:
+
+.. code-block:: text
+
+    nghttpx: error while loading shared libraries: libnghttp2.so.14: cannot open shared object file: No such file or directory
+
+This means that the tool is unable to locate the ``libnghttp2.so`` shared library.
+
+To update the shared library cache run ``sudo ldconfig``.
+
 Building the documentation
 --------------------------
 
@@ -268,7 +320,6 @@ its testing framework.  We depend on the following libraries:
 * golang.org/x/net/http2
 * golang.org/x/net/websocket
 * https://github.com/tatsuhiro-t/go-nghttp2
-* https://github.com/tatsuhiro-t/spdy
 
 To download the above packages, after settings ``GOPATH``, run the
 following command under ``integration-tests`` directory:
@@ -285,11 +336,6 @@ To run the tests, run the following command under
     $ make it
 
 Inside the tests, we use port 3009 to run the test subject server.
-
-.. note::
-
-   github.com/tatsuhiro-t/spdy is a copy used to be available at
-   golang.org/x/net/spdy, but it is now gone.
 
 Migration from v0.7.15 or earlier
 ---------------------------------
@@ -691,7 +737,7 @@ information.  Here is sample output from ``nghttpd``:
 nghttpx - proxy
 +++++++++++++++
 
-``nghttpx`` is a multi-threaded reverse proxy for HTTP/2, SPDY and
+``nghttpx`` is a multi-threaded reverse proxy for HTTP/2, and
 HTTP/1.1, and powers http://nghttp2.org and supports HTTP/2 server
 push.
 
@@ -706,31 +752,30 @@ to know how to migrate from earlier releases.
 ``nghttpx`` implements `important performance-oriented features
 <https://istlsfastyet.com/#server-performance>`_ in TLS, such as
 session IDs, session tickets (with automatic key rotation), OCSP
-stapling, dynamic record sizing, ALPN/NPN, forward secrecy and SPDY &
-HTTP/2.  ``nghttpx`` also offers the functionality to share session
-cache and ticket keys among multiple ``nghttpx`` instances via
-memcached.
+stapling, dynamic record sizing, ALPN/NPN, forward secrecy and HTTP/2.
+``nghttpx`` also offers the functionality to share session cache and
+ticket keys among multiple ``nghttpx`` instances via memcached.
 
 ``nghttpx`` has 2 operation modes:
 
-================== ====================== ================ =============
-Mode option        Frontend               Backend          Note
-================== ====================== ================ =============
-default mode       HTTP/2, SPDY, HTTP/1.1 HTTP/1.1, HTTP/2 Reverse proxy
-``--http2-proxy``  HTTP/2, SPDY, HTTP/1.1 HTTP/1.1, HTTP/2 Forward proxy
-================== ====================== ================ =============
+================== ================ ================ =============
+Mode option        Frontend         Backend          Note
+================== ================ ================ =============
+default mode       HTTP/2, HTTP/1.1 HTTP/1.1, HTTP/2 Reverse proxy
+``--http2-proxy``  HTTP/2, HTTP/1.1 HTTP/1.1, HTTP/2 Forward proxy
+================== ================ ================ =============
 
 The interesting mode at the moment is the default mode.  It works like
-a reverse proxy and listens for HTTP/2, SPDY and HTTP/1.1 and can be
+a reverse proxy and listens for HTTP/2, and HTTP/1.1 and can be
 deployed as a SSL/TLS terminator for existing web server.
 
 In all modes, the frontend connections are encrypted by SSL/TLS by
 default.  To disable encryption, use the ``no-tls`` keyword in
-``--frontend`` option.  If encryption is disabled, SPDY is disabled in
-the frontend and incoming HTTP/1.1 connections can be upgraded to
-HTTP/2 through HTTP Upgrade.  On the other hard, backend connections
-are not encrypted by default.  To encrypt backend connections, use
-``tls`` keyword in ``--backend`` option.
+``--frontend`` option.  If encryption is disabled, incoming HTTP/1.1
+connections can be upgraded to HTTP/2 through HTTP Upgrade.  On the
+other hard, backend connections are not encrypted by default.  To
+encrypt backend connections, use ``tls`` keyword in ``--backend``
+option.
 
 ``nghttpx`` supports a configuration file.  See the ``--conf`` option and
 sample configuration file ``nghttpx.conf.sample``.
@@ -740,16 +785,16 @@ server:
 
 .. code-block:: text
 
-    Client <-- (HTTP/2, SPDY, HTTP/1.1) --> nghttpx <-- (HTTP/1.1, HTTP/2) --> Web Server
-                                          [reverse proxy]
+    Client <-- (HTTP/2, HTTP/1.1) --> nghttpx <-- (HTTP/1.1, HTTP/2) --> Web Server
+                                    [reverse proxy]
 
 With the ``--http2-proxy`` option, it works as forward proxy, and it
-is so called secure HTTP/2 proxy (aka SPDY proxy):
+is so called secure HTTP/2 proxy:
 
 .. code-block:: text
 
-    Client <-- (HTTP/2, SPDY, HTTP/1.1) --> nghttpx <-- (HTTP/1.1) --> Proxy
-                                           [secure proxy]          (e.g., Squid, ATS)
+    Client <-- (HTTP/2, HTTP/1.1) --> nghttpx <-- (HTTP/1.1) --> Proxy
+                                     [secure proxy]          (e.g., Squid, ATS)
 
 The ``Client`` in the above example needs to be configured to use
 ``nghttpx`` as secure proxy.
@@ -781,7 +826,7 @@ proxy through an HTTP proxy:
 
 .. code-block:: text
 
-    Client <-- (HTTP/2, SPDY, HTTP/1.1) --> nghttpx <-- (HTTP/2) --
+    Client <-- (HTTP/2, HTTP/1.1) --> nghttpx <-- (HTTP/2) --
 
             --===================---> HTTP/2 Proxy
               (HTTP proxy tunnel)     (e.g., nghttpx -s)
@@ -789,9 +834,8 @@ proxy through an HTTP proxy:
 Benchmarking tool
 -----------------
 
-The ``h2load`` program is a benchmarking tool for HTTP/2 and SPDY.
-The SPDY support is enabled if the program was built with the spdylay
-library.  The UI of ``h2load`` is heavily inspired by ``weighttp``
+The ``h2load`` program is a benchmarking tool for HTTP/2.  The UI of
+``h2load`` is heavily inspired by ``weighttp``
 (https://github.com/lighttpd/weighttp).  The typical usage is as
 follows:
 

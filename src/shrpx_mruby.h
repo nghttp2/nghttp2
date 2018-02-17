@@ -38,6 +38,8 @@ using namespace nghttp2;
 
 namespace shrpx {
 
+class Downstream;
+
 namespace mruby {
 
 class MRubyContext {

@@ -51,7 +51,8 @@
 #include "shrpx_memcached_dispatcher.h"
 #include "shrpx_memcached_request.h"
 #include "shrpx_process.h"
-#include "shrpx_ssl.h"
+#include "shrpx_tls.h"
+#include "shrpx_log.h"
 #include "util.h"
 #include "app_helper.h"
 #include "template.h"
@@ -66,11 +67,17 @@ void drop_privileges(
 #ifdef HAVE_NEVERBLEED
     neverbleed_t *nb
 #endif // HAVE_NEVERBLEED
-    ) {
+) {
   std::array<char, STRERROR_BUFSIZE> errbuf;
   auto config = get_config();
 
   if (getuid() == 0 && config->uid != 0) {
+#ifdef HAVE_NEVERBLEED
+    if (nb) {
+      neverbleed_setuidgid(nb, config->user.c_str(), 1);
+    }
+#endif // HAVE_NEVERBLEED
+
     if (initgroups(config->user.c_str(), config->gid) != 0) {
       auto error = errno;
       LOG(FATAL) << "Could not change supplementary groups: "
@@ -93,11 +100,6 @@ void drop_privileges(
       LOG(FATAL) << "Still have root privileges?";
       exit(EXIT_FAILURE);
     }
-#ifdef HAVE_NEVERBLEED
-    if (nb) {
-      neverbleed_setuidgid(nb, config->user.c_str(), 1);
-    }
-#endif // HAVE_NEVERBLEED
   }
 }
 } // namespace
@@ -114,16 +116,16 @@ void graceful_shutdown(ConnectionHandler *conn_handler) {
 
   conn_handler->disable_acceptor();
 
-  // After disabling accepting new connection, disptach incoming
+  // After disabling accepting new connection, dispatch incoming
   // connection in backlog.
 
   conn_handler->accept_pending_connection();
 
   conn_handler->graceful_shutdown_worker();
 
-  if (get_config()->num_worker == 1) {
-    if (conn_handler->get_single_worker()->get_worker_stat()->num_connections ==
-        0) {
+  auto single_worker = conn_handler->get_single_worker();
+  if (single_worker) {
+    if (single_worker->get_worker_stat()->num_connections == 0) {
       ev_break(conn_handler->get_loop());
     }
 
@@ -136,12 +138,13 @@ namespace {
 void reopen_log(ConnectionHandler *conn_handler) {
   LOG(NOTICE) << "Reopening log files: worker process (thread main)";
 
-  (void)reopen_log_files();
-  redirect_stderr_to_errorlog();
+  auto config = get_config();
+  auto &loggingconf = config->logging;
 
-  if (get_config()->num_worker > 1) {
-    conn_handler->worker_reopen_log_files();
-  }
+  (void)reopen_log_files(loggingconf);
+  redirect_stderr_to_errorlog(loggingconf);
+
+  conn_handler->worker_reopen_log_files();
 }
 } // namespace
 
@@ -272,8 +275,7 @@ void memcached_get_ticket_key_cb(struct ev_loop *loop, ev_timer *w,
   auto req = make_unique<MemcachedRequest>();
   req->key = "nghttpx:tls-ticket-key";
   req->op = MEMCACHED_OP_GET;
-  req->cb = [conn_handler, dispatcher, w](MemcachedRequest *req,
-                                          MemcachedResult res) {
+  req->cb = [conn_handler, w](MemcachedRequest *req, MemcachedResult res) {
     switch (res.status_code) {
     case MEMCACHED_ERR_NO_ERROR:
       break;
@@ -389,16 +391,14 @@ void nb_child_cb(struct ev_loop *loop, ev_child *w, int revents) {
 } // namespace
 #endif // HAVE_NEVERBLEED
 
-namespace {
-std::random_device rd;
-} // namespace
-
 int worker_process_event_loop(WorkerProcessConfig *wpconf) {
   int rv;
   std::array<char, STRERROR_BUFSIZE> errbuf;
   (void)errbuf;
 
-  if (reopen_log_files() != 0) {
+  auto config = get_config();
+
+  if (reopen_log_files(config->logging) != 0) {
     LOG(FATAL) << "Failed to open log file";
     return -1;
   }
@@ -411,11 +411,9 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
 
   auto loop = EV_DEFAULT;
 
-  auto gen = std::mt19937(rd());
+  auto gen = util::make_mt19937();
 
   ConnectionHandler conn_handler(loop, gen);
-
-  auto config = get_config();
 
   for (auto &addr : config->conn.listener.addrs) {
     conn_handler.add_acceptor(make_unique<AcceptHandler>(&addr, &conn_handler));
@@ -449,7 +447,7 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
   MemchunkPool mcpool;
 
   ev_timer renew_ticket_key_timer;
-  if (ssl::upstream_tls_enabled()) {
+  if (tls::upstream_tls_enabled(config->conn)) {
     auto &ticketconf = config->tls.ticket;
     auto &memcachedconf = ticketconf.memcached;
 
@@ -503,7 +501,7 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
     }
   }
 
-  if (config->num_worker == 1) {
+  if (config->single_thread) {
     rv = conn_handler.create_single_worker();
     if (rv != 0) {
       return -1;
@@ -541,14 +539,19 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
 #ifdef HAVE_NEVERBLEED
       nb
 #endif // HAVE_NEVERBLEED
-      );
+  );
 
   ev_io ipcev;
   ev_io_init(&ipcev, ipc_readcb, wpconf->ipc_fd, EV_READ);
   ipcev.data = &conn_handler;
   ev_io_start(loop, &ipcev);
 
-  if (ssl::upstream_tls_enabled() && !config->tls.ocsp.disabled) {
+  if (tls::upstream_tls_enabled(config->conn) && !config->tls.ocsp.disabled) {
+    if (config->tls.ocsp.startup) {
+      conn_handler.set_enable_acceptor_on_ocsp_completion(true);
+      conn_handler.disable_acceptor();
+    }
+
     conn_handler.proceed_next_cert_ocsp();
   }
 

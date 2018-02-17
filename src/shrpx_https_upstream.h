@@ -50,6 +50,8 @@ public:
   virtual int on_event();
   virtual int on_downstream_abort_request(Downstream *downstream,
                                           unsigned int status_code);
+  virtual int
+  on_downstream_abort_request_with_https_redirect(Downstream *downstream);
   virtual ClientHandler *get_client_handler() const;
 
   virtual int downstream_read(DownstreamConnection *dconn);
@@ -91,6 +93,10 @@ public:
 
   void reset_current_header_length();
   void log_response_headers(DefaultMemchunks *buf) const;
+  int redirect_to_https(Downstream *downstream);
+
+  // Called when new request has started.
+  void on_start_request();
 
 private:
   ClientHandler *handler_;
@@ -98,6 +104,8 @@ private:
   size_t current_header_length_;
   std::unique_ptr<Downstream> downstream_;
   IOControl ioctrl_;
+  // The number of requests seen so far.
+  size_t num_requests_;
 };
 
 } // namespace shrpx

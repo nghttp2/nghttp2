@@ -96,8 +96,8 @@ bool in_token(char c);
 
 bool in_attr_char(char c);
 
-// Returns integer corresponding to hex notation |c|.  It is undefined
-// if is_hex_digit(c) is false.
+// Returns integer corresponding to hex notation |c|.  If
+// is_hex_digit(c) is false, it returns 256.
 uint32_t hex_to_uint(char c);
 
 std::string percent_encode(const unsigned char *target, size_t len);
@@ -152,6 +152,19 @@ template <size_t N> std::string format_hex(const std::array<uint8_t, N> &s) {
 
 StringRef format_hex(BlockAllocator &balloc, const StringRef &s);
 
+static constexpr char LOWER_XDIGITS[] = "0123456789abcdef";
+
+template <typename OutputIt>
+OutputIt format_hex(OutputIt it, const StringRef &s) {
+  for (auto cc : s) {
+    uint8_t c = cc;
+    *it++ = LOWER_XDIGITS[c >> 4];
+    *it++ = LOWER_XDIGITS[c & 0xf];
+  }
+
+  return it;
+}
+
 // decode_hex decodes hex string |s|, returns the decoded byte string.
 // This function assumes |s| is hex string, that is is_hex_string(s)
 // == true.
@@ -182,6 +195,11 @@ std::string iso8601_date(int64_t ms);
 char *iso8601_date(char *res, int64_t ms);
 
 time_t parse_http_date(const StringRef &s);
+
+// Parses time formatted as "MMM DD HH:MM:SS YYYY [GMT]" (e.g., Feb 3
+// 00:55:52 2015 GMT), which is specifically used by OpenSSL
+// ASN1_TIME_print().
+time_t parse_openssl_asn1_time_print(const StringRef &s);
 
 char upcase(char c);
 
@@ -716,7 +734,7 @@ template <typename OutputIt, typename Generator>
 OutputIt random_alpha_digit(OutputIt first, OutputIt last, Generator &gen) {
   // If we use uint8_t instead char, gcc 6.2.0 complains by shouting
   // char-array initialized from wide string.
-  constexpr char s[] =
+  static constexpr char s[] =
       "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
   std::uniform_int_distribution<> dis(0, 26 * 2 + 10 - 1);
   for (; first != last; ++first) {
@@ -738,6 +756,14 @@ uint32_t hash32(const StringRef &s);
 // Computes SHA-256 of |s|, and stores it in |buf|.  This function
 // returns 0 if it succeeds, or -1.
 int sha256(uint8_t *buf, const StringRef &s);
+
+// Returns host from |hostport|.  If host cannot be found in
+// |hostport|, returns empty string.  The returned string might not be
+// NULL-terminated.
+StringRef extract_host(const StringRef &hostport);
+
+// Returns new std::mt19937 object.
+std::mt19937 make_mt19937();
 
 } // namespace util
 

@@ -14,7 +14,7 @@ SYNOPSIS
 DESCRIPTION
 -----------
 
-benchmarking tool for HTTP/2 and SPDY server
+benchmarking tool for HTTP/2 server
 
 .. describe:: <URI>
 
@@ -34,7 +34,9 @@ OPTIONS
     Number of  requests across all  clients.  If it  is used
     with :option:`--timing-script-file` option,  this option specifies
     the number of requests  each client performs rather than
-    the number of requests across all clients.
+    the number of requests  across all clients.  This option
+    is ignored if timing-based  benchmarking is enabled (see
+    :option:`--duration` option).
 
     Default: ``1``
 
@@ -74,16 +76,13 @@ OPTIONS
 .. option:: -w, --window-bits=<N>
 
     Sets the stream level initial window size to (2\*\*<N>)-1.
-    For SPDY, 2\*\*<N> is used instead.
 
     Default: ``30``
 
 .. option:: -W, --connection-window-bits=<N>
 
     Sets  the  connection  level   initial  window  size  to
-    (2\*\*<N>)-1.  For SPDY, if <N>  is strictly less than 16,
-    this option  is ignored.   Otherwise 2\*\*<N> is  used for
-    SPDY.
+    (2\*\*<N>)-1.
 
     Default: ``30``
 
@@ -96,14 +95,13 @@ OPTIONS
     Set allowed  cipher list.  The  format of the  string is
     described in OpenSSL ciphers(1).
 
-    Default: ``ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA:ECDHE-RSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-RSA-AES256-SHA256:DHE-RSA-AES256-SHA:ECDHE-ECDSA-DES-CBC3-SHA:ECDHE-RSA-DES-CBC3-SHA:EDH-RSA-DES-CBC3-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA:DES-CBC3-SHA:!DSS``
+    Default: ``ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256``
 
 .. option:: -p, --no-tls-proto=<PROTOID>
 
     Specify ALPN identifier of the  protocol to be used when
     accessing http URI without SSL/TLS.
-    Available protocols: spdy/2, spdy/3, spdy/3.1, h2c and
-    http/1.1
+    Available protocols: h2c and http/1.1
 
     Default: ``h2c``
 
@@ -135,6 +133,17 @@ OPTIONS
     length of the period in time.  This option is ignored if
     the rate option is not used.  The default value for this
     option is 1s.
+
+.. option:: -D, --duration=<N>
+
+    Specifies the main duration for the measurements in case
+    of timing-based benchmarking.
+
+.. option:: --warm-up-time=<DURATION>
+
+    Specifies the  time  period  before  starting the actual
+    measurements, in  case  of  timing-based benchmarking.
+    Needs to provided along with :option:`-D` option.
 
 .. option:: -T, --connection-active-timeout=<DURATION>
 
@@ -196,7 +205,7 @@ OPTIONS
     only  and any  white spaces  are  treated as  a part  of
     protocol string.
 
-    Default: ``h2,h2-16,h2-14,spdy/3.1,spdy/3,spdy/2,http/1.1``
+    Default: ``h2,h2-16,h2-14,http/1.1``
 
 .. option:: --h1
 
@@ -284,8 +293,7 @@ traffic
     used for header fields after decompression.  The ``space savings``
     is calculated  by (1 - ``headers``  / ``decompressed(headers)``) *
     100.  For HTTP/1.1, this is usually  0.00%, since it does not have
-    header compression.  For HTTP/2 and SPDY, it shows some insightful
-    numbers.
+    header compression.  For HTTP/2, it shows some insightful numbers.
   data
     The number of response body bytes received from the server.
 
@@ -353,7 +361,7 @@ h2load sets large flow control window by default, and effectively
 disables flow control to avoid under utilization of server
 performance.  To set smaller flow control window, use :option:`-w` and
 :option:`-W` options.  For example, use ``-w16 -W16`` to set default
-window size described in HTTP/2 and SPDY protocol specification.
+window size described in HTTP/2 protocol specification.
 
 SEE ALSO
 --------

@@ -27,6 +27,8 @@
 
 #include "shrpx.h"
 
+#include <memory>
+
 #include "shrpx_io_control.h"
 
 namespace shrpx {

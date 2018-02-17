@@ -48,7 +48,7 @@
 #include "app_helper.h"
 #include "HttpServer.h"
 #include "util.h"
-#include "ssl.h"
+#include "tls.h"
 
 namespace nghttp2 {
 
@@ -174,8 +174,7 @@ Options:
   --mime-types-file=<PATH>
               Path  to file  that contains  MIME media  types and  the
               extensions that represent them.
-              Default: )"
-      << config.mime_types_file << R"(
+              Default: )" << config.mime_types_file << R"(
   --no-content-length
               Don't send content-length header field.
   --version   Display version information and exit.
@@ -190,10 +189,10 @@ Options:
 } // namespace
 
 int main(int argc, char **argv) {
-  ssl::libssl_init();
+  tls::libssl_init();
 
 #ifndef NOTHREADS
-  ssl::LibsslGlobalLock lock;
+  tls::LibsslGlobalLock lock;
 #endif // NOTHREADS
 
   Config config;

@@ -37,19 +37,20 @@ session_tcp_impl::session_tcp_impl(
 session_tcp_impl::~session_tcp_impl() {}
 
 void session_tcp_impl::start_connect(tcp::resolver::iterator endpoint_it) {
+  auto self = shared_from_this();
   boost::asio::async_connect(socket_, endpoint_it,
-                             [this](const boost::system::error_code &ec,
+                             [self](const boost::system::error_code &ec,
                                     tcp::resolver::iterator endpoint_it) {
-                               if (stopped()) {
+                               if (self->stopped()) {
                                  return;
                                }
 
                                if (ec) {
-                                 not_connected(ec);
+                                 self->not_connected(ec);
                                  return;
                                }
 
-                               connected(endpoint_it);
+                               self->connected(endpoint_it);
                              });
 }
 

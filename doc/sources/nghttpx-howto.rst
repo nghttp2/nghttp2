@@ -4,10 +4,10 @@ nghttpx - HTTP/2 proxy - HOW-TO
 ===============================
 
 :doc:`nghttpx.1` is a proxy translating protocols between HTTP/2 and
-other protocols (e.g., HTTP/1, SPDY).  It operates in several modes
-and each mode may require additional programs to work with.  This
-article describes each operation mode and explains the intended
-use-cases.  It also covers some useful options later.
+other protocols (e.g., HTTP/1).  It operates in several modes and each
+mode may require additional programs to work with.  This article
+describes each operation mode and explains the intended use-cases.  It
+also covers some useful options later.
 
 Default mode
 ------------
@@ -15,9 +15,7 @@ Default mode
 If nghttpx is invoked without :option:`--http2-proxy`, it operates in
 default mode.  In this mode, it works as reverse proxy (gateway) for
 both HTTP/2 and HTTP/1 clients to backend servers.  This is also known
-as "HTTP/2 router".  If nghttpx is linked with spdylay library and
-frontend connection is SSL/TLS, the frontend also supports SPDY
-protocol.
+as "HTTP/2 router".
 
 By default, frontend connection is encrypted using SSL/TLS.  So
 server's private key and certificate must be supplied to the command
@@ -25,11 +23,10 @@ line (or through configuration file).  In this case, the frontend
 protocol selection will be done via ALPN or NPN.
 
 To turn off encryption on frontend connection, use ``no-tls`` keyword
-in :option:`--frontend` option.  In this case, SPDY protocol is not
-available even if spdylay library is liked to nghttpx.  HTTP/2 and
-HTTP/1 are available on the frontend, and an HTTP/1 connection can be
-upgraded to HTTP/2 using HTTP Upgrade.  Starting HTTP/2 connection by
-sending HTTP/2 connection preface is also supported.
+in :option:`--frontend` option.  HTTP/2 and HTTP/1 are available on
+the frontend, and an HTTP/1 connection can be upgraded to HTTP/2 using
+HTTP Upgrade.  Starting HTTP/2 connection by sending HTTP/2 connection
+preface is also supported.
 
 nghttpx can listen on multiple frontend addresses.  This is achieved
 by using multiple :option:`--frontend` options.  For each frontend
@@ -45,17 +42,17 @@ that default backend protocol is HTTP/1.1.  To use HTTP/2 in backend,
 you have to specify ``h2`` in ``proto`` keyword in :option:`--backend`
 explicitly.
 
-The backend is supposed to be Web server.  For example, to make
+The backend is supposed to be a Web server.  For example, to make
 nghttpx listen to encrypted HTTP/2 requests at port 8443, and a
-backend Web server is configured to listen to HTTP request at port
-8080 in the same host, run nghttpx command-line like this:
+backend Web server is configured to listen to HTTP requests at port
+8080 on the same host, run nghttpx command-line like this:
 
 .. code-block:: text
 
     $ nghttpx -f0.0.0.0,8443 -b127.0.0.1,8080 /path/to/server.key /path/to/server.crt
 
-Then HTTP/2 enabled client can access to the nghttpx in HTTP/2.  For
-example, you can send GET request to the server using nghttp:
+Then an HTTP/2 enabled client can access the nghttpx server using HTTP/2.  For
+example, you can send a GET request using nghttp:
 
 .. code-block:: text
 
@@ -66,19 +63,18 @@ HTTP/2 proxy mode
 
 If nghttpx is invoked with :option:`--http2-proxy` (or its shorthand
 :option:`-s`) option, it operates in HTTP/2 proxy mode.  The supported
-protocols in frontend and backend connections are the same in `default
-mode`_.  The difference is that this mode acts like forward proxy and
-assumes the backend is HTTP proxy server (e.g., Squid, Apache Traffic
-Server).  HTTP/1 request must include absolute URI in request line.
+protocols in frontend and backend connections are the same as in `default
+mode`_.  The difference is that this mode acts like a forward proxy and
+assumes the backend is an HTTP proxy server (e.g., Squid, Apache Traffic
+Server).  HTTP/1 requests must include an absolute URI in request line.
 
-By default, frontend connection is encrypted.  So this mode is also
-called secure proxy.  If nghttpx is linked with spdylay, it supports
-SPDY protocols and it works as so called SPDY proxy.
+By default, the frontend connection is encrypted.  So this mode is
+also called secure proxy.
 
-To turn off encryption on frontend connection, use ``no-tls`` keyword
+To turn off encryption on the frontend connection, use ``no-tls`` keyword
 in :option:`--frontend` option.
 
-The backend must be HTTP proxy server.  nghttpx supports multiple
+The backend must be an HTTP proxy server.  nghttpx supports multiple
 backend server addresses.  It translates incoming requests to HTTP
 request to backend server.  The backend server performs real proxy
 work for each request, for example, dispatching requests to the origin
@@ -92,7 +88,7 @@ connection, use :option:`--backend` option, and specify ``h2`` in
 
 For example, to make nghttpx listen to encrypted HTTP/2 requests at
 port 8443, and a backend HTTP proxy server is configured to listen to
-HTTP/1 request at port 8080 in the same host, run nghttpx command-line
+HTTP/1 requests at port 8080 on the same host, run nghttpx command-line
 like this:
 
 .. code-block:: text
@@ -102,8 +98,8 @@ like this:
 At the time of this writing, Firefox 41 and Chromium v46 can use
 nghttpx as HTTP/2 proxy.
 
-To make Firefox or Chromium use nghttpx as HTTP/2 or SPDY proxy, user
-has to create proxy.pac script file like this:
+To make Firefox or Chromium use nghttpx as HTTP/2 proxy, user has to
+create proxy.pac script file like this:
 
 .. code-block:: javascript
 
@@ -229,12 +225,18 @@ Hot swapping
 nghttpx supports hot swapping using signals.  The hot swapping in
 nghttpx is multi step process.  First send USR2 signal to nghttpx
 process.  It will do fork and execute new executable, using same
-command-line arguments and environment variables.  At this point, both
-current and new processes can accept requests.  To gracefully shutdown
-current process, send QUIT signal to current nghttpx process.  When
-all existing frontend connections are done, the current process will
-exit.  At this point, only new nghttpx process exists and serves
-incoming requests.
+command-line arguments and environment variables.
+
+As of nghttpx version 1.20.0, that is all you have to do.  The new
+master process sends QUIT signal to the original process, when it is
+ready to serve requests, to shut it down gracefully.
+
+For earlier versions of nghttpx, you have to do one more thing.  At
+this point, both current and new processes can accept requests.  To
+gracefully shutdown current process, send QUIT signal to current
+nghttpx process.  When all existing frontend connections are done, the
+current process will exit.  At this point, only new nghttpx process
+exists and serves incoming requests.
 
 If you want to just reload configuration file without executing new
 binary, send SIGHUP to nghttpx master process.
@@ -291,12 +293,30 @@ When you write this option in command-line, you should enclose
 argument with single or double quotes, since the character ``;`` has a
 special meaning in shell.
 
-To route, request to request path whose prefix is ``/foo`` to backend
-server ``[::1]:8080``, you can write like so:
+To route, request to request path ``/foo`` to backend server
+``[::1]:8080``, you can write like so:
 
 .. code-block:: text
 
    backend=::1,8080;/foo
+
+If the last character of path pattern is ``/``, all request paths
+which start with that pattern match:
+
+.. code-block:: text
+
+   backend=::1,8080;/bar/
+
+The request path ``/bar/buzz`` matches the ``/bar/``.
+
+You can use ``*`` at the end of the path pattern to make it wildcard
+pattern.  ``*`` must match at least one character:
+
+.. code-block:: text
+
+   backend=::1,8080;/sample*
+
+The request path ``/sample1/foo`` matches the ``/sample*`` pattern.
 
 Of course, you can specify both host and request path at the same
 time:
@@ -365,7 +385,7 @@ parameter in :option:`--backend` option, like so:
 
 .. code-block:: text
 
-   backend=foo.example.com;;dns
+   backend=foo.example.com,80;;dns
 
 nghttpx will cache resolved addresses for certain period of time.  To
 change this cache period, use :option:`--dns-cache-timeout`.
@@ -380,6 +400,28 @@ like so:
 .. code-block:: text
 
    frontend=*,443;proxyproto
+
+Session affinity
+----------------
+
+Two kinds of session affinity are available: client IP, and HTTP
+Cookie.
+
+To enable client IP based affinity, specify ``affinity=ip`` parameter
+in :option:`--backend` option.  If PROXY protocol is enabled, then an
+address obtained from PROXY protocol is taken into consideration.
+
+To enable HTTP Cookie based affinity, specify ``affinity=cookie``
+parameter, and specify a name of cookie in ``affinity-cookie-name``
+parameter.  Optionally, a Path attribute can be specified in
+``affinity-cookie-path`` parameter:
+
+.. code-block:: text
+
+   backend=127.0.0.1,3000;;affinity=cookie;affinity-cookie-name=nghttpxlb;affinity-cookie-path=/
+
+Secure attribute of cookie is set if client connection is protected by
+TLS.
 
 PSK cipher suites
 -----------------

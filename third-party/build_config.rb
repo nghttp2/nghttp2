@@ -4,7 +4,7 @@ MRuby::Build.new do |conf|
 
   # C++ project needs this.  Without this, mruby exception does not
   # properly destory C++ object allocated on stack.
-  conf.enable_cxx_abi
+  conf.enable_cxx_exception
 
   conf.build_dir = ENV['BUILD_DIR']
 

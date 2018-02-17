@@ -17,6 +17,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"os/exec"
 	"sort"
 	"strconv"
@@ -100,10 +101,8 @@ func newServerTesterInternal(src_args []string, t *testing.T, handler http.Handl
 
 	args := []string{}
 
-	backendTLS := false
-	dns := false
-	externalDNS := false
-	acceptProxyProtocol := false
+	var backendTLS, dns, externalDNS, acceptProxyProtocol, redirectIfNotTLS, affinityCookie, alpnH1 bool
+
 	for _, k := range src_args {
 		switch k {
 		case "--http2-bridge":
@@ -115,6 +114,12 @@ func newServerTesterInternal(src_args []string, t *testing.T, handler http.Handl
 			externalDNS = true
 		case "--accept-proxy-protocol":
 			acceptProxyProtocol = true
+		case "--redirect-if-not-tls":
+			redirectIfNotTLS = true
+		case "--affinity-cookie":
+			affinityCookie = true
+		case "--alpn-h1":
+			alpnH1 = true
 		default:
 			args = append(args, k)
 		}
@@ -152,8 +157,8 @@ func newServerTesterInternal(src_args []string, t *testing.T, handler http.Handl
 		if sep == -1 {
 			t.Fatalf("backendURL.Host %v does not contain separator ':'", backendURL.Host)
 		}
-		// We use awesome service xip.io.
-		b += fmt.Sprintf("%v.xip.io,%v;", backendURL.Host[:sep], backendURL.Host[sep+1:])
+		// We use awesome service nip.io.
+		b += fmt.Sprintf("%v.nip.io,%v;", backendURL.Host[:sep], backendURL.Host[sep+1:])
 	}
 
 	if backendTLS {
@@ -161,6 +166,14 @@ func newServerTesterInternal(src_args []string, t *testing.T, handler http.Handl
 	}
 	if dns {
 		b += ";dns"
+	}
+
+	if redirectIfNotTLS {
+		b += ";redirect-if-not-tls"
+	}
+
+	if affinityCookie {
+		b += ";affinity=cookie;affinity-cookie-name=affinity;affinity-cookie-path=/foo/bar"
 	}
 
 	noTLS := ";no-tls"
@@ -192,6 +205,9 @@ func newServerTesterInternal(src_args []string, t *testing.T, handler http.Handl
 		errCh:        make(chan error),
 	}
 
+	st.cmd.Stdout = os.Stdout
+	st.cmd.Stderr = os.Stderr
+
 	if err := st.cmd.Start(); err != nil {
 		st.t.Fatalf("Error starting %v: %v", serverBin, err)
 	}
@@ -210,7 +226,11 @@ func newServerTesterInternal(src_args []string, t *testing.T, handler http.Handl
 				tlsConfig = clientConfig
 			}
 			tlsConfig.InsecureSkipVerify = true
-			tlsConfig.NextProtos = []string{"h2", "spdy/3.1"}
+			if alpnH1 {
+				tlsConfig.NextProtos = []string{"http/1.1"}
+			} else {
+				tlsConfig.NextProtos = []string{"h2", "spdy/3.1"}
+			}
 			conn, err = tls.Dial("tcp", authority, tlsConfig)
 		} else {
 			conn, err = net.Dial("tcp", authority)
@@ -258,7 +278,7 @@ func (st *serverTester) Close() {
 		done := make(chan struct{})
 		go func() {
 			st.cmd.Wait()
-			done <- struct{}{}
+			close(done)
 		}()
 
 		st.cmd.Process.Signal(syscall.SIGQUIT)
@@ -761,7 +781,7 @@ type serverResponse struct {
 	connErr           bool                 // true if HTTP/2 connection error
 	spdyGoAwayErrCode spdy.GoAwayStatus    // status code received in SPDY RST_STREAM
 	spdyRstErrCode    spdy.RstStreamStatus // status code received in SPDY GOAWAY
-	connClose         bool                 // Conection: close is included in response header in HTTP/1 test
+	connClose         bool                 // Connection: close is included in response header in HTTP/1 test
 	reqHeader         http.Header          // http request header, currently only sotres pushed request header
 	pushResponse      []*serverResponse    // pushed response
 }
@@ -793,6 +813,7 @@ func cloneHeader(h http.Header) http.Header {
 func noopHandler(w http.ResponseWriter, r *http.Request) {}
 
 type APIResponse struct {
-	Status string `json:"status,omitempty"`
-	Code   int    `json:"code,omitempty"`
+	Status string                 `json:"status,omitempty"`
+	Code   int                    `json:"code,omitempty"`
+	Data   map[string]interface{} `json:"data,omitempty"`
 }

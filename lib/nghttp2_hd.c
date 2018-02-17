@@ -662,9 +662,9 @@ static int hd_context_init(nghttp2_hd_context *context, nghttp2_mem *mem) {
   context->mem = mem;
   context->bad = 0;
   context->hd_table_bufsize_max = NGHTTP2_HD_DEFAULT_MAX_BUFFER_SIZE;
-  rv = hd_ringbuf_init(&context->hd_table, context->hd_table_bufsize_max /
-                                               NGHTTP2_HD_ENTRY_OVERHEAD,
-                       mem);
+  rv = hd_ringbuf_init(
+      &context->hd_table,
+      context->hd_table_bufsize_max / NGHTTP2_HD_ENTRY_OVERHEAD, mem);
   if (rv != 0) {
     return rv;
   }
@@ -1537,10 +1537,11 @@ ssize_t nghttp2_hd_deflate_hd_vec(nghttp2_hd_deflater *deflater,
   return (ssize_t)buflen;
 }
 
-size_t nghttp2_hd_deflate_bound(nghttp2_hd_deflater *deflater _U_,
+size_t nghttp2_hd_deflate_bound(nghttp2_hd_deflater *deflater,
                                 const nghttp2_nv *nva, size_t nvlen) {
   size_t n = 0;
   size_t i;
+  (void)deflater;
 
   /* Possible Maximum Header Table Size Change.  Encoding (1u << 31) -
      1 using 4 bit prefix requires 6 bytes.  We may emit this at most

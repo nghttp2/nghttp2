@@ -1,3 +1,4 @@
+dist: trusty
 env:
   matrix:
     - CI_BUILD=cmake
@@ -6,15 +7,13 @@ language: cpp
 compiler:
   - clang
   - gcc
-sudo: false
+sudo: required
 addons:
   apt:
     sources:
     - ubuntu-toolchain-r-test
-    - george-edison55-precise-backports
     packages:
-    - g++-4.9
-    - libstdc++-4.9-dev
+    - g++-7
     - autoconf
     - automake
     - autotools-dev
@@ -33,29 +32,18 @@ addons:
     - cmake-data
 before_install:
   - $CC --version
-  - if [ "$CXX" = "g++" ]; then export CXX="g++-4.9" CC="gcc-4.9"; fi
+  - if [ "$CXX" = "g++" ]; then export CXX="g++-7" CC="gcc-7"; fi
   - $CC --version
   - go version
   - cmake --version
 before_script:
-  # First build spdylay, since integration tests require it.
-  # spdylay is going to be built under third-party/spdylay
-  - cd third-party
-  - git clone https://github.com/tatsuhiro-t/spdylay.git
-  - cd spdylay
-  - autoreconf -i
-  # Don't use ASAN for spdylay since failmalloc does not work with it.
-  - ./configure --disable-src --disable-examples
-  - make check
-  - export SPDYLAY_HOME=$PWD
-  - cd ../..
   # Now build nghttp2
   - if [ "$CI_BUILD" = "autotools" ]; then autoreconf -i; fi
   - git submodule update --init
-  - if [ "$CI_BUILD" = "autotools" ]; then ./configure --enable-werror --with-mruby --with-neverbleed LIBSPDYLAY_CFLAGS="-I$SPDYLAY_HOME/lib/includes" LIBSPDYLAY_LIBS="-L$SPDYLAY_HOME/lib/.libs -lspdylay" CPPFLAGS=-fsanitize=address LDFLAGS=-fsanitize=address; fi
-  - if [ "$CI_BUILD" = "cmake" ]; then cmake -DENABLE_WERROR=1 -DWITH_MRUBY=1 -DWITH_NEVERBLEED=1 -DSPDYLAY_INCLUDE_DIR="$SPDYLAY_HOME/lib/includes" -DSPDYLAY_LIBRARY="$SPDYLAY_HOME/lib/.libs/libspdylay.so"; fi
+  - if [ "$CI_BUILD" = "autotools" ]; then ./configure --with-mruby; fi
+  - if [ "$CI_BUILD" = "cmake" ]; then cmake -DENABLE_WERROR=1 -DWITH_MRUBY=1 -DWITH_NEVERBLEED=1; fi
 script:
-  - if [ "$CI_BUILD" = "autotools" ]; then make distcheck; fi
+  - if [ "$CI_BUILD" = "autotools" ]; then make distcheck DISTCHECK_CONFIGURE_FLAGS="--with-mruby --with-neverbleed --enable-werror CPPFLAGS=-fsanitize=address LDFLAGS=\"-fsanitize=address -fuse-ld=gold\""; fi
   - if [ "$CI_BUILD" = "cmake" ]; then make check; fi
   # As of April, 23, 2016, golang http2 build fails, probably because
   # the default go version is too old.
