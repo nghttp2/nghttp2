@@ -917,7 +917,7 @@ HTTP/2
     Set the maximum number of  the concurrent streams in one
     frontend HTTP/2 session.
 
-    Default: `` 100``
+    Default: ``100``
 
 .. option:: --backend-http2-max-concurrent-streams=<N>
 
