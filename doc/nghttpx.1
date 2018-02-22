@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTPX" "1" "Feb 02, 2018" "1.30.0" "nghttp2"
+.TH "NGHTTPX" "1" "Feb 22, 2018" "1.31.0-DEV" "nghttp2"
 .SH NAME
 nghttpx \- HTTP/2 proxy
 .
@@ -698,6 +698,14 @@ can contain multiple certificates.
 .UNINDENT
 .INDENT 0.0
 .TP
+.B \-\-verify\-client\-tolerate\-expired
+Accept  expired  client  certificate.   Operator  should
+handle  the expired  client  certificate  by some  means
+(e.g.,  mruby  script).   Otherwise, this  option  might
+cause a security risk.
+.UNINDENT
+.INDENT 0.0
+.TP
 .B \-\-client\-private\-key\-file=<PATH>
 Path to  file that contains  client private key  used in
 backend client authentication.
@@ -996,7 +1004,7 @@ option.  But be aware its implications.
 Set the maximum number of  the concurrent streams in one
 frontend HTTP/2 session.
 .sp
-Default: \(ga\(ga 100\(ga\(ga
+Default: \fB100\fP
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -2027,6 +2035,18 @@ Return the subject name of a client certificate.
 .TP
 .B attribute [R] tls_client_serial
 Return the serial number of a client certificate.
+.UNINDENT
+.INDENT 7.0
+.TP
+.B attribute [R] tls_client_not_before
+Return the start date of a client certificate in seconds since
+the epoch.
+.UNINDENT
+.INDENT 7.0
+.TP
+.B attribute [R] tls_client_not_after
+Return the end date of a client certificate in seconds since
+the epoch.
 .UNINDENT
 .INDENT 7.0
 .TP
