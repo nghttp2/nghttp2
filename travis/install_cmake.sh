@@ -12,6 +12,6 @@ else
     brew upgrade cmake || brew install cmake
 fi
 
-- cmake --version
+cmake --version
 
 echo "Done installing CMake"
