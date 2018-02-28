@@ -285,9 +285,7 @@ if(ENABLE_ASIO_LIB)
     ${Boost_LIBRARIES}
   )
   
-  if(WIN32)
-    target_compile_definitions(nghttp2_asio PRIVATE -DBOOST_ALL_NO_LIB)
-  endif()
+  target_compile_definitions(nghttp2_asio PRIVATE BUILDING_NGHTTP2_ASIO)
 
   install(TARGETS nghttp2_asio
     DESTINATION "${CMAKE_INSTALL_LIBDIR}")
