@@ -50,20 +50,20 @@ extern "C" {
 #include <nghttp2/nghttp2ver.h>
 
 #ifdef NGHTTP2_STATICLIB
-#define NGHTTP2_EXTERN
+    #define NGHTTP2_EXTERN
 #elif defined(WIN32)
-#ifdef BUILDING_NGHTTP2
-#define NGHTTP2_EXTERN __declspec(dllexport)
-#else /* !BUILDING_NGHTTP2 */
-#define NGHTTP2_EXTERN __declspec(dllimport)
-#endif /* !BUILDING_NGHTTP2 */
-#else  /* !defined(WIN32) */
-#ifdef BUILDING_NGHTTP2
-#define NGHTTP2_EXTERN __attribute__((visibility("default")))
-#else /* !BUILDING_NGHTTP2 */
-#define NGHTTP2_EXTERN
-#endif /* !BUILDING_NGHTTP2 */
-#endif /* !defined(WIN32) */
+    #ifdef BUILDING_NGHTTP2
+        #define NGHTTP2_EXTERN __declspec(dllexport)
+    #else
+        #define NGHTTP2_EXTERN __declspec(dllimport)
+    #endif
+#else
+    #ifdef BUILDING_NGHTTP2
+        #define NGHTTP2_EXTERN __attribute__((visibility("default")))
+    #else
+        #define NGHTTP2_EXTERN
+    #endif
+#endif
 
 /**
  * @macro
