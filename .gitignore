@@ -55,3 +55,6 @@ _VC_ROOT/
 *.pyd
 *.egg-info/
 python/nghttp2.c
+
+# Qt Creator
+CMakeLists.txt.user
