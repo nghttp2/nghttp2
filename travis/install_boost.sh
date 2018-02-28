@@ -1,5 +1,7 @@
 #!/bin/bash
 
+echo "Installing Boost ${CI_BOOST_VERSION}"
+
 _startup_dir=`pwd`
 
 export CI_BOOST_ROOT=${HOME}/boost
@@ -33,4 +35,6 @@ mv ${HOME}/boost_source/boost ${CI_BOOST_ROOT}/include/
 
 cd ${_startup_dir}
 unset _startup_dir
+
+echo "Done installing Boost. \${CI_BOOST_ROOT}=${CI_BOOST_ROOT}"
 

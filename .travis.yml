@@ -5,7 +5,7 @@ sudo: required
 env:
   global:
     - CI_BOOST_VERSION=1.65.1
-    - CI_CMAKE_VERSION=3.10.0
+    - CI_CMAKE_VERSION=3.10.2
   matrix:
     - CI_BUILD=cmake CI_BUILD_TYPE=Debug
     - CI_BUILD=autotools CI_BUILD_TYPE=Debug
@@ -42,19 +42,8 @@ before_install:
   - ${CC} --version
   - ${CXX} --version
   - go version
-  # Install CMake
-  - |
-    if [[ "${TRAVIS_OS_NAME}" == "linux" ]]; then
-      mkdir -p ${HOME}/cmake
-      CI_CMAKE_VERSION_SHORT=`echo -n ${CI_CMAKE_VERSION} | awk -F. '{print $1 "." $2}'`
-      CI_CMAKE_URL="https://cmake.org/files/v${CI_CMAKE_VERSION_SHORT}/cmake-${CI_CMAKE_VERSION}-Linux-x86_64.tar.gz"
-      travis_retry wget --no-check-certificate --quiet -O - ${CI_CMAKE_URL} | tar --strip-components=1 -xz -C ${HOME}/cmake
-      export PATH=${HOME}/cmake/bin:${PATH}
-    else
-      brew upgrade cmake || brew install cmake
-    fi
-  - cmake --version
-  # Install boost
+
+  - if [[ "${CI_BUILD}" = "cmake" ]]; then source travis/install_cmake.sh; fi
   - if [[ "${CI_BUILD}" = "cmake" ]]; then source travis/install_boost.sh; fi
 
 before_script:
@@ -63,9 +52,7 @@ before_script:
   - if [[ "${CI_BUILD}" = "autotools" ]]; then ./configure --with-mruby; fi
   
   - CI_CMAKE_OPTIONS="-DCMAKE_BUILD_TYPE=${CI_BUILD_TYPE} -DBOOST_ROOT=${CI_BOOST_ROOT} -DENABLE_ASIO_LIB=ON -DENABLE_WERROR=ON -DWITH_MRUBY=ON -DWITH_NEVERBLEED=ON"
-  - if [[ "${CI_BUILD}" = "cmake" ]]; then mkdir -p ${HOME}/build; fi
-  - if [[ "${CI_BUILD}" = "cmake" ]]; then cd ${HOME}/build; fi
-  - if [[ "${CI_BUILD}" = "cmake" ]]; then cmake ${CI_CMAKE_OPTIONS} ${TRAVIS_BUILD_DIR}; fi
+  - if [[ "${CI_BUILD}" = "cmake" ]]; then mkdir -p ${HOME}/build && cd ${HOME}/build && cmake ${CI_CMAKE_OPTIONS} ${TRAVIS_BUILD_DIR}; fi
 
 script:
   - if [[ "$CI_BUILD" = "autotools" ]]; then make distcheck DISTCHECK_CONFIGURE_FLAGS="--with-mruby --with-neverbleed --enable-werror CPPFLAGS=-fsanitize=address LDFLAGS=\"-fsanitize=address -fuse-ld=gold\""; fi
