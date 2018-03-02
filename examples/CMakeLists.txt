@@ -29,17 +29,13 @@ if(ENABLE_EXAMPLES)
   if(ENABLE_ASIO_LIB)
     foreach(name asio-sv asio-sv2 asio-cl asio-cl2)
       add_executable(${name} ${name}.cc $<TARGET_OBJECTS:http-parser>)
-      target_include_directories(${name} PRIVATE
-        ${OPENSSL_INCLUDE_DIRS}
-        ${Boost_INCLUDE_DIRS}
-      )
       target_link_libraries(${name}
         nghttp2
         nghttp2_asio
         ${JEMALLOC_LIBRARIES}
         ${OPENSSL_LIBRARIES}
-        ${Boost_LIBRARIES}
-        ${APP_LIBRARIES}
+        Boost::thread
+        OpenSSL::SSL
       )
     endforeach()
   endif()
