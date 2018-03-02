@@ -268,11 +268,6 @@ if(ENABLE_ASIO_LIB)
     CXX_VISIBILITY_PRESET hidden
   )
 
-  target_include_directories(nghttp2_asio PRIVATE
-    ${OPENSSL_INCLUDE_DIRS}
-    ${Boost_INCLUDE_DIRS}
-  )
-
   target_include_directories(nghttp2_asio INTERFACE
     "${CMAKE_CURRENT_BINARY_DIR}/../lib/includes"
     "${CMAKE_CURRENT_SOURCE_DIR}/../lib/includes"
@@ -281,8 +276,8 @@ if(ENABLE_ASIO_LIB)
 
   target_link_libraries(nghttp2_asio
     nghttp2
-    ${OPENSSL_LIBRARIES}
-    ${Boost_LIBRARIES}
+    Boost::thread
+    OpenSSL::SSL
   )
   
   target_compile_definitions(nghttp2_asio PRIVATE BUILDING_NGHTTP2_ASIO)
