@@ -276,6 +276,7 @@ if(ENABLE_ASIO_LIB)
 
   target_link_libraries(nghttp2_asio
     nghttp2
+    Boost::disable_autolinking
     Boost::thread
     OpenSSL::SSL
   )

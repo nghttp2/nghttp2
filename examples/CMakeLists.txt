@@ -34,6 +34,7 @@ if(ENABLE_EXAMPLES)
         nghttp2_asio
         ${JEMALLOC_LIBRARIES}
         ${OPENSSL_LIBRARIES}
+        Boost::disable_autolinking
         Boost::thread
         OpenSSL::SSL
       )
