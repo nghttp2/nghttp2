@@ -221,18 +221,17 @@ private:
 // Configures |tls_context| for server use.  This function sets couple
 // of OpenSSL options (disables SSLv2 and SSLv3 and compression) and
 // enables ECDHE ciphers.  NPN callback is also configured.
-boost::system::error_code
-NGHTTP2_ASIO_EXTERN
+NGHTTP2_ASIO_EXTERN boost::system::error_code
 configure_tls_context_easy(boost::system::error_code &ec,
                            boost::asio::ssl::context &tls_context);
 
 // Returns request handler to do redirect to |uri| using
 // |status_code|.  The |uri| appears in "location" header field as is.
-request_cb NGHTTP2_ASIO_EXTERN redirect_handler(int status_code, std::string uri);
+NGHTTP2_ASIO_EXTERN request_cb redirect_handler(int status_code, std::string uri);
 
 // Returns request handler to reply with given |status_code| and HTML
 // including message about status code.
-request_cb NGHTTP2_ASIO_EXTERN status_handler(int status_code);
+NGHTTP2_ASIO_EXTERN request_cb status_handler(int status_code);
 
 } // namespace server
 

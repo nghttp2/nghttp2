@@ -66,8 +66,7 @@ class request;
 
 using response_cb = std::function<void(const response &)>;
 using request_cb = std::function<void(const request &)>;
-using connect_cb =
-    std::function<void(boost::asio::ip::tcp::resolver::iterator)>;
+using connect_cb = std::function<void(boost::asio::ip::tcp::resolver::iterator)>;
 
 class request_impl;
 
@@ -228,8 +227,7 @@ private:
 
 // configure |tls_ctx| for client use.  Currently, we just set NPN
 // callback for HTTP/2.
-boost::system::error_code
-NGHTTP2_ASIO_EXTERN
+NGHTTP2_ASIO_EXTERN boost::system::error_code
 configure_tls_context(boost::system::error_code &ec,
                       boost::asio::ssl::context &tls_ctx);
 
