@@ -59,7 +59,14 @@ public:
   response_impl &impl() const;
 
 private:
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 4251)
+#endif
   std::unique_ptr<response_impl> impl_;
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 };
 
 class request;
@@ -114,7 +121,14 @@ public:
   request_impl &impl() const;
 
 private:
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 4251)
+#endif
   std::unique_ptr<request_impl> impl_;
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 };
 
 // Wrapper around an nghttp2_priority_spec.
@@ -222,7 +236,14 @@ public:
                         priority_spec prio = priority_spec()) const;
 
 private:
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 4251)
+#endif
   std::shared_ptr<session_impl> impl_;
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 };
 
 // configure |tls_ctx| for client use.  Currently, we just set NPN

@@ -63,7 +63,14 @@ public:
   const boost::asio::ip::tcp::endpoint &remote_endpoint() const;
 
 private:
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 4251)
+#endif
   std::unique_ptr<request_impl> impl_;
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 };
 
 class NGHTTP2_ASIO_EXTERN response {
@@ -119,7 +126,14 @@ public:
   response_impl &impl() const;
 
 private:
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 4251)
+#endif
   std::unique_ptr<response_impl> impl_;
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 };
 
 // This is so called request callback.  Called every time request is
@@ -215,7 +229,14 @@ public:
   io_services() const;
 
 private:
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 4251)
+#endif
   std::unique_ptr<http2_impl> impl_;
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 };
 
 // Configures |tls_context| for server use.  This function sets couple
