@@ -1,7 +1,7 @@
 add_subdirectory(includes)
 
 if(MSVC)
-    add_definitions(-DNOMINMAX -DBUILDING_NGHTTP2)
+    add_definitions(-DNOMINMAX -D_SCL_SECURE_NO_WARNINGS)
 endif()
 
 file(GLOB c_sources *.c)
