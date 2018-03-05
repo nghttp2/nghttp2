@@ -46,7 +46,8 @@ AM_CPPFLAGS = \
 	@LIBCARES_CFLAGS@ \
 	@JANSSON_CFLAGS@ \
 	@ZLIB_CFLAGS@ \
-	@DEFS@
+        @DEFS@ \
+        -DBUILDING_NGHTTP2
 
 LDADD = $(top_builddir)/lib/libnghttp2.la \
 	$(top_builddir)/third-party/libhttp-parser.la \
