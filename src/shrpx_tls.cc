@@ -64,6 +64,7 @@
 #include "tls.h"
 #include "template.h"
 #include "ssl_compat.h"
+#include "timegm.h"
 
 using namespace nghttp2;
 
@@ -94,6 +95,12 @@ int verify_callback(int preverify_ok, X509_STORE_CTX *ctx) {
   if (!preverify_ok) {
     int err = X509_STORE_CTX_get_error(ctx);
     int depth = X509_STORE_CTX_get_error_depth(ctx);
+    if (err == X509_V_ERR_CERT_HAS_EXPIRED && depth == 0 &&
+        get_config()->tls.client_verify.tolerate_expired) {
+      LOG(INFO) << "The client certificate has expired, but is accepted by "
+                   "configuration";
+      return 1;
+    }
     LOG(ERROR) << "client certificate verify error:num=" << err << ":"
                << X509_verify_cert_error_string(err) << ":depth=" << depth;
   }
@@ -1990,6 +1997,74 @@ StringRef get_x509_serial(BlockAllocator &balloc, X509 *x) {
 
   return util::format_hex(balloc, StringRef{std::begin(b), std::end(b)});
 #endif // !OPENSSL_1_1_API
+}
+
+namespace {
+// Performs conversion from |at| to time_t.  The result is stored in
+// |t|.  This function returns 0 if it succeeds, or -1.
+int time_t_from_asn1_time(time_t &t, const ASN1_TIME *at) {
+  int rv;
+
+#if OPENSSL_1_1_1_API
+  struct tm tm;
+  rv = ASN1_TIME_to_tm(at, &tm);
+  if (rv != 1) {
+    return -1;
+  }
+
+  t = nghttp2_timegm(&tm);
+#else  // !OPENSSL_1_1_1_API
+  auto b = BIO_new(BIO_s_mem());
+  if (!b) {
+    return -1;
+  }
+
+  auto bio_deleter = defer(BIO_free, b);
+
+  rv = ASN1_TIME_print(b, at);
+  if (rv != 1) {
+    return -1;
+  }
+
+  unsigned char *s;
+  auto slen = BIO_get_mem_data(b, &s);
+  auto tt = util::parse_openssl_asn1_time_print(
+      StringRef{s, static_cast<size_t>(slen)});
+  if (tt == 0) {
+    return -1;
+  }
+
+  t = tt;
+#endif // !OPENSSL_1_1_1_API
+
+  return 0;
+}
+} // namespace
+
+int get_x509_not_before(time_t &t, X509 *x) {
+#if OPENSSL_1_1_API
+  auto at = X509_get0_notBefore(x);
+#else  // !OPENSSL_1_1_API
+  auto at = X509_get_notBefore(x);
+#endif // !OPENSSL_1_1_API
+  if (!at) {
+    return -1;
+  }
+
+  return time_t_from_asn1_time(t, at);
+}
+
+int get_x509_not_after(time_t &t, X509 *x) {
+#if OPENSSL_1_1_API
+  auto at = X509_get0_notAfter(x);
+#else  // !OPENSSL_1_1_API
+  auto at = X509_get_notAfter(x);
+#endif // !OPENSSL_1_1_API
+  if (!at) {
+    return -1;
+  }
+
+  return time_t_from_asn1_time(t, at);
 }
 
 } // namespace tls

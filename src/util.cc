@@ -70,9 +70,16 @@ namespace nghttp2 {
 
 namespace util {
 
-#ifdef _WIN32
+#ifndef _WIN32
+namespace {
+int nghttp2_inet_pton(int af, const char *src, void *dst) {
+  return inet_pton(af, src, dst);
+}
+} // namespace
+#else // _WIN32
+namespace {
 // inet_pton-wrapper for Windows
-static int inet_pton(int af, const char *src, void *dst) {
+int nghttp2_inet_pton(int af, const char *src, void *dst) {
 #if _WIN32_WINNT >= 0x0600
   return InetPtonA(af, src, dst);
 #else
@@ -88,6 +95,7 @@ static int inet_pton(int af, const char *src, void *dst) {
   return 0;
 #endif
 }
+} // namespace
 #endif // _WIN32
 
 const char UPPER_XDIGITS[] = "0123456789ABCDEF";
@@ -426,6 +434,15 @@ time_t parse_http_date(const StringRef &s) {
 #endif // !_WIN32
 }
 
+time_t parse_openssl_asn1_time_print(const StringRef &s) {
+  tm tm{};
+  auto r = strptime(s.c_str(), "%b %d %H:%M:%S %Y GMT", &tm);
+  if (r == nullptr) {
+    return 0;
+  }
+  return nghttp2_timegm_without_yday(&tm);
+}
+
 char upcase(char c) {
   if ('a' <= c && c <= 'z') {
     return c - 'a' + 'A';
@@ -672,7 +689,7 @@ bool numeric_host(const char *hostname, int family) {
   int rv;
   std::array<uint8_t, sizeof(struct in6_addr)> dst;
 
-  rv = inet_pton(family, hostname, dst.data());
+  rv = nghttp2_inet_pton(family, hostname, dst.data());
 
   return rv == 1;
 }
@@ -969,7 +986,7 @@ int get_socket_error(int fd) {
 
 bool ipv6_numeric_addr(const char *host) {
   uint8_t dst[16];
-  return inet_pton(AF_INET6, host, dst) == 1;
+  return nghttp2_inet_pton(AF_INET6, host, dst) == 1;
 }
 
 namespace {

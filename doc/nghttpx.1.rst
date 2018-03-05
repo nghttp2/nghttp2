@@ -644,6 +644,13 @@ SSL/TLS
     client certificate.  The file must be in PEM format.  It
     can contain multiple certificates.
 
+.. option:: --verify-client-tolerate-expired
+
+    Accept  expired  client  certificate.   Operator  should
+    handle  the expired  client  certificate  by some  means
+    (e.g.,  mruby  script).   Otherwise, this  option  might
+    cause a security risk.
+
 .. option:: --client-private-key-file=<PATH>
 
     Path to  file that contains  client private key  used in
@@ -917,7 +924,7 @@ HTTP/2
     Set the maximum number of  the concurrent streams in one
     frontend HTTP/2 session.
 
-    Default: `` 100``
+    Default: ``100``
 
 .. option:: --backend-http2-max-concurrent-streams=<N>
 
@@ -1858,6 +1865,16 @@ respectively.
     .. rb:attr_reader:: tls_client_serial
 
         Return the serial number of a client certificate.
+
+    .. rb:attr_reader:: tls_client_not_before
+
+        Return the start date of a client certificate in seconds since
+        the epoch.
+
+    .. rb:attr_reader:: tls_client_not_after
+
+        Return the end date of a client certificate in seconds since
+        the epoch.
 
     .. rb:attr_reader:: tls_cipher
 

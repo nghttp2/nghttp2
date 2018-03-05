@@ -7521,3 +7521,7 @@ size_t
 nghttp2_session_get_hd_deflate_dynamic_table_size(nghttp2_session *session) {
   return nghttp2_hd_deflate_get_dynamic_table_size(&session->hd_deflater);
 }
+
+void nghttp2_session_set_user_data(nghttp2_session *session, void *user_data) {
+  session->user_data = user_data;
+}

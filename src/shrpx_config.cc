@@ -2173,6 +2173,11 @@ int option_lookup_token(const char *name, size_t namelen) {
     break;
   case 30:
     switch (name[29]) {
+    case 'd':
+      if (util::strieq_l("verify-client-tolerate-expire", name, 29)) {
+        return SHRPX_OPTID_VERIFY_CLIENT_TOLERATE_EXPIRED;
+      }
+      break;
     case 'r':
       if (util::strieq_l("strip-incoming-x-forwarded-fo", name, 29)) {
         return SHRPX_OPTID_STRIP_INCOMING_X_FORWARDED_FOR;
@@ -3553,6 +3558,10 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     return 0;
   case SHRPX_OPTID_NO_VERIFY_OCSP:
     config->tls.ocsp.no_verify = util::strieq_l("yes", optarg);
+
+    return 0;
+  case SHRPX_OPTID_VERIFY_CLIENT_TOLERATE_EXPIRED:
+    config->tls.client_verify.tolerate_expired = util::strieq_l("yes", optarg);
 
     return 0;
   case SHRPX_OPTID_CONF:
