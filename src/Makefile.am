@@ -47,7 +47,7 @@ AM_CPPFLAGS = \
 	@JANSSON_CFLAGS@ \
 	@ZLIB_CFLAGS@ \
         @DEFS@ \
-        -DBUILDING_NGHTTP2
+        -DBUILDING_NGHTTP2_ASIO
 
 LDADD = $(top_builddir)/lib/libnghttp2.la \
 	$(top_builddir)/third-party/libhttp-parser.la \
