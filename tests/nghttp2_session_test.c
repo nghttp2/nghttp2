@@ -3480,6 +3480,29 @@ void test_nghttp2_session_on_settings_received(void) {
   CU_ASSERT(NGHTTP2_STREAM_CLOSING == stream1->state);
 
   nghttp2_session_del(session);
+
+  /* It is invalid that peer disables ENABLE_CONNECT_PROTOCOL once it
+     has been enabled. */
+  nghttp2_session_client_new(&session, &callbacks, NULL);
+
+  session->remote_settings.enable_connect_protocol = 1;
+
+  iv[0].settings_id = NGHTTP2_SETTINGS_ENABLE_CONNECT_PROTOCOL;
+  iv[0].value = 0;
+
+  nghttp2_frame_settings_init(&frame.settings, NGHTTP2_FLAG_NONE, dup_iv(iv, 1),
+                              1);
+
+  CU_ASSERT(0 == nghttp2_session_on_settings_received(session, &frame, 0));
+
+  nghttp2_frame_settings_free(&frame.settings, mem);
+
+  item = nghttp2_session_get_next_ob_item(session);
+
+  CU_ASSERT(NULL != item);
+  CU_ASSERT(NGHTTP2_GOAWAY == item->frame.hd.type);
+
+  nghttp2_session_del(session);
 }
 
 void test_nghttp2_session_on_push_promise_received(void) {

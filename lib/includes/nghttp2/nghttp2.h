@@ -680,7 +680,12 @@ typedef enum {
   /**
    * SETTINGS_MAX_HEADER_LIST_SIZE
    */
-  NGHTTP2_SETTINGS_MAX_HEADER_LIST_SIZE = 0x06
+  NGHTTP2_SETTINGS_MAX_HEADER_LIST_SIZE = 0x06,
+  /**
+   * SETTINGS_ENABLE_CONNECT_PROTOCOL
+   * (https://tools.ietf.org/html/draft-ietf-httpbis-h2-websockets-00)
+   */
+  NGHTTP2_SETTINGS_ENABLE_CONNECT_PROTOCOL = 0x08
 } nghttp2_settings_id;
 /* Note: If we add SETTINGS, update the capacity of
    NGHTTP2_INBOUND_NUM_IV as well */
