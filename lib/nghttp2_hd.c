@@ -271,6 +271,15 @@ static int32_t lookup_token(const uint8_t *name, size_t namelen) {
       break;
     }
     break;
+  case 9:
+    switch (name[8]) {
+    case 'l':
+      if (memeq(":protoco", name, 8)) {
+        return NGHTTP2_TOKEN__PROTOCOL;
+      }
+      break;
+    }
+    break;
   case 10:
     switch (name[9]) {
     case 'e':
