@@ -36,14 +36,17 @@ namespace nghttp2 {
 
 namespace base64 {
 
+namespace {
+constexpr char B64_CHARS[] = {
+    'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M',
+    'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
+    'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
+    'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
+    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '+', '/',
+};
+} // namespace
+
 template <typename InputIt> std::string encode(InputIt first, InputIt last) {
-  static constexpr char CHAR_TABLE[] = {
-      'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M',
-      'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
-      'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
-      'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
-      '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '+', '/',
-  };
   std::string res;
   size_t len = last - first;
   if (len == 0) {
@@ -57,27 +60,70 @@ template <typename InputIt> std::string encode(InputIt first, InputIt last) {
     uint32_t n = static_cast<uint8_t>(*first++) << 16;
     n += static_cast<uint8_t>(*first++) << 8;
     n += static_cast<uint8_t>(*first++);
-    *p++ = CHAR_TABLE[n >> 18];
-    *p++ = CHAR_TABLE[(n >> 12) & 0x3fu];
-    *p++ = CHAR_TABLE[(n >> 6) & 0x3fu];
-    *p++ = CHAR_TABLE[n & 0x3fu];
+    *p++ = B64_CHARS[n >> 18];
+    *p++ = B64_CHARS[(n >> 12) & 0x3fu];
+    *p++ = B64_CHARS[(n >> 6) & 0x3fu];
+    *p++ = B64_CHARS[n & 0x3fu];
   }
 
   if (r == 2) {
     uint32_t n = static_cast<uint8_t>(*first++) << 16;
     n += static_cast<uint8_t>(*first++) << 8;
-    *p++ = CHAR_TABLE[n >> 18];
-    *p++ = CHAR_TABLE[(n >> 12) & 0x3fu];
-    *p++ = CHAR_TABLE[(n >> 6) & 0x3fu];
+    *p++ = B64_CHARS[n >> 18];
+    *p++ = B64_CHARS[(n >> 12) & 0x3fu];
+    *p++ = B64_CHARS[(n >> 6) & 0x3fu];
     *p++ = '=';
   } else if (r == 1) {
     uint32_t n = static_cast<uint8_t>(*first++) << 16;
-    *p++ = CHAR_TABLE[n >> 18];
-    *p++ = CHAR_TABLE[(n >> 12) & 0x3fu];
+    *p++ = B64_CHARS[n >> 18];
+    *p++ = B64_CHARS[(n >> 12) & 0x3fu];
     *p++ = '=';
     *p++ = '=';
   }
   return res;
+}
+
+constexpr size_t encode_length(size_t n) { return (n + 2) / 3 * 4; }
+
+template <typename InputIt, typename OutputIt>
+OutputIt encode(InputIt first, InputIt last, OutputIt d_first) {
+  size_t len = last - first;
+  if (len == 0) {
+    return d_first;
+  }
+  auto r = len % 3;
+  auto j = last - r;
+  auto p = d_first;
+  while (first != j) {
+    uint32_t n = static_cast<uint8_t>(*first++) << 16;
+    n += static_cast<uint8_t>(*first++) << 8;
+    n += static_cast<uint8_t>(*first++);
+    *p++ = B64_CHARS[n >> 18];
+    *p++ = B64_CHARS[(n >> 12) & 0x3fu];
+    *p++ = B64_CHARS[(n >> 6) & 0x3fu];
+    *p++ = B64_CHARS[n & 0x3fu];
+  }
+
+  switch (r) {
+  case 2: {
+    uint32_t n = static_cast<uint8_t>(*first++) << 16;
+    n += static_cast<uint8_t>(*first++) << 8;
+    *p++ = B64_CHARS[n >> 18];
+    *p++ = B64_CHARS[(n >> 12) & 0x3fu];
+    *p++ = B64_CHARS[(n >> 6) & 0x3fu];
+    *p++ = '=';
+    break;
+  }
+  case 1: {
+    uint32_t n = static_cast<uint8_t>(*first++) << 16;
+    *p++ = B64_CHARS[n >> 18];
+    *p++ = B64_CHARS[(n >> 12) & 0x3fu];
+    *p++ = '=';
+    *p++ = '=';
+    break;
+  }
+  }
+  return p;
 }
 
 template <typename InputIt>

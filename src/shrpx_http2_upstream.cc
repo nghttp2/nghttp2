@@ -391,6 +391,17 @@ int Http2Upstream::on_request_headers(Downstream *downstream,
     }
   }
 
+  auto connect_proto = req.fs.header(http2::HD__PROTOCOL);
+  if (connect_proto) {
+    if (connect_proto->value != "websocket") {
+      if (error_reply(downstream, 400) != 0) {
+        return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
+      }
+      return 0;
+    }
+    req.connect_proto = CONNECT_PROTO_WEBSOCKET;
+  }
+
   if (!(frame->hd.flags & NGHTTP2_FLAG_END_STREAM)) {
     req.http2_expect_body = true;
   } else if (req.fs.content_length == -1) {
@@ -1025,7 +1036,7 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
   flow_control_ = true;
 
   // TODO Maybe call from outside?
-  std::array<nghttp2_settings_entry, 3> entry;
+  std::array<nghttp2_settings_entry, 4> entry;
   size_t nentry = 2;
 
   entry[0].settings_id = NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS;
@@ -1036,6 +1047,12 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
     entry[1].value = (1u << 31) - 1;
   } else {
     entry[1].value = http2conf.upstream.window_size;
+  }
+
+  if (!config->http2_proxy) {
+    entry[nentry].settings_id = NGHTTP2_SETTINGS_ENABLE_CONNECT_PROTOCOL;
+    entry[nentry].value = 1;
+    ++nentry;
   }
 
   if (http2conf.upstream.decoder_dynamic_table_size !=
@@ -1704,11 +1721,11 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
   nva.reserve(resp.fs.headers().size() + 5 +
               httpconf.add_response_headers.size());
 
-  auto response_status = http2::stringify_status(balloc, resp.http_status);
-
-  nva.push_back(http2::make_nv_ls_nocopy(":status", response_status));
-
   if (downstream->get_non_final_response()) {
+    auto response_status = http2::stringify_status(balloc, resp.http_status);
+
+    nva.push_back(http2::make_nv_ls_nocopy(":status", response_status));
+
     http2::copy_headers_to_nva_nocopy(nva, resp.fs.headers(),
                                       http2::HDOP_STRIP_ALL);
 
@@ -1730,8 +1747,19 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
     return 0;
   }
 
-  http2::copy_headers_to_nva_nocopy(
-      nva, resp.fs.headers(), http2::HDOP_STRIP_ALL & ~http2::HDOP_STRIP_VIA);
+  auto striphd_flags = http2::HDOP_STRIP_ALL & ~http2::HDOP_STRIP_VIA;
+  StringRef response_status;
+
+  if (req.connect_proto == CONNECT_PROTO_WEBSOCKET && resp.http_status == 101) {
+    response_status = http2::stringify_status(balloc, 200);
+    striphd_flags |= http2::HDOP_STRIP_SEC_WEBSOCKET_ACCEPT;
+  } else {
+    response_status = http2::stringify_status(balloc, resp.http_status);
+  }
+
+  nva.push_back(http2::make_nv_ls_nocopy(":status", response_status));
+
+  http2::copy_headers_to_nva_nocopy(nva, resp.fs.headers(), striphd_flags);
 
   if (!config->http2_proxy && !httpconf.no_server_rewrite) {
     nva.push_back(http2::make_nv_ls_nocopy("server", httpconf.server_name));
@@ -1742,7 +1770,7 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
     }
   }
 
-  if (req.method != HTTP_CONNECT || !downstream->get_upgraded()) {
+  if (!req.regular_connect_method() || !downstream->get_upgraded()) {
     auto affinity_cookie = downstream->get_affinity_cookie_to_send();
     if (affinity_cookie) {
       auto dconn = downstream->get_downstream_connection();
@@ -1916,7 +1944,7 @@ int Http2Upstream::on_downstream_abort_request_with_https_redirect(
 
 int Http2Upstream::redirect_to_https(Downstream *downstream) {
   auto &req = downstream->request();
-  if (req.method == HTTP_CONNECT || req.scheme != "http") {
+  if (req.regular_connect_method() || req.scheme != "http") {
     return error_reply(downstream, 400);
   }
 

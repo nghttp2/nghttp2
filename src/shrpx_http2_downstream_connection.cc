@@ -105,7 +105,7 @@ int Http2DownstreamConnection::attach_downstream(Downstream *downstream) {
   auto &req = downstream_->request();
 
   // HTTP/2 disables HTTP Upgrade.
-  if (req.method != HTTP_CONNECT) {
+  if (req.method != HTTP_CONNECT && !req.connect_proto) {
     req.upgrade_request = false;
   }
 
@@ -231,7 +231,7 @@ int Http2DownstreamConnection::push_request_headers() {
   if (!downstream_) {
     return 0;
   }
-  if (!http2session_->can_push_request()) {
+  if (!http2session_->can_push_request(downstream_)) {
     // The HTTP2 session to the backend has not been established or
     // connection is now being checked.  This function will be called
     // again just after it is established.
@@ -244,6 +244,10 @@ int Http2DownstreamConnection::push_request_headers() {
 
   const auto &req = downstream_->request();
 
+  if (req.connect_proto && !http2session_->get_allow_connect_proto()) {
+    return -1;
+  }
+
   auto &balloc = downstream_->get_block_allocator();
 
   auto config = get_config();
@@ -251,7 +255,7 @@ int Http2DownstreamConnection::push_request_headers() {
   auto &http2conf = config->http2;
 
   auto no_host_rewrite = httpconf.no_host_rewrite || config->http2_proxy ||
-                         req.method == HTTP_CONNECT;
+                         req.regular_connect_method();
 
   // http2session_ has already in CONNECTED state, so we can get
   // addr_idx here.
@@ -272,25 +276,31 @@ int Http2DownstreamConnection::push_request_headers() {
     num_cookies = downstream_->count_crumble_request_cookie();
   }
 
-  // 10 means:
+  // 11 means:
   // 1. :method
   // 2. :scheme
   // 3. :path
   // 4. :authority (or host)
-  // 5. via (optional)
-  // 6. x-forwarded-for (optional)
-  // 7. x-forwarded-proto (optional)
-  // 8. te (optional)
-  // 9. forwarded (optional)
-  // 10. early-data (optional)
+  // 5. :protocol (optional)
+  // 6. via (optional)
+  // 7. x-forwarded-for (optional)
+  // 8. x-forwarded-proto (optional)
+  // 9. te (optional)
+  // 10. forwarded (optional)
+  // 11. early-data (optional)
   auto nva = std::vector<nghttp2_nv>();
-  nva.reserve(req.fs.headers().size() + 10 + num_cookies +
+  nva.reserve(req.fs.headers().size() + 11 + num_cookies +
               httpconf.add_request_headers.size());
 
-  nva.push_back(
-      http2::make_nv_ls_nocopy(":method", http2::to_method_string(req.method)));
+  if (req.connect_proto == CONNECT_PROTO_WEBSOCKET) {
+    nva.push_back(http2::make_nv_ll(":method", "CONNECT"));
+    nva.push_back(http2::make_nv_ll(":protocol", "websocket"));
+  } else {
+    nva.push_back(http2::make_nv_ls_nocopy(
+        ":method", http2::to_method_string(req.method)));
+  }
 
-  if (req.method != HTTP_CONNECT) {
+  if (!req.regular_connect_method()) {
     assert(!req.scheme.empty());
 
     auto addr = http2session_->get_addr();
@@ -308,7 +318,7 @@ int Http2DownstreamConnection::push_request_headers() {
       nva.push_back(http2::make_nv_ls_nocopy(":path", req.path));
     }
 
-    if (!req.no_authority) {
+    if (!req.no_authority || req.connect_proto) {
       nva.push_back(http2::make_nv_ls_nocopy(":authority", authority));
     } else {
       nva.push_back(http2::make_nv_ls_nocopy("host", authority));
@@ -326,7 +336,8 @@ int Http2DownstreamConnection::push_request_headers() {
       (fwdconf.strip_incoming ? http2::HDOP_STRIP_FORWARDED : 0) |
       (xffconf.strip_incoming ? http2::HDOP_STRIP_X_FORWARDED_FOR : 0) |
       (xfpconf.strip_incoming ? http2::HDOP_STRIP_X_FORWARDED_PROTO : 0) |
-      (earlydataconf.strip_incoming ? http2::HDOP_STRIP_EARLY_DATA : 0);
+      (earlydataconf.strip_incoming ? http2::HDOP_STRIP_EARLY_DATA : 0) |
+      http2::HDOP_STRIP_SEC_WEBSOCKET_KEY;
 
   http2::copy_headers_to_nva_nocopy(nva, req.fs.headers(), build_flags);
 
@@ -351,7 +362,7 @@ int Http2DownstreamConnection::push_request_headers() {
   if (fwdconf.params) {
     auto params = fwdconf.params;
 
-    if (config->http2_proxy || req.method == HTTP_CONNECT) {
+    if (config->http2_proxy || req.regular_connect_method()) {
       params &= ~FORWARDED_PROTO;
     }
 
@@ -392,7 +403,7 @@ int Http2DownstreamConnection::push_request_headers() {
     nva.push_back(http2::make_nv_ls_nocopy("x-forwarded-for", xff->value));
   }
 
-  if (!config->http2_proxy && req.method != HTTP_CONNECT) {
+  if (!config->http2_proxy && !req.regular_connect_method()) {
     auto xfp = xfpconf.strip_incoming
                    ? nullptr
                    : req.fs.header(http2::HD_X_FORWARDED_PROTO);
@@ -464,7 +475,7 @@ int Http2DownstreamConnection::push_request_headers() {
 
   // Add body as long as transfer-encoding is given even if
   // req.fs.content_length == 0 to forward trailer fields.
-  if (req.method == HTTP_CONNECT || transfer_encoding ||
+  if (req.method == HTTP_CONNECT || req.connect_proto || transfer_encoding ||
       req.fs.content_length > 0 || req.http2_expect_body) {
     // Request-body is expected.
     data_prd = {{}, http2_data_read_callback};
