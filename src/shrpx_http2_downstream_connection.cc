@@ -250,7 +250,7 @@ int Http2DownstreamConnection::push_request_headers() {
   auto &http2conf = config->http2;
 
   auto no_host_rewrite = httpconf.no_host_rewrite || config->http2_proxy ||
-                         req.method == HTTP_CONNECT;
+                         req.regular_connect_method();
 
   // http2session_ has already in CONNECTED state, so we can get
   // addr_idx here.
@@ -288,7 +288,7 @@ int Http2DownstreamConnection::push_request_headers() {
   nva.push_back(
       http2::make_nv_ls_nocopy(":method", http2::to_method_string(req.method)));
 
-  if (req.method != HTTP_CONNECT) {
+  if (!req.regular_connect_method()) {
     assert(!req.scheme.empty());
 
     auto addr = http2session_->get_addr();
@@ -339,7 +339,7 @@ int Http2DownstreamConnection::push_request_headers() {
   if (fwdconf.params) {
     auto params = fwdconf.params;
 
-    if (config->http2_proxy || req.method == HTTP_CONNECT) {
+    if (config->http2_proxy || req.regular_connect_method()) {
       params &= ~FORWARDED_PROTO;
     }
 
@@ -380,7 +380,7 @@ int Http2DownstreamConnection::push_request_headers() {
     nva.push_back(http2::make_nv_ls_nocopy("x-forwarded-for", xff->value));
   }
 
-  if (!config->http2_proxy && req.method != HTTP_CONNECT) {
+  if (!config->http2_proxy && !req.regular_connect_method()) {
     auto xfp = xfpconf.strip_incoming
                    ? nullptr
                    : req.fs.header(http2::HD_X_FORWARDED_PROTO);

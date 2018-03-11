@@ -134,6 +134,12 @@ private:
   bool trailer_key_prev_;
 };
 
+// Protocols allowed in HTTP/2 :protocol header field.
+enum shrpx_connect_proto {
+  CONNECT_PROTO_NONE,
+  CONNECT_PROTO_WEBSOCKET,
+};
+
 struct Request {
   Request(BlockAllocator &balloc)
       : fs(balloc, 16),
@@ -151,6 +157,14 @@ struct Request {
   void consume(size_t len) {
     assert(unconsumed_body_length >= len);
     unconsumed_body_length -= len;
+  }
+
+  bool regular_connect_method() const {
+    return method == HTTP_CONNECT && !connect_proto;
+  }
+
+  bool extended_connect_method() const {
+    return method == HTTP_CONNECT && connect_proto;
   }
 
   FieldStore fs;
@@ -176,6 +190,9 @@ struct Request {
   int method;
   // HTTP major and minor version
   int http_major, http_minor;
+  // connect_protocol specified in HTTP/2 :protocol pseudo header
+  // field which enables extended CONNECT method.
+  int connect_proto;
   // Returns true if the request is HTTP upgrade (HTTP Upgrade or
   // CONNECT method).  Upgrade to HTTP/2 is excluded.  For HTTP/2
   // Upgrade, check get_http2_upgrade_request().

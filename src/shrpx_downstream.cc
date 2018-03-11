@@ -722,7 +722,12 @@ bool Downstream::validate_response_recv_body_length() const {
 
 void Downstream::check_upgrade_fulfilled() {
   if (req_.method == HTTP_CONNECT) {
-    upgraded_ = 200 <= resp_.http_status && resp_.http_status < 300;
+    if (req_.connect_proto) {
+      // TODO For websocket, check Sec-WebSocket-Accept header field.
+      upgraded_ = resp_.http_status == 101;
+    } else {
+      upgraded_ = 200 <= resp_.http_status && resp_.http_status < 300;
+    }
 
     return;
   }

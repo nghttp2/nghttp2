@@ -9,6 +9,7 @@ HEADERS = [
     ':scheme',
     ':status',
     ':host', # for spdy
+    ':protocol',
     'expect',
     'host',
     'if-modified-since',
@@ -31,6 +32,7 @@ HEADERS = [
     "user-agent",
     "date",
     "content-type",
+    "sec-websocket-accept",
     # disallowed h1 headers
     'connection',
     'keep-alive',

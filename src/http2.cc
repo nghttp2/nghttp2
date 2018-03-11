@@ -438,6 +438,11 @@ void copy_headers_to_nva_internal(std::vector<nghttp2_nv> &nva,
       kv = &(*it_via);
       it_via = it;
       break;
+    case HD_SEC_WEBSOCKET_ACCEPT:
+      if (flags & HDOP_STRIP_SEC_WEBSOCKET_ACCEPT) {
+        continue;
+      }
+      break;
     }
     nva.push_back(
         make_nv_internal(kv->name, kv->value, kv->no_index, nv_flags));
@@ -821,6 +826,11 @@ int lookup_token(const uint8_t *name, size_t namelen) {
         return HD_FORWARDED;
       }
       break;
+    case 'l':
+      if (util::streq_l(":protoco", name, 8)) {
+        return HD__PROTOCOL;
+      }
+      break;
     }
     break;
   case 10:
@@ -922,6 +932,15 @@ int lookup_token(const uint8_t *name, size_t namelen) {
     case 'o':
       if (util::streq_l("x-forwarded-prot", name, 16)) {
         return HD_X_FORWARDED_PROTO;
+      }
+      break;
+    }
+    break;
+  case 20:
+    switch (name[19]) {
+    case 't':
+      if (util::streq_l("sec-websocket-accep", name, 19)) {
+        return HD_SEC_WEBSOCKET_ACCEPT;
       }
       break;
     }
@@ -1313,7 +1332,8 @@ std::string path_join(const StringRef &base_path, const StringRef &base_query,
 }
 
 bool expect_response_body(int status_code) {
-  return status_code / 100 != 1 && status_code != 304 && status_code != 204;
+  return status_code == 101 ||
+         (status_code / 100 != 1 && status_code != 304 && status_code != 204);
 }
 
 bool expect_response_body(const std::string &method, int status_code) {
