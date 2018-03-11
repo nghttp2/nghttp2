@@ -10907,6 +10907,17 @@ void test_nghttp2_http_mandatory_headers(void) {
   const nghttp2_nv asteriskoptions2_reqnv[] = {
       MAKE_NV(":scheme", "https"), MAKE_NV(":authority", "localhost"),
       MAKE_NV(":method", "OPTIONS"), MAKE_NV(":path", "*")};
+  const nghttp2_nv connectproto_reqnv[] = {
+      MAKE_NV(":scheme", "https"), MAKE_NV(":path", "/"),
+      MAKE_NV(":method", "CONNECT"), MAKE_NV(":authority", "localhost"),
+      MAKE_NV(":protocol", "websocket")};
+  const nghttp2_nv connectprotoget_reqnv[] = {
+      MAKE_NV(":scheme", "https"), MAKE_NV(":path", "/"),
+      MAKE_NV(":method", "GET"), MAKE_NV(":authority", "localhost"),
+      MAKE_NV(":protocol", "websocket")};
+  const nghttp2_nv connectprotonopath_reqnv[] = {
+      MAKE_NV(":scheme", "https"), MAKE_NV(":method", "GET"),
+      MAKE_NV(":authority", "localhost"), MAKE_NV(":protocol", "websocket")};
 
   mem = nghttp2_mem_default();
 
@@ -11053,6 +11064,39 @@ void test_nghttp2_http_mandatory_headers(void) {
   check_nghttp2_http_recv_headers_ok(session, &deflater, 25, -1,
                                      asteriskoptions2_reqnv,
                                      ARRLEN(asteriskoptions2_reqnv));
+
+  /* :protocol is not allowed unless it is enabled by the local
+     endpoint. */
+  check_nghttp2_http_recv_headers_fail(session, &deflater, 27, -1,
+                                       connectproto_reqnv,
+                                       ARRLEN(connectproto_reqnv));
+
+  nghttp2_hd_deflate_free(&deflater);
+
+  nghttp2_session_del(session);
+
+  /* enable SETTINGS_CONNECT_PROTOCOL */
+  nghttp2_session_server_new(&session, &callbacks, &ud);
+
+  session->local_settings.enable_connect_protocol = 1;
+
+  nghttp2_hd_deflate_init(&deflater, mem);
+
+  /* :protocol is allowed if SETTINGS_CONNECT_PROTOCOL is enabled by
+     the local endpoint. */
+  check_nghttp2_http_recv_headers_ok(session, &deflater, 1, -1,
+                                     connectproto_reqnv,
+                                     ARRLEN(connectproto_reqnv));
+
+  /* :protocol is only allowed with CONNECT method. */
+  check_nghttp2_http_recv_headers_fail(session, &deflater, 3, -1,
+                                       connectprotoget_reqnv,
+                                       ARRLEN(connectprotoget_reqnv));
+
+  /* CONNECT method with :protocol requires :path. */
+  check_nghttp2_http_recv_headers_fail(session, &deflater, 5, -1,
+                                       connectprotonopath_reqnv,
+                                       ARRLEN(connectprotonopath_reqnv));
 
   nghttp2_hd_deflate_free(&deflater);
 
