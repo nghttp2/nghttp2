@@ -52,11 +52,13 @@ int nghttp2_http_on_header(nghttp2_session *session, nghttp2_stream *stream,
                            int trailer);
 
 /*
- * This function is called when request header is received.  This
+ * This function is called when request header is received.
+ * |connect_protocol| is nonzero if SETTINGS_ENABLE_CONNECT_PROTOCOL
+ * is enabled by the local endpoint (which must be server).  This
  * function performs validation and returns 0 if it succeeds, or -1.
  */
 int nghttp2_http_on_request_headers(nghttp2_stream *stream,
-                                    nghttp2_frame *frame);
+                                    nghttp2_frame *frame, int connect_protocol);
 
 /*
  * This function is called when response header is received.  This
