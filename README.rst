@@ -951,7 +951,7 @@ output_length
     The length of the compressed header block.
 
 percentage_of_original_size
-    ``input_length`` / ``output_length`` * 100
+    ``output_length`` / ``input_length`` * 100
 
 wire
     The compressed header block as a hex string.
