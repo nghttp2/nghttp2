@@ -148,6 +148,7 @@ struct Request {
         method(-1),
         http_major(1),
         http_minor(1),
+        connect_proto(CONNECT_PROTO_NONE),
         upgrade_request(false),
         http2_upgrade_seen(false),
         connection_close(false),
