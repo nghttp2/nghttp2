@@ -391,17 +391,15 @@ int Http2Upstream::on_request_headers(Downstream *downstream,
     }
   }
 
-  if (!config->http2_proxy) {
-    auto connect_proto = req.fs.header(http2::HD__PROTOCOL);
-    if (connect_proto) {
-      if (connect_proto->value != "websocket") {
-        if (error_reply(downstream, 400) != 0) {
-          return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
-        }
-        return 0;
+  auto connect_proto = req.fs.header(http2::HD__PROTOCOL);
+  if (connect_proto) {
+    if (connect_proto->value != "websocket") {
+      if (error_reply(downstream, 400) != 0) {
+        return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
       }
-      req.connect_proto = CONNECT_PROTO_WEBSOCKET;
+      return 0;
     }
+    req.connect_proto = CONNECT_PROTO_WEBSOCKET;
   }
 
   if (!(frame->hd.flags & NGHTTP2_FLAG_END_STREAM)) {
@@ -1015,7 +1013,7 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
 
   // TODO Maybe call from outside?
   std::array<nghttp2_settings_entry, 4> entry;
-  size_t nentry = 3;
+  size_t nentry = 2;
 
   entry[0].settings_id = NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS;
   entry[0].value = http2conf.upstream.max_concurrent_streams;
@@ -1027,8 +1025,11 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
     entry[1].value = http2conf.upstream.window_size;
   }
 
-  entry[2].settings_id = NGHTTP2_SETTINGS_ENABLE_CONNECT_PROTOCOL;
-  entry[2].value = 1;
+  if (!config->http2_proxy) {
+    entry[nentry].settings_id = NGHTTP2_SETTINGS_ENABLE_CONNECT_PROTOCOL;
+    entry[nentry].value = 1;
+    ++nentry;
+  }
 
   if (http2conf.upstream.decoder_dynamic_table_size !=
       NGHTTP2_DEFAULT_HEADER_TABLE_SIZE) {
