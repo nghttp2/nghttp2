@@ -573,9 +573,14 @@ void signal_cb(struct ev_loop *loop, ev_signal *w, int revents) {
   case EXEC_BINARY_SIGNAL:
     exec_binary();
     return;
-  case GRACEFUL_SHUTDOWN_SIGNAL:
+  case GRACEFUL_SHUTDOWN_SIGNAL: {
+    auto &listenerconf = get_config()->conn.listener;
+    for (auto &addr : listenerconf.addrs) {
+      close(addr.fd);
+    }
     ipc_send(wp, SHRPX_IPC_GRACEFUL_SHUTDOWN);
     return;
+  }
   case RELOAD_SIGNAL:
     reload_config(wp);
     return;
@@ -2361,7 +2366,7 @@ HTTP/2:
   -c, --frontend-http2-max-concurrent-streams=<N>
               Set the maximum number of  the concurrent streams in one
               frontend HTTP/2 session.
-              Default:  )"
+              Default: )"
       << config->http2.upstream.max_concurrent_streams << R"(
   --backend-http2-max-concurrent-streams=<N>
               Set the maximum number of  the concurrent streams in one

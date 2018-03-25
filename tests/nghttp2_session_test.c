@@ -10437,6 +10437,7 @@ void test_nghttp2_http_mandatory_headers(void) {
                                     MAKE_NV("content-length", "0")};
   const nghttp2_nv clnonzero204_resnv[] = {MAKE_NV(":status", "204"),
                                            MAKE_NV("content-length", "100")};
+  const nghttp2_nv status101_resnv[] = {MAKE_NV(":status", "101")};
 
   /* test case for request */
   const nghttp2_nv nopath_reqnv[] = {MAKE_NV(":scheme", "https"),
@@ -10550,6 +10551,12 @@ void test_nghttp2_http_mandatory_headers(void) {
   check_nghttp2_http_recv_headers_fail(
       session, &deflater, 21, NGHTTP2_STREAM_OPENING, clnonzero204_resnv,
       ARRLEN(clnonzero204_resnv));
+
+  /* status code 101 should not be used in HTTP/2 because it is used
+     for HTTP Upgrade which HTTP/2 removes. */
+  check_nghttp2_http_recv_headers_fail(session, &deflater, 23,
+                                       NGHTTP2_STREAM_OPENING, status101_resnv,
+                                       ARRLEN(status101_resnv));
 
   nghttp2_hd_deflate_free(&deflater);
 

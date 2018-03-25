@@ -452,6 +452,8 @@ void ConnectionHandler::add_acceptor(std::unique_ptr<AcceptHandler> h) {
   acceptors_.push_back(std::move(h));
 }
 
+void ConnectionHandler::delete_acceptor() { acceptors_.clear(); }
+
 void ConnectionHandler::enable_acceptor() {
   for (auto &a : acceptors_) {
     a->enable();

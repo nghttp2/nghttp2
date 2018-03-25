@@ -117,6 +117,7 @@ public:
   struct ev_loop *get_loop() const;
   Worker *get_single_worker() const;
   void add_acceptor(std::unique_ptr<AcceptHandler> h);
+  void delete_acceptor();
   void enable_acceptor();
   void disable_acceptor();
   void sleep_acceptor(ev_tstamp t);
