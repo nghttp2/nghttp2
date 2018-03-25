@@ -1095,7 +1095,9 @@ int HttpClient::connection_made() {
     // Check NPN or ALPN result
     const unsigned char *next_proto = nullptr;
     unsigned int next_proto_len;
+#ifndef OPENSSL_NO_NEXTPROTONEG
     SSL_get0_next_proto_negotiated(ssl, &next_proto, &next_proto_len);
+#endif
     for (int i = 0; i < 2; ++i) {
       if (next_proto) {
         auto proto = StringRef{next_proto, next_proto_len};
@@ -2308,8 +2310,10 @@ int communicate(
         goto fin;
       }
     }
+#ifndef OPENSSL_NO_NEXTPROTONEG
     SSL_CTX_set_next_proto_select_cb(ssl_ctx, client_select_next_proto_cb,
                                      nullptr);
+#endif
 
 #if OPENSSL_VERSION_NUMBER >= 0x10002000L
     auto proto_list = util::get_default_alpn();
