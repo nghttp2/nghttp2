@@ -379,7 +379,7 @@ static void init_ssl_ctx(SSL_CTX *ssl_ctx) {
   /* Set NPN callback */
 #ifndef OPENSSL_NO_NEXTPROTONEG
   SSL_CTX_set_next_proto_select_cb(ssl_ctx, select_next_proto_cb, NULL);
-#endif
+#endif /* !OPENSSL_NO_NEXTPROTONEG */
 }
 
 static void ssl_handshake(SSL *ssl, int fd) {
