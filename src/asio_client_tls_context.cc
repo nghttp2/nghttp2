@@ -35,6 +35,7 @@ namespace nghttp2 {
 namespace asio_http2 {
 namespace client {
 
+#ifndef OPENSSL_NO_NEXTPROTONEG
 namespace {
 int client_select_next_proto_cb(SSL *ssl, unsigned char **out,
                                 unsigned char *outlen, const unsigned char *in,
@@ -46,6 +47,7 @@ int client_select_next_proto_cb(SSL *ssl, unsigned char **out,
   return SSL_TLSEXT_ERR_OK;
 }
 } // namespace
+#endif // !OPENSSL_NO_NEXTPROTONEG
 
 boost::system::error_code
 configure_tls_context(boost::system::error_code &ec,
@@ -54,7 +56,9 @@ configure_tls_context(boost::system::error_code &ec,
 
   auto ctx = tls_ctx.native_handle();
 
+#ifndef OPENSSL_NO_NEXTPROTONEG
   SSL_CTX_set_next_proto_select_cb(ctx, client_select_next_proto_cb, nullptr);
+#endif // !OPENSSL_NO_NEXTPROTONEG
 
 #if OPENSSL_VERSION_NUMBER >= 0x10002000L
   auto proto_list = util::get_default_alpn();

@@ -308,6 +308,7 @@ static int on_stream_close_callback(nghttp2_session *session, int32_t stream_id,
   return 0;
 }
 
+#ifndef OPENSSL_NO_NEXTPROTONEG
 /* NPN TLS extension client callback. We check that server advertised
    the HTTP/2 protocol the nghttp2 library supports. If not, exit
    the program. */
@@ -322,6 +323,7 @@ static int select_next_proto_cb(SSL *ssl, unsigned char **out,
   }
   return SSL_TLSEXT_ERR_OK;
 }
+#endif /* !OPENSSL_NO_NEXTPROTONEG */
 
 /* Create SSL_CTX. */
 static SSL_CTX *create_ssl_ctx(void) {

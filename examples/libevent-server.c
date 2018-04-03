@@ -109,6 +109,7 @@ struct app_context {
 static unsigned char next_proto_list[256];
 static size_t next_proto_list_len;
 
+#ifndef OPENSSL_NO_NEXTPROTONEG
 static int next_proto_cb(SSL *ssl, const unsigned char **data,
                          unsigned int *len, void *arg) {
   (void)ssl;
@@ -118,6 +119,7 @@ static int next_proto_cb(SSL *ssl, const unsigned char **data,
   *len = (unsigned int)next_proto_list_len;
   return SSL_TLSEXT_ERR_OK;
 }
+#endif /* !OPENSSL_NO_NEXTPROTONEG */
 
 #if OPENSSL_VERSION_NUMBER >= 0x10002000L
 static int alpn_select_proto_cb(SSL *ssl, const unsigned char **out,
