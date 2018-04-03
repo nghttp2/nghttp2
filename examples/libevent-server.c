@@ -137,7 +137,7 @@ static int alpn_select_proto_cb(SSL *ssl, const unsigned char **out,
 
   return SSL_TLSEXT_ERR_OK;
 }
-#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
+#endif /* OPENSSL_VERSION_NUMBER >= 0x10002000L */
 
 /* Create SSL_CTX. */
 static SSL_CTX *create_ssl_ctx(const char *key_file, const char *cert_file) {
@@ -180,7 +180,7 @@ static SSL_CTX *create_ssl_ctx(const char *key_file, const char *cert_file) {
 
 #if OPENSSL_VERSION_NUMBER >= 0x10002000L
   SSL_CTX_set_alpn_select_cb(ssl_ctx, alpn_select_proto_cb, NULL);
-#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
+#endif /* OPENSSL_VERSION_NUMBER >= 0x10002000L */
 
   return ssl_ctx;
 }
@@ -701,7 +701,7 @@ static void eventcb(struct bufferevent *bev, short events, void *ptr) {
     if (alpn == NULL) {
       SSL_get0_alpn_selected(ssl, &alpn, &alpnlen);
     }
-#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
+#endif /* OPENSSL_VERSION_NUMBER >= 0x10002000L */
 
     if (alpn == NULL || alpnlen != 2 || memcmp("h2", alpn, 2) != 0) {
       fprintf(stderr, "%s h2 is not negotiated\n", session_data->client_addr);
