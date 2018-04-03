@@ -91,17 +91,17 @@ int main(int argc, char *argv[]) {
         return;
       }
 
-      req->on_response([&sess, req](const response &res) {
+      req->on_response([](const response &res) {
         std::cerr << "response header was received" << std::endl;
         print_header(res);
 
-        res.on_data([&sess](const uint8_t *data, std::size_t len) {
+        res.on_data([](const uint8_t *data, std::size_t len) {
           std::cerr.write(reinterpret_cast<const char *>(data), len);
           std::cerr << std::endl;
         });
       });
 
-      req->on_close([&sess](uint32_t error_code) {
+      req->on_close([](uint32_t error_code) {
         std::cerr << "request done with error_code=" << error_code << std::endl;
       });
 
