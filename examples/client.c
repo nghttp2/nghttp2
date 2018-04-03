@@ -345,6 +345,7 @@ static void setup_nghttp2_callbacks(nghttp2_session_callbacks *callbacks) {
       callbacks, on_data_chunk_recv_callback);
 }
 
+#ifndef OPENSSL_NO_NEXTPROTONEG
 /*
  * Callback function for TLS NPN. Since this program only supports
  * HTTP/2 protocol, if server does not offer HTTP/2 the nghttp2
@@ -365,6 +366,7 @@ static int select_next_proto_cb(SSL *ssl, unsigned char **out,
   }
   return SSL_TLSEXT_ERR_OK;
 }
+#endif /* !OPENSSL_NO_NEXTPROTONEG */
 
 /*
  * Setup SSL/TLS context.
@@ -375,7 +377,9 @@ static void init_ssl_ctx(SSL_CTX *ssl_ctx) {
   SSL_CTX_set_mode(ssl_ctx, SSL_MODE_AUTO_RETRY);
   SSL_CTX_set_mode(ssl_ctx, SSL_MODE_RELEASE_BUFFERS);
   /* Set NPN callback */
+#ifndef OPENSSL_NO_NEXTPROTONEG
   SSL_CTX_set_next_proto_select_cb(ssl_ctx, select_next_proto_cb, NULL);
+#endif /* !OPENSSL_NO_NEXTPROTONEG */
 }
 
 static void ssl_handshake(SSL *ssl, int fd) {

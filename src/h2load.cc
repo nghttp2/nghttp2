@@ -857,7 +857,9 @@ int Client::connection_made() {
     const unsigned char *next_proto = nullptr;
     unsigned int next_proto_len;
 
+#ifndef OPENSSL_NO_NEXTPROTONEG
     SSL_get0_next_proto_negotiated(ssl, &next_proto, &next_proto_len);
+#endif // !OPENSSL_NO_NEXTPROTONEG
 #if OPENSSL_VERSION_NUMBER >= 0x10002000L
     if (next_proto == nullptr) {
       SSL_get0_alpn_selected(ssl, &next_proto, &next_proto_len);
@@ -1563,6 +1565,7 @@ std::string get_reqline(const char *uri, const http_parser_url &u) {
 }
 } // namespace
 
+#ifndef OPENSSL_NO_NEXTPROTONEG
 namespace {
 int client_select_next_proto_cb(SSL *ssl, unsigned char **out,
                                 unsigned char *outlen, const unsigned char *in,
@@ -1577,6 +1580,7 @@ int client_select_next_proto_cb(SSL *ssl, unsigned char **out,
   return SSL_TLSEXT_ERR_NOACK;
 }
 } // namespace
+#endif // !OPENSSL_NO_NEXTPROTONEG
 
 namespace {
 constexpr char UNIX_PATH_PREFIX[] = "unix:";
@@ -2399,8 +2403,10 @@ int main(int argc, char **argv) {
     exit(EXIT_FAILURE);
   }
 
+#ifndef OPENSSL_NO_NEXTPROTONEG
   SSL_CTX_set_next_proto_select_cb(ssl_ctx, client_select_next_proto_cb,
                                    nullptr);
+#endif // !OPENSSL_NO_NEXTPROTONEG
 
 #if OPENSSL_VERSION_NUMBER >= 0x10002000L
   std::vector<unsigned char> proto_list;
