@@ -44,13 +44,15 @@ using namespace nghttp2;
 
 namespace shrpx {
 
-#if !OPENSSL_1_1_API
-
+#ifndef HAVE_BIO_GET_DATA
 void *BIO_get_data(BIO *bio) { return bio->ptr; }
+#endif
+#ifndef HAVE_BIO_SET_DATA
 void BIO_set_data(BIO *bio, void *ptr) { bio->ptr = ptr; }
+#endif
+#ifndef HAVE_BIO_SET_INIT
 void BIO_set_init(BIO *bio, int init) { bio->init = init; }
-
-#endif // !OPENSSL_1_1_API
+#endif
 
 Connection::Connection(struct ev_loop *loop, int fd, SSL *ssl,
                        MemchunkPool *mcpool, ev_tstamp write_timeout,

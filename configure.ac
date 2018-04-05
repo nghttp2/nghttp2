@@ -359,6 +359,11 @@ PKG_CHECK_MODULES([OPENSSL], [openssl >= 1.0.1],
 if test "x${have_openssl}" = "xno"; then
   AC_MSG_NOTICE($OPENSSL_PKG_ERRORS)
 fi
+save_LIBS=$LIBS
+LIBS=$OPENSSL_LIBS
+AC_CHECK_FUNCS(BIO_set_data BIO_get_data BIO_set_init)
+LIBS=$save_LIBS
+
 
 # c-ares (for src)
 PKG_CHECK_MODULES([LIBCARES], [libcares >= 1.7.5], [have_libcares=yes],
