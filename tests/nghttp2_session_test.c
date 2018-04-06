@@ -2297,6 +2297,31 @@ void test_nghttp2_session_recv_altsvc(void) {
 
   nghttp2_session_del(session);
 
+  /* send too large frame */
+  nghttp2_buf_reset(&buf);
+
+  nghttp2_session_client_new2(&session, &callbacks, &ud, option);
+
+  session->local_settings.max_frame_size = NGHTTP2_MAX_FRAME_SIZE_MIN - 1;
+
+  nghttp2_frame_hd_init(&hd, NGHTTP2_MAX_FRAME_SIZE_MIN + 1, NGHTTP2_ALTSVC,
+                        NGHTTP2_FLAG_NONE, 0);
+  nghttp2_frame_pack_frame_hd(buf.last, &hd);
+  buf.last += NGHTTP2_FRAME_HDLEN;
+  nghttp2_put_uint16be(buf.last, sizeof(origin) - 1);
+  buf.last += 2;
+  buf.last = nghttp2_cpymem(buf.last, origin, sizeof(origin) - 1);
+  memset(buf.last, 0, nghttp2_buf_avail(&buf));
+  buf.last += nghttp2_buf_avail(&buf);
+
+  ud.frame_recv_cb_called = 0;
+  rv = nghttp2_session_mem_recv(session, buf.pos, nghttp2_buf_len(&buf));
+
+  CU_ASSERT((ssize_t)nghttp2_buf_len(&buf) == rv);
+  CU_ASSERT(0 == ud.frame_recv_cb_called);
+
+  nghttp2_session_del(session);
+
   /* received by server */
   nghttp2_buf_reset(&buf);
 
