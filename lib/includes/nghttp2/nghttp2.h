@@ -5337,7 +5337,11 @@ nghttp2_stream_get_sum_dependency_weight(nghttp2_stream *stream);
  * ``DEBUGBUILD`` macro defined.
  */
 typedef void (*nghttp2_debug_vprintf_callback)(const char *format,
-              va_list args)  __attribute__ ((format(printf, 1, 0)));
+              va_list args)
+#ifdef __GNUC__
+  __attribute__ ((format(printf, 1, 0)))
+#endif
+;
 
 /**
  * @function
