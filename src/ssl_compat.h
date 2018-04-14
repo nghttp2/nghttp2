@@ -27,15 +27,17 @@
 #include <openssl/opensslv.h>
 
 #if defined(LIBRESSL_VERSION_NUMBER)
+#define OPENSSL_1_1_API 0
+#define OPENSSL_1_1_1_API 0
 #define LIBRESSL_IN_USE 1
+#define LIBRESSL_LEGACY_API (LIBRESSL_VERSION_NUMBER < 0x20700000L)
+#define LIBRESSL_2_7_API (LIBRESSL_VERSION_NUMBER >= 0x20700000L)
 #else // !defined(LIBRESSL_VERSION_NUMBER)
+#define OPENSSL_1_1_API (OPENSSL_VERSION_NUMBER >= 0x1010000fL)
+#define OPENSSL_1_1_1_API (OPENSSL_VERSION_NUMBER >= 0x10101000L)
 #define LIBRESSL_IN_USE 0
+#define LIBRESSL_LEGACY_API 0
+#define LIBRESSL_2_7_API 0
 #endif // !defined(LIBRESSL_VERSION_NUMBER)
-
-#define OPENSSL_1_1_API                                                        \
-  (!LIBRESSL_IN_USE && OPENSSL_VERSION_NUMBER >= 0x1010000fL)
-
-#define OPENSSL_1_1_1_API                                                      \
-  (!LIBRESSL_IN_USE && OPENSSL_VERSION_NUMBER >= 0x10101000L)
 
 #endif // OPENSSL_COMPAT_H
