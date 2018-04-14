@@ -194,7 +194,7 @@ int servername_callback(SSL *ssl, int *al, void *arg) {
   const auto &ssl_ctx_list = conn_handler->get_indexed_ssl_ctx(idx);
   assert(!ssl_ctx_list.empty());
 
-#if !defined(OPENSSL_IS_BORINGSSL) && !defined(LIBRESSL_VERSION_NUMBER) &&     \
+#if !defined(OPENSSL_IS_BORINGSSL) && !LIBRESSL_IN_USE &&                      \
     OPENSSL_VERSION_NUMBER >= 0x10002000L
   auto num_shared_curves = SSL_get_shared_curve(ssl, -1);
 
@@ -238,7 +238,7 @@ int servername_callback(SSL *ssl, int *al, void *arg) {
       }
     }
   }
-#endif // !defined(OPENSSL_IS_BORINGSSL) && !defined(LIBRESSL_VERSION_NUMBER) &&
+#endif // !defined(OPENSSL_IS_BORINGSSL) && !LIBRESSL_IN_USE &&
        // OPENSSL_VERSION_NUMBER >= 0x10002000L
 
   SSL_set_SSL_CTX(ssl, ssl_ctx_list[0]);
@@ -1851,7 +1851,7 @@ int proto_version_from_string(const StringRef &v) {
 int verify_ocsp_response(SSL_CTX *ssl_ctx, const uint8_t *ocsp_resp,
                          size_t ocsp_resplen) {
 
-#if !defined(OPENSSL_NO_OCSP) && !defined(LIBRESSL_VERSION_NUMBER) &&          \
+#if !defined(OPENSSL_NO_OCSP) && !LIBRESSL_IN_USE &&                           \
     OPENSSL_VERSION_NUMBER >= 0x10002000L
   int rv;
 
@@ -1924,7 +1924,7 @@ int verify_ocsp_response(SSL_CTX *ssl_ctx, const uint8_t *ocsp_resp,
   if (LOG_ENABLED(INFO)) {
     LOG(INFO) << "OCSP verification succeeded";
   }
-#endif // !defined(OPENSSL_NO_OCSP) && !defined(LIBRESSL_VERSION_NUMBER)
+#endif // !defined(OPENSSL_NO_OCSP) && !LIBRESSL_IN_USE
        // && OPENSSL_VERSION_NUMBER >= 0x10002000L
 
   return 0;
