@@ -5800,8 +5800,10 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
       case NGHTTP2_HEADERS:
         if (iframe->padlen == 0 &&
             (iframe->frame.hd.flags & NGHTTP2_FLAG_PADDED)) {
+          pri_fieldlen = nghttp2_frame_priority_len(iframe->frame.hd.flags);
           padlen = inbound_frame_compute_pad(iframe);
-          if (padlen < 0) {
+          if (padlen < 0 ||
+              (size_t)padlen + pri_fieldlen > 1 + iframe->payloadleft) {
             busy = 1;
             rv = nghttp2_session_terminate_session_with_reason(
                 session, NGHTTP2_PROTOCOL_ERROR, "HEADERS: invalid padding");
@@ -5812,8 +5814,6 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
             break;
           }
           iframe->frame.headers.padlen = (size_t)padlen;
-
-          pri_fieldlen = nghttp2_frame_priority_len(iframe->frame.hd.flags);
 
           if (pri_fieldlen > 0) {
             if (iframe->payloadleft < pri_fieldlen) {
@@ -5877,8 +5877,10 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
         if (iframe->padlen == 0 &&
             (iframe->frame.hd.flags & NGHTTP2_FLAG_PADDED)) {
           padlen = inbound_frame_compute_pad(iframe);
-          if (padlen < 0) {
+          if (padlen < 0 || (size_t)padlen + 4 /* promised stream id */
+                                > 1 + iframe->payloadleft) {
             busy = 1;
+
             rv = nghttp2_session_terminate_session_with_reason(
                 session, NGHTTP2_PROTOCOL_ERROR,
                 "PUSH_PROMISE: invalid padding");
@@ -6028,6 +6030,12 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
 
       data_readlen = inbound_frame_effective_readlen(
           iframe, iframe->payloadleft - readlen, readlen);
+
+      if (data_readlen == -1) {
+        /* everything is padding */
+        data_readlen = 0;
+      }
+
       trail_padlen = nghttp2_frame_trail_padlen(&iframe->frame, iframe->padlen);
 
       final = (iframe->frame.hd.flags & NGHTTP2_FLAG_END_HEADERS) &&

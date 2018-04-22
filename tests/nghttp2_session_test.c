@@ -1575,6 +1575,94 @@ void test_nghttp2_session_recv_headers_with_priority(void) {
   nghttp2_session_del(session);
 }
 
+void test_nghttp2_session_recv_headers_with_padding(void) {
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+  nghttp2_bufs bufs;
+  nghttp2_buf *buf;
+  nghttp2_frame_hd hd;
+  nghttp2_outbound_item *item;
+  my_user_data ud;
+  ssize_t rv;
+
+  frame_pack_bufs_init(&bufs);
+
+  memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
+  callbacks.on_frame_recv_callback = on_frame_recv_callback;
+  callbacks.send_callback = null_send_callback;
+
+  /* HEADERS: Wrong padding length */
+  nghttp2_session_server_new(&session, &callbacks, &ud);
+  nghttp2_session_send(session);
+
+  nghttp2_frame_hd_init(&hd, 10, NGHTTP2_HEADERS,
+                        NGHTTP2_FLAG_END_HEADERS | NGHTTP2_FLAG_PRIORITY |
+                            NGHTTP2_FLAG_PADDED,
+                        1);
+  buf = &bufs.head->buf;
+  nghttp2_frame_pack_frame_hd(buf->last, &hd);
+  buf->last += NGHTTP2_FRAME_HDLEN;
+  /* padding is 6 bytes */
+  *buf->last++ = 5;
+  /* priority field */
+  nghttp2_put_uint32be(buf->last, 3);
+  buf->last += sizeof(uint32_t);
+  *buf->last++ = 1;
+  /* rest is garbage */
+  memset(buf->last, 0, 4);
+  buf->last += 4;
+
+  ud.frame_recv_cb_called = 0;
+
+  rv = nghttp2_session_mem_recv(session, buf->pos, nghttp2_buf_len(buf));
+
+  CU_ASSERT((ssize_t)nghttp2_buf_len(buf) == rv);
+  CU_ASSERT(0 == ud.frame_recv_cb_called);
+
+  item = nghttp2_session_get_next_ob_item(session);
+
+  CU_ASSERT(NULL != item);
+  CU_ASSERT(NGHTTP2_GOAWAY == item->frame.hd.type);
+
+  nghttp2_bufs_reset(&bufs);
+  nghttp2_session_del(session);
+
+  /* PUSH_PROMISE: Wrong padding length */
+  nghttp2_session_client_new(&session, &callbacks, &ud);
+  nghttp2_session_send(session);
+
+  open_sent_stream(session, 1);
+
+  nghttp2_frame_hd_init(&hd, 9, NGHTTP2_PUSH_PROMISE,
+                        NGHTTP2_FLAG_END_HEADERS | NGHTTP2_FLAG_PADDED, 1);
+  buf = &bufs.head->buf;
+  nghttp2_frame_pack_frame_hd(buf->last, &hd);
+  buf->last += NGHTTP2_FRAME_HDLEN;
+  /* padding is 6 bytes */
+  *buf->last++ = 5;
+  /* promised stream ID field */
+  nghttp2_put_uint32be(buf->last, 2);
+  buf->last += sizeof(uint32_t);
+  /* rest is garbage */
+  memset(buf->last, 0, 4);
+  buf->last += 4;
+
+  ud.frame_recv_cb_called = 0;
+
+  rv = nghttp2_session_mem_recv(session, buf->pos, nghttp2_buf_len(buf));
+
+  CU_ASSERT((ssize_t)nghttp2_buf_len(buf) == rv);
+  CU_ASSERT(0 == ud.frame_recv_cb_called);
+
+  item = nghttp2_session_get_next_ob_item(session);
+
+  CU_ASSERT(NULL != item);
+  CU_ASSERT(NGHTTP2_GOAWAY == item->frame.hd.type);
+
+  nghttp2_bufs_free(&bufs);
+  nghttp2_session_del(session);
+}
+
 static int response_on_begin_frame_callback(nghttp2_session *session,
                                             const nghttp2_frame_hd *hd,
                                             void *user_data) {

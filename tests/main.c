@@ -87,6 +87,8 @@ int main() {
                    test_nghttp2_session_recv_continuation) ||
       !CU_add_test(pSuite, "session_recv_headers_with_priority",
                    test_nghttp2_session_recv_headers_with_priority) ||
+      !CU_add_test(pSuite, "session_recv_headers_with_padding",
+                   test_nghttp2_session_recv_headers_with_padding) ||
       !CU_add_test(pSuite, "session_recv_headers_early_response",
                    test_nghttp2_session_recv_headers_early_response) ||
       !CU_add_test(pSuite, "session_server_recv_push_response",
