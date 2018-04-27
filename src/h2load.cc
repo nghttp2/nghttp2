@@ -1856,7 +1856,7 @@ Options:
               connections per period.  When the rate is 0, the program
               will run  as it  normally does, creating  connections at
               whatever variable rate it  wants.  The default value for
-              this option is 0.
+              this option is 0.  -r and -D are mutually exclusive.
   --rate-period=<DURATION>
               Specifies the time  period between creating connections.
               The period  must be a positive  number, representing the
@@ -1865,7 +1865,8 @@ Options:
               option is 1s.
   -D, --duration=<N>
               Specifies the main duration for the measurements in case
-              of timing-based benchmarking.
+              of timing-based  benchmarking.  -D  and -r  are mutually
+              exclusive.
   --warm-up-time=<DURATION>
               Specifies the  time  period  before  starting the actual
               measurements, in  case  of  timing-based benchmarking.
@@ -2295,6 +2296,11 @@ int main(int argc, char **argv) {
 
   if (reqlines.empty()) {
     std::cerr << "No URI given" << std::endl;
+    exit(EXIT_FAILURE);
+  }
+
+  if (config.is_timing_based_mode() && config.is_rate_mode()) {
+    std::cerr << "-r, -D: they are mutually exclusive." << std::endl;
     exit(EXIT_FAILURE);
   }
 
