@@ -38,6 +38,10 @@ session_tls_impl::session_tls_impl(
   // ssl::context::set_verify_mode(boost::asio::ssl::verify_peer) is
   // not used, which is what we want.
   socket_.set_verify_callback(boost::asio::ssl::rfc2818_verification(host));
+  auto ssl = socket_.native_handle();
+  if (!util::numeric_host(host.c_str())) {
+    SSL_set_tlsext_host_name(ssl, host.c_str());
+  }
 }
 
 session_tls_impl::~session_tls_impl() {}
