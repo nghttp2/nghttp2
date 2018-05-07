@@ -124,7 +124,7 @@ OPTIONS
     connections per period.  When the rate is 0, the program
     will run  as it  normally does, creating  connections at
     whatever variable rate it  wants.  The default value for
-    this option is 0.
+    this option is 0.  :option:`-r` and :option:`\-D` are mutually exclusive.
 
 .. option:: --rate-period=<DURATION>
 
@@ -137,7 +137,8 @@ OPTIONS
 .. option:: -D, --duration=<N>
 
     Specifies the main duration for the measurements in case
-    of timing-based benchmarking.
+    of timing-based  benchmarking.  :option:`-D`  and :option:`\-r`  are mutually
+    exclusive.
 
 .. option:: --warm-up-time=<DURATION>
 

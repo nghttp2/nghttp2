@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "H2LOAD" "1" "Feb 27, 2018" "1.31.0" "nghttp2"
+.TH "H2LOAD" "1" "May 07, 2018" "1.32.0-DEV" "nghttp2"
 .SH NAME
 h2load \- HTTP/2 benchmarking tool
 .
@@ -155,7 +155,7 @@ example,  with   \fI\%\-t\fP2  and   \fI\%\-r\fP4,  each  thread   gets  2
 connections per period.  When the rate is 0, the program
 will run  as it  normally does, creating  connections at
 whatever variable rate it  wants.  The default value for
-this option is 0.
+this option is 0.  \fI\%\-r\fP and \fI\%\-D\fP are mutually exclusive.
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -170,7 +170,8 @@ option is 1s.
 .TP
 .B \-D, \-\-duration=<N>
 Specifies the main duration for the measurements in case
-of timing\-based benchmarking.
+of timing\-based  benchmarking.  \fI\%\-D\fP  and \fI\%\-r\fP  are mutually
+exclusive.
 .UNINDENT
 .INDENT 0.0
 .TP
