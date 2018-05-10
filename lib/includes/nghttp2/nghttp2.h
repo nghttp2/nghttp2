@@ -611,7 +611,12 @@ typedef enum {
    * The ALTSVC frame, which is defined in `RFC 7383
    * <https://tools.ietf.org/html/rfc7838#section-4>`_.
    */
-  NGHTTP2_ALTSVC = 0x0a
+  NGHTTP2_ALTSVC = 0x0a,
+  /**
+   * The ORIGIN frame, which is defined by `RFC 8336
+   * <https://tools.ietf.org/html/rfc8336>`_.
+   */
+  NGHTTP2_ORIGIN = 0x0c
 } nghttp2_frame_type;
 
 /**
@@ -4550,6 +4555,80 @@ NGHTTP2_EXTERN int nghttp2_submit_altsvc(nghttp2_session *session,
                                          size_t origin_len,
                                          const uint8_t *field_value,
                                          size_t field_value_len);
+
+/**
+ * @struct
+ *
+ * The single entry of an origin.
+ */
+typedef struct {
+  /**
+   * The pointer to origin.  No validation is made against this field
+   * by the library.  This is not necessarily NULL-terminated.
+   */
+  uint8_t *origin;
+  /**
+   * The length of the |origin|.
+   */
+  size_t origin_len;
+} nghttp2_origin_entry;
+
+/**
+ * @struct
+ *
+ * The payload of ORIGIN frame.  ORIGIN frame is a non-critical
+ * extension to HTTP/2 and defined by `RFC 8336
+ * <https://tools.ietf.org/html/rfc8336>`_.
+ *
+ * If this frame is received, and
+ * `nghttp2_option_set_user_recv_extension_type()` is not set, and
+ * `nghttp2_option_set_builtin_recv_extension_type()` is set for
+ * :enum:`NGHTTP2_ORIGIN`, ``nghttp2_extension.payload`` will point to
+ * this struct.
+ *
+ * It has the following members:
+ */
+typedef struct {
+  /**
+   * The number of origins contained in |ov|.
+   */
+  size_t nov;
+  /**
+   * The pointer to the array of origins contained in ORIGIN frame.
+   */
+  nghttp2_origin_entry *ov;
+} nghttp2_ext_origin;
+
+/**
+ * @function
+ *
+ * Submits ORIGIN frame.
+ *
+ * ORIGIN frame is a non-critical extension to HTTP/2 and defined by
+ * `RFC 8336 <https://tools.ietf.org/html/rfc8336>`_.
+ *
+ * The |flags| is currently ignored and should be
+ * :enum:`NGHTTP2_FLAG_NONE`.
+ *
+ * The |ov| points to the array of origins.  The |nov| specifies the
+ * number of origins included in |ov|.
+ *
+ * The ORIGIN frame is only usable by a server.  If this function is
+ * invoked with client side session, this function returns
+ * :enum:`NGHTTP2_ERR_INVALID_STATE`.
+ *
+ * :enum:`NGHTTP2_ERR_NOMEM`
+ *     Out of memory
+ * :enum:`NGHTTP2_ERR_INVALID_STATE`
+ *     The function is called from client side session.
+ * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
+ *     There are too many origins, or an origin is too large to fit
+ *     into a default frame payload.
+ */
+NGHTTP2_EXTERN int nghttp2_submit_origin(nghttp2_session *session,
+                                         uint8_t flags,
+                                         const nghttp2_origin_entry *ov,
+                                         size_t nov);
 
 /**
  * @function

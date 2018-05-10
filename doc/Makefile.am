@@ -164,6 +164,7 @@ APIDOCS= \
 	nghttp2_submit_extension.rst \
 	nghttp2_submit_goaway.rst \
 	nghttp2_submit_headers.rst \
+	nghttp2_submit_origin.rst \
 	nghttp2_submit_ping.rst \
 	nghttp2_submit_priority.rst \
 	nghttp2_submit_push_promise.rst \

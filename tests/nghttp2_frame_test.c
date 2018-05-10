@@ -508,6 +508,98 @@ void test_nghttp2_frame_pack_altsvc(void) {
   nghttp2_bufs_free(&bufs);
 }
 
+void test_nghttp2_frame_pack_origin(void) {
+  nghttp2_extension frame, oframe;
+  nghttp2_ext_origin origin, oorigin;
+  nghttp2_bufs bufs;
+  nghttp2_buf *buf;
+  int rv;
+  size_t payloadlen;
+  static const uint8_t example[] = "https://example.com";
+  static const uint8_t nghttp2[] = "https://nghttp2.org";
+  nghttp2_origin_entry ov[] = {
+      {
+          (uint8_t *)example,
+          sizeof(example) - 1,
+      },
+      {
+          NULL,
+          0,
+      },
+      {
+          (uint8_t *)nghttp2,
+          sizeof(nghttp2) - 1,
+      },
+  };
+  nghttp2_mem *mem;
+
+  mem = nghttp2_mem_default();
+
+  frame_pack_bufs_init(&bufs);
+
+  frame.payload = &origin;
+  oframe.payload = &oorigin;
+
+  nghttp2_frame_origin_init(&frame, ov, 3);
+
+  payloadlen = 2 + sizeof(example) - 1 + 2 + 2 + sizeof(nghttp2) - 1;
+
+  rv = nghttp2_frame_pack_origin(&bufs, &frame);
+
+  CU_ASSERT(0 == rv);
+  CU_ASSERT(NGHTTP2_FRAME_HDLEN + payloadlen == nghttp2_bufs_len(&bufs));
+
+  rv = unpack_framebuf((nghttp2_frame *)&oframe, &bufs);
+
+  CU_ASSERT(0 == rv);
+
+  check_frame_header(payloadlen, NGHTTP2_ORIGIN, NGHTTP2_FLAG_NONE, 0,
+                     &oframe.hd);
+
+  CU_ASSERT(2 == oorigin.nov);
+  CU_ASSERT(sizeof(example) - 1 == oorigin.ov[0].origin_len);
+  CU_ASSERT(0 == memcmp(example, oorigin.ov[0].origin, sizeof(example) - 1));
+  CU_ASSERT(sizeof(nghttp2) - 1 == oorigin.ov[1].origin_len);
+  CU_ASSERT(0 == memcmp(nghttp2, oorigin.ov[1].origin, sizeof(nghttp2) - 1));
+
+  nghttp2_frame_origin_free(&oframe, mem);
+
+  /* Check the case where origin length is too large */
+  buf = &bufs.head->buf;
+  nghttp2_put_uint16be(buf->pos + NGHTTP2_FRAME_HDLEN,
+                       (uint16_t)(payloadlen - 1));
+
+  rv = unpack_framebuf((nghttp2_frame *)&oframe, &bufs);
+
+  CU_ASSERT(NGHTTP2_ERR_FRAME_SIZE_ERROR == rv);
+
+  nghttp2_bufs_reset(&bufs);
+  memset(&oframe, 0, sizeof(oframe));
+  memset(&oorigin, 0, sizeof(oorigin));
+  oframe.payload = &oorigin;
+
+  /* Empty ORIGIN frame */
+  nghttp2_frame_origin_init(&frame, NULL, 0);
+
+  rv = nghttp2_frame_pack_origin(&bufs, &frame);
+
+  CU_ASSERT(0 == rv);
+  CU_ASSERT(NGHTTP2_FRAME_HDLEN == nghttp2_bufs_len(&bufs));
+
+  rv = unpack_framebuf((nghttp2_frame *)&oframe, &bufs);
+
+  CU_ASSERT(0 == rv);
+
+  check_frame_header(0, NGHTTP2_ORIGIN, NGHTTP2_FLAG_NONE, 0, &oframe.hd);
+
+  CU_ASSERT(0 == oorigin.nov);
+  CU_ASSERT(NULL == oorigin.ov);
+
+  nghttp2_frame_origin_free(&oframe, mem);
+
+  nghttp2_bufs_free(&bufs);
+}
+
 void test_nghttp2_nv_array_copy(void) {
   nghttp2_nv *nva;
   ssize_t rv;
