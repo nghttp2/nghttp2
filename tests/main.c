@@ -107,6 +107,8 @@ int main() {
                    test_nghttp2_session_recv_extension) ||
       !CU_add_test(pSuite, "session_recv_altsvc",
                    test_nghttp2_session_recv_altsvc) ||
+      !CU_add_test(pSuite, "session_recv_origin",
+                   test_nghttp2_session_recv_origin) ||
       !CU_add_test(pSuite, "session_continue", test_nghttp2_session_continue) ||
       !CU_add_test(pSuite, "session_add_frame",
                    test_nghttp2_session_add_frame) ||
@@ -206,6 +208,7 @@ int main() {
                    test_nghttp2_submit_invalid_nv) ||
       !CU_add_test(pSuite, "submit_extension", test_nghttp2_submit_extension) ||
       !CU_add_test(pSuite, "submit_altsvc", test_nghttp2_submit_altsvc) ||
+      !CU_add_test(pSuite, "submit_origin", test_nghttp2_submit_origin) ||
       !CU_add_test(pSuite, "session_open_stream",
                    test_nghttp2_session_open_stream) ||
       !CU_add_test(pSuite, "session_open_stream_with_idle_stream_dep",
@@ -355,6 +358,8 @@ int main() {
                    test_nghttp2_frame_pack_window_update) ||
       !CU_add_test(pSuite, "frame_pack_altsvc",
                    test_nghttp2_frame_pack_altsvc) ||
+      !CU_add_test(pSuite, "frame_pack_origin",
+                   test_nghttp2_frame_pack_origin) ||
       !CU_add_test(pSuite, "nv_array_copy", test_nghttp2_nv_array_copy) ||
       !CU_add_test(pSuite, "iv_check", test_nghttp2_iv_check) ||
       !CU_add_test(pSuite, "hd_deflate", test_nghttp2_hd_deflate) ||

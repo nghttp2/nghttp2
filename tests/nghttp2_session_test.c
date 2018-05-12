@@ -2436,6 +2436,153 @@ void test_nghttp2_session_recv_altsvc(void) {
   nghttp2_option_del(option);
 }
 
+void test_nghttp2_session_recv_origin(void) {
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+  my_user_data ud;
+  nghttp2_bufs bufs;
+  ssize_t rv;
+  nghttp2_option *option;
+  nghttp2_extension frame;
+  nghttp2_ext_origin origin;
+  nghttp2_origin_entry ov;
+  static const uint8_t nghttp2[] = "https://nghttp2.org";
+
+  frame_pack_bufs_init(&bufs);
+
+  frame.payload = &origin;
+
+  ov.origin = (uint8_t *)nghttp2;
+  ov.origin_len = sizeof(nghttp2) - 1;
+
+  memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
+
+  callbacks.on_frame_recv_callback = on_frame_recv_callback;
+
+  nghttp2_option_new(&option);
+  nghttp2_option_set_builtin_recv_extension_type(option, NGHTTP2_ORIGIN);
+
+  nghttp2_session_client_new2(&session, &callbacks, &ud, option);
+
+  nghttp2_frame_origin_init(&frame, &ov, 1);
+
+  rv = nghttp2_frame_pack_origin(&bufs, &frame);
+
+  CU_ASSERT(0 == rv);
+
+  ud.frame_recv_cb_called = 0;
+  rv = nghttp2_session_mem_recv(session, bufs.head->buf.pos,
+                                nghttp2_bufs_len(&bufs));
+
+  CU_ASSERT((ssize_t)nghttp2_bufs_len(&bufs) == rv);
+  CU_ASSERT(1 == ud.frame_recv_cb_called);
+  CU_ASSERT(NGHTTP2_ORIGIN == ud.recv_frame_hd.type);
+  CU_ASSERT(NGHTTP2_FLAG_NONE == ud.recv_frame_hd.flags);
+  CU_ASSERT(0 == ud.recv_frame_hd.stream_id);
+
+  nghttp2_session_del(session);
+  nghttp2_bufs_reset(&bufs);
+
+  /* The length of origin is larger than payload length. */
+  nghttp2_session_client_new2(&session, &callbacks, &ud, option);
+
+  nghttp2_frame_origin_init(&frame, &ov, 1);
+  rv = nghttp2_frame_pack_origin(&bufs, &frame);
+
+  CU_ASSERT(0 == rv);
+
+  nghttp2_put_uint16be(bufs.head->buf.pos + NGHTTP2_FRAME_HDLEN,
+                       (uint16_t)sizeof(nghttp2));
+
+  ud.frame_recv_cb_called = 0;
+  rv = nghttp2_session_mem_recv(session, bufs.head->buf.pos,
+                                nghttp2_bufs_len(&bufs));
+
+  CU_ASSERT((ssize_t)nghttp2_bufs_len(&bufs) == rv);
+  CU_ASSERT(0 == ud.frame_recv_cb_called);
+
+  nghttp2_session_del(session);
+  nghttp2_bufs_reset(&bufs);
+
+  /* A frame should be ignored if it is sent to a stream other than
+     stream 0. */
+  nghttp2_session_client_new2(&session, &callbacks, &ud, option);
+
+  nghttp2_frame_origin_init(&frame, &ov, 1);
+  frame.hd.stream_id = 1;
+  rv = nghttp2_frame_pack_origin(&bufs, &frame);
+
+  CU_ASSERT(0 == rv);
+
+  ud.frame_recv_cb_called = 0;
+  rv = nghttp2_session_mem_recv(session, bufs.head->buf.pos,
+                                nghttp2_bufs_len(&bufs));
+
+  CU_ASSERT((ssize_t)nghttp2_bufs_len(&bufs) == rv);
+  CU_ASSERT(0 == ud.frame_recv_cb_called);
+
+  nghttp2_session_del(session);
+  nghttp2_bufs_reset(&bufs);
+
+  /* A frame should be ignored if the reserved flag is set */
+  nghttp2_session_client_new2(&session, &callbacks, &ud, option);
+
+  nghttp2_frame_origin_init(&frame, &ov, 1);
+  frame.hd.flags = 0xf0;
+  rv = nghttp2_frame_pack_origin(&bufs, &frame);
+
+  CU_ASSERT(0 == rv);
+
+  ud.frame_recv_cb_called = 0;
+  rv = nghttp2_session_mem_recv(session, bufs.head->buf.pos,
+                                nghttp2_bufs_len(&bufs));
+
+  CU_ASSERT((ssize_t)nghttp2_bufs_len(&bufs) == rv);
+  CU_ASSERT(0 == ud.frame_recv_cb_called);
+
+  nghttp2_session_del(session);
+  nghttp2_bufs_reset(&bufs);
+
+  /* A frame should be ignored if it is received by a server. */
+  nghttp2_session_server_new2(&session, &callbacks, &ud, option);
+
+  nghttp2_frame_origin_init(&frame, &ov, 1);
+  rv = nghttp2_frame_pack_origin(&bufs, &frame);
+
+  CU_ASSERT(0 == rv);
+
+  ud.frame_recv_cb_called = 0;
+  rv = nghttp2_session_mem_recv(session, bufs.head->buf.pos,
+                                nghttp2_bufs_len(&bufs));
+
+  CU_ASSERT((ssize_t)nghttp2_bufs_len(&bufs) == rv);
+  CU_ASSERT(0 == ud.frame_recv_cb_called);
+
+  nghttp2_session_del(session);
+  nghttp2_bufs_reset(&bufs);
+
+  /* Receiving empty ORIGIN frame */
+  nghttp2_session_client_new2(&session, &callbacks, &ud, option);
+
+  nghttp2_frame_origin_init(&frame, NULL, 0);
+  rv = nghttp2_frame_pack_origin(&bufs, &frame);
+
+  CU_ASSERT(0 == rv);
+
+  ud.frame_recv_cb_called = 0;
+  rv = nghttp2_session_mem_recv(session, bufs.head->buf.pos,
+                                nghttp2_bufs_len(&bufs));
+
+  CU_ASSERT((ssize_t)nghttp2_bufs_len(&bufs) == rv);
+  CU_ASSERT(1 == ud.frame_recv_cb_called);
+  CU_ASSERT(NGHTTP2_ORIGIN == ud.recv_frame_hd.type);
+
+  nghttp2_session_del(session);
+
+  nghttp2_option_del(option);
+  nghttp2_bufs_free(&bufs);
+}
+
 void test_nghttp2_session_continue(void) {
   nghttp2_session *session;
   nghttp2_session_callbacks callbacks;
@@ -6032,6 +6179,95 @@ void test_nghttp2_submit_altsvc(void) {
                              sizeof(field_value) - 1);
 
   CU_ASSERT(NGHTTP2_ERR_INVALID_STATE == rv);
+
+  nghttp2_session_del(session);
+}
+
+void test_nghttp2_submit_origin(void) {
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+  my_user_data ud;
+  int rv;
+  ssize_t len;
+  const uint8_t *data;
+  static const uint8_t nghttp2[] = "https://nghttp2.org";
+  static const uint8_t examples[] = "https://examples.com";
+  static const nghttp2_origin_entry ov[] = {
+      {
+          (uint8_t *)nghttp2,
+          sizeof(nghttp2) - 1,
+      },
+      {
+          (uint8_t *)examples,
+          sizeof(examples) - 1,
+      },
+  };
+  nghttp2_frame frame;
+  nghttp2_ext_origin origin;
+  nghttp2_mem *mem;
+
+  mem = nghttp2_mem_default();
+
+  memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
+  callbacks.on_frame_send_callback = on_frame_send_callback;
+
+  frame.ext.payload = &origin;
+
+  nghttp2_session_server_new(&session, &callbacks, &ud);
+
+  rv = nghttp2_submit_origin(session, NGHTTP2_FLAG_NONE, ov, 2);
+
+  CU_ASSERT(0 == rv);
+
+  ud.frame_send_cb_called = 0;
+  len = nghttp2_session_mem_send(session, &data);
+
+  CU_ASSERT(len > 0);
+  CU_ASSERT(1 == ud.frame_send_cb_called);
+
+  nghttp2_frame_unpack_frame_hd(&frame.hd, data);
+  rv = nghttp2_frame_unpack_origin_payload(
+      &frame.ext, data + NGHTTP2_FRAME_HDLEN, (size_t)len - NGHTTP2_FRAME_HDLEN,
+      mem);
+
+  CU_ASSERT(0 == rv);
+  CU_ASSERT(0 == frame.hd.stream_id);
+  CU_ASSERT(NGHTTP2_ORIGIN == frame.hd.type);
+  CU_ASSERT(2 == origin.nov);
+  CU_ASSERT(0 == memcmp(nghttp2, origin.ov[0].origin, sizeof(nghttp2) - 1));
+  CU_ASSERT(sizeof(nghttp2) - 1 == origin.ov[0].origin_len);
+  CU_ASSERT(0 == memcmp(examples, origin.ov[1].origin, sizeof(examples) - 1));
+  CU_ASSERT(sizeof(examples) - 1 == origin.ov[1].origin_len);
+
+  nghttp2_frame_origin_free(&frame.ext, mem);
+
+  nghttp2_session_del(session);
+
+  /* Submitting ORIGIN frame from client session is error */
+  nghttp2_session_client_new(&session, &callbacks, NULL);
+
+  rv = nghttp2_submit_origin(session, NGHTTP2_FLAG_NONE, ov, 1);
+
+  CU_ASSERT(NGHTTP2_ERR_INVALID_STATE == rv);
+
+  nghttp2_session_del(session);
+
+  /* Submitting empty ORIGIN frame */
+  nghttp2_session_server_new(&session, &callbacks, &ud);
+
+  rv = nghttp2_submit_origin(session, NGHTTP2_FLAG_NONE, NULL, 0);
+
+  CU_ASSERT(0 == rv);
+
+  ud.frame_send_cb_called = 0;
+  len = nghttp2_session_mem_send(session, &data);
+
+  CU_ASSERT(len == NGHTTP2_FRAME_HDLEN);
+  CU_ASSERT(1 == ud.frame_send_cb_called);
+
+  nghttp2_frame_unpack_frame_hd(&frame.hd, data);
+
+  CU_ASSERT(NGHTTP2_ORIGIN == frame.hd.type);
 
   nghttp2_session_del(session);
 }
