@@ -700,7 +700,7 @@ int nghttp2_session_on_push_promise_received(nghttp2_session *session,
  * NGHTTP2_ERR_NOMEM
  *     Out of memory.
  * NGHTTP2_ERR_CALLBACK_FAILURE
- *   The callback function failed.
+ *     The callback function failed.
  * NGHTTP2_ERR_FLOODED
  *     There are too many items in outbound queue, and this is most
  *     likely caused by misbehaviour of peer.
@@ -718,7 +718,7 @@ int nghttp2_session_on_ping_received(nghttp2_session *session,
  * NGHTTP2_ERR_NOMEM
  *     Out of memory.
  * NGHTTP2_ERR_CALLBACK_FAILURE
- *   The callback function failed.
+ *     The callback function failed.
  */
 int nghttp2_session_on_goaway_received(nghttp2_session *session,
                                        nghttp2_frame *frame);
@@ -733,7 +733,7 @@ int nghttp2_session_on_goaway_received(nghttp2_session *session,
  * NGHTTP2_ERR_NOMEM
  *     Out of memory.
  * NGHTTP2_ERR_CALLBACK_FAILURE
- *   The callback function failed.
+ *     The callback function failed.
  */
 int nghttp2_session_on_window_update_received(nghttp2_session *session,
                                               nghttp2_frame *frame);
@@ -746,7 +746,7 @@ int nghttp2_session_on_window_update_received(nghttp2_session *session,
  * negative error codes:
  *
  * NGHTTP2_ERR_CALLBACK_FAILURE
- *   The callback function failed.
+ *     The callback function failed.
  */
 int nghttp2_session_on_altsvc_received(nghttp2_session *session,
                                        nghttp2_frame *frame);
@@ -774,7 +774,7 @@ int nghttp2_session_on_origin_received(nghttp2_session *session,
  * NGHTTP2_ERR_NOMEM
  *     Out of memory.
  * NGHTTP2_ERR_CALLBACK_FAILURE
- *   The callback function failed.
+ *     The callback function failed.
  */
 int nghttp2_session_on_data_received(nghttp2_session *session,
                                      nghttp2_frame *frame);
