@@ -4521,8 +4521,7 @@ typedef struct {
  * Submits ALTSVC frame.
  *
  * ALTSVC frame is a non-critical extension to HTTP/2, and defined in
- * is defined in `RFC 7383
- * <https://tools.ietf.org/html/rfc7838#section-4>`_.
+ * `RFC 7383 <https://tools.ietf.org/html/rfc7838#section-4>`_.
  *
  * The |flags| is currently ignored and should be
  * :enum:`NGHTTP2_FLAG_NONE`.
