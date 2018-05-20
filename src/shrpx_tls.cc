@@ -973,6 +973,14 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
   }
 #endif // !LIBRESSL_IN_USE && OPENSSL_VERSION_NUMBER >= 0x10002000L
 
+#if OPENSSL_1_1_1_API
+  if (SSL_CTX_set_max_early_data(ssl_ctx, tlsconf.max_early_data) != 1) {
+    LOG(FATAL) << "SSL_CTX_set_max_early_data failed: "
+               << ERR_error_string(ERR_get_error(), nullptr);
+    DIE();
+  }
+#endif // OPENSSL_1_1_1_API
+
 #ifndef OPENSSL_NO_PSK
   SSL_CTX_set_psk_server_callback(ssl_ctx, psk_server_cb);
 #endif // !LIBRESSL_NO_PSK

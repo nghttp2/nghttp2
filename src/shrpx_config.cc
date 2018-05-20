@@ -1883,6 +1883,11 @@ int option_lookup_token(const char *name, size_t namelen) {
     break;
   case 18:
     switch (name[17]) {
+    case 'a':
+      if (util::strieq_l("tls-max-early-dat", name, 17)) {
+        return SHRPX_OPTID_TLS_MAX_EARLY_DATA;
+      }
+      break;
     case 'r':
       if (util::strieq_l("add-request-heade", name, 17)) {
         return SHRPX_OPTID_ADD_REQUEST_HEADER;
@@ -3600,6 +3605,9 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     config->tls.postpone_early_data = util::strieq_l("yes", optarg);
 
     return 0;
+  case SHRPX_OPTID_TLS_MAX_EARLY_DATA: {
+    return parse_uint_with_unit(&config->tls.max_early_data, opt, optarg);
+  }
   case SHRPX_OPTID_CONF:
     LOG(WARN) << "conf: ignored";
 

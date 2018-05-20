@@ -1465,6 +1465,7 @@ void fill_default_config(Config *config) {
       tls::proto_version_from_string(DEFAULT_TLS_MIN_PROTO_VERSION);
   tlsconf.max_proto_version =
       tls::proto_version_from_string(DEFAULT_TLS_MAX_PROTO_VERSION);
+  tlsconf.max_early_data = 16_k;
 #if OPENSSL_1_1_API || defined(OPENSSL_IS_BORINGSSL)
   tlsconf.ecdh_curves = StringRef::from_lit("X25519:P-256:P-384:P-521");
 #else  // !OPENSSL_1_1_API && !defined(OPENSSL_IS_BORINGSSL)
@@ -2376,6 +2377,11 @@ SSL/TLS:
               handshake  finishes.   This  option   must  be  used  to
               mitigate  possible  replay  attack  unless  all  backend
               servers recognize "Early-Data" header field.
+  --tls-max-early-data=<SIZE>
+              Sets  the  maximum  amount  of 0-RTT  data  that  server
+              accepts.
+              Default: )"
+      << util::utos_unit(config->tls.max_early_data) << R"(
 
 HTTP/2:
   -c, --frontend-http2-max-concurrent-streams=<N>
@@ -3443,6 +3449,7 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_IGNORE_PER_PATTERN_MRUBY_ERROR.c_str(), no_argument, &flag,
          161},
         {SHRPX_OPT_TLS_POSTPONE_EARLY_DATA.c_str(), no_argument, &flag, 162},
+        {SHRPX_OPT_TLS_MAX_EARLY_DATA.c_str(), required_argument, &flag, 163},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -4218,6 +4225,10 @@ int main(int argc, char **argv) {
         // --tls-postpone-early-data
         cmdcfgs.emplace_back(SHRPX_OPT_TLS_POSTPONE_EARLY_DATA,
                              StringRef::from_lit("yes"));
+        break;
+      case 163:
+        // --tls-max-early-data
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS_MAX_EARLY_DATA, StringRef{optarg});
         break;
       default:
         break;

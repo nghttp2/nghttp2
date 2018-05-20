@@ -349,6 +349,8 @@ constexpr auto SHRPX_OPT_IGNORE_PER_PATTERN_MRUBY_ERROR =
     StringRef::from_lit("ignore-per-pattern-mruby-error");
 constexpr auto SHRPX_OPT_TLS_POSTPONE_EARLY_DATA =
     StringRef::from_lit("tls-postpone-early-data");
+constexpr auto SHRPX_OPT_TLS_MAX_EARLY_DATA =
+    StringRef::from_lit("tls-max-early-data");
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
@@ -652,6 +654,8 @@ struct TLSConfig {
   StringRef ciphers;
   StringRef ecdh_curves;
   StringRef cacert;
+  // The maximum amount of 0-RTT data that server accepts.
+  uint32_t max_early_data;
   // The minimum and maximum TLS version.  These values are defined in
   // OpenSSL header file.
   int min_proto_version;
@@ -1119,6 +1123,7 @@ enum {
   SHRPX_OPTID_SYSLOG_FACILITY,
   SHRPX_OPTID_TLS_DYN_REC_IDLE_TIMEOUT,
   SHRPX_OPTID_TLS_DYN_REC_WARMUP_THRESHOLD,
+  SHRPX_OPTID_TLS_MAX_EARLY_DATA,
   SHRPX_OPTID_TLS_MAX_PROTO_VERSION,
   SHRPX_OPTID_TLS_MIN_PROTO_VERSION,
   SHRPX_OPTID_TLS_POSTPONE_EARLY_DATA,
