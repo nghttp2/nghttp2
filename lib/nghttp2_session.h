@@ -303,8 +303,10 @@ struct nghttp2_session {
      increased/decreased by submitting WINDOW_UPDATE. See
      nghttp2_submit_window_update(). */
   int32_t local_window_size;
-  /* Settings value received from the remote endpoint. We just use ID
-     as index. The index = 0 is unused. */
+  /* This flag is used to indicate that the local endpoint received initial
+     SETTINGS frame from the remote endpoint. */
+  uint8_t remote_settings_received;
+  /* Settings value received from the remote endpoint. */
   nghttp2_settings_storage remote_settings;
   /* Settings value of the local endpoint. */
   nghttp2_settings_storage local_settings;

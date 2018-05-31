@@ -4410,6 +4410,12 @@ int nghttp2_session_on_settings_received(nghttp2_session *session,
     return session_call_on_frame_received(session, frame);
   }
 
+  if (!session->remote_settings_received) {
+    session->remote_settings.max_concurrent_streams =
+        NGHTTP2_DEFAULT_MAX_CONCURRENT_STREAMS;
+    session->remote_settings_received = 1;
+  }
+
   for (i = 0; i < frame->settings.niv; ++i) {
     nghttp2_settings_entry *entry = &frame->settings.iv[i];
 

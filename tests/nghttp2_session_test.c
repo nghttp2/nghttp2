@@ -3294,6 +3294,7 @@ void test_nghttp2_session_on_settings_received(void) {
   nghttp2_outbound_item *item;
   nghttp2_nv nv = MAKE_NV(":authority", "example.org");
   nghttp2_mem *mem;
+  nghttp2_option *option;
 
   mem = nghttp2_mem_default();
 
@@ -3405,6 +3406,23 @@ void test_nghttp2_session_on_settings_received(void) {
 
   nghttp2_frame_settings_free(&frame.settings, mem);
   nghttp2_session_del(session);
+
+  /* Check that remote SETTINGS_MAX_CONCURRENT_STREAMS is set to a value set by
+     nghttp2_option_set_peer_max_concurrent_streams() and reset to the default
+     value (unlimited) after receiving initial SETTINGS frame from the peer. */
+  nghttp2_option_new(&option);
+  nghttp2_option_set_peer_max_concurrent_streams(option, 1000);
+  nghttp2_session_client_new2(&session, &callbacks, NULL, option);
+  CU_ASSERT(1000 == session->remote_settings.max_concurrent_streams);
+
+  nghttp2_frame_settings_init(&frame.settings, NGHTTP2_FLAG_NONE, NULL, 0);
+  CU_ASSERT(0 == nghttp2_session_on_settings_received(session, &frame, 0));
+  CU_ASSERT(NGHTTP2_DEFAULT_MAX_CONCURRENT_STREAMS ==
+            session->remote_settings.max_concurrent_streams);
+
+  nghttp2_frame_settings_free(&frame.settings, mem);
+  nghttp2_session_del(session);
+  nghttp2_option_del(option);
 
   /* Check too large SETTINGS_MAX_FRAME_SIZE */
   nghttp2_session_server_new(&session, &callbacks, NULL);
