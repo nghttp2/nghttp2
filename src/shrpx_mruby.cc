@@ -136,7 +136,7 @@ mrb_value instantiate_app(mrb_state *mrb, RProc *proc) {
 // Based on
 // https://github.com/h2o/h2o/blob/master/lib/handler/mruby.c.  It is
 // very hard to write these kind of code because mruby has almost no
-// documentation aobut compiling or generating code, at least at the
+// documentation about compiling or generating code, at least at the
 // time of this writing.
 RProc *compile(mrb_state *mrb, const StringRef &filename) {
   if (filename.empty()) {
