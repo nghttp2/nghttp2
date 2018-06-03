@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/tatsuhiro-t/go-nghttp2"
-	"github.com/tatsuhiro-t/spdy"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/hpack"
 	"golang.org/x/net/websocket"
@@ -53,14 +52,12 @@ type serverTester struct {
 	h2PrefaceSent bool             // HTTP/2 preface was sent in conn
 	nextStreamID  uint32           // next stream ID
 	fr            *http2.Framer    // HTTP/2 framer
-	spdyFr        *spdy.Framer     // SPDY/3.1 framer
 	headerBlkBuf  bytes.Buffer     // buffer to store encoded header block
 	enc           *hpack.Encoder   // HTTP/2 HPACK encoder
 	header        http.Header      // received header fields
 	dec           *hpack.Decoder   // HTTP/2 HPACK decoder
 	authority     string           // server's host:port
 	frCh          chan http2.Frame // used for incoming HTTP/2 frame
-	spdyFrCh      chan spdy.Frame  // used for incoming SPDY frame
 	errCh         chan error
 }
 
@@ -201,7 +198,6 @@ func newServerTesterInternal(src_args []string, t *testing.T, handler http.Handl
 		nextStreamID: 1,
 		authority:    authority,
 		frCh:         make(chan http2.Frame),
-		spdyFrCh:     make(chan spdy.Frame),
 		errCh:        make(chan error),
 	}
 
@@ -229,7 +225,7 @@ func newServerTesterInternal(src_args []string, t *testing.T, handler http.Handl
 			if alpnH1 {
 				tlsConfig.NextProtos = []string{"http/1.1"}
 			} else {
-				tlsConfig.NextProtos = []string{"h2", "spdy/3.1"}
+				tlsConfig.NextProtos = []string{"h2"}
 			}
 			conn, err = tls.Dial("tcp", authority, tlsConfig)
 		} else {
@@ -256,12 +252,6 @@ func newServerTesterInternal(src_args []string, t *testing.T, handler http.Handl
 	}
 
 	st.fr = http2.NewFramer(st.conn, st.conn)
-	spdyFr, err := spdy.NewFramer(st.conn, st.conn)
-	if err != nil {
-		st.Close()
-		st.t.Fatalf("Error spdy.NewFramer: %v", err)
-	}
-	st.spdyFr = spdyFr
 	st.enc = hpack.NewEncoder(&st.headerBlkBuf)
 	st.dec = hpack.NewDecoder(4096, func(f hpack.HeaderField) {
 		st.header.Add(f.Name, f.Value)
@@ -311,26 +301,6 @@ func (st *serverTester) readFrame() (http2.Frame, error) {
 	case err := <-st.errCh:
 		return nil, err
 	case <-time.After(5 * time.Second):
-		return nil, errors.New("timeout waiting for frame")
-	}
-}
-
-func (st *serverTester) readSpdyFrame() (spdy.Frame, error) {
-	go func() {
-		f, err := st.spdyFr.ReadFrame()
-		if err != nil {
-			st.errCh <- err
-			return
-		}
-		st.spdyFrCh <- f
-	}()
-
-	select {
-	case f := <-st.spdyFrCh:
-		return f, nil
-	case err := <-st.errCh:
-		return nil, err
-	case <-time.After(2 * time.Second):
 		return nil, errors.New("timeout waiting for frame")
 	}
 }
@@ -472,122 +442,6 @@ func (st *serverTester) http1(rp requestParam) (*serverResponse, error) {
 		connClose: resp.Close,
 	}
 
-	return res, nil
-}
-
-func (st *serverTester) spdy(rp requestParam) (*serverResponse, error) {
-	res := &serverResponse{}
-
-	var id spdy.StreamId
-	if rp.streamID != 0 {
-		id = spdy.StreamId(rp.streamID)
-		if id >= spdy.StreamId(st.nextStreamID) && id%2 == 1 {
-			st.nextStreamID = uint32(id) + 2
-		}
-	} else {
-		id = spdy.StreamId(st.nextStreamID)
-		st.nextStreamID += 2
-	}
-
-	method := "GET"
-	if rp.method != "" {
-		method = rp.method
-	}
-
-	scheme := "http"
-	if rp.scheme != "" {
-		scheme = rp.scheme
-	}
-
-	host := st.authority
-	if rp.authority != "" {
-		host = rp.authority
-	}
-
-	path := "/"
-	if rp.path != "" {
-		path = rp.path
-	}
-
-	header := make(http.Header)
-	header.Add(":method", method)
-	header.Add(":scheme", scheme)
-	header.Add(":host", host)
-	header.Add(":path", path)
-	header.Add(":version", "HTTP/1.1")
-	header.Add("test-case", rp.name)
-	for _, h := range rp.header {
-		header.Add(h.Name, h.Value)
-	}
-
-	var synStreamFlags spdy.ControlFlags
-	if len(rp.body) == 0 && !rp.noEndStream {
-		synStreamFlags = spdy.ControlFlagFin
-	}
-	if err := st.spdyFr.WriteFrame(&spdy.SynStreamFrame{
-		CFHeader: spdy.ControlFrameHeader{
-			Flags: synStreamFlags,
-		},
-		StreamId: id,
-		Headers:  header,
-	}); err != nil {
-		return nil, err
-	}
-
-	if len(rp.body) != 0 {
-		var dataFlags spdy.DataFlags
-		if !rp.noEndStream {
-			dataFlags = spdy.DataFlagFin
-		}
-		if err := st.spdyFr.WriteFrame(&spdy.DataFrame{
-			StreamId: id,
-			Flags:    dataFlags,
-			Data:     rp.body,
-		}); err != nil {
-			return nil, err
-		}
-	}
-
-loop:
-	for {
-		fr, err := st.readSpdyFrame()
-		if err != nil {
-			return res, err
-		}
-		switch f := fr.(type) {
-		case *spdy.SynReplyFrame:
-			if f.StreamId != id {
-				break
-			}
-			res.header = cloneHeader(f.Headers)
-			if _, err := fmt.Sscan(res.header.Get(":status"), &res.status); err != nil {
-				return res, fmt.Errorf("Error parsing status code: %v", err)
-			}
-			if f.CFHeader.Flags&spdy.ControlFlagFin != 0 {
-				break loop
-			}
-		case *spdy.DataFrame:
-			if f.StreamId != id {
-				break
-			}
-			res.body = append(res.body, f.Data...)
-			if f.Flags&spdy.DataFlagFin != 0 {
-				break loop
-			}
-		case *spdy.RstStreamFrame:
-			if f.StreamId != id {
-				break
-			}
-			res.spdyRstErrCode = f.Status
-			break loop
-		case *spdy.GoAwayFrame:
-			if f.Status == spdy.GoAwayOK {
-				break
-			}
-			res.spdyGoAwayErrCode = f.Status
-			break loop
-		}
-	}
 	return res, nil
 }
 
@@ -779,8 +633,6 @@ type serverResponse struct {
 	streamID          uint32               // stream ID in HTTP/2
 	errCode           http2.ErrCode        // error code received in HTTP/2 RST_STREAM or GOAWAY
 	connErr           bool                 // true if HTTP/2 connection error
-	spdyGoAwayErrCode spdy.GoAwayStatus    // status code received in SPDY RST_STREAM
-	spdyRstErrCode    spdy.RstStreamStatus // status code received in SPDY GOAWAY
 	connClose         bool                 // Connection: close is included in response header in HTTP/1 test
 	reqHeader         http.Header          // http request header, currently only sotres pushed request header
 	pushResponse      []*serverResponse    // pushed response
