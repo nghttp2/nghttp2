@@ -1799,10 +1799,12 @@ Options:
   -c, --clients=<N>
               Number  of concurrent  clients.   With  -r option,  this
               specifies the maximum number of connections to be made.
-              Default: )" << config.nclients << R"(
+              Default: )"
+      << config.nclients << R"(
   -t, --threads=<N>
               Number of native threads.
-              Default: )" << config.nthreads << R"(
+              Default: )"
+      << config.nthreads << R"(
   -i, --input-file=<PATH>
               Path of a file with multiple URIs are separated by EOLs.
               This option will disable URIs getting from command-line.
@@ -1825,7 +1827,8 @@ Options:
   -W, --connection-window-bits=<N>
               Sets  the  connection  level   initial  window  size  to
               (2**<N>)-1.
-              Default: )" << config.connection_window_bits << R"(
+              Default: )"
+      << config.connection_window_bits << R"(
   -H, --header=<HEADER>
               Add/Override a header to the requests.
   --ciphers=<SUITE>
@@ -1836,8 +1839,8 @@ Options:
   -p, --no-tls-proto=<PROTOID>
               Specify ALPN identifier of the  protocol to be used when
               accessing http URI without SSL/TLS.
-              Available protocols: )" << NGHTTP2_CLEARTEXT_PROTO_VERSION_ID
-      << R"( and )" << NGHTTP2_H1_1 << R"(
+              Available protocols: )"
+      << NGHTTP2_CLEARTEXT_PROTO_VERSION_ID << R"( and )" << NGHTTP2_H1_1 << R"(
               Default: )"
       << NGHTTP2_CLEARTEXT_PROTO_VERSION_ID << R"(
   -d, --data=<PATH>
@@ -1921,7 +1924,8 @@ Options:
               NPN.  The parameter must be  delimited by a single comma
               only  and any  white spaces  are  treated as  a part  of
               protocol string.
-              Default: )" << DEFAULT_NPN_LIST << R"(
+              Default: )"
+      << DEFAULT_NPN_LIST << R"(
   --h1        Short        hand         for        --npn-list=http/1.1
               --no-tls-proto=http/1.1,    which   effectively    force
               http/1.1 for both http and https URI.
@@ -1949,7 +1953,8 @@ Options:
   The <DURATION> argument is an integer and an optional unit (e.g., 1s
   is 1 second and 500ms is 500 milliseconds).  Units are h, m, s or ms
   (hours, minutes, seconds and milliseconds, respectively).  If a unit
-  is omitted, a second is used as unit.)" << std::endl;
+  is omitted, a second is used as unit.)"
+      << std::endl;
 }
 } // namespace
 
@@ -2686,14 +2691,14 @@ int main(int argc, char **argv) {
 finished in )"
             << util::format_duration(duration) << ", " << rps << " req/s, "
             << util::utos_funit(bps) << R"(B/s
-requests: )" << stats.req_todo << " total, "
-            << stats.req_started << " started, " << stats.req_done << " done, "
-            << stats.req_status_success << " succeeded, " << stats.req_failed
-            << " failed, " << stats.req_error << " errored, "
-            << stats.req_timedout << R"( timeout
-status codes: )" << stats.status[2] << " 2xx, "
-            << stats.status[3] << " 3xx, " << stats.status[4] << " 4xx, "
-            << stats.status[5] << R"( 5xx
+requests: )" << stats.req_todo
+            << " total, " << stats.req_started << " started, " << stats.req_done
+            << " done, " << stats.req_status_success << " succeeded, "
+            << stats.req_failed << " failed, " << stats.req_error
+            << " errored, " << stats.req_timedout << R"( timeout
+status codes: )"
+            << stats.status[2] << " 2xx, " << stats.status[3] << " 3xx, "
+            << stats.status[4] << " 4xx, " << stats.status[5] << R"( 5xx
 traffic: )" << util::utos_funit(stats.bytes_total)
             << "B (" << stats.bytes_total << ") total, "
             << util::utos_funit(stats.bytes_head) << "B (" << stats.bytes_head
@@ -2701,12 +2706,12 @@ traffic: )" << util::utos_funit(stats.bytes_total)
             << "%), " << util::utos_funit(stats.bytes_body) << "B ("
             << stats.bytes_body << R"() data
                      min         max         mean         sd        +/- sd
-time for request: )" << std::setw(10)
-            << util::format_duration(ts.request.min) << "  " << std::setw(10)
-            << util::format_duration(ts.request.max) << "  " << std::setw(10)
-            << util::format_duration(ts.request.mean) << "  " << std::setw(10)
-            << util::format_duration(ts.request.sd) << std::setw(9)
-            << util::dtos(ts.request.within_sd) << "%"
+time for request: )"
+            << std::setw(10) << util::format_duration(ts.request.min) << "  "
+            << std::setw(10) << util::format_duration(ts.request.max) << "  "
+            << std::setw(10) << util::format_duration(ts.request.mean) << "  "
+            << std::setw(10) << util::format_duration(ts.request.sd)
+            << std::setw(9) << util::dtos(ts.request.within_sd) << "%"
             << "\ntime for connect: " << std::setw(10)
             << util::format_duration(ts.connect.min) << "  " << std::setw(10)
             << util::format_duration(ts.connect.max) << "  " << std::setw(10)
