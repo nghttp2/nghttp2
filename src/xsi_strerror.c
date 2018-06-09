@@ -26,11 +26,11 @@
 
 /* Make sure that we get XSI-compliant version of strerror_r */
 #ifdef _POSIX_C_SOURCE
-#undef _POSIX_C_SOURCE
+#  undef _POSIX_C_SOURCE
 #endif /* _POSIX_C_SOURCE */
 
 #ifdef _GNU_SOURCE
-#undef _GNU_SOURCE
+#  undef _GNU_SOURCE
 #endif /* _GNU_SOURCE */
 
 #include <string.h>

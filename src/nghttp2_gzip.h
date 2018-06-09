@@ -24,16 +24,16 @@
  */
 #ifndef NGHTTP2_GZIP_H
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif /* HAVE_CONFIG_H */
-#include <zlib.h>
+#  ifdef HAVE_CONFIG_H
+#    include <config.h>
+#  endif /* HAVE_CONFIG_H */
+#  include <zlib.h>
 
-#include <nghttp2/nghttp2.h>
+#  include <nghttp2/nghttp2.h>
 
-#ifdef __cplusplus
+#  ifdef __cplusplus
 extern "C" {
-#endif
+#  endif
 
 /**
  * @struct
@@ -115,8 +115,8 @@ int nghttp2_gzip_inflate(nghttp2_gzip *inflater, uint8_t *out,
  */
 int nghttp2_gzip_inflate_finished(nghttp2_gzip *inflater);
 
-#ifdef __cplusplus
+#  ifdef __cplusplus
 }
-#endif
+#  endif
 
 #endif /* NGHTTP2_GZIP_H */

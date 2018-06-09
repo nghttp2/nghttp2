@@ -26,7 +26,7 @@
 #define TIMEGM_H
 
 #ifdef HAVE_CONFIG_H
-#include <config.h>
+#  include <config.h>
 #endif /* HAVE_CONFIG_H */
 
 #ifdef __cplusplus
@@ -34,7 +34,7 @@ extern "C" {
 #endif /* __cplusplus */
 
 #ifdef HAVE_TIME_H
-#include <time.h>
+#  include <time.h>
 #endif // HAVE_TIME_H
 
 time_t nghttp2_timegm(struct tm *tm);

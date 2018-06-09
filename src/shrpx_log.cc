@@ -25,18 +25,18 @@
 #include "shrpx_log.h"
 
 #ifdef HAVE_SYSLOG_H
-#include <syslog.h>
+#  include <syslog.h>
 #endif // HAVE_SYSLOG_H
 #ifdef HAVE_UNISTD_H
-#include <unistd.h>
+#  include <unistd.h>
 #endif // HAVE_UNISTD_H
 #ifdef HAVE_INTTYPES_H
-#include <inttypes.h>
+#  include <inttypes.h>
 #endif // HAVE_INTTYPES_H
 #include <sys/types.h>
 #include <sys/stat.h>
 #ifdef HAVE_FCNTL_H
-#include <fcntl.h>
+#  include <fcntl.h>
 #endif // HAVE_FCNTL_H
 #include <sys/wait.h>
 

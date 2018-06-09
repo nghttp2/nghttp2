@@ -34,7 +34,7 @@
 #include <deque>
 #include <thread>
 #ifndef NOTHREADS
-#include <future>
+#  include <future>
 #endif // NOTHREADS
 
 #include <openssl/ssl.h>

@@ -25,10 +25,10 @@
 #include "shrpx_tls.h"
 
 #ifdef HAVE_SYS_SOCKET_H
-#include <sys/socket.h>
+#  include <sys/socket.h>
 #endif // HAVE_SYS_SOCKET_H
 #ifdef HAVE_NETDB_H
-#include <netdb.h>
+#  include <netdb.h>
 #endif // HAVE_NETDB_H
 #include <netinet/tcp.h>
 #include <pthread.h>
@@ -46,7 +46,7 @@
 #include <openssl/rand.h>
 #include <openssl/dh.h>
 #ifndef OPENSSL_NO_OCSP
-#include <openssl/ocsp.h>
+#  include <openssl/ocsp.h>
 #endif // OPENSSL_NO_OCSP
 
 #include <nghttp2/nghttp2.h>
@@ -204,21 +204,21 @@ int servername_callback(SSL *ssl, int *al, void *arg) {
     for (auto ssl_ctx : ssl_ctx_list) {
       auto cert = SSL_CTX_get0_certificate(ssl_ctx);
 
-#if OPENSSL_1_1_API
+#  if OPENSSL_1_1_API
       auto pubkey = X509_get0_pubkey(cert);
-#else  // !OPENSSL_1_1_API
+#  else  // !OPENSSL_1_1_API
       auto pubkey = X509_get_pubkey(cert);
-#endif // !OPENSSL_1_1_API
+#  endif // !OPENSSL_1_1_API
 
       if (EVP_PKEY_base_id(pubkey) != EVP_PKEY_EC) {
         continue;
       }
 
-#if OPENSSL_1_1_API
+#  if OPENSSL_1_1_API
       auto eckey = EVP_PKEY_get0_EC_KEY(pubkey);
-#else  // !OPENSSL_1_1_API
+#  else  // !OPENSSL_1_1_API
       auto eckey = EVP_PKEY_get1_EC_KEY(pubkey);
-#endif // !OPENSSL_1_1_API
+#  endif // !OPENSSL_1_1_API
 
       if (eckey == nullptr) {
         continue;
@@ -227,10 +227,10 @@ int servername_callback(SSL *ssl, int *al, void *arg) {
       auto ecgroup = EC_KEY_get0_group(eckey);
       auto cert_curve = EC_GROUP_get_curve_name(ecgroup);
 
-#if !OPENSSL_1_1_API
+#  if !OPENSSL_1_1_API
       EC_KEY_free(eckey);
       EVP_PKEY_free(pubkey);
-#endif // !OPENSSL_1_1_API
+#  endif // !OPENSSL_1_1_API
 
       if (shared_curve == cert_curve) {
         SSL_set_SSL_CTX(ssl, ssl_ctx);
@@ -251,13 +251,13 @@ int servername_callback(SSL *ssl, int *al, void *arg) {
 namespace {
 std::shared_ptr<std::vector<uint8_t>>
 get_ocsp_data(TLSContextData *tls_ctx_data) {
-#ifdef HAVE_ATOMIC_STD_SHARED_PTR
+#  ifdef HAVE_ATOMIC_STD_SHARED_PTR
   return std::atomic_load_explicit(&tls_ctx_data->ocsp_data,
                                    std::memory_order_acquire);
-#else  // !HAVE_ATOMIC_STD_SHARED_PTR
+#  else  // !HAVE_ATOMIC_STD_SHARED_PTR
   std::lock_guard<std::mutex> g(tls_ctx_data->mu);
   return tls_ctx_data->ocsp_data;
-#endif // !HAVE_ATOMIC_STD_SHARED_PTR
+#  endif // !HAVE_ATOMIC_STD_SHARED_PTR
 }
 } // namespace
 
@@ -567,9 +567,9 @@ int alpn_select_proto_cb(SSL *ssl, const unsigned char **out,
 
 #if !LIBRESSL_IN_USE && OPENSSL_VERSION_NUMBER >= 0x10002000L
 
-#ifndef TLSEXT_TYPE_signed_certificate_timestamp
-#define TLSEXT_TYPE_signed_certificate_timestamp 18
-#endif // !TLSEXT_TYPE_signed_certificate_timestamp
+#  ifndef TLSEXT_TYPE_signed_certificate_timestamp
+#    define TLSEXT_TYPE_signed_certificate_timestamp 18
+#  endif // !TLSEXT_TYPE_signed_certificate_timestamp
 
 namespace {
 int sct_add_cb(SSL *ssl, unsigned int ext_type, unsigned int context,
@@ -629,7 +629,7 @@ int sct_parse_cb(SSL *ssl, unsigned int ext_type, unsigned int context,
 }
 } // namespace
 
-#if !OPENSSL_1_1_1_API
+#  if !OPENSSL_1_1_1_API
 
 namespace {
 int legacy_sct_add_cb(SSL *ssl, unsigned int ext_type,
@@ -654,8 +654,8 @@ int legacy_sct_parse_cb(SSL *ssl, unsigned int ext_type,
 }
 } // namespace
 
-#endif // !OPENSSL_1_1_1_API
-#endif // !LIBRESSL_IN_USE && OPENSSL_VERSION_NUMBER >= 0x10002000L
+#  endif // !OPENSSL_1_1_1_API
+#endif   // !LIBRESSL_IN_USE && OPENSSL_VERSION_NUMBER >= 0x10002000L
 
 #ifndef OPENSSL_NO_PSK
 namespace {
@@ -794,18 +794,18 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
   }
 
 #ifndef OPENSSL_NO_EC
-#if !LIBRESSL_LEGACY_API && OPENSSL_VERSION_NUMBER >= 0x10002000L
+#  if !LIBRESSL_LEGACY_API && OPENSSL_VERSION_NUMBER >= 0x10002000L
   if (SSL_CTX_set1_curves_list(ssl_ctx, tlsconf.ecdh_curves.c_str()) != 1) {
     LOG(FATAL) << "SSL_CTX_set1_curves_list " << tlsconf.ecdh_curves
                << " failed";
     DIE();
   }
-#if !defined(OPENSSL_IS_BORINGSSL) && !OPENSSL_1_1_API
+#    if !defined(OPENSSL_IS_BORINGSSL) && !OPENSSL_1_1_API
   // It looks like we need this function call for OpenSSL 1.0.2.  This
   // function was deprecated in OpenSSL 1.1.0 and BoringSSL.
   SSL_CTX_set_ecdh_auto(ssl_ctx, 1);
-#endif // !defined(OPENSSL_IS_BORINGSSL) && !OPENSSL_1_1_API
-#else  // LIBRESSL_LEGACY_API || OPENSSL_VERSION_NUBMER < 0x10002000L
+#    endif // !defined(OPENSSL_IS_BORINGSSL) && !OPENSSL_1_1_API
+#  else    // LIBRESSL_LEGACY_API || OPENSSL_VERSION_NUBMER < 0x10002000L
   // Use P-256, which is sufficiently secure at the time of this
   // writing.
   auto ecdh = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
@@ -816,8 +816,8 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
   }
   SSL_CTX_set_tmp_ecdh(ssl_ctx, ecdh);
   EC_KEY_free(ecdh);
-#endif // LIBRESSL_LEGACY_API || OPENSSL_VERSION_NUBMER < 0x10002000L
-#endif // OPENSSL_NO_EC
+#  endif   // LIBRESSL_LEGACY_API || OPENSSL_VERSION_NUBMER < 0x10002000L
+#endif     // OPENSSL_NO_EC
 
   if (!tlsconf.dh_param_file.empty()) {
     // Read DH parameters from file
@@ -939,7 +939,7 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
   // OpenSSL handles signed_certificate_timestamp extension specially,
   // and it lets custom handler to process the extension.
   if (!sct_data.empty()) {
-#if OPENSSL_1_1_1_API
+#  if OPENSSL_1_1_1_API
     // It is not entirely clear to me that SSL_EXT_CLIENT_HELLO is
     // required here.  sct_parse_cb is called without
     // SSL_EXT_CLIENT_HELLO being set.  But the passed context value
@@ -953,7 +953,7 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
                  << ERR_error_string(ERR_get_error(), nullptr);
       DIE();
     }
-#else  // !OPENSSL_1_1_1_API
+#  else  // !OPENSSL_1_1_1_API
     if (SSL_CTX_add_server_custom_ext(
             ssl_ctx, TLSEXT_TYPE_signed_certificate_timestamp,
             legacy_sct_add_cb, legacy_sct_free_cb, nullptr, legacy_sct_parse_cb,
@@ -962,7 +962,7 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
                  << ERR_error_string(ERR_get_error(), nullptr);
       DIE();
     }
-#endif // !OPENSSL_1_1_1_API
+#  endif // !OPENSSL_1_1_1_API
   }
 #endif // !LIBRESSL_IN_USE && OPENSSL_VERSION_NUMBER >= 0x10002000L
 
@@ -1893,11 +1893,11 @@ int verify_ocsp_response(SSL_CTX *ssl_ctx, const uint8_t *ocsp_resp,
     return -1;
   }
 
-#if OPENSSL_1_1_API
+#  if OPENSSL_1_1_API
   auto certid = OCSP_SINGLERESP_get0_id(sresp);
-#else  // !OPENSSL_1_1_API
+#  else  // !OPENSSL_1_1_API
   auto certid = sresp->certId;
-#endif // !OPENSSL_1_1_API
+#  endif // !OPENSSL_1_1_API
   assert(certid != nullptr);
 
   ASN1_INTEGER *serial;
@@ -1971,10 +1971,10 @@ StringRef get_x509_issuer_name(BlockAllocator &balloc, X509 *x) {
 }
 
 #ifdef WORDS_BIGENDIAN
-#define bswap64(N) (N)
+#  define bswap64(N) (N)
 #else /* !WORDS_BIGENDIAN */
-#define bswap64(N)                                                             \
-  ((uint64_t)(ntohl((uint32_t)(N))) << 32 | ntohl((uint32_t)((N) >> 32)))
+#  define bswap64(N)                                                           \
+    ((uint64_t)(ntohl((uint32_t)(N))) << 32 | ntohl((uint32_t)((N) >> 32)))
 #endif /* !WORDS_BIGENDIAN */
 
 StringRef get_x509_serial(BlockAllocator &balloc, X509 *x) {

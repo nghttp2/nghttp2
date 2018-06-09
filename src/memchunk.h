@@ -35,7 +35,7 @@ struct iovec {
   size_t iov_len; /* Length of data.  */
 };
 #else // !_WIN32
-#include <sys/uio.h>
+#  include <sys/uio.h>
 #endif // !_WIN32
 
 #include <cassert>
@@ -52,9 +52,9 @@ namespace nghttp2 {
 #define DEFAULT_WR_IOVCNT 16
 
 #if defined(IOV_MAX) && IOV_MAX < DEFAULT_WR_IOVCNT
-#define MAX_WR_IOVCNT IOV_MAX
+#  define MAX_WR_IOVCNT IOV_MAX
 #else // !defined(IOV_MAX) || IOV_MAX >= DEFAULT_WR_IOVCNT
-#define MAX_WR_IOVCNT DEFAULT_WR_IOVCNT
+#  define MAX_WR_IOVCNT DEFAULT_WR_IOVCNT
 #endif // !defined(IOV_MAX) || IOV_MAX >= DEFAULT_WR_IOVCNT
 
 template <size_t N> struct Memchunk {

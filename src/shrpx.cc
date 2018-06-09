@@ -28,36 +28,36 @@
 #include <sys/wait.h>
 #include <sys/stat.h>
 #ifdef HAVE_SYS_SOCKET_H
-#include <sys/socket.h>
+#  include <sys/socket.h>
 #endif // HAVE_SYS_SOCKET_H
 #include <sys/un.h>
 #ifdef HAVE_NETDB_H
-#include <netdb.h>
+#  include <netdb.h>
 #endif // HAVE_NETDB_H
 #include <signal.h>
 #ifdef HAVE_NETINET_IN_H
-#include <netinet/in.h>
+#  include <netinet/in.h>
 #endif // HAVE_NETINET_IN_H
 #include <netinet/tcp.h>
 #ifdef HAVE_ARPA_INET_H
-#include <arpa/inet.h>
+#  include <arpa/inet.h>
 #endif // HAVE_ARPA_INET_H
 #ifdef HAVE_UNISTD_H
-#include <unistd.h>
+#  include <unistd.h>
 #endif // HAVE_UNISTD_H
 #include <getopt.h>
 #ifdef HAVE_SYSLOG_H
-#include <syslog.h>
+#  include <syslog.h>
 #endif // HAVE_SYSLOG_H
 #ifdef HAVE_LIMITS_H
-#include <limits.h>
+#  include <limits.h>
 #endif // HAVE_LIMITS_H
 #ifdef HAVE_SYS_TIME_H
-#include <sys/time.h>
+#  include <sys/time.h>
 #endif // HAVE_SYS_TIME_H
 #include <sys/resource.h>
 #ifdef HAVE_LIBSYSTEMD
-#include <systemd/sd-daemon.h>
+#  include <systemd/sd-daemon.h>
 #endif // HAVE_LIBSYSTEMD
 
 #include <cinttypes>
@@ -131,16 +131,16 @@ constexpr auto ENV_ACCEPT_PREFIX = StringRef::from_lit("NGHTTPX_ACCEPT_");
 constexpr auto ENV_ORIG_PID = StringRef::from_lit("NGHTTPX_ORIG_PID");
 
 #ifndef _KERNEL_FASTOPEN
-#define _KERNEL_FASTOPEN
+#  define _KERNEL_FASTOPEN
 // conditional define for TCP_FASTOPEN mostly on ubuntu
-#ifndef TCP_FASTOPEN
-#define TCP_FASTOPEN 23
-#endif
+#  ifndef TCP_FASTOPEN
+#    define TCP_FASTOPEN 23
+#  endif
 
 // conditional define for SOL_TCP mostly on ubuntu
-#ifndef SOL_TCP
-#define SOL_TCP 6
-#endif
+#  ifndef SOL_TCP
+#    define SOL_TCP 6
+#  endif
 #endif
 
 // This configuration is fixed at the first startup of the main
@@ -1140,15 +1140,15 @@ int call_daemon() {
 #ifdef __sgi
   return _daemonize(0, 0, 0, 0);
 #else // !__sgi
-#ifdef HAVE_LIBSYSTEMD
+#  ifdef HAVE_LIBSYSTEMD
   if (sd_booted() && (getenv("NOTIFY_SOCKET") != nullptr)) {
     LOG(NOTICE) << "Daemonising disabled under systemd";
     chdir("/");
     return 0;
   }
-#endif // HAVE_LIBSYSTEMD
+#  endif // HAVE_LIBSYSTEMD
   return daemon(0, 0);
-#endif // !__sgi
+#endif   // !__sgi
 }
 } // namespace
 

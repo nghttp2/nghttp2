@@ -578,9 +578,9 @@ int MemcachedConnection::parse_packet() {
 #define DEFAULT_WR_IOVCNT 128
 
 #if defined(IOV_MAX) && IOV_MAX < DEFAULT_WR_IOVCNT
-#define MAX_WR_IOVCNT IOV_MAX
+#  define MAX_WR_IOVCNT IOV_MAX
 #else // !defined(IOV_MAX) || IOV_MAX >= DEFAULT_WR_IOVCNT
-#define MAX_WR_IOVCNT DEFAULT_WR_IOVCNT
+#  define MAX_WR_IOVCNT DEFAULT_WR_IOVCNT
 #endif // !defined(IOV_MAX) || IOV_MAX >= DEFAULT_WR_IOVCNT
 
 size_t MemcachedConnection::fill_request_buffer(struct iovec *iov,

@@ -25,7 +25,7 @@
 #include "shrpx_http_test.h"
 
 #ifdef HAVE_UNISTD_H
-#include <unistd.h>
+#  include <unistd.h>
 #endif // HAVE_UNISTD_H
 
 #include <cstdlib>

@@ -26,7 +26,7 @@
 
 #include <sys/types.h>
 #ifdef HAVE_UNISTD_H
-#include <unistd.h>
+#  include <unistd.h>
 #endif // HAVE_UNISTD_H
 #include <sys/resource.h>
 #include <sys/wait.h>

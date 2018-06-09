@@ -25,11 +25,11 @@
 #include "nghttp2_config.h"
 
 #ifdef __sgi
-#define daemon _daemonize
+#  define daemon _daemonize
 #endif
 
 #ifdef HAVE_UNISTD_H
-#include <unistd.h>
+#  include <unistd.h>
 #endif // HAVE_UNISTD_H
 #include <signal.h>
 #include <getopt.h>

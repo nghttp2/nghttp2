@@ -30,7 +30,7 @@
 #include <cinttypes>
 #include <cstdlib>
 #ifdef HAVE_SYS_TIME_H
-#include <sys/time.h>
+#  include <sys/time.h>
 #endif // HAVE_SYS_TIME_H
 #include <poll.h>
 

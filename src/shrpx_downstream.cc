@@ -38,7 +38,7 @@
 #include "shrpx_http2_session.h"
 #include "shrpx_log.h"
 #ifdef HAVE_MRUBY
-#include "shrpx_mruby.h"
+#  include "shrpx_mruby.h"
 #endif // HAVE_MRUBY
 #include "util.h"
 #include "http2.h"

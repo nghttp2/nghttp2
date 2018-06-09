@@ -57,14 +57,14 @@ LogConfig::LogConfig()
 }
 
 #ifndef NOTHREADS
-#ifdef HAVE_THREAD_LOCAL
+#  ifdef HAVE_THREAD_LOCAL
 namespace {
 thread_local std::unique_ptr<LogConfig> config = make_unique<LogConfig>();
 } // namespace
 
 LogConfig *log_config() { return config.get(); }
 void delete_log_config() {}
-#else  // !HAVE_THREAD_LOCAL
+#  else  // !HAVE_THREAD_LOCAL
 namespace {
 pthread_key_t lckey;
 pthread_once_t lckey_once = PTHREAD_ONCE_INIT;
@@ -85,8 +85,8 @@ LogConfig *log_config() {
 }
 
 void delete_log_config() { delete log_config(); }
-#endif // !HAVE_THREAD_LOCAL
-#else  // NOTHREADS
+#  endif // !HAVE_THREAD_LOCAL
+#else    // NOTHREADS
 namespace {
 std::unique_ptr<LogConfig> config = make_unique<LogConfig>();
 } // namespace
@@ -94,7 +94,7 @@ std::unique_ptr<LogConfig> config = make_unique<LogConfig>();
 LogConfig *log_config() { return config.get(); }
 
 void delete_log_config() {}
-#endif // NOTHREADS
+#endif   // NOTHREADS
 
 void LogConfig::update_tstamp_millis(
     const std::chrono::system_clock::time_point &now) {

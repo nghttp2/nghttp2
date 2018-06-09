@@ -27,12 +27,12 @@
 #include <getopt.h>
 #include <signal.h>
 #ifdef HAVE_NETINET_IN_H
-#include <netinet/in.h>
+#  include <netinet/in.h>
 #endif // HAVE_NETINET_IN_H
 #include <netinet/tcp.h>
 #include <sys/stat.h>
 #ifdef HAVE_FCNTL_H
-#include <fcntl.h>
+#  include <fcntl.h>
 #endif // HAVE_FCNTL_H
 
 #include <cstdio>
@@ -58,7 +58,7 @@
 #include "template.h"
 
 #ifndef O_BINARY
-#define O_BINARY (0)
+#  define O_BINARY (0)
 #endif // O_BINARY
 
 using namespace nghttp2;

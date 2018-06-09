@@ -36,7 +36,7 @@
 #include <ev.h>
 
 #ifdef HAVE_NEVERBLEED
-#include <neverbleed.h>
+#  include <neverbleed.h>
 #endif // HAVE_NEVERBLEED
 
 #include "network.h"

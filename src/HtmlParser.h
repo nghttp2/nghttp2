@@ -32,7 +32,7 @@
 
 #ifdef HAVE_LIBXML2
 
-#include <libxml/HTMLparser.h>
+#  include <libxml/HTMLparser.h>
 
 #endif // HAVE_LIBXML2
 

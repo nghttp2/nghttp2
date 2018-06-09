@@ -26,20 +26,20 @@
 #define SHRPX_H
 
 #ifdef HAVE_CONFIG_H
-#include <config.h>
+#  include <config.h>
 #endif // HAVE_CONFIG_H
 
 #include <sys/types.h>
 #ifdef HAVE_SYS_SOCKET_H
-#include <sys/socket.h>
+#  include <sys/socket.h>
 #endif // HAVE_SYS_SOCKET_H
 
 #include <cassert>
 
 #ifndef HAVE__EXIT
-#define nghttp2_Exit(status) _exit(status)
+#  define nghttp2_Exit(status) _exit(status)
 #else // HAVE__EXIT
-#define nghttp2_Exit(status) _Exit(status)
+#  define nghttp2_Exit(status) _Exit(status)
 #endif // HAVE__EXIT
 
 #define DIE() nghttp2_Exit(EXIT_FAILURE)

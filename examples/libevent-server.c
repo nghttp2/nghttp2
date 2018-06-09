@@ -23,41 +23,41 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 #ifdef __sgi
-#define errx(exitcode, format, args...)                                        \
-  {                                                                            \
-    warnx(format, ##args);                                                     \
-    exit(exitcode);                                                            \
-  }
-#define warn(format, args...) warnx(format ": %s", ##args, strerror(errno))
-#define warnx(format, args...) fprintf(stderr, format "\n", ##args)
+#  define errx(exitcode, format, args...)                                      \
+    {                                                                          \
+      warnx(format, ##args);                                                   \
+      exit(exitcode);                                                          \
+    }
+#  define warn(format, args...) warnx(format ": %s", ##args, strerror(errno))
+#  define warnx(format, args...) fprintf(stderr, format "\n", ##args)
 #endif
 
 #ifdef HAVE_CONFIG_H
-#include <config.h>
+#  include <config.h>
 #endif /* HAVE_CONFIG_H */
 
 #include <sys/types.h>
 #ifdef HAVE_SYS_SOCKET_H
-#include <sys/socket.h>
+#  include <sys/socket.h>
 #endif /* HAVE_SYS_SOCKET_H */
 #ifdef HAVE_NETDB_H
-#include <netdb.h>
+#  include <netdb.h>
 #endif /* HAVE_NETDB_H */
 #include <signal.h>
 #ifdef HAVE_UNISTD_H
-#include <unistd.h>
+#  include <unistd.h>
 #endif /* HAVE_UNISTD_H */
 #include <sys/stat.h>
 #ifdef HAVE_FCNTL_H
-#include <fcntl.h>
+#  include <fcntl.h>
 #endif /* HAVE_FCNTL_H */
 #include <ctype.h>
 #ifdef HAVE_NETINET_IN_H
-#include <netinet/in.h>
+#  include <netinet/in.h>
 #endif /* HAVE_NETINET_IN_H */
 #include <netinet/tcp.h>
 #ifndef __sgi
-#include <err.h>
+#  include <err.h>
 #endif
 #include <string.h>
 #include <errno.h>

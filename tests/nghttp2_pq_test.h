@@ -26,7 +26,7 @@
 #define NGHTTP2_PQ_TEST_H
 
 #ifdef HAVE_CONFIG_H
-#include <config.h>
+#  include <config.h>
 #endif /* HAVE_CONFIG_H */
 
 void test_nghttp2_pq(void);

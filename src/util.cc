@@ -25,30 +25,30 @@
 #include "util.h"
 
 #ifdef HAVE_TIME_H
-#include <time.h>
+#  include <time.h>
 #endif // HAVE_TIME_H
 #include <sys/types.h>
 #ifdef HAVE_SYS_SOCKET_H
-#include <sys/socket.h>
+#  include <sys/socket.h>
 #endif // HAVE_SYS_SOCKET_H
 #ifdef HAVE_NETDB_H
-#include <netdb.h>
+#  include <netdb.h>
 #endif // HAVE_NETDB_H
 #include <sys/stat.h>
 #ifdef HAVE_FCNTL_H
-#include <fcntl.h>
+#  include <fcntl.h>
 #endif // HAVE_FCNTL_H
 #ifdef HAVE_NETINET_IN_H
-#include <netinet/in.h>
+#  include <netinet/in.h>
 #endif // HAVE_NETINET_IN_H
 #ifdef _WIN32
-#include <ws2tcpip.h>
-#include <boost/date_time/posix_time/posix_time.hpp>
+#  include <ws2tcpip.h>
+#  include <boost/date_time/posix_time/posix_time.hpp>
 #else // !_WIN32
-#include <netinet/tcp.h>
+#  include <netinet/tcp.h>
 #endif // !_WIN32
 #ifdef HAVE_ARPA_INET_H
-#include <arpa/inet.h>
+#  include <arpa/inet.h>
 #endif // HAVE_ARPA_INET_H
 
 #include <cmath>
@@ -80,9 +80,9 @@ int nghttp2_inet_pton(int af, const char *src, void *dst) {
 namespace {
 // inet_pton-wrapper for Windows
 int nghttp2_inet_pton(int af, const char *src, void *dst) {
-#if _WIN32_WINNT >= 0x0600
+#  if _WIN32_WINNT >= 0x0600
   return InetPtonA(af, src, dst);
-#else
+#  else
   // the function takes a 'char*', so we need to make a copy
   char addr[INET6_ADDRSTRLEN + 1];
   strncpy(addr, src, sizeof(addr));
@@ -93,7 +93,7 @@ int nghttp2_inet_pton(int af, const char *src, void *dst) {
   if (WSAStringToAddress(addr, af, NULL, (LPSOCKADDR)dst, &size) == 0)
     return 1;
   return 0;
-#endif
+#  endif
 }
 } // namespace
 #endif // _WIN32

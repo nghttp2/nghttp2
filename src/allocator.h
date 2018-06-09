@@ -28,7 +28,7 @@
 #include "nghttp2_config.h"
 
 #ifndef _WIN32
-#include <sys/uio.h>
+#  include <sys/uio.h>
 #endif // !_WIN32
 
 #include <cassert>

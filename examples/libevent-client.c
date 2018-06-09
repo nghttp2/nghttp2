@@ -23,33 +23,33 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 #ifdef __sgi
-#include <string.h>
-#define errx(exitcode, format, args...)                                        \
-  {                                                                            \
-    warnx(format, ##args);                                                     \
-    exit(exitcode);                                                            \
-  }
-#define warnx(format, args...) fprintf(stderr, format "\n", ##args)
+#  include <string.h>
+#  define errx(exitcode, format, args...)                                      \
+    {                                                                          \
+      warnx(format, ##args);                                                   \
+      exit(exitcode);                                                          \
+    }
+#  define warnx(format, args...) fprintf(stderr, format "\n", ##args)
 char *strndup(const char *s, size_t size);
 #endif
 
 #ifdef HAVE_CONFIG_H
-#include <config.h>
+#  include <config.h>
 #endif /* HAVE_CONFIG_H */
 
 #include <sys/types.h>
 #ifdef HAVE_UNISTD_H
-#include <unistd.h>
+#  include <unistd.h>
 #endif /* HAVE_UNISTD_H */
 #ifdef HAVE_SYS_SOCKET_H
-#include <sys/socket.h>
+#  include <sys/socket.h>
 #endif /* HAVE_SYS_SOCKET_H */
 #ifdef HAVE_NETINET_IN_H
-#include <netinet/in.h>
+#  include <netinet/in.h>
 #endif /* HAVE_NETINET_IN_H */
 #include <netinet/tcp.h>
 #ifndef __sgi
-#include <err.h>
+#  include <err.h>
 #endif
 #include <signal.h>
 #include <string.h>

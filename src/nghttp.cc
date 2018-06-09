@@ -26,13 +26,13 @@
 
 #include <sys/stat.h>
 #ifdef HAVE_UNISTD_H
-#include <unistd.h>
+#  include <unistd.h>
 #endif // HAVE_UNISTD_H
 #ifdef HAVE_FCNTL_H
-#include <fcntl.h>
+#  include <fcntl.h>
 #endif // HAVE_FCNTL_H
 #ifdef HAVE_NETINET_IN_H
-#include <netinet/in.h>
+#  include <netinet/in.h>
 #endif // HAVE_NETINET_IN_H
 #include <netinet/tcp.h>
 #include <getopt.h>
@@ -50,7 +50,7 @@
 #include <openssl/err.h>
 
 #ifdef HAVE_JANSSON
-#include <jansson.h>
+#  include <jansson.h>
 #endif // HAVE_JANSSON
 
 #include "app_helper.h"
@@ -62,7 +62,7 @@
 #include "ssl_compat.h"
 
 #ifndef O_BINARY
-#define O_BINARY (0)
+#  define O_BINARY (0)
 #endif // O_BINARY
 
 namespace nghttp2 {

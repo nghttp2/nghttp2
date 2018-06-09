@@ -25,7 +25,7 @@
 #include "shrpx_worker.h"
 
 #ifdef HAVE_UNISTD_H
-#include <unistd.h>
+#  include <unistd.h>
 #endif // HAVE_UNISTD_H
 
 #include <memory>
@@ -37,7 +37,7 @@
 #include "shrpx_log_config.h"
 #include "shrpx_memcached_dispatcher.h"
 #ifdef HAVE_MRUBY
-#include "shrpx_mruby.h"
+#  include "shrpx_mruby.h"
 #endif // HAVE_MRUBY
 #include "util.h"
 #include "template.h"
