@@ -34,24 +34,31 @@ session_tcp_impl::session_tcp_impl(
     const boost::posix_time::time_duration &connect_timeout)
     : session_impl(io_service, connect_timeout), socket_(io_service) {}
 
+session_tcp_impl::session_tcp_impl(
+    boost::asio::io_service &io_service,
+    const boost::asio::ip::tcp::endpoint &local_endpoint,
+    const std::string &host, const std::string &service,
+    const boost::posix_time::time_duration &connect_timeout)
+    : session_impl(io_service, connect_timeout),
+      socket_(io_service, local_endpoint) {}
+
 session_tcp_impl::~session_tcp_impl() {}
 
 void session_tcp_impl::start_connect(tcp::resolver::iterator endpoint_it) {
   auto self = shared_from_this();
-  boost::asio::async_connect(socket_, endpoint_it,
-                             [self](const boost::system::error_code &ec,
-                                    tcp::resolver::iterator endpoint_it) {
-                               if (self->stopped()) {
-                                 return;
-                               }
+  socket_.async_connect(
+      *endpoint_it, [self, endpoint_it](const boost::system::error_code &ec) {
+        if (self->stopped()) {
+          return;
+        }
 
-                               if (ec) {
-                                 self->not_connected(ec);
-                                 return;
-                               }
+        if (ec) {
+          self->not_connected(ec);
+          return;
+        }
 
-                               self->connected(endpoint_it);
-                             });
+        self->connected(endpoint_it);
+      });
 }
 
 tcp::socket &session_tcp_impl::socket() { return socket_; }
