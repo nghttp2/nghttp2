@@ -150,11 +150,22 @@ public:
   session(boost::asio::io_service &io_service, const std::string &host,
           const std::string &service);
 
+  // Same as previous but with pegged local endpoint
+  session(boost::asio::io_service &io_service,
+          const boost::asio::ip::tcp::endpoint &local_endpoint,
+          const std::string &host, const std::string &service);
+
   // Starts HTTP/2 session by connecting to |host| and |service|
   // (e.g., "80") using clear text TCP connection with given connect
   // timeout.
   session(boost::asio::io_service &io_service, const std::string &host,
           const std::string &service,
+          const boost::posix_time::time_duration &connect_timeout);
+
+  // Same as previous but with pegged local endpoint
+  session(boost::asio::io_service &io_service,
+          const boost::asio::ip::tcp::endpoint &local_endpoint,
+          const std::string &host, const std::string &service,
           const boost::posix_time::time_duration &connect_timeout);
 
   // Starts HTTP/2 session by connecting to |host| and |service|

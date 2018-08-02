@@ -40,6 +40,10 @@ public:
   session_tcp_impl(boost::asio::io_service &io_service, const std::string &host,
                    const std::string &service,
                    const boost::posix_time::time_duration &connect_timeout);
+  session_tcp_impl(boost::asio::io_service &io_service,
+                   const boost::asio::ip::tcp::endpoint &local_endpoint,
+                   const std::string &host, const std::string &service,
+                   const boost::posix_time::time_duration &connect_timeout);
   virtual ~session_tcp_impl();
 
   virtual void start_connect(tcp::resolver::iterator endpoint_it);
