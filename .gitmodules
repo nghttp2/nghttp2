@@ -1,6 +1,6 @@
 [submodule "third-party/mruby"]
 	path = third-party/mruby
-	url = https://github.com/mruby/mruby
+	url = ../../mruby/mruby
 [submodule "third-party/neverbleed"]
 	path = third-party/neverbleed
-	url = https://github.com/h2o/neverbleed.git
+	url = ../../h2o/neverbleed.git
