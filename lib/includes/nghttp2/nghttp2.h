@@ -3802,10 +3802,13 @@ nghttp2_priority_spec_check_default(const nghttp2_priority_spec *pri_spec);
  * .. warning::
  *
  *   This function returns assigned stream ID if it succeeds.  But
- *   that stream is not opened yet.  The application must not submit
+ *   that stream is not created yet.  The application must not submit
  *   frame to that stream ID before
  *   :type:`nghttp2_before_frame_send_callback` is called for this
- *   frame.
+ *   frame.  This means `nghttp2_session_get_stream_user_data()` does
+ *   not work before the callback.  But
+ *   `nghttp2_session_set_stream_user_data()` handles this situation
+ *   specially, and it can set data to a stream during this period.
  *
  */
 NGHTTP2_EXTERN int32_t nghttp2_submit_request(

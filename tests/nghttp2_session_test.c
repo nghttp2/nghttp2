@@ -10696,6 +10696,39 @@ void test_nghttp2_session_no_closed_streams(void) {
   nghttp2_option_del(option);
 }
 
+void test_nghttp2_session_set_stream_user_data(void) {
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+  int32_t stream_id;
+  int user_data1, user_data2;
+  int rv;
+  const uint8_t *datap;
+  ssize_t datalen;
+
+  memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
+
+  nghttp2_session_client_new(&session, &callbacks, NULL);
+
+  stream_id = nghttp2_submit_request(session, NULL, reqnv, ARRLEN(reqnv), NULL,
+                                     &user_data1);
+
+  rv = nghttp2_session_set_stream_user_data(session, stream_id, &user_data2);
+
+  CU_ASSERT(0 == rv);
+
+  datalen = nghttp2_session_mem_send(session, &datap);
+
+  CU_ASSERT(datalen > 0);
+
+  CU_ASSERT(&user_data2 ==
+            nghttp2_session_get_stream_user_data(session, stream_id));
+
+  CU_ASSERT(NGHTTP2_ERR_INVALID_ARGUMENT ==
+            nghttp2_session_set_stream_user_data(session, 2, NULL));
+
+  nghttp2_session_del(session);
+}
+
 static void check_nghttp2_http_recv_headers_fail(
     nghttp2_session *session, nghttp2_hd_deflater *deflater, int32_t stream_id,
     int stream_state, const nghttp2_nv *nva, size_t nvlen) {
