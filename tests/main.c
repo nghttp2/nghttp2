@@ -319,6 +319,8 @@ int main() {
                    test_nghttp2_session_pause_data) ||
       !CU_add_test(pSuite, "session_no_closed_streams",
                    test_nghttp2_session_no_closed_streams) ||
+      !CU_add_test(pSuite, "session_set_stream_user_data",
+                   test_nghttp2_session_set_stream_user_data) ||
       !CU_add_test(pSuite, "http_mandatory_headers",
                    test_nghttp2_http_mandatory_headers) ||
       !CU_add_test(pSuite, "http_content_length",
