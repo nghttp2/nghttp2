@@ -40,7 +40,11 @@ session_tcp_impl::session_tcp_impl(
     const std::string &host, const std::string &service,
     const boost::posix_time::time_duration &connect_timeout)
     : session_impl(io_service, connect_timeout),
-      socket_(io_service, local_endpoint) {}
+      socket_(io_service, tcp::v4()) {
+  boost::asio::socket_base::reuse_address option(true);
+  socket_.set_option(option);
+  socket_.bind(local_endpoint);
+}
 
 session_tcp_impl::~session_tcp_impl() {}
 
