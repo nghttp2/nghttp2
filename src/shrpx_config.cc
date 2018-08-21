@@ -55,6 +55,9 @@
 #include "shrpx_log.h"
 #include "shrpx_tls.h"
 #include "shrpx_http.h"
+#ifdef HAVE_MRUBY
+#  include "shrpx_mruby.h"
+#endif // HAVE_MRUBY
 #include "util.h"
 #include "base64.h"
 #include "ssl_compat.h"
@@ -807,6 +810,7 @@ int parse_upstream_params(UpstreamParams &out, const StringRef &src_params) {
 
 struct DownstreamParams {
   StringRef sni;
+  StringRef mruby;
   AffinityConfig affinity;
   size_t fall;
   size_t rise;
@@ -921,6 +925,9 @@ int parse_downstream_params(DownstreamParams &out,
       out.redirect_if_not_tls = true;
     } else if (util::strieq_l("upgrade-scheme", param)) {
       out.upgrade_scheme = true;
+    } else if (util::istarts_with_l(param, "mruby=")) {
+      auto valstr = StringRef{first + str_size("mruby="), end};
+      out.mruby = valstr;
     } else if (!param.empty()) {
       LOG(ERROR) << "backend: " << param << ": unknown keyword";
       return -1;
@@ -1045,6 +1052,18 @@ int parse_mapping(Config *config, DownstreamAddrConfig &addr,
       if (params.redirect_if_not_tls) {
         g.redirect_if_not_tls = true;
       }
+      // All backends in the same group must have the same mruby path.
+      // If some backend does not specify mruby file, and there is at
+      // least one backend with mruby file, it is used for all backend
+      // in the group.
+      if (g.mruby_file.empty()) {
+        g.mruby_file = params.mruby;
+      } else if (g.mruby_file != params.mruby) {
+        LOG(ERROR) << "backend: mruby: multiple different mruby file found in "
+                      "a single group";
+        return -1;
+      }
+
       g.addrs.push_back(addr);
       continue;
     }
@@ -1065,6 +1084,7 @@ int parse_mapping(Config *config, DownstreamAddrConfig &addr,
       g.affinity.cookie.secure = params.affinity.cookie.secure;
     }
     g.redirect_if_not_tls = params.redirect_if_not_tls;
+    g.mruby_file = params.mruby;
 
     if (pattern[0] == '*') {
       // wildcard pattern
@@ -2179,6 +2199,9 @@ int option_lookup_token(const char *name, size_t namelen) {
       }
       break;
     case 'r':
+      if (util::strieq_l("ignore-per-backend-mruby-erro", name, 29)) {
+        return SHRPX_OPTID_IGNORE_PER_BACKEND_MRUBY_ERROR;
+      }
       if (util::strieq_l("strip-incoming-x-forwarded-fo", name, 29)) {
         return SHRPX_OPTID_STRIP_INCOMING_X_FORWARDED_FOR;
       }
@@ -3564,6 +3587,10 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     config->tls.client_verify.tolerate_expired = util::strieq_l("yes", optarg);
 
     return 0;
+  case SHRPX_OPTID_IGNORE_PER_BACKEND_MRUBY_ERROR:
+    config->ignore_per_backend_mruby_error = util::strieq_l("yes", optarg);
+
+    return 0;
   case SHRPX_OPTID_CONF:
     LOG(WARN) << "conf: ignored";
 
@@ -3854,7 +3881,32 @@ int configure_downstream_group(Config *config, bool http2_proxy,
                   << (addr.tls ? ", tls" : "");
       }
     }
+#ifdef HAVE_MRUBY
+    // Try compile mruby script and catch compile error early.
+    if (!g.mruby_file.empty()) {
+      if (mruby::create_mruby_context(g.mruby_file) == nullptr) {
+        LOG(config->ignore_per_backend_mruby_error ? ERROR : FATAL)
+            << "backend: Could not compile mruby flie for pattern "
+            << g.pattern;
+        if (!config->ignore_per_backend_mruby_error) {
+          return -1;
+        }
+        g.mruby_file = StringRef{};
+      }
+    }
+#endif // HAVE_MRUBY
   }
+
+#ifdef HAVE_MRUBY
+  // Try compile mruby script (--mruby-file) here to catch compile
+  // error early.
+  if (!config->mruby_file.empty()) {
+    if (mruby::create_mruby_context(config->mruby_file) == nullptr) {
+      LOG(FATAL) << "mruby-file: Could not compile mruby file";
+      return -1;
+    }
+  }
+#endif // HAVE_MRUBY
 
   if (catch_all_group == -1) {
     LOG(FATAL) << "backend: No catch-all backend address is configured";

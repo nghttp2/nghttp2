@@ -345,6 +345,8 @@ constexpr auto SHRPX_OPT_OCSP_STARTUP = StringRef::from_lit("ocsp-startup");
 constexpr auto SHRPX_OPT_NO_VERIFY_OCSP = StringRef::from_lit("no-verify-ocsp");
 constexpr auto SHRPX_OPT_VERIFY_CLIENT_TOLERATE_EXPIRED =
     StringRef::from_lit("verify-client-tolerate-expired");
+constexpr auto SHRPX_OPT_IGNORE_PER_BACKEND_MRUBY_ERROR =
+    StringRef::from_lit("ignore-per-backend-mruby-error");
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
@@ -483,6 +485,7 @@ struct DownstreamAddrGroupConfig {
       : pattern(pattern), affinity{AFFINITY_NONE}, redirect_if_not_tls(false) {}
 
   StringRef pattern;
+  StringRef mruby_file;
   std::vector<DownstreamAddrConfig> addrs;
   // Bunch of session affinity hash.  Only used if affinity ==
   // AFFINITY_IP.
@@ -915,6 +918,7 @@ struct Config {
         http2_proxy{false},
         single_process{false},
         single_thread{false},
+        ignore_per_backend_mruby_error{false},
         ev_loop_flags{0} {}
   ~Config();
 
@@ -959,6 +963,8 @@ struct Config {
   // handling is omitted.
   bool single_process;
   bool single_thread;
+  // Ignore mruby compile error for per-backend mruby script.
+  bool ignore_per_backend_mruby_error;
   // flags passed to ev_default_loop() and ev_loop_new()
   int ev_loop_flags;
 };
@@ -1063,6 +1069,7 @@ enum {
   SHRPX_OPTID_HTTP2_MAX_CONCURRENT_STREAMS,
   SHRPX_OPTID_HTTP2_NO_COOKIE_CRUMBLING,
   SHRPX_OPTID_HTTP2_PROXY,
+  SHRPX_OPTID_IGNORE_PER_BACKEND_MRUBY_ERROR,
   SHRPX_OPTID_INCLUDE,
   SHRPX_OPTID_INSECURE,
   SHRPX_OPTID_LISTENER_DISABLE_TIMEOUT,

@@ -431,11 +431,28 @@ int htp_hdrs_completecb(http_parser *htp) {
     return -1;
   }
 
+#ifdef HAVE_MRUBY
+  auto dconn_ptr = dconn.get();
+#endif // HAVE_MRUBY
   if (downstream->attach_downstream_connection(std::move(dconn)) != 0) {
     downstream->set_request_state(Downstream::CONNECT_FAIL);
 
     return -1;
   }
+
+#ifdef HAVE_MRUBY
+  const auto &group = dconn_ptr->get_downstream_addr_group();
+  const auto &dmruby_ctx = group->mruby_ctx;
+
+  if (dmruby_ctx->run_on_request_proc(downstream) != 0) {
+    resp.http_status = 500;
+    return -1;
+  }
+
+  if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
+    return 0;
+  }
+#endif // HAVE_MRUBY
 
   rv = downstream->push_request_headers();
 
@@ -1021,6 +1038,8 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
   const auto &req = downstream->request();
   auto &resp = downstream->response();
   auto &balloc = downstream->get_block_allocator();
+  auto dconn = downstream->get_downstream_connection();
+  assert(dconn);
 
   if (downstream->get_non_final_response() &&
       !downstream->supports_non_final_response()) {
@@ -1030,6 +1049,18 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
 
 #ifdef HAVE_MRUBY
   if (!downstream->get_non_final_response()) {
+    const auto &group = dconn->get_downstream_addr_group();
+    const auto &dmruby_ctx = group->mruby_ctx;
+
+    if (dmruby_ctx->run_on_response_proc(downstream) != 0) {
+      error_reply(500);
+      return -1;
+    }
+
+    if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
+      return -1;
+    }
+
     auto worker = handler_->get_worker();
     auto mruby_ctx = worker->get_mruby_context();
 
@@ -1150,8 +1181,6 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
   if (req.method != HTTP_CONNECT || !downstream->get_upgraded()) {
     auto affinity_cookie = downstream->get_affinity_cookie_to_send();
     if (affinity_cookie) {
-      auto dconn = downstream->get_downstream_connection();
-      assert(dconn);
       auto &group = dconn->get_downstream_addr_group();
       auto &shared_addr = group->shared_addr;
       auto &cookieconf = shared_addr->affinity.cookie;

@@ -299,9 +299,19 @@ server.  These hooks allows users to modify header fields, or common
 HTTP variables, like authority or request path, and even return custom
 response without forwarding request to backend servers.
 
-To specify mruby script file, use :option:`--mruby-file` option.  The
-script will be evaluated once per thread on startup, and it must
-instantiate object and evaluate it as the return value (e.g.,
+There are 2 levels of mruby script invocations: global and
+per-backend.  The global mruby script is set by :option:`--mruby-file`
+option and is called for all requests.  The per-backend mruby script
+is set by "mruby" parameter in :option:`-b` option.  It is invoked for
+a request which is forwarded to the particular backend.  The order of
+hook invocation is: global request phase hook, per-backend request
+phase hook, per-backend response phase hook, and finally global
+response phase hook.  If a hook returns a response, any later hooks
+are not invoked.  The global request hook is invoked before selecting
+backend, and changing request path may affect the backend selection.
+
+The all mruby script will be evaluated once per thread on startup, and
+it must instantiate object and evaluate it as the return value (e.g.,
 ``App.new``).  This object is called app object.  If app object
 defines ``on_req`` method, it is called with :rb:class:`Nghttpx::Env`
 object on request hook.  Similarly, if app object defines ``on_resp``

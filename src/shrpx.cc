@@ -1729,12 +1729,13 @@ Connections:
               The  parameters are  delimited  by  ";".  The  available
               parameters       are:      "proto=<PROTO>",       "tls",
               "sni=<SNI_HOST>",         "fall=<N>",        "rise=<N>",
-              "affinity=<METHOD>",  "dns", and  "redirect-if-not-tls".
-              The  parameter  consists   of  keyword,  and  optionally
-              followed by  "=" and value.  For  example, the parameter
-              "proto=h2"  consists of  the keyword  "proto" and  value
-              "h2".  The parameter "tls" consists of the keyword "tls"
-              without value.  Each parameter is described as follows.
+              "affinity=<METHOD>",    "dns",    "redirect-if-not-tls",
+              "upgrade-scheme",  and  "mruby=<PATH>".   The  parameter
+              consists of keyword, and  optionally followed by "=" and
+              value.  For  example, the parameter  "proto=h2" consists
+              of the  keyword "proto"  and value "h2".   The parameter
+              "tls" consists of the keyword "tls" without value.  Each
+              parameter is described as follows.
 
               The backend application protocol  can be specified using
               optional  "proto"   parameter,  and   in  the   form  of
@@ -1826,6 +1827,10 @@ Connections:
               particular backend.  This is  a workaround for a backend
               server  which  requires  "https" :scheme  pseudo  header
               field on TLS encrypted connection.
+
+              "mruby=<PATH>"  parameter  specifies  a  path  to  mruby
+              script  file  which  is  invoked when  this  backend  is
+              selected.
 
               Since ";" and ":" are  used as delimiter, <PATTERN> must
               not  contain these  characters.  Since  ";" has  special
@@ -2749,6 +2754,10 @@ Process:
 Scripting:
   --mruby-file=<PATH>
               Set mruby script file
+  --ignore-per-backend-mruby-error
+              Ignore mruby compile error  for per-backend mruby script
+              file.  If error  occurred, it is treated as  if no mruby
+              file were specified for the backend.
 
 Misc:
   --conf=<PATH>
@@ -3424,6 +3433,8 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_SINGLE_PROCESS.c_str(), no_argument, &flag, 159},
         {SHRPX_OPT_VERIFY_CLIENT_TOLERATE_EXPIRED.c_str(), no_argument, &flag,
          160},
+        {SHRPX_OPT_IGNORE_PER_BACKEND_MRUBY_ERROR.c_str(), no_argument, &flag,
+         161},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -4188,6 +4199,11 @@ int main(int argc, char **argv) {
       case 160:
         // --verify-client-tolerate-expired
         cmdcfgs.emplace_back(SHRPX_OPT_VERIFY_CLIENT_TOLERATE_EXPIRED,
+                             StringRef::from_lit("yes"));
+        break;
+      case 161:
+        // --ignore-per-backend-mruby-error
+        cmdcfgs.emplace_back(SHRPX_OPT_IGNORE_PER_BACKEND_MRUBY_ERROR,
                              StringRef::from_lit("yes"));
         break;
       default:
