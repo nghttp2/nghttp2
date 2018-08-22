@@ -938,7 +938,8 @@ uint32_t ClientHandler::get_affinity_cookie(Downstream *downstream,
 }
 
 std::unique_ptr<DownstreamConnection>
-ClientHandler::get_downstream_connection(int &err, Downstream *downstream) {
+ClientHandler::get_downstream_connection(int &err, Downstream *downstream,
+                                         shrpx_proto pref_proto) {
   size_t group_idx;
   auto &downstreamconf = *worker_->get_downstream_config();
   auto &routerconf = downstreamconf.router;
@@ -1041,7 +1042,8 @@ ClientHandler::get_downstream_connection(int &err, Downstream *downstream) {
           i = 0;
         }
         addr = &shared_addr->addrs[shared_addr->affinity_hash[i].idx];
-        if (addr->connect_blocker->blocked()) {
+        if (addr->connect_blocker->blocked() ||
+            (pref_proto != PROTO_NONE && pref_proto != addr->proto)) {
           continue;
         }
         break;
@@ -1081,7 +1083,15 @@ ClientHandler::get_downstream_connection(int &err, Downstream *downstream) {
 
   auto proto = PROTO_NONE;
 
-  if (http1_weight > 0 && http2_weight > 0) {
+  if (pref_proto == PROTO_HTTP1) {
+    if (http1_weight > 0) {
+      proto = PROTO_HTTP1;
+    }
+  } else if (pref_proto == PROTO_HTTP2) {
+    if (http2_weight > 0) {
+      proto = PROTO_HTTP2;
+    }
+  } else if (http1_weight > 0 && http2_weight > 0) {
     // We only advance cycle if both weight has nonzero to keep its
     // distance under WEIGHT_MAX.
     if (pri_less(shared_addr->http1_pri, shared_addr->http2_pri)) {

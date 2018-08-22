@@ -102,9 +102,11 @@ public:
   // Returns DownstreamConnection object based on request path.  This
   // function returns non-null DownstreamConnection, and assigns 0 to
   // |err| if it succeeds, or returns nullptr, and assigns negative
-  // error code to |err|.
+  // error code to |err|.  If |pref_proto| is not PROTO_NONE, choose
+  // backend whose protocol is |pref_proto|.
   std::unique_ptr<DownstreamConnection>
-  get_downstream_connection(int &err, Downstream *downstream);
+  get_downstream_connection(int &err, Downstream *downstream,
+                            shrpx_proto pref_proto = PROTO_NONE);
   MemchunkPool *get_mcpool();
   SSL *get_ssl() const;
   // Call this function when HTTP/2 connection header is received at

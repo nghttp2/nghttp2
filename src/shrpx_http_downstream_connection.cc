@@ -87,7 +87,11 @@ void retry_downstream_connection(Downstream *downstream,
   downstream->pop_downstream_connection();
 
   int rv;
-  auto ndconn = handler->get_downstream_connection(rv, downstream);
+  // We have to use h1 backend for retry if we have already written h1
+  // request in request buffer.
+  auto ndconn = handler->get_downstream_connection(
+      rv, downstream,
+      downstream->get_request_header_sent() ? PROTO_HTTP1 : PROTO_NONE);
   if (ndconn) {
     if (downstream->attach_downstream_connection(std::move(ndconn)) == 0 &&
         downstream->push_request_headers() == 0) {
