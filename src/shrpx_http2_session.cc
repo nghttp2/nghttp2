@@ -1468,6 +1468,15 @@ int on_frame_send_callback(nghttp2_session *session, const nghttp2_frame *frame,
     if (frame->hd.type == NGHTTP2_HEADERS &&
         frame->headers.cat == NGHTTP2_HCAT_REQUEST) {
       downstream->set_request_header_sent(true);
+      auto src = downstream->get_blocked_request_buf();
+      if (src->rleft()) {
+        auto dest = downstream->get_request_buf();
+        src->remove(*dest);
+        if (http2session->resume_data(sd->dconn) != 0) {
+          return NGHTTP2_ERR_CALLBACK_FAILURE;
+        }
+        downstream->ensure_downstream_wtimer();
+      }
     }
 
     if ((frame->hd.flags & NGHTTP2_FLAG_END_STREAM) == 0) {

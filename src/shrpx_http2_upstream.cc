@@ -590,7 +590,7 @@ int on_data_chunk_recv_callback(nghttp2_session *session, uint8_t flags,
   auto downstream = static_cast<Downstream *>(
       nghttp2_session_get_stream_user_data(session, stream_id));
 
-  if (!downstream || !downstream->get_downstream_connection()) {
+  if (!downstream) {
     if (upstream->consume(stream_id, len) != 0) {
       return NGHTTP2_ERR_CALLBACK_FAILURE;
     }
