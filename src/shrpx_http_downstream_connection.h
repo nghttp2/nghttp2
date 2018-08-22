@@ -89,6 +89,8 @@ public:
 
   int noop();
 
+  int process_blocked_request_buf();
+
 private:
   Connection conn_;
   std::function<int(HttpDownstreamConnection &)> on_read_, on_write_,

@@ -121,6 +121,7 @@ Downstream::Downstream(Upstream *upstream, MemchunkPool *mcpool,
       req_(balloc_),
       resp_(balloc_),
       request_start_time_(std::chrono::high_resolution_clock::now()),
+      blocked_request_buf_(mcpool),
       request_buf_(mcpool),
       response_buf_(mcpool),
       upstream_(upstream),
@@ -142,7 +143,8 @@ Downstream::Downstream(Upstream *upstream, MemchunkPool *mcpool,
       request_pending_(false),
       request_header_sent_(false),
       accesslog_written_(false),
-      new_affinity_cookie_(false) {
+      new_affinity_cookie_(false),
+      blocked_request_data_eof_(false) {
 
   auto &timeoutconf = get_config()->http2.timeout;
 
@@ -605,6 +607,12 @@ int Downstream::push_request_headers() {
 int Downstream::push_upload_data_chunk(const uint8_t *data, size_t datalen) {
   req_.recv_body_length += datalen;
 
+  if (!request_header_sent_) {
+    blocked_request_buf_.append(data, datalen);
+    req_.unconsumed_body_length += datalen;
+    return 0;
+  }
+
   // Assumes that request headers have already been pushed to output
   // buffer using push_request_headers().
   if (!dconn_) {
@@ -621,6 +629,10 @@ int Downstream::push_upload_data_chunk(const uint8_t *data, size_t datalen) {
 }
 
 int Downstream::end_upload_data() {
+  if (!request_header_sent_) {
+    blocked_request_data_eof_ = true;
+    return 0;
+  }
   if (!dconn_) {
     DLOG(INFO, this) << "dconn_ is NULL";
     return -1;
@@ -1050,6 +1062,14 @@ uint32_t Downstream::get_affinity_cookie_to_send() const {
     return affinity_cookie_;
   }
   return 0;
+}
+
+DefaultMemchunks *Downstream::get_blocked_request_buf() {
+  return &blocked_request_buf_;
+}
+
+bool Downstream::get_blocked_request_data_eof() const {
+  return blocked_request_data_eof_;
 }
 
 } // namespace shrpx

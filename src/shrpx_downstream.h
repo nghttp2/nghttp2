@@ -356,6 +356,9 @@ public:
   // get_request_pending() returns false.
   bool request_submission_ready() const;
 
+  DefaultMemchunks *get_blocked_request_buf();
+  bool get_blocked_request_data_eof() const;
+
   // downstream response API
   const Response &response() const { return resp_; }
   Response &response() { return resp_; }
@@ -491,6 +494,9 @@ private:
   // or not.
   StringRef request_downstream_host_;
 
+  // Data arrived in frontend before sending header fields to backend
+  // are stored in this buffer.
+  DefaultMemchunks blocked_request_buf_;
   DefaultMemchunks request_buf_;
   DefaultMemchunks response_buf_;
 
@@ -547,6 +553,9 @@ private:
   bool accesslog_written_;
   // true if affinity cookie is generated for this request.
   bool new_affinity_cookie_;
+  // true if eof is received from client before sending header fields
+  // to backend.
+  bool blocked_request_data_eof_;
 };
 
 } // namespace shrpx

@@ -251,6 +251,29 @@ template <typename Memchunk> struct Memchunks {
 
     return count - left;
   }
+  size_t remove(Memchunks &dest) {
+    assert(pool == dest.pool);
+
+    if (head == nullptr) {
+      return 0;
+    }
+
+    auto n = len;
+
+    if (dest.tail == nullptr) {
+      dest.head = head;
+    } else {
+      dest.tail->next = head;
+    }
+
+    dest.tail = tail;
+    dest.len += len;
+
+    head = tail = nullptr;
+    len = 0;
+
+    return n;
+  }
   size_t drain(size_t count) {
     auto ndata = count;
     auto m = head;
