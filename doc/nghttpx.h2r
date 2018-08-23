@@ -548,10 +548,10 @@ respectively.
         not be invoked.  When this method is called in response phase
         hook, response from backend server is canceled and discarded.
         The status code and response header fields should be set
-        before using this method.  To set status code, use :rb:meth To
-        set response header fields, use
+        before using this method.  To set status code, use
         :rb:attr:`Nghttpx::Response#status`.  If status code is not
-        set, 200 is used.  :rb:meth:`Nghttpx::Response#add_header` and
+        set, 200 is used.  To set response header fields,
+        :rb:meth:`Nghttpx::Response#add_header` and
         :rb:meth:`Nghttpx::Response#set_header`.  When this method is
         invoked in response phase hook, the response headers are
         filled with the ones received from backend server.  To send
