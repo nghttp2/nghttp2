@@ -188,6 +188,14 @@ Downstream::~Downstream() {
 #endif // HAVE_MRUBY
   }
 
+#ifdef HAVE_MRUBY
+  if (dconn_) {
+    const auto &group = dconn_->get_downstream_addr_group();
+    const auto &mruby_ctx = group->mruby_ctx;
+    mruby_ctx->delete_downstream(this);
+  }
+#endif // HAVE_MRUBY
+
   // DownstreamConnection may refer to this object.  Delete it now
   // explicitly.
   dconn_.reset();
@@ -217,6 +225,12 @@ void Downstream::detach_downstream_connection() {
     return;
   }
 
+#ifdef HAVE_MRUBY
+  const auto &group = dconn_->get_downstream_addr_group();
+  const auto &mruby_ctx = group->mruby_ctx;
+  mruby_ctx->delete_downstream(this);
+#endif // HAVE_MRUBY
+
   dconn_->detach_downstream(this);
 
   auto handler = dconn_->get_client_handler();
@@ -230,6 +244,16 @@ DownstreamConnection *Downstream::get_downstream_connection() {
 }
 
 std::unique_ptr<DownstreamConnection> Downstream::pop_downstream_connection() {
+#ifdef HAVE_MRUBY
+  if (!dconn_) {
+    return nullptr;
+  }
+
+  const auto &group = dconn_->get_downstream_addr_group();
+  const auto &mruby_ctx = group->mruby_ctx;
+  mruby_ctx->delete_downstream(this);
+#endif // HAVE_MRUBY
+
   return std::unique_ptr<DownstreamConnection>(dconn_.release());
 }
 

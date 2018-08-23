@@ -68,6 +68,10 @@ void proc_wev_cb(struct ev_loop *loop, ev_timer *w, int revents) {
 }
 } // namespace
 
+DownstreamAddrGroup::DownstreamAddrGroup() : retired{false} {}
+
+DownstreamAddrGroup::~DownstreamAddrGroup() {}
+
 // DownstreamKey is used to index SharedDownstreamAddr in order to
 // find the same configuration.
 using DownstreamKey = std::tuple<
@@ -185,6 +189,10 @@ void Worker::replace_downstream_config(
     dst = std::make_shared<DownstreamAddrGroup>();
     dst->pattern =
         ImmutableString{std::begin(src.pattern), std::end(src.pattern)};
+#ifdef HAVE_MRUBY
+    dst->mruby_ctx = mruby::create_mruby_context(src.mruby_file);
+    assert(dst->mruby_ctx);
+#endif // HAVE_MRUBY
 
     auto shared_addr = std::make_shared<SharedDownstreamAddr>();
 
