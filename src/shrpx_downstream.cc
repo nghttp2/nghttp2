@@ -586,7 +586,8 @@ bool Downstream::request_buf_full() {
 
   if (dconn_) {
     auto &downstreamconf = *worker->get_downstream_config();
-    return request_buf_.rleft() >= downstreamconf.request_buffer_size;
+    return blocked_request_buf_.rleft() + request_buf_.rleft() >=
+           downstreamconf.request_buffer_size;
   }
 
   return false;
