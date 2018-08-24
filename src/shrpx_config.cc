@@ -1057,7 +1057,7 @@ int parse_mapping(Config *config, DownstreamAddrConfig &addr,
       // least one backend with mruby file, it is used for all backend
       // in the group.
       if (g.mruby_file.empty()) {
-        g.mruby_file = params.mruby;
+        g.mruby_file = make_string_ref(downstreamconf.balloc, params.mruby);
       } else if (g.mruby_file != params.mruby) {
         LOG(ERROR) << "backend: mruby: multiple different mruby file found in "
                       "a single group";
@@ -1084,7 +1084,7 @@ int parse_mapping(Config *config, DownstreamAddrConfig &addr,
       g.affinity.cookie.secure = params.affinity.cookie.secure;
     }
     g.redirect_if_not_tls = params.redirect_if_not_tls;
-    g.mruby_file = params.mruby;
+    g.mruby_file = make_string_ref(downstreamconf.balloc, params.mruby);
 
     if (pattern[0] == '*') {
       // wildcard pattern
