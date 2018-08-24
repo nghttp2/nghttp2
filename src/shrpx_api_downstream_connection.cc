@@ -265,6 +265,11 @@ int APIDownstreamConnection::push_request_headers() {
   }
   }
 
+  downstream_->set_request_header_sent(true);
+  auto src = downstream_->get_blocked_request_buf();
+  auto dest = downstream_->get_request_buf();
+  src->remove(*dest);
+
   return 0;
 }
 
