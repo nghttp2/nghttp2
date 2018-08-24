@@ -181,6 +181,10 @@ void Worker::replace_downstream_config(
       std::vector<std::shared_ptr<DownstreamAddrGroup>>(groups.size());
 
   std::map<DownstreamKey, size_t> addr_groups_indexer;
+  // TODO It is a bit less efficient because
+  // mruby::create_mruby_context returns std::unique_ptr and we cannot
+  // use std::make_shared.
+  std::map<StringRef, std::shared_ptr<mruby::MRubyContext>> shared_mruby_ctxs;
 
   for (size_t i = 0; i < groups.size(); ++i) {
     auto &src = groups[i];
@@ -190,8 +194,14 @@ void Worker::replace_downstream_config(
     dst->pattern =
         ImmutableString{std::begin(src.pattern), std::end(src.pattern)};
 #ifdef HAVE_MRUBY
-    dst->mruby_ctx = mruby::create_mruby_context(src.mruby_file);
-    assert(dst->mruby_ctx);
+    auto mruby_ctx_it = shared_mruby_ctxs.find(src.mruby_file);
+    if (mruby_ctx_it == std::end(shared_mruby_ctxs)) {
+      dst->mruby_ctx = mruby::create_mruby_context(src.mruby_file);
+      assert(dst->mruby_ctx);
+      shared_mruby_ctxs.emplace(src.mruby_file, dst->mruby_ctx);
+    } else {
+      dst->mruby_ctx = (*mruby_ctx_it).second;
+    }
 #endif // HAVE_MRUBY
 
     auto shared_addr = std::make_shared<SharedDownstreamAddr>();

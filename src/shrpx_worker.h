@@ -194,7 +194,7 @@ struct DownstreamAddrGroup {
   ImmutableString pattern;
   std::shared_ptr<SharedDownstreamAddr> shared_addr;
 #ifdef HAVE_MRUBY
-  std::unique_ptr<mruby::MRubyContext> mruby_ctx;
+  std::shared_ptr<mruby::MRubyContext> mruby_ctx;
 #endif // HAVE_MRUBY
   // true if this group is no longer used for new request.  If this is
   // true, the connection made using one of address in shared_addr
