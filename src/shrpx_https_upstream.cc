@@ -442,15 +442,17 @@ int htp_hdrs_completecb(http_parser *htp) {
 
 #ifdef HAVE_MRUBY
   const auto &group = dconn_ptr->get_downstream_addr_group();
-  const auto &dmruby_ctx = group->mruby_ctx;
+  if (group) {
+    const auto &dmruby_ctx = group->mruby_ctx;
 
-  if (dmruby_ctx->run_on_request_proc(downstream) != 0) {
-    resp.http_status = 500;
-    return -1;
-  }
+    if (dmruby_ctx->run_on_request_proc(downstream) != 0) {
+      resp.http_status = 500;
+      return -1;
+    }
 
-  if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
-    return 0;
+    if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
+      return 0;
+    }
   }
 #endif // HAVE_MRUBY
 
@@ -1050,15 +1052,17 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
 #ifdef HAVE_MRUBY
   if (!downstream->get_non_final_response()) {
     const auto &group = dconn->get_downstream_addr_group();
-    const auto &dmruby_ctx = group->mruby_ctx;
+    if (group) {
+      const auto &dmruby_ctx = group->mruby_ctx;
 
-    if (dmruby_ctx->run_on_response_proc(downstream) != 0) {
-      error_reply(500);
-      return -1;
-    }
+      if (dmruby_ctx->run_on_response_proc(downstream) != 0) {
+        error_reply(500);
+        return -1;
+      }
 
-    if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
-      return -1;
+      if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
+        return -1;
+      }
     }
 
     auto worker = handler_->get_worker();

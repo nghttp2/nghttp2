@@ -480,19 +480,21 @@ void Http2Upstream::initiate_downstream(Downstream *downstream) {
 
 #ifdef HAVE_MRUBY
   const auto &group = dconn_ptr->get_downstream_addr_group();
-  const auto &mruby_ctx = group->mruby_ctx;
-  if (mruby_ctx->run_on_request_proc(downstream) != 0) {
-    if (error_reply(downstream, 500) != 0) {
-      rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
+  if (group) {
+    const auto &mruby_ctx = group->mruby_ctx;
+    if (mruby_ctx->run_on_request_proc(downstream) != 0) {
+      if (error_reply(downstream, 500) != 0) {
+        rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
+      }
+
+      downstream_queue_.mark_failure(downstream);
+
+      return;
     }
 
-    downstream_queue_.mark_failure(downstream);
-
-    return;
-  }
-
-  if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
-    return;
+    if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
+      return;
+    }
   }
 #endif // HAVE_MRUBY
 
@@ -1635,18 +1637,20 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
   if (!downstream->get_non_final_response()) {
     auto dconn = downstream->get_downstream_connection();
     const auto &group = dconn->get_downstream_addr_group();
-    const auto &dmruby_ctx = group->mruby_ctx;
+    if (group) {
+      const auto &dmruby_ctx = group->mruby_ctx;
 
-    if (dmruby_ctx->run_on_response_proc(downstream) != 0) {
-      if (error_reply(downstream, 500) != 0) {
+      if (dmruby_ctx->run_on_response_proc(downstream) != 0) {
+        if (error_reply(downstream, 500) != 0) {
+          return -1;
+        }
+        // Returning -1 will signal deletion of dconn.
         return -1;
       }
-      // Returning -1 will signal deletion of dconn.
-      return -1;
-    }
 
-    if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
-      return -1;
+      if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
+        return -1;
+      }
     }
 
     auto worker = handler_->get_worker();
