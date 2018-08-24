@@ -160,8 +160,7 @@ public:
   const std::vector<SSL_CTX *> &get_indexed_ssl_ctx(size_t idx) const;
 
 #ifdef HAVE_NEVERBLEED
-  void set_neverbleed(std::unique_ptr<neverbleed_t> nb);
-  neverbleed_t *get_neverbleed() const;
+  void set_neverbleed(neverbleed_t *nb);
 #endif // HAVE_NEVERBLEED
 
   // Send SerialEvent SEV_REPLACE_DOWNSTREAM to this object.
@@ -210,7 +209,7 @@ private:
   struct ev_loop *loop_;
   std::vector<std::unique_ptr<AcceptHandler>> acceptors_;
 #ifdef HAVE_NEVERBLEED
-  std::unique_ptr<neverbleed_t> nb_;
+  neverbleed_t *nb_;
 #endif // HAVE_NEVERBLEED
   ev_timer disable_acceptor_timer_;
   ev_timer ocsp_timer_;

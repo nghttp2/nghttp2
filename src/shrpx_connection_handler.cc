@@ -115,6 +115,9 @@ ConnectionHandler::ConnectionHandler(struct ev_loop *loop, std::mt19937 &gen)
     : gen_(gen),
       single_worker_(nullptr),
       loop_(loop),
+#ifdef HAVE_NEVERBLEED
+      nb_(nullptr),
+#endif // HAVE_NEVERBLEED
       tls_ticket_key_memcached_get_retry_count_(0),
       tls_ticket_key_memcached_fail_count_(0),
       worker_round_robin_cnt_(get_config()->api.enabled ? 1 : 0),
@@ -205,12 +208,12 @@ int ConnectionHandler::create_single_worker() {
       all_ssl_ctx_, indexed_ssl_ctx_, cert_tree_.get()
 #ifdef HAVE_NEVERBLEED
                                           ,
-      nb_.get()
+      nb_
 #endif // HAVE_NEVERBLEED
   );
   auto cl_ssl_ctx = tls::setup_downstream_client_ssl_context(
 #ifdef HAVE_NEVERBLEED
-      nb_.get()
+      nb_
 #endif // HAVE_NEVERBLEED
   );
 
@@ -227,7 +230,7 @@ int ConnectionHandler::create_single_worker() {
     if (memcachedconf.tls) {
       session_cache_ssl_ctx = tls::create_ssl_client_context(
 #ifdef HAVE_NEVERBLEED
-          nb_.get(),
+          nb_,
 #endif // HAVE_NEVERBLEED
           tlsconf.cacert, memcachedconf.cert_file,
           memcachedconf.private_key_file, nullptr);
@@ -256,12 +259,12 @@ int ConnectionHandler::create_worker_thread(size_t num) {
       all_ssl_ctx_, indexed_ssl_ctx_, cert_tree_.get()
 #  ifdef HAVE_NEVERBLEED
                                           ,
-      nb_.get()
+      nb_
 #  endif // HAVE_NEVERBLEED
   );
   auto cl_ssl_ctx = tls::setup_downstream_client_ssl_context(
 #  ifdef HAVE_NEVERBLEED
-      nb_.get()
+      nb_
 #  endif // HAVE_NEVERBLEED
   );
 
@@ -285,7 +288,7 @@ int ConnectionHandler::create_worker_thread(size_t num) {
     if (memcachedconf.tls) {
       session_cache_ssl_ctx = tls::create_ssl_client_context(
 #  ifdef HAVE_NEVERBLEED
-          nb_.get(),
+          nb_,
 #  endif // HAVE_NEVERBLEED
           tlsconf.cacert, memcachedconf.cert_file,
           memcachedconf.private_key_file, nullptr);
@@ -802,7 +805,7 @@ SSL_CTX *ConnectionHandler::create_tls_ticket_key_memcached_ssl_ctx() {
 
   auto ssl_ctx = tls::create_ssl_client_context(
 #ifdef HAVE_NEVERBLEED
-      nb_.get(),
+      nb_,
 #endif // HAVE_NEVERBLEED
       tlsconf.cacert, memcachedconf.cert_file, memcachedconf.private_key_file,
       nullptr);
@@ -813,12 +816,7 @@ SSL_CTX *ConnectionHandler::create_tls_ticket_key_memcached_ssl_ctx() {
 }
 
 #ifdef HAVE_NEVERBLEED
-void ConnectionHandler::set_neverbleed(std::unique_ptr<neverbleed_t> nb) {
-  nb_ = std::move(nb);
-}
-
-neverbleed_t *ConnectionHandler::get_neverbleed() const { return nb_.get(); }
-
+void ConnectionHandler::set_neverbleed(neverbleed_t *nb) { nb_ = nb; }
 #endif // HAVE_NEVERBLEED
 
 void ConnectionHandler::handle_serial_event() {
