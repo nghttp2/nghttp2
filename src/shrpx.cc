@@ -1829,8 +1829,9 @@ Connections:
               field on TLS encrypted connection.
 
               "mruby=<PATH>"  parameter  specifies  a  path  to  mruby
-              script  file  which  is  invoked when  this  backend  is
-              selected.
+              script  file  which  is  invoked when  this  pattern  is
+              matched.  All backends which share the same pattern must
+              have the same mruby path.
 
               Since ";" and ":" are  used as delimiter, <PATTERN> must
               not  contain these  characters.  Since  ";" has  special
@@ -2754,10 +2755,10 @@ Process:
 Scripting:
   --mruby-file=<PATH>
               Set mruby script file
-  --ignore-per-backend-mruby-error
-              Ignore mruby compile error  for per-backend mruby script
+  --ignore-per-pattern-mruby-error
+              Ignore mruby compile error  for per-pattern mruby script
               file.  If error  occurred, it is treated as  if no mruby
-              file were specified for the backend.
+              file were specified for the pattern.
 
 Misc:
   --conf=<PATH>
@@ -3433,7 +3434,7 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_SINGLE_PROCESS.c_str(), no_argument, &flag, 159},
         {SHRPX_OPT_VERIFY_CLIENT_TOLERATE_EXPIRED.c_str(), no_argument, &flag,
          160},
-        {SHRPX_OPT_IGNORE_PER_BACKEND_MRUBY_ERROR.c_str(), no_argument, &flag,
+        {SHRPX_OPT_IGNORE_PER_PATTERN_MRUBY_ERROR.c_str(), no_argument, &flag,
          161},
         {nullptr, 0, nullptr, 0}};
 
@@ -4202,8 +4203,8 @@ int main(int argc, char **argv) {
                              StringRef::from_lit("yes"));
         break;
       case 161:
-        // --ignore-per-backend-mruby-error
-        cmdcfgs.emplace_back(SHRPX_OPT_IGNORE_PER_BACKEND_MRUBY_ERROR,
+        // --ignore-per-pattern-mruby-error
+        cmdcfgs.emplace_back(SHRPX_OPT_IGNORE_PER_PATTERN_MRUBY_ERROR,
                              StringRef::from_lit("yes"));
         break;
       default:

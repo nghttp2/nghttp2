@@ -2199,8 +2199,8 @@ int option_lookup_token(const char *name, size_t namelen) {
       }
       break;
     case 'r':
-      if (util::strieq_l("ignore-per-backend-mruby-erro", name, 29)) {
-        return SHRPX_OPTID_IGNORE_PER_BACKEND_MRUBY_ERROR;
+      if (util::strieq_l("ignore-per-pattern-mruby-erro", name, 29)) {
+        return SHRPX_OPTID_IGNORE_PER_PATTERN_MRUBY_ERROR;
       }
       if (util::strieq_l("strip-incoming-x-forwarded-fo", name, 29)) {
         return SHRPX_OPTID_STRIP_INCOMING_X_FORWARDED_FOR;
@@ -3587,8 +3587,8 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     config->tls.client_verify.tolerate_expired = util::strieq_l("yes", optarg);
 
     return 0;
-  case SHRPX_OPTID_IGNORE_PER_BACKEND_MRUBY_ERROR:
-    config->ignore_per_backend_mruby_error = util::strieq_l("yes", optarg);
+  case SHRPX_OPTID_IGNORE_PER_PATTERN_MRUBY_ERROR:
+    config->ignore_per_pattern_mruby_error = util::strieq_l("yes", optarg);
 
     return 0;
   case SHRPX_OPTID_CONF:
@@ -3885,10 +3885,10 @@ int configure_downstream_group(Config *config, bool http2_proxy,
     // Try compile mruby script and catch compile error early.
     if (!g.mruby_file.empty()) {
       if (mruby::create_mruby_context(g.mruby_file) == nullptr) {
-        LOG(config->ignore_per_backend_mruby_error ? ERROR : FATAL)
+        LOG(config->ignore_per_pattern_mruby_error ? ERROR : FATAL)
             << "backend: Could not compile mruby flie for pattern "
             << g.pattern;
-        if (!config->ignore_per_backend_mruby_error) {
+        if (!config->ignore_per_pattern_mruby_error) {
           return -1;
         }
         g.mruby_file = StringRef{};
