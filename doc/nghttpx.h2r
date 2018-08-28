@@ -311,6 +311,14 @@ invoked.  The global request hook is invoked before the pattern
 matching is made and changing request path may affect the pattern
 matching.
 
+Please note that request and response hooks of per-pattern mruby
+script for a single request might not come from the same script.  This
+might happen after a request hook is executed, backend failed for some
+reason, and at the same time, backend configuration is replaced by API
+request, and then the request uses new configuration on retry.  The
+response hook from new configuration, if it is specified, will be
+invoked.
+
 The all mruby script will be evaluated once per thread on startup, and
 it must instantiate object and evaluate it as the return value (e.g.,
 ``App.new``).  This object is called app object.  If app object
