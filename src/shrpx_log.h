@@ -29,7 +29,6 @@
 
 #include <sys/types.h>
 
-#include <sstream>
 #include <memory>
 #include <vector>
 #include <chrono>
@@ -38,6 +37,7 @@
 #include "shrpx_log_config.h"
 #include "tls.h"
 #include "template.h"
+#include "util.h"
 
 using namespace nghttp2;
 
@@ -90,25 +90,119 @@ struct DownstreamAddr;
 
 enum SeverityLevel { INFO, NOTICE, WARN, ERROR, FATAL };
 
+using LogBuffer = std::array<uint8_t, 4_k>;
+
 class Log {
 public:
   Log(int severity, const char *filename, int linenum);
   ~Log();
-  template <typename Type> Log &operator<<(Type s) {
-    stream_ << s;
+  Log &operator<<(const std::string &s);
+  Log &operator<<(const char *s);
+  Log &operator<<(const StringRef &s);
+  Log &operator<<(const ImmutableString &s);
+  Log &operator<<(int16_t n) { return *this << static_cast<int64_t>(n); }
+  Log &operator<<(int32_t n) { return *this << static_cast<int64_t>(n); }
+  Log &operator<<(int64_t n);
+  Log &operator<<(uint16_t n) { return *this << static_cast<uint64_t>(n); }
+  Log &operator<<(uint32_t n) { return *this << static_cast<uint64_t>(n); }
+  Log &operator<<(uint64_t n);
+  Log &operator<<(float n) { return *this << static_cast<double>(n); }
+  Log &operator<<(double n);
+  Log &operator<<(long double n);
+  Log &operator<<(bool n);
+  Log &operator<<(const void *p);
+  template <typename T> Log &operator<<(const std::shared_ptr<T> &ptr) {
+    return *this << ptr.get();
+  }
+  Log &operator<<(void (*func)(Log &log)) {
+    func(*this);
     return *this;
+  }
+  template <typename InputIt> void write_seq(InputIt first, InputIt last) {
+    if (full_) {
+      return;
+    }
+
+    auto d = std::distance(first, last);
+    auto n = std::min(wleft(), static_cast<size_t>(d));
+    last_ = std::copy(first, first + n, last_);
+    update_full();
+  }
+
+  template <typename T> void write_hex(T n) {
+    if (full_) {
+      return;
+    }
+
+    if (n == 0) {
+      if (wleft() < 4 /* for "0x00" */) {
+        full_ = true;
+        return;
+      }
+      *last_++ = '0';
+      *last_++ = 'x';
+      *last_++ = '0';
+      *last_++ = '0';
+      update_full();
+      return;
+    }
+
+    size_t nlen = 0;
+    for (auto t = n; t; t >>= 8, ++nlen)
+      ;
+
+    nlen *= 2;
+
+    if (wleft() < 2 /* for "0x" */ + nlen) {
+      full_ = true;
+      return;
+    }
+
+    *last_++ = '0';
+    *last_++ = 'x';
+
+    last_ += nlen;
+    update_full();
+
+    auto p = last_ - 1;
+    for (; n; n >>= 8) {
+      uint8_t b = n & 0xff;
+      *p-- = util::LOWER_XDIGITS[b & 0xf];
+      *p-- = util::LOWER_XDIGITS[b >> 4];
+    }
   }
   static void set_severity_level(int severity);
   static int set_severity_level_by_name(const StringRef &name);
   static bool log_enabled(int severity) { return severity >= severity_thres_; }
 
+  enum {
+    fmt_dec = 0x00,
+    fmt_hex = 0x01,
+  };
+
+  void set_flags(int flags) { flags_ = flags; }
+
 private:
-  std::stringstream stream_;
+  size_t rleft() { return last_ - begin_; }
+  size_t wleft() { return end_ - last_; }
+  void update_full() { full_ = last_ == end_; }
+
+  LogBuffer &buf_;
+  uint8_t *begin_;
+  uint8_t *end_;
+  uint8_t *last_;
   const char *filename_;
+  uint32_t flags_;
   int severity_;
   int linenum_;
+  bool full_;
   static int severity_thres_;
 };
+
+namespace log {
+void hex(Log &log);
+void dec(Log &log);
+} // namespace log
 
 #define TTY_HTTP_HD (log_config()->errorlog_tty ? "\033[1;34m" : "")
 #define TTY_RST (log_config()->errorlog_tty ? "\033[0m" : "")
