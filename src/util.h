@@ -370,14 +370,12 @@ template <typename T> std::string utos(T n) {
     res = "0";
     return res;
   }
-  int i = 0;
-  T t = n;
-  for (; t; t /= 10, ++i)
+  size_t nlen = 0;
+  for (auto t = n; t; t /= 10, ++nlen)
     ;
-  res.resize(i);
-  --i;
-  for (; n; --i, n /= 10) {
-    res[i] = (n % 10) + '0';
+  res.resize(nlen);
+  for (; n; n /= 10) {
+    res[--nlen] = (n % 10) + '0';
   }
   return res;
 }
@@ -387,15 +385,13 @@ template <typename T, typename OutputIt> OutputIt utos(OutputIt dst, T n) {
     *dst++ = '0';
     return dst;
   }
-  int i = 0;
-  T t = n;
-  for (; t; t /= 10, ++i)
+  size_t nlen = 0;
+  for (auto t = n; t; t /= 10, ++nlen)
     ;
-  --i;
-  auto p = dst + i;
-  auto res = p + 1;
-  for (; n; --i, n /= 10) {
-    *p-- = (n % 10) + '0';
+  auto p = dst + nlen;
+  auto res = p;
+  for (; n; n /= 10) {
+    *--p = (n % 10) + '0';
   }
   return res;
 }
