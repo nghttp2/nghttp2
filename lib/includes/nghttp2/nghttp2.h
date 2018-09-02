@@ -4613,7 +4613,8 @@ typedef struct {
  * :enum:`NGHTTP2_FLAG_NONE`.
  *
  * The |ov| points to the array of origins.  The |nov| specifies the
- * number of origins included in |ov|.
+ * number of origins included in |ov|.  This function creates copies
+ * of all elements in |ov|.
  *
  * The ORIGIN frame is only usable by a server.  If this function is
  * invoked with client side session, this function returns
