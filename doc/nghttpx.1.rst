@@ -121,12 +121,13 @@ Connections
     The  parameters are  delimited  by  ";".  The  available
     parameters       are:      "proto=<PROTO>",       "tls",
     "sni=<SNI_HOST>",         "fall=<N>",        "rise=<N>",
-    "affinity=<METHOD>",  "dns", and  "redirect-if-not-tls".
-    The  parameter  consists   of  keyword,  and  optionally
-    followed by  "=" and value.  For  example, the parameter
-    "proto=h2"  consists of  the keyword  "proto" and  value
-    "h2".  The parameter "tls" consists of the keyword "tls"
-    without value.  Each parameter is described as follows.
+    "affinity=<METHOD>",    "dns",    "redirect-if-not-tls",
+    "upgrade-scheme",  and  "mruby=<PATH>".   The  parameter
+    consists of keyword, and  optionally followed by "=" and
+    value.  For  example, the parameter  "proto=h2" consists
+    of the  keyword "proto"  and value "h2".   The parameter
+    "tls" consists of the keyword "tls" without value.  Each
+    parameter is described as follows.
 
     The backend application protocol  can be specified using
     optional  "proto"   parameter,  and   in  the   form  of
@@ -218,6 +219,11 @@ Connections
     particular backend.  This is  a workaround for a backend
     server  which  requires  "https" :scheme  pseudo  header
     field on TLS encrypted connection.
+
+    "mruby=<PATH>"  parameter  specifies  a  path  to  mruby
+    script  file  which  is  invoked when  this  pattern  is
+    matched.  All backends which share the same pattern must
+    have the same mruby path.
 
     Since ";" and ":" are  used as delimiter, <PATTERN> must
     not  contain these  characters.  Since  ";" has  special
@@ -1439,6 +1445,12 @@ Scripting
 
     Set mruby script file
 
+.. option:: --ignore-per-pattern-mruby-error
+
+    Ignore mruby compile error  for per-pattern mruby script
+    file.  If error  occurred, it is treated as  if no mruby
+    file were specified for the pattern.
+
 
 Misc
 ~~~~
@@ -1777,9 +1789,28 @@ server.  These hooks allows users to modify header fields, or common
 HTTP variables, like authority or request path, and even return custom
 response without forwarding request to backend servers.
 
-To specify mruby script file, use :option:`--mruby-file` option.  The
-script will be evaluated once per thread on startup, and it must
-instantiate object and evaluate it as the return value (e.g.,
+There are 2 levels of mruby script invocations: global and
+per-pattern.  The global mruby script is set by :option:`--mruby-file`
+option and is called for all requests.  The per-pattern mruby script
+is set by "mruby" parameter in :option:`-b` option.  It is invoked for
+a request which matches the particular pattern.  The order of hook
+invocation is: global request phase hook, per-pattern request phase
+hook, per-pattern response phase hook, and finally global response
+phase hook.  If a hook returns a response, any later hooks are not
+invoked.  The global request hook is invoked before the pattern
+matching is made and changing request path may affect the pattern
+matching.
+
+Please note that request and response hooks of per-pattern mruby
+script for a single request might not come from the same script.  This
+might happen after a request hook is executed, backend failed for some
+reason, and at the same time, backend configuration is replaced by API
+request, and then the request uses new configuration on retry.  The
+response hook from new configuration, if it is specified, will be
+invoked.
+
+The all mruby script will be evaluated once per thread on startup, and
+it must instantiate object and evaluate it as the return value (e.g.,
 ``App.new``).  This object is called app object.  If app object
 defines ``on_req`` method, it is called with :rb:class:`Nghttpx::Env`
 object on request hook.  Similarly, if app object defines ``on_resp``
@@ -2026,10 +2057,10 @@ respectively.
         not be invoked.  When this method is called in response phase
         hook, response from backend server is canceled and discarded.
         The status code and response header fields should be set
-        before using this method.  To set status code, use :rb:meth To
-        set response header fields, use
+        before using this method.  To set status code, use
         :rb:attr:`Nghttpx::Response#status`.  If status code is not
-        set, 200 is used.  :rb:meth:`Nghttpx::Response#add_header` and
+        set, 200 is used.  To set response header fields,
+        :rb:meth:`Nghttpx::Response#add_header` and
         :rb:meth:`Nghttpx::Response#set_header`.  When this method is
         invoked in response phase hook, the response headers are
         filled with the ones received from backend server.  To send
