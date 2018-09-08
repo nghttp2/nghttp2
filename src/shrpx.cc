@@ -2371,12 +2371,13 @@ SSL/TLS:
               HTTP/2.   To  use  those   cipher  suites  with  HTTP/2,
               consider   to  use   --client-no-http2-cipher-black-list
               option.  But be aware its implications.
-  --tls-postpone-early-data
-              Postpone forwarding  HTTP requests  sent in  early data,
-              including  those  sent in  partially  in  it, until  TLS
-              handshake  finishes.   This  option   must  be  used  to
-              mitigate  possible  replay  attack  unless  all  backend
-              servers recognize "Early-Data" header field.
+  --tls-no-postpone-early-data
+              By default,  nghttpx postpones forwarding  HTTP requests
+              sent in early data, including those sent in partially in
+              it, until TLS handshake finishes.  If all backend server
+              recognizes "Early-Data" header  field, using this option
+              makes nghttpx  not postpone  forwarding request  and get
+              full potential of 0-RTT data.
   --tls-max-early-data=<SIZE>
               Sets  the  maximum  amount  of 0-RTT  data  that  server
               accepts.
@@ -3448,7 +3449,7 @@ int main(int argc, char **argv) {
          160},
         {SHRPX_OPT_IGNORE_PER_PATTERN_MRUBY_ERROR.c_str(), no_argument, &flag,
          161},
-        {SHRPX_OPT_TLS_POSTPONE_EARLY_DATA.c_str(), no_argument, &flag, 162},
+        {SHRPX_OPT_TLS_NO_POSTPONE_EARLY_DATA.c_str(), no_argument, &flag, 162},
         {SHRPX_OPT_TLS_MAX_EARLY_DATA.c_str(), required_argument, &flag, 163},
         {nullptr, 0, nullptr, 0}};
 
@@ -4222,8 +4223,8 @@ int main(int argc, char **argv) {
                              StringRef::from_lit("yes"));
         break;
       case 162:
-        // --tls-postpone-early-data
-        cmdcfgs.emplace_back(SHRPX_OPT_TLS_POSTPONE_EARLY_DATA,
+        // --tls-no-postpone-early-data
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS_NO_POSTPONE_EARLY_DATA,
                              StringRef::from_lit("yes"));
         break;
       case 163:

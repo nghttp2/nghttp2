@@ -2045,11 +2045,6 @@ int option_lookup_token(const char *name, size_t namelen) {
     break;
   case 23:
     switch (name[22]) {
-    case 'a':
-      if (util::strieq_l("tls-postpone-early-dat", name, 22)) {
-        return SHRPX_OPTID_TLS_POSTPONE_EARLY_DATA;
-      }
-      break;
     case 'e':
       if (util::strieq_l("client-private-key-fil", name, 22)) {
         return SHRPX_OPTID_CLIENT_PRIVATE_KEY_FILE;
@@ -2124,6 +2119,11 @@ int option_lookup_token(const char *name, size_t namelen) {
     break;
   case 26:
     switch (name[25]) {
+    case 'a':
+      if (util::strieq_l("tls-no-postpone-early-dat", name, 25)) {
+        return SHRPX_OPTID_TLS_NO_POSTPONE_EARLY_DATA;
+      }
+      break;
     case 'e':
       if (util::strieq_l("frontend-http2-window-siz", name, 25)) {
         return SHRPX_OPTID_FRONTEND_HTTP2_WINDOW_SIZE;
@@ -3601,8 +3601,8 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     config->ignore_per_pattern_mruby_error = util::strieq_l("yes", optarg);
 
     return 0;
-  case SHRPX_OPTID_TLS_POSTPONE_EARLY_DATA:
-    config->tls.postpone_early_data = util::strieq_l("yes", optarg);
+  case SHRPX_OPTID_TLS_NO_POSTPONE_EARLY_DATA:
+    config->tls.no_postpone_early_data = util::strieq_l("yes", optarg);
 
     return 0;
   case SHRPX_OPTID_TLS_MAX_EARLY_DATA: {
