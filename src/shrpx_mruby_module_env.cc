@@ -397,6 +397,18 @@ mrb_value env_get_alpn(mrb_state *mrb, mrb_value self) {
 }
 } // namespace
 
+namespace {
+mrb_value env_get_tls_handshake_finished(mrb_state *mrb, mrb_value self) {
+  auto data = static_cast<MRubyAssocData *>(mrb->ud);
+  auto downstream = data->downstream;
+  auto upstream = downstream->get_upstream();
+  auto handler = upstream->get_client_handler();
+  auto conn = handler->get_connection();
+  return SSL_is_init_finished(conn->tls.ssl) ? mrb_true_value()
+                                             : mrb_false_value();
+}
+} // namespace
+
 void init_env_class(mrb_state *mrb, RClass *module) {
   auto env_class =
       mrb_define_class_under(mrb, module, "Env", mrb->object_class);
@@ -439,6 +451,8 @@ void init_env_class(mrb_state *mrb, RClass *module) {
   mrb_define_method(mrb, env_class, "tls_session_reused",
                     env_get_tls_session_reused, MRB_ARGS_NONE());
   mrb_define_method(mrb, env_class, "alpn", env_get_alpn, MRB_ARGS_NONE());
+  mrb_define_method(mrb, env_class, "tls_handshake_finished",
+                    env_get_tls_handshake_finished, MRB_ARGS_NONE());
 }
 
 } // namespace mruby

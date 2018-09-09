@@ -437,6 +437,14 @@ respectively.
 
         Return ALPN identifier negotiated in this connection.
 
+    .. rb:attr_reader:: tls_handshake_finished
+
+        Return true if SSL/TLS handshake has finished.  If it returns
+        false in the request phase hook, the request is received in
+        TLSv1.3 early data (0-RTT) and might be vulnerable to the
+        replay attack.  nghttpx will send Early-Data header field to
+        backend servers to indicate this.
+
 .. rb:class:: Request
 
     Object to represent request from client.  The modification to
