@@ -1487,6 +1487,7 @@ void fill_default_config(Config *config) {
   httpconf.max_requests = std::numeric_limits<size_t>::max();
   httpconf.xfp.add = true;
   httpconf.xfp.strip_incoming = true;
+  httpconf.early_data.strip_incoming = true;
 
   auto &http2conf = config->http2;
   {
@@ -2644,6 +2645,9 @@ HTTP:
               Default: obfuscated
   --no-via    Don't append to  Via header field.  If  Via header field
               is received, it is left unaltered.
+  --no-strip-incoming-early-data
+              Don't strip Early-Data header  field from inbound client
+              requests.
   --no-location-rewrite
               Don't  rewrite location  header field  in default  mode.
               When --http2-proxy  is used, location header  field will
@@ -3475,6 +3479,8 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_TLS_MAX_EARLY_DATA.c_str(), required_argument, &flag, 163},
         {SHRPX_OPT_TLS13_CIPHERS.c_str(), required_argument, &flag, 164},
         {SHRPX_OPT_TLS13_CLIENT_CIPHERS.c_str(), required_argument, &flag, 165},
+        {SHRPX_OPT_NO_STRIP_INCOMING_EARLY_DATA.c_str(), no_argument, &flag,
+         166},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -4262,6 +4268,11 @@ int main(int argc, char **argv) {
       case 165:
         // --tls13-client-ciphers
         cmdcfgs.emplace_back(SHRPX_OPT_TLS13_CLIENT_CIPHERS, StringRef{optarg});
+        break;
+      case 166:
+        // --no-strip-incoming-early-data
+        cmdcfgs.emplace_back(SHRPX_OPT_NO_STRIP_INCOMING_EARLY_DATA,
+                             StringRef::from_lit("yes"));
         break;
       default:
         break;

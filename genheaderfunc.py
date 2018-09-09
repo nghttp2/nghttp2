@@ -31,6 +31,7 @@ HEADERS = [
     "user-agent",
     "date",
     "content-type",
+    "early-data",
     # disallowed h1 headers
     'connection',
     'keep-alive',

@@ -174,6 +174,7 @@ OPTIONS = [
     "tls-max-early-data",
     "tls13-ciphers",
     "tls13-client-ciphers",
+    "no-strip-incoming-early-data",
 ]
 
 LOGVARS = [

@@ -389,6 +389,11 @@ void copy_headers_to_nva_internal(std::vector<nghttp2_nv> &nva,
     case HD_TRANSFER_ENCODING:
     case HD_UPGRADE:
       continue;
+    case HD_EARLY_DATA:
+      if (flags & HDOP_STRIP_EARLY_DATA) {
+        continue;
+      }
+      break;
     case HD_FORWARDED:
       if (flags & HDOP_STRIP_FORWARDED) {
         continue;
@@ -483,6 +488,11 @@ void build_http1_headers_from_headers(DefaultMemchunks *buf,
     case HD_SERVER:
     case HD_UPGRADE:
       continue;
+    case HD_EARLY_DATA:
+      if (flags & HDOP_STRIP_EARLY_DATA) {
+        continue;
+      }
+      break;
     case HD_FORWARDED:
       if (flags & HDOP_STRIP_FORWARDED) {
         continue;
@@ -828,6 +838,11 @@ int lookup_token(const uint8_t *name, size_t namelen) {
     break;
   case 10:
     switch (name[9]) {
+    case 'a':
+      if (util::streq_l("early-dat", name, 9)) {
+        return HD_EARLY_DATA;
+      }
+      break;
     case 'e':
       if (util::streq_l("keep-aliv", name, 9)) {
         return HD_KEEP_ALIVE;

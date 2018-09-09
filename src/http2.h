@@ -203,9 +203,13 @@ enum HeaderBuildOp {
   // Via header fields must be stripped.  If this flag is not set, all
   // Via header fields other than last one are added.
   HDOP_STRIP_VIA = 1 << 3,
+  // Early-Data header fields must be stripped.  If this flag is not
+  // set, all Early-Data header fields are added.
+  HDOP_STRIP_EARLY_DATA = 1 << 4,
   // Strip above all header fields.
   HDOP_STRIP_ALL = HDOP_STRIP_FORWARDED | HDOP_STRIP_X_FORWARDED_FOR |
-                   HDOP_STRIP_X_FORWARDED_PROTO | HDOP_STRIP_VIA,
+                   HDOP_STRIP_X_FORWARDED_PROTO | HDOP_STRIP_VIA |
+                   HDOP_STRIP_EARLY_DATA,
 };
 
 // Appends headers in |headers| to |nv|.  |headers| must be indexed
@@ -304,6 +308,7 @@ enum {
   HD_CONTENT_TYPE,
   HD_COOKIE,
   HD_DATE,
+  HD_EARLY_DATA,
   HD_EXPECT,
   HD_FORWARDED,
   HD_HOST,

@@ -2186,6 +2186,11 @@ int option_lookup_token(const char *name, size_t namelen) {
     break;
   case 28:
     switch (name[27]) {
+    case 'a':
+      if (util::strieq_l("no-strip-incoming-early-dat", name, 27)) {
+        return SHRPX_OPTID_NO_STRIP_INCOMING_EARLY_DATA;
+      }
+      break;
     case 'd':
       if (util::strieq_l("tls-dyn-rec-warmup-threshol", name, 27)) {
         return SHRPX_OPTID_TLS_DYN_REC_WARMUP_THRESHOLD;
@@ -3626,6 +3631,10 @@ int parse_config(Config *config, int optid, const StringRef &opt,
   case SHRPX_OPTID_TLS_MAX_EARLY_DATA: {
     return parse_uint_with_unit(&config->tls.max_early_data, opt, optarg);
   }
+  case SHRPX_OPTID_NO_STRIP_INCOMING_EARLY_DATA:
+    config->http.early_data.strip_incoming = !util::strieq_l("yes", optarg);
+
+    return 0;
   case SHRPX_OPTID_CONF:
     LOG(WARN) << "conf: ignored";
 
