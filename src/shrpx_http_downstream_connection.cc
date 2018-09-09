@@ -39,6 +39,7 @@
 #include "shrpx_log.h"
 #include "http2.h"
 #include "util.h"
+#include "ssl_compat.h"
 
 using namespace nghttp2;
 
@@ -583,6 +584,14 @@ int HttpDownstreamConnection::push_request_headers() {
 
   auto upstream = downstream_->get_upstream();
   auto handler = upstream->get_client_handler();
+
+#if OPENSSL_1_1_1_API
+  auto conn = handler->get_connection();
+
+  if (!SSL_is_init_finished(conn->tls.ssl)) {
+    buf->append("Early-Data: 1\r\n");
+  }
+#endif // OPENSSL_1_1_1_API
 
   auto fwd =
       fwdconf.strip_incoming ? nullptr : req.fs.header(http2::HD_FORWARDED);

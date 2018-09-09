@@ -170,6 +170,8 @@ OPTIONS = [
     "no-verify-ocsp",
     "verify-client-tolerate-expired",
     "ignore-per-pattern-mruby-error",
+    "tls-no-postpone-early-data",
+    "tls-max-early-data",
 ]
 
 LOGVARS = [

@@ -1465,6 +1465,7 @@ void fill_default_config(Config *config) {
       tls::proto_version_from_string(DEFAULT_TLS_MIN_PROTO_VERSION);
   tlsconf.max_proto_version =
       tls::proto_version_from_string(DEFAULT_TLS_MAX_PROTO_VERSION);
+  tlsconf.max_early_data = 16_k;
 #if OPENSSL_1_1_API || defined(OPENSSL_IS_BORINGSSL)
   tlsconf.ecdh_curves = StringRef::from_lit("X25519:P-256:P-384:P-521");
 #else  // !OPENSSL_1_1_API && !defined(OPENSSL_IS_BORINGSSL)
@@ -2370,6 +2371,18 @@ SSL/TLS:
               HTTP/2.   To  use  those   cipher  suites  with  HTTP/2,
               consider   to  use   --client-no-http2-cipher-black-list
               option.  But be aware its implications.
+  --tls-no-postpone-early-data
+              By default,  nghttpx postpones forwarding  HTTP requests
+              sent in early data, including those sent in partially in
+              it, until TLS handshake finishes.  If all backend server
+              recognizes "Early-Data" header  field, using this option
+              makes nghttpx  not postpone  forwarding request  and get
+              full potential of 0-RTT data.
+  --tls-max-early-data=<SIZE>
+              Sets  the  maximum  amount  of 0-RTT  data  that  server
+              accepts.
+              Default: )"
+      << util::utos_unit(config->tls.max_early_data) << R"(
 
 HTTP/2:
   -c, --frontend-http2-max-concurrent-streams=<N>
@@ -3436,6 +3449,8 @@ int main(int argc, char **argv) {
          160},
         {SHRPX_OPT_IGNORE_PER_PATTERN_MRUBY_ERROR.c_str(), no_argument, &flag,
          161},
+        {SHRPX_OPT_TLS_NO_POSTPONE_EARLY_DATA.c_str(), no_argument, &flag, 162},
+        {SHRPX_OPT_TLS_MAX_EARLY_DATA.c_str(), required_argument, &flag, 163},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -4206,6 +4221,15 @@ int main(int argc, char **argv) {
         // --ignore-per-pattern-mruby-error
         cmdcfgs.emplace_back(SHRPX_OPT_IGNORE_PER_PATTERN_MRUBY_ERROR,
                              StringRef::from_lit("yes"));
+        break;
+      case 162:
+        // --tls-no-postpone-early-data
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS_NO_POSTPONE_EARLY_DATA,
+                             StringRef::from_lit("yes"));
+        break;
+      case 163:
+        // --tls-max-early-data
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS_MAX_EARLY_DATA, StringRef{optarg});
         break;
       default:
         break;

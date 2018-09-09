@@ -517,6 +517,13 @@ int ticket_key_cb(SSL *ssl, unsigned char *key_name, unsigned char *iv,
 
 namespace {
 void info_callback(const SSL *ssl, int where, int ret) {
+#ifdef TLS1_3_VERSION
+  // TLSv1.3 has no renegotiation.
+  if (SSL_version(ssl) == TLS1_3_VERSION) {
+    return;
+  }
+#endif // TLS1_3_VERSION
+
   // To mitigate possible DOS attack using lots of renegotiations, we
   // disable renegotiation. Since OpenSSL does not provide an easy way
   // to disable it, we check that renegotiation is started in this
@@ -763,7 +770,17 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
       (SSL_OP_ALL & ~SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS) | SSL_OP_NO_SSLv2 |
       SSL_OP_NO_SSLv3 | SSL_OP_NO_COMPRESSION |
       SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION | SSL_OP_SINGLE_ECDH_USE |
-      SSL_OP_SINGLE_DH_USE | SSL_OP_CIPHER_SERVER_PREFERENCE;
+      SSL_OP_SINGLE_DH_USE |
+      SSL_OP_CIPHER_SERVER_PREFERENCE
+#if OPENSSL_1_1_1_API
+      // The reason for disabling built-in anti-replay in OpenSSL is
+      // that it only works if client gets back to the same server.
+      // The freshness check described in
+      // https://tools.ietf.org/html/rfc8446#section-8.3 is still
+      // performed.
+      | SSL_OP_NO_ANTI_REPLAY
+#endif // OPENSSL_1_1_1_API
+      ;
 
   auto config = mod_config();
   auto &tlsconf = config->tls;
@@ -965,6 +982,14 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
 #  endif // !OPENSSL_1_1_1_API
   }
 #endif // !LIBRESSL_IN_USE && OPENSSL_VERSION_NUMBER >= 0x10002000L
+
+#if OPENSSL_1_1_1_API
+  if (SSL_CTX_set_max_early_data(ssl_ctx, tlsconf.max_early_data) != 1) {
+    LOG(FATAL) << "SSL_CTX_set_max_early_data failed: "
+               << ERR_error_string(ERR_get_error(), nullptr);
+    DIE();
+  }
+#endif // OPENSSL_1_1_1_API
 
 #ifndef OPENSSL_NO_PSK
   SSL_CTX_set_psk_server_callback(ssl_ctx, psk_server_cb);

@@ -41,6 +41,7 @@
 #include "shrpx_log.h"
 #include "http2.h"
 #include "util.h"
+#include "ssl_compat.h"
 
 using namespace nghttp2;
 
@@ -271,7 +272,7 @@ int Http2DownstreamConnection::push_request_headers() {
     num_cookies = downstream_->count_crumble_request_cookie();
   }
 
-  // 9 means:
+  // 10 means:
   // 1. :method
   // 2. :scheme
   // 3. :path
@@ -281,8 +282,9 @@ int Http2DownstreamConnection::push_request_headers() {
   // 7. x-forwarded-proto (optional)
   // 8. te (optional)
   // 9. forwarded (optional)
+  // 10. early-data (optional)
   auto nva = std::vector<nghttp2_nv>();
-  nva.reserve(req.fs.headers().size() + 9 + num_cookies +
+  nva.reserve(req.fs.headers().size() + 10 + num_cookies +
               httpconf.add_request_headers.size());
 
   nva.push_back(
@@ -332,6 +334,14 @@ int Http2DownstreamConnection::push_request_headers() {
 
   auto upstream = downstream_->get_upstream();
   auto handler = upstream->get_client_handler();
+
+#if OPENSSL_1_1_1_API
+  auto conn = handler->get_connection();
+
+  if (!SSL_is_init_finished(conn->tls.ssl)) {
+    nva.push_back(http2::make_nv_ll("early-data", "1"));
+  }
+#endif // OPENSSL_1_1_1_API
 
   auto fwd =
       fwdconf.strip_incoming ? nullptr : req.fs.header(http2::HD_FORWARDED);

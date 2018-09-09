@@ -347,6 +347,10 @@ constexpr auto SHRPX_OPT_VERIFY_CLIENT_TOLERATE_EXPIRED =
     StringRef::from_lit("verify-client-tolerate-expired");
 constexpr auto SHRPX_OPT_IGNORE_PER_PATTERN_MRUBY_ERROR =
     StringRef::from_lit("ignore-per-pattern-mruby-error");
+constexpr auto SHRPX_OPT_TLS_NO_POSTPONE_EARLY_DATA =
+    StringRef::from_lit("tls-no-postpone-early-data");
+constexpr auto SHRPX_OPT_TLS_MAX_EARLY_DATA =
+    StringRef::from_lit("tls-max-early-data");
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
@@ -650,12 +654,17 @@ struct TLSConfig {
   StringRef ciphers;
   StringRef ecdh_curves;
   StringRef cacert;
+  // The maximum amount of 0-RTT data that server accepts.
+  uint32_t max_early_data;
   // The minimum and maximum TLS version.  These values are defined in
   // OpenSSL header file.
   int min_proto_version;
   int max_proto_version;
   bool insecure;
   bool no_http2_cipher_black_list;
+  // true if forwarding requests included in TLS early data should not
+  // be postponed until TLS handshake finishes.
+  bool no_postpone_early_data;
 };
 
 // custom error page
@@ -1114,8 +1123,10 @@ enum {
   SHRPX_OPTID_SYSLOG_FACILITY,
   SHRPX_OPTID_TLS_DYN_REC_IDLE_TIMEOUT,
   SHRPX_OPTID_TLS_DYN_REC_WARMUP_THRESHOLD,
+  SHRPX_OPTID_TLS_MAX_EARLY_DATA,
   SHRPX_OPTID_TLS_MAX_PROTO_VERSION,
   SHRPX_OPTID_TLS_MIN_PROTO_VERSION,
+  SHRPX_OPTID_TLS_NO_POSTPONE_EARLY_DATA,
   SHRPX_OPTID_TLS_PROTO_LIST,
   SHRPX_OPTID_TLS_SCT_DIR,
   SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED,
