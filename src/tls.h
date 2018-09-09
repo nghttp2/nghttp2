@@ -31,6 +31,8 @@
 
 #include <openssl/ssl.h>
 
+#include "ssl_compat.h"
+
 namespace nghttp2 {
 
 namespace tls {
@@ -53,6 +55,14 @@ constexpr char DEFAULT_CIPHER_LIST[] =
     "CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-"
     "SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-"
     "AES256-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256";
+
+constexpr char DEFAULT_TLS13_CIPHER_LIST[] =
+#if OPENSSL_1_1_1_API
+    TLS_DEFAULT_CIPHERSUITES
+#else  // !OPENSSL_1_1_1_API
+    ""
+#endif // !OPENSSL_1_1_1_API
+    ;
 
 constexpr auto NGHTTP2_TLS_MIN_VERSION = TLS1_VERSION;
 #ifdef TLS1_3_VERSION

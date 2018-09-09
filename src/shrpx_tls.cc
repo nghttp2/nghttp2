@@ -810,6 +810,14 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
     DIE();
   }
 
+#if OPENSSL_1_1_1_API
+  if (SSL_CTX_set_ciphersuites(ssl_ctx, tlsconf.tls13_ciphers.c_str()) == 0) {
+    LOG(FATAL) << "SSL_CTX_set_ciphersuites " << tlsconf.tls13_ciphers
+               << " failed: " << ERR_error_string(ERR_get_error(), nullptr);
+    DIE();
+  }
+#endif // OPENSSL_1_1_1_API
+
 #ifndef OPENSSL_NO_EC
 #  if !LIBRESSL_LEGACY_API && OPENSSL_VERSION_NUMBER >= 0x10002000L
   if (SSL_CTX_set1_curves_list(ssl_ctx, tlsconf.ecdh_curves.c_str()) != 1) {
@@ -1090,6 +1098,15 @@ SSL_CTX *create_ssl_client_context(
                << " failed: " << ERR_error_string(ERR_get_error(), nullptr);
     DIE();
   }
+
+#if OPENSSL_1_1_1_API
+  if (SSL_CTX_set_ciphersuites(ssl_ctx, tlsconf.client.tls13_ciphers.c_str()) ==
+      0) {
+    LOG(FATAL) << "SSL_CTX_set_ciphersuites " << tlsconf.client.tls13_ciphers
+               << " failed: " << ERR_error_string(ERR_get_error(), nullptr);
+    DIE();
+  }
+#endif // OPENSSL_1_1_1_API
 
   SSL_CTX_set_mode(ssl_ctx, SSL_MODE_RELEASE_BUFFERS);
 

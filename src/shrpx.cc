@@ -1459,8 +1459,12 @@ void fill_default_config(Config *config) {
 
   tlsconf.session_timeout = std::chrono::hours(12);
   tlsconf.ciphers = StringRef::from_lit(nghttp2::tls::DEFAULT_CIPHER_LIST);
+  tlsconf.tls13_ciphers =
+      StringRef::from_lit(nghttp2::tls::DEFAULT_TLS13_CIPHER_LIST);
   tlsconf.client.ciphers =
       StringRef::from_lit(nghttp2::tls::DEFAULT_CIPHER_LIST);
+  tlsconf.client.tls13_ciphers =
+      StringRef::from_lit(nghttp2::tls::DEFAULT_TLS13_CIPHER_LIST);
   tlsconf.min_proto_version =
       tls::proto_version_from_string(DEFAULT_TLS_MIN_PROTO_VERSION);
   tlsconf.max_proto_version =
@@ -2081,13 +2085,31 @@ SSL/TLS:
   --ciphers=<SUITE>
               Set allowed  cipher list  for frontend  connection.  The
               format of the string is described in OpenSSL ciphers(1).
+              This option  sets cipher suites for  TLSv1.2 or earlier.
+              Use --tls13-ciphers for TLSv1.3.
               Default: )"
       << config->tls.ciphers << R"(
+  --tls13-ciphers=<SUITE>
+              Set allowed  cipher list  for frontend  connection.  The
+              format of the string is described in OpenSSL ciphers(1).
+              This  option  sets  cipher   suites  for  TLSv1.3.   Use
+              --ciphers for TLSv1.2 or earlier.
+              Default: )"
+      << config->tls.tls13_ciphers << R"(
   --client-ciphers=<SUITE>
               Set  allowed cipher  list for  backend connection.   The
               format of the string is described in OpenSSL ciphers(1).
+              This option  sets cipher suites for  TLSv1.2 or earlier.
+              Use --tls13-client-ciphers for TLSv1.3.
               Default: )"
       << config->tls.client.ciphers << R"(
+  --tls13-client-ciphers=<SUITE>
+              Set  allowed cipher  list for  backend connection.   The
+              format of the string is described in OpenSSL ciphers(1).
+              This  option  sets  cipher   suites  for  TLSv1.3.   Use
+              --tls13-client-ciphers for TLSv1.2 or earlier.
+              Default: )"
+      << config->tls.client.tls13_ciphers << R"(
   --ecdh-curves=<LIST>
               Set  supported  curve  list  for  frontend  connections.
               <LIST> is a  colon separated list of curve  NID or names
@@ -3451,6 +3473,8 @@ int main(int argc, char **argv) {
          161},
         {SHRPX_OPT_TLS_NO_POSTPONE_EARLY_DATA.c_str(), no_argument, &flag, 162},
         {SHRPX_OPT_TLS_MAX_EARLY_DATA.c_str(), required_argument, &flag, 163},
+        {SHRPX_OPT_TLS13_CIPHERS.c_str(), required_argument, &flag, 164},
+        {SHRPX_OPT_TLS13_CLIENT_CIPHERS.c_str(), required_argument, &flag, 165},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -4230,6 +4254,14 @@ int main(int argc, char **argv) {
       case 163:
         // --tls-max-early-data
         cmdcfgs.emplace_back(SHRPX_OPT_TLS_MAX_EARLY_DATA, StringRef{optarg});
+        break;
+      case 164:
+        // --tls13-ciphers
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS13_CIPHERS, StringRef{optarg});
+        break;
+      case 165:
+        // --tls13-client-ciphers
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS13_CLIENT_CIPHERS, StringRef{optarg});
         break;
       default:
         break;

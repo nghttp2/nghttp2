@@ -1759,6 +1759,11 @@ int option_lookup_token(const char *name, size_t namelen) {
         return SHRPX_OPTID_FORWARDED_FOR;
       }
       break;
+    case 's':
+      if (util::strieq_l("tls13-cipher", name, 12)) {
+        return SHRPX_OPTID_TLS13_CIPHERS;
+      }
+      break;
     case 't':
       if (util::strieq_l("verify-clien", name, 12)) {
         return SHRPX_OPTID_VERIFY_CLIENT;
@@ -1954,6 +1959,11 @@ int option_lookup_token(const char *name, size_t namelen) {
     case 'l':
       if (util::strieq_l("ocsp-update-interva", name, 19)) {
         return SHRPX_OPTID_OCSP_UPDATE_INTERVAL;
+      }
+      break;
+    case 's':
+      if (util::strieq_l("tls13-client-cipher", name, 19)) {
+        return SHRPX_OPTID_TLS13_CLIENT_CIPHERS;
       }
       break;
     case 't':
@@ -2833,6 +2843,10 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     config->tls.ciphers = make_string_ref(config->balloc, optarg);
 
     return 0;
+  case SHRPX_OPTID_TLS13_CIPHERS:
+    config->tls.tls13_ciphers = make_string_ref(config->balloc, optarg);
+
+    return 0;
   case SHRPX_OPTID_CLIENT:
     LOG(ERROR) << opt
                << ": deprecated.  Use frontend=<addr>,<port>;no-tls, "
@@ -3546,6 +3560,10 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     return 0;
   case SHRPX_OPTID_CLIENT_CIPHERS:
     config->tls.client.ciphers = make_string_ref(config->balloc, optarg);
+
+    return 0;
+  case SHRPX_OPTID_TLS13_CLIENT_CIPHERS:
+    config->tls.client.tls13_ciphers = make_string_ref(config->balloc, optarg);
 
     return 0;
   case SHRPX_OPTID_ACCESSLOG_WRITE_EARLY:

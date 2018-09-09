@@ -351,6 +351,9 @@ constexpr auto SHRPX_OPT_TLS_NO_POSTPONE_EARLY_DATA =
     StringRef::from_lit("tls-no-postpone-early-data");
 constexpr auto SHRPX_OPT_TLS_MAX_EARLY_DATA =
     StringRef::from_lit("tls-max-early-data");
+constexpr auto SHRPX_OPT_TLS13_CIPHERS = StringRef::from_lit("tls13-ciphers");
+constexpr auto SHRPX_OPT_TLS13_CLIENT_CIPHERS =
+    StringRef::from_lit("tls13-client-ciphers");
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
@@ -626,6 +629,7 @@ struct TLSConfig {
     StringRef private_key_file;
     StringRef cert_file;
     StringRef ciphers;
+    StringRef tls13_ciphers;
     bool no_http2_cipher_black_list;
   } client;
 
@@ -652,6 +656,7 @@ struct TLSConfig {
   StringRef cert_file;
   StringRef dh_param_file;
   StringRef ciphers;
+  StringRef tls13_ciphers;
   StringRef ecdh_curves;
   StringRef cacert;
   // The maximum amount of 0-RTT data that server accepts.
@@ -1144,6 +1149,8 @@ enum {
   SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED_MAX_RETRY,
   SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED_PRIVATE_KEY_FILE,
   SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED_TLS,
+  SHRPX_OPTID_TLS13_CIPHERS,
+  SHRPX_OPTID_TLS13_CLIENT_CIPHERS,
   SHRPX_OPTID_USER,
   SHRPX_OPTID_VERIFY_CLIENT,
   SHRPX_OPTID_VERIFY_CLIENT_CACERT,
