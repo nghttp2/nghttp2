@@ -45,7 +45,7 @@
 /* 3rd parameter is nghttp2_token value for header field name.  We use
    first enum value if same header names are repeated (e.g.,
    :status). */
-static nghttp2_hd_static_entry static_table[] = {
+static const nghttp2_hd_static_entry static_table[] = {
     MAKE_STATIC_ENT(":authority", "", 0, 3153725150u),
     MAKE_STATIC_ENT(":method", "GET", 1, 695666056u),
     MAKE_STATIC_ENT(":method", "POST", 1, 695666056u),
@@ -1159,7 +1159,7 @@ static search_result search_static_table(const nghttp2_nv *nv, int32_t token,
                                          int name_only) {
   search_result res = {token, 0};
   int i;
-  nghttp2_hd_static_entry *ent;
+  const nghttp2_hd_static_entry *ent;
 
   if (name_only) {
     return res;
@@ -1184,7 +1184,7 @@ static search_result search_hd_table(nghttp2_hd_context *context,
                                      int indexing_mode, nghttp2_hd_map *map,
                                      uint32_t hash) {
   search_result res = {-1, 0};
-  nghttp2_hd_entry *ent;
+  const nghttp2_hd_entry *ent;
   int exact_match;
   int name_only = indexing_mode == NGHTTP2_HD_NEVER_INDEXING;
 
@@ -1289,8 +1289,9 @@ nghttp2_hd_nv nghttp2_hd_table_get(nghttp2_hd_context *context, size_t idx) {
     return hd_ringbuf_get(&context->hd_table, idx - NGHTTP2_STATIC_TABLE_LENGTH)
         ->nv;
   } else {
-    nghttp2_hd_static_entry *ent = &static_table[idx];
-    nghttp2_hd_nv nv = {&ent->name, &ent->value, ent->token,
+    const nghttp2_hd_static_entry *ent = &static_table[idx];
+    nghttp2_hd_nv nv = {(nghttp2_rcbuf *)&ent->name,
+                        (nghttp2_rcbuf *)&ent->value, ent->token,
                         NGHTTP2_NV_FLAG_NONE};
     return nv;
   }
