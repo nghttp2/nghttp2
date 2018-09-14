@@ -74,6 +74,44 @@ constexpr const char *SEVERITY_COLOR[] = {
 };
 } // namespace
 
+#ifndef NOTHREADS
+#  ifdef HAVE_THREAD_LOCAL
+namespace {
+thread_local LogBuffer logbuf_;
+} // namespace
+
+namespace {
+LogBuffer *get_logbuf() { return &logbuf_; }
+} // namespace
+#  else  // !HAVE_THREAD_LOCAL
+namespace {
+pthread_key_t lckey;
+pthread_once_t lckey_once = PTHREAD_ONCE_INIT;
+} // namespace
+
+namespace {
+void make_key() { pthread_key_create(&lckey, NULL); }
+} // namespace
+
+LogBuffer *get_logbuf() {
+  pthread_once(&lckey_once, make_key);
+  auto buf = static_cast<LogBuffer *>(pthread_getspecific(lckey));
+  if (!buf) {
+    buf = new LogBuffer();
+    pthread_setspecific(lckey, buf);
+  }
+  return buf;
+}
+#  endif // !HAVE_THREAD_LOCAL
+#else    // NOTHREADS
+namespace {
+LogBuffer *get_logbuf() {
+  static LogBuffer logbuf;
+  return &logbuf;
+}
+} // namespace
+#endif   // NOTHREADS
+
 int Log::severity_thres_ = NOTICE;
 
 void Log::set_severity_level(int severity) { severity_thres_ = severity; }
@@ -106,7 +144,15 @@ int severity_to_syslog_level(int severity) {
 }
 
 Log::Log(int severity, const char *filename, int linenum)
-    : filename_(filename), severity_(severity), linenum_(linenum) {}
+    : buf_(*get_logbuf()),
+      begin_(buf_.data()),
+      end_(begin_ + buf_.size()),
+      last_(begin_),
+      filename_(filename),
+      flags_(0),
+      severity_(severity),
+      linenum_(linenum),
+      full_(false) {}
 
 Log::~Log() {
   int rv;
@@ -127,12 +173,13 @@ Log::~Log() {
 
   if (errorconf.syslog) {
     if (severity_ == NOTICE) {
-      syslog(severity_to_syslog_level(severity_), "[%s] %s",
-             SEVERITY_STR[severity_].c_str(), stream_.str().c_str());
+      syslog(severity_to_syslog_level(severity_), "[%s] %.*s",
+             SEVERITY_STR[severity_].c_str(), static_cast<int>(rleft()),
+             begin_);
     } else {
-      syslog(severity_to_syslog_level(severity_), "[%s] %s (%s:%d)",
-             SEVERITY_STR[severity_].c_str(), stream_.str().c_str(), filename_,
-             linenum_);
+      syslog(severity_to_syslog_level(severity_), "[%s] %.*s (%s:%d)",
+             SEVERITY_STR[severity_].c_str(), static_cast<int>(rleft()), begin_,
+             filename_, linenum_);
     }
 
     return;
@@ -145,11 +192,11 @@ Log::~Log() {
 
   // Error log format: <datetime> <master-pid> <current-pid>
   // <thread-id> <level> (<filename>:<line>) <msg>
-  rv = snprintf(buf, sizeof(buf), "%s %d %d %s %s%s%s (%s:%d) %s\n",
+  rv = snprintf(buf, sizeof(buf), "%s %d %d %s %s%s%s (%s:%d) %.*s\n",
                 lgconf->tstamp->time_iso8601.c_str(), config->pid, lgconf->pid,
                 lgconf->thread_id.c_str(), tty ? SEVERITY_COLOR[severity_] : "",
                 SEVERITY_STR[severity_].c_str(), tty ? "\033[0m" : "",
-                filename_, linenum_, stream_.str().c_str());
+                filename_, linenum_, static_cast<int>(rleft()), begin_);
 
   if (rv < 0) {
     return;
@@ -160,6 +207,156 @@ Log::~Log() {
   while (write(lgconf->errorlog_fd, buf, nwrite) == -1 && errno == EINTR)
     ;
 }
+
+Log &Log::operator<<(const std::string &s) {
+  write_seq(std::begin(s), std::end(s));
+  return *this;
+}
+
+Log &Log::operator<<(const StringRef &s) {
+  write_seq(std::begin(s), std::end(s));
+  return *this;
+}
+
+Log &Log::operator<<(const char *s) {
+  write_seq(s, s + strlen(s));
+  return *this;
+}
+
+Log &Log::operator<<(const ImmutableString &s) {
+  write_seq(std::begin(s), std::end(s));
+  return *this;
+}
+
+Log &Log::operator<<(int64_t n) {
+  if (n >= 0) {
+    return *this << static_cast<uint64_t>(n);
+  }
+
+  if (flags_ & fmt_hex) {
+    write_hex(n);
+    return *this;
+  }
+
+  if (full_) {
+    return *this;
+  }
+
+  n *= -1;
+
+  size_t nlen = 0;
+  for (auto t = n; t; t /= 10, ++nlen)
+    ;
+  if (wleft() < 1 /* sign */ + nlen) {
+    full_ = true;
+    return *this;
+  }
+  *last_++ = '-';
+  *last_ += nlen;
+  update_full();
+
+  auto p = last_ - 1;
+  for (; n; n /= 10) {
+    *p-- = (n % 10) + '0';
+  }
+  return *this;
+}
+
+Log &Log::operator<<(uint64_t n) {
+  if (flags_ & fmt_hex) {
+    write_hex(n);
+    return *this;
+  }
+
+  if (full_) {
+    return *this;
+  }
+
+  if (n == 0) {
+    *last_++ = '0';
+    update_full();
+    return *this;
+  }
+  size_t nlen = 0;
+  for (auto t = n; t; t /= 10, ++nlen)
+    ;
+  if (wleft() < nlen) {
+    full_ = true;
+    return *this;
+  }
+
+  last_ += nlen;
+  update_full();
+
+  auto p = last_ - 1;
+  for (; n; n /= 10) {
+    *p-- = (n % 10) + '0';
+  }
+  return *this;
+}
+
+Log &Log::operator<<(double n) {
+  if (full_) {
+    return *this;
+  }
+
+  auto left = wleft();
+  auto rv = snprintf(reinterpret_cast<char *>(last_), left, "%.9f", n);
+  if (rv > static_cast<int>(left)) {
+    full_ = true;
+    return *this;
+  }
+
+  last_ += rv;
+  update_full();
+
+  return *this;
+}
+
+Log &Log::operator<<(long double n) {
+  if (full_) {
+    return *this;
+  }
+
+  auto left = wleft();
+  auto rv = snprintf(reinterpret_cast<char *>(last_), left, "%.9Lf", n);
+  if (rv > static_cast<int>(left)) {
+    full_ = true;
+    return *this;
+  }
+
+  last_ += rv;
+  update_full();
+
+  return *this;
+}
+
+Log &Log::operator<<(bool n) {
+  if (full_) {
+    return *this;
+  }
+
+  *last_++ = n ? '1' : '0';
+  update_full();
+
+  return *this;
+}
+
+Log &Log::operator<<(const void *p) {
+  if (full_) {
+    return *this;
+  }
+
+  write_hex(reinterpret_cast<uintptr_t>(p));
+
+  return *this;
+}
+
+namespace log {
+void hex(Log &log) { log.set_flags(Log::fmt_hex); };
+
+void dec(Log &log) { log.set_flags(Log::fmt_dec); };
+} // namespace log
 
 namespace {
 template <typename OutputIterator>
@@ -696,8 +893,9 @@ void log_chld(pid_t pid, int rstatus, const char *msg) {
 
   LOG(NOTICE) << msg << ": [" << pid << "] exited "
               << (WIFEXITED(rstatus) ? "normally" : "abnormally")
-              << " with status " << std::hex << rstatus << std::oct
-              << "; exit status " << WEXITSTATUS(rstatus)
+              << " with status " << log::hex << rstatus << log::dec
+              << "; exit status "
+              << (WIFEXITED(rstatus) ? WEXITSTATUS(rstatus) : 0)
               << (signalstr.empty() ? "" : signalstr.c_str());
 }
 

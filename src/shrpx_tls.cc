@@ -591,7 +591,7 @@ int sct_add_cb(SSL *ssl, unsigned int ext_type, unsigned int context,
 
   if (LOG_ENABLED(INFO)) {
     LOG(INFO) << "sct_add_cb is called, chainidx=" << chainidx << ", x=" << x
-              << ", context=" << std::hex << context;
+              << ", context=" << log::hex << context;
   }
 
   // We only have SCTs for leaf certificate.
@@ -1856,7 +1856,7 @@ void try_cache_tls_session(TLSSessionCache *cache, SSL_SESSION *session,
 
   if (LOG_ENABLED(INFO)) {
     LOG(INFO) << "Update client cache entry "
-              << "timestamp = " << std::fixed << std::setprecision(6) << t;
+              << "timestamp = " << t;
   }
 
   cache->session_data = serialize_ssl_session(session);
