@@ -119,10 +119,10 @@ typedef struct nghttp2_hd_entry nghttp2_hd_entry;
 typedef struct {
   /* The buffer containing header field name.  NULL-termination is
      guaranteed. */
-  nghttp2_rcbuf *name;
+  const nghttp2_rcbuf *name;
   /* The buffer containing header field value.  NULL-termination is
      guaranteed. */
-  nghttp2_rcbuf *value;
+  const nghttp2_rcbuf *value;
   /* nghttp2_token value for name.  It could be -1 if we have no token
      for that header field name. */
   int32_t token;
@@ -236,7 +236,7 @@ struct nghttp2_hd_inflater {
   nghttp2_rcbuf *namercbuf, *valuercbuf;
   /* Pointer to the name/value pair which are used in the current
      header emission. */
-  nghttp2_rcbuf *nv_name_keep, *nv_value_keep;
+  const nghttp2_rcbuf *nv_name_keep, *nv_value_keep;
   /* The number of bytes to read */
   size_t left;
   /* The index in indexed repr or indexed name */
