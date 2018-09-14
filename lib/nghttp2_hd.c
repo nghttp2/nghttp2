@@ -1290,8 +1290,7 @@ nghttp2_hd_nv nghttp2_hd_table_get(nghttp2_hd_context *context, size_t idx) {
         ->nv;
   } else {
     const nghttp2_hd_static_entry *ent = &static_table[idx];
-    nghttp2_hd_nv nv = {(nghttp2_rcbuf *)&ent->name,
-                        (nghttp2_rcbuf *)&ent->value, ent->token,
+    nghttp2_hd_nv nv = {&ent->name, &ent->value, ent->token,
                         NGHTTP2_NV_FLAG_NONE};
     return nv;
   }

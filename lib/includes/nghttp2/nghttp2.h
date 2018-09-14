@@ -1747,8 +1747,8 @@ typedef int (*nghttp2_on_header_callback)(nghttp2_session *session,
  */
 typedef int (*nghttp2_on_header_callback2)(nghttp2_session *session,
                                            const nghttp2_frame *frame,
-                                           nghttp2_rcbuf *name,
-                                           nghttp2_rcbuf *value, uint8_t flags,
+                                           const nghttp2_rcbuf *name,
+                                           const nghttp2_rcbuf *value, uint8_t flags,
                                            void *user_data);
 
 /**
@@ -1815,8 +1815,8 @@ typedef int (*nghttp2_on_invalid_header_callback)(
  * :enum:`NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE`.
  */
 typedef int (*nghttp2_on_invalid_header_callback2)(
-    nghttp2_session *session, const nghttp2_frame *frame, nghttp2_rcbuf *name,
-    nghttp2_rcbuf *value, uint8_t flags, void *user_data);
+    nghttp2_session *session, const nghttp2_frame *frame, const nghttp2_rcbuf *name,
+    const nghttp2_rcbuf *value, uint8_t flags, void *user_data);
 
 /**
  * @functypedef
