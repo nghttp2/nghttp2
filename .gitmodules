@@ -3,4 +3,5 @@
 	url = https://github.com/mruby/mruby
 [submodule "third-party/neverbleed"]
 	path = third-party/neverbleed
-	url = https://github.com/h2o/neverbleed.git
+	url = https://github.com/tatsuhiro-t/neverbleed.git
+	branch = openssl111fix
