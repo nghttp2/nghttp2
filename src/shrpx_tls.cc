@@ -1907,6 +1907,11 @@ int verify_ocsp_response(SSL_CTX *ssl_ctx, const uint8_t *ocsp_resp,
   }
   auto resp_deleter = defer(OCSP_RESPONSE_free, resp);
 
+  if (OCSP_response_status(resp) != OCSP_RESPONSE_STATUS_SUCCESSFUL) {
+    LOG(ERROR) << "OCSP response status is not successful";
+    return -1;
+  }
+
   ERR_clear_error();
 
   auto bs = OCSP_response_get1_basic(resp);
