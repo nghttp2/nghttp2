@@ -254,7 +254,7 @@ mrb_value request_mod_header(mrb_state *mrb, mrb_value self, bool repl) {
   }
 
   if (mrb_array_p(values)) {
-    auto n = mrb_ary_len(mrb, values);
+    auto n = RARRAY_LEN(values);
     for (int i = 0; i < n; ++i) {
       auto value = mrb_ary_ref(mrb, values, i);
       if (!mrb_string_p(value)) {
