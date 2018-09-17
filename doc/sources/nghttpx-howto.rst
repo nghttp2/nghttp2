@@ -471,6 +471,33 @@ such PSK cipher suite with HTTP/2, disable HTTP/2 cipher black list by
 using :option:`--client-no-http2-cipher-black-list` option.  But you
 should understand its implications.
 
+TLSv1.3
+-------
+
+As of nghttpx v1.34.0, if it is built with OpenSSL 1.1.1 or later, it
+supports TLSv1.3.  0-RTT data is supported, but by default its
+processing is postponed until TLS handshake completes to mitigate
+replay attack.  This costs extra round trip and reduces effectiveness
+of 0-RTT data.  :option:`--tls-no-postpone-early-data` makes nghttpx
+not wait for handshake to complete before forwarding request included
+in 0-RTT to get full potential of 0-RTT data.  In this case, nghttpx
+adds ``Early-Data: 1`` header field when forwarding a request to a
+backend server.  All backend servers should recognize this header
+field and understand that there is a risk for replay attack.  See
+https://tools.ietf.org/html/draft-ietf-httpbis-replay-04 for
+``Early-Data`` header field.
+
+nghttpx disables anti replay protection provided by OpenSSL.  The anti
+replay protection of OpenSSL requires that a resumed request must hit
+the same server which generates the session ticket.  Therefore it
+might not work nicely in a deployment where there are multiple nghttpx
+instances sharing ticket encryption keys via memcached.
+
+Because TLSv1.3 completely changes the semantics of cipher suite
+naming scheme and structure, nghttpx provides the new option
+:option:`--tls13-ciphers` and :option:`--tls13-client-ciphers` to
+change preferred cipher list for TLSv1.3.
+
 Migration from nghttpx v1.18.x or earlier
 -----------------------------------------
 
