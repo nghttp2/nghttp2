@@ -461,12 +461,21 @@ int Connection::tls_handshake() {
       break;
     case SSL_ERROR_WANT_WRITE:
       break;
-    case SSL_ERROR_SSL:
+    case SSL_ERROR_SSL: {
       if (LOG_ENABLED(INFO)) {
         LOG(INFO) << "tls: handshake libssl error: "
                   << ERR_error_string(ERR_get_error(), nullptr);
       }
+
+      struct iovec iov;
+      auto iovcnt = tls.wbuf.riovec(&iov, 1);
+      auto nwrite = writev_clear(&iov, iovcnt);
+      if (nwrite > 0) {
+        tls.wbuf.drain(nwrite);
+      }
+
       return SHRPX_ERR_NETWORK;
+    }
     default:
       if (LOG_ENABLED(INFO)) {
         LOG(INFO) << "tls: handshake libssl error " << err;
