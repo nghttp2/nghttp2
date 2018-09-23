@@ -683,7 +683,7 @@ typedef enum {
   NGHTTP2_SETTINGS_MAX_HEADER_LIST_SIZE = 0x06,
   /**
    * SETTINGS_ENABLE_CONNECT_PROTOCOL
-   * (https://tools.ietf.org/html/draft-ietf-httpbis-h2-websockets-00)
+   * (`RFC 8441 <https://tools.ietf.org/html/rfc8441>`_)
    */
   NGHTTP2_SETTINGS_ENABLE_CONNECT_PROTOCOL = 0x08
 } nghttp2_settings_id;

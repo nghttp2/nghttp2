@@ -484,8 +484,8 @@ int nghttp2_http_on_request_headers(nghttp2_stream *stream,
       return -1;
     }
     if ((stream->http_flags & NGHTTP2_HTTP_FLAG__PROTOCOL) &&
-        (!connect_protocol ||
-         (stream->http_flags & NGHTTP2_HTTP_FLAG_METH_CONNECT) == 0)) {
+        ((stream->http_flags & NGHTTP2_HTTP_FLAG_METH_CONNECT) == 0 ||
+         (stream->http_flags & NGHTTP2_HTTP_FLAG__AUTHORITY) == 0)) {
       return -1;
     }
     if (!check_path(stream)) {

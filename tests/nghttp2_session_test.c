@@ -10916,8 +10916,12 @@ void test_nghttp2_http_mandatory_headers(void) {
       MAKE_NV(":method", "GET"), MAKE_NV(":authority", "localhost"),
       MAKE_NV(":protocol", "websocket")};
   const nghttp2_nv connectprotonopath_reqnv[] = {
-      MAKE_NV(":scheme", "https"), MAKE_NV(":method", "GET"),
+      MAKE_NV(":scheme", "https"), MAKE_NV(":method", "CONNECT"),
       MAKE_NV(":authority", "localhost"), MAKE_NV(":protocol", "websocket")};
+  const nghttp2_nv connectprotonoauth_reqnv[] = {
+      MAKE_NV(":scheme", "http"), MAKE_NV(":path", "/"),
+      MAKE_NV(":method", "CONNECT"), MAKE_NV("host", "localhost"),
+      MAKE_NV(":protocol", "websocket")};
 
   mem = nghttp2_mem_default();
 
@@ -11097,6 +11101,11 @@ void test_nghttp2_http_mandatory_headers(void) {
   check_nghttp2_http_recv_headers_fail(session, &deflater, 5, -1,
                                        connectprotonopath_reqnv,
                                        ARRLEN(connectprotonopath_reqnv));
+
+  /* CONNECT method with :protocol requires :authority. */
+  check_nghttp2_http_recv_headers_fail(session, &deflater, 7, -1,
+                                       connectprotonoauth_reqnv,
+                                       ARRLEN(connectprotonoauth_reqnv));
 
   nghttp2_hd_deflate_free(&deflater);
 
