@@ -67,6 +67,7 @@ HEADERS = [
     ('keep-alive',None),
     ('proxy-connection', None),
     ('upgrade', None),
+    (':protocol', None),
 ]
 
 def to_enum_hd(k):
