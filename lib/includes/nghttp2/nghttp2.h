@@ -2537,6 +2537,17 @@ NGHTTP2_EXTERN void nghttp2_option_set_no_http_messaging(nghttp2_option *option,
 /**
  * @function
  *
+ * By default, nghttp2 library does not allow the CONNECT method.  For
+ * applications which wish to use CONNECT to allow websockets to traverse an
+ * HTTP/2 hop, give a nonzero |val| to enable CONNECT support.
+ * See `RFC 8441 <https://tools.ietf.org/html/rfc8441>`_ for details.
+ */
+NGHTTP2_EXTERN void nghttp2_option_set_enable_connect_protocol(nghttp2_option *option,
+                                                         int val);
+
+/**
+ * @function
+ *
  * RFC 7540 does not enforce any limit on the number of incoming
  * reserved streams (in RFC 7540 terms, streams in reserved (remote)
  * state).  This only affects client side, since only server can push
