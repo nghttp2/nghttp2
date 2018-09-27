@@ -457,9 +457,9 @@ int nghttp2_http_on_header(nghttp2_session *session, nghttp2_stream *stream,
   }
 
   if (session->server || frame->hd.type == NGHTTP2_PUSH_PROMISE) {
-    return http_request_on_header(
-        stream, nv, trailer,
-        session->server && session->local_settings.enable_connect_protocol);
+    return http_request_on_header(stream, nv, trailer,
+                                  session->server &&
+                                      session->pending_enable_connect_protocol);
   }
 
   return http_response_on_header(stream, nv, trailer);

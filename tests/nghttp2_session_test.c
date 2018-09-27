@@ -11082,7 +11082,7 @@ void test_nghttp2_http_mandatory_headers(void) {
   /* enable SETTINGS_CONNECT_PROTOCOL */
   nghttp2_session_server_new(&session, &callbacks, &ud);
 
-  session->local_settings.enable_connect_protocol = 1;
+  session->pending_enable_connect_protocol = 1;
 
   nghttp2_hd_deflate_init(&deflater, mem);
 

@@ -3748,7 +3748,7 @@ static int session_after_header_block_received(nghttp2_session *session) {
       if (subject_stream) {
         rv = nghttp2_http_on_request_headers(
             subject_stream, frame,
-            session->server && session->local_settings.enable_connect_protocol);
+            session->server && session->pending_enable_connect_protocol);
       }
     } else {
       assert(frame->hd.type == NGHTTP2_HEADERS);
@@ -3756,7 +3756,7 @@ static int session_after_header_block_received(nghttp2_session *session) {
       case NGHTTP2_HCAT_REQUEST:
         rv = nghttp2_http_on_request_headers(
             stream, frame,
-            session->server && session->local_settings.enable_connect_protocol);
+            session->server && session->pending_enable_connect_protocol);
         break;
       case NGHTTP2_HCAT_RESPONSE:
       case NGHTTP2_HCAT_PUSH_RESPONSE:
@@ -7076,6 +7076,13 @@ int nghttp2_session_add_settings(nghttp2_session *session, uint8_t flags,
   for (i = niv; i > 0; --i) {
     if (iv[i - 1].settings_id == NGHTTP2_SETTINGS_ENABLE_PUSH) {
       session->pending_enable_push = (uint8_t)iv[i - 1].value;
+      break;
+    }
+  }
+
+  for (i = niv; i > 0; --i) {
+    if (iv[i - 1].settings_id == NGHTTP2_SETTINGS_ENABLE_CONNECT_PROTOCOL) {
+      session->pending_enable_connect_protocol = (uint8_t)iv[i - 1].value;
       break;
     }
   }
