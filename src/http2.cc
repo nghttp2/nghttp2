@@ -108,7 +108,7 @@ StringRef get_reason_phrase(unsigned int status_code) {
   case 421:
     return StringRef::from_lit("Misdirected Request");
   case 425:
-    // https://tools.ietf.org/html/draft-ietf-httpbis-replay-02
+    // https://tools.ietf.org/html/rfc8470
     return StringRef::from_lit("Too Early");
   case 426:
     return StringRef::from_lit("Upgrade Required");
