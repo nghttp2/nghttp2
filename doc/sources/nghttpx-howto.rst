@@ -483,9 +483,9 @@ not wait for handshake to complete before forwarding request included
 in 0-RTT to get full potential of 0-RTT data.  In this case, nghttpx
 adds ``Early-Data: 1`` header field when forwarding a request to a
 backend server.  All backend servers should recognize this header
-field and understand that there is a risk for replay attack.  See
-https://tools.ietf.org/html/draft-ietf-httpbis-replay-04 for
-``Early-Data`` header field.
+field and understand that there is a risk for replay attack.  See `RFC
+8470 <https://tools.ietf.org/html/rfc8470>`_ for ``Early-Data`` header
+field.
 
 nghttpx disables anti replay protection provided by OpenSSL.  The anti
 replay protection of OpenSSL requires that a resumed request must hit

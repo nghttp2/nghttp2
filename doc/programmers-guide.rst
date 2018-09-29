@@ -110,9 +110,9 @@ HTTP Messaging
 
 By default, nghttp2 library checks HTTP messaging rules described in
 `HTTP/2 specification, section 8
-<https://tools.ietf.org/html/draft-ietf-httpbis-http2-17#section-8>`_.
-Everything described in that section is not validated however.  We
-briefly describe what the library does in this area.  In the following
+<https://tools.ietf.org/html/rfc7540#section-8>`_.  Everything
+described in that section is not validated however.  We briefly
+describe what the library does in this area.  In the following
 description, without loss of generality we omit CONTINUATION frame
 since they must follow HEADERS frame and are processed atomically.  In
 other words, they are just one big HEADERS frame.  To disable these
@@ -249,7 +249,7 @@ set to :type:`nghttp2_session_callbacks` using
 `nghttp2_session_callbacks_set_pack_extension_callback()`.
 
 For example, we will illustrate how to send `ALTSVC
-<https://tools.ietf.org/html/draft-ietf-httpbis-alt-svc-14>`_ frame.
+<https://tools.ietf.org/html/rfc7838>`_ frame.
 
 .. code-block:: c
 
