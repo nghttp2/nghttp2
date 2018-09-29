@@ -763,9 +763,43 @@ bool Downstream::validate_response_recv_body_length() const {
   return true;
 }
 
-void Downstream::check_upgrade_fulfilled() {
+void Downstream::check_upgrade_fulfilled_http2() {
   if (req_.method == HTTP_CONNECT) {
+    // This handles nonzero req_.connect_proto as well.
     upgraded_ = 200 <= resp_.http_status && resp_.http_status < 300;
+
+    return;
+  }
+
+  if (req_.connect_proto == CONNECT_PROTO_WEBSOCKET) {
+    // h1 frontend requests WebSocket upgrade
+    upgraded_ = resp_.http_status == 200;
+
+    return;
+  }
+}
+
+void Downstream::check_upgrade_fulfilled_http1() {
+  if (req_.method == HTTP_CONNECT) {
+    if (req_.connect_proto == CONNECT_PROTO_WEBSOCKET) {
+      if (resp_.http_status != 101) {
+        return;
+      }
+
+      // This is done for HTTP/2 frontend only.
+      auto accept = resp_.fs.header(http2::HD_SEC_WEBSOCKET_ACCEPT);
+      if (!accept) {
+        return;
+      }
+
+      std::array<uint8_t, base64::encode_length(20)> accept_buf;
+      auto expected =
+          http2::make_websocket_accept_token(accept_buf.data(), ws_key_);
+
+      upgraded_ = expected != "" && expected == accept->value;
+    } else {
+      upgraded_ = 200 <= resp_.http_status && resp_.http_status < 300;
+    }
 
     return;
   }
@@ -787,7 +821,7 @@ void Downstream::inspect_http2_request() {
 void Downstream::inspect_http1_request() {
   if (req_.method == HTTP_CONNECT) {
     req_.upgrade_request = true;
-  } else {
+  } else if (req_.http_minor > 0) {
     auto upgrade = req_.fs.header(http2::HD_UPGRADE);
     if (upgrade) {
       const auto &val = upgrade->value;
@@ -797,6 +831,12 @@ void Downstream::inspect_http1_request() {
         req_.http2_upgrade_seen = true;
       } else {
         req_.upgrade_request = true;
+
+        // TODO Should we check Sec-WebSocket-Key, and
+        // Sec-WebSocket-Version as well?
+        if (util::strieq_l("websocket", val)) {
+          req_.connect_proto = CONNECT_PROTO_WEBSOCKET;
+        }
       }
     }
   }
@@ -1102,5 +1142,7 @@ DefaultMemchunks *Downstream::get_blocked_request_buf() {
 bool Downstream::get_blocked_request_data_eof() const {
   return blocked_request_data_eof_;
 }
+
+void Downstream::set_ws_key(const StringRef &key) { ws_key_ = key; }
 
 } // namespace shrpx

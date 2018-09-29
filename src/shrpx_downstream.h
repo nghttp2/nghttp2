@@ -134,6 +134,12 @@ private:
   bool trailer_key_prev_;
 };
 
+// Protocols allowed in HTTP/2 :protocol header field.
+enum shrpx_connect_proto {
+  CONNECT_PROTO_NONE,
+  CONNECT_PROTO_WEBSOCKET,
+};
+
 struct Request {
   Request(BlockAllocator &balloc)
       : fs(balloc, 16),
@@ -142,6 +148,7 @@ struct Request {
         method(-1),
         http_major(1),
         http_minor(1),
+        connect_proto(CONNECT_PROTO_NONE),
         upgrade_request(false),
         http2_upgrade_seen(false),
         connection_close(false),
@@ -152,6 +159,12 @@ struct Request {
     assert(unconsumed_body_length >= len);
     unconsumed_body_length -= len;
   }
+
+  bool regular_connect_method() const {
+    return method == HTTP_CONNECT && !connect_proto;
+  }
+
+  bool extended_connect_method() const { return connect_proto; }
 
   FieldStore fs;
   // Timestamp when all request header fields are received.
@@ -176,6 +189,10 @@ struct Request {
   int method;
   // HTTP major and minor version
   int http_major, http_minor;
+  // connect_proto specified in HTTP/2 :protocol pseudo header field
+  // which enables extended CONNECT method.  This field is also set if
+  // WebSocket upgrade is requested in h1 frontend for convenience.
+  int connect_proto;
   // Returns true if the request is HTTP upgrade (HTTP Upgrade or
   // CONNECT method).  Upgrade to HTTP/2 is excluded.  For HTTP/2
   // Upgrade, check get_http2_upgrade_request().
@@ -283,11 +300,14 @@ public:
   // Returns true if output buffer is full. If underlying dconn_ is
   // NULL, this function always returns false.
   bool request_buf_full();
-  // Returns true if upgrade (HTTP Upgrade or CONNECT) is succeeded.
-  // This should not depend on inspect_http1_response().
-  void check_upgrade_fulfilled();
+  // Returns true if upgrade (HTTP Upgrade or CONNECT) is succeeded in
+  // h1 backend.  This should not depend on inspect_http1_response().
+  void check_upgrade_fulfilled_http1();
+  // Returns true if upgrade (HTTP Upgrade or CONNECT) is succeeded in
+  // h2 backend.
+  void check_upgrade_fulfilled_http2();
   // Returns true if the upgrade is succeeded as a result of the call
-  // check_upgrade_fulfilled().  HTTP/2 Upgrade is excluded.
+  // check_upgrade_fulfilled_http*().  HTTP/2 Upgrade is excluded.
   bool get_upgraded() const;
   // Inspects HTTP/2 request.
   void inspect_http2_request();
@@ -461,6 +481,8 @@ public:
   // field, returns 0.
   uint32_t get_affinity_cookie_to_send() const;
 
+  void set_ws_key(const StringRef &key);
+
   enum {
     EVENT_ERROR = 0x1,
     EVENT_TIMEOUT = 0x2,
@@ -499,6 +521,10 @@ private:
   DefaultMemchunks blocked_request_buf_;
   DefaultMemchunks request_buf_;
   DefaultMemchunks response_buf_;
+
+  // The Sec-WebSocket-Key field sent to the peer.  This field is used
+  // if frontend uses RFC 8441 WebSocket bootstrapping via HTTP/2.
+  StringRef ws_key_;
 
   ev_timer upstream_rtimer_;
   ev_timer upstream_wtimer_;

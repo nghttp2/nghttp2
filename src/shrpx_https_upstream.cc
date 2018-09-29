@@ -44,6 +44,7 @@
 #include "http2.h"
 #include "util.h"
 #include "template.h"
+#include "base64.h"
 
 using namespace nghttp2;
 
@@ -1087,9 +1088,15 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
   buf->append('.');
   buf->append('0' + req.http_minor);
   buf->append(' ');
-  buf->append(http2::stringify_status(balloc, resp.http_status));
-  buf->append(' ');
-  buf->append(http2::get_reason_phrase(resp.http_status));
+  if (req.connect_proto && downstream->get_upgraded()) {
+    buf->append(http2::stringify_status(balloc, 101));
+    buf->append(' ');
+    buf->append(http2::get_reason_phrase(101));
+  } else {
+    buf->append(http2::stringify_status(balloc, resp.http_status));
+    buf->append(' ');
+    buf->append(http2::get_reason_phrase(resp.http_status));
+  }
   buf->append("\r\n");
 
   auto config = get_config();
@@ -1139,18 +1146,35 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
   }
 
   if (!connect_method && downstream->get_upgraded()) {
-    auto connection = resp.fs.header(http2::HD_CONNECTION);
-    if (connection) {
-      buf->append("Connection: ");
-      buf->append((*connection).value);
+    if (req.connect_proto == CONNECT_PROTO_WEBSOCKET &&
+        resp.http_status == 200) {
+      buf->append("Upgrade: websocket\r\nConnection: Upgrade\r\n");
+      auto key = req.fs.header(http2::HD_SEC_WEBSOCKET_KEY);
+      if (!key || key->value.size() != base64::encode_length(16)) {
+        return -1;
+      }
+      std::array<uint8_t, base64::encode_length(20)> out;
+      auto accept = http2::make_websocket_accept_token(out.data(), key->value);
+      if (accept.empty()) {
+        return -1;
+      }
+      buf->append("Sec-WebSocket-Accept: ");
+      buf->append(accept);
       buf->append("\r\n");
-    }
+    } else {
+      auto connection = resp.fs.header(http2::HD_CONNECTION);
+      if (connection) {
+        buf->append("Connection: ");
+        buf->append((*connection).value);
+        buf->append("\r\n");
+      }
 
-    auto upgrade = resp.fs.header(http2::HD_UPGRADE);
-    if (upgrade) {
-      buf->append("Upgrade: ");
-      buf->append((*upgrade).value);
-      buf->append("\r\n");
+      auto upgrade = resp.fs.header(http2::HD_UPGRADE);
+      if (upgrade) {
+        buf->append("Upgrade: ");
+        buf->append((*upgrade).value);
+        buf->append("\r\n");
+      }
     }
   }
 

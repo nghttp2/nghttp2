@@ -146,7 +146,7 @@ public:
   int consume(int32_t stream_id, size_t len);
 
   // Returns true if request can be issued on downstream connection.
-  bool can_push_request() const;
+  bool can_push_request(const Downstream *downstream) const;
   // Initiates the connection checking if downstream connection has
   // been established and connection checking is required.
   void start_checking_connection();
@@ -211,6 +211,12 @@ public:
 
   // Returns address used to connect to backend.  Could be nullptr.
   const Address *get_raddr() const;
+
+  // This is called when SETTINGS frame without ACK flag set is
+  // received.
+  void on_settings_received(const nghttp2_frame *frame);
+
+  bool get_allow_connect_proto() const;
 
   enum {
     // Disconnected
@@ -280,6 +286,10 @@ private:
   int state_;
   int connection_check_state_;
   int freelist_zone_;
+  // true if SETTINGS without ACK is received from peer.
+  bool settings_recved_;
+  // true if peer enables RFC 8441 CONNECT protocol.
+  bool allow_connect_proto_;
 };
 
 nghttp2_session_callbacks *create_http2_downstream_callbacks();

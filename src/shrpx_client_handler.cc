@@ -979,7 +979,7 @@ ClientHandler::get_downstream_connection(int &err, Downstream *downstream,
     StringRef path;
     // CONNECT method does not have path.  But we requires path in
     // host-path mapping.  As workaround, we assume that path is "/".
-    if (req.method != HTTP_CONNECT) {
+    if (!req.regular_connect_method()) {
       path = req.path;
     }
 

@@ -41,6 +41,7 @@
 #include "memchunk.h"
 #include "template.h"
 #include "allocator.h"
+#include "base64.h"
 
 namespace nghttp2 {
 
@@ -210,6 +211,12 @@ enum HeaderBuildOp {
   HDOP_STRIP_ALL = HDOP_STRIP_FORWARDED | HDOP_STRIP_X_FORWARDED_FOR |
                    HDOP_STRIP_X_FORWARDED_PROTO | HDOP_STRIP_VIA |
                    HDOP_STRIP_EARLY_DATA,
+  // Sec-WebSocket-Accept header field must be stripped.  If this flag
+  // is not set, all Sec-WebSocket-Accept header fields are added.
+  HDOP_STRIP_SEC_WEBSOCKET_ACCEPT = 1 << 5,
+  // Sec-WebSocket-Key header field must be stripped.  If this flag is
+  // not set, all Sec-WebSocket-Key header fields are added.
+  HDOP_STRIP_SEC_WEBSOCKET_KEY = 1 << 6,
 };
 
 // Appends headers in |headers| to |nv|.  |headers| must be indexed
@@ -297,6 +304,7 @@ enum {
   HD__HOST,
   HD__METHOD,
   HD__PATH,
+  HD__PROTOCOL,
   HD__SCHEME,
   HD__STATUS,
   HD_ACCEPT_ENCODING,
@@ -318,6 +326,8 @@ enum {
   HD_LINK,
   HD_LOCATION,
   HD_PROXY_CONNECTION,
+  HD_SEC_WEBSOCKET_ACCEPT,
+  HD_SEC_WEBSOCKET_KEY,
   HD_SERVER,
   HD_TE,
   HD_TRAILER,
@@ -420,6 +430,12 @@ StringRef copy_lower(BlockAllocator &balloc, const StringRef &src);
 
 // Returns true if te header field value |s| contains "trailers".
 bool contains_trailers(const StringRef &s);
+
+// Creates Sec-WebSocket-Accept value for |key|.  The capacity of
+// buffer pointed by |dest| must have at least 24 bytes (base64
+// encoded length of 16 bytes data).  It returns empty string in case
+// of error.
+StringRef make_websocket_accept_token(uint8_t *dest, const StringRef &key);
 
 } // namespace http2
 

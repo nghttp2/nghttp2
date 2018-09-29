@@ -394,6 +394,16 @@ void copy_headers_to_nva_internal(std::vector<nghttp2_nv> &nva,
         continue;
       }
       break;
+    case HD_SEC_WEBSOCKET_ACCEPT:
+      if (flags & HDOP_STRIP_SEC_WEBSOCKET_ACCEPT) {
+        continue;
+      }
+      break;
+    case HD_SEC_WEBSOCKET_KEY:
+      if (flags & HDOP_STRIP_SEC_WEBSOCKET_KEY) {
+        continue;
+      }
+      break;
     case HD_FORWARDED:
       if (flags & HDOP_STRIP_FORWARDED) {
         continue;
@@ -834,6 +844,11 @@ int lookup_token(const uint8_t *name, size_t namelen) {
         return HD_FORWARDED;
       }
       break;
+    case 'l':
+      if (util::streq_l(":protoco", name, 8)) {
+        return HD__PROTOCOL;
+      }
+      break;
     }
     break;
   case 10:
@@ -940,6 +955,20 @@ int lookup_token(const uint8_t *name, size_t namelen) {
     case 'o':
       if (util::streq_l("x-forwarded-prot", name, 16)) {
         return HD_X_FORWARDED_PROTO;
+      }
+      break;
+    case 'y':
+      if (util::streq_l("sec-websocket-ke", name, 16)) {
+        return HD_SEC_WEBSOCKET_KEY;
+      }
+      break;
+    }
+    break;
+  case 20:
+    switch (name[19]) {
+    case 't':
+      if (util::streq_l("sec-websocket-accep", name, 19)) {
+        return HD_SEC_WEBSOCKET_ACCEPT;
       }
       break;
     }
@@ -1331,7 +1360,8 @@ std::string path_join(const StringRef &base_path, const StringRef &base_query,
 }
 
 bool expect_response_body(int status_code) {
-  return status_code / 100 != 1 && status_code != 304 && status_code != 204;
+  return status_code == 101 ||
+         (status_code / 100 != 1 && status_code != 304 && status_code != 204);
 }
 
 bool expect_response_body(const std::string &method, int status_code) {
@@ -1827,6 +1857,21 @@ bool contains_trailers(const StringRef &s) {
       return false;
     }
   }
+}
+
+StringRef make_websocket_accept_token(uint8_t *dest, const StringRef &key) {
+  static constexpr uint8_t magic[] = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
+  std::array<uint8_t, base64::encode_length(16) + str_size(magic)> s;
+  auto p = std::copy(std::begin(key), std::end(key), std::begin(s));
+  std::copy_n(magic, str_size(magic), p);
+
+  std::array<uint8_t, 20> h;
+  if (util::sha1(h.data(), StringRef{std::begin(s), std::end(s)}) != 0) {
+    return StringRef{};
+  }
+
+  auto end = base64::encode(std::begin(h), std::end(h), dest);
+  return StringRef{dest, end};
 }
 
 } // namespace http2

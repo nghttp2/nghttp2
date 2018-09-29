@@ -1453,7 +1453,8 @@ void EVP_MD_CTX_free(EVP_MD_CTX *ctx) { EVP_MD_CTX_destroy(ctx); }
 } // namespace
 #endif // !OPENSSL_1_1_API
 
-int sha256(uint8_t *res, const StringRef &s) {
+namespace {
+int message_digest(uint8_t *res, const EVP_MD *meth, const StringRef &s) {
   int rv;
 
   auto ctx = EVP_MD_CTX_new();
@@ -1463,7 +1464,7 @@ int sha256(uint8_t *res, const StringRef &s) {
 
   auto ctx_deleter = defer(EVP_MD_CTX_free, ctx);
 
-  rv = EVP_DigestInit_ex(ctx, EVP_sha256(), nullptr);
+  rv = EVP_DigestInit_ex(ctx, meth, nullptr);
   if (rv != 1) {
     return -1;
   }
@@ -1473,7 +1474,7 @@ int sha256(uint8_t *res, const StringRef &s) {
     return -1;
   }
 
-  unsigned int mdlen = 32;
+  unsigned int mdlen = EVP_MD_size(meth);
 
   rv = EVP_DigestFinal_ex(ctx, res, &mdlen);
   if (rv != 1) {
@@ -1481,6 +1482,15 @@ int sha256(uint8_t *res, const StringRef &s) {
   }
 
   return 0;
+}
+} // namespace
+
+int sha256(uint8_t *res, const StringRef &s) {
+  return message_digest(res, EVP_sha256(), s);
+}
+
+int sha1(uint8_t *res, const StringRef &s) {
+  return message_digest(res, EVP_sha1(), s);
 }
 
 bool is_hex_string(const StringRef &s) {
