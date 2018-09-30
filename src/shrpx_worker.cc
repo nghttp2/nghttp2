@@ -77,7 +77,7 @@ DownstreamAddrGroup::~DownstreamAddrGroup() {}
 using DownstreamKey = std::tuple<
     std::vector<std::tuple<StringRef, StringRef, size_t, size_t, shrpx_proto,
                            uint16_t, bool, bool, bool, bool>>,
-    bool, int, StringRef, StringRef, int>;
+    bool, int, StringRef, StringRef, int, int64_t, int64_t>;
 
 namespace {
 DownstreamKey create_downstream_key(
@@ -109,6 +109,9 @@ DownstreamKey create_downstream_key(
   std::get<3>(dkey) = affinity.cookie.name;
   std::get<4>(dkey) = affinity.cookie.path;
   std::get<5>(dkey) = affinity.cookie.secure;
+  auto &timeout = shared_addr->timeout;
+  std::get<6>(dkey) = timeout.read;
+  std::get<7>(dkey) = timeout.write;
 
   return dkey;
 }
@@ -221,6 +224,8 @@ void Worker::replace_downstream_config(
     }
     shared_addr->affinity_hash = src.affinity_hash;
     shared_addr->redirect_if_not_tls = src.redirect_if_not_tls;
+    shared_addr->timeout.read = src.timeout.read;
+    shared_addr->timeout.write = src.timeout.write;
 
     size_t num_http1 = 0;
     size_t num_http2 = 0;

@@ -812,6 +812,8 @@ struct DownstreamParams {
   StringRef sni;
   StringRef mruby;
   AffinityConfig affinity;
+  ev_tstamp read_timeout;
+  ev_tstamp write_timeout;
   size_t fall;
   size_t rise;
   shrpx_proto proto;
@@ -820,6 +822,22 @@ struct DownstreamParams {
   bool redirect_if_not_tls;
   bool upgrade_scheme;
 };
+
+namespace {
+// Parses |value| of parameter named |name| as duration.  This
+// function returns 0 if it succeeds and the parsed value is assigned
+// to |dest|, or -1.
+int parse_downstream_param_duration(ev_tstamp &dest, const StringRef &name,
+                                    const StringRef &value) {
+  auto t = util::parse_duration_with_unit(value);
+  if (t == std::numeric_limits<double>::infinity()) {
+    LOG(ERROR) << "backend: " << name << ": bad value: '" << value << "'";
+    return -1;
+  }
+  dest = t;
+  return 0;
+}
+} // namespace
 
 namespace {
 // Parses downstream configuration parameter |src_params|, and stores
@@ -928,6 +946,18 @@ int parse_downstream_params(DownstreamParams &out,
     } else if (util::istarts_with_l(param, "mruby=")) {
       auto valstr = StringRef{first + str_size("mruby="), end};
       out.mruby = valstr;
+    } else if (util::istarts_with_l(param, "read-timeout=")) {
+      if (parse_downstream_param_duration(
+              out.read_timeout, StringRef::from_lit("read-timeout"),
+              StringRef{first + str_size("read-timeout="), end}) == -1) {
+        return -1;
+      }
+    } else if (util::istarts_with_l(param, "write-timeout=")) {
+      if (parse_downstream_param_duration(
+              out.write_timeout, StringRef::from_lit("write-timeout"),
+              StringRef{first + str_size("write-timeout="), end}) == -1) {
+        return -1;
+      }
     } else if (!param.empty()) {
       LOG(ERROR) << "backend: " << param << ": unknown keyword";
       return -1;
@@ -1065,6 +1095,29 @@ int parse_mapping(Config *config, DownstreamAddrConfig &addr,
           return -1;
         }
       }
+      // All backends in the same group must have the same read/write
+      // timeout.  If some backends do not specify read/write timeout,
+      // and there is at least one backend with read/write timeout, it
+      // is used for all backends in the group.
+      if (params.read_timeout > 1e-9) {
+        if (g.timeout.read < 1e-9) {
+          g.timeout.read = params.read_timeout;
+        } else if (fabs(g.timeout.read - params.read_timeout) > 1e-9) {
+          LOG(ERROR)
+              << "backend: read-timeout: multiple different read-timeout "
+                 "found in a single group";
+          return -1;
+        }
+      }
+      if (params.write_timeout > 1e-9) {
+        if (g.timeout.write < 1e-9) {
+          g.timeout.write = params.write_timeout;
+        } else if (fabs(g.timeout.write - params.write_timeout) > 1e-9) {
+          LOG(ERROR) << "backend: write-timeout: multiple different "
+                        "write-timeout found in a single group";
+          return -1;
+        }
+      }
 
       g.addrs.push_back(addr);
       continue;
@@ -1087,6 +1140,8 @@ int parse_mapping(Config *config, DownstreamAddrConfig &addr,
     }
     g.redirect_if_not_tls = params.redirect_if_not_tls;
     g.mruby_file = make_string_ref(downstreamconf.balloc, params.mruby);
+    g.timeout.read = params.read_timeout;
+    g.timeout.write = params.write_timeout;
 
     if (pattern[0] == '*') {
       // wildcard pattern
@@ -4047,6 +4102,14 @@ int configure_downstream_group(Config *config, bool http2_proxy,
                 [](const AffinityHash &lhs, const AffinityHash &rhs) {
                   return lhs.hash < rhs.hash;
                 });
+    }
+
+    auto &timeout = g.timeout;
+    if (timeout.read < 1e-9) {
+      timeout.read = downstreamconf.timeout.read;
+    }
+    if (timeout.write < 1e-9) {
+      timeout.write = downstreamconf.timeout.write;
     }
   }
 

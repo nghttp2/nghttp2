@@ -186,9 +186,9 @@ Http2Session::Http2Session(struct ev_loop *loop, SSL_CTX *ssl_ctx,
     : dlnext(nullptr),
       dlprev(nullptr),
       conn_(loop, -1, nullptr, worker->get_mcpool(),
-            worker->get_downstream_config()->timeout.write,
-            worker->get_downstream_config()->timeout.read, {}, {}, writecb,
-            readcb, timeoutcb, this, get_config()->tls.dyn_rec.warmup_threshold,
+            group->shared_addr->timeout.write, group->shared_addr->timeout.read,
+            {}, {}, writecb, readcb, timeoutcb, this,
+            get_config()->tls.dyn_rec.warmup_threshold,
             get_config()->tls.dyn_rec.idle_timeout, PROTO_HTTP2),
       wb_(worker->get_mcpool()),
       worker_(worker),
@@ -1972,10 +1972,8 @@ int Http2Session::connected() {
     SSLOG(INFO, this) << "Connection established";
   }
 
-  auto &downstreamconf = *get_config()->conn.downstream;
-
   // Reset timeout for write.  Previously, we set timeout for connect.
-  conn_.wt.repeat = downstreamconf.timeout.write;
+  conn_.wt.repeat = group_->shared_addr->timeout.write;
   ev_timer_again(conn_.loop, &conn_.wt);
 
   conn_.rlimit.startw();
