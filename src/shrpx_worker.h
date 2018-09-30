@@ -180,6 +180,11 @@ struct SharedDownstreamAddr {
   // true if this group requires that client connection must be TLS,
   // and the request must be redirected to https URI.
   bool redirect_if_not_tls;
+  // Timeouts for backend connection.
+  struct {
+    ev_tstamp read;
+    ev_tstamp write;
+  } timeout;
 };
 
 struct DownstreamAddrGroup {

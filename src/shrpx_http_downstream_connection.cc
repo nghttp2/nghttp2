@@ -190,9 +190,8 @@ HttpDownstreamConnection::HttpDownstreamConnection(
     const std::shared_ptr<DownstreamAddrGroup> &group, size_t initial_addr_idx,
     struct ev_loop *loop, Worker *worker)
     : conn_(loop, -1, nullptr, worker->get_mcpool(),
-            worker->get_downstream_config()->timeout.write,
-            worker->get_downstream_config()->timeout.read, {}, {}, connectcb,
-            readcb, connect_timeoutcb, this,
+            group->shared_addr->timeout.write, group->shared_addr->timeout.read,
+            {}, {}, connectcb, readcb, connect_timeoutcb, this,
             get_config()->tls.dyn_rec.warmup_threshold,
             get_config()->tls.dyn_rec.idle_timeout, PROTO_HTTP1),
       on_read_(&HttpDownstreamConnection::noop),
@@ -459,11 +458,11 @@ int HttpDownstreamConnection::initiate_connection() {
   } else {
     // we may set read timer cb to idle_timeoutcb.  Reset again.
     ev_set_cb(&conn_.rt, timeoutcb);
-    if (conn_.read_timeout < downstreamconf.timeout.read) {
-      conn_.read_timeout = downstreamconf.timeout.read;
+    if (conn_.read_timeout < group_->shared_addr->timeout.read) {
+      conn_.read_timeout = group_->shared_addr->timeout.read;
       conn_.last_read = ev_now(conn_.loop);
     } else {
-      conn_.again_rt(downstreamconf.timeout.read);
+      conn_.again_rt(group_->shared_addr->timeout.read);
     }
 
     ev_set_cb(&conn_.rev, readcb);
@@ -1489,10 +1488,8 @@ int HttpDownstreamConnection::connected() {
     DCLOG(INFO, this) << "Connected to downstream host";
   }
 
-  auto &downstreamconf = *get_config()->conn.downstream;
-
   // Reset timeout for write.  Previously, we set timeout for connect.
-  conn_.wt.repeat = downstreamconf.timeout.write;
+  conn_.wt.repeat = group_->shared_addr->timeout.write;
   ev_timer_again(conn_.loop, &conn_.wt);
 
   conn_.rlimit.startw();
