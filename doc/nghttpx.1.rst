@@ -122,11 +122,13 @@ Connections
     parameters       are:      "proto=<PROTO>",       "tls",
     "sni=<SNI_HOST>",         "fall=<N>",        "rise=<N>",
     "affinity=<METHOD>",    "dns",    "redirect-if-not-tls",
-    "upgrade-scheme",  and  "mruby=<PATH>".   The  parameter
-    consists of keyword, and  optionally followed by "=" and
-    value.  For  example, the parameter  "proto=h2" consists
-    of the  keyword "proto"  and value "h2".   The parameter
-    "tls" consists of the keyword "tls" without value.  Each
+    "upgrade-scheme",                        "mruby=<PATH>",
+    "read-timeout=<DURATION>",                           and
+    "write-timeout=<DURATION>".   The parameter  consists of
+    keyword, and optionally followed  by "=" and value.  For
+    example,  the  parameter   "proto=h2"  consists  of  the
+    keyword  "proto" and  value "h2".   The parameter  "tls"
+    consists  of  the  keyword "tls"  without  value.   Each
     parameter is described as follows.
 
     The backend application protocol  can be specified using
@@ -224,6 +226,14 @@ Connections
     script  file  which  is  invoked when  this  pattern  is
     matched.  All backends which share the same pattern must
     have the same mruby path.
+
+    "read-timeout=<DURATION>" and "write-timeout=<DURATION>"
+    parameters  specify the  read and  write timeout  of the
+    backend connection  when this  pattern is  matched.  All
+    backends which share the same pattern must have the same
+    timeouts.  If these timeouts  are entirely omitted for a
+    pattern,            :option:`--backend-read-timeout`           and
+    :option:`--backend-write-timeout` are used.
 
     Since ";" and ":" are  used as delimiter, <PATTERN> must
     not  contain these  characters.  Since  ";" has  special

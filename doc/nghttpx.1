@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTPX" "1" "Sep 15, 2018" "1.34.0-DEV" "nghttp2"
+.TH "NGHTTPX" "1" "Oct 02, 2018" "1.34.0-DEV" "nghttp2"
 .SH NAME
 nghttpx \- HTTP/2 proxy
 .
@@ -138,11 +138,13 @@ The  parameters are  delimited  by  ";".  The  available
 parameters       are:      "proto=<PROTO>",       "tls",
 "sni=<SNI_HOST>",         "fall=<N>",        "rise=<N>",
 "affinity=<METHOD>",    "dns",    "redirect\-if\-not\-tls",
-"upgrade\-scheme",  and  "mruby=<PATH>".   The  parameter
-consists of keyword, and  optionally followed by "=" and
-value.  For  example, the parameter  "proto=h2" consists
-of the  keyword "proto"  and value "h2".   The parameter
-"tls" consists of the keyword "tls" without value.  Each
+"upgrade\-scheme",                        "mruby=<PATH>",
+"read\-timeout=<DURATION>",                           and
+"write\-timeout=<DURATION>".   The parameter  consists of
+keyword, and optionally followed  by "=" and value.  For
+example,  the  parameter   "proto=h2"  consists  of  the
+keyword  "proto" and  value "h2".   The parameter  "tls"
+consists  of  the  keyword "tls"  without  value.   Each
 parameter is described as follows.
 .sp
 The backend application protocol  can be specified using
@@ -240,6 +242,14 @@ field on TLS encrypted connection.
 script  file  which  is  invoked when  this  pattern  is
 matched.  All backends which share the same pattern must
 have the same mruby path.
+.sp
+"read\-timeout=<DURATION>" and "write\-timeout=<DURATION>"
+parameters  specify the  read and  write timeout  of the
+backend connection  when this  pattern is  matched.  All
+backends which share the same pattern must have the same
+timeouts.  If these timeouts  are entirely omitted for a
+pattern,            \fI\%\-\-backend\-read\-timeout\fP           and
+\fI\%\-\-backend\-write\-timeout\fP are used.
 .sp
 Since ";" and ":" are  used as delimiter, <PATTERN> must
 not  contain these  characters.  Since  ";" has  special
