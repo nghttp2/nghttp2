@@ -39,6 +39,7 @@ set(APIDOCS
   nghttp2_option_set_no_auto_ping_ack.rst
   nghttp2_option_set_no_auto_window_update.rst
   nghttp2_option_set_no_http_messaging.rst
+  nghttp2_option_set_enable_connect_protocol.rst
   nghttp2_option_set_no_recv_client_magic.rst
   nghttp2_option_set_peer_max_concurrent_streams.rst
   nghttp2_option_set_user_recv_extension_type.rst
