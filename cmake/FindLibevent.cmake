@@ -40,6 +40,9 @@ if(LIBEVENT_INCLUDE_DIR)
     # Libevent 2.0
     file(STRINGS "${LIBEVENT_INCLUDE_DIR}/event2/event-config.h"
       LIBEVENT_VERSION REGEX "${_version_regex}")
+    if("${LIBEVENT_VERSION}" STREQUAL "")
+      set(LIBEVENT_VERSION ${PC_LIBEVENT_VERSION})
+    endif()
   else()
     # Libevent 1.4
     file(STRINGS "${LIBEVENT_INCLUDE_DIR}/event-config.h"
