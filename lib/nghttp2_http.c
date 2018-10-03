@@ -264,7 +264,7 @@ static int http_response_on_header(nghttp2_stream *stream, nghttp2_hd_nv *nv,
       return NGHTTP2_ERR_REMOVE_HTTP_HEADER;
     }
     if (stream->status_code / 100 == 1 ||
-        (stream->status_code == 200 &&
+        (stream->status_code / 100 == 2 &&
          (stream->http_flags & NGHTTP2_HTTP_FLAG_METH_CONNECT))) {
       return NGHTTP2_ERR_HTTP_HEADER;
     }
