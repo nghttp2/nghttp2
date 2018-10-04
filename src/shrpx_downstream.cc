@@ -764,19 +764,11 @@ bool Downstream::validate_response_recv_body_length() const {
 }
 
 void Downstream::check_upgrade_fulfilled_http2() {
-  if (req_.method == HTTP_CONNECT) {
-    // This handles nonzero req_.connect_proto as well.
-    upgraded_ = 200 <= resp_.http_status && resp_.http_status < 300;
-
-    return;
-  }
-
-  if (req_.connect_proto == CONNECT_PROTO_WEBSOCKET) {
-    // h1 frontend requests WebSocket upgrade
-    upgraded_ = resp_.http_status == 200;
-
-    return;
-  }
+  // This handles nonzero req_.connect_proto and h1 frontend requests
+  // WebSocket upgrade.
+  upgraded_ = (req_.method == HTTP_CONNECT ||
+               req_.connect_proto == CONNECT_PROTO_WEBSOCKET) &&
+              resp_.http_status / 100 == 2;
 }
 
 void Downstream::check_upgrade_fulfilled_http1() {
@@ -798,7 +790,7 @@ void Downstream::check_upgrade_fulfilled_http1() {
 
       upgraded_ = expected != "" && expected == accept->value;
     } else {
-      upgraded_ = 200 <= resp_.http_status && resp_.http_status < 300;
+      upgraded_ = resp_.http_status / 100 == 2;
     }
 
     return;

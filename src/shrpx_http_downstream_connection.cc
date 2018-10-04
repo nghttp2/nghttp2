@@ -938,7 +938,7 @@ int htp_hdrs_completecb(http_parser *htp) {
 
   // Server MUST NOT send Transfer-Encoding with a status code 1xx or
   // 204.  Also server MUST NOT send Transfer-Encoding with a status
-  // code 200 to a CONNECT request.  Same holds true with
+  // code 2xx to a CONNECT request.  Same holds true with
   // Content-Length.
   if (resp.http_status == 204) {
     if (resp.fs.header(http2::HD_TRANSFER_ENCODING)) {
@@ -960,7 +960,7 @@ int htp_hdrs_completecb(http_parser *htp) {
       return -1;
     }
   } else if (resp.http_status / 100 == 1 ||
-             (resp.http_status == 200 && req.method == HTTP_CONNECT)) {
+             (resp.http_status / 100 == 2 && req.method == HTTP_CONNECT)) {
     if (resp.fs.header(http2::HD_CONTENT_LENGTH) ||
         resp.fs.header(http2::HD_TRANSFER_ENCODING)) {
       return -1;

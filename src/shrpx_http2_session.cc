@@ -620,7 +620,7 @@ int htp_hdrs_completecb(http_parser *htp) {
   http_parser_pause(htp, 1);
 
   // We just check status code here
-  if (htp->status_code == 200) {
+  if (htp->status_code / 100 == 2) {
     if (LOG_ENABLED(INFO)) {
       SSLOG(INFO, http2session) << "Tunneling success";
     }

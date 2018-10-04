@@ -1147,7 +1147,7 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
 
   if (!connect_method && downstream->get_upgraded()) {
     if (req.connect_proto == CONNECT_PROTO_WEBSOCKET &&
-        resp.http_status == 200) {
+        resp.http_status / 100 == 2) {
       buf->append("Upgrade: websocket\r\nConnection: Upgrade\r\n");
       auto key = req.fs.header(http2::HD_SEC_WEBSOCKET_KEY);
       if (!key || key->value.size() != base64::encode_length(16)) {
