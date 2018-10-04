@@ -10922,6 +10922,8 @@ void test_nghttp2_http_mandatory_headers(void) {
       MAKE_NV(":scheme", "http"), MAKE_NV(":path", "/"),
       MAKE_NV(":method", "CONNECT"), MAKE_NV("host", "localhost"),
       MAKE_NV(":protocol", "websocket")};
+  const nghttp2_nv regularconnect_reqnv[] = {
+      MAKE_NV(":method", "CONNECT"), MAKE_NV(":authority", "localhost")};
 
   mem = nghttp2_mem_default();
 
@@ -11106,6 +11108,12 @@ void test_nghttp2_http_mandatory_headers(void) {
   check_nghttp2_http_recv_headers_fail(session, &deflater, 7, -1,
                                        connectprotonoauth_reqnv,
                                        ARRLEN(connectprotonoauth_reqnv));
+
+  /* regular CONNECT method should succeed with
+     SETTINGS_CONNECT_PROTOCOL */
+  check_nghttp2_http_recv_headers_ok(session, &deflater, 9, -1,
+                                     regularconnect_reqnv,
+                                     ARRLEN(regularconnect_reqnv));
 
   nghttp2_hd_deflate_free(&deflater);
 

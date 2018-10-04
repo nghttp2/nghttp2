@@ -3746,17 +3746,13 @@ static int session_after_header_block_received(nghttp2_session *session) {
       subject_stream = nghttp2_session_get_stream(
           session, frame->push_promise.promised_stream_id);
       if (subject_stream) {
-        rv = nghttp2_http_on_request_headers(
-            subject_stream, frame,
-            session->server && session->pending_enable_connect_protocol);
+        rv = nghttp2_http_on_request_headers(subject_stream, frame);
       }
     } else {
       assert(frame->hd.type == NGHTTP2_HEADERS);
       switch (frame->headers.cat) {
       case NGHTTP2_HCAT_REQUEST:
-        rv = nghttp2_http_on_request_headers(
-            stream, frame,
-            session->server && session->pending_enable_connect_protocol);
+        rv = nghttp2_http_on_request_headers(stream, frame);
         break;
       case NGHTTP2_HCAT_RESPONSE:
       case NGHTTP2_HCAT_PUSH_RESPONSE:

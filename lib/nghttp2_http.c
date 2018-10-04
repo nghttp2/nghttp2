@@ -466,9 +466,8 @@ int nghttp2_http_on_header(nghttp2_session *session, nghttp2_stream *stream,
 }
 
 int nghttp2_http_on_request_headers(nghttp2_stream *stream,
-                                    nghttp2_frame *frame,
-                                    int connect_protocol) {
-  if (!connect_protocol &&
+                                    nghttp2_frame *frame) {
+  if (!(stream->http_flags & NGHTTP2_HTTP_FLAG__PROTOCOL) &&
       (stream->http_flags & NGHTTP2_HTTP_FLAG_METH_CONNECT)) {
     if ((stream->http_flags &
          (NGHTTP2_HTTP_FLAG__SCHEME | NGHTTP2_HTTP_FLAG__PATH)) ||
