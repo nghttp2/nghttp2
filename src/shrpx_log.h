@@ -100,12 +100,20 @@ public:
   Log &operator<<(const char *s);
   Log &operator<<(const StringRef &s);
   Log &operator<<(const ImmutableString &s);
-  Log &operator<<(int16_t n) { return *this << static_cast<int64_t>(n); }
-  Log &operator<<(int32_t n) { return *this << static_cast<int64_t>(n); }
-  Log &operator<<(int64_t n);
-  Log &operator<<(uint16_t n) { return *this << static_cast<uint64_t>(n); }
-  Log &operator<<(uint32_t n) { return *this << static_cast<uint64_t>(n); }
-  Log &operator<<(uint64_t n);
+  Log &operator<<(short n) { return *this << static_cast<long long>(n); }
+  Log &operator<<(int n) { return *this << static_cast<long long>(n); }
+  Log &operator<<(long n) { return *this << static_cast<long long>(n); }
+  Log &operator<<(long long n);
+  Log &operator<<(unsigned short n) {
+    return *this << static_cast<unsigned long long>(n);
+  }
+  Log &operator<<(unsigned int n) {
+    return *this << static_cast<unsigned long long>(n);
+  }
+  Log &operator<<(unsigned long n) {
+    return *this << static_cast<unsigned long long>(n);
+  }
+  Log &operator<<(unsigned long long n);
   Log &operator<<(float n) { return *this << static_cast<double>(n); }
   Log &operator<<(double n);
   Log &operator<<(long double n);

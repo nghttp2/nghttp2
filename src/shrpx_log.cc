@@ -228,7 +228,7 @@ Log &Log::operator<<(const ImmutableString &s) {
   return *this;
 }
 
-Log &Log::operator<<(int64_t n) {
+Log &Log::operator<<(long long n) {
   if (n >= 0) {
     return *this << static_cast<uint64_t>(n);
   }
@@ -262,7 +262,7 @@ Log &Log::operator<<(int64_t n) {
   return *this;
 }
 
-Log &Log::operator<<(uint64_t n) {
+Log &Log::operator<<(unsigned long long n) {
   if (flags_ & fmt_hex) {
     write_hex(n);
     return *this;
