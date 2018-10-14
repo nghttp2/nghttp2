@@ -1122,8 +1122,12 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
     return 0;
   }
 
-  http2::build_http1_headers_from_headers(
-      buf, resp.fs.headers(), http2::HDOP_STRIP_ALL & ~http2::HDOP_STRIP_VIA);
+  auto build_flags = (http2::HDOP_STRIP_ALL & ~http2::HDOP_STRIP_VIA) |
+                     (!http2::legacy_http1(req.http_major, req.http_minor)
+                          ? 0
+                          : http2::HDOP_STRIP_TRANSFER_ENCODING);
+
+  http2::build_http1_headers_from_headers(buf, resp.fs.headers(), build_flags);
 
   auto worker = handler_->get_worker();
 

@@ -1000,6 +1000,11 @@ int htp_hdrs_completecb(http_parser *htp) {
     resp.connection_close = true;
     // transfer-encoding not applied to upgraded connection
     downstream->set_chunked_response(false);
+  } else if (http2::legacy_http1(req.http_major, req.http_minor)) {
+    if (resp.fs.content_length == -1) {
+      resp.connection_close = true;
+    }
+    downstream->set_chunked_response(false);
   } else if (!downstream->expect_response_body()) {
     downstream->set_chunked_response(false);
   }

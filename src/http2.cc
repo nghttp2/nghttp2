@@ -503,6 +503,11 @@ void build_http1_headers_from_headers(DefaultMemchunks *buf,
         continue;
       }
       break;
+    case HD_TRANSFER_ENCODING:
+      if (flags & HDOP_STRIP_TRANSFER_ENCODING) {
+        continue;
+      }
+      break;
     case HD_FORWARDED:
       if (flags & HDOP_STRIP_FORWARDED) {
         continue;
@@ -1872,6 +1877,10 @@ StringRef make_websocket_accept_token(uint8_t *dest, const StringRef &key) {
 
   auto end = base64::encode(std::begin(h), std::end(h), dest);
   return StringRef{dest, end};
+}
+
+bool legacy_http1(int major, int minor) {
+  return major <= 0 || (major == 1 && minor == 0);
 }
 
 } // namespace http2

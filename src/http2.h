@@ -217,6 +217,9 @@ enum HeaderBuildOp {
   // Sec-WebSocket-Key header field must be stripped.  If this flag is
   // not set, all Sec-WebSocket-Key header fields are added.
   HDOP_STRIP_SEC_WEBSOCKET_KEY = 1 << 6,
+  // Transfer-Encoding header field must be stripped.  If this flag is
+  // not set, all Transfer-Encoding header fields are added.
+  HDOP_STRIP_TRANSFER_ENCODING = 1 << 7,
 };
 
 // Appends headers in |headers| to |nv|.  |headers| must be indexed
@@ -436,6 +439,10 @@ bool contains_trailers(const StringRef &s);
 // encoded length of 16 bytes data).  It returns empty string in case
 // of error.
 StringRef make_websocket_accept_token(uint8_t *dest, const StringRef &key);
+
+// Returns true if HTTP version represents pre-HTTP/1.1 (e.g.,
+// HTTP/0.9 or HTTP/1.0).
+bool legacy_http1(int major, int minor);
 
 } // namespace http2
 
