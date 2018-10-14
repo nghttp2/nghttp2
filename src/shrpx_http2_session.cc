@@ -1173,7 +1173,7 @@ int on_response_headers(Http2Session *http2session, Downstream *downstream,
         resp.connection_close = true;
       } else {
         // Otherwise, use chunked encoding to keep upstream connection
-        // open.  In HTTP2, we are supporsed not to receive
+        // open.  In HTTP2, we are supposed not to receive
         // transfer-encoding.
         resp.fs.add_header_token(StringRef::from_lit("transfer-encoding"),
                                  StringRef::from_lit("chunked"), false,
