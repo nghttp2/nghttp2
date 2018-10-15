@@ -1332,7 +1332,7 @@ are:
 * Boost::Thread
 
 The server API is designed to build an HTTP/2 server very easily to utilize
-C++11 anonymous functions and closures.  The bare minimum example of
+C++14 anonymous functions and closures.  The bare minimum example of
 an HTTP/2 server looks like this:
 
 .. code-block:: cpp
