@@ -71,7 +71,8 @@ void HttpsUpstream::on_start_request() {
   }
   reset_current_header_length();
 
-  auto downstream = make_unique<Downstream>(this, handler_->get_mcpool(), 0);
+  auto downstream =
+      std::make_unique<Downstream>(this, handler_->get_mcpool(), 0);
 
   attach_downstream(std::move(downstream));
 
@@ -959,7 +960,8 @@ void HttpsUpstream::error_reply(unsigned int status_code) {
   auto downstream = get_downstream();
 
   if (!downstream) {
-    attach_downstream(make_unique<Downstream>(this, handler_->get_mcpool(), 1));
+    attach_downstream(
+        std::make_unique<Downstream>(this, handler_->get_mcpool(), 1));
     downstream = get_downstream();
   }
 

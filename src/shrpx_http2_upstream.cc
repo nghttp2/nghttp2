@@ -278,8 +278,8 @@ int on_begin_headers_callback(nghttp2_session *session,
 } // namespace
 
 void Http2Upstream::on_start_request(const nghttp2_frame *frame) {
-  auto downstream = make_unique<Downstream>(this, handler_->get_mcpool(),
-                                            frame->hd.stream_id);
+  auto downstream = std::make_unique<Downstream>(this, handler_->get_mcpool(),
+                                                 frame->hd.stream_id);
   nghttp2_session_set_stream_user_data(session_, frame->hd.stream_id,
                                        downstream.get());
 
@@ -705,7 +705,7 @@ int on_frame_send_callback(nghttp2_session *session, const nghttp2_frame *frame,
       return 0;
     }
 
-    auto promised_downstream = make_unique<Downstream>(
+    auto promised_downstream = std::make_unique<Downstream>(
         upstream, handler->get_mcpool(), promised_stream_id);
     auto &req = promised_downstream->request();
 
@@ -2295,7 +2295,7 @@ Http2Upstream::on_downstream_push_promise(Downstream *downstream,
   // promised_stream_id is for backend HTTP/2 session, not for
   // frontend.
   auto promised_downstream =
-      make_unique<Downstream>(this, handler_->get_mcpool(), 0);
+      std::make_unique<Downstream>(this, handler_->get_mcpool(), 0);
   auto &promised_req = promised_downstream->request();
 
   promised_downstream->set_downstream_stream_id(promised_stream_id);

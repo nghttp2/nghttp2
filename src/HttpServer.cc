@@ -305,7 +305,7 @@ public:
       }
     }
     auto handler =
-        make_unique<Http2Handler>(this, fd, ssl, get_next_session_id());
+        std::make_unique<Http2Handler>(this, fd, ssl, get_next_session_id());
     if (!ssl) {
       if (handler->connection_made() != 0) {
         return;
@@ -358,11 +358,11 @@ public:
   }
   FileEntry *cache_fd(const std::string &path, const FileEntry &ent) {
 #ifdef HAVE_STD_MAP_EMPLACE
-    auto rv = fd_cache_.emplace(path, make_unique<FileEntry>(ent));
+    auto rv = fd_cache_.emplace(path, std::make_unique<FileEntry>(ent));
 #else  // !HAVE_STD_MAP_EMPLACE
     // for gcc-4.7
-    auto rv =
-        fd_cache_.insert(std::make_pair(path, make_unique<FileEntry>(ent)));
+    auto rv = fd_cache_.insert(
+        std::make_pair(path, std::make_unique<FileEntry>(ent)));
 #endif // !HAVE_STD_MAP_EMPLACE
     auto &res = (*rv).second;
     res->it = rv;
@@ -1023,7 +1023,7 @@ int Http2Handler::submit_push_promise(Stream *stream,
     return promised_stream_id;
   }
 
-  auto promised_stream = make_unique<Stream>(this, promised_stream_id);
+  auto promised_stream = std::make_unique<Stream>(this, promised_stream_id);
 
   auto &promised_header = promised_stream->header;
   promised_header.method = StringRef::from_lit("GET");
@@ -1477,7 +1477,7 @@ int on_begin_headers_callback(nghttp2_session *session,
     return 0;
   }
 
-  auto stream = make_unique<Stream>(hd, frame->hd.stream_id);
+  auto stream = std::make_unique<Stream>(hd, frame->hd.stream_id);
 
   add_stream_read_timeout(stream.get());
 
@@ -1832,10 +1832,10 @@ public:
       if (config_->verbose) {
         std::cerr << "spawning thread #" << i << std::endl;
       }
-      auto worker = make_unique<Worker>();
+      auto worker = std::make_unique<Worker>();
       auto loop = ev_loop_new(get_ev_loop_flags());
-      worker->sessions =
-          make_unique<Sessions>(sv, loop, config_, sessions_->get_ssl_ctx());
+      worker->sessions = std::make_unique<Sessions>(sv, loop, config_,
+                                                    sessions_->get_ssl_ctx());
       ev_async_init(&worker->w, worker_acceptcb);
       worker->w.data = worker.get();
       ev_async_start(loop, &worker->w);

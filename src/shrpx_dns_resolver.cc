@@ -251,7 +251,7 @@ void start_ev(std::vector<std::unique_ptr<ev_io>> &evs, struct ev_loop *loop,
     }
   }
 
-  auto w = make_unique<ev_io>();
+  auto w = std::make_unique<ev_io>();
   ev_io_init(w.get(), cb, fd, event);
   w->data = data;
   ev_io_start(loop, w.get());

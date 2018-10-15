@@ -233,7 +233,7 @@ void Request::init_html_parser() {
     base_uri += util::get_uri_field(uri.c_str(), u, UF_QUERY);
   }
 
-  html_parser = make_unique<HtmlParser>(base_uri);
+  html_parser = std::make_unique<HtmlParser>(base_uri);
 }
 
 int Request::update_html_parser(const uint8_t *data, size_t len, int fin) {
@@ -527,7 +527,7 @@ int submit_request(HttpClient *client, const Headers &headers, Request *req) {
   req->req_nva = std::move(build_headers);
 
   if (expect_continue) {
-    auto timer = make_unique<ContinueTimer>(client->loop, req);
+    auto timer = std::make_unique<ContinueTimer>(client->loop, req);
     req->continue_timer = std::move(timer);
   }
 
@@ -885,7 +885,7 @@ int HttpClient::connected() {
   writefn = &HttpClient::write_clear;
 
   if (need_upgrade()) {
-    htp = make_unique<http_parser>();
+    htp = std::make_unique<http_parser>();
     http_parser_init(htp.get(), HTTP_RESPONSE);
     htp->data = this;
 
@@ -1453,8 +1453,8 @@ bool HttpClient::add_request(const std::string &uri,
     path_cache.insert(uri);
   }
 
-  reqvec.push_back(
-      make_unique<Request>(uri, u, data_prd, data_length, pri_spec, level));
+  reqvec.push_back(std::make_unique<Request>(uri, u, data_prd, data_length,
+                                             pri_spec, level));
   return true;
 }
 
@@ -1854,7 +1854,7 @@ int on_begin_headers_callback(nghttp2_session *session,
 
     nghttp2_priority_spec_default_init(&pri_spec);
 
-    auto req = make_unique<Request>("", u, nullptr, 0, pri_spec);
+    auto req = std::make_unique<Request>("", u, nullptr, 0, pri_spec);
     req->stream_id = stream_id;
 
     nghttp2_session_set_stream_user_data(session, stream_id, req.get());

@@ -36,7 +36,7 @@ namespace asio_http2 {
 
 namespace server {
 
-http2::http2() : impl_(make_unique<http2_impl>()) {}
+http2::http2() : impl_(std::make_unique<http2_impl>()) {}
 
 http2::~http2() {}
 

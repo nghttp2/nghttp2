@@ -34,7 +34,7 @@ namespace nghttp2 {
 namespace asio_http2 {
 namespace client {
 
-request::request() : impl_(make_unique<request_impl>()) {}
+request::request() : impl_(std::make_unique<request_impl>()) {}
 
 request::~request() {}
 

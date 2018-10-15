@@ -180,7 +180,8 @@ RProc *compile(mrb_state *mrb, const StringRef &filename) {
 
 std::unique_ptr<MRubyContext> create_mruby_context(const StringRef &filename) {
   if (filename.empty()) {
-    return make_unique<MRubyContext>(nullptr, mrb_nil_value(), mrb_nil_value());
+    return std::make_unique<MRubyContext>(nullptr, mrb_nil_value(),
+                                          mrb_nil_value());
   }
 
   auto mrb = mrb_open();
@@ -216,7 +217,7 @@ std::unique_ptr<MRubyContext> create_mruby_context(const StringRef &filename) {
   mrb_gc_protect(mrb, env);
   mrb_gc_protect(mrb, app);
 
-  return make_unique<MRubyContext>(mrb, std::move(app), std::move(env));
+  return std::make_unique<MRubyContext>(mrb, std::move(app), std::move(env));
 }
 
 mrb_sym intern_ptr(mrb_state *mrb, void *ptr) {

@@ -305,7 +305,7 @@ int save_pid() {
   auto &pid_file = config->pid_file;
 
   auto len = config->pid_file.size() + SUFFIX.size();
-  auto buf = make_unique<char[]>(len + 1);
+  auto buf = std::make_unique<char[]>(len + 1);
   auto p = buf.get();
 
   p = std::copy(std::begin(pid_file), std::end(pid_file), p);
@@ -438,7 +438,7 @@ void exec_binary() {
     nghttp2_Exit(EXIT_FAILURE);
   }
 
-  auto argv = make_unique<char *[]>(suconfig.argc + 1);
+  auto argv = std::make_unique<char *[]>(suconfig.argc + 1);
 
   argv[0] = exec_path;
   for (int i = 1; i < suconfig.argc; ++i) {
@@ -454,7 +454,8 @@ void exec_binary() {
   auto &listenerconf = config->conn.listener;
 
   // 2 for ENV_ORIG_PID and terminal nullptr.
-  auto envp = make_unique<char *[]>(envlen + listenerconf.addrs.size() + 2);
+  auto envp =
+      std::make_unique<char *[]>(envlen + listenerconf.addrs.size() + 2);
   size_t envidx = 0;
 
   std::vector<ImmutableString> fd_envs;
@@ -1354,7 +1355,7 @@ int event_loop() {
     return -1;
   }
 
-  worker_process_add(make_unique<WorkerProcess>(loop, pid, ipc_fd));
+  worker_process_add(std::make_unique<WorkerProcess>(loop, pid, ipc_fd));
 
   // Write PID file when we are ready to accept connection from peer.
   // This makes easier to write restart script for nghttpx.  Because
@@ -3140,7 +3141,7 @@ void reload_config(WorkerProcess *wp) {
   LOG(NOTICE) << "Reloading configuration";
 
   auto cur_config = mod_config();
-  auto new_config = make_unique<Config>();
+  auto new_config = std::make_unique<Config>();
 
   fill_default_config(new_config.get());
 
@@ -3195,7 +3196,7 @@ void reload_config(WorkerProcess *wp) {
   // We no longer use signals for this worker.
   last_wp->shutdown_signal_watchers();
 
-  worker_process_add(make_unique<WorkerProcess>(loop, pid, ipc_fd));
+  worker_process_add(std::make_unique<WorkerProcess>(loop, pid, ipc_fd));
 
   if (!get_config()->pid_file.empty()) {
     save_pid();

@@ -242,7 +242,7 @@ struct Response {
   void resource_pushed(const StringRef &scheme, const StringRef &authority,
                        const StringRef &path) {
     if (!pushed_resources) {
-      pushed_resources = make_unique<
+      pushed_resources = std::make_unique<
           std::vector<std::tuple<StringRef, StringRef, StringRef>>>();
     }
     pushed_resources->emplace_back(scheme, authority, path);

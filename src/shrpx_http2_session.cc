@@ -307,7 +307,7 @@ int Http2Session::disconnect(bool hard) {
 int Http2Session::resolve_name() {
   int rv;
 
-  auto dns_query = make_unique<DNSQuery>(
+  auto dns_query = std::make_unique<DNSQuery>(
       addr_->host, [this](int status, const Address *result) {
         int rv;
 
@@ -321,7 +321,7 @@ int Http2Session::resolve_name() {
           delete this;
         }
       });
-  resolved_addr_ = make_unique<Address>();
+  resolved_addr_ = std::make_unique<Address>();
   auto dns_tracker = worker_->get_dns_tracker();
   rv = dns_tracker->resolve(resolved_addr_.get(), dns_query.get());
   switch (rv) {
@@ -405,7 +405,7 @@ int Http2Session::initiate_connection() {
     on_read_ = &Http2Session::downstream_read_proxy;
     on_write_ = &Http2Session::downstream_connect_proxy;
 
-    proxy_htp_ = make_unique<http_parser>();
+    proxy_htp_ = std::make_unique<http_parser>();
     http_parser_init(proxy_htp_.get(), HTTP_RESPONSE);
     proxy_htp_->data = this;
 
@@ -749,7 +749,7 @@ int Http2Session::submit_request(Http2DownstreamConnection *dconn,
                                  const nghttp2_nv *nva, size_t nvlen,
                                  const nghttp2_data_provider *data_prd) {
   assert(state_ == CONNECTED);
-  auto sd = make_unique<StreamData>();
+  auto sd = std::make_unique<StreamData>();
   sd->dlnext = sd->dlprev = nullptr;
   // TODO Specify nullptr to pri_spec for now
   auto stream_id =
@@ -2215,7 +2215,7 @@ int Http2Session::handle_downstream_push_promise(Downstream *downstream,
 
   auto handler = upstream->get_client_handler();
 
-  auto promised_dconn = make_unique<Http2DownstreamConnection>(this);
+  auto promised_dconn = std::make_unique<Http2DownstreamConnection>(this);
   promised_dconn->set_client_handler(handler);
 
   auto ptr = promised_dconn.get();
@@ -2225,7 +2225,7 @@ int Http2Session::handle_downstream_push_promise(Downstream *downstream,
     return -1;
   }
 
-  auto promised_sd = make_unique<StreamData>();
+  auto promised_sd = std::make_unique<StreamData>();
 
   nghttp2_session_set_stream_user_data(session_, promised_stream_id,
                                        promised_sd.get());

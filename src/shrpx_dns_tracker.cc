@@ -106,7 +106,7 @@ int DNSTracker::resolve(Address *result, DNSQuery *dnsq) {
       LOG(INFO) << "DNS entry not found for " << dnsq->host;
     }
 
-    auto resolv = make_unique<DualDNSResolver>(loop_);
+    auto resolv = std::make_unique<DualDNSResolver>(loop_);
     auto host_copy =
         ImmutableString{std::begin(dnsq->host), std::end(dnsq->host)};
     auto host = StringRef{host_copy};
@@ -180,7 +180,7 @@ int DNSTracker::resolve(Address *result, DNSQuery *dnsq) {
                 << ", but it has been expired";
     }
 
-    auto resolv = make_unique<DualDNSResolver>(loop_);
+    auto resolv = std::make_unique<DualDNSResolver>(loop_);
     auto host = StringRef{ent.host};
 
     rv = resolv->resolve(host);

@@ -211,7 +211,7 @@ void rate_period_timeout_w_cb(struct ev_loop *loop, ev_timer *w, int revents) {
       --worker->nreqs_rem;
     }
     auto client =
-        make_unique<Client>(worker->next_client_id++, worker, req_todo);
+        std::make_unique<Client>(worker->next_client_id++, worker, req_todo);
 
     ++worker->nconns_made;
 
@@ -869,9 +869,9 @@ int Client::connection_made() {
     if (next_proto) {
       auto proto = StringRef{next_proto, next_proto_len};
       if (util::check_h2_is_selected(proto)) {
-        session = make_unique<Http2Session>(this);
+        session = std::make_unique<Http2Session>(this);
       } else if (util::streq(NGHTTP2_H1_1, proto)) {
-        session = make_unique<Http1Session>(this);
+        session = std::make_unique<Http1Session>(this);
       }
 
       // Just assign next_proto to selected_proto anyway to show the
@@ -886,7 +886,7 @@ int Client::connection_made() {
           std::cout
               << "Server does not support NPN/ALPN. Falling back to HTTP/1.1."
               << std::endl;
-          session = make_unique<Http1Session>(this);
+          session = std::make_unique<Http1Session>(this);
           selected_proto = NGHTTP2_H1_1.str();
           break;
         }
@@ -910,11 +910,11 @@ int Client::connection_made() {
   } else {
     switch (config.no_tls_proto) {
     case Config::PROTO_HTTP2:
-      session = make_unique<Http2Session>(this);
+      session = std::make_unique<Http2Session>(this);
       selected_proto = NGHTTP2_CLEARTEXT_PROTO_VERSION_ID;
       break;
     case Config::PROTO_HTTP1_1:
-      session = make_unique<Http1Session>(this);
+      session = std::make_unique<Http1Session>(this);
       selected_proto = NGHTTP2_H1_1.str();
       break;
     default:
@@ -1319,7 +1319,7 @@ void Worker::run() {
         --nreqs_rem;
       }
 
-      auto client = make_unique<Client>(next_client_id++, this, req_todo);
+      auto client = std::make_unique<Client>(next_client_id++, this, req_todo);
       if (client->connect() != 0) {
         std::cerr << "client could not connect to host" << std::endl;
         client->fail();
@@ -1513,7 +1513,7 @@ process_time_stats(const std::vector<std::unique_ptr<Worker>> &workers) {
 namespace {
 void resolve_host() {
   if (config.base_uri_unix) {
-    auto res = make_unique<addrinfo>();
+    auto res = std::make_unique<addrinfo>();
     res->ai_family = config.unix_addr.sun_family;
     res->ai_socktype = SOCK_STREAM;
     res->ai_addrlen = sizeof(config.unix_addr);
@@ -1722,13 +1722,13 @@ std::unique_ptr<Worker> create_worker(uint32_t id, SSL_CTX *ssl_ctx,
   }
 
   if (config.is_rate_mode()) {
-    return make_unique<Worker>(id, ssl_ctx, nreqs, nclients, rate, max_samples,
-                               &config);
+    return std::make_unique<Worker>(id, ssl_ctx, nreqs, nclients, rate,
+                                    max_samples, &config);
   } else {
     // Here rate is same as client because the rate_timeout callback
     // will be called only once
-    return make_unique<Worker>(id, ssl_ctx, nreqs, nclients, nclients,
-                               max_samples, &config);
+    return std::make_unique<Worker>(id, ssl_ctx, nreqs, nclients, nclients,
+                                    max_samples, &config);
   }
 }
 } // namespace

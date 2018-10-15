@@ -238,7 +238,7 @@ int ConnectionHandler::create_single_worker() {
     }
   }
 
-  single_worker_ = make_unique<Worker>(
+  single_worker_ = std::make_unique<Worker>(
       loop_, sv_ssl_ctx, cl_ssl_ctx, session_cache_ssl_ctx, cert_tree_.get(),
       ticket_keys_, this, config->conn.downstream);
 #ifdef HAVE_MRUBY
@@ -299,7 +299,7 @@ int ConnectionHandler::create_worker_thread(size_t num) {
   for (size_t i = 0; i < num; ++i) {
     auto loop = ev_loop_new(config->ev_loop_flags);
 
-    auto worker = make_unique<Worker>(
+    auto worker = std::make_unique<Worker>(
         loop, sv_ssl_ctx, cl_ssl_ctx, session_cache_ssl_ctx, cert_tree_.get(),
         ticket_keys_, this, config->conn.downstream);
 #  ifdef HAVE_MRUBY

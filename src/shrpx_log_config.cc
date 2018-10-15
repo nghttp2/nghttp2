@@ -59,7 +59,7 @@ LogConfig::LogConfig()
 #ifndef NOTHREADS
 #  ifdef HAVE_THREAD_LOCAL
 namespace {
-thread_local std::unique_ptr<LogConfig> config = make_unique<LogConfig>();
+thread_local std::unique_ptr<LogConfig> config = std::make_unique<LogConfig>();
 } // namespace
 
 LogConfig *log_config() { return config.get(); }
@@ -88,7 +88,7 @@ void delete_log_config() { delete log_config(); }
 #  endif // !HAVE_THREAD_LOCAL
 #else    // NOTHREADS
 namespace {
-std::unique_ptr<LogConfig> config = make_unique<LogConfig>();
+std::unique_ptr<LogConfig> config = std::make_unique<LogConfig>();
 } // namespace
 
 LogConfig *log_config() { return config.get(); }

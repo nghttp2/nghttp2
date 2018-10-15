@@ -227,7 +227,7 @@ int LiveCheck::initiate_connection() {
 
   if (addr_->dns) {
     if (!dns_query_) {
-      auto dns_query = make_unique<DNSQuery>(
+      auto dns_query = std::make_unique<DNSQuery>(
           addr_->host, [this](int status, const Address *result) {
             int rv;
 
@@ -242,7 +242,7 @@ int LiveCheck::initiate_connection() {
       auto dns_tracker = worker_->get_dns_tracker();
 
       if (!resolved_addr_) {
-        resolved_addr_ = make_unique<Address>();
+        resolved_addr_ = std::make_unique<Address>();
       }
 
       rv = dns_tracker->resolve(resolved_addr_.get(), dns_query.get());

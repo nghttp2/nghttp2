@@ -478,7 +478,7 @@ void ClientHandler::setup_upstream_io_callback() {
     // For non-TLS version, first create HttpsUpstream. It may be
     // upgraded to HTTP/2 through HTTP Upgrade or direct HTTP/2
     // connection.
-    upstream_ = make_unique<HttpsUpstream>(this);
+    upstream_ = std::make_unique<HttpsUpstream>(this);
     alpn_ = StringRef::from_lit("http/1.1");
     read_ = &ClientHandler::read_clear;
     write_ = &ClientHandler::write_clear;
@@ -584,7 +584,7 @@ int ClientHandler::validate_next_proto() {
   if (util::check_h2_is_selected(proto)) {
     on_read_ = &ClientHandler::upstream_http2_connhd_read;
 
-    auto http2_upstream = make_unique<Http2Upstream>(this);
+    auto http2_upstream = std::make_unique<Http2Upstream>(this);
 
     upstream_ = std::move(http2_upstream);
     alpn_ = make_string_ref(balloc_, proto);
@@ -600,7 +600,7 @@ int ClientHandler::validate_next_proto() {
   }
 
   if (proto == StringRef::from_lit("http/1.1")) {
-    upstream_ = make_unique<HttpsUpstream>(this);
+    upstream_ = std::make_unique<HttpsUpstream>(this);
     alpn_ = StringRef::from_lit("http/1.1");
 
     // At this point, input buffer is already filled with some bytes.
@@ -953,9 +953,9 @@ ClientHandler::get_downstream_connection(int &err, Downstream *downstream,
 
   switch (faddr_->alt_mode) {
   case ALTMODE_API:
-    return make_unique<APIDownstreamConnection>(worker_);
+    return std::make_unique<APIDownstreamConnection>(worker_);
   case ALTMODE_HEALTHMON:
-    return make_unique<HealthMonitorDownstreamConnection>();
+    return std::make_unique<HealthMonitorDownstreamConnection>();
   }
 
   auto &balloc = downstream->get_block_allocator();
@@ -1058,7 +1058,7 @@ ClientHandler::get_downstream_connection(int &err, Downstream *downstream,
     if (addr->proto == PROTO_HTTP2) {
       auto http2session = select_http2_session_with_affinity(group, addr);
 
-      auto dconn = make_unique<Http2DownstreamConnection>(http2session);
+      auto dconn = std::make_unique<Http2DownstreamConnection>(http2session);
 
       dconn->set_client_handler(this);
 
@@ -1069,8 +1069,8 @@ ClientHandler::get_downstream_connection(int &err, Downstream *downstream,
     auto dconn = dconn_pool->pop_downstream_connection();
 
     if (!dconn) {
-      dconn = make_unique<HttpDownstreamConnection>(group, aff_idx, conn_.loop,
-                                                    worker_);
+      dconn = std::make_unique<HttpDownstreamConnection>(group, aff_idx,
+                                                         conn_.loop, worker_);
     }
 
     dconn->set_client_handler(this);
@@ -1129,7 +1129,7 @@ ClientHandler::get_downstream_connection(int &err, Downstream *downstream,
       return nullptr;
     }
 
-    auto dconn = make_unique<Http2DownstreamConnection>(http2session);
+    auto dconn = std::make_unique<Http2DownstreamConnection>(http2session);
 
     dconn->set_client_handler(this);
 
@@ -1152,8 +1152,8 @@ ClientHandler::get_downstream_connection(int &err, Downstream *downstream,
                        << " Create new one";
     }
 
-    dconn =
-        make_unique<HttpDownstreamConnection>(group, 0, conn_.loop, worker_);
+    dconn = std::make_unique<HttpDownstreamConnection>(group, 0, conn_.loop,
+                                                       worker_);
   }
 
   dconn->set_client_handler(this);
@@ -1166,14 +1166,14 @@ MemchunkPool *ClientHandler::get_mcpool() { return worker_->get_mcpool(); }
 SSL *ClientHandler::get_ssl() const { return conn_.tls.ssl; }
 
 void ClientHandler::direct_http2_upgrade() {
-  upstream_ = make_unique<Http2Upstream>(this);
+  upstream_ = std::make_unique<Http2Upstream>(this);
   alpn_ = StringRef::from_lit(NGHTTP2_CLEARTEXT_PROTO_VERSION_ID);
   on_read_ = &ClientHandler::upstream_read;
   write_ = &ClientHandler::write_clear;
 }
 
 int ClientHandler::perform_http2_upgrade(HttpsUpstream *http) {
-  auto upstream = make_unique<Http2Upstream>(this);
+  auto upstream = std::make_unique<Http2Upstream>(this);
 
   auto output = upstream->get_response_buf();
 

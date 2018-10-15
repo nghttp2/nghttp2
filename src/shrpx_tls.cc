@@ -329,7 +329,7 @@ int tls_session_new_cb(SSL *ssl, SSL_SESSION *session) {
     LOG(INFO) << "Memcached: cache session, id=" << util::format_hex(id, idlen);
   }
 
-  auto req = make_unique<MemcachedRequest>();
+  auto req = std::make_unique<MemcachedRequest>();
   req->op = MEMCACHED_OP_ADD;
   req->key = MEMCACHED_SESSION_CACHE_KEY_PREFIX.str();
   req->key +=
@@ -397,7 +397,7 @@ SSL_SESSION *tls_session_get_cb(SSL *ssl,
               << util::format_hex(id, idlen);
   }
 
-  auto req = make_unique<MemcachedRequest>();
+  auto req = std::make_unique<MemcachedRequest>();
   req->op = MEMCACHED_OP_GET;
   req->key = MEMCACHED_SESSION_CACHE_KEY_PREFIX.str();
   req->key +=
@@ -1831,7 +1831,7 @@ std::unique_ptr<CertLookupTree> create_cert_lookup_tree() {
   if (!upstream_tls_enabled(config->conn)) {
     return nullptr;
   }
-  return make_unique<CertLookupTree>();
+  return std::make_unique<CertLookupTree>();
 }
 
 namespace {

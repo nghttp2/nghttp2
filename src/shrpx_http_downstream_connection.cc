@@ -316,7 +316,7 @@ int HttpDownstreamConnection::initiate_connection() {
 
       if (addr->dns) {
         if (!check_dns_result) {
-          auto dns_query = make_unique<DNSQuery>(
+          auto dns_query = std::make_unique<DNSQuery>(
               addr->host, [this](int status, const Address *result) {
                 int rv;
 
@@ -335,7 +335,7 @@ int HttpDownstreamConnection::initiate_connection() {
           auto dns_tracker = worker_->get_dns_tracker();
 
           if (!resolved_addr_) {
-            resolved_addr_ = make_unique<Address>();
+            resolved_addr_ = std::make_unique<Address>();
           }
           rv = dns_tracker->resolve(resolved_addr_.get(), dns_query.get());
           switch (rv) {

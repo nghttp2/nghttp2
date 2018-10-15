@@ -67,7 +67,7 @@ void Router::add_node(RNode *node, const char *pattern, size_t patlen,
                       ssize_t index, ssize_t wildcard_index) {
   auto pat = make_string_ref(balloc_, StringRef{pattern, patlen});
   auto new_node =
-      make_unique<RNode>(pat.c_str(), pat.size(), index, wildcard_index);
+      std::make_unique<RNode>(pat.c_str(), pat.size(), index, wildcard_index);
   add_next_node(node, std::move(new_node));
 }
 
@@ -131,8 +131,8 @@ size_t Router::add_route(const StringRef &pattern, size_t idx, bool wildcard) {
     if (node->len > j) {
       // node must be split into 2 nodes.  new_node is now the child
       // of node.
-      auto new_node = make_unique<RNode>(&node->s[j], node->len - j,
-                                         node->index, node->wildcard_index);
+      auto new_node = std::make_unique<RNode>(
+          &node->s[j], node->len - j, node->index, node->wildcard_index);
       std::swap(node->next, new_node->next);
 
       node->len = j;

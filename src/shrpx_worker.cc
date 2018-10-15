@@ -133,7 +133,7 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
       conn_handler_(conn_handler),
       ticket_keys_(ticket_keys),
       connect_blocker_(
-          make_unique<ConnectBlocker>(randgen_, loop_, []() {}, []() {})),
+          std::make_unique<ConnectBlocker>(randgen_, loop_, []() {}, []() {})),
       graceful_shutdown_(false) {
   ev_async_init(&w_, eventcb);
   w_.data = this;
@@ -148,7 +148,7 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
   auto &session_cacheconf = get_config()->tls.session_cache;
 
   if (!session_cacheconf.memcached.host.empty()) {
-    session_cache_memcached_dispatcher_ = make_unique<MemcachedDispatcher>(
+    session_cache_memcached_dispatcher_ = std::make_unique<MemcachedDispatcher>(
         &session_cacheconf.memcached.addr, loop,
         tls_session_cache_memcached_ssl_ctx,
         StringRef{session_cacheconf.memcached.host}, &mcpool_, randgen_);
@@ -250,35 +250,35 @@ void Worker::replace_downstream_config(
 
       auto shared_addr_ptr = shared_addr.get();
 
-      dst_addr.connect_blocker =
-          make_unique<ConnectBlocker>(randgen_, loop_,
-                                      [shared_addr_ptr, &dst_addr]() {
-                                        switch (dst_addr.proto) {
-                                        case PROTO_HTTP1:
-                                          --shared_addr_ptr->http1_pri.weight;
-                                          break;
-                                        case PROTO_HTTP2:
-                                          --shared_addr_ptr->http2_pri.weight;
-                                          break;
-                                        default:
-                                          assert(0);
-                                        }
-                                      },
-                                      [shared_addr_ptr, &dst_addr]() {
-                                        switch (dst_addr.proto) {
-                                        case PROTO_HTTP1:
-                                          ++shared_addr_ptr->http1_pri.weight;
-                                          break;
-                                        case PROTO_HTTP2:
-                                          ++shared_addr_ptr->http2_pri.weight;
-                                          break;
-                                        default:
-                                          assert(0);
-                                        }
-                                      });
+      dst_addr.connect_blocker = std::make_unique<ConnectBlocker>(
+          randgen_, loop_,
+          [shared_addr_ptr, &dst_addr]() {
+            switch (dst_addr.proto) {
+            case PROTO_HTTP1:
+              --shared_addr_ptr->http1_pri.weight;
+              break;
+            case PROTO_HTTP2:
+              --shared_addr_ptr->http2_pri.weight;
+              break;
+            default:
+              assert(0);
+            }
+          },
+          [shared_addr_ptr, &dst_addr]() {
+            switch (dst_addr.proto) {
+            case PROTO_HTTP1:
+              ++shared_addr_ptr->http1_pri.weight;
+              break;
+            case PROTO_HTTP2:
+              ++shared_addr_ptr->http2_pri.weight;
+              break;
+            default:
+              assert(0);
+            }
+          });
 
-      dst_addr.live_check =
-          make_unique<LiveCheck>(loop_, cl_ssl_ctx_, this, &dst_addr, randgen_);
+      dst_addr.live_check = std::make_unique<LiveCheck>(
+          loop_, cl_ssl_ctx_, this, &dst_addr, randgen_);
 
       if (dst_addr.proto == PROTO_HTTP2) {
         ++num_http2;
@@ -305,7 +305,7 @@ void Worker::replace_downstream_config(
 
       if (shared_addr->affinity.type != AFFINITY_NONE) {
         for (auto &addr : shared_addr->addrs) {
-          addr.dconn_pool = make_unique<DownstreamConnectionPool>();
+          addr.dconn_pool = std::make_unique<DownstreamConnectionPool>();
         }
       }
 

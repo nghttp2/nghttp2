@@ -160,7 +160,7 @@ bool is_secure(const StringRef &filename) {
 std::unique_ptr<TicketKeys>
 read_tls_ticket_key_file(const std::vector<StringRef> &files,
                          const EVP_CIPHER *cipher, const EVP_MD *hmac) {
-  auto ticket_keys = make_unique<TicketKeys>();
+  auto ticket_keys = std::make_unique<TicketKeys>();
   auto &keys = ticket_keys->keys;
   keys.resize(files.size());
   auto enc_keylen = EVP_CIPHER_key_length(cipher);
