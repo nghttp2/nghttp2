@@ -110,13 +110,13 @@ int signal_set_handler(void (*handler)(int), Signals &&sigs) {
 } // namespace
 
 namespace {
-constexpr auto master_proc_ign_signals = std::array<int, 1>{{SIGPIPE}};
+constexpr auto master_proc_ign_signals = std::array<int, 1>{SIGPIPE};
 } // namespace
 
 namespace {
 constexpr auto worker_proc_ign_signals =
-    std::array<int, 5>{{REOPEN_LOG_SIGNAL, EXEC_BINARY_SIGNAL,
-                        GRACEFUL_SHUTDOWN_SIGNAL, RELOAD_SIGNAL, SIGPIPE}};
+    std::array<int, 5>{REOPEN_LOG_SIGNAL, EXEC_BINARY_SIGNAL,
+                       GRACEFUL_SHUTDOWN_SIGNAL, RELOAD_SIGNAL, SIGPIPE};
 } // namespace
 
 int shrpx_signal_set_master_proc_ign_handler() {

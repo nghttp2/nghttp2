@@ -1319,7 +1319,7 @@ int ClientHandler::proxy_protocol_read() {
   // NULL character really destroys functions which expects NULL
   // terminated string.  We won't expect it in PROXY protocol line, so
   // find it here.
-  auto chrs = std::array<char, 2>{{'\n', '\0'}};
+  auto chrs = std::array<char, 2>{'\n', '\0'};
 
   constexpr size_t MAX_PROXY_LINELEN = 107;
 

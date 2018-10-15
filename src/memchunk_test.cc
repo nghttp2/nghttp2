@@ -224,10 +224,10 @@ void test_peek_memchunks_append(void) {
   MemchunkPool16 pool;
   PeekMemchunks16 pchunks(&pool);
 
-  std::array<uint8_t, 32> b{{
+  std::array<uint8_t, 32> b{
       '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0',
       '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '1',
-  }},
+  },
       d;
 
   pchunks.append(b.data(), b.size());
@@ -259,10 +259,10 @@ void test_peek_memchunks_disable_peek_drain(void) {
   MemchunkPool16 pool;
   PeekMemchunks16 pchunks(&pool);
 
-  std::array<uint8_t, 32> b{{
+  std::array<uint8_t, 32> b{
       '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0',
       '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '1',
-  }},
+  },
       d;
 
   pchunks.append(b.data(), b.size());
@@ -287,10 +287,10 @@ void test_peek_memchunks_disable_peek_no_drain(void) {
   MemchunkPool16 pool;
   PeekMemchunks16 pchunks(&pool);
 
-  std::array<uint8_t, 32> b{{
+  std::array<uint8_t, 32> b{
       '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0',
       '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '1',
-  }},
+  },
       d;
 
   pchunks.append(b.data(), b.size());
@@ -315,10 +315,10 @@ void test_peek_memchunks_reset(void) {
   MemchunkPool16 pool;
   PeekMemchunks16 pchunks(&pool);
 
-  std::array<uint8_t, 32> b{{
+  std::array<uint8_t, 32> b{
       '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0',
       '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '1',
-  }},
+  },
       d;
 
   pchunks.append(b.data(), b.size());
