@@ -420,13 +420,13 @@ struct AltSvc {
   uint16_t port;
 };
 
-enum UpstreamAltMode {
+enum class UpstreamAltMode {
   // No alternative mode
-  ALTMODE_NONE,
+  NONE,
   // API processing mode
-  ALTMODE_API,
+  API,
   // Health monitor mode
-  ALTMODE_HEALTHMON,
+  HEALTHMON,
 };
 
 struct UpstreamAddr {
@@ -444,7 +444,7 @@ struct UpstreamAddr {
   // domain socket, this is 0.
   int family;
   // Alternate mode
-  int alt_mode;
+  UpstreamAltMode alt_mode;
   // true if |host| contains UNIX domain socket path.
   bool host_unix;
   // true if TLS is enabled.

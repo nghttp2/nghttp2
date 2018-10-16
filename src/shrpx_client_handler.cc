@@ -952,10 +952,12 @@ ClientHandler::get_downstream_connection(int &err, Downstream *downstream,
   err = 0;
 
   switch (faddr_->alt_mode) {
-  case ALTMODE_API:
+  case UpstreamAltMode::API:
     return std::make_unique<APIDownstreamConnection>(worker_);
-  case ALTMODE_HEALTHMON:
+  case UpstreamAltMode::HEALTHMON:
     return std::make_unique<HealthMonitorDownstreamConnection>();
+  default:
+    break;
   }
 
   auto &balloc = downstream->get_block_allocator();

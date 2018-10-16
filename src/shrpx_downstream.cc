@@ -610,7 +610,7 @@ bool Downstream::request_buf_full() {
   auto worker = handler->get_worker();
 
   // We don't check buffer size here for API endpoint.
-  if (faddr->alt_mode == ALTMODE_API) {
+  if (faddr->alt_mode == UpstreamAltMode::API) {
     return false;
   }
 

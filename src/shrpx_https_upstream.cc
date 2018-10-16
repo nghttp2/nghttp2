@@ -413,7 +413,8 @@ int htp_hdrs_completecb(http_parser *htp) {
 
   // mruby hook may change method value
 
-  if (req.no_authority && config->http2_proxy && !faddr->alt_mode) {
+  if (req.no_authority && config->http2_proxy &&
+      faddr->alt_mode == UpstreamAltMode::NONE) {
     // Request URI should be absolute-form for client proxy mode
     return -1;
   }
@@ -464,7 +465,7 @@ int htp_hdrs_completecb(http_parser *htp) {
     return -1;
   }
 
-  if (faddr->alt_mode) {
+  if (faddr->alt_mode != UpstreamAltMode::NONE) {
     // Normally, we forward expect: 100-continue to backend server,
     // and let them decide whether responds with 100 Continue or not.
     // For alternative mode, we have no backend, so just send 100

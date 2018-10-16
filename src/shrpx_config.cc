@@ -756,7 +756,7 @@ int parse_memcached_connection_params(MemcachedConnectionParams &out,
 } // namespace
 
 struct UpstreamParams {
-  int alt_mode;
+  UpstreamAltMode alt_mode;
   bool tls;
   bool sni_fwd;
   bool proxyproto;
@@ -779,17 +779,19 @@ int parse_upstream_params(UpstreamParams &out, const StringRef &src_params) {
     } else if (util::strieq_l("no-tls", param)) {
       out.tls = false;
     } else if (util::strieq_l("api", param)) {
-      if (out.alt_mode && out.alt_mode != ALTMODE_API) {
+      if (out.alt_mode != UpstreamAltMode::NONE &&
+          out.alt_mode != UpstreamAltMode::API) {
         LOG(ERROR) << "frontend: api and healthmon are mutually exclusive";
         return -1;
       }
-      out.alt_mode = ALTMODE_API;
+      out.alt_mode = UpstreamAltMode::API;
     } else if (util::strieq_l("healthmon", param)) {
-      if (out.alt_mode && out.alt_mode != ALTMODE_HEALTHMON) {
+      if (out.alt_mode != UpstreamAltMode::NONE &&
+          out.alt_mode != UpstreamAltMode::HEALTHMON) {
         LOG(ERROR) << "frontend: api and healthmon are mutually exclusive";
         return -1;
       }
-      out.alt_mode = ALTMODE_HEALTHMON;
+      out.alt_mode = UpstreamAltMode::HEALTHMON;
     } else if (util::strieq_l("proxyproto", param)) {
       out.proxyproto = true;
     } else if (!param.empty()) {
@@ -2572,7 +2574,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     addr.alt_mode = params.alt_mode;
     addr.accept_proxy_protocol = params.proxyproto;
 
-    if (addr.alt_mode == ALTMODE_API) {
+    if (addr.alt_mode == UpstreamAltMode::API) {
       apiconf.enabled = true;
     }
 

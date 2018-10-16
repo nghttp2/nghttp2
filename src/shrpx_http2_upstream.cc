@@ -358,8 +358,8 @@ int Http2Upstream::on_request_headers(Downstream *downstream,
   auto faddr = handler_->get_upstream_addr();
 
   // For HTTP/2 proxy, we require :authority.
-  if (method_token != HTTP_CONNECT && config->http2_proxy && !faddr->alt_mode &&
-      !authority) {
+  if (method_token != HTTP_CONNECT && config->http2_proxy &&
+      faddr->alt_mode == UpstreamAltMode::NONE && !authority) {
     rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
     return 0;
   }
@@ -383,7 +383,8 @@ int Http2Upstream::on_request_headers(Downstream *downstream,
     if (method_token == HTTP_OPTIONS &&
         path->value == StringRef::from_lit("*")) {
       // Server-wide OPTIONS request.  Path is empty.
-    } else if (config->http2_proxy && !faddr->alt_mode) {
+    } else if (config->http2_proxy &&
+               faddr->alt_mode == UpstreamAltMode::NONE) {
       req.path = path->value;
     } else {
       req.path = http2::rewrite_clean_path(downstream->get_block_allocator(),
@@ -1026,10 +1027,11 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
 
   auto faddr = handler_->get_upstream_addr();
 
-  rv = nghttp2_session_server_new2(
-      &session_, http2conf.upstream.callbacks, this,
-      faddr->alt_mode ? http2conf.upstream.alt_mode_option
-                      : http2conf.upstream.option);
+  rv =
+      nghttp2_session_server_new2(&session_, http2conf.upstream.callbacks, this,
+                                  faddr->alt_mode != UpstreamAltMode::NONE
+                                      ? http2conf.upstream.alt_mode_option
+                                      : http2conf.upstream.option);
 
   assert(rv == 0);
 
@@ -1043,7 +1045,7 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
   entry[0].value = http2conf.upstream.max_concurrent_streams;
 
   entry[1].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
-  if (faddr->alt_mode) {
+  if (faddr->alt_mode != UpstreamAltMode::NONE) {
     entry[1].value = (1u << 31) - 1;
   } else {
     entry[1].value = http2conf.upstream.window_size;
@@ -1070,7 +1072,7 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
   }
 
   auto window_size =
-      faddr->alt_mode
+      faddr->alt_mode != UpstreamAltMode::NONE
           ? std::numeric_limits<int32_t>::max()
           : http2conf.upstream.optimize_window_size
                 ? std::min(http2conf.upstream.connection_window_size,
@@ -1186,7 +1188,7 @@ int Http2Upstream::on_write() {
 
       if (http2conf.upstream.optimize_window_size) {
         auto faddr = handler_->get_upstream_addr();
-        if (!faddr->alt_mode) {
+        if (faddr->alt_mode == UpstreamAltMode::NONE) {
           auto window_size = std::min(http2conf.upstream.connection_window_size,
                                       static_cast<int32_t>(hint.rwin * 2));
 
@@ -1980,7 +1982,7 @@ int Http2Upstream::consume(int32_t stream_id, size_t len) {
 
   auto faddr = handler_->get_upstream_addr();
 
-  if (faddr->alt_mode) {
+  if (faddr->alt_mode != UpstreamAltMode::NONE) {
     return 0;
   }
 

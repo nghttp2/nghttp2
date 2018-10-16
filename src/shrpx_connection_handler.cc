@@ -407,7 +407,7 @@ int ConnectionHandler::handle_connection(int fd, sockaddr *addr, int addrlen,
 
   Worker *worker;
 
-  if (faddr->alt_mode == ALTMODE_API) {
+  if (faddr->alt_mode == UpstreamAltMode::API) {
     worker = workers_[0].get();
 
     if (LOG_ENABLED(INFO)) {
