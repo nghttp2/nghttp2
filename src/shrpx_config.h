@@ -409,9 +409,9 @@ enum shrpx_forwarded_param {
   FORWARDED_PROTO = 0x8,
 };
 
-enum shrpx_forwarded_node_type {
-  FORWARDED_NODE_OBFUSCATED,
-  FORWARDED_NODE_IP,
+enum class ForwardedNode {
+  OBFUSCATED,
+  IP,
 };
 
 struct AltSvc {
@@ -704,10 +704,10 @@ struct HttpConfig {
     uint32_t params;
     // type of value recorded in "by" parameter of Forwarded header
     // field.
-    shrpx_forwarded_node_type by_node_type;
+    ForwardedNode by_node_type;
     // type of value recorded in "for" parameter of Forwarded header
     // field.
-    shrpx_forwarded_node_type for_node_type;
+    ForwardedNode for_node_type;
     bool strip_incoming;
   } forwarded;
   struct {

@@ -1195,27 +1195,27 @@ int parse_mapping(Config *config, DownstreamAddrConfig &addr,
 } // namespace
 
 namespace {
-int parse_forwarded_node_type(const StringRef &optarg) {
+ForwardedNode parse_forwarded_node_type(const StringRef &optarg) {
   if (util::strieq_l("obfuscated", optarg)) {
-    return FORWARDED_NODE_OBFUSCATED;
+    return ForwardedNode::OBFUSCATED;
   }
 
   if (util::strieq_l("ip", optarg)) {
-    return FORWARDED_NODE_IP;
+    return ForwardedNode::IP;
   }
 
   if (optarg.size() < 2 || optarg[0] != '_') {
-    return -1;
+    return static_cast<ForwardedNode>(-1);
   }
 
   if (std::find_if_not(std::begin(optarg), std::end(optarg), [](char c) {
         return util::is_alpha(c) || util::is_digit(c) || c == '.' || c == '_' ||
                c == '-';
       }) != std::end(optarg)) {
-    return -1;
+    return static_cast<ForwardedNode>(-1);
   }
 
-  return FORWARDED_NODE_OBFUSCATED;
+  return ForwardedNode::OBFUSCATED;
 }
 } // namespace
 
@@ -3387,7 +3387,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
   case SHRPX_OPTID_FORWARDED_FOR: {
     auto type = parse_forwarded_node_type(optarg);
 
-    if (type == -1 ||
+    if (type == static_cast<ForwardedNode>(-1) ||
         (optid == SHRPX_OPTID_FORWARDED_FOR && optarg[0] == '_')) {
       LOG(ERROR) << opt << ": unknown node type or illegal obfuscated string "
                  << optarg;
@@ -3398,7 +3398,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
 
     switch (optid) {
     case SHRPX_OPTID_FORWARDED_BY:
-      fwdconf.by_node_type = static_cast<shrpx_forwarded_node_type>(type);
+      fwdconf.by_node_type = type;
       if (optarg[0] == '_') {
         fwdconf.by_obfuscated = make_string_ref(config->balloc, optarg);
       } else {
@@ -3406,7 +3406,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
       }
       break;
     case SHRPX_OPTID_FORWARDED_FOR:
-      fwdconf.for_node_type = static_cast<shrpx_forwarded_node_type>(type);
+      fwdconf.for_node_type = type;
       break;
     }
 

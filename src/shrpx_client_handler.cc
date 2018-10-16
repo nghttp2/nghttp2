@@ -430,7 +430,7 @@ ClientHandler::ClientHandler(Worker *worker, int fd, SSL *ssl,
   auto &fwdconf = config->http.forwarded;
 
   if (fwdconf.params & FORWARDED_FOR) {
-    if (fwdconf.for_node_type == FORWARDED_NODE_OBFUSCATED) {
+    if (fwdconf.for_node_type == ForwardedNode::OBFUSCATED) {
       // 1 for '_'
       auto len = SHRPX_OBFUSCATED_NODE_LENGTH + 1;
       // 1 for terminating NUL.
@@ -1490,7 +1490,7 @@ int ClientHandler::proxy_protocol_read() {
   auto &fwdconf = config->http.forwarded;
 
   if ((fwdconf.params & FORWARDED_FOR) &&
-      fwdconf.for_node_type == FORWARDED_NODE_IP) {
+      fwdconf.for_node_type == ForwardedNode::IP) {
     init_forwarded_for(family, ipaddr_);
   }
 
@@ -1500,7 +1500,7 @@ int ClientHandler::proxy_protocol_read() {
 StringRef ClientHandler::get_forwarded_by() const {
   auto &fwdconf = get_config()->http.forwarded;
 
-  if (fwdconf.by_node_type == FORWARDED_NODE_OBFUSCATED) {
+  if (fwdconf.by_node_type == ForwardedNode::OBFUSCATED) {
     return fwdconf.by_obfuscated;
   }
 

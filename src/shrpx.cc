@@ -3085,7 +3085,7 @@ int process_options(Config *config,
 
   auto &fwdconf = config->http.forwarded;
 
-  if (fwdconf.by_node_type == FORWARDED_NODE_OBFUSCATED &&
+  if (fwdconf.by_node_type == ForwardedNode::OBFUSCATED &&
       fwdconf.by_obfuscated.empty()) {
     // 2 for '_' and terminal NULL
     auto iov = make_byte_ref(config->balloc, SHRPX_OBFUSCATED_NODE_LENGTH + 2);
