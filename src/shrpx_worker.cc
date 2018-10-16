@@ -77,8 +77,8 @@ DownstreamAddrGroup::~DownstreamAddrGroup() {}
 using DownstreamKey =
     std::tuple<std::vector<std::tuple<StringRef, StringRef, size_t, size_t,
                                       Proto, uint16_t, bool, bool, bool, bool>>,
-               bool, SessionAffinity, StringRef, StringRef, int, int64_t,
-               int64_t>;
+               bool, SessionAffinity, StringRef, StringRef,
+               SessionAffinityCookieSecure, int64_t, int64_t>;
 
 namespace {
 DownstreamKey create_downstream_key(

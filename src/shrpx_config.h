@@ -378,14 +378,14 @@ enum class SessionAffinity {
   COOKIE,
 };
 
-enum shrpx_cookie_secure {
+enum class SessionAffinityCookieSecure {
   // Secure attribute of session affinity cookie is determined by the
   // request scheme.
-  COOKIE_SECURE_AUTO,
+  AUTO,
   // Secure attribute of session affinity cookie is always set.
-  COOKIE_SECURE_YES,
+  YES,
   // Secure attribute of session affinity cookie is always unset.
-  COOKIE_SECURE_NO,
+  NO,
 };
 
 struct AffinityConfig {
@@ -397,7 +397,7 @@ struct AffinityConfig {
     // Path which a cookie is applied to.
     StringRef path;
     // Secure attribute
-    shrpx_cookie_secure secure;
+    SessionAffinityCookieSecure secure;
   } cookie;
 };
 

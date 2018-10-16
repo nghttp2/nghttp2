@@ -199,12 +199,12 @@ StringRef create_affinity_cookie(BlockAllocator &balloc, const StringRef &name,
   return StringRef{iov.base, p};
 }
 
-bool require_cookie_secure_attribute(shrpx_cookie_secure secure,
+bool require_cookie_secure_attribute(SessionAffinityCookieSecure secure,
                                      const StringRef &scheme) {
   switch (secure) {
-  case COOKIE_SECURE_AUTO:
+  case SessionAffinityCookieSecure::AUTO:
     return scheme == "https";
-  case COOKIE_SECURE_YES:
+  case SessionAffinityCookieSecure::YES:
     return true;
   default:
     return false;

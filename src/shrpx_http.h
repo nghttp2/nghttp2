@@ -76,7 +76,7 @@ StringRef create_affinity_cookie(BlockAllocator &balloc, const StringRef &name,
 
 // Returns true if |secure| indicates that Secure attribute should be
 // set.
-bool require_cookie_secure_attribute(shrpx_cookie_secure secure,
+bool require_cookie_secure_attribute(SessionAffinityCookieSecure secure,
                                      const StringRef &scheme);
 
 } // namespace http

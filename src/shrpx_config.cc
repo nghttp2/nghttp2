@@ -927,11 +927,11 @@ int parse_downstream_params(DownstreamParams &out,
     } else if (util::istarts_with_l(param, "affinity-cookie-secure=")) {
       auto valstr = StringRef{first + str_size("affinity-cookie-secure="), end};
       if (util::strieq_l("auto", valstr)) {
-        out.affinity.cookie.secure = COOKIE_SECURE_AUTO;
+        out.affinity.cookie.secure = SessionAffinityCookieSecure::AUTO;
       } else if (util::strieq_l("yes", valstr)) {
-        out.affinity.cookie.secure = COOKIE_SECURE_YES;
+        out.affinity.cookie.secure = SessionAffinityCookieSecure::YES;
       } else if (util::strieq_l("no", valstr)) {
-        out.affinity.cookie.secure = COOKIE_SECURE_NO;
+        out.affinity.cookie.secure = SessionAffinityCookieSecure::NO;
       } else {
         LOG(ERROR) << "backend: affinity-cookie-secure: value must be one of "
                       "auto, yes, and no";
