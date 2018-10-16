@@ -903,11 +903,11 @@ int parse_downstream_params(DownstreamParams &out,
     } else if (util::istarts_with_l(param, "affinity=")) {
       auto valstr = StringRef{first + str_size("affinity="), end};
       if (util::strieq_l("none", valstr)) {
-        out.affinity.type = AFFINITY_NONE;
+        out.affinity.type = SessionAffinity::NONE;
       } else if (util::strieq_l("ip", valstr)) {
-        out.affinity.type = AFFINITY_IP;
+        out.affinity.type = SessionAffinity::IP;
       } else if (util::strieq_l("cookie", valstr)) {
-        out.affinity.type = AFFINITY_COOKIE;
+        out.affinity.type = SessionAffinity::COOKIE;
       } else {
         LOG(ERROR)
             << "backend: affinity: value must be one of none, ip, and cookie";
@@ -1004,7 +1004,7 @@ int parse_mapping(Config *config, DownstreamAddrConfig &addr,
     return -1;
   }
 
-  if (params.affinity.type == AFFINITY_COOKIE &&
+  if (params.affinity.type == SessionAffinity::COOKIE &&
       params.affinity.cookie.name.empty()) {
     LOG(ERROR) << "backend: affinity-cookie-name is mandatory if "
                   "affinity=cookie is specified";
@@ -1056,10 +1056,10 @@ int parse_mapping(Config *config, DownstreamAddrConfig &addr,
       auto &g = addr_groups[(*it).second];
       // Last value wins if we have multiple different affinity
       // value under one group.
-      if (params.affinity.type != AFFINITY_NONE) {
-        if (g.affinity.type == AFFINITY_NONE) {
+      if (params.affinity.type != SessionAffinity::NONE) {
+        if (g.affinity.type == SessionAffinity::NONE) {
           g.affinity.type = params.affinity.type;
-          if (params.affinity.type == AFFINITY_COOKIE) {
+          if (params.affinity.type == SessionAffinity::COOKIE) {
             g.affinity.cookie.name = make_string_ref(
                 downstreamconf.balloc, params.affinity.cookie.name);
             if (!params.affinity.cookie.path.empty()) {
@@ -1129,7 +1129,7 @@ int parse_mapping(Config *config, DownstreamAddrConfig &addr,
     auto &g = addr_groups.back();
     g.addrs.push_back(addr);
     g.affinity.type = params.affinity.type;
-    if (params.affinity.type == AFFINITY_COOKIE) {
+    if (params.affinity.type == SessionAffinity::COOKIE) {
       g.affinity.cookie.name =
           make_string_ref(downstreamconf.balloc, params.affinity.cookie.name);
       if (!params.affinity.cookie.path.empty()) {
@@ -4076,7 +4076,7 @@ int configure_downstream_group(Config *config, bool http2_proxy,
       }
     }
 
-    if (g.affinity.type != AFFINITY_NONE) {
+    if (g.affinity.type != SessionAffinity::NONE) {
       size_t idx = 0;
       for (auto &addr : g.addrs) {
         StringRef key;

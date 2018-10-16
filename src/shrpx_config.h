@@ -369,13 +369,13 @@ enum class Proto {
   MEMCACHED,
 };
 
-enum shrpx_session_affinity {
+enum class SessionAffinity {
   // No session affinity
-  AFFINITY_NONE,
+  NONE,
   // Client IP affinity
-  AFFINITY_IP,
+  IP,
   // Cookie based affinity
-  AFFINITY_COOKIE,
+  COOKIE,
 };
 
 enum shrpx_cookie_secure {
@@ -390,7 +390,7 @@ enum shrpx_cookie_secure {
 
 struct AffinityConfig {
   // Type of session affinity.
-  shrpx_session_affinity type;
+  SessionAffinity type;
   struct {
     // Name of a cookie to use.
     StringRef name;
@@ -496,13 +496,15 @@ struct AffinityHash {
 
 struct DownstreamAddrGroupConfig {
   DownstreamAddrGroupConfig(const StringRef &pattern)
-      : pattern(pattern), affinity{AFFINITY_NONE}, redirect_if_not_tls(false) {}
+      : pattern(pattern),
+        affinity{SessionAffinity::NONE},
+        redirect_if_not_tls(false) {}
 
   StringRef pattern;
   StringRef mruby_file;
   std::vector<DownstreamAddrConfig> addrs;
   // Bunch of session affinity hash.  Only used if affinity ==
-  // AFFINITY_IP.
+  // SessionAffinity::IP.
   std::vector<AffinityHash> affinity_hash;
   // Cookie based session affinity configuration.
   AffinityConfig affinity;

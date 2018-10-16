@@ -660,7 +660,7 @@ void ClientHandler::pool_downstream_connection(
 
   auto &shared_addr = group->shared_addr;
 
-  if (shared_addr->affinity.type == AFFINITY_NONE) {
+  if (shared_addr->affinity.type == SessionAffinity::NONE) {
     auto &dconn_pool = group->shared_addr->dconn_pool;
     dconn_pool.add_downstream_connection(std::move(dconn));
 
@@ -1003,17 +1003,17 @@ ClientHandler::get_downstream_connection(int &err, Downstream *downstream,
   auto &group = groups[group_idx];
   auto &shared_addr = group->shared_addr;
 
-  if (shared_addr->affinity.type != AFFINITY_NONE) {
+  if (shared_addr->affinity.type != SessionAffinity::NONE) {
     uint32_t hash;
     switch (shared_addr->affinity.type) {
-    case AFFINITY_IP:
+    case SessionAffinity::IP:
       if (!affinity_hash_computed_) {
         affinity_hash_ = compute_affinity_from_ip(ipaddr_);
         affinity_hash_computed_ = true;
       }
       hash = affinity_hash_;
       break;
-    case AFFINITY_COOKIE:
+    case SessionAffinity::COOKIE:
       hash = get_affinity_cookie(downstream, shared_addr->affinity.cookie.name);
       break;
     default:

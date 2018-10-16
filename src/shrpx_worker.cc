@@ -77,7 +77,8 @@ DownstreamAddrGroup::~DownstreamAddrGroup() {}
 using DownstreamKey =
     std::tuple<std::vector<std::tuple<StringRef, StringRef, size_t, size_t,
                                       Proto, uint16_t, bool, bool, bool, bool>>,
-               bool, int, StringRef, StringRef, int, int64_t, int64_t>;
+               bool, SessionAffinity, StringRef, StringRef, int, int64_t,
+               int64_t>;
 
 namespace {
 DownstreamKey create_downstream_key(
@@ -164,7 +165,7 @@ void Worker::replace_downstream_config(
 
     auto &shared_addr = g->shared_addr;
 
-    if (shared_addr->affinity.type == AFFINITY_NONE) {
+    if (shared_addr->affinity.type == SessionAffinity::NONE) {
       shared_addr->dconn_pool.remove_all();
       continue;
     }
@@ -213,7 +214,7 @@ void Worker::replace_downstream_config(
 
     shared_addr->addrs.resize(src.addrs.size());
     shared_addr->affinity.type = src.affinity.type;
-    if (src.affinity.type == AFFINITY_COOKIE) {
+    if (src.affinity.type == SessionAffinity::COOKIE) {
       shared_addr->affinity.cookie.name =
           make_string_ref(shared_addr->balloc, src.affinity.cookie.name);
       if (!src.affinity.cookie.path.empty()) {
@@ -303,7 +304,7 @@ void Worker::replace_downstream_config(
       shared_addr->http1_pri.weight = num_http1;
       shared_addr->http2_pri.weight = num_http2;
 
-      if (shared_addr->affinity.type != AFFINITY_NONE) {
+      if (shared_addr->affinity.type != SessionAffinity::NONE) {
         for (auto &addr : shared_addr->addrs) {
           addr.dconn_pool = std::make_unique<DownstreamConnectionPool>();
         }

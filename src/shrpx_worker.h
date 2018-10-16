@@ -137,7 +137,7 @@ struct WeightedPri {
 struct SharedDownstreamAddr {
   SharedDownstreamAddr()
       : balloc(1024, 1024),
-        affinity{AFFINITY_NONE},
+        affinity{SessionAffinity::NONE},
         next{0},
         http1_pri{},
         http2_pri{},
@@ -151,7 +151,7 @@ struct SharedDownstreamAddr {
   BlockAllocator balloc;
   std::vector<DownstreamAddr> addrs;
   // Bunch of session affinity hash.  Only used if affinity ==
-  // AFFINITY_IP.
+  // SessionAffinity::IP.
   std::vector<AffinityHash> affinity_hash;
   // List of Http2Session which is not fully utilized (i.e., the
   // server advertised maximum concurrency is not reached).  We will
