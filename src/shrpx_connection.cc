@@ -121,7 +121,7 @@ void Connection::disconnect() {
     tls.warmup_writelen = 0;
     tls.last_writelen = 0;
     tls.last_readlen = 0;
-    tls.handshake_state = TLS_CONN_NORMAL;
+    tls.handshake_state = TLSHandshakeState::NORMAL;
     tls.initial_handshake_done = false;
     tls.reneg_started = false;
     tls.sct_requested = false;
@@ -354,9 +354,9 @@ int Connection::tls_handshake() {
   }
 
   switch (tls.handshake_state) {
-  case TLS_CONN_WAIT_FOR_SESSION_CACHE:
+  case TLSHandshakeState::WAIT_FOR_SESSION_CACHE:
     return SHRPX_ERR_INPROGRESS;
-  case TLS_CONN_GOT_SESSION_CACHE: {
+  case TLSHandshakeState::GOT_SESSION_CACHE: {
     // Use the same trick invented by @kazuho in h2o project.
 
     // Discard all outgoing data.
@@ -380,11 +380,13 @@ int Connection::tls_handshake() {
 
     SSL_set_accept_state(tls.ssl);
 
-    tls.handshake_state = TLS_CONN_NORMAL;
+    tls.handshake_state = TLSHandshakeState::NORMAL;
     break;
   }
-  case TLS_CONN_CANCEL_SESSION_CACHE:
-    tls.handshake_state = TLS_CONN_NORMAL;
+  case TLSHandshakeState::CANCEL_SESSION_CACHE:
+    tls.handshake_state = TLSHandshakeState::NORMAL;
+    break;
+  default:
     break;
   }
 
@@ -409,7 +411,7 @@ int Connection::tls_handshake() {
         // client, which voids the purpose of 0-RTT data.  The left
         // over of handshake is done through write_tls or read_tls.
         if (tlsconf.no_postpone_early_data &&
-            (tls.handshake_state == TLS_CONN_WRITE_STARTED ||
+            (tls.handshake_state == TLSHandshakeState::WRITE_STARTED ||
              tls.wbuf.rleft()) &&
             tls.earlybuf.rleft()) {
           rv = 1;
@@ -432,7 +434,7 @@ int Connection::tls_handshake() {
         tls.early_data_finish = true;
         // The same reason stated above.
         if (tlsconf.no_postpone_early_data &&
-            (tls.handshake_state == TLS_CONN_WRITE_STARTED ||
+            (tls.handshake_state == TLSHandshakeState::WRITE_STARTED ||
              tls.wbuf.rleft()) &&
             tls.earlybuf.rleft()) {
           rv = 1;
@@ -484,7 +486,7 @@ int Connection::tls_handshake() {
     }
   }
 
-  if (tls.handshake_state == TLS_CONN_WAIT_FOR_SESSION_CACHE) {
+  if (tls.handshake_state == TLSHandshakeState::WAIT_FOR_SESSION_CACHE) {
     if (LOG_ENABLED(INFO)) {
       LOG(INFO) << "tls: handshake is still in progress";
     }
@@ -496,8 +498,8 @@ int Connection::tls_handshake() {
   // negotiated before sending finished message to the peer.
   if (rv != 1 && tls.wbuf.rleft()) {
     // First write indicates that resumption stuff has done.
-    if (tls.handshake_state != TLS_CONN_WRITE_STARTED) {
-      tls.handshake_state = TLS_CONN_WRITE_STARTED;
+    if (tls.handshake_state != TLSHandshakeState::WRITE_STARTED) {
+      tls.handshake_state = TLSHandshakeState::WRITE_STARTED;
       // If peek has already disabled, this is noop.
       tls.rbuf.disable_peek(true);
     }

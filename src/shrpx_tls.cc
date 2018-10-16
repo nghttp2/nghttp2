@@ -416,7 +416,7 @@ SSL_SESSION *tls_session_get_cb(SSL *ssl,
 
     conn->tls.cached_session_lookup_req = nullptr;
     if (res.status_code != 0) {
-      conn->tls.handshake_state = TLS_CONN_CANCEL_SESSION_CACHE;
+      conn->tls.handshake_state = TLSHandshakeState::CANCEL_SESSION_CACHE;
       return;
     }
 
@@ -427,15 +427,15 @@ SSL_SESSION *tls_session_get_cb(SSL *ssl,
       if (LOG_ENABLED(INFO)) {
         LOG(INFO) << "cannot materialize session";
       }
-      conn->tls.handshake_state = TLS_CONN_CANCEL_SESSION_CACHE;
+      conn->tls.handshake_state = TLSHandshakeState::CANCEL_SESSION_CACHE;
       return;
     }
 
     conn->tls.cached_session = session;
-    conn->tls.handshake_state = TLS_CONN_GOT_SESSION_CACHE;
+    conn->tls.handshake_state = TLSHandshakeState::GOT_SESSION_CACHE;
   };
 
-  conn->tls.handshake_state = TLS_CONN_WAIT_FOR_SESSION_CACHE;
+  conn->tls.handshake_state = TLSHandshakeState::WAIT_FOR_SESSION_CACHE;
   conn->tls.cached_session_lookup_req = req.get();
 
   dispatcher->add_request(std::move(req));

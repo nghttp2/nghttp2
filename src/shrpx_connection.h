@@ -45,12 +45,12 @@ namespace tls {
 struct TLSSessionCache;
 } // namespace tls
 
-enum {
-  TLS_CONN_NORMAL,
-  TLS_CONN_WAIT_FOR_SESSION_CACHE,
-  TLS_CONN_GOT_SESSION_CACHE,
-  TLS_CONN_CANCEL_SESSION_CACHE,
-  TLS_CONN_WRITE_STARTED,
+enum class TLSHandshakeState {
+  NORMAL,
+  WAIT_FOR_SESSION_CACHE,
+  GOT_SESSION_CACHE,
+  CANCEL_SESSION_CACHE,
+  WRITE_STARTED,
 };
 
 struct TLSConnection {
@@ -68,7 +68,7 @@ struct TLSConnection {
   // required since these functions require the exact same parameters
   // on non-blocking I/O.
   size_t last_writelen, last_readlen;
-  int handshake_state;
+  TLSHandshakeState handshake_state;
   bool initial_handshake_done;
   bool reneg_started;
   // true if ssl is prepared to do handshake as server.
