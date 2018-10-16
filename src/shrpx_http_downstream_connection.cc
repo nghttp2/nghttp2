@@ -92,7 +92,7 @@ void retry_downstream_connection(Downstream *downstream,
   // request in request buffer.
   auto ndconn = handler->get_downstream_connection(
       rv, downstream,
-      downstream->get_request_header_sent() ? PROTO_HTTP1 : PROTO_NONE);
+      downstream->get_request_header_sent() ? Proto::HTTP1 : Proto::NONE);
   if (ndconn) {
     if (downstream->attach_downstream_connection(std::move(ndconn)) == 0 &&
         downstream->push_request_headers() == 0) {
@@ -193,7 +193,7 @@ HttpDownstreamConnection::HttpDownstreamConnection(
             group->shared_addr->timeout.write, group->shared_addr->timeout.read,
             {}, {}, connectcb, readcb, connect_timeoutcb, this,
             get_config()->tls.dyn_rec.warmup_threshold,
-            get_config()->tls.dyn_rec.idle_timeout, PROTO_HTTP1),
+            get_config()->tls.dyn_rec.idle_timeout, Proto::HTTP1),
       on_read_(&HttpDownstreamConnection::noop),
       on_write_(&HttpDownstreamConnection::noop),
       signal_write_(&HttpDownstreamConnection::noop),
@@ -286,7 +286,7 @@ int HttpDownstreamConnection::initiate_connection() {
           }
         }
 
-        if (addr->proto != PROTO_HTTP1) {
+        if (addr->proto != Proto::HTTP1) {
           if (end == next_downstream) {
             return SHRPX_ERR_NETWORK;
           }

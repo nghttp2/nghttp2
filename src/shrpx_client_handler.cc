@@ -396,7 +396,7 @@ ClientHandler::ClientHandler(Worker *worker, int fd, SSL *ssl,
             get_config()->conn.upstream.ratelimit.write,
             get_config()->conn.upstream.ratelimit.read, writecb, readcb,
             timeoutcb, this, get_config()->tls.dyn_rec.warmup_threshold,
-            get_config()->tls.dyn_rec.idle_timeout, PROTO_NONE),
+            get_config()->tls.dyn_rec.idle_timeout, Proto::NONE),
       ipaddr_(make_string_ref(balloc_, ipaddr)),
       port_(make_string_ref(balloc_, port)),
       faddr_(faddr),
@@ -769,7 +769,7 @@ Http2Session *ClientHandler::select_http2_session(
   // First count the working backend addresses.
   size_t min = 0;
   for (const auto &addr : shared_addr->addrs) {
-    if (addr.proto != PROTO_HTTP2 || addr.connect_blocker->blocked()) {
+    if (addr.proto != Proto::HTTP2 || addr.connect_blocker->blocked()) {
       continue;
     }
 
@@ -825,7 +825,7 @@ Http2Session *ClientHandler::select_http2_session(
   DownstreamAddr *selected_addr = nullptr;
 
   for (auto &addr : shared_addr->addrs) {
-    if (addr.in_avail || addr.proto != PROTO_HTTP2 ||
+    if (addr.in_avail || addr.proto != Proto::HTTP2 ||
         (addr.http2_extra_freelist.size() == 0 &&
          addr.connect_blocker->blocked())) {
       continue;
@@ -939,7 +939,7 @@ uint32_t ClientHandler::get_affinity_cookie(Downstream *downstream,
 
 std::unique_ptr<DownstreamConnection>
 ClientHandler::get_downstream_connection(int &err, Downstream *downstream,
-                                         shrpx_proto pref_proto) {
+                                         Proto pref_proto) {
   size_t group_idx;
   auto &downstreamconf = *worker_->get_downstream_config();
   auto &routerconf = downstreamconf.router;
@@ -1043,7 +1043,7 @@ ClientHandler::get_downstream_connection(int &err, Downstream *downstream,
         }
         addr = &shared_addr->addrs[shared_addr->affinity_hash[i].idx];
         if (addr->connect_blocker->blocked() ||
-            (pref_proto != PROTO_NONE && pref_proto != addr->proto)) {
+            (pref_proto != Proto::NONE && pref_proto != addr->proto)) {
           continue;
         }
         break;
@@ -1055,7 +1055,7 @@ ClientHandler::get_downstream_connection(int &err, Downstream *downstream,
       aff_idx = i;
     }
 
-    if (addr->proto == PROTO_HTTP2) {
+    if (addr->proto == Proto::HTTP2) {
       auto http2session = select_http2_session_with_affinity(group, addr);
 
       auto dconn = std::make_unique<Http2DownstreamConnection>(http2session);
@@ -1081,33 +1081,33 @@ ClientHandler::get_downstream_connection(int &err, Downstream *downstream,
   auto http1_weight = shared_addr->http1_pri.weight;
   auto http2_weight = shared_addr->http2_pri.weight;
 
-  auto proto = PROTO_NONE;
+  auto proto = Proto::NONE;
 
-  if (pref_proto == PROTO_HTTP1) {
+  if (pref_proto == Proto::HTTP1) {
     if (http1_weight > 0) {
-      proto = PROTO_HTTP1;
+      proto = Proto::HTTP1;
     }
-  } else if (pref_proto == PROTO_HTTP2) {
+  } else if (pref_proto == Proto::HTTP2) {
     if (http2_weight > 0) {
-      proto = PROTO_HTTP2;
+      proto = Proto::HTTP2;
     }
   } else if (http1_weight > 0 && http2_weight > 0) {
     // We only advance cycle if both weight has nonzero to keep its
     // distance under WEIGHT_MAX.
     if (pri_less(shared_addr->http1_pri, shared_addr->http2_pri)) {
-      proto = PROTO_HTTP1;
+      proto = Proto::HTTP1;
       shared_addr->http1_pri.cycle = next_cycle(shared_addr->http1_pri);
     } else {
-      proto = PROTO_HTTP2;
+      proto = Proto::HTTP2;
       shared_addr->http2_pri.cycle = next_cycle(shared_addr->http2_pri);
     }
   } else if (http1_weight > 0) {
-    proto = PROTO_HTTP1;
+    proto = Proto::HTTP1;
   } else if (http2_weight > 0) {
-    proto = PROTO_HTTP2;
+    proto = Proto::HTTP2;
   }
 
-  if (proto == PROTO_NONE) {
+  if (proto == Proto::NONE) {
     if (LOG_ENABLED(INFO)) {
       CLOG(INFO, this) << "No working downstream address found";
     }
@@ -1116,7 +1116,7 @@ ClientHandler::get_downstream_connection(int &err, Downstream *downstream,
     return nullptr;
   }
 
-  if (proto == PROTO_HTTP2) {
+  if (proto == Proto::HTTP2) {
     if (LOG_ENABLED(INFO)) {
       CLOG(INFO, this) << "Downstream connection pool is empty."
                        << " Create new one";

@@ -106,7 +106,7 @@ public:
   // backend whose protocol is |pref_proto|.
   std::unique_ptr<DownstreamConnection>
   get_downstream_connection(int &err, Downstream *downstream,
-                            shrpx_proto pref_proto = PROTO_NONE);
+                            Proto pref_proto = Proto::NONE);
   MemchunkPool *get_mcpool();
   SSL *get_ssl() const;
   // Call this function when HTTP/2 connection header is received at

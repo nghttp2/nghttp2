@@ -102,7 +102,7 @@ MemcachedConnection::MemcachedConnection(const Address *addr,
                                          MemchunkPool *mcpool,
                                          std::mt19937 &gen)
     : conn_(loop, -1, nullptr, mcpool, write_timeout, read_timeout, {}, {},
-            connectcb, readcb, timeoutcb, this, 0, 0., PROTO_MEMCACHED),
+            connectcb, readcb, timeoutcb, this, 0, 0., Proto::MEMCACHED),
       do_read_(&MemcachedConnection::noop),
       do_write_(&MemcachedConnection::noop),
       sni_name_(sni_name),

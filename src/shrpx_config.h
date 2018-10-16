@@ -362,7 +362,12 @@ constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 constexpr char DEFAULT_DOWNSTREAM_HOST[] = "127.0.0.1";
 constexpr int16_t DEFAULT_DOWNSTREAM_PORT = 80;
 
-enum shrpx_proto { PROTO_NONE, PROTO_HTTP1, PROTO_HTTP2, PROTO_MEMCACHED };
+enum class Proto {
+  NONE,
+  HTTP1,
+  HTTP2,
+  MEMCACHED,
+};
 
 enum shrpx_session_affinity {
   // No session affinity
@@ -466,7 +471,7 @@ struct DownstreamAddrConfig {
   size_t fall;
   size_t rise;
   // Application protocol used in this group
-  shrpx_proto proto;
+  Proto proto;
   // backend port.  0 if |host_unix| is true.
   uint16_t port;
   // true if |host| contains UNIX domain socket path.
@@ -1232,7 +1237,7 @@ read_tls_ticket_key_file(const std::vector<StringRef> &files,
                          const EVP_CIPHER *cipher, const EVP_MD *hmac);
 
 // Returns string representation of |proto|.
-StringRef strproto(shrpx_proto proto);
+StringRef strproto(Proto proto);
 
 int configure_downstream_group(Config *config, bool http2_proxy,
                                bool numeric_addr_only,

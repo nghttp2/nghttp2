@@ -106,7 +106,7 @@ LiveCheck::LiveCheck(struct ev_loop *loop, SSL_CTX *ssl_ctx, Worker *worker,
             worker->get_downstream_config()->timeout.write,
             worker->get_downstream_config()->timeout.read, {}, {}, writecb,
             readcb, timeoutcb, this, get_config()->tls.dyn_rec.warmup_threshold,
-            get_config()->tls.dyn_rec.idle_timeout, PROTO_NONE),
+            get_config()->tls.dyn_rec.idle_timeout, Proto::NONE),
       wb_(worker->get_mcpool()),
       gen_(gen),
       read_(&LiveCheck::noop),
@@ -211,10 +211,10 @@ int LiveCheck::initiate_connection() {
     }
 
     switch (addr_->proto) {
-    case PROTO_HTTP1:
+    case Proto::HTTP1:
       tls::setup_downstream_http1_alpn(ssl);
       break;
-    case PROTO_HTTP2:
+    case Proto::HTTP2:
       tls::setup_downstream_http2_alpn(ssl);
       break;
     default:
@@ -359,7 +359,7 @@ int LiveCheck::connected() {
     return do_write();
   }
 
-  if (addr_->proto == PROTO_HTTP2) {
+  if (addr_->proto == Proto::HTTP2) {
     // For HTTP/2, we try to read SETTINGS ACK from server to make
     // sure it is really alive, and serving HTTP/2.
     read_ = &LiveCheck::read_clear;
@@ -418,12 +418,12 @@ int LiveCheck::tls_handshake() {
   auto proto = StringRef{next_proto, next_proto_len};
 
   switch (addr_->proto) {
-  case PROTO_HTTP1:
+  case Proto::HTTP1:
     if (proto.empty() || proto == StringRef::from_lit("http/1.1")) {
       break;
     }
     return -1;
-  case PROTO_HTTP2:
+  case Proto::HTTP2:
     if (util::check_h2_is_selected(proto)) {
       // For HTTP/2, we try to read SETTINGS ACK from server to make
       // sure it is really alive, and serving HTTP/2.

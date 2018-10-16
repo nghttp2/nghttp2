@@ -110,7 +110,7 @@ struct DownstreamAddr {
   // address.
   size_t num_dconn;
   // Application protocol used in this backend
-  shrpx_proto proto;
+  Proto proto;
   // true if TLS is used in this backend
   bool tls;
   // true if dynamic DNS is enabled

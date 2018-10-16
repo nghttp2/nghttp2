@@ -816,7 +816,7 @@ struct DownstreamParams {
   ev_tstamp write_timeout;
   size_t fall;
   size_t rise;
-  shrpx_proto proto;
+  Proto proto;
   bool tls;
   bool dns;
   bool redirect_if_not_tls;
@@ -858,10 +858,10 @@ int parse_downstream_params(DownstreamParams &out,
       }
 
       if (util::streq_l("h2", std::begin(protostr), protostr.size())) {
-        out.proto = PROTO_HTTP2;
+        out.proto = Proto::HTTP2;
       } else if (util::streq_l("http/1.1", std::begin(protostr),
                                protostr.size())) {
-        out.proto = PROTO_HTTP1;
+        out.proto = Proto::HTTP1;
       } else {
         LOG(ERROR) << "backend: proto: unknown protocol " << protostr;
         return -1;
@@ -993,7 +993,7 @@ int parse_mapping(Config *config, DownstreamAddrConfig &addr,
   auto &addr_groups = downstreamconf.addr_groups;
 
   DownstreamParams params{};
-  params.proto = PROTO_HTTP1;
+  params.proto = Proto::HTTP1;
 
   if (parse_downstream_params(params, src_params) != 0) {
     return -1;
@@ -3872,15 +3872,15 @@ int int_syslog_facility(const StringRef &strfacility) {
   return -1;
 }
 
-StringRef strproto(shrpx_proto proto) {
+StringRef strproto(Proto proto) {
   switch (proto) {
-  case PROTO_NONE:
+  case Proto::NONE:
     return StringRef::from_lit("none");
-  case PROTO_HTTP1:
+  case Proto::HTTP1:
     return StringRef::from_lit("http/1.1");
-  case PROTO_HTTP2:
+  case Proto::HTTP2:
     return StringRef::from_lit("h2");
-  case PROTO_MEMCACHED:
+  case Proto::MEMCACHED:
     return StringRef::from_lit("memcached");
   }
 
@@ -3943,7 +3943,7 @@ int configure_downstream_group(Config *config, bool http2_proxy,
     DownstreamAddrConfig addr{};
     addr.host = StringRef::from_lit(DEFAULT_DOWNSTREAM_HOST);
     addr.port = DEFAULT_DOWNSTREAM_PORT;
-    addr.proto = PROTO_HTTP1;
+    addr.proto = Proto::HTTP1;
 
     DownstreamAddrGroupConfig g(StringRef::from_lit("/"));
     g.addrs.push_back(std::move(addr));

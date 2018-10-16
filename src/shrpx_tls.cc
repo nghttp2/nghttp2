@@ -1049,9 +1049,9 @@ int select_next_proto_cb(SSL *ssl, unsigned char **out, unsigned char *outlen,
                          void *arg) {
   auto conn = static_cast<Connection *>(SSL_get_app_data(ssl));
   switch (conn->proto) {
-  case PROTO_HTTP1:
+  case Proto::HTTP1:
     return select_h1_next_proto_cb(ssl, out, outlen, in, inlen, arg);
-  case PROTO_HTTP2:
+  case Proto::HTTP2:
     return select_h2_next_proto_cb(ssl, out, outlen, in, inlen, arg);
   default:
     return SSL_TLSEXT_ERR_NOACK;

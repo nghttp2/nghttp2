@@ -74,10 +74,10 @@ DownstreamAddrGroup::~DownstreamAddrGroup() {}
 
 // DownstreamKey is used to index SharedDownstreamAddr in order to
 // find the same configuration.
-using DownstreamKey = std::tuple<
-    std::vector<std::tuple<StringRef, StringRef, size_t, size_t, shrpx_proto,
-                           uint16_t, bool, bool, bool, bool>>,
-    bool, int, StringRef, StringRef, int, int64_t, int64_t>;
+using DownstreamKey =
+    std::tuple<std::vector<std::tuple<StringRef, StringRef, size_t, size_t,
+                                      Proto, uint16_t, bool, bool, bool, bool>>,
+               bool, int, StringRef, StringRef, int, int64_t, int64_t>;
 
 namespace {
 DownstreamKey create_downstream_key(
@@ -254,10 +254,10 @@ void Worker::replace_downstream_config(
           randgen_, loop_,
           [shared_addr_ptr, &dst_addr]() {
             switch (dst_addr.proto) {
-            case PROTO_HTTP1:
+            case Proto::HTTP1:
               --shared_addr_ptr->http1_pri.weight;
               break;
-            case PROTO_HTTP2:
+            case Proto::HTTP2:
               --shared_addr_ptr->http2_pri.weight;
               break;
             default:
@@ -266,10 +266,10 @@ void Worker::replace_downstream_config(
           },
           [shared_addr_ptr, &dst_addr]() {
             switch (dst_addr.proto) {
-            case PROTO_HTTP1:
+            case Proto::HTTP1:
               ++shared_addr_ptr->http1_pri.weight;
               break;
-            case PROTO_HTTP2:
+            case Proto::HTTP2:
               ++shared_addr_ptr->http2_pri.weight;
               break;
             default:
@@ -280,10 +280,10 @@ void Worker::replace_downstream_config(
       dst_addr.live_check = std::make_unique<LiveCheck>(
           loop_, cl_ssl_ctx_, this, &dst_addr, randgen_);
 
-      if (dst_addr.proto == PROTO_HTTP2) {
+      if (dst_addr.proto == Proto::HTTP2) {
         ++num_http2;
       } else {
-        assert(dst_addr.proto == PROTO_HTTP1);
+        assert(dst_addr.proto == Proto::HTTP1);
         ++num_http1;
       }
     }
