@@ -84,17 +84,18 @@ struct OCSPUpdateContext {
 };
 
 // SerialEvent is an event sent from Worker thread.
-enum SerialEventType {
-  SEV_NONE,
-  SEV_REPLACE_DOWNSTREAM,
+enum class SerialEventType {
+  NONE,
+  REPLACE_DOWNSTREAM,
 };
 
 struct SerialEvent {
   // ctor for event uses DownstreamConfig
-  SerialEvent(int type, const std::shared_ptr<DownstreamConfig> &downstreamconf)
+  SerialEvent(SerialEventType type,
+              const std::shared_ptr<DownstreamConfig> &downstreamconf)
       : type(type), downstreamconf(downstreamconf) {}
 
-  int type;
+  SerialEventType type;
   std::shared_ptr<DownstreamConfig> downstreamconf;
 };
 
@@ -163,7 +164,8 @@ public:
   void set_neverbleed(neverbleed_t *nb);
 #endif // HAVE_NEVERBLEED
 
-  // Send SerialEvent SEV_REPLACE_DOWNSTREAM to this object.
+  // Send SerialEvent SerialEventType::REPLACE_DOWNSTREAM to this
+  // object.
   void send_replace_downstream(
       const std::shared_ptr<DownstreamConfig> &downstreamconf);
   // Internal function to send |ev| to this object.

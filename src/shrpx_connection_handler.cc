@@ -828,7 +828,7 @@ void ConnectionHandler::handle_serial_event() {
 
   for (auto &sev : q) {
     switch (sev.type) {
-    case SEV_REPLACE_DOWNSTREAM:
+    case SerialEventType::REPLACE_DOWNSTREAM:
       // Mmake sure that none of worker uses
       // get_config()->conn.downstream
       mod_config()->conn.downstream = sev.downstreamconf;
@@ -842,13 +842,16 @@ void ConnectionHandler::handle_serial_event() {
       worker_replace_downstream(sev.downstreamconf);
 
       break;
+    default:
+      break;
     }
   }
 }
 
 void ConnectionHandler::send_replace_downstream(
     const std::shared_ptr<DownstreamConfig> &downstreamconf) {
-  send_serial_event(SerialEvent(SEV_REPLACE_DOWNSTREAM, downstreamconf));
+  send_serial_event(
+      SerialEvent(SerialEventType::REPLACE_DOWNSTREAM, downstreamconf));
 }
 
 void ConnectionHandler::send_serial_event(SerialEvent ev) {
