@@ -69,7 +69,7 @@ void connchk_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
   ev_timer_stop(loop, w);
 
   switch (http2session->get_connection_check_state()) {
-  case Http2Session::CONNECTION_CHECK_STARTED:
+  case ConnectionCheck::STARTED:
     // ping timeout; disconnect
     if (LOG_ENABLED(INFO)) {
       SSLOG(INFO, http2session) << "ping timeout";
@@ -82,8 +82,7 @@ void connchk_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
     if (LOG_ENABLED(INFO)) {
       SSLOG(INFO, http2session) << "connection check required";
     }
-    http2session->set_connection_check_state(
-        Http2Session::CONNECTION_CHECK_REQUIRED);
+    http2session->set_connection_check_state(ConnectionCheck::REQUIRED);
   }
 }
 } // namespace
@@ -198,7 +197,7 @@ Http2Session::Http2Session(struct ev_loop *loop, SSL_CTX *ssl_ctx,
       session_(nullptr),
       raddr_(nullptr),
       state_(Http2SessionState::DISCONNECTED),
-      connection_check_state_(CONNECTION_CHECK_NONE),
+      connection_check_state_(ConnectionCheck::NONE),
       freelist_zone_(FreelistZone::NONE),
       settings_recved_(false),
       allow_connect_proto_(false) {
@@ -266,7 +265,7 @@ int Http2Session::disconnect(bool hard) {
     proxy_htp_.reset();
   }
 
-  connection_check_state_ = CONNECTION_CHECK_NONE;
+  connection_check_state_ = ConnectionCheck::NONE;
   state_ = Http2SessionState::DISCONNECTED;
 
   // When deleting Http2DownstreamConnection, it calls this object's
@@ -1867,16 +1866,16 @@ int Http2Session::consume(int32_t stream_id, size_t len) {
 bool Http2Session::can_push_request(const Downstream *downstream) const {
   auto &req = downstream->request();
   return state_ == Http2SessionState::CONNECTED &&
-         connection_check_state_ == CONNECTION_CHECK_NONE &&
+         connection_check_state_ == ConnectionCheck::NONE &&
          (req.connect_proto == ConnectProto::NONE || settings_recved_);
 }
 
 void Http2Session::start_checking_connection() {
   if (state_ != Http2SessionState::CONNECTED ||
-      connection_check_state_ != CONNECTION_CHECK_REQUIRED) {
+      connection_check_state_ != ConnectionCheck::REQUIRED) {
     return;
   }
-  connection_check_state_ = CONNECTION_CHECK_STARTED;
+  connection_check_state_ = ConnectionCheck::STARTED;
 
   SSLOG(INFO, this) << "Start checking connection";
   // If connection is down, we may get error when writing data.  Issue
@@ -1895,7 +1894,7 @@ void Http2Session::reset_connection_check_timer(ev_tstamp t) {
 }
 
 void Http2Session::reset_connection_check_timer_if_not_checking() {
-  if (connection_check_state_ != CONNECTION_CHECK_NONE) {
+  if (connection_check_state_ != ConnectionCheck::NONE) {
     return;
   }
 
@@ -1905,7 +1904,7 @@ void Http2Session::reset_connection_check_timer_if_not_checking() {
 void Http2Session::connection_alive() {
   reset_connection_check_timer(CONNCHK_TIMEOUT);
 
-  if (connection_check_state_ == CONNECTION_CHECK_NONE) {
+  if (connection_check_state_ == ConnectionCheck::NONE) {
     return;
   }
 
@@ -1913,7 +1912,7 @@ void Http2Session::connection_alive() {
     SSLOG(INFO, this) << "Connection alive";
   }
 
-  connection_check_state_ = CONNECTION_CHECK_NONE;
+  connection_check_state_ = ConnectionCheck::NONE;
 
   submit_pending_requests();
 }
@@ -1948,11 +1947,11 @@ void Http2Session::submit_pending_requests() {
   }
 }
 
-void Http2Session::set_connection_check_state(int state) {
+void Http2Session::set_connection_check_state(ConnectionCheck state) {
   connection_check_state_ = state;
 }
 
-int Http2Session::get_connection_check_state() const {
+ConnectionCheck Http2Session::get_connection_check_state() const {
   return connection_check_state_;
 }
 

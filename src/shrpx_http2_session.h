@@ -91,6 +91,15 @@ enum class Http2SessionState {
   RESOLVING_NAME,
 };
 
+enum class ConnectionCheck {
+  // Connection checking is not required
+  NONE,
+  // Connection checking is required
+  REQUIRED,
+  // Connection checking has been started
+  STARTED,
+};
+
 class Http2Session {
 public:
   Http2Session(struct ev_loop *loop, SSL_CTX *ssl_ctx, Worker *worker,
@@ -178,8 +187,8 @@ public:
   // reset_connection_check_timer() is called.
   void connection_alive();
   // Change connection check state.
-  void set_connection_check_state(int state);
-  int get_connection_check_state() const;
+  void set_connection_check_state(ConnectionCheck state);
+  ConnectionCheck get_connection_check_state() const;
 
   bool should_hard_fail() const;
 
@@ -237,15 +246,6 @@ public:
 
   bool get_allow_connect_proto() const;
 
-  enum {
-    // Connection checking is not required
-    CONNECTION_CHECK_NONE,
-    // Connection checking is required
-    CONNECTION_CHECK_REQUIRED,
-    // Connection checking has been started
-    CONNECTION_CHECK_STARTED
-  };
-
   using ReadBuf = Buffer<8_k>;
 
   Http2Session *dlnext, *dlprev;
@@ -255,7 +255,7 @@ private:
   DefaultMemchunks wb_;
   ev_timer settings_timer_;
   // This timer has 2 purpose: when it first timeout, set
-  // connection_check_state_ = CONNECTION_CHECK_REQUIRED.  After
+  // connection_check_state_ = ConnectionCheck::REQUIRED.  After
   // connection check has started, this timer is started again and
   // traps PING ACK timeout.
   ev_timer connchk_timer_;
@@ -284,7 +284,7 @@ private:
   std::unique_ptr<Address> resolved_addr_;
   std::unique_ptr<DNSQuery> dns_query_;
   Http2SessionState state_;
-  int connection_check_state_;
+  ConnectionCheck connection_check_state_;
   FreelistZone freelist_zone_;
   // true if SETTINGS without ACK is received from peer.
   bool settings_recved_;
