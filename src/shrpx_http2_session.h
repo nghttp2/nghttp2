@@ -58,18 +58,18 @@ struct StreamData {
   Http2DownstreamConnection *dconn;
 };
 
-enum FreelistZone {
+enum class FreelistZone {
   // Http2Session object is not linked in any freelist.
-  FREELIST_ZONE_NONE,
+  NONE,
   // Http2Session object is linked in group scope
   // http2_avail_freelist.
-  FREELIST_ZONE_AVAIL,
+  AVAIL,
   // Http2Session object is linked in address scope
   // http2_extra_freelist.
-  FREELIST_ZONE_EXTRA,
+  EXTRA,
   // Http2Session object is about to be deleted, and it does not
   // belong to any linked list.
-  FREELIST_ZONE_GONE
+  GONE
 };
 
 class Http2Session {
@@ -285,7 +285,7 @@ private:
   std::unique_ptr<DNSQuery> dns_query_;
   int state_;
   int connection_check_state_;
-  int freelist_zone_;
+  FreelistZone freelist_zone_;
   // true if SETTINGS without ACK is received from peer.
   bool settings_recved_;
   // true if peer enables RFC 8441 CONNECT protocol.

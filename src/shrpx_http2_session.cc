@@ -199,7 +199,7 @@ Http2Session::Http2Session(struct ev_loop *loop, SSL_CTX *ssl_ctx,
       raddr_(nullptr),
       state_(DISCONNECTED),
       connection_check_state_(CONNECTION_CHECK_NONE),
-      freelist_zone_(FREELIST_ZONE_NONE),
+      freelist_zone_(FreelistZone::NONE),
       settings_recved_(false),
       allow_connect_proto_(false) {
   read_ = write_ = &Http2Session::noop;
@@ -723,7 +723,7 @@ void Http2Session::remove_downstream_connection(
     SSLOG(INFO, this) << "Remove downstream";
   }
 
-  if (freelist_zone_ == FREELIST_ZONE_NONE && !max_concurrency_reached()) {
+  if (freelist_zone_ == FreelistZone::NONE && !max_concurrency_reached()) {
     if (LOG_ENABLED(INFO)) {
       SSLOG(INFO, this) << "Append to http2_extra_freelist, addr=" << addr_
                         << ", freelist.size="
@@ -2313,7 +2313,7 @@ Http2Session::get_downstream_addr_group() const {
 }
 
 void Http2Session::add_to_avail_freelist() {
-  if (freelist_zone_ != FREELIST_ZONE_NONE) {
+  if (freelist_zone_ != FreelistZone::NONE) {
     return;
   }
 
@@ -2323,13 +2323,13 @@ void Http2Session::add_to_avail_freelist() {
                       << group_->shared_addr->http2_avail_freelist.size();
   }
 
-  freelist_zone_ = FREELIST_ZONE_AVAIL;
+  freelist_zone_ = FreelistZone::AVAIL;
   group_->shared_addr->http2_avail_freelist.append(this);
   addr_->in_avail = true;
 }
 
 void Http2Session::add_to_extra_freelist() {
-  if (freelist_zone_ != FREELIST_ZONE_NONE) {
+  if (freelist_zone_ != FreelistZone::NONE) {
     return;
   }
 
@@ -2339,15 +2339,15 @@ void Http2Session::add_to_extra_freelist() {
                       << addr_->http2_extra_freelist.size();
   }
 
-  freelist_zone_ = FREELIST_ZONE_EXTRA;
+  freelist_zone_ = FreelistZone::EXTRA;
   addr_->http2_extra_freelist.append(this);
 }
 
 void Http2Session::remove_from_freelist() {
   switch (freelist_zone_) {
-  case FREELIST_ZONE_NONE:
+  case FreelistZone::NONE:
     return;
-  case FREELIST_ZONE_AVAIL:
+  case FreelistZone::AVAIL:
     if (LOG_ENABLED(INFO)) {
       SSLOG(INFO, this) << "Remove from http2_avail_freelist, group=" << group_
                         << ", freelist.size="
@@ -2356,7 +2356,7 @@ void Http2Session::remove_from_freelist() {
     group_->shared_addr->http2_avail_freelist.remove(this);
     addr_->in_avail = false;
     break;
-  case FREELIST_ZONE_EXTRA:
+  case FreelistZone::EXTRA:
     if (LOG_ENABLED(INFO)) {
       SSLOG(INFO, this) << "Remove from http2_extra_freelist, addr=" << addr_
                         << ", freelist.size="
@@ -2364,16 +2364,16 @@ void Http2Session::remove_from_freelist() {
     }
     addr_->http2_extra_freelist.remove(this);
     break;
-  case FREELIST_ZONE_GONE:
+  case FreelistZone::GONE:
     return;
   }
 
-  freelist_zone_ = FREELIST_ZONE_NONE;
+  freelist_zone_ = FreelistZone::NONE;
 }
 
 void Http2Session::exclude_from_scheduling() {
   remove_from_freelist();
-  freelist_zone_ = FREELIST_ZONE_GONE;
+  freelist_zone_ = FreelistZone::GONE;
 }
 
 DefaultMemchunks *Http2Session::get_request_buf() { return &wb_; }
