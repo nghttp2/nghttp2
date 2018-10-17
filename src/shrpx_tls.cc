@@ -330,7 +330,7 @@ int tls_session_new_cb(SSL *ssl, SSL_SESSION *session) {
   }
 
   auto req = std::make_unique<MemcachedRequest>();
-  req->op = MEMCACHED_OP_ADD;
+  req->op = MemcachedOp::ADD;
   req->key = MEMCACHED_SESSION_CACHE_KEY_PREFIX.str();
   req->key +=
       util::format_hex(balloc, StringRef{id, static_cast<size_t>(idlen)});
@@ -398,7 +398,7 @@ SSL_SESSION *tls_session_get_cb(SSL *ssl,
   }
 
   auto req = std::make_unique<MemcachedRequest>();
-  req->op = MEMCACHED_OP_GET;
+  req->op = MemcachedOp::GET;
   req->key = MEMCACHED_SESSION_CACHE_KEY_PREFIX.str();
   req->key +=
       util::format_hex(balloc, StringRef{id, static_cast<size_t>(idlen)});

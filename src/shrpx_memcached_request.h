@@ -35,9 +35,9 @@
 
 namespace shrpx {
 
-enum {
-  MEMCACHED_OP_GET = 0x00,
-  MEMCACHED_OP_ADD = 0x02,
+enum class MemcachedOp : uint8_t {
+  GET = 0x00,
+  ADD = 0x02,
 };
 
 struct MemcachedRequest;
@@ -50,7 +50,7 @@ struct MemcachedRequest {
   std::vector<uint8_t> value;
   MemcachedResultCallback cb;
   uint32_t expiry;
-  int op;
+  MemcachedOp op;
   bool canceled;
 };
 

@@ -43,6 +43,7 @@ using namespace nghttp2;
 namespace shrpx {
 
 struct MemcachedRequest;
+enum class MemcachedOp : uint8_t;
 
 enum class MemcachedParseState {
   HEADER24,
@@ -70,7 +71,7 @@ struct MemcachedParseContext {
   // status_code in response
   int status_code;
   // op in response
-  int op;
+  MemcachedOp op;
 };
 
 struct MemcachedSendbuf {
