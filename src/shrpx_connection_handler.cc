@@ -183,7 +183,7 @@ void ConnectionHandler::set_ticket_keys_to_worker(
 void ConnectionHandler::worker_reopen_log_files() {
   WorkerEvent wev{};
 
-  wev.type = REOPEN_LOG;
+  wev.type = WorkerEventType::REOPEN_LOG;
 
   for (auto &worker : workers_) {
     worker->send(wev);
@@ -194,7 +194,7 @@ void ConnectionHandler::worker_replace_downstream(
     std::shared_ptr<DownstreamConfig> downstreamconf) {
   WorkerEvent wev{};
 
-  wev.type = REPLACE_DOWNSTREAM;
+  wev.type = WorkerEventType::REPLACE_DOWNSTREAM;
   wev.downstreamconf = std::move(downstreamconf);
 
   for (auto &worker : workers_) {
@@ -348,7 +348,7 @@ void ConnectionHandler::graceful_shutdown_worker() {
   }
 
   WorkerEvent wev{};
-  wev.type = GRACEFUL_SHUTDOWN;
+  wev.type = WorkerEventType::GRACEFUL_SHUTDOWN;
 
   if (LOG_ENABLED(INFO)) {
     LLOG(INFO, this) << "Sending graceful shutdown signal to worker";
@@ -432,7 +432,7 @@ int ConnectionHandler::handle_connection(int fd, sockaddr *addr, int addrlen,
   }
 
   WorkerEvent wev{};
-  wev.type = NEW_CONNECTION;
+  wev.type = WorkerEventType::NEW_CONNECTION;
   wev.client_fd = fd;
   memcpy(&wev.client_addr, addr, addrlen);
   wev.client_addrlen = addrlen;

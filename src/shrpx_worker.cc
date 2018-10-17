@@ -369,9 +369,9 @@ void Worker::process_events() {
     std::lock_guard<std::mutex> g(m_);
 
     // Process event one at a time.  This is important for
-    // NEW_CONNECTION event since accepting large number of new
-    // connections at once may delay time to 1st byte for existing
-    // connections.
+    // WorkerEventType::NEW_CONNECTION event since accepting large
+    // number of new connections at once may delay time to 1st byte
+    // for existing connections.
 
     if (q_.empty()) {
       ev_timer_stop(loop_, &proc_wev_timer_);
@@ -389,7 +389,7 @@ void Worker::process_events() {
   auto worker_connections = config->conn.upstream.worker_connections;
 
   switch (wev.type) {
-  case NEW_CONNECTION: {
+  case WorkerEventType::NEW_CONNECTION: {
     if (LOG_ENABLED(INFO)) {
       WLOG(INFO, this) << "WorkerEvent: client_fd=" << wev.client_fd
                        << ", addrlen=" << wev.client_addrlen;
@@ -423,14 +423,14 @@ void Worker::process_events() {
 
     break;
   }
-  case REOPEN_LOG:
+  case WorkerEventType::REOPEN_LOG:
     WLOG(NOTICE, this) << "Reopening log files: worker process (thread " << this
                        << ")";
 
     reopen_log_files(config->logging);
 
     break;
-  case GRACEFUL_SHUTDOWN:
+  case WorkerEventType::GRACEFUL_SHUTDOWN:
     WLOG(NOTICE, this) << "Graceful shutdown commencing";
 
     graceful_shutdown_ = true;
@@ -442,7 +442,7 @@ void Worker::process_events() {
     }
 
     break;
-  case REPLACE_DOWNSTREAM:
+  case WorkerEventType::REPLACE_DOWNSTREAM:
     WLOG(NOTICE, this) << "Replace downstream";
 
     replace_downstream_config(wev.downstreamconf);
@@ -450,7 +450,7 @@ void Worker::process_events() {
     break;
   default:
     if (LOG_ENABLED(INFO)) {
-      WLOG(INFO, this) << "unknown event type " << wev.type;
+      WLOG(INFO, this) << "unknown event type " << static_cast<int>(wev.type);
     }
   }
 }
