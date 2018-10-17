@@ -424,7 +424,7 @@ int MemcachedConnection::parse_packet() {
     auto busy = false;
 
     switch (parse_state_.state) {
-    case MEMCACHED_PARSE_HEADER24: {
+    case MemcachedParseState::HEADER24: {
       if (recvbuf_.last - in < 24) {
         recvbuf_.drain_reset(in - recvbuf_.pos);
         return 0;
@@ -494,17 +494,17 @@ int MemcachedConnection::parse_packet() {
       }
 
       if (parse_state_.extralen) {
-        parse_state_.state = MEMCACHED_PARSE_EXTRA;
+        parse_state_.state = MemcachedParseState::EXTRA;
         parse_state_.read_left = parse_state_.extralen;
       } else {
-        parse_state_.state = MEMCACHED_PARSE_VALUE;
+        parse_state_.state = MemcachedParseState::VALUE;
         parse_state_.read_left = parse_state_.totalbody - parse_state_.keylen -
                                  parse_state_.extralen;
       }
       busy = true;
       break;
     }
-    case MEMCACHED_PARSE_EXTRA: {
+    case MemcachedParseState::EXTRA: {
       // We don't use extra for now. Just read and forget.
       auto n = std::min(static_cast<size_t>(recvbuf_.last - in),
                         parse_state_.read_left);
@@ -515,7 +515,7 @@ int MemcachedConnection::parse_packet() {
         recvbuf_.reset();
         return 0;
       }
-      parse_state_.state = MEMCACHED_PARSE_VALUE;
+      parse_state_.state = MemcachedParseState::VALUE;
       // since we require keylen == 0, totalbody - extralen ==
       // valuelen
       parse_state_.read_left =
@@ -523,7 +523,7 @@ int MemcachedConnection::parse_packet() {
       busy = true;
       break;
     }
-    case MEMCACHED_PARSE_VALUE: {
+    case MemcachedParseState::VALUE: {
       auto n = std::min(static_cast<size_t>(recvbuf_.last - in),
                         parse_state_.read_left);
 

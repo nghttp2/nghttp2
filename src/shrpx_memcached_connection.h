@@ -44,14 +44,14 @@ namespace shrpx {
 
 struct MemcachedRequest;
 
-enum {
-  MEMCACHED_PARSE_HEADER24,
-  MEMCACHED_PARSE_EXTRA,
-  MEMCACHED_PARSE_VALUE,
+enum class MemcachedParseState {
+  HEADER24,
+  EXTRA,
+  VALUE,
 };
 
 // Stores state when parsing response from memcached server
-struct MemcachedParseState {
+struct MemcachedParseContext {
   // Buffer for value, dynamically allocated.
   std::vector<uint8_t> value;
   // cas in response
@@ -66,7 +66,7 @@ struct MemcachedParseState {
   // Number of bytes left to read variable length field.
   size_t read_left;
   // Parser state; see enum above
-  int state;
+  MemcachedParseState state;
   // status_code in response
   int status_code;
   // op in response
@@ -138,7 +138,7 @@ private:
   StringRef sni_name_;
   tls::TLSSessionCache tls_session_cache_;
   ConnectBlocker connect_blocker_;
-  MemcachedParseState parse_state_;
+  MemcachedParseContext parse_state_;
   const Address *addr_;
   SSL_CTX *ssl_ctx_;
   // Sum of the bytes to be transmitted in sendbufv_.
