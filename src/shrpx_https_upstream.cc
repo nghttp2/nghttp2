@@ -111,8 +111,9 @@ int htp_uricb(http_parser *htp, const char *data, size_t len) {
       ULOG(INFO, upstream) << "Too large URI size="
                            << req.fs.buffer_size() + len;
     }
-    assert(downstream->get_request_state() == Downstream::INITIAL);
-    downstream->set_request_state(Downstream::HTTP1_REQUEST_HEADER_TOO_LARGE);
+    assert(downstream->get_request_state() == DownstreamState::INITIAL);
+    downstream->set_request_state(
+        DownstreamState::HTTP1_REQUEST_HEADER_TOO_LARGE);
     return -1;
   }
 
@@ -141,12 +142,13 @@ int htp_hdr_keycb(http_parser *htp, const char *data, size_t len) {
       ULOG(INFO, upstream) << "Too large header block size="
                            << req.fs.buffer_size() + len;
     }
-    if (downstream->get_request_state() == Downstream::INITIAL) {
-      downstream->set_request_state(Downstream::HTTP1_REQUEST_HEADER_TOO_LARGE);
+    if (downstream->get_request_state() == DownstreamState::INITIAL) {
+      downstream->set_request_state(
+          DownstreamState::HTTP1_REQUEST_HEADER_TOO_LARGE);
     }
     return -1;
   }
-  if (downstream->get_request_state() == Downstream::INITIAL) {
+  if (downstream->get_request_state() == DownstreamState::INITIAL) {
     if (req.fs.header_key_prev()) {
       req.fs.append_last_header_key(data, len);
     } else {
@@ -156,7 +158,7 @@ int htp_hdr_keycb(http_parser *htp, const char *data, size_t len) {
               << "Too many header field num=" << req.fs.num_fields() + 1;
         }
         downstream->set_request_state(
-            Downstream::HTTP1_REQUEST_HEADER_TOO_LARGE);
+            DownstreamState::HTTP1_REQUEST_HEADER_TOO_LARGE);
         return -1;
       }
       req.fs.alloc_add_header_name(StringRef{data, len});
@@ -192,12 +194,13 @@ int htp_hdr_valcb(http_parser *htp, const char *data, size_t len) {
       ULOG(INFO, upstream) << "Too large header block size="
                            << req.fs.buffer_size() + len;
     }
-    if (downstream->get_request_state() == Downstream::INITIAL) {
-      downstream->set_request_state(Downstream::HTTP1_REQUEST_HEADER_TOO_LARGE);
+    if (downstream->get_request_state() == DownstreamState::INITIAL) {
+      downstream->set_request_state(
+          DownstreamState::HTTP1_REQUEST_HEADER_TOO_LARGE);
     }
     return -1;
   }
-  if (downstream->get_request_state() == Downstream::INITIAL) {
+  if (downstream->get_request_state() == DownstreamState::INITIAL) {
     req.fs.append_last_header_value(data, len);
   } else {
     req.fs.append_last_trailer_value(data, len);
@@ -397,7 +400,7 @@ int htp_hdrs_completecb(http_parser *htp) {
     }
   }
 
-  downstream->set_request_state(Downstream::HEADER_COMPLETE);
+  downstream->set_request_state(DownstreamState::HEADER_COMPLETE);
 
 #ifdef HAVE_MRUBY
   auto worker = handler->get_worker();
@@ -419,7 +422,7 @@ int htp_hdrs_completecb(http_parser *htp) {
     return -1;
   }
 
-  if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
+  if (downstream->get_response_state() == DownstreamState::MSG_COMPLETE) {
     return 0;
   }
 
@@ -429,7 +432,7 @@ int htp_hdrs_completecb(http_parser *htp) {
     if (rv == SHRPX_ERR_TLS_REQUIRED) {
       upstream->redirect_to_https(downstream);
     }
-    downstream->set_request_state(Downstream::CONNECT_FAIL);
+    downstream->set_request_state(DownstreamState::CONNECT_FAIL);
 
     return -1;
   }
@@ -438,7 +441,7 @@ int htp_hdrs_completecb(http_parser *htp) {
   auto dconn_ptr = dconn.get();
 #endif // HAVE_MRUBY
   if (downstream->attach_downstream_connection(std::move(dconn)) != 0) {
-    downstream->set_request_state(Downstream::CONNECT_FAIL);
+    downstream->set_request_state(DownstreamState::CONNECT_FAIL);
 
     return -1;
   }
@@ -453,7 +456,7 @@ int htp_hdrs_completecb(http_parser *htp) {
       return -1;
     }
 
-    if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
+    if (downstream->get_response_state() == DownstreamState::MSG_COMPLETE) {
       return 0;
     }
   }
@@ -494,7 +497,7 @@ int htp_bodycb(http_parser *htp, const char *data, size_t len) {
   if (rv != 0) {
     // Ignore error if response has been completed.  We will end up in
     // htp_msg_completecb, and request will end gracefully.
-    if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
+    if (downstream->get_response_state() == DownstreamState::MSG_COMPLETE) {
       return 0;
     }
 
@@ -513,10 +516,10 @@ int htp_msg_completecb(http_parser *htp) {
   }
   auto handler = upstream->get_client_handler();
   auto downstream = upstream->get_downstream();
-  downstream->set_request_state(Downstream::MSG_COMPLETE);
+  downstream->set_request_state(DownstreamState::MSG_COMPLETE);
   rv = downstream->end_upload_data();
   if (rv != 0) {
-    if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
+    if (downstream->get_response_state() == DownstreamState::MSG_COMPLETE) {
       // Here both response and request were completed.  One of the
       // reason why end_upload_data() failed is when we sent response
       // in request phase hook.  We only delete and proceed to the
@@ -596,8 +599,8 @@ int HttpsUpstream::on_read() {
   if (downstream) {
     // To avoid reading next pipelined request
     switch (downstream->get_request_state()) {
-    case Downstream::INITIAL:
-    case Downstream::HEADER_COMPLETE:
+    case DownstreamState::INITIAL:
+    case DownstreamState::HEADER_COMPLETE:
       break;
     default:
       return 0;
@@ -625,8 +628,8 @@ int HttpsUpstream::on_read() {
     // We may pause parser in htp_msg_completecb when both side are
     // completed.  Signal write, so that we can run on_write().
     if (downstream &&
-        downstream->get_request_state() == Downstream::MSG_COMPLETE &&
-        downstream->get_response_state() == Downstream::MSG_COMPLETE) {
+        downstream->get_request_state() == DownstreamState::MSG_COMPLETE &&
+        downstream->get_response_state() == DownstreamState::MSG_COMPLETE) {
       handler_->signal_write();
     }
     return 0;
@@ -639,7 +642,8 @@ int HttpsUpstream::on_read() {
                        << http_errno_description(htperr);
     }
 
-    if (downstream && downstream->get_response_state() != Downstream::INITIAL) {
+    if (downstream &&
+        downstream->get_response_state() != DownstreamState::INITIAL) {
       handler_->set_should_close_after_write(true);
       handler_->signal_write();
       return 0;
@@ -652,10 +656,10 @@ int HttpsUpstream::on_read() {
     } else if (downstream) {
       status_code = downstream->response().http_status;
       if (status_code == 0) {
-        if (downstream->get_request_state() == Downstream::CONNECT_FAIL) {
+        if (downstream->get_request_state() == DownstreamState::CONNECT_FAIL) {
           status_code = 502;
         } else if (downstream->get_request_state() ==
-                   Downstream::HTTP1_REQUEST_HEADER_TOO_LARGE) {
+                   DownstreamState::HTTP1_REQUEST_HEADER_TOO_LARGE) {
           status_code = 431;
         } else {
           status_code = 400;
@@ -701,7 +705,7 @@ int HttpsUpstream::on_write() {
 
   // We need to postpone detachment until all data are sent so that
   // we can notify nghttp2 library all data consumed.
-  if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
+  if (downstream->get_response_state() == DownstreamState::MSG_COMPLETE) {
     if (downstream->can_detach_downstream_connection()) {
       // Keep-alive
       downstream->detach_downstream_connection();
@@ -711,7 +715,7 @@ int HttpsUpstream::on_write() {
       // dconn was deleted
     }
     // We need this if response ends before request.
-    if (downstream->get_request_state() == Downstream::MSG_COMPLETE) {
+    if (downstream->get_request_state() == DownstreamState::MSG_COMPLETE) {
       delete_downstream();
 
       if (handler_->get_should_close_after_write()) {
@@ -778,11 +782,11 @@ int HttpsUpstream::downstream_read(DownstreamConnection *dconn) {
     return downstream_error(dconn, Downstream::EVENT_ERROR);
   }
 
-  if (downstream->get_response_state() == Downstream::MSG_RESET) {
+  if (downstream->get_response_state() == DownstreamState::MSG_RESET) {
     return -1;
   }
 
-  if (downstream->get_response_state() == Downstream::MSG_BAD_HEADER) {
+  if (downstream->get_response_state() == DownstreamState::MSG_BAD_HEADER) {
     error_reply(502);
     downstream->pop_downstream_connection();
     goto end;
@@ -820,23 +824,23 @@ int HttpsUpstream::downstream_eof(DownstreamConnection *dconn) {
     DCLOG(INFO, dconn) << "EOF";
   }
 
-  if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
+  if (downstream->get_response_state() == DownstreamState::MSG_COMPLETE) {
     goto end;
   }
 
-  if (downstream->get_response_state() == Downstream::HEADER_COMPLETE) {
+  if (downstream->get_response_state() == DownstreamState::HEADER_COMPLETE) {
     // Server may indicate the end of the request by EOF
     if (LOG_ENABLED(INFO)) {
       DCLOG(INFO, dconn) << "The end of the response body was indicated by "
                          << "EOF";
     }
     on_downstream_body_complete(downstream);
-    downstream->set_response_state(Downstream::MSG_COMPLETE);
+    downstream->set_response_state(DownstreamState::MSG_COMPLETE);
     downstream->pop_downstream_connection();
     goto end;
   }
 
-  if (downstream->get_response_state() == Downstream::INITIAL) {
+  if (downstream->get_response_state() == DownstreamState::INITIAL) {
     // we did not send any response headers, so we can reply error
     // message.
     if (LOG_ENABLED(INFO)) {
@@ -865,7 +869,7 @@ int HttpsUpstream::downstream_error(DownstreamConnection *dconn, int events) {
       DCLOG(INFO, dconn) << "Timeout";
     }
   }
-  if (downstream->get_response_state() != Downstream::INITIAL) {
+  if (downstream->get_response_state() != DownstreamState::INITIAL) {
     return -1;
   }
 
@@ -952,7 +956,7 @@ int HttpsUpstream::send_reply(Downstream *downstream, const uint8_t *body,
   output->append(body, bodylen);
 
   downstream->response_sent_body_length += bodylen;
-  downstream->set_response_state(Downstream::MSG_COMPLETE);
+  downstream->set_response_state(DownstreamState::MSG_COMPLETE);
 
   return 0;
 }
@@ -998,7 +1002,7 @@ void HttpsUpstream::error_reply(unsigned int status_code) {
   output->append(html);
 
   downstream->response_sent_body_length += html.size();
-  downstream->set_response_state(Downstream::MSG_COMPLETE);
+  downstream->set_response_state(DownstreamState::MSG_COMPLETE);
 }
 
 void HttpsUpstream::attach_downstream(std::unique_ptr<Downstream> downstream) {
@@ -1064,7 +1068,7 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
         return -1;
       }
 
-      if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
+      if (downstream->get_response_state() == DownstreamState::MSG_COMPLETE) {
         return -1;
       }
     }
@@ -1077,7 +1081,7 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
       return -1;
     }
 
-    if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
+    if (downstream->get_response_state() == DownstreamState::MSG_COMPLETE) {
       return -1;
     }
   }
@@ -1312,7 +1316,7 @@ int HttpsUpstream::on_downstream_body_complete(Downstream *downstream) {
 
   if (req.connection_close || resp.connection_close ||
       // To avoid to stall upload body
-      downstream->get_request_state() != Downstream::MSG_COMPLETE) {
+      downstream->get_request_state() != DownstreamState::MSG_COMPLETE) {
     auto handler = get_client_handler();
     handler->set_should_close_after_write(true);
   }
@@ -1399,14 +1403,16 @@ int HttpsUpstream::on_downstream_reset(Downstream *downstream, bool no_retry) {
 
   if (!downstream_->request_submission_ready()) {
     switch (downstream_->get_response_state()) {
-    case Downstream::MSG_COMPLETE:
+    case DownstreamState::MSG_COMPLETE:
       // We have got all response body already.  Send it off.
       return 0;
-    case Downstream::INITIAL:
+    case DownstreamState::INITIAL:
       if (on_downstream_abort_request(downstream_.get(), 502) != 0) {
         return -1;
       }
       return 0;
+    default:
+      break;
     }
     // Return error so that caller can delete handler
     return -1;

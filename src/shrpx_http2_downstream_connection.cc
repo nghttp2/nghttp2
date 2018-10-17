@@ -62,10 +62,10 @@ Http2DownstreamConnection::~Http2DownstreamConnection() {
     downstream_->disable_downstream_wtimer();
 
     uint32_t error_code;
-    if (downstream_->get_request_state() == Downstream::STREAM_CLOSED &&
+    if (downstream_->get_request_state() == DownstreamState::STREAM_CLOSED &&
         downstream_->get_upgraded()) {
       // For upgraded connection, send NO_ERROR.  Should we consider
-      // request states other than Downstream::STREAM_CLOSED ?
+      // request states other than DownstreamState::STREAM_CLOSED ?
       error_code = NGHTTP2_NO_ERROR;
     } else {
       error_code = NGHTTP2_INTERNAL_ERROR;
@@ -143,9 +143,9 @@ int Http2DownstreamConnection::submit_rst_stream(Downstream *downstream,
   if (http2session_->get_state() == Http2Session::CONNECTED &&
       downstream->get_downstream_stream_id() != -1) {
     switch (downstream->get_response_state()) {
-    case Downstream::MSG_RESET:
-    case Downstream::MSG_BAD_HEADER:
-    case Downstream::MSG_COMPLETE:
+    case DownstreamState::MSG_RESET:
+    case DownstreamState::MSG_BAD_HEADER:
+    case DownstreamState::MSG_COMPLETE:
       break;
     default:
       if (LOG_ENABLED(INFO)) {
@@ -188,12 +188,12 @@ ssize_t http2_data_read_callback(nghttp2_session *session, int32_t stream_id,
   *data_flags |= NGHTTP2_DATA_FLAG_NO_COPY;
 
   if (input_empty &&
-      downstream->get_request_state() == Downstream::MSG_COMPLETE &&
+      downstream->get_request_state() == DownstreamState::MSG_COMPLETE &&
       // If connection is upgraded, don't set EOF flag, since HTTP/1
       // will set MSG_COMPLETE to request state after upgrade response
       // header is seen.
       (!req.upgrade_request ||
-       (downstream->get_response_state() == Downstream::HEADER_COMPLETE &&
+       (downstream->get_response_state() == DownstreamState::HEADER_COMPLETE &&
         !downstream->get_upgraded()))) {
 
     *data_flags |= NGHTTP2_DATA_FLAG_EOF;

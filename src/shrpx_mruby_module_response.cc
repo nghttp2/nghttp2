@@ -209,7 +209,7 @@ mrb_value response_return(mrb_state *mrb, mrb_value self) {
 
   auto &balloc = downstream->get_block_allocator();
 
-  if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
+  if (downstream->get_response_state() == DownstreamState::MSG_COMPLETE) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "response has already been committed");
   }
 
@@ -283,7 +283,7 @@ mrb_value response_send_info(mrb_state *mrb, mrb_value self) {
   auto &resp = downstream->response();
   int rv;
 
-  if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
+  if (downstream->get_response_state() == DownstreamState::MSG_COMPLETE) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "response has already been committed");
   }
 

@@ -133,8 +133,8 @@ Downstream::Downstream(Upstream *upstream, MemchunkPool *mcpool,
       downstream_stream_id_(-1),
       response_rst_stream_error_code_(NGHTTP2_NO_ERROR),
       affinity_cookie_(0),
-      request_state_(INITIAL),
-      response_state_(INITIAL),
+      request_state_(DownstreamState::INITIAL),
+      response_state_(DownstreamState::INITIAL),
       dispatch_state_(DISPATCH_NONE),
       upgraded_(false),
       chunked_request_(false),
@@ -596,9 +596,11 @@ void Downstream::set_stream_id(int32_t stream_id) { stream_id_ = stream_id; }
 
 int32_t Downstream::get_stream_id() const { return stream_id_; }
 
-void Downstream::set_request_state(int state) { request_state_ = state; }
+void Downstream::set_request_state(DownstreamState state) {
+  request_state_ = state;
+}
 
-int Downstream::get_request_state() const { return request_state_; }
+DownstreamState Downstream::get_request_state() const { return request_state_; }
 
 bool Downstream::get_chunked_request() const { return chunked_request_; }
 
@@ -711,9 +713,13 @@ int Downstream::on_read() {
   return dconn_->on_read();
 }
 
-void Downstream::set_response_state(int state) { response_state_ = state; }
+void Downstream::set_response_state(DownstreamState state) {
+  response_state_ = state;
+}
 
-int Downstream::get_response_state() const { return response_state_; }
+DownstreamState Downstream::get_response_state() const {
+  return response_state_;
+}
 
 DefaultMemchunks *Downstream::get_response_buf() { return &response_buf_; }
 
@@ -869,7 +875,7 @@ bool Downstream::get_upgraded() const { return upgraded_; }
 
 bool Downstream::get_http2_upgrade_request() const {
   return req_.http2_upgrade_seen && req_.fs.header(http2::HD_HTTP2_SETTINGS) &&
-         response_state_ == INITIAL;
+         response_state_ == DownstreamState::INITIAL;
 }
 
 StringRef Downstream::get_http2_settings() const {
@@ -1055,10 +1061,10 @@ bool Downstream::get_request_header_sent() const {
 }
 
 bool Downstream::request_submission_ready() const {
-  return (request_state_ == Downstream::HEADER_COMPLETE ||
-          request_state_ == Downstream::MSG_COMPLETE) &&
+  return (request_state_ == DownstreamState::HEADER_COMPLETE ||
+          request_state_ == DownstreamState::MSG_COMPLETE) &&
          (request_pending_ || !request_header_sent_) &&
-         response_state_ == Downstream::INITIAL;
+         response_state_ == DownstreamState::INITIAL;
 }
 
 int Downstream::get_dispatch_state() const { return dispatch_state_; }
@@ -1082,8 +1088,8 @@ bool Downstream::can_detach_downstream_connection() const {
   // We should check request and response buffer.  If request buffer
   // is not empty, then we might leave downstream connection in weird
   // state, especially for HTTP/1.1
-  return dconn_ && response_state_ == Downstream::MSG_COMPLETE &&
-         request_state_ == Downstream::MSG_COMPLETE && !upgraded_ &&
+  return dconn_ && response_state_ == DownstreamState::MSG_COMPLETE &&
+         request_state_ == DownstreamState::MSG_COMPLETE && !upgraded_ &&
          !resp_.connection_close && request_buf_.rleft() == 0;
 }
 

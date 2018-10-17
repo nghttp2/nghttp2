@@ -100,7 +100,7 @@ void retry_downstream_connection(Downstream *downstream,
     }
   }
 
-  downstream->set_request_state(Downstream::CONNECT_FAIL);
+  downstream->set_request_state(DownstreamState::CONNECT_FAIL);
 
   if (rv == SHRPX_ERR_TLS_REQUIRED) {
     rv = upstream->on_downstream_abort_request_with_https_redirect(downstream);
@@ -901,7 +901,7 @@ namespace {
 int htp_msg_begincb(http_parser *htp) {
   auto downstream = static_cast<Downstream *>(htp->data);
 
-  if (downstream->get_response_state() != Downstream::INITIAL) {
+  if (downstream->get_response_state() != DownstreamState::INITIAL) {
     return -1;
   }
 
@@ -966,7 +966,7 @@ int htp_hdrs_completecb(http_parser *htp) {
       return -1;
     }
   } else if (resp.fs.parse_content_length() != 0) {
-    downstream->set_response_state(Downstream::MSG_BAD_HEADER);
+    downstream->set_response_state(DownstreamState::MSG_BAD_HEADER);
     return -1;
   }
 
@@ -992,7 +992,7 @@ int htp_hdrs_completecb(http_parser *htp) {
   }
 
   resp.connection_close = !http_should_keep_alive(htp);
-  downstream->set_response_state(Downstream::HEADER_COMPLETE);
+  downstream->set_response_state(DownstreamState::HEADER_COMPLETE);
   downstream->inspect_http1_response();
   if (downstream->get_upgraded()) {
     // content-length must be ignored for upgraded connection.
@@ -1023,7 +1023,7 @@ int htp_hdrs_completecb(http_parser *htp) {
     if (upstream->resume_read(SHRPX_NO_BUFFER, downstream, 0) != 0) {
       return -1;
     }
-    downstream->set_request_state(Downstream::HEADER_COMPLETE);
+    downstream->set_request_state(DownstreamState::HEADER_COMPLETE);
     if (LOG_ENABLED(INFO)) {
       LOG(INFO) << "HTTP upgrade success. stream_id="
                 << downstream->get_stream_id();
@@ -1086,7 +1086,7 @@ int htp_hdr_keycb(http_parser *htp, const char *data, size_t len) {
     return -1;
   }
 
-  if (downstream->get_response_state() == Downstream::INITIAL) {
+  if (downstream->get_response_state() == DownstreamState::INITIAL) {
     if (resp.fs.header_key_prev()) {
       resp.fs.append_last_header_key(data, len);
     } else {
@@ -1123,7 +1123,7 @@ int htp_hdr_valcb(http_parser *htp, const char *data, size_t len) {
     return -1;
   }
 
-  if (downstream->get_response_state() == Downstream::INITIAL) {
+  if (downstream->get_response_state() == DownstreamState::INITIAL) {
     resp.fs.append_last_header_value(data, len);
   } else {
     resp.fs.append_last_trailer_value(data, len);
@@ -1163,7 +1163,7 @@ int htp_msg_completecb(http_parser *htp) {
     return 0;
   }
 
-  downstream->set_response_state(Downstream::MSG_COMPLETE);
+  downstream->set_response_state(DownstreamState::MSG_COMPLETE);
   // Block reading another response message from (broken?)
   // server. This callback is not called if the connection is
   // tunneled.
@@ -1435,7 +1435,7 @@ int HttpDownstreamConnection::process_input(const uint8_t *data,
   if (htperr != HPE_OK) {
     // Handling early return (in other words, response was hijacked by
     // mruby scripting).
-    if (downstream_->get_response_state() == Downstream::MSG_COMPLETE) {
+    if (downstream_->get_response_state() == DownstreamState::MSG_COMPLETE) {
       return SHRPX_ERR_DCONN_CANCELED;
     }
 

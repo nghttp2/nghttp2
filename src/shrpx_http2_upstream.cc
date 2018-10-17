@@ -77,7 +77,7 @@ int on_stream_close_callback(nghttp2_session *session, int32_t stream_id,
 
   req.unconsumed_body_length = 0;
 
-  if (downstream->get_request_state() == Downstream::CONNECT_FAIL) {
+  if (downstream->get_request_state() == DownstreamState::CONNECT_FAIL) {
     upstream->remove_downstream(downstream);
     // downstream was deleted
 
@@ -89,7 +89,7 @@ int on_stream_close_callback(nghttp2_session *session, int32_t stream_id,
     downstream->detach_downstream_connection();
   }
 
-  downstream->set_request_state(Downstream::STREAM_CLOSED);
+  downstream->set_request_state(DownstreamState::STREAM_CLOSED);
 
   // At this point, downstream read may be paused.
 
@@ -187,7 +187,7 @@ int on_header_callback2(nghttp2_session *session, const nghttp2_frame *frame,
   if (req.fs.buffer_size() + namebuf.len + valuebuf.len >
           httpconf.request_header_field_buffer ||
       req.fs.num_fields() >= httpconf.max_request_header_fields) {
-    if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
+    if (downstream->get_response_state() == DownstreamState::MSG_COMPLETE) {
       return 0;
     }
 
@@ -312,7 +312,7 @@ int Http2Upstream::on_request_headers(Downstream *downstream,
   auto &req = downstream->request();
   req.tstamp = lgconf->tstamp;
 
-  if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
+  if (downstream->get_response_state() == DownstreamState::MSG_COMPLETE) {
     return 0;
   }
 
@@ -413,7 +413,7 @@ int Http2Upstream::on_request_headers(Downstream *downstream,
 
   downstream->inspect_http2_request();
 
-  downstream->set_request_state(Downstream::HEADER_COMPLETE);
+  downstream->set_request_state(DownstreamState::HEADER_COMPLETE);
 
 #ifdef HAVE_MRUBY
   auto upstream = downstream->get_upstream();
@@ -432,10 +432,10 @@ int Http2Upstream::on_request_headers(Downstream *downstream,
   if (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
     downstream->disable_upstream_rtimer();
 
-    downstream->set_request_state(Downstream::MSG_COMPLETE);
+    downstream->set_request_state(DownstreamState::MSG_COMPLETE);
   }
 
-  if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
+  if (downstream->get_response_state() == DownstreamState::MSG_COMPLETE) {
     return 0;
   }
 
@@ -467,7 +467,7 @@ void Http2Upstream::initiate_downstream(Downstream *downstream) {
       rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
     }
 
-    downstream->set_request_state(Downstream::CONNECT_FAIL);
+    downstream->set_request_state(DownstreamState::CONNECT_FAIL);
     downstream_queue_.mark_failure(downstream);
 
     return;
@@ -483,7 +483,7 @@ void Http2Upstream::initiate_downstream(Downstream *downstream) {
       rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
     }
 
-    downstream->set_request_state(Downstream::CONNECT_FAIL);
+    downstream->set_request_state(DownstreamState::CONNECT_FAIL);
 
     downstream_queue_.mark_failure(downstream);
 
@@ -504,7 +504,7 @@ void Http2Upstream::initiate_downstream(Downstream *downstream) {
       return;
     }
 
-    if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
+    if (downstream->get_response_state() == DownstreamState::MSG_COMPLETE) {
       return;
     }
   }
@@ -556,12 +556,12 @@ int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
       downstream->disable_upstream_rtimer();
 
       if (downstream->end_upload_data() != 0) {
-        if (downstream->get_response_state() != Downstream::MSG_COMPLETE) {
+        if (downstream->get_response_state() != DownstreamState::MSG_COMPLETE) {
           upstream->rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
         }
       }
 
-      downstream->set_request_state(Downstream::MSG_COMPLETE);
+      downstream->set_request_state(DownstreamState::MSG_COMPLETE);
     }
 
     return 0;
@@ -585,12 +585,12 @@ int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
       downstream->disable_upstream_rtimer();
 
       if (downstream->end_upload_data() != 0) {
-        if (downstream->get_response_state() != Downstream::MSG_COMPLETE) {
+        if (downstream->get_response_state() != DownstreamState::MSG_COMPLETE) {
           upstream->rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
         }
       }
 
-      downstream->set_request_state(Downstream::MSG_COMPLETE);
+      downstream->set_request_state(DownstreamState::MSG_COMPLETE);
     }
 
     return 0;
@@ -637,7 +637,7 @@ int on_data_chunk_recv_callback(nghttp2_session *session, uint8_t flags,
   downstream->reset_upstream_rtimer();
 
   if (downstream->push_upload_data_chunk(data, len) != 0) {
-    if (downstream->get_response_state() != Downstream::MSG_COMPLETE) {
+    if (downstream->get_response_state() != DownstreamState::MSG_COMPLETE) {
       upstream->rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
     }
 
@@ -757,7 +757,7 @@ int on_frame_send_callback(nghttp2_session *session, const nghttp2_frame *frame,
 
     promised_downstream->inspect_http2_request();
 
-    promised_downstream->set_request_state(Downstream::MSG_COMPLETE);
+    promised_downstream->set_request_state(DownstreamState::MSG_COMPLETE);
 
     // a bit weird but start_downstream() expects that given
     // downstream is in pending queue.
@@ -1241,7 +1241,7 @@ ClientHandler *Http2Upstream::get_client_handler() const { return handler_; }
 int Http2Upstream::downstream_read(DownstreamConnection *dconn) {
   auto downstream = dconn->get_downstream();
 
-  if (downstream->get_response_state() == Downstream::MSG_RESET) {
+  if (downstream->get_response_state() == DownstreamState::MSG_RESET) {
     // The downstream stream was reset (canceled). In this case,
     // RST_STREAM to the upstream and delete downstream connection
     // here. Deleting downstream will be taken place at
@@ -1252,7 +1252,8 @@ int Http2Upstream::downstream_read(DownstreamConnection *dconn) {
     downstream->pop_downstream_connection();
     // dconn was deleted
     dconn = nullptr;
-  } else if (downstream->get_response_state() == Downstream::MSG_BAD_HEADER) {
+  } else if (downstream->get_response_state() ==
+             DownstreamState::MSG_BAD_HEADER) {
     if (error_reply(downstream, 502) != 0) {
       return -1;
     }
@@ -1316,19 +1317,20 @@ int Http2Upstream::downstream_eof(DownstreamConnection *dconn) {
   // dconn was deleted
   dconn = nullptr;
   // downstream wil be deleted in on_stream_close_callback.
-  if (downstream->get_response_state() == Downstream::HEADER_COMPLETE) {
+  if (downstream->get_response_state() == DownstreamState::HEADER_COMPLETE) {
     // Server may indicate the end of the request by EOF
     if (LOG_ENABLED(INFO)) {
       ULOG(INFO, this) << "Downstream body was ended by EOF";
     }
-    downstream->set_response_state(Downstream::MSG_COMPLETE);
+    downstream->set_response_state(DownstreamState::MSG_COMPLETE);
 
     // For tunneled connection, MSG_COMPLETE signals
     // downstream_data_read_callback to send RST_STREAM after pending
     // response body is sent. This is needed to ensure that RST_STREAM
     // is sent after all pending data are sent.
     on_downstream_body_complete(downstream);
-  } else if (downstream->get_response_state() != Downstream::MSG_COMPLETE) {
+  } else if (downstream->get_response_state() !=
+             DownstreamState::MSG_COMPLETE) {
     // If stream was not closed, then we set MSG_COMPLETE and let
     // on_stream_close_callback delete downstream.
     if (error_reply(downstream, 502) != 0) {
@@ -1360,7 +1362,7 @@ int Http2Upstream::downstream_error(DownstreamConnection *dconn, int events) {
   // dconn was deleted
   dconn = nullptr;
 
-  if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
+  if (downstream->get_response_state() == DownstreamState::MSG_COMPLETE) {
     // For SSL tunneling, we issue RST_STREAM. For other types of
     // stream, we don't have to do anything since response was
     // complete.
@@ -1368,7 +1370,7 @@ int Http2Upstream::downstream_error(DownstreamConnection *dconn, int events) {
       rst_stream(downstream, NGHTTP2_NO_ERROR);
     }
   } else {
-    if (downstream->get_response_state() == Downstream::HEADER_COMPLETE) {
+    if (downstream->get_response_state() == DownstreamState::HEADER_COMPLETE) {
       if (downstream->get_upgraded()) {
         on_downstream_body_complete(downstream);
       } else {
@@ -1385,7 +1387,7 @@ int Http2Upstream::downstream_error(DownstreamConnection *dconn, int events) {
         return -1;
       }
     }
-    downstream->set_response_state(Downstream::MSG_COMPLETE);
+    downstream->set_response_state(DownstreamState::MSG_COMPLETE);
   }
   handler_->signal_write();
   // At this point, downstream may be deleted.
@@ -1452,7 +1454,7 @@ ssize_t downstream_data_read_callback(nghttp2_session *session,
   *data_flags |= NGHTTP2_DATA_FLAG_NO_COPY;
 
   if (body_empty &&
-      downstream->get_response_state() == Downstream::MSG_COMPLETE) {
+      downstream->get_response_state() == DownstreamState::MSG_COMPLETE) {
 
     *data_flags |= NGHTTP2_DATA_FLAG_EOF;
 
@@ -1549,7 +1551,7 @@ int Http2Upstream::send_reply(Downstream *downstream, const uint8_t *body,
 
   buf->append(body, bodylen);
 
-  downstream->set_response_state(Downstream::MSG_COMPLETE);
+  downstream->set_response_state(DownstreamState::MSG_COMPLETE);
 
   if (data_prd_ptr) {
     downstream->reset_upstream_wtimer();
@@ -1569,7 +1571,7 @@ int Http2Upstream::error_reply(Downstream *downstream,
   resp.http_status = status_code;
   auto body = downstream->get_response_buf();
   body->append(html);
-  downstream->set_response_state(Downstream::MSG_COMPLETE);
+  downstream->set_response_state(DownstreamState::MSG_COMPLETE);
 
   nghttp2_data_provider data_prd;
   data_prd.source.ptr = downstream;
@@ -1667,7 +1669,7 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
         return -1;
       }
 
-      if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
+      if (downstream->get_response_state() == DownstreamState::MSG_COMPLETE) {
         return -1;
       }
     }
@@ -1683,7 +1685,7 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
       return -1;
     }
 
-    if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
+    if (downstream->get_response_state() == DownstreamState::MSG_COMPLETE) {
       return -1;
     }
   }
@@ -2045,7 +2047,7 @@ int Http2Upstream::on_downstream_reset(Downstream *downstream, bool no_retry) {
   }
 
   if (!downstream->request_submission_ready()) {
-    if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
+    if (downstream->get_response_state() == DownstreamState::MSG_COMPLETE) {
       // We have got all response body already.  Send it off.
       downstream->pop_downstream_connection();
       return 0;

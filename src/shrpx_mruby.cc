@@ -82,7 +82,7 @@ int MRubyContext::run_app(Downstream *downstream, int phase) {
 
   if (mrb_->exc) {
     // If response has been committed, ignore error
-    if (downstream->get_response_state() != Downstream::MSG_COMPLETE) {
+    if (downstream->get_response_state() != DownstreamState::MSG_COMPLETE) {
       rv = -1;
     }
 

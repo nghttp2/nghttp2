@@ -276,6 +276,22 @@ struct Response {
   bool headers_only;
 };
 
+enum class DownstreamState {
+  INITIAL,
+  HEADER_COMPLETE,
+  MSG_COMPLETE,
+  STREAM_CLOSED,
+  CONNECT_FAIL,
+  MSG_RESET,
+  // header contains invalid header field.  We can safely send error
+  // response (502) to a client.
+  MSG_BAD_HEADER,
+  // header fields in HTTP/1 request exceed the configuration limit.
+  // This state is only transitioned from INITIAL state, and solely
+  // used to signal 431 status code to the client.
+  HTTP1_REQUEST_HEADER_TOO_LARGE,
+};
+
 class Downstream {
 public:
   Downstream(Upstream *upstream, MemchunkPool *mcpool, int32_t stream_id);
@@ -349,24 +365,8 @@ public:
   void set_request_downstream_host(const StringRef &host);
   bool expect_response_body() const;
   bool expect_response_trailer() const;
-  enum {
-    INITIAL,
-    HEADER_COMPLETE,
-    MSG_COMPLETE,
-    STREAM_CLOSED,
-    CONNECT_FAIL,
-    IDLE,
-    MSG_RESET,
-    // header contains invalid header field.  We can safely send error
-    // response (502) to a client.
-    MSG_BAD_HEADER,
-    // header fields in HTTP/1 request exceed the configuration limit.
-    // This state is only transitioned from INITIAL state, and solely
-    // used to signal 431 status code to the client.
-    HTTP1_REQUEST_HEADER_TOO_LARGE,
-  };
-  void set_request_state(int state);
-  int get_request_state() const;
+  void set_request_state(DownstreamState state);
+  DownstreamState get_request_state() const;
   DefaultMemchunks *get_request_buf();
   void set_request_pending(bool f);
   bool get_request_pending() const;
@@ -391,8 +391,8 @@ public:
   bool get_chunked_response() const;
   void set_chunked_response(bool f);
 
-  void set_response_state(int state);
-  int get_response_state() const;
+  void set_response_state(DownstreamState state);
+  DownstreamState get_response_state() const;
   DefaultMemchunks *get_response_buf();
   bool response_buf_full();
   // Validates that received response body length and content-length
@@ -557,9 +557,9 @@ private:
   // An affinity cookie value.
   uint32_t affinity_cookie_;
   // request state
-  int request_state_;
+  DownstreamState request_state_;
   // response state
-  int response_state_;
+  DownstreamState response_state_;
   // only used by HTTP/2 upstream
   int dispatch_state_;
   // true if the connection is upgraded (HTTP Upgrade or CONNECT),
