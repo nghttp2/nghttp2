@@ -609,19 +609,19 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
 
   for (auto &lf : lfv) {
     switch (lf.type) {
-    case SHRPX_LOGF_LITERAL:
+    case LogFragmentType::LITERAL:
       std::tie(p, last) = copy(lf.value, p, last);
       break;
-    case SHRPX_LOGF_REMOTE_ADDR:
+    case LogFragmentType::REMOTE_ADDR:
       std::tie(p, last) = copy(lgsp.remote_addr, p, last);
       break;
-    case SHRPX_LOGF_TIME_LOCAL:
+    case LogFragmentType::TIME_LOCAL:
       std::tie(p, last) = copy(tstamp->time_local, p, last);
       break;
-    case SHRPX_LOGF_TIME_ISO8601:
+    case LogFragmentType::TIME_ISO8601:
       std::tie(p, last) = copy(tstamp->time_iso8601, p, last);
       break;
-    case SHRPX_LOGF_REQUEST:
+    case LogFragmentType::REQUEST:
       std::tie(p, last) = copy(method, p, last);
       std::tie(p, last) = copy(' ', p, last);
       std::tie(p, last) = copy_escape(path, p, last);
@@ -632,13 +632,13 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
         std::tie(p, last) = copy(req.http_minor, p, last);
       }
       break;
-    case SHRPX_LOGF_STATUS:
+    case LogFragmentType::STATUS:
       std::tie(p, last) = copy(resp.http_status, p, last);
       break;
-    case SHRPX_LOGF_BODY_BYTES_SENT:
+    case LogFragmentType::BODY_BYTES_SENT:
       std::tie(p, last) = copy(downstream->response_sent_body_length, p, last);
       break;
-    case SHRPX_LOGF_HTTP: {
+    case LogFragmentType::HTTP: {
       auto hd = req.fs.header(lf.value);
       if (hd) {
         std::tie(p, last) = copy_escape((*hd).value, p, last);
@@ -649,7 +649,7 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
 
       break;
     }
-    case SHRPX_LOGF_AUTHORITY:
+    case LogFragmentType::AUTHORITY:
       if (!req.authority.empty()) {
         std::tie(p, last) = copy(req.authority, p, last);
         break;
@@ -658,13 +658,13 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
       std::tie(p, last) = copy('-', p, last);
 
       break;
-    case SHRPX_LOGF_REMOTE_PORT:
+    case LogFragmentType::REMOTE_PORT:
       std::tie(p, last) = copy(lgsp.remote_port, p, last);
       break;
-    case SHRPX_LOGF_SERVER_PORT:
+    case LogFragmentType::SERVER_PORT:
       std::tie(p, last) = copy(lgsp.server_port, p, last);
       break;
-    case SHRPX_LOGF_REQUEST_TIME: {
+    case LogFragmentType::REQUEST_TIME: {
       auto t = std::chrono::duration_cast<std::chrono::milliseconds>(
                    lgsp.request_end_time - downstream->get_request_start_time())
                    .count();
@@ -678,20 +678,20 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
       std::tie(p, last) = copy(frac, p, last);
       break;
     }
-    case SHRPX_LOGF_PID:
+    case LogFragmentType::PID:
       std::tie(p, last) = copy(lgsp.pid, p, last);
       break;
-    case SHRPX_LOGF_ALPN:
+    case LogFragmentType::ALPN:
       std::tie(p, last) = copy_escape(lgsp.alpn, p, last);
       break;
-    case SHRPX_LOGF_TLS_CIPHER:
+    case LogFragmentType::TLS_CIPHER:
       if (!lgsp.ssl) {
         std::tie(p, last) = copy('-', p, last);
         break;
       }
       std::tie(p, last) = copy(SSL_get_cipher_name(lgsp.ssl), p, last);
       break;
-    case SHRPX_LOGF_TLS_PROTOCOL:
+    case LogFragmentType::TLS_PROTOCOL:
       if (!lgsp.ssl) {
         std::tie(p, last) = copy('-', p, last);
         break;
@@ -699,7 +699,7 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
       std::tie(p, last) =
           copy(nghttp2::tls::get_tls_protocol(lgsp.ssl), p, last);
       break;
-    case SHRPX_LOGF_TLS_SESSION_ID: {
+    case LogFragmentType::TLS_SESSION_ID: {
       auto session = SSL_get_session(lgsp.ssl);
       if (!session) {
         std::tie(p, last) = copy('-', p, last);
@@ -714,7 +714,7 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
       std::tie(p, last) = copy_hex_low(session_id, session_id_length, p, last);
       break;
     }
-    case SHRPX_LOGF_TLS_SESSION_REUSED:
+    case LogFragmentType::TLS_SESSION_REUSED:
       if (!lgsp.ssl) {
         std::tie(p, last) = copy('-', p, last);
         break;
@@ -722,15 +722,15 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
       std::tie(p, last) =
           copy(SSL_session_reused(lgsp.ssl) ? 'r' : '.', p, last);
       break;
-    case SHRPX_LOGF_TLS_SNI:
+    case LogFragmentType::TLS_SNI:
       if (lgsp.sni.empty()) {
         std::tie(p, last) = copy('-', p, last);
         break;
       }
       std::tie(p, last) = copy_escape(lgsp.sni, p, last);
       break;
-    case SHRPX_LOGF_TLS_CLIENT_FINGERPRINT_SHA1:
-    case SHRPX_LOGF_TLS_CLIENT_FINGERPRINT_SHA256: {
+    case LogFragmentType::TLS_CLIENT_FINGERPRINT_SHA1:
+    case LogFragmentType::TLS_CLIENT_FINGERPRINT_SHA256: {
       if (!lgsp.ssl) {
         std::tie(p, last) = copy('-', p, last);
         break;
@@ -743,8 +743,9 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
       std::array<uint8_t, 32> buf;
       auto len = tls::get_x509_fingerprint(
           buf.data(), buf.size(), x,
-          lf.type == SHRPX_LOGF_TLS_CLIENT_FINGERPRINT_SHA256 ? EVP_sha256()
-                                                              : EVP_sha1());
+          lf.type == LogFragmentType::TLS_CLIENT_FINGERPRINT_SHA256
+              ? EVP_sha256()
+              : EVP_sha1());
       X509_free(x);
       if (len <= 0) {
         std::tie(p, last) = copy('-', p, last);
@@ -753,8 +754,8 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
       std::tie(p, last) = copy_hex_low(buf.data(), len, p, last);
       break;
     }
-    case SHRPX_LOGF_TLS_CLIENT_ISSUER_NAME:
-    case SHRPX_LOGF_TLS_CLIENT_SUBJECT_NAME: {
+    case LogFragmentType::TLS_CLIENT_ISSUER_NAME:
+    case LogFragmentType::TLS_CLIENT_SUBJECT_NAME: {
       if (!lgsp.ssl) {
         std::tie(p, last) = copy('-', p, last);
         break;
@@ -764,7 +765,7 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
         std::tie(p, last) = copy('-', p, last);
         break;
       }
-      auto name = lf.type == SHRPX_LOGF_TLS_CLIENT_ISSUER_NAME
+      auto name = lf.type == LogFragmentType::TLS_CLIENT_ISSUER_NAME
                       ? tls::get_x509_issuer_name(balloc, x)
                       : tls::get_x509_subject_name(balloc, x);
       X509_free(x);
@@ -775,7 +776,7 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
       std::tie(p, last) = copy(name, p, last);
       break;
     }
-    case SHRPX_LOGF_TLS_CLIENT_SERIAL: {
+    case LogFragmentType::TLS_CLIENT_SERIAL: {
       if (!lgsp.ssl) {
         std::tie(p, last) = copy('-', p, last);
         break;
@@ -794,21 +795,21 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
       std::tie(p, last) = copy(sn, p, last);
       break;
     }
-    case SHRPX_LOGF_BACKEND_HOST:
+    case LogFragmentType::BACKEND_HOST:
       if (!downstream_addr) {
         std::tie(p, last) = copy('-', p, last);
         break;
       }
       std::tie(p, last) = copy(downstream_addr->host, p, last);
       break;
-    case SHRPX_LOGF_BACKEND_PORT:
+    case LogFragmentType::BACKEND_PORT:
       if (!downstream_addr) {
         std::tie(p, last) = copy('-', p, last);
         break;
       }
       std::tie(p, last) = copy(downstream_addr->port, p, last);
       break;
-    case SHRPX_LOGF_NONE:
+    case LogFragmentType::NONE:
       break;
     default:
       break;

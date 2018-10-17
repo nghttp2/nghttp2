@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 def to_enum_hd(k, prefix):
-    res = prefix + '_'
+    res = prefix
     for c in k.upper():
         if c == ':' or c == '-':
             res += '_'
@@ -30,7 +30,7 @@ enum {'''
         print '''\
   {},'''.format(to_enum_hd(k, prefix))
     print '''\
-  {}_MAXIDX,
+  {}MAXIDX,
 }};'''.format(prefix)
 
 def gen_index_header(tokens, prefix, value_type, comp_fun, return_type, fail_value):

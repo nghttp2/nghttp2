@@ -44,4 +44,4 @@ HEADERS = [
 ]
 
 if __name__ == '__main__':
-    gentokenlookup(HEADERS, 'HD')
+    gentokenlookup(HEADERS, 'HD_')

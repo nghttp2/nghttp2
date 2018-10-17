@@ -208,5 +208,5 @@ LOGVARS = [
 ]
 
 if __name__ == '__main__':
-    gentokenlookup(OPTIONS, 'SHRPX_OPTID', value_type='char', comp_fun='util::strieq_l')
-    gentokenlookup(LOGVARS, 'SHRPX_LOGF', value_type='char', comp_fun='util::strieq_l', return_type='LogFragmentType', fail_value='SHRPX_LOGF_NONE')
+    gentokenlookup(OPTIONS, 'SHRPX_OPTID_', value_type='char', comp_fun='util::strieq_l')
+    gentokenlookup(LOGVARS, 'LogFragmentType::', value_type='char', comp_fun='util::strieq_l', return_type='LogFragmentType', fail_value='LogFragmentType::NONE')

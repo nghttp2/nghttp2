@@ -50,4 +50,4 @@ if __name__ == '__main__':
             continue
         _, m, _ = line.split(',', 2)
         methods.append(m.strip())
-    gentokenlookup(methods, 'HTTP')
+    gentokenlookup(methods, 'HTTP_')

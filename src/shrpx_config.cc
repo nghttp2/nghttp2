@@ -379,7 +379,7 @@ LogFragmentType log_var_lookup_token(const char *name, size_t namelen) {
     switch (name[2]) {
     case 'd':
       if (util::strieq_l("pi", name, 2)) {
-        return SHRPX_LOGF_PID;
+        return LogFragmentType::PID;
       }
       break;
     }
@@ -388,7 +388,7 @@ LogFragmentType log_var_lookup_token(const char *name, size_t namelen) {
     switch (name[3]) {
     case 'n':
       if (util::strieq_l("alp", name, 3)) {
-        return SHRPX_LOGF_ALPN;
+        return LogFragmentType::ALPN;
       }
       break;
     }
@@ -397,7 +397,7 @@ LogFragmentType log_var_lookup_token(const char *name, size_t namelen) {
     switch (name[5]) {
     case 's':
       if (util::strieq_l("statu", name, 5)) {
-        return SHRPX_LOGF_STATUS;
+        return LogFragmentType::STATUS;
       }
       break;
     }
@@ -406,12 +406,12 @@ LogFragmentType log_var_lookup_token(const char *name, size_t namelen) {
     switch (name[6]) {
     case 'i':
       if (util::strieq_l("tls_sn", name, 6)) {
-        return SHRPX_LOGF_TLS_SNI;
+        return LogFragmentType::TLS_SNI;
       }
       break;
     case 't':
       if (util::strieq_l("reques", name, 6)) {
-        return SHRPX_LOGF_REQUEST;
+        return LogFragmentType::REQUEST;
       }
       break;
     }
@@ -420,15 +420,15 @@ LogFragmentType log_var_lookup_token(const char *name, size_t namelen) {
     switch (name[9]) {
     case 'l':
       if (util::strieq_l("time_loca", name, 9)) {
-        return SHRPX_LOGF_TIME_LOCAL;
+        return LogFragmentType::TIME_LOCAL;
       }
       break;
     case 'r':
       if (util::strieq_l("ssl_ciphe", name, 9)) {
-        return SHRPX_LOGF_SSL_CIPHER;
+        return LogFragmentType::SSL_CIPHER;
       }
       if (util::strieq_l("tls_ciphe", name, 9)) {
-        return SHRPX_LOGF_TLS_CIPHER;
+        return LogFragmentType::TLS_CIPHER;
       }
       break;
     }
@@ -437,15 +437,15 @@ LogFragmentType log_var_lookup_token(const char *name, size_t namelen) {
     switch (name[10]) {
     case 'r':
       if (util::strieq_l("remote_add", name, 10)) {
-        return SHRPX_LOGF_REMOTE_ADDR;
+        return LogFragmentType::REMOTE_ADDR;
       }
       break;
     case 't':
       if (util::strieq_l("remote_por", name, 10)) {
-        return SHRPX_LOGF_REMOTE_PORT;
+        return LogFragmentType::REMOTE_PORT;
       }
       if (util::strieq_l("server_por", name, 10)) {
-        return SHRPX_LOGF_SERVER_PORT;
+        return LogFragmentType::SERVER_PORT;
       }
       break;
     }
@@ -454,28 +454,28 @@ LogFragmentType log_var_lookup_token(const char *name, size_t namelen) {
     switch (name[11]) {
     case '1':
       if (util::strieq_l("time_iso860", name, 11)) {
-        return SHRPX_LOGF_TIME_ISO8601;
+        return LogFragmentType::TIME_ISO8601;
       }
       break;
     case 'e':
       if (util::strieq_l("request_tim", name, 11)) {
-        return SHRPX_LOGF_REQUEST_TIME;
+        return LogFragmentType::REQUEST_TIME;
       }
       break;
     case 'l':
       if (util::strieq_l("ssl_protoco", name, 11)) {
-        return SHRPX_LOGF_SSL_PROTOCOL;
+        return LogFragmentType::SSL_PROTOCOL;
       }
       if (util::strieq_l("tls_protoco", name, 11)) {
-        return SHRPX_LOGF_TLS_PROTOCOL;
+        return LogFragmentType::TLS_PROTOCOL;
       }
       break;
     case 't':
       if (util::strieq_l("backend_hos", name, 11)) {
-        return SHRPX_LOGF_BACKEND_HOST;
+        return LogFragmentType::BACKEND_HOST;
       }
       if (util::strieq_l("backend_por", name, 11)) {
-        return SHRPX_LOGF_BACKEND_PORT;
+        return LogFragmentType::BACKEND_PORT;
       }
       break;
     }
@@ -484,10 +484,10 @@ LogFragmentType log_var_lookup_token(const char *name, size_t namelen) {
     switch (name[13]) {
     case 'd':
       if (util::strieq_l("ssl_session_i", name, 13)) {
-        return SHRPX_LOGF_SSL_SESSION_ID;
+        return LogFragmentType::SSL_SESSION_ID;
       }
       if (util::strieq_l("tls_session_i", name, 13)) {
-        return SHRPX_LOGF_TLS_SESSION_ID;
+        return LogFragmentType::TLS_SESSION_ID;
       }
       break;
     }
@@ -496,7 +496,7 @@ LogFragmentType log_var_lookup_token(const char *name, size_t namelen) {
     switch (name[14]) {
     case 't':
       if (util::strieq_l("body_bytes_sen", name, 14)) {
-        return SHRPX_LOGF_BODY_BYTES_SENT;
+        return LogFragmentType::BODY_BYTES_SENT;
       }
       break;
     }
@@ -505,7 +505,7 @@ LogFragmentType log_var_lookup_token(const char *name, size_t namelen) {
     switch (name[16]) {
     case 'l':
       if (util::strieq_l("tls_client_seria", name, 16)) {
-        return SHRPX_LOGF_TLS_CLIENT_SERIAL;
+        return LogFragmentType::TLS_CLIENT_SERIAL;
       }
       break;
     }
@@ -514,10 +514,10 @@ LogFragmentType log_var_lookup_token(const char *name, size_t namelen) {
     switch (name[17]) {
     case 'd':
       if (util::strieq_l("ssl_session_reuse", name, 17)) {
-        return SHRPX_LOGF_SSL_SESSION_REUSED;
+        return LogFragmentType::SSL_SESSION_REUSED;
       }
       if (util::strieq_l("tls_session_reuse", name, 17)) {
-        return SHRPX_LOGF_TLS_SESSION_REUSED;
+        return LogFragmentType::TLS_SESSION_REUSED;
       }
       break;
     }
@@ -526,7 +526,7 @@ LogFragmentType log_var_lookup_token(const char *name, size_t namelen) {
     switch (name[21]) {
     case 'e':
       if (util::strieq_l("tls_client_issuer_nam", name, 21)) {
-        return SHRPX_LOGF_TLS_CLIENT_ISSUER_NAME;
+        return LogFragmentType::TLS_CLIENT_ISSUER_NAME;
       }
       break;
     }
@@ -535,7 +535,7 @@ LogFragmentType log_var_lookup_token(const char *name, size_t namelen) {
     switch (name[22]) {
     case 'e':
       if (util::strieq_l("tls_client_subject_nam", name, 22)) {
-        return SHRPX_LOGF_TLS_CLIENT_SUBJECT_NAME;
+        return LogFragmentType::TLS_CLIENT_SUBJECT_NAME;
       }
       break;
     }
@@ -544,7 +544,7 @@ LogFragmentType log_var_lookup_token(const char *name, size_t namelen) {
     switch (name[26]) {
     case '1':
       if (util::strieq_l("tls_client_fingerprint_sha", name, 26)) {
-        return SHRPX_LOGF_TLS_CLIENT_FINGERPRINT_SHA1;
+        return LogFragmentType::TLS_CLIENT_FINGERPRINT_SHA1;
       }
       break;
     }
@@ -553,13 +553,13 @@ LogFragmentType log_var_lookup_token(const char *name, size_t namelen) {
     switch (name[28]) {
     case '6':
       if (util::strieq_l("tls_client_fingerprint_sha25", name, 28)) {
-        return SHRPX_LOGF_TLS_CLIENT_FINGERPRINT_SHA256;
+        return LogFragmentType::TLS_CLIENT_FINGERPRINT_SHA256;
       }
       break;
     }
     break;
   }
-  return SHRPX_LOGF_NONE;
+  return LogFragmentType::NONE;
 }
 } // namespace
 
@@ -613,16 +613,16 @@ std::vector<LogFragment> parse_log_format(BlockAllocator &balloc,
 
     auto type = log_var_lookup_token(var_name, var_namelen);
 
-    if (type == SHRPX_LOGF_NONE) {
+    if (type == LogFragmentType::NONE) {
       if (util::istarts_with_l(StringRef{var_name, var_namelen}, "http_")) {
         if (util::streq_l("host", StringRef{var_name + str_size("http_"),
                                             var_namelen - str_size("http_")})) {
           // Special handling of host header field.  We will use
           // :authority header field if host header is missing.  This
           // is a typical case in HTTP/2.
-          type = SHRPX_LOGF_AUTHORITY;
+          type = LogFragmentType::AUTHORITY;
         } else {
-          type = SHRPX_LOGF_HTTP;
+          type = LogFragmentType::HTTP;
           value = var_name + str_size("http_");
         }
       } else {
@@ -634,7 +634,7 @@ std::vector<LogFragment> parse_log_format(BlockAllocator &balloc,
 
     if (literal_start < var_start) {
       res.emplace_back(
-          SHRPX_LOGF_LITERAL,
+          LogFragmentType::LITERAL,
           make_string_ref(balloc, StringRef{literal_start, var_start}));
     }
 
@@ -661,7 +661,7 @@ std::vector<LogFragment> parse_log_format(BlockAllocator &balloc,
   }
 
   if (literal_start != eop) {
-    res.emplace_back(SHRPX_LOGF_LITERAL,
+    res.emplace_back(LogFragmentType::LITERAL,
                      make_string_ref(balloc, StringRef{literal_start, eop}));
   }
 
