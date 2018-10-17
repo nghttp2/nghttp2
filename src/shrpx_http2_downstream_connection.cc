@@ -71,7 +71,7 @@ Http2DownstreamConnection::~Http2DownstreamConnection() {
       error_code = NGHTTP2_INTERNAL_ERROR;
     }
 
-    if (http2session_->get_state() == Http2Session::CONNECTED &&
+    if (http2session_->get_state() == Http2SessionState::CONNECTED &&
         downstream_->get_downstream_stream_id() != -1) {
       submit_rst_stream(downstream_, error_code);
 
@@ -140,7 +140,7 @@ void Http2DownstreamConnection::detach_downstream(Downstream *downstream) {
 int Http2DownstreamConnection::submit_rst_stream(Downstream *downstream,
                                                  uint32_t error_code) {
   int rv = -1;
-  if (http2session_->get_state() == Http2Session::CONNECTED &&
+  if (http2session_->get_state() == Http2SessionState::CONNECTED &&
       downstream->get_downstream_stream_id() != -1) {
     switch (downstream->get_response_state()) {
     case DownstreamState::MSG_RESET:
@@ -534,7 +534,7 @@ int Http2DownstreamConnection::resume_read(IOCtrlReason reason,
                                            size_t consumed) {
   int rv;
 
-  if (http2session_->get_state() != Http2Session::CONNECTED) {
+  if (http2session_->get_state() != Http2SessionState::CONNECTED) {
     return 0;
   }
 

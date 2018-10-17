@@ -72,6 +72,25 @@ enum class FreelistZone {
   GONE
 };
 
+enum class Http2SessionState {
+  // Disconnected
+  DISCONNECTED,
+  // Connecting proxy and making CONNECT request
+  PROXY_CONNECTING,
+  // Tunnel is established with proxy
+  PROXY_CONNECTED,
+  // Establishing tunnel is failed
+  PROXY_FAILED,
+  // Connecting to downstream and/or performing SSL/TLS handshake
+  CONNECTING,
+  // Connected to downstream
+  CONNECTED,
+  // Connection is started to fail
+  CONNECT_FAILING,
+  // Resolving host name
+  RESOLVING_NAME,
+};
+
 class Http2Session {
 public:
   Http2Session(struct ev_loop *loop, SSL_CTX *ssl_ctx, Worker *worker,
@@ -135,8 +154,8 @@ public:
 
   ev_io *get_wev();
 
-  int get_state() const;
-  void set_state(int state);
+  Http2SessionState get_state() const;
+  void set_state(Http2SessionState state);
 
   void start_settings_timer();
   void stop_settings_timer();
@@ -219,25 +238,6 @@ public:
   bool get_allow_connect_proto() const;
 
   enum {
-    // Disconnected
-    DISCONNECTED,
-    // Connecting proxy and making CONNECT request
-    PROXY_CONNECTING,
-    // Tunnel is established with proxy
-    PROXY_CONNECTED,
-    // Establishing tunnel is failed
-    PROXY_FAILED,
-    // Connecting to downstream and/or performing SSL/TLS handshake
-    CONNECTING,
-    // Connected to downstream
-    CONNECTED,
-    // Connection is started to fail
-    CONNECT_FAILING,
-    // Resolving host name
-    RESOLVING_NAME,
-  };
-
-  enum {
     // Connection checking is not required
     CONNECTION_CHECK_NONE,
     // Connection checking is required
@@ -283,7 +283,7 @@ private:
   // Resolved IP address if dns parameter is used
   std::unique_ptr<Address> resolved_addr_;
   std::unique_ptr<DNSQuery> dns_query_;
-  int state_;
+  Http2SessionState state_;
   int connection_check_state_;
   FreelistZone freelist_zone_;
   // true if SETTINGS without ACK is received from peer.
