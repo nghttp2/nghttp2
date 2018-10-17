@@ -48,7 +48,7 @@ public:
   int resolve(const StringRef &host);
   CompleteCb get_complete_cb() const;
   void set_complete_cb(CompleteCb cb);
-  int get_status(Address *result) const;
+  DNSResolverStatus get_status(Address *result) const;
 
 private:
   // For A record

@@ -41,7 +41,7 @@ struct DNSQuery {
         cb(std::move(cb)),
         dlnext(nullptr),
         dlprev(nullptr),
-        status(DNS_STATUS_IDLE),
+        status(DNSResolverStatus::IDLE),
         in_qlist(false) {}
 
   // Host name we lookup for.
@@ -51,7 +51,7 @@ struct DNSQuery {
   // DNSTracker::resolve().
   CompleteCb cb;
   DNSQuery *dlnext, *dlprev;
-  int status;
+  DNSResolverStatus status;
   // true if this object is in linked list ResolverEntry::qlist.
   bool in_qlist;
 };
@@ -59,13 +59,14 @@ struct DNSQuery {
 struct ResolverEntry {
   // Host name this entry lookups for.
   ImmutableString host;
-  // DNS resolver.  Only non-nullptr if status is DNS_STATUS_RUNNING.
+  // DNS resolver.  Only non-nullptr if status is
+  // DNSResolverStatus::RUNNING.
   std::unique_ptr<DualDNSResolver> resolv;
   // DNSQuery interested in this name lookup result.  The result is
   // notified to them all.
   DList<DNSQuery> qlist;
   // Use the same enum with DNSResolverStatus
-  int status;
+  DNSResolverStatus status;
   // result and its expiry time
   Address result;
   // time point when cached result expires.
@@ -80,12 +81,13 @@ public:
   // Lookups host name described in |dnsq|.  If name lookup finishes
   // within this function (either it came from /etc/hosts, host name
   // is numeric, lookup result is cached, etc), it returns
-  // DNS_STATUS_OK or DNS_STATUS_ERROR.  If lookup is successful,
-  // DNS_STATUS_OK is returned, and |result| is filled.  If lookup
-  // failed, DNS_STATUS_ERROR is returned.  If name lookup is being
-  // done background, it returns DNS_STATUS_RUNNING.  Its completion
-  // is notified by calling dnsq->cb.
-  int resolve(Address *result, DNSQuery *dnsq);
+  // DNSResolverStatus::OK or DNSResolverStatus::ERROR.  If lookup is
+  // successful, DNSResolverStatus::OK is returned, and |result| is
+  // filled.  If lookup failed, DNSResolverStatus::ERROR is returned.
+  // If name lookup is being done background, it returns
+  // DNSResolverStatus::RUNNING.  Its completion is notified by
+  // calling dnsq->cb.
+  DNSResolverStatus resolve(Address *result, DNSQuery *dnsq);
   // Cancels name lookup requested by |dnsq|.
   void cancel(DNSQuery *dnsq);
   // Removes expired entries from ents_.
@@ -95,11 +97,11 @@ public:
 
 private:
   ResolverEntry make_entry(std::unique_ptr<DualDNSResolver> resolv,
-                           ImmutableString host, int status,
+                           ImmutableString host, DNSResolverStatus status,
                            const Address *result);
 
   void update_entry(ResolverEntry &ent, std::unique_ptr<DualDNSResolver> resolv,
-                    int status, const Address *result);
+                    DNSResolverStatus status, const Address *result);
 
   void add_to_qlist(ResolverEntry &ent, DNSQuery *dnsq);
 

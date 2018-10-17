@@ -228,10 +228,10 @@ int LiveCheck::initiate_connection() {
   if (addr_->dns) {
     if (!dns_query_) {
       auto dns_query = std::make_unique<DNSQuery>(
-          addr_->host, [this](int status, const Address *result) {
+          addr_->host, [this](DNSResolverStatus status, const Address *result) {
             int rv;
 
-            if (status == DNS_STATUS_OK) {
+            if (status == DNSResolverStatus::OK) {
               *this->resolved_addr_ = *result;
             }
             rv = this->initiate_connection();
@@ -245,24 +245,23 @@ int LiveCheck::initiate_connection() {
         resolved_addr_ = std::make_unique<Address>();
       }
 
-      rv = dns_tracker->resolve(resolved_addr_.get(), dns_query.get());
-      switch (rv) {
-      case DNS_STATUS_ERROR:
+      switch (dns_tracker->resolve(resolved_addr_.get(), dns_query.get())) {
+      case DNSResolverStatus::ERROR:
         return -1;
-      case DNS_STATUS_RUNNING:
+      case DNSResolverStatus::RUNNING:
         dns_query_ = std::move(dns_query);
         return 0;
-      case DNS_STATUS_OK:
+      case DNSResolverStatus::OK:
         break;
       default:
         assert(0);
       }
     } else {
       switch (dns_query_->status) {
-      case DNS_STATUS_ERROR:
+      case DNSResolverStatus::ERROR:
         dns_query_.reset();
         return -1;
-      case DNS_STATUS_OK:
+      case DNSResolverStatus::OK:
         dns_query_.reset();
         break;
       default:

@@ -305,13 +305,11 @@ int Http2Session::disconnect(bool hard) {
 }
 
 int Http2Session::resolve_name() {
-  int rv;
-
   auto dns_query = std::make_unique<DNSQuery>(
-      addr_->host, [this](int status, const Address *result) {
+      addr_->host, [this](DNSResolverStatus status, const Address *result) {
         int rv;
 
-        if (status == DNS_STATUS_OK) {
+        if (status == DNSResolverStatus::OK) {
           *resolved_addr_ = *result;
           util::set_port(*this->resolved_addr_, this->addr_->port);
         }
@@ -323,15 +321,14 @@ int Http2Session::resolve_name() {
       });
   resolved_addr_ = std::make_unique<Address>();
   auto dns_tracker = worker_->get_dns_tracker();
-  rv = dns_tracker->resolve(resolved_addr_.get(), dns_query.get());
-  switch (rv) {
-  case DNS_STATUS_ERROR:
+  switch (dns_tracker->resolve(resolved_addr_.get(), dns_query.get())) {
+  case DNSResolverStatus::ERROR:
     return -1;
-  case DNS_STATUS_RUNNING:
+  case DNSResolverStatus::RUNNING:
     dns_query_ = std::move(dns_query);
     state_ = RESOLVING_NAME;
     return 0;
-  case DNS_STATUS_OK:
+  case DNSResolverStatus::OK:
     util::set_port(*resolved_addr_, addr_->port);
     return 0;
   default:
@@ -469,11 +466,11 @@ int Http2Session::initiate_connection() {
       }
 
       if (state_ == RESOLVING_NAME) {
-        if (dns_query_->status == DNS_STATUS_ERROR) {
+        if (dns_query_->status == DNSResolverStatus::ERROR) {
           downstream_failure(addr_, nullptr);
           return -1;
         }
-        assert(dns_query_->status == DNS_STATUS_OK);
+        assert(dns_query_->status == DNSResolverStatus::OK);
         state_ = DISCONNECTED;
         dns_query_.reset();
         raddr_ = resolved_addr_.get();
@@ -534,11 +531,11 @@ int Http2Session::initiate_connection() {
       }
 
       if (state_ == RESOLVING_NAME) {
-        if (dns_query_->status == DNS_STATUS_ERROR) {
+        if (dns_query_->status == DNSResolverStatus::ERROR) {
           downstream_failure(addr_, nullptr);
           return -1;
         }
-        assert(dns_query_->status == DNS_STATUS_OK);
+        assert(dns_query_->status == DNSResolverStatus::OK);
         state_ = DISCONNECTED;
         dns_query_.reset();
         raddr_ = resolved_addr_.get();

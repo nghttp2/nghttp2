@@ -37,7 +37,7 @@ namespace {
 void sock_state_cb(void *data, int s, int read, int write) {
   auto resolv = static_cast<DNSResolver *>(data);
 
-  if (resolv->get_status(nullptr) != DNS_STATUS_RUNNING) {
+  if (resolv->get_status(nullptr) != DNSResolverStatus::RUNNING) {
     return;
   }
 
@@ -70,9 +70,11 @@ void process_result(DNSResolver *resolv) {
   Address result;
   auto status = resolv->get_status(&result);
   switch (status) {
-  case DNS_STATUS_OK:
-  case DNS_STATUS_ERROR:
+  case DNSResolverStatus::OK:
+  case DNSResolverStatus::ERROR:
     cb(status, &result);
+    break;
+  default:
     break;
   }
   // resolv may be deleted here.
@@ -117,7 +119,7 @@ DNSResolver::DNSResolver(struct ev_loop *loop)
       loop_(loop),
       channel_(nullptr),
       family_(AF_UNSPEC),
-      status_(DNS_STATUS_IDLE) {
+      status_(DNSResolverStatus::IDLE) {
   ev_timer_init(&timer_, timeoutcb, 0., 0.);
   timer_.data = this;
 }
@@ -134,7 +136,7 @@ DNSResolver::~DNSResolver() {
 }
 
 int DNSResolver::resolve(const StringRef &name, int family) {
-  if (status_ != DNS_STATUS_IDLE) {
+  if (status_ != DNSResolverStatus::IDLE) {
     return -1;
   }
 
@@ -164,12 +166,12 @@ int DNSResolver::resolve(const StringRef &name, int family) {
     if (LOG_ENABLED(INFO)) {
       LOG(INFO) << "ares_init_options failed: " << ares_strerror(rv);
     }
-    status_ = DNS_STATUS_ERROR;
+    status_ = DNSResolverStatus::ERROR;
     return -1;
   }
 
   channel_ = chan;
-  status_ = DNS_STATUS_RUNNING;
+  status_ = DNSResolverStatus::RUNNING;
 
   ares_gethostbyname(channel_, name_.c_str(), family_, host_cb, this);
   reset_timeout();
@@ -186,20 +188,19 @@ int DNSResolver::on_timeout() {
 }
 
 int DNSResolver::handle_event(int rfd, int wfd) {
-  if (status_ == DNS_STATUS_IDLE) {
+  if (status_ == DNSResolverStatus::IDLE) {
     return -1;
   }
 
   ares_process_fd(channel_, rfd, wfd);
 
   switch (status_) {
-  case DNS_STATUS_RUNNING: {
+  case DNSResolverStatus::RUNNING:
     reset_timeout();
     return 0;
-  }
-  case DNS_STATUS_OK:
+  case DNSResolverStatus::OK:
     return 0;
-  case DNS_STATUS_ERROR:
+  case DNSResolverStatus::ERROR:
     return -1;
   default:
     // Unreachable
@@ -209,7 +210,7 @@ int DNSResolver::handle_event(int rfd, int wfd) {
 }
 
 void DNSResolver::reset_timeout() {
-  if (status_ != DNS_STATUS_RUNNING) {
+  if (status_ != DNSResolverStatus::RUNNING) {
     return;
   }
   timeval tvout;
@@ -223,8 +224,8 @@ void DNSResolver::reset_timeout() {
   ev_timer_again(loop_, &timer_);
 }
 
-int DNSResolver::get_status(Address *result) const {
-  if (status_ != DNS_STATUS_OK) {
+DNSResolverStatus DNSResolver::get_status(Address *result) const {
+  if (status_ != DNSResolverStatus::OK) {
     return status_;
   }
 
@@ -294,7 +295,7 @@ void DNSResolver::on_result(int status, hostent *hostent) {
       LOG(INFO) << "Name lookup for " << name_
                 << " failed: " << ares_strerror(status);
     }
-    status_ = DNS_STATUS_ERROR;
+    status_ = DNSResolverStatus::ERROR;
     return;
   }
 
@@ -303,13 +304,13 @@ void DNSResolver::on_result(int status, hostent *hostent) {
     if (LOG_ENABLED(INFO)) {
       LOG(INFO) << "Name lookup for " << name_ << "failed: no address returned";
     }
-    status_ = DNS_STATUS_ERROR;
+    status_ = DNSResolverStatus::ERROR;
     return;
   }
 
   switch (hostent->h_addrtype) {
   case AF_INET:
-    status_ = DNS_STATUS_OK;
+    status_ = DNSResolverStatus::OK;
     result_.len = sizeof(result_.su.in);
     result_.su.in = {};
     result_.su.in.sin_family = AF_INET;
@@ -319,7 +320,7 @@ void DNSResolver::on_result(int status, hostent *hostent) {
     memcpy(&result_.su.in.sin_addr, ap, sizeof(result_.su.in.sin_addr));
     break;
   case AF_INET6:
-    status_ = DNS_STATUS_OK;
+    status_ = DNSResolverStatus::OK;
     result_.len = sizeof(result_.su.in6);
     result_.su.in6 = {};
     result_.su.in6.sin6_family = AF_INET6;
@@ -332,7 +333,7 @@ void DNSResolver::on_result(int status, hostent *hostent) {
     assert(0);
   }
 
-  if (status_ == DNS_STATUS_OK) {
+  if (status_ == DNSResolverStatus::OK) {
     if (LOG_ENABLED(INFO)) {
       LOG(INFO) << "Name lookup succeeded: " << name_ << " -> "
                 << util::numeric_name(&result_.su.sa, result_.len);
@@ -340,7 +341,7 @@ void DNSResolver::on_result(int status, hostent *hostent) {
     return;
   }
 
-  status_ = DNS_STATUS_ERROR;
+  status_ = DNSResolverStatus::ERROR;
 }
 
 void DNSResolver::set_complete_cb(CompleteCb cb) {

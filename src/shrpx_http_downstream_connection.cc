@@ -317,10 +317,11 @@ int HttpDownstreamConnection::initiate_connection() {
       if (addr->dns) {
         if (!check_dns_result) {
           auto dns_query = std::make_unique<DNSQuery>(
-              addr->host, [this](int status, const Address *result) {
+              addr->host,
+              [this](DNSResolverStatus status, const Address *result) {
                 int rv;
 
-                if (status == DNS_STATUS_OK) {
+                if (status == DNSResolverStatus::OK) {
                   *this->resolved_addr_ = *result;
                 }
 
@@ -337,31 +338,30 @@ int HttpDownstreamConnection::initiate_connection() {
           if (!resolved_addr_) {
             resolved_addr_ = std::make_unique<Address>();
           }
-          rv = dns_tracker->resolve(resolved_addr_.get(), dns_query.get());
-          switch (rv) {
-          case DNS_STATUS_ERROR:
+          switch (dns_tracker->resolve(resolved_addr_.get(), dns_query.get())) {
+          case DNSResolverStatus::ERROR:
             downstream_failure(addr, nullptr);
             if (end == next_downstream) {
               return SHRPX_ERR_NETWORK;
             }
             continue;
-          case DNS_STATUS_RUNNING:
+          case DNSResolverStatus::RUNNING:
             dns_query_ = std::move(dns_query);
             // Remember current addr
             addr_ = addr;
             return 0;
-          case DNS_STATUS_OK:
+          case DNSResolverStatus::OK:
             break;
           default:
             assert(0);
           }
         } else {
           switch (dns_query_->status) {
-          case DNS_STATUS_ERROR:
+          case DNSResolverStatus::ERROR:
             dns_query_.reset();
             downstream_failure(addr, nullptr);
             continue;
-          case DNS_STATUS_OK:
+          case DNSResolverStatus::OK:
             dns_query_.reset();
             break;
           default:

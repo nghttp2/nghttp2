@@ -42,27 +42,29 @@ using namespace nghttp2;
 
 namespace shrpx {
 
-enum DNSResolverStatus {
+enum class DNSResolverStatus {
   // Resolver is in initial status
-  DNS_STATUS_IDLE,
+  IDLE,
   // Resolver is currently resolving host name
-  DNS_STATUS_RUNNING,
+  RUNNING,
   // Resolver successfully resolved host name
-  DNS_STATUS_OK,
+  OK,
   // Resolver failed to resolve host name
-  DNS_STATUS_ERROR,
+  ERROR,
 };
 
 // Callback function called when host name lookup is finished.
-// |status| is either DNS_STATUS_OK, or DNS_STATUS_ERROR.  If |status|
-// is DNS_STATUS_OK, |result| points to the resolved address.  Note
-// that port portion of |result| is undefined, and must be initialized
-// by application.  This callback function is not called if name
-// lookup finishes in DNSResolver::resolve() completely.  In this
-// case, application should call DNSResolver::get_status() to get
-// current status and result.  In other words, callback is called if
-// get_status() returns DNS_STATUS_RUNNING.
-using CompleteCb = std::function<void(int status, const Address *result)>;
+// |status| is either DNSResolverStatus::OK, or
+// DNSResolverStatus::ERROR.  If |status| is DNSResolverStatus::OK,
+// |result| points to the resolved address.  Note that port portion of
+// |result| is undefined, and must be initialized by application.
+// This callback function is not called if name lookup finishes in
+// DNSResolver::resolve() completely.  In this case, application
+// should call DNSResolver::get_status() to get current status and
+// result.  In other words, callback is called if get_status() returns
+// DNSResolverStatus::RUNNING.
+using CompleteCb =
+    std::function<void(DNSResolverStatus status, const Address *result)>;
 
 // DNSResolver is asynchronous name resolver, backed by c-ares
 // library.
@@ -73,9 +75,9 @@ public:
 
   // Starts resolving hostname |name|.
   int resolve(const StringRef &name, int family);
-  // Returns status.  If status_ is DNS_STATUS_SUCCESS && |result| is
-  // not nullptr, |*result| is filled.
-  int get_status(Address *result) const;
+  // Returns status.  If status_ is DNSResolverStatus::SUCCESS &&
+  // |result| is not nullptr, |*result| is filled.
+  DNSResolverStatus get_status(Address *result) const;
   // Sets callback function when name lookup finishes.  The callback
   // function is called in a way that it can destroy this DNSResolver.
   void set_complete_cb(CompleteCb cb);
@@ -108,7 +110,7 @@ private:
   // AF_INET or AF_INET6.  AF_INET for A record lookup, and AF_INET6
   // for AAAA record lookup.
   int family_;
-  int status_;
+  DNSResolverStatus status_;
 };
 
 } // namespace shrpx
