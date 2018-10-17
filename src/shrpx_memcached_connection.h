@@ -44,6 +44,7 @@ namespace shrpx {
 
 struct MemcachedRequest;
 enum class MemcachedOp : uint8_t;
+enum class MemcachedStatusCode : uint16_t;
 
 enum class MemcachedParseState {
   HEADER24,
@@ -69,7 +70,7 @@ struct MemcachedParseContext {
   // Parser state; see enum above
   MemcachedParseState state;
   // status_code in response
-  int status_code;
+  MemcachedStatusCode status_code;
   // op in response
   MemcachedOp op;
 };

@@ -120,7 +120,8 @@ namespace {
 void clear_request(std::deque<std::unique_ptr<MemcachedRequest>> &q) {
   for (auto &req : q) {
     if (req->cb) {
-      req->cb(req.get(), MemcachedResult(MEMCACHED_ERR_EXT_NETWORK_ERROR));
+      req->cb(req.get(),
+              MemcachedResult(MemcachedStatusCode::EXT_NETWORK_ERROR));
     }
   }
   q.clear();
@@ -451,7 +452,8 @@ int MemcachedConnection::parse_packet() {
       parse_state_.extralen = *in++;
       // skip 1 byte reserved data type
       ++in;
-      parse_state_.status_code = util::get_uint16(in);
+      parse_state_.status_code =
+          static_cast<MemcachedStatusCode>(util::get_uint16(in));
       in += 2;
       parse_state_.totalbody = util::get_uint32(in);
       in += 4;
@@ -481,7 +483,8 @@ int MemcachedConnection::parse_packet() {
       }
 
       if (parse_state_.op == MemcachedOp::GET &&
-          parse_state_.status_code == 0 && parse_state_.extralen == 0) {
+          parse_state_.status_code == MemcachedStatusCode::NO_ERROR &&
+          parse_state_.extralen == 0) {
         MCLOG(WARN, this) << "response for GET does not have extra";
         return -1;
       }
@@ -538,9 +541,9 @@ int MemcachedConnection::parse_packet() {
       }
 
       if (LOG_ENABLED(INFO)) {
-        if (parse_state_.status_code) {
-          MCLOG(INFO, this)
-              << "response returned error status: " << parse_state_.status_code;
+        if (parse_state_.status_code != MemcachedStatusCode::NO_ERROR) {
+          MCLOG(INFO, this) << "response returned error status: "
+                            << static_cast<uint16_t>(parse_state_.status_code);
         }
       }
 

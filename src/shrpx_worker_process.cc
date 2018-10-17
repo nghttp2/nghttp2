@@ -275,9 +275,9 @@ void memcached_get_ticket_key_cb(struct ev_loop *loop, ev_timer *w,
   req->op = MemcachedOp::GET;
   req->cb = [conn_handler, w](MemcachedRequest *req, MemcachedResult res) {
     switch (res.status_code) {
-    case MEMCACHED_ERR_NO_ERROR:
+    case MemcachedStatusCode::NO_ERROR:
       break;
-    case MEMCACHED_ERR_EXT_NETWORK_ERROR:
+    case MemcachedStatusCode::EXT_NETWORK_ERROR:
       conn_handler->on_tls_ticket_key_network_error(w);
       return;
     default:

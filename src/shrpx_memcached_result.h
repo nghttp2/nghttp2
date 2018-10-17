@@ -31,18 +31,18 @@
 
 namespace shrpx {
 
-enum MemcachedStatusCode {
-  MEMCACHED_ERR_NO_ERROR,
-  MEMCACHED_ERR_EXT_NETWORK_ERROR = 0x1001,
+enum class MemcachedStatusCode : uint16_t {
+  NO_ERROR,
+  EXT_NETWORK_ERROR = 0x1001,
 };
 
 struct MemcachedResult {
-  MemcachedResult(int status_code) : status_code(status_code) {}
-  MemcachedResult(int status_code, std::vector<uint8_t> value)
+  MemcachedResult(MemcachedStatusCode status_code) : status_code(status_code) {}
+  MemcachedResult(MemcachedStatusCode status_code, std::vector<uint8_t> value)
       : value(std::move(value)), status_code(status_code) {}
 
   std::vector<uint8_t> value;
-  int status_code;
+  MemcachedStatusCode status_code;
 };
 
 } // namespace shrpx

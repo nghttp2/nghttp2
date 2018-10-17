@@ -343,12 +343,14 @@ int tls_session_new_cb(SSL *ssl, SSL_SESSION *session) {
   req->cb = [](MemcachedRequest *req, MemcachedResult res) {
     if (LOG_ENABLED(INFO)) {
       LOG(INFO) << "Memcached: session cache done.  key=" << req->key
-                << ", status_code=" << res.status_code << ", value="
+                << ", status_code=" << static_cast<uint16_t>(res.status_code)
+                << ", value="
                 << std::string(std::begin(res.value), std::end(res.value));
     }
-    if (res.status_code != 0) {
+    if (res.status_code != MemcachedStatusCode::NO_ERROR) {
       LOG(WARN) << "Memcached: failed to cache session key=" << req->key
-                << ", status_code=" << res.status_code << ", value="
+                << ", status_code=" << static_cast<uint16_t>(res.status_code)
+                << ", value="
                 << std::string(std::begin(res.value), std::end(res.value));
     }
   };
@@ -404,7 +406,8 @@ SSL_SESSION *tls_session_get_cb(SSL *ssl,
       util::format_hex(balloc, StringRef{id, static_cast<size_t>(idlen)});
   req->cb = [conn](MemcachedRequest *, MemcachedResult res) {
     if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "Memcached: returned status code " << res.status_code;
+      LOG(INFO) << "Memcached: returned status code "
+                << static_cast<uint16_t>(res.status_code);
     }
 
     // We might stop reading, so start it again
@@ -415,7 +418,7 @@ SSL_SESSION *tls_session_get_cb(SSL *ssl,
     ev_timer_again(conn->loop, &conn->wt);
 
     conn->tls.cached_session_lookup_req = nullptr;
-    if (res.status_code != 0) {
+    if (res.status_code != MemcachedStatusCode::NO_ERROR) {
       conn->tls.handshake_state = TLSHandshakeState::CANCEL_SESSION_CACHE;
       return;
     }
