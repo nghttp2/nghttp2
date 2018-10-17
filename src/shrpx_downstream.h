@@ -292,6 +292,14 @@ enum class DownstreamState {
   HTTP1_REQUEST_HEADER_TOO_LARGE,
 };
 
+enum class DispatchState {
+  NONE,
+  PENDING,
+  BLOCKED,
+  ACTIVE,
+  FAILURE,
+};
+
 class Downstream {
 public:
   Downstream(Upstream *upstream, MemchunkPool *mcpool, int32_t stream_id);
@@ -448,8 +456,8 @@ public:
   // true if retry attempt should not be done.
   bool no_more_retry() const;
 
-  int get_dispatch_state() const;
-  void set_dispatch_state(int s);
+  DispatchState get_dispatch_state() const;
+  void set_dispatch_state(DispatchState s);
 
   void attach_blocked_link(BlockedLink *l);
   BlockedLink *detach_blocked_link();
@@ -488,14 +496,6 @@ public:
   enum {
     EVENT_ERROR = 0x1,
     EVENT_TIMEOUT = 0x2,
-  };
-
-  enum {
-    DISPATCH_NONE,
-    DISPATCH_PENDING,
-    DISPATCH_BLOCKED,
-    DISPATCH_ACTIVE,
-    DISPATCH_FAILURE,
   };
 
   Downstream *dlnext, *dlprev;
@@ -561,7 +561,7 @@ private:
   // response state
   DownstreamState response_state_;
   // only used by HTTP/2 upstream
-  int dispatch_state_;
+  DispatchState dispatch_state_;
   // true if the connection is upgraded (HTTP Upgrade or CONNECT),
   // excluding upgrade to HTTP/2.
   bool upgraded_;

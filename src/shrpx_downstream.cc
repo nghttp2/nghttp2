@@ -135,7 +135,7 @@ Downstream::Downstream(Upstream *upstream, MemchunkPool *mcpool,
       affinity_cookie_(0),
       request_state_(DownstreamState::INITIAL),
       response_state_(DownstreamState::INITIAL),
-      dispatch_state_(DISPATCH_NONE),
+      dispatch_state_(DispatchState::NONE),
       upgraded_(false),
       chunked_request_(false),
       chunked_response_(false),
@@ -1067,9 +1067,9 @@ bool Downstream::request_submission_ready() const {
          response_state_ == DownstreamState::INITIAL;
 }
 
-int Downstream::get_dispatch_state() const { return dispatch_state_; }
+DispatchState Downstream::get_dispatch_state() const { return dispatch_state_; }
 
-void Downstream::set_dispatch_state(int s) { dispatch_state_ = s; }
+void Downstream::set_dispatch_state(DispatchState s) { dispatch_state_ = s; }
 
 void Downstream::attach_blocked_link(BlockedLink *l) {
   assert(!blocked_link_);

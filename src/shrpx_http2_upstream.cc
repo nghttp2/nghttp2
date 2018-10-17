@@ -2025,7 +2025,7 @@ int Http2Upstream::on_timeout(Downstream *downstream) {
 
 void Http2Upstream::on_handler_delete() {
   for (auto d = downstream_queue_.get_downstreams(); d; d = d->dlnext) {
-    if (d->get_dispatch_state() == Downstream::DISPATCH_ACTIVE &&
+    if (d->get_dispatch_state() == DispatchState::ACTIVE &&
         d->accesslog_ready()) {
       handler_->write_accesslog(d);
     }
@@ -2035,10 +2035,10 @@ void Http2Upstream::on_handler_delete() {
 int Http2Upstream::on_downstream_reset(Downstream *downstream, bool no_retry) {
   int rv;
 
-  if (downstream->get_dispatch_state() != Downstream::DISPATCH_ACTIVE) {
+  if (downstream->get_dispatch_state() != DispatchState::ACTIVE) {
     // This is error condition when we failed push_request_headers()
     // in initiate_downstream().  Otherwise, we have
-    // Downstream::DISPATCH_ACTIVE state, or we did not set
+    // DispatchState::ACTIVE state, or we did not set
     // DownstreamConnection.
     downstream->pop_downstream_connection();
     handler_->signal_write();

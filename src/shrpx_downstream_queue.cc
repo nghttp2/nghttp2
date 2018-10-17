@@ -49,12 +49,12 @@ DownstreamQueue::~DownstreamQueue() {
 }
 
 void DownstreamQueue::add_pending(std::unique_ptr<Downstream> downstream) {
-  downstream->set_dispatch_state(Downstream::DISPATCH_PENDING);
+  downstream->set_dispatch_state(DispatchState::PENDING);
   downstreams_.append(downstream.release());
 }
 
 void DownstreamQueue::mark_failure(Downstream *downstream) {
-  downstream->set_dispatch_state(Downstream::DISPATCH_FAILURE);
+  downstream->set_dispatch_state(DispatchState::FAILURE);
 }
 
 DownstreamQueue::HostEntry &
@@ -87,13 +87,13 @@ void DownstreamQueue::mark_active(Downstream *downstream) {
   auto &ent = find_host_entry(make_host_key(downstream));
   ++ent.num_active;
 
-  downstream->set_dispatch_state(Downstream::DISPATCH_ACTIVE);
+  downstream->set_dispatch_state(DispatchState::ACTIVE);
 }
 
 void DownstreamQueue::mark_blocked(Downstream *downstream) {
   auto &ent = find_host_entry(make_host_key(downstream));
 
-  downstream->set_dispatch_state(Downstream::DISPATCH_BLOCKED);
+  downstream->set_dispatch_state(DispatchState::BLOCKED);
 
   auto link = new BlockedLink{};
   downstream->attach_blocked_link(link);
@@ -131,7 +131,7 @@ Downstream *DownstreamQueue::remove_and_get_blocked(Downstream *downstream,
   auto host = make_host_key(downstream);
   auto &ent = find_host_entry(host);
 
-  if (downstream->get_dispatch_state() == Downstream::DISPATCH_ACTIVE) {
+  if (downstream->get_dispatch_state() == DispatchState::ACTIVE) {
     --ent.num_active;
   } else {
     // For those downstreams deleted while in blocked state
