@@ -400,7 +400,7 @@ int Http2Upstream::on_request_headers(Downstream *downstream,
       }
       return 0;
     }
-    req.connect_proto = CONNECT_PROTO_WEBSOCKET;
+    req.connect_proto = ConnectProto::WEBSOCKET;
   }
 
   if (!(frame->hd.flags & NGHTTP2_FLAG_END_STREAM)) {
@@ -1752,7 +1752,7 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
   auto striphd_flags = http2::HDOP_STRIP_ALL & ~http2::HDOP_STRIP_VIA;
   StringRef response_status;
 
-  if (req.connect_proto == CONNECT_PROTO_WEBSOCKET && resp.http_status == 101) {
+  if (req.connect_proto == ConnectProto::WEBSOCKET && resp.http_status == 101) {
     response_status = http2::stringify_status(balloc, 200);
     striphd_flags |= http2::HDOP_STRIP_SEC_WEBSOCKET_ACCEPT;
   } else {

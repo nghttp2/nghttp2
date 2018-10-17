@@ -1091,7 +1091,7 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
   buf->append('.');
   buf->append('0' + req.http_minor);
   buf->append(' ');
-  if (req.connect_proto && downstream->get_upgraded()) {
+  if (req.connect_proto != ConnectProto::NONE && downstream->get_upgraded()) {
     buf->append(http2::stringify_status(balloc, 101));
     buf->append(' ');
     buf->append(http2::get_reason_phrase(101));
@@ -1153,7 +1153,7 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
   }
 
   if (!connect_method && downstream->get_upgraded()) {
-    if (req.connect_proto == CONNECT_PROTO_WEBSOCKET &&
+    if (req.connect_proto == ConnectProto::WEBSOCKET &&
         resp.http_status / 100 == 2) {
       buf->append("Upgrade: websocket\r\nConnection: Upgrade\r\n");
       auto key = req.fs.header(http2::HD_SEC_WEBSOCKET_KEY);

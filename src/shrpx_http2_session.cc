@@ -1859,7 +1859,7 @@ bool Http2Session::can_push_request(const Downstream *downstream) const {
   auto &req = downstream->request();
   return state_ == CONNECTED &&
          connection_check_state_ == CONNECTION_CHECK_NONE &&
-         (!req.connect_proto || settings_recved_);
+         (req.connect_proto == ConnectProto::NONE || settings_recved_);
 }
 
 void Http2Session::start_checking_connection() {
@@ -1919,7 +1919,7 @@ void Http2Session::submit_pending_requests() {
     }
 
     auto &req = downstream->request();
-    if (req.connect_proto && !settings_recved_) {
+    if (req.connect_proto != ConnectProto::NONE && !settings_recved_) {
       continue;
     }
 

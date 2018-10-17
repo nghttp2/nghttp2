@@ -135,9 +135,9 @@ private:
 };
 
 // Protocols allowed in HTTP/2 :protocol header field.
-enum shrpx_connect_proto {
-  CONNECT_PROTO_NONE,
-  CONNECT_PROTO_WEBSOCKET,
+enum class ConnectProto {
+  NONE,
+  WEBSOCKET,
 };
 
 struct Request {
@@ -148,7 +148,7 @@ struct Request {
         method(-1),
         http_major(1),
         http_minor(1),
-        connect_proto(CONNECT_PROTO_NONE),
+        connect_proto(ConnectProto::NONE),
         upgrade_request(false),
         http2_upgrade_seen(false),
         connection_close(false),
@@ -161,10 +161,12 @@ struct Request {
   }
 
   bool regular_connect_method() const {
-    return method == HTTP_CONNECT && !connect_proto;
+    return method == HTTP_CONNECT && connect_proto == ConnectProto::NONE;
   }
 
-  bool extended_connect_method() const { return connect_proto; }
+  bool extended_connect_method() const {
+    return connect_proto != ConnectProto::NONE;
+  }
 
   FieldStore fs;
   // Timestamp when all request header fields are received.
@@ -192,7 +194,7 @@ struct Request {
   // connect_proto specified in HTTP/2 :protocol pseudo header field
   // which enables extended CONNECT method.  This field is also set if
   // WebSocket upgrade is requested in h1 frontend for convenience.
-  int connect_proto;
+  ConnectProto connect_proto;
   // Returns true if the request is HTTP upgrade (HTTP Upgrade or
   // CONNECT method).  Upgrade to HTTP/2 is excluded.  For HTTP/2
   // Upgrade, check get_http2_upgrade_request().

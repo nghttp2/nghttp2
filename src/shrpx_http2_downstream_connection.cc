@@ -105,7 +105,7 @@ int Http2DownstreamConnection::attach_downstream(Downstream *downstream) {
   auto &req = downstream_->request();
 
   // HTTP/2 disables HTTP Upgrade.
-  if (req.method != HTTP_CONNECT && !req.connect_proto) {
+  if (req.method != HTTP_CONNECT && req.connect_proto == ConnectProto::NONE) {
     req.upgrade_request = false;
   }
 
@@ -244,7 +244,8 @@ int Http2DownstreamConnection::push_request_headers() {
 
   const auto &req = downstream_->request();
 
-  if (req.connect_proto && !http2session_->get_allow_connect_proto()) {
+  if (req.connect_proto != ConnectProto::NONE &&
+      !http2session_->get_allow_connect_proto()) {
     return -1;
   }
 
@@ -292,7 +293,7 @@ int Http2DownstreamConnection::push_request_headers() {
   nva.reserve(req.fs.headers().size() + 11 + num_cookies +
               httpconf.add_request_headers.size());
 
-  if (req.connect_proto == CONNECT_PROTO_WEBSOCKET) {
+  if (req.connect_proto == ConnectProto::WEBSOCKET) {
     nva.push_back(http2::make_nv_ll(":method", "CONNECT"));
     nva.push_back(http2::make_nv_ll(":protocol", "websocket"));
   } else {
@@ -318,7 +319,7 @@ int Http2DownstreamConnection::push_request_headers() {
       nva.push_back(http2::make_nv_ls_nocopy(":path", req.path));
     }
 
-    if (!req.no_authority || req.connect_proto) {
+    if (!req.no_authority || req.connect_proto != ConnectProto::NONE) {
       nva.push_back(http2::make_nv_ls_nocopy(":authority", authority));
     } else {
       nva.push_back(http2::make_nv_ls_nocopy("host", authority));
@@ -475,8 +476,8 @@ int Http2DownstreamConnection::push_request_headers() {
 
   // Add body as long as transfer-encoding is given even if
   // req.fs.content_length == 0 to forward trailer fields.
-  if (req.method == HTTP_CONNECT || req.connect_proto || transfer_encoding ||
-      req.fs.content_length > 0 || req.http2_expect_body) {
+  if (req.method == HTTP_CONNECT || req.connect_proto != ConnectProto::NONE ||
+      transfer_encoding || req.fs.content_length > 0 || req.http2_expect_body) {
     // Request-body is expected.
     data_prd = {{}, http2_data_read_callback};
     data_prdptr = &data_prd;

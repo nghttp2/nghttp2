@@ -767,13 +767,13 @@ void Downstream::check_upgrade_fulfilled_http2() {
   // This handles nonzero req_.connect_proto and h1 frontend requests
   // WebSocket upgrade.
   upgraded_ = (req_.method == HTTP_CONNECT ||
-               req_.connect_proto == CONNECT_PROTO_WEBSOCKET) &&
+               req_.connect_proto == ConnectProto::WEBSOCKET) &&
               resp_.http_status / 100 == 2;
 }
 
 void Downstream::check_upgrade_fulfilled_http1() {
   if (req_.method == HTTP_CONNECT) {
-    if (req_.connect_proto == CONNECT_PROTO_WEBSOCKET) {
+    if (req_.connect_proto == ConnectProto::WEBSOCKET) {
       if (resp_.http_status != 101) {
         return;
       }
@@ -827,7 +827,7 @@ void Downstream::inspect_http1_request() {
         // TODO Should we check Sec-WebSocket-Key, and
         // Sec-WebSocket-Version as well?
         if (util::strieq_l("websocket", val)) {
-          req_.connect_proto = CONNECT_PROTO_WEBSOCKET;
+          req_.connect_proto = ConnectProto::WEBSOCKET;
         }
       }
     }

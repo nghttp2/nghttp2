@@ -513,7 +513,7 @@ int HttpDownstreamConnection::push_request_headers() {
 
   // Assume that method and request path do not contain \r\n.
   auto meth = http2::to_method_string(
-      req.connect_proto == CONNECT_PROTO_WEBSOCKET ? HTTP_GET : req.method);
+      req.connect_proto == ConnectProto::WEBSOCKET ? HTTP_GET : req.method);
   buf->append(meth);
   buf->append(' ');
 
@@ -566,7 +566,7 @@ int HttpDownstreamConnection::push_request_headers() {
     buf->append("Transfer-Encoding: chunked\r\n");
   }
 
-  if (req.connect_proto == CONNECT_PROTO_WEBSOCKET) {
+  if (req.connect_proto == ConnectProto::WEBSOCKET) {
     if (req.http_major == 2) {
       std::array<uint8_t, 16> nonce;
       util::random_bytes(std::begin(nonce), std::end(nonce),
