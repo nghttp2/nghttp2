@@ -60,11 +60,14 @@ time for request
 
 time for connect
   min
-    The minimum time taken to connect to a server.
+    The minimum time taken to connect to a server including TLS
+    handshake.
   max
-    The maximum time taken to connect to a server.
+    The maximum time taken to connect to a server including TLS
+    handshake.
   mean
-    The mean time taken to connect to a server.
+    The mean time taken to connect to a server including TLS
+    handshake.
   sd
     The standard deviation of the time taken to connect to a server.
   +/- sd
