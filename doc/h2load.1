@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "H2LOAD" "1" "Oct 04, 2018" "1.34.0" "nghttp2"
+.TH "H2LOAD" "1" "Nov 02, 2018" "1.35.0-DEV" "nghttp2"
 .SH NAME
 h2load \- HTTP/2 benchmarking tool
 .
@@ -377,13 +377,16 @@ range (mean +/\- sd) against total number of successful requests.
 .INDENT 7.0
 .TP
 .B min
-The minimum time taken to connect to a server.
+The minimum time taken to connect to a server including TLS
+handshake.
 .TP
 .B max
-The maximum time taken to connect to a server.
+The maximum time taken to connect to a server including TLS
+handshake.
 .TP
 .B mean
-The mean time taken to connect to a server.
+The mean time taken to connect to a server including TLS
+handshake.
 .TP
 .B sd
 The standard deviation of the time taken to connect to a server.
