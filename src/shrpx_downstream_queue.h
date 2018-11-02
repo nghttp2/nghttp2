@@ -67,7 +67,7 @@ public:
     size_t num_active;
   };
 
-  using HostEntryMap = std::map<StringRef, HostEntry, std::less<StringRef>>;
+  using HostEntryMap = std::map<StringRef, HostEntry>;
 
   // conn_max_per_host == 0 means no limit for downstream connection.
   DownstreamQueue(size_t conn_max_per_host = 0, bool unified_host = true);
