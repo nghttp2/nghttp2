@@ -12,8 +12,10 @@ addons:
   apt:
     sources:
     - ubuntu-toolchain-r-test
+    - llvm-toolchain-trusty-7
     packages:
-    - g++-7
+    - g++-8
+    - clang-7
     - autoconf
     - automake
     - autotools-dev
@@ -32,7 +34,8 @@ addons:
     - cmake-data
 before_install:
   - $CC --version
-  - if [ "$CXX" = "g++" ]; then export CXX="g++-7" CC="gcc-7"; fi
+  - if [ "$CXX" = "g++" ]; then export CXX="g++-8" CC="gcc-8"; fi
+  - if [ "$CXX" = "clang++" ]; then export CXX="clang++-7" CC="clang-7"; fi
   - $CC --version
   - go version
   - cmake --version
