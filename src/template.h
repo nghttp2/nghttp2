@@ -36,6 +36,7 @@
 #include <typeinfo>
 #include <algorithm>
 #include <ostream>
+#include <utility>
 
 namespace nghttp2 {
 
@@ -89,21 +90,17 @@ template <typename T> struct DList {
   DList &operator=(const DList &) = delete;
 
   DList(DList &&other) noexcept
-      : head(other.head), tail(other.tail), len(other.len) {
-    other.head = other.tail = nullptr;
-    other.len = 0;
-  }
+      : head{std::exchange(other.head, nullptr)},
+        tail{std::exchange(other.tail, nullptr)},
+        len{std::exchange(other.len, 0)} {}
 
   DList &operator=(DList &&other) noexcept {
     if (this == &other) {
       return *this;
     }
-    head = other.head;
-    tail = other.tail;
-    len = other.len;
-
-    other.head = other.tail = nullptr;
-    other.len = 0;
+    head = std::exchange(other.head, nullptr);
+    tail = std::exchange(other.tail, nullptr);
+    len = std::exchange(other.len, 0);
 
     return *this;
   }
@@ -250,10 +247,7 @@ public:
   ImmutableString(const ImmutableString &other)
       : len(other.len), base(copystr(std::begin(other), std::end(other))) {}
   ImmutableString(ImmutableString &&other) noexcept
-      : len(other.len), base(other.base) {
-    other.len = 0;
-    other.base = "";
-  }
+      : len{std::exchange(other.len, 0)}, base{std::exchange(other.base, "")} {}
   ~ImmutableString() {
     if (len) {
       delete[] base;
@@ -278,10 +272,8 @@ public:
     if (len) {
       delete[] base;
     }
-    len = other.len;
-    base = other.base;
-    other.len = 0;
-    other.base = "";
+    len = std::exchange(other.len, 0);
+    base = std::exchange(other.base, "");
     return *this;
   }
 

@@ -32,6 +32,7 @@
 #endif // !_WIN32
 
 #include <cassert>
+#include <utility>
 
 #include "template.h"
 
@@ -65,24 +66,18 @@ struct BlockAllocator {
   ~BlockAllocator() { reset(); }
 
   BlockAllocator(BlockAllocator &&other) noexcept
-      : retain(other.retain),
-        head(other.head),
+      : retain{std::exchange(other.retain, nullptr)},
+        head{std::exchange(other.head, nullptr)},
         block_size(other.block_size),
-        isolation_threshold(other.isolation_threshold) {
-    other.retain = nullptr;
-    other.head = nullptr;
-  }
+        isolation_threshold(other.isolation_threshold) {}
 
   BlockAllocator &operator=(BlockAllocator &&other) noexcept {
     reset();
 
-    retain = other.retain;
-    head = other.head;
+    retain = std::exchange(other.retain, nullptr);
+    head = std::exchange(other.head, nullptr);
     block_size = other.block_size;
     isolation_threshold = other.isolation_threshold;
-
-    other.retain = nullptr;
-    other.head = nullptr;
 
     return *this;
   }
