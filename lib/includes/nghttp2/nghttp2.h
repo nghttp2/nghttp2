@@ -56,7 +56,8 @@ extern "C" {
 
 #ifdef NGHTTP2_STATICLIB
 #  define NGHTTP2_EXTERN
-#elif defined(WIN32) || (__has_declspec_attribute(dllexport) && __has_declspec_attribute(dllimport))
+#elif defined(WIN32) || (__has_declspec_attribute(dllexport) &&                \
+                         __has_declspec_attribute(dllimport))
 #  ifdef BUILDING_NGHTTP2
 #    define NGHTTP2_EXTERN __declspec(dllexport)
 #  else /* !BUILDING_NGHTTP2 */
