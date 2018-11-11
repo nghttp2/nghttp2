@@ -214,6 +214,9 @@ public:
   const std::vector<std::shared_ptr<boost::asio::io_service>> &
   io_services() const;
 
+  // Returns a vector with the ports in use
+  std::vector<int> ports() const;
+
 private:
   std::unique_ptr<http2_impl> impl_;
 };
