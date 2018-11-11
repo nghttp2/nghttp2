@@ -78,6 +78,11 @@ http2_impl::io_services() const {
   return server_->io_services();
 }
 
+int http2_impl::port() const {
+  const auto ports = server_->ports();
+  return ports.empty() ? 0 : server_->ports().back();
+}
+
 } // namespace server
 
 } // namespace asio_http2

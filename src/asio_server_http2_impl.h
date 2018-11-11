@@ -54,6 +54,7 @@ public:
   void join();
   const std::vector<std::shared_ptr<boost::asio::io_service>> &
   io_services() const;
+  int port() const;
 
 private:
   std::unique_ptr<server> server_;

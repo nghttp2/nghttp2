@@ -214,6 +214,9 @@ public:
   const std::vector<std::shared_ptr<boost::asio::io_service>> &
   io_services() const;
 
+  // The current used port. If no port is in use, returns 0.
+  int port() const;
+
 private:
   std::unique_ptr<http2_impl> impl_;
 };
