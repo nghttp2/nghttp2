@@ -71,6 +71,7 @@ struct Config {
   std::string host;
   std::string ifile;
   std::string ciphers;
+  std::string log_file;
   // length of upload data
   int64_t data_length;
   addrinfo *addrs;
@@ -122,10 +123,14 @@ struct Config {
 struct RequestStat {
   // time point when request was sent
   std::chrono::steady_clock::time_point request_time;
+  // same, but in wall clock reference frame
+  std::chrono::system_clock::time_point request_wall_time;
   // time point when stream was closed
   std::chrono::steady_clock::time_point stream_close_time;
   // upload data length sent so far
   int64_t data_offset;
+  // HTTP status code
+  int status;
   // true if stream was successfully closed.  This means stream was
   // not reset, but it does not mean HTTP level error (e.g., 404).
   bool completed;
@@ -266,6 +271,10 @@ struct Worker {
   // specified
   ev_timer duration_watcher;
   ev_timer warmup_watcher;
+  // Stream to write per-request stats to.
+  std::unique_ptr<std::ostream> log;
+  // Number of unflushed lines in the log.
+  uint32_t log_pending;
 
   Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t nreq_todo, size_t nclients,
          size_t rate, size_t max_samples, Config *config);

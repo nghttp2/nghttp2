@@ -748,6 +748,7 @@ void Client::on_header(int32_t stream_id, const uint8_t *name, size_t namelen,
       }
     }
 
+    stream.req_stat.status = status;
     if (status >= 200 && status < 300) {
       ++worker->stats.status[2];
       stream.status_success = 1;
@@ -775,6 +776,7 @@ void Client::on_status_code(int32_t stream_id, uint16_t status) {
     return;
   }
 
+  stream.req_stat.status = status;
   if (status >= 200 && status < 300) {
     ++worker->stats.status[2];
     stream.status_success = 1;
@@ -821,6 +823,21 @@ void Client::on_stream_close(int32_t stream_id, bool success, bool final) {
     }
     ++worker->stats.req_done;
     ++req_done;
+
+    if (worker->log) {
+      auto start = std::chrono::duration_cast<std::chrono::microseconds>(
+          req_stat->request_wall_time.time_since_epoch());
+      auto delta = std::chrono::duration_cast<std::chrono::microseconds>(
+          req_stat->stream_close_time - req_stat->request_time);
+      *worker->log << start.count() << '\t' << (success ? req_stat->status : -1)
+                   << '\t' << delta.count() << '\n';
+      // Flushing manually is important to ensure atomicity of lines, but
+      // doing it after each line (e.g. with std::endl) is noticeably slow.
+      if (++worker->log_pending == 16) {
+        worker->log->flush();
+        worker->log_pending = 0;
+      }
+    }
   }
 
   worker->report_progress();
@@ -1177,6 +1194,7 @@ int Client::write_tls() {
 
 void Client::record_request_time(RequestStat *req_stat) {
   req_stat->request_time = std::chrono::steady_clock::now();
+  req_stat->request_wall_time = std::chrono::system_clock::now();
 }
 
 void Client::record_connect_start_time() {
@@ -1246,7 +1264,8 @@ Worker::Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t req_todo, size_t nclients,
       nreqs_rem(req_todo % nclients),
       rate(rate),
       max_samples(max_samples),
-      next_client_id(0) {
+      next_client_id(0),
+      log_pending(0) {
   if (!config->is_rate_mode() && !config->is_timing_based_mode()) {
     progress_interval = std::max(static_cast<size_t>(1), req_todo / 10);
   } else {
@@ -1280,6 +1299,11 @@ Worker::Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t req_todo, size_t nclients,
     current_phase = Phase::INITIAL_IDLE;
   } else {
     current_phase = Phase::MAIN_DURATION;
+  }
+
+  if (!config->log_file.empty()) {
+    log = std::make_unique<std::ofstream>(
+        config->log_file, std::ios_base::out | std::ios_base::app);
   }
 }
 
@@ -1940,6 +1964,14 @@ Options:
               this option value and the value which server specified.
               Default: )"
       << util::utos_unit(config.encoder_header_table_size) << R"(
+  --log-file=<PATH>
+              Write per-request information to a file as tab-separated
+              columns: start  time as  microseconds since  epoch; HTTP
+              status code;  microseconds until end of  response.  More
+              columns may be added later.  Rows are ordered by end-of-
+              response  time when  using  one worker  thread, but  may
+              appear slightly  out of order with  multiple threads due
+              to buffering.  Status code is -1 for failed streams.
   -v, --verbose
               Output debug information.
   --version   Display version information and exit.
@@ -1996,6 +2028,7 @@ int main(int argc, char **argv) {
         {"header-table-size", required_argument, &flag, 7},
         {"encoder-header-table-size", required_argument, &flag, 8},
         {"warm-up-time", required_argument, &flag, 9},
+        {"log-file", required_argument, &flag, 10},
         {nullptr, 0, nullptr, 0}};
     int option_index = 0;
     auto c = getopt_long(argc, argv,
@@ -2218,6 +2251,15 @@ int main(int argc, char **argv) {
           std::cerr << "--warm-up-time: value error " << optarg << std::endl;
           exit(EXIT_FAILURE);
         }
+        break;
+      case 10:
+        // --log-file
+        std::ofstream out(optarg, std::ios_base::out | std::ios_base::app);
+        if (!out.is_open()) {
+          std::cerr << "--log-file: cannot write to " << optarg << std::endl;
+          exit(EXIT_FAILURE);
+        }
+        config.log_file = optarg;
         break;
       }
       break;
