@@ -357,6 +357,10 @@ mrb_value response_send_info(mrb_state *mrb, mrb_value self) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "could not send non-final response");
   }
 
+  auto handler = upstream->get_client_handler();
+
+  handler->signal_write();
+
   return self;
 }
 } // namespace
