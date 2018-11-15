@@ -1049,7 +1049,7 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
   auto &resp = downstream->response();
   auto &balloc = downstream->get_block_allocator();
   auto dconn = downstream->get_downstream_connection();
-  assert(dconn);
+  // dconn might be nullptr if this is non-final response from mruby.
 
   if (downstream->get_non_final_response() &&
       !downstream->supports_non_final_response()) {
@@ -1059,6 +1059,7 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
 
 #ifdef HAVE_MRUBY
   if (!downstream->get_non_final_response()) {
+    assert(dconn);
     const auto &group = dconn->get_downstream_addr_group();
     if (group) {
       const auto &dmruby_ctx = group->mruby_ctx;
