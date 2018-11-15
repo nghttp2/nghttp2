@@ -70,6 +70,11 @@ namespace {
 int htp_statuscb(http_parser *htp, const char *at, size_t length) {
   auto session = static_cast<Http1Session *>(htp->data);
   auto client = session->get_client();
+
+  if (htp->status_code / 100 == 1) {
+    return 0;
+  }
+
   client->on_status_code(session->stream_resp_counter_, htp->status_code);
 
   return 0;
@@ -81,6 +86,10 @@ namespace {
 int htp_msg_completecb(http_parser *htp) {
   auto session = static_cast<Http1Session *>(htp->data);
   auto client = session->get_client();
+
+  if (htp->status_code / 100 == 1) {
+    return 0;
+  }
 
   client->final = http_should_keep_alive(htp) == 0;
   auto req_stat = client->get_req_stat(session->stream_resp_counter_);
@@ -134,6 +143,12 @@ int htp_hdr_valcb(http_parser *htp, const char *data, size_t len) {
 } // namespace
 
 namespace {
+int htp_hdrs_completecb(http_parser *htp) {
+  return !http2::expect_response_body(htp->status_code);
+}
+} // namespace
+
+namespace {
 int htp_body_cb(http_parser *htp, const char *data, size_t len) {
   auto session = static_cast<Http1Session *>(htp->data);
   auto client = session->get_client();
@@ -147,14 +162,14 @@ int htp_body_cb(http_parser *htp, const char *data, size_t len) {
 
 namespace {
 constexpr http_parser_settings htp_hooks = {
-    htp_msg_begincb,   // http_cb      on_message_begin;
-    nullptr,           // http_data_cb on_url;
-    htp_statuscb,      // http_data_cb on_status;
-    htp_hdr_keycb,     // http_data_cb on_header_field;
-    htp_hdr_valcb,     // http_data_cb on_header_value;
-    nullptr,           // http_cb      on_headers_complete;
-    htp_body_cb,       // http_data_cb on_body;
-    htp_msg_completecb // http_cb      on_message_complete;
+    htp_msg_begincb,     // http_cb      on_message_begin;
+    nullptr,             // http_data_cb on_url;
+    htp_statuscb,        // http_data_cb on_status;
+    htp_hdr_keycb,       // http_data_cb on_header_field;
+    htp_hdr_valcb,       // http_data_cb on_header_value;
+    htp_hdrs_completecb, // http_cb      on_headers_complete;
+    htp_body_cb,         // http_data_cb on_body;
+    htp_msg_completecb   // http_cb      on_message_complete;
 };
 } // namespace
 
