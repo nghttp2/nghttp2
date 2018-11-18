@@ -90,8 +90,8 @@ http2::io_services() const {
   return impl_->io_services();
 }
 
-int http2::port() const {
-  return impl_->port();
+std::vector<int> http2::ports() const {
+  return impl_->ports();
 }
 
 
