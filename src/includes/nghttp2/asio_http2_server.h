@@ -142,8 +142,8 @@ public:
   // incoming requests in cleartext TCP connection.  If |asynchronous|
   // is false, this function blocks forever unless there is an error.
   // If it is true, after server has started, this function returns
-  // immediately, and the caller should call join() to shutdown server
-  // gracefully.
+  // immediately, and the caller should call stop() and join() to
+  // shutdown server gracefully.
   boost::system::error_code listen_and_serve(boost::system::error_code &ec,
                                              const std::string &address,
                                              const std::string &port,
