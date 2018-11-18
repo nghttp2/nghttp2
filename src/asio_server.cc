@@ -202,8 +202,9 @@ server::io_services() const {
 
 const std::vector<int> server::ports() const {
     auto ports = std::vector<int>(acceptors_.size());
+    auto index = 0;
     for (const auto &acceptor : acceptors_) {
-        ports.push_back(acceptor.local_endpoint().port());
+        ports.at(index++) = acceptor.local_endpoint().port();
     }
     return ports;
 }
