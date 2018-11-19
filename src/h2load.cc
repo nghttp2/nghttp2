@@ -825,11 +825,10 @@ void Client::on_stream_close(int32_t stream_id, bool success, bool final) {
     ++req_done;
 
     if (worker->log) {
-      auto to_us = [](auto d) {
-        return std::chrono::duration_cast<std::chrono::microseconds>(d);
-      };
-      auto start = to_us(req_stat->request_wall_time.time_since_epoch());
-      auto delta = to_us(req_stat->stream_close_time - req_stat->request_time);
+      auto start = std::chrono::duration_cast<std::chrono::microseconds>(
+        req_stat->request_wall_time.time_since_epoch());
+      auto delta = std::chrono::duration_cast<std::chrono::microseconds>(
+        req_stat->stream_close_time - req_stat->request_time);
       *worker->log << start.count() << '\t' << (success ? req_stat->status : -1)
                    << '\t' << delta.count() << '\n';
       // Flushing manually is important to ensure atomicity of lines, but
