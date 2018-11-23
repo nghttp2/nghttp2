@@ -845,9 +845,11 @@ void Client::on_stream_close(int32_t stream_id, bool success, bool final) {
       p = util::utos(p, delta.count());
       *p++ = '\n';
 
-      auto nwrite = std::distance(std::begin(buf), p);
+      auto nwrite = static_cast<size_t>(std::distance(std::begin(buf), p));
       assert(nwrite <= buf.size());
-      write(worker->config->log_fd, buf.data(), nwrite);
+      while (write(worker->config->log_fd, buf.data(), nwrite) == -1 &&
+             errno == EINTR)
+        ;
     }
   }
 
