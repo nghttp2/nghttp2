@@ -91,6 +91,7 @@ Config::Config()
       header_table_size(4_k),
       encoder_header_table_size(4_k),
       data_fd(-1),
+      log_fd(-1),
       port(0),
       default_port(0),
       verbose(false),
@@ -824,19 +825,29 @@ void Client::on_stream_close(int32_t stream_id, bool success, bool final) {
     ++worker->stats.req_done;
     ++req_done;
 
-    if (worker->log) {
+    if (worker->config->log_fd != -1) {
       auto start = std::chrono::duration_cast<std::chrono::microseconds>(
           req_stat->request_wall_time.time_since_epoch());
       auto delta = std::chrono::duration_cast<std::chrono::microseconds>(
           req_stat->stream_close_time - req_stat->request_time);
-      *worker->log << start.count() << '\t' << (success ? req_stat->status : -1)
-                   << '\t' << delta.count() << '\n';
-      // Flushing manually is important to ensure atomicity of lines, but
-      // doing it after each line (e.g. with std::endl) is noticeably slow.
-      if (++worker->log_pending == 16) {
-        worker->log->flush();
-        worker->log_pending = 0;
+
+      std::array<uint8_t, 256> buf;
+      auto p = std::begin(buf);
+      p = util::utos(p, start.count());
+      *p++ = '\t';
+      if (success) {
+        p = util::utos(p, req_stat->status);
+      } else {
+        *p++ = '-';
+        *p++ = '1';
       }
+      *p++ = '\t';
+      p = util::utos(p, delta.count());
+      *p++ = '\n';
+
+      auto nwrite = std::distance(std::begin(buf), p);
+      assert(nwrite <= buf.size());
+      write(worker->config->log_fd, buf.data(), nwrite);
     }
   }
 
@@ -1264,8 +1275,7 @@ Worker::Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t req_todo, size_t nclients,
       nreqs_rem(req_todo % nclients),
       rate(rate),
       max_samples(max_samples),
-      next_client_id(0),
-      log_pending(0) {
+      next_client_id(0) {
   if (!config->is_rate_mode() && !config->is_timing_based_mode()) {
     progress_interval = std::max(static_cast<size_t>(1), req_todo / 10);
   } else {
@@ -1299,11 +1309,6 @@ Worker::Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t req_todo, size_t nclients,
     current_phase = Phase::INITIAL_IDLE;
   } else {
     current_phase = Phase::MAIN_DURATION;
-  }
-
-  if (!config->log_file.empty()) {
-    log = std::make_unique<std::ofstream>(
-        config->log_file, std::ios_base::out | std::ios_base::app);
   }
 }
 
@@ -1998,6 +2003,7 @@ int main(int argc, char **argv) {
 #endif // NOTHREADS
 
   std::string datafile;
+  std::string logfile;
   bool nreqs_set_manually = false;
   while (1) {
     static int flag = 0;
@@ -2254,12 +2260,7 @@ int main(int argc, char **argv) {
         break;
       case 10:
         // --log-file
-        std::ofstream out(optarg, std::ios_base::out | std::ios_base::app);
-        if (!out.is_open()) {
-          std::cerr << "--log-file: cannot write to " << optarg << std::endl;
-          exit(EXIT_FAILURE);
-        }
-        config.log_file = optarg;
+        logfile = optarg;
         break;
       }
       break;
@@ -2421,6 +2422,15 @@ int main(int argc, char **argv) {
       exit(EXIT_FAILURE);
     }
     config.data_length = data_stat.st_size;
+  }
+
+  if (!logfile.empty()) {
+    config.log_fd = open(logfile.c_str(), O_WRONLY | O_CREAT | O_APPEND,
+                         S_IRUSR | S_IWUSR | S_IRGRP);
+    if (config.log_fd == -1) {
+      std::cerr << "--log-file: Could not open file " << logfile << std::endl;
+      exit(EXIT_FAILURE);
+    }
   }
 
   struct sigaction act {};
@@ -2772,6 +2782,10 @@ time for request: )"
             << util::dtos(ts.rps.within_sd) << "%" << std::endl;
 
   SSL_CTX_free(ssl_ctx);
+
+  if (config.log_fd != -1) {
+    close(config.log_fd);
+  }
 
   return 0;
 }
