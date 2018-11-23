@@ -200,6 +200,15 @@ server::io_services() const {
   return io_service_pool_.io_services();
 }
 
+const std::vector<int> server::ports() const {
+  auto ports = std::vector<int>(acceptors_.size());
+  auto index = 0;
+  for (const auto &acceptor : acceptors_) {
+    ports[index++] = acceptor.local_endpoint().port();
+  }
+  return ports;
+}
+
 } // namespace server
 } // namespace asio_http2
 } // namespace nghttp2

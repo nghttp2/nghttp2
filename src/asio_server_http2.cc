@@ -90,6 +90,8 @@ http2::io_services() const {
   return impl_->io_services();
 }
 
+std::vector<int> http2::ports() const { return impl_->ports(); }
+
 } // namespace server
 
 } // namespace asio_http2

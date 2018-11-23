@@ -79,6 +79,9 @@ public:
   const std::vector<std::shared_ptr<boost::asio::io_service>> &
   io_services() const;
 
+  /// Returns a vector with all the acceptors ports in use.
+  const std::vector<int> ports() const;
+
 private:
   /// Initiate an asynchronous accept operation.
   void start_accept(tcp::acceptor &acceptor, serve_mux &mux);
