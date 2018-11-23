@@ -27,10 +27,18 @@ EXTRA_DIST = CMakeLists.txt
 
 if ENABLE_THIRD_PARTY
 
-noinst_LTLIBRARIES = libhttp-parser.la
-libhttp_parser_la_SOURCES = \
-	http-parser/http_parser.c \
-	http-parser/http_parser.h
+noinst_LTLIBRARIES = liburl-parser.la
+liburl_parser_la_SOURCES = \
+	url-parser/url_parser.c \
+	url-parser/url_parser.h
+
+noinst_LTLIBRARIES += libllhttp.la
+libllhttp_la_SOURCES = \
+	llhttp/src/api.c \
+	llhttp/src/http.c \
+	llhttp/src/llhttp.c \
+	llhttp/include/llhttp.h
+libllhttp_la_CPPFLAGS = -I${srcdir}/llhttp/include
 
 if HAVE_NEVERBLEED
 noinst_LTLIBRARIES += libneverbleed.la

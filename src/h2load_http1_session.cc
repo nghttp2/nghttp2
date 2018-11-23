@@ -34,27 +34,13 @@
 #include <iostream>
 #include <fstream>
 
-#include "http-parser/http_parser.h"
-
 using namespace nghttp2;
 
 namespace h2load {
 
-Http1Session::Http1Session(Client *client)
-    : stream_req_counter_(1),
-      stream_resp_counter_(1),
-      client_(client),
-      htp_(),
-      complete_(false) {
-  http_parser_init(&htp_, HTTP_RESPONSE);
-  htp_.data = this;
-}
-
-Http1Session::~Http1Session() {}
-
 namespace {
 // HTTP response message begin
-int htp_msg_begincb(http_parser *htp) {
+int htp_msg_begincb(llhttp_t *htp) {
   auto session = static_cast<Http1Session *>(htp->data);
 
   if (session->stream_resp_counter_ > session->stream_req_counter_) {
@@ -67,7 +53,7 @@ int htp_msg_begincb(http_parser *htp) {
 
 namespace {
 // HTTP response status code
-int htp_statuscb(http_parser *htp, const char *at, size_t length) {
+int htp_statuscb(llhttp_t *htp, const char *at, size_t length) {
   auto session = static_cast<Http1Session *>(htp->data);
   auto client = session->get_client();
 
@@ -83,7 +69,7 @@ int htp_statuscb(http_parser *htp, const char *at, size_t length) {
 
 namespace {
 // HTTP response message complete
-int htp_msg_completecb(http_parser *htp) {
+int htp_msg_completecb(llhttp_t *htp) {
   auto session = static_cast<Http1Session *>(htp->data);
   auto client = session->get_client();
 
@@ -91,7 +77,7 @@ int htp_msg_completecb(http_parser *htp) {
     return 0;
   }
 
-  client->final = http_should_keep_alive(htp) == 0;
+  client->final = llhttp_should_keep_alive(htp) == 0;
   auto req_stat = client->get_req_stat(session->stream_resp_counter_);
 
   assert(req_stat);
@@ -106,14 +92,13 @@ int htp_msg_completecb(http_parser *htp) {
   if (client->final) {
     session->stream_req_counter_ = session->stream_resp_counter_;
 
-    http_parser_pause(htp, 1);
     // Connection is going down.  If we have still request to do,
     // create new connection and keep on doing the job.
     if (client->req_left) {
       client->try_new_connection();
     }
 
-    return 0;
+    return HPE_PAUSED;
   }
 
   return 0;
@@ -121,7 +106,7 @@ int htp_msg_completecb(http_parser *htp) {
 } // namespace
 
 namespace {
-int htp_hdr_keycb(http_parser *htp, const char *data, size_t len) {
+int htp_hdr_keycb(llhttp_t *htp, const char *data, size_t len) {
   auto session = static_cast<Http1Session *>(htp->data);
   auto client = session->get_client();
 
@@ -132,7 +117,7 @@ int htp_hdr_keycb(http_parser *htp, const char *data, size_t len) {
 } // namespace
 
 namespace {
-int htp_hdr_valcb(http_parser *htp, const char *data, size_t len) {
+int htp_hdr_valcb(llhttp_t *htp, const char *data, size_t len) {
   auto session = static_cast<Http1Session *>(htp->data);
   auto client = session->get_client();
 
@@ -143,13 +128,13 @@ int htp_hdr_valcb(http_parser *htp, const char *data, size_t len) {
 } // namespace
 
 namespace {
-int htp_hdrs_completecb(http_parser *htp) {
+int htp_hdrs_completecb(llhttp_t *htp) {
   return !http2::expect_response_body(htp->status_code);
 }
 } // namespace
 
 namespace {
-int htp_body_cb(http_parser *htp, const char *data, size_t len) {
+int htp_body_cb(llhttp_t *htp, const char *data, size_t len) {
   auto session = static_cast<Http1Session *>(htp->data);
   auto client = session->get_client();
 
@@ -161,17 +146,31 @@ int htp_body_cb(http_parser *htp, const char *data, size_t len) {
 } // namespace
 
 namespace {
-constexpr http_parser_settings htp_hooks = {
-    htp_msg_begincb,     // http_cb      on_message_begin;
-    nullptr,             // http_data_cb on_url;
-    htp_statuscb,        // http_data_cb on_status;
-    htp_hdr_keycb,       // http_data_cb on_header_field;
-    htp_hdr_valcb,       // http_data_cb on_header_value;
-    htp_hdrs_completecb, // http_cb      on_headers_complete;
-    htp_body_cb,         // http_data_cb on_body;
-    htp_msg_completecb   // http_cb      on_message_complete;
+constexpr llhttp_settings_t htp_hooks = {
+    htp_msg_begincb,     // llhttp_cb      on_message_begin;
+    nullptr,             // llhttp_data_cb on_url;
+    htp_statuscb,        // llhttp_data_cb on_status;
+    htp_hdr_keycb,       // llhttp_data_cb on_header_field;
+    htp_hdr_valcb,       // llhttp_data_cb on_header_value;
+    htp_hdrs_completecb, // llhttp_cb      on_headers_complete;
+    htp_body_cb,         // llhttp_data_cb on_body;
+    htp_msg_completecb,  // llhttp_cb      on_message_complete;
+    nullptr,             // llhttp_cb      on_chunk_header
+    nullptr,             // llhttp_cb      on_chunk_complete
 };
 } // namespace
+
+Http1Session::Http1Session(Client *client)
+    : stream_req_counter_(1),
+      stream_resp_counter_(1),
+      client_(client),
+      htp_(),
+      complete_(false) {
+  llhttp_init(&htp_, HTTP_RESPONSE, &htp_hooks);
+  htp_.data = this;
+}
+
+Http1Session::~Http1Session() {}
 
 void Http1Session::on_connect() { client_->signal_write(); }
 
@@ -202,14 +201,14 @@ int Http1Session::submit_request() {
 }
 
 int Http1Session::on_read(const uint8_t *data, size_t len) {
-  auto nread = http_parser_execute(&htp_, &htp_hooks,
-                                   reinterpret_cast<const char *>(data), len);
+  auto htperr =
+      llhttp_execute(&htp_, reinterpret_cast<const char *>(data), len);
+  auto nread = static_cast<size_t>(
+      reinterpret_cast<const uint8_t *>(llhttp_get_error_pos(&htp_)) - data);
 
   if (client_->worker->config->verbose) {
     std::cout.write(reinterpret_cast<const char *>(data), nread);
   }
-
-  auto htperr = HTTP_PARSER_ERRNO(&htp_);
 
   if (htperr == HPE_PAUSED) {
     // pause is done only when connection: close is requested
@@ -218,8 +217,8 @@ int Http1Session::on_read(const uint8_t *data, size_t len) {
 
   if (htperr != HPE_OK) {
     std::cerr << "[ERROR] HTTP parse error: "
-              << "(" << http_errno_name(htperr) << ") "
-              << http_errno_description(htperr) << std::endl;
+              << "(" << llhttp_errno_name(htperr) << ") "
+              << llhttp_get_error_reason(&htp_) << std::endl;
     return -1;
   }
 

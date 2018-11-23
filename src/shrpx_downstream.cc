@@ -26,7 +26,7 @@
 
 #include <cassert>
 
-#include "http-parser/http_parser.h"
+#include "url-parser/url_parser.h"
 
 #include "shrpx_upstream.h"
 #include "shrpx_client_handler.h"

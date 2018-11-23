@@ -9,6 +9,7 @@ if(ENABLE_EXAMPLES)
   include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}
     "${CMAKE_CURRENT_SOURCE_DIR}/../third-party"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../third-party/llhttp/include"
 
     ${LIBEVENT_INCLUDE_DIRS}
     ${OPENSSL_INCLUDE_DIRS}
@@ -21,14 +22,24 @@ if(ENABLE_EXAMPLES)
     ${APP_LIBRARIES}
   )
 
-  add_executable(client           client.c $<TARGET_OBJECTS:http-parser>)
-  add_executable(libevent-client  libevent-client.c $<TARGET_OBJECTS:http-parser>)
-  add_executable(libevent-server  libevent-server.c $<TARGET_OBJECTS:http-parser>)
-  add_executable(deflate          deflate.c $<TARGET_OBJECTS:http-parser>)
+  add_executable(client           client.c $<TARGET_OBJECTS:llhttp>
+    $<TARGET_OBJECTS:url-parser>
+  )
+  add_executable(libevent-client  libevent-client.c $<TARGET_OBJECTS:llhttp>
+    $<TARGET_OBJECTS:url-parser>
+  )
+  add_executable(libevent-server  libevent-server.c $<TARGET_OBJECTS:llhttp>
+    $<TARGET_OBJECTS:url-parser>
+  )
+  add_executable(deflate          deflate.c $<TARGET_OBJECTS:llhttp>
+    $<TARGET_OBJECTS:url-parser>
+  )
 
   if(ENABLE_ASIO_LIB)
     foreach(name asio-sv asio-sv2 asio-cl asio-cl2)
-      add_executable(${name} ${name}.cc $<TARGET_OBJECTS:http-parser>)
+      add_executable(${name} ${name}.cc $<TARGET_OBJECTS:llhttp>
+        $<TARGET_OBJECTS:url-parser>
+      )
       target_include_directories(${name} PRIVATE
         ${OPENSSL_INCLUDE_DIRS}
         ${Boost_INCLUDE_DIRS}

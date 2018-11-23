@@ -594,7 +594,8 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
   auto &balloc = downstream->get_block_allocator();
 
   auto downstream_addr = downstream->get_addr();
-  auto method = http2::to_method_string(req.method);
+  auto method = req.method == -1 ? StringRef::from_lit("<unknown>")
+                                 : http2::to_method_string(req.method);
   auto path = req.method == HTTP_CONNECT
                   ? req.authority
                   : config->http2_proxy
