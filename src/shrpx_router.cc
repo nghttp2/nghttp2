@@ -220,9 +220,16 @@ const RNode *match_partial(bool *pattern_is_wildcard, const RNode *node,
           return node;
         }
 
+        // The last '/' handling, see below.
+        node = find_next_node(node, '/');
+        if (node != nullptr && node->index != -1 && node->len == 1) {
+          return node;
+        }
+
         return nullptr;
       }
 
+      // The last '/' handling, see below.
       if (node->index != -1 && offset + n + 1 == node->len &&
           node->s[node->len - 1] == '/') {
         return node;
@@ -261,6 +268,13 @@ const RNode *match_partial(bool *pattern_is_wildcard, const RNode *node,
       if (node->len == n) {
         // Complete match with this node
         if (node->index != -1) {
+          *pattern_is_wildcard = false;
+          return node;
+        }
+
+        // The last '/' handling, see below.
+        node = find_next_node(node, '/');
+        if (node != nullptr && node->index != -1 && node->len == 1) {
           *pattern_is_wildcard = false;
           return node;
         }
