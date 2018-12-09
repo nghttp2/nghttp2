@@ -45,6 +45,9 @@ void test_shrpx_router_match(void) {
       {StringRef::from_lit("www.nghttp2.org/alpha/"), 4},
       {StringRef::from_lit("/alpha"), 5},
       {StringRef::from_lit("example.com/alpha/"), 6},
+      {StringRef::from_lit("nghttp2.org/alpha/bravo2/"), 7},
+      {StringRef::from_lit("www2.nghttp2.org/alpha/"), 8},
+      {StringRef::from_lit("www2.nghttp2.org/alpha2/"), 9},
   };
 
   Router router;
@@ -83,6 +86,13 @@ void test_shrpx_router_match(void) {
   // matches pattern when last '/' is missing in path
   idx = router.match(StringRef::from_lit("nghttp2.org"),
                      StringRef::from_lit("/alpha/bravo"));
+
+  CU_ASSERT(3 == idx);
+
+  idx = router.match(StringRef::from_lit("www2.nghttp2.org"),
+                     StringRef::from_lit("/alpha"));
+
+  CU_ASSERT(8 == idx);
 
   idx = router.match(StringRef{}, StringRef::from_lit("/alpha"));
 
