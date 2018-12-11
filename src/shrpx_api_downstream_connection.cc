@@ -353,6 +353,7 @@ int APIDownstreamConnection::handle_backendconfig() {
   auto rp = mmap(nullptr, req.recv_body_length, PROT_READ, MAP_SHARED, fd_, 0);
   if (rp == reinterpret_cast<void *>(-1)) {
     send_reply(500, APIStatusCode::FAILURE);
+    return 0;
   }
 
   auto unmapper = defer(munmap, rp, req.recv_body_length);
