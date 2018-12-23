@@ -61,7 +61,7 @@ namespace server {
 template <typename socket_type>
 class connection : public std::enable_shared_from_this<connection<socket_type>>,
                    private boost::noncopyable {
-public:
+ public:
   /// Construct a connection with the given io_service.
   template <typename... SocketArgs>
   explicit connection(
@@ -69,10 +69,13 @@ public:
       const boost::posix_time::time_duration &tls_handshake_timeout,
       const boost::posix_time::time_duration &read_timeout,
       SocketArgs &&... args)
-      : socket_(std::forward<SocketArgs>(args)...), mux_(mux),
+      : socket_(std::forward<SocketArgs>(args)...),
+        mux_(mux),
         deadline_(socket_.get_io_service()),
         tls_handshake_timeout_(tls_handshake_timeout),
-        read_timeout_(read_timeout), writing_(false), stopped_(false) {}
+        read_timeout_(read_timeout),
+        writing_(false),
+        stopped_(false) {}
 
   /// Start the first asynchronous operation for the connection.
   void start() {
@@ -80,11 +83,12 @@ public:
 
     handler_ = std::make_shared<http2_handler>(
         socket_.get_io_service(), socket_.lowest_layer().remote_endpoint(ec),
-        [ this, self = this->shared_from_this() ]() {
-          if (!std::weak_ptr<connection>{self}.lock()) {
+        [self = this->shared_from_this()]() {
+          auto ptr = std::weak_ptr<connection>{self}.lock();
+          if (!ptr) {
             return;
           }
-          do_write();
+          ptr->do_write();
         },
         mux_);
     if (handler_->start() != 0) {
@@ -100,9 +104,11 @@ public:
     deadline_.expires_from_now(tls_handshake_timeout_);
     deadline_.async_wait([self = this->shared_from_this()](
         const boost::system::error_code &) {
-      if (!std::weak_ptr<connection>{self}.lock())
+      auto ptr = std::weak_ptr<connection>{self}.lock();
+      if (!ptr) {
         return;
-      return self->handle_deadline();
+      }
+      return ptr->handle_deadline();
     });
   }
 
@@ -110,9 +116,11 @@ public:
     deadline_.expires_from_now(read_timeout_);
     deadline_.async_wait([self = this->shared_from_this()](
         const boost::system::error_code &) {
-      if (!std::weak_ptr<connection>{self}.lock())
+      auto ptr = std::weak_ptr<connection>{self}.lock();
+      if (!ptr) {
         return;
-      return self->handle_deadline();
+      }
+      return ptr->handle_deadline();
     });
   }
 
@@ -130,46 +138,50 @@ public:
 
     deadline_.async_wait([self = this->shared_from_this()](
         const boost::system::error_code &) {
-      if (!std::weak_ptr<connection>{self}.lock())
+      auto ptr = std::weak_ptr<connection>{self}.lock();
+      if (!ptr) {
         return;
-      return self->handle_deadline();
+      }
+      return ptr->handle_deadline();
     });
   }
 
   void do_read() {
     deadline_.expires_from_now(read_timeout_);
 
-    socket_.async_read_some(boost::asio::buffer(buffer_), [
-      this, self = this->shared_from_this()
-    ](const boost::system::error_code &e, std::size_t bytes_transferred) {
-      if (!std::weak_ptr<connection>{self}.lock()) {
-        return;
-      }
-      if (e) {
-        stop();
-        return;
-      }
+    socket_.async_read_some(
+        boost::asio::buffer(buffer_),
+        [this, self=this->shared_from_this()](const boost::system::error_code &e,
+                     std::size_t bytes_transferred) {
+          auto ptr = std::weak_ptr<connection>{self}.lock();
+          if (!ptr) {
+            return;
+          }
+          if (e) {
+            ptr->stop();
+            return;
+          }
 
-      if (handler_->on_read(buffer_, bytes_transferred) != 0) {
-        stop();
-        return;
-      }
+          if (handler_->on_read(buffer_, bytes_transferred) != 0) {
+            ptr->stop();
+            return;
+          }
 
-      do_write();
+          ptr->do_write();
 
-      if (!writing_ && handler_->should_stop()) {
-        stop();
-        return;
-      }
+          if (!writing_ && handler_->should_stop()) {
+            stop();
+            return;
+          }
 
-      do_read();
+          ptr->do_read();
 
-      // If an error occurs then no new asynchronous operations are
-      // started. This means that all shared_ptr references to the
-      // connection object will disappear and the object will be
-      // destroyed automatically after this handler returns. The
-      // connection class's destructor closes the socket.
-    });
+          // If an error occurs then no new asynchronous operations are
+          // started. This means that all shared_ptr references to the
+          // connection object will disappear and the object will be
+          // destroyed automatically after this handler returns. The
+          // connection class's destructor closes the socket.
+        });
   }
 
   void do_write() {
@@ -203,17 +215,18 @@ public:
     boost::asio::async_write(socket_, boost::asio::buffer(outbuf_, nwrite), [
       this, self = this->shared_from_this()
     ](const boost::system::error_code &e, std::size_t) {
-      if (!std::weak_ptr<connection>{self}.lock()) {
+      auto ptr = std::weak_ptr<connection>{self}.lock();
+      if (!ptr) {
         return;
       }
       if (e) {
-        stop();
+        ptr->stop();
         return;
       }
 
       writing_ = false;
 
-      do_write();
+      ptr->do_write();
     });
 
     // No new asynchronous operations are started. This means that all
@@ -233,7 +246,7 @@ public:
     deadline_.cancel();
   }
 
-private:
+ private:
   socket_type socket_;
 
   serve_mux &mux_;
@@ -253,10 +266,10 @@ private:
   bool stopped_;
 };
 
-} // namespace server
+}  // namespace server
 
-} // namespace asio_http2
+}  // namespace asio_http2
 
-} // namespace nghttp2
+}  // namespace nghttp2
 
-#endif // ASIO_SERVER_CONNECTION_H
+#endif  // ASIO_SERVER_CONNECTION_H
