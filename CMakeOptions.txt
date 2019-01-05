@@ -15,6 +15,7 @@ option(ENABLE_PYTHON_BINDINGS "Build Python bindings"
 option(ENABLE_FAILMALLOC "Build failmalloc test program" ON)
 option(ENABLE_LIB_ONLY  "Build libnghttp2 only.  This is a short hand for -DENABLE_APP=0 -DENABLE_EXAMPLES=0 -DENABLE_HPACK_TOOLS=0 -DENABLE_PYTHON_BINDINGS=0")
 option(ENABLE_STATIC_LIB "Build libnghttp2 in static mode also")
+option(ENABLE_SHARED_LIB "Build libnghttp2 as a shared library" ON)
 
 option(WITH_LIBXML2     "Use libxml2"
   ${WITH_LIBXML2_DEFAULT})
