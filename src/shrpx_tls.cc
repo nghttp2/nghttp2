@@ -2042,7 +2042,7 @@ StringRef get_x509_serial(BlockAllocator &balloc, X509 *x) {
   auto sn = X509_get_serialNumber(x);
   auto bn = BN_new();
   auto bn_d = defer(BN_free, bn);
-  if (!ASN1_INTEGER_to_BN(sn, bn)) {
+  if (!ASN1_INTEGER_to_BN(sn, bn) || BN_num_bytes(bn) > 20) {
     return StringRef{};
   }
 
