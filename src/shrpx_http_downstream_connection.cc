@@ -807,16 +807,6 @@ int HttpDownstreamConnection::end_upload_data() {
 
 namespace {
 void remove_from_pool(HttpDownstreamConnection *dconn) {
-  auto &group = dconn->get_downstream_addr_group();
-  auto &shared_addr = group->shared_addr;
-
-  if (shared_addr->affinity.type == SessionAffinity::NONE) {
-    auto &dconn_pool =
-        dconn->get_downstream_addr_group()->shared_addr->dconn_pool;
-    dconn_pool.remove_downstream_connection(dconn);
-    return;
-  }
-
   auto addr = dconn->get_addr();
   auto &dconn_pool = addr->dconn_pool;
   dconn_pool->remove_downstream_connection(dconn);

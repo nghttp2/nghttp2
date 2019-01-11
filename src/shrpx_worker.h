@@ -164,7 +164,6 @@ struct SharedDownstreamAddr {
   // TODO Verify that this approach performs better in performance
   // wise.
   DList<Http2Session> http2_avail_freelist;
-  DownstreamConnectionPool dconn_pool;
   // Configuration for session affinity
   AffinityConfig affinity;
   // Next http/1.1 downstream address index in addrs.
