@@ -1404,10 +1404,10 @@ constexpr auto DEFAULT_TLS_MAX_PROTO_VERSION = StringRef::from_lit("TLSv1.2");
 } // namespace
 
 namespace {
-constexpr auto DEFAULT_ACCESSLOG_FORMAT = StringRef::from_lit(
-    R"($remote_addr - - [$time_local] )"
-    R"("$request" $status $body_bytes_sent )"
-    R"("$http_referer" "$http_user_agent")");
+constexpr auto DEFAULT_ACCESSLOG_FORMAT =
+    StringRef::from_lit(R"($remote_addr - - [$time_local] )"
+                        R"("$request" $status $body_bytes_sent )"
+                        R"("$http_referer" "$http_user_agent")");
 } // namespace
 
 namespace {
