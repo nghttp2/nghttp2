@@ -304,6 +304,9 @@ void Worker::replace_downstream_config(
       shared_addr->http1_pri.weight = num_http1;
       shared_addr->http2_pri.weight = num_http2;
 
+      std::shuffle(std::begin(shared_addr->addrs), std::end(shared_addr->addrs),
+                   randgen_);
+
       if (shared_addr->affinity.type != SessionAffinity::NONE) {
         for (auto &addr : shared_addr->addrs) {
           addr.dconn_pool = std::make_unique<DownstreamConnectionPool>();
