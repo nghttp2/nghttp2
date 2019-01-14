@@ -658,28 +658,9 @@ void ClientHandler::pool_downstream_connection(
                      << " in group " << group;
   }
 
-  auto &shared_addr = group->shared_addr;
-
-  if (shared_addr->affinity.type == SessionAffinity::NONE) {
-    auto &dconn_pool = group->shared_addr->dconn_pool;
-    dconn_pool.add_downstream_connection(std::move(dconn));
-
-    return;
-  }
-
   auto addr = dconn->get_addr();
   auto &dconn_pool = addr->dconn_pool;
   dconn_pool->add_downstream_connection(std::move(dconn));
-}
-
-void ClientHandler::remove_downstream_connection(DownstreamConnection *dconn) {
-  if (LOG_ENABLED(INFO)) {
-    CLOG(INFO, this) << "Removing downstream connection DCONN:" << dconn
-                     << " from pool";
-  }
-  auto &dconn_pool =
-      dconn->get_downstream_addr_group()->shared_addr->dconn_pool;
-  dconn_pool.remove_downstream_connection(dconn);
 }
 
 namespace {
@@ -1138,25 +1119,47 @@ ClientHandler::get_downstream_connection(int &err, Downstream *downstream,
     return std::move(dconn);
   }
 
-  auto &dconn_pool = shared_addr->dconn_pool;
+  auto end = shared_addr->next;
+  for (;;) {
+    auto addr = &shared_addr->addrs[shared_addr->next];
 
-  // pool connection must be HTTP/1.1 connection
-  auto dconn = dconn_pool.pop_downstream_connection();
+    if (addr->proto != Proto::HTTP1) {
+      if (++shared_addr->next >= shared_addr->addrs.size()) {
+        shared_addr->next = 0;
+      }
 
-  if (dconn) {
-    if (LOG_ENABLED(INFO)) {
-      CLOG(INFO, this) << "Reuse downstream connection DCONN:" << dconn.get()
-                       << " from pool";
-    }
-  } else {
-    if (LOG_ENABLED(INFO)) {
-      CLOG(INFO, this) << "Downstream connection pool is empty."
-                       << " Create new one";
+      assert(end != shared_addr->next);
+
+      continue;
     }
 
-    dconn = std::make_unique<HttpDownstreamConnection>(group, 0, conn_.loop,
-                                                       worker_);
+    // pool connection must be HTTP/1.1 connection
+    auto dconn = addr->dconn_pool->pop_downstream_connection();
+    if (dconn) {
+      if (++shared_addr->next >= shared_addr->addrs.size()) {
+        shared_addr->next = 0;
+      }
+
+      if (LOG_ENABLED(INFO)) {
+        CLOG(INFO, this) << "Reuse downstream connection DCONN:" << dconn.get()
+                         << " from pool";
+      }
+
+      dconn->set_client_handler(this);
+
+      return dconn;
+    }
+
+    break;
   }
+
+  if (LOG_ENABLED(INFO)) {
+    CLOG(INFO, this) << "Downstream connection pool is empty."
+                     << " Create new one";
+  }
+
+  auto dconn =
+      std::make_unique<HttpDownstreamConnection>(group, 0, conn_.loop, worker_);
 
   dconn->set_client_handler(this);
 

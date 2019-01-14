@@ -164,12 +164,6 @@ void Worker::replace_downstream_config(
     g->retired = true;
 
     auto &shared_addr = g->shared_addr;
-
-    if (shared_addr->affinity.type == SessionAffinity::NONE) {
-      shared_addr->dconn_pool.remove_all();
-      continue;
-    }
-
     for (auto &addr : shared_addr->addrs) {
       addr.dconn_pool->remove_all();
     }
@@ -307,10 +301,8 @@ void Worker::replace_downstream_config(
       std::shuffle(std::begin(shared_addr->addrs), std::end(shared_addr->addrs),
                    randgen_);
 
-      if (shared_addr->affinity.type != SessionAffinity::NONE) {
-        for (auto &addr : shared_addr->addrs) {
-          addr.dconn_pool = std::make_unique<DownstreamConnectionPool>();
-        }
+      for (auto &addr : shared_addr->addrs) {
+        addr.dconn_pool = std::make_unique<DownstreamConnectionPool>();
       }
 
       dst->shared_addr = shared_addr;
