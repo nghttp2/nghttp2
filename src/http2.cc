@@ -1581,6 +1581,10 @@ int construct_push_component(BlockAllocator &balloc, StringRef &scheme,
   int rv;
   StringRef rel, relq;
 
+  if (uri.size() == 0) {
+    return -1;
+  }
+
   http_parser_url u{};
 
   rv = http_parser_parse_url(uri.c_str(), uri.size(), 0, &u);
