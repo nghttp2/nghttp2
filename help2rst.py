@@ -167,7 +167,7 @@ def format_text(text):
     else:
         text = re.sub(r'\*', r'\*', text)
     # markup option reference
-    text = re.sub(r'(^|\s)(-[a-zA-Z0-9]|--[a-zA-Z0-9-]+)',
+    text = re.sub(r'(^|\s)(-[a-zA-Z]|--[a-zA-Z0-9-]+)',
                   r'\1:option:`\2`', text)
     # sphinx does not like markup like ':option:`-f`='.  We need
     # backslash between ` and =.
