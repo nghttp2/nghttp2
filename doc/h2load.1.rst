@@ -229,6 +229,16 @@ OPTIONS
 
     Default: ``4K``
 
+.. option:: --log-file=<PATH>
+
+    Write per-request information to a file as tab-separated
+    columns: start  time as  microseconds since  epoch; HTTP
+    status code;  microseconds until end of  response.  More
+    columns may be added later.  Rows are ordered by end-of-
+    response  time when  using  one worker  thread, but  may
+    appear slightly  out of order with  multiple threads due
+    to buffering.  Status code is -1 for failed streams.
+
 .. option:: -v, --verbose
 
     Output debug information.
