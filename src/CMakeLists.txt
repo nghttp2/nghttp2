@@ -163,6 +163,7 @@ if(ENABLE_APP)
       memchunk_test.cc
       template_test.cc
       base64_test.cc
+      priority_queue_test.cc
     )
     add_executable(nghttpx-unittest EXCLUDE_FROM_ALL
       ${NGHTTPX_UNITTEST_SOURCES}

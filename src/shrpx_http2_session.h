@@ -61,9 +61,6 @@ struct StreamData {
 enum class FreelistZone {
   // Http2Session object is not linked in any freelist.
   NONE,
-  // Http2Session object is linked in group scope
-  // http2_avail_freelist.
-  AVAIL,
   // Http2Session object is linked in address scope
   // http2_extra_freelist.
   EXTRA,

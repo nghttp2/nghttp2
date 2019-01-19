@@ -140,7 +140,8 @@ NGHTTPX_SRCS = \
 	shrpx_dual_dns_resolver.cc shrpx_dual_dns_resolver.h \
 	shrpx_dns_tracker.cc shrpx_dns_tracker.h \
 	buffer.h memchunk.h template.h allocator.h \
-	xsi_strerror.c xsi_strerror.h
+	xsi_strerror.c xsi_strerror.h \
+	priority_queue.h
 
 if HAVE_MRUBY
 NGHTTPX_SRCS += \
@@ -186,7 +187,8 @@ nghttpx_unittest_SOURCES = shrpx-unittest.cc \
 	buffer_test.cc buffer_test.h \
 	memchunk_test.cc memchunk_test.h \
 	template_test.cc template_test.h \
-	base64_test.cc base64_test.h
+	base64_test.cc base64_test.h \
+	priority_queue_test.cc priority_queue_test.h
 nghttpx_unittest_CPPFLAGS = ${AM_CPPFLAGS} \
 	-DNGHTTP2_SRC_DIR=\"$(top_srcdir)/src\"
 nghttpx_unittest_LDADD = libnghttpx.a ${LDADD} @CUNIT_LIBS@ @TESTLDADD@

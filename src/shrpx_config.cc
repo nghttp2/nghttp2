@@ -47,6 +47,7 @@
 #include <cerrno>
 #include <limits>
 #include <fstream>
+#include <unordered_map>
 
 #include <nghttp2/nghttp2.h>
 
@@ -813,11 +814,14 @@ int parse_upstream_params(UpstreamParams &out, const StringRef &src_params) {
 struct DownstreamParams {
   StringRef sni;
   StringRef mruby;
+  StringRef group;
   AffinityConfig affinity;
   ev_tstamp read_timeout;
   ev_tstamp write_timeout;
   size_t fall;
   size_t rise;
+  uint32_t weight;
+  uint32_t group_weight;
   Proto proto;
   bool tls;
   bool dns;
@@ -960,6 +964,43 @@ int parse_downstream_params(DownstreamParams &out,
               StringRef{first + str_size("write-timeout="), end}) == -1) {
         return -1;
       }
+    } else if (util::istarts_with_l(param, "weight=")) {
+      auto valstr = StringRef{first + str_size("weight="), end};
+      if (valstr.empty()) {
+        LOG(ERROR)
+            << "backend: weight: non-negative integer [1, 256] is expected";
+        return -1;
+      }
+
+      auto n = util::parse_uint(valstr);
+      if (n < 1 || n > 256) {
+        LOG(ERROR)
+            << "backend: weight: non-negative integer [1, 256] is expected";
+        return -1;
+      }
+      out.weight = n;
+    } else if (util::istarts_with_l(param, "group=")) {
+      auto valstr = StringRef{first + str_size("group="), end};
+      if (valstr.empty()) {
+        LOG(ERROR) << "backend: group: empty string is not allowed";
+        return -1;
+      }
+      out.group = valstr;
+    } else if (util::istarts_with_l(param, "group-weight=")) {
+      auto valstr = StringRef{first + str_size("group-weight="), end};
+      if (valstr.empty()) {
+        LOG(ERROR) << "backend: group-weight: non-negative integer [1, 256] is "
+                      "expected";
+        return -1;
+      }
+
+      auto n = util::parse_uint(valstr);
+      if (n < 1 || n > 256) {
+        LOG(ERROR) << "backend: group-weight: non-negative integer [1, 256] is "
+                      "expected";
+        return -1;
+      }
+      out.group_weight = n;
     } else if (!param.empty()) {
       LOG(ERROR) << "backend: " << param << ": unknown keyword";
       return -1;
@@ -996,6 +1037,7 @@ int parse_mapping(Config *config, DownstreamAddrConfig &addr,
 
   DownstreamParams params{};
   params.proto = Proto::HTTP1;
+  params.weight = 1;
 
   if (parse_downstream_params(params, src_params) != 0) {
     return -1;
@@ -1015,6 +1057,9 @@ int parse_mapping(Config *config, DownstreamAddrConfig &addr,
 
   addr.fall = params.fall;
   addr.rise = params.rise;
+  addr.weight = params.weight;
+  addr.group = make_string_ref(downstreamconf.balloc, params.group);
+  addr.group_weight = params.group_weight;
   addr.proto = params.proto;
   addr.tls = params.tls;
   addr.sni = make_string_ref(downstreamconf.balloc, params.sni);
@@ -4025,7 +4070,17 @@ int configure_downstream_group(Config *config, bool http2_proxy,
   auto resolve_flags = numeric_addr_only ? AI_NUMERICHOST | AI_NUMERICSERV : 0;
 
   for (auto &g : addr_groups) {
+    std::unordered_map<StringRef, uint32_t> wgchk;
     for (auto &addr : g.addrs) {
+      if (addr.group_weight) {
+        auto it = wgchk.find(addr.group);
+        if (it == std::end(wgchk)) {
+          wgchk.emplace(addr.group, addr.group_weight);
+        } else if ((*it).second != addr.group_weight) {
+          LOG(FATAL) << "backend: inconsistent group-weight for a single group";
+          return -1;
+        }
+      }
 
       if (addr.host_unix) {
         // for AF_UNIX socket, we use "localhost" as host for backend
@@ -4075,6 +4130,17 @@ int configure_downstream_group(Config *config, bool http2_proxy,
       } else {
         LOG(INFO) << "Resolving backend address " << hostport
                   << " takes place dynamically";
+      }
+    }
+
+    for (auto &addr : g.addrs) {
+      if (addr.group_weight == 0) {
+        auto it = wgchk.find(addr.group);
+        if (it == std::end(wgchk)) {
+          addr.group_weight = 1;
+        } else {
+          addr.group_weight = (*it).second;
+        }
       }
     }
 
