@@ -364,7 +364,7 @@ int tls_session_new_cb(SSL *ssl, SSL_SESSION *session) {
 
 namespace {
 SSL_SESSION *tls_session_get_cb(SSL *ssl,
-#if OPENSSL_1_1_API
+#if OPENSSL_1_1_API || LIBRESSL_VERSION_NUMBER >= 0x0280000f
                                 const unsigned char *id,
 #else  // !OPENSSL_1_1_API
                                 unsigned char *id,
