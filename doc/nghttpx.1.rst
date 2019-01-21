@@ -123,13 +123,13 @@ Connections
     "sni=<SNI_HOST>",         "fall=<N>",        "rise=<N>",
     "affinity=<METHOD>",    "dns",    "redirect-if-not-tls",
     "upgrade-scheme",                        "mruby=<PATH>",
-    "read-timeout=<DURATION>",                           and
-    "write-timeout=<DURATION>".   The parameter  consists of
-    keyword, and optionally followed  by "=" and value.  For
-    example,  the  parameter   "proto=h2"  consists  of  the
-    keyword  "proto" and  value "h2".   The parameter  "tls"
-    consists  of  the  keyword "tls"  without  value.   Each
-    parameter is described as follows.
+    "read-timeout=<DURATION>",   "write-timeout=<DURATION>",
+    "group=<GROUP>",  "group-weight=<N>", and  "weight=<N>".
+    The  parameter  consists   of  keyword,  and  optionally
+    followed by  "=" and value.  For  example, the parameter
+    "proto=h2"  consists of  the keyword  "proto" and  value
+    "h2".  The parameter "tls" consists of the keyword "tls"
+    without value.  Each parameter is described as follows.
 
     The backend application protocol  can be specified using
     optional  "proto"   parameter,  and   in  the   form  of
@@ -234,6 +234,30 @@ Connections
     timeouts.  If these timeouts  are entirely omitted for a
     pattern,            :option:`--backend-read-timeout`           and
     :option:`--backend-write-timeout` are used.
+
+
+    "group=<GROUP>"  parameter specifies  the name  of group
+    this backend address belongs to.  By default, it belongs
+    to  the unnamed  default group.   The name  of group  is
+    unique   per   pattern.   "group-weight=<N>"   parameter
+    specifies the  weight of  the group.  The  higher weight
+    gets  more frequently  selected  by  the load  balancing
+    algorithm.  <N> must be  [1, 256] inclusive.  The weight
+    8 has 4 times more weight  than 2.  <N> must be the same
+    for  all addresses  which  share the  same <GROUP>.   If
+    "group-weight" is  omitted in an address,  but the other
+    address  which  belongs  to  the  same  group  specifies
+    "group-weight",   its    weight   is   used.     If   no
+    "group-weight"  is  specified  for  all  addresses,  the
+    weight of a group becomes 1.
+
+    "weight=<N>"  parameter  specifies  the  weight  of  the
+    backend  address  inside  a  group  which  this  address
+    belongs  to.  The  higher  weight  gets more  frequently
+    selected by  the load balancing algorithm.   <N> must be
+    [1,  256] inclusive.   The  weight 8  has  4 times  more
+    weight  than weight  2.  If  this parameter  is omitted,
+    weight becomes 1.
 
     Since ";" and ":" are  used as delimiter, <PATTERN> must
     not  contain these  characters.  Since  ";" has  special
