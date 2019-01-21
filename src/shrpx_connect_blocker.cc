@@ -128,8 +128,16 @@ void ConnectBlocker::online() {
 
 bool ConnectBlocker::in_offline() const { return offline_; }
 
-void ConnectBlocker::call_block_func() { block_func_(); }
+void ConnectBlocker::call_block_func() {
+  if (block_func_) {
+    block_func_();
+  }
+}
 
-void ConnectBlocker::call_unblock_func() { unblock_func_(); }
+void ConnectBlocker::call_unblock_func() {
+  if (unblock_func_) {
+    unblock_func_();
+  }
+}
 
 } // namespace shrpx

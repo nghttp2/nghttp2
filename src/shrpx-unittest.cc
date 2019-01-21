@@ -45,6 +45,7 @@
 #include "shrpx_config.h"
 #include "tls.h"
 #include "shrpx_router_test.h"
+#include "priority_queue_test.h"
 #include "shrpx_log.h"
 
 static int init_suite1(void) { return 0; }
@@ -217,7 +218,9 @@ int main(int argc, char *argv[]) {
       !CU_add_test(pSuite, "template_string_ref",
                    nghttp2::test_template_string_ref) ||
       !CU_add_test(pSuite, "base64_encode", nghttp2::test_base64_encode) ||
-      !CU_add_test(pSuite, "base64_decode", nghttp2::test_base64_decode)) {
+      !CU_add_test(pSuite, "base64_decode", nghttp2::test_base64_decode) ||
+      !CU_add_test(pSuite, "priority_queue_push",
+                   nghttp2::test_priority_queue_push)) {
     CU_cleanup_registry();
     return CU_get_error();
   }

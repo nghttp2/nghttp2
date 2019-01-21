@@ -2318,22 +2318,6 @@ Http2Session::get_downstream_addr_group() const {
   return group_;
 }
 
-void Http2Session::add_to_avail_freelist() {
-  if (freelist_zone_ != FreelistZone::NONE) {
-    return;
-  }
-
-  if (LOG_ENABLED(INFO)) {
-    SSLOG(INFO, this) << "Append to http2_avail_freelist, group="
-                      << group_.get() << ", freelist.size="
-                      << group_->shared_addr->http2_avail_freelist.size();
-  }
-
-  freelist_zone_ = FreelistZone::AVAIL;
-  group_->shared_addr->http2_avail_freelist.append(this);
-  addr_->in_avail = true;
-}
-
 void Http2Session::add_to_extra_freelist() {
   if (freelist_zone_ != FreelistZone::NONE) {
     return;
@@ -2353,15 +2337,6 @@ void Http2Session::remove_from_freelist() {
   switch (freelist_zone_) {
   case FreelistZone::NONE:
     return;
-  case FreelistZone::AVAIL:
-    if (LOG_ENABLED(INFO)) {
-      SSLOG(INFO, this) << "Remove from http2_avail_freelist, group=" << group_
-                        << ", freelist.size="
-                        << group_->shared_addr->http2_avail_freelist.size();
-    }
-    group_->shared_addr->http2_avail_freelist.remove(this);
-    addr_->in_avail = false;
-    break;
   case FreelistZone::EXTRA:
     if (LOG_ENABLED(INFO)) {
       SSLOG(INFO, this) << "Remove from http2_extra_freelist, addr=" << addr_

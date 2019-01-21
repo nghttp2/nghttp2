@@ -187,6 +187,14 @@ template <typename Memchunk> struct Memchunks {
   size_t append(const ImmutableString &s) {
     return append(s.c_str(), s.size());
   }
+  size_t copy(Memchunks &dest) {
+    auto m = head;
+    while (m) {
+      dest.append(m->pos, m->len());
+      m = m->next;
+    }
+    return len;
+  }
   size_t remove(void *dest, size_t count) {
     if (!tail || count == 0) {
       return 0;

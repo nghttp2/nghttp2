@@ -468,8 +468,15 @@ struct DownstreamAddrConfig {
   StringRef hostport;
   // hostname sent as SNI field
   StringRef sni;
+  // name of group which this address belongs to.
+  StringRef group;
   size_t fall;
   size_t rise;
+  // weight of this address inside a weight group.  Its range is [1,
+  // 256], inclusive.
+  uint32_t weight;
+  // weight of the weight group.  Its range is [1, 256], inclusive.
+  uint32_t group_weight;
   // Application protocol used in this group
   Proto proto;
   // backend port.  0 if |host_unix| is true.

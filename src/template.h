@@ -530,4 +530,19 @@ inline int run_app(std::function<int(int, char **)> app, int argc,
 
 } // namespace nghttp2
 
+namespace std {
+template <> struct hash<nghttp2::StringRef> {
+  std::size_t operator()(const nghttp2::StringRef &s) const noexcept {
+    // 32 bit FNV-1a:
+    // https://tools.ietf.org/html/draft-eastlake-fnv-16#section-6.1.1
+    uint32_t h = 2166136261u;
+    for (auto c : s) {
+      h ^= static_cast<uint8_t>(c);
+      h += (h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24);
+    }
+    return h;
+  }
+};
+} // namespace std
+
 #endif // TEMPLATE_H
