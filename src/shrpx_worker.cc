@@ -163,33 +163,34 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
 }
 
 namespace {
-void ensure_enqueue_addr(PriorityQueue<DownstreamAddrKey, WeightGroup *,
-                                       DownstreamAddrKeyLess> &wgpq,
-                         WeightGroup *wg, DownstreamAddr *addr) {
+void ensure_enqueue_addr(
+    std::priority_queue<WeightGroupEntry, std::vector<WeightGroupEntry>,
+                        WeightGroupEntryGreater> &wgpq,
+    WeightGroup *wg, DownstreamAddr *addr) {
   uint32_t cycle;
   if (!wg->pq.empty()) {
-    auto key = wg->pq.key_top();
-    cycle = key.first;
+    auto &top = wg->pq.top();
+    cycle = top.cycle;
   } else {
     cycle = 0;
   }
 
   addr->cycle = cycle;
   addr->pending_penalty = 0;
-  wg->pq.emplace(DownstreamAddrKey{addr->cycle, addr->seq}, addr);
+  wg->pq.push(DownstreamAddrEntry{addr, addr->seq, addr->cycle});
   addr->queued = true;
 
   if (!wg->queued) {
     if (!wgpq.empty()) {
-      auto key = wgpq.key_top();
-      cycle = key.first;
+      auto &top = wgpq.top();
+      cycle = top.cycle;
     } else {
       cycle = 0;
     }
 
     wg->cycle = cycle;
     wg->pending_penalty = 0;
-    wgpq.emplace(DownstreamAddrKey{wg->cycle, wg->seq}, wg);
+    wgpq.push(WeightGroupEntry{wg, wg->seq, wg->cycle});
     wg->queued = true;
   }
 }
@@ -332,7 +333,7 @@ void Worker::replace_downstream_config(
           }
 
           wg->weight = addr.group_weight;
-          wg->pq.emplace(DownstreamAddrKey{0, addr.seq}, &addr);
+          wg->pq.push(DownstreamAddrEntry{&addr, addr.seq, addr.cycle});
           addr.queued = true;
           addr.wg = wg;
         }
@@ -340,8 +341,8 @@ void Worker::replace_downstream_config(
         assert(num_wgs == 0);
 
         for (auto &kv : wgs) {
-          shared_addr->pq.emplace(DownstreamAddrKey{0, kv.second->seq},
-                                  kv.second);
+          shared_addr->pq.push(
+              WeightGroupEntry{kv.second, kv.second->seq, kv.second->cycle});
           kv.second->queued = true;
         }
       }

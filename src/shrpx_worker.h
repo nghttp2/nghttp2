@@ -33,6 +33,7 @@
 #include <unordered_map>
 #include <deque>
 #include <thread>
+#include <queue>
 #ifndef NOTHREADS
 #  include <future>
 #endif // NOTHREADS
@@ -50,7 +51,6 @@
 #include "shrpx_connect_blocker.h"
 #include "shrpx_dns_tracker.h"
 #include "allocator.h"
-#include "priority_queue.h"
 
 using namespace nghttp2;
 
@@ -140,27 +140,50 @@ struct DownstreamAddr {
 
 constexpr uint32_t MAX_DOWNSTREAM_ADDR_WEIGHT = 256;
 
-using DownstreamAddrKey = std::pair<uint32_t, size_t>;
+struct DownstreamAddrEntry {
+  DownstreamAddr *addr;
+  size_t seq;
+  uint32_t cycle;
+};
 
-struct DownstreamAddrKeyLess {
-  bool operator()(const DownstreamAddrKey &lhs,
-                  const DownstreamAddrKey &rhs) const {
-    auto d = rhs.first - lhs.first;
+struct DownstreamAddrEntryGreater {
+  bool operator()(const DownstreamAddrEntry &lhs,
+                  const DownstreamAddrEntry &rhs) const {
+    auto d = lhs.cycle - rhs.cycle;
     if (d == 0) {
-      return lhs.second < rhs.second;
+      return rhs.seq < lhs.seq;
     }
     return d <= MAX_DOWNSTREAM_ADDR_WEIGHT;
   }
 };
 
 struct WeightGroup {
-  PriorityQueue<DownstreamAddrKey, DownstreamAddr *, DownstreamAddrKeyLess> pq;
+  std::priority_queue<DownstreamAddrEntry, std::vector<DownstreamAddrEntry>,
+                      DownstreamAddrEntryGreater>
+      pq;
   size_t seq;
   uint32_t weight;
   uint32_t cycle;
   uint32_t pending_penalty;
   // true if this object is queued.
   bool queued;
+};
+
+struct WeightGroupEntry {
+  WeightGroup *wg;
+  size_t seq;
+  uint32_t cycle;
+};
+
+struct WeightGroupEntryGreater {
+  bool operator()(const WeightGroupEntry &lhs,
+                  const WeightGroupEntry &rhs) const {
+    auto d = lhs.cycle - rhs.cycle;
+    if (d == 0) {
+      return rhs.seq < lhs.seq;
+    }
+    return d <= MAX_DOWNSTREAM_ADDR_WEIGHT;
+  }
 };
 
 struct SharedDownstreamAddr {
@@ -177,7 +200,9 @@ struct SharedDownstreamAddr {
   BlockAllocator balloc;
   std::vector<DownstreamAddr> addrs;
   std::vector<WeightGroup> wgs;
-  PriorityQueue<DownstreamAddrKey, WeightGroup *, DownstreamAddrKeyLess> pq;
+  std::priority_queue<WeightGroupEntry, std::vector<WeightGroupEntry>,
+                      WeightGroupEntryGreater>
+      pq;
   // Bunch of session affinity hash.  Only used if affinity ==
   // SessionAffinity::IP.
   std::vector<AffinityHash> affinity_hash;

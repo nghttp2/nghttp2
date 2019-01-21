@@ -754,27 +754,29 @@ uint32_t ClientHandler::get_affinity_cookie(Downstream *downstream,
 }
 
 namespace {
-void reschedule_addr(PriorityQueue<DownstreamAddrKey, DownstreamAddr *,
-                                   DownstreamAddrKeyLess> &pq,
-                     DownstreamAddr *addr) {
+void reschedule_addr(
+    std::priority_queue<DownstreamAddrEntry, std::vector<DownstreamAddrEntry>,
+                        DownstreamAddrEntryGreater> &pq,
+    DownstreamAddr *addr) {
   auto penalty = MAX_DOWNSTREAM_ADDR_WEIGHT + addr->pending_penalty;
   addr->cycle += penalty / addr->weight;
   addr->pending_penalty = penalty % addr->weight;
 
-  pq.emplace(DownstreamAddrKey{addr->cycle, addr->seq}, addr);
+  pq.push(DownstreamAddrEntry{addr, addr->seq, addr->cycle});
   addr->queued = true;
 }
 } // namespace
 
 namespace {
 void reschedule_wg(
-    PriorityQueue<DownstreamAddrKey, WeightGroup *, DownstreamAddrKeyLess> &pq,
+    std::priority_queue<WeightGroupEntry, std::vector<WeightGroupEntry>,
+                        WeightGroupEntryGreater> &pq,
     WeightGroup *wg) {
   auto penalty = MAX_DOWNSTREAM_ADDR_WEIGHT + wg->pending_penalty;
   wg->cycle += penalty / wg->weight;
   wg->pending_penalty = penalty % wg->weight;
 
-  pq.emplace(DownstreamAddrKey{wg->cycle, wg->seq}, wg);
+  pq.push(WeightGroupEntry{wg, wg->seq, wg->cycle});
   wg->queued = true;
 }
 } // namespace
@@ -857,7 +859,7 @@ DownstreamAddr *ClientHandler::get_downstream_addr(int &err,
       return nullptr;
     }
 
-    auto wg = wgpq.top();
+    auto wg = wgpq.top().wg;
     wgpq.pop();
     wg->queued = false;
 
@@ -866,7 +868,7 @@ DownstreamAddr *ClientHandler::get_downstream_addr(int &err,
         break;
       }
 
-      auto addr = wg->pq.top();
+      auto addr = wg->pq.top().addr;
       wg->pq.pop();
       addr->queued = false;
 
