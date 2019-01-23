@@ -499,6 +499,14 @@ int Http2DownstreamConnection::push_request_headers() {
 
 int Http2DownstreamConnection::push_upload_data_chunk(const uint8_t *data,
                                                       size_t datalen) {
+  if (!downstream_->get_request_header_sent()) {
+    auto output = downstream_->get_blocked_request_buf();
+    auto &req = downstream_->request();
+    output->append(data, datalen);
+    req.unconsumed_body_length += datalen;
+    return 0;
+  }
+
   int rv;
   auto output = downstream_->get_request_buf();
   output->append(data, datalen);
@@ -516,6 +524,11 @@ int Http2DownstreamConnection::push_upload_data_chunk(const uint8_t *data,
 }
 
 int Http2DownstreamConnection::end_upload_data() {
+  if (!downstream_->get_request_header_sent()) {
+    downstream_->set_blocked_request_data_eof(true);
+    return 0;
+  }
+
   int rv;
   if (downstream_->get_downstream_stream_id() != -1) {
     rv = http2session_->resume_data(this);

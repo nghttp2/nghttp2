@@ -640,7 +640,7 @@ int Downstream::push_request_headers() {
 int Downstream::push_upload_data_chunk(const uint8_t *data, size_t datalen) {
   req_.recv_body_length += datalen;
 
-  if (!request_header_sent_) {
+  if (!dconn_ && !request_header_sent_) {
     blocked_request_buf_.append(data, datalen);
     req_.unconsumed_body_length += datalen;
     return 0;
@@ -662,7 +662,7 @@ int Downstream::push_upload_data_chunk(const uint8_t *data, size_t datalen) {
 }
 
 int Downstream::end_upload_data() {
-  if (!request_header_sent_) {
+  if (!dconn_ && !request_header_sent_) {
     blocked_request_data_eof_ = true;
     return 0;
   }
@@ -1139,6 +1139,10 @@ DefaultMemchunks *Downstream::get_blocked_request_buf() {
 
 bool Downstream::get_blocked_request_data_eof() const {
   return blocked_request_data_eof_;
+}
+
+void Downstream::set_blocked_request_data_eof(bool f) {
+  blocked_request_data_eof_ = f;
 }
 
 void Downstream::set_ws_key(const StringRef &key) { ws_key_ = key; }

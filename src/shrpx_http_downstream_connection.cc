@@ -705,6 +705,17 @@ int HttpDownstreamConnection::process_blocked_request_buf() {
 
 int HttpDownstreamConnection::push_upload_data_chunk(const uint8_t *data,
                                                      size_t datalen) {
+  if (!downstream_->get_request_header_sent()) {
+    auto output = downstream_->get_blocked_request_buf();
+    auto &req = downstream_->request();
+    output->append(data, datalen);
+    req.unconsumed_body_length += datalen;
+    if (request_header_written_) {
+      signal_write();
+    }
+    return 0;
+  }
+
   auto chunked = downstream_->get_chunked_request();
   auto output = downstream_->get_request_buf();
 
@@ -726,6 +737,14 @@ int HttpDownstreamConnection::push_upload_data_chunk(const uint8_t *data,
 }
 
 int HttpDownstreamConnection::end_upload_data() {
+  if (!downstream_->get_request_header_sent()) {
+    downstream_->set_blocked_request_data_eof(true);
+    if (request_header_written_) {
+      signal_write();
+    }
+    return 0;
+  }
+
   signal_write();
 
   if (!downstream_->get_chunked_request()) {

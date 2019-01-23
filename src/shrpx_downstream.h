@@ -388,6 +388,7 @@ public:
 
   DefaultMemchunks *get_blocked_request_buf();
   bool get_blocked_request_data_eof() const;
+  void set_blocked_request_data_eof(bool f);
 
   // downstream response API
   const Response &response() const { return resp_; }
