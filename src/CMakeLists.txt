@@ -241,6 +241,13 @@ if(ENABLE_ASIO_LIB)
     asio_client_tls_context.cc
   )
 
+  if (ENABLE_STATIC_LIB)
+      add_library(nghttp2_asio_static STATIC
+         ${NGHTTP2_ASIO_SOURCES}
+         $<TARGET_OBJECTS:http-parser>
+      )
+  endif()
+
   add_library(nghttp2_asio SHARED
      ${NGHTTP2_ASIO_SOURCES}
      $<TARGET_OBJECTS:http-parser>
@@ -261,6 +268,14 @@ if(ENABLE_ASIO_LIB)
   )
   set_target_properties(nghttp2_asio PROPERTIES
     VERSION 1.0.0 SOVERSION 1)
+
+  if(ENABLE_STATIC_LIB)
+    set_target_properties(nghttp2_asio_static PROPERTIES
+        ARCHIVE_OUTPUT_NAME nghttp2_asio
+    )
+    install(TARGETS nghttp2_asio_static
+      DESTINATION "${CMAKE_INSTALL_LIBDIR}")
+  endif()
 
   install(TARGETS nghttp2_asio
     DESTINATION "${CMAKE_INSTALL_LIBDIR}")
