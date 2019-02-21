@@ -25,9 +25,7 @@
 #ifndef XSI_STRERROR_H
 #define XSI_STRERROR_H
 
-#ifdef HAVE_CONFIG_H
-#  include <config.h>
-#endif /* HAVE_CONFIG_H */
+#include "nghttp2_config.h"
 
 #include <stddef.h>
 

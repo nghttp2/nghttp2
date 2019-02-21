@@ -25,9 +25,7 @@
 #ifndef NETWORK_H
 #define NETWORK_H
 
-#ifdef HAVE_CONFIG_H
-#  include <config.h>
-#endif // HAVE_CONFIG_H
+#include "nghttp2_config.h"
 
 #include <sys/types.h>
 #ifdef HAVE_SYS_SOCKET_H

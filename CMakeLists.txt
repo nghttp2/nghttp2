@@ -396,7 +396,7 @@ if(NOT ENABLE_THREADS OR NOT HAVE_STD_FUTURE)
 endif()
 
 add_definitions(-DHAVE_CONFIG_H)
-configure_file(cmakeconfig.h.in config.h)
+configure_file(cmakeconfig.h.in nghttp2_config.h)
 # autotools-compatible names
 # Sphinx expects relative paths in the .rst files. Use the fact that the files
 # below are all one directory level deep.
@@ -442,7 +442,7 @@ foreach(name
 endforeach()
 
 include_directories(
-  "${CMAKE_CURRENT_BINARY_DIR}" # for config.h
+  "${CMAKE_CURRENT_BINARY_DIR}" # for nghttp2_config.h
 )
 # For use in src/CMakeLists.txt
 set(PKGDATADIR "${CMAKE_INSTALL_FULL_DATADIR}/${CMAKE_PROJECT_NAME}")
