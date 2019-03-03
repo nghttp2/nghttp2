@@ -54,6 +54,27 @@ session::session(boost::asio::io_service &io_service,
 }
 
 session::session(boost::asio::io_service &io_service, const std::string &host,
+                 const std::string &service, connect_cb ccb, error_cb ecb)
+    : impl_(std::make_shared<session_tcp_impl>(
+          io_service, host, service, boost::posix_time::seconds(60))) {
+  impl_->on_connect(ccb);
+  impl_->on_error(ecb);
+  impl_->start_resolve(host, service);
+}
+
+session::session(boost::asio::io_service &io_service,
+                 const boost::asio::ip::tcp::endpoint &local_endpoint,
+                 const std::string &host, const std::string &service,
+                 connect_cb ccb, error_cb ecb)
+    : impl_(std::make_shared<session_tcp_impl>(
+          io_service, local_endpoint, host, service,
+          boost::posix_time::seconds(60))) {
+  impl_->on_connect(ccb);
+  impl_->on_error(ecb);
+  impl_->start_resolve(host, service);
+}
+
+session::session(boost::asio::io_service &io_service, const std::string &host,
                  const std::string &service,
                  const boost::posix_time::time_duration &connect_timeout)
     : impl_(std::make_shared<session_tcp_impl>(io_service, host, service,
@@ -70,6 +91,29 @@ session::session(boost::asio::io_service &io_service,
   impl_->start_resolve(host, service);
 }
 
+session::session(boost::asio::io_service &io_service, const std::string &host,
+                 const std::string &service,
+                 const boost::posix_time::time_duration &connect_timeout,
+                 connect_cb ccb, error_cb ecb)
+    : impl_(std::make_shared<session_tcp_impl>(io_service, host, service,
+                                               connect_timeout)) {
+  impl_->on_connect(ccb);
+  impl_->on_error(ecb);
+  impl_->start_resolve(host, service);
+}
+
+session::session(boost::asio::io_service &io_service,
+                 const boost::asio::ip::tcp::endpoint &local_endpoint,
+                 const std::string &host, const std::string &service,
+                 const boost::posix_time::time_duration &connect_timeout,
+                 connect_cb ccb, error_cb ecb)
+    : impl_(std::make_shared<session_tcp_impl>(io_service, local_endpoint, host,
+                                               service, connect_timeout)) {
+  impl_->on_connect(ccb);
+  impl_->on_error(ecb);
+  impl_->start_resolve(host, service);
+}
+
 session::session(boost::asio::io_service &io_service,
                  boost::asio::ssl::context &tls_ctx, const std::string &host,
                  const std::string &service)
@@ -80,10 +124,32 @@ session::session(boost::asio::io_service &io_service,
 
 session::session(boost::asio::io_service &io_service,
                  boost::asio::ssl::context &tls_ctx, const std::string &host,
+                 const std::string &service, connect_cb ccb, error_cb ecb)
+    : impl_(std::make_shared<session_tls_impl>(
+          io_service, tls_ctx, host, service, boost::posix_time::seconds(60))) {
+  impl_->on_connect(ccb);
+  impl_->on_error(ecb);
+  impl_->start_resolve(host, service);
+}
+
+session::session(boost::asio::io_service &io_service,
+                 boost::asio::ssl::context &tls_ctx, const std::string &host,
                  const std::string &service,
                  const boost::posix_time::time_duration &connect_timeout)
     : impl_(std::make_shared<session_tls_impl>(io_service, tls_ctx, host,
                                                service, connect_timeout)) {
+  impl_->start_resolve(host, service);
+}
+
+session::session(boost::asio::io_service &io_service,
+                 boost::asio::ssl::context &tls_ctx, const std::string &host,
+                 const std::string &service,
+                 const boost::posix_time::time_duration &connect_timeout,
+                 connect_cb ccb, error_cb ecb)
+    : impl_(std::make_shared<session_tls_impl>(io_service, tls_ctx, host,
+                                               service, connect_timeout)) {
+  impl_->on_connect(ccb);
+  impl_->on_error(ecb);
   impl_->start_resolve(host, service);
 }
 
@@ -156,6 +222,6 @@ const nghttp2_priority_spec *priority_spec::get() const {
 
 const bool priority_spec::valid() const { return valid_; }
 
-} // namespace client
-} // namespace asio_http2
-} // namespace nghttp2
+}  // namespace client
+}  // namespace asio_http2
+}  // namespace nghttp2

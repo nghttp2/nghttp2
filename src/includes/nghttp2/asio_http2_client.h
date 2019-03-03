@@ -36,7 +36,7 @@ namespace client {
 class response_impl;
 
 class response {
-public:
+ public:
   // Application must not call this directly.
   response();
   ~response();
@@ -58,7 +58,7 @@ public:
   // Application must not call this directly.
   response_impl &impl() const;
 
-private:
+ private:
   std::unique_ptr<response_impl> impl_;
 };
 
@@ -72,7 +72,7 @@ using connect_cb =
 class request_impl;
 
 class request {
-public:
+ public:
   // Application must not call this directly.
   request();
   ~request();
@@ -114,13 +114,13 @@ public:
   // Application must not call this directly.
   request_impl &impl() const;
 
-private:
+ private:
   std::unique_ptr<request_impl> impl_;
 };
 
 // Wrapper around an nghttp2_priority_spec.
 class priority_spec {
-public:
+ public:
   // The default ctor is used only by sentinel values.
   priority_spec() = default;
 
@@ -135,7 +135,7 @@ public:
   // values).
   const bool valid() const;
 
-private:
+ private:
   nghttp2_priority_spec spec_;
   bool valid_ = false;
 };
@@ -143,7 +143,7 @@ private:
 class session_impl;
 
 class session {
-public:
+ public:
   // Starts HTTP/2 session by connecting to |host| and |service|
   // (e.g., "80") using clear text TCP connection with connect timeout
   // 60 seconds.
@@ -154,6 +154,18 @@ public:
   session(boost::asio::io_service &io_service,
           const boost::asio::ip::tcp::endpoint &local_endpoint,
           const std::string &host, const std::string &service);
+
+  // Starts HTTP/2 session by connecting to |host| and |service|
+  // (e.g., "80") using clear text TCP connection with connect timeout
+  // 60 seconds and given connect/error callbacks.
+  session(boost::asio::io_service &io_service, const std::string &host,
+          const std::string &service, connect_cb ccb, error_cb ecb);
+
+  // Same as previous but with pegged local endpoint
+  session(boost::asio::io_service &io_service,
+          const boost::asio::ip::tcp::endpoint &local_endpoint,
+          const std::string &host, const std::string &service, connect_cb ccb,
+          error_cb ecb);
 
   // Starts HTTP/2 session by connecting to |host| and |service|
   // (e.g., "80") using clear text TCP connection with given connect
@@ -169,11 +181,33 @@ public:
           const boost::posix_time::time_duration &connect_timeout);
 
   // Starts HTTP/2 session by connecting to |host| and |service|
+  // (e.g., "80") using clear text TCP connection with given connect
+  // timeout and connect/error callbacks.
+  session(boost::asio::io_service &io_service, const std::string &host,
+          const std::string &service,
+          const boost::posix_time::time_duration &connect_timeout,
+          connect_cb ccb, error_cb ecb);
+
+  // Same as previous but with pegged local endpoint
+  session(boost::asio::io_service &io_service,
+          const boost::asio::ip::tcp::endpoint &local_endpoint,
+          const std::string &host, const std::string &service,
+          const boost::posix_time::time_duration &connect_timeout,
+          connect_cb ccb, error_cb ecb);
+
+  // Starts HTTP/2 session by connecting to |host| and |service|
   // (e.g., "443") using encrypted SSL/TLS connection with connect
   // timeout 60 seconds.
   session(boost::asio::io_service &io_service,
           boost::asio::ssl::context &tls_context, const std::string &host,
           const std::string &service);
+
+  // Starts HTTP/2 session by connecting to |host| and |service|
+  // (e.g., "443") using encrypted SSL/TLS connection with connect
+  // timeout 60 seconds and connect/error callbacks.
+  session(boost::asio::io_service &io_service,
+          boost::asio::ssl::context &tls_context, const std::string &host,
+          const std::string &service, connect_cb ccb, error_cb ecb);
 
   // Starts HTTP/2 session by connecting to |host| and |service|
   // (e.g., "443") using encrypted SSL/TLS connection with given
@@ -182,6 +216,15 @@ public:
           boost::asio::ssl::context &tls_context, const std::string &host,
           const std::string &service,
           const boost::posix_time::time_duration &connect_timeout);
+
+  // Starts HTTP/2 session by connecting to |host| and |service|
+  // (e.g., "443") using encrypted SSL/TLS connection with given
+  // connect timeout and connect/error callbacks.
+  session(boost::asio::io_service &io_service,
+          boost::asio::ssl::context &tls_context, const std::string &host,
+          const std::string &service,
+          const boost::posix_time::time_duration &connect_timeout,
+          connect_cb ccb, error_cb ecb);
 
   ~session();
 
@@ -233,20 +276,19 @@ public:
                         generator_cb cb, header_map h = header_map{},
                         priority_spec prio = priority_spec()) const;
 
-private:
+ private:
   std::shared_ptr<session_impl> impl_;
 };
 
 // configure |tls_ctx| for client use.  Currently, we just set NPN
 // callback for HTTP/2.
-boost::system::error_code
-configure_tls_context(boost::system::error_code &ec,
-                      boost::asio::ssl::context &tls_ctx);
+boost::system::error_code configure_tls_context(
+    boost::system::error_code &ec, boost::asio::ssl::context &tls_ctx);
 
-} // namespace client
+}  // namespace client
 
-} // namespace asio_http2
+}  // namespace asio_http2
 
-} // namespace nghttp2
+}  // namespace nghttp2
 
-#endif // ASIO_HTTP2_CLIENT_H
+#endif  // ASIO_HTTP2_CLIENT_H
