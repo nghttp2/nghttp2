@@ -52,11 +52,7 @@ static int stream_less(const void *lhsx, const void *rhsx) {
     return lhs->seq < rhs->seq;
   }
 
-  if (lhs->cycle < rhs->cycle) {
-    return rhs->cycle - lhs->cycle <= NGHTTP2_MAX_CYCLE_DISTANCE;
-  }
-
-  return lhs->cycle - rhs->cycle > NGHTTP2_MAX_CYCLE_DISTANCE;
+  return rhs->cycle - lhs->cycle <= NGHTTP2_MAX_CYCLE_DISTANCE;
 }
 
 void nghttp2_stream_init(nghttp2_stream *stream, int32_t stream_id,
