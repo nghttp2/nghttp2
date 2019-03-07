@@ -961,7 +961,8 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
   SSL_CTX_set_alpn_select_cb(ssl_ctx, alpn_select_proto_cb, nullptr);
 #endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 
-#if !LIBRESSL_IN_USE && OPENSSL_VERSION_NUMBER >= 0x10002000L && !defined(OPENSSL_IS_BORINGSSL)
+#if !LIBRESSL_IN_USE && OPENSSL_VERSION_NUMBER >= 0x10002000L &&               \
+    !defined(OPENSSL_IS_BORINGSSL)
   // SSL_extension_supported(TLSEXT_TYPE_signed_certificate_timestamp)
   // returns 1, which means OpenSSL internally handles it.  But
   // OpenSSL handles signed_certificate_timestamp extension specially,
@@ -992,7 +993,8 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
     }
 #  endif // !OPENSSL_1_1_1_API
   }
-#endif // !LIBRESSL_IN_USE && OPENSSL_VERSION_NUMBER >= 0x10002000L && !defined(OPENSSL_IS_BORINGSSL)
+#endif // !LIBRESSL_IN_USE && OPENSSL_VERSION_NUMBER >= 0x10002000L &&
+       // !defined(OPENSSL_IS_BORINGSSL)
 
 #if OPENSSL_1_1_1_API
   if (SSL_CTX_set_max_early_data(ssl_ctx, tlsconf.max_early_data) != 1) {
@@ -2068,7 +2070,7 @@ int time_t_from_asn1_time(time_t &t, const ASN1_TIME *at) {
   }
 
   t = nghttp2_timegm(&tm);
-#else  // !OPENSSL_1_1_1_API
+#else // !OPENSSL_1_1_1_API
   auto b = BIO_new(BIO_s_mem());
   if (!b) {
     return -1;
@@ -2081,11 +2083,11 @@ int time_t_from_asn1_time(time_t &t, const ASN1_TIME *at) {
     return -1;
   }
 
-#if defined(OPENSSL_IS_BORINGSSL)
+#  if defined(OPENSSL_IS_BORINGSSL)
   char *s;
-#else
+#  else
   unsigned char *s;
-#endif
+#  endif
   auto slen = BIO_get_mem_data(b, &s);
   auto tt = util::parse_openssl_asn1_time_print(
       StringRef{s, static_cast<size_t>(slen)});
