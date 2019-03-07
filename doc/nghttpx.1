@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTPX" "1" "Jan 21, 2019" "1.37.0-DEV" "nghttp2"
+.TH "NGHTTPX" "1" "Mar 07, 2019" "1.37.0" "nghttp2"
 .SH NAME
 nghttpx \- HTTP/2 proxy
 .
@@ -264,7 +264,8 @@ for  all addresses  which  share the  same <GROUP>.   If
 address  which  belongs  to  the  same  group  specifies
 "group\-weight",   its    weight   is   used.     If   no
 "group\-weight"  is  specified  for  all  addresses,  the
-weight of a group becomes 1.
+weight of a group becomes 1.  "group" and "group\-weight"
+are ignored if session affinity is enabled.
 .sp
 "weight=<N>"  parameter  specifies  the  weight  of  the
 backend  address  inside  a  group  which  this  address
@@ -272,7 +273,8 @@ belongs  to.  The  higher  weight  gets more  frequently
 selected by  the load balancing algorithm.   <N> must be
 [1,  256] inclusive.   The  weight 8  has  4 times  more
 weight  than weight  2.  If  this parameter  is omitted,
-weight becomes 1.
+weight  becomes  1.   "weight"  is  ignored  if  session
+affinity is enabled.
 .sp
 Since ";" and ":" are  used as delimiter, <PATTERN> must
 not  contain these  characters.  Since  ";" has  special
