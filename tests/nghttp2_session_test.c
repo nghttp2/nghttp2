@@ -1743,6 +1743,91 @@ void test_nghttp2_session_recv_headers_early_response(void) {
   nghttp2_bufs_free(&bufs);
 }
 
+void test_nghttp2_session_recv_headers_for_closed_stream(void) {
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+  nghttp2_nv *nva;
+  size_t nvlen;
+  nghttp2_frame frame;
+  nghttp2_bufs bufs;
+  nghttp2_buf *buf;
+  ssize_t rv;
+  my_user_data ud;
+  nghttp2_hd_deflater deflater;
+  nghttp2_stream *stream;
+  nghttp2_mem *mem;
+  const uint8_t *data;
+
+  mem = nghttp2_mem_default();
+  frame_pack_bufs_init(&bufs);
+
+  memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
+  callbacks.on_frame_recv_callback = on_frame_recv_callback;
+  callbacks.on_header_callback = on_header_callback;
+
+  nghttp2_session_server_new(&session, &callbacks, &ud);
+
+  nghttp2_hd_deflate_init(&deflater, mem);
+
+  /* Make sure that on_header callback never be invoked for closed
+     stream */
+  nvlen = ARRLEN(reqnv);
+  nghttp2_nv_array_copy(&nva, reqnv, nvlen, mem);
+
+  nghttp2_frame_headers_init(&frame.headers, NGHTTP2_FLAG_END_HEADERS, 1,
+                             NGHTTP2_HCAT_HEADERS, NULL, nva, nvlen);
+
+  rv = nghttp2_frame_pack_headers(&bufs, &frame.headers, &deflater);
+
+  CU_ASSERT(0 == rv);
+  CU_ASSERT(nghttp2_bufs_len(&bufs) > 0);
+
+  nghttp2_frame_headers_free(&frame.headers, mem);
+
+  buf = &bufs.head->buf;
+  assert(nghttp2_bufs_len(&bufs) == nghttp2_buf_len(buf));
+
+  ud.header_cb_called = 0;
+  ud.frame_recv_cb_called = 0;
+
+  rv = nghttp2_session_mem_recv(session, buf->pos, NGHTTP2_FRAME_HDLEN);
+
+  CU_ASSERT(NGHTTP2_FRAME_HDLEN == rv);
+  CU_ASSERT(0 == ud.header_cb_called);
+  CU_ASSERT(0 == ud.frame_recv_cb_called);
+
+  stream = nghttp2_session_get_stream(session, 1);
+
+  CU_ASSERT(NULL != stream);
+
+  rv = nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, 1,
+                                 NGHTTP2_NO_ERROR);
+
+  CU_ASSERT(0 == rv);
+
+  rv = nghttp2_session_mem_send(session, &data);
+
+  CU_ASSERT(rv > 0);
+
+  stream = nghttp2_session_get_stream(session, 1);
+
+  CU_ASSERT(NULL == stream);
+
+  ud.header_cb_called = 0;
+  ud.frame_recv_cb_called = 0;
+
+  rv = nghttp2_session_mem_recv(session, buf->pos + NGHTTP2_FRAME_HDLEN,
+                                nghttp2_buf_len(buf) - NGHTTP2_FRAME_HDLEN);
+
+  CU_ASSERT((ssize_t)nghttp2_buf_len(buf) - NGHTTP2_FRAME_HDLEN == rv);
+  CU_ASSERT(0 == ud.header_cb_called);
+  CU_ASSERT(0 == ud.frame_recv_cb_called);
+
+  nghttp2_bufs_free(&bufs);
+  nghttp2_hd_deflate_free(&deflater);
+  nghttp2_session_del(session);
+}
+
 void test_nghttp2_session_server_recv_push_response(void) {
   nghttp2_session *session;
   nghttp2_session_callbacks callbacks;
