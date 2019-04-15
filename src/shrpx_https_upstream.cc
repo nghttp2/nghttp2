@@ -318,6 +318,10 @@ int htp_hdrs_completecb(http_parser *htp) {
        << "HTTP/" << req.http_major << "." << req.http_minor << "\n";
 
     for (const auto &kv : req.fs.headers()) {
+      if (kv.name == "authorization") {
+        ss << TTY_HTTP_HD << kv.name << TTY_RST << ": <redacted>\n";
+        continue;
+      }
       ss << TTY_HTTP_HD << kv.name << TTY_RST << ": " << kv.value << "\n";
     }
 
