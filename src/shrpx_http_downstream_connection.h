@@ -53,6 +53,7 @@ public:
   virtual int push_request_headers();
   virtual int push_upload_data_chunk(const uint8_t *data, size_t datalen);
   virtual int end_upload_data();
+  void end_upload_data_chunk();
 
   virtual void pause_read(IOCtrlReason reason);
   virtual int resume_read(IOCtrlReason reason, size_t consumed);
