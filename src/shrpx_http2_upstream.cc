@@ -321,6 +321,10 @@ int Http2Upstream::on_request_headers(Downstream *downstream,
   if (LOG_ENABLED(INFO)) {
     std::stringstream ss;
     for (auto &nv : nva) {
+      if (nv.name == "authorization") {
+        ss << TTY_HTTP_HD << nv.name << TTY_RST << ": <redacted>\n";
+        continue;
+      }
       ss << TTY_HTTP_HD << nv.name << TTY_RST << ": " << nv.value << "\n";
     }
     ULOG(INFO, this) << "HTTP request headers. stream_id="

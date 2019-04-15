@@ -463,6 +463,11 @@ int Http2DownstreamConnection::push_request_headers() {
   if (LOG_ENABLED(INFO)) {
     std::stringstream ss;
     for (auto &nv : nva) {
+      if (util::streq_l("authorization", nv.name, nv.namelen)) {
+        ss << TTY_HTTP_HD << StringRef{nv.name, nv.namelen} << TTY_RST
+           << ": <redacted>\n";
+        continue;
+      }
       ss << TTY_HTTP_HD << StringRef{nv.name, nv.namelen} << TTY_RST << ": "
          << StringRef{nv.value, nv.valuelen} << "\n";
     }
