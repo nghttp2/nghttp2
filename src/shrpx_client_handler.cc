@@ -893,7 +893,7 @@ ClientHandler::get_downstream_connection(int &err, Downstream *downstream) {
   auto catch_all = downstreamconf.addr_group_catch_all;
   auto &groups = worker_->get_downstream_addr_groups();
 
-  const auto &req = downstream->request();
+  auto &req = downstream->request();
 
   err = 0;
 
@@ -908,11 +908,14 @@ ClientHandler::get_downstream_connection(int &err, Downstream *downstream) {
 
   auto &balloc = downstream->get_block_allocator();
 
-  // Fast path.  If we have one group, it must be catch-all group.
-  if (groups.size() == 1) {
-    group_idx = 0;
+  StringRef authority, path;
+
+  if (req.forwarded_once) {
+    if (groups.size() != 1) {
+      authority = req.orig_authority;
+      path = req.orig_path;
+    }
   } else {
-    StringRef authority;
     if (faddr_->sni_fwd) {
       authority = sni_;
     } else if (!req.authority.empty()) {
@@ -924,13 +927,24 @@ ClientHandler::get_downstream_connection(int &err, Downstream *downstream) {
       }
     }
 
-    StringRef path;
     // CONNECT method does not have path.  But we requires path in
-    // host-path mapping.  As workaround, we assume that path is "/".
+    // host-path mapping.  As workaround, we assume that path is
+    // "/".
     if (!req.regular_connect_method()) {
       path = req.path;
     }
 
+    // Cache the authority and path used for the first-time backend
+    // selection because per-pattern mruby script can change them.
+    req.orig_authority = authority;
+    req.orig_path = path;
+    req.forwarded_once = true;
+  }
+
+  // Fast path.  If we have one group, it must be catch-all group.
+  if (groups.size() == 1) {
+    group_idx = 0;
+  } else {
     group_idx = match_downstream_addr_group(routerconf, authority, path, groups,
                                             catch_all, balloc);
   }
