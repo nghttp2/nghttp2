@@ -153,7 +153,8 @@ struct Request {
         http2_upgrade_seen(false),
         connection_close(false),
         http2_expect_body(false),
-        no_authority(false) {}
+        no_authority(false),
+        forwarded_once(false) {}
 
   void consume(size_t len) {
     assert(unconsumed_body_length >= len);
@@ -184,6 +185,12 @@ struct Request {
   // request-target.  For HTTP/2, this is :path header field value.
   // For CONNECT request, this is empty.
   StringRef path;
+  // This is original authority which cannot be changed by per-pattern
+  // mruby script.
+  StringRef orig_authority;
+  // This is original path which cannot be changed by per-pattern
+  // mruby script.
+  StringRef orig_path;
   // the length of request body received so far
   int64_t recv_body_length;
   // The number of bytes not consumed by the application yet.
@@ -209,6 +216,10 @@ struct Request {
   // This happens when: For HTTP/2 request, :authority is missing.
   // For HTTP/1 request, origin or asterisk form is used.
   bool no_authority;
+  // true if backend selection is done for request once.
+  // orig_authority and orig_path have the authority and path which
+  // are used for the first backend selection.
+  bool forwarded_once;
 };
 
 struct Response {
