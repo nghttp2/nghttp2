@@ -49,8 +49,9 @@ mruby:
 	MRUBY_CONFIG="${srcdir}/build_config.rb" \
 	BUILD_DIR="${abs_builddir}/mruby/build" \
 	INSTALL_DIR="${abs_builddir}/mruby/build/install/bin" \
-	CC="${CC}" CXX="${CXX}" LD="${LD}" \
-	CFLAGS="${CPPFLAGS} ${CFLAGS}" CXXFLAGS="${CPPFLAGS} ${CXXFLAGS}" \
+	CC="${CC}" CXX="$(firstword $(CXX))" LD="${LD}" \
+	CFLAGS="${CPPFLAGS} ${CFLAGS}" \
+	CXXFLAGS="$(wordlist 2, $(words $(CXX)), $(CXX)) ${CPPFLAGS} ${CXXFLAGS}" \
 	LDFLAGS="${LDFLAGS}" \
 	"${srcdir}/mruby/minirake" -f "${srcdir}/mruby/Rakefile"
 
