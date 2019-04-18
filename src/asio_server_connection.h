@@ -52,9 +52,10 @@
 #include "template.h"
 
 #if BOOST_VERSION >= 107000
-#define GET_IO_SERVICE(s) ((boost::asio::io_context&)(s).get_executor().context())
+#  define GET_IO_SERVICE(s)                                                    \
+    ((boost::asio::io_context &)(s).get_executor().context())
 #else
-#define GET_IO_SERVICE(s) ((s).get_io_service())
+#  define GET_IO_SERVICE(s) ((s).get_io_service())
 #endif
 
 namespace nghttp2 {
