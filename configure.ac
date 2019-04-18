@@ -137,6 +137,11 @@ AC_ARG_WITH([cython],
                     [Use cython in given PATH])],
     [cython_path=$withval], [])
 
+AC_ARG_WITH([bundled-http_parser],
+    [AS_HELP_STRING([--without-bundled-http_parser],
+		    [don't use bundled http_parser third party lib[default=yes]])],
+    [request_bundled_http_parser=$withval], [request_bundled_http_parser=yes])
+
 dnl Define variables
 AC_ARG_VAR([CYTHON], [the Cython executable])
 
@@ -529,7 +534,7 @@ fi
 
 AM_CONDITIONAL([ENABLE_EXAMPLES], [ test "x${enable_examples}" = "xyes" ])
 
-# third-party only be built when needed
+# third-party only be built when needed or not disabled by user
 
 enable_third_party=no
 have_mruby=no
@@ -538,7 +543,17 @@ if test "x${enable_examples}" = "xyes" ||
    test "x${enable_app}" = "xyes" ||
    test "x${enable_hpack_tools}" = "xyes" ||
    test "x${enable_asio_lib}" = "xyes"; then
-  enable_third_party=yes
+  AS_IF([test "x${request_bundled_http_parser}" != "xno"],
+	[enable_third_party=yes],
+	[
+	 AC_CHECK_LIB([http_parser], [http_parser_parse_url], [
+		      HTTP_PARSER_LIBS="-lhttp_parser"
+		      AC_SUBST([HTTP_PARSER_LIBS])
+		      AC_DEFINE(SYSTEM_HTTP_PARSER, [1], [Use system http-parser lib])
+	 ],[
+		      AC_MSG_ERROR([System http-parser is requested but could not be found.])
+	 ])
+  ])
 
   # mruby (for src/nghttpx)
   if test "x${request_mruby}" = "xyes"; then
@@ -558,6 +573,7 @@ if test "x${enable_examples}" = "xyes" ||
   fi
 fi
 
+AM_CONDITIONAL([SYSTEM_HTTP_PARSER], [ test "x${request_bundled_http_parser}" = "xno" ])
 AM_CONDITIONAL([ENABLE_THIRD_PARTY], [ test "x${enable_third_party}" = "xyes" ])
 AM_CONDITIONAL([HAVE_MRUBY], [test "x${have_mruby}" = "xyes"])
 AM_CONDITIONAL([HAVE_NEVERBLEED], [test "x${have_neverbleed}" = "xyes"])

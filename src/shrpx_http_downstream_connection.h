@@ -27,7 +27,11 @@
 
 #include "shrpx.h"
 
+#ifdef SYSTEM_HTTP_PARSER
+#include <http_parser.h>
+#else
 #include "http-parser/http_parser.h"
+#endif
 
 #include "shrpx_downstream_connection.h"
 #include "shrpx_io_control.h"

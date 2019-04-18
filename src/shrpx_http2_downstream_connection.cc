@@ -28,7 +28,11 @@
 #  include <unistd.h>
 #endif // HAVE_UNISTD_H
 
+#ifdef SYSTEM_HTTP_PARSER
+#include <http_parser.h>
+#else
 #include "http-parser/http_parser.h"
+#endif
 
 #include "shrpx_client_handler.h"
 #include "shrpx_upstream.h"

@@ -48,7 +48,11 @@
 
 #include <openssl/err.h>
 
+#ifdef SYSTEM_HTTP_PARSER
+#include <http_parser.h>
+#else
 #include "http-parser/http_parser.h"
+#endif
 
 #include "h2load_http1_session.h"
 #include "h2load_http2_session.h"

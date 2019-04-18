@@ -48,8 +48,19 @@ AM_CPPFLAGS = \
 	@ZLIB_CFLAGS@ \
 	@DEFS@
 
-LDADD = $(top_builddir)/lib/libnghttp2.la \
-	$(top_builddir)/third-party/libhttp-parser.la \
+LDADD = $(top_builddir)/lib/libnghttp2.la
+
+if SYSTEM_HTTP_PARSER
+
+LDADD += @HTTP_PARSER_LIBS@
+
+else # SYSTEM_HTTP_PARSER
+
+LDADD += $(top_builddir)/third-party/libhttp-parser.la
+
+endif # SYSTEM_HTTP_PARSER
+
+LDADD += \
 	@JEMALLOC_LIBS@ \
 	@LIBXML2_LIBS@ \
 	@LIBEV_LIBS@ \
@@ -59,6 +70,7 @@ LDADD = $(top_builddir)/lib/libnghttp2.la \
 	@JANSSON_LIBS@ \
 	@ZLIB_LIBS@ \
 	@APPLDFLAGS@
+
 
 if ENABLE_APP
 
@@ -261,9 +273,19 @@ libnghttp2_asio_la_SOURCES = \
 
 libnghttp2_asio_la_CPPFLAGS = ${AM_CPPFLAGS} ${BOOST_CPPFLAGS}
 libnghttp2_asio_la_LDFLAGS = -no-undefined -version-info 1:0:0
-libnghttp2_asio_la_LIBADD = \
-	$(top_builddir)/lib/libnghttp2.la \
-	$(top_builddir)/third-party/libhttp-parser.la \
+libnghttp2_asio_la_LIBADD = $(top_builddir)/lib/libnghttp2.la
+
+if SYSTEM_HTTP_PARSER
+
+libnghttp2_asio_la_LIBADD += @HTTP_PARSER_LIBS@
+
+else # SYSTEM_HTTP_PARSER
+
+libnghttp2_asio_la_LIBADD += $(top_builddir)/third-party/libhttp-parser.la
+
+endif # SYSTEM_HTTP_PARSER
+
+libnghttp2_asio_la_LIBADD += \
 	@OPENSSL_LIBS@ \
 	${BOOST_LDFLAGS} \
 	${BOOST_ASIO_LIB} \

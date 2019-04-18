@@ -26,7 +26,11 @@
 
 #include <cassert>
 
+#ifdef SYSTEM_HTTP_PARSER
+#include <http_parser.h>
+#else
 #include "http-parser/http_parser.h"
+#endif
 
 #include "shrpx_upstream.h"
 #include "shrpx_client_handler.h"

@@ -65,7 +65,11 @@ char *strndup(const char *s, size_t size);
 
 #include <nghttp2/nghttp2.h>
 
+#ifdef SYSTEM_HTTP_PARSER
+#include <http_parser.h>
+#else
 #include "http-parser/http_parser.h"
+#endif
 
 #define ARRLEN(x) (sizeof(x) / sizeof(x[0]))
 

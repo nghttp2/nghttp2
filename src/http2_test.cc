@@ -30,7 +30,11 @@
 
 #include <CUnit/CUnit.h>
 
+#ifdef SYSTEM_HTTP_PARSER
+#include <http_parser.h>
+#else
 #include "http-parser/http_parser.h"
+#endif
 
 #include "http2.h"
 #include "util.h"

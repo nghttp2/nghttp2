@@ -34,7 +34,11 @@
 #include <iostream>
 #include <fstream>
 
+#ifdef SYSTEM_HTTP_PARSER
+#include <http_parser.h>
+#else
 #include "http-parser/http_parser.h"
+#endif
 
 using namespace nghttp2;
 

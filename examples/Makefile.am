@@ -35,8 +35,19 @@ AM_CPPFLAGS = \
 	@LIBEVENT_OPENSSL_CFLAGS@ \
 	@OPENSSL_CFLAGS@ \
 	@DEFS@
-LDADD = $(top_builddir)/lib/libnghttp2.la \
-	$(top_builddir)/third-party/libhttp-parser.la \
+LDADD = $(top_builddir)/lib/libnghttp2.la
+
+if SYSTEM_HTTP_PARSER
+
+LDADD += @HTTP_PARSER_LIBS@
+
+else
+
+LDADD += $(top_builddir)/third-party/libhttp-parser.la
+
+endif
+
+LDADD += \
 	@LIBEVENT_OPENSSL_LIBS@ \
 	@OPENSSL_LIBS@ \
 	@APPLDFLAGS@
@@ -60,8 +71,19 @@ noinst_PROGRAMS += asio-sv asio-sv2 asio-cl asio-cl2
 # one.
 ASIOCPPFLAGS = ${AM_CPPFLAGS} ${BOOST_CPPFLAGS}
 ASIOLDADD = $(top_builddir)/lib/libnghttp2.la \
-	$(top_builddir)/src/libnghttp2_asio.la @JEMALLOC_LIBS@ \
-	$(top_builddir)/third-party/libhttp-parser.la \
+	$(top_builddir)/src/libnghttp2_asio.la @JEMALLOC_LIBS@
+
+if SYSTEM_HTTP_PARSER
+
+LDADD += @HTTP_PARSER_LIBS@
+
+else
+
+LDADD += $(top_builddir)/third-party/libhttp-parser.la
+
+endif
+
+LDADD += \
 	@OPENSSL_LIBS@ \
 	${BOOST_LDFLAGS} \
 	${BOOST_ASIO_LIB} \
