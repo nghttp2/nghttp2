@@ -203,8 +203,11 @@ int Http1Session::submit_request() {
 int Http1Session::on_read(const uint8_t *data, size_t len) {
   auto htperr =
       llhttp_execute(&htp_, reinterpret_cast<const char *>(data), len);
-  auto nread = static_cast<size_t>(
-      reinterpret_cast<const uint8_t *>(llhttp_get_error_pos(&htp_)) - data);
+  auto nread = htperr == HPE_OK
+                   ? len
+                   : static_cast<size_t>(reinterpret_cast<const uint8_t *>(
+                                             llhttp_get_error_pos(&htp_)) -
+                                         data);
 
   if (client_->worker->config->verbose) {
     std::cout.write(reinterpret_cast<const char *>(data), nread);

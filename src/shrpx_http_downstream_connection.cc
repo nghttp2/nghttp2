@@ -1402,9 +1402,12 @@ int HttpDownstreamConnection::process_input(const uint8_t *data,
 
   auto htperr = llhttp_execute(&response_htp_,
                                reinterpret_cast<const char *>(data), datalen);
-  auto nproc = static_cast<size_t>(
-      reinterpret_cast<const uint8_t *>(llhttp_get_error_pos(&response_htp_)) -
-      data);
+  auto nproc =
+      htperr == HPE_OK
+          ? datalen
+          : static_cast<size_t>(reinterpret_cast<const uint8_t *>(
+                                    llhttp_get_error_pos(&response_htp_)) -
+                                data);
 
   if (htperr != HPE_OK &&
       (!downstream_->get_upgraded() || htperr != HPE_PAUSED_UPGRADE)) {
