@@ -38,6 +38,8 @@
 
 #include <nghttp2/nghttp2.h>
 
+#include "llhttp.h"
+
 #include "shrpx_io_control.h"
 #include "shrpx_log_config.h"
 #include "http2.h"

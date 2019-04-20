@@ -27,7 +27,7 @@
 
 #include "shrpx.h"
 
-#include "http-parser/http_parser.h"
+#include "llhttp.h"
 
 #include "shrpx_downstream_connection.h"
 #include "shrpx_io_control.h"
@@ -110,7 +110,7 @@ private:
   std::unique_ptr<Address> resolved_addr_;
   std::unique_ptr<DNSQuery> dns_query_;
   IOControl ioctrl_;
-  http_parser response_htp_;
+  llhttp_t response_htp_;
   // true if first write succeeded.
   bool first_write_done_;
   // true if this object can be reused

@@ -243,6 +243,30 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
   return 0;
 }
 
+namespace {
+int htp_msg_begincb(llhttp_t *htp);
+int htp_hdr_keycb(llhttp_t *htp, const char *data, size_t len);
+int htp_hdr_valcb(llhttp_t *htp, const char *data, size_t len);
+int htp_hdrs_completecb(llhttp_t *htp);
+int htp_bodycb(llhttp_t *htp, const char *data, size_t len);
+int htp_msg_completecb(llhttp_t *htp);
+} // namespace
+
+namespace {
+constexpr llhttp_settings_t htp_hooks = {
+    htp_msg_begincb,     // llhttp_cb      on_message_begin;
+    nullptr,             // llhttp_data_cb on_url;
+    nullptr,             // llhttp_data_cb on_status;
+    htp_hdr_keycb,       // llhttp_data_cb on_header_field;
+    htp_hdr_valcb,       // llhttp_data_cb on_header_value;
+    htp_hdrs_completecb, // llhttp_cb      on_headers_complete;
+    htp_bodycb,          // llhttp_data_cb on_body;
+    htp_msg_completecb,  // llhttp_cb      on_message_complete;
+    nullptr,             // llhttp_cb      on_chunk_header
+    nullptr,             // llhttp_cb      on_chunk_complete
+};
+} // namespace
+
 int HttpDownstreamConnection::initiate_connection() {
   int rv;
 
@@ -416,7 +440,7 @@ int HttpDownstreamConnection::initiate_connection() {
     request_header_written_ = false;
   }
 
-  http_parser_init(&response_htp_, HTTP_RESPONSE);
+  llhttp_init(&response_htp_, HTTP_RESPONSE, &htp_hooks);
   response_htp_.data = downstream_;
 
   return 0;
@@ -855,11 +879,12 @@ void HttpDownstreamConnection::force_resume_read() {
 }
 
 namespace {
-int htp_msg_begincb(http_parser *htp) {
+int htp_msg_begincb(llhttp_t *htp) {
   auto downstream = static_cast<Downstream *>(htp->data);
 
   if (downstream->get_response_state() != DownstreamState::INITIAL) {
-    return -1;
+    llhttp_set_error_reason(htp, "HTTP message started when it shouldn't");
+    return HPE_USER;
   }
 
   return 0;
@@ -867,7 +892,7 @@ int htp_msg_begincb(http_parser *htp) {
 } // namespace
 
 namespace {
-int htp_hdrs_completecb(http_parser *htp) {
+int htp_hdrs_completecb(llhttp_t *htp) {
   auto downstream = static_cast<Downstream *>(htp->data);
   auto upstream = downstream->get_upstream();
   auto handler = upstream->get_client_handler();
@@ -948,7 +973,7 @@ int htp_hdrs_completecb(http_parser *htp) {
     return 1;
   }
 
-  resp.connection_close = !http_should_keep_alive(htp);
+  resp.connection_close = !llhttp_should_keep_alive(htp);
   downstream->set_response_state(DownstreamState::HEADER_COMPLETE);
   downstream->inspect_http1_response();
   if (downstream->get_upgraded()) {
@@ -994,7 +1019,7 @@ int htp_hdrs_completecb(http_parser *htp) {
   // https://tools.ietf.org/html/rfc7230#section-3.3
 
   // TODO It seems that the cases other than HEAD are handled by
-  // http-parser.  Need test.
+  // llhttp.  Need test.
   return !http2::expect_response_body(req.method, resp.http_status);
 }
 } // namespace
@@ -1034,7 +1059,7 @@ int ensure_max_header_fields(const Downstream *downstream,
 } // namespace
 
 namespace {
-int htp_hdr_keycb(http_parser *htp, const char *data, size_t len) {
+int htp_hdr_keycb(llhttp_t *htp, const char *data, size_t len) {
   auto downstream = static_cast<Downstream *>(htp->data);
   auto &resp = downstream->response();
   auto &httpconf = get_config()->http;
@@ -1071,7 +1096,7 @@ int htp_hdr_keycb(http_parser *htp, const char *data, size_t len) {
 } // namespace
 
 namespace {
-int htp_hdr_valcb(http_parser *htp, const char *data, size_t len) {
+int htp_hdr_valcb(llhttp_t *htp, const char *data, size_t len) {
   auto downstream = static_cast<Downstream *>(htp->data);
   auto &resp = downstream->response();
   auto &httpconf = get_config()->http;
@@ -1090,7 +1115,7 @@ int htp_hdr_valcb(http_parser *htp, const char *data, size_t len) {
 } // namespace
 
 namespace {
-int htp_bodycb(http_parser *htp, const char *data, size_t len) {
+int htp_bodycb(llhttp_t *htp, const char *data, size_t len) {
   auto downstream = static_cast<Downstream *>(htp->data);
   auto &resp = downstream->response();
 
@@ -1102,14 +1127,13 @@ int htp_bodycb(http_parser *htp, const char *data, size_t len) {
 } // namespace
 
 namespace {
-int htp_msg_completecb(http_parser *htp) {
+int htp_msg_completecb(llhttp_t *htp) {
   auto downstream = static_cast<Downstream *>(htp->data);
 
-  // http-parser does not treat "200 connection established" response
+  // llhttp does not treat "200 connection established" response
   // against CONNECT request, and in that case, this function is not
   // called.  But if HTTP Upgrade is made (e.g., WebSocket), this
-  // function is called, and http_parser_execute() returns just after
-  // that.
+  // function is called, and llhttp_execute() returns just after that.
   if (downstream->get_upgraded()) {
     return 0;
   }
@@ -1127,19 +1151,6 @@ int htp_msg_completecb(http_parser *htp) {
   downstream->pause_read(SHRPX_MSG_BLOCK);
   return downstream->get_upstream()->on_downstream_body_complete(downstream);
 }
-} // namespace
-
-namespace {
-constexpr http_parser_settings htp_hooks = {
-    htp_msg_begincb,     // http_cb on_message_begin;
-    nullptr,             // http_data_cb on_url;
-    nullptr,             // http_data_cb on_status;
-    htp_hdr_keycb,       // http_data_cb on_header_field;
-    htp_hdr_valcb,       // http_data_cb on_header_value;
-    htp_hdrs_completecb, // http_cb      on_headers_complete;
-    htp_bodycb,          // http_data_cb on_body;
-    htp_msg_completecb   // http_cb      on_message_complete;
-};
 } // namespace
 
 int HttpDownstreamConnection::write_first() {
@@ -1389,13 +1400,14 @@ int HttpDownstreamConnection::process_input(const uint8_t *data,
     return 0;
   }
 
-  auto nproc =
-      http_parser_execute(&response_htp_, &htp_hooks,
-                          reinterpret_cast<const char *>(data), datalen);
+  auto htperr = llhttp_execute(&response_htp_,
+                               reinterpret_cast<const char *>(data), datalen);
+  auto nproc = static_cast<size_t>(
+      reinterpret_cast<const uint8_t *>(llhttp_get_error_pos(&response_htp_)) -
+      data);
 
-  auto htperr = HTTP_PARSER_ERRNO(&response_htp_);
-
-  if (htperr != HPE_OK) {
+  if (htperr != HPE_OK &&
+      (!downstream_->get_upgraded() || htperr != HPE_PAUSED_UPGRADE)) {
     // Handling early return (in other words, response was hijacked by
     // mruby scripting).
     if (downstream_->get_response_state() == DownstreamState::MSG_COMPLETE) {
@@ -1404,8 +1416,8 @@ int HttpDownstreamConnection::process_input(const uint8_t *data,
 
     if (LOG_ENABLED(INFO)) {
       DCLOG(INFO, this) << "HTTP parser failure: "
-                        << "(" << http_errno_name(htperr) << ") "
-                        << http_errno_description(htperr);
+                        << "(" << llhttp_errno_name(htperr) << ") "
+                        << llhttp_get_error_reason(&response_htp_);
     }
 
     return -1;

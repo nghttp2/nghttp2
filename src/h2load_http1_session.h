@@ -29,6 +29,8 @@
 
 #include <nghttp2/nghttp2.h>
 
+#include "llhttp.h"
+
 namespace h2load {
 
 struct Client;
@@ -49,7 +51,7 @@ public:
 
 private:
   Client *client_;
-  http_parser htp_;
+  llhttp_t htp_;
   bool complete_;
 };
 

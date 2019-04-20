@@ -35,7 +35,7 @@
 
 #include <nghttp2/nghttp2.h>
 
-#include "http-parser/http_parser.h"
+#include "url-parser/url_parser.h"
 
 #include "util.h"
 #include "memchunk.h"
@@ -396,15 +396,15 @@ bool expect_response_body(int method_token, int status_code);
 bool expect_response_body(int status_code);
 
 // Looks up method token for method name |name| of length |namelen|.
-// Only methods defined in http-parser/http-parser.h (http_method) are
-// tokenized.  If method name cannot be tokenized, returns -1.
+// Only methods defined in llhttp.h (llhttp_method) are tokenized.  If
+// method name cannot be tokenized, returns -1.
 int lookup_method_token(const uint8_t *name, size_t namelen);
 int lookup_method_token(const StringRef &name);
 
-// Returns string  representation of |method_token|.  This  is wrapper
-// function over http_method_str  from http-parser.  If |method_token|
-// is not known to http-parser, "<unknown>" is returned.  The returned
-// StringRef is guaranteed to be NULL-terminated.
+// Returns string representation of |method_token|.  This is wrapper
+// around llhttp_method_name from llhttp.  If |method_token| is
+// unknown, program aborts.  The returned StringRef is guaranteed to
+// be NULL-terminated.
 StringRef to_method_string(int method_token);
 
 StringRef normalize_path(BlockAllocator &balloc, const StringRef &path,

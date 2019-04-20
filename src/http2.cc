@@ -24,6 +24,8 @@
  */
 #include "http2.h"
 
+#include "llhttp.h"
+
 #include "util.h"
 
 namespace nghttp2 {
@@ -1386,6 +1388,11 @@ int lookup_method_token(const uint8_t *name, size_t namelen) {
   switch (namelen) {
   case 3:
     switch (name[2]) {
+    case 'L':
+      if (util::streq_l("AC", name, 2)) {
+        return HTTP_ACL;
+      }
+      break;
     case 'T':
       if (util::streq_l("GE", name, 2)) {
         return HTTP_GET;
@@ -1399,6 +1406,9 @@ int lookup_method_token(const uint8_t *name, size_t namelen) {
   case 4:
     switch (name[3]) {
     case 'D':
+      if (util::streq_l("BIN", name, 3)) {
+        return HTTP_BIND;
+      }
       if (util::streq_l("HEA", name, 3)) {
         return HTTP_HEAD;
       }
@@ -1409,6 +1419,9 @@ int lookup_method_token(const uint8_t *name, size_t namelen) {
       }
       break;
     case 'K':
+      if (util::streq_l("LIN", name, 3)) {
+        return HTTP_LINK;
+      }
       if (util::streq_l("LOC", name, 3)) {
         return HTTP_LOCK;
       }
@@ -1452,9 +1465,20 @@ int lookup_method_token(const uint8_t *name, size_t namelen) {
     break;
   case 6:
     switch (name[5]) {
+    case 'D':
+      if (util::streq_l("REBIN", name, 5)) {
+        return HTTP_REBIND;
+      }
+      if (util::streq_l("UNBIN", name, 5)) {
+        return HTTP_UNBIND;
+      }
+      break;
     case 'E':
       if (util::streq_l("DELET", name, 5)) {
         return HTTP_DELETE;
+      }
+      if (util::streq_l("SOURC", name, 5)) {
+        return HTTP_SOURCE;
       }
       break;
     case 'H':
@@ -1463,6 +1487,9 @@ int lookup_method_token(const uint8_t *name, size_t namelen) {
       }
       break;
     case 'K':
+      if (util::streq_l("UNLIN", name, 5)) {
+        return HTTP_UNLINK;
+      }
       if (util::streq_l("UNLOC", name, 5)) {
         return HTTP_UNLOCK;
       }
@@ -1554,8 +1581,9 @@ int lookup_method_token(const uint8_t *name, size_t namelen) {
 }
 
 StringRef to_method_string(int method_token) {
-  // we happened to use same value for method with http-parser.
-  return StringRef{http_method_str(static_cast<http_method>(method_token))};
+  // we happened to use same value for method with llhttp.
+  return StringRef{
+      llhttp_method_name(static_cast<llhttp_method>(method_token))};
 }
 
 StringRef get_pure_path_component(const StringRef &uri) {

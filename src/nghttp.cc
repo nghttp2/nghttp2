@@ -401,7 +401,7 @@ void ContinueTimer::dispatch_continue() {
 }
 
 namespace {
-int htp_msg_begincb(http_parser *htp) {
+int htp_msg_begincb(llhttp_t *htp) {
   if (config.verbose) {
     print_timer();
     std::cout << " HTTP Upgrade response" << std::endl;
@@ -411,7 +411,7 @@ int htp_msg_begincb(http_parser *htp) {
 } // namespace
 
 namespace {
-int htp_msg_completecb(http_parser *htp) {
+int htp_msg_completecb(llhttp_t *htp) {
   auto client = static_cast<HttpClient *>(htp->data);
   client->upgrade_response_status_code = htp->status_code;
   client->upgrade_response_complete = true;
@@ -420,15 +420,17 @@ int htp_msg_completecb(http_parser *htp) {
 } // namespace
 
 namespace {
-constexpr http_parser_settings htp_hooks = {
-    htp_msg_begincb,   // http_cb      on_message_begin;
-    nullptr,           // http_data_cb on_url;
-    nullptr,           // http_data_cb on_status;
-    nullptr,           // http_data_cb on_header_field;
-    nullptr,           // http_data_cb on_header_value;
-    nullptr,           // http_cb      on_headers_complete;
-    nullptr,           // http_data_cb on_body;
-    htp_msg_completecb // http_cb      on_message_complete;
+constexpr llhttp_settings_t htp_hooks = {
+    htp_msg_begincb,    // llhttp_cb      on_message_begin;
+    nullptr,            // llhttp_data_cb on_url;
+    nullptr,            // llhttp_data_cb on_status;
+    nullptr,            // llhttp_data_cb on_header_field;
+    nullptr,            // llhttp_data_cb on_header_value;
+    nullptr,            // llhttp_cb      on_headers_complete;
+    nullptr,            // llhttp_data_cb on_body;
+    htp_msg_completecb, // llhttp_cb      on_message_complete;
+    nullptr,            // llhttp_cb      on_chunk_header
+    nullptr,            // llhttp_cb      on_chunk_complete
 };
 } // namespace
 
@@ -885,8 +887,8 @@ int HttpClient::connected() {
   writefn = &HttpClient::write_clear;
 
   if (need_upgrade()) {
-    htp = std::make_unique<http_parser>();
-    http_parser_init(htp.get(), HTTP_RESPONSE);
+    htp = std::make_unique<llhttp_t>();
+    llhttp_init(htp.get(), HTTP_RESPONSE, &htp_hooks);
     htp->data = this;
 
     return do_write();
@@ -1031,19 +1033,20 @@ int HttpClient::on_upgrade_connect() {
 int HttpClient::on_upgrade_read(const uint8_t *data, size_t len) {
   int rv;
 
-  auto nread = http_parser_execute(htp.get(), &htp_hooks,
-                                   reinterpret_cast<const char *>(data), len);
+  auto htperr =
+      llhttp_execute(htp.get(), reinterpret_cast<const char *>(data), len);
+  auto nread = static_cast<size_t>(
+      reinterpret_cast<const uint8_t *>(llhttp_get_error_pos(htp.get())) -
+      data);
 
   if (config.verbose) {
     std::cout.write(reinterpret_cast<const char *>(data), nread);
   }
 
-  auto htperr = HTTP_PARSER_ERRNO(htp.get());
-
-  if (htperr != HPE_OK) {
+  if (htperr != HPE_OK && htperr != HPE_PAUSED_UPGRADE) {
     std::cerr << "[ERROR] Failed to parse HTTP Upgrade response header: "
-              << "(" << http_errno_name(htperr) << ") "
-              << http_errno_description(htperr) << std::endl;
+              << "(" << llhttp_errno_name(htperr) << ") "
+              << llhttp_get_error_reason(htp.get()) << std::endl;
     return -1;
   }
 

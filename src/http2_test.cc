@@ -30,7 +30,7 @@
 
 #include <CUnit/CUnit.h>
 
-#include "http-parser/http_parser.h"
+#include "url-parser/url_parser.h"
 
 #include "http2.h"
 #include "util.h"
