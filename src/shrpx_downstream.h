@@ -119,6 +119,10 @@ public:
 
   bool trailer_key_prev() const { return trailer_key_prev_; }
 
+  // erase_content_length_and_transfer_encoding erases content-length
+  // and transfer-encoding header fields.
+  void erase_content_length_and_transfer_encoding();
+
   // content-length, -1 if it is unknown.
   int64_t content_length;
 

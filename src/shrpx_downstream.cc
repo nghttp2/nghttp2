@@ -573,6 +573,18 @@ void FieldStore::append_last_trailer_value(const char *data, size_t len) {
                                   trailers_, data, len);
 }
 
+void FieldStore::erase_content_length_and_transfer_encoding() {
+  for (auto &kv : headers_) {
+    switch (kv.token) {
+    case http2::HD_CONTENT_LENGTH:
+    case http2::HD_TRANSFER_ENCODING:
+      kv.name = StringRef{};
+      kv.token = -1;
+      break;
+    }
+  }
+}
+
 void Downstream::set_request_start_time(
     std::chrono::high_resolution_clock::time_point time) {
   request_start_time_ = std::move(time);
