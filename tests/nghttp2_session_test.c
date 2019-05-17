@@ -11762,6 +11762,8 @@ void test_nghttp2_http_ignore_content_length(void) {
   const nghttp2_nv conn_reqnv[] = {MAKE_NV(":authority", "localhost"),
                                    MAKE_NV(":method", "CONNECT"),
                                    MAKE_NV("content-length", "999999")};
+  const nghttp2_nv conn_cl_resnv[] = {MAKE_NV(":status", "200"),
+                                      MAKE_NV("content-length", "0")};
   nghttp2_stream *stream;
 
   mem = nghttp2_mem_default();
@@ -11788,6 +11790,24 @@ void test_nghttp2_http_ignore_content_length(void) {
   CU_ASSERT((ssize_t)nghttp2_buf_len(&bufs.head->buf) == rv);
 
   CU_ASSERT(NULL == nghttp2_session_get_next_ob_item(session));
+
+  nghttp2_bufs_reset(&bufs);
+
+  /* Content-Length in 200 response to CONNECT is ignored */
+  stream = open_sent_stream2(session, 3, NGHTTP2_STREAM_OPENING);
+  stream->http_flags |= NGHTTP2_HTTP_FLAG_METH_CONNECT;
+
+  rv = pack_headers(&bufs, &deflater, 3, NGHTTP2_FLAG_END_HEADERS,
+                    conn_cl_resnv, ARRLEN(conn_cl_resnv), mem);
+  CU_ASSERT(0 == rv);
+
+  rv = nghttp2_session_mem_recv(session, bufs.head->buf.pos,
+                                nghttp2_buf_len(&bufs.head->buf));
+
+  CU_ASSERT((ssize_t)nghttp2_buf_len(&bufs.head->buf) == rv);
+
+  CU_ASSERT(NULL == nghttp2_session_get_next_ob_item(session));
+  CU_ASSERT(-1 == stream->content_length);
 
   nghttp2_bufs_reset(&bufs);
 
@@ -11866,13 +11886,10 @@ void test_nghttp2_http_record_request_method(void) {
   CU_ASSERT((NGHTTP2_HTTP_FLAG_METH_CONNECT & stream->http_flags) > 0);
   CU_ASSERT(-1 == stream->content_length);
 
-  /* content-length is now allowed in 200 response to a CONNECT
-     request */
+  /* content-length is ignored in 200 response to a CONNECT request */
   item = nghttp2_session_get_next_ob_item(session);
 
-  CU_ASSERT(NULL != item);
-  CU_ASSERT(NGHTTP2_RST_STREAM == item->frame.hd.type);
-  CU_ASSERT(NGHTTP2_PROTOCOL_ERROR == item->frame.rst_stream.error_code);
+  CU_ASSERT(NULL == item);
 
   nghttp2_hd_deflate_free(&deflater);
   nghttp2_session_del(session);

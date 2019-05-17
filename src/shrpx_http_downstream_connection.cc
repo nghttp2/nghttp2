@@ -935,18 +935,15 @@ int htp_hdrs_completecb(llhttp_t *htp) {
       return -1;
     }
     if (resp.fs.content_length == 0) {
-      auto cl = resp.fs.header(http2::HD_CONTENT_LENGTH);
-      assert(cl);
-      http2::erase_header(cl);
+      resp.fs.erase_content_length_and_transfer_encoding();
     } else if (resp.fs.content_length != -1) {
       return -1;
     }
   } else if (resp.http_status / 100 == 1 ||
              (resp.http_status / 100 == 2 && req.method == HTTP_CONNECT)) {
-    if (resp.fs.header(http2::HD_CONTENT_LENGTH) ||
-        resp.fs.header(http2::HD_TRANSFER_ENCODING)) {
-      return -1;
-    }
+    // Server MUST NOT send Content-Length and Transfer-Encoding in
+    // these responses.
+    resp.fs.erase_content_length_and_transfer_encoding();
   } else if (resp.fs.parse_content_length() != 0) {
     downstream->set_response_state(DownstreamState::MSG_BAD_HEADER);
     return -1;
