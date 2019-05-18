@@ -111,6 +111,9 @@ SpacesInCStyleCastParentheses: false
 SpacesInParentheses: false
 SpacesInSquareBrackets: false
 Standard:        Cpp11
+StatementMacros: 
+  - Q_UNUSED
+  - QT_REQUIRE_VERSION
 TabWidth:        8
 UseTab:          Never
 ...
