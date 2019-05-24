@@ -87,10 +87,15 @@ public:
   /// Start the first asynchronous operation for the connection.
   void start() {
     boost::system::error_code ec;
-
+    std::weak_ptr<connection> weak_self = this->shared_from_this();
+    
     handler_ = std::make_shared<http2_handler>(
         GET_IO_SERVICE(socket_), socket_.lowest_layer().remote_endpoint(ec),
-        [this]() { do_write(); }, mux_);
+        [weak_self]() {
+          auto shared_connection = weak_self.lock();
+          if (!shared_connection) { return; }
+          shared_connection->do_write();
+        }, mux_);
     if (handler_->start() != 0) {
       stop();
       return;
