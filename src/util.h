@@ -772,6 +772,10 @@ StringRef extract_host(const StringRef &hostport);
 // Returns new std::mt19937 object.
 std::mt19937 make_mt19937();
 
+// daemonize calls daemon(3).  If __APPLE__ is defined, it implements
+// daemon() using fork().
+int daemonize(int nochdir, int noclose);
+
 } // namespace util
 
 } // namespace nghttp2

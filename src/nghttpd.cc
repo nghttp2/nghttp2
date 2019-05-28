@@ -435,7 +435,7 @@ int main(int argc, char **argv) {
 #ifdef __sgi
     if (daemon(0, 0, 0, 0) == -1) {
 #else
-    if (daemon(0, 0) == -1) {
+    if (util::daemonize(0, 0) == -1) {
 #endif
       perror("daemon");
       exit(EXIT_FAILURE);
