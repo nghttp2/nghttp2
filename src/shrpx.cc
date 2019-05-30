@@ -1148,7 +1148,7 @@ int call_daemon() {
     return 0;
   }
 #  endif // HAVE_LIBSYSTEMD
-  return daemon(0, 0);
+  return util::daemonize(0, 0);
 #endif   // !__sgi
 }
 } // namespace

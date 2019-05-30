@@ -1542,6 +1542,46 @@ std::mt19937 make_mt19937() {
   return std::mt19937(rd());
 }
 
+int daemonize(int nochdir, int noclose) {
+#if defined(__APPLE__)
+  pid_t pid;
+  pid = fork();
+  if (pid == -1) {
+    return -1;
+  } else if (pid > 0) {
+    _exit(EXIT_SUCCESS);
+  }
+  if (setsid() == -1) {
+    return -1;
+  }
+  pid = fork();
+  if (pid == -1) {
+    return -1;
+  } else if (pid > 0) {
+    _exit(EXIT_SUCCESS);
+  }
+  if (nochdir == 0) {
+    if (chdir("/") == -1) {
+      return -1;
+    }
+  }
+  if (noclose == 0) {
+    if (freopen("/dev/null", "r", stdin) == nullptr) {
+      return -1;
+    }
+    if (freopen("/dev/null", "w", stdout) == nullptr) {
+      return -1;
+    }
+    if (freopen("/dev/null", "w", stderr) == nullptr) {
+      return -1;
+    }
+  }
+  return 0;
+#else  // !defined(__APPLE__)
+  return daemon(nochdir, noclose);
+#endif // !defined(__APPLE__)
+}
+
 } // namespace util
 
 } // namespace nghttp2
