@@ -808,6 +808,7 @@ struct LoggingConfig {
     bool syslog;
   } error;
   int syslog_facility;
+  int severity;
 };
 
 struct RateLimitConfig {

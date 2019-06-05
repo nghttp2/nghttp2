@@ -116,11 +116,10 @@ int Log::severity_thres_ = NOTICE;
 
 void Log::set_severity_level(int severity) { severity_thres_ = severity; }
 
-int Log::set_severity_level_by_name(const StringRef &name) {
+int Log::get_severity_level_by_name(const StringRef &name) {
   for (size_t i = 0, max = array_size(SEVERITY_STR); i < max; ++i) {
     if (name == SEVERITY_STR[i]) {
-      severity_thres_ = i;
-      return 0;
+      return i;
     }
   }
   return -1;
