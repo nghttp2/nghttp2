@@ -2682,13 +2682,16 @@ int parse_config(Config *config, int optid, const StringRef &opt,
 
     return 0;
   }
-  case SHRPX_OPTID_LOG_LEVEL:
-    if (Log::set_severity_level_by_name(optarg) == -1) {
+  case SHRPX_OPTID_LOG_LEVEL: {
+    auto level = Log::get_severity_level_by_name(optarg);
+    if (level == -1) {
       LOG(ERROR) << opt << ": Invalid severity level: " << optarg;
       return -1;
     }
+    config->logging.severity = level;
 
     return 0;
+  }
   case SHRPX_OPTID_DAEMON:
     config->daemon = util::strieq_l("yes", optarg);
 
