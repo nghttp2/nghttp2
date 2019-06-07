@@ -78,11 +78,11 @@ script:
     fi
   - |
     if [ "$CI_BUILD" = "cmake" ]; then
+      make
       make check
+      # Integration tests for nghttpx; autotools build erases build
+      # for packaging test.
+      cd integration-tests
+      export GO111MODULE=on
+      make it
     fi
-  # As of April, 23, 2016, golang http2 build fails, probably because
-  # the default go version is too old.
-  # - cd integration-tests
-  # - export GOPATH="$PWD/integration-tests/golang"
-  # - make itprep
-  # - make it

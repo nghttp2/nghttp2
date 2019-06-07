@@ -323,12 +323,7 @@ its testing framework.  We depend on the following libraries:
 * golang.org/x/net/websocket
 * https://github.com/tatsuhiro-t/go-nghttp2
 
-To download the above packages, after settings ``GOPATH``, run the
-following command under ``integration-tests`` directory:
-
-.. code-block:: text
-
-    $ make itprep
+Go modules will download these dependencies automatically.
 
 To run the tests, run the following command under
 ``integration-tests`` directory:
