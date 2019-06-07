@@ -13,7 +13,6 @@ include_directories(
   "${CMAKE_CURRENT_SOURCE_DIR}/../third-party/llhttp/include"
 
   ${JEMALLOC_INCLUDE_DIRS}
-  ${SPDYLAY_INCLUDE_DIRS}
   ${LIBXML2_INCLUDE_DIRS}
   ${LIBEV_INCLUDE_DIRS}
   ${OPENSSL_INCLUDE_DIRS}
@@ -26,7 +25,6 @@ include_directories(
 link_libraries(
   nghttp2
   ${JEMALLOC_LIBRARIES}
-  ${SPDYLAY_LIBRARIES}
   ${LIBXML2_LIBRARIES}
   ${LIBEV_LIBRARIES}
   ${OPENSSL_LIBRARIES}
@@ -69,11 +67,6 @@ if(ENABLE_APP)
     h2load_http2_session.cc
     h2load_http1_session.cc
   )
-  if(HAVE_SPDYLAY)
-    list(APPEND H2LOAD_SOURCES
-      h2load_spdy_session.cc
-    )
-  endif()
 
 
   # Common libnhttpx sources (used for nghttpx and unit tests)
@@ -117,11 +110,6 @@ if(ENABLE_APP)
     shrpx_dns_tracker.cc
     xsi_strerror.c
   )
-  if(HAVE_SPDYLAY)
-    list(APPEND NGHTTPX_SRCS
-      shrpx_spdy_upstream.cc
-    )
-  endif()
   if(HAVE_MRUBY)
     list(APPEND NGHTTPX_SRCS
       shrpx_mruby.cc
