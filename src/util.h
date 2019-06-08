@@ -626,6 +626,9 @@ int make_socket_nonblocking(int fd);
 int make_socket_nodelay(int fd);
 
 int create_nonblock_socket(int family);
+int create_nonblock_udp_socket(int family);
+
+int bind_any_addr_udp(int fd, int family);
 
 bool check_socket_connected(int fd);
 

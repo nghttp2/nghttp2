@@ -45,6 +45,8 @@ AM_CPPFLAGS = \
 	@LIBEV_CFLAGS@ \
 	@OPENSSL_CFLAGS@ \
 	@LIBCARES_CFLAGS@ \
+	@LIBNGHTTP3_CFLAGS@ \
+	@LIBNGTCP2_CFLAGS@ \
 	@JANSSON_CFLAGS@ \
 	@ZLIB_CFLAGS@ \
 	@DEFS@
@@ -57,6 +59,8 @@ LDADD = $(top_builddir)/lib/libnghttp2.la \
 	@LIBEV_LIBS@ \
 	@OPENSSL_LIBS@ \
 	@LIBCARES_LIBS@ \
+	@LIBNGHTTP3_LIBS@ \
+	@LIBNGTCP2_LIBS@ \
 	@SYSTEMD_LIBS@ \
 	@JANSSON_LIBS@ \
 	@ZLIB_LIBS@ \
@@ -95,7 +99,10 @@ h2load_SOURCES = util.cc util.h \
 	tls.cc tls.h \
 	h2load_session.h \
 	h2load_http2_session.cc h2load_http2_session.h \
-	h2load_http1_session.cc h2load_http1_session.h
+	h2load_http1_session.cc h2load_http1_session.h \
+	h2load_http3_session.cc h2load_http3_session.h \
+	h2load_quic.cc h2load_quic.h \
+	quic.cc quic.h
 
 NGHTTPX_SRCS = \
 	util.cc util.h http2.cc http2.h timegm.c timegm.h base64.h \

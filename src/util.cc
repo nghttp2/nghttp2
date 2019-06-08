@@ -945,6 +945,56 @@ int create_nonblock_socket(int family) {
   return fd;
 }
 
+int create_nonblock_udp_socket(int family) {
+#ifdef SOCK_NONBLOCK
+  auto fd = socket(family, SOCK_DGRAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
+
+  if (fd == -1) {
+    return -1;
+  }
+#else  // !SOCK_NONBLOCK
+  auto fd = socket(family, SOCK_STREAM, 0);
+
+  if (fd == -1) {
+    return -1;
+  }
+
+  make_socket_nonblocking(fd);
+  make_socket_closeonexec(fd);
+#endif // !SOCK_NONBLOCK
+
+  return fd;
+}
+
+int bind_any_addr_udp(int fd, int family) {
+  addrinfo hints{};
+  addrinfo *res, *rp;
+  int rv;
+
+  hints.ai_family = family;
+  hints.ai_socktype = SOCK_DGRAM;
+  hints.ai_flags = AI_PASSIVE;
+
+  rv = getaddrinfo(nullptr, "0", &hints, &res);
+  if (rv != 0) {
+    return -1;
+  }
+
+  for (rp = res; rp; rp = rp->ai_next) {
+    if (bind(fd, rp->ai_addr, rp->ai_addrlen) != -1) {
+      break;
+    }
+  }
+
+  freeaddrinfo(res);
+
+  if (!rp) {
+    return -1;
+  }
+
+  return 0;
+}
+
 bool check_socket_connected(int fd) {
   int error;
   socklen_t len = sizeof(error);
