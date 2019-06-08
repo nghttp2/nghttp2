@@ -48,10 +48,14 @@
 
 #include <openssl/err.h>
 
+#include <ngtcp2/ngtcp2.h>
+
 #include "url-parser/url_parser.h"
 
 #include "h2load_http1_session.h"
 #include "h2load_http2_session.h"
+#include "h2load_http3_session.h"
+#include "h2load_quic.h"
 #include "tls.h"
 #include "http2.h"
 #include "util.h"
@@ -117,6 +121,9 @@ Config::~Config() {
 bool Config::is_rate_mode() const { return (this->rate != 0); }
 bool Config::is_timing_based_mode() const { return (this->duration > 0); }
 bool Config::has_base_uri() const { return (!this->base_uri.empty()); }
+bool Config::is_quic() const {
+  return !npn_list.empty() && npn_list[0] == NGTCP2_ALPN_H3;
+}
 Config config;
 
 namespace {
@@ -362,6 +369,7 @@ Client::Client(uint32_t id, Worker *worker, size_t req_todo)
       cstat{},
       worker(worker),
       ssl(nullptr),
+      quic{},
       next_addr(config.addrs),
       current_addr(nullptr),
       reqidx(0),
@@ -373,6 +381,7 @@ Client::Client(uint32_t id, Worker *worker, size_t req_todo)
       req_done(0),
       id(id),
       fd(-1),
+      local_addr{},
       new_connection_requested(false),
       final(false) {
   if (req_todo == 0) { // this means infinite number of requests are to be made
@@ -396,10 +405,17 @@ Client::Client(uint32_t id, Worker *worker, size_t req_todo)
 
   ev_timer_init(&request_timeout_watcher, client_request_timeout_cb, 0., 0.);
   request_timeout_watcher.data = this;
+
+  ev_timer_init(&quic.pkt_timer, quic_pkt_timeout_cb, 0., 0.);
+  quic.pkt_timer.data = this;
 }
 
 Client::~Client() {
   disconnect();
+
+  if (config.is_quic()) {
+    quic_free();
+  }
 
   if (ssl) {
     SSL_free(ssl);
@@ -413,6 +429,37 @@ int Client::do_read() { return readfn(*this); }
 int Client::do_write() { return writefn(*this); }
 
 int Client::make_socket(addrinfo *addr) {
+  int rv;
+
+  if (config.is_quic()) {
+    fd = util::create_nonblock_udp_socket(addr->ai_family);
+    if (fd == -1) {
+      return -1;
+    }
+
+    rv = util::bind_any_addr_udp(fd, addr->ai_family);
+    if (rv != 0) {
+      close(fd);
+      fd = -1;
+      return -1;
+    }
+
+    socklen_t addrlen = sizeof(local_addr.su.storage);
+    rv = getsockname(fd, &local_addr.su.sa, &addrlen);
+    if (rv == -1) {
+      return -1;
+    }
+    local_addr.len = addrlen;
+
+    if (quic_init(&local_addr.su.sa, local_addr.len, addr->ai_addr,
+                  addr->ai_addrlen) != 0) {
+      std::cerr << "quic_init failed" << std::endl;
+      return -1;
+    }
+
+    return 0;
+  }
+
   fd = util::create_nonblock_socket(addr->ai_family);
   if (fd == -1) {
     return -1;
@@ -422,17 +469,15 @@ int Client::make_socket(addrinfo *addr) {
       ssl = SSL_new(worker->ssl_ctx);
     }
 
-    auto config = worker->config;
-
-    if (!util::numeric_host(config->host.c_str())) {
-      SSL_set_tlsext_host_name(ssl, config->host.c_str());
-    }
-
     SSL_set_fd(ssl, fd);
     SSL_set_connect_state(ssl);
   }
 
-  auto rv = ::connect(fd, addr->ai_addr, addr->ai_addrlen);
+  if (ssl && !util::numeric_host(config.host.c_str())) {
+    SSL_set_tlsext_host_name(ssl, config.host.c_str());
+  }
+
+  rv = ::connect(fd, addr->ai_addr, addr->ai_addrlen);
   if (rv != 0 && errno != EINPROGRESS) {
     if (ssl) {
       SSL_free(ssl);
@@ -489,12 +534,19 @@ int Client::connect() {
     current_addr = addr;
   }
 
-  writefn = &Client::connected;
-
   ev_io_set(&rev, fd, EV_READ);
   ev_io_set(&wev, fd, EV_WRITE);
 
   ev_io_start(worker->loop, &wev);
+
+  if (config.is_quic()) {
+    ev_io_start(worker->loop, &rev);
+
+    readfn = &Client::read_quic;
+    writefn = &Client::write_quic;
+  } else {
+    writefn = &Client::connected;
+  }
 
   return 0;
 }
@@ -550,6 +602,11 @@ void Client::fail() {
 void Client::disconnect() {
   record_client_end_time();
 
+  if (config.is_quic()) {
+    quic_close_connection();
+  }
+
+  ev_timer_stop(worker->loop, &quic.pkt_timer);
   ev_timer_stop(worker->loop, &conn_inactivity_watcher);
   ev_timer_stop(worker->loop, &conn_active_watcher);
   ev_timer_stop(worker->loop, &request_timeout_watcher);
@@ -711,6 +768,9 @@ void Client::report_app_info() {
 }
 
 void Client::terminate_session() {
+  if (config.is_quic()) {
+    quic.close_requested = true;
+  }
   session->terminate();
   // http1 session needs writecb to tear down session.
   signal_write();
@@ -899,7 +959,15 @@ int Client::connection_made() {
 
     if (next_proto) {
       auto proto = StringRef{next_proto, next_proto_len};
-      if (util::check_h2_is_selected(proto)) {
+      if (config.is_quic()) {
+        if (util::streq(StringRef{&NGTCP2_ALPN_H3[1]}, proto)) {
+          auto s = std::make_unique<Http3Session>(this);
+          if (s->init_conn() == -1) {
+            return -1;
+          }
+          session = std::move(s);
+        }
+      } else if (util::check_h2_is_selected(proto)) {
         session = std::make_unique<Http2Session>(this);
       } else if (util::streq(NGHTTP2_H1_1, proto)) {
         session = std::make_unique<Http1Session>(this);
@@ -1203,6 +1271,15 @@ int Client::write_tls() {
 
   ev_io_stop(worker->loop, &wev);
 
+  return 0;
+}
+
+int Client::write_udp(const sockaddr *addr, socklen_t addrlen,
+                      const uint8_t *data, size_t datalen) {
+  auto nwrite = sendto(fd, data, datalen, MSG_DONTWAIT, addr, addrlen);
+  if (nwrite < 0) {
+    std::cerr << "sendto: errno=" << errno << std::endl;
+  }
   return 0;
 }
 
@@ -1618,6 +1695,79 @@ int client_select_next_proto_cb(SSL *ssl, unsigned char **out,
 }
 } // namespace
 #endif // !OPENSSL_NO_NEXTPROTONEG
+
+namespace {
+int quic_transport_params_add_cb(SSL *ssl, unsigned int ext_type,
+                                 unsigned int content,
+                                 const unsigned char **out, size_t *outlen,
+                                 X509 *x, size_t chainidx, int *al,
+                                 void *add_arg) {
+  auto c = static_cast<Client *>(SSL_get_app_data(ssl));
+  auto conn = c->quic.conn;
+
+  ngtcp2_transport_params params;
+
+  ngtcp2_conn_get_local_transport_params(conn, &params);
+
+  constexpr size_t bufsize = 128;
+  auto buf = std::make_unique<uint8_t[]>(bufsize);
+
+  auto nwrite = ngtcp2_encode_transport_params(
+      buf.get(), bufsize, NGTCP2_TRANSPORT_PARAMS_TYPE_CLIENT_HELLO, &params);
+  if (nwrite < 0) {
+    std::cerr << "ngtcp2_encode_transport_params: " << ngtcp2_strerror(nwrite)
+              << std::endl;
+    *al = SSL_AD_INTERNAL_ERROR;
+    return -1;
+  }
+
+  *out = buf.release();
+  *outlen = static_cast<size_t>(nwrite);
+
+  return 1;
+}
+} // namespace
+
+namespace {
+void quic_transport_params_free_cb(SSL *ssl, unsigned int ext_type,
+                                   unsigned int context,
+                                   const unsigned char *out, void *add_arg) {
+  delete[] const_cast<unsigned char *>(out);
+}
+} // namespace
+
+namespace {
+int quic_transport_params_parse_cb(SSL *ssl, unsigned int ext_type,
+                                   unsigned int context,
+                                   const unsigned char *in, size_t inlen,
+                                   X509 *x, size_t chainidx, int *al,
+                                   void *parse_arg) {
+  auto c = static_cast<Client *>(SSL_get_app_data(ssl));
+  auto conn = c->quic.conn;
+
+  int rv;
+  ngtcp2_transport_params params;
+
+  rv = ngtcp2_decode_transport_params(
+      &params, NGTCP2_TRANSPORT_PARAMS_TYPE_ENCRYPTED_EXTENSIONS, in, inlen);
+  if (rv != 0) {
+    std::cerr << "ngtcp2_decode_transport_params: " << ngtcp2_strerror(rv)
+              << std::endl;
+    *al = SSL_AD_ILLEGAL_PARAMETER;
+    return -1;
+  }
+
+  rv = ngtcp2_conn_set_remote_transport_params(conn, &params);
+  if (rv != 0) {
+    std::cerr << "ngtcp2_conn_set_remote_transport_params: "
+              << ngtcp2_strerror(rv) << std::endl;
+    *al = SSL_AD_ILLEGAL_PARAMETER;
+    return -1;
+  }
+
+  return 1;
+}
+} // namespace
 
 namespace {
 constexpr char UNIX_PATH_PREFIX[] = "unix:";
@@ -2477,9 +2627,26 @@ int main(int argc, char **argv) {
   SSL_CTX_set_mode(ssl_ctx, SSL_MODE_AUTO_RETRY);
   SSL_CTX_set_mode(ssl_ctx, SSL_MODE_RELEASE_BUFFERS);
 
-  if (nghttp2::tls::ssl_ctx_set_proto_versions(
-          ssl_ctx, nghttp2::tls::NGHTTP2_TLS_MIN_VERSION,
-          nghttp2::tls::NGHTTP2_TLS_MAX_VERSION) != 0) {
+  if (config.is_quic()) {
+    SSL_CTX_set_min_proto_version(ssl_ctx, TLS1_3_VERSION);
+    SSL_CTX_set_max_proto_version(ssl_ctx, TLS1_3_VERSION);
+
+    SSL_CTX_clear_options(ssl_ctx, SSL_OP_ENABLE_MIDDLEBOX_COMPAT);
+    SSL_CTX_set_mode(ssl_ctx, SSL_MODE_QUIC_HACK);
+
+    if (SSL_CTX_add_custom_ext(
+            ssl_ctx, NGTCP2_TLSEXT_QUIC_TRANSPORT_PARAMETERS,
+            SSL_EXT_CLIENT_HELLO | SSL_EXT_TLS1_3_ENCRYPTED_EXTENSIONS,
+            quic_transport_params_add_cb, quic_transport_params_free_cb,
+            nullptr, quic_transport_params_parse_cb, nullptr) != 1) {
+      std::cerr << "SSL_CTX_add_custom_ext(NGTCP2_TLSEXT_QUIC_TRANSPORT_"
+                   "PARAMETERS) failed: "
+                << ERR_error_string(ERR_get_error(), nullptr) << std::endl;
+      exit(EXIT_FAILURE);
+    }
+  } else if (nghttp2::tls::ssl_ctx_set_proto_versions(
+                 ssl_ctx, nghttp2::tls::NGHTTP2_TLS_MIN_VERSION,
+                 nghttp2::tls::NGHTTP2_TLS_MAX_VERSION) != 0) {
     std::cerr << "Could not set TLS versions" << std::endl;
     exit(EXIT_FAILURE);
   }
@@ -2490,6 +2657,9 @@ int main(int argc, char **argv) {
               << std::endl;
     exit(EXIT_FAILURE);
   }
+
+  // TODO Use SSL_CTX_set_ciphersuites to set TLSv1.3 cipher list
+  // TODO Use SSL_CTX_set1_groups_list to set key share
 
 #ifndef OPENSSL_NO_NEXTPROTONEG
   SSL_CTX_set_next_proto_select_cb(ssl_ctx, client_select_next_proto_cb,
