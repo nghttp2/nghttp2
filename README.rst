@@ -16,6 +16,21 @@ An experimental high level C++ library is also available.
 We have Python bindings of this library, but we do not have full
 code coverage yet.
 
+h2load IETF QUIC
+----------------
+
+In order to build h2load with IETF QUIC, you have to build ngtcp2,
+nghttp3 and my patched OpenSSL.
+https://github.com/ngtcp2/ngtcp2#build-from-git describes how to build
+these three software.
+
+To run h2load against IETF QUIC server, specify h3-20 ALPN with
+``--npn-list`` option like so:
+
+.. code-block:: text
+
+    $ h2load --npn-list h3-20 https://localhost:4433
+
 Development Status
 ------------------
 
