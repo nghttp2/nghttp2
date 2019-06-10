@@ -21,8 +21,8 @@ h2load IETF QUIC
 
 In order to build h2load with IETF QUIC, you have to build ngtcp2,
 nghttp3 and my patched OpenSSL.
-https://github.com/ngtcp2/ngtcp2#build-from-git describes how to build
-these three software.
+https://github.com/ngtcp2/ngtcp2/tree/draft-20#build-from-git
+describes how to build these three software.
 
 To run h2load against IETF QUIC server, specify h3-20 ALPN with
 ``--npn-list`` option like so:
