@@ -64,8 +64,7 @@ before_script:
   - git submodule update --init
   - |
     if [ "$CI_BUILD" = "autotools" ]; then
-      autoreconf -i
-      ./configure --with-mruby PKG_CONFIG_PATH=$PKG_CONFIG_PATH
+      autoreconf -i && ./configure --with-mruby PKG_CONFIG_PATH=$PKG_CONFIG_PATH
     fi
   - |
     if [ "$CI_BUILD" = "cmake" ]; then
@@ -78,8 +77,10 @@ script:
     fi
   - |
     if [ "$CI_BUILD" = "cmake" ]; then
-      make
-      make check
+      make && make check
+    fi
+  - |
+    if [ "$CI_BUILD" = "cmake" ]; then
       # Integration tests for nghttpx; autotools build erases build
       # for packaging test.
       cd integration-tests
