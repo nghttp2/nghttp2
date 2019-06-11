@@ -3994,6 +3994,8 @@ int configure_downstream_group(Config *config, bool http2_proxy,
     addr.host = StringRef::from_lit(DEFAULT_DOWNSTREAM_HOST);
     addr.port = DEFAULT_DOWNSTREAM_PORT;
     addr.proto = Proto::HTTP1;
+    addr.weight = 1;
+    addr.group_weight = 1;
 
     DownstreamAddrGroupConfig g(StringRef::from_lit("/"));
     g.addrs.push_back(std::move(addr));
