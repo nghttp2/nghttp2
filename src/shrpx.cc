@@ -2898,6 +2898,8 @@ int process_options(Config *config,
     assert(include_set.empty());
   }
 
+  Log::set_severity_level(config->logging.severity);
+
   auto &loggingconf = config->logging;
 
   if (loggingconf.access.syslog || loggingconf.error.syslog) {
@@ -3202,7 +3204,6 @@ void reload_config(WorkerProcess *wp) {
   // configuration can be obtained from get_config().
 
   auto old_config = replace_config(std::move(new_config));
-  Log::set_severity_level(get_config()->logging.severity);
 
   auto pid = fork_worker_process(ipc_fd, iaddrs);
 
@@ -3210,7 +3211,6 @@ void reload_config(WorkerProcess *wp) {
     LOG(ERROR) << "Failed to process new configuration";
 
     new_config = replace_config(std::move(old_config));
-    Log::set_severity_level(get_config()->logging.severity);
     close_not_inherited_fd(new_config.get(), iaddrs);
 
     return;
