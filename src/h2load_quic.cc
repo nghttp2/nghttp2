@@ -569,16 +569,17 @@ int Client::quic_init(const sockaddr *local_addr, socklen_t local_addrlen,
   generate_cid(scid);
   generate_cid(dcid);
 
+  auto config = worker->config;
+
   ngtcp2_settings settings;
   ngtcp2_settings_default(&settings);
   settings.log_printf = debug_log_printf;
   settings.log_printf = nullptr;
   settings.initial_ts = timestamp(worker->loop);
-  settings.max_stream_data_bidi_local = 256_k;
-  settings.max_stream_data_bidi_remote = 256_k;
-  settings.max_stream_data_uni = 256_k;
-  settings.max_data = 1_m;
-  settings.max_streams_bidi = 1;
+  settings.max_stream_data_bidi_local = (1 << config->window_bits) - 1;
+  settings.max_stream_data_uni = (1 << config->window_bits) - 1;
+  settings.max_data = (1 << config->connection_window_bits) - 1;
+  settings.max_streams_bidi = 0;
   settings.max_streams_uni = 100;
   settings.idle_timeout = 30 * NGTCP2_SECONDS;
 
