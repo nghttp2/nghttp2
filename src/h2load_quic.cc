@@ -962,20 +962,46 @@ int Client::write_quic() {
     return -1;
   }
 
-  auto s = static_cast<Http3Session *>(session.get());
-
   std::array<nghttp3_vec, 16> vec;
   std::array<uint8_t, 1500> buf;
   ngtcp2_path_storage ps;
 
   ngtcp2_path_storage_zero(&ps);
 
+  if (!session) {
+    auto nwrite =
+        ngtcp2_conn_write_pkt(quic.conn, &ps.path, buf.data(), quic.max_pktlen,
+                              timestamp(worker->loop));
+    if (nwrite < 0) {
+      quic.last_error = quic::err_transport(nwrite);
+      return -1;
+    }
+
+    quic_restart_pkt_timer();
+
+    if (nwrite) {
+      write_udp(reinterpret_cast<sockaddr *>(ps.path.remote.addr),
+                ps.path.remote.addrlen, buf.data(), nwrite);
+
+      ev_io_start(worker->loop, &wev);
+      return 0;
+    }
+
+    // session might be initialized during ngtcp2_conn_write_pkt.
+    if (!session) {
+      ev_io_stop(worker->loop, &wev);
+      return 0;
+    }
+  }
+
+  auto s = static_cast<Http3Session *>(session.get());
+
   for (;;) {
     int64_t stream_id;
     int fin;
     ssize_t sveccnt = 0;
 
-    if (s && ngtcp2_conn_get_max_data_left(quic.conn)) {
+    if (ngtcp2_conn_get_max_data_left(quic.conn)) {
       sveccnt = s->write_stream(stream_id, fin, vec.data(), vec.size());
       if (sveccnt == -1) {
         return -1;
