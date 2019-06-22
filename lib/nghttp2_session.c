@@ -5404,8 +5404,8 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
     case NGHTTP2_IB_READ_CLIENT_MAGIC:
       readlen = nghttp2_min(inlen, iframe->payloadleft);
 
-      if (memcmp(NGHTTP2_CLIENT_MAGIC + NGHTTP2_CLIENT_MAGIC_LEN -
-                     iframe->payloadleft,
+      if (memcmp(&NGHTTP2_CLIENT_MAGIC[NGHTTP2_CLIENT_MAGIC_LEN -
+                                       iframe->payloadleft],
                  in, readlen) != 0) {
         return NGHTTP2_ERR_BAD_CLIENT_MAGIC;
       }

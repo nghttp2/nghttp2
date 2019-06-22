@@ -305,7 +305,7 @@ int ClientHandler::upstream_write() {
 
 int ClientHandler::upstream_http2_connhd_read() {
   auto nread = std::min(left_connhd_len_, rb_.rleft());
-  if (memcmp(NGHTTP2_CLIENT_MAGIC + NGHTTP2_CLIENT_MAGIC_LEN - left_connhd_len_,
+  if (memcmp(&NGHTTP2_CLIENT_MAGIC[NGHTTP2_CLIENT_MAGIC_LEN - left_connhd_len_],
              rb_.pos(), nread) != 0) {
     // There is no downgrade path here. Just drop the connection.
     if (LOG_ENABLED(INFO)) {
@@ -334,7 +334,7 @@ int ClientHandler::upstream_http2_connhd_read() {
 
 int ClientHandler::upstream_http1_connhd_read() {
   auto nread = std::min(left_connhd_len_, rb_.rleft());
-  if (memcmp(NGHTTP2_CLIENT_MAGIC + NGHTTP2_CLIENT_MAGIC_LEN - left_connhd_len_,
+  if (memcmp(&NGHTTP2_CLIENT_MAGIC[NGHTTP2_CLIENT_MAGIC_LEN - left_connhd_len_],
              rb_.pos(), nread) != 0) {
     if (LOG_ENABLED(INFO)) {
       CLOG(INFO, this) << "This is HTTP/1.1 connection, "
