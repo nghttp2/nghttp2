@@ -44,7 +44,8 @@ public:
   http2_impl();
   boost::system::error_code listen_and_serve(
       boost::system::error_code &ec, boost::asio::ssl::context *tls_context,
-      const std::string &address, const std::string &port, bool asynchronous);
+      const std::string &address, const std::string &port,
+      uint32_t max_concurrent_streams, bool asynchronous);
   void num_threads(size_t num_threads);
   void backlog(int backlog);
   void tls_handshake_timeout(const boost::posix_time::time_duration &t);

@@ -75,9 +75,10 @@ public:
       serve_mux &mux,
       const boost::posix_time::time_duration &tls_handshake_timeout,
       const boost::posix_time::time_duration &read_timeout,
-      SocketArgs &&... args)
+      uint32_t max_concurrent_streams, SocketArgs &&... args)
       : socket_(std::forward<SocketArgs>(args)...),
         mux_(mux),
+        max_concurrent_streams_(max_concurrent_streams),
         deadline_(GET_IO_SERVICE(socket_)),
         tls_handshake_timeout_(tls_handshake_timeout),
         read_timeout_(read_timeout),
@@ -89,7 +90,8 @@ public:
     boost::system::error_code ec;
 
     handler_ = std::make_shared<http2_handler>(
-        GET_IO_SERVICE(socket_), socket_.lowest_layer().remote_endpoint(ec),
+        GET_IO_SERVICE(socket_), max_concurrent_streams_,
+        socket_.lowest_layer().remote_endpoint(ec),
         [this]() { do_write(); }, mux_);
     if (handler_->start() != 0) {
       stop();
@@ -229,6 +231,7 @@ private:
 
   serve_mux &mux_;
 
+  uint32_t max_concurrent_streams_;
   std::shared_ptr<http2_handler> handler_;
 
   /// Buffer for incoming data.

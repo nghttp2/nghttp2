@@ -64,6 +64,7 @@ using ssl_socket = boost::asio::ssl::stream<tcp::socket>;
 class server : private boost::noncopyable {
 public:
   explicit server(std::size_t io_service_pool_size,
+                  uint32_t max_concurrent_streams,
                   const boost::posix_time::time_duration &tls_handshake_timeout,
                   const boost::posix_time::time_duration &read_timeout);
 
@@ -103,6 +104,8 @@ private:
   std::vector<tcp::acceptor> acceptors_;
 
   std::unique_ptr<boost::asio::ssl::context> ssl_ctx_;
+
+  uint32_t max_concurrent_streams_;
 
   boost::posix_time::time_duration tls_handshake_timeout_;
   boost::posix_time::time_duration read_timeout_;

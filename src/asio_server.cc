@@ -45,9 +45,11 @@ namespace asio_http2 {
 namespace server {
 
 server::server(std::size_t io_service_pool_size,
+               uint32_t max_concurrent_streams,
                const boost::posix_time::time_duration &tls_handshake_timeout,
                const boost::posix_time::time_duration &read_timeout)
     : io_service_pool_(io_service_pool_size),
+      max_concurrent_streams(max_concurrent_streams),
       tls_handshake_timeout_(tls_handshake_timeout),
       read_timeout_(read_timeout) {}
 
@@ -130,7 +132,7 @@ void server::start_accept(boost::asio::ssl::context &tls_context,
   }
 
   auto new_connection = std::make_shared<connection<ssl_socket>>(
-      mux, tls_handshake_timeout_, read_timeout_,
+      mux, tls_handshake_timeout_, read_timeout_, max_concurrent_streams_,
       io_service_pool_.get_io_service(), tls_context);
 
   acceptor.async_accept(
@@ -169,7 +171,7 @@ void server::start_accept(tcp::acceptor &acceptor, serve_mux &mux) {
   }
 
   auto new_connection = std::make_shared<connection<tcp::socket>>(
-      mux, tls_handshake_timeout_, read_timeout_,
+      mux, tls_handshake_timeout_, read_timeout_, max_concurrent_streams_,
       io_service_pool_.get_io_service());
 
   acceptor.async_accept(

@@ -54,6 +54,7 @@ using connection_write = std::function<void(void)>;
 class http2_handler : public std::enable_shared_from_this<http2_handler> {
 public:
   http2_handler(boost::asio::io_service &io_service,
+                uint32_t max_concurrent_streams,
                 boost::asio::ip::tcp::endpoint ep, connection_write writefun,
                 serve_mux &mux);
 
@@ -152,6 +153,7 @@ public:
 
 private:
   std::map<int32_t, std::shared_ptr<stream>> streams_;
+  uint32_t max_concurrent_streams_;
   connection_write writefun_;
   serve_mux &mux_;
   boost::asio::io_service &io_service_;

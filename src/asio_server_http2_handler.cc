@@ -235,9 +235,11 @@ int on_frame_not_send_callback(nghttp2_session *session,
 } // namespace
 
 http2_handler::http2_handler(boost::asio::io_service &io_service,
+                             uint32_t max_concurrent_streams,
                              boost::asio::ip::tcp::endpoint ep,
                              connection_write writefun, serve_mux &mux)
-    : writefun_(writefun),
+    : max_concurrent_streams_(max_concurrent_streams),
+      writefun_(writefun),
       mux_(mux),
       io_service_(io_service),
       remote_ep_(ep),
@@ -298,7 +300,7 @@ int http2_handler::start() {
     return -1;
   }
 
-  nghttp2_settings_entry ent{NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS, 100};
+  nghttp2_settings_entry ent{NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS, max_concurrent_streams_};
   nghttp2_submit_settings(session_, NGHTTP2_FLAG_NONE, &ent, 1);
 
   return 0;

@@ -45,9 +45,11 @@ http2_impl::http2_impl()
 
 boost::system::error_code http2_impl::listen_and_serve(
     boost::system::error_code &ec, boost::asio::ssl::context *tls_context,
-    const std::string &address, const std::string &port, bool asynchronous) {
+    const std::string &address, const std::string &port, 
+    uint32_t max_concurrent_streams, bool asynchronous) {
   server_.reset(
-      new server(num_threads_, tls_handshake_timeout_, read_timeout_));
+      new server(num_threads_, max_concurrent_streams, tls_handshake_timeout_,
+      read_timeout_));
   return server_->listen_and_serve(ec, tls_context, address, port, backlog_,
                                    mux_, asynchronous);
 }
