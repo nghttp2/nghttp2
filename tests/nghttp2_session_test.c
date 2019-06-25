@@ -10002,7 +10002,7 @@ void test_nghttp2_session_flooding(void) {
 
   buf = &bufs.head->buf;
 
-  for (i = 0; i < NGHTTP2_MAX_OBQ_FLOOD_ITEM; ++i) {
+  for (i = 0; i < NGHTTP2_DEFAULT_MAX_OBQ_FLOOD_ITEM; ++i) {
     CU_ASSERT(
         (ssize_t)nghttp2_buf_len(buf) ==
         nghttp2_session_mem_recv(session, buf->pos, nghttp2_buf_len(buf)));
@@ -10024,7 +10024,7 @@ void test_nghttp2_session_flooding(void) {
 
   buf = &bufs.head->buf;
 
-  for (i = 0; i < NGHTTP2_MAX_OBQ_FLOOD_ITEM; ++i) {
+  for (i = 0; i < NGHTTP2_DEFAULT_MAX_OBQ_FLOOD_ITEM; ++i) {
     CU_ASSERT(
         (ssize_t)nghttp2_buf_len(buf) ==
         nghttp2_session_mem_recv(session, buf->pos, nghttp2_buf_len(buf)));
