@@ -111,6 +111,7 @@ void writecb(struct ev_loop *loop, ev_io *w, int revents) {
 int ClientHandler::noop() { return 0; }
 
 int ClientHandler::read_clear() {
+  auto should_break = false;
   rb_.ensure_chunk();
   for (;;) {
     if (rb_.rleft() && on_read() != 0) {
@@ -123,7 +124,7 @@ int ClientHandler::read_clear() {
       return 0;
     }
 
-    if (!ev_is_active(&conn_.rev)) {
+    if (!ev_is_active(&conn_.rev) || should_break) {
       return 0;
     }
 
@@ -141,6 +142,7 @@ int ClientHandler::read_clear() {
     }
 
     rb_.write(nread);
+    should_break = true;
   }
 }
 
@@ -205,6 +207,8 @@ int ClientHandler::tls_handshake() {
 }
 
 int ClientHandler::read_tls() {
+  auto should_break = false;
+
   ERR_clear_error();
 
   rb_.ensure_chunk();
@@ -221,7 +225,7 @@ int ClientHandler::read_tls() {
       return 0;
     }
 
-    if (!ev_is_active(&conn_.rev)) {
+    if (!ev_is_active(&conn_.rev) || should_break) {
       return 0;
     }
 
@@ -239,6 +243,7 @@ int ClientHandler::read_tls() {
     }
 
     rb_.write(nread);
+    should_break = true;
   }
 }
 

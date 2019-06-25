@@ -650,6 +650,7 @@ int Http2Handler::read_clear() {
       }
       return -1;
     }
+    break;
   }
 
   return write_(*this);
@@ -775,6 +776,7 @@ int Http2Handler::read_tls() {
       }
       return -1;
     }
+    break;
   }
 
 fin:
