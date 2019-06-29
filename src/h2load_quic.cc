@@ -108,6 +108,21 @@ int Client::quic_handshake_completed() {
 }
 
 namespace {
+int recv_retry(ngtcp2_conn *conn, const ngtcp2_pkt_hd *hd,
+               const ngtcp2_pkt_retry *retry, void *user_data) {
+  // Re-generate handshake secrets here because connection ID might
+  // change.
+  auto c = static_cast<Client *>(user_data);
+
+  if (c->quic_setup_initial_crypto() != 0) {
+    return NGTCP2_ERR_CALLBACK_FAILURE;
+  }
+
+  return 0;
+}
+} // namespace
+
+namespace {
 ssize_t in_encrypt(ngtcp2_conn *conn, uint8_t *dest, size_t destlen,
                    const uint8_t *plaintext, size_t plaintextlen,
                    const uint8_t *key, size_t keylen, const uint8_t *nonce,
@@ -550,7 +565,7 @@ int Client::quic_init(const sockaddr *local_addr, socklen_t local_addrlen,
       nullptr, // stream_open
       h2load::stream_close,
       nullptr, // recv_stateless_reset
-      nullptr, // recv_retry
+      h2load::recv_retry,
       h2load::extend_max_local_streams_bidi,
       nullptr, // extend_max_local_streams_uni
       nullptr, // rand
