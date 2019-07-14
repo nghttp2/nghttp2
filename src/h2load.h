@@ -465,8 +465,8 @@ struct Client {
                    size_t keylen, const uint8_t *sample, size_t samplelen);
   int quic_recv_stream_data(int64_t stream_id, int fin, const uint8_t *data,
                             size_t datalen);
-  int quic_stream_close(int64_t stream_id, uint16_t app_error_code);
-  int quic_stream_reset(int64_t stream_id, uint16_t app_error_code);
+  int quic_stream_close(int64_t stream_id, uint64_t app_error_code);
+  int quic_stream_reset(int64_t stream_id, uint64_t app_error_code);
   int quic_extend_max_local_streams();
 
   int quic_tls_handshake(bool initial = false);

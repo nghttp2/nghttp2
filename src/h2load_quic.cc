@@ -305,7 +305,7 @@ int Client::quic_recv_stream_data(int64_t stream_id, int fin,
 }
 
 namespace {
-int stream_close(ngtcp2_conn *conn, int64_t stream_id, uint16_t app_error_code,
+int stream_close(ngtcp2_conn *conn, int64_t stream_id, uint64_t app_error_code,
                  void *user_data, void *stream_user_data) {
   auto c = static_cast<Client *>(user_data);
   if (c->quic_stream_close(stream_id, app_error_code) != 0) {
@@ -315,7 +315,7 @@ int stream_close(ngtcp2_conn *conn, int64_t stream_id, uint16_t app_error_code,
 }
 } // namespace
 
-int Client::quic_stream_close(int64_t stream_id, uint16_t app_error_code) {
+int Client::quic_stream_close(int64_t stream_id, uint64_t app_error_code) {
   auto s = static_cast<Http3Session *>(session.get());
   if (s->close_stream(stream_id, app_error_code) != 0) {
     return -1;
@@ -325,7 +325,7 @@ int Client::quic_stream_close(int64_t stream_id, uint16_t app_error_code) {
 
 namespace {
 int stream_reset(ngtcp2_conn *conn, int64_t stream_id, uint64_t final_size,
-                 uint16_t app_error_code, void *user_data,
+                 uint64_t app_error_code, void *user_data,
                  void *stream_user_data) {
   auto c = static_cast<Client *>(user_data);
   if (c->quic_stream_reset(stream_id, app_error_code) != 0) {
@@ -335,7 +335,7 @@ int stream_reset(ngtcp2_conn *conn, int64_t stream_id, uint64_t final_size,
 }
 } // namespace
 
-int Client::quic_stream_reset(int64_t stream_id, uint16_t app_error_code) {
+int Client::quic_stream_reset(int64_t stream_id, uint64_t app_error_code) {
   auto s = static_cast<Http3Session *>(session.get());
   if (s->reset_stream(stream_id) != 0) {
     return -1;
