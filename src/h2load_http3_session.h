@@ -45,15 +45,15 @@ public:
   virtual size_t max_concurrent_streams();
 
   int init_conn();
-  int stream_close(int64_t stream_id, uint16_t error_code);
+  int stream_close(int64_t stream_id, uint64_t app_error_code);
   void recv_data(int64_t stream_id, const uint8_t *data, size_t datalen);
   void consume(int64_t stream_id, size_t nconsumed);
   void begin_headers(int64_t stream_id);
   void recv_header(int64_t stream_id, const nghttp3_vec *name,
                    const nghttp3_vec *value);
-  int send_stop_sending(int64_t stream_id);
+  int send_stop_sending(int64_t stream_id, uint64_t app_error_code);
 
-  int close_stream(int64_t stream_id, uint16_t error_code);
+  int close_stream(int64_t stream_id, uint64_t app_error_code);
   int reset_stream(int64_t stream_id);
   int extend_max_local_streams();
   int64_t submit_request_internal();

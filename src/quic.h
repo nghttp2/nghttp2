@@ -88,11 +88,11 @@ enum class ErrorType {
 };
 
 struct Error {
-  Error(ErrorType type, uint16_t code) : type(type), code(code) {}
+  Error(ErrorType type, uint64_t code) : type(type), code(code) {}
   Error() : type(ErrorType::Transport), code(0) {}
 
   ErrorType type;
-  uint16_t code;
+  uint64_t code;
 };
 
 Error err_transport(int liberr);
