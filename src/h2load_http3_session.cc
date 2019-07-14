@@ -76,7 +76,7 @@ int64_t Http3Session::submit_request_internal() {
     return rv;
   }
 
-  rv = nghttp3_conn_submit_request(conn_, stream_id, nullptr,
+  rv = nghttp3_conn_submit_request(conn_, stream_id,
                                    reinterpret_cast<nghttp3_nv *>(nva.data()),
                                    nva.size(), nullptr, nullptr);
   if (rv != 0) {
@@ -105,18 +105,18 @@ size_t Http3Session::max_concurrent_streams() {
 }
 
 namespace {
-int stream_close(nghttp3_conn *conn, int64_t stream_id, uint16_t error_code,
+int stream_close(nghttp3_conn *conn, int64_t stream_id, uint64_t app_error_code,
                  void *user_data, void *stream_user_data) {
   auto s = static_cast<Http3Session *>(user_data);
-  if (s->stream_close(stream_id, error_code) != 0) {
+  if (s->stream_close(stream_id, app_error_code) != 0) {
     return NGHTTP3_ERR_CALLBACK_FAILURE;
   }
   return 0;
 }
 } // namespace
 
-int Http3Session::stream_close(int64_t stream_id, uint16_t error_code) {
-  client_->on_stream_close(stream_id, error_code == NGHTTP3_HTTP_NO_ERROR);
+int Http3Session::stream_close(int64_t stream_id, uint64_t app_error_code) {
+  client_->on_stream_close(stream_id, app_error_code == NGHTTP3_HTTP_NO_ERROR);
   return 0;
 }
 
@@ -186,19 +186,21 @@ void Http3Session::recv_header(int64_t stream_id, const nghttp3_vec *name,
 }
 
 namespace {
-int send_stop_sending(nghttp3_conn *conn, int64_t stream_id, void *user_data,
+int send_stop_sending(nghttp3_conn *conn, int64_t stream_id,
+                      uint64_t app_error_code, void *user_data,
                       void *stream_user_data) {
   auto s = static_cast<Http3Session *>(user_data);
-  if (s->send_stop_sending(stream_id) != 0) {
+  if (s->send_stop_sending(stream_id, app_error_code) != 0) {
     return NGHTTP3_ERR_CALLBACK_FAILURE;
   }
   return 0;
 }
 } // namespace
 
-int Http3Session::send_stop_sending(int64_t stream_id) {
+int Http3Session::send_stop_sending(int64_t stream_id,
+                                    uint64_t app_error_code) {
   auto rv = ngtcp2_conn_shutdown_stream_read(client_->quic.conn, stream_id,
-                                             NGHTTP3_HTTP_PUSH_REFUSED);
+                                             app_error_code);
   if (rv != 0) {
     std::cerr << "ngtcp2_conn_shutdown_stream_read: " << ngtcp2_strerror(rv)
               << std::endl;
@@ -207,8 +209,8 @@ int Http3Session::send_stop_sending(int64_t stream_id) {
   return 0;
 }
 
-int Http3Session::close_stream(int64_t stream_id, uint16_t error_code) {
-  auto rv = nghttp3_conn_close_stream(conn_, stream_id, error_code);
+int Http3Session::close_stream(int64_t stream_id, uint64_t app_error_code) {
+  auto rv = nghttp3_conn_close_stream(conn_, stream_id, app_error_code);
   if (rv != 0) {
     return -1;
   }
