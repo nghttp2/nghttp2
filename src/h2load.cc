@@ -77,6 +77,7 @@ bool recorded(const std::chrono::steady_clock::time_point &t) {
 
 Config::Config()
     : ciphers(tls::DEFAULT_CIPHER_LIST),
+      groups("P-256:X25519:P-384:P-521"),
       data_length(-1),
       addrs(nullptr),
       nreqs(1),
@@ -2138,6 +2139,10 @@ Options:
   --connect-to=<HOST>[:<PORT>]
               Host and port to connect  instead of using the authority
               in <URI>.
+  --groups=<GROUPS>
+              Specify the supported groups.
+              Default: )"
+      << config.groups << R"(
   -v, --verbose
               Output debug information.
   --version   Display version information and exit.
@@ -2197,6 +2202,7 @@ int main(int argc, char **argv) {
         {"warm-up-time", required_argument, &flag, 9},
         {"log-file", required_argument, &flag, 10},
         {"connect-to", required_argument, &flag, 11},
+        {"groups", required_argument, &flag, 12},
         {nullptr, 0, nullptr, 0}};
     int option_index = 0;
     auto c = getopt_long(argc, argv,
@@ -2437,6 +2443,10 @@ int main(int argc, char **argv) {
         config.connect_to_port = port;
         break;
       }
+      case 12:
+        // --groups
+        config.groups = optarg;
+        break;
       }
       break;
     default:
@@ -2659,7 +2669,11 @@ int main(int argc, char **argv) {
   }
 
   // TODO Use SSL_CTX_set_ciphersuites to set TLSv1.3 cipher list
-  // TODO Use SSL_CTX_set1_groups_list to set key share
+
+  if (SSL_CTX_set1_groups_list(ssl_ctx, config.groups.c_str()) != 1) {
+    std::cerr << "SSL_CTX_set1_groups_list failed" << std::endl;
+    exit(EXIT_FAILURE);
+  }
 
 #ifndef OPENSSL_NO_NEXTPROTONEG
   SSL_CTX_set_next_proto_select_cb(ssl_ctx, client_select_next_proto_cb,
