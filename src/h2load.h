@@ -74,6 +74,8 @@ struct Config {
   std::string host;
   std::string ifile;
   std::string ciphers;
+  // supported groups (or curves).
+  std::string groups;
   // length of upload data
   int64_t data_length;
   addrinfo *addrs;
