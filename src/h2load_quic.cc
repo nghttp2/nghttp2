@@ -386,6 +386,8 @@ void debug_log_printf(void *user_data, const char *fmt, ...) {
   va_start(ap, fmt);
   vfprintf(stderr, fmt, ap);
   va_end(ap);
+
+  fprintf(stderr, "\n");
 }
 } // namespace
 
@@ -588,8 +590,9 @@ int Client::quic_init(const sockaddr *local_addr, socklen_t local_addrlen,
 
   ngtcp2_settings settings;
   ngtcp2_settings_default(&settings);
-  settings.log_printf = debug_log_printf;
-  settings.log_printf = nullptr;
+  if (config->verbose) {
+    settings.log_printf = debug_log_printf;
+  }
   settings.initial_ts = timestamp(worker->loop);
   settings.max_stream_data_bidi_local = (1 << config->window_bits) - 1;
   settings.max_stream_data_uni = (1 << config->window_bits) - 1;
