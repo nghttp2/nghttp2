@@ -911,7 +911,6 @@ void quic_pkt_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
 int Client::quic_pkt_timeout() {
   int rv;
   auto now = timestamp(worker->loop);
-  auto should_write = false;
 
   if (ngtcp2_conn_loss_detection_expiry(quic.conn) <= now) {
     rv = ngtcp2_conn_on_loss_detection_timer(quic.conn, now);
@@ -919,16 +918,12 @@ int Client::quic_pkt_timeout() {
       quic.last_error = quic::err_transport(NGTCP2_ERR_INTERNAL);
       return -1;
     }
-    should_write = true;
   }
   if (ngtcp2_conn_ack_delay_expiry(quic.conn) <= now) {
     ngtcp2_conn_cancel_expired_ack_delay_timer(quic.conn, now);
-    should_write = true;
   }
-  if (should_write) {
-    return write_quic();
-  }
-  return 0;
+
+  return write_quic();
 }
 
 void Client::quic_restart_pkt_timer() {
