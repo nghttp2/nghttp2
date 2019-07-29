@@ -126,6 +126,12 @@ if(ENABLE_APP)
     shrpx.cc
   )
 
+  if(HAVE_SYSTEMD)
+    target_link_libraries(nghttpx_static ${SYSTEMD_LIBRARIES})
+    target_compile_definitions(nghttpx_static PUBLIC HAVE_LIBSYSTEMD)
+    target_include_directories(nghttpx_static PUBLIC ${SYSTEMD_INCLUDE_DIRS})
+  endif()
+
   if(HAVE_MRUBY)
     target_link_libraries(nghttpx_static mruby-lib)
   endif()

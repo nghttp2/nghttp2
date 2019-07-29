@@ -66,6 +66,7 @@ if(OPENSSL_FOUND AND LIBEV_FOUND AND ZLIB_FOUND)
 else()
   set(ENABLE_APP_DEFAULT OFF)
 endif()
+find_package(Systemd 209)
 find_package(Jansson  2.5)
 set(ENABLE_HPACK_TOOLS_DEFAULT ${JANSSON_FOUND})
 # 2.0.8 is required because we use evconnlistener_set_error_cb()
@@ -193,6 +194,7 @@ endif()
 # libev (for src)
 set(HAVE_LIBEV      ${LIBEV_FOUND})
 set(HAVE_ZLIB       ${ZLIB_FOUND})
+set(HAVE_SYSTEMD    ${SYSTEMD_FOUND})
 set(HAVE_LIBEVENT_OPENSSL ${LIBEVENT_FOUND})
 if(LIBEVENT_FOUND)
   # Must both link the core and openssl libraries.
@@ -497,6 +499,7 @@ message(STATUS "summary of build options:
       Jansson:        ${HAVE_JANSSON} (LIBS='${JANSSON_LIBRARIES}')
       Jemalloc:       ${HAVE_JEMALLOC} (LIBS='${JEMALLOC_LIBRARIES}')
       Zlib:           ${HAVE_ZLIB} (LIBS='${ZLIB_LIBRARIES}')
+      Systemd:        ${HAVE_SYSTEMD} (LIBS='${SYSTEMD_LIBRARIES}')
       Boost::System:  ${Boost_SYSTEM_LIBRARY}
       Boost::Thread:  ${Boost_THREAD_LIBRARY}
     Third-party:
