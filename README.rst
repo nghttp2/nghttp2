@@ -31,6 +31,20 @@ To run h2load against HTTP/3 server, specify h3-22 ALPN with
 
     $ h2load --npn-list h3-22 https://localhost:4433
 
+You can use Dockerfile to skip the tedious build steps to manually
+pull and build dependencies.  In order to build Docker image, do this:
+
+.. code-block:: text
+
+    $ cd docker
+    $ docker build -t nghttp2-quic .
+
+Run h2load:
+
+.. code-block:: text
+
+    $ docker run --rm -it --network=host nghttp2-quic /usr/local/bin/h2load --npn-list h3-22 https://localhost:4433
+
 Development Status
 ------------------
 
