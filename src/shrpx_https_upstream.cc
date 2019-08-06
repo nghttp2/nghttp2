@@ -505,9 +505,7 @@ int htp_hdrs_completecb(llhttp_t *htp) {
     // and let them decide whether responds with 100 Continue or not.
     // For alternative mode, we have no backend, so just send 100
     // Continue here to make the client happy.
-    auto expect = req.fs.header(http2::HD_EXPECT);
-    if (expect &&
-        util::strieq(expect->value, StringRef::from_lit("100-continue"))) {
+    if (downstream->get_expect_100_continue()) {
       auto output = downstream->get_response_buf();
       constexpr auto res = StringRef::from_lit("HTTP/1.1 100 Continue\r\n\r\n");
       output->append(res);

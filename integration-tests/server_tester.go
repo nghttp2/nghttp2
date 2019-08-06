@@ -662,7 +662,9 @@ func cloneHeader(h http.Header) http.Header {
 	return h2
 }
 
-func noopHandler(w http.ResponseWriter, r *http.Request) {}
+func noopHandler(w http.ResponseWriter, r *http.Request) {
+	ioutil.ReadAll(r.Body)
+}
 
 type APIResponse struct {
 	Status string                 `json:"status,omitempty"`
