@@ -625,6 +625,35 @@ func TestH1H1HTTPSRedirectPort(t *testing.T) {
 	}
 }
 
+// TestH1H1POSTRequests tests that server can handle 2 requests with
+// request body.
+func TestH1H1POSTRequests(t *testing.T) {
+	st := newServerTester(nil, t, noopHandler)
+	defer st.Close()
+
+	res, err := st.http1(requestParam{
+		name: "TestH1H1POSTRequestsNo1",
+		body: make([]byte, 1),
+	})
+	if err != nil {
+		t.Fatalf("Error st.http1() = %v", err)
+	}
+	if got, want := res.status, 200; got != want {
+		t.Errorf("res.status: %v; want %v", got, want)
+	}
+
+	res, err = st.http1(requestParam{
+		name: "TestH1H1POSTRequestsNo2",
+		body: make([]byte, 65536),
+	})
+	if err != nil {
+		t.Fatalf("Error st.http1() = %v", err)
+	}
+	if got, want := res.status, 200; got != want {
+		t.Errorf("res.status: %v; want %v", got, want)
+	}
+}
+
 // // TestH1H2ConnectFailure tests that server handles the situation that
 // // connection attempt to HTTP/2 backend failed.
 // func TestH1H2ConnectFailure(t *testing.T) {
