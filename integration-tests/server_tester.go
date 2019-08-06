@@ -627,15 +627,15 @@ func streamEnded(mainSr *serverResponse, streams map[uint32]*serverResponse, sr 
 }
 
 type serverResponse struct {
-	status            int                  // HTTP status code
-	header            http.Header          // response header fields
-	body              []byte               // response body
-	streamID          uint32               // stream ID in HTTP/2
-	errCode           http2.ErrCode        // error code received in HTTP/2 RST_STREAM or GOAWAY
-	connErr           bool                 // true if HTTP/2 connection error
-	connClose         bool                 // Connection: close is included in response header in HTTP/1 test
-	reqHeader         http.Header          // http request header, currently only sotres pushed request header
-	pushResponse      []*serverResponse    // pushed response
+	status       int               // HTTP status code
+	header       http.Header       // response header fields
+	body         []byte            // response body
+	streamID     uint32            // stream ID in HTTP/2
+	errCode      http2.ErrCode     // error code received in HTTP/2 RST_STREAM or GOAWAY
+	connErr      bool              // true if HTTP/2 connection error
+	connClose    bool              // Connection: close is included in response header in HTTP/1 test
+	reqHeader    http.Header       // http request header, currently only sotres pushed request header
+	pushResponse []*serverResponse // pushed response
 }
 
 type ByStreamID []*serverResponse
