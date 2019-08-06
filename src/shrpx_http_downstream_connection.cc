@@ -694,7 +694,8 @@ int HttpDownstreamConnection::push_request_headers() {
   // enables us to send headers and data in one writev system call.
   if (req.method == HTTP_CONNECT ||
       downstream_->get_blocked_request_buf()->rleft() ||
-      (!req.http2_expect_body && req.fs.content_length == 0)) {
+      (!req.http2_expect_body && req.fs.content_length == 0) ||
+      downstream_->get_expect_100_continue()) {
     signal_write();
   }
 
@@ -1176,6 +1177,19 @@ int HttpDownstreamConnection::write_first() {
 
   auto buf = downstream_->get_blocked_request_buf();
   buf->reset();
+
+  // upstream->resume_read() might be called in
+  // write_tls()/write_clear(), but before blocked_request_buf_ is
+  // reset.  So upstream read might still be blocked.  Let's do it
+  // again here.
+  auto input = downstream_->get_request_buf();
+  if (input->rleft() == 0) {
+    auto upstream = downstream_->get_upstream();
+    auto &req = downstream_->request();
+
+    upstream->resume_read(SHRPX_NO_BUFFER, downstream_,
+                          req.unconsumed_body_length);
+  }
 
   return 0;
 }

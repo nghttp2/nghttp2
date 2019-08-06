@@ -511,6 +511,8 @@ public:
 
   void set_ws_key(const StringRef &key);
 
+  bool get_expect_100_continue() const;
+
   enum {
     EVENT_ERROR = 0x1,
     EVENT_TIMEOUT = 0x2,
@@ -602,6 +604,8 @@ private:
   // true if eof is received from client before sending header fields
   // to backend.
   bool blocked_request_data_eof_;
+  // true if request contains "expect: 100-continue" header field.
+  bool expect_100_continue_;
 };
 
 } // namespace shrpx
