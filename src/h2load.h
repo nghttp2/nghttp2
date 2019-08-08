@@ -74,6 +74,7 @@ struct Config {
   std::string host;
   std::string ifile;
   std::string ciphers;
+  std::string tls13_ciphers;
   // supported groups (or curves).
   std::string groups;
   // length of upload data
