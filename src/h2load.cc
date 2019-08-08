@@ -77,6 +77,8 @@ bool recorded(const std::chrono::steady_clock::time_point &t) {
 
 Config::Config()
     : ciphers(tls::DEFAULT_CIPHER_LIST),
+      tls13_ciphers("TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_"
+                    "CHACHA20_POLY1305_SHA256:TLS_AES_128_CCM_SHA256"),
       groups("P-256:X25519:P-384:P-521"),
       data_length(-1),
       addrs(nullptr),
@@ -2020,10 +2022,15 @@ Options:
   -H, --header=<HEADER>
               Add/Override a header to the requests.
   --ciphers=<SUITE>
-              Set allowed  cipher list.  The  format of the  string is
-              described in OpenSSL ciphers(1).
+              Set  allowed cipher  list  for TLSv1.2  or ealier.   The
+              format of the string is described in OpenSSL ciphers(1).
               Default: )"
       << config.ciphers << R"(
+  --tls13-ciphers=<SUITE>
+              Set allowed cipher list for  TLSv1.3.  The format of the
+              string is described in OpenSSL ciphers(1).
+              Default: )"
+      << config.tls13_ciphers << R"(
   -p, --no-tls-proto=<PROTOID>
               Specify ALPN identifier of the  protocol to be used when
               accessing http URI without SSL/TLS.
@@ -2203,6 +2210,7 @@ int main(int argc, char **argv) {
         {"log-file", required_argument, &flag, 10},
         {"connect-to", required_argument, &flag, 11},
         {"groups", required_argument, &flag, 12},
+        {"tls13-ciphers", required_argument, &flag, 13},
         {nullptr, 0, nullptr, 0}};
     int option_index = 0;
     auto c = getopt_long(argc, argv,
@@ -2447,6 +2455,10 @@ int main(int argc, char **argv) {
         // --groups
         config.groups = optarg;
         break;
+      case 13:
+        // --tls13-ciphers
+        config.tls13_ciphers = optarg;
+        break;
       }
       break;
     default:
@@ -2668,7 +2680,12 @@ int main(int argc, char **argv) {
     exit(EXIT_FAILURE);
   }
 
-  // TODO Use SSL_CTX_set_ciphersuites to set TLSv1.3 cipher list
+  if (SSL_CTX_set_ciphersuites(ssl_ctx, config.tls13_ciphers.c_str()) == 0) {
+    std::cerr << "SSL_CTX_set_ciphersuites with " << config.tls13_ciphers
+              << " failed: " << ERR_error_string(ERR_get_error(), nullptr)
+              << std::endl;
+    exit(EXIT_FAILURE);
+  }
 
   if (SSL_CTX_set1_groups_list(ssl_ctx, config.groups.c_str()) != 1) {
     std::cerr << "SSL_CTX_set1_groups_list failed" << std::endl;
