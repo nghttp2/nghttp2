@@ -45,6 +45,8 @@ const EVP_CIPHER *aead(SSL *ssl) {
     return EVP_aes_256_gcm();
   case 0x03001303u: // TLS_CHACHA20_POLY1305_SHA256
     return EVP_chacha20_poly1305();
+  case 0x03001304u: // TLS_AES_128_CCM_SHA256
+    return EVP_aes_128_ccm();
   default:
     assert(0);
   }
@@ -53,6 +55,7 @@ const EVP_CIPHER *aead(SSL *ssl) {
 const EVP_CIPHER *hp(SSL *ssl) {
   switch (SSL_CIPHER_get_id(SSL_get_current_cipher(ssl))) {
   case 0x03001301u: // TLS_AES_128_GCM_SHA256
+  case 0x03001304u: // TLS_AES_128_CCM_SHA256
     return EVP_aes_128_ctr();
   case 0x03001302u: // TLS_AES_256_GCM_SHA384
     return EVP_aes_256_ctr();
@@ -67,6 +70,7 @@ const EVP_MD *prf(SSL *ssl) {
   switch (SSL_CIPHER_get_id(SSL_get_current_cipher(ssl))) {
   case 0x03001301u: // TLS_AES_128_GCM_SHA256
   case 0x03001303u: // TLS_CHACHA20_POLY1305_SHA256
+  case 0x03001304u: // TLS_AES_128_CCM_SHA256
     return EVP_sha256();
   case 0x03001302u: // TLS_AES_256_GCM_SHA384
     return EVP_sha384();
@@ -94,6 +98,9 @@ size_t aead_tag_length(const EVP_CIPHER *aead) {
   }
   if (aead == EVP_chacha20_poly1305()) {
     return EVP_CHACHAPOLY_TLS_TAG_LEN;
+  }
+  if (aead == EVP_aes_128_ccm()) {
+    return EVP_CCM_TLS_TAG_LEN;
   }
   assert(0);
 }
@@ -269,12 +276,22 @@ ssize_t encrypt(uint8_t *dest, size_t destlen, const uint8_t *plaintext,
     return -1;
   }
 
+  if (aead == EVP_aes_128_ccm() &&
+      EVP_CIPHER_CTX_ctrl(actx, EVP_CTRL_AEAD_SET_TAG, taglen, nullptr) != 1) {
+    return -1;
+  }
+
   if (EVP_EncryptInit_ex(actx, nullptr, nullptr, key, nonce) != 1) {
     return -1;
   }
 
   size_t outlen = 0;
   int len;
+
+  if (aead == EVP_aes_128_ccm() &&
+      EVP_EncryptUpdate(actx, nullptr, &len, nullptr, plaintextlen) != 1) {
+    return -1;
+  }
 
   if (EVP_EncryptUpdate(actx, nullptr, &len, ad, adlen) != 1) {
     return -1;
@@ -333,12 +350,23 @@ ssize_t decrypt(uint8_t *dest, size_t destlen, const uint8_t *ciphertext,
     return -1;
   }
 
+  if (aead == EVP_aes_128_ccm() &&
+      EVP_CIPHER_CTX_ctrl(actx, EVP_CTRL_AEAD_SET_TAG, taglen,
+                          const_cast<uint8_t *>(tag)) != 1) {
+    return -1;
+  }
+
   if (EVP_DecryptInit_ex(actx, nullptr, nullptr, key, nonce) != 1) {
     return -1;
   }
 
   size_t outlen;
   int len;
+
+  if (aead == EVP_aes_128_ccm() &&
+      EVP_DecryptUpdate(actx, nullptr, &len, nullptr, ciphertextlen) != 1) {
+    return -1;
+  }
 
   if (EVP_DecryptUpdate(actx, nullptr, &len, ad, adlen) != 1) {
     return -1;
@@ -349,6 +377,10 @@ ssize_t decrypt(uint8_t *dest, size_t destlen, const uint8_t *ciphertext,
   }
 
   outlen = len;
+
+  if (aead == EVP_aes_128_ccm()) {
+    return outlen;
+  }
 
   if (EVP_CIPHER_CTX_ctrl(actx, EVP_CTRL_AEAD_SET_TAG, taglen,
                           const_cast<uint8_t *>(tag)) != 1) {
