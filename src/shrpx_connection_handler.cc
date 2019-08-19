@@ -159,9 +159,7 @@ ConnectionHandler::~ConnectionHandler() {
   for (auto ssl_ctx : all_ssl_ctx_) {
     auto tls_ctx_data =
         static_cast<tls::TLSContextData *>(SSL_CTX_get_app_data(ssl_ctx));
-    if (tls_ctx_data) {
-      delete tls_ctx_data;
-    }
+    delete tls_ctx_data;
     SSL_CTX_free(ssl_ctx);
   }
 
