@@ -27,59 +27,9 @@
 
 #include "nghttp2_config.h"
 
-#include <openssl/ssl.h>
+#include "stdint.h"
 
 namespace quic {
-
-const EVP_CIPHER *aead(SSL *ssl);
-const EVP_CIPHER *hp(SSL *ssl);
-const EVP_MD *prf(SSL *ssl);
-size_t aead_max_overhead(const EVP_CIPHER *aead);
-
-int hkdf_extract(uint8_t *dest, size_t destlen, const uint8_t *secret,
-                 size_t secretlen, const uint8_t *salt, size_t saltlen,
-                 const EVP_MD *prf);
-
-int hkdf_expand(uint8_t *dest, size_t destlen, const uint8_t *secret,
-                size_t secretlen, const uint8_t *info, size_t infolen,
-                const EVP_MD *prf);
-
-int hkdf_expand_label(uint8_t *dest, size_t destlen, const uint8_t *secret,
-                      size_t secretlen, const uint8_t *label, size_t labellen,
-                      const EVP_MD *prf);
-
-int derive_initial_secret(uint8_t *dest, size_t destlen, const uint8_t *secret,
-                          size_t secretlen, const uint8_t *salt,
-                          size_t saltlen);
-
-int derive_client_initial_secret(uint8_t *dest, size_t destlen,
-                                 const uint8_t *secret, size_t secretlen);
-
-int derive_server_initial_secret(uint8_t *dest, size_t destlen,
-                                 const uint8_t *secret, size_t secretlen);
-
-int derive_packet_protection_key(uint8_t *key, size_t &keylen, uint8_t *iv,
-                                 size_t &ivlen, const uint8_t *secret,
-                                 size_t secretlen, const EVP_CIPHER *aead,
-                                 const EVP_MD *prf);
-
-int derive_header_protection_key(uint8_t *key, size_t &keylen,
-                                 const uint8_t *secret, size_t secretlen,
-                                 const EVP_CIPHER *aead, const EVP_MD *prf);
-
-ssize_t encrypt(uint8_t *dest, size_t destlen, const uint8_t *plaintext,
-                size_t plaintextlen, const uint8_t *key, size_t keylen,
-                const uint8_t *nonce, size_t noncelen, const uint8_t *ad,
-                size_t adlen, const EVP_CIPHER *aead);
-
-ssize_t decrypt(uint8_t *dest, size_t destlen, const uint8_t *ciphertext,
-                size_t ciphertextlen, const uint8_t *key, size_t keylen,
-                const uint8_t *nonce, size_t noncelen, const uint8_t *ad,
-                size_t adlen, const EVP_CIPHER *aead);
-
-ssize_t hp_mask(uint8_t *dest, size_t destlen, const uint8_t *key,
-                size_t keylen, const uint8_t *sample, size_t samplelen,
-                const EVP_CIPHER *cipher);
 
 enum class ErrorType {
   Transport,
