@@ -83,9 +83,6 @@ int64_t Http3Session::submit_request_internal() {
     return rv;
   }
 
-  rv = nghttp3_conn_end_stream(conn_, stream_id);
-  assert(0 == rv);
-
   client_->on_request(stream_id);
   auto req_stat = client_->get_req_stat(stream_id);
   assert(req_stat);

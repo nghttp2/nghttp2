@@ -37,6 +37,8 @@ namespace {
 auto randgen = util::make_mt19937();
 } // namespace
 
+ngtcp2_crypto_ctx in_crypto_ctx;
+
 namespace {
 int client_initial(ngtcp2_conn *conn, void *user_data) {
   auto c = static_cast<Client *>(user_data);
@@ -123,156 +125,133 @@ int recv_retry(ngtcp2_conn *conn, const ngtcp2_pkt_hd *hd,
 } // namespace
 
 namespace {
-ssize_t in_encrypt(ngtcp2_conn *conn, uint8_t *dest, size_t destlen,
-                   const uint8_t *plaintext, size_t plaintextlen,
-                   const uint8_t *key, size_t keylen, const uint8_t *nonce,
-                   size_t noncelen, const uint8_t *ad, size_t adlen,
-                   void *user_data) {
+int in_encrypt(ngtcp2_conn *conn, uint8_t *dest, const uint8_t *plaintext,
+               size_t plaintextlen, const uint8_t *key, const uint8_t *nonce,
+               size_t noncelen, const uint8_t *ad, size_t adlen,
+               void *user_data) {
   auto c = static_cast<Client *>(user_data);
 
-  auto nwrite = c->quic_in_encrypt(dest, destlen, plaintext, plaintextlen, key,
-                                   keylen, nonce, noncelen, ad, adlen);
-  if (nwrite < 0) {
+  if (c->quic_in_encrypt(dest, plaintext, plaintextlen, key, nonce, noncelen,
+                         ad, adlen) != 0) {
     return NGTCP2_ERR_CALLBACK_FAILURE;
   }
 
-  return nwrite;
+  return 0;
 }
 } // namespace
 
-int Client::quic_in_encrypt(uint8_t *dest, size_t destlen,
-                            const uint8_t *plaintext, size_t plaintextlen,
-                            const uint8_t *key, size_t keylen,
+int Client::quic_in_encrypt(uint8_t *dest, const uint8_t *plaintext,
+                            size_t plaintextlen, const uint8_t *key,
                             const uint8_t *nonce, size_t noncelen,
                             const uint8_t *ad, size_t adlen) {
-  return quic::encrypt(dest, destlen, plaintext, plaintextlen, key, keylen,
-                       nonce, noncelen, ad, adlen, EVP_aes_128_gcm());
+  return ngtcp2_crypto_encrypt(dest, &in_crypto_ctx.aead, plaintext,
+                               plaintextlen, key, nonce, noncelen, ad, adlen);
 }
 
 namespace {
-ssize_t in_decrypt(ngtcp2_conn *conn, uint8_t *dest, size_t destlen,
-                   const uint8_t *ciphertext, size_t ciphertextlen,
-                   const uint8_t *key, size_t keylen, const uint8_t *nonce,
-                   size_t noncelen, const uint8_t *ad, size_t adlen,
-                   void *user_data) {
+int in_decrypt(ngtcp2_conn *conn, uint8_t *dest, const uint8_t *ciphertext,
+               size_t ciphertextlen, const uint8_t *key, const uint8_t *nonce,
+               size_t noncelen, const uint8_t *ad, size_t adlen,
+               void *user_data) {
   auto c = static_cast<Client *>(user_data);
 
-  auto nwrite = c->quic_in_decrypt(dest, destlen, ciphertext, ciphertextlen,
-                                   key, keylen, nonce, noncelen, ad, adlen);
-  if (nwrite < 0) {
+  if (c->quic_in_decrypt(dest, ciphertext, ciphertextlen, key, nonce, noncelen,
+                         ad, adlen) != 0) {
     return NGTCP2_ERR_TLS_DECRYPT;
   }
 
-  return nwrite;
+  return 0;
 }
 } // namespace
 
-int Client::quic_in_decrypt(uint8_t *dest, size_t destlen,
-                            const uint8_t *ciphertext, size_t ciphertextlen,
-                            const uint8_t *key, size_t keylen,
+int Client::quic_in_decrypt(uint8_t *dest, const uint8_t *ciphertext,
+                            size_t ciphertextlen, const uint8_t *key,
                             const uint8_t *nonce, size_t noncelen,
                             const uint8_t *ad, size_t adlen) {
-  return quic::decrypt(dest, destlen, ciphertext, ciphertextlen, key, keylen,
-                       nonce, noncelen, ad, adlen, EVP_aes_128_gcm());
+  return ngtcp2_crypto_decrypt(dest, &in_crypto_ctx.aead, ciphertext,
+                               ciphertextlen, key, nonce, noncelen, ad, adlen);
 }
 
 namespace {
-ssize_t encrypt(ngtcp2_conn *conn, uint8_t *dest, size_t destlen,
-                const uint8_t *plaintext, size_t plaintextlen,
-                const uint8_t *key, size_t keylen, const uint8_t *nonce,
-                size_t noncelen, const uint8_t *ad, size_t adlen,
-                void *user_data) {
+int encrypt(ngtcp2_conn *conn, uint8_t *dest, const uint8_t *plaintext,
+            size_t plaintextlen, const uint8_t *key, const uint8_t *nonce,
+            size_t noncelen, const uint8_t *ad, size_t adlen, void *user_data) {
   auto c = static_cast<Client *>(user_data);
 
-  auto nwrite = c->quic_encrypt(dest, destlen, plaintext, plaintextlen, key,
-                                keylen, nonce, noncelen, ad, adlen);
-  if (nwrite < 0) {
+  if (c->quic_encrypt(dest, plaintext, plaintextlen, key, nonce, noncelen, ad,
+                      adlen) != 0) {
     return NGTCP2_ERR_CALLBACK_FAILURE;
   }
 
-  return nwrite;
+  return 0;
 }
 } // namespace
 
-int Client::quic_encrypt(uint8_t *dest, size_t destlen,
-                         const uint8_t *plaintext, size_t plaintextlen,
-                         const uint8_t *key, size_t keylen,
+int Client::quic_encrypt(uint8_t *dest, const uint8_t *plaintext,
+                         size_t plaintextlen, const uint8_t *key,
                          const uint8_t *nonce, size_t noncelen,
                          const uint8_t *ad, size_t adlen) {
-  return quic::encrypt(dest, destlen, plaintext, plaintextlen, key, keylen,
-                       nonce, noncelen, ad, adlen, quic::aead(ssl));
+  return ngtcp2_crypto_encrypt(dest, &quic.crypto_ctx.aead, plaintext,
+                               plaintextlen, key, nonce, noncelen, ad, adlen);
 }
 
 namespace {
-ssize_t decrypt(ngtcp2_conn *conn, uint8_t *dest, size_t destlen,
-                const uint8_t *ciphertext, size_t ciphertextlen,
-                const uint8_t *key, size_t keylen, const uint8_t *nonce,
-                size_t noncelen, const uint8_t *ad, size_t adlen,
-                void *user_data) {
+int decrypt(ngtcp2_conn *conn, uint8_t *dest, const uint8_t *ciphertext,
+            size_t ciphertextlen, const uint8_t *key, const uint8_t *nonce,
+            size_t noncelen, const uint8_t *ad, size_t adlen, void *user_data) {
   auto c = static_cast<Client *>(user_data);
 
-  auto nwrite = c->quic_decrypt(dest, destlen, ciphertext, ciphertextlen, key,
-                                keylen, nonce, noncelen, ad, adlen);
-  if (nwrite < 0) {
+  if (c->quic_decrypt(dest, ciphertext, ciphertextlen, key, nonce, noncelen, ad,
+                      adlen) != 0) {
     return NGTCP2_ERR_TLS_DECRYPT;
   }
 
-  return nwrite;
+  return 0;
 }
 } // namespace
 
-int Client::quic_decrypt(uint8_t *dest, size_t destlen,
-                         const uint8_t *ciphertext, size_t ciphertextlen,
-                         const uint8_t *key, size_t keylen,
+int Client::quic_decrypt(uint8_t *dest, const uint8_t *ciphertext,
+                         size_t ciphertextlen, const uint8_t *key,
                          const uint8_t *nonce, size_t noncelen,
                          const uint8_t *ad, size_t adlen) {
-  return quic::decrypt(dest, destlen, ciphertext, ciphertextlen, key, keylen,
-                       nonce, noncelen, ad, adlen, quic::aead(ssl));
+  return ngtcp2_crypto_decrypt(dest, &quic.crypto_ctx.aead, ciphertext,
+                               ciphertextlen, key, nonce, noncelen, ad, adlen);
 }
 
 namespace {
-ssize_t in_hp_mask(ngtcp2_conn *conn, uint8_t *dest, size_t destlen,
-                   const uint8_t *key, size_t keylen, const uint8_t *sample,
-                   size_t samplelen, void *user_data) {
+int in_hp_mask(ngtcp2_conn *conn, uint8_t *dest, const uint8_t *key,
+               const uint8_t *sample, void *user_data) {
   auto c = static_cast<Client *>(user_data);
 
-  auto nwrite =
-      c->quic_in_hp_mask(dest, destlen, key, keylen, sample, samplelen);
-  if (nwrite < 0) {
+  if (c->quic_in_hp_mask(dest, key, sample) != 0) {
     return NGTCP2_ERR_CALLBACK_FAILURE;
   }
 
-  return nwrite;
+  return 0;
 }
 } // namespace
 
-int Client::quic_in_hp_mask(uint8_t *dest, size_t destlen, const uint8_t *key,
-                            size_t keylen, const uint8_t *sample,
-                            size_t samplelen) {
-  return quic::hp_mask(dest, destlen, key, keylen, sample, samplelen,
-                       EVP_aes_128_ctr());
+int Client::quic_in_hp_mask(uint8_t *dest, const uint8_t *key,
+                            const uint8_t *sample) {
+  return ngtcp2_crypto_hp_mask(dest, &in_crypto_ctx.hp, key, sample);
 }
 
 namespace {
-ssize_t hp_mask(ngtcp2_conn *conn, uint8_t *dest, size_t destlen,
-                const uint8_t *key, size_t keylen, const uint8_t *sample,
-                size_t samplelen, void *user_data) {
+int hp_mask(ngtcp2_conn *conn, uint8_t *dest, const uint8_t *key,
+            const uint8_t *sample, void *user_data) {
   auto c = static_cast<Client *>(user_data);
 
-  auto nwrite = c->quic_hp_mask(dest, destlen, key, keylen, sample, samplelen);
-  if (nwrite < 0) {
+  if (c->quic_hp_mask(dest, key, sample) != 0) {
     return NGTCP2_ERR_CALLBACK_FAILURE;
   }
 
-  return nwrite;
+  return 0;
 }
 } // namespace
 
-int Client::quic_hp_mask(uint8_t *dest, size_t destlen, const uint8_t *key,
-                         size_t keylen, const uint8_t *sample,
-                         size_t samplelen) {
-  return quic::hp_mask(dest, destlen, key, keylen, sample, samplelen,
-                       quic::hp(ssl));
+int Client::quic_hp_mask(uint8_t *dest, const uint8_t *key,
+                         const uint8_t *sample) {
+  return ngtcp2_crypto_hp_mask(dest, &quic.crypto_ctx.hp, key, sample);
 }
 
 namespace {
@@ -669,71 +648,45 @@ void Client::quic_close_connection() {
 }
 
 int Client::quic_setup_initial_crypto() {
-  int rv;
-
-  std::array<uint8_t, 32> initial_secret, secret;
+  std::array<uint8_t, 32> tx_secret, rx_secret;
   auto dcid = ngtcp2_conn_get_dcid(quic.conn);
-  rv = quic::derive_initial_secret(
-      initial_secret.data(), initial_secret.size(), dcid->data, dcid->datalen,
-      reinterpret_cast<const uint8_t *>(NGTCP2_INITIAL_SALT),
-      str_size(NGTCP2_INITIAL_SALT));
-  if (rv != 0) {
-    std::cerr << "quic::derive_initial_secret() failed" << std::endl;
+  if (ngtcp2_crypto_derive_initial_secrets(rx_secret.data(), tx_secret.data(),
+                                           nullptr, dcid,
+                                           NGTCP2_CRYPTO_SIDE_CLIENT) != 0) {
+    std::cerr << "ngtcp2_crypto_derive_initial_secrets() failed" << std::endl;
     return -1;
   }
 
-  auto aead = EVP_aes_128_gcm();
-  auto prf = EVP_sha256();
-
-  rv = quic::derive_client_initial_secret(secret.data(), secret.size(),
-                                          initial_secret.data(),
-                                          initial_secret.size());
-  if (rv != 0) {
-    std::cerr << "quic::derive_client_initial_secret() failed" << std::endl;
-    return -1;
-  }
+  auto aead = &in_crypto_ctx.aead;
+  auto md = &in_crypto_ctx.md;
 
   std::array<uint8_t, 16> key, iv, hp;
-  auto keylen = key.size();
-  auto ivlen = iv.size();
-  rv = quic::derive_packet_protection_key(key.data(), keylen, iv.data(), ivlen,
-                                          secret.data(), secret.size(), aead,
-                                          prf);
-  if (rv != 0) {
+  auto keylen = ngtcp2_crypto_aead_keylen(aead);
+  auto ivlen = ngtcp2_crypto_packet_protection_ivlen(aead);
+  auto hplen = keylen;
+
+  if (ngtcp2_crypto_derive_packet_protection_key(key.data(), iv.data(), aead,
+                                                 md, tx_secret.data(),
+                                                 tx_secret.size()) != 0) {
     return -1;
   }
 
-  auto hplen = hp.size();
-  rv = quic::derive_header_protection_key(hp.data(), hplen, secret.data(),
-                                          secret.size(), aead, prf);
-  if (rv != 0) {
+  if (ngtcp2_crypto_derive_header_protection_key(
+          hp.data(), aead, md, tx_secret.data(), tx_secret.size()) != 0) {
     return -1;
   }
 
   ngtcp2_conn_install_initial_tx_keys(quic.conn, key.data(), keylen, iv.data(),
                                       ivlen, hp.data(), hplen);
 
-  rv = quic::derive_server_initial_secret(secret.data(), secret.size(),
-                                          initial_secret.data(),
-                                          initial_secret.size());
-  if (rv != 0) {
-    std::cerr << "quic::derive_server_initial_secret() failed" << std::endl;
+  if (ngtcp2_crypto_derive_packet_protection_key(key.data(), iv.data(), aead,
+                                                 md, rx_secret.data(),
+                                                 rx_secret.size()) != 0) {
     return -1;
   }
 
-  keylen = key.size();
-  ivlen = iv.size();
-  rv = quic::derive_packet_protection_key(key.data(), keylen, iv.data(), ivlen,
-                                          secret.data(), secret.size(), aead,
-                                          prf);
-  if (rv != 0) {
-    return -1;
-  }
-
-  hplen = hp.size();
-  rv = quic::derive_header_protection_key(hp.data(), hplen, secret.data(),
-                                          secret.size(), aead, prf);
-  if (rv != 0) {
+  if (ngtcp2_crypto_derive_header_protection_key(
+          hp.data(), aead, md, rx_secret.data(), rx_secret.size()) != 0) {
     return -1;
   }
 
@@ -744,8 +697,6 @@ int Client::quic_setup_initial_crypto() {
 }
 
 int Client::quic_on_key(int name, const uint8_t *secret, size_t secretlen) {
-  int rv;
-
   switch (name) {
   case SSL_KEY_CLIENT_EARLY_TRAFFIC:
   case SSL_KEY_CLIENT_HANDSHAKE_TRAFFIC:
@@ -757,27 +708,29 @@ int Client::quic_on_key(int name, const uint8_t *secret, size_t secretlen) {
     return 0;
   }
 
-  auto aead = quic::aead(ssl);
-  auto prf = quic::prf(ssl);
+  if (quic.crypto_ctx.aead.native_handle == nullptr) {
+    ngtcp2_crypto_ctx_tls(&quic.crypto_ctx, ssl);
+    ngtcp2_conn_set_aead_overhead(
+        quic.conn, ngtcp2_crypto_aead_taglen(&quic.crypto_ctx.aead));
+  }
+
+  auto aead = &quic.crypto_ctx.aead;
+  auto md = &quic.crypto_ctx.md;
 
   std::array<uint8_t, 64> key, iv, hp;
-  auto keylen = key.size();
-  auto ivlen = iv.size();
-  rv = quic::derive_packet_protection_key(key.data(), keylen, iv.data(), ivlen,
-                                          secret, secretlen, aead, prf);
-  if (rv != 0) {
+  auto keylen = ngtcp2_crypto_aead_keylen(aead);
+  auto ivlen = ngtcp2_crypto_packet_protection_ivlen(aead);
+  auto hplen = keylen;
+
+  if (ngtcp2_crypto_derive_packet_protection_key(key.data(), iv.data(), aead,
+                                                 md, secret, secretlen) != 0) {
     return -1;
   }
 
-  auto hplen = hp.size();
-  rv = quic::derive_header_protection_key(hp.data(), hplen, secret, secretlen,
-                                          aead, prf);
-  if (rv != 0) {
+  if (ngtcp2_crypto_derive_header_protection_key(hp.data(), aead, md, secret,
+                                                 secretlen) != 0) {
     return -1;
   }
-
-  // TODO Just call this once.
-  ngtcp2_conn_set_aead_overhead(quic.conn, quic::aead_max_overhead(aead));
 
   switch (name) {
   case SSL_KEY_CLIENT_EARLY_TRAFFIC:

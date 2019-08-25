@@ -46,6 +46,7 @@
 #include <nghttp2/nghttp2.h>
 
 #include <ngtcp2/ngtcp2.h>
+#include <ngtcp2/ngtcp2_crypto.h>
 
 #include <ev.h>
 
@@ -328,6 +329,7 @@ struct Client {
     ngtcp2_crypto_level rx_crypto_level;
     std::vector<uint8_t> server_handshake;
     size_t server_handshake_nread;
+    ngtcp2_crypto_ctx crypto_ctx;
     // Client never send CRYPTO in Short packet.
     std::array<Crypto, 2> crypto;
     size_t max_pktlen;
@@ -446,26 +448,23 @@ struct Client {
   int quic_recv_crypto_data(ngtcp2_crypto_level crypto_level,
                             const uint8_t *data, size_t datalen);
   int quic_handshake_completed();
-  int quic_in_encrypt(uint8_t *dest, size_t destlen, const uint8_t *plaintext,
-                      size_t plaintextlen, const uint8_t *key, size_t keylen,
+  int quic_in_encrypt(uint8_t *dest, const uint8_t *plaintext,
+                      size_t plaintextlen, const uint8_t *key,
                       const uint8_t *nonce, size_t noncelen, const uint8_t *ad,
                       size_t adlen);
-  int quic_in_decrypt(uint8_t *dest, size_t destlen, const uint8_t *ciphertext,
-                      size_t ciphertextlen, const uint8_t *key, size_t keylen,
+  int quic_in_decrypt(uint8_t *dest, const uint8_t *ciphertext,
+                      size_t ciphertextlen, const uint8_t *key,
                       const uint8_t *nonce, size_t noncelen, const uint8_t *ad,
                       size_t adlen);
-  int quic_encrypt(uint8_t *dest, size_t destlen, const uint8_t *plaintext,
-                   size_t plaintextlen, const uint8_t *key, size_t keylen,
+  int quic_encrypt(uint8_t *dest, const uint8_t *plaintext, size_t plaintextlen,
+                   const uint8_t *key, const uint8_t *nonce, size_t noncelen,
+                   const uint8_t *ad, size_t adlen);
+  int quic_decrypt(uint8_t *dest, const uint8_t *ciphertext,
+                   size_t ciphertextlen, const uint8_t *key,
                    const uint8_t *nonce, size_t noncelen, const uint8_t *ad,
                    size_t adlen);
-  int quic_decrypt(uint8_t *dest, size_t destlen, const uint8_t *ciphertext,
-                   size_t ciphertextlen, const uint8_t *key, size_t keylen,
-                   const uint8_t *nonce, size_t noncelen, const uint8_t *ad,
-                   size_t adlen);
-  int quic_in_hp_mask(uint8_t *dest, size_t destlen, const uint8_t *key,
-                      size_t keylen, const uint8_t *sample, size_t samplelen);
-  int quic_hp_mask(uint8_t *dest, size_t destlen, const uint8_t *key,
-                   size_t keylen, const uint8_t *sample, size_t samplelen);
+  int quic_in_hp_mask(uint8_t *dest, const uint8_t *key, const uint8_t *sample);
+  int quic_hp_mask(uint8_t *dest, const uint8_t *key, const uint8_t *sample);
   int quic_recv_stream_data(int64_t stream_id, int fin, const uint8_t *data,
                             size_t datalen);
   int quic_stream_close(int64_t stream_id, uint64_t app_error_code);
