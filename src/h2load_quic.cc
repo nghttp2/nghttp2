@@ -1019,7 +1019,9 @@ int Client::write_quic() {
         auto should_break = false;
         switch (nwrite) {
         case NGTCP2_ERR_STREAM_DATA_BLOCKED:
-          if (ngtcp2_conn_get_max_data_left(quic.conn) == 0) {
+        case NGTCP2_ERR_STREAM_SHUT_WR:
+          if (nwrite == NGTCP2_ERR_STREAM_DATA_BLOCKED &&
+              ngtcp2_conn_get_max_data_left(quic.conn) == 0) {
             return 0;
           }
 
@@ -1027,13 +1029,6 @@ int Client::write_quic() {
             return -1;
           }
           should_break = true;
-          break;
-        case NGTCP2_ERR_EARLY_DATA_REJECTED:
-        case NGTCP2_ERR_STREAM_SHUT_WR:
-        case NGTCP2_ERR_STREAM_NOT_FOUND: // This means that stream is
-                                          // closed.
-          assert(0);
-          // TODO Perhaps, close stream or this should not happen?
           break;
         case NGTCP2_ERR_WRITE_STREAM_MORE:
           assert(ndatalen > 0);
