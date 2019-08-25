@@ -374,6 +374,15 @@ if test "x${have_libngtcp2}" = "xno"; then
   AC_MSG_NOTICE($LIBNGTCP2_PKG_ERRORS)
 fi
 
+# ngtcp2_crypto_openssl (for src)
+PKG_CHECK_MODULES([LIBNGTCP2_CRYPTO_OPENSSL],
+                  [libngtcp2_crypto_openssl >= 0.0.0],
+                  [have_libngtcp2_crypto_openssl=yes],
+                  [have_libngtcp2_crypto_openssl=no])
+if test "x${have_libngtcp2_crypto_openssl}" = "xno"; then
+  AC_MSG_NOTICE($LIBNGTCP2_CRYPTO_OPENSSL_PKG_ERRORS)
+fi
+
 # nghttp3 (for src)
 PKG_CHECK_MODULES([LIBNGHTTP3], [libnghttp3 >= 0.0.0], [have_libnghttp3=yes],
                   [have_libnghttp3=no])
@@ -917,6 +926,7 @@ AC_MSG_NOTICE([summary of build options:
       Libev:          ${have_libev} (CFLAGS='${LIBEV_CFLAGS}' LIBS='${LIBEV_LIBS}')
       Libc-ares:      ${have_libcares} (CFLAGS='${LIBCARES_CFLAGS}' LIBS='${LIBCARES_LIBS}')
       libngtcp2:      ${have_libngtcp2} (CFLAGS='${LIBNGTCP2_CFLAGS}' LIBS='${LIBNGTCP2_LIBS}')
+      libngtcp2_crypto_openssl: ${have_libngtcp2_crypto_openssl} (CFLAGS='${LIBNGTCP2_CRYPTO_OPENSSL_CFLAGS}' LIBS='${LIBNGTCP2_CRYPTO_OPENSSL_LIBS}')
       libnghttp3:     ${have_libnghttp3} (CFLAGS='${LIBNGHTTP3_CFLAGS}' LIBS='${LIBNGHTTP3_LIBS}')
       Libevent(SSL):  ${have_libevent_openssl} (CFLAGS='${LIBEVENT_OPENSSL_CFLAGS}' LIBS='${LIBEVENT_OPENSSL_LIBS}')
       Jansson:        ${have_jansson} (CFLAGS='${JANSSON_CFLAGS}' LIBS='${JANSSON_LIBS}')
