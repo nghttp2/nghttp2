@@ -16,8 +16,8 @@ An experimental high level C++ library is also available.
 We have Python bindings of this library, but we do not have full
 code coverage yet.
 
-Running h2load against HTTP/3 endpoint
---------------------------------------
+Running h2load against HTTP/3 server
+------------------------------------
 
 In order to build h2load with HTTP/3 support, you have to build
 ngtcp2, nghttp3 and my patched OpenSSL.
