@@ -963,12 +963,9 @@ int Client::connection_made() {
     if (next_proto) {
       auto proto = StringRef{next_proto, next_proto_len};
       if (config.is_quic()) {
-        if (util::streq(StringRef{&NGTCP2_ALPN_H3[1]}, proto)) {
-          auto s = std::make_unique<Http3Session>(this);
-          if (s->init_conn() == -1) {
-            return -1;
-          }
-          session = std::move(s);
+        assert(session);
+        if (!util::streq(StringRef{&NGTCP2_ALPN_H3[1]}, proto)) {
+          return -1;
         }
       } else if (util::check_h2_is_selected(proto)) {
         session = std::make_unique<Http2Session>(this);
@@ -979,6 +976,9 @@ int Client::connection_made() {
       // Just assign next_proto to selected_proto anyway to show the
       // negotiation result.
       selected_proto = proto.str();
+    } else if (config.is_quic()) {
+      std::cerr << "QUIC requires ALPN negotiation" << std::endl;
+      return -1;
     } else {
       std::cout << "No protocol negotiated. Fallback behaviour may be activated"
                 << std::endl;
@@ -1700,79 +1700,6 @@ int client_select_next_proto_cb(SSL *ssl, unsigned char **out,
 #endif // !OPENSSL_NO_NEXTPROTONEG
 
 namespace {
-int quic_transport_params_add_cb(SSL *ssl, unsigned int ext_type,
-                                 unsigned int content,
-                                 const unsigned char **out, size_t *outlen,
-                                 X509 *x, size_t chainidx, int *al,
-                                 void *add_arg) {
-  auto c = static_cast<Client *>(SSL_get_app_data(ssl));
-  auto conn = c->quic.conn;
-
-  ngtcp2_transport_params params;
-
-  ngtcp2_conn_get_local_transport_params(conn, &params);
-
-  constexpr size_t bufsize = 128;
-  auto buf = std::make_unique<uint8_t[]>(bufsize);
-
-  auto nwrite = ngtcp2_encode_transport_params(
-      buf.get(), bufsize, NGTCP2_TRANSPORT_PARAMS_TYPE_CLIENT_HELLO, &params);
-  if (nwrite < 0) {
-    std::cerr << "ngtcp2_encode_transport_params: " << ngtcp2_strerror(nwrite)
-              << std::endl;
-    *al = SSL_AD_INTERNAL_ERROR;
-    return -1;
-  }
-
-  *out = buf.release();
-  *outlen = static_cast<size_t>(nwrite);
-
-  return 1;
-}
-} // namespace
-
-namespace {
-void quic_transport_params_free_cb(SSL *ssl, unsigned int ext_type,
-                                   unsigned int context,
-                                   const unsigned char *out, void *add_arg) {
-  delete[] const_cast<unsigned char *>(out);
-}
-} // namespace
-
-namespace {
-int quic_transport_params_parse_cb(SSL *ssl, unsigned int ext_type,
-                                   unsigned int context,
-                                   const unsigned char *in, size_t inlen,
-                                   X509 *x, size_t chainidx, int *al,
-                                   void *parse_arg) {
-  auto c = static_cast<Client *>(SSL_get_app_data(ssl));
-  auto conn = c->quic.conn;
-
-  int rv;
-  ngtcp2_transport_params params;
-
-  rv = ngtcp2_decode_transport_params(
-      &params, NGTCP2_TRANSPORT_PARAMS_TYPE_ENCRYPTED_EXTENSIONS, in, inlen);
-  if (rv != 0) {
-    std::cerr << "ngtcp2_decode_transport_params: " << ngtcp2_strerror(rv)
-              << std::endl;
-    *al = SSL_AD_ILLEGAL_PARAMETER;
-    return -1;
-  }
-
-  rv = ngtcp2_conn_set_remote_transport_params(conn, &params);
-  if (rv != 0) {
-    std::cerr << "ngtcp2_conn_set_remote_transport_params: "
-              << ngtcp2_strerror(rv) << std::endl;
-    *al = SSL_AD_ILLEGAL_PARAMETER;
-    return -1;
-  }
-
-  return 1;
-}
-} // namespace
-
-namespace {
 constexpr char UNIX_PATH_PREFIX[] = "unix:";
 } // namespace
 
@@ -2167,8 +2094,6 @@ Options:
       << std::endl;
 }
 } // namespace
-
-extern ngtcp2_crypto_ctx in_crypto_ctx;
 
 int main(int argc, char **argv) {
   tls::libssl_init();
@@ -2654,20 +2579,6 @@ int main(int argc, char **argv) {
   if (config.is_quic()) {
     SSL_CTX_set_min_proto_version(ssl_ctx, TLS1_3_VERSION);
     SSL_CTX_set_max_proto_version(ssl_ctx, TLS1_3_VERSION);
-
-    SSL_CTX_clear_options(ssl_ctx, SSL_OP_ENABLE_MIDDLEBOX_COMPAT);
-    SSL_CTX_set_mode(ssl_ctx, SSL_MODE_QUIC_HACK);
-
-    if (SSL_CTX_add_custom_ext(
-            ssl_ctx, NGTCP2_TLSEXT_QUIC_TRANSPORT_PARAMETERS,
-            SSL_EXT_CLIENT_HELLO | SSL_EXT_TLS1_3_ENCRYPTED_EXTENSIONS,
-            quic_transport_params_add_cb, quic_transport_params_free_cb,
-            nullptr, quic_transport_params_parse_cb, nullptr) != 1) {
-      std::cerr << "SSL_CTX_add_custom_ext(NGTCP2_TLSEXT_QUIC_TRANSPORT_"
-                   "PARAMETERS) failed: "
-                << ERR_error_string(ERR_get_error(), nullptr) << std::endl;
-      exit(EXIT_FAILURE);
-    }
   } else if (nghttp2::tls::ssl_ctx_set_proto_versions(
                  ssl_ctx, nghttp2::tls::NGHTTP2_TLS_MIN_VERSION,
                  nghttp2::tls::NGHTTP2_TLS_MAX_VERSION) != 0) {
@@ -2809,8 +2720,6 @@ int main(int argc, char **argv) {
               << " should be prohibited." << std::endl;
     exit(EXIT_FAILURE);
   }
-
-  ngtcp2_crypto_ctx_initial(&in_crypto_ctx);
 
   resolve_host();
 
