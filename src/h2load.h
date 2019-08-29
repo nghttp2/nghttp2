@@ -325,11 +325,6 @@ struct Client {
     ev_timer pkt_timer;
     ngtcp2_conn *conn;
     quic::Error last_error;
-    ngtcp2_crypto_level tx_crypto_level;
-    ngtcp2_crypto_level rx_crypto_level;
-    std::vector<uint8_t> server_handshake;
-    size_t server_handshake_nread;
-    ngtcp2_crypto_ctx crypto_ctx;
     // Client never send CRYPTO in Short packet.
     std::array<Crypto, 2> crypto;
     size_t max_pktlen;
@@ -444,45 +439,21 @@ struct Client {
   void quic_close_connection();
   int quic_setup_initial_crypto();
 
-  int quic_client_initial();
   int quic_recv_crypto_data(ngtcp2_crypto_level crypto_level,
                             const uint8_t *data, size_t datalen);
   int quic_handshake_completed();
-  int quic_in_encrypt(uint8_t *dest, const uint8_t *plaintext,
-                      size_t plaintextlen, const uint8_t *key,
-                      const uint8_t *nonce, size_t noncelen, const uint8_t *ad,
-                      size_t adlen);
-  int quic_in_decrypt(uint8_t *dest, const uint8_t *ciphertext,
-                      size_t ciphertextlen, const uint8_t *key,
-                      const uint8_t *nonce, size_t noncelen, const uint8_t *ad,
-                      size_t adlen);
-  int quic_encrypt(uint8_t *dest, const uint8_t *plaintext, size_t plaintextlen,
-                   const uint8_t *key, const uint8_t *nonce, size_t noncelen,
-                   const uint8_t *ad, size_t adlen);
-  int quic_decrypt(uint8_t *dest, const uint8_t *ciphertext,
-                   size_t ciphertextlen, const uint8_t *key,
-                   const uint8_t *nonce, size_t noncelen, const uint8_t *ad,
-                   size_t adlen);
-  int quic_in_hp_mask(uint8_t *dest, const uint8_t *key, const uint8_t *sample);
-  int quic_hp_mask(uint8_t *dest, const uint8_t *key, const uint8_t *sample);
   int quic_recv_stream_data(int64_t stream_id, int fin, const uint8_t *data,
                             size_t datalen);
   int quic_stream_close(int64_t stream_id, uint64_t app_error_code);
   int quic_stream_reset(int64_t stream_id, uint64_t app_error_code);
   int quic_extend_max_local_streams();
 
-  int quic_tls_handshake(bool initial = false);
-  int quic_read_tls();
-
-  int quic_on_key(int name, const uint8_t *secret, size_t secretlen);
+  int quic_on_key(ngtcp2_crypto_level level, const uint8_t *rx_secret,
+                  const uint8_t *tx_secret, size_t secretlen);
   void quic_set_tls_alert(uint8_t alert);
 
-  size_t quic_read_server_handshake(uint8_t *buf, size_t buflen);
-  int quic_write_server_handshake(ngtcp2_crypto_level crypto_level,
-                                  const uint8_t *data, size_t datalen);
-  void quic_write_client_handshake(const uint8_t *data, size_t datalen);
-  void quic_write_client_handshake(Crypto &crypto, const uint8_t *data,
-                                   size_t datalen);
+  void quic_write_client_handshake(ngtcp2_crypto_level level,
+                                   const uint8_t *data, size_t datalen);
   int quic_pkt_timeout();
   void quic_restart_pkt_timer();
 };
