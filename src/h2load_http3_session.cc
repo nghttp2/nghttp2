@@ -373,4 +373,13 @@ int Http3Session::add_write_offset(int64_t stream_id, size_t ndatalen) {
   return 0;
 }
 
+int Http3Session::add_ack_offset(int64_t stream_id, size_t datalen) {
+  auto rv = nghttp3_conn_add_ack_offset(conn_, stream_id, datalen);
+  if (rv != 0) {
+    client_->quic.last_error = quic::err_application(rv);
+    return -1;
+  }
+  return 0;
+}
+
 } // namespace h2load
