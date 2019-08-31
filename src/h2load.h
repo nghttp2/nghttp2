@@ -444,6 +444,7 @@ struct Client {
   int quic_handshake_completed();
   int quic_recv_stream_data(int64_t stream_id, int fin, const uint8_t *data,
                             size_t datalen);
+  int quic_acked_stream_data_offset(int64_t stream_id, size_t datalen);
   int quic_stream_close(int64_t stream_id, uint64_t app_error_code);
   int quic_stream_reset(int64_t stream_id, uint64_t app_error_code);
   int quic_extend_max_local_streams();
