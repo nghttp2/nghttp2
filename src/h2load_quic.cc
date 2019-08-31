@@ -106,7 +106,7 @@ int recv_stream_data(ngtcp2_conn *conn, int64_t stream_id, int fin,
     // TODO Better to do this gracefully rather than
     // NGTCP2_ERR_CALLBACK_FAILURE.  Perhaps, call
     // ngtcp2_conn_write_application_close() ?
-    return -1;
+    return NGTCP2_ERR_CALLBACK_FAILURE;
   }
   return 0;
 }
