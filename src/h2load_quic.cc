@@ -127,6 +127,26 @@ int Client::quic_recv_stream_data(int64_t stream_id, int fin,
 }
 
 namespace {
+int acked_stream_data_offset(ngtcp2_conn *conn, int64_t stream_id,
+                             uint64_t offset, size_t datalen, void *user_data,
+                             void *stream_user_data) {
+  auto c = static_cast<Client *>(user_data);
+  if (c->quic_acked_stream_data_offset(stream_id, datalen) != 0) {
+    return NGTCP2_ERR_CALLBACK_FAILURE;
+  }
+  return 0;
+}
+} // namespace
+
+int Client::quic_acked_stream_data_offset(int64_t stream_id, size_t datalen) {
+  auto s = static_cast<Http3Session *>(session.get());
+  if (s->add_ack_offset(stream_id, datalen) != 0) {
+    return -1;
+  }
+  return 0;
+}
+
+namespace {
 int stream_close(ngtcp2_conn *conn, int64_t stream_id, uint64_t app_error_code,
                  void *user_data, void *stream_user_data) {
   auto c = static_cast<Client *>(user_data);
@@ -331,7 +351,7 @@ int Client::quic_init(const sockaddr *local_addr, socklen_t local_addrlen,
       ngtcp2_crypto_hp_mask_cb,
       h2load::recv_stream_data,
       nullptr, // acked_crypto_offset
-      nullptr, // acked_stream_data_offset
+      h2load::acked_stream_data_offset,
       nullptr, // stream_open
       h2load::stream_close,
       nullptr, // recv_stateless_reset
