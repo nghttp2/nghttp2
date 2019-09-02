@@ -159,6 +159,16 @@ void backend_retry(Downstream *downstream) {
 } // namespace
 
 namespace {
+void retry_readcb(struct ev_loop *loop, ev_io *w, int revents) {
+  auto conn = static_cast<Connection *>(w->data);
+  auto dconn = static_cast<HttpDownstreamConnection *>(conn->data);
+  auto downstream = dconn->get_downstream();
+
+  retry_downstream_connection(downstream, 502);
+}
+} // namespace
+
+namespace {
 void writecb(struct ev_loop *loop, ev_io *w, int revents) {
   int rv;
   auto conn = static_cast<Connection *>(w->data);
@@ -197,7 +207,7 @@ HttpDownstreamConnection::HttpDownstreamConnection(
     struct ev_loop *loop, Worker *worker)
     : conn_(loop, -1, nullptr, worker->get_mcpool(),
             group->shared_addr->timeout.write, group->shared_addr->timeout.read,
-            {}, {}, connectcb, readcb, connect_timeoutcb, this,
+            {}, {}, connectcb, retry_readcb, connect_timeoutcb, this,
             get_config()->tls.dyn_rec.warmup_threshold,
             get_config()->tls.dyn_rec.idle_timeout, Proto::HTTP1),
       on_read_(&HttpDownstreamConnection::noop),
@@ -433,7 +443,10 @@ int HttpDownstreamConnection::initiate_connection() {
       conn_.again_rt(group_->shared_addr->timeout.read);
     }
 
-    ev_set_cb(&conn_.rev, readcb);
+    // downstream host might close connection while waiting for
+    // request header fields.  If it happens, establish new
+    // connection.
+    ev_set_cb(&conn_.rev, retry_readcb);
 
     on_write_ = &HttpDownstreamConnection::write_first;
     first_write_done_ = false;
@@ -1165,6 +1178,8 @@ int HttpDownstreamConnection::write_first() {
   if (rv != 0) {
     return SHRPX_ERR_RETRY;
   }
+
+  ev_set_cb(&conn_.rev, readcb);
 
   if (conn_.tls.ssl) {
     on_write_ = &HttpDownstreamConnection::write_tls;
