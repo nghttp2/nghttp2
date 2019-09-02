@@ -1378,7 +1378,11 @@ int Http2Upstream::downstream_error(DownstreamConnection *dconn, int events) {
     } else {
       unsigned int status;
       if (events & Downstream::EVENT_TIMEOUT) {
-        status = 504;
+        if (downstream->get_request_header_sent()) {
+          status = 504;
+        } else {
+          status = 408;
+        }
       } else {
         status = 502;
       }
