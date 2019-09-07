@@ -552,8 +552,8 @@ int Client::quic_pkt_timeout() {
 void Client::quic_restart_pkt_timer() {
   auto expiry = ngtcp2_conn_get_expiry(quic.conn);
   auto now = timestamp(worker->loop);
-  auto t = expiry < now ? 1e-9
-                        : static_cast<ev_tstamp>(expiry - now) / NGTCP2_SECONDS;
+  auto t = expiry > now ? static_cast<ev_tstamp>(expiry - now) / NGTCP2_SECONDS
+                        : 1e-9;
   quic.pkt_timer.repeat = t;
   ev_timer_again(worker->loop, &quic.pkt_timer);
 }
