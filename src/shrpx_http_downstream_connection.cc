@@ -139,22 +139,29 @@ void connect_timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
 } // namespace
 
 namespace {
+void backend_retry(Downstream *downstream) {
+  retry_downstream_connection(downstream, 502);
+}
+} // namespace
+
+namespace {
 void readcb(struct ev_loop *loop, ev_io *w, int revents) {
+  int rv;
   auto conn = static_cast<Connection *>(w->data);
   auto dconn = static_cast<HttpDownstreamConnection *>(conn->data);
   auto downstream = dconn->get_downstream();
   auto upstream = downstream->get_upstream();
   auto handler = upstream->get_client_handler();
 
-  if (upstream->downstream_read(dconn) != 0) {
+  rv = upstream->downstream_read(dconn);
+  if (rv != 0) {
+    if (rv == SHRPX_ERR_RETRY) {
+      backend_retry(downstream);
+      return;
+    }
+
     delete handler;
   }
-}
-} // namespace
-
-namespace {
-void backend_retry(Downstream *downstream) {
-  retry_downstream_connection(downstream, 502);
 }
 } // namespace
 

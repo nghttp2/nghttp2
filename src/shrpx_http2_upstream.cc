@@ -1262,7 +1262,10 @@ int Http2Upstream::downstream_read(DownstreamConnection *dconn) {
   } else {
     auto rv = downstream->on_read();
     if (rv == SHRPX_ERR_EOF) {
-      return downstream_eof(dconn);
+      if (downstream->get_request_header_sent()) {
+        return downstream_eof(dconn);
+      }
+      return SHRPX_ERR_RETRY;
     }
     if (rv == SHRPX_ERR_DCONN_CANCELED) {
       downstream->pop_downstream_connection();

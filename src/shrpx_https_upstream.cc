@@ -788,7 +788,10 @@ int HttpsUpstream::downstream_read(DownstreamConnection *dconn) {
   rv = downstream->on_read();
 
   if (rv == SHRPX_ERR_EOF) {
-    return downstream_eof(dconn);
+    if (downstream->get_request_header_sent()) {
+      return downstream_eof(dconn);
+    }
+    return SHRPX_ERR_RETRY;
   }
 
   if (rv == SHRPX_ERR_DCONN_CANCELED) {
