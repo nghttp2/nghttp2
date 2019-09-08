@@ -631,8 +631,8 @@ int Client::write_quic() {
   auto s = static_cast<Http3Session *>(session.get());
 
   for (;;) {
-    int64_t stream_id;
-    int fin;
+    int64_t stream_id = -1;
+    int fin = 0;
     ssize_t sveccnt = 0;
 
     if (ngtcp2_conn_get_max_data_left(quic.conn)) {
@@ -643,7 +643,7 @@ int Client::write_quic() {
     }
 
     ssize_t ndatalen;
-    if (sveccnt == 0) {
+    if (sveccnt == 0 && stream_id == -1) {
       auto nwrite =
           ngtcp2_conn_write_pkt(quic.conn, &ps.path, buf.data(),
                                 quic.max_pktlen, timestamp(worker->loop));
@@ -714,7 +714,7 @@ int Client::write_quic() {
         return 0;
       }
 
-      if (ndatalen > 0) {
+      if (ndatalen >= 0) {
         if (s->add_write_offset(stream_id, ndatalen) != 0) {
           return -1;
         }
