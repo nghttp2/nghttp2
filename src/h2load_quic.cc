@@ -602,32 +602,6 @@ int Client::write_quic() {
 
   ngtcp2_path_storage_zero(&ps);
 
-  if (!session) {
-    auto nwrite =
-        ngtcp2_conn_write_pkt(quic.conn, &ps.path, buf.data(), quic.max_pktlen,
-                              timestamp(worker->loop));
-    if (nwrite < 0) {
-      quic.last_error = quic::err_transport(nwrite);
-      return -1;
-    }
-
-    quic_restart_pkt_timer();
-
-    if (nwrite) {
-      write_udp(reinterpret_cast<sockaddr *>(ps.path.remote.addr),
-                ps.path.remote.addrlen, buf.data(), nwrite);
-
-      ev_io_start(worker->loop, &wev);
-      return 0;
-    }
-
-    // session might be initialized during ngtcp2_conn_write_pkt.
-    if (!session) {
-      ev_io_stop(worker->loop, &wev);
-      return 0;
-    }
-  }
-
   auto s = static_cast<Http3Session *>(session.get());
 
   for (;;) {
@@ -635,7 +609,7 @@ int Client::write_quic() {
     int fin = 0;
     ssize_t sveccnt = 0;
 
-    if (ngtcp2_conn_get_max_data_left(quic.conn)) {
+    if (session && ngtcp2_conn_get_max_data_left(quic.conn)) {
       sveccnt = s->write_stream(stream_id, fin, vec.data(), vec.size());
       if (sveccnt == -1) {
         return -1;
@@ -643,90 +617,52 @@ int Client::write_quic() {
     }
 
     ssize_t ndatalen;
-    if (sveccnt == 0 && stream_id == -1) {
-      auto nwrite =
-          ngtcp2_conn_write_pkt(quic.conn, &ps.path, buf.data(),
-                                quic.max_pktlen, timestamp(worker->loop));
-      if (nwrite < 0) {
-        quic.last_error = quic::err_transport(nwrite);
-        return -1;
-      }
-
-      quic_restart_pkt_timer();
-
-      if (nwrite == 0) {
-        ev_io_stop(worker->loop, &wev);
-        return 0;
-      }
-
-      write_udp(reinterpret_cast<sockaddr *>(ps.path.remote.addr),
-                ps.path.remote.addrlen, buf.data(), nwrite);
-
-      ev_io_start(worker->loop, &wev);
-
-      return 0;
-    }
-
     auto v = vec.data();
     auto vcnt = static_cast<size_t>(sveccnt);
-    for (;;) {
-      auto nwrite = ngtcp2_conn_writev_stream(
-          quic.conn, &ps.path, buf.data(), quic.max_pktlen, &ndatalen,
-          NGTCP2_WRITE_STREAM_FLAG_MORE, stream_id, fin,
-          reinterpret_cast<const ngtcp2_vec *>(v), vcnt,
-          timestamp(worker->loop));
-      if (nwrite < 0) {
-        auto should_break = false;
-        switch (nwrite) {
-        case NGTCP2_ERR_STREAM_DATA_BLOCKED:
-        case NGTCP2_ERR_STREAM_SHUT_WR:
-          if (nwrite == NGTCP2_ERR_STREAM_DATA_BLOCKED &&
-              ngtcp2_conn_get_max_data_left(quic.conn) == 0) {
-            return 0;
-          }
 
-          if (s->block_stream(stream_id) != 0) {
-            return -1;
-          }
-          should_break = true;
-          break;
-        case NGTCP2_ERR_WRITE_STREAM_MORE:
-          assert(ndatalen > 0);
-          if (s->add_write_offset(stream_id, ndatalen) != 0) {
-            return -1;
-          }
-          should_break = true;
-          break;
+    auto nwrite = ngtcp2_conn_writev_stream(
+        quic.conn, &ps.path, buf.data(), quic.max_pktlen, &ndatalen,
+        NGTCP2_WRITE_STREAM_FLAG_MORE, stream_id, fin,
+        reinterpret_cast<const ngtcp2_vec *>(v), vcnt, timestamp(worker->loop));
+    if (nwrite < 0) {
+      switch (nwrite) {
+      case NGTCP2_ERR_STREAM_DATA_BLOCKED:
+      case NGTCP2_ERR_STREAM_SHUT_WR:
+        if (nwrite == NGTCP2_ERR_STREAM_DATA_BLOCKED &&
+            ngtcp2_conn_get_max_data_left(quic.conn) == 0) {
+          return 0;
         }
 
-        if (should_break) {
-          break;
+        if (s->block_stream(stream_id) != 0) {
+          return -1;
         }
-
-        quic.last_error = quic::err_transport(nwrite);
-        return -1;
-      }
-
-      quic_restart_pkt_timer();
-
-      if (nwrite == 0) {
-        ev_io_stop(worker->loop, &wev);
-        return 0;
-      }
-
-      if (ndatalen >= 0) {
+        continue;
+      case NGTCP2_ERR_WRITE_STREAM_MORE:
+        assert(ndatalen > 0);
         if (s->add_write_offset(stream_id, ndatalen) != 0) {
           return -1;
         }
+        continue;
       }
 
-      write_udp(reinterpret_cast<sockaddr *>(ps.path.remote.addr),
-                ps.path.remote.addrlen, buf.data(), nwrite);
+      quic.last_error = quic::err_transport(nwrite);
+      return -1;
+    }
 
-      ev_io_start(worker->loop, &wev);
+    quic_restart_pkt_timer();
 
+    if (nwrite == 0) {
       return 0;
     }
+
+    if (ndatalen >= 0) {
+      if (s->add_write_offset(stream_id, ndatalen) != 0) {
+        return -1;
+      }
+    }
+
+    write_udp(reinterpret_cast<sockaddr *>(ps.path.remote.addr),
+              ps.path.remote.addrlen, buf.data(), nwrite);
   }
 }
 
