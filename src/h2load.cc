@@ -1283,6 +1283,9 @@ int Client::write_udp(const sockaddr *addr, socklen_t addrlen,
   if (nwrite < 0) {
     std::cerr << "sendto: errno=" << errno << std::endl;
   }
+
+  ev_io_stop(worker->loop, &wev);
+
   return 0;
 }
 
