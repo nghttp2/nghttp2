@@ -710,6 +710,7 @@ void session_impl::do_write() {
 
   if (wblen_ == 0) {
     if (should_stop()) {
+      call_error_cb(make_error_code(static_cast<nghttp2_error>(NGHTTP2_INTERNAL_ERROR)));
       stop();
     }
     return;
