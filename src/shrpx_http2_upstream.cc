@@ -492,7 +492,7 @@ void Http2Upstream::initiate_downstream(Downstream *downstream) {
 #ifdef HAVE_MRUBY
   const auto &group = dconn_ptr->get_downstream_addr_group();
   if (group) {
-    const auto &mruby_ctx = group->mruby_ctx;
+    const auto &mruby_ctx = group->shared_addr->mruby_ctx;
     if (mruby_ctx->run_on_request_proc(downstream) != 0) {
       if (error_reply(downstream, 500) != 0) {
         rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
@@ -1665,7 +1665,7 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
     auto dconn = downstream->get_downstream_connection();
     const auto &group = dconn->get_downstream_addr_group();
     if (group) {
-      const auto &dmruby_ctx = group->mruby_ctx;
+      const auto &dmruby_ctx = group->shared_addr->mruby_ctx;
 
       if (dmruby_ctx->run_on_response_proc(downstream) != 0) {
         if (error_reply(downstream, 500) != 0) {

@@ -481,7 +481,7 @@ int htp_hdrs_completecb(llhttp_t *htp) {
 #ifdef HAVE_MRUBY
   const auto &group = dconn_ptr->get_downstream_addr_group();
   if (group) {
-    const auto &dmruby_ctx = group->mruby_ctx;
+    const auto &dmruby_ctx = group->shared_addr->mruby_ctx;
 
     if (dmruby_ctx->run_on_request_proc(downstream) != 0) {
       resp.http_status = 500;
@@ -1087,7 +1087,7 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
     assert(dconn);
     const auto &group = dconn->get_downstream_addr_group();
     if (group) {
-      const auto &dmruby_ctx = group->mruby_ctx;
+      const auto &dmruby_ctx = group->shared_addr->mruby_ctx;
 
       if (dmruby_ctx->run_on_response_proc(downstream) != 0) {
         error_reply(500);
