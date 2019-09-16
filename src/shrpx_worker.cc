@@ -79,11 +79,12 @@ using DownstreamKey =
                                       size_t, Proto, uint32_t, uint32_t,
                                       uint32_t, bool, bool, bool, bool>>,
                bool, SessionAffinity, StringRef, StringRef,
-               SessionAffinityCookieSecure, int64_t, int64_t>;
+               SessionAffinityCookieSecure, int64_t, int64_t, StringRef>;
 
 namespace {
-DownstreamKey create_downstream_key(
-    const std::shared_ptr<SharedDownstreamAddr> &shared_addr) {
+DownstreamKey
+create_downstream_key(const std::shared_ptr<SharedDownstreamAddr> &shared_addr,
+                      const StringRef &mruby_file) {
   DownstreamKey dkey;
 
   auto &addrs = std::get<0>(dkey);
@@ -117,6 +118,7 @@ DownstreamKey create_downstream_key(
   auto &timeout = shared_addr->timeout;
   std::get<6>(dkey) = timeout.read;
   std::get<7>(dkey) = timeout.write;
+  std::get<8>(dkey) = mruby_file;
 
   return dkey;
 }
@@ -231,16 +233,6 @@ void Worker::replace_downstream_config(
     dst = std::make_shared<DownstreamAddrGroup>();
     dst->pattern =
         ImmutableString{std::begin(src.pattern), std::end(src.pattern)};
-#ifdef HAVE_MRUBY
-    auto mruby_ctx_it = shared_mruby_ctxs.find(src.mruby_file);
-    if (mruby_ctx_it == std::end(shared_mruby_ctxs)) {
-      dst->mruby_ctx = mruby::create_mruby_context(src.mruby_file);
-      assert(dst->mruby_ctx);
-      shared_mruby_ctxs.emplace(src.mruby_file, dst->mruby_ctx);
-    } else {
-      dst->mruby_ctx = (*mruby_ctx_it).second;
-    }
-#endif // HAVE_MRUBY
 
     auto shared_addr = std::make_shared<SharedDownstreamAddr>();
 
@@ -297,10 +289,21 @@ void Worker::replace_downstream_config(
           loop_, cl_ssl_ctx_, this, &dst_addr, randgen_);
     }
 
+#ifdef HAVE_MRUBY
+    auto mruby_ctx_it = shared_mruby_ctxs.find(src.mruby_file);
+    if (mruby_ctx_it == std::end(shared_mruby_ctxs)) {
+      shared_addr->mruby_ctx = mruby::create_mruby_context(src.mruby_file);
+      assert(shared_addr->mruby_ctx);
+      shared_mruby_ctxs.emplace(src.mruby_file, shared_addr->mruby_ctx);
+    } else {
+      shared_addr->mruby_ctx = (*mruby_ctx_it).second;
+    }
+#endif // HAVE_MRUBY
+
     // share the connection if patterns have the same set of backend
     // addresses.
 
-    auto dkey = create_downstream_key(shared_addr);
+    auto dkey = create_downstream_key(shared_addr, src.mruby_file);
     auto it = addr_groups_indexer.find(dkey);
 
     if (it == std::end(addr_groups_indexer)) {

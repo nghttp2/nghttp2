@@ -206,6 +206,9 @@ struct SharedDownstreamAddr {
   // Bunch of session affinity hash.  Only used if affinity ==
   // SessionAffinity::IP.
   std::vector<AffinityHash> affinity_hash;
+#ifdef HAVE_MRUBY
+  std::shared_ptr<mruby::MRubyContext> mruby_ctx;
+#endif // HAVE_MRUBY
   // Configuration for session affinity
   AffinityConfig affinity;
   // Session affinity
@@ -230,9 +233,6 @@ struct DownstreamAddrGroup {
 
   ImmutableString pattern;
   std::shared_ptr<SharedDownstreamAddr> shared_addr;
-#ifdef HAVE_MRUBY
-  std::shared_ptr<mruby::MRubyContext> mruby_ctx;
-#endif // HAVE_MRUBY
   // true if this group is no longer used for new request.  If this is
   // true, the connection made using one of address in shared_addr
   // must not be pooled.
