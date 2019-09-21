@@ -469,9 +469,9 @@ int Connection::tls_handshake() {
                   << ERR_error_string(ERR_get_error(), nullptr);
       }
 
-      struct iovec iov;
-      auto iovcnt = tls.wbuf.riovec(&iov, 1);
-      auto nwrite = writev_clear(&iov, iovcnt);
+      struct iovec iov[1];
+      auto iovcnt = tls.wbuf.riovec(iov, 1);
+      auto nwrite = writev_clear(iov, iovcnt);
       if (nwrite > 0) {
         tls.wbuf.drain(nwrite);
       }
