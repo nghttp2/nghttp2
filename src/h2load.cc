@@ -459,25 +459,27 @@ int Client::make_socket(addrinfo *addr) {
       std::cerr << "quic_init failed" << std::endl;
       return -1;
     }
-
-    return 0;
-  }
-
-  fd = util::create_nonblock_socket(addr->ai_family);
-  if (fd == -1) {
-    return -1;
-  }
-  if (config.scheme == "https") {
-    if (!ssl) {
-      ssl = SSL_new(worker->ssl_ctx);
+  } else {
+    fd = util::create_nonblock_socket(addr->ai_family);
+    if (fd == -1) {
+      return -1;
     }
+    if (config.scheme == "https") {
+      if (!ssl) {
+        ssl = SSL_new(worker->ssl_ctx);
+      }
 
-    SSL_set_fd(ssl, fd);
-    SSL_set_connect_state(ssl);
+      SSL_set_fd(ssl, fd);
+      SSL_set_connect_state(ssl);
+    }
   }
 
   if (ssl && !util::numeric_host(config.host.c_str())) {
     SSL_set_tlsext_host_name(ssl, config.host.c_str());
+  }
+
+  if (config.is_quic()) {
+    return 0;
   }
 
   rv = ::connect(fd, addr->ai_addr, addr->ai_addrlen);
