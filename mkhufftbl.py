@@ -423,9 +423,12 @@ typedef struct {
     print '''\
 const nghttp2_huff_sym huff_sym_table[] = {'''
     for i in range(257):
+        nbits = symbol_tbl[i][0]
+        k = int(symbol_tbl[i][1], 16)
+        k = k << (32 - nbits)
         print '''\
   {{ {}, 0x{}u }}{}\
-'''.format(symbol_tbl[i][0], symbol_tbl[i][1], ',' if i < 256 else '')
+'''.format(symbol_tbl[i][0], hex(k)[2:], ',' if i < 256 else '')
     print '};'
     print ''
 
