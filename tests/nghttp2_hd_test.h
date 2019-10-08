@@ -50,5 +50,6 @@ void test_nghttp2_hd_public_api(void);
 void test_nghttp2_hd_deflate_hd_vec(void);
 void test_nghttp2_hd_decode_length(void);
 void test_nghttp2_hd_huff_encode(void);
+void test_nghttp2_hd_huff_decode(void);
 
 #endif /* NGHTTP2_HD_TEST_H */

@@ -1538,3 +1538,32 @@ void test_nghttp2_hd_huff_encode(void) {
 
   nghttp2_bufs_free(&bufs);
 }
+
+void test_nghttp2_hd_huff_decode(void) {
+  const uint8_t e[] = {0x1f, 0xff, 0xff, 0xff, 0xff, 0xff};
+  nghttp2_hd_huff_decode_context ctx;
+  nghttp2_buf outbuf;
+  uint8_t b[256];
+  ssize_t len;
+
+  nghttp2_buf_wrap_init(&outbuf, b, sizeof(b));
+  nghttp2_hd_huff_decode_context_init(&ctx);
+  len = nghttp2_hd_huff_decode(&ctx, &outbuf, e, 1, 1);
+
+  CU_ASSERT(1 == len);
+  CU_ASSERT(0 == memcmp("a", outbuf.pos, 1));
+
+  /* Premature sequence must elicit decoding error */
+  nghttp2_buf_wrap_init(&outbuf, b, sizeof(b));
+  nghttp2_hd_huff_decode_context_init(&ctx);
+  len = nghttp2_hd_huff_decode(&ctx, &outbuf, e, 2, 1);
+
+  CU_ASSERT(NGHTTP2_ERR_HEADER_COMP == len);
+
+  /* Fully decoding EOS is error */
+  nghttp2_buf_wrap_init(&outbuf, b, sizeof(b));
+  nghttp2_hd_huff_decode_context_init(&ctx);
+  len = nghttp2_hd_huff_decode(&ctx, &outbuf, e, 2, 6);
+
+  CU_ASSERT(NGHTTP2_ERR_HEADER_COMP == len);
+}
