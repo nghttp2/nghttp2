@@ -357,9 +357,8 @@ def _build_transition_table(ctx, node):
 def huffman_tree_build_transition_table(ctx):
     _build_transition_table(ctx, ctx.root)
 
-NGHTTP2_HUFF_ACCEPTED = 1
-NGHTTP2_HUFF_SYM = 1 << 1
-NGHTTP2_HUFF_FAIL = 1 << 2
+NGHTTP2_HUFF_ACCEPTED = 1 << 14
+NGHTTP2_HUFF_SYM = 1 << 15
 
 def _print_transition_table(node):
     if node.term is not None:
@@ -374,8 +373,7 @@ def _print_transition_table(node):
             out = sym
             flags |= NGHTTP2_HUFF_SYM
         if nd is None:
-            id = 0
-            flags |= NGHTTP2_HUFF_FAIL
+            id = 256
         else:
             id = nd.id
             if id is None:
@@ -384,13 +382,32 @@ def _print_transition_table(node):
                 flags |= NGHTTP2_HUFF_ACCEPTED
             elif nd.accept:
                 flags |= NGHTTP2_HUFF_ACCEPTED
-        print '  {{{}, 0x{:02x}, {}}},'.format(id, flags, out)
+        print '  {{0x{:02x}, {}}},'.format(id | flags, out)
     print '},'
     _print_transition_table(node.left)
     _print_transition_table(node.right)
 
 def huffman_tree_print_transition_table(ctx):
     _print_transition_table(ctx.root)
+    print '/* 256 */'
+    print '{'
+    print '  {0x100, 0},'
+    print '  {0x100, 0},'
+    print '  {0x100, 0},'
+    print '  {0x100, 0},'
+    print '  {0x100, 0},'
+    print '  {0x100, 0},'
+    print '  {0x100, 0},'
+    print '  {0x100, 0},'
+    print '  {0x100, 0},'
+    print '  {0x100, 0},'
+    print '  {0x100, 0},'
+    print '  {0x100, 0},'
+    print '  {0x100, 0},'
+    print '  {0x100, 0},'
+    print '  {0x100, 0},'
+    print '  {0x100, 0},'
+    print '},'
 
 if __name__ == '__main__':
     ctx = Context()
@@ -423,9 +440,12 @@ typedef struct {
     print '''\
 const nghttp2_huff_sym huff_sym_table[] = {'''
     for i in range(257):
+        nbits = symbol_tbl[i][0]
+        k = int(symbol_tbl[i][1], 16)
+        k = k << (32 - nbits)
         print '''\
   {{ {}, 0x{}u }}{}\
-'''.format(symbol_tbl[i][0], symbol_tbl[i][1], ',' if i < 256 else '')
+'''.format(symbol_tbl[i][0], hex(k)[2:], ',' if i < 256 else '')
     print '};'
     print ''
 
@@ -433,14 +453,12 @@ const nghttp2_huff_sym huff_sym_table[] = {'''
 enum {{
   NGHTTP2_HUFF_ACCEPTED = {},
   NGHTTP2_HUFF_SYM = {},
-  NGHTTP2_HUFF_FAIL = {},
 }} nghttp2_huff_decode_flag;
-'''.format(NGHTTP2_HUFF_ACCEPTED, NGHTTP2_HUFF_SYM, NGHTTP2_HUFF_FAIL)
+'''.format(NGHTTP2_HUFF_ACCEPTED, NGHTTP2_HUFF_SYM)
 
     print '''\
 typedef struct {
-  uint8_t state;
-  uint8_t flags;
+  uint16_t fstate;
   uint8_t sym;
 } nghttp2_huff_decode;
 '''

@@ -402,6 +402,7 @@ int main() {
                    test_nghttp2_hd_deflate_hd_vec) ||
       !CU_add_test(pSuite, "hd_decode_length", test_nghttp2_hd_decode_length) ||
       !CU_add_test(pSuite, "hd_huff_encode", test_nghttp2_hd_huff_encode) ||
+      !CU_add_test(pSuite, "hd_huff_decode", test_nghttp2_hd_huff_decode) ||
       !CU_add_test(pSuite, "adjust_local_window_size",
                    test_nghttp2_adjust_local_window_size) ||
       !CU_add_test(pSuite, "check_header_name",
