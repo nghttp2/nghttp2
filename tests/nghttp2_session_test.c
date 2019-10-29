@@ -11288,6 +11288,8 @@ void test_nghttp2_http_content_length_mismatch(void) {
       MAKE_NV(":path", "/"), MAKE_NV(":method", "PUT"),
       MAKE_NV(":authority", "localhost"), MAKE_NV(":scheme", "https"),
       MAKE_NV("content-length", "20")};
+  const nghttp2_nv cl_resnv[] = {MAKE_NV(":status", "200"),
+                                 MAKE_NV("content-length", "20")};
   nghttp2_outbound_item *item;
   nghttp2_frame_hd hd;
 
@@ -11365,7 +11367,97 @@ void test_nghttp2_http_content_length_mismatch(void) {
 
   nghttp2_session_del(session);
 
+  /* Check for client */
+  nghttp2_session_client_new(&session, &callbacks, NULL);
+
+  nghttp2_hd_deflate_init(&deflater, mem);
+
+  /* header says content-length: 20, but HEADERS has END_STREAM flag set */
+  nghttp2_submit_request(session, NULL, reqnv, ARRLEN(reqnv), NULL, NULL);
+
+  CU_ASSERT(0 == nghttp2_session_send(session));
+
+  rv = pack_headers(&bufs, &deflater, 1,
+                    NGHTTP2_FLAG_END_HEADERS | NGHTTP2_FLAG_END_STREAM,
+                    cl_resnv, ARRLEN(cl_resnv), mem);
+  CU_ASSERT(0 == rv);
+
+  rv = nghttp2_session_mem_recv(session, bufs.head->buf.pos,
+                                nghttp2_buf_len(&bufs.head->buf));
+
+  CU_ASSERT((ssize_t)nghttp2_buf_len(&bufs.head->buf) == rv);
+
+  item = nghttp2_session_get_next_ob_item(session);
+  CU_ASSERT(NGHTTP2_RST_STREAM == item->frame.hd.type);
+
+  CU_ASSERT(NULL != nghttp2_session_get_stream(session, 1));
+  CU_ASSERT(0 == nghttp2_session_send(session));
+  /* After sending RST_STREAM, stream must be closed */
+  CU_ASSERT(NULL == nghttp2_session_get_stream(session, 1));
+
+  nghttp2_bufs_reset(&bufs);
+
+  /* header says content-length: 20, but DATA has 0 byte */
+  nghttp2_submit_request(session, NULL, reqnv, ARRLEN(reqnv), NULL, NULL);
+
+  CU_ASSERT(0 == nghttp2_session_send(session));
+
+  rv = pack_headers(&bufs, &deflater, 3, NGHTTP2_FLAG_END_HEADERS, cl_resnv,
+                    ARRLEN(cl_resnv), mem);
+  CU_ASSERT(0 == rv);
+
+  nghttp2_frame_hd_init(&hd, 0, NGHTTP2_DATA, NGHTTP2_FLAG_END_STREAM, 3);
+  nghttp2_frame_pack_frame_hd(bufs.head->buf.last, &hd);
+  bufs.head->buf.last += NGHTTP2_FRAME_HDLEN;
+
+  rv = nghttp2_session_mem_recv(session, bufs.head->buf.pos,
+                                nghttp2_buf_len(&bufs.head->buf));
+
+  CU_ASSERT((ssize_t)nghttp2_buf_len(&bufs.head->buf) == rv);
+
+  item = nghttp2_session_get_next_ob_item(session);
+  CU_ASSERT(NGHTTP2_RST_STREAM == item->frame.hd.type);
+
+  CU_ASSERT(NULL != nghttp2_session_get_stream(session, 3));
+  CU_ASSERT(0 == nghttp2_session_send(session));
+  /* After sending RST_STREAM, stream must be closed */
+  CU_ASSERT(NULL == nghttp2_session_get_stream(session, 3));
+
+  nghttp2_bufs_reset(&bufs);
+
+  /* header says content-length: 20, but DATA has 21 bytes */
+  nghttp2_submit_request(session, NULL, reqnv, ARRLEN(reqnv), NULL, NULL);
+
+  CU_ASSERT(0 == nghttp2_session_send(session));
+
+  rv = pack_headers(&bufs, &deflater, 5, NGHTTP2_FLAG_END_HEADERS, cl_resnv,
+                    ARRLEN(cl_resnv), mem);
+  CU_ASSERT(0 == rv);
+
+  nghttp2_frame_hd_init(&hd, 21, NGHTTP2_DATA, NGHTTP2_FLAG_END_STREAM, 5);
+  nghttp2_frame_pack_frame_hd(bufs.head->buf.last, &hd);
+  bufs.head->buf.last += NGHTTP2_FRAME_HDLEN + 21;
+
+  rv = nghttp2_session_mem_recv(session, bufs.head->buf.pos,
+                                nghttp2_buf_len(&bufs.head->buf));
+
+  CU_ASSERT((ssize_t)nghttp2_buf_len(&bufs.head->buf) == rv);
+
+  item = nghttp2_session_get_next_ob_item(session);
+  CU_ASSERT(NGHTTP2_RST_STREAM == item->frame.hd.type);
+
+  CU_ASSERT(NULL != nghttp2_session_get_stream(session, 5));
+  CU_ASSERT(0 == nghttp2_session_send(session));
+  /* After sending RST_STREAM, stream must be closed */
+  CU_ASSERT(NULL == nghttp2_session_get_stream(session, 5));
+
+  nghttp2_bufs_reset(&bufs);
+
   nghttp2_bufs_free(&bufs);
+
+  nghttp2_hd_deflate_free(&deflater);
+
+  nghttp2_session_del(session);
 }
 
 void test_nghttp2_http_non_final_response(void) {
