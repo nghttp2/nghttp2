@@ -154,7 +154,7 @@ const nghttp2_priority_spec *priority_spec::get() const {
   return &spec_;
 }
 
-const bool priority_spec::valid() const { return valid_; }
+bool priority_spec::valid() const { return valid_; }
 
 } // namespace client
 } // namespace asio_http2

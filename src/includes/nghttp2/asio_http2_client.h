@@ -133,7 +133,7 @@ public:
 
   // Indicates whether or not this spec is valid (i.e. was constructed with
   // values).
-  const bool valid() const;
+  bool valid() const;
 
 private:
   nghttp2_priority_spec spec_;
