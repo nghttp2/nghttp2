@@ -27,6 +27,7 @@ APIDOCS= \
 	macros.rst \
 	enums.rst \
 	types.rst \
+	nghttp2_check_authority.rst \
 	nghttp2_check_header_name.rst \
 	nghttp2_check_header_value.rst \
 	nghttp2_hd_deflate_bound.rst \
