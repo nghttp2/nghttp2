@@ -113,7 +113,7 @@ int stream_close(nghttp3_conn *conn, int64_t stream_id, uint64_t app_error_code,
 } // namespace
 
 int Http3Session::stream_close(int64_t stream_id, uint64_t app_error_code) {
-  client_->on_stream_close(stream_id, app_error_code == NGHTTP3_HTTP_NO_ERROR);
+  client_->on_stream_close(stream_id, app_error_code == NGHTTP3_H3_NO_ERROR);
   return 0;
 }
 

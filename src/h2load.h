@@ -329,6 +329,8 @@ struct Client {
     std::array<Crypto, 2> crypto;
     size_t max_pktlen;
     bool close_requested;
+    std::vector<uint8_t> rx_secret;
+    std::vector<uint8_t> tx_secret;
   } quic;
   ev_timer request_timeout_watcher;
   addrinfo *next_addr;
@@ -448,6 +450,7 @@ struct Client {
   int quic_stream_close(int64_t stream_id, uint64_t app_error_code);
   int quic_stream_reset(int64_t stream_id, uint64_t app_error_code);
   int quic_extend_max_local_streams();
+  int quic_update_key();
 
   int quic_on_key(ngtcp2_crypto_level level, const uint8_t *rx_secret,
                   const uint8_t *tx_secret, size_t secretlen);
