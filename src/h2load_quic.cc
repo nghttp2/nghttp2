@@ -159,7 +159,7 @@ int stream_close(ngtcp2_conn *conn, int64_t stream_id, uint64_t app_error_code,
 
 int Client::quic_stream_close(int64_t stream_id, uint64_t app_error_code) {
   auto s = static_cast<Http3Session *>(session.get());
-  if (s->close_stream(stream_id, app_error_code == 0 ? NGHTTP3_HTTP_NO_ERROR
+  if (s->close_stream(stream_id, app_error_code == 0 ? NGHTTP3_H3_NO_ERROR
                                                      : app_error_code) != 0) {
     return -1;
   }
@@ -221,6 +221,36 @@ int get_new_connection_id(ngtcp2_conn *conn, ngtcp2_cid *cid, uint8_t *token,
   return 0;
 }
 } // namespace
+
+namespace {
+int update_key(ngtcp2_conn *conn, void *user_data) {
+  auto c = static_cast<Client *>(user_data);
+
+  if (c->quic_update_key() != 0) {
+    return NGTCP2_ERR_CALLBACK_FAILURE;
+  }
+
+  return 0;
+}
+} // namespace
+
+int Client::quic_update_key() {
+  std::array<uint8_t, 64> rx_secret, tx_secret;
+
+  if (ngtcp2_crypto_update_and_install_key(
+          quic.conn, rx_secret.data(), tx_secret.data(), nullptr, nullptr,
+          nullptr, nullptr, quic.rx_secret.data(), quic.tx_secret.data(),
+          quic.rx_secret.size()) != 0) {
+    return -1;
+  }
+
+  quic.rx_secret.assign(std::begin(rx_secret),
+                        std::begin(rx_secret) + quic.rx_secret.size());
+  quic.tx_secret.assign(std::begin(tx_secret),
+                        std::begin(tx_secret) + quic.tx_secret.size());
+
+  return 0;
+}
 
 namespace {
 void debug_log_printf(void *user_data, const char *fmt, ...) {
@@ -362,7 +392,7 @@ int Client::quic_init(const sockaddr *local_addr, socklen_t local_addrlen,
       nullptr, // rand
       get_new_connection_id,
       nullptr, // remove_connection_id
-      nullptr, // update_key
+      update_key,
       nullptr, // path_validation
       select_preferred_addr,
       h2load::stream_reset,
@@ -497,6 +527,9 @@ int Client::quic_on_key(ngtcp2_crypto_level level, const uint8_t *rx_secret,
       return -1;
     }
     session = std::move(s);
+
+    quic.rx_secret.assign(rx_secret, rx_secret + secretlen);
+    quic.tx_secret.assign(tx_secret, tx_secret + secretlen);
   }
 
   return 0;
