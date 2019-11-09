@@ -470,7 +470,7 @@ void Client::quic_close_connection() {
   }
 
   std::array<uint8_t, 1500> buf;
-  ssize_t nwrite;
+  ngtcp2_ssize nwrite;
   ngtcp2_path_storage ps;
   ngtcp2_path_storage_zero(&ps);
 
@@ -650,7 +650,7 @@ int Client::write_quic() {
       }
     }
 
-    ssize_t ndatalen;
+    ngtcp2_ssize ndatalen;
     auto v = vec.data();
     auto vcnt = static_cast<size_t>(sveccnt);
 
