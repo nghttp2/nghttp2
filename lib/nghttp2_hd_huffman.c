@@ -138,3 +138,7 @@ ssize_t nghttp2_hd_huff_decode(nghttp2_hd_huff_decode_context *ctx,
 
   return (ssize_t)srclen;
 }
+
+int nghttp2_hd_huff_decode_failure_state(nghttp2_hd_huff_decode_context *ctx) {
+  return ctx->fstate == 0x100;
+}

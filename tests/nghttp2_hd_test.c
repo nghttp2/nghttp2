@@ -1566,4 +1566,12 @@ void test_nghttp2_hd_huff_decode(void) {
   len = nghttp2_hd_huff_decode(&ctx, &outbuf, e, 2, 6);
 
   CU_ASSERT(NGHTTP2_ERR_HEADER_COMP == len);
+
+  /* Check failure state */
+  nghttp2_buf_wrap_init(&outbuf, b, sizeof(b));
+  nghttp2_hd_huff_decode_context_init(&ctx);
+  len = nghttp2_hd_huff_decode(&ctx, &outbuf, e, 5, 0);
+
+  CU_ASSERT(5 == len);
+  CU_ASSERT(nghttp2_hd_huff_decode_failure_state(&ctx));
 }
