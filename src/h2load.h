@@ -37,6 +37,7 @@
 #include <sys/un.h>
 
 #include <vector>
+#include <queue>
 #include <string>
 #include <unordered_map>
 #include <memory>
@@ -113,12 +114,15 @@ struct Config {
   // preference.
   std::vector<std::string> npn_list;
 
+  size_t qps;
+
   Config();
   ~Config();
 
   bool is_rate_mode() const;
   bool is_timing_based_mode() const;
   bool has_base_uri() const;
+  bool is_qps_mode() const;
 };
 
 struct RequestStat {
@@ -273,6 +277,19 @@ struct Worker {
   ev_timer duration_watcher;
   ev_timer warmup_watcher;
 
+  // number of requests to send in qps mode
+  size_t qps_left;
+  // periodic timer for updating 'qps_left'
+  ev_periodic qps_watcher;
+
+  // clients blocked due to qps limit
+  std::queue<Client *> clients_blocked_due_to_qps;
+
+  // we randomly distribute qps request among each second for smoother request
+  // flow especially when --qps is small
+  size_t qps_count_index;
+  std::vector<size_t> qps_counts;
+
   Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t nreq_todo, size_t nclients,
          size_t rate, size_t max_samples, Config *config);
   ~Worker();
@@ -286,6 +303,8 @@ struct Worker {
   void stop_all_clients();
   // This function frees a client from the list of clients for this Worker.
   void free_client(Client *);
+
+  void set_qps_counts(std::vector<size_t> qps_counts);
 };
 
 struct Stream {
