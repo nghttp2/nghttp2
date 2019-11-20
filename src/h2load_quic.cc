@@ -601,35 +601,40 @@ int Client::read_quic() {
   sockaddr_union su;
   socklen_t addrlen = sizeof(su);
   int rv;
+  size_t pktcnt = 0;
 
-  auto nread =
-      recvfrom(fd, buf.data(), buf.size(), MSG_DONTWAIT, &su.sa, &addrlen);
-  if (nread == -1) {
-    return 0;
-  }
+  for (;;) {
+    auto nread =
+        recvfrom(fd, buf.data(), buf.size(), MSG_DONTWAIT, &su.sa, &addrlen);
+    if (nread == -1) {
+      return 0;
+    }
 
-  assert(quic.conn);
+    assert(quic.conn);
 
-  auto path = ngtcp2_path{
-      {local_addr.len, reinterpret_cast<uint8_t *>(&local_addr.su.sa)},
-      {addrlen, reinterpret_cast<uint8_t *>(&su.sa)},
-  };
+    auto path = ngtcp2_path{
+        {local_addr.len, reinterpret_cast<uint8_t *>(&local_addr.su.sa)},
+        {addrlen, reinterpret_cast<uint8_t *>(&su.sa)},
+    };
 
-  rv = ngtcp2_conn_read_pkt(quic.conn, &path, buf.data(), nread,
-                            timestamp(worker->loop));
-  if (rv != 0) {
-    std::cerr << "ngtcp2_conn_read_pkt: " << ngtcp2_strerror(rv) << std::endl;
-    return -1;
-  }
+    rv = ngtcp2_conn_read_pkt(quic.conn, &path, buf.data(), nread,
+                              timestamp(worker->loop));
+    if (rv != 0) {
+      std::cerr << "ngtcp2_conn_read_pkt: " << ngtcp2_strerror(rv) << std::endl;
+      return -1;
+    }
 
-  if (worker->current_phase == Phase::MAIN_DURATION) {
-    worker->stats.bytes_total += nread;
+    if (pktcnt == 10) {
+      break;
+    }
   }
 
   return 0;
 }
 
 int Client::write_quic() {
+  ev_io_stop(worker->loop, &wev);
+
   if (quic.close_requested) {
     return -1;
   }
