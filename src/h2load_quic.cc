@@ -114,6 +114,10 @@ int recv_stream_data(ngtcp2_conn *conn, int64_t stream_id, int fin,
 
 int Client::quic_recv_stream_data(int64_t stream_id, int fin,
                                   const uint8_t *data, size_t datalen) {
+  if (worker->current_phase == Phase::MAIN_DURATION) {
+    worker->stats.bytes_total += datalen;
+  }
+
   auto s = static_cast<Http3Session *>(session.get());
   auto nconsumed = s->read_stream(stream_id, data, datalen, fin);
   if (nconsumed == -1) {
