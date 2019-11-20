@@ -212,8 +212,7 @@ void readcb(struct ev_loop *loop, ev_io *w, int revents) {
     delete client;
     return;
   }
-  writecb(loop, &client->wev, revents);
-  // client->disconnect() and client->fail() may be called
+  client->signal_write();
 }
 } // namespace
 
