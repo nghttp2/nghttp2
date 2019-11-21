@@ -1,11 +1,11 @@
-FROM k8s.gcr.io/debian-base-amd64:1.0.0
+FROM k8s.gcr.io/debian-base-amd64:v2.0.0
 
 RUN /usr/local/bin/clean-install git g++ make binutils autoconf automake autotools-dev libtool pkg-config \
         zlib1g-dev libev-dev libjemalloc-dev ruby-dev libc-ares-dev bison \
         zlib1g libev4 libjemalloc1 libc-ares2 \
         ca-certificates psmisc \
         python && \
-    git clone --depth 1 -b openssl-quic-draft-24 https://github.com/tatsuhiro-t/openssl && \
+    git clone --depth 1 -b OpenSSL_1_1_1d-quic-draft-24 https://github.com/tatsuhiro-t/openssl && \
     cd openssl && ./config enable-tls1_3 --openssldir=/etc/ssl && make -j$(nproc) && make install_sw && cd .. && rm -rf openssl && \
     git clone --depth 1 https://github.com/ngtcp2/nghttp3 && \
     cd nghttp3 && autoreconf -i && \
