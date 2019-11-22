@@ -819,7 +819,9 @@ int nghttp2_frame_unpack_origin_payload(nghttp2_extension *frame,
 
   origin = frame->payload;
   p = payload;
-  end = p + payloadlen;
+  if (p != NULL) {
+    end = p + payloadlen;
+  }
 
   for (; p != end;) {
     if (end - p < 2) {
