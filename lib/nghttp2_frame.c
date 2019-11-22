@@ -818,9 +818,9 @@ int nghttp2_frame_unpack_origin_payload(nghttp2_extension *frame,
   size_t len = 0;
 
   origin = frame->payload;
-  p = payload;
-  if (p != NULL) {
-    end = p + payloadlen;
+  p = end = payload;
+  if (end != NULL) {
+    end += payloadlen;
   }
 
   for (; p != end;) {
