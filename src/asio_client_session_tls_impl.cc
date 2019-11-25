@@ -86,6 +86,8 @@ void session_tls_impl::start_connect(tcp::resolver::iterator endpoint_it) {
 
 tcp::socket &session_tls_impl::socket() { return socket_.next_layer(); }
 
+SSL *session_tls_impl::native_handle() { return socket_.native_handle(); }
+
 void session_tls_impl::read_socket(
     std::function<void(const boost::system::error_code &ec, std::size_t n)> h) {
   socket_.async_read_some(boost::asio::buffer(rb_), h);

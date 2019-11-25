@@ -47,6 +47,7 @@ public:
 
   virtual void start_connect(tcp::resolver::iterator endpoint_it);
   virtual tcp::socket &socket();
+  virtual SSL* native_handle();
   virtual void read_socket(
       std::function<void(const boost::system::error_code &ec, std::size_t n)>
           h);

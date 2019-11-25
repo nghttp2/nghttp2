@@ -140,6 +140,13 @@ void session::read_timeout(const boost::posix_time::time_duration &t) {
   impl_->read_timeout(t);
 }
 
+SSL *session::tls_native_handle() {
+  if(session_tls_impl* i=dynamic_cast<session_tls_impl*>(impl_.get())) {
+    return i->native_handle();
+  }
+  return nullptr;
+}
+
 priority_spec::priority_spec(const int32_t stream_id, const int32_t weight,
                              const bool exclusive)
     : valid_(true) {
