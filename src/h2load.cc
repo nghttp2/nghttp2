@@ -1656,7 +1656,9 @@ void resolve_host() {
   hints.ai_protocol = 0;
   hints.ai_flags = AI_ADDRCONFIG;
 
-  rv = getaddrinfo(config.host.c_str(), util::utos(config.port).c_str(), &hints,
+  auto resolve_host = config.connect_to_host.empty() ? config.host : config.connect_to_host;
+
+  rv = getaddrinfo(resolve_host.c_str(), util::utos(config.port).c_str(), &hints,
                    &res);
   if (rv != 0) {
     std::cerr << "getaddrinfo() failed: " << gai_strerror(rv) << std::endl;
@@ -2141,6 +2143,7 @@ int main(int argc, char **argv) {
         {"log-file", required_argument, &flag, 10},
         {"groups", required_argument, &flag, 11},
         {"tls13-ciphers", required_argument, &flag, 12},
+        {"connect-to", required_argument, &flag, 13},
         {nullptr, 0, nullptr, 0}};
     int option_index = 0;
     auto c = getopt_long(argc, argv,
@@ -2375,6 +2378,10 @@ int main(int argc, char **argv) {
       case 12:
         // --tls13-ciphers
         config.tls13_ciphers = optarg;
+        break;
+      case 13:
+        // --connect-to
+        config.connect_to_host = optarg;
         break;
       }
       break;

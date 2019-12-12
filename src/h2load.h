@@ -73,6 +73,7 @@ struct Config {
   nghttp2::Headers custom_headers;
   std::string scheme;
   std::string host;
+  std::string connect_to_host;
   std::string ifile;
   std::string ciphers;
   std::string tls13_ciphers;
