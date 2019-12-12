@@ -1563,8 +1563,11 @@ void resolve_host() {
   hints.ai_protocol = 0;
   hints.ai_flags = AI_ADDRCONFIG;
 
-  rv = getaddrinfo(config.host.c_str(), util::utos(config.port).c_str(), &hints,
-                   &res);
+  const auto &resolve_host =
+      config.connect_to_host.empty() ? config.host : config.connect_to_host;
+
+  rv = getaddrinfo(resolve_host.c_str(), util::utos(config.port).c_str(),
+                   &hints, &res);
   if (rv != 0) {
     std::cerr << "getaddrinfo() failed: " << gai_strerror(rv) << std::endl;
     exit(EXIT_FAILURE);
@@ -1979,6 +1982,8 @@ Options:
               response  time when  using  one worker  thread, but  may
               appear slightly  out of order with  multiple threads due
               to buffering.  Status code is -1 for failed streams.
+  --connect-to=<HOST>
+              Host to connect instead of using the host in <URI>.
   -v, --verbose
               Output debug information.
   --version   Display version information and exit.
@@ -2037,6 +2042,7 @@ int main(int argc, char **argv) {
         {"encoder-header-table-size", required_argument, &flag, 8},
         {"warm-up-time", required_argument, &flag, 9},
         {"log-file", required_argument, &flag, 10},
+        {"connect-to", required_argument, &flag, 11},
         {nullptr, 0, nullptr, 0}};
     int option_index = 0;
     auto c = getopt_long(argc, argv,
@@ -2263,6 +2269,10 @@ int main(int argc, char **argv) {
       case 10:
         // --log-file
         logfile = optarg;
+        break;
+      case 11:
+        // --connect-to
+        config.connect_to_host = optarg;
         break;
       }
       break;
