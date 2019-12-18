@@ -402,6 +402,15 @@ int Http3Session::block_stream(int64_t stream_id) {
   return 0;
 }
 
+int Http3Session::shutdown_stream_write(int64_t stream_id) {
+  auto rv = nghttp3_conn_shutdown_stream_write(conn_, stream_id);
+  if (rv != 0) {
+    client_->quic.last_error = quic::err_application(rv);
+    return -1;
+  }
+  return 0;
+}
+
 int Http3Session::add_write_offset(int64_t stream_id, size_t ndatalen) {
   auto rv = nghttp3_conn_add_write_offset(conn_, stream_id, ndatalen);
   if (rv != 0) {
