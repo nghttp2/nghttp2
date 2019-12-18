@@ -35,6 +35,7 @@
 #  include <fcntl.h>
 #endif // HAVE_FCNTL_H
 #include <sys/mman.h>
+#include <netinet/udp.h>
 
 #include <cstdio>
 #include <cassert>
@@ -117,7 +118,8 @@ Config::Config()
       timing_script(false),
       base_uri_unix(false),
       unix_addr{},
-      rps(0.) {}
+      rps(0.),
+      no_udp_gso(false) {}
 
 Config::~Config() {
   if (addrs) {
@@ -1375,8 +1377,32 @@ int Client::write_tls() {
 }
 
 int Client::write_udp(const sockaddr *addr, socklen_t addrlen,
-                      const uint8_t *data, size_t datalen) {
-  auto nwrite = sendto(fd, data, datalen, MSG_DONTWAIT, addr, addrlen);
+                      const uint8_t *data, size_t datalen, size_t gso_size) {
+  iovec msg_iov;
+  msg_iov.iov_base = const_cast<uint8_t *>(data);
+  msg_iov.iov_len = datalen;
+
+  msghdr msg{};
+  msg.msg_name = const_cast<sockaddr *>(addr);
+  msg.msg_namelen = addrlen;
+  msg.msg_iov = &msg_iov;
+  msg.msg_iovlen = 1;
+
+#ifdef UDP_SEGMENT
+  std::array<uint8_t, CMSG_SPACE(sizeof(uint16_t))> msg_ctrl{};
+  if (gso_size && datalen > gso_size) {
+    msg.msg_control = msg_ctrl.data();
+    msg.msg_controllen = msg_ctrl.size();
+
+    auto cm = CMSG_FIRSTHDR(&msg);
+    cm->cmsg_level = SOL_UDP;
+    cm->cmsg_type = UDP_SEGMENT;
+    cm->cmsg_len = CMSG_LEN(sizeof(uint16_t));
+    *(reinterpret_cast<uint16_t *>(CMSG_DATA(cm))) = gso_size;
+  }
+#endif // UDP_SEGMENT
+
+  auto nwrite = sendmsg(fd, &msg, 0);
   if (nwrite < 0) {
     std::cerr << "sendto: errno=" << errno << std::endl;
   } else {
@@ -2183,6 +2209,8 @@ Options:
               Specify the supported groups.
               Default: )"
       << config.groups << R"(
+  --no-udp-gso
+              Disable UDP GSO.
   -v, --verbose
               Output debug information.
   --version   Display version information and exit.
@@ -2245,6 +2273,7 @@ int main(int argc, char **argv) {
         {"rps", required_argument, &flag, 12},
         {"groups", required_argument, &flag, 13},
         {"tls13-ciphers", required_argument, &flag, 14},
+        {"no-udp-gso", no_argument, &flag, 15},
         {nullptr, 0, nullptr, 0}};
     int option_index = 0;
     auto c = getopt_long(argc, argv,
@@ -2502,6 +2531,10 @@ int main(int argc, char **argv) {
       case 14:
         // --tls13-ciphers
         config.tls13_ciphers = optarg;
+        break;
+      case 15:
+        // --no-udp-gso
+        config.no_udp_gso = true;
         break;
       }
       break;

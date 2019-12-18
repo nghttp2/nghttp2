@@ -125,6 +125,8 @@ struct Config {
   std::vector<std::string> npn_list;
   // The number of request per second for each client.
   double rps;
+  // Disables GSO for UDP connections.
+  bool no_udp_gso;
 
   Config();
   ~Config();
@@ -458,7 +460,7 @@ struct Client {
   int read_quic();
   int write_quic();
   int write_udp(const sockaddr *addr, socklen_t addrlen, const uint8_t *data,
-                size_t datalen);
+                size_t datalen, size_t gso_size);
   void quic_close_connection();
 
   int quic_recv_crypto_data(ngtcp2_crypto_level crypto_level,

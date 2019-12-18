@@ -24,6 +24,8 @@
  */
 #include "h2load_quic.h"
 
+#include <netinet/udp.h>
+
 #include <iostream>
 
 #include <ngtcp2/ngtcp2_crypto_openssl.h>
@@ -425,7 +427,7 @@ void Client::quic_close_connection() {
   }
 
   write_udp(reinterpret_cast<sockaddr *>(ps.path.remote.addr),
-            ps.path.remote.addrlen, buf.data(), nwrite);
+            ps.path.remote.addrlen, buf.data(), nwrite, 0);
 }
 
 int Client::quic_on_key(ngtcp2_crypto_level level, const uint8_t *rx_secret,
@@ -554,7 +556,18 @@ int Client::write_quic() {
   }
 
   std::array<nghttp3_vec, 16> vec;
-  std::array<uint8_t, 1500> buf;
+  size_t pktcnt = 0;
+  size_t max_pktcnt =
+#ifdef UDP_SEGMENT
+      worker->config->no_udp_gso
+          ? 1
+          : std::min(static_cast<size_t>(10),
+                     static_cast<size_t>(64_k / quic.max_pktlen));
+#else  // !UDP_SEGMENT
+      1;
+#endif // !UDP_SEGMENT
+  std::array<uint8_t, 64_k> buf;
+  uint8_t *bufpos = buf.data();
   ngtcp2_path_storage ps;
 
   ngtcp2_path_storage_zero(&ps);
@@ -583,16 +596,20 @@ int Client::write_quic() {
     }
 
     auto nwrite = ngtcp2_conn_writev_stream(
-        quic.conn, &ps.path, nullptr, buf.data(), quic.max_pktlen, &ndatalen,
-        flags, stream_id, reinterpret_cast<const ngtcp2_vec *>(v), vcnt,
+        quic.conn, &ps.path, nullptr, bufpos, quic.max_pktlen, &ndatalen, flags,
+        stream_id, reinterpret_cast<const ngtcp2_vec *>(v), vcnt,
         timestamp(worker->loop));
     if (nwrite < 0) {
       switch (nwrite) {
       case NGTCP2_ERR_STREAM_DATA_BLOCKED:
+        assert(ndatalen == -1);
+        if (s->block_stream(stream_id) != 0) {
+          return -1;
+        }
+        continue;
       case NGTCP2_ERR_STREAM_SHUT_WR:
         assert(ndatalen == -1);
-
-        if (s->block_stream(stream_id) != 0) {
+        if (s->shutdown_stream_write(stream_id) != 0) {
           return -1;
         }
         continue;
@@ -613,11 +630,23 @@ int Client::write_quic() {
     quic_restart_pkt_timer();
 
     if (nwrite == 0) {
+      if (bufpos - buf.data()) {
+        write_udp(ps.path.remote.addr, ps.path.remote.addrlen, buf.data(),
+                  bufpos - buf.data(), quic.max_pktlen);
+      }
       return 0;
     }
 
-    write_udp(reinterpret_cast<sockaddr *>(ps.path.remote.addr),
-              ps.path.remote.addrlen, buf.data(), nwrite);
+    bufpos += nwrite;
+
+    // Assume that the path does not change.
+    if (++pktcnt == max_pktcnt ||
+        static_cast<size_t>(nwrite) < quic.max_pktlen) {
+      write_udp(ps.path.remote.addr, ps.path.remote.addrlen, buf.data(),
+                bufpos - buf.data(), quic.max_pktlen);
+      signal_write();
+      return 0;
+    }
   }
 }
 
