@@ -94,6 +94,7 @@ Config::Config()
       log_fd(-1),
       port(0),
       default_port(0),
+      connect_to_port(0),
       verbose(false),
       timing_script(false),
       base_uri_unix(false),
@@ -1565,9 +1566,11 @@ void resolve_host() {
 
   const auto &resolve_host =
       config.connect_to_host.empty() ? config.host : config.connect_to_host;
+  auto port =
+      config.connect_to_port == 0 ? config.port : config.connect_to_port;
 
-  rv = getaddrinfo(resolve_host.c_str(), util::utos(config.port).c_str(),
-                   &hints, &res);
+  rv =
+      getaddrinfo(resolve_host.c_str(), util::utos(port).c_str(), &hints, &res);
   if (rv != 0) {
     std::cerr << "getaddrinfo() failed: " << gai_strerror(rv) << std::endl;
     exit(EXIT_FAILURE);
@@ -1982,8 +1985,9 @@ Options:
               response  time when  using  one worker  thread, but  may
               appear slightly  out of order with  multiple threads due
               to buffering.  Status code is -1 for failed streams.
-  --connect-to=<HOST>
-              Host to connect instead of using the host in <URI>.
+  --connect-to=<HOST>[:<PORT>]
+              Host and port to connect  instead of using the authority
+              in <URI>.
   -v, --verbose
               Output debug information.
   --version   Display version information and exit.
@@ -2270,10 +2274,19 @@ int main(int argc, char **argv) {
         // --log-file
         logfile = optarg;
         break;
-      case 11:
+      case 11: {
         // --connect-to
-        config.connect_to_host = optarg;
+        auto p = util::split_hostport(StringRef{optarg});
+        int64_t port = 0;
+        if (p.first.empty() ||
+            (!p.second.empty() && (port = util::parse_uint(p.second)) == -1)) {
+          std::cerr << "--connect-to: Invalid value " << optarg << std::endl;
+          exit(EXIT_FAILURE);
+        }
+        config.connect_to_host = p.first.str();
+        config.connect_to_port = port;
         break;
+      }
       }
       break;
     default:

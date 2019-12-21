@@ -67,6 +67,7 @@ void test_util_format_hex(void);
 void test_util_is_hex_string(void);
 void test_util_decode_hex(void);
 void test_util_extract_host(void);
+void test_util_split_hostport(void);
 
 } // namespace shrpx
 

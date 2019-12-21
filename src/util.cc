@@ -1537,6 +1537,41 @@ StringRef extract_host(const StringRef &hostport) {
   return StringRef{std::begin(hostport), p};
 }
 
+std::pair<StringRef, StringRef> split_hostport(const StringRef &hostport) {
+  if (hostport.empty()) {
+    return {};
+  }
+  if (hostport[0] == '[') {
+    // assume this is IPv6 numeric address
+    auto p = std::find(std::begin(hostport), std::end(hostport), ']');
+    if (p == std::end(hostport)) {
+      return {};
+    }
+    if (p + 1 == std::end(hostport)) {
+      return {StringRef{std::begin(hostport) + 1, p}, {}};
+    }
+    if (*(p + 1) != ':' || p + 2 == std::end(hostport)) {
+      return {};
+    }
+    return {StringRef{std::begin(hostport) + 1, p},
+            StringRef{p + 2, std::end(hostport)}};
+  }
+
+  auto p = std::find(std::begin(hostport), std::end(hostport), ':');
+  if (p == std::begin(hostport)) {
+    return {};
+  }
+  if (p == std::end(hostport)) {
+    return {StringRef{std::begin(hostport), p}, {}};
+  }
+  if (p + 1 == std::end(hostport)) {
+    return {};
+  }
+
+  return {StringRef{std::begin(hostport), p},
+          StringRef{p + 1, std::end(hostport)}};
+}
+
 std::mt19937 make_mt19937() {
   std::random_device rd;
   return std::mt19937(rd());

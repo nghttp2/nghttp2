@@ -769,6 +769,13 @@ int sha1(uint8_t *buf, const StringRef &s);
 // NULL-terminated.
 StringRef extract_host(const StringRef &hostport);
 
+// split_hostport splits host and port in |hostport|.  Unlike
+// extract_host, square brackets enclosing host name is stripped.  If
+// port is not available, it returns empty string in the second
+// string.  The returned string might not be NULL-terminated.  On any
+// error, it returns a pair which has empty strings.
+std::pair<StringRef, StringRef> split_hostport(const StringRef &hostport);
+
 // Returns new std::mt19937 object.
 std::mt19937 make_mt19937();
 

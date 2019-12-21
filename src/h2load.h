@@ -102,6 +102,7 @@ struct Config {
   int log_fd;
   uint16_t port;
   uint16_t default_port;
+  uint16_t connect_to_port;
   bool verbose;
   bool timing_script;
   std::string base_uri;
