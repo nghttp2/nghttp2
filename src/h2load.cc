@@ -2517,7 +2517,7 @@ int main(int argc, char **argv) {
   shared_nva.emplace_back(":method", config.data_fd == -1 ? "GET" : "POST");
   shared_nva.emplace_back("user-agent", user_agent);
 
-  // list overridalbe headers
+  // list header fields that can be overridden.
   auto override_hdrs = make_array<std::string>(":authority", ":host", ":method",
                                                ":scheme", "user-agent");
 
