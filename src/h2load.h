@@ -329,8 +329,6 @@ struct Client {
     std::array<Crypto, 2> crypto;
     size_t max_pktlen;
     bool close_requested;
-    std::vector<uint8_t> rx_secret;
-    std::vector<uint8_t> tx_secret;
   } quic;
   ev_timer request_timeout_watcher;
   addrinfo *next_addr;
