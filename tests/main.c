@@ -307,6 +307,8 @@ int main() {
       !CU_add_test(pSuite, "session_flooding", test_nghttp2_session_flooding) ||
       !CU_add_test(pSuite, "session_change_stream_priority",
                    test_nghttp2_session_change_stream_priority) ||
+      !CU_add_test(pSuite, "session_create_idle_stream",
+                   test_nghttp2_session_create_idle_stream) ||
       !CU_add_test(pSuite, "session_repeated_priority_change",
                    test_nghttp2_session_repeated_priority_change) ||
       !CU_add_test(pSuite, "session_repeated_priority_submission",
