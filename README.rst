@@ -21,15 +21,15 @@ Running h2load against HTTP/3 server
 
 In order to build h2load with HTTP/3 support, you have to build
 ngtcp2, nghttp3 and my patched OpenSSL.
-https://github.com/ngtcp2/ngtcp2/tree/draft-22#build-from-git
-describes how to build these three software.
+https://github.com/ngtcp2/ngtcp2#build-from-git describes how to build
+these three software.
 
-To run h2load against HTTP/3 server, specify h3-24 ALPN with
+To run h2load against HTTP/3 server, specify h3-25 ALPN with
 ``--npn-list`` option like so:
 
 .. code-block:: text
 
-    $ h2load --npn-list h3-24 https://127.0.0.1:4433
+    $ h2load --npn-list h3-25 https://127.0.0.1:4433
 
 You can use Dockerfile to skip the tedious build steps to manually
 pull and build dependencies.  In order to build Docker image, do this:
@@ -43,7 +43,7 @@ Run h2load:
 
 .. code-block:: text
 
-    $ docker run --rm -it --network=host nghttp2-quic /usr/local/bin/h2load --npn-list h3-24 https://127.0.0.1:4433
+    $ docker run --rm -it --network=host nghttp2-quic /usr/local/bin/h2load --npn-list h3-25 https://127.0.0.1:4433
 
 Development Status
 ------------------
