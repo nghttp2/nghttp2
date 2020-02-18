@@ -2494,14 +2494,6 @@ static int session_update_stream_consumed_size(nghttp2_session *session,
 static int session_update_connection_consumed_size(nghttp2_session *session,
                                                    size_t delta_size);
 
-static int session_update_recv_connection_window_size(nghttp2_session *session,
-                                                      size_t delta_size);
-
-static int session_update_recv_stream_window_size(nghttp2_session *session,
-                                                  nghttp2_stream *stream,
-                                                  size_t delta_size,
-                                                  int send_window_update);
-
 /*
  * Called after a frame is sent.  This function runs
  * on_frame_send_callback and handles stream closure upon END_STREAM
@@ -2735,7 +2727,7 @@ static int session_after_frame_sent1(nghttp2_session *session) {
       if (session->opt_flags & NGHTTP2_OPTMASK_NO_AUTO_WINDOW_UPDATE) {
         rv = session_update_connection_consumed_size(session, 0);
       } else {
-        rv = session_update_recv_connection_window_size(session, 0);
+        rv = nghttp2_session_update_recv_connection_window_size(session, 0);
       }
 
       if (nghttp2_is_fatal(rv)) {
@@ -2761,7 +2753,8 @@ static int session_after_frame_sent1(nghttp2_session *session) {
     if (session->opt_flags & NGHTTP2_OPTMASK_NO_AUTO_WINDOW_UPDATE) {
       rv = session_update_stream_consumed_size(session, stream, 0);
     } else {
-      rv = session_update_recv_stream_window_size(session, stream, 0, 1);
+      rv =
+          nghttp2_session_update_recv_stream_window_size(session, stream, 0, 1);
     }
 
     if (nghttp2_is_fatal(rv)) {
@@ -5019,22 +5012,10 @@ static int adjust_recv_window_size(int32_t *recv_window_size_ptr, size_t delta,
   return 0;
 }
 
-/*
- * Accumulates received bytes |delta_size| for stream-level flow
- * control and decides whether to send WINDOW_UPDATE to that stream.
- * If NGHTTP2_OPT_NO_AUTO_WINDOW_UPDATE is set, WINDOW_UPDATE will not
- * be sent.
- *
- * This function returns 0 if it succeeds, or one of the following
- * negative error codes:
- *
- * NGHTTP2_ERR_NOMEM
- *     Out of memory.
- */
-static int session_update_recv_stream_window_size(nghttp2_session *session,
-                                                  nghttp2_stream *stream,
-                                                  size_t delta_size,
-                                                  int send_window_update) {
+int nghttp2_session_update_recv_stream_window_size(nghttp2_session *session,
+                                                   nghttp2_stream *stream,
+                                                   size_t delta_size,
+                                                   int send_window_update) {
   int rv;
   rv = adjust_recv_window_size(&stream->recv_window_size, delta_size,
                                stream->local_window_size);
@@ -5063,20 +5044,8 @@ static int session_update_recv_stream_window_size(nghttp2_session *session,
   return 0;
 }
 
-/*
- * Accumulates received bytes |delta_size| for connection-level flow
- * control and decides whether to send WINDOW_UPDATE to the
- * connection.  If NGHTTP2_OPT_NO_AUTO_WINDOW_UPDATE is set,
- * WINDOW_UPDATE will not be sent.
- *
- * This function returns 0 if it succeeds, or one of the following
- * negative error codes:
- *
- * NGHTTP2_ERR_NOMEM
- *     Out of memory.
- */
-static int session_update_recv_connection_window_size(nghttp2_session *session,
-                                                      size_t delta_size) {
+int nghttp2_session_update_recv_connection_window_size(nghttp2_session *session,
+                                                       size_t delta_size) {
   int rv;
   rv = adjust_recv_window_size(&session->recv_window_size, delta_size,
                                session->local_window_size);
@@ -6454,7 +6423,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
       }
 
       /* Pad Length field is subject to flow control */
-      rv = session_update_recv_connection_window_size(session, readlen);
+      rv = nghttp2_session_update_recv_connection_window_size(session, readlen);
       if (nghttp2_is_fatal(rv)) {
         return rv;
       }
@@ -6477,7 +6446,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
 
       stream = nghttp2_session_get_stream(session, iframe->frame.hd.stream_id);
       if (stream) {
-        rv = session_update_recv_stream_window_size(
+        rv = nghttp2_session_update_recv_stream_window_size(
             session, stream, readlen,
             iframe->payloadleft ||
                 (iframe->frame.hd.flags & NGHTTP2_FLAG_END_STREAM) == 0);
@@ -6524,7 +6493,8 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
       if (readlen > 0) {
         ssize_t data_readlen;
 
-        rv = session_update_recv_connection_window_size(session, readlen);
+        rv = nghttp2_session_update_recv_connection_window_size(session,
+                                                                readlen);
         if (nghttp2_is_fatal(rv)) {
           return rv;
         }
@@ -6533,7 +6503,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
           return (ssize_t)inlen;
         }
 
-        rv = session_update_recv_stream_window_size(
+        rv = nghttp2_session_update_recv_stream_window_size(
             session, stream, readlen,
             iframe->payloadleft ||
                 (iframe->frame.hd.flags & NGHTTP2_FLAG_END_STREAM) == 0);
@@ -6634,7 +6604,8 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
       if (readlen > 0) {
         /* Update connection-level flow control window for ignored
            DATA frame too */
-        rv = session_update_recv_connection_window_size(session, readlen);
+        rv = nghttp2_session_update_recv_connection_window_size(session,
+                                                                readlen);
         if (nghttp2_is_fatal(rv)) {
           return rv;
         }
