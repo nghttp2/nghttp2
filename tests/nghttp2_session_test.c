@@ -10141,7 +10141,7 @@ void test_nghttp2_session_create_idle_stream(void) {
 
   /* If pri_spec->stream_id does not exist, and it is idle stream, it
      is created too */
-  nghttp2_priority_spec_init(&pri_spec, 8, 109, 0);
+  nghttp2_priority_spec_init(&pri_spec, 10, 109, 0);
 
   rv = nghttp2_session_create_idle_stream(session, 8, &pri_spec);
 
@@ -10174,7 +10174,7 @@ void test_nghttp2_session_create_idle_stream(void) {
   CU_ASSERT(NGHTTP2_ERR_INVALID_ARGUMENT == rv);
 
   /* It is an error to create non-idle stream */
-  session->next_stream_id = 20;
+  session->last_sent_stream_id = 20;
   pri_spec.stream_id = 2;
 
   rv = nghttp2_session_create_idle_stream(session, 18, &pri_spec);
