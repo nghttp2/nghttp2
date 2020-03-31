@@ -329,6 +329,15 @@ int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
 
     break;
   }
+  case NGHTTP2_GOAWAY: {
+    if (!sess->stopped()) {
+      auto& cb = sess->on_error();
+      auto ec = make_error_code(
+        static_cast<nghttp2_error>(NGHTTP2_ERR_START_STREAM_NOT_ALLOWED));
+      cb(ec);
+    }
+    break;
+  }
   }
   return 0;
 }
