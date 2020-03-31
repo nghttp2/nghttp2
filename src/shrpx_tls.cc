@@ -2030,17 +2030,6 @@ StringRef get_x509_issuer_name(BlockAllocator &balloc, X509 *x) {
 #endif /* !WORDS_BIGENDIAN */
 
 StringRef get_x509_serial(BlockAllocator &balloc, X509 *x) {
-#if OPENSSL_1_1_API && !defined(OPENSSL_IS_BORINGSSL)
-  auto sn = X509_get0_serialNumber(x);
-  uint64_t r;
-  if (ASN1_INTEGER_get_uint64(&r, sn) != 1) {
-    return StringRef{};
-  }
-
-  r = bswap64(r);
-  return util::format_hex(
-      balloc, StringRef{reinterpret_cast<uint8_t *>(&r), sizeof(r)});
-#else  // !OPENSSL_1_1_API || OPENSSL_IS_BORINGSSL
   auto sn = X509_get_serialNumber(x);
   auto bn = BN_new();
   auto bn_d = defer(BN_free, bn);
@@ -2052,8 +2041,7 @@ StringRef get_x509_serial(BlockAllocator &balloc, X509 *x) {
   auto n = BN_bn2bin(bn, b.data());
   assert(n <= 20);
 
-  return util::format_hex(balloc, StringRef{std::begin(b), std::end(b)});
-#endif // !OPENSSL_1_1_API
+  return util::format_hex(balloc, StringRef{b.data(), static_cast<size_t>(n)});
 }
 
 namespace {
