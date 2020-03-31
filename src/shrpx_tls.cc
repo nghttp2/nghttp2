@@ -2041,7 +2041,7 @@ StringRef get_x509_serial(BlockAllocator &balloc, X509 *x) {
   auto n = BN_bn2bin(bn, b.data());
   assert(n <= 20);
 
-  return util::format_hex(balloc, StringRef{b.data(), n});
+  return util::format_hex(balloc, StringRef{b.data(), static_cast<size_t>(n)});
 }
 
 namespace {
