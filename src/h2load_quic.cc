@@ -476,7 +476,7 @@ int Client::quic_setup_initial_crypto() {
 
   if (ngtcp2_crypto_derive_and_install_initial_key(
           quic.conn, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-          nullptr, nullptr, nullptr, dcid, NGTCP2_CRYPTO_SIDE_CLIENT) != 0) {
+          nullptr, nullptr, nullptr, dcid) != 0) {
     std::cerr << "ngtcp2_crypto_derive_and_install_initial_key() failed"
               << std::endl;
     return -1;
@@ -487,11 +487,20 @@ int Client::quic_setup_initial_crypto() {
 
 int Client::quic_on_key(ngtcp2_crypto_level level, const uint8_t *rx_secret,
                         const uint8_t *tx_secret, size_t secretlen) {
-  if (ngtcp2_crypto_derive_and_install_key(
-          quic.conn, ssl, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-          level, rx_secret, tx_secret, secretlen,
-          NGTCP2_CRYPTO_SIDE_CLIENT) != 0) {
-    std::cerr << "ngtcp2_crypto_derive_and_install_key() failed" << std::endl;
+  if (level != NGTCP2_CRYPTO_LEVEL_EARLY &&
+      ngtcp2_crypto_derive_and_install_rx_key(quic.conn, ssl, nullptr, nullptr,
+                                              nullptr, level, rx_secret,
+                                              secretlen) != 0) {
+    std::cerr << "ngtcp2_crypto_derive_and_install_rx_key() failed"
+              << std::endl;
+    return -1;
+  }
+
+  if (ngtcp2_crypto_derive_and_install_tx_key(quic.conn, ssl, nullptr, nullptr,
+                                              nullptr, level, tx_secret,
+                                              secretlen) != 0) {
+    std::cerr << "ngtcp2_crypto_derive_and_install_tx_key() failed"
+              << std::endl;
     return -1;
   }
 
