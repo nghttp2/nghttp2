@@ -647,7 +647,13 @@ int Client::write_quic() {
       case NGTCP2_ERR_STREAM_SHUT_WR:
         if (nwrite == NGTCP2_ERR_STREAM_DATA_BLOCKED &&
             ngtcp2_conn_get_max_data_left(quic.conn) == 0) {
-          return 0;
+          /* Call ngtcp2_conn_writev_stream to ensure that a complete
+             packet is written to the buffer. */
+          nwrite = ngtcp2_conn_writev_stream(
+              quic.conn, &ps.path, buf.data(), quic.max_pktlen, nullptr,
+              NGTCP2_WRITE_STREAM_FLAG_NONE, /* stream_id = */ 0, /* fin = */ 0,
+              nullptr, 0, timestamp(worker->loop));
+          break;
         }
 
         if (s->block_stream(stream_id) != 0) {
@@ -662,8 +668,10 @@ int Client::write_quic() {
         continue;
       }
 
-      quic.last_error = quic::err_transport(nwrite);
-      return -1;
+      if (nwrite < 0) {
+        quic.last_error = quic::err_transport(nwrite);
+        return -1;
+      }
     }
 
     quic_restart_pkt_timer();
