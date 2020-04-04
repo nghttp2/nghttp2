@@ -645,10 +645,7 @@ int Client::write_quic() {
       switch (nwrite) {
       case NGTCP2_ERR_STREAM_DATA_BLOCKED:
       case NGTCP2_ERR_STREAM_SHUT_WR:
-        if (nwrite == NGTCP2_ERR_STREAM_DATA_BLOCKED &&
-            ngtcp2_conn_get_max_data_left(quic.conn) == 0) {
-          return 0;
-        }
+        assert(ndatalen == -1);
 
         if (s->block_stream(stream_id) != 0) {
           return -1;
@@ -666,16 +663,12 @@ int Client::write_quic() {
       return -1;
     }
 
+    assert(ndatalen == -1);
+
     quic_restart_pkt_timer();
 
     if (nwrite == 0) {
       return 0;
-    }
-
-    if (ndatalen >= 0) {
-      if (s->add_write_offset(stream_id, ndatalen) != 0) {
-        return -1;
-      }
     }
 
     write_udp(reinterpret_cast<sockaddr *>(ps.path.remote.addr),
