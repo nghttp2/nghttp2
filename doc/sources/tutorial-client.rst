@@ -422,7 +422,7 @@ the ``on_header_callback()`` is called for each name/value pair::
       return 0;
     }
 
-In this tutorial, we just print the name/value pairs on stdout.
+In this tutorial, we just print the name/value pairs on stderr.
 
 After the HEADERS frame has been fully received (and thus all response
 header name/value pairs have been received), the
