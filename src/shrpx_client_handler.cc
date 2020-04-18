@@ -447,8 +447,7 @@ ClientHandler::ClientHandler(Worker *worker, int fd, SSL *ssl,
       *p = '\0';
 
       forwarded_for_ = StringRef{buf.base, p};
-    } else if (!faddr_->accept_proxy_protocol &&
-               !config->conn.upstream.accept_proxy_protocol) {
+    } else {
       init_forwarded_for(family, ipaddr_);
     }
   }
