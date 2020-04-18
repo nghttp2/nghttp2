@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"crypto/tls"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"github.com/tatsuhiro-t/go-nghttp2"
@@ -670,4 +671,94 @@ type APIResponse struct {
 	Status string                 `json:"status,omitempty"`
 	Code   int                    `json:"code,omitempty"`
 	Data   map[string]interface{} `json:"data,omitempty"`
+}
+
+type proxyProtocolV2 struct {
+	command            proxyProtocolV2Command
+	sourceAddress      net.Addr
+	destinationAddress net.Addr
+	additionalData     []byte
+}
+
+type proxyProtocolV2Command int
+
+const (
+	proxyProtocolV2CommandLocal proxyProtocolV2Command = 0x0
+	proxyProtocolV2CommandProxy proxyProtocolV2Command = 0x1
+)
+
+type proxyProtocolV2Family int
+
+const (
+	proxyProtocolV2FamilyUnspec proxyProtocolV2Family = 0x0
+	proxyProtocolV2FamilyInet   proxyProtocolV2Family = 0x1
+	proxyProtocolV2FamilyInet6  proxyProtocolV2Family = 0x2
+	proxyProtocolV2FamilyUnix   proxyProtocolV2Family = 0x3
+)
+
+type proxyProtocolV2Protocol int
+
+const (
+	proxyProtocolV2ProtocolUnspec proxyProtocolV2Protocol = 0x0
+	proxyProtocolV2ProtocolStream proxyProtocolV2Protocol = 0x1
+	proxyProtocolV2ProtocolDgram  proxyProtocolV2Protocol = 0x2
+)
+
+func writeProxyProtocolV2(w io.Writer, hdr proxyProtocolV2) {
+	w.Write([]byte{0x0D, 0x0A, 0x0D, 0x0A, 0x00, 0x0D, 0x0A, 0x51, 0x55, 0x49, 0x54, 0x0A})
+	w.Write([]byte{byte(0x20 | hdr.command)})
+
+	switch srcAddr := hdr.sourceAddress.(type) {
+	case *net.TCPAddr:
+		dstAddr := hdr.destinationAddress.(*net.TCPAddr)
+		if len(srcAddr.IP) != len(dstAddr.IP) {
+			panic("len(srcAddr.IP) != len(dstAddr.IP)")
+		}
+		var fam byte
+		if len(srcAddr.IP) == 4 {
+			fam = byte(proxyProtocolV2FamilyInet << 4)
+		} else {
+			fam = byte(proxyProtocolV2FamilyInet6 << 4)
+		}
+		fam |= byte(proxyProtocolV2ProtocolStream)
+		w.Write([]byte{fam})
+		length := uint16(len(srcAddr.IP)*2 + 4 + len(hdr.additionalData))
+		binary.Write(w, binary.BigEndian, length)
+		w.Write(srcAddr.IP)
+		w.Write(dstAddr.IP)
+		binary.Write(w, binary.BigEndian, uint16(srcAddr.Port))
+		binary.Write(w, binary.BigEndian, uint16(dstAddr.Port))
+	case *net.UnixAddr:
+		dstAddr := hdr.destinationAddress.(*net.UnixAddr)
+		if len(srcAddr.Name) > 108 {
+			panic("too long Unix source address")
+		}
+		if len(dstAddr.Name) > 108 {
+			panic("too long Unix destination address")
+		}
+		fam := byte(proxyProtocolV2FamilyUnix << 4)
+		switch srcAddr.Net {
+		case "unix":
+			fam |= byte(proxyProtocolV2ProtocolStream)
+		case "unixdgram":
+			fam |= byte(proxyProtocolV2ProtocolDgram)
+		default:
+			fam |= byte(proxyProtocolV2ProtocolUnspec)
+		}
+		w.Write([]byte{fam})
+		length := uint16(216 + len(hdr.additionalData))
+		binary.Write(w, binary.BigEndian, length)
+		zeros := make([]byte, 108)
+		w.Write([]byte(srcAddr.Name))
+		w.Write(zeros[:108-len(srcAddr.Name)])
+		w.Write([]byte(dstAddr.Name))
+		w.Write(zeros[:108-len(dstAddr.Name)])
+	default:
+		fam := byte(proxyProtocolV2FamilyUnspec<<4) | byte(proxyProtocolV2ProtocolUnspec)
+		w.Write([]byte{fam})
+		length := uint16(len(hdr.additionalData))
+		binary.Write(w, binary.BigEndian, length)
+	}
+
+	w.Write(hdr.additionalData)
 }
