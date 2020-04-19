@@ -5653,6 +5653,12 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
           break;
         }
 
+        /* Check the settings flood counter early to be safe */
+        if (session->obq_flood_counter_ >= session->max_outbound_ack &&
+            !(iframe->frame.hd.flags & NGHTTP2_FLAG_ACK)) {
+          return NGHTTP2_ERR_FLOODED;
+        }
+
         iframe->state = NGHTTP2_IB_READ_SETTINGS;
 
         if (iframe->payloadleft) {
