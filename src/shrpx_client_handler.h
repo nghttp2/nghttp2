@@ -77,6 +77,7 @@ public:
   int upstream_write();
 
   int proxy_protocol_read();
+  int proxy_protocol_v2_read();
   int on_proxy_protocol_finish();
 
   // Performs I/O operation.  Internally calls on_read()/on_write().

@@ -447,8 +447,7 @@ ClientHandler::ClientHandler(Worker *worker, int fd, SSL *ssl,
       *p = '\0';
 
       forwarded_for_ = StringRef{buf.base, p};
-    } else if (!faddr_->accept_proxy_protocol &&
-               !config->conn.upstream.accept_proxy_protocol) {
+    } else {
       init_forwarded_for(family, ipaddr_);
     }
   }
@@ -1149,6 +1148,16 @@ int ClientHandler::on_proxy_protocol_finish() {
   return 0;
 }
 
+namespace {
+// PROXY-protocol v2 header signature
+constexpr uint8_t PROXY_PROTO_V2_SIG[] =
+    "\x0D\x0A\x0D\x0A\x00\x0D\x0A\x51\x55\x49\x54\x0A";
+
+// PROXY-protocol v2 header length
+constexpr size_t PROXY_PROTO_V2_HDLEN =
+    str_size(PROXY_PROTO_V2_SIG) + /* ver_cmd(1) + fam(1) + len(2) = */ 4;
+} // namespace
+
 // http://www.haproxy.org/download/1.5/doc/proxy-protocol.txt
 int ClientHandler::proxy_protocol_read() {
   if (LOG_ENABLED(INFO)) {
@@ -1156,6 +1165,14 @@ int ClientHandler::proxy_protocol_read() {
   }
 
   auto first = rb_.pos();
+
+  if (rb_.rleft() >= PROXY_PROTO_V2_HDLEN &&
+      (*(first + str_size(PROXY_PROTO_V2_SIG)) & 0xf0) == 0x20) {
+    if (LOG_ENABLED(INFO)) {
+      CLOG(INFO, this) << "PROXY-protocol: Detected v2 header signature";
+    }
+    return proxy_protocol_v2_read();
+  }
 
   // NULL character really destroys functions which expects NULL
   // terminated string.  We won't expect it in PROXY protocol line, so
@@ -1335,6 +1352,167 @@ int ClientHandler::proxy_protocol_read() {
     init_forwarded_for(family, ipaddr_);
   }
 
+  return on_proxy_protocol_finish();
+}
+
+int ClientHandler::proxy_protocol_v2_read() {
+  // Assume that first str_size(PROXY_PROTO_V2_SIG) octets match v2
+  // protocol signature and followed by the bytes which indicates v2.
+  assert(rb_.rleft() >= PROXY_PROTO_V2_HDLEN);
+
+  auto p = rb_.pos() + str_size(PROXY_PROTO_V2_SIG);
+
+  assert(((*p) & 0xf0) == 0x20);
+
+  enum { LOCAL, PROXY } cmd;
+
+  auto cmd_bits = (*p++) & 0xf;
+  switch (cmd_bits) {
+  case 0x0:
+    cmd = LOCAL;
+    break;
+  case 0x01:
+    cmd = PROXY;
+    break;
+  default:
+    if (LOG_ENABLED(INFO)) {
+      CLOG(INFO, this) << "PROXY-protocol-v2: Unknown command " << log::hex
+                       << cmd_bits;
+    }
+    return -1;
+  }
+
+  auto fam = *p++;
+  uint16_t len;
+  memcpy(&len, p, sizeof(len));
+  len = ntohs(len);
+
+  p += sizeof(len);
+
+  if (LOG_ENABLED(INFO)) {
+    CLOG(INFO, this) << "PROXY-protocol-v2: Detected family=" << log::hex << fam
+                     << ", len=" << log::dec << len;
+  }
+
+  if (rb_.last() - p < len) {
+    if (LOG_ENABLED(INFO)) {
+      CLOG(INFO, this)
+          << "PROXY-protocol-v2: Prematurely truncated header block; require "
+          << len << " bytes, " << rb_.last() - p << " bytes left";
+    }
+    return -1;
+  }
+
+  int family;
+  std::array<char, std::max(INET_ADDRSTRLEN, INET6_ADDRSTRLEN)> src_addr,
+      dst_addr;
+  size_t addrlen;
+
+  switch (fam) {
+  case 0x11:
+  case 0x12:
+    if (len < 12) {
+      if (LOG_ENABLED(INFO)) {
+        CLOG(INFO, this) << "PROXY-protocol-v2: Too short AF_INET addresses";
+      }
+      return -1;
+    }
+    family = AF_INET;
+    addrlen = 4;
+    break;
+  case 0x21:
+  case 0x22:
+    if (len < 36) {
+      if (LOG_ENABLED(INFO)) {
+        CLOG(INFO, this) << "PROXY-protocol-v2: Too short AF_INET6 addresses";
+      }
+      return -1;
+    }
+    family = AF_INET6;
+    addrlen = 16;
+    break;
+  case 0x31:
+  case 0x32:
+    if (len < 216) {
+      if (LOG_ENABLED(INFO)) {
+        CLOG(INFO, this) << "PROXY-protocol-v2: Too short AF_UNIX addresses";
+      }
+      return -1;
+    }
+    // fall through
+  case 0x00: {
+    // UNSPEC and UNIX are just ignored.
+    if (LOG_ENABLED(INFO)) {
+      CLOG(INFO, this) << "PROXY-protocol-v2: Ignore combination of address "
+                          "family and protocol "
+                       << log::hex << fam;
+    }
+    rb_.drain(PROXY_PROTO_V2_HDLEN + len);
+    return on_proxy_protocol_finish();
+  }
+  default:
+    if (LOG_ENABLED(INFO)) {
+      CLOG(INFO, this) << "PROXY-protocol-v2: Unknown combination of address "
+                          "family and protocol "
+                       << log::hex << fam;
+    }
+    return -1;
+  }
+
+  if (cmd != PROXY) {
+    if (LOG_ENABLED(INFO)) {
+      CLOG(INFO, this) << "PROXY-protocol-v2: Ignore non-PROXY command";
+    }
+    rb_.drain(PROXY_PROTO_V2_HDLEN + len);
+    return on_proxy_protocol_finish();
+  }
+
+  if (inet_ntop(family, p, src_addr.data(), src_addr.size()) == nullptr) {
+    if (LOG_ENABLED(INFO)) {
+      CLOG(INFO, this) << "PROXY-protocol-v2: Unable to parse source address";
+    }
+    return -1;
+  }
+
+  p += addrlen;
+
+  if (inet_ntop(family, p, dst_addr.data(), dst_addr.size()) == nullptr) {
+    if (LOG_ENABLED(INFO)) {
+      CLOG(INFO, this)
+          << "PROXY-protocol-v2: Unable to parse destination address";
+    }
+    return -1;
+  }
+
+  p += addrlen;
+
+  uint16_t src_port;
+
+  memcpy(&src_port, p, sizeof(src_port));
+  src_port = ntohs(src_port);
+
+  // We don't use destination port.
+  p += 4;
+
+  ipaddr_ = make_string_ref(balloc_, StringRef{src_addr.data()});
+  port_ = util::make_string_ref_uint(balloc_, src_port);
+
+  if (LOG_ENABLED(INFO)) {
+    CLOG(INFO, this) << "PROXY-protocol-v2: Finished reading proxy addresses, "
+                     << p - rb_.pos() << " bytes read, "
+                     << PROXY_PROTO_V2_HDLEN + len - (p - rb_.pos())
+                     << " bytes left";
+  }
+
+  auto config = get_config();
+  auto &fwdconf = config->http.forwarded;
+
+  if ((fwdconf.params & FORWARDED_FOR) &&
+      fwdconf.for_node_type == ForwardedNode::IP) {
+    init_forwarded_for(family, ipaddr_);
+  }
+
+  rb_.drain(PROXY_PROTO_V2_HDLEN + len);
   return on_proxy_protocol_finish();
 }
 

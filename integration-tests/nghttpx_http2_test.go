@@ -9,6 +9,7 @@ import (
 	"golang.org/x/net/http2/hpack"
 	"io"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"regexp"
 	"strings"
@@ -1503,6 +1504,235 @@ func TestH2H1ProxyProtocolV1InvalidID(t *testing.T) {
 
 	if err == nil {
 		t.Fatalf("connection was not terminated")
+	}
+}
+
+// TestH2H1ProxyProtocolV2TCP4 tests PROXY protocol version 2
+// containing AF_INET family is accepted and X-Forwarded-For contains
+// advertised src address.
+func TestH2H1ProxyProtocolV2TCP4(t *testing.T) {
+	st := newServerTester([]string{"--accept-proxy-protocol", "--add-x-forwarded-for", "--add-forwarded=for", "--forwarded-for=ip"}, t, func(w http.ResponseWriter, r *http.Request) {
+		if got, want := r.Header.Get("X-Forwarded-For"), "192.168.0.2"; got != want {
+			t.Errorf("X-Forwarded-For: %v; want %v", got, want)
+		}
+		if got, want := r.Header.Get("Forwarded"), "for=192.168.0.2"; got != want {
+			t.Errorf("Forwarded: %v; want %v", got, want)
+		}
+	})
+	defer st.Close()
+
+	var b bytes.Buffer
+	writeProxyProtocolV2(&b, proxyProtocolV2{
+		command: proxyProtocolV2CommandProxy,
+		sourceAddress: &net.TCPAddr{
+			IP:   net.ParseIP("192.168.0.2").To4(),
+			Port: 12345,
+		},
+		destinationAddress: &net.TCPAddr{
+			IP:   net.ParseIP("192.168.0.100").To4(),
+			Port: 8080,
+		},
+		additionalData: []byte("foobar"),
+	})
+	st.conn.Write(b.Bytes())
+
+	res, err := st.http2(requestParam{
+		name: "TestH2H1ProxyProtocolV2TCP4",
+	})
+
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+
+	if got, want := res.status, 200; got != want {
+		t.Errorf("res.status: %v; want %v", got, want)
+	}
+}
+
+// TestH2H1ProxyProtocolV2TCP6 tests PROXY protocol version 2
+// containing AF_INET6 family is accepted and X-Forwarded-For contains
+// advertised src address.
+func TestH2H1ProxyProtocolV2TCP6(t *testing.T) {
+	st := newServerTester([]string{"--accept-proxy-protocol", "--add-x-forwarded-for", "--add-forwarded=for", "--forwarded-for=ip"}, t, func(w http.ResponseWriter, r *http.Request) {
+		if got, want := r.Header.Get("X-Forwarded-For"), "2001:db8:85a3::8a2e:370:7334"; got != want {
+			t.Errorf("X-Forwarded-For: %v; want %v", got, want)
+		}
+		if got, want := r.Header.Get("Forwarded"), `for="[2001:db8:85a3::8a2e:370:7334]"`; got != want {
+			t.Errorf("Forwarded: %v; want %v", got, want)
+		}
+	})
+	defer st.Close()
+
+	var b bytes.Buffer
+	writeProxyProtocolV2(&b, proxyProtocolV2{
+		command: proxyProtocolV2CommandProxy,
+		sourceAddress: &net.TCPAddr{
+			IP:   net.ParseIP("2001:0db8:85a3:0000:0000:8a2e:0370:7334"),
+			Port: 12345,
+		},
+		destinationAddress: &net.TCPAddr{
+			IP:   net.ParseIP("::1"),
+			Port: 8080,
+		},
+		additionalData: []byte("foobar"),
+	})
+	st.conn.Write(b.Bytes())
+
+	res, err := st.http2(requestParam{
+		name: "TestH2H1ProxyProtocolV2TCP6",
+	})
+
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+
+	if got, want := res.status, 200; got != want {
+		t.Errorf("res.status: %v; want %v", got, want)
+	}
+}
+
+// TestH2H1ProxyProtocolV2Local tests PROXY protocol version 2
+// containing cmd == Local is ignored.
+func TestH2H1ProxyProtocolV2Local(t *testing.T) {
+	st := newServerTester([]string{"--accept-proxy-protocol", "--add-x-forwarded-for", "--add-forwarded=for", "--forwarded-for=ip"}, t, func(w http.ResponseWriter, r *http.Request) {
+		if got, want := r.Header.Get("X-Forwarded-For"), "127.0.0.1"; got != want {
+			t.Errorf("X-Forwarded-For: %v; want %v", got, want)
+		}
+		if got, want := r.Header.Get("Forwarded"), "for=127.0.0.1"; got != want {
+			t.Errorf("Forwarded: %v; want %v", got, want)
+		}
+	})
+	defer st.Close()
+
+	var b bytes.Buffer
+	writeProxyProtocolV2(&b, proxyProtocolV2{
+		command: proxyProtocolV2CommandLocal,
+		sourceAddress: &net.TCPAddr{
+			IP:   net.ParseIP("192.168.0.2").To4(),
+			Port: 12345,
+		},
+		destinationAddress: &net.TCPAddr{
+			IP:   net.ParseIP("192.168.0.100").To4(),
+			Port: 8080,
+		},
+		additionalData: []byte("foobar"),
+	})
+	st.conn.Write(b.Bytes())
+
+	res, err := st.http2(requestParam{
+		name: "TestH2H1ProxyProtocolV2Local",
+	})
+
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+
+	if got, want := res.status, 200; got != want {
+		t.Errorf("res.status: %v; want %v", got, want)
+	}
+}
+
+// TestH2H1ProxyProtocolV2UnknownCmd tests PROXY protocol version 2
+// containing unknown cmd should be rejected.
+func TestH2H1ProxyProtocolV2UnknownCmd(t *testing.T) {
+	st := newServerTester([]string{"--accept-proxy-protocol"}, t, noopHandler)
+	defer st.Close()
+
+	var b bytes.Buffer
+	writeProxyProtocolV2(&b, proxyProtocolV2{
+		command: 0xf,
+		sourceAddress: &net.TCPAddr{
+			IP:   net.ParseIP("192.168.0.2").To4(),
+			Port: 12345,
+		},
+		destinationAddress: &net.TCPAddr{
+			IP:   net.ParseIP("192.168.0.100").To4(),
+			Port: 8080,
+		},
+		additionalData: []byte("foobar"),
+	})
+	st.conn.Write(b.Bytes())
+
+	_, err := st.http2(requestParam{
+		name: "TestH2H1ProxyProtocolV2UnknownCmd",
+	})
+
+	if err == nil {
+		t.Fatalf("connection was not terminated")
+	}
+}
+
+// TestH2H1ProxyProtocolV2Unix tests PROXY protocol version 2
+// containing AF_UNIX family is ignored.
+func TestH2H1ProxyProtocolV2Unix(t *testing.T) {
+	st := newServerTester([]string{"--accept-proxy-protocol", "--add-x-forwarded-for", "--add-forwarded=for", "--forwarded-for=ip"}, t, func(w http.ResponseWriter, r *http.Request) {
+		if got, want := r.Header.Get("X-Forwarded-For"), "127.0.0.1"; got != want {
+			t.Errorf("X-Forwarded-For: %v; want %v", got, want)
+		}
+		if got, want := r.Header.Get("Forwarded"), "for=127.0.0.1"; got != want {
+			t.Errorf("Forwarded: %v; want %v", got, want)
+		}
+	})
+	defer st.Close()
+
+	var b bytes.Buffer
+	writeProxyProtocolV2(&b, proxyProtocolV2{
+		command: proxyProtocolV2CommandProxy,
+		sourceAddress: &net.UnixAddr{
+			Name: "/foo",
+			Net:  "unix",
+		},
+		destinationAddress: &net.UnixAddr{
+			Name: "/bar",
+			Net:  "unix",
+		},
+		additionalData: []byte("foobar"),
+	})
+	st.conn.Write(b.Bytes())
+
+	res, err := st.http2(requestParam{
+		name: "TestH2H1ProxyProtocolV2Unix",
+	})
+
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+
+	if got, want := res.status, 200; got != want {
+		t.Errorf("res.status: %v; want %v", got, want)
+	}
+}
+
+// TestH2H1ProxyProtocolV2Unspec tests PROXY protocol version 2
+// containing AF_UNSPEC family is ignored.
+func TestH2H1ProxyProtocolV2Unspec(t *testing.T) {
+	st := newServerTester([]string{"--accept-proxy-protocol", "--add-x-forwarded-for", "--add-forwarded=for", "--forwarded-for=ip"}, t, func(w http.ResponseWriter, r *http.Request) {
+		if got, want := r.Header.Get("X-Forwarded-For"), "127.0.0.1"; got != want {
+			t.Errorf("X-Forwarded-For: %v; want %v", got, want)
+		}
+		if got, want := r.Header.Get("Forwarded"), "for=127.0.0.1"; got != want {
+			t.Errorf("Forwarded: %v; want %v", got, want)
+		}
+	})
+	defer st.Close()
+
+	var b bytes.Buffer
+	writeProxyProtocolV2(&b, proxyProtocolV2{
+		command:        proxyProtocolV2CommandProxy,
+		additionalData: []byte("foobar"),
+	})
+	st.conn.Write(b.Bytes())
+
+	res, err := st.http2(requestParam{
+		name: "TestH2H1ProxyProtocolV2Unspec",
+	})
+
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+
+	if got, want := res.status, 200; got != want {
+		t.Errorf("res.status: %v; want %v", got, want)
 	}
 }
 
