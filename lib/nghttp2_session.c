@@ -4698,12 +4698,7 @@ int nghttp2_session_on_ping_received(nghttp2_session *session,
     rv = nghttp2_session_add_ping(session, NGHTTP2_FLAG_ACK,
                                   frame->ping.opaque_data);
     if (rv != 0) {
-      if (nghttp2_is_fatal(rv)) {
-        return rv;
-      }
-
-      return session_handle_invalid_connection(session, frame,
-                                               NGHTTP2_ERR_INTERNAL, NULL);
+      return rv;
     }
   }
   return session_call_on_frame_received(session, frame);
