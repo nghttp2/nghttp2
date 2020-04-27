@@ -124,6 +124,14 @@ and above, run the following to install the required packages:
       zlib1g-dev libcunit1-dev libssl-dev libxml2-dev libev-dev libevent-dev libjansson-dev \
       libc-ares-dev libjemalloc-dev libsystemd-dev \
       cython python3-dev python-setuptools
+      
+On centos 7 use the following command line for required packages:
+
+.. code-block:: text
+
+    yum install -y gcc make binutils autoconf automake libtool pkgconfig \
+	zlib-devel openssl-devel libxml2-devel jemalloc-devel systemd-devel \
+	CUnit-devel libevent-devel c-ares-devel libev-devel
 
 To enable mruby support for nghttpx, `mruby
 <https://github.com/mruby/mruby>`_ is required.  We need to build
