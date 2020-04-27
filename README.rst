@@ -131,7 +131,9 @@ On centos 7 use the following command line for required packages:
 
     yum install -y gcc make binutils autoconf automake libtool pkgconfig \
 	zlib-devel openssl-devel libxml2-devel jemalloc-devel systemd-devel \
-	CUnit-devel libevent-devel c-ares-devel libev-devel
+	CUnit-devel libevent-devel c-ares-devel libev-devel centos-release-scl
+    yum install -y devtoolset-7
+    source /opt/rh/devtoolset-7/enable
 
 To enable mruby support for nghttpx, `mruby
 <https://github.com/mruby/mruby>`_ is required.  We need to build
