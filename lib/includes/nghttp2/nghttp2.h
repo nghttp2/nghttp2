@@ -399,6 +399,11 @@ typedef enum {
    */
   NGHTTP2_ERR_SETTINGS_EXPECTED = -536,
   /**
+   * Integer exceeded the maximum value
+   */
+  NGHTTP2_ERR_HEADER_COMP_MAX_LEN_EX = -537,
+
+  /**
    * The errors < :enum:`NGHTTP2_ERR_FATAL` mean that the library is
    * under unexpected condition and processing was terminated (e.g.,
    * out of memory).  If application receives this error code, it must
@@ -5080,7 +5085,12 @@ typedef enum {
   /**
    * Indicates a header was emitted.
    */
-  NGHTTP2_HD_INFLATE_EMIT = 0x02
+  NGHTTP2_HD_INFLATE_EMIT = 0x02,
+  /**
+   * Input value: Indicates that the inflater is run in decode mode
+   * e.g will not stop on unknown indexes.
+   */
+  NGHTTP2_HD_INFLATE_DECODE = 0x04
 } nghttp2_hd_inflate_flag;
 
 /**
@@ -5178,6 +5188,11 @@ NGHTTP2_EXTERN ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
  * |*inflate_flags| and name/value pair is assigned to the |nv_out|
  * and the function returns.  The caller must not free the members of
  * |nv_out|.
+ *
+ * If :|*inflate_flags| is set to enum:`NGHTTP2_HD_INFLATE_DECODE` as
+ * an IN parameter the deflater will act as a decoder and atempt to
+ * decode the header even if unknown indexes occure. This is aimed
+ * at analysers such as Wireshark.
  *
  * The |nv_out| may include pointers to the memory region in the |in|.
  * The caller must retain the |in| while the |nv_out| is used.
