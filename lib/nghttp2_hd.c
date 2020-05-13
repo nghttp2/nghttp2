@@ -790,6 +790,22 @@ static void emit_header(nghttp2_hd_nv *nv_out, nghttp2_hd_nv *nv) {
   *nv_out = *nv;
 }
 
+static void emit_dummy_header(nghttp2_hd_nv *nv_out, nghttp2_hd_nv *nv) {
+
+    const nghttp2_hd_static_entry *ent = &dissect_index_table[0];
+
+    nv->name = (nghttp2_rcbuf *)&ent->name;
+    nv->value = (nghttp2_rcbuf *)&ent->value;
+    nv->token = ent->token;
+    nv->flags = NGHTTP2_NV_FLAG_NONE;
+
+  DEBUGF("inflatehd: dummy header emission: %s: %s\n", nv->name->base,
+         nv->value->base);
+  /* ent->ref may be 0. This happens if the encoder emits literal
+     block larger than header table capacity with indexing. */
+  *nv_out = *nv;
+}
+
 static size_t count_encoded_length(size_t n, size_t prefix) {
   size_t k = (size_t)((1 << prefix) - 1);
   size_t len = 0;
@@ -1876,7 +1892,7 @@ ssize_t nghttp2_hd_inflate_hd_nv(nghttp2_hd_inflater *inflater,
   int busy = 0;
   nghttp2_mem *mem;
   int dissection = 0;
-  const nghttp2_hd_static_entry *ent = &dissect_index_table[0];
+  nghttp2_hd_nv nv;
 
   if (*inflate_flags == NGHTTP2_HD_INFLATE_DECODE) {
     dissection = 1;
@@ -1988,12 +2004,7 @@ ssize_t nghttp2_hd_inflate_hd_nv(nghttp2_hd_inflater *inflater,
             rv = NGHTTP2_ERR_HEADER_COMP;
             goto fail;
           }
-          nghttp2_hd_nv nv = {(nghttp2_rcbuf *)&ent->name,
-                              (nghttp2_rcbuf *)&ent->value, ent->token,
-                              NGHTTP2_NV_FLAG_NONE};
-
-          emit_header(nv_out, &nv);
-          DEBUGF("inflatehd dissect: index=%zu\n", inflater->left);
+          emit_dummy_header(nv_out, &nv);
           inflater->index = inflater->left;
           --inflater->index;
           inflater->state = NGHTTP2_HD_STATE_OPCODE;
