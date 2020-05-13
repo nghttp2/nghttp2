@@ -1876,6 +1876,7 @@ ssize_t nghttp2_hd_inflate_hd_nv(nghttp2_hd_inflater *inflater,
   int busy = 0;
   nghttp2_mem *mem;
   int dissection = 0;
+  const nghttp2_hd_static_entry *ent = &dissect_index_table[0];
 
   if (*inflate_flags == NGHTTP2_HD_INFLATE_DECODE) {
     dissection = 1;
@@ -1987,7 +1988,6 @@ ssize_t nghttp2_hd_inflate_hd_nv(nghttp2_hd_inflater *inflater,
             rv = NGHTTP2_ERR_HEADER_COMP;
             goto fail;
           }
-          const nghttp2_hd_static_entry *ent = &dissect_index_table[0];
           nghttp2_hd_nv nv = {(nghttp2_rcbuf *)&ent->name,
                               (nghttp2_rcbuf *)&ent->value, ent->token,
                               NGHTTP2_NV_FLAG_NONE};
