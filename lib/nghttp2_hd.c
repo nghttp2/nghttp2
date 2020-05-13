@@ -110,7 +110,7 @@ static const nghttp2_hd_static_entry static_table[] = {
 };
 
 static const nghttp2_hd_static_entry dissect_index_table[] = {
-    MAKE_STATIC_ENT(":Failed deflate", "Index not seen before", "", -1, NGHTTP2_NV_FLAG_NONE),
+    MAKE_STATIC_ENT(":Failed deflate", "Index not seen before", -1, NGHTTP2_NV_FLAG_NONE),
 };
 
 static int memeq(const void *s1, const void *s2, size_t n) {
