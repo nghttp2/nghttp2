@@ -109,6 +109,10 @@ static const nghttp2_hd_static_entry static_table[] = {
     MAKE_STATIC_ENT("www-authenticate", "", 60, 779865858u),
 };
 
+static const nghttp2_hd_static_entry dissect_index_table[] = {
+    MAKE_STATIC_ENT(":Failed deflate", "Index not seen before", -1, NGHTTP2_NV_FLAG_NONE),
+};
+
 static int memeq(const void *s1, const void *s2, size_t n) {
   return memcmp(s1, s2, n) == 0;
 }
@@ -780,6 +784,22 @@ static size_t entry_room(size_t namelen, size_t valuelen) {
 
 static void emit_header(nghttp2_hd_nv *nv_out, nghttp2_hd_nv *nv) {
   DEBUGF("inflatehd: header emission: %s: %s\n", nv->name->base,
+         nv->value->base);
+  /* ent->ref may be 0. This happens if the encoder emits literal
+     block larger than header table capacity with indexing. */
+  *nv_out = *nv;
+}
+
+static void emit_dummy_header(nghttp2_hd_nv *nv_out, nghttp2_hd_nv *nv) {
+
+    const nghttp2_hd_static_entry *ent = &dissect_index_table[0];
+
+    nv->name = (nghttp2_rcbuf *)&ent->name;
+    nv->value = (nghttp2_rcbuf *)&ent->value;
+    nv->token = ent->token;
+    nv->flags = NGHTTP2_NV_FLAG_NONE;
+
+  DEBUGF("inflatehd: dummy header emission: %s: %s\n", nv->name->base,
          nv->value->base);
   /* ent->ref may be 0. This happens if the encoder emits literal
      block larger than header table capacity with indexing. */
@@ -1654,8 +1674,9 @@ static ssize_t hd_inflate_read_len(nghttp2_hd_inflater *inflater, int *rfin,
   }
 
   if (out > maxlen) {
-    DEBUGF("inflatehd: integer exceeded the maximum value %zu\n", maxlen);
-    return NGHTTP2_ERR_HEADER_COMP;
+    DEBUGF("inflatehd: integer %zu exceeded the maximum value %zu\n", out, maxlen);
+    inflater->left = out;
+    return NGHTTP2_ERR_HEADER_COMP_MAX_LEN_EX;
   }
 
   inflater->left = out;
@@ -1870,6 +1891,13 @@ ssize_t nghttp2_hd_inflate_hd_nv(nghttp2_hd_inflater *inflater,
   int rfin = 0;
   int busy = 0;
   nghttp2_mem *mem;
+  int dissection = 0;
+  nghttp2_hd_nv nv;
+
+  if (*inflate_flags == NGHTTP2_HD_INFLATE_DECODE) {
+    dissection = 1;
+    DEBUGF("inflatehd: dissection = 1 inflate flag %d\n", *inflate_flags);
+  }
 
   mem = inflater->ctx.mem;
 
@@ -1963,7 +1991,28 @@ ssize_t nghttp2_hd_inflate_hd_nv(nghttp2_hd_inflater *inflater,
       rv = hd_inflate_read_len(inflater, &rfin, in, last, prefixlen,
                                get_max_index(&inflater->ctx));
       if (rv < 0) {
-        goto fail;
+        if ((dissection == 1) && (rv == NGHTTP2_ERR_HEADER_COMP_MAX_LEN_EX)) {
+          /* We recived an index not seen before, make a dissect header entry */
+          rv = 1;
+          in += rv;
+
+          if (!rfin) {
+            goto almost_ok;
+          }
+
+          if (inflater->left == 0) {
+            rv = NGHTTP2_ERR_HEADER_COMP;
+            goto fail;
+          }
+          emit_dummy_header(nv_out, &nv);
+          inflater->index = inflater->left;
+          --inflater->index;
+          inflater->state = NGHTTP2_HD_STATE_OPCODE;
+          *inflate_flags |= NGHTTP2_HD_INFLATE_EMIT;
+          return (ssize_t)(in - first);
+        } else {
+          goto fail;
+        }
       }
 
       in += rv;
@@ -2223,7 +2272,7 @@ almost_ok:
   return (ssize_t)(in - first);
 
 fail:
-  DEBUGF("inflatehd: error return %zd\n", rv);
+  DEBUGF("inflatehd: error return %d\n", rv);
 
   inflater->ctx.bad = 1;
   return rv;
