@@ -818,8 +818,10 @@ int nghttp2_frame_unpack_origin_payload(nghttp2_extension *frame,
   size_t len = 0;
 
   origin = frame->payload;
-  p = payload;
-  end = p + payloadlen;
+  p = end = payload;
+  if (payloadlen) {
+    end += payloadlen;
+  }
 
   for (; p != end;) {
     if (end - p < 2) {
