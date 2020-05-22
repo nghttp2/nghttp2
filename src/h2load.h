@@ -437,7 +437,6 @@ struct Client {
   int write_udp(const sockaddr *addr, socklen_t addrlen, const uint8_t *data,
                 size_t datalen);
   void quic_close_connection();
-  int quic_setup_initial_crypto();
 
   int quic_recv_crypto_data(ngtcp2_crypto_level crypto_level,
                             const uint8_t *data, size_t datalen);
