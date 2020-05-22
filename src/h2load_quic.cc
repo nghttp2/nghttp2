@@ -37,18 +37,6 @@ auto randgen = util::make_mt19937();
 } // namespace
 
 namespace {
-int client_initial(ngtcp2_conn *conn, void *user_data) {
-  auto c = static_cast<Client *>(user_data);
-
-  if (c->quic_recv_crypto_data(NGTCP2_CRYPTO_LEVEL_INITIAL, nullptr, 0) != 0) {
-    return NGTCP2_ERR_CALLBACK_FAILURE;
-  }
-
-  return 0;
-}
-} // namespace
-
-namespace {
 int recv_crypto_data(ngtcp2_conn *conn, ngtcp2_crypto_level crypto_level,
                      uint64_t offset, const uint8_t *data, size_t datalen,
                      void *user_data) {
@@ -81,21 +69,6 @@ int handshake_completed(ngtcp2_conn *conn, void *user_data) {
 } // namespace
 
 int Client::quic_handshake_completed() { return connection_made(); }
-
-namespace {
-int recv_retry(ngtcp2_conn *conn, const ngtcp2_pkt_hd *hd,
-               const ngtcp2_pkt_retry *retry, void *user_data) {
-  // Re-generate handshake secrets here because connection ID might
-  // change.
-  auto c = static_cast<Client *>(user_data);
-
-  if (c->quic_setup_initial_crypto() != 0) {
-    return NGTCP2_ERR_CALLBACK_FAILURE;
-  }
-
-  return 0;
-}
-} // namespace
 
 namespace {
 int recv_stream_data(ngtcp2_conn *conn, int64_t stream_id, int fin,
@@ -346,7 +319,7 @@ int Client::quic_init(const sockaddr *local_addr, socklen_t local_addrlen,
   }
 
   auto callbacks = ngtcp2_conn_callbacks{
-      h2load::client_initial,
+      ngtcp2_crypto_client_initial_cb,
       nullptr, // recv_client_initial
       h2load::recv_crypto_data,
       h2load::handshake_completed,
@@ -360,7 +333,7 @@ int Client::quic_init(const sockaddr *local_addr, socklen_t local_addrlen,
       nullptr, // stream_open
       h2load::stream_close,
       nullptr, // recv_stateless_reset
-      h2load::recv_retry,
+      ngtcp2_crypto_recv_retry_cb,
       h2load::extend_max_local_streams_bidi,
       nullptr, // extend_max_local_streams_uni
       nullptr, // rand
@@ -394,6 +367,7 @@ int Client::quic_init(const sockaddr *local_addr, socklen_t local_addrlen,
   params.initial_max_streams_bidi = 0;
   params.initial_max_streams_uni = 100;
   params.max_idle_timeout = 30 * NGTCP2_SECONDS;
+  params.max_udp_payload_size = quic.max_pktlen;
 
   auto path = ngtcp2_path{
       {local_addrlen,
@@ -408,28 +382,7 @@ int Client::quic_init(const sockaddr *local_addr, socklen_t local_addrlen,
     return -1;
   }
 
-  std::array<uint8_t, 64> buf;
-
-  auto nwrite = ngtcp2_encode_transport_params(
-      buf.data(), buf.size(), NGTCP2_TRANSPORT_PARAMS_TYPE_CLIENT_HELLO,
-      &params);
-  if (nwrite < 0) {
-    std::cerr << "ngtcp2_encode_transport_params: " << ngtcp2_strerror(nwrite)
-              << std::endl;
-    return -1;
-  }
-
-  if (SSL_set_quic_transport_params(ssl, buf.data(), nwrite) != 1) {
-    std::cerr << "SSL_set_quic_transport_params failed" << std::endl;
-    return -1;
-  }
-
-  rv = quic_setup_initial_crypto();
-  if (rv != 0) {
-    ngtcp2_conn_del(quic.conn);
-    quic.conn = nullptr;
-    return -1;
-  }
+  ngtcp2_conn_set_tls(quic.conn, ssl);
 
   return 0;
 }
@@ -471,24 +424,9 @@ void Client::quic_close_connection() {
             ps.path.remote.addrlen, buf.data(), nwrite);
 }
 
-int Client::quic_setup_initial_crypto() {
-  auto dcid = ngtcp2_conn_get_dcid(quic.conn);
-
-  if (ngtcp2_crypto_derive_and_install_initial_key(
-          quic.conn, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-          nullptr, nullptr, nullptr, dcid) != 0) {
-    std::cerr << "ngtcp2_crypto_derive_and_install_initial_key() failed"
-              << std::endl;
-    return -1;
-  }
-
-  return 0;
-}
-
 int Client::quic_on_key(ngtcp2_crypto_level level, const uint8_t *rx_secret,
                         const uint8_t *tx_secret, size_t secretlen) {
-  if (level != NGTCP2_CRYPTO_LEVEL_EARLY &&
-      ngtcp2_crypto_derive_and_install_rx_key(quic.conn, ssl, nullptr, nullptr,
+  if (ngtcp2_crypto_derive_and_install_rx_key(quic.conn, ssl, nullptr, nullptr,
                                               nullptr, level, rx_secret,
                                               secretlen) != 0) {
     std::cerr << "ngtcp2_crypto_derive_and_install_rx_key() failed"

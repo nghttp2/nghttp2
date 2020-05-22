@@ -134,7 +134,7 @@ bool Config::is_rate_mode() const { return (this->rate != 0); }
 bool Config::is_timing_based_mode() const { return (this->duration > 0); }
 bool Config::has_base_uri() const { return (!this->base_uri.empty()); }
 bool Config::is_quic() const {
-  return !npn_list.empty() && npn_list[0] == NGTCP2_ALPN_H3;
+  return !npn_list.empty() && npn_list[0] == NGHTTP3_ALPN_H3;
 }
 Config config;
 
@@ -974,7 +974,7 @@ int Client::connection_made() {
       auto proto = StringRef{next_proto, next_proto_len};
       if (config.is_quic()) {
         assert(session);
-        if (!util::streq(StringRef{&NGTCP2_ALPN_H3[1]}, proto)) {
+        if (!util::streq(StringRef{&NGHTTP3_ALPN_H3[1]}, proto)) {
           return -1;
         }
       } else if (util::check_h2_is_selected(proto)) {
