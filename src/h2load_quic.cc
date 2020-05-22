@@ -485,15 +485,10 @@ int Client::quic_pkt_timeout() {
   int rv;
   auto now = timestamp(worker->loop);
 
-  if (ngtcp2_conn_loss_detection_expiry(quic.conn) <= now) {
-    rv = ngtcp2_conn_on_loss_detection_timer(quic.conn, now);
-    if (rv != 0) {
-      quic.last_error = quic::err_transport(NGTCP2_ERR_INTERNAL);
-      return -1;
-    }
-  }
-  if (ngtcp2_conn_ack_delay_expiry(quic.conn) <= now) {
-    ngtcp2_conn_cancel_expired_ack_delay_timer(quic.conn, now);
+  rv = ngtcp2_conn_handle_expiry(quic.conn, now);
+  if (rv != 0) {
+    quic.last_error = quic::err_transport(NGTCP2_ERR_INTERNAL);
+    return -1;
   }
 
   return write_quic();
