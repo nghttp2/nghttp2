@@ -382,7 +382,7 @@ int Client::quic_init(const sockaddr *local_addr, socklen_t local_addrlen,
     return -1;
   }
 
-  ngtcp2_conn_set_tls(quic.conn, ssl);
+  ngtcp2_conn_set_tls_native_handle(quic.conn, ssl);
 
   return 0;
 }
