@@ -52,8 +52,8 @@ int recv_crypto_data(ngtcp2_conn *conn, ngtcp2_crypto_level crypto_level,
 
 int Client::quic_recv_crypto_data(ngtcp2_crypto_level crypto_level,
                                   const uint8_t *data, size_t datalen) {
-  return ngtcp2_crypto_read_write_crypto_data(quic.conn, ssl, crypto_level,
-                                              data, datalen);
+  return ngtcp2_crypto_read_write_crypto_data(quic.conn, crypto_level, data,
+                                              datalen);
 }
 
 namespace {
@@ -426,7 +426,7 @@ void Client::quic_close_connection() {
 
 int Client::quic_on_key(ngtcp2_crypto_level level, const uint8_t *rx_secret,
                         const uint8_t *tx_secret, size_t secretlen) {
-  if (ngtcp2_crypto_derive_and_install_rx_key(quic.conn, ssl, nullptr, nullptr,
+  if (ngtcp2_crypto_derive_and_install_rx_key(quic.conn, nullptr, nullptr,
                                               nullptr, level, rx_secret,
                                               secretlen) != 0) {
     std::cerr << "ngtcp2_crypto_derive_and_install_rx_key() failed"
@@ -434,7 +434,7 @@ int Client::quic_on_key(ngtcp2_crypto_level level, const uint8_t *rx_secret,
     return -1;
   }
 
-  if (ngtcp2_crypto_derive_and_install_tx_key(quic.conn, ssl, nullptr, nullptr,
+  if (ngtcp2_crypto_derive_and_install_tx_key(quic.conn, nullptr, nullptr,
                                               nullptr, level, tx_secret,
                                               secretlen) != 0) {
     std::cerr << "ngtcp2_crypto_derive_and_install_tx_key() failed"
