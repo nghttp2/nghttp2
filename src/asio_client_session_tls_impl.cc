@@ -44,6 +44,27 @@ session_tls_impl::session_tls_impl(
   }
 }
 
+session_tls_impl::session_tls_impl(
+    boost::asio::io_service &io_service, boost::asio::ssl::context &tls_ctx,
+    const boost::asio::ip::tcp::endpoint &local_endpoint,
+    const std::string &host, const std::string &service,
+    const boost::posix_time::time_duration &connect_timeout)
+    : session_impl(io_service, connect_timeout), socket_(io_service, tls_ctx) {
+  // this callback setting is no effect is
+  // ssl::context::set_verify_mode(boost::asio::ssl::verify_peer) is
+  // not used, which is what we want.
+  auto & tcp_socket_ = socket();
+  tcp_socket_.open(local_endpoint.protocol());
+  boost::asio::socket_base::reuse_address option1(true);
+  tcp_socket_.set_option(option1);
+
+  socket_.set_verify_callback(boost::asio::ssl::rfc2818_verification(host));
+  auto ssl = socket_.native_handle();
+  if (!util::numeric_host(host.c_str())) {
+    SSL_set_tlsext_host_name(ssl, host.c_str());
+  }
+}
+
 session_tls_impl::~session_tls_impl() {}
 
 void session_tls_impl::start_connect(tcp::resolver::iterator endpoint_it) {
