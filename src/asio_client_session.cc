@@ -79,10 +79,31 @@ session::session(boost::asio::io_service &io_service,
 }
 
 session::session(boost::asio::io_service &io_service,
+                 boost::asio::ssl::context &tls_ctx,
+                 const boost::asio::ip::tcp::endpoint &local_endpoint,
+                 const std::string &host,
+                 const std::string &service)
+    : impl_(std::make_shared<session_tls_impl>(
+          io_service, tls_ctx, local_endpoint, host, service, boost::posix_time::seconds(60))) {
+  impl_->start_resolve(host, service);
+}
+
+session::session(boost::asio::io_service &io_service,
                  boost::asio::ssl::context &tls_ctx, const std::string &host,
                  const std::string &service,
                  const boost::posix_time::time_duration &connect_timeout)
     : impl_(std::make_shared<session_tls_impl>(io_service, tls_ctx, host,
+                                               service, connect_timeout)) {
+  impl_->start_resolve(host, service);
+}
+
+session::session(boost::asio::io_service &io_service,
+                 boost::asio::ssl::context &tls_ctx,
+                 const boost::asio::ip::tcp::endpoint &local_endpoint,
+                 const std::string &host,
+                 const std::string &service,
+                 const boost::posix_time::time_duration &connect_timeout)
+    : impl_(std::make_shared<session_tls_impl>(io_service, tls_ctx, local_endpoint, host,
                                                service, connect_timeout)) {
   impl_->start_resolve(host, service);
 }

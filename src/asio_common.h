@@ -62,9 +62,11 @@ void split_path(uri_ref &dst, InputIt first, InputIt last) {
 
 using boost::asio::ip::tcp;
 
-using ssl_socket = boost::asio::ssl::stream<tcp::socket>;
+using ssl_socket = boost::asio::ssl::stream<tcp::socket&>;
+using ssl_tcp_socket = boost::asio::ssl::stream<tcp::socket>;
 
 bool tls_h2_negotiated(ssl_socket &socket);
+bool tls_h2_negotiated(ssl_tcp_socket &socket);
 
 } // namespace asio_http2
 
