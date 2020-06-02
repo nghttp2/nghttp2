@@ -300,7 +300,7 @@ Connections
     default.  Any  requests which come through  this address
     are replied with 200 HTTP status, without no body.
 
-    To  accept   PROXY  protocol   version  1   on  frontend
+    To accept  PROXY protocol  version 1  and 2  on frontend
     connection,  specify  "proxyproto" parameter.   This  is
     disabled by default.
 

@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "H2LOAD" "1" "Nov 15, 2019" "1.40.0" "nghttp2"
+.TH "H2LOAD" "1" "Jun 02, 2020" "1.41.0" "nghttp2"
 .SH NAME
 h2load \- HTTP/2 benchmarking tool
 .
@@ -281,6 +281,12 @@ columns may be added later.  Rows are ordered by end\-of\-
 response  time when  using  one worker  thread, but  may
 appear slightly  out of order with  multiple threads due
 to buffering.  Status code is \-1 for failed streams.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-connect\-to=<HOST>[:<PORT>]
+Host and port to connect  instead of using the authority
+in <URI>.
 .UNINDENT
 .INDENT 0.0
 .TP

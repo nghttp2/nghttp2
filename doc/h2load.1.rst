@@ -239,6 +239,11 @@ OPTIONS
     appear slightly  out of order with  multiple threads due
     to buffering.  Status code is -1 for failed streams.
 
+.. option:: --connect-to=<HOST>[:<PORT>]
+
+    Host and port to connect  instead of using the authority
+    in <URI>.
+
 .. option:: -v, --verbose
 
     Output debug information.
