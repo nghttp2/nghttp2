@@ -458,6 +458,7 @@ static int session_new(nghttp2_session **session_ptr,
 
   (*session_ptr)->max_send_header_block_length = NGHTTP2_MAX_HEADERSLEN;
   (*session_ptr)->max_outbound_ack = NGHTTP2_DEFAULT_MAX_OBQ_FLOOD_ITEM;
+  (*session_ptr)->max_settings = NGHTTP2_DEFAULT_MAX_SETTINGS;
 
   if (option) {
     if ((option->opt_set_mask & NGHTTP2_OPT_NO_AUTO_WINDOW_UPDATE) &&
@@ -520,6 +521,11 @@ static int session_new(nghttp2_session **session_ptr,
 
     if (option->opt_set_mask & NGHTTP2_OPT_MAX_OUTBOUND_ACK) {
       (*session_ptr)->max_outbound_ack = option->max_outbound_ack;
+    }
+
+    if ((option->opt_set_mask & NGHTTP2_OPT_MAX_SETTINGS) &&
+        option->max_settings) {
+      (*session_ptr)->max_settings = option->max_settings;
     }
   }
 
@@ -5647,6 +5653,12 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
           break;
         }
 
+        /* Check the settings flood counter early to be safe */
+        if (session->obq_flood_counter_ >= session->max_outbound_ack &&
+            !(iframe->frame.hd.flags & NGHTTP2_FLAG_ACK)) {
+          return NGHTTP2_ERR_FLOODED;
+        }
+
         iframe->state = NGHTTP2_IB_READ_SETTINGS;
 
         if (iframe->payloadleft) {
@@ -5656,6 +5668,16 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
              minimum header table size. */
           iframe->max_niv =
               iframe->frame.hd.length / NGHTTP2_FRAME_SETTINGS_ENTRY_LENGTH + 1;
+
+          if (iframe->max_niv - 1 > session->max_settings) {
+            rv = nghttp2_session_terminate_session_with_reason(
+                session, NGHTTP2_ENHANCE_YOUR_CALM,
+                "SETTINGS: too many setting entries");
+            if (nghttp2_is_fatal(rv)) {
+              return rv;
+            }
+            return (ssize_t)inlen;
+          }
 
           iframe->iv = nghttp2_mem_malloc(mem, sizeof(nghttp2_settings_entry) *
                                                    iframe->max_niv);
@@ -7424,6 +7446,11 @@ static int nghttp2_session_upgrade_internal(nghttp2_session *session,
   }
   if (settings_payloadlen % NGHTTP2_FRAME_SETTINGS_ENTRY_LENGTH) {
     return NGHTTP2_ERR_INVALID_ARGUMENT;
+  }
+  /* SETTINGS frame contains too many settings */
+  if (settings_payloadlen / NGHTTP2_FRAME_SETTINGS_ENTRY_LENGTH
+        > session->max_settings) {
+    return NGHTTP2_ERR_TOO_MANY_SETTINGS;
   }
   rv = nghttp2_frame_unpack_settings_payload2(&iv, &niv, settings_payload,
                                               settings_payloadlen, mem);
