@@ -105,7 +105,7 @@ int Client::quic_recv_stream_data(int64_t stream_id, int fin,
 
 namespace {
 int acked_stream_data_offset(ngtcp2_conn *conn, int64_t stream_id,
-                             uint64_t offset, size_t datalen, void *user_data,
+                             uint64_t offset, uint64_t datalen, void *user_data,
                              void *stream_user_data) {
   auto c = static_cast<Client *>(user_data);
   if (c->quic_acked_stream_data_offset(stream_id, datalen) != 0) {
