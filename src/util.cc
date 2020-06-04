@@ -953,7 +953,7 @@ int create_nonblock_udp_socket(int family) {
     return -1;
   }
 #else  // !SOCK_NONBLOCK
-  auto fd = socket(family, SOCK_STREAM, 0);
+  auto fd = socket(family, SOCK_DGRAM, 0);
 
   if (fd == -1) {
     return -1;
