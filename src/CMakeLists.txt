@@ -263,6 +263,7 @@ if(ENABLE_ASIO_LIB)
     nghttp2
     ${OPENSSL_LIBRARIES}
     ${Boost_LIBRARIES}
+    crypt32
   )
   set_target_properties(nghttp2_asio PROPERTIES
     VERSION 1.0.0 SOVERSION 1)
