@@ -1,14 +1,19 @@
 @echo on
 
-REM Builds the nghttp2 for STC for all Windows 64bit platform configurations. ;)
+REM Builds the nghttp2 for STC for all Windows 64bit platform configurations.
 REM NOTICE: Follow instructions and change a few variables below before building.
 
 REM Change STC_ROOT to the STC build root folder.
-set STC_ROOT=C:\TestCenter\integration
+set STC_ROOT=%STC_BUILD_ROOT%
+@echo %STC_ROOT%
+IF "%STC_ROOT%" == "" (
+  set STC_ROOT=D:\table\blds\bandrews\bld
+)
 
-REM NB: Do not link to STC OpenSSL libraries. Build OpenSSL from source or use vcpkg.
+REM NB: Do not link to STC OpenSSL libraries. Build OpenSSL from source.
 REM The nghttp2 build will perform a static link. To build OpenSSL from source, follow
-REM the instructions in INSTALL.W64 for building the static libraries.
+REM the instructions in INSTALL.W64 for building the static libraries
+REM Use table build to build libs for consistent environment.
 set OPENSSL_WIN64=C:\dev\openssl_64\openssl-1.0.1u
 
 set BOOST_INCLUDEDIR=%STC_ROOT%\common\lib\boost_1_64_0
