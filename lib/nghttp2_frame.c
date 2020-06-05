@@ -899,9 +899,25 @@ nghttp2_settings_entry *nghttp2_frame_iv_copy(const nghttp2_settings_entry *iv,
 }
 
 int nghttp2_nv_equal(const nghttp2_nv *a, const nghttp2_nv *b) {
-  return a->namelen == b->namelen && a->valuelen == b->valuelen &&
-         memcmp(a->name, b->name, a->namelen) == 0 &&
-         memcmp(a->value, b->value, a->valuelen) == 0;
+  if (a->namelen != b->namelen || a->valuelen != b->valuelen) {
+    return 0;
+  }
+
+  if (a->name == NULL || b->name == NULL) {
+    assert(a->namelen == 0);
+    assert(b->namelen == 0);
+  } else if (memcmp(a->name, b->name, a->namelen) != 0) {
+    return 0;
+  }
+
+  if (a->value == NULL || b->value == NULL) {
+    assert(a->valuelen == 0);
+    assert(b->valuelen == 0);
+  } else if (memcmp(a->value, b->value, a->valuelen) != 0) {
+    return 0;
+  }
+
+  return 1;
 }
 
 void nghttp2_nv_array_del(nghttp2_nv *nva, nghttp2_mem *mem) {

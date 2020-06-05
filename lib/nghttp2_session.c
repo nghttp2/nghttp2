@@ -5353,9 +5353,11 @@ static ssize_t inbound_frame_effective_readlen(nghttp2_inbound_frame *iframe,
   return (ssize_t)(readlen);
 }
 
+static const uint8_t sin[] = {0};
+
 ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
                                  size_t inlen) {
-  const uint8_t *first = in, *last = in + inlen;
+  const uint8_t *first, *last;
   nghttp2_inbound_frame *iframe = &session->iframe;
   size_t readlen;
   ssize_t padlen;
@@ -5365,6 +5367,14 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
   nghttp2_stream *stream;
   size_t pri_fieldlen;
   nghttp2_mem *mem;
+
+  if (in == NULL) {
+    assert(inlen == 0);
+    in = sin;
+  }
+
+  first = in;
+  last = in + inlen;
 
   DEBUGF("recv: connection recv_window_size=%d, local_window=%d\n",
          session->recv_window_size, session->local_window_size);
