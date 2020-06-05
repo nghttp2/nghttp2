@@ -7458,8 +7458,8 @@ static int nghttp2_session_upgrade_internal(nghttp2_session *session,
     return NGHTTP2_ERR_INVALID_ARGUMENT;
   }
   /* SETTINGS frame contains too many settings */
-  if (settings_payloadlen / NGHTTP2_FRAME_SETTINGS_ENTRY_LENGTH
-        > session->max_settings) {
+  if (settings_payloadlen / NGHTTP2_FRAME_SETTINGS_ENTRY_LENGTH >
+      session->max_settings) {
     return NGHTTP2_ERR_TOO_MANY_SETTINGS;
   }
   rv = nghttp2_frame_unpack_settings_payload2(&iv, &niv, settings_payload,
