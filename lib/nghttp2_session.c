@@ -5353,7 +5353,7 @@ static ssize_t inbound_frame_effective_readlen(nghttp2_inbound_frame *iframe,
   return (ssize_t)(readlen);
 }
 
-static const uint8_t sin[] = {0};
+static const uint8_t static_in[] = {0};
 
 ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
                                  size_t inlen) {
@@ -5370,7 +5370,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
 
   if (in == NULL) {
     assert(inlen == 0);
-    in = sin;
+    in = static_in;
   }
 
   first = in;
