@@ -58,8 +58,8 @@ public:
   int extend_max_local_streams();
   int64_t submit_request_internal();
 
-  ssize_t read_stream(int64_t stream_id, const uint8_t *data, size_t datalen,
-                      int fin);
+  ssize_t read_stream(uint32_t flags, int64_t stream_id, const uint8_t *data,
+                      size_t datalen);
   ssize_t write_stream(int64_t &stream_id, int &fin, nghttp3_vec *vec,
                        size_t veccnt);
   int block_stream(int64_t stream_id);
