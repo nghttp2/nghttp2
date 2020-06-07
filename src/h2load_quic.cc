@@ -71,11 +71,11 @@ int handshake_completed(ngtcp2_conn *conn, void *user_data) {
 int Client::quic_handshake_completed() { return connection_made(); }
 
 namespace {
-int recv_stream_data(ngtcp2_conn *conn, int64_t stream_id, int fin,
+int recv_stream_data(ngtcp2_conn *conn, uint32_t flags, int64_t stream_id,
                      uint64_t offset, const uint8_t *data, size_t datalen,
                      void *user_data, void *stream_user_data) {
   auto c = static_cast<Client *>(user_data);
-  if (c->quic_recv_stream_data(stream_id, fin, data, datalen) != 0) {
+  if (c->quic_recv_stream_data(flags, stream_id, data, datalen) != 0) {
     // TODO Better to do this gracefully rather than
     // NGTCP2_ERR_CALLBACK_FAILURE.  Perhaps, call
     // ngtcp2_conn_write_application_close() ?
@@ -85,14 +85,14 @@ int recv_stream_data(ngtcp2_conn *conn, int64_t stream_id, int fin,
 }
 } // namespace
 
-int Client::quic_recv_stream_data(int64_t stream_id, int fin,
+int Client::quic_recv_stream_data(uint32_t flags, int64_t stream_id,
                                   const uint8_t *data, size_t datalen) {
   if (worker->current_phase == Phase::MAIN_DURATION) {
     worker->stats.bytes_total += datalen;
   }
 
   auto s = static_cast<Http3Session *>(session.get());
-  auto nconsumed = s->read_stream(stream_id, data, datalen, fin);
+  auto nconsumed = s->read_stream(flags, stream_id, data, datalen);
   if (nconsumed == -1) {
     return -1;
   }
@@ -570,10 +570,15 @@ int Client::write_quic() {
     auto v = vec.data();
     auto vcnt = static_cast<size_t>(sveccnt);
 
+    uint32_t flags = NGTCP2_WRITE_STREAM_FLAG_MORE;
+    if (fin) {
+      flags |= NGTCP2_WRITE_STREAM_FLAG_FIN;
+    }
+
     auto nwrite = ngtcp2_conn_writev_stream(
-        quic.conn, &ps.path, buf.data(), quic.max_pktlen, &ndatalen,
-        NGTCP2_WRITE_STREAM_FLAG_MORE, stream_id, fin,
-        reinterpret_cast<const ngtcp2_vec *>(v), vcnt, timestamp(worker->loop));
+        quic.conn, &ps.path, buf.data(), quic.max_pktlen, &ndatalen, flags,
+        stream_id, reinterpret_cast<const ngtcp2_vec *>(v), vcnt,
+        timestamp(worker->loop));
     if (nwrite < 0) {
       switch (nwrite) {
       case NGTCP2_ERR_STREAM_DATA_BLOCKED:
