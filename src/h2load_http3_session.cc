@@ -343,10 +343,10 @@ int Http3Session::init_conn() {
   return 0;
 }
 
-ssize_t Http3Session::read_stream(int64_t stream_id, const uint8_t *data,
-                                  size_t datalen, int fin) {
-  auto nconsumed =
-      nghttp3_conn_read_stream(conn_, stream_id, data, datalen, fin);
+ssize_t Http3Session::read_stream(uint32_t flags, int64_t stream_id,
+                                  const uint8_t *data, size_t datalen) {
+  auto nconsumed = nghttp3_conn_read_stream(
+      conn_, stream_id, data, datalen, flags & NGTCP2_STREAM_DATA_FLAG_FIN);
   if (nconsumed < 0) {
     std::cerr << "nghttp3_conn_read_stream: " << nghttp3_strerror(nconsumed)
               << std::endl;
