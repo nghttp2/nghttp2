@@ -254,9 +254,16 @@ std::string http_date(time_t t) {
 char *http_date(char *res, time_t t) {
   struct tm tms;
 
+#if defined(_WIN32)
+  /* gmtime_s is thread safe in windows */
+  if (gmtime_s(&tms, &t) != 0) {
+    return res;
+  }
+#else
   if (gmtime_r(&t, &tms) == nullptr) {
     return res;
   }
+#endif
 
   auto p = res;
 
@@ -292,9 +299,15 @@ std::string common_log_date(time_t t) {
 char *common_log_date(char *res, time_t t) {
   struct tm tms;
 
+#if defined(_WIN32)
+  if (localtime_s(&tms, &t) != 0) {
+    return res;
+  }
+#else
   if (localtime_r(&t, &tms) == nullptr) {
     return res;
   }
+#endif
 
   auto p = res;
 
@@ -343,9 +356,15 @@ char *iso8601_date(char *res, int64_t ms) {
   time_t sec = ms / 1000;
 
   tm tms;
+#if defined(_WIN32)
+  if (localtime_s(&tms, &sec) != 0) {
+    return res;
+  }
+#else
   if (localtime_r(&sec, &tms) == nullptr) {
     return res;
   }
+#endif
 
   auto p = res;
 
@@ -415,6 +434,7 @@ time_t parse_http_date(const StringRef &s) {
 #endif // !_WIN32
 }
 
+/*
 time_t parse_openssl_asn1_time_print(const StringRef &s) {
   tm tm{};
   auto r = strptime(s.c_str(), "%b %d %H:%M:%S %Y GMT", &tm);
@@ -423,6 +443,7 @@ time_t parse_openssl_asn1_time_print(const StringRef &s) {
   }
   return nghttp2_timegm_without_yday(&tm);
 }
+*/
 
 char upcase(char c) {
   if ('a' <= c && c <= 'z') {
@@ -532,6 +553,7 @@ int levenshtein(const char *a, int alen, const char *b, int blen, int swapcost,
 }
 } // namespace
 
+/*
 void show_candidates(const char *unkopt, const option *options) {
   for (; *unkopt == '-'; ++unkopt)
     ;
@@ -589,6 +611,7 @@ void show_candidates(const char *unkopt, const option *options) {
     std::cerr << "\t--" << item.second << "\n";
   }
 }
+*/
 
 bool has_uri_field(const http_parser_url &u, http_parser_url_fields field) {
   return u.field_set & (1 << field);
@@ -1577,6 +1600,7 @@ std::mt19937 make_mt19937() {
   return std::mt19937(rd());
 }
 
+/*
 int daemonize(int nochdir, int noclose) {
 #if defined(__APPLE__)
   pid_t pid;
@@ -1615,7 +1639,7 @@ int daemonize(int nochdir, int noclose) {
 #else  // !defined(__APPLE__)
   return daemon(nochdir, noclose);
 #endif // !defined(__APPLE__)
-}
+} */
 
 } // namespace util
 

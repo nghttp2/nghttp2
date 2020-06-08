@@ -30,7 +30,9 @@
 #ifdef HAVE_UNISTD_H
 #  include <unistd.h>
 #endif // HAVE_UNISTD_H
+#ifndef _WIN32
 #include <getopt.h>
+#endif // _WIN32
 #ifdef HAVE_NETDB_H
 #  include <netdb.h>
 #endif // HAVE_NETDB_H
@@ -52,6 +54,17 @@
 #include "template.h"
 #include "network.h"
 #include "allocator.h"
+
+/*
+ * Removed getopt.h functions which are nor required for
+ * client use cases to enable cross compile.
+ * Current usage is limited to parse input parameters
+ * for different applications enabled with --enable-app
+ * nghttpd, nghttpx, h2load application code is using it.
+ * sphinx documentation is using it as well.
+ * Windows equivalent implementation of getopt_long
+ * is required to enabel the code.
+ */
 
 namespace nghttp2 {
 
@@ -199,7 +212,7 @@ time_t parse_http_date(const StringRef &s);
 // Parses time formatted as "MMM DD HH:MM:SS YYYY [GMT]" (e.g., Feb 3
 // 00:55:52 2015 GMT), which is specifically used by OpenSSL
 // ASN1_TIME_print().
-time_t parse_openssl_asn1_time_print(const StringRef &s);
+// time_t parse_openssl_asn1_time_print(const StringRef &s);
 
 char upcase(char c);
 
@@ -467,7 +480,7 @@ void to_token68(std::string &base64str);
 
 StringRef to_base64(BlockAllocator &balloc, const StringRef &token68str);
 
-void show_candidates(const char *unkopt, const option *options);
+// void show_candidates(const char *unkopt, const option *options);
 
 bool has_uri_field(const http_parser_url &u, http_parser_url_fields field);
 
@@ -781,7 +794,7 @@ std::mt19937 make_mt19937();
 
 // daemonize calls daemon(3).  If __APPLE__ is defined, it implements
 // daemon() using fork().
-int daemonize(int nochdir, int noclose);
+// int daemonize(int nochdir, int noclose);
 
 } // namespace util
 
