@@ -63,7 +63,7 @@
  * nghttpd, nghttpx, h2load application code is using it.
  * sphinx documentation is using it as well.
  * Windows equivalent implementation of getopt_long
- * is required to enabel the code.
+ * is required to enable the code.
  */
 
 namespace nghttp2 {

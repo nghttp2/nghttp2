@@ -254,13 +254,13 @@ std::string http_date(time_t t) {
 char *http_date(char *res, time_t t) {
   struct tm tms;
 
-#if defined(_WIN32)
-  /* gmtime_s is thread safe in windows */
-  if (gmtime_s(&tms, &t) != 0) {
+#ifndef _WIN32
+  if (gmtime_r(&t, &tms) == nullptr) {
     return res;
   }
 #else
-  if (gmtime_r(&t, &tms) == nullptr) {
+  /* gmtime_s is thread safe in windows */
+  if (gmtime_s(&tms, &t) != 0) {
     return res;
   }
 #endif
@@ -299,12 +299,12 @@ std::string common_log_date(time_t t) {
 char *common_log_date(char *res, time_t t) {
   struct tm tms;
 
-#if defined(_WIN32)
-  if (localtime_s(&tms, &t) != 0) {
+#ifndef _WIN32
+  if (localtime_r(&t, &tms) == nullptr) {
     return res;
   }
 #else
-  if (localtime_r(&t, &tms) == nullptr) {
+  if (localtime_s(&tms, &t) != 0) {
     return res;
   }
 #endif
@@ -356,12 +356,12 @@ char *iso8601_date(char *res, int64_t ms) {
   time_t sec = ms / 1000;
 
   tm tms;
-#if defined(_WIN32)
-  if (localtime_s(&tms, &sec) != 0) {
+#ifndef _WIN32
+   if (localtime_r(&sec, &tms) == nullptr) {
     return res;
   }
 #else
-  if (localtime_r(&sec, &tms) == nullptr) {
+  if (localtime_s(&tms, &sec) != 0) {
     return res;
   }
 #endif
