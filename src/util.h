@@ -55,17 +55,6 @@
 #include "network.h"
 #include "allocator.h"
 
-/*
- * Removed getopt.h functions which are nor required for
- * client use cases to enable cross compile.
- * Current usage is limited to parse input parameters
- * for different applications enabled with --enable-app
- * nghttpd, nghttpx, h2load application code is using it.
- * sphinx documentation is using it as well.
- * Windows equivalent implementation of getopt_long
- * is required to enable the code.
- */
-
 namespace nghttp2 {
 
 constexpr auto NGHTTP2_H2_ALPN = StringRef::from_lit("\x2h2");
@@ -212,7 +201,9 @@ time_t parse_http_date(const StringRef &s);
 // Parses time formatted as "MMM DD HH:MM:SS YYYY [GMT]" (e.g., Feb 3
 // 00:55:52 2015 GMT), which is specifically used by OpenSSL
 // ASN1_TIME_print().
-// time_t parse_openssl_asn1_time_print(const StringRef &s);
+#ifndef _WIN32
+time_t parse_openssl_asn1_time_print(const StringRef &s);
+#endif // _WIN32
 
 char upcase(char c);
 
@@ -480,7 +471,9 @@ void to_token68(std::string &base64str);
 
 StringRef to_base64(BlockAllocator &balloc, const StringRef &token68str);
 
-// void show_candidates(const char *unkopt, const option *options);
+#ifndef _WIN32
+void show_candidates(const char *unkopt, const option *options);
+#endif // _WIN32
 
 bool has_uri_field(const http_parser_url &u, http_parser_url_fields field);
 
@@ -794,7 +787,9 @@ std::mt19937 make_mt19937();
 
 // daemonize calls daemon(3).  If __APPLE__ is defined, it implements
 // daemon() using fork().
-// int daemonize(int nochdir, int noclose);
+#ifndef _WIN32
+int daemonize(int nochdir, int noclose);
+#endif // _WIN32
 
 } // namespace util
 

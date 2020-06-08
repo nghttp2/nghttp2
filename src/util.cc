@@ -263,7 +263,7 @@ char *http_date(char *res, time_t t) {
   if (gmtime_s(&tms, &t) != 0) {
     return res;
   }
-#endif
+#endif // _WIN32
 
   auto p = res;
 
@@ -307,7 +307,7 @@ char *common_log_date(char *res, time_t t) {
   if (localtime_s(&tms, &t) != 0) {
     return res;
   }
-#endif
+#endif // _WIN32
 
   auto p = res;
 
@@ -364,7 +364,7 @@ char *iso8601_date(char *res, int64_t ms) {
   if (localtime_s(&tms, &sec) != 0) {
     return res;
   }
-#endif
+#endif // _WIN32
 
   auto p = res;
 
@@ -434,7 +434,7 @@ time_t parse_http_date(const StringRef &s) {
 #endif // !_WIN32
 }
 
-/*
+#ifndef _WIN32
 time_t parse_openssl_asn1_time_print(const StringRef &s) {
   tm tm{};
   auto r = strptime(s.c_str(), "%b %d %H:%M:%S %Y GMT", &tm);
@@ -443,7 +443,7 @@ time_t parse_openssl_asn1_time_print(const StringRef &s) {
   }
   return nghttp2_timegm_without_yday(&tm);
 }
-*/
+#endif // _WIN32
 
 char upcase(char c) {
   if ('a' <= c && c <= 'z') {
@@ -553,7 +553,7 @@ int levenshtein(const char *a, int alen, const char *b, int blen, int swapcost,
 }
 } // namespace
 
-/*
+#ifndef _WIN32
 void show_candidates(const char *unkopt, const option *options) {
   for (; *unkopt == '-'; ++unkopt)
     ;
@@ -611,7 +611,7 @@ void show_candidates(const char *unkopt, const option *options) {
     std::cerr << "\t--" << item.second << "\n";
   }
 }
-*/
+#endif // _WIN32
 
 bool has_uri_field(const http_parser_url &u, http_parser_url_fields field) {
   return u.field_set & (1 << field);
@@ -1600,7 +1600,7 @@ std::mt19937 make_mt19937() {
   return std::mt19937(rd());
 }
 
-/*
+#ifndef _WIN32
 int daemonize(int nochdir, int noclose) {
 #if defined(__APPLE__)
   pid_t pid;
@@ -1639,7 +1639,8 @@ int daemonize(int nochdir, int noclose) {
 #else  // !defined(__APPLE__)
   return daemon(nochdir, noclose);
 #endif // !defined(__APPLE__)
-} */
+}
+#endif // !_WIN32
 
 } // namespace util
 
