@@ -30,7 +30,9 @@
 #ifdef HAVE_UNISTD_H
 #  include <unistd.h>
 #endif // HAVE_UNISTD_H
+#ifndef _WIN32
 #include <getopt.h>
+#endif // _WIN32
 #ifdef HAVE_NETDB_H
 #  include <netdb.h>
 #endif // HAVE_NETDB_H
@@ -199,7 +201,9 @@ time_t parse_http_date(const StringRef &s);
 // Parses time formatted as "MMM DD HH:MM:SS YYYY [GMT]" (e.g., Feb 3
 // 00:55:52 2015 GMT), which is specifically used by OpenSSL
 // ASN1_TIME_print().
+#ifndef _WIN32
 time_t parse_openssl_asn1_time_print(const StringRef &s);
+#endif // _WIN32
 
 char upcase(char c);
 
@@ -467,7 +471,9 @@ void to_token68(std::string &base64str);
 
 StringRef to_base64(BlockAllocator &balloc, const StringRef &token68str);
 
+#ifndef _WIN32
 void show_candidates(const char *unkopt, const option *options);
+#endif // _WIN32
 
 bool has_uri_field(const http_parser_url &u, http_parser_url_fields field);
 
@@ -781,7 +787,9 @@ std::mt19937 make_mt19937();
 
 // daemonize calls daemon(3).  If __APPLE__ is defined, it implements
 // daemon() using fork().
+#ifndef _WIN32
 int daemonize(int nochdir, int noclose);
+#endif // _WIN32
 
 } // namespace util
 
