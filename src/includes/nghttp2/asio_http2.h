@@ -103,7 +103,7 @@ typedef std::function<ssize_t(uint8_t *buf, std::size_t len,
 // Like file_generator(const std::string&), but it takes opened file
 // descriptor.  The passed descriptor will be closed when returned
 // function object is destroyed.
-generator_cb file_generator_from_fd(int fd);
+// generator_cb file_generator_from_fd(int fd);
 
 // Validates path so that it does not contain directory traversal
 // vector.  Returns true if path is safe.  The |path| must start with
