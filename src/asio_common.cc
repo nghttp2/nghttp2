@@ -102,6 +102,8 @@ std::shared_ptr<Defer<F, T...>> defer_shared(F &&f, T &&... t) {
                                           std::forward<T>(t)...);
 }
 
+/*
+// Code is disabled, See additional comment in asio_http2.h
 generator_cb file_generator(const std::string &path) {
   auto fd = open(path.c_str(), O_RDONLY);
   if (fd == -1) {
@@ -131,6 +133,7 @@ generator_cb file_generator_from_fd(int fd) {
     return n;
   };
 }
+*/
 
 bool check_path(const std::string &path) { return util::check_path(path); }
 

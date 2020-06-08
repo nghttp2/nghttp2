@@ -95,7 +95,10 @@ typedef std::function<ssize_t(uint8_t *buf, std::size_t len,
 
 // Convenient function to create function to read file denoted by
 // |path|.  This can be passed to response::end().
-generator_cb file_generator(const std::string &path);
+// Code is currently disabled. Can be re-enabled by replacing
+// cross platform implementation. Current implementation is
+// not compatible with windows. Not required for client usecases.
+// generator_cb file_generator(const std::string &path);
 
 // Like file_generator(const std::string&), but it takes opened file
 // descriptor.  The passed descriptor will be closed when returned
