@@ -25,8 +25,6 @@
 #ifndef MEMCHUNK_H
 #define MEMCHUNK_H
 
-#include "nghttp2_config.h"
-
 #include <limits.h>
 #ifdef _WIN32
 /* Structure for scatter/gather I/O.  */
@@ -62,7 +60,7 @@ template <size_t N> struct Memchunk {
   Memchunk(Memchunk *next_chunk)
       : pos(&(buf.front())), last(pos), knext(next_chunk), next(nullptr) {}
   size_t len() const { return last - pos; }
-  size_t left() const { return &(buf.back()) - last + 1; }
+  size_t left() const { return &(buf.back()) + 1 - last; }
   void reset() { pos = last = &(buf.front()); }
   std::array<uint8_t, N> buf;
   uint8_t *pos, *last;
