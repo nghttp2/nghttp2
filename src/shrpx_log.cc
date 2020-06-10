@@ -251,7 +251,7 @@ Log &Log::operator<<(long long n) {
     return *this;
   }
   *last_++ = '-';
-  *last_ += nlen;
+  last_ += nlen;
   update_full();
 
   auto p = last_ - 1;
