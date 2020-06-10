@@ -6398,6 +6398,107 @@ void test_nghttp2_submit_origin(void) {
   nghttp2_session_del(session);
 }
 
+void test_nghttp2_submit_rst_stream(void) {
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+  nghttp2_outbound_item *item;
+  int rv;
+  int32_t stream_id;
+
+  memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
+
+  /* Sending RST_STREAM to idle stream (local) is ignored */
+  nghttp2_session_client_new(&session, &callbacks, NULL);
+
+  rv = nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, 1,
+                                 NGHTTP2_NO_ERROR);
+
+  CU_ASSERT(0 == rv);
+
+  item = nghttp2_outbound_queue_top(&session->ob_reg);
+
+  CU_ASSERT(NULL == item);
+
+  nghttp2_session_del(session);
+
+  /* Sending RST_STREAM to idle stream (remote) is ignored */
+  nghttp2_session_client_new(&session, &callbacks, NULL);
+
+  rv = nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, 2,
+                                 NGHTTP2_NO_ERROR);
+
+  CU_ASSERT(0 == rv);
+
+  item = nghttp2_outbound_queue_top(&session->ob_reg);
+
+  CU_ASSERT(NULL == item);
+
+  nghttp2_session_del(session);
+
+  /* Sending RST_STREAM to non-idle stream (local) */
+  nghttp2_session_client_new(&session, &callbacks, NULL);
+
+  open_sent_stream(session, 1);
+
+  rv = nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, 1,
+                                 NGHTTP2_NO_ERROR);
+
+  CU_ASSERT(0 == rv);
+
+  item = nghttp2_outbound_queue_top(&session->ob_reg);
+
+  CU_ASSERT(NULL != item);
+  CU_ASSERT(NGHTTP2_RST_STREAM == item->frame.hd.type);
+  CU_ASSERT(1 == item->frame.hd.stream_id);
+
+  nghttp2_session_del(session);
+
+  /* Sending RST_STREAM to non-idle stream (remote) */
+  nghttp2_session_client_new(&session, &callbacks, NULL);
+
+  open_recv_stream(session, 2);
+
+  rv = nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, 2,
+                                 NGHTTP2_NO_ERROR);
+
+  CU_ASSERT(0 == rv);
+
+  item = nghttp2_outbound_queue_top(&session->ob_reg);
+
+  CU_ASSERT(NULL != item);
+  CU_ASSERT(NGHTTP2_RST_STREAM == item->frame.hd.type);
+  CU_ASSERT(2 == item->frame.hd.stream_id);
+
+  nghttp2_session_del(session);
+
+  /* Sending RST_STREAM to pending stream */
+  nghttp2_session_client_new(&session, &callbacks, NULL);
+
+  stream_id =
+      nghttp2_submit_request(session, NULL, reqnv, ARRLEN(reqnv), NULL, NULL);
+
+  CU_ASSERT(stream_id > 0);
+
+  item = nghttp2_outbound_queue_top(&session->ob_syn);
+
+  CU_ASSERT(NULL != item);
+  CU_ASSERT(NGHTTP2_HEADERS == item->frame.hd.type);
+  CU_ASSERT(0 == item->aux_data.headers.canceled);
+
+  rv = nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, stream_id,
+                                 NGHTTP2_NO_ERROR);
+
+  CU_ASSERT(0 == rv);
+
+  item = nghttp2_outbound_queue_top(&session->ob_syn);
+
+  CU_ASSERT(NULL != item);
+  CU_ASSERT(NGHTTP2_HEADERS == item->frame.hd.type);
+  CU_ASSERT(1 == item->aux_data.headers.canceled);
+
+  nghttp2_session_del(session);
+}
+
 void test_nghttp2_session_open_stream(void) {
   nghttp2_session *session;
   nghttp2_session_callbacks callbacks;

@@ -211,6 +211,8 @@ int main() {
       !CU_add_test(pSuite, "submit_extension", test_nghttp2_submit_extension) ||
       !CU_add_test(pSuite, "submit_altsvc", test_nghttp2_submit_altsvc) ||
       !CU_add_test(pSuite, "submit_origin", test_nghttp2_submit_origin) ||
+      !CU_add_test(pSuite, "submit_rst_stream",
+                   test_nghttp2_submit_rst_stream) ||
       !CU_add_test(pSuite, "session_open_stream",
                    test_nghttp2_session_open_stream) ||
       !CU_add_test(pSuite, "session_open_stream_with_idle_stream_dep",
