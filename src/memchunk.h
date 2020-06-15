@@ -67,6 +67,7 @@ template <size_t N> struct Memchunk {
   Memchunk *knext;
   Memchunk *next;
   static const size_t size = N;
+  static_assert(N >= 1, "N must be greater than 1");
 };
 
 template <typename T> struct Pool {
