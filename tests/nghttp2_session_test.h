@@ -156,6 +156,7 @@ void test_nghttp2_session_repeated_priority_change(void);
 void test_nghttp2_session_repeated_priority_submission(void);
 void test_nghttp2_session_set_local_window_size(void);
 void test_nghttp2_session_cancel_from_before_frame_send(void);
+void test_nghttp2_session_too_many_settings(void);
 void test_nghttp2_session_removed_closed_stream(void);
 void test_nghttp2_session_pause_data(void);
 void test_nghttp2_session_no_closed_streams(void);

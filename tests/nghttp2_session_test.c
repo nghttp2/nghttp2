@@ -10614,6 +10614,67 @@ void test_nghttp2_session_cancel_from_before_frame_send(void) {
   nghttp2_session_del(session);
 }
 
+void test_nghttp2_session_too_many_settings(void) {
+  nghttp2_session *session;
+  nghttp2_option *option;
+  nghttp2_session_callbacks callbacks;
+  nghttp2_frame frame;
+  nghttp2_bufs bufs;
+  nghttp2_buf *buf;
+  ssize_t rv;
+  my_user_data ud;
+  nghttp2_settings_entry iv[3];
+  nghttp2_mem *mem;
+  nghttp2_outbound_item *item;
+
+  mem = nghttp2_mem_default();
+  frame_pack_bufs_init(&bufs);
+
+  memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
+  callbacks.on_frame_recv_callback = on_frame_recv_callback;
+  callbacks.send_callback = null_send_callback;
+
+  nghttp2_option_new(&option);
+  nghttp2_option_set_max_settings(option, 1);
+
+  nghttp2_session_client_new2(&session, &callbacks, &ud, option);
+
+  CU_ASSERT(1 == session->max_settings);
+
+  nghttp2_option_del(option);
+
+  iv[0].settings_id = NGHTTP2_SETTINGS_HEADER_TABLE_SIZE;
+  iv[0].value = 3000;
+
+  iv[1].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
+  iv[1].value = 16384;
+
+  nghttp2_frame_settings_init(&frame.settings, NGHTTP2_FLAG_NONE, dup_iv(iv, 2),
+                              2);
+
+  rv = nghttp2_frame_pack_settings(&bufs, &frame.settings);
+
+  CU_ASSERT(0 == rv);
+  CU_ASSERT(nghttp2_bufs_len(&bufs) > 0);
+
+  nghttp2_frame_settings_free(&frame.settings, mem);
+
+  buf = &bufs.head->buf;
+  assert(nghttp2_bufs_len(&bufs) == nghttp2_buf_len(buf));
+
+  ud.frame_recv_cb_called = 0;
+
+  rv = nghttp2_session_mem_recv(session, buf->pos, nghttp2_buf_len(buf));
+  CU_ASSERT((ssize_t)nghttp2_buf_len(buf) == rv);
+
+  item = nghttp2_session_get_next_ob_item(session);
+  CU_ASSERT(NGHTTP2_GOAWAY == item->frame.hd.type);
+
+  nghttp2_bufs_reset(&bufs);
+  nghttp2_bufs_free(&bufs);
+  nghttp2_session_del(session);
+}
+
 static void
 prepare_session_removed_closed_stream(nghttp2_session *session,
                                       nghttp2_hd_deflater *deflater) {

@@ -317,6 +317,8 @@ int main() {
                    test_nghttp2_session_set_local_window_size) ||
       !CU_add_test(pSuite, "session_cancel_from_before_frame_send",
                    test_nghttp2_session_cancel_from_before_frame_send) ||
+      !CU_add_test(pSuite, "session_too_many_settings",
+                   test_nghttp2_session_too_many_settings) ||
       !CU_add_test(pSuite, "session_removed_closed_stream",
                    test_nghttp2_session_removed_closed_stream) ||
       !CU_add_test(pSuite, "session_pause_data",
