@@ -959,6 +959,18 @@ int nghttp2_session_add_rst_stream(nghttp2_session *session, int32_t stream_id,
     return 0;
   }
 
+  /* Sending RST_STREAM to an idle stream is subject to protocol
+     violation.  Historically, nghttp2 allows this.  In order not to
+     disrupt the existing applications, we don't error out this case
+     and simply ignore it. */
+  if (nghttp2_session_is_my_stream_id(session, stream_id)) {
+    if ((uint32_t)stream_id >= session->next_stream_id) {
+      return 0;
+    }
+  } else if (session->last_recv_stream_id < stream_id) {
+    return 0;
+  }
+
   /* Cancel pending request HEADERS in ob_syn if this RST_STREAM
      refers to that stream. */
   if (!session->server && nghttp2_session_is_my_stream_id(session, stream_id) &&
@@ -969,8 +981,7 @@ int nghttp2_session_add_rst_stream(nghttp2_session *session, int32_t stream_id,
     headers_frame = &nghttp2_outbound_queue_top(&session->ob_syn)->frame;
     assert(headers_frame->hd.type == NGHTTP2_HEADERS);
 
-    if (headers_frame->hd.stream_id <= stream_id &&
-        (uint32_t)stream_id < session->next_stream_id) {
+    if (headers_frame->hd.stream_id <= stream_id) {
 
       for (item = session->ob_syn.head; item; item = item->qnext) {
         aux_data = &item->aux_data.headers;
