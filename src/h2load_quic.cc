@@ -346,6 +346,11 @@ int Client::quic_init(const sockaddr *local_addr, socklen_t local_addrlen,
       nullptr, // extend_max_remote_streams_bidi
       nullptr, // extend_max_remote_streams_uni
       nullptr, // extend_max_stream_data
+      nullptr, // dcid_status
+      nullptr, // handshake_confirmed
+      nullptr, // recv_new_token
+      ngtcp2_crypto_delete_crypto_aead_ctx_cb,
+      ngtcp2_crypto_delete_crypto_cipher_ctx_cb,
   };
 
   ngtcp2_cid scid, dcid;
