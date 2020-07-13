@@ -240,10 +240,6 @@ void Downstream::detach_downstream_connection() {
 
   auto handler = dconn_->get_client_handler();
 
-  if (!handler) {
-    return;
-  }
-
   handler->pool_downstream_connection(
       std::unique_ptr<DownstreamConnection>(dconn_.release()));
 }
