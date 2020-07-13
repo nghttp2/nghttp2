@@ -902,10 +902,16 @@ ClientHandler::get_downstream_connection(int &err, Downstream *downstream) {
   err = 0;
 
   switch (faddr_->alt_mode) {
-  case UpstreamAltMode::API:
-    return std::make_unique<APIDownstreamConnection>(worker_);
-  case UpstreamAltMode::HEALTHMON:
-    return std::make_unique<HealthMonitorDownstreamConnection>();
+  case UpstreamAltMode::API: {
+    auto dconn = std::make_unique<APIDownstreamConnection>(worker_);
+    dconn->set_client_handler(this);
+    return dconn;
+  }
+  case UpstreamAltMode::HEALTHMON: {
+    auto dconn = std::make_unique<HealthMonitorDownstreamConnection>();
+    dconn->set_client_handler(this);
+    return dconn;
+  }
   default:
     break;
   }
