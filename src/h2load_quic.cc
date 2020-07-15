@@ -375,10 +375,8 @@ int Client::quic_init(const sockaddr *local_addr, socklen_t local_addrlen,
   params.max_udp_payload_size = quic.max_pktlen;
 
   auto path = ngtcp2_path{
-      {local_addrlen,
-       const_cast<uint8_t *>(reinterpret_cast<const uint8_t *>(local_addr))},
-      {remote_addrlen,
-       const_cast<uint8_t *>(reinterpret_cast<const uint8_t *>(remote_addr))},
+      {local_addrlen, const_cast<sockaddr *>(local_addr)},
+      {remote_addrlen, const_cast<sockaddr *>(remote_addr)},
   };
 
   rv = ngtcp2_conn_client_new(&quic.conn, &dcid, &scid, &path, NGTCP2_PROTO_VER,
@@ -525,8 +523,8 @@ int Client::read_quic() {
     assert(quic.conn);
 
     auto path = ngtcp2_path{
-        {local_addr.len, reinterpret_cast<uint8_t *>(&local_addr.su.sa)},
-        {addrlen, reinterpret_cast<uint8_t *>(&su.sa)},
+        {local_addr.len, &local_addr.su.sa},
+        {addrlen, &su.sa},
     };
 
     rv = ngtcp2_conn_read_pkt(quic.conn, &path, buf.data(), nread,
