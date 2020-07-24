@@ -18,6 +18,7 @@ Contents:
 
    package_README
    contribute
+   security
    building-android-binary
    tutorial-client
    tutorial-server

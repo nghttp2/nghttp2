@@ -203,6 +203,7 @@ EXTRA_DIST = \
 	sources/python-apiref.rst \
 	sources/building-android-binary.rst \
 	sources/contribute.rst \
+	sources/security.rst \
 	_exts/sphinxcontrib/LICENSE.rubydomain \
 	_exts/sphinxcontrib/__init__.py \
 	_exts/sphinxcontrib/rubydomain.py \
