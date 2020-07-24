@@ -211,16 +211,51 @@ EXTRA_DIST = \
 	_themes/sphinx_rtd_theme/breadcrumbs.html \
 	_themes/sphinx_rtd_theme/footer.html \
 	_themes/sphinx_rtd_theme/layout.html \
-	_themes/sphinx_rtd_theme/layout_old.html \
+	_themes/sphinx_rtd_theme/locale/de/LC_MESSAGES/sphinx.mo \
+	_themes/sphinx_rtd_theme/locale/de/LC_MESSAGES/sphinx.po \
+	_themes/sphinx_rtd_theme/locale/en/LC_MESSAGES/sphinx.mo \
+	_themes/sphinx_rtd_theme/locale/en/LC_MESSAGES/sphinx.po \
+	_themes/sphinx_rtd_theme/locale/es/LC_MESSAGES/sphinx.mo \
+	_themes/sphinx_rtd_theme/locale/es/LC_MESSAGES/sphinx.po \
+	_themes/sphinx_rtd_theme/locale/et/LC_MESSAGES/sphinx.mo \
+	_themes/sphinx_rtd_theme/locale/et/LC_MESSAGES/sphinx.po \
+	_themes/sphinx_rtd_theme/locale/fr/LC_MESSAGES/sphinx.mo \
+	_themes/sphinx_rtd_theme/locale/fr/LC_MESSAGES/sphinx.po \
+	_themes/sphinx_rtd_theme/locale/nl/LC_MESSAGES/sphinx.mo \
+	_themes/sphinx_rtd_theme/locale/nl/LC_MESSAGES/sphinx.po \
+	_themes/sphinx_rtd_theme/locale/pt_BR/LC_MESSAGES/sphinx.mo \
+	_themes/sphinx_rtd_theme/locale/pt_BR/LC_MESSAGES/sphinx.po \
+	_themes/sphinx_rtd_theme/locale/ru/LC_MESSAGES/sphinx.mo \
+	_themes/sphinx_rtd_theme/locale/ru/LC_MESSAGES/sphinx.po \
+	_themes/sphinx_rtd_theme/locale/sphinx.pot \
+	_themes/sphinx_rtd_theme/locale/sv/LC_MESSAGES/sphinx.mo \
+	_themes/sphinx_rtd_theme/locale/sv/LC_MESSAGES/sphinx.po \
+	_themes/sphinx_rtd_theme/locale/tr/LC_MESSAGES/sphinx.mo \
+	_themes/sphinx_rtd_theme/locale/tr/LC_MESSAGES/sphinx.po \
+	_themes/sphinx_rtd_theme/locale/zh_CN/LC_MESSAGES/sphinx.mo \
+	_themes/sphinx_rtd_theme/locale/zh_CN/LC_MESSAGES/sphinx.po \
 	_themes/sphinx_rtd_theme/search.html \
 	_themes/sphinx_rtd_theme/searchbox.html \
 	_themes/sphinx_rtd_theme/static/css/badge_only.css \
+	_themes/sphinx_rtd_theme/static/css/fonts/Roboto-Slab-Bold.woff \
+	_themes/sphinx_rtd_theme/static/css/fonts/Roboto-Slab-Bold.woff2 \
+	_themes/sphinx_rtd_theme/static/css/fonts/Roboto-Slab-Regular.woff \
+	_themes/sphinx_rtd_theme/static/css/fonts/Roboto-Slab-Regular.woff2 \
+	_themes/sphinx_rtd_theme/static/css/fonts/fontawesome-webfont.eot \
+	_themes/sphinx_rtd_theme/static/css/fonts/fontawesome-webfont.svg \
+	_themes/sphinx_rtd_theme/static/css/fonts/fontawesome-webfont.ttf \
+	_themes/sphinx_rtd_theme/static/css/fonts/fontawesome-webfont.woff \
+	_themes/sphinx_rtd_theme/static/css/fonts/fontawesome-webfont.woff2 \
+	_themes/sphinx_rtd_theme/static/css/fonts/lato-bold-italic.woff \
+	_themes/sphinx_rtd_theme/static/css/fonts/lato-bold-italic.woff2 \
+	_themes/sphinx_rtd_theme/static/css/fonts/lato-bold.woff \
+	_themes/sphinx_rtd_theme/static/css/fonts/lato-bold.woff2 \
+	_themes/sphinx_rtd_theme/static/css/fonts/lato-normal-italic.woff \
+	_themes/sphinx_rtd_theme/static/css/fonts/lato-normal-italic.woff2 \
+	_themes/sphinx_rtd_theme/static/css/fonts/lato-normal.woff \
+	_themes/sphinx_rtd_theme/static/css/fonts/lato-normal.woff2 \
 	_themes/sphinx_rtd_theme/static/css/theme.css \
-	_themes/sphinx_rtd_theme/static/fonts/FontAwesome.otf \
-	_themes/sphinx_rtd_theme/static/fonts/fontawesome-webfont.eot \
-	_themes/sphinx_rtd_theme/static/fonts/fontawesome-webfont.svg \
-	_themes/sphinx_rtd_theme/static/fonts/fontawesome-webfont.ttf \
-	_themes/sphinx_rtd_theme/static/fonts/fontawesome-webfont.woff \
+	_themes/sphinx_rtd_theme/static/js/badge_only.js \
 	_themes/sphinx_rtd_theme/static/js/theme.js \
 	_themes/sphinx_rtd_theme/theme.conf \
 	_themes/sphinx_rtd_theme/versions.html \
