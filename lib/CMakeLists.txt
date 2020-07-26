@@ -24,6 +24,7 @@ set(NGHTTP2_SOURCES
   nghttp2_http.c
   nghttp2_rcbuf.c
   nghttp2_debug.c
+  ngtcp2_ksl.c
 )
 
 set(NGHTTP2_RES "")
