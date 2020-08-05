@@ -592,7 +592,7 @@ int Client::write_quic() {
           return -1;
         }
         continue;
-      case NGTCP2_ERR_WRITE_STREAM_MORE:
+      case NGTCP2_ERR_WRITE_MORE:
         assert(ndatalen > 0);
         if (s->add_write_offset(stream_id, ndatalen) != 0) {
           return -1;
