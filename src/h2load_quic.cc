@@ -512,6 +512,7 @@ int Client::read_quic() {
   socklen_t addrlen = sizeof(su);
   int rv;
   size_t pktcnt = 0;
+  ngtcp2_pkt_info pi{};
 
   for (;;) {
     auto nread =
@@ -527,7 +528,7 @@ int Client::read_quic() {
         {addrlen, &su.sa},
     };
 
-    rv = ngtcp2_conn_read_pkt(quic.conn, &path, buf.data(), nread,
+    rv = ngtcp2_conn_read_pkt(quic.conn, &path, &pi, buf.data(), nread,
                               timestamp(worker->loop));
     if (rv != 0) {
       std::cerr << "ngtcp2_conn_read_pkt: " << ngtcp2_strerror(rv) << std::endl;
@@ -579,8 +580,8 @@ int Client::write_quic() {
     }
 
     auto nwrite = ngtcp2_conn_writev_stream(
-        quic.conn, &ps.path, buf.data(), quic.max_pktlen, &ndatalen, flags,
-        stream_id, reinterpret_cast<const ngtcp2_vec *>(v), vcnt,
+        quic.conn, &ps.path, nullptr, buf.data(), quic.max_pktlen, &ndatalen,
+        flags, stream_id, reinterpret_cast<const ngtcp2_vec *>(v), vcnt,
         timestamp(worker->loop));
     if (nwrite < 0) {
       switch (nwrite) {
