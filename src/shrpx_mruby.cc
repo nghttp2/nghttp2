@@ -117,7 +117,7 @@ namespace {
 mrb_value instantiate_app(mrb_state *mrb, RProc *proc) {
   mrb->ud = nullptr;
 
-  auto res = mrb_run(mrb, proc, mrb_top_self(mrb));
+  auto res = mrb_top_run(mrb, proc, mrb_top_self(mrb), 0);
 
   if (mrb->exc) {
     auto exc = mrb_obj_value(mrb->exc);
