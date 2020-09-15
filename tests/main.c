@@ -333,6 +333,8 @@ int main() {
                    test_nghttp2_http_mandatory_headers) ||
       !CU_add_test(pSuite, "http_content_length",
                    test_nghttp2_http_content_length) ||
+      !CU_add_test(pSuite, "http_content_length_close",
+                   test_nghttp2_http_content_length_close) ||
       !CU_add_test(pSuite, "http_content_length_mismatch",
                    test_nghttp2_http_content_length_mismatch) ||
       !CU_add_test(pSuite, "http_non_final_response",

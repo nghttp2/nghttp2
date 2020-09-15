@@ -164,6 +164,7 @@ void test_nghttp2_session_no_closed_streams(void);
 void test_nghttp2_session_set_stream_user_data(void);
 void test_nghttp2_http_mandatory_headers(void);
 void test_nghttp2_http_content_length(void);
+void test_nghttp2_http_content_length_close(void);
 void test_nghttp2_http_content_length_mismatch(void);
 void test_nghttp2_http_non_final_response(void);
 void test_nghttp2_http_trailer_headers(void);
