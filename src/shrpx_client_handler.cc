@@ -985,6 +985,14 @@ ClientHandler::get_downstream_connection(int &err, Downstream *downstream) {
       return dconn;
     }
 
+    if (worker_->get_connect_blocker()->blocked()) {
+      if (LOG_ENABLED(INFO)) {
+        DCLOG(INFO, this)
+            << "Worker wide backend connection was blocked temporarily";
+      }
+      return nullptr;
+    }
+
     if (LOG_ENABLED(INFO)) {
       CLOG(INFO, this) << "Downstream connection pool is empty."
                        << " Create new one";
