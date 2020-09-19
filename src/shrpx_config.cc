@@ -387,6 +387,11 @@ LogFragmentType log_var_lookup_token(const char *name, size_t namelen) {
     break;
   case 4:
     switch (name[3]) {
+    case 'h':
+      if (util::strieq_l("pat", name, 3)) {
+        return LogFragmentType::PATH;
+      }
+      break;
     case 'n':
       if (util::strieq_l("alp", name, 3)) {
         return LogFragmentType::ALPN;
@@ -396,6 +401,11 @@ LogFragmentType log_var_lookup_token(const char *name, size_t namelen) {
     break;
   case 6:
     switch (name[5]) {
+    case 'd':
+      if (util::strieq_l("metho", name, 5)) {
+        return LogFragmentType::METHOD;
+      }
+      break;
     case 's':
       if (util::strieq_l("statu", name, 5)) {
         return LogFragmentType::STATUS;
@@ -502,6 +512,15 @@ LogFragmentType log_var_lookup_token(const char *name, size_t namelen) {
       break;
     }
     break;
+  case 16:
+    switch (name[15]) {
+    case 'n':
+      if (util::strieq_l("protocol_versio", name, 15)) {
+        return LogFragmentType::PROTOCOL_VERSION;
+      }
+      break;
+    }
+    break;
   case 17:
     switch (name[16]) {
     case 'l':
@@ -519,6 +538,11 @@ LogFragmentType log_var_lookup_token(const char *name, size_t namelen) {
       }
       if (util::strieq_l("tls_session_reuse", name, 17)) {
         return LogFragmentType::TLS_SESSION_REUSED;
+      }
+      break;
+    case 'y':
+      if (util::strieq_l("path_without_quer", name, 17)) {
+        return LogFragmentType::PATH_WITHOUT_QUERY;
       }
       break;
     }

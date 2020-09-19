@@ -249,6 +249,10 @@ enum class LogFragmentType {
   TLS_CLIENT_SUBJECT_NAME,
   BACKEND_HOST,
   BACKEND_PORT,
+  METHOD,
+  PATH,
+  PATH_WITHOUT_QUERY,
+  PROTOCOL_VERSION,
 };
 
 struct LogFragment {

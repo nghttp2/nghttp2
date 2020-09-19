@@ -603,6 +603,11 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
                                                  ? StringRef::from_lit("*")
                                                  : StringRef::from_lit("-")
                                            : req.path;
+  auto path_without_query =
+      req.method == HTTP_CONNECT
+          ? path
+          : StringRef{std::begin(path),
+                      std::find(std::begin(path), std::end(path), '?')};
 
   auto p = std::begin(buf);
   auto last = std::end(buf) - 2;
@@ -626,6 +631,24 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
       std::tie(p, last) = copy(' ', p, last);
       std::tie(p, last) = copy_escape(path, p, last);
       std::tie(p, last) = copy_l(" HTTP/", p, last);
+      std::tie(p, last) = copy(req.http_major, p, last);
+      if (req.http_major < 2) {
+        std::tie(p, last) = copy('.', p, last);
+        std::tie(p, last) = copy(req.http_minor, p, last);
+      }
+      break;
+    case LogFragmentType::METHOD:
+      std::tie(p, last) = copy(method, p, last);
+      std::tie(p, last) = copy(' ', p, last);
+      break;
+    case LogFragmentType::PATH:
+      std::tie(p, last) = copy_escape(path, p, last);
+      break;
+    case LogFragmentType::PATH_WITHOUT_QUERY:
+      std::tie(p, last) = copy_escape(path_without_query, p, last);
+      break;
+    case LogFragmentType::PROTOCOL_VERSION:
+      std::tie(p, last) = copy_l("HTTP/", p, last);
       std::tie(p, last) = copy(req.http_major, p, last);
       if (req.http_major < 2) {
         std::tie(p, last) = copy('.', p, last);
