@@ -49,7 +49,7 @@ static const unsigned char llparse_blob7[] = {
 };
 #ifdef __SSE4_2__
 static const unsigned char ALIGN(16) llparse_blob8[] = {
-  0x9, 0x9, ' ', '~', 0x80, 0xfe, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x9, 0x9, ' ', '~', 0x80, 0xff, 0x0, 0x0, 0x0, 0x0, 0x0,
   0x0, 0x0, 0x0, 0x0, 0x0
 };
 #endif  /* __SSE4_2__ */
@@ -210,6 +210,38 @@ static llparse_match_t llparse__match_sequence_id(
     unsigned char current;
 
     current = *p;
+    if (current == seq[index]) {
+      if (++index == seq_len) {
+        res.status = kMatchComplete;
+        goto reset;
+      }
+    } else {
+      res.status = kMatchMismatch;
+      goto reset;
+    }
+  }
+  s->_index = index;
+  res.status = kMatchPause;
+  res.current = p;
+  return res;
+reset:
+  s->_index = 0;
+  res.current = p;
+  return res;
+}
+
+static llparse_match_t llparse__match_sequence_to_lower(
+    llhttp__internal_t* s, const unsigned char* p,
+    const unsigned char* endp,
+    const unsigned char* seq, uint32_t seq_len) {
+  uint32_t index;
+  llparse_match_t res;
+
+  index = s->_index;
+  for (; p != endp; p++) {
+    unsigned char current;
+
+    current = ((*p) >= 'A' && (*p) <= 'Z' ? (*p | 0x20) : (*p));
     if (current == seq[index]) {
       if (++index == seq_len) {
         res.status = kMatchComplete;
@@ -1563,7 +1595,7 @@ static llparse_state_t llhttp__internal__run(
         1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
         1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
         1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
       };
       if (p == endp) {
         return s_n_llhttp__internal__n_header_value_connection_token;
@@ -1618,7 +1650,7 @@ static llparse_state_t llhttp__internal__run(
       if (p == endp) {
         return s_n_llhttp__internal__n_header_value_connection_1;
       }
-      match_seq = llparse__match_sequence_to_lower_unsafe(state, p, endp, llparse_blob4, 4);
+      match_seq = llparse__match_sequence_to_lower(state, p, endp, llparse_blob4, 4);
       p = match_seq.current;
       switch (match_seq.status) {
         case kMatchComplete: {
@@ -1642,7 +1674,7 @@ static llparse_state_t llhttp__internal__run(
       if (p == endp) {
         return s_n_llhttp__internal__n_header_value_connection_2;
       }
-      match_seq = llparse__match_sequence_to_lower_unsafe(state, p, endp, llparse_blob5, 9);
+      match_seq = llparse__match_sequence_to_lower(state, p, endp, llparse_blob5, 9);
       p = match_seq.current;
       switch (match_seq.status) {
         case kMatchComplete: {
@@ -1666,7 +1698,7 @@ static llparse_state_t llhttp__internal__run(
       if (p == endp) {
         return s_n_llhttp__internal__n_header_value_connection_3;
       }
-      match_seq = llparse__match_sequence_to_lower_unsafe(state, p, endp, llparse_blob6, 6);
+      match_seq = llparse__match_sequence_to_lower(state, p, endp, llparse_blob6, 6);
       p = match_seq.current;
       switch (match_seq.status) {
         case kMatchComplete: {
@@ -1688,7 +1720,7 @@ static llparse_state_t llhttp__internal__run(
       if (p == endp) {
         return s_n_llhttp__internal__n_header_value_connection;
       }
-      switch (((*p) | 0x20)) {
+      switch (((*p) >= 'A' && (*p) <= 'Z' ? (*p | 0x20) : (*p))) {
         case 9: {
           p++;
           goto s_n_llhttp__internal__n_header_value_connection;
@@ -1884,7 +1916,7 @@ static llparse_state_t llhttp__internal__run(
         1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
         1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
         1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
       };
       if (p == endp) {
         return s_n_llhttp__internal__n_header_value;
@@ -1943,7 +1975,7 @@ static llparse_state_t llhttp__internal__run(
         1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
         1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
         1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
       };
       if (p == endp) {
         return s_n_llhttp__internal__n_header_value_te_token;
@@ -2142,7 +2174,7 @@ static llparse_state_t llhttp__internal__run(
       if (p == endp) {
         return s_n_llhttp__internal__n_header_field_3;
       }
-      match_seq = llparse__match_sequence_to_lower_unsafe(state, p, endp, llparse_blob3, 6);
+      match_seq = llparse__match_sequence_to_lower(state, p, endp, llparse_blob3, 6);
       p = match_seq.current;
       switch (match_seq.status) {
         case kMatchComplete: {
@@ -2167,7 +2199,7 @@ static llparse_state_t llhttp__internal__run(
       if (p == endp) {
         return s_n_llhttp__internal__n_header_field_4;
       }
-      match_seq = llparse__match_sequence_to_lower_unsafe(state, p, endp, llparse_blob11, 10);
+      match_seq = llparse__match_sequence_to_lower(state, p, endp, llparse_blob11, 10);
       p = match_seq.current;
       switch (match_seq.status) {
         case kMatchComplete: {
@@ -2190,7 +2222,7 @@ static llparse_state_t llhttp__internal__run(
       if (p == endp) {
         return s_n_llhttp__internal__n_header_field_2;
       }
-      switch (((*p) | 0x20)) {
+      switch (((*p) >= 'A' && (*p) <= 'Z' ? (*p | 0x20) : (*p))) {
         case 'n': {
           p++;
           goto s_n_llhttp__internal__n_header_field_3;
@@ -2213,7 +2245,7 @@ static llparse_state_t llhttp__internal__run(
       if (p == endp) {
         return s_n_llhttp__internal__n_header_field_1;
       }
-      match_seq = llparse__match_sequence_to_lower_unsafe(state, p, endp, llparse_blob2, 2);
+      match_seq = llparse__match_sequence_to_lower(state, p, endp, llparse_blob2, 2);
       p = match_seq.current;
       switch (match_seq.status) {
         case kMatchComplete: {
@@ -2237,7 +2269,7 @@ static llparse_state_t llhttp__internal__run(
       if (p == endp) {
         return s_n_llhttp__internal__n_header_field_5;
       }
-      match_seq = llparse__match_sequence_to_lower_unsafe(state, p, endp, llparse_blob12, 15);
+      match_seq = llparse__match_sequence_to_lower(state, p, endp, llparse_blob12, 15);
       p = match_seq.current;
       switch (match_seq.status) {
         case kMatchComplete: {
@@ -2262,7 +2294,7 @@ static llparse_state_t llhttp__internal__run(
       if (p == endp) {
         return s_n_llhttp__internal__n_header_field_6;
       }
-      match_seq = llparse__match_sequence_to_lower_unsafe(state, p, endp, llparse_blob13, 16);
+      match_seq = llparse__match_sequence_to_lower(state, p, endp, llparse_blob13, 16);
       p = match_seq.current;
       switch (match_seq.status) {
         case kMatchComplete: {
@@ -2287,7 +2319,7 @@ static llparse_state_t llhttp__internal__run(
       if (p == endp) {
         return s_n_llhttp__internal__n_header_field_7;
       }
-      match_seq = llparse__match_sequence_to_lower_unsafe(state, p, endp, llparse_blob14, 6);
+      match_seq = llparse__match_sequence_to_lower(state, p, endp, llparse_blob14, 6);
       p = match_seq.current;
       switch (match_seq.status) {
         case kMatchComplete: {
@@ -2310,7 +2342,7 @@ static llparse_state_t llhttp__internal__run(
       if (p == endp) {
         return s_n_llhttp__internal__n_header_field;
       }
-      switch (((*p) | 0x20)) {
+      switch (((*p) >= 'A' && (*p) <= 'Z' ? (*p | 0x20) : (*p))) {
         case 'c': {
           p++;
           goto s_n_llhttp__internal__n_header_field_1;
@@ -6831,7 +6863,7 @@ static const unsigned char llparse_blob7[] = {
 };
 #ifdef __SSE4_2__
 static const unsigned char ALIGN(16) llparse_blob8[] = {
-  0x9, 0x9, ' ', '~', 0x80, 0xfe, 0x0, 0x0, 0x0, 0x0, 0x0,
+  0x9, 0x9, ' ', '~', 0x80, 0xff, 0x0, 0x0, 0x0, 0x0, 0x0,
   0x0, 0x0, 0x0, 0x0, 0x0
 };
 #endif  /* __SSE4_2__ */
@@ -6995,6 +7027,38 @@ static llparse_match_t llparse__match_sequence_id(
     unsigned char current;
 
     current = *p;
+    if (current == seq[index]) {
+      if (++index == seq_len) {
+        res.status = kMatchComplete;
+        goto reset;
+      }
+    } else {
+      res.status = kMatchMismatch;
+      goto reset;
+    }
+  }
+  s->_index = index;
+  res.status = kMatchPause;
+  res.current = p;
+  return res;
+reset:
+  s->_index = 0;
+  res.current = p;
+  return res;
+}
+
+static llparse_match_t llparse__match_sequence_to_lower(
+    llhttp__internal_t* s, const unsigned char* p,
+    const unsigned char* endp,
+    const unsigned char* seq, uint32_t seq_len) {
+  uint32_t index;
+  llparse_match_t res;
+
+  index = s->_index;
+  for (; p != endp; p++) {
+    unsigned char current;
+
+    current = ((*p) >= 'A' && (*p) <= 'Z' ? (*p | 0x20) : (*p));
     if (current == seq[index]) {
       if (++index == seq_len) {
         res.status = kMatchComplete;
@@ -8294,7 +8358,7 @@ static llparse_state_t llhttp__internal__run(
         1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
         1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
         1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
       };
       if (p == endp) {
         return s_n_llhttp__internal__n_header_value_connection_token;
@@ -8349,7 +8413,7 @@ static llparse_state_t llhttp__internal__run(
       if (p == endp) {
         return s_n_llhttp__internal__n_header_value_connection_1;
       }
-      match_seq = llparse__match_sequence_to_lower_unsafe(state, p, endp, llparse_blob4, 4);
+      match_seq = llparse__match_sequence_to_lower(state, p, endp, llparse_blob4, 4);
       p = match_seq.current;
       switch (match_seq.status) {
         case kMatchComplete: {
@@ -8373,7 +8437,7 @@ static llparse_state_t llhttp__internal__run(
       if (p == endp) {
         return s_n_llhttp__internal__n_header_value_connection_2;
       }
-      match_seq = llparse__match_sequence_to_lower_unsafe(state, p, endp, llparse_blob5, 9);
+      match_seq = llparse__match_sequence_to_lower(state, p, endp, llparse_blob5, 9);
       p = match_seq.current;
       switch (match_seq.status) {
         case kMatchComplete: {
@@ -8397,7 +8461,7 @@ static llparse_state_t llhttp__internal__run(
       if (p == endp) {
         return s_n_llhttp__internal__n_header_value_connection_3;
       }
-      match_seq = llparse__match_sequence_to_lower_unsafe(state, p, endp, llparse_blob6, 6);
+      match_seq = llparse__match_sequence_to_lower(state, p, endp, llparse_blob6, 6);
       p = match_seq.current;
       switch (match_seq.status) {
         case kMatchComplete: {
@@ -8419,7 +8483,7 @@ static llparse_state_t llhttp__internal__run(
       if (p == endp) {
         return s_n_llhttp__internal__n_header_value_connection;
       }
-      switch (((*p) | 0x20)) {
+      switch (((*p) >= 'A' && (*p) <= 'Z' ? (*p | 0x20) : (*p))) {
         case 9: {
           p++;
           goto s_n_llhttp__internal__n_header_value_connection;
@@ -8615,7 +8679,7 @@ static llparse_state_t llhttp__internal__run(
         1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
         1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
         1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
       };
       if (p == endp) {
         return s_n_llhttp__internal__n_header_value;
@@ -8674,7 +8738,7 @@ static llparse_state_t llhttp__internal__run(
         1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
         1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
         1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
       };
       if (p == endp) {
         return s_n_llhttp__internal__n_header_value_te_token;
@@ -8873,7 +8937,7 @@ static llparse_state_t llhttp__internal__run(
       if (p == endp) {
         return s_n_llhttp__internal__n_header_field_3;
       }
-      match_seq = llparse__match_sequence_to_lower_unsafe(state, p, endp, llparse_blob3, 6);
+      match_seq = llparse__match_sequence_to_lower(state, p, endp, llparse_blob3, 6);
       p = match_seq.current;
       switch (match_seq.status) {
         case kMatchComplete: {
@@ -8898,7 +8962,7 @@ static llparse_state_t llhttp__internal__run(
       if (p == endp) {
         return s_n_llhttp__internal__n_header_field_4;
       }
-      match_seq = llparse__match_sequence_to_lower_unsafe(state, p, endp, llparse_blob11, 10);
+      match_seq = llparse__match_sequence_to_lower(state, p, endp, llparse_blob11, 10);
       p = match_seq.current;
       switch (match_seq.status) {
         case kMatchComplete: {
@@ -8921,7 +8985,7 @@ static llparse_state_t llhttp__internal__run(
       if (p == endp) {
         return s_n_llhttp__internal__n_header_field_2;
       }
-      switch (((*p) | 0x20)) {
+      switch (((*p) >= 'A' && (*p) <= 'Z' ? (*p | 0x20) : (*p))) {
         case 'n': {
           p++;
           goto s_n_llhttp__internal__n_header_field_3;
@@ -8944,7 +9008,7 @@ static llparse_state_t llhttp__internal__run(
       if (p == endp) {
         return s_n_llhttp__internal__n_header_field_1;
       }
-      match_seq = llparse__match_sequence_to_lower_unsafe(state, p, endp, llparse_blob2, 2);
+      match_seq = llparse__match_sequence_to_lower(state, p, endp, llparse_blob2, 2);
       p = match_seq.current;
       switch (match_seq.status) {
         case kMatchComplete: {
@@ -8968,7 +9032,7 @@ static llparse_state_t llhttp__internal__run(
       if (p == endp) {
         return s_n_llhttp__internal__n_header_field_5;
       }
-      match_seq = llparse__match_sequence_to_lower_unsafe(state, p, endp, llparse_blob12, 15);
+      match_seq = llparse__match_sequence_to_lower(state, p, endp, llparse_blob12, 15);
       p = match_seq.current;
       switch (match_seq.status) {
         case kMatchComplete: {
@@ -8993,7 +9057,7 @@ static llparse_state_t llhttp__internal__run(
       if (p == endp) {
         return s_n_llhttp__internal__n_header_field_6;
       }
-      match_seq = llparse__match_sequence_to_lower_unsafe(state, p, endp, llparse_blob13, 16);
+      match_seq = llparse__match_sequence_to_lower(state, p, endp, llparse_blob13, 16);
       p = match_seq.current;
       switch (match_seq.status) {
         case kMatchComplete: {
@@ -9018,7 +9082,7 @@ static llparse_state_t llhttp__internal__run(
       if (p == endp) {
         return s_n_llhttp__internal__n_header_field_7;
       }
-      match_seq = llparse__match_sequence_to_lower_unsafe(state, p, endp, llparse_blob14, 6);
+      match_seq = llparse__match_sequence_to_lower(state, p, endp, llparse_blob14, 6);
       p = match_seq.current;
       switch (match_seq.status) {
         case kMatchComplete: {
@@ -9041,7 +9105,7 @@ static llparse_state_t llhttp__internal__run(
       if (p == endp) {
         return s_n_llhttp__internal__n_header_field;
       }
-      switch (((*p) | 0x20)) {
+      switch (((*p) >= 'A' && (*p) <= 'Z' ? (*p | 0x20) : (*p))) {
         case 'c': {
           p++;
           goto s_n_llhttp__internal__n_header_field_1;
