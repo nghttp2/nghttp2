@@ -379,8 +379,9 @@ int Client::quic_init(const sockaddr *local_addr, socklen_t local_addrlen,
       {remote_addrlen, const_cast<sockaddr *>(remote_addr)},
   };
 
-  rv = ngtcp2_conn_client_new(&quic.conn, &dcid, &scid, &path, NGTCP2_PROTO_VER,
-                              &callbacks, &settings, nullptr, this);
+  rv = ngtcp2_conn_client_new(&quic.conn, &dcid, &scid, &path,
+                              NGTCP2_PROTO_VER_MIN, &callbacks, &settings,
+                              nullptr, this);
   if (rv != 0) {
     return -1;
   }
@@ -407,13 +408,13 @@ void Client::quic_close_connection() {
     return;
   case quic::ErrorType::Transport:
     nwrite = ngtcp2_conn_write_connection_close(
-        quic.conn, &ps.path, buf.data(), quic.max_pktlen, quic.last_error.code,
-        timestamp(worker->loop));
+        quic.conn, &ps.path, nullptr, buf.data(), quic.max_pktlen,
+        quic.last_error.code, timestamp(worker->loop));
     break;
   case quic::ErrorType::Application:
     nwrite = ngtcp2_conn_write_application_close(
-        quic.conn, &ps.path, buf.data(), quic.max_pktlen, quic.last_error.code,
-        timestamp(worker->loop));
+        quic.conn, &ps.path, nullptr, buf.data(), quic.max_pktlen,
+        quic.last_error.code, timestamp(worker->loop));
     break;
   default:
     assert(0);
