@@ -205,6 +205,10 @@ LOGVARS = [
     "tls_client_serial",
     "backend_host",
     "backend_port",
+    "method",
+    "path",
+    "path_without_query",
+    "protocol_version",
 ]
 
 if __name__ == '__main__':
