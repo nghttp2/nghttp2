@@ -69,6 +69,7 @@ mruby:
 all-local: mruby
 
 clean-local:
+	[ ! -f "${abs_builddir}/mruby/build/build_config.rb" ] || \
 	MRUBY_CONFIG="${abs_builddir}/mruby/build/build_config.rb" \
 	BUILD_DIR="${abs_builddir}/mruby/build" \
 	CC="${CC}" \
