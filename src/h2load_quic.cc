@@ -366,8 +366,10 @@ int Client::quic_init(const sockaddr *local_addr, socklen_t local_addrlen,
   }
   settings.initial_ts = timestamp(worker->loop);
   auto &params = settings.transport_params;
-  params.initial_max_stream_data_bidi_local = (1 << config->window_bits) - 1;
-  params.initial_max_stream_data_uni = (1 << config->window_bits) - 1;
+  auto max_stream_data =
+      std::min((1 << 23) - 1, (1 << config->window_bits) - 1);
+  params.initial_max_stream_data_bidi_local = max_stream_data;
+  params.initial_max_stream_data_uni = max_stream_data;
   params.initial_max_data = (1 << config->connection_window_bits) - 1;
   params.initial_max_streams_bidi = 0;
   params.initial_max_streams_uni = 100;
