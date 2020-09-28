@@ -2033,6 +2033,7 @@ Options:
               Default: 1
   -w, --window-bits=<N>
               Sets the stream level initial window size to (2**<N>)-1.
+              For QUIC, <N> is capped to 23 (roughly 8MiB).
               Default: )"
       << config.window_bits << R"(
   -W, --connection-window-bits=<N>
