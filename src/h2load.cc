@@ -88,7 +88,7 @@ Config::Config()
     : ciphers(tls::DEFAULT_CIPHER_LIST),
       tls13_ciphers("TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_"
                     "CHACHA20_POLY1305_SHA256:TLS_AES_128_CCM_SHA256"),
-      groups("P-256:X25519:P-384:P-521"),
+      groups("X25519:P-256:P-384:P-521"),
       data_length(-1),
       addrs(nullptr),
       nreqs(1),
