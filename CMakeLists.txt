@@ -460,6 +460,27 @@ set(PKGDATADIR "${CMAKE_INSTALL_FULL_DATADIR}/${CMAKE_PROJECT_NAME}")
 
 install(FILES README.rst DESTINATION "${CMAKE_INSTALL_DOCDIR}")
 
+install(
+    EXPORT nghttp2-targets
+    DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/nghttp2"
+    NAMESPACE nghttp2::
+    FILE nghttp2-config.cmake
+)
+
+include(CMakePackageConfigHelpers)
+write_basic_package_version_file(
+    nghttp2-config-version.cmake
+    VERSION ${nghttp2_VERSION}
+    COMPATIBILITY SameMajorVersion
+)
+
+install(
+    FILES
+        "${CMAKE_CURRENT_BINARY_DIR}/nghttp2-config-version.cmake"
+    DESTINATION
+        "${CMAKE_INSTALL_LIBDIR}/cmake/nghttp2"
+)
+
 add_subdirectory(lib)
 #add_subdirectory(lib/includes)
 add_subdirectory(third-party)
