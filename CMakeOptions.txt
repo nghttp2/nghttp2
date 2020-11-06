@@ -27,4 +27,6 @@ option(WITH_SPDYLAY     "Use spdylay"
 option(WITH_MRUBY       "Use mruby")
 option(WITH_NEVERBLEED  "Use neverbleed")
 
+option(RELOCATABLE_PKGCONFIG "Make the pkg-config files relocatable")
+
 # vim: ft=cmake:
