@@ -2,8 +2,8 @@
 #define INCLUDE_LLHTTP_H_
 
 #define LLHTTP_VERSION_MAJOR 2
-#define LLHTTP_VERSION_MINOR 1
-#define LLHTTP_VERSION_PATCH 3
+#define LLHTTP_VERSION_MINOR 2
+#define LLHTTP_VERSION_PATCH 0
 
 #ifndef LLHTTP_STRICT_MODE
 # define LLHTTP_STRICT_MODE 0
@@ -145,7 +145,18 @@ enum llhttp_method {
   HTTP_LINK = 31,
   HTTP_UNLINK = 32,
   HTTP_SOURCE = 33,
-  HTTP_PRI = 34
+  HTTP_PRI = 34,
+  HTTP_DESCRIBE = 35,
+  HTTP_ANNOUNCE = 36,
+  HTTP_SETUP = 37,
+  HTTP_PLAY = 38,
+  HTTP_PAUSE = 39,
+  HTTP_TEARDOWN = 40,
+  HTTP_GET_PARAMETER = 41,
+  HTTP_SET_PARAMETER = 42,
+  HTTP_REDIRECT = 43,
+  HTTP_RECORD = 44,
+  HTTP_FLUSH = 45
 };
 typedef enum llhttp_method llhttp_method_t;
 
@@ -212,6 +223,17 @@ typedef enum llhttp_method llhttp_method_t;
   XX(32, UNLINK, UNLINK) \
   XX(33, SOURCE, SOURCE) \
   XX(34, PRI, PRI) \
+  XX(35, DESCRIBE, DESCRIBE) \
+  XX(36, ANNOUNCE, ANNOUNCE) \
+  XX(37, SETUP, SETUP) \
+  XX(38, PLAY, PLAY) \
+  XX(39, PAUSE, PAUSE) \
+  XX(40, TEARDOWN, TEARDOWN) \
+  XX(41, GET_PARAMETER, GET_PARAMETER) \
+  XX(42, SET_PARAMETER, SET_PARAMETER) \
+  XX(43, REDIRECT, REDIRECT) \
+  XX(44, RECORD, RECORD) \
+  XX(45, FLUSH, FLUSH) \
 
 
 
@@ -266,7 +288,12 @@ struct llhttp_settings_s {
   llhttp_cb      on_chunk_complete;
 };
 
-/* Initialize the parser with specific type and user settings */
+/* Initialize the parser with specific type and user settings.
+ *
+ * NOTE: lifetime of `settings` has to be at least the same as the lifetime of
+ * the `parser` here. In practice, `settings` has to be either a static
+ * variable or be allocated with `malloc`, `new`, etc.
+ */
 void llhttp_init(llhttp_t* parser, llhttp_type_t type,
                  const llhttp_settings_t* settings);
 
