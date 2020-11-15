@@ -2379,6 +2379,10 @@ void Http2Session::check_retire() {
 
   ev_prepare_stop(conn_.loop, &prep_);
 
+  if (!session_) {
+    return;
+  }
+
   auto last_stream_id = nghttp2_session_get_last_proc_stream_id(session_);
   nghttp2_submit_goaway(session_, NGHTTP2_FLAG_NONE, last_stream_id,
                         NGHTTP2_NO_ERROR, nullptr, 0);
