@@ -37,7 +37,6 @@ EXTRA_DIST = nghttpx.conf.sample proxy.pac.sample android-config android-make \
 	cmakeconfig.h.in \
 	CMakeLists.txt \
 	CMakeOptions.txt \
-	cmake/FindSpdylay.cmake \
 	cmake/ExtractValidFlags.cmake \
 	cmake/FindJemalloc.cmake \
 	cmake/FindLibev.cmake \
