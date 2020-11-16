@@ -90,7 +90,7 @@ jobs:
       if: matrix.buildtool == 'autotools'
       run: |
         make distcheck \
-          DISTCHECK_CONFIGURE_FLAGS="--with-mruby --with-neverbleed --enable-werror CPPFLAGS=\"$CPPFLAGS\" LDFLAGS=\"$LDFLAGS\" PKG_CONFIG_PATH=$PKG_CONFIG_PATH"
+          DISTCHECK_CONFIGURE_FLAGS="--with-mruby --with-neverbleed --enable-werror CPPFLAGS=\"$CPPFLAGS\" LDFLAGS=\"$LDFLAGS\""
     - name: Build nghttp2 with cmake
       if: matrix.buildtool == 'cmake'
       run: |
