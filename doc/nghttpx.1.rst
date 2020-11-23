@@ -1203,6 +1203,14 @@ Logging
       request.  "-" if backend host is not available.
     * $backend_port:  backend  port   used  to  fulfill  the
       request.  "-" if backend host is not available.
+    * $method: HTTP method
+    * $path:  Request  path  including query.   For  CONNECT
+      request, authority is recorded.
+    * $path_without_query:  $path   up  to  the   first  '?'
+      character.    For   CONNECT  request,   authority   is
+      recorded.
+    * $protocol_version:   HTTP  version   (e.g.,  HTTP/1.1,
+      HTTP/2)
 
     The  variable  can  be  enclosed  by  "{"  and  "}"  for
     disambiguation (e.g., ${remote_addr}).

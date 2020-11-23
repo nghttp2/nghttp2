@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTPX" "1" "Jun 02, 2020" "1.41.0" "nghttp2"
+.TH "NGHTTPX" "1" "Nov 23, 2020" "1.42.0" "nghttp2"
 .SH NAME
 nghttpx \- HTTP/2 proxy
 .
@@ -1324,6 +1324,18 @@ request.  "\-" if backend host is not available.
 .IP \(bu 2
 $backend_port:  backend  port   used  to  fulfill  the
 request.  "\-" if backend host is not available.
+.IP \(bu 2
+$method: HTTP method
+.IP \(bu 2
+$path:  Request  path  including query.   For  CONNECT
+request, authority is recorded.
+.IP \(bu 2
+$path_without_query:  $path   up  to  the   first  \(aq?\(aq
+character.    For   CONNECT  request,   authority   is
+recorded.
+.IP \(bu 2
+$protocol_version:   HTTP  version   (e.g.,  HTTP/1.1,
+HTTP/2)
 .UNINDENT
 .sp
 The  variable  can  be  enclosed  by  "{"  and  "}"  for
