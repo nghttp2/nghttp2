@@ -33,6 +33,6 @@ attached to this kind of issue.
 Before few hours of new release, we merge the fixes to the master
 branch (and/or a release branch if necessary) and make a new release.
 Security advisory is disclosed on GitHub.  We also post the
-vulnerability information to `oss-secirty
+vulnerability information to `oss-security
 <https://oss-security.openwall.org/wiki/mailing-lists/oss-security>`_
 mailing list.
