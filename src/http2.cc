@@ -1841,6 +1841,53 @@ StringRef normalize_path(BlockAllocator &balloc, const StringRef &path,
                    query);
 }
 
+StringRef normalize_path_colon(BlockAllocator &balloc, const StringRef &path,
+                               const StringRef &query) {
+  // First, decode %XX for unreserved characters and ':', then do
+  // http2::path_join
+
+  // We won't find %XX if length is less than 3.
+  if (path.size() < 3 ||
+      std::find(std::begin(path), std::end(path), '%') == std::end(path)) {
+    return path_join(balloc, StringRef{}, StringRef{}, path, query);
+  }
+
+  // includes last terminal NULL.
+  auto result = make_byte_ref(balloc, path.size() + 1);
+  auto p = result.base;
+
+  auto it = std::begin(path);
+  for (; it + 2 < std::end(path);) {
+    if (*it == '%') {
+      if (util::is_hex_digit(*(it + 1)) && util::is_hex_digit(*(it + 2))) {
+        auto c =
+            (util::hex_to_uint(*(it + 1)) << 4) + util::hex_to_uint(*(it + 2));
+        if (util::in_rfc3986_unreserved_chars(c) || c == ':') {
+          *p++ = c;
+
+          it += 3;
+
+          continue;
+        }
+        *p++ = '%';
+        *p++ = util::upcase(*(it + 1));
+        *p++ = util::upcase(*(it + 2));
+
+        it += 3;
+
+        continue;
+      }
+    }
+    *p++ = *it++;
+  }
+
+  p = std::copy(it, std::end(path), p);
+  *p = '\0';
+
+  return path_join(balloc, StringRef{}, StringRef{}, StringRef{result.base, p},
+                   query);
+}
+
 std::string normalize_path(const StringRef &path, const StringRef &query) {
   BlockAllocator balloc(1024, 1024);
 

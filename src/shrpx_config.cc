@@ -1109,9 +1109,9 @@ int parse_mapping(Config *config, DownstreamAddrConfig &addr,
       *p = '\0';
       pattern = StringRef{iov.base, p};
     } else {
-      auto path = http2::normalize_path(downstreamconf.balloc,
-                                        StringRef{slash, std::end(raw_pattern)},
-                                        StringRef{});
+      auto path = http2::normalize_path_colon(
+          downstreamconf.balloc, StringRef{slash, std::end(raw_pattern)},
+          StringRef{});
       auto iov = make_byte_ref(downstreamconf.balloc,
                                std::distance(std::begin(raw_pattern), slash) +
                                    path.size() + 1);

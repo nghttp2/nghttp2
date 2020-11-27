@@ -410,6 +410,12 @@ StringRef to_method_string(int method_token);
 StringRef normalize_path(BlockAllocator &balloc, const StringRef &path,
                          const StringRef &query);
 
+// normalize_path_colon is like normalize_path, but it additionally
+// does percent-decoding %3A in order to workaround the issue that ':'
+// cannot be included in backend pattern.
+StringRef normalize_path_colon(BlockAllocator &balloc, const StringRef &path,
+                               const StringRef &query);
+
 std::string normalize_path(const StringRef &path, const StringRef &query);
 
 StringRef rewrite_clean_path(BlockAllocator &balloc, const StringRef &src);
