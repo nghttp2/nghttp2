@@ -1877,8 +1877,11 @@ Connections:
               affinity is enabled.
 
               Since ";" and ":" are  used as delimiter, <PATTERN> must
-              not  contain these  characters.  Since  ";" has  special
-              meaning in shell, the option value must be quoted.
+              not contain  these characters.  In order  to include ":"
+              in  <PATTERN>,  one  has  to  specify  "%3A"  (which  is
+              percent-encoded  from of  ":") instead.   Since ";"  has
+              special  meaning  in shell,  the  option  value must  be
+              quoted.
 
               Default: )"
       << DEFAULT_DOWNSTREAM_HOST << "," << DEFAULT_DOWNSTREAM_PORT << R"(
