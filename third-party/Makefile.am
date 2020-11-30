@@ -55,7 +55,7 @@ EXTRA_DIST += build_config.rb mruby/*
 
 mruby:
 	mkdir -p "${abs_builddir}/mruby/build"
-	diff "${srcdir}/build_config.rb" "${abs_builddir}/mruby/build/build_config.rb" >& /dev/null || \
+	diff "${srcdir}/build_config.rb" "${abs_builddir}/mruby/build/build_config.rb" > /dev/null 2>&1 || \
 	cp "${srcdir}/build_config.rb" "${abs_builddir}/mruby/build"
 	MRUBY_CONFIG="${abs_builddir}/mruby/build/build_config.rb" \
 	BUILD_DIR="${abs_builddir}/mruby/build" \
