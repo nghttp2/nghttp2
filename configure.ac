@@ -502,6 +502,11 @@ if test "x${request_hpack_tools}" = "xyes" &&
   AC_MSG_ERROR([HPACK tools were requested (--enable-hpack-tools) but dependencies are not met.])
 fi
 
+if AX_CXX_COMPILE_STDCXX([14], [noext], [optional]) then
+  enable_hpack_tools=no
+  AC_MSG_WARN([HPACK tools were requested but depend on C++14])
+fi
+
 AM_CONDITIONAL([ENABLE_HPACK_TOOLS], [ test "x${enable_hpack_tools}" = "xyes" ])
 
 # C++ library libnghttp2_asio
