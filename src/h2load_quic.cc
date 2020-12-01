@@ -243,7 +243,7 @@ ngtcp2_crypto_level from_ossl_level(OSSL_ENCRYPTION_LEVEL ossl_level) {
   case ssl_encryption_handshake:
     return NGTCP2_CRYPTO_LEVEL_HANDSHAKE;
   case ssl_encryption_application:
-    return NGTCP2_CRYPTO_LEVEL_APP;
+    return NGTCP2_CRYPTO_LEVEL_APPLICATION;
   default:
     assert(0);
   }
@@ -448,7 +448,7 @@ int Client::quic_on_key(ngtcp2_crypto_level level, const uint8_t *rx_secret,
     return -1;
   }
 
-  if (level == NGTCP2_CRYPTO_LEVEL_APP) {
+  if (level == NGTCP2_CRYPTO_LEVEL_APPLICATION) {
     auto s = std::make_unique<Http3Session>(this);
     if (s->init_conn() == -1) {
       return -1;
