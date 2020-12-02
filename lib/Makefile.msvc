@@ -91,7 +91,8 @@ NGHTTP2_SRC := nghttp2_pq.c \
   nghttp2_callbacks.c \
   nghttp2_mem.c \
   nghttp2_http.c \
-  nghttp2_rcbuf.c
+  nghttp2_rcbuf.c \
+  nghttp2_ksl.c
 
 NGHTTP2_OBJ_R := $(addprefix $(OBJ_DIR)/r_, $(notdir $(NGHTTP2_SRC:.c=.obj)))
 NGHTTP2_OBJ_D := $(addprefix $(OBJ_DIR)/d_, $(notdir $(NGHTTP2_SRC:.c=.obj)))
