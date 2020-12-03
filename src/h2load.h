@@ -81,6 +81,8 @@ struct Config {
   std::string groups;
   // length of upload data
   int64_t data_length;
+  // memory mapped upload data
+  uint8_t *data;
   addrinfo *addrs;
   size_t nreqs;
   size_t nclients;
