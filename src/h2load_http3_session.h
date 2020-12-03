@@ -66,6 +66,8 @@ public:
   int add_write_offset(int64_t stream_id, size_t ndatalen);
   int add_ack_offset(int64_t stream_id, size_t datalen);
 
+  void read_data(nghttp3_vec *vec, size_t veccnt, uint32_t *pflags);
+
 private:
   Client *client_;
   nghttp3_conn *conn_;

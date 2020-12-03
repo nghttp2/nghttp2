@@ -34,6 +34,7 @@
 #ifdef HAVE_FCNTL_H
 #  include <fcntl.h>
 #endif // HAVE_FCNTL_H
+#include <sys/mman.h>
 
 #include <cstdio>
 #include <cassert>
@@ -90,6 +91,7 @@ Config::Config()
                     "CHACHA20_POLY1305_SHA256:TLS_AES_128_CCM_SHA256"),
       groups("X25519:P-256:P-384:P-521"),
       data_length(-1),
+      data(nullptr),
       addrs(nullptr),
       nreqs(1),
       nclients(1),
@@ -2661,6 +2663,13 @@ int main(int argc, char **argv) {
       exit(EXIT_FAILURE);
     }
     config.data_length = data_stat.st_size;
+    auto addr = mmap(nullptr, config.data_length, PROT_READ, MAP_SHARED,
+                     config.data_fd, 0);
+    if (addr == MAP_FAILED) {
+      std::cerr << "-d: Could not mmap file " << datafile << std::endl;
+      exit(EXIT_FAILURE);
+    }
+    config.data = static_cast<uint8_t *>(addr);
   }
 
   if (!logfile.empty()) {
