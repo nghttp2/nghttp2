@@ -64,6 +64,29 @@ int Http3Session::submit_request() {
   return 0;
 }
 
+namespace {
+nghttp3_ssize read_data(nghttp3_conn *conn, int64_t stream_id, nghttp3_vec *vec,
+                        size_t veccnt, uint32_t *pflags, void *user_data,
+                        void *stream_user_data) {
+  auto s = static_cast<Http3Session *>(user_data);
+
+  s->read_data(vec, veccnt, pflags);
+
+  return 1;
+}
+} // namespace
+
+void Http3Session::read_data(nghttp3_vec *vec, size_t veccnt,
+                             uint32_t *pflags) {
+  assert(veccnt > 0);
+
+  auto config = client_->worker->config;
+
+  vec[0].base = config->data;
+  vec[0].len = config->data_length;
+  *pflags |= NGHTTP3_DATA_FLAG_EOF;
+}
+
 int64_t Http3Session::submit_request_internal() {
   int rv;
   int64_t stream_id;
@@ -76,9 +99,12 @@ int64_t Http3Session::submit_request_internal() {
     return rv;
   }
 
-  rv = nghttp3_conn_submit_request(conn_, stream_id,
-                                   reinterpret_cast<nghttp3_nv *>(nva.data()),
-                                   nva.size(), nullptr, nullptr);
+  nghttp3_data_reader dr{};
+  dr.read_data = h2load::read_data;
+
+  rv = nghttp3_conn_submit_request(
+      conn_, stream_id, reinterpret_cast<nghttp3_nv *>(nva.data()), nva.size(),
+      config->data_fd == -1 ? nullptr : &dr, nullptr);
   if (rv != 0) {
     return rv;
   }
