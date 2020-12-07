@@ -26,6 +26,8 @@
 
 #include <iostream>
 
+#include <ngtcp2/ngtcp2_crypto_openssl.h>
+
 #include <openssl/err.h>
 
 #include "h2load_http3_session.h"
@@ -234,30 +236,13 @@ ngtcp2_tstamp timestamp(struct ev_loop *loop) {
 } // namespace
 
 namespace {
-ngtcp2_crypto_level from_ossl_level(OSSL_ENCRYPTION_LEVEL ossl_level) {
-  switch (ossl_level) {
-  case ssl_encryption_initial:
-    return NGTCP2_CRYPTO_LEVEL_INITIAL;
-  case ssl_encryption_early_data:
-    return NGTCP2_CRYPTO_LEVEL_EARLY;
-  case ssl_encryption_handshake:
-    return NGTCP2_CRYPTO_LEVEL_HANDSHAKE;
-  case ssl_encryption_application:
-    return NGTCP2_CRYPTO_LEVEL_APPLICATION;
-  default:
-    assert(0);
-  }
-}
-} // namespace
-
-namespace {
 int set_encryption_secrets(SSL *ssl, OSSL_ENCRYPTION_LEVEL ossl_level,
                            const uint8_t *rx_secret, const uint8_t *tx_secret,
                            size_t secret_len) {
   auto c = static_cast<Client *>(SSL_get_app_data(ssl));
 
-  if (c->quic_on_key(from_ossl_level(ossl_level), rx_secret, tx_secret,
-                     secret_len) != 0) {
+  if (c->quic_on_key(ngtcp2_crypto_from_ossl_encryption_level(ossl_level),
+                     rx_secret, tx_secret, secret_len) != 0) {
     return 0;
   }
 
@@ -269,7 +254,8 @@ namespace {
 int add_handshake_data(SSL *ssl, OSSL_ENCRYPTION_LEVEL ossl_level,
                        const uint8_t *data, size_t len) {
   auto c = static_cast<Client *>(SSL_get_app_data(ssl));
-  c->quic_write_client_handshake(from_ossl_level(ossl_level), data, len);
+  c->quic_write_client_handshake(
+      ngtcp2_crypto_from_ossl_encryption_level(ossl_level), data, len);
   return 1;
 }
 } // namespace
@@ -318,7 +304,7 @@ int Client::quic_init(const sockaddr *local_addr, socklen_t local_addrlen,
     return -1;
   }
 
-  auto callbacks = ngtcp2_conn_callbacks{
+  auto callbacks = ngtcp2_callbacks{
       ngtcp2_crypto_client_initial_cb,
       nullptr, // recv_client_initial
       h2load::recv_crypto_data,
