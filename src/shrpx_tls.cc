@@ -196,6 +196,31 @@ int servername_callback(SSL *ssl, int *al, void *arg) {
 
 #if !defined(OPENSSL_IS_BORINGSSL) && !LIBRESSL_IN_USE &&                      \
     OPENSSL_VERSION_NUMBER >= 0x10002000L
+  auto num_sigalgs =
+      SSL_get_sigalgs(ssl, 0, nullptr, nullptr, nullptr, nullptr, nullptr);
+
+  for (idx = 0; idx < num_sigalgs; ++idx) {
+    int signhash;
+
+    SSL_get_sigalgs(ssl, idx, nullptr, nullptr, &signhash, nullptr, nullptr);
+    switch (signhash) {
+    case NID_ecdsa_with_SHA256:
+    case NID_ecdsa_with_SHA384:
+    case NID_ecdsa_with_SHA512:
+      break;
+    default:
+      continue;
+    }
+
+    break;
+  }
+
+  if (idx == num_sigalgs) {
+    SSL_set_SSL_CTX(ssl, ssl_ctx_list[0]);
+
+    return SSL_TLSEXT_ERR_OK;
+  }
+
   auto num_shared_curves = SSL_get_shared_curve(ssl, -1);
 
   for (auto i = 0; i < num_shared_curves; ++i) {
