@@ -72,7 +72,7 @@ template <size_t N> struct Memchunk {
 };
 
 template <typename T> struct Pool {
-  Pool() : pool(nullptr), freelist(nullptr), poolsize(0) {}
+  Pool() : pool(nullptr), freelist(nullptr), poolsize(0), freelistsize(0) {}
   ~Pool() { clear(); }
   T *get() {
     if (freelist) {
@@ -80,6 +80,7 @@ template <typename T> struct Pool {
       freelist = freelist->next;
       m->next = nullptr;
       m->reset();
+      freelistsize -= T::size;
       return m;
     }
 
@@ -90,9 +91,11 @@ template <typename T> struct Pool {
   void recycle(T *m) {
     m->next = freelist;
     freelist = m;
+    freelistsize += T::size;
   }
   void clear() {
     freelist = nullptr;
+    freelistsize = 0;
     for (auto p = pool; p;) {
       auto knext = p->knext;
       delete p;
@@ -105,6 +108,7 @@ template <typename T> struct Pool {
   T *pool;
   T *freelist;
   size_t poolsize;
+  size_t freelistsize;
 };
 
 template <typename Memchunk> struct Memchunks {
