@@ -241,8 +241,9 @@ int set_encryption_secrets(SSL *ssl, OSSL_ENCRYPTION_LEVEL ossl_level,
                            size_t secret_len) {
   auto c = static_cast<Client *>(SSL_get_app_data(ssl));
 
-  if (c->quic_on_key(ngtcp2_crypto_from_ossl_encryption_level(ossl_level),
-                     rx_secret, tx_secret, secret_len) != 0) {
+  if (c->quic_on_key(
+          ngtcp2_crypto_openssl_from_ossl_encryption_level(ossl_level),
+          rx_secret, tx_secret, secret_len) != 0) {
     return 0;
   }
 
@@ -255,7 +256,7 @@ int add_handshake_data(SSL *ssl, OSSL_ENCRYPTION_LEVEL ossl_level,
                        const uint8_t *data, size_t len) {
   auto c = static_cast<Client *>(SSL_get_app_data(ssl));
   c->quic_write_client_handshake(
-      ngtcp2_crypto_from_ossl_encryption_level(ossl_level), data, len);
+      ngtcp2_crypto_openssl_from_ossl_encryption_level(ossl_level), data, len);
   return 1;
 }
 } // namespace
