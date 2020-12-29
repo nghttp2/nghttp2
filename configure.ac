@@ -151,7 +151,7 @@ AC_PROG_MKDIR_P
 
 PKG_PROG_PKG_CONFIG([0.20])
 
-AM_PATH_PYTHON([2.7],, [:])
+AM_PATH_PYTHON([3.8],, [:])
 
 if [test "x$request_lib_only" = "xyes"]; then
   request_app=no
@@ -161,7 +161,7 @@ if [test "x$request_lib_only" = "xyes"]; then
 fi
 
 if [test "x$request_python_bindings" != "xno"]; then
-  AX_PYTHON_DEVEL([>= '2.7'])
+  AX_PYTHON_DEVEL([>= '3.8'])
 fi
 
 if test "x${cython_path}" = "x"; then

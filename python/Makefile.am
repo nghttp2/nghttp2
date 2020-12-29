@@ -44,6 +44,6 @@ clean-local:
 	-rm -f $(builddir)/nghttp2.c
 
 .pyx.c:
-	$(CYTHON) -o $@ $<
+	$(CYTHON) -3 -o $@ $<
 
 endif # ENABLE_PYTHON_BINDINGS
