@@ -1,10 +1,8 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 # script to produce rst file from program's help output.
 
-from __future__ import unicode_literals
-from __future__ import print_function
 import sys
 import re
 import argparse

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 def to_enum_hd(k, prefix):
     res = prefix
@@ -24,46 +24,46 @@ def build_header(headers):
     return res
 
 def gen_enum(tokens, prefix):
-    print '''\
-enum {'''
+    print('''\
+enum {''')
     for k in sorted(tokens):
-        print '''\
-  {},'''.format(to_enum_hd(k, prefix))
-    print '''\
+        print('''\
+  {},'''.format(to_enum_hd(k, prefix)))
+    print('''\
   {}MAXIDX,
-}};'''.format(prefix)
+}};'''.format(prefix))
 
 def gen_index_header(tokens, prefix, value_type, comp_fun, return_type, fail_value):
-    print '''\
+    print('''\
 {} lookup_token(const {} *name, size_t namelen) {{
-  switch (namelen) {{'''.format(return_type, value_type)
+  switch (namelen) {{'''.format(return_type, value_type))
     b = build_header(tokens)
     for size in sorted(b.keys()):
         ents = b[size]
-        print '''\
-  case {}:'''.format(size)
-        print '''\
-    switch (name[{}]) {{'''.format(size - 1)
+        print('''\
+  case {}:'''.format(size))
+        print('''\
+    switch (name[{}]) {{'''.format(size - 1))
         for c in sorted(ents.keys()):
             headers = sorted(ents[c])
-            print '''\
-    case '{}':'''.format(c)
+            print('''\
+    case '{}':'''.format(c))
             for k in headers:
-                print '''\
+                print('''\
       if ({}("{}", name, {})) {{
         return {};
-      }}'''.format(comp_fun, k[:-1], size - 1, to_enum_hd(k, prefix))
-            print '''\
-      break;'''
-        print '''\
+      }}'''.format(comp_fun, k[:-1], size - 1, to_enum_hd(k, prefix)))
+            print('''\
+      break;''')
+        print('''\
     }
-    break;'''
-    print '''\
+    break;''')
+    print('''\
   }}
   return {};
-}}'''.format(fail_value)
+}}'''.format(fail_value))
 
 def gentokenlookup(tokens, prefix, value_type='uint8_t', comp_fun='util::streq_l', return_type='int', fail_value='-1'):
     gen_enum(tokens, prefix)
-    print ''
+    print()
     gen_index_header(tokens, prefix, value_type, comp_fun, return_type, fail_value)

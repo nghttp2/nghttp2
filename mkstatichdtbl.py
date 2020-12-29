@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 # This scripts reads static table entries [1] and generates
@@ -7,7 +7,6 @@
 #
 # [1] http://http2.github.io/http2-spec/compression.html
 
-from __future__ import unicode_literals
 import re, sys
 
 def hd_map_hash(name):
@@ -27,11 +26,11 @@ for line in sys.stdin:
     val = m.group(3).strip() if m.group(3) else ''
     entries.append((int(m.group(1)), m.group(2), val))
 
-print 'static nghttp2_hd_entry static_table[] = {'
+print('static nghttp2_hd_entry static_table[] = {')
 idx = 0
 for i, ent in enumerate(entries):
     if entries[idx][1] != ent[1]:
         idx = i
-    print 'MAKE_STATIC_ENT("{}", "{}", {}, {}u),'\
-        .format(ent[1], ent[2], entries[idx][0] - 1, hd_map_hash(ent[1]))
-print '};'
+    print('MAKE_STATIC_ENT("{}", "{}", {}, {}u),'\
+        .format(ent[1], ent[2], entries[idx][0] - 1, hd_map_hash(ent[1])))
+print('};')
