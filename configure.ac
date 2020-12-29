@@ -567,7 +567,7 @@ enable_python_bindings=no
 if test "x${request_python_bindings}" != "xno" &&
    test "x${CYTHON}" != "x" &&
    test "x${PYTHON}" != "x:" &&
-   test "x${have_python_dev}" = "xyes"; then
+   test "x${PYTHON_VERSION}" != "x"; then
   enable_python_bindings=yes
 fi
 
@@ -890,9 +890,8 @@ AC_MSG_NOTICE([summary of build options:
       Python:         ${PYTHON}
       PYTHON_VERSION: ${PYTHON_VERSION}
       pyexecdir:      ${pyexecdir}
-      Python-dev:     ${have_python_dev}
       PYTHON_CPPFLAGS:${PYTHON_CPPFLAGS}
-      PYTHON_LDFLAGS: ${PYTHON_LDFLAGS}
+      PYTHON_LIBS:    ${PYTHON_LIBS}
       Cython:         ${CYTHON}
     Test:
       CUnit:          ${have_cunit} (CFLAGS='${CUNIT_CFLAGS}' LIBS='${CUNIT_LIBS}')
