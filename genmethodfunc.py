@@ -1,5 +1,4 @@
-#!/usr/bin/env python
-from __future__ import unicode_literals
+#!/usr/bin/env python3
 from io import StringIO
 
 from gentokenlookup import gentokenlookup

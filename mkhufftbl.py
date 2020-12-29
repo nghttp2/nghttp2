@@ -1,16 +1,15 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 # This script reads Huffman Code table [1] and generates symbol table
 # and decoding tables in C language.  The resulting code is used in
 # lib/nghttp2_hd_huffman.h and lib/nghttp2_hd_huffman_data.c
 #
-# [1] http://http2.github.io/http2-spec/compression.html
+# [1] https://httpwg.org/specs/rfc7541.html
 
-from __future__ import unicode_literals
 import re
 import sys
-import StringIO
+from io import StringIO
 
 # From [1]
 HUFFMAN_CODE_TABLE = """\
@@ -363,8 +362,8 @@ NGHTTP2_HUFF_SYM = 1 << 15
 def _print_transition_table(node):
     if node.term is not None:
         return
-    print '/* {} */'.format(node.id)
-    print '{'
+    print('/* {} */'.format(node.id))
+    print('{')
     for nd, sym in node.trans:
         flags = 0
         if sym is None:
@@ -382,38 +381,38 @@ def _print_transition_table(node):
                 flags |= NGHTTP2_HUFF_ACCEPTED
             elif nd.accept:
                 flags |= NGHTTP2_HUFF_ACCEPTED
-        print '  {{0x{:02x}, {}}},'.format(id | flags, out)
-    print '},'
+        print('  {{0x{:02x}, {}}},'.format(id | flags, out))
+    print('},')
     _print_transition_table(node.left)
     _print_transition_table(node.right)
 
 def huffman_tree_print_transition_table(ctx):
     _print_transition_table(ctx.root)
-    print '/* 256 */'
-    print '{'
-    print '  {0x100, 0},'
-    print '  {0x100, 0},'
-    print '  {0x100, 0},'
-    print '  {0x100, 0},'
-    print '  {0x100, 0},'
-    print '  {0x100, 0},'
-    print '  {0x100, 0},'
-    print '  {0x100, 0},'
-    print '  {0x100, 0},'
-    print '  {0x100, 0},'
-    print '  {0x100, 0},'
-    print '  {0x100, 0},'
-    print '  {0x100, 0},'
-    print '  {0x100, 0},'
-    print '  {0x100, 0},'
-    print '  {0x100, 0},'
-    print '},'
+    print('/* 256 */')
+    print('{')
+    print('  {0x100, 0},')
+    print('  {0x100, 0},')
+    print('  {0x100, 0},')
+    print('  {0x100, 0},')
+    print('  {0x100, 0},')
+    print('  {0x100, 0},')
+    print('  {0x100, 0},')
+    print('  {0x100, 0},')
+    print('  {0x100, 0},')
+    print('  {0x100, 0},')
+    print('  {0x100, 0},')
+    print('  {0x100, 0},')
+    print('  {0x100, 0},')
+    print('  {0x100, 0},')
+    print('  {0x100, 0},')
+    print('  {0x100, 0},')
+    print('},')
 
 if __name__ == '__main__':
     ctx = Context()
     symbol_tbl = [(None, 0) for i in range(257)]
 
-    for line in StringIO.StringIO(HUFFMAN_CODE_TABLE):
+    for line in StringIO(HUFFMAN_CODE_TABLE):
         m = re.match(
             r'.*\(\s*(\d+)\)\s+([|01]+)\s+(\S+)\s+\[\s*(\d+)\].*', line)
         if m:
@@ -430,40 +429,40 @@ if __name__ == '__main__':
     huffman_tree_set_node_id(ctx)
     huffman_tree_build_transition_table(ctx)
 
-    print '''\
+    print('''\
 typedef struct {
   uint32_t nbits;
   uint32_t code;
 } nghttp2_huff_sym;
-'''
+''')
 
-    print '''\
-const nghttp2_huff_sym huff_sym_table[] = {'''
+    print('''\
+const nghttp2_huff_sym huff_sym_table[] = {''')
     for i in range(257):
         nbits = symbol_tbl[i][0]
         k = int(symbol_tbl[i][1], 16)
         k = k << (32 - nbits)
-        print '''\
+        print('''\
   {{ {}, 0x{}u }}{}\
-'''.format(symbol_tbl[i][0], hex(k)[2:], ',' if i < 256 else '')
-    print '};'
-    print ''
+'''.format(symbol_tbl[i][0], hex(k)[2:], ',' if i < 256 else ''))
+    print('};')
+    print()
 
-    print '''\
+    print('''\
 enum {{
   NGHTTP2_HUFF_ACCEPTED = {},
   NGHTTP2_HUFF_SYM = {},
 }} nghttp2_huff_decode_flag;
-'''.format(NGHTTP2_HUFF_ACCEPTED, NGHTTP2_HUFF_SYM)
+'''.format(NGHTTP2_HUFF_ACCEPTED, NGHTTP2_HUFF_SYM))
 
-    print '''\
+    print('''\
 typedef struct {
   uint16_t fstate;
   uint8_t sym;
 } nghttp2_huff_decode;
-'''
+''')
 
-    print '''\
-const nghttp2_huff_decode huff_decode_table[][16] = {'''
+    print('''\
+const nghttp2_huff_decode huff_decode_table[][16] = {''')
     huffman_tree_print_transition_table(ctx)
-    print '};'
+    print('};')

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # script to extract commit author's name from standard input.  The
 # input should be <AUTHOR>:<EMAIL>, one per line.
@@ -49,4 +49,4 @@ for name in names:
         ndict[lowname] = name
 
 for name in sorted(ndict.values()):
-    print name
+    print(name)

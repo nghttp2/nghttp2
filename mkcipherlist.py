@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 # This script read cipher suite list csv file [1] and prints out id
@@ -8,7 +8,6 @@
 # [1] http://www.iana.org/assignments/tls-parameters/tls-parameters-4.csv
 # [2] http://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml
 
-from __future__ import unicode_literals
 import re
 import sys
 import csv
@@ -295,7 +294,7 @@ blacklist = [
 
 ciphers = []
 found = set()
-for hl, name, _, _ in csv.reader(sys.stdin):
+for hl, name, _, _, _ in csv.reader(sys.stdin):
     if name not in blacklist:
         continue
 
@@ -306,21 +305,21 @@ for hl, name, _, _ in csv.reader(sys.stdin):
     id = high + low[2:] + 'u'
     ciphers.append((id, name))
 
-print '''\
-enum {'''
+print('''\
+enum {''')
 
 for id, name in ciphers:
-    print '{} = {},'.format(name, id)
+    print('{} = {},'.format(name, id))
 
-print '''\
+print('''\
 };
-'''
+''')
 
 for id, name in ciphers:
-    print '''\
-case {}:'''.format(name)
+    print('''\
+case {}:'''.format(name))
 
 if len(found) != len(blacklist):
-    print '{} found out of {}; not all cipher was found: {}'.format(
+    print('{} found out of {}; not all cipher was found: {}'.format(
         len(found), len(blacklist),
-        found.symmetric_difference(blacklist))
+        found.symmetric_difference(blacklist)))
