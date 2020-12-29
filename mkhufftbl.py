@@ -5,7 +5,7 @@
 # and decoding tables in C language.  The resulting code is used in
 # lib/nghttp2_hd_huffman.h and lib/nghttp2_hd_huffman_data.c
 #
-# [1] http://http2.github.io/http2-spec/compression.html
+# [1] https://httpwg.org/specs/rfc7541.html
 
 import re
 import sys

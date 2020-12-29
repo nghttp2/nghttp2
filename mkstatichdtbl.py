@@ -5,7 +5,7 @@
 # nghttp2_hd_static_entry table.  This table is used in
 # lib/nghttp2_hd.c.
 #
-# [1] http://http2.github.io/http2-spec/compression.html
+# [1] https://httpwg.org/specs/rfc7541.html
 
 import re, sys
 
