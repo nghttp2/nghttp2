@@ -151,7 +151,7 @@ AC_PROG_MKDIR_P
 
 PKG_PROG_PKG_CONFIG([0.20])
 
-AM_PATH_PYTHON([2.7],, [:])
+AM_PATH_PYTHON([3.8],, [:])
 
 if [test "x$request_lib_only" = "xyes"]; then
   request_app=no
@@ -161,7 +161,7 @@ if [test "x$request_lib_only" = "xyes"]; then
 fi
 
 if [test "x$request_python_bindings" != "xno"]; then
-  AX_PYTHON_DEVEL([>= '2.7'])
+  AX_PYTHON_DEVEL([>= '3.8'])
 fi
 
 if test "x${cython_path}" = "x"; then
@@ -567,7 +567,7 @@ enable_python_bindings=no
 if test "x${request_python_bindings}" != "xno" &&
    test "x${CYTHON}" != "x" &&
    test "x${PYTHON}" != "x:" &&
-   test "x${have_python_dev}" = "xyes"; then
+   test "x${PYTHON_VERSION}" != "x"; then
   enable_python_bindings=yes
 fi
 
@@ -890,9 +890,8 @@ AC_MSG_NOTICE([summary of build options:
       Python:         ${PYTHON}
       PYTHON_VERSION: ${PYTHON_VERSION}
       pyexecdir:      ${pyexecdir}
-      Python-dev:     ${have_python_dev}
       PYTHON_CPPFLAGS:${PYTHON_CPPFLAGS}
-      PYTHON_LDFLAGS: ${PYTHON_LDFLAGS}
+      PYTHON_LIBS:    ${PYTHON_LIBS}
       Cython:         ${CYTHON}
     Test:
       CUnit:          ${have_cunit} (CFLAGS='${CUNIT_CFLAGS}' LIBS='${CUNIT_LIBS}')

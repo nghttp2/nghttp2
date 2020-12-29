@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #
 # This script reads input headers from json file given in the
 # command-line (each file must be written in the format described in

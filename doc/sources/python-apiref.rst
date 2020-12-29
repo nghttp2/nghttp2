@@ -13,7 +13,7 @@ The extension module is called ``nghttp2``.
 determined by configure script.  If the detected Python version is not
 what you expect, specify a path to Python executable in ``PYTHON``
 variable as an argument to configure script (e.g., ``./configure
-PYTHON=/usr/bin/python3.5``).
+PYTHON=/usr/bin/python3.8``).
 
 HPACK API
 ---------
@@ -137,14 +137,14 @@ HTTP/2 servers
 .. note::
 
    We use :py:mod:`asyncio` for HTTP/2 server classes, and ALPN.
-   Therefore, Python 3.5 or later is required to use these objects.
-   To explicitly configure nghttp2 build to use Python 3.5, specify
-   the ``PYTHON`` variable to the path to Python 3.5 executable when
+   Therefore, Python 3.8 or later is required to use these objects.
+   To explicitly configure nghttp2 build to use Python 3.8, specify
+   the ``PYTHON`` variable to the path to Python 3.8 executable when
    invoking configure script like this:
 
    .. code-block:: text
 
-       $ ./configure PYTHON=/usr/bin/python3.5
+       $ ./configure PYTHON=/usr/bin/python3.8
 
 .. py:class:: HTTP2Server(address, RequestHandlerClass, ssl=None)
 
@@ -336,7 +336,7 @@ The following example illustrates :py:class:`HTTP2Server` and
 
 .. code-block:: python
 
-    #!/usr/bin/env python
+    #!/usr/bin/env python3
 
     import io, ssl
 
@@ -367,7 +367,7 @@ response body generation.  This is simplified reverse proxy:
 
 .. code-block:: python
 
-    #!/usr/bin/env python
+    #!/usr/bin/env python3
 
     import ssl
     import os

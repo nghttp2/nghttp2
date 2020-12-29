@@ -857,7 +857,7 @@ cdef class _HTTP2SessionCore(_HTTP2SessionCoreBase):
 
         rv = cnghttp2.nghttp2_submit_settings(self.session,
                                               cnghttp2.NGHTTP2_FLAG_NONE,
-                                              iv, sizeof(iv) / sizeof(iv[0]))
+                                              iv, sizeof(iv) // sizeof(iv[0]))
 
         if rv != 0:
             raise Exception('nghttp2_submit_settings failed: {}'.format\
@@ -971,7 +971,7 @@ cdef class _HTTP2ClientSessionCore(_HTTP2SessionCoreBase):
 
         rv = cnghttp2.nghttp2_submit_settings(self.session,
                                               cnghttp2.NGHTTP2_FLAG_NONE,
-                                              iv, sizeof(iv) / sizeof(iv[0]))
+                                              iv, sizeof(iv) // sizeof(iv[0]))
 
         if rv != 0:
             raise Exception('nghttp2_submit_settings failed: {}'.format\
