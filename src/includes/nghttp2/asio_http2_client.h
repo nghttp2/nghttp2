@@ -51,8 +51,8 @@ public:
   // Returns content-length.  -1 if it is unknown.
   int64_t content_length() const;
 
-  // Returns the response header fields.  The pusedo header fields,
-  // which start with colon (:), are exluced from this list.
+  // Returns the response header fields.  The pseudo header fields,
+  // which start with colon (:), are excluded from this list.
   const header_map &header() const;
 
   // Application must not call this directly.
@@ -107,8 +107,8 @@ public:
   // Returns request URI, split into components.
   const uri_ref &uri() const;
 
-  // Returns request header fields.  The pusedo header fields, which
-  // start with colon (:), are exluced from this list.
+  // Returns request header fields.  The pseudo header fields, which
+  // start with colon (:), are excluded from this list.
   const header_map &header() const;
 
   // Application must not call this directly.
