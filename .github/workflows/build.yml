@@ -36,8 +36,8 @@ jobs:
           libc-ares-dev \
           cmake \
           cmake-data
-        echo 'CPPFLAGS=-fsanitize=address' >> $GITHUB_ENV
-        echo 'LDFLAGS=-fsanitize=address' >> $GITHUB_ENV
+        echo 'CPPFLAGS=-fsanitize=address,undefined -fno-sanitize-recover=undefined -g' >> $GITHUB_ENV
+        echo 'LDFLAGS=-fsanitize=address,undefined -fno-sanitize-recover=undefined' >> $GITHUB_ENV
     - name: MacOS setup
       if: runner.os == 'macOS'
       run: |
