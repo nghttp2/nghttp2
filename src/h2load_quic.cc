@@ -593,9 +593,9 @@ int Client::write_quic() {
 
       quic.last_error = quic::err_transport(nwrite);
       return -1;
+    } else if (ndatalen > 0 && s->add_write_offset(stream_id, ndatalen) != 0) {
+      return -1;
     }
-
-    assert(ndatalen == -1);
 
     quic_restart_pkt_timer();
 
