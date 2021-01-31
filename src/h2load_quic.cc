@@ -352,7 +352,9 @@ int Client::quic_init(const sockaddr *local_addr, socklen_t local_addrlen,
     settings.log_printf = debug_log_printf;
   }
   settings.initial_ts = timestamp(worker->loop);
-  auto &params = settings.transport_params;
+
+  ngtcp2_transport_params params;
+  ngtcp2_transport_params_default(&params);
   auto max_stream_data =
       std::min((1 << 26) - 1, (1 << config->window_bits) - 1);
   params.initial_max_stream_data_bidi_local = max_stream_data;
@@ -370,7 +372,7 @@ int Client::quic_init(const sockaddr *local_addr, socklen_t local_addrlen,
 
   rv = ngtcp2_conn_client_new(&quic.conn, &dcid, &scid, &path,
                               NGTCP2_PROTO_VER_MIN, &callbacks, &settings,
-                              nullptr, this);
+                              &params, nullptr, this);
   if (rv != 0) {
     return -1;
   }
