@@ -639,7 +639,6 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
       break;
     case LogFragmentType::METHOD:
       std::tie(p, last) = copy(method, p, last);
-      std::tie(p, last) = copy(' ', p, last);
       break;
     case LogFragmentType::PATH:
       std::tie(p, last) = copy_escape(path, p, last);
