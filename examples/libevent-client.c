@@ -551,6 +551,7 @@ static void initiate_connection(struct event_base *evbase, SSL_CTX *ssl_ctx,
   SSL *ssl;
 
   ssl = create_ssl(ssl_ctx);
+  SSL_set_tlsext_host_name(ssl, host);
   bev = bufferevent_openssl_socket_new(
       evbase, -1, ssl, BUFFEREVENT_SSL_CONNECTING,
       BEV_OPT_DEFER_CALLBACKS | BEV_OPT_CLOSE_ON_FREE);
