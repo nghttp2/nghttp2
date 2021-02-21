@@ -112,6 +112,41 @@ AC_ARG_WITH([libxml2],
                     [Use libxml2 [default=check]])],
     [request_libxml2=$withval], [request_libxml2=check])
 
+AC_ARG_WITH([jansson],
+    [AS_HELP_STRING([--with-jansson],
+                    [Use jansson [default=check]])],
+    [request_jansson=$withval], [request_jansson=check])
+
+AC_ARG_WITH([zlib],
+    [AS_HELP_STRING([--with-zlib],
+                    [Use zlib [default=check]])],
+    [request_zlib=$withval], [request_zlib=check])
+
+AC_ARG_WITH([libevent-openssl],
+    [AS_HELP_STRING([--with-libevent-openssl],
+                    [Use libevent_openssl [default=check]])],
+    [request_libevent_openssl=$withval], [request_libevent_openssl=check])
+
+AC_ARG_WITH([libcares],
+    [AS_HELP_STRING([--with-libcares],
+                    [Use libc-ares [default=check]])],
+    [request_libcares=$withval], [request_libcares=check])
+
+AC_ARG_WITH([openssl],
+    [AS_HELP_STRING([--with-openssl],
+                    [Use openssl [default=check]])],
+    [request_openssl=$withval], [request_openssl=check])
+
+AC_ARG_WITH([libev],
+    [AS_HELP_STRING([--with-libev],
+                    [Use libev [default=check]])],
+    [request_libev=$withval], [request_libev=check])
+
+AC_ARG_WITH([cunit],
+    [AS_HELP_STRING([--with-cunit],
+                    [Use cunit [default=check]])],
+    [request_cunit=$withval], [request_cunit=check])
+
 AC_ARG_WITH([jemalloc],
     [AS_HELP_STRING([--with-jemalloc],
                     [Use jemalloc [default=check]])],
@@ -293,10 +328,18 @@ case "$host_os" in
 esac
 
 # zlib
-PKG_CHECK_MODULES([ZLIB], [zlib >= 1.2.3], [have_zlib=yes], [have_zlib=no])
+have_zlib=no
+if test "x${request_zlib}" != "xno"; then
+  PKG_CHECK_MODULES([ZLIB], [zlib >= 1.2.3], [have_zlib=yes], [have_zlib=no])
 
-if test "x${have_zlib}" = "xno"; then
-  AC_MSG_NOTICE($ZLIB_PKG_ERRORS)
+  if test "x${have_zlib}" = "xno"; then
+    AC_MSG_NOTICE($ZLIB_PKG_ERRORS)
+  fi
+fi
+
+if test "x${request_zlib}" = "xyes" &&
+   test "x${have_zlib}" != "xyes"; then
+  AC_MSG_ERROR([zlib was requested (--with-zlib) but not found])
 fi
 
 # dl: openssl requires libdl when it is statically linked.
@@ -312,82 +355,133 @@ case "${host_os}" in
 esac
 
 # cunit
-PKG_CHECK_MODULES([CUNIT], [cunit >= 2.1], [have_cunit=yes], [have_cunit=no])
-# If pkg-config does not find cunit, check it using AC_CHECK_LIB.  We
-# do this because Debian (Ubuntu) lacks pkg-config file for cunit.
-if test "x${have_cunit}" = "xno"; then
-  AC_MSG_WARN([${CUNIT_PKG_ERRORS}])
-  AC_CHECK_LIB([cunit], [CU_initialize_registry],
-               [have_cunit=yes], [have_cunit=no])
+have_cunit=no
+if test "x${request_cunit}" != "xno"; then
+  PKG_CHECK_MODULES([CUNIT], [cunit >= 2.1], [have_cunit=yes], [have_cunit=no])
+  # If pkg-config does not find cunit, check it using AC_CHECK_LIB.  We
+  # do this because Debian (Ubuntu) lacks pkg-config file for cunit.
+  if test "x${have_cunit}" = "xno"; then
+    AC_MSG_WARN([${CUNIT_PKG_ERRORS}])
+    AC_CHECK_LIB([cunit], [CU_initialize_registry],
+                 [have_cunit=yes], [have_cunit=no])
+    if test "x${have_cunit}" = "xyes"; then
+      CUNIT_LIBS="-lcunit"
+      CUNIT_CFLAGS=""
+      AC_SUBST([CUNIT_LIBS])
+      AC_SUBST([CUNIT_CFLAGS])
+    fi
+  fi
   if test "x${have_cunit}" = "xyes"; then
-    CUNIT_LIBS="-lcunit"
-    CUNIT_CFLAGS=""
-    AC_SUBST([CUNIT_LIBS])
-    AC_SUBST([CUNIT_CFLAGS])
+    # cunit in Mac OS X requires ncurses. Note that in Mac OS X, test
+    # program can be built without -lncurses, but it emits runtime
+    # error.
+    case "${build}" in
+      *-apple-darwin*)
+        CUNIT_LIBS="$CUNIT_LIBS -lncurses"
+        AC_SUBST([CUNIT_LIBS])
+        ;;
+    esac
   fi
 fi
-if test "x${have_cunit}" = "xyes"; then
-  # cunit in Mac OS X requires ncurses. Note that in Mac OS X, test
-  # program can be built without -lncurses, but it emits runtime
-  # error.
-  case "${build}" in
-    *-apple-darwin*)
-      CUNIT_LIBS="$CUNIT_LIBS -lncurses"
-      AC_SUBST([CUNIT_LIBS])
-      ;;
-  esac
+
+if test "x${request_cunit}" = "xyes" &&
+   test "x${have_cunit}" != "xyes"; then
+  AC_MSG_ERROR([cunit was requested (--with-cunit) but not found])
 fi
 
 AM_CONDITIONAL([HAVE_CUNIT], [ test "x${have_cunit}" = "xyes" ])
 
 # libev (for src)
-# libev does not have pkg-config file.  Check it in an old way.
-save_LIBS=$LIBS
-# android requires -lm for floor
-AC_CHECK_LIB([ev], [ev_time], [have_libev=yes], [have_libev=no], [-lm])
-if test "x${have_libev}" = "xyes"; then
-  AC_CHECK_HEADER([ev.h], [have_libev=yes], [have_libev=no])
-  if test "x${have_libev}" = "xyes"; then
-    LIBEV_LIBS=-lev
-    LIBEV_CFLAGS=
-    AC_SUBST([LIBEV_LIBS])
-    AC_SUBST([LIBEV_CFLAGS])
+have_libev=no
+if test "x${request_libev}" != "xno"; then
+  if test "x${LIBEV_LIBS}" = "x" && test "x${LIBEV_CFLAGS}" = "x"; then
+    # libev does not have pkg-config file.  Check it in an old way.
+    save_LIBS=$LIBS
+    # android requires -lm for floor
+   AC_CHECK_LIB([ev], [ev_time], [have_libev=yes], [have_libev=no], [-lm])
+   if test "x${have_libev}" = "xyes"; then
+      AC_CHECK_HEADER([ev.h], [have_libev=yes], [have_libev=no])
+      if test "x${have_libev}" = "xyes"; then
+        LIBEV_LIBS=-lev
+        LIBEV_CFLAGS=
+        AC_SUBST([LIBEV_LIBS])
+        AC_SUBST([LIBEV_CFLAGS])
+      fi
+    fi
+    LIBS=$save_LIBS
+  else
+    have_libev=yes
   fi
 fi
-LIBS=$save_LIBS
+
+if test "x${request_libev}" = "xyes" &&
+   test "x${have_libev}" != "xyes"; then
+  AC_MSG_ERROR([libev was requested (--with-libev) but not found])
+fi
 
 # openssl (for src)
-PKG_CHECK_MODULES([OPENSSL], [openssl >= 1.0.1],
-                  [have_openssl=yes], [have_openssl=no])
-if test "x${have_openssl}" = "xno"; then
-  AC_MSG_NOTICE($OPENSSL_PKG_ERRORS)
+have_openssl=no
+if test "x${request_openssl}" != "xno"; then
+  PKG_CHECK_MODULES([OPENSSL], [openssl >= 1.0.1],
+                    [have_openssl=yes], [have_openssl=no])
+  if test "x${have_openssl}" = "xno"; then
+    AC_MSG_NOTICE($OPENSSL_PKG_ERRORS)
+  fi
+fi
+
+if test "x${request_openssl}" = "xyes" &&
+   test "x${have_openssl}" != "xyes"; then
+  AC_MSG_ERROR([openssl was requested (--with-openssl) but not found])
 fi
 
 # c-ares (for src)
-PKG_CHECK_MODULES([LIBCARES], [libcares >= 1.7.5], [have_libcares=yes],
-                  [have_libcares=no])
-if test "x${have_libcares}" = "xno"; then
-  AC_MSG_NOTICE($LIBCARES_PKG_ERRORS)
+have_libcares=no
+if test "x${request_libcares}" != "xno"; then
+  PKG_CHECK_MODULES([LIBCARES], [libcares >= 1.7.5], [have_libcares=yes],
+                    [have_libcares=no])
+  if test "x${have_libcares}" = "xno"; then
+    AC_MSG_NOTICE($LIBCARES_PKG_ERRORS)
+  fi
+fi
+
+if test "x${request_libcares}" = "xyes" &&
+   test "x${have_libcares}" != "xyes"; then
+  AC_MSG_ERROR([libcares was requested (--with-libcares) but not found])
 fi
 
 # libevent_openssl (for examples)
 # 2.0.8 is required because we use evconnlistener_set_error_cb()
-PKG_CHECK_MODULES([LIBEVENT_OPENSSL], [libevent_openssl >= 2.0.8],
-                  [have_libevent_openssl=yes], [have_libevent_openssl=no])
-if test "x${have_libevent_openssl}" = "xno"; then
-  AC_MSG_NOTICE($LIBEVENT_OPENSSL_PKG_ERRORS)
+have_libevent_openssl=no
+if test "x${request_libevent_openssl}" != "xno"; then
+  PKG_CHECK_MODULES([LIBEVENT_OPENSSL], [libevent_openssl >= 2.0.8],
+                    [have_libevent_openssl=yes], [have_libevent_openssl=no])
+  if test "x${have_libevent_openssl}" = "xno"; then
+    AC_MSG_NOTICE($LIBEVENT_OPENSSL_PKG_ERRORS)
+  fi
+fi
+
+if test "x${request_libevent_openssl}" = "xyes" &&
+   test "x${have_libevent_openssl}" != "xyes"; then
+  AC_MSG_ERROR([libevent_openssl was requested (--with-libevent) but not found])
 fi
 
 # jansson (for src/nghttp, src/deflatehd and src/inflatehd)
-PKG_CHECK_MODULES([JANSSON], [jansson >= 2.5],
-                  [have_jansson=yes], [have_jansson=no])
-if test "x${have_jansson}" = "xyes"; then
-  AC_DEFINE([HAVE_JANSSON], [1],
-            [Define to 1 if you have `libjansson` library.])
-else
-  AC_MSG_NOTICE($JANSSON_PKG_ERRORS)
+have_jansson=no
+if test "x${request_jansson}" != "xno"; then
+  PKG_CHECK_MODULES([JANSSON], [jansson >= 2.5],
+                    [have_jansson=yes], [have_jansson=no])
+  if test "x${have_jansson}" = "xyes"; then
+    AC_DEFINE([HAVE_JANSSON], [1],
+              [Define to 1 if you have `libjansson` library.])
+  else
+    AC_MSG_NOTICE($JANSSON_PKG_ERRORS)
+  fi
 fi
 
+if test "x${request_jansson}" = "xyes" &&
+   test "x${have_jansson}" != "xyes"; then
+  AC_MSG_ERROR([jansson was requested (--with-jansson) but not found])
+fi
 
 #  libsystemd (for src/nghttpx)
 have_libsystemd=no
@@ -408,12 +502,15 @@ if test "x${request_systemd}" = "xyes" &&
 fi
 
 # libxml2 (for src/nghttp)
-PKG_CHECK_MODULES([LIBXML2], [libxml-2.0 >= 2.6.26],
-                  [have_libxml2=yes], [have_libxml2=no])
-if test "x${have_libxml2}" = "xyes"; then
-  AC_DEFINE([HAVE_LIBXML2], [1], [Define to 1 if you have `libxml2` library.])
-else
-  AC_MSG_NOTICE($LIBXML2_PKG_ERRORS)
+have_libxml2=no
+if test "x${request_libxml2}" != "xno"; then
+  PKG_CHECK_MODULES([LIBXML2], [libxml-2.0 >= 2.6.26],
+                    [have_libxml2=yes], [have_libxml2=no])
+  if test "x${have_libxml2}" = "xyes"; then
+    AC_DEFINE([HAVE_LIBXML2], [1], [Define to 1 if you have `libxml2` library.])
+  else
+    AC_MSG_NOTICE($LIBXML2_PKG_ERRORS)
+  fi
 fi
 
 if test "x${request_libxml2}" = "xyes" &&
@@ -426,28 +523,32 @@ AM_CONDITIONAL([HAVE_LIBXML2], [ test "x${have_libxml2}" = "xyes" ])
 # jemalloc
 have_jemalloc=no
 if test "x${request_jemalloc}" != "xno"; then
-  save_LIBS=$LIBS
-  AC_SEARCH_LIBS([malloc_stats_print], [jemalloc], [have_jemalloc=yes], [],
-                 [$PTHREAD_LDFLAGS])
-
-  if test "x${have_jemalloc}" = "xyes"; then
-    jemalloc_libs=${ac_cv_search_malloc_stats_print}
-  else
-    # On Darwin, malloc_stats_print is je_malloc_stats_print
-    AC_SEARCH_LIBS([je_malloc_stats_print], [jemalloc], [have_jemalloc=yes], [],
+  if test "x${JEMALLOC_LIBS}" = "x" && test "x${JEMALLOC_CFLAGS}" = "x"; then
+    save_LIBS=$LIBS
+    AC_SEARCH_LIBS([malloc_stats_print], [jemalloc], [have_jemalloc=yes], [],
                    [$PTHREAD_LDFLAGS])
 
     if test "x${have_jemalloc}" = "xyes"; then
-      jemalloc_libs=${ac_cv_search_je_malloc_stats_print}
+      jemalloc_libs=${ac_cv_search_malloc_stats_print}
+    else
+      # On Darwin, malloc_stats_print is je_malloc_stats_print
+      AC_SEARCH_LIBS([je_malloc_stats_print], [jemalloc], [have_jemalloc=yes], [],
+                     [$PTHREAD_LDFLAGS])
+
+      if test "x${have_jemalloc}" = "xyes"; then
+        jemalloc_libs=${ac_cv_search_je_malloc_stats_print}
+      fi
     fi
-  fi
 
-  LIBS=$save_LIBS
+    LIBS=$save_LIBS
 
-  if test "x${have_jemalloc}" = "xyes" &&
-     test "x${jemalloc_libs}" != "xnone required"; then
-    JEMALLOC_LIBS=${jemalloc_libs}
-    AC_SUBST([JEMALLOC_LIBS])
+    if test "x${have_jemalloc}" = "xyes" &&
+       test "x${jemalloc_libs}" != "xnone required"; then
+      JEMALLOC_LIBS=${jemalloc_libs}
+      AC_SUBST([JEMALLOC_LIBS])
+    fi
+  else
+    have_jemalloc=yes
   fi
 fi
 
