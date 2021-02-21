@@ -140,6 +140,9 @@ AC_ARG_WITH([cython],
 dnl Define variables
 AC_ARG_VAR([CYTHON], [the Cython executable])
 
+AC_ARG_VAR([LIBTOOL_LDFLAGS],
+           [libtool specific flags (e.g., -static-libtool-libs)])
+
 dnl Checks for programs
 AC_PROG_CC
 AC_PROG_CXX
@@ -886,6 +889,8 @@ AC_MSG_NOTICE([summary of build options:
     Library:
       Shared:         ${enable_shared}
       Static:         ${enable_static}
+    Libtool:
+      LIBTOOL_LDFLAGS: ${LIBTOOL_LDFLAGS}
     Python:
       Python:         ${PYTHON}
       PYTHON_VERSION: ${PYTHON_VERSION}

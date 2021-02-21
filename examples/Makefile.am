@@ -35,6 +35,7 @@ AM_CPPFLAGS = \
 	@LIBEVENT_OPENSSL_CFLAGS@ \
 	@OPENSSL_CFLAGS@ \
 	@DEFS@
+AM_LDFLAGS = @LIBTOOL_LDFLAGS@
 LDADD = $(top_builddir)/lib/libnghttp2.la \
 	$(top_builddir)/third-party/liburl-parser.la \
 	@LIBEVENT_OPENSSL_LIBS@ \
