@@ -230,6 +230,10 @@ struct Stats {
   std::vector<RequestStat> req_stats;
   // The statistics per client
   std::vector<ClientStat> client_stats;
+  // The number of UDP datagrams received.
+  size_t udp_dgram_recv;
+  // The number of UDP datagrams sent.
+  size_t udp_dgram_sent;
 };
 
 enum ClientState { CLIENT_IDLE, CLIENT_CONNECTED };
