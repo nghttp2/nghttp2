@@ -524,6 +524,8 @@ int Client::read_quic() {
 
     assert(quic.conn);
 
+    ++worker->stats.udp_dgram_recv;
+
     auto path = ngtcp2_path{
         {local_addr.len, &local_addr.su.sa},
         {addrlen, &su.sa},
