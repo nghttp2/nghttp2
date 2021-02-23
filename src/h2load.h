@@ -218,7 +218,7 @@ struct Stats {
   std::array<size_t, 6> status;
   // The statistics per request
   std::vector<RequestStat> req_stats;
-  // THe statistics per client
+  // The statistics per client
   std::vector<ClientStat> client_stats;
 };
 
