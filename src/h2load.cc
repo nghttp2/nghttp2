@@ -1903,7 +1903,7 @@ Options:
               length of the period in time.  This option is ignored if
               the rate option is not used.  The default value for this
               option is 1s.
-  -D, --duration=<N>
+  -D, --duration=<DURATION>
               Specifies the main duration for the measurements in case
               of timing-based  benchmarking.  -D  and -r  are mutually
               exclusive.
@@ -2199,10 +2199,9 @@ int main(int argc, char **argv) {
       break;
     }
     case 'D':
-      config.duration = strtoul(optarg, nullptr, 10);
-      if (config.duration == 0) {
-        std::cerr << "-D: the main duration for timing-based benchmarking "
-                  << "must be positive." << std::endl;
+      config.duration = util::parse_duration_with_unit(optarg);
+      if (!std::isfinite(config.duration)) {
+        std::cerr << "-D: value error " << optarg << std::endl;
         exit(EXIT_FAILURE);
       }
       break;
