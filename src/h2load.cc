@@ -160,7 +160,9 @@ Stats::Stats(size_t req_todo, size_t nclients)
       bytes_head(0),
       bytes_head_decomp(0),
       bytes_body(0),
-      status() {}
+      status(),
+      udp_dgram_recv(0),
+      udp_dgram_sent(0) {}
 
 Stream::Stream() : req_stat{}, status_success(-1) {}
 
@@ -1377,6 +1379,8 @@ int Client::write_udp(const sockaddr *addr, socklen_t addrlen,
   auto nwrite = sendto(fd, data, datalen, MSG_DONTWAIT, addr, addrlen);
   if (nwrite < 0) {
     std::cerr << "sendto: errno=" << errno << std::endl;
+  } else {
+    ++worker->stats.udp_dgram_sent;
   }
 
   ev_io_stop(worker->loop, &wev);
@@ -2971,6 +2975,8 @@ int main(int argc, char **argv) {
     stats.bytes_head += s.bytes_head;
     stats.bytes_head_decomp += s.bytes_head_decomp;
     stats.bytes_body += s.bytes_body;
+    stats.udp_dgram_recv += s.udp_dgram_recv;
+    stats.udp_dgram_sent += s.udp_dgram_sent;
 
     for (size_t i = 0; i < stats.status.size(); ++i) {
       stats.status[i] += s.status[i];
@@ -3029,30 +3035,35 @@ traffic: )" << util::utos_funit(stats.bytes_total)
             << util::utos_funit(stats.bytes_head) << "B (" << stats.bytes_head
             << ") headers (space savings " << header_space_savings * 100
             << "%), " << util::utos_funit(stats.bytes_body) << "B ("
-            << stats.bytes_body << R"() data
-                     min         max         mean         sd        +/- sd
+            << stats.bytes_body << R"() data)" << std::endl;
+  if (config.is_quic()) {
+    std::cout << "UDP datagram: " << stats.udp_dgram_sent << " sent, "
+              << stats.udp_dgram_recv << " received" << std::endl;
+  }
+  std::cout
+      << R"(                     min         max         mean         sd        +/- sd
 time for request: )"
-            << std::setw(10) << util::format_duration(ts.request.min) << "  "
-            << std::setw(10) << util::format_duration(ts.request.max) << "  "
-            << std::setw(10) << util::format_duration(ts.request.mean) << "  "
-            << std::setw(10) << util::format_duration(ts.request.sd)
-            << std::setw(9) << util::dtos(ts.request.within_sd) << "%"
-            << "\ntime for connect: " << std::setw(10)
-            << util::format_duration(ts.connect.min) << "  " << std::setw(10)
-            << util::format_duration(ts.connect.max) << "  " << std::setw(10)
-            << util::format_duration(ts.connect.mean) << "  " << std::setw(10)
-            << util::format_duration(ts.connect.sd) << std::setw(9)
-            << util::dtos(ts.connect.within_sd) << "%"
-            << "\ntime to 1st byte: " << std::setw(10)
-            << util::format_duration(ts.ttfb.min) << "  " << std::setw(10)
-            << util::format_duration(ts.ttfb.max) << "  " << std::setw(10)
-            << util::format_duration(ts.ttfb.mean) << "  " << std::setw(10)
-            << util::format_duration(ts.ttfb.sd) << std::setw(9)
-            << util::dtos(ts.ttfb.within_sd) << "%"
-            << "\nreq/s           : " << std::setw(10) << ts.rps.min << "  "
-            << std::setw(10) << ts.rps.max << "  " << std::setw(10)
-            << ts.rps.mean << "  " << std::setw(10) << ts.rps.sd << std::setw(9)
-            << util::dtos(ts.rps.within_sd) << "%" << std::endl;
+      << std::setw(10) << util::format_duration(ts.request.min) << "  "
+      << std::setw(10) << util::format_duration(ts.request.max) << "  "
+      << std::setw(10) << util::format_duration(ts.request.mean) << "  "
+      << std::setw(10) << util::format_duration(ts.request.sd) << std::setw(9)
+      << util::dtos(ts.request.within_sd) << "%"
+      << "\ntime for connect: " << std::setw(10)
+      << util::format_duration(ts.connect.min) << "  " << std::setw(10)
+      << util::format_duration(ts.connect.max) << "  " << std::setw(10)
+      << util::format_duration(ts.connect.mean) << "  " << std::setw(10)
+      << util::format_duration(ts.connect.sd) << std::setw(9)
+      << util::dtos(ts.connect.within_sd) << "%"
+      << "\ntime to 1st byte: " << std::setw(10)
+      << util::format_duration(ts.ttfb.min) << "  " << std::setw(10)
+      << util::format_duration(ts.ttfb.max) << "  " << std::setw(10)
+      << util::format_duration(ts.ttfb.mean) << "  " << std::setw(10)
+      << util::format_duration(ts.ttfb.sd) << std::setw(9)
+      << util::dtos(ts.ttfb.within_sd) << "%"
+      << "\nreq/s           : " << std::setw(10) << ts.rps.min << "  "
+      << std::setw(10) << ts.rps.max << "  " << std::setw(10) << ts.rps.mean
+      << "  " << std::setw(10) << ts.rps.sd << std::setw(9)
+      << util::dtos(ts.rps.within_sd) << "%" << std::endl;
 
   SSL_CTX_free(ssl_ctx);
 
