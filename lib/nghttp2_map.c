@@ -130,7 +130,6 @@ int nghttp2_map_each(nghttp2_map *map,
 
 void nghttp2_map_entry_init(nghttp2_map_entry *entry, key_type key) {
   entry->key = key;
-  entry->next = NULL;
 }
 
 /* FNV1a hash */
