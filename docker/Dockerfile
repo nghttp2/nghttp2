@@ -1,10 +1,10 @@
-FROM k8s.gcr.io/debian-base-amd64:v2.0.0
+FROM debian:10 as build
 
-RUN /usr/local/bin/clean-install git g++ make binutils autoconf automake autotools-dev libtool pkg-config \
-        zlib1g-dev libev-dev libjemalloc-dev ruby-dev libc-ares-dev bison \
-        zlib1g libev4 libjemalloc2 libc-ares2 \
-        ca-certificates psmisc \
-        python && \
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        git g++ make binutils autoconf automake autotools-dev libtool \
+        pkg-config \
+        zlib1g-dev libev-dev libjemalloc-dev ruby-dev libc-ares-dev bison && \
     git clone --depth 1 -b OpenSSL_1_1_1g-quic-draft-33 https://github.com/tatsuhiro-t/openssl && \
     cd openssl && ./config enable-tls1_3 --openssldir=/etc/ssl && make -j$(nproc) && make install_sw && cd .. && rm -rf openssl && \
     git clone --depth 1 https://github.com/ngtcp2/nghttp3 && \
@@ -18,13 +18,19 @@ RUN /usr/local/bin/clean-install git g++ make binutils autoconf automake autotoo
     git clone --depth 1 -b quic https://github.com/nghttp2/nghttp2.git && \
     cd nghttp2 && \
     git submodule update --init && autoreconf -i && \
-    ./configure --disable-examples --disable-hpack-tools --disable-python-bindings --with-mruby --with-neverbleed && \
-    make -j$(nproc) install-strip && \
-    cd .. && \
-    rm -rf nghttp2 && \
-    strip /usr/local/lib/*.so.*.* /usr/local/lib/engines-*/*.so && \
-    rm -rf /usr/local/lib/libssl.so /usr/local/lib/libcrypto.so /usr/local/lib/libssl.a /usr/local/lib/libcrypto.a /usr/local/lib/pkgconfig/*ssl.pc /usr/local/include/openssl/* && \
-    apt-get -y purge git g++ make binutils autoconf automake autotools-dev libtool pkg-config \
-        zlib1g-dev libev-dev libjemalloc-dev ruby-dev libc-ares-dev bison && \
-    apt-get -y autoremove --purge && \
-    rm -rf /var/log/*
+    ./configure --disable-examples --disable-hpack-tools \
+        --disable-python-bindings --with-mruby --with-neverbleed \
+        LIBTOOL_LDFLAGS="-static-libtool-libs" \
+        LIBS="-ldl -pthread" \
+        OPENSSL_LIBS="-l:libssl.a -l:libcrypto.a" \
+        LIBEV_LIBS="-l:libev.a" \
+        JEMALLOC_LIBS="-l:libjemalloc.a" \
+        LIBCARES_LIBS="-l:libcares.a" \
+        ZLIB_LIBS="-l:libz.a" && \
+    make -j$(nproc) install-strip
+
+FROM gcr.io/distroless/cc-debian10
+
+COPY --from=build /usr/local/bin/h2load /usr/local/bin/
+
+ENTRYPOINT ["/usr/local/bin/h2load"]
