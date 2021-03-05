@@ -120,6 +120,10 @@ struct nghttp2_session_callbacks {
   nghttp2_on_extension_chunk_recv_callback on_extension_chunk_recv_callback;
   nghttp2_error_callback error_callback;
   nghttp2_error_callback2 error_callback2;
+  /**
+   * Memory allocator
+   */
+  nghttp2_mem mem;
 };
 
 #endif /* NGHTTP2_CALLBACKS_H */
