@@ -175,6 +175,13 @@ AC_ARG_WITH([cython],
 dnl Define variables
 AC_ARG_VAR([CYTHON], [the Cython executable])
 
+AC_ARG_VAR([LIBEV_CFLAGS], [C compiler flags for libev, skipping any checks])
+AC_ARG_VAR([LIBEV_LIBS], [linker flags for libev, skipping any checks])
+
+AC_ARG_VAR([JEMALLOC_CFLAGS],
+           [C compiler flags for jemalloc, skipping any checks])
+AC_ARG_VAR([JEMALLOC_LIBS], [linker flags for jemalloc, skipping any checks])
+
 AC_ARG_VAR([LIBTOOL_LDFLAGS],
            [libtool specific flags (e.g., -static-libtool-libs)])
 
@@ -404,8 +411,6 @@ if test "x${request_libev}" != "xno"; then
       if test "x${have_libev}" = "xyes"; then
         LIBEV_LIBS=-lev
         LIBEV_CFLAGS=
-        AC_SUBST([LIBEV_LIBS])
-        AC_SUBST([LIBEV_CFLAGS])
       fi
     fi
     LIBS=$save_LIBS
@@ -545,7 +550,6 @@ if test "x${request_jemalloc}" != "xno"; then
     if test "x${have_jemalloc}" = "xyes" &&
        test "x${jemalloc_libs}" != "xnone required"; then
       JEMALLOC_LIBS=${jemalloc_libs}
-      AC_SUBST([JEMALLOC_LIBS])
     fi
   else
     have_jemalloc=yes
@@ -1009,7 +1013,7 @@ AC_MSG_NOTICE([summary of build options:
       Libc-ares:      ${have_libcares} (CFLAGS='${LIBCARES_CFLAGS}' LIBS='${LIBCARES_LIBS}')
       Libevent(SSL):  ${have_libevent_openssl} (CFLAGS='${LIBEVENT_OPENSSL_CFLAGS}' LIBS='${LIBEVENT_OPENSSL_LIBS}')
       Jansson:        ${have_jansson} (CFLAGS='${JANSSON_CFLAGS}' LIBS='${JANSSON_LIBS}')
-      Jemalloc:       ${have_jemalloc} (LIBS='${JEMALLOC_LIBS}')
+      Jemalloc:       ${have_jemalloc} (CFLAGS='${JEMALLOC_CFLAGS}' LIBS='${JEMALLOC_LIBS}')
       Zlib:           ${have_zlib} (CFLAGS='${ZLIB_CFLAGS}' LIBS='${ZLIB_LIBS}')
       Systemd:        ${have_libsystemd} (CFLAGS='${SYSTEMD_CFLAGS}' LIBS='${SYSTEMD_LIBS}')
       Boost CPPFLAGS: ${BOOST_CPPFLAGS}

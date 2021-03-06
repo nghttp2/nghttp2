@@ -41,6 +41,7 @@ AM_CPPFLAGS = \
 	-I$(top_srcdir)/src/includes \
 	-I$(top_srcdir)/third-party \
 	-I$(top_srcdir)/third-party/llhttp/include \
+	@JEMALLOC_CFLAGS@ \
 	@LIBXML2_CFLAGS@ \
 	@LIBEV_CFLAGS@ \
 	@OPENSSL_CFLAGS@ \
