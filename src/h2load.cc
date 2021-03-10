@@ -98,7 +98,8 @@ Config::Config()
       verbose(false),
       timing_script(false),
       base_uri_unix(false),
-      unix_addr{} {}
+      unix_addr{},
+      rps(0.) {}
 
 Config::~Config() {
   if (addrs) {
