@@ -45,6 +45,8 @@
 #include <thread>
 #include <future>
 #include <random>
+#include <vector>
+#include <regex>
 
 #include <openssl/err.h>
 
@@ -99,7 +101,11 @@ Config::Config()
       timing_script(false),
       base_uri_unix(false),
       unix_addr{},
-      rps(0.) {}
+      rps(0.),
+      req_variable_start(0),
+      req_variable_end(0),
+      req_variable_name(""),
+      data_file_size(-1) {}
 
 Config::~Config() {
   if (addrs) {
@@ -608,6 +614,7 @@ void Client::disconnect() {
   ev_timer_stop(worker->loop, &rps_watcher);
   ev_timer_stop(worker->loop, &request_timeout_watcher);
   streams.clear();
+  streams_data_buffer.clear();
   session.reset();
   wb.reset();
   state = CLIENT_IDLE;
@@ -910,6 +917,7 @@ void Client::on_stream_close(int32_t stream_id, bool success, bool final) {
 
   worker->report_progress();
   streams.erase(stream_id);
+  streams_data_buffer.erase(stream_id);
   if (req_left == 0 && req_inflight == 0) {
     terminate_session();
     return;
@@ -943,6 +951,10 @@ RequestStat *Client::get_req_stat(int32_t stream_id) {
   }
 
   return &(*it).second.req_stat;
+}
+
+std::string& Client::get_stream_buffer(int32_t stream_id) {
+  return streams_data_buffer[stream_id];
 }
 
 int Client::connection_made() {
@@ -1357,7 +1369,8 @@ Worker::Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t req_todo, size_t nclients,
       nreqs_rem(req_todo % nclients),
       rate(rate),
       max_samples(max_samples),
-      next_client_id(0) {
+      next_client_id(0),
+      curr_req_variable_value(0) {
   if (!config->is_rate_mode() && !config->is_timing_based_mode()) {
     progress_interval = std::max(static_cast<size_t>(1), req_todo / 10);
   } else {
@@ -2070,6 +2083,19 @@ Options:
               in <URI>.
   --rps=<N>   Specify request  per second for each  client.  --rps and
               --timing-script-file are mutually exclusive.
+  -V, --request-variable-name=<VARIABLE-NAME>
+              Specify the name of the variable to be  replaced in  the
+              request-URI and the data file. When h2load runs, it will
+              start  from  request-variable-value-start  to  request-\
+              variable-value-end, every  time a value is  picked up to
+              replace  the  VARIABLE-NAME  in request-URI and the data
+              file.  This is  repeated  until  the  load test is done.
+              This feature is  useful for the case  where a user ID is
+              part  of the  URI and the  data, e.g., telecom use case.
+  -S, --request-variable-value-start=<start-value>
+              An integer to specify the start of the range.
+  -E, --request-variable-value-end=<end-value>
+              An integer to specify the end of the range.
   -v, --verbose
               Output debug information.
   --version   Display version information and exit.
@@ -2130,10 +2156,13 @@ int main(int argc, char **argv) {
         {"log-file", required_argument, &flag, 10},
         {"connect-to", required_argument, &flag, 11},
         {"rps", required_argument, &flag, 12},
+        {"request-variable-name", no_argument, nullptr, 'V'},
+        {"request-variable-value-start", no_argument, nullptr, 'S'},
+        {"request-variable-value-end", no_argument, nullptr, 'E'},
         {nullptr, 0, nullptr, 0}};
     int option_index = 0;
     auto c = getopt_long(argc, argv,
-                         "hvW:c:d:m:n:p:t:w:H:i:r:T:N:D:B:", long_options,
+                         "hvW:c:d:m:n:p:t:w:H:i:r:T:N:D:B:V:S:E:", long_options,
                          &option_index);
     if (c == -1) {
       break;
@@ -2382,6 +2411,18 @@ int main(int argc, char **argv) {
       }
       }
       break;
+      case 'V': {
+        config.req_variable_name = optarg;
+      }
+      break;
+      case 'S': {
+        config.req_variable_start = strtoul(optarg, nullptr, 10);
+      }
+      break;
+      case 'E': {
+        config.req_variable_end = strtoul(optarg, nullptr, 10);
+      }
+      break;
     default:
       break;
     }
@@ -2546,6 +2587,26 @@ int main(int argc, char **argv) {
       exit(EXIT_FAILURE);
     }
     config.data_length = data_stat.st_size;
+    config.data_file_size = config.data_length;
+
+    // pre-read the data file to avoid read it in every request
+    ssize_t nread;
+    std::vector<uint8_t> buf;
+    buf.resize(config.data_length);
+    while ((nread = pread(config.data_fd, (void*)&buf[0], config.data_length, 0)) ==
+               -1 &&
+           errno == EINTR);
+    if (nread == -1) {
+      std::cerr << "unable to read from data file: "<< datafile<< std::endl;
+      exit(EXIT_FAILURE);
+    }
+    config.data_buffer.assign((const char*)&buf[0], (size_t)nread);
+
+    if (!config.req_variable_name.empty() && config.req_variable_end) {
+      std::string data_to_send = std::regex_replace(config.data_buffer, std::regex(config.req_variable_name),
+                                                    std::to_string(config.req_variable_end));
+      config.data_length = data_to_send.size();
+    }
   }
 
   if (!logfile.empty()) {
