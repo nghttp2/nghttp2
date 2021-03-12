@@ -109,6 +109,8 @@ struct Config {
   int data_fd;
   // file descriptor to write per-request stats to.
   int log_fd;
+  // base file name of qlog output files
+  std::string qlog_file_base;
   uint16_t port;
   uint16_t default_port;
   uint16_t connect_to_port;
@@ -340,6 +342,7 @@ struct Client {
     std::array<Crypto, 2> crypto;
     size_t max_pktlen;
     bool close_requested;
+    FILE *qlog_file;
   } quic;
   ev_timer request_timeout_watcher;
   addrinfo *next_addr;
@@ -481,6 +484,7 @@ struct Client {
                                    const uint8_t *data, size_t datalen);
   int quic_pkt_timeout();
   void quic_restart_pkt_timer();
+  void quic_write_qlog(const void *data, size_t datalen);
 };
 
 } // namespace h2load

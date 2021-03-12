@@ -34,6 +34,8 @@
 
 #include "h2load_http3_session.h"
 
+#include <sstream>
+
 namespace h2load {
 
 namespace {
@@ -284,6 +286,20 @@ auto quic_method = SSL_QUIC_METHOD{
 };
 } // namespace
 
+// qlog write callback -- excerpted from ngtcp2/examples/client_base.cc
+namespace {
+void qlog_write_cb(void *user_data, uint32_t flags, const void *data,
+                   size_t datalen) {
+  auto c = static_cast<Client *>(user_data);
+  c->quic_write_qlog(data, datalen);
+}
+} // namespace
+
+void Client::quic_write_qlog(const void *data, size_t datalen) {
+  assert(quic.qlog_file != nullptr);
+  fwrite(data, 1, datalen, quic.qlog_file);
+}
+
 int Client::quic_init(const sockaddr *local_addr, socklen_t local_addrlen,
                       const sockaddr *remote_addr, socklen_t remote_addrlen) {
   int rv;
@@ -354,6 +370,17 @@ int Client::quic_init(const sockaddr *local_addr, socklen_t local_addrlen,
     settings.log_printf = debug_log_printf;
   }
   settings.initial_ts = timestamp(worker->loop);
+  if (!config->qlog_file_base.empty()) {
+    assert(quic.qlog_file == nullptr);
+    std::ostringstream oss(config->qlog_file_base, std::ios::app);
+    oss << '.' << worker->id << '.' << id << ".qlog";
+    quic.qlog_file = fopen(oss.str().c_str(), "w");
+    if (quic.qlog_file == nullptr) {
+      std::cerr << "Failed to open a qlog file: " << oss.str() << std::endl;
+      return -1;
+    }
+    settings.qlog.write = qlog_write_cb;
+  }
 
   ngtcp2_transport_params params;
   ngtcp2_transport_params_default(&params);
@@ -393,7 +420,13 @@ int Client::quic_init(const sockaddr *local_addr, socklen_t local_addrlen,
   return 0;
 }
 
-void Client::quic_free() { ngtcp2_conn_del(quic.conn); }
+void Client::quic_free() {
+  ngtcp2_conn_del(quic.conn);
+  if (quic.qlog_file != nullptr) {
+    fclose(quic.qlog_file);
+    quic.qlog_file = nullptr;
+  }
+}
 
 void Client::quic_close_connection() {
   if (!quic.conn) {

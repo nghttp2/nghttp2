@@ -111,6 +111,7 @@ Config::Config()
       encoder_header_table_size(4_k),
       data_fd(-1),
       log_fd(-1),
+      qlog_file_base(),
       port(0),
       default_port(0),
       connect_to_port(0),
@@ -2200,6 +2201,13 @@ Options:
               response  time when  using  one worker  thread, but  may
               appear slightly  out of order with  multiple threads due
               to buffering.  Status code is -1 for failed streams.
+  --qlog-file-base=<PATH>
+              Enable qlog output and specify base file name for qlogs.
+              Qlog  is emitted  for each connection.
+              For  a  given  base  name "base", each  output file name
+              becomes  "base.M.N.qlog"  where M is worker ID  and N is
+              client ID (e.g. "base.0.3.qlog").
+              Only effective in QUIC runs.
   --connect-to=<HOST>[:<PORT>]
               Host and port to connect  instead of using the authority
               in <URI>.
@@ -2238,6 +2246,7 @@ int main(int argc, char **argv) {
 
   std::string datafile;
   std::string logfile;
+  std::string qlog_base;
   bool nreqs_set_manually = false;
   while (1) {
     static int flag = 0;
@@ -2274,6 +2283,7 @@ int main(int argc, char **argv) {
         {"groups", required_argument, &flag, 13},
         {"tls13-ciphers", required_argument, &flag, 14},
         {"no-udp-gso", no_argument, &flag, 15},
+        {"qlog-file-base", required_argument, &flag, 16},
         {nullptr, 0, nullptr, 0}};
     int option_index = 0;
     auto c = getopt_long(argc, argv,
@@ -2536,6 +2546,10 @@ int main(int argc, char **argv) {
         // --no-udp-gso
         config.no_udp_gso = true;
         break;
+      case 16:
+        // --qlog-file-base
+        qlog_base = optarg;
+        break;
       }
       break;
     default:
@@ -2717,6 +2731,14 @@ int main(int argc, char **argv) {
     if (config.log_fd == -1) {
       std::cerr << "--log-file: Could not open file " << logfile << std::endl;
       exit(EXIT_FAILURE);
+    }
+  }
+
+  if (!qlog_base.empty()) {
+    if (!config.is_quic()) {
+      std::cerr << "Warning: --qlog-file-base: only effective in quic, ignoring." << std::endl;
+    } else {
+      config.qlog_file_base = qlog_base;
     }
   }
 
