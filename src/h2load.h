@@ -42,6 +42,7 @@
 #include <memory>
 #include <chrono>
 #include <array>
+#include <atomic>
 
 #include <nghttp2/nghttp2.h>
 
@@ -116,6 +117,10 @@ struct Config {
   std::vector<std::string> npn_list;
   // The number of request per second for each client.
   double rps;
+  uint64_t req_variable_start;
+  uint64_t req_variable_end;
+  std::string req_variable_name;
+  std::string data_buffer;
 
   Config();
   ~Config();
@@ -188,10 +193,10 @@ struct Stats {
   // The number of requests issued so far
   size_t req_started;
   // The number of requests finished
-  size_t req_done;
+  std::atomic<size_t> req_done;
   // The number of requests completed successful, but not necessarily
   // means successful HTTP status code.
-  size_t req_success;
+  std::atomic<size_t> req_success;
   // The number of requests marked as success.  HTTP status code is
   // also considered as success. This is subset of req_done.
   size_t req_status_success;
@@ -277,6 +282,7 @@ struct Worker {
   // specified
   ev_timer duration_watcher;
   ev_timer warmup_watcher;
+  uint64_t curr_req_variable_value;
 
   Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t nreq_todo, size_t nclients,
          size_t rate, size_t max_samples, Config *config);
@@ -302,6 +308,7 @@ struct Stream {
 struct Client {
   DefaultMemchunks wb;
   std::unordered_map<int32_t, Stream> streams;
+  std::unordered_map<int32_t, std::string> streams_data_buffer;
   ClientStat cstat;
   std::unique_ptr<Session> session;
   ev_io wev;
@@ -409,7 +416,7 @@ struct Client {
   // on_stream_close(stream_id, ...).  Otherwise, this will return
   // nullptr.
   RequestStat *get_req_stat(int32_t stream_id);
-
+  std::string& get_stream_buffer(int32_t stream_id);
   void record_request_time(RequestStat *req_stat);
   void record_connect_start_time();
   void record_connect_time();

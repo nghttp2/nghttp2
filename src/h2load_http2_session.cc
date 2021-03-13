@@ -27,6 +27,10 @@
 #include <cassert>
 #include <cerrno>
 #include <iostream>
+#include <string>
+#include <cstring>
+#include <stdlib.h>
+#include <regex>
 
 #include "h2load.h"
 #include "util.h"
@@ -100,7 +104,6 @@ int on_stream_close_callback(nghttp2_session *session, int32_t stream_id,
                              uint32_t error_code, void *user_data) {
   auto client = static_cast<Client *>(user_data);
   client->on_stream_close(stream_id, error_code == NGHTTP2_NO_ERROR);
-
   return 0;
 }
 } // namespace
@@ -152,6 +155,49 @@ ssize_t file_read_callback(nghttp2_session *session, int32_t stream_id,
   }
 
   return nread;
+}
+
+ssize_t buffer_read_callback(nghttp2_session *session, int32_t stream_id,
+                           uint8_t *buf, size_t length, uint32_t *data_flags,
+                           nghttp2_data_source *source, void *user_data) {
+  auto client = static_cast<Client *>(user_data);
+  auto config = client->worker->config;
+  auto req_stat = client->get_req_stat(stream_id);
+  std::string& streams_buffer = client->get_stream_buffer(stream_id);
+  assert(req_stat);
+
+  if (streams_buffer.empty()) {
+    size_t full_var_length = std::to_string(config->req_variable_end).size();
+    std::string curr_var_value = std::to_string(client->worker->curr_req_variable_value);
+    curr_var_value.reserve(full_var_length);
+    std::string padding;
+    padding.reserve(full_var_length - curr_var_value.size());
+    for (size_t i = 0; i < full_var_length - curr_var_value.size(); i++) {
+      padding.append("0");
+    }
+    curr_var_value.insert(0, padding);
+    streams_buffer =
+      std::regex_replace(config->data_buffer, std::regex(config->req_variable_name), curr_var_value);
+
+    client->worker->curr_req_variable_value++;
+    if (client->worker->curr_req_variable_value > config->req_variable_end) {
+      client->worker->curr_req_variable_value = config->req_variable_start;
+    }
+  }
+
+  if (length >= streams_buffer.size()) {
+    memcpy(buf, streams_buffer.c_str(), streams_buffer.size());
+    *data_flags |= NGHTTP2_DATA_FLAG_EOF;
+    size_t buf_size = streams_buffer.size();
+    streams_buffer.clear();
+    return buf_size;
+  }
+  else {
+    memcpy(buf, streams_buffer.c_str(), length);
+    streams_buffer =
+      streams_buffer.substr(length, std::string::npos);
+    return length;
+  }
 }
 
 } // namespace
@@ -236,6 +282,11 @@ void Http2Session::on_connect() {
   nghttp2_session_set_local_window_size(session_, NGHTTP2_FLAG_NONE, 0,
                                         connection_window);
 
+  std::random_device                  rand_dev;
+  std::mt19937                        generator(rand_dev());
+  std::uniform_int_distribution<int>  distr(config->req_variable_start, config->req_variable_end);
+  client_->worker->curr_req_variable_value = distr(generator);
+
   client_->signal_write();
 }
 
@@ -245,17 +296,61 @@ int Http2Session::submit_request() {
   }
 
   auto config = client_->worker->config;
-  auto &nva = config->nva[client_->reqidx++];
+  thread_local static auto nvas = config->nva;
+  auto &nva = nvas[client_->reqidx++];
 
-  if (client_->reqidx == config->nva.size()) {
+  if (client_->reqidx == nvas.size()) {
     client_->reqidx = 0;
   }
 
   nghttp2_data_provider prd{{0}, file_read_callback};
 
+  nghttp2_nv path_nv_with_variable;
+  int64_t path_nv_index = -1;
+
+  std::string new_path;
+  if (!config->req_variable_name.empty() && config->req_variable_end) {
+    for (size_t i = 0; i < nva.size(); i++) {
+      std::string header_name((const char*)nva[i].name, nva[i].namelen);
+      if (header_name == ":path") {
+        path_nv_with_variable = nva[i];
+        std::string path_value((const char*)nva[i].value, nva[i].valuelen);
+        if (path_value.find(config->req_variable_name) != std::string::npos) {
+          new_path = path_value;
+          size_t full_length = std::to_string(config->req_variable_end).size();
+          std::string curr_var_value = std::to_string(client_->worker->curr_req_variable_value);
+          std::string padding;
+          padding.reserve(full_length - curr_var_value.size());
+          for (size_t i = 0; i < full_length - curr_var_value.size(); i++) {
+            padding.append("0");
+          }
+          curr_var_value.insert(0, padding);
+          new_path = std::regex_replace(new_path, std::regex(config->req_variable_name), curr_var_value);
+          nva[i].value = (uint8_t*)new_path.c_str();
+          nva[i].valuelen = new_path.size();
+          path_nv_index = i;
+          break;
+        }
+      }
+    }
+    prd.read_callback = buffer_read_callback;
+  }
+
   auto stream_id =
       nghttp2_submit_request(session_, nullptr, nva.data(), nva.size(),
                              config->data_fd == -1 ? nullptr : &prd, nullptr);
+
+  if (-1 != path_nv_index) {
+    nva[path_nv_index] = path_nv_with_variable; // restore path nv for next request
+  }
+
+  if (config->data_fd == -1) {
+    client_->worker->curr_req_variable_value++;
+    if (client_->worker->curr_req_variable_value > config->req_variable_end) {
+      client_->worker->curr_req_variable_value = config->req_variable_start;
+    }
+  }
+
   if (stream_id < 0) {
     return -1;
   }
