@@ -2736,7 +2736,9 @@ int main(int argc, char **argv) {
 
   if (!qlog_base.empty()) {
     if (!config.is_quic()) {
-      std::cerr << "Warning: --qlog-file-base: only effective in quic, ignoring." << std::endl;
+      std::cerr
+          << "Warning: --qlog-file-base: only effective in quic, ignoring."
+          << std::endl;
     } else {
       config.qlog_file_base = qlog_base;
     }
