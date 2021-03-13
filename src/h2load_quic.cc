@@ -34,8 +34,6 @@
 
 #include "h2load_http3_session.h"
 
-#include <sstream>
-
 namespace h2load {
 
 namespace {
@@ -372,11 +370,15 @@ int Client::quic_init(const sockaddr *local_addr, socklen_t local_addrlen,
   settings.initial_ts = timestamp(worker->loop);
   if (!config->qlog_file_base.empty()) {
     assert(quic.qlog_file == nullptr);
-    std::ostringstream oss(config->qlog_file_base, std::ios::app);
-    oss << '.' << worker->id << '.' << id << ".qlog";
-    quic.qlog_file = fopen(oss.str().c_str(), "w");
+    auto path = config->qlog_file_base;
+    path += '.';
+    path += util::utos(worker->id);
+    path += '.';
+    path += util::utos(id);
+    path += ".qlog";
+    quic.qlog_file = fopen(path.c_str(), "w");
     if (quic.qlog_file == nullptr) {
-      std::cerr << "Failed to open a qlog file: " << oss.str() << std::endl;
+      std::cerr << "Failed to open a qlog file: " << path << std::endl;
       return -1;
     }
     settings.qlog.write = qlog_write_cb;
