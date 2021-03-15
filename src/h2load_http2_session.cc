@@ -281,11 +281,16 @@ void Http2Session::on_connect() {
   auto connection_window = (1 << config->connection_window_bits) - 1;
   nghttp2_session_set_local_window_size(session_, NGHTTP2_FLAG_NONE, 0,
                                         connection_window);
-
-  std::random_device                  rand_dev;
-  std::mt19937                        generator(rand_dev());
-  std::uniform_int_distribution<int>  distr(config->req_variable_start, config->req_variable_end);
-  client_->worker->curr_req_variable_value = distr(generator);
+  if (config->nclients > 1)
+  {
+    std::random_device                  rand_dev;
+    std::mt19937                        generator(rand_dev());
+    std::uniform_int_distribution<uint64_t>  distr(config->req_variable_start, config->req_variable_end);
+    client_->worker->curr_req_variable_value = distr(generator);
+  }
+  else {
+    client_->worker->curr_req_variable_value = config->req_variable_start;
+  }
 
   client_->signal_write();
 }
