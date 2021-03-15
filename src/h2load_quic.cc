@@ -394,7 +394,6 @@ int Client::quic_init(const sockaddr *local_addr, socklen_t local_addrlen,
   params.initial_max_streams_bidi = 0;
   params.initial_max_streams_uni = 100;
   params.max_idle_timeout = 30 * NGTCP2_SECONDS;
-  params.max_udp_payload_size = quic.max_pktlen;
 
   auto path = ngtcp2_path{
       {local_addrlen, const_cast<sockaddr *>(local_addr)},
