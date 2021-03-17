@@ -524,7 +524,7 @@ void Client::quic_restart_pkt_timer() {
 }
 
 int Client::read_quic() {
-  std::array<uint8_t, 1500> buf;
+  std::array<uint8_t, 65536> buf;
   sockaddr_union su;
   socklen_t addrlen = sizeof(su);
   int rv;
