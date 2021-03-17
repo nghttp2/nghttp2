@@ -41,26 +41,6 @@ auto randgen = util::make_mt19937();
 } // namespace
 
 namespace {
-int recv_crypto_data(ngtcp2_conn *conn, ngtcp2_crypto_level crypto_level,
-                     uint64_t offset, const uint8_t *data, size_t datalen,
-                     void *user_data) {
-  auto c = static_cast<Client *>(user_data);
-
-  if (c->quic_recv_crypto_data(crypto_level, data, datalen) != 0) {
-    return NGTCP2_ERR_CRYPTO;
-  }
-
-  return 0;
-}
-} // namespace
-
-int Client::quic_recv_crypto_data(ngtcp2_crypto_level crypto_level,
-                                  const uint8_t *data, size_t datalen) {
-  return ngtcp2_crypto_read_write_crypto_data(quic.conn, crypto_level, data,
-                                              datalen);
-}
-
-namespace {
 int handshake_completed(ngtcp2_conn *conn, void *user_data) {
   auto c = static_cast<Client *>(user_data);
 
@@ -324,7 +304,7 @@ int Client::quic_init(const sockaddr *local_addr, socklen_t local_addrlen,
   auto callbacks = ngtcp2_callbacks{
       ngtcp2_crypto_client_initial_cb,
       nullptr, // recv_client_initial
-      h2load::recv_crypto_data,
+      ngtcp2_crypto_recv_crypto_data_cb,
       h2load::handshake_completed,
       nullptr, // recv_version_negotiation
       ngtcp2_crypto_encrypt_cb,
