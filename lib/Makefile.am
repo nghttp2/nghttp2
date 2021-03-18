@@ -71,5 +71,6 @@ HFILES = nghttp2_pq.h nghttp2_int.h nghttp2_map.h nghttp2_queue.h \
 	nghttp2_ksl.h
 
 libnghttp2_la_SOURCES = $(HFILES) $(OBJECTS)
+libnghttp2_la_LIBADD = $(PTHREAD_LIBS)
 libnghttp2_la_LDFLAGS = $(AM_LDFLAGS) -no-undefined \
 	-version-info $(LT_CURRENT):$(LT_REVISION):$(LT_AGE)

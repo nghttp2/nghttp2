@@ -322,10 +322,6 @@ case "$host_os" in
     # android does not need -pthread, but needs followng 3 libs for C++
     APPLDFLAGS="$APPLDFLAGS -lstdc++ -latomic -lsupc++"
     ;;
-  *)
-    PTHREAD_LDFLAGS="-pthread"
-    APPLDFLAGS="$APPLDFLAGS $PTHREAD_LDFLAGS"
-    ;;
 esac
 
 case "$host_os" in
@@ -531,14 +527,14 @@ if test "x${request_jemalloc}" != "xno"; then
   if test "x${JEMALLOC_LIBS}" = "x" && test "x${JEMALLOC_CFLAGS}" = "x"; then
     save_LIBS=$LIBS
     AC_SEARCH_LIBS([malloc_stats_print], [jemalloc], [have_jemalloc=yes], [],
-                   [$PTHREAD_LDFLAGS])
+                   [])
 
     if test "x${have_jemalloc}" = "xyes"; then
       jemalloc_libs=${ac_cv_search_malloc_stats_print}
     else
       # On Darwin, malloc_stats_print is je_malloc_stats_print
       AC_SEARCH_LIBS([je_malloc_stats_print], [jemalloc], [have_jemalloc=yes], [],
-                     [$PTHREAD_LDFLAGS])
+                     [])
 
       if test "x${have_jemalloc}" = "xyes"; then
         jemalloc_libs=${ac_cv_search_je_malloc_stats_print}
@@ -568,6 +564,7 @@ if test "x${request_asio_lib}" = "xyes"; then
   AX_BOOST_BASE([1.54.0], [have_boost_base=yes], [have_boost_base=no])
 
   if test "x${have_boost_base}" = "xyes"; then
+    AX_PTHREAD
     AX_BOOST_ASIO()
     AX_BOOST_SYSTEM()
     AX_BOOST_THREAD()
