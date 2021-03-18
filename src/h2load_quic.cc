@@ -554,7 +554,7 @@ int Client::read_quic() {
       return -1;
     }
 
-    if (pktcnt == 10) {
+    if (++pktcnt == 100) {
       break;
     }
   }
