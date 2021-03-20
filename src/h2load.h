@@ -42,6 +42,9 @@
 #include <memory>
 #include <chrono>
 #include <array>
+#include <atomic>
+#include <deque>
+#include <set>
 
 #include <nghttp2/nghttp2.h>
 
@@ -58,6 +61,8 @@ using namespace nghttp2;
 namespace h2load {
 
 constexpr auto BACKOFF_WRITE_BUFFER_THRES = 16_k;
+
+void replace_header_in_nva(std::vector<nghttp2_nv>& nva, const std::string& header_name, const std::string& header_value);
 
 class Session;
 struct Worker;
@@ -116,6 +121,24 @@ struct Config {
   std::vector<std::string> npn_list;
   // The number of request per second for each client.
   double rps;
+  uint64_t req_variable_start;
+  uint64_t req_variable_end;
+  std::string req_variable_name;
+  std::string data_buffer;
+  // this is the name of the header, identifying resource created by server
+  // h2load can send update/delete to operate the resource
+  std::string crud_resource_header_name;
+  std::string crud_create_method;
+  std::string crud_read_method;
+  std::string crud_update_method;
+  std::string crud_delete_method;
+  std::string crud_create_data_file_name;
+  std::string crud_update_data_file_name;
+  std::string crud_update_data_template_buf;
+  std::vector<nghttp2_nv> read_nva;
+  std::vector<nghttp2_nv> update_nva;
+  std::vector<nghttp2_nv> delete_nva;
+  uint16_t stream_timeout_in_ms;
 
   Config();
   ~Config();
@@ -188,13 +211,13 @@ struct Stats {
   // The number of requests issued so far
   size_t req_started;
   // The number of requests finished
-  size_t req_done;
+  std::atomic<size_t> req_done;
   // The number of requests completed successful, but not necessarily
   // means successful HTTP status code.
   size_t req_success;
   // The number of requests marked as success.  HTTP status code is
   // also considered as success. This is subset of req_done.
-  size_t req_status_success;
+  std::atomic<size_t> req_status_success;
   // The number of requests failed. This is subset of req_done.
   size_t req_failed;
   // The number of requests failed due to network errors. This is
@@ -277,6 +300,7 @@ struct Worker {
   // specified
   ev_timer duration_watcher;
   ev_timer warmup_watcher;
+  uint64_t curr_req_variable_value;
 
   Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t nreq_todo, size_t nclients,
          size_t rate, size_t max_samples, Config *config);
@@ -299,9 +323,18 @@ struct Stream {
   Stream();
 };
 
+struct CRUD_data {
+  std::string data_buffer;
+  std::string resource_uri;
+  uint64_t user_id;
+  CRUD_data();
+};
+
 struct Client {
   DefaultMemchunks wb;
+  std::multimap<std::chrono::steady_clock::time_point, int32_t> stream_timestamp;
   std::unordered_map<int32_t, Stream> streams;
+  std::unordered_map<int32_t, CRUD_data> streams_CRUD_data;
   ClientStat cstat;
   std::unique_ptr<Session> session;
   ev_io wev;
@@ -353,6 +386,12 @@ struct Client {
   // rps_req_inflight measures the number of requests in all phases,
   // and it is only used if --rps is given.
   size_t rps_req_inflight;
+  std::deque<CRUD_data> resource_uris_to_read;
+  std::deque<CRUD_data> resource_uris_to_update;
+  std::deque<CRUD_data> resource_uris_to_delete;
+  std::map<int32_t, uint64_t> streams_waiting_for_create_response;
+  std::map<int32_t, CRUD_data> streams_waiting_for_get_response;
+  std::map<int32_t, CRUD_data> streams_waiting_for_update_response;
 
   enum { ERR_CONNECT_FAIL = -100 };
 
@@ -397,6 +436,7 @@ struct Client {
   int connection_made();
 
   void on_request(int32_t stream_id);
+  void reset_timeout_requests();
   void on_header(int32_t stream_id, const uint8_t *name, size_t namelen,
                  const uint8_t *value, size_t valuelen);
   void on_status_code(int32_t stream_id, uint16_t status);
@@ -409,7 +449,6 @@ struct Client {
   // on_stream_close(stream_id, ...).  Otherwise, this will return
   // nullptr.
   RequestStat *get_req_stat(int32_t stream_id);
-
   void record_request_time(RequestStat *req_stat);
   void record_connect_start_time();
   void record_connect_time();
