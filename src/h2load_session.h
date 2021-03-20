@@ -52,6 +52,7 @@ public:
   virtual void terminate() = 0;
   // Return the maximum concurrency per connection
   virtual size_t max_concurrent_streams() = 0;
+  virtual void submit_rst_stream(int32_t stream_id) {};
 };
 
 } // namespace h2load

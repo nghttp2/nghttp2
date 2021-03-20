@@ -45,6 +45,8 @@
 #include <thread>
 #include <future>
 #include <random>
+#include <vector>
+#include <regex>
 
 #include <openssl/err.h>
 
@@ -70,6 +72,23 @@ bool recorded(const std::chrono::steady_clock::time_point &t) {
   return std::chrono::steady_clock::duration::zero() != t.time_since_epoch();
 }
 } // namespace
+
+std::string get_reqline(const char *uri, const http_parser_url &u) {
+  std::string reqline;
+
+  if (util::has_uri_field(u, UF_PATH)) {
+    reqline = util::get_uri_field(uri, u, UF_PATH).str();
+  } else {
+    reqline = "/";
+  }
+
+  if (util::has_uri_field(u, UF_QUERY)) {
+    reqline += '?';
+    reqline += util::get_uri_field(uri, u, UF_QUERY);
+  }
+
+  return reqline;
+}
 
 Config::Config()
     : ciphers(tls::DEFAULT_CIPHER_LIST),
@@ -99,7 +118,19 @@ Config::Config()
       timing_script(false),
       base_uri_unix(false),
       unix_addr{},
-      rps(0.) {}
+      rps(0.),
+      req_variable_start(0),
+      req_variable_end(0),
+      req_variable_name(""),
+      data_buffer(""),
+      crud_resource_header_name(""),
+      crud_create_method(""),
+      crud_update_method(""),
+      crud_delete_method(""),
+      crud_create_data_file_name(""),
+      crud_update_data_file_name(""),
+      crud_update_data_template_buf(""),
+      stream_timeout_in_ms(5000) {}
 
 Config::~Config() {
   if (addrs) {
@@ -141,6 +172,7 @@ Stats::Stats(size_t req_todo, size_t nclients)
       status() {}
 
 Stream::Stream() : req_stat{}, status_success(-1) {}
+CRUD_data::CRUD_data() : data_buffer(""), resource_uri(""), user_id(0) {}
 
 namespace {
 std::random_device rd;
@@ -292,6 +324,7 @@ namespace {
 void rps_cb(struct ev_loop *loop, ev_timer *w, int revents) {
   auto client = static_cast<Client *>(w->data);
   auto &session = client->session;
+  client->reset_timeout_requests();
 
   assert(!config.timing_script);
 
@@ -310,7 +343,7 @@ void rps_cb(struct ev_loop *loop, ev_timer *w, int revents) {
     return;
   }
 
-  auto nreq = session->max_concurrent_streams() - client->rps_req_inflight;
+  auto nreq = session->max_concurrent_streams() - client->streams.size();
   if (nreq == 0) {
     return;
   }
@@ -364,6 +397,7 @@ bool check_stop_client_request_timeout(Client *client, ev_timer *w) {
 namespace {
 void client_request_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
   auto client = static_cast<Client *>(w->data);
+  client->reset_timeout_requests();
 
   if (client->streams.size() >= (size_t)config.max_concurrent_streams) {
     ev_timer_stop(client->worker->loop, w);
@@ -608,6 +642,12 @@ void Client::disconnect() {
   ev_timer_stop(worker->loop, &rps_watcher);
   ev_timer_stop(worker->loop, &request_timeout_watcher);
   streams.clear();
+  streams_CRUD_data.clear();
+  streams_waiting_for_get_response.clear();
+  streams_waiting_for_update_response.clear();
+  resource_uris_to_read.clear();
+  resource_uris_to_update.clear();
+  resource_uris_to_delete.clear();
   session.reset();
   wb.reset();
   state = CLIENT_IDLE;
@@ -770,7 +810,34 @@ void Client::terminate_session() {
   signal_write();
 }
 
-void Client::on_request(int32_t stream_id) { streams[stream_id] = Stream(); }
+void Client::on_request(int32_t stream_id) {
+  streams[stream_id] = Stream();
+  auto curr_timepoint = std::chrono::steady_clock::now();
+  stream_timestamp.insert(std::make_pair(curr_timepoint, stream_id));
+ }
+
+void Client::reset_timeout_requests() {
+  if (stream_timestamp.empty()) {
+    return;
+  }
+  const std::chrono::milliseconds timeout_duration(config.stream_timeout_in_ms);
+  std::chrono::steady_clock::time_point curr_time_point = std::chrono::steady_clock::now();
+  std::chrono::steady_clock::time_point timeout_timepoint = curr_time_point - timeout_duration;
+  auto no_timeout_it = stream_timestamp.upper_bound(timeout_timepoint);
+  auto it = stream_timestamp.begin();
+  bool call_signal_write = false;
+  while (it != no_timeout_it) {
+    if (streams.find(it->second) != streams.end()) {
+      session->submit_rst_stream(it->second);
+      call_signal_write = true;
+    }
+    it = stream_timestamp.erase(it);
+  }
+  if (call_signal_write) {
+    signal_write();
+  }
+}
+
 
 void Client::on_header(int32_t stream_id, const uint8_t *name, size_t namelen,
                        const uint8_t *value, size_t valuelen) {
@@ -786,6 +853,28 @@ void Client::on_header(int32_t stream_id, const uint8_t *name, size_t namelen,
     // Same has been done in on_status_code function
     stream.status_success = 1;
     return;
+  }
+
+  if (streams_waiting_for_create_response.find(stream_id) !=
+      streams_waiting_for_create_response.end()) {
+    std::string header_name;
+    header_name.assign((const char*)name, namelen);
+    if (worker->config->crud_resource_header_name == header_name) {
+      std::string resource_header;
+      resource_header.assign((const char*)value, valuelen);
+      http_parser_url u{};
+      auto uri = resource_header.c_str();
+      if (http_parser_parse_url(uri, resource_header.size(), 0, &u) != 0) {
+        std::cerr << "invalid URI: " << resource_header << std::endl;
+      }
+      else {
+        CRUD_data crud_data;
+        crud_data.user_id = streams_waiting_for_create_response[stream_id];
+        crud_data.resource_uri = get_reqline(uri, u);
+        resource_uris_to_read.push_back(crud_data);
+      }
+      streams_waiting_for_create_response.erase(stream_id);
+    }
   }
 
   if (stream.status_success == -1 && namelen == 7 &&
@@ -852,6 +941,9 @@ void Client::on_stream_close(int32_t stream_id, bool success, bool final) {
     if (req_inflight > 0) {
       --req_inflight;
     }
+    if (config.rps_enabled() && rps_req_inflight) {
+      --rps_req_inflight;
+    }
     auto req_stat = get_req_stat(stream_id);
     if (!req_stat) {
       return;
@@ -910,6 +1002,19 @@ void Client::on_stream_close(int32_t stream_id, bool success, bool final) {
 
   worker->report_progress();
   streams.erase(stream_id);
+  streams_CRUD_data.erase(stream_id);
+  streams_waiting_for_create_response.erase(stream_id);
+  if (streams_waiting_for_get_response.find(stream_id) !=
+      streams_waiting_for_get_response.end()) {
+    resource_uris_to_update.push_back(streams_waiting_for_get_response[stream_id]);
+    streams_waiting_for_get_response.erase(stream_id);
+  }
+  else if (streams_waiting_for_update_response.find(stream_id) !=
+           streams_waiting_for_update_response.end()) {
+    resource_uris_to_delete.push_back(streams_waiting_for_update_response[stream_id]);
+    streams_waiting_for_update_response.erase(stream_id);
+  }
+
   if (req_left == 0 && req_inflight == 0) {
     terminate_session();
     return;
@@ -929,9 +1034,6 @@ void Client::on_stream_close(int32_t stream_id, bool success, bool final) {
       if (submit_request() != 0) {
         process_request_failure();
       }
-    } else {
-      assert(rps_req_inflight);
-      --rps_req_inflight;
     }
   }
 }
@@ -1357,7 +1459,8 @@ Worker::Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t req_todo, size_t nclients,
       nreqs_rem(req_todo % nclients),
       rate(rate),
       max_samples(max_samples),
-      next_client_id(0) {
+      next_client_id(0),
+      curr_req_variable_value(0) {
   if (!config->is_rate_mode() && !config->is_timing_based_mode()) {
     progress_interval = std::max(static_cast<size_t>(1), req_todo / 10);
   } else {
@@ -1659,25 +1762,6 @@ void resolve_host() {
     exit(EXIT_FAILURE);
   }
   config.addrs = res;
-}
-} // namespace
-
-namespace {
-std::string get_reqline(const char *uri, const http_parser_url &u) {
-  std::string reqline;
-
-  if (util::has_uri_field(u, UF_PATH)) {
-    reqline = util::get_uri_field(uri, u, UF_PATH).str();
-  } else {
-    reqline = "/";
-  }
-
-  if (util::has_uri_field(u, UF_QUERY)) {
-    reqline += '?';
-    reqline += util::get_uri_field(uri, u, UF_QUERY);
-  }
-
-  return reqline;
 }
 } // namespace
 
@@ -2070,6 +2154,39 @@ Options:
               in <URI>.
   --rps=<N>   Specify request  per second for each  client.  --rps and
               --timing-script-file are mutually exclusive.
+  --crud-request-variable-name=<VARIABLE-NAME>
+              Specify the name of the variable to be  replaced in  the
+              request-URI and the data file. When h2load runs, it will
+              start  from  request-variable-value-start  to  request-\
+              variable-value-end, every  time a value is  picked up to
+              replace  the  VARIABLE-NAME  in request-URI and the data
+              file.  This is  repeated  until  the  load test is done.
+              This feature is  useful for the case  where a user ID is
+              part of the URI and data, e.g., CURD based on user ID.
+  --crud-request-variable-value-start=<start-value>
+              An integer to specify the start of the range.
+  --crud-request-variable-value-end=<end-value>
+              An integer to specify the end of the range.
+  --crud-create-method=<METHOD>
+              HTTP METHOD for Create operationto override the  default
+              method (GET/POST)
+  --crud-read-method=<METHOD>
+              HTTP METHOD to for CRUD Read operation
+  --crud-update-method=<METHOD>
+              HTTP METHOD to for CRUD Update operation
+  --crud-delete-method=<METHOD>
+              HTTP METHOD to for CRUD Delete operation
+  --crud-resource-header-name=<header name>
+              name of the header which containers the resource created
+              If not specified, header name 'location' is assumed
+  --crud-create-data-file=<file name>
+              name of the data file for  Create operation. If present,
+              this overrides the file name provided in 'data' option
+  --crud-update-data-file=<file name>
+              name of the data file for Update operation.
+  --stream-timeout-interval-ms=<timeout value in ms>
+              request time out  value.  After  timeout,  RST_STREAM is
+              sent by h2load. Default 5000.
   -v, --verbose
               Output debug information.
   --version   Display version information and exit.
@@ -2087,6 +2204,33 @@ Options:
       << std::endl;
 }
 } // namespace
+
+namespace {
+void remove_header_field_from_nva(std::vector<nghttp2_nv>& nva, const std::string& header_name) {
+  auto it =
+      std::find_if(std::begin(nva), std::end(nva),
+                   [&header_name](const nghttp2_nv &nv) {
+                     std::string name((const char*)nv.name, nv.namelen);
+                     return name == header_name;
+                   });
+  if(it != std::end(nva)) {
+      nva.erase(it);
+  }
+}
+}
+
+void replace_header_in_nva(std::vector<nghttp2_nv>& nva, const std::string& header_name, const std::string& header_value) {
+  auto it =
+      std::find_if(std::begin(nva), std::end(nva),
+                   [&header_name](const nghttp2_nv &nv) {
+                     std::string name((const char*)nv.name, nv.namelen);
+                     return name == header_name;
+                   });
+  if(it != std::end(nva)) {
+      it->value = (uint8_t*)header_value.c_str();
+      it->valuelen = header_value.size();
+  }
+}
 
 int main(int argc, char **argv) {
   tls::libssl_init();
@@ -2130,6 +2274,17 @@ int main(int argc, char **argv) {
         {"log-file", required_argument, &flag, 10},
         {"connect-to", required_argument, &flag, 11},
         {"rps", required_argument, &flag, 12},
+        {"crud-create-method", required_argument, &flag, 13},
+        {"crud-read-method", required_argument, &flag, 14},
+        {"crud-update-method", required_argument, &flag, 15},
+        {"crud-delete-method", required_argument, &flag, 16},
+        {"crud-resource-header-name", required_argument, &flag, 17},
+        {"crud-create-data-file", required_argument, &flag, 18},
+        {"crud-update-data-file", required_argument, &flag, 19},
+        {"crud-request-variable-name", required_argument, &flag, 20},
+        {"crud-request-variable-value-start", required_argument, &flag, 21},
+        {"crud-request-variable-value-end", required_argument, &flag, 22},
+        {"stream-timeout-interval-ms", required_argument, &flag, 23},
         {nullptr, 0, nullptr, 0}};
     int option_index = 0;
     auto c = getopt_long(argc, argv,
@@ -2380,8 +2535,59 @@ int main(int argc, char **argv) {
         config.rps = v;
         break;
       }
+      case 13: {
+        // create-method
+        config.crud_create_method = optarg;
+        break;
+      }
+      case 14: {
+        // read-method
+        config.crud_read_method = optarg;
+        break;
+      }
+      case 15: {
+        // update-method
+        config.crud_update_method = optarg;
+        break;
+      }
+      case 16: {
+        // delete-method
+        config.crud_delete_method = optarg;
+        break;
+      }
+      case 17: {
+        // crud_resource_header_name
+        config.crud_resource_header_name = optarg;
+        break;
+      }
+      case 18: {
+        // crud_create_data_file_name
+        config.crud_create_data_file_name = optarg;
+        break;
+      }
+      case 19: {
+        // crud_update_data_file_name
+        config.crud_update_data_file_name = optarg;
+        break;
+      }
+      case 20: {
+        config.req_variable_name = optarg;
       }
       break;
+      case 21: {
+        config.req_variable_start = strtoul(optarg, nullptr, 10);
+      }
+      break;
+      case 22: {
+        config.req_variable_end = strtoul(optarg, nullptr, 10);
+      }
+      break;
+      case 23: {
+        config.stream_timeout_in_ms = (uint16_t)strtoul(optarg, nullptr, 10);
+      }
+      break;
+    }
+    break;
     default:
       break;
     }
@@ -2410,6 +2616,9 @@ int main(int argc, char **argv) {
     proto.insert(proto.begin(), static_cast<unsigned char>(proto.size()));
   }
 
+  if (!config.crud_create_data_file_name.empty()) {
+    datafile = config.crud_create_data_file_name;
+  }
   std::vector<std::string> reqlines;
 
   if (config.ifile.empty()) {
@@ -2546,6 +2755,24 @@ int main(int argc, char **argv) {
       exit(EXIT_FAILURE);
     }
     config.data_length = data_stat.st_size;
+
+    if (!config.req_variable_name.empty() && config.req_variable_end) {
+      // pre-read the data file to avoid read it in every request
+      ssize_t nread;
+      std::vector<uint8_t> buf;
+      buf.resize(config.data_length);
+      while ((nread = pread(config.data_fd, (void*)&buf[0], config.data_length, 0)) ==
+                 -1 &&
+             errno == EINTR);
+      if (nread == -1) {
+        std::cerr << "unable to read from data file: "<< datafile<< std::endl;
+        exit(EXIT_FAILURE);
+      }
+      config.data_buffer.assign((const char*)&buf[0], (size_t)nread);
+      std::string data_to_send = std::regex_replace(config.data_buffer, std::regex(config.req_variable_name),
+                                                    std::to_string(config.req_variable_end));
+      config.data_length = data_to_send.size();
+    }
   }
 
   if (!logfile.empty()) {
@@ -2699,6 +2926,81 @@ int main(int argc, char **argv) {
     config.nva.push_back(std::move(nva));
   }
 
+  if ((!config.crud_read_method.empty() ||
+       !config.crud_update_method.empty() ||
+       !config.crud_delete_method.empty()) &&
+      config.crud_resource_header_name.empty()) {
+    config.crud_resource_header_name = "location";
+  }
+  if (!config.crud_read_method.empty()) {
+    config.read_nva = config.nva[0];
+    replace_header_in_nva(config.read_nva, ":method", config.crud_read_method);
+    remove_header_field_from_nva(config.read_nva, "content-length");
+    remove_header_field_from_nva(config.read_nva, "content-type");
+  }
+
+  std::string update_content_length;
+  std::string nv_content_length = "content-length";
+  if (!config.crud_update_method.empty()) {
+    config.update_nva = config.nva[0];
+
+    replace_header_in_nva(config.update_nva, ":method", config.crud_update_method);
+    remove_header_field_from_nva(config.update_nva, "content-length");
+
+    if (!config.crud_update_data_file_name.empty()) {
+      int update_data_fd = open(config.crud_update_data_file_name.c_str(), O_RDONLY | O_BINARY);
+      if (update_data_fd == -1) {
+        std::cerr << "Could not open file " << config.crud_update_data_file_name << std::endl;
+        exit(EXIT_FAILURE);
+      }
+
+      struct stat data_stat;
+      if (fstat(update_data_fd, &data_stat) == -1) {
+        std::cerr << "-d: Could not stat file " << config.crud_update_data_file_name << std::endl;
+        exit(EXIT_FAILURE);
+      }
+      uint64_t update_data_len = data_stat.st_size;
+
+      ssize_t nread;
+      std::vector<uint8_t> buf;
+      buf.resize(update_data_len);
+      while ((nread = pread(update_data_fd, (void*)&buf[0], update_data_len, 0)) ==
+                 -1 &&
+             errno == EINTR);
+      if (nread == -1) {
+        std::cerr << "unable to read from data file: "<< config.crud_update_data_file_name << std::endl;
+        exit(EXIT_FAILURE);
+      }
+      close(update_data_fd);
+      config.crud_update_data_template_buf.assign((const char*)&buf[0], (size_t)nread);
+      if (!config.req_variable_name.empty()) {
+        std::string update_buffer = std::regex_replace(config.crud_update_data_template_buf,
+                                           std::regex(config.req_variable_name),
+                                           std::to_string(config.req_variable_end));
+        update_data_len = update_buffer.size();
+      }
+
+      update_content_length = std::to_string(update_data_len);
+
+      if (!update_content_length.empty()) {
+        config.update_nva.emplace_back(http2::make_nv(nv_content_length, update_content_length));
+      }
+    }
+  }
+
+  if (!config.crud_delete_method.empty()) {
+      config.delete_nva = config.nva[0];
+      replace_header_in_nva(config.delete_nva, ":method", config.crud_delete_method);
+      remove_header_field_from_nva(config.delete_nva, "content-length");
+      remove_header_field_from_nva(config.delete_nva, "content-type");
+  }
+
+  if (!config.crud_create_method.empty()) {
+    for (auto& shared_nva: config.nva) {
+      replace_header_in_nva(shared_nva, ":method", config.crud_create_method);
+    }
+  }
+
   // Don't DOS our server!
   if (config.host == "nghttp2.org") {
     std::cerr << "Using h2load against public server " << config.host
@@ -2783,10 +3085,40 @@ int main(int argc, char **argv) {
   }
 
   auto start = std::chrono::steady_clock::now();
+  std::atomic<bool> workers_stopped;
+  workers_stopped = false;
+
+  std::future<void> fu_tps =
+          std::async(std::launch::async, [&workers, &workers_stopped]() {
+            size_t totalReq_till_now = 0;
+            size_t totalReq_success_till_now = 0;
+            while (!workers_stopped) {
+              size_t total_req_till_last_interval = totalReq_till_now;
+              size_t totalReq_success_till_last_interval = totalReq_success_till_now;
+              std::this_thread::sleep_for(std::chrono::seconds(1));
+              totalReq_till_now = 0;
+              totalReq_success_till_now = 0;
+              for (const auto &w : workers) {
+                const auto &s = w->stats;
+                totalReq_till_now += s.req_done;
+                totalReq_success_till_now += s.req_status_success;
+              }
+              size_t delta_TPS = totalReq_till_now - total_req_till_last_interval;
+              size_t delta_TPS_success = totalReq_success_till_now - totalReq_success_till_last_interval;
+              auto now = std::chrono::system_clock::now();
+              auto now_c = std::chrono::system_clock::to_time_t(now);
+              std::cout << std::put_time(std::localtime(&now_c), "%c")
+                        << ", Request per second: "<<delta_TPS
+                        <<", successful rate: "
+                        <<(((double)delta_TPS_success/delta_TPS)*100)<<"%"<<std::endl;
+            }
+          });
 
   for (auto &fut : futures) {
     fut.get();
   }
+  workers_stopped = true;
+  fu_tps.get();
 
 #else  // NOTHREADS
   auto rate = config.rate;
