@@ -325,7 +325,6 @@ void rps_cb(struct ev_loop *loop, ev_timer *w, int revents) {
   auto client = static_cast<Client *>(w->data);
   auto &session = client->session;
   client->reset_timeout_requests();
-
   assert(!config.timing_script);
 
   if (client->req_left == 0) {
@@ -356,12 +355,12 @@ void rps_cb(struct ev_loop *loop, ev_timer *w, int revents) {
   client->rps_req_pending -= nreq;
 
   for (; nreq > 0; --nreq) {
-    if (client->submit_request() != 0) {
-      client->process_request_failure();
+    auto retCode = client->submit_request();
+    if (retCode != 0) {
+      client->process_request_failure(retCode);
       break;
     }
   }
-
   client->signal_write();
 }
 } // namespace
@@ -458,7 +457,8 @@ Client::Client(uint32_t id, Worker *worker, size_t req_todo)
       final(false),
       rps_duration_started(0),
       rps_req_pending(0),
-      rps_req_inflight(0) {
+      rps_req_inflight(0),
+      curr_stream_id(0) {
   if (req_todo == 0) { // this means infinite number of requests are to be made
     // This ensures that number of requests are unbounded
     // Just a positive number is fine, we chose the first positive number
@@ -672,8 +672,9 @@ void Client::disconnect() {
 }
 
 int Client::submit_request() {
-  if (session->submit_request() != 0) {
-    return -1;
+  auto retCode = session->submit_request();
+  if (retCode != 0) {
+    return retCode;
   }
 
   if (worker->current_phase != Phase::MAIN_DURATION) {
@@ -726,7 +727,32 @@ void Client::process_abandoned_streams() {
   req_left = 0;
 }
 
-void Client::process_request_failure() {
+void restart_client_w_cb(struct ev_loop *loop, ev_timer *w, int revents) {
+  auto client = static_cast<Client *>(w->data);
+  ev_timer_stop(client->worker->loop, &client->worker->retart_client_watcher);
+  std::cout << "Restart client:"<<std::endl;
+  client->terminate_session();
+  client->disconnect();
+  auto new_client = std::make_unique<Client>(client->id, client->worker, client->req_todo);
+  if (new_client->connect() != 0) {
+    std::cerr << "client could not connect to host" << std::endl;
+    new_client->fail();
+  } else {
+    for (auto &cl : client->worker->clients) {
+      if (cl == client) {
+        auto index = &cl - &client->worker->clients[0];
+        client->req_todo = client->req_done;
+        client->worker->stats.req_todo += client->req_todo;
+        client->worker->clients[index] = new_client.get();
+        new_client->ancestor.reset(client);
+        break;
+      }
+    }
+    new_client.release();
+  }
+}
+
+void Client::process_request_failure(int errCode) {
   if (worker->current_phase != Phase::MAIN_DURATION) {
     return;
   }
@@ -736,10 +762,20 @@ void Client::process_request_failure() {
 
   req_left = 0;
 
-  if (req_inflight == 0) {
-    terminate_session();
+  if (streams.size() == 0) {
+    if (MAX_STREAM_TO_BE_EXHAUSTED != errCode) {
+      terminate_session();
+    }
+  }
+  if (MAX_STREAM_TO_BE_EXHAUSTED == errCode) {
+      std::cout << "stream exhausted on this client. Restart client:"<<std::endl;
+      worker->retart_client_watcher.data = this;
+      ev_timer_init(&worker->retart_client_watcher, restart_client_w_cb, 0.1, 0.);
+      ev_timer_start(worker->loop, &worker->retart_client_watcher);
+      return;
   }
   std::cout << "Process Request Failure:" << worker->stats.req_failed
+            <<", errorCode: "<<errCode
             << std::endl;
 }
 
@@ -1031,8 +1067,9 @@ void Client::on_stream_close(int32_t stream_id, bool success, bool final) {
       }
     } else if (rps_req_pending) {
       --rps_req_pending;
-      if (submit_request() != 0) {
-        process_request_failure();
+      auto retCode = submit_request();
+      if (retCode != 0) {
+        process_request_failure(retCode);
       }
     }
   }
@@ -1139,8 +1176,9 @@ int Client::connection_made() {
 
     ++rps_req_inflight;
 
-    if (submit_request() != 0) {
-      process_request_failure();
+    auto retCode = submit_request();
+    if (retCode != 0) {
+      process_request_failure(retCode);
     }
   } else if (!config.timing_script) {
     auto nreq = config.is_timing_based_mode()
@@ -1271,6 +1309,7 @@ int Client::connected() {
   }
   ev_io_start(worker->loop, &rev);
   ev_io_stop(worker->loop, &wev);
+  ancestor.reset();
 
   if (ssl) {
     readfn = &Client::tls_handshake;
