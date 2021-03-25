@@ -299,12 +299,21 @@ int Http2Session::submit_request() {
   if (nghttp2_session_check_request_allowed(session_) == 0) {
     return -1;
   }
+
   auto config = client_->worker->config;
   thread_local static auto nvas = config->nva;
   thread_local static auto read_nva = config->read_nva;
   thread_local static auto update_nva = config->update_nva;
   thread_local static auto delete_nva = config->delete_nva;
   int32_t stream_id = -1;
+
+  // tear down the client which is approaching max stream, and reconnect again
+  if ((config->nclients > 1 && config->rps > 0 &&
+       INT32_MAX - client_->curr_stream_id < config->nclients * config->nclients * config->rps &&
+       rand() % config->nclients == 0 )||
+      (client_->curr_stream_id >= INT32_MAX - 1)) {
+    return MAX_STREAM_TO_BE_EXHAUSTED;
+  }
 
   if (config->crud_read_method.empty()) {
     client_->resource_uris_to_update.insert(client_->resource_uris_to_update.begin(),
@@ -435,6 +444,7 @@ int Http2Session::submit_request() {
   }
 
   client_->on_request(stream_id);
+  client_->curr_stream_id = stream_id;
 
   return 0;
 }

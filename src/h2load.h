@@ -61,6 +61,8 @@ using namespace nghttp2;
 namespace h2load {
 
 constexpr auto BACKOFF_WRITE_BUFFER_THRES = 16_k;
+constexpr int MAX_STREAM_TO_BE_EXHAUSTED = -2;
+
 
 void replace_header_in_nva(std::vector<nghttp2_nv>& nva, const std::string& header_name, const std::string& header_value);
 
@@ -301,6 +303,7 @@ struct Worker {
   ev_timer duration_watcher;
   ev_timer warmup_watcher;
   uint64_t curr_req_variable_value;
+  ev_timer retart_client_watcher;
 
   Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t nreq_todo, size_t nclients,
          size_t rate, size_t max_samples, Config *config);
@@ -392,6 +395,8 @@ struct Client {
   std::map<int32_t, uint64_t> streams_waiting_for_create_response;
   std::map<int32_t, CRUD_data> streams_waiting_for_get_response;
   std::map<int32_t, CRUD_data> streams_waiting_for_update_response;
+  int32_t curr_stream_id;
+  std::unique_ptr<Client> ancestor;
 
   enum { ERR_CONNECT_FAIL = -100 };
 
@@ -410,7 +415,7 @@ struct Client {
   void timeout();
   void restart_timeout();
   int submit_request();
-  void process_request_failure();
+  void process_request_failure(int errCode = -1);
   void process_timedout_streams();
   void process_abandoned_streams();
   void report_tls_info();
