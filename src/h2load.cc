@@ -729,7 +729,7 @@ void Client::process_abandoned_streams() {
 
 void restart_client_w_cb(struct ev_loop *loop, ev_timer *w, int revents) {
   auto client = static_cast<Client *>(w->data);
-  ev_timer_stop(client->worker->loop, &client->worker->retart_client_watcher);
+  ev_timer_stop(client->worker->loop, &client->retart_client_watcher);
   std::cout << "Restart client:"<<std::endl;
   client->terminate_session();
   client->disconnect();
@@ -769,9 +769,9 @@ void Client::process_request_failure(int errCode) {
   }
   if (MAX_STREAM_TO_BE_EXHAUSTED == errCode) {
       std::cout << "stream exhausted on this client. Restart client:"<<std::endl;
-      worker->retart_client_watcher.data = this;
-      ev_timer_init(&worker->retart_client_watcher, restart_client_w_cb, 0.1, 0.);
-      ev_timer_start(worker->loop, &worker->retart_client_watcher);
+      retart_client_watcher.data = this;
+      ev_timer_init(&retart_client_watcher, restart_client_w_cb, 0.0, 0.);
+      ev_timer_start(worker->loop, &retart_client_watcher);
       return;
   }
   std::cout << "Process Request Failure:" << worker->stats.req_failed
