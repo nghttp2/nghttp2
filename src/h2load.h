@@ -122,7 +122,7 @@ struct Config {
   // preference.
   std::vector<std::string> npn_list;
   // The number of request per second for each client.
-  double rps;
+  std::atomic<double> rps;
   uint64_t req_variable_start;
   uint64_t req_variable_end;
   std::string req_variable_name;
@@ -141,6 +141,7 @@ struct Config {
   std::vector<nghttp2_nv> update_nva;
   std::vector<nghttp2_nv> delete_nva;
   uint16_t stream_timeout_in_ms;
+  std::string rps_file;
 
   Config();
   ~Config();

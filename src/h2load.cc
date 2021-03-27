@@ -865,6 +865,7 @@ void Client::reset_timeout_requests() {
   while (it != no_timeout_it) {
     if (streams.find(it->second) != streams.end()) {
       session->submit_rst_stream(it->second);
+      worker->stats.req_timedout++;
       call_signal_write = true;
     }
     it = stream_timestamp.erase(it);
@@ -2015,7 +2016,7 @@ namespace {
 void print_help(std::ostream &out) {
   print_usage(out);
 
-  auto config = Config();
+  Config config;
 
   out << R"(
   <URI>       Specify URI to access.   Multiple URIs can be specified.
@@ -2226,6 +2227,9 @@ Options:
   --stream-timeout-interval-ms=<timeout value in ms>
               request time out  value.  After  timeout,  RST_STREAM is
               sent by h2load. Default 5000.
+  --rps-input-file=<PATH>
+              A file specifying rps number.  It is useful when dynamic
+              change of rps is needed.
   -v, --verbose
               Output debug information.
   --version   Display version information and exit.
@@ -2324,6 +2328,7 @@ int main(int argc, char **argv) {
         {"crud-request-variable-value-start", required_argument, &flag, 21},
         {"crud-request-variable-value-end", required_argument, &flag, 22},
         {"stream-timeout-interval-ms", required_argument, &flag, 23},
+        {"rps-input-file", required_argument, &flag, 24},
         {nullptr, 0, nullptr, 0}};
     int option_index = 0;
     auto c = getopt_long(argc, argv,
@@ -2623,6 +2628,10 @@ int main(int argc, char **argv) {
       break;
       case 23: {
         config.stream_timeout_in_ms = (uint16_t)strtoul(optarg, nullptr, 10);
+      }
+      break;
+      case 24: {
+        config.rps_file = optarg;
       }
       break;
     }
@@ -3153,11 +3162,41 @@ int main(int argc, char **argv) {
             }
           });
 
+  std::future<void> fu_update_rps =
+          std::async(std::launch::async, [&workers_stopped]() {
+            while (!workers_stopped) {
+              std::this_thread::sleep_for(std::chrono::seconds(1));
+              std::ifstream file;
+              file.open(config.rps_file);
+              std::string line;
+              if (!file)
+              {
+                std::cerr << "Error: Could not find:"<<config.rps_file;
+              }
+              else
+              {
+                std::getline(file, line);
+                file.close();
+                char* end;
+                auto v = std::strtod(line.c_str(), &end);
+                if (end == line.c_str() || *end != '\0' || !std::isfinite(v) ||
+                    1. / v < 1e-6) {
+                  std::cerr << "--rps: Invalid value, skip: " << line << std::endl;
+                }
+                else if (v != config.rps) {
+                  config.rps = v;
+                }
+              }
+            }
+          });
+
+
   for (auto &fut : futures) {
     fut.get();
   }
   workers_stopped = true;
   fu_tps.get();
+  fu_update_rps.get();
 
 #else  // NOTHREADS
   auto rate = config.rate;
