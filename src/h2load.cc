@@ -3164,7 +3164,7 @@ int main(int argc, char **argv) {
 
   std::future<void> fu_update_rps =
           std::async(std::launch::async, [&workers_stopped]() {
-            while (!workers_stopped) {
+            while (!config.rps_file.empty() && !workers_stopped) {
               std::this_thread::sleep_for(std::chrono::seconds(1));
               std::ifstream file;
               file.open(config.rps_file);
