@@ -206,6 +206,7 @@ void generate_cid(ngtcp2_cid &dest) {
 
 namespace {
 int select_preferred_addr(ngtcp2_conn *conn, ngtcp2_addr *dest,
+                          void **ppath_user_data,
                           const ngtcp2_preferred_addr *paddr, void *user_data) {
   return 0;
 }
