@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "H2LOAD" "1" "Feb 02, 2021" "1.43.0" "nghttp2"
+.TH "H2LOAD" "1" "Apr 02, 2021" "1.44.0-DEV" "nghttp2"
 .SH NAME
 h2load \- HTTP/2 benchmarking tool
 .
@@ -168,7 +168,7 @@ option is 1s.
 .UNINDENT
 .INDENT 0.0
 .TP
-.B \-D, \-\-duration=<N>
+.B \-D, \-\-duration=<DURATION>
 Specifies the main duration for the measurements in case
 of timing\-based  benchmarking.  \fI\%\-D\fP  and \fI\%\-r\fP  are mutually
 exclusive.
@@ -220,7 +220,8 @@ to the  number of  script lines.   The scheme,  host and
 port defined in  the first URI are  used solely.  Values
 contained  in  other  URIs,  if  present,  are  ignored.
 Definition of a  base URI overrides all  scheme, host or
-port values.
+port   values.   \fI\%\-\-timing\-script\-file\fP   and  \fI\%\-\-rps\fP   are
+mutually exclusive.
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -287,6 +288,12 @@ to buffering.  Status code is \-1 for failed streams.
 .B \-\-connect\-to=<HOST>[:<PORT>]
 Host and port to connect  instead of using the authority
 in <URI>.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-rps=<N>
+Specify request  per second for each  client.  \fI\%\-\-rps\fP and
+\fI\%\-\-timing\-script\-file\fP are mutually exclusive.
 .UNINDENT
 .INDENT 0.0
 .TP

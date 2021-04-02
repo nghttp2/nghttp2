@@ -134,7 +134,7 @@ OPTIONS
     the rate option is not used.  The default value for this
     option is 1s.
 
-.. option:: -D, --duration=<N>
+.. option:: -D, --duration=<DURATION>
 
     Specifies the main duration for the measurements in case
     of timing-based  benchmarking.  :option:`-D`  and :option:`\-r`  are mutually
@@ -183,7 +183,8 @@ OPTIONS
     port defined in  the first URI are  used solely.  Values
     contained  in  other  URIs,  if  present,  are  ignored.
     Definition of a  base URI overrides all  scheme, host or
-    port values.
+    port   values.   :option:`--timing-script-file`   and  :option:`\--rps`   are
+    mutually exclusive.
 
 .. option:: -B, --base-uri=(<URI>|unix:<PATH>)
 
@@ -243,6 +244,11 @@ OPTIONS
 
     Host and port to connect  instead of using the authority
     in <URI>.
+
+.. option:: --rps=<N>
+
+    Specify request  per second for each  client.  :option:`--rps` and
+    :option:`--timing-script-file` are mutually exclusive.
 
 .. option:: -v, --verbose
 

@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTPX" "1" "Feb 02, 2021" "1.43.0" "nghttp2"
+.TH "NGHTTPX" "1" "Apr 02, 2021" "1.44.0-DEV" "nghttp2"
 .SH NAME
 nghttpx \- HTTP/2 proxy
 .
@@ -1006,19 +1006,19 @@ Default: \fB1s\fP
 .UNINDENT
 .INDENT 0.0
 .TP
-.B \-\-no\-http2\-cipher\-black\-list
-Allow  black  listed  cipher suite  on  frontend  HTTP/2
+.B \-\-no\-http2\-cipher\-block\-list
+Allow  block  listed  cipher suite  on  frontend  HTTP/2
 connection.                                          See
 \fI\%https://tools.ietf.org/html/rfc7540#appendix\-A\fP  for  the
-complete HTTP/2 cipher suites black list.
+complete HTTP/2 cipher suites block list.
 .UNINDENT
 .INDENT 0.0
 .TP
-.B \-\-client\-no\-http2\-cipher\-black\-list
-Allow  black  listed  cipher  suite  on  backend  HTTP/2
+.B \-\-client\-no\-http2\-cipher\-block\-list
+Allow  block  listed  cipher  suite  on  backend  HTTP/2
 connection.                                          See
 \fI\%https://tools.ietf.org/html/rfc7540#appendix\-A\fP  for  the
-complete HTTP/2 cipher suites black list.
+complete HTTP/2 cipher suites block list.
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -1043,9 +1043,9 @@ in hex.  An  empty line, and line which  starts with \(aq#\(aq
 are skipped.  The default  enabled cipher list might not
 contain any PSK cipher suite.  In that case, desired PSK
 cipher suites  must be  enabled using  \fI\%\-\-ciphers\fP option.
-The  desired PSK  cipher suite  may be  black listed  by
+The  desired PSK  cipher suite  may be  block listed  by
 HTTP/2.   To  use  those   cipher  suites  with  HTTP/2,
-consider  to  use  \fI\%\-\-no\-http2\-cipher\-black\-list\fP  option.
+consider  to  use  \fI\%\-\-no\-http2\-cipher\-block\-list\fP  option.
 But be aware its implications.
 .UNINDENT
 .INDENT 0.0
@@ -1060,9 +1060,9 @@ The first identity and  secret pair encountered is used.
 The default  enabled cipher  list might not  contain any
 PSK  cipher suite.   In  that case,  desired PSK  cipher
 suites  must be  enabled using  \fI\%\-\-client\-ciphers\fP option.
-The  desired PSK  cipher suite  may be  black listed  by
+The  desired PSK  cipher suite  may be  block listed  by
 HTTP/2.   To  use  those   cipher  suites  with  HTTP/2,
-consider   to  use   \fI\%\-\-client\-no\-http2\-cipher\-black\-list\fP
+consider   to  use   \fI\%\-\-client\-no\-http2\-cipher\-block\-list\fP
 option.  But be aware its implications.
 .UNINDENT
 .INDENT 0.0
@@ -1669,10 +1669,10 @@ be used to drop root privileges.
 .B \-\-single\-process
 Run this program in a  single process mode for debugging
 purpose.  Without this option,  nghttpx creates at least
-2  processes:  master  and worker  processes.   If  this
-option is  used, master  and worker  are unified  into a
-single process.  nghttpx still spawns additional process
-if neverbleed is used.  In  the single process mode, the
+2 processes: main and  worker processes.  If this option
+is  used, main  and  worker are  unified  into a  single
+process.   nghttpx still  spawns  additional process  if
+neverbleed  is used.   In the  single process  mode, the
 signal handling feature is disabled.
 .UNINDENT
 .SS Scripting
