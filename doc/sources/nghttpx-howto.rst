@@ -445,10 +445,10 @@ nghttpx server accepts any of the identity and secret pairs in the
 file.  The default cipher suite list does not contain PSK cipher
 suites.  In order to use PSK, PSK cipher suite must be enabled by
 using :option:`--ciphers` option.  The desired PSK cipher suite may be
-listed in `HTTP/2 cipher black list
+listed in `HTTP/2 cipher block list
 <https://tools.ietf.org/html/rfc7540#appendix-A>`_.  In order to use
-such PSK cipher suite with HTTP/2, disable HTTP/2 cipher black list by
-using :option:`--no-http2-cipher-black-list` option.  But you should
+such PSK cipher suite with HTTP/2, disable HTTP/2 cipher block list by
+using :option:`--no-http2-cipher-block-list` option.  But you should
 understand its implications.
 
 At the time of writing, even if only PSK cipher suites are specified
@@ -468,10 +468,10 @@ used, like so:
 The default cipher suite list does not contain PSK cipher suites.  In
 order to use PSK, PSK cipher suite must be enabled by using
 :option:`--client-ciphers` option.  The desired PSK cipher suite may
-be listed in `HTTP/2 cipher black list
+be listed in `HTTP/2 cipher block list
 <https://tools.ietf.org/html/rfc7540#appendix-A>`_.  In order to use
-such PSK cipher suite with HTTP/2, disable HTTP/2 cipher black list by
-using :option:`--client-no-http2-cipher-black-list` option.  But you
+such PSK cipher suite with HTTP/2, disable HTTP/2 cipher block list by
+using :option:`--client-no-http2-cipher-block-list` option.  But you
 should understand its implications.
 
 TLSv1.3
@@ -516,10 +516,10 @@ As of nghttpx v1.19.0, :option:`--ciphers` option only changes cipher
 list for frontend TLS connection.  In order to change cipher list for
 backend connection, use :option:`--client-ciphers` option.
 
-Similarly, :option:`--no-http2-cipher-black-list` option only disables
-HTTP/2 cipher black list for frontend connection.  In order to disable
-HTTP/2 cipher black list for backend connection, use
-:option:`--client-no-http2-cipher-black-list` option.
+Similarly, :option:`--no-http2-cipher-block-list` option only disables
+HTTP/2 cipher block list for frontend connection.  In order to disable
+HTTP/2 cipher block list for backend connection, use
+:option:`--client-no-http2-cipher-block-list` option.
 
 ``--accept-proxy-protocol`` option was deprecated.  Instead, use
 ``proxyproto`` parameter in :option:`--frontend` option to enable

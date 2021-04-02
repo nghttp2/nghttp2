@@ -117,7 +117,7 @@ TLSSessionInfo *get_tls_session_info(TLSSessionInfo *tls_info, SSL *ssl) {
 }
 
 /* Conditional logic w/ lookup tables to check if id is one of the
-   the black listed cipher suites for HTTP/2 described in RFC 7540.
+   the block listed cipher suites for HTTP/2 described in RFC 7540.
    https://github.com/jay/http2_blacklisted_ciphers
 */
 #define IS_CIPHER_BANNED_METHOD2(id)                                           \
@@ -132,7 +132,7 @@ TLSSessionInfo *get_tls_session_info(TLSSessionInfo *tls_info, SSL *ssl) {
             [(id & 0xFF) / 8] &                                                \
         (1 << (id % 8))))
 
-bool check_http2_cipher_black_list(SSL *ssl) {
+bool check_http2_cipher_block_list(SSL *ssl) {
   int id = SSL_CIPHER_get_id(SSL_get_current_cipher(ssl)) & 0xFFFFFF;
 
   return IS_CIPHER_BANNED_METHOD2(id);
@@ -145,7 +145,7 @@ bool check_http2_tls_version(SSL *ssl) {
 }
 
 bool check_http2_requirement(SSL *ssl) {
-  return check_http2_tls_version(ssl) && !check_http2_cipher_black_list(ssl);
+  return check_http2_tls_version(ssl) && !check_http2_cipher_block_list(ssl);
 }
 
 void libssl_init() {

@@ -2388,16 +2388,16 @@ SSL/TLS:
               TLS HTTP/2 backends.
               Default: )"
       << util::duration_str(config->tls.dyn_rec.idle_timeout) << R"(
-  --no-http2-cipher-black-list
-              Allow  black  listed  cipher suite  on  frontend  HTTP/2
+  --no-http2-cipher-block-list
+              Allow  block  listed  cipher suite  on  frontend  HTTP/2
               connection.                                          See
               https://tools.ietf.org/html/rfc7540#appendix-A  for  the
-              complete HTTP/2 cipher suites black list.
-  --client-no-http2-cipher-black-list
-              Allow  black  listed  cipher  suite  on  backend  HTTP/2
+              complete HTTP/2 cipher suites block list.
+  --client-no-http2-cipher-block-list
+              Allow  block  listed  cipher  suite  on  backend  HTTP/2
               connection.                                          See
               https://tools.ietf.org/html/rfc7540#appendix-A  for  the
-              complete HTTP/2 cipher suites black list.
+              complete HTTP/2 cipher suites block list.
   --tls-sct-dir=<DIR>
               Specifies the  directory where  *.sct files  exist.  All
               *.sct   files   in  <DIR>   are   read,   and  sent   as
@@ -2416,9 +2416,9 @@ SSL/TLS:
               are skipped.  The default  enabled cipher list might not
               contain any PSK cipher suite.  In that case, desired PSK
               cipher suites  must be  enabled using  --ciphers option.
-              The  desired PSK  cipher suite  may be  black listed  by
+              The  desired PSK  cipher suite  may be  block listed  by
               HTTP/2.   To  use  those   cipher  suites  with  HTTP/2,
-              consider  to  use  --no-http2-cipher-black-list  option.
+              consider  to  use  --no-http2-cipher-block-list  option.
               But be aware its implications.
   --client-psk-secrets=<PATH>
               Read PSK identity and secrets from <PATH>.  This is used
@@ -2430,9 +2430,9 @@ SSL/TLS:
               The default  enabled cipher  list might not  contain any
               PSK  cipher suite.   In  that case,  desired PSK  cipher
               suites  must be  enabled using  --client-ciphers option.
-              The  desired PSK  cipher suite  may be  black listed  by
+              The  desired PSK  cipher suite  may be  block listed  by
               HTTP/2.   To  use  those   cipher  suites  with  HTTP/2,
-              consider   to  use   --client-no-http2-cipher-black-list
+              consider   to  use   --client-no-http2-cipher-block-list
               option.  But be aware its implications.
   --tls-no-postpone-early-data
               By default,  nghttpx postpones forwarding  HTTP requests
@@ -3531,6 +3531,9 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_TLS13_CLIENT_CIPHERS.c_str(), required_argument, &flag, 165},
         {SHRPX_OPT_NO_STRIP_INCOMING_EARLY_DATA.c_str(), no_argument, &flag,
          166},
+        {SHRPX_OPT_NO_HTTP2_CIPHER_BLOCK_LIST.c_str(), no_argument, &flag, 167},
+        {SHRPX_OPT_CLIENT_NO_HTTP2_CIPHER_BLOCK_LIST.c_str(), no_argument,
+         &flag, 168},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -4322,6 +4325,16 @@ int main(int argc, char **argv) {
       case 166:
         // --no-strip-incoming-early-data
         cmdcfgs.emplace_back(SHRPX_OPT_NO_STRIP_INCOMING_EARLY_DATA,
+                             StringRef::from_lit("yes"));
+        break;
+      case 167:
+        // --no-http2-cipher-block-list
+        cmdcfgs.emplace_back(SHRPX_OPT_NO_HTTP2_CIPHER_BLOCK_LIST,
+                             StringRef::from_lit("yes"));
+        break;
+      case 168:
+        // --client-no-http2-cipher-block-list
+        cmdcfgs.emplace_back(SHRPX_OPT_CLIENT_NO_HTTP2_CIPHER_BLOCK_LIST,
                              StringRef::from_lit("yes"));
         break;
       default:

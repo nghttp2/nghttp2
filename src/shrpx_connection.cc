@@ -616,18 +616,18 @@ int Connection::check_http2_requirement() {
     return -1;
   }
 
-  auto check_black_list = false;
+  auto check_block_list = false;
   if (tls.server_handshake) {
-    check_black_list = !get_config()->tls.no_http2_cipher_black_list;
+    check_block_list = !get_config()->tls.no_http2_cipher_block_list;
   } else {
-    check_black_list = !get_config()->tls.client.no_http2_cipher_black_list;
+    check_block_list = !get_config()->tls.client.no_http2_cipher_block_list;
   }
 
-  if (check_black_list &&
-      nghttp2::tls::check_http2_cipher_black_list(tls.ssl)) {
+  if (check_block_list &&
+      nghttp2::tls::check_http2_cipher_block_list(tls.ssl)) {
     if (LOG_ENABLED(INFO)) {
       LOG(INFO) << "The negotiated cipher suite is in HTTP/2 cipher suite "
-                   "black list.  HTTP/2 must not be used.";
+                   "block list.  HTTP/2 must not be used.";
     }
     return -1;
   }

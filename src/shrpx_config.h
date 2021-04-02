@@ -244,6 +244,8 @@ constexpr auto SHRPX_OPT_RESPONSE_HEADER_FIELD_BUFFER =
     StringRef::from_lit("response-header-field-buffer");
 constexpr auto SHRPX_OPT_MAX_RESPONSE_HEADER_FIELDS =
     StringRef::from_lit("max-response-header-fields");
+constexpr auto SHRPX_OPT_NO_HTTP2_CIPHER_BLOCK_LIST =
+    StringRef::from_lit("no-http2-cipher-block-list");
 constexpr auto SHRPX_OPT_NO_HTTP2_CIPHER_BLACK_LIST =
     StringRef::from_lit("no-http2-cipher-black-list");
 constexpr auto SHRPX_OPT_BACKEND_HTTP1_TLS =
@@ -322,6 +324,8 @@ constexpr auto SHRPX_OPT_FRONTEND_KEEP_ALIVE_TIMEOUT =
 constexpr auto SHRPX_OPT_PSK_SECRETS = StringRef::from_lit("psk-secrets");
 constexpr auto SHRPX_OPT_CLIENT_PSK_SECRETS =
     StringRef::from_lit("client-psk-secrets");
+constexpr auto SHRPX_OPT_CLIENT_NO_HTTP2_CIPHER_BLOCK_LIST =
+    StringRef::from_lit("client-no-http2-cipher-block-list");
 constexpr auto SHRPX_OPT_CLIENT_NO_HTTP2_CIPHER_BLACK_LIST =
     StringRef::from_lit("client-no-http2-cipher-black-list");
 constexpr auto SHRPX_OPT_CLIENT_CIPHERS = StringRef::from_lit("client-ciphers");
@@ -652,7 +656,7 @@ struct TLSConfig {
     StringRef cert_file;
     StringRef ciphers;
     StringRef tls13_ciphers;
-    bool no_http2_cipher_black_list;
+    bool no_http2_cipher_block_list;
   } client;
 
   // PSK secrets.  The key is identity, and the associated value is
@@ -688,7 +692,7 @@ struct TLSConfig {
   int min_proto_version;
   int max_proto_version;
   bool insecure;
-  bool no_http2_cipher_black_list;
+  bool no_http2_cipher_block_list;
   // true if forwarding requests included in TLS early data should not
   // be postponed until TLS handshake finishes.
   bool no_postpone_early_data;
@@ -1066,6 +1070,7 @@ enum {
   SHRPX_OPTID_CLIENT_CERT_FILE,
   SHRPX_OPTID_CLIENT_CIPHERS,
   SHRPX_OPTID_CLIENT_NO_HTTP2_CIPHER_BLACK_LIST,
+  SHRPX_OPTID_CLIENT_NO_HTTP2_CIPHER_BLOCK_LIST,
   SHRPX_OPTID_CLIENT_PRIVATE_KEY_FILE,
   SHRPX_OPTID_CLIENT_PROXY,
   SHRPX_OPTID_CLIENT_PSK_SECRETS,
@@ -1121,6 +1126,7 @@ enum {
   SHRPX_OPTID_NO_ADD_X_FORWARDED_PROTO,
   SHRPX_OPTID_NO_HOST_REWRITE,
   SHRPX_OPTID_NO_HTTP2_CIPHER_BLACK_LIST,
+  SHRPX_OPTID_NO_HTTP2_CIPHER_BLOCK_LIST,
   SHRPX_OPTID_NO_KQUEUE,
   SHRPX_OPTID_NO_LOCATION_REWRITE,
   SHRPX_OPTID_NO_OCSP,

@@ -2282,6 +2282,9 @@ int option_lookup_token(const char *name, size_t namelen) {
       if (util::strieq_l("no-http2-cipher-black-lis", name, 25)) {
         return SHRPX_OPTID_NO_HTTP2_CIPHER_BLACK_LIST;
       }
+      if (util::strieq_l("no-http2-cipher-block-lis", name, 25)) {
+        return SHRPX_OPTID_NO_HTTP2_CIPHER_BLOCK_LIST;
+      }
       break;
     }
     break;
@@ -2402,6 +2405,9 @@ int option_lookup_token(const char *name, size_t namelen) {
     case 't':
       if (util::strieq_l("client-no-http2-cipher-black-lis", name, 32)) {
         return SHRPX_OPTID_CLIENT_NO_HTTP2_CIPHER_BLACK_LIST;
+      }
+      if (util::strieq_l("client-no-http2-cipher-block-lis", name, 32)) {
+        return SHRPX_OPTID_CLIENT_NO_HTTP2_CIPHER_BLOCK_LIST;
       }
       break;
     }
@@ -3487,8 +3493,11 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     return 0;
   }
   case SHRPX_OPTID_NO_HTTP2_CIPHER_BLACK_LIST:
-    config->tls.no_http2_cipher_black_list = util::strieq_l("yes", optarg);
-
+    LOG(WARN) << opt << ": deprecated.  Use "
+              << SHRPX_OPT_NO_HTTP2_CIPHER_BLOCK_LIST << " instead.";
+    // fall through
+  case SHRPX_OPTID_NO_HTTP2_CIPHER_BLOCK_LIST:
+    config->tls.no_http2_cipher_block_list = util::strieq_l("yes", optarg);
     return 0;
   case SHRPX_OPTID_BACKEND_HTTP1_TLS:
   case SHRPX_OPTID_BACKEND_TLS:
@@ -3690,7 +3699,11 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     return 0;
 #endif // LIBRESSL_LEGACY_API
   case SHRPX_OPTID_CLIENT_NO_HTTP2_CIPHER_BLACK_LIST:
-    config->tls.client.no_http2_cipher_black_list =
+    LOG(WARN) << opt << ": deprecated.  Use "
+              << SHRPX_OPT_CLIENT_NO_HTTP2_CIPHER_BLOCK_LIST << " instead.";
+    // fall through
+  case SHRPX_OPTID_CLIENT_NO_HTTP2_CIPHER_BLOCK_LIST:
+    config->tls.client.no_http2_cipher_block_list =
         util::strieq_l("yes", optarg);
 
     return 0;
