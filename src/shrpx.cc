@@ -124,10 +124,10 @@ constexpr auto ENV_UNIX_PATH = StringRef::from_lit("NGHTTP2_UNIX_PATH");
 // descriptor.  <PATH> is a path to UNIX domain socket.
 constexpr auto ENV_ACCEPT_PREFIX = StringRef::from_lit("NGHTTPX_ACCEPT_");
 
-// This environment variable contains PID of the original master
-// process, assuming that it created this master process as a result
-// of SIGUSR2.  The new master process is expected to send QUIT signal
-// to the original master process to shut it down gracefully.
+// This environment variable contains PID of the original main
+// process, assuming that it created this main process as a result of
+// SIGUSR2.  The new main process is expected to send QUIT signal to
+// the original main process to shut it down gracefully.
 constexpr auto ENV_ORIG_PID = StringRef::from_lit("NGHTTPX_ORIG_PID");
 
 #ifndef _KERNEL_FASTOPEN
@@ -419,7 +419,7 @@ void exec_binary() {
 
   // child process
 
-  shrpx_signal_unset_master_proc_ign_handler();
+  shrpx_signal_unset_main_proc_ign_handler();
 
   rv = shrpx_signal_unblock_all();
   if (rv != 0) {
@@ -548,7 +548,7 @@ void ipc_send(WorkerProcess *wp, uint8_t ipc_event) {
 
 namespace {
 void reopen_log(WorkerProcess *wp) {
-  LOG(NOTICE) << "Reopening log files: master process";
+  LOG(NOTICE) << "Reopening log files: main process";
 
   auto config = get_config();
   auto &loggingconf = config->logging;
@@ -1092,7 +1092,7 @@ void close_unused_inherited_addr(const std::vector<InheritedAddr> &iaddrs) {
 } // namespace
 
 namespace {
-// Returns the PID of the original master process from environment
+// Returns the PID of the original main process from environment
 // variable ENV_ORIG_PID.
 pid_t get_orig_pid_from_env() {
   auto s = getenv(ENV_ORIG_PID.c_str());
@@ -1310,7 +1310,7 @@ namespace {
 int event_loop() {
   std::array<char, STRERROR_BUFSIZE> errbuf;
 
-  shrpx_signal_set_master_proc_ign_handler();
+  shrpx_signal_set_main_proc_ign_handler();
 
   auto config = mod_config();
 
@@ -1369,7 +1369,7 @@ int event_loop() {
   shrpx_sd_notifyf(0, "READY=1");
 
   if (orig_pid != -1) {
-    LOG(NOTICE) << "Send QUIT signal to the original master process to tell "
+    LOG(NOTICE) << "Send QUIT signal to the original main process to tell "
                    "that we are ready to serve requests.";
     kill(orig_pid, SIGQUIT);
   }
@@ -2833,10 +2833,10 @@ Process:
   --single-process
               Run this program in a  single process mode for debugging
               purpose.  Without this option,  nghttpx creates at least
-              2  processes:  master  and worker  processes.   If  this
-              option is  used, master  and worker  are unified  into a
-              single process.  nghttpx still spawns additional process
-              if neverbleed is used.  In  the single process mode, the
+              2 processes: main and  worker processes.  If this option
+              is  used, main  and  worker are  unified  into a  single
+              process.   nghttpx still  spawns  additional process  if
+              neverbleed  is used.   In the  single process  mode, the
               signal handling feature is disabled.
 
 Scripting:

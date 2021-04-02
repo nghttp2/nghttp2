@@ -32,7 +32,7 @@ namespace shrpx {
 class ConnectionHandler;
 
 struct WorkerProcessConfig {
-  // IPC socket to read event from master process
+  // IPC socket to read event from main process
   int ipc_fd;
   // IPv4 or UNIX domain socket, or -1 if not used
   int server_fd;

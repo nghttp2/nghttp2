@@ -49,8 +49,8 @@ int shrpx_signal_unblock_all();
 // -1.  The errno will indicate the error.
 int shrpx_signal_set(sigset_t *set);
 
-int shrpx_signal_set_master_proc_ign_handler();
-int shrpx_signal_unset_master_proc_ign_handler();
+int shrpx_signal_set_main_proc_ign_handler();
+int shrpx_signal_unset_main_proc_ign_handler();
 
 int shrpx_signal_set_worker_proc_ign_handler();
 int shrpx_signal_unset_worker_proc_ign_handler();
