@@ -577,7 +577,7 @@ const request *session_impl::submit(boost::system::error_code &ec,
 }
 
 void session_impl::shutdown() {
-  if (stopped_) {
+  if (session_ == nullptr || stopped_) {
     return;
   }
 
