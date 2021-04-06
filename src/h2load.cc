@@ -2211,13 +2211,13 @@ Options:
               HTTP METHOD for Create operationto override the  default
               method (GET/POST)
   --crud-read-method=<METHOD>
-              HTTP METHOD to for CRUD Read operation
+              HTTP METHOD for CRUD Read operation
   --crud-update-method=<METHOD>
-              HTTP METHOD to for CRUD Update operation
+              HTTP METHOD for CRUD Update operation
   --crud-delete-method=<METHOD>
-              HTTP METHOD to for CRUD Delete operation
+              HTTP METHOD for CRUD Delete operation
   --crud-resource-header-name=<header name>
-              name of the header which containers the resource created
+              name of the  header  which contains the resource created
               If not specified, header name 'location' is assumed
   --crud-create-data-file=<file name>
               name of the data file for  Create operation. If present,
