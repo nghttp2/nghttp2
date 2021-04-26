@@ -2218,7 +2218,6 @@ Options:
               HTTP METHOD for CRUD Delete operation
   --crud-resource-header-name=<header name>
               name of the  header  which contains the resource created
-              If not specified, header name 'location' is assumed
   --crud-create-data-file=<file name>
               name of the data file for  Create operation. If present,
               this overrides the file name provided in 'data' option
@@ -2974,12 +2973,6 @@ int main(int argc, char **argv) {
     config.nva.push_back(std::move(nva));
   }
 
-  if ((!config.crud_read_method.empty() ||
-       !config.crud_update_method.empty() ||
-       !config.crud_delete_method.empty()) &&
-      config.crud_resource_header_name.empty()) {
-    config.crud_resource_header_name = "location";
-  }
   if (!config.crud_read_method.empty()) {
     config.read_nva = config.nva[0];
     replace_header_in_nva(config.read_nva, ":method", config.crud_read_method);

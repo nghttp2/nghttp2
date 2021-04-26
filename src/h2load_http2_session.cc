@@ -388,15 +388,14 @@ int Http2Session::submit_request() {
     int64_t path_nv_index = -1;
     uint64_t curr_stream_var_value = client_->worker->curr_req_variable_value;
 
-    std::string new_path;
+    std::string path_header_value;
     if (!config->req_variable_name.empty() && config->req_variable_end) {
       for (size_t i = 0; i < nva.size(); i++) {
         std::string header_name((const char*)nva[i].name, nva[i].namelen);
         if (header_name == ":path") {
           path_nv_with_variable = nva[i];
-          std::string path_value((const char*)nva[i].value, nva[i].valuelen);
-          if (path_value.find(config->req_variable_name) != std::string::npos) {
-            new_path = path_value;
+          path_header_value.assign((const char*)nva[i].value, nva[i].valuelen);
+          if (path_header_value.find(config->req_variable_name) != std::string::npos) {
             size_t full_length = std::to_string(config->req_variable_end).size();
             std::string curr_var_value = std::to_string(client_->worker->curr_req_variable_value);
             std::string padding;
@@ -405,9 +404,9 @@ int Http2Session::submit_request() {
               padding.append("0");
             }
             curr_var_value.insert(0, padding);
-            new_path = std::regex_replace(new_path, std::regex(config->req_variable_name), curr_var_value);
-            nva[i].value = (uint8_t*)new_path.c_str();
-            nva[i].valuelen = new_path.size();
+            path_header_value = std::regex_replace(path_header_value, std::regex(config->req_variable_name), curr_var_value);
+            nva[i].value = (uint8_t*)path_header_value.c_str();
+            nva[i].valuelen = path_header_value.size();
             path_nv_index = i;
           }
           if (client_->reqidx == nvas.size() -1 ) {
@@ -426,8 +425,24 @@ int Http2Session::submit_request() {
         nghttp2_submit_request(session_, nullptr, nva.data(), nva.size(),
                                config->data_fd == -1 ? nullptr : &prd, nullptr);
 
-    if (stream_id > 0 && !config->crud_resource_header_name.empty() && (-1 != path_nv_index)) {
+    if (stream_id > 0) {
+      if (!config->crud_resource_header_name.empty()) {
         client_->streams_waiting_for_create_response[stream_id] = curr_stream_var_value;
+      }
+      else {
+        CRUD_data crud_data;
+        crud_data.user_id = curr_stream_var_value;
+        crud_data.resource_uri = path_header_value;
+        if (!config->crud_read_method.empty()) {
+          client_->resource_uris_to_read.push_back(crud_data);
+        }
+        else if (!config->crud_update_method.empty()) {
+          client_->resource_uris_to_update.push_back(crud_data);
+        }
+        else if (!config->crud_update_method.empty()) {
+          client_->resource_uris_to_delete.push_back(crud_data);
+        }
+      }
     }
 
     if (stream_id > 0 && !config->data_buffer.empty()) {
