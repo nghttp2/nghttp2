@@ -3133,23 +3133,42 @@ int main(int argc, char **argv) {
           std::async(std::launch::async, [&workers, &workers_stopped]() {
             size_t totalReq_till_now = 0;
             size_t totalReq_success_till_now = 0;
+            size_t total3xx_till_now = 0;
+            size_t total4xx_till_now = 0;
+            size_t total5xx_till_now = 0;
             while (!workers_stopped) {
               size_t total_req_till_last_interval = totalReq_till_now;
               size_t totalReq_success_till_last_interval = totalReq_success_till_now;
+              size_t total3xx_till_last_interval = total3xx_till_now;
+              size_t total4xx_till_last_interval = total4xx_till_now;
+              size_t total5xx_till_last_interval = total5xx_till_now;
               std::this_thread::sleep_for(std::chrono::seconds(1));
               totalReq_till_now = 0;
               totalReq_success_till_now = 0;
+              total3xx_till_now = 0;
+              total4xx_till_now = 0;
+              total5xx_till_now = 0;
               for (const auto &w : workers) {
                 const auto &s = w->stats;
                 totalReq_till_now += s.req_done;
-                totalReq_success_till_now += s.req_status_success;
+                totalReq_success_till_now += s.req_success;
+                total3xx_till_now += s.status[3];
+                total4xx_till_now += s.status[4];
+                total5xx_till_now += s.status[5];
               }
               size_t delta_TPS = totalReq_till_now - total_req_till_last_interval;
               size_t delta_TPS_success = totalReq_success_till_now - totalReq_success_till_last_interval;
+              size_t delta_TPS_3xx = total3xx_till_now - total3xx_till_last_interval;
+              size_t delta_TPS_4xx = total4xx_till_now - total4xx_till_last_interval;
+              size_t delta_TPS_5xx = total5xx_till_now - total5xx_till_last_interval;
               auto now = std::chrono::system_clock::now();
               auto now_c = std::chrono::system_clock::to_time_t(now);
               std::cout << std::put_time(std::localtime(&now_c), "%c")
-                        << ", Request per second: "<<delta_TPS
+                        << ", actual RPS: "<<delta_TPS
+                        << ", successful response: " << delta_TPS_success
+                        << ", 3xx: " << delta_TPS_3xx
+                        << ", 4xx: " << delta_TPS_4xx
+                        << ", 5xx: " << delta_TPS_5xx
                         <<", successful rate: "
                         <<(((double)delta_TPS_success/delta_TPS)*100)<<"%"<<std::endl;
             }
