@@ -2722,6 +2722,19 @@ NGHTTP2_EXTERN void nghttp2_option_set_max_settings(nghttp2_option *option,
 /**
  * @function
  *
+ * This option prevents the library from sending empty SETTINGS frame with ACK
+ * flag set automatically when SETTINGS frame is received.
+ * If this option is set to nonzero, the library won't send empty
+ * SETTINGS frame with ACK flag set in the response for incoming SETTINGS
+ * frame.  The application can send SETTINGS frame with ACK flag set using
+ * `nghttp2_submit_settings()` with :enum:`nghttp2_flag.NGHTTP2_FLAG_ACK`
+ * as flags parameter.
+ */
+NGHTTP2_EXTERN void nghttp2_option_set_no_auto_settings_ack(nghttp2_option *option, int val);
+
+/**
+ * @function
+ *
  * Initializes |*session_ptr| for client use.  The all members of
  * |callbacks| are copied to |*session_ptr|.  Therefore |*session_ptr|
  * does not store |callbacks|.  The |user_data| is an arbitrary user
@@ -4228,8 +4241,21 @@ NGHTTP2_EXTERN int nghttp2_submit_rst_stream(nghttp2_session *session,
  * pointer to the array of :type:`nghttp2_settings_entry`.  The |niv|
  * indicates the number of :type:`nghttp2_settings_entry`.
  *
- * The |flags| is currently ignored and should be
- * :enum:`nghttp2_flag.NGHTTP2_FLAG_NONE`.
+ * The |flags| must be one of the following values:
+ *
+ * * :enum:`nghttp2_flag.NGHTTP2_FLAG_NONE`
+ * * :enum:`nghttp2_flag.NGHTTP2_FLAG_ACK`
+ *
+ * Unless `nghttp2_option_set_no_auto_settings_ack()` is used, the |flags|
+ * should be :enum:`nghttp2_flag.NGHTTP2_FLAG_NONE` and
+ * SETTINGS with :enum:`nghttp2_flag.NGHTTP2_FLAG_ACK` is
+ * automatically submitted by the library and application could not
+ * send it at its will.
+ *
+ * Otherwise the application must confirm the received settings by
+ * calling `nghttp2_submit_settings` with the flags set to
+ * :enum:`nghttp2_flag.NGHTTP2_FLAG_ACK` and empty settings
+ * (e.g. the |niv| must be 0).
  *
  * This function does not take ownership of the |iv|.  This function
  * copies all the elements in the |iv|.
@@ -4238,16 +4264,19 @@ NGHTTP2_EXTERN int nghttp2_submit_rst_stream(nghttp2_session *session,
  * size becomes strictly larger than NGHTTP2_MAX_WINDOW_SIZE,
  * RST_STREAM is issued against such a stream.
  *
- * SETTINGS with :enum:`nghttp2_flag.NGHTTP2_FLAG_ACK` is
- * automatically submitted by the library and application could not
- * send it at its will.
- *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
  *
  * :enum:`nghttp2_error.NGHTTP2_ERR_INVALID_ARGUMENT`
  *     The |iv| contains invalid value (e.g., initial window size
- *     strictly greater than (1 << 31) - 1.
+ *     strictly greater than (1 << 31) - 1;
+ *     or the |flags| is set to :enum:`nghttp2_flag.NGHTTP2_FLAG_ACK`
+ *     but the manual SETTINGS confirmation was not configured with
+ *     `nghttp2_option_set_no_auto_settings_ack()`;
+ *     or the |flags| is set to :enum:`nghttp2_flag.NGHTTP2_FLAG_ACK`
+ *     and the |niv| is non-zero;
+ *     or the |flags| is neither :enum:`nghttp2_flag.NGHTTP2_FLAG_NONE`
+ *     nor :enum:`nghttp2_flag.NGHTTP2_FLAG_ACK`.
  * :enum:`nghttp2_error.NGHTTP2_ERR_NOMEM`
  *     Out of memory.
  */

@@ -126,3 +126,8 @@ void nghttp2_option_set_max_settings(nghttp2_option *option, size_t val) {
   option->opt_set_mask |= NGHTTP2_OPT_MAX_SETTINGS;
   option->max_settings = val;
 }
+
+void nghttp2_option_set_no_auto_settings_ack(nghttp2_option *option, int val) {
+    option->opt_set_mask |= NGHTTP2_OPT_NO_AUTO_SETTINGS_ACK;
+    option->no_auto_settings_ack = val;
+}

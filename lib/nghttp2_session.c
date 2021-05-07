@@ -527,6 +527,11 @@ static int session_new(nghttp2_session **session_ptr,
         option->max_settings) {
       (*session_ptr)->max_settings = option->max_settings;
     }
+
+    if ((option->opt_set_mask & NGHTTP2_OPT_NO_AUTO_SETTINGS_ACK) &&
+        option->no_auto_settings_ack) {
+      (*session_ptr)->opt_flags |= NGHTTP2_OPTMASK_NO_AUTO_SETTINGS_ACK;
+    }
   }
 
   rv = nghttp2_hd_deflate_init2(&(*session_ptr)->hd_deflater,
@@ -4546,7 +4551,7 @@ int nghttp2_session_on_settings_received(nghttp2_session *session,
     }
   }
 
-  if (!noack && !session_is_closing(session)) {
+  if (!(session->opt_flags & NGHTTP2_OPTMASK_NO_AUTO_SETTINGS_ACK) && !noack && !session_is_closing(session)) {
     rv = nghttp2_session_add_settings(session, NGHTTP2_FLAG_ACK, NULL, 0);
 
     if (rv != 0) {

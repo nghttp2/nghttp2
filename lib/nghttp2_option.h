@@ -68,6 +68,7 @@ typedef enum {
   NGHTTP2_OPT_NO_CLOSED_STREAMS = 1 << 10,
   NGHTTP2_OPT_MAX_OUTBOUND_ACK = 1 << 11,
   NGHTTP2_OPT_MAX_SETTINGS = 1 << 12,
+  NGHTTP2_OPT_NO_AUTO_SETTINGS_ACK = 1 << 13,
 } nghttp2_option_flag;
 
 /**
@@ -131,6 +132,10 @@ struct nghttp2_option {
    * NGHTTP2_OPT_USER_RECV_EXT_TYPES
    */
   uint8_t user_recv_ext_types[32];
+  /**
+   * NGHTTP2_OPT_NO_AUTO_SETTINGS_ACK
+   */
+  int no_auto_settings_ack;
 };
 
 #endif /* NGHTTP2_OPTION_H */
