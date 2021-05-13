@@ -891,8 +891,7 @@ int htp_msg_begincb(llhttp_t *htp) {
   auto downstream = static_cast<Downstream *>(htp->data);
 
   if (downstream->get_response_state() != DownstreamState::INITIAL) {
-    llhttp_set_error_reason(htp, "HTTP message started when it shouldn't");
-    return HPE_USER;
+    return -1;
   }
 
   return 0;

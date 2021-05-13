@@ -559,8 +559,7 @@ int htp_msg_completecb(llhttp_t *htp) {
       // signal_write() to run on_write().
       return HPE_PAUSED;
     }
-    llhttp_set_error_reason(htp, "could not finish request body");
-    return HPE_USER;
+    return -1;
   }
 
   if (handler->get_http2_upgrade_allowed() &&
