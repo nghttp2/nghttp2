@@ -169,7 +169,9 @@ Stats::Stats(size_t req_todo, size_t nclients)
       bytes_head(0),
       bytes_head_decomp(0),
       bytes_body(0),
-      status() {}
+      status(),
+      max_resp_time_us(0),
+      min_resp_time_us(0xFFFFFFFFFFFFFFFE) {}
 
 Stream::Stream() : req_stat{}, status_success(-1) {}
 CRUD_data::CRUD_data() : data_buffer(""), resource_uri(""), user_id(0) {}
@@ -1008,6 +1010,12 @@ void Client::on_stream_close(int32_t stream_id, bool success, bool final) {
     }
     ++worker->stats.req_done;
     ++req_done;
+
+    auto resp_time_us = std::chrono::duration_cast<std::chrono::microseconds>(
+          req_stat->stream_close_time - req_stat->request_time);
+
+    worker->stats.max_resp_time_us = std::max(worker->stats.max_resp_time_us.load(), (uint64_t)resp_time_us.count());
+    worker->stats.min_resp_time_us = std::min(worker->stats.min_resp_time_us.load(), (uint64_t)resp_time_us.count());
 
     if (worker->config->log_fd != -1) {
       auto start = std::chrono::duration_cast<std::chrono::microseconds>(
@@ -3148,13 +3156,17 @@ int main(int argc, char **argv) {
               total3xx_till_now = 0;
               total4xx_till_now = 0;
               total5xx_till_now = 0;
-              for (const auto &w : workers) {
-                const auto &s = w->stats;
+              uint64_t max_resp_time_us = 0;
+              uint64_t min_resp_time_us = 0xFFFFFFFFFFFFFFFE;
+              for (auto &w : workers) {
+                auto &s = w->stats;
                 totalReq_till_now += s.req_done;
                 totalReq_success_till_now += s.req_success;
                 total3xx_till_now += s.status[3];
                 total4xx_till_now += s.status[4];
                 total5xx_till_now += s.status[5];
+                max_resp_time_us = std::max(max_resp_time_us, s.max_resp_time_us.exchange(0));
+                min_resp_time_us = std::min(min_resp_time_us, s.min_resp_time_us.exchange(0xFFFFFFFFFFFFFFFE));
               }
               size_t delta_TPS = totalReq_till_now - total_req_till_last_interval;
               size_t delta_TPS_success = totalReq_success_till_now - totalReq_success_till_last_interval;
@@ -3169,6 +3181,8 @@ int main(int argc, char **argv) {
                         << ", 3xx: " << delta_TPS_3xx
                         << ", 4xx: " << delta_TPS_4xx
                         << ", 5xx: " << delta_TPS_5xx
+                        << ", max resp time (us): " << max_resp_time_us
+                        << ", min resp time (us): " << min_resp_time_us
                         <<", successful rate: "
                         <<(((double)delta_TPS_success/delta_TPS)*100)<<"%"<<std::endl;
             }

@@ -246,6 +246,8 @@ struct Stats {
   std::vector<RequestStat> req_stats;
   // The statistics per client
   std::vector<ClientStat> client_stats;
+  std::atomic<uint64_t> max_resp_time_us;
+  std::atomic<uint64_t> min_resp_time_us;
 };
 
 enum ClientState { CLIENT_IDLE, CLIENT_CONNECTED };
