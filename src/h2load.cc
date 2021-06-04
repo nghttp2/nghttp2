@@ -368,6 +368,15 @@ void rps_cb(struct ev_loop *loop, ev_timer *w, int revents) {
 } // namespace
 
 namespace {
+void stream_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
+  auto client = static_cast<Client *>(w->data);
+  auto &session = client->session;
+  client->reset_timeout_requests();
+
+}
+} // namespace
+
+namespace {
 // Called when an a connection has been inactive for a set period of time
 // or a fixed amount of time after all requests have been made on a
 // connection
@@ -485,6 +494,10 @@ Client::Client(uint32_t id, Worker *worker, size_t req_todo)
 
   ev_timer_init(&rps_watcher, rps_cb, 0., 0.);
   rps_watcher.data = this;
+
+  ev_timer_init(&stream_timeout_watcher, stream_timeout_cb, 0., 0.);
+  stream_timeout_watcher.data = this;
+
 }
 
 Client::~Client() {
@@ -1179,6 +1192,9 @@ int Client::connection_made() {
     ev_timer_again(worker->loop, &rps_watcher);
     rps_duration_started = ev_now(worker->loop);
   }
+
+  stream_timeout_watcher.repeat = 0.01;
+  ev_timer_again(worker->loop, &stream_timeout_watcher);
 
   if (config.rps_enabled()) {
     assert(req_left);
@@ -3139,6 +3155,7 @@ int main(int argc, char **argv) {
 
   std::future<void> fu_tps =
           std::async(std::launch::async, [&workers, &workers_stopped]() {
+            static uint32_t counter = 0;
             size_t totalReq_till_now = 0;
             size_t totalReq_success_till_now = 0;
             size_t total3xx_till_now = 0;
@@ -3177,14 +3194,28 @@ int main(int argc, char **argv) {
               auto now_c = std::chrono::system_clock::to_time_t(now);
               std::cout << std::put_time(std::localtime(&now_c), "%c")
                         << ", actual RPS: "<<delta_TPS
-                        << ", successful response: " << delta_TPS_success
+                        << ", successful responses: " << delta_TPS_success
                         << ", 3xx: " << delta_TPS_3xx
                         << ", 4xx: " << delta_TPS_4xx
                         << ", 5xx: " << delta_TPS_5xx
                         << ", max resp time (us): " << max_resp_time_us
                         << ", min resp time (us): " << min_resp_time_us
-                        <<", successful rate: "
+                        << ", successful rate: "
                         <<(((double)delta_TPS_success/delta_TPS)*100)<<"%"<<std::endl;
+              counter++;
+
+              if (counter == 30)
+              {
+                counter = 0;
+                std::cout << std::put_time(std::localtime(&now_c), "%c")
+                          << ", total requests sent: "<<totalReq_till_now
+                          << ", total successful responses: " << totalReq_success_till_now
+                          << ", total 3xx: " << total3xx_till_now
+                          << ", total 4xx: " << total4xx_till_now
+                          << ", total 5xx: " << total5xx_till_now
+                          << ", ovewrall successful rate: "
+                          <<(((double)totalReq_success_till_now/totalReq_till_now)*100)<<"%"<<std::endl;
+              }
             }
           });
 

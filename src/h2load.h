@@ -380,6 +380,7 @@ struct Client {
   // rps_watcher is a timer to invoke callback periodically to
   // generate a new request.
   ev_timer rps_watcher;
+  ev_timer stream_timeout_watcher;
   // The timestamp that starts the period which contributes to the
   // next request generation.
   ev_tstamp rps_duration_started;
