@@ -24,7 +24,7 @@ ngtcp2, nghttp3 and my patched OpenSSL.
 https://github.com/ngtcp2/ngtcp2#build-from-git describes how to build
 these three software.
 
-To run h2load against HTTP/3 server, specify h3 or h3-29 ALPN with
+To run h2load against HTTP/3 server, specify h3 ALPN with
 ``--npn-list`` option like so:
 
 .. code-block:: text
