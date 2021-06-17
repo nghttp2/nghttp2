@@ -9,6 +9,8 @@ set_source_files_properties(${cxx_sources} PROPERTIES
 
 include_directories(
   "${CMAKE_CURRENT_SOURCE_DIR}/includes"
+  "${CMAKE_CURRENT_SOURCE_DIR}/../lib/includes"
+  "${PROJECT_BINARY_DIR}/lib/includes"
   "${CMAKE_CURRENT_SOURCE_DIR}/../third-party"
   "${CMAKE_CURRENT_SOURCE_DIR}/../third-party/llhttp/include"
 
