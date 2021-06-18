@@ -344,6 +344,9 @@ struct nghttp2_session {
      bit is set, it indicates that incoming frame with that type is
      passed to user defined callbacks, otherwise they are ignored. */
   uint8_t user_recv_ext_types[32];
+  /* This flag is used to indicate that a callback is in process. It is used to
+     detect incorrect reentrant usage of nghttp2 in debug builds. */
+  uint8_t at_callback_depth;
 };
 
 /* Struct used when updating initial window size of each active

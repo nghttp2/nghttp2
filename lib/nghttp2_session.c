@@ -38,6 +38,24 @@
 #include "nghttp2_pq.h"
 #include "nghttp2_debug.h"
 
+#ifdef DEBUGBUILD
+#  define CALL_CALLBACK(session, fn, ...)                       \
+  ({                                                            \
+    typeof((session)->callbacks.fn(session, __VA_ARGS__)) cbrv; \
+    ++(session)->at_callback_depth;                             \
+    DEBUGF("session(%p) callback %s at depth %d - enter\n",     \
+      (session), #fn, (session)->at_callback_depth);            \
+    cbrv = (session)->callbacks.fn(session, __VA_ARGS__);       \
+    DEBUGF("session(%p) callback %s at depth %d - exit\n",      \
+      (session), #fn, (session)->at_callback_depth);            \
+    --(session)->at_callback_depth;                             \
+    cbrv;                                                       \
+  })
+#else
+#  define CALL_CALLBACK(session, fn, ...)                       \
+  (session)->callbacks.fn(session, __VA_ARGS__);
+#endif
+
 /*
  * Returns non-zero if the number of outgoing opened streams is larger
  * than or equal to
@@ -192,11 +210,11 @@ static int session_call_error_callback(nghttp2_session *session,
   }
 
   if (session->callbacks.error_callback2) {
-    rv = session->callbacks.error_callback2(session, lib_error_code, buf,
-                                            (size_t)rv, session->user_data);
+    rv = CALL_CALLBACK(session, error_callback2, lib_error_code, buf,
+                       (size_t)rv, session->user_data);
   } else {
-    rv = session->callbacks.error_callback(session, buf, (size_t)rv,
-                                           session->user_data);
+    rv = CALL_CALLBACK(session, error_callback, buf, (size_t)rv,
+                       session->user_data);
   }
 
   nghttp2_mem_free(mem, buf);
@@ -1204,11 +1222,14 @@ int nghttp2_session_close_stream(nghttp2_session *session, int32_t stream_id,
   */
 
   if (session->callbacks.on_stream_close_callback) {
+    ++session->at_callback_depth;
     if (session->callbacks.on_stream_close_callback(
             session, stream_id, error_code, session->user_data) != 0) {
+      --session->at_callback_depth;
 
       return NGHTTP2_ERR_CALLBACK_FAILURE;
     }
+    --session->at_callback_depth;
   }
 
   is_my_stream_id = nghttp2_session_is_my_stream_id(session, stream_id);
@@ -1884,8 +1905,10 @@ static ssize_t session_call_select_padding(nghttp2_session *session,
     max_paddedlen =
         nghttp2_min(frame->hd.length + NGHTTP2_MAX_PADLEN, max_payloadlen);
 
+    ++session->at_callback_depth;
     rv = session->callbacks.select_padding_callback(
         session, frame, max_paddedlen, session->user_data);
+    --session->at_callback_depth;
     if (rv < (ssize_t)frame->hd.length || rv > (ssize_t)max_paddedlen) {
       return NGHTTP2_ERR_CALLBACK_FAILURE;
     }
@@ -1955,8 +1978,10 @@ static int session_pack_extension(nghttp2_session *session, nghttp2_bufs *bufs,
   buf = &bufs->head->buf;
   buflen = nghttp2_min(nghttp2_buf_avail(buf), NGHTTP2_MAX_PAYLOADLEN);
 
+  ++session->at_callback_depth;
   rv = session->callbacks.pack_extension_callback(session, buf->last, buflen,
                                                   frame, session->user_data);
+  --session->at_callback_depth;
   if (rv == NGHTTP2_ERR_CANCEL) {
     return (int)rv;
   }
@@ -2398,8 +2423,10 @@ static int session_call_before_frame_send(nghttp2_session *session,
                                           nghttp2_frame *frame) {
   int rv;
   if (session->callbacks.before_frame_send_callback) {
+    ++session->at_callback_depth;
     rv = session->callbacks.before_frame_send_callback(session, frame,
                                                        session->user_data);
+    --session->at_callback_depth;
     if (rv == NGHTTP2_ERR_CANCEL) {
       return rv;
     }
@@ -2415,8 +2442,10 @@ static int session_call_on_frame_send(nghttp2_session *session,
                                       nghttp2_frame *frame) {
   int rv;
   if (session->callbacks.on_frame_send_callback) {
+    ++session->at_callback_depth;
     rv = session->callbacks.on_frame_send_callback(session, frame,
                                                    session->user_data);
+    --session->at_callback_depth;
     if (rv != 0) {
       return NGHTTP2_ERR_CALLBACK_FAILURE;
     }
@@ -2884,9 +2913,11 @@ static int session_call_send_data(nghttp2_session *session,
   length = frame->hd.length - frame->data.padlen;
   aux_data = &item->aux_data.data;
 
+  ++session->at_callback_depth;
   rv = session->callbacks.send_data_callback(session, frame, buf->pos, length,
                                              &aux_data->data_prd.source,
                                              session->user_data);
+  --session->at_callback_depth;
 
   switch (rv) {
   case 0:
@@ -2951,15 +2982,18 @@ static ssize_t nghttp2_session_mem_send_internal(nghttp2_session *session,
           /* The library is responsible for the transmission of
              WINDOW_UPDATE frame, so we don't call error callback for
              it. */
+          ++session->at_callback_depth;
           if (frame->hd.type != NGHTTP2_WINDOW_UPDATE &&
               session->callbacks.on_frame_not_send_callback(
                   session, frame, rv, session->user_data) != 0) {
+            --session->at_callback_depth;
 
             nghttp2_outbound_item_free(item, mem);
             nghttp2_mem_free(mem, item);
 
             return NGHTTP2_ERR_CALLBACK_FAILURE;
           }
+          --session->at_callback_depth;
         }
         /* We have to close stream opened by failed request HEADERS
            or PUSH_PROMISE. */
@@ -3031,10 +3065,13 @@ static ssize_t nghttp2_session_mem_send_internal(nghttp2_session *session,
           uint32_t error_code = NGHTTP2_INTERNAL_ERROR;
 
           if (session->callbacks.on_frame_not_send_callback) {
+            ++session->at_callback_depth;
             if (session->callbacks.on_frame_not_send_callback(
                     session, frame, rv, session->user_data) != 0) {
+              --session->at_callback_depth;
               return NGHTTP2_ERR_CALLBACK_FAILURE;
             }
+            --session->at_callback_depth;
           }
 
           /* We have to close stream opened by canceled request
@@ -3222,6 +3259,8 @@ ssize_t nghttp2_session_mem_send(nghttp2_session *session,
 
   *data_ptr = NULL;
 
+  assert(session->at_callback_depth == 0);
+
   len = nghttp2_session_mem_send_internal(session, data_ptr, 1);
   if (len <= 0) {
     return len;
@@ -3248,6 +3287,8 @@ int nghttp2_session_send(nghttp2_session *session) {
   ssize_t sentlen;
   nghttp2_bufs *framebufs;
 
+  assert(session->at_callback_depth == 0);
+
   framebufs = &session->aob.framebufs;
 
   for (;;) {
@@ -3255,8 +3296,10 @@ int nghttp2_session_send(nghttp2_session *session) {
     if (datalen <= 0) {
       return (int)datalen;
     }
+    ++session->at_callback_depth;
     sentlen = session->callbacks.send_callback(session, data, (size_t)datalen,
                                                0, session->user_data);
+    --session->at_callback_depth;
     if (sentlen < 0) {
       if (sentlen == NGHTTP2_ERR_WOULDBLOCK) {
         /* Transmission canceled. Rewind the offset */
@@ -3274,8 +3317,10 @@ int nghttp2_session_send(nghttp2_session *session) {
 static ssize_t session_recv(nghttp2_session *session, uint8_t *buf,
                             size_t len) {
   ssize_t rv;
+  ++session->at_callback_depth;
   rv = session->callbacks.recv_callback(session, buf, len, 0,
                                         session->user_data);
+  --session->at_callback_depth;
   if (rv > 0) {
     if ((size_t)rv > len) {
       return NGHTTP2_ERR_CALLBACK_FAILURE;
@@ -3292,8 +3337,10 @@ static int session_call_on_begin_frame(nghttp2_session *session,
 
   if (session->callbacks.on_begin_frame_callback) {
 
+    ++session->at_callback_depth;
     rv = session->callbacks.on_begin_frame_callback(session, hd,
                                                     session->user_data);
+    --session->at_callback_depth;
 
     if (rv != 0) {
       return NGHTTP2_ERR_CALLBACK_FAILURE;
@@ -3307,8 +3354,10 @@ static int session_call_on_frame_received(nghttp2_session *session,
                                           nghttp2_frame *frame) {
   int rv;
   if (session->callbacks.on_frame_recv_callback) {
+    ++session->at_callback_depth;
     rv = session->callbacks.on_frame_recv_callback(session, frame,
                                                    session->user_data);
+    --session->at_callback_depth;
     if (rv != 0) {
       return NGHTTP2_ERR_CALLBACK_FAILURE;
     }
@@ -3322,8 +3371,10 @@ static int session_call_on_begin_headers(nghttp2_session *session,
   DEBUGF("recv: call on_begin_headers callback stream_id=%d\n",
          frame->hd.stream_id);
   if (session->callbacks.on_begin_headers_callback) {
+    ++session->at_callback_depth;
     rv = session->callbacks.on_begin_headers_callback(session, frame,
                                                       session->user_data);
+    --session->at_callback_depth;
     if (rv == NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE) {
       return rv;
     }
@@ -3339,12 +3390,16 @@ static int session_call_on_header(nghttp2_session *session,
                                   const nghttp2_hd_nv *nv) {
   int rv = 0;
   if (session->callbacks.on_header_callback2) {
+    ++session->at_callback_depth;
     rv = session->callbacks.on_header_callback2(
         session, frame, nv->name, nv->value, nv->flags, session->user_data);
+    --session->at_callback_depth;
   } else if (session->callbacks.on_header_callback) {
+    ++session->at_callback_depth;
     rv = session->callbacks.on_header_callback(
         session, frame, nv->name->base, nv->name->len, nv->value->base,
         nv->value->len, nv->flags, session->user_data);
+    --session->at_callback_depth;
   }
 
   if (rv == NGHTTP2_ERR_PAUSE || rv == NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE) {
@@ -3362,12 +3417,16 @@ static int session_call_on_invalid_header(nghttp2_session *session,
                                           const nghttp2_hd_nv *nv) {
   int rv;
   if (session->callbacks.on_invalid_header_callback2) {
+    ++session->at_callback_depth;
     rv = session->callbacks.on_invalid_header_callback2(
         session, frame, nv->name, nv->value, nv->flags, session->user_data);
+    --session->at_callback_depth;
   } else if (session->callbacks.on_invalid_header_callback) {
+    ++session->at_callback_depth;
     rv = session->callbacks.on_invalid_header_callback(
         session, frame, nv->name->base, nv->name->len, nv->value->base,
         nv->value->len, nv->flags, session->user_data);
+    --session->at_callback_depth;
   } else {
     return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
   }
@@ -3390,8 +3449,10 @@ session_call_on_extension_chunk_recv_callback(nghttp2_session *session,
   nghttp2_frame *frame = &iframe->frame;
 
   if (session->callbacks.on_extension_chunk_recv_callback) {
+    ++session->at_callback_depth;
     rv = session->callbacks.on_extension_chunk_recv_callback(
         session, &frame->hd, data, len, session->user_data);
+    --session->at_callback_depth;
     if (rv == NGHTTP2_ERR_CANCEL) {
       return rv;
     }
@@ -3409,8 +3470,10 @@ static int session_call_unpack_extension_callback(nghttp2_session *session) {
   nghttp2_frame *frame = &iframe->frame;
   void *payload = NULL;
 
+  ++session->at_callback_depth;
   rv = session->callbacks.unpack_extension_callback(
       session, &payload, &frame->hd, session->user_data);
+  --session->at_callback_depth;
   if (rv == NGHTTP2_ERR_CANCEL) {
     return rv;
   }
@@ -3472,10 +3535,13 @@ static int session_call_on_invalid_frame_recv_callback(nghttp2_session *session,
                                                        nghttp2_frame *frame,
                                                        int lib_error_code) {
   if (session->callbacks.on_invalid_frame_recv_callback) {
+    ++session->at_callback_depth;
     if (session->callbacks.on_invalid_frame_recv_callback(
             session, frame, lib_error_code, session->user_data) != 0) {
+      --session->at_callback_depth;
       return NGHTTP2_ERR_CALLBACK_FAILURE;
     }
+    --session->at_callback_depth;
   }
   return 0;
 }
@@ -3491,10 +3557,13 @@ static int session_handle_invalid_stream2(nghttp2_session *session,
     return rv;
   }
   if (session->callbacks.on_invalid_frame_recv_callback) {
+    ++session->at_callback_depth;
     if (session->callbacks.on_invalid_frame_recv_callback(
             session, frame, lib_error_code, session->user_data) != 0) {
+      --session->at_callback_depth;
       return NGHTTP2_ERR_CALLBACK_FAILURE;
     }
+    --session->at_callback_depth;
   }
   return 0;
 }
@@ -3525,10 +3594,13 @@ static int session_handle_invalid_connection(nghttp2_session *session,
                                              int lib_error_code,
                                              const char *reason) {
   if (session->callbacks.on_invalid_frame_recv_callback) {
+    ++session->at_callback_depth;
     if (session->callbacks.on_invalid_frame_recv_callback(
             session, frame, lib_error_code, session->user_data) != 0) {
+      --session->at_callback_depth;
       return NGHTTP2_ERR_CALLBACK_FAILURE;
     }
+    --session->at_callback_depth;
   }
   return nghttp2_session_terminate_session_with_reason(
       session, get_error_code_from_lib_error_code(lib_error_code), reason);
@@ -5377,6 +5449,8 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
   size_t pri_fieldlen;
   nghttp2_mem *mem;
 
+  assert(session->at_callback_depth == 0);
+
   if (in == NULL) {
     assert(inlen == 0);
     in = static_in;
@@ -5799,7 +5873,9 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
 
         if (check_ext_type_set(session->user_recv_ext_types,
                                iframe->frame.hd.type)) {
+          ++session->at_callback_depth;
           if (!session->callbacks.unpack_extension_callback) {
+            --session->at_callback_depth;
             /* Silently ignore unknown frame type. */
 
             busy = 1;
@@ -5808,6 +5884,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
 
             break;
           }
+          --session->at_callback_depth;
 
           busy = 1;
 
@@ -6606,9 +6683,11 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
             }
           }
           if (session->callbacks.on_data_chunk_recv_callback) {
+            ++session->at_callback_depth;
             rv = session->callbacks.on_data_chunk_recv_callback(
                 session, iframe->frame.hd.flags, iframe->frame.hd.stream_id,
                 in - readlen, (size_t)data_readlen, session->user_data);
+            --session->at_callback_depth;
             if (rv == NGHTTP2_ERR_PAUSE) {
               return in - first;
             }
@@ -6795,6 +6874,9 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
 
 int nghttp2_session_recv(nghttp2_session *session) {
   uint8_t buf[NGHTTP2_INBOUND_BUFFER_LENGTH];
+
+  assert(session->at_callback_depth == 0);
+
   while (1) {
     ssize_t readlen;
     readlen = session_recv(session, buf, sizeof(buf));
@@ -7126,10 +7208,12 @@ int nghttp2_session_pack_data(nghttp2_session *session, nghttp2_bufs *bufs,
 
   if (session->callbacks.read_length_callback) {
 
+    ++session->at_callback_depth;
     payloadlen = session->callbacks.read_length_callback(
         session, frame->hd.type, stream->stream_id, session->remote_window_size,
         stream->remote_window_size, session->remote_settings.max_frame_size,
         session->user_data);
+    --session->at_callback_depth;
 
     DEBUGF("send: read_length_callback=%zd\n", payloadlen);
 
