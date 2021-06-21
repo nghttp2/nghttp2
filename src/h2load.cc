@@ -471,6 +471,16 @@ int Client::make_socket(addrinfo *addr) {
     return -1;
   }
   if (config.scheme == "https") {
+
+    if (config.full_handshake_rate > 0) {
+	auto d = std::uniform_int_distribution<unsigned long>(0, 99);
+	if (d(gen) <= config.full_handshake_rate) {
+		// ok, now we are doign a full handshake..
+		SSL_free(ssl);
+		ssl = NULL;
+	}
+    }
+
     if (!ssl) {
       ssl = SSL_new(worker->ssl_ctx);
     }
@@ -1837,6 +1847,11 @@ std::unique_ptr<Worker> create_worker(uint32_t id, SSL_CTX *ssl_ctx,
               << " total requests" << std::endl;
   }
 
+  if (config.full_handshake_rate > 0) {
+	std::cout << " full TLS handshakes will happen: " <<
+		config.full_handshake_rate << "%% of the time." << std::endl;
+  }
+
   if (config.is_rate_mode()) {
     return std::make_unique<Worker>(id, ssl_ctx, nreqs, nclients, rate,
                                     max_samples, &config);
@@ -1921,6 +1936,10 @@ Options:
               Number of native threads.
               Default: )"
       << config.nthreads << R"(
+  --full-handshake-rate=<N>
+              Whole number representing the percentage of time a full
+              TLS handshake will happen. For example "70" means 70% of the
+              time a full handshake will happen.
   -i, --input-file=<PATH>
               Path of a file with multiple URIs are separated by EOLs.
               This option will disable URIs getting from command-line.
@@ -2130,6 +2149,7 @@ int main(int argc, char **argv) {
         {"log-file", required_argument, &flag, 10},
         {"connect-to", required_argument, &flag, 11},
         {"rps", required_argument, &flag, 12},
+	{"full-handshake-rate", required_argument, &flag, 13},
         {nullptr, 0, nullptr, 0}};
     int option_index = 0;
     auto c = getopt_long(argc, argv,
@@ -2380,6 +2400,17 @@ int main(int argc, char **argv) {
         config.rps = v;
         break;
       }
+      case 13: {
+		       char *end = NULL;
+		       auto v = std::strtod(optarg, &end);
+		       if (end == optarg || *end != '\0' || !std::isfinite(v) || 1. / v < 1e-6) {
+			       std::cerr << "--rps: Invalid value " << optarg << std::endl;
+			       exit(EXIT_FAILURE);
+		       }
+
+		       config.full_handshake_rate = v;
+		       break;
+	       }
       }
       break;
     default:
