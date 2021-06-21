@@ -98,6 +98,7 @@ Config::Config()
       verbose(false),
       timing_script(false),
       base_uri_unix(false),
+      requests_until_reconnect(0),
       unix_addr{},
       rps(0.) {}
 
@@ -215,7 +216,7 @@ void rate_period_timeout_w_cb(struct ev_loop *loop, ev_timer *w, int revents) {
       --worker->nreqs_rem;
     }
     auto client =
-        std::make_unique<Client>(worker->next_client_id++, worker, req_todo);
+        std::make_unique<Client>(worker->next_client_id++, worker, req_todo, 0);
 
     ++worker->nconns_made;
 
@@ -404,7 +405,8 @@ void client_request_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
 }
 } // namespace
 
-Client::Client(uint32_t id, Worker *worker, size_t req_todo)
+Client::Client(uint32_t id, Worker *worker, size_t req_todo, uint32_t
+		requests_until_reconnect)
     : wb(&worker->mcpool),
       cstat{},
       worker(worker),
@@ -418,6 +420,8 @@ Client::Client(uint32_t id, Worker *worker, size_t req_todo)
       req_inflight(0),
       req_started(0),
       req_done(0),
+      req_until_reconnect(requests_until_reconnect),
+      req_until_reconnect_rearmed(false),
       id(id),
       fd(-1),
       new_connection_requested(false),
@@ -573,12 +577,16 @@ int Client::try_again_or_fail() {
     if (req_left) {
 
       if (worker->current_phase == Phase::MAIN_DURATION) {
-        // At the moment, we don't have a facility to re-start request
-        // already in in-flight.  Make them fail.
-        worker->stats.req_failed += req_inflight;
-        worker->stats.req_error += req_inflight;
+	      if (req_inflight > 0) {
+		      // At the moment, we don't have a facility to re-start request
+		      // already in in-flight.  Make them fail.
+		      worker->stats.req_failed += req_inflight;
+		      worker->stats.req_error += req_inflight;
 
-        req_inflight = 0;
+		      req_inflight = 0;
+	      } else {
+		      req_until_reconnect_rearmed = false;
+	      }
       }
 
       // Keep using current address
@@ -1343,7 +1351,7 @@ int get_ev_loop_flags() {
 } // namespace
 
 Worker::Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t req_todo, size_t nclients,
-               size_t rate, size_t max_samples, Config *config)
+               uint32_t requests_until_reconnect, size_t rate, size_t max_samples, Config *config)
     : stats(req_todo, nclients),
       loop(ev_loop_new(get_ev_loop_flags())),
       ssl_ctx(ssl_ctx),
@@ -1355,6 +1363,7 @@ Worker::Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t req_todo, size_t nclients,
       nclients(nclients),
       nreqs_per_client(req_todo / nclients),
       nreqs_rem(req_todo % nclients),
+      requests_until_reconnect(requests_until_reconnect),
       rate(rate),
       max_samples(max_samples),
       next_client_id(0) {
@@ -1430,7 +1439,8 @@ void Worker::run() {
         --nreqs_rem;
       }
 
-      auto client = std::make_unique<Client>(next_client_id++, this, req_todo);
+      auto client = std::make_unique<Client>(next_client_id++, this, req_todo,
+		      requests_until_reconnect);
       if (client->connect() != 0) {
         std::cerr << "client could not connect to host" << std::endl;
         client->fail();
@@ -1837,14 +1847,20 @@ std::unique_ptr<Worker> create_worker(uint32_t id, SSL_CTX *ssl_ctx,
               << " total requests" << std::endl;
   }
 
+  if (config.requests_until_reconnect > 0) {
+	  std::cout << " number of requests until reconnect: " <<
+		  config.requests_until_reconnect << std::endl;
+  }
+
   if (config.is_rate_mode()) {
-    return std::make_unique<Worker>(id, ssl_ctx, nreqs, nclients, rate,
-                                    max_samples, &config);
+    return std::make_unique<Worker>(id, ssl_ctx, nreqs, nclients,
+		    config.requests_until_reconnect, rate, max_samples, &config);
   } else {
     // Here rate is same as client because the rate_timeout callback
     // will be called only once
-    return std::make_unique<Worker>(id, ssl_ctx, nreqs, nclients, nclients,
-                                    max_samples, &config);
+    return std::make_unique<Worker>(id, ssl_ctx, nreqs, nclients,
+		    config.requests_until_reconnect,
+		    nclients, max_samples, &config);
   }
 }
 } // namespace
@@ -1921,6 +1937,10 @@ Options:
               Number of native threads.
               Default: )"
       << config.nthreads << R"(
+  -q, --requests-until-reconnect=<N>
+              Number of requests to issue per client before a reconnect is
+              done from that client. Default is 0, which means this behavior
+              is disabled.
   -i, --input-file=<PATH>
               Path of a file with multiple URIs are separated by EOLs.
               This option will disable URIs getting from command-line.
@@ -2130,10 +2150,11 @@ int main(int argc, char **argv) {
         {"log-file", required_argument, &flag, 10},
         {"connect-to", required_argument, &flag, 11},
         {"rps", required_argument, &flag, 12},
+	{"requests-until-reconnect", required_argument, nullptr, 'q'},
         {nullptr, 0, nullptr, 0}};
     int option_index = 0;
     auto c = getopt_long(argc, argv,
-                         "hvW:c:d:m:n:p:t:w:H:i:r:T:N:D:B:", long_options,
+                         "hvW:c:d:m:n:p:t:w:H:i:r:T:N:D:B:q:", long_options,
                          &option_index);
     if (c == -1) {
       break;
@@ -2142,6 +2163,9 @@ int main(int argc, char **argv) {
     case 'n':
       config.nreqs = strtoul(optarg, nullptr, 10);
       nreqs_set_manually = true;
+      break;
+    case 'q':
+      config.requests_until_reconnect = strtoul(optarg, nullptr, 10);
       break;
     case 'c':
       config.nclients = strtoul(optarg, nullptr, 10);

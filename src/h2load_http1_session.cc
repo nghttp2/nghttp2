@@ -89,16 +89,23 @@ int htp_msg_completecb(llhttp_t *htp) {
 
   session->stream_resp_counter_ += 2;
 
-  if (client->final) {
+  if (client->final || (client->worker->requests_until_reconnect > 0 &&
+			  client->req_until_reconnect == 0)) {
     session->stream_req_counter_ = session->stream_resp_counter_;
 
     // Connection is going down.  If we have still request to do,
     // create new connection and keep on doing the job.
     if (client->req_left) {
+      client->req_until_reconnect = client->worker->requests_until_reconnect;
+      client->req_until_reconnect_rearmed = true;
       client->try_new_connection();
     }
 
     return HPE_PAUSED;
+  }
+
+  if (client->worker->requests_until_reconnect > 0) {
+	  client->req_until_reconnect--;
   }
 
   return 0;

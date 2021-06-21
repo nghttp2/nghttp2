@@ -104,6 +104,7 @@ struct Config {
   uint16_t default_port;
   uint16_t connect_to_port;
   bool verbose;
+  uint32_t requests_until_reconnect;
   bool timing_script;
   std::string base_uri;
   // true if UNIX domain socket is used.  In this case, base_uri is
@@ -268,6 +269,9 @@ struct Worker {
   ev_timer timeout_watcher;
   // The next client ID this worker assigns
   uint32_t next_client_id;
+  // the number of requests that should be processed before the client
+  // reconnects
+  const uint32_t requests_until_reconnect;
   // Keeps track of the current phase (for timing-based experiment) for the
   // worker
   Phase current_phase;
@@ -279,7 +283,7 @@ struct Worker {
   ev_timer warmup_watcher;
 
   Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t nreq_todo, size_t nclients,
-         size_t rate, size_t max_samples, Config *config);
+         uint32_t reqs_until_reconnect, size_t rate, size_t max_samples, Config *config);
   ~Worker();
   Worker(Worker &&o) = default;
   void run();
@@ -329,6 +333,8 @@ struct Client {
   size_t req_started;
   // The number of requests this client has done so far.
   size_t req_done;
+  // The number of requests this client has left until a reconnect is done.
+  uint32_t req_until_reconnect;
   // The client id per worker
   uint32_t id;
   int fd;
@@ -336,6 +342,7 @@ struct Client {
   ev_timer conn_inactivity_watcher;
   std::string selected_proto;
   bool new_connection_requested;
+  bool req_until_reconnect_rearmed;
   // true if the current connection will be closed, and no more new
   // request cannot be processed.
   bool final;
@@ -356,7 +363,8 @@ struct Client {
 
   enum { ERR_CONNECT_FAIL = -100 };
 
-  Client(uint32_t id, Worker *worker, size_t req_todo);
+  Client(uint32_t id, Worker *worker, size_t req_todo, uint32_t
+		  requests_until_reconnect);
   ~Client();
   int make_socket(addrinfo *addr);
   int connect();
