@@ -44,6 +44,9 @@ public:
                    const boost::asio::ip::tcp::endpoint &local_endpoint,
                    const std::string &host, const std::string &service,
                    const boost::posix_time::time_duration &connect_timeout);
+  session_tcp_impl(boost::asio::io_service &io_service,
+                   std::shared_ptr<tcp::socket> socket);
+
   virtual ~session_tcp_impl();
 
   virtual void start_connect(tcp::resolver::iterator endpoint_it);
@@ -57,7 +60,7 @@ public:
   virtual void shutdown_socket();
 
 private:
-  tcp::socket socket_;
+  std::shared_ptr<tcp::socket> socket_;
 };
 
 } // namespace client

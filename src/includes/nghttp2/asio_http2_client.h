@@ -26,6 +26,7 @@
 #define ASIO_HTTP2_CLIENT_H
 
 #include <nghttp2/asio_http2.h>
+#include <memory>
 
 namespace nghttp2 {
 
@@ -142,6 +143,9 @@ private:
 
 class session_impl;
 
+using http_stream = boost::asio::ip::tcp::socket;
+using https_stream = boost::asio::ssl::stream<http_stream>;
+
 class session {
 public:
   // Starts HTTP/2 session by connecting to |host| and |service|
@@ -182,6 +186,13 @@ public:
           boost::asio::ssl::context &tls_context, const std::string &host,
           const std::string &service,
           const boost::posix_time::time_duration &connect_timeout);
+
+  // Starts HTTP/2 session by attaching to a stream. The stream must out live
+  // the session.
+  session(boost::asio::io_service &io_service,
+          std::shared_ptr<http_stream> stream);
+  session(boost::asio::io_service &io_service,
+          std::shared_ptr<https_stream> stream);
 
   ~session();
 

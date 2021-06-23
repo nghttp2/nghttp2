@@ -124,6 +124,19 @@ void session_impl::handle_ping(const boost::system::error_code &ec) {
   start_ping();
 }
 
+void session_impl::attached() {
+  if (!setup_session()) {
+    return;
+  }
+
+  socket().set_option(boost::asio::ip::tcp::no_delay(true));
+
+  do_write();
+  do_read();
+
+  start_ping();
+}
+
 void session_impl::connected(tcp::resolver::iterator endpoint_it) {
   if (!setup_session()) {
     return;
@@ -327,6 +340,13 @@ int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
 
     strm->request().impl().call_on_push(push_strm->request());
 
+    break;
+  }
+  case NGHTTP2_GOAWAY: {
+    if (!sess->stopped()) {
+      auto ec = make_error_code(static_cast<nghttp2_error>(NGHTTP2_ERR_EOF));
+      sess->call_error_cb(ec);
+    }
     break;
   }
   }

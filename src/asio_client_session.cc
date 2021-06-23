@@ -87,6 +87,18 @@ session::session(boost::asio::io_service &io_service,
   impl_->start_resolve(host, service);
 }
 
+session::session(boost::asio::io_service &io_service,
+                 std::shared_ptr<http_stream> stream)
+    : impl_(std::make_shared<session_tcp_impl>(io_service, stream)) {
+  impl_->attached();
+}
+
+session::session(boost::asio::io_service &io_service,
+                 std::shared_ptr<https_stream> stream)
+    : impl_(std::make_shared<session_tls_impl>(io_service, stream)) {
+  impl_->attached();
+}
+
 session::~session() {}
 
 session::session(session &&other) noexcept : impl_(std::move(other.impl_)) {}

@@ -51,6 +51,7 @@ public:
 
   void connected(tcp::resolver::iterator endpoint_it);
   void not_connected(const boost::system::error_code &ec);
+  void attached();
 
   void on_connect(connect_cb cb);
   void on_error(error_cb cb);
@@ -99,6 +100,8 @@ public:
   void stop();
   bool stopped() const;
 
+  void call_error_cb(const boost::system::error_code &ec);
+
 protected:
   boost::array<uint8_t, 8_k> rb_;
   boost::array<uint8_t, 64_k> wb_;
@@ -107,7 +110,6 @@ protected:
 private:
   bool should_stop() const;
   bool setup_session();
-  void call_error_cb(const boost::system::error_code &ec);
   void handle_deadline();
   void start_ping();
   void handle_ping(const boost::system::error_code &ec);

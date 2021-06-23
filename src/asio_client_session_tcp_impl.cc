@@ -32,25 +32,32 @@ session_tcp_impl::session_tcp_impl(
     boost::asio::io_service &io_service, const std::string &host,
     const std::string &service,
     const boost::posix_time::time_duration &connect_timeout)
-    : session_impl(io_service, connect_timeout), socket_(io_service) {}
+    : session_impl(io_service, connect_timeout),
+      socket_(std::make_shared<tcp::socket>(io_service)) {}
 
 session_tcp_impl::session_tcp_impl(
     boost::asio::io_service &io_service,
     const boost::asio::ip::tcp::endpoint &local_endpoint,
     const std::string &host, const std::string &service,
     const boost::posix_time::time_duration &connect_timeout)
-    : session_impl(io_service, connect_timeout), socket_(io_service) {
-  socket_.open(local_endpoint.protocol());
+    : session_impl(io_service, connect_timeout),
+      socket_(std::make_shared<tcp::socket>(io_service)) {
+  socket_->open(local_endpoint.protocol());
   boost::asio::socket_base::reuse_address option(true);
-  socket_.set_option(option);
-  socket_.bind(local_endpoint);
+  socket_->set_option(option);
+  socket_->bind(local_endpoint);
 }
+
+session_tcp_impl::session_tcp_impl(boost::asio::io_service &io_service,
+                                   std::shared_ptr<tcp::socket> socket)
+    : session_impl(io_service, boost::posix_time::seconds(0)),
+      socket_(socket) {}
 
 session_tcp_impl::~session_tcp_impl() {}
 
 void session_tcp_impl::start_connect(tcp::resolver::iterator endpoint_it) {
   auto self = shared_from_this();
-  socket_.async_connect(
+  socket_->async_connect(
       *endpoint_it, [self, endpoint_it](const boost::system::error_code &ec) {
         if (self->stopped()) {
           return;
@@ -65,21 +72,21 @@ void session_tcp_impl::start_connect(tcp::resolver::iterator endpoint_it) {
       });
 }
 
-tcp::socket &session_tcp_impl::socket() { return socket_; }
+tcp::socket &session_tcp_impl::socket() { return *socket_; }
 
 void session_tcp_impl::read_socket(
     std::function<void(const boost::system::error_code &ec, std::size_t n)> h) {
-  socket_.async_read_some(boost::asio::buffer(rb_), h);
+  socket_->async_read_some(boost::asio::buffer(rb_), h);
 }
 
 void session_tcp_impl::write_socket(
     std::function<void(const boost::system::error_code &ec, std::size_t n)> h) {
-  boost::asio::async_write(socket_, boost::asio::buffer(wb_, wblen_), h);
+  boost::asio::async_write(*socket_, boost::asio::buffer(wb_, wblen_), h);
 }
 
 void session_tcp_impl::shutdown_socket() {
   boost::system::error_code ignored_ec;
-  socket_.close(ignored_ec);
+  socket_->close(ignored_ec);
 }
 
 } // namespace client

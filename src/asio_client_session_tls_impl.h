@@ -43,6 +43,9 @@ public:
                    boost::asio::ssl::context &tls_ctx, const std::string &host,
                    const std::string &service,
                    const boost::posix_time::time_duration &connect_timeout);
+  session_tls_impl(boost::asio::io_service &io_service,
+                   std::shared_ptr<ssl_socket> socket);
+
   virtual ~session_tls_impl();
 
   virtual void start_connect(tcp::resolver::iterator endpoint_it);
@@ -56,7 +59,7 @@ public:
   virtual void shutdown_socket();
 
 private:
-  ssl_socket socket_;
+  std::shared_ptr<ssl_socket> socket_;
 };
 
 } // namespace client

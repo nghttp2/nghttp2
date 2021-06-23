@@ -33,16 +33,22 @@ session_tls_impl::session_tls_impl(
     boost::asio::io_service &io_service, boost::asio::ssl::context &tls_ctx,
     const std::string &host, const std::string &service,
     const boost::posix_time::time_duration &connect_timeout)
-    : session_impl(io_service, connect_timeout), socket_(io_service, tls_ctx) {
+    : session_impl(io_service, connect_timeout),
+      socket_(std::make_shared<ssl_socket>(io_service, tls_ctx)) {
   // this callback setting is no effect is
   // ssl::context::set_verify_mode(boost::asio::ssl::verify_peer) is
   // not used, which is what we want.
-  socket_.set_verify_callback(boost::asio::ssl::rfc2818_verification(host));
-  auto ssl = socket_.native_handle();
+  socket_->set_verify_callback(boost::asio::ssl::rfc2818_verification(host));
+  auto ssl = socket_->native_handle();
   if (!util::numeric_host(host.c_str())) {
     SSL_set_tlsext_host_name(ssl, host.c_str());
   }
 }
+
+session_tls_impl::session_tls_impl(boost::asio::io_service &io_service,
+                                   std::shared_ptr<ssl_socket> socket)
+    : session_impl(io_service, boost::posix_time::seconds{0}),
+      socket_(socket) {}
 
 session_tls_impl::~session_tls_impl() {}
 
@@ -61,7 +67,7 @@ void session_tls_impl::start_connect(tcp::resolver::iterator endpoint_it) {
           return;
         }
 
-        self->socket_.async_handshake(
+        self->socket_->async_handshake(
             boost::asio::ssl::stream_base::client,
             [self, endpoint_it](const boost::system::error_code &ec) {
               if (self->stopped()) {
@@ -73,7 +79,7 @@ void session_tls_impl::start_connect(tcp::resolver::iterator endpoint_it) {
                 return;
               }
 
-              if (!tls_h2_negotiated(self->socket_)) {
+              if (!tls_h2_negotiated(*(self->socket_))) {
                 self->not_connected(make_error_code(
                     NGHTTP2_ASIO_ERR_TLS_NO_APP_PROTO_NEGOTIATED));
                 return;
@@ -84,21 +90,21 @@ void session_tls_impl::start_connect(tcp::resolver::iterator endpoint_it) {
       });
 }
 
-tcp::socket &session_tls_impl::socket() { return socket_.next_layer(); }
+tcp::socket &session_tls_impl::socket() { return socket_->next_layer(); }
 
 void session_tls_impl::read_socket(
     std::function<void(const boost::system::error_code &ec, std::size_t n)> h) {
-  socket_.async_read_some(boost::asio::buffer(rb_), h);
+  socket_->async_read_some(boost::asio::buffer(rb_), h);
 }
 
 void session_tls_impl::write_socket(
     std::function<void(const boost::system::error_code &ec, std::size_t n)> h) {
-  boost::asio::async_write(socket_, boost::asio::buffer(wb_, wblen_), h);
+  boost::asio::async_write(*socket_, boost::asio::buffer(wb_, wblen_), h);
 }
 
 void session_tls_impl::shutdown_socket() {
   boost::system::error_code ignored_ec;
-  socket_.lowest_layer().close(ignored_ec);
+  socket_->lowest_layer().close(ignored_ec);
 }
 
 } // namespace client
