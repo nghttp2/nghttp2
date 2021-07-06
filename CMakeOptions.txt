@@ -17,6 +17,7 @@ option(ENABLE_LIB_ONLY  "Build libnghttp2 only.  This is a short hand for -DENAB
 option(ENABLE_STATIC_LIB "Build libnghttp2 in static mode also")
 option(ENABLE_SHARED_LIB "Build libnghttp2 as a shared library" ON)
 option(ENABLE_STATIC_CRT "Build libnghttp2 against the MS LIBCMT[d]")
+option(ENABLE_DOC "Build documentation" ON)
 
 option(WITH_LIBXML2     "Use libxml2"
   ${WITH_LIBXML2_DEFAULT})
