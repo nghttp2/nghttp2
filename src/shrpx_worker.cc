@@ -275,21 +275,6 @@ void Worker::replace_downstream_config(
       dst_addr.rise = src_addr.rise;
       dst_addr.dns = src_addr.dns;
       dst_addr.upgrade_scheme = src_addr.upgrade_scheme;
-
-      auto shared_addr_ptr = shared_addr.get();
-
-      dst_addr.connect_blocker = std::make_unique<ConnectBlocker>(
-          randgen_, loop_, nullptr, [shared_addr_ptr, &dst_addr]() {
-            if (!dst_addr.queued) {
-              if (!dst_addr.wg) {
-                return;
-              }
-              ensure_enqueue_addr(shared_addr_ptr->pq, dst_addr.wg, &dst_addr);
-            }
-          });
-
-      dst_addr.live_check = std::make_unique<LiveCheck>(
-          loop_, cl_ssl_ctx_, this, &dst_addr, randgen_);
     }
 
 #ifdef HAVE_MRUBY
@@ -312,6 +297,23 @@ void Worker::replace_downstream_config(
     if (it == std::end(addr_groups_indexer)) {
       std::shuffle(std::begin(shared_addr->addrs), std::end(shared_addr->addrs),
                    randgen_);
+
+      auto shared_addr_ptr = shared_addr.get();
+
+      for (auto &addr : shared_addr->addrs) {
+        addr.connect_blocker = std::make_unique<ConnectBlocker>(
+            randgen_, loop_, nullptr, [shared_addr_ptr, &addr]() {
+              if (!addr.queued) {
+                if (!addr.wg) {
+                  return;
+                }
+                ensure_enqueue_addr(shared_addr_ptr->pq, addr.wg, &addr);
+              }
+            });
+
+        addr.live_check = std::make_unique<LiveCheck>(loop_, cl_ssl_ctx_, this,
+                                                      &addr, randgen_);
+      }
 
       size_t seq = 0;
       for (auto &addr : shared_addr->addrs) {
