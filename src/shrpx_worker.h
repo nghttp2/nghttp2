@@ -153,7 +153,7 @@ struct DownstreamAddrEntryGreater {
     if (d == 0) {
       return rhs.seq < lhs.seq;
     }
-    return d <= MAX_DOWNSTREAM_ADDR_WEIGHT;
+    return d <= 2 * MAX_DOWNSTREAM_ADDR_WEIGHT - 1;
   }
 };
 
@@ -182,7 +182,7 @@ struct WeightGroupEntryGreater {
     if (d == 0) {
       return rhs.seq < lhs.seq;
     }
-    return d <= MAX_DOWNSTREAM_ADDR_WEIGHT;
+    return d <= 2 * MAX_DOWNSTREAM_ADDR_WEIGHT - 1;
   }
 };
 
