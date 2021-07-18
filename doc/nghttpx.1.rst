@@ -1625,14 +1625,14 @@ Error log
   using :option:`--errorlog-file`.  The format of log message is as
   follows:
 
-  <datetime> <master-pid> <current-pid> <thread-id> <level> (<filename>:<line>) <msg>
+  <datetime> <main-pid> <current-pid> <thread-id> <level> (<filename>:<line>) <msg>
 
   <datetime>
     It is a combination of date and time when the log is written.  It
     is in ISO 8601 format.
 
-  <master-pid>
-    It is a master process ID.
+  <main-pid>
+    It is a main process ID.
 
   <current-pid>
     It is a process ID which writes this log.
@@ -1665,30 +1665,30 @@ SIGUSR2
 
   Fork and execute nghttpx.  It will execute the binary in the same
   path with same command-line arguments and environment variables.  As
-  of nghttpx version 1.20.0, the new master process sends SIGQUIT to
-  the original master process when it is ready to serve requests.  For
-  the earlier versions of nghttpx, user has to send SIGQUIT to the
-  original master process.
+  of nghttpx version 1.20.0, the new main process sends SIGQUIT to the
+  original main process when it is ready to serve requests.  For the
+  earlier versions of nghttpx, user has to send SIGQUIT to the
+  original main process.
 
   The difference between SIGUSR2 (+ SIGQUIT) and SIGHUP is that former
-  is usually used to execute new binary, and the master process is
-  newly spawned.  On the other hand, the latter just reloads
-  configuration file, and the same master process continues to exist.
+  is usually used to execute new binary, and the main process is newly
+  spawned.  On the other hand, the latter just reloads configuration
+  file, and the same main process continues to exist.
 
 .. note::
 
   nghttpx consists of multiple processes: one process for processing
   these signals, and another one for processing requests.  The former
-  spawns the latter.  The former is called master process, and the
+  spawns the latter.  The former is called main process, and the
   latter is called worker process.  If neverbleed is enabled, the
   worker process spawns neverbleed daemon process which does RSA key
-  processing.  The above signal must be sent to the master process.
-  If the other processes received one of them, it is ignored.  This
+  processing.  The above signal must be sent to the main process.  If
+  the other processes received one of them, it is ignored.  This
   behaviour of these processes may change in the future release.  In
-  other words, in the future release, the processes other than master
+  other words, in the future release, the processes other than main
   process may terminate upon the reception of these signals.
   Therefore these signals should not be sent to the processes other
-  than master process.
+  than main process.
 
 SERVER PUSH
 -----------
