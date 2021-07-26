@@ -6,7 +6,7 @@ Architecture
 
 The most notable point in nghttp2 library architecture is it does not
 perform any I/O.  nghttp2 only performs HTTP/2 protocol stuff based on
-input byte strings.  It will calls callback functions set by
+input byte strings.  It will call callback functions set by
 applications while processing input.  The output of nghttp2 is just
 byte string.  An application is responsible to send these output to
 the remote peer.  The callback functions may be called while producing
