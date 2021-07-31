@@ -205,14 +205,6 @@ void generate_cid(ngtcp2_cid &dest) {
 } // namespace
 
 namespace {
-int select_preferred_addr(ngtcp2_conn *conn, ngtcp2_addr *dest,
-                          void **ppath_user_data,
-                          const ngtcp2_preferred_addr *paddr, void *user_data) {
-  return 0;
-}
-} // namespace
-
-namespace {
 ngtcp2_tstamp timestamp(struct ev_loop *loop) {
   return ev_now(loop) * NGTCP2_SECONDS;
 }
@@ -325,7 +317,7 @@ int Client::quic_init(const sockaddr *local_addr, socklen_t local_addrlen,
       nullptr, // remove_connection_id
       ngtcp2_crypto_update_key_cb,
       nullptr, // path_validation
-      select_preferred_addr,
+      nullptr, // select_preferred_addr
       h2load::stream_reset,
       nullptr, // extend_max_remote_streams_bidi
       nullptr, // extend_max_remote_streams_uni
