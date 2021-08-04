@@ -197,7 +197,7 @@ inline size_t concat_string_ref_count(size_t acc) { return acc; }
 // accumulated, and passed to the next function.
 template <typename... Args>
 size_t concat_string_ref_count(size_t acc, const StringRef &value,
-                               Args &&... args) {
+                               Args &&...args) {
   return concat_string_ref_count(acc + value.size(),
                                  std::forward<Args>(args)...);
 }
@@ -212,7 +212,7 @@ inline uint8_t *concat_string_ref_copy(uint8_t *p) { return p; }
 // beyond the last byte written.
 template <typename... Args>
 uint8_t *concat_string_ref_copy(uint8_t *p, const StringRef &value,
-                                Args &&... args) {
+                                Args &&...args) {
   p = std::copy(std::begin(value), std::end(value), p);
   return concat_string_ref_copy(p, std::forward<Args>(args)...);
 }
@@ -220,7 +220,7 @@ uint8_t *concat_string_ref_copy(uint8_t *p, const StringRef &value,
 // Returns the string which is the concatenation of |args| in the
 // given order.  The resulting string will be NULL-terminated.
 template <typename BlockAllocator, typename... Args>
-StringRef concat_string_ref(BlockAllocator &alloc, Args &&... args) {
+StringRef concat_string_ref(BlockAllocator &alloc, Args &&...args) {
   size_t len = concat_string_ref_count(0, std::forward<Args>(args)...);
   auto dst = static_cast<uint8_t *>(alloc.alloc(len + 1));
   auto p = dst;
@@ -237,7 +237,7 @@ StringRef concat_string_ref(BlockAllocator &alloc, Args &&... args) {
 // then just call concat_string_ref().
 template <typename BlockAllocator, typename... Args>
 StringRef realloc_concat_string_ref(BlockAllocator &alloc,
-                                    const StringRef &value, Args &&... args) {
+                                    const StringRef &value, Args &&...args) {
   if (value.empty()) {
     return concat_string_ref(alloc, std::forward<Args>(args)...);
   }

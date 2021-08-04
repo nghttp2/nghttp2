@@ -1070,13 +1070,12 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
                       << nghttp2_strerror(rv);
   }
 
-  auto window_size =
-      faddr->alt_mode != UpstreamAltMode::NONE
-          ? std::numeric_limits<int32_t>::max()
-          : http2conf.upstream.optimize_window_size
-                ? std::min(http2conf.upstream.connection_window_size,
-                           NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE)
-                : http2conf.upstream.connection_window_size;
+  auto window_size = faddr->alt_mode != UpstreamAltMode::NONE
+                         ? std::numeric_limits<int32_t>::max()
+                     : http2conf.upstream.optimize_window_size
+                         ? std::min(http2conf.upstream.connection_window_size,
+                                    NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE)
+                         : http2conf.upstream.connection_window_size;
 
   rv = nghttp2_session_set_local_window_size(session_, NGHTTP2_FLAG_NONE, 0,
                                              window_size);

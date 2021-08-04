@@ -6430,8 +6430,9 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
 
       /* CONTINUATION won't bear NGHTTP2_PADDED flag */
 
-      iframe->frame.hd.flags = (uint8_t)(
-          iframe->frame.hd.flags | (cont_hd.flags & NGHTTP2_FLAG_END_HEADERS));
+      iframe->frame.hd.flags =
+          (uint8_t)(iframe->frame.hd.flags |
+                    (cont_hd.flags & NGHTTP2_FLAG_END_HEADERS));
       iframe->frame.hd.length += cont_hd.length;
 
       busy = 1;

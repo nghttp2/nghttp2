@@ -75,7 +75,7 @@ public:
       serve_mux &mux,
       const boost::posix_time::time_duration &tls_handshake_timeout,
       const boost::posix_time::time_duration &read_timeout,
-      SocketArgs &&... args)
+      SocketArgs &&...args)
       : socket_(std::forward<SocketArgs>(args)...),
         mux_(mux),
         deadline_(GET_IO_SERVICE(socket_)),

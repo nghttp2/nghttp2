@@ -97,7 +97,7 @@ generator_cb deferred_generator() {
 }
 
 template <typename F, typename... T>
-std::shared_ptr<Defer<F, T...>> defer_shared(F &&f, T &&... t) {
+std::shared_ptr<Defer<F, T...>> defer_shared(F &&f, T &&...t) {
   return std::make_shared<Defer<F, T...>>(std::forward<F>(f),
                                           std::forward<T>(t)...);
 }
