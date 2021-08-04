@@ -300,12 +300,7 @@ int Http3Session::init_conn() {
       nullptr, // begin_trailers
       h2load::recv_header,
       nullptr, // end_trailers
-      nullptr, // http_begin_push_promise
-      nullptr, // http_recv_push_promise
-      nullptr, // http_end_push_promise
-      nullptr, // http_cancel_push
       h2load::send_stop_sending,
-      nullptr, // push_stream,
   };
 
   auto config = client_->worker->config;
