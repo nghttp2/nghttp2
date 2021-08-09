@@ -472,6 +472,7 @@ struct Client {
   int quic_acked_stream_data_offset(int64_t stream_id, size_t datalen);
   int quic_stream_close(int64_t stream_id, uint64_t app_error_code);
   int quic_stream_reset(int64_t stream_id, uint64_t app_error_code);
+  int quic_stream_stop_sending(int64_t stream_id, uint64_t app_error_code);
   int quic_extend_max_local_streams();
 
   int quic_on_key(ngtcp2_crypto_level level, const uint8_t *rx_secret,

@@ -54,7 +54,7 @@ public:
   int send_stop_sending(int64_t stream_id, uint64_t app_error_code);
 
   int close_stream(int64_t stream_id, uint64_t app_error_code);
-  int reset_stream(int64_t stream_id);
+  int shutdown_stream_read(int64_t stream_id);
   int extend_max_local_streams();
   int64_t submit_request_internal();
 

@@ -252,8 +252,8 @@ int Http3Session::close_stream(int64_t stream_id, uint64_t app_error_code) {
   }
 }
 
-int Http3Session::reset_stream(int64_t stream_id) {
-  auto rv = nghttp3_conn_reset_stream(conn_, stream_id);
+int Http3Session::shutdown_stream_read(int64_t stream_id) {
+  auto rv = nghttp3_conn_shutdown_stream_read(conn_, stream_id);
   if (rv != 0) {
     return -1;
   }
