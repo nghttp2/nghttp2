@@ -141,7 +141,28 @@ int stream_reset(ngtcp2_conn *conn, int64_t stream_id, uint64_t final_size,
 
 int Client::quic_stream_reset(int64_t stream_id, uint64_t app_error_code) {
   auto s = static_cast<Http3Session *>(session.get());
-  if (s->reset_stream(stream_id) != 0) {
+  if (s->shutdown_stream_read(stream_id) != 0) {
+    return -1;
+  }
+  return 0;
+}
+
+namespace {
+int stream_stop_sending(ngtcp2_conn *conn, int64_t stream_id,
+                        uint64_t app_error_code, void *user_data,
+                        void *stream_user_data) {
+  auto c = static_cast<Client *>(user_data);
+  if (c->quic_stream_stop_sending(stream_id, app_error_code) != 0) {
+    return -1;
+  }
+  return 0;
+}
+} // namespace
+
+int Client::quic_stream_stop_sending(int64_t stream_id,
+                                     uint64_t app_error_code) {
+  auto s = static_cast<Http3Session *>(session.get());
+  if (s->shutdown_stream_read(stream_id) != 0) {
     return -1;
   }
   return 0;
@@ -327,6 +348,11 @@ int Client::quic_init(const sockaddr *local_addr, socklen_t local_addrlen,
       nullptr, // recv_new_token
       ngtcp2_crypto_delete_crypto_aead_ctx_cb,
       ngtcp2_crypto_delete_crypto_cipher_ctx_cb,
+      nullptr, // recv_datagram
+      nullptr, // ack_datagram
+      nullptr, // lost_datagram
+      nullptr, // get_path_challenge_data
+      h2load::stream_stop_sending,
   };
 
   ngtcp2_cid scid, dcid;
