@@ -3054,7 +3054,7 @@ NGHTTP2_EXTERN int nghttp2_session_recv(nghttp2_session *session);
  * @function
  *
  * Processes data |in| as an input from the remote endpoint.  The
- * |inlen| indicates the number of bytes in the |in|.
+ * |inlen| indicates the number of bytes to receive in the |in|.
  *
  * This function behaves like `nghttp2_session_recv()` except that it
  * does not use :type:`nghttp2_recv_callback` to receive data; the
@@ -3063,7 +3063,7 @@ NGHTTP2_EXTERN int nghttp2_session_recv(nghttp2_session *session);
  * are called in the same way as they are in `nghttp2_session_recv()`.
  *
  * In the current implementation, this function always tries to
- * processes all input data unless either an error occurs or
+ * processes |inlen| bytes of input data unless either an error occurs or
  * :enum:`nghttp2_error.NGHTTP2_ERR_PAUSE` is returned from
  * :type:`nghttp2_on_header_callback` or
  * :type:`nghttp2_on_data_chunk_recv_callback`.  If
