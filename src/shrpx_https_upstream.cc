@@ -747,6 +747,13 @@ int HttpsUpstream::on_write() {
       handler_->repeat_read_timer();
 
       return resume_read(SHRPX_NO_BUFFER, nullptr, 0);
+    } else {
+      // If the request is not complete, close the connection.
+      delete_downstream();
+
+      handler_->set_should_close_after_write(true);
+
+      return 0;
     }
   }
 
