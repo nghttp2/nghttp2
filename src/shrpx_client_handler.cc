@@ -50,6 +50,7 @@
 #include "shrpx_connect_blocker.h"
 #include "shrpx_api_downstream_connection.h"
 #include "shrpx_health_monitor_downstream_connection.h"
+#include "shrpx_null_downstream_connection.h"
 #include "shrpx_log.h"
 #include "util.h"
 #include "template.h"
@@ -973,6 +974,13 @@ ClientHandler::get_downstream_connection(int &err, Downstream *downstream) {
   }
 
   auto &group = groups[group_idx];
+
+  if (group->shared_addr->dnf) {
+    auto dconn = std::make_unique<NullDownstreamConnection>(group);
+    dconn->set_client_handler(this);
+    return dconn;
+  }
+
   auto addr = get_downstream_addr(err, group.get(), downstream);
   if (addr == nullptr) {
     return nullptr;

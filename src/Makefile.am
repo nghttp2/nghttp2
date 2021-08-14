@@ -139,6 +139,7 @@ NGHTTPX_SRCS = \
 	shrpx_api_downstream_connection.cc shrpx_api_downstream_connection.h \
 	shrpx_health_monitor_downstream_connection.cc \
 	shrpx_health_monitor_downstream_connection.h \
+	shrpx_null_downstream_connection.cc shrpx_null_downstream_connection.h \
 	shrpx_exec.cc shrpx_exec.h \
 	shrpx_dns_resolver.cc shrpx_dns_resolver.h \
 	shrpx_dual_dns_resolver.cc shrpx_dual_dns_resolver.h \

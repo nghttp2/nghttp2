@@ -851,6 +851,7 @@ struct DownstreamParams {
   bool dns;
   bool redirect_if_not_tls;
   bool upgrade_scheme;
+  bool dnf;
 };
 
 namespace {
@@ -1025,6 +1026,8 @@ int parse_downstream_params(DownstreamParams &out,
         return -1;
       }
       out.group_weight = n;
+    } else if (util::strieq_l("dnf", param)) {
+      out.dnf = true;
     } else if (!param.empty()) {
       LOG(ERROR) << "backend: " << param << ": unknown keyword";
       return -1;
@@ -1089,6 +1092,7 @@ int parse_mapping(Config *config, DownstreamAddrConfig &addr,
   addr.sni = make_string_ref(downstreamconf.balloc, params.sni);
   addr.dns = params.dns;
   addr.upgrade_scheme = params.upgrade_scheme;
+  addr.dnf = params.dnf;
 
   auto &routerconf = downstreamconf.router;
   auto &router = routerconf.router;
@@ -1189,6 +1193,14 @@ int parse_mapping(Config *config, DownstreamAddrConfig &addr,
           return -1;
         }
       }
+      // All backends in the same group must have the same dnf
+      // setting.  If some backends do not specify dnf, and there is
+      // at least one backend with dnf, it is used for all backends in
+      // the group.  In general, multiple backends are not necessary
+      // for dnf because there is no need for load balancing.
+      if (params.dnf) {
+        g.dnf = true;
+      }
 
       g.addrs.push_back(addr);
       continue;
@@ -1213,6 +1225,7 @@ int parse_mapping(Config *config, DownstreamAddrConfig &addr,
     g.mruby_file = make_string_ref(downstreamconf.balloc, params.mruby);
     g.timeout.read = params.read_timeout;
     g.timeout.write = params.write_timeout;
+    g.dnf = params.dnf;
 
     if (pattern[0] == '*') {
       // wildcard pattern

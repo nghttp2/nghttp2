@@ -82,7 +82,7 @@ using DownstreamKey =
                                       size_t, Proto, uint32_t, uint32_t,
                                       uint32_t, bool, bool, bool, bool>>,
                bool, SessionAffinity, StringRef, StringRef,
-               SessionAffinityCookieSecure, int64_t, int64_t, StringRef>;
+               SessionAffinityCookieSecure, int64_t, int64_t, StringRef, bool>;
 
 namespace {
 DownstreamKey
@@ -122,6 +122,7 @@ create_downstream_key(const std::shared_ptr<SharedDownstreamAddr> &shared_addr,
   std::get<6>(dkey) = timeout.read;
   std::get<7>(dkey) = timeout.write;
   std::get<8>(dkey) = mruby_file;
+  std::get<9>(dkey) = shared_addr->dnf;
 
   return dkey;
 }
@@ -252,6 +253,7 @@ void Worker::replace_downstream_config(
     }
     shared_addr->affinity_hash = src.affinity_hash;
     shared_addr->redirect_if_not_tls = src.redirect_if_not_tls;
+    shared_addr->dnf = src.dnf;
     shared_addr->timeout.read = src.timeout.read;
     shared_addr->timeout.write = src.timeout.write;
 
