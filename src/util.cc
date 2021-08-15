@@ -686,18 +686,21 @@ std::string numeric_name(const struct sockaddr *sa, socklen_t salen) {
 }
 
 std::string to_numeric_addr(const Address *addr) {
-  auto family = addr->su.storage.ss_family;
+  return to_numeric_addr(&addr->su.sa, addr->len);
+}
+
+std::string to_numeric_addr(const struct sockaddr *sa, socklen_t salen) {
+  auto family = sa->sa_family;
 #ifndef _WIN32
   if (family == AF_UNIX) {
-    return addr->su.un.sun_path;
+    return reinterpret_cast<const sockaddr_un *>(sa)->sun_path;
   }
 #endif // !_WIN32
 
   std::array<char, NI_MAXHOST> host;
   std::array<char, NI_MAXSERV> serv;
-  auto rv =
-      getnameinfo(&addr->su.sa, addr->len, host.data(), host.size(),
-                  serv.data(), serv.size(), NI_NUMERICHOST | NI_NUMERICSERV);
+  auto rv = getnameinfo(sa, salen, host.data(), host.size(), serv.data(),
+                        serv.size(), NI_NUMERICHOST | NI_NUMERICSERV);
   if (rv != 0) {
     return "unknown";
   }
@@ -1665,6 +1668,40 @@ int daemonize(int nochdir, int noclose) {
 #else  // !defined(__APPLE__)
   return daemon(nochdir, noclose);
 #endif // !defined(__APPLE__)
+}
+
+int msghdr_get_local_addr(Address &dest, msghdr *msg, int family) {
+  switch (family) {
+  case AF_INET:
+    for (auto cmsg = CMSG_FIRSTHDR(msg); cmsg; cmsg = CMSG_NXTHDR(msg, cmsg)) {
+      if (cmsg->cmsg_level == IPPROTO_IP && cmsg->cmsg_type == IP_PKTINFO) {
+        auto pktinfo = reinterpret_cast<in_pktinfo *>(CMSG_DATA(cmsg));
+        dest.len = sizeof(dest.su.in);
+        auto &sa = dest.su.in;
+        sa.sin_family = AF_INET;
+        sa.sin_addr = pktinfo->ipi_addr;
+
+        return 0;
+      }
+    }
+
+    return -1;
+  case AF_INET6:
+    for (auto cmsg = CMSG_FIRSTHDR(msg); cmsg; cmsg = CMSG_NXTHDR(msg, cmsg)) {
+      if (cmsg->cmsg_level == IPPROTO_IPV6 && cmsg->cmsg_type == IPV6_PKTINFO) {
+        auto pktinfo = reinterpret_cast<in6_pktinfo *>(CMSG_DATA(cmsg));
+        dest.len = sizeof(dest.su.in6);
+        auto &sa = dest.su.in6;
+        sa.sin6_family = AF_INET6;
+        sa.sin6_addr = pktinfo->ipi6_addr;
+        return 0;
+      }
+    }
+
+    return -1;
+  }
+
+  return -1;
 }
 
 } // namespace util

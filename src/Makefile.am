@@ -154,6 +154,7 @@ NGHTTPX_SRCS = \
 	shrpx_dual_dns_resolver.cc shrpx_dual_dns_resolver.h \
 	shrpx_dns_tracker.cc shrpx_dns_tracker.h \
 	shrpx_quic.cc shrpx_quic.h \
+	shrpx_quic_listener.cc shrpx_quic_listener.h \
 	buffer.h memchunk.h template.h allocator.h \
 	xsi_strerror.c xsi_strerror.h
 

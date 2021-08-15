@@ -40,6 +40,7 @@
 #  include "shrpx_mruby.h"
 #endif // HAVE_MRUBY
 #include "shrpx_quic.h"
+#include "shrpx_quic_listener.h"
 #include "util.h"
 #include "template.h"
 
@@ -584,15 +585,12 @@ DNSTracker *Worker::get_dns_tracker() { return &dns_tracker_; }
 
 int Worker::setup_quic_server_socket() {
   for (auto &addr : quic_upstream_addrs_) {
-    if (addr.host_unix) {
-      /* TODO Not implemented */
-      assert(0);
-      continue;
-    }
-
+    assert(!addr.host_unix);
     if (create_quic_server_socket(addr) != 0) {
       return -1;
     }
+
+    quic_listeners_.emplace_back(std::make_unique<QUICListener>(&addr, this));
   }
 
   return 0;

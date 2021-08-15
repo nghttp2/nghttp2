@@ -61,6 +61,7 @@ class ConnectBlocker;
 class MemcachedDispatcher;
 struct UpstreamAddr;
 class ConnectionHandler;
+class QUICListener;
 
 #ifdef HAVE_MRUBY
 namespace mruby {
@@ -338,6 +339,7 @@ private:
   DNSTracker dns_tracker_;
 
   std::vector<UpstreamAddr> quic_upstream_addrs_;
+  std::vector<std::unique_ptr<QUICListener>> quic_listeners_;
 
   std::shared_ptr<DownstreamConfig> downstreamconf_;
   std::unique_ptr<MemcachedDispatcher> session_cache_memcached_dispatcher_;
