@@ -185,4 +185,11 @@ int create_quic_server_socket(UpstreamAddr &faddr) {
   return 0;
 }
 
+int quic_send_packet(const UpstreamAddr *addr, const sockaddr *remote_sa,
+                     size_t remote_salen, const sockaddr *local_sa,
+                     size_t local_salen, const uint8_t *data, size_t datalen,
+                     size_t gso_size) {
+  return 0;
+}
+
 } // namespace shrpx
