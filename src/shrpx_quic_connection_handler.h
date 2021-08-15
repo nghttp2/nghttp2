@@ -22,26 +22,43 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#ifndef SHRPX_QUIC_H
-#define SHRPX_QUIC_H
+#ifndef SHRPX_QUIC_CONNECTION_HANDLER_H
+#define SHRPX_QUIC_CONNECTION_HANDLER_H
 
 #include "shrpx.h"
 
-#include <stdint.h>
+#include <memory>
+#include <unordered_map>
+#include <string>
+
+#include "network.h"
+
+using namespace nghttp2;
 
 namespace shrpx {
 
 struct UpstreamAddr;
+class ClientHandler;
+class Worker;
 
-constexpr size_t SHRPX_QUIC_SCIDLEN = 20;
+class QUICConnectionHandler {
+public:
+  QUICConnectionHandler(Worker *worker);
+  ~QUICConnectionHandler();
+  int handle_packet(const UpstreamAddr *faddr, const Address &remote_addr,
+                    const Address &local_addr, const uint8_t *data,
+                    size_t datalen);
+  int send_version_negotiation(const UpstreamAddr *faddr, uint32_t version,
+                               const uint8_t *dcid, size_t dcidlen,
+                               const uint8_t *scid, size_t scidlen,
+                               const Address &remote_addr,
+                               const Address &local_addr);
 
-int create_quic_server_socket(UpstreamAddr &addr);
-
-int quic_send_packet(const UpstreamAddr *addr, const sockaddr *remote_sa,
-                     size_t remote_salen, const sockaddr *local_sa,
-                     size_t local_salen, const uint8_t *data, size_t datalen,
-                     size_t gso_size);
+private:
+  Worker *worker_;
+  std::unordered_map<std::string, std::shared_ptr<ClientHandler>> connections_;
+};
 
 } // namespace shrpx
 
-#endif // SHRPX_QUIC_H
+#endif // SHRPX_QUIC_CONNECTION_HANDLER_H
