@@ -30,7 +30,8 @@
 
 namespace shrpx {
 
-Http3Upstream::Http3Upstream(ClientHandler *handler) : handler_{handler} {}
+Http3Upstream::Http3Upstream(ClientHandler *handler)
+    : handler_{handler}, tls_alert_{0} {}
 
 Http3Upstream::~Http3Upstream() {}
 
@@ -128,5 +129,22 @@ int Http3Upstream::on_read(const UpstreamAddr *faddr,
                            size_t datalen) {
   return 0;
 }
+
+int Http3Upstream::on_rx_secret(ngtcp2_crypto_level level,
+                                const uint8_t *secret, size_t secretlen) {
+  return 0;
+}
+
+int Http3Upstream::on_tx_secret(ngtcp2_crypto_level level,
+                                const uint8_t *secret, size_t secretlen) {
+  return 0;
+}
+
+int Http3Upstream::add_crypto_data(ngtcp2_crypto_level level,
+                                   const uint8_t *data, size_t datalen) {
+  return 0;
+}
+
+void Http3Upstream::set_tls_alert(uint8_t alert) { tls_alert_ = alert; }
 
 } // namespace shrpx
