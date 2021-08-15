@@ -505,6 +505,8 @@ std::string numeric_name(const struct sockaddr *sa, socklen_t salen);
 // IPv6 address, address is enclosed by square brackets ([]).
 std::string to_numeric_addr(const Address *addr);
 
+std::string to_numeric_addr(const struct sockaddr *sa, socklen_t salen);
+
 // Sets |port| to |addr|.
 void set_port(Address &addr, uint16_t port);
 
@@ -785,6 +787,8 @@ std::mt19937 make_mt19937();
 // daemonize calls daemon(3).  If __APPLE__ is defined, it implements
 // daemon() using fork().
 int daemonize(int nochdir, int noclose);
+
+int msghdr_get_local_addr(Address &dest, msghdr *msg, int family);
 
 } // namespace util
 
