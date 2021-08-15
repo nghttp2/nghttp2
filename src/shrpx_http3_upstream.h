@@ -26,6 +26,9 @@
 #define SHRPX_HTTP3_UPSTREAM_H
 
 #include "shrpx.h"
+
+#include <ngtcp2/ngtcp2.h>
+
 #include "shrpx_upstream.h"
 #include "network.h"
 
@@ -84,8 +87,19 @@ public:
   int on_read(const UpstreamAddr *faddr, const Address &remote_addr,
               const Address &local_addr, const uint8_t *data, size_t datalen);
 
+  int on_rx_secret(ngtcp2_crypto_level level, const uint8_t *secret,
+                   size_t secretlen);
+  int on_tx_secret(ngtcp2_crypto_level level, const uint8_t *secret,
+                   size_t secretlen);
+
+  int add_crypto_data(ngtcp2_crypto_level level, const uint8_t *data,
+                      size_t datalen);
+
+  void set_tls_alert(uint8_t alert);
+
 private:
   ClientHandler *handler_;
+  uint8_t tls_alert_;
 };
 
 } // namespace shrpx
