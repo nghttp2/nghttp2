@@ -908,6 +908,10 @@ struct ConnectionConfig {
   } listener;
 
   struct {
+    std::vector<UpstreamAddr> addrs;
+  } quic_listener;
+
+  struct {
     struct {
       ev_tstamp http2_read;
       ev_tstamp read;

@@ -244,6 +244,9 @@ int ConnectionHandler::create_single_worker() {
     return -1;
   }
 #endif // HAVE_MRUBY
+  if (single_worker_->setup_quic_server_socket() != 0) {
+    return -1;
+  }
 
   return 0;
 }
@@ -305,6 +308,9 @@ int ConnectionHandler::create_worker_thread(size_t num) {
       return -1;
     }
 #  endif // HAVE_MRUBY
+    if (worker->setup_quic_server_socket() != 0) {
+      return -1;
+    }
 
     workers_.push_back(std::move(worker));
     worker_loops_.push_back(loop);

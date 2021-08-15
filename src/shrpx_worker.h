@@ -321,6 +321,8 @@ public:
 
   DNSTracker *get_dns_tracker();
 
+  int setup_quic_server_socket();
+
 private:
 #ifndef NOTHREADS
   std::future<void> fut_;
@@ -334,6 +336,8 @@ private:
   MemchunkPool mcpool_;
   WorkerStat worker_stat_;
   DNSTracker dns_tracker_;
+
+  std::vector<UpstreamAddr> quic_upstream_addrs_;
 
   std::shared_ptr<DownstreamConfig> downstreamconf_;
   std::unique_ptr<MemcachedDispatcher> session_cache_memcached_dispatcher_;

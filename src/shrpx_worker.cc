@@ -39,6 +39,7 @@
 #ifdef HAVE_MRUBY
 #  include "shrpx_mruby.h"
 #endif // HAVE_MRUBY
+#include "shrpx_quic.h"
 #include "util.h"
 #include "template.h"
 
@@ -137,6 +138,7 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
     : randgen_(util::make_mt19937()),
       worker_stat_{},
       dns_tracker_(loop),
+      quic_upstream_addrs_{get_config()->conn.quic_listener.addrs},
       loop_(loop),
       sv_ssl_ctx_(sv_ssl_ctx),
       cl_ssl_ctx_(cl_ssl_ctx),
@@ -579,6 +581,22 @@ ConnectionHandler *Worker::get_connection_handler() const {
 }
 
 DNSTracker *Worker::get_dns_tracker() { return &dns_tracker_; }
+
+int Worker::setup_quic_server_socket() {
+  for (auto &addr : quic_upstream_addrs_) {
+    if (addr.host_unix) {
+      /* TODO Not implemented */
+      assert(0);
+      continue;
+    }
+
+    if (create_quic_server_socket(addr) != 0) {
+      return -1;
+    }
+  }
+
+  return 0;
+}
 
 namespace {
 size_t match_downstream_addr_group_host(
