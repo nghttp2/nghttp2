@@ -785,6 +785,7 @@ struct UpstreamParams {
   bool tls;
   bool sni_fwd;
   bool proxyproto;
+  bool quic;
 };
 
 namespace {
@@ -819,6 +820,8 @@ int parse_upstream_params(UpstreamParams &out, const StringRef &src_params) {
       out.alt_mode = UpstreamAltMode::HEALTHMON;
     } else if (util::strieq_l("proxyproto", param)) {
       out.proxyproto = true;
+    } else if (util::strieq_l("quic", param)) {
+      out.quic = true;
     } else if (!param.empty()) {
       LOG(ERROR) << "frontend: " << param << ": unknown keyword";
       return -1;
@@ -2624,7 +2627,6 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     return 0;
   }
   case SHRPX_OPTID_FRONTEND: {
-    auto &listenerconf = config->conn.listener;
     auto &apiconf = config->api;
 
     auto addr_end = std::find(std::begin(optarg), std::end(optarg), ';');
@@ -2642,6 +2644,11 @@ int parse_config(Config *config, int optid, const StringRef &opt,
       return -1;
     }
 
+    if (params.quic && params.alt_mode != UpstreamAltMode::NONE) {
+      LOG(ERROR) << "frontend: api or healthmon cannot be used with quic";
+      return -1;
+    }
+
     UpstreamAddr addr{};
     addr.fd = -1;
     addr.tls = params.tls;
@@ -2653,12 +2660,15 @@ int parse_config(Config *config, int optid, const StringRef &opt,
       apiconf.enabled = true;
     }
 
+    auto &addrs = params.quic ? config->conn.quic_listener.addrs
+                              : config->conn.listener.addrs;
+
     if (util::istarts_with(optarg, SHRPX_UNIX_PATH_PREFIX)) {
       auto path = std::begin(optarg) + SHRPX_UNIX_PATH_PREFIX.size();
       addr.host = make_string_ref(config->balloc, StringRef{path, addr_end});
       addr.host_unix = true;
 
-      listenerconf.addrs.push_back(std::move(addr));
+      addrs.push_back(std::move(addr));
 
       return 0;
     }
@@ -2673,21 +2683,21 @@ int parse_config(Config *config, int optid, const StringRef &opt,
 
     if (util::numeric_host(host, AF_INET)) {
       addr.family = AF_INET;
-      listenerconf.addrs.push_back(std::move(addr));
+      addrs.push_back(std::move(addr));
       return 0;
     }
 
     if (util::numeric_host(host, AF_INET6)) {
       addr.family = AF_INET6;
-      listenerconf.addrs.push_back(std::move(addr));
+      addrs.push_back(std::move(addr));
       return 0;
     }
 
     addr.family = AF_INET;
-    listenerconf.addrs.push_back(addr);
+    addrs.push_back(addr);
 
     addr.family = AF_INET6;
-    listenerconf.addrs.push_back(std::move(addr));
+    addrs.push_back(std::move(addr));
 
     return 0;
   }
