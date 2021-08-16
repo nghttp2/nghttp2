@@ -43,6 +43,10 @@ Error err_transport(int liberr) {
           ngtcp2_err_infer_quic_transport_error_code(liberr)};
 }
 
+Error err_transport_idle_timeout() {
+  return {ErrorType::TransportIdleTimeout, 0};
+}
+
 Error err_transport_tls(int alert) {
   return {ErrorType::Transport, ngtcp2_err_infer_quic_transport_error_code(
                                     NGTCP2_CRYPTO_ERROR | alert)};

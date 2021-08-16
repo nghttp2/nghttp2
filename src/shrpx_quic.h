@@ -38,28 +38,6 @@ struct UpstreamAddr;
 constexpr size_t SHRPX_QUIC_SCIDLEN = 20;
 constexpr size_t SHRPX_MAX_UDP_PAYLOAD_SIZE = 1280;
 
-enum class QUICErrorType {
-  Application,
-  Transport,
-  TransportVersionNegotiation,
-  TransportIdleTimeout,
-};
-
-struct QUICError {
-  QUICError(QUICErrorType type, uint64_t code) : type{type}, code{code} {}
-
-  QUICErrorType type;
-  uint64_t code;
-};
-
-QUICError quic_err_transport(int liberr);
-
-QUICError quic_err_idle_timeout();
-
-QUICError quic_err_tls(int alert);
-
-QUICError quic_err_app(int liberr);
-
 ngtcp2_tstamp quic_timestamp();
 
 int create_quic_server_socket(UpstreamAddr &addr);

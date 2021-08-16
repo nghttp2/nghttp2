@@ -30,7 +30,7 @@
 #include <ngtcp2/ngtcp2.h>
 
 #include "shrpx_upstream.h"
-#include "shrpx_quic.h"
+#include "quic.h"
 #include "network.h"
 
 using namespace nghttp2;
@@ -107,7 +107,7 @@ private:
   ClientHandler *handler_;
   ngtcp2_cid initial_client_dcid_;
   ngtcp2_conn *conn_;
-  QUICError last_error_;
+  quic::Error last_error_;
   uint8_t tls_alert_;
 };
 

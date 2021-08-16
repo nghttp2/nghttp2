@@ -46,28 +46,6 @@ using namespace nghttp2;
 
 namespace shrpx {
 
-QUICError quic_err_transport(int liberr) {
-  if (liberr == NGTCP2_ERR_RECV_VERSION_NEGOTIATION) {
-    return {QUICErrorType::TransportVersionNegotiation, 0};
-  }
-  return {QUICErrorType::Transport,
-          ngtcp2_err_infer_quic_transport_error_code(liberr)};
-}
-
-QUICError quic_err_idle_timeout() {
-  return {QUICErrorType::TransportIdleTimeout, 0};
-}
-
-QUICError quic_err_tls(int alert) {
-  return {QUICErrorType::Transport,
-          static_cast<uint64_t>(NGTCP2_CRYPTO_ERROR | alert)};
-}
-
-QUICError quic_err_app(int liberr) {
-  return {QUICErrorType::Application,
-          nghttp3_err_infer_quic_app_error_code(liberr)};
-}
-
 ngtcp2_tstamp quic_timestamp() {
   return std::chrono::duration_cast<std::chrono::nanoseconds>(
              std::chrono::steady_clock::now().time_since_epoch())

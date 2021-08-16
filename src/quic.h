@@ -34,6 +34,7 @@ namespace quic {
 enum class ErrorType {
   Transport,
   TransportVersionNegotiation,
+  TransportIdleTimeout,
   Application,
 };
 
@@ -46,6 +47,7 @@ struct Error {
 };
 
 Error err_transport(int liberr);
+Error err_transport_idle_timeout();
 Error err_transport_tls(int alert);
 Error err_application(int liberr);
 
