@@ -59,7 +59,7 @@ void http2_impl::backlog(int backlog) { backlog_ = backlog; }
 
 void http2_impl::set_on_all_threads_created_callback(
     on_all_threads_created_cb cb) {
-  all_threads_created_cb_ = cb;
+  all_threads_created_cb_ = std::move(cb);
 }
 
 void http2_impl::tls_handshake_timeout(

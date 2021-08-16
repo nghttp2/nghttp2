@@ -71,7 +71,7 @@ server::listen_and_serve(boost::system::error_code &ec,
     }
   }
 
-  io_service_pool_.run(asynchronous, all_threads_created_cb);
+  io_service_pool_.run(asynchronous, std::move(all_threads_created_cb));
 
   return ec;
 }
