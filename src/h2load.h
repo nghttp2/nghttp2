@@ -104,6 +104,7 @@ struct Config {
   uint16_t default_port;
   uint16_t connect_to_port;
   bool verbose;
+  uint32_t full_handshake_rate;
   bool timing_script;
   std::string base_uri;
   // true if UNIX domain socket is used.  In this case, base_uri is
