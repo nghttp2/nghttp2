@@ -148,6 +148,7 @@ public:
   void setup_upstream_io_callback();
 
   void setup_http3_upstream(std::unique_ptr<Http3Upstream> &&upstream);
+  int write_quic();
 
   // Returns string suitable for use in "by" parameter of Forwarded
   // header field.

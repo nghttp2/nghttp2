@@ -185,6 +185,7 @@ int Http3Upstream::init(const UpstreamAddr *faddr, const Address &remote_addr,
 
   ngtcp2_transport_params params;
   ngtcp2_transport_params_default(&params);
+  params.initial_max_streams_uni = 3;
   params.initial_max_data = 1_m;
   params.initial_max_stream_data_bidi_remote = 256_k;
   params.initial_max_stream_data_uni = 256_k;
@@ -217,7 +218,119 @@ int Http3Upstream::init(const UpstreamAddr *faddr, const Address &remote_addr,
 
 int Http3Upstream::on_read() { return 0; }
 
-int Http3Upstream::on_write() { return 0; }
+int Http3Upstream::on_write() {
+  std::array<uint8_t, 64_k> buf;
+  size_t max_pktcnt =
+      std::min(static_cast<size_t>(64_k), ngtcp2_conn_get_send_quantum(conn_)) /
+      SHRPX_MAX_UDP_PAYLOAD_SIZE;
+  ngtcp2_pkt_info pi;
+  uint8_t *bufpos = buf.data();
+  ngtcp2_path_storage ps, prev_ps;
+  size_t pktcnt = 0;
+  auto ts = quic_timestamp();
+
+  ngtcp2_path_storage_zero(&ps);
+  ngtcp2_path_storage_zero(&prev_ps);
+
+  for (;;) {
+    int64_t stream_id = -1;
+    int fin = 0;
+
+    ngtcp2_ssize ndatalen;
+
+    uint32_t flags = NGTCP2_WRITE_STREAM_FLAG_MORE;
+    if (fin) {
+      flags |= NGTCP2_WRITE_STREAM_FLAG_FIN;
+    }
+
+    auto nwrite = ngtcp2_conn_writev_stream(
+        conn_, &ps.path, &pi, bufpos, SHRPX_MAX_UDP_PAYLOAD_SIZE, &ndatalen,
+        flags, stream_id, nullptr, 0, ts);
+    if (nwrite < 0) {
+      switch (nwrite) {
+      case NGTCP2_ERR_STREAM_DATA_BLOCKED:
+        assert(ndatalen == -1);
+        continue;
+      case NGTCP2_ERR_STREAM_SHUT_WR:
+        assert(ndatalen == -1);
+        continue;
+      case NGTCP2_ERR_WRITE_MORE:
+        assert(ndatalen >= 0);
+        continue;
+      }
+
+      assert(ndatalen == -1);
+
+      LOG(ERROR) << "ngtcp2_conn_writev_stream: " << ngtcp2_strerror(nwrite);
+
+      last_error_ = quic::err_transport(nwrite);
+
+      handler_->get_connection()->wlimit.stopw();
+
+      return handle_error();
+    } else if (ndatalen >= 0) {
+      // TODO do something
+    }
+
+    if (nwrite == 0) {
+      if (bufpos - buf.data()) {
+        quic_send_packet(static_cast<UpstreamAddr *>(prev_ps.path.user_data),
+                         prev_ps.path.remote.addr, prev_ps.path.remote.addrlen,
+                         prev_ps.path.local.addr, prev_ps.path.local.addrlen,
+                         buf.data(), bufpos - buf.data(),
+                         SHRPX_MAX_UDP_PAYLOAD_SIZE);
+
+        ngtcp2_conn_update_pkt_tx_time(conn_, ts);
+        // reset_idle_timer here
+      }
+
+      handler_->get_connection()->wlimit.stopw();
+
+      return 0;
+    }
+
+    bufpos += nwrite;
+
+    if (pktcnt == 0) {
+      ngtcp2_path_copy(&prev_ps.path, &ps.path);
+    } else if (!ngtcp2_path_eq(&prev_ps.path, &ps.path)) {
+      quic_send_packet(static_cast<UpstreamAddr *>(prev_ps.path.user_data),
+                       prev_ps.path.remote.addr, prev_ps.path.remote.addrlen,
+                       prev_ps.path.local.addr, prev_ps.path.local.addrlen,
+                       buf.data(), bufpos - buf.data() - nwrite,
+                       SHRPX_MAX_UDP_PAYLOAD_SIZE);
+
+      quic_send_packet(static_cast<UpstreamAddr *>(ps.path.user_data),
+                       ps.path.remote.addr, ps.path.remote.addrlen,
+                       ps.path.local.addr, ps.path.local.addrlen,
+                       bufpos - nwrite, nwrite, SHRPX_MAX_UDP_PAYLOAD_SIZE);
+
+      ngtcp2_conn_update_pkt_tx_time(conn_, ts);
+      // reset_idle_timer here
+
+      handler_->signal_write();
+
+      return 0;
+    }
+
+    if (++pktcnt == max_pktcnt ||
+        static_cast<size_t>(nwrite) < SHRPX_MAX_UDP_PAYLOAD_SIZE) {
+      quic_send_packet(static_cast<UpstreamAddr *>(ps.path.user_data),
+                       ps.path.remote.addr, ps.path.remote.addrlen,
+                       ps.path.local.addr, ps.path.local.addrlen, buf.data(),
+                       bufpos - buf.data(), SHRPX_MAX_UDP_PAYLOAD_SIZE);
+
+      ngtcp2_conn_update_pkt_tx_time(conn_, ts);
+      // reset_idle_timer here
+
+      handler_->signal_write();
+
+      return 0;
+    }
+  }
+
+  return 0;
+}
 
 int Http3Upstream::on_timeout(Downstream *downstream) { return 0; }
 
@@ -382,6 +495,13 @@ int Http3Upstream::on_tx_secret(ngtcp2_crypto_level level,
 
 int Http3Upstream::add_crypto_data(ngtcp2_crypto_level level,
                                    const uint8_t *data, size_t datalen) {
+  int rv = ngtcp2_conn_submit_crypto_data(conn_, level, data, datalen);
+
+  if (rv != 0) {
+    LOG(ERROR) << "ngtcp2_conn_submit_crypto_data: " << ngtcp2_strerror(rv);
+    return -1;
+  }
+
   return 0;
 }
 

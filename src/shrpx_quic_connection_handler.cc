@@ -105,7 +105,10 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
 
   if (handler->read_quic(faddr, remote_addr, local_addr, data, datalen) != 0) {
     delete handler;
+    return 0;
   }
+
+  handler->signal_write();
 
   return 0;
 }
@@ -134,6 +137,10 @@ ClientHandler *QUICConnectionHandler::handle_new_connection(
   if (ssl == nullptr) {
     return nullptr;
   }
+
+  assert(SSL_is_quic(ssl));
+
+  SSL_set_accept_state(ssl);
 
   // Disable TLS session ticket if we don't have working ticket
   // keys.

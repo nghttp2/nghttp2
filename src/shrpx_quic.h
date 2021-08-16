@@ -42,7 +42,7 @@ ngtcp2_tstamp quic_timestamp();
 
 int create_quic_server_socket(UpstreamAddr &addr);
 
-int quic_send_packet(const UpstreamAddr *addr, const sockaddr *remote_sa,
+int quic_send_packet(const UpstreamAddr *faddr, const sockaddr *remote_sa,
                      size_t remote_salen, const sockaddr *local_sa,
                      size_t local_salen, const uint8_t *data, size_t datalen,
                      size_t gso_size);

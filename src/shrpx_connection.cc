@@ -74,7 +74,7 @@ Connection::Connection(struct ev_loop *loop, int fd, SSL *ssl,
       read_timeout(read_timeout) {
 
   ev_io_init(&wev, writecb, fd, EV_WRITE);
-  ev_io_init(&rev, readcb, fd, EV_READ);
+  ev_io_init(&rev, readcb, proto == Proto::HTTP3 ? 0 : fd, EV_READ);
 
   wev.data = this;
   rev.data = this;
@@ -128,7 +128,7 @@ void Connection::disconnect() {
     tls.early_data_finish = false;
   }
 
-  if (fd != -1) {
+  if (proto != Proto::HTTP3 && fd != -1) {
     shutdown(fd, SHUT_WR);
     close(fd);
     fd = -1;
