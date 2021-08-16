@@ -72,7 +72,7 @@ fail:
 } // namespace
 
 Http3Upstream::Http3Upstream(ClientHandler *handler)
-    : handler_{handler}, conn_{nullptr}, tls_alert_{0} {
+    : handler_{handler}, conn_{nullptr}, tls_alert_{0}, httpconn_{nullptr} {
   ev_timer_init(&timer_, timeoutcb, 0., 0.);
   timer_.data = this;
 
@@ -88,6 +88,8 @@ Http3Upstream::~Http3Upstream() {
 
   ev_timer_stop(loop, &idle_timer_);
   ev_timer_stop(loop, &timer_);
+
+  nghttp3_conn_del(httpconn_);
 
   if (conn_) {
     auto worker = handler_->get_worker();
@@ -594,6 +596,10 @@ int Http3Upstream::on_tx_secret(ngtcp2_crypto_level level,
     return -1;
   }
 
+  if (level == NGTCP2_CRYPTO_LEVEL_APPLICATION && setup_httpconn() != 0) {
+    return -1;
+  }
+
   return 0;
 }
 
@@ -646,6 +652,162 @@ void Http3Upstream::reset_timer() {
                       : 1e-9;
 
   ev_timer_again(handler_->get_loop(), &timer_);
+}
+
+namespace {
+int http_deferred_consume(nghttp3_conn *conn, int64_t stream_id,
+                          size_t nsoncumed, void *user_data,
+                          void *stream_user_data) {
+  return 0;
+}
+} // namespace
+
+namespace {
+int http_acked_stream_data(nghttp3_conn *conn, int64_t stream_id,
+                           size_t datalen, void *user_data,
+                           void *stream_user_data) {
+  return 0;
+}
+} // namespace
+
+namespace {
+int http_begin_request_headers(nghttp3_conn *conn, int64_t stream_id,
+                               void *user_data, void *stream_user_data) {
+  return 0;
+}
+} // namespace
+
+namespace {
+int http_recv_request_header(nghttp3_conn *conn, int64_t stream_id,
+                             int32_t token, nghttp3_rcbuf *name,
+                             nghttp3_rcbuf *value, uint8_t flags,
+                             void *user_data, void *stream_user_data) {
+  return 0;
+}
+} // namespace
+
+namespace {
+int http_end_request_headers(nghttp3_conn *conn, int64_t stream_id,
+                             void *user_data, void *stream_user_data) {
+  return 0;
+}
+} // namespace
+
+namespace {
+int http_recv_data(nghttp3_conn *conn, int64_t stream_id, const uint8_t *data,
+                   size_t datalen, void *user_data, void *stream_user_data) {
+  return 0;
+}
+} // namespace
+
+namespace {
+int http_end_stream(nghttp3_conn *conn, int64_t stream_id, void *user_data,
+                    void *stream_user_data) {
+  return 0;
+}
+} // namespace
+
+namespace {
+int http_stream_close(nghttp3_conn *conn, int64_t stream_id,
+                      uint64_t app_error_code, void *conn_user_data,
+                      void *stream_user_data) {
+  return 0;
+}
+} // namespace
+
+namespace {
+int http_send_stop_sending(nghttp3_conn *conn, int64_t stream_id,
+                           uint64_t app_error_code, void *user_data,
+                           void *stream_user_data) {
+  return 0;
+}
+} // namespace
+
+namespace {
+int http_reset_stream(nghttp3_conn *conn, int64_t stream_id,
+                      uint64_t app_error_code, void *user_data,
+                      void *stream_user_data) {
+  return 0;
+}
+} // namespace
+
+int Http3Upstream::setup_httpconn() {
+  int rv;
+
+  if (ngtcp2_conn_get_max_local_streams_uni(conn_) < 3) {
+    return -1;
+  }
+
+  nghttp3_callbacks callbacks{
+      http_acked_stream_data,
+      http_stream_close,
+      http_recv_data,
+      http_deferred_consume,
+      http_begin_request_headers,
+      http_recv_request_header,
+      http_end_request_headers,
+      nullptr, // begin_trailers
+      nullptr, // recv_trailer
+      nullptr, // end_trailers
+      http_send_stop_sending,
+      http_end_stream,
+      http_reset_stream,
+  };
+
+  nghttp3_settings settings;
+  nghttp3_settings_default(&settings);
+  settings.qpack_max_table_capacity = 4_k;
+
+  auto mem = nghttp3_mem_default();
+
+  rv = nghttp3_conn_server_new(&httpconn_, &callbacks, &settings, mem, this);
+  if (rv != 0) {
+    LOG(ERROR) << "nghttp3_conn_server_new: " << nghttp3_strerror(rv);
+    return -1;
+  }
+
+  ngtcp2_transport_params params;
+  ngtcp2_conn_get_local_transport_params(conn_, &params);
+
+  nghttp3_conn_set_max_client_streams_bidi(httpconn_,
+                                           params.initial_max_streams_bidi);
+
+  int64_t ctrl_stream_id;
+
+  rv = ngtcp2_conn_open_uni_stream(conn_, &ctrl_stream_id, nullptr);
+  if (rv != 0) {
+    LOG(ERROR) << "ngtcp2_conn_open_uni_stream: " << ngtcp2_strerror(rv);
+    return -1;
+  }
+
+  rv = nghttp3_conn_bind_control_stream(httpconn_, ctrl_stream_id);
+  if (rv != 0) {
+    LOG(ERROR) << "nghttp3_conn_bind_control_stream: " << nghttp3_strerror(rv);
+    return -1;
+  }
+
+  int64_t qpack_enc_stream_id, qpack_dec_stream_id;
+
+  rv = ngtcp2_conn_open_uni_stream(conn_, &qpack_enc_stream_id, nullptr);
+  if (rv != 0) {
+    LOG(ERROR) << "ngtcp2_conn_open_uni_stream: " << ngtcp2_strerror(rv);
+    return -1;
+  }
+
+  rv = ngtcp2_conn_open_uni_stream(conn_, &qpack_dec_stream_id, nullptr);
+  if (rv != 0) {
+    LOG(ERROR) << "ngtcp2_conn_open_uni_stream: " << ngtcp2_strerror(rv);
+    return -1;
+  }
+
+  rv = nghttp3_conn_bind_qpack_streams(httpconn_, qpack_enc_stream_id,
+                                       qpack_dec_stream_id);
+  if (rv != 0) {
+    LOG(ERROR) << "nghttp3_conn_bind_qpack_streams: " << nghttp3_strerror(rv);
+    return -1;
+  }
+
+  return 0;
 }
 
 } // namespace shrpx

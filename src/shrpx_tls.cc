@@ -185,7 +185,8 @@ int servername_callback(SSL *ssl, int *al, void *arg) {
 
   auto hostname = StringRef{std::begin(buf), end_buf};
 
-  auto cert_tree = worker->get_cert_lookup_tree();
+  auto cert_tree = SSL_is_quic(ssl) ? worker->get_quic_cert_lookup_tree()
+                                    : worker->get_cert_lookup_tree();
 
   auto idx = cert_tree->lookup(hostname);
   if (idx == -1) {
@@ -196,7 +197,9 @@ int servername_callback(SSL *ssl, int *al, void *arg) {
 
   auto conn_handler = worker->get_connection_handler();
 
-  const auto &ssl_ctx_list = conn_handler->get_indexed_ssl_ctx(idx);
+  const auto &ssl_ctx_list = SSL_is_quic(ssl)
+                                 ? conn_handler->get_quic_indexed_ssl_ctx(idx)
+                                 : conn_handler->get_indexed_ssl_ctx(idx);
   assert(!ssl_ctx_list.empty());
 
 #if !defined(OPENSSL_IS_BORINGSSL) && !LIBRESSL_IN_USE &&                      \

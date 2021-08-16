@@ -28,6 +28,7 @@
 #include "shrpx.h"
 
 #include <ngtcp2/ngtcp2.h>
+#include <nghttp3/nghttp3.h>
 
 #include "shrpx_upstream.h"
 #include "quic.h"
@@ -109,6 +110,8 @@ public:
   void reset_idle_timer();
   void reset_timer();
 
+  int setup_httpconn();
+
 private:
   ClientHandler *handler_;
   ev_timer timer_;
@@ -117,6 +120,7 @@ private:
   ngtcp2_conn *conn_;
   quic::Error last_error_;
   uint8_t tls_alert_;
+  nghttp3_conn *httpconn_;
 };
 
 } // namespace shrpx

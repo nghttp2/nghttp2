@@ -345,7 +345,8 @@ int ConnectionHandler::create_worker_thread(size_t num) {
       return -1;
     }
 #  endif // HAVE_MRUBY
-    if (worker->setup_quic_server_socket() != 0) {
+    if ((!apiconf.enabled || i != 0) &&
+        worker->setup_quic_server_socket() != 0) {
       return -1;
     }
 
