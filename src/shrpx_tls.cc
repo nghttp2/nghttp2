@@ -1118,6 +1118,10 @@ int quic_send_alert(SSL *ssl, OSSL_ENCRYPTION_LEVEL ossl_level, uint8_t alert) {
   auto handler = static_cast<ClientHandler *>(conn->data);
   auto upstream = static_cast<Http3Upstream *>(handler->get_upstream());
 
+  if (!upstream) {
+    return 1;
+  }
+
   upstream->set_tls_alert(alert);
 
   return 1;

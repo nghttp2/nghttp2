@@ -296,6 +296,8 @@ int ClientHandler::read_quic(const UpstreamAddr *faddr,
   return upstream->on_read(faddr, remote_addr, local_addr, data, datalen);
 }
 
+int ClientHandler::write_quic() { return upstream_->on_write(); }
+
 int ClientHandler::upstream_noop() { return 0; }
 
 int ClientHandler::upstream_read() {
@@ -429,7 +431,9 @@ ClientHandler::ClientHandler(Worker *worker, int fd, SSL *ssl,
 
   reneg_shutdown_timer_.data = this;
 
-  conn_.rlimit.startw();
+  if (!faddr->quic) {
+    conn_.rlimit.startw();
+  }
   ev_timer_again(conn_.loop, &conn_.rt);
 
   auto config = get_config();
@@ -509,6 +513,7 @@ void ClientHandler::setup_http3_upstream(
     std::unique_ptr<Http3Upstream> &&upstream) {
   upstream_ = std::move(upstream);
   alpn_ = StringRef::from_lit("h3");
+  write_ = &ClientHandler::write_quic;
 }
 
 ClientHandler::~ClientHandler() {
