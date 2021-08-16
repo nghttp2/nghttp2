@@ -131,8 +131,6 @@ enum nghttp2_asio_error {
 
 struct thread_info {
   thread_info(pid_t id) : pid(id) {}
-  // Thread info is ready to be read.
-  bool ready;
   pid_t pid;
 };
 
