@@ -198,8 +198,8 @@ public:
   // connections.
   void backlog(int backlog);
 
-  // Sets the callback to be executed after all threads
-  // of |num_threads| is created.
+  // Sets the callback to be executed after |num_threads|
+  // of threads is created.
   void set_on_all_threads_created_callback(on_all_threads_created_cb cb);
 
   // Sets TLS handshake timeout, which defaults to 60 seconds.
