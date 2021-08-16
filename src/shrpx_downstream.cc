@@ -113,7 +113,7 @@ void downstream_wtimeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
 
 // upstream could be nullptr for unittests
 Downstream::Downstream(Upstream *upstream, MemchunkPool *mcpool,
-                       int32_t stream_id)
+                       int64_t stream_id)
     : dlnext(nullptr),
       dlprev(nullptr),
       response_sent_body_length(0),
@@ -605,9 +605,9 @@ void Downstream::reset_upstream(Upstream *upstream) {
 
 Upstream *Downstream::get_upstream() const { return upstream_; }
 
-void Downstream::set_stream_id(int32_t stream_id) { stream_id_ = stream_id; }
+void Downstream::set_stream_id(int64_t stream_id) { stream_id_ = stream_id; }
 
-int32_t Downstream::get_stream_id() const { return stream_id_; }
+int64_t Downstream::get_stream_id() const { return stream_id_; }
 
 void Downstream::set_request_state(DownstreamState state) {
   request_state_ = state;
@@ -904,11 +904,11 @@ StringRef Downstream::get_http2_settings() const {
   return http2_settings->value;
 }
 
-void Downstream::set_downstream_stream_id(int32_t stream_id) {
+void Downstream::set_downstream_stream_id(int64_t stream_id) {
   downstream_stream_id_ = stream_id;
 }
 
-int32_t Downstream::get_downstream_stream_id() const {
+int64_t Downstream::get_downstream_stream_id() const {
   return downstream_stream_id_;
 }
 
@@ -1115,11 +1115,11 @@ DefaultMemchunks Downstream::pop_response_buf() {
   return std::move(response_buf_);
 }
 
-void Downstream::set_assoc_stream_id(int32_t stream_id) {
+void Downstream::set_assoc_stream_id(int64_t stream_id) {
   assoc_stream_id_ = stream_id;
 }
 
-int32_t Downstream::get_assoc_stream_id() const { return assoc_stream_id_; }
+int64_t Downstream::get_assoc_stream_id() const { return assoc_stream_id_; }
 
 BlockAllocator &Downstream::get_block_allocator() { return balloc_; }
 
