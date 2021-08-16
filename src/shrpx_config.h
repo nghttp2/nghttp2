@@ -704,6 +704,9 @@ struct QUICConfig {
   struct {
     std::array<uint8_t, 32> secret;
   } stateless_reset;
+  struct {
+    ev_tstamp idle;
+  } timeout;
 };
 
 // custom error page

@@ -38,10 +38,57 @@
 
 namespace shrpx {
 
+namespace {
+void idle_timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
+  auto upstream = static_cast<Http3Upstream *>(w->data);
+
+  if (LOG_ENABLED(INFO)) {
+    LOG(INFO) << "QUIC idle timeout";
+  }
+
+  // TODO Implement draining period.
+
+  auto handler = upstream->get_client_handler();
+
+  delete handler;
+}
+} // namespace
+
+namespace {
+void timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
+  auto upstream = static_cast<Http3Upstream *>(w->data);
+
+  if (upstream->handle_expiry() != 0 || upstream->on_write() != 0) {
+    goto fail;
+  }
+
+  return;
+
+fail:
+  auto handler = upstream->get_client_handler();
+
+  delete handler;
+}
+} // namespace
+
 Http3Upstream::Http3Upstream(ClientHandler *handler)
-    : handler_{handler}, conn_{nullptr}, tls_alert_{0} {}
+    : handler_{handler}, conn_{nullptr}, tls_alert_{0} {
+  ev_timer_init(&timer_, timeoutcb, 0., 0.);
+  timer_.data = this;
+
+  auto config = get_config();
+  auto &quicconf = config->quic;
+
+  ev_timer_init(&idle_timer_, idle_timeoutcb, 0., quicconf.timeout.idle);
+  idle_timer_.data = this;
+}
 
 Http3Upstream::~Http3Upstream() {
+  auto loop = handler_->get_loop();
+
+  ev_timer_stop(loop, &idle_timer_);
+  ev_timer_stop(loop, &timer_);
+
   if (conn_) {
     auto worker = handler_->get_worker();
     auto quic_client_handler = worker->get_quic_connection_handler();
@@ -183,13 +230,17 @@ int Http3Upstream::init(const UpstreamAddr *faddr, const Address &remote_addr,
   settings.max_udp_payload_size = SHRPX_MAX_UDP_PAYLOAD_SIZE;
   settings.rand_ctx = {&worker->get_randgen()};
 
+  auto config = get_config();
+  auto &quicconf = config->quic;
+
   ngtcp2_transport_params params;
   ngtcp2_transport_params_default(&params);
   params.initial_max_streams_uni = 3;
   params.initial_max_data = 1_m;
   params.initial_max_stream_data_bidi_remote = 256_k;
   params.initial_max_stream_data_uni = 256_k;
-  params.max_idle_timeout = 30 * NGTCP2_SECONDS;
+  params.max_idle_timeout =
+      static_cast<ngtcp2_tstamp>(quicconf.timeout.idle * NGTCP2_SECONDS);
   params.original_dcid = initial_hd.dcid;
 
   auto path = ngtcp2_path{
@@ -219,6 +270,16 @@ int Http3Upstream::init(const UpstreamAddr *faddr, const Address &remote_addr,
 int Http3Upstream::on_read() { return 0; }
 
 int Http3Upstream::on_write() {
+  if (write_streams() != 0) {
+    return -1;
+  }
+
+  reset_timer();
+
+  return 0;
+}
+
+int Http3Upstream::write_streams() {
   std::array<uint8_t, 64_k> buf;
   size_t max_pktcnt =
       std::min(static_cast<size_t>(64_k), ngtcp2_conn_get_send_quantum(conn_)) /
@@ -281,7 +342,7 @@ int Http3Upstream::on_write() {
                          SHRPX_MAX_UDP_PAYLOAD_SIZE);
 
         ngtcp2_conn_update_pkt_tx_time(conn_, ts);
-        // reset_idle_timer here
+        reset_idle_timer();
       }
 
       handler_->get_connection()->wlimit.stopw();
@@ -306,7 +367,7 @@ int Http3Upstream::on_write() {
                        bufpos - nwrite, nwrite, SHRPX_MAX_UDP_PAYLOAD_SIZE);
 
       ngtcp2_conn_update_pkt_tx_time(conn_, ts);
-      // reset_idle_timer here
+      reset_idle_timer();
 
       handler_->signal_write();
 
@@ -321,7 +382,7 @@ int Http3Upstream::on_write() {
                        bufpos - buf.data(), SHRPX_MAX_UDP_PAYLOAD_SIZE);
 
       ngtcp2_conn_update_pkt_tx_time(conn_, ts);
-      // reset_idle_timer here
+      reset_idle_timer();
 
       handler_->signal_write();
 
@@ -466,10 +527,53 @@ int Http3Upstream::on_read(const UpstreamAddr *faddr,
     return handle_error();
   }
 
+  reset_idle_timer();
+
   return 0;
 }
 
-int Http3Upstream::handle_error() { return -1; }
+int Http3Upstream::handle_error() {
+  if (ngtcp2_conn_is_in_closing_period(conn_)) {
+    return -1;
+  }
+
+  ngtcp2_path_storage ps;
+  ngtcp2_pkt_info pi;
+
+  ngtcp2_path_storage_zero(&ps);
+
+  auto ts = quic_timestamp();
+
+  std::array<uint8_t, SHRPX_MAX_UDP_PAYLOAD_SIZE> buf;
+  ngtcp2_ssize nwrite;
+
+  if (last_error_.type == quic::ErrorType::Transport) {
+    nwrite = ngtcp2_conn_write_connection_close(
+        conn_, &ps.path, &pi, buf.data(), SHRPX_MAX_UDP_PAYLOAD_SIZE,
+        last_error_.code, ts);
+    if (nwrite < 0) {
+      LOG(ERROR) << "ngtcp2_conn_write_connection_close: "
+                 << ngtcp2_strerror(nwrite);
+      return -1;
+    }
+  } else {
+    nwrite = ngtcp2_conn_write_application_close(
+        conn_, &ps.path, &pi, buf.data(), SHRPX_MAX_UDP_PAYLOAD_SIZE,
+        last_error_.code, ts);
+    if (nwrite < 0) {
+      LOG(ERROR) << "ngtcp2_conn_write_application_close: "
+                 << ngtcp2_strerror(nwrite);
+      return -1;
+    }
+  }
+
+  quic_send_packet(static_cast<UpstreamAddr *>(ps.path.user_data),
+                   ps.path.remote.addr, ps.path.remote.addrlen,
+                   ps.path.local.addr, ps.path.local.addrlen, buf.data(),
+                   nwrite, 0);
+
+  return -1;
+}
 
 int Http3Upstream::on_rx_secret(ngtcp2_crypto_level level,
                                 const uint8_t *secret, size_t secretlen) {
@@ -506,5 +610,42 @@ int Http3Upstream::add_crypto_data(ngtcp2_crypto_level level,
 }
 
 void Http3Upstream::set_tls_alert(uint8_t alert) { tls_alert_ = alert; }
+
+int Http3Upstream::handle_expiry() {
+  int rv;
+
+  auto ts = quic_timestamp();
+
+  rv = ngtcp2_conn_handle_expiry(conn_, ts);
+  if (rv != 0) {
+    LOG(ERROR) << "ngtcp2_conn_handle_expiry: " << ngtcp2_strerror(rv);
+    last_error_ = quic::err_transport(rv);
+    return handle_error();
+  }
+
+  return 0;
+}
+
+void Http3Upstream::reset_idle_timer() {
+  auto ts = quic_timestamp();
+  auto idle_ts = ngtcp2_conn_get_idle_expiry(conn_);
+
+  idle_timer_.repeat =
+      idle_ts > ts ? static_cast<ev_tstamp>(idle_ts - ts) / NGTCP2_SECONDS
+                   : 1e-9;
+
+  ev_timer_again(handler_->get_loop(), &idle_timer_);
+}
+
+void Http3Upstream::reset_timer() {
+  auto ts = quic_timestamp();
+  auto expiry_ts = ngtcp2_conn_get_expiry(conn_);
+
+  timer_.repeat = expiry_ts > ts
+                      ? static_cast<ev_tstamp>(expiry_ts - ts) / NGTCP2_SECONDS
+                      : 1e-9;
+
+  ev_timer_again(handler_->get_loop(), &timer_);
+}
 
 } // namespace shrpx

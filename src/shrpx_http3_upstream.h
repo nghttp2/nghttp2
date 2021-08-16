@@ -91,6 +91,8 @@ public:
   int on_read(const UpstreamAddr *faddr, const Address &remote_addr,
               const Address &local_addr, const uint8_t *data, size_t datalen);
 
+  int write_streams();
+
   int on_rx_secret(ngtcp2_crypto_level level, const uint8_t *secret,
                    size_t secretlen);
   int on_tx_secret(ngtcp2_crypto_level level, const uint8_t *secret,
@@ -103,8 +105,14 @@ public:
 
   int handle_error();
 
+  int handle_expiry();
+  void reset_idle_timer();
+  void reset_timer();
+
 private:
   ClientHandler *handler_;
+  ev_timer timer_;
+  ev_timer idle_timer_;
   ngtcp2_cid initial_client_dcid_;
   ngtcp2_conn *conn_;
   quic::Error last_error_;
