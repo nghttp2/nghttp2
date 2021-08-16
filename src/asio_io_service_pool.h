@@ -59,7 +59,8 @@ public:
   explicit io_service_pool(std::size_t pool_size);
 
   /// Run all io_service objects in the pool.
-  void run(bool asynchronous = false);
+  void run(bool asynchronous = false,
+           on_all_threads_created_cb all_threads_created_cb = nullptr);
 
   /// Stop all io_service objects in the pool.
   void force_stop();
@@ -87,8 +88,14 @@ private:
   /// The next io_service to use for a connection.
   std::size_t next_io_service_;
 
-  /// Futures to all the io_service objects
+  /// Futures to all the io_service objects.
   std::vector<std::future<std::size_t>> futures_;
+
+  /// Execute this function when new thread is created.
+  size_t io_thread_run(size_t index);
+
+  /// Hold the thread info for all io_services.
+  std::vector<std::shared_ptr<thread_info>> io_services_thread_info_;
 };
 
 } // namespace asio_http2

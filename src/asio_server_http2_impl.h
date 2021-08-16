@@ -47,6 +47,7 @@ public:
       const std::string &address, const std::string &port, bool asynchronous);
   void num_threads(size_t num_threads);
   void backlog(int backlog);
+  void set_on_all_threads_created_callback(on_all_threads_created_cb cb);
   void tls_handshake_timeout(const boost::posix_time::time_duration &t);
   void read_timeout(const boost::posix_time::time_duration &t);
   bool handle(std::string pattern, request_cb cb);
@@ -63,6 +64,7 @@ private:
   serve_mux mux_;
   boost::posix_time::time_duration tls_handshake_timeout_;
   boost::posix_time::time_duration read_timeout_;
+  on_all_threads_created_cb all_threads_created_cb_;
 };
 
 } // namespace server

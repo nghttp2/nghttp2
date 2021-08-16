@@ -33,6 +33,9 @@
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
+
+#include <algorithm>
+
 #include "asio_io_service_pool.h"
 
 namespace nghttp2 {
@@ -52,15 +55,39 @@ io_service_pool::io_service_pool(std::size_t pool_size) : next_io_service_(0) {
     io_services_.push_back(io_service);
     work_.push_back(work);
   }
+
+  // Pre-allocate vector space.
+  io_services_thread_info_.resize(pool_size);
 }
 
-void io_service_pool::run(bool asynchronous) {
+size_t io_service_pool::io_thread_run(size_t thread_index) {
+  auto io_service_thread_info = std::make_shared<thread_info>(gettid());
+  io_services_thread_info_[thread_index] = io_service_thread_info;
+  return io_services_[thread_index]->run();
+}
+
+void io_service_pool::run(bool asynchronous,
+                          on_all_threads_created_cb all_threads_created_cb) {
   // Create a pool of threads to run all of the io_services.
   for (std::size_t i = 0; i < io_services_.size(); ++i) {
     futures_.push_back(std::async(std::launch::async,
-                                  (size_t(boost::asio::io_service::*)(void)) &
-                                      boost::asio::io_service::run,
-                                  io_services_[i]));
+                                  (size_t(io_service_pool::*)(size_t)) &
+                                      io_service_pool::io_thread_run,
+                                  this, i));
+  }
+
+  if (all_threads_created_cb) {
+    // Wait until all thread created.
+    while (1) {
+      if (std::all_of(io_services_thread_info_.cbegin(),
+                      io_services_thread_info_.cend(),
+                      [](auto i) { return i && i != nullptr; })) {
+        break;
+      }
+      usleep(10);
+    }
+    // Execute callback before blocking.
+    all_threads_created_cb(io_services_thread_info_);
   }
 
   if (!asynchronous) {

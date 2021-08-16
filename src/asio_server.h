@@ -71,7 +71,8 @@ public:
   listen_and_serve(boost::system::error_code &ec,
                    boost::asio::ssl::context *tls_context,
                    const std::string &address, const std::string &port,
-                   int backlog, serve_mux &mux, bool asynchronous = false);
+                   int backlog, serve_mux &mux, bool asynchronous = false,
+                   on_all_threads_created_cb all_threads_created_cb = nullptr);
   void join();
   void stop();
 

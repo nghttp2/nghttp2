@@ -41,7 +41,8 @@ http2_impl::http2_impl()
     : num_threads_(1),
       backlog_(-1),
       tls_handshake_timeout_(boost::posix_time::seconds(60)),
-      read_timeout_(boost::posix_time::seconds(60)) {}
+      read_timeout_(boost::posix_time::seconds(60)),
+      all_threads_created_cb_(nullptr) {}
 
 boost::system::error_code http2_impl::listen_and_serve(
     boost::system::error_code &ec, boost::asio::ssl::context *tls_context,
@@ -49,12 +50,17 @@ boost::system::error_code http2_impl::listen_and_serve(
   server_.reset(
       new server(num_threads_, tls_handshake_timeout_, read_timeout_));
   return server_->listen_and_serve(ec, tls_context, address, port, backlog_,
-                                   mux_, asynchronous);
+                                   mux_, asynchronous, all_threads_created_cb_);
 }
 
 void http2_impl::num_threads(size_t num_threads) { num_threads_ = num_threads; }
 
 void http2_impl::backlog(int backlog) { backlog_ = backlog; }
+
+void http2_impl::set_on_all_threads_created_callback(
+    on_all_threads_created_cb cb) {
+  all_threads_created_cb_ = cb;
+}
 
 void http2_impl::tls_handshake_timeout(
     const boost::posix_time::time_duration &t) {

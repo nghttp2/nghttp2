@@ -55,7 +55,8 @@ boost::system::error_code
 server::listen_and_serve(boost::system::error_code &ec,
                          boost::asio::ssl::context *tls_context,
                          const std::string &address, const std::string &port,
-                         int backlog, serve_mux &mux, bool asynchronous) {
+                         int backlog, serve_mux &mux, bool asynchronous,
+                         on_all_threads_created_cb all_threads_created_cb) {
   ec.clear();
 
   if (bind_and_listen(ec, address, port, backlog)) {
@@ -70,7 +71,7 @@ server::listen_and_serve(boost::system::error_code &ec,
     }
   }
 
-  io_service_pool_.run(asynchronous);
+  io_service_pool_.run(asynchronous, all_threads_created_cb);
 
   return ec;
 }

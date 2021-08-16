@@ -198,6 +198,10 @@ public:
   // connections.
   void backlog(int backlog);
 
+  // Sets the callback to be executed after all threads
+  // of |num_threads| is created.
+  void set_on_all_threads_created_callback(on_all_threads_created_cb cb);
+
   // Sets TLS handshake timeout, which defaults to 60 seconds.
   void tls_handshake_timeout(const boost::posix_time::time_duration &t);
 

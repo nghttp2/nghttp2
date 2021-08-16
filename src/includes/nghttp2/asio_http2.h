@@ -31,6 +31,7 @@
 #include <vector>
 #include <functional>
 #include <map>
+#include <unistd.h>
 
 #include <boost/system/error_code.hpp>
 #include <boost/asio.hpp>
@@ -127,6 +128,16 @@ enum nghttp2_asio_error {
   NGHTTP2_ASIO_ERR_NO_ERROR = 0,
   NGHTTP2_ASIO_ERR_TLS_NO_APP_PROTO_NEGOTIATED = 1,
 };
+
+struct thread_info {
+  thread_info(pid_t id) : pid(id) {}
+  // Thread info is ready to be read.
+  bool ready;
+  pid_t pid;
+};
+
+typedef std::function<void(std::vector<std::shared_ptr<thread_info>>)>
+    on_all_threads_created_cb;
 
 } // namespace asio_http2
 
