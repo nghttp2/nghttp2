@@ -325,7 +325,6 @@ int Client::quic_init(const sockaddr *local_addr, socklen_t local_addrlen,
       ngtcp2_crypto_decrypt_cb,
       ngtcp2_crypto_hp_mask_cb,
       h2load::recv_stream_data,
-      nullptr, // acked_crypto_offset
       h2load::acked_stream_data_offset,
       nullptr, // stream_open
       h2load::stream_close,
@@ -499,14 +498,8 @@ void Client::quic_set_tls_alert(uint8_t alert) {
 void Client::quic_write_client_handshake(ngtcp2_crypto_level level,
                                          const uint8_t *data, size_t datalen) {
   assert(level < 2);
-  auto &crypto = quic.crypto[level];
-  assert(crypto.data.size() >= crypto.datalen + datalen);
 
-  auto p = std::begin(crypto.data) + crypto.datalen;
-  std::copy_n(data, datalen, p);
-  crypto.datalen += datalen;
-
-  ngtcp2_conn_submit_crypto_data(quic.conn, level, p, datalen);
+  ngtcp2_conn_submit_crypto_data(quic.conn, level, data, datalen);
 }
 
 void quic_pkt_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
