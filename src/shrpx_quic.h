@@ -29,11 +29,38 @@
 
 #include <stdint.h>
 
+#include <ngtcp2/ngtcp2.h>
+
 namespace shrpx {
 
 struct UpstreamAddr;
 
 constexpr size_t SHRPX_QUIC_SCIDLEN = 20;
+constexpr size_t SHRPX_MAX_UDP_PAYLOAD_SIZE = 1280;
+
+enum class QUICErrorType {
+  Application,
+  Transport,
+  TransportVersionNegotiation,
+  TransportIdleTimeout,
+};
+
+struct QUICError {
+  QUICError(QUICErrorType type, uint64_t code) : type{type}, code{code} {}
+
+  QUICErrorType type;
+  uint64_t code;
+};
+
+QUICError quic_err_transport(int liberr);
+
+QUICError quic_err_idle_timeout();
+
+QUICError quic_err_tls(int alert);
+
+QUICError quic_err_app(int liberr);
+
+ngtcp2_tstamp quic_timestamp();
 
 int create_quic_server_socket(UpstreamAddr &addr);
 
@@ -41,6 +68,12 @@ int quic_send_packet(const UpstreamAddr *addr, const sockaddr *remote_sa,
                      size_t remote_salen, const sockaddr *local_sa,
                      size_t local_salen, const uint8_t *data, size_t datalen,
                      size_t gso_size);
+
+int generate_quic_connection_id(ngtcp2_cid *cid, size_t cidlen);
+
+int generate_quic_stateless_reset_token(uint8_t *token, const ngtcp2_cid *cid,
+                                        const uint8_t *secret,
+                                        size_t secretlen);
 
 } // namespace shrpx
 

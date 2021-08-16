@@ -222,11 +222,11 @@ int ConnectionHandler::create_single_worker() {
   );
 
   quic_cert_tree_ = tls::create_cert_lookup_tree();
-  tls::setup_quic_server_ssl_context(quic_all_ssl_ctx_, quic_indexed_ssl_ctx_,
-                                     quic_cert_tree_.get()
+  auto quic_sv_ssl_ctx = tls::setup_quic_server_ssl_context(
+      quic_all_ssl_ctx_, quic_indexed_ssl_ctx_, quic_cert_tree_.get()
 #ifdef HAVE_NEVERBLEED
-                                         ,
-                                     nb_
+                                                    ,
+      nb_
 #endif // HAVE_NEVERBLEED
   );
 
@@ -261,7 +261,8 @@ int ConnectionHandler::create_single_worker() {
 
   single_worker_ = std::make_unique<Worker>(
       loop_, sv_ssl_ctx, cl_ssl_ctx, session_cache_ssl_ctx, cert_tree_.get(),
-      ticket_keys_, this, config->conn.downstream);
+      quic_sv_ssl_ctx, quic_cert_tree_.get(), ticket_keys_, this,
+      config->conn.downstream);
 #ifdef HAVE_MRUBY
   if (single_worker_->create_mruby_context() != 0) {
     return -1;
@@ -288,11 +289,11 @@ int ConnectionHandler::create_worker_thread(size_t num) {
   );
 
   quic_cert_tree_ = tls::create_cert_lookup_tree();
-  tls::setup_quic_server_ssl_context(quic_all_ssl_ctx_, quic_indexed_ssl_ctx_,
-                                     quic_cert_tree_.get()
+  auto quic_sv_ssl_ctx = tls::setup_quic_server_ssl_context(
+      quic_all_ssl_ctx_, quic_indexed_ssl_ctx_, quic_cert_tree_.get()
 #  ifdef HAVE_NEVERBLEED
-                                         ,
-                                     nb_
+                                                    ,
+      nb_
 #  endif // HAVE_NEVERBLEED
   );
 
@@ -337,7 +338,8 @@ int ConnectionHandler::create_worker_thread(size_t num) {
 
     auto worker = std::make_unique<Worker>(
         loop, sv_ssl_ctx, cl_ssl_ctx, session_cache_ssl_ctx, cert_tree_.get(),
-        ticket_keys_, this, config->conn.downstream);
+        quic_sv_ssl_ctx, quic_cert_tree_.get(), ticket_keys_, this,
+        config->conn.downstream);
 #  ifdef HAVE_MRUBY
     if (worker->create_mruby_context() != 0) {
       return -1;

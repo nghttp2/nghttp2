@@ -45,6 +45,12 @@ std::string make_cid_key(const uint8_t *dcid, size_t dcidlen) {
 }
 } // namespace
 
+namespace {
+std::string make_cid_key(const ngtcp2_cid *cid) {
+  return make_cid_key(cid->data, cid->datalen);
+}
+} // namespace
+
 int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
                                          const Address &remote_addr,
                                          const Address &local_addr,
@@ -67,6 +73,8 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
 
   auto dcid_key = make_cid_key(dcid, dcidlen);
 
+  ClientHandler *handler;
+
   auto it = connections_.find(dcid_key);
   if (it == std::end(connections_)) {
     // new connection
@@ -87,16 +95,64 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
       return 0;
     }
 
-    return 0;
+    handler = handle_new_connection(faddr, remote_addr, local_addr, hd);
+    if (handler == nullptr) {
+      return 0;
+    }
+  } else {
+    handler = (*it).second;
   }
 
-  auto h = (*it).second.get();
-  auto upstream = static_cast<Http3Upstream *>(h->get_upstream());
-
-  // TODO Delete h on failure
-  upstream->on_read(faddr, remote_addr, local_addr, data, datalen);
+  if (handler->read_quic(faddr, remote_addr, local_addr, data, datalen) != 0) {
+    delete handler;
+  }
 
   return 0;
+}
+
+ClientHandler *QUICConnectionHandler::handle_new_connection(
+    const UpstreamAddr *faddr, const Address &remote_addr,
+    const Address &local_addr, const ngtcp2_pkt_hd &hd) {
+  std::array<char, NI_MAXHOST> host;
+  std::array<char, NI_MAXSERV> service;
+  int rv;
+
+  rv = getnameinfo(&remote_addr.su.sa, remote_addr.len, host.data(),
+                   host.size(), service.data(), service.size(),
+                   NI_NUMERICHOST | NI_NUMERICSERV);
+  if (rv != 0) {
+    LOG(ERROR) << "getnameinfo() failed: " << gai_strerror(rv);
+
+    return nullptr;
+  }
+
+  auto ssl_ctx = worker_->get_quic_sv_ssl_ctx();
+
+  assert(ssl_ctx);
+
+  auto ssl = tls::create_ssl(ssl_ctx);
+  if (ssl == nullptr) {
+    return nullptr;
+  }
+
+  // Disable TLS session ticket if we don't have working ticket
+  // keys.
+  if (!worker_->get_ticket_keys()) {
+    SSL_set_options(ssl, SSL_OP_NO_TICKET);
+  }
+
+  auto handler = std::make_unique<ClientHandler>(
+      worker_, faddr->fd, ssl, StringRef{host.data()},
+      StringRef{service.data()}, remote_addr.su.sa.sa_family, faddr);
+
+  auto upstream = std::make_unique<Http3Upstream>(handler.get());
+  if (upstream->init(faddr, remote_addr, local_addr, hd) != 0) {
+    return nullptr;
+  }
+
+  handler->setup_http3_upstream(std::move(upstream));
+
+  return handler.release();
 }
 
 namespace {
@@ -152,6 +208,17 @@ int QUICConnectionHandler::send_version_negotiation(
   return quic_send_packet(faddr, &remote_addr.su.sa, remote_addr.len,
                           &local_addr.su.sa, local_addr.len, buf.data(), nwrite,
                           0);
+}
+
+void QUICConnectionHandler::add_connection_id(const ngtcp2_cid *cid,
+                                              ClientHandler *handler) {
+  auto key = make_cid_key(cid);
+  connections_.emplace(key, handler);
+}
+
+void QUICConnectionHandler::remove_connection_id(const ngtcp2_cid *cid) {
+  auto key = make_cid_key(cid);
+  connections_.erase(key);
 }
 
 } // namespace shrpx
