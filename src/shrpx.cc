@@ -1548,6 +1548,9 @@ void fill_default_config(Config *config) {
         downstreamconf.option, downstreamconf.encoder_dynamic_table_size);
   }
 
+  auto &quicconf = config->quic;
+  { quicconf.timeout.idle = 30_s; }
+
   auto &loggingconf = config->logging;
   {
     auto &accessconf = loggingconf.access;
