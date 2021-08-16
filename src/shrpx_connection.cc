@@ -312,10 +312,13 @@ BIO_METHOD *create_bio_method() {
 void Connection::set_ssl(SSL *ssl) {
   tls.ssl = ssl;
 
-  auto &tlsconf = get_config()->tls;
-  auto bio = BIO_new(tlsconf.bio_method);
-  BIO_set_data(bio, this);
-  SSL_set_bio(tls.ssl, bio, bio);
+  if (proto != Proto::HTTP3) {
+    auto &tlsconf = get_config()->tls;
+    auto bio = BIO_new(tlsconf.bio_method);
+    BIO_set_data(bio, this);
+    SSL_set_bio(tls.ssl, bio, bio);
+  }
+
   SSL_set_app_data(tls.ssl, this);
 }
 

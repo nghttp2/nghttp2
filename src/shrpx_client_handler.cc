@@ -50,6 +50,7 @@
 #include "shrpx_connect_blocker.h"
 #include "shrpx_api_downstream_connection.h"
 #include "shrpx_health_monitor_downstream_connection.h"
+#include "shrpx_http3_upstream.h"
 #include "shrpx_log.h"
 #include "util.h"
 #include "template.h"
@@ -285,6 +286,15 @@ int ClientHandler::write_tls() {
   }
 }
 
+int ClientHandler::read_quic(const UpstreamAddr *faddr,
+                             const Address &remote_addr,
+                             const Address &local_addr, const uint8_t *data,
+                             size_t datalen) {
+  auto upstream = static_cast<Http3Upstream *>(upstream_.get());
+
+  return upstream->on_read(faddr, remote_addr, local_addr, data, datalen);
+}
+
 int ClientHandler::upstream_noop() { return 0; }
 
 int ClientHandler::upstream_read() {
@@ -401,7 +411,8 @@ ClientHandler::ClientHandler(Worker *worker, int fd, SSL *ssl,
             get_config()->conn.upstream.ratelimit.write,
             get_config()->conn.upstream.ratelimit.read, writecb, readcb,
             timeoutcb, this, get_config()->tls.dyn_rec.warmup_threshold,
-            get_config()->tls.dyn_rec.idle_timeout, Proto::NONE),
+            get_config()->tls.dyn_rec.idle_timeout,
+            faddr->quic ? Proto::HTTP3 : Proto::NONE),
       ipaddr_(make_string_ref(balloc_, ipaddr)),
       port_(make_string_ref(balloc_, port)),
       faddr_(faddr),
@@ -422,14 +433,16 @@ ClientHandler::ClientHandler(Worker *worker, int fd, SSL *ssl,
 
   auto config = get_config();
 
-  if (faddr_->accept_proxy_protocol ||
-      config->conn.upstream.accept_proxy_protocol) {
-    read_ = &ClientHandler::read_clear;
-    write_ = &ClientHandler::noop;
-    on_read_ = &ClientHandler::proxy_protocol_read;
-    on_write_ = &ClientHandler::upstream_noop;
-  } else {
-    setup_upstream_io_callback();
+  if (!faddr->quic) {
+    if (faddr_->accept_proxy_protocol ||
+        config->conn.upstream.accept_proxy_protocol) {
+      read_ = &ClientHandler::read_clear;
+      write_ = &ClientHandler::noop;
+      on_read_ = &ClientHandler::proxy_protocol_read;
+      on_write_ = &ClientHandler::upstream_noop;
+    } else {
+      setup_upstream_io_callback();
+    }
   }
 
   auto &fwdconf = config->http.forwarded;
@@ -489,6 +502,12 @@ void ClientHandler::setup_upstream_io_callback() {
     on_read_ = &ClientHandler::upstream_http1_connhd_read;
     on_write_ = &ClientHandler::upstream_noop;
   }
+}
+
+void ClientHandler::setup_http3_upstream(
+    std::unique_ptr<Http3Upstream> &&upstream) {
+  upstream_ = std::move(upstream);
+  alpn_ = StringRef::from_lit("h3");
 }
 
 ClientHandler::~ClientHandler() {

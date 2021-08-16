@@ -31,6 +31,8 @@
 #include <unordered_map>
 #include <string>
 
+#include <ngtcp2/ngtcp2.h>
+
 #include "network.h"
 
 using namespace nghttp2;
@@ -53,10 +55,16 @@ public:
                                const uint8_t *scid, size_t scidlen,
                                const Address &remote_addr,
                                const Address &local_addr);
+  ClientHandler *handle_new_connection(const UpstreamAddr *faddr,
+                                       const Address &remote_addr,
+                                       const Address &local_addr,
+                                       const ngtcp2_pkt_hd &hd);
+  void add_connection_id(const ngtcp2_cid *cid, ClientHandler *handler);
+  void remove_connection_id(const ngtcp2_cid *cid);
 
 private:
   Worker *worker_;
-  std::unordered_map<std::string, std::shared_ptr<ClientHandler>> connections_;
+  std::unordered_map<std::string, ClientHandler *> connections_;
 };
 
 } // namespace shrpx

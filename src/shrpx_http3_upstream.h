@@ -30,6 +30,7 @@
 #include <ngtcp2/ngtcp2.h>
 
 #include "shrpx_upstream.h"
+#include "shrpx_quic.h"
 #include "network.h"
 
 using namespace nghttp2;
@@ -84,6 +85,9 @@ public:
   virtual bool push_enabled() const;
   virtual void cancel_premature_downstream(Downstream *promised_downstream);
 
+  int init(const UpstreamAddr *faddr, const Address &remote_addr,
+           const Address &local_addr, const ngtcp2_pkt_hd &initial_hd);
+
   int on_read(const UpstreamAddr *faddr, const Address &remote_addr,
               const Address &local_addr, const uint8_t *data, size_t datalen);
 
@@ -97,8 +101,13 @@ public:
 
   void set_tls_alert(uint8_t alert);
 
+  int handle_error();
+
 private:
   ClientHandler *handler_;
+  ngtcp2_cid initial_client_dcid_;
+  ngtcp2_conn *conn_;
+  QUICError last_error_;
   uint8_t tls_alert_;
 };
 

@@ -50,6 +50,7 @@
 #include "shrpx_live_check.h"
 #include "shrpx_connect_blocker.h"
 #include "shrpx_dns_tracker.h"
+#include "shrpx_quic_connection_handler.h"
 #include "allocator.h"
 
 using namespace nghttp2;
@@ -268,7 +269,8 @@ class Worker {
 public:
   Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
          SSL_CTX *tls_session_cache_memcached_ssl_ctx,
-         tls::CertLookupTree *cert_tree,
+         tls::CertLookupTree *cert_tree, SSL_CTX *quic_sv_ssl_ctx,
+         tls::CertLookupTree *quic_cert_tree,
          const std::shared_ptr<TicketKeys> &ticket_keys,
          ConnectionHandler *conn_handler,
          std::shared_ptr<DownstreamConfig> downstreamconf);
@@ -279,6 +281,7 @@ public:
   void send(const WorkerEvent &event);
 
   tls::CertLookupTree *get_cert_lookup_tree() const;
+  tls::CertLookupTree *get_quic_cert_lookup_tree() const;
 
   // These 2 functions make a lock m_ to get/set ticket keys
   // atomically.
@@ -289,6 +292,7 @@ public:
   struct ev_loop *get_loop() const;
   SSL_CTX *get_sv_ssl_ctx() const;
   SSL_CTX *get_cl_ssl_ctx() const;
+  SSL_CTX *get_quic_sv_ssl_ctx() const;
 
   void set_graceful_shutdown(bool f);
   bool get_graceful_shutdown() const;
@@ -317,6 +321,8 @@ public:
   replace_downstream_config(std::shared_ptr<DownstreamConfig> downstreamconf);
 
   ConnectionHandler *get_connection_handler() const;
+
+  QUICConnectionHandler *get_quic_connection_handler();
 
   DNSTracker *get_dns_tracker();
 
@@ -352,6 +358,10 @@ private:
   SSL_CTX *cl_ssl_ctx_;
   tls::CertLookupTree *cert_tree_;
   ConnectionHandler *conn_handler_;
+  SSL_CTX *quic_sv_ssl_ctx_;
+  tls::CertLookupTree *quic_cert_tree_;
+
+  QUICConnectionHandler quic_conn_handler_;
 
 #ifndef HAVE_ATOMIC_STD_SHARED_PTR
   std::mutex ticket_keys_m_;

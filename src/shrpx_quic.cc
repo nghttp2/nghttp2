@@ -29,6 +29,13 @@
 #include <netdb.h>
 
 #include <array>
+#include <chrono>
+
+#include <ngtcp2/ngtcp2_crypto.h>
+
+#include <nghttp3/nghttp3.h>
+
+#include <openssl/rand.h>
 
 #include "shrpx_config.h"
 #include "shrpx_log.h"
@@ -38,6 +45,34 @@
 using namespace nghttp2;
 
 namespace shrpx {
+
+QUICError quic_err_transport(int liberr) {
+  if (liberr == NGTCP2_ERR_RECV_VERSION_NEGOTIATION) {
+    return {QUICErrorType::TransportVersionNegotiation, 0};
+  }
+  return {QUICErrorType::Transport,
+          ngtcp2_err_infer_quic_transport_error_code(liberr)};
+}
+
+QUICError quic_err_idle_timeout() {
+  return {QUICErrorType::TransportIdleTimeout, 0};
+}
+
+QUICError quic_err_tls(int alert) {
+  return {QUICErrorType::Transport,
+          static_cast<uint64_t>(NGTCP2_CRYPTO_ERROR | alert)};
+}
+
+QUICError quic_err_app(int liberr) {
+  return {QUICErrorType::Application,
+          nghttp3_err_infer_quic_app_error_code(liberr)};
+}
+
+ngtcp2_tstamp quic_timestamp() {
+  return std::chrono::duration_cast<std::chrono::nanoseconds>(
+             std::chrono::steady_clock::now().time_since_epoch())
+      .count();
+}
 
 int create_quic_server_socket(UpstreamAddr &faddr) {
   std::array<char, STRERROR_BUFSIZE> errbuf;
@@ -189,6 +224,30 @@ int quic_send_packet(const UpstreamAddr *addr, const sockaddr *remote_sa,
                      size_t remote_salen, const sockaddr *local_sa,
                      size_t local_salen, const uint8_t *data, size_t datalen,
                      size_t gso_size) {
+  return 0;
+}
+
+int generate_quic_connection_id(ngtcp2_cid *cid, size_t cidlen) {
+  if (RAND_bytes(cid->data, cidlen) != 1) {
+    return -1;
+  }
+
+  cid->datalen = cidlen;
+
+  return 0;
+}
+
+int generate_quic_stateless_reset_token(uint8_t *token, const ngtcp2_cid *cid,
+                                        const uint8_t *secret,
+                                        size_t secretlen) {
+  ngtcp2_crypto_md md;
+  ngtcp2_crypto_md_init(&md, const_cast<EVP_MD *>(EVP_sha256()));
+
+  if (ngtcp2_crypto_generate_stateless_reset_token(token, &md, secret,
+                                                   secretlen, cid) != 0) {
+    return -1;
+  }
+
   return 0;
 }
 

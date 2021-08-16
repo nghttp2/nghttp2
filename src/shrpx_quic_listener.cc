@@ -37,7 +37,7 @@ void readcb(struct ev_loop *loop, ev_io *w, int revent) {
 } // namespace
 
 QUICListener::QUICListener(const UpstreamAddr *faddr, Worker *worker)
-    : faddr_(faddr), worker_(worker) {
+    : faddr_{faddr}, worker_{worker} {
   ev_io_init(&rev_, readcb, faddr_->fd, EV_READ);
   rev_.data = this;
   ev_io_start(worker_->get_loop(), &rev_);
@@ -61,6 +61,8 @@ void QUICListener::on_read() {
 
   uint8_t msg_ctrl[CMSG_SPACE(sizeof(in6_pktinfo))];
   msg.msg_control = msg_ctrl;
+
+  auto quic_conn_handler = worker_->get_quic_connection_handler();
 
   for (; pktcnt < 10;) {
     msg.msg_namelen = sizeof(su);
@@ -91,6 +93,13 @@ void QUICListener::on_read() {
     if (nread == 0) {
       continue;
     }
+
+    Address remote_addr;
+    remote_addr.su = su;
+    remote_addr.len = msg.msg_namelen;
+
+    quic_conn_handler->handle_packet(faddr_, remote_addr, local_addr,
+                                     buf.data(), nread);
   }
 }
 

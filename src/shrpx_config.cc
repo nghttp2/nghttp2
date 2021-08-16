@@ -2655,6 +2655,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     addr.sni_fwd = params.sni_fwd;
     addr.alt_mode = params.alt_mode;
     addr.accept_proxy_protocol = params.proxyproto;
+    addr.quic = params.quic;
 
     if (addr.alt_mode == UpstreamAltMode::API) {
       apiconf.enabled = true;
@@ -3977,6 +3978,8 @@ StringRef strproto(Proto proto) {
     return StringRef::from_lit("http/1.1");
   case Proto::HTTP2:
     return StringRef::from_lit("h2");
+  case Proto::HTTP3:
+    return StringRef::from_lit("h3");
   case Proto::MEMCACHED:
     return StringRef::from_lit("memcached");
   }
