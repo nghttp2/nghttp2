@@ -134,7 +134,7 @@ struct thread_info {
   pid_t pid;
 };
 
-typedef std::function<void(std::vector<std::shared_ptr<thread_info>>)>
+typedef std::function<void(const std::vector<std::shared_ptr<thread_info>> &)>
     on_all_threads_created_cb;
 
 } // namespace asio_http2
