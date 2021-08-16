@@ -317,13 +317,6 @@ struct Stream {
   Stream();
 };
 
-struct Crypto {
-  Crypto() : datalen(0), acked_offset(0) {}
-  std::array<uint8_t, 1024> data;
-  size_t datalen;
-  size_t acked_offset;
-};
-
 struct Client {
   DefaultMemchunks wb;
   std::unordered_map<int32_t, Stream> streams;
@@ -338,8 +331,6 @@ struct Client {
     ev_timer pkt_timer;
     ngtcp2_conn *conn;
     quic::Error last_error;
-    // Client never send CRYPTO in Short packet.
-    std::array<Crypto, 2> crypto;
     size_t max_pktlen;
     bool close_requested;
     FILE *qlog_file;
