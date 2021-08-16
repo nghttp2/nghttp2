@@ -39,10 +39,7 @@
 namespace shrpx {
 
 Http3Upstream::Http3Upstream(ClientHandler *handler)
-    : handler_{handler},
-      conn_{nullptr},
-      last_error_{QUICErrorType::Transport, 0},
-      tls_alert_{0} {}
+    : handler_{handler}, conn_{nullptr}, tls_alert_{0} {}
 
 Http3Upstream::~Http3Upstream() {
   if (conn_) {
@@ -139,7 +136,6 @@ int Http3Upstream::init(const UpstreamAddr *faddr, const Address &remote_addr,
       ngtcp2_crypto_decrypt_cb,
       ngtcp2_crypto_hp_mask_cb,
       nullptr, // recv_stream_data
-      nullptr, // acked_crypto_offset
       nullptr, // acked_stream_data_offset
       nullptr, // stream_open
       nullptr, // stream_close
@@ -343,13 +339,13 @@ int Http3Upstream::on_read(const UpstreamAddr *faddr,
       // If rv indicates transport_parameters related error, we should
       // send TRANSPORT_PARAMETER_ERROR even if last_error_.code is
       // already set.  This is because OpenSSL might set Alert.
-      last_error_ = quic_err_transport(rv);
+      last_error_ = quic::err_transport(rv);
       break;
     case NGTCP2_ERR_DROP_CONN:
       return -1;
     default:
       if (!last_error_.code) {
-        last_error_ = quic_err_transport(rv);
+        last_error_ = quic::err_transport(rv);
       }
     }
 
