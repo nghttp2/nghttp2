@@ -42,6 +42,13 @@
 using namespace nghttp2::asio_http2;
 using namespace nghttp2::asio_http2::server;
 
+void all_threads_created_cb(
+    std::vector<std::shared_ptr<thread_info>> all_threads_info) {
+  for (auto thread_info : all_threads_info) {
+    std::cout << "thread pid: " << thread_info->pid << std::endl;
+  }
+}
+
 int main(int argc, char *argv[]) {
   try {
     // Check command line arguments.
@@ -61,6 +68,8 @@ int main(int argc, char *argv[]) {
     http2 server;
 
     server.num_threads(num_threads);
+
+    server.set_on_all_threads_created_callback(all_threads_created_cb);
 
     server.handle("/", [](const request &req, const response &res) {
       res.write_head(200, {{"foo", {"bar"}}});
