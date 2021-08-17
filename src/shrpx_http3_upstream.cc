@@ -451,18 +451,20 @@ int Http3Upstream::init(const UpstreamAddr *faddr, const Address &remote_addr,
     return -1;
   }
 
+  auto config = get_config();
+  auto &quicconf = config->quic;
+
   ngtcp2_settings settings;
   ngtcp2_settings_default(&settings);
-  settings.log_printf = log_printf;
+  if (quicconf.debug.log) {
+    settings.log_printf = log_printf;
+  }
   settings.initial_ts = quic_timestamp();
   settings.cc_algo = NGTCP2_CC_ALGO_BBR;
   settings.max_window = 6_m;
   settings.max_stream_window = 6_m;
   settings.max_udp_payload_size = SHRPX_MAX_UDP_PAYLOAD_SIZE;
   settings.rand_ctx.native_handle = &worker->get_randgen();
-
-  auto config = get_config();
-  auto &quicconf = config->quic;
 
   ngtcp2_transport_params params;
   ngtcp2_transport_params_default(&params);
