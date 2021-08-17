@@ -92,6 +92,8 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
                                remote_addr, local_addr);
       return 0;
     default:
+      // TODO Must be rate limited
+      send_stateless_reset(faddr, dcid, dcidlen, remote_addr, local_addr);
       return 0;
     }
 
@@ -210,6 +212,56 @@ int QUICConnectionHandler::send_version_negotiation(
     LOG(ERROR) << "ngtcp2_pkt_write_version_negotiation: "
                << ngtcp2_strerror(nwrite);
     return -1;
+  }
+
+  return quic_send_packet(faddr, &remote_addr.su.sa, remote_addr.len,
+                          &local_addr.su.sa, local_addr.len, buf.data(), nwrite,
+                          0);
+}
+
+int QUICConnectionHandler::send_stateless_reset(const UpstreamAddr *faddr,
+                                                const uint8_t *dcid,
+                                                size_t dcidlen,
+                                                const Address &remote_addr,
+                                                const Address &local_addr) {
+  int rv;
+  std::array<uint8_t, NGTCP2_STATELESS_RESET_TOKENLEN> token;
+  ngtcp2_cid cid;
+
+  ngtcp2_cid_init(&cid, dcid, dcidlen);
+
+  auto config = get_config();
+  auto &quicconf = config->quic;
+  auto &stateless_resetconf = quicconf.stateless_reset;
+
+  rv = generate_quic_stateless_reset_token(token.data(), &cid,
+                                           stateless_resetconf.secret.data(),
+                                           stateless_resetconf.secret.size());
+  if (rv != 0) {
+    return -1;
+  }
+
+  std::array<uint8_t, NGTCP2_MIN_STATELESS_RESET_RANDLEN> rand_bytes;
+
+  if (RAND_bytes(rand_bytes.data(), rand_bytes.size()) != 1) {
+    return -1;
+  }
+
+  std::array<uint8_t, 1280> buf;
+
+  auto nwrite =
+      ngtcp2_pkt_write_stateless_reset(buf.data(), buf.size(), token.data(),
+                                       rand_bytes.data(), rand_bytes.size());
+  if (nwrite < 0) {
+    LOG(ERROR) << "ngtcp2_pkt_write_stateless_reset: "
+               << ngtcp2_strerror(nwrite);
+    return -1;
+  }
+
+  if (LOG_ENABLED(INFO)) {
+    LOG(INFO) << "Send stateless_reset to remote="
+              << util::to_numeric_addr(&remote_addr)
+              << " dcid=" << util::format_hex(dcid, dcidlen);
   }
 
   return quic_send_packet(faddr, &remote_addr.su.sa, remote_addr.len,

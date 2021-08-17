@@ -55,6 +55,9 @@ public:
                                const uint8_t *scid, size_t scidlen,
                                const Address &remote_addr,
                                const Address &local_addr);
+  int send_stateless_reset(const UpstreamAddr *faddr, const uint8_t *dcid,
+                           size_t dcidlen, const Address &remote_addr,
+                           const Address &local_addr);
   ClientHandler *handle_new_connection(const UpstreamAddr *faddr,
                                        const Address &remote_addr,
                                        const Address &local_addr,
