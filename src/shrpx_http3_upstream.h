@@ -138,6 +138,8 @@ public:
                             const std::vector<nghttp3_nv> &nva) const;
   int http_acked_stream_data(Downstream *downstream, size_t datalen);
   int http_shutdown_stream_read(int64_t stream_id);
+  int http_reset_stream(int64_t stream_id, uint64_t app_error_code);
+  int http_send_stop_sending(int64_t stream_id, uint64_t app_error_code);
 
 private:
   ClientHandler *handler_;

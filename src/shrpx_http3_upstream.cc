@@ -1904,17 +1904,51 @@ namespace {
 int http_send_stop_sending(nghttp3_conn *conn, int64_t stream_id,
                            uint64_t app_error_code, void *user_data,
                            void *stream_user_data) {
+  auto upstream = static_cast<Http3Upstream *>(user_data);
+
+  if (upstream->http_send_stop_sending(stream_id, app_error_code) != 0) {
+    return NGHTTP3_ERR_CALLBACK_FAILURE;
+  }
+
   return 0;
 }
 } // namespace
+
+int Http3Upstream::http_send_stop_sending(int64_t stream_id,
+                                          uint64_t app_error_code) {
+  auto rv = ngtcp2_conn_shutdown_stream_read(conn_, stream_id, app_error_code);
+  if (ngtcp2_err_is_fatal(rv)) {
+    LOG(ERROR) << "ngtcp2_conn_shutdown_stream_read: " << ngtcp2_strerror(rv);
+    return -1;
+  }
+
+  return 0;
+}
 
 namespace {
 int http_reset_stream(nghttp3_conn *conn, int64_t stream_id,
                       uint64_t app_error_code, void *user_data,
                       void *stream_user_data) {
+  auto upstream = static_cast<Http3Upstream *>(user_data);
+
+  if (upstream->http_reset_stream(stream_id, app_error_code) != 0) {
+    return NGHTTP3_ERR_CALLBACK_FAILURE;
+  }
+
   return 0;
 }
 } // namespace
+
+int Http3Upstream::http_reset_stream(int64_t stream_id,
+                                     uint64_t app_error_code) {
+  auto rv = ngtcp2_conn_shutdown_stream_write(conn_, stream_id, app_error_code);
+  if (ngtcp2_err_is_fatal(rv)) {
+    LOG(ERROR) << "ngtcp2_conn_shutdown_stream_write: " << ngtcp2_strerror(rv);
+    return -1;
+  }
+
+  return 0;
+}
 
 int Http3Upstream::setup_httpconn() {
   int rv;
@@ -1934,9 +1968,9 @@ int Http3Upstream::setup_httpconn() {
       nullptr, // begin_trailers
       nullptr, // recv_trailer
       nullptr, // end_trailers
-      http_send_stop_sending,
+      shrpx::http_send_stop_sending,
       shrpx::http_end_stream,
-      http_reset_stream,
+      shrpx::http_reset_stream,
   };
 
   nghttp3_settings settings;
