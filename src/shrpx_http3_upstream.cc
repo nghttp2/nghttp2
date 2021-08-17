@@ -907,7 +907,7 @@ nghttp3_ssize downstream_read_data_callback(nghttp3_conn *conn,
 
   veccnt = body->riovec_mark(reinterpret_cast<struct iovec *>(vec), veccnt);
 
-  assert(veccnt);
+  assert((*pflags & NGHTTP3_DATA_FLAG_EOF) || veccnt);
 
   downstream->response_sent_body_length += nghttp3_vec_len(vec, veccnt);
 
