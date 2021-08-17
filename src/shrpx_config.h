@@ -711,6 +711,9 @@ struct QUICConfig {
   struct {
     ev_tstamp idle;
   } timeout;
+  struct {
+    bool log;
+  } debug;
 };
 
 // custom error page
