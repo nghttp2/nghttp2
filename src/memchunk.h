@@ -113,13 +113,22 @@ template <typename T> struct Pool {
 
 template <typename Memchunk> struct Memchunks {
   Memchunks(Pool<Memchunk> *pool)
-      : pool(pool), head(nullptr), tail(nullptr), len(0) {}
+      : pool(pool),
+        head(nullptr),
+        tail(nullptr),
+        len(0),
+        mark(nullptr),
+        mark_pos(nullptr),
+        mark_offset(0) {}
   Memchunks(const Memchunks &) = delete;
   Memchunks(Memchunks &&other) noexcept
       : pool{other.pool}, // keep other.pool
         head{std::exchange(other.head, nullptr)},
         tail{std::exchange(other.tail, nullptr)},
-        len{std::exchange(other.len, 0)} {}
+        len{std::exchange(other.len, 0)},
+        mark{std::exchange(other.mark, nullptr)},
+        mark_pos{std::exchange(other.mark_pos, nullptr)},
+        mark_offset{std::exchange(other.mark_offset, 0)} {}
   Memchunks &operator=(const Memchunks &) = delete;
   Memchunks &operator=(Memchunks &&other) noexcept {
     if (this == &other) {
@@ -132,6 +141,9 @@ template <typename Memchunk> struct Memchunks {
     head = std::exchange(other.head, nullptr);
     tail = std::exchange(other.tail, nullptr);
     len = std::exchange(other.len, 0);
+    mark = std::exchange(other.mark, nullptr);
+    mark_pos = std::exchange(other.mark_pos, nullptr);
+    mark_offset = std::exchange(other.mark_offset, 0);
 
     return *this;
   }
@@ -200,6 +212,8 @@ template <typename Memchunk> struct Memchunks {
     return len;
   }
   size_t remove(void *dest, size_t count) {
+    assert(mark == nullptr);
+
     if (!tail || count == 0) {
       return 0;
     }
@@ -231,6 +245,8 @@ template <typename Memchunk> struct Memchunks {
     return first - static_cast<uint8_t *>(dest);
   }
   size_t remove(Memchunks &dest, size_t count) {
+    assert(mark == nullptr);
+
     if (!tail || count == 0) {
       return 0;
     }
@@ -262,6 +278,7 @@ template <typename Memchunk> struct Memchunks {
   }
   size_t remove(Memchunks &dest) {
     assert(pool == dest.pool);
+    assert(mark == nullptr);
 
     if (head == nullptr) {
       return 0;
@@ -284,6 +301,8 @@ template <typename Memchunk> struct Memchunks {
     return n;
   }
   size_t drain(size_t count) {
+    assert(mark == nullptr);
+
     auto ndata = count;
     auto m = head;
     while (m) {
@@ -294,6 +313,38 @@ template <typename Memchunk> struct Memchunks {
       len -= n;
       if (m->len() > 0) {
         break;
+      }
+
+      pool->recycle(m);
+      m = next;
+    }
+    head = m;
+    if (head == nullptr) {
+      tail = nullptr;
+    }
+    return ndata - count;
+  }
+  size_t drain_mark(size_t count) {
+    auto ndata = count;
+    auto m = head;
+    while (m) {
+      auto next = m->next;
+      auto n = std::min(count, m->len());
+      m->pos += n;
+      count -= n;
+      len -= n;
+      mark_offset -= n;
+
+      if (m->len() > 0) {
+        assert(mark != m || m->pos <= mark_pos);
+        break;
+      }
+      if (mark == m) {
+        assert(m->pos <= mark_pos);
+
+        mark = nullptr;
+        mark_pos = nullptr;
+        mark_offset = 0;
       }
 
       pool->recycle(m);
@@ -317,7 +368,41 @@ template <typename Memchunk> struct Memchunks {
     }
     return i;
   }
+  int riovec_mark(struct iovec *iov, int iovcnt) {
+    if (!head || iovcnt == 0) {
+      return 0;
+    }
+
+    int i = 0;
+    Memchunk *m;
+    if (mark) {
+      if (mark_pos != mark->last) {
+        iov[0].iov_base = mark_pos;
+        iov[0].iov_len = mark->len() - (mark_pos - mark->pos);
+
+        mark_pos = mark->last;
+        mark_offset += iov[0].iov_len;
+        i = 1;
+      }
+      m = mark->next;
+    } else {
+      i = 0;
+      m = head;
+    }
+
+    for (; i < iovcnt && m; ++i, m = m->next) {
+      iov[i].iov_base = m->pos;
+      iov[i].iov_len = m->len();
+
+      mark = m;
+      mark_pos = m->last;
+      mark_offset += m->len();
+    }
+
+    return i;
+  }
   size_t rleft() const { return len; }
+  size_t rleft_mark() const { return len - mark_offset; }
   void reset() {
     for (auto m = head; m;) {
       auto next = m->next;
@@ -325,12 +410,17 @@ template <typename Memchunk> struct Memchunks {
       m = next;
     }
     len = 0;
-    head = tail = nullptr;
+    head = tail = mark = nullptr;
+    mark_pos = nullptr;
+    mark_offset = 0;
   }
 
   Pool<Memchunk> *pool;
   Memchunk *head, *tail;
   size_t len;
+  Memchunk *mark;
+  uint8_t *mark_pos;
+  size_t mark_offset;
 };
 
 // Wrapper around Memchunks to offer "peeking" functionality.

@@ -145,7 +145,8 @@ Downstream::Downstream(Upstream *upstream, MemchunkPool *mcpool,
       accesslog_written_(false),
       new_affinity_cookie_(false),
       blocked_request_data_eof_(false),
-      expect_100_continue_(false) {
+      expect_100_continue_(false),
+      stop_reading_(false) {
 
   auto &timeoutconf = get_config()->http2.timeout;
 
@@ -164,6 +165,7 @@ Downstream::Downstream(Upstream *upstream, MemchunkPool *mcpool,
   downstream_wtimer_.data = this;
 
   rcbufs_.reserve(32);
+  rcbufs3_.reserve(32);
 }
 
 Downstream::~Downstream() {
@@ -202,6 +204,10 @@ Downstream::~Downstream() {
   // DownstreamConnection may refer to this object.  Delete it now
   // explicitly.
   dconn_.reset();
+
+  for (auto rcbuf : rcbufs3_) {
+    nghttp3_rcbuf_decref(rcbuf);
+  }
 
   for (auto rcbuf : rcbufs_) {
     nghttp2_rcbuf_decref(rcbuf);
@@ -1128,6 +1134,11 @@ void Downstream::add_rcbuf(nghttp2_rcbuf *rcbuf) {
   rcbufs_.push_back(rcbuf);
 }
 
+void Downstream::add_rcbuf(nghttp3_rcbuf *rcbuf) {
+  nghttp3_rcbuf_incref(rcbuf);
+  rcbufs3_.push_back(rcbuf);
+}
+
 void Downstream::set_downstream_addr_group(
     const std::shared_ptr<DownstreamAddrGroup> &group) {
   group_ = group;
@@ -1168,5 +1179,9 @@ void Downstream::set_ws_key(const StringRef &key) { ws_key_ = key; }
 bool Downstream::get_expect_100_continue() const {
   return expect_100_continue_;
 }
+
+bool Downstream::get_stop_reading() const { return stop_reading_; }
+
+void Downstream::set_stop_reading(bool f) { stop_reading_ = f; }
 
 } // namespace shrpx

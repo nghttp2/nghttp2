@@ -157,6 +157,7 @@ NGHTTPX_SRCS = \
 	shrpx_quic_listener.cc shrpx_quic_listener.h \
 	shrpx_quic_connection_handler.cc shrpx_quic_connection_handler.h \
 	shrpx_http3_upstream.cc shrpx_http3_upstream.h \
+	http3.cc http3.h \
 	quic.cc quic.h \
 	buffer.h memchunk.h template.h allocator.h \
 	xsi_strerror.c xsi_strerror.h

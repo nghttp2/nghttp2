@@ -31,6 +31,8 @@
 #include <nghttp3/nghttp3.h>
 
 #include "shrpx_upstream.h"
+#include "shrpx_downstream_queue.h"
+#include "shrpx_mruby.h"
 #include "quic.h"
 #include "network.h"
 
@@ -111,6 +113,31 @@ public:
   void reset_timer();
 
   int setup_httpconn();
+  void add_pending_downstream(std::unique_ptr<Downstream> downstream);
+  int recv_stream_data(uint32_t flags, int64_t stream_id, const uint8_t *data,
+                       size_t datalen);
+  int acked_stream_data_offset(int64_t stream_id, uint64_t datalen);
+  int extend_max_stream_data(int64_t stream_id);
+  void extend_max_remote_streams_bidi(uint64_t max_streams);
+  int error_reply(Downstream *downstream, unsigned int status_code);
+  void http_begin_request_headers(int64_t stream_id);
+  int http_recv_request_header(Downstream *downstream, int32_t token,
+                               nghttp3_rcbuf *name, nghttp3_rcbuf *value,
+                               uint8_t flags);
+  int http_end_request_headers(Downstream *downstream);
+  int http_end_stream(Downstream *downstream);
+  void start_downstream(Downstream *downstream);
+  void initiate_downstream(Downstream *downstream);
+  int shutdown_stream(Downstream *downstream, uint64_t app_error_code);
+  int redirect_to_https(Downstream *downstream);
+  int http_stream_close(Downstream *downstream, uint64_t app_error_code);
+  void consume(int64_t stream_id, size_t nconsumed);
+  void remove_downstream(Downstream *downstream);
+  int stream_close(int64_t stream_id, uint64_t app_error_code);
+  void log_response_headers(Downstream *downstream,
+                            const std::vector<nghttp3_nv> &nva) const;
+  int http_acked_stream_data(Downstream *downstream, size_t datalen);
+  int http_shutdown_stream_read(int64_t stream_id);
 
 private:
   ClientHandler *handler_;
@@ -121,6 +148,7 @@ private:
   quic::Error last_error_;
   uint8_t tls_alert_;
   nghttp3_conn *httpconn_;
+  DownstreamQueue downstream_queue_;
 };
 
 } // namespace shrpx
