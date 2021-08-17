@@ -477,6 +477,17 @@ int Http3Upstream::init(const UpstreamAddr *faddr, const Address &remote_addr,
       static_cast<ngtcp2_tstamp>(quicconf.timeout.idle * NGTCP2_SECONDS);
   params.original_dcid = initial_hd.dcid;
 
+  auto &stateless_resetconf = quicconf.stateless_reset;
+
+  rv = generate_quic_stateless_reset_token(params.stateless_reset_token, &scid,
+                                           stateless_resetconf.secret.data(),
+                                           stateless_resetconf.secret.size());
+  if (rv != 0) {
+    LOG(ERROR) << "generate_quic_stateless_reset_token failed";
+    return -1;
+  }
+  params.stateless_reset_token_present = 1;
+
   auto path = ngtcp2_path{
       {local_addr.len, const_cast<sockaddr *>(&local_addr.su.sa)},
       {remote_addr.len, const_cast<sockaddr *>(&remote_addr.su.sa)},
