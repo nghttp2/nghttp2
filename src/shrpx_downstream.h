@@ -38,6 +38,8 @@
 
 #include <nghttp2/nghttp2.h>
 
+#include <nghttp3/nghttp3.h>
+
 #include "llhttp.h"
 
 #include "shrpx_io_control.h"
@@ -488,6 +490,7 @@ public:
   BlockAllocator &get_block_allocator();
 
   void add_rcbuf(nghttp2_rcbuf *rcbuf);
+  void add_rcbuf(nghttp3_rcbuf *rcbuf);
 
   void
   set_downstream_addr_group(const std::shared_ptr<DownstreamAddrGroup> &group);
@@ -513,6 +516,9 @@ public:
 
   bool get_expect_100_continue() const;
 
+  bool get_stop_reading() const;
+  void set_stop_reading(bool f);
+
   enum {
     EVENT_ERROR = 0x1,
     EVENT_TIMEOUT = 0x2,
@@ -527,6 +533,7 @@ private:
   BlockAllocator balloc_;
 
   std::vector<nghttp2_rcbuf *> rcbufs_;
+  std::vector<nghttp3_rcbuf *> rcbufs3_;
 
   Request req_;
   Response resp_;
@@ -606,6 +613,7 @@ private:
   bool blocked_request_data_eof_;
   // true if request contains "expect: 100-continue" header field.
   bool expect_100_continue_;
+  bool stop_reading_;
 };
 
 } // namespace shrpx
