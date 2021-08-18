@@ -143,6 +143,7 @@ ClientHandler *QUICConnectionHandler::handle_new_connection(
   assert(SSL_is_quic(ssl));
 
   SSL_set_accept_state(ssl);
+  SSL_set_quic_early_data_enabled(ssl, 1);
 
   // Disable TLS session ticket if we don't have working ticket
   // keys.
