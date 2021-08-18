@@ -129,6 +129,7 @@ public:
   void start_downstream(Downstream *downstream);
   void initiate_downstream(Downstream *downstream);
   int shutdown_stream(Downstream *downstream, uint64_t app_error_code);
+  int shutdown_stream_read(int64_t stream_id, uint64_t app_error_code);
   int redirect_to_https(Downstream *downstream);
   int http_stream_close(Downstream *downstream, uint64_t app_error_code);
   void consume(int64_t stream_id, size_t nconsumed);
@@ -140,6 +141,8 @@ public:
   int http_shutdown_stream_read(int64_t stream_id);
   int http_reset_stream(int64_t stream_id, uint64_t app_error_code);
   int http_send_stop_sending(int64_t stream_id, uint64_t app_error_code);
+  int http_recv_data(Downstream *downstream, const uint8_t *data,
+                     size_t datalen);
 
 private:
   ClientHandler *handler_;
