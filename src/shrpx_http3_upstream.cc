@@ -698,6 +698,14 @@ int Http3Upstream::on_downstream_abort_request(Downstream *downstream,
 
 int Http3Upstream::on_downstream_abort_request_with_https_redirect(
     Downstream *downstream) {
+  int rv;
+
+  rv = redirect_to_https(downstream);
+  if (rv != 0) {
+    return -1;
+  }
+
+  handler_->signal_write();
   return 0;
 }
 
@@ -888,6 +896,7 @@ nghttp3_ssize downstream_read_data_callback(nghttp3_conn *conn,
                                             size_t veccnt, uint32_t *pflags,
                                             void *conn_user_data,
                                             void *stream_user_data) {
+  auto upstream = static_cast<Http3Upstream *>(conn_user_data);
   auto downstream = static_cast<Downstream *>(stream_user_data);
 
   assert(downstream);
@@ -910,6 +919,11 @@ nghttp3_ssize downstream_read_data_callback(nghttp3_conn *conn,
   assert((*pflags & NGHTTP3_DATA_FLAG_EOF) || veccnt);
 
   downstream->response_sent_body_length += nghttp3_vec_len(vec, veccnt);
+
+  if ((*pflags & NGHTTP3_DATA_FLAG_EOF) &&
+      upstream->shutdown_stream_read(stream_id, NGHTTP3_H3_NO_ERROR) != 0) {
+    return NGHTTP3_ERR_CALLBACK_FAILURE;
+  }
 
   return veccnt;
 }
@@ -1106,6 +1120,9 @@ int Http3Upstream::on_downstream_header_complete(Downstream *downstream) {
 
   if (data_readptr) {
     downstream->reset_upstream_wtimer();
+  } else if (shutdown_stream_read(downstream->get_stream_id(),
+                                  NGHTTP3_H3_NO_ERROR) != 0) {
+    return -1;
   }
 
   return 0;
@@ -1155,6 +1172,81 @@ void Http3Upstream::on_handler_delete() {
 }
 
 int Http3Upstream::on_downstream_reset(Downstream *downstream, bool no_retry) {
+  int rv;
+
+  if (downstream->get_dispatch_state() != DispatchState::ACTIVE) {
+    // This is error condition when we failed push_request_headers()
+    // in initiate_downstream().  Otherwise, we have
+    // DispatchState::ACTIVE state, or we did not set
+    // DownstreamConnection.
+    downstream->pop_downstream_connection();
+    handler_->signal_write();
+
+    return 0;
+  }
+
+  if (!downstream->request_submission_ready()) {
+    if (downstream->get_response_state() == DownstreamState::MSG_COMPLETE) {
+      // We have got all response body already.  Send it off.
+      downstream->pop_downstream_connection();
+      return 0;
+    }
+    // pushed stream is handled here
+    shutdown_stream(downstream, NGHTTP3_H3_INTERNAL_ERROR);
+    downstream->pop_downstream_connection();
+
+    handler_->signal_write();
+
+    return 0;
+  }
+
+  downstream->pop_downstream_connection();
+
+  downstream->add_retry();
+
+  std::unique_ptr<DownstreamConnection> dconn;
+
+  rv = 0;
+
+  if (no_retry || downstream->no_more_retry()) {
+    goto fail;
+  }
+
+  // downstream connection is clean; we can retry with new
+  // downstream connection.
+
+  for (;;) {
+    auto dconn = handler_->get_downstream_connection(rv, downstream);
+    if (!dconn) {
+      goto fail;
+    }
+
+    rv = downstream->attach_downstream_connection(std::move(dconn));
+    if (rv == 0) {
+      break;
+    }
+  }
+
+  rv = downstream->push_request_headers();
+  if (rv != 0) {
+    goto fail;
+  }
+
+  return 0;
+
+fail:
+  if (rv == SHRPX_ERR_TLS_REQUIRED) {
+    rv = on_downstream_abort_request_with_https_redirect(downstream);
+  } else {
+    rv = on_downstream_abort_request(downstream, 502);
+  }
+  if (rv != 0) {
+    shutdown_stream(downstream, NGHTTP3_H3_INTERNAL_ERROR);
+  }
+  downstream->pop_downstream_connection();
+
+  handler_->signal_write();
+
   return 0;
 }
 
@@ -1239,6 +1331,11 @@ int Http3Upstream::send_reply(Downstream *downstream, const uint8_t *body,
 
   if (data_read_ptr) {
     downstream->reset_upstream_wtimer();
+  }
+
+  if (shutdown_stream_read(downstream->get_stream_id(), NGHTTP3_H3_NO_ERROR) !=
+      0) {
+    return -1;
   }
 
   return 0;
@@ -2099,14 +2196,17 @@ int Http3Upstream::error_reply(Downstream *downstream,
   rv = nghttp3_conn_submit_response(httpconn_, downstream->get_stream_id(),
                                     nva.data(), nva.size(), &data_read);
   if (nghttp3_err_is_fatal(rv)) {
-    ULOG(FATAL, this) << "nghttp3_submit_response() failed: "
+    ULOG(FATAL, this) << "nghttp3_conn_submit_response() failed: "
                       << nghttp3_strerror(rv);
     return -1;
   }
 
   downstream->reset_upstream_wtimer();
 
-  // TODO Should we shutdown read here?
+  if (shutdown_stream_read(downstream->get_stream_id(), NGHTTP3_H3_NO_ERROR) !=
+      0) {
+    return -1;
+  }
 
   return 0;
 }
@@ -2123,6 +2223,19 @@ int Http3Upstream::shutdown_stream(Downstream *downstream,
   auto rv = ngtcp2_conn_shutdown_stream(conn_, stream_id, app_error_code);
   if (rv != 0) {
     ULOG(FATAL, this) << "ngtcp2_conn_shutdown_stream() failed: "
+                      << ngtcp2_strerror(rv);
+    return -1;
+  }
+
+  return 0;
+}
+
+int Http3Upstream::shutdown_stream_read(int64_t stream_id,
+                                        uint64_t app_error_code) {
+  auto rv =
+      ngtcp2_conn_shutdown_stream_read(conn_, stream_id, NGHTTP3_H3_NO_ERROR);
+  if (ngtcp2_err_is_fatal(rv)) {
+    ULOG(FATAL, this) << "ngtcp2_conn_shutdown_stream_read: "
                       << ngtcp2_strerror(rv);
     return -1;
   }
