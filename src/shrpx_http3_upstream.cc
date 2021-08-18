@@ -1811,9 +1811,33 @@ void Http3Upstream::initiate_downstream(Downstream *downstream) {
 namespace {
 int http_recv_data(nghttp3_conn *conn, int64_t stream_id, const uint8_t *data,
                    size_t datalen, void *user_data, void *stream_user_data) {
+  auto upstream = static_cast<Http3Upstream *>(user_data);
+  auto downstream = static_cast<Downstream *>(stream_user_data);
+
+  if (upstream->http_recv_data(downstream, data, datalen) != 0) {
+    return NGHTTP3_ERR_CALLBACK_FAILURE;
+  }
+
   return 0;
 }
 } // namespace
+
+int Http3Upstream::http_recv_data(Downstream *downstream, const uint8_t *data,
+                                  size_t datalen) {
+  downstream->reset_upstream_rtimer();
+
+  if (downstream->push_upload_data_chunk(data, datalen) != 0) {
+    if (downstream->get_response_state() != DownstreamState::MSG_COMPLETE) {
+      shutdown_stream(downstream, NGHTTP3_H3_INTERNAL_ERROR);
+    }
+
+    consume(downstream->get_stream_id(), datalen);
+
+    return 0;
+  }
+
+  return 0;
+}
 
 namespace {
 int http_end_stream(nghttp3_conn *conn, int64_t stream_id, void *user_data,
@@ -1973,7 +1997,7 @@ int Http3Upstream::setup_httpconn() {
   nghttp3_callbacks callbacks{
       shrpx::http_acked_stream_data,
       shrpx::http_stream_close,
-      http_recv_data,
+      shrpx::http_recv_data,
       http_deferred_consume,
       shrpx::http_begin_request_headers,
       shrpx::http_recv_request_header,
