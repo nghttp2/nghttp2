@@ -45,15 +45,19 @@
 
 #include <nghttp2/nghttp2.h>
 
-#include <ngtcp2/ngtcp2.h>
-#include <ngtcp2/ngtcp2_crypto.h>
+#ifdef ENABLE_HTTP3
+#  include <ngtcp2/ngtcp2.h>
+#  include <ngtcp2/ngtcp2_crypto.h>
+#endif // ENABLE_HTTP3
 
 #include <ev.h>
 
 #include <openssl/ssl.h>
 
 #include "http2.h"
-#include "quic.h"
+#ifdef ENABLE_HTTP3
+#  include "quic.h"
+#endif // ENABLE_HTTP3
 #include "memchunk.h"
 #include "template.h"
 
@@ -327,6 +331,7 @@ struct Client {
   std::function<int(Client &)> readfn, writefn;
   Worker *worker;
   SSL *ssl;
+#ifdef ENABLE_HTTP3
   struct {
     ev_timer pkt_timer;
     ngtcp2_conn *conn;
@@ -335,6 +340,7 @@ struct Client {
     bool close_requested;
     FILE *qlog_file;
   } quic;
+#endif // ENABLE_HTTP3
   ev_timer request_timeout_watcher;
   addrinfo *next_addr;
   // Address for the current address.  When try_new_connection() is
@@ -447,6 +453,7 @@ struct Client {
 
   void signal_write();
 
+#ifdef ENABLE_HTTP3
   // QUIC
   int quic_init(const sockaddr *local_addr, socklen_t local_addrlen,
                 const sockaddr *remote_addr, socklen_t remote_addrlen);
@@ -475,6 +482,7 @@ struct Client {
   int quic_pkt_timeout();
   void quic_restart_pkt_timer();
   void quic_write_qlog(const void *data, size_t datalen);
+#endif // ENABLE_HTTP3
 };
 
 } // namespace h2load

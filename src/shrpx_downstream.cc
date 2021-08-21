@@ -165,7 +165,9 @@ Downstream::Downstream(Upstream *upstream, MemchunkPool *mcpool,
   downstream_wtimer_.data = this;
 
   rcbufs_.reserve(32);
+#ifdef ENABLE_HTTP3
   rcbufs3_.reserve(32);
+#endif // ENABLE_HTTP3
 }
 
 Downstream::~Downstream() {
@@ -205,9 +207,11 @@ Downstream::~Downstream() {
   // explicitly.
   dconn_.reset();
 
+#ifdef ENABLE_HTTP3
   for (auto rcbuf : rcbufs3_) {
     nghttp3_rcbuf_decref(rcbuf);
   }
+#endif // ENABLE_HTTP3
 
   for (auto rcbuf : rcbufs_) {
     nghttp2_rcbuf_decref(rcbuf);
@@ -1134,10 +1138,12 @@ void Downstream::add_rcbuf(nghttp2_rcbuf *rcbuf) {
   rcbufs_.push_back(rcbuf);
 }
 
+#ifdef ENABLE_HTTP3
 void Downstream::add_rcbuf(nghttp3_rcbuf *rcbuf) {
   nghttp3_rcbuf_incref(rcbuf);
   rcbufs3_.push_back(rcbuf);
 }
+#endif // ENABLE_HTTP3
 
 void Downstream::set_downstream_addr_group(
     const std::shared_ptr<DownstreamAddrGroup> &group) {

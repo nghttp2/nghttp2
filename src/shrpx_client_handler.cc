@@ -51,7 +51,9 @@
 #include "shrpx_api_downstream_connection.h"
 #include "shrpx_health_monitor_downstream_connection.h"
 #include "shrpx_null_downstream_connection.h"
-#include "shrpx_http3_upstream.h"
+#ifdef ENABLE_HTTP3
+#  include "shrpx_http3_upstream.h"
+#endif // ENABLE_HTTP3
 #include "shrpx_log.h"
 #include "util.h"
 #include "template.h"
@@ -287,6 +289,7 @@ int ClientHandler::write_tls() {
   }
 }
 
+#ifdef ENABLE_HTTP3
 int ClientHandler::read_quic(const UpstreamAddr *faddr,
                              const Address &remote_addr,
                              const Address &local_addr, const uint8_t *data,
@@ -297,6 +300,7 @@ int ClientHandler::read_quic(const UpstreamAddr *faddr,
 }
 
 int ClientHandler::write_quic() { return upstream_->on_write(); }
+#endif // ENABLE_HTTP3
 
 int ClientHandler::upstream_noop() { return 0; }
 
@@ -509,12 +513,14 @@ void ClientHandler::setup_upstream_io_callback() {
   }
 }
 
+#ifdef ENABLE_HTTP3
 void ClientHandler::setup_http3_upstream(
     std::unique_ptr<Http3Upstream> &&upstream) {
   upstream_ = std::move(upstream);
   alpn_ = StringRef::from_lit("h3");
   write_ = &ClientHandler::write_quic;
 }
+#endif // ENABLE_HTTP3
 
 ClientHandler::~ClientHandler() {
   if (LOG_ENABLED(INFO)) {

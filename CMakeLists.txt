@@ -448,6 +448,10 @@ foreach(name
   configure_file("${name}.in" "${name}" @ONLY)
 endforeach()
 
+if(APPLE)
+  add_definitions(-D__APPLE_USE_RFC_3542)
+endif()
+
 include_directories(
   "${CMAKE_CURRENT_BINARY_DIR}" # for config.h
 )

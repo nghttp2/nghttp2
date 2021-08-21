@@ -159,7 +159,9 @@ public:
   SSL_CTX *get_ssl_ctx(size_t idx) const;
 
   const std::vector<SSL_CTX *> &get_indexed_ssl_ctx(size_t idx) const;
+#ifdef ENABLE_HTTP3
   const std::vector<SSL_CTX *> &get_quic_indexed_ssl_ctx(size_t idx) const;
+#endif // ENABLE_HTTP3
 
 #ifdef HAVE_NEVERBLEED
   void set_neverbleed(neverbleed_t *nb);
@@ -188,8 +190,10 @@ private:
   // selection among them are performed by hostname presented by SNI,
   // and signature algorithm presented by client.
   std::vector<std::vector<SSL_CTX *>> indexed_ssl_ctx_;
+#ifdef ENABLE_HTTP3
   std::vector<SSL_CTX *> quic_all_ssl_ctx_;
   std::vector<std::vector<SSL_CTX *>> quic_indexed_ssl_ctx_;
+#endif // ENABLE_HTTP3
   OCSPUpdateContext ocsp_;
   std::mt19937 &gen_;
   // ev_loop for each worker
@@ -206,7 +210,9 @@ private:
   // Otherwise, nullptr and workers_ has instances of Worker instead.
   std::unique_ptr<Worker> single_worker_;
   std::unique_ptr<tls::CertLookupTree> cert_tree_;
+#ifdef ENABLE_HTTP3
   std::unique_ptr<tls::CertLookupTree> quic_cert_tree_;
+#endif // ENABLE_HTTP3
   std::unique_ptr<MemcachedDispatcher> tls_ticket_key_memcached_dispatcher_;
   // Current TLS session ticket keys.  Note that TLS connection does
   // not refer to this field directly.  They use TicketKeys object in

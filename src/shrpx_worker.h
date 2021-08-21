@@ -50,7 +50,9 @@
 #include "shrpx_live_check.h"
 #include "shrpx_connect_blocker.h"
 #include "shrpx_dns_tracker.h"
-#include "shrpx_quic_connection_handler.h"
+#ifdef ENABLE_HTTP3
+#  include "shrpx_quic_connection_handler.h"
+#endif // ENABLE_HTTP3
 #include "allocator.h"
 
 using namespace nghttp2;
@@ -62,7 +64,9 @@ class ConnectBlocker;
 class MemcachedDispatcher;
 struct UpstreamAddr;
 class ConnectionHandler;
+#ifdef ENABLE_HTTP3
 class QUICListener;
+#endif // ENABLE_HTTP3
 
 #ifdef HAVE_MRUBY
 namespace mruby {
@@ -271,8 +275,10 @@ class Worker {
 public:
   Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
          SSL_CTX *tls_session_cache_memcached_ssl_ctx,
-         tls::CertLookupTree *cert_tree, SSL_CTX *quic_sv_ssl_ctx,
-         tls::CertLookupTree *quic_cert_tree,
+         tls::CertLookupTree *cert_tree,
+#ifdef ENABLE_HTTP3
+         SSL_CTX *quic_sv_ssl_ctx, tls::CertLookupTree *quic_cert_tree,
+#endif // ENABLE_HTTP3
          const std::shared_ptr<TicketKeys> &ticket_keys,
          ConnectionHandler *conn_handler,
          std::shared_ptr<DownstreamConfig> downstreamconf);
@@ -283,7 +289,9 @@ public:
   void send(const WorkerEvent &event);
 
   tls::CertLookupTree *get_cert_lookup_tree() const;
+#ifdef ENABLE_HTTP3
   tls::CertLookupTree *get_quic_cert_lookup_tree() const;
+#endif // ENABLE_HTTP3
 
   // These 2 functions make a lock m_ to get/set ticket keys
   // atomically.
@@ -294,7 +302,9 @@ public:
   struct ev_loop *get_loop() const;
   SSL_CTX *get_sv_ssl_ctx() const;
   SSL_CTX *get_cl_ssl_ctx() const;
+#ifdef ENABLE_HTTP3
   SSL_CTX *get_quic_sv_ssl_ctx() const;
+#endif // ENABLE_HTTP3
 
   void set_graceful_shutdown(bool f);
   bool get_graceful_shutdown() const;
@@ -324,11 +334,13 @@ public:
 
   ConnectionHandler *get_connection_handler() const;
 
+#ifdef ENABLE_HTTP3
   QUICConnectionHandler *get_quic_connection_handler();
 
-  DNSTracker *get_dns_tracker();
-
   int setup_quic_server_socket();
+#endif // ENABLE_HTTP3
+
+  DNSTracker *get_dns_tracker();
 
 private:
 #ifndef NOTHREADS
@@ -344,8 +356,10 @@ private:
   WorkerStat worker_stat_;
   DNSTracker dns_tracker_;
 
+#ifdef ENABLE_HTTP3
   std::vector<UpstreamAddr> quic_upstream_addrs_;
   std::vector<std::unique_ptr<QUICListener>> quic_listeners_;
+#endif // ENABLE_HTTP3
 
   std::shared_ptr<DownstreamConfig> downstreamconf_;
   std::unique_ptr<MemcachedDispatcher> session_cache_memcached_dispatcher_;
@@ -360,10 +374,12 @@ private:
   SSL_CTX *cl_ssl_ctx_;
   tls::CertLookupTree *cert_tree_;
   ConnectionHandler *conn_handler_;
+#ifdef ENABLE_HTTP3
   SSL_CTX *quic_sv_ssl_ctx_;
   tls::CertLookupTree *quic_cert_tree_;
 
   QUICConnectionHandler quic_conn_handler_;
+#endif // ENABLE_HTTP3
 
 #ifndef HAVE_ATOMIC_STD_SHARED_PTR
   std::mutex ticket_keys_m_;

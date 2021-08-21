@@ -821,7 +821,11 @@ int parse_upstream_params(UpstreamParams &out, const StringRef &src_params) {
     } else if (util::strieq_l("proxyproto", param)) {
       out.proxyproto = true;
     } else if (util::strieq_l("quic", param)) {
+#ifdef ENABLE_HTTP3
       out.quic = true;
+#else  // !ENABLE_HTTP3
+      LOG(ERROR) << "quic: QUIC is disabled at compile time";
+#endif // !ENABLE_HTTP3
     } else if (!param.empty()) {
       LOG(ERROR) << "frontend: " << param << ": unknown keyword";
       return -1;
@@ -2674,8 +2678,12 @@ int parse_config(Config *config, int optid, const StringRef &opt,
       apiconf.enabled = true;
     }
 
+#ifdef ENABLE_HTTP3
     auto &addrs = params.quic ? config->conn.quic_listener.addrs
                               : config->conn.listener.addrs;
+#else  // !ENABLE_HTTP3
+    auto &addrs = config->conn.listener.addrs;
+#endif // !ENABLE_HTTP3
 
     if (util::istarts_with(optarg, SHRPX_UNIX_PATH_PREFIX)) {
       auto path = std::begin(optarg) + SHRPX_UNIX_PATH_PREFIX.size();

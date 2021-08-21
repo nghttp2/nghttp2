@@ -704,6 +704,7 @@ struct TLSConfig {
   bool no_postpone_early_data;
 };
 
+#ifdef ENABLE_HTTP3
 struct QUICConfig {
   struct {
     std::array<uint8_t, 32> secret;
@@ -715,6 +716,7 @@ struct QUICConfig {
     bool log;
   } debug;
 };
+#endif // ENABLE_HTTP3
 
 // custom error page
 struct ErrorPage {
@@ -921,9 +923,11 @@ struct ConnectionConfig {
     int fastopen;
   } listener;
 
+#ifdef ENABLE_HTTP3
   struct {
     std::vector<UpstreamAddr> addrs;
   } quic_listener;
+#endif // ENABLE_HTTP3
 
   struct {
     struct {
@@ -968,7 +972,9 @@ struct Config {
         http{},
         http2{},
         tls{},
+#ifdef ENABLE_HTTP3
         quic{},
+#endif // ENABLE_HTTP3
         logging{},
         conn{},
         api{},
@@ -986,7 +992,8 @@ struct Config {
         single_process{false},
         single_thread{false},
         ignore_per_pattern_mruby_error{false},
-        ev_loop_flags{0} {}
+        ev_loop_flags{0} {
+  }
   ~Config();
 
   Config(Config &&) = delete;
@@ -1002,7 +1009,9 @@ struct Config {
   HttpConfig http;
   Http2Config http2;
   TLSConfig tls;
+#ifdef ENABLE_HTTP3
   QUICConfig quic;
+#endif // ENABLE_HTTP3
   LoggingConfig logging;
   ConnectionConfig conn;
   APIConfig api;

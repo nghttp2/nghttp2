@@ -50,14 +50,18 @@
 
 #include <openssl/err.h>
 
-#include <ngtcp2/ngtcp2.h>
+#ifdef ENABLE_HTTP3
+#  include <ngtcp2/ngtcp2.h>
+#endif // ENABLE_HTTP3
 
 #include "url-parser/url_parser.h"
 
 #include "h2load_http1_session.h"
 #include "h2load_http2_session.h"
-#include "h2load_http3_session.h"
-#include "h2load_quic.h"
+#ifdef ENABLE_HTTP3
+#  include "h2load_http3_session.h"
+#  include "h2load_quic.h"
+#endif // ENABLE_HTTP3
 #include "tls.h"
 #include "http2.h"
 #include "util.h"
@@ -141,8 +145,12 @@ bool Config::is_timing_based_mode() const { return (this->duration > 0); }
 bool Config::has_base_uri() const { return (!this->base_uri.empty()); }
 bool Config::rps_enabled() const { return this->rps > 0.0; }
 bool Config::is_quic() const {
+#ifdef ENABLE_HTTP3
   return !npn_list.empty() &&
          (npn_list[0] == NGHTTP3_ALPN_H3 || npn_list[0] == "\x5h3-29");
+#else  // !ENABLE_HTTP3
+  return false;
+#endif // !ENABLE_HTTP3
 }
 Config config;
 
@@ -435,7 +443,9 @@ Client::Client(uint32_t id, Worker *worker, size_t req_todo)
       cstat{},
       worker(worker),
       ssl(nullptr),
+#ifdef ENABLE_HTTP3
       quic{},
+#endif // ENABLE_HTTP3
       next_addr(config.addrs),
       current_addr(nullptr),
       reqidx(0),
@@ -478,16 +488,20 @@ Client::Client(uint32_t id, Worker *worker, size_t req_todo)
   ev_timer_init(&rps_watcher, rps_cb, 0., 0.);
   rps_watcher.data = this;
 
+#ifdef ENABLE_HTTP3
   ev_timer_init(&quic.pkt_timer, quic_pkt_timeout_cb, 0., 0.);
   quic.pkt_timer.data = this;
+#endif // ENABLE_HTTP3
 }
 
 Client::~Client() {
   disconnect();
 
+#ifdef ENABLE_HTTP3
   if (config.is_quic()) {
     quic_free();
   }
+#endif // ENABLE_HTTP3
 
   if (ssl) {
     SSL_free(ssl);
@@ -504,6 +518,7 @@ int Client::make_socket(addrinfo *addr) {
   int rv;
 
   if (config.is_quic()) {
+#ifdef ENABLE_HTTP3
     fd = util::create_nonblock_udp_socket(addr->ai_family);
     if (fd == -1) {
       return -1;
@@ -528,6 +543,7 @@ int Client::make_socket(addrinfo *addr) {
       std::cerr << "quic_init failed" << std::endl;
       return -1;
     }
+#endif // ENABLE_HTTP3
   } else {
     fd = util::create_nonblock_socket(addr->ai_family);
     if (fd == -1) {
@@ -614,10 +630,12 @@ int Client::connect() {
   ev_io_start(worker->loop, &wev);
 
   if (config.is_quic()) {
+#ifdef ENABLE_HTTP3
     ev_io_start(worker->loop, &rev);
 
     readfn = &Client::read_quic;
     writefn = &Client::write_quic;
+#endif // ENABLE_HTTP3
   } else {
     writefn = &Client::connected;
   }
@@ -676,11 +694,15 @@ void Client::fail() {
 void Client::disconnect() {
   record_client_end_time();
 
+#ifdef ENABLE_HTTP3
   if (config.is_quic()) {
     quic_close_connection();
   }
+#endif // ENABLE_HTTP3
 
+#ifdef ENABLE_HTTP3
   ev_timer_stop(worker->loop, &quic.pkt_timer);
+#endif // ENABLE_HTTP3
   ev_timer_stop(worker->loop, &conn_inactivity_watcher);
   ev_timer_stop(worker->loop, &conn_active_watcher);
   ev_timer_stop(worker->loop, &rps_watcher);
@@ -843,9 +865,11 @@ void Client::report_app_info() {
 }
 
 void Client::terminate_session() {
+#ifdef ENABLE_HTTP3
   if (config.is_quic()) {
     quic.close_requested = true;
   }
+#endif // ENABLE_HTTP3
   if (session) {
     session->terminate();
   }
@@ -1047,11 +1071,13 @@ int Client::connection_made() {
     if (next_proto) {
       auto proto = StringRef{next_proto, next_proto_len};
       if (config.is_quic()) {
+#ifdef ENABLE_HTTP3
         assert(session);
         if (!util::streq(StringRef{&NGHTTP3_ALPN_H3[1]}, proto) &&
             !util::streq_l("h3-29", proto)) {
           return -1;
         }
+#endif // ENABLE_HTTP3
       } else if (util::check_h2_is_selected(proto)) {
         session = std::make_unique<Http2Session>(this);
       } else if (util::streq(NGHTTP2_H1_1, proto)) {
@@ -1377,6 +1403,7 @@ int Client::write_tls() {
   return 0;
 }
 
+#ifdef ENABLE_HTTP3
 int Client::write_udp(const sockaddr *addr, socklen_t addrlen,
                       const uint8_t *data, size_t datalen, size_t gso_size) {
   iovec msg_iov;
@@ -1389,7 +1416,7 @@ int Client::write_udp(const sockaddr *addr, socklen_t addrlen,
   msg.msg_iov = &msg_iov;
   msg.msg_iovlen = 1;
 
-#ifdef UDP_SEGMENT
+#  ifdef UDP_SEGMENT
   std::array<uint8_t, CMSG_SPACE(sizeof(uint16_t))> msg_ctrl{};
   if (gso_size && datalen > gso_size) {
     msg.msg_control = msg_ctrl.data();
@@ -1401,7 +1428,7 @@ int Client::write_udp(const sockaddr *addr, socklen_t addrlen,
     cm->cmsg_len = CMSG_LEN(sizeof(uint16_t));
     *(reinterpret_cast<uint16_t *>(CMSG_DATA(cm))) = gso_size;
   }
-#endif // UDP_SEGMENT
+#  endif // UDP_SEGMENT
 
   auto nwrite = sendmsg(fd, &msg, 0);
   if (nwrite < 0) {
@@ -1414,6 +1441,7 @@ int Client::write_udp(const sockaddr *addr, socklen_t addrlen,
 
   return 0;
 }
+#endif // ENABLE_HTTP3
 
 void Client::record_request_time(RequestStat *req_stat) {
   req_stat->request_time = std::chrono::steady_clock::now();
@@ -2740,7 +2768,9 @@ int main(int argc, char **argv) {
           << "Warning: --qlog-file-base: only effective in quic, ignoring."
           << std::endl;
     } else {
+#ifdef ENABLE_HTTP3
       config.qlog_file_base = qlog_base;
+#endif // ENABLE_HTTP3
     }
   }
 
@@ -2764,8 +2794,10 @@ int main(int argc, char **argv) {
   SSL_CTX_set_mode(ssl_ctx, SSL_MODE_RELEASE_BUFFERS);
 
   if (config.is_quic()) {
+#ifdef ENABLE_HTTP3
     SSL_CTX_set_min_proto_version(ssl_ctx, TLS1_3_VERSION);
     SSL_CTX_set_max_proto_version(ssl_ctx, TLS1_3_VERSION);
+#endif // ENABLE_HTTP3
   } else if (nghttp2::tls::ssl_ctx_set_proto_versions(
                  ssl_ctx, nghttp2::tls::NGHTTP2_TLS_MIN_VERSION,
                  nghttp2::tls::NGHTTP2_TLS_MAX_VERSION) != 0) {
@@ -2780,12 +2812,14 @@ int main(int argc, char **argv) {
     exit(EXIT_FAILURE);
   }
 
+#if OPENSSL_1_1_1_API
   if (SSL_CTX_set_ciphersuites(ssl_ctx, config.tls13_ciphers.c_str()) == 0) {
     std::cerr << "SSL_CTX_set_ciphersuites with " << config.tls13_ciphers
               << " failed: " << ERR_error_string(ERR_get_error(), nullptr)
               << std::endl;
     exit(EXIT_FAILURE);
   }
+#endif // OPENSSL_1_1_1_API
 
   if (SSL_CTX_set1_groups_list(ssl_ctx, config.groups.c_str()) != 1) {
     std::cerr << "SSL_CTX_set1_groups_list failed" << std::endl;
@@ -2806,6 +2840,7 @@ int main(int argc, char **argv) {
   SSL_CTX_set_alpn_protos(ssl_ctx, proto_list.data(), proto_list.size());
 #endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 
+#if OPENSSL_1_1_1_API
   auto keylog_filename = getenv("SSLKEYLOGFILE");
   if (keylog_filename) {
     keylog_file.open(keylog_filename, std::ios_base::app);
@@ -2813,6 +2848,7 @@ int main(int argc, char **argv) {
       SSL_CTX_set_keylog_callback(ssl_ctx, keylog_callback);
     }
   }
+#endif // OPENSSL_1_1_1_API
 
   std::string user_agent = "h2load nghttp2/" NGHTTP2_VERSION;
   Headers shared_nva;
@@ -3093,10 +3129,12 @@ traffic: )" << util::utos_funit(stats.bytes_total)
             << ") headers (space savings " << header_space_savings * 100
             << "%), " << util::utos_funit(stats.bytes_body) << "B ("
             << stats.bytes_body << R"() data)" << std::endl;
+#ifdef ENABLE_HTTP3
   if (config.is_quic()) {
     std::cout << "UDP datagram: " << stats.udp_dgram_sent << " sent, "
               << stats.udp_dgram_recv << " received" << std::endl;
   }
+#endif // ENABLE_HTTP3
   std::cout
       << R"(                     min         max         mean         sd        +/- sd
 time for request: )"

@@ -51,6 +51,7 @@ AM_CPPFLAGS = \
 	@LIBNGTCP2_CFLAGS@ \
 	@JANSSON_CFLAGS@ \
 	@ZLIB_CFLAGS@ \
+	@EXTRA_DEFS@ \
 	@DEFS@
 AM_LDFLAGS = @LIBTOOL_LDFLAGS@
 
@@ -103,10 +104,14 @@ h2load_SOURCES = util.cc util.h \
 	tls.cc tls.h \
 	h2load_session.h \
 	h2load_http2_session.cc h2load_http2_session.h \
-	h2load_http1_session.cc h2load_http1_session.h \
+	h2load_http1_session.cc h2load_http1_session.h
+
+if ENABLE_HTTP3
+h2load_SOURCES += \
 	h2load_http3_session.cc h2load_http3_session.h \
 	h2load_quic.cc h2load_quic.h \
 	quic.cc quic.h
+endif # ENABLE_HTTP3
 
 NGHTTPX_SRCS = \
 	util.cc util.h http2.cc http2.h timegm.c timegm.h base64.h \
@@ -153,12 +158,6 @@ NGHTTPX_SRCS = \
 	shrpx_dns_resolver.cc shrpx_dns_resolver.h \
 	shrpx_dual_dns_resolver.cc shrpx_dual_dns_resolver.h \
 	shrpx_dns_tracker.cc shrpx_dns_tracker.h \
-	shrpx_quic.cc shrpx_quic.h \
-	shrpx_quic_listener.cc shrpx_quic_listener.h \
-	shrpx_quic_connection_handler.cc shrpx_quic_connection_handler.h \
-	shrpx_http3_upstream.cc shrpx_http3_upstream.h \
-	http3.cc http3.h \
-	quic.cc quic.h \
 	buffer.h memchunk.h template.h allocator.h \
 	xsi_strerror.c xsi_strerror.h
 
@@ -170,6 +169,16 @@ NGHTTPX_SRCS += \
 	shrpx_mruby_module_request.cc shrpx_mruby_module_request.h \
 	shrpx_mruby_module_response.cc shrpx_mruby_module_response.h
 endif # HAVE_MRUBY
+
+if ENABLE_HTTP3
+NGHTTPX_SRCS += \
+	shrpx_quic.cc shrpx_quic.h \
+	shrpx_quic_listener.cc shrpx_quic_listener.h \
+	shrpx_quic_connection_handler.cc shrpx_quic_connection_handler.h \
+	shrpx_http3_upstream.cc shrpx_http3_upstream.h \
+	http3.cc http3.h \
+	quic.cc quic.h
+endif # ENABLE_HTTP3
 
 noinst_LIBRARIES = libnghttpx.a
 libnghttpx_a_SOURCES = ${NGHTTPX_SRCS}

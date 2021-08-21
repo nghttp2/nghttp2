@@ -1548,6 +1548,7 @@ void fill_default_config(Config *config) {
         downstreamconf.option, downstreamconf.encoder_dynamic_table_size);
   }
 
+#ifdef ENABLE_HTTP3
   auto &quicconf = config->quic;
   {
     quicconf.timeout.idle = 30_s;
@@ -1560,6 +1561,7 @@ void fill_default_config(Config *config) {
       exit(EXIT_FAILURE);
     }
   }
+#endif // ENABLE_HTTP3
 
   auto &loggingconf = config->logging;
   {

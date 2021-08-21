@@ -38,7 +38,9 @@
 
 #include <nghttp2/nghttp2.h>
 
-#include <nghttp3/nghttp3.h>
+#ifdef ENABLE_HTTP3
+#  include <nghttp3/nghttp3.h>
+#endif // ENABLE_HTTP3
 
 #include "llhttp.h"
 
@@ -490,7 +492,9 @@ public:
   BlockAllocator &get_block_allocator();
 
   void add_rcbuf(nghttp2_rcbuf *rcbuf);
+#ifdef ENABLE_HTTP3
   void add_rcbuf(nghttp3_rcbuf *rcbuf);
+#endif // ENABLE_HTTP3
 
   void
   set_downstream_addr_group(const std::shared_ptr<DownstreamAddrGroup> &group);
@@ -533,7 +537,9 @@ private:
   BlockAllocator balloc_;
 
   std::vector<nghttp2_rcbuf *> rcbufs_;
+#ifdef ENABLE_HTTP3
   std::vector<nghttp3_rcbuf *> rcbufs3_;
+#endif // ENABLE_HTTP3
 
   Request req_;
   Response resp_;
