@@ -136,13 +136,14 @@ void log_printf(void *user_data, const char *fmt, ...) {
   auto nwrite = vsnprintf(buf.data(), buf.size(), fmt, ap);
   va_end(ap);
 
-  if (nwrite >= buf.size()) {
+  if (static_cast<size_t>(nwrite) >= buf.size()) {
     nwrite = buf.size() - 1;
   }
 
   buf[nwrite++] = '\n';
 
-  write(fileno(stderr), buf.data(), nwrite);
+  while (write(fileno(stderr), buf.data(), nwrite) == -1 && errno == EINTR)
+    ;
 }
 } // namespace
 
