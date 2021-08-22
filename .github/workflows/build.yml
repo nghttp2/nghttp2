@@ -12,9 +12,6 @@ jobs:
         compiler: [gcc, clang]
         buildtool: [autotools, cmake]
         http3: [http3, no-http3]
-        exclude:
-        - buildtool: cmake
-          http3: http3
 
     steps:
     - uses: actions/checkout@v2
@@ -113,6 +110,7 @@ jobs:
         echo 'PKG_CONFIG_PATH='"$PKG_CONFIG_PATH" >> $GITHUB_ENV
         echo 'LDFLAGS='"$LDFLAGS" >> $GITHUB_ENV
         echo 'EXTRA_AUTOTOOLS_OPTS=--enable-http3' >> $GITHUB_ENV
+        echo 'EXTRA_CMAKE_OPTS=-DENABLE_HTTP3=ON' >> $GITHUB_ENV
     - name: Setup git submodules
       run: |
         git submodule update --init
@@ -124,7 +122,7 @@ jobs:
     - name: Configure cmake
       if: matrix.buildtool == 'cmake'
       run: |
-        cmake -DENABLE_WERROR=1 -DWITH_MRUBY=1 -DWITH_NEVERBLEED=1 -DCPPFLAGS="$CPPFLAGS" -DLDFLAGS="$LDFLAGS" .
+        cmake -DENABLE_WERROR=1 -DWITH_MRUBY=1 -DWITH_NEVERBLEED=1 $EXTRA_CMAKE_OPTS -DCPPFLAGS="$CPPFLAGS" -DLDFLAGS="$LDFLAGS" .
     - name: Build nghttp2 with autotools
       if: matrix.buildtool == 'autotools'
       run: |
