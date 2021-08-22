@@ -453,6 +453,25 @@ if test "x${request_openssl}" != "xno"; then
                     [have_openssl=yes], [have_openssl=no])
   if test "x${have_openssl}" = "xno"; then
     AC_MSG_NOTICE($OPENSSL_PKG_ERRORS)
+  else
+    save_CFLAGS="$CFLAGS"
+    save_LIBS="$LIBS"
+    CFLAGS="$OPENSSL_CFLAGS $CFLAGS"
+    LIBS="$OPENSSL_LIBS $LIBS"
+
+    have_ssl_is_quic=no
+    AC_MSG_CHECKING([for SSL_is_quic])
+    AC_LINK_IFELSE([AC_LANG_PROGRAM([[
+      #include <openssl/ssl.h>
+    ]], [[
+      SSL *ssl = NULL;
+      SSL_is_quic(ssl);
+    ]])],
+    [AC_MSG_RESULT([yes]); have_ssl_is_quic=yes],
+    [AC_MSG_RESULT([no]); have_ssl_is_quic=no])
+
+    CFLAGS="$save_CFLAGS"
+    LIBS="$save_LIBS"
   fi
 fi
 
@@ -670,6 +689,7 @@ AM_CONDITIONAL([ENABLE_APP], [ test "x${enable_app}" = "xyes" ])
 # Check HTTP/3 support
 enable_http3=no
 if test "x${request_http3}" != "xno" &&
+   test "x${have_ssl_is_quic}" = "xyes" &&
    test "x${have_libngtcp2}" = "xyes" &&
    test "x${have_libngtcp2_crypto_openssl}" = "xyes" &&
    test "x${have_libnghttp3}" = "xyes"; then
