@@ -11,6 +11,10 @@ jobs:
         os: [ubuntu-20.04, macos-10.15]
         compiler: [gcc, clang]
         buildtool: [autotools, cmake]
+        http3: [http3, no-http3]
+        exclude:
+        - buildtool: cmake
+          http3: http3
 
     steps:
     - uses: actions/checkout@v2
@@ -74,6 +78,41 @@ jobs:
       run: |
         echo 'CC=gcc' >> $GITHUB_ENV
         echo 'CXX=g++' >> $GITHUB_ENV
+    - name: Build quictls/openssl
+      if: matrix.http3 == 'http3'
+      run: |
+        git clone --depth 1 -b OpenSSL_1_1_1k+quic https://github.com/quictls/openssl
+        cd openssl
+        ./config enable-tls1_3 --prefix=$PWD/build
+        make -j$(nproc)
+        make install_sw
+    - name: Build nghttp3
+      if: matrix.http3 == 'http3'
+      run: |
+        git clone https://github.com/ngtcp2/nghttp3
+        cd nghttp3
+        autoreconf -i
+        ./configure --prefix=$PWD/build --enable-lib-only
+        make -j$(nproc) check
+        make install
+    - name: Build ngtcp2
+      if: matrix.http3 == 'http3'
+      run: |
+        git clone https://github.com/ngtcp2/ngtcp2
+        cd ngtcp2
+        autoreconf -i
+        ./configure --prefix=$PWD/build --enable-lib-only PKG_CONFIG_PATH="../openssl/build/lib/pkgconfig"
+        make -j$(nproc) check
+        make install
+    - name: Setup extra environment variables for HTTP/3
+      if: matrix.http3 == 'http3'
+      run: |
+        PKG_CONFIG_PATH="$PWD/openssl/build/lib/pkgconfig:$PWD/nghttp3/build/lib/pkgconfig:$PWD/ngtcp2/build/lib/pkgconfig:$PKG_CONFIG_PATH"
+        LDFLAGS="$LDFLAGS -Wl,-rpath,$PWD/openssl/build/lib"
+
+        echo 'PKG_CONFIG_PATH='"$PKG_CONFIG_PATH" >> $GITHUB_ENV
+        echo 'LDFLAGS='"$LDFLAGS" >> $GITHUB_ENV
+        echo 'EXTRA_AUTOTOOLS_OPTS=--enable-http3' >> $GITHUB_ENV
     - name: Setup git submodules
       run: |
         git submodule update --init
@@ -81,7 +120,7 @@ jobs:
       if: matrix.buildtool == 'autotools'
       run: |
         autoreconf -i
-        ./configure --enable-werror --with-mruby
+        ./configure --enable-werror --with-mruby $EXTRA_AUTOTOOLS_OPTS
     - name: Configure cmake
       if: matrix.buildtool == 'cmake'
       run: |
@@ -90,7 +129,7 @@ jobs:
       if: matrix.buildtool == 'autotools'
       run: |
         make distcheck \
-          DISTCHECK_CONFIGURE_FLAGS="--with-mruby --with-neverbleed --enable-werror CPPFLAGS=\"$CPPFLAGS\" LDFLAGS=\"$LDFLAGS\""
+          DISTCHECK_CONFIGURE_FLAGS="--with-mruby --with-neverbleed --enable-werror $EXTRA_AUTOTOOLS_OPTS CPPFLAGS=\"$CPPFLAGS\" LDFLAGS=\"$LDFLAGS\""
     - name: Build nghttp2 with cmake
       if: matrix.buildtool == 'cmake'
       run: |
