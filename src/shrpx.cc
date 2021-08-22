@@ -71,6 +71,7 @@
 
 #include <openssl/ssl.h>
 #include <openssl/err.h>
+#include <openssl/rand.h>
 #include <ev.h>
 
 #include <nghttp2/nghttp2.h>

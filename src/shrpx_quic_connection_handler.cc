@@ -24,6 +24,8 @@
  */
 #include "shrpx_quic_connection_handler.h"
 
+#include <openssl/rand.h>
+
 #include <ngtcp2/ngtcp2.h>
 
 #include "shrpx_worker.h"
