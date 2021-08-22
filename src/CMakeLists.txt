@@ -15,6 +15,9 @@ include_directories(
   ${JEMALLOC_INCLUDE_DIRS}
   ${LIBXML2_INCLUDE_DIRS}
   ${LIBEV_INCLUDE_DIRS}
+  ${LIBNGHTTP3_INCLUDE_DIRS}
+  ${LIBNGTCP2_INCLUDE_DIRS}
+  ${LIBNGTCP2_CRYPTO_OPENSSL_INCLUDE_DIRS}
   ${OPENSSL_INCLUDE_DIRS}
   ${LIBCARES_INCLUDE_DIRS}
   ${JANSSON_INCLUDE_DIRS}
@@ -27,6 +30,9 @@ link_libraries(
   ${JEMALLOC_LIBRARIES}
   ${LIBXML2_LIBRARIES}
   ${LIBEV_LIBRARIES}
+  ${LIBNGHTTP3_LIBRARIES}
+  ${LIBNGTCP2_LIBRARIES}
+  ${LIBNGTCP2_CRYPTO_OPENSSL_LIBRARIES}
   ${OPENSSL_LIBRARIES}
   ${LIBCARES_LIBRARIES}
   ${JANSSON_LIBRARIES}
@@ -67,7 +73,13 @@ if(ENABLE_APP)
     h2load_http2_session.cc
     h2load_http1_session.cc
   )
-
+  if(ENABLE_HTTP3)
+    list(APPEND H2LOAD_SOURCES
+      h2load_http3_session.cc
+      h2load_quic.cc
+      quic.cc
+    )
+  endif()
 
   # Common libnhttpx sources (used for nghttpx and unit tests)
   set(NGHTTPX_SRCS
@@ -118,6 +130,16 @@ if(ENABLE_APP)
       shrpx_mruby_module_env.cc
       shrpx_mruby_module_request.cc
       shrpx_mruby_module_response.cc
+    )
+  endif()
+  if(ENABLE_HTTP3)
+    list(APPEND NGHTTPX_SRCS
+     shrpx_quic.cc
+     shrpx_quic_listener.cc
+     shrpx_quic_connection_handler.cc
+     shrpx_http3_upstream.cc
+     http3.cc
+     quic.cc
     )
   endif()
   add_library(nghttpx_static STATIC ${NGHTTPX_SRCS})

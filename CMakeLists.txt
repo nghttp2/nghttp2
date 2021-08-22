@@ -61,6 +61,9 @@ find_package(OpenSSL 1.0.1)
 find_package(Libev 4.11)
 find_package(Libcares 1.7.5)
 find_package(ZLIB 1.2.3)
+find_package(Libngtcp2 0.0.0)
+find_package(Libngtcp2_crypto_openssl 0.0.0)
+find_package(Libnghttp3 0.0.0)
 if(OPENSSL_FOUND AND LIBEV_FOUND AND ZLIB_FOUND)
   set(ENABLE_APP_DEFAULT ON)
 else()
@@ -182,9 +185,18 @@ if(HAVE_CUNIT)
 endif()
 
 # openssl (for src)
+include(CheckSymbolExists)
 set(HAVE_OPENSSL    ${OPENSSL_FOUND})
 if(OPENSSL_FOUND)
   set(OPENSSL_INCLUDE_DIRS  ${OPENSSL_INCLUDE_DIR})
+  cmake_push_check_state()
+  set(CMAKE_REQUIRED_INCLUDES   "${OPENSSL_INCLUDE_DIR}")
+  set(CMAKE_REQUIRED_LIBRARIES  "${OPENSSL_LIBRARIES}")
+  check_symbol_exists(SSL_is_quic "openssl/ssl.h" HAVE_SSL_IS_QUIC)
+  if(NOT HAVE_SSL_IS_QUIC)
+    message(WARNING "OpenSSL in ${OPENSSL_LIBRARIES} dose not have SSL_is_quic.  HTTP/3 support cannot be enabled")
+  endif()
+  cmake_pop_check_state()
 else()
   set(OPENSSL_INCLUDE_DIRS  "")
   set(OPENSSL_LIBRARIES     "")
@@ -226,6 +238,12 @@ endif()
 # The nghttp, nghttpd and nghttpx under src depend on zlib, OpenSSL and libev
 if(ENABLE_APP AND NOT (ZLIB_FOUND AND OPENSSL_FOUND AND LIBEV_FOUND))
   message(FATAL_ERROR "Applications were requested (ENABLE_APP=1) but dependencies are not met.")
+endif()
+
+# HTTP/3 requires quictls/openssl, libngtcp2, libngtcp2_crypto_openssl
+# and libnghttp3.
+if(ENABLE_HTTP3 AND NOT (HAVE_SSL_IS_QUIC AND LIBNGTCP2_FOUND AND LIBNGTCP2_CRYPTO_OPENSSL_FOUND AND LIBNGHTTP3_FOUND))
+  message(FATAL_ERROR "HTTP/3 was requested (ENABLE_HTTP3=1) but dependencies are not met.")
 endif()
 
 # HPACK tools requires jansson
@@ -503,6 +521,9 @@ message(STATUS "summary of build options:
       Libxml2:        ${HAVE_LIBXML2} (LIBS='${LIBXML2_LIBRARIES}')
       Libev:          ${HAVE_LIBEV} (LIBS='${LIBEV_LIBRARIES}')
       Libc-ares:      ${HAVE_LIBCARES} (LIBS='${LIBCARES_LIBRARIES}')
+      Libngtcp2:      ${HAVE_LIBNGTCP2} (LIBS='${LIBNGTCP2_LIBRARIES}')
+      Libngtcp2_crypto_openssl: ${HAVE_LIBNGTCP2_CRYPTO_OPENSSL} (LIBS='${LIBNGTCP2_CRYPTO_OPENSSL_LIBRARIES}')
+      Libnghttp3:     ${HAVE_LIBNGHTTP3} (LIBS='${LIBNGHTTP3_LIBRARIES}')
       Libevent(SSL):  ${HAVE_LIBEVENT_OPENSSL} (LIBS='${LIBEVENT_OPENSSL_LIBRARIES}')
       Jansson:        ${HAVE_JANSSON} (LIBS='${JANSSON_LIBRARIES}')
       Jemalloc:       ${HAVE_JEMALLOC} (LIBS='${JEMALLOC_LIBRARIES}')
@@ -521,6 +542,7 @@ message(STATUS "summary of build options:
       Examples:       ${ENABLE_EXAMPLES}
       Python bindings:${ENABLE_PYTHON_BINDINGS}
       Threading:      ${ENABLE_THREADS}
+      HTTP/3(EXPERIMENTAL): ${ENABLE_HTTP3}
 ")
 if(ENABLE_LIB_ONLY_DISABLED_OTHERS)
   message("Only the library will be built. To build other components "
