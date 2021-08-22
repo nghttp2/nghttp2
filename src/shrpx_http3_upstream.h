@@ -32,7 +32,6 @@
 
 #include "shrpx_upstream.h"
 #include "shrpx_downstream_queue.h"
-#include "shrpx_mruby.h"
 #include "quic.h"
 #include "network.h"
 

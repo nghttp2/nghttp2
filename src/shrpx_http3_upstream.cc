@@ -35,6 +35,9 @@
 #include "shrpx_quic.h"
 #include "shrpx_worker.h"
 #include "shrpx_http.h"
+#ifdef HAVE_MRUBY
+#  include "shrpx_mruby.h"
+#endif // HAVE_MRUBY
 #include "http3.h"
 #include "util.h"
 
