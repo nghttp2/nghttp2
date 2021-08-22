@@ -16,35 +16,6 @@ An experimental high level C++ library is also available.
 We have Python bindings of this library, but we do not have full
 code coverage yet.
 
-Running h2load against HTTP/3 server
-------------------------------------
-
-In order to build h2load with HTTP/3 support, you have to build
-ngtcp2, nghttp3 and my patched OpenSSL.
-https://github.com/ngtcp2/ngtcp2#build-from-git describes how to build
-these three software.
-
-To run h2load against HTTP/3 server, specify h3 ALPN with
-``--npn-list`` option like so:
-
-.. code-block:: text
-
-    $ h2load --npn-list h3 https://127.0.0.1:4433
-
-You can use Dockerfile to skip the tedious build steps to manually
-pull and build dependencies.  In order to build Docker image, do this:
-
-.. code-block:: text
-
-    $ cd docker
-    $ docker build -t nghttp2-quic .
-
-Run h2load:
-
-.. code-block:: text
-
-    $ docker run --rm -it --network=host nghttp2-quic /usr/local/bin/h2load --npn-list h3 https://127.0.0.1:4433
-
 Development Status
 ------------------
 
@@ -173,6 +144,14 @@ privilege separation engine for OpenSSL / LibreSSL.  In short, it
 minimizes the risk of private key leakage when serious bug like
 Heartbleed is exploited.  The neverbleed is disabled by default.  To
 enable it, use ``--with-neverbleed`` configure option.
+
+To enable the experimental HTTP/3 support for h2load and nghttpx, the
+following libraries are required:
+
+* `OpenSSL with QUIC support
+  <https://github.com/quictls/openssl/tree/OpenSSL_1_1_1k+quic>`_
+* `ngtcp2 <https://github.com/ngtcp2/ngtcp2>`_
+* `nghttp3 <https://github.com/ngtcp2/nghttp3>`_
 
 Compiling libnghttp2 C source code requires a C99 compiler.  gcc 4.8
 is known to be adequate.  In order to compile the C++ source code, gcc
@@ -903,6 +882,14 @@ threads to avoid saturating a single core on client side.
    **Don't use this tool against publicly available servers.** That is
    considered a DOS attack.  Please only use it against your private
    servers.
+
+If the experimental HTTP/3 is enabled, h2load can send requests to
+HTTP/3 server.  To do this, specify ``h3`` to ``--npn-list`` option
+like so:
+
+.. code-block:: text
+
+    $ h2load --npn-list h3 https://127.0.0.1:4433
 
 HPACK tools
 -----------
