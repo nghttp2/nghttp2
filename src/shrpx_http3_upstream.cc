@@ -638,6 +638,7 @@ int Http3Upstream::write_streams() {
 
     bufpos += nwrite;
 
+#ifdef UDP_SEGMENT
     if (pktcnt == 0) {
       ngtcp2_path_copy(&prev_ps.path, &ps.path);
     } else if (!ngtcp2_path_eq(&prev_ps.path, &ps.path)) {
@@ -674,6 +675,23 @@ int Http3Upstream::write_streams() {
 
       return 0;
     }
+#else  // !UDP_SEGMENT
+    quic_send_packet(static_cast<UpstreamAddr *>(ps.path.user_data),
+                     ps.path.remote.addr, ps.path.remote.addrlen,
+                     ps.path.local.addr, ps.path.local.addrlen, buf.data(),
+                     bufpos - buf.data(), 0);
+
+    if (++pktcnt == max_pktcnt) {
+      ngtcp2_conn_update_pkt_tx_time(conn_, ts);
+      reset_idle_timer();
+
+      handler_->signal_write();
+
+      return 0;
+    }
+
+    bufpos = buf.data();
+#endif // !UDP_SEGMENT
   }
 
   return 0;

@@ -210,8 +210,11 @@ int quic_send_packet(const UpstreamAddr *faddr, const sockaddr *remote_sa,
   msg.msg_iov = &msg_iov;
   msg.msg_iovlen = 1;
 
-  uint8_t
-      msg_ctrl[CMSG_SPACE(sizeof(uint16_t)) + CMSG_SPACE(sizeof(in6_pktinfo))];
+  uint8_t msg_ctrl[
+#ifdef UDP_SEGMENT
+      CMSG_SPACE(sizeof(uint16_t)) +
+#endif // UDP_SEGMENT
+      CMSG_SPACE(sizeof(in6_pktinfo))];
 
   memset(msg_ctrl, 0, sizeof(msg_ctrl));
 
@@ -251,6 +254,7 @@ int quic_send_packet(const UpstreamAddr *faddr, const sockaddr *remote_sa,
     assert(0);
   }
 
+#ifdef UDP_SEGMENT
   if (gso_size && datalen > gso_size) {
     controllen += CMSG_SPACE(sizeof(uint16_t));
     cm = CMSG_NXTHDR(&msg, cm);
@@ -259,6 +263,7 @@ int quic_send_packet(const UpstreamAddr *faddr, const sockaddr *remote_sa,
     cm->cmsg_len = CMSG_LEN(sizeof(uint16_t));
     *(reinterpret_cast<uint16_t *>(CMSG_DATA(cm))) = gso_size;
   }
+#endif // UDP_SEGMENT
 
   msg.msg_controllen = controllen;
 
