@@ -5,7 +5,7 @@ RUN apt-get update && \
         git g++ make binutils autoconf automake autotools-dev libtool \
         pkg-config \
         zlib1g-dev libev-dev libjemalloc-dev ruby-dev libc-ares-dev bison && \
-    git clone --depth 1 -b OpenSSL_1_1_1g-quic-draft-33 https://github.com/tatsuhiro-t/openssl && \
+    git clone --depth 1 -b OpenSSL_1_1_1k+quic https://github.com/quictls/openssl && \
     cd openssl && ./config enable-tls1_3 --openssldir=/etc/ssl && make -j$(nproc) && make install_sw && cd .. && rm -rf openssl && \
     git clone --depth 1 https://github.com/ngtcp2/nghttp3 && \
     cd nghttp3 && autoreconf -i && \
@@ -13,13 +13,16 @@ RUN apt-get update && \
     make -j$(nproc) && make install-strip && cd .. && rm -rf nghttp3 && \
     git clone --depth 1 https://github.com/ngtcp2/ngtcp2 && \
     cd ngtcp2 && autoreconf -i && \
-    ./configure && \
+    ./configure --enable-lib-only \
+        LIBTOOL_LDFLAGS="-static-libtool-libs" \
+        OPENSSL_LIBS="-l:libssl.a -l:libcrypto.a -ldl -lpthread" && \
     make -j$(nproc) && make install-strip && cd .. && rm -rf ngtcp2 && \
-    git clone --depth 1 -b quic https://github.com/nghttp2/nghttp2.git && \
+    git clone --depth 1 https://github.com/nghttp2/nghttp2.git && \
     cd nghttp2 && \
     git submodule update --init && autoreconf -i && \
     ./configure --disable-examples --disable-hpack-tools \
         --disable-python-bindings --with-mruby --with-neverbleed \
+        --enable-http3 \
         LIBTOOL_LDFLAGS="-static-libtool-libs" \
         LIBS="-ldl -pthread" \
         OPENSSL_LIBS="-l:libssl.a -l:libcrypto.a" \
