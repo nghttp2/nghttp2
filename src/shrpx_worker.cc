@@ -40,7 +40,6 @@
 #  include "shrpx_mruby.h"
 #endif // HAVE_MRUBY
 #ifdef ENABLE_HTTP3
-#  include "shrpx_quic.h"
 #  include "shrpx_quic_listener.h"
 #endif // ENABLE_HTTP3
 #include "util.h"
@@ -137,6 +136,7 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
                tls::CertLookupTree *cert_tree,
 #ifdef ENABLE_HTTP3
                SSL_CTX *quic_sv_ssl_ctx, tls::CertLookupTree *quic_cert_tree,
+               const uint8_t *cid_prefix, size_t cid_prefixlen,
 #endif // ENABLE_HTTP3
                const std::shared_ptr<TicketKeys> &ticket_keys,
                ConnectionHandler *conn_handler,
@@ -161,6 +161,10 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
       connect_blocker_(
           std::make_unique<ConnectBlocker>(randgen_, loop_, nullptr, nullptr)),
       graceful_shutdown_(false) {
+#ifdef ENABLE_HTTP3
+  std::copy_n(cid_prefix, cid_prefixlen, std::begin(cid_prefix_));
+#endif // ENABLE_HTTP3
+
   ev_async_init(&w_, eventcb);
   w_.data = this;
   ev_async_start(loop_, &w_);
@@ -415,11 +419,11 @@ void Worker::run_async() {
 #endif // !NOTHREADS
 }
 
-void Worker::send(const WorkerEvent &event) {
+void Worker::send(WorkerEvent event) {
   {
     std::lock_guard<std::mutex> g(m_);
 
-    q_.push_back(event);
+    q_.emplace_back(std::move(event));
   }
 
   ev_async_send(loop_, &w_);
@@ -440,7 +444,7 @@ void Worker::process_events() {
       return;
     }
 
-    wev = q_.front();
+    wev = std::move(q_.front());
     q_.pop_front();
   }
 
@@ -510,6 +514,16 @@ void Worker::process_events() {
     replace_downstream_config(wev.downstreamconf);
 
     break;
+#ifdef ENABLE_HTTP3
+  case WorkerEventType::QUIC_PKT_FORWARD: {
+    quic_conn_handler_.handle_packet(
+        &quic_upstream_addrs_[wev.quic_pkt->upstream_addr_index],
+        wev.quic_pkt->remote_addr, wev.quic_pkt->local_addr,
+        wev.quic_pkt->data.data(), wev.quic_pkt->data.size());
+
+    break;
+  }
+#endif // ENABLE_HTTP3
   default:
     if (LOG_ENABLED(INFO)) {
       WLOG(INFO, this) << "unknown event type " << static_cast<int>(wev.type);
@@ -624,6 +638,8 @@ int Worker::setup_quic_server_socket() {
 
   return 0;
 }
+
+const uint8_t *Worker::get_cid_prefix() const { return cid_prefix_.data(); }
 #endif // ENABLE_HTTP3
 
 namespace {
@@ -796,5 +812,15 @@ void downstream_failure(DownstreamAddr *addr, const Address *raddr) {
     }
   }
 }
+
+#ifdef ENABLE_HTTP3
+int create_cid_prefix(uint8_t *cid_prefix) {
+  if (RAND_bytes(cid_prefix, SHRPX_QUIC_CID_PREFIXLEN) != 1) {
+    return -1;
+  }
+
+  return 0;
+}
+#endif // ENABLE_HTTP3
 
 } // namespace shrpx

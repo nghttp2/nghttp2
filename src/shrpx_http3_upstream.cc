@@ -160,7 +160,11 @@ void rand(uint8_t *dest, size_t destlen, const ngtcp2_rand_ctx *rand_ctx) {
 namespace {
 int get_new_connection_id(ngtcp2_conn *conn, ngtcp2_cid *cid, uint8_t *token,
                           size_t cidlen, void *user_data) {
-  if (generate_quic_connection_id(cid, cidlen) != 0) {
+  auto upstream = static_cast<Http3Upstream *>(user_data);
+  auto handler = upstream->get_client_handler();
+  auto worker = handler->get_worker();
+
+  if (generate_quic_connection_id(cid, cidlen, worker->get_cid_prefix()) != 0) {
     return NGTCP2_ERR_CALLBACK_FAILURE;
   }
 
@@ -173,9 +177,6 @@ int get_new_connection_id(ngtcp2_conn *conn, ngtcp2_cid *cid, uint8_t *token,
     return NGTCP2_ERR_CALLBACK_FAILURE;
   }
 
-  auto upstream = static_cast<Http3Upstream *>(user_data);
-  auto handler = upstream->get_client_handler();
-  auto worker = handler->get_worker();
   auto quic_connection_handler = worker->get_quic_connection_handler();
 
   quic_connection_handler->add_connection_id(cid, handler);
@@ -451,7 +452,8 @@ int Http3Upstream::init(const UpstreamAddr *faddr, const Address &remote_addr,
 
   ngtcp2_cid scid;
 
-  if (generate_quic_connection_id(&scid, SHRPX_QUIC_SCIDLEN) != 0) {
+  if (generate_quic_connection_id(&scid, SHRPX_QUIC_SCIDLEN,
+                                  worker->get_cid_prefix()) != 0) {
     return -1;
   }
 

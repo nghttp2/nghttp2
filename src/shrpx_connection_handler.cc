@@ -192,24 +192,24 @@ void ConnectionHandler::set_ticket_keys_to_worker(
 }
 
 void ConnectionHandler::worker_reopen_log_files() {
-  WorkerEvent wev{};
-
-  wev.type = WorkerEventType::REOPEN_LOG;
-
   for (auto &worker : workers_) {
-    worker->send(wev);
+    WorkerEvent wev{};
+
+    wev.type = WorkerEventType::REOPEN_LOG;
+
+    worker->send(std::move(wev));
   }
 }
 
 void ConnectionHandler::worker_replace_downstream(
     std::shared_ptr<DownstreamConfig> downstreamconf) {
-  WorkerEvent wev{};
-
-  wev.type = WorkerEventType::REPLACE_DOWNSTREAM;
-  wev.downstreamconf = std::move(downstreamconf);
-
   for (auto &worker : workers_) {
-    worker->send(wev);
+    WorkerEvent wev{};
+
+    wev.type = WorkerEventType::REPLACE_DOWNSTREAM;
+    wev.downstreamconf = downstreamconf;
+
+    worker->send(std::move(wev));
   }
 }
 
@@ -267,10 +267,18 @@ int ConnectionHandler::create_single_worker() {
     }
   }
 
+#ifdef ENABLE_HTTP3
+  std::array<uint8_t, SHRPX_QUIC_CID_PREFIXLEN> cid_prefix;
+  if (create_cid_prefix(cid_prefix.data()) != 0) {
+    return -1;
+  }
+#endif // ENABLE_HTTP3
+
   single_worker_ = std::make_unique<Worker>(
       loop_, sv_ssl_ctx, cl_ssl_ctx, session_cache_ssl_ctx, cert_tree_.get(),
 #ifdef ENABLE_HTTP3
-      quic_sv_ssl_ctx, quic_cert_tree_.get(),
+      quic_sv_ssl_ctx, quic_cert_tree_.get(), cid_prefix.data(),
+      cid_prefix.size(),
 #endif // ENABLE_HTTP3
       ticket_keys_, this, config->conn.downstream);
 #ifdef HAVE_MRUBY
@@ -355,10 +363,18 @@ int ConnectionHandler::create_worker_thread(size_t num) {
   for (size_t i = 0; i < num; ++i) {
     auto loop = ev_loop_new(config->ev_loop_flags);
 
+#  ifdef ENABLE_HTTP3
+    std::array<uint8_t, SHRPX_QUIC_CID_PREFIXLEN> cid_prefix;
+    if (create_cid_prefix(cid_prefix.data()) != 0) {
+      return -1;
+    }
+#  endif // ENABLE_HTTP3
+
     auto worker = std::make_unique<Worker>(
         loop, sv_ssl_ctx, cl_ssl_ctx, session_cache_ssl_ctx, cert_tree_.get(),
 #  ifdef ENABLE_HTTP3
-        quic_sv_ssl_ctx, quic_cert_tree_.get(),
+        quic_sv_ssl_ctx, quic_cert_tree_.get(), cid_prefix.data(),
+        cid_prefix.size(),
 #  endif // ENABLE_HTTP3
         ticket_keys_, this, config->conn.downstream);
 #  ifdef HAVE_MRUBY
@@ -413,15 +429,15 @@ void ConnectionHandler::graceful_shutdown_worker() {
     return;
   }
 
-  WorkerEvent wev{};
-  wev.type = WorkerEventType::GRACEFUL_SHUTDOWN;
-
   if (LOG_ENABLED(INFO)) {
     LLOG(INFO, this) << "Sending graceful shutdown signal to worker";
   }
 
   for (auto &worker : workers_) {
-    worker->send(wev);
+    WorkerEvent wev{};
+    wev.type = WorkerEventType::GRACEFUL_SHUTDOWN;
+
+    worker->send(std::move(wev));
   }
 
 #ifndef NOTHREADS
@@ -504,7 +520,7 @@ int ConnectionHandler::handle_connection(int fd, sockaddr *addr, int addrlen,
   wev.client_addrlen = addrlen;
   wev.faddr = faddr;
 
-  worker->send(wev);
+  worker->send(std::move(wev));
 
   return 0;
 }
@@ -980,5 +996,34 @@ ConnectionHandler::get_quic_indexed_ssl_ctx(size_t idx) const {
 void ConnectionHandler::set_enable_acceptor_on_ocsp_completion(bool f) {
   enable_acceptor_on_ocsp_completion_ = f;
 }
+
+#ifdef ENABLE_HTTP3
+int ConnectionHandler::forward_quic_packet(const UpstreamAddr *faddr,
+                                           const Address &remote_addr,
+                                           const Address &local_addr,
+                                           const uint8_t *cid_prefix,
+                                           const uint8_t *data,
+                                           size_t datalen) {
+  assert(!get_config()->single_thread);
+
+  for (auto &worker : workers_) {
+    if (!std::equal(cid_prefix, cid_prefix + SHRPX_QUIC_CID_PREFIXLEN,
+                    worker->get_cid_prefix())) {
+      continue;
+    }
+
+    WorkerEvent wev{};
+    wev.type = WorkerEventType::QUIC_PKT_FORWARD;
+    wev.quic_pkt = std::make_unique<QUICPacket>(faddr->index, remote_addr,
+                                                local_addr, data, datalen);
+
+    worker->send(std::move(wev));
+
+    return 0;
+  }
+
+  return -1;
+}
+#endif // ENABLE_HTTP3
 
 } // namespace shrpx

@@ -36,6 +36,7 @@ namespace shrpx {
 struct UpstreamAddr;
 
 constexpr size_t SHRPX_QUIC_SCIDLEN = 20;
+constexpr size_t SHRPX_QUIC_CID_PREFIXLEN = 8;
 constexpr size_t SHRPX_MAX_UDP_PAYLOAD_SIZE = 1280;
 
 ngtcp2_tstamp quic_timestamp();
@@ -48,6 +49,9 @@ int quic_send_packet(const UpstreamAddr *faddr, const sockaddr *remote_sa,
                      size_t gso_size);
 
 int generate_quic_connection_id(ngtcp2_cid *cid, size_t cidlen);
+
+int generate_quic_connection_id(ngtcp2_cid *cid, size_t cidlen,
+                                const uint8_t *cid_prefix);
 
 int generate_quic_stateless_reset_token(uint8_t *token, const ngtcp2_cid *cid,
                                         const uint8_t *secret,

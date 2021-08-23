@@ -297,6 +297,21 @@ int generate_quic_connection_id(ngtcp2_cid *cid, size_t cidlen) {
   return 0;
 }
 
+int generate_quic_connection_id(ngtcp2_cid *cid, size_t cidlen,
+                                const uint8_t *cid_prefix) {
+  assert(cidlen > SHRPX_QUIC_CID_PREFIXLEN);
+
+  auto p = std::copy_n(cid_prefix, SHRPX_QUIC_CID_PREFIXLEN, cid->data);
+
+  if (RAND_bytes(p, cidlen - SHRPX_QUIC_CID_PREFIXLEN) != 1) {
+    return -1;
+  }
+
+  cid->datalen = cidlen;
+
+  return 0;
+}
+
 int generate_quic_stateless_reset_token(uint8_t *token, const ngtcp2_cid *cid,
                                         const uint8_t *secret,
                                         size_t secretlen) {

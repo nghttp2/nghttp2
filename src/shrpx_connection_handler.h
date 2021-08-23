@@ -161,6 +161,10 @@ public:
   const std::vector<SSL_CTX *> &get_indexed_ssl_ctx(size_t idx) const;
 #ifdef ENABLE_HTTP3
   const std::vector<SSL_CTX *> &get_quic_indexed_ssl_ctx(size_t idx) const;
+
+  int forward_quic_packet(const UpstreamAddr *faddr, const Address &remote_addr,
+                          const Address &local_addr, const uint8_t *cid_prefix,
+                          const uint8_t *data, size_t datalen);
 #endif // ENABLE_HTTP3
 
 #ifdef HAVE_NEVERBLEED

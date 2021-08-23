@@ -2689,6 +2689,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
       auto path = std::begin(optarg) + SHRPX_UNIX_PATH_PREFIX.size();
       addr.host = make_string_ref(config->balloc, StringRef{path, addr_end});
       addr.host_unix = true;
+      addr.index = addrs.size();
 
       addrs.push_back(std::move(addr));
 
@@ -2705,20 +2706,24 @@ int parse_config(Config *config, int optid, const StringRef &opt,
 
     if (util::numeric_host(host, AF_INET)) {
       addr.family = AF_INET;
+      addr.index = addrs.size();
       addrs.push_back(std::move(addr));
       return 0;
     }
 
     if (util::numeric_host(host, AF_INET6)) {
       addr.family = AF_INET6;
+      addr.index = addrs.size();
       addrs.push_back(std::move(addr));
       return 0;
     }
 
     addr.family = AF_INET;
+    addr.index = addrs.size();
     addrs.push_back(addr);
 
     addr.family = AF_INET6;
+    addr.index = addrs.size();
     addrs.push_back(std::move(addr));
 
     return 0;

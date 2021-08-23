@@ -3051,8 +3051,10 @@ int process_options(Config *config,
     addr.port = 3000;
     addr.tls = true;
     addr.family = AF_INET;
+    addr.index = 0;
     listenerconf.addrs.push_back(addr);
     addr.family = AF_INET6;
+    addr.index = 1;
     listenerconf.addrs.push_back(std::move(addr));
   }
 

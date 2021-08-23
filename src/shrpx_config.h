@@ -435,6 +435,8 @@ enum class UpstreamAltMode {
 };
 
 struct UpstreamAddr {
+  // The unique index of this address.
+  size_t index;
   // The frontend address (e.g., FQDN, hostname, IP address).  If
   // |host_unix| is true, this is UNIX domain socket path.  This must
   // be NULL terminated string.

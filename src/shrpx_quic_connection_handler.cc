@@ -33,6 +33,7 @@
 #include "shrpx_log.h"
 #include "shrpx_quic.h"
 #include "shrpx_http3_upstream.h"
+#include "shrpx_connection_handler.h"
 
 namespace shrpx {
 
@@ -94,6 +95,18 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
                                remote_addr, local_addr);
       return 0;
     default:
+      if (!get_config()->single_thread && !(data[0] & 0x80) &&
+          dcidlen > SHRPX_QUIC_CID_PREFIXLEN &&
+          !std::equal(dcid, dcid + SHRPX_QUIC_CID_PREFIXLEN,
+                      worker_->get_cid_prefix())) {
+        auto conn_handler = worker_->get_connection_handler();
+
+        if (conn_handler->forward_quic_packet(faddr, remote_addr, local_addr,
+                                              dcid, data, datalen) == 0) {
+          return 0;
+        }
+      }
+
       // TODO Must be rate limited
       send_stateless_reset(faddr, dcid, dcidlen, remote_addr, local_addr);
       return 0;

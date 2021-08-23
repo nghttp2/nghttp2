@@ -52,6 +52,7 @@
 #include "shrpx_dns_tracker.h"
 #ifdef ENABLE_HTTP3
 #  include "shrpx_quic_connection_handler.h"
+#  include "shrpx_quic.h"
 #endif // ENABLE_HTTP3
 #include "allocator.h"
 
@@ -252,11 +253,29 @@ struct WorkerStat {
   size_t num_connections;
 };
 
+#ifdef ENABLE_HTTP3
+struct QUICPacket {
+  QUICPacket(size_t upstream_addr_index, const Address &remote_addr,
+             const Address &local_addr, const uint8_t *data, size_t datalen)
+      : upstream_addr_index{upstream_addr_index},
+        remote_addr{remote_addr},
+        local_addr{local_addr},
+        data{data, data + datalen} {}
+  size_t upstream_addr_index;
+  Address remote_addr;
+  Address local_addr;
+  std::vector<uint8_t> data;
+};
+#endif // ENABLE_HTTP3
+
 enum class WorkerEventType {
   NEW_CONNECTION = 0x01,
   REOPEN_LOG = 0x02,
   GRACEFUL_SHUTDOWN = 0x03,
   REPLACE_DOWNSTREAM = 0x04,
+#ifdef ENABLE_HTTP3
+  QUIC_PKT_FORWARD = 0x05,
+#endif // ENABLE_HTTP3
 };
 
 struct WorkerEvent {
@@ -269,6 +288,9 @@ struct WorkerEvent {
   };
   std::shared_ptr<TicketKeys> ticket_keys;
   std::shared_ptr<DownstreamConfig> downstreamconf;
+#ifdef ENABLE_HTTP3
+  std::unique_ptr<QUICPacket> quic_pkt;
+#endif // ENABLE_HTTP3
 };
 
 class Worker {
@@ -278,6 +300,7 @@ public:
          tls::CertLookupTree *cert_tree,
 #ifdef ENABLE_HTTP3
          SSL_CTX *quic_sv_ssl_ctx, tls::CertLookupTree *quic_cert_tree,
+         const uint8_t *cid_prefix, size_t cid_prefixlen,
 #endif // ENABLE_HTTP3
          const std::shared_ptr<TicketKeys> &ticket_keys,
          ConnectionHandler *conn_handler,
@@ -286,7 +309,7 @@ public:
   void run_async();
   void wait();
   void process_events();
-  void send(const WorkerEvent &event);
+  void send(WorkerEvent event);
 
   tls::CertLookupTree *get_cert_lookup_tree() const;
 #ifdef ENABLE_HTTP3
@@ -338,6 +361,8 @@ public:
   QUICConnectionHandler *get_quic_connection_handler();
 
   int setup_quic_server_socket();
+
+  const uint8_t *get_cid_prefix() const;
 #endif // ENABLE_HTTP3
 
   DNSTracker *get_dns_tracker();
@@ -357,6 +382,7 @@ private:
   DNSTracker dns_tracker_;
 
 #ifdef ENABLE_HTTP3
+  std::array<uint8_t, SHRPX_QUIC_CID_PREFIXLEN> cid_prefix_;
   std::vector<UpstreamAddr> quic_upstream_addrs_;
   std::vector<std::unique_ptr<QUICListener>> quic_listeners_;
 #endif // ENABLE_HTTP3
@@ -409,6 +435,13 @@ size_t match_downstream_addr_group(
 // the actual address used to connect to backend, and it could be
 // nullptr.  This function may schedule live check.
 void downstream_failure(DownstreamAddr *addr, const Address *raddr);
+
+#ifdef ENABLE_HTTP3
+// Creates unpredictable SHRPX_QUIC_CID_PREFIXLEN bytes sequence which
+// is used as a prefix of QUIC Connection ID.  This function returns
+// -1 on failure.
+int create_cid_prefix(uint8_t *cid_prefix);
+#endif // ENABLE_HTTP3
 
 } // namespace shrpx
 
