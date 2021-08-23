@@ -39,6 +39,10 @@
 #ifdef HAVE_MRUBY
 #  include "shrpx_mruby.h"
 #endif // HAVE_MRUBY
+#ifdef ENABLE_HTTP3
+#  include "shrpx_quic.h"
+#  include "shrpx_quic_listener.h"
+#endif // ENABLE_HTTP3
 #include "util.h"
 #include "template.h"
 
@@ -131,17 +135,28 @@ create_downstream_key(const std::shared_ptr<SharedDownstreamAddr> &shared_addr,
 Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
                SSL_CTX *tls_session_cache_memcached_ssl_ctx,
                tls::CertLookupTree *cert_tree,
+#ifdef ENABLE_HTTP3
+               SSL_CTX *quic_sv_ssl_ctx, tls::CertLookupTree *quic_cert_tree,
+#endif // ENABLE_HTTP3
                const std::shared_ptr<TicketKeys> &ticket_keys,
                ConnectionHandler *conn_handler,
                std::shared_ptr<DownstreamConfig> downstreamconf)
     : randgen_(util::make_mt19937()),
       worker_stat_{},
       dns_tracker_(loop),
+#ifdef ENABLE_HTTP3
+      quic_upstream_addrs_{get_config()->conn.quic_listener.addrs},
+#endif // ENABLE_HTTP3
       loop_(loop),
       sv_ssl_ctx_(sv_ssl_ctx),
       cl_ssl_ctx_(cl_ssl_ctx),
       cert_tree_(cert_tree),
       conn_handler_(conn_handler),
+#ifdef ENABLE_HTTP3
+      quic_sv_ssl_ctx_{quic_sv_ssl_ctx},
+      quic_cert_tree_{quic_cert_tree},
+      quic_conn_handler_{this},
+#endif // ENABLE_HTTP3
       ticket_keys_(ticket_keys),
       connect_blocker_(
           std::make_unique<ConnectBlocker>(randgen_, loop_, nullptr, nullptr)),
@@ -504,6 +519,12 @@ void Worker::process_events() {
 
 tls::CertLookupTree *Worker::get_cert_lookup_tree() const { return cert_tree_; }
 
+#ifdef ENABLE_HTTP3
+tls::CertLookupTree *Worker::get_quic_cert_lookup_tree() const {
+  return quic_cert_tree_;
+}
+#endif // ENABLE_HTTP3
+
 std::shared_ptr<TicketKeys> Worker::get_ticket_keys() {
 #ifdef HAVE_ATOMIC_STD_SHARED_PTR
   return std::atomic_load_explicit(&ticket_keys_, std::memory_order_acquire);
@@ -533,6 +554,10 @@ struct ev_loop *Worker::get_loop() const {
 SSL_CTX *Worker::get_sv_ssl_ctx() const { return sv_ssl_ctx_; }
 
 SSL_CTX *Worker::get_cl_ssl_ctx() const { return cl_ssl_ctx_; }
+
+#ifdef ENABLE_HTTP3
+SSL_CTX *Worker::get_quic_sv_ssl_ctx() const { return quic_sv_ssl_ctx_; }
+#endif // ENABLE_HTTP3
 
 void Worker::set_graceful_shutdown(bool f) { graceful_shutdown_ = f; }
 
@@ -578,7 +603,28 @@ ConnectionHandler *Worker::get_connection_handler() const {
   return conn_handler_;
 }
 
+#ifdef ENABLE_HTTP3
+QUICConnectionHandler *Worker::get_quic_connection_handler() {
+  return &quic_conn_handler_;
+}
+#endif // ENABLE_HTTP3
+
 DNSTracker *Worker::get_dns_tracker() { return &dns_tracker_; }
+
+#ifdef ENABLE_HTTP3
+int Worker::setup_quic_server_socket() {
+  for (auto &addr : quic_upstream_addrs_) {
+    assert(!addr.host_unix);
+    if (create_quic_server_socket(addr) != 0) {
+      return -1;
+    }
+
+    quic_listeners_.emplace_back(std::make_unique<QUICListener>(&addr, this));
+  }
+
+  return 0;
+}
+#endif // ENABLE_HTTP3
 
 namespace {
 size_t match_downstream_addr_group_host(

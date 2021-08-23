@@ -78,3 +78,6 @@
 
 /* Define to 1 if you have the <unistd.h> header file. */
 #cmakedefine HAVE_UNISTD_H 1
+
+/* Define to 1 if HTTP/3 is enabled. */
+#cmakedefine ENABLE_HTTP3 1

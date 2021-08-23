@@ -38,6 +38,10 @@
 
 #include <nghttp2/nghttp2.h>
 
+#ifdef ENABLE_HTTP3
+#  include <nghttp3/nghttp3.h>
+#endif // ENABLE_HTTP3
+
 #include "llhttp.h"
 
 #include "shrpx_io_control.h"
@@ -319,20 +323,20 @@ enum class DispatchState {
 
 class Downstream {
 public:
-  Downstream(Upstream *upstream, MemchunkPool *mcpool, int32_t stream_id);
+  Downstream(Upstream *upstream, MemchunkPool *mcpool, int64_t stream_id);
   ~Downstream();
   void reset_upstream(Upstream *upstream);
   Upstream *get_upstream() const;
-  void set_stream_id(int32_t stream_id);
-  int32_t get_stream_id() const;
-  void set_assoc_stream_id(int32_t stream_id);
-  int32_t get_assoc_stream_id() const;
+  void set_stream_id(int64_t stream_id);
+  int64_t get_stream_id() const;
+  void set_assoc_stream_id(int64_t stream_id);
+  int64_t get_assoc_stream_id() const;
   void pause_read(IOCtrlReason reason);
   int resume_read(IOCtrlReason reason, size_t consumed);
   void force_resume_read();
   // Set stream ID for downstream HTTP2 connection.
-  void set_downstream_stream_id(int32_t stream_id);
-  int32_t get_downstream_stream_id() const;
+  void set_downstream_stream_id(int64_t stream_id);
+  int64_t get_downstream_stream_id() const;
 
   int attach_downstream_connection(std::unique_ptr<DownstreamConnection> dconn);
   void detach_downstream_connection();
@@ -488,6 +492,9 @@ public:
   BlockAllocator &get_block_allocator();
 
   void add_rcbuf(nghttp2_rcbuf *rcbuf);
+#ifdef ENABLE_HTTP3
+  void add_rcbuf(nghttp3_rcbuf *rcbuf);
+#endif // ENABLE_HTTP3
 
   void
   set_downstream_addr_group(const std::shared_ptr<DownstreamAddrGroup> &group);
@@ -513,6 +520,9 @@ public:
 
   bool get_expect_100_continue() const;
 
+  bool get_stop_reading() const;
+  void set_stop_reading(bool f);
+
   enum {
     EVENT_ERROR = 0x1,
     EVENT_TIMEOUT = 0x2,
@@ -527,6 +537,9 @@ private:
   BlockAllocator balloc_;
 
   std::vector<nghttp2_rcbuf *> rcbufs_;
+#ifdef ENABLE_HTTP3
+  std::vector<nghttp3_rcbuf *> rcbufs3_;
+#endif // ENABLE_HTTP3
 
   Request req_;
   Response resp_;
@@ -566,12 +579,12 @@ private:
   // How many times we tried in backend connection
   size_t num_retry_;
   // The stream ID in frontend connection
-  int32_t stream_id_;
+  int64_t stream_id_;
   // The associated stream ID in frontend connection if this is pushed
   // stream.
-  int32_t assoc_stream_id_;
+  int64_t assoc_stream_id_;
   // stream ID in backend connection
-  int32_t downstream_stream_id_;
+  int64_t downstream_stream_id_;
   // RST_STREAM error_code from downstream HTTP2 connection
   uint32_t response_rst_stream_error_code_;
   // An affinity cookie value.
@@ -606,6 +619,7 @@ private:
   bool blocked_request_data_eof_;
   // true if request contains "expect: 100-continue" header field.
   bool expect_100_continue_;
+  bool stop_reading_;
 };
 
 } // namespace shrpx

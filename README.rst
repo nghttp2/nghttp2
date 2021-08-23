@@ -145,6 +145,14 @@ minimizes the risk of private key leakage when serious bug like
 Heartbleed is exploited.  The neverbleed is disabled by default.  To
 enable it, use ``--with-neverbleed`` configure option.
 
+To enable the experimental HTTP/3 support for h2load and nghttpx, the
+following libraries are required:
+
+* `OpenSSL with QUIC support
+  <https://github.com/quictls/openssl/tree/OpenSSL_1_1_1k+quic>`_
+* `ngtcp2 <https://github.com/ngtcp2/ngtcp2>`_
+* `nghttp3 <https://github.com/ngtcp2/nghttp3>`_
+
 Compiling libnghttp2 C source code requires a C99 compiler.  gcc 4.8
 is known to be adequate.  In order to compile the C++ source code, gcc
 >= 6.0 or clang >= 6.0 is required.  C++ source code requires C++14
@@ -874,6 +882,14 @@ threads to avoid saturating a single core on client side.
    **Don't use this tool against publicly available servers.** That is
    considered a DOS attack.  Please only use it against your private
    servers.
+
+If the experimental HTTP/3 is enabled, h2load can send requests to
+HTTP/3 server.  To do this, specify ``h3`` to ``--npn-list`` option
+like so:
+
+.. code-block:: text
+
+    $ h2load --npn-list h3 https://127.0.0.1:4433
 
 HPACK tools
 -----------

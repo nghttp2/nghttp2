@@ -71,6 +71,7 @@
 
 #include <openssl/ssl.h>
 #include <openssl/err.h>
+#include <openssl/rand.h>
 #include <ev.h>
 
 #include <nghttp2/nghttp2.h>
@@ -1547,6 +1548,21 @@ void fill_default_config(Config *config) {
     nghttp2_option_set_max_deflate_dynamic_table_size(
         downstreamconf.option, downstreamconf.encoder_dynamic_table_size);
   }
+
+#ifdef ENABLE_HTTP3
+  auto &quicconf = config->quic;
+  {
+    quicconf.timeout.idle = 30_s;
+
+    auto &stateless_resetconf = quicconf.stateless_reset;
+    // TODO Find better place to do this and error handling.
+    if (RAND_bytes(stateless_resetconf.secret.data(),
+                   stateless_resetconf.secret.size()) != 1) {
+      LOG(FATAL) << "Unable to generate stateless reset secret";
+      exit(EXIT_FAILURE);
+    }
+  }
+#endif // ENABLE_HTTP3
 
   auto &loggingconf = config->logging;
   {

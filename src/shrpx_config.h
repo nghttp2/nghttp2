@@ -370,6 +370,7 @@ enum class Proto {
   NONE,
   HTTP1,
   HTTP2,
+  HTTP3,
   MEMCACHED,
 };
 
@@ -458,6 +459,7 @@ struct UpstreamAddr {
   bool sni_fwd;
   // true if client is supposed to send PROXY protocol v1 header.
   bool accept_proxy_protocol;
+  bool quic;
   int fd;
 };
 
@@ -702,6 +704,20 @@ struct TLSConfig {
   bool no_postpone_early_data;
 };
 
+#ifdef ENABLE_HTTP3
+struct QUICConfig {
+  struct {
+    std::array<uint8_t, 32> secret;
+  } stateless_reset;
+  struct {
+    ev_tstamp idle;
+  } timeout;
+  struct {
+    bool log;
+  } debug;
+};
+#endif // ENABLE_HTTP3
+
 // custom error page
 struct ErrorPage {
   // not NULL-terminated
@@ -907,6 +923,12 @@ struct ConnectionConfig {
     int fastopen;
   } listener;
 
+#ifdef ENABLE_HTTP3
+  struct {
+    std::vector<UpstreamAddr> addrs;
+  } quic_listener;
+#endif // ENABLE_HTTP3
+
   struct {
     struct {
       ev_tstamp http2_read;
@@ -950,6 +972,9 @@ struct Config {
         http{},
         http2{},
         tls{},
+#ifdef ENABLE_HTTP3
+        quic{},
+#endif // ENABLE_HTTP3
         logging{},
         conn{},
         api{},
@@ -967,7 +992,8 @@ struct Config {
         single_process{false},
         single_thread{false},
         ignore_per_pattern_mruby_error{false},
-        ev_loop_flags{0} {}
+        ev_loop_flags{0} {
+  }
   ~Config();
 
   Config(Config &&) = delete;
@@ -983,6 +1009,9 @@ struct Config {
   HttpConfig http;
   Http2Config http2;
   TLSConfig tls;
+#ifdef ENABLE_HTTP3
+  QUICConfig quic;
+#endif // ENABLE_HTTP3
   LoggingConfig logging;
   ConnectionConfig conn;
   APIConfig api;
