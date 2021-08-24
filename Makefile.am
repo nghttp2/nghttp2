@@ -20,7 +20,7 @@
 # LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-SUBDIRS = lib third-party src examples python tests integration-tests \
+SUBDIRS = lib third-party src bpf examples python tests integration-tests \
 	doc contrib script
 
 # Now with python setuptools, make uninstall will leave many files we

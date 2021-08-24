@@ -279,7 +279,10 @@ int ConnectionHandler::create_single_worker() {
 #ifdef ENABLE_HTTP3
       quic_sv_ssl_ctx, quic_cert_tree_.get(), cid_prefix.data(),
       cid_prefix.size(),
-#endif // ENABLE_HTTP3
+#  ifdef HAVE_LIBBPF
+      /* index = */ 0,
+#  endif // HAVE_LIBBPF
+#endif   // ENABLE_HTTP3
       ticket_keys_, this, config->conn.downstream);
 #ifdef HAVE_MRUBY
   if (single_worker_->create_mruby_context() != 0) {
@@ -337,6 +340,10 @@ int ConnectionHandler::create_worker_thread(size_t num) {
   auto &tlsconf = config->tls;
   auto &apiconf = config->api;
 
+#  if defined(ENABLE_HTTP3) && defined(HAVE_LIBBPF)
+  quic_bpf_refs_.resize(num);
+#  endif // ENABLE_HTTP3 && HAVE_LIBBPF
+
   // We have dedicated worker for API request processing.
   if (apiconf.enabled) {
     ++num;
@@ -375,7 +382,10 @@ int ConnectionHandler::create_worker_thread(size_t num) {
 #  ifdef ENABLE_HTTP3
         quic_sv_ssl_ctx, quic_cert_tree_.get(), cid_prefix.data(),
         cid_prefix.size(),
-#  endif // ENABLE_HTTP3
+#    ifdef HAVE_LIBBPF
+        i,
+#    endif // HAVE_LIBBPF
+#  endif   // ENABLE_HTTP3
         ticket_keys_, this, config->conn.downstream);
 #  ifdef HAVE_MRUBY
     if (worker->create_mruby_context() != 0) {
@@ -1024,6 +1034,13 @@ int ConnectionHandler::forward_quic_packet(const UpstreamAddr *faddr,
 
   return -1;
 }
+
+#  ifdef HAVE_LIBBPF
+std::vector<BPFRef> &ConnectionHandler::get_quic_bpf_refs() {
+  return quic_bpf_refs_;
+}
+#  endif // HAVE_LIBBPF
+
 #endif // ENABLE_HTTP3
 
 } // namespace shrpx

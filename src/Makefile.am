@@ -186,7 +186,7 @@ libnghttpx_a_CPPFLAGS = ${AM_CPPFLAGS}
 
 nghttpx_SOURCES = shrpx.cc shrpx.h
 nghttpx_CPPFLAGS = ${libnghttpx_a_CPPFLAGS}
-nghttpx_LDADD = libnghttpx.a ${LDADD}
+nghttpx_LDADD = libnghttpx.a ${LDADD} @LIBBPF_LIBS@
 
 if HAVE_MRUBY
 libnghttpx_a_CPPFLAGS += \
@@ -218,7 +218,8 @@ nghttpx_unittest_SOURCES = shrpx-unittest.cc \
 	base64_test.cc base64_test.h
 nghttpx_unittest_CPPFLAGS = ${AM_CPPFLAGS} \
 	-DNGHTTP2_SRC_DIR=\"$(top_srcdir)/src\"
-nghttpx_unittest_LDADD = libnghttpx.a ${LDADD} @CUNIT_LIBS@ @TESTLDADD@
+nghttpx_unittest_LDADD = libnghttpx.a ${LDADD} @CUNIT_LIBS@ @TESTLDADD@ \
+	@LIBBPF_LIBS@
 
 if HAVE_MRUBY
 nghttpx_unittest_CPPFLAGS += \

@@ -106,10 +106,11 @@ jobs:
       run: |
         PKG_CONFIG_PATH="$PWD/openssl/build/lib/pkgconfig:$PWD/nghttp3/build/lib/pkgconfig:$PWD/ngtcp2/build/lib/pkgconfig:$PKG_CONFIG_PATH"
         LDFLAGS="$LDFLAGS -Wl,-rpath,$PWD/openssl/build/lib"
+        EXTRA_AUTOTOOLS_OPTS="--enable-http3"
 
         echo 'PKG_CONFIG_PATH='"$PKG_CONFIG_PATH" >> $GITHUB_ENV
         echo 'LDFLAGS='"$LDFLAGS" >> $GITHUB_ENV
-        echo 'EXTRA_AUTOTOOLS_OPTS=--enable-http3' >> $GITHUB_ENV
+        echo 'EXTRA_AUTOTOOLS_OPTS='"$EXTRA_AUTOTOOLS_OPTS" >> $GITHUB_ENV
         echo 'EXTRA_CMAKE_OPTS=-DENABLE_HTTP3=ON' >> $GITHUB_ENV
     - name: Setup git submodules
       run: |

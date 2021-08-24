@@ -28,7 +28,13 @@
 #  include <unistd.h>
 #endif // HAVE_UNISTD_H
 
+#include <cstdio>
 #include <memory>
+
+#ifdef HAVE_LIBBPF
+#  include <bpf/bpf.h>
+#  include <bpf/libbpf.h>
+#endif // HAVE_LIBBPF
 
 #include "shrpx_tls.h"
 #include "shrpx_log.h"
@@ -42,8 +48,10 @@
 #ifdef ENABLE_HTTP3
 #  include "shrpx_quic_listener.h"
 #endif // ENABLE_HTTP3
+#include "shrpx_connection_handler.h"
 #include "util.h"
 #include "template.h"
+#include "xsi_strerror.h"
 
 namespace shrpx {
 
@@ -137,11 +145,18 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
 #ifdef ENABLE_HTTP3
                SSL_CTX *quic_sv_ssl_ctx, tls::CertLookupTree *quic_cert_tree,
                const uint8_t *cid_prefix, size_t cid_prefixlen,
-#endif // ENABLE_HTTP3
+#  ifdef HAVE_LIBBPF
+               size_t index,
+#  endif // HAVE_LIBBPF
+#endif   // ENABLE_HTTP3
                const std::shared_ptr<TicketKeys> &ticket_keys,
                ConnectionHandler *conn_handler,
                std::shared_ptr<DownstreamConfig> downstreamconf)
-    : randgen_(util::make_mt19937()),
+    :
+#if defined(ENABLE_HTTP3) && defined(HAVE_LIBBPF)
+      index_{index},
+#endif // ENABLE_HTTP3 && HAVE_LIBBPF
+      randgen_(util::make_mt19937()),
       worker_stat_{},
       dns_tracker_(loop),
 #ifdef ENABLE_HTTP3
@@ -626,6 +641,43 @@ QUICConnectionHandler *Worker::get_quic_connection_handler() {
 DNSTracker *Worker::get_dns_tracker() { return &dns_tracker_; }
 
 #ifdef ENABLE_HTTP3
+#  ifdef HAVE_LIBBPF
+bool Worker::should_attach_bpf() const {
+  auto config = get_config();
+  auto &apiconf = config->api;
+
+  if (config->single_thread || config->num_worker == 1) {
+    return false;
+  }
+
+  if (apiconf.enabled) {
+    return index_ == 1;
+  }
+
+  return index_ == 0;
+}
+
+bool Worker::should_update_bpf_map() const {
+  auto config = get_config();
+
+  return !config->single_thread && config->num_worker > 1;
+}
+
+uint32_t Worker::compute_sk_index() const {
+  auto config = get_config();
+  auto &apiconf = config->api;
+
+  assert(!config->single_thread);
+  assert(config->num_worker > 1);
+
+  if (apiconf.enabled) {
+    return index_ - 1;
+  }
+
+  return index_;
+}
+#  endif // HAVE_LIBBPF
+
 int Worker::setup_quic_server_socket() {
   for (auto &addr : quic_upstream_addrs_) {
     assert(!addr.host_unix);
@@ -635,6 +687,261 @@ int Worker::setup_quic_server_socket() {
 
     quic_listeners_.emplace_back(std::make_unique<QUICListener>(&addr, this));
   }
+
+  return 0;
+}
+
+int Worker::create_quic_server_socket(UpstreamAddr &faddr) {
+  std::array<char, STRERROR_BUFSIZE> errbuf;
+  int fd = -1;
+  int rv;
+
+  auto service = util::utos(faddr.port);
+  addrinfo hints{};
+  hints.ai_family = faddr.family;
+  hints.ai_socktype = SOCK_DGRAM;
+  hints.ai_flags = AI_PASSIVE;
+#  ifdef AI_ADDRCONFIG
+  hints.ai_flags |= AI_ADDRCONFIG;
+#  endif // AI_ADDRCONFIG
+
+  auto node =
+      faddr.host == StringRef::from_lit("*") ? nullptr : faddr.host.c_str();
+
+  addrinfo *res, *rp;
+  rv = getaddrinfo(node, service.c_str(), &hints, &res);
+#  ifdef AI_ADDRCONFIG
+  if (rv != 0) {
+    // Retry without AI_ADDRCONFIG
+    hints.ai_flags &= ~AI_ADDRCONFIG;
+    rv = getaddrinfo(node, service.c_str(), &hints, &res);
+  }
+#  endif // AI_ADDRCONFIG
+  if (rv != 0) {
+    LOG(FATAL) << "Unable to get IPv" << (faddr.family == AF_INET ? "4" : "6")
+               << " address for " << faddr.host << ", port " << faddr.port
+               << ": " << gai_strerror(rv);
+    return -1;
+  }
+
+  auto res_d = defer(freeaddrinfo, res);
+
+  std::array<char, NI_MAXHOST> host;
+
+  for (rp = res; rp; rp = rp->ai_next) {
+    rv = getnameinfo(rp->ai_addr, rp->ai_addrlen, host.data(), host.size(),
+                     nullptr, 0, NI_NUMERICHOST);
+    if (rv != 0) {
+      LOG(WARN) << "getnameinfo() failed: " << gai_strerror(rv);
+      continue;
+    }
+
+#  ifdef SOCK_NONBLOCK
+    fd = socket(rp->ai_family, rp->ai_socktype | SOCK_NONBLOCK | SOCK_CLOEXEC,
+                rp->ai_protocol);
+    if (fd == -1) {
+      auto error = errno;
+      LOG(WARN) << "socket() syscall failed: "
+                << xsi_strerror(error, errbuf.data(), errbuf.size());
+      continue;
+    }
+#  else  // !SOCK_NONBLOCK
+    fd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
+    if (fd == -1) {
+      auto error = errno;
+      LOG(WARN) << "socket() syscall failed: "
+                << xsi_strerror(error, errbuf.data(), errbuf.size());
+      continue;
+    }
+    util::make_socket_nonblocking(fd);
+    util::make_socket_closeonexec(fd);
+#  endif // !SOCK_NONBLOCK
+
+    int val = 1;
+    if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &val,
+                   static_cast<socklen_t>(sizeof(val))) == -1) {
+      auto error = errno;
+      LOG(WARN) << "Failed to set SO_REUSEADDR option to listener socket: "
+                << xsi_strerror(error, errbuf.data(), errbuf.size());
+      close(fd);
+      continue;
+    }
+
+    if (setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &val,
+                   static_cast<socklen_t>(sizeof(val))) == -1) {
+      auto error = errno;
+      LOG(WARN) << "Failed to set SO_REUSEPORT option to listener socket: "
+                << xsi_strerror(error, errbuf.data(), errbuf.size());
+      close(fd);
+      continue;
+    }
+
+    if (faddr.family == AF_INET6) {
+#  ifdef IPV6_V6ONLY
+      if (setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, &val,
+                     static_cast<socklen_t>(sizeof(val))) == -1) {
+        auto error = errno;
+        LOG(WARN) << "Failed to set IPV6_V6ONLY option to listener socket: "
+                  << xsi_strerror(error, errbuf.data(), errbuf.size());
+        close(fd);
+        continue;
+      }
+#  endif // IPV6_V6ONLY
+
+      if (setsockopt(fd, IPPROTO_IPV6, IPV6_RECVPKTINFO, &val,
+                     static_cast<socklen_t>(sizeof(val))) == -1) {
+        auto error = errno;
+        LOG(WARN)
+            << "Failed to set IPV6_RECVPKTINFO option to listener socket: "
+            << xsi_strerror(error, errbuf.data(), errbuf.size());
+        close(fd);
+        continue;
+      }
+    } else {
+      if (setsockopt(fd, IPPROTO_IP, IP_PKTINFO, &val,
+                     static_cast<socklen_t>(sizeof(val))) == -1) {
+        auto error = errno;
+        LOG(WARN) << "Failed to set IP_PKTINFO option to listener socket: "
+                  << xsi_strerror(error, errbuf.data(), errbuf.size());
+        close(fd);
+        continue;
+      }
+    }
+
+    // TODO Enable ECN
+
+    if (bind(fd, rp->ai_addr, rp->ai_addrlen) == -1) {
+      auto error = errno;
+      LOG(WARN) << "bind() syscall failed: "
+                << xsi_strerror(error, errbuf.data(), errbuf.size());
+      close(fd);
+      continue;
+    }
+
+#  ifdef HAVE_LIBBPF
+    auto &quic_bpf_refs = conn_handler_->get_quic_bpf_refs();
+    int err;
+
+    if (should_attach_bpf()) {
+      auto obj = bpf_object__open_file("bpf/reuseport_kern.o", nullptr);
+      err = libbpf_get_error(obj);
+      if (err) {
+        LOG(FATAL) << "Failed to open bpf object file: "
+                   << xsi_strerror(-err, errbuf.data(), errbuf.size());
+        close(fd);
+        return -1;
+      }
+
+      if (bpf_object__load(obj)) {
+        LOG(FATAL) << "Failed to load bpf object file: "
+                   << xsi_strerror(errno, errbuf.data(), errbuf.size());
+        close(fd);
+        return -1;
+      }
+
+      auto prog = bpf_object__find_program_by_name(obj, "select_reuseport");
+      err = libbpf_get_error(prog);
+      if (err) {
+        LOG(FATAL) << "Failed to find sk_reuseport program: "
+                   << xsi_strerror(-err, errbuf.data(), errbuf.size());
+        close(fd);
+        return -1;
+      }
+
+      auto &ref = quic_bpf_refs[faddr.index];
+
+      auto reuseport_array =
+          bpf_object__find_map_by_name(obj, "reuseport_array");
+      err = libbpf_get_error(reuseport_array);
+      if (err) {
+        LOG(FATAL) << "Failed to get reuseport_array: "
+                   << xsi_strerror(-err, errbuf.data(), errbuf.size());
+        close(fd);
+        return -1;
+      }
+
+      ref.reuseport_array = bpf_map__fd(reuseport_array);
+
+      auto cid_prefix_map = bpf_object__find_map_by_name(obj, "cid_prefix_map");
+      err = libbpf_get_error(cid_prefix_map);
+      if (err) {
+        LOG(FATAL) << "Failed to get cid_prefix_map: "
+                   << xsi_strerror(-err, errbuf.data(), errbuf.size());
+        close(fd);
+        return -1;
+      }
+
+      ref.cid_prefix_map = bpf_map__fd(cid_prefix_map);
+
+      auto sk_info = bpf_object__find_map_by_name(obj, "sk_info");
+      err = libbpf_get_error(sk_info);
+      if (err) {
+        LOG(FATAL) << "Failed to get sk_info: "
+                   << xsi_strerror(-err, errbuf.data(), errbuf.size());
+        close(fd);
+        return -1;
+      }
+
+      constexpr uint32_t zero = 0;
+      auto config = get_config();
+      uint32_t num_socks = config->num_worker;
+
+      if (bpf_map_update_elem(bpf_map__fd(sk_info), &zero, &num_socks,
+                              BPF_ANY) != 0) {
+        LOG(FATAL) << "Failed to update sk_info: "
+                   << xsi_strerror(errno, errbuf.data(), errbuf.size());
+        close(fd);
+        return -1;
+      }
+
+      auto prog_fd = bpf_program__fd(prog);
+
+      if (setsockopt(fd, SOL_SOCKET, SO_ATTACH_REUSEPORT_EBPF, &prog_fd,
+                     static_cast<socklen_t>(sizeof(prog_fd))) == -1) {
+        LOG(FATAL) << "Failed to attach bpf program: "
+                   << xsi_strerror(errno, errbuf.data(), errbuf.size());
+        close(fd);
+        return -1;
+      }
+    }
+
+    if (should_update_bpf_map()) {
+      const auto &ref = quic_bpf_refs[faddr.index];
+      auto sk_index = compute_sk_index();
+
+      if (bpf_map_update_elem(ref.reuseport_array, &sk_index, &fd,
+                              BPF_NOEXIST) != 0) {
+        LOG(FATAL) << "Failed to update reuseport_array: "
+                   << xsi_strerror(errno, errbuf.data(), errbuf.size());
+        close(fd);
+        return -1;
+      }
+
+      if (bpf_map_update_elem(ref.cid_prefix_map, cid_prefix_.data(), &sk_index,
+                              BPF_NOEXIST) != 0) {
+        LOG(FATAL) << "Failed to update cid_prefix_map: "
+                   << xsi_strerror(errno, errbuf.data(), errbuf.size());
+        close(fd);
+        return -1;
+      }
+    }
+#  endif // HAVE_LIBBPF
+
+    break;
+  }
+
+  if (!rp) {
+    LOG(FATAL) << "Listening " << (faddr.family == AF_INET ? "IPv4" : "IPv6")
+               << " socket failed";
+
+    return -1;
+  }
+
+  faddr.fd = fd;
+  faddr.hostport = util::make_http_hostport(mod_config()->balloc,
+                                            StringRef{host.data()}, faddr.port);
+
+  LOG(NOTICE) << "Listening on " << faddr.hostport << ", quic";
 
   return 0;
 }

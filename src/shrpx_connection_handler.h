@@ -40,6 +40,10 @@
 #  include <future>
 #endif // NOTHREADS
 
+#ifdef HAVE_LIBBPF
+#  include <bpf/libbpf.h>
+#endif // HAVE_LIBBPF
+
 #include <openssl/ssl.h>
 
 #include <ev.h>
@@ -98,6 +102,13 @@ struct SerialEvent {
   SerialEventType type;
   std::shared_ptr<DownstreamConfig> downstreamconf;
 };
+
+#if defined(ENABLE_HTTP3) && defined(HAVE_LIBBPF)
+struct BPFRef {
+  int reuseport_array;
+  int cid_prefix_map;
+};
+#endif // ENABLE_HTTP3 && HAVE_LIBBPF
 
 class ConnectionHandler {
 public:
@@ -165,7 +176,11 @@ public:
   int forward_quic_packet(const UpstreamAddr *faddr, const Address &remote_addr,
                           const Address &local_addr, const uint8_t *cid_prefix,
                           const uint8_t *data, size_t datalen);
-#endif // ENABLE_HTTP3
+
+#  ifdef HAVE_LIBBPF
+  std::vector<BPFRef> &get_quic_bpf_refs();
+#  endif // HAVE_LIBBPF
+#endif   // ENABLE_HTTP3
 
 #ifdef HAVE_NEVERBLEED
   void set_neverbleed(neverbleed_t *nb);
@@ -195,6 +210,9 @@ private:
   // and signature algorithm presented by client.
   std::vector<std::vector<SSL_CTX *>> indexed_ssl_ctx_;
 #ifdef ENABLE_HTTP3
+#  ifdef HAVE_LIBBPF
+  std::vector<BPFRef> quic_bpf_refs_;
+#  endif // HAVE_LIBBPF
   std::vector<SSL_CTX *> quic_all_ssl_ctx_;
   std::vector<std::vector<SSL_CTX *>> quic_indexed_ssl_ctx_;
 #endif // ENABLE_HTTP3

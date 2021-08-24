@@ -112,6 +112,14 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
       return 0;
     }
 
+    // If we get Initial and it has the CID prefix of this worker, it
+    // is likely that client is intentionally use the our prefix.
+    // Just drop it.
+    if (std::equal(dcid, dcid + SHRPX_QUIC_CID_PREFIXLEN,
+                   worker_->get_cid_prefix())) {
+      return 0;
+    }
+
     handler = handle_new_connection(faddr, remote_addr, local_addr, hd);
     if (handler == nullptr) {
       return 0;

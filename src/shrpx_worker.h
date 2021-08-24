@@ -301,7 +301,10 @@ public:
 #ifdef ENABLE_HTTP3
          SSL_CTX *quic_sv_ssl_ctx, tls::CertLookupTree *quic_cert_tree,
          const uint8_t *cid_prefix, size_t cid_prefixlen,
-#endif // ENABLE_HTTP3
+#  ifdef HAVE_LIBBPF
+         size_t index,
+#  endif // HAVE_LIBBPF
+#endif   // ENABLE_HTTP3
          const std::shared_ptr<TicketKeys> &ticket_keys,
          ConnectionHandler *conn_handler,
          std::shared_ptr<DownstreamConfig> downstreamconf);
@@ -363,6 +366,16 @@ public:
   int setup_quic_server_socket();
 
   const uint8_t *get_cid_prefix() const;
+
+#  ifdef HAVE_LIBBPF
+  bool should_attach_bpf() const;
+
+  bool should_update_bpf_map() const;
+
+  uint32_t compute_sk_index() const;
+#  endif // HAVE_LIBBPF
+
+  int create_quic_server_socket(UpstreamAddr &addr);
 #endif // ENABLE_HTTP3
 
   DNSTracker *get_dns_tracker();
@@ -371,6 +384,10 @@ private:
 #ifndef NOTHREADS
   std::future<void> fut_;
 #endif // NOTHREADS
+#if defined(ENABLE_HTTP3) && defined(HAVE_LIBBPF)
+  // Unique index of this worker.
+  size_t index_;
+#endif // ENABLE_HTTP3 && HAVE_LIBBPF
   std::mutex m_;
   std::deque<WorkerEvent> q_;
   std::mt19937 randgen_;

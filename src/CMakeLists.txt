@@ -212,7 +212,10 @@ if(ENABLE_APP)
   add_executable(nghttpx  ${NGHTTPX-bin_SOURCES} $<TARGET_OBJECTS:llhttp>
     $<TARGET_OBJECTS:url-parser>
   )
-  target_compile_definitions(nghttpx PRIVATE "-DPKGDATADIR=\"${PKGDATADIR}\"")
+  target_compile_definitions(nghttpx PRIVATE
+    "-DPKGDATADIR=\"${PKGDATADIR}\""
+    "-DPKGLIBDIR=\"${PKGLIBDIR}\""
+  )
   target_link_libraries(nghttpx nghttpx_static)
   add_executable(h2load   ${H2LOAD_SOURCES}   $<TARGET_OBJECTS:llhttp>
     $<TARGET_OBJECTS:url-parser>

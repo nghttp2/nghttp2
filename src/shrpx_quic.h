@@ -41,8 +41,6 @@ constexpr size_t SHRPX_MAX_UDP_PAYLOAD_SIZE = 1280;
 
 ngtcp2_tstamp quic_timestamp();
 
-int create_quic_server_socket(UpstreamAddr &addr);
-
 int quic_send_packet(const UpstreamAddr *faddr, const sockaddr *remote_sa,
                      size_t remote_salen, const sockaddr *local_sa,
                      size_t local_salen, const uint8_t *data, size_t datalen,

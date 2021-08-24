@@ -187,6 +187,11 @@ AC_ARG_WITH([libnghttp3],
                     [Use libnghttp3 [default=check]])],
     [request_libnghttp3=$withval], [request_libnghttp3=check])
 
+AC_ARG_WITH([libbpf],
+    [AS_HELP_STRING([--with-libbpf],
+                    [Use libbpf [default=check]])],
+    [request_libbpf=$withval], [request_libbpf=no])
+
 dnl Define variables
 AC_ARG_VAR([CYTHON], [the Cython executable])
 
@@ -199,6 +204,10 @@ AC_ARG_VAR([JEMALLOC_LIBS], [linker flags for jemalloc, skipping any checks])
 
 AC_ARG_VAR([LIBTOOL_LDFLAGS],
            [libtool specific flags (e.g., -static-libtool-libs)])
+
+AC_ARG_VAR([LIBBPF_LIBS], [linker flags for libbpf, skipping any checks])
+
+AC_ARG_VAR([BPFCFLAGS], [C compiler flags for bpf program])
 
 dnl Checks for programs
 AC_PROG_CC
@@ -541,6 +550,50 @@ if test "x${request_libnghttp3}" = "xyes" &&
    test "x${have_libnghttp3}" != "xyes"; then
   AC_MSG_ERROR([libnghttp3 was requested (--with-libnghttp3) but not found])
 fi
+
+# libbpf (for src)
+have_libbpf=no
+if test "x${request_libbpf}" != "xno"; then
+  if test "x${LIBBPF_LIBS}" = "x"; then
+    save_CFLAGS=$CFLAGS
+    save_LDFLAGS=$LDFLAGS
+
+    LDFLAGS="-lbpf"
+    AC_MSG_CHECKING([for libbpf])
+    AC_LINK_IFELSE([AC_LANG_PROGRAM([[
+      #include <bpf/bpf.h>
+      #include <bpf/libbpf.h>
+    ]], [[
+      bpf_object__open_file("placeholder.o", NULL);
+    ]])],
+    [AC_MSG_RESULT([yes]); have_libbpf=yes],
+    [AC_MSG_RESULT([no]); have_libbpf=no])
+
+    if test "x${have_libbpf}" = "xyes"; then
+      AC_DEFINE([HAVE_LIBBPF], [1], [Define to 1 if you have `libbpf` library.])
+      LIBBPF_LIBS=$LDFLAGS
+      AC_SUBST([LIBBPF_LIBS])
+      if test "x${BPFCFLAGS}" = "x"; then
+        BPFCFLAGS="-Wall -O2"
+      fi
+      # Add the include path for Debian
+      EXTRABPFCFLAGS="-I/usr/include/$host_cpu-$host_os"
+      AC_SUBST([EXTRABPFCFLAGS])
+    fi
+
+    CFLAGS=$save_CFLAGS
+    LDFLAGS=$save_LDFLAGS
+  else
+    have_libbpf=yes
+  fi
+fi
+
+if test "x${request_libbpf}" = "xyes" &&
+   test "x${have_libbpf}" != "xyes"; then
+  AC_MSG_ERROR([libbpf was requested (--with-libbpf) but not found])
+fi
+
+AM_CONDITIONAL([HAVE_LIBBPF], [ test "x${have_libbpf}" = "xyes" ])
 
 # libevent_openssl (for examples)
 # 2.0.8 is required because we use evconnlistener_set_error_cb()
@@ -1070,6 +1123,7 @@ AC_CONFIG_FILES([
   src/Makefile
   src/includes/Makefile
   src/libnghttp2_asio.pc
+  bpf/Makefile
   examples/Makefile
   python/Makefile
   python/setup.py
@@ -1121,6 +1175,8 @@ AC_MSG_NOTICE([summary of build options:
       WARNCXXFLAGS:   ${WARNCXXFLAGS}
       CXX1XCXXFLAGS:  ${CXX1XCXXFLAGS}
       EXTRACFLAG:     ${EXTRACFLAG}
+      BPFCFLAGS:      ${BPFCFLAGS}
+      EXTRABPFCFLAGS: ${EXTRABPFCFLAGS}
       LIBS:           ${LIBS}
       DEFS:           ${DEFS}
       EXTRA_DEFS:     ${EXTRA_DEFS}
@@ -1147,6 +1203,7 @@ AC_MSG_NOTICE([summary of build options:
       libngtcp2:      ${have_libngtcp2} (CFLAGS='${LIBNGTCP2_CFLAGS}' LIBS='${LIBNGTCP2_LIBS}')
       libngtcp2_crypto_openssl: ${have_libngtcp2_crypto_openssl} (CFLAGS='${LIBNGTCP2_CRYPTO_OPENSSL_CFLAGS}' LIBS='${LIBNGTCP2_CRYPTO_OPENSSL_LIBS}')
       libnghttp3:     ${have_libnghttp3} (CFLAGS='${LIBNGHTTP3_CFLAGS}' LIBS='${LIBNGHTTP3_LIBS}')
+      libbpf:         ${have_libbpf} (LIBS='${LIBBPF_LIBS}')
       Libevent(SSL):  ${have_libevent_openssl} (CFLAGS='${LIBEVENT_OPENSSL_CFLAGS}' LIBS='${LIBEVENT_OPENSSL_LIBS}')
       Jansson:        ${have_jansson} (CFLAGS='${JANSSON_CFLAGS}' LIBS='${JANSSON_LIBS}')
       Jemalloc:       ${have_jemalloc} (CFLAGS='${JEMALLOC_CFLAGS}' LIBS='${JEMALLOC_LIBS}')
