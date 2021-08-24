@@ -411,13 +411,6 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
 
   auto gen = util::make_mt19937();
 
-  auto conn_handler = std::make_unique<ConnectionHandler>(loop, gen);
-
-  for (auto &addr : config->conn.listener.addrs) {
-    conn_handler->add_acceptor(
-        std::make_unique<AcceptHandler>(&addr, conn_handler.get()));
-  }
-
 #ifdef HAVE_NEVERBLEED
   std::array<char, NEVERBLEED_ERRBUF_SIZE> nb_errbuf;
   auto nb = std::make_unique<neverbleed_t>();
@@ -428,14 +421,23 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
 
   LOG(NOTICE) << "neverbleed process [" << nb->daemon_pid << "] spawned";
 
-  conn_handler->set_neverbleed(nb.get());
-
   ev_child nb_childev;
 
   ev_child_init(&nb_childev, nb_child_cb, nb->daemon_pid, 0);
   nb_childev.data = nullptr;
   ev_child_start(loop, &nb_childev);
 #endif // HAVE_NEVERBLEED
+
+  auto conn_handler = std::make_unique<ConnectionHandler>(loop, gen);
+
+#ifdef HAVE_NEVERBLEED
+  conn_handler->set_neverbleed(nb.get());
+#endif // HAVE_NEVERBLEED
+
+  for (auto &addr : config->conn.listener.addrs) {
+    conn_handler->add_acceptor(
+        std::make_unique<AcceptHandler>(&addr, conn_handler.get()));
+  }
 
   MemchunkPool mcpool;
 
