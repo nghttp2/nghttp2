@@ -683,11 +683,28 @@ uint32_t Worker::compute_sk_index() const {
 #  endif // HAVE_LIBBPF
 
 int Worker::setup_quic_server_socket() {
+  size_t n = 0;
+
   for (auto &addr : quic_upstream_addrs_) {
     assert(!addr.host_unix);
     if (create_quic_server_socket(addr) != 0) {
       return -1;
     }
+
+    // Make sure that each endpoint has a unique address.
+    for (size_t i = 0; i < n; ++i) {
+      const auto &a = quic_upstream_addrs_[i];
+
+      if (addr.hostport == a.hostport) {
+        LOG(FATAL)
+            << "QUIC frontend endpoint must be unique: a duplicate found for "
+            << addr.hostport;
+
+        return -1;
+      }
+    }
+
+    ++n;
 
     quic_listeners_.emplace_back(std::make_unique<QUICListener>(&addr, this));
   }
