@@ -84,6 +84,12 @@ int verify_retry_token(ngtcp2_cid *odcid, const uint8_t *token, size_t tokenlen,
                        const ngtcp2_cid *dcid, const sockaddr *sa,
                        socklen_t salen, const uint8_t *token_secret);
 
+int generate_token(uint8_t *token, size_t &tokenlen, const sockaddr *sa,
+                   size_t salen, const uint8_t *token_secret);
+
+int verify_token(const uint8_t *token, size_t tokenlen, const sockaddr *sa,
+                 socklen_t salen, const uint8_t *token_secret);
+
 } // namespace shrpx
 
 #endif // SHRPX_QUIC_H

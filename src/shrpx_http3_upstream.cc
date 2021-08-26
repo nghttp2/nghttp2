@@ -401,6 +401,41 @@ int stream_stop_sending(ngtcp2_conn *conn, int64_t stream_id,
 }
 } // namespace
 
+namespace {
+int handshake_completed(ngtcp2_conn *conn, void *user_data) {
+  auto upstream = static_cast<Http3Upstream *>(user_data);
+
+  if (upstream->handshake_completed() != 0) {
+    return NGTCP2_ERR_CALLBACK_FAILURE;
+  }
+
+  return 0;
+}
+} // namespace
+
+int Http3Upstream::handshake_completed() {
+  std::array<uint8_t, SHRPX_QUIC_MAX_TOKENLEN> token;
+  size_t tokenlen = token.size();
+
+  auto path = ngtcp2_conn_get_path(conn_);
+  auto worker = handler_->get_worker();
+  auto &quic_secret = worker->get_quic_secret();
+  auto &secret = quic_secret->token_secret;
+
+  if (generate_token(token.data(), tokenlen, path->remote.addr,
+                     path->remote.addrlen, secret.data()) != 0) {
+    return 0;
+  }
+
+  auto rv = ngtcp2_conn_submit_new_token(conn_, token.data(), tokenlen);
+  if (rv != 0) {
+    LOG(ERROR) << "ngtcp2_conn_submit_new_token: " << ngtcp2_strerror(rv);
+    return -1;
+  }
+
+  return 0;
+}
+
 int Http3Upstream::init(const UpstreamAddr *faddr, const Address &remote_addr,
                         const Address &local_addr,
                         const ngtcp2_pkt_hd &initial_hd,
@@ -414,7 +449,7 @@ int Http3Upstream::init(const UpstreamAddr *faddr, const Address &remote_addr,
       nullptr, // client_initial
       ngtcp2_crypto_recv_client_initial_cb,
       ngtcp2_crypto_recv_crypto_data_cb,
-      nullptr, // handshake_completed
+      shrpx::handshake_completed,
       nullptr, // recv_version_negotiation
       ngtcp2_crypto_encrypt_cb,
       ngtcp2_crypto_decrypt_cb,

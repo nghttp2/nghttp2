@@ -403,4 +403,182 @@ int verify_retry_token(ngtcp2_cid *odcid, const uint8_t *token, size_t tokenlen,
   return 0;
 }
 
+namespace {
+size_t generate_token_aad(uint8_t *dest, size_t destlen, const sockaddr *sa,
+                          size_t salen) {
+  const uint8_t *addr;
+  size_t addrlen;
+
+  switch (sa->sa_family) {
+  case AF_INET:
+    addr = reinterpret_cast<const uint8_t *>(
+        &reinterpret_cast<const sockaddr_in *>(sa)->sin_addr);
+    addrlen = sizeof(reinterpret_cast<const sockaddr_in *>(sa)->sin_addr);
+    break;
+  case AF_INET6:
+    addr = reinterpret_cast<const uint8_t *>(
+        &reinterpret_cast<const sockaddr_in6 *>(sa)->sin6_addr);
+    addrlen = sizeof(reinterpret_cast<const sockaddr_in6 *>(sa)->sin6_addr);
+    break;
+  default:
+    return 0;
+  }
+
+  assert(destlen >= addrlen);
+
+  return std::copy_n(addr, addrlen, dest) - dest;
+}
+} // namespace
+
+int generate_token(uint8_t *token, size_t &tokenlen, const sockaddr *sa,
+                   size_t salen, const uint8_t *token_secret) {
+  std::array<uint8_t, 8> plaintext;
+
+  uint64_t t = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                   std::chrono::system_clock::now().time_since_epoch())
+                   .count();
+
+  std::array<uint8_t, 256> aad;
+  auto aadlen = generate_token_aad(aad.data(), aad.size(), sa, salen);
+  if (aadlen == 0) {
+    return -1;
+  }
+
+  auto p = std::begin(plaintext);
+  // Host byte order
+  p = std::copy_n(reinterpret_cast<uint8_t *>(&t), sizeof(t), p);
+
+  std::array<uint8_t, SHRPX_QUIC_TOKEN_RAND_DATALEN> rand_data;
+  std::array<uint8_t, 32> key, iv;
+  auto keylen = key.size();
+  auto ivlen = iv.size();
+
+  if (RAND_bytes(rand_data.data(), rand_data.size()) != 1) {
+    return -1;
+  }
+
+  ngtcp2_crypto_aead aead;
+  ngtcp2_crypto_aead_init(&aead, const_cast<EVP_CIPHER *>(EVP_aes_128_gcm()));
+
+  ngtcp2_crypto_md md;
+  ngtcp2_crypto_md_init(&md, const_cast<EVP_MD *>(EVP_sha256()));
+
+  if (derive_token_key(key.data(), keylen, iv.data(), ivlen, token_secret,
+                       rand_data.data(), rand_data.size(), &aead, &md) != 0) {
+    return -1;
+  }
+
+  auto plaintextlen = std::distance(std::begin(plaintext), p);
+
+  ngtcp2_crypto_aead_ctx aead_ctx;
+  if (ngtcp2_crypto_aead_ctx_encrypt_init(&aead_ctx, &aead, key.data(),
+                                          ivlen) != 0) {
+    return -1;
+  }
+
+  token[0] = SHRPX_QUIC_TOKEN_MAGIC;
+  auto rv =
+      ngtcp2_crypto_encrypt(token + 1, &aead, &aead_ctx, plaintext.data(),
+                            plaintextlen, iv.data(), ivlen, aad.data(), aadlen);
+
+  ngtcp2_crypto_aead_ctx_free(&aead_ctx);
+
+  if (rv != 0) {
+    return -1;
+  }
+
+  /* 1 for magic byte */
+  tokenlen = 1 + plaintextlen + aead.max_overhead;
+  memcpy(token + tokenlen, rand_data.data(), rand_data.size());
+  tokenlen += rand_data.size();
+
+  return 0;
+}
+
+int verify_token(const uint8_t *token, size_t tokenlen, const sockaddr *sa,
+                 socklen_t salen, const uint8_t *token_secret) {
+  std::array<char, NI_MAXHOST> host;
+  std::array<char, NI_MAXSERV> port;
+
+  if (getnameinfo(sa, salen, host.data(), host.size(), port.data(), port.size(),
+                  NI_NUMERICHOST | NI_NUMERICSERV) != 0) {
+    return -1;
+  }
+
+  /* 1 for TOKEN_MAGIC */
+  if (tokenlen < SHRPX_QUIC_TOKEN_RAND_DATALEN + 1) {
+    return -1;
+  }
+  if (tokenlen > SHRPX_QUIC_MAX_TOKENLEN) {
+    return -1;
+  }
+
+  assert(token[0] == SHRPX_QUIC_TOKEN_MAGIC);
+
+  std::array<uint8_t, 256> aad;
+  auto aadlen = generate_token_aad(aad.data(), aad.size(), sa, salen);
+  if (aadlen == 0) {
+    return -1;
+  }
+
+  auto rand_data = token + tokenlen - SHRPX_QUIC_TOKEN_RAND_DATALEN;
+  auto ciphertext = token + 1;
+  auto ciphertextlen = tokenlen - SHRPX_QUIC_TOKEN_RAND_DATALEN - 1;
+
+  std::array<uint8_t, 32> key, iv;
+  auto keylen = key.size();
+  auto ivlen = iv.size();
+
+  ngtcp2_crypto_aead aead;
+  ngtcp2_crypto_aead_init(&aead, const_cast<EVP_CIPHER *>(EVP_aes_128_gcm()));
+
+  ngtcp2_crypto_md md;
+  ngtcp2_crypto_md_init(&md, const_cast<EVP_MD *>(EVP_sha256()));
+
+  if (derive_token_key(key.data(), keylen, iv.data(), ivlen, token_secret,
+                       rand_data, SHRPX_QUIC_TOKEN_RAND_DATALEN, &aead,
+                       &md) != 0) {
+    return -1;
+  }
+
+  ngtcp2_crypto_aead_ctx aead_ctx;
+  if (ngtcp2_crypto_aead_ctx_decrypt_init(&aead_ctx, &aead, key.data(),
+                                          ivlen) != 0) {
+    return -1;
+  }
+
+  std::array<uint8_t, SHRPX_QUIC_MAX_TOKENLEN> plaintext;
+
+  auto rv = ngtcp2_crypto_decrypt(plaintext.data(), &aead, &aead_ctx,
+                                  ciphertext, ciphertextlen, iv.data(), ivlen,
+                                  aad.data(), aadlen);
+
+  ngtcp2_crypto_aead_ctx_free(&aead_ctx);
+
+  if (rv != 0) {
+    return -1;
+  }
+
+  assert(ciphertextlen >= aead.max_overhead);
+
+  auto plaintextlen = ciphertextlen - aead.max_overhead;
+  if (plaintextlen != sizeof(uint64_t)) {
+    return -1;
+  }
+
+  uint64_t t;
+  memcpy(&t, plaintext.data(), sizeof(uint64_t));
+
+  uint64_t now = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                     std::chrono::system_clock::now().time_since_epoch())
+                     .count();
+
+  // Allow 1 hour window
+  if (t + 3600ULL * NGTCP2_SECONDS < now) {
+    return -1;
+  }
+
+  return 0;
+}
+
 } // namespace shrpx

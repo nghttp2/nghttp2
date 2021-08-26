@@ -75,7 +75,8 @@ public:
                                        const Address &remote_addr,
                                        const Address &local_addr,
                                        const ngtcp2_pkt_hd &hd,
-                                       const ngtcp2_cid *odcid);
+                                       const ngtcp2_cid *odcid,
+                                       const uint8_t *token, size_t tokenlen);
   void add_connection_id(const ngtcp2_cid *cid, ClientHandler *handler);
   void remove_connection_id(const ngtcp2_cid *cid);
 

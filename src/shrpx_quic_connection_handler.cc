@@ -85,6 +85,8 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
 
     ngtcp2_pkt_hd hd;
     ngtcp2_cid odcid, *podcid = nullptr;
+    const uint8_t *token = nullptr;
+    size_t tokenlen = 0;
 
     switch (ngtcp2_accept(&hd, data, datalen)) {
     case 0: {
@@ -95,12 +97,31 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
       auto &quic_secret = worker_->get_quic_secret();
       auto &secret = quic_secret->token_secret;
 
-      if (hd.token.base[0] == SHRPX_QUIC_RETRY_TOKEN_MAGIC) {
+      switch (hd.token.base[0]) {
+      case SHRPX_QUIC_RETRY_TOKEN_MAGIC:
         if (verify_retry_token(&odcid, hd.token.base, hd.token.len, &hd.dcid,
                                &remote_addr.su.sa, remote_addr.len,
-                               secret.data()) == 0) {
-          podcid = &odcid;
+                               secret.data()) != 0) {
+          break;
         }
+
+        podcid = &odcid;
+        token = hd.token.base;
+        tokenlen = hd.token.len;
+
+        break;
+      case SHRPX_QUIC_TOKEN_MAGIC:
+        if (verify_token(hd.token.base, hd.token.len, &remote_addr.su.sa,
+                         remote_addr.len, secret.data()) != 0) {
+          break;
+        }
+
+        token = hd.token.base;
+        tokenlen = hd.token.len;
+
+        break;
+      default:
+        break;
       }
 
       break;
@@ -139,7 +160,8 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
       return 0;
     }
 
-    handler = handle_new_connection(faddr, remote_addr, local_addr, hd, podcid);
+    handler = handle_new_connection(faddr, remote_addr, local_addr, hd, podcid,
+                                    token, tokenlen);
     if (handler == nullptr) {
       return 0;
     }
@@ -159,8 +181,8 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
 
 ClientHandler *QUICConnectionHandler::handle_new_connection(
     const UpstreamAddr *faddr, const Address &remote_addr,
-    const Address &local_addr, const ngtcp2_pkt_hd &hd,
-    const ngtcp2_cid *odcid) {
+    const Address &local_addr, const ngtcp2_pkt_hd &hd, const ngtcp2_cid *odcid,
+    const uint8_t *token, size_t tokenlen) {
   std::array<char, NI_MAXHOST> host;
   std::array<char, NI_MAXSERV> service;
   int rv;
@@ -197,14 +219,6 @@ ClientHandler *QUICConnectionHandler::handle_new_connection(
   auto handler = std::make_unique<ClientHandler>(
       worker_, faddr->fd, ssl, StringRef{host.data()},
       StringRef{service.data()}, remote_addr.su.sa.sa_family, faddr);
-
-  const uint8_t *token = nullptr;
-  size_t tokenlen = 0;
-
-  if (odcid) {
-    token = hd.token.base;
-    tokenlen = hd.token.len;
-  }
 
   auto upstream = std::make_unique<Http3Upstream>(handler.get());
   if (upstream->init(faddr, remote_addr, local_addr, hd, odcid, token,

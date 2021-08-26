@@ -143,6 +143,7 @@ public:
   int http_send_stop_sending(int64_t stream_id, uint64_t app_error_code);
   int http_recv_data(Downstream *downstream, const uint8_t *data,
                      size_t datalen);
+  int handshake_completed();
 
 private:
   ClientHandler *handler_;
