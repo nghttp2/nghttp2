@@ -366,6 +366,7 @@ constexpr auto SHRPX_OPT_NO_STRIP_INCOMING_EARLY_DATA =
 constexpr auto SHRPX_OPT_BPF_PROGRAM_FILE =
     StringRef::from_lit("bpf-program-file");
 constexpr auto SHRPX_OPT_NO_BPF = StringRef::from_lit("no-bpf");
+constexpr auto SHRPX_OPT_HTTP2_ALTSVC = StringRef::from_lit("http2-altsvc");
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
@@ -426,7 +427,7 @@ enum class ForwardedNode {
 };
 
 struct AltSvc {
-  StringRef protocol_id, host, origin, service;
+  StringRef protocol_id, host, origin, service, params;
 
   uint16_t port;
 };
@@ -771,6 +772,11 @@ struct HttpConfig {
     bool strip_incoming;
   } early_data;
   std::vector<AltSvc> altsvcs;
+  // altsvcs serialized in a wire format.
+  StringRef altsvc_header_value;
+  std::vector<AltSvc> http2_altsvcs;
+  // http2_altsvcs serialized in a wire format.
+  StringRef http2_altsvc_header_value;
   std::vector<ErrorPage> error_pages;
   HeaderRefs add_request_headers;
   HeaderRefs add_response_headers;
@@ -1161,6 +1167,7 @@ enum {
   SHRPX_OPTID_FRONTEND_WRITE_TIMEOUT,
   SHRPX_OPTID_HEADER_FIELD_BUFFER,
   SHRPX_OPTID_HOST_REWRITE,
+  SHRPX_OPTID_HTTP2_ALTSVC,
   SHRPX_OPTID_HTTP2_BRIDGE,
   SHRPX_OPTID_HTTP2_MAX_CONCURRENT_STREAMS,
   SHRPX_OPTID_HTTP2_NO_COOKIE_CRUMBLING,

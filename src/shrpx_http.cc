@@ -220,6 +220,57 @@ bool require_cookie_secure_attribute(SessionAffinityCookieSecure secure,
   }
 }
 
+StringRef create_altsvc_header_value(BlockAllocator &balloc,
+                                     const std::vector<AltSvc> &altsvcs) {
+  // <PROTOID>="<HOST>:<SERVICE>"; <PARAMS>
+  size_t len = 0;
+
+  if (altsvcs.empty()) {
+    return StringRef{};
+  }
+
+  for (auto &altsvc : altsvcs) {
+    len += util::percent_encode_tokenlen(altsvc.protocol_id);
+    len += str_size("=\"");
+    len += util::quote_stringlen(altsvc.host);
+    len += str_size(":");
+    len += altsvc.service.size();
+    len += str_size("\"");
+    if (!altsvc.params.empty()) {
+      len += str_size("; ");
+      len += altsvc.params.size();
+    }
+  }
+
+  // ", " between items.
+  len += (altsvcs.size() - 1) * 2;
+
+  // We will write additional ", " at the end, and cut it later.
+  auto iov = make_byte_ref(balloc, len + 2);
+  auto p = iov.base;
+
+  for (auto &altsvc : altsvcs) {
+    p = util::percent_encode_token(p, altsvc.protocol_id);
+    p = util::copy_lit(p, "=\"");
+    p = util::quote_string(p, altsvc.host);
+    *p++ = ':';
+    p = std::copy(std::begin(altsvc.service), std::end(altsvc.service), p);
+    *p++ = '"';
+    if (!altsvc.params.empty()) {
+      p = util::copy_lit(p, "; ");
+      p = std::copy(std::begin(altsvc.params), std::end(altsvc.params), p);
+    }
+    p = util::copy_lit(p, ", ");
+  }
+
+  p -= 2;
+  *p = '\0';
+
+  assert(static_cast<size_t>(p - iov.base) == len);
+
+  return StringRef{iov.base, p};
+}
+
 } // namespace http
 
 } // namespace shrpx

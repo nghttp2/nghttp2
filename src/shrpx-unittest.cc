@@ -135,6 +135,8 @@ int main(int argc, char *argv[]) {
                    shrpx::test_shrpx_http_create_via_header_value) ||
       !CU_add_test(pSuite, "http_create_affinity_cookie",
                    shrpx::test_shrpx_http_create_affinity_cookie) ||
+      !CU_add_test(pSuite, "http_create_atlsvc_header_field_value",
+                   shrpx::test_shrpx_http_create_altsvc_header_value) ||
       !CU_add_test(pSuite, "router_match", shrpx::test_shrpx_router_match) ||
       !CU_add_test(pSuite, "router_match_wildcard",
                    shrpx::test_shrpx_router_match_wildcard) ||
@@ -197,6 +199,7 @@ int main(int argc, char *argv[]) {
                    shrpx::test_util_extract_host) ||
       !CU_add_test(pSuite, "util_split_hostport",
                    shrpx::test_util_split_hostport) ||
+      !CU_add_test(pSuite, "util_split_str", shrpx::test_util_split_str) ||
       !CU_add_test(pSuite, "gzip_inflate", test_nghttp2_gzip_inflate) ||
       !CU_add_test(pSuite, "buffer_write", nghttp2::test_buffer_write) ||
       !CU_add_test(pSuite, "pool_recycle", nghttp2::test_pool_recycle) ||

@@ -167,24 +167,29 @@ bool in_attr_char(char c) {
 StringRef percent_encode_token(BlockAllocator &balloc,
                                const StringRef &target) {
   auto iov = make_byte_ref(balloc, target.size() * 3 + 1);
-  auto p = iov.base;
+  auto p = percent_encode_token(iov.base, target);
+
+  *p = '\0';
+
+  return StringRef{iov.base, p};
+}
+
+size_t percent_encode_tokenlen(const StringRef &target) {
+  size_t n = 0;
 
   for (auto first = std::begin(target); first != std::end(target); ++first) {
     uint8_t c = *first;
 
     if (c != '%' && in_token(c)) {
-      *p++ = c;
+      ++n;
       continue;
     }
 
-    *p++ = '%';
-    *p++ = UPPER_XDIGITS[c >> 4];
-    *p++ = UPPER_XDIGITS[(c & 0x0f)];
+    // percent-encoded character '%ff'
+    n += 3;
   }
 
-  *p = '\0';
-
-  return StringRef{iov.base, p};
+  return n;
 }
 
 uint32_t hex_to_uint(char c) {
@@ -208,19 +213,25 @@ StringRef quote_string(BlockAllocator &balloc, const StringRef &target) {
   }
 
   auto iov = make_byte_ref(balloc, target.size() + cnt + 1);
-  auto p = iov.base;
+  auto p = quote_string(iov.base, target);
 
-  for (auto c : target) {
-    if (c == '"') {
-      *p++ = '\\';
-      *p++ = '"';
-    } else {
-      *p++ = c;
-    }
-  }
   *p = '\0';
 
   return StringRef{iov.base, p};
+}
+
+size_t quote_stringlen(const StringRef &target) {
+  size_t n = 0;
+
+  for (auto c : target) {
+    if (c == '"') {
+      n += 2;
+    } else {
+      ++n;
+    }
+  }
+
+  return n;
 }
 
 namespace {
@@ -861,6 +872,42 @@ std::vector<StringRef> split_str(const StringRef &s, char delim) {
 
   len = 0;
   for (auto first = std::begin(s);; ++len) {
+    auto stop = std::find(first, last, delim);
+    list[len] = StringRef{first, stop};
+    if (stop == last) {
+      break;
+    }
+    first = stop + 1;
+  }
+  return list;
+}
+
+std::vector<StringRef> split_str(const StringRef &s, char delim, size_t n) {
+  if (n == 0) {
+    return split_str(s, delim);
+  }
+
+  if (n == 1) {
+    return {s};
+  }
+
+  size_t len = 1;
+  auto last = std::end(s);
+  StringRef::const_iterator d;
+  for (auto first = std::begin(s);
+       len < n && (d = std::find(first, last, delim)) != last;
+       ++len, first = d + 1)
+    ;
+
+  auto list = std::vector<StringRef>(len);
+
+  len = 0;
+  for (auto first = std::begin(s);; ++len) {
+    if (len == n - 1) {
+      list[len] = StringRef{first, last};
+      break;
+    }
+
     auto stop = std::find(first, last, delim);
     list[len] = StringRef{first, stop};
     if (stop == last) {

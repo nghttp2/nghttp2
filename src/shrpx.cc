@@ -87,6 +87,7 @@
 #include "shrpx_signal.h"
 #include "shrpx_connection.h"
 #include "shrpx_log.h"
+#include "shrpx_http.h"
 #include "util.h"
 #include "app_helper.h"
 #include "tls.h"
@@ -2723,13 +2724,18 @@ HTTP:
               Rewrite  host and  :authority header  fields in  default
               mode.  When  --http2-proxy is  used, these  headers will
               not be altered regardless of this option.
-  --altsvc=<PROTOID,PORT[,HOST,[ORIGIN]]>
+  --altsvc=<PROTOID,PORT[,HOST,[ORIGIN[,PARAMS]]]>
               Specify   protocol  ID,   port,  host   and  origin   of
-              alternative service.  <HOST>  and <ORIGIN> are optional.
-              They  are advertised  in  alt-svc header  field only  in
-              HTTP/1.1  frontend.  This  option can  be used  multiple
-              times   to   specify  multiple   alternative   services.
-              Example: --altsvc=h2,443
+              alternative service.  <HOST>,  <ORIGIN> and <PARAMS> are
+              optional.   Empty <HOST>  and <ORIGIN>  are allowed  and
+              they  are treated  as  nothing is  specified.  They  are
+              advertised  in alt-svc  header  field  only in  HTTP/1.1
+              frontend.   This option  can be  used multiple  times to
+              specify multiple alternative services.
+              Example: --altsvc="h2,443,,,ma=3600; persist=1'
+  --http2-altsvc=<PROTOID,PORT[,HOST,[ORIGIN[,PARAMS]]]>
+              Just like --altsvc option, but  this altsvc is only sent
+              in HTTP/2 frontend.
   --add-request-header=<HEADER>
               Specify additional header field to add to request header
               set.  This  option just  appends header field  and won't
@@ -3183,6 +3189,16 @@ int process_options(Config *config,
   config->http2.upstream.callbacks = create_http2_upstream_callbacks();
   config->http2.downstream.callbacks = create_http2_downstream_callbacks();
 
+  if (!config->http.altsvcs.empty()) {
+    config->http.altsvc_header_value =
+        http::create_altsvc_header_value(config->balloc, config->http.altsvcs);
+  }
+
+  if (!config->http.http2_altsvcs.empty()) {
+    config->http.http2_altsvc_header_value = http::create_altsvc_header_value(
+        config->balloc, config->http.http2_altsvcs);
+  }
+
   return 0;
 }
 } // namespace
@@ -3571,6 +3587,7 @@ int main(int argc, char **argv) {
          &flag, 168},
         {SHRPX_OPT_BPF_PROGRAM_FILE.c_str(), required_argument, &flag, 169},
         {SHRPX_OPT_NO_BPF.c_str(), no_argument, &flag, 170},
+        {SHRPX_OPT_HTTP2_ALTSVC.c_str(), required_argument, &flag, 171},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -4381,6 +4398,10 @@ int main(int argc, char **argv) {
       case 170:
         // --no-bpf
         cmdcfgs.emplace_back(SHRPX_OPT_NO_BPF, StringRef::from_lit("yes"));
+        break;
+      case 171:
+        // --http2-altsvc
+        cmdcfgs.emplace_back(SHRPX_OPT_HTTP2_ALTSVC, StringRef{optarg});
         break;
       default:
         break;

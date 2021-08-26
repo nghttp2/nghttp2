@@ -118,4 +118,40 @@ void test_shrpx_http_create_affinity_cookie(void) {
   CU_ASSERT("charlie=01111111; Path=bar; Secure" == c);
 }
 
+void test_shrpx_http_create_altsvc_header_value(void) {
+  {
+    BlockAllocator balloc(1024, 1024);
+    std::vector<AltSvc> altsvcs{
+        AltSvc{
+            .protocol_id = StringRef::from_lit("h3"),
+            .host = StringRef::from_lit("127.0.0.1"),
+            .service = StringRef::from_lit("443"),
+            .params = StringRef::from_lit("ma=3600"),
+        },
+    };
+
+    CU_ASSERT(R"(h3="127.0.0.1:443"; ma=3600)" ==
+              http::create_altsvc_header_value(balloc, altsvcs));
+  }
+
+  {
+    BlockAllocator balloc(1024, 1024);
+    std::vector<AltSvc> altsvcs{
+        AltSvc{
+            .protocol_id = StringRef::from_lit("h3"),
+            .service = StringRef::from_lit("443"),
+            .params = StringRef::from_lit("ma=3600"),
+        },
+        AltSvc{
+            .protocol_id = StringRef::from_lit("h3%"),
+            .host = StringRef::from_lit("\"foo\""),
+            .service = StringRef::from_lit("4433"),
+        },
+    };
+
+    CU_ASSERT(R"(h3=":443"; ma=3600, h3%25="\"foo\":4433")" ==
+              http::create_altsvc_header_value(balloc, altsvcs));
+  }
+}
+
 } // namespace shrpx

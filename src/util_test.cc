@@ -652,4 +652,44 @@ void test_util_split_hostport(void) {
             util::split_hostport(StringRef::from_lit("[::1]80")));
 }
 
+void test_util_split_str(void) {
+  CU_ASSERT(std::vector<StringRef>{StringRef::from_lit("")} ==
+            util::split_str(StringRef::from_lit(""), ','));
+  CU_ASSERT(std::vector<StringRef>{StringRef::from_lit("alpha")} ==
+            util::split_str(StringRef::from_lit("alpha"), ','));
+  CU_ASSERT((std::vector<StringRef>{StringRef::from_lit("alpha"),
+                                    StringRef::from_lit("")}) ==
+            util::split_str(StringRef::from_lit("alpha,"), ','));
+  CU_ASSERT((std::vector<StringRef>{StringRef::from_lit("alpha"),
+                                    StringRef::from_lit("bravo")}) ==
+            util::split_str(StringRef::from_lit("alpha,bravo"), ','));
+  CU_ASSERT((std::vector<StringRef>{StringRef::from_lit("alpha"),
+                                    StringRef::from_lit("bravo"),
+                                    StringRef::from_lit("charlie")}) ==
+            util::split_str(StringRef::from_lit("alpha,bravo,charlie"), ','));
+  CU_ASSERT(
+      (std::vector<StringRef>{StringRef::from_lit("alpha"),
+                              StringRef::from_lit("bravo"),
+                              StringRef::from_lit("charlie")}) ==
+      util::split_str(StringRef::from_lit("alpha,bravo,charlie"), ',', 0));
+  CU_ASSERT(std::vector<StringRef>{StringRef::from_lit("")} ==
+            util::split_str(StringRef::from_lit(""), ',', 1));
+  CU_ASSERT(std::vector<StringRef>{StringRef::from_lit("")} ==
+            util::split_str(StringRef::from_lit(""), ',', 2));
+  CU_ASSERT(
+      (std::vector<StringRef>{StringRef::from_lit("alpha"),
+                              StringRef::from_lit("bravo,charlie")}) ==
+      util::split_str(StringRef::from_lit("alpha,bravo,charlie"), ',', 2));
+  CU_ASSERT(std::vector<StringRef>{StringRef::from_lit("alpha")} ==
+            util::split_str(StringRef::from_lit("alpha"), ',', 2));
+  CU_ASSERT((std::vector<StringRef>{StringRef::from_lit("alpha"),
+                                    StringRef::from_lit("")}) ==
+            util::split_str(StringRef::from_lit("alpha,"), ',', 2));
+  CU_ASSERT(std::vector<StringRef>{StringRef::from_lit("alpha")} ==
+            util::split_str(StringRef::from_lit("alpha"), ',', 0));
+  CU_ASSERT(
+      std::vector<StringRef>{StringRef::from_lit("alpha,bravo,charlie")} ==
+      util::split_str(StringRef::from_lit("alpha,bravo,charlie"), ',', 1));
+}
+
 } // namespace shrpx

@@ -74,6 +74,8 @@ constexpr size_t NGHTTP2_MAX_UINT64_DIGITS = str_size("18446744073709551615");
 
 namespace util {
 
+extern const char UPPER_XDIGITS[];
+
 inline bool is_alpha(const char c) {
   return ('A' <= c && c <= 'Z') || ('a' <= c && c <= 'z');
 }
@@ -136,9 +138,51 @@ StringRef percent_decode(BlockAllocator &balloc, const StringRef &src);
 // Percent encode |target| if character is not in token or '%'.
 StringRef percent_encode_token(BlockAllocator &balloc, const StringRef &target);
 
+template <typename OutputIt>
+OutputIt percent_encode_token(OutputIt it, const StringRef &target) {
+  for (auto first = std::begin(target); first != std::end(target); ++first) {
+    uint8_t c = *first;
+
+    if (c != '%' && in_token(c)) {
+      *it++ = c;
+      continue;
+    }
+
+    *it++ = '%';
+    *it++ = UPPER_XDIGITS[c >> 4];
+    *it++ = UPPER_XDIGITS[(c & 0x0f)];
+  }
+
+  return it;
+}
+
+// Returns the number of bytes written by percent_encode_token with
+// the same |target| parameter.  The return value does not include a
+// terminal NUL byte.
+size_t percent_encode_tokenlen(const StringRef &target);
+
 // Returns quotedString version of |target|.  Currently, this function
 // just replace '"' with '\"'.
 StringRef quote_string(BlockAllocator &balloc, const StringRef &target);
+
+template <typename OutputIt>
+OutputIt quote_string(OutputIt it, const StringRef &target) {
+  for (auto c : target) {
+    if (c == '"') {
+      *it++ = '\\';
+      *it++ = '"';
+    } else {
+      *it++ = c;
+    }
+  }
+
+  return it;
+}
+
+// Returns the number of bytes written by quote_string with the same
+// |target| parameter.  The return value does not include a terminal
+// NUL byte.
+size_t quote_stringlen(const StringRef &target);
 
 std::string format_hex(const unsigned char *s, size_t len);
 
@@ -443,8 +487,6 @@ template <typename T> std::string utos_funit(T n) {
   return dtos(static_cast<double>(n) / (1 << b)) + u;
 }
 
-extern const char UPPER_XDIGITS[];
-
 template <typename T> std::string utox(T n) {
   std::string res;
   if (n == 0) {
@@ -563,6 +605,11 @@ std::vector<std::string> parse_config_str_list(const StringRef &s,
 // delimited by |delim|.  The any white spaces around substring are
 // treated as a part of substring.
 std::vector<StringRef> split_str(const StringRef &s, char delim);
+
+// Behaves like split_str, but this variant splits at most |n| - 1
+// times and returns at most |n| sub-strings.  If |n| is zero, it
+// falls back to split_str.
+std::vector<StringRef> split_str(const StringRef &s, char delim, size_t n);
 
 // Writes given time |tp| in Common Log format (e.g.,
 // 03/Jul/2014:00:19:38 +0900) in buffer pointed by |out|.  The buffer

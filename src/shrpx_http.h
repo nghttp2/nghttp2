@@ -79,6 +79,10 @@ StringRef create_affinity_cookie(BlockAllocator &balloc, const StringRef &name,
 bool require_cookie_secure_attribute(SessionAffinityCookieSecure secure,
                                      const StringRef &scheme);
 
+// Returns RFC 7838 alt-svc header field value.
+StringRef create_altsvc_header_value(BlockAllocator &balloc,
+                                     const std::vector<AltSvc> &altsvcs);
+
 } // namespace http
 
 } // namespace shrpx

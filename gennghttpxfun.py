@@ -179,6 +179,7 @@ OPTIONS = [
     "no-strip-incoming-early-data",
     "bpf-program-file",
     "no-bpf",
+    "http2-altsvc",
 ]
 
 LOGVARS = [

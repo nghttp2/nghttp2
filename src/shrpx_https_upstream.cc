@@ -1055,18 +1055,6 @@ std::unique_ptr<Downstream> HttpsUpstream::pop_downstream() {
   return std::unique_ptr<Downstream>(downstream_.release());
 }
 
-namespace {
-void write_altsvc(DefaultMemchunks *buf, BlockAllocator &balloc,
-                  const AltSvc &altsvc) {
-  buf->append(util::percent_encode_token(balloc, altsvc.protocol_id));
-  buf->append("=\"");
-  buf->append(util::quote_string(balloc, altsvc.host));
-  buf->append(':');
-  buf->append(altsvc.service);
-  buf->append('"');
-}
-} // namespace
-
 int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
   if (LOG_ENABLED(INFO)) {
     if (downstream->get_non_final_response()) {
@@ -1225,13 +1213,7 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
     // We won't change or alter alt-svc from backend for now
     if (!httpconf.altsvcs.empty()) {
       buf->append("Alt-Svc: ");
-
-      auto &altsvcs = httpconf.altsvcs;
-      write_altsvc(buf, downstream->get_block_allocator(), altsvcs[0]);
-      for (size_t i = 1; i < altsvcs.size(); ++i) {
-        buf->append(", ");
-        write_altsvc(buf, downstream->get_block_allocator(), altsvcs[i]);
-      }
+      buf->append(httpconf.altsvc_header_value);
       buf->append("\r\n");
     }
   }
