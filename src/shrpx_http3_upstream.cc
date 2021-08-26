@@ -403,7 +403,9 @@ int stream_stop_sending(ngtcp2_conn *conn, int64_t stream_id,
 
 int Http3Upstream::init(const UpstreamAddr *faddr, const Address &remote_addr,
                         const Address &local_addr,
-                        const ngtcp2_pkt_hd &initial_hd) {
+                        const ngtcp2_pkt_hd &initial_hd,
+                        const ngtcp2_cid *odcid, const uint8_t *token,
+                        size_t tokenlen) {
   int rv;
 
   auto worker = handler_->get_worker();
@@ -470,6 +472,7 @@ int Http3Upstream::init(const UpstreamAddr *faddr, const Address &remote_addr,
   settings.max_stream_window = 6_m;
   settings.max_udp_payload_size = SHRPX_MAX_UDP_PAYLOAD_SIZE;
   settings.rand_ctx.native_handle = &worker->get_randgen();
+  settings.token = ngtcp2_vec{const_cast<uint8_t *>(token), tokenlen};
 
   ngtcp2_transport_params params;
   ngtcp2_transport_params_default(&params);
@@ -480,7 +483,14 @@ int Http3Upstream::init(const UpstreamAddr *faddr, const Address &remote_addr,
   params.initial_max_stream_data_uni = 256_k;
   params.max_idle_timeout =
       static_cast<ngtcp2_tstamp>(quicconf.timeout.idle * NGTCP2_SECONDS);
-  params.original_dcid = initial_hd.dcid;
+
+  if (odcid) {
+    params.original_dcid = *odcid;
+    params.retry_scid = initial_hd.dcid;
+    params.retry_scid_present = 1;
+  } else {
+    params.original_dcid = initial_hd.dcid;
+  }
 
   auto &quic_secret = worker->get_quic_secret();
   auto &stateless_reset_secret = quic_secret->stateless_reset_secret;

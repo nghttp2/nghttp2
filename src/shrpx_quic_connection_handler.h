@@ -50,6 +50,14 @@ public:
   int handle_packet(const UpstreamAddr *faddr, const Address &remote_addr,
                     const Address &local_addr, const uint8_t *data,
                     size_t datalen);
+  // Send Retry packet.  |ini_dcid| is the destination Connection ID
+  // which appeared in Client Initial packet and its length is
+  // |dcidlen|.  |ini_scid| is the source Connection ID which appeared
+  // in Client Initial packet and its length is |scidlen|.
+  int send_retry(const UpstreamAddr *faddr, uint32_t version,
+                 const uint8_t *ini_dcid, size_t ini_dcidlen,
+                 const uint8_t *ini_scid, size_t ini_scidlen,
+                 const Address &remote_addr, const Address &local_addr);
   int send_version_negotiation(const UpstreamAddr *faddr, uint32_t version,
                                const uint8_t *dcid, size_t dcidlen,
                                const uint8_t *scid, size_t scidlen,
@@ -61,7 +69,8 @@ public:
   ClientHandler *handle_new_connection(const UpstreamAddr *faddr,
                                        const Address &remote_addr,
                                        const Address &local_addr,
-                                       const ngtcp2_pkt_hd &hd);
+                                       const ngtcp2_pkt_hd &hd,
+                                       const ngtcp2_cid *odcid);
   void add_connection_id(const ngtcp2_cid *cid, ClientHandler *handler);
   void remove_connection_id(const ngtcp2_cid *cid);
 

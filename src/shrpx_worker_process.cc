@@ -496,6 +496,12 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
     }
   }
 
+#ifdef ENABLE_HTTP3
+  if (conn_handler->create_quic_secret() != 0) {
+    return -1;
+  }
+#endif // ENABLE_HTTP3
+
   if (config->single_thread) {
     rv = conn_handler->create_single_worker();
     if (rv != 0) {

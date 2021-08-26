@@ -27,6 +27,7 @@
 #include <openssl/rand.h>
 
 #include <ngtcp2/ngtcp2.h>
+#include <ngtcp2/ngtcp2_crypto.h>
 
 #include "shrpx_worker.h"
 #include "shrpx_client_handler.h"
@@ -83,12 +84,30 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
     // new connection
 
     ngtcp2_pkt_hd hd;
+    ngtcp2_cid odcid, *podcid = nullptr;
 
     switch (ngtcp2_accept(&hd, data, datalen)) {
-    case 0:
+    case 0: {
+      if (hd.token.len == 0) {
+        break;
+      }
+
+      auto &quic_secret = worker_->get_quic_secret();
+      auto &secret = quic_secret->token_secret;
+
+      if (hd.token.base[0] == SHRPX_QUIC_RETRY_TOKEN_MAGIC) {
+        if (verify_retry_token(&odcid, hd.token.base, hd.token.len, &hd.dcid,
+                               &remote_addr.su.sa, remote_addr.len,
+                               secret.data()) == 0) {
+          podcid = &odcid;
+        }
+      }
+
       break;
+    }
     case NGTCP2_ERR_RETRY:
-      // TODO Send retry
+      send_retry(faddr, version, dcid, dcidlen, scid, scidlen, remote_addr,
+                 local_addr);
       return 0;
     case NGTCP2_ERR_VERSION_NEGOTIATION:
       send_version_negotiation(faddr, version, scid, scidlen, dcid, dcidlen,
@@ -120,7 +139,7 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
       return 0;
     }
 
-    handler = handle_new_connection(faddr, remote_addr, local_addr, hd);
+    handler = handle_new_connection(faddr, remote_addr, local_addr, hd, podcid);
     if (handler == nullptr) {
       return 0;
     }
@@ -140,7 +159,8 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
 
 ClientHandler *QUICConnectionHandler::handle_new_connection(
     const UpstreamAddr *faddr, const Address &remote_addr,
-    const Address &local_addr, const ngtcp2_pkt_hd &hd) {
+    const Address &local_addr, const ngtcp2_pkt_hd &hd,
+    const ngtcp2_cid *odcid) {
   std::array<char, NI_MAXHOST> host;
   std::array<char, NI_MAXSERV> service;
   int rv;
@@ -178,8 +198,17 @@ ClientHandler *QUICConnectionHandler::handle_new_connection(
       worker_, faddr->fd, ssl, StringRef{host.data()},
       StringRef{service.data()}, remote_addr.su.sa.sa_family, faddr);
 
+  const uint8_t *token = nullptr;
+  size_t tokenlen = 0;
+
+  if (odcid) {
+    token = hd.token.base;
+    tokenlen = hd.token.len;
+  }
+
   auto upstream = std::make_unique<Http3Upstream>(handler.get());
-  if (upstream->init(faddr, remote_addr, local_addr, hd) != 0) {
+  if (upstream->init(faddr, remote_addr, local_addr, hd, odcid, token,
+                     tokenlen) != 0) {
     return nullptr;
   }
 
@@ -214,6 +243,58 @@ uint32_t generate_reserved_version(const Address &addr, uint32_t version) {
   return h;
 }
 } // namespace
+
+int QUICConnectionHandler::send_retry(
+    const UpstreamAddr *faddr, uint32_t version, const uint8_t *initial_dcid,
+    size_t initial_dcidlen, const uint8_t *initial_scid, size_t initial_scidlen,
+    const Address &remote_addr, const Address &local_addr) {
+  std::array<char, NI_MAXHOST> host;
+  std::array<char, NI_MAXSERV> port;
+
+  if (getnameinfo(&remote_addr.su.sa, remote_addr.len, host.data(), host.size(),
+                  port.data(), port.size(),
+                  NI_NUMERICHOST | NI_NUMERICSERV) != 0) {
+    return -1;
+  }
+
+  ngtcp2_cid retry_scid;
+
+  retry_scid.datalen = SHRPX_QUIC_SCIDLEN;
+  // We do not steer packet based on Retry CID.
+  if (RAND_bytes(retry_scid.data, retry_scid.datalen) != 1) {
+    return -1;
+  }
+
+  std::array<uint8_t, SHRPX_QUIC_MAX_RETRY_TOKENLEN> token;
+  size_t tokenlen = token.size();
+
+  ngtcp2_cid ini_dcid, ini_scid;
+  ngtcp2_cid_init(&ini_dcid, initial_dcid, initial_dcidlen);
+  ngtcp2_cid_init(&ini_scid, initial_scid, initial_scidlen);
+
+  auto &quic_secret = worker_->get_quic_secret();
+  auto &secret = quic_secret->token_secret;
+
+  if (generate_retry_token(token.data(), tokenlen, &remote_addr.su.sa,
+                           remote_addr.len, &retry_scid, &ini_dcid,
+                           secret.data()) != 0) {
+    return -1;
+  }
+
+  std::array<uint8_t, 1280> buf;
+
+  auto nwrite =
+      ngtcp2_crypto_write_retry(buf.data(), buf.size(), version, &ini_scid,
+                                &retry_scid, &ini_dcid, token.data(), tokenlen);
+  if (nwrite < 0) {
+    LOG(ERROR) << "ngtcp2_crypto_write_retry: " << ngtcp2_strerror(nwrite);
+    return -1;
+  }
+
+  return quic_send_packet(faddr, &remote_addr.su.sa, remote_addr.len,
+                          &local_addr.su.sa, local_addr.len, buf.data(), nwrite,
+                          0);
+}
 
 int QUICConnectionHandler::send_version_negotiation(
     const UpstreamAddr *faddr, uint32_t version, const uint8_t *dcid,
