@@ -302,6 +302,7 @@ int Client::quic_init(const sockaddr *local_addr, socklen_t local_addrlen,
     SSL_set_app_data(ssl, this);
     SSL_set_connect_state(ssl);
     SSL_set_quic_method(ssl, &quic_method);
+    SSL_set_quic_use_legacy_codepoint(ssl, 0);
   }
 
   switch (remote_addr->sa_family) {
