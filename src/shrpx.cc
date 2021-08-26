@@ -1554,14 +1554,6 @@ void fill_default_config(Config *config) {
   {
     quicconf.timeout.idle = 30_s;
 
-    auto &stateless_resetconf = quicconf.stateless_reset;
-    // TODO Find better place to do this and error handling.
-    if (RAND_bytes(stateless_resetconf.secret.data(),
-                   stateless_resetconf.secret.size()) != 1) {
-      LOG(FATAL) << "Unable to generate stateless reset secret";
-      exit(EXIT_FAILURE);
-    }
-
     auto &bpfconf = quicconf.bpf;
     bpfconf.prog_file = StringRef::from_lit(PKGLIBDIR "/reuseport_kern.o");
   }

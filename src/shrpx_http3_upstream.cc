@@ -168,9 +168,8 @@ int get_new_connection_id(ngtcp2_conn *conn, ngtcp2_cid *cid, uint8_t *token,
     return NGTCP2_ERR_CALLBACK_FAILURE;
   }
 
-  auto config = get_config();
-  auto &quicconf = config->quic;
-  auto &secret = quicconf.stateless_reset.secret;
+  auto &quic_secret = worker->get_quic_secret();
+  auto &secret = quic_secret->stateless_reset_secret;
 
   if (generate_quic_stateless_reset_token(token, cid, secret.data(),
                                           secret.size()) != 0) {
@@ -483,11 +482,12 @@ int Http3Upstream::init(const UpstreamAddr *faddr, const Address &remote_addr,
       static_cast<ngtcp2_tstamp>(quicconf.timeout.idle * NGTCP2_SECONDS);
   params.original_dcid = initial_hd.dcid;
 
-  auto &stateless_resetconf = quicconf.stateless_reset;
+  auto &quic_secret = worker->get_quic_secret();
+  auto &stateless_reset_secret = quic_secret->stateless_reset_secret;
 
   rv = generate_quic_stateless_reset_token(params.stateless_reset_token, &scid,
-                                           stateless_resetconf.secret.data(),
-                                           stateless_resetconf.secret.size());
+                                           stateless_reset_secret.data(),
+                                           stateless_reset_secret.size());
   if (rv != 0) {
     LOG(ERROR) << "generate_quic_stateless_reset_token failed";
     return -1;

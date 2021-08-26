@@ -254,13 +254,11 @@ int QUICConnectionHandler::send_stateless_reset(const UpstreamAddr *faddr,
 
   ngtcp2_cid_init(&cid, dcid, dcidlen);
 
-  auto config = get_config();
-  auto &quicconf = config->quic;
-  auto &stateless_resetconf = quicconf.stateless_reset;
+  auto &quic_secret = worker_->get_quic_secret();
+  auto &secret = quic_secret->stateless_reset_secret;
 
-  rv = generate_quic_stateless_reset_token(token.data(), &cid,
-                                           stateless_resetconf.secret.data(),
-                                           stateless_resetconf.secret.size());
+  rv = generate_quic_stateless_reset_token(token.data(), &cid, secret.data(),
+                                           secret.size());
   if (rv != 0) {
     return -1;
   }

@@ -954,6 +954,14 @@ int Worker::create_quic_server_socket(UpstreamAddr &faddr) {
 }
 
 const uint8_t *Worker::get_cid_prefix() const { return cid_prefix_.data(); }
+
+void Worker::set_quic_secret(const std::shared_ptr<QUICSecret> &secret) {
+  quic_secret_ = secret;
+}
+
+const std::shared_ptr<QUICSecret> &Worker::get_quic_secret() const {
+  return quic_secret_;
+}
 #endif // ENABLE_HTTP3
 
 namespace {

@@ -180,4 +180,12 @@ int generate_quic_stateless_reset_token(uint8_t *token, const ngtcp2_cid *cid,
   return 0;
 }
 
+int generate_quic_stateless_reset_secret(uint8_t *secret) {
+  return RAND_bytes(secret, SHRPX_QUIC_STATELESS_RESET_SECRETLEN) == 1;
+}
+
+int generate_quic_token_secret(uint8_t *secret) {
+  return RAND_bytes(secret, SHRPX_QUIC_TOKEN_SECRETLEN) == 1;
+}
+
 } // namespace shrpx

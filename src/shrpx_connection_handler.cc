@@ -291,6 +291,8 @@ int ConnectionHandler::create_single_worker() {
 #endif // HAVE_MRUBY
 
 #ifdef ENABLE_HTTP3
+  single_worker_->set_quic_secret(quic_secret_);
+
   if (single_worker_->setup_quic_server_socket() != 0) {
     return -1;
   }
@@ -394,6 +396,8 @@ int ConnectionHandler::create_worker_thread(size_t num) {
 #  endif // HAVE_MRUBY
 
 #  ifdef ENABLE_HTTP3
+    worker->set_quic_secret(quic_secret_);
+
     if ((!apiconf.enabled || i != 0) &&
         worker->setup_quic_server_socket() != 0) {
       return -1;
@@ -1033,6 +1037,27 @@ int ConnectionHandler::forward_quic_packet(const UpstreamAddr *faddr,
   }
 
   return -1;
+}
+
+int ConnectionHandler::create_quic_secret() {
+  auto quic_secret = std::make_shared<QUICSecret>();
+
+  if (generate_quic_stateless_reset_secret(
+          quic_secret->stateless_reset_secret.data()) != 0) {
+    LOG(ERROR) << "Failed to generate QUIC Stateless Reset secret";
+
+    return -1;
+  }
+
+  if (generate_quic_token_secret(quic_secret->token_secret.data()) != 0) {
+    LOG(ERROR) << "Failed to generate QUIC token secret";
+
+    return -1;
+  }
+
+  quic_secret_ = std::move(quic_secret);
+
+  return 0;
 }
 
 #  ifdef HAVE_LIBBPF

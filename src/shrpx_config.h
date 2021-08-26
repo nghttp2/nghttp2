@@ -51,6 +51,9 @@
 #include <nghttp2/nghttp2.h>
 
 #include "shrpx_router.h"
+#if ENABLE_HTTP3
+#  include "shrpx_quic.h"
+#endif // ENABLE_HTTP3
 #include "template.h"
 #include "http2.h"
 #include "network.h"
@@ -572,6 +575,14 @@ struct TLSCertificate {
   std::vector<uint8_t> sct_data;
 };
 
+#ifdef ENABLE_HTTP3
+struct QUICSecret {
+  std::array<uint8_t, SHRPX_QUIC_STATELESS_RESET_SECRETLEN>
+      stateless_reset_secret;
+  std::array<uint8_t, SHRPX_QUIC_TOKEN_SECRETLEN> token_secret;
+};
+#endif // ENABLE_HTTP3
+
 struct HttpProxy {
   Address addr;
   // host in http proxy URI
@@ -711,9 +722,6 @@ struct TLSConfig {
 
 #ifdef ENABLE_HTTP3
 struct QUICConfig {
-  struct {
-    std::array<uint8_t, 32> secret;
-  } stateless_reset;
   struct {
     ev_tstamp idle;
   } timeout;
