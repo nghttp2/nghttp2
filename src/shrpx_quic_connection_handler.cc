@@ -68,7 +68,7 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
                                      data, datalen, SHRPX_QUIC_SCIDLEN);
   if (rv != 0) {
     if (rv == 1) {
-      send_version_negotiation(faddr, version, scid, scidlen, dcid, dcidlen,
+      send_version_negotiation(faddr, version, dcid, dcidlen, scid, scidlen,
                                remote_addr, local_addr);
     }
 
@@ -110,7 +110,7 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
                  local_addr);
       return 0;
     case NGTCP2_ERR_VERSION_NEGOTIATION:
-      send_version_negotiation(faddr, version, scid, scidlen, dcid, dcidlen,
+      send_version_negotiation(faddr, version, dcid, dcidlen, scid, scidlen,
                                remote_addr, local_addr);
       return 0;
     default:
@@ -245,8 +245,8 @@ uint32_t generate_reserved_version(const Address &addr, uint32_t version) {
 } // namespace
 
 int QUICConnectionHandler::send_retry(
-    const UpstreamAddr *faddr, uint32_t version, const uint8_t *initial_dcid,
-    size_t initial_dcidlen, const uint8_t *initial_scid, size_t initial_scidlen,
+    const UpstreamAddr *faddr, uint32_t version, const uint8_t *ini_dcid,
+    size_t ini_dcidlen, const uint8_t *ini_scid, size_t ini_scidlen,
     const Address &remote_addr, const Address &local_addr) {
   std::array<char, NI_MAXHOST> host;
   std::array<char, NI_MAXSERV> port;
@@ -268,15 +268,15 @@ int QUICConnectionHandler::send_retry(
   std::array<uint8_t, SHRPX_QUIC_MAX_RETRY_TOKENLEN> token;
   size_t tokenlen = token.size();
 
-  ngtcp2_cid ini_dcid, ini_scid;
-  ngtcp2_cid_init(&ini_dcid, initial_dcid, initial_dcidlen);
-  ngtcp2_cid_init(&ini_scid, initial_scid, initial_scidlen);
+  ngtcp2_cid idcid, iscid;
+  ngtcp2_cid_init(&idcid, ini_dcid, ini_dcidlen);
+  ngtcp2_cid_init(&iscid, ini_scid, ini_scidlen);
 
   auto &quic_secret = worker_->get_quic_secret();
   auto &secret = quic_secret->token_secret;
 
   if (generate_retry_token(token.data(), tokenlen, &remote_addr.su.sa,
-                           remote_addr.len, &retry_scid, &ini_dcid,
+                           remote_addr.len, &retry_scid, &idcid,
                            secret.data()) != 0) {
     return -1;
   }
@@ -284,8 +284,8 @@ int QUICConnectionHandler::send_retry(
   std::array<uint8_t, 1280> buf;
 
   auto nwrite =
-      ngtcp2_crypto_write_retry(buf.data(), buf.size(), version, &ini_scid,
-                                &retry_scid, &ini_dcid, token.data(), tokenlen);
+      ngtcp2_crypto_write_retry(buf.data(), buf.size(), version, &iscid,
+                                &retry_scid, &idcid, token.data(), tokenlen);
   if (nwrite < 0) {
     LOG(ERROR) << "ngtcp2_crypto_write_retry: " << ngtcp2_strerror(nwrite);
     return -1;
@@ -297,8 +297,8 @@ int QUICConnectionHandler::send_retry(
 }
 
 int QUICConnectionHandler::send_version_negotiation(
-    const UpstreamAddr *faddr, uint32_t version, const uint8_t *dcid,
-    size_t dcidlen, const uint8_t *scid, size_t scidlen,
+    const UpstreamAddr *faddr, uint32_t version, const uint8_t *ini_dcid,
+    size_t ini_dcidlen, const uint8_t *ini_scid, size_t ini_scidlen,
     const Address &remote_addr, const Address &local_addr) {
   std::array<uint32_t, 2> sv;
 
@@ -311,8 +311,8 @@ int QUICConnectionHandler::send_version_negotiation(
   util::random_bytes(&rand_byte, &rand_byte + 1, worker_->get_randgen());
 
   auto nwrite = ngtcp2_pkt_write_version_negotiation(
-      buf.data(), buf.size(), rand_byte, dcid, dcidlen, scid, scidlen,
-      sv.data(), sv.size());
+      buf.data(), buf.size(), rand_byte, ini_scid, ini_scidlen, ini_dcid,
+      ini_dcidlen, sv.data(), sv.size());
   if (nwrite < 0) {
     LOG(ERROR) << "ngtcp2_pkt_write_version_negotiation: "
                << ngtcp2_strerror(nwrite);

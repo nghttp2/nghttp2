@@ -58,9 +58,14 @@ public:
                  const uint8_t *ini_dcid, size_t ini_dcidlen,
                  const uint8_t *ini_scid, size_t ini_scidlen,
                  const Address &remote_addr, const Address &local_addr);
+  // Send Version Negotiation packet.  |ini_dcid| is the destination
+  // Connection ID which appeared in Client Initial packet and its
+  // length is |dcidlen|.  |ini_scid| is the source Connection ID
+  // which appeared in Client Initial packet and its length is
+  // |scidlen|.
   int send_version_negotiation(const UpstreamAddr *faddr, uint32_t version,
-                               const uint8_t *dcid, size_t dcidlen,
-                               const uint8_t *scid, size_t scidlen,
+                               const uint8_t *ini_dcid, size_t ini_dcidlen,
+                               const uint8_t *ini_scid, size_t ini_scidlen,
                                const Address &remote_addr,
                                const Address &local_addr);
   int send_stateless_reset(const UpstreamAddr *faddr, const uint8_t *dcid,
