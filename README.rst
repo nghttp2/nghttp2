@@ -153,6 +153,12 @@ following libraries are required:
 * `ngtcp2 <https://github.com/ngtcp2/ngtcp2>`_
 * `nghttp3 <https://github.com/ngtcp2/nghttp3>`_
 
+In order to build optional eBPF program to direct an incoming QUIC UDP
+datagram to a correct socket for nghttpx, the following libraries are
+required:
+
+* libbpf-dev
+
 Compiling libnghttp2 C source code requires a C99 compiler.  gcc 4.8
 is known to be adequate.  In order to compile the C++ source code, gcc
 >= 6.0 or clang >= 6.0 is required.  C++ source code requires C++14
