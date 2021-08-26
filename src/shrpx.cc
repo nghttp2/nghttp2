@@ -2878,7 +2878,8 @@ Scripting:
 QUIC:
   --bpf-program-file=<PATH>
               Specify a path to  eBPF program file reuseport_kern.o to
-              steer an incoming QUIC UDP datagram to a correct socket.
+              direct  an  incoming  QUIC  UDP datagram  to  a  correct
+              socket.
               Default: )"
       << config->quic.bpf.prog_file << R"(
   --no-bpf    Disable eBPF.
