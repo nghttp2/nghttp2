@@ -2694,6 +2694,11 @@ int parse_config(Config *config, int optid, const StringRef &opt,
 #endif // !ENABLE_HTTP3
 
     if (util::istarts_with(optarg, SHRPX_UNIX_PATH_PREFIX)) {
+      if (addr.quic) {
+        LOG(ERROR) << "frontend: quic cannot be used on UNIX domain socket";
+        return -1;
+      }
+
       auto path = std::begin(optarg) + SHRPX_UNIX_PATH_PREFIX.size();
       addr.host = make_string_ref(config->balloc, StringRef{path, addr_end});
       addr.host_unix = true;
