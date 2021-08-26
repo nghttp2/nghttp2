@@ -78,7 +78,7 @@ jobs:
     - name: Build quictls/openssl
       if: matrix.http3 == 'http3'
       run: |
-        git clone --depth 1 -b OpenSSL_1_1_1k+quic https://github.com/quictls/openssl
+        git clone --depth 1 -b OpenSSL_1_1_1l+quic https://github.com/quictls/openssl
         cd openssl
         ./config enable-tls1_3 --prefix=$PWD/build
         make -j$(nproc)
