@@ -1689,6 +1689,11 @@ int option_lookup_token(const char *name, size_t namelen) {
         return SHRPX_OPTID_ALTSVC;
       }
       break;
+    case 'f':
+      if (util::strieq_l("no-bp", name, 5)) {
+        return SHRPX_OPTID_NO_BPF;
+      }
+      break;
     case 'n':
       if (util::strieq_l("daemo", name, 5)) {
         return SHRPX_OPTID_DAEMON;
@@ -1981,6 +1986,9 @@ int option_lookup_token(const char *name, size_t namelen) {
   case 16:
     switch (name[15]) {
     case 'e':
+      if (util::strieq_l("bpf-program-fil", name, 15)) {
+        return SHRPX_OPTID_BPF_PROGRAM_FILE;
+      }
       if (util::strieq_l("certificate-fil", name, 15)) {
         return SHRPX_OPTID_CERTIFICATE_FILE;
       }
@@ -3814,6 +3822,18 @@ int parse_config(Config *config, int optid, const StringRef &opt,
   }
   case SHRPX_OPTID_NO_STRIP_INCOMING_EARLY_DATA:
     config->http.early_data.strip_incoming = !util::strieq_l("yes", optarg);
+
+    return 0;
+  case SHRPX_OPTID_BPF_PROGRAM_FILE:
+#ifdef ENABLE_HTTP3
+    config->quic.bpf.prog_file = make_string_ref(config->balloc, optarg);
+#endif // ENABLE_HTTP3
+
+    return 0;
+  case SHRPX_OPTID_NO_BPF:
+#ifdef ENABLE_HTTP3
+    config->quic.bpf.disabled = util::strieq_l("yes", optarg);
+#endif // ENABLE_HTTP3
 
     return 0;
   case SHRPX_OPTID_CONF:

@@ -1561,6 +1561,9 @@ void fill_default_config(Config *config) {
       LOG(FATAL) << "Unable to generate stateless reset secret";
       exit(EXIT_FAILURE);
     }
+
+    auto &bpfconf = quicconf.bpf;
+    bpfconf.prog_file = StringRef::from_lit(PKGLIBDIR "/reuseport_kern.o");
   }
 #endif // ENABLE_HTTP3
 
@@ -2870,7 +2873,21 @@ Scripting:
               Ignore mruby compile error  for per-pattern mruby script
               file.  If error  occurred, it is treated as  if no mruby
               file were specified for the pattern.
+)";
 
+#ifdef ENABLE_HTTP3
+  out << R"(
+QUIC:
+  --bpf-program-file=<PATH>
+              Specify a path to  eBPF program file reuseport_kern.o to
+              steer an incoming QUIC UDP datagram to a correct socket.
+              Default: )"
+      << config->quic.bpf.prog_file << R"(
+  --no-bpf    Disable eBPF.
+)";
+#endif // ENABLE_HTTP3
+
+  out << R"(
 Misc:
   --conf=<PATH>
               Load  configuration  from   <PATH>.   Please  note  that
@@ -3560,6 +3577,8 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_NO_HTTP2_CIPHER_BLOCK_LIST.c_str(), no_argument, &flag, 167},
         {SHRPX_OPT_CLIENT_NO_HTTP2_CIPHER_BLOCK_LIST.c_str(), no_argument,
          &flag, 168},
+        {SHRPX_OPT_BPF_PROGRAM_FILE.c_str(), required_argument, &flag, 169},
+        {SHRPX_OPT_NO_BPF.c_str(), no_argument, &flag, 170},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -4362,6 +4381,14 @@ int main(int argc, char **argv) {
         // --client-no-http2-cipher-block-list
         cmdcfgs.emplace_back(SHRPX_OPT_CLIENT_NO_HTTP2_CIPHER_BLOCK_LIST,
                              StringRef::from_lit("yes"));
+        break;
+      case 169:
+        // --bpf-program-file
+        cmdcfgs.emplace_back(SHRPX_OPT_BPF_PROGRAM_FILE, StringRef{optarg});
+        break;
+      case 170:
+        // --no-bpf
+        cmdcfgs.emplace_back(SHRPX_OPT_NO_BPF, StringRef::from_lit("yes"));
         break;
       default:
         break;

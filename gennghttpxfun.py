@@ -177,6 +177,8 @@ OPTIONS = [
     "tls13-ciphers",
     "tls13-client-ciphers",
     "no-strip-incoming-early-data",
+    "bpf-program-file",
+    "no-bpf",
 ]
 
 LOGVARS = [

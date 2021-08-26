@@ -360,6 +360,9 @@ constexpr auto SHRPX_OPT_TLS13_CLIENT_CIPHERS =
     StringRef::from_lit("tls13-client-ciphers");
 constexpr auto SHRPX_OPT_NO_STRIP_INCOMING_EARLY_DATA =
     StringRef::from_lit("no-strip-incoming-early-data");
+constexpr auto SHRPX_OPT_BPF_PROGRAM_FILE =
+    StringRef::from_lit("bpf-program-file");
+constexpr auto SHRPX_OPT_NO_BPF = StringRef::from_lit("no-bpf");
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
@@ -717,6 +720,10 @@ struct QUICConfig {
   struct {
     bool log;
   } debug;
+  struct {
+    StringRef prog_file;
+    bool disabled;
+  } bpf;
 };
 #endif // ENABLE_HTTP3
 
@@ -1098,6 +1105,7 @@ enum {
   SHRPX_OPTID_BACKEND_TLS_SNI_FIELD,
   SHRPX_OPTID_BACKEND_WRITE_TIMEOUT,
   SHRPX_OPTID_BACKLOG,
+  SHRPX_OPTID_BPF_PROGRAM_FILE,
   SHRPX_OPTID_CACERT,
   SHRPX_OPTID_CERTIFICATE_FILE,
   SHRPX_OPTID_CIPHERS,
@@ -1159,6 +1167,7 @@ enum {
   SHRPX_OPTID_MAX_RESPONSE_HEADER_FIELDS,
   SHRPX_OPTID_MRUBY_FILE,
   SHRPX_OPTID_NO_ADD_X_FORWARDED_PROTO,
+  SHRPX_OPTID_NO_BPF,
   SHRPX_OPTID_NO_HOST_REWRITE,
   SHRPX_OPTID_NO_HTTP2_CIPHER_BLACK_LIST,
   SHRPX_OPTID_NO_HTTP2_CIPHER_BLOCK_LIST,

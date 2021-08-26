@@ -35,6 +35,7 @@ AM_CFLAGS = $(WARNCFLAGS)
 AM_CXXFLAGS = $(WARNCXXFLAGS) $(CXX1XCXXFLAGS)
 AM_CPPFLAGS = \
 	-DPKGDATADIR='"$(pkgdatadir)"' \
+	-DPKGLIBDIR='"$(pkglibdir)"' \
 	-I$(top_srcdir)/lib/includes \
 	-I$(top_builddir)/lib/includes \
 	-I$(top_srcdir)/lib \

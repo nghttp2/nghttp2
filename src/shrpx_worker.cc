@@ -644,9 +644,11 @@ DNSTracker *Worker::get_dns_tracker() { return &dns_tracker_; }
 #  ifdef HAVE_LIBBPF
 bool Worker::should_attach_bpf() const {
   auto config = get_config();
+  auto &quicconf = config->quic;
   auto &apiconf = config->api;
 
-  if (config->single_thread || config->num_worker == 1) {
+  if (quicconf.bpf.disabled || config->single_thread ||
+      config->num_worker == 1) {
     return false;
   }
 
@@ -659,8 +661,10 @@ bool Worker::should_attach_bpf() const {
 
 bool Worker::should_update_bpf_map() const {
   auto config = get_config();
+  auto &quicconf = config->quic;
 
-  return !config->single_thread && config->num_worker > 1;
+  return !quicconf.bpf.disabled && !config->single_thread &&
+         config->num_worker > 1;
 }
 
 uint32_t Worker::compute_sk_index() const {
@@ -819,11 +823,15 @@ int Worker::create_quic_server_socket(UpstreamAddr &faddr) {
     }
 
 #  ifdef HAVE_LIBBPF
+    auto config = get_config();
+
     auto &quic_bpf_refs = conn_handler_->get_quic_bpf_refs();
     int err;
 
     if (should_attach_bpf()) {
-      auto obj = bpf_object__open_file("bpf/reuseport_kern.o", nullptr);
+      auto &bpfconf = config->quic.bpf;
+
+      auto obj = bpf_object__open_file(bpfconf.prog_file.c_str(), nullptr);
       err = libbpf_get_error(obj);
       if (err) {
         LOG(FATAL) << "Failed to open bpf object file: "
@@ -883,7 +891,6 @@ int Worker::create_quic_server_socket(UpstreamAddr &faddr) {
       }
 
       constexpr uint32_t zero = 0;
-      auto config = get_config();
       uint32_t num_socks = config->num_worker;
 
       if (bpf_map_update_elem(bpf_map__fd(sk_info), &zero, &num_socks,
