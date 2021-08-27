@@ -2891,7 +2891,7 @@ QUIC:
   --frontend-quic-idle-timeout=<DURATION>
               Specify an idle timeout for QUIC connection.
               Default: )"
-      << config->quic.upstream.timeout.idle << R"(
+      << util::duration_str(config->quic.upstream.timeout.idle) << R"(
   --frontend-quic-debug-log
               Output QUIC debug log to /dev/stderr.
   --bpf-program-file=<PATH>
