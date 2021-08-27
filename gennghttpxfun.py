@@ -182,6 +182,7 @@ OPTIONS = [
     "http2-altsvc",
     "frontend-http3-read-timeout",
     "frontend-quic-idle-timeout",
+    "frontend-quic-debug-log",
 ]
 
 LOGVARS = [

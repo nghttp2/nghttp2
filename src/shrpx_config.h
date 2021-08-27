@@ -371,6 +371,8 @@ constexpr auto SHRPX_OPT_FRONTEND_HTTP3_READ_TIMEOUT =
     StringRef::from_lit("frontend-http3-read-timeout");
 constexpr auto SHRPX_OPT_FRONTEND_QUIC_IDLE_TIMEOUT =
     StringRef::from_lit("frontend-quic-idle-timeout");
+constexpr auto SHRPX_OPT_FRONTEND_QUIC_DEBUG_LOG =
+    StringRef::from_lit("frontend-quic-debug-log");
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
@@ -1171,6 +1173,7 @@ enum {
   SHRPX_OPTID_FRONTEND_KEEP_ALIVE_TIMEOUT,
   SHRPX_OPTID_FRONTEND_MAX_REQUESTS,
   SHRPX_OPTID_FRONTEND_NO_TLS,
+  SHRPX_OPTID_FRONTEND_QUIC_DEBUG_LOG,
   SHRPX_OPTID_FRONTEND_QUIC_IDLE_TIMEOUT,
   SHRPX_OPTID_FRONTEND_READ_TIMEOUT,
   SHRPX_OPTID_FRONTEND_WRITE_TIMEOUT,

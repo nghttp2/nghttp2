@@ -2275,6 +2275,11 @@ int option_lookup_token(const char *name, size_t namelen) {
         return SHRPX_OPTID_PRIVATE_KEY_PASSWD_FILE;
       }
       break;
+    case 'g':
+      if (util::strieq_l("frontend-quic-debug-lo", name, 22)) {
+        return SHRPX_OPTID_FRONTEND_QUIC_DEBUG_LOG;
+      }
+      break;
     case 'r':
       if (util::strieq_l("backend-response-buffe", name, 22)) {
         return SHRPX_OPTID_BACKEND_RESPONSE_BUFFER;
@@ -3892,6 +3897,12 @@ int parse_config(Config *config, int optid, const StringRef &opt,
 #else  // !ENABLE_HTTP3
     return 0;
 #endif // !ENABLE_HTTP3
+  case SHRPX_OPTID_FRONTEND_QUIC_DEBUG_LOG:
+#ifdef ENABLE_HTTP3
+    config->quic.upstream.debug.log = util::strieq_l("yes", optarg);
+#endif // ENABLE_HTTP3
+
+    return 0;
   case SHRPX_OPTID_CONF:
     LOG(WARN) << "conf: ignored";
 

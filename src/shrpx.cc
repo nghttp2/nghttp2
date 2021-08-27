@@ -2892,6 +2892,8 @@ QUIC:
               Specify an idle timeout for QUIC connection.
               Default: )"
       << config->quic.upstream.timeout.idle << R"(
+  --frontend-quic-debug-log
+              Output QUIC debug log to /dev/stderr.
   --bpf-program-file=<PATH>
               Specify a path to  eBPF program file reuseport_kern.o to
               direct  an  incoming  QUIC  UDP datagram  to  a  correct
@@ -3609,6 +3611,7 @@ int main(int argc, char **argv) {
          &flag, 172},
         {SHRPX_OPT_FRONTEND_QUIC_IDLE_TIMEOUT.c_str(), required_argument, &flag,
          173},
+        {SHRPX_OPT_FRONTEND_QUIC_DEBUG_LOG.c_str(), no_argument, &flag, 174},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -4433,6 +4436,11 @@ int main(int argc, char **argv) {
         // --frontend-quic-idle-timeout
         cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_QUIC_IDLE_TIMEOUT,
                              StringRef{optarg});
+        break;
+      case 174:
+        // --frontend-quic-debug-log
+        cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_QUIC_DEBUG_LOG,
+                             StringRef::from_lit("yes"));
         break;
       default:
         break;
