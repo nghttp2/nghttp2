@@ -1538,8 +1538,7 @@ int Http3Upstream::handle_error() {
 
   if (last_error_.type == quic::ErrorType::Transport) {
     nwrite = ngtcp2_conn_write_connection_close(
-        conn_, &ps.path, &pi, buf.data(), SHRPX_MAX_UDP_PAYLOAD_SIZE,
-        last_error_.code, ts);
+        conn_, &ps.path, &pi, buf.data(), buf.size(), last_error_.code, ts);
     if (nwrite < 0) {
       LOG(ERROR) << "ngtcp2_conn_write_connection_close: "
                  << ngtcp2_strerror(nwrite);
@@ -1547,8 +1546,7 @@ int Http3Upstream::handle_error() {
     }
   } else {
     nwrite = ngtcp2_conn_write_application_close(
-        conn_, &ps.path, &pi, buf.data(), SHRPX_MAX_UDP_PAYLOAD_SIZE,
-        last_error_.code, ts);
+        conn_, &ps.path, &pi, buf.data(), buf.size(), last_error_.code, ts);
     if (nwrite < 0) {
       LOG(ERROR) << "ngtcp2_conn_write_application_close: "
                  << ngtcp2_strerror(nwrite);
