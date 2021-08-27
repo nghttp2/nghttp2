@@ -3880,8 +3880,12 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     return 0;
   }
   case SHRPX_OPTID_FRONTEND_HTTP3_READ_TIMEOUT:
+#ifdef ENABLE_HTTP3
     return parse_duration(&config->conn.upstream.timeout.http3_read, opt,
                           optarg);
+#else  // !ENABLE_HTTP3
+    return 0;
+#endif // !ENABLE_HTTP3
   case SHRPX_OPTID_QUIC_IDLE_TIMEOUT:
 #ifdef ENABLE_HTTP3
     return parse_duration(&config->quic.timeout.idle, opt, optarg);
