@@ -373,6 +373,14 @@ constexpr auto SHRPX_OPT_FRONTEND_QUIC_IDLE_TIMEOUT =
     StringRef::from_lit("frontend-quic-idle-timeout");
 constexpr auto SHRPX_OPT_FRONTEND_QUIC_DEBUG_LOG =
     StringRef::from_lit("frontend-quic-debug-log");
+constexpr auto SHRPX_OPT_FRONTEND_HTTP3_WINDOW_SIZE =
+    StringRef::from_lit("frontend-http3-window-size");
+constexpr auto SHRPX_OPT_FRONTEND_HTTP3_CONNECTION_WINDOW_SIZE =
+    StringRef::from_lit("frontend-http3-connection-window-size");
+constexpr auto SHRPX_OPT_FRONTEND_HTTP3_MAX_WINDOW_SIZE =
+    StringRef::from_lit("frontend-http3-max-window-size");
+constexpr auto SHRPX_OPT_FRONTEND_HTTP3_MAX_CONNECTION_WINDOW_SIZE =
+    StringRef::from_lit("frontend-http3-max-connection-window-size");
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
@@ -742,6 +750,15 @@ struct QUICConfig {
     bool disabled;
   } bpf;
 };
+
+struct Http3Config {
+  struct {
+    int32_t window_size;
+    int32_t connection_window_size;
+    int32_t max_window_size;
+    int32_t max_connection_window_size;
+  } upstream;
+};
 #endif // ENABLE_HTTP3
 
 // custom error page
@@ -1043,6 +1060,7 @@ struct Config {
   TLSConfig tls;
 #ifdef ENABLE_HTTP3
   QUICConfig quic;
+  Http3Config http3;
 #endif // ENABLE_HTTP3
   LoggingConfig logging;
   ConnectionConfig conn;
@@ -1169,7 +1187,11 @@ enum {
   SHRPX_OPTID_FRONTEND_HTTP2_SETTINGS_TIMEOUT,
   SHRPX_OPTID_FRONTEND_HTTP2_WINDOW_BITS,
   SHRPX_OPTID_FRONTEND_HTTP2_WINDOW_SIZE,
+  SHRPX_OPTID_FRONTEND_HTTP3_CONNECTION_WINDOW_SIZE,
+  SHRPX_OPTID_FRONTEND_HTTP3_MAX_CONNECTION_WINDOW_SIZE,
+  SHRPX_OPTID_FRONTEND_HTTP3_MAX_WINDOW_SIZE,
   SHRPX_OPTID_FRONTEND_HTTP3_READ_TIMEOUT,
+  SHRPX_OPTID_FRONTEND_HTTP3_WINDOW_SIZE,
   SHRPX_OPTID_FRONTEND_KEEP_ALIVE_TIMEOUT,
   SHRPX_OPTID_FRONTEND_MAX_REQUESTS,
   SHRPX_OPTID_FRONTEND_NO_TLS,

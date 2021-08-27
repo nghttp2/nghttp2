@@ -183,6 +183,10 @@ OPTIONS = [
     "frontend-http3-read-timeout",
     "frontend-quic-idle-timeout",
     "frontend-quic-debug-log",
+    "frontend-http3-window-size",
+    "frontend-http3-connection-window-size",
+    "frontend-http3-max-window-size",
+    "frontend-http3-max-connection-window-size",
 ]
 
 LOGVARS = [

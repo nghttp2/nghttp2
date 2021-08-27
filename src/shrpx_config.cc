@@ -2355,6 +2355,9 @@ int option_lookup_token(const char *name, size_t namelen) {
       if (util::strieq_l("frontend-http2-window-siz", name, 25)) {
         return SHRPX_OPTID_FRONTEND_HTTP2_WINDOW_SIZE;
       }
+      if (util::strieq_l("frontend-http3-window-siz", name, 25)) {
+        return SHRPX_OPTID_FRONTEND_HTTP3_WINDOW_SIZE;
+      }
       break;
     case 's':
       if (util::strieq_l("frontend-http2-window-bit", name, 25)) {
@@ -2447,6 +2450,11 @@ int option_lookup_token(const char *name, size_t namelen) {
     case 'd':
       if (util::strieq_l("verify-client-tolerate-expire", name, 29)) {
         return SHRPX_OPTID_VERIFY_CLIENT_TOLERATE_EXPIRED;
+      }
+      break;
+    case 'e':
+      if (util::strieq_l("frontend-http3-max-window-siz", name, 29)) {
+        return SHRPX_OPTID_FRONTEND_HTTP3_MAX_WINDOW_SIZE;
       }
       break;
     case 'r':
@@ -2578,6 +2586,9 @@ int option_lookup_token(const char *name, size_t namelen) {
       if (util::strieq_l("frontend-http2-connection-window-siz", name, 36)) {
         return SHRPX_OPTID_FRONTEND_HTTP2_CONNECTION_WINDOW_SIZE;
       }
+      if (util::strieq_l("frontend-http3-connection-window-siz", name, 36)) {
+        return SHRPX_OPTID_FRONTEND_HTTP3_CONNECTION_WINDOW_SIZE;
+      }
       if (util::strieq_l("tls-session-cache-memcached-cert-fil", name, 36)) {
         return SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED_CERT_FILE;
       }
@@ -2636,6 +2647,10 @@ int option_lookup_token(const char *name, size_t namelen) {
       if (util::strieq_l("frontend-http2-optimize-write-buffer-siz", name,
                          40)) {
         return SHRPX_OPTID_FRONTEND_HTTP2_OPTIMIZE_WRITE_BUFFER_SIZE;
+      }
+      if (util::strieq_l("frontend-http3-max-connection-window-siz", name,
+                         40)) {
+        return SHRPX_OPTID_FRONTEND_HTTP3_MAX_CONNECTION_WINDOW_SIZE;
       }
       if (util::strieq_l("tls-ticket-key-memcached-private-key-fil", name,
                          40)) {
@@ -3900,6 +3915,42 @@ int parse_config(Config *config, int optid, const StringRef &opt,
   case SHRPX_OPTID_FRONTEND_QUIC_DEBUG_LOG:
 #ifdef ENABLE_HTTP3
     config->quic.upstream.debug.log = util::strieq_l("yes", optarg);
+#endif // ENABLE_HTTP3
+
+    return 0;
+  case SHRPX_OPTID_FRONTEND_HTTP3_WINDOW_SIZE:
+#ifdef ENABLE_HTTP3
+    if (parse_uint_with_unit(&config->http3.upstream.window_size, opt,
+                             optarg) != 0) {
+      return -1;
+    }
+#endif // ENABLE_HTTP3
+
+    return 0;
+  case SHRPX_OPTID_FRONTEND_HTTP3_CONNECTION_WINDOW_SIZE:
+#ifdef ENABLE_HTTP3
+    if (parse_uint_with_unit(&config->http3.upstream.connection_window_size,
+                             opt, optarg) != 0) {
+      return -1;
+    }
+#endif // ENABLE_HTTP3
+
+    return 0;
+  case SHRPX_OPTID_FRONTEND_HTTP3_MAX_WINDOW_SIZE:
+#ifdef ENABLE_HTTP3
+    if (parse_uint_with_unit(&config->http3.upstream.max_window_size, opt,
+                             optarg) != 0) {
+      return -1;
+    }
+#endif // ENABLE_HTTP3
+
+    return 0;
+  case SHRPX_OPTID_FRONTEND_HTTP3_MAX_CONNECTION_WINDOW_SIZE:
+#ifdef ENABLE_HTTP3
+    if (parse_uint_with_unit(&config->http3.upstream.max_connection_window_size,
+                             opt, optarg) != 0) {
+      return -1;
+    }
 #endif // ENABLE_HTTP3
 
     return 0;

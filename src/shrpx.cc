@@ -1563,6 +1563,16 @@ void fill_default_config(Config *config) {
     auto &bpfconf = quicconf.bpf;
     bpfconf.prog_file = StringRef::from_lit(PKGLIBDIR "/reuseport_kern.o");
   }
+
+  auto &http3conf = config->http3;
+  {
+    auto &upstreamconf = http3conf.upstream;
+
+    upstreamconf.window_size = 256_k;
+    upstreamconf.connection_window_size = 1_m;
+    upstreamconf.max_window_size = 6_m;
+    upstreamconf.max_connection_window_size = 8_m;
+  }
 #endif // ENABLE_HTTP3
 
   auto &loggingconf = config->logging;
@@ -2901,6 +2911,34 @@ QUIC:
               Default: )"
       << config->quic.bpf.prog_file << R"(
   --no-bpf    Disable eBPF.
+  --frontend-http3-window-size=<SIZE>
+              Sets  the  per-stream  initial  window  size  of  HTTP/3
+              frontend connection.
+              Default: )"
+      << util::utos_unit(config->http3.upstream.window_size) << R"(
+  --frontend-http3-connection-window-size=<SIZE>
+              Sets the  per-connection window size of  HTTP/3 frontend
+              connection.
+              Default: )"
+      << util::utos_unit(config->http3.upstream.connection_window_size) << R"(
+  --frontend-http3-max-window-size=<SIZE>
+              Sets  the  maximum  per-stream  window  size  of  HTTP/3
+              frontend connection.  The window  size is adjusted based
+              on the receiving rate of stream data.  The initial value
+              is the  value specified  by --frontend-http3-window-size
+              and the window size grows up to <SIZE> bytes.
+              Default: )"
+      << util::utos_unit(config->http3.upstream.max_window_size) << R"(
+  --frontend-http3-max-connection-window-size=<SIZE>
+              Sets the  maximum per-connection  window size  of HTTP/3
+              frontend connection.  The window  size is adjusted based
+              on the receiving rate of stream data.  The initial value
+              is         the         value        specified         by
+              --frontend-http3-connection-window-size  and the  window
+              size grows up to <SIZE> bytes.
+              Default: )"
+      << util::utos_unit(config->http3.upstream.max_connection_window_size)
+      << R"(
 )";
 #endif // ENABLE_HTTP3
 
@@ -3612,6 +3650,14 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_FRONTEND_QUIC_IDLE_TIMEOUT.c_str(), required_argument, &flag,
          173},
         {SHRPX_OPT_FRONTEND_QUIC_DEBUG_LOG.c_str(), no_argument, &flag, 174},
+        {SHRPX_OPT_FRONTEND_HTTP3_WINDOW_SIZE.c_str(), required_argument, &flag,
+         175},
+        {SHRPX_OPT_FRONTEND_HTTP3_CONNECTION_WINDOW_SIZE.c_str(),
+         required_argument, &flag, 176},
+        {SHRPX_OPT_FRONTEND_HTTP3_MAX_WINDOW_SIZE.c_str(), required_argument,
+         &flag, 177},
+        {SHRPX_OPT_FRONTEND_HTTP3_MAX_CONNECTION_WINDOW_SIZE.c_str(),
+         required_argument, &flag, 178},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -4441,6 +4487,27 @@ int main(int argc, char **argv) {
         // --frontend-quic-debug-log
         cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_QUIC_DEBUG_LOG,
                              StringRef::from_lit("yes"));
+        break;
+      case 175:
+        // --frontend-http3-window-size
+        cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_HTTP3_WINDOW_SIZE,
+                             StringRef{optarg});
+        break;
+      case 176:
+        // --frontend-http3-connection-window-size
+        cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_HTTP3_CONNECTION_WINDOW_SIZE,
+                             StringRef{optarg});
+        break;
+      case 177:
+        // --frontend-http3-max-window-size
+        cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_HTTP3_MAX_WINDOW_SIZE,
+                             StringRef{optarg});
+        break;
+      case 178:
+        // --frontend-http3-max-connection-window-size
+        cmdcfgs.emplace_back(
+            SHRPX_OPT_FRONTEND_HTTP3_MAX_CONNECTION_WINDOW_SIZE,
+            StringRef{optarg});
         break;
       default:
         break;

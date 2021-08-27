@@ -496,6 +496,7 @@ int Http3Upstream::init(const UpstreamAddr *faddr, const Address &remote_addr,
 
   auto config = get_config();
   auto &quicconf = config->quic;
+  auto &http3conf = config->http3;
 
   ngtcp2_settings settings;
   ngtcp2_settings_default(&settings);
@@ -504,8 +505,8 @@ int Http3Upstream::init(const UpstreamAddr *faddr, const Address &remote_addr,
   }
   settings.initial_ts = quic_timestamp();
   settings.cc_algo = NGTCP2_CC_ALGO_BBR;
-  settings.max_window = 6_m;
-  settings.max_stream_window = 6_m;
+  settings.max_window = http3conf.upstream.max_connection_window_size;
+  settings.max_stream_window = http3conf.upstream.max_window_size;
   settings.max_udp_payload_size = SHRPX_MAX_UDP_PAYLOAD_SIZE;
   settings.rand_ctx.native_handle = &worker->get_randgen();
   settings.token = ngtcp2_vec{const_cast<uint8_t *>(token), tokenlen};
@@ -514,9 +515,9 @@ int Http3Upstream::init(const UpstreamAddr *faddr, const Address &remote_addr,
   ngtcp2_transport_params_default(&params);
   params.initial_max_streams_bidi = 100;
   params.initial_max_streams_uni = 3;
-  params.initial_max_data = 1_m;
-  params.initial_max_stream_data_bidi_remote = 256_k;
-  params.initial_max_stream_data_uni = 256_k;
+  params.initial_max_data = http3conf.upstream.connection_window_size;
+  params.initial_max_stream_data_bidi_remote = http3conf.upstream.window_size;
+  params.initial_max_stream_data_uni = http3conf.upstream.window_size;
   params.max_idle_timeout = static_cast<ngtcp2_tstamp>(
       quicconf.upstream.timeout.idle * NGTCP2_SECONDS);
 
