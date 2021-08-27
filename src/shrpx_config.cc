@@ -1740,11 +1740,6 @@ int option_lookup_token(const char *name, size_t namelen) {
         return SHRPX_OPTID_ALTSVC;
       }
       break;
-    case 'f':
-      if (util::strieq_l("no-bp", name, 5)) {
-        return SHRPX_OPTID_NO_BPF;
-      }
-      break;
     case 'n':
       if (util::strieq_l("daemo", name, 5)) {
         return SHRPX_OPTID_DAEMON;
@@ -1869,6 +1864,11 @@ int option_lookup_token(const char *name, size_t namelen) {
     case 'e':
       if (util::strieq_l("server-nam", name, 10)) {
         return SHRPX_OPTID_SERVER_NAME;
+      }
+      break;
+    case 'f':
+      if (util::strieq_l("no-quic-bp", name, 10)) {
+        return SHRPX_OPTID_NO_QUIC_BPF;
       }
       break;
     case 'r':
@@ -2042,9 +2042,6 @@ int option_lookup_token(const char *name, size_t namelen) {
   case 16:
     switch (name[15]) {
     case 'e':
-      if (util::strieq_l("bpf-program-fil", name, 15)) {
-        return SHRPX_OPTID_BPF_PROGRAM_FILE;
-      }
       if (util::strieq_l("certificate-fil", name, 15)) {
         return SHRPX_OPTID_CERTIFICATE_FILE;
       }
@@ -2201,6 +2198,11 @@ int option_lookup_token(const char *name, size_t namelen) {
     case 'd':
       if (util::strieq_l("backend-tls-sni-fiel", name, 20)) {
         return SHRPX_OPTID_BACKEND_TLS_SNI_FIELD;
+      }
+      break;
+    case 'e':
+      if (util::strieq_l("quic-bpf-program-fil", name, 20)) {
+        return SHRPX_OPTID_QUIC_BPF_PROGRAM_FILE;
       }
       break;
     case 'l':
@@ -3879,13 +3881,13 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     config->http.early_data.strip_incoming = !util::strieq_l("yes", optarg);
 
     return 0;
-  case SHRPX_OPTID_BPF_PROGRAM_FILE:
+  case SHRPX_OPTID_QUIC_BPF_PROGRAM_FILE:
 #ifdef ENABLE_HTTP3
     config->quic.bpf.prog_file = make_string_ref(config->balloc, optarg);
 #endif // ENABLE_HTTP3
 
     return 0;
-  case SHRPX_OPTID_NO_BPF:
+  case SHRPX_OPTID_NO_QUIC_BPF:
 #ifdef ENABLE_HTTP3
     config->quic.bpf.disabled = util::strieq_l("yes", optarg);
 #endif // ENABLE_HTTP3

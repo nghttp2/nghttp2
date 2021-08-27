@@ -2905,13 +2905,14 @@ QUIC:
       << util::duration_str(config->quic.upstream.timeout.idle) << R"(
   --frontend-quic-debug-log
               Output QUIC debug log to /dev/stderr.
-  --bpf-program-file=<PATH>
+  --quic-bpf-program-file=<PATH>
               Specify a path to  eBPF program file reuseport_kern.o to
               direct  an  incoming  QUIC  UDP datagram  to  a  correct
               socket.
               Default: )"
       << config->quic.bpf.prog_file << R"(
-  --no-bpf    Disable eBPF.
+  --no-quic-bpf
+              Disable eBPF.
   --frontend-http3-window-size=<SIZE>
               Sets  the  per-stream  initial  window  size  of  HTTP/3
               frontend connection.
@@ -3648,8 +3649,9 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_NO_HTTP2_CIPHER_BLOCK_LIST.c_str(), no_argument, &flag, 167},
         {SHRPX_OPT_CLIENT_NO_HTTP2_CIPHER_BLOCK_LIST.c_str(), no_argument,
          &flag, 168},
-        {SHRPX_OPT_BPF_PROGRAM_FILE.c_str(), required_argument, &flag, 169},
-        {SHRPX_OPT_NO_BPF.c_str(), no_argument, &flag, 170},
+        {SHRPX_OPT_QUIC_BPF_PROGRAM_FILE.c_str(), required_argument, &flag,
+         169},
+        {SHRPX_OPT_NO_QUIC_BPF.c_str(), no_argument, &flag, 170},
         {SHRPX_OPT_HTTP2_ALTSVC.c_str(), required_argument, &flag, 171},
         {SHRPX_OPT_FRONTEND_HTTP3_READ_TIMEOUT.c_str(), required_argument,
          &flag, 172},
@@ -4470,12 +4472,13 @@ int main(int argc, char **argv) {
                              StringRef::from_lit("yes"));
         break;
       case 169:
-        // --bpf-program-file
-        cmdcfgs.emplace_back(SHRPX_OPT_BPF_PROGRAM_FILE, StringRef{optarg});
+        // --quic-bpf-program-file
+        cmdcfgs.emplace_back(SHRPX_OPT_QUIC_BPF_PROGRAM_FILE,
+                             StringRef{optarg});
         break;
       case 170:
-        // --no-bpf
-        cmdcfgs.emplace_back(SHRPX_OPT_NO_BPF, StringRef::from_lit("yes"));
+        // --no-quic-bpf
+        cmdcfgs.emplace_back(SHRPX_OPT_NO_QUIC_BPF, StringRef::from_lit("yes"));
         break;
       case 171:
         // --http2-altsvc
