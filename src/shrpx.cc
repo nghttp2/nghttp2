@@ -1553,7 +1553,12 @@ void fill_default_config(Config *config) {
 #ifdef ENABLE_HTTP3
   auto &quicconf = config->quic;
   {
-    quicconf.timeout.idle = 30_s;
+    auto &upstreamconf = quicconf.upstream;
+
+    {
+      auto &timeoutconf = upstreamconf.timeout;
+      timeoutconf.idle = 30_s;
+    }
 
     auto &bpfconf = quicconf.bpf;
     bpfconf.prog_file = StringRef::from_lit(PKGLIBDIR "/reuseport_kern.o");
@@ -2883,10 +2888,10 @@ Scripting:
 #ifdef ENABLE_HTTP3
   out << R"(
 QUIC:
-  --quic-idle-timeout=<DURATION>
+  --frontend-quic-idle-timeout=<DURATION>
               Specify an idle timeout for QUIC connection.
               Default: )"
-      << config->quic.timeout.idle << R"(
+      << config->quic.upstream.timeout.idle << R"(
   --bpf-program-file=<PATH>
               Specify a path to  eBPF program file reuseport_kern.o to
               direct  an  incoming  QUIC  UDP datagram  to  a  correct
@@ -3602,7 +3607,8 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_HTTP2_ALTSVC.c_str(), required_argument, &flag, 171},
         {SHRPX_OPT_FRONTEND_HTTP3_READ_TIMEOUT.c_str(), required_argument,
          &flag, 172},
-        {SHRPX_OPT_QUIC_IDLE_TIMEOUT.c_str(), required_argument, &flag, 173},
+        {SHRPX_OPT_FRONTEND_QUIC_IDLE_TIMEOUT.c_str(), required_argument, &flag,
+         173},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -4424,8 +4430,9 @@ int main(int argc, char **argv) {
                              StringRef{optarg});
         break;
       case 173:
-        // --quic-idle-timeout
-        cmdcfgs.emplace_back(SHRPX_OPT_QUIC_IDLE_TIMEOUT, StringRef{optarg});
+        // --frontend-quic-idle-timeout
+        cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_QUIC_IDLE_TIMEOUT,
+                             StringRef{optarg});
         break;
       default:
         break;

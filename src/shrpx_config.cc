@@ -2092,9 +2092,6 @@ int option_lookup_token(const char *name, size_t namelen) {
       if (util::strieq_l("dns-cache-timeou", name, 16)) {
         return SHRPX_OPTID_DNS_CACHE_TIMEOUT;
       }
-      if (util::strieq_l("quic-idle-timeou", name, 16)) {
-        return SHRPX_OPTID_QUIC_IDLE_TIMEOUT;
-      }
       if (util::strieq_l("worker-read-burs", name, 16)) {
         return SHRPX_OPTID_WORKER_READ_BURST;
       }
@@ -2365,6 +2362,9 @@ int option_lookup_token(const char *name, size_t namelen) {
     case 't':
       if (util::strieq_l("backend-keep-alive-timeou", name, 25)) {
         return SHRPX_OPTID_BACKEND_KEEP_ALIVE_TIMEOUT;
+      }
+      if (util::strieq_l("frontend-quic-idle-timeou", name, 25)) {
+        return SHRPX_OPTID_FRONTEND_QUIC_IDLE_TIMEOUT;
       }
       if (util::strieq_l("no-http2-cipher-black-lis", name, 25)) {
         return SHRPX_OPTID_NO_HTTP2_CIPHER_BLACK_LIST;
@@ -3886,9 +3886,9 @@ int parse_config(Config *config, int optid, const StringRef &opt,
 #else  // !ENABLE_HTTP3
     return 0;
 #endif // !ENABLE_HTTP3
-  case SHRPX_OPTID_QUIC_IDLE_TIMEOUT:
+  case SHRPX_OPTID_FRONTEND_QUIC_IDLE_TIMEOUT:
 #ifdef ENABLE_HTTP3
-    return parse_duration(&config->quic.timeout.idle, opt, optarg);
+    return parse_duration(&config->quic.upstream.timeout.idle, opt, optarg);
 #else  // !ENABLE_HTTP3
     return 0;
 #endif // !ENABLE_HTTP3

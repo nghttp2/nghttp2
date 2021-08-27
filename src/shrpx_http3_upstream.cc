@@ -101,7 +101,8 @@ Http3Upstream::Http3Upstream(ClientHandler *handler)
   auto config = get_config();
   auto &quicconf = config->quic;
 
-  ev_timer_init(&idle_timer_, idle_timeoutcb, 0., quicconf.timeout.idle);
+  ev_timer_init(&idle_timer_, idle_timeoutcb, 0.,
+                quicconf.upstream.timeout.idle);
   idle_timer_.data = this;
 }
 
@@ -498,7 +499,7 @@ int Http3Upstream::init(const UpstreamAddr *faddr, const Address &remote_addr,
 
   ngtcp2_settings settings;
   ngtcp2_settings_default(&settings);
-  if (quicconf.debug.log) {
+  if (quicconf.upstream.debug.log) {
     settings.log_printf = log_printf;
   }
   settings.initial_ts = quic_timestamp();
@@ -516,8 +517,8 @@ int Http3Upstream::init(const UpstreamAddr *faddr, const Address &remote_addr,
   params.initial_max_data = 1_m;
   params.initial_max_stream_data_bidi_remote = 256_k;
   params.initial_max_stream_data_uni = 256_k;
-  params.max_idle_timeout =
-      static_cast<ngtcp2_tstamp>(quicconf.timeout.idle * NGTCP2_SECONDS);
+  params.max_idle_timeout = static_cast<ngtcp2_tstamp>(
+      quicconf.upstream.timeout.idle * NGTCP2_SECONDS);
 
   if (odcid) {
     params.original_dcid = *odcid;

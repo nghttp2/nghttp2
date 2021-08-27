@@ -181,7 +181,7 @@ OPTIONS = [
     "no-bpf",
     "http2-altsvc",
     "frontend-http3-read-timeout",
-    "quic-idle-timeout",
+    "frontend-quic-idle-timeout",
 ]
 
 LOGVARS = [
