@@ -367,6 +367,8 @@ constexpr auto SHRPX_OPT_BPF_PROGRAM_FILE =
     StringRef::from_lit("bpf-program-file");
 constexpr auto SHRPX_OPT_NO_BPF = StringRef::from_lit("no-bpf");
 constexpr auto SHRPX_OPT_HTTP2_ALTSVC = StringRef::from_lit("http2-altsvc");
+constexpr auto SHRPX_OPT_FRONTEND_HTTP3_READ_TIMEOUT =
+    StringRef::from_lit("frontend-http3-read-timeout");
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
@@ -955,6 +957,7 @@ struct ConnectionConfig {
   struct {
     struct {
       ev_tstamp http2_read;
+      ev_tstamp http3_read;
       ev_tstamp read;
       ev_tstamp write;
       ev_tstamp idle_read;
@@ -1160,6 +1163,7 @@ enum {
   SHRPX_OPTID_FRONTEND_HTTP2_SETTINGS_TIMEOUT,
   SHRPX_OPTID_FRONTEND_HTTP2_WINDOW_BITS,
   SHRPX_OPTID_FRONTEND_HTTP2_WINDOW_SIZE,
+  SHRPX_OPTID_FRONTEND_HTTP3_READ_TIMEOUT,
   SHRPX_OPTID_FRONTEND_KEEP_ALIVE_TIMEOUT,
   SHRPX_OPTID_FRONTEND_MAX_REQUESTS,
   SHRPX_OPTID_FRONTEND_NO_TLS,

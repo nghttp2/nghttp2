@@ -2393,6 +2393,9 @@ int option_lookup_token(const char *name, size_t namelen) {
       if (util::strieq_l("frontend-http2-read-timeou", name, 26)) {
         return SHRPX_OPTID_FRONTEND_HTTP2_READ_TIMEOUT;
       }
+      if (util::strieq_l("frontend-http3-read-timeou", name, 26)) {
+        return SHRPX_OPTID_FRONTEND_HTTP3_READ_TIMEOUT;
+      }
       if (util::strieq_l("frontend-keep-alive-timeou", name, 26)) {
         return SHRPX_OPTID_FRONTEND_KEEP_ALIVE_TIMEOUT;
       }
@@ -3873,6 +3876,9 @@ int parse_config(Config *config, int optid, const StringRef &opt,
 
     return 0;
   }
+  case SHRPX_OPTID_FRONTEND_HTTP3_READ_TIMEOUT:
+    return parse_duration(&config->conn.upstream.timeout.http3_read, opt,
+                          optarg);
   case SHRPX_OPTID_CONF:
     LOG(WARN) << "conf: ignored";
 

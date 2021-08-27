@@ -180,6 +180,7 @@ OPTIONS = [
     "bpf-program-file",
     "no-bpf",
     "http2-altsvc",
+    "frontend-http3-read-timeout",
 ]
 
 LOGVARS = [

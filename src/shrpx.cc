@@ -1590,6 +1590,9 @@ void fill_default_config(Config *config) {
       // Read timeout for HTTP2 upstream connection
       timeoutconf.http2_read = 3_min;
 
+      // Read timeout for HTTP3 upstream connection
+      timeoutconf.http3_read = 3_min;
+
       // Read timeout for non-HTTP2 upstream connection
       timeoutconf.read = 1_min;
 
@@ -2073,6 +2076,10 @@ Timeout:
               Specify read timeout for HTTP/2 frontend connection.
               Default: )"
       << util::duration_str(config->conn.upstream.timeout.http2_read) << R"(
+  --frontend-http3-read-timeout=<DURATION>
+              Specify read timeout for HTTP/3 frontend connection.
+              Default: )"
+      << util::duration_str(config->conn.upstream.timeout.http3_read) << R"(
   --frontend-read-timeout=<DURATION>
               Specify read timeout for HTTP/1.1 frontend connection.
               Default: )"
@@ -3589,6 +3596,8 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_BPF_PROGRAM_FILE.c_str(), required_argument, &flag, 169},
         {SHRPX_OPT_NO_BPF.c_str(), no_argument, &flag, 170},
         {SHRPX_OPT_HTTP2_ALTSVC.c_str(), required_argument, &flag, 171},
+        {SHRPX_OPT_FRONTEND_HTTP3_READ_TIMEOUT.c_str(), required_argument,
+         &flag, 172},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -4403,6 +4412,11 @@ int main(int argc, char **argv) {
       case 171:
         // --http2-altsvc
         cmdcfgs.emplace_back(SHRPX_OPT_HTTP2_ALTSVC, StringRef{optarg});
+        break;
+      case 172:
+        // --frontend-http3-read-timeout
+        cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_HTTP3_READ_TIMEOUT,
+                             StringRef{optarg});
         break;
       default:
         break;

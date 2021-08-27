@@ -519,6 +519,10 @@ void ClientHandler::setup_http3_upstream(
   upstream_ = std::move(upstream);
   alpn_ = StringRef::from_lit("h3");
   write_ = &ClientHandler::write_quic;
+
+  auto config = get_config();
+
+  reset_upstream_read_timeout(config->conn.upstream.timeout.http3_read);
 }
 #endif // ENABLE_HTTP3
 
