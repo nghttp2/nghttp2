@@ -2092,6 +2092,9 @@ int option_lookup_token(const char *name, size_t namelen) {
       if (util::strieq_l("dns-cache-timeou", name, 16)) {
         return SHRPX_OPTID_DNS_CACHE_TIMEOUT;
       }
+      if (util::strieq_l("quic-idle-timeou", name, 16)) {
+        return SHRPX_OPTID_QUIC_IDLE_TIMEOUT;
+      }
       if (util::strieq_l("worker-read-burs", name, 16)) {
         return SHRPX_OPTID_WORKER_READ_BURST;
       }
@@ -3879,6 +3882,12 @@ int parse_config(Config *config, int optid, const StringRef &opt,
   case SHRPX_OPTID_FRONTEND_HTTP3_READ_TIMEOUT:
     return parse_duration(&config->conn.upstream.timeout.http3_read, opt,
                           optarg);
+  case SHRPX_OPTID_QUIC_IDLE_TIMEOUT:
+#ifdef ENABLE_HTTP3
+    return parse_duration(&config->quic.timeout.idle, opt, optarg);
+#else  // !ENABLE_HTTP3
+    return 0;
+#endif // !ENABLE_HTTP3
   case SHRPX_OPTID_CONF:
     LOG(WARN) << "conf: ignored";
 

@@ -369,6 +369,8 @@ constexpr auto SHRPX_OPT_NO_BPF = StringRef::from_lit("no-bpf");
 constexpr auto SHRPX_OPT_HTTP2_ALTSVC = StringRef::from_lit("http2-altsvc");
 constexpr auto SHRPX_OPT_FRONTEND_HTTP3_READ_TIMEOUT =
     StringRef::from_lit("frontend-http3-read-timeout");
+constexpr auto SHRPX_OPT_QUIC_IDLE_TIMEOUT =
+    StringRef::from_lit("quic-idle-timeout");
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
@@ -1207,6 +1209,7 @@ enum {
   SHRPX_OPTID_PRIVATE_KEY_FILE,
   SHRPX_OPTID_PRIVATE_KEY_PASSWD_FILE,
   SHRPX_OPTID_PSK_SECRETS,
+  SHRPX_OPTID_QUIC_IDLE_TIMEOUT,
   SHRPX_OPTID_READ_BURST,
   SHRPX_OPTID_READ_RATE,
   SHRPX_OPTID_REDIRECT_HTTPS_PORT,
