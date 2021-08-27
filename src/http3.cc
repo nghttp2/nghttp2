@@ -201,15 +201,6 @@ int check_nv(const uint8_t *name, size_t namelen, const uint8_t *value,
   return 1;
 }
 
-void dump_nv(FILE *out, const nghttp3_nv *nva, size_t nvlen) {
-  auto end = nva + nvlen;
-  for (; nva != end; ++nva) {
-    fprintf(out, "%s: %s\n", nva->name, nva->value);
-  }
-  fputc('\n', out);
-  fflush(out);
-}
-
 } // namespace http3
 
 } // namespace nghttp2

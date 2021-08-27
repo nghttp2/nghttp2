@@ -1058,8 +1058,6 @@ int Http3Upstream::on_downstream_header_complete(Downstream *downstream) {
   }
 #endif // HAVE_MRUBY
 
-  auto &http2conf = config->http2;
-
   auto nva = std::vector<nghttp3_nv>();
   // 4 means :status and possible server, via, and set-cookie (for
   // affinity cookie) header field.
@@ -1161,11 +1159,6 @@ int Http3Upstream::on_downstream_header_complete(Downstream *downstream) {
 
   if (LOG_ENABLED(INFO)) {
     log_response_headers(downstream, nva);
-  }
-
-  if (http2conf.upstream.debug.dump.response_header) {
-    http3::dump_nv(http2conf.upstream.debug.dump.response_header, nva.data(),
-                   nva.size());
   }
 
   nghttp3_data_reader data_read;
@@ -1811,13 +1804,6 @@ int Http3Upstream::http_end_request_headers(Downstream *downstream) {
                      << ss.str();
   }
 
-  auto config = get_config();
-  auto &dump = config->http2.upstream.debug.dump;
-
-  if (dump.request_header) {
-    http2::dump_nv(dump.request_header, nva);
-  }
-
   auto content_length = req.fs.header(http2::HD_CONTENT_LENGTH);
   if (content_length) {
     // libnghttp2 guarantees this can be parsed
@@ -1839,6 +1825,8 @@ int Http3Upstream::http_end_request_headers(Downstream *downstream) {
   }
 
   auto faddr = handler_->get_upstream_addr();
+
+  auto config = get_config();
 
   // For HTTP/2 proxy, we require :authority.
   if (method_token != HTTP_CONNECT && config->http2_proxy &&
