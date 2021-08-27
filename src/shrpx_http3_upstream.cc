@@ -1238,6 +1238,34 @@ void Http3Upstream::on_handler_delete() {
       handler_->write_accesslog(d);
     }
   }
+
+  // If this is not idle close, send APPLICATION_CLOSE since this
+  // might come before idle close.
+  if (!ngtcp2_conn_is_in_closing_period(conn_) &&
+      !ngtcp2_conn_is_in_draining_period(conn_)) {
+    ngtcp2_path_storage ps;
+    ngtcp2_pkt_info pi;
+    std::array<uint8_t, SHRPX_MAX_UDP_PAYLOAD_SIZE> buf;
+
+    ngtcp2_path_storage_zero(&ps);
+
+    auto nwrite = ngtcp2_conn_write_application_close(
+        conn_, &ps.path, &pi, buf.data(), buf.size(), NGHTTP3_H3_NO_ERROR,
+        quic_timestamp());
+    if (nwrite < 0) {
+      if (nwrite != NGTCP2_ERR_INVALID_STATE) {
+        LOG(ERROR) << "ngtcp2_conn_write_application_close: "
+                   << ngtcp2_strerror(nwrite);
+      }
+
+      return;
+    }
+
+    quic_send_packet(static_cast<UpstreamAddr *>(ps.path.user_data),
+                     ps.path.remote.addr, ps.path.remote.addrlen,
+                     ps.path.local.addr, ps.path.local.addrlen, buf.data(),
+                     nwrite, 0);
+  }
 }
 
 int Http3Upstream::on_downstream_reset(Downstream *downstream, bool no_retry) {
