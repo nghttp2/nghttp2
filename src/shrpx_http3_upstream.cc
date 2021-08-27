@@ -513,7 +513,8 @@ int Http3Upstream::init(const UpstreamAddr *faddr, const Address &remote_addr,
 
   ngtcp2_transport_params params;
   ngtcp2_transport_params_default(&params);
-  params.initial_max_streams_bidi = 100;
+  params.initial_max_streams_bidi = http3conf.upstream.max_concurrent_streams;
+  // The minimum number of unidirectional streams required for HTTP/3.
   params.initial_max_streams_uni = 3;
   params.initial_max_data = http3conf.upstream.connection_window_size;
   params.initial_max_stream_data_bidi_remote = http3conf.upstream.window_size;

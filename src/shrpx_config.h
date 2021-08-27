@@ -381,6 +381,8 @@ constexpr auto SHRPX_OPT_FRONTEND_HTTP3_MAX_WINDOW_SIZE =
     StringRef::from_lit("frontend-http3-max-window-size");
 constexpr auto SHRPX_OPT_FRONTEND_HTTP3_MAX_CONNECTION_WINDOW_SIZE =
     StringRef::from_lit("frontend-http3-max-connection-window-size");
+constexpr auto SHRPX_OPT_FRONTEND_HTTP3_MAX_CONCURRENT_STREAMS =
+    StringRef::from_lit("frontend-http3-max-concurrent-streams");
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
@@ -753,6 +755,7 @@ struct QUICConfig {
 
 struct Http3Config {
   struct {
+    size_t max_concurrent_streams;
     int32_t window_size;
     int32_t connection_window_size;
     int32_t max_window_size;
@@ -1188,6 +1191,7 @@ enum {
   SHRPX_OPTID_FRONTEND_HTTP2_WINDOW_BITS,
   SHRPX_OPTID_FRONTEND_HTTP2_WINDOW_SIZE,
   SHRPX_OPTID_FRONTEND_HTTP3_CONNECTION_WINDOW_SIZE,
+  SHRPX_OPTID_FRONTEND_HTTP3_MAX_CONCURRENT_STREAMS,
   SHRPX_OPTID_FRONTEND_HTTP3_MAX_CONNECTION_WINDOW_SIZE,
   SHRPX_OPTID_FRONTEND_HTTP3_MAX_WINDOW_SIZE,
   SHRPX_OPTID_FRONTEND_HTTP3_READ_TIMEOUT,

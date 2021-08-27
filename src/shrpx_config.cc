@@ -2600,6 +2600,9 @@ int option_lookup_token(const char *name, size_t namelen) {
       if (util::strieq_l("frontend-http2-max-concurrent-stream", name, 36)) {
         return SHRPX_OPTID_FRONTEND_HTTP2_MAX_CONCURRENT_STREAMS;
       }
+      if (util::strieq_l("frontend-http3-max-concurrent-stream", name, 36)) {
+        return SHRPX_OPTID_FRONTEND_HTTP3_MAX_CONCURRENT_STREAMS;
+      }
       break;
     }
     break;
@@ -3954,6 +3957,13 @@ int parse_config(Config *config, int optid, const StringRef &opt,
 #endif // ENABLE_HTTP3
 
     return 0;
+  case SHRPX_OPTID_FRONTEND_HTTP3_MAX_CONCURRENT_STREAMS:
+#ifdef ENABLE_HTTP3
+    return parse_uint(&config->http3.upstream.max_concurrent_streams, opt,
+                      optarg);
+#else  // !ENABLE_HTTP3
+    return 0;
+#endif // !ENABLE_HTTP3
   case SHRPX_OPTID_CONF:
     LOG(WARN) << "conf: ignored";
 

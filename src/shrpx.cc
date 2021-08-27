@@ -1568,6 +1568,7 @@ void fill_default_config(Config *config) {
   {
     auto &upstreamconf = http3conf.upstream;
 
+    upstreamconf.max_concurrent_streams = 100;
     upstreamconf.window_size = 256_k;
     upstreamconf.connection_window_size = 1_m;
     upstreamconf.max_window_size = 6_m;
@@ -2939,6 +2940,11 @@ QUIC:
               Default: )"
       << util::utos_unit(config->http3.upstream.max_connection_window_size)
       << R"(
+  --frontend-http3-max-concurrent-streams=<N>
+              Set the maximum number of  the concurrent streams in one
+              frontend HTTP/3 connection.
+              Default: )"
+      << config->http3.upstream.max_concurrent_streams << R"(
 )";
 #endif // ENABLE_HTTP3
 
@@ -3658,6 +3664,8 @@ int main(int argc, char **argv) {
          &flag, 177},
         {SHRPX_OPT_FRONTEND_HTTP3_MAX_CONNECTION_WINDOW_SIZE.c_str(),
          required_argument, &flag, 178},
+        {SHRPX_OPT_FRONTEND_HTTP3_MAX_CONCURRENT_STREAMS.c_str(),
+         required_argument, &flag, 179},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -4508,6 +4516,11 @@ int main(int argc, char **argv) {
         cmdcfgs.emplace_back(
             SHRPX_OPT_FRONTEND_HTTP3_MAX_CONNECTION_WINDOW_SIZE,
             StringRef{optarg});
+        break;
+      case 179:
+        // --frontend-http3-max-concurrent-streams
+        cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_HTTP3_MAX_CONCURRENT_STREAMS,
+                             StringRef{optarg});
         break;
       default:
         break;
