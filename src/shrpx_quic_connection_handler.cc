@@ -295,7 +295,7 @@ int QUICConnectionHandler::send_retry(
     return -1;
   }
 
-  std::array<uint8_t, 1280> buf;
+  std::array<uint8_t, SHRPX_MAX_UDP_PAYLOAD_SIZE> buf;
 
   auto nwrite =
       ngtcp2_crypto_write_retry(buf.data(), buf.size(), version, &iscid,
@@ -319,7 +319,7 @@ int QUICConnectionHandler::send_version_negotiation(
   sv[0] = generate_reserved_version(remote_addr, version);
   sv[1] = NGTCP2_PROTO_VER_V1;
 
-  std::array<uint8_t, 1280> buf;
+  std::array<uint8_t, SHRPX_MAX_UDP_PAYLOAD_SIZE> buf;
 
   uint8_t rand_byte;
   util::random_bytes(&rand_byte, &rand_byte + 1, worker_->get_randgen());
@@ -364,7 +364,7 @@ int QUICConnectionHandler::send_stateless_reset(const UpstreamAddr *faddr,
     return -1;
   }
 
-  std::array<uint8_t, 1280> buf;
+  std::array<uint8_t, SHRPX_MAX_UDP_PAYLOAD_SIZE> buf;
 
   auto nwrite =
       ngtcp2_pkt_write_stateless_reset(buf.data(), buf.size(), token.data(),
