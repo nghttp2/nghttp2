@@ -157,7 +157,7 @@ In order to build optional eBPF program to direct an incoming QUIC UDP
 datagram to a correct socket for nghttpx, the following libraries are
 required:
 
-* libbpf-dev
+* libbpf-dev >= 0.4.0
 
 Compiling libnghttp2 C source code requires a C99 compiler.  gcc 4.8
 is known to be adequate.  In order to compile the C++ source code, gcc

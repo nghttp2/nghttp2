@@ -205,8 +205,6 @@ AC_ARG_VAR([JEMALLOC_LIBS], [linker flags for jemalloc, skipping any checks])
 AC_ARG_VAR([LIBTOOL_LDFLAGS],
            [libtool specific flags (e.g., -static-libtool-libs)])
 
-AC_ARG_VAR([LIBBPF_LIBS], [linker flags for libbpf, skipping any checks])
-
 AC_ARG_VAR([BPFCFLAGS], [C compiler flags for bpf program])
 
 dnl Checks for programs
@@ -554,37 +552,15 @@ fi
 # libbpf (for src)
 have_libbpf=no
 if test "x${request_libbpf}" != "xno"; then
-  if test "x${LIBBPF_LIBS}" = "x"; then
-    save_CFLAGS=$CFLAGS
-    save_LDFLAGS=$LDFLAGS
-
-    LDFLAGS="-lbpf"
-    AC_MSG_CHECKING([for libbpf])
-    AC_LINK_IFELSE([AC_LANG_PROGRAM([[
-      #include <bpf/bpf.h>
-      #include <bpf/libbpf.h>
-    ]], [[
-      bpf_object__open_file("placeholder.o", NULL);
-    ]])],
-    [AC_MSG_RESULT([yes]); have_libbpf=yes],
-    [AC_MSG_RESULT([no]); have_libbpf=no])
-
-    if test "x${have_libbpf}" = "xyes"; then
-      AC_DEFINE([HAVE_LIBBPF], [1], [Define to 1 if you have `libbpf` library.])
-      LIBBPF_LIBS=$LDFLAGS
-      AC_SUBST([LIBBPF_LIBS])
-      if test "x${BPFCFLAGS}" = "x"; then
-        BPFCFLAGS="-Wall -O2"
-      fi
-      # Add the include path for Debian
-      EXTRABPFCFLAGS="-I/usr/include/$host_cpu-$host_os"
-      AC_SUBST([EXTRABPFCFLAGS])
-    fi
-
-    CFLAGS=$save_CFLAGS
-    LDFLAGS=$save_LDFLAGS
+  PKG_CHECK_MODULES([LIBBPF], [libbpf >= 0.4.0], [have_libbpf=yes],
+                    [have_libbpf=no])
+  if test "x${have_libbpf}" = "xyes"; then
+    AC_DEFINE([HAVE_LIBBPF], [1], [Define to 1 if you have `libbpf` library.])
+    # Add the include path for Debian
+    EXTRABPFCFLAGS="-I/usr/include/$host_cpu-$host_os"
+    AC_SUBST([EXTRABPFCFLAGS])
   else
-    have_libbpf=yes
+    AC_MSG_NOTICE($LIBBPF_PKG_ERRORS)
   fi
 fi
 
@@ -1203,7 +1179,7 @@ AC_MSG_NOTICE([summary of build options:
       libngtcp2:      ${have_libngtcp2} (CFLAGS='${LIBNGTCP2_CFLAGS}' LIBS='${LIBNGTCP2_LIBS}')
       libngtcp2_crypto_openssl: ${have_libngtcp2_crypto_openssl} (CFLAGS='${LIBNGTCP2_CRYPTO_OPENSSL_CFLAGS}' LIBS='${LIBNGTCP2_CRYPTO_OPENSSL_LIBS}')
       libnghttp3:     ${have_libnghttp3} (CFLAGS='${LIBNGHTTP3_CFLAGS}' LIBS='${LIBNGHTTP3_LIBS}')
-      libbpf:         ${have_libbpf} (LIBS='${LIBBPF_LIBS}')
+      libbpf:         ${have_libbpf} (CFLAGS='${LIBBPF_CFLAGS}' LIBS='${LIBBPF_LIBS}')
       Libevent(SSL):  ${have_libevent_openssl} (CFLAGS='${LIBEVENT_OPENSSL_CFLAGS}' LIBS='${LIBEVENT_OPENSSL_LIBS}')
       Jansson:        ${have_jansson} (CFLAGS='${JANSSON_CFLAGS}' LIBS='${JANSSON_LIBS}')
       Jemalloc:       ${have_jemalloc} (CFLAGS='${JEMALLOC_CFLAGS}' LIBS='${JEMALLOC_LIBS}')
