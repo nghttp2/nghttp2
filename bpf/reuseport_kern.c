@@ -271,7 +271,19 @@ int select_reuseport(struct sk_reuseport_md *reuse_md) {
 
     psk_index = bpf_map_lookup_elem(&cid_prefix_map, sk_prefix);
     if (psk_index == NULL) {
-      return SK_DROP;
+      pnum_socks = bpf_map_lookup_elem(&sk_info, &zero);
+      if (pnum_socks == NULL) {
+        return SK_DROP;
+      }
+
+      a = (sk_prefix[0] << 24) | (sk_prefix[1] << 16) | (sk_prefix[2] << 8) |
+          sk_prefix[3];
+      b = (sk_prefix[4] << 24) | (sk_prefix[5] << 16) | (sk_prefix[6] << 8) |
+          sk_prefix[7];
+
+      sk_index = jhash_2words(a, b, reuse_md->hash) % *pnum_socks;
+
+      break;
     }
 
     sk_index = *psk_index;

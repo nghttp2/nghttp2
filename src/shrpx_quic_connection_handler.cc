@@ -77,10 +77,27 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
 
   auto dcid_key = make_cid_key(dcid, dcidlen);
 
+  auto conn_handler = worker_->get_connection_handler();
+
   ClientHandler *handler;
 
   auto it = connections_.find(dcid_key);
   if (it == std::end(connections_)) {
+    if (!std::equal(dcid, dcid + SHRPX_QUIC_CID_PREFIXLEN,
+                    worker_->get_cid_prefix())) {
+      auto quic_lwp =
+          conn_handler->match_quic_lingering_worker_process_cid_prefix(dcid,
+                                                                       dcidlen);
+      if (quic_lwp) {
+        if (conn_handler->forward_quic_packet_to_lingering_worker_process(
+                quic_lwp, remote_addr, local_addr, data, datalen) == 0) {
+          return 0;
+        }
+
+        return 0;
+      }
+    }
+
     // new connection
 
     ngtcp2_pkt_hd hd;
@@ -90,6 +107,14 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
 
     switch (ngtcp2_accept(&hd, data, datalen)) {
     case 0: {
+      // If we get Initial and it has the CID prefix of this worker, it
+      // is likely that client is intentionally use the our prefix.
+      // Just drop it.
+      if (std::equal(dcid, dcid + SHRPX_QUIC_CID_PREFIXLEN,
+                     worker_->get_cid_prefix())) {
+        return 0;
+      }
+
       if (hd.token.len == 0) {
         break;
       }
@@ -102,7 +127,9 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
         if (verify_retry_token(&odcid, hd.token.base, hd.token.len, &hd.dcid,
                                &remote_addr.su.sa, remote_addr.len,
                                secret.data()) != 0) {
-          break;
+          // 2nd Retry packet is not allowed, so just drop it or send
+          // CONNECTIONC_CLOE with INVALID_TOKEN.
+          return 0;
         }
 
         podcid = &odcid;
@@ -139,8 +166,6 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
           dcidlen > SHRPX_QUIC_CID_PREFIXLEN &&
           !std::equal(dcid, dcid + SHRPX_QUIC_CID_PREFIXLEN,
                       worker_->get_cid_prefix())) {
-        auto conn_handler = worker_->get_connection_handler();
-
         if (conn_handler->forward_quic_packet(faddr, remote_addr, local_addr,
                                               dcid, data, datalen) == 0) {
           return 0;
@@ -149,14 +174,6 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
 
       // TODO Must be rate limited
       send_stateless_reset(faddr, dcid, dcidlen, remote_addr, local_addr);
-      return 0;
-    }
-
-    // If we get Initial and it has the CID prefix of this worker, it
-    // is likely that client is intentionally use the our prefix.
-    // Just drop it.
-    if (std::equal(dcid, dcid + SHRPX_QUIC_CID_PREFIXLEN,
-                   worker_->get_cid_prefix())) {
       return 0;
     }
 

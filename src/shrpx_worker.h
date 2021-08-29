@@ -261,6 +261,7 @@ struct QUICPacket {
         remote_addr{remote_addr},
         local_addr{local_addr},
         data{data, data + datalen} {}
+  QUICPacket() {}
   size_t upstream_addr_index;
   Address remote_addr;
   Address local_addr;
@@ -380,6 +381,9 @@ public:
 #  endif // HAVE_LIBBPF
 
   int create_quic_server_socket(UpstreamAddr &addr);
+
+  // Returns a pointer to UpstreamAddr which matches |local_addr|.
+  const UpstreamAddr *find_quic_upstream_addr(const Address &local_addr);
 #endif // ENABLE_HTTP3
 
   DNSTracker *get_dns_tracker();

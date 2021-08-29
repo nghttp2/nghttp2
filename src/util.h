@@ -214,6 +214,15 @@ OutputIt format_hex(OutputIt it, const StringRef &s) {
 // == true.
 StringRef decode_hex(BlockAllocator &balloc, const StringRef &s);
 
+template <typename OutputIt>
+OutputIt decode_hex(OutputIt d_first, const StringRef &s) {
+  for (auto it = std::begin(s); it != std::end(s); it += 2) {
+    *d_first++ = (hex_to_uint(*it) << 4) | hex_to_uint(*(it + 1));
+  }
+
+  return d_first;
+}
+
 // Returns given time |t| from epoch in HTTP Date format (e.g., Mon,
 // 10 Oct 2016 10:25:58 GMT).
 std::string http_date(time_t t);

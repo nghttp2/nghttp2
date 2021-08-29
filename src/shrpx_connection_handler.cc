@@ -45,6 +45,7 @@
 #include "shrpx_memcached_dispatcher.h"
 #include "shrpx_signal.h"
 #include "shrpx_log.h"
+#include "xsi_strerror.h"
 #include "util.h"
 #include "template.h"
 
@@ -112,7 +113,11 @@ void serial_event_async_cb(struct ev_loop *loop, ev_async *w, int revent) {
 } // namespace
 
 ConnectionHandler::ConnectionHandler(struct ev_loop *loop, std::mt19937 &gen)
-    : gen_(gen),
+    :
+#ifdef ENABLE_HTTP3
+      quic_ipc_fd_(-1),
+#endif // ENABLE_HTTP3
+      gen_(gen),
       single_worker_(nullptr),
       loop_(loop),
 #ifdef HAVE_NEVERBLEED
@@ -267,11 +272,13 @@ int ConnectionHandler::create_single_worker() {
     }
   }
 
+#if defined(ENABLE_HTTP3) && defined(HAVE_LIBBPF)
+  quic_bpf_refs_.resize(config->conn.quic_listener.addrs.size());
+#endif // ENABLE_HTTP3 && HAVE_LIBBPF
+
 #ifdef ENABLE_HTTP3
-  std::array<uint8_t, SHRPX_QUIC_CID_PREFIXLEN> cid_prefix;
-  if (create_cid_prefix(cid_prefix.data()) != 0) {
-    return -1;
-  }
+  assert(cid_prefixes_.size() == 1);
+  const auto &cid_prefix = cid_prefixes_[0];
 #endif // ENABLE_HTTP3
 
   single_worker_ = std::make_unique<Worker>(
@@ -343,7 +350,7 @@ int ConnectionHandler::create_worker_thread(size_t num) {
   auto &apiconf = config->api;
 
 #  if defined(ENABLE_HTTP3) && defined(HAVE_LIBBPF)
-  quic_bpf_refs_.resize(num);
+  quic_bpf_refs_.resize(config->conn.quic_listener.addrs.size());
 #  endif // ENABLE_HTTP3 && HAVE_LIBBPF
 
   // We have dedicated worker for API request processing.
@@ -369,14 +376,15 @@ int ConnectionHandler::create_worker_thread(size_t num) {
     }
   }
 
+#  ifdef ENABLE_HTTP3
+  assert(cid_prefixes_.size() == num);
+#  endif // ENABLE_HTTP3
+
   for (size_t i = 0; i < num; ++i) {
     auto loop = ev_loop_new(config->ev_loop_flags);
 
 #  ifdef ENABLE_HTTP3
-    std::array<uint8_t, SHRPX_QUIC_CID_PREFIXLEN> cid_prefix;
-    if (create_cid_prefix(cid_prefix.data()) != 0) {
-      return -1;
-    }
+    const auto &cid_prefix = cid_prefixes_[i];
 #  endif // ENABLE_HTTP3
 
     auto worker = std::make_unique<Worker>(
@@ -1060,12 +1068,246 @@ int ConnectionHandler::create_quic_secret() {
   return 0;
 }
 
+void ConnectionHandler::set_cid_prefixes(
+    const std::vector<std::array<uint8_t, SHRPX_QUIC_CID_PREFIXLEN>>
+        &cid_prefixes) {
+  cid_prefixes_ = cid_prefixes;
+}
+
+QUICLingeringWorkerProcess *
+ConnectionHandler::match_quic_lingering_worker_process_cid_prefix(
+    const uint8_t *dcid, size_t dcidlen) {
+  assert(dcidlen >= SHRPX_QUIC_CID_PREFIXLEN);
+
+  for (auto &lwps : quic_lingering_worker_processes_) {
+    for (auto &cid_prefix : lwps.cid_prefixes) {
+      if (std::equal(std::begin(cid_prefix), std::end(cid_prefix), dcid)) {
+        return &lwps;
+      }
+    }
+  }
+
+  return nullptr;
+}
+
 #  ifdef HAVE_LIBBPF
 std::vector<BPFRef> &ConnectionHandler::get_quic_bpf_refs() {
   return quic_bpf_refs_;
 }
 #  endif // HAVE_LIBBPF
 
+void ConnectionHandler::set_quic_ipc_fd(int fd) { quic_ipc_fd_ = fd; }
+
+void ConnectionHandler::set_quic_lingering_worker_processes(
+    const std::vector<QUICLingeringWorkerProcess> &quic_lwps) {
+  quic_lingering_worker_processes_ = quic_lwps;
+}
+
+int ConnectionHandler::forward_quic_packet_to_lingering_worker_process(
+    QUICLingeringWorkerProcess *quic_lwp, const Address &remote_addr,
+    const Address &local_addr, const uint8_t *data, size_t datalen) {
+  std::array<uint8_t, 512> header;
+
+  assert(header.size() >= 1 + 1 + 1 + sizeof(sockaddr_storage) * 2);
+  assert(remote_addr.len > 0);
+  assert(local_addr.len > 0);
+
+  auto p = header.data();
+
+  *p++ = static_cast<uint8_t>(QUICIPCType::DGRAM_FORWARD);
+  *p++ = static_cast<uint8_t>(remote_addr.len - 1);
+  p = std::copy_n(reinterpret_cast<const uint8_t *>(&remote_addr.su),
+                  remote_addr.len, p);
+  *p++ = static_cast<uint8_t>(local_addr.len - 1);
+  p = std::copy_n(reinterpret_cast<const uint8_t *>(&local_addr.su),
+                  local_addr.len, p);
+
+  iovec msg_iov[] = {
+      {
+          .iov_base = header.data(),
+          .iov_len = static_cast<size_t>(p - header.data()),
+      },
+      {
+          .iov_base = const_cast<uint8_t *>(data),
+          .iov_len = datalen,
+      },
+  };
+
+  msghdr msg{};
+  msg.msg_iov = msg_iov;
+  msg.msg_iovlen = array_size(msg_iov);
+
+  ssize_t nwrite;
+
+  while ((nwrite = sendmsg(quic_lwp->quic_ipc_fd, &msg, 0)) == -1 &&
+         errno == EINTR)
+    ;
+
+  if (nwrite == -1) {
+    std::array<char, STRERROR_BUFSIZE> errbuf;
+
+    auto error = errno;
+    LOG(ERROR) << "Failed to send QUIC IPC message: "
+               << xsi_strerror(error, errbuf.data(), errbuf.size());
+
+    return -1;
+  }
+
+  return 0;
+}
+
+int ConnectionHandler::quic_ipc_read() {
+  std::array<uint8_t, 65536> buf;
+
+  ssize_t nread;
+
+  while ((nread = recv(quic_ipc_fd_, buf.data(), buf.size(), 0)) == -1 &&
+         errno == EINTR)
+    ;
+
+  if (nread == -1) {
+    std::array<char, STRERROR_BUFSIZE> errbuf;
+
+    auto error = errno;
+    LOG(ERROR) << "Failed to read data from QUIC IPC channel: "
+               << xsi_strerror(error, errbuf.data(), errbuf.size());
+
+    return -1;
+  }
+
+  if (nread == 0) {
+    return 0;
+  }
+
+  size_t len = 1 + 1 + 1;
+
+  // Wire format:
+  // TYPE(1) REMOTE_ADDRLEN(1) REMOTE_ADDR(N) LOCAL_ADDRLEN(1) REMOTE_ADDR(N)
+  // DGRAM_PAYLAOD(N)
+  //
+  // When encoding, REMOTE_ADDRLEN and LOCAL_ADDRLEN is decremented by
+  // 1.
+  if (static_cast<size_t>(nread) < len) {
+    return 0;
+  }
+
+  auto p = buf.data();
+  if (*p != static_cast<uint8_t>(QUICIPCType::DGRAM_FORWARD)) {
+    LOG(ERROR) << "Unknown QUICIPCType: " << static_cast<uint32_t>(*p);
+
+    return -1;
+  }
+
+  ++p;
+
+  auto pkt = std::make_unique<QUICPacket>();
+
+  auto remote_addrlen = static_cast<size_t>(*p++) + 1;
+  if (remote_addrlen > sizeof(sockaddr_storage)) {
+    LOG(ERROR) << "The length of remote address is too large: "
+               << remote_addrlen;
+
+    return -1;
+  }
+
+  len += remote_addrlen;
+
+  if (static_cast<size_t>(nread) < len) {
+    LOG(ERROR) << "Insufficient QUIC IPC message length";
+
+    return -1;
+  }
+
+  pkt->remote_addr.len = remote_addrlen;
+  memcpy(&pkt->remote_addr.su, p, remote_addrlen);
+
+  p += remote_addrlen;
+
+  auto local_addrlen = static_cast<size_t>(*p++) + 1;
+  if (local_addrlen > sizeof(sockaddr_storage)) {
+    LOG(ERROR) << "The length of local address is too large: " << local_addrlen;
+
+    return -1;
+  }
+
+  len += local_addrlen;
+
+  if (static_cast<size_t>(nread) < len) {
+    LOG(ERROR) << "Insufficient QUIC IPC message length";
+
+    return -1;
+  }
+
+  pkt->local_addr.len = local_addrlen;
+  memcpy(&pkt->local_addr.su, p, local_addrlen);
+
+  p += local_addrlen;
+
+  auto datalen = nread - (p - buf.data());
+
+  pkt->data.assign(p, p + datalen);
+
+  // At the moment, UpstreamAddr index is unknown.
+  pkt->upstream_addr_index = static_cast<size_t>(-1);
+
+  uint32_t version;
+  const uint8_t *dcid;
+  size_t dcidlen;
+  const uint8_t *scid;
+  size_t scidlen;
+
+  auto rv =
+      ngtcp2_pkt_decode_version_cid(&version, &dcid, &dcidlen, &scid, &scidlen,
+                                    p, datalen, SHRPX_QUIC_SCIDLEN);
+  if (rv < 0) {
+    LOG(ERROR) << "ngtcp2_pkt_decode_version_cid: " << ngtcp2_strerror(rv);
+
+    return -1;
+  }
+
+  if (dcidlen < SHRPX_QUIC_CID_PREFIXLEN) {
+    LOG(ERROR) << "DCID is too short";
+    return -1;
+  }
+
+  if (single_worker_) {
+    auto faddr = single_worker_->find_quic_upstream_addr(pkt->local_addr);
+    if (faddr == nullptr) {
+      LOG(ERROR) << "No suitable upstream address found";
+
+      return 0;
+    }
+
+    auto quic_conn_handler = single_worker_->get_quic_connection_handler();
+
+    // Ignore return value
+    quic_conn_handler->handle_packet(faddr, pkt->remote_addr, pkt->local_addr,
+                                     pkt->data.data(), pkt->data.size());
+
+    return 0;
+  }
+
+  for (auto &worker : workers_) {
+    if (!std::equal(dcid, dcid + SHRPX_QUIC_CID_PREFIXLEN,
+                    worker->get_cid_prefix())) {
+      continue;
+    }
+
+    WorkerEvent wev{
+        .type = WorkerEventType::QUIC_PKT_FORWARD,
+        .quic_pkt = std::move(pkt),
+    };
+    worker->send(std::move(wev));
+
+    return 0;
+  }
+
+  if (LOG_ENABLED(INFO)) {
+    LOG(INFO) << "No worker to match CID prefix";
+  }
+
+  return 0;
+}
 #endif // ENABLE_HTTP3
 
 } // namespace shrpx

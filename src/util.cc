@@ -1609,10 +1609,7 @@ bool is_hex_string(const StringRef &s) {
 
 StringRef decode_hex(BlockAllocator &balloc, const StringRef &s) {
   auto iov = make_byte_ref(balloc, s.size() + 1);
-  auto p = iov.base;
-  for (auto it = std::begin(s); it != std::end(s); it += 2) {
-    *p++ = (hex_to_uint(*it) << 4) | hex_to_uint(*(it + 1));
-  }
+  auto p = decode_hex(iov.base, s);
   *p = '\0';
   return StringRef{iov.base, p};
 }

@@ -178,6 +178,20 @@ void ipc_readcb(struct ev_loop *loop, ev_io *w, int revents) {
 }
 } // namespace
 
+#ifdef ENABLE_HTTP3
+namespace {
+void quic_ipc_readcb(struct ev_loop *loop, ev_io *w, int revents) {
+  auto conn_handler = static_cast<ConnectionHandler *>(w->data);
+
+  if (conn_handler->quic_ipc_read() != 0) {
+    LOG(ERROR) << "Failed to read data from QUIC IPC channel";
+
+    return;
+  }
+}
+} // namespace
+#endif // ENABLE_HTTP3
+
 namespace {
 int generate_ticket_key(TicketKey &ticket_key) {
   ticket_key.cipher = get_config()->tls.ticket.cipher;
@@ -434,6 +448,12 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
   conn_handler->set_neverbleed(nb.get());
 #endif // HAVE_NEVERBLEED
 
+#ifdef ENABLE_HTTP3
+  conn_handler->set_quic_ipc_fd(wpconf->quic_ipc_fd);
+  conn_handler->set_quic_lingering_worker_processes(
+      wpconf->quic_lingering_worker_processes);
+#endif // ENABLE_HTTP3
+
   for (auto &addr : config->conn.listener.addrs) {
     conn_handler->add_acceptor(
         std::make_unique<AcceptHandler>(&addr, conn_handler.get()));
@@ -500,6 +520,10 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
   if (conn_handler->create_quic_secret() != 0) {
     return -1;
   }
+
+  conn_handler->set_cid_prefixes(wpconf->cid_prefixes);
+  conn_handler->set_quic_lingering_worker_processes(
+      wpconf->quic_lingering_worker_processes);
 #endif // ENABLE_HTTP3
 
   if (config->single_thread) {
@@ -546,6 +570,13 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
   ev_io_init(&ipcev, ipc_readcb, wpconf->ipc_fd, EV_READ);
   ipcev.data = conn_handler.get();
   ev_io_start(loop, &ipcev);
+
+#ifdef ENABLE_HTTP3
+  ev_io quic_ipcev;
+  ev_io_init(&quic_ipcev, quic_ipc_readcb, wpconf->quic_ipc_fd, EV_READ);
+  quic_ipcev.data = conn_handler.get();
+  ev_io_start(loop, &quic_ipcev);
+#endif // ENABLE_HTTP3
 
   if (tls::upstream_tls_enabled(config->conn) && !config->tls.ocsp.disabled) {
     if (config->tls.ocsp.startup) {

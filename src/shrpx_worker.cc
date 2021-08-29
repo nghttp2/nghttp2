@@ -531,9 +531,26 @@ void Worker::process_events() {
     break;
 #ifdef ENABLE_HTTP3
   case WorkerEventType::QUIC_PKT_FORWARD: {
+    const UpstreamAddr *faddr;
+
+    if (wev.quic_pkt->upstream_addr_index == static_cast<size_t>(-1)) {
+      faddr = find_quic_upstream_addr(wev.quic_pkt->local_addr);
+      if (faddr == nullptr) {
+        LOG(ERROR) << "No suitable upstream address found";
+
+        break;
+      }
+    } else if (quic_upstream_addrs_.size() <=
+               wev.quic_pkt->upstream_addr_index) {
+      LOG(ERROR) << "upstream_addr_index is too large";
+
+      break;
+    } else {
+      faddr = &quic_upstream_addrs_[wev.quic_pkt->upstream_addr_index];
+    }
+
     quic_conn_handler_.handle_packet(
-        &quic_upstream_addrs_[wev.quic_pkt->upstream_addr_index],
-        wev.quic_pkt->remote_addr, wev.quic_pkt->local_addr,
+        faddr, wev.quic_pkt->remote_addr, wev.quic_pkt->local_addr,
         wev.quic_pkt->data.data(), wev.quic_pkt->data.size());
 
     break;
@@ -647,12 +664,11 @@ bool Worker::should_attach_bpf() const {
   auto &quicconf = config->quic;
   auto &apiconf = config->api;
 
-  if (quicconf.bpf.disabled || config->single_thread ||
-      config->num_worker == 1) {
+  if (quicconf.bpf.disabled) {
     return false;
   }
 
-  if (apiconf.enabled) {
+  if (!config->single_thread && apiconf.enabled) {
     return index_ == 1;
   }
 
@@ -663,18 +679,14 @@ bool Worker::should_update_bpf_map() const {
   auto config = get_config();
   auto &quicconf = config->quic;
 
-  return !quicconf.bpf.disabled && !config->single_thread &&
-         config->num_worker > 1;
+  return !quicconf.bpf.disabled;
 }
 
 uint32_t Worker::compute_sk_index() const {
   auto config = get_config();
   auto &apiconf = config->api;
 
-  assert(!config->single_thread);
-  assert(config->num_worker > 1);
-
-  if (apiconf.enabled) {
+  if (!config->single_thread && apiconf.enabled) {
     return index_ - 1;
   }
 
@@ -978,6 +990,65 @@ void Worker::set_quic_secret(const std::shared_ptr<QUICSecret> &secret) {
 
 const std::shared_ptr<QUICSecret> &Worker::get_quic_secret() const {
   return quic_secret_;
+}
+
+const UpstreamAddr *Worker::find_quic_upstream_addr(const Address &local_addr) {
+  std::array<char, NI_MAXHOST> host;
+
+  auto rv = getnameinfo(&local_addr.su.sa, local_addr.len, host.data(),
+                        host.size(), nullptr, 0, NI_NUMERICHOST);
+  if (rv != 0) {
+    LOG(ERROR) << "getnameinfo: " << gai_strerror(rv);
+
+    return nullptr;
+  }
+
+  uint16_t port;
+
+  switch (local_addr.su.sa.sa_family) {
+  case AF_INET:
+    port = htons(local_addr.su.in.sin_port);
+
+    break;
+  case AF_INET6:
+    port = htons(local_addr.su.in6.sin6_port);
+
+    break;
+  default:
+    assert(0);
+  }
+
+  auto hostport = util::make_hostport(StringRef{host.data()}, port);
+  const UpstreamAddr *fallback_faddr = nullptr;
+
+  for (auto &faddr : quic_upstream_addrs_) {
+    if (faddr.hostport == hostport) {
+      return &faddr;
+    }
+
+    if (faddr.port != port || faddr.family != local_addr.su.sa.sa_family) {
+      continue;
+    }
+
+    switch (faddr.family) {
+    case AF_INET:
+      if (util::starts_with(faddr.hostport, StringRef::from_lit("0.0.0.0:"))) {
+        fallback_faddr = &faddr;
+      }
+
+      break;
+    case AF_INET6:
+      if (util::starts_with(faddr.hostport, StringRef::from_lit("[::]:"))) {
+        fallback_faddr = &faddr;
+      }
+
+      break;
+    default:
+      assert(0);
+    }
+  }
+
+  return fallback_faddr;
 }
 #endif // ENABLE_HTTP3
 

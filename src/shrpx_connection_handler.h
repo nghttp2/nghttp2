@@ -103,12 +103,33 @@ struct SerialEvent {
   std::shared_ptr<DownstreamConfig> downstreamconf;
 };
 
-#if defined(ENABLE_HTTP3) && defined(HAVE_LIBBPF)
+#ifdef ENABLE_HTTP3
+#  ifdef HAVE_LIBBPF
 struct BPFRef {
   int reuseport_array;
   int cid_prefix_map;
 };
-#endif // ENABLE_HTTP3 && HAVE_LIBBPF
+#  endif // HAVE_LIBBPF
+
+// QUIC IPC message type.
+enum class QUICIPCType {
+  NONE,
+  // Send forwarded QUIC UDP datagram and its metadata.
+  DGRAM_FORWARD,
+};
+
+// WorkerProcesses which are in graceful shutdown period.
+struct QUICLingeringWorkerProcess {
+  QUICLingeringWorkerProcess(
+      std::vector<std::array<uint8_t, SHRPX_QUIC_CID_PREFIXLEN>> cid_prefixes,
+      int quic_ipc_fd)
+      : cid_prefixes{std::move(cid_prefixes)}, quic_ipc_fd{quic_ipc_fd} {}
+
+  std::vector<std::array<uint8_t, SHRPX_QUIC_CID_PREFIXLEN>> cid_prefixes;
+  // Socket to send QUIC IPC message to this worker process.
+  int quic_ipc_fd;
+};
+#endif // ENABLE_HTTP3
 
 class ConnectionHandler {
 public:
@@ -179,6 +200,28 @@ public:
 
   int create_quic_secret();
 
+  void set_cid_prefixes(
+      const std::vector<std::array<uint8_t, SHRPX_QUIC_CID_PREFIXLEN>>
+          &cid_prefixes);
+
+  void set_quic_lingering_worker_processes(
+      const std::vector<QUICLingeringWorkerProcess> &quic_lwps);
+
+  // Return matching QUICLingeringWorkerProcess which has a CID prefix
+  // such that |dcid| starts with it.  If no such
+  // QUICLingeringWorkerProcess, it returns nullptr.
+  QUICLingeringWorkerProcess *
+  match_quic_lingering_worker_process_cid_prefix(const uint8_t *dcid,
+                                                 size_t dcidlen);
+
+  int forward_quic_packet_to_lingering_worker_process(
+      QUICLingeringWorkerProcess *quic_lwp, const Address &remote_addr,
+      const Address &local_addr, const uint8_t *data, size_t datalen);
+
+  void set_quic_ipc_fd(int fd);
+
+  int quic_ipc_read();
+
 #  ifdef HAVE_LIBBPF
   std::vector<BPFRef> &get_quic_bpf_refs();
 #  endif // HAVE_LIBBPF
@@ -212,6 +255,11 @@ private:
   // and signature algorithm presented by client.
   std::vector<std::vector<SSL_CTX *>> indexed_ssl_ctx_;
 #ifdef ENABLE_HTTP3
+  std::vector<std::array<uint8_t, SHRPX_QUIC_CID_PREFIXLEN>> cid_prefixes_;
+  std::vector<std::array<uint8_t, SHRPX_QUIC_CID_PREFIXLEN>>
+      lingering_cid_prefixes_;
+  int quic_ipc_fd_;
+  std::vector<QUICLingeringWorkerProcess> quic_lingering_worker_processes_;
 #  ifdef HAVE_LIBBPF
   std::vector<BPFRef> quic_bpf_refs_;
 #  endif // HAVE_LIBBPF
