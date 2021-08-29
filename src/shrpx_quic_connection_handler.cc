@@ -172,8 +172,11 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
         }
       }
 
-      // TODO Must be rate limited
-      send_stateless_reset(faddr, dcid, dcidlen, remote_addr, local_addr);
+      if (!(data[0] & 0x80)) {
+        // TODO Must be rate limited
+        send_stateless_reset(faddr, dcid, dcidlen, remote_addr, local_addr);
+      }
+
       return 0;
     }
 
