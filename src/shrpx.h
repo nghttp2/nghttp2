@@ -48,4 +48,11 @@
 inline int initgroups(const char *user, gid_t group) { return 0; }
 #endif // defined(HAVE_DECL_INITGROUPS) && !HAVE_DECL_INITGROUPS
 
+#ifndef HAVE_BPF_STATS_TYPE
+/* Newer kernel should have this defined in linux/bpf.h */
+enum bpf_stats_type {
+  BPF_STATS_RUN_TIME = 0,
+};
+#endif // !HAVE_BPF_STATS_TYPE
+
 #endif // SHRPX_H

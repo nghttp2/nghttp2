@@ -559,6 +559,25 @@ if test "x${request_libbpf}" != "xno"; then
     # Add the include path for Debian
     EXTRABPFCFLAGS="-I/usr/include/$host_cpu-$host_os"
     AC_SUBST([EXTRABPFCFLAGS])
+
+    AC_MSG_CHECKING([whether enum bpf_stats_type is defined in linux/bpf.h])
+    AC_COMPILE_IFELSE([AC_LANG_PROGRAM(
+    [[
+    #include <linux/bpf.h>
+    ]],
+    [[
+    enum bpf_stats_type foo;
+    ]])],
+    [have_bpf_stats_type=yes],
+    [have_bpf_stats_type=no])
+
+    if test "x${have_bpf_stats_type}" = "xyes"; then
+      AC_MSG_RESULT([yes])
+      AC_DEFINE([HAVE_BPF_STATS_TYPE], [1],
+                [Define to 1 if you have enum bpf_stats_type in linux/bpf.h.])
+    else
+      AC_MSG_RESULT([no])
+    fi
   else
     AC_MSG_NOTICE($LIBBPF_PKG_ERRORS)
   fi
