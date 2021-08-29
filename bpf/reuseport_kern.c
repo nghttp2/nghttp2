@@ -140,7 +140,7 @@ struct bpf_map_def SEC("maps") sk_info = {
 };
 
 typedef struct quic_hd {
-  __u8 *dcid;
+  const __u8 *dcid;
   __u32 dcidlen;
   __u32 dcid_offset;
   __u8 type;
@@ -158,54 +158,33 @@ enum {
   NGTCP2_PKT_SHORT = 0x40,
 };
 
-static inline int parse_quic(quic_hd *qhd, struct sk_reuseport_md *reuse_md) {
-  __u64 len = sizeof(struct udphdr) + 1;
-  __u8 *p;
+static inline int parse_quic(quic_hd *qhd, const __u8 *data,
+                             const __u8 *data_end) {
+  const __u8 *p;
   __u64 dcidlen;
 
-  if (reuse_md->data + len > reuse_md->data_end) {
-    return -1;
-  }
+  if (*data & 0x80) {
+    p = data + 1 + 4;
 
-  p = reuse_md->data + sizeof(struct udphdr);
-
-  if (*p & 0x80) {
-    len += 4 + 1;
-    if (reuse_md->data + len > reuse_md->data_end) {
-      return -1;
-    }
-
-    p += 1 + 4;
-
+    // Do not check the actual DCID length because we might not buffer
+    // whole DCID here.
     dcidlen = *p;
 
     if (dcidlen > MAX_DCIDLEN || dcidlen < MIN_DCIDLEN) {
       return -1;
     }
 
-    len += 1 + dcidlen;
-
-    if (reuse_md->data + len > reuse_md->data_end) {
-      return -1;
-    }
-
     ++p;
 
-    qhd->type =
-        (*((__u8 *)(reuse_md->data) + sizeof(struct udphdr)) & 0x30) >> 4;
+    qhd->type = (*data & 0x30) >> 4;
     qhd->dcid = p;
     qhd->dcidlen = dcidlen;
-    qhd->dcid_offset = sizeof(struct udphdr) + 6;
+    qhd->dcid_offset = 6;
   } else {
-    len += SV_DCIDLEN;
-    if (reuse_md->data + len > reuse_md->data_end) {
-      return -1;
-    }
-
     qhd->type = NGTCP2_PKT_SHORT;
-    qhd->dcid = (__u8 *)reuse_md->data + sizeof(struct udphdr) + 1;
+    qhd->dcid = data + 1;
     qhd->dcidlen = SV_DCIDLEN;
-    qhd->dcid_offset = sizeof(struct udphdr) + 1;
+    qhd->dcid_offset = 1;
   }
 
   return 0;
@@ -220,8 +199,14 @@ int select_reuseport(struct sk_reuseport_md *reuse_md) {
   int rv;
   quic_hd qhd;
   __u32 a, b;
+  __u8 pkt_databuf[6 + MAX_DCIDLEN];
 
-  rv = parse_quic(&qhd, reuse_md);
+  if (bpf_skb_load_bytes(reuse_md, sizeof(struct udphdr), pkt_databuf,
+                         sizeof(pkt_databuf)) != 0) {
+    return SK_DROP;
+  }
+
+  rv = parse_quic(&qhd, pkt_databuf, pkt_databuf + sizeof(pkt_databuf));
   if (rv != 0) {
     return SK_DROP;
   }
@@ -229,12 +214,7 @@ int select_reuseport(struct sk_reuseport_md *reuse_md) {
   switch (qhd.type) {
   case NGTCP2_PKT_INITIAL:
   case NGTCP2_PKT_0RTT:
-    if (reuse_md->data + qhd.dcid_offset + CID_PREFIXLEN > reuse_md->data_end) {
-      return SK_DROP;
-    }
-
-    memcpy(sk_prefix, reuse_md->data + sizeof(struct udphdr) + 6,
-           CID_PREFIXLEN);
+    memcpy(sk_prefix, pkt_databuf + qhd.dcid_offset, CID_PREFIXLEN);
 
     if (qhd.dcidlen == SV_DCIDLEN) {
       psk_index = bpf_map_lookup_elem(&cid_prefix_map, sk_prefix);
@@ -263,11 +243,7 @@ int select_reuseport(struct sk_reuseport_md *reuse_md) {
       return SK_DROP;
     }
 
-    if (reuse_md->data + qhd.dcid_offset + SV_DCIDLEN > reuse_md->data_end) {
-      return SK_DROP;
-    }
-
-    memcpy(sk_prefix, reuse_md->data + qhd.dcid_offset, CID_PREFIXLEN);
+    memcpy(sk_prefix, pkt_databuf + qhd.dcid_offset, CID_PREFIXLEN);
 
     psk_index = bpf_map_lookup_elem(&cid_prefix_map, sk_prefix);
     if (psk_index == NULL) {
