@@ -31,6 +31,7 @@ bpf_pkglib_DATA = reuseport_kern.o
 all: $(builddir)/reuseport_kern.o
 
 $(builddir)/reuseport_kern.o: reuseport_kern.c
-	$(CC) @BPFCFLAGS@ @EXTRABPFCFLAGS@ -target bpf -g -c $< -o $@
+	$(CC) @LIBBPF_CFLAGS@ @BPFCFLAGS@ @EXTRABPFCFLAGS@ \
+	  -target bpf -g -c $< -o $@
 
 endif # HAVE_LIBBPF
