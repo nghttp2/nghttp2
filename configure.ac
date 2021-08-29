@@ -189,7 +189,7 @@ AC_ARG_WITH([libnghttp3],
 
 AC_ARG_WITH([libbpf],
     [AS_HELP_STRING([--with-libbpf],
-                    [Use libbpf [default=check]])],
+                    [Use libbpf [default=no]])],
     [request_libbpf=$withval], [request_libbpf=no])
 
 dnl Define variables
