@@ -557,7 +557,7 @@ if test "x${request_libbpf}" != "xno"; then
   if test "x${have_libbpf}" = "xyes"; then
     AC_DEFINE([HAVE_LIBBPF], [1], [Define to 1 if you have `libbpf` library.])
     if test "x${BPFCFLAGS}" = "x"; then
-      BPFCFLAGS="-Wall -O2"
+      BPFCFLAGS="-Wall -O2 -g"
     fi
     # Add the include path for Debian
     EXTRABPFCFLAGS="-I/usr/include/$host_cpu-$host_os"
