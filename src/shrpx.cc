@@ -1211,7 +1211,8 @@ get_inherited_quic_lingering_worker_process_from_env() {
       auto hex_cid_prefix = StringRef{p, end};
       if (hex_cid_prefix.size() != SHRPX_QUIC_CID_PREFIXLEN * 2 ||
           !util::is_hex_string(hex_cid_prefix)) {
-        continue;
+        LOG(WARN) << "Found invalid CID prefix=" << hex_cid_prefix;
+        break;
       }
 
       if (LOG_ENABLED(INFO)) {
