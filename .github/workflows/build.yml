@@ -36,7 +36,6 @@ jobs:
           libjemalloc-dev \
           libc-ares-dev \
           libelf-dev \
-          libc6-dev-i386 \
           cmake \
           cmake-data
         echo 'CPPFLAGS=-fsanitize=address,undefined -fno-sanitize-recover=undefined -g' >> $GITHUB_ENV
