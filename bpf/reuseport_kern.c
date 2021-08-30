@@ -205,7 +205,7 @@ int select_reuseport(struct sk_reuseport_md *reuse_md) {
   switch (qhd.type) {
   case NGTCP2_PKT_INITIAL:
   case NGTCP2_PKT_0RTT:
-    memcpy(sk_prefix, pkt_databuf + qhd.dcid_offset, CID_PREFIXLEN);
+    __builtin_memcpy(sk_prefix, pkt_databuf + qhd.dcid_offset, CID_PREFIXLEN);
 
     if (qhd.dcidlen == SV_DCIDLEN) {
       psk_index = bpf_map_lookup_elem(&cid_prefix_map, sk_prefix);
@@ -234,7 +234,7 @@ int select_reuseport(struct sk_reuseport_md *reuse_md) {
       return SK_DROP;
     }
 
-    memcpy(sk_prefix, pkt_databuf + qhd.dcid_offset, CID_PREFIXLEN);
+    __builtin_memcpy(sk_prefix, pkt_databuf + qhd.dcid_offset, CID_PREFIXLEN);
 
     psk_index = bpf_map_lookup_elem(&cid_prefix_map, sk_prefix);
     if (psk_index == NULL) {
