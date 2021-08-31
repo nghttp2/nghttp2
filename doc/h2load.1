@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "H2LOAD" "1" "Jul 18, 2021" "1.45.0-DEV" "nghttp2"
+.TH "H2LOAD" "1" "Aug 31, 2021" "1.45.0-DEV" "nghttp2"
 .SH NAME
 h2load \- HTTP/2 benchmarking tool
 .
@@ -101,6 +101,7 @@ Default: \fB1\fP
 .TP
 .B \-w, \-\-window\-bits=<N>
 Sets the stream level initial window size to (2**<N>)\-1.
+For QUIC, <N> is capped to 26 (roughly 64MiB).
 .sp
 Default: \fB30\fP
 .UNINDENT
@@ -120,10 +121,18 @@ Add/Override a header to the requests.
 .INDENT 0.0
 .TP
 .B \-\-ciphers=<SUITE>
-Set allowed  cipher list.  The  format of the  string is
-described in OpenSSL ciphers(1).
+Set  allowed cipher  list  for TLSv1.2  or ealier.   The
+format of the string is described in OpenSSL ciphers(1).
 .sp
 Default: \fBECDHE\-ECDSA\-AES256\-GCM\-SHA384:ECDHE\-RSA\-AES256\-GCM\-SHA384:ECDHE\-ECDSA\-CHACHA20\-POLY1305:ECDHE\-RSA\-CHACHA20\-POLY1305:ECDHE\-ECDSA\-AES128\-GCM\-SHA256:ECDHE\-RSA\-AES128\-GCM\-SHA256:ECDHE\-ECDSA\-AES256\-SHA384:ECDHE\-RSA\-AES256\-SHA384:ECDHE\-ECDSA\-AES128\-SHA256:ECDHE\-RSA\-AES128\-SHA256\fP
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-tls13\-ciphers=<SUITE>
+Set allowed cipher list for  TLSv1.3.  The format of the
+string is described in OpenSSL ciphers(1).
+.sp
+Default: \fBTLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_CCM_SHA256\fP
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -285,6 +294,16 @@ to buffering.  Status code is \-1 for failed streams.
 .UNINDENT
 .INDENT 0.0
 .TP
+.B \-\-qlog\-file\-base=<PATH>
+Enable qlog output and specify base file name for qlogs.
+Qlog  is emitted  for each connection.
+For  a  given  base  name "base", each  output file name
+becomes  "base.M.N.qlog"  where M is worker ID  and N is
+client ID (e.g. "base.0.3.qlog").
+Only effective in QUIC runs.
+.UNINDENT
+.INDENT 0.0
+.TP
 .B \-\-connect\-to=<HOST>[:<PORT>]
 Host and port to connect  instead of using the authority
 in <URI>.
@@ -294,6 +313,18 @@ in <URI>.
 .B \-\-rps=<N>
 Specify request  per second for each  client.  \fI\%\-\-rps\fP and
 \fI\%\-\-timing\-script\-file\fP are mutually exclusive.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-groups=<GROUPS>
+Specify the supported groups.
+.sp
+Default: \fBX25519:P\-256:P\-384:P\-521\fP
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-no\-udp\-gso
+Disable UDP GSO.
 .UNINDENT
 .INDENT 0.0
 .TP

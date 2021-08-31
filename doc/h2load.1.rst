@@ -76,6 +76,7 @@ OPTIONS
 .. option:: -w, --window-bits=<N>
 
     Sets the stream level initial window size to (2\*\*<N>)-1.
+    For QUIC, <N> is capped to 26 (roughly 64MiB).
 
     Default: ``30``
 
@@ -92,10 +93,17 @@ OPTIONS
 
 .. option:: --ciphers=<SUITE>
 
-    Set allowed  cipher list.  The  format of the  string is
-    described in OpenSSL ciphers(1).
+    Set  allowed cipher  list  for TLSv1.2  or ealier.   The
+    format of the string is described in OpenSSL ciphers(1).
 
     Default: ``ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256``
+
+.. option:: --tls13-ciphers=<SUITE>
+
+    Set allowed cipher list for  TLSv1.3.  The format of the
+    string is described in OpenSSL ciphers(1).
+
+    Default: ``TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_CCM_SHA256``
 
 .. option:: -p, --no-tls-proto=<PROTOID>
 
@@ -240,6 +248,15 @@ OPTIONS
     appear slightly  out of order with  multiple threads due
     to buffering.  Status code is -1 for failed streams.
 
+.. option:: --qlog-file-base=<PATH>
+
+    Enable qlog output and specify base file name for qlogs.
+    Qlog  is emitted  for each connection.
+    For  a  given  base  name "base", each  output file name
+    becomes  "base.M.N.qlog"  where M is worker ID  and N is
+    client ID (e.g. "base.0.3.qlog").
+    Only effective in QUIC runs.
+
 .. option:: --connect-to=<HOST>[:<PORT>]
 
     Host and port to connect  instead of using the authority
@@ -249,6 +266,16 @@ OPTIONS
 
     Specify request  per second for each  client.  :option:`--rps` and
     :option:`--timing-script-file` are mutually exclusive.
+
+.. option:: --groups=<GROUPS>
+
+    Specify the supported groups.
+
+    Default: ``X25519:P-256:P-384:P-521``
+
+.. option:: --no-udp-gso
+
+    Disable UDP GSO.
 
 .. option:: -v, --verbose
 
