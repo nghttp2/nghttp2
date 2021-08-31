@@ -2252,6 +2252,12 @@ Connections:
               connection,  specify  "proxyproto" parameter.   This  is
               disabled by default.
 
+              To  receive   HTTP/3  (QUIC)  traffic,   specify  "quic"
+              parameter.  It  makes nghttpx listen on  UDP port rather
+              than  TCP   port.   UNIX   domain  socket,   "api",  and
+              "healthmon"  parameters  cannot   be  used  with  "quic"
+              parameter.
+
               Default: *,3000
   --backlog=<N>
               Set listen backlog size.
