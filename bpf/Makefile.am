@@ -32,7 +32,7 @@ all: $(builddir)/reuseport_kern.o
 
 $(builddir)/reuseport_kern.o: reuseport_kern.c
 	$(CC) @LIBBPF_CFLAGS@ @BPFCFLAGS@ @EXTRABPFCFLAGS@ \
-	  -target bpf -g -c $< -o $@
+	  -target bpf -c $< -o $@
 
 clean-local:
 	-rm -f reuseport_kern.o
