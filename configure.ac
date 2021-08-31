@@ -267,6 +267,7 @@ AC_COMPILE_IFELSE([AC_LANG_PROGRAM(
 ]],
 [[
 std::vector<std::future<int>> v;
+(void)v;
 ]])],
     [AC_DEFINE([HAVE_STD_FUTURE], [1],
                [Define to 1 if you have the `std::future`.])
@@ -570,6 +571,7 @@ if test "x${request_libbpf}" != "xno"; then
     ]],
     [[
     enum bpf_stats_type foo;
+    (void)foo;
     ]])],
     [have_bpf_stats_type=yes],
     [have_bpf_stats_type=no])
