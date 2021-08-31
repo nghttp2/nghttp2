@@ -131,3 +131,12 @@ specify ``unix:`` followed by the path to UNIX domain socket.  For
 example, if UNIX domain socket is ``/tmp/nghttpx.sock``, use
 ``--base-uri=unix:/tmp/nghttpx.sock``.  h2load uses scheme, host and
 port in the first URI in command-line or input file.
+
+HTTP/3
+------
+
+h2load supports HTTP/3 if it is built with HTTP/3 enabled.  HTTP/3
+support is experimental.
+
+In order to send HTTP/3 request, specify ``h3`` to
+:option:`--npn-list`.

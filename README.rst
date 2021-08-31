@@ -159,6 +159,11 @@ required:
 
 * libbpf-dev >= 0.4.0
 
+For Ubuntu 20.04, you can build libbpf from `the source code
+<https://github.com/libbpf/libbpf/releases/tag/v0.4.0>`_.  nghttpx
+requires eBPF program for reloading its configuration and hot swapping
+its executable.
+
 Compiling libnghttp2 C source code requires a C99 compiler.  gcc 4.8
 is known to be adequate.  In order to compile the C++ source code, gcc
 >= 6.0 or clang >= 6.0 is required.  C++ source code requires C++14
@@ -896,6 +901,17 @@ like so:
 .. code-block:: text
 
     $ h2load --npn-list h3 https://127.0.0.1:4433
+
+HTTP/3
+------
+
+To build h2load and nghttpx with HTTP/3 feature enabled, run the
+configure script with ``--enable-http3``.
+
+For nghttpx to reload configurations and swapping its executable while
+gracefully terminating old worker processes, eBPF is required.  Run
+the configure script with ``--enable-http3 --with-libbpf`` to build
+eBPF program.
 
 HPACK tools
 -----------

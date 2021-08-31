@@ -509,6 +509,37 @@ Bootstrapping WebSockets with HTTP/2 for both frontend and backend
 connections.  This feature is enabled by default and no configuration
 is required.
 
+HTTP/3
+------
+
+nghttpx supports HTTP/3 if it is built with HTTP/3 support enabled.
+HTTP/3 support is experimental.
+
+In order to listen UDP port to receive HTTP/3 traffic,
+:option:`--frontend` option must have ``quic`` parameter:
+
+.. code-block:: text
+
+   frontend=*,443;quic
+
+The above example makes nghttpx receive HTTP/3 traffic on UDP
+port 443.
+
+nghttpx does not support HTTP/3 on backend connection.
+
+Hot swapping (SIGUSR2) or configuration reload (SIGHUP) require eBPF
+program.  Without eBPF, old worker processes keep getting HTTP/3
+traffic and do not work as intended.
+
+In order announce that HTTP/3 endpoint is available, you should
+specify alt-svc header field.  For example, the following options send
+alt-svc header field in HTTP/1.1 and HTTP/2 response:
+
+.. code-block:: text
+
+   altsvc=h3,443,,,ma=3600
+   http2-altsvc=h3,443,,,ma=3600
+
 Migration from nghttpx v1.18.x or earlier
 -----------------------------------------
 
