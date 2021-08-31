@@ -1799,6 +1799,7 @@ namespace {
 int http_end_request_headers(nghttp3_conn *conn, int64_t stream_id,
                              void *user_data, void *stream_user_data) {
   auto upstream = static_cast<Http3Upstream *>(user_data);
+  auto handler = upstream->get_client_handler();
   auto downstream = static_cast<Downstream *>(stream_user_data);
 
   if (!downstream || downstream->get_stop_reading()) {
@@ -1808,6 +1809,9 @@ int http_end_request_headers(nghttp3_conn *conn, int64_t stream_id,
   if (upstream->http_end_request_headers(downstream) != 0) {
     return NGHTTP3_ERR_CALLBACK_FAILURE;
   }
+
+  downstream->reset_upstream_rtimer();
+  handler->stop_read_timer();
 
   return 0;
 }
