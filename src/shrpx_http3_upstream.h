@@ -144,11 +144,16 @@ public:
   int http_recv_data(Downstream *downstream, const uint8_t *data,
                      size_t datalen);
   int handshake_completed();
+  int check_shutdown();
+  int start_graceful_shutdown();
+  int submit_goaway();
 
 private:
   ClientHandler *handler_;
   ev_timer timer_;
   ev_timer idle_timer_;
+  ev_timer shutdown_timer_;
+  ev_prepare prep_;
   ngtcp2_cid initial_client_dcid_;
   ngtcp2_conn *conn_;
   quic::Error last_error_;

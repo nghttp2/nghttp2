@@ -77,6 +77,28 @@ fail:
 } // namespace
 
 namespace {
+void shutdown_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
+  auto upstream = static_cast<Http3Upstream *>(w->data);
+  auto handler = upstream->get_client_handler();
+
+  if (upstream->submit_goaway() != 0) {
+    delete handler;
+  }
+}
+} // namespace
+
+namespace {
+void prepare_cb(struct ev_loop *loop, ev_prepare *w, int revent) {
+  auto upstream = static_cast<Http3Upstream *>(w->data);
+  auto handler = upstream->get_client_handler();
+
+  if (upstream->check_shutdown() != 0) {
+    delete handler;
+  }
+}
+} // namespace
+
+namespace {
 size_t downstream_queue_size(Worker *worker) {
   auto &downstreamconf = *worker->get_downstream_config();
 
@@ -104,11 +126,20 @@ Http3Upstream::Http3Upstream(ClientHandler *handler)
   ev_timer_init(&idle_timer_, idle_timeoutcb, 0.,
                 quicconf.upstream.timeout.idle);
   idle_timer_.data = this;
+
+  ev_timer_init(&shutdown_timer_, shutdown_timeout_cb, 0., 0.);
+  shutdown_timer_.data = this;
+
+  ev_prepare_init(&prep_, prepare_cb);
+  prep_.data = this;
+  ev_prepare_start(handler_->get_loop(), &prep_);
 }
 
 Http3Upstream::~Http3Upstream() {
   auto loop = handler_->get_loop();
 
+  ev_prepare_stop(loop, &prep_);
+  ev_timer_stop(loop, &shutdown_timer_);
   ev_timer_stop(loop, &idle_timer_);
   ev_timer_stop(loop, &timer_);
 
@@ -2398,6 +2429,57 @@ void Http3Upstream::log_response_headers(
   ULOG(INFO, this) << "HTTP response headers. stream_id="
                    << downstream->get_stream_id() << "\n"
                    << ss.str();
+}
+
+int Http3Upstream::check_shutdown() {
+  auto worker = handler_->get_worker();
+
+  if (!worker->get_graceful_shutdown()) {
+    return 0;
+  }
+
+  ev_prepare_stop(handler_->get_loop(), &prep_);
+
+  return start_graceful_shutdown();
+}
+
+int Http3Upstream::start_graceful_shutdown() {
+  int rv;
+
+  if (ev_is_active(&shutdown_timer_)) {
+    return 0;
+  }
+
+  rv = nghttp3_conn_submit_shutdown_notice(httpconn_);
+  if (rv != 0) {
+    ULOG(FATAL, this) << "nghttp3_conn_submit_shutdown_notice: "
+                      << nghttp3_strerror(rv);
+    return -1;
+  }
+
+  handler_->signal_write();
+
+  auto t = ngtcp2_conn_get_pto(conn_);
+
+  ev_timer_set(&shutdown_timer_, static_cast<ev_tstamp>(t) * 3 / NGTCP2_SECONDS,
+               0.);
+  ev_timer_start(handler_->get_loop(), &shutdown_timer_);
+
+  return 0;
+}
+
+int Http3Upstream::submit_goaway() {
+  int rv;
+
+  rv = nghttp3_conn_shutdown(httpconn_);
+  if (rv != 0) {
+    ULOG(FATAL, this) << "nghttp3_conn_shutdown: " << nghttp3_strerror(rv);
+    return -1;
+  }
+
+  handler_->signal_write();
+
+  return 0;
 }
 
 } // namespace shrpx
