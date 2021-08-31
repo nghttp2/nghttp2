@@ -4839,7 +4839,30 @@ NGHTTP2_EXTERN int nghttp2_check_header_value(const uint8_t *value, size_t len);
 /**
  * @function
  *
- * Returns nonzero if the |value| which is supposed to the value of
+ * Returns nonzero if the |value| which is supposed to be the value of the
+ * :method header field is valid according to
+ * https://datatracker.ietf.org/doc/html/rfc7231#section-4 and
+ * https://datatracker.ietf.org/doc/html/rfc7230#section-3.2.6
+ */
+NGHTTP2_EXTERN int nghttp2_check_method(const uint8_t *value, size_t len);
+
+/**
+ * @function
+ *
+ * Returns nonzero if the |value| which is supposed to be the value of the
+ * :path header field is valid according to
+ * https://datatracker.ietf.org/doc/html/rfc7540#section-8.1.2.3
+ *
+ * |value| is valid if it merely consists of the allowed characters.
+ * In particular, it does not check whether |value| follows the syntax
+ * of path.
+ */
+NGHTTP2_EXTERN int nghttp2_check_path(const uint8_t *value, size_t len);
+
+/**
+ * @function
+ *
+ * Returns nonzero if the |value| which is supposed to be the value of the
  * :authority or host header field is valid according to
  * https://tools.ietf.org/html/rfc3986#section-3.2
  *
