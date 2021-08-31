@@ -876,6 +876,7 @@ int parse_upstream_params(UpstreamParams &out, const StringRef &src_params) {
       out.quic = true;
 #else  // !ENABLE_HTTP3
       LOG(ERROR) << "quic: QUIC is disabled at compile time";
+      return -1;
 #endif // !ENABLE_HTTP3
     } else if (!param.empty()) {
       LOG(ERROR) << "frontend: " << param << ": unknown keyword";
