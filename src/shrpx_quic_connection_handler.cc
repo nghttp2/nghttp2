@@ -127,8 +127,10 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
         if (verify_retry_token(&odcid, hd.token.base, hd.token.len, &hd.dcid,
                                &remote_addr.su.sa, remote_addr.len,
                                secret.data()) != 0) {
-          // 2nd Retry packet is not allowed, so just drop it or send
-          // CONNECTIONC_CLOE with INVALID_TOKEN.
+          // 2nd Retry packet is not allowed, so send CONNECTIONC_CLOE
+          // with INVALID_TOKEN.
+          send_connection_close(faddr, version, &hd.dcid, &hd.scid, remote_addr,
+                                local_addr, NGTCP2_INVALID_TOKEN);
           return 0;
         }
 
@@ -399,6 +401,33 @@ int QUICConnectionHandler::send_stateless_reset(const UpstreamAddr *faddr,
     LOG(INFO) << "Send stateless_reset to remote="
               << util::to_numeric_addr(&remote_addr)
               << " dcid=" << util::format_hex(dcid, dcidlen);
+  }
+
+  return quic_send_packet(faddr, &remote_addr.su.sa, remote_addr.len,
+                          &local_addr.su.sa, local_addr.len, buf.data(), nwrite,
+                          0);
+}
+
+int QUICConnectionHandler::send_connection_close(
+    const UpstreamAddr *faddr, uint32_t version, const ngtcp2_cid *ini_dcid,
+    const ngtcp2_cid *ini_scid, const Address &remote_addr,
+    const Address &local_addr, uint64_t error_code) {
+  std::array<uint8_t, NGTCP2_DEFAULT_MAX_PKTLEN> buf;
+
+  auto nwrite = ngtcp2_crypto_write_connection_close(
+      buf.data(), buf.size(), version, ini_scid, ini_dcid, error_code);
+  if (nwrite < 0) {
+    LOG(ERROR) << "ngtcp2_crypto_write_connection_close failed";
+    return -1;
+  }
+
+  if (LOG_ENABLED(INFO)) {
+    LOG(INFO) << "Send Initial CONNECTION_CLOSE with error_code=" << log::hex
+              << error_code << log::dec
+              << " to remote=" << util::to_numeric_addr(&remote_addr)
+              << " dcid=" << util::format_hex(ini_scid->data, ini_scid->datalen)
+              << " scid="
+              << util::format_hex(ini_dcid->data, ini_dcid->datalen);
   }
 
   return quic_send_packet(faddr, &remote_addr.su.sa, remote_addr.len,

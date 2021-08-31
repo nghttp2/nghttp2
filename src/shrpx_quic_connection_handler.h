@@ -71,6 +71,15 @@ public:
   int send_stateless_reset(const UpstreamAddr *faddr, const uint8_t *dcid,
                            size_t dcidlen, const Address &remote_addr,
                            const Address &local_addr);
+  // Send Initial CONNECTION_CLOSE.  |ini_dcid| is the destination
+  // Connection ID which appeared in Client Initial packet.
+  // |ini_scid| is the source Connection ID which appeared in Client
+  // Initial packet.
+  int send_connection_close(const UpstreamAddr *faddr, uint32_t version,
+                            const ngtcp2_cid *ini_dcid,
+                            const ngtcp2_cid *ini_scid,
+                            const Address &remote_addr,
+                            const Address &local_addr, uint64_t error_code);
   ClientHandler *handle_new_connection(const UpstreamAddr *faddr,
                                        const Address &remote_addr,
                                        const Address &local_addr,
