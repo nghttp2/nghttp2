@@ -3196,7 +3196,7 @@ Scripting:
 
 #ifdef ENABLE_HTTP3
   out << R"(
-QUIC:
+HTTP/3 and QUIC:
   --frontend-quic-idle-timeout=<DURATION>
               Specify an idle timeout for QUIC connection.
               Default: )"
