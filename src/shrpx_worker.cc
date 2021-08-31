@@ -31,6 +31,8 @@
 #include <cstdio>
 #include <memory>
 
+#include <openssl/rand.h>
+
 #ifdef HAVE_LIBBPF
 #  include <bpf/bpf.h>
 #  include <bpf/libbpf.h>
