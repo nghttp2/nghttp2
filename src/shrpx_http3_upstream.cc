@@ -507,7 +507,8 @@ int Http3Upstream::init(const UpstreamAddr *faddr, const Address &remote_addr,
   settings.cc_algo = NGTCP2_CC_ALGO_BBR;
   settings.max_window = http3conf.upstream.max_connection_window_size;
   settings.max_stream_window = http3conf.upstream.max_window_size;
-  settings.max_udp_payload_size = SHRPX_MAX_UDP_PAYLOAD_SIZE;
+  settings.max_udp_payload_size = SHRPX_QUIC_MAX_UDP_PAYLOAD_SIZE;
+  settings.assume_symmetric_path = 1;
   settings.rand_ctx.native_handle = &worker->get_randgen();
   settings.token = ngtcp2_vec{const_cast<uint8_t *>(token), tokenlen};
 
@@ -581,9 +582,10 @@ int Http3Upstream::on_write() {
 int Http3Upstream::write_streams() {
   std::array<nghttp3_vec, 16> vec;
   std::array<uint8_t, 64_k> buf;
+  auto max_udp_payload_size = ngtcp2_conn_get_path_max_udp_payload_size(conn_);
   size_t max_pktcnt =
       std::min(static_cast<size_t>(64_k), ngtcp2_conn_get_send_quantum(conn_)) /
-      SHRPX_MAX_UDP_PAYLOAD_SIZE;
+      max_udp_payload_size;
   ngtcp2_pkt_info pi;
   uint8_t *bufpos = buf.data();
   ngtcp2_path_storage ps, prev_ps;
@@ -620,8 +622,8 @@ int Http3Upstream::write_streams() {
     }
 
     auto nwrite = ngtcp2_conn_writev_stream(
-        conn_, &ps.path, &pi, bufpos, SHRPX_MAX_UDP_PAYLOAD_SIZE, &ndatalen,
-        flags, stream_id, reinterpret_cast<const ngtcp2_vec *>(v), vcnt, ts);
+        conn_, &ps.path, &pi, bufpos, max_udp_payload_size, &ndatalen, flags,
+        stream_id, reinterpret_cast<const ngtcp2_vec *>(v), vcnt, ts);
     if (nwrite < 0) {
       switch (nwrite) {
       case NGTCP2_ERR_STREAM_DATA_BLOCKED:
@@ -678,8 +680,7 @@ int Http3Upstream::write_streams() {
         quic_send_packet(static_cast<UpstreamAddr *>(prev_ps.path.user_data),
                          prev_ps.path.remote.addr, prev_ps.path.remote.addrlen,
                          prev_ps.path.local.addr, prev_ps.path.local.addrlen,
-                         buf.data(), bufpos - buf.data(),
-                         SHRPX_MAX_UDP_PAYLOAD_SIZE);
+                         buf.data(), bufpos - buf.data(), max_udp_payload_size);
 
         ngtcp2_conn_update_pkt_tx_time(conn_, ts);
         reset_idle_timer();
@@ -700,12 +701,12 @@ int Http3Upstream::write_streams() {
                        prev_ps.path.remote.addr, prev_ps.path.remote.addrlen,
                        prev_ps.path.local.addr, prev_ps.path.local.addrlen,
                        buf.data(), bufpos - buf.data() - nwrite,
-                       SHRPX_MAX_UDP_PAYLOAD_SIZE);
+                       max_udp_payload_size);
 
       quic_send_packet(static_cast<UpstreamAddr *>(ps.path.user_data),
                        ps.path.remote.addr, ps.path.remote.addrlen,
                        ps.path.local.addr, ps.path.local.addrlen,
-                       bufpos - nwrite, nwrite, SHRPX_MAX_UDP_PAYLOAD_SIZE);
+                       bufpos - nwrite, nwrite, max_udp_payload_size);
 
       ngtcp2_conn_update_pkt_tx_time(conn_, ts);
       reset_idle_timer();
@@ -716,11 +717,11 @@ int Http3Upstream::write_streams() {
     }
 
     if (++pktcnt == max_pktcnt ||
-        static_cast<size_t>(nwrite) < SHRPX_MAX_UDP_PAYLOAD_SIZE) {
+        static_cast<size_t>(nwrite) < max_udp_payload_size) {
       quic_send_packet(static_cast<UpstreamAddr *>(ps.path.user_data),
                        ps.path.remote.addr, ps.path.remote.addrlen,
                        ps.path.local.addr, ps.path.local.addrlen, buf.data(),
-                       bufpos - buf.data(), SHRPX_MAX_UDP_PAYLOAD_SIZE);
+                       bufpos - buf.data(), max_udp_payload_size);
 
       ngtcp2_conn_update_pkt_tx_time(conn_, ts);
       reset_idle_timer();
@@ -1241,7 +1242,7 @@ void Http3Upstream::on_handler_delete() {
       !ngtcp2_conn_is_in_draining_period(conn_)) {
     ngtcp2_path_storage ps;
     ngtcp2_pkt_info pi;
-    std::array<uint8_t, SHRPX_MAX_UDP_PAYLOAD_SIZE> buf;
+    std::array<uint8_t, NGTCP2_DEFAULT_MAX_PKTLEN> buf;
 
     ngtcp2_path_storage_zero(&ps);
 
@@ -1529,7 +1530,7 @@ int Http3Upstream::handle_error() {
 
   auto ts = quic_timestamp();
 
-  std::array<uint8_t, SHRPX_MAX_UDP_PAYLOAD_SIZE> buf;
+  std::array<uint8_t, NGTCP2_DEFAULT_MAX_PKTLEN> buf;
   ngtcp2_ssize nwrite;
 
   if (last_error_.type == quic::ErrorType::Transport) {

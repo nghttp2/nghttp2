@@ -37,7 +37,7 @@ struct UpstreamAddr;
 
 constexpr size_t SHRPX_QUIC_SCIDLEN = 20;
 constexpr size_t SHRPX_QUIC_CID_PREFIXLEN = 8;
-constexpr size_t SHRPX_MAX_UDP_PAYLOAD_SIZE = NGTCP2_MAX_PKTLEN_IPV4;
+constexpr size_t SHRPX_QUIC_MAX_UDP_PAYLOAD_SIZE = 1472;
 constexpr size_t SHRPX_QUIC_STATELESS_RESET_SECRETLEN = 32;
 constexpr size_t SHRPX_QUIC_TOKEN_SECRETLEN = 32;
 constexpr size_t SHRPX_QUIC_TOKEN_RAND_DATALEN = 16;
