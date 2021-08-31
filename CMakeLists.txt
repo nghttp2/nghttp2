@@ -64,6 +64,7 @@ find_package(ZLIB 1.2.3)
 find_package(Libngtcp2 0.0.0)
 find_package(Libngtcp2_crypto_openssl 0.0.0)
 find_package(Libnghttp3 0.0.0)
+find_package(Libbpf 0.4.0)
 if(OPENSSL_FOUND AND LIBEV_FOUND AND ZLIB_FOUND)
   set(ENABLE_APP_DEFAULT ON)
 else()
@@ -233,6 +234,20 @@ set(HAVE_JEMALLOC   ${JEMALLOC_FOUND})
 
 if(ENABLE_ASIO_LIB)
   find_package(Boost 1.54.0 REQUIRED system thread)
+endif()
+
+# libbpf (for bpf)
+set(HAVE_LIBBPF ${LIBBPF_FOUND})
+if(LIBBPF_FOUND)
+  set(BPFCFLAGS -Wall -O2 -g)
+  if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    # For Debian/Ubuntu
+    set(EXTRABPFCFLAGS -I/usr/include/${CMAKE_SYSTEM_PROCESSOR}-linux-gnu)
+  endif()
+
+  check_c_source_compiles("
+#include <linux/bpf.h>
+int main() { enum bpf_stats_type foo; (void)foo; }" HAVE_BPF_STATS_TYPE)
 endif()
 
 # The nghttp, nghttpd and nghttpx under src depend on zlib, OpenSSL and libev
@@ -492,6 +507,7 @@ add_subdirectory(integration-tests)
 add_subdirectory(doc)
 add_subdirectory(contrib)
 add_subdirectory(script)
+add_subdirectory(bpf)
 
 
 string(TOUPPER "${CMAKE_BUILD_TYPE}" _build_type)
@@ -525,6 +541,7 @@ message(STATUS "summary of build options:
       Libngtcp2:      ${HAVE_LIBNGTCP2} (LIBS='${LIBNGTCP2_LIBRARIES}')
       Libngtcp2_crypto_openssl: ${HAVE_LIBNGTCP2_CRYPTO_OPENSSL} (LIBS='${LIBNGTCP2_CRYPTO_OPENSSL_LIBRARIES}')
       Libnghttp3:     ${HAVE_LIBNGHTTP3} (LIBS='${LIBNGHTTP3_LIBRARIES}')
+      Libbpf:         ${HAVE_LIBBPF} (LIBS='${LIBBPF_LIBRARIES}')
       Libevent(SSL):  ${HAVE_LIBEVENT_OPENSSL} (LIBS='${LIBEVENT_OPENSSL_LIBRARIES}')
       Jansson:        ${HAVE_JANSSON} (LIBS='${JANSSON_LIBRARIES}')
       Jemalloc:       ${HAVE_JEMALLOC} (LIBS='${JEMALLOC_LIBRARIES}')

@@ -22,6 +22,7 @@ include_directories(
   ${LIBCARES_INCLUDE_DIRS}
   ${JANSSON_INCLUDE_DIRS}
   ${ZLIB_INCLUDE_DIRS}
+  ${LIBBPF_INCLUDE_DIRS}
 )
 
 # XXX per-target?
@@ -38,6 +39,7 @@ link_libraries(
   ${JANSSON_LIBRARIES}
   ${ZLIB_LIBRARIES}
   ${APP_LIBRARIES}
+  ${LIBBPF_LIBRARIES}
 )
 
 if(ENABLE_APP)
