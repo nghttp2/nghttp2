@@ -75,6 +75,8 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
     return 0;
   }
 
+  auto config = get_config();
+
   auto dcid_key = make_cid_key(dcid, dcidlen);
 
   auto conn_handler = worker_->get_connection_handler();
@@ -99,6 +101,17 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
     }
 
     // new connection
+
+    auto &upstreamconf = config->conn.upstream;
+    if (worker_->get_worker_stat()->num_connections >=
+        upstreamconf.worker_connections) {
+      if (LOG_ENABLED(INFO)) {
+        LOG(INFO) << "Too many connections >="
+                  << upstreamconf.worker_connections;
+      }
+
+      return 0;
+    }
 
     ngtcp2_pkt_hd hd;
     ngtcp2_cid odcid, *podcid = nullptr;
@@ -164,7 +177,7 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
                                remote_addr, local_addr);
       return 0;
     default:
-      if (!get_config()->single_thread && !(data[0] & 0x80) &&
+      if (!config->single_thread && !(data[0] & 0x80) &&
           dcidlen > SHRPX_QUIC_CID_PREFIXLEN &&
           !std::equal(dcid, dcid + SHRPX_QUIC_CID_PREFIXLEN,
                       worker_->get_cid_prefix())) {
