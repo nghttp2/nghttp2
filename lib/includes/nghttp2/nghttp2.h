@@ -4855,7 +4855,8 @@ NGHTTP2_EXTERN int nghttp2_check_method(const uint8_t *value, size_t len);
  *
  * |value| is valid if it merely consists of the allowed characters.
  * In particular, it does not check whether |value| follows the syntax
- * of path.
+ * of path.  The allowed characters are all characters valid by
+ * `nghttp2_check_header_value` minus SPC and HT.
  */
 NGHTTP2_EXTERN int nghttp2_check_path(const uint8_t *value, size_t len);
 
