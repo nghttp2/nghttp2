@@ -48,7 +48,7 @@ void idle_timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
   auto upstream = static_cast<Http3Upstream *>(w->data);
 
   if (LOG_ENABLED(INFO)) {
-    LOG(INFO) << "QUIC idle timeout";
+    ULOG(INFO, upstream) << "QUIC idle timeout";
   }
 
   // TODO Implement draining period.
@@ -273,7 +273,8 @@ int Http3Upstream::recv_stream_data(uint32_t flags, int64_t stream_id,
   auto nconsumed = nghttp3_conn_read_stream(
       httpconn_, stream_id, data, datalen, flags & NGTCP2_STREAM_DATA_FLAG_FIN);
   if (nconsumed < 0) {
-    LOG(ERROR) << "nghttp3_conn_read_stream: " << nghttp3_strerror(nconsumed);
+    ULOG(ERROR, this) << "nghttp3_conn_read_stream: "
+                      << nghttp3_strerror(nconsumed);
     last_error_ = quic::err_application(nconsumed);
     return -1;
   }
@@ -312,7 +313,7 @@ int Http3Upstream::stream_close(int64_t stream_id, uint64_t app_error_code) {
     }
     break;
   default:
-    LOG(ERROR) << "nghttp3_conn_close_stream: " << nghttp3_strerror(rv);
+    ULOG(ERROR, this) << "nghttp3_conn_close_stream: " << nghttp3_strerror(rv);
     last_error_ = quic::err_application(rv);
     return -1;
   }
@@ -342,7 +343,8 @@ int Http3Upstream::acked_stream_data_offset(int64_t stream_id,
 
   auto rv = nghttp3_conn_add_ack_offset(httpconn_, stream_id, datalen);
   if (rv != 0) {
-    LOG(ERROR) << "nghttp3_conn_add_ack_offset: " << nghttp3_strerror(rv);
+    ULOG(ERROR, this) << "nghttp3_conn_add_ack_offset: "
+                      << nghttp3_strerror(rv);
     return -1;
   }
 
@@ -370,7 +372,8 @@ int Http3Upstream::extend_max_stream_data(int64_t stream_id) {
 
   auto rv = nghttp3_conn_unblock_stream(httpconn_, stream_id);
   if (rv != 0) {
-    LOG(ERROR) << "nghttp3_conn_unblock_stream: " << nghttp3_strerror(rv);
+    ULOG(ERROR, this) << "nghttp3_conn_unblock_stream: "
+                      << nghttp3_strerror(rv);
     return -1;
   }
 
@@ -413,7 +416,8 @@ int Http3Upstream::http_shutdown_stream_read(int64_t stream_id) {
 
   auto rv = nghttp3_conn_shutdown_stream_read(httpconn_, stream_id);
   if (rv != 0) {
-    LOG(ERROR) << "nghttp3_conn_shutdown_stream_read: " << nghttp3_strerror(rv);
+    ULOG(ERROR, this) << "nghttp3_conn_shutdown_stream_read: "
+                      << nghttp3_strerror(rv);
     return -1;
   }
 
@@ -462,7 +466,8 @@ int Http3Upstream::handshake_completed() {
 
   auto rv = ngtcp2_conn_submit_new_token(conn_, token.data(), tokenlen);
   if (rv != 0) {
-    LOG(ERROR) << "ngtcp2_conn_submit_new_token: " << ngtcp2_strerror(rv);
+    ULOG(ERROR, this) << "ngtcp2_conn_submit_new_token: "
+                      << ngtcp2_strerror(rv);
     return -1;
   }
 
@@ -568,7 +573,7 @@ int Http3Upstream::init(const UpstreamAddr *faddr, const Address &remote_addr,
                                            stateless_reset_secret.data(),
                                            stateless_reset_secret.size());
   if (rv != 0) {
-    LOG(ERROR) << "generate_quic_stateless_reset_token failed";
+    ULOG(ERROR, this) << "generate_quic_stateless_reset_token failed";
     return -1;
   }
   params.stateless_reset_token_present = 1;
@@ -583,7 +588,7 @@ int Http3Upstream::init(const UpstreamAddr *faddr, const Address &remote_addr,
                               initial_hd.version, &callbacks, &settings,
                               &params, nullptr, this);
   if (rv != 0) {
-    LOG(ERROR) << "ngtcp2_conn_server_new: " << ngtcp2_strerror(rv);
+    ULOG(ERROR, this) << "ngtcp2_conn_server_new: " << ngtcp2_strerror(rv);
     return -1;
   }
 
@@ -635,8 +640,8 @@ int Http3Upstream::write_streams() {
       sveccnt = nghttp3_conn_writev_stream(httpconn_, &stream_id, &fin,
                                            vec.data(), vec.size());
       if (sveccnt < 0) {
-        LOG(ERROR) << "nghttp3_conn_writev_stream: "
-                   << nghttp3_strerror(sveccnt);
+        ULOG(ERROR, this) << "nghttp3_conn_writev_stream: "
+                          << nghttp3_strerror(sveccnt);
         last_error_ = quic::err_application(sveccnt);
         return handle_error();
       }
@@ -660,7 +665,8 @@ int Http3Upstream::write_streams() {
         assert(ndatalen == -1);
         rv = nghttp3_conn_block_stream(httpconn_, stream_id);
         if (rv != 0) {
-          LOG(ERROR) << "nghttp3_conn_block_stream: " << nghttp3_strerror(rv);
+          ULOG(ERROR, this)
+              << "nghttp3_conn_block_stream: " << nghttp3_strerror(rv);
           last_error_ = quic::err_application(rv);
           return handle_error();
         }
@@ -669,8 +675,8 @@ int Http3Upstream::write_streams() {
         assert(ndatalen == -1);
         rv = nghttp3_conn_shutdown_stream_write(httpconn_, stream_id);
         if (rv != 0) {
-          LOG(ERROR) << "nghttp3_conn_shutdown_stream_write: "
-                     << nghttp3_strerror(rv);
+          ULOG(ERROR, this)
+              << "nghttp3_conn_shutdown_stream_write: " << nghttp3_strerror(rv);
           last_error_ = quic::err_application(rv);
           return handle_error();
         }
@@ -679,8 +685,8 @@ int Http3Upstream::write_streams() {
         assert(ndatalen >= 0);
         rv = nghttp3_conn_add_write_offset(httpconn_, stream_id, ndatalen);
         if (rv != 0) {
-          LOG(ERROR) << "nghttp3_conn_add_write_offset: "
-                     << nghttp3_strerror(rv);
+          ULOG(ERROR, this)
+              << "nghttp3_conn_add_write_offset: " << nghttp3_strerror(rv);
           last_error_ = quic::err_application(rv);
           return handle_error();
         }
@@ -689,7 +695,8 @@ int Http3Upstream::write_streams() {
 
       assert(ndatalen == -1);
 
-      LOG(ERROR) << "ngtcp2_conn_writev_stream: " << ngtcp2_strerror(nwrite);
+      ULOG(ERROR, this) << "ngtcp2_conn_writev_stream: "
+                        << ngtcp2_strerror(nwrite);
 
       last_error_ = quic::err_transport(nwrite);
 
@@ -699,7 +706,8 @@ int Http3Upstream::write_streams() {
     } else if (ndatalen >= 0) {
       rv = nghttp3_conn_add_write_offset(httpconn_, stream_id, ndatalen);
       if (rv != 0) {
-        LOG(ERROR) << "nghttp3_conn_add_write_offset: " << nghttp3_strerror(rv);
+        ULOG(ERROR, this) << "nghttp3_conn_add_write_offset: "
+                          << nghttp3_strerror(rv);
         last_error_ = quic::err_application(rv);
         return handle_error();
       }
@@ -1281,8 +1289,8 @@ void Http3Upstream::on_handler_delete() {
         quic_timestamp());
     if (nwrite < 0) {
       if (nwrite != NGTCP2_ERR_INVALID_STATE) {
-        LOG(ERROR) << "ngtcp2_conn_write_application_close: "
-                   << ngtcp2_strerror(nwrite);
+        ULOG(ERROR, this) << "ngtcp2_conn_write_application_close: "
+                          << ngtcp2_strerror(nwrite);
       }
 
       return;
@@ -1514,7 +1522,7 @@ int Http3Upstream::on_read(const UpstreamAddr *faddr,
 
   rv = ngtcp2_conn_read_pkt(conn_, &path, &pi, data, datalen, quic_timestamp());
   if (rv != 0) {
-    LOG(ERROR) << "ngtcp2_conn_read_pkt: " << ngtcp2_strerror(rv);
+    ULOG(ERROR, this) << "ngtcp2_conn_read_pkt: " << ngtcp2_strerror(rv);
 
     switch (rv) {
     case NGTCP2_ERR_DRAINING:
@@ -1567,16 +1575,16 @@ int Http3Upstream::handle_error() {
     nwrite = ngtcp2_conn_write_connection_close(
         conn_, &ps.path, &pi, buf.data(), buf.size(), last_error_.code, ts);
     if (nwrite < 0) {
-      LOG(ERROR) << "ngtcp2_conn_write_connection_close: "
-                 << ngtcp2_strerror(nwrite);
+      ULOG(ERROR, this) << "ngtcp2_conn_write_connection_close: "
+                        << ngtcp2_strerror(nwrite);
       return -1;
     }
   } else {
     nwrite = ngtcp2_conn_write_application_close(
         conn_, &ps.path, &pi, buf.data(), buf.size(), last_error_.code, ts);
     if (nwrite < 0) {
-      LOG(ERROR) << "ngtcp2_conn_write_application_close: "
-                 << ngtcp2_strerror(nwrite);
+      ULOG(ERROR, this) << "ngtcp2_conn_write_application_close: "
+                        << ngtcp2_strerror(nwrite);
       return -1;
     }
   }
@@ -1593,7 +1601,7 @@ int Http3Upstream::on_rx_secret(ngtcp2_crypto_level level,
                                 const uint8_t *secret, size_t secretlen) {
   if (ngtcp2_crypto_derive_and_install_rx_key(conn_, nullptr, nullptr, nullptr,
                                               level, secret, secretlen) != 0) {
-    LOG(ERROR) << "ngtcp2_crypto_derive_and_install_rx_key failed";
+    ULOG(ERROR, this) << "ngtcp2_crypto_derive_and_install_rx_key failed";
     return -1;
   }
 
@@ -1604,7 +1612,7 @@ int Http3Upstream::on_tx_secret(ngtcp2_crypto_level level,
                                 const uint8_t *secret, size_t secretlen) {
   if (ngtcp2_crypto_derive_and_install_tx_key(conn_, nullptr, nullptr, nullptr,
                                               level, secret, secretlen) != 0) {
-    LOG(ERROR) << "ngtcp2_crypto_derive_and_install_tx_key failed";
+    ULOG(ERROR, this) << "ngtcp2_crypto_derive_and_install_tx_key failed";
     return -1;
   }
 
@@ -1620,7 +1628,8 @@ int Http3Upstream::add_crypto_data(ngtcp2_crypto_level level,
   int rv = ngtcp2_conn_submit_crypto_data(conn_, level, data, datalen);
 
   if (rv != 0) {
-    LOG(ERROR) << "ngtcp2_conn_submit_crypto_data: " << ngtcp2_strerror(rv);
+    ULOG(ERROR, this) << "ngtcp2_conn_submit_crypto_data: "
+                      << ngtcp2_strerror(rv);
     return -1;
   }
 
@@ -1636,7 +1645,7 @@ int Http3Upstream::handle_expiry() {
 
   rv = ngtcp2_conn_handle_expiry(conn_, ts);
   if (rv != 0) {
-    LOG(ERROR) << "ngtcp2_conn_handle_expiry: " << ngtcp2_strerror(rv);
+    ULOG(ERROR, this) << "ngtcp2_conn_handle_expiry: " << ngtcp2_strerror(rv);
     last_error_ = quic::err_transport(rv);
     return handle_error();
   }
@@ -1698,8 +1707,8 @@ int http_acked_stream_data(nghttp3_conn *conn, int64_t stream_id,
 int Http3Upstream::http_acked_stream_data(Downstream *downstream,
                                           size_t datalen) {
   if (LOG_ENABLED(INFO)) {
-    LOG(INFO) << "Stream " << downstream->get_stream_id() << " " << datalen
-              << " bytes acknowledged";
+    ULOG(INFO, this) << "Stream " << downstream->get_stream_id() << " "
+                     << datalen << " bytes acknowledged";
   }
 
   auto body = downstream->get_response_buf();
@@ -2119,8 +2128,8 @@ int Http3Upstream::http_stream_close(Downstream *downstream,
 
     auto body = downstream->get_response_buf();
 
-    LOG(INFO) << "response unacked_left=" << body->rleft()
-              << " not_sent=" << body->rleft_mark();
+    ULOG(INFO, this) << "response unacked_left=" << body->rleft()
+                     << " not_sent=" << body->rleft_mark();
   }
 
   auto &req = downstream->request();
@@ -2173,7 +2182,8 @@ int Http3Upstream::http_send_stop_sending(int64_t stream_id,
                                           uint64_t app_error_code) {
   auto rv = ngtcp2_conn_shutdown_stream_read(conn_, stream_id, app_error_code);
   if (ngtcp2_err_is_fatal(rv)) {
-    LOG(ERROR) << "ngtcp2_conn_shutdown_stream_read: " << ngtcp2_strerror(rv);
+    ULOG(ERROR, this) << "ngtcp2_conn_shutdown_stream_read: "
+                      << ngtcp2_strerror(rv);
     return -1;
   }
 
@@ -2198,7 +2208,8 @@ int Http3Upstream::http_reset_stream(int64_t stream_id,
                                      uint64_t app_error_code) {
   auto rv = ngtcp2_conn_shutdown_stream_write(conn_, stream_id, app_error_code);
   if (ngtcp2_err_is_fatal(rv)) {
-    LOG(ERROR) << "ngtcp2_conn_shutdown_stream_write: " << ngtcp2_strerror(rv);
+    ULOG(ERROR, this) << "ngtcp2_conn_shutdown_stream_write: "
+                      << ngtcp2_strerror(rv);
     return -1;
   }
 
@@ -2236,7 +2247,7 @@ int Http3Upstream::setup_httpconn() {
 
   rv = nghttp3_conn_server_new(&httpconn_, &callbacks, &settings, mem, this);
   if (rv != 0) {
-    LOG(ERROR) << "nghttp3_conn_server_new: " << nghttp3_strerror(rv);
+    ULOG(ERROR, this) << "nghttp3_conn_server_new: " << nghttp3_strerror(rv);
     return -1;
   }
 
@@ -2250,13 +2261,14 @@ int Http3Upstream::setup_httpconn() {
 
   rv = ngtcp2_conn_open_uni_stream(conn_, &ctrl_stream_id, nullptr);
   if (rv != 0) {
-    LOG(ERROR) << "ngtcp2_conn_open_uni_stream: " << ngtcp2_strerror(rv);
+    ULOG(ERROR, this) << "ngtcp2_conn_open_uni_stream: " << ngtcp2_strerror(rv);
     return -1;
   }
 
   rv = nghttp3_conn_bind_control_stream(httpconn_, ctrl_stream_id);
   if (rv != 0) {
-    LOG(ERROR) << "nghttp3_conn_bind_control_stream: " << nghttp3_strerror(rv);
+    ULOG(ERROR, this) << "nghttp3_conn_bind_control_stream: "
+                      << nghttp3_strerror(rv);
     return -1;
   }
 
@@ -2264,20 +2276,21 @@ int Http3Upstream::setup_httpconn() {
 
   rv = ngtcp2_conn_open_uni_stream(conn_, &qpack_enc_stream_id, nullptr);
   if (rv != 0) {
-    LOG(ERROR) << "ngtcp2_conn_open_uni_stream: " << ngtcp2_strerror(rv);
+    ULOG(ERROR, this) << "ngtcp2_conn_open_uni_stream: " << ngtcp2_strerror(rv);
     return -1;
   }
 
   rv = ngtcp2_conn_open_uni_stream(conn_, &qpack_dec_stream_id, nullptr);
   if (rv != 0) {
-    LOG(ERROR) << "ngtcp2_conn_open_uni_stream: " << ngtcp2_strerror(rv);
+    ULOG(ERROR, this) << "ngtcp2_conn_open_uni_stream: " << ngtcp2_strerror(rv);
     return -1;
   }
 
   rv = nghttp3_conn_bind_qpack_streams(httpconn_, qpack_enc_stream_id,
                                        qpack_dec_stream_id);
   if (rv != 0) {
-    LOG(ERROR) << "nghttp3_conn_bind_qpack_streams: " << nghttp3_strerror(rv);
+    ULOG(ERROR, this) << "nghttp3_conn_bind_qpack_streams: "
+                      << nghttp3_strerror(rv);
     return -1;
   }
 
