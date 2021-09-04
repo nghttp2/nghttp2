@@ -147,6 +147,7 @@ public:
   int check_shutdown();
   int start_graceful_shutdown();
   int submit_goaway();
+  void idle_close();
 
 private:
   ClientHandler *handler_;
@@ -159,6 +160,7 @@ private:
   uint8_t tls_alert_;
   nghttp3_conn *httpconn_;
   DownstreamQueue downstream_queue_;
+  bool idle_close_;
 };
 
 } // namespace shrpx

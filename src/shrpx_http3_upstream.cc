@@ -51,7 +51,7 @@ void idle_timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
     ULOG(INFO, upstream) << "QUIC idle timeout";
   }
 
-  // TODO Implement draining period.
+  upstream->idle_close();
 
   auto handler = upstream->get_client_handler();
 
@@ -116,7 +116,8 @@ Http3Upstream::Http3Upstream(ClientHandler *handler)
       tls_alert_{0},
       httpconn_{nullptr},
       downstream_queue_{downstream_queue_size(handler->get_worker()),
-                        !get_config()->http2_proxy} {
+                        !get_config()->http2_proxy},
+      idle_close_{false} {
   ev_timer_init(&timer_, timeoutcb, 0., 0.);
   timer_.data = this;
 
@@ -1276,7 +1277,7 @@ void Http3Upstream::on_handler_delete() {
 
   // If this is not idle close, send APPLICATION_CLOSE since this
   // might come before idle close.
-  if (!ngtcp2_conn_is_in_closing_period(conn_) &&
+  if (!idle_close_ && !ngtcp2_conn_is_in_closing_period(conn_) &&
       !ngtcp2_conn_is_in_draining_period(conn_)) {
     ngtcp2_path_storage ps;
     ngtcp2_pkt_info pi;
@@ -2497,5 +2498,7 @@ int Http3Upstream::submit_goaway() {
 
   return 0;
 }
+
+void Http3Upstream::idle_close() { idle_close_ = true; }
 
 } // namespace shrpx
