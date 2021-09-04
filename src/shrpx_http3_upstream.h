@@ -154,7 +154,6 @@ private:
   ev_timer idle_timer_;
   ev_timer shutdown_timer_;
   ev_prepare prep_;
-  ngtcp2_cid initial_client_dcid_;
   ngtcp2_conn *conn_;
   quic::Error last_error_;
   uint8_t tls_alert_;

@@ -149,7 +149,8 @@ Http3Upstream::~Http3Upstream() {
     auto worker = handler_->get_worker();
     auto quic_client_handler = worker->get_quic_connection_handler();
 
-    quic_client_handler->remove_connection_id(&initial_client_dcid_);
+    quic_client_handler->remove_connection_id(
+        ngtcp2_conn_get_client_initial_dcid(conn_));
 
     std::vector<ngtcp2_cid> scids(ngtcp2_conn_get_num_scid(conn_));
     ngtcp2_conn_get_scid(conn_, scids.data());
@@ -516,8 +517,6 @@ int Http3Upstream::init(const UpstreamAddr *faddr, const Address &remote_addr,
       shrpx::stream_stop_sending,
   };
 
-  initial_client_dcid_ = initial_hd.dcid;
-
   ngtcp2_cid scid;
 
   if (generate_quic_connection_id(&scid, SHRPX_QUIC_SCIDLEN,
@@ -592,7 +591,7 @@ int Http3Upstream::init(const UpstreamAddr *faddr, const Address &remote_addr,
 
   auto quic_connection_handler = worker->get_quic_connection_handler();
 
-  quic_connection_handler->add_connection_id(&initial_client_dcid_, handler_);
+  quic_connection_handler->add_connection_id(&initial_hd.dcid, handler_);
   quic_connection_handler->add_connection_id(&scid, handler_);
 
   return 0;
