@@ -66,12 +66,15 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
 
   rv = ngtcp2_pkt_decode_version_cid(&version, &dcid, &dcidlen, &scid, &scidlen,
                                      data, datalen, SHRPX_QUIC_SCIDLEN);
-  if (rv != 0) {
-    if (rv == 1) {
-      send_version_negotiation(faddr, version, dcid, dcidlen, scid, scidlen,
-                               remote_addr, local_addr);
-    }
+  switch (rv) {
+  case 0:
+    break;
+  case NGTCP2_ERR_VERSION_NEGOTIATION:
+    send_version_negotiation(faddr, version, dcid, dcidlen, scid, scidlen,
+                             remote_addr, local_addr);
 
+    return 0;
+  default:
     return 0;
   }
 
