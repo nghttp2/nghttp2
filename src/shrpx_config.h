@@ -383,6 +383,8 @@ constexpr auto SHRPX_OPT_FRONTEND_HTTP3_MAX_CONNECTION_WINDOW_SIZE =
     StringRef::from_lit("frontend-http3-max-connection-window-size");
 constexpr auto SHRPX_OPT_FRONTEND_HTTP3_MAX_CONCURRENT_STREAMS =
     StringRef::from_lit("frontend-http3-max-concurrent-streams");
+constexpr auto SHRPX_OPT_FRONTEND_QUIC_EARLY_DATA =
+    StringRef::from_lit("frontend-quic-early-data");
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
@@ -746,6 +748,7 @@ struct QUICConfig {
     struct {
       bool log;
     } debug;
+    bool early_data;
   } upstream;
   struct {
     StringRef prog_file;
@@ -1199,6 +1202,7 @@ enum {
   SHRPX_OPTID_FRONTEND_MAX_REQUESTS,
   SHRPX_OPTID_FRONTEND_NO_TLS,
   SHRPX_OPTID_FRONTEND_QUIC_DEBUG_LOG,
+  SHRPX_OPTID_FRONTEND_QUIC_EARLY_DATA,
   SHRPX_OPTID_FRONTEND_QUIC_IDLE_TIMEOUT,
   SHRPX_OPTID_FRONTEND_READ_TIMEOUT,
   SHRPX_OPTID_FRONTEND_WRITE_TIMEOUT,

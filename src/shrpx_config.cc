@@ -2297,6 +2297,11 @@ int option_lookup_token(const char *name, size_t namelen) {
     break;
   case 24:
     switch (name[23]) {
+    case 'a':
+      if (util::strieq_l("frontend-quic-early-dat", name, 23)) {
+        return SHRPX_OPTID_FRONTEND_QUIC_EARLY_DATA;
+      }
+      break;
     case 'd':
       if (util::strieq_l("strip-incoming-forwarde", name, 23)) {
         return SHRPX_OPTID_STRIP_INCOMING_FORWARDED;
@@ -3967,6 +3972,12 @@ int parse_config(Config *config, int optid, const StringRef &opt,
 #else  // !ENABLE_HTTP3
     return 0;
 #endif // !ENABLE_HTTP3
+  case SHRPX_OPTID_FRONTEND_QUIC_EARLY_DATA:
+#ifdef ENABLE_HTTP3
+    config->quic.upstream.early_data = util::strieq_l("yes", optarg);
+#endif // ENABLE_HTTP3
+
+    return 0;
   case SHRPX_OPTID_CONF:
     LOG(WARN) << "conf: ignored";
 

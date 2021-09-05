@@ -2776,12 +2776,13 @@ SSL/TLS:
               consider   to  use   --client-no-http2-cipher-block-list
               option.  But be aware its implications.
   --tls-no-postpone-early-data
-              By default,  nghttpx postpones forwarding  HTTP requests
-              sent in early data, including those sent in partially in
-              it, until TLS handshake finishes.  If all backend server
-              recognizes "Early-Data" header  field, using this option
-              makes nghttpx  not postpone  forwarding request  and get
-              full potential of 0-RTT data.
+              By  default,   except  for  QUIC   connections,  nghttpx
+              postpones forwarding  HTTP requests sent in  early data,
+              including  those  sent in  partially  in  it, until  TLS
+              handshake  finishes.  If  all backend  server recognizes
+              "Early-Data"  header  field,  using  this  option  makes
+              nghttpx  not postpone  forwarding request  and get  full
+              potential of 0-RTT data.
   --tls-max-early-data=<SIZE>
               Sets  the  maximum  amount  of 0-RTT  data  that  server
               accepts.
@@ -3209,6 +3210,12 @@ HTTP/3 and QUIC:
               socket.
               Default: )"
       << config->quic.bpf.prog_file << R"(
+  --frontend-quic-early-data
+              Enable early data on frontend QUIC connections.  nghttpx
+              sends "Early-Data" header field to a backend server if a
+              request is received in early  data and handshake has not
+              finished.  All backend servers should deal with possibly
+              replayed requests.
   --no-quic-bpf
               Disable eBPF.
   --frontend-http3-window-size=<SIZE>
@@ -3995,6 +4002,7 @@ int main(int argc, char **argv) {
          required_argument, &flag, 178},
         {SHRPX_OPT_FRONTEND_HTTP3_MAX_CONCURRENT_STREAMS.c_str(),
          required_argument, &flag, 179},
+        {SHRPX_OPT_FRONTEND_QUIC_EARLY_DATA.c_str(), no_argument, &flag, 180},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -4851,6 +4859,11 @@ int main(int argc, char **argv) {
         // --frontend-http3-max-concurrent-streams
         cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_HTTP3_MAX_CONCURRENT_STREAMS,
                              StringRef{optarg});
+        break;
+      case 180:
+        // --frontend-quic-early-data
+        cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_QUIC_EARLY_DATA,
+                             StringRef::from_lit("yes"));
         break;
       default:
         break;

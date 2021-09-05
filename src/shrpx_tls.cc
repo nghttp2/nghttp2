@@ -1389,7 +1389,10 @@ SSL_CTX *create_quic_ssl_context(const char *private_key_file,
          // !defined(OPENSSL_IS_BORINGSSL)
 
 #  if OPENSSL_1_1_1_API
-  if (SSL_CTX_set_max_early_data(ssl_ctx,
+  auto &quicconf = config->quic;
+
+  if (quicconf.upstream.early_data &&
+      SSL_CTX_set_max_early_data(ssl_ctx,
                                  std::numeric_limits<uint32_t>::max()) != 1) {
     LOG(FATAL) << "SSL_CTX_set_max_early_data failed: "
                << ERR_error_string(ERR_get_error(), nullptr);

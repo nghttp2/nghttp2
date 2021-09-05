@@ -188,6 +188,7 @@ OPTIONS = [
     "frontend-http3-max-window-size",
     "frontend-http3-max-connection-window-size",
     "frontend-http3-max-concurrent-streams",
+    "frontend-quic-early-data",
 ]
 
 LOGVARS = [
