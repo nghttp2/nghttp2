@@ -41,6 +41,7 @@ constexpr size_t SHRPX_QUIC_MAX_UDP_PAYLOAD_SIZE = 1472;
 constexpr size_t SHRPX_QUIC_STATELESS_RESET_SECRETLEN = 32;
 constexpr size_t SHRPX_QUIC_TOKEN_SECRETLEN = 32;
 constexpr size_t SHRPX_QUIC_TOKEN_RAND_DATALEN = 16;
+constexpr size_t SHRPX_QUIC_CONN_CLOSE_PKTLEN = 256;
 
 // SHRPX_QUIC_RETRY_TOKEN_MAGIC is the magic byte of Retry token.
 // Sent in plaintext.

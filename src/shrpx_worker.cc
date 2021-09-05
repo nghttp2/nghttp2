@@ -518,7 +518,8 @@ void Worker::process_events() {
 
     graceful_shutdown_ = true;
 
-    if (worker_stat_.num_connections == 0) {
+    if (worker_stat_.num_connections == 0 &&
+        worker_stat_.num_close_waits == 0) {
       ev_break(loop_);
 
       return;

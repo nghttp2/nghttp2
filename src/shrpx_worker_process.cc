@@ -123,7 +123,9 @@ void graceful_shutdown(ConnectionHandler *conn_handler) {
 
   auto single_worker = conn_handler->get_single_worker();
   if (single_worker) {
-    if (single_worker->get_worker_stat()->num_connections == 0) {
+    auto worker_stat = single_worker->get_worker_stat();
+    if (worker_stat->num_connections == 0 &&
+        worker_stat->num_close_waits == 0) {
       ev_break(conn_handler->get_loop());
     }
 

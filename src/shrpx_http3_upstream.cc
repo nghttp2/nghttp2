@@ -147,19 +147,6 @@ Http3Upstream::~Http3Upstream() {
   nghttp3_conn_del(httpconn_);
 
   if (conn_) {
-    auto worker = handler_->get_worker();
-    auto quic_client_handler = worker->get_quic_connection_handler();
-
-    quic_client_handler->remove_connection_id(
-        ngtcp2_conn_get_client_initial_dcid(conn_));
-
-    std::vector<ngtcp2_cid> scids(ngtcp2_conn_get_num_scid(conn_));
-    ngtcp2_conn_get_scid(conn_, scids.data());
-
-    for (auto &cid : scids) {
-      quic_client_handler->remove_connection_id(&cid);
-    }
-
     ngtcp2_conn_del(conn_);
   }
 }
@@ -1275,33 +1262,66 @@ void Http3Upstream::on_handler_delete() {
     }
   }
 
-  // If this is not idle close, send APPLICATION_CLOSE since this
-  // might come before idle close.
-  if (!idle_close_ && !ngtcp2_conn_is_in_closing_period(conn_) &&
+  auto worker = handler_->get_worker();
+  auto quic_conn_handler = worker->get_quic_connection_handler();
+
+  quic_conn_handler->remove_connection_id(
+      ngtcp2_conn_get_client_initial_dcid(conn_));
+
+  std::vector<ngtcp2_cid> scids(ngtcp2_conn_get_num_scid(conn_));
+  ngtcp2_conn_get_scid(conn_, scids.data());
+
+  for (auto &cid : scids) {
+    quic_conn_handler->remove_connection_id(&cid);
+  }
+
+  if (idle_close_) {
+    return;
+  }
+
+  // If this is not idle close, send CONNECTION_CLOSE.
+  if (!ngtcp2_conn_is_in_closing_period(conn_) &&
       !ngtcp2_conn_is_in_draining_period(conn_)) {
     ngtcp2_path_storage ps;
     ngtcp2_pkt_info pi;
-    std::array<uint8_t, NGTCP2_DEFAULT_MAX_PKTLEN> buf;
+    conn_close_.resize(SHRPX_QUIC_CONN_CLOSE_PKTLEN);
 
     ngtcp2_path_storage_zero(&ps);
 
-    auto nwrite = ngtcp2_conn_write_application_close(
-        conn_, &ps.path, &pi, buf.data(), buf.size(), NGHTTP3_H3_NO_ERROR,
-        quic_timestamp());
+    auto nwrite = ngtcp2_conn_write_connection_close(
+        conn_, &ps.path, &pi, conn_close_.data(), conn_close_.size(),
+        NGTCP2_NO_ERROR, quic_timestamp());
     if (nwrite < 0) {
       if (nwrite != NGTCP2_ERR_INVALID_STATE) {
-        ULOG(ERROR, this) << "ngtcp2_conn_write_application_close: "
+        ULOG(ERROR, this) << "ngtcp2_conn_write_connection_close: "
                           << ngtcp2_strerror(nwrite);
       }
 
       return;
     }
 
+    conn_close_.resize(nwrite);
+
     quic_send_packet(static_cast<UpstreamAddr *>(ps.path.user_data),
                      ps.path.remote.addr, ps.path.remote.addrlen,
-                     ps.path.local.addr, ps.path.local.addrlen, buf.data(),
-                     nwrite, 0);
+                     ps.path.local.addr, ps.path.local.addrlen,
+                     conn_close_.data(), nwrite, 0);
   }
+
+  auto d =
+      static_cast<ev_tstamp>(ngtcp2_conn_get_pto(conn_) * 3) / NGTCP2_SECONDS;
+
+  if (LOG_ENABLED(INFO)) {
+    ULOG(INFO, this) << "Enter close-wait period " << d << "s with "
+                     << conn_close_.size() << " bytes sentinel packet";
+  }
+
+  auto cw = std::make_unique<CloseWait>(worker, std::move(scids),
+                                        std::move(conn_close_), d);
+
+  quic_conn_handler->add_close_wait(cw.get());
+
+  cw.release();
 }
 
 int Http3Upstream::on_downstream_reset(Downstream *downstream, bool no_retry) {
@@ -1569,12 +1589,14 @@ int Http3Upstream::handle_error() {
 
   auto ts = quic_timestamp();
 
-  std::array<uint8_t, NGTCP2_DEFAULT_MAX_PKTLEN> buf;
+  conn_close_.resize(SHRPX_QUIC_CONN_CLOSE_PKTLEN);
+
   ngtcp2_ssize nwrite;
 
   if (last_error_.type == quic::ErrorType::Transport) {
     nwrite = ngtcp2_conn_write_connection_close(
-        conn_, &ps.path, &pi, buf.data(), buf.size(), last_error_.code, ts);
+        conn_, &ps.path, &pi, conn_close_.data(), conn_close_.size(),
+        last_error_.code, ts);
     if (nwrite < 0) {
       ULOG(ERROR, this) << "ngtcp2_conn_write_connection_close: "
                         << ngtcp2_strerror(nwrite);
@@ -1582,7 +1604,8 @@ int Http3Upstream::handle_error() {
     }
   } else {
     nwrite = ngtcp2_conn_write_application_close(
-        conn_, &ps.path, &pi, buf.data(), buf.size(), last_error_.code, ts);
+        conn_, &ps.path, &pi, conn_close_.data(), conn_close_.size(),
+        last_error_.code, ts);
     if (nwrite < 0) {
       ULOG(ERROR, this) << "ngtcp2_conn_write_application_close: "
                         << ngtcp2_strerror(nwrite);
@@ -1590,10 +1613,12 @@ int Http3Upstream::handle_error() {
     }
   }
 
+  conn_close_.resize(nwrite);
+
   quic_send_packet(static_cast<UpstreamAddr *>(ps.path.user_data),
                    ps.path.remote.addr, ps.path.remote.addrlen,
-                   ps.path.local.addr, ps.path.local.addrlen, buf.data(),
-                   nwrite, 0);
+                   ps.path.local.addr, ps.path.local.addrlen,
+                   conn_close_.data(), nwrite, 0);
 
   return -1;
 }

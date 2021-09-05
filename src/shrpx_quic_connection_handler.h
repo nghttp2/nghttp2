@@ -30,8 +30,11 @@
 #include <memory>
 #include <unordered_map>
 #include <string>
+#include <vector>
 
 #include <ngtcp2/ngtcp2.h>
+
+#include <ev.h>
 
 #include "network.h"
 
@@ -42,6 +45,36 @@ namespace shrpx {
 struct UpstreamAddr;
 class ClientHandler;
 class Worker;
+
+// CloseWait handles packets received in close-wait (draining or
+// closing period).
+struct CloseWait {
+  CloseWait(Worker *worker, std::vector<ngtcp2_cid> scids,
+            std::vector<uint8_t> conn_close, ev_tstamp period);
+  ~CloseWait();
+
+  int handle_packet(const UpstreamAddr *faddr, const Address &remote_addr,
+                    const Address &local_addr, const uint8_t *data,
+                    size_t datalen);
+
+  Worker *worker;
+  // Source Connection IDs of the connection.
+  std::vector<ngtcp2_cid> scids;
+  // QUIC packet containing CONNECTION_CLOSE.  It is empty when a
+  // connection entered in draining state.
+  std::vector<uint8_t> conn_close;
+  // Close-wait (draining or closing period) timer.
+  ev_timer timer;
+  // The number of bytes received during close-wait period.
+  size_t bytes_recv;
+  // The number of bytes sent during close-wait period.
+  size_t bytes_sent;
+  // The number of packets received during close-wait period.
+  size_t num_pkts_recv;
+  // If the number of packets received reaches this number, send a
+  // QUIC packet.
+  size_t next_pkts_recv;
+};
 
 class QUICConnectionHandler {
 public:
@@ -89,9 +122,13 @@ public:
   void add_connection_id(const ngtcp2_cid *cid, ClientHandler *handler);
   void remove_connection_id(const ngtcp2_cid *cid);
 
+  void add_close_wait(CloseWait *cw);
+  void remove_close_wait(const CloseWait *cw);
+
 private:
   Worker *worker_;
   std::unordered_map<std::string, ClientHandler *> connections_;
+  std::unordered_map<std::string, CloseWait *> close_waits_;
 };
 
 } // namespace shrpx

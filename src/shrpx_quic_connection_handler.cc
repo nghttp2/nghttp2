@@ -103,6 +103,15 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
       }
     }
 
+    auto it = close_waits_.find(dcid_key);
+    if (it != std::end(close_waits_)) {
+      auto cw = (*it).second;
+
+      cw->handle_packet(faddr, remote_addr, local_addr, data, datalen);
+
+      return 0;
+    }
+
     // new connection
 
     auto &upstreamconf = config->conn.upstream;
@@ -460,6 +469,91 @@ void QUICConnectionHandler::add_connection_id(const ngtcp2_cid *cid,
 void QUICConnectionHandler::remove_connection_id(const ngtcp2_cid *cid) {
   auto key = make_cid_key(cid);
   connections_.erase(key);
+}
+
+void QUICConnectionHandler::add_close_wait(CloseWait *cw) {
+  for (auto &cid : cw->scids) {
+    close_waits_.emplace(make_cid_key(&cid), cw);
+  }
+}
+
+void QUICConnectionHandler::remove_close_wait(const CloseWait *cw) {
+  for (auto &cid : cw->scids) {
+    close_waits_.erase(make_cid_key(&cid));
+  }
+}
+
+static void close_wait_timeoutcb(struct ev_loop *loop, ev_timer *w,
+                                 int revents) {
+  auto cw = static_cast<CloseWait *>(w->data);
+
+  if (LOG_ENABLED(INFO)) {
+    LOG(INFO) << "close-wait period finished";
+  }
+
+  auto quic_conn_handler = cw->worker->get_quic_connection_handler();
+  quic_conn_handler->remove_close_wait(cw);
+
+  delete cw;
+}
+
+CloseWait::CloseWait(Worker *worker, std::vector<ngtcp2_cid> scids,
+                     std::vector<uint8_t> conn_close, ev_tstamp period)
+    : worker{worker},
+      scids{std::move(scids)},
+      conn_close{std::move(conn_close)},
+      bytes_recv{0},
+      bytes_sent{0},
+      num_pkts_recv{0},
+      next_pkts_recv{1} {
+  ++worker->get_worker_stat()->num_close_waits;
+
+  ev_timer_init(&timer, close_wait_timeoutcb, period, 0.);
+  timer.data = this;
+
+  ev_timer_start(worker->get_loop(), &timer);
+}
+
+CloseWait::~CloseWait() {
+  auto loop = worker->get_loop();
+
+  ev_timer_stop(loop, &timer);
+
+  auto worker_stat = worker->get_worker_stat();
+  --worker_stat->num_close_waits;
+
+  if (worker->get_graceful_shutdown() && worker_stat->num_connections == 0 &&
+      worker_stat->num_close_waits) {
+    ev_break(loop);
+  }
+}
+
+int CloseWait::handle_packet(const UpstreamAddr *faddr,
+                             const Address &remote_addr,
+                             const Address &local_addr, const uint8_t *data,
+                             size_t datalen) {
+  if (conn_close.empty()) {
+    return 0;
+  }
+
+  ++num_pkts_recv;
+  bytes_recv += datalen;
+
+  if (bytes_sent + conn_close.size() > 3 * bytes_recv ||
+      next_pkts_recv > num_pkts_recv) {
+    return 0;
+  }
+
+  if (quic_send_packet(faddr, &remote_addr.su.sa, remote_addr.len,
+                       &local_addr.su.sa, local_addr.len, conn_close.data(),
+                       conn_close.size(), 0) != 0) {
+    return -1;
+  }
+
+  next_pkts_recv *= 2;
+  bytes_sent += conn_close.size();
+
+  return 0;
 }
 
 } // namespace shrpx

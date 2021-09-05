@@ -251,6 +251,7 @@ struct DownstreamAddrGroup {
 
 struct WorkerStat {
   size_t num_connections;
+  size_t num_close_waits;
 };
 
 #ifdef ENABLE_HTTP3
