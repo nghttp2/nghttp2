@@ -37,10 +37,26 @@
 
 namespace shrpx {
 
-QUICConnectionHandler::QUICConnectionHandler(Worker *worker)
-    : worker_{worker} {}
+namespace {
+void stateless_reset_bucket_regen_timercb(struct ev_loop *loop, ev_timer *w,
+                                          int revents) {
+  auto quic_conn_handler = static_cast<QUICConnectionHandler *>(w->data);
 
-QUICConnectionHandler::~QUICConnectionHandler() {}
+  quic_conn_handler->on_stateless_reset_bucket_regen();
+}
+} // namespace
+
+QUICConnectionHandler::QUICConnectionHandler(Worker *worker)
+    : worker_{worker},
+      stateless_reset_bucket_{SHRPX_QUIC_STATELESS_RESET_BURST} {
+  ev_timer_init(&stateless_reset_bucket_regen_timer_,
+                stateless_reset_bucket_regen_timercb, 0., 1.);
+  stateless_reset_bucket_regen_timer_.data = this;
+}
+
+QUICConnectionHandler::~QUICConnectionHandler() {
+  ev_timer_stop(worker_->get_loop(), &stateless_reset_bucket_regen_timer_);
+}
 
 int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
                                          const Address &remote_addr,
@@ -378,6 +394,20 @@ int QUICConnectionHandler::send_stateless_reset(const UpstreamAddr *faddr,
                                                 size_t dcidlen,
                                                 const Address &remote_addr,
                                                 const Address &local_addr) {
+  if (stateless_reset_bucket_ == 0) {
+    if (LOG_ENABLED(INFO)) {
+      LOG(INFO) << "Stateless Reset bucket has been depleted";
+    }
+
+    return 0;
+  }
+
+  --stateless_reset_bucket_;
+
+  if (!ev_is_active(&stateless_reset_bucket_regen_timer_)) {
+    ev_timer_again(worker_->get_loop(), &stateless_reset_bucket_regen_timer_);
+  }
+
   int rv;
   std::array<uint8_t, NGTCP2_STATELESS_RESET_TOKENLEN> token;
   ngtcp2_cid cid;
@@ -466,6 +496,14 @@ void QUICConnectionHandler::add_close_wait(CloseWait *cw) {
 void QUICConnectionHandler::remove_close_wait(const CloseWait *cw) {
   for (auto &cid : cw->scids) {
     close_waits_.erase(cid);
+  }
+}
+
+void QUICConnectionHandler::on_stateless_reset_bucket_regen() {
+  assert(stateless_reset_bucket_ < SHRPX_QUIC_STATELESS_RESET_BURST);
+
+  if (++stateless_reset_bucket_ == SHRPX_QUIC_STATELESS_RESET_BURST) {
+    ev_timer_stop(worker_->get_loop(), &stateless_reset_bucket_regen_timer_);
   }
 }
 

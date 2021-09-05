@@ -126,10 +126,14 @@ public:
   void add_close_wait(CloseWait *cw);
   void remove_close_wait(const CloseWait *cw);
 
+  void on_stateless_reset_bucket_regen();
+
 private:
   Worker *worker_;
   std::unordered_map<ngtcp2_cid, ClientHandler *> connections_;
   std::unordered_map<ngtcp2_cid, CloseWait *> close_waits_;
+  ev_timer stateless_reset_bucket_regen_timer_;
+  size_t stateless_reset_bucket_;
 };
 
 } // namespace shrpx
