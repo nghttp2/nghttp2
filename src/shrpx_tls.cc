@@ -1201,12 +1201,7 @@ SSL_CTX *create_quic_ssl_context(const char *private_key_file,
 
   const unsigned char sid_ctx[] = "shrpx";
   SSL_CTX_set_session_id_context(ssl_ctx, sid_ctx, sizeof(sid_ctx) - 1);
-  SSL_CTX_set_session_cache_mode(ssl_ctx, SSL_SESS_CACHE_SERVER);
-
-  if (!tlsconf.session_cache.memcached.host.empty()) {
-    SSL_CTX_sess_set_new_cb(ssl_ctx, tls_session_new_cb);
-    SSL_CTX_sess_set_get_cb(ssl_ctx, tls_session_get_cb);
-  }
+  SSL_CTX_set_session_cache_mode(ssl_ctx, SSL_SESS_CACHE_OFF);
 
   SSL_CTX_set_timeout(ssl_ctx, tlsconf.session_timeout.count());
 
