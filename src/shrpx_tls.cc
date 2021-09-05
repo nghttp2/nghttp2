@@ -560,6 +560,12 @@ int ticket_key_cb(SSL *ssl, unsigned char *key_name, unsigned char *iv,
                nullptr);
   EVP_DecryptInit_ex(ctx, key.cipher, nullptr, key.data.enc_key.data(), iv);
 
+  // If ticket_key_cb is not set, OpenSSL always renew ticket for
+  // TLSv1.3.
+  if (SSL_version(ssl) == TLS1_3_VERSION) {
+    return 2;
+  }
+
   return i == 0 ? 1 : 2;
 }
 } // namespace
