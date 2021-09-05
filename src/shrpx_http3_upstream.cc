@@ -2478,7 +2478,7 @@ int Http3Upstream::start_graceful_shutdown() {
 
   auto t = ngtcp2_conn_get_pto(conn_);
 
-  ev_timer_set(&shutdown_timer_, static_cast<ev_tstamp>(t) * 3 / NGTCP2_SECONDS,
+  ev_timer_set(&shutdown_timer_, static_cast<ev_tstamp>(t * 3) / NGTCP2_SECONDS,
                0.);
   ev_timer_start(handler_->get_loop(), &shutdown_timer_);
 
