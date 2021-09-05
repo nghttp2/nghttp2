@@ -541,6 +541,7 @@ struct DownstreamAddrGroupConfig {
       : pattern(pattern),
         affinity{SessionAffinity::NONE},
         redirect_if_not_tls(false),
+        dnf{false},
         timeout{} {}
 
   StringRef pattern;

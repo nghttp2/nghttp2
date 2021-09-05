@@ -198,6 +198,7 @@ struct SharedDownstreamAddr {
       : balloc(1024, 1024),
         affinity{SessionAffinity::NONE},
         redirect_if_not_tls{false},
+        dnf{false},
         timeout{} {}
 
   SharedDownstreamAddr(const SharedDownstreamAddr &) = delete;
