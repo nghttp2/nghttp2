@@ -1345,10 +1345,6 @@ SSL_CTX *create_quic_ssl_context(const char *private_key_file,
   SSL_CTX_set_tlsext_status_cb(ssl_ctx, ocsp_resp_cb);
 #  endif // OPENSSL_IS_BORINGSSL
 
-#  ifdef OPENSSL_IS_BORINGSSL
-  SSL_CTX_set_early_data_enabled(ssl_ctx, 1);
-#  endif // OPENSSL_IS_BORINGSSL
-
 #  if OPENSSL_VERSION_NUMBER >= 0x10002000L
   // ALPN selection callback
   SSL_CTX_set_alpn_select_cb(ssl_ctx, quic_alpn_select_proto_cb, nullptr);
