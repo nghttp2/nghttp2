@@ -32,7 +32,6 @@
 #include "shrpx_worker.h"
 #include "shrpx_client_handler.h"
 #include "shrpx_log.h"
-#include "shrpx_quic.h"
 #include "shrpx_http3_upstream.h"
 #include "shrpx_connection_handler.h"
 
@@ -42,18 +41,6 @@ QUICConnectionHandler::QUICConnectionHandler(Worker *worker)
     : worker_{worker} {}
 
 QUICConnectionHandler::~QUICConnectionHandler() {}
-
-namespace {
-std::string make_cid_key(const uint8_t *dcid, size_t dcidlen) {
-  return std::string{dcid, dcid + dcidlen};
-}
-} // namespace
-
-namespace {
-std::string make_cid_key(const ngtcp2_cid *cid) {
-  return make_cid_key(cid->data, cid->datalen);
-}
-} // namespace
 
 int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
                                          const Address &remote_addr,
@@ -80,7 +67,8 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
 
   auto config = get_config();
 
-  auto dcid_key = make_cid_key(dcid, dcidlen);
+  ngtcp2_cid dcid_key;
+  ngtcp2_cid_init(&dcid_key, dcid, dcidlen);
 
   auto conn_handler = worker_->get_connection_handler();
 
@@ -462,24 +450,22 @@ int QUICConnectionHandler::send_connection_close(
 
 void QUICConnectionHandler::add_connection_id(const ngtcp2_cid *cid,
                                               ClientHandler *handler) {
-  auto key = make_cid_key(cid);
-  connections_.emplace(key, handler);
+  connections_.emplace(*cid, handler);
 }
 
 void QUICConnectionHandler::remove_connection_id(const ngtcp2_cid *cid) {
-  auto key = make_cid_key(cid);
-  connections_.erase(key);
+  connections_.erase(*cid);
 }
 
 void QUICConnectionHandler::add_close_wait(CloseWait *cw) {
   for (auto &cid : cw->scids) {
-    close_waits_.emplace(make_cid_key(&cid), cw);
+    close_waits_.emplace(cid, cw);
   }
 }
 
 void QUICConnectionHandler::remove_close_wait(const CloseWait *cw) {
   for (auto &cid : cw->scids) {
-    close_waits_.erase(make_cid_key(&cid));
+    close_waits_.erase(cid);
   }
 }
 

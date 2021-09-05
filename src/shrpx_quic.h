@@ -29,7 +29,29 @@
 
 #include <stdint.h>
 
+#include <functional>
+
 #include <ngtcp2/ngtcp2.h>
+
+namespace std {
+template <> struct hash<ngtcp2_cid> {
+  std::size_t operator()(const ngtcp2_cid &cid) const noexcept {
+    // FNV-1a 64bits variant
+    constexpr uint64_t basis = 0xCBF29CE484222325ULL;
+    const uint8_t *p = cid.data, *end = cid.data + cid.datalen;
+    uint64_t h = basis;
+
+    for (; p != end;) {
+      h ^= *p++;
+      h *= basis;
+    }
+
+    return static_cast<size_t>(h);
+  }
+};
+} // namespace std
+
+bool operator==(const ngtcp2_cid &lhs, const ngtcp2_cid &rhs);
 
 namespace shrpx {
 

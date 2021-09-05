@@ -45,6 +45,10 @@
 
 using namespace nghttp2;
 
+bool operator==(const ngtcp2_cid &lhs, const ngtcp2_cid &rhs) {
+  return ngtcp2_cid_eq(&lhs, &rhs);
+}
+
 namespace shrpx {
 
 ngtcp2_tstamp quic_timestamp() {

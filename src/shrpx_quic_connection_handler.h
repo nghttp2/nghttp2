@@ -36,6 +36,7 @@
 
 #include <ev.h>
 
+#include "shrpx_quic.h"
 #include "network.h"
 
 using namespace nghttp2;
@@ -127,8 +128,8 @@ public:
 
 private:
   Worker *worker_;
-  std::unordered_map<std::string, ClientHandler *> connections_;
-  std::unordered_map<std::string, CloseWait *> close_waits_;
+  std::unordered_map<ngtcp2_cid, ClientHandler *> connections_;
+  std::unordered_map<ngtcp2_cid, CloseWait *> close_waits_;
 };
 
 } // namespace shrpx
