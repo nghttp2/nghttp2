@@ -2255,6 +2255,9 @@ int option_lookup_token(const char *name, size_t namelen) {
       if (util::strieq_l("backend-request-buffe", name, 21)) {
         return SHRPX_OPTID_BACKEND_REQUEST_BUFFER;
       }
+      if (util::strieq_l("frontend-quic-qlog-di", name, 21)) {
+        return SHRPX_OPTID_FRONTEND_QUIC_QLOG_DIR;
+      }
       break;
     case 't':
       if (util::strieq_l("frontend-write-timeou", name, 21)) {
@@ -3975,6 +3978,12 @@ int parse_config(Config *config, int optid, const StringRef &opt,
   case SHRPX_OPTID_FRONTEND_QUIC_EARLY_DATA:
 #ifdef ENABLE_HTTP3
     config->quic.upstream.early_data = util::strieq_l("yes", optarg);
+#endif // ENABLE_HTTP3
+
+    return 0;
+  case SHRPX_OPTID_FRONTEND_QUIC_QLOG_DIR:
+#ifdef ENABLE_HTTP3
+    config->quic.upstream.qlog.dir = optarg;
 #endif // ENABLE_HTTP3
 
     return 0;

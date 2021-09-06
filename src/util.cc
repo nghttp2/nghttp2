@@ -396,6 +396,47 @@ char *iso8601_date(char *res, int64_t ms) {
   return p;
 }
 
+char *iso8601_basic_date(char *res, int64_t ms) {
+  time_t sec = ms / 1000;
+
+  tm tms;
+  if (localtime_r(&sec, &tms) == nullptr) {
+    return res;
+  }
+
+  auto p = res;
+
+  p = cpydig(p, tms.tm_year + 1900, 4);
+  p = cpydig(p, tms.tm_mon + 1, 2);
+  p = cpydig(p, tms.tm_mday, 2);
+  *p++ = 'T';
+  p = cpydig(p, tms.tm_hour, 2);
+  p = cpydig(p, tms.tm_min, 2);
+  p = cpydig(p, tms.tm_sec, 2);
+  *p++ = '.';
+  p = cpydig(p, ms % 1000, 3);
+
+#ifdef HAVE_STRUCT_TM_TM_GMTOFF
+  auto gmtoff = tms.tm_gmtoff;
+#else  // !HAVE_STRUCT_TM_TM_GMTOFF
+  auto gmtoff = nghttp2_timegm(&tms) - sec;
+#endif // !HAVE_STRUCT_TM_TM_GMTOFF
+  if (gmtoff == 0) {
+    *p++ = 'Z';
+  } else {
+    if (gmtoff > 0) {
+      *p++ = '+';
+    } else {
+      *p++ = '-';
+      gmtoff = -gmtoff;
+    }
+    p = cpydig(p, gmtoff / 3600, 2);
+    p = cpydig(p, (gmtoff % 3600) / 60, 2);
+  }
+
+  return p;
+}
+
 #ifdef _WIN32
 namespace bt = boost::posix_time;
 // one-time definition of the locale that is used to parse UTC strings

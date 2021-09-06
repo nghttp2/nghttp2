@@ -247,6 +247,11 @@ std::string iso8601_date(int64_t ms);
 // function returns the one beyond the last position.
 char *iso8601_date(char *res, int64_t ms);
 
+// Writes given time |t| from epoch in ISO 8601 basic format into the
+// buffer pointed by |res|.  The buffer must be at least 24 bytes
+// long.  This function returns the one beyond the last position.
+char *iso8601_basic_date(char *res, int64_t ms);
+
 time_t parse_http_date(const StringRef &s);
 
 // Parses time formatted as "MMM DD HH:MM:SS YYYY [GMT]" (e.g., Feb 3
@@ -653,6 +658,20 @@ template <typename T> StringRef format_iso8601(char *out, const T &tp) {
   auto t = std::chrono::duration_cast<std::chrono::milliseconds>(
       tp.time_since_epoch());
   auto p = iso8601_date(out, t.count());
+  *p = '\0';
+  return StringRef{out, p};
+}
+
+// Writes given time |tp| in ISO 8601 basic format (e.g.,
+// 20141115T125824.741Z or 20141115T125824.741+0900) in buffer pointed
+// by |out|.  The buffer must be at least 25 bytes, including terminal
+// NULL byte.  Expected type of |tp| is std::chrono::time_point.  This
+// function returns StringRef wrapping the buffer pointed by |out|,
+// and this string is terminated by NULL.
+template <typename T> StringRef format_iso8601_basic(char *out, const T &tp) {
+  auto t = std::chrono::duration_cast<std::chrono::milliseconds>(
+      tp.time_since_epoch());
+  auto p = iso8601_basic_date(out, t.count());
   *p = '\0';
   return StringRef{out, p};
 }

@@ -3216,6 +3216,12 @@ HTTP/3 and QUIC:
               request is received in early  data and handshake has not
               finished.  All backend servers should deal with possibly
               replayed requests.
+  --frontend-quic-qlog-dir=<DIR>
+              Specify a  directory where  a qlog  file is  written for
+              frontend QUIC  connections.  A qlog file  is created per
+              each QUIC  connection.  The  file name is  ISO8601 basic
+              format, followed by "-", server Source Connection ID and
+              ".qlog".
   --no-quic-bpf
               Disable eBPF.
   --frontend-http3-window-size=<SIZE>
@@ -4003,6 +4009,8 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_FRONTEND_HTTP3_MAX_CONCURRENT_STREAMS.c_str(),
          required_argument, &flag, 179},
         {SHRPX_OPT_FRONTEND_QUIC_EARLY_DATA.c_str(), no_argument, &flag, 180},
+        {SHRPX_OPT_FRONTEND_QUIC_QLOG_DIR.c_str(), required_argument, &flag,
+         181},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -4864,6 +4872,11 @@ int main(int argc, char **argv) {
         // --frontend-quic-early-data
         cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_QUIC_EARLY_DATA,
                              StringRef::from_lit("yes"));
+        break;
+      case 181:
+        // --frontend-quic-qlog-dir
+        cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_QUIC_QLOG_DIR,
+                             StringRef{optarg});
         break;
       default:
         break;

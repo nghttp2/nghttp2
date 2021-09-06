@@ -24,7 +24,11 @@
  */
 #include "shrpx_http3_upstream.h"
 
-#include <stdio.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
+#include <cstdio>
 
 #include <ngtcp2/ngtcp2_crypto.h>
 
@@ -112,6 +116,7 @@ size_t downstream_queue_size(Worker *worker) {
 
 Http3Upstream::Http3Upstream(ClientHandler *handler)
     : handler_{handler},
+      qlog_fd_{-1},
       conn_{nullptr},
       tls_alert_{0},
       httpconn_{nullptr},
@@ -149,6 +154,10 @@ Http3Upstream::~Http3Upstream() {
   if (conn_) {
     ngtcp2_conn_del(conn_);
   }
+
+  if (qlog_fd_ != -1) {
+    close(qlog_fd_);
+  }
 }
 
 namespace {
@@ -170,6 +179,29 @@ void log_printf(void *user_data, const char *fmt, ...) {
     ;
 }
 } // namespace
+
+namespace {
+void qlog_write(void *user_data, uint32_t flags, const void *data,
+                size_t datalen) {
+  auto upstream = static_cast<Http3Upstream *>(user_data);
+
+  upstream->qlog_write(data, datalen, flags & NGTCP2_QLOG_WRITE_FLAG_FIN);
+}
+} // namespace
+
+void Http3Upstream::qlog_write(const void *data, size_t datalen, bool fin) {
+  assert(qlog_fd_ != -1);
+
+  ssize_t nwrite;
+
+  while ((nwrite = write(qlog_fd_, data, datalen)) == -1 && errno == EINTR)
+    ;
+
+  if (fin) {
+    close(qlog_fd_);
+    qlog_fd_ = -1;
+  }
+}
 
 namespace {
 void rand(uint8_t *dest, size_t destlen, const ngtcp2_rand_ctx *rand_ctx) {
@@ -526,6 +558,16 @@ int Http3Upstream::init(const UpstreamAddr *faddr, const Address &remote_addr,
   if (quicconf.upstream.debug.log) {
     settings.log_printf = log_printf;
   }
+
+  if (!quicconf.upstream.qlog.dir.empty()) {
+    auto fd = open_qlog_file(quicconf.upstream.qlog.dir, scid);
+    if (fd != -1) {
+      qlog_fd_ = fd;
+      settings.qlog.odcid = initial_hd.dcid;
+      settings.qlog.write = shrpx::qlog_write;
+    }
+  }
+
   settings.initial_ts = quic_timestamp();
   settings.cc_algo = NGTCP2_CC_ALGO_BBR;
   settings.max_window = http3conf.upstream.max_connection_window_size;
@@ -2525,5 +2567,45 @@ int Http3Upstream::submit_goaway() {
 }
 
 void Http3Upstream::idle_close() { idle_close_ = true; }
+
+int Http3Upstream::open_qlog_file(const StringRef &dir,
+                                  const ngtcp2_cid &scid) const {
+  std::array<char, sizeof("20141115T125824.741+0900")> buf;
+
+  auto path = dir.str();
+  path += '/';
+  path +=
+      util::format_iso8601_basic(buf.data(), std::chrono::system_clock::now());
+  path += '-';
+  path += util::format_hex(scid.data, scid.datalen);
+  path += ".qlog";
+
+  int fd;
+
+#ifdef O_CLOEXEC
+  while ((fd = open(path.c_str(), O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC,
+                    S_IRUSR | S_IWUSR | S_IRGRP)) == -1 &&
+         errno == EINTR)
+    ;
+#else  // !O_CLOEXEC
+  while ((fd = open(path.c_str(), O_WRONLY | O_CREAT | O_TRUNC,
+                    S_IRUSR | S_IWUSR | S_IRGRP)) == -1 &&
+         errno == EINTR)
+    ;
+
+  if (fd != -1) {
+    util::make_socket_closeonexec(fd);
+  }
+#endif // !O_CLOEXEC
+
+  if (fd == -1) {
+    auto error = errno;
+    ULOG(ERROR, this) << "Failed to open qlog file " << path
+                      << ": errno=" << error;
+    return -1;
+  }
+
+  return fd;
+}
 
 } // namespace shrpx

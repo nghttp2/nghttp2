@@ -149,12 +149,16 @@ public:
   int submit_goaway();
   void idle_close();
 
+  void qlog_write(const void *data, size_t datalen, bool fin);
+  int open_qlog_file(const StringRef &dir, const ngtcp2_cid &scid) const;
+
 private:
   ClientHandler *handler_;
   ev_timer timer_;
   ev_timer idle_timer_;
   ev_timer shutdown_timer_;
   ev_prepare prep_;
+  int qlog_fd_;
   ngtcp2_conn *conn_;
   quic::Error last_error_;
   uint8_t tls_alert_;
