@@ -161,7 +161,7 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
                       << util::to_numeric_addr(&remote_addr);
           }
 
-          // 2nd Retry packet is not allowed, so send CONNECTIONC_CLOE
+          // 2nd Retry packet is not allowed, so send CONNECTION_CLOSE
           // with INVALID_TOKEN.
           send_connection_close(faddr, version, &hd.dcid, &hd.scid, remote_addr,
                                 local_addr, NGTCP2_INVALID_TOKEN);
