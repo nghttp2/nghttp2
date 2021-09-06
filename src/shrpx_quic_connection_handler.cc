@@ -156,11 +156,21 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
         if (verify_retry_token(&odcid, hd.token.base, hd.token.len, &hd.dcid,
                                &remote_addr.su.sa, remote_addr.len,
                                secret.data()) != 0) {
+          if (LOG_ENABLED(INFO)) {
+            LOG(INFO) << "Failed to validate Retry token from remote="
+                      << util::to_numeric_addr(&remote_addr);
+          }
+
           // 2nd Retry packet is not allowed, so send CONNECTIONC_CLOE
           // with INVALID_TOKEN.
           send_connection_close(faddr, version, &hd.dcid, &hd.scid, remote_addr,
                                 local_addr, NGTCP2_INVALID_TOKEN);
           return 0;
+        }
+
+        if (LOG_ENABLED(INFO)) {
+          LOG(INFO) << "Successfully validated Retry token from remote="
+                    << util::to_numeric_addr(&remote_addr);
         }
 
         podcid = &odcid;
@@ -171,7 +181,17 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
       case SHRPX_QUIC_TOKEN_MAGIC:
         if (verify_token(hd.token.base, hd.token.len, &remote_addr.su.sa,
                          remote_addr.len, secret.data()) != 0) {
+          if (LOG_ENABLED(INFO)) {
+            LOG(INFO) << "Failed to validate token from remote="
+                      << util::to_numeric_addr(&remote_addr);
+          }
+
           break;
+        }
+
+        if (LOG_ENABLED(INFO)) {
+          LOG(INFO) << "Successfully validated token from remote="
+                    << util::to_numeric_addr(&remote_addr);
         }
 
         token = hd.token.base;
