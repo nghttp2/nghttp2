@@ -133,6 +133,8 @@ struct Config {
   double rps;
   // Disables GSO for UDP connections.
   bool no_udp_gso;
+  // The maximum UDP datagram payload size to send.
+  size_t max_udp_payload_size;
 
   Config();
   ~Config();
@@ -336,7 +338,6 @@ struct Client {
     ev_timer pkt_timer;
     ngtcp2_conn *conn;
     quic::Error last_error;
-    size_t max_pktlen;
     bool close_requested;
     FILE *qlog_file;
   } quic;

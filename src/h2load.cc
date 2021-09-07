@@ -124,7 +124,8 @@ Config::Config()
       base_uri_unix(false),
       unix_addr{},
       rps(0.),
-      no_udp_gso(false) {}
+      no_udp_gso(false),
+      max_udp_payload_size(0) {}
 
 Config::~Config() {
   if (addrs) {
@@ -2247,6 +2248,8 @@ Options:
       << config.groups << R"(
   --no-udp-gso
               Disable UDP GSO.
+  --max-udp-payload-size=<SIZE>
+              Specify the maximum outgoing UDP datagram payload size.
   -v, --verbose
               Output debug information.
   --version   Display version information and exit.
@@ -2312,6 +2315,7 @@ int main(int argc, char **argv) {
         {"tls13-ciphers", required_argument, &flag, 14},
         {"no-udp-gso", no_argument, &flag, 15},
         {"qlog-file-base", required_argument, &flag, 16},
+        {"max-udp-payload-size", required_argument, &flag, 17},
         {nullptr, 0, nullptr, 0}};
     int option_index = 0;
     auto c = getopt_long(argc, argv,
@@ -2578,6 +2582,22 @@ int main(int argc, char **argv) {
         // --qlog-file-base
         qlog_base = optarg;
         break;
+      case 17: {
+        // --max-udp-payload-size
+        auto n = util::parse_uint_with_unit(optarg);
+        if (n == -1) {
+          std::cerr << "--max-udp-payload-size: bad option value: " << optarg
+                    << std::endl;
+          exit(EXIT_FAILURE);
+        }
+        if (n > 64_k) {
+          std::cerr << "--max-udp-payload-size: must not exceed 65536"
+                    << std::endl;
+          exit(EXIT_FAILURE);
+        }
+        config.max_udp_payload_size = n;
+        break;
+      }
       }
       break;
     default:

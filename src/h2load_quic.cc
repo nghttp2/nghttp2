@@ -305,8 +305,6 @@ int Client::quic_init(const sockaddr *local_addr, socklen_t local_addrlen,
     SSL_set_quic_use_legacy_codepoint(ssl, 0);
   }
 
-  quic.max_pktlen = NGTCP2_MAX_UDP_PAYLOAD_SIZE;
-
   auto callbacks = ngtcp2_callbacks{
       ngtcp2_crypto_client_initial_cb,
       nullptr, // recv_client_initial
@@ -373,6 +371,10 @@ int Client::quic_init(const sockaddr *local_addr, socklen_t local_addrlen,
     }
     settings.qlog.write = qlog_write_cb;
   }
+  if (config->max_udp_payload_size) {
+    settings.max_udp_payload_size = config->max_udp_payload_size;
+    settings.no_udp_payload_size_shaping = 1;
+  }
 
   ngtcp2_transport_params params;
   ngtcp2_transport_params_default(&params);
@@ -424,7 +426,7 @@ void Client::quic_close_connection() {
     return;
   }
 
-  std::array<uint8_t, 1500> buf;
+  std::array<uint8_t, NGTCP2_MAX_UDP_PAYLOAD_SIZE> buf;
   ngtcp2_ssize nwrite;
   ngtcp2_path_storage ps;
   ngtcp2_path_storage_zero(&ps);
@@ -434,12 +436,12 @@ void Client::quic_close_connection() {
     return;
   case quic::ErrorType::Transport:
     nwrite = ngtcp2_conn_write_connection_close(
-        quic.conn, &ps.path, nullptr, buf.data(), quic.max_pktlen,
+        quic.conn, &ps.path, nullptr, buf.data(), buf.size(),
         quic.last_error.code, timestamp(worker->loop));
     break;
   case quic::ErrorType::Application:
     nwrite = ngtcp2_conn_write_application_close(
-        quic.conn, &ps.path, nullptr, buf.data(), quic.max_pktlen,
+        quic.conn, &ps.path, nullptr, buf.data(), buf.size(),
         quic.last_error.code, timestamp(worker->loop));
     break;
   default:
@@ -575,12 +577,14 @@ int Client::write_quic() {
 
   std::array<nghttp3_vec, 16> vec;
   size_t pktcnt = 0;
+  auto max_udp_payload_size =
+      ngtcp2_conn_get_path_max_udp_payload_size(quic.conn);
   size_t max_pktcnt =
 #ifdef UDP_SEGMENT
       worker->config->no_udp_gso
           ? 1
           : std::min(static_cast<size_t>(10),
-                     static_cast<size_t>(64_k / quic.max_pktlen));
+                     static_cast<size_t>(64_k / max_udp_payload_size));
 #else  // !UDP_SEGMENT
       1;
 #endif // !UDP_SEGMENT
@@ -614,8 +618,8 @@ int Client::write_quic() {
     }
 
     auto nwrite = ngtcp2_conn_writev_stream(
-        quic.conn, &ps.path, nullptr, bufpos, quic.max_pktlen, &ndatalen, flags,
-        stream_id, reinterpret_cast<const ngtcp2_vec *>(v), vcnt,
+        quic.conn, &ps.path, nullptr, bufpos, max_udp_payload_size, &ndatalen,
+        flags, stream_id, reinterpret_cast<const ngtcp2_vec *>(v), vcnt,
         timestamp(worker->loop));
     if (nwrite < 0) {
       switch (nwrite) {
@@ -650,7 +654,7 @@ int Client::write_quic() {
     if (nwrite == 0) {
       if (bufpos - buf.data()) {
         write_udp(ps.path.remote.addr, ps.path.remote.addrlen, buf.data(),
-                  bufpos - buf.data(), quic.max_pktlen);
+                  bufpos - buf.data(), max_udp_payload_size);
       }
       return 0;
     }
@@ -659,9 +663,9 @@ int Client::write_quic() {
 
     // Assume that the path does not change.
     if (++pktcnt == max_pktcnt ||
-        static_cast<size_t>(nwrite) < quic.max_pktlen) {
+        static_cast<size_t>(nwrite) < max_udp_payload_size) {
       write_udp(ps.path.remote.addr, ps.path.remote.addrlen, buf.data(),
-                bufpos - buf.data(), quic.max_pktlen);
+                bufpos - buf.data(), max_udp_payload_size);
       signal_write();
       return 0;
     }
