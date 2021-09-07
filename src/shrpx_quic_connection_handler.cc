@@ -372,7 +372,7 @@ int QUICConnectionHandler::send_retry(
     return -1;
   }
 
-  std::array<uint8_t, NGTCP2_DEFAULT_MAX_PKTLEN> buf;
+  std::array<uint8_t, NGTCP2_MAX_UDP_PAYLOAD_SIZE> buf;
 
   auto nwrite =
       ngtcp2_crypto_write_retry(buf.data(), buf.size(), version, &iscid,
@@ -396,7 +396,7 @@ int QUICConnectionHandler::send_version_negotiation(
   sv[0] = generate_reserved_version(remote_addr, version);
   sv[1] = NGTCP2_PROTO_VER_V1;
 
-  std::array<uint8_t, NGTCP2_DEFAULT_MAX_PKTLEN> buf;
+  std::array<uint8_t, NGTCP2_MAX_UDP_PAYLOAD_SIZE> buf;
 
   uint8_t rand_byte;
   util::random_bytes(&rand_byte, &rand_byte + 1, worker_->get_randgen());
@@ -455,7 +455,7 @@ int QUICConnectionHandler::send_stateless_reset(const UpstreamAddr *faddr,
     return -1;
   }
 
-  std::array<uint8_t, NGTCP2_DEFAULT_MAX_PKTLEN> buf;
+  std::array<uint8_t, NGTCP2_MAX_UDP_PAYLOAD_SIZE> buf;
 
   auto nwrite =
       ngtcp2_pkt_write_stateless_reset(buf.data(), buf.size(), token.data(),
@@ -481,7 +481,7 @@ int QUICConnectionHandler::send_connection_close(
     const UpstreamAddr *faddr, uint32_t version, const ngtcp2_cid *ini_dcid,
     const ngtcp2_cid *ini_scid, const Address &remote_addr,
     const Address &local_addr, uint64_t error_code) {
-  std::array<uint8_t, NGTCP2_DEFAULT_MAX_PKTLEN> buf;
+  std::array<uint8_t, NGTCP2_MAX_UDP_PAYLOAD_SIZE> buf;
 
   auto nwrite = ngtcp2_crypto_write_connection_close(
       buf.data(), buf.size(), version, ini_scid, ini_dcid, error_code);

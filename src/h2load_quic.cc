@@ -305,16 +305,7 @@ int Client::quic_init(const sockaddr *local_addr, socklen_t local_addrlen,
     SSL_set_quic_use_legacy_codepoint(ssl, 0);
   }
 
-  switch (remote_addr->sa_family) {
-  case AF_INET:
-    quic.max_pktlen = NGTCP2_MAX_PKTLEN_IPV4;
-    break;
-  case AF_INET6:
-    quic.max_pktlen = NGTCP2_MAX_PKTLEN_IPV6;
-    break;
-  default:
-    return -1;
-  }
+  quic.max_pktlen = NGTCP2_MAX_UDP_PAYLOAD_SIZE;
 
   auto callbacks = ngtcp2_callbacks{
       ngtcp2_crypto_client_initial_cb,
