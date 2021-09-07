@@ -2590,7 +2590,7 @@ int main(int argc, char **argv) {
                     << std::endl;
           exit(EXIT_FAILURE);
         }
-        if (n > 64_k) {
+        if (static_cast<uint64_t>(n) > 64_k) {
           std::cerr << "--max-udp-payload-size: must not exceed 65536"
                     << std::endl;
           exit(EXIT_FAILURE);
