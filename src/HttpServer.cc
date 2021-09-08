@@ -52,8 +52,13 @@
 #include <mutex>
 #include <deque>
 
+#include "ssl_compat.h"
+
 #include <openssl/err.h>
 #include <openssl/dh.h>
+#if OPENSSL_3_0_0_API
+#  include <openssl/decoder.h>
+#endif // OPENSSL_3_0_0_API
 
 #include <zlib.h>
 
@@ -2138,15 +2143,22 @@ int HttpServer::run() {
     SSL_CTX_set_session_cache_mode(ssl_ctx, SSL_SESS_CACHE_SERVER);
 
 #ifndef OPENSSL_NO_EC
-
     // Disabled SSL_CTX_set_ecdh_auto, because computational cost of
     // chosen curve is much higher than P-256.
 
-    // #if OPENSSL_VERSION_NUMBER >= 0x10002000L
     //     SSL_CTX_set_ecdh_auto(ssl_ctx, 1);
-    // #else // OPENSSL_VERSION_NUBMER < 0x10002000L
     // Use P-256, which is sufficiently secure at the time of this
     // writing.
+#  if OPENSSL_3_0_0_API
+    auto ecdh = EVP_EC_gen("P-256");
+    if (ecdh == nullptr) {
+      std::cerr << "EC_KEY_new_by_curv_name failed: "
+                << ERR_error_string(ERR_get_error(), nullptr);
+      return -1;
+    }
+    SSL_CTX_set_tmp_ecdh(ssl_ctx, ecdh);
+    EVP_PKEY_free(ecdh);
+#  else  // !OPENSSL_3_0_0_API
     auto ecdh = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
     if (ecdh == nullptr) {
       std::cerr << "EC_KEY_new_by_curv_name failed: "
@@ -2155,19 +2167,33 @@ int HttpServer::run() {
     }
     SSL_CTX_set_tmp_ecdh(ssl_ctx, ecdh);
     EC_KEY_free(ecdh);
-    // #endif // OPENSSL_VERSION_NUBMER < 0x10002000L
-
-#endif // OPENSSL_NO_EC
+#  endif // !OPENSSL_3_0_0_API
+#endif   // OPENSSL_NO_EC
 
     if (!config_->dh_param_file.empty()) {
       // Read DH parameters from file
-      auto bio = BIO_new_file(config_->dh_param_file.c_str(), "r");
+      auto bio = BIO_new_file(config_->dh_param_file.c_str(), "rb");
       if (bio == nullptr) {
         std::cerr << "BIO_new_file() failed: "
                   << ERR_error_string(ERR_get_error(), nullptr) << std::endl;
         return -1;
       }
 
+#if OPENSSL_3_0_0_API
+      EVP_PKEY *dh = nullptr;
+      auto dctx = OSSL_DECODER_CTX_new_for_pkey(
+          &dh, "PEM", nullptr, "DH", OSSL_KEYMGMT_SELECT_DOMAIN_PARAMETERS,
+          nullptr, nullptr);
+
+      if (!OSSL_DECODER_from_bio(dctx, bio)) {
+        std::cerr << "OSSL_DECODER_from_bio() failed: "
+                  << ERR_error_string(ERR_get_error(), nullptr) << std::endl;
+        return -1;
+      }
+
+      SSL_CTX_set_tmp_dh(ssl_ctx, dh);
+      EVP_PKEY_free(dh);
+#else  // !OPENSSL_3_0_0_API
       auto dh = PEM_read_bio_DHparams(bio, nullptr, nullptr, nullptr);
 
       if (dh == nullptr) {
@@ -2178,6 +2204,7 @@ int HttpServer::run() {
 
       SSL_CTX_set_tmp_dh(ssl_ctx, dh);
       DH_free(dh);
+#endif // !OPENSSL_3_0_0_API
       BIO_free(bio);
     }
 

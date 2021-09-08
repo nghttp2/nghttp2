@@ -40,6 +40,8 @@
 
 #include <iostream>
 
+#include "ssl_compat.h"
+
 #include <openssl/crypto.h>
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
@@ -48,6 +50,11 @@
 #ifndef OPENSSL_NO_OCSP
 #  include <openssl/ocsp.h>
 #endif // OPENSSL_NO_OCSP
+#if OPENSSL_3_0_0_API
+#  include <openssl/params.h>
+#  include <openssl/core_names.h>
+#  include <openssl/decoder.h>
+#endif // OPENSSL_3_0_0_API
 
 #include <nghttp2/nghttp2.h>
 
@@ -72,7 +79,6 @@
 #include "util.h"
 #include "tls.h"
 #include "template.h"
-#include "ssl_compat.h"
 #include "timegm.h"
 
 using namespace nghttp2;
@@ -246,6 +252,15 @@ int servername_callback(SSL *ssl, int *al, void *arg) {
 
   for (auto i = 0; i < num_shared_curves; ++i) {
     auto shared_curve = SSL_get_shared_curve(ssl, i);
+#  if OPENSSL_3_0_0_API
+    // It looks like only short name is defined in OpenSSL.  No idea
+    // which one to use because it is unknown that which one
+    // EVP_PKEY_get_utf8_string_param("group") returns.
+    auto shared_curve_name = OBJ_nid2sn(shared_curve);
+    if (shared_curve_name == nullptr) {
+      continue;
+    }
+#  endif // OPENSSL_3_0_0_API
 
     for (auto ssl_ctx : ssl_ctx_list) {
       auto cert = SSL_CTX_get0_certificate(ssl_ctx);
@@ -260,11 +275,23 @@ int servername_callback(SSL *ssl, int *al, void *arg) {
         continue;
       }
 
-#  if OPENSSL_1_1_API
+#  if OPENSSL_3_0_0_API
+      std::array<char, 64> curve_name;
+      if (!EVP_PKEY_get_utf8_string_param(pubkey, "group", curve_name.data(),
+                                          curve_name.size(), nullptr)) {
+        continue;
+      }
+
+      if (strcmp(shared_curve_name, curve_name.data()) == 0) {
+        SSL_set_SSL_CTX(ssl, ssl_ctx);
+        return SSL_TLSEXT_ERR_OK;
+      }
+#  else // !OPENSSL_3_0_0_API
+#    if OPENSSL_1_1_API
       auto eckey = EVP_PKEY_get0_EC_KEY(pubkey);
-#  else  // !OPENSSL_1_1_API
+#    else  // !OPENSSL_1_1_API
       auto eckey = EVP_PKEY_get1_EC_KEY(pubkey);
-#  endif // !OPENSSL_1_1_API
+#    endif // !OPENSSL_1_1_API
 
       if (eckey == nullptr) {
         continue;
@@ -273,15 +300,16 @@ int servername_callback(SSL *ssl, int *al, void *arg) {
       auto ecgroup = EC_KEY_get0_group(eckey);
       auto cert_curve = EC_GROUP_get_curve_name(ecgroup);
 
-#  if !OPENSSL_1_1_API
+#    if !OPENSSL_1_1_API
       EC_KEY_free(eckey);
       EVP_PKEY_free(pubkey);
-#  endif // !OPENSSL_1_1_API
+#    endif // !OPENSSL_1_1_API
 
       if (shared_curve == cert_curve) {
         SSL_set_SSL_CTX(ssl, ssl_ctx);
         return SSL_TLSEXT_ERR_OK;
       }
+#  endif   // !OPENSSL_3_0_0_API
     }
   }
 #endif // !defined(OPENSSL_IS_BORINGSSL) && !LIBRESSL_IN_USE &&
@@ -495,7 +523,13 @@ SSL_SESSION *tls_session_get_cb(SSL *ssl,
 
 namespace {
 int ticket_key_cb(SSL *ssl, unsigned char *key_name, unsigned char *iv,
-                  EVP_CIPHER_CTX *ctx, HMAC_CTX *hctx, int enc) {
+                  EVP_CIPHER_CTX *ctx,
+#if OPENSSL_3_0_0_API
+                  EVP_MAC_CTX *hctx,
+#else  // !OPENSSL_3_0_0_API
+                  HMAC_CTX *hctx,
+#endif // !OPENSSL_3_0_0_API
+                  int enc) {
   auto conn = static_cast<Connection *>(SSL_get_app_data(ssl));
   auto handler = static_cast<ClientHandler *>(conn->data);
   auto worker = handler->get_worker();
@@ -528,8 +562,25 @@ int ticket_key_cb(SSL *ssl, unsigned char *key_name, unsigned char *iv,
 
     EVP_EncryptInit_ex(ctx, get_config()->tls.ticket.cipher, nullptr,
                        key.data.enc_key.data(), iv);
+#if OPENSSL_3_0_0_API
+    std::array<OSSL_PARAM, 3> params{
+        OSSL_PARAM_construct_octet_string(
+            OSSL_MAC_PARAM_KEY, key.data.hmac_key.data(), key.hmac_keylen),
+        OSSL_PARAM_construct_utf8_string(
+            OSSL_MAC_PARAM_DIGEST,
+            const_cast<char *>(EVP_MD_get0_name(key.hmac)), 0),
+        OSSL_PARAM_construct_end(),
+    };
+    if (!EVP_MAC_CTX_set_params(hctx, params.data())) {
+      if (LOG_ENABLED(INFO)) {
+        CLOG(INFO, handler) << "EVP_MAC_CTX_set_params failed";
+      }
+      return -1;
+    }
+#else  // !OPENSSL_3_0_0_API
     HMAC_Init_ex(hctx, key.data.hmac_key.data(), key.hmac_keylen, key.hmac,
                  nullptr);
+#endif // !OPENSSL_3_0_0_API
     return 1;
   }
 
@@ -556,8 +607,25 @@ int ticket_key_cb(SSL *ssl, unsigned char *key_name, unsigned char *iv,
   }
 
   auto &key = keys[i];
+#if OPENSSL_3_0_0_API
+  std::array<OSSL_PARAM, 3> params{
+      OSSL_PARAM_construct_octet_string(
+          OSSL_MAC_PARAM_KEY, key.data.hmac_key.data(), key.hmac_keylen),
+      OSSL_PARAM_construct_utf8_string(
+          OSSL_MAC_PARAM_DIGEST, const_cast<char *>(EVP_MD_get0_name(key.hmac)),
+          0),
+      OSSL_PARAM_construct_end(),
+  };
+  if (!EVP_MAC_CTX_set_params(hctx, params.data())) {
+    if (LOG_ENABLED(INFO)) {
+      CLOG(INFO, handler) << "EVP_MAC_CTX_set_params failed";
+    }
+    return -1;
+  }
+#else  // !OPENSSL_3_0_0_API
   HMAC_Init_ex(hctx, key.data.hmac_key.data(), key.hmac_keylen, key.hmac,
                nullptr);
+#endif // !OPENSSL_3_0_0_API
   EVP_DecryptInit_ex(ctx, key.cipher, nullptr, key.data.enc_key.data(), iv);
 
 #ifdef TLS1_3_VERSION
@@ -931,12 +999,27 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
 
   if (!tlsconf.dh_param_file.empty()) {
     // Read DH parameters from file
-    auto bio = BIO_new_file(tlsconf.dh_param_file.c_str(), "r");
+    auto bio = BIO_new_file(tlsconf.dh_param_file.c_str(), "rb");
     if (bio == nullptr) {
       LOG(FATAL) << "BIO_new_file() failed: "
                  << ERR_error_string(ERR_get_error(), nullptr);
       DIE();
     }
+#if OPENSSL_3_0_0_API
+    EVP_PKEY *dh = nullptr;
+    auto dctx = OSSL_DECODER_CTX_new_for_pkey(
+        &dh, "PEM", nullptr, "DH", OSSL_KEYMGMT_SELECT_DOMAIN_PARAMETERS,
+        nullptr, nullptr);
+
+    if (!OSSL_DECODER_from_bio(dctx, bio)) {
+      LOG(FATAL) << "OSSL_DECODER_from_bio() failed: "
+                 << ERR_error_string(ERR_get_error(), nullptr);
+      DIE();
+    }
+
+    SSL_CTX_set_tmp_dh(ssl_ctx, dh);
+    EVP_PKEY_free(dh);
+#else  // !OPENSSL_3_0_0_API
     auto dh = PEM_read_bio_DHparams(bio, nullptr, nullptr, nullptr);
     if (dh == nullptr) {
       LOG(FATAL) << "PEM_read_bio_DHparams() failed: "
@@ -945,6 +1028,7 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
     }
     SSL_CTX_set_tmp_dh(ssl_ctx, dh);
     DH_free(dh);
+#endif // !OPENSSL_3_0_0_API
     BIO_free(bio);
   }
 
@@ -1024,7 +1108,11 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
                        verify_callback);
   }
   SSL_CTX_set_tlsext_servername_callback(ssl_ctx, servername_callback);
+#if OPENSSL_3_0_0_API
+  SSL_CTX_set_tlsext_ticket_key_evp_cb(ssl_ctx, ticket_key_cb);
+#else  // !OPENSSL_3_0_0_API
   SSL_CTX_set_tlsext_ticket_key_cb(ssl_ctx, ticket_key_cb);
+#endif // !OPENSSL_3_0_0_API
 #ifndef OPENSSL_IS_BORINGSSL
   SSL_CTX_set_tlsext_status_cb(ssl_ctx, ocsp_resp_cb);
 #endif // OPENSSL_IS_BORINGSSL
@@ -1249,12 +1337,27 @@ SSL_CTX *create_quic_ssl_context(const char *private_key_file,
 
   if (!tlsconf.dh_param_file.empty()) {
     // Read DH parameters from file
-    auto bio = BIO_new_file(tlsconf.dh_param_file.c_str(), "r");
+    auto bio = BIO_new_file(tlsconf.dh_param_file.c_str(), "rb");
     if (bio == nullptr) {
       LOG(FATAL) << "BIO_new_file() failed: "
                  << ERR_error_string(ERR_get_error(), nullptr);
       DIE();
     }
+#  if OPENSSL_3_0_0_API
+    EVP_PKEY *dh = nullptr;
+    auto dctx = OSSL_DECODER_CTX_new_for_pkey(
+        &dh, "PEM", nullptr, "DH", OSSL_KEYMGMT_SELECT_DOMAIN_PARAMETERS,
+        nullptr, nullptr);
+
+    if (!OSSL_DECODER_from_bio(dctx, bio)) {
+      LOG(FATAL) << "OSSL_DECODER_from_bio() failed: "
+                 << ERR_error_string(ERR_get_error(), nullptr);
+      DIE();
+    }
+
+    SSL_CTX_set_tmp_dh(ssl_ctx, dh);
+    EVP_PKEY_free(dh);
+#  else  // !OPENSSL_3_0_0_API
     auto dh = PEM_read_bio_DHparams(bio, nullptr, nullptr, nullptr);
     if (dh == nullptr) {
       LOG(FATAL) << "PEM_read_bio_DHparams() failed: "
@@ -1263,6 +1366,7 @@ SSL_CTX *create_quic_ssl_context(const char *private_key_file,
     }
     SSL_CTX_set_tmp_dh(ssl_ctx, dh);
     DH_free(dh);
+#  endif // !OPENSSL_3_0_0_API
     BIO_free(bio);
   }
 
@@ -1342,7 +1446,11 @@ SSL_CTX *create_quic_ssl_context(const char *private_key_file,
                        verify_callback);
   }
   SSL_CTX_set_tlsext_servername_callback(ssl_ctx, servername_callback);
+#  if OPENSSL_3_0_0_API
+  SSL_CTX_set_tlsext_ticket_key_evp_cb(ssl_ctx, ticket_key_cb);
+#  else  // !OPENSSL_3_0_0_API
   SSL_CTX_set_tlsext_ticket_key_cb(ssl_ctx, ticket_key_cb);
+#  endif // !OPENSSL_3_0_0_API
 #  ifndef OPENSSL_IS_BORINGSSL
   SSL_CTX_set_tlsext_status_cb(ssl_ctx, ocsp_resp_cb);
 #  endif // OPENSSL_IS_BORINGSSL

@@ -142,7 +142,6 @@ static int alpn_select_proto_cb(SSL *ssl, const unsigned char **out,
 /* Create SSL_CTX. */
 static SSL_CTX *create_ssl_ctx(const char *key_file, const char *cert_file) {
   SSL_CTX *ssl_ctx;
-  EC_KEY *ecdh;
 
   ssl_ctx = SSL_CTX_new(SSLv23_server_method());
   if (!ssl_ctx) {
@@ -153,14 +152,28 @@ static SSL_CTX *create_ssl_ctx(const char *key_file, const char *cert_file) {
                       SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 |
                           SSL_OP_NO_COMPRESSION |
                           SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION);
-
-  ecdh = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
-  if (!ecdh) {
-    errx(1, "EC_KEY_new_by_curv_name failed: %s",
-         ERR_error_string(ERR_get_error(), NULL));
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+  {
+    EVP_PKEY *ecdh;
+    ecdh = EVP_EC_gen("P-256");
+    if (!ecdh) {
+      errx(1, "EVP_EC_gen failed: %s", ERR_error_string(ERR_get_error(), NULL));
+    }
+    SSL_CTX_set_tmp_ecdh(ssl_ctx, ecdh);
+    EVP_PKEY_free(ecdh);
   }
-  SSL_CTX_set_tmp_ecdh(ssl_ctx, ecdh);
-  EC_KEY_free(ecdh);
+#else  /* !(OPENSSL_VERSION_NUMBER >= 0x30000000L) */
+  {
+    EC_KEY *ecdh;
+    ecdh = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
+    if (!ecdh) {
+      errx(1, "EC_KEY_new_by_curv_name failed: %s",
+           ERR_error_string(ERR_get_error(), NULL));
+    }
+    SSL_CTX_set_tmp_ecdh(ssl_ctx, ecdh);
+    EC_KEY_free(ecdh);
+  }
+#endif /* !(OPENSSL_VERSION_NUMBER >= 0x30000000L) */
 
   if (SSL_CTX_use_PrivateKey_file(ssl_ctx, key_file, SSL_FILETYPE_PEM) != 1) {
     errx(1, "Could not read private key file %s", key_file);
