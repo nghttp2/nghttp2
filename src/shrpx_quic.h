@@ -62,23 +62,8 @@ constexpr size_t SHRPX_QUIC_CID_PREFIXLEN = 8;
 constexpr size_t SHRPX_QUIC_MAX_UDP_PAYLOAD_SIZE = 1472;
 constexpr size_t SHRPX_QUIC_STATELESS_RESET_SECRETLEN = 32;
 constexpr size_t SHRPX_QUIC_TOKEN_SECRETLEN = 32;
-constexpr size_t SHRPX_QUIC_TOKEN_RAND_DATALEN = 16;
 constexpr size_t SHRPX_QUIC_CONN_CLOSE_PKTLEN = 256;
 constexpr size_t SHRPX_QUIC_STATELESS_RESET_BURST = 100;
-
-// SHRPX_QUIC_RETRY_TOKEN_MAGIC is the magic byte of Retry token.
-// Sent in plaintext.
-constexpr uint8_t SHRPX_QUIC_RETRY_TOKEN_MAGIC = 0xb6;
-constexpr size_t SHRPX_QUIC_MAX_RETRY_TOKENLEN =
-    /* magic */ 1 + sizeof(uint64_t) + NGTCP2_MAX_CIDLEN +
-    /* aead tag */ 16 + SHRPX_QUIC_TOKEN_RAND_DATALEN;
-
-// SHRPX_QUIC_TOKEN_MAGIC is the magic byte of token which is sent in
-// NEW_TOKEN frame.  Sent in plaintext.
-constexpr uint8_t SHRPX_QUIC_TOKEN_MAGIC = 0x36;
-constexpr size_t SHRPX_QUIC_MAX_TOKENLEN =
-    /* magic */ 1 + sizeof(uint64_t) + /* aead tag */ 16 +
-    SHRPX_QUIC_TOKEN_RAND_DATALEN;
 
 ngtcp2_tstamp quic_timestamp();
 

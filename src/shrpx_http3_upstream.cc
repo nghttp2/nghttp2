@@ -471,8 +471,8 @@ int handshake_completed(ngtcp2_conn *conn, void *user_data) {
 } // namespace
 
 int Http3Upstream::handshake_completed() {
-  std::array<uint8_t, SHRPX_QUIC_MAX_TOKENLEN> token;
-  size_t tokenlen = token.size();
+  std::array<uint8_t, NGTCP2_CRYPTO_MAX_REGULAR_TOKENLEN> token;
+  size_t tokenlen;
 
   auto path = ngtcp2_conn_get_path(conn_);
   auto worker = handler_->get_worker();

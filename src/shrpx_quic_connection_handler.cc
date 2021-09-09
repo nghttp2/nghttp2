@@ -152,7 +152,7 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
       auto &secret = quic_secret->token_secret;
 
       switch (hd.token.base[0]) {
-      case SHRPX_QUIC_RETRY_TOKEN_MAGIC:
+      case NGTCP2_CRYPTO_TOKEN_MAGIC_RETRY:
         if (verify_retry_token(&odcid, hd.token.base, hd.token.len, &hd.dcid,
                                &remote_addr.su.sa, remote_addr.len,
                                secret.data()) != 0) {
@@ -178,7 +178,7 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
         tokenlen = hd.token.len;
 
         break;
-      case SHRPX_QUIC_TOKEN_MAGIC:
+      case NGTCP2_CRYPTO_TOKEN_MAGIC_REGULAR:
         if (verify_token(hd.token.base, hd.token.len, &remote_addr.su.sa,
                          remote_addr.len, secret.data()) != 0) {
           if (LOG_ENABLED(INFO)) {
@@ -356,8 +356,8 @@ int QUICConnectionHandler::send_retry(
     return -1;
   }
 
-  std::array<uint8_t, SHRPX_QUIC_MAX_RETRY_TOKENLEN> token;
-  size_t tokenlen = token.size();
+  std::array<uint8_t, NGTCP2_CRYPTO_MAX_RETRY_TOKENLEN> token;
+  size_t tokenlen;
 
   ngtcp2_cid idcid, iscid;
   ngtcp2_cid_init(&idcid, ini_dcid, ini_dcidlen);
