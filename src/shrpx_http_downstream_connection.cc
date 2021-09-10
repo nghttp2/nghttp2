@@ -24,6 +24,8 @@
  */
 #include "shrpx_http_downstream_connection.h"
 
+#include <openssl/rand.h>
+
 #include "shrpx_client_handler.h"
 #include "shrpx_upstream.h"
 #include "shrpx_downstream.h"
