@@ -543,8 +543,9 @@ int HttpDownstreamConnection::push_request_headers() {
   if (req.connect_proto == ConnectProto::WEBSOCKET) {
     if (req.http_major == 2) {
       std::array<uint8_t, 16> nonce;
-      util::random_bytes(std::begin(nonce), std::end(nonce),
-                         worker_->get_randgen());
+      if (RAND_bytes(nonce.data(), nonce.size()) != 1) {
+        return -1;
+      }
       auto iov = make_byte_ref(balloc, base64::encode_length(nonce.size()) + 1);
       auto p = base64::encode(std::begin(nonce), std::end(nonce), iov.base);
       *p = '\0';
