@@ -25,9 +25,17 @@ include_directories(
   ${LIBBPF_INCLUDE_DIRS}
 )
 
+if(ENABLE_STATIC_LIB)
+  set(NGHTTP2_TARGET nghttp2_static)
+  set(LIB_TYPE STATIC)
+else()
+  set(NGHTTP2_TARGET nghttp2)
+  set(LIB_TYPE SHARED)
+endif()
+
 # XXX per-target?
 link_libraries(
-  nghttp2
+  ${NGHTTP2_TARGET}
   ${JEMALLOC_LIBRARIES}
   ${LIBXML2_LIBRARIES}
   ${LIBEV_LIBRARIES}
@@ -273,7 +281,7 @@ if(ENABLE_ASIO_LIB)
     asio_client_tls_context.cc
   )
 
-  add_library(nghttp2_asio SHARED
+  add_library(nghttp2_asio ${LIB_TYPE}
      ${NGHTTP2_ASIO_SOURCES}
      $<TARGET_OBJECTS:llhttp>
      $<TARGET_OBJECTS:url-parser>
@@ -282,13 +290,13 @@ if(ENABLE_ASIO_LIB)
     ${OPENSSL_INCLUDE_DIRS}
     ${Boost_INCLUDE_DIRS}
   )
-  target_include_directories(nghttp2_asio INTERFACE
+  target_include_directories(nghttp2_asio PUBLIC
     "${CMAKE_CURRENT_BINARY_DIR}/../lib/includes"
     "${CMAKE_CURRENT_SOURCE_DIR}/../lib/includes"
     "${CMAKE_CURRENT_SOURCE_DIR}/includes"
   )
   target_link_libraries(nghttp2_asio
-    nghttp2
+    ${NGHTTP2_TARGET}
     ${OPENSSL_LIBRARIES}
     ${Boost_LIBRARIES}
   )
