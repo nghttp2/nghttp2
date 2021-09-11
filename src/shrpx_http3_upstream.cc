@@ -306,9 +306,14 @@ int Http3Upstream::recv_stream_data(uint32_t flags, int64_t stream_id,
 }
 
 namespace {
-int stream_close(ngtcp2_conn *conn, int64_t stream_id, uint64_t app_error_code,
-                 void *user_data, void *stream_user_data) {
+int stream_close(ngtcp2_conn *conn, uint32_t flags, int64_t stream_id,
+                 uint64_t app_error_code, void *user_data,
+                 void *stream_user_data) {
   auto upstream = static_cast<Http3Upstream *>(user_data);
+
+  if (!(flags & NGTCP2_STREAM_CLOSE_FLAG_APP_ERROR_CODE_SET)) {
+    app_error_code = NGHTTP3_H3_NO_ERROR;
+  }
 
   if (upstream->stream_close(stream_id, app_error_code) != 0) {
     return NGTCP2_ERR_CALLBACK_FAILURE;
