@@ -126,8 +126,7 @@ int stream_close(ngtcp2_conn *conn, uint32_t flags, int64_t stream_id,
 
 int Client::quic_stream_close(int64_t stream_id, uint64_t app_error_code) {
   auto s = static_cast<Http3Session *>(session.get());
-  if (s->close_stream(stream_id, app_error_code == 0 ? NGHTTP3_H3_NO_ERROR
-                                                     : app_error_code) != 0) {
+  if (s->close_stream(stream_id, app_error_code) != 0) {
     return -1;
   }
   return 0;
