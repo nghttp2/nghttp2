@@ -2312,9 +2312,15 @@ int Http3Upstream::setup_httpconn() {
       shrpx::http_reset_stream,
   };
 
+  auto config = get_config();
+
   nghttp3_settings settings;
   nghttp3_settings_default(&settings);
   settings.qpack_max_table_capacity = 4_k;
+
+  if (!config->http2_proxy) {
+    settings.enable_connect_protocol = 1;
+  }
 
   auto mem = nghttp3_mem_default();
 

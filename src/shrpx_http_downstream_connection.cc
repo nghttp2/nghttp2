@@ -523,7 +523,9 @@ int HttpDownstreamConnection::push_request_headers() {
       (xffconf.strip_incoming ? http2::HDOP_STRIP_X_FORWARDED_FOR : 0) |
       (xfpconf.strip_incoming ? http2::HDOP_STRIP_X_FORWARDED_PROTO : 0) |
       (earlydataconf.strip_incoming ? http2::HDOP_STRIP_EARLY_DATA : 0) |
-      (req.http_major == 2 ? http2::HDOP_STRIP_SEC_WEBSOCKET_KEY : 0);
+      ((req.http_major == 3 || req.http_major == 2)
+           ? http2::HDOP_STRIP_SEC_WEBSOCKET_KEY
+           : 0);
 
   http2::build_http1_headers_from_headers(buf, req.fs.headers(), build_flags);
 
@@ -543,7 +545,7 @@ int HttpDownstreamConnection::push_request_headers() {
   }
 
   if (req.connect_proto == ConnectProto::WEBSOCKET) {
-    if (req.http_major == 2) {
+    if (req.http_major == 3 || req.http_major == 2) {
       std::array<uint8_t, 16> nonce;
       if (RAND_bytes(nonce.data(), nonce.size()) != 1) {
         return -1;

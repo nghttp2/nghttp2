@@ -896,7 +896,8 @@ bool Downstream::get_non_final_response() const {
 }
 
 bool Downstream::supports_non_final_response() const {
-  return req_.http_major == 2 || (req_.http_major == 1 && req_.http_minor == 1);
+  return req_.http_major == 3 || req_.http_major == 2 ||
+         (req_.http_major == 1 && req_.http_minor == 1);
 }
 
 bool Downstream::get_upgraded() const { return upgraded_; }
@@ -947,7 +948,8 @@ bool Downstream::expect_response_trailer() const {
   // In HTTP/2, if final response HEADERS does not bear END_STREAM it
   // is possible trailer fields might come, regardless of request
   // method or status code.
-  return !resp_.headers_only && resp_.http_major == 2;
+  return !resp_.headers_only &&
+         (resp_.http_major == 3 || resp_.http_major == 2);
 }
 
 namespace {
