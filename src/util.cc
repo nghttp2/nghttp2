@@ -418,27 +418,34 @@ char *iso8601_date(char *res, int64_t ms) {
 char *iso8601_basic_date(char *res, int64_t ms) {
   time_t sec = ms / 1000;
 
-  tm tms;
-  if (localtime_r(&sec, &tms) == nullptr) {
-    return res;
+  struct tm* ptms;
+#if !defined(_MSC_VER)
+  struct tm tms;
+  ptms = localtime_r(&sec, &tms);
+#else
+  ptms = localtime(&sec);
+#endif
+
+  if (ptms == nullptr) {
+      return res;
   }
 
   auto p = res;
 
-  p = cpydig(p, tms.tm_year + 1900, 4);
-  p = cpydig(p, tms.tm_mon + 1, 2);
-  p = cpydig(p, tms.tm_mday, 2);
+  p = cpydig(p, ptms->tm_year + 1900, 4);
+  p = cpydig(p, ptms->tm_mon + 1, 2);
+  p = cpydig(p, ptms->tm_mday, 2);
   *p++ = 'T';
-  p = cpydig(p, tms.tm_hour, 2);
-  p = cpydig(p, tms.tm_min, 2);
-  p = cpydig(p, tms.tm_sec, 2);
+  p = cpydig(p, ptms->tm_hour, 2);
+  p = cpydig(p, ptms->tm_min, 2);
+  p = cpydig(p, ptms->tm_sec, 2);
   *p++ = '.';
   p = cpydig(p, ms % 1000, 3);
 
 #ifdef HAVE_STRUCT_TM_TM_GMTOFF
-  auto gmtoff = tms.tm_gmtoff;
+  auto gmtoff = ptms->tm_gmtoff;
 #else  // !HAVE_STRUCT_TM_TM_GMTOFF
-  auto gmtoff = nghttp2_timegm(&tms) - sec;
+  auto gmtoff = nghttp2_timegm(ptms) - sec;
 #endif // !HAVE_STRUCT_TM_TM_GMTOFF
   if (gmtoff == 0) {
     *p++ = 'Z';
@@ -1790,6 +1797,7 @@ int daemonize(int nochdir, int noclose) {
 #endif // !defined(__APPLE__)
 }
 
+#ifdef ENABLE_HTTP3
 int msghdr_get_local_addr(Address &dest, msghdr *msg, int family) {
   switch (family) {
   case AF_INET:
@@ -1823,6 +1831,7 @@ int msghdr_get_local_addr(Address &dest, msghdr *msg, int family) {
 
   return -1;
 }
+#endif
 
 } // namespace util
 

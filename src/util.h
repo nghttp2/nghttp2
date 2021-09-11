@@ -863,7 +863,9 @@ std::mt19937 make_mt19937();
 // daemon() using fork().
 int daemonize(int nochdir, int noclose);
 
+#ifdef ENABLE_HTTP3
 int msghdr_get_local_addr(Address &dest, msghdr *msg, int family);
+#endif
 
 } // namespace util
 
