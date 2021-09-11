@@ -31,6 +31,10 @@
 #include "template.h"
 #include "http2.h"
 
+#ifdef _MSC_VER
+#include <io.h>
+#endif
+
 namespace nghttp2 {
 namespace asio_http2 {
 

@@ -295,6 +295,9 @@ if(ENABLE_ASIO_LIB)
     "${CMAKE_CURRENT_SOURCE_DIR}/../lib/includes"
     "${CMAKE_CURRENT_SOURCE_DIR}/includes"
   )
+  if(WIN32)
+    target_compile_definitions(nghttp2_asio PRIVATE NOMINMAX)
+  endif()
   target_link_libraries(nghttp2_asio
     ${NGHTTP2_TARGET}
     ${OPENSSL_LIBRARIES}

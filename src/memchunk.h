@@ -60,10 +60,10 @@ namespace nghttp2 {
 
 template <size_t N> struct Memchunk {
   Memchunk(Memchunk *next_chunk)
-      : pos(std::begin(buf)), last(pos), knext(next_chunk), next(nullptr) {}
+      : pos(&(*std::begin(buf))), last(pos), knext(next_chunk), next(nullptr) {}
   size_t len() const { return last - pos; }
-  size_t left() const { return std::end(buf) - last; }
-  void reset() { pos = last = std::begin(buf); }
+  size_t left() const { return &(*std::end(buf)) - last; }
+  void reset() { pos = last = &(*std::begin(buf)); }
   std::array<uint8_t, N> buf;
   uint8_t *pos, *last;
   Memchunk *knext;

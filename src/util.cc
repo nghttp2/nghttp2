@@ -263,30 +263,36 @@ std::string http_date(time_t t) {
 }
 
 char *http_date(char *res, time_t t) {
+  struct tm* ptms;
+#if !defined(_MSC_VER)
   struct tm tms;
+  ptms = gmtime_r(&t, &tms);
+#else
+  ptms = gmtime(&t);
+#endif
 
-  if (gmtime_r(&t, &tms) == nullptr) {
+  if (ptms == nullptr) {
     return res;
   }
 
   auto p = res;
 
-  auto s = DAY_OF_WEEK[tms.tm_wday];
+  auto s = DAY_OF_WEEK[ptms->tm_wday];
   p = std::copy_n(s, 3, p);
   *p++ = ',';
   *p++ = ' ';
-  p = cpydig(p, tms.tm_mday, 2);
+  p = cpydig(p, ptms->tm_mday, 2);
   *p++ = ' ';
-  s = MONTH[tms.tm_mon];
+  s = MONTH[ptms->tm_mon];
   p = std::copy_n(s, 3, p);
   *p++ = ' ';
-  p = cpydig(p, tms.tm_year + 1900, 4);
+  p = cpydig(p, ptms->tm_year + 1900, 4);
   *p++ = ' ';
-  p = cpydig(p, tms.tm_hour, 2);
+  p = cpydig(p, ptms->tm_hour, 2);
   *p++ = ':';
-  p = cpydig(p, tms.tm_min, 2);
+  p = cpydig(p, ptms->tm_min, 2);
   *p++ = ':';
-  p = cpydig(p, tms.tm_sec, 2);
+  p = cpydig(p, ptms->tm_sec, 2);
   s = " GMT";
   p = std::copy_n(s, 4, p);
 
@@ -301,32 +307,38 @@ std::string common_log_date(time_t t) {
 }
 
 char *common_log_date(char *res, time_t t) {
+  struct tm* ptms;
+#if !defined(_MSC_VER)
   struct tm tms;
+  ptms = localtime_r(&t, &tms);
+#else
+  ptms = localtime(&t);
+#endif
 
-  if (localtime_r(&t, &tms) == nullptr) {
+  if (ptms == nullptr) {
     return res;
   }
 
   auto p = res;
 
-  p = cpydig(p, tms.tm_mday, 2);
+  p = cpydig(p, ptms->tm_mday, 2);
   *p++ = '/';
-  auto s = MONTH[tms.tm_mon];
+  auto s = MONTH[ptms->tm_mon];
   p = std::copy_n(s, 3, p);
   *p++ = '/';
-  p = cpydig(p, tms.tm_year + 1900, 4);
+  p = cpydig(p, ptms->tm_year + 1900, 4);
   *p++ = ':';
-  p = cpydig(p, tms.tm_hour, 2);
+  p = cpydig(p, ptms->tm_hour, 2);
   *p++ = ':';
-  p = cpydig(p, tms.tm_min, 2);
+  p = cpydig(p, ptms->tm_min, 2);
   *p++ = ':';
-  p = cpydig(p, tms.tm_sec, 2);
+  p = cpydig(p, ptms->tm_sec, 2);
   *p++ = ' ';
 
 #ifdef HAVE_STRUCT_TM_TM_GMTOFF
-  auto gmtoff = tms.tm_gmtoff;
+  auto gmtoff = ptms->tm_gmtoff;
 #else  // !HAVE_STRUCT_TM_TM_GMTOFF
-  auto gmtoff = nghttp2_timegm(&tms) - t;
+  auto gmtoff = nghttp2_timegm(ptms) - t;
 #endif // !HAVE_STRUCT_TM_TM_GMTOFF
   if (gmtoff >= 0) {
     *p++ = '+';
@@ -353,31 +365,38 @@ std::string iso8601_date(int64_t ms) {
 char *iso8601_date(char *res, int64_t ms) {
   time_t sec = ms / 1000;
 
-  tm tms;
-  if (localtime_r(&sec, &tms) == nullptr) {
-    return res;
+  struct tm* ptms;
+#if !defined(_MSC_VER)
+  struct tm tms;
+  ptms = localtime_r(&sec, &tms);
+#else
+  ptms = localtime(&sec);
+#endif
+
+  if (ptms == nullptr) {
+      return res;
   }
 
   auto p = res;
 
-  p = cpydig(p, tms.tm_year + 1900, 4);
+  p = cpydig(p, ptms->tm_year + 1900, 4);
   *p++ = '-';
-  p = cpydig(p, tms.tm_mon + 1, 2);
+  p = cpydig(p, ptms->tm_mon + 1, 2);
   *p++ = '-';
-  p = cpydig(p, tms.tm_mday, 2);
+  p = cpydig(p, ptms->tm_mday, 2);
   *p++ = 'T';
-  p = cpydig(p, tms.tm_hour, 2);
+  p = cpydig(p, ptms->tm_hour, 2);
   *p++ = ':';
-  p = cpydig(p, tms.tm_min, 2);
+  p = cpydig(p, ptms->tm_min, 2);
   *p++ = ':';
-  p = cpydig(p, tms.tm_sec, 2);
+  p = cpydig(p, ptms->tm_sec, 2);
   *p++ = '.';
   p = cpydig(p, ms % 1000, 3);
 
 #ifdef HAVE_STRUCT_TM_TM_GMTOFF
-  auto gmtoff = tms.tm_gmtoff;
+  auto gmtoff = ptms->tm_gmtoff;
 #else  // !HAVE_STRUCT_TM_TM_GMTOFF
-  auto gmtoff = nghttp2_timegm(&tms) - sec;
+  auto gmtoff = nghttp2_timegm(ptms) - sec;
 #endif // !HAVE_STRUCT_TM_TM_GMTOFF
   if (gmtoff == 0) {
     *p++ = 'Z';
@@ -442,15 +461,17 @@ namespace bt = boost::posix_time;
 // one-time definition of the locale that is used to parse UTC strings
 // (note that the time_input_facet is ref-counted and deleted automatically)
 static const std::locale
-    ptime_locale(std::locale::classic(),
-                 new bt::time_input_facet("%a, %d %b %Y %H:%M:%S GMT"));
+    http_ptime_locale(std::locale::classic(),
+                 new bt::time_input_facet("%a, %d %b %Y %H:%M:%S GMT")),
+    openssl_asn1_ptime_locale(std::locale::classic(),
+                 new bt::time_input_facet("%b %d %H:%M:%S %Y GMT"));
 #endif //_WIN32
 
 time_t parse_http_date(const StringRef &s) {
 #ifdef _WIN32
   // there is no strptime - use boost
   std::stringstream sstr(s.str());
-  sstr.imbue(ptime_locale);
+  sstr.imbue(http_ptime_locale);
   bt::ptime ltime;
   sstr >> ltime;
   if (!sstr)
@@ -468,12 +489,24 @@ time_t parse_http_date(const StringRef &s) {
 }
 
 time_t parse_openssl_asn1_time_print(const StringRef &s) {
+#ifdef _WIN32
+  // there is no strptime - use boost
+  std::stringstream sstr(s.str());
+  sstr.imbue(openssl_asn1_ptime_locale);
+  bt::ptime ltime;
+  sstr >> ltime;
+  if (!sstr)
+    return 0;
+
+  return boost::posix_time::to_time_t(ltime);
+#else  // !_WIN32
   tm tm{};
   auto r = strptime(s.c_str(), "%b %d %H:%M:%S %Y GMT", &tm);
   if (r == nullptr) {
     return 0;
   }
   return nghttp2_timegm_without_yday(&tm);
+#endif // !_WIN32
 }
 
 char upcase(char c) {
@@ -1750,6 +1783,8 @@ int daemonize(int nochdir, int noclose) {
     }
   }
   return 0;
+#elif defined(_MSC_VER)
+  return -1;
 #else  // !defined(__APPLE__)
   return daemon(nochdir, noclose);
 #endif // !defined(__APPLE__)
