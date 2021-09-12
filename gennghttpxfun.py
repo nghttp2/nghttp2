@@ -190,6 +190,7 @@ OPTIONS = [
     "frontend-http3-max-concurrent-streams",
     "frontend-quic-early-data",
     "frontend-quic-qlog-dir",
+    "frontend-quic-require-token",
 ]
 
 LOGVARS = [

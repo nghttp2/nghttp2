@@ -2401,6 +2401,11 @@ int option_lookup_token(const char *name, size_t namelen) {
         return SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED;
       }
       break;
+    case 'n':
+      if (util::strieq_l("frontend-quic-require-toke", name, 26)) {
+        return SHRPX_OPTID_FRONTEND_QUIC_REQUIRE_TOKEN;
+      }
+      break;
     case 'r':
       if (util::strieq_l("request-header-field-buffe", name, 26)) {
         return SHRPX_OPTID_REQUEST_HEADER_FIELD_BUFFER;
@@ -3984,6 +3989,12 @@ int parse_config(Config *config, int optid, const StringRef &opt,
   case SHRPX_OPTID_FRONTEND_QUIC_QLOG_DIR:
 #ifdef ENABLE_HTTP3
     config->quic.upstream.qlog.dir = optarg;
+#endif // ENABLE_HTTP3
+
+    return 0;
+  case SHRPX_OPTID_FRONTEND_QUIC_REQUIRE_TOKEN:
+#ifdef ENABLE_HTTP3
+    config->quic.upstream.require_token = util::strieq_l("yes", optarg);
 #endif // ENABLE_HTTP3
 
     return 0;

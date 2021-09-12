@@ -3222,6 +3222,10 @@ HTTP/3 and QUIC:
               each QUIC  connection.  The  file name is  ISO8601 basic
               format, followed by "-", server Source Connection ID and
               ".qlog".
+  --frontend-quic-require-token
+              Require an address validation  token for a frontend QUIC
+              connection.   Server sends  a token  in Retry  packet or
+              NEW_TOKEN frame in the previous connection.
   --no-quic-bpf
               Disable eBPF.
   --frontend-http3-window-size=<SIZE>
@@ -4011,6 +4015,8 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_FRONTEND_QUIC_EARLY_DATA.c_str(), no_argument, &flag, 180},
         {SHRPX_OPT_FRONTEND_QUIC_QLOG_DIR.c_str(), required_argument, &flag,
          181},
+        {SHRPX_OPT_FRONTEND_QUIC_REQUIRE_TOKEN.c_str(), no_argument, &flag,
+         182},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -4877,6 +4883,11 @@ int main(int argc, char **argv) {
         // --frontend-quic-qlog-dir
         cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_QUIC_QLOG_DIR,
                              StringRef{optarg});
+        break;
+      case 182:
+        // --frontend-quic-require-token
+        cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_QUIC_REQUIRE_TOKEN,
+                             StringRef::from_lit("yes"));
         break;
       default:
         break;

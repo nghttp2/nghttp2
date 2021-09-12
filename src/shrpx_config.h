@@ -387,6 +387,8 @@ constexpr auto SHRPX_OPT_FRONTEND_QUIC_EARLY_DATA =
     StringRef::from_lit("frontend-quic-early-data");
 constexpr auto SHRPX_OPT_FRONTEND_QUIC_QLOG_DIR =
     StringRef::from_lit("frontend-quic-qlog-dir");
+constexpr auto SHRPX_OPT_FRONTEND_QUIC_REQUIRE_TOKEN =
+    StringRef::from_lit("frontend-quic-require-token");
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
@@ -755,6 +757,7 @@ struct QUICConfig {
       StringRef dir;
     } qlog;
     bool early_data;
+    bool require_token;
   } upstream;
   struct {
     StringRef prog_file;
@@ -1211,6 +1214,7 @@ enum {
   SHRPX_OPTID_FRONTEND_QUIC_EARLY_DATA,
   SHRPX_OPTID_FRONTEND_QUIC_IDLE_TIMEOUT,
   SHRPX_OPTID_FRONTEND_QUIC_QLOG_DIR,
+  SHRPX_OPTID_FRONTEND_QUIC_REQUIRE_TOKEN,
   SHRPX_OPTID_FRONTEND_READ_TIMEOUT,
   SHRPX_OPTID_FRONTEND_WRITE_TIMEOUT,
   SHRPX_OPTID_HEADER_FIELD_BUFFER,

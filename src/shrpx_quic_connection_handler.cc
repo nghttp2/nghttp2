@@ -134,6 +134,8 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
     const uint8_t *token = nullptr;
     size_t tokenlen = 0;
 
+    auto &quicconf = config->quic;
+
     switch (ngtcp2_accept(&hd, data, datalen)) {
     case 0: {
       // If we get Initial and it has the CID prefix of this worker, it
@@ -145,6 +147,13 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
       }
 
       if (hd.token.len == 0) {
+        if (quicconf.upstream.require_token) {
+          send_retry(faddr, version, dcid, dcidlen, scid, scidlen, remote_addr,
+                     local_addr);
+
+          return 0;
+        }
+
         break;
       }
 
@@ -186,6 +195,13 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
                       << util::to_numeric_addr(&remote_addr);
           }
 
+          if (quicconf.upstream.require_token) {
+            send_retry(faddr, version, dcid, dcidlen, scid, scidlen,
+                       remote_addr, local_addr);
+
+            return 0;
+          }
+
           break;
         }
 
@@ -199,6 +215,13 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
 
         break;
       default:
+        if (quicconf.upstream.require_token) {
+          send_retry(faddr, version, dcid, dcidlen, scid, scidlen, remote_addr,
+                     local_addr);
+
+          return 0;
+        }
+
         break;
       }
 
