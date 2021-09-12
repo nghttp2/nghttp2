@@ -151,9 +151,7 @@ Http3Upstream::~Http3Upstream() {
 
   nghttp3_conn_del(httpconn_);
 
-  if (conn_) {
-    ngtcp2_conn_del(conn_);
-  }
+  ngtcp2_conn_del(conn_);
 
   if (qlog_fd_ != -1) {
     close(qlog_fd_);
