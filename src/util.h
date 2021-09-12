@@ -762,6 +762,11 @@ std::string format_duration(const std::chrono::microseconds &u);
 // Just like above, but this takes |t| as seconds.
 std::string format_duration(double t);
 
+// The maximum buffer size including terminal NULL to store the result
+// of make_hostport.
+constexpr size_t max_hostport = NI_MAXHOST + /* [] for IPv6 */ 2 + /* : */ 1 +
+                                /* port */ 5 + /* terminal NULL */ 1;
+
 // Just like make_http_hostport(), but doesn't treat 80 and 443
 // specially.
 StringRef make_hostport(BlockAllocator &balloc, const StringRef &host,
@@ -797,9 +802,6 @@ StringRef make_hostport(OutputIt first, const StringRef &host, uint16_t port) {
 // and "]".  If |port| is 80 or 443, port part is omitted.
 StringRef make_http_hostport(BlockAllocator &balloc, const StringRef &host,
                              uint16_t port);
-
-constexpr size_t max_hostport = NI_MAXHOST + /* [] for IPv6 */ 2 + /* : */ 1 +
-                                /* port */ 5 + /* terminal NUL */ 1;
 
 template <typename OutputIt>
 StringRef make_http_hostport(OutputIt first, const StringRef &host,
