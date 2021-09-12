@@ -1325,81 +1325,26 @@ std::string dtos(double n) {
 
 StringRef make_http_hostport(BlockAllocator &balloc, const StringRef &host,
                              uint16_t port) {
-  if (port != 80 && port != 443) {
-    return make_hostport(balloc, host, port);
-  }
-
-  auto ipv6 = ipv6_numeric_addr(host.c_str());
-
-  auto iov = make_byte_ref(balloc, host.size() + (ipv6 ? 2 : 0) + 1);
-  auto p = iov.base;
-
-  if (ipv6) {
-    *p++ = '[';
-  }
-
-  p = std::copy(std::begin(host), std::end(host), p);
-
-  if (ipv6) {
-    *p++ = ']';
-  }
-
-  *p = '\0';
-
-  return StringRef{iov.base, p};
+  auto iov = make_byte_ref(balloc, host.size() + 2 + 1 + 5 + 1);
+  return make_http_hostport(iov.base, host, port);
 }
 
 std::string make_hostport(const StringRef &host, uint16_t port) {
-  auto ipv6 = ipv6_numeric_addr(host.c_str());
-  auto serv = utos(port);
-
   std::string hostport;
-  hostport.resize(host.size() + (ipv6 ? 2 : 0) + 1 + serv.size());
+  // I'm not sure we can write \0 at the position std::string::size(),
+  // so allocate an extra byte.
+  hostport.resize(host.size() + 2 + 1 + 5 + 1);
 
-  auto p = &hostport[0];
-
-  if (ipv6) {
-    *p++ = '[';
-  }
-
-  p = std::copy_n(host.c_str(), host.size(), p);
-
-  if (ipv6) {
-    *p++ = ']';
-  }
-
-  *p++ = ':';
-  std::copy_n(serv.c_str(), serv.size(), p);
+  auto s = make_hostport(std::begin(hostport), host, port);
+  hostport.resize(s.size());
 
   return hostport;
 }
 
 StringRef make_hostport(BlockAllocator &balloc, const StringRef &host,
                         uint16_t port) {
-  auto ipv6 = ipv6_numeric_addr(host.c_str());
-  auto serv = utos(port);
-
-  auto iov =
-      make_byte_ref(balloc, host.size() + (ipv6 ? 2 : 0) + 1 + serv.size());
-  auto p = iov.base;
-
-  if (ipv6) {
-    *p++ = '[';
-  }
-
-  p = std::copy(std::begin(host), std::end(host), p);
-
-  if (ipv6) {
-    *p++ = ']';
-  }
-
-  *p++ = ':';
-
-  p = std::copy(std::begin(serv), std::end(serv), p);
-
-  *p = '\0';
-
-  return StringRef{iov.base, p};
+  auto iov = make_byte_ref(balloc, host.size() + 2 + 1 + 5 + 1);
+  return make_hostport(iov.base, host, port);
 }
 
 namespace {

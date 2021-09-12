@@ -1021,7 +1021,10 @@ const UpstreamAddr *Worker::find_quic_upstream_addr(const Address &local_addr) {
     assert(0);
   }
 
-  auto hostport = util::make_hostport(StringRef{host.data()}, port);
+  std::array<char, util::max_hostport> hostport_buf;
+
+  auto hostport = util::make_http_hostport(std::begin(hostport_buf),
+                                           StringRef{host.data()}, port);
   const UpstreamAddr *fallback_faddr = nullptr;
 
   for (auto &faddr : quic_upstream_addrs_) {
@@ -1033,21 +1036,41 @@ const UpstreamAddr *Worker::find_quic_upstream_addr(const Address &local_addr) {
       continue;
     }
 
-    switch (faddr.family) {
-    case AF_INET:
-      if (util::starts_with(faddr.hostport, StringRef::from_lit("0.0.0.0:"))) {
-        fallback_faddr = &faddr;
-      }
+    if (faddr.port == 443 || faddr.port == 80) {
+      switch (faddr.family) {
+      case AF_INET:
+        if (util::streq(faddr.hostport, StringRef::from_lit("0.0.0.0"))) {
+          fallback_faddr = &faddr;
+        }
 
-      break;
-    case AF_INET6:
-      if (util::starts_with(faddr.hostport, StringRef::from_lit("[::]:"))) {
-        fallback_faddr = &faddr;
-      }
+        break;
+      case AF_INET6:
+        if (util::streq(faddr.hostport, StringRef::from_lit("[::]"))) {
+          fallback_faddr = &faddr;
+        }
 
-      break;
-    default:
-      assert(0);
+        break;
+      default:
+        assert(0);
+      }
+    } else {
+      switch (faddr.family) {
+      case AF_INET:
+        if (util::starts_with(faddr.hostport,
+                              StringRef::from_lit("0.0.0.0:"))) {
+          fallback_faddr = &faddr;
+        }
+
+        break;
+      case AF_INET6:
+        if (util::starts_with(faddr.hostport, StringRef::from_lit("[::]:"))) {
+          fallback_faddr = &faddr;
+        }
+
+        break;
+      default:
+        assert(0);
+      }
     }
   }
 

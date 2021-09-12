@@ -762,18 +762,71 @@ std::string format_duration(const std::chrono::microseconds &u);
 // Just like above, but this takes |t| as seconds.
 std::string format_duration(double t);
 
-// Creates "host:port" string using given |host| and |port|.  If
-// |host| is numeric IPv6 address (e.g., ::1), it is enclosed by "["
-// and "]".  If |port| is 80 or 443, port part is omitted.
-StringRef make_http_hostport(BlockAllocator &balloc, const StringRef &host,
-                             uint16_t port);
-
 // Just like make_http_hostport(), but doesn't treat 80 and 443
 // specially.
 std::string make_hostport(const StringRef &host, uint16_t port);
 
 StringRef make_hostport(BlockAllocator &balloc, const StringRef &host,
                         uint16_t port);
+
+template <typename OutputIt>
+StringRef make_hostport(OutputIt first, const StringRef &host, uint16_t port) {
+  auto ipv6 = ipv6_numeric_addr(host.c_str());
+  auto serv = utos(port);
+  auto p = first;
+
+  if (ipv6) {
+    *p++ = '[';
+  }
+
+  p = std::copy(std::begin(host), std::end(host), p);
+
+  if (ipv6) {
+    *p++ = ']';
+  }
+
+  *p++ = ':';
+
+  p = std::copy(std::begin(serv), std::end(serv), p);
+
+  *p = '\0';
+
+  return StringRef{first, p};
+}
+
+// Creates "host:port" string using given |host| and |port|.  If
+// |host| is numeric IPv6 address (e.g., ::1), it is enclosed by "["
+// and "]".  If |port| is 80 or 443, port part is omitted.
+StringRef make_http_hostport(BlockAllocator &balloc, const StringRef &host,
+                             uint16_t port);
+
+constexpr size_t max_hostport = NI_MAXHOST + /* [] for IPv6 */ 2 + /* : */ 1 +
+                                /* port */ 5 + /* terminal NUL */ 1;
+
+template <typename OutputIt>
+StringRef make_http_hostport(OutputIt first, const StringRef &host,
+                             uint16_t port) {
+  if (port != 80 && port != 443) {
+    return make_hostport(first, host, port);
+  }
+
+  auto ipv6 = ipv6_numeric_addr(host.c_str());
+  auto p = first;
+
+  if (ipv6) {
+    *p++ = '[';
+  }
+
+  p = std::copy(std::begin(host), std::end(host), p);
+
+  if (ipv6) {
+    *p++ = ']';
+  }
+
+  *p = '\0';
+
+  return StringRef{first, p};
+}
 
 // Dumps |src| of length |len| in the format similar to `hexdump -C`.
 void hexdump(FILE *out, const uint8_t *src, size_t len);

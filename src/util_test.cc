@@ -550,6 +550,12 @@ void test_util_make_hostport(void) {
             util::make_hostport(balloc, StringRef::from_lit("localhost"), 80));
   CU_ASSERT("[::1]:443" ==
             util::make_hostport(balloc, StringRef::from_lit("::1"), 443));
+
+  // Check std::string version
+  CU_ASSERT(
+      "abcdefghijklmnopqrstuvwxyz0123456789:65535" ==
+      util::make_hostport(
+          StringRef::from_lit("abcdefghijklmnopqrstuvwxyz0123456789"), 65535));
 }
 
 void test_util_strifind(void) {
