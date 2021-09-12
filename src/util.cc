@@ -1329,18 +1329,6 @@ StringRef make_http_hostport(BlockAllocator &balloc, const StringRef &host,
   return make_http_hostport(iov.base, host, port);
 }
 
-std::string make_hostport(const StringRef &host, uint16_t port) {
-  std::string hostport;
-  // I'm not sure we can write \0 at the position std::string::size(),
-  // so allocate an extra byte.
-  hostport.resize(host.size() + 2 + 1 + 5 + 1);
-
-  auto s = make_hostport(std::begin(hostport), host, port);
-  hostport.resize(s.size());
-
-  return hostport;
-}
-
 StringRef make_hostport(BlockAllocator &balloc, const StringRef &host,
                         uint16_t port) {
   auto iov = make_byte_ref(balloc, host.size() + 2 + 1 + 5 + 1);

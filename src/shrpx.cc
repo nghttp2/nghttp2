@@ -3479,9 +3479,12 @@ int process_options(Config *config,
     return -1;
   }
 
+  std::array<char, util::max_hostport> hostport_buf;
+
   auto &proxy = config->downstream_http_proxy;
   if (!proxy.host.empty()) {
-    auto hostport = util::make_hostport(StringRef{proxy.host}, proxy.port);
+    auto hostport = util::make_hostport(std::begin(hostport_buf),
+                                        StringRef{proxy.host}, proxy.port);
     if (resolve_hostname(&proxy.addr, proxy.host.c_str(), proxy.port,
                          AF_UNSPEC) == -1) {
       LOG(FATAL) << "Resolving backend HTTP proxy address failed: " << hostport;
@@ -3494,7 +3497,8 @@ int process_options(Config *config,
   {
     auto &memcachedconf = tlsconf.session_cache.memcached;
     if (!memcachedconf.host.empty()) {
-      auto hostport = util::make_hostport(StringRef{memcachedconf.host},
+      auto hostport = util::make_hostport(std::begin(hostport_buf),
+                                          StringRef{memcachedconf.host},
                                           memcachedconf.port);
       if (resolve_hostname(&memcachedconf.addr, memcachedconf.host.c_str(),
                            memcachedconf.port, memcachedconf.family) == -1) {
@@ -3515,7 +3519,8 @@ int process_options(Config *config,
   {
     auto &memcachedconf = tlsconf.ticket.memcached;
     if (!memcachedconf.host.empty()) {
-      auto hostport = util::make_hostport(StringRef{memcachedconf.host},
+      auto hostport = util::make_hostport(std::begin(hostport_buf),
+                                          StringRef{memcachedconf.host},
                                           memcachedconf.port);
       if (resolve_hostname(&memcachedconf.addr, memcachedconf.host.c_str(),
                            memcachedconf.port, memcachedconf.family) == -1) {

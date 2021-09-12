@@ -4332,6 +4332,8 @@ int configure_downstream_group(Config *config, bool http2_proxy,
 
   auto resolve_flags = numeric_addr_only ? AI_NUMERICHOST | AI_NUMERICSERV : 0;
 
+  std::array<char, util::max_hostport> hostport_buf;
+
   for (auto &g : addr_groups) {
     std::unordered_map<StringRef, uint32_t> wgchk;
     for (auto &addr : g.addrs) {
@@ -4377,7 +4379,7 @@ int configure_downstream_group(Config *config, bool http2_proxy,
           util::make_http_hostport(downstreamconf.balloc, addr.host, addr.port);
 
       auto hostport =
-          util::make_hostport(downstreamconf.balloc, addr.host, addr.port);
+          util::make_hostport(std::begin(hostport_buf), addr.host, addr.port);
 
       if (!addr.dns) {
         if (resolve_hostname(&addr.addr, addr.host.c_str(), addr.port,

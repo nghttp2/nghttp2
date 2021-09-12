@@ -764,8 +764,6 @@ std::string format_duration(double t);
 
 // Just like make_http_hostport(), but doesn't treat 80 and 443
 // specially.
-std::string make_hostport(const StringRef &host, uint16_t port);
-
 StringRef make_hostport(BlockAllocator &balloc, const StringRef &host,
                         uint16_t port);
 
