@@ -1596,15 +1596,30 @@ int Http3Upstream::on_read(const UpstreamAddr *faddr,
 
   rv = ngtcp2_conn_read_pkt(conn_, &path, &pi, data, datalen, quic_timestamp());
   if (rv != 0) {
-    ULOG(ERROR, this) << "ngtcp2_conn_read_pkt: " << ngtcp2_strerror(rv);
-
     switch (rv) {
     case NGTCP2_ERR_DRAINING:
-      // TODO Start drain period
       return -1;
-    case NGTCP2_ERR_RETRY:
-      // TODO Send Retry packet
+    case NGTCP2_ERR_RETRY: {
+      auto worker = handler_->get_worker();
+      auto quic_conn_handler = worker->get_quic_connection_handler();
+
+      uint32_t version;
+      const uint8_t *dcid, *scid;
+      size_t dcidlen, scidlen;
+
+      rv = ngtcp2_pkt_decode_version_cid(&version, &dcid, &dcidlen, &scid,
+                                         &scidlen, data, datalen,
+                                         SHRPX_QUIC_SCIDLEN);
+      if (rv != 0) {
+        return -1;
+      }
+
+      quic_conn_handler->send_retry(handler_->get_upstream_addr(), version,
+                                    dcid, dcidlen, scid, scidlen, remote_addr,
+                                    local_addr);
+
       return -1;
+    }
     case NGTCP2_ERR_REQUIRED_TRANSPORT_PARAM:
     case NGTCP2_ERR_MALFORMED_TRANSPORT_PARAM:
     case NGTCP2_ERR_TRANSPORT_PARAM:
@@ -1621,7 +1636,8 @@ int Http3Upstream::on_read(const UpstreamAddr *faddr,
       }
     }
 
-    // TODO Send connection close
+    ULOG(ERROR, this) << "ngtcp2_conn_read_pkt: " << ngtcp2_strerror(rv);
+
     return handle_error();
   }
 
