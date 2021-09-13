@@ -2571,6 +2571,9 @@ int option_lookup_token(const char *name, size_t namelen) {
       if (util::strieq_l("frontend-http2-dump-response-heade", name, 34)) {
         return SHRPX_OPTID_FRONTEND_HTTP2_DUMP_RESPONSE_HEADER;
       }
+      if (util::strieq_l("frontend-quic-congestion-controlle", name, 34)) {
+        return SHRPX_OPTID_FRONTEND_QUIC_CONGESTION_CONTROLLER;
+      }
       break;
     }
     break;
@@ -3995,6 +3998,19 @@ int parse_config(Config *config, int optid, const StringRef &opt,
   case SHRPX_OPTID_FRONTEND_QUIC_REQUIRE_TOKEN:
 #ifdef ENABLE_HTTP3
     config->quic.upstream.require_token = util::strieq_l("yes", optarg);
+#endif // ENABLE_HTTP3
+
+    return 0;
+  case SHRPX_OPTID_FRONTEND_QUIC_CONGESTION_CONTROLLER:
+#ifdef ENABLE_HTTP3
+    if (util::strieq_l("cubic", optarg)) {
+      config->quic.upstream.congestion_controller = NGTCP2_CC_ALGO_CUBIC;
+    } else if (util::strieq_l("bbr", optarg)) {
+      config->quic.upstream.congestion_controller = NGTCP2_CC_ALGO_BBR;
+    } else {
+      LOG(ERROR) << opt << ": must be either cubic or bbr";
+      return -1;
+    }
 #endif // ENABLE_HTTP3
 
     return 0;

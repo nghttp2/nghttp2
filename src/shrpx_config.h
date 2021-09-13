@@ -389,6 +389,8 @@ constexpr auto SHRPX_OPT_FRONTEND_QUIC_QLOG_DIR =
     StringRef::from_lit("frontend-quic-qlog-dir");
 constexpr auto SHRPX_OPT_FRONTEND_QUIC_REQUIRE_TOKEN =
     StringRef::from_lit("frontend-quic-require-token");
+constexpr auto SHRPX_OPT_FRONTEND_QUIC_CONGESTION_CONTROLLER =
+    StringRef::from_lit("frontend-quic-congestion-controller");
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
@@ -756,6 +758,7 @@ struct QUICConfig {
     struct {
       StringRef dir;
     } qlog;
+    ngtcp2_cc_algo congestion_controller;
     bool early_data;
     bool require_token;
   } upstream;
@@ -1210,6 +1213,7 @@ enum {
   SHRPX_OPTID_FRONTEND_KEEP_ALIVE_TIMEOUT,
   SHRPX_OPTID_FRONTEND_MAX_REQUESTS,
   SHRPX_OPTID_FRONTEND_NO_TLS,
+  SHRPX_OPTID_FRONTEND_QUIC_CONGESTION_CONTROLLER,
   SHRPX_OPTID_FRONTEND_QUIC_DEBUG_LOG,
   SHRPX_OPTID_FRONTEND_QUIC_EARLY_DATA,
   SHRPX_OPTID_FRONTEND_QUIC_IDLE_TIMEOUT,

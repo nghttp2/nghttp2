@@ -573,7 +573,7 @@ int Http3Upstream::init(const UpstreamAddr *faddr, const Address &remote_addr,
   }
 
   settings.initial_ts = quic_timestamp();
-  settings.cc_algo = NGTCP2_CC_ALGO_BBR;
+  settings.cc_algo = quicconf.upstream.congestion_controller;
   settings.max_window = http3conf.upstream.max_connection_window_size;
   settings.max_stream_window = http3conf.upstream.max_window_size;
   settings.max_udp_payload_size = SHRPX_QUIC_MAX_UDP_PAYLOAD_SIZE;
@@ -664,6 +664,13 @@ int Http3Upstream::write_streams() {
 
   ngtcp2_path_storage_zero(&ps);
   ngtcp2_path_storage_zero(&prev_ps);
+
+  auto config = get_config();
+  auto &quicconf = config->quic;
+
+  if (quicconf.upstream.congestion_controller != NGTCP2_CC_ALGO_BBR) {
+    max_pktcnt = std::min(max_pktcnt, static_cast<size_t>(10));
+  }
 
   for (;;) {
     int64_t stream_id = -1;

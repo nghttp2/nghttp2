@@ -191,6 +191,7 @@ OPTIONS = [
     "frontend-quic-early-data",
     "frontend-quic-qlog-dir",
     "frontend-quic-require-token",
+    "frontend-quic-congestion-controller",
 ]
 
 LOGVARS = [

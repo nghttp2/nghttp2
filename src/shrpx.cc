@@ -1854,6 +1854,8 @@ void fill_default_config(Config *config) {
 
     auto &bpfconf = quicconf.bpf;
     bpfconf.prog_file = StringRef::from_lit(PKGLIBDIR "/reuseport_kern.o");
+
+    upstreamconf.congestion_controller = NGTCP2_CC_ALGO_CUBIC;
   }
 
   auto &http3conf = config->http3;
@@ -3226,6 +3228,15 @@ HTTP/3 and QUIC:
               Require an address validation  token for a frontend QUIC
               connection.   Server sends  a token  in Retry  packet or
               NEW_TOKEN frame in the previous connection.
+  --frontend-quic-congestion-controller=<CC>
+              Specify a congestion controller algorithm for a frontend
+              QUIC  connection.   <CC>  should be  either  "cubic"  or
+              "bbr".
+              Default: )"
+      << (config->quic.upstream.congestion_controller == NGTCP2_CC_ALGO_CUBIC
+              ? "cubic"
+              : "bbr")
+      << R"(
   --no-quic-bpf
               Disable eBPF.
   --frontend-http3-window-size=<SIZE>
@@ -4022,6 +4033,8 @@ int main(int argc, char **argv) {
          181},
         {SHRPX_OPT_FRONTEND_QUIC_REQUIRE_TOKEN.c_str(), no_argument, &flag,
          182},
+        {SHRPX_OPT_FRONTEND_QUIC_CONGESTION_CONTROLLER.c_str(),
+         required_argument, &flag, 183},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -4893,6 +4906,11 @@ int main(int argc, char **argv) {
         // --frontend-quic-require-token
         cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_QUIC_REQUIRE_TOKEN,
                              StringRef::from_lit("yes"));
+        break;
+      case 183:
+        // --frontend-quic-congestion-controller
+        cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_QUIC_CONGESTION_CONTROLLER,
+                             StringRef{optarg});
         break;
       default:
         break;
