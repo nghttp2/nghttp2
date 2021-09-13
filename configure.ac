@@ -991,6 +991,7 @@ AC_CHECK_DECL([UDP_SEGMENT], [have_netinet_udp_h_udp_segment=yes],
 
 if test "x$have_netinet_udp_h_udp_segment" = "xno"; then
   have_linux_udp_h_udp_segment=no
+  AC_MSG_CHECKING([whether UDP_SEGMENT is defined as 103 in linux/udp.h])
   AC_RUN_IFELSE([AC_LANG_PROGRAM(
                      [[
                        #include <linux/udp.h>
@@ -1000,8 +1001,10 @@ if test "x$have_netinet_udp_h_udp_segment" = "xno"; then
 		       exit(1)
 		       #endif
                      ]])],
-		    [have_linux_udp_h_udp_segment=yes],
-		    [have_linux_udp_h_udp_segment=no])
+		    [have_linux_udp_h_udp_segment=yes
+		     AC_MSG_RESULT([yes])],
+		    [have_linux_udp_h_udp_segment=no
+		     AC_MSG_RESULT([no])])
 
   if test "x$have_linux_udp_h_udp_segment" = "xyes"; then
     EXTRA_DEFS="$EXTRA_DEFS -DUDP_SEGMENT=103"
