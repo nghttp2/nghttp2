@@ -1784,7 +1784,7 @@ int http_deferred_consume(nghttp3_conn *conn, int64_t stream_id,
 
 namespace {
 int http_acked_stream_data(nghttp3_conn *conn, int64_t stream_id,
-                           size_t datalen, void *user_data,
+                           uint64_t datalen, void *user_data,
                            void *stream_user_data) {
   auto upstream = static_cast<Http3Upstream *>(user_data);
   auto downstream = static_cast<Downstream *>(stream_user_data);
@@ -1800,7 +1800,7 @@ int http_acked_stream_data(nghttp3_conn *conn, int64_t stream_id,
 } // namespace
 
 int Http3Upstream::http_acked_stream_data(Downstream *downstream,
-                                          size_t datalen) {
+                                          uint64_t datalen) {
   if (LOG_ENABLED(INFO)) {
     ULOG(INFO, this) << "Stream " << downstream->get_stream_id() << " "
                      << datalen << " bytes acknowledged";
