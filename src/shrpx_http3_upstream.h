@@ -137,7 +137,7 @@ public:
   int stream_close(int64_t stream_id, uint64_t app_error_code);
   void log_response_headers(Downstream *downstream,
                             const std::vector<nghttp3_nv> &nva) const;
-  int http_acked_stream_data(Downstream *downstream, uin64_t datalen);
+  int http_acked_stream_data(Downstream *downstream, uint64_t datalen);
   int http_shutdown_stream_read(int64_t stream_id);
   int http_reset_stream(int64_t stream_id, uint64_t app_error_code);
   int http_send_stop_sending(int64_t stream_id, uint64_t app_error_code);
