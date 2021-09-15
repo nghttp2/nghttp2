@@ -93,13 +93,34 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
   auto &quicconf = config->quic;
 
   auto it = connections_.find(dcid_key);
-  if ((data[0] & 0x80) && it == std::end(connections_)) {
-    if (generate_quic_hashed_connection_id(dcid_key, remote_addr, local_addr,
-                                           dcid_key) != 0) {
+  if (it == std::end(connections_)) {
+    auto cwit = close_waits_.find(dcid_key);
+    if (cwit != std::end(close_waits_)) {
+      auto cw = (*cwit).second;
+
+      cw->handle_packet(faddr, remote_addr, local_addr, data, datalen);
+
       return 0;
     }
 
-    it = connections_.find(dcid_key);
+    if (data[0] & 0x80) {
+      if (generate_quic_hashed_connection_id(dcid_key, remote_addr, local_addr,
+                                             dcid_key) != 0) {
+        return 0;
+      }
+
+      it = connections_.find(dcid_key);
+      if (it == std::end(connections_)) {
+        auto cwit = close_waits_.find(dcid_key);
+        if (cwit != std::end(close_waits_)) {
+          auto cw = (*cwit).second;
+
+          cw->handle_packet(faddr, remote_addr, local_addr, data, datalen);
+
+          return 0;
+        }
+      }
+    }
   }
 
   if (it == std::end(connections_)) {
@@ -127,15 +148,6 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
           return 0;
         }
       }
-    }
-
-    auto it = close_waits_.find(dcid_key);
-    if (it != std::end(close_waits_)) {
-      auto cw = (*it).second;
-
-      cw->handle_packet(faddr, remote_addr, local_addr, data, datalen);
-
-      return 0;
     }
 
     // new connection
