@@ -33,6 +33,10 @@
 
 #include <ngtcp2/ngtcp2.h>
 
+#include "network.h"
+
+using namespace nghttp2;
+
 namespace std {
 template <> struct hash<ngtcp2_cid> {
   std::size_t operator()(const ngtcp2_cid &cid) const noexcept {
@@ -85,6 +89,11 @@ int encrypt_quic_connection_id(uint8_t *dest, const uint8_t *src,
 
 int decrypt_quic_connection_id(uint8_t *dest, const uint8_t *src,
                                const uint8_t *key);
+
+int generate_quic_hashed_connection_id(ngtcp2_cid &dest,
+                                       const Address &remote_addr,
+                                       const Address &local_addr,
+                                       const ngtcp2_cid &cid);
 
 int generate_quic_stateless_reset_token(uint8_t *token, const ngtcp2_cid *cid,
                                         const uint8_t *secret,

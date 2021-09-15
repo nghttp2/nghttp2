@@ -43,8 +43,6 @@
 #include "util.h"
 #include "xsi_strerror.h"
 
-using namespace nghttp2;
-
 bool operator==(const ngtcp2_cid &lhs, const ngtcp2_cid &rhs) {
   return ngtcp2_cid_eq(&lhs, &rhs);
 }
@@ -209,6 +207,32 @@ int decrypt_quic_connection_id(uint8_t *dest, const uint8_t *src,
       !EVP_DecryptFinal_ex(ctx, dest + len, &len)) {
     return -1;
   }
+
+  return 0;
+}
+
+int generate_quic_hashed_connection_id(ngtcp2_cid &dest,
+                                       const Address &remote_addr,
+                                       const Address &local_addr,
+                                       const ngtcp2_cid &cid) {
+  auto ctx = EVP_MD_CTX_new();
+  auto d = defer(EVP_MD_CTX_free, ctx);
+
+  std::array<uint8_t, 32> h;
+  unsigned int hlen = EVP_MD_size(EVP_sha256());
+
+  if (!EVP_DigestInit_ex(ctx, EVP_sha256(), nullptr) ||
+      !EVP_DigestUpdate(ctx, &remote_addr.su.sa, remote_addr.len) ||
+      !EVP_DigestUpdate(ctx, &local_addr.su.sa, local_addr.len) ||
+      !EVP_DigestUpdate(ctx, cid.data, cid.datalen) ||
+      !EVP_DigestFinal_ex(ctx, h.data(), &hlen)) {
+    return -1;
+  }
+
+  assert(hlen == h.size());
+
+  std::copy_n(std::begin(h), sizeof(dest.data), std::begin(dest.data));
+  dest.datalen = sizeof(dest.data);
 
   return 0;
 }

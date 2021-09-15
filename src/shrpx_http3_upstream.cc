@@ -118,6 +118,7 @@ size_t downstream_queue_size(Worker *worker) {
 Http3Upstream::Http3Upstream(ClientHandler *handler)
     : handler_{handler},
       qlog_fd_{-1},
+      hashed_scid_{},
       conn_{nullptr},
       tls_alert_{0},
       httpconn_{nullptr},
@@ -636,7 +637,12 @@ int Http3Upstream::init(const UpstreamAddr *faddr, const Address &remote_addr,
 
   auto quic_connection_handler = worker->get_quic_connection_handler();
 
-  quic_connection_handler->add_connection_id(&initial_hd.dcid, handler_);
+  if (generate_quic_hashed_connection_id(hashed_scid_, remote_addr, local_addr,
+                                         initial_hd.dcid) != 0) {
+    return -1;
+  }
+
+  quic_connection_handler->add_connection_id(&hashed_scid_, handler_);
   quic_connection_handler->add_connection_id(&scid, handler_);
 
   return 0;
@@ -1324,8 +1330,7 @@ void Http3Upstream::on_handler_delete() {
   auto worker = handler_->get_worker();
   auto quic_conn_handler = worker->get_quic_connection_handler();
 
-  quic_conn_handler->remove_connection_id(
-      ngtcp2_conn_get_client_initial_dcid(conn_));
+  quic_conn_handler->remove_connection_id(&hashed_scid_);
 
   std::vector<ngtcp2_cid> scids(ngtcp2_conn_get_num_scid(conn_));
   ngtcp2_conn_get_scid(conn_, scids.data());

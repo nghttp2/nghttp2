@@ -93,6 +93,15 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
   auto &quicconf = config->quic;
 
   auto it = connections_.find(dcid_key);
+  if ((data[0] & 0x80) && it == std::end(connections_)) {
+    if (generate_quic_hashed_connection_id(dcid_key, remote_addr, local_addr,
+                                           dcid_key) != 0) {
+      return 0;
+    }
+
+    it = connections_.find(dcid_key);
+  }
+
   if (it == std::end(connections_)) {
     std::array<uint8_t, SHRPX_QUIC_DECRYPTED_DCIDLEN> decrypted_dcid;
 

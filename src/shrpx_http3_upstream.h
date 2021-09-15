@@ -159,6 +159,7 @@ private:
   ev_timer shutdown_timer_;
   ev_prepare prep_;
   int qlog_fd_;
+  ngtcp2_cid hashed_scid_;
   ngtcp2_conn *conn_;
   quic::Error last_error_;
   uint8_t tls_alert_;
