@@ -1003,12 +1003,13 @@ SSL/TLS
 
 .. option:: --tls-no-postpone-early-data
 
-    By default,  nghttpx postpones forwarding  HTTP requests
-    sent in early data, including those sent in partially in
-    it, until TLS handshake finishes.  If all backend server
-    recognizes "Early-Data" header  field, using this option
-    makes nghttpx  not postpone  forwarding request  and get
-    full potential of 0-RTT data.
+    By  default,   except  for  QUIC   connections,  nghttpx
+    postpones forwarding  HTTP requests sent in  early data,
+    including  those  sent in  partially  in  it, until  TLS
+    handshake  finishes.  If  all backend  server recognizes
+    "Early-Data"  header  field,  using  this  option  makes
+    nghttpx  not postpone  forwarding request  and get  full
+    potential of 0-RTT data.
 
 .. option:: --tls-max-early-data=<SIZE>
 
@@ -1588,6 +1589,46 @@ HTTP/3 and QUIC
     socket.
 
     Default: ``/usr/local/lib/nghttp2/reuseport_kern.o``
+
+.. option:: --frontend-quic-early-data
+
+    Enable early data on frontend QUIC connections.  nghttpx
+    sends "Early-Data" header field to a backend server if a
+    request is received in early  data and handshake has not
+    finished.  All backend servers should deal with possibly
+    replayed requests.
+
+.. option:: --frontend-quic-qlog-dir=<DIR>
+
+    Specify a  directory where  a qlog  file is  written for
+    frontend QUIC  connections.  A qlog file  is created per
+    each QUIC  connection.  The  file name is  ISO8601 basic
+    format, followed by "-", server Source Connection ID and
+    ".qlog".
+
+.. option:: --frontend-quic-require-token
+
+    Require an address validation  token for a frontend QUIC
+    connection.   Server sends  a token  in Retry  packet or
+    NEW_TOKEN frame in the previous connection.
+
+.. option:: --frontend-quic-congestion-controller=<CC>
+
+    Specify a congestion controller algorithm for a frontend
+    QUIC  connection.   <CC>  should be  either  "cubic"  or
+    "bbr".
+
+    Default: ``cubic``
+
+.. option:: --frontend-quic-connection-id-encryption-key=<HEXSTRING>
+
+    Specify  Connection ID  encryption key.   The encryption
+    key must  be 16  bytes, and  it must  be encoded  in hex
+    string  (which is  32 bytes  long).  If  this option  is
+    omitted, new key is generated.  In order to survive QUIC
+    connection in a configuration  reload event, old and new
+    configuration must  have this option and  share the same
+    key.
 
 .. option:: --no-quic-bpf
 

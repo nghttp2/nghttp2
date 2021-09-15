@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "H2LOAD" "1" "Aug 31, 2021" "1.45.0-DEV" "nghttp2"
+.TH "H2LOAD" "1" "Sep 15, 2021" "1.45.0-DEV" "nghttp2"
 .SH NAME
 h2load \- HTTP/2 benchmarking tool
 .
@@ -325,6 +325,11 @@ Default: \fBX25519:P\-256:P\-384:P\-521\fP
 .TP
 .B \-\-no\-udp\-gso
 Disable UDP GSO.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-max\-udp\-payload\-size=<SIZE>
+Specify the maximum outgoing UDP datagram payload size.
 .UNINDENT
 .INDENT 0.0
 .TP
