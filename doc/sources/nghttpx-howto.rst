@@ -529,7 +529,10 @@ nghttpx does not support HTTP/3 on backend connection.
 
 Hot swapping (SIGUSR2) or configuration reload (SIGHUP) require eBPF
 program.  Without eBPF, old worker processes keep getting HTTP/3
-traffic and do not work as intended.
+traffic and do not work as intended.  Connection ID encryption key
+must be set with
+:option:`--frontend-quic-connection-id-encryption-key` and must not
+change in order to keep the existing connections alive during reload.
 
 In order announce that HTTP/3 endpoint is available, you should
 specify alt-svc header field.  For example, the following options send
