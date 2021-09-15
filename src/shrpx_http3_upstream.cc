@@ -1330,10 +1330,9 @@ void Http3Upstream::on_handler_delete() {
   auto worker = handler_->get_worker();
   auto quic_conn_handler = worker->get_quic_connection_handler();
 
-  quic_conn_handler->remove_connection_id(&hashed_scid_);
-
-  std::vector<ngtcp2_cid> scids(ngtcp2_conn_get_num_scid(conn_));
+  std::vector<ngtcp2_cid> scids(ngtcp2_conn_get_num_scid(conn_) + 1);
   ngtcp2_conn_get_scid(conn_, scids.data());
+  scids.back() = hashed_scid_;
 
   for (auto &cid : scids) {
     quic_conn_handler->remove_connection_id(&cid);
