@@ -596,7 +596,7 @@ CloseWait::~CloseWait() {
   --worker_stat->num_close_waits;
 
   if (worker->get_graceful_shutdown() && worker_stat->num_connections == 0 &&
-      worker_stat->num_close_waits) {
+      worker_stat->num_close_waits == 0) {
     ev_break(loop);
   }
 }
