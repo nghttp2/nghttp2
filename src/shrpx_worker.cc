@@ -923,11 +923,34 @@ int Worker::create_quic_server_socket(UpstreamAddr &faddr) {
       }
 
       constexpr uint32_t zero = 0;
-      uint32_t num_socks = config->num_worker;
+      uint64_t num_socks = config->num_worker;
 
       if (bpf_map_update_elem(bpf_map__fd(sk_info), &zero, &num_socks,
                               BPF_ANY) != 0) {
         LOG(FATAL) << "Failed to update sk_info: "
+                   << xsi_strerror(errno, errbuf.data(), errbuf.size());
+        close(fd);
+        return -1;
+      }
+
+      auto &quicconf = config->quic;
+
+      constexpr uint32_t key_high_idx = 1;
+      constexpr uint32_t key_low_idx = 2;
+
+      if (bpf_map_update_elem(bpf_map__fd(sk_info), &key_high_idx,
+                              quicconf.upstream.cid_encryption_key.data(),
+                              BPF_ANY) != 0) {
+        LOG(FATAL) << "Failed to update key_high_idx sk_info: "
+                   << xsi_strerror(errno, errbuf.data(), errbuf.size());
+        close(fd);
+        return -1;
+      }
+
+      if (bpf_map_update_elem(bpf_map__fd(sk_info), &key_low_idx,
+                              quicconf.upstream.cid_encryption_key.data() + 8,
+                              BPF_ANY) != 0) {
+        LOG(FATAL) << "Failed to update key_low_idx sk_info: "
                    << xsi_strerror(errno, errbuf.data(), errbuf.size());
         close(fd);
         return -1;

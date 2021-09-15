@@ -155,8 +155,9 @@ int generate_quic_connection_id(ngtcp2_cid *cid, size_t cidlen) {
   return 0;
 }
 
-int generate_quic_connection_id(ngtcp2_cid *cid, size_t cidlen,
-                                const uint8_t *cid_prefix) {
+int generate_encrypted_quic_connection_id(ngtcp2_cid *cid, size_t cidlen,
+                                          const uint8_t *cid_prefix,
+                                          const uint8_t *key) {
   assert(cidlen > SHRPX_QUIC_CID_PREFIXLEN);
 
   auto p = std::copy_n(cid_prefix, SHRPX_QUIC_CID_PREFIXLEN, cid->data);
@@ -166,6 +167,48 @@ int generate_quic_connection_id(ngtcp2_cid *cid, size_t cidlen,
   }
 
   cid->datalen = cidlen;
+
+  return encrypt_quic_connection_id(cid->data, cid->data, key);
+}
+
+int encrypt_quic_connection_id(uint8_t *dest, const uint8_t *src,
+                               const uint8_t *key) {
+  auto ctx = EVP_CIPHER_CTX_new();
+  auto d = defer(EVP_CIPHER_CTX_free, ctx);
+
+  if (!EVP_EncryptInit_ex(ctx, EVP_aes_128_ecb(), nullptr, key, nullptr)) {
+    return -1;
+  }
+
+  EVP_CIPHER_CTX_set_padding(ctx, 0);
+
+  int len;
+
+  if (!EVP_EncryptUpdate(ctx, dest, &len, src, SHRPX_QUIC_DECRYPTED_DCIDLEN) ||
+      !EVP_EncryptFinal_ex(ctx, dest + len, &len)) {
+    return -1;
+  }
+
+  return 0;
+}
+
+int decrypt_quic_connection_id(uint8_t *dest, const uint8_t *src,
+                               const uint8_t *key) {
+  auto ctx = EVP_CIPHER_CTX_new();
+  auto d = defer(EVP_CIPHER_CTX_free, ctx);
+
+  if (!EVP_DecryptInit_ex(ctx, EVP_aes_128_ecb(), nullptr, key, nullptr)) {
+    return -1;
+  }
+
+  EVP_CIPHER_CTX_set_padding(ctx, 0);
+
+  int len;
+
+  if (!EVP_DecryptUpdate(ctx, dest, &len, src, SHRPX_QUIC_DECRYPTED_DCIDLEN) ||
+      !EVP_DecryptFinal_ex(ctx, dest + len, &len)) {
+    return -1;
+  }
 
   return 0;
 }

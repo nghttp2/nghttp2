@@ -391,6 +391,8 @@ constexpr auto SHRPX_OPT_FRONTEND_QUIC_REQUIRE_TOKEN =
     StringRef::from_lit("frontend-quic-require-token");
 constexpr auto SHRPX_OPT_FRONTEND_QUIC_CONGESTION_CONTROLLER =
     StringRef::from_lit("frontend-quic-congestion-controller");
+constexpr auto SHRPX_OPT_FRONTEND_QUIC_CONNECTION_ID_ENCRYPTION_KEY =
+    StringRef::from_lit("frontend-quic-connection-id-encryption-key");
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
@@ -761,6 +763,7 @@ struct QUICConfig {
     ngtcp2_cc_algo congestion_controller;
     bool early_data;
     bool require_token;
+    std::array<uint8_t, SHRPX_QUIC_CID_ENCRYPTION_KEYLEN> cid_encryption_key;
   } upstream;
   struct {
     StringRef prog_file;
@@ -1214,6 +1217,7 @@ enum {
   SHRPX_OPTID_FRONTEND_MAX_REQUESTS,
   SHRPX_OPTID_FRONTEND_NO_TLS,
   SHRPX_OPTID_FRONTEND_QUIC_CONGESTION_CONTROLLER,
+  SHRPX_OPTID_FRONTEND_QUIC_CONNECTION_ID_ENCRYPTION_KEY,
   SHRPX_OPTID_FRONTEND_QUIC_DEBUG_LOG,
   SHRPX_OPTID_FRONTEND_QUIC_EARLY_DATA,
   SHRPX_OPTID_FRONTEND_QUIC_IDLE_TIMEOUT,

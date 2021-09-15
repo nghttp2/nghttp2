@@ -1856,6 +1856,14 @@ void fill_default_config(Config *config) {
     bpfconf.prog_file = StringRef::from_lit(PKGLIBDIR "/reuseport_kern.o");
 
     upstreamconf.congestion_controller = NGTCP2_CC_ALGO_CUBIC;
+
+    // TODO Not really nice to generate random key here, but fine for
+    // now.
+    if (RAND_bytes(upstreamconf.cid_encryption_key.data(),
+                   upstreamconf.cid_encryption_key.size()) != 1) {
+      assert(0);
+      abort();
+    }
   }
 
   auto &http3conf = config->http3;
@@ -3237,6 +3245,14 @@ HTTP/3 and QUIC:
               ? "cubic"
               : "bbr")
       << R"(
+  --frontend-quic-connection-id-encryption-key=<HEXSTRING>
+              Specify  Connection ID  encryption key.   The encryption
+              key must  be 16  bytes, and  it must  be encoded  in hex
+              string  (which is  32 bytes  long).  If  this option  is
+              omitted, new key is generated.  In order to survive QUIC
+              connection in a configuration  reload event, old and new
+              configuration must  have this option and  share the same
+              key.
   --no-quic-bpf
               Disable eBPF.
   --frontend-http3-window-size=<SIZE>
@@ -4035,6 +4051,8 @@ int main(int argc, char **argv) {
          182},
         {SHRPX_OPT_FRONTEND_QUIC_CONGESTION_CONTROLLER.c_str(),
          required_argument, &flag, 183},
+        {SHRPX_OPT_FRONTEND_QUIC_CONNECTION_ID_ENCRYPTION_KEY.c_str(),
+         required_argument, &flag, 184},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -4911,6 +4929,12 @@ int main(int argc, char **argv) {
         // --frontend-quic-congestion-controller
         cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_QUIC_CONGESTION_CONTROLLER,
                              StringRef{optarg});
+        break;
+      case 184:
+        // --frontend-quic-connection-id-encryption-key
+        cmdcfgs.emplace_back(
+            SHRPX_OPT_FRONTEND_QUIC_CONNECTION_ID_ENCRYPTION_KEY,
+            StringRef{optarg});
         break;
       default:
         break;

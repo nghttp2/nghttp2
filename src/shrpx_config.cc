@@ -2684,6 +2684,10 @@ int option_lookup_token(const char *name, size_t namelen) {
   case 42:
     switch (name[41]) {
     case 'y':
+      if (util::strieq_l("frontend-quic-connection-id-encryption-ke", name,
+                         41)) {
+        return SHRPX_OPTID_FRONTEND_QUIC_CONNECTION_ID_ENCRYPTION_KEY;
+      }
       if (util::strieq_l("tls-session-cache-memcached-address-famil", name,
                          41)) {
         return SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED_ADDRESS_FAMILY;
@@ -4011,6 +4015,18 @@ int parse_config(Config *config, int optid, const StringRef &opt,
       LOG(ERROR) << opt << ": must be either cubic or bbr";
       return -1;
     }
+#endif // ENABLE_HTTP3
+
+    return 0;
+  case SHRPX_OPTID_FRONTEND_QUIC_CONNECTION_ID_ENCRYPTION_KEY:
+#ifdef ENABLE_HTTP3
+    if (optarg.size() != config->quic.upstream.cid_encryption_key.size() * 2 ||
+        !util::is_hex_string(optarg)) {
+      LOG(ERROR) << opt << ": must be a hex-string";
+      return -1;
+    }
+    util::decode_hex(std::begin(config->quic.upstream.cid_encryption_key),
+                     optarg);
 #endif // ENABLE_HTTP3
 
     return 0;

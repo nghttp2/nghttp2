@@ -1265,8 +1265,8 @@ int ConnectionHandler::quic_ipc_read() {
     return -1;
   }
 
-  if (dcidlen < SHRPX_QUIC_CID_PREFIXLEN) {
-    LOG(ERROR) << "DCID is too short";
+  if (dcidlen != SHRPX_QUIC_SCIDLEN) {
+    LOG(ERROR) << "DCID length is invalid";
     return -1;
   }
 
@@ -1287,8 +1287,20 @@ int ConnectionHandler::quic_ipc_read() {
     return 0;
   }
 
+  auto config = get_config();
+  auto &quicconf = config->quic;
+
+  std::array<uint8_t, SHRPX_QUIC_DECRYPTED_DCIDLEN> decrypted_dcid;
+
+  if (decrypt_quic_connection_id(decrypted_dcid.data(), dcid,
+                                 quicconf.upstream.cid_encryption_key.data()) !=
+      0) {
+    return -1;
+  }
+
   for (auto &worker : workers_) {
-    if (!std::equal(dcid, dcid + SHRPX_QUIC_CID_PREFIXLEN,
+    if (!std::equal(std::begin(decrypted_dcid),
+                    std::begin(decrypted_dcid) + SHRPX_QUIC_CID_PREFIXLEN,
                     worker->get_cid_prefix())) {
       continue;
     }

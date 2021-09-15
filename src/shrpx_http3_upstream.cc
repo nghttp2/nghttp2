@@ -216,7 +216,12 @@ int get_new_connection_id(ngtcp2_conn *conn, ngtcp2_cid *cid, uint8_t *token,
   auto handler = upstream->get_client_handler();
   auto worker = handler->get_worker();
 
-  if (generate_quic_connection_id(cid, cidlen, worker->get_cid_prefix()) != 0) {
+  auto config = get_config();
+  auto &quicconf = config->quic;
+
+  if (generate_encrypted_quic_connection_id(
+          cid, cidlen, worker->get_cid_prefix(),
+          quicconf.upstream.cid_encryption_key.data()) != 0) {
     return NGTCP2_ERR_CALLBACK_FAILURE;
   }
 
@@ -546,16 +551,17 @@ int Http3Upstream::init(const UpstreamAddr *faddr, const Address &remote_addr,
       shrpx::stream_stop_sending,
   };
 
-  ngtcp2_cid scid;
-
-  if (generate_quic_connection_id(&scid, SHRPX_QUIC_SCIDLEN,
-                                  worker->get_cid_prefix()) != 0) {
-    return -1;
-  }
-
   auto config = get_config();
   auto &quicconf = config->quic;
   auto &http3conf = config->http3;
+
+  ngtcp2_cid scid;
+
+  if (generate_encrypted_quic_connection_id(
+          &scid, SHRPX_QUIC_SCIDLEN, worker->get_cid_prefix(),
+          quicconf.upstream.cid_encryption_key.data()) != 0) {
+    return -1;
+  }
 
   ngtcp2_settings settings;
   ngtcp2_settings_default(&settings);
