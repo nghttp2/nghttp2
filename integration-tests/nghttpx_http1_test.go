@@ -1171,3 +1171,31 @@ Content-Length: 1000000
 		t.Errorf("status: %v; want %v", got, want)
 	}
 }
+
+// TestH1H1ChunkedEndsPrematurely tests that an HTTP/1.1 request fails
+// if the backend chunked encoded response ends prematurely.
+func TestH1H1ChunkedEndsPrematurely(t *testing.T) {
+	st := newServerTester(nil, t, func(w http.ResponseWriter, r *http.Request) {
+		hj, ok := w.(http.Hijacker)
+		if !ok {
+			http.Error(w, "Could not hijack the connection", http.StatusInternalServerError)
+			return
+		}
+		conn, bufrw, err := hj.Hijack()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		defer conn.Close()
+		bufrw.WriteString("HTTP/1.1 200\r\nTransfer-Encoding: chunked\r\n\r\n")
+		bufrw.Flush()
+	})
+	defer st.Close()
+
+	_, err := st.http1(requestParam{
+		name: "TestH1H1ChunkedEndsPrematurely",
+	})
+	if err == nil {
+		t.Fatal("st.http1() should fail")
+	}
+}
