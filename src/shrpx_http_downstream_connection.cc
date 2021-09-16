@@ -1218,6 +1218,18 @@ int HttpDownstreamConnection::read_clear() {
     }
 
     if (nread < 0) {
+      if (nread == SHRPX_ERR_EOF && !downstream_->get_upgraded()) {
+        auto htperr = llhttp_finish(&response_htp_);
+        if (htperr != HPE_OK) {
+          if (LOG_ENABLED(INFO)) {
+            DCLOG(INFO, this) << "HTTP response ended prematurely: "
+                              << llhttp_errno_name(htperr);
+          }
+
+          return -1;
+        }
+      }
+
       return nread;
     }
 
@@ -1337,6 +1349,18 @@ int HttpDownstreamConnection::read_tls() {
     }
 
     if (nread < 0) {
+      if (nread == SHRPX_ERR_EOF && !downstream_->get_upgraded()) {
+        auto htperr = llhttp_finish(&response_htp_);
+        if (htperr != HPE_OK) {
+          if (LOG_ENABLED(INFO)) {
+            DCLOG(INFO, this) << "HTTP response ended prematurely: "
+                              << llhttp_errno_name(htperr);
+          }
+
+          return -1;
+        }
+      }
+
       return nread;
     }
 
