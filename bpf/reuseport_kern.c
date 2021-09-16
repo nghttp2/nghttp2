@@ -24,6 +24,7 @@
  */
 #include <linux/udp.h>
 #include <linux/bpf.h>
+#include <linux/version.h>
 
 #include <bpf/bpf_helpers.h>
 
@@ -240,7 +241,16 @@ static void InvSubBytes(state_t *state) {
   __u8 i, j;
   for (i = 0; i < 4; ++i) {
     for (j = 0; j < 4; ++j) {
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)
+      /* Ubuntu 20.04 LTS kernel 5.4.0 needs this workaround otherwise
+         "math between map_value pointer and register with unbounded
+         min value is not allowed".  5.10.0 is a kernel version that
+         works but it might not be a minimum version.  */
+      __u8 k = (*state)[j][i];
+      (*state)[j][i] = k ? getSBoxInvert(k) : getSBoxInvert(0);
+#else  /* !(LINUX_VERSION_CDOE < KERNEL_VERSION(5, 10, 0)) */
       (*state)[j][i] = getSBoxInvert((*state)[j][i]);
+#endif /* !(LINUX_VERSION_CDOE < KERNEL_VERSION(5, 10, 0)) */
     }
   }
 }
