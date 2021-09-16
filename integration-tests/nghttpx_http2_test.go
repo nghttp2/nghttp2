@@ -565,7 +565,7 @@ func TestH2H1BadResponseCL(t *testing.T) {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
 
-	want := http2.ErrCodeProtocol
+	want := http2.ErrCodeInternal
 	if res.errCode != want {
 		t.Errorf("res.errCode = %v; want %v", res.errCode, want)
 	}
