@@ -163,6 +163,7 @@ required:
 * libbpf-dev >= 0.4.0
 
 Use ``--with-libbpf`` configure option to build eBPF program.
+libelf-dev is needed to build libbpf.
 
 For Ubuntu 20.04, you can build libbpf from `the source code
 <https://github.com/libbpf/libbpf/releases/tag/v0.4.0>`_.  nghttpx
@@ -330,6 +331,88 @@ The generated documents will not be installed with ``make install``.
 
 The online documentation is available at
 https://nghttp2.org/documentation/
+
+Build HTTP/3 enabled h2load and nghttpx
+---------------------------------------
+
+To build h2load and nghttpx with HTTP/3 feature enabled, run the
+configure script with ``--enable-http3``.
+
+For nghttpx to reload configurations and swapping its executable while
+gracefully terminating old worker processes, eBPF is required.  Run
+the configure script with ``--enable-http3 --with-libbpf`` to build
+eBPF program.  The Connection ID encryption key must be set with
+``--frontend-quic-connection-id-encryption-key`` and must not change
+in order to keep the existing connections alive during reload.
+
+The detailed steps to build HTTP/3 enabled h2load and nghttpx follow.
+
+Build custom OpenSSL:
+
+.. code-block:: text
+
+   $ git clone --depth 1 -b OpenSSL_1_1_1l+quic https://github.com/quictls/openssl
+   $ cd openssl
+   $ ./config --prefix=$PWD/build --openssldir=/etc/ssl
+   $ make -j$(nproc)
+   $ make install_sw
+   $ cd ..
+
+Build nghttp3:
+
+.. code-block:: text
+
+   $ git clone --depth 1 https://github.com/ngtcp2/nghttp3
+   $ cd nghttp3
+   $ autoreconf -i
+   $ ./configure --prefix=$PWD/build --enable-lib-only
+   $ make -j$(nproc)
+   $ make install
+   $ cd ..
+
+Build ngtcp2:
+
+.. code-block:: text
+
+   $ git clone --depth 1 https://github.com/ngtcp2/ngtcp2
+   $ cd ngtcp2
+   $ autoreconf -i
+   $ ./configure --prefix=$PWD/build --enable-lib-only \
+         PKG_CONFIG_PATH="$PWD/../openssl/build/lib/pkgconfig"
+   $ make -j$(nproc)
+   $ make install
+   $ cd ..
+
+If your Linux distribution does not have libbpf-dev >= 0.4.0, build
+from source:
+
+.. code-block:: text
+
+   $ git clone --depth 1 -b v0.4.0 https://github.com/libbpf/libbpf
+   $ cd libbpf
+   $ PREFIX=$PWD/build make -C src install
+   $ cd ..
+
+Build nghttp2:
+
+.. code-block:: text
+
+   $ git clone https://github.com/nghttp2/nghttp2
+   $ cd nghttp2
+   $ git submodule update --init
+   $ autoreconf -i
+   $ ./configure --with-mruby --with-neverbleed --enable-http3 --with-libbpf \
+         --disable-python-bindings \
+         CC=clang-12 CXX=clang++-12 \
+         PKG_CONFIG_PATH="$PWD/../openssl/build/lib/pkgconfig:$PWD/../nghttp3/build/lib/pkgconfig:$PWD/../ngtcp2/build/lib/pkgconfig:$PWD/../libbpf/build/lib64/pkgconfig" \
+         LDFLAGS="$LDFLAGS -Wl,-rpath,$PWD/../openssl/build/lib -Wl,-rpath,$PWD/../libbpf/build/lib64"
+   $ make -j$(nproc)
+
+The eBPF program ``reuseport_kern.o`` should be found under bpf
+directory.  Pass ``--quic-bpf-program-file=bpf/reuseport_kern.o``
+option to nghttpx to load it.  See also `HTTP/3 section in nghttpx -
+HTTP/2 proxy - HOW-TO
+<https://nghttp2.org/documentation/nghttpx-howto.html#http-3>`_.
 
 Unit tests
 ----------
@@ -906,17 +989,6 @@ like so:
 .. code-block:: text
 
     $ h2load --npn-list h3 https://127.0.0.1:4433
-
-HTTP/3
-------
-
-To build h2load and nghttpx with HTTP/3 feature enabled, run the
-configure script with ``--enable-http3``.
-
-For nghttpx to reload configurations and swapping its executable while
-gracefully terminating old worker processes, eBPF is required.  Run
-the configure script with ``--enable-http3 --with-libbpf`` to build
-eBPF program.
 
 HPACK tools
 -----------
