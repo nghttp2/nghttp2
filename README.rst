@@ -153,11 +153,16 @@ following libraries are required:
 * `ngtcp2 <https://github.com/ngtcp2/ngtcp2>`_
 * `nghttp3 <https://github.com/ngtcp2/nghttp3>`_
 
+Use ``--enable-http3`` configure option to enable HTTP/3 feature for
+h2load and nghttpx.
+
 In order to build optional eBPF program to direct an incoming QUIC UDP
 datagram to a correct socket for nghttpx, the following libraries are
 required:
 
 * libbpf-dev >= 0.4.0
+
+Use ``--with-libbpf`` configure option to build eBPF program.
 
 For Ubuntu 20.04, you can build libbpf from `the source code
 <https://github.com/libbpf/libbpf/releases/tag/v0.4.0>`_.  nghttpx
