@@ -143,30 +143,30 @@ int quic_send_packet(const UpstreamAddr *faddr, const sockaddr *remote_sa,
   return 0;
 }
 
-int generate_quic_connection_id(ngtcp2_cid *cid, size_t cidlen) {
-  if (RAND_bytes(cid->data, cidlen) != 1) {
+int generate_quic_connection_id(ngtcp2_cid &cid, size_t cidlen) {
+  if (RAND_bytes(cid.data, cidlen) != 1) {
     return -1;
   }
 
-  cid->datalen = cidlen;
+  cid.datalen = cidlen;
 
   return 0;
 }
 
-int generate_encrypted_quic_connection_id(ngtcp2_cid *cid, size_t cidlen,
+int generate_encrypted_quic_connection_id(ngtcp2_cid &cid, size_t cidlen,
                                           const uint8_t *cid_prefix,
                                           const uint8_t *key) {
   assert(cidlen > SHRPX_QUIC_CID_PREFIXLEN);
 
-  auto p = std::copy_n(cid_prefix, SHRPX_QUIC_CID_PREFIXLEN, cid->data);
+  auto p = std::copy_n(cid_prefix, SHRPX_QUIC_CID_PREFIXLEN, cid.data);
 
   if (RAND_bytes(p, cidlen - SHRPX_QUIC_CID_PREFIXLEN) != 1) {
     return -1;
   }
 
-  cid->datalen = cidlen;
+  cid.datalen = cidlen;
 
-  return encrypt_quic_connection_id(cid->data, cid->data, key);
+  return encrypt_quic_connection_id(cid.data, cid.data, key);
 }
 
 int encrypt_quic_connection_id(uint8_t *dest, const uint8_t *src,
@@ -237,11 +237,11 @@ int generate_quic_hashed_connection_id(ngtcp2_cid &dest,
   return 0;
 }
 
-int generate_quic_stateless_reset_token(uint8_t *token, const ngtcp2_cid *cid,
+int generate_quic_stateless_reset_token(uint8_t *token, const ngtcp2_cid &cid,
                                         const uint8_t *secret,
                                         size_t secretlen) {
   if (ngtcp2_crypto_generate_stateless_reset_token(token, secret, secretlen,
-                                                   cid) != 0) {
+                                                   &cid) != 0) {
     return -1;
   }
 
@@ -265,15 +265,15 @@ int generate_quic_token_secret(uint8_t *secret) {
 }
 
 int generate_retry_token(uint8_t *token, size_t &tokenlen, const sockaddr *sa,
-                         socklen_t salen, const ngtcp2_cid *retry_scid,
-                         const ngtcp2_cid *odcid, const uint8_t *token_secret) {
+                         socklen_t salen, const ngtcp2_cid &retry_scid,
+                         const ngtcp2_cid &odcid, const uint8_t *token_secret) {
   auto t = std::chrono::duration_cast<std::chrono::nanoseconds>(
                std::chrono::system_clock::now().time_since_epoch())
                .count();
 
   auto stokenlen = ngtcp2_crypto_generate_retry_token(
-      token, token_secret, SHRPX_QUIC_TOKEN_SECRETLEN, sa, salen, retry_scid,
-      odcid, t);
+      token, token_secret, SHRPX_QUIC_TOKEN_SECRETLEN, sa, salen, &retry_scid,
+      &odcid, t);
   if (stokenlen < 0) {
     return -1;
   }
@@ -283,17 +283,17 @@ int generate_retry_token(uint8_t *token, size_t &tokenlen, const sockaddr *sa,
   return 0;
 }
 
-int verify_retry_token(ngtcp2_cid *odcid, const uint8_t *token, size_t tokenlen,
-                       const ngtcp2_cid *dcid, const sockaddr *sa,
+int verify_retry_token(ngtcp2_cid &odcid, const uint8_t *token, size_t tokenlen,
+                       const ngtcp2_cid &dcid, const sockaddr *sa,
                        socklen_t salen, const uint8_t *token_secret) {
 
   auto t = std::chrono::duration_cast<std::chrono::nanoseconds>(
                std::chrono::system_clock::now().time_since_epoch())
                .count();
 
-  if (ngtcp2_crypto_verify_retry_token(odcid, token, tokenlen, token_secret,
+  if (ngtcp2_crypto_verify_retry_token(&odcid, token, tokenlen, token_secret,
                                        SHRPX_QUIC_TOKEN_SECRETLEN, sa, salen,
-                                       dcid, 10 * NGTCP2_SECONDS, t) != 0) {
+                                       &dcid, 10 * NGTCP2_SECONDS, t) != 0) {
     return -1;
   }
 

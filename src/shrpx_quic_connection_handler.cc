@@ -181,7 +181,7 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
       }
 
       if (worker_->get_graceful_shutdown()) {
-        send_connection_close(faddr, version, &hd.dcid, &hd.scid, remote_addr,
+        send_connection_close(faddr, version, hd.dcid, hd.scid, remote_addr,
                               local_addr, NGTCP2_CONNECTION_REFUSED);
         return 0;
       }
@@ -202,7 +202,7 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
 
       switch (hd.token.base[0]) {
       case NGTCP2_CRYPTO_TOKEN_MAGIC_RETRY:
-        if (verify_retry_token(&odcid, hd.token.base, hd.token.len, &hd.dcid,
+        if (verify_retry_token(odcid, hd.token.base, hd.token.len, hd.dcid,
                                &remote_addr.su.sa, remote_addr.len,
                                secret.data()) != 0) {
           if (LOG_ENABLED(INFO)) {
@@ -212,7 +212,7 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
 
           // 2nd Retry packet is not allowed, so send CONNECTION_CLOSE
           // with INVALID_TOKEN.
-          send_connection_close(faddr, version, &hd.dcid, &hd.scid, remote_addr,
+          send_connection_close(faddr, version, hd.dcid, hd.scid, remote_addr,
                                 local_addr, NGTCP2_INVALID_TOKEN);
           return 0;
         }
@@ -269,7 +269,7 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
     }
     case NGTCP2_ERR_RETRY:
       if (worker_->get_graceful_shutdown()) {
-        send_connection_close(faddr, version, &hd.dcid, &hd.scid, remote_addr,
+        send_connection_close(faddr, version, hd.dcid, hd.scid, remote_addr,
                               local_addr, NGTCP2_CONNECTION_REFUSED);
         return 0;
       }
@@ -421,9 +421,7 @@ int QUICConnectionHandler::send_retry(
 
   ngtcp2_cid retry_scid;
 
-  retry_scid.datalen = SHRPX_QUIC_SCIDLEN;
-  // We do not steer packet based on Retry CID.
-  if (RAND_bytes(retry_scid.data, retry_scid.datalen) != 1) {
+  if (generate_quic_connection_id(retry_scid, SHRPX_QUIC_SCIDLEN) != 0) {
     return -1;
   }
 
@@ -438,7 +436,7 @@ int QUICConnectionHandler::send_retry(
   auto &secret = quic_secret->token_secret;
 
   if (generate_retry_token(token.data(), tokenlen, &remote_addr.su.sa,
-                           remote_addr.len, &retry_scid, &idcid,
+                           remote_addr.len, retry_scid, idcid,
                            secret.data()) != 0) {
     return -1;
   }
@@ -539,7 +537,7 @@ int QUICConnectionHandler::send_stateless_reset(const UpstreamAddr *faddr,
   auto &quic_secret = worker_->get_quic_secret();
   auto &secret = quic_secret->stateless_reset_secret;
 
-  rv = generate_quic_stateless_reset_token(token.data(), &cid, secret.data(),
+  rv = generate_quic_stateless_reset_token(token.data(), cid, secret.data(),
                                            secret.size());
   if (rv != 0) {
     return -1;
@@ -574,13 +572,13 @@ int QUICConnectionHandler::send_stateless_reset(const UpstreamAddr *faddr,
 }
 
 int QUICConnectionHandler::send_connection_close(
-    const UpstreamAddr *faddr, uint32_t version, const ngtcp2_cid *ini_dcid,
-    const ngtcp2_cid *ini_scid, const Address &remote_addr,
+    const UpstreamAddr *faddr, uint32_t version, const ngtcp2_cid &ini_dcid,
+    const ngtcp2_cid &ini_scid, const Address &remote_addr,
     const Address &local_addr, uint64_t error_code) {
   std::array<uint8_t, NGTCP2_MAX_UDP_PAYLOAD_SIZE> buf;
 
   auto nwrite = ngtcp2_crypto_write_connection_close(
-      buf.data(), buf.size(), version, ini_scid, ini_dcid, error_code);
+      buf.data(), buf.size(), version, &ini_scid, &ini_dcid, error_code);
   if (nwrite < 0) {
     LOG(ERROR) << "ngtcp2_crypto_write_connection_close failed";
     return -1;
@@ -590,9 +588,8 @@ int QUICConnectionHandler::send_connection_close(
     LOG(INFO) << "Send Initial CONNECTION_CLOSE with error_code=" << log::hex
               << error_code << log::dec
               << " to remote=" << util::to_numeric_addr(&remote_addr)
-              << " dcid=" << util::format_hex(ini_scid->data, ini_scid->datalen)
-              << " scid="
-              << util::format_hex(ini_dcid->data, ini_dcid->datalen);
+              << " dcid=" << util::format_hex(ini_scid.data, ini_scid.datalen)
+              << " scid=" << util::format_hex(ini_dcid.data, ini_dcid.datalen);
   }
 
   return quic_send_packet(faddr, &remote_addr.su.sa, remote_addr.len,
@@ -600,13 +597,13 @@ int QUICConnectionHandler::send_connection_close(
                           0);
 }
 
-void QUICConnectionHandler::add_connection_id(const ngtcp2_cid *cid,
+void QUICConnectionHandler::add_connection_id(const ngtcp2_cid &cid,
                                               ClientHandler *handler) {
-  connections_.emplace(*cid, handler);
+  connections_.emplace(cid, handler);
 }
 
-void QUICConnectionHandler::remove_connection_id(const ngtcp2_cid *cid) {
-  connections_.erase(*cid);
+void QUICConnectionHandler::remove_connection_id(const ngtcp2_cid &cid) {
+  connections_.erase(cid);
 }
 
 void QUICConnectionHandler::add_close_wait(CloseWait *cw) {

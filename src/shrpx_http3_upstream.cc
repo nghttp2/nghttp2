@@ -222,7 +222,7 @@ int get_new_connection_id(ngtcp2_conn *conn, ngtcp2_cid *cid, uint8_t *token,
   auto &quicconf = config->quic;
 
   if (generate_encrypted_quic_connection_id(
-          cid, cidlen, worker->get_cid_prefix(),
+          *cid, cidlen, worker->get_cid_prefix(),
           quicconf.upstream.cid_encryption_key.data()) != 0) {
     return NGTCP2_ERR_CALLBACK_FAILURE;
   }
@@ -230,14 +230,14 @@ int get_new_connection_id(ngtcp2_conn *conn, ngtcp2_cid *cid, uint8_t *token,
   auto &quic_secret = worker->get_quic_secret();
   auto &secret = quic_secret->stateless_reset_secret;
 
-  if (generate_quic_stateless_reset_token(token, cid, secret.data(),
+  if (generate_quic_stateless_reset_token(token, *cid, secret.data(),
                                           secret.size()) != 0) {
     return NGTCP2_ERR_CALLBACK_FAILURE;
   }
 
   auto quic_connection_handler = worker->get_quic_connection_handler();
 
-  quic_connection_handler->add_connection_id(cid, handler);
+  quic_connection_handler->add_connection_id(*cid, handler);
 
   return 0;
 }
@@ -251,7 +251,7 @@ int remove_connection_id(ngtcp2_conn *conn, const ngtcp2_cid *cid,
   auto worker = handler->get_worker();
   auto quic_conn_handler = worker->get_quic_connection_handler();
 
-  quic_conn_handler->remove_connection_id(cid);
+  quic_conn_handler->remove_connection_id(*cid);
 
   return 0;
 }
@@ -560,7 +560,7 @@ int Http3Upstream::init(const UpstreamAddr *faddr, const Address &remote_addr,
   ngtcp2_cid scid;
 
   if (generate_encrypted_quic_connection_id(
-          &scid, SHRPX_QUIC_SCIDLEN, worker->get_cid_prefix(),
+          scid, SHRPX_QUIC_SCIDLEN, worker->get_cid_prefix(),
           quicconf.upstream.cid_encryption_key.data()) != 0) {
     return -1;
   }
@@ -611,7 +611,7 @@ int Http3Upstream::init(const UpstreamAddr *faddr, const Address &remote_addr,
   auto &quic_secret = worker->get_quic_secret();
   auto &stateless_reset_secret = quic_secret->stateless_reset_secret;
 
-  rv = generate_quic_stateless_reset_token(params.stateless_reset_token, &scid,
+  rv = generate_quic_stateless_reset_token(params.stateless_reset_token, scid,
                                            stateless_reset_secret.data(),
                                            stateless_reset_secret.size());
   if (rv != 0) {
@@ -643,8 +643,8 @@ int Http3Upstream::init(const UpstreamAddr *faddr, const Address &remote_addr,
     return -1;
   }
 
-  quic_connection_handler->add_connection_id(&hashed_scid_, handler_);
-  quic_connection_handler->add_connection_id(&scid, handler_);
+  quic_connection_handler->add_connection_id(hashed_scid_, handler_);
+  quic_connection_handler->add_connection_id(scid, handler_);
 
   return 0;
 }
@@ -1336,7 +1336,7 @@ void Http3Upstream::on_handler_delete() {
   scids.back() = hashed_scid_;
 
   for (auto &cid : scids) {
-    quic_conn_handler->remove_connection_id(&cid);
+    quic_conn_handler->remove_connection_id(cid);
   }
 
   if (idle_close_ || retry_close_) {
@@ -1632,7 +1632,7 @@ int Http3Upstream::on_read(const UpstreamAddr *faddr,
         ngtcp2_cid_init(&ini_scid, scid, scidlen);
 
         quic_conn_handler->send_connection_close(
-            faddr, version, &ini_dcid, &ini_scid, remote_addr, local_addr,
+            faddr, version, ini_dcid, ini_scid, remote_addr, local_addr,
             NGTCP2_CONNECTION_REFUSED);
 
         return -1;

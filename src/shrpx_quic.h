@@ -78,9 +78,9 @@ int quic_send_packet(const UpstreamAddr *faddr, const sockaddr *remote_sa,
                      size_t local_salen, const uint8_t *data, size_t datalen,
                      size_t gso_size);
 
-int generate_quic_connection_id(ngtcp2_cid *cid, size_t cidlen);
+int generate_quic_connection_id(ngtcp2_cid &cid, size_t cidlen);
 
-int generate_encrypted_quic_connection_id(ngtcp2_cid *cid, size_t cidlen,
+int generate_encrypted_quic_connection_id(ngtcp2_cid &cid, size_t cidlen,
                                           const uint8_t *cid_prefix,
                                           const uint8_t *key);
 
@@ -95,7 +95,7 @@ int generate_quic_hashed_connection_id(ngtcp2_cid &dest,
                                        const Address &local_addr,
                                        const ngtcp2_cid &cid);
 
-int generate_quic_stateless_reset_token(uint8_t *token, const ngtcp2_cid *cid,
+int generate_quic_stateless_reset_token(uint8_t *token, const ngtcp2_cid &cid,
                                         const uint8_t *secret,
                                         size_t secretlen);
 
@@ -104,11 +104,11 @@ int generate_quic_stateless_reset_secret(uint8_t *secret);
 int generate_quic_token_secret(uint8_t *secret);
 
 int generate_retry_token(uint8_t *token, size_t &tokenlen, const sockaddr *sa,
-                         socklen_t salen, const ngtcp2_cid *retry_scid,
-                         const ngtcp2_cid *odcid, const uint8_t *token_secret);
+                         socklen_t salen, const ngtcp2_cid &retry_scid,
+                         const ngtcp2_cid &odcid, const uint8_t *token_secret);
 
-int verify_retry_token(ngtcp2_cid *odcid, const uint8_t *token, size_t tokenlen,
-                       const ngtcp2_cid *dcid, const sockaddr *sa,
+int verify_retry_token(ngtcp2_cid &odcid, const uint8_t *token, size_t tokenlen,
+                       const ngtcp2_cid &dcid, const sockaddr *sa,
                        socklen_t salen, const uint8_t *token_secret);
 
 int generate_token(uint8_t *token, size_t &tokenlen, const sockaddr *sa,
