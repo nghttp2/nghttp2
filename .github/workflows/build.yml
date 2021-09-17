@@ -87,9 +87,7 @@ jobs:
       run: |
         git clone -b v0.4.0 https://github.com/libbpf/libbpf
         cd libbpf
-        export PREFIX=$PWD/build
-        cd src
-        make install
+        PREFIX=$PWD/build make -C src install
 
         EXTRA_AUTOTOOLS_OPTS="--with-libbpf"
 
