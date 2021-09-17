@@ -124,7 +124,8 @@ Http3Upstream::Http3Upstream(ClientHandler *handler)
       httpconn_{nullptr},
       downstream_queue_{downstream_queue_size(handler->get_worker()),
                         !get_config()->http2_proxy},
-      idle_close_{false} {
+      idle_close_{false},
+      retry_close_{false} {
   ev_timer_init(&timer_, timeoutcb, 0., 0.);
   timer_.data = this;
 
@@ -1338,7 +1339,7 @@ void Http3Upstream::on_handler_delete() {
     quic_conn_handler->remove_connection_id(&cid);
   }
 
-  if (idle_close_) {
+  if (idle_close_ || retry_close_) {
     return;
   }
 
@@ -1623,6 +1624,21 @@ int Http3Upstream::on_read(const UpstreamAddr *faddr,
       if (rv != 0) {
         return -1;
       }
+
+      if (worker->get_graceful_shutdown()) {
+        ngtcp2_cid ini_dcid, ini_scid;
+
+        ngtcp2_cid_init(&ini_dcid, dcid, dcidlen);
+        ngtcp2_cid_init(&ini_scid, scid, scidlen);
+
+        quic_conn_handler->send_connection_close(
+            faddr, version, &ini_dcid, &ini_scid, remote_addr, local_addr,
+            NGTCP2_CONNECTION_REFUSED);
+
+        return -1;
+      }
+
+      retry_close_ = true;
 
       quic_conn_handler->send_retry(handler_->get_upstream_addr(), version,
                                     dcid, dcidlen, scid, scidlen, remote_addr,

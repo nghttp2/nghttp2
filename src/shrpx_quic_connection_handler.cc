@@ -180,6 +180,12 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
         return 0;
       }
 
+      if (worker_->get_graceful_shutdown()) {
+        send_connection_close(faddr, version, &hd.dcid, &hd.scid, remote_addr,
+                              local_addr, NGTCP2_CONNECTION_REFUSED);
+        return 0;
+      }
+
       if (hd.token.len == 0) {
         if (quicconf.upstream.require_token) {
           send_retry(faddr, version, dcid, dcidlen, scid, scidlen, remote_addr,
@@ -262,6 +268,12 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
       break;
     }
     case NGTCP2_ERR_RETRY:
+      if (worker_->get_graceful_shutdown()) {
+        send_connection_close(faddr, version, &hd.dcid, &hd.scid, remote_addr,
+                              local_addr, NGTCP2_CONNECTION_REFUSED);
+        return 0;
+      }
+
       send_retry(faddr, version, dcid, dcidlen, scid, scidlen, remote_addr,
                  local_addr);
       return 0;
@@ -455,6 +467,11 @@ int QUICConnectionHandler::send_retry(
 
   auto d =
       static_cast<ev_tstamp>(NGTCP2_DEFAULT_INITIAL_RTT * 3) / NGTCP2_SECONDS;
+
+  if (LOG_ENABLED(INFO)) {
+    LOG(INFO) << "Enter close-wait period " << d << "s with " << buf.size()
+              << " bytes sentinel packet";
+  }
 
   auto cw = std::make_unique<CloseWait>(worker_, std::vector<ngtcp2_cid>{idcid},
                                         std::move(buf), d);
