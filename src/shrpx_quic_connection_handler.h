@@ -51,7 +51,7 @@ class Worker;
 // closing period).
 struct CloseWait {
   CloseWait(Worker *worker, std::vector<ngtcp2_cid> scids,
-            std::vector<uint8_t> conn_close, ev_tstamp period);
+            std::vector<uint8_t> pkt, ev_tstamp period);
   ~CloseWait();
 
   int handle_packet(const UpstreamAddr *faddr, const Address &remote_addr,
@@ -61,9 +61,9 @@ struct CloseWait {
   Worker *worker;
   // Source Connection IDs of the connection.
   std::vector<ngtcp2_cid> scids;
-  // QUIC packet containing CONNECTION_CLOSE.  It is empty when a
-  // connection entered in draining state.
-  std::vector<uint8_t> conn_close;
+  // QUIC packet which is sent in response to the incoming packet.  It
+  // might be empty.
+  std::vector<uint8_t> pkt;
   // Close-wait (draining or closing period) timer.
   ev_timer timer;
   // The number of bytes received during close-wait period.

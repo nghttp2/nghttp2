@@ -431,7 +431,8 @@ int QUICConnectionHandler::send_retry(
     return -1;
   }
 
-  std::array<uint8_t, NGTCP2_MAX_UDP_PAYLOAD_SIZE> buf;
+  std::vector<uint8_t> buf;
+  buf.resize(256);
 
   auto nwrite =
       ngtcp2_crypto_write_retry(buf.data(), buf.size(), version, &iscid,
@@ -441,9 +442,28 @@ int QUICConnectionHandler::send_retry(
     return -1;
   }
 
-  return quic_send_packet(faddr, &remote_addr.su.sa, remote_addr.len,
-                          &local_addr.su.sa, local_addr.len, buf.data(), nwrite,
-                          0);
+  buf.resize(nwrite);
+
+  quic_send_packet(faddr, &remote_addr.su.sa, remote_addr.len,
+                   &local_addr.su.sa, local_addr.len, buf.data(), buf.size(),
+                   0);
+
+  if (generate_quic_hashed_connection_id(idcid, remote_addr, local_addr,
+                                         idcid) != 0) {
+    return -1;
+  }
+
+  auto d =
+      static_cast<ev_tstamp>(NGTCP2_DEFAULT_INITIAL_RTT * 3) / NGTCP2_SECONDS;
+
+  auto cw = std::make_unique<CloseWait>(worker_, std::vector<ngtcp2_cid>{idcid},
+                                        std::move(buf), d);
+
+  add_close_wait(cw.get());
+
+  cw.release();
+
+  return 0;
 }
 
 int QUICConnectionHandler::send_version_negotiation(
@@ -607,10 +627,10 @@ static void close_wait_timeoutcb(struct ev_loop *loop, ev_timer *w,
 }
 
 CloseWait::CloseWait(Worker *worker, std::vector<ngtcp2_cid> scids,
-                     std::vector<uint8_t> conn_close, ev_tstamp period)
+                     std::vector<uint8_t> pkt, ev_tstamp period)
     : worker{worker},
       scids{std::move(scids)},
-      conn_close{std::move(conn_close)},
+      pkt{std::move(pkt)},
       bytes_recv{0},
       bytes_sent{0},
       num_pkts_recv{0},
@@ -641,26 +661,26 @@ int CloseWait::handle_packet(const UpstreamAddr *faddr,
                              const Address &remote_addr,
                              const Address &local_addr, const uint8_t *data,
                              size_t datalen) {
-  if (conn_close.empty()) {
+  if (pkt.empty()) {
     return 0;
   }
 
   ++num_pkts_recv;
   bytes_recv += datalen;
 
-  if (bytes_sent + conn_close.size() > 3 * bytes_recv ||
+  if (bytes_sent + pkt.size() > 3 * bytes_recv ||
       next_pkts_recv > num_pkts_recv) {
     return 0;
   }
 
   if (quic_send_packet(faddr, &remote_addr.su.sa, remote_addr.len,
-                       &local_addr.su.sa, local_addr.len, conn_close.data(),
-                       conn_close.size(), 0) != 0) {
+                       &local_addr.su.sa, local_addr.len, pkt.data(),
+                       pkt.size(), 0) != 0) {
     return -1;
   }
 
   next_pkts_recv *= 2;
-  bytes_sent += conn_close.size();
+  bytes_sent += pkt.size();
 
   return 0;
 }
