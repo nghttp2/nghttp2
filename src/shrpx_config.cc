@@ -2777,9 +2777,16 @@ int parse_config(Config *config, int optid, const StringRef &opt,
       return -1;
     }
 
-    if (params.quic && params.alt_mode != UpstreamAltMode::NONE) {
-      LOG(ERROR) << "frontend: api or healthmon cannot be used with quic";
-      return -1;
+    if (params.quic) {
+      if (params.alt_mode != UpstreamAltMode::NONE) {
+        LOG(ERROR) << "frontend: api or healthmon cannot be used with quic";
+        return -1;
+      }
+
+      if (!params.tls) {
+        LOG(ERROR) << "frontend: quic requires TLS";
+        return -1;
+      }
     }
 
     UpstreamAddr addr{};
