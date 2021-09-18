@@ -14,8 +14,8 @@ Default mode
 
 If nghttpx is invoked without :option:`--http2-proxy`, it operates in
 default mode.  In this mode, it works as reverse proxy (gateway) for
-both HTTP/2 and HTTP/1 clients to backend servers.  This is also known
-as "HTTP/2 router".
+both HTTP/3, HTTP/2 and HTTP/1 clients to backend servers.  This is
+also known as "HTTP/2 router".
 
 By default, frontend connection is encrypted using SSL/TLS.  So
 server's private key and certificate must be supplied to the command
@@ -27,6 +27,9 @@ in :option:`--frontend` option.  HTTP/2 and HTTP/1 are available on
 the frontend, and an HTTP/1 connection can be upgraded to HTTP/2 using
 HTTP Upgrade.  Starting HTTP/2 connection by sending HTTP/2 connection
 preface is also supported.
+
+In order to receive HTTP/3 traffic, use ``quic`` parameter in
+:option:`--frontend` option (.e.g, ``--frontend='*,443;quic'``)
 
 nghttpx can listen on multiple frontend addresses.  This is achieved
 by using multiple :option:`--frontend` options.  For each frontend
@@ -508,6 +511,8 @@ nghttpx supports `RFC 8441 <https://tools.ietf.org/html/rfc8441>`_
 Bootstrapping WebSockets with HTTP/2 for both frontend and backend
 connections.  This feature is enabled by default and no configuration
 is required.
+
+WebSockets over HTTP/3 is also supported.
 
 HTTP/3
 ------

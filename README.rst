@@ -841,7 +841,7 @@ information.  Here is sample output from ``nghttpd``:
 nghttpx - proxy
 +++++++++++++++
 
-``nghttpx`` is a multi-threaded reverse proxy for HTTP/2, and
+``nghttpx`` is a multi-threaded reverse proxy for HTTP/3, HTTP/2, and
 HTTP/1.1, and powers http://nghttp2.org and supports HTTP/2 server
 push.
 
@@ -862,16 +862,16 @@ ticket keys among multiple ``nghttpx`` instances via memcached.
 
 ``nghttpx`` has 2 operation modes:
 
-================== ================ ================ =============
-Mode option        Frontend         Backend          Note
-================== ================ ================ =============
-default mode       HTTP/2, HTTP/1.1 HTTP/1.1, HTTP/2 Reverse proxy
-``--http2-proxy``  HTTP/2, HTTP/1.1 HTTP/1.1, HTTP/2 Forward proxy
-================== ================ ================ =============
+================== ======================== ================ =============
+Mode option        Frontend                 Backend          Note
+================== ======================== ================ =============
+default mode       HTTP/3, HTTP/2, HTTP/1.1 HTTP/1.1, HTTP/2 Reverse proxy
+``--http2-proxy``  HTTP/3, HTTP/2, HTTP/1.1 HTTP/1.1, HTTP/2 Forward proxy
+================== ======================== ================ =============
 
 The interesting mode at the moment is the default mode.  It works like
-a reverse proxy and listens for HTTP/2, and HTTP/1.1 and can be
-deployed as a SSL/TLS terminator for existing web server.
+a reverse proxy and listens for HTTP/3, HTTP/2, and HTTP/1.1 and can
+be deployed as a SSL/TLS terminator for existing web server.
 
 In all modes, the frontend connections are encrypted by SSL/TLS by
 default.  To disable encryption, use the ``no-tls`` keyword in
@@ -889,16 +889,16 @@ server:
 
 .. code-block:: text
 
-    Client <-- (HTTP/2, HTTP/1.1) --> nghttpx <-- (HTTP/1.1, HTTP/2) --> Web Server
-                                    [reverse proxy]
+    Client <-- (HTTP/3, HTTP/2, HTTP/1.1) --> nghttpx <-- (HTTP/1.1, HTTP/2) --> Web Server
+                                            [reverse proxy]
 
 With the ``--http2-proxy`` option, it works as forward proxy, and it
 is so called secure HTTP/2 proxy:
 
 .. code-block:: text
 
-    Client <-- (HTTP/2, HTTP/1.1) --> nghttpx <-- (HTTP/1.1) --> Proxy
-                                     [secure proxy]          (e.g., Squid, ATS)
+    Client <-- (HTTP/3, HTTP/2, HTTP/1.1) --> nghttpx <-- (HTTP/1.1) --> Proxy
+                                             [secure proxy]          (e.g., Squid, ATS)
 
 The ``Client`` in the above example needs to be configured to use
 ``nghttpx`` as secure proxy.
@@ -930,7 +930,7 @@ proxy through an HTTP proxy:
 
 .. code-block:: text
 
-    Client <-- (HTTP/2, HTTP/1.1) --> nghttpx <-- (HTTP/2) --
+    Client <-- (HTTP/3, HTTP/2, HTTP/1.1) --> nghttpx <-- (HTTP/2) --
 
             --===================---> HTTP/2 Proxy
               (HTTP proxy tunnel)     (e.g., nghttpx -s)
@@ -938,8 +938,8 @@ proxy through an HTTP proxy:
 Benchmarking tool
 -----------------
 
-The ``h2load`` program is a benchmarking tool for HTTP/2.  The UI of
-``h2load`` is heavily inspired by ``weighttp``
+The ``h2load`` program is a benchmarking tool for HTTP/3, HTTP/2, and
+HTTP/1.1.  The UI of ``h2load`` is heavily inspired by ``weighttp``
 (https://github.com/lighttpd/weighttp).  The typical usage is as
 follows:
 

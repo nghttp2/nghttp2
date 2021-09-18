@@ -1965,7 +1965,7 @@ void print_version(std::ostream &out) {
 namespace {
 void print_usage(std::ostream &out) {
   out << R"(Usage: nghttpx [OPTIONS]... [<PRIVATE_KEY> <CERT>]
-A reverse proxy for HTTP/2, and HTTP/1.)"
+A reverse proxy for HTTP/3, HTTP/2, and HTTP/1.)"
       << std::endl;
 }
 } // namespace
