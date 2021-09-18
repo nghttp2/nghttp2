@@ -14,8 +14,8 @@ Default mode
 
 If nghttpx is invoked without :option:`--http2-proxy`, it operates in
 default mode.  In this mode, it works as reverse proxy (gateway) for
-both HTTP/3, HTTP/2 and HTTP/1 clients to backend servers.  This is
-also known as "HTTP/2 router".
+HTTP/3, HTTP/2 and HTTP/1 clients to backend servers.  This is also
+known as "HTTP/2 router".
 
 By default, frontend connection is encrypted using SSL/TLS.  So
 server's private key and certificate must be supplied to the command
