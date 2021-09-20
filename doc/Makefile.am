@@ -206,9 +206,9 @@ EXTRA_DIST = \
 	sources/building-android-binary.rst \
 	sources/contribute.rst \
 	sources/security.rst \
-	_exts/sphinxcontrib/LICENSE.rubydomain \
-	_exts/sphinxcontrib/__init__.py \
-	_exts/sphinxcontrib/rubydomain.py \
+	_exts/rubydomain/LICENSE.rubydomain \
+	_exts/rubydomain/__init__.py \
+	_exts/rubydomain/rubydomain.py \
 	_themes/sphinx_rtd_theme/__init__.py \
 	_themes/sphinx_rtd_theme/breadcrumbs.html \
 	_themes/sphinx_rtd_theme/footer.html \
