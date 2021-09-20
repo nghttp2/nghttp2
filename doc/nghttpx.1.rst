@@ -14,7 +14,7 @@ SYNOPSIS
 DESCRIPTION
 -----------
 
-A reverse proxy for HTTP/2, and HTTP/1.
+A reverse proxy for HTTP/3, HTTP/2, and HTTP/1.
 
 .. describe:: <PRIVATE_KEY>
 
