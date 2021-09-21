@@ -144,22 +144,28 @@ jobs:
       run: |
         git submodule update --init
     - name: Configure autotools
-      if: matrix.buildtool == 'autotools'
       run: |
         autoreconf -i
-        ./configure --enable-werror --with-mruby $EXTRA_AUTOTOOLS_OPTS
+        ./configure
     - name: Configure cmake
       if: matrix.buildtool == 'cmake'
       run: |
-        cmake -DENABLE_WERROR=1 -DWITH_MRUBY=1 -DWITH_NEVERBLEED=1 $EXTRA_CMAKE_OPTS -DCPPFLAGS="$CPPFLAGS" -DLDFLAGS="$LDFLAGS" .
+        make dist
+        VERSION=$(grep PACKAGE_VERSION config.h | cut -d' ' -f3 | tr -d '"')
+        tar xf nghttp2-$VERSION.tar.gz
+        cd nghttp2-$VERSION
+        echo 'NGHTTP2_CMAKE_DIR='"$PWD" >> $GITHUB_ENV
+
+        cmake -DENABLE_WERROR=1 -DWITH_MRUBY=1 -DWITH_NEVERBLEED=1 -DENABLE_APP=1 $EXTRA_CMAKE_OPTS -DCPPFLAGS="$CPPFLAGS" -DLDFLAGS="$LDFLAGS" .
     - name: Build nghttp2 with autotools
       if: matrix.buildtool == 'autotools'
       run: |
         make distcheck \
-          DISTCHECK_CONFIGURE_FLAGS="--with-mruby --with-neverbleed --enable-werror $EXTRA_AUTOTOOLS_OPTS CPPFLAGS=\"$CPPFLAGS\" LDFLAGS=\"$LDFLAGS\""
+          DISTCHECK_CONFIGURE_FLAGS="--with-mruby --with-neverbleed --with-libev --enable-werror $EXTRA_AUTOTOOLS_OPTS CPPFLAGS=\"$CPPFLAGS\" LDFLAGS=\"$LDFLAGS\""
     - name: Build nghttp2 with cmake
       if: matrix.buildtool == 'cmake'
       run: |
+        cd $NGHTTP2_CMAKE_DIR
         make
         make check
     - name: Integration test
@@ -167,5 +173,5 @@ jobs:
       # artifacts.
       if: matrix.buildtool == 'cmake'
       run: |
-        cd integration-tests
+        cd $NGHTTP2_CMAKE_DIR/integration-tests
         make itprep it
