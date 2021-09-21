@@ -22,7 +22,7 @@ dnl OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 dnl WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 dnl Do not change user variables!
-dnl http://www.gnu.org/software/automake/manual/html_node/Flag-Variables-Ordering.html
+dnl https://www.gnu.org/software/automake/manual/html_node/Flag-Variables-Ordering.html
 
 AC_PREREQ(2.61)
 AC_INIT([nghttp2], [1.46.0-DEV], [t-tujikawa@users.sourceforge.net])

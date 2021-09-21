@@ -27,7 +27,7 @@ cmake_minimum_required(VERSION 3.0)
 project(nghttp2 VERSION 1.45.90)
 
 # See versioning rule:
-#  http://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
+#  https://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
 set(LT_CURRENT  35)
 set(LT_REVISION 0)
 set(LT_AGE      21)
