@@ -23,7 +23,7 @@
 
 AM_CPPFLAGS = @DEFS@
 
-EXTRA_DIST = CMakeLists.txt
+EXTRA_DIST = CMakeLists.txt build_config.rb mruby/*
 
 if ENABLE_THIRD_PARTY
 
@@ -48,8 +48,6 @@ libneverbleed_la_SOURCES = neverbleed/neverbleed.c neverbleed/neverbleed.h
 endif # HAVE_NEVERBLEED
 
 if HAVE_MRUBY
-
-EXTRA_DIST += build_config.rb mruby/*
 
 .PHONY: all-local clean mruby
 

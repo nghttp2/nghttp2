@@ -21,9 +21,9 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-if HAVE_LIBBPF
+EXTRA_DIST = CMakeLists.txt reuseport_kern.c
 
-EXTRA_DIST = reuseport_kern.c
+if HAVE_LIBBPF
 
 bpf_pkglibdir = $(pkglibdir)
 bpf_pkglib_DATA = reuseport_kern.o
