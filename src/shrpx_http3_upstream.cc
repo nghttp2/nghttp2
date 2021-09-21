@@ -221,7 +221,7 @@ int get_new_connection_id(ngtcp2_conn *conn, ngtcp2_cid *cid, uint8_t *token,
   auto config = get_config();
   auto &quicconf = config->quic;
 
-  if (generate_encrypted_quic_connection_id(
+  if (generate_quic_connection_id(
           *cid, cidlen, worker->get_cid_prefix(),
           quicconf.upstream.cid_encryption_key.data()) != 0) {
     return NGTCP2_ERR_CALLBACK_FAILURE;
@@ -559,7 +559,7 @@ int Http3Upstream::init(const UpstreamAddr *faddr, const Address &remote_addr,
 
   ngtcp2_cid scid;
 
-  if (generate_encrypted_quic_connection_id(
+  if (generate_quic_connection_id(
           scid, SHRPX_QUIC_SCIDLEN, worker->get_cid_prefix(),
           quicconf.upstream.cid_encryption_key.data()) != 0) {
     return -1;

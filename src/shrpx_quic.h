@@ -85,9 +85,8 @@ int generate_quic_retry_connection_id(ngtcp2_cid &cid, size_t cidlen,
                                       const uint8_t *server_id,
                                       const uint8_t *key);
 
-int generate_encrypted_quic_connection_id(ngtcp2_cid &cid, size_t cidlen,
-                                          const uint8_t *cid_prefix,
-                                          const uint8_t *key);
+int generate_quic_connection_id(ngtcp2_cid &cid, size_t cidlen,
+                                const uint8_t *cid_prefix, const uint8_t *key);
 
 int encrypt_quic_connection_id(uint8_t *dest, const uint8_t *src,
                                const uint8_t *key);

@@ -161,9 +161,8 @@ int generate_quic_retry_connection_id(ngtcp2_cid &cid, size_t cidlen,
   return encrypt_quic_connection_id(p, p, key);
 }
 
-int generate_encrypted_quic_connection_id(ngtcp2_cid &cid, size_t cidlen,
-                                          const uint8_t *cid_prefix,
-                                          const uint8_t *key) {
+int generate_quic_connection_id(ngtcp2_cid &cid, size_t cidlen,
+                                const uint8_t *cid_prefix, const uint8_t *key) {
   assert(cidlen == SHRPX_QUIC_SCIDLEN);
 
   if (RAND_bytes(cid.data, cidlen) != 1) {
