@@ -60,8 +60,6 @@ jobs:
           pkg-config \
           libtool
         echo 'PKG_CONFIG_PATH=/usr/local/opt/libressl/lib/pkgconfig:/usr/local/opt/libxml2/lib/pkgconfig' >> $GITHUB_ENV
-        # This fixes infamous 'stdio.h not found' error.
-        echo 'SDKROOT='"$(xcrun --sdk macosx --show-sdk-path)" >> $GITHUB_ENV
     - name: Setup clang (Linux)
       if: runner.os == 'Linux' && matrix.compiler == 'clang'
       run: |
@@ -155,6 +153,9 @@ jobs:
         tar xf nghttp2-$VERSION.tar.gz
         cd nghttp2-$VERSION
         echo 'NGHTTP2_CMAKE_DIR='"$PWD" >> $GITHUB_ENV
+
+        # This fixes infamous 'stdio.h not found' error.
+        echo 'SDKROOT='"$(xcrun --sdk macosx --show-sdk-path)" >> $GITHUB_ENV
 
         cmake -DENABLE_WERROR=1 -DWITH_MRUBY=1 -DWITH_NEVERBLEED=1 -DENABLE_APP=1 $EXTRA_CMAKE_OPTS -DCPPFLAGS="$CPPFLAGS" -DLDFLAGS="$LDFLAGS" .
     - name: Build nghttp2 with autotools
