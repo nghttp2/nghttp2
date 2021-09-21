@@ -81,6 +81,7 @@ bool recorded(const std::chrono::steady_clock::time_point &t) {
 }
 } // namespace
 
+#if OPENSSL_1_1_1_API
 namespace {
 std::ofstream keylog_file;
 void keylog_callback(const SSL *ssl, const char *line) {
@@ -89,6 +90,7 @@ void keylog_callback(const SSL *ssl, const char *line) {
   keylog_file.flush();
 }
 } // namespace
+#endif // OPENSSL_1_1_1_API
 
 Config::Config()
     : ciphers(tls::DEFAULT_CIPHER_LIST),
