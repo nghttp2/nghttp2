@@ -62,7 +62,10 @@ namespace shrpx {
 struct UpstreamAddr;
 
 constexpr size_t SHRPX_QUIC_SCIDLEN = 20;
+constexpr size_t SHRPX_QUIC_SERVER_IDLEN = 2;
+// SHRPX_QUIC_CID_PREFIXLEN includes SHRPX_QUIC_SERVER_IDLEN.
 constexpr size_t SHRPX_QUIC_CID_PREFIXLEN = 8;
+constexpr size_t SHRPX_QUIC_CID_PREFIX_OFFSET = 1;
 constexpr size_t SHRPX_QUIC_DECRYPTED_DCIDLEN = 16;
 constexpr size_t SHRPX_QUIC_CID_ENCRYPTION_KEYLEN = 16;
 constexpr size_t SHRPX_QUIC_MAX_UDP_PAYLOAD_SIZE = 1472;
@@ -78,7 +81,9 @@ int quic_send_packet(const UpstreamAddr *faddr, const sockaddr *remote_sa,
                      size_t local_salen, const uint8_t *data, size_t datalen,
                      size_t gso_size);
 
-int generate_quic_connection_id(ngtcp2_cid &cid, size_t cidlen);
+int generate_quic_retry_connection_id(ngtcp2_cid &cid, size_t cidlen,
+                                      const uint8_t *server_id,
+                                      const uint8_t *key);
 
 int generate_encrypted_quic_connection_id(ngtcp2_cid &cid, size_t cidlen,
                                           const uint8_t *cid_prefix,

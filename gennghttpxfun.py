@@ -193,6 +193,7 @@ OPTIONS = [
     "frontend-quic-require-token",
     "frontend-quic-congestion-controller",
     "frontend-quic-connection-id-encryption-key",
+    "frontend-quic-server-id",
 ]
 
 LOGVARS = [

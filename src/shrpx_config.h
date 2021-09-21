@@ -393,6 +393,8 @@ constexpr auto SHRPX_OPT_FRONTEND_QUIC_CONGESTION_CONTROLLER =
     StringRef::from_lit("frontend-quic-congestion-controller");
 constexpr auto SHRPX_OPT_FRONTEND_QUIC_CONNECTION_ID_ENCRYPTION_KEY =
     StringRef::from_lit("frontend-quic-connection-id-encryption-key");
+constexpr auto SHRPX_OPT_FRONTEND_QUIC_SERVER_ID =
+    StringRef::from_lit("frontend-quic-server-id");
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
@@ -764,6 +766,7 @@ struct QUICConfig {
     bool early_data;
     bool require_token;
     std::array<uint8_t, SHRPX_QUIC_CID_ENCRYPTION_KEYLEN> cid_encryption_key;
+    std::array<uint8_t, SHRPX_QUIC_SERVER_IDLEN> server_id;
   } upstream;
   struct {
     StringRef prog_file;
@@ -1223,6 +1226,7 @@ enum {
   SHRPX_OPTID_FRONTEND_QUIC_IDLE_TIMEOUT,
   SHRPX_OPTID_FRONTEND_QUIC_QLOG_DIR,
   SHRPX_OPTID_FRONTEND_QUIC_REQUIRE_TOKEN,
+  SHRPX_OPTID_FRONTEND_QUIC_SERVER_ID,
   SHRPX_OPTID_FRONTEND_READ_TIMEOUT,
   SHRPX_OPTID_FRONTEND_WRITE_TIMEOUT,
   SHRPX_OPTID_HEADER_FIELD_BUFFER,

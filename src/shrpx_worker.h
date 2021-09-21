@@ -467,8 +467,8 @@ void downstream_failure(DownstreamAddr *addr, const Address *raddr);
 #ifdef ENABLE_HTTP3
 // Creates unpredictable SHRPX_QUIC_CID_PREFIXLEN bytes sequence which
 // is used as a prefix of QUIC Connection ID.  This function returns
-// -1 on failure.
-int create_cid_prefix(uint8_t *cid_prefix);
+// -1 on failure.  |server_id| must be 2 bytes long.
+int create_cid_prefix(uint8_t *cid_prefix, const uint8_t *server_id);
 #endif // ENABLE_HTTP3
 
 } // namespace shrpx

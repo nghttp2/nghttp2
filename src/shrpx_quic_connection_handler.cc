@@ -128,7 +128,7 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
 
     if (dcidlen == SHRPX_QUIC_SCIDLEN) {
       if (decrypt_quic_connection_id(
-              decrypted_dcid.data(), dcid,
+              decrypted_dcid.data(), dcid + SHRPX_QUIC_CID_PREFIX_OFFSET,
               quicconf.upstream.cid_encryption_key.data()) != 0) {
         return 0;
       }
@@ -419,9 +419,14 @@ int QUICConnectionHandler::send_retry(
     return -1;
   }
 
+  auto config = get_config();
+  auto &quicconf = config->quic;
+
   ngtcp2_cid retry_scid;
 
-  if (generate_quic_connection_id(retry_scid, SHRPX_QUIC_SCIDLEN) != 0) {
+  if (generate_quic_retry_connection_id(
+          retry_scid, SHRPX_QUIC_SCIDLEN, quicconf.upstream.server_id.data(),
+          quicconf.upstream.cid_encryption_key.data()) != 0) {
     return -1;
   }
 

@@ -1273,8 +1273,10 @@ void downstream_failure(DownstreamAddr *addr, const Address *raddr) {
 }
 
 #ifdef ENABLE_HTTP3
-int create_cid_prefix(uint8_t *cid_prefix) {
-  if (RAND_bytes(cid_prefix, SHRPX_QUIC_CID_PREFIXLEN) != 1) {
+int create_cid_prefix(uint8_t *cid_prefix, const uint8_t *server_id) {
+  auto p = std::copy_n(server_id, SHRPX_QUIC_SERVER_IDLEN, cid_prefix);
+
+  if (RAND_bytes(p, SHRPX_QUIC_CID_PREFIXLEN - SHRPX_QUIC_SERVER_IDLEN) != 1) {
     return -1;
   }
 

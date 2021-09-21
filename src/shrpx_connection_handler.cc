@@ -1292,9 +1292,9 @@ int ConnectionHandler::quic_ipc_read() {
 
   std::array<uint8_t, SHRPX_QUIC_DECRYPTED_DCIDLEN> decrypted_dcid;
 
-  if (decrypt_quic_connection_id(decrypted_dcid.data(), dcid,
-                                 quicconf.upstream.cid_encryption_key.data()) !=
-      0) {
+  if (decrypt_quic_connection_id(
+          decrypted_dcid.data(), dcid + SHRPX_QUIC_CID_PREFIX_OFFSET,
+          quicconf.upstream.cid_encryption_key.data()) != 0) {
     return -1;
   }
 

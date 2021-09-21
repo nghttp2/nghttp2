@@ -143,30 +143,40 @@ int quic_send_packet(const UpstreamAddr *faddr, const sockaddr *remote_sa,
   return 0;
 }
 
-int generate_quic_connection_id(ngtcp2_cid &cid, size_t cidlen) {
+int generate_quic_retry_connection_id(ngtcp2_cid &cid, size_t cidlen,
+                                      const uint8_t *server_id,
+                                      const uint8_t *key) {
+  assert(cidlen == SHRPX_QUIC_SCIDLEN);
+
   if (RAND_bytes(cid.data, cidlen) != 1) {
     return -1;
   }
 
   cid.datalen = cidlen;
 
-  return 0;
+  auto p = cid.data + SHRPX_QUIC_CID_PREFIX_OFFSET;
+
+  std::copy_n(server_id, SHRPX_QUIC_SERVER_IDLEN, p);
+
+  return encrypt_quic_connection_id(p, p, key);
 }
 
 int generate_encrypted_quic_connection_id(ngtcp2_cid &cid, size_t cidlen,
                                           const uint8_t *cid_prefix,
                                           const uint8_t *key) {
-  assert(cidlen > SHRPX_QUIC_CID_PREFIXLEN);
+  assert(cidlen == SHRPX_QUIC_SCIDLEN);
 
-  auto p = std::copy_n(cid_prefix, SHRPX_QUIC_CID_PREFIXLEN, cid.data);
-
-  if (RAND_bytes(p, cidlen - SHRPX_QUIC_CID_PREFIXLEN) != 1) {
+  if (RAND_bytes(cid.data, cidlen) != 1) {
     return -1;
   }
 
   cid.datalen = cidlen;
 
-  return encrypt_quic_connection_id(cid.data, cid.data, key);
+  auto p = cid.data + SHRPX_QUIC_CID_PREFIX_OFFSET;
+
+  std::copy_n(cid_prefix, SHRPX_QUIC_CID_PREFIXLEN, p);
+
+  return encrypt_quic_connection_id(p, p, key);
 }
 
 int encrypt_quic_connection_id(uint8_t *dest, const uint8_t *src,

@@ -1342,6 +1342,7 @@ int generate_cid_prefix(
     std::vector<std::array<uint8_t, SHRPX_QUIC_CID_PREFIXLEN>> &cid_prefixes,
     const Config *config) {
   auto &apiconf = config->api;
+  auto &quicconf = config->quic;
 
   size_t num_cid_prefix;
   if (config->single_thread) {
@@ -1360,7 +1361,8 @@ int generate_cid_prefix(
   cid_prefixes.resize(num_cid_prefix);
 
   for (auto &cid_prefix : cid_prefixes) {
-    if (create_cid_prefix(cid_prefix.data()) != 0) {
+    if (create_cid_prefix(cid_prefix.data(),
+                          quicconf.upstream.server_id.data()) != 0) {
       return -1;
     }
   }
@@ -1861,6 +1863,12 @@ void fill_default_config(Config *config) {
     // now.
     if (RAND_bytes(upstreamconf.cid_encryption_key.data(),
                    upstreamconf.cid_encryption_key.size()) != 1) {
+      assert(0);
+      abort();
+    }
+
+    if (RAND_bytes(upstreamconf.server_id.data(),
+                   upstreamconf.server_id.size()) != 1) {
       assert(0);
       abort();
     }
@@ -3253,6 +3261,14 @@ HTTP/3 and QUIC:
               connection in a configuration  reload event, old and new
               configuration must  have this option and  share the same
               key.
+  --frontend-quic-server-id=<HEXSTRING>
+              Specify server  ID encoded in Connection  ID to identify
+              this  particular  server  instance.   Connection  ID  is
+              encrypted and  this part is  not visible in  public.  It
+              must be 2  bytes long and must be encoded  in hex string
+              (which is 4  bytes long).  If this option  is omitted, a
+              random   server  ID   is   generated   on  startup   and
+              configuration reload.
   --no-quic-bpf
               Disable eBPF.
   --frontend-http3-window-size=<SIZE>
@@ -4053,6 +4069,8 @@ int main(int argc, char **argv) {
          required_argument, &flag, 183},
         {SHRPX_OPT_FRONTEND_QUIC_CONNECTION_ID_ENCRYPTION_KEY.c_str(),
          required_argument, &flag, 184},
+        {SHRPX_OPT_FRONTEND_QUIC_SERVER_ID.c_str(), required_argument, &flag,
+         185},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -4935,6 +4953,11 @@ int main(int argc, char **argv) {
         cmdcfgs.emplace_back(
             SHRPX_OPT_FRONTEND_QUIC_CONNECTION_ID_ENCRYPTION_KEY,
             StringRef{optarg});
+        break;
+      case 185:
+        // --frontend-quic-server-id
+        cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_QUIC_SERVER_ID,
+                             StringRef{optarg});
         break;
       default:
         break;

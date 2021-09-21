@@ -455,6 +455,7 @@ typedef struct quic_hd {
 #define MAX_DCIDLEN 20
 #define MIN_DCIDLEN 8
 #define CID_PREFIXLEN 8
+#define CID_PREFIX_OFFSET 1
 
 enum {
   NGTCP2_PKT_INITIAL = 0x0,
@@ -579,6 +580,7 @@ int select_reuseport(struct sk_reuseport_md *reuse_md) {
   __u8 qpktbuf[6 + MAX_DCIDLEN];
   struct AES_ctx aes_ctx;
   __u8 key[AES_KEYLEN];
+  __u8 *cid_prefix;
 
   if (bpf_skb_load_bytes(reuse_md, sizeof(struct udphdr), qpktbuf,
                          sizeof(qpktbuf)) != 0) {
@@ -615,9 +617,10 @@ int select_reuseport(struct sk_reuseport_md *reuse_md) {
   case NGTCP2_PKT_INITIAL:
   case NGTCP2_PKT_0RTT:
     if (qhd.dcidlen == SV_DCIDLEN) {
-      AES_ECB_decrypt(&aes_ctx, qhd.dcid);
+      cid_prefix = qhd.dcid + CID_PREFIX_OFFSET;
+      AES_ECB_decrypt(&aes_ctx, cid_prefix);
 
-      psk_index = bpf_map_lookup_elem(&cid_prefix_map, qhd.dcid);
+      psk_index = bpf_map_lookup_elem(&cid_prefix_map, cid_prefix);
       if (psk_index != NULL) {
         sk_index = *psk_index;
 
@@ -634,9 +637,10 @@ int select_reuseport(struct sk_reuseport_md *reuse_md) {
       return SK_DROP;
     }
 
-    AES_ECB_decrypt(&aes_ctx, qhd.dcid);
+    cid_prefix = qhd.dcid + CID_PREFIX_OFFSET;
+    AES_ECB_decrypt(&aes_ctx, cid_prefix);
 
-    psk_index = bpf_map_lookup_elem(&cid_prefix_map, qhd.dcid);
+    psk_index = bpf_map_lookup_elem(&cid_prefix_map, cid_prefix);
     if (psk_index == NULL) {
       sk_index = sk_index_from_dcid(&qhd, reuse_md, *pnum_socks);
 
