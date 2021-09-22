@@ -3866,7 +3866,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
                     "65535], inclusive";
       return -1;
     }
-    config->http.redirect_https_port = optarg;
+    config->http.redirect_https_port = make_string_ref(config->balloc, optarg);
     return 0;
   }
   case SHRPX_OPTID_FRONTEND_MAX_REQUESTS:
@@ -4007,7 +4007,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     return 0;
   case SHRPX_OPTID_FRONTEND_QUIC_QLOG_DIR:
 #ifdef ENABLE_HTTP3
-    config->quic.upstream.qlog.dir = optarg;
+    config->quic.upstream.qlog.dir = make_string_ref(config->balloc, optarg);
 #endif // ENABLE_HTTP3
 
     return 0;
