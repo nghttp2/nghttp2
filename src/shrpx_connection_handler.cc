@@ -298,8 +298,6 @@ int ConnectionHandler::create_single_worker() {
 #endif // HAVE_MRUBY
 
 #ifdef ENABLE_HTTP3
-  single_worker_->set_quic_secret(quic_secret_);
-
   if (single_worker_->setup_quic_server_socket() != 0) {
     return -1;
   }
@@ -404,8 +402,6 @@ int ConnectionHandler::create_worker_thread(size_t num) {
 #  endif // HAVE_MRUBY
 
 #  ifdef ENABLE_HTTP3
-    worker->set_quic_secret(quic_secret_);
-
     if ((!apiconf.enabled || i != 0) &&
         worker->setup_quic_server_socket() != 0) {
       return -1;
@@ -1047,25 +1043,14 @@ int ConnectionHandler::forward_quic_packet(const UpstreamAddr *faddr,
   return -1;
 }
 
-int ConnectionHandler::create_quic_secret() {
-  auto quic_secret = std::make_shared<QUICSecret>();
+void ConnectionHandler::set_quic_keying_materials(
+    std::shared_ptr<QUICKeyingMaterials> qkms) {
+  quic_keying_materials_ = std::move(qkms);
+}
 
-  if (generate_quic_stateless_reset_secret(
-          quic_secret->stateless_reset_secret.data()) != 0) {
-    LOG(ERROR) << "Failed to generate QUIC Stateless Reset secret";
-
-    return -1;
-  }
-
-  if (generate_quic_token_secret(quic_secret->token_secret.data()) != 0) {
-    LOG(ERROR) << "Failed to generate QUIC token secret";
-
-    return -1;
-  }
-
-  quic_secret_ = std::move(quic_secret);
-
-  return 0;
+const std::shared_ptr<QUICKeyingMaterials> &
+ConnectionHandler::get_quic_keying_materials() const {
+  return quic_keying_materials_;
 }
 
 void ConnectionHandler::set_cid_prefixes(
@@ -1287,14 +1272,13 @@ int ConnectionHandler::quic_ipc_read() {
     return 0;
   }
 
-  auto config = get_config();
-  auto &quicconf = config->quic;
+  auto &qkm = quic_keying_materials_->keying_materials.front();
 
   std::array<uint8_t, SHRPX_QUIC_DECRYPTED_DCIDLEN> decrypted_dcid;
 
-  if (decrypt_quic_connection_id(
-          decrypted_dcid.data(), dcid + SHRPX_QUIC_CID_PREFIX_OFFSET,
-          quicconf.upstream.cid_encryption_key.data()) != 0) {
+  if (decrypt_quic_connection_id(decrypted_dcid.data(),
+                                 dcid + SHRPX_QUIC_CID_PREFIX_OFFSET,
+                                 qkm.cid_encryption_key.data()) != 0) {
     return -1;
   }
 

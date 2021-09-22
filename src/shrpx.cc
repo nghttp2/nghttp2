@@ -1859,14 +1859,6 @@ void fill_default_config(Config *config) {
 
     upstreamconf.congestion_controller = NGTCP2_CC_ALGO_CUBIC;
 
-    // TODO Not really nice to generate random key here, but fine for
-    // now.
-    if (RAND_bytes(upstreamconf.cid_encryption_key.data(),
-                   upstreamconf.cid_encryption_key.size()) != 1) {
-      assert(0);
-      abort();
-    }
-
     if (RAND_bytes(upstreamconf.server_id.data(),
                    upstreamconf.server_id.size()) != 1) {
       assert(0);
@@ -3253,14 +3245,31 @@ HTTP/3 and QUIC:
               ? "cubic"
               : "bbr")
       << R"(
-  --frontend-quic-connection-id-encryption-key=<HEXSTRING>
-              Specify  Connection ID  encryption key.   The encryption
-              key must  be 16  bytes, and  it must  be encoded  in hex
-              string  (which is  32 bytes  long).  If  this option  is
-              omitted, new key is generated.  In order to survive QUIC
-              connection in a configuration  reload event, old and new
-              configuration must  have this option and  share the same
-              key.
+  --frontend-quic-secret-file=<PATH>
+              Path to file that contains secure random data to be used
+              as QUIC keying materials.  It is used to derive keys for
+              encrypting tokens and Connection IDs.  It is not used to
+              encrypt  QUIC  packets.  Each  line  of  this file  must
+              contain  exactly  136  bytes  hex-encoded  string  (when
+              decoded the byte string is  68 bytes long).  The first 2
+              bits of  decoded byte  string are  used to  identify the
+              keying material.  An  empty line or a  line which starts
+              '#'  is ignored.   The file  can contain  more than  one
+              keying materials.  Because the  identifier is 2 bits, at
+              most 4 keying materials are  read and the remaining data
+              is discarded.  The first keying  material in the file is
+              primarily  used for  encryption and  decryption for  new
+              connection.  The other ones are used to decrypt data for
+              the  existing connections.   Specifying multiple  keying
+              materials enables  key rotation.   Please note  that key
+              rotation  does  not  occur automatically.   User  should
+              update  files  or  change  options  values  and  restart
+              nghttpx gracefully.   If opening  or reading  given file
+              fails, all loaded keying  materials are discarded and it
+              is treated as if none of  this option is given.  If this
+              option is not  given or an error  occurred while opening
+              or  reading  a  file,  a keying  material  is  generated
+              internally on startup and reload.
   --frontend-quic-server-id=<HEXSTRING>
               Specify server  ID encoded in Connection  ID to identify
               this  particular  server  instance.   Connection  ID  is
@@ -4067,10 +4076,10 @@ int main(int argc, char **argv) {
          182},
         {SHRPX_OPT_FRONTEND_QUIC_CONGESTION_CONTROLLER.c_str(),
          required_argument, &flag, 183},
-        {SHRPX_OPT_FRONTEND_QUIC_CONNECTION_ID_ENCRYPTION_KEY.c_str(),
-         required_argument, &flag, 184},
         {SHRPX_OPT_FRONTEND_QUIC_SERVER_ID.c_str(), required_argument, &flag,
          185},
+        {SHRPX_OPT_FRONTEND_QUIC_SECRET_FILE.c_str(), required_argument, &flag,
+         186},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -4948,15 +4957,14 @@ int main(int argc, char **argv) {
         cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_QUIC_CONGESTION_CONTROLLER,
                              StringRef{optarg});
         break;
-      case 184:
-        // --frontend-quic-connection-id-encryption-key
-        cmdcfgs.emplace_back(
-            SHRPX_OPT_FRONTEND_QUIC_CONNECTION_ID_ENCRYPTION_KEY,
-            StringRef{optarg});
-        break;
       case 185:
         // --frontend-quic-server-id
         cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_QUIC_SERVER_ID,
+                             StringRef{optarg});
+        break;
+      case 186:
+        // --frontend-quic-secret-file
+        cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_QUIC_SECRET_FILE,
                              StringRef{optarg});
         break;
       default:

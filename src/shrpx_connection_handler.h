@@ -198,7 +198,8 @@ public:
                           const Address &local_addr, const uint8_t *cid_prefix,
                           const uint8_t *data, size_t datalen);
 
-  int create_quic_secret();
+  void set_quic_keying_materials(std::shared_ptr<QUICKeyingMaterials> qkms);
+  const std::shared_ptr<QUICKeyingMaterials> &get_quic_keying_materials() const;
 
   void set_cid_prefixes(
       const std::vector<std::array<uint8_t, SHRPX_QUIC_CID_PREFIXLEN>>
@@ -263,7 +264,7 @@ private:
 #  ifdef HAVE_LIBBPF
   std::vector<BPFRef> quic_bpf_refs_;
 #  endif // HAVE_LIBBPF
-  std::shared_ptr<QUICSecret> quic_secret_;
+  std::shared_ptr<QUICKeyingMaterials> quic_keying_materials_;
   std::vector<SSL_CTX *> quic_all_ssl_ctx_;
   std::vector<std::vector<SSL_CTX *>> quic_indexed_ssl_ctx_;
 #endif // ENABLE_HTTP3

@@ -391,10 +391,10 @@ constexpr auto SHRPX_OPT_FRONTEND_QUIC_REQUIRE_TOKEN =
     StringRef::from_lit("frontend-quic-require-token");
 constexpr auto SHRPX_OPT_FRONTEND_QUIC_CONGESTION_CONTROLLER =
     StringRef::from_lit("frontend-quic-congestion-controller");
-constexpr auto SHRPX_OPT_FRONTEND_QUIC_CONNECTION_ID_ENCRYPTION_KEY =
-    StringRef::from_lit("frontend-quic-connection-id-encryption-key");
 constexpr auto SHRPX_OPT_FRONTEND_QUIC_SERVER_ID =
     StringRef::from_lit("frontend-quic-server-id");
+constexpr auto SHRPX_OPT_FRONTEND_QUIC_SECRET_FILE =
+    StringRef::from_lit("frontend-quic-secret-file");
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
@@ -606,10 +606,18 @@ struct TLSCertificate {
 };
 
 #ifdef ENABLE_HTTP3
-struct QUICSecret {
-  std::array<uint8_t, SHRPX_QUIC_STATELESS_RESET_SECRETLEN>
-      stateless_reset_secret;
-  std::array<uint8_t, SHRPX_QUIC_TOKEN_SECRETLEN> token_secret;
+struct QUICKeyingMaterial {
+  std::array<uint8_t, SHRPX_QUIC_SECRET_RESERVEDLEN> reserved;
+  std::array<uint8_t, SHRPX_QUIC_SECRETLEN> secret;
+  std::array<uint8_t, SHRPX_QUIC_SALTLEN> salt;
+  std::array<uint8_t, SHRPX_QUIC_CID_ENCRYPTION_KEYLEN> cid_encryption_key;
+  // Identifier of this keying material.  Only the first 2 bits are
+  // used.
+  uint8_t id;
+};
+
+struct QUICKeyingMaterials {
+  std::vector<QUICKeyingMaterial> keying_materials;
 };
 #endif // ENABLE_HTTP3
 
@@ -765,8 +773,8 @@ struct QUICConfig {
     ngtcp2_cc_algo congestion_controller;
     bool early_data;
     bool require_token;
-    std::array<uint8_t, SHRPX_QUIC_CID_ENCRYPTION_KEYLEN> cid_encryption_key;
     std::array<uint8_t, SHRPX_QUIC_SERVER_IDLEN> server_id;
+    StringRef secret_file;
   } upstream;
   struct {
     StringRef prog_file;
@@ -1220,12 +1228,12 @@ enum {
   SHRPX_OPTID_FRONTEND_MAX_REQUESTS,
   SHRPX_OPTID_FRONTEND_NO_TLS,
   SHRPX_OPTID_FRONTEND_QUIC_CONGESTION_CONTROLLER,
-  SHRPX_OPTID_FRONTEND_QUIC_CONNECTION_ID_ENCRYPTION_KEY,
   SHRPX_OPTID_FRONTEND_QUIC_DEBUG_LOG,
   SHRPX_OPTID_FRONTEND_QUIC_EARLY_DATA,
   SHRPX_OPTID_FRONTEND_QUIC_IDLE_TIMEOUT,
   SHRPX_OPTID_FRONTEND_QUIC_QLOG_DIR,
   SHRPX_OPTID_FRONTEND_QUIC_REQUIRE_TOKEN,
+  SHRPX_OPTID_FRONTEND_QUIC_SECRET_FILE,
   SHRPX_OPTID_FRONTEND_QUIC_SERVER_ID,
   SHRPX_OPTID_FRONTEND_READ_TIMEOUT,
   SHRPX_OPTID_FRONTEND_WRITE_TIMEOUT,
@@ -1376,6 +1384,11 @@ FILE *open_file_for_write(const char *filename);
 std::unique_ptr<TicketKeys>
 read_tls_ticket_key_file(const std::vector<StringRef> &files,
                          const EVP_CIPHER *cipher, const EVP_MD *hmac);
+
+#ifdef ENABLE_HTTP3
+std::shared_ptr<QUICKeyingMaterials>
+read_quic_secret_file(const StringRef &path);
+#endif // ENABLE_HTTP3
 
 // Returns string representation of |proto|.
 StringRef strproto(Proto proto);

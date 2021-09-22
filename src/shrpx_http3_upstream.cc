@@ -40,6 +40,7 @@
 #include "shrpx_quic.h"
 #include "shrpx_worker.h"
 #include "shrpx_http.h"
+#include "shrpx_connection_handler.h"
 #ifdef HAVE_MRUBY
 #  include "shrpx_mruby.h"
 #endif // HAVE_MRUBY
@@ -217,21 +218,17 @@ int get_new_connection_id(ngtcp2_conn *conn, ngtcp2_cid *cid, uint8_t *token,
   auto upstream = static_cast<Http3Upstream *>(user_data);
   auto handler = upstream->get_client_handler();
   auto worker = handler->get_worker();
+  auto conn_handler = worker->get_connection_handler();
+  auto &qkms = conn_handler->get_quic_keying_materials();
+  auto &qkm = qkms->keying_materials.front();
 
-  auto config = get_config();
-  auto &quicconf = config->quic;
-
-  if (generate_quic_connection_id(
-          *cid, cidlen, worker->get_cid_prefix(),
-          quicconf.upstream.cid_encryption_key.data()) != 0) {
+  if (generate_quic_connection_id(*cid, cidlen, worker->get_cid_prefix(),
+                                  qkm.id, qkm.cid_encryption_key.data()) != 0) {
     return NGTCP2_ERR_CALLBACK_FAILURE;
   }
 
-  auto &quic_secret = worker->get_quic_secret();
-  auto &secret = quic_secret->stateless_reset_secret;
-
-  if (generate_quic_stateless_reset_token(token, *cid, secret.data(),
-                                          secret.size()) != 0) {
+  if (generate_quic_stateless_reset_token(token, *cid, qkm.secret.data(),
+                                          qkm.secret.size()) != 0) {
     return NGTCP2_ERR_CALLBACK_FAILURE;
   }
 
@@ -487,11 +484,13 @@ int Http3Upstream::handshake_completed() {
 
   auto path = ngtcp2_conn_get_path(conn_);
   auto worker = handler_->get_worker();
-  auto &quic_secret = worker->get_quic_secret();
-  auto &secret = quic_secret->token_secret;
+  auto conn_handler = worker->get_connection_handler();
+  auto &qkms = conn_handler->get_quic_keying_materials();
+  auto &qkm = qkms->keying_materials.front();
 
   if (generate_token(token.data(), tokenlen, path->remote.addr,
-                     path->remote.addrlen, secret.data()) != 0) {
+                     path->remote.addrlen, qkm.secret.data(),
+                     qkm.secret.size()) != 0) {
     return 0;
   }
 
@@ -513,6 +512,7 @@ int Http3Upstream::init(const UpstreamAddr *faddr, const Address &remote_addr,
   int rv;
 
   auto worker = handler_->get_worker();
+  auto conn_handler = worker->get_connection_handler();
 
   auto callbacks = ngtcp2_callbacks{
       nullptr, // client_initial
@@ -557,11 +557,14 @@ int Http3Upstream::init(const UpstreamAddr *faddr, const Address &remote_addr,
   auto &quicconf = config->quic;
   auto &http3conf = config->http3;
 
+  auto &qkms = conn_handler->get_quic_keying_materials();
+  auto &qkm = qkms->keying_materials.front();
+
   ngtcp2_cid scid;
 
-  if (generate_quic_connection_id(
-          scid, SHRPX_QUIC_SCIDLEN, worker->get_cid_prefix(),
-          quicconf.upstream.cid_encryption_key.data()) != 0) {
+  if (generate_quic_connection_id(scid, SHRPX_QUIC_SCIDLEN,
+                                  worker->get_cid_prefix(), qkm.id,
+                                  qkm.cid_encryption_key.data()) != 0) {
     return -1;
   }
 
@@ -608,12 +611,8 @@ int Http3Upstream::init(const UpstreamAddr *faddr, const Address &remote_addr,
     params.original_dcid = initial_hd.dcid;
   }
 
-  auto &quic_secret = worker->get_quic_secret();
-  auto &stateless_reset_secret = quic_secret->stateless_reset_secret;
-
-  rv = generate_quic_stateless_reset_token(params.stateless_reset_token, scid,
-                                           stateless_reset_secret.data(),
-                                           stateless_reset_secret.size());
+  rv = generate_quic_stateless_reset_token(
+      params.stateless_reset_token, scid, qkm.secret.data(), qkm.secret.size());
   if (rv != 0) {
     ULOG(ERROR, this) << "generate_quic_stateless_reset_token failed";
     return -1;

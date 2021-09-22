@@ -230,6 +230,69 @@ read_tls_ticket_key_file(const std::vector<StringRef> &files,
   return ticket_keys;
 }
 
+#ifdef ENABLE_HTTP3
+std::shared_ptr<QUICKeyingMaterials>
+read_quic_secret_file(const StringRef &path) {
+  constexpr size_t expectedlen =
+      SHRPX_QUIC_SECRET_RESERVEDLEN + SHRPX_QUIC_SECRETLEN + SHRPX_QUIC_SALTLEN;
+
+  auto qkms = std::make_shared<QUICKeyingMaterials>();
+  auto &kms = qkms->keying_materials;
+
+  std::ifstream f(path.c_str());
+  if (!f) {
+    LOG(ERROR) << "frontend-quic-secret-file: could not open file " << path;
+    return nullptr;
+  }
+
+  std::array<char, 4096> buf;
+
+  while (f.getline(buf.data(), buf.size())) {
+    if (f.gcount() == 1 || buf[0] == '#') {
+      continue;
+    }
+
+    auto s = StringRef{std::begin(buf), std::begin(buf) + f.gcount() - 1};
+    if (s.size() != expectedlen * 2 || !util::is_hex_string(s)) {
+      LOG(ERROR) << "frontend-quic-secret-file: each line must be a "
+                 << expectedlen * 2 << " bytes hex encoded string";
+      return nullptr;
+    }
+
+    kms.emplace_back();
+    auto &qkm = kms.back();
+
+    auto p = std::begin(s);
+
+    util::decode_hex(std::begin(qkm.reserved),
+                     StringRef{p, p + qkm.reserved.size()});
+    p += qkm.reserved.size() * 2;
+    util::decode_hex(std::begin(qkm.secret),
+                     StringRef{p, p + qkm.secret.size()});
+    p += qkm.secret.size() * 2;
+    util::decode_hex(std::begin(qkm.salt), StringRef{p, p + qkm.salt.size()});
+    p += qkm.salt.size() * 2;
+
+    assert(static_cast<size_t>(p - std::begin(s)) == expectedlen * 2);
+
+    qkm.id = qkm.reserved[0] & 0xc0;
+
+    if (kms.size() == 4) {
+      break;
+    }
+  }
+
+  if (f.bad()) {
+    LOG(ERROR)
+        << "frontend-quic-secret-file: error occurred while reading file "
+        << path;
+    return nullptr;
+  }
+
+  return qkms;
+}
+#endif // ENABLE_HTTP3
+
 FILE *open_file_for_write(const char *filename) {
   std::array<char, STRERROR_BUFSIZE> errbuf;
 
@@ -2344,6 +2407,9 @@ int option_lookup_token(const char *name, size_t namelen) {
       if (util::strieq_l("backend-http2-window-siz", name, 24)) {
         return SHRPX_OPTID_BACKEND_HTTP2_WINDOW_SIZE;
       }
+      if (util::strieq_l("frontend-quic-secret-fil", name, 24)) {
+        return SHRPX_OPTID_FRONTEND_QUIC_SECRET_FILE;
+      }
       break;
     case 'g':
       if (util::strieq_l("http2-no-cookie-crumblin", name, 24)) {
@@ -2689,10 +2755,6 @@ int option_lookup_token(const char *name, size_t namelen) {
   case 42:
     switch (name[41]) {
     case 'y':
-      if (util::strieq_l("frontend-quic-connection-id-encryption-ke", name,
-                         41)) {
-        return SHRPX_OPTID_FRONTEND_QUIC_CONNECTION_ID_ENCRYPTION_KEY;
-      }
       if (util::strieq_l("tls-session-cache-memcached-address-famil", name,
                          41)) {
         return SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED_ADDRESS_FAMILY;
@@ -4030,18 +4092,6 @@ int parse_config(Config *config, int optid, const StringRef &opt,
 #endif // ENABLE_HTTP3
 
     return 0;
-  case SHRPX_OPTID_FRONTEND_QUIC_CONNECTION_ID_ENCRYPTION_KEY:
-#ifdef ENABLE_HTTP3
-    if (optarg.size() != config->quic.upstream.cid_encryption_key.size() * 2 ||
-        !util::is_hex_string(optarg)) {
-      LOG(ERROR) << opt << ": must be a hex-string";
-      return -1;
-    }
-    util::decode_hex(std::begin(config->quic.upstream.cid_encryption_key),
-                     optarg);
-#endif // ENABLE_HTTP3
-
-    return 0;
   case SHRPX_OPTID_FRONTEND_QUIC_SERVER_ID:
 #ifdef ENABLE_HTTP3
     if (optarg.size() != config->quic.upstream.server_id.size() * 2 ||
@@ -4050,6 +4100,12 @@ int parse_config(Config *config, int optid, const StringRef &opt,
       return -1;
     }
     util::decode_hex(std::begin(config->quic.upstream.server_id), optarg);
+#endif // ENABLE_HTTP3
+
+    return 0;
+  case SHRPX_OPTID_FRONTEND_QUIC_SECRET_FILE:
+#ifdef ENABLE_HTTP3
+    config->quic.upstream.secret_file = make_string_ref(config->balloc, optarg);
 #endif // ENABLE_HTTP3
 
     return 0;

@@ -933,14 +933,14 @@ int Worker::create_quic_server_socket(UpstreamAddr &faddr) {
         return -1;
       }
 
-      auto &quicconf = config->quic;
-
       constexpr uint32_t key_high_idx = 1;
       constexpr uint32_t key_low_idx = 2;
 
+      auto &qkms = conn_handler_->get_quic_keying_materials();
+      auto &qkm = qkms->keying_materials.front();
+
       if (bpf_map_update_elem(bpf_map__fd(sk_info), &key_high_idx,
-                              quicconf.upstream.cid_encryption_key.data(),
-                              BPF_ANY) != 0) {
+                              qkm.cid_encryption_key.data(), BPF_ANY) != 0) {
         LOG(FATAL) << "Failed to update key_high_idx sk_info: "
                    << xsi_strerror(errno, errbuf.data(), errbuf.size());
         close(fd);
@@ -948,7 +948,7 @@ int Worker::create_quic_server_socket(UpstreamAddr &faddr) {
       }
 
       if (bpf_map_update_elem(bpf_map__fd(sk_info), &key_low_idx,
-                              quicconf.upstream.cid_encryption_key.data() + 8,
+                              qkm.cid_encryption_key.data() + 8,
                               BPF_ANY) != 0) {
         LOG(FATAL) << "Failed to update key_low_idx sk_info: "
                    << xsi_strerror(errno, errbuf.data(), errbuf.size());
@@ -1009,14 +1009,6 @@ int Worker::create_quic_server_socket(UpstreamAddr &faddr) {
 }
 
 const uint8_t *Worker::get_cid_prefix() const { return cid_prefix_.data(); }
-
-void Worker::set_quic_secret(const std::shared_ptr<QUICSecret> &secret) {
-  quic_secret_ = secret;
-}
-
-const std::shared_ptr<QUICSecret> &Worker::get_quic_secret() const {
-  return quic_secret_;
-}
 
 const UpstreamAddr *Worker::find_quic_upstream_addr(const Address &local_addr) {
   std::array<char, NI_MAXHOST> host;

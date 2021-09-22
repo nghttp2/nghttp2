@@ -341,9 +341,9 @@ configure script with ``--enable-http3``.
 For nghttpx to reload configurations and swapping its executable while
 gracefully terminating old worker processes, eBPF is required.  Run
 the configure script with ``--enable-http3 --with-libbpf`` to build
-eBPF program.  The Connection ID encryption key must be set with
-``--frontend-quic-connection-id-encryption-key`` and must not change
-in order to keep the existing connections alive during reload.
+eBPF program.  The QUIC keying material must be set with
+``--frontend-quic-secret-file`` in order to keep the existing
+connections alive during reload.
 
 The detailed steps to build HTTP/3 enabled h2load and nghttpx follow.
 

@@ -519,9 +519,50 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
   }
 
 #ifdef ENABLE_HTTP3
-  if (conn_handler->create_quic_secret() != 0) {
-    return -1;
+  auto &quicconf = config->quic;
+
+  std::shared_ptr<QUICKeyingMaterials> qkms;
+
+  if (!quicconf.upstream.secret_file.empty()) {
+    qkms = read_quic_secret_file(quicconf.upstream.secret_file);
+    if (!qkms) {
+      LOG(WARN) << "Use QUIC keying materials generated internally";
+    }
   }
+
+  if (!qkms) {
+    qkms = std::make_shared<QUICKeyingMaterials>();
+    qkms->keying_materials.resize(1);
+
+    auto &qkm = qkms->keying_materials.front();
+
+    if (RAND_bytes(qkm.reserved.data(), qkm.reserved.size()) != 1) {
+      LOG(ERROR) << "Failed to generate QUIC secret reserved data";
+      return -1;
+    }
+
+    if (RAND_bytes(qkm.secret.data(), qkm.secret.size()) != 1) {
+      LOG(ERROR) << "Failed to generate QUIC secret";
+      return -1;
+    }
+
+    if (RAND_bytes(qkm.salt.data(), qkm.salt.size()) != 1) {
+      LOG(ERROR) << "Failed to generate QUIC salt";
+      return -1;
+    }
+  }
+
+  for (auto &qkm : qkms->keying_materials) {
+    if (generate_quic_connection_id_encryption_key(
+            qkm.cid_encryption_key.data(), qkm.cid_encryption_key.size(),
+            qkm.secret.data(), qkm.secret.size(), qkm.salt.data(),
+            qkm.salt.size()) != 0) {
+      LOG(ERROR) << "Failed to generate QUIC Connection ID encryption key";
+      return -1;
+    }
+  }
+
+  conn_handler->set_quic_keying_materials(std::move(qkms));
 
   conn_handler->set_cid_prefixes(wpconf->cid_prefixes);
   conn_handler->set_quic_lingering_worker_processes(
