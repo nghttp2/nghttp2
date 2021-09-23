@@ -1620,15 +1620,42 @@ HTTP/3 and QUIC
 
     Default: ``cubic``
 
-.. option:: --frontend-quic-connection-id-encryption-key=<HEXSTRING>
+.. option:: --frontend-quic-secret-file=<PATH>
 
-    Specify  Connection ID  encryption key.   The encryption
-    key must  be 16  bytes, and  it must  be encoded  in hex
-    string  (which is  32 bytes  long).  If  this option  is
-    omitted, new key is generated.  In order to survive QUIC
-    connection in a configuration  reload event, old and new
-    configuration must  have this option and  share the same
-    key.
+    Path to file that contains secure random data to be used
+    as QUIC keying materials.  It is used to derive keys for
+    encrypting tokens and Connection IDs.  It is not used to
+    encrypt  QUIC  packets.  Each  line  of  this file  must
+    contain  exactly  136  bytes  hex-encoded  string  (when
+    decoded the byte string is  68 bytes long).  The first 2
+    bits of  decoded byte  string are  used to  identify the
+    keying material.  An  empty line or a  line which starts
+    '#'  is ignored.   The file  can contain  more than  one
+    keying materials.  Because the  identifier is 2 bits, at
+    most 4 keying materials are  read and the remaining data
+    is discarded.  The first keying  material in the file is
+    primarily  used for  encryption and  decryption for  new
+    connection.  The other ones are used to decrypt data for
+    the  existing connections.   Specifying multiple  keying
+    materials enables  key rotation.   Please note  that key
+    rotation  does  not  occur automatically.   User  should
+    update  files  or  change  options  values  and  restart
+    nghttpx gracefully.   If opening  or reading  given file
+    fails, all loaded keying  materials are discarded and it
+    is treated as if none of  this option is given.  If this
+    option is not  given or an error  occurred while opening
+    or  reading  a  file,  a keying  material  is  generated
+    internally on startup and reload.
+
+.. option:: --frontend-quic-server-id=<HEXSTRING>
+
+    Specify server  ID encoded in Connection  ID to identify
+    this  particular  server  instance.   Connection  ID  is
+    encrypted and  this part is  not visible in  public.  It
+    must be 2  bytes long and must be encoded  in hex string
+    (which is 4  bytes long).  If this option  is omitted, a
+    random   server  ID   is   generated   on  startup   and
+    configuration reload.
 
 .. option:: --no-quic-bpf
 
