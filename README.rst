@@ -32,11 +32,13 @@ Public Test Server
 The following endpoints are available to try out our nghttp2
 implementation.
 
-* https://nghttp2.org/ (TLS + ALPN/NPN)
+* https://nghttp2.org/ (TLS + ALPN/NPN and HTTP/3)
 
   This endpoint supports ``h2``, ``h2-16``, ``h2-14``, and
   ``http/1.1`` via ALPN/NPN and requires TLSv1.2 for HTTP/2
   connection.
+
+  It also supports HTTP/3.
 
 * http://nghttp2.org/ (HTTP Upgrade and HTTP/2 Direct)
 
