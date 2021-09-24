@@ -290,6 +290,13 @@ read_quic_secret_file(const StringRef &path) {
     return nullptr;
   }
 
+  if (kms.empty()) {
+    LOG(WARN)
+        << "frontend-quic-secret-file: no keying materials are present in file "
+        << path;
+    return nullptr;
+  }
+
   return qkms;
 }
 #endif // ENABLE_HTTP3
