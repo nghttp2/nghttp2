@@ -2376,6 +2376,12 @@ Performance:
               If 0 is given, nghttpx does not set the limit.
               Default: )"
       << config->rlimit_nofile << R"(
+  --rlimit-memlock=<N>
+              Set maximum number of bytes of memory that may be locked
+              into  RAM.  If  0 is  given,  nghttpx does  not set  the
+              limit.
+              Default: )"
+      << config->rlimit_memlock << R"(
   --backend-request-buffer=<SIZE>
               Set buffer size used to store backend request.
               Default: )"
@@ -3599,6 +3605,16 @@ int process_options(Config *config,
     }
   }
 
+  if (config->rlimit_memlock) {
+    struct rlimit lim = {static_cast<rlim_t>(config->rlimit_memlock),
+                         static_cast<rlim_t>(config->rlimit_memlock)};
+    if (setrlimit(RLIMIT_MEMLOCK, &lim) != 0) {
+      auto error = errno;
+      LOG(WARN) << "Setting rlimit-memlock failed: "
+                << xsi_strerror(error, errbuf.data(), errbuf.size());
+    }
+  }
+
   auto &fwdconf = config->http.forwarded;
 
   if (fwdconf.by_node_type == ForwardedNode::OBFUSCATED &&
@@ -4080,6 +4096,7 @@ int main(int argc, char **argv) {
          185},
         {SHRPX_OPT_FRONTEND_QUIC_SECRET_FILE.c_str(), required_argument, &flag,
          186},
+        {SHRPX_OPT_RLIMIT_MEMLOCK.c_str(), required_argument, &flag, 187},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -4966,6 +4983,10 @@ int main(int argc, char **argv) {
         // --frontend-quic-secret-file
         cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_QUIC_SECRET_FILE,
                              StringRef{optarg});
+        break;
+      case 187:
+        // --rlimit-memlock
+        cmdcfgs.emplace_back(SHRPX_OPT_RLIMIT_MEMLOCK, StringRef{optarg});
         break;
       default:
         break;

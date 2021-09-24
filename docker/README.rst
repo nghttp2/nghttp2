@@ -20,6 +20,6 @@ certificate in server.key and server.crt respectively :
 .. code-block:: text
 
    $ docker run --rm -it -v $PWD:/shared --net=host --privileged \
-         --ulimit memlock=2048000 nghttp2 nghttpx \
+         nghttp2 nghttpx \
          /shared/server.key /shared/server.crt \
-         -f'*,443;quic'
+         -f'*,443;quic' --rlimit-memlock 262144

@@ -395,6 +395,7 @@ constexpr auto SHRPX_OPT_FRONTEND_QUIC_SERVER_ID =
     StringRef::from_lit("frontend-quic-server-id");
 constexpr auto SHRPX_OPT_FRONTEND_QUIC_SECRET_FILE =
     StringRef::from_lit("frontend-quic-secret-file");
+constexpr auto SHRPX_OPT_RLIMIT_MEMLOCK = StringRef::from_lit("rlimit-memlock");
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
@@ -1064,6 +1065,7 @@ struct Config {
         num_worker{0},
         padding{0},
         rlimit_nofile{0},
+        rlimit_memlock{0},
         uid{0},
         gid{0},
         pid{0},
@@ -1112,6 +1114,7 @@ struct Config {
   size_t num_worker;
   size_t padding;
   size_t rlimit_nofile;
+  size_t rlimit_memlock;
   uid_t uid;
   gid_t gid;
   pid_t pid;
@@ -1281,6 +1284,7 @@ enum {
   SHRPX_OPTID_REDIRECT_HTTPS_PORT,
   SHRPX_OPTID_REQUEST_HEADER_FIELD_BUFFER,
   SHRPX_OPTID_RESPONSE_HEADER_FIELD_BUFFER,
+  SHRPX_OPTID_RLIMIT_MEMLOCK,
   SHRPX_OPTID_RLIMIT_NOFILE,
   SHRPX_OPTID_SERVER_NAME,
   SHRPX_OPTID_SINGLE_PROCESS,

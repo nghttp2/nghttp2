@@ -2057,6 +2057,11 @@ int option_lookup_token(const char *name, size_t namelen) {
         return SHRPX_OPTID_NO_SERVER_PUSH;
       }
       break;
+    case 'k':
+      if (util::strieq_l("rlimit-memloc", name, 13)) {
+        return SHRPX_OPTID_RLIMIT_MEMLOCK;
+      }
+      break;
     case 'p':
       if (util::strieq_l("no-verify-ocs", name, 13)) {
         return SHRPX_OPTID_NO_VERIFY_OCSP;
@@ -4110,6 +4115,23 @@ int parse_config(Config *config, int optid, const StringRef &opt,
 #endif // ENABLE_HTTP3
 
     return 0;
+  case SHRPX_OPTID_RLIMIT_MEMLOCK: {
+    int n;
+
+    if (parse_uint(&n, opt, optarg) != 0) {
+      return -1;
+    }
+
+    if (n < 0) {
+      LOG(ERROR) << opt << ": specify the integer more than or equal to 0";
+
+      return -1;
+    }
+
+    config->rlimit_memlock = n;
+
+    return 0;
+  }
   case SHRPX_OPTID_CONF:
     LOG(WARN) << "conf: ignored";
 

@@ -194,6 +194,7 @@ OPTIONS = [
     "frontend-quic-congestion-controller",
     "frontend-quic-server-id",
     "frontend-quic-secret-file",
+    "rlimit-memlock",
 ]
 
 LOGVARS = [
