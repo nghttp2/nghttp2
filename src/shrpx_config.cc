@@ -248,11 +248,12 @@ read_quic_secret_file(const StringRef &path) {
   std::array<char, 4096> buf;
 
   while (f.getline(buf.data(), buf.size())) {
-    if (f.gcount() == 1 || buf[0] == '#') {
+    auto len = strlen(buf.data());
+    if (len == 0 || buf[0] == '#') {
       continue;
     }
 
-    auto s = StringRef{std::begin(buf), std::begin(buf) + f.gcount() - 1};
+    auto s = StringRef{std::begin(buf), std::begin(buf) + len};
     if (s.size() != expectedlen * 2 || !util::is_hex_string(s)) {
       LOG(ERROR) << "frontend-quic-secret-file: each line must be a "
                  << expectedlen * 2 << " bytes hex encoded string";
@@ -282,7 +283,7 @@ read_quic_secret_file(const StringRef &path) {
     }
   }
 
-  if (f.bad()) {
+  if (f.bad() || (!f.eof() && f.fail())) {
     LOG(ERROR)
         << "frontend-quic-secret-file: error occurred while reading file "
         << path;
