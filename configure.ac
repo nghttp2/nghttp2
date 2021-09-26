@@ -983,34 +983,6 @@ AC_CHECK_DECLS([initgroups], [], [], [[
   #include <grp.h>
 ]])
 
-have_netinet_udp_h_udp_segment=no
-AC_CHECK_DECL([UDP_SEGMENT], [have_netinet_udp_h_udp_segment=yes],
-              [have_netinet_udp_h_udp_segment=no], [[
-  #include <netinet/udp.h>
-]])
-
-if test "x$have_netinet_udp_h_udp_segment" = "xno"; then
-  have_linux_udp_h_udp_segment=no
-  AC_MSG_CHECKING([whether UDP_SEGMENT is defined as 103 in linux/udp.h])
-  AC_RUN_IFELSE([AC_LANG_PROGRAM(
-                     [[
-                       #include <linux/udp.h>
-                     ]],
-                     [[
-		       #if UDP_SEGMENT != 103
-		       exit(1)
-		       #endif
-                     ]])],
-		    [have_linux_udp_h_udp_segment=yes
-		     AC_MSG_RESULT([yes])],
-		    [have_linux_udp_h_udp_segment=no
-		     AC_MSG_RESULT([no])])
-
-  if test "x$have_linux_udp_h_udp_segment" = "xyes"; then
-    EXTRA_DEFS="$EXTRA_DEFS -DUDP_SEGMENT=103"
-  fi
-fi
-
 save_CFLAGS=$CFLAGS
 save_CXXFLAGS=$CXXFLAGS
 
