@@ -719,7 +719,7 @@ int quic_alpn_select_proto_cb(SSL *ssl, const unsigned char **out,
     p += 1 + proto_len;
   }
 
-  return SSL_TLSEXT_ERR_NOACK;
+  return SSL_TLSEXT_ERR_ALERT_FATAL;
 }
 } // namespace
 #  endif // OPENSSL_VERSION_NUMBER >= 0x10002000L

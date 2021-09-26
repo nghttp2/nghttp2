@@ -479,6 +479,14 @@ int handshake_completed(ngtcp2_conn *conn, void *user_data) {
 } // namespace
 
 int Http3Upstream::handshake_completed() {
+  handler_->set_alpn_from_conn();
+
+  auto alpn = handler_->get_alpn();
+  if (alpn.empty()) {
+    ULOG(ERROR, this) << "NO ALPN was negotiated";
+    return -1;
+  }
+
   std::array<uint8_t, NGTCP2_CRYPTO_MAX_REGULAR_TOKENLEN> token;
   size_t tokenlen;
 

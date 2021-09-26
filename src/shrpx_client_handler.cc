@@ -517,7 +517,6 @@ void ClientHandler::setup_upstream_io_callback() {
 void ClientHandler::setup_http3_upstream(
     std::unique_ptr<Http3Upstream> &&upstream) {
   upstream_ = std::move(upstream);
-  alpn_ = StringRef::from_lit("h3");
   write_ = &ClientHandler::write_quic;
 
   auto config = get_config();
@@ -1598,5 +1597,14 @@ StringRef ClientHandler::get_tls_sni() const { return sni_; }
 StringRef ClientHandler::get_alpn() const { return alpn_; }
 
 BlockAllocator &ClientHandler::get_block_allocator() { return balloc_; }
+
+void ClientHandler::set_alpn_from_conn() {
+  const unsigned char *alpn;
+  unsigned int alpnlen;
+
+  SSL_get0_alpn_selected(conn_.tls.ssl, &alpn, &alpnlen);
+
+  alpn_ = make_string_ref(balloc_, StringRef{alpn, alpnlen});
+}
 
 } // namespace shrpx

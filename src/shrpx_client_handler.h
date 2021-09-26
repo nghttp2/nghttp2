@@ -187,6 +187,8 @@ public:
 
   BlockAllocator &get_block_allocator();
 
+  void set_alpn_from_conn();
+
 private:
   // Allocator to allocate memory for connection-wide objects.  Make
   // sure that the allocations must be bounded, and not proportional
