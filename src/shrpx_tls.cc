@@ -703,20 +703,26 @@ namespace {
 int quic_alpn_select_proto_cb(SSL *ssl, const unsigned char **out,
                               unsigned char *outlen, const unsigned char *in,
                               unsigned int inlen, void *arg) {
-  for (auto p = in, end = in + inlen; p < end;) {
-    auto proto_id = p + 1;
-    auto proto_len = *p;
+  constexpr StringRef alpnlist[] = {
+      StringRef::from_lit("h3"),
+      StringRef::from_lit("h3-29"),
+  };
 
-    if (proto_id + proto_len <= end &&
-        util::streq_l("h3", StringRef{proto_id, proto_len})) {
+  for (auto &alpn : alpnlist) {
+    for (auto p = in, end = in + inlen; p < end;) {
+      auto proto_id = p + 1;
+      auto proto_len = *p;
 
-      *out = reinterpret_cast<const unsigned char *>(proto_id);
-      *outlen = proto_len;
+      if (alpn.size() == proto_len &&
+          memcmp(alpn.byte(), proto_id, alpn.size()) == 0) {
+        *out = proto_id;
+        *outlen = proto_len;
 
-      return SSL_TLSEXT_ERR_OK;
+        return SSL_TLSEXT_ERR_OK;
+      }
+
+      p += 1 + proto_len;
     }
-
-    p += 1 + proto_len;
   }
 
   return SSL_TLSEXT_ERR_ALERT_FATAL;
