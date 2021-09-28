@@ -1688,6 +1688,7 @@ int daemonize(int nochdir, int noclose) {
 #endif // !defined(__APPLE__)
 }
 
+#ifdef ENABLE_HTTP3
 int msghdr_get_local_addr(Address &dest, msghdr *msg, int family) {
   switch (family) {
   case AF_INET:
@@ -1721,6 +1722,7 @@ int msghdr_get_local_addr(Address &dest, msghdr *msg, int family) {
 
   return -1;
 }
+#endif // ENABLE_HTTP3
 
 } // namespace util
 
