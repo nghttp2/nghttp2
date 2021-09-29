@@ -195,6 +195,7 @@ OPTIONS = [
     "frontend-quic-server-id",
     "frontend-quic-secret-file",
     "rlimit-memlock",
+    "max-worker-processes",
 ]
 
 LOGVARS = [

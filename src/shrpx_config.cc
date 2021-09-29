@@ -2248,6 +2248,9 @@ int option_lookup_token(const char *name, size_t namelen) {
       }
       break;
     case 's':
+      if (util::strieq_l("max-worker-processe", name, 19)) {
+        return SHRPX_OPTID_MAX_WORKER_PROCESSES;
+      }
       if (util::strieq_l("tls13-client-cipher", name, 19)) {
         return SHRPX_OPTID_TLS13_CLIENT_CIPHERS;
       }
@@ -4139,6 +4142,8 @@ int parse_config(Config *config, int optid, const StringRef &opt,
 
     return 0;
   }
+  case SHRPX_OPTID_MAX_WORKER_PROCESSES:
+    return parse_uint(&config->max_worker_processes, opt, optarg);
   case SHRPX_OPTID_CONF:
     LOG(WARN) << "conf: ignored";
 

@@ -396,6 +396,8 @@ constexpr auto SHRPX_OPT_FRONTEND_QUIC_SERVER_ID =
 constexpr auto SHRPX_OPT_FRONTEND_QUIC_SECRET_FILE =
     StringRef::from_lit("frontend-quic-secret-file");
 constexpr auto SHRPX_OPT_RLIMIT_MEMLOCK = StringRef::from_lit("rlimit-memlock");
+constexpr auto SHRPX_OPT_MAX_WORKER_PROCESSES =
+    StringRef::from_lit("max-worker-processes");
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
@@ -1075,7 +1077,8 @@ struct Config {
         single_process{false},
         single_thread{false},
         ignore_per_pattern_mruby_error{false},
-        ev_loop_flags{0} {
+        ev_loop_flags{0},
+        max_worker_processes{0} {
   }
   ~Config();
 
@@ -1129,6 +1132,7 @@ struct Config {
   bool ignore_per_pattern_mruby_error;
   // flags passed to ev_default_loop() and ev_loop_new()
   int ev_loop_flags;
+  size_t max_worker_processes;
 };
 
 const Config *get_config();
@@ -1255,6 +1259,7 @@ enum {
   SHRPX_OPTID_MAX_HEADER_FIELDS,
   SHRPX_OPTID_MAX_REQUEST_HEADER_FIELDS,
   SHRPX_OPTID_MAX_RESPONSE_HEADER_FIELDS,
+  SHRPX_OPTID_MAX_WORKER_PROCESSES,
   SHRPX_OPTID_MRUBY_FILE,
   SHRPX_OPTID_NO_ADD_X_FORWARDED_PROTO,
   SHRPX_OPTID_NO_HOST_REWRITE,

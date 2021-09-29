@@ -301,6 +301,17 @@ void worker_process_remove(const WorkerProcess *wp) {
 } // namespace
 
 namespace {
+void worker_process_adjust_limit() {
+  auto config = get_config();
+
+  if (config->max_worker_processes &&
+      worker_processes.size() > config->max_worker_processes) {
+    worker_processes.pop_front();
+  }
+}
+} // namespace
+
+namespace {
 void worker_process_remove_all() {
   std::deque<std::unique_ptr<WorkerProcess>>().swap(worker_processes);
 }
@@ -3201,6 +3212,19 @@ Process:
               process.   nghttpx still  spawns  additional process  if
               neverbleed  is used.   In the  single process  mode, the
               signal handling feature is disabled.
+  --max-worker-processes=<N>
+              The maximum number of  worker processes.  nghttpx spawns
+              new worker  process when  it reloads  its configuration.
+              The previous worker  process enters graceful termination
+              period and will terminate  when it finishes handling the
+              existing    connections.     However,    if    reloading
+              configurations  happen   very  frequently,   the  worker
+              processes might be piled up if they take a bit long time
+              to finish  the existing connections.  With  this option,
+              if  the number  of  worker processes  exceeds the  given
+              value,   the  oldest   worker   process  is   terminated
+              immediately.  Specifying 0 means no  limit and it is the
+              default behaviour.
 
 Scripting:
   --mruby-file=<PATH>
@@ -3773,6 +3797,8 @@ void reload_config(WorkerProcess *wp) {
   ipc_send(last_wp.get(), SHRPX_IPC_UNLOAD_BPF_OBJECT);
 #endif // ENABLE_HTTP3
 
+  worker_process_adjust_limit();
+
   if (!get_config()->pid_file.empty()) {
     save_pid();
   }
@@ -4101,6 +4127,7 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_FRONTEND_QUIC_SECRET_FILE.c_str(), required_argument, &flag,
          186},
         {SHRPX_OPT_RLIMIT_MEMLOCK.c_str(), required_argument, &flag, 187},
+        {SHRPX_OPT_MAX_WORKER_PROCESSES.c_str(), required_argument, &flag, 188},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -4991,6 +5018,10 @@ int main(int argc, char **argv) {
       case 187:
         // --rlimit-memlock
         cmdcfgs.emplace_back(SHRPX_OPT_RLIMIT_MEMLOCK, StringRef{optarg});
+        break;
+      case 188:
+        // --max-worker-processes
+        cmdcfgs.emplace_back(SHRPX_OPT_MAX_WORKER_PROCESSES, StringRef{optarg});
         break;
       default:
         break;
