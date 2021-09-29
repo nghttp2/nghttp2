@@ -175,9 +175,11 @@ void ipc_readcb(struct ev_loop *loop, ev_io *w, int revents) {
     case SHRPX_IPC_REOPEN_LOG:
       reopen_log(conn_handler);
       break;
+#if defined(ENABLE_HTTP3) && defined(HAVE_LIBBPF)
     case SHRPX_IPC_UNLOAD_BPF_OBJECT:
       conn_handler->unload_bpf_objects();
       break;
+#endif // defined(ENABLE_HTTP3) && defined(HAVE_LIBBPF)
     }
   }
 }
