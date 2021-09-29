@@ -22,4 +22,4 @@ certificate in server.key and server.crt respectively :
    $ docker run --rm -it -v $PWD:/shared --net=host --privileged \
          nghttp2 nghttpx \
          /shared/server.key /shared/server.crt \
-         -f'*,443;quic' --rlimit-memlock 262144
+         -f'*,443;quic' --rlimit-memlock 524288
