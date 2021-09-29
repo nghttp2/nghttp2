@@ -106,6 +106,7 @@ struct SerialEvent {
 #ifdef ENABLE_HTTP3
 #  ifdef HAVE_LIBBPF
 struct BPFRef {
+  bpf_object *obj;
   int reuseport_array;
   int cid_prefix_map;
 };
@@ -225,6 +226,7 @@ public:
 
 #  ifdef HAVE_LIBBPF
   std::vector<BPFRef> &get_quic_bpf_refs();
+  void unload_bpf_objects();
 #  endif // HAVE_LIBBPF
 #endif   // ENABLE_HTTP3
 

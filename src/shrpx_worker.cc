@@ -890,6 +890,8 @@ int Worker::create_quic_server_socket(UpstreamAddr &faddr) {
 
       auto &ref = quic_bpf_refs[faddr.index];
 
+      ref.obj = obj;
+
       auto reuseport_array =
           bpf_object__find_map_by_name(obj, "reuseport_array");
       err = libbpf_get_error(reuseport_array);

@@ -31,6 +31,7 @@ namespace shrpx {
 
 constexpr uint8_t SHRPX_IPC_REOPEN_LOG = 1;
 constexpr uint8_t SHRPX_IPC_GRACEFUL_SHUTDOWN = 2;
+constexpr uint8_t SHRPX_IPC_UNLOAD_BPF_OBJECT = 3;
 
 } // namespace shrpx
 

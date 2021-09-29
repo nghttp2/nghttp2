@@ -1079,6 +1079,26 @@ ConnectionHandler::match_quic_lingering_worker_process_cid_prefix(
 std::vector<BPFRef> &ConnectionHandler::get_quic_bpf_refs() {
   return quic_bpf_refs_;
 }
+
+void ConnectionHandler::unload_bpf_objects() {
+  std::array<char, STRERROR_BUFSIZE> errbuf;
+
+  LOG(NOTICE) << "Unloading BPF objects";
+
+  for (auto &ref : quic_bpf_refs_) {
+    if (ref.obj == nullptr) {
+      continue;
+    }
+
+    if (bpf_object__unload(ref.obj) != 0) {
+      LOG(WARN) << "Failed to unload bpf object: "
+                << xsi_strerror(errno, errbuf.data(), errbuf.size());
+      continue;
+    }
+
+    ref.obj = nullptr;
+  }
+}
 #  endif // HAVE_LIBBPF
 
 void ConnectionHandler::set_quic_ipc_fd(int fd) { quic_ipc_fd_ = fd; }

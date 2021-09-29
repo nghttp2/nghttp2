@@ -3769,6 +3769,10 @@ void reload_config(WorkerProcess *wp) {
 #endif // ENABLE_HTTP3
                                                      ));
 
+#ifdef ENABLE_HTTP3
+  ipc_send(last_wp.get(), SHRPX_IPC_UNLOAD_BPF_OBJECT);
+#endif // ENABLE_HTTP3
+
   if (!get_config()->pid_file.empty()) {
     save_pid();
   }
