@@ -781,9 +781,10 @@ int Http3Upstream::write_streams() {
                          prev_ps.path.local.addr, prev_ps.path.local.addrlen,
                          buf.data(), bufpos - buf.data(), max_udp_payload_size);
 
-        ngtcp2_conn_update_pkt_tx_time(conn_, ts);
         reset_idle_timer();
       }
+
+      ngtcp2_conn_update_pkt_tx_time(conn_, ts);
 
       handler_->get_connection()->wlimit.stopw();
 
