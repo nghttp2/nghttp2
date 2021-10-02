@@ -398,6 +398,8 @@ constexpr auto SHRPX_OPT_FRONTEND_QUIC_SECRET_FILE =
 constexpr auto SHRPX_OPT_RLIMIT_MEMLOCK = StringRef::from_lit("rlimit-memlock");
 constexpr auto SHRPX_OPT_MAX_WORKER_PROCESSES =
     StringRef::from_lit("max-worker-processes");
+constexpr auto SHRPX_OPT_WORKER_PROCESS_GRACE_SHUTDOWN_PERIOD =
+    StringRef::from_lit("worker-process-grace-shutdown-period");
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
@@ -1078,7 +1080,8 @@ struct Config {
         single_thread{false},
         ignore_per_pattern_mruby_error{false},
         ev_loop_flags{0},
-        max_worker_processes{0} {
+        max_worker_processes{0},
+        worker_process_grace_shutdown_period{0.} {
   }
   ~Config();
 
@@ -1133,6 +1136,7 @@ struct Config {
   // flags passed to ev_default_loop() and ev_loop_new()
   int ev_loop_flags;
   size_t max_worker_processes;
+  ev_tstamp worker_process_grace_shutdown_period;
 };
 
 const Config *get_config();
@@ -1330,6 +1334,7 @@ enum {
   SHRPX_OPTID_VERIFY_CLIENT_CACERT,
   SHRPX_OPTID_VERIFY_CLIENT_TOLERATE_EXPIRED,
   SHRPX_OPTID_WORKER_FRONTEND_CONNECTIONS,
+  SHRPX_OPTID_WORKER_PROCESS_GRACE_SHUTDOWN_PERIOD,
   SHRPX_OPTID_WORKER_READ_BURST,
   SHRPX_OPTID_WORKER_READ_RATE,
   SHRPX_OPTID_WORKER_WRITE_BURST,

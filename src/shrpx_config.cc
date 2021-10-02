@@ -2666,6 +2666,11 @@ int option_lookup_token(const char *name, size_t namelen) {
     break;
   case 36:
     switch (name[35]) {
+    case 'd':
+      if (util::strieq_l("worker-process-grace-shutdown-perio", name, 35)) {
+        return SHRPX_OPTID_WORKER_PROCESS_GRACE_SHUTDOWN_PERIOD;
+      }
+      break;
     case 'e':
       if (util::strieq_l("backend-http2-connection-window-siz", name, 35)) {
         return SHRPX_OPTID_BACKEND_HTTP2_CONNECTION_WINDOW_SIZE;
@@ -4144,6 +4149,9 @@ int parse_config(Config *config, int optid, const StringRef &opt,
   }
   case SHRPX_OPTID_MAX_WORKER_PROCESSES:
     return parse_uint(&config->max_worker_processes, opt, optarg);
+  case SHRPX_OPTID_WORKER_PROCESS_GRACE_SHUTDOWN_PERIOD:
+    return parse_duration(&config->worker_process_grace_shutdown_period, opt,
+                          optarg);
   case SHRPX_OPTID_CONF:
     LOG(WARN) << "conf: ignored";
 

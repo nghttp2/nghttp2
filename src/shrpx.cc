@@ -202,7 +202,8 @@ struct WorkerProcess {
                 )
       : loop(loop),
         worker_pid(worker_pid),
-        ipc_fd(ipc_fd)
+        ipc_fd(ipc_fd),
+        termination_deadline(0.)
 #ifdef ENABLE_HTTP3
         ,
         quic_ipc_fd(quic_ipc_fd),
@@ -264,6 +265,7 @@ struct WorkerProcess {
   struct ev_loop *loop;
   pid_t worker_pid;
   int ipc_fd;
+  ev_tstamp termination_deadline;
 #ifdef ENABLE_HTTP3
   int quic_ipc_fd;
   std::vector<std::array<uint8_t, SHRPX_QUIC_CID_PREFIXLEN>> cid_prefixes;
@@ -279,13 +281,81 @@ std::deque<std::unique_ptr<WorkerProcess>> worker_processes;
 } // namespace
 
 namespace {
+ev_timer worker_process_grace_period_timer;
+} // namespace
+
+namespace {
+void worker_process_grace_period_timercb(struct ev_loop *loop, ev_timer *w,
+                                         int revents) {
+  auto now = ev_now(loop);
+  ev_tstamp next_repeat = 0.;
+
+  for (auto it = std::begin(worker_processes);
+       it != std::end(worker_processes);) {
+    auto &wp = *it;
+    if (!(wp->termination_deadline > 0.)) {
+      ++it;
+
+      continue;
+    }
+
+    auto d = wp->termination_deadline - now;
+    if (d > 0) {
+      if (!(next_repeat > 0.) || d < next_repeat) {
+        next_repeat = d;
+      }
+
+      ++it;
+
+      continue;
+    }
+
+    LOG(NOTICE) << "Deleting worker process pid=" << wp->worker_pid
+                << " because its grace shutdown period is over";
+
+    it = worker_processes.erase(it);
+  }
+
+  if (next_repeat > 0.) {
+    w->repeat = next_repeat;
+    ev_timer_again(loop, w);
+
+    return;
+  }
+
+  ev_timer_stop(loop, w);
+}
+} // namespace
+
+namespace {
+void worker_process_set_termination_deadline(WorkerProcess *wp,
+                                             struct ev_loop *loop) {
+  auto config = get_config();
+
+  if (!(config->worker_process_grace_shutdown_period > 0.)) {
+    return;
+  }
+
+  wp->termination_deadline =
+      ev_now(loop) + config->worker_process_grace_shutdown_period;
+
+  if (!ev_is_active(&worker_process_grace_period_timer)) {
+    worker_process_grace_period_timer.repeat =
+        config->worker_process_grace_shutdown_period;
+
+    ev_timer_again(loop, &worker_process_grace_period_timer);
+  }
+}
+} // namespace
+
+namespace {
 void worker_process_add(std::unique_ptr<WorkerProcess> wp) {
   worker_processes.push_back(std::move(wp));
 }
 } // namespace
 
 namespace {
-void worker_process_remove(const WorkerProcess *wp) {
+void worker_process_remove(const WorkerProcess *wp, struct ev_loop *loop) {
   for (auto it = std::begin(worker_processes); it != std::end(worker_processes);
        ++it) {
     auto &s = *it;
@@ -295,6 +365,11 @@ void worker_process_remove(const WorkerProcess *wp) {
     }
 
     worker_processes.erase(it);
+
+    if (worker_processes.empty()) {
+      ev_timer_stop(loop, &worker_process_grace_period_timer);
+    }
+
     break;
   }
 }
@@ -312,22 +387,24 @@ void worker_process_adjust_limit() {
 } // namespace
 
 namespace {
-void worker_process_remove_all() {
+void worker_process_remove_all(struct ev_loop *loop) {
   std::deque<std::unique_ptr<WorkerProcess>>().swap(worker_processes);
+
+  ev_timer_stop(loop, &worker_process_grace_period_timer);
 }
 } // namespace
 
 namespace {
 // Send signal |signum| to all worker processes, and clears
 // worker_processes.
-void worker_process_kill(int signum) {
+void worker_process_kill(int signum, struct ev_loop *loop) {
   for (auto &s : worker_processes) {
     if (s->worker_pid == -1) {
       continue;
     }
     kill(s->worker_pid, signum);
   }
-  worker_process_remove_all();
+  worker_process_remove_all(loop);
 }
 } // namespace
 
@@ -646,13 +723,14 @@ void signal_cb(struct ev_loop *loop, ev_signal *w, int revents) {
       close(addr.fd);
     }
     ipc_send(wp, SHRPX_IPC_GRACEFUL_SHUTDOWN);
+    worker_process_set_termination_deadline(wp, loop);
     return;
   }
   case RELOAD_SIGNAL:
     reload_config(wp);
     return;
   default:
-    worker_process_kill(w->signum);
+    worker_process_kill(w->signum, loop);
     ev_break(loop);
     return;
   }
@@ -667,7 +745,7 @@ void worker_process_child_cb(struct ev_loop *loop, ev_child *w, int revents) {
 
   auto pid = wp->worker_pid;
 
-  worker_process_remove(wp);
+  worker_process_remove(wp, loop);
 
   if (worker_process_last_pid() == pid) {
     ev_break(loop);
@@ -1482,7 +1560,7 @@ pid_t fork_worker_process(
 
     // Remove all WorkerProcesses to stop any registered watcher on
     // default loop.
-    worker_process_remove_all();
+    worker_process_remove_all(EV_DEFAULT);
 
     close_unused_inherited_addr(iaddrs);
 
@@ -1657,6 +1735,9 @@ int event_loop() {
     return -1;
   }
 
+  ev_timer_init(&worker_process_grace_period_timer,
+                worker_process_grace_period_timercb, 0., 0.);
+
   worker_process_add(std::make_unique<WorkerProcess>(loop, pid, ipc_fd
 #ifdef ENABLE_HTTP3
                                                      ,
@@ -1682,6 +1763,8 @@ int event_loop() {
   }
 
   ev_run(loop, 0);
+
+  ev_timer_stop(loop, &worker_process_grace_period_timer);
 
   return 0;
 }
@@ -3225,6 +3308,14 @@ Process:
               value,   the  oldest   worker   process  is   terminated
               immediately.  Specifying 0 means no  limit and it is the
               default behaviour.
+  --worker-process-grace-shutdown-period=<DURATION>
+              Maximum  period  for  a   worker  process  to  terminate
+              gracefully.  When  a worker  process enters  in graceful
+              shutdown   period  (e.g.,   when  nghttpx   reloads  its
+              configuration)  and  it  does not  finish  handling  the
+              existing connections in the given  period of time, it is
+              immediately terminated.  Specifying 0 means no limit and
+              it is the default behaviour.
 
 Scripting:
   --mruby-file=<PATH>
@@ -3783,6 +3874,7 @@ void reload_config(WorkerProcess *wp) {
   // Send last worker process a graceful shutdown notice
   auto &last_wp = worker_processes.back();
   ipc_send(last_wp.get(), SHRPX_IPC_GRACEFUL_SHUTDOWN);
+  worker_process_set_termination_deadline(last_wp.get(), loop);
   // We no longer use signals for this worker.
   last_wp->shutdown_signal_watchers();
 
@@ -4128,6 +4220,8 @@ int main(int argc, char **argv) {
          186},
         {SHRPX_OPT_RLIMIT_MEMLOCK.c_str(), required_argument, &flag, 187},
         {SHRPX_OPT_MAX_WORKER_PROCESSES.c_str(), required_argument, &flag, 188},
+        {SHRPX_OPT_WORKER_PROCESS_GRACE_SHUTDOWN_PERIOD.c_str(),
+         required_argument, &flag, 189},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -5022,6 +5116,11 @@ int main(int argc, char **argv) {
       case 188:
         // --max-worker-processes
         cmdcfgs.emplace_back(SHRPX_OPT_MAX_WORKER_PROCESSES, StringRef{optarg});
+        break;
+      case 189:
+        // --worker-process-grace-shutdown-period
+        cmdcfgs.emplace_back(SHRPX_OPT_WORKER_PROCESS_GRACE_SHUTDOWN_PERIOD,
+                             StringRef{optarg});
         break;
       default:
         break;

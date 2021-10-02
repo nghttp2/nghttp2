@@ -196,6 +196,7 @@ OPTIONS = [
     "frontend-quic-secret-file",
     "rlimit-memlock",
     "max-worker-processes",
+    "worker-process-grace-shutdown-period",
 ]
 
 LOGVARS = [
