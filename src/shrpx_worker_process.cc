@@ -603,7 +603,9 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
 #endif // !NOTHREADS
   }
 
+#if defined(ENABLE_HTTP3) && defined(HAVE_LIBBPF)
   conn_handler->unload_bpf_objects();
+#endif // defined(ENABLE_HTTP3) && defined(HAVE_LIBBPF)
 
   drop_privileges(
 #ifdef HAVE_NEVERBLEED
