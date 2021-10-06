@@ -451,6 +451,7 @@ void Client::quic_close_connection() {
     break;
   default:
     assert(0);
+    abort();
   }
 
   if (nwrite < 0) {

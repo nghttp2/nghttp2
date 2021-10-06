@@ -1842,6 +1842,7 @@ int Http3Upstream::http_acked_stream_data(Downstream *downstream,
 
   auto body = downstream->get_response_buf();
   auto drained = body->drain_mark(datalen);
+  (void)drained;
 
   assert(datalen == drained);
 

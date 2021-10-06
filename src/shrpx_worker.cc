@@ -1036,6 +1036,7 @@ const UpstreamAddr *Worker::find_quic_upstream_addr(const Address &local_addr) {
     break;
   default:
     assert(0);
+    abort();
   }
 
   std::array<char, util::max_hostport> hostport_buf;
