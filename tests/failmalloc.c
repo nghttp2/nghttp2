@@ -37,7 +37,7 @@ static int init_suite1(void) { return 0; }
 
 static int clean_suite1(void) { return 0; }
 
-int main() {
+int main(void) {
   CU_pSuite pSuite = NULL;
   unsigned int num_tests_failed;
 
