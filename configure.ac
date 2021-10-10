@@ -220,6 +220,11 @@ PKG_PROG_PKG_CONFIG([0.20])
 
 AM_PATH_PYTHON([3.8],, [:])
 
+if test "x$request_python_bindings" = "xyes" &&
+   test "x$PYTHON" = "x:"; then
+  AC_MSG_ERROR([python was requested (enable-python-bindings) but not found])
+fi
+
 if [test "x$request_lib_only" = "xyes"]; then
   request_app=no
   request_hpack_tools=no
@@ -227,8 +232,10 @@ if [test "x$request_lib_only" = "xyes"]; then
   request_python_bindings=no
 fi
 
-if [test "x$request_python_bindings" != "xno"]; then
-  AX_PYTHON_DEVEL([>= '3.8'])
+if test "x$request_python_bindings" != "xno" &&
+   test "x$PYTHON" != "x:"; then
+  # version check is broken
+  AX_PYTHON_DEVEL()
 fi
 
 if test "x${cython_path}" = "x"; then
