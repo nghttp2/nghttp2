@@ -400,6 +400,8 @@ constexpr auto SHRPX_OPT_MAX_WORKER_PROCESSES =
     StringRef::from_lit("max-worker-processes");
 constexpr auto SHRPX_OPT_WORKER_PROCESS_GRACE_SHUTDOWN_PERIOD =
     StringRef::from_lit("worker-process-grace-shutdown-period");
+constexpr auto SHRPX_OPT_FRONTEND_QUIC_INITIAL_RTT =
+    StringRef::from_lit("frontend-quic-initial-rtt");
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
@@ -780,6 +782,7 @@ struct QUICConfig {
     bool require_token;
     std::array<uint8_t, SHRPX_QUIC_SERVER_IDLEN> server_id;
     StringRef secret_file;
+    ngtcp2_duration initial_rtt;
   } upstream;
   struct {
     StringRef prog_file;
@@ -1242,6 +1245,7 @@ enum {
   SHRPX_OPTID_FRONTEND_QUIC_DEBUG_LOG,
   SHRPX_OPTID_FRONTEND_QUIC_EARLY_DATA,
   SHRPX_OPTID_FRONTEND_QUIC_IDLE_TIMEOUT,
+  SHRPX_OPTID_FRONTEND_QUIC_INITIAL_RTT,
   SHRPX_OPTID_FRONTEND_QUIC_QLOG_DIR,
   SHRPX_OPTID_FRONTEND_QUIC_REQUIRE_TOKEN,
   SHRPX_OPTID_FRONTEND_QUIC_SECRET_FILE,

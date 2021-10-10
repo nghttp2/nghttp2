@@ -2440,6 +2440,11 @@ int option_lookup_token(const char *name, size_t namelen) {
         return SHRPX_OPTID_MAX_REQUEST_HEADER_FIELDS;
       }
       break;
+    case 't':
+      if (util::strieq_l("frontend-quic-initial-rt", name, 24)) {
+        return SHRPX_OPTID_FRONTEND_QUIC_INITIAL_RTT;
+      }
+      break;
     }
     break;
   case 26:
@@ -4152,6 +4157,19 @@ int parse_config(Config *config, int optid, const StringRef &opt,
   case SHRPX_OPTID_WORKER_PROCESS_GRACE_SHUTDOWN_PERIOD:
     return parse_duration(&config->worker_process_grace_shutdown_period, opt,
                           optarg);
+  case SHRPX_OPTID_FRONTEND_QUIC_INITIAL_RTT: {
+#ifdef ENABLE_HTTP3
+    ev_tstamp d;
+    if (parse_duration(&d, opt, optarg) != 0) {
+      return -1;
+    }
+
+    config->quic.upstream.initial_rtt =
+        static_cast<ngtcp2_duration>(d * NGTCP2_SECONDS);
+#endif // ENABLE_HTTP3
+
+    return 0;
+  }
   case SHRPX_OPTID_CONF:
     LOG(WARN) << "conf: ignored";
 

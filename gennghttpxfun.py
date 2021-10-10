@@ -197,6 +197,7 @@ OPTIONS = [
     "rlimit-memlock",
     "max-worker-processes",
     "worker-process-grace-shutdown-period",
+    "frontend-quic-initial-rtt",
 ]
 
 LOGVARS = [

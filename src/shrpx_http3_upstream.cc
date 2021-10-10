@@ -592,6 +592,7 @@ int Http3Upstream::init(const UpstreamAddr *faddr, const Address &remote_addr,
   }
 
   settings.initial_ts = quic_timestamp();
+  settings.initial_rtt = quicconf.upstream.initial_rtt;
   settings.cc_algo = quicconf.upstream.congestion_controller;
   settings.max_window = http3conf.upstream.max_connection_window_size;
   settings.max_stream_window = http3conf.upstream.max_window_size;

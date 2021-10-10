@@ -1958,6 +1958,8 @@ void fill_default_config(Config *config) {
       assert(0);
       abort();
     }
+
+    upstreamconf.initial_rtt = NGTCP2_DEFAULT_INITIAL_RTT;
   }
 
   auto &http3conf = config->http3;
@@ -3399,6 +3401,13 @@ HTTP/3 and QUIC:
               (which is 8  bytes long).  If this option  is omitted, a
               random   server  ID   is   generated   on  startup   and
               configuration reload.
+  --frontend-quic-initial-rtt=<DURATION>
+              Specify the initial RTT of the frontend QUIC connection.
+              Default: )"
+      << util::duration_str(
+             static_cast<double>(config->quic.upstream.initial_rtt) /
+             NGTCP2_SECONDS)
+      << R"(
   --no-quic-bpf
               Disable eBPF.
   --frontend-http3-window-size=<SIZE>
@@ -4218,6 +4227,8 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_MAX_WORKER_PROCESSES.c_str(), required_argument, &flag, 188},
         {SHRPX_OPT_WORKER_PROCESS_GRACE_SHUTDOWN_PERIOD.c_str(),
          required_argument, &flag, 189},
+        {SHRPX_OPT_FRONTEND_QUIC_INITIAL_RTT.c_str(), required_argument, &flag,
+         190},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -5116,6 +5127,11 @@ int main(int argc, char **argv) {
       case 189:
         // --worker-process-grace-shutdown-period
         cmdcfgs.emplace_back(SHRPX_OPT_WORKER_PROCESS_GRACE_SHUTDOWN_PERIOD,
+                             StringRef{optarg});
+        break;
+      case 190:
+        // --frontend-quic-initial-rtt
+        cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_QUIC_INITIAL_RTT,
                              StringRef{optarg});
         break;
       default:
