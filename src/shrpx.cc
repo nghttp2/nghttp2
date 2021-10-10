@@ -3395,8 +3395,8 @@ HTTP/3 and QUIC:
               Specify server  ID encoded in Connection  ID to identify
               this  particular  server  instance.   Connection  ID  is
               encrypted and  this part is  not visible in  public.  It
-              must be 2  bytes long and must be encoded  in hex string
-              (which is 4  bytes long).  If this option  is omitted, a
+              must be 4  bytes long and must be encoded  in hex string
+              (which is 8  bytes long).  If this option  is omitted, a
               random   server  ID   is   generated   on  startup   and
               configuration reload.
   --no-quic-bpf

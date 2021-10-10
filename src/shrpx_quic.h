@@ -64,7 +64,7 @@ struct QUICKeyingMaterials;
 struct QUICKeyingMaterial;
 
 constexpr size_t SHRPX_QUIC_SCIDLEN = 20;
-constexpr size_t SHRPX_QUIC_SERVER_IDLEN = 2;
+constexpr size_t SHRPX_QUIC_SERVER_IDLEN = 4;
 // SHRPX_QUIC_CID_PREFIXLEN includes SHRPX_QUIC_SERVER_IDLEN.
 constexpr size_t SHRPX_QUIC_CID_PREFIXLEN = 8;
 constexpr size_t SHRPX_QUIC_CID_PREFIX_OFFSET = 1;
