@@ -782,7 +782,7 @@ struct QUICConfig {
     bool require_token;
     std::array<uint8_t, SHRPX_QUIC_SERVER_IDLEN> server_id;
     StringRef secret_file;
-    ngtcp2_duration initial_rtt;
+    ev_tstamp initial_rtt;
   } upstream;
   struct {
     StringRef prog_file;

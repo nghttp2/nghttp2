@@ -4159,13 +4159,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
                           optarg);
   case SHRPX_OPTID_FRONTEND_QUIC_INITIAL_RTT: {
 #ifdef ENABLE_HTTP3
-    ev_tstamp d;
-    if (parse_duration(&d, opt, optarg) != 0) {
-      return -1;
-    }
-
-    config->quic.upstream.initial_rtt =
-        static_cast<ngtcp2_duration>(d * NGTCP2_SECONDS);
+    return parse_duration(&config->quic.upstream.initial_rtt, opt, optarg);
 #endif // ENABLE_HTTP3
 
     return 0;

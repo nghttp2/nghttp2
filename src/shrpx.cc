@@ -1959,7 +1959,8 @@ void fill_default_config(Config *config) {
       abort();
     }
 
-    upstreamconf.initial_rtt = NGTCP2_DEFAULT_INITIAL_RTT;
+    upstreamconf.initial_rtt =
+        static_cast<ev_tstamp>(NGTCP2_DEFAULT_INITIAL_RTT) / NGTCP2_SECONDS;
   }
 
   auto &http3conf = config->http3;
@@ -3404,10 +3405,7 @@ HTTP/3 and QUIC:
   --frontend-quic-initial-rtt=<DURATION>
               Specify the initial RTT of the frontend QUIC connection.
               Default: )"
-      << util::duration_str(
-             static_cast<double>(config->quic.upstream.initial_rtt) /
-             NGTCP2_SECONDS)
-      << R"(
+      << util::duration_str(config->quic.upstream.initial_rtt) << R"(
   --no-quic-bpf
               Disable eBPF.
   --frontend-http3-window-size=<SIZE>
