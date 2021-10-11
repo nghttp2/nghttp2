@@ -1891,7 +1891,7 @@ ssize_t nghttp2_hd_inflate_hd_nv(nghttp2_hd_inflater *inflater,
         rv = NGHTTP2_ERR_HEADER_COMP;
         goto fail;
       }
-    /* fall through */
+      __attribute__((fallthrough));
     case NGHTTP2_HD_STATE_INFLATE_START:
     case NGHTTP2_HD_STATE_OPCODE:
       if ((*in & 0xe0u) == 0x20u) {
@@ -2001,7 +2001,7 @@ ssize_t nghttp2_hd_inflate_hd_nv(nghttp2_hd_inflater *inflater,
       inflater->left = 0;
       inflater->shift = 0;
       DEBUGF("inflatehd: huffman encoded=%d\n", inflater->huffman_encoded != 0);
-    /* Fall through */
+      __attribute__((fallthrough));
     case NGHTTP2_HD_STATE_NEWNAME_READ_NAMELEN:
       rfin = 0;
       rv = hd_inflate_read_len(inflater, &rfin, in, last, 7, NGHTTP2_HD_MAX_NV);
@@ -2085,7 +2085,7 @@ ssize_t nghttp2_hd_inflate_hd_nv(nghttp2_hd_inflater *inflater,
       inflater->left = 0;
       inflater->shift = 0;
       DEBUGF("inflatehd: huffman encoded=%d\n", inflater->huffman_encoded != 0);
-    /* Fall through */
+      __attribute__((fallthrough));
     case NGHTTP2_HD_STATE_READ_VALUELEN:
       rfin = 0;
       rv = hd_inflate_read_len(inflater, &rfin, in, last, 7, NGHTTP2_HD_MAX_NV);

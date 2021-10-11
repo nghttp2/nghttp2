@@ -2644,10 +2644,10 @@ static int session_after_frame_sent1(nghttp2_session *session) {
     case NGHTTP2_HCAT_PUSH_RESPONSE:
       stream->flags = (uint8_t)(stream->flags & ~NGHTTP2_STREAM_FLAG_PUSH);
       ++session->num_outgoing_streams;
-    /* Fall through */
+      __attribute__((fallthrough));
     case NGHTTP2_HCAT_RESPONSE:
       stream->state = NGHTTP2_STREAM_OPENED;
-    /* Fall through */
+      __attribute__((fallthrough));
     case NGHTTP2_HCAT_HEADERS:
       if (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
         nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_WR);
@@ -5456,7 +5456,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
 
       iframe->state = NGHTTP2_IB_READ_HEAD;
 
-    /* Fall through */
+      __attribute__((fallthrough));
     case NGHTTP2_IB_READ_HEAD: {
       int on_begin_frame_called = 0;
 
