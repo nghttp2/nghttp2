@@ -80,6 +80,8 @@ http2_impl::io_services() const {
 
 std::vector<int> http2_impl::ports() const { return server_->ports(); }
 
+std::vector<boost::asio::ip::tcp::endpoint> http2_impl::endpoints() const { return server_->endpoints(); }
+
 } // namespace server
 
 } // namespace asio_http2

@@ -55,6 +55,7 @@ public:
   const std::vector<std::shared_ptr<boost::asio::io_service>> &
   io_services() const;
   std::vector<int> ports() const;
+  std::vector<boost::asio::ip::tcp::endpoint> endpoints() const;
 
 private:
   std::unique_ptr<server> server_;

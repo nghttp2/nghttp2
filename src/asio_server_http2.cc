@@ -92,6 +92,8 @@ http2::io_services() const {
 
 std::vector<int> http2::ports() const { return impl_->ports(); }
 
+std::vector<boost::asio::ip::tcp::endpoint> http2::endpoints() const { return impl_->endpoints(); }
+
 } // namespace server
 
 } // namespace asio_http2
