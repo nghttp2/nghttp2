@@ -2845,19 +2845,26 @@ int main(int argc, char **argv) {
     exit(EXIT_FAILURE);
   }
 
-#if OPENSSL_1_1_1_API
+#if OPENSSL_1_1_1_API && !defined(OPENSSL_IS_BORINGSSL)
   if (SSL_CTX_set_ciphersuites(ssl_ctx, config.tls13_ciphers.c_str()) == 0) {
     std::cerr << "SSL_CTX_set_ciphersuites with " << config.tls13_ciphers
               << " failed: " << ERR_error_string(ERR_get_error(), nullptr)
               << std::endl;
     exit(EXIT_FAILURE);
   }
-#endif // OPENSSL_1_1_1_API
+#endif // OPENSSL_1_1_1_API && !defined(OPENSSL_IS_BORINGSSL)
 
+#if OPENSSL_1_1_1_API && !defined(OPENSSL_IS_BORINGSSL)
   if (SSL_CTX_set1_groups_list(ssl_ctx, config.groups.c_str()) != 1) {
     std::cerr << "SSL_CTX_set1_groups_list failed" << std::endl;
     exit(EXIT_FAILURE);
   }
+#else  // !(OPENSSL_1_1_1_API && !defined(OPENSSL_IS_BORINGSSL))
+  if (SSL_CTX_set1_curves_list(ssl_ctx, config.groups.c_str()) != 1) {
+    std::cerr << "SSL_CTX_set1_curves_list failed" << std::endl;
+    exit(EXIT_FAILURE);
+  }
+#endif // !(OPENSSL_1_1_1_API && !defined(OPENSSL_IS_BORINGSSL))
 
 #ifndef OPENSSL_NO_NEXTPROTONEG
   SSL_CTX_set_next_proto_select_cb(ssl_ctx, client_select_next_proto_cb,

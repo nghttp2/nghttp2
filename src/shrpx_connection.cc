@@ -397,7 +397,7 @@ int Connection::tls_handshake() {
 
   ERR_clear_error();
 
-#if OPENSSL_1_1_1_API
+#if OPENSSL_1_1_1_API && !defined(OPENSSL_IS_BORINGSSL)
   if (!tls.server_handshake || tls.early_data_finish) {
     rv = SSL_do_handshake(tls.ssl);
   } else {
@@ -449,9 +449,9 @@ int Connection::tls_handshake() {
       }
     }
   }
-#else  // !OPENSSL_1_1_1_API
+#else  // !(OPENSSL_1_1_1_API && !defined(OPENSSL_IS_BORINGSSL))
   rv = SSL_do_handshake(tls.ssl);
-#endif // !OPENSSL_1_1_1_API
+#endif // !(OPENSSL_1_1_1_API && !defined(OPENSSL_IS_BORINGSSL))
 
   if (rv <= 0) {
     auto err = SSL_get_error(tls.ssl, rv);
@@ -698,7 +698,7 @@ ssize_t Connection::write_tls(const void *data, size_t len) {
 
   ERR_clear_error();
 
-#if OPENSSL_1_1_1_API
+#if OPENSSL_1_1_1_API && !defined(OPENSSL_IS_BORINGSSL)
   int rv;
   if (SSL_is_init_finished(tls.ssl)) {
     rv = SSL_write(tls.ssl, data, len);
@@ -710,9 +710,9 @@ ssize_t Connection::write_tls(const void *data, size_t len) {
       rv = nwrite;
     }
   }
-#else  // !OPENSSL_1_1_1_API
+#else  // !(OPENSSL_1_1_1_API && !defined(OPENSSL_IS_BORINGSSL))
   auto rv = SSL_write(tls.ssl, data, len);
-#endif // !OPENSSL_1_1_1_API
+#endif // !(OPENSSL_1_1_1_API && !defined(OPENSSL_IS_BORINGSSL))
 
   if (rv <= 0) {
     auto err = SSL_get_error(tls.ssl, rv);
@@ -772,7 +772,7 @@ ssize_t Connection::read_tls(void *data, size_t len) {
     tls.last_readlen = 0;
   }
 
-#if OPENSSL_1_1_1_API
+#if OPENSSL_1_1_1_API && !defined(OPENSSL_IS_BORINGSSL)
   if (!tls.early_data_finish) {
     // TLSv1.3 handshake is still going on.
     size_t nread;
@@ -811,7 +811,7 @@ ssize_t Connection::read_tls(void *data, size_t len) {
     }
     return nread;
   }
-#endif // OPENSSL_1_1_1_API
+#endif // OPENSSL_1_1_1_API && !defined(OPENSSL_IS_BORINGSSL)
 
   auto rv = SSL_read(tls.ssl, data, len);
 

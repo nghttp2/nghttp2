@@ -731,7 +731,8 @@ int quic_alpn_select_proto_cb(SSL *ssl, const unsigned char **out,
 #  endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 #endif   // ENABLE_HTTP3
 
-#if !LIBRESSL_IN_USE && OPENSSL_VERSION_NUMBER >= 0x10002000L
+#if !LIBRESSL_IN_USE && OPENSSL_VERSION_NUMBER >= 0x10002000L &&               \
+    !defined(OPENSSL_IS_BORINGSSL)
 
 #  ifndef TLSEXT_TYPE_signed_certificate_timestamp
 #    define TLSEXT_TYPE_signed_certificate_timestamp 18
@@ -821,7 +822,8 @@ int legacy_sct_parse_cb(SSL *ssl, unsigned int ext_type,
 } // namespace
 
 #  endif // !OPENSSL_1_1_1_API
-#endif   // !LIBRESSL_IN_USE && OPENSSL_VERSION_NUMBER >= 0x10002000L
+#endif   // !LIBRESSL_IN_USE && OPENSSL_VERSION_NUMBER >= 0x10002000L &&
+         // !defined(OPENSSL_IS_BORINGSSL)
 
 #ifndef OPENSSL_NO_PSK
 namespace {
@@ -931,14 +933,14 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
       SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION | SSL_OP_SINGLE_ECDH_USE |
       SSL_OP_SINGLE_DH_USE |
       SSL_OP_CIPHER_SERVER_PREFERENCE
-#if OPENSSL_1_1_1_API
+#if OPENSSL_1_1_1_API && !defined(OPENSSL_IS_BORINGSSL)
       // The reason for disabling built-in anti-replay in OpenSSL is
       // that it only works if client gets back to the same server.
       // The freshness check described in
       // https://tools.ietf.org/html/rfc8446#section-8.3 is still
       // performed.
       | SSL_OP_NO_ANTI_REPLAY
-#endif // OPENSSL_1_1_1_API
+#endif // OPENSSL_1_1_1_API && !defined(OPENSSL_IS_BORINGSSL)
       ;
 
   auto config = mod_config();
@@ -969,13 +971,13 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
     DIE();
   }
 
-#if OPENSSL_1_1_1_API
+#if OPENSSL_1_1_1_API && !defined(OPENSSL_IS_BORINGSSL)
   if (SSL_CTX_set_ciphersuites(ssl_ctx, tlsconf.tls13_ciphers.c_str()) == 0) {
     LOG(FATAL) << "SSL_CTX_set_ciphersuites " << tlsconf.tls13_ciphers
                << " failed: " << ERR_error_string(ERR_get_error(), nullptr);
     DIE();
   }
-#endif // OPENSSL_1_1_1_API
+#endif // OPENSSL_1_1_1_API && !defined(OPENSSL_IS_BORINGSSL)
 
 #ifndef OPENSSL_NO_EC
 #  if !LIBRESSL_LEGACY_API && OPENSSL_VERSION_NUMBER >= 0x10002000L
@@ -1172,13 +1174,13 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
 #endif // !LIBRESSL_IN_USE && OPENSSL_VERSION_NUMBER >= 0x10002000L &&
        // !defined(OPENSSL_IS_BORINGSSL)
 
-#if OPENSSL_1_1_1_API
+#if OPENSSL_1_1_1_API && !defined(OPENSSL_IS_BORINGSSL)
   if (SSL_CTX_set_max_early_data(ssl_ctx, tlsconf.max_early_data) != 1) {
     LOG(FATAL) << "SSL_CTX_set_max_early_data failed: "
                << ERR_error_string(ERR_get_error(), nullptr);
     DIE();
   }
-#endif // OPENSSL_1_1_1_API
+#endif // OPENSSL_1_1_1_API && !defined(OPENSSL_IS_BORINGSSL)
 
 #ifndef OPENSSL_NO_PSK
   SSL_CTX_set_psk_server_callback(ssl_ctx, psk_server_cb);
@@ -1616,14 +1618,14 @@ SSL_CTX *create_ssl_client_context(
     DIE();
   }
 
-#if OPENSSL_1_1_1_API
+#if OPENSSL_1_1_1_API && !defined(OPENSSL_IS_BORINGSSL)
   if (SSL_CTX_set_ciphersuites(ssl_ctx, tlsconf.client.tls13_ciphers.c_str()) ==
       0) {
     LOG(FATAL) << "SSL_CTX_set_ciphersuites " << tlsconf.client.tls13_ciphers
                << " failed: " << ERR_error_string(ERR_get_error(), nullptr);
     DIE();
   }
-#endif // OPENSSL_1_1_1_API
+#endif // OPENSSL_1_1_1_API && !defined(OPENSSL_IS_BORINGSSL)
 
   SSL_CTX_set_mode(ssl_ctx, SSL_MODE_RELEASE_BUFFERS);
 
@@ -2625,7 +2627,7 @@ namespace {
 int time_t_from_asn1_time(time_t &t, const ASN1_TIME *at) {
   int rv;
 
-#if OPENSSL_1_1_1_API
+#if OPENSSL_1_1_1_API && !defined(OPENSSL_IS_BORINGSSL)
   struct tm tm;
   rv = ASN1_TIME_to_tm(at, &tm);
   if (rv != 1) {
@@ -2633,7 +2635,7 @@ int time_t_from_asn1_time(time_t &t, const ASN1_TIME *at) {
   }
 
   t = nghttp2_timegm(&tm);
-#else // !OPENSSL_1_1_1_API
+#else // !(OPENSSL_1_1_1_API && !defined(OPENSSL_IS_BORINGSSL))
   auto b = BIO_new(BIO_s_mem());
   if (!b) {
     return -1;
@@ -2659,7 +2661,7 @@ int time_t_from_asn1_time(time_t &t, const ASN1_TIME *at) {
   }
 
   t = tt;
-#endif // !OPENSSL_1_1_1_API
+#endif // !(OPENSSL_1_1_1_API && !defined(OPENSSL_IS_BORINGSSL))
 
   return 0;
 }
