@@ -397,11 +397,12 @@ int Connection::tls_handshake() {
 
   ERR_clear_error();
 
+  auto &tlsconf = get_config()->tls;
+
 #if OPENSSL_1_1_1_API && !defined(OPENSSL_IS_BORINGSSL)
   if (!tls.server_handshake || tls.early_data_finish) {
     rv = SSL_do_handshake(tls.ssl);
   } else {
-    auto &tlsconf = get_config()->tls;
     for (;;) {
       size_t nread;
 
@@ -499,7 +500,12 @@ int Connection::tls_handshake() {
   // Don't send handshake data if handshake was completed in OpenSSL
   // routine.  We have to check HTTP/2 requirement if HTTP/2 was
   // negotiated before sending finished message to the peer.
-  if (rv != 1 && tls.wbuf.rleft()) {
+  if ((rv != 1
+#if defined(OPENSSL_IS_BORINGSSL)
+       || SSL_in_init(tls.ssl)
+#endif // defined(OPENSSL_IS_BORINGSSL)
+           ) &&
+      tls.wbuf.rleft()) {
     // First write indicates that resumption stuff has done.
     if (tls.handshake_state != TLSHandshakeState::WRITE_STARTED) {
       tls.handshake_state = TLSHandshakeState::WRITE_STARTED;
@@ -534,6 +540,40 @@ int Connection::tls_handshake() {
     }
     return SHRPX_ERR_INPROGRESS;
   }
+
+#if defined(OPENSSL_IS_BORINGSSL)
+  if (!tlsconf.no_postpone_early_data && SSL_in_early_data(tls.ssl) &&
+      SSL_in_init(tls.ssl)) {
+    auto nread = SSL_read(tls.ssl, buf.data(), buf.size());
+    if (nread <= 0) {
+      auto err = SSL_get_error(tls.ssl, nread);
+      switch (err) {
+      case SSL_ERROR_WANT_READ:
+      case SSL_ERROR_WANT_WRITE:
+        break;
+      case SSL_ERROR_ZERO_RETURN:
+        return SHRPX_ERR_EOF;
+      case SSL_ERROR_SSL:
+        if (LOG_ENABLED(INFO)) {
+          LOG(INFO) << "SSL_read: "
+                    << ERR_error_string(ERR_get_error(), nullptr);
+        }
+        return SHRPX_ERR_NETWORK;
+      default:
+        if (LOG_ENABLED(INFO)) {
+          LOG(INFO) << "SSL_read: SSL_get_error returned " << err;
+        }
+        return SHRPX_ERR_NETWORK;
+      }
+    } else {
+      tls.earlybuf.append(buf.data(), nread);
+    }
+
+    if (SSL_in_init(tls.ssl)) {
+      return SHRPX_ERR_INPROGRESS;
+    }
+  }
+#endif // defined(OPENSSL_IS_BORINGSSL)
 
   // Handshake was done
 
