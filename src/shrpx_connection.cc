@@ -571,6 +571,36 @@ int Connection::write_tls_pending_handshake() {
     tls.wbuf.drain(nwrite);
   }
 
+#if defined(OPENSSL_IS_BORINGSSL)
+  if (!SSL_in_init(tls.ssl)) {
+    // This will send a session ticket.
+    auto nwrite = SSL_write(tls.ssl, "", 0);
+    if (nwrite < 0) {
+      auto err = SSL_get_error(tls.ssl, nwrite);
+      switch (err) {
+      case SSL_ERROR_WANT_READ:
+        if (LOG_ENABLED(INFO)) {
+          LOG(INFO) << "Close connection due to TLS renegotiation";
+        }
+        return SHRPX_ERR_NETWORK;
+      case SSL_ERROR_WANT_WRITE:
+        break;
+      case SSL_ERROR_SSL:
+        if (LOG_ENABLED(INFO)) {
+          LOG(INFO) << "SSL_write: "
+                    << ERR_error_string(ERR_get_error(), nullptr);
+        }
+        return SHRPX_ERR_NETWORK;
+      default:
+        if (LOG_ENABLED(INFO)) {
+          LOG(INFO) << "SSL_write: SSL_get_error returned " << err;
+        }
+        return SHRPX_ERR_NETWORK;
+      }
+    }
+  }
+#endif // defined(OPENSSL_IS_BORINGSSL)
+
   // We have to start read watcher, since later stage of code expects
   // this.
   rlimit.startw();
