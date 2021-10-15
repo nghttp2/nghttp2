@@ -1145,6 +1145,12 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
   SSL_CTX_set_alpn_select_cb(ssl_ctx, alpn_select_proto_cb, nullptr);
 #endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 
+  auto tls_ctx_data = new TLSContextData();
+  tls_ctx_data->cert_file = cert_file;
+  tls_ctx_data->sct_data = sct_data;
+
+  SSL_CTX_set_app_data(ssl_ctx, tls_ctx_data);
+
 #if !LIBRESSL_IN_USE && OPENSSL_VERSION_NUMBER >= 0x10002000L &&               \
     !defined(OPENSSL_IS_BORINGSSL)
   // SSL_extension_supported(TLSEXT_TYPE_signed_certificate_timestamp)
@@ -1177,8 +1183,16 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
     }
 #  endif // !OPENSSL_1_1_1_API
   }
-#endif // !LIBRESSL_IN_USE && OPENSSL_VERSION_NUMBER >= 0x10002000L &&
-       // !defined(OPENSSL_IS_BORINGSSL)
+#elif defined(OPENSSL_IS_BORINGSSL)
+  if (!tls_ctx_data->sct_data.empty() &&
+      SSL_CTX_set_signed_cert_timestamp_list(
+          ssl_ctx, tls_ctx_data->sct_data.data(),
+          tls_ctx_data->sct_data.size()) != 1) {
+    LOG(FATAL) << "SSL_CTX_set_signed_cert_timestamp_list failed: "
+               << ERR_error_string(ERR_get_error(), nullptr);
+    DIE();
+  }
+#endif // defined(OPENSSL_IS_BORINGSSL)
 
 #if OPENSSL_1_1_1_API && !defined(OPENSSL_IS_BORINGSSL)
   if (SSL_CTX_set_max_early_data(ssl_ctx, tlsconf.max_early_data) != 1) {
@@ -1191,12 +1205,6 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
 #ifndef OPENSSL_NO_PSK
   SSL_CTX_set_psk_server_callback(ssl_ctx, psk_server_cb);
 #endif // !LIBRESSL_NO_PSK
-
-  auto tls_ctx_data = new TLSContextData();
-  tls_ctx_data->cert_file = cert_file;
-  tls_ctx_data->sct_data = sct_data;
-
-  SSL_CTX_set_app_data(ssl_ctx, tls_ctx_data);
 
   return ssl_ctx;
 }
@@ -1553,6 +1561,12 @@ SSL_CTX *create_quic_ssl_context(const char *private_key_file,
   SSL_CTX_set_alpn_select_cb(ssl_ctx, quic_alpn_select_proto_cb, nullptr);
 #  endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 
+  auto tls_ctx_data = new TLSContextData();
+  tls_ctx_data->cert_file = cert_file;
+  tls_ctx_data->sct_data = sct_data;
+
+  SSL_CTX_set_app_data(ssl_ctx, tls_ctx_data);
+
 #  if !LIBRESSL_IN_USE && OPENSSL_VERSION_NUMBER >= 0x10002000L &&             \
       !defined(OPENSSL_IS_BORINGSSL)
   // SSL_extension_supported(TLSEXT_TYPE_signed_certificate_timestamp)
@@ -1585,8 +1599,16 @@ SSL_CTX *create_quic_ssl_context(const char *private_key_file,
     }
 #    endif // !OPENSSL_1_1_1_API
   }
-#  endif // !LIBRESSL_IN_USE && OPENSSL_VERSION_NUMBER >= 0x10002000L &&
-         // !defined(OPENSSL_IS_BORINGSSL)
+#  elif defined(OPENSSL_IS_BORINGSSL)
+  if (!tls_ctx_data->sct_data.empty() &&
+      SSL_CTX_set_signed_cert_timestamp_list(
+          ssl_ctx, tls_ctx_data->sct_data.data(),
+          tls_ctx_data->sct_data.size()) != 1) {
+    LOG(FATAL) << "SSL_CTX_set_signed_cert_timestamp_list failed: "
+               << ERR_error_string(ERR_get_error(), nullptr);
+    DIE();
+  }
+#  endif // defined(OPENSSL_IS_BORINGSSL)
 
 #  if OPENSSL_1_1_1_API && !defined(OPENSSL_IS_BORINGSSL)
   auto &quicconf = config->quic;
@@ -1605,12 +1627,6 @@ SSL_CTX *create_quic_ssl_context(const char *private_key_file,
 #  endif // !LIBRESSL_NO_PSK
 
   SSL_CTX_set_quic_method(ssl_ctx, &quic_method);
-
-  auto tls_ctx_data = new TLSContextData();
-  tls_ctx_data->cert_file = cert_file;
-  tls_ctx_data->sct_data = sct_data;
-
-  SSL_CTX_set_app_data(ssl_ctx, tls_ctx_data);
 
   return ssl_ctx;
 }
