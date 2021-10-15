@@ -754,7 +754,8 @@ void ConnectionHandler::handle_ocsp_complete() {
           std::make_shared<std::vector<uint8_t>>(ocsp_.resp);
 #    endif // !HAVE_ATOMIC_STD_SHARED_PTR
 #  else    // OPENSSL_IS_BORINGSSL
-      SSL_CTX_set_ocsp_response(ssl_ctx, ocsp_.resp.data(), ocsp_.resp.size());
+      SSL_CTX_set_ocsp_response(quic_ssl_ctx, ocsp_.resp.data(),
+                                ocsp_.resp.size());
 #  endif   // OPENSSL_IS_BORINGSSL
     }
 #endif // ENABLE_HTTP3
