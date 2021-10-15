@@ -1649,7 +1649,7 @@ std::mt19937 make_mt19937() {
 }
 
 int daemonize(int nochdir, int noclose) {
-#if defined(__APPLE__)
+#ifdef __APPLE__
   pid_t pid;
   pid = fork();
   if (pid == -1) {
@@ -1683,9 +1683,9 @@ int daemonize(int nochdir, int noclose) {
     }
   }
   return 0;
-#else  // !defined(__APPLE__)
+#else  // !__APPLE__
   return daemon(nochdir, noclose);
-#endif // !defined(__APPLE__)
+#endif // !__APPLE__
 }
 
 #ifdef ENABLE_HTTP3

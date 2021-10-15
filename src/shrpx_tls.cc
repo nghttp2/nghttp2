@@ -2648,7 +2648,7 @@ int time_t_from_asn1_time(time_t &t, const ASN1_TIME *at) {
     return -1;
   }
 
-#  if defined(OPENSSL_IS_BORINGSSL)
+#  ifdef OPENSSL_IS_BORINGSSL
   char *s;
 #  else
   unsigned char *s;

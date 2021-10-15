@@ -964,7 +964,7 @@ int open_log_file(const char *path) {
       strcmp(path, "/proc/self/fd/2") == 0) {
     return STDERR_COPY;
   }
-#if defined O_CLOEXEC
+#ifdef O_CLOEXEC
 
   auto fd = open(path, O_WRONLY | O_APPEND | O_CREAT | O_CLOEXEC,
                  S_IRUSR | S_IWUSR | S_IRGRP);

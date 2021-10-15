@@ -304,7 +304,7 @@ read_quic_secret_file(const StringRef &path) {
 FILE *open_file_for_write(const char *filename) {
   std::array<char, STRERROR_BUFSIZE> errbuf;
 
-#if defined O_CLOEXEC
+#ifdef O_CLOEXEC
   auto fd = open(filename, O_WRONLY | O_CLOEXEC | O_CREAT | O_TRUNC,
                  S_IRUSR | S_IWUSR);
 #else

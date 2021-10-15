@@ -503,9 +503,9 @@ int Connection::tls_handshake() {
   // routine.  We have to check HTTP/2 requirement if HTTP/2 was
   // negotiated before sending finished message to the peer.
   if ((rv != 1
-#if defined(OPENSSL_IS_BORINGSSL)
+#ifdef OPENSSL_IS_BORINGSSL
        || SSL_in_init(tls.ssl)
-#endif // defined(OPENSSL_IS_BORINGSSL)
+#endif // OPENSSL_IS_BORINGSSL
            ) &&
       tls.wbuf.rleft()) {
     // First write indicates that resumption stuff has done.
@@ -543,7 +543,7 @@ int Connection::tls_handshake() {
     return SHRPX_ERR_INPROGRESS;
   }
 
-#if defined(OPENSSL_IS_BORINGSSL)
+#ifdef OPENSSL_IS_BORINGSSL
   if (!tlsconf.no_postpone_early_data && SSL_in_early_data(tls.ssl) &&
       SSL_in_init(tls.ssl)) {
     auto nread = SSL_read(tls.ssl, buf.data(), buf.size());
@@ -575,7 +575,7 @@ int Connection::tls_handshake() {
       return SHRPX_ERR_INPROGRESS;
     }
   }
-#endif // defined(OPENSSL_IS_BORINGSSL)
+#endif // OPENSSL_IS_BORINGSSL
 
   // Handshake was done
 
@@ -613,7 +613,7 @@ int Connection::write_tls_pending_handshake() {
     tls.wbuf.drain(nwrite);
   }
 
-#if defined(OPENSSL_IS_BORINGSSL)
+#ifdef OPENSSL_IS_BORINGSSL
   if (!SSL_in_init(tls.ssl)) {
     // This will send a session ticket.
     auto nwrite = SSL_write(tls.ssl, "", 0);
@@ -641,7 +641,7 @@ int Connection::write_tls_pending_handshake() {
       }
     }
   }
-#endif // defined(OPENSSL_IS_BORINGSSL)
+#endif // OPENSSL_IS_BORINGSSL
 
   // We have to start read watcher, since later stage of code expects
   // this.
