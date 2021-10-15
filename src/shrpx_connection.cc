@@ -397,7 +397,9 @@ int Connection::tls_handshake() {
 
   ERR_clear_error();
 
+#if OPENSSL_1_1_1_API || defined(OPENSSL_IS_BORINGSSL)
   auto &tlsconf = get_config()->tls;
+#endif // OPENSSL_1_1_1_API || defined(OPENSSL_IS_BORINGSSL)
 
 #if OPENSSL_1_1_1_API && !defined(OPENSSL_IS_BORINGSSL)
   if (!tls.server_handshake || tls.early_data_finish) {
