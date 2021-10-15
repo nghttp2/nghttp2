@@ -613,6 +613,40 @@ int Http3Upstream::init(const UpstreamAddr *faddr, const Address &remote_addr,
   params.max_idle_timeout = static_cast<ngtcp2_tstamp>(
       quicconf.upstream.timeout.idle * NGTCP2_SECONDS);
 
+#ifdef OPENSSL_IS_BORINGSSL
+  if (quicconf.upstream.early_data) {
+    ngtcp2_transport_params early_data_params{
+        .initial_max_stream_data_bidi_local =
+            params.initial_max_stream_data_bidi_local,
+        .initial_max_stream_data_bidi_remote =
+            params.initial_max_stream_data_bidi_remote,
+        .initial_max_stream_data_uni = params.initial_max_stream_data_uni,
+        .initial_max_data = params.initial_max_data,
+        .initial_max_streams_bidi = params.initial_max_streams_bidi,
+        .initial_max_streams_uni = params.initial_max_streams_uni,
+    };
+
+    // TODO include HTTP/3 SETTINGS
+
+    std::array<uint8_t, 128> quic_early_data_ctx;
+
+    auto quic_early_data_ctxlen = ngtcp2_encode_transport_params(
+        quic_early_data_ctx.data(), quic_early_data_ctx.size(),
+        NGTCP2_TRANSPORT_PARAMS_TYPE_ENCRYPTED_EXTENSIONS, &early_data_params);
+
+    assert(quic_early_data_ctxlen > 0);
+    assert(static_cast<size_t>(quic_early_data_ctxlen) <=
+           quic_early_data_ctx.size());
+
+    if (SSL_set_quic_early_data_context(handler_->get_ssl(),
+                                        quic_early_data_ctx.data(),
+                                        quic_early_data_ctxlen) != 1) {
+      ULOG(ERROR, this) << "SSL_set_quic_early_data_context failed";
+      return -1;
+    }
+  }
+#endif // OPENSSL_IS_BORINGSSL
+
   if (odcid) {
     params.original_dcid = *odcid;
     params.retry_scid = initial_hd.dcid;

@@ -474,6 +474,7 @@ if test "x${request_openssl}" != "xno"; then
     CFLAGS="$OPENSSL_CFLAGS $CFLAGS"
     LIBS="$OPENSSL_LIBS $LIBS"
 
+    # quictls/openssl has SSL_is_quic.
     have_ssl_is_quic=no
     AC_MSG_CHECKING([for SSL_is_quic])
     AC_LINK_IFELSE([AC_LANG_PROGRAM([[
@@ -484,6 +485,17 @@ if test "x${request_openssl}" != "xno"; then
     ]])],
     [AC_MSG_RESULT([yes]); have_ssl_is_quic=yes],
     [AC_MSG_RESULT([no]); have_ssl_is_quic=no])
+
+    # boringssl has SSL_set_quic_early_data_context.
+    AC_MSG_CHECKING([for SSL_set_quic_early_data_context])
+    AC_LINK_IFELSE([AC_LANG_PROGRAM([[
+      #include <openssl/ssl.h>
+    ]], [[
+      SSL *ssl = NULL;
+      SSL_set_quic_early_data_context(ssl, NULL, 0);
+    ]])],
+    [AC_MSG_RESULT([yes]); have_boringssl_quic=yes],
+    [AC_MSG_RESULT([no]); have_boringssl_quic=no])
 
     CFLAGS="$save_CFLAGS"
     LIBS="$save_LIBS"
@@ -527,19 +539,46 @@ fi
 
 # ngtcp2_crypto_openssl (for src)
 have_libngtcp2_crypto_openssl=no
-if test "x${request_libngtcp2}" != "xno"; then
+if test "x${have_ssl_is_quic}" = "xyes" &&
+   test "x${request_libngtcp2}" != "xno"; then
   PKG_CHECK_MODULES([LIBNGTCP2_CRYPTO_OPENSSL],
                     [libngtcp2_crypto_openssl >= 0.0.0],
                     [have_libngtcp2_crypto_openssl=yes],
                     [have_libngtcp2_crypto_openssl=no])
   if test "x${have_libngtcp2_crypto_openssl}" = "xno"; then
     AC_MSG_NOTICE($LIBNGTCP2_CRYPTO_OPENSSL_PKG_ERRORS)
+  else
+    AC_DEFINE([HAVE_LIBNGTCP2_CRYPTO_OPENSSL], [1],
+              [Define to 1 if you have `libngtcp2_crypto_openssl` library.])
   fi
 fi
 
-if test "x${request_libngtcp2}" = "xyes" &&
+if test "x${have_ssl_is_quic}" = "xyes" &&
+   test "x${request_libngtcp2}" = "xyes" &&
    test "x${have_libngtcp2_crypto_openssl}" != "xyes"; then
   AC_MSG_ERROR([libngtcp2_crypto_openssl was requested (--with-libngtcp2) but not found])
+fi
+
+# ngtcp2_crypto_boringssl (for src)
+have_libngtcp2_crypto_boringssl=no
+if test "x${have_boringssl_quic}" = "xyes" &&
+   test "x${request_libngtcp2}" != "xno"; then
+  PKG_CHECK_MODULES([LIBNGTCP2_CRYPTO_BORINGSSL],
+                    [libngtcp2_crypto_boringssl >= 0.0.0],
+                    [have_libngtcp2_crypto_boringssl=yes],
+                    [have_libngtcp2_crypto_boringssl=no])
+  if test "x${have_libngtcp2_crypto_boringssl}" = "xno"; then
+    AC_MSG_NOTICE($LIBNGTCP2_CRYPTO_BORINGSSL_PKG_ERRORS)
+  else
+    AC_DEFINE([HAVE_LIBNGTCP2_CRYPTO_BORINGSSL], [1],
+              [Define to 1 if you have `libngtcp2_crypto_boringssl` library.])
+  fi
+fi
+
+if test "x${have_boringssl_quic}" = "xyes" &&
+   test "x${request_libngtcp2}" = "xyes" &&
+   test "x${have_libngtcp2_crypto_boringssl}" != "xyes"; then
+  AC_MSG_ERROR([libngtcp2_crypto_boringssl was requested (--with-libngtcp2) but not found])
 fi
 
 # nghttp3 (for src)
@@ -749,9 +788,11 @@ AM_CONDITIONAL([ENABLE_APP], [ test "x${enable_app}" = "xyes" ])
 # Check HTTP/3 support
 enable_http3=no
 if test "x${request_http3}" != "xno" &&
-   test "x${have_ssl_is_quic}" = "xyes" &&
+   (test "x${have_ssl_is_quic}" = "xyes" ||
+    test "x${have_boringssl_quic}" = "xyes") &&
    test "x${have_libngtcp2}" = "xyes" &&
-   test "x${have_libngtcp2_crypto_openssl}" = "xyes" &&
+   (test "x${have_libngtcp2_crypto_openssl}" = "xyes" ||
+    test "x${have_libngtcp2_crypto_boringssl}" = "xyes") &&
    test "x${have_libnghttp3}" = "xyes"; then
   enable_http3=yes
   AC_DEFINE([ENABLE_HTTP3], [1], [Define to 1 if HTTP/3 is enabled.])
@@ -1184,6 +1225,7 @@ AC_MSG_NOTICE([summary of build options:
       Libc-ares:      ${have_libcares} (CFLAGS='${LIBCARES_CFLAGS}' LIBS='${LIBCARES_LIBS}')
       libngtcp2:      ${have_libngtcp2} (CFLAGS='${LIBNGTCP2_CFLAGS}' LIBS='${LIBNGTCP2_LIBS}')
       libngtcp2_crypto_openssl: ${have_libngtcp2_crypto_openssl} (CFLAGS='${LIBNGTCP2_CRYPTO_OPENSSL_CFLAGS}' LIBS='${LIBNGTCP2_CRYPTO_OPENSSL_LIBS}')
+      libngtcp2_crypto_boringssl: ${have_libngtcp2_crypto_boringssl} (CFLAGS='${LIBNGTCP2_CRYPTO_BORINGSSL_CFLAGS}' LIBS='${LIBNGTCP2_CRYPTO_BORINGSSL_LIBS}')
       libnghttp3:     ${have_libnghttp3} (CFLAGS='${LIBNGHTTP3_CFLAGS}' LIBS='${LIBNGHTTP3_LIBS}')
       libbpf:         ${have_libbpf} (CFLAGS='${LIBBPF_CFLAGS}' LIBS='${LIBBPF_LIBS}')
       Libevent(SSL):  ${have_libevent_openssl} (CFLAGS='${LIBEVENT_OPENSSL_CFLAGS}' LIBS='${LIBEVENT_OPENSSL_LIBS}')

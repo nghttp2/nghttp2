@@ -740,9 +740,9 @@ void ConnectionHandler::handle_ocsp_complete() {
     // that case we get nullptr.
     auto quic_ssl_ctx = quic_all_ssl_ctx_[ocsp_.next];
     if (quic_ssl_ctx) {
+#  ifndef OPENSSL_IS_BORINGSSL
       auto quic_tls_ctx_data = static_cast<tls::TLSContextData *>(
           SSL_CTX_get_app_data(quic_ssl_ctx));
-#  ifndef OPENSSL_IS_BORINGSSL
 #    ifdef HAVE_ATOMIC_STD_SHARED_PTR
       std::atomic_store_explicit(
           &quic_tls_ctx_data->ocsp_data,

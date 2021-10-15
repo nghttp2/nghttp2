@@ -369,7 +369,9 @@ ClientHandler *QUICConnectionHandler::handle_new_connection(
     return nullptr;
   }
 
+#if OPENSSL_1_1_1_API && !defined(OPENSSL_IS_BORINGSSL)
   assert(SSL_is_quic(ssl));
+#endif // OPENSSL_1_1_1_API && !defined(OPENSSL_IS_BORINGSSL)
 
   SSL_set_accept_state(ssl);
 
@@ -377,7 +379,11 @@ ClientHandler *QUICConnectionHandler::handle_new_connection(
   auto &quicconf = config->quic;
 
   if (quicconf.upstream.early_data) {
+#if OPENSSL_1_1_1_API && !defined(OPENSSL_IS_BORINGSSL)
     SSL_set_quic_early_data_enabled(ssl, 1);
+#else  // !(OPENSSL_1_1_1_API && !defined(OPENSSL_IS_BORINGSSL))
+    SSL_set_early_data_enabled(ssl, 1);
+#endif // !(OPENSSL_1_1_1_API && !defined(OPENSSL_IS_BORINGSSL))
   }
 
   // Disable TLS session ticket if we don't have working ticket

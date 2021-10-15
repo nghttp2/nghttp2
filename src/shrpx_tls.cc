@@ -61,8 +61,13 @@
 #ifdef ENABLE_HTTP3
 #  include <ngtcp2/ngtcp2.h>
 #  include <ngtcp2/ngtcp2_crypto.h>
-#  include <ngtcp2/ngtcp2_crypto_openssl.h>
-#endif // ENABLE_HTTP3
+#  ifdef HAVE_LIBNGTCP2_CRYPTO_OPENSSL
+#    include <ngtcp2/ngtcp2_crypto_openssl.h>
+#  endif // HAVE_LIBNGTCP2_CRYPTO_OPENSSL
+#  ifdef HAVE_LIBNGTCP2_CRYPTO_BORINGSSL
+#    include <ngtcp2/ngtcp2_crypto_boringssl.h>
+#  endif // HAVE_LIBNGTCP2_CRYPTO_BORINGSSL
+#endif   // ENABLE_HTTP3
 
 #include "shrpx_log.h"
 #include "shrpx_client_handler.h"
@@ -196,8 +201,9 @@ int servername_callback(SSL *ssl, int *al, void *arg) {
   auto hostname = StringRef{std::begin(buf), end_buf};
 
 #ifdef ENABLE_HTTP3
-  auto cert_tree = SSL_is_quic(ssl) ? worker->get_quic_cert_lookup_tree()
-                                    : worker->get_cert_lookup_tree();
+  auto cert_tree = conn->proto == Proto::HTTP3
+                       ? worker->get_quic_cert_lookup_tree()
+                       : worker->get_cert_lookup_tree();
 #else  // !ENABLE_HTTP3
   auto cert_tree = worker->get_cert_lookup_tree();
 #endif // !ENABLE_HTTP3
@@ -212,7 +218,7 @@ int servername_callback(SSL *ssl, int *al, void *arg) {
   auto conn_handler = worker->get_connection_handler();
 
 #ifdef ENABLE_HTTP3
-  const auto &ssl_ctx_list = SSL_is_quic(ssl)
+  const auto &ssl_ctx_list = conn->proto == Proto::HTTP3
                                  ? conn_handler->get_quic_indexed_ssl_ctx(idx)
                                  : conn_handler->get_indexed_ssl_ctx(idx);
 #else  // !ENABLE_HTTP3
@@ -1196,6 +1202,7 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
 }
 
 #ifdef ENABLE_HTTP3
+#  ifdef HAVE_LIBNGTCP2_CRYPTO_OPENSSL
 namespace {
 int quic_set_encryption_secrets(SSL *ssl, OSSL_ENCRYPTION_LEVEL ossl_level,
                                 const uint8_t *rx_secret,
@@ -1259,6 +1266,84 @@ auto quic_method = SSL_QUIC_METHOD{
     quic_send_alert,
 };
 } // namespace
+#  endif // HAVE_LIBNGTCP2_CRYPTO_OPENSSL
+
+#  ifdef HAVE_LIBNGTCP2_CRYPTO_BORINGSSL
+namespace {
+int quic_set_read_secret(SSL *ssl, ssl_encryption_level_t ssl_level,
+                         const SSL_CIPHER *cipher, const uint8_t *secret,
+                         size_t secretlen) {
+  auto conn = static_cast<Connection *>(SSL_get_app_data(ssl));
+  auto handler = static_cast<ClientHandler *>(conn->data);
+  auto upstream = static_cast<Http3Upstream *>(handler->get_upstream());
+  auto level = ngtcp2_crypto_boringssl_from_ssl_encryption_level(ssl_level);
+
+  if (upstream->on_rx_secret(level, secret, secretlen) != 0) {
+    return 0;
+  }
+
+  return 1;
+}
+} // namespace
+
+namespace {
+int quic_set_write_secret(SSL *ssl, ssl_encryption_level_t ssl_level,
+                          const SSL_CIPHER *cipher, const uint8_t *secret,
+                          size_t secretlen) {
+  auto conn = static_cast<Connection *>(SSL_get_app_data(ssl));
+  auto handler = static_cast<ClientHandler *>(conn->data);
+  auto upstream = static_cast<Http3Upstream *>(handler->get_upstream());
+  auto level = ngtcp2_crypto_boringssl_from_ssl_encryption_level(ssl_level);
+
+  if (upstream->on_tx_secret(level, secret, secretlen) != 0) {
+    return 0;
+  }
+
+  return 1;
+}
+} // namespace
+
+namespace {
+int quic_add_handshake_data(SSL *ssl, ssl_encryption_level_t ssl_level,
+                            const uint8_t *data, size_t len) {
+  auto conn = static_cast<Connection *>(SSL_get_app_data(ssl));
+  auto handler = static_cast<ClientHandler *>(conn->data);
+  auto upstream = static_cast<Http3Upstream *>(handler->get_upstream());
+  auto level = ngtcp2_crypto_boringssl_from_ssl_encryption_level(ssl_level);
+
+  upstream->add_crypto_data(level, data, len);
+
+  return 1;
+}
+} // namespace
+
+namespace {
+int quic_flush_flight(SSL *ssl) { return 1; }
+} // namespace
+
+namespace {
+int quic_send_alert(SSL *ssl, ssl_encryption_level_t level, uint8_t alert) {
+  auto conn = static_cast<Connection *>(SSL_get_app_data(ssl));
+  auto handler = static_cast<ClientHandler *>(conn->data);
+  auto upstream = static_cast<Http3Upstream *>(handler->get_upstream());
+
+  if (!upstream) {
+    return 1;
+  }
+
+  upstream->set_tls_alert(alert);
+
+  return 1;
+}
+} // namespace
+
+namespace {
+auto quic_method = SSL_QUIC_METHOD{
+    quic_set_read_secret, quic_set_write_secret, quic_add_handshake_data,
+    quic_flush_flight,    quic_send_alert,
+};
+} // namespace
+#  endif // HAVE_LIBNGTCP2_CRYPTO_BORINGSSL
 
 SSL_CTX *create_quic_ssl_context(const char *private_key_file,
                                  const char *cert_file,
@@ -1279,14 +1364,14 @@ SSL_CTX *create_quic_ssl_context(const char *private_key_file,
       SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION | SSL_OP_SINGLE_ECDH_USE |
       SSL_OP_SINGLE_DH_USE |
       SSL_OP_CIPHER_SERVER_PREFERENCE
-#  if OPENSSL_1_1_1_API
+#  if OPENSSL_1_1_1_API && !defined(OPENSSL_IS_BORINGSSL)
       // The reason for disabling built-in anti-replay in OpenSSL is
       // that it only works if client gets back to the same server.
       // The freshness check described in
       // https://tools.ietf.org/html/rfc8446#section-8.3 is still
       // performed.
       | SSL_OP_NO_ANTI_REPLAY
-#  endif // OPENSSL_1_1_1_API
+#  endif // OPENSSL_1_1_1_API && !defined(OPENSSL_IS_BORINGSSL)
       ;
 
   auto config = mod_config();
@@ -1309,13 +1394,13 @@ SSL_CTX *create_quic_ssl_context(const char *private_key_file,
     DIE();
   }
 
-#  if OPENSSL_1_1_1_API
+#  if OPENSSL_1_1_1_API && !defined(OPENSSL_IS_BORINGSSL)
   if (SSL_CTX_set_ciphersuites(ssl_ctx, tlsconf.tls13_ciphers.c_str()) == 0) {
     LOG(FATAL) << "SSL_CTX_set_ciphersuites " << tlsconf.tls13_ciphers
                << " failed: " << ERR_error_string(ERR_get_error(), nullptr);
     DIE();
   }
-#  endif // OPENSSL_1_1_1_API
+#  endif // OPENSSL_1_1_1_API && !defined(OPENSSL_IS_BORINGSSL)
 
 #  ifndef OPENSSL_NO_EC
 #    if !LIBRESSL_LEGACY_API && OPENSSL_VERSION_NUMBER >= 0x10002000L
@@ -1503,7 +1588,7 @@ SSL_CTX *create_quic_ssl_context(const char *private_key_file,
 #  endif // !LIBRESSL_IN_USE && OPENSSL_VERSION_NUMBER >= 0x10002000L &&
          // !defined(OPENSSL_IS_BORINGSSL)
 
-#  if OPENSSL_1_1_1_API
+#  if OPENSSL_1_1_1_API && !defined(OPENSSL_IS_BORINGSSL)
   auto &quicconf = config->quic;
 
   if (quicconf.upstream.early_data &&
@@ -1513,7 +1598,7 @@ SSL_CTX *create_quic_ssl_context(const char *private_key_file,
                << ERR_error_string(ERR_get_error(), nullptr);
     DIE();
   }
-#  endif // OPENSSL_1_1_1_API
+#  endif // OPENSSL_1_1_1_API && !defined(OPENSSL_IS_BORINGSSL)
 
 #  ifndef OPENSSL_NO_PSK
   SSL_CTX_set_psk_server_callback(ssl_ctx, psk_server_cb);
