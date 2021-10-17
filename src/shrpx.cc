@@ -1450,8 +1450,7 @@ int generate_cid_prefix(
   cid_prefixes.resize(num_cid_prefix);
 
   for (auto &cid_prefix : cid_prefixes) {
-    if (create_cid_prefix(cid_prefix.data(),
-                          quicconf.upstream.server_id.data()) != 0) {
+    if (create_cid_prefix(cid_prefix.data(), quicconf.server_id.data()) != 0) {
       return -1;
     }
   }
@@ -1953,14 +1952,13 @@ void fill_default_config(Config *config) {
 
     upstreamconf.congestion_controller = NGTCP2_CC_ALGO_CUBIC;
 
-    if (RAND_bytes(upstreamconf.server_id.data(),
-                   upstreamconf.server_id.size()) != 1) {
-      assert(0);
-      abort();
-    }
-
     upstreamconf.initial_rtt =
         static_cast<ev_tstamp>(NGTCP2_DEFAULT_INITIAL_RTT) / NGTCP2_SECONDS;
+  }
+
+  if (RAND_bytes(quicconf.server_id.data(), quicconf.server_id.size()) != 1) {
+    assert(0);
+    abort();
   }
 
   auto &http3conf = config->http3;
@@ -3394,7 +3392,7 @@ HTTP/3 and QUIC:
               option is not  given or an error  occurred while opening
               or  reading  a  file,  a keying  material  is  generated
               internally on startup and reload.
-  --frontend-quic-server-id=<HEXSTRING>
+  --quic-server-id=<HEXSTRING>
               Specify server  ID encoded in Connection  ID to identify
               this  particular  server  instance.   Connection  ID  is
               encrypted and  this part is  not visible in  public.  It
@@ -4217,8 +4215,7 @@ int main(int argc, char **argv) {
          182},
         {SHRPX_OPT_FRONTEND_QUIC_CONGESTION_CONTROLLER.c_str(),
          required_argument, &flag, 183},
-        {SHRPX_OPT_FRONTEND_QUIC_SERVER_ID.c_str(), required_argument, &flag,
-         185},
+        {SHRPX_OPT_QUIC_SERVER_ID.c_str(), required_argument, &flag, 185},
         {SHRPX_OPT_FRONTEND_QUIC_SECRET_FILE.c_str(), required_argument, &flag,
          186},
         {SHRPX_OPT_RLIMIT_MEMLOCK.c_str(), required_argument, &flag, 187},
@@ -5105,9 +5102,8 @@ int main(int argc, char **argv) {
                              StringRef{optarg});
         break;
       case 185:
-        // --frontend-quic-server-id
-        cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_QUIC_SERVER_ID,
-                             StringRef{optarg});
+        // --quic-server-id
+        cmdcfgs.emplace_back(SHRPX_OPT_QUIC_SERVER_ID, StringRef{optarg});
         break;
       case 186:
         // --frontend-quic-secret-file

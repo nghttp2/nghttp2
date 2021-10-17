@@ -391,8 +391,7 @@ constexpr auto SHRPX_OPT_FRONTEND_QUIC_REQUIRE_TOKEN =
     StringRef::from_lit("frontend-quic-require-token");
 constexpr auto SHRPX_OPT_FRONTEND_QUIC_CONGESTION_CONTROLLER =
     StringRef::from_lit("frontend-quic-congestion-controller");
-constexpr auto SHRPX_OPT_FRONTEND_QUIC_SERVER_ID =
-    StringRef::from_lit("frontend-quic-server-id");
+constexpr auto SHRPX_OPT_QUIC_SERVER_ID = StringRef::from_lit("quic-server-id");
 constexpr auto SHRPX_OPT_FRONTEND_QUIC_SECRET_FILE =
     StringRef::from_lit("frontend-quic-secret-file");
 constexpr auto SHRPX_OPT_RLIMIT_MEMLOCK = StringRef::from_lit("rlimit-memlock");
@@ -780,7 +779,6 @@ struct QUICConfig {
     ngtcp2_cc_algo congestion_controller;
     bool early_data;
     bool require_token;
-    std::array<uint8_t, SHRPX_QUIC_SERVER_IDLEN> server_id;
     StringRef secret_file;
     ev_tstamp initial_rtt;
   } upstream;
@@ -788,6 +786,7 @@ struct QUICConfig {
     StringRef prog_file;
     bool disabled;
   } bpf;
+  std::array<uint8_t, SHRPX_QUIC_SERVER_IDLEN> server_id;
 };
 
 struct Http3Config {
@@ -1249,7 +1248,6 @@ enum {
   SHRPX_OPTID_FRONTEND_QUIC_QLOG_DIR,
   SHRPX_OPTID_FRONTEND_QUIC_REQUIRE_TOKEN,
   SHRPX_OPTID_FRONTEND_QUIC_SECRET_FILE,
-  SHRPX_OPTID_FRONTEND_QUIC_SERVER_ID,
   SHRPX_OPTID_FRONTEND_READ_TIMEOUT,
   SHRPX_OPTID_FRONTEND_WRITE_TIMEOUT,
   SHRPX_OPTID_HEADER_FIELD_BUFFER,
@@ -1292,6 +1290,7 @@ enum {
   SHRPX_OPTID_PRIVATE_KEY_PASSWD_FILE,
   SHRPX_OPTID_PSK_SECRETS,
   SHRPX_OPTID_QUIC_BPF_PROGRAM_FILE,
+  SHRPX_OPTID_QUIC_SERVER_ID,
   SHRPX_OPTID_READ_BURST,
   SHRPX_OPTID_READ_RATE,
   SHRPX_OPTID_REDIRECT_HTTPS_PORT,

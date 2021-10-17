@@ -192,7 +192,7 @@ OPTIONS = [
     "frontend-quic-qlog-dir",
     "frontend-quic-require-token",
     "frontend-quic-congestion-controller",
-    "frontend-quic-server-id",
+    "quic-server-id",
     "frontend-quic-secret-file",
     "rlimit-memlock",
     "max-worker-processes",

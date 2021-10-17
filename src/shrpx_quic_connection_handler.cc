@@ -456,9 +456,9 @@ int QUICConnectionHandler::send_retry(
 
   ngtcp2_cid retry_scid;
 
-  if (generate_quic_retry_connection_id(
-          retry_scid, SHRPX_QUIC_SCIDLEN, quicconf.upstream.server_id.data(),
-          qkm.id, qkm.cid_encryption_key.data()) != 0) {
+  if (generate_quic_retry_connection_id(retry_scid, SHRPX_QUIC_SCIDLEN,
+                                        quicconf.server_id.data(), qkm.id,
+                                        qkm.cid_encryption_key.data()) != 0) {
     return -1;
   }
 

@@ -2054,6 +2054,11 @@ int option_lookup_token(const char *name, size_t namelen) {
     break;
   case 14:
     switch (name[13]) {
+    case 'd':
+      if (util::strieq_l("quic-server-i", name, 13)) {
+        return SHRPX_OPTID_QUIC_SERVER_ID;
+      }
+      break;
     case 'e':
       if (util::strieq_l("accesslog-fil", name, 13)) {
         return SHRPX_OPTID_ACCESSLOG_FILE;
@@ -2352,11 +2357,6 @@ int option_lookup_token(const char *name, size_t namelen) {
     break;
   case 23:
     switch (name[22]) {
-    case 'd':
-      if (util::strieq_l("frontend-quic-server-i", name, 22)) {
-        return SHRPX_OPTID_FRONTEND_QUIC_SERVER_ID;
-      }
-      break;
     case 'e':
       if (util::strieq_l("client-private-key-fil", name, 22)) {
         return SHRPX_OPTID_CLIENT_PRIVATE_KEY_FILE;
@@ -4118,14 +4118,14 @@ int parse_config(Config *config, int optid, const StringRef &opt,
 #endif // ENABLE_HTTP3
 
     return 0;
-  case SHRPX_OPTID_FRONTEND_QUIC_SERVER_ID:
+  case SHRPX_OPTID_QUIC_SERVER_ID:
 #ifdef ENABLE_HTTP3
-    if (optarg.size() != config->quic.upstream.server_id.size() * 2 ||
+    if (optarg.size() != config->quic.server_id.size() * 2 ||
         !util::is_hex_string(optarg)) {
       LOG(ERROR) << opt << ": must be a hex-string";
       return -1;
     }
-    util::decode_hex(std::begin(config->quic.upstream.server_id), optarg);
+    util::decode_hex(std::begin(config->quic.server_id), optarg);
 #endif // ENABLE_HTTP3
 
     return 0;
