@@ -617,8 +617,18 @@ int main(int argc, char **argv) {
   act.sa_handler = SIG_IGN;
   sigaction(SIGPIPE, &act, NULL);
 
+#if OPENSSL_VERSION_NUMBER >= 0x1010000fL
+  /* No explicit initialization is required. */
+#elif defined(OPENSSL_IS_BORINGSSL)
+  CRYPTO_library_init();
+#else  /* !(OPENSSL_VERSION_NUMBER >= 0x1010000fL) &&                          \
+          !defined(OPENSSL_IS_BORINGSSL) */
+  OPENSSL_config(NULL);
   SSL_load_error_strings();
   SSL_library_init();
+  OpenSSL_add_all_algorithms();
+#endif /* !(OPENSSL_VERSION_NUMBER >= 0x1010000fL) &&                          \
+          !defined(OPENSSL_IS_BORINGSSL) */
 
   run(argv[1]);
   return 0;

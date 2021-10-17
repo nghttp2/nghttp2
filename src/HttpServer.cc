@@ -2143,22 +2143,13 @@ int HttpServer::run() {
     SSL_CTX_set_session_cache_mode(ssl_ctx, SSL_SESS_CACHE_SERVER);
 
 #ifndef OPENSSL_NO_EC
-    // Disabled SSL_CTX_set_ecdh_auto, because computational cost of
-    // chosen curve is much higher than P-256.
-
-    //     SSL_CTX_set_ecdh_auto(ssl_ctx, 1);
-    // Use P-256, which is sufficiently secure at the time of this
-    // writing.
-#  if OPENSSL_3_0_0_API
-    auto ecdh = EVP_EC_gen("P-256");
-    if (ecdh == nullptr) {
-      std::cerr << "EC_KEY_new_by_curv_name failed: "
+#  if !LIBRESSL_LEGACY_API && OPENSSL_VERSION_NUMBER >= 0x10002000L
+    if (SSL_CTX_set1_curves_list(ssl_ctx, "P-256") != 1) {
+      std::cerr << "SSL_CTX_set1_curves_list failed: "
                 << ERR_error_string(ERR_get_error(), nullptr);
       return -1;
     }
-    SSL_CTX_set_tmp_ecdh(ssl_ctx, ecdh);
-    EVP_PKEY_free(ecdh);
-#  else  // !OPENSSL_3_0_0_API
+#  else  // !(!LIBRESSL_LEGACY_API && OPENSSL_VERSION_NUMBER >= 0x10002000L)
     auto ecdh = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
     if (ecdh == nullptr) {
       std::cerr << "EC_KEY_new_by_curv_name failed: "
@@ -2167,7 +2158,7 @@ int HttpServer::run() {
     }
     SSL_CTX_set_tmp_ecdh(ssl_ctx, ecdh);
     EC_KEY_free(ecdh);
-#  endif // !OPENSSL_3_0_0_API
+#  endif // !(!LIBRESSL_LEGACY_API && OPENSSL_VERSION_NUMBER >= 0x10002000L)
 #endif   // OPENSSL_NO_EC
 
     if (!config_->dh_param_file.empty()) {
@@ -2191,8 +2182,11 @@ int HttpServer::run() {
         return -1;
       }
 
-      SSL_CTX_set_tmp_dh(ssl_ctx, dh);
-      EVP_PKEY_free(dh);
+      if (SSL_CTX_set0_tmp_dh_pkey(ssl_ctx, dh) != 1) {
+        std::cerr << "SSL_CTX_set0_tmp_dh_pkey failed: "
+                  << ERR_error_string(ERR_get_error(), nullptr) << std::endl;
+        return -1;
+      }
 #else  // !OPENSSL_3_0_0_API
       auto dh = PEM_read_bio_DHparams(bio, nullptr, nullptr, nullptr);
 

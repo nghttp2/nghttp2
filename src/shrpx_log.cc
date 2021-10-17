@@ -755,7 +755,11 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
         std::tie(p, last) = copy('-', p, last);
         break;
       }
+#if OPENSSL_3_0_0_API
+      auto x = SSL_get0_peer_certificate(lgsp.ssl);
+#else  // !OPENSSL_3_0_0_API
       auto x = SSL_get_peer_certificate(lgsp.ssl);
+#endif // !OPENSSL_3_0_0_API
       if (!x) {
         std::tie(p, last) = copy('-', p, last);
         break;
@@ -766,7 +770,9 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
           lf.type == LogFragmentType::TLS_CLIENT_FINGERPRINT_SHA256
               ? EVP_sha256()
               : EVP_sha1());
+#if !OPENSSL_3_0_0_API
       X509_free(x);
+#endif // !OPENSSL_3_0_0_API
       if (len <= 0) {
         std::tie(p, last) = copy('-', p, last);
         break;
@@ -780,7 +786,11 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
         std::tie(p, last) = copy('-', p, last);
         break;
       }
+#if OPENSSL_3_0_0_API
+      auto x = SSL_get0_peer_certificate(lgsp.ssl);
+#else  // !OPENSSL_3_0_0_API
       auto x = SSL_get_peer_certificate(lgsp.ssl);
+#endif // !OPENSSL_3_0_0_API
       if (!x) {
         std::tie(p, last) = copy('-', p, last);
         break;
@@ -788,7 +798,9 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
       auto name = lf.type == LogFragmentType::TLS_CLIENT_ISSUER_NAME
                       ? tls::get_x509_issuer_name(balloc, x)
                       : tls::get_x509_subject_name(balloc, x);
+#if !OPENSSL_3_0_0_API
       X509_free(x);
+#endif // !OPENSSL_3_0_0_API
       if (name.empty()) {
         std::tie(p, last) = copy('-', p, last);
         break;
@@ -801,13 +813,19 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
         std::tie(p, last) = copy('-', p, last);
         break;
       }
+#if OPENSSL_3_0_0_API
+      auto x = SSL_get0_peer_certificate(lgsp.ssl);
+#else  // !OPENSSL_3_0_0_API
       auto x = SSL_get_peer_certificate(lgsp.ssl);
+#endif // !OPENSSL_3_0_0_API
       if (!x) {
         std::tie(p, last) = copy('-', p, last);
         break;
       }
       auto sn = tls::get_x509_serial(balloc, x);
+#if !OPENSSL_3_0_0_API
       X509_free(x);
+#endif // !OPENSSL_3_0_0_API
       if (sn.empty()) {
         std::tie(p, last) = copy('-', p, last);
         break;

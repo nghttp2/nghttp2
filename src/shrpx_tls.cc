@@ -1031,8 +1031,11 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
       DIE();
     }
 
-    SSL_CTX_set_tmp_dh(ssl_ctx, dh);
-    EVP_PKEY_free(dh);
+    if (SSL_CTX_set0_tmp_dh_pkey(ssl_ctx, dh) != 1) {
+      LOG(FATAL) << "SSL_CTX_set0_tmp_dh_pkey failed: "
+                 << ERR_error_string(ERR_get_error(), nullptr);
+      DIE();
+    }
 #else  // !OPENSSL_3_0_0_API
     auto dh = PEM_read_bio_DHparams(bio, nullptr, nullptr, nullptr);
     if (dh == nullptr) {
@@ -1456,8 +1459,11 @@ SSL_CTX *create_quic_ssl_context(const char *private_key_file,
       DIE();
     }
 
-    SSL_CTX_set_tmp_dh(ssl_ctx, dh);
-    EVP_PKEY_free(dh);
+    if (SSL_CTX_set0_tmp_dh_pkey(ssl_ctx, dh) != 1) {
+      LOG(FATAL) << "SSL_CTX_set0_tmp_dh_pkey failed: "
+                 << ERR_error_string(ERR_get_error(), nullptr);
+      DIE();
+    }
 #  else  // !OPENSSL_3_0_0_API
     auto dh = PEM_read_bio_DHparams(bio, nullptr, nullptr, nullptr);
     if (dh == nullptr) {
@@ -2064,14 +2070,20 @@ int verify_hostname(X509 *cert, const StringRef &hostname,
 } // namespace
 
 int check_cert(SSL *ssl, const Address *addr, const StringRef &host) {
+#if OPENSSL_3_0_0_API
+  auto cert = SSL_get0_peer_certificate(ssl);
+#else  // !OPENSSL_3_0_0_API
   auto cert = SSL_get_peer_certificate(ssl);
+#endif // !OPENSSL_3_0_0_API
   if (!cert) {
     // By the protocol definition, TLS server always sends certificate
     // if it has.  If certificate cannot be retrieved, authentication
     // without certificate is used, such as PSK.
     return 0;
   }
+#if !OPENSSL_3_0_0_API
   auto cert_deleter = defer(X509_free, cert);
+#endif // !OPENSSL_3_0_0_API
 
   if (verify_hostname(cert, host, addr) != 0) {
     LOG(ERROR) << "Certificate verification failed: hostname does not match";
