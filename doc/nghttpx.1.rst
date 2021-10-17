@@ -1680,7 +1680,7 @@ HTTP/3 and QUIC
     or  reading  a  file,  a keying  material  is  generated
     internally on startup and reload.
 
-.. option:: --frontend-quic-server-id=<HEXSTRING>
+.. option:: --quic-server-id=<HEXSTRING>
 
     Specify server  ID encoded in Connection  ID to identify
     this  particular  server  instance.   Connection  ID  is
