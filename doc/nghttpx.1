@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTPX" "1" "Sep 23, 2021" "1.46.0-DEV" "nghttp2"
+.TH "NGHTTPX" "1" "Oct 17, 2021" "1.46.0" "nghttp2"
 .SH NAME
 nghttpx \- HTTP/2 proxy
 .
@@ -498,6 +498,15 @@ Default: \fB0\fP
 .B \-\-rlimit\-nofile=<N>
 Set maximum number of open files (RLIMIT_NOFILE) to <N>.
 If 0 is given, nghttpx does not set the limit.
+.sp
+Default: \fB0\fP
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-rlimit\-memlock=<N>
+Set maximum number of bytes of memory that may be locked
+into  RAM.  If  0 is  given,  nghttpx does  not set  the
+limit.
 .sp
 Default: \fB0\fP
 .UNINDENT
@@ -1705,6 +1714,33 @@ process.   nghttpx still  spawns  additional process  if
 neverbleed  is used.   In the  single process  mode, the
 signal handling feature is disabled.
 .UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-max\-worker\-processes=<N>
+The maximum number of  worker processes.  nghttpx spawns
+new worker  process when  it reloads  its configuration.
+The previous worker  process enters graceful termination
+period and will terminate  when it finishes handling the
+existing    connections.     However,    if    reloading
+configurations  happen   very  frequently,   the  worker
+processes might be piled up if they take a bit long time
+to finish  the existing connections.  With  this option,
+if  the number  of  worker processes  exceeds the  given
+value,   the  oldest   worker   process  is   terminated
+immediately.  Specifying 0 means no  limit and it is the
+default behaviour.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-worker\-process\-grace\-shutdown\-period=<DURATION>
+Maximum  period  for  a   worker  process  to  terminate
+gracefully.  When  a worker  process enters  in graceful
+shutdown   period  (e.g.,   when  nghttpx   reloads  its
+configuration)  and  it  does not  finish  handling  the
+existing connections in the given  period of time, it is
+immediately terminated.  Specifying 0 means no limit and
+it is the default behaviour.
+.UNINDENT
 .SS Scripting
 .INDENT 0.0
 .TP
@@ -1808,10 +1844,17 @@ internally on startup and reload.
 Specify server  ID encoded in Connection  ID to identify
 this  particular  server  instance.   Connection  ID  is
 encrypted and  this part is  not visible in  public.  It
-must be 2  bytes long and must be encoded  in hex string
-(which is 4  bytes long).  If this option  is omitted, a
+must be 4  bytes long and must be encoded  in hex string
+(which is 8  bytes long).  If this option  is omitted, a
 random   server  ID   is   generated   on  startup   and
 configuration reload.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-frontend\-quic\-initial\-rtt=<DURATION>
+Specify the initial RTT of the frontend QUIC connection.
+.sp
+Default: \fB333ms\fP
 .UNINDENT
 .INDENT 0.0
 .TP

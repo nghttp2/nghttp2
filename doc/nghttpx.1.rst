@@ -472,6 +472,14 @@ Performance
 
     Default: ``0``
 
+.. option:: --rlimit-memlock=<N>
+
+    Set maximum number of bytes of memory that may be locked
+    into  RAM.  If  0 is  given,  nghttpx does  not set  the
+    limit.
+
+    Default: ``0``
+
 .. option:: --backend-request-buffer=<SIZE>
 
     Set buffer size used to store backend request.
@@ -1554,6 +1562,31 @@ Process
     neverbleed  is used.   In the  single process  mode, the
     signal handling feature is disabled.
 
+.. option:: --max-worker-processes=<N>
+
+    The maximum number of  worker processes.  nghttpx spawns
+    new worker  process when  it reloads  its configuration.
+    The previous worker  process enters graceful termination
+    period and will terminate  when it finishes handling the
+    existing    connections.     However,    if    reloading
+    configurations  happen   very  frequently,   the  worker
+    processes might be piled up if they take a bit long time
+    to finish  the existing connections.  With  this option,
+    if  the number  of  worker processes  exceeds the  given
+    value,   the  oldest   worker   process  is   terminated
+    immediately.  Specifying 0 means no  limit and it is the
+    default behaviour.
+
+.. option:: --worker-process-grace-shutdown-period=<DURATION>
+
+    Maximum  period  for  a   worker  process  to  terminate
+    gracefully.  When  a worker  process enters  in graceful
+    shutdown   period  (e.g.,   when  nghttpx   reloads  its
+    configuration)  and  it  does not  finish  handling  the
+    existing connections in the given  period of time, it is
+    immediately terminated.  Specifying 0 means no limit and
+    it is the default behaviour.
+
 
 Scripting
 ~~~~~~~~~
@@ -1652,10 +1685,16 @@ HTTP/3 and QUIC
     Specify server  ID encoded in Connection  ID to identify
     this  particular  server  instance.   Connection  ID  is
     encrypted and  this part is  not visible in  public.  It
-    must be 2  bytes long and must be encoded  in hex string
-    (which is 4  bytes long).  If this option  is omitted, a
+    must be 4  bytes long and must be encoded  in hex string
+    (which is 8  bytes long).  If this option  is omitted, a
     random   server  ID   is   generated   on  startup   and
     configuration reload.
+
+.. option:: --frontend-quic-initial-rtt=<DURATION>
+
+    Specify the initial RTT of the frontend QUIC connection.
+
+    Default: ``333ms``
 
 .. option:: --no-quic-bpf
 
