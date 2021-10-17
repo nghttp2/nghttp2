@@ -328,7 +328,7 @@ static int select_next_proto_cb(SSL *ssl, unsigned char **out,
 /* Create SSL_CTX. */
 static SSL_CTX *create_ssl_ctx(void) {
   SSL_CTX *ssl_ctx;
-  ssl_ctx = SSL_CTX_new(SSLv23_client_method());
+  ssl_ctx = SSL_CTX_new(TLS_client_method());
   if (!ssl_ctx) {
     errx(1, "Could not create SSL/TLS context: %s",
          ERR_error_string(ERR_get_error(), NULL));

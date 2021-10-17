@@ -544,7 +544,7 @@ static void fetch_uri(const struct URI *uri) {
   if (fd == -1) {
     die("Could not open file descriptor");
   }
-  ssl_ctx = SSL_CTX_new(SSLv23_client_method());
+  ssl_ctx = SSL_CTX_new(TLS_client_method());
   if (ssl_ctx == NULL) {
     dief("SSL_CTX_new", ERR_error_string(ERR_get_error(), NULL));
   }

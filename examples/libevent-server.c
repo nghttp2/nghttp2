@@ -143,7 +143,7 @@ static int alpn_select_proto_cb(SSL *ssl, const unsigned char **out,
 static SSL_CTX *create_ssl_ctx(const char *key_file, const char *cert_file) {
   SSL_CTX *ssl_ctx;
 
-  ssl_ctx = SSL_CTX_new(SSLv23_server_method());
+  ssl_ctx = SSL_CTX_new(TLS_server_method());
   if (!ssl_ctx) {
     errx(1, "Could not create SSL/TLS context: %s",
          ERR_error_string(ERR_get_error(), NULL));

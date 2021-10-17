@@ -2811,7 +2811,7 @@ int main(int argc, char **argv) {
   act.sa_handler = SIG_IGN;
   sigaction(SIGPIPE, &act, nullptr);
 
-  auto ssl_ctx = SSL_CTX_new(SSLv23_client_method());
+  auto ssl_ctx = SSL_CTX_new(TLS_client_method());
   if (!ssl_ctx) {
     std::cerr << "Failed to create SSL_CTX: "
               << ERR_error_string(ERR_get_error(), nullptr) << std::endl;

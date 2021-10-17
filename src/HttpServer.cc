@@ -2110,7 +2110,7 @@ int HttpServer::run() {
   std::vector<unsigned char> next_proto;
 
   if (!config_->no_tls) {
-    ssl_ctx = SSL_CTX_new(SSLv23_server_method());
+    ssl_ctx = SSL_CTX_new(TLS_server_method());
     if (!ssl_ctx) {
       std::cerr << ERR_error_string(ERR_get_error(), nullptr) << std::endl;
       return -1;
