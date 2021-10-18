@@ -148,6 +148,10 @@ public:
   int start_graceful_shutdown();
   int submit_goaway();
   void idle_close();
+  int send_packet(const UpstreamAddr *faddr, const sockaddr *remote_sa,
+                  size_t remote_salen, const sockaddr *local_sa,
+                  size_t local_salen, const uint8_t *data, size_t datalen,
+                  size_t gso_size);
 
   void qlog_write(const void *data, size_t datalen, bool fin);
   int open_qlog_file(const StringRef &dir, const ngtcp2_cid &scid) const;
@@ -158,6 +162,7 @@ private:
   ev_timer idle_timer_;
   ev_timer shutdown_timer_;
   ev_prepare prep_;
+  size_t max_udp_payload_size_;
   int qlog_fd_;
   ngtcp2_cid hashed_scid_;
   ngtcp2_conn *conn_;

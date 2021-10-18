@@ -130,7 +130,12 @@ int quic_send_packet(const UpstreamAddr *faddr, const sockaddr *remote_sa,
   } while (nwrite == -1 && errno == EINTR);
 
   if (nwrite == -1) {
-    return -1;
+    if (LOG_ENABLED(INFO)) {
+      auto error = errno;
+      LOG(INFO) << "sendmsg failed: errno=" << error;
+    }
+
+    return -errno;
   }
 
   if (LOG_ENABLED(INFO)) {
