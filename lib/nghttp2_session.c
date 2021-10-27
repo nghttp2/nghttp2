@@ -147,6 +147,7 @@ static int check_ext_type_set(const uint8_t *ext_types, uint8_t type) {
   return (ext_types[type / 8] & (1 << (type & 0x7))) > 0;
 }
 
+__printflike(3, 4)
 static int session_call_error_callback(nghttp2_session *session,
                                        int lib_error_code, const char *fmt,
                                        ...) {
