@@ -2245,11 +2245,10 @@ Options:
               to buffering.  Status code is -1 for failed streams.
   --qlog-file-base=<PATH>
               Enable qlog output and specify base file name for qlogs.
-              Qlog  is emitted  for each connection.
-              For  a  given  base  name "base", each  output file name
-              becomes  "base.M.N.qlog"  where M is worker ID  and N is
-              client ID (e.g. "base.0.3.qlog").
-              Only effective in QUIC runs.
+              Qlog is emitted  for each connection.  For  a given base
+              name   "base",    each   output   file    name   becomes
+              "base.M.N.sqlog" where M is worker ID and N is client ID
+              (e.g. "base.0.3.sqlog").  Only effective in QUIC runs.
   --connect-to=<HOST>[:<PORT>]
               Host and port to connect  instead of using the authority
               in <URI>.

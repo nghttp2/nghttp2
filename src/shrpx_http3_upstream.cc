@@ -2704,7 +2704,7 @@ int Http3Upstream::open_qlog_file(const StringRef &dir,
       util::format_iso8601_basic(buf.data(), std::chrono::system_clock::now());
   path += '-';
   path += util::format_hex(scid.data, scid.datalen);
-  path += ".qlog";
+  path += ".sqlog";
 
   int fd;
 

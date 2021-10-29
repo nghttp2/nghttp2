@@ -3353,7 +3353,7 @@ HTTP/3 and QUIC:
               frontend QUIC  connections.  A qlog file  is created per
               each QUIC  connection.  The  file name is  ISO8601 basic
               format, followed by "-", server Source Connection ID and
-              ".qlog".
+              ".sqlog".
   --frontend-quic-require-token
               Require an address validation  token for a frontend QUIC
               connection.   Server sends  a token  in Retry  packet or

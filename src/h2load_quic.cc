@@ -441,7 +441,7 @@ int Client::quic_init(const sockaddr *local_addr, socklen_t local_addrlen,
     path += util::utos(worker->id);
     path += '.';
     path += util::utos(id);
-    path += ".qlog";
+    path += ".sqlog";
     quic.qlog_file = fopen(path.c_str(), "w");
     if (quic.qlog_file == nullptr) {
       std::cerr << "Failed to open a qlog file: " << path << std::endl;
