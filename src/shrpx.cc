@@ -3725,6 +3725,7 @@ int process_options(Config *config,
     }
   }
 
+#ifdef RLIMIT_MEMLOCK
   if (config->rlimit_memlock) {
     struct rlimit lim = {static_cast<rlim_t>(config->rlimit_memlock),
                          static_cast<rlim_t>(config->rlimit_memlock)};
@@ -3734,6 +3735,7 @@ int process_options(Config *config,
                 << xsi_strerror(error, errbuf.data(), errbuf.size());
     }
   }
+#endif // RLIMIT_MEMLOCK
 
   auto &fwdconf = config->http.forwarded;
 
