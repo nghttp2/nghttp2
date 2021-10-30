@@ -7,7 +7,7 @@ RUN apt-get update && \
         zlib1g-dev libev-dev libjemalloc-dev ruby-dev libc-ares-dev bison \
         libelf-dev
 
-RUN git clone --depth 1 -b openssl-3.0.0+quic https://github.com/quictls/openssl && \
+RUN git clone --depth 1 -b OpenSSL_1_1_1l+quic https://github.com/quictls/openssl && \
     cd openssl && \
     ./config --openssldir=/etc/ssl && \
     make -j$(nproc) && \
