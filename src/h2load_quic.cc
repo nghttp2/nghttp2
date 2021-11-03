@@ -36,14 +36,11 @@
 #endif // HAVE_LIBNGTCP2_CRYPTO_BORINGSSL
 
 #include <openssl/err.h>
+#include <openssl/rand.h>
 
 #include "h2load_http3_session.h"
 
 namespace h2load {
-
-namespace {
-auto randgen = util::make_mt19937();
-} // namespace
 
 namespace {
 int handshake_completed(ngtcp2_conn *conn, void *user_data) {
@@ -202,13 +199,15 @@ int Client::quic_extend_max_local_streams() {
 namespace {
 int get_new_connection_id(ngtcp2_conn *conn, ngtcp2_cid *cid, uint8_t *token,
                           size_t cidlen, void *user_data) {
-  auto dis = std::uniform_int_distribution<uint8_t>(
-      0, std::numeric_limits<uint8_t>::max());
-  auto f = [&dis]() { return dis(randgen); };
+  if (RAND_bytes(cid->data, cidlen) != 1) {
+    return NGTCP2_ERR_CALLBACK_FAILURE;
+  }
 
-  std::generate_n(cid->data, cidlen, f);
   cid->datalen = cidlen;
-  std::generate_n(token, NGTCP2_STATELESS_RESET_TOKENLEN, f);
+
+  if (RAND_bytes(token, NGTCP2_STATELESS_RESET_TOKENLEN) != 1) {
+    return NGTCP2_ERR_CALLBACK_FAILURE;
+  }
 
   return 0;
 }
@@ -227,11 +226,14 @@ void debug_log_printf(void *user_data, const char *fmt, ...) {
 } // namespace
 
 namespace {
-void generate_cid(ngtcp2_cid &dest) {
-  auto dis = std::uniform_int_distribution<uint8_t>(
-      0, std::numeric_limits<uint8_t>::max());
+int generate_cid(ngtcp2_cid &dest) {
   dest.datalen = 8;
-  std::generate_n(dest.data, dest.datalen, [&dis]() { return dis(randgen); });
+
+  if (RAND_bytes(dest.data, dest.datalen) != 1) {
+    return -1;
+  }
+
+  return 0;
 }
 } // namespace
 
@@ -370,6 +372,13 @@ void Client::quic_write_qlog(const void *data, size_t datalen) {
   fwrite(data, 1, datalen, quic.qlog_file);
 }
 
+namespace {
+void rand(uint8_t *dest, size_t destlen, const ngtcp2_rand_ctx *rand_ctx) {
+  util::random_bytes(dest, dest + destlen,
+                     *static_cast<std::mt19937 *>(rand_ctx->native_handle));
+}
+} // namespace
+
 int Client::quic_init(const sockaddr *local_addr, socklen_t local_addrlen,
                       const sockaddr *remote_addr, socklen_t remote_addrlen) {
   int rv;
@@ -400,7 +409,7 @@ int Client::quic_init(const sockaddr *local_addr, socklen_t local_addrlen,
       ngtcp2_crypto_recv_retry_cb,
       h2load::extend_max_local_streams_bidi,
       nullptr, // extend_max_local_streams_uni
-      nullptr, // rand
+      h2load::rand,
       get_new_connection_id,
       nullptr, // remove_connection_id
       ngtcp2_crypto_update_key_cb,
@@ -418,13 +427,17 @@ int Client::quic_init(const sockaddr *local_addr, socklen_t local_addrlen,
       nullptr, // recv_datagram
       nullptr, // ack_datagram
       nullptr, // lost_datagram
-      nullptr, // get_path_challenge_data
+      ngtcp2_crypto_get_path_challenge_data_cb,
       h2load::stream_stop_sending,
   };
 
   ngtcp2_cid scid, dcid;
-  generate_cid(scid);
-  generate_cid(dcid);
+  if (generate_cid(scid) != 0) {
+    return -1;
+  }
+  if (generate_cid(dcid) != 0) {
+    return -1;
+  }
 
   auto config = worker->config;
 
@@ -434,6 +447,7 @@ int Client::quic_init(const sockaddr *local_addr, socklen_t local_addrlen,
     settings.log_printf = debug_log_printf;
   }
   settings.initial_ts = timestamp(worker->loop);
+  settings.rand_ctx.native_handle = &worker->randgen;
   if (!config->qlog_file_base.empty()) {
     assert(quic.qlog_file == nullptr);
     auto path = config->qlog_file_base;
