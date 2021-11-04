@@ -2053,7 +2053,12 @@ void fill_default_config(Config *config) {
 
 namespace {
 void print_version(std::ostream &out) {
-  out << "nghttpx nghttp2/" NGHTTP2_VERSION << std::endl;
+  out << "nghttpx nghttp2/" NGHTTP2_VERSION
+#ifdef ENABLE_HTTP3
+    " ngtcp2/" NGTCP2_VERSION
+    " nghttp3/" NGHTTP3_VERSION
+#endif
+      << std::endl;
 }
 } // namespace
 
