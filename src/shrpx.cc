@@ -76,6 +76,11 @@
 
 #include <nghttp2/nghttp2.h>
 
+#ifdef ENABLE_HTTP3
+#  include <ngtcp2/ngtcp2.h>
+#  include <nghttp3/nghttp3.h>
+#endif // ENABLE_HTTP3
+
 #include "shrpx_config.h"
 #include "shrpx_tls.h"
 #include "shrpx_log_config.h"
@@ -2053,7 +2058,11 @@ void fill_default_config(Config *config) {
 
 namespace {
 void print_version(std::ostream &out) {
-  out << "nghttpx nghttp2/" NGHTTP2_VERSION << std::endl;
+  out << "nghttpx nghttp2/" NGHTTP2_VERSION
+#ifdef ENABLE_HTTP3
+         " ngtcp2/" NGTCP2_VERSION " nghttp3/" NGHTTP3_VERSION
+#endif // ENABLE_HTTP3
+      << std::endl;
 }
 } // namespace
 
