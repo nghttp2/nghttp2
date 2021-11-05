@@ -711,10 +711,7 @@ int Http3Upstream::write_streams() {
   size_t max_pktcnt =
       std::min(static_cast<size_t>(64_k), ngtcp2_conn_get_send_quantum(conn_)) /
       max_udp_payload_size;
-  ngtcp2_pkt_info pi;
-#ifdef UDP_SEGMENT
-  ngtcp2_pkt_info prev_pi;
-#endif // UDP_SEGMENT
+  ngtcp2_pkt_info pi, prev_pi;
   uint8_t *bufpos = buf.data();
   ngtcp2_path_storage ps, prev_ps;
   size_t pktcnt = 0;
