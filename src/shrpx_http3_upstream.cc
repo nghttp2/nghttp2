@@ -195,9 +195,7 @@ void qlog_write(void *user_data, uint32_t flags, const void *data,
 void Http3Upstream::qlog_write(const void *data, size_t datalen, bool fin) {
   assert(qlog_fd_ != -1);
 
-  ssize_t nwrite;
-
-  while ((nwrite = write(qlog_fd_, data, datalen)) == -1 && errno == EINTR)
+  while (write(qlog_fd_, data, datalen) == -1 && errno == EINTR)
     ;
 
   if (fin) {

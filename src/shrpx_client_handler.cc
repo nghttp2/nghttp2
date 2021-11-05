@@ -884,7 +884,6 @@ DownstreamAddr *ClientHandler::get_downstream_addr(int &err,
         err = -1;
         return nullptr;
       }
-      aff_idx = i;
     }
 
     return addr;
