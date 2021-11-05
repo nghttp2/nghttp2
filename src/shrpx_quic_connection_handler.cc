@@ -61,6 +61,7 @@ QUICConnectionHandler::~QUICConnectionHandler() {
 int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
                                          const Address &remote_addr,
                                          const Address &local_addr,
+                                         const ngtcp2_pkt_info &pi,
                                          const uint8_t *data, size_t datalen) {
   int rv;
   uint32_t version;
@@ -98,7 +99,7 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
     if (cwit != std::end(close_waits_)) {
       auto cw = (*cwit).second;
 
-      cw->handle_packet(faddr, remote_addr, local_addr, data, datalen);
+      cw->handle_packet(faddr, remote_addr, local_addr, pi, data, datalen);
 
       return 0;
     }
@@ -115,7 +116,7 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
         if (cwit != std::end(close_waits_)) {
           auto cw = (*cwit).second;
 
-          cw->handle_packet(faddr, remote_addr, local_addr, data, datalen);
+          cw->handle_packet(faddr, remote_addr, local_addr, pi, data, datalen);
 
           return 0;
         }
@@ -147,7 +148,7 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
                 decrypted_dcid.data(), decrypted_dcid.size());
         if (quic_lwp) {
           if (conn_handler->forward_quic_packet_to_lingering_worker_process(
-                  quic_lwp, remote_addr, local_addr, data, datalen) == 0) {
+                  quic_lwp, remote_addr, local_addr, pi, data, datalen) == 0) {
             return 0;
           }
 
@@ -310,7 +311,7 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
                       std::begin(decrypted_dcid) + SHRPX_QUIC_CID_PREFIXLEN,
                       worker_->get_cid_prefix())) {
         if (conn_handler->forward_quic_packet(faddr, remote_addr, local_addr,
-                                              decrypted_dcid.data(), data,
+                                              pi, decrypted_dcid.data(), data,
                                               datalen) == 0) {
           return 0;
         }
@@ -333,7 +334,8 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
     handler = (*it).second;
   }
 
-  if (handler->read_quic(faddr, remote_addr, local_addr, data, datalen) != 0) {
+  if (handler->read_quic(faddr, remote_addr, local_addr, pi, data, datalen) !=
+      0) {
     delete handler;
     return 0;
   }
@@ -708,7 +710,8 @@ CloseWait::~CloseWait() {
 
 int CloseWait::handle_packet(const UpstreamAddr *faddr,
                              const Address &remote_addr,
-                             const Address &local_addr, const uint8_t *data,
+                             const Address &local_addr,
+                             const ngtcp2_pkt_info &pi, const uint8_t *data,
                              size_t datalen) {
   if (pkt.empty()) {
     return 0;

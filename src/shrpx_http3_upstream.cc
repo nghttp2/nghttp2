@@ -1632,10 +1632,9 @@ void Http3Upstream::cancel_premature_downstream(
 
 int Http3Upstream::on_read(const UpstreamAddr *faddr,
                            const Address &remote_addr,
-                           const Address &local_addr, const uint8_t *data,
-                           size_t datalen) {
+                           const Address &local_addr, const ngtcp2_pkt_info &pi,
+                           const uint8_t *data, size_t datalen) {
   int rv;
-  ngtcp2_pkt_info pi{};
 
   auto path = ngtcp2_path{
       {

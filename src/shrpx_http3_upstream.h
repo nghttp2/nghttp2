@@ -92,7 +92,8 @@ public:
            const ngtcp2_cid *odcid, const uint8_t *token, size_t tokenlen);
 
   int on_read(const UpstreamAddr *faddr, const Address &remote_addr,
-              const Address &local_addr, const uint8_t *data, size_t datalen);
+              const Address &local_addr, const ngtcp2_pkt_info &pi,
+              const uint8_t *data, size_t datalen);
 
   int write_streams();
 

@@ -292,11 +292,12 @@ int ClientHandler::write_tls() {
 #ifdef ENABLE_HTTP3
 int ClientHandler::read_quic(const UpstreamAddr *faddr,
                              const Address &remote_addr,
-                             const Address &local_addr, const uint8_t *data,
+                             const Address &local_addr,
+                             const ngtcp2_pkt_info &pi, const uint8_t *data,
                              size_t datalen) {
   auto upstream = static_cast<Http3Upstream *>(upstream_.get());
 
-  return upstream->on_read(faddr, remote_addr, local_addr, data, datalen);
+  return upstream->on_read(faddr, remote_addr, local_addr, pi, data, datalen);
 }
 
 int ClientHandler::write_quic() { return upstream_->on_write(); }

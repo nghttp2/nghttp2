@@ -55,8 +55,8 @@ struct CloseWait {
   ~CloseWait();
 
   int handle_packet(const UpstreamAddr *faddr, const Address &remote_addr,
-                    const Address &local_addr, const uint8_t *data,
-                    size_t datalen);
+                    const Address &local_addr, const ngtcp2_pkt_info &pi,
+                    const uint8_t *data, size_t datalen);
 
   Worker *worker;
   // Source Connection IDs of the connection.
@@ -82,8 +82,8 @@ public:
   QUICConnectionHandler(Worker *worker);
   ~QUICConnectionHandler();
   int handle_packet(const UpstreamAddr *faddr, const Address &remote_addr,
-                    const Address &local_addr, const uint8_t *data,
-                    size_t datalen);
+                    const Address &local_addr, const ngtcp2_pkt_info &pi,
+                    const uint8_t *data, size_t datalen);
   // Send Retry packet.  |ini_dcid| is the destination Connection ID
   // which appeared in Client Initial packet and its length is
   // |dcidlen|.  |ini_scid| is the source Connection ID which appeared

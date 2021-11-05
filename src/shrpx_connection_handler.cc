@@ -1017,12 +1017,10 @@ void ConnectionHandler::set_enable_acceptor_on_ocsp_completion(bool f) {
 }
 
 #ifdef ENABLE_HTTP3
-int ConnectionHandler::forward_quic_packet(const UpstreamAddr *faddr,
-                                           const Address &remote_addr,
-                                           const Address &local_addr,
-                                           const uint8_t *cid_prefix,
-                                           const uint8_t *data,
-                                           size_t datalen) {
+int ConnectionHandler::forward_quic_packet(
+    const UpstreamAddr *faddr, const Address &remote_addr,
+    const Address &local_addr, const ngtcp2_pkt_info &pi,
+    const uint8_t *cid_prefix, const uint8_t *data, size_t datalen) {
   assert(!get_config()->single_thread);
 
   for (auto &worker : workers_) {
@@ -1034,7 +1032,7 @@ int ConnectionHandler::forward_quic_packet(const UpstreamAddr *faddr,
     WorkerEvent wev{};
     wev.type = WorkerEventType::QUIC_PKT_FORWARD;
     wev.quic_pkt = std::make_unique<QUICPacket>(faddr->index, remote_addr,
-                                                local_addr, data, datalen);
+                                                local_addr, pi, data, datalen);
 
     worker->send(std::move(wev));
 
@@ -1111,10 +1109,11 @@ void ConnectionHandler::set_quic_lingering_worker_processes(
 
 int ConnectionHandler::forward_quic_packet_to_lingering_worker_process(
     QUICLingeringWorkerProcess *quic_lwp, const Address &remote_addr,
-    const Address &local_addr, const uint8_t *data, size_t datalen) {
+    const Address &local_addr, const ngtcp2_pkt_info &pi, const uint8_t *data,
+    size_t datalen) {
   std::array<uint8_t, 512> header;
 
-  assert(header.size() >= 1 + 1 + 1 + sizeof(sockaddr_storage) * 2);
+  assert(header.size() >= 1 + 1 + 1 + 1 + sizeof(sockaddr_storage) * 2);
   assert(remote_addr.len > 0);
   assert(local_addr.len > 0);
 
@@ -1127,6 +1126,7 @@ int ConnectionHandler::forward_quic_packet_to_lingering_worker_process(
   *p++ = static_cast<uint8_t>(local_addr.len - 1);
   p = std::copy_n(reinterpret_cast<const uint8_t *>(&local_addr.su),
                   local_addr.len, p);
+  *p++ = pi.ecn;
 
   iovec msg_iov[] = {
       {
@@ -1185,14 +1185,14 @@ int ConnectionHandler::quic_ipc_read() {
     return 0;
   }
 
-  size_t len = 1 + 1 + 1;
+  size_t len = 1 + 1 + 1 + 1;
 
   // Wire format:
-  // TYPE(1) REMOTE_ADDRLEN(1) REMOTE_ADDR(N) LOCAL_ADDRLEN(1) REMOTE_ADDR(N)
-  // DGRAM_PAYLAOD(N)
+  // TYPE(1) REMOTE_ADDRLEN(1) REMOTE_ADDR(N) LOCAL_ADDRLEN(1) LOCAL_ADDR(N)
+  // ECN(1) DGRAM_PAYLOAD(N)
   //
-  // When encoding, REMOTE_ADDRLEN and LOCAL_ADDRLEN is decremented by
-  // 1.
+  // When encoding, REMOTE_ADDRLEN and LOCAL_ADDRLEN are decremented
+  // by 1.
   if (static_cast<size_t>(nread) < len) {
     return 0;
   }
@@ -1249,6 +1249,8 @@ int ConnectionHandler::quic_ipc_read() {
 
   p += local_addrlen;
 
+  pkt->pi.ecn = *p++;
+
   auto datalen = nread - (p - buf.data());
 
   pkt->data.assign(p, p + datalen);
@@ -1288,7 +1290,8 @@ int ConnectionHandler::quic_ipc_read() {
 
     // Ignore return value
     quic_conn_handler->handle_packet(faddr, pkt->remote_addr, pkt->local_addr,
-                                     pkt->data.data(), pkt->data.size());
+                                     pkt->pi, pkt->data.data(),
+                                     pkt->data.size());
 
     return 0;
   }

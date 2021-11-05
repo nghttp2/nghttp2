@@ -1722,6 +1722,54 @@ int msghdr_get_local_addr(Address &dest, msghdr *msg, int family) {
 
   return -1;
 }
+
+unsigned int msghdr_get_ecn(msghdr *msg, int family) {
+  switch (family) {
+  case AF_INET:
+    for (auto cmsg = CMSG_FIRSTHDR(msg); cmsg; cmsg = CMSG_NXTHDR(msg, cmsg)) {
+      if (cmsg->cmsg_level == IPPROTO_IP && cmsg->cmsg_type == IP_TOS &&
+          cmsg->cmsg_len) {
+        return *reinterpret_cast<uint8_t *>(CMSG_DATA(cmsg));
+      }
+    }
+
+    return 0;
+  case AF_INET6:
+    for (auto cmsg = CMSG_FIRSTHDR(msg); cmsg; cmsg = CMSG_NXTHDR(msg, cmsg)) {
+      if (cmsg->cmsg_level == IPPROTO_IPV6 && cmsg->cmsg_type == IPV6_TCLASS &&
+          cmsg->cmsg_len) {
+        return *reinterpret_cast<uint8_t *>(CMSG_DATA(cmsg));
+      }
+    }
+
+    return 0;
+  }
+
+  return 0;
+}
+
+int fd_set_recv_ecn(int fd, int family) {
+  unsigned int tos = 1;
+
+  switch (family) {
+  case AF_INET:
+    if (setsockopt(fd, IPPROTO_IP, IP_RECVTOS, &tos,
+                   static_cast<socklen_t>(sizeof(tos))) == -1) {
+      return -1;
+    }
+
+    return 0;
+  case AF_INET6:
+    if (setsockopt(fd, IPPROTO_IPV6, IPV6_RECVTCLASS, &tos,
+                   static_cast<socklen_t>(sizeof(tos))) == -1) {
+      return -1;
+    }
+
+    return 0;
+  }
+
+  return -1;
+}
 #endif // ENABLE_HTTP3
 
 } // namespace util

@@ -258,15 +258,18 @@ struct WorkerStat {
 #ifdef ENABLE_HTTP3
 struct QUICPacket {
   QUICPacket(size_t upstream_addr_index, const Address &remote_addr,
-             const Address &local_addr, const uint8_t *data, size_t datalen)
+             const Address &local_addr, const ngtcp2_pkt_info &pi,
+             const uint8_t *data, size_t datalen)
       : upstream_addr_index{upstream_addr_index},
         remote_addr{remote_addr},
         local_addr{local_addr},
+        pi{pi},
         data{data, data + datalen} {}
-  QUICPacket() {}
+  QUICPacket() : upstream_addr_index{}, remote_addr{}, local_addr{}, pi{} {}
   size_t upstream_addr_index;
   Address remote_addr;
   Address local_addr;
+  ngtcp2_pkt_info pi;
   std::vector<uint8_t> data;
 };
 #endif // ENABLE_HTTP3

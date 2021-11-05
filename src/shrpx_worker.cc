@@ -554,7 +554,7 @@ void Worker::process_events() {
 
     quic_conn_handler_.handle_packet(
         faddr, wev.quic_pkt->remote_addr, wev.quic_pkt->local_addr,
-        wev.quic_pkt->data.data(), wev.quic_pkt->data.size());
+        wev.quic_pkt->pi, wev.quic_pkt->data.data(), wev.quic_pkt->data.size());
 
     break;
   }
@@ -844,7 +844,7 @@ int Worker::create_quic_server_socket(UpstreamAddr &faddr) {
       }
     }
 
-    // TODO Enable ECN
+    util::fd_set_recv_ecn(fd, faddr.family);
 
     if (bind(fd, rp->ai_addr, rp->ai_addrlen) == -1) {
       auto error = errno;
