@@ -57,8 +57,8 @@ ngtcp2_tstamp quic_timestamp() {
 
 int quic_send_packet(const UpstreamAddr *faddr, const sockaddr *remote_sa,
                      size_t remote_salen, const sockaddr *local_sa,
-                     size_t local_salen, const uint8_t *data, size_t datalen,
-                     size_t gso_size) {
+                     size_t local_salen, const ngtcp2_pkt_info &pi,
+                     const uint8_t *data, size_t datalen, size_t gso_size) {
   iovec msg_iov = {const_cast<uint8_t *>(data), datalen};
   msghdr msg{};
   msg.msg_name = const_cast<sockaddr *>(remote_sa);
@@ -123,6 +123,8 @@ int quic_send_packet(const UpstreamAddr *faddr, const sockaddr *remote_sa,
 
   msg.msg_controllen = controllen;
 
+  util::fd_set_send_ecn(faddr->fd, local_sa->sa_family, pi.ecn);
+
   ssize_t nwrite;
 
   do {
@@ -142,7 +144,8 @@ int quic_send_packet(const UpstreamAddr *faddr, const sockaddr *remote_sa,
     LOG(INFO) << "QUIC sent packet: local="
               << util::to_numeric_addr(local_sa, local_salen)
               << " remote=" << util::to_numeric_addr(remote_sa, remote_salen)
-              << " " << nwrite << " bytes";
+              << " ecn=" << log::hex << pi.ecn << log::dec << " " << nwrite
+              << " bytes";
   }
 
   return 0;

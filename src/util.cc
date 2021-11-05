@@ -1770,6 +1770,27 @@ int fd_set_recv_ecn(int fd, int family) {
 
   return -1;
 }
+
+int fd_set_send_ecn(int fd, int family, unsigned int ecn) {
+  switch (family) {
+  case AF_INET:
+    if (setsockopt(fd, IPPROTO_IP, IP_TOS, &ecn,
+                   static_cast<socklen_t>(sizeof(ecn))) == -1) {
+      return -1;
+    }
+
+    return 0;
+  case AF_INET6:
+    if (setsockopt(fd, IPPROTO_IPV6, IPV6_TCLASS, &ecn,
+                   static_cast<socklen_t>(sizeof(ecn))) == -1) {
+      return -1;
+    }
+
+    return 0;
+  }
+
+  return -1;
+}
 #endif // ENABLE_HTTP3
 
 } // namespace util

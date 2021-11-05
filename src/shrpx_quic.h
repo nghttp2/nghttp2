@@ -81,8 +81,8 @@ ngtcp2_tstamp quic_timestamp();
 
 int quic_send_packet(const UpstreamAddr *faddr, const sockaddr *remote_sa,
                      size_t remote_salen, const sockaddr *local_sa,
-                     size_t local_salen, const uint8_t *data, size_t datalen,
-                     size_t gso_size);
+                     size_t local_salen, const ngtcp2_pkt_info &pi,
+                     const uint8_t *data, size_t datalen, size_t gso_size);
 
 int generate_quic_retry_connection_id(ngtcp2_cid &cid, size_t cidlen,
                                       const uint8_t *server_id, uint8_t km_id,

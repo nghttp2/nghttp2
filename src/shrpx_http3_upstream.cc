@@ -712,6 +712,9 @@ int Http3Upstream::write_streams() {
       std::min(static_cast<size_t>(64_k), ngtcp2_conn_get_send_quantum(conn_)) /
       max_udp_payload_size;
   ngtcp2_pkt_info pi;
+#ifdef UDP_SEGMENT
+  ngtcp2_pkt_info prev_pi;
+#endif // UDP_SEGMENT
   uint8_t *bufpos = buf.data();
   ngtcp2_path_storage ps, prev_ps;
   size_t pktcnt = 0;
@@ -815,7 +818,8 @@ int Http3Upstream::write_streams() {
         send_packet(static_cast<UpstreamAddr *>(prev_ps.path.user_data),
                     prev_ps.path.remote.addr, prev_ps.path.remote.addrlen,
                     prev_ps.path.local.addr, prev_ps.path.local.addrlen,
-                    buf.data(), bufpos - buf.data(), max_udp_payload_size);
+                    prev_pi, buf.data(), bufpos - buf.data(),
+                    max_udp_payload_size);
 
         reset_idle_timer();
       }
@@ -832,17 +836,19 @@ int Http3Upstream::write_streams() {
 #ifdef UDP_SEGMENT
     if (pktcnt == 0) {
       ngtcp2_path_copy(&prev_ps.path, &ps.path);
-    } else if (!ngtcp2_path_eq(&prev_ps.path, &ps.path)) {
+      prev_pi = pi;
+    } else if (!ngtcp2_path_eq(&prev_ps.path, &ps.path) ||
+               prev_pi.ecn != pi.ecn) {
       send_packet(static_cast<UpstreamAddr *>(prev_ps.path.user_data),
                   prev_ps.path.remote.addr, prev_ps.path.remote.addrlen,
-                  prev_ps.path.local.addr, prev_ps.path.local.addrlen,
+                  prev_ps.path.local.addr, prev_ps.path.local.addrlen, prev_pi,
                   buf.data(), bufpos - buf.data() - nwrite,
                   max_udp_payload_size);
 
       send_packet(static_cast<UpstreamAddr *>(ps.path.user_data),
                   ps.path.remote.addr, ps.path.remote.addrlen,
-                  ps.path.local.addr, ps.path.local.addrlen, bufpos - nwrite,
-                  nwrite, max_udp_payload_size);
+                  ps.path.local.addr, ps.path.local.addrlen, pi,
+                  bufpos - nwrite, nwrite, max_udp_payload_size);
 
       ngtcp2_conn_update_pkt_tx_time(conn_, ts);
       reset_idle_timer();
@@ -856,7 +862,7 @@ int Http3Upstream::write_streams() {
         static_cast<size_t>(nwrite) < max_udp_payload_size) {
       send_packet(static_cast<UpstreamAddr *>(ps.path.user_data),
                   ps.path.remote.addr, ps.path.remote.addrlen,
-                  ps.path.local.addr, ps.path.local.addrlen, buf.data(),
+                  ps.path.local.addr, ps.path.local.addrlen, pi, buf.data(),
                   bufpos - buf.data(), max_udp_payload_size);
 
       ngtcp2_conn_update_pkt_tx_time(conn_, ts);
@@ -869,7 +875,7 @@ int Http3Upstream::write_streams() {
 #else  // !UDP_SEGMENT
     send_packet(static_cast<UpstreamAddr *>(ps.path.user_data),
                 ps.path.remote.addr, ps.path.remote.addrlen, ps.path.local.addr,
-                ps.path.local.addrlen, buf.data(), bufpos - buf.data(), 0);
+                ps.path.local.addrlen, pi, buf.data(), bufpos - buf.data(), 0);
 
     if (++pktcnt == max_pktcnt) {
       ngtcp2_conn_update_pkt_tx_time(conn_, ts);
@@ -1411,7 +1417,7 @@ void Http3Upstream::on_handler_delete() {
 
     send_packet(static_cast<UpstreamAddr *>(ps.path.user_data),
                 ps.path.remote.addr, ps.path.remote.addrlen, ps.path.local.addr,
-                ps.path.local.addrlen, conn_close_.data(), nwrite, 0);
+                ps.path.local.addrlen, pi, conn_close_.data(), nwrite, 0);
   }
 
   auto d =
@@ -1716,10 +1722,10 @@ int Http3Upstream::on_read(const UpstreamAddr *faddr,
 int Http3Upstream::send_packet(const UpstreamAddr *faddr,
                                const sockaddr *remote_sa, size_t remote_salen,
                                const sockaddr *local_sa, size_t local_salen,
-                               const uint8_t *data, size_t datalen,
-                               size_t gso_size) {
+                               const ngtcp2_pkt_info &pi, const uint8_t *data,
+                               size_t datalen, size_t gso_size) {
   auto rv = quic_send_packet(faddr, remote_sa, remote_salen, local_sa,
-                             local_salen, data, datalen, gso_size);
+                             local_salen, pi, data, datalen, gso_size);
   switch (rv) {
   case 0:
     return 0;
@@ -1776,7 +1782,7 @@ int Http3Upstream::handle_error() {
 
   send_packet(static_cast<UpstreamAddr *>(ps.path.user_data),
               ps.path.remote.addr, ps.path.remote.addrlen, ps.path.local.addr,
-              ps.path.local.addrlen, conn_close_.data(), nwrite, 0);
+              ps.path.local.addrlen, pi, conn_close_.data(), nwrite, 0);
 
   return -1;
 }

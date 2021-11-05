@@ -491,8 +491,8 @@ int QUICConnectionHandler::send_retry(
   buf.resize(nwrite);
 
   quic_send_packet(faddr, &remote_addr.su.sa, remote_addr.len,
-                   &local_addr.su.sa, local_addr.len, buf.data(), buf.size(),
-                   0);
+                   &local_addr.su.sa, local_addr.len, ngtcp2_pkt_info{},
+                   buf.data(), buf.size(), 0);
 
   if (generate_quic_hashed_connection_id(idcid, remote_addr, local_addr,
                                          idcid) != 0) {
@@ -541,8 +541,8 @@ int QUICConnectionHandler::send_version_negotiation(
   }
 
   return quic_send_packet(faddr, &remote_addr.su.sa, remote_addr.len,
-                          &local_addr.su.sa, local_addr.len, buf.data(), nwrite,
-                          0);
+                          &local_addr.su.sa, local_addr.len, ngtcp2_pkt_info{},
+                          buf.data(), nwrite, 0);
 }
 
 int QUICConnectionHandler::send_stateless_reset(const UpstreamAddr *faddr,
@@ -604,8 +604,8 @@ int QUICConnectionHandler::send_stateless_reset(const UpstreamAddr *faddr,
   }
 
   return quic_send_packet(faddr, &remote_addr.su.sa, remote_addr.len,
-                          &local_addr.su.sa, local_addr.len, buf.data(), nwrite,
-                          0);
+                          &local_addr.su.sa, local_addr.len, ngtcp2_pkt_info{},
+                          buf.data(), nwrite, 0);
 }
 
 int QUICConnectionHandler::send_connection_close(
@@ -630,8 +630,8 @@ int QUICConnectionHandler::send_connection_close(
   }
 
   return quic_send_packet(faddr, &remote_addr.su.sa, remote_addr.len,
-                          &local_addr.su.sa, local_addr.len, buf.data(), nwrite,
-                          0);
+                          &local_addr.su.sa, local_addr.len, ngtcp2_pkt_info{},
+                          buf.data(), nwrite, 0);
 }
 
 void QUICConnectionHandler::add_connection_id(const ngtcp2_cid &cid,
@@ -726,8 +726,8 @@ int CloseWait::handle_packet(const UpstreamAddr *faddr,
   }
 
   if (quic_send_packet(faddr, &remote_addr.su.sa, remote_addr.len,
-                       &local_addr.su.sa, local_addr.len, pkt.data(),
-                       pkt.size(), 0) != 0) {
+                       &local_addr.su.sa, local_addr.len, ngtcp2_pkt_info{},
+                       pkt.data(), pkt.size(), 0) != 0) {
     return -1;
   }
 

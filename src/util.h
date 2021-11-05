@@ -922,6 +922,8 @@ int msghdr_get_local_addr(Address &dest, msghdr *msg, int family);
 unsigned int msghdr_get_ecn(msghdr *msg, int family);
 
 int fd_set_recv_ecn(int fd, int family);
+
+int fd_set_send_ecn(int fd, int family, unsigned int ecn);
 #endif // ENABLE_HTTP3
 
 } // namespace util
