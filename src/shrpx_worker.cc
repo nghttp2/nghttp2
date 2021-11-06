@@ -833,6 +833,19 @@ int Worker::create_quic_server_socket(UpstreamAddr &faddr) {
         close(fd);
         continue;
       }
+
+#  if defined(IPV6_MTU_DISCOVER) && defined(IP_PMTUDISC_DO)
+      int mtu_disc = IP_PMTUDISC_DO;
+      if (setsockopt(fd, IPPROTO_IPV6, IPV6_MTU_DISCOVER, &mtu_disc,
+                     static_cast<socklen_t>(sizeof(mtu_disc))) == -1) {
+        auto error = errno;
+        LOG(WARN)
+            << "Failed to set IPV6_MTU_DISCOVER option to listener socket: "
+            << xsi_strerror(error, errbuf.data(), errbuf.size());
+        close(fd);
+        continue;
+      }
+#  endif // defined(IPV6_MTU_DISCOVER) && defined(IP_PMTUDISC_DO)
     } else {
       if (setsockopt(fd, IPPROTO_IP, IP_PKTINFO, &val,
                      static_cast<socklen_t>(sizeof(val))) == -1) {
@@ -842,6 +855,18 @@ int Worker::create_quic_server_socket(UpstreamAddr &faddr) {
         close(fd);
         continue;
       }
+
+#  if defined(IP_MTU_DISCOVER) && defined(IP_PMTUDISC_DO)
+      int mtu_disc = IP_PMTUDISC_DO;
+      if (setsockopt(fd, IPPROTO_IP, IP_MTU_DISCOVER, &mtu_disc,
+                     static_cast<socklen_t>(sizeof(mtu_disc))) == -1) {
+        auto error = errno;
+        LOG(WARN) << "Failed to set IP_MTU_DISCOVER option to listener socket: "
+                  << xsi_strerror(error, errbuf.data(), errbuf.size());
+        close(fd);
+        continue;
+      }
+#  endif // defined(IP_MTU_DISCOVER) && defined(IP_PMTUDISC_DO)
     }
 
     util::fd_set_recv_ecn(fd, faddr.family);
