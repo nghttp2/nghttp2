@@ -310,9 +310,12 @@ def negotiated_protocol(ssl_obj):
 
 def set_application_protocol(ssl_ctx):
     app_protos = [cnghttp2.NGHTTP2_PROTO_VERSION_ID.decode('utf-8')]
-    ssl_ctx.set_npn_protocols(app_protos)
-    if tls.HAS_ALPN:
+    if tls.HAS_NPN:
+        ssl_ctx.set_npn_protocols(app_protos)
+    elif tls.HAS_ALPN:
         ssl_ctx.set_alpn_protocols(app_protos)
+    else:
+        raise Exception('nghttp2_set_application_protocol: NPM or ALPN extension required')
 
 cdef _get_stream_user_data(cnghttp2.nghttp2_session *session,
                            int32_t stream_id):
