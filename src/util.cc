@@ -1748,29 +1748,6 @@ unsigned int msghdr_get_ecn(msghdr *msg, int family) {
   return 0;
 }
 
-int fd_set_recv_ecn(int fd, int family) {
-  unsigned int tos = 1;
-
-  switch (family) {
-  case AF_INET:
-    if (setsockopt(fd, IPPROTO_IP, IP_RECVTOS, &tos,
-                   static_cast<socklen_t>(sizeof(tos))) == -1) {
-      return -1;
-    }
-
-    return 0;
-  case AF_INET6:
-    if (setsockopt(fd, IPPROTO_IPV6, IPV6_RECVTCLASS, &tos,
-                   static_cast<socklen_t>(sizeof(tos))) == -1) {
-      return -1;
-    }
-
-    return 0;
-  }
-
-  return -1;
-}
-
 int fd_set_send_ecn(int fd, int family, unsigned int ecn) {
   switch (family) {
   case AF_INET:

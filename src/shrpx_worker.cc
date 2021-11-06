@@ -834,6 +834,15 @@ int Worker::create_quic_server_socket(UpstreamAddr &faddr) {
         continue;
       }
 
+      if (setsockopt(fd, IPPROTO_IPV6, IPV6_RECVTCLASS, &val,
+                     static_cast<socklen_t>(sizeof(val))) == -1) {
+        auto error = errno;
+        LOG(WARN) << "Failed to set IPV6_RECVTCLASS option to listener socket: "
+                  << xsi_strerror(error, errbuf.data(), errbuf.size());
+        close(fd);
+        continue;
+      }
+
 #  if defined(IPV6_MTU_DISCOVER) && defined(IP_PMTUDISC_DO)
       int mtu_disc = IP_PMTUDISC_DO;
       if (setsockopt(fd, IPPROTO_IPV6, IPV6_MTU_DISCOVER, &mtu_disc,
@@ -856,6 +865,15 @@ int Worker::create_quic_server_socket(UpstreamAddr &faddr) {
         continue;
       }
 
+      if (setsockopt(fd, IPPROTO_IP, IP_RECVTOS, &val,
+                     static_cast<socklen_t>(sizeof(val))) == -1) {
+        auto error = errno;
+        LOG(WARN) << "Failed to set IP_RECVTOS option to listener socket: "
+                  << xsi_strerror(error, errbuf.data(), errbuf.size());
+        close(fd);
+        continue;
+      }
+
 #  if defined(IP_MTU_DISCOVER) && defined(IP_PMTUDISC_DO)
       int mtu_disc = IP_PMTUDISC_DO;
       if (setsockopt(fd, IPPROTO_IP, IP_MTU_DISCOVER, &mtu_disc,
@@ -868,8 +886,6 @@ int Worker::create_quic_server_socket(UpstreamAddr &faddr) {
       }
 #  endif // defined(IP_MTU_DISCOVER) && defined(IP_PMTUDISC_DO)
     }
-
-    util::fd_set_recv_ecn(fd, faddr.family);
 
     if (bind(fd, rp->ai_addr, rp->ai_addrlen) == -1) {
       auto error = errno;
