@@ -141,7 +141,7 @@ public:
   int http_acked_stream_data(Downstream *downstream, uint64_t datalen);
   int http_shutdown_stream_read(int64_t stream_id);
   int http_reset_stream(int64_t stream_id, uint64_t app_error_code);
-  int http_send_stop_sending(int64_t stream_id, uint64_t app_error_code);
+  int http_stop_sending(int64_t stream_id, uint64_t app_error_code);
   int http_recv_data(Downstream *downstream, const uint8_t *data,
                      size_t datalen);
   int handshake_completed();

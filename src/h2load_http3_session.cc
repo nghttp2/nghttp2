@@ -213,19 +213,17 @@ void Http3Session::recv_header(int64_t stream_id, const nghttp3_vec *name,
 }
 
 namespace {
-int send_stop_sending(nghttp3_conn *conn, int64_t stream_id,
-                      uint64_t app_error_code, void *user_data,
-                      void *stream_user_data) {
+int stop_sending(nghttp3_conn *conn, int64_t stream_id, uint64_t app_error_code,
+                 void *user_data, void *stream_user_data) {
   auto s = static_cast<Http3Session *>(user_data);
-  if (s->send_stop_sending(stream_id, app_error_code) != 0) {
+  if (s->stop_sending(stream_id, app_error_code) != 0) {
     return NGHTTP3_ERR_CALLBACK_FAILURE;
   }
   return 0;
 }
 } // namespace
 
-int Http3Session::send_stop_sending(int64_t stream_id,
-                                    uint64_t app_error_code) {
+int Http3Session::stop_sending(int64_t stream_id, uint64_t app_error_code) {
   auto rv = ngtcp2_conn_shutdown_stream_read(client_->quic.conn, stream_id,
                                              app_error_code);
   if (rv != 0) {
@@ -300,7 +298,7 @@ int Http3Session::init_conn() {
       nullptr, // begin_trailers
       h2load::recv_header,
       nullptr, // end_trailers
-      h2load::send_stop_sending,
+      h2load::stop_sending,
   };
 
   auto config = client_->worker->config;

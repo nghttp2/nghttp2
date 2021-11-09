@@ -2353,12 +2353,12 @@ int Http3Upstream::http_stream_close(Downstream *downstream,
 }
 
 namespace {
-int http_send_stop_sending(nghttp3_conn *conn, int64_t stream_id,
-                           uint64_t app_error_code, void *user_data,
-                           void *stream_user_data) {
+int http_stop_sending(nghttp3_conn *conn, int64_t stream_id,
+                      uint64_t app_error_code, void *user_data,
+                      void *stream_user_data) {
   auto upstream = static_cast<Http3Upstream *>(user_data);
 
-  if (upstream->http_send_stop_sending(stream_id, app_error_code) != 0) {
+  if (upstream->http_stop_sending(stream_id, app_error_code) != 0) {
     return NGHTTP3_ERR_CALLBACK_FAILURE;
   }
 
@@ -2366,8 +2366,8 @@ int http_send_stop_sending(nghttp3_conn *conn, int64_t stream_id,
 }
 } // namespace
 
-int Http3Upstream::http_send_stop_sending(int64_t stream_id,
-                                          uint64_t app_error_code) {
+int Http3Upstream::http_stop_sending(int64_t stream_id,
+                                     uint64_t app_error_code) {
   auto rv = ngtcp2_conn_shutdown_stream_read(conn_, stream_id, app_error_code);
   if (ngtcp2_err_is_fatal(rv)) {
     ULOG(ERROR, this) << "ngtcp2_conn_shutdown_stream_read: "
@@ -2422,7 +2422,7 @@ int Http3Upstream::setup_httpconn() {
       nullptr, // begin_trailers
       nullptr, // recv_trailer
       nullptr, // end_trailers
-      shrpx::http_send_stop_sending,
+      shrpx::http_stop_sending,
       shrpx::http_end_stream,
       shrpx::http_reset_stream,
   };
