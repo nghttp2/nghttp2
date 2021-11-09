@@ -480,8 +480,14 @@ int Client::quic_init(const sockaddr *local_addr, socklen_t local_addrlen,
   params.max_idle_timeout = 30 * NGTCP2_SECONDS;
 
   auto path = ngtcp2_path{
-      {local_addrlen, const_cast<sockaddr *>(local_addr)},
-      {remote_addrlen, const_cast<sockaddr *>(remote_addr)},
+      {
+          const_cast<sockaddr *>(local_addr),
+          local_addrlen,
+      },
+      {
+          const_cast<sockaddr *>(remote_addr),
+          remote_addrlen,
+      },
   };
 
   assert(config->npn_list.size());
@@ -647,8 +653,14 @@ int Client::read_quic() {
     ++worker->stats.udp_dgram_recv;
 
     auto path = ngtcp2_path{
-        {local_addr.len, &local_addr.su.sa},
-        {addrlen, &su.sa},
+        {
+            &local_addr.su.sa,
+            local_addr.len,
+        },
+        {
+            &su.sa,
+            addrlen,
+        },
     };
 
     rv = ngtcp2_conn_read_pkt(quic.conn, &path, &pi, buf.data(), nread,
