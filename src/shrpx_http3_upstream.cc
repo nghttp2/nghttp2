@@ -2072,7 +2072,7 @@ int Http3Upstream::http_end_request_headers(Downstream *downstream) {
   // For HTTP/2 proxy, we require :authority.
   if (method_token != HTTP_CONNECT && config->http2_proxy &&
       faddr->alt_mode == UpstreamAltMode::NONE && !authority) {
-    shutdown_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
+    shutdown_stream(downstream, NGHTTP3_H3_GENERAL_PROTOCOL_ERROR);
     return 0;
   }
 
@@ -2283,7 +2283,7 @@ int Http3Upstream::http_end_stream(Downstream *downstream) {
 
   if (downstream->end_upload_data() != 0) {
     if (downstream->get_response_state() != DownstreamState::MSG_COMPLETE) {
-      shutdown_stream(downstream, NGHTTP2_INTERNAL_ERROR);
+      shutdown_stream(downstream, NGHTTP3_H3_INTERNAL_ERROR);
     }
   }
 
