@@ -106,6 +106,7 @@ Config::Config()
       max_concurrent_streams(1),
       window_bits(30),
       connection_window_bits(30),
+      max_frame_size(16_k),
       rate(0),
       rate_period(1.0),
       duration(0.0),
@@ -2109,6 +2110,11 @@ Options:
               http/1.1  is used,  this  specifies the  number of  HTTP
               pipelining requests in-flight.
               Default: 1
+  -f, --max-frame-size=<SIZE>
+              Maximum frame size that the local endpoint is willing to
+              receive.
+              Default: )"
+      << util::utos_unit(config.max_frame_size) << R"(
   -w, --window-bits=<N>
               Sets the stream level initial window size to (2**<N>)-1.
               For QUIC, <N> is capped to 26 (roughly 64MiB).
@@ -2301,6 +2307,7 @@ int main(int argc, char **argv) {
         {"threads", required_argument, nullptr, 't'},
         {"max-concurrent-streams", required_argument, nullptr, 'm'},
         {"window-bits", required_argument, nullptr, 'w'},
+        {"max-frame-size", required_argument, nullptr, 'f'},
         {"connection-window-bits", required_argument, nullptr, 'W'},
         {"input-file", required_argument, nullptr, 'i'},
         {"header", required_argument, nullptr, 'H'},
@@ -2332,7 +2339,7 @@ int main(int argc, char **argv) {
         {nullptr, 0, nullptr, 0}};
     int option_index = 0;
     auto c = getopt_long(argc, argv,
-                         "hvW:c:d:m:n:p:t:w:H:i:r:T:N:D:B:", long_options,
+                         "hvW:c:d:m:n:p:t:w:f:H:i:r:T:N:D:B:", long_options,
                          &option_index);
     if (c == -1) {
       break;
@@ -2376,6 +2383,24 @@ int main(int argc, char **argv) {
                   << std::endl;
         exit(EXIT_FAILURE);
       }
+      break;
+    }
+    case 'f': {
+      auto n = util::parse_uint_with_unit(optarg);
+      if (n == -1) {
+        std::cerr << "--max-frame-size: bad option value: " << optarg
+                  << std::endl;
+        exit(EXIT_FAILURE);
+      }
+      if (static_cast<uint64_t>(n) < 16_k) {
+        std::cerr << "--max-frame-size: minimum 16384" << std::endl;
+        exit(EXIT_FAILURE);
+      }
+      if (static_cast<uint64_t>(n) > 16_m - 1) {
+        std::cerr << "--max-frame-size: maximum 16777215" << std::endl;
+        exit(EXIT_FAILURE);
+      }
+      config.max_frame_size = n;
       break;
     }
     case 'H': {
