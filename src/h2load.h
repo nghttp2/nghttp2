@@ -95,6 +95,7 @@ struct Config {
   ssize_t max_concurrent_streams;
   size_t window_bits;
   size_t connection_window_bits;
+  size_t max_frame_size;
   // rate at which connections should be made
   size_t rate;
   ev_tstamp rate_period;
