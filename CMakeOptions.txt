@@ -27,5 +27,6 @@ option(WITH_SPDYLAY     "Use spdylay"
   ${WITH_SPDYLAY_DEFAULT})
 option(WITH_MRUBY       "Use mruby")
 option(WITH_NEVERBLEED  "Use neverbleed")
+option(WITH_LIBBPF      "Use libbpf")
 
 # vim: ft=cmake:
