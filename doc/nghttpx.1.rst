@@ -1376,7 +1376,7 @@ HTTP
     advertised  in alt-svc  header  field  only in  HTTP/1.1
     frontend.   This option  can be  used multiple  times to
     specify multiple alternative services.
-    Example: :option:`--altsvc`\="h2,443,,,ma=3600; persist=1'
+    Example: :option:`--altsvc`\="h2,443,,,ma=3600; persist=1"
 
 .. option:: --http2-altsvc=<PROTOID,PORT[,HOST,[ORIGIN[,PARAMS]]]>
 
