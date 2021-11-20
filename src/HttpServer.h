@@ -203,7 +203,7 @@ public:
 
   struct ev_loop *get_loop() const;
 
-  using WriteBuf = Buffer<512_k>;
+  using WriteBuf = Buffer<512_k>; // This needs to be >= largest frame sent, or frame is not sent
 
   WriteBuf *get_wb();
 
