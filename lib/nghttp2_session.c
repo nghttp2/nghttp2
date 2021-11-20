@@ -7165,6 +7165,21 @@ int nghttp2_session_pack_data(nghttp2_session *session, nghttp2_bufs *bufs,
     datamax = (size_t)payloadlen;
   }
 
+  if ((size_t)datamax > nghttp2_buf_avail(buf)) {
+      /* Resize the current buffer(s).  The reason why we do +1 for
+         buffer size is for possible padding field. */
+      rv = nghttp2_bufs_realloc(&session->aob.framebufs,
+                                (size_t)(NGHTTP2_FRAME_HDLEN + 1 + datamax));
+
+      if (rv != 0) {
+        DEBUGF("send: realloc buffer failed rv=%d", rv);
+      } else {
+        assert(&session->aob.framebufs == bufs);
+
+        buf = &bufs->cur->buf;
+      }
+    }
+
   /* Current max DATA length is less then buffer chunk size */
   assert(nghttp2_buf_avail(buf) >= datamax);
 

@@ -53,7 +53,7 @@
   (NGHTTP2_FRAME_HDLEN + 1 + NGHTTP2_MAX_PAYLOADLEN)
 
 /* The default length of DATA frame payload. */
-#define NGHTTP2_DATA_PAYLOADLEN NGHTTP2_MAX_FRAME_SIZE_MIN
+#define NGHTTP2_DATA_PAYLOADLEN 256*1024
 
 /* Maximum headers block size to send, calculated using
    nghttp2_hd_deflate_bound().  This is the default value, and can be

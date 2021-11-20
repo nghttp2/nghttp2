@@ -203,7 +203,7 @@ public:
 
   struct ev_loop *get_loop() const;
 
-  using WriteBuf = Buffer<64_k>;
+  using WriteBuf = Buffer<512_k>;
 
   WriteBuf *get_wb();
 
