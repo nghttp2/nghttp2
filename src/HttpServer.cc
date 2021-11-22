@@ -1626,6 +1626,13 @@ int hd_on_frame_send_callback(nghttp2_session *session,
 }
 } // namespace
 
+
+namespace {
+ssize_t read_length_callback(nghttp2_session *session, uint8_t frame_type, int32_t stream_id, int32_t session_remote_window_size, int32_t stream_remote_window_size, uint32_t remote_max_frame_size, void *user_data){
+  return remote_max_frame_size;
+}
+} //namespace
+
 namespace {
 int send_data_callback(nghttp2_session *session, nghttp2_frame *frame,
                        const uint8_t *framehd, size_t length,
@@ -1766,6 +1773,12 @@ void fill_callback(nghttp2_session_callbacks *callbacks, const Config *config) {
 
   nghttp2_session_callbacks_set_send_data_callback(callbacks,
                                                    send_data_callback);
+
+  nghttp2_session_callbacks_set_data_source_read_length_callback(callbacks,
+                                                   read_length_callback);
+
+
+  
 
   if (config->padding) {
     nghttp2_session_callbacks_set_select_padding_callback(
