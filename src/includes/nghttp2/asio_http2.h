@@ -108,6 +108,9 @@ generator_cb file_generator_from_fd(int fd);
 // percent-decode was performed.
 bool check_path(const std::string &path);
 
+// Performs percent-encode against string |s|.
+std::string percent_encode(const std::string &s);
+
 // Performs percent-decode against string |s|.
 std::string percent_decode(const std::string &s);
 

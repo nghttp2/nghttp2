@@ -134,6 +134,10 @@ generator_cb file_generator_from_fd(int fd) {
 
 bool check_path(const std::string &path) { return util::check_path(path); }
 
+std::string percent_encode(const std::string &s) {
+  return util::percent_encode(s);
+}
+
 std::string percent_decode(const std::string &s) {
   return util::percent_decode(std::begin(s), std::end(s));
 }
