@@ -66,6 +66,9 @@ RUN git clone --depth 1 https://github.com/nghttp2/nghttp2.git && \
 FROM gcr.io/distroless/base-debian11
 
 COPY --from=build \
+    /usr/local/share/nghttp2/ \
+    /usr/local/share/nghttp2/
+COPY --from=build \
     /usr/local/bin/h2load \
     /usr/local/bin/nghttpx \
     /usr/local/bin/nghttp \
