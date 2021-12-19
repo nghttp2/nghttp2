@@ -95,18 +95,18 @@ jobs:
     - name: Build quictls/openssl v1.1.1
       if: matrix.http3 == 'http3' && matrix.openssl == 'openssl1'
       run: |
-        git clone --depth 1 -b OpenSSL_1_1_1l+quic https://github.com/quictls/openssl
+        git clone --depth 1 -b OpenSSL_1_1_1m+quic https://github.com/quictls/openssl
         cd openssl
         ./config enable-tls1_3 --prefix=$PWD/build
         make -j$(nproc)
         make install_sw
-    - name: Build quictls/openssl v3.0.0
+    - name: Build quictls/openssl v3.0.x
       if: matrix.http3 == 'http3' && matrix.openssl == 'openssl3'
       run: |
         unset CPPFLAGS
         unset LDFLAGS
 
-        git clone --depth 1 -b openssl-3.0.0+quic https://github.com/quictls/openssl
+        git clone --depth 1 -b openssl-3.0.1+quic https://github.com/quictls/openssl
         cd openssl
         ./config enable-tls1_3 --prefix=$PWD/build --libdir=$PWD/build/lib
         make -j$(nproc)
