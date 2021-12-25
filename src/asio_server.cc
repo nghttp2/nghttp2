@@ -188,7 +188,13 @@ void server::start_accept(tcp::acceptor &acceptor, serve_mux &mux) {
 
 void server::stop() {
   for (auto &acceptor : acceptors_) {
-    acceptor.close();
+    std::promise<void> promise;
+    GET_IO_SERVICE ( acceptor ).dispatch ( [&acceptor, &promise]() {
+      boost::system::error_code ignored_ec;
+      acceptor.close ( ignored_ec );
+      promise.set_value();
+    } );
+    promise.get_future().get();
   }
   io_service_pool_.stop();
 }
