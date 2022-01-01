@@ -1057,8 +1057,7 @@ if asyncio:
         """HTTP/2 request (stream) handler base class.
 
         The class is used to handle the HTTP/2 stream. By default, it does
-        not nothing. It must be subclassed to handle each event callback
-        method.
+        nothing. It must be subclassed to handle each event callback method.
 
         The first callback method invoked is on_headers(). It is called
         when HEADERS frame, which includes request header fields, is
