@@ -23,8 +23,6 @@ option(WITH_LIBXML2     "Use libxml2"
   ${WITH_LIBXML2_DEFAULT})
 option(WITH_JEMALLOC    "Use jemalloc"
   ${WITH_JEMALLOC_DEFAULT})
-option(WITH_SPDYLAY     "Use spdylay"
-  ${WITH_SPDYLAY_DEFAULT})
 option(WITH_MRUBY       "Use mruby")
 option(WITH_NEVERBLEED  "Use neverbleed")
 option(WITH_LIBBPF      "Use libbpf")
