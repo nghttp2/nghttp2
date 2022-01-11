@@ -734,7 +734,7 @@ void test_nghttp2_hd_change_table_size(void) {
 
   CU_ASSERT(4096 == deflater.ctx.hd_table_bufsize_max);
 
-  CU_ASSERT(8000 == inflater.ctx.hd_table_bufsize_max);
+  CU_ASSERT(4096 == inflater.ctx.hd_table_bufsize_max);
   CU_ASSERT(8000 == inflater.settings_hd_table_bufsize_max);
 
   /* This will emit encoding context update with header table size 4096 */
@@ -830,8 +830,8 @@ void test_nghttp2_hd_change_table_size(void) {
 
   CU_ASSERT(8000 == deflater.ctx.hd_table_bufsize_max);
   CU_ASSERT(8000 == nghttp2_hd_deflate_get_max_dynamic_table_size(&deflater));
-  CU_ASSERT(8000 == inflater.ctx.hd_table_bufsize_max);
-  CU_ASSERT(8000 == nghttp2_hd_inflate_get_max_dynamic_table_size(&inflater));
+  CU_ASSERT(4096 == inflater.ctx.hd_table_bufsize_max);
+  CU_ASSERT(4096 == nghttp2_hd_inflate_get_max_dynamic_table_size(&inflater));
   CU_ASSERT(8000 == inflater.settings_hd_table_bufsize_max);
 
   rv = nghttp2_hd_deflate_hd_bufs(&deflater, &bufs, nva, 2);
@@ -856,8 +856,8 @@ void test_nghttp2_hd_change_table_size(void) {
   CU_ASSERT(8192 == deflater.ctx.hd_table_bufsize_max);
   CU_ASSERT(8192 == nghttp2_hd_deflate_get_max_dynamic_table_size(&deflater));
 
-  CU_ASSERT(16383 == inflater.ctx.hd_table_bufsize_max);
-  CU_ASSERT(16383 == nghttp2_hd_inflate_get_max_dynamic_table_size(&inflater));
+  CU_ASSERT(8000 == inflater.ctx.hd_table_bufsize_max);
+  CU_ASSERT(8000 == nghttp2_hd_inflate_get_max_dynamic_table_size(&inflater));
   CU_ASSERT(16383 == inflater.settings_hd_table_bufsize_max);
 
   rv = nghttp2_hd_deflate_hd_bufs(&deflater, &bufs, nva, 2);
