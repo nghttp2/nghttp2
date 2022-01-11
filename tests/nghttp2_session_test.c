@@ -5720,7 +5720,7 @@ void test_nghttp2_submit_settings(void) {
   nghttp2_frame_settings_free(&ack_frame.settings, mem);
 
   CU_ASSERT(16 * 1024 == session->local_settings.initial_window_size);
-  CU_ASSERT(1023 == session->hd_inflater.ctx.hd_table_bufsize_max);
+  CU_ASSERT(111 == session->hd_inflater.ctx.hd_table_bufsize_max);
   CU_ASSERT(111 == session->hd_inflater.min_hd_table_bufsize_max);
   CU_ASSERT(50 == session->local_settings.max_concurrent_streams);
 
