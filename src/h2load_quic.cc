@@ -535,12 +535,12 @@ void Client::quic_close_connection() {
   case quic::ErrorType::Transport:
     nwrite = ngtcp2_conn_write_connection_close(
         quic.conn, &ps.path, nullptr, buf.data(), buf.size(),
-        quic.last_error.code, timestamp(worker->loop));
+        quic.last_error.code, nullptr, 0, timestamp(worker->loop));
     break;
   case quic::ErrorType::Application:
     nwrite = ngtcp2_conn_write_application_close(
         quic.conn, &ps.path, nullptr, buf.data(), buf.size(),
-        quic.last_error.code, timestamp(worker->loop));
+        quic.last_error.code, nullptr, 0, timestamp(worker->loop));
     break;
   default:
     assert(0);

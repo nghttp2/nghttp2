@@ -1406,7 +1406,7 @@ void Http3Upstream::on_handler_delete() {
 
     auto nwrite = ngtcp2_conn_write_connection_close(
         conn_, &ps.path, &pi, conn_close_.data(), conn_close_.size(),
-        NGTCP2_NO_ERROR, quic_timestamp());
+        NGTCP2_NO_ERROR, nullptr, 0, quic_timestamp());
     if (nwrite < 0) {
       if (nwrite != NGTCP2_ERR_INVALID_STATE) {
         ULOG(ERROR, this) << "ngtcp2_conn_write_connection_close: "
@@ -1764,7 +1764,7 @@ int Http3Upstream::handle_error() {
   if (last_error_.type == quic::ErrorType::Transport) {
     nwrite = ngtcp2_conn_write_connection_close(
         conn_, &ps.path, &pi, conn_close_.data(), conn_close_.size(),
-        last_error_.code, ts);
+        last_error_.code, nullptr, 0, ts);
     if (nwrite < 0) {
       ULOG(ERROR, this) << "ngtcp2_conn_write_connection_close: "
                         << ngtcp2_strerror(nwrite);
@@ -1773,7 +1773,7 @@ int Http3Upstream::handle_error() {
   } else {
     nwrite = ngtcp2_conn_write_application_close(
         conn_, &ps.path, &pi, conn_close_.data(), conn_close_.size(),
-        last_error_.code, ts);
+        last_error_.code, nullptr, 0, ts);
     if (nwrite < 0) {
       ULOG(ERROR, this) << "ngtcp2_conn_write_application_close: "
                         << ngtcp2_strerror(nwrite);

@@ -615,7 +615,8 @@ int QUICConnectionHandler::send_connection_close(
   std::array<uint8_t, NGTCP2_MAX_UDP_PAYLOAD_SIZE> buf;
 
   auto nwrite = ngtcp2_crypto_write_connection_close(
-      buf.data(), buf.size(), version, &ini_scid, &ini_dcid, error_code);
+      buf.data(), buf.size(), version, &ini_scid, &ini_dcid, error_code,
+      nullptr, 0);
   if (nwrite < 0) {
     LOG(ERROR) << "ngtcp2_crypto_write_connection_close failed";
     return -1;
