@@ -163,7 +163,7 @@ public:
 
   // Cancels ocsp update process
   void cancel_ocsp_update();
-  // Starts ocsp update for certficate |cert_file|.
+  // Starts ocsp update for certificate |cert_file|.
   int start_ocsp_update(const char *cert_file);
   // Reads incoming data from ocsp update process
   void read_ocsp_chunk();

@@ -74,7 +74,7 @@ int NullDownstreamConnection::on_read() { return 0; }
 
 int NullDownstreamConnection::on_write() { return 0; }
 
-void NullDownstreamConnection::on_upstream_change(Upstream *uptream) {}
+void NullDownstreamConnection::on_upstream_change(Upstream *upstream) {}
 
 bool NullDownstreamConnection::poolable() const { return false; }
 

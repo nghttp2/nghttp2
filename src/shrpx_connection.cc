@@ -753,7 +753,7 @@ ssize_t Connection::write_tls(const void *data, size_t len) {
   // length) on SSL_ERROR_WANT_READ or SSL_ERROR_WANT_WRITE.
   // get_write_limit() may return smaller length than previously
   // passed to SSL_write, which violates OpenSSL assumption.  To avoid
-  // this, we keep last legnth passed to SSL_write to
+  // this, we keep last length passed to SSL_write to
   // tls.last_writelen if SSL_write indicated I/O blocking.
   if (tls.last_writelen == 0) {
     len = std::min(len, wlimit.avail());
@@ -831,7 +831,7 @@ ssize_t Connection::read_tls(void *data, size_t len) {
   // length) on SSL_ERROR_WANT_READ or SSL_ERROR_WANT_WRITE.
   // rlimit_.avail() or rlimit_.avail() may return different length
   // than the length previously passed to SSL_read, which violates
-  // OpenSSL assumption.  To avoid this, we keep last legnth passed
+  // OpenSSL assumption.  To avoid this, we keep last length passed
   // to SSL_read to tls_last_readlen_ if SSL_read indicated I/O
   // blocking.
   if (tls.last_readlen == 0) {

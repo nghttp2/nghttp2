@@ -58,7 +58,7 @@ public:
   virtual int on_write() = 0;
   virtual int on_timeout() { return 0; }
 
-  virtual void on_upstream_change(Upstream *uptream) = 0;
+  virtual void on_upstream_change(Upstream *upstream) = 0;
 
   // true if this object is poolable.
   virtual bool poolable() const = 0;

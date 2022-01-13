@@ -572,7 +572,7 @@ std::string ascii_dump(const uint8_t *data, size_t len);
 
 // Returns absolute path of executable path.  If argc == 0 or |cwd| is
 // nullptr, this function returns nullptr.  If argv[0] starts with
-// '/', this function returns argv[0].  Oterwise return cwd + "/" +
+// '/', this function returns argv[0].  Otherwise return cwd + "/" +
 // argv[0].  If non-null is returned, it is NULL-terminated string and
 // dynamically allocated by malloc.  The caller is responsible to free
 // it.

@@ -701,7 +701,7 @@ cdef class _HTTP2SessionCoreBase:
             if outbuflen == 0:
                 break
             if outbuflen < 0:
-                raise Exception('nghttp2_session_mem_send faild: {}'.format\
+                raise Exception('nghttp2_session_mem_send failed: {}'.format\
                                 (_strerror(outbuflen)))
             self.transport.write(outbuf[:outbuflen])
 
@@ -1083,7 +1083,7 @@ if asyncio:
           address.
 
         client_certificate
-          May contain the client certifcate in its non-binary form
+          May contain the client certificate in its non-binary form
 
         stream_id
           Stream ID of this stream
