@@ -5,14 +5,15 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"golang.org/x/net/http2/hpack"
-	"golang.org/x/net/websocket"
 	"io"
 	"net/http"
 	"regexp"
 	"syscall"
 	"testing"
 	"time"
+
+	"golang.org/x/net/http2/hpack"
+	"golang.org/x/net/websocket"
 )
 
 // TestH1H1PlainGET tests whether simple HTTP/1 GET request works.
@@ -34,7 +35,7 @@ func TestH1H1PlainGET(t *testing.T) {
 }
 
 // TestH1H1PlainGETClose tests whether simple HTTP/1 GET request with
-// Connetion: close request header field works.
+// Connection: close request header field works.
 func TestH1H1PlainGETClose(t *testing.T) {
 	st := newServerTester(nil, t, noopHandler)
 	defer st.Close()

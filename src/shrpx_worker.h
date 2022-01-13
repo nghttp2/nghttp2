@@ -439,7 +439,7 @@ private:
   std::shared_ptr<TicketKeys> ticket_keys_;
   std::vector<std::shared_ptr<DownstreamAddrGroup>> downstream_addr_groups_;
   // Worker level blocker for downstream connection.  For example,
-  // this is used when file decriptor is exhausted.
+  // this is used when file descriptor is exhausted.
   std::unique_ptr<ConnectBlocker> connect_blocker_;
 
   bool graceful_shutdown_;

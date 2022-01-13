@@ -88,7 +88,7 @@ public:
   int on_write(int fd);
   int on_timeout();
   // Calls this function when DNS query finished.
-  void on_result(int staus, hostent *hostent);
+  void on_result(int status, hostent *hostent);
   void reset_timeout();
 
   void start_rev(int fd);

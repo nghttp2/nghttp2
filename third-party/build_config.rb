@@ -3,7 +3,7 @@ MRuby::Build.new do |conf|
   toolchain :gcc if ENV['CC'].include? "gcc"
 
   # C++ project needs this.  Without this, mruby exception does not
-  # properly destory C++ object allocated on stack.
+  # properly destroy C++ object allocated on stack.
   conf.enable_cxx_exception
 
   conf.build_dir = ENV['BUILD_DIR']
