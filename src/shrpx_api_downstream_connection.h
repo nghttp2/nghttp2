@@ -81,7 +81,7 @@ public:
   virtual int on_read();
   virtual int on_write();
 
-  virtual void on_upstream_change(Upstream *uptream);
+  virtual void on_upstream_change(Upstream *upstream);
 
   // true if this object is poolable.
   virtual bool poolable() const;

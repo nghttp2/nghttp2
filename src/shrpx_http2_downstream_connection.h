@@ -60,7 +60,7 @@ public:
 
   virtual void on_upstream_change(Upstream *upstream) {}
 
-  // This object is not poolable because we dont' have facility to
+  // This object is not poolable because we don't have facility to
   // migrate to another Http2Session object.
   virtual bool poolable() const { return false; }
 

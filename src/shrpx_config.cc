@@ -4463,7 +4463,7 @@ int configure_downstream_group(Config *config, bool http2_proxy,
     if (!g.mruby_file.empty()) {
       if (mruby::create_mruby_context(g.mruby_file) == nullptr) {
         LOG(config->ignore_per_pattern_mruby_error ? ERROR : FATAL)
-            << "backend: Could not compile mruby flie for pattern "
+            << "backend: Could not compile mruby file for pattern "
             << g.pattern;
         if (!config->ignore_per_pattern_mruby_error) {
           return -1;

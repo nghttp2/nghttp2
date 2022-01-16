@@ -2954,7 +2954,7 @@ void test_nghttp2_session_on_request_headers_received(void) {
   session->local_settings.max_concurrent_streams =
       NGHTTP2_DEFAULT_MAX_CONCURRENT_STREAMS;
 
-  /* Stream ID less than or equal to the previouly received request
+  /* Stream ID less than or equal to the previously received request
      HEADERS is just ignored due to race condition */
   nghttp2_frame_headers_init(&frame.headers,
                              NGHTTP2_FLAG_END_HEADERS | NGHTTP2_FLAG_PRIORITY,
@@ -4650,7 +4650,7 @@ void test_nghttp2_session_reprioritize_stream(void) {
   CU_ASSERT(10 == stream->weight);
   CU_ASSERT(&session->root == stream->dep_prev);
 
-  /* If depenency to idle stream which is not in depdenency tree yet */
+  /* If dependency to idle stream which is not in dependency tree yet */
 
   nghttp2_priority_spec_init(&pri_spec, 3, 99, 0);
 
@@ -9070,7 +9070,7 @@ void test_nghttp2_session_stream_get_state(void) {
   CU_ASSERT(NGHTTP2_STREAM_STATE_RESERVED_LOCAL ==
             nghttp2_stream_get_state(stream));
 
-  /* Send resposne to push stream 2 with END_STREAM set */
+  /* Send response to push stream 2 with END_STREAM set */
   nghttp2_submit_response(session, 2, resnv, ARRLEN(resnv), NULL);
 
   rv = nghttp2_session_send(session);

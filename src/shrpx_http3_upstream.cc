@@ -1023,7 +1023,7 @@ int Http3Upstream::downstream_eof(DownstreamConnection *dconn) {
   downstream->pop_downstream_connection();
   // dconn was deleted
   dconn = nullptr;
-  // downstream wil be deleted in on_stream_close_callback.
+  // downstream will be deleted in on_stream_close_callback.
   if (downstream->get_response_state() == DownstreamState::HEADER_COMPLETE) {
     // Server may indicate the end of the request by EOF
     if (LOG_ENABLED(INFO)) {

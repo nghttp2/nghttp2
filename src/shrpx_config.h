@@ -691,7 +691,7 @@ struct TLSConfig {
     ev_tstamp idle_timeout;
   } dyn_rec;
 
-  // OCSP realted configurations
+  // OCSP related configurations
   struct {
     ev_tstamp update_interval;
     StringRef fetch_ocsp_response_file;

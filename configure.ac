@@ -349,7 +349,7 @@ APPLDFLAGS=
 case "$host_os" in
   *android*)
     android_build=yes
-    # android does not need -pthread, but needs followng 3 libs for C++
+    # android does not need -pthread, but needs following 3 libs for C++
     APPLDFLAGS="$APPLDFLAGS -lstdc++ -latomic -lsupc++"
     ;;
   *)

@@ -2128,7 +2128,7 @@ Options:
   -H, --header=<HEADER>
               Add/Override a header to the requests.
   --ciphers=<SUITE>
-              Set  allowed cipher  list  for TLSv1.2  or ealier.   The
+              Set  allowed cipher  list  for TLSv1.2  or earlier.   The
               format of the string is described in OpenSSL ciphers(1).
               Default: )"
       << config.ciphers << R"(

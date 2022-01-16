@@ -55,7 +55,7 @@ EXTRA_DIST = nghttpx.conf.sample proxy.pac.sample android-config android-make \
 .PHONY: clang-format
 
 # Format source files using clang-format.  Don't format source files
-# under third-party directory since we are not responsible for thier
+# under third-party directory since we are not responsible for their
 # coding style.
 clang-format:
 	CLANGFORMAT=`git config --get clangformat.binary`; \
