@@ -3174,7 +3174,7 @@ HTTP:
               advertised  in alt-svc  header  field  only in  HTTP/1.1
               frontend.   This option  can be  used multiple  times to
               specify multiple alternative services.
-              Example: --altsvc="h2,443,,,ma=3600; persist=1'
+              Example: --altsvc="h2,443,,,ma=3600; persist=1"
   --http2-altsvc=<PROTOID,PORT[,HOST,[ORIGIN[,PARAMS]]]>
               Just like --altsvc option, but  this altsvc is only sent
               in HTTP/2 frontend.
