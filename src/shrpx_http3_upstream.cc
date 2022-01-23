@@ -2027,7 +2027,7 @@ int Http3Upstream::http_recv_request_header(Downstream *downstream,
     }
 
     if (error_reply(downstream, 431) != 0) {
-      return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
+      return -1;
     }
 
     return 0;
@@ -2115,7 +2115,7 @@ int Http3Upstream::http_end_request_headers(Downstream *downstream, int fin) {
   auto method_token = http2::lookup_method_token(method->value);
   if (method_token == -1) {
     if (error_reply(downstream, 501) != 0) {
-      return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
+      return -1;
     }
     return 0;
   }
@@ -2163,7 +2163,7 @@ int Http3Upstream::http_end_request_headers(Downstream *downstream, int fin) {
   if (connect_proto) {
     if (connect_proto->value != "websocket") {
       if (error_reply(downstream, 400) != 0) {
-        return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
+        return -1;
       }
       return 0;
     }
@@ -2188,7 +2188,7 @@ int Http3Upstream::http_end_request_headers(Downstream *downstream, int fin) {
 
   if (mruby_ctx->run_on_request_proc(downstream) != 0) {
     if (error_reply(downstream, 500) != 0) {
-      return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
+      return -1;
     }
     return 0;
   }
