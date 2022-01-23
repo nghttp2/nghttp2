@@ -120,7 +120,7 @@ int stream_close(ngtcp2_conn *conn, uint32_t flags, int64_t stream_id,
   }
 
   if (c->quic_stream_close(stream_id, app_error_code) != 0) {
-    return -1;
+    return NGTCP2_ERR_CALLBACK_FAILURE;
   }
   return 0;
 }
@@ -140,7 +140,7 @@ int stream_reset(ngtcp2_conn *conn, int64_t stream_id, uint64_t final_size,
                  void *stream_user_data) {
   auto c = static_cast<Client *>(user_data);
   if (c->quic_stream_reset(stream_id, app_error_code) != 0) {
-    return -1;
+    return NGTCP2_ERR_CALLBACK_FAILURE;
   }
   return 0;
 }
@@ -160,7 +160,7 @@ int stream_stop_sending(ngtcp2_conn *conn, int64_t stream_id,
                         void *stream_user_data) {
   auto c = static_cast<Client *>(user_data);
   if (c->quic_stream_stop_sending(stream_id, app_error_code) != 0) {
-    return -1;
+    return NGTCP2_ERR_CALLBACK_FAILURE;
   }
   return 0;
 }
