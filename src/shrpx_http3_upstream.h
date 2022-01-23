@@ -124,7 +124,7 @@ public:
   void http_begin_request_headers(int64_t stream_id);
   int http_recv_request_header(Downstream *downstream, int32_t token,
                                nghttp3_rcbuf *name, nghttp3_rcbuf *value,
-                               uint8_t flags);
+                               uint8_t flags, bool trailer);
   int http_end_request_headers(Downstream *downstream, int fin);
   int http_end_stream(Downstream *downstream);
   void start_downstream(Downstream *downstream);

@@ -1035,7 +1035,9 @@ int Http3Upstream::downstream_eof(DownstreamConnection *dconn) {
     // downstream_read_data_callback to send RST_STREAM after pending
     // response body is sent. This is needed to ensure that RST_STREAM
     // is sent after all pending data are sent.
-    on_downstream_body_complete(downstream);
+    if (on_downstream_body_complete(downstream) != 0) {
+      return -1;
+    }
   } else if (downstream->get_response_state() !=
              DownstreamState::MSG_COMPLETE) {
     // If stream was not closed, then we set MSG_COMPLETE and let
@@ -1079,7 +1081,9 @@ int Http3Upstream::downstream_error(DownstreamConnection *dconn, int events) {
   } else {
     if (downstream->get_response_state() == DownstreamState::HEADER_COMPLETE) {
       if (downstream->get_upgraded()) {
-        on_downstream_body_complete(downstream);
+        if (on_downstream_body_complete(downstream) != 0) {
+          return -1;
+        }
       } else {
         shutdown_stream(downstream, NGHTTP3_H3_INTERNAL_ERROR);
       }
@@ -1364,6 +1368,24 @@ int Http3Upstream::on_downstream_body_complete(Downstream *downstream) {
     shutdown_stream(downstream, NGHTTP3_H3_GENERAL_PROTOCOL_ERROR);
     resp.connection_close = true;
     return 0;
+  }
+
+  if (!downstream->get_upgraded()) {
+    const auto &trailers = resp.fs.trailers();
+    if (!trailers.empty()) {
+      std::vector<nghttp3_nv> nva;
+      nva.reserve(trailers.size());
+      http3::copy_headers_to_nva_nocopy(nva, trailers, http2::HDOP_STRIP_ALL);
+      if (!nva.empty()) {
+        auto rv = nghttp3_conn_submit_trailers(
+            httpconn_, downstream->get_stream_id(), nva.data(), nva.size());
+        if (rv != 0) {
+          ULOG(FATAL, this) << "nghttp3_conn_submit_trailers() failed: "
+                            << nghttp3_strerror(rv);
+          return -1;
+        }
+      }
+    }
   }
 
   nghttp3_conn_resume_stream(httpconn_, downstream->get_stream_id());
@@ -1943,8 +1965,29 @@ int http_recv_request_header(nghttp3_conn *conn, int64_t stream_id,
     return 0;
   }
 
-  if (upstream->http_recv_request_header(downstream, token, name, value,
-                                         flags) != 0) {
+  if (upstream->http_recv_request_header(downstream, token, name, value, flags,
+                                         /* trailer = */ false) != 0) {
+    return NGHTTP3_ERR_CALLBACK_FAILURE;
+  }
+
+  return 0;
+}
+} // namespace
+
+namespace {
+int http_recv_request_trailer(nghttp3_conn *conn, int64_t stream_id,
+                              int32_t token, nghttp3_rcbuf *name,
+                              nghttp3_rcbuf *value, uint8_t flags,
+                              void *user_data, void *stream_user_data) {
+  auto upstream = static_cast<Http3Upstream *>(user_data);
+  auto downstream = static_cast<Downstream *>(stream_user_data);
+
+  if (!downstream || downstream->get_stop_reading()) {
+    return 0;
+  }
+
+  if (upstream->http_recv_request_header(downstream, token, name, value, flags,
+                                         /* trailer = */ true) != 0) {
     return NGHTTP3_ERR_CALLBACK_FAILURE;
   }
 
@@ -1955,8 +1998,8 @@ int http_recv_request_header(nghttp3_conn *conn, int64_t stream_id,
 int Http3Upstream::http_recv_request_header(Downstream *downstream,
                                             int32_t h3token,
                                             nghttp3_rcbuf *name,
-                                            nghttp3_rcbuf *value,
-                                            uint8_t flags) {
+                                            nghttp3_rcbuf *value, uint8_t flags,
+                                            bool trailer) {
   auto namebuf = nghttp3_rcbuf_get_buf(name);
   auto valuebuf = nghttp3_rcbuf_get_buf(value);
   auto &req = downstream->request();
@@ -1978,6 +2021,11 @@ int Http3Upstream::http_recv_request_header(Downstream *downstream,
                        << ", num=" << req.fs.num_fields() + 1;
     }
 
+    // just ignore if this is a trailer part.
+    if (trailer) {
+      return 0;
+    }
+
     if (error_reply(downstream, 431) != 0) {
       return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
     }
@@ -1990,6 +2038,13 @@ int Http3Upstream::http_recv_request_header(Downstream *downstream,
 
   downstream->add_rcbuf(name);
   downstream->add_rcbuf(value);
+
+  if (trailer) {
+    req.fs.add_trailer_token(StringRef{namebuf.base, namebuf.len},
+                             StringRef{valuebuf.base, valuebuf.len}, no_index,
+                             token);
+    return 0;
+  }
 
   req.fs.add_header_token(StringRef{namebuf.base, namebuf.len},
                           StringRef{valuebuf.base, valuebuf.len}, no_index,
@@ -2429,7 +2484,7 @@ int Http3Upstream::setup_httpconn() {
       shrpx::http_recv_request_header,
       shrpx::http_end_request_headers,
       nullptr, // begin_trailers
-      nullptr, // recv_trailer
+      shrpx::http_recv_request_trailer,
       nullptr, // end_trailers
       shrpx::http_stop_sending,
       shrpx::http_end_stream,
