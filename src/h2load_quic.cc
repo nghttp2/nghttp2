@@ -667,6 +667,11 @@ int Client::read_quic() {
                               timestamp(worker->loop));
     if (rv != 0) {
       std::cerr << "ngtcp2_conn_read_pkt: " << ngtcp2_strerror(rv) << std::endl;
+
+      if (!quic.last_error.code) {
+        quic.last_error = quic::err_transport(rv);
+      }
+
       return -1;
     }
 
