@@ -1998,7 +1998,7 @@ int Http3Upstream::http_recv_request_header(Downstream *downstream,
 }
 
 namespace {
-int http_end_request_headers(nghttp3_conn *conn, int64_t stream_id,
+int http_end_request_headers(nghttp3_conn *conn, int64_t stream_id, int fin,
                              void *user_data, void *stream_user_data) {
   auto upstream = static_cast<Http3Upstream *>(user_data);
   auto handler = upstream->get_client_handler();
@@ -2008,7 +2008,7 @@ int http_end_request_headers(nghttp3_conn *conn, int64_t stream_id,
     return 0;
   }
 
-  if (upstream->http_end_request_headers(downstream) != 0) {
+  if (upstream->http_end_request_headers(downstream, fin) != 0) {
     return NGHTTP3_ERR_CALLBACK_FAILURE;
   }
 
@@ -2019,7 +2019,7 @@ int http_end_request_headers(nghttp3_conn *conn, int64_t stream_id,
 }
 } // namespace
 
-int Http3Upstream::http_end_request_headers(Downstream *downstream) {
+int Http3Upstream::http_end_request_headers(Downstream *downstream, int fin) {
   auto lgconf = log_config();
   lgconf->update_tstamp(std::chrono::system_clock::now());
   auto &req = downstream->request();
@@ -2115,8 +2115,11 @@ int Http3Upstream::http_end_request_headers(Downstream *downstream) {
     req.connect_proto = ConnectProto::WEBSOCKET;
   }
 
-  // We are not sure that request has body or not at the moment.
-  req.http2_expect_body = true;
+  if (!fin) {
+    req.http2_expect_body = true;
+  } else if (req.fs.content_length == -1) {
+    req.fs.content_length = 0;
+  }
 
   downstream->inspect_http2_request();
 
