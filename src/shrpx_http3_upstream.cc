@@ -2495,7 +2495,7 @@ int Http3Upstream::setup_httpconn() {
 
   nghttp3_settings settings;
   nghttp3_settings_default(&settings);
-  settings.qpack_max_table_capacity = 4_k;
+  settings.qpack_max_dtable_capacity = 4_k;
 
   if (!config->http2_proxy) {
     settings.enable_connect_protocol = 1;

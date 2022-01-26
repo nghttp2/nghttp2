@@ -368,7 +368,7 @@ Build nghttp3:
 
    $ git clone https://github.com/ngtcp2/nghttp3
    $ cd nghttp3
-   $ git checkout 207318c92e0578ac393c31dcd797e4a4dca3e31a
+   $ git checkout 74a222fe0c89b7202bcdaf6ef27a232edffc85e3
    $ autoreconf -i
    $ ./configure --prefix=$PWD/build --enable-lib-only
    $ make -j$(nproc)

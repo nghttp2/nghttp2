@@ -305,7 +305,7 @@ int Http3Session::init_conn() {
 
   nghttp3_settings settings;
   nghttp3_settings_default(&settings);
-  settings.qpack_max_table_capacity = config->header_table_size;
+  settings.qpack_max_dtable_capacity = config->header_table_size;
   settings.qpack_blocked_streams = 100;
 
   auto mem = nghttp3_mem_default();
