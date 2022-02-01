@@ -32,11 +32,13 @@ Public Test Server
 The following endpoints are available to try out our nghttp2
 implementation.
 
-* https://nghttp2.org/ (TLS + ALPN/NPN)
+* https://nghttp2.org/ (TLS + ALPN/NPN and HTTP/3)
 
   This endpoint supports ``h2``, ``h2-16``, ``h2-14``, and
   ``http/1.1`` via ALPN/NPN and requires TLSv1.2 for HTTP/2
   connection.
+
+  It also supports HTTP/3.
 
 * http://nghttp2.org/ (HTTP Upgrade and HTTP/2 Direct)
 
@@ -149,15 +151,23 @@ To enable the experimental HTTP/3 support for h2load and nghttpx, the
 following libraries are required:
 
 * `OpenSSL with QUIC support
-  <https://github.com/quictls/openssl/tree/OpenSSL_1_1_1k+quic>`_
+  <https://github.com/quictls/openssl/tree/OpenSSL_1_1_1m+quic>`_; or
+  `BoringSSL <https://boringssl.googlesource.com/boringssl/>`_ (commit
+  f6ef1c560ae5af51e2df5d8d2175bed207b28b8f)
 * `ngtcp2 <https://github.com/ngtcp2/ngtcp2>`_
 * `nghttp3 <https://github.com/ngtcp2/nghttp3>`_
+
+Use ``--enable-http3`` configure option to enable HTTP/3 feature for
+h2load and nghttpx.
 
 In order to build optional eBPF program to direct an incoming QUIC UDP
 datagram to a correct socket for nghttpx, the following libraries are
 required:
 
 * libbpf-dev >= 0.4.0
+
+Use ``--with-libbpf`` configure option to build eBPF program.
+libelf-dev is needed to build libbpf.
 
 For Ubuntu 20.04, you can build libbpf from `the source code
 <https://github.com/libbpf/libbpf/releases/tag/v0.4.0>`_.  nghttpx
@@ -325,6 +335,89 @@ The generated documents will not be installed with ``make install``.
 
 The online documentation is available at
 https://nghttp2.org/documentation/
+
+Build HTTP/3 enabled h2load and nghttpx
+---------------------------------------
+
+To build h2load and nghttpx with HTTP/3 feature enabled, run the
+configure script with ``--enable-http3``.
+
+For nghttpx to reload configurations and swapping its executable while
+gracefully terminating old worker processes, eBPF is required.  Run
+the configure script with ``--enable-http3 --with-libbpf`` to build
+eBPF program.  The QUIC keying material must be set with
+``--frontend-quic-secret-file`` in order to keep the existing
+connections alive during reload.
+
+The detailed steps to build HTTP/3 enabled h2load and nghttpx follow.
+
+Build custom OpenSSL:
+
+.. code-block:: text
+
+   $ git clone --depth 1 -b OpenSSL_1_1_1m+quic https://github.com/quictls/openssl
+   $ cd openssl
+   $ ./config --prefix=$PWD/build --openssldir=/etc/ssl
+   $ make -j$(nproc)
+   $ make install_sw
+   $ cd ..
+
+Build nghttp3:
+
+.. code-block:: text
+
+   $ git clone https://github.com/ngtcp2/nghttp3
+   $ cd nghttp3
+   $ git checkout 74a222fe0c89b7202bcdaf6ef27a232edffc85e3
+   $ autoreconf -i
+   $ ./configure --prefix=$PWD/build --enable-lib-only
+   $ make -j$(nproc)
+   $ make install
+   $ cd ..
+
+Build ngtcp2:
+
+.. code-block:: text
+
+   $ git clone --depth 1 -b v0.1.0 https://github.com/ngtcp2/ngtcp2
+   $ cd ngtcp2
+   $ autoreconf -i
+   $ ./configure --prefix=$PWD/build --enable-lib-only \
+         PKG_CONFIG_PATH="$PWD/../openssl/build/lib/pkgconfig"
+   $ make -j$(nproc)
+   $ make install
+   $ cd ..
+
+If your Linux distribution does not have libbpf-dev >= 0.4.0, build
+from source:
+
+.. code-block:: text
+
+   $ git clone --depth 1 -b v0.4.0 https://github.com/libbpf/libbpf
+   $ cd libbpf
+   $ PREFIX=$PWD/build make -C src install
+   $ cd ..
+
+Build nghttp2:
+
+.. code-block:: text
+
+   $ git clone https://github.com/nghttp2/nghttp2
+   $ cd nghttp2
+   $ git submodule update --init
+   $ autoreconf -i
+   $ ./configure --with-mruby --with-neverbleed --enable-http3 --with-libbpf \
+         --disable-python-bindings \
+         CC=clang-12 CXX=clang++-12 \
+         PKG_CONFIG_PATH="$PWD/../openssl/build/lib/pkgconfig:$PWD/../nghttp3/build/lib/pkgconfig:$PWD/../ngtcp2/build/lib/pkgconfig:$PWD/../libbpf/build/lib64/pkgconfig" \
+         LDFLAGS="$LDFLAGS -Wl,-rpath,$PWD/../openssl/build/lib -Wl,-rpath,$PWD/../libbpf/build/lib64"
+   $ make -j$(nproc)
+
+The eBPF program ``reuseport_kern.o`` should be found under bpf
+directory.  Pass ``--quic-bpf-program-file=bpf/reuseport_kern.o``
+option to nghttpx to load it.  See also `HTTP/3 section in nghttpx -
+HTTP/2 proxy - HOW-TO
+<https://nghttp2.org/documentation/nghttpx-howto.html#http-3>`_.
 
 Unit tests
 ----------
@@ -753,7 +846,7 @@ information.  Here is sample output from ``nghttpd``:
 nghttpx - proxy
 +++++++++++++++
 
-``nghttpx`` is a multi-threaded reverse proxy for HTTP/2, and
+``nghttpx`` is a multi-threaded reverse proxy for HTTP/3, HTTP/2, and
 HTTP/1.1, and powers http://nghttp2.org and supports HTTP/2 server
 push.
 
@@ -774,16 +867,16 @@ ticket keys among multiple ``nghttpx`` instances via memcached.
 
 ``nghttpx`` has 2 operation modes:
 
-================== ================ ================ =============
-Mode option        Frontend         Backend          Note
-================== ================ ================ =============
-default mode       HTTP/2, HTTP/1.1 HTTP/1.1, HTTP/2 Reverse proxy
-``--http2-proxy``  HTTP/2, HTTP/1.1 HTTP/1.1, HTTP/2 Forward proxy
-================== ================ ================ =============
+================== ======================== ================ =============
+Mode option        Frontend                 Backend          Note
+================== ======================== ================ =============
+default mode       HTTP/3, HTTP/2, HTTP/1.1 HTTP/1.1, HTTP/2 Reverse proxy
+``--http2-proxy``  HTTP/3, HTTP/2, HTTP/1.1 HTTP/1.1, HTTP/2 Forward proxy
+================== ======================== ================ =============
 
 The interesting mode at the moment is the default mode.  It works like
-a reverse proxy and listens for HTTP/2, and HTTP/1.1 and can be
-deployed as a SSL/TLS terminator for existing web server.
+a reverse proxy and listens for HTTP/3, HTTP/2, and HTTP/1.1 and can
+be deployed as a SSL/TLS terminator for existing web server.
 
 In all modes, the frontend connections are encrypted by SSL/TLS by
 default.  To disable encryption, use the ``no-tls`` keyword in
@@ -801,16 +894,16 @@ server:
 
 .. code-block:: text
 
-    Client <-- (HTTP/2, HTTP/1.1) --> nghttpx <-- (HTTP/1.1, HTTP/2) --> Web Server
-                                    [reverse proxy]
+    Client <-- (HTTP/3, HTTP/2, HTTP/1.1) --> nghttpx <-- (HTTP/1.1, HTTP/2) --> Web Server
+                                            [reverse proxy]
 
 With the ``--http2-proxy`` option, it works as forward proxy, and it
 is so called secure HTTP/2 proxy:
 
 .. code-block:: text
 
-    Client <-- (HTTP/2, HTTP/1.1) --> nghttpx <-- (HTTP/1.1) --> Proxy
-                                     [secure proxy]          (e.g., Squid, ATS)
+    Client <-- (HTTP/3, HTTP/2, HTTP/1.1) --> nghttpx <-- (HTTP/1.1) --> Proxy
+                                             [secure proxy]          (e.g., Squid, ATS)
 
 The ``Client`` in the above example needs to be configured to use
 ``nghttpx`` as secure proxy.
@@ -842,7 +935,7 @@ proxy through an HTTP proxy:
 
 .. code-block:: text
 
-    Client <-- (HTTP/2, HTTP/1.1) --> nghttpx <-- (HTTP/2) --
+    Client <-- (HTTP/3, HTTP/2, HTTP/1.1) --> nghttpx <-- (HTTP/2) --
 
             --===================---> HTTP/2 Proxy
               (HTTP proxy tunnel)     (e.g., nghttpx -s)
@@ -850,8 +943,8 @@ proxy through an HTTP proxy:
 Benchmarking tool
 -----------------
 
-The ``h2load`` program is a benchmarking tool for HTTP/2.  The UI of
-``h2load`` is heavily inspired by ``weighttp``
+The ``h2load`` program is a benchmarking tool for HTTP/3, HTTP/2, and
+HTTP/1.1.  The UI of ``h2load`` is heavily inspired by ``weighttp``
 (https://github.com/lighttpd/weighttp).  The typical usage is as
 follows:
 
@@ -901,17 +994,6 @@ like so:
 .. code-block:: text
 
     $ h2load --npn-list h3 https://127.0.0.1:4433
-
-HTTP/3
-------
-
-To build h2load and nghttpx with HTTP/3 feature enabled, run the
-configure script with ``--enable-http3``.
-
-For nghttpx to reload configurations and swapping its executable while
-gracefully terminating old worker processes, eBPF is required.  Run
-the configure script with ``--enable-http3 --with-libbpf`` to build
-eBPF program.
 
 HPACK tools
 -----------

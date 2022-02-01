@@ -298,8 +298,6 @@ int ConnectionHandler::create_single_worker() {
 #endif // HAVE_MRUBY
 
 #ifdef ENABLE_HTTP3
-  single_worker_->set_quic_secret(quic_secret_);
-
   if (single_worker_->setup_quic_server_socket() != 0) {
     return -1;
   }
@@ -404,8 +402,6 @@ int ConnectionHandler::create_worker_thread(size_t num) {
 #  endif // HAVE_MRUBY
 
 #  ifdef ENABLE_HTTP3
-    worker->set_quic_secret(quic_secret_);
-
     if ((!apiconf.enabled || i != 0) &&
         worker->setup_quic_server_socket() != 0) {
       return -1;
@@ -744,9 +740,9 @@ void ConnectionHandler::handle_ocsp_complete() {
     // that case we get nullptr.
     auto quic_ssl_ctx = quic_all_ssl_ctx_[ocsp_.next];
     if (quic_ssl_ctx) {
+#  ifndef OPENSSL_IS_BORINGSSL
       auto quic_tls_ctx_data = static_cast<tls::TLSContextData *>(
           SSL_CTX_get_app_data(quic_ssl_ctx));
-#  ifndef OPENSSL_IS_BORINGSSL
 #    ifdef HAVE_ATOMIC_STD_SHARED_PTR
       std::atomic_store_explicit(
           &quic_tls_ctx_data->ocsp_data,
@@ -758,7 +754,8 @@ void ConnectionHandler::handle_ocsp_complete() {
           std::make_shared<std::vector<uint8_t>>(ocsp_.resp);
 #    endif // !HAVE_ATOMIC_STD_SHARED_PTR
 #  else    // OPENSSL_IS_BORINGSSL
-      SSL_CTX_set_ocsp_response(ssl_ctx, ocsp_.resp.data(), ocsp_.resp.size());
+      SSL_CTX_set_ocsp_response(quic_ssl_ctx, ocsp_.resp.data(),
+                                ocsp_.resp.size());
 #  endif   // OPENSSL_IS_BORINGSSL
     }
 #endif // ENABLE_HTTP3
@@ -1020,12 +1017,10 @@ void ConnectionHandler::set_enable_acceptor_on_ocsp_completion(bool f) {
 }
 
 #ifdef ENABLE_HTTP3
-int ConnectionHandler::forward_quic_packet(const UpstreamAddr *faddr,
-                                           const Address &remote_addr,
-                                           const Address &local_addr,
-                                           const uint8_t *cid_prefix,
-                                           const uint8_t *data,
-                                           size_t datalen) {
+int ConnectionHandler::forward_quic_packet(
+    const UpstreamAddr *faddr, const Address &remote_addr,
+    const Address &local_addr, const ngtcp2_pkt_info &pi,
+    const uint8_t *cid_prefix, const uint8_t *data, size_t datalen) {
   assert(!get_config()->single_thread);
 
   for (auto &worker : workers_) {
@@ -1037,7 +1032,7 @@ int ConnectionHandler::forward_quic_packet(const UpstreamAddr *faddr,
     WorkerEvent wev{};
     wev.type = WorkerEventType::QUIC_PKT_FORWARD;
     wev.quic_pkt = std::make_unique<QUICPacket>(faddr->index, remote_addr,
-                                                local_addr, data, datalen);
+                                                local_addr, pi, data, datalen);
 
     worker->send(std::move(wev));
 
@@ -1047,25 +1042,14 @@ int ConnectionHandler::forward_quic_packet(const UpstreamAddr *faddr,
   return -1;
 }
 
-int ConnectionHandler::create_quic_secret() {
-  auto quic_secret = std::make_shared<QUICSecret>();
+void ConnectionHandler::set_quic_keying_materials(
+    std::shared_ptr<QUICKeyingMaterials> qkms) {
+  quic_keying_materials_ = std::move(qkms);
+}
 
-  if (generate_quic_stateless_reset_secret(
-          quic_secret->stateless_reset_secret.data()) != 0) {
-    LOG(ERROR) << "Failed to generate QUIC Stateless Reset secret";
-
-    return -1;
-  }
-
-  if (generate_quic_token_secret(quic_secret->token_secret.data()) != 0) {
-    LOG(ERROR) << "Failed to generate QUIC token secret";
-
-    return -1;
-  }
-
-  quic_secret_ = std::move(quic_secret);
-
-  return 0;
+const std::shared_ptr<QUICKeyingMaterials> &
+ConnectionHandler::get_quic_keying_materials() const {
+  return quic_keying_materials_;
 }
 
 void ConnectionHandler::set_cid_prefixes(
@@ -1094,6 +1078,26 @@ ConnectionHandler::match_quic_lingering_worker_process_cid_prefix(
 std::vector<BPFRef> &ConnectionHandler::get_quic_bpf_refs() {
   return quic_bpf_refs_;
 }
+
+void ConnectionHandler::unload_bpf_objects() {
+  std::array<char, STRERROR_BUFSIZE> errbuf;
+
+  LOG(NOTICE) << "Unloading BPF objects";
+
+  for (auto &ref : quic_bpf_refs_) {
+    if (ref.obj == nullptr) {
+      continue;
+    }
+
+    if (bpf_object__unload(ref.obj) != 0) {
+      LOG(WARN) << "Failed to unload bpf object: "
+                << xsi_strerror(errno, errbuf.data(), errbuf.size());
+      continue;
+    }
+
+    ref.obj = nullptr;
+  }
+}
 #  endif // HAVE_LIBBPF
 
 void ConnectionHandler::set_quic_ipc_fd(int fd) { quic_ipc_fd_ = fd; }
@@ -1105,10 +1109,11 @@ void ConnectionHandler::set_quic_lingering_worker_processes(
 
 int ConnectionHandler::forward_quic_packet_to_lingering_worker_process(
     QUICLingeringWorkerProcess *quic_lwp, const Address &remote_addr,
-    const Address &local_addr, const uint8_t *data, size_t datalen) {
+    const Address &local_addr, const ngtcp2_pkt_info &pi, const uint8_t *data,
+    size_t datalen) {
   std::array<uint8_t, 512> header;
 
-  assert(header.size() >= 1 + 1 + 1 + sizeof(sockaddr_storage) * 2);
+  assert(header.size() >= 1 + 1 + 1 + 1 + sizeof(sockaddr_storage) * 2);
   assert(remote_addr.len > 0);
   assert(local_addr.len > 0);
 
@@ -1121,6 +1126,7 @@ int ConnectionHandler::forward_quic_packet_to_lingering_worker_process(
   *p++ = static_cast<uint8_t>(local_addr.len - 1);
   p = std::copy_n(reinterpret_cast<const uint8_t *>(&local_addr.su),
                   local_addr.len, p);
+  *p++ = pi.ecn;
 
   iovec msg_iov[] = {
       {
@@ -1179,14 +1185,14 @@ int ConnectionHandler::quic_ipc_read() {
     return 0;
   }
 
-  size_t len = 1 + 1 + 1;
+  size_t len = 1 + 1 + 1 + 1;
 
   // Wire format:
-  // TYPE(1) REMOTE_ADDRLEN(1) REMOTE_ADDR(N) LOCAL_ADDRLEN(1) REMOTE_ADDR(N)
-  // DGRAM_PAYLAOD(N)
+  // TYPE(1) REMOTE_ADDRLEN(1) REMOTE_ADDR(N) LOCAL_ADDRLEN(1) LOCAL_ADDR(N)
+  // ECN(1) DGRAM_PAYLOAD(N)
   //
-  // When encoding, REMOTE_ADDRLEN and LOCAL_ADDRLEN is decremented by
-  // 1.
+  // When encoding, REMOTE_ADDRLEN and LOCAL_ADDRLEN are decremented
+  // by 1.
   if (static_cast<size_t>(nread) < len) {
     return 0;
   }
@@ -1243,6 +1249,8 @@ int ConnectionHandler::quic_ipc_read() {
 
   p += local_addrlen;
 
+  pkt->pi.ecn = *p++;
+
   auto datalen = nread - (p - buf.data());
 
   pkt->data.assign(p, p + datalen);
@@ -1265,8 +1273,8 @@ int ConnectionHandler::quic_ipc_read() {
     return -1;
   }
 
-  if (dcidlen < SHRPX_QUIC_CID_PREFIXLEN) {
-    LOG(ERROR) << "DCID is too short";
+  if (dcidlen != SHRPX_QUIC_SCIDLEN) {
+    LOG(ERROR) << "DCID length is invalid";
     return -1;
   }
 
@@ -1282,13 +1290,25 @@ int ConnectionHandler::quic_ipc_read() {
 
     // Ignore return value
     quic_conn_handler->handle_packet(faddr, pkt->remote_addr, pkt->local_addr,
-                                     pkt->data.data(), pkt->data.size());
+                                     pkt->pi, pkt->data.data(),
+                                     pkt->data.size());
 
     return 0;
   }
 
+  auto &qkm = quic_keying_materials_->keying_materials.front();
+
+  std::array<uint8_t, SHRPX_QUIC_DECRYPTED_DCIDLEN> decrypted_dcid;
+
+  if (decrypt_quic_connection_id(decrypted_dcid.data(),
+                                 dcid + SHRPX_QUIC_CID_PREFIX_OFFSET,
+                                 qkm.cid_encryption_key.data()) != 0) {
+    return -1;
+  }
+
   for (auto &worker : workers_) {
-    if (!std::equal(dcid, dcid + SHRPX_QUIC_CID_PREFIXLEN,
+    if (!std::equal(std::begin(decrypted_dcid),
+                    std::begin(decrypted_dcid) + SHRPX_QUIC_CID_PREFIXLEN,
                     worker->get_cid_prefix())) {
       continue;
     }

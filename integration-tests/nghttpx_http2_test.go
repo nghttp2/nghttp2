@@ -565,7 +565,7 @@ func TestH2H1BadResponseCL(t *testing.T) {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
 
-	want := http2.ErrCodeProtocol
+	want := http2.ErrCodeInternal
 	if res.errCode != want {
 		t.Errorf("res.errCode = %v; want %v", res.errCode, want)
 	}
@@ -2836,5 +2836,37 @@ func TestH2ResponseBeforeRequestEnd(t *testing.T) {
 	}
 	if got, want := res.status, 404; got != want {
 		t.Errorf("res.status: %v; want %v", got, want)
+	}
+}
+
+// TestH2H1ChunkedEndsPrematurely tests that a stream is reset if the
+// backend chunked encoded response ends prematurely.
+func TestH2H1ChunkedEndsPrematurely(t *testing.T) {
+	st := newServerTester(nil, t, func(w http.ResponseWriter, r *http.Request) {
+		hj, ok := w.(http.Hijacker)
+		if !ok {
+			http.Error(w, "Could not hijack the connection", http.StatusInternalServerError)
+			return
+		}
+		conn, bufrw, err := hj.Hijack()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		defer conn.Close()
+		bufrw.WriteString("HTTP/1.1 200\r\nTransfer-Encoding: chunked\r\n\r\n")
+		bufrw.Flush()
+	})
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name: "TestH2H1ChunkedEndsPrematurely",
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+
+	if got, want := res.errCode, http2.ErrCodeInternal; got != want {
+		t.Errorf("res.errCode = %v; want %v", got, want)
 	}
 }

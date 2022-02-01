@@ -43,8 +43,6 @@
 #include "util.h"
 #include "xsi_strerror.h"
 
-using namespace nghttp2;
-
 bool operator==(const ngtcp2_cid &lhs, const ngtcp2_cid &rhs) {
   return ngtcp2_cid_eq(&lhs, &rhs);
 }
@@ -59,8 +57,8 @@ ngtcp2_tstamp quic_timestamp() {
 
 int quic_send_packet(const UpstreamAddr *faddr, const sockaddr *remote_sa,
                      size_t remote_salen, const sockaddr *local_sa,
-                     size_t local_salen, const uint8_t *data, size_t datalen,
-                     size_t gso_size) {
+                     size_t local_salen, const ngtcp2_pkt_info &pi,
+                     const uint8_t *data, size_t datalen, size_t gso_size) {
   iovec msg_iov = {const_cast<uint8_t *>(data), datalen};
   msghdr msg{};
   msg.msg_name = const_cast<sockaddr *>(remote_sa);
@@ -125,6 +123,8 @@ int quic_send_packet(const UpstreamAddr *faddr, const sockaddr *remote_sa,
 
   msg.msg_controllen = controllen;
 
+  util::fd_set_send_ecn(faddr->fd, local_sa->sa_family, pi.ecn);
+
   ssize_t nwrite;
 
   do {
@@ -132,65 +132,138 @@ int quic_send_packet(const UpstreamAddr *faddr, const sockaddr *remote_sa,
   } while (nwrite == -1 && errno == EINTR);
 
   if (nwrite == -1) {
-    return -1;
+    if (LOG_ENABLED(INFO)) {
+      auto error = errno;
+      LOG(INFO) << "sendmsg failed: errno=" << error;
+    }
+
+    return -errno;
   }
 
   if (LOG_ENABLED(INFO)) {
     LOG(INFO) << "QUIC sent packet: local="
               << util::to_numeric_addr(local_sa, local_salen)
               << " remote=" << util::to_numeric_addr(remote_sa, remote_salen)
-              << " " << nwrite << " bytes";
+              << " ecn=" << log::hex << pi.ecn << log::dec << " " << nwrite
+              << " bytes";
   }
 
   return 0;
 }
 
-int generate_quic_connection_id(ngtcp2_cid *cid, size_t cidlen) {
-  if (RAND_bytes(cid->data, cidlen) != 1) {
+int generate_quic_retry_connection_id(ngtcp2_cid &cid, size_t cidlen,
+                                      const uint8_t *server_id, uint8_t km_id,
+                                      const uint8_t *key) {
+  assert(cidlen == SHRPX_QUIC_SCIDLEN);
+
+  if (RAND_bytes(cid.data, cidlen) != 1) {
     return -1;
   }
 
-  cid->datalen = cidlen;
+  cid.datalen = cidlen;
 
-  return 0;
+  cid.data[0] = (cid.data[0] & 0x3f) | km_id;
+
+  auto p = cid.data + SHRPX_QUIC_CID_PREFIX_OFFSET;
+
+  std::copy_n(server_id, SHRPX_QUIC_SERVER_IDLEN, p);
+
+  return encrypt_quic_connection_id(p, p, key);
 }
 
-int generate_quic_connection_id(ngtcp2_cid *cid, size_t cidlen,
-                                const uint8_t *cid_prefix) {
-  assert(cidlen > SHRPX_QUIC_CID_PREFIXLEN);
+int generate_quic_connection_id(ngtcp2_cid &cid, size_t cidlen,
+                                const uint8_t *cid_prefix, uint8_t km_id,
+                                const uint8_t *key) {
+  assert(cidlen == SHRPX_QUIC_SCIDLEN);
 
-  auto p = std::copy_n(cid_prefix, SHRPX_QUIC_CID_PREFIXLEN, cid->data);
-
-  if (RAND_bytes(p, cidlen - SHRPX_QUIC_CID_PREFIXLEN) != 1) {
+  if (RAND_bytes(cid.data, cidlen) != 1) {
     return -1;
   }
 
-  cid->datalen = cidlen;
+  cid.datalen = cidlen;
+
+  cid.data[0] = (cid.data[0] & 0x3f) | km_id;
+
+  auto p = cid.data + SHRPX_QUIC_CID_PREFIX_OFFSET;
+
+  std::copy_n(cid_prefix, SHRPX_QUIC_CID_PREFIXLEN, p);
+
+  return encrypt_quic_connection_id(p, p, key);
+}
+
+int encrypt_quic_connection_id(uint8_t *dest, const uint8_t *src,
+                               const uint8_t *key) {
+  auto ctx = EVP_CIPHER_CTX_new();
+  auto d = defer(EVP_CIPHER_CTX_free, ctx);
+
+  if (!EVP_EncryptInit_ex(ctx, EVP_aes_128_ecb(), nullptr, key, nullptr)) {
+    return -1;
+  }
+
+  EVP_CIPHER_CTX_set_padding(ctx, 0);
+
+  int len;
+
+  if (!EVP_EncryptUpdate(ctx, dest, &len, src, SHRPX_QUIC_DECRYPTED_DCIDLEN) ||
+      !EVP_EncryptFinal_ex(ctx, dest + len, &len)) {
+    return -1;
+  }
 
   return 0;
 }
 
-int generate_quic_stateless_reset_token(uint8_t *token, const ngtcp2_cid *cid,
+int decrypt_quic_connection_id(uint8_t *dest, const uint8_t *src,
+                               const uint8_t *key) {
+  auto ctx = EVP_CIPHER_CTX_new();
+  auto d = defer(EVP_CIPHER_CTX_free, ctx);
+
+  if (!EVP_DecryptInit_ex(ctx, EVP_aes_128_ecb(), nullptr, key, nullptr)) {
+    return -1;
+  }
+
+  EVP_CIPHER_CTX_set_padding(ctx, 0);
+
+  int len;
+
+  if (!EVP_DecryptUpdate(ctx, dest, &len, src, SHRPX_QUIC_DECRYPTED_DCIDLEN) ||
+      !EVP_DecryptFinal_ex(ctx, dest + len, &len)) {
+    return -1;
+  }
+
+  return 0;
+}
+
+int generate_quic_hashed_connection_id(ngtcp2_cid &dest,
+                                       const Address &remote_addr,
+                                       const Address &local_addr,
+                                       const ngtcp2_cid &cid) {
+  auto ctx = EVP_MD_CTX_new();
+  auto d = defer(EVP_MD_CTX_free, ctx);
+
+  std::array<uint8_t, 32> h;
+  unsigned int hlen = EVP_MD_size(EVP_sha256());
+
+  if (!EVP_DigestInit_ex(ctx, EVP_sha256(), nullptr) ||
+      !EVP_DigestUpdate(ctx, &remote_addr.su.sa, remote_addr.len) ||
+      !EVP_DigestUpdate(ctx, &local_addr.su.sa, local_addr.len) ||
+      !EVP_DigestUpdate(ctx, cid.data, cid.datalen) ||
+      !EVP_DigestFinal_ex(ctx, h.data(), &hlen)) {
+    return -1;
+  }
+
+  assert(hlen == h.size());
+
+  std::copy_n(std::begin(h), sizeof(dest.data), std::begin(dest.data));
+  dest.datalen = sizeof(dest.data);
+
+  return 0;
+}
+
+int generate_quic_stateless_reset_token(uint8_t *token, const ngtcp2_cid &cid,
                                         const uint8_t *secret,
                                         size_t secretlen) {
   if (ngtcp2_crypto_generate_stateless_reset_token(token, secret, secretlen,
-                                                   cid) != 0) {
-    return -1;
-  }
-
-  return 0;
-}
-
-int generate_quic_stateless_reset_secret(uint8_t *secret) {
-  if (RAND_bytes(secret, SHRPX_QUIC_STATELESS_RESET_SECRETLEN) != 1) {
-    return -1;
-  }
-
-  return 0;
-}
-
-int generate_quic_token_secret(uint8_t *secret) {
-  if (RAND_bytes(secret, SHRPX_QUIC_TOKEN_SECRETLEN) != 1) {
+                                                   &cid) != 0) {
     return -1;
   }
 
@@ -198,15 +271,15 @@ int generate_quic_token_secret(uint8_t *secret) {
 }
 
 int generate_retry_token(uint8_t *token, size_t &tokenlen, const sockaddr *sa,
-                         socklen_t salen, const ngtcp2_cid *retry_scid,
-                         const ngtcp2_cid *odcid, const uint8_t *token_secret) {
+                         socklen_t salen, const ngtcp2_cid &retry_scid,
+                         const ngtcp2_cid &odcid, const uint8_t *secret,
+                         size_t secretlen) {
   auto t = std::chrono::duration_cast<std::chrono::nanoseconds>(
                std::chrono::system_clock::now().time_since_epoch())
                .count();
 
   auto stokenlen = ngtcp2_crypto_generate_retry_token(
-      token, token_secret, SHRPX_QUIC_TOKEN_SECRETLEN, sa, salen, retry_scid,
-      odcid, t);
+      token, secret, secretlen, sa, salen, &retry_scid, &odcid, t);
   if (stokenlen < 0) {
     return -1;
   }
@@ -216,17 +289,18 @@ int generate_retry_token(uint8_t *token, size_t &tokenlen, const sockaddr *sa,
   return 0;
 }
 
-int verify_retry_token(ngtcp2_cid *odcid, const uint8_t *token, size_t tokenlen,
-                       const ngtcp2_cid *dcid, const sockaddr *sa,
-                       socklen_t salen, const uint8_t *token_secret) {
+int verify_retry_token(ngtcp2_cid &odcid, const uint8_t *token, size_t tokenlen,
+                       const ngtcp2_cid &dcid, const sockaddr *sa,
+                       socklen_t salen, const uint8_t *secret,
+                       size_t secretlen) {
 
   auto t = std::chrono::duration_cast<std::chrono::nanoseconds>(
                std::chrono::system_clock::now().time_since_epoch())
                .count();
 
-  if (ngtcp2_crypto_verify_retry_token(odcid, token, tokenlen, token_secret,
-                                       SHRPX_QUIC_TOKEN_SECRETLEN, sa, salen,
-                                       dcid, 10 * NGTCP2_SECONDS, t) != 0) {
+  if (ngtcp2_crypto_verify_retry_token(&odcid, token, tokenlen, secret,
+                                       secretlen, sa, salen, &dcid,
+                                       10 * NGTCP2_SECONDS, t) != 0) {
     return -1;
   }
 
@@ -234,13 +308,13 @@ int verify_retry_token(ngtcp2_cid *odcid, const uint8_t *token, size_t tokenlen,
 }
 
 int generate_token(uint8_t *token, size_t &tokenlen, const sockaddr *sa,
-                   size_t salen, const uint8_t *token_secret) {
+                   size_t salen, const uint8_t *secret, size_t secretlen) {
   auto t = std::chrono::duration_cast<std::chrono::nanoseconds>(
                std::chrono::system_clock::now().time_since_epoch())
                .count();
 
   auto stokenlen = ngtcp2_crypto_generate_regular_token(
-      token, token_secret, SHRPX_QUIC_TOKEN_SECRETLEN, sa, salen, t);
+      token, secret, secretlen, sa, salen, t);
   if (stokenlen < 0) {
     return -1;
   }
@@ -251,18 +325,48 @@ int generate_token(uint8_t *token, size_t &tokenlen, const sockaddr *sa,
 }
 
 int verify_token(const uint8_t *token, size_t tokenlen, const sockaddr *sa,
-                 socklen_t salen, const uint8_t *token_secret) {
+                 socklen_t salen, const uint8_t *secret, size_t secretlen) {
   auto t = std::chrono::duration_cast<std::chrono::nanoseconds>(
                std::chrono::system_clock::now().time_since_epoch())
                .count();
 
-  if (ngtcp2_crypto_verify_regular_token(token, tokenlen, token_secret,
-                                         SHRPX_QUIC_TOKEN_SECRETLEN, sa, salen,
-                                         3600 * NGTCP2_SECONDS, t) != 0) {
+  if (ngtcp2_crypto_verify_regular_token(token, tokenlen, secret, secretlen, sa,
+                                         salen, 3600 * NGTCP2_SECONDS,
+                                         t) != 0) {
     return -1;
   }
 
   return 0;
+}
+
+int generate_quic_connection_id_encryption_key(uint8_t *key, size_t keylen,
+                                               const uint8_t *secret,
+                                               size_t secretlen,
+                                               const uint8_t *salt,
+                                               size_t saltlen) {
+  constexpr uint8_t info[] = "connection id encryption key";
+  ngtcp2_crypto_md sha256;
+  ngtcp2_crypto_md_init(
+      &sha256, reinterpret_cast<void *>(const_cast<EVP_MD *>(EVP_sha256())));
+
+  if (ngtcp2_crypto_hkdf(key, keylen, &sha256, secret, secretlen, salt, saltlen,
+                         info, str_size(info)) != 0) {
+    return -1;
+  }
+
+  return 0;
+}
+
+const QUICKeyingMaterial *
+select_quic_keying_material(const QUICKeyingMaterials &qkms,
+                            const uint8_t *cid) {
+  for (auto &qkm : qkms.keying_materials) {
+    if (((*cid) & 0xc0) == qkm.id) {
+      return &qkm;
+    }
+  }
+
+  return &qkms.keying_materials.front();
 }
 
 } // namespace shrpx

@@ -2268,7 +2268,7 @@ int communicate(
   auto loop = EV_DEFAULT;
   SSL_CTX *ssl_ctx = nullptr;
   if (scheme == "https") {
-    ssl_ctx = SSL_CTX_new(SSLv23_client_method());
+    ssl_ctx = SSL_CTX_new(TLS_client_method());
     if (!ssl_ctx) {
       std::cerr << "[ERROR] Failed to create SSL_CTX: "
                 << ERR_error_string(ERR_get_error(), nullptr) << std::endl;

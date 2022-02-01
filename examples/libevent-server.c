@@ -143,7 +143,7 @@ static int alpn_select_proto_cb(SSL *ssl, const unsigned char **out,
 static SSL_CTX *create_ssl_ctx(const char *key_file, const char *cert_file) {
   SSL_CTX *ssl_ctx;
 
-  ssl_ctx = SSL_CTX_new(SSLv23_server_method());
+  ssl_ctx = SSL_CTX_new(TLS_server_method());
   if (!ssl_ctx) {
     errx(1, "Could not create SSL/TLS context: %s",
          ERR_error_string(ERR_get_error(), NULL));
@@ -153,14 +153,9 @@ static SSL_CTX *create_ssl_ctx(const char *key_file, const char *cert_file) {
                           SSL_OP_NO_COMPRESSION |
                           SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION);
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
-  {
-    EVP_PKEY *ecdh;
-    ecdh = EVP_EC_gen("P-256");
-    if (!ecdh) {
-      errx(1, "EVP_EC_gen failed: %s", ERR_error_string(ERR_get_error(), NULL));
-    }
-    SSL_CTX_set_tmp_ecdh(ssl_ctx, ecdh);
-    EVP_PKEY_free(ecdh);
+  if (SSL_CTX_set1_curves_list(ssl_ctx, "P-256") != 1) {
+    errx(1, "SSL_CTX_set1_curves_list failed: %s",
+         ERR_error_string(ERR_get_error(), NULL));
   }
 #else  /* !(OPENSSL_VERSION_NUMBER >= 0x30000000L) */
   {
@@ -822,8 +817,18 @@ int main(int argc, char **argv) {
   act.sa_handler = SIG_IGN;
   sigaction(SIGPIPE, &act, NULL);
 
+#if OPENSSL_VERSION_NUMBER >= 0x1010000fL
+  /* No explicit initialization is required. */
+#elif defined(OPENSSL_IS_BORINGSSL)
+  CRYPTO_library_init();
+#else  /* !(OPENSSL_VERSION_NUMBER >= 0x1010000fL) &&                          \
+          !defined(OPENSSL_IS_BORINGSSL) */
+  OPENSSL_config(NULL);
   SSL_load_error_strings();
   SSL_library_init();
+  OpenSSL_add_all_algorithms();
+#endif /* !(OPENSSL_VERSION_NUMBER >= 0x1010000fL) &&                          \
+          !defined(OPENSSL_IS_BORINGSSL) */
 
   run(argv[1], argv[2], argv[3]);
   return 0;

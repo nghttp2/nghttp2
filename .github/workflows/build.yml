@@ -60,8 +60,6 @@ jobs:
           pkg-config \
           libtool
         echo 'PKG_CONFIG_PATH=/usr/local/opt/libressl/lib/pkgconfig:/usr/local/opt/libxml2/lib/pkgconfig' >> $GITHUB_ENV
-        # This fixes infamous 'stdio.h not found' error.
-        echo 'SDKROOT='"$(xcrun --sdk macosx --show-sdk-path)" >> $GITHUB_ENV
     - name: Setup clang (Linux)
       if: runner.os == 'Linux' && matrix.compiler == 'clang'
       run: |
@@ -87,28 +85,28 @@ jobs:
       run: |
         git clone -b v0.4.0 https://github.com/libbpf/libbpf
         cd libbpf
-        export PREFIX=$PWD/build
-        cd src
-        make install
+        PREFIX=$PWD/build make -C src install
 
         EXTRA_AUTOTOOLS_OPTS="--with-libbpf"
+        EXTRA_CMAKE_OPTS="-DWITH_LIBBPF=1"
 
         echo 'EXTRA_AUTOTOOLS_OPTS='"$EXTRA_AUTOTOOLS_OPTS" >> $GITHUB_ENV
+        echo 'EXTRA_CMAKE_OPTS='"$EXTRA_CMAKE_OPTS" >> $GITHUB_ENV
     - name: Build quictls/openssl v1.1.1
       if: matrix.http3 == 'http3' && matrix.openssl == 'openssl1'
       run: |
-        git clone --depth 1 -b OpenSSL_1_1_1l+quic https://github.com/quictls/openssl
+        git clone --depth 1 -b OpenSSL_1_1_1m+quic https://github.com/quictls/openssl
         cd openssl
         ./config enable-tls1_3 --prefix=$PWD/build
         make -j$(nproc)
         make install_sw
-    - name: Build quictls/openssl v3.0.0
+    - name: Build quictls/openssl v3.0.x
       if: matrix.http3 == 'http3' && matrix.openssl == 'openssl3'
       run: |
         unset CPPFLAGS
         unset LDFLAGS
 
-        git clone --depth 1 -b openssl-3.0.0+quic https://github.com/quictls/openssl
+        git clone --depth 1 -b openssl-3.0.1+quic https://github.com/quictls/openssl
         cd openssl
         ./config enable-tls1_3 --prefix=$PWD/build --libdir=$PWD/build/lib
         make -j$(nproc)
@@ -118,6 +116,7 @@ jobs:
       run: |
         git clone https://github.com/ngtcp2/nghttp3
         cd nghttp3
+        git checkout 74a222fe0c89b7202bcdaf6ef27a232edffc85e3
         autoreconf -i
         ./configure --prefix=$PWD/build --enable-lib-only
         make -j$(nproc) check
@@ -125,7 +124,7 @@ jobs:
     - name: Build ngtcp2
       if: matrix.http3 == 'http3'
       run: |
-        git clone https://github.com/ngtcp2/ngtcp2
+        git clone --depth 1 -b v0.1.0 https://github.com/ngtcp2/ngtcp2
         cd ngtcp2
         autoreconf -i
         ./configure --prefix=$PWD/build --enable-lib-only PKG_CONFIG_PATH="../openssl/build/lib/pkgconfig"
@@ -137,31 +136,41 @@ jobs:
         PKG_CONFIG_PATH="$PWD/openssl/build/lib/pkgconfig:$PWD/nghttp3/build/lib/pkgconfig:$PWD/ngtcp2/build/lib/pkgconfig:$PWD/libbpf/build/lib64/pkgconfig:$PKG_CONFIG_PATH"
         LDFLAGS="$LDFLAGS -Wl,-rpath,$PWD/openssl/build/lib -Wl,-rpath,$PWD/libbpf/build/lib64"
         EXTRA_AUTOTOOLS_OPTS="--enable-http3 $EXTRA_AUTOTOOLS_OPTS"
+        EXTRA_CMAKE_OPTS="-DENABLE_HTTP3=1 $EXTRA_CMAKE_OPTS"
 
         echo 'PKG_CONFIG_PATH='"$PKG_CONFIG_PATH" >> $GITHUB_ENV
         echo 'LDFLAGS='"$LDFLAGS" >> $GITHUB_ENV
         echo 'EXTRA_AUTOTOOLS_OPTS='"$EXTRA_AUTOTOOLS_OPTS" >> $GITHUB_ENV
-        echo 'EXTRA_CMAKE_OPTS=-DENABLE_HTTP3=ON' >> $GITHUB_ENV
+        echo 'EXTRA_CMAKE_OPTS='"$EXTRA_CMAKE_OPTS" >> $GITHUB_ENV
     - name: Setup git submodules
       run: |
         git submodule update --init
     - name: Configure autotools
-      if: matrix.buildtool == 'autotools'
       run: |
         autoreconf -i
-        ./configure --enable-werror --with-mruby $EXTRA_AUTOTOOLS_OPTS
+        ./configure
     - name: Configure cmake
       if: matrix.buildtool == 'cmake'
       run: |
-        cmake -DENABLE_WERROR=1 -DWITH_MRUBY=1 -DWITH_NEVERBLEED=1 $EXTRA_CMAKE_OPTS -DCPPFLAGS="$CPPFLAGS" -DLDFLAGS="$LDFLAGS" .
+        make dist
+        VERSION=$(grep PACKAGE_VERSION config.h | cut -d' ' -f3 | tr -d '"')
+        tar xf nghttp2-$VERSION.tar.gz
+        cd nghttp2-$VERSION
+        echo 'NGHTTP2_CMAKE_DIR='"$PWD" >> $GITHUB_ENV
+
+        # This fixes infamous 'stdio.h not found' error.
+        echo 'SDKROOT='"$(xcrun --sdk macosx --show-sdk-path)" >> $GITHUB_ENV
+
+        cmake -DENABLE_WERROR=1 -DWITH_MRUBY=1 -DWITH_NEVERBLEED=1 -DENABLE_APP=1 $EXTRA_CMAKE_OPTS -DCPPFLAGS="$CPPFLAGS" -DLDFLAGS="$LDFLAGS" .
     - name: Build nghttp2 with autotools
       if: matrix.buildtool == 'autotools'
       run: |
         make distcheck \
-          DISTCHECK_CONFIGURE_FLAGS="--with-mruby --with-neverbleed --enable-werror $EXTRA_AUTOTOOLS_OPTS CPPFLAGS=\"$CPPFLAGS\" LDFLAGS=\"$LDFLAGS\""
+          DISTCHECK_CONFIGURE_FLAGS="--with-mruby --with-neverbleed --with-libev --enable-werror $EXTRA_AUTOTOOLS_OPTS CPPFLAGS=\"$CPPFLAGS\" LDFLAGS=\"$LDFLAGS\""
     - name: Build nghttp2 with cmake
       if: matrix.buildtool == 'cmake'
       run: |
+        cd $NGHTTP2_CMAKE_DIR
         make
         make check
     - name: Integration test
@@ -169,5 +178,5 @@ jobs:
       # artifacts.
       if: matrix.buildtool == 'cmake'
       run: |
-        cd integration-tests
+        cd $NGHTTP2_CMAKE_DIR/integration-tests
         make itprep it

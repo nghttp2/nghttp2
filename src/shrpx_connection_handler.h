@@ -106,6 +106,7 @@ struct SerialEvent {
 #ifdef ENABLE_HTTP3
 #  ifdef HAVE_LIBBPF
 struct BPFRef {
+  bpf_object *obj;
   int reuseport_array;
   int cid_prefix_map;
 };
@@ -162,7 +163,7 @@ public:
 
   // Cancels ocsp update process
   void cancel_ocsp_update();
-  // Starts ocsp update for certficate |cert_file|.
+  // Starts ocsp update for certificate |cert_file|.
   int start_ocsp_update(const char *cert_file);
   // Reads incoming data from ocsp update process
   void read_ocsp_chunk();
@@ -195,10 +196,12 @@ public:
   const std::vector<SSL_CTX *> &get_quic_indexed_ssl_ctx(size_t idx) const;
 
   int forward_quic_packet(const UpstreamAddr *faddr, const Address &remote_addr,
-                          const Address &local_addr, const uint8_t *cid_prefix,
-                          const uint8_t *data, size_t datalen);
+                          const Address &local_addr, const ngtcp2_pkt_info &pi,
+                          const uint8_t *cid_prefix, const uint8_t *data,
+                          size_t datalen);
 
-  int create_quic_secret();
+  void set_quic_keying_materials(std::shared_ptr<QUICKeyingMaterials> qkms);
+  const std::shared_ptr<QUICKeyingMaterials> &get_quic_keying_materials() const;
 
   void set_cid_prefixes(
       const std::vector<std::array<uint8_t, SHRPX_QUIC_CID_PREFIXLEN>>
@@ -216,7 +219,8 @@ public:
 
   int forward_quic_packet_to_lingering_worker_process(
       QUICLingeringWorkerProcess *quic_lwp, const Address &remote_addr,
-      const Address &local_addr, const uint8_t *data, size_t datalen);
+      const Address &local_addr, const ngtcp2_pkt_info &pi, const uint8_t *data,
+      size_t datalen);
 
   void set_quic_ipc_fd(int fd);
 
@@ -224,6 +228,7 @@ public:
 
 #  ifdef HAVE_LIBBPF
   std::vector<BPFRef> &get_quic_bpf_refs();
+  void unload_bpf_objects();
 #  endif // HAVE_LIBBPF
 #endif   // ENABLE_HTTP3
 
@@ -263,7 +268,7 @@ private:
 #  ifdef HAVE_LIBBPF
   std::vector<BPFRef> quic_bpf_refs_;
 #  endif // HAVE_LIBBPF
-  std::shared_ptr<QUICSecret> quic_secret_;
+  std::shared_ptr<QUICKeyingMaterials> quic_keying_materials_;
   std::vector<SSL_CTX *> quic_all_ssl_ctx_;
   std::vector<std::vector<SSL_CTX *>> quic_indexed_ssl_ctx_;
 #endif // ENABLE_HTTP3

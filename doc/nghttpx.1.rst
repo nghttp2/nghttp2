@@ -14,7 +14,7 @@ SYNOPSIS
 DESCRIPTION
 -----------
 
-A reverse proxy for HTTP/2, and HTTP/1.
+A reverse proxy for HTTP/3, HTTP/2, and HTTP/1.
 
 .. describe:: <PRIVATE_KEY>
 
@@ -469,6 +469,14 @@ Performance
 
     Set maximum number of open files (RLIMIT_NOFILE) to <N>.
     If 0 is given, nghttpx does not set the limit.
+
+    Default: ``0``
+
+.. option:: --rlimit-memlock=<N>
+
+    Set maximum number of bytes of memory that may be locked
+    into  RAM.  If  0 is  given,  nghttpx does  not set  the
+    limit.
 
     Default: ``0``
 
@@ -1003,12 +1011,13 @@ SSL/TLS
 
 .. option:: --tls-no-postpone-early-data
 
-    By default,  nghttpx postpones forwarding  HTTP requests
-    sent in early data, including those sent in partially in
-    it, until TLS handshake finishes.  If all backend server
-    recognizes "Early-Data" header  field, using this option
-    makes nghttpx  not postpone  forwarding request  and get
-    full potential of 0-RTT data.
+    By  default,   except  for  QUIC   connections,  nghttpx
+    postpones forwarding  HTTP requests sent in  early data,
+    including  those  sent in  partially  in  it, until  TLS
+    handshake  finishes.  If  all backend  server recognizes
+    "Early-Data"  header  field,  using  this  option  makes
+    nghttpx  not postpone  forwarding request  and get  full
+    potential of 0-RTT data.
 
 .. option:: --tls-max-early-data=<SIZE>
 
@@ -1367,7 +1376,7 @@ HTTP
     advertised  in alt-svc  header  field  only in  HTTP/1.1
     frontend.   This option  can be  used multiple  times to
     specify multiple alternative services.
-    Example: :option:`--altsvc`\="h2,443,,,ma=3600; persist=1'
+    Example: :option:`--altsvc`\="h2,443,,,ma=3600; persist=1"
 
 .. option:: --http2-altsvc=<PROTOID,PORT[,HOST,[ORIGIN[,PARAMS]]]>
 
@@ -1553,6 +1562,31 @@ Process
     neverbleed  is used.   In the  single process  mode, the
     signal handling feature is disabled.
 
+.. option:: --max-worker-processes=<N>
+
+    The maximum number of  worker processes.  nghttpx spawns
+    new worker  process when  it reloads  its configuration.
+    The previous worker  process enters graceful termination
+    period and will terminate  when it finishes handling the
+    existing    connections.     However,    if    reloading
+    configurations  happen   very  frequently,   the  worker
+    processes might be piled up if they take a bit long time
+    to finish  the existing connections.  With  this option,
+    if  the number  of  worker processes  exceeds the  given
+    value,   the  oldest   worker   process  is   terminated
+    immediately.  Specifying 0 means no  limit and it is the
+    default behaviour.
+
+.. option:: --worker-process-grace-shutdown-period=<DURATION>
+
+    Maximum  period  for  a   worker  process  to  terminate
+    gracefully.  When  a worker  process enters  in graceful
+    shutdown   period  (e.g.,   when  nghttpx   reloads  its
+    configuration)  and  it  does not  finish  handling  the
+    existing connections in the given  period of time, it is
+    immediately terminated.  Specifying 0 means no limit and
+    it is the default behaviour.
+
 
 Scripting
 ~~~~~~~~~
@@ -1588,6 +1622,79 @@ HTTP/3 and QUIC
     socket.
 
     Default: ``/usr/local/lib/nghttp2/reuseport_kern.o``
+
+.. option:: --frontend-quic-early-data
+
+    Enable early data on frontend QUIC connections.  nghttpx
+    sends "Early-Data" header field to a backend server if a
+    request is received in early  data and handshake has not
+    finished.  All backend servers should deal with possibly
+    replayed requests.
+
+.. option:: --frontend-quic-qlog-dir=<DIR>
+
+    Specify a  directory where  a qlog  file is  written for
+    frontend QUIC  connections.  A qlog file  is created per
+    each QUIC  connection.  The  file name is  ISO8601 basic
+    format, followed by "-", server Source Connection ID and
+    ".qlog".
+
+.. option:: --frontend-quic-require-token
+
+    Require an address validation  token for a frontend QUIC
+    connection.   Server sends  a token  in Retry  packet or
+    NEW_TOKEN frame in the previous connection.
+
+.. option:: --frontend-quic-congestion-controller=<CC>
+
+    Specify a congestion controller algorithm for a frontend
+    QUIC  connection.   <CC>  should be  either  "cubic"  or
+    "bbr".
+
+    Default: ``cubic``
+
+.. option:: --frontend-quic-secret-file=<PATH>
+
+    Path to file that contains secure random data to be used
+    as QUIC keying materials.  It is used to derive keys for
+    encrypting tokens and Connection IDs.  It is not used to
+    encrypt  QUIC  packets.  Each  line  of  this file  must
+    contain  exactly  136  bytes  hex-encoded  string  (when
+    decoded the byte string is  68 bytes long).  The first 2
+    bits of  decoded byte  string are  used to  identify the
+    keying material.  An  empty line or a  line which starts
+    '#'  is ignored.   The file  can contain  more than  one
+    keying materials.  Because the  identifier is 2 bits, at
+    most 4 keying materials are  read and the remaining data
+    is discarded.  The first keying  material in the file is
+    primarily  used for  encryption and  decryption for  new
+    connection.  The other ones are used to decrypt data for
+    the  existing connections.   Specifying multiple  keying
+    materials enables  key rotation.   Please note  that key
+    rotation  does  not  occur automatically.   User  should
+    update  files  or  change  options  values  and  restart
+    nghttpx gracefully.   If opening  or reading  given file
+    fails, all loaded keying  materials are discarded and it
+    is treated as if none of  this option is given.  If this
+    option is not  given or an error  occurred while opening
+    or  reading  a  file,  a keying  material  is  generated
+    internally on startup and reload.
+
+.. option:: --quic-server-id=<HEXSTRING>
+
+    Specify server  ID encoded in Connection  ID to identify
+    this  particular  server  instance.   Connection  ID  is
+    encrypted and  this part is  not visible in  public.  It
+    must be 4  bytes long and must be encoded  in hex string
+    (which is 8  bytes long).  If this option  is omitted, a
+    random   server  ID   is   generated   on  startup   and
+    configuration reload.
+
+.. option:: --frontend-quic-initial-rtt=<DURATION>
+
+    Specify the initial RTT of the frontend QUIC connection.
+
+    Default: ``333ms``
 
 .. option:: --no-quic-bpf
 

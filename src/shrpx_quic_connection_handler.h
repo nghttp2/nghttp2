@@ -51,19 +51,19 @@ class Worker;
 // closing period).
 struct CloseWait {
   CloseWait(Worker *worker, std::vector<ngtcp2_cid> scids,
-            std::vector<uint8_t> conn_close, ev_tstamp period);
+            std::vector<uint8_t> pkt, ev_tstamp period);
   ~CloseWait();
 
   int handle_packet(const UpstreamAddr *faddr, const Address &remote_addr,
-                    const Address &local_addr, const uint8_t *data,
-                    size_t datalen);
+                    const Address &local_addr, const ngtcp2_pkt_info &pi,
+                    const uint8_t *data, size_t datalen);
 
   Worker *worker;
   // Source Connection IDs of the connection.
   std::vector<ngtcp2_cid> scids;
-  // QUIC packet containing CONNECTION_CLOSE.  It is empty when a
-  // connection entered in draining state.
-  std::vector<uint8_t> conn_close;
+  // QUIC packet which is sent in response to the incoming packet.  It
+  // might be empty.
+  std::vector<uint8_t> pkt;
   // Close-wait (draining or closing period) timer.
   ev_timer timer;
   // The number of bytes received during close-wait period.
@@ -82,8 +82,8 @@ public:
   QUICConnectionHandler(Worker *worker);
   ~QUICConnectionHandler();
   int handle_packet(const UpstreamAddr *faddr, const Address &remote_addr,
-                    const Address &local_addr, const uint8_t *data,
-                    size_t datalen);
+                    const Address &local_addr, const ngtcp2_pkt_info &pi,
+                    const uint8_t *data, size_t datalen);
   // Send Retry packet.  |ini_dcid| is the destination Connection ID
   // which appeared in Client Initial packet and its length is
   // |dcidlen|.  |ini_scid| is the source Connection ID which appeared
@@ -110,8 +110,8 @@ public:
   // |ini_scid| is the source Connection ID which appeared in Client
   // Initial packet.
   int send_connection_close(const UpstreamAddr *faddr, uint32_t version,
-                            const ngtcp2_cid *ini_dcid,
-                            const ngtcp2_cid *ini_scid,
+                            const ngtcp2_cid &ini_dcid,
+                            const ngtcp2_cid &ini_scid,
                             const Address &remote_addr,
                             const Address &local_addr, uint64_t error_code);
   ClientHandler *handle_new_connection(const UpstreamAddr *faddr,
@@ -120,8 +120,8 @@ public:
                                        const ngtcp2_pkt_hd &hd,
                                        const ngtcp2_cid *odcid,
                                        const uint8_t *token, size_t tokenlen);
-  void add_connection_id(const ngtcp2_cid *cid, ClientHandler *handler);
-  void remove_connection_id(const ngtcp2_cid *cid);
+  void add_connection_id(const ngtcp2_cid &cid, ClientHandler *handler);
+  void remove_connection_id(const ngtcp2_cid &cid);
 
   void add_close_wait(CloseWait *cw);
   void remove_close_wait(const CloseWait *cw);

@@ -81,6 +81,7 @@ bool recorded(const std::chrono::steady_clock::time_point &t) {
 }
 } // namespace
 
+#if OPENSSL_1_1_1_API
 namespace {
 std::ofstream keylog_file;
 void keylog_callback(const SSL *ssl, const char *line) {
@@ -89,6 +90,7 @@ void keylog_callback(const SSL *ssl, const char *line) {
   keylog_file.flush();
 }
 } // namespace
+#endif // OPENSSL_1_1_1_API
 
 Config::Config()
     : ciphers(tls::DEFAULT_CIPHER_LIST),
@@ -104,6 +106,7 @@ Config::Config()
       max_concurrent_streams(1),
       window_bits(30),
       connection_window_bits(30),
+      max_frame_size(16_k),
       rate(0),
       rate_period(1.0),
       duration(0.0),
@@ -1514,7 +1517,8 @@ int get_ev_loop_flags() {
 
 Worker::Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t req_todo, size_t nclients,
                size_t rate, size_t max_samples, Config *config)
-    : stats(req_todo, nclients),
+    : randgen(util::make_mt19937()),
+      stats(req_todo, nclients),
       loop(ev_loop_new(get_ev_loop_flags())),
       ssl_ctx(ssl_ctx),
       config(config),
@@ -2106,6 +2110,11 @@ Options:
               http/1.1  is used,  this  specifies the  number of  HTTP
               pipelining requests in-flight.
               Default: 1
+  -f, --max-frame-size=<SIZE>
+              Maximum frame size that the local endpoint is willing to
+              receive.
+              Default: )"
+      << util::utos_unit(config.max_frame_size) << R"(
   -w, --window-bits=<N>
               Sets the stream level initial window size to (2**<N>)-1.
               For QUIC, <N> is capped to 26 (roughly 64MiB).
@@ -2119,7 +2128,7 @@ Options:
   -H, --header=<HEADER>
               Add/Override a header to the requests.
   --ciphers=<SUITE>
-              Set  allowed cipher  list  for TLSv1.2  or ealier.   The
+              Set  allowed cipher  list  for TLSv1.2  or earlier.   The
               format of the string is described in OpenSSL ciphers(1).
               Default: )"
       << config.ciphers << R"(
@@ -2243,11 +2252,10 @@ Options:
               to buffering.  Status code is -1 for failed streams.
   --qlog-file-base=<PATH>
               Enable qlog output and specify base file name for qlogs.
-              Qlog  is emitted  for each connection.
-              For  a  given  base  name "base", each  output file name
-              becomes  "base.M.N.qlog"  where M is worker ID  and N is
-              client ID (e.g. "base.0.3.qlog").
-              Only effective in QUIC runs.
+              Qlog is emitted  for each connection.  For  a given base
+              name   "base",    each   output   file    name   becomes
+              "base.M.N.sqlog" where M is worker ID and N is client ID
+              (e.g. "base.0.3.sqlog").  Only effective in QUIC runs.
   --connect-to=<HOST>[:<PORT>]
               Host and port to connect  instead of using the authority
               in <URI>.
@@ -2299,6 +2307,7 @@ int main(int argc, char **argv) {
         {"threads", required_argument, nullptr, 't'},
         {"max-concurrent-streams", required_argument, nullptr, 'm'},
         {"window-bits", required_argument, nullptr, 'w'},
+        {"max-frame-size", required_argument, nullptr, 'f'},
         {"connection-window-bits", required_argument, nullptr, 'W'},
         {"input-file", required_argument, nullptr, 'i'},
         {"header", required_argument, nullptr, 'H'},
@@ -2330,7 +2339,7 @@ int main(int argc, char **argv) {
         {nullptr, 0, nullptr, 0}};
     int option_index = 0;
     auto c = getopt_long(argc, argv,
-                         "hvW:c:d:m:n:p:t:w:H:i:r:T:N:D:B:", long_options,
+                         "hvW:c:d:m:n:p:t:w:f:H:i:r:T:N:D:B:", long_options,
                          &option_index);
     if (c == -1) {
       break;
@@ -2374,6 +2383,24 @@ int main(int argc, char **argv) {
                   << std::endl;
         exit(EXIT_FAILURE);
       }
+      break;
+    }
+    case 'f': {
+      auto n = util::parse_uint_with_unit(optarg);
+      if (n == -1) {
+        std::cerr << "--max-frame-size: bad option value: " << optarg
+                  << std::endl;
+        exit(EXIT_FAILURE);
+      }
+      if (static_cast<uint64_t>(n) < 16_k) {
+        std::cerr << "--max-frame-size: minimum 16384" << std::endl;
+        exit(EXIT_FAILURE);
+      }
+      if (static_cast<uint64_t>(n) > 16_m - 1) {
+        std::cerr << "--max-frame-size: maximum 16777215" << std::endl;
+        exit(EXIT_FAILURE);
+      }
+      config.max_frame_size = n;
       break;
     }
     case 'H': {
@@ -2809,7 +2836,7 @@ int main(int argc, char **argv) {
   act.sa_handler = SIG_IGN;
   sigaction(SIGPIPE, &act, nullptr);
 
-  auto ssl_ctx = SSL_CTX_new(SSLv23_client_method());
+  auto ssl_ctx = SSL_CTX_new(TLS_client_method());
   if (!ssl_ctx) {
     std::cerr << "Failed to create SSL_CTX: "
               << ERR_error_string(ERR_get_error(), nullptr) << std::endl;
@@ -2843,19 +2870,26 @@ int main(int argc, char **argv) {
     exit(EXIT_FAILURE);
   }
 
-#if OPENSSL_1_1_1_API
+#if OPENSSL_1_1_1_API && !defined(OPENSSL_IS_BORINGSSL)
   if (SSL_CTX_set_ciphersuites(ssl_ctx, config.tls13_ciphers.c_str()) == 0) {
     std::cerr << "SSL_CTX_set_ciphersuites with " << config.tls13_ciphers
               << " failed: " << ERR_error_string(ERR_get_error(), nullptr)
               << std::endl;
     exit(EXIT_FAILURE);
   }
-#endif // OPENSSL_1_1_1_API
+#endif // OPENSSL_1_1_1_API && !defined(OPENSSL_IS_BORINGSSL)
 
+#if OPENSSL_1_1_1_API && !defined(OPENSSL_IS_BORINGSSL)
   if (SSL_CTX_set1_groups_list(ssl_ctx, config.groups.c_str()) != 1) {
     std::cerr << "SSL_CTX_set1_groups_list failed" << std::endl;
     exit(EXIT_FAILURE);
   }
+#else  // !(OPENSSL_1_1_1_API && !defined(OPENSSL_IS_BORINGSSL))
+  if (SSL_CTX_set1_curves_list(ssl_ctx, config.groups.c_str()) != 1) {
+    std::cerr << "SSL_CTX_set1_curves_list failed" << std::endl;
+    exit(EXIT_FAILURE);
+  }
+#endif // !(OPENSSL_1_1_1_API && !defined(OPENSSL_IS_BORINGSSL))
 
 #ifndef OPENSSL_NO_NEXTPROTONEG
   SSL_CTX_set_next_proto_select_cb(ssl_ctx, client_select_next_proto_cb,

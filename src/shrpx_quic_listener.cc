@@ -59,7 +59,8 @@ void QUICListener::on_read() {
   msg.msg_iov = &msg_iov;
   msg.msg_iovlen = 1;
 
-  uint8_t msg_ctrl[CMSG_SPACE(sizeof(in6_pktinfo))];
+  uint8_t
+      msg_ctrl[CMSG_SPACE(sizeof(uint8_t)) + CMSG_SPACE(sizeof(in6_pktinfo))];
   msg.msg_control = msg_ctrl;
 
   auto quic_conn_handler = worker_->get_quic_connection_handler();
@@ -83,11 +84,16 @@ void QUICListener::on_read() {
 
     util::set_port(local_addr, faddr_->port);
 
+    ngtcp2_pkt_info pi{
+        .ecn = util::msghdr_get_ecn(&msg, su.storage.ss_family),
+    };
+
     if (LOG_ENABLED(INFO)) {
       LOG(INFO) << "QUIC received packet: local="
                 << util::to_numeric_addr(&local_addr)
                 << " remote=" << util::to_numeric_addr(&su.sa, msg.msg_namelen)
-                << " " << nread << " bytes";
+                << " ecn=" << log::hex << pi.ecn << log::dec << " " << nread
+                << " bytes";
     }
 
     if (nread == 0) {
@@ -98,7 +104,7 @@ void QUICListener::on_read() {
     remote_addr.su = su;
     remote_addr.len = msg.msg_namelen;
 
-    quic_conn_handler->handle_packet(faddr_, remote_addr, local_addr,
+    quic_conn_handler->handle_packet(faddr_, remote_addr, local_addr, pi,
                                      buf.data(), nread);
   }
 }

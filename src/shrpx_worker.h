@@ -258,15 +258,18 @@ struct WorkerStat {
 #ifdef ENABLE_HTTP3
 struct QUICPacket {
   QUICPacket(size_t upstream_addr_index, const Address &remote_addr,
-             const Address &local_addr, const uint8_t *data, size_t datalen)
+             const Address &local_addr, const ngtcp2_pkt_info &pi,
+             const uint8_t *data, size_t datalen)
       : upstream_addr_index{upstream_addr_index},
         remote_addr{remote_addr},
         local_addr{local_addr},
+        pi{pi},
         data{data, data + datalen} {}
-  QUICPacket() {}
+  QUICPacket() : upstream_addr_index{}, remote_addr{}, local_addr{}, pi{} {}
   size_t upstream_addr_index;
   Address remote_addr;
   Address local_addr;
+  ngtcp2_pkt_info pi;
   std::vector<uint8_t> data;
 };
 #endif // ENABLE_HTTP3
@@ -370,10 +373,6 @@ public:
 
   const uint8_t *get_cid_prefix() const;
 
-  void set_quic_secret(const std::shared_ptr<QUICSecret> &secret);
-
-  const std::shared_ptr<QUICSecret> &get_quic_secret() const;
-
 #  ifdef HAVE_LIBBPF
   bool should_attach_bpf() const;
 
@@ -412,7 +411,6 @@ private:
   std::array<uint8_t, SHRPX_QUIC_CID_PREFIXLEN> cid_prefix_;
   std::vector<UpstreamAddr> quic_upstream_addrs_;
   std::vector<std::unique_ptr<QUICListener>> quic_listeners_;
-  std::shared_ptr<QUICSecret> quic_secret_;
 #endif // ENABLE_HTTP3
 
   std::shared_ptr<DownstreamConfig> downstreamconf_;
@@ -441,7 +439,7 @@ private:
   std::shared_ptr<TicketKeys> ticket_keys_;
   std::vector<std::shared_ptr<DownstreamAddrGroup>> downstream_addr_groups_;
   // Worker level blocker for downstream connection.  For example,
-  // this is used when file decriptor is exhausted.
+  // this is used when file descriptor is exhausted.
   std::unique_ptr<ConnectBlocker> connect_blocker_;
 
   bool graceful_shutdown_;
@@ -467,8 +465,8 @@ void downstream_failure(DownstreamAddr *addr, const Address *raddr);
 #ifdef ENABLE_HTTP3
 // Creates unpredictable SHRPX_QUIC_CID_PREFIXLEN bytes sequence which
 // is used as a prefix of QUIC Connection ID.  This function returns
-// -1 on failure.
-int create_cid_prefix(uint8_t *cid_prefix);
+// -1 on failure.  |server_id| must be 2 bytes long.
+int create_cid_prefix(uint8_t *cid_prefix, const uint8_t *server_id);
 #endif // ENABLE_HTTP3
 
 } // namespace shrpx

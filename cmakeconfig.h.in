@@ -87,3 +87,6 @@
 
 /* Define to 1 if you have enum bpf_stats_type in linux/bpf.h. */
 #cmakedefine HAVE_BPF_STATS_TYPE 1
+
+/* Define to 1 if you have `libngtcp2_crypto_openssl` library. */
+#cmakedefine HAVE_LIBNGTCP2_CRYPTO_OPENSSL

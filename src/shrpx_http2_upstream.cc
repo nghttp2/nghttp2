@@ -1317,7 +1317,7 @@ int Http2Upstream::downstream_eof(DownstreamConnection *dconn) {
   downstream->pop_downstream_connection();
   // dconn was deleted
   dconn = nullptr;
-  // downstream wil be deleted in on_stream_close_callback.
+  // downstream will be deleted in on_stream_close_callback.
   if (downstream->get_response_state() == DownstreamState::HEADER_COMPLETE) {
     // Server may indicate the end of the request by EOF
     if (LOG_ENABLED(INFO)) {
@@ -2183,7 +2183,7 @@ int Http2Upstream::submit_push_promise(const StringRef &scheme,
   // 4 for :method, :scheme, :path and :authority
   nva.reserve(4 + req.fs.headers().size());
 
-  // juse use "GET" for now
+  // just use "GET" for now
   nva.push_back(http2::make_nv_ll(":method", "GET"));
   nva.push_back(http2::make_nv_ls_nocopy(":scheme", scheme));
   nva.push_back(http2::make_nv_ls_nocopy(":path", path));

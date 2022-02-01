@@ -76,6 +76,11 @@
 
 #include <nghttp2/nghttp2.h>
 
+#ifdef ENABLE_HTTP3
+#  include <ngtcp2/ngtcp2.h>
+#  include <nghttp3/nghttp3.h>
+#endif // ENABLE_HTTP3
+
 #include "shrpx_config.h"
 #include "shrpx_tls.h"
 #include "shrpx_log_config.h"
@@ -202,7 +207,8 @@ struct WorkerProcess {
                 )
       : loop(loop),
         worker_pid(worker_pid),
-        ipc_fd(ipc_fd)
+        ipc_fd(ipc_fd),
+        termination_deadline(0.)
 #ifdef ENABLE_HTTP3
         ,
         quic_ipc_fd(quic_ipc_fd),
@@ -264,6 +270,7 @@ struct WorkerProcess {
   struct ev_loop *loop;
   pid_t worker_pid;
   int ipc_fd;
+  ev_tstamp termination_deadline;
 #ifdef ENABLE_HTTP3
   int quic_ipc_fd;
   std::vector<std::array<uint8_t, SHRPX_QUIC_CID_PREFIXLEN>> cid_prefixes;
@@ -279,13 +286,81 @@ std::deque<std::unique_ptr<WorkerProcess>> worker_processes;
 } // namespace
 
 namespace {
+ev_timer worker_process_grace_period_timer;
+} // namespace
+
+namespace {
+void worker_process_grace_period_timercb(struct ev_loop *loop, ev_timer *w,
+                                         int revents) {
+  auto now = ev_now(loop);
+  ev_tstamp next_repeat = 0.;
+
+  for (auto it = std::begin(worker_processes);
+       it != std::end(worker_processes);) {
+    auto &wp = *it;
+    if (!(wp->termination_deadline > 0.)) {
+      ++it;
+
+      continue;
+    }
+
+    auto d = wp->termination_deadline - now;
+    if (d > 0) {
+      if (!(next_repeat > 0.) || d < next_repeat) {
+        next_repeat = d;
+      }
+
+      ++it;
+
+      continue;
+    }
+
+    LOG(NOTICE) << "Deleting worker process pid=" << wp->worker_pid
+                << " because its grace shutdown period is over";
+
+    it = worker_processes.erase(it);
+  }
+
+  if (next_repeat > 0.) {
+    w->repeat = next_repeat;
+    ev_timer_again(loop, w);
+
+    return;
+  }
+
+  ev_timer_stop(loop, w);
+}
+} // namespace
+
+namespace {
+void worker_process_set_termination_deadline(WorkerProcess *wp,
+                                             struct ev_loop *loop) {
+  auto config = get_config();
+
+  if (!(config->worker_process_grace_shutdown_period > 0.)) {
+    return;
+  }
+
+  wp->termination_deadline =
+      ev_now(loop) + config->worker_process_grace_shutdown_period;
+
+  if (!ev_is_active(&worker_process_grace_period_timer)) {
+    worker_process_grace_period_timer.repeat =
+        config->worker_process_grace_shutdown_period;
+
+    ev_timer_again(loop, &worker_process_grace_period_timer);
+  }
+}
+} // namespace
+
+namespace {
 void worker_process_add(std::unique_ptr<WorkerProcess> wp) {
   worker_processes.push_back(std::move(wp));
 }
 } // namespace
 
 namespace {
-void worker_process_remove(const WorkerProcess *wp) {
+void worker_process_remove(const WorkerProcess *wp, struct ev_loop *loop) {
   for (auto it = std::begin(worker_processes); it != std::end(worker_processes);
        ++it) {
     auto &s = *it;
@@ -295,28 +370,46 @@ void worker_process_remove(const WorkerProcess *wp) {
     }
 
     worker_processes.erase(it);
+
+    if (worker_processes.empty()) {
+      ev_timer_stop(loop, &worker_process_grace_period_timer);
+    }
+
     break;
   }
 }
 } // namespace
 
 namespace {
-void worker_process_remove_all() {
+void worker_process_adjust_limit() {
+  auto config = get_config();
+
+  if (config->max_worker_processes &&
+      worker_processes.size() > config->max_worker_processes) {
+    worker_processes.pop_front();
+  }
+}
+} // namespace
+
+namespace {
+void worker_process_remove_all(struct ev_loop *loop) {
   std::deque<std::unique_ptr<WorkerProcess>>().swap(worker_processes);
+
+  ev_timer_stop(loop, &worker_process_grace_period_timer);
 }
 } // namespace
 
 namespace {
 // Send signal |signum| to all worker processes, and clears
 // worker_processes.
-void worker_process_kill(int signum) {
+void worker_process_kill(int signum, struct ev_loop *loop) {
   for (auto &s : worker_processes) {
     if (s->worker_pid == -1) {
       continue;
     }
     kill(s->worker_pid, signum);
   }
-  worker_process_remove_all();
+  worker_process_remove_all(loop);
 }
 } // namespace
 
@@ -635,13 +728,14 @@ void signal_cb(struct ev_loop *loop, ev_signal *w, int revents) {
       close(addr.fd);
     }
     ipc_send(wp, SHRPX_IPC_GRACEFUL_SHUTDOWN);
+    worker_process_set_termination_deadline(wp, loop);
     return;
   }
   case RELOAD_SIGNAL:
     reload_config(wp);
     return;
   default:
-    worker_process_kill(w->signum);
+    worker_process_kill(w->signum, loop);
     ev_break(loop);
     return;
   }
@@ -656,7 +750,7 @@ void worker_process_child_cb(struct ev_loop *loop, ev_child *w, int revents) {
 
   auto pid = wp->worker_pid;
 
-  worker_process_remove(wp);
+  worker_process_remove(wp, loop);
 
   if (worker_process_last_pid() == pid) {
     ev_break(loop);
@@ -1342,6 +1436,7 @@ int generate_cid_prefix(
     std::vector<std::array<uint8_t, SHRPX_QUIC_CID_PREFIXLEN>> &cid_prefixes,
     const Config *config) {
   auto &apiconf = config->api;
+  auto &quicconf = config->quic;
 
   size_t num_cid_prefix;
   if (config->single_thread) {
@@ -1360,7 +1455,7 @@ int generate_cid_prefix(
   cid_prefixes.resize(num_cid_prefix);
 
   for (auto &cid_prefix : cid_prefixes) {
-    if (create_cid_prefix(cid_prefix.data()) != 0) {
+    if (create_cid_prefix(cid_prefix.data(), quicconf.server_id.data()) != 0) {
       return -1;
     }
   }
@@ -1469,7 +1564,7 @@ pid_t fork_worker_process(
 
     // Remove all WorkerProcesses to stop any registered watcher on
     // default loop.
-    worker_process_remove_all();
+    worker_process_remove_all(EV_DEFAULT);
 
     close_unused_inherited_addr(iaddrs);
 
@@ -1644,6 +1739,9 @@ int event_loop() {
     return -1;
   }
 
+  ev_timer_init(&worker_process_grace_period_timer,
+                worker_process_grace_period_timercb, 0., 0.);
+
   worker_process_add(std::make_unique<WorkerProcess>(loop, pid, ipc_fd
 #ifdef ENABLE_HTTP3
                                                      ,
@@ -1669,6 +1767,8 @@ int event_loop() {
   }
 
   ev_run(loop, 0);
+
+  ev_timer_stop(loop, &worker_process_grace_period_timer);
 
   return 0;
 }
@@ -1854,6 +1954,16 @@ void fill_default_config(Config *config) {
 
     auto &bpfconf = quicconf.bpf;
     bpfconf.prog_file = StringRef::from_lit(PKGLIBDIR "/reuseport_kern.o");
+
+    upstreamconf.congestion_controller = NGTCP2_CC_ALGO_CUBIC;
+
+    upstreamconf.initial_rtt =
+        static_cast<ev_tstamp>(NGTCP2_DEFAULT_INITIAL_RTT) / NGTCP2_SECONDS;
+  }
+
+  if (RAND_bytes(quicconf.server_id.data(), quicconf.server_id.size()) != 1) {
+    assert(0);
+    abort();
   }
 
   auto &http3conf = config->http3;
@@ -1948,14 +2058,18 @@ void fill_default_config(Config *config) {
 
 namespace {
 void print_version(std::ostream &out) {
-  out << "nghttpx nghttp2/" NGHTTP2_VERSION << std::endl;
+  out << "nghttpx nghttp2/" NGHTTP2_VERSION
+#ifdef ENABLE_HTTP3
+         " ngtcp2/" NGTCP2_VERSION " nghttp3/" NGHTTP3_VERSION
+#endif // ENABLE_HTTP3
+      << std::endl;
 }
 } // namespace
 
 namespace {
 void print_usage(std::ostream &out) {
   out << R"(Usage: nghttpx [OPTIONS]... [<PRIVATE_KEY> <CERT>]
-A reverse proxy for HTTP/2, and HTTP/1.)"
+A reverse proxy for HTTP/3, HTTP/2, and HTTP/1.)"
       << std::endl;
 }
 } // namespace
@@ -2366,6 +2480,12 @@ Performance:
               If 0 is given, nghttpx does not set the limit.
               Default: )"
       << config->rlimit_nofile << R"(
+  --rlimit-memlock=<N>
+              Set maximum number of bytes of memory that may be locked
+              into  RAM.  If  0 is  given,  nghttpx does  not set  the
+              limit.
+              Default: )"
+      << config->rlimit_memlock << R"(
   --backend-request-buffer=<SIZE>
               Set buffer size used to store backend request.
               Default: )"
@@ -3054,7 +3174,7 @@ HTTP:
               advertised  in alt-svc  header  field  only in  HTTP/1.1
               frontend.   This option  can be  used multiple  times to
               specify multiple alternative services.
-              Example: --altsvc="h2,443,,,ma=3600; persist=1'
+              Example: --altsvc="h2,443,,,ma=3600; persist=1"
   --http2-altsvc=<PROTOID,PORT[,HOST,[ORIGIN[,PARAMS]]]>
               Just like --altsvc option, but  this altsvc is only sent
               in HTTP/2 frontend.
@@ -3185,6 +3305,27 @@ Process:
               process.   nghttpx still  spawns  additional process  if
               neverbleed  is used.   In the  single process  mode, the
               signal handling feature is disabled.
+  --max-worker-processes=<N>
+              The maximum number of  worker processes.  nghttpx spawns
+              new worker  process when  it reloads  its configuration.
+              The previous worker  process enters graceful termination
+              period and will terminate  when it finishes handling the
+              existing    connections.     However,    if    reloading
+              configurations  happen   very  frequently,   the  worker
+              processes might be piled up if they take a bit long time
+              to finish  the existing connections.  With  this option,
+              if  the number  of  worker processes  exceeds the  given
+              value,   the  oldest   worker   process  is   terminated
+              immediately.  Specifying 0 means no  limit and it is the
+              default behaviour.
+  --worker-process-grace-shutdown-period=<DURATION>
+              Maximum  period  for  a   worker  process  to  terminate
+              gracefully.  When  a worker  process enters  in graceful
+              shutdown   period  (e.g.,   when  nghttpx   reloads  its
+              configuration)  and  it  does not  finish  handling  the
+              existing connections in the given  period of time, it is
+              immediately terminated.  Specifying 0 means no limit and
+              it is the default behaviour.
 
 Scripting:
   --mruby-file=<PATH>
@@ -3221,7 +3362,57 @@ HTTP/3 and QUIC:
               frontend QUIC  connections.  A qlog file  is created per
               each QUIC  connection.  The  file name is  ISO8601 basic
               format, followed by "-", server Source Connection ID and
-              ".qlog".
+              ".sqlog".
+  --frontend-quic-require-token
+              Require an address validation  token for a frontend QUIC
+              connection.   Server sends  a token  in Retry  packet or
+              NEW_TOKEN frame in the previous connection.
+  --frontend-quic-congestion-controller=<CC>
+              Specify a congestion controller algorithm for a frontend
+              QUIC  connection.   <CC>  should be  either  "cubic"  or
+              "bbr".
+              Default: )"
+      << (config->quic.upstream.congestion_controller == NGTCP2_CC_ALGO_CUBIC
+              ? "cubic"
+              : "bbr")
+      << R"(
+  --frontend-quic-secret-file=<PATH>
+              Path to file that contains secure random data to be used
+              as QUIC keying materials.  It is used to derive keys for
+              encrypting tokens and Connection IDs.  It is not used to
+              encrypt  QUIC  packets.  Each  line  of  this file  must
+              contain  exactly  136  bytes  hex-encoded  string  (when
+              decoded the byte string is  68 bytes long).  The first 2
+              bits of  decoded byte  string are  used to  identify the
+              keying material.  An  empty line or a  line which starts
+              '#'  is ignored.   The file  can contain  more than  one
+              keying materials.  Because the  identifier is 2 bits, at
+              most 4 keying materials are  read and the remaining data
+              is discarded.  The first keying  material in the file is
+              primarily  used for  encryption and  decryption for  new
+              connection.  The other ones are used to decrypt data for
+              the  existing connections.   Specifying multiple  keying
+              materials enables  key rotation.   Please note  that key
+              rotation  does  not  occur automatically.   User  should
+              update  files  or  change  options  values  and  restart
+              nghttpx gracefully.   If opening  or reading  given file
+              fails, all loaded keying  materials are discarded and it
+              is treated as if none of  this option is given.  If this
+              option is not  given or an error  occurred while opening
+              or  reading  a  file,  a keying  material  is  generated
+              internally on startup and reload.
+  --quic-server-id=<HEXSTRING>
+              Specify server  ID encoded in Connection  ID to identify
+              this  particular  server  instance.   Connection  ID  is
+              encrypted and  this part is  not visible in  public.  It
+              must be 4  bytes long and must be encoded  in hex string
+              (which is 8  bytes long).  If this option  is omitted, a
+              random   server  ID   is   generated   on  startup   and
+              configuration reload.
+  --frontend-quic-initial-rtt=<DURATION>
+              Specify the initial RTT of the frontend QUIC connection.
+              Default: )"
+      << util::duration_str(config->quic.upstream.initial_rtt) << R"(
   --no-quic-bpf
               Disable eBPF.
   --frontend-http3-window-size=<SIZE>
@@ -3475,9 +3666,12 @@ int process_options(Config *config,
     return -1;
   }
 
+  std::array<char, util::max_hostport> hostport_buf;
+
   auto &proxy = config->downstream_http_proxy;
   if (!proxy.host.empty()) {
-    auto hostport = util::make_hostport(StringRef{proxy.host}, proxy.port);
+    auto hostport = util::make_hostport(std::begin(hostport_buf),
+                                        StringRef{proxy.host}, proxy.port);
     if (resolve_hostname(&proxy.addr, proxy.host.c_str(), proxy.port,
                          AF_UNSPEC) == -1) {
       LOG(FATAL) << "Resolving backend HTTP proxy address failed: " << hostport;
@@ -3490,7 +3684,8 @@ int process_options(Config *config,
   {
     auto &memcachedconf = tlsconf.session_cache.memcached;
     if (!memcachedconf.host.empty()) {
-      auto hostport = util::make_hostport(StringRef{memcachedconf.host},
+      auto hostport = util::make_hostport(std::begin(hostport_buf),
+                                          StringRef{memcachedconf.host},
                                           memcachedconf.port);
       if (resolve_hostname(&memcachedconf.addr, memcachedconf.host.c_str(),
                            memcachedconf.port, memcachedconf.family) == -1) {
@@ -3511,7 +3706,8 @@ int process_options(Config *config,
   {
     auto &memcachedconf = tlsconf.ticket.memcached;
     if (!memcachedconf.host.empty()) {
-      auto hostport = util::make_hostport(StringRef{memcachedconf.host},
+      auto hostport = util::make_hostport(std::begin(hostport_buf),
+                                          StringRef{memcachedconf.host},
                                           memcachedconf.port);
       if (resolve_hostname(&memcachedconf.addr, memcachedconf.host.c_str(),
                            memcachedconf.port, memcachedconf.family) == -1) {
@@ -3537,6 +3733,18 @@ int process_options(Config *config,
                 << xsi_strerror(error, errbuf.data(), errbuf.size());
     }
   }
+
+#ifdef RLIMIT_MEMLOCK
+  if (config->rlimit_memlock) {
+    struct rlimit lim = {static_cast<rlim_t>(config->rlimit_memlock),
+                         static_cast<rlim_t>(config->rlimit_memlock)};
+    if (setrlimit(RLIMIT_MEMLOCK, &lim) != 0) {
+      auto error = errno;
+      LOG(WARN) << "Setting rlimit-memlock failed: "
+                << xsi_strerror(error, errbuf.data(), errbuf.size());
+    }
+  }
+#endif // RLIMIT_MEMLOCK
 
   auto &fwdconf = config->http.forwarded;
 
@@ -3682,6 +3890,7 @@ void reload_config(WorkerProcess *wp) {
   // Send last worker process a graceful shutdown notice
   auto &last_wp = worker_processes.back();
   ipc_send(last_wp.get(), SHRPX_IPC_GRACEFUL_SHUTDOWN);
+  worker_process_set_termination_deadline(last_wp.get(), loop);
   // We no longer use signals for this worker.
   last_wp->shutdown_signal_watchers();
 
@@ -3691,6 +3900,8 @@ void reload_config(WorkerProcess *wp) {
                                                      quic_ipc_fd, cid_prefixes
 #endif // ENABLE_HTTP3
                                                      ));
+
+  worker_process_adjust_limit();
 
   if (!get_config()->pid_file.empty()) {
     save_pid();
@@ -4011,6 +4222,19 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_FRONTEND_QUIC_EARLY_DATA.c_str(), no_argument, &flag, 180},
         {SHRPX_OPT_FRONTEND_QUIC_QLOG_DIR.c_str(), required_argument, &flag,
          181},
+        {SHRPX_OPT_FRONTEND_QUIC_REQUIRE_TOKEN.c_str(), no_argument, &flag,
+         182},
+        {SHRPX_OPT_FRONTEND_QUIC_CONGESTION_CONTROLLER.c_str(),
+         required_argument, &flag, 183},
+        {SHRPX_OPT_QUIC_SERVER_ID.c_str(), required_argument, &flag, 185},
+        {SHRPX_OPT_FRONTEND_QUIC_SECRET_FILE.c_str(), required_argument, &flag,
+         186},
+        {SHRPX_OPT_RLIMIT_MEMLOCK.c_str(), required_argument, &flag, 187},
+        {SHRPX_OPT_MAX_WORKER_PROCESSES.c_str(), required_argument, &flag, 188},
+        {SHRPX_OPT_WORKER_PROCESS_GRACE_SHUTDOWN_PERIOD.c_str(),
+         required_argument, &flag, 189},
+        {SHRPX_OPT_FRONTEND_QUIC_INITIAL_RTT.c_str(), required_argument, &flag,
+         190},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -4876,6 +5100,43 @@ int main(int argc, char **argv) {
       case 181:
         // --frontend-quic-qlog-dir
         cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_QUIC_QLOG_DIR,
+                             StringRef{optarg});
+        break;
+      case 182:
+        // --frontend-quic-require-token
+        cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_QUIC_REQUIRE_TOKEN,
+                             StringRef::from_lit("yes"));
+        break;
+      case 183:
+        // --frontend-quic-congestion-controller
+        cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_QUIC_CONGESTION_CONTROLLER,
+                             StringRef{optarg});
+        break;
+      case 185:
+        // --quic-server-id
+        cmdcfgs.emplace_back(SHRPX_OPT_QUIC_SERVER_ID, StringRef{optarg});
+        break;
+      case 186:
+        // --frontend-quic-secret-file
+        cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_QUIC_SECRET_FILE,
+                             StringRef{optarg});
+        break;
+      case 187:
+        // --rlimit-memlock
+        cmdcfgs.emplace_back(SHRPX_OPT_RLIMIT_MEMLOCK, StringRef{optarg});
+        break;
+      case 188:
+        // --max-worker-processes
+        cmdcfgs.emplace_back(SHRPX_OPT_MAX_WORKER_PROCESSES, StringRef{optarg});
+        break;
+      case 189:
+        // --worker-process-grace-shutdown-period
+        cmdcfgs.emplace_back(SHRPX_OPT_WORKER_PROCESS_GRACE_SHUTDOWN_PERIOD,
+                             StringRef{optarg});
+        break;
+      case 190:
+        // --frontend-quic-initial-rtt
+        cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_QUIC_INITIAL_RTT,
                              StringRef{optarg});
         break;
       default:

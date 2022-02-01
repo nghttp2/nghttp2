@@ -277,6 +277,10 @@ OPTIONS
 
     Disable UDP GSO.
 
+.. option:: --max-udp-payload-size=<SIZE>
+
+    Specify the maximum outgoing UDP datagram payload size.
+
 .. option:: -v, --verbose
 
     Output debug information.

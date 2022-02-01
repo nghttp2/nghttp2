@@ -230,10 +230,81 @@ read_tls_ticket_key_file(const std::vector<StringRef> &files,
   return ticket_keys;
 }
 
+#ifdef ENABLE_HTTP3
+std::shared_ptr<QUICKeyingMaterials>
+read_quic_secret_file(const StringRef &path) {
+  constexpr size_t expectedlen =
+      SHRPX_QUIC_SECRET_RESERVEDLEN + SHRPX_QUIC_SECRETLEN + SHRPX_QUIC_SALTLEN;
+
+  auto qkms = std::make_shared<QUICKeyingMaterials>();
+  auto &kms = qkms->keying_materials;
+
+  std::ifstream f(path.c_str());
+  if (!f) {
+    LOG(ERROR) << "frontend-quic-secret-file: could not open file " << path;
+    return nullptr;
+  }
+
+  std::array<char, 4096> buf;
+
+  while (f.getline(buf.data(), buf.size())) {
+    auto len = strlen(buf.data());
+    if (len == 0 || buf[0] == '#') {
+      continue;
+    }
+
+    auto s = StringRef{std::begin(buf), std::begin(buf) + len};
+    if (s.size() != expectedlen * 2 || !util::is_hex_string(s)) {
+      LOG(ERROR) << "frontend-quic-secret-file: each line must be a "
+                 << expectedlen * 2 << " bytes hex encoded string";
+      return nullptr;
+    }
+
+    kms.emplace_back();
+    auto &qkm = kms.back();
+
+    auto p = std::begin(s);
+
+    util::decode_hex(std::begin(qkm.reserved),
+                     StringRef{p, p + qkm.reserved.size()});
+    p += qkm.reserved.size() * 2;
+    util::decode_hex(std::begin(qkm.secret),
+                     StringRef{p, p + qkm.secret.size()});
+    p += qkm.secret.size() * 2;
+    util::decode_hex(std::begin(qkm.salt), StringRef{p, p + qkm.salt.size()});
+    p += qkm.salt.size() * 2;
+
+    assert(static_cast<size_t>(p - std::begin(s)) == expectedlen * 2);
+
+    qkm.id = qkm.reserved[0] & 0xc0;
+
+    if (kms.size() == 4) {
+      break;
+    }
+  }
+
+  if (f.bad() || (!f.eof() && f.fail())) {
+    LOG(ERROR)
+        << "frontend-quic-secret-file: error occurred while reading file "
+        << path;
+    return nullptr;
+  }
+
+  if (kms.empty()) {
+    LOG(WARN)
+        << "frontend-quic-secret-file: no keying materials are present in file "
+        << path;
+    return nullptr;
+  }
+
+  return qkms;
+}
+#endif // ENABLE_HTTP3
+
 FILE *open_file_for_write(const char *filename) {
   std::array<char, STRERROR_BUFSIZE> errbuf;
 
-#if defined O_CLOEXEC
+#ifdef O_CLOEXEC
   auto fd = open(filename, O_WRONLY | O_CLOEXEC | O_CREAT | O_TRUNC,
                  S_IRUSR | S_IWUSR);
 #else
@@ -1983,6 +2054,11 @@ int option_lookup_token(const char *name, size_t namelen) {
     break;
   case 14:
     switch (name[13]) {
+    case 'd':
+      if (util::strieq_l("quic-server-i", name, 13)) {
+        return SHRPX_OPTID_QUIC_SERVER_ID;
+      }
+      break;
     case 'e':
       if (util::strieq_l("accesslog-fil", name, 13)) {
         return SHRPX_OPTID_ACCESSLOG_FILE;
@@ -1991,6 +2067,11 @@ int option_lookup_token(const char *name, size_t namelen) {
     case 'h':
       if (util::strieq_l("no-server-pus", name, 13)) {
         return SHRPX_OPTID_NO_SERVER_PUSH;
+      }
+      break;
+    case 'k':
+      if (util::strieq_l("rlimit-memloc", name, 13)) {
+        return SHRPX_OPTID_RLIMIT_MEMLOCK;
       }
       break;
     case 'p':
@@ -2172,6 +2253,9 @@ int option_lookup_token(const char *name, size_t namelen) {
       }
       break;
     case 's':
+      if (util::strieq_l("max-worker-processe", name, 19)) {
+        return SHRPX_OPTID_MAX_WORKER_PROCESSES;
+      }
       if (util::strieq_l("tls13-client-cipher", name, 19)) {
         return SHRPX_OPTID_TLS13_CLIENT_CIPHERS;
       }
@@ -2339,6 +2423,9 @@ int option_lookup_token(const char *name, size_t namelen) {
       if (util::strieq_l("backend-http2-window-siz", name, 24)) {
         return SHRPX_OPTID_BACKEND_HTTP2_WINDOW_SIZE;
       }
+      if (util::strieq_l("frontend-quic-secret-fil", name, 24)) {
+        return SHRPX_OPTID_FRONTEND_QUIC_SECRET_FILE;
+      }
       break;
     case 'g':
       if (util::strieq_l("http2-no-cookie-crumblin", name, 24)) {
@@ -2351,6 +2438,11 @@ int option_lookup_token(const char *name, size_t namelen) {
       }
       if (util::strieq_l("max-request-header-field", name, 24)) {
         return SHRPX_OPTID_MAX_REQUEST_HEADER_FIELDS;
+      }
+      break;
+    case 't':
+      if (util::strieq_l("frontend-quic-initial-rt", name, 24)) {
+        return SHRPX_OPTID_FRONTEND_QUIC_INITIAL_RTT;
       }
       break;
     }
@@ -2399,6 +2491,11 @@ int option_lookup_token(const char *name, size_t namelen) {
     case 'd':
       if (util::strieq_l("tls-session-cache-memcache", name, 26)) {
         return SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED;
+      }
+      break;
+    case 'n':
+      if (util::strieq_l("frontend-quic-require-toke", name, 26)) {
+        return SHRPX_OPTID_FRONTEND_QUIC_REQUIRE_TOKEN;
       }
       break;
     case 'r':
@@ -2566,11 +2663,19 @@ int option_lookup_token(const char *name, size_t namelen) {
       if (util::strieq_l("frontend-http2-dump-response-heade", name, 34)) {
         return SHRPX_OPTID_FRONTEND_HTTP2_DUMP_RESPONSE_HEADER;
       }
+      if (util::strieq_l("frontend-quic-congestion-controlle", name, 34)) {
+        return SHRPX_OPTID_FRONTEND_QUIC_CONGESTION_CONTROLLER;
+      }
       break;
     }
     break;
   case 36:
     switch (name[35]) {
+    case 'd':
+      if (util::strieq_l("worker-process-grace-shutdown-perio", name, 35)) {
+        return SHRPX_OPTID_WORKER_PROCESS_GRACE_SHUTDOWN_PERIOD;
+      }
+      break;
     case 'e':
       if (util::strieq_l("backend-http2-connection-window-siz", name, 35)) {
         return SHRPX_OPTID_BACKEND_HTTP2_CONNECTION_WINDOW_SIZE;
@@ -2765,9 +2870,16 @@ int parse_config(Config *config, int optid, const StringRef &opt,
       return -1;
     }
 
-    if (params.quic && params.alt_mode != UpstreamAltMode::NONE) {
-      LOG(ERROR) << "frontend: api or healthmon cannot be used with quic";
-      return -1;
+    if (params.quic) {
+      if (params.alt_mode != UpstreamAltMode::NONE) {
+        LOG(ERROR) << "frontend: api or healthmon cannot be used with quic";
+        return -1;
+      }
+
+      if (!params.tls) {
+        LOG(ERROR) << "frontend: quic requires TLS";
+        return -1;
+      }
     }
 
     UpstreamAddr addr{};
@@ -3842,7 +3954,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
                     "65535], inclusive";
       return -1;
     }
-    config->http.redirect_https_port = optarg;
+    config->http.redirect_https_port = make_string_ref(config->balloc, optarg);
     return 0;
   }
   case SHRPX_OPTID_FRONTEND_MAX_REQUESTS:
@@ -3983,10 +4095,75 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     return 0;
   case SHRPX_OPTID_FRONTEND_QUIC_QLOG_DIR:
 #ifdef ENABLE_HTTP3
-    config->quic.upstream.qlog.dir = optarg;
+    config->quic.upstream.qlog.dir = make_string_ref(config->balloc, optarg);
 #endif // ENABLE_HTTP3
 
     return 0;
+  case SHRPX_OPTID_FRONTEND_QUIC_REQUIRE_TOKEN:
+#ifdef ENABLE_HTTP3
+    config->quic.upstream.require_token = util::strieq_l("yes", optarg);
+#endif // ENABLE_HTTP3
+
+    return 0;
+  case SHRPX_OPTID_FRONTEND_QUIC_CONGESTION_CONTROLLER:
+#ifdef ENABLE_HTTP3
+    if (util::strieq_l("cubic", optarg)) {
+      config->quic.upstream.congestion_controller = NGTCP2_CC_ALGO_CUBIC;
+    } else if (util::strieq_l("bbr", optarg)) {
+      config->quic.upstream.congestion_controller = NGTCP2_CC_ALGO_BBR;
+    } else {
+      LOG(ERROR) << opt << ": must be either cubic or bbr";
+      return -1;
+    }
+#endif // ENABLE_HTTP3
+
+    return 0;
+  case SHRPX_OPTID_QUIC_SERVER_ID:
+#ifdef ENABLE_HTTP3
+    if (optarg.size() != config->quic.server_id.size() * 2 ||
+        !util::is_hex_string(optarg)) {
+      LOG(ERROR) << opt << ": must be a hex-string";
+      return -1;
+    }
+    util::decode_hex(std::begin(config->quic.server_id), optarg);
+#endif // ENABLE_HTTP3
+
+    return 0;
+  case SHRPX_OPTID_FRONTEND_QUIC_SECRET_FILE:
+#ifdef ENABLE_HTTP3
+    config->quic.upstream.secret_file = make_string_ref(config->balloc, optarg);
+#endif // ENABLE_HTTP3
+
+    return 0;
+  case SHRPX_OPTID_RLIMIT_MEMLOCK: {
+    int n;
+
+    if (parse_uint(&n, opt, optarg) != 0) {
+      return -1;
+    }
+
+    if (n < 0) {
+      LOG(ERROR) << opt << ": specify the integer more than or equal to 0";
+
+      return -1;
+    }
+
+    config->rlimit_memlock = n;
+
+    return 0;
+  }
+  case SHRPX_OPTID_MAX_WORKER_PROCESSES:
+    return parse_uint(&config->max_worker_processes, opt, optarg);
+  case SHRPX_OPTID_WORKER_PROCESS_GRACE_SHUTDOWN_PERIOD:
+    return parse_duration(&config->worker_process_grace_shutdown_period, opt,
+                          optarg);
+  case SHRPX_OPTID_FRONTEND_QUIC_INITIAL_RTT: {
+#ifdef ENABLE_HTTP3
+    return parse_duration(&config->quic.upstream.initial_rtt, opt, optarg);
+#endif // ENABLE_HTTP3
+
+    return 0;
+  }
   case SHRPX_OPTID_CONF:
     LOG(WARN) << "conf: ignored";
 
@@ -4286,7 +4463,7 @@ int configure_downstream_group(Config *config, bool http2_proxy,
     if (!g.mruby_file.empty()) {
       if (mruby::create_mruby_context(g.mruby_file) == nullptr) {
         LOG(config->ignore_per_pattern_mruby_error ? ERROR : FATAL)
-            << "backend: Could not compile mruby flie for pattern "
+            << "backend: Could not compile mruby file for pattern "
             << g.pattern;
         if (!config->ignore_per_pattern_mruby_error) {
           return -1;
@@ -4320,6 +4497,8 @@ int configure_downstream_group(Config *config, bool http2_proxy,
   }
 
   auto resolve_flags = numeric_addr_only ? AI_NUMERICHOST | AI_NUMERICSERV : 0;
+
+  std::array<char, util::max_hostport> hostport_buf;
 
   for (auto &g : addr_groups) {
     std::unordered_map<StringRef, uint32_t> wgchk;
@@ -4366,7 +4545,7 @@ int configure_downstream_group(Config *config, bool http2_proxy,
           util::make_http_hostport(downstreamconf.balloc, addr.host, addr.port);
 
       auto hostport =
-          util::make_hostport(downstreamconf.balloc, addr.host, addr.port);
+          util::make_hostport(std::begin(hostport_buf), addr.host, addr.port);
 
       if (!addr.dns) {
         if (resolve_hostname(&addr.addr, addr.host.c_str(), addr.port,

@@ -75,6 +75,7 @@ int MRubyContext::run_app(Downstream *downstream, int phase) {
     break;
   default:
     assert(0);
+    abort();
   }
 
   auto res = mrb_funcall(mrb_, app_, method, 1, env_);

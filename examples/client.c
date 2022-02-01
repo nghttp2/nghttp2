@@ -380,6 +380,10 @@ static void init_ssl_ctx(SSL_CTX *ssl_ctx) {
 #ifndef OPENSSL_NO_NEXTPROTONEG
   SSL_CTX_set_next_proto_select_cb(ssl_ctx, select_next_proto_cb, NULL);
 #endif /* !OPENSSL_NO_NEXTPROTONEG */
+
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+  SSL_CTX_set_alpn_protos(ssl_ctx, (const unsigned char *)"\x02h2", 3);
+#endif /* OPENSSL_VERSION_NUMBER >= 0x10002000L */
 }
 
 static void ssl_handshake(SSL *ssl, int fd) {
@@ -544,7 +548,7 @@ static void fetch_uri(const struct URI *uri) {
   if (fd == -1) {
     die("Could not open file descriptor");
   }
-  ssl_ctx = SSL_CTX_new(SSLv23_client_method());
+  ssl_ctx = SSL_CTX_new(TLS_client_method());
   if (ssl_ctx == NULL) {
     dief("SSL_CTX_new", ERR_error_string(ERR_get_error(), NULL));
   }
@@ -715,8 +719,18 @@ int main(int argc, char **argv) {
   act.sa_handler = SIG_IGN;
   sigaction(SIGPIPE, &act, 0);
 
+#if OPENSSL_VERSION_NUMBER >= 0x1010000fL
+  /* No explicit initialization is required. */
+#elif defined(OPENSSL_IS_BORINGSSL)
+  CRYPTO_library_init();
+#else  /* !(OPENSSL_VERSION_NUMBER >= 0x1010000fL) &&                          \
+          !defined(OPENSSL_IS_BORINGSSL) */
+  OPENSSL_config(NULL);
   SSL_load_error_strings();
   SSL_library_init();
+  OpenSSL_add_all_algorithms();
+#endif /* !(OPENSSL_VERSION_NUMBER >= 0x1010000fL) &&                          \
+          !defined(OPENSSL_IS_BORINGSSL) */
 
   rv = parse_uri(&uri, argv[1]);
   if (rv != 0) {

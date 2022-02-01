@@ -387,6 +387,20 @@ constexpr auto SHRPX_OPT_FRONTEND_QUIC_EARLY_DATA =
     StringRef::from_lit("frontend-quic-early-data");
 constexpr auto SHRPX_OPT_FRONTEND_QUIC_QLOG_DIR =
     StringRef::from_lit("frontend-quic-qlog-dir");
+constexpr auto SHRPX_OPT_FRONTEND_QUIC_REQUIRE_TOKEN =
+    StringRef::from_lit("frontend-quic-require-token");
+constexpr auto SHRPX_OPT_FRONTEND_QUIC_CONGESTION_CONTROLLER =
+    StringRef::from_lit("frontend-quic-congestion-controller");
+constexpr auto SHRPX_OPT_QUIC_SERVER_ID = StringRef::from_lit("quic-server-id");
+constexpr auto SHRPX_OPT_FRONTEND_QUIC_SECRET_FILE =
+    StringRef::from_lit("frontend-quic-secret-file");
+constexpr auto SHRPX_OPT_RLIMIT_MEMLOCK = StringRef::from_lit("rlimit-memlock");
+constexpr auto SHRPX_OPT_MAX_WORKER_PROCESSES =
+    StringRef::from_lit("max-worker-processes");
+constexpr auto SHRPX_OPT_WORKER_PROCESS_GRACE_SHUTDOWN_PERIOD =
+    StringRef::from_lit("worker-process-grace-shutdown-period");
+constexpr auto SHRPX_OPT_FRONTEND_QUIC_INITIAL_RTT =
+    StringRef::from_lit("frontend-quic-initial-rtt");
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
@@ -598,10 +612,18 @@ struct TLSCertificate {
 };
 
 #ifdef ENABLE_HTTP3
-struct QUICSecret {
-  std::array<uint8_t, SHRPX_QUIC_STATELESS_RESET_SECRETLEN>
-      stateless_reset_secret;
-  std::array<uint8_t, SHRPX_QUIC_TOKEN_SECRETLEN> token_secret;
+struct QUICKeyingMaterial {
+  std::array<uint8_t, SHRPX_QUIC_SECRET_RESERVEDLEN> reserved;
+  std::array<uint8_t, SHRPX_QUIC_SECRETLEN> secret;
+  std::array<uint8_t, SHRPX_QUIC_SALTLEN> salt;
+  std::array<uint8_t, SHRPX_QUIC_CID_ENCRYPTION_KEYLEN> cid_encryption_key;
+  // Identifier of this keying material.  Only the first 2 bits are
+  // used.
+  uint8_t id;
+};
+
+struct QUICKeyingMaterials {
+  std::vector<QUICKeyingMaterial> keying_materials;
 };
 #endif // ENABLE_HTTP3
 
@@ -669,7 +691,7 @@ struct TLSConfig {
     ev_tstamp idle_timeout;
   } dyn_rec;
 
-  // OCSP realted configurations
+  // OCSP related configurations
   struct {
     ev_tstamp update_interval;
     StringRef fetch_ocsp_response_file;
@@ -754,12 +776,17 @@ struct QUICConfig {
     struct {
       StringRef dir;
     } qlog;
+    ngtcp2_cc_algo congestion_controller;
     bool early_data;
+    bool require_token;
+    StringRef secret_file;
+    ev_tstamp initial_rtt;
   } upstream;
   struct {
     StringRef prog_file;
     bool disabled;
   } bpf;
+  std::array<uint8_t, SHRPX_QUIC_SERVER_IDLEN> server_id;
 };
 
 struct Http3Config {
@@ -1044,6 +1071,7 @@ struct Config {
         num_worker{0},
         padding{0},
         rlimit_nofile{0},
+        rlimit_memlock{0},
         uid{0},
         gid{0},
         pid{0},
@@ -1053,7 +1081,9 @@ struct Config {
         single_process{false},
         single_thread{false},
         ignore_per_pattern_mruby_error{false},
-        ev_loop_flags{0} {
+        ev_loop_flags{0},
+        max_worker_processes{0},
+        worker_process_grace_shutdown_period{0.} {
   }
   ~Config();
 
@@ -1092,6 +1122,7 @@ struct Config {
   size_t num_worker;
   size_t padding;
   size_t rlimit_nofile;
+  size_t rlimit_memlock;
   uid_t uid;
   gid_t gid;
   pid_t pid;
@@ -1106,6 +1137,8 @@ struct Config {
   bool ignore_per_pattern_mruby_error;
   // flags passed to ev_default_loop() and ev_loop_new()
   int ev_loop_flags;
+  size_t max_worker_processes;
+  ev_tstamp worker_process_grace_shutdown_period;
 };
 
 const Config *get_config();
@@ -1207,10 +1240,14 @@ enum {
   SHRPX_OPTID_FRONTEND_KEEP_ALIVE_TIMEOUT,
   SHRPX_OPTID_FRONTEND_MAX_REQUESTS,
   SHRPX_OPTID_FRONTEND_NO_TLS,
+  SHRPX_OPTID_FRONTEND_QUIC_CONGESTION_CONTROLLER,
   SHRPX_OPTID_FRONTEND_QUIC_DEBUG_LOG,
   SHRPX_OPTID_FRONTEND_QUIC_EARLY_DATA,
   SHRPX_OPTID_FRONTEND_QUIC_IDLE_TIMEOUT,
+  SHRPX_OPTID_FRONTEND_QUIC_INITIAL_RTT,
   SHRPX_OPTID_FRONTEND_QUIC_QLOG_DIR,
+  SHRPX_OPTID_FRONTEND_QUIC_REQUIRE_TOKEN,
+  SHRPX_OPTID_FRONTEND_QUIC_SECRET_FILE,
   SHRPX_OPTID_FRONTEND_READ_TIMEOUT,
   SHRPX_OPTID_FRONTEND_WRITE_TIMEOUT,
   SHRPX_OPTID_HEADER_FIELD_BUFFER,
@@ -1228,6 +1265,7 @@ enum {
   SHRPX_OPTID_MAX_HEADER_FIELDS,
   SHRPX_OPTID_MAX_REQUEST_HEADER_FIELDS,
   SHRPX_OPTID_MAX_RESPONSE_HEADER_FIELDS,
+  SHRPX_OPTID_MAX_WORKER_PROCESSES,
   SHRPX_OPTID_MRUBY_FILE,
   SHRPX_OPTID_NO_ADD_X_FORWARDED_PROTO,
   SHRPX_OPTID_NO_HOST_REWRITE,
@@ -1252,11 +1290,13 @@ enum {
   SHRPX_OPTID_PRIVATE_KEY_PASSWD_FILE,
   SHRPX_OPTID_PSK_SECRETS,
   SHRPX_OPTID_QUIC_BPF_PROGRAM_FILE,
+  SHRPX_OPTID_QUIC_SERVER_ID,
   SHRPX_OPTID_READ_BURST,
   SHRPX_OPTID_READ_RATE,
   SHRPX_OPTID_REDIRECT_HTTPS_PORT,
   SHRPX_OPTID_REQUEST_HEADER_FIELD_BUFFER,
   SHRPX_OPTID_RESPONSE_HEADER_FIELD_BUFFER,
+  SHRPX_OPTID_RLIMIT_MEMLOCK,
   SHRPX_OPTID_RLIMIT_NOFILE,
   SHRPX_OPTID_SERVER_NAME,
   SHRPX_OPTID_SINGLE_PROCESS,
@@ -1297,6 +1337,7 @@ enum {
   SHRPX_OPTID_VERIFY_CLIENT_CACERT,
   SHRPX_OPTID_VERIFY_CLIENT_TOLERATE_EXPIRED,
   SHRPX_OPTID_WORKER_FRONTEND_CONNECTIONS,
+  SHRPX_OPTID_WORKER_PROCESS_GRACE_SHUTDOWN_PERIOD,
   SHRPX_OPTID_WORKER_READ_BURST,
   SHRPX_OPTID_WORKER_READ_RATE,
   SHRPX_OPTID_WORKER_WRITE_BURST,
@@ -1360,6 +1401,11 @@ FILE *open_file_for_write(const char *filename);
 std::unique_ptr<TicketKeys>
 read_tls_ticket_key_file(const std::vector<StringRef> &files,
                          const EVP_CIPHER *cipher, const EVP_MD *hmac);
+
+#ifdef ENABLE_HTTP3
+std::shared_ptr<QUICKeyingMaterials>
+read_quic_secret_file(const StringRef &path);
+#endif // ENABLE_HTTP3
 
 // Returns string representation of |proto|.
 StringRef strproto(Proto proto);

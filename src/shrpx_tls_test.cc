@@ -121,7 +121,7 @@ void test_shrpx_tls_cert_lookup_tree_add_ssl_ctx(void) {
 
   static constexpr char nghttp2_certfile[] =
       NGHTTP2_SRC_DIR "/test.nghttp2.org.pem";
-  auto nghttp2_ssl_ctx = SSL_CTX_new(SSLv23_server_method());
+  auto nghttp2_ssl_ctx = SSL_CTX_new(TLS_server_method());
   auto nghttp2_ssl_ctx_del = defer(SSL_CTX_free, nghttp2_ssl_ctx);
   auto nghttp2_tls_ctx_data = std::make_unique<tls::TLSContextData>();
   nghttp2_tls_ctx_data->cert_file = nghttp2_certfile;
@@ -132,7 +132,7 @@ void test_shrpx_tls_cert_lookup_tree_add_ssl_ctx(void) {
 
   static constexpr char examples_certfile[] =
       NGHTTP2_SRC_DIR "/test.example.com.pem";
-  auto examples_ssl_ctx = SSL_CTX_new(SSLv23_server_method());
+  auto examples_ssl_ctx = SSL_CTX_new(TLS_server_method());
   auto examples_ssl_ctx_del = defer(SSL_CTX_free, examples_ssl_ctx);
   auto examples_tls_ctx_data = std::make_unique<tls::TLSContextData>();
   examples_tls_ctx_data->cert_file = examples_certfile;

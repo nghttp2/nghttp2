@@ -292,11 +292,12 @@ int ClientHandler::write_tls() {
 #ifdef ENABLE_HTTP3
 int ClientHandler::read_quic(const UpstreamAddr *faddr,
                              const Address &remote_addr,
-                             const Address &local_addr, const uint8_t *data,
+                             const Address &local_addr,
+                             const ngtcp2_pkt_info &pi, const uint8_t *data,
                              size_t datalen) {
   auto upstream = static_cast<Http3Upstream *>(upstream_.get());
 
-  return upstream->on_read(faddr, remote_addr, local_addr, data, datalen);
+  return upstream->on_read(faddr, remote_addr, local_addr, pi, data, datalen);
 }
 
 int ClientHandler::write_quic() { return upstream_->on_write(); }
@@ -517,7 +518,6 @@ void ClientHandler::setup_upstream_io_callback() {
 void ClientHandler::setup_http3_upstream(
     std::unique_ptr<Http3Upstream> &&upstream) {
   upstream_ = std::move(upstream);
-  alpn_ = StringRef::from_lit("h3");
   write_ = &ClientHandler::write_quic;
 
   auto config = get_config();
@@ -884,7 +884,6 @@ DownstreamAddr *ClientHandler::get_downstream_addr(int &err,
         err = -1;
         return nullptr;
       }
-      aff_idx = i;
     }
 
     return addr;
@@ -1598,5 +1597,14 @@ StringRef ClientHandler::get_tls_sni() const { return sni_; }
 StringRef ClientHandler::get_alpn() const { return alpn_; }
 
 BlockAllocator &ClientHandler::get_block_allocator() { return balloc_; }
+
+void ClientHandler::set_alpn_from_conn() {
+  const unsigned char *alpn;
+  unsigned int alpnlen;
+
+  SSL_get0_alpn_selected(conn_.tls.ssl, &alpn, &alpnlen);
+
+  alpn_ = make_string_ref(balloc_, StringRef{alpn, alpnlen});
+}
 
 } // namespace shrpx

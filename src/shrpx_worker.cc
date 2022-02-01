@@ -554,7 +554,7 @@ void Worker::process_events() {
 
     quic_conn_handler_.handle_packet(
         faddr, wev.quic_pkt->remote_addr, wev.quic_pkt->local_addr,
-        wev.quic_pkt->data.data(), wev.quic_pkt->data.size());
+        wev.quic_pkt->pi, wev.quic_pkt->data.data(), wev.quic_pkt->data.size());
 
     break;
   }
@@ -833,6 +833,28 @@ int Worker::create_quic_server_socket(UpstreamAddr &faddr) {
         close(fd);
         continue;
       }
+
+      if (setsockopt(fd, IPPROTO_IPV6, IPV6_RECVTCLASS, &val,
+                     static_cast<socklen_t>(sizeof(val))) == -1) {
+        auto error = errno;
+        LOG(WARN) << "Failed to set IPV6_RECVTCLASS option to listener socket: "
+                  << xsi_strerror(error, errbuf.data(), errbuf.size());
+        close(fd);
+        continue;
+      }
+
+#  if defined(IPV6_MTU_DISCOVER) && defined(IP_PMTUDISC_DO)
+      int mtu_disc = IP_PMTUDISC_DO;
+      if (setsockopt(fd, IPPROTO_IPV6, IPV6_MTU_DISCOVER, &mtu_disc,
+                     static_cast<socklen_t>(sizeof(mtu_disc))) == -1) {
+        auto error = errno;
+        LOG(WARN)
+            << "Failed to set IPV6_MTU_DISCOVER option to listener socket: "
+            << xsi_strerror(error, errbuf.data(), errbuf.size());
+        close(fd);
+        continue;
+      }
+#  endif // defined(IPV6_MTU_DISCOVER) && defined(IP_PMTUDISC_DO)
     } else {
       if (setsockopt(fd, IPPROTO_IP, IP_PKTINFO, &val,
                      static_cast<socklen_t>(sizeof(val))) == -1) {
@@ -842,9 +864,28 @@ int Worker::create_quic_server_socket(UpstreamAddr &faddr) {
         close(fd);
         continue;
       }
-    }
 
-    // TODO Enable ECN
+      if (setsockopt(fd, IPPROTO_IP, IP_RECVTOS, &val,
+                     static_cast<socklen_t>(sizeof(val))) == -1) {
+        auto error = errno;
+        LOG(WARN) << "Failed to set IP_RECVTOS option to listener socket: "
+                  << xsi_strerror(error, errbuf.data(), errbuf.size());
+        close(fd);
+        continue;
+      }
+
+#  if defined(IP_MTU_DISCOVER) && defined(IP_PMTUDISC_DO)
+      int mtu_disc = IP_PMTUDISC_DO;
+      if (setsockopt(fd, IPPROTO_IP, IP_MTU_DISCOVER, &mtu_disc,
+                     static_cast<socklen_t>(sizeof(mtu_disc))) == -1) {
+        auto error = errno;
+        LOG(WARN) << "Failed to set IP_MTU_DISCOVER option to listener socket: "
+                  << xsi_strerror(error, errbuf.data(), errbuf.size());
+        close(fd);
+        continue;
+      }
+#  endif // defined(IP_MTU_DISCOVER) && defined(IP_PMTUDISC_DO)
+    }
 
     if (bind(fd, rp->ai_addr, rp->ai_addrlen) == -1) {
       auto error = errno;
@@ -890,6 +931,8 @@ int Worker::create_quic_server_socket(UpstreamAddr &faddr) {
 
       auto &ref = quic_bpf_refs[faddr.index];
 
+      ref.obj = obj;
+
       auto reuseport_array =
           bpf_object__find_map_by_name(obj, "reuseport_array");
       err = libbpf_get_error(reuseport_array);
@@ -923,11 +966,34 @@ int Worker::create_quic_server_socket(UpstreamAddr &faddr) {
       }
 
       constexpr uint32_t zero = 0;
-      uint32_t num_socks = config->num_worker;
+      uint64_t num_socks = config->num_worker;
 
       if (bpf_map_update_elem(bpf_map__fd(sk_info), &zero, &num_socks,
                               BPF_ANY) != 0) {
         LOG(FATAL) << "Failed to update sk_info: "
+                   << xsi_strerror(errno, errbuf.data(), errbuf.size());
+        close(fd);
+        return -1;
+      }
+
+      constexpr uint32_t key_high_idx = 1;
+      constexpr uint32_t key_low_idx = 2;
+
+      auto &qkms = conn_handler_->get_quic_keying_materials();
+      auto &qkm = qkms->keying_materials.front();
+
+      if (bpf_map_update_elem(bpf_map__fd(sk_info), &key_high_idx,
+                              qkm.cid_encryption_key.data(), BPF_ANY) != 0) {
+        LOG(FATAL) << "Failed to update key_high_idx sk_info: "
+                   << xsi_strerror(errno, errbuf.data(), errbuf.size());
+        close(fd);
+        return -1;
+      }
+
+      if (bpf_map_update_elem(bpf_map__fd(sk_info), &key_low_idx,
+                              qkm.cid_encryption_key.data() + 8,
+                              BPF_ANY) != 0) {
+        LOG(FATAL) << "Failed to update key_low_idx sk_info: "
                    << xsi_strerror(errno, errbuf.data(), errbuf.size());
         close(fd);
         return -1;
@@ -987,14 +1053,6 @@ int Worker::create_quic_server_socket(UpstreamAddr &faddr) {
 
 const uint8_t *Worker::get_cid_prefix() const { return cid_prefix_.data(); }
 
-void Worker::set_quic_secret(const std::shared_ptr<QUICSecret> &secret) {
-  quic_secret_ = secret;
-}
-
-const std::shared_ptr<QUICSecret> &Worker::get_quic_secret() const {
-  return quic_secret_;
-}
-
 const UpstreamAddr *Worker::find_quic_upstream_addr(const Address &local_addr) {
   std::array<char, NI_MAXHOST> host;
 
@@ -1019,9 +1077,13 @@ const UpstreamAddr *Worker::find_quic_upstream_addr(const Address &local_addr) {
     break;
   default:
     assert(0);
+    abort();
   }
 
-  auto hostport = util::make_hostport(StringRef{host.data()}, port);
+  std::array<char, util::max_hostport> hostport_buf;
+
+  auto hostport = util::make_http_hostport(std::begin(hostport_buf),
+                                           StringRef{host.data()}, port);
   const UpstreamAddr *fallback_faddr = nullptr;
 
   for (auto &faddr : quic_upstream_addrs_) {
@@ -1033,21 +1095,41 @@ const UpstreamAddr *Worker::find_quic_upstream_addr(const Address &local_addr) {
       continue;
     }
 
-    switch (faddr.family) {
-    case AF_INET:
-      if (util::starts_with(faddr.hostport, StringRef::from_lit("0.0.0.0:"))) {
-        fallback_faddr = &faddr;
-      }
+    if (faddr.port == 443 || faddr.port == 80) {
+      switch (faddr.family) {
+      case AF_INET:
+        if (util::streq(faddr.hostport, StringRef::from_lit("0.0.0.0"))) {
+          fallback_faddr = &faddr;
+        }
 
-      break;
-    case AF_INET6:
-      if (util::starts_with(faddr.hostport, StringRef::from_lit("[::]:"))) {
-        fallback_faddr = &faddr;
-      }
+        break;
+      case AF_INET6:
+        if (util::streq(faddr.hostport, StringRef::from_lit("[::]"))) {
+          fallback_faddr = &faddr;
+        }
 
-      break;
-    default:
-      assert(0);
+        break;
+      default:
+        assert(0);
+      }
+    } else {
+      switch (faddr.family) {
+      case AF_INET:
+        if (util::starts_with(faddr.hostport,
+                              StringRef::from_lit("0.0.0.0:"))) {
+          fallback_faddr = &faddr;
+        }
+
+        break;
+      case AF_INET6:
+        if (util::starts_with(faddr.hostport, StringRef::from_lit("[::]:"))) {
+          fallback_faddr = &faddr;
+        }
+
+        break;
+      default:
+        assert(0);
+      }
     }
   }
 
@@ -1227,8 +1309,10 @@ void downstream_failure(DownstreamAddr *addr, const Address *raddr) {
 }
 
 #ifdef ENABLE_HTTP3
-int create_cid_prefix(uint8_t *cid_prefix) {
-  if (RAND_bytes(cid_prefix, SHRPX_QUIC_CID_PREFIXLEN) != 1) {
+int create_cid_prefix(uint8_t *cid_prefix, const uint8_t *server_id) {
+  auto p = std::copy_n(server_id, SHRPX_QUIC_SERVER_IDLEN, cid_prefix);
+
+  if (RAND_bytes(p, SHRPX_QUIC_CID_PREFIXLEN - SHRPX_QUIC_SERVER_IDLEN) != 1) {
     return -1;
   }
 

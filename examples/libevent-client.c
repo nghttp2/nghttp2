@@ -328,7 +328,7 @@ static int select_next_proto_cb(SSL *ssl, unsigned char **out,
 /* Create SSL_CTX. */
 static SSL_CTX *create_ssl_ctx(void) {
   SSL_CTX *ssl_ctx;
-  ssl_ctx = SSL_CTX_new(SSLv23_client_method());
+  ssl_ctx = SSL_CTX_new(TLS_client_method());
   if (!ssl_ctx) {
     errx(1, "Could not create SSL/TLS context: %s",
          ERR_error_string(ERR_get_error(), NULL));
@@ -617,8 +617,18 @@ int main(int argc, char **argv) {
   act.sa_handler = SIG_IGN;
   sigaction(SIGPIPE, &act, NULL);
 
+#if OPENSSL_VERSION_NUMBER >= 0x1010000fL
+  /* No explicit initialization is required. */
+#elif defined(OPENSSL_IS_BORINGSSL)
+  CRYPTO_library_init();
+#else  /* !(OPENSSL_VERSION_NUMBER >= 0x1010000fL) &&                          \
+          !defined(OPENSSL_IS_BORINGSSL) */
+  OPENSSL_config(NULL);
   SSL_load_error_strings();
   SSL_library_init();
+  OpenSSL_add_all_algorithms();
+#endif /* !(OPENSSL_VERSION_NUMBER >= 0x1010000fL) &&                          \
+          !defined(OPENSSL_IS_BORINGSSL) */
 
   run(argv[1]);
   return 0;

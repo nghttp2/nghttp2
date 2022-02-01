@@ -190,6 +190,14 @@ OPTIONS = [
     "frontend-http3-max-concurrent-streams",
     "frontend-quic-early-data",
     "frontend-quic-qlog-dir",
+    "frontend-quic-require-token",
+    "frontend-quic-congestion-controller",
+    "quic-server-id",
+    "frontend-quic-secret-file",
+    "rlimit-memlock",
+    "max-worker-processes",
+    "worker-process-grace-shutdown-period",
+    "frontend-quic-initial-rtt",
 ]
 
 LOGVARS = [

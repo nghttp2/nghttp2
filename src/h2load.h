@@ -95,6 +95,7 @@ struct Config {
   ssize_t max_concurrent_streams;
   size_t window_bits;
   size_t connection_window_bits;
+  size_t max_frame_size;
   // rate at which connections should be made
   size_t rate;
   ev_tstamp rate_period;
@@ -269,6 +270,7 @@ struct Sampling {
 
 struct Worker {
   MemchunkPool mcpool;
+  std::mt19937 randgen;
   Stats stats;
   Sampling request_times_smp;
   Sampling client_smp;
@@ -474,8 +476,10 @@ struct Client {
   int quic_stream_stop_sending(int64_t stream_id, uint64_t app_error_code);
   int quic_extend_max_local_streams();
 
-  int quic_on_key(ngtcp2_crypto_level level, const uint8_t *rx_secret,
-                  const uint8_t *tx_secret, size_t secretlen);
+  int quic_on_rx_secret(ngtcp2_crypto_level level, const uint8_t *secret,
+                        size_t secretlen);
+  int quic_on_tx_secret(ngtcp2_crypto_level level, const uint8_t *secret,
+                        size_t secretlen);
   void quic_set_tls_alert(uint8_t alert);
 
   void quic_write_client_handshake(ngtcp2_crypto_level level,

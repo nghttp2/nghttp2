@@ -540,10 +540,13 @@ void test_util_make_http_hostport(void) {
 }
 
 void test_util_make_hostport(void) {
+  std::array<char, util::max_hostport> hostport_buf;
   CU_ASSERT("localhost:80" ==
-            util::make_hostport(StringRef::from_lit("localhost"), 80));
-  CU_ASSERT("[::1]:443" ==
-            util::make_hostport(StringRef::from_lit("::1"), 443));
+            util::make_hostport(std::begin(hostport_buf),
+                                StringRef::from_lit("localhost"), 80));
+  CU_ASSERT("[::1]:443" == util::make_hostport(std::begin(hostport_buf),
+                                               StringRef::from_lit("::1"),
+                                               443));
 
   BlockAllocator balloc(4096, 4096);
   CU_ASSERT("localhost:80" ==

@@ -572,7 +572,7 @@ std::string ascii_dump(const uint8_t *data, size_t len);
 
 // Returns absolute path of executable path.  If argc == 0 or |cwd| is
 // nullptr, this function returns nullptr.  If argv[0] starts with
-// '/', this function returns argv[0].  Oterwise return cwd + "/" +
+// '/', this function returns argv[0].  Otherwise return cwd + "/" +
 // argv[0].  If non-null is returned, it is NULL-terminated string and
 // dynamically allocated by malloc.  The caller is responsible to free
 // it.
@@ -762,18 +762,71 @@ std::string format_duration(const std::chrono::microseconds &u);
 // Just like above, but this takes |t| as seconds.
 std::string format_duration(double t);
 
+// The maximum buffer size including terminal NULL to store the result
+// of make_hostport.
+constexpr size_t max_hostport = NI_MAXHOST + /* [] for IPv6 */ 2 + /* : */ 1 +
+                                /* port */ 5 + /* terminal NULL */ 1;
+
+// Just like make_http_hostport(), but doesn't treat 80 and 443
+// specially.
+StringRef make_hostport(BlockAllocator &balloc, const StringRef &host,
+                        uint16_t port);
+
+template <typename OutputIt>
+StringRef make_hostport(OutputIt first, const StringRef &host, uint16_t port) {
+  auto ipv6 = ipv6_numeric_addr(host.c_str());
+  auto serv = utos(port);
+  auto p = first;
+
+  if (ipv6) {
+    *p++ = '[';
+  }
+
+  p = std::copy(std::begin(host), std::end(host), p);
+
+  if (ipv6) {
+    *p++ = ']';
+  }
+
+  *p++ = ':';
+
+  p = std::copy(std::begin(serv), std::end(serv), p);
+
+  *p = '\0';
+
+  return StringRef{first, p};
+}
+
 // Creates "host:port" string using given |host| and |port|.  If
 // |host| is numeric IPv6 address (e.g., ::1), it is enclosed by "["
 // and "]".  If |port| is 80 or 443, port part is omitted.
 StringRef make_http_hostport(BlockAllocator &balloc, const StringRef &host,
                              uint16_t port);
 
-// Just like make_http_hostport(), but doesn't treat 80 and 443
-// specially.
-std::string make_hostport(const StringRef &host, uint16_t port);
+template <typename OutputIt>
+StringRef make_http_hostport(OutputIt first, const StringRef &host,
+                             uint16_t port) {
+  if (port != 80 && port != 443) {
+    return make_hostport(first, host, port);
+  }
 
-StringRef make_hostport(BlockAllocator &balloc, const StringRef &host,
-                        uint16_t port);
+  auto ipv6 = ipv6_numeric_addr(host.c_str());
+  auto p = first;
+
+  if (ipv6) {
+    *p++ = '[';
+  }
+
+  p = std::copy(std::begin(host), std::end(host), p);
+
+  if (ipv6) {
+    *p++ = ']';
+  }
+
+  *p = '\0';
+
+  return StringRef{first, p};
+}
 
 // Dumps |src| of length |len| in the format similar to `hexdump -C`.
 void hexdump(FILE *out, const uint8_t *src, size_t len);
@@ -866,6 +919,11 @@ int daemonize(int nochdir, int noclose);
 #ifdef ENABLE_HTTP3
 int msghdr_get_local_addr(Address &dest, msghdr *msg, int family);
 #endif
+
+unsigned int msghdr_get_ecn(msghdr *msg, int family);
+
+int fd_set_send_ecn(int fd, int family, unsigned int ecn);
+#endif // ENABLE_HTTP3
 
 } // namespace util
 

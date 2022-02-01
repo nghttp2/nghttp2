@@ -1365,81 +1365,14 @@ std::string dtos(double n) {
 
 StringRef make_http_hostport(BlockAllocator &balloc, const StringRef &host,
                              uint16_t port) {
-  if (port != 80 && port != 443) {
-    return make_hostport(balloc, host, port);
-  }
-
-  auto ipv6 = ipv6_numeric_addr(host.c_str());
-
-  auto iov = make_byte_ref(balloc, host.size() + (ipv6 ? 2 : 0) + 1);
-  auto p = iov.base;
-
-  if (ipv6) {
-    *p++ = '[';
-  }
-
-  p = std::copy(std::begin(host), std::end(host), p);
-
-  if (ipv6) {
-    *p++ = ']';
-  }
-
-  *p = '\0';
-
-  return StringRef{iov.base, p};
-}
-
-std::string make_hostport(const StringRef &host, uint16_t port) {
-  auto ipv6 = ipv6_numeric_addr(host.c_str());
-  auto serv = utos(port);
-
-  std::string hostport;
-  hostport.resize(host.size() + (ipv6 ? 2 : 0) + 1 + serv.size());
-
-  auto p = &hostport[0];
-
-  if (ipv6) {
-    *p++ = '[';
-  }
-
-  p = std::copy_n(host.c_str(), host.size(), p);
-
-  if (ipv6) {
-    *p++ = ']';
-  }
-
-  *p++ = ':';
-  std::copy_n(serv.c_str(), serv.size(), p);
-
-  return hostport;
+  auto iov = make_byte_ref(balloc, host.size() + 2 + 1 + 5 + 1);
+  return make_http_hostport(iov.base, host, port);
 }
 
 StringRef make_hostport(BlockAllocator &balloc, const StringRef &host,
                         uint16_t port) {
-  auto ipv6 = ipv6_numeric_addr(host.c_str());
-  auto serv = utos(port);
-
-  auto iov =
-      make_byte_ref(balloc, host.size() + (ipv6 ? 2 : 0) + 1 + serv.size());
-  auto p = iov.base;
-
-  if (ipv6) {
-    *p++ = '[';
-  }
-
-  p = std::copy(std::begin(host), std::end(host), p);
-
-  if (ipv6) {
-    *p++ = ']';
-  }
-
-  *p++ = ':';
-
-  p = std::copy(std::begin(serv), std::end(serv), p);
-
-  *p = '\0';
-
-  return StringRef{iov.base, p};
+  auto iov = make_byte_ref(balloc, host.size() + 2 + 1 + 5 + 1);
+  return make_hostport(iov.base, host, port);
 }
 
 namespace {
@@ -1756,7 +1689,7 @@ std::mt19937 make_mt19937() {
 }
 
 int daemonize(int nochdir, int noclose) {
-#if defined(__APPLE__)
+#ifdef __APPLE__
   pid_t pid;
   pid = fork();
   if (pid == -1) {
@@ -1792,9 +1725,9 @@ int daemonize(int nochdir, int noclose) {
   return 0;
 #elif defined(_MSC_VER)
   return -1;
-#else  // !defined(__APPLE__)
+#else  // !__APPLE__ && !_MSC_VER
   return daemon(nochdir, noclose);
-#endif // !defined(__APPLE__)
+#endif // !__APPLE__
 }
 
 #ifdef ENABLE_HTTP3
@@ -1832,6 +1765,53 @@ int msghdr_get_local_addr(Address &dest, msghdr *msg, int family) {
   return -1;
 }
 #endif
+
+unsigned int msghdr_get_ecn(msghdr *msg, int family) {
+  switch (family) {
+  case AF_INET:
+    for (auto cmsg = CMSG_FIRSTHDR(msg); cmsg; cmsg = CMSG_NXTHDR(msg, cmsg)) {
+      if (cmsg->cmsg_level == IPPROTO_IP && cmsg->cmsg_type == IP_TOS &&
+          cmsg->cmsg_len) {
+        return *reinterpret_cast<uint8_t *>(CMSG_DATA(cmsg));
+      }
+    }
+
+    return 0;
+  case AF_INET6:
+    for (auto cmsg = CMSG_FIRSTHDR(msg); cmsg; cmsg = CMSG_NXTHDR(msg, cmsg)) {
+      if (cmsg->cmsg_level == IPPROTO_IPV6 && cmsg->cmsg_type == IPV6_TCLASS &&
+          cmsg->cmsg_len) {
+        return *reinterpret_cast<uint8_t *>(CMSG_DATA(cmsg));
+      }
+    }
+
+    return 0;
+  }
+
+  return 0;
+}
+
+int fd_set_send_ecn(int fd, int family, unsigned int ecn) {
+  switch (family) {
+  case AF_INET:
+    if (setsockopt(fd, IPPROTO_IP, IP_TOS, &ecn,
+                   static_cast<socklen_t>(sizeof(ecn))) == -1) {
+      return -1;
+    }
+
+    return 0;
+  case AF_INET6:
+    if (setsockopt(fd, IPPROTO_IPV6, IPV6_TCLASS, &ecn,
+                   static_cast<socklen_t>(sizeof(ecn))) == -1) {
+      return -1;
+    }
+
+    return 0;
+  }
+
+  return -1;
+}
+#endif // ENABLE_HTTP3
 
 } // namespace util
 

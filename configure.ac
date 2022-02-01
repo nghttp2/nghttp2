@@ -22,10 +22,10 @@ dnl OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 dnl WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 dnl Do not change user variables!
-dnl http://www.gnu.org/software/automake/manual/html_node/Flag-Variables-Ordering.html
+dnl https://www.gnu.org/software/automake/manual/html_node/Flag-Variables-Ordering.html
 
 AC_PREREQ(2.61)
-AC_INIT([nghttp2], [1.45.0-DEV], [t-tujikawa@users.sourceforge.net])
+AC_INIT([nghttp2], [1.47.0-DEV], [t-tujikawa@users.sourceforge.net])
 AC_CONFIG_AUX_DIR([.])
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_HEADERS([config.h])
@@ -43,10 +43,10 @@ AM_INIT_AUTOMAKE([subdir-objects])
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 
 dnl See versioning rule:
-dnl  http://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
-AC_SUBST(LT_CURRENT, 34)
-AC_SUBST(LT_REVISION, 2)
-AC_SUBST(LT_AGE, 20)
+dnl  https://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
+AC_SUBST(LT_CURRENT, 35)
+AC_SUBST(LT_REVISION, 1)
+AC_SUBST(LT_AGE, 21)
 
 major=`echo $PACKAGE_VERSION |cut -d. -f1 | sed -e "s/[^0-9]//g"`
 minor=`echo $PACKAGE_VERSION |cut -d. -f2 | sed -e "s/[^0-9]//g"`
@@ -220,6 +220,11 @@ PKG_PROG_PKG_CONFIG([0.20])
 
 AM_PATH_PYTHON([3.8],, [:])
 
+if test "x$request_python_bindings" = "xyes" &&
+   test "x$PYTHON" = "x:"; then
+  AC_MSG_ERROR([python was requested (enable-python-bindings) but not found])
+fi
+
 if [test "x$request_lib_only" = "xyes"]; then
   request_app=no
   request_hpack_tools=no
@@ -227,8 +232,10 @@ if [test "x$request_lib_only" = "xyes"]; then
   request_python_bindings=no
 fi
 
-if [test "x$request_python_bindings" != "xno"]; then
-  AX_PYTHON_DEVEL([>= '3.8'])
+if test "x$request_python_bindings" != "xno" &&
+   test "x$PYTHON" != "x:"; then
+  # version check is broken
+  AX_PYTHON_DEVEL()
 fi
 
 if test "x${cython_path}" = "x"; then
@@ -342,7 +349,7 @@ APPLDFLAGS=
 case "$host_os" in
   *android*)
     android_build=yes
-    # android does not need -pthread, but needs followng 3 libs for C++
+    # android does not need -pthread, but needs following 3 libs for C++
     APPLDFLAGS="$APPLDFLAGS -lstdc++ -latomic -lsupc++"
     ;;
   *)
@@ -467,6 +474,7 @@ if test "x${request_openssl}" != "xno"; then
     CFLAGS="$OPENSSL_CFLAGS $CFLAGS"
     LIBS="$OPENSSL_LIBS $LIBS"
 
+    # quictls/openssl has SSL_is_quic.
     have_ssl_is_quic=no
     AC_MSG_CHECKING([for SSL_is_quic])
     AC_LINK_IFELSE([AC_LANG_PROGRAM([[
@@ -477,6 +485,17 @@ if test "x${request_openssl}" != "xno"; then
     ]])],
     [AC_MSG_RESULT([yes]); have_ssl_is_quic=yes],
     [AC_MSG_RESULT([no]); have_ssl_is_quic=no])
+
+    # boringssl has SSL_set_quic_early_data_context.
+    AC_MSG_CHECKING([for SSL_set_quic_early_data_context])
+    AC_LINK_IFELSE([AC_LANG_PROGRAM([[
+      #include <openssl/ssl.h>
+    ]], [[
+      SSL *ssl = NULL;
+      SSL_set_quic_early_data_context(ssl, NULL, 0);
+    ]])],
+    [AC_MSG_RESULT([yes]); have_boringssl_quic=yes],
+    [AC_MSG_RESULT([no]); have_boringssl_quic=no])
 
     CFLAGS="$save_CFLAGS"
     LIBS="$save_LIBS"
@@ -506,7 +525,7 @@ fi
 # ngtcp2 (for src)
 have_libngtcp2=no
 if test "x${request_libngtcp2}" != "xno"; then
-  PKG_CHECK_MODULES([LIBNGTCP2], [libngtcp2 >= 0.0.0], [have_libngtcp2=yes],
+  PKG_CHECK_MODULES([LIBNGTCP2], [libngtcp2 >= 0.1.0], [have_libngtcp2=yes],
                     [have_libngtcp2=no])
   if test "x${have_libngtcp2}" = "xno"; then
     AC_MSG_NOTICE($LIBNGTCP2_PKG_ERRORS)
@@ -520,25 +539,52 @@ fi
 
 # ngtcp2_crypto_openssl (for src)
 have_libngtcp2_crypto_openssl=no
-if test "x${request_libngtcp2}" != "xno"; then
+if test "x${have_ssl_is_quic}" = "xyes" &&
+   test "x${request_libngtcp2}" != "xno"; then
   PKG_CHECK_MODULES([LIBNGTCP2_CRYPTO_OPENSSL],
                     [libngtcp2_crypto_openssl >= 0.0.0],
                     [have_libngtcp2_crypto_openssl=yes],
                     [have_libngtcp2_crypto_openssl=no])
   if test "x${have_libngtcp2_crypto_openssl}" = "xno"; then
     AC_MSG_NOTICE($LIBNGTCP2_CRYPTO_OPENSSL_PKG_ERRORS)
+  else
+    AC_DEFINE([HAVE_LIBNGTCP2_CRYPTO_OPENSSL], [1],
+              [Define to 1 if you have `libngtcp2_crypto_openssl` library.])
   fi
 fi
 
-if test "x${request_libngtcp2}" = "xyes" &&
+if test "x${have_ssl_is_quic}" = "xyes" &&
+   test "x${request_libngtcp2}" = "xyes" &&
    test "x${have_libngtcp2_crypto_openssl}" != "xyes"; then
   AC_MSG_ERROR([libngtcp2_crypto_openssl was requested (--with-libngtcp2) but not found])
+fi
+
+# ngtcp2_crypto_boringssl (for src)
+have_libngtcp2_crypto_boringssl=no
+if test "x${have_boringssl_quic}" = "xyes" &&
+   test "x${request_libngtcp2}" != "xno"; then
+  PKG_CHECK_MODULES([LIBNGTCP2_CRYPTO_BORINGSSL],
+                    [libngtcp2_crypto_boringssl >= 0.0.0],
+                    [have_libngtcp2_crypto_boringssl=yes],
+                    [have_libngtcp2_crypto_boringssl=no])
+  if test "x${have_libngtcp2_crypto_boringssl}" = "xno"; then
+    AC_MSG_NOTICE($LIBNGTCP2_CRYPTO_BORINGSSL_PKG_ERRORS)
+  else
+    AC_DEFINE([HAVE_LIBNGTCP2_CRYPTO_BORINGSSL], [1],
+              [Define to 1 if you have `libngtcp2_crypto_boringssl` library.])
+  fi
+fi
+
+if test "x${have_boringssl_quic}" = "xyes" &&
+   test "x${request_libngtcp2}" = "xyes" &&
+   test "x${have_libngtcp2_crypto_boringssl}" != "xyes"; then
+  AC_MSG_ERROR([libngtcp2_crypto_boringssl was requested (--with-libngtcp2) but not found])
 fi
 
 # nghttp3 (for src)
 have_libnghttp3=no
 if test "x${request_libnghttp3}" != "xno"; then
-  PKG_CHECK_MODULES([LIBNGHTTP3], [libnghttp3 >= 0.0.0], [have_libnghttp3=yes],
+  PKG_CHECK_MODULES([LIBNGHTTP3], [libnghttp3 >= 0.1.0], [have_libnghttp3=yes],
                     [have_libnghttp3=no])
   if test "x${have_libnghttp3}" = "xno"; then
     AC_MSG_NOTICE($LIBNGHTTP3_PKG_ERRORS)
@@ -742,9 +788,11 @@ AM_CONDITIONAL([ENABLE_APP], [ test "x${enable_app}" = "xyes" ])
 # Check HTTP/3 support
 enable_http3=no
 if test "x${request_http3}" != "xno" &&
-   test "x${have_ssl_is_quic}" = "xyes" &&
+   (test "x${have_ssl_is_quic}" = "xyes" ||
+    test "x${have_boringssl_quic}" = "xyes") &&
    test "x${have_libngtcp2}" = "xyes" &&
-   test "x${have_libngtcp2_crypto_openssl}" = "xyes" &&
+   (test "x${have_libngtcp2_crypto_openssl}" = "xyes" ||
+    test "x${have_libngtcp2_crypto_boringssl}" = "xyes") &&
    test "x${have_libnghttp3}" = "xyes"; then
   enable_http3=yes
   AC_DEFINE([ENABLE_HTTP3], [1], [Define to 1 if HTTP/3 is enabled.])
@@ -983,31 +1031,6 @@ AC_CHECK_DECLS([initgroups], [], [], [[
   #include <grp.h>
 ]])
 
-have_netinet_udp_h_udp_segment=no
-AC_CHECK_DECL([UDP_SEGMENT], [have_netinet_udp_h_udp_segment=yes],
-              [have_netinet_udp_h_udp_segment=no], [[
-  #include <netinet/udp.h>
-]])
-
-if test "x$have_netinet_udp_h_udp_segment" = "xno"; then
-  have_linux_udp_h_udp_segment=no
-  AC_COMPILE_IFELSE([AC_LANG_PROGRAM(
-                     [[
-                       #include <linux/udp.h>
-                     ]],
-                     [[
-		       #if UDP_SEGMENT != 103
-		       exit(1)
-		       #endif
-                     ]])],
-		    [have_linux_udp_h_udp_segment=yes],
-		    [have_linux_udp_h_udp_segment=no])
-
-  if test "x$have_linux_udp_h_udp_segment" = "xyes"; then
-    EXTRA_DEFS="$EXTRA_DEFS -DUDP_SEGMENT=103"
-  fi
-fi
-
 save_CFLAGS=$CFLAGS
 save_CXXFLAGS=$CXXFLAGS
 
@@ -1202,6 +1225,7 @@ AC_MSG_NOTICE([summary of build options:
       Libc-ares:      ${have_libcares} (CFLAGS='${LIBCARES_CFLAGS}' LIBS='${LIBCARES_LIBS}')
       libngtcp2:      ${have_libngtcp2} (CFLAGS='${LIBNGTCP2_CFLAGS}' LIBS='${LIBNGTCP2_LIBS}')
       libngtcp2_crypto_openssl: ${have_libngtcp2_crypto_openssl} (CFLAGS='${LIBNGTCP2_CRYPTO_OPENSSL_CFLAGS}' LIBS='${LIBNGTCP2_CRYPTO_OPENSSL_LIBS}')
+      libngtcp2_crypto_boringssl: ${have_libngtcp2_crypto_boringssl} (CFLAGS='${LIBNGTCP2_CRYPTO_BORINGSSL_CFLAGS}' LIBS='${LIBNGTCP2_CRYPTO_BORINGSSL_LIBS}')
       libnghttp3:     ${have_libnghttp3} (CFLAGS='${LIBNGHTTP3_CFLAGS}' LIBS='${LIBNGHTTP3_LIBS}')
       libbpf:         ${have_libbpf} (CFLAGS='${LIBBPF_CFLAGS}' LIBS='${LIBBPF_LIBS}')
       Libevent(SSL):  ${have_libevent_openssl} (CFLAGS='${LIBEVENT_OPENSSL_CFLAGS}' LIBS='${LIBEVENT_OPENSSL_LIBS}')
