@@ -655,7 +655,7 @@ int Client::read_quic() {
     auto path = ngtcp2_path{
         {
             &local_addr.su.sa,
-            local_addr.len,
+            static_cast<socklen_t>(local_addr.len),
         },
         {
             &su.sa,

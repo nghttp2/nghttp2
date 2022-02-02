@@ -665,11 +665,11 @@ int Http3Upstream::init(const UpstreamAddr *faddr, const Address &remote_addr,
   auto path = ngtcp2_path{
       {
           const_cast<sockaddr *>(&local_addr.su.sa),
-          local_addr.len,
+          static_cast<socklen_t>(local_addr.len),
       },
       {
           const_cast<sockaddr *>(&remote_addr.su.sa),
-          remote_addr.len,
+          static_cast<socklen_t>(remote_addr.len),
       },
       const_cast<UpstreamAddr *>(faddr),
   };
@@ -1668,11 +1668,11 @@ int Http3Upstream::on_read(const UpstreamAddr *faddr,
   auto path = ngtcp2_path{
       {
           const_cast<sockaddr *>(&local_addr.su.sa),
-          local_addr.len,
+          static_cast<socklen_t>(local_addr.len),
       },
       {
           const_cast<sockaddr *>(&remote_addr.su.sa),
-          remote_addr.len,
+          static_cast<socklen_t>(remote_addr.len),
       },
       const_cast<UpstreamAddr *>(faddr),
   };
