@@ -157,6 +157,14 @@ public:
   void qlog_write(const void *data, size_t datalen, bool fin);
   int open_qlog_file(const StringRef &dir, const ngtcp2_cid &scid) const;
 
+  void on_send_blocked(const UpstreamAddr *faddr,
+                       const ngtcp2_addr &remote_addr,
+                       const ngtcp2_addr &local_addr, const ngtcp2_pkt_info &pi,
+                       const uint8_t *data, size_t datalen,
+                       size_t max_udp_payload_size);
+  int send_blocked_packet();
+  void signal_write_upstream_addr(const UpstreamAddr *faddr);
+
 private:
   ClientHandler *handler_;
   ev_timer timer_;
@@ -174,6 +182,23 @@ private:
   bool idle_close_;
   bool retry_close_;
   std::vector<uint8_t> conn_close_;
+
+  struct {
+    bool send_blocked;
+    size_t num_blocked;
+    size_t num_blocked_sent;
+    // blocked field is effective only when send_blocked is true.
+    struct {
+      const UpstreamAddr *faddr;
+      Address local_addr;
+      Address remote_addr;
+      ngtcp2_pkt_info pi;
+      const uint8_t *data;
+      size_t datalen;
+      size_t max_udp_payload_size;
+    } blocked[2];
+    std::unique_ptr<uint8_t[]> data;
+  } tx_;
 };
 
 } // namespace shrpx
