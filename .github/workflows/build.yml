@@ -182,3 +182,17 @@ jobs:
       run: |
         cd $NGHTTP2_CMAKE_DIR/integration-tests
         make itprep it
+
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Configure cmake
+      run: |
+        mkdir build
+        cd build
+        cmake ..
+    - name: Build nghttp2
+      run: |
+        cmake --build build
