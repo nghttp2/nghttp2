@@ -18,6 +18,8 @@ jobs:
           openssl: openssl3
         - http3: no-http3
           openssl: openssl3
+        - os: macos-10.15
+          compiler: gcc
 
     steps:
     - uses: actions/checkout@v2
