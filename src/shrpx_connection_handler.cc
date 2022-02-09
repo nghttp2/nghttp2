@@ -1080,8 +1080,6 @@ std::vector<BPFRef> &ConnectionHandler::get_quic_bpf_refs() {
 }
 
 void ConnectionHandler::unload_bpf_objects() {
-  std::array<char, STRERROR_BUFSIZE> errbuf;
-
   LOG(NOTICE) << "Unloading BPF objects";
 
   for (auto &ref : quic_bpf_refs_) {
@@ -1089,11 +1087,7 @@ void ConnectionHandler::unload_bpf_objects() {
       continue;
     }
 
-    if (bpf_object__unload(ref.obj) != 0) {
-      LOG(WARN) << "Failed to unload bpf object: "
-                << xsi_strerror(errno, errbuf.data(), errbuf.size());
-      continue;
-    }
+    bpf_object__close(ref.obj);
 
     ref.obj = nullptr;
   }
