@@ -342,6 +342,16 @@ struct Client {
     quic::Error last_error;
     bool close_requested;
     FILE *qlog_file;
+
+    struct {
+      bool send_blocked;
+      struct {
+        Address remote_addr;
+        size_t datalen;
+        size_t max_udp_payload_size;
+      } blocked;
+      std::unique_ptr<uint8_t[]> data;
+    } tx;
   } quic;
 #endif // ENABLE_HTTP3
   ev_timer request_timeout_watcher;
@@ -465,6 +475,9 @@ struct Client {
   int write_quic();
   int write_udp(const sockaddr *addr, socklen_t addrlen, const uint8_t *data,
                 size_t datalen, size_t gso_size);
+  void on_send_blocked(const ngtcp2_addr &remote_addr, size_t datalen,
+                       size_t max_udp_payload_size);
+  int send_blocked_packet();
   void quic_close_connection();
 
   int quic_handshake_completed();

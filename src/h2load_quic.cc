@@ -684,10 +684,23 @@ int Client::read_quic() {
 }
 
 int Client::write_quic() {
+  int rv;
+
   ev_io_stop(worker->loop, &wev);
 
   if (quic.close_requested) {
     return -1;
+  }
+
+  if (quic.tx.send_blocked) {
+    rv = send_blocked_packet();
+    if (rv != 0) {
+      return -1;
+    }
+
+    if (quic.tx.send_blocked) {
+      return 0;
+    }
   }
 
   std::array<nghttp3_vec, 16> vec;
@@ -703,8 +716,7 @@ int Client::write_quic() {
 #else  // !UDP_SEGMENT
       1;
 #endif // !UDP_SEGMENT
-  std::array<uint8_t, 64_k> buf;
-  uint8_t *bufpos = buf.data();
+  uint8_t *bufpos = quic.tx.data.get();
   ngtcp2_path_storage ps;
 
   ngtcp2_path_storage_zero(&ps);
@@ -767,9 +779,15 @@ int Client::write_quic() {
     quic_restart_pkt_timer();
 
     if (nwrite == 0) {
-      if (bufpos - buf.data()) {
-        write_udp(ps.path.remote.addr, ps.path.remote.addrlen, buf.data(),
-                  bufpos - buf.data(), max_udp_payload_size);
+      if (bufpos - quic.tx.data.get()) {
+        auto datalen = bufpos - quic.tx.data.get();
+        rv = write_udp(ps.path.remote.addr, ps.path.remote.addrlen,
+                       quic.tx.data.get(), datalen, max_udp_payload_size);
+        if (rv == 1) {
+          on_send_blocked(ps.path.remote, datalen, max_udp_payload_size);
+          signal_write();
+          return 0;
+        }
       }
       return 0;
     }
@@ -779,12 +797,51 @@ int Client::write_quic() {
     // Assume that the path does not change.
     if (++pktcnt == max_pktcnt ||
         static_cast<size_t>(nwrite) < max_udp_payload_size) {
-      write_udp(ps.path.remote.addr, ps.path.remote.addrlen, buf.data(),
-                bufpos - buf.data(), max_udp_payload_size);
+      auto datalen = bufpos - quic.tx.data.get();
+      rv = write_udp(ps.path.remote.addr, ps.path.remote.addrlen,
+                     quic.tx.data.get(), datalen, max_udp_payload_size);
+      if (rv == 1) {
+        on_send_blocked(ps.path.remote, datalen, max_udp_payload_size);
+      }
       signal_write();
       return 0;
     }
   }
+}
+
+void Client::on_send_blocked(const ngtcp2_addr &remote_addr, size_t datalen,
+                             size_t max_udp_payload_size) {
+  assert(!quic.tx.send_blocked);
+
+  quic.tx.send_blocked = true;
+
+  auto &p = quic.tx.blocked;
+
+  memcpy(&p.remote_addr.su, remote_addr.addr, remote_addr.addrlen);
+
+  p.remote_addr.len = remote_addr.addrlen;
+  p.datalen = datalen;
+  p.max_udp_payload_size = max_udp_payload_size;
+}
+
+int Client::send_blocked_packet() {
+  int rv;
+
+  assert(quic.tx.send_blocked);
+
+  auto &p = quic.tx.blocked;
+
+  rv = write_udp(&p.remote_addr.su.sa, p.remote_addr.len, quic.tx.data.get(),
+                 p.datalen, p.max_udp_payload_size);
+  if (rv == 1) {
+    signal_write();
+
+    return 0;
+  }
+
+  quic.tx.send_blocked = false;
+
+  return 0;
 }
 
 } // namespace h2load

@@ -495,6 +495,10 @@ Client::Client(uint32_t id, Worker *worker, size_t req_todo)
 #ifdef ENABLE_HTTP3
   ev_timer_init(&quic.pkt_timer, quic_pkt_timeout_cb, 0., 0.);
   quic.pkt_timer.data = this;
+
+  if (config.is_quic()) {
+    quic.tx.data = std::make_unique<uint8_t[]>(64_k);
+  }
 #endif // ENABLE_HTTP3
 }
 
@@ -1419,6 +1423,7 @@ int Client::write_tls() {
 }
 
 #ifdef ENABLE_HTTP3
+// Returns 1 if sendmsg is blocked.
 int Client::write_udp(const sockaddr *addr, socklen_t addrlen,
                       const uint8_t *data, size_t datalen, size_t gso_size) {
   iovec msg_iov;
@@ -1447,6 +1452,10 @@ int Client::write_udp(const sockaddr *addr, socklen_t addrlen,
 
   auto nwrite = sendmsg(fd, &msg, 0);
   if (nwrite < 0) {
+    if (nwrite == EAGAIN || nwrite == EWOULDBLOCK) {
+      return 1;
+    }
+
     std::cerr << "sendto: errno=" << errno << std::endl;
   } else {
     ++worker->stats.udp_dgram_sent;
