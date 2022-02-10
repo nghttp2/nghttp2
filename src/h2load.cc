@@ -1456,7 +1456,7 @@ int Client::write_udp(const sockaddr *addr, socklen_t addrlen,
       return 1;
     }
 
-    std::cerr << "sendto: errno=" << errno << std::endl;
+    std::cerr << "sendmsg: errno=" << errno << std::endl;
   } else {
     ++worker->stats.udp_dgram_sent;
   }
