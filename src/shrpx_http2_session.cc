@@ -1875,7 +1875,7 @@ void Http2Session::start_checking_connection() {
   SSLOG(INFO, this) << "Start checking connection";
   // If connection is down, we may get error when writing data.  Issue
   // ping frame to see whether connection is alive.
-  nghttp2_submit_ping(session_, NGHTTP2_FLAG_NONE, NULL);
+  nghttp2_submit_ping(session_, NGHTTP2_FLAG_NONE, nullptr);
 
   // set ping timeout and start timer again
   reset_connection_check_timer(CONNCHK_PING_TIMEOUT);

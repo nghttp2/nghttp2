@@ -90,7 +90,7 @@ int nghttp2_inet_pton(int af, const char *src, void *dst) {
 
   int size = sizeof(struct in6_addr);
 
-  if (WSAStringToAddress(addr, af, NULL, (LPSOCKADDR)dst, &size) == 0)
+  if (WSAStringToAddress(addr, af, nullptr, (LPSOCKADDR)dst, &size) == 0)
     return 1;
   return 0;
 #  endif

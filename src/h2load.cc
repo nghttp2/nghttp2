@@ -1589,7 +1589,7 @@ void Worker::free_client(Client *deleted_client) {
       client->req_todo = client->req_done;
       stats.req_todo += client->req_todo;
       auto index = &client - &clients[0];
-      clients[index] = NULL;
+      clients[index] = nullptr;
       return;
     }
   }

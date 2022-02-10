@@ -90,7 +90,7 @@ pthread_once_t lckey_once = PTHREAD_ONCE_INIT;
 } // namespace
 
 namespace {
-void make_key() { pthread_key_create(&lckey, NULL); }
+void make_key() { pthread_key_create(&lckey, nullptr); }
 } // namespace
 
 LogBuffer *get_logbuf() {

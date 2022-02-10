@@ -207,7 +207,7 @@ void test_util_http_date(void) {
 }
 
 void test_util_select_h2(void) {
-  const unsigned char *out = NULL;
+  const unsigned char *out = nullptr;
   unsigned char outlen = 0;
 
   // Check single entry and select it.
@@ -217,7 +217,7 @@ void test_util_select_h2(void) {
       memcmp(NGHTTP2_PROTO_VERSION_ID, out, NGHTTP2_PROTO_VERSION_ID_LEN) == 0);
   CU_ASSERT(NGHTTP2_PROTO_VERSION_ID_LEN == outlen);
 
-  out = NULL;
+  out = nullptr;
   outlen = 0;
 
   // Check the case where id is correct but length is invalid and too
@@ -233,7 +233,7 @@ void test_util_select_h2(void) {
       memcmp(NGHTTP2_PROTO_VERSION_ID, out, NGHTTP2_PROTO_VERSION_ID_LEN) == 0);
   CU_ASSERT(NGHTTP2_PROTO_VERSION_ID_LEN == outlen);
 
-  out = NULL;
+  out = nullptr;
   outlen = 0;
 
   // Check the case that last entry's length is invalid and too long.

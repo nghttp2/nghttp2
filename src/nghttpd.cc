@@ -55,7 +55,7 @@ namespace nghttp2 {
 namespace {
 int parse_push_config(Config &config, const char *optarg) {
   const char *eq = strchr(optarg, '=');
-  if (eq == NULL) {
+  if (eq == nullptr) {
     return -1;
   }
   auto &paths = config.push[std::string(optarg, eq)];
@@ -63,7 +63,7 @@ int parse_push_config(Config &config, const char *optarg) {
   auto i = eq + 1;
   for (;;) {
     const char *j = strchr(i, ',');
-    if (j == NULL) {
+    if (j == nullptr) {
       j = optarg_end;
     }
     paths.emplace_back(i, j);

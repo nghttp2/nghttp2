@@ -319,7 +319,8 @@ int Http3Session::init_conn() {
 
   int64_t ctrl_stream_id;
 
-  rv = ngtcp2_conn_open_uni_stream(client_->quic.conn, &ctrl_stream_id, NULL);
+  rv =
+      ngtcp2_conn_open_uni_stream(client_->quic.conn, &ctrl_stream_id, nullptr);
   if (rv != 0) {
     std::cerr << "ngtcp2_conn_open_uni_stream: " << ngtcp2_strerror(rv)
               << std::endl;
@@ -336,7 +337,7 @@ int Http3Session::init_conn() {
   int64_t qpack_enc_stream_id, qpack_dec_stream_id;
 
   rv = ngtcp2_conn_open_uni_stream(client_->quic.conn, &qpack_enc_stream_id,
-                                   NULL);
+                                   nullptr);
   if (rv != 0) {
     std::cerr << "ngtcp2_conn_open_uni_stream: " << ngtcp2_strerror(rv)
               << std::endl;
@@ -344,7 +345,7 @@ int Http3Session::init_conn() {
   }
 
   rv = ngtcp2_conn_open_uni_stream(client_->quic.conn, &qpack_dec_stream_id,
-                                   NULL);
+                                   nullptr);
   if (rv != 0) {
     std::cerr << "ngtcp2_conn_open_uni_stream: " << ngtcp2_strerror(rv)
               << std::endl;

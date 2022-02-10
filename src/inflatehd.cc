@@ -171,7 +171,7 @@ static int inflate_hd(json_t *obj, nghttp2_hd_inflater *inflater, int seq) {
 }
 
 static int perform(void) {
-  nghttp2_hd_inflater *inflater = NULL;
+  nghttp2_hd_inflater *inflater = nullptr;
   json_error_t error;
 
   auto json = json_loadf(stdin, 0, &error);
