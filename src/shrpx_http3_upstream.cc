@@ -745,7 +745,11 @@ int Http3Upstream::write_streams() {
   auto config = get_config();
   auto &quicconf = config->quic;
 
-  if (quicconf.upstream.congestion_controller != NGTCP2_CC_ALGO_BBR) {
+  switch (quicconf.upstream.congestion_controller) {
+  case NGTCP2_CC_ALGO_BBR:
+  case NGTCP2_CC_ALGO_BBR2:
+    break;
+  default:
     max_pktcnt = std::min(max_pktcnt, static_cast<size_t>(10));
   }
 
