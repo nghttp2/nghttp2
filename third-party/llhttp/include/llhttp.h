@@ -3,7 +3,7 @@
 
 #define LLHTTP_VERSION_MAJOR 6
 #define LLHTTP_VERSION_MINOR 0
-#define LLHTTP_VERSION_PATCH 2
+#define LLHTTP_VERSION_PATCH 6
 
 #ifndef LLHTTP_STRICT_MODE
 # define LLHTTP_STRICT_MODE 0
@@ -374,8 +374,6 @@ LLHTTP_EXPORT
 void llhttp_init(llhttp_t* parser, llhttp_type_t type,
                  const llhttp_settings_t* settings);
 
-#if defined(__wasm__)
-
 LLHTTP_EXPORT
 llhttp_t* llhttp_alloc(llhttp_type_t type);
 
@@ -399,8 +397,6 @@ int llhttp_get_status_code(llhttp_t* parser);
 
 LLHTTP_EXPORT
 uint8_t llhttp_get_upgrade(llhttp_t* parser);
-
-#endif  // defined(__wasm__)
 
 /* Reset an already initialized parser back to the start state, preserving the
  * existing parser type, callback settings, user data, and lenient flags.
