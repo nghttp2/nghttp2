@@ -198,6 +198,7 @@ OPTIONS = [
     "max-worker-processes",
     "worker-process-grace-shutdown-period",
     "frontend-quic-initial-rtt",
+    "require-http-scheme",
 ]
 
 LOGVARS = [

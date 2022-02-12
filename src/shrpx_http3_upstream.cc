@@ -2325,10 +2325,15 @@ int Http3Upstream::http_end_request_headers(Downstream *downstream, int fin) {
 
   downstream->set_request_state(DownstreamState::HEADER_COMPLETE);
 
+  if (config->http.require_http_scheme &&
+      !http::check_http_scheme(req.scheme, /* encrypted = */true) {
+    if (error_reply(downstream, 400) != 0) {
+      return -1;
+    }
+  }
+
 #ifdef HAVE_MRUBY
-  auto upstream = downstream->get_upstream();
-  auto handler = upstream->get_client_handler();
-  auto worker = handler->get_worker();
+  auto worker = handler_->get_worker();
   auto mruby_ctx = worker->get_mruby_context();
 
   if (mruby_ctx->run_on_request_proc(downstream) != 0) {

@@ -154,4 +154,15 @@ void test_shrpx_http_create_altsvc_header_value(void) {
   }
 }
 
+void test_shrpx_http_check_http_scheme(void) {
+  CU_ASSERT(http::check_http_scheme(StringRef::from_lit("https"), true));
+  CU_ASSERT(!http::check_http_scheme(StringRef::from_lit("https"), false));
+  CU_ASSERT(!http::check_http_scheme(StringRef::from_lit("http"), true));
+  CU_ASSERT(http::check_http_scheme(StringRef::from_lit("http"), false));
+  CU_ASSERT(!http::check_http_scheme(StringRef::from_lit("foo"), true));
+  CU_ASSERT(!http::check_http_scheme(StringRef::from_lit("foo"), false));
+  CU_ASSERT(!http::check_http_scheme(StringRef{}, true));
+  CU_ASSERT(!http::check_http_scheme(StringRef{}, false));
+}
+
 } // namespace shrpx

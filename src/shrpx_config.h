@@ -401,6 +401,8 @@ constexpr auto SHRPX_OPT_WORKER_PROCESS_GRACE_SHUTDOWN_PERIOD =
     StringRef::from_lit("worker-process-grace-shutdown-period");
 constexpr auto SHRPX_OPT_FRONTEND_QUIC_INITIAL_RTT =
     StringRef::from_lit("frontend-quic-initial-rtt");
+constexpr auto SHRPX_OPT_REQUIRE_HTTP_SCHEME =
+    StringRef::from_lit("require-http-scheme");
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
@@ -857,6 +859,7 @@ struct HttpConfig {
   bool no_location_rewrite;
   bool no_host_rewrite;
   bool no_server_rewrite;
+  bool require_http_scheme;
 };
 
 struct Http2Config {
@@ -1295,6 +1298,7 @@ enum {
   SHRPX_OPTID_READ_RATE,
   SHRPX_OPTID_REDIRECT_HTTPS_PORT,
   SHRPX_OPTID_REQUEST_HEADER_FIELD_BUFFER,
+  SHRPX_OPTID_REQUIRE_HTTP_SCHEME,
   SHRPX_OPTID_RESPONSE_HEADER_FIELD_BUFFER,
   SHRPX_OPTID_RLIMIT_MEMLOCK,
   SHRPX_OPTID_RLIMIT_NOFILE,

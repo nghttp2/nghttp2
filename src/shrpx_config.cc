@@ -2210,6 +2210,9 @@ int option_lookup_token(const char *name, size_t namelen) {
       if (util::strieq_l("no-location-rewrit", name, 18)) {
         return SHRPX_OPTID_NO_LOCATION_REWRITE;
       }
+      if (util::strieq_l("require-http-schem", name, 18)) {
+        return SHRPX_OPTID_REQUIRE_HTTP_SCHEME;
+      }
       if (util::strieq_l("tls-ticket-key-fil", name, 18)) {
         return SHRPX_OPTID_TLS_TICKET_KEY_FILE;
       }
@@ -4166,6 +4169,9 @@ int parse_config(Config *config, int optid, const StringRef &opt,
 
     return 0;
   }
+  case SHRPX_OPTID_REQUIRE_HTTP_SCHEME:
+    config->http.require_http_scheme = util::strieq_l("yes", optarg);
+    return 0;
   case SHRPX_OPTID_CONF:
     LOG(WARN) << "conf: ignored";
 

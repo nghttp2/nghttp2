@@ -433,11 +433,17 @@ int htp_hdrs_completecb(llhttp_t *htp) {
 
   downstream->set_request_state(DownstreamState::HEADER_COMPLETE);
 
+  auto &resp = downstream->response();
+
+  if (config->http.require_http_scheme &&
+      !http::check_http_scheme(req.scheme, handler->get_ssl() != nullptr)) {
+    resp.http_status = 400;
+    return -1;
+  }
+
 #ifdef HAVE_MRUBY
   auto worker = handler->get_worker();
   auto mruby_ctx = worker->get_mruby_context();
-
-  auto &resp = downstream->response();
 
   if (mruby_ctx->run_on_request_proc(downstream) != 0) {
     resp.http_status = 500;

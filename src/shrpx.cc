@@ -3237,6 +3237,13 @@ HTTP:
               "redirect-if-not-tls" parameter in --backend option.
               Default: )"
       << config->http.redirect_https_port << R"(
+  --require-http-scheme
+              Always require http or https scheme in HTTP request.  It
+              also  requires that  https scheme  must be  used for  an
+              encrypted  connection.  Otherwise,  http scheme  must be
+              used.   This   option  is   recommended  for   a  server
+              deployment which directly faces clients and the services
+              it provides only require http or https scheme.
 
 API:
   --api-max-request-body=<SIZE>
@@ -4238,6 +4245,7 @@ int main(int argc, char **argv) {
          required_argument, &flag, 189},
         {SHRPX_OPT_FRONTEND_QUIC_INITIAL_RTT.c_str(), required_argument, &flag,
          190},
+        {SHRPX_OPT_REQUIRE_HTTP_SCHEME.c_str(), no_argument, &flag, 191},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -5141,6 +5149,11 @@ int main(int argc, char **argv) {
         // --frontend-quic-initial-rtt
         cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_QUIC_INITIAL_RTT,
                              StringRef{optarg});
+        break;
+      case 191:
+        // --require-http-scheme
+        cmdcfgs.emplace_back(SHRPX_OPT_REQUIRE_HTTP_SCHEME,
+                             StringRef::from_lit("yes"));
         break;
       default:
         break;

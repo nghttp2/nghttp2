@@ -137,6 +137,8 @@ int main(int argc, char *argv[]) {
                    shrpx::test_shrpx_http_create_affinity_cookie) ||
       !CU_add_test(pSuite, "http_create_atlsvc_header_field_value",
                    shrpx::test_shrpx_http_create_altsvc_header_value) ||
+      !CU_add_test(pSuite, "http_check_http_scheme",
+                   shrpx::test_shrpx_http_check_http_scheme) ||
       !CU_add_test(pSuite, "router_match", shrpx::test_shrpx_router_match) ||
       !CU_add_test(pSuite, "router_match_wildcard",
                    shrpx::test_shrpx_router_match_wildcard) ||

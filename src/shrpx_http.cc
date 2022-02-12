@@ -271,6 +271,10 @@ StringRef create_altsvc_header_value(BlockAllocator &balloc,
   return StringRef{iov.base, p};
 }
 
+bool check_http_scheme(const StringRef &scheme, bool encrypted) {
+  return encrypted ? scheme == "https" : scheme == "http";
+}
+
 } // namespace http
 
 } // namespace shrpx

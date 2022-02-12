@@ -2870,3 +2870,88 @@ func TestH2H1ChunkedEndsPrematurely(t *testing.T) {
 		t.Errorf("res.errCode = %v; want %v", got, want)
 	}
 }
+
+// TestH2H1RequireHTTPSchemeHTTPSWithoutEncryption verifies that https
+// scheme in non-encrypted connection is treated as error.
+func TestH2H1RequireHTTPSchemeHTTPSWithoutEncryption(t *testing.T) {
+	st := newServerTester([]string{"--require-http-scheme"}, t, func(w http.ResponseWriter, r *http.Request) {
+		t.Errorf("server should not forward this request")
+	})
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name:   "TestH2H1RequireHTTPSchemeHTTPSWithoutEncryption",
+		scheme: "https",
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+
+	if got, want := res.status, 400; got != want {
+		t.Errorf("status = %v; want %v", got, want)
+	}
+}
+
+// TestH2H1RequireHTTPSchemeHTTPWithEncryption verifies that http
+// scheme in encrypted connection is treated as error.
+func TestH2H1RequireHTTPSchemeHTTPWithEncryption(t *testing.T) {
+	st := newServerTesterTLS([]string{"--require-http-scheme"}, t, func(w http.ResponseWriter, r *http.Request) {
+		t.Errorf("server should not forward this request")
+	})
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name:   "TestH2H1RequireHTTPSchemeHTTPWithEncryption",
+		scheme: "http",
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+
+	if got, want := res.status, 400; got != want {
+		t.Errorf("status = %v; want %v", got, want)
+	}
+}
+
+// TestH2H1RequireHTTPSchemeUnknownSchemeWithoutEncryption verifies
+// that unknown scheme in non-encrypted connection is treated as
+// error.
+func TestH2H1RequireHTTPSchemeUnknownSchemeWithoutEncryption(t *testing.T) {
+	st := newServerTester([]string{"--require-http-scheme"}, t, func(w http.ResponseWriter, r *http.Request) {
+		t.Errorf("server should not forward this request")
+	})
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name:   "TestH2H1RequireHTTPSchemeUnknownSchemeWithoutEncryption",
+		scheme: "unknown",
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+
+	if got, want := res.status, 400; got != want {
+		t.Errorf("status = %v; want %v", got, want)
+	}
+}
+
+// TestH2H1RequireHTTPSchemeUnknownSchemeWithEncryption verifies that
+// unknown scheme in encrypted connection is treated as error.
+func TestH2H1RequireHTTPSchemeUnknownSchemeWithEncryption(t *testing.T) {
+	st := newServerTesterTLS([]string{"--require-http-scheme"}, t, func(w http.ResponseWriter, r *http.Request) {
+		t.Errorf("server should not forward this request")
+	})
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name:   "TestH2H1RequireHTTPSchemeUnknownSchemeWithEncryption",
+		scheme: "unknown",
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+
+	if got, want := res.status, 400; got != want {
+		t.Errorf("status = %v; want %v", got, want)
+	}
+}

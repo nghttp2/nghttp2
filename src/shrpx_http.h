@@ -83,6 +83,12 @@ bool require_cookie_secure_attribute(SessionAffinityCookieSecure secure,
 StringRef create_altsvc_header_value(BlockAllocator &balloc,
                                      const std::vector<AltSvc> &altsvcs);
 
+// Returns true if either of the following conditions holds:
+// - scheme is https and encrypted is true
+// - scheme is http and encrypted is false
+// Otherwise returns false.
+bool check_http_scheme(const StringRef &scheme, bool encrypted);
+
 } // namespace http
 
 } // namespace shrpx
