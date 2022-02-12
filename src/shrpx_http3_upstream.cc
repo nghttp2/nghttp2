@@ -2326,7 +2326,7 @@ int Http3Upstream::http_end_request_headers(Downstream *downstream, int fin) {
   downstream->set_request_state(DownstreamState::HEADER_COMPLETE);
 
   if (config->http.require_http_scheme &&
-      !http::check_http_scheme(req.scheme, /* encrypted = */true) {
+      !http::check_http_scheme(req.scheme, /* encrypted = */ true)) {
     if (error_reply(downstream, 400) != 0) {
       return -1;
     }
