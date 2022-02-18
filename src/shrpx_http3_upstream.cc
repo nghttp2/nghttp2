@@ -1202,9 +1202,8 @@ nghttp3_ssize downstream_read_data_callback(nghttp3_conn *conn,
 
   assert(body);
 
-  if (downstream->get_response_state() == DownstreamState::MSG_COMPLETE) {
-    *pflags |= NGHTTP3_DATA_FLAG_EOF;
-  } else if (body->rleft_mark() == 0) {
+  if (downstream->get_response_state() != DownstreamState::MSG_COMPLETE &&
+      body->rleft_mark() == 0) {
     downstream->disable_upstream_wtimer();
     return NGHTTP3_ERR_WOULDBLOCK;
   }
@@ -1212,6 +1211,11 @@ nghttp3_ssize downstream_read_data_callback(nghttp3_conn *conn,
   downstream->reset_upstream_wtimer();
 
   veccnt = body->riovec_mark(reinterpret_cast<struct iovec *>(vec), veccnt);
+
+  if (downstream->get_response_state() == DownstreamState::MSG_COMPLETE &&
+      body->rleft_mark() == 0) {
+    *pflags |= NGHTTP3_DATA_FLAG_EOF;
+  }
 
   assert((*pflags & NGHTTP3_DATA_FLAG_EOF) || veccnt);
 
