@@ -164,13 +164,13 @@ In order to build optional eBPF program to direct an incoming QUIC UDP
 datagram to a correct socket for nghttpx, the following libraries are
 required:
 
-* libbpf-dev >= 0.4.0
+* libbpf-dev >= 0.7.0
 
 Use ``--with-libbpf`` configure option to build eBPF program.
 libelf-dev is needed to build libbpf.
 
 For Ubuntu 20.04, you can build libbpf from `the source code
-<https://github.com/libbpf/libbpf/releases/tag/v0.6.1>`_.  nghttpx
+<https://github.com/libbpf/libbpf/releases/tag/v0.7.0>`_.  nghttpx
 requires eBPF program for reloading its configuration and hot swapping
 its executable.
 
@@ -387,12 +387,12 @@ Build ngtcp2:
    $ make install
    $ cd ..
 
-If your Linux distribution does not have libbpf-dev >= 0.4.0, build
+If your Linux distribution does not have libbpf-dev >= 0.7.0, build
 from source:
 
 .. code-block:: text
 
-   $ git clone --depth 1 -b v0.6.1 https://github.com/libbpf/libbpf
+   $ git clone --depth 1 -b v0.7.0 https://github.com/libbpf/libbpf
    $ cd libbpf
    $ PREFIX=$PWD/build make -C src install
    $ cd ..

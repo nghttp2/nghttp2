@@ -59,6 +59,9 @@
 #ifdef HAVE_LIBSYSTEMD
 #  include <systemd/sd-daemon.h>
 #endif // HAVE_LIBSYSTEMD
+#ifdef HAVE_LIBBPF
+#  include <bpf/libbpf.h>
+#endif // HAVE_LIBBPF
 
 #include <cinttypes>
 #include <limits>
@@ -3924,6 +3927,10 @@ int main(int argc, char **argv) {
   std::array<char, STRERROR_BUFSIZE> errbuf;
 
   nghttp2::tls::libssl_init();
+
+#ifdef HAVE_LIBBPF
+  libbpf_set_strict_mode(LIBBPF_STRICT_ALL);
+#endif // HAVE_LIBBPF
 
 #ifndef NOTHREADS
   nghttp2::tls::LibsslGlobalLock lock;

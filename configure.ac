@@ -599,7 +599,7 @@ fi
 # libbpf (for src)
 have_libbpf=no
 if test "x${request_libbpf}" != "xno"; then
-  PKG_CHECK_MODULES([LIBBPF], [libbpf >= 0.4.0], [have_libbpf=yes],
+  PKG_CHECK_MODULES([LIBBPF], [libbpf >= 0.7.0], [have_libbpf=yes],
                     [have_libbpf=no])
   if test "x${have_libbpf}" = "xyes"; then
     AC_DEFINE([HAVE_LIBBPF], [1], [Define to 1 if you have `libbpf` library.])

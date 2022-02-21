@@ -423,26 +423,26 @@ static inline __u32 jhash_2words(__u32 a, __u32 b, __u32 initval) {
   return __jhash_nwords(a, b, 0, initval + JHASH_INITVAL + (2 << 2));
 }
 
-struct bpf_map_def SEC("maps") cid_prefix_map = {
-    .type = BPF_MAP_TYPE_HASH,
-    .max_entries = 255,
-    .key_size = sizeof(__u64),
-    .value_size = sizeof(__u32),
-};
+struct {
+  __uint(type, BPF_MAP_TYPE_HASH);
+  __uint(max_entries, 255);
+  __type(key, __u64);
+  __type(value, __u32);
+} cid_prefix_map SEC(".maps");
 
-struct bpf_map_def SEC("maps") reuseport_array = {
-    .type = BPF_MAP_TYPE_REUSEPORT_SOCKARRAY,
-    .max_entries = 255,
-    .key_size = sizeof(__u32),
-    .value_size = sizeof(__u32),
-};
+struct {
+  __uint(type, BPF_MAP_TYPE_REUSEPORT_SOCKARRAY);
+  __uint(max_entries, 255);
+  __type(key, __u32);
+  __type(value, __u32);
+} reuseport_array SEC(".maps");
 
-struct bpf_map_def SEC("maps") sk_info = {
-    .type = BPF_MAP_TYPE_ARRAY,
-    .max_entries = 3,
-    .key_size = sizeof(__u32),
-    .value_size = sizeof(__u64),
-};
+struct {
+  __uint(type, BPF_MAP_TYPE_ARRAY);
+  __uint(max_entries, 3);
+  __type(key, __u32);
+  __type(value, __u64);
+} sk_info SEC(".maps");
 
 typedef struct quic_hd {
   __u8 *dcid;
