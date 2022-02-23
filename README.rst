@@ -153,9 +153,9 @@ following libraries are required:
 * `OpenSSL with QUIC support
   <https://github.com/quictls/openssl/tree/OpenSSL_1_1_1m+quic>`_; or
   `BoringSSL <https://boringssl.googlesource.com/boringssl/>`_ (commit
-  f6ef1c560ae5af51e2df5d8d2175bed207b28b8f)
-* `ngtcp2 <https://github.com/ngtcp2/ngtcp2>`_
-* `nghttp3 <https://github.com/ngtcp2/nghttp3>`_
+  36a41bf0bf2dd3176f8780e09c03585351f29963)
+* `ngtcp2 <https://github.com/ngtcp2/ngtcp2>`_ >= 0.2.0
+* `nghttp3 <https://github.com/ngtcp2/nghttp3>`_ >= 0.2.0
 
 Use ``--enable-http3`` configure option to enable HTTP/3 feature for
 h2load and nghttpx.
@@ -407,7 +407,6 @@ Build nghttp2:
    $ autoreconf -i
    $ ./configure --with-mruby --with-neverbleed --enable-http3 --with-libbpf \
          --disable-python-bindings \
-         CC=clang-12 CXX=clang++-12 \
          PKG_CONFIG_PATH="$PWD/../openssl/build/lib/pkgconfig:$PWD/../nghttp3/build/lib/pkgconfig:$PWD/../ngtcp2/build/lib/pkgconfig:$PWD/../libbpf/build/lib64/pkgconfig" \
          LDFLAGS="$LDFLAGS -Wl,-rpath,$PWD/../openssl/build/lib -Wl,-rpath,$PWD/../libbpf/build/lib64"
    $ make -j$(nproc)
