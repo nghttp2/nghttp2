@@ -73,6 +73,13 @@ OPTIONS
 
     Default: ``1``
 
+.. option:: -f, --max-frame-size=<SIZE>
+
+    Maximum frame size that the local endpoint is willing to
+    receive.
+
+    Default: ``16K``
+
 .. option:: -w, --window-bits=<N>
 
     Sets the stream level initial window size to (2\*\*<N>)-1.
@@ -93,7 +100,7 @@ OPTIONS
 
 .. option:: --ciphers=<SUITE>
 
-    Set  allowed cipher  list  for TLSv1.2  or ealier.   The
+    Set  allowed cipher  list  for TLSv1.2  or earlier.   The
     format of the string is described in OpenSSL ciphers(1).
 
     Default: ``ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256``
@@ -251,11 +258,10 @@ OPTIONS
 .. option:: --qlog-file-base=<PATH>
 
     Enable qlog output and specify base file name for qlogs.
-    Qlog  is emitted  for each connection.
-    For  a  given  base  name "base", each  output file name
-    becomes  "base.M.N.qlog"  where M is worker ID  and N is
-    client ID (e.g. "base.0.3.qlog").
-    Only effective in QUIC runs.
+    Qlog is emitted  for each connection.  For  a given base
+    name   "base",    each   output   file    name   becomes
+    "base.M.N.sqlog" where M is worker ID and N is client ID
+    (e.g. "base.0.3.sqlog").  Only effective in QUIC runs.
 
 .. option:: --connect-to=<HOST>[:<PORT>]
 

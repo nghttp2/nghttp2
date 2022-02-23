@@ -1462,6 +1462,15 @@ HTTP
 
     Default: ``443``
 
+.. option:: --require-http-scheme
+
+    Always require http or https scheme in HTTP request.  It
+    also  requires that  https scheme  must be  used for  an
+    encrypted  connection.  Otherwise,  http scheme  must be
+    used.   This   option  is   recommended  for   a  server
+    deployment which directly faces clients and the services
+    it provides only require http or https scheme.
+
 
 API
 ~~~
@@ -1637,7 +1646,7 @@ HTTP/3 and QUIC
     frontend QUIC  connections.  A qlog file  is created per
     each QUIC  connection.  The  file name is  ISO8601 basic
     format, followed by "-", server Source Connection ID and
-    ".qlog".
+    ".sqlog".
 
 .. option:: --frontend-quic-require-token
 
@@ -1648,8 +1657,8 @@ HTTP/3 and QUIC
 .. option:: --frontend-quic-congestion-controller=<CC>
 
     Specify a congestion controller algorithm for a frontend
-    QUIC  connection.   <CC>  should be  either  "cubic"  or
-    "bbr".
+    QUIC connection.  <CC> should  be one of "cubic", "bbr",
+    and "bbr2".
 
     Default: ``cubic``
 

@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "H2LOAD" "1" "Oct 19, 2021" "1.46.0" "nghttp2"
+.TH "H2LOAD" "1" "Feb 23, 2022" "1.47.0" "nghttp2"
 .SH NAME
 h2load \- HTTP/2 benchmarking tool
 .
@@ -99,6 +99,14 @@ Default: \fB1\fP
 .UNINDENT
 .INDENT 0.0
 .TP
+.B \-f, \-\-max\-frame\-size=<SIZE>
+Maximum frame size that the local endpoint is willing to
+receive.
+.sp
+Default: \fB16K\fP
+.UNINDENT
+.INDENT 0.0
+.TP
 .B \-w, \-\-window\-bits=<N>
 Sets the stream level initial window size to (2**<N>)\-1.
 For QUIC, <N> is capped to 26 (roughly 64MiB).
@@ -121,7 +129,7 @@ Add/Override a header to the requests.
 .INDENT 0.0
 .TP
 .B \-\-ciphers=<SUITE>
-Set  allowed cipher  list  for TLSv1.2  or ealier.   The
+Set  allowed cipher  list  for TLSv1.2  or earlier.   The
 format of the string is described in OpenSSL ciphers(1).
 .sp
 Default: \fBECDHE\-ECDSA\-AES256\-GCM\-SHA384:ECDHE\-RSA\-AES256\-GCM\-SHA384:ECDHE\-ECDSA\-CHACHA20\-POLY1305:ECDHE\-RSA\-CHACHA20\-POLY1305:ECDHE\-ECDSA\-AES128\-GCM\-SHA256:ECDHE\-RSA\-AES128\-GCM\-SHA256:ECDHE\-ECDSA\-AES256\-SHA384:ECDHE\-RSA\-AES256\-SHA384:ECDHE\-ECDSA\-AES128\-SHA256:ECDHE\-RSA\-AES128\-SHA256\fP
@@ -296,11 +304,10 @@ to buffering.  Status code is \-1 for failed streams.
 .TP
 .B \-\-qlog\-file\-base=<PATH>
 Enable qlog output and specify base file name for qlogs.
-Qlog  is emitted  for each connection.
-For  a  given  base  name "base", each  output file name
-becomes  "base.M.N.qlog"  where M is worker ID  and N is
-client ID (e.g. "base.0.3.qlog").
-Only effective in QUIC runs.
+Qlog is emitted  for each connection.  For  a given base
+name   "base",    each   output   file    name   becomes
+"base.M.N.sqlog" where M is worker ID and N is client ID
+(e.g. "base.0.3.sqlog").  Only effective in QUIC runs.
 .UNINDENT
 .INDENT 0.0
 .TP

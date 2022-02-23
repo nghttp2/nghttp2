@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTPX" "1" "Oct 19, 2021" "1.46.0" "nghttp2"
+.TH "NGHTTPX" "1" "Feb 23, 2022" "1.47.0" "nghttp2"
 .SH NAME
 nghttpx \- HTTP/2 proxy
 .
@@ -1614,6 +1614,16 @@ field  when  redirect  to  HTTPS  URI  is  made  due  to
 .sp
 Default: \fB443\fP
 .UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-require\-http\-scheme
+Always require http or https scheme in HTTP request.  It
+also  requires that  https scheme  must be  used for  an
+encrypted  connection.  Otherwise,  http scheme  must be
+used.   This   option  is   recommended  for   a  server
+deployment which directly faces clients and the services
+it provides only require http or https scheme.
+.UNINDENT
 .SS API
 .INDENT 0.0
 .TP
@@ -1792,7 +1802,7 @@ Specify a  directory where  a qlog  file is  written for
 frontend QUIC  connections.  A qlog file  is created per
 each QUIC  connection.  The  file name is  ISO8601 basic
 format, followed by "\-", server Source Connection ID and
-".qlog".
+".sqlog".
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -1805,8 +1815,8 @@ NEW_TOKEN frame in the previous connection.
 .TP
 .B \-\-frontend\-quic\-congestion\-controller=<CC>
 Specify a congestion controller algorithm for a frontend
-QUIC  connection.   <CC>  should be  either  "cubic"  or
-"bbr".
+QUIC connection.  <CC> should  be one of "cubic", "bbr",
+and "bbr2".
 .sp
 Default: \fBcubic\fP
 .UNINDENT
