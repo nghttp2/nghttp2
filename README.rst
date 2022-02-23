@@ -407,6 +407,7 @@ Build nghttp2:
    $ autoreconf -i
    $ ./configure --with-mruby --with-neverbleed --enable-http3 --with-libbpf \
          --disable-python-bindings \
+         CC=clang-12 CXX=clang++-12 \
          PKG_CONFIG_PATH="$PWD/../openssl/build/lib/pkgconfig:$PWD/../nghttp3/build/lib/pkgconfig:$PWD/../ngtcp2/build/lib/pkgconfig:$PWD/../libbpf/build/lib64/pkgconfig" \
          LDFLAGS="$LDFLAGS -Wl,-rpath,$PWD/../openssl/build/lib -Wl,-rpath,$PWD/../libbpf/build/lib64"
    $ make -j$(nproc)
