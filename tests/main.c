@@ -196,6 +196,8 @@ int main(void) {
                    test_nghttp2_submit_settings) ||
       !CU_add_test(pSuite, "session_submit_settings_update_local_window_size",
                    test_nghttp2_submit_settings_update_local_window_size) ||
+      !CU_add_test(pSuite, "test_nghttp2_submit_settings_update_local_window_size_before_initial_settings_ack",
+                   test_nghttp2_submit_settings_update_local_window_size_before_initial_settings_ack) ||
       !CU_add_test(pSuite, "session_submit_settings_multiple_times",
                    test_nghttp2_submit_settings_multiple_times) ||
       !CU_add_test(pSuite, "session_submit_push_promise",

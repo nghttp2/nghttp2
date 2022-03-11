@@ -5823,6 +5823,84 @@ void test_nghttp2_submit_settings_update_local_window_size(void) {
   nghttp2_frame_settings_free(&ack_frame.settings, mem);
 }
 
+
+void test_nghttp2_submit_settings_update_local_window_size_before_initial_settings_ack(void) {
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+  nghttp2_settings_entry iv[4];
+  nghttp2_stream *stream;
+  nghttp2_frame ack_frame;
+  nghttp2_mem *mem;
+  nghttp2_option *option;
+  my_user_data ud;
+  nghttp2_outbound_item *item;
+  ssize_t rv;
+
+  mem = nghttp2_mem_default();
+  nghttp2_frame_settings_init(&ack_frame.settings, NGHTTP2_FLAG_ACK, NULL, 0);
+
+  iv[0].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
+  iv[0].value = 1024;
+
+
+  uint8_t data[8092];
+  nghttp2_frame_hd hd;
+
+  /* Create DATA frame with length 4KiB */
+  memset(data, 0, sizeof(data));
+  hd.length = 4096;
+  hd.type = NGHTTP2_DATA;
+  hd.flags = NGHTTP2_FLAG_NONE;
+  hd.stream_id = 1;
+  nghttp2_frame_pack_frame_hd(data, &hd);
+
+  memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
+  callbacks.send_callback = null_send_callback;
+  callbacks.on_data_chunk_recv_callback = on_data_chunk_recv_callback;
+  callbacks.on_frame_recv_callback = on_frame_recv_callback;
+  callbacks.on_frame_send_callback = on_frame_send_callback;
+
+  /* Without auto-window update */
+  nghttp2_option_new(&option);
+  nghttp2_option_set_no_auto_window_update(option, 1);
+
+  nghttp2_session_server_new2(&session, &callbacks, &ud, option);
+
+  nghttp2_option_del(option);
+
+  /* Submit settings which lower the window size */
+  CU_ASSERT(0 == nghttp2_submit_settings(session, NGHTTP2_FLAG_NONE, iv, 1));
+  CU_ASSERT(0 == nghttp2_session_send(session));
+
+  stream = open_recv_stream(session, 1);
+
+  ud.data_chunk_recv_cb_called = 0;
+  ud.frame_recv_cb_called = 0;
+  rv = nghttp2_session_mem_recv(session, data, NGHTTP2_FRAME_HDLEN + 4000);
+  CU_ASSERT(NGHTTP2_FRAME_HDLEN + 4000 == rv);
+  CU_ASSERT(1 == ud.data_chunk_recv_cb_called);
+  CU_ASSERT(0 == ud.frame_recv_cb_called);
+
+  CU_ASSERT(0 == nghttp2_session_consume_connection(session, 4000));
+  CU_ASSERT(0 == nghttp2_session_consume_stream(session, 1, 4000));
+
+  /* Not yet worth it to send NGHTTP2_WINDOW_UPDATE */
+  CU_ASSERT(NULL == nghttp2_session_get_next_ob_item(session));
+
+
+  /* This causes NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE change to be applied */
+  CU_ASSERT(0 == nghttp2_session_on_settings_received(session, &ack_frame, 0));
+
+  item = nghttp2_session_get_next_ob_item(session);
+  CU_ASSERT(NGHTTP2_WINDOW_UPDATE == item->frame.hd.type);
+  CU_ASSERT(1 == item->frame.window_update.hd.stream_id);
+  CU_ASSERT(0 == nghttp2_session_send(session));
+
+
+  nghttp2_session_del(session);
+  nghttp2_frame_settings_free(&ack_frame.settings, mem);
+}
+
 void test_nghttp2_submit_settings_multiple_times(void) {
   nghttp2_session *session;
   nghttp2_session_callbacks callbacks;
