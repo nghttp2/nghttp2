@@ -200,14 +200,15 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
 
       if (worker_->get_graceful_shutdown()) {
         send_connection_close(faddr, version, hd.dcid, hd.scid, remote_addr,
-                              local_addr, NGTCP2_CONNECTION_REFUSED);
+                              local_addr, NGTCP2_CONNECTION_REFUSED,
+                              datalen * 3);
         return 0;
       }
 
       if (hd.token.len == 0) {
         if (quicconf.upstream.require_token) {
           send_retry(faddr, version, dcid, dcidlen, scid, scidlen, remote_addr,
-                     local_addr);
+                     local_addr, datalen * 3);
 
           return 0;
         }
@@ -235,7 +236,7 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
           // 2nd Retry packet is not allowed, so send CONNECTION_CLOSE
           // with INVALID_TOKEN.
           send_connection_close(faddr, version, hd.dcid, hd.scid, remote_addr,
-                                local_addr, NGTCP2_INVALID_TOKEN);
+                                local_addr, NGTCP2_INVALID_TOKEN, datalen * 3);
           return 0;
         }
 
@@ -260,7 +261,7 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
 
           if (quicconf.upstream.require_token) {
             send_retry(faddr, version, dcid, dcidlen, scid, scidlen,
-                       remote_addr, local_addr);
+                       remote_addr, local_addr, datalen * 3);
 
             return 0;
           }
@@ -280,7 +281,7 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
       default:
         if (quicconf.upstream.require_token) {
           send_retry(faddr, version, dcid, dcidlen, scid, scidlen, remote_addr,
-                     local_addr);
+                     local_addr, datalen * 3);
 
           return 0;
         }
@@ -293,12 +294,13 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
     case NGTCP2_ERR_RETRY:
       if (worker_->get_graceful_shutdown()) {
         send_connection_close(faddr, version, hd.dcid, hd.scid, remote_addr,
-                              local_addr, NGTCP2_CONNECTION_REFUSED);
+                              local_addr, NGTCP2_CONNECTION_REFUSED,
+                              datalen * 3);
         return 0;
       }
 
       send_retry(faddr, version, dcid, dcidlen, scid, scidlen, remote_addr,
-                 local_addr);
+                 local_addr, datalen * 3);
       return 0;
     case NGTCP2_ERR_VERSION_NEGOTIATION:
       send_version_negotiation(faddr, version, dcid, dcidlen, scid, scidlen,
@@ -439,7 +441,7 @@ uint32_t generate_reserved_version(const Address &addr, uint32_t version) {
 int QUICConnectionHandler::send_retry(
     const UpstreamAddr *faddr, uint32_t version, const uint8_t *ini_dcid,
     size_t ini_dcidlen, const uint8_t *ini_scid, size_t ini_scidlen,
-    const Address &remote_addr, const Address &local_addr) {
+    const Address &remote_addr, const Address &local_addr, size_t max_pktlen) {
   std::array<char, NI_MAXHOST> host;
   std::array<char, NI_MAXSERV> port;
 
@@ -478,7 +480,7 @@ int QUICConnectionHandler::send_retry(
   }
 
   std::vector<uint8_t> buf;
-  buf.resize(256);
+  buf.resize(std::min(max_pktlen, static_cast<size_t>(256)));
 
   auto nwrite =
       ngtcp2_crypto_write_retry(buf.data(), buf.size(), version, &iscid,
@@ -611,11 +613,13 @@ int QUICConnectionHandler::send_stateless_reset(const UpstreamAddr *faddr,
 int QUICConnectionHandler::send_connection_close(
     const UpstreamAddr *faddr, uint32_t version, const ngtcp2_cid &ini_dcid,
     const ngtcp2_cid &ini_scid, const Address &remote_addr,
-    const Address &local_addr, uint64_t error_code) {
+    const Address &local_addr, uint64_t error_code, size_t max_pktlen) {
   std::array<uint8_t, NGTCP2_MAX_UDP_PAYLOAD_SIZE> buf;
 
+  max_pktlen = std::min(max_pktlen, buf.size());
+
   auto nwrite = ngtcp2_crypto_write_connection_close(
-      buf.data(), buf.size(), version, &ini_scid, &ini_dcid, error_code,
+      buf.data(), max_pktlen, version, &ini_scid, &ini_dcid, error_code,
       nullptr, 0);
   if (nwrite < 0) {
     LOG(ERROR) << "ngtcp2_crypto_write_connection_close failed";
