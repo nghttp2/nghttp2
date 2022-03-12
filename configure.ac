@@ -230,6 +230,21 @@ if [test "x$request_lib_only" = "xyes"]; then
   request_hpack_tools=no
   request_examples=no
   request_python_bindings=no
+  request_http3=no
+  request_libxml2=no
+  request_jansson=no
+  request_zlib=no
+  request_libevent_openssl=no
+  request_libcares=no
+  request_openssl=no
+  request_libev=no
+  request_jemalloc=no
+  request_systemd=no
+  request_mruby=no
+  request_neverbleed=no
+  request_libngtcp2=no
+  request_libnghttp3=no
+  request_libbpf=no
 fi
 
 if test "x$request_python_bindings" != "xno" &&
