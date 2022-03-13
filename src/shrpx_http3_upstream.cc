@@ -1785,7 +1785,7 @@ int Http3Upstream::on_read(const UpstreamAddr *faddr,
 
         quic_conn_handler->send_connection_close(
             faddr, version, ini_dcid, ini_scid, remote_addr, local_addr,
-            NGTCP2_CONNECTION_REFUSED);
+            NGTCP2_CONNECTION_REFUSED, datalen * 3);
 
         return -1;
       }
@@ -1794,7 +1794,7 @@ int Http3Upstream::on_read(const UpstreamAddr *faddr,
 
       quic_conn_handler->send_retry(handler_->get_upstream_addr(), version,
                                     dcid, dcidlen, scid, scidlen, remote_addr,
-                                    local_addr);
+                                    local_addr, datalen * 3);
 
       return -1;
     }
