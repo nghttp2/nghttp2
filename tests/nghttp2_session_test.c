@@ -3380,6 +3380,11 @@ void test_nghttp2_session_on_settings_received(void) {
   nghttp2_nv nv = MAKE_NV(":authority", "example.org");
   nghttp2_mem *mem;
   nghttp2_option *option;
+  uint8_t data[2048];
+  nghttp2_frame_hd hd;
+  int rv;
+  ssize_t nread;
+  nghttp2_stream *stream;
 
   mem = nghttp2_mem_default();
 
@@ -3588,6 +3593,64 @@ void test_nghttp2_session_on_settings_received(void) {
   CU_ASSERT(NGHTTP2_GOAWAY == item->frame.hd.type);
 
   nghttp2_session_del(session);
+
+  /* Should send WINDOW_UPDATE with no_auto_window_update option on if
+     the initial window size is decreased and becomes smaller than or
+     equal to the amount of data that has already received. */
+  nghttp2_option_new(&option);
+  nghttp2_option_set_no_auto_window_update(option, 1);
+
+  nghttp2_session_server_new2(&session, &callbacks, NULL, option);
+
+  iv[0].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
+  iv[0].value = 1024;
+
+  rv = nghttp2_submit_settings(session, NGHTTP2_FLAG_NONE, iv, 1);
+
+  CU_ASSERT(0 == rv);
+
+  rv = nghttp2_session_send(session);
+
+  CU_ASSERT(0 == rv);
+
+  stream = open_recv_stream(session, 1);
+
+  memset(data, 0, sizeof(data));
+  hd.length = 1024;
+  hd.type = NGHTTP2_DATA;
+  hd.flags = NGHTTP2_FLAG_NONE;
+  hd.stream_id = 1;
+  nghttp2_frame_pack_frame_hd(data, &hd);
+
+  nread =
+      nghttp2_session_mem_recv(session, data, NGHTTP2_FRAME_HDLEN + hd.length);
+
+  CU_ASSERT((ssize_t)(NGHTTP2_FRAME_HDLEN + hd.length) == nread);
+
+  rv = nghttp2_session_consume(session, 1, hd.length);
+
+  CU_ASSERT(0 == rv);
+  CU_ASSERT((int32_t)hd.length == stream->recv_window_size);
+  CU_ASSERT((int32_t)hd.length == stream->consumed_size);
+
+  nghttp2_frame_settings_init(&frame.settings, NGHTTP2_FLAG_ACK, NULL, 0);
+
+  rv = nghttp2_session_on_settings_received(session, &frame, 0);
+
+  CU_ASSERT(0 == rv);
+  CU_ASSERT(1024 == stream->local_window_size);
+  CU_ASSERT(0 == stream->recv_window_size);
+  CU_ASSERT(0 == stream->consumed_size);
+
+  item = nghttp2_session_get_next_ob_item(session);
+
+  CU_ASSERT(NULL != item);
+  CU_ASSERT(NGHTTP2_WINDOW_UPDATE == item->frame.hd.type);
+  CU_ASSERT((int32_t)hd.length ==
+            item->frame.window_update.window_size_increment);
+
+  nghttp2_session_del(session);
+  nghttp2_option_del(option);
 }
 
 void test_nghttp2_session_on_push_promise_received(void) {

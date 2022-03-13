@@ -4259,9 +4259,16 @@ static int update_local_initial_window_size_func(void *entry, void *ptr) {
     return nghttp2_session_add_rst_stream(arg->session, stream->stream_id,
                                           NGHTTP2_FLOW_CONTROL_ERROR);
   }
-  if (!(arg->session->opt_flags & NGHTTP2_OPTMASK_NO_AUTO_WINDOW_UPDATE) &&
-      stream->window_update_queued == 0 &&
-      nghttp2_should_send_window_update(stream->local_window_size,
+
+  if (stream->window_update_queued) {
+    return 0;
+  }
+
+  if (arg->session->opt_flags & NGHTTP2_OPTMASK_NO_AUTO_WINDOW_UPDATE) {
+    return session_update_stream_consumed_size(arg->session, stream, 0);
+  }
+
+  if (nghttp2_should_send_window_update(stream->local_window_size,
                                         stream->recv_window_size)) {
 
     rv = nghttp2_session_add_window_update(arg->session, NGHTTP2_FLAG_NONE,
