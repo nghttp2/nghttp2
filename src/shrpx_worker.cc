@@ -333,9 +333,6 @@ void Worker::replace_downstream_config(
     auto it = addr_groups_indexer.find(dkey);
 
     if (it == std::end(addr_groups_indexer)) {
-      std::shuffle(std::begin(shared_addr->addrs), std::end(shared_addr->addrs),
-                   randgen_);
-
       auto shared_addr_ptr = shared_addr.get();
 
       for (auto &addr : shared_addr->addrs) {
