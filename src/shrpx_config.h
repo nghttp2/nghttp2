@@ -43,6 +43,7 @@
 #include <vector>
 #include <memory>
 #include <set>
+#include <unordered_map>
 
 #include <openssl/ssl.h>
 
@@ -436,6 +437,16 @@ enum class SessionAffinityCookieSecure {
   NO,
 };
 
+enum class SessionAffinityCookieStickiness {
+  // Backend server might be changed when an existing backend server
+  // is removed, or new backend server is added.
+  LOOSE,
+  // Backend server might be changed when a designated backend server
+  // is removed, but adding new backend server does not cause
+  // breakage.
+  STRICT,
+};
+
 struct AffinityConfig {
   // Type of session affinity.
   SessionAffinity type;
@@ -446,6 +457,8 @@ struct AffinityConfig {
     StringRef path;
     // Secure attribute
     SessionAffinityCookieSecure secure;
+    // Affinity Stickiness
+    SessionAffinityCookieStickiness stickiness;
   } cookie;
 };
 
@@ -528,6 +541,9 @@ struct DownstreamAddrConfig {
   uint32_t weight;
   // weight of the weight group.  Its range is [1, 256], inclusive.
   uint32_t group_weight;
+  // affinity hash for this address.  It is assigned when strict
+  // stickiness is enabled.
+  uint32_t affinity_hash;
   // Application protocol used in this group
   Proto proto;
   // backend port.  0 if |host_unix| is true.
@@ -568,6 +584,9 @@ struct DownstreamAddrGroupConfig {
   // Bunch of session affinity hash.  Only used if affinity ==
   // SessionAffinity::IP.
   std::vector<AffinityHash> affinity_hash;
+  // Maps affinity hash of each DownstreamAddrConfig to its index in
+  // addrs.  It is only assigned when strict stickiness is enabled.
+  std::unordered_map<uint32_t, size_t> affinity_hash_map;
   // Cookie based session affinity configuration.
   AffinityConfig affinity;
   // true if this group requires that client connection must be TLS,

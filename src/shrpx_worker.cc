@@ -90,12 +90,12 @@ DownstreamAddrGroup::~DownstreamAddrGroup() {}
 
 // DownstreamKey is used to index SharedDownstreamAddr in order to
 // find the same configuration.
-using DownstreamKey =
-    std::tuple<std::vector<std::tuple<StringRef, StringRef, StringRef, size_t,
-                                      size_t, Proto, uint32_t, uint32_t,
-                                      uint32_t, bool, bool, bool, bool>>,
-               bool, SessionAffinity, StringRef, StringRef,
-               SessionAffinityCookieSecure, int64_t, int64_t, StringRef, bool>;
+using DownstreamKey = std::tuple<
+    std::vector<
+        std::tuple<StringRef, StringRef, StringRef, size_t, size_t, Proto,
+                   uint32_t, uint32_t, uint32_t, bool, bool, bool, bool>>,
+    bool, SessionAffinity, StringRef, StringRef, SessionAffinityCookieSecure,
+    SessionAffinityCookieStickiness, int64_t, int64_t, StringRef, bool>;
 
 namespace {
 DownstreamKey
@@ -131,11 +131,12 @@ create_downstream_key(const std::shared_ptr<SharedDownstreamAddr> &shared_addr,
   std::get<3>(dkey) = affinity.cookie.name;
   std::get<4>(dkey) = affinity.cookie.path;
   std::get<5>(dkey) = affinity.cookie.secure;
+  std::get<6>(dkey) = affinity.cookie.stickiness;
   auto &timeout = shared_addr->timeout;
-  std::get<6>(dkey) = timeout.read;
-  std::get<7>(dkey) = timeout.write;
-  std::get<8>(dkey) = mruby_file;
-  std::get<9>(dkey) = shared_addr->dnf;
+  std::get<7>(dkey) = timeout.read;
+  std::get<8>(dkey) = timeout.write;
+  std::get<9>(dkey) = mruby_file;
+  std::get<10>(dkey) = shared_addr->dnf;
 
   return dkey;
 }
@@ -286,8 +287,10 @@ void Worker::replace_downstream_config(
             make_string_ref(shared_addr->balloc, src.affinity.cookie.path);
       }
       shared_addr->affinity.cookie.secure = src.affinity.cookie.secure;
+      shared_addr->affinity.cookie.stickiness = src.affinity.cookie.stickiness;
     }
     shared_addr->affinity_hash = src.affinity_hash;
+    shared_addr->affinity_hash_map = src.affinity_hash_map;
     shared_addr->redirect_if_not_tls = src.redirect_if_not_tls;
     shared_addr->dnf = src.dnf;
     shared_addr->timeout.read = src.timeout.read;
@@ -306,6 +309,7 @@ void Worker::replace_downstream_config(
       dst_addr.weight = src_addr.weight;
       dst_addr.group = make_string_ref(shared_addr->balloc, src_addr.group);
       dst_addr.group_weight = src_addr.group_weight;
+      dst_addr.affinity_hash = src_addr.affinity_hash;
       dst_addr.proto = src_addr.proto;
       dst_addr.tls = src_addr.tls;
       dst_addr.sni = make_string_ref(shared_addr->balloc, src_addr.sni);

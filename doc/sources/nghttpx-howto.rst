@@ -427,7 +427,11 @@ parameter.  Optionally, a Path attribute can be specified in
    backend=127.0.0.1,3000;;affinity=cookie;affinity-cookie-name=nghttpxlb;affinity-cookie-path=/
 
 Secure attribute of cookie is set if client connection is protected by
-TLS.
+TLS.  ``affinity-cookie-stickiness`` specifies the stickiness of this
+affinity.  If ``loose`` is given, which is the default, removing or
+adding a backend server might break affinity.  While ``strict`` is
+given, removing the designated backend server breaks affinity, but
+adding new backend server does not cause breakage.
 
 PSK cipher suites
 -----------------

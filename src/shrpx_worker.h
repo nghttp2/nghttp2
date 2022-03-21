@@ -133,6 +133,9 @@ struct DownstreamAddr {
   // Weight of the weight group which this address belongs to.  Its
   // range is [1, 256], inclusive.
   uint32_t group_weight;
+  // affinity hash for this address.  It is assigned when strict
+  // stickiness is enabled.
+  uint32_t affinity_hash;
   // true if TLS is used in this backend
   bool tls;
   // true if dynamic DNS is enabled
@@ -215,6 +218,9 @@ struct SharedDownstreamAddr {
   // Bunch of session affinity hash.  Only used if affinity ==
   // SessionAffinity::IP.
   std::vector<AffinityHash> affinity_hash;
+  // Maps affinity hash of each DownstreamAddr to its index in addrs.
+  // It is only assigned when strict stickiness is enabled.
+  std::unordered_map<uint32_t, size_t> affinity_hash_map;
 #ifdef HAVE_MRUBY
   std::shared_ptr<mruby::MRubyContext> mruby_ctx;
 #endif // HAVE_MRUBY

@@ -2249,7 +2249,18 @@ Connections:
               If a request scheme is "https", then Secure attribute is
               set.  Otherwise, it  is not set.  If  <SECURE> is "yes",
               the  Secure attribute  is  always set.   If <SECURE>  is
-              "no", the Secure attribute is always omitted.
+              "no",   the   Secure   attribute  is   always   omitted.
+              "affinity-cookie-stickiness=<STICKINESS>"       controls
+              stickiness  of   this  affinity.   If   <STICKINESS>  is
+              "loose", removing or adding a backend server might break
+              the affinity  and the  request might  be forwarded  to a
+              different backend server.   If <STICKINESS> is "strict",
+              removing the designated  backend server breaks affinity,
+              but adding  new backend server does  not cause breakage.
+              If  the designated  backend server  becomes unavailable,
+              new backend server is chosen  as if the request does not
+              have  an  affinity  cookie.   <STICKINESS>  defaults  to
+              "loose".
 
               By default, name resolution of backend host name is done
               at  start  up,  or reloading  configuration.   If  "dns"

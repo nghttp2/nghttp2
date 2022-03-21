@@ -1098,6 +1098,19 @@ int parse_downstream_params(DownstreamParams &out,
                       "auto, yes, and no";
         return -1;
       }
+    } else if (util::istarts_with_l(param, "affinity-cookie-stickiness=")) {
+      auto valstr =
+          StringRef{first + str_size("affinity-cookie-stickiness="), end};
+      if (util::strieq_l("loose", valstr)) {
+        out.affinity.cookie.stickiness = SessionAffinityCookieStickiness::LOOSE;
+      } else if (util::strieq_l("strict", valstr)) {
+        out.affinity.cookie.stickiness =
+            SessionAffinityCookieStickiness::STRICT;
+      } else {
+        LOG(ERROR) << "backend: affinity-cookie-stickiness: value must be "
+                      "either loose or strict";
+        return -1;
+      }
     } else if (util::strieq_l("dns", param)) {
       out.dns = true;
     } else if (util::strieq_l("redirect-if-not-tls", param)) {
@@ -1276,7 +1289,9 @@ int parse_mapping(Config *config, DownstreamAddrConfig &addr,
         } else if (g.affinity.type != params.affinity.type ||
                    g.affinity.cookie.name != params.affinity.cookie.name ||
                    g.affinity.cookie.path != params.affinity.cookie.path ||
-                   g.affinity.cookie.secure != params.affinity.cookie.secure) {
+                   g.affinity.cookie.secure != params.affinity.cookie.secure ||
+                   g.affinity.cookie.stickiness !=
+                       params.affinity.cookie.stickiness) {
           LOG(ERROR) << "backend: affinity: multiple different affinity "
                         "configurations found in a single group";
           return -1;
@@ -1350,6 +1365,7 @@ int parse_mapping(Config *config, DownstreamAddrConfig &addr,
             make_string_ref(downstreamconf.balloc, params.affinity.cookie.path);
       }
       g.affinity.cookie.secure = params.affinity.cookie.secure;
+      g.affinity.cookie.stickiness = params.affinity.cookie.stickiness;
     }
     g.redirect_if_not_tls = params.redirect_if_not_tls;
     g.mruby_file = make_string_ref(downstreamconf.balloc, params.mruby);
@@ -4600,6 +4616,12 @@ int configure_downstream_group(Config *config, bool http2_proxy,
         rv = compute_affinity_hash(g.affinity_hash, idx, key);
         if (rv != 0) {
           return -1;
+        }
+
+        if (g.affinity.cookie.stickiness ==
+            SessionAffinityCookieStickiness::STRICT) {
+          addr.affinity_hash = util::hash32(key);
+          g.affinity_hash_map.emplace(addr.affinity_hash, idx);
         }
 
         ++idx;

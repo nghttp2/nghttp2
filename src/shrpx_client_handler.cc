@@ -847,6 +847,12 @@ DownstreamAddr *ClientHandler::get_downstream_addr(int &err,
       hash = affinity_hash_;
       break;
     case SessionAffinity::COOKIE:
+      if (shared_addr->affinity.cookie.stickiness ==
+          SessionAffinityCookieStickiness::STRICT) {
+        return get_downstream_addr_strict_affinity(err, shared_addr,
+                                                   downstream);
+      }
+
       hash = get_affinity_cookie(downstream, shared_addr->affinity.cookie.name);
       break;
     default:
@@ -921,6 +927,69 @@ DownstreamAddr *ClientHandler::get_downstream_addr(int &err,
       return addr;
     }
   }
+}
+
+DownstreamAddr *ClientHandler::get_downstream_addr_strict_affinity(
+    int &err, const std::shared_ptr<SharedDownstreamAddr> &shared_addr,
+    Downstream *downstream) {
+  const auto &affinity_hash = shared_addr->affinity_hash;
+
+  auto h = downstream->find_affinity_cookie(shared_addr->affinity.cookie.name);
+  if (h) {
+    auto it = shared_addr->affinity_hash_map.find(h);
+    if (it != std::end(shared_addr->affinity_hash_map)) {
+      auto addr = &shared_addr->addrs[(*it).second];
+      if (!addr->connect_blocker->blocked()) {
+        return addr;
+      }
+    }
+  } else {
+    auto d = std::uniform_int_distribution<uint32_t>(
+        1, std::numeric_limits<uint32_t>::max());
+    auto rh = d(worker_->get_randgen());
+    h = util::hash32(StringRef{reinterpret_cast<uint8_t *>(&rh),
+                               reinterpret_cast<uint8_t *>(&rh) + sizeof(rh)});
+  }
+
+  // Client is not bound to a particular backend, or the bound backend
+  // is not found, or is blocked.  Find new backend using h.  Using
+  // existing h allows us to find new server in a deterministic way.
+  // It is preferable because multiple concurrent requests with the
+  // stale cookie might be in-flight.
+  auto it = std::lower_bound(
+      std::begin(affinity_hash), std::end(affinity_hash), h,
+      [](const AffinityHash &lhs, uint32_t rhs) { return lhs.hash < rhs; });
+
+  if (it == std::end(affinity_hash)) {
+    it = std::begin(affinity_hash);
+  }
+
+  auto aff_idx =
+      static_cast<size_t>(std::distance(std::begin(affinity_hash), it));
+  auto idx = (*it).idx;
+  auto addr = &shared_addr->addrs[idx];
+
+  if (addr->connect_blocker->blocked()) {
+    size_t i;
+    for (i = aff_idx + 1; i != aff_idx; ++i) {
+      if (i == shared_addr->affinity_hash.size()) {
+        i = 0;
+      }
+      addr = &shared_addr->addrs[shared_addr->affinity_hash[i].idx];
+      if (addr->connect_blocker->blocked()) {
+        continue;
+      }
+      break;
+    }
+    if (i == aff_idx) {
+      err = -1;
+      return nullptr;
+    }
+  }
+
+  downstream->renew_affinity_cookie(addr->affinity_hash);
+
+  return addr;
 }
 
 std::unique_ptr<DownstreamConnection>
