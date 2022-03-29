@@ -242,6 +242,10 @@ set(HAVE_JEMALLOC   ${JEMALLOC_FOUND})
 
 if(ENABLE_ASIO_LIB)
   find_package(Boost 1.54.0 REQUIRED system thread)
+
+  if(ENABLE_GRPC)
+      find_package(Protobuf REQUIRED)
+  endif()
 endif()
 
 # libbpf (for bpf)
@@ -565,6 +569,7 @@ message(STATUS "summary of build options:
       Applications:   ${ENABLE_APP}
       HPACK tools:    ${ENABLE_HPACK_TOOLS}
       Libnghttp2_asio:${ENABLE_ASIO_LIB}
+      gRPC:           ${ENABLE_GRPC}
       Examples:       ${ENABLE_EXAMPLES}
       Python bindings:${ENABLE_PYTHON_BINDINGS}
       Threading:      ${ENABLE_THREADS}
