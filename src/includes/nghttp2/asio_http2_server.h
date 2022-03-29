@@ -217,6 +217,9 @@ public:
   // Returns a vector with the ports in use
   std::vector<int> ports() const;
 
+  // Returns a vector of the endpoints in use
+  std::vector<boost::asio::ip::tcp::endpoint> endpoints() const;
+
 private:
   std::unique_ptr<http2_impl> impl_;
 };

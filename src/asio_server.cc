@@ -209,6 +209,15 @@ const std::vector<int> server::ports() const {
   return ports;
 }
 
+const std::vector<boost::asio::ip::tcp::endpoint> server::endpoints() const {
+  std::vector<boost::asio::ip::tcp::endpoint> ports;
+  ports.reserve(acceptors_.size());
+  for (const auto &acceptor : acceptors_) {
+    ports.emplace_back(acceptor.local_endpoint());
+  }
+  return ports;
+}
+
 } // namespace server
 } // namespace asio_http2
 } // namespace nghttp2
