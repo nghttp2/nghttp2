@@ -1724,17 +1724,16 @@ int event_loop() {
   }
 #endif // ENABLE_HTTP3
 
-  auto pid = fork_worker_process(
-      ipc_fd
+  auto pid = fork_worker_process(ipc_fd
 #ifdef ENABLE_HTTP3
-      ,
-      quic_ipc_fd
+                                 ,
+                                 quic_ipc_fd
 #endif // ENABLE_HTTP3
-      ,
-      {}
+                                 ,
+                                 {}
 #ifdef ENABLE_HTTP3
-      ,
-      cid_prefixes, quic_lwps
+                                 ,
+                                 cid_prefixes, quic_lwps
 #endif // ENABLE_HTTP3
   );
 
