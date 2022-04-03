@@ -8,17 +8,17 @@ jobs:
 
     strategy:
       matrix:
-        os: [ubuntu-20.04, macos-10.15]
+        os: [ubuntu-20.04, macos-11]
         compiler: [gcc, clang]
         buildtool: [autotools, cmake]
         http3: [http3, no-http3]
         openssl: [openssl1, openssl3]
         exclude:
-        - os: macos-10.15
+        - os: macos-11
           openssl: openssl3
         - http3: no-http3
           openssl: openssl3
-        - os: macos-10.15
+        - os: macos-11
           compiler: gcc
 
     steps:
