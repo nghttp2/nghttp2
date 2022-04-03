@@ -370,7 +370,9 @@ ssize_t Http3Session::read_stream(uint32_t flags, int64_t stream_id,
   if (nconsumed < 0) {
     std::cerr << "nghttp3_conn_read_stream: " << nghttp3_strerror(nconsumed)
               << std::endl;
-    client_->quic.last_error = quic::err_application(nconsumed);
+    ngtcp2_connection_close_error_set_application_error(
+        &client_->quic.last_error,
+        nghttp3_err_infer_quic_app_error_code(nconsumed), nullptr, 0);
     return -1;
   }
   return nconsumed;
@@ -381,7 +383,9 @@ ssize_t Http3Session::write_stream(int64_t &stream_id, int &fin,
   auto sveccnt =
       nghttp3_conn_writev_stream(conn_, &stream_id, &fin, vec, veccnt);
   if (sveccnt < 0) {
-    client_->quic.last_error = quic::err_application(sveccnt);
+    ngtcp2_connection_close_error_set_application_error(
+        &client_->quic.last_error,
+        nghttp3_err_infer_quic_app_error_code(sveccnt), nullptr, 0);
     return -1;
   }
   return sveccnt;
@@ -390,7 +394,9 @@ ssize_t Http3Session::write_stream(int64_t &stream_id, int &fin,
 int Http3Session::block_stream(int64_t stream_id) {
   auto rv = nghttp3_conn_block_stream(conn_, stream_id);
   if (rv != 0) {
-    client_->quic.last_error = quic::err_application(rv);
+    ngtcp2_connection_close_error_set_application_error(
+        &client_->quic.last_error, nghttp3_err_infer_quic_app_error_code(rv),
+        nullptr, 0);
     return -1;
   }
   return 0;
@@ -399,7 +405,9 @@ int Http3Session::block_stream(int64_t stream_id) {
 int Http3Session::shutdown_stream_write(int64_t stream_id) {
   auto rv = nghttp3_conn_shutdown_stream_write(conn_, stream_id);
   if (rv != 0) {
-    client_->quic.last_error = quic::err_application(rv);
+    ngtcp2_connection_close_error_set_application_error(
+        &client_->quic.last_error, nghttp3_err_infer_quic_app_error_code(rv),
+        nullptr, 0);
     return -1;
   }
   return 0;
@@ -408,7 +416,9 @@ int Http3Session::shutdown_stream_write(int64_t stream_id) {
 int Http3Session::add_write_offset(int64_t stream_id, size_t ndatalen) {
   auto rv = nghttp3_conn_add_write_offset(conn_, stream_id, ndatalen);
   if (rv != 0) {
-    client_->quic.last_error = quic::err_application(rv);
+    ngtcp2_connection_close_error_set_application_error(
+        &client_->quic.last_error, nghttp3_err_infer_quic_app_error_code(rv),
+        nullptr, 0);
     return -1;
   }
   return 0;
@@ -417,7 +427,9 @@ int Http3Session::add_write_offset(int64_t stream_id, size_t ndatalen) {
 int Http3Session::add_ack_offset(int64_t stream_id, size_t datalen) {
   auto rv = nghttp3_conn_add_ack_offset(conn_, stream_id, datalen);
   if (rv != 0) {
-    client_->quic.last_error = quic::err_application(rv);
+    ngtcp2_connection_close_error_set_application_error(
+        &client_->quic.last_error, nghttp3_err_infer_quic_app_error_code(rv),
+        nullptr, 0);
     return -1;
   }
   return 0;

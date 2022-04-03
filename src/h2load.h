@@ -339,7 +339,7 @@ struct Client {
   struct {
     ev_timer pkt_timer;
     ngtcp2_conn *conn;
-    quic::Error last_error;
+    ngtcp2_connection_close_error last_error;
     bool close_requested;
     FILE *qlog_file;
 

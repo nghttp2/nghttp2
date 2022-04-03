@@ -171,11 +171,10 @@ private:
   ev_timer idle_timer_;
   ev_timer shutdown_timer_;
   ev_prepare prep_;
-  size_t max_udp_payload_size_;
   int qlog_fd_;
   ngtcp2_cid hashed_scid_;
   ngtcp2_conn *conn_;
-  quic::Error last_error_;
+  ngtcp2_connection_close_error last_error_;
   uint8_t tls_alert_;
   nghttp3_conn *httpconn_;
   DownstreamQueue downstream_queue_;
