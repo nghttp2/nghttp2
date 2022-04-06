@@ -160,8 +160,7 @@ public:
   void on_send_blocked(const UpstreamAddr *faddr,
                        const ngtcp2_addr &remote_addr,
                        const ngtcp2_addr &local_addr, const ngtcp2_pkt_info &pi,
-                       const uint8_t *data, size_t datalen,
-                       size_t max_udp_payload_size);
+                       const uint8_t *data, size_t datalen, size_t gso_size);
   int send_blocked_packet();
   void signal_write_upstream_addr(const UpstreamAddr *faddr);
 
@@ -194,7 +193,7 @@ private:
       ngtcp2_pkt_info pi;
       const uint8_t *data;
       size_t datalen;
-      size_t max_udp_payload_size;
+      size_t gso_size;
     } blocked[2];
     std::unique_ptr<uint8_t[]> data;
   } tx_;
