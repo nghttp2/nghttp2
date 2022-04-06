@@ -739,6 +739,7 @@ int Http3Upstream::write_streams() {
   ngtcp2_path_storage ps, prev_ps;
   size_t pktcnt = 0;
   int rv;
+  size_t gso_size = 0;
   auto ts = quic_timestamp();
 
   ngtcp2_path_storage_zero(&ps);
@@ -855,10 +856,10 @@ int Http3Upstream::write_streams() {
         rv = send_packet(faddr, prev_ps.path.remote.addr,
                          prev_ps.path.remote.addrlen, prev_ps.path.local.addr,
                          prev_ps.path.local.addrlen, prev_pi, data, datalen,
-                         max_udp_payload_size);
+                         gso_size);
         if (rv == SHRPX_ERR_SEND_BLOCKED) {
           on_send_blocked(faddr, prev_ps.path.remote, prev_ps.path.local,
-                          prev_pi, data, datalen, max_udp_payload_size);
+                          prev_pi, data, datalen, gso_size);
 
           ngtcp2_conn_update_pkt_tx_time(conn_, ts);
           reset_idle_timer();
@@ -884,8 +885,10 @@ int Http3Upstream::write_streams() {
     if (pktcnt == 0) {
       ngtcp2_path_copy(&prev_ps.path, &ps.path);
       prev_pi = pi;
+      gso_size = nwrite;
     } else if (!ngtcp2_path_eq(&prev_ps.path, &ps.path) ||
-               prev_pi.ecn != pi.ecn) {
+               prev_pi.ecn != pi.ecn ||
+               static_cast<size_t>(nwrite) > gso_size) {
       auto faddr = static_cast<UpstreamAddr *>(prev_ps.path.user_data);
       auto data = tx_.data.get();
       auto datalen = bufpos - data - nwrite;
@@ -893,15 +896,15 @@ int Http3Upstream::write_streams() {
       rv = send_packet(faddr, prev_ps.path.remote.addr,
                        prev_ps.path.remote.addrlen, prev_ps.path.local.addr,
                        prev_ps.path.local.addrlen, prev_pi, data, datalen,
-                       max_udp_payload_size);
+                       gso_size);
       switch (rv) {
       case SHRPX_ERR_SEND_BLOCKED:
         on_send_blocked(faddr, prev_ps.path.remote, prev_ps.path.local, prev_pi,
-                        data, datalen, max_udp_payload_size);
+                        data, datalen, gso_size);
 
         on_send_blocked(static_cast<UpstreamAddr *>(ps.path.user_data),
                         ps.path.remote, ps.path.local, pi, bufpos - nwrite,
-                        nwrite, max_udp_payload_size);
+                        nwrite, 0);
 
         signal_write_upstream_addr(faddr);
 
@@ -912,10 +915,10 @@ int Http3Upstream::write_streams() {
 
         rv = send_packet(faddr, ps.path.remote.addr, ps.path.remote.addrlen,
                          ps.path.local.addr, ps.path.local.addrlen, pi, data,
-                         nwrite, max_udp_payload_size);
+                         nwrite, 0);
         if (rv == SHRPX_ERR_SEND_BLOCKED) {
           on_send_blocked(faddr, ps.path.remote, ps.path.local, pi, data,
-                          nwrite, max_udp_payload_size);
+                          nwrite, 0);
         }
 
         signal_write_upstream_addr(faddr);
@@ -928,18 +931,17 @@ int Http3Upstream::write_streams() {
       return 0;
     }
 
-    if (++pktcnt == max_pktcnt ||
-        static_cast<size_t>(nwrite) < max_udp_payload_size) {
+    if (++pktcnt == max_pktcnt || static_cast<size_t>(nwrite) < gso_size) {
       auto faddr = static_cast<UpstreamAddr *>(ps.path.user_data);
       auto data = tx_.data.get();
       auto datalen = bufpos - data;
 
       rv = send_packet(faddr, ps.path.remote.addr, ps.path.remote.addrlen,
                        ps.path.local.addr, ps.path.local.addrlen, pi, data,
-                       datalen, max_udp_payload_size);
+                       datalen, gso_size);
       if (rv == SHRPX_ERR_SEND_BLOCKED) {
         on_send_blocked(faddr, ps.path.remote, ps.path.local, pi, data, datalen,
-                        max_udp_payload_size);
+                        gso_size);
       }
 
       ngtcp2_conn_update_pkt_tx_time(conn_, ts);
@@ -1875,7 +1877,7 @@ void Http3Upstream::on_send_blocked(const UpstreamAddr *faddr,
                                     const ngtcp2_addr &local_addr,
                                     const ngtcp2_pkt_info &pi,
                                     const uint8_t *data, size_t datalen,
-                                    size_t max_udp_payload_size) {
+                                    size_t gso_size) {
   assert(tx_.num_blocked || !tx_.send_blocked);
   assert(tx_.num_blocked < 2);
 
@@ -1892,7 +1894,7 @@ void Http3Upstream::on_send_blocked(const UpstreamAddr *faddr,
   p.pi = pi;
   p.data = data;
   p.datalen = datalen;
-  p.max_udp_payload_size = max_udp_payload_size;
+  p.gso_size = gso_size;
 }
 
 int Http3Upstream::send_blocked_packet() {
@@ -1905,7 +1907,7 @@ int Http3Upstream::send_blocked_packet() {
 
     rv = send_packet(p.faddr, &p.remote_addr.su.sa, p.remote_addr.len,
                      &p.local_addr.su.sa, p.local_addr.len, p.pi, p.data,
-                     p.datalen, p.max_udp_payload_size);
+                     p.datalen, p.gso_size);
     if (rv == SHRPX_ERR_SEND_BLOCKED) {
       signal_write_upstream_addr(p.faddr);
 
