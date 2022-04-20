@@ -107,15 +107,15 @@ int generate_quic_stateless_reset_token(uint8_t *token, const ngtcp2_cid &cid,
                                         const uint8_t *secret,
                                         size_t secretlen);
 
-int generate_retry_token(uint8_t *token, size_t &tokenlen, const sockaddr *sa,
-                         socklen_t salen, const ngtcp2_cid &retry_scid,
-                         const ngtcp2_cid &odcid, const uint8_t *secret,
-                         size_t secretlen);
+int generate_retry_token(uint8_t *token, size_t &tokenlen, uint32_t version,
+                         const sockaddr *sa, socklen_t salen,
+                         const ngtcp2_cid &retry_scid, const ngtcp2_cid &odcid,
+                         const uint8_t *secret, size_t secretlen);
 
 int verify_retry_token(ngtcp2_cid &odcid, const uint8_t *token, size_t tokenlen,
-                       const ngtcp2_cid &dcid, const sockaddr *sa,
-                       socklen_t salen, const uint8_t *secret,
-                       size_t secretlen);
+                       uint32_t version, const ngtcp2_cid &dcid,
+                       const sockaddr *sa, socklen_t salen,
+                       const uint8_t *secret, size_t secretlen);
 
 int generate_token(uint8_t *token, size_t &tokenlen, const sockaddr *sa,
                    size_t salen, const uint8_t *secret, size_t secretlen);

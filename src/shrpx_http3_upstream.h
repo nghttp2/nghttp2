@@ -110,7 +110,6 @@ public:
   int handle_error();
 
   int handle_expiry();
-  void reset_idle_timer();
   void reset_timer();
 
   int setup_httpconn();
@@ -148,7 +147,6 @@ public:
   int check_shutdown();
   int start_graceful_shutdown();
   int submit_goaway();
-  void idle_close();
   int send_packet(const UpstreamAddr *faddr, const sockaddr *remote_sa,
                   size_t remote_salen, const sockaddr *local_sa,
                   size_t local_salen, const ngtcp2_pkt_info &pi,
@@ -167,7 +165,6 @@ public:
 private:
   ClientHandler *handler_;
   ev_timer timer_;
-  ev_timer idle_timer_;
   ev_timer shutdown_timer_;
   ev_prepare prep_;
   int qlog_fd_;
@@ -177,7 +174,6 @@ private:
   uint8_t tls_alert_;
   nghttp3_conn *httpconn_;
   DownstreamQueue downstream_queue_;
-  bool idle_close_;
   bool retry_close_;
   std::vector<uint8_t> conn_close_;
 

@@ -50,22 +50,6 @@
 namespace shrpx {
 
 namespace {
-void idle_timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
-  auto upstream = static_cast<Http3Upstream *>(w->data);
-
-  if (LOG_ENABLED(INFO)) {
-    ULOG(INFO, upstream) << "QUIC idle timeout";
-  }
-
-  upstream->idle_close();
-
-  auto handler = upstream->get_client_handler();
-
-  delete handler;
-}
-} // namespace
-
-namespace {
 void timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
   auto upstream = static_cast<Http3Upstream *>(w->data);
 
@@ -125,7 +109,6 @@ Http3Upstream::Http3Upstream(ClientHandler *handler)
       httpconn_{nullptr},
       downstream_queue_{downstream_queue_size(handler->get_worker()),
                         !get_config()->http2_proxy},
-      idle_close_{false},
       retry_close_{false},
       tx_{
           .data = std::unique_ptr<uint8_t[]>(new uint8_t[64_k]),
@@ -134,13 +117,6 @@ Http3Upstream::Http3Upstream(ClientHandler *handler)
   timer_.data = this;
 
   ngtcp2_connection_close_error_default(&last_error_);
-
-  auto config = get_config();
-  auto &quicconf = config->quic;
-
-  ev_timer_init(&idle_timer_, idle_timeoutcb, 0.,
-                quicconf.upstream.timeout.idle);
-  idle_timer_.data = this;
 
   ev_timer_init(&shutdown_timer_, shutdown_timeout_cb, 0., 0.);
   shutdown_timer_.data = this;
@@ -155,7 +131,6 @@ Http3Upstream::~Http3Upstream() {
 
   ev_prepare_stop(loop, &prep_);
   ev_timer_stop(loop, &shutdown_timer_);
-  ev_timer_stop(loop, &idle_timer_);
   ev_timer_stop(loop, &timer_);
 
   nghttp3_conn_del(httpconn_);
@@ -862,14 +837,11 @@ int Http3Upstream::write_streams() {
                           prev_pi, data, datalen, gso_size);
 
           ngtcp2_conn_update_pkt_tx_time(conn_, ts);
-          reset_idle_timer();
 
           signal_write_upstream_addr(faddr);
 
           return 0;
         }
-
-        reset_idle_timer();
       }
 
       ngtcp2_conn_update_pkt_tx_time(conn_, ts);
@@ -888,7 +860,7 @@ int Http3Upstream::write_streams() {
       gso_size = nwrite;
     } else if (!ngtcp2_path_eq(&prev_ps.path, &ps.path) ||
                prev_pi.ecn != pi.ecn ||
-               static_cast<size_t>(nwrite) > gso_size) {
+               static_cast<size_t>(nwrite) != gso_size) {
       auto faddr = static_cast<UpstreamAddr *>(prev_ps.path.user_data);
       auto data = tx_.data.get();
       auto datalen = bufpos - data - nwrite;
@@ -926,12 +898,11 @@ int Http3Upstream::write_streams() {
       }
 
       ngtcp2_conn_update_pkt_tx_time(conn_, ts);
-      reset_idle_timer();
 
       return 0;
     }
 
-    if (++pktcnt == max_pktcnt || static_cast<size_t>(nwrite) < gso_size) {
+    if (++pktcnt == max_pktcnt) {
       auto faddr = static_cast<UpstreamAddr *>(ps.path.user_data);
       auto data = tx_.data.get();
       auto datalen = bufpos - data;
@@ -945,7 +916,6 @@ int Http3Upstream::write_streams() {
       }
 
       ngtcp2_conn_update_pkt_tx_time(conn_, ts);
-      reset_idle_timer();
 
       signal_write_upstream_addr(faddr);
 
@@ -964,7 +934,6 @@ int Http3Upstream::write_streams() {
                       0);
 
       ngtcp2_conn_update_pkt_tx_time(conn_, ts);
-      reset_idle_timer();
 
       signal_write_upstream_addr(faddr);
 
@@ -973,7 +942,6 @@ int Http3Upstream::write_streams() {
 
     if (++pktcnt == max_pktcnt) {
       ngtcp2_conn_update_pkt_tx_time(conn_, ts);
-      reset_idle_timer();
 
       signal_write_upstream_addr(faddr);
 
@@ -1508,7 +1476,9 @@ void Http3Upstream::on_handler_delete() {
     quic_conn_handler->remove_connection_id(cid);
   }
 
-  if (idle_close_ || retry_close_) {
+  if (retry_close_ ||
+      last_error_.type ==
+          NGTCP2_CONNECTION_CLOSE_ERROR_CODE_TYPE_TRANSPORT_IDLE_CLOSE) {
     return;
   }
 
@@ -1839,8 +1809,6 @@ int Http3Upstream::on_read(const UpstreamAddr *faddr,
     return handle_error();
   }
 
-  reset_idle_timer();
-
   return 0;
 }
 
@@ -1937,7 +1905,8 @@ void Http3Upstream::signal_write_upstream_addr(const UpstreamAddr *faddr) {
 }
 
 int Http3Upstream::handle_error() {
-  if (ngtcp2_conn_is_in_closing_period(conn_)) {
+  if (ngtcp2_conn_is_in_closing_period(conn_) ||
+      ngtcp2_conn_is_in_draining_period(conn_)) {
     return -1;
   }
 
@@ -2020,7 +1989,11 @@ int Http3Upstream::handle_expiry() {
 
   rv = ngtcp2_conn_handle_expiry(conn_, ts);
   if (rv != 0) {
-    ULOG(ERROR, this) << "ngtcp2_conn_handle_expiry: " << ngtcp2_strerror(rv);
+    if (rv == NGTCP2_ERR_IDLE_CLOSE) {
+      ULOG(INFO, this) << "Idle connection timeout";
+    } else {
+      ULOG(ERROR, this) << "ngtcp2_conn_handle_expiry: " << ngtcp2_strerror(rv);
+    }
     ngtcp2_connection_close_error_set_transport_error_liberr(&last_error_, rv,
                                                              nullptr, 0);
     return handle_error();
@@ -2029,26 +2002,19 @@ int Http3Upstream::handle_expiry() {
   return 0;
 }
 
-void Http3Upstream::reset_idle_timer() {
-  auto ts = quic_timestamp();
-  auto idle_ts = ngtcp2_conn_get_idle_expiry(conn_);
-
-  idle_timer_.repeat =
-      idle_ts > ts ? static_cast<ev_tstamp>(idle_ts - ts) / NGTCP2_SECONDS
-                   : 1e-9;
-
-  ev_timer_again(handler_->get_loop(), &idle_timer_);
-}
-
 void Http3Upstream::reset_timer() {
   auto ts = quic_timestamp();
   auto expiry_ts = ngtcp2_conn_get_expiry(conn_);
+  auto loop = handler_->get_loop();
 
-  timer_.repeat = expiry_ts > ts
-                      ? static_cast<ev_tstamp>(expiry_ts - ts) / NGTCP2_SECONDS
-                      : 1e-9;
+  if (expiry_ts <= ts) {
+    ev_feed_event(loop, &timer_, EV_TIMER);
+    return;
+  }
 
-  ev_timer_again(handler_->get_loop(), &timer_);
+  timer_.repeat = static_cast<ev_tstamp>(expiry_ts - ts) / NGTCP2_SECONDS;
+
+  ev_timer_again(loop, &timer_);
 }
 
 namespace {
@@ -2921,8 +2887,6 @@ int Http3Upstream::submit_goaway() {
 
   return 0;
 }
-
-void Http3Upstream::idle_close() { idle_close_ = true; }
 
 int Http3Upstream::open_qlog_file(const StringRef &dir,
                                   const ngtcp2_cid &scid) const {
