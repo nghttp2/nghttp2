@@ -786,7 +786,7 @@ int Client::write_quic() {
 
     if (pktcnt == 0) {
       gso_size = nwrite;
-    } else if (static_cast<size_t>(nwrite) > gso_size) {
+    } else if (static_cast<size_t>(nwrite) != gso_size) {
       auto data = quic.tx.data.get();
       auto datalen = bufpos - quic.tx.data.get() - nwrite;
       rv = write_udp(ps.path.remote.addr, ps.path.remote.addrlen, data, datalen,
@@ -808,7 +808,7 @@ int Client::write_quic() {
     }
 
     // Assume that the path does not change.
-    if (++pktcnt == max_pktcnt || static_cast<size_t>(nwrite) < gso_size) {
+    if (++pktcnt == max_pktcnt) {
       auto data = quic.tx.data.get();
       auto datalen = bufpos - quic.tx.data.get();
       rv = write_udp(ps.path.remote.addr, ps.path.remote.addrlen, data, datalen,

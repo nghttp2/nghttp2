@@ -225,8 +225,8 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
 
       switch (hd.token.base[0]) {
       case NGTCP2_CRYPTO_TOKEN_MAGIC_RETRY:
-        if (verify_retry_token(odcid, hd.token.base, hd.token.len, hd.dcid,
-                               &remote_addr.su.sa, remote_addr.len,
+        if (verify_retry_token(odcid, hd.token.base, hd.token.len, hd.version,
+                               hd.dcid, &remote_addr.su.sa, remote_addr.len,
                                qkm->secret.data(), qkm->secret.size()) != 0) {
           if (LOG_ENABLED(INFO)) {
             LOG(INFO) << "Failed to validate Retry token from remote="
@@ -473,7 +473,7 @@ int QUICConnectionHandler::send_retry(
   ngtcp2_cid_init(&idcid, ini_dcid, ini_dcidlen);
   ngtcp2_cid_init(&iscid, ini_scid, ini_scidlen);
 
-  if (generate_retry_token(token.data(), tokenlen, &remote_addr.su.sa,
+  if (generate_retry_token(token.data(), tokenlen, version, &remote_addr.su.sa,
                            remote_addr.len, retry_scid, idcid,
                            qkm.secret.data(), qkm.secret.size()) != 0) {
     return -1;

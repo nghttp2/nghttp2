@@ -270,16 +270,16 @@ int generate_quic_stateless_reset_token(uint8_t *token, const ngtcp2_cid &cid,
   return 0;
 }
 
-int generate_retry_token(uint8_t *token, size_t &tokenlen, const sockaddr *sa,
-                         socklen_t salen, const ngtcp2_cid &retry_scid,
-                         const ngtcp2_cid &odcid, const uint8_t *secret,
-                         size_t secretlen) {
+int generate_retry_token(uint8_t *token, size_t &tokenlen, uint32_t version,
+                         const sockaddr *sa, socklen_t salen,
+                         const ngtcp2_cid &retry_scid, const ngtcp2_cid &odcid,
+                         const uint8_t *secret, size_t secretlen) {
   auto t = std::chrono::duration_cast<std::chrono::nanoseconds>(
                std::chrono::system_clock::now().time_since_epoch())
                .count();
 
   auto stokenlen = ngtcp2_crypto_generate_retry_token(
-      token, secret, secretlen, sa, salen, &retry_scid, &odcid, t);
+      token, secret, secretlen, version, sa, salen, &retry_scid, &odcid, t);
   if (stokenlen < 0) {
     return -1;
   }
@@ -290,16 +290,16 @@ int generate_retry_token(uint8_t *token, size_t &tokenlen, const sockaddr *sa,
 }
 
 int verify_retry_token(ngtcp2_cid &odcid, const uint8_t *token, size_t tokenlen,
-                       const ngtcp2_cid &dcid, const sockaddr *sa,
-                       socklen_t salen, const uint8_t *secret,
-                       size_t secretlen) {
+                       uint32_t version, const ngtcp2_cid &dcid,
+                       const sockaddr *sa, socklen_t salen,
+                       const uint8_t *secret, size_t secretlen) {
 
   auto t = std::chrono::duration_cast<std::chrono::nanoseconds>(
                std::chrono::system_clock::now().time_since_epoch())
                .count();
 
   if (ngtcp2_crypto_verify_retry_token(&odcid, token, tokenlen, secret,
-                                       secretlen, sa, salen, &dcid,
+                                       secretlen, version, sa, salen, &dcid,
                                        10 * NGTCP2_SECONDS, t) != 0) {
     return -1;
   }
