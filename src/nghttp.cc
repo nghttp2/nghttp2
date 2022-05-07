@@ -122,7 +122,8 @@ Config::Config()
       hexdump(false),
       no_push(false),
       expect_continue(false),
-      verify_peer(true) {
+      verify_peer(true),
+      ktls(false) {
   nghttp2_option_new(&http2_option);
   nghttp2_option_set_peer_max_concurrent_streams(http2_option,
                                                  peer_max_concurrent_streams);
@@ -2280,6 +2281,12 @@ int communicate(
                     SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_COMPRESSION |
                     SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION;
 
+#ifdef SSL_OP_ENABLE_KTLS
+    if (config.ktls) {
+      ssl_opts |= SSL_OP_ENABLE_KTLS;
+    }
+#endif // SSL_OP_ENABLE_KTLS
+
     SSL_CTX_set_options(ssl_ctx, ssl_opts);
     SSL_CTX_set_mode(ssl_ctx, SSL_MODE_AUTO_RETRY);
     SSL_CTX_set_mode(ssl_ctx, SSL_MODE_RELEASE_BUFFERS);
@@ -2748,6 +2755,7 @@ Options:
   -y, --no-verify-peer
               Suppress  warning  on  server  certificate  verification
               failure.
+  --ktls      Enable ktls.
   --version   Display version information and exit.
   -h, --help  Display this help and exit.
 
@@ -2803,6 +2811,7 @@ int main(int argc, char **argv) {
         {"max-concurrent-streams", required_argument, &flag, 12},
         {"expect-continue", no_argument, &flag, 13},
         {"encoder-header-table-size", required_argument, &flag, 14},
+        {"ktls", no_argument, &flag, 15},
         {nullptr, 0, nullptr, 0}};
     int option_index = 0;
     int c =
@@ -3030,6 +3039,10 @@ int main(int argc, char **argv) {
         config.encoder_header_table_size = n;
         break;
       }
+      case 15:
+        // ktls option
+        config.ktls = true;
+        break;
       }
       break;
     default:

@@ -109,6 +109,7 @@ struct Connection {
   void prepare_server_handshake();
 
   int tls_handshake();
+  int tls_handshake_simple();
   int write_tls_pending_handshake();
 
   int check_http2_requirement();

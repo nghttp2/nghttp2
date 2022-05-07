@@ -199,6 +199,7 @@ OPTIONS = [
     "worker-process-grace-shutdown-period",
     "frontend-quic-initial-rtt",
     "require-http-scheme",
+    "tls-ktls",
 ]
 
 LOGVARS = [

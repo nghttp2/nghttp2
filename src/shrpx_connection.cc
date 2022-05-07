@@ -312,8 +312,8 @@ BIO_METHOD *create_bio_method() {
 void Connection::set_ssl(SSL *ssl) {
   tls.ssl = ssl;
 
-  if (proto != Proto::HTTP3) {
-    auto &tlsconf = get_config()->tls;
+  auto &tlsconf = get_config()->tls;
+  if (proto != Proto::HTTP3 && !tlsconf.session_cache.memcached.host.empty()) {
     auto bio = BIO_new(tlsconf.bio_method);
     BIO_set_data(bio, this);
     SSL_set_bio(tls.ssl, bio, bio);
@@ -335,6 +335,12 @@ bool read_buffer_full(DefaultPeekMemchunks &rbuf) {
 int Connection::tls_handshake() {
   wlimit.stopw();
   ev_timer_stop(loop, &wt);
+
+  auto &tlsconf = get_config()->tls;
+
+  if (tlsconf.session_cache.memcached.host.empty()) {
+    return tls_handshake_simple();
+  }
 
   std::array<uint8_t, 16_k> buf;
 
@@ -396,10 +402,6 @@ int Connection::tls_handshake() {
   int rv;
 
   ERR_clear_error();
-
-#if OPENSSL_1_1_1_API || defined(OPENSSL_IS_BORINGSSL)
-  auto &tlsconf = get_config()->tls;
-#endif // OPENSSL_1_1_1_API || defined(OPENSSL_IS_BORINGSSL)
 
 #if OPENSSL_1_1_1_API && !defined(OPENSSL_IS_BORINGSSL)
   if (!tls.server_handshake || tls.early_data_finish) {
@@ -586,6 +588,158 @@ int Connection::tls_handshake() {
 
   // Just in case
   tls.rbuf.disable_peek(true);
+
+  tls.initial_handshake_done = true;
+
+  return write_tls_pending_handshake();
+}
+
+int Connection::tls_handshake_simple() {
+  wlimit.stopw();
+  ev_timer_stop(loop, &wt);
+
+  if (tls.initial_handshake_done) {
+    return write_tls_pending_handshake();
+  }
+
+  if (SSL_get_fd(tls.ssl) == -1) {
+    SSL_set_fd(tls.ssl, fd);
+  }
+
+  int rv;
+#if OPENSSL_1_1_1_API || defined(OPENSSL_IS_BORINGSSL)
+  auto &tlsconf = get_config()->tls;
+  std::array<uint8_t, 16_k> buf;
+#endif // OPENSSL_1_1_1_API || defined(OPENSSL_IS_BORINGSSL)
+
+  ERR_clear_error();
+
+#if OPENSSL_1_1_1_API && !defined(OPENSSL_IS_BORINGSSL)
+  if (!tls.server_handshake || tls.early_data_finish) {
+    rv = SSL_do_handshake(tls.ssl);
+  } else {
+    for (;;) {
+      size_t nread;
+
+      rv = SSL_read_early_data(tls.ssl, buf.data(), buf.size(), &nread);
+      if (rv == SSL_READ_EARLY_DATA_ERROR) {
+        // If we have early data, and server sends ServerHello, assume
+        // that handshake is completed in server side, and start
+        // processing request.  If we don't exit handshake code here,
+        // server waits for EndOfEarlyData and Finished message from
+        // client, which voids the purpose of 0-RTT data.  The left
+        // over of handshake is done through write_tls or read_tls.
+        if (tlsconf.no_postpone_early_data && tls.earlybuf.rleft()) {
+          rv = 1;
+        }
+
+        break;
+      }
+
+      if (LOG_ENABLED(INFO)) {
+        LOG(INFO) << "tls: read early data " << nread << " bytes";
+      }
+
+      tls.earlybuf.append(buf.data(), nread);
+
+      if (rv == SSL_READ_EARLY_DATA_FINISH) {
+        if (LOG_ENABLED(INFO)) {
+          LOG(INFO) << "tls: read all early data; total "
+                    << tls.earlybuf.rleft() << " bytes";
+        }
+        tls.early_data_finish = true;
+        // The same reason stated above.
+        if (tlsconf.no_postpone_early_data && tls.earlybuf.rleft()) {
+          rv = 1;
+        } else {
+          ERR_clear_error();
+          rv = SSL_do_handshake(tls.ssl);
+        }
+        break;
+      }
+    }
+  }
+#else  // !(OPENSSL_1_1_1_API && !defined(OPENSSL_IS_BORINGSSL))
+  rv = SSL_do_handshake(tls.ssl);
+#endif // !(OPENSSL_1_1_1_API && !defined(OPENSSL_IS_BORINGSSL))
+
+  if (rv <= 0) {
+    auto err = SSL_get_error(tls.ssl, rv);
+    switch (err) {
+    case SSL_ERROR_WANT_READ:
+      if (read_buffer_full(tls.rbuf)) {
+        if (LOG_ENABLED(INFO)) {
+          LOG(INFO) << "tls: handshake message is too large";
+        }
+        return -1;
+      }
+      break;
+    case SSL_ERROR_WANT_WRITE:
+      wlimit.startw();
+      ev_timer_again(loop, &wt);
+      break;
+    case SSL_ERROR_SSL: {
+      if (LOG_ENABLED(INFO)) {
+        LOG(INFO) << "tls: handshake libssl error: "
+                  << ERR_error_string(ERR_get_error(), nullptr);
+      }
+      return SHRPX_ERR_NETWORK;
+    }
+    default:
+      if (LOG_ENABLED(INFO)) {
+        LOG(INFO) << "tls: handshake libssl error " << err;
+      }
+      return SHRPX_ERR_NETWORK;
+    }
+  }
+
+  if (rv != 1) {
+    if (LOG_ENABLED(INFO)) {
+      LOG(INFO) << "tls: handshake is still in progress";
+    }
+    return SHRPX_ERR_INPROGRESS;
+  }
+
+#ifdef OPENSSL_IS_BORINGSSL
+  if (!tlsconf.no_postpone_early_data && SSL_in_early_data(tls.ssl) &&
+      SSL_in_init(tls.ssl)) {
+    auto nread = SSL_read(tls.ssl, buf.data(), buf.size());
+    if (nread <= 0) {
+      auto err = SSL_get_error(tls.ssl, nread);
+      switch (err) {
+      case SSL_ERROR_WANT_READ:
+      case SSL_ERROR_WANT_WRITE:
+        break;
+      case SSL_ERROR_ZERO_RETURN:
+        return SHRPX_ERR_EOF;
+      case SSL_ERROR_SSL:
+        if (LOG_ENABLED(INFO)) {
+          LOG(INFO) << "SSL_read: "
+                    << ERR_error_string(ERR_get_error(), nullptr);
+        }
+        return SHRPX_ERR_NETWORK;
+      default:
+        if (LOG_ENABLED(INFO)) {
+          LOG(INFO) << "SSL_read: SSL_get_error returned " << err;
+        }
+        return SHRPX_ERR_NETWORK;
+      }
+    } else {
+      tls.earlybuf.append(buf.data(), nread);
+    }
+
+    if (SSL_in_init(tls.ssl)) {
+      return SHRPX_ERR_INPROGRESS;
+    }
+  }
+#endif // OPENSSL_IS_BORINGSSL
+
+  // Handshake was done
+
+  rv = check_http2_requirement();
+  if (rv != 0) {
+    return -1;
+  }
 
   tls.initial_handshake_done = true;
 
