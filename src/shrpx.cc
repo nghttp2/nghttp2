@@ -2921,6 +2921,7 @@ SSL/TLS:
               accepts.
               Default: )"
       << util::utos_unit(config->tls.max_early_data) << R"(
+  --tls-ktls  Enable ktls.
 
 HTTP/2:
   -c, --frontend-http2-max-concurrent-streams=<N>
@@ -4263,6 +4264,7 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_FRONTEND_QUIC_INITIAL_RTT.c_str(), required_argument, &flag,
          190},
         {SHRPX_OPT_REQUIRE_HTTP_SCHEME.c_str(), no_argument, &flag, 191},
+        {SHRPX_OPT_TLS_KTLS.c_str(), no_argument, &flag, 192},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -5171,6 +5173,10 @@ int main(int argc, char **argv) {
         // --require-http-scheme
         cmdcfgs.emplace_back(SHRPX_OPT_REQUIRE_HTTP_SCHEME,
                              StringRef::from_lit("yes"));
+        break;
+      case 192:
+        // --tls-ktls
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS_KTLS, StringRef::from_lit("yes"));
         break;
       default:
         break;

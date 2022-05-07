@@ -113,7 +113,8 @@ Config::Config()
       early_response(false),
       hexdump(false),
       echo_upload(false),
-      no_content_length(false) {}
+      no_content_length(false),
+      ktls(false) {}
 
 Config::~Config() {}
 
@@ -2121,6 +2122,12 @@ int HttpServer::run() {
                     SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION |
                     SSL_OP_SINGLE_ECDH_USE | SSL_OP_NO_TICKET |
                     SSL_OP_CIPHER_SERVER_PREFERENCE;
+
+#ifdef SSL_OP_ENABLE_KTLS
+    if (config_->ktls) {
+      ssl_opts |= SSL_OP_ENABLE_KTLS;
+    }
+#endif // SSL_OP_ENABLE_KTLS
 
     SSL_CTX_set_options(ssl_ctx, ssl_opts);
     SSL_CTX_set_mode(ssl_ctx, SSL_MODE_AUTO_RETRY);

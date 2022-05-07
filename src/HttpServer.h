@@ -82,6 +82,7 @@ struct Config {
   bool hexdump;
   bool echo_upload;
   bool no_content_length;
+  bool ktls;
   Config();
   ~Config();
 };

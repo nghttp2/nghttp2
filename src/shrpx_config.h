@@ -404,6 +404,7 @@ constexpr auto SHRPX_OPT_FRONTEND_QUIC_INITIAL_RTT =
     StringRef::from_lit("frontend-quic-initial-rtt");
 constexpr auto SHRPX_OPT_REQUIRE_HTTP_SCHEME =
     StringRef::from_lit("require-http-scheme");
+constexpr auto SHRPX_OPT_TLS_KTLS = StringRef::from_lit("tls-ktls");
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
@@ -783,6 +784,7 @@ struct TLSConfig {
   // true if forwarding requests included in TLS early data should not
   // be postponed until TLS handshake finishes.
   bool no_postpone_early_data;
+  bool ktls;
 };
 
 #ifdef ENABLE_HTTP3
@@ -1332,6 +1334,7 @@ enum {
   SHRPX_OPTID_SYSLOG_FACILITY,
   SHRPX_OPTID_TLS_DYN_REC_IDLE_TIMEOUT,
   SHRPX_OPTID_TLS_DYN_REC_WARMUP_THRESHOLD,
+  SHRPX_OPTID_TLS_KTLS,
   SHRPX_OPTID_TLS_MAX_EARLY_DATA,
   SHRPX_OPTID_TLS_MAX_PROTO_VERSION,
   SHRPX_OPTID_TLS_MIN_PROTO_VERSION,

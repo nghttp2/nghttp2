@@ -1903,6 +1903,11 @@ int option_lookup_token(const char *name, size_t namelen) {
         return SHRPX_OPTID_FASTOPEN;
       }
       break;
+    case 's':
+      if (util::strieq_l("tls-ktl", name, 7)) {
+        return SHRPX_OPTID_TLS_KTLS;
+      }
+      break;
     case 't':
       if (util::strieq_l("npn-lis", name, 7)) {
         return SHRPX_OPTID_NPN_LIST;
@@ -4187,6 +4192,9 @@ int parse_config(Config *config, int optid, const StringRef &opt,
   }
   case SHRPX_OPTID_REQUIRE_HTTP_SCHEME:
     config->http.require_http_scheme = util::strieq_l("yes", optarg);
+    return 0;
+  case SHRPX_OPTID_TLS_KTLS:
+    config->tls.ktls = util::strieq_l("yes", optarg);
     return 0;
   case SHRPX_OPTID_CONF:
     LOG(WARN) << "conf: ignored";

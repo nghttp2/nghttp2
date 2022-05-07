@@ -933,24 +933,30 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
     DIE();
   }
 
-  constexpr auto ssl_opts =
-      (SSL_OP_ALL & ~SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS) | SSL_OP_NO_SSLv2 |
-      SSL_OP_NO_SSLv3 | SSL_OP_NO_COMPRESSION |
-      SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION | SSL_OP_SINGLE_ECDH_USE |
-      SSL_OP_SINGLE_DH_USE |
-      SSL_OP_CIPHER_SERVER_PREFERENCE
+  auto ssl_opts = (SSL_OP_ALL & ~SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS) |
+                  SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_COMPRESSION |
+                  SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION |
+                  SSL_OP_SINGLE_ECDH_USE | SSL_OP_SINGLE_DH_USE |
+                  SSL_OP_CIPHER_SERVER_PREFERENCE
 #if OPENSSL_1_1_1_API && !defined(OPENSSL_IS_BORINGSSL)
-      // The reason for disabling built-in anti-replay in OpenSSL is
-      // that it only works if client gets back to the same server.
-      // The freshness check described in
-      // https://tools.ietf.org/html/rfc8446#section-8.3 is still
-      // performed.
-      | SSL_OP_NO_ANTI_REPLAY
+                  // The reason for disabling built-in anti-replay in
+                  // OpenSSL is that it only works if client gets back
+                  // to the same server.  The freshness check
+                  // described in
+                  // https://tools.ietf.org/html/rfc8446#section-8.3
+                  // is still performed.
+                  | SSL_OP_NO_ANTI_REPLAY
 #endif // OPENSSL_1_1_1_API && !defined(OPENSSL_IS_BORINGSSL)
       ;
 
   auto config = mod_config();
   auto &tlsconf = config->tls;
+
+#ifdef SSL_OP_ENABLE_KTLS
+  if (tlsconf.ktls) {
+    ssl_opts |= SSL_OP_ENABLE_KTLS;
+  }
+#endif // SSL_OP_ENABLE_KTLS
 
   SSL_CTX_set_options(ssl_ctx, ssl_opts | tlsconf.tls_proto_mask);
 
@@ -1700,12 +1706,17 @@ SSL_CTX *create_ssl_client_context(
     DIE();
   }
 
-  constexpr auto ssl_opts = (SSL_OP_ALL & ~SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS) |
-                            SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 |
-                            SSL_OP_NO_COMPRESSION |
-                            SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION;
+  auto ssl_opts = (SSL_OP_ALL & ~SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS) |
+                  SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_COMPRESSION |
+                  SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION;
 
   auto &tlsconf = get_config()->tls;
+
+#ifdef SSL_OP_ENABLE_KTLS
+  if (tlsconf.ktls) {
+    ssl_opts |= SSL_OP_ENABLE_KTLS;
+  }
+#endif // SSL_OP_ENABLE_KTLS
 
   SSL_CTX_set_options(ssl_ctx, ssl_opts | tlsconf.tls_proto_mask);
 

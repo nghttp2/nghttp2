@@ -110,7 +110,7 @@ jobs:
 
         git clone --depth 1 -b openssl-3.0.3+quic https://github.com/quictls/openssl
         cd openssl
-        ./config enable-tls1_3 --prefix=$PWD/build --libdir=$PWD/build/lib
+        ./config enable-tls1_3 enable-ktls --prefix=$PWD/build --libdir=$PWD/build/lib
         make -j$(nproc)
         make install_sw
     - name: Build nghttp3
