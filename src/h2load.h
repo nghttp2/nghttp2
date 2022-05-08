@@ -136,6 +136,8 @@ struct Config {
   bool no_udp_gso;
   // The maximum UDP datagram payload size to send.
   size_t max_udp_payload_size;
+  // Enable ktls.
+  bool ktls;
 
   Config();
   ~Config();
