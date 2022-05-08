@@ -128,7 +128,8 @@ Config::Config()
       unix_addr{},
       rps(0.),
       no_udp_gso(false),
-      max_udp_payload_size(0) {}
+      max_udp_payload_size(0),
+      ktls(false) {}
 
 Config::~Config() {
   if (addrs) {
@@ -564,7 +565,6 @@ int Client::make_socket(addrinfo *addr) {
         ssl = SSL_new(worker->ssl_ctx);
       }
 
-      SSL_set_fd(ssl, fd);
       SSL_set_connect_state(ssl);
     }
   }
@@ -1310,6 +1310,8 @@ int Client::connected() {
   ev_io_stop(worker->loop, &wev);
 
   if (ssl) {
+    SSL_set_fd(ssl, fd);
+
     readfn = &Client::tls_handshake;
     writefn = &Client::tls_handshake;
 
@@ -2280,6 +2282,7 @@ Options:
               Disable UDP GSO.
   --max-udp-payload-size=<SIZE>
               Specify the maximum outgoing UDP datagram payload size.
+  --ktls      Enable ktls.
   -v, --verbose
               Output debug information.
   --version   Display version information and exit.
@@ -2347,6 +2350,7 @@ int main(int argc, char **argv) {
         {"no-udp-gso", no_argument, &flag, 15},
         {"qlog-file-base", required_argument, &flag, 16},
         {"max-udp-payload-size", required_argument, &flag, 17},
+        {"ktls", no_argument, &flag, 18},
         {nullptr, 0, nullptr, 0}};
     int option_index = 0;
     auto c = getopt_long(argc, argv,
@@ -2647,6 +2651,10 @@ int main(int argc, char **argv) {
         config.max_udp_payload_size = n;
         break;
       }
+      case 18:
+        // --ktls
+        config.ktls = true;
+        break;
       }
       break;
     default:
@@ -2857,6 +2865,12 @@ int main(int argc, char **argv) {
   auto ssl_opts = (SSL_OP_ALL & ~SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS) |
                   SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_COMPRESSION |
                   SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION;
+
+#ifdef SSL_OP_ENABLE_KTLS
+  if (config.ktls) {
+    ssl_opts |= SSL_OP_ENABLE_KTLS;
+  }
+#endif // SSL_OP_ENABLE_KTLS
 
   SSL_CTX_set_options(ssl_ctx, ssl_opts);
   SSL_CTX_set_mode(ssl_ctx, SSL_MODE_AUTO_RETRY);
