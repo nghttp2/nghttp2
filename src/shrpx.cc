@@ -2921,7 +2921,8 @@ SSL/TLS:
               accepts.
               Default: )"
       << util::utos_unit(config->tls.max_early_data) << R"(
-  --tls-ktls  Enable ktls.
+  --tls-ktls  Enable   ktls.    For   server,  ktls   is   enable   if
+              --tls-session-cache-memcached is not configured.
 
 HTTP/2:
   -c, --frontend-http2-max-concurrent-streams=<N>
