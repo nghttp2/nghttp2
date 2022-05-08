@@ -150,6 +150,13 @@ void Connection::prepare_client_handshake() {
 }
 
 void Connection::prepare_server_handshake() {
+  auto &tlsconf = get_config()->tls;
+  if (proto != Proto::HTTP3 && !tlsconf.session_cache.memcached.host.empty()) {
+    auto bio = BIO_new(tlsconf.bio_method);
+    BIO_set_data(bio, this);
+    SSL_set_bio(tls.ssl, bio, bio);
+  }
+
   SSL_set_accept_state(tls.ssl);
   tls.server_handshake = true;
 }
@@ -312,13 +319,6 @@ BIO_METHOD *create_bio_method() {
 void Connection::set_ssl(SSL *ssl) {
   tls.ssl = ssl;
 
-  auto &tlsconf = get_config()->tls;
-  if (proto != Proto::HTTP3 && !tlsconf.session_cache.memcached.host.empty()) {
-    auto bio = BIO_new(tlsconf.bio_method);
-    BIO_set_data(bio, this);
-    SSL_set_bio(tls.ssl, bio, bio);
-  }
-
   SSL_set_app_data(tls.ssl, this);
 }
 
@@ -338,7 +338,7 @@ int Connection::tls_handshake() {
 
   auto &tlsconf = get_config()->tls;
 
-  if (tlsconf.session_cache.memcached.host.empty()) {
+  if (!tls.server_handshake || tlsconf.session_cache.memcached.host.empty()) {
     return tls_handshake_simple();
   }
 
@@ -387,7 +387,7 @@ int Connection::tls_handshake() {
 
     set_ssl(ssl);
 
-    SSL_set_accept_state(tls.ssl);
+    prepare_server_handshake();
 
     tls.handshake_state = TLSHandshakeState::NORMAL;
     break;
