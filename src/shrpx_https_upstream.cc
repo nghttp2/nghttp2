@@ -463,7 +463,9 @@ int htp_hdrs_completecb(llhttp_t *htp) {
     return 0;
   }
 
+#ifdef HAVE_MRUBY
   DownstreamConnection *dconn_ptr;
+#endif // HAVE_MRUBY
 
   for (;;) {
     auto dconn = handler->get_downstream_connection(rv, downstream);
