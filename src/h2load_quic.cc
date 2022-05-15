@@ -267,8 +267,11 @@ namespace {
 int add_handshake_data(SSL *ssl, OSSL_ENCRYPTION_LEVEL ossl_level,
                        const uint8_t *data, size_t len) {
   auto c = static_cast<Client *>(SSL_get_app_data(ssl));
-  c->quic_write_client_handshake(
-      ngtcp2_crypto_openssl_from_ossl_encryption_level(ossl_level), data, len);
+  if (c->quic_write_client_handshake(
+          ngtcp2_crypto_openssl_from_ossl_encryption_level(ossl_level), data,
+          len) != 0) {
+    return 0;
+  }
   return 1;
 }
 } // namespace
@@ -332,8 +335,11 @@ namespace {
 int add_handshake_data(SSL *ssl, ssl_encryption_level_t ssl_level,
                        const uint8_t *data, size_t len) {
   auto c = static_cast<Client *>(SSL_get_app_data(ssl));
-  c->quic_write_client_handshake(
-      ngtcp2_crypto_boringssl_from_ssl_encryption_level(ssl_level), data, len);
+  if (c->quic_write_client_handshake(
+          ngtcp2_crypto_boringssl_from_ssl_encryption_level(ssl_level), data,
+          len) != 0) {
+    return 0;
+  }
   return 1;
 }
 } // namespace
@@ -576,11 +582,20 @@ int Client::quic_on_tx_secret(ngtcp2_crypto_level level, const uint8_t *secret,
 
 void Client::quic_set_tls_alert(uint8_t alert) { quic.tls_alert = alert; }
 
-void Client::quic_write_client_handshake(ngtcp2_crypto_level level,
-                                         const uint8_t *data, size_t datalen) {
+int Client::quic_write_client_handshake(ngtcp2_crypto_level level,
+                                        const uint8_t *data, size_t datalen) {
+  int rv;
+
   assert(level < 2);
 
-  ngtcp2_conn_submit_crypto_data(quic.conn, level, data, datalen);
+  rv = ngtcp2_conn_submit_crypto_data(quic.conn, level, data, datalen);
+  if (rv != 0) {
+    std::cerr << "ngtcp2_conn_submit_crypto_data: " << ngtcp2_strerror(rv)
+              << std::endl;
+    return -1;
+  }
+
+  return 0;
 }
 
 void quic_pkt_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {

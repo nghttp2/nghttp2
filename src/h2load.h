@@ -501,8 +501,8 @@ struct Client {
                         size_t secretlen);
   void quic_set_tls_alert(uint8_t alert);
 
-  void quic_write_client_handshake(ngtcp2_crypto_level level,
-                                   const uint8_t *data, size_t datalen);
+  int quic_write_client_handshake(ngtcp2_crypto_level level,
+                                  const uint8_t *data, size_t datalen);
   int quic_pkt_timeout();
   void quic_restart_pkt_timer();
   void quic_write_qlog(const void *data, size_t datalen);
