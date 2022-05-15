@@ -100,7 +100,7 @@ jobs:
         git clone --depth 1 -b OpenSSL_1_1_1o+quic https://github.com/quictls/openssl
         cd openssl
         ./config --prefix=$PWD/build
-        make -j$(nproc)
+        make -j"$(nproc 2> /dev/null || sysctl -n hw.ncpu)"
         make install_sw
     - name: Build quictls/openssl v3.0.x
       if: matrix.http3 == 'http3' && matrix.openssl == 'openssl3'
@@ -111,7 +111,7 @@ jobs:
         git clone --depth 1 -b openssl-3.0.3+quic https://github.com/quictls/openssl
         cd openssl
         ./config enable-ktls --prefix=$PWD/build --libdir=$PWD/build/lib
-        make -j$(nproc)
+        make -j"$(nproc 2> /dev/null || sysctl -n hw.ncpu)"
         make install_sw
     - name: Build nghttp3
       if: matrix.http3 == 'http3'
@@ -120,7 +120,7 @@ jobs:
         cd nghttp3
         autoreconf -i
         ./configure --prefix=$PWD/build --enable-lib-only
-        make -j$(nproc) check
+        make -j"$(nproc 2> /dev/null || sysctl -n hw.ncpu)" check
         make install
     - name: Build ngtcp2
       if: matrix.http3 == 'http3'
@@ -129,7 +129,7 @@ jobs:
         cd ngtcp2
         autoreconf -i
         ./configure --prefix=$PWD/build --enable-lib-only PKG_CONFIG_PATH="../openssl/build/lib/pkgconfig"
-        make -j$(nproc) check
+        make -j"$(nproc 2> /dev/null || sysctl -n hw.ncpu)" check
         make install
     - name: Setup extra environment variables for HTTP/3
       if: matrix.http3 == 'http3'
