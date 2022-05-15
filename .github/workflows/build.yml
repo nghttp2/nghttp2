@@ -22,7 +22,7 @@ jobs:
           compiler: gcc
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Linux setup
       if: runner.os == 'Linux'
       run: |
@@ -186,7 +186,7 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Configure cmake
       run: |
         mkdir build
