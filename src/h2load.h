@@ -342,6 +342,7 @@ struct Client {
     ev_timer pkt_timer;
     ngtcp2_conn *conn;
     ngtcp2_connection_close_error last_error;
+    uint8_t tls_alert;
     bool close_requested;
     FILE *qlog_file;
 

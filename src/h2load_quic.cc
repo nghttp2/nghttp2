@@ -574,10 +574,7 @@ int Client::quic_on_tx_secret(ngtcp2_crypto_level level, const uint8_t *secret,
   return 0;
 }
 
-void Client::quic_set_tls_alert(uint8_t alert) {
-  ngtcp2_connection_close_error_set_transport_error_tls_alert(
-      &quic.last_error, alert, nullptr, 0);
-}
+void Client::quic_set_tls_alert(uint8_t alert) { quic.tls_alert = alert; }
 
 void Client::quic_write_client_handshake(ngtcp2_crypto_level level,
                                          const uint8_t *data, size_t datalen) {
@@ -656,8 +653,13 @@ int Client::read_quic() {
       std::cerr << "ngtcp2_conn_read_pkt: " << ngtcp2_strerror(rv) << std::endl;
 
       if (!quic.last_error.error_code) {
-        ngtcp2_connection_close_error_set_transport_error_liberr(
-            &quic.last_error, rv, nullptr, 0);
+        if (rv == NGTCP2_ERR_CRYPTO) {
+          ngtcp2_connection_close_error_set_transport_error_tls_alert(
+              &quic.last_error, quic.tls_alert, nullptr, 0);
+        } else {
+          ngtcp2_connection_close_error_set_transport_error_liberr(
+              &quic.last_error, rv, nullptr, 0);
+        }
       }
 
       return -1;
