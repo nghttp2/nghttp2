@@ -540,7 +540,7 @@ fi
 # ngtcp2 (for src)
 have_libngtcp2=no
 if test "x${request_libngtcp2}" != "xno"; then
-  PKG_CHECK_MODULES([LIBNGTCP2], [libngtcp2 >= 0.4.0], [have_libngtcp2=yes],
+  PKG_CHECK_MODULES([LIBNGTCP2], [libngtcp2 >= 0.5.0], [have_libngtcp2=yes],
                     [have_libngtcp2=no])
   if test "x${have_libngtcp2}" = "xno"; then
     AC_MSG_NOTICE($LIBNGTCP2_PKG_ERRORS)
@@ -557,7 +557,7 @@ have_libngtcp2_crypto_openssl=no
 if test "x${have_ssl_is_quic}" = "xyes" &&
    test "x${request_libngtcp2}" != "xno"; then
   PKG_CHECK_MODULES([LIBNGTCP2_CRYPTO_OPENSSL],
-                    [libngtcp2_crypto_openssl >= 0.4.0],
+                    [libngtcp2_crypto_openssl >= 0.5.0],
                     [have_libngtcp2_crypto_openssl=yes],
                     [have_libngtcp2_crypto_openssl=no])
   if test "x${have_libngtcp2_crypto_openssl}" = "xno"; then
