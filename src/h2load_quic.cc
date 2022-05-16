@@ -711,6 +711,8 @@ int Client::write_quic() {
   std::array<nghttp3_vec, 16> vec;
   size_t pktcnt = 0;
   auto max_udp_payload_size = ngtcp2_conn_get_max_udp_payload_size(quic.conn);
+  auto path_max_udp_payload_size =
+      ngtcp2_conn_get_path_max_udp_payload_size(quic.conn);
   size_t max_pktcnt =
 #ifdef UDP_SEGMENT
       worker->config->no_udp_gso
@@ -803,7 +805,9 @@ int Client::write_quic() {
 
     if (pktcnt == 0) {
       gso_size = nwrite;
-    } else if (static_cast<size_t>(nwrite) != gso_size) {
+    } else if (static_cast<size_t>(nwrite) > gso_size ||
+               (gso_size > path_max_udp_payload_size &&
+                static_cast<size_t>(nwrite) != gso_size)) {
       auto data = quic.tx.data.get();
       auto datalen = bufpos - quic.tx.data.get() - nwrite;
       rv = write_udp(ps.path.remote.addr, ps.path.remote.addrlen, data, datalen,
@@ -825,7 +829,7 @@ int Client::write_quic() {
     }
 
     // Assume that the path does not change.
-    if (++pktcnt == max_pktcnt) {
+    if (++pktcnt == max_pktcnt || static_cast<size_t>(nwrite) < gso_size) {
       auto data = quic.tx.data.get();
       auto datalen = bufpos - quic.tx.data.get();
       rv = write_udp(ps.path.remote.addr, ps.path.remote.addrlen, data, datalen,

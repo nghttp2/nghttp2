@@ -706,6 +706,10 @@ int Http3Upstream::on_write() {
 int Http3Upstream::write_streams() {
   std::array<nghttp3_vec, 16> vec;
   auto max_udp_payload_size = ngtcp2_conn_get_max_udp_payload_size(conn_);
+#ifdef UDP_SEGMENT
+  auto path_max_udp_payload_size =
+      ngtcp2_conn_get_path_max_udp_payload_size(conn_);
+#endif // UDP_SEGMENT
   size_t max_pktcnt =
       std::min(static_cast<size_t>(64_k), ngtcp2_conn_get_send_quantum(conn_)) /
       max_udp_payload_size;
@@ -860,7 +864,9 @@ int Http3Upstream::write_streams() {
       gso_size = nwrite;
     } else if (!ngtcp2_path_eq(&prev_ps.path, &ps.path) ||
                prev_pi.ecn != pi.ecn ||
-               static_cast<size_t>(nwrite) != gso_size) {
+               static_cast<size_t>(nwrite) > gso_size ||
+               (gso_size > path_max_udp_payload_size &&
+                static_cast<size_t>(nwrite) != gso_size)) {
       auto faddr = static_cast<UpstreamAddr *>(prev_ps.path.user_data);
       auto data = tx_.data.get();
       auto datalen = bufpos - data - nwrite;
@@ -902,7 +908,7 @@ int Http3Upstream::write_streams() {
       return 0;
     }
 
-    if (++pktcnt == max_pktcnt) {
+    if (++pktcnt == max_pktcnt || static_cast<size_t>(nwrite) < gso_size) {
       auto faddr = static_cast<UpstreamAddr *>(ps.path.user_data);
       auto data = tx_.data.get();
       auto datalen = bufpos - data;
