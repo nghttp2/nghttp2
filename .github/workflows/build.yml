@@ -166,14 +166,14 @@ jobs:
     - name: Build nghttp2 with autotools
       if: matrix.buildtool == 'autotools'
       run: |
-        make distcheck \
+        make -j"$(nproc 2> /dev/null || sysctl -n hw.ncpu)" distcheck \
           DISTCHECK_CONFIGURE_FLAGS="--with-mruby --with-neverbleed --with-libev --enable-werror $EXTRA_AUTOTOOLS_OPTS CPPFLAGS=\"$CPPFLAGS\" LDFLAGS=\"$LDFLAGS\""
     - name: Build nghttp2 with cmake
       if: matrix.buildtool == 'cmake'
       run: |
         cd $NGHTTP2_CMAKE_DIR
-        make
-        make check
+        make -j"$(nproc 2> /dev/null || sysctl -n hw.ncpu)"
+        make -j"$(nproc 2> /dev/null || sysctl -n hw.ncpu)" check
     - name: Integration test
       # Integration tests for nghttpx; autotools erases build
       # artifacts.
