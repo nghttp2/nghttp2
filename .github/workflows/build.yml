@@ -8,7 +8,7 @@ jobs:
 
     strategy:
       matrix:
-        os: [ubuntu-20.04, macos-11]
+        os: [ubuntu-22.04, macos-11]
         compiler: [gcc, clang]
         buildtool: [autotools, cmake]
         http3: [http3, no-http3]
@@ -27,8 +27,8 @@ jobs:
       if: runner.os == 'Linux'
       run: |
         sudo apt-get install \
-          g++-8 \
-          clang-10 \
+          g++-11 \
+          clang-12 \
           autoconf \
           automake \
           autotools-dev \
@@ -65,8 +65,8 @@ jobs:
     - name: Setup clang (Linux)
       if: runner.os == 'Linux' && matrix.compiler == 'clang'
       run: |
-        echo 'CC=clang-10' >> $GITHUB_ENV
-        echo 'CXX=clang++-10' >> $GITHUB_ENV
+        echo 'CC=clang-12' >> $GITHUB_ENV
+        echo 'CXX=clang++-12' >> $GITHUB_ENV
     - name: Setup clang (MacOS)
       if: runner.os == 'macOS' && matrix.compiler == 'clang'
       run: |
@@ -75,8 +75,8 @@ jobs:
     - name: Setup gcc (Linux)
       if: runner.os == 'Linux' && matrix.compiler == 'gcc'
       run: |
-        echo 'CC=gcc-8' >> $GITHUB_ENV
-        echo 'CXX=g++-8' >> $GITHUB_ENV
+        echo 'CC=gcc-11' >> $GITHUB_ENV
+        echo 'CXX=g++-11' >> $GITHUB_ENV
     - name: Setup gcc (MacOS)
       if: runner.os == 'macOS' && matrix.compiler == 'gcc'
       run: |
