@@ -560,7 +560,7 @@ loop:
 			var status int
 			status, err = strconv.Atoi(sr.header.Get(":status"))
 			if err != nil {
-				return res, fmt.Errorf("Error parsing status code: %v", err)
+				return res, fmt.Errorf("Error parsing status code: %w", err)
 			}
 			sr.status = status
 			if f.StreamEnded() {
