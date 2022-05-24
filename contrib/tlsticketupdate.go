@@ -30,9 +30,10 @@ import (
 	"encoding/binary"
 	"flag"
 	"fmt"
-	"github.com/bradfitz/gomemcache/memcache"
 	"log"
 	"time"
+
+	"github.com/bradfitz/gomemcache/memcache"
 )
 
 func makeKey(len int) []byte {

@@ -7,10 +7,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/tatsuhiro-t/go-nghttp2"
-	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/hpack"
-	"golang.org/x/net/websocket"
 	"io"
 	"net"
 	"net/http"
@@ -24,6 +20,11 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
+	"github.com/tatsuhiro-t/go-nghttp2"
+	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/hpack"
+	"golang.org/x/net/websocket"
 )
 
 const (
