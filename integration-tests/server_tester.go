@@ -61,46 +61,37 @@ type serverTester struct {
 	errCh         chan error
 }
 
-// newServerTester creates test context for plain TCP frontend
-// connection.
-func newServerTester(args []string, t *testing.T, handler http.HandlerFunc) *serverTester {
-	return newServerTesterInternal(args, t, handler, false, serverPort, nil)
+type options struct {
+	// args is the additional arguments to nghttpx.
+	args []string
+	// handler is the handler to handle the request.  It defaults
+	// to noopHandler.
+	handler http.HandlerFunc
+	// connectPort is the server side port where client connection
+	// is made.  It defaults to serverPort.
+	connectPort int
+	// tls, if set to true, sets up TLS frontend connection.
+	tls bool
+	// tlsConfig is the client side TLS configuration that is used
+	// when tls is true.
+	tlsConfig *tls.Config
 }
 
-func newServerTesterConnectPort(args []string, t *testing.T, handler http.HandlerFunc, port int) *serverTester {
-	return newServerTesterInternal(args, t, handler, false, port, nil)
-}
+// newServerTester creates test context.
+func newServerTester(t *testing.T, opts options) *serverTester {
+	if opts.handler == nil {
+		opts.handler = noopHandler
+	}
+	if opts.connectPort == 0 {
+		opts.connectPort = serverPort
+	}
 
-func newServerTesterHandler(args []string, t *testing.T, handler http.Handler) *serverTester {
-	return newServerTesterInternal(args, t, handler, false, serverPort, nil)
-}
+	ts := httptest.NewUnstartedServer(opts.handler)
 
-// newServerTester creates test context for TLS frontend connection.
-func newServerTesterTLS(args []string, t *testing.T, handler http.HandlerFunc) *serverTester {
-	return newServerTesterInternal(args, t, handler, true, serverPort, nil)
-}
-
-func newServerTesterTLSConnectPort(args []string, t *testing.T, handler http.HandlerFunc, port int) *serverTester {
-	return newServerTesterInternal(args, t, handler, true, port, nil)
-}
-
-// newServerTester creates test context for TLS frontend connection
-// with given clientConfig
-func newServerTesterTLSConfig(args []string, t *testing.T, handler http.HandlerFunc, clientConfig *tls.Config) *serverTester {
-	return newServerTesterInternal(args, t, handler, true, serverPort, clientConfig)
-}
-
-// newServerTesterInternal creates test context.  If frontendTLS is
-// true, set up TLS frontend connection.  connectPort is the server
-// side port where client connection is made.
-func newServerTesterInternal(src_args []string, t *testing.T, handler http.Handler, frontendTLS bool, connectPort int, clientConfig *tls.Config) *serverTester {
-	ts := httptest.NewUnstartedServer(handler)
-
-	args := []string{}
-
+	var args []string
 	var backendTLS, dns, externalDNS, acceptProxyProtocol, redirectIfNotTLS, affinityCookie, alpnH1 bool
 
-	for _, k := range src_args {
+	for _, k := range opts.args {
 		switch k {
 		case "--http2-bridge":
 			backendTLS = true
@@ -134,7 +125,7 @@ func newServerTesterInternal(src_args []string, t *testing.T, handler http.Handl
 		ts.Start()
 	}
 	scheme := "http"
-	if frontendTLS {
+	if opts.tls {
 		scheme = "https"
 		args = append(args, testDir+"/server.key", testDir+"/server.crt")
 	}
@@ -174,7 +165,7 @@ func newServerTesterInternal(src_args []string, t *testing.T, handler http.Handl
 	}
 
 	noTLS := ";no-tls"
-	if frontendTLS {
+	if opts.tls {
 		noTLS = ""
 	}
 
@@ -186,7 +177,7 @@ func newServerTesterInternal(src_args []string, t *testing.T, handler http.Handl
 	args = append(args, fmt.Sprintf("-f127.0.0.1,%v%v%v", serverPort, noTLS, proxyProto), b,
 		"--errorlog-file="+logDir+"/log.txt", "-LINFO")
 
-	authority := fmt.Sprintf("127.0.0.1:%v", connectPort)
+	authority := fmt.Sprintf("127.0.0.1:%v", opts.connectPort)
 
 	st := &serverTester{
 		cmd:          exec.Command(serverBin, args...),
@@ -214,12 +205,12 @@ func newServerTesterInternal(src_args []string, t *testing.T, handler http.Handl
 
 		var conn net.Conn
 		var err error
-		if frontendTLS {
+		if opts.tls {
 			var tlsConfig *tls.Config
-			if clientConfig == nil {
+			if opts.tlsConfig == nil {
 				tlsConfig = new(tls.Config)
 			} else {
-				tlsConfig = clientConfig
+				tlsConfig = opts.tlsConfig.Clone()
 			}
 			tlsConfig.InsecureSkipVerify = true
 			if alpnH1 {
@@ -239,7 +230,7 @@ func newServerTesterInternal(src_args []string, t *testing.T, handler http.Handl
 			}
 			continue
 		}
-		if frontendTLS {
+		if opts.tls {
 			tlsConn := conn.(*tls.Conn)
 			cs := tlsConn.ConnectionState()
 			if !cs.NegotiatedProtocolIsMutual {
