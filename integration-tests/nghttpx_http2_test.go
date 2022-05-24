@@ -8,7 +8,6 @@ import (
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/hpack"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"regexp"
@@ -601,7 +600,7 @@ func TestH2H1ChunkedRequestBody(t *testing.T) {
 		if got := fmt.Sprint(r.TransferEncoding); got != want {
 			t.Errorf("Transfer-Encoding: %v; want %v", got, want)
 		}
-		body, err := ioutil.ReadAll(r.Body)
+		body, err := io.ReadAll(r.Body)
 		if err != nil {
 			t.Fatalf("Error reading r.body: %v", err)
 		}

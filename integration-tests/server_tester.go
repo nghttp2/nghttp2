@@ -12,7 +12,6 @@ import (
 	"golang.org/x/net/http2/hpack"
 	"golang.org/x/net/websocket"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -430,7 +429,7 @@ func (st *serverTester) http1(rp requestParam) (*serverResponse, error) {
 	if err != nil {
 		return nil, err
 	}
-	respBody, err := ioutil.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -664,7 +663,7 @@ func cloneHeader(h http.Header) http.Header {
 }
 
 func noopHandler(w http.ResponseWriter, r *http.Request) {
-	ioutil.ReadAll(r.Body)
+	io.ReadAll(r.Body)
 }
 
 type APIResponse struct {
