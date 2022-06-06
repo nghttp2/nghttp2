@@ -51,8 +51,13 @@
 #include <openssl/err.h>
 
 #ifdef ENABLE_HTTP3
-#  include <ngtcp2/ngtcp2.h>
-#endif // ENABLE_HTTP3
+#  ifdef HAVE_LIBNGTCP2_CRYPTO_OPENSSL
+#    include <ngtcp2/ngtcp2_crypto_openssl.h>
+#  endif // HAVE_LIBNGTCP2_CRYPTO_OPENSSL
+#  ifdef HAVE_LIBNGTCP2_CRYPTO_BORINGSSL
+#    include <ngtcp2/ngtcp2_crypto_boringssl.h>
+#  endif // HAVE_LIBNGTCP2_CRYPTO_BORINGSSL
+#endif   // ENABLE_HTTP3
 
 #include "url-parser/url_parser.h"
 
@@ -724,12 +729,17 @@ void Client::disconnect() {
   ev_io_stop(worker->loop, &wev);
   ev_io_stop(worker->loop, &rev);
   if (ssl) {
-    SSL_set_shutdown(ssl, SSL_get_shutdown(ssl) | SSL_RECEIVED_SHUTDOWN);
-    ERR_clear_error();
-
-    if (SSL_shutdown(ssl) != 1) {
+    if (config.is_quic()) {
       SSL_free(ssl);
       ssl = nullptr;
+    } else {
+      SSL_set_shutdown(ssl, SSL_get_shutdown(ssl) | SSL_RECEIVED_SHUTDOWN);
+      ERR_clear_error();
+
+      if (SSL_shutdown(ssl) != 1) {
+        SSL_free(ssl);
+        ssl = nullptr;
+      }
     }
   }
   if (fd != -1) {
@@ -2878,9 +2888,21 @@ int main(int argc, char **argv) {
 
   if (config.is_quic()) {
 #ifdef ENABLE_HTTP3
-    SSL_CTX_set_min_proto_version(ssl_ctx, TLS1_3_VERSION);
-    SSL_CTX_set_max_proto_version(ssl_ctx, TLS1_3_VERSION);
-#endif // ENABLE_HTTP3
+#  ifdef HAVE_LIBNGTCP2_CRYPTO_OPENSSL
+    if (ngtcp2_crypto_openssl_configure_client_context(ssl_ctx) != 0) {
+      std::cerr << "ngtcp2_crypto_openssl_configure_client_context failed"
+                << std::endl;
+      exit(EXIT_FAILURE);
+    }
+#  endif // HAVE_LIBNGTCP2_CRYPTO_OPENSSL
+#  ifdef HAVE_LIBNGTCP2_CRYPTO_BORINGSSL
+    if (ngtcp2_crypto_boringssl_configure_client_context(ssl_ctx) != 0) {
+      std::cerr << "ngtcp2_crypto_boringssl_configure_client_context failed"
+                << std::endl;
+      exit(EXIT_FAILURE);
+    }
+#  endif // HAVE_LIBNGTCP2_CRYPTO_BORINGSSL
+#endif   // ENABLE_HTTP3
   } else if (nghttp2::tls::ssl_ctx_set_proto_versions(
                  ssl_ctx, nghttp2::tls::NGHTTP2_TLS_MIN_VERSION,
                  nghttp2::tls::NGHTTP2_TLS_MAX_VERSION) != 0) {

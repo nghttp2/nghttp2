@@ -33,6 +33,10 @@
 
 #include <openssl/ssl.h>
 
+#ifdef ENABLE_HTTP3
+#  include <ngtcp2/ngtcp2_crypto.h>
+#endif // ENABLE_HTTP3
+
 #include "shrpx_rate_limit.h"
 #include "shrpx_error.h"
 #include "memchunk.h"
@@ -155,6 +159,10 @@ struct Connection {
   // Returns true if read timer expired.
   bool expired_rt();
 
+#ifdef ENABLE_HTTP3
+  // This must be the first member of Connection.
+  ngtcp2_crypto_conn_ref conn_ref;
+#endif // ENABLE_HTTP3
   TLSConnection tls;
   ev_io wev;
   ev_io rev;
@@ -177,6 +185,11 @@ struct Connection {
   // Timeout for read timer |rt|.
   ev_tstamp read_timeout;
 };
+
+#ifdef ENABLE_HTTP3
+static_assert(std::is_standard_layout<Connection>::value,
+              "Conneciton is not standard layout");
+#endif // ENABLE_HTTP3
 
 // Creates BIO_method shared by all SSL objects.
 BIO_METHOD *create_bio_method();

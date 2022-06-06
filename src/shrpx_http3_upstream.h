@@ -97,16 +97,6 @@ public:
 
   int write_streams();
 
-  int on_rx_secret(ngtcp2_crypto_level level, const uint8_t *secret,
-                   size_t secretlen);
-  int on_tx_secret(ngtcp2_crypto_level level, const uint8_t *secret,
-                   size_t secretlen);
-
-  int add_crypto_data(ngtcp2_crypto_level level, const uint8_t *data,
-                      size_t datalen);
-
-  void set_tls_alert(uint8_t alert);
-
   int handle_error();
 
   int handle_expiry();
@@ -162,6 +152,8 @@ public:
   int send_blocked_packet();
   void signal_write_upstream_addr(const UpstreamAddr *faddr);
 
+  ngtcp2_conn *get_conn() const;
+
 private:
   ClientHandler *handler_;
   ev_timer timer_;
@@ -171,7 +163,6 @@ private:
   ngtcp2_cid hashed_scid_;
   ngtcp2_conn *conn_;
   ngtcp2_connection_close_error last_error_;
-  uint8_t tls_alert_;
   nghttp3_conn *httpconn_;
   DownstreamQueue downstream_queue_;
   bool retry_close_;
