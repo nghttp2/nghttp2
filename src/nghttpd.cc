@@ -179,6 +179,8 @@ Options:
   --no-content-length
               Don't send content-length header field.
   --ktls      Enable ktls.
+  --no-rfc7540-pri
+              Disable RFC7540 priorities.
   --version   Display version information and exit.
   -h, --help  Display this help and exit.
 
@@ -230,6 +232,7 @@ int main(int argc, char **argv) {
         {"no-content-length", no_argument, &flag, 10},
         {"encoder-header-table-size", required_argument, &flag, 11},
         {"ktls", no_argument, &flag, 12},
+        {"no-rfc7540-pri", no_argument, &flag, 13},
         {nullptr, 0, nullptr, 0}};
     int option_index = 0;
     int c = getopt_long(argc, argv, "DVb:c:d:ehm:n:p:va:w:W:", long_options,
@@ -412,6 +415,10 @@ int main(int argc, char **argv) {
       case 12:
         // tls option
         config.ktls = true;
+        break;
+      case 13:
+        // no-rfc7540-pri option
+        config.no_rfc7540_pri = true;
         break;
       }
       break;

@@ -123,7 +123,8 @@ Config::Config()
       no_push(false),
       expect_continue(false),
       verify_peer(true),
-      ktls(false) {
+      ktls(false),
+      no_rfc7540_pri(false) {
   nghttp2_option_new(&http2_option);
   nghttp2_option_set_peer_max_concurrent_streams(http2_option,
                                                  peer_max_concurrent_streams);
@@ -932,6 +933,12 @@ size_t populate_settings(nghttp2_settings_entry *iv) {
   if (config.no_push) {
     iv[niv].settings_id = NGHTTP2_SETTINGS_ENABLE_PUSH;
     iv[niv].value = 0;
+    ++niv;
+  }
+
+  if (config.no_rfc7540_pri) {
+    iv[niv].settings_id = NGHTTP2_SETTINGS_NO_RFC7540_PRIORITIES;
+    iv[niv].value = 1;
     ++niv;
   }
 
@@ -2757,6 +2764,8 @@ Options:
               Suppress  warning  on  server  certificate  verification
               failure.
   --ktls      Enable ktls.
+  --no-rfc7540-pri
+              Disable RFC7540 priorities.
   --version   Display version information and exit.
   -h, --help  Display this help and exit.
 
@@ -2813,6 +2822,7 @@ int main(int argc, char **argv) {
         {"expect-continue", no_argument, &flag, 13},
         {"encoder-header-table-size", required_argument, &flag, 14},
         {"ktls", no_argument, &flag, 15},
+        {"no-rfc7540-pri", no_argument, &flag, 16},
         {nullptr, 0, nullptr, 0}};
     int option_index = 0;
     int c =
@@ -3043,6 +3053,10 @@ int main(int argc, char **argv) {
       case 15:
         // ktls option
         config.ktls = true;
+        break;
+      case 16:
+        // no-rfc7540-pri option
+        config.no_rfc7540_pri = true;
         break;
       }
       break;

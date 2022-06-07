@@ -79,6 +79,8 @@ const char *strsettingsid(int32_t id) {
     return "SETTINGS_MAX_HEADER_LIST_SIZE";
   case NGHTTP2_SETTINGS_ENABLE_CONNECT_PROTOCOL:
     return "SETTINGS_ENABLE_CONNECT_PROTOCOL";
+  case NGHTTP2_SETTINGS_NO_RFC7540_PRIORITIES:
+    return "SETTINGS_NO_RFC7540_PRIORITIES";
   default:
     return "UNKNOWN";
   }

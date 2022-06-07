@@ -162,6 +162,7 @@ void test_nghttp2_session_removed_closed_stream(void);
 void test_nghttp2_session_pause_data(void);
 void test_nghttp2_session_no_closed_streams(void);
 void test_nghttp2_session_set_stream_user_data(void);
+void test_nghttp2_session_no_rfc7540_priorities(void);
 void test_nghttp2_http_mandatory_headers(void);
 void test_nghttp2_http_content_length(void);
 void test_nghttp2_http_content_length_mismatch(void);

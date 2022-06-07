@@ -165,6 +165,7 @@ typedef struct {
   uint32_t max_frame_size;
   uint32_t max_header_list_size;
   uint32_t enable_connect_protocol;
+  uint32_t no_rfc7540_priorities;
 } nghttp2_settings_storage;
 
 typedef enum {
@@ -202,6 +203,9 @@ struct nghttp2_session {
      response) frame, which are subject to
      SETTINGS_MAX_CONCURRENT_STREAMS limit. */
   nghttp2_outbound_queue ob_syn;
+  /* Queue for DATA frames which is used when
+     SETTINGS_NO_RFC7540_PRIORITIES is enabled. */
+  nghttp2_pq ob_data;
   nghttp2_active_outbound_item aob;
   nghttp2_inbound_frame iframe;
   nghttp2_hd_deflater hd_deflater;
@@ -227,6 +231,9 @@ struct nghttp2_session {
   /* Queue of In-flight SETTINGS values.  SETTINGS bearing ACK is not
      considered as in-flight. */
   nghttp2_inflight_settings *inflight_settings_head;
+  /* Sequential number across all streams to process streams in
+     FIFO. */
+  uint64_t stream_seq;
   /* The number of outgoing streams. This will be capped by
      remote_settings.max_concurrent_streams. */
   size_t num_outgoing_streams;
@@ -328,6 +335,9 @@ struct nghttp2_session {
   /* Unacked local ENABLE_CONNECT_PROTOCOL value.  We use this to
      accept :protocol header field before SETTINGS_ACK is received. */
   uint8_t pending_enable_connect_protocol;
+  /* Unacked local SETTINGS_NO_RFC7540_PRIORITIES value, which is
+     effective before it is acknowledged. */
+  uint8_t pending_no_rfc7540_priorities;
   /* Nonzero if the session is server side. */
   uint8_t server;
   /* Flags indicating GOAWAY is sent and/or received. The flags are
