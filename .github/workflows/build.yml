@@ -18,6 +18,9 @@ jobs:
           openssl: openssl3
         - os: macos-11
           compiler: gcc
+        - # disable macos cmake because of include path issue
+          os: macos-11
+          buildtool: cmake
 
     runs-on: ${{ matrix.os }}
 
