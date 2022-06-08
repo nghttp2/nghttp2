@@ -44,13 +44,13 @@ using namespace nghttp2;
 
 namespace shrpx {
 
-#if !LIBRESSL_2_7_API && !OPENSSL_1_1_API
+#if !LIBRESSL_3_5_API && !LIBRESSL_2_7_API && !OPENSSL_1_1_API
 
 void *BIO_get_data(BIO *bio) { return bio->ptr; }
 void BIO_set_data(BIO *bio, void *ptr) { bio->ptr = ptr; }
 void BIO_set_init(BIO *bio, int init) { bio->init = init; }
 
-#endif // !LIBRESSL_2_7_API && !OPENSSL_1_1_API
+#endif // !LIBRESSL_3_5_API && !LIBRESSL_2_7_API && !OPENSSL_1_1_API
 
 Connection::Connection(struct ev_loop *loop, int fd, SSL *ssl,
                        MemchunkPool *mcpool, ev_tstamp write_timeout,
@@ -259,14 +259,14 @@ long shrpx_bio_ctrl(BIO *b, int cmd, long num, void *ptr) {
 
 namespace {
 int shrpx_bio_create(BIO *b) {
-#if OPENSSL_1_1_API
+#if OPENSSL_1_1_API || LIBRESSL_3_5_API
   BIO_set_init(b, 1);
-#else  // !OPENSSL_1_1_API
+#else  // !OPENSSL_1_1_API && !LIBRESSL_3_5_API
   b->init = 1;
   b->num = 0;
   b->ptr = nullptr;
   b->flags = 0;
-#endif // !OPENSSL_1_1_API
+#endif // !OPENSSL_1_1_API && !LIBRESSL_3_5_API
   return 1;
 }
 } // namespace
@@ -277,17 +277,17 @@ int shrpx_bio_destroy(BIO *b) {
     return 0;
   }
 
-#if !OPENSSL_1_1_API
+#if !OPENSSL_1_1_API && !LIBRESSL_3_5_API
   b->ptr = nullptr;
   b->init = 0;
   b->flags = 0;
-#endif // !OPENSSL_1_1_API
+#endif // !OPENSSL_1_1_API && !LIBRESSL_3_5_API
 
   return 1;
 }
 } // namespace
 
-#if OPENSSL_1_1_API
+#if OPENSSL_1_1_API || LIBRESSL_3_5_API
 
 BIO_METHOD *create_bio_method() {
   auto meth = BIO_meth_new(BIO_TYPE_FD, "nghttpx-bio");
@@ -302,7 +302,7 @@ BIO_METHOD *create_bio_method() {
   return meth;
 }
 
-#else // !OPENSSL_1_1_API
+#else // !OPENSSL_1_1_API && !LIBRESSL_3_5_API
 
 BIO_METHOD *create_bio_method() {
   static auto meth = new BIO_METHOD{
@@ -314,7 +314,7 @@ BIO_METHOD *create_bio_method() {
   return meth;
 }
 
-#endif // !OPENSSL_1_1_API
+#endif // !OPENSSL_1_1_API && !LIBRESSL_3_5_API
 
 void Connection::set_ssl(SSL *ssl) {
   tls.ssl = ssl;
