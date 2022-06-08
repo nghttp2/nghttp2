@@ -150,8 +150,18 @@ jobs:
       run: |
         autoreconf -i
         ./configure
-    - name: Configure cmake
-      if: matrix.buildtool == 'cmake'
+    - name: Configure cmake (Linux)
+      if: matrix.buildtool == 'cmake' && runner.os == 'Linux'
+      run: |
+        make dist
+        VERSION=$(grep PACKAGE_VERSION config.h | cut -d' ' -f3 | tr -d '"')
+        tar xf nghttp2-$VERSION.tar.gz
+        cd nghttp2-$VERSION
+        echo 'NGHTTP2_CMAKE_DIR='"$PWD" >> $GITHUB_ENV
+
+        cmake -DENABLE_WERROR=1 -DWITH_MRUBY=1 -DWITH_NEVERBLEED=1 -DENABLE_APP=1 $EXTRA_CMAKE_OPTS -DCPPFLAGS="$CPPFLAGS" -DLDFLAGS="$LDFLAGS" .
+    - name: Configure cmake (MacOS)
+      if: matrix.buildtool == 'cmake' && runner.os == 'macOS'
       run: |
         make dist
         VERSION=$(grep PACKAGE_VERSION config.h | cut -d' ' -f3 | tr -d '"')
@@ -162,12 +172,17 @@ jobs:
         # This fixes infamous 'stdio.h not found' error.
         echo 'SDKROOT='"$(xcrun --sdk macosx --show-sdk-path)" >> $GITHUB_ENV
 
-        cmake -DENABLE_WERROR=1 -DWITH_MRUBY=1 -DWITH_NEVERBLEED=1 -DENABLE_APP=1 $EXTRA_CMAKE_OPTS -DCPPFLAGS="$CPPFLAGS" -DLDFLAGS="$LDFLAGS" .
-    - name: Build nghttp2 with autotools
-      if: matrix.buildtool == 'autotools'
+        cmake -DENABLE_WERROR=1 -DWITH_MRUBY=1 -DENABLE_APP=1 $EXTRA_CMAKE_OPTS -DCPPFLAGS="$CPPFLAGS" -DLDFLAGS="$LDFLAGS" .
+    - name: Build nghttp2 with autotools (Linux)
+      if: matrix.buildtool == 'autotools' && runner.os == 'Linux'
       run: |
-        make -j"$(nproc 2> /dev/null || sysctl -n hw.ncpu)" distcheck \
+        make -j"$(nproc)" distcheck \
           DISTCHECK_CONFIGURE_FLAGS="--with-mruby --with-neverbleed --with-libev --enable-werror $EXTRA_AUTOTOOLS_OPTS CPPFLAGS=\"$CPPFLAGS\" LDFLAGS=\"$LDFLAGS\""
+    - name: Build nghttp2 with autotools (MacOS)
+      if: matrix.buildtool == 'autotools' && runner.os == 'macOS'
+      run: |
+        make -j"$(sysctl -n hw.ncpu)" distcheck \
+          DISTCHECK_CONFIGURE_FLAGS="--with-mruby --with-libev --enable-werror $EXTRA_AUTOTOOLS_OPTS CPPFLAGS=\"$CPPFLAGS\" LDFLAGS=\"$LDFLAGS\""
     - name: Build nghttp2 with cmake
       if: matrix.buildtool == 'cmake'
       run: |
