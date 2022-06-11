@@ -595,11 +595,7 @@ static int session_new(nghttp2_session **session_ptr,
     }
   }
 
-  rv = nghttp2_pq_init(&(*session_ptr)->ob_data, stream_less, mem);
-  if (rv != 0) {
-    assert(0);
-    abort();
-  }
+  nghttp2_pq_init(&(*session_ptr)->ob_data, stream_less, mem);
 
   return 0;
 
