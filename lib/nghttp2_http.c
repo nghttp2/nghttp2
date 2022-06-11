@@ -369,7 +369,11 @@ int nghttp2_http_on_header(nghttp2_session *session, nghttp2_stream *stream,
     break;
   case NGHTTP2_TOKEN__AUTHORITY:
   case NGHTTP2_TOKEN_HOST:
-    rv = nghttp2_check_authority(nv->value->base, nv->value->len);
+    if (session->server || frame->hd.type == NGHTTP2_PUSH_PROMISE) {
+      rv = nghttp2_check_authority(nv->value->base, nv->value->len);
+    } else {
+      rv = nghttp2_check_header_value(nv->value->base, nv->value->len);
+    }
     break;
   case NGHTTP2_TOKEN__SCHEME:
     rv = check_scheme(nv->value->base, nv->value->len);

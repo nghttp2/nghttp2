@@ -11376,6 +11376,8 @@ void test_nghttp2_http_mandatory_headers(void) {
   const nghttp2_nv clnonzero204_resnv[] = {MAKE_NV(":status", "204"),
                                            MAKE_NV("content-length", "100")};
   const nghttp2_nv status101_resnv[] = {MAKE_NV(":status", "101")};
+  const nghttp2_nv unexpectedhost_resnv[] = {MAKE_NV(":status", "200"),
+                                             MAKE_NV("host", "/localhost")};
 
   /* test case for request */
   const nghttp2_nv nopath_reqnv[] = {MAKE_NV(":scheme", "https"),
@@ -11512,6 +11514,12 @@ void test_nghttp2_http_mandatory_headers(void) {
   check_nghttp2_http_recv_headers_fail(session, &deflater, 23,
                                        NGHTTP2_STREAM_OPENING, status101_resnv,
                                        ARRLEN(status101_resnv));
+
+  /* Specific characters check for host field in response header
+     should not be done as its use is undefined. */
+  check_nghttp2_http_recv_headers_ok(
+      session, &deflater, 25, NGHTTP2_STREAM_OPENING, unexpectedhost_resnv,
+      ARRLEN(unexpectedhost_resnv));
 
   nghttp2_hd_deflate_free(&deflater);
 
