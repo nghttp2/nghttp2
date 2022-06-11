@@ -114,7 +114,8 @@ Config::Config()
       hexdump(false),
       echo_upload(false),
       no_content_length(false),
-      ktls(false) {}
+      ktls(false),
+      no_rfc7540_pri(false) {}
 
 Config::~Config() {}
 
@@ -861,6 +862,12 @@ int Http2Handler::connection_made() {
   if (config->window_bits != -1) {
     entry[niv].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
     entry[niv].value = (1 << config->window_bits) - 1;
+    ++niv;
+  }
+
+  if (config->no_rfc7540_pri) {
+    entry[niv].settings_id = NGHTTP2_SETTINGS_NO_RFC7540_PRIORITIES;
+    entry[niv].value = 1;
     ++niv;
   }
 

@@ -1071,6 +1071,11 @@ int nghttp2_iv_check(const nghttp2_settings_entry *iv, size_t niv) {
         return 0;
       }
       break;
+    case NGHTTP2_SETTINGS_NO_RFC7540_PRIORITIES:
+      if (iv[i].value != 0 && iv[i].value != 1) {
+        return 0;
+      }
+      break;
     }
   }
   return 1;

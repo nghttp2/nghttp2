@@ -3651,6 +3651,29 @@ void test_nghttp2_session_on_settings_received(void) {
 
   nghttp2_session_del(session);
   nghttp2_option_del(option);
+
+  /* It is invalid to change SETTINGS_NO_RFC7540_PRIORITIES in the
+     following SETTINGS. */
+  nghttp2_session_client_new(&session, &callbacks, NULL);
+
+  session->remote_settings.no_rfc7540_priorities = 1;
+
+  iv[0].settings_id = NGHTTP2_SETTINGS_NO_RFC7540_PRIORITIES;
+  iv[0].value = 0;
+
+  nghttp2_frame_settings_init(&frame.settings, NGHTTP2_FLAG_NONE, dup_iv(iv, 1),
+                              1);
+
+  CU_ASSERT(0 == nghttp2_session_on_settings_received(session, &frame, 0));
+
+  nghttp2_frame_settings_free(&frame.settings, mem);
+
+  item = nghttp2_session_get_next_ob_item(session);
+
+  CU_ASSERT(NULL != item);
+  CU_ASSERT(NGHTTP2_GOAWAY == item->frame.hd.type);
+
+  nghttp2_session_del(session);
 }
 
 void test_nghttp2_session_on_push_promise_received(void) {
@@ -5794,6 +5817,37 @@ void test_nghttp2_submit_settings(void) {
 
   /* We just keep the last seen value */
   CU_ASSERT(50 == session->pending_local_max_concurrent_stream);
+
+  nghttp2_session_del(session);
+
+  /* Bail out if there are contradicting
+     SETTINGS_NO_RFC7540_PRIORITIES in one SETTINGS. */
+  nghttp2_session_server_new(&session, &callbacks, &ud);
+
+  iv[0].settings_id = NGHTTP2_SETTINGS_NO_RFC7540_PRIORITIES;
+  iv[0].value = 1;
+  iv[1].settings_id = NGHTTP2_SETTINGS_NO_RFC7540_PRIORITIES;
+  iv[1].value = 0;
+
+  CU_ASSERT(NGHTTP2_ERR_INVALID_ARGUMENT ==
+            nghttp2_submit_settings(session, NGHTTP2_FLAG_NONE, iv, 2));
+
+  nghttp2_session_del(session);
+
+  /* Attempt to change SETTINGS_NO_RFC7540_PRIORITIES in the 2nd
+     SETTINGS. */
+  nghttp2_session_server_new(&session, &callbacks, &ud);
+
+  iv[0].settings_id = NGHTTP2_SETTINGS_NO_RFC7540_PRIORITIES;
+  iv[0].value = 1;
+
+  CU_ASSERT(0 == nghttp2_submit_settings(session, NGHTTP2_FLAG_NONE, iv, 1));
+
+  iv[0].settings_id = NGHTTP2_SETTINGS_NO_RFC7540_PRIORITIES;
+  iv[0].value = 0;
+
+  CU_ASSERT(NGHTTP2_ERR_INVALID_ARGUMENT ==
+            nghttp2_submit_settings(session, NGHTTP2_FLAG_NONE, iv, 1));
 
   nghttp2_session_del(session);
 }
@@ -11114,6 +11168,101 @@ void test_nghttp2_session_set_stream_user_data(void) {
 
   CU_ASSERT(NGHTTP2_ERR_INVALID_ARGUMENT ==
             nghttp2_session_set_stream_user_data(session, 2, NULL));
+
+  nghttp2_session_del(session);
+}
+
+void test_nghttp2_session_no_rfc7540_priorities(void) {
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+  nghttp2_data_provider data_prd;
+  my_user_data ud;
+  nghttp2_outbound_item *item;
+  nghttp2_mem *mem;
+  nghttp2_settings_entry iv;
+  nghttp2_priority_spec pri_spec;
+
+  mem = nghttp2_mem_default();
+
+  memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
+  callbacks.send_callback = null_send_callback;
+
+  /* Do not use a dependency tree if SETTINGS_NO_RFC7540_PRIORITIES =
+     1. */
+  data_prd.read_callback = fixed_length_data_source_read_callback;
+
+  ud.data_source_length = 128 * 1024;
+  CU_ASSERT(0 == nghttp2_session_server_new(&session, &callbacks, &ud));
+
+  iv.settings_id = NGHTTP2_SETTINGS_NO_RFC7540_PRIORITIES;
+  iv.value = 1;
+
+  CU_ASSERT(0 == nghttp2_submit_settings(session, NGHTTP2_FLAG_NONE, &iv, 1));
+  CU_ASSERT(0 == nghttp2_session_send(session));
+
+  open_recv_stream2(session, 1, NGHTTP2_STREAM_OPENING);
+  CU_ASSERT(0 == nghttp2_submit_response(session, 1, resnv, ARRLEN(resnv),
+                                         &data_prd));
+  item = nghttp2_session_get_next_ob_item(session);
+  CU_ASSERT(ARRLEN(resnv) == item->frame.headers.nvlen);
+  assert_nv_equal(resnv, item->frame.headers.nva, item->frame.headers.nvlen,
+                  mem);
+
+  CU_ASSERT(0 == nghttp2_session_send(session));
+  CU_ASSERT(1 == nghttp2_pq_size(&session->ob_data));
+  CU_ASSERT(nghttp2_pq_empty(&session->root.obq));
+
+  nghttp2_session_del(session);
+
+  /* Priorities are sent as is before client receives
+     SETTINGS_NO_RFC7540_PRIORITIES = 1 from server. */
+  CU_ASSERT(0 == nghttp2_session_client_new(&session, &callbacks, NULL));
+
+  iv.settings_id = NGHTTP2_SETTINGS_NO_RFC7540_PRIORITIES;
+  iv.value = 1;
+
+  CU_ASSERT(0 == nghttp2_submit_settings(session, NGHTTP2_FLAG_NONE, &iv, 1));
+
+  pri_spec.stream_id = 5;
+  pri_spec.weight = 111;
+  pri_spec.exclusive = 1;
+
+  CU_ASSERT(1 == nghttp2_submit_request(session, &pri_spec, reqnv,
+                                        ARRLEN(reqnv), NULL, NULL));
+
+  item = nghttp2_outbound_queue_top(&session->ob_syn);
+
+  CU_ASSERT(NULL != item);
+  CU_ASSERT(NGHTTP2_HEADERS == item->frame.hd.type);
+  CU_ASSERT(pri_spec.stream_id == item->frame.headers.pri_spec.stream_id);
+  CU_ASSERT(pri_spec.weight == item->frame.headers.pri_spec.weight);
+  CU_ASSERT(pri_spec.exclusive == item->frame.headers.pri_spec.exclusive);
+
+  nghttp2_session_del(session);
+
+  /* Priorities are defaulted if client received
+     SETTINGS_NO_RFC7540_PRIORITIES = 1 from server. */
+  CU_ASSERT(0 == nghttp2_session_client_new(&session, &callbacks, NULL));
+
+  iv.settings_id = NGHTTP2_SETTINGS_NO_RFC7540_PRIORITIES;
+  iv.value = 1;
+
+  CU_ASSERT(0 == nghttp2_submit_settings(session, NGHTTP2_FLAG_NONE, &iv, 1));
+
+  session->remote_settings.no_rfc7540_priorities = 1;
+
+  pri_spec.stream_id = 5;
+  pri_spec.weight = 111;
+  pri_spec.exclusive = 1;
+
+  CU_ASSERT(1 == nghttp2_submit_request(session, &pri_spec, reqnv,
+                                        ARRLEN(reqnv), NULL, NULL));
+
+  item = nghttp2_outbound_queue_top(&session->ob_syn);
+
+  CU_ASSERT(NULL != item);
+  CU_ASSERT(NGHTTP2_HEADERS == item->frame.hd.type);
+  CU_ASSERT(nghttp2_priority_spec_check_default(&item->frame.headers.pri_spec));
 
   nghttp2_session_del(session);
 }

@@ -703,7 +703,12 @@ typedef enum {
    * SETTINGS_ENABLE_CONNECT_PROTOCOL
    * (`RFC 8441 <https://tools.ietf.org/html/rfc8441>`_)
    */
-  NGHTTP2_SETTINGS_ENABLE_CONNECT_PROTOCOL = 0x08
+  NGHTTP2_SETTINGS_ENABLE_CONNECT_PROTOCOL = 0x08,
+  /**
+   * SETTINGS_NO_RFC7540_PRIORITIES (`RFC 9218
+   * <https://datatracker.ietf.org/doc/html/rfc9218>`_)
+   */
+  NGHTTP2_SETTINGS_NO_RFC7540_PRIORITIES = 0x09
 } nghttp2_settings_id;
 /* Note: If we add SETTINGS, update the capacity of
    NGHTTP2_INBOUND_NUM_IV as well */
@@ -2693,6 +2698,11 @@ nghttp2_option_set_max_deflate_dynamic_table_size(nghttp2_option *option,
  * This option prevents the library from retaining closed streams to
  * maintain the priority tree.  If this option is set to nonzero,
  * applications can discard closed stream completely to save memory.
+ *
+ * If
+ * :enum:`nghttp2_settings_id.NGHTTP2_SETTINGS_NO_RFC7540_PRIORITIES`
+ * of value of 1 is submitted via `nghttp2_submit_settings()`, any
+ * closed streams are not retained regardless of this option.
  */
 NGHTTP2_EXTERN void nghttp2_option_set_no_closed_streams(nghttp2_option *option,
                                                          int val);
@@ -3589,6 +3599,11 @@ NGHTTP2_EXTERN int nghttp2_session_consume_stream(nghttp2_session *session,
  * found, we use default priority instead of given |pri_spec|.  That
  * is make stream depend on root stream with weight 16.
  *
+ * If
+ * :enum:`nghttp2_settings_id.NGHTTP2_SETTINGS_NO_RFC7540_PRIORITIES`
+ * of value of 1 is submitted via `nghttp2_submit_settings()`, this
+ * function does nothing and returns 0.
+ *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
  *
@@ -3631,6 +3646,11 @@ nghttp2_session_change_stream_priority(nghttp2_session *session,
  * Otherwise, if stream denoted by ``pri_spec->stream_id`` is not
  * found, we use default priority instead of given |pri_spec|.  That
  * is make stream depend on root stream with weight 16.
+ *
+ * If
+ * :enum:`nghttp2_settings_id.NGHTTP2_SETTINGS_NO_RFC7540_PRIORITIES`
+ * of value of 1 is submitted via `nghttp2_submit_settings()`, this
+ * function does nothing and returns 0.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
@@ -3836,6 +3856,11 @@ nghttp2_priority_spec_check_default(const nghttp2_priority_spec *pri_spec);
  * :macro:`NGHTTP2_MIN_WEIGHT`.  If it is strictly greater than
  * :macro:`NGHTTP2_MAX_WEIGHT`, it becomes
  * :macro:`NGHTTP2_MAX_WEIGHT`.
+ *
+ * If
+ * :enum:`nghttp2_settings_id.NGHTTP2_SETTINGS_NO_RFC7540_PRIORITIES`
+ * of value of 1 is received by a remote endpoint, |pri_spec| is
+ * ignored, and treated as if ``NULL`` is specified.
  *
  * The |nva| is an array of name/value pair :type:`nghttp2_nv` with
  * |nvlen| elements.  The application is responsible to include
@@ -4057,6 +4082,11 @@ NGHTTP2_EXTERN int nghttp2_submit_trailer(nghttp2_session *session,
  * :macro:`NGHTTP2_MIN_WEIGHT`.  If it is strictly greater than
  * :macro:`NGHTTP2_MAX_WEIGHT`, it becomes :macro:`NGHTTP2_MAX_WEIGHT`.
  *
+ * If
+ * :enum:`nghttp2_settings_id.NGHTTP2_SETTINGS_NO_RFC7540_PRIORITIES`
+ * of value of 1 is received by a remote endpoint, |pri_spec| is
+ * ignored, and treated as if ``NULL`` is specified.
+ *
  * The |nva| is an array of name/value pair :type:`nghttp2_nv` with
  * |nvlen| elements.  The application is responsible to include
  * required pseudo-header fields (header field whose name starts with
@@ -4183,6 +4213,11 @@ NGHTTP2_EXTERN int nghttp2_submit_data(nghttp2_session *session, uint8_t flags,
  * :macro:`NGHTTP2_MIN_WEIGHT`.  If it is strictly greater than
  * :macro:`NGHTTP2_MAX_WEIGHT`, it becomes
  * :macro:`NGHTTP2_MAX_WEIGHT`.
+ *
+ * If
+ * :enum:`nghttp2_settings_id.NGHTTP2_SETTINGS_NO_RFC7540_PRIORITIES`
+ * of value of 1 is received by a remote endpoint, this function does
+ * nothing and returns 0.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:

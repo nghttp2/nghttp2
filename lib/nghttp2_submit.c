@@ -196,7 +196,8 @@ int32_t nghttp2_submit_headers(nghttp2_session *session, uint8_t flags,
 
   flags &= NGHTTP2_FLAG_END_STREAM;
 
-  if (pri_spec && !nghttp2_priority_spec_check_default(pri_spec)) {
+  if (pri_spec && !nghttp2_priority_spec_check_default(pri_spec) &&
+      session->remote_settings.no_rfc7540_priorities != 1) {
     rv = detect_self_dependency(session, stream_id, pri_spec);
     if (rv != 0) {
       return rv;
@@ -228,6 +229,10 @@ int nghttp2_submit_priority(nghttp2_session *session, uint8_t flags,
   (void)flags;
 
   mem = &session->mem;
+
+  if (session->remote_settings.no_rfc7540_priorities == 1) {
+    return 0;
+  }
 
   if (stream_id == 0 || pri_spec == NULL) {
     return NGHTTP2_ERR_INVALID_ARGUMENT;
@@ -688,7 +693,8 @@ int32_t nghttp2_submit_request(nghttp2_session *session,
     return NGHTTP2_ERR_PROTO;
   }
 
-  if (pri_spec && !nghttp2_priority_spec_check_default(pri_spec)) {
+  if (pri_spec && !nghttp2_priority_spec_check_default(pri_spec) &&
+      session->remote_settings.no_rfc7540_priorities != 1) {
     rv = detect_self_dependency(session, -1, pri_spec);
     if (rv != 0) {
       return rv;
