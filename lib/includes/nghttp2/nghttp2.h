@@ -634,7 +634,11 @@ typedef enum {
    * The ORIGIN frame, which is defined by `RFC 8336
    * <https://tools.ietf.org/html/rfc8336>`_.
    */
-  NGHTTP2_ORIGIN = 0x0c
+  NGHTTP2_ORIGIN = 0x0c,
+  /**
+   * The PRIORITY_UPDATE frame, which is defined by :rfc:`9218`.
+   */
+  NGHTTP2_PRIORITY_UPDATE = 0x10
 } nghttp2_frame_type;
 
 /**
@@ -4810,6 +4814,74 @@ NGHTTP2_EXTERN int nghttp2_submit_origin(nghttp2_session *session,
                                          uint8_t flags,
                                          const nghttp2_origin_entry *ov,
                                          size_t nov);
+
+/**
+ * @struct
+ *
+ * The payload of PRIORITY_UPDATE frame.  PRIORITY_UPDATE frame is a
+ * non-critical extension to HTTP/2.  If this frame is received, and
+ * `nghttp2_option_set_user_recv_extension_type()` is not set, and
+ * `nghttp2_option_set_builtin_recv_extension_type()` is set for
+ * :enum:`nghttp2_frame_type.NGHTTP2_PRIORITY_UPDATE`,
+ * ``nghttp2_extension.payload`` will point to this struct.
+ *
+ * It has the following members:
+ */
+typedef struct {
+  /**
+   * The stream ID of the stream whose priority is updated.
+   */
+  int32_t stream_id;
+  /**
+   * The pointer to Priority field value.  It is not necessarily
+   * NULL-terminated.
+   */
+  uint8_t *field_value;
+  /**
+   * The length of the :member:`field_value`.
+   */
+  size_t field_value_len;
+} nghttp2_ext_priority_update;
+
+/**
+ * @function
+ *
+ * Submits PRIORITY_UPDATE frame.
+ *
+ * PRIORITY_UPDATE frame is a non-critical extension to HTTP/2, and
+ * defined in :rfc:`9218#section-7.1`.
+ *
+ * The |flags| is currently ignored and should be
+ * :enum:`nghttp2_flag.NGHTTP2_FLAG_NONE`.
+ *
+ * The |stream_id| is the ID of stream which is prioritized.  The
+ * |field_value| points to the Priority field value.  The
+ * |field_value_len| is the length of the Priority field value.
+ *
+ * If this function is called by server,
+ * :enum:`nghttp2_error.NGHTTP2_ERR_INVALID_STATE` is returned.
+ *
+ * If
+ * :enum:`nghttp2_settings_id.NGHTTP2_SETTINGS_NO_RFC7540_PRIORITIES`
+ * of value of 0 is received by a remote endpoint (or it is omitted),
+ * this function does nothing and returns 0.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * :enum:`nghttp2_error.NGHTTP2_ERR_NOMEM`
+ *     Out of memory
+ * :enum:`nghttp2_error.NGHTTP2_ERR_INVALID_STATE`
+ *     The function is called from server side session
+ * :enum:`nghttp2_error.NGHTTP2_ERR_INVALID_ARGUMENT`
+ *     The |field_value_len| is larger than 16380; or |stream_id| is
+ *     0.
+ */
+NGHTTP2_EXTERN int nghttp2_submit_priority_update(nghttp2_session *session,
+                                                  uint8_t flags,
+                                                  int32_t stream_id,
+                                                  const uint8_t *field_value,
+                                                  size_t field_value_len);
 
 /**
  * @function

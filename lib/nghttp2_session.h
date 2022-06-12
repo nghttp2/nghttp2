@@ -62,7 +62,8 @@ typedef enum {
 typedef enum {
   NGHTTP2_TYPEMASK_NONE = 0,
   NGHTTP2_TYPEMASK_ALTSVC = 1 << 0,
-  NGHTTP2_TYPEMASK_ORIGIN = 1 << 1
+  NGHTTP2_TYPEMASK_ORIGIN = 1 << 1,
+  NGHTTP2_TYPEMASK_PRIORITY_UPDATE = 1 << 2
 } nghttp2_typemask;
 
 typedef enum {
@@ -151,10 +152,8 @@ typedef struct {
   /* padding length for the current frame */
   size_t padlen;
   nghttp2_inbound_state state;
-  /* Small buffer.  Currently the largest contiguous chunk to buffer
-     is frame header.  We buffer part of payload, but they are smaller
-     than frame header. */
-  uint8_t raw_sbuf[NGHTTP2_FRAME_HDLEN];
+  /* Small fixed sized buffer. */
+  uint8_t raw_sbuf[32];
 } nghttp2_inbound_frame;
 
 typedef struct {
@@ -785,6 +784,19 @@ int nghttp2_session_on_altsvc_received(nghttp2_session *session,
  */
 int nghttp2_session_on_origin_received(nghttp2_session *session,
                                        nghttp2_frame *frame);
+
+/*
+ * Called when PRIORITY_UPDATE is received, assuming |frame| is
+ * properly initialized.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * NGHTTP2_ERR_CALLBACK_FAILURE
+ *     The callback function failed.
+ */
+int nghttp2_session_on_priority_update_received(nghttp2_session *session,
+                                                nghttp2_frame *frame);
 
 /*
  * Called when DATA is received, assuming |frame| is properly

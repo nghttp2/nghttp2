@@ -84,14 +84,14 @@ static int lws(const uint8_t *s, size_t n) {
 }
 
 static int check_pseudo_header(nghttp2_stream *stream, const nghttp2_hd_nv *nv,
-                               int flag) {
+                               uint32_t flag) {
   if (stream->http_flags & flag) {
     return 0;
   }
   if (lws(nv->value->base, nv->value->len)) {
     return 0;
   }
-  stream->http_flags = (uint16_t)(stream->http_flags | flag);
+  stream->http_flags = stream->http_flags | flag;
   return 1;
 }
 
@@ -217,11 +217,16 @@ static int http_request_on_header(nghttp2_stream *stream, nghttp2_hd_nv *nv,
     break;
   case NGHTTP2_TOKEN_PRIORITY:
     if (!trailer &&
-        (stream->flags & NGHTTP2_STREAM_FLAG_NO_RFC7540_PRIORITIES)) {
+        (stream->flags & NGHTTP2_STREAM_FLAG_NO_RFC7540_PRIORITIES) &&
+        !(stream->http_flags & NGHTTP2_HTTP_FLAG_BAD_PRIORITY)) {
       nghttp2_extpri_from_uint8(&extpri, stream->http_extpri);
       if (nghttp2_http_parse_priority(&extpri, nv->value->base,
                                       nv->value->len) == 0) {
         stream->http_extpri = nghttp2_extpri_to_uint8(&extpri);
+        stream->http_flags |= NGHTTP2_HTTP_FLAG_PRIORITY;
+      } else {
+        stream->http_flags &= (uint32_t)~NGHTTP2_HTTP_FLAG_PRIORITY;
+        stream->http_flags |= NGHTTP2_HTTP_FLAG_BAD_PRIORITY;
       }
     }
     break;
@@ -460,16 +465,15 @@ int nghttp2_http_on_response_headers(nghttp2_stream *stream) {
 
   if (stream->status_code / 100 == 1) {
     /* non-final response */
-    stream->http_flags =
-        (uint16_t)((stream->http_flags & NGHTTP2_HTTP_FLAG_METH_ALL) |
-                   NGHTTP2_HTTP_FLAG_EXPECT_FINAL_RESPONSE);
+    stream->http_flags = (stream->http_flags & NGHTTP2_HTTP_FLAG_METH_ALL) |
+                         NGHTTP2_HTTP_FLAG_EXPECT_FINAL_RESPONSE;
     stream->content_length = -1;
     stream->status_code = -1;
     return 0;
   }
 
   stream->http_flags =
-      (uint16_t)(stream->http_flags & ~NGHTTP2_HTTP_FLAG_EXPECT_FINAL_RESPONSE);
+      stream->http_flags & (uint32_t)~NGHTTP2_HTTP_FLAG_EXPECT_FINAL_RESPONSE;
 
   if (!expect_response_body(stream)) {
     stream->content_length = 0;

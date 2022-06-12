@@ -134,6 +134,11 @@ typedef enum {
   /* set if final response is expected */
   NGHTTP2_HTTP_FLAG_EXPECT_FINAL_RESPONSE = 1 << 14,
   NGHTTP2_HTTP_FLAG__PROTOCOL = 1 << 15,
+  /* set if priority header field is received */
+  NGHTTP2_HTTP_FLAG_PRIORITY = 1 << 16,
+  /* set if an error is encountered while parsing priority header
+     field */
+  NGHTTP2_HTTP_FLAG_BAD_PRIORITY = 1 << 17,
 } nghttp2_http_flag;
 
 struct nghttp2_stream {
@@ -206,7 +211,7 @@ struct nghttp2_stream {
   /* status code from remote server */
   int16_t status_code;
   /* Bitwise OR of zero or more nghttp2_http_flag values */
-  uint16_t http_flags;
+  uint32_t http_flags;
   /* This is bitwise-OR of 0 or more of nghttp2_stream_flag. */
   uint8_t flags;
   /* Bitwise OR of zero or more nghttp2_shut_flag values */

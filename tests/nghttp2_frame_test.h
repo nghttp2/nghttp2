@@ -40,6 +40,7 @@ void test_nghttp2_frame_pack_goaway(void);
 void test_nghttp2_frame_pack_window_update(void);
 void test_nghttp2_frame_pack_altsvc(void);
 void test_nghttp2_frame_pack_origin(void);
+void test_nghttp2_frame_pack_priority_update(void);
 void test_nghttp2_nv_array_copy(void);
 void test_nghttp2_iv_check(void);
 

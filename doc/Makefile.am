@@ -172,6 +172,7 @@ APIDOCS= \
 	nghttp2_submit_origin.rst \
 	nghttp2_submit_ping.rst \
 	nghttp2_submit_priority.rst \
+	nghttp2_submit_priority_update.rst \
 	nghttp2_submit_push_promise.rst \
 	nghttp2_submit_request.rst \
 	nghttp2_submit_response.rst \
