@@ -40,6 +40,8 @@
 #include "nghttp2_npn_test.h"
 #include "nghttp2_helper_test.h"
 #include "nghttp2_buf_test.h"
+#include "nghttp2_http_test.h"
+#include "nghttp2_extpri_test.h"
 
 extern int nghttp2_enable_strict_preface;
 
@@ -93,6 +95,8 @@ int main(void) {
                    test_nghttp2_session_recv_headers_early_response) ||
       !CU_add_test(pSuite, "session_recv_headers_for_closed_stream",
                    test_nghttp2_session_recv_headers_for_closed_stream) ||
+      !CU_add_test(pSuite, "session_recv_headers_with_extpri",
+                   test_nghttp2_session_recv_headers_with_extpri) ||
       !CU_add_test(pSuite, "session_server_recv_push_response",
                    test_nghttp2_session_server_recv_push_response) ||
       !CU_add_test(pSuite, "session_recv_premature_headers",
@@ -427,7 +431,13 @@ int main(void) {
       !CU_add_test(pSuite, "bufs_advance", test_nghttp2_bufs_advance) ||
       !CU_add_test(pSuite, "bufs_next_present",
                    test_nghttp2_bufs_next_present) ||
-      !CU_add_test(pSuite, "bufs_realloc", test_nghttp2_bufs_realloc)) {
+      !CU_add_test(pSuite, "bufs_realloc", test_nghttp2_bufs_realloc) ||
+      !CU_add_test(pSuite, "http_parse_priority",
+                   test_nghttp2_http_parse_priority) ||
+      !CU_add_test(pSuite, "sf_parse_item", test_nghttp2_sf_parse_item) ||
+      !CU_add_test(pSuite, "sf_parse_inner_list",
+                   test_nghttp2_sf_parse_inner_list) ||
+      !CU_add_test(pSuite, "extpri_to_uint8", test_nghttp2_extpri_to_uint8)) {
     CU_cleanup_registry();
     return (int)CU_get_error();
   }

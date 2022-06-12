@@ -203,9 +203,12 @@ struct nghttp2_session {
      response) frame, which are subject to
      SETTINGS_MAX_CONCURRENT_STREAMS limit. */
   nghttp2_outbound_queue ob_syn;
-  /* Queue for DATA frames which is used when
-     SETTINGS_NO_RFC7540_PRIORITIES is enabled. */
-  nghttp2_pq ob_data;
+  /* Queues for DATA frames which is used when
+     SETTINGS_NO_RFC7540_PRIORITIES is enabled.  This implements RFC
+     9218 extensible prioritization scheme. */
+  struct {
+    nghttp2_pq ob_data;
+  } sched[NGHTTP2_EXTPRI_URGENCY_LEVELS];
   nghttp2_active_outbound_item aob;
   nghttp2_inbound_frame iframe;
   nghttp2_hd_deflater hd_deflater;

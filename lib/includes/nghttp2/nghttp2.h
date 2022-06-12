@@ -705,8 +705,7 @@ typedef enum {
    */
   NGHTTP2_SETTINGS_ENABLE_CONNECT_PROTOCOL = 0x08,
   /**
-   * SETTINGS_NO_RFC7540_PRIORITIES (`RFC 9218
-   * <https://datatracker.ietf.org/doc/html/rfc9218>`_)
+   * SETTINGS_NO_RFC7540_PRIORITIES (:rfc:`9218`)
    */
   NGHTTP2_SETTINGS_NO_RFC7540_PRIORITIES = 0x09
 } nghttp2_settings_id;
@@ -4232,6 +4231,61 @@ NGHTTP2_EXTERN int
 nghttp2_submit_priority(nghttp2_session *session, uint8_t flags,
                         int32_t stream_id,
                         const nghttp2_priority_spec *pri_spec);
+
+/**
+ * @macro
+ *
+ * :macro:`NGHTTP2_EXTPRI_DEFAULT_URGENCY` is the default urgency
+ * level for :rfc:`9218` extensible priorities.
+ */
+#define NGHTTP2_EXTPRI_DEFAULT_URGENCY 3
+
+/**
+ * @macro
+ *
+ * :macro:`NGHTTP2_EXTPRI_URGENCY_HIGH` is the highest urgency level
+ * for :rfc:`9218` extensible priorities.
+ */
+#define NGHTTP2_EXTPRI_URGENCY_HIGH 0
+
+/**
+ * @macro
+ *
+ * :macro:`NGHTTP2_EXTPRI_URGENCY_LOW` is the lowest urgency level for
+ * :rfc:`9218` extensible priorities.
+ */
+#define NGHTTP2_EXTPRI_URGENCY_LOW 7
+
+/**
+ * @macro
+ *
+ * :macro:`NGHTTP2_EXTPRI_URGENCY_LEVELS` is the number of urgency
+ * levels for :rfc:`9218` extensible priorities.
+ */
+#define NGHTTP2_EXTPRI_URGENCY_LEVELS (NGHTTP2_EXTPRI_URGENCY_LOW + 1)
+
+/**
+ * @struct
+ *
+ * :type:`nghttp2_extpri` is :rfc:`9218` extensible priorities
+ * specification for a stream.
+ */
+typedef struct nghttp2_extpri {
+  /**
+   * :member:`urgency` is the urgency of a stream, it must be in
+   * [:macro:`NGHTTP2_EXTPRI_URGENCY_HIGH`,
+   * :macro:`NGHTTP2_EXTPRI_URGENCY_LOW`], inclusive, and 0 is the
+   * highest urgency.
+   */
+  uint32_t urgency;
+  /**
+   * :member:`inc` indicates that a content can be processed
+   * incrementally or not.  If inc is 0, it cannot be processed
+   * incrementally.  If inc is 1, it can be processed incrementally.
+   * Other value is not permitted.
+   */
+  int inc;
+} nghttp2_extpri;
 
 /**
  * @function

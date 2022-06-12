@@ -35,6 +35,7 @@
 #include "nghttp2_helper.h"
 #include "nghttp2_test_helper.h"
 #include "nghttp2_priority_spec.h"
+#include "nghttp2_extpri.h"
 
 typedef struct {
   uint8_t buf[65535];
@@ -1822,6 +1823,67 @@ void test_nghttp2_session_recv_headers_for_closed_stream(void) {
   CU_ASSERT((ssize_t)nghttp2_buf_len(buf) - NGHTTP2_FRAME_HDLEN == rv);
   CU_ASSERT(0 == ud.header_cb_called);
   CU_ASSERT(0 == ud.frame_recv_cb_called);
+
+  nghttp2_bufs_free(&bufs);
+  nghttp2_hd_deflate_free(&deflater);
+  nghttp2_session_del(session);
+}
+
+void test_nghttp2_session_recv_headers_with_extpri(void) {
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+  nghttp2_nv *nva;
+  size_t nvlen;
+  nghttp2_frame frame;
+  nghttp2_bufs bufs;
+  nghttp2_buf *buf;
+  ssize_t rv;
+  nghttp2_hd_deflater deflater;
+  nghttp2_stream *stream;
+  nghttp2_mem *mem;
+  const nghttp2_nv extpri_reqnv[] = {
+      MAKE_NV(":method", "GET"),    MAKE_NV(":path", "/"),
+      MAKE_NV(":scheme", "https"),  MAKE_NV(":authority", "localhost"),
+      MAKE_NV("priority", "i,u=2"),
+  };
+  nghttp2_settings_entry iv;
+
+  mem = nghttp2_mem_default();
+  frame_pack_bufs_init(&bufs);
+
+  memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
+
+  nghttp2_session_server_new(&session, &callbacks, NULL);
+
+  iv.settings_id = NGHTTP2_SETTINGS_NO_RFC7540_PRIORITIES;
+  iv.value = 1;
+
+  nghttp2_submit_settings(session, NGHTTP2_FLAG_NONE, &iv, 1);
+
+  nghttp2_hd_deflate_init(&deflater, mem);
+
+  nvlen = ARRLEN(extpri_reqnv);
+  nghttp2_nv_array_copy(&nva, extpri_reqnv, nvlen, mem);
+
+  nghttp2_frame_headers_init(&frame.headers, NGHTTP2_FLAG_END_HEADERS, 1,
+                             NGHTTP2_HCAT_HEADERS, NULL, nva, nvlen);
+
+  rv = nghttp2_frame_pack_headers(&bufs, &frame.headers, &deflater);
+
+  CU_ASSERT(0 == rv);
+  CU_ASSERT(nghttp2_bufs_len(&bufs) > 0);
+
+  nghttp2_frame_headers_free(&frame.headers, mem);
+
+  buf = &bufs.head->buf;
+  assert(nghttp2_bufs_len(&bufs) == nghttp2_buf_len(buf));
+
+  rv = nghttp2_session_mem_recv(session, buf->pos, nghttp2_buf_len(buf));
+
+  stream = nghttp2_session_get_stream(session, 1);
+
+  CU_ASSERT(2 == nghttp2_extpri_uint8_urgency(stream->extpri));
+  CU_ASSERT(1 == nghttp2_extpri_uint8_inc(stream->extpri));
 
   nghttp2_bufs_free(&bufs);
   nghttp2_hd_deflate_free(&deflater);
@@ -11209,7 +11271,8 @@ void test_nghttp2_session_no_rfc7540_priorities(void) {
                   mem);
 
   CU_ASSERT(0 == nghttp2_session_send(session));
-  CU_ASSERT(1 == nghttp2_pq_size(&session->ob_data));
+  CU_ASSERT(1 == nghttp2_pq_size(
+                     &session->sched[NGHTTP2_EXTPRI_DEFAULT_URGENCY].ob_data));
   CU_ASSERT(nghttp2_pq_empty(&session->root.obq));
 
   nghttp2_session_del(session);
