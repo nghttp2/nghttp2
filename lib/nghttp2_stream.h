@@ -220,6 +220,12 @@ struct nghttp2_stream {
      this stream.  The nonzero does not necessarily mean WINDOW_UPDATE
      is not queued. */
   uint8_t window_update_queued;
+  /* extpri is a stream priority produced by nghttp2_extpri_to_uint8
+     used by RFC 9218 extensible priorities. */
+  uint8_t extpri;
+  /* http_extpri is a stream priority received in HTTP request header
+     fields and produced by nghttp2_extpri_to_uint8. */
+  uint8_t http_extpri;
 };
 
 void nghttp2_stream_init(nghttp2_stream *stream, int32_t stream_id,

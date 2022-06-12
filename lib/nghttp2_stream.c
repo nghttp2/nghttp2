@@ -100,6 +100,8 @@ void nghttp2_stream_init(nghttp2_stream *stream, int32_t stream_id,
   stream->descendant_next_seq = 0;
   stream->seq = 0;
   stream->last_writelen = 0;
+
+  stream->extpri = stream->http_extpri = NGHTTP2_EXTPRI_DEFAULT_URGENCY;
 }
 
 void nghttp2_stream_free(nghttp2_stream *stream) {
