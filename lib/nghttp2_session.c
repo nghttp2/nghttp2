@@ -355,6 +355,14 @@ static void session_inbound_frame_reset(nghttp2_session *session) {
         }
         nghttp2_frame_origin_free(&iframe->frame.ext, mem);
         break;
+      case NGHTTP2_PRIORITY_UPDATE:
+        if ((session->builtin_recv_ext_types &
+             NGHTTP2_TYPEMASK_PRIORITY_UPDATE) == 0) {
+          break;
+        }
+        /* Do not call nghttp2_frame_priority_update_free, because all
+           fields point to sbuf. */
+        break;
       }
     }
 
@@ -2055,6 +2063,28 @@ static int session_predicate_origin_send(nghttp2_session *session) {
   return 0;
 }
 
+static int session_predicate_priority_update_send(nghttp2_session *session,
+                                                  int32_t stream_id) {
+  nghttp2_stream *stream;
+
+  if (session_is_closing(session)) {
+    return NGHTTP2_ERR_SESSION_CLOSING;
+  }
+
+  stream = nghttp2_session_get_stream(session, stream_id);
+  if (stream == NULL) {
+    return 0;
+  }
+  if (stream->state == NGHTTP2_STREAM_CLOSING) {
+    return NGHTTP2_ERR_STREAM_CLOSING;
+  }
+  if (stream->shut_flags & NGHTTP2_SHUT_RD) {
+    return NGHTTP2_ERR_INVALID_STREAM_STATE;
+  }
+
+  return 0;
+}
+
 /* Take into account settings max frame size and both connection-level
    flow control here */
 static ssize_t
@@ -2600,6 +2630,18 @@ static int session_prep_frame(nghttp2_session *session,
       }
 
       return 0;
+    case NGHTTP2_PRIORITY_UPDATE: {
+      nghttp2_ext_priority_update *priority_update = frame->ext.payload;
+      rv = session_predicate_priority_update_send(session,
+                                                  priority_update->stream_id);
+      if (rv != 0) {
+        return rv;
+      }
+
+      nghttp2_frame_pack_priority_update(&session->aob.framebufs, &frame->ext);
+
+      return 0;
+    }
     default:
       /* Unreachable here */
       assert(0);
@@ -4028,7 +4070,8 @@ static int session_end_stream_headers_received(nghttp2_session *session,
 
   if (session->server && session_enforce_http_messaging(session) &&
       frame->headers.cat == NGHTTP2_HCAT_REQUEST &&
-      (stream->flags & NGHTTP2_STREAM_FLAG_NO_RFC7540_PRIORITIES)) {
+      (stream->flags & NGHTTP2_STREAM_FLAG_NO_RFC7540_PRIORITIES) &&
+      (stream->http_flags & NGHTTP2_HTTP_FLAG_PRIORITY)) {
     rv = session_update_stream_priority(session, stream, stream->http_extpri);
     if (rv != 0) {
       assert(nghttp2_is_fatal(rv));
@@ -5240,6 +5283,77 @@ int nghttp2_session_on_origin_received(nghttp2_session *session,
   return session_call_on_frame_received(session, frame);
 }
 
+int nghttp2_session_on_priority_update_received(nghttp2_session *session,
+                                                nghttp2_frame *frame) {
+  nghttp2_ext_priority_update *priority_update;
+  nghttp2_stream *stream;
+  nghttp2_priority_spec pri_spec;
+  nghttp2_extpri extpri;
+  int rv;
+
+  assert(session->server);
+
+  priority_update = frame->ext.payload;
+
+  if (frame->hd.stream_id != 0) {
+    return session_handle_invalid_connection(session, frame, NGHTTP2_ERR_PROTO,
+                                             "PRIORITY_UPDATE: stream_id == 0");
+  }
+
+  if (nghttp2_session_is_my_stream_id(session, priority_update->stream_id)) {
+    if (session_detect_idle_stream(session, priority_update->stream_id)) {
+      return session_handle_invalid_connection(
+          session, frame, NGHTTP2_ERR_PROTO,
+          "PRIORITY_UPDATE: prioritizing idle push is not allowed");
+    }
+
+    /* TODO Ignore priority signal to a push stream for now */
+    return session_call_on_frame_received(session, frame);
+  }
+
+  stream = nghttp2_session_get_stream_raw(session, priority_update->stream_id);
+  if (stream) {
+    /* Stream already exists. */
+  } else if (session_detect_idle_stream(session, priority_update->stream_id)) {
+    if (session->num_idle_streams + session->num_incoming_streams >=
+        session->local_settings.max_concurrent_streams) {
+      return session_handle_invalid_connection(
+          session, frame, NGHTTP2_ERR_PROTO,
+          "PRIORITY_UPDATE: max concurrent streams exceeded");
+    }
+
+    nghttp2_priority_spec_default_init(&pri_spec);
+    stream = nghttp2_session_open_stream(session, priority_update->stream_id,
+                                         NGHTTP2_FLAG_NONE, &pri_spec,
+                                         NGHTTP2_STREAM_IDLE, NULL);
+    if (!stream) {
+      return NGHTTP2_ERR_NOMEM;
+    }
+  } else {
+    return session_call_on_frame_received(session, frame);
+  }
+
+  extpri.urgency = NGHTTP2_EXTPRI_DEFAULT_URGENCY;
+  extpri.inc = 0;
+
+  rv = nghttp2_http_parse_priority(&extpri, priority_update->field_value,
+                                   priority_update->field_value_len);
+  if (rv != 0) {
+    /* Just ignore field_value if it cannot be parsed. */
+    return session_call_on_frame_received(session, frame);
+  }
+
+  rv = session_update_stream_priority(session, stream,
+                                      nghttp2_extpri_to_uint8(&extpri));
+  if (rv != 0) {
+    if (nghttp2_is_fatal(rv)) {
+      return rv;
+    }
+  }
+
+  return session_call_on_frame_received(session, frame);
+}
+
 static int session_process_altsvc_frame(nghttp2_session *session) {
   nghttp2_inbound_frame *iframe = &session->iframe;
   nghttp2_frame *frame = &iframe->frame;
@@ -5272,6 +5386,16 @@ static int session_process_origin_frame(nghttp2_session *session) {
   }
 
   return nghttp2_session_on_origin_received(session, frame);
+}
+
+static int session_process_priority_update_frame(nghttp2_session *session) {
+  nghttp2_inbound_frame *iframe = &session->iframe;
+  nghttp2_frame *frame = &iframe->frame;
+
+  nghttp2_frame_unpack_priority_update_payload(&frame->ext, iframe->sbuf.pos,
+                                               nghttp2_buf_len(&iframe->sbuf));
+
+  return nghttp2_session_on_priority_update_received(session, frame);
 }
 
 static int session_process_extension_frame(nghttp2_session *session) {
@@ -6226,6 +6350,49 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
             iframe->state = NGHTTP2_IB_READ_ORIGIN_PAYLOAD;
 
             break;
+          case NGHTTP2_PRIORITY_UPDATE:
+            if ((session->builtin_recv_ext_types &
+                 NGHTTP2_TYPEMASK_PRIORITY_UPDATE) == 0) {
+              busy = 1;
+              iframe->state = NGHTTP2_IB_IGN_PAYLOAD;
+              break;
+            }
+
+            DEBUGF("recv: PRIORITY_UPDATE\n");
+
+            iframe->frame.hd.flags = NGHTTP2_FLAG_NONE;
+            iframe->frame.ext.payload =
+                &iframe->ext_frame_payload.priority_update;
+
+            if (!session->server) {
+              rv = nghttp2_session_terminate_session_with_reason(
+                  session, NGHTTP2_PROTOCOL_ERROR,
+                  "PRIORITY_UPDATE is received from server");
+              if (nghttp2_is_fatal(rv)) {
+                return rv;
+              }
+              return (ssize_t)inlen;
+            }
+
+            if (iframe->payloadleft < 4) {
+              busy = 1;
+              iframe->state = NGHTTP2_IB_FRAME_SIZE_ERROR;
+              break;
+            }
+
+            if (session->pending_no_rfc7540_priorities != 1 ||
+                iframe->payloadleft > sizeof(iframe->raw_sbuf)) {
+              busy = 1;
+              iframe->state = NGHTTP2_IB_IGN_PAYLOAD;
+              break;
+            }
+
+            busy = 1;
+
+            iframe->state = NGHTTP2_IB_READ_NBYTE;
+            inbound_frame_set_mark(iframe, iframe->payloadleft);
+
+            break;
           default:
             busy = 1;
 
@@ -6495,6 +6662,18 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
         busy = 1;
 
         iframe->state = NGHTTP2_IB_READ_ALTSVC_PAYLOAD;
+
+        break;
+      case NGHTTP2_PRIORITY_UPDATE:
+        DEBUGF("recv: prioritized_stream_id=%d\n",
+               nghttp2_get_uint32(iframe->sbuf.pos) & NGHTTP2_STREAM_ID_MASK);
+
+        rv = session_process_priority_update_frame(session);
+        if (nghttp2_is_fatal(rv)) {
+          return rv;
+        }
+
+        session_inbound_frame_reset(session);
 
         break;
       }

@@ -88,6 +88,11 @@ int unpack_frame(nghttp2_frame *frame, const uint8_t *in, size_t len) {
     rv = nghttp2_frame_unpack_origin_payload(&frame->ext, payload, payloadlen,
                                              mem);
     break;
+  case NGHTTP2_PRIORITY_UPDATE:
+    assert(payloadlen >= 4);
+    nghttp2_frame_unpack_priority_update_payload(
+        &frame->ext, (uint8_t *)payload, payloadlen);
+    break;
   default:
     /* Must not be reachable */
     assert(0);

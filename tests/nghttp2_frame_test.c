@@ -600,6 +600,43 @@ void test_nghttp2_frame_pack_origin(void) {
   nghttp2_bufs_free(&bufs);
 }
 
+void test_nghttp2_frame_pack_priority_update(void) {
+  nghttp2_extension frame, oframe;
+  nghttp2_ext_priority_update priority_update, opriority_update;
+  nghttp2_bufs bufs;
+  int rv;
+  size_t payloadlen;
+  static const uint8_t field_value[] = "i,u=0";
+
+  frame_pack_bufs_init(&bufs);
+
+  frame.payload = &priority_update;
+  oframe.payload = &opriority_update;
+
+  nghttp2_frame_priority_update_init(&frame, 1000000007, (uint8_t *)field_value,
+                                     sizeof(field_value) - 1);
+
+  payloadlen = 4 + sizeof(field_value) - 1;
+
+  rv = nghttp2_frame_pack_priority_update(&bufs, &frame);
+
+  CU_ASSERT(0 == rv);
+  CU_ASSERT(NGHTTP2_FRAME_HDLEN + payloadlen == nghttp2_bufs_len(&bufs));
+
+  rv = unpack_framebuf((nghttp2_frame *)&oframe, &bufs);
+
+  CU_ASSERT(0 == rv);
+
+  check_frame_header(payloadlen, NGHTTP2_PRIORITY_UPDATE, NGHTTP2_FLAG_NONE, 0,
+                     &oframe.hd);
+
+  CU_ASSERT(sizeof(field_value) - 1 == opriority_update.field_value_len);
+  CU_ASSERT(0 == memcmp(field_value, opriority_update.field_value,
+                        sizeof(field_value) - 1));
+
+  nghttp2_bufs_free(&bufs);
+}
+
 void test_nghttp2_nv_array_copy(void) {
   nghttp2_nv *nva;
   ssize_t rv;
