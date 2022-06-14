@@ -339,6 +339,8 @@ int main(void) {
                    test_nghttp2_session_set_stream_user_data) ||
       !CU_add_test(pSuite, "session_no_rfc7540_priorities",
                    test_nghttp2_session_no_rfc7540_priorities) ||
+      !CU_add_test(pSuite, "session_server_fallback_rfc7540_priorities",
+                   test_nghttp2_session_server_fallback_rfc7540_priorities) ||
       !CU_add_test(pSuite, "http_mandatory_headers",
                    test_nghttp2_http_mandatory_headers) ||
       !CU_add_test(pSuite, "http_content_length",

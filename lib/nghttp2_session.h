@@ -52,7 +52,8 @@ typedef enum {
   NGHTTP2_OPTMASK_NO_RECV_CLIENT_MAGIC = 1 << 1,
   NGHTTP2_OPTMASK_NO_HTTP_MESSAGING = 1 << 2,
   NGHTTP2_OPTMASK_NO_AUTO_PING_ACK = 1 << 3,
-  NGHTTP2_OPTMASK_NO_CLOSED_STREAMS = 1 << 4
+  NGHTTP2_OPTMASK_NO_CLOSED_STREAMS = 1 << 4,
+  NGHTTP2_OPTMASK_SERVER_FALLBACK_RFC7540_PRIORITIES = 1 << 5
 } nghttp2_optmask;
 
 /*
@@ -340,6 +341,8 @@ struct nghttp2_session {
   /* Unacked local SETTINGS_NO_RFC7540_PRIORITIES value, which is
      effective before it is acknowledged. */
   uint8_t pending_no_rfc7540_priorities;
+  /* Turn on fallback to RFC 7540 priorities; for server use only. */
+  uint8_t fallback_rfc7540_priorities;
   /* Nonzero if the session is server side. */
   uint8_t server;
   /* Flags indicating GOAWAY is sent and/or received. The flags are
