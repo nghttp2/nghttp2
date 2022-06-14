@@ -144,6 +144,11 @@ static int session_detect_idle_stream(nghttp2_session *session,
   return 0;
 }
 
+static int session_no_rfc7540_pri_no_fallback(nghttp2_session *session) {
+  return session->pending_no_rfc7540_priorities == 1 &&
+         !session->fallback_rfc7540_priorities;
+}
+
 static int check_ext_type_set(const uint8_t *ext_types, uint8_t type) {
   return (ext_types[type / 8] & (1 << (type & 0x7))) > 0;
 }
@@ -554,6 +559,13 @@ static int session_new(nghttp2_session **session_ptr,
         option->max_settings) {
       (*session_ptr)->max_settings = option->max_settings;
     }
+
+    if ((option->opt_set_mask &
+         NGHTTP2_OPT_SERVER_FALLBACK_RFC7540_PRIORITIES) &&
+        option->server_fallback_rfc7540_priorities) {
+      (*session_ptr)->opt_flags |=
+          NGHTTP2_OPTMASK_SERVER_FALLBACK_RFC7540_PRIORITIES;
+    }
   }
 
   rv = nghttp2_hd_deflate_init2(&(*session_ptr)->hd_deflater,
@@ -810,7 +822,8 @@ int nghttp2_session_reprioritize_stream(
   nghttp2_priority_spec pri_spec_default;
   const nghttp2_priority_spec *pri_spec = pri_spec_in;
 
-  assert(session->pending_no_rfc7540_priorities != 1);
+  assert((!session->server && session->pending_no_rfc7540_priorities != 1) ||
+         (session->server && !session_no_rfc7540_pri_no_fallback(session)));
   assert(pri_spec->stream_id != stream->stream_id);
 
   if (!nghttp2_stream_in_dep_tree(stream)) {
@@ -1296,7 +1309,7 @@ nghttp2_stream *nghttp2_session_open_stream(nghttp2_session *session,
         return NULL;
       }
 
-      if (session->pending_no_rfc7540_priorities == 1) {
+      if (session_no_rfc7540_pri_no_fallback(session)) {
         stream->flags |= NGHTTP2_STREAM_FLAG_NO_RFC7540_PRIORITIES;
       }
     }
@@ -1309,7 +1322,7 @@ nghttp2_stream *nghttp2_session_open_stream(nghttp2_session *session,
     stream_alloc = 1;
   }
 
-  if (session->pending_no_rfc7540_priorities == 1 ||
+  if (session_no_rfc7540_pri_no_fallback(session) ||
       session->remote_settings.no_rfc7540_priorities == 1) {
     /* For client which has not received server
        SETTINGS_NO_RFC7540_PRIORITIES = 1, send a priority signal
@@ -1369,7 +1382,7 @@ nghttp2_stream *nghttp2_session_open_stream(nghttp2_session *session,
                         (int32_t)session->local_settings.initial_window_size,
                         stream_user_data, mem);
 
-    if (session->pending_no_rfc7540_priorities == 1) {
+    if (session_no_rfc7540_pri_no_fallback(session)) {
       stream->seq = session->stream_seq++;
     }
 
@@ -4440,7 +4453,7 @@ int nghttp2_session_on_priority_received(nghttp2_session *session,
   int rv;
   nghttp2_stream *stream;
 
-  assert(session->pending_no_rfc7540_priorities != 1);
+  assert(!session_no_rfc7540_pri_no_fallback(session));
 
   if (frame->hd.stream_id == 0) {
     return session_handle_invalid_connection(session, frame, NGHTTP2_ERR_PROTO,
@@ -4499,7 +4512,7 @@ static int session_process_priority_frame(nghttp2_session *session) {
   nghttp2_inbound_frame *iframe = &session->iframe;
   nghttp2_frame *frame = &iframe->frame;
 
-  assert(session->pending_no_rfc7540_priorities != 1);
+  assert(!session_no_rfc7540_pri_no_fallback(session));
 
   nghttp2_frame_unpack_priority_payload(&frame->priority, iframe->sbuf.pos);
 
@@ -4927,6 +4940,12 @@ int nghttp2_session_on_settings_received(nghttp2_session *session,
 
   if (session->remote_settings.no_rfc7540_priorities == UINT32_MAX) {
     session->remote_settings.no_rfc7540_priorities = 0;
+
+    if (session->server && session->pending_no_rfc7540_priorities &&
+        (session->opt_flags &
+         NGHTTP2_OPTMASK_SERVER_FALLBACK_RFC7540_PRIORITIES)) {
+      session->fallback_rfc7540_priorities = 1;
+    }
   }
 
   if (!noack && !session_is_closing(session)) {
@@ -6380,7 +6399,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
               break;
             }
 
-            if (session->pending_no_rfc7540_priorities != 1 ||
+            if (!session_no_rfc7540_pri_no_fallback(session) ||
                 iframe->payloadleft > sizeof(iframe->raw_sbuf)) {
               busy = 1;
               iframe->state = NGHTTP2_IB_IGN_PAYLOAD;
@@ -6498,7 +6517,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
 
         break;
       case NGHTTP2_PRIORITY:
-        if (session->pending_no_rfc7540_priorities != 1 &&
+        if (!session_no_rfc7540_pri_no_fallback(session) &&
             session->remote_settings.no_rfc7540_priorities != 1) {
           rv = session_process_priority_frame(session);
           if (nghttp2_is_fatal(rv)) {

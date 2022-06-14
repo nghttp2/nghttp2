@@ -11637,6 +11637,196 @@ void test_nghttp2_session_no_rfc7540_priorities(void) {
   nghttp2_session_del(session);
 }
 
+void test_nghttp2_session_server_fallback_rfc7540_priorities(void) {
+  nghttp2_session *session;
+  nghttp2_option *option;
+  nghttp2_session_callbacks callbacks;
+  nghttp2_frame frame;
+  nghttp2_bufs bufs;
+  nghttp2_buf *buf;
+  ssize_t rv;
+  nghttp2_settings_entry iv;
+  nghttp2_mem *mem;
+  nghttp2_hd_deflater deflater;
+  nghttp2_nv *nva;
+  size_t nvlen;
+  nghttp2_priority_spec pri_spec;
+  nghttp2_stream *anchor_stream, *stream;
+  my_user_data ud;
+  nghttp2_ext_priority_update priority_update;
+  static const uint8_t field_value[] = "u=0";
+
+  mem = nghttp2_mem_default();
+  frame_pack_bufs_init(&bufs);
+
+  memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
+  callbacks.send_callback = null_send_callback;
+  callbacks.on_frame_recv_callback = on_frame_recv_callback;
+
+  nghttp2_option_new(&option);
+  nghttp2_option_set_server_fallback_rfc7540_priorities(option, 1);
+
+  iv.settings_id = NGHTTP2_SETTINGS_NO_RFC7540_PRIORITIES;
+  iv.value = 1;
+
+  /* Server falls back to RFC 7540 priorities. */
+  nghttp2_session_server_new2(&session, &callbacks, &ud, option);
+
+  rv = nghttp2_submit_settings(session, NGHTTP2_FLAG_NONE, &iv, 1);
+
+  CU_ASSERT(0 == rv);
+
+  rv = nghttp2_session_send(session);
+
+  CU_ASSERT(0 == rv);
+
+  nghttp2_frame_settings_init(&frame.settings, NGHTTP2_FLAG_NONE, NULL, 0);
+  rv = nghttp2_frame_pack_settings(&bufs, &frame.settings);
+
+  CU_ASSERT(0 == rv);
+
+  nghttp2_frame_settings_free(&frame.settings, mem);
+
+  buf = &bufs.head->buf;
+  rv = nghttp2_session_mem_recv(session, buf->pos, nghttp2_buf_len(buf));
+
+  CU_ASSERT((ssize_t)nghttp2_buf_len(buf) == rv);
+  CU_ASSERT(1 == session->fallback_rfc7540_priorities);
+
+  nghttp2_hd_deflate_init(&deflater, mem);
+
+  nvlen = ARRLEN(reqnv);
+  nghttp2_nv_array_copy(&nva, reqnv, nvlen, mem);
+  nghttp2_priority_spec_init(&pri_spec, 3, 111, 1);
+  nghttp2_frame_headers_init(&frame.headers,
+                             NGHTTP2_FLAG_END_HEADERS | NGHTTP2_FLAG_PRIORITY,
+                             1, NGHTTP2_HCAT_HEADERS, &pri_spec, nva, nvlen);
+  nghttp2_bufs_reset(&bufs);
+  rv = nghttp2_frame_pack_headers(&bufs, &frame.headers, &deflater);
+
+  CU_ASSERT(0 == rv);
+
+  nghttp2_frame_headers_free(&frame.headers, mem);
+
+  buf = &bufs.head->buf;
+  rv = nghttp2_session_mem_recv(session, buf->pos, nghttp2_buf_len(buf));
+
+  CU_ASSERT((ssize_t)nghttp2_buf_len(buf) == rv);
+
+  anchor_stream = nghttp2_session_get_stream_raw(session, 3);
+
+  CU_ASSERT(NGHTTP2_STREAM_IDLE == anchor_stream->state);
+  CU_ASSERT(
+      !(anchor_stream->flags & NGHTTP2_STREAM_FLAG_NO_RFC7540_PRIORITIES));
+  CU_ASSERT(&session->root == anchor_stream->dep_prev);
+
+  stream = nghttp2_session_get_stream(session, 1);
+
+  CU_ASSERT(NGHTTP2_STREAM_OPENING == stream->state);
+  CU_ASSERT(!(stream->flags & NGHTTP2_STREAM_FLAG_NO_RFC7540_PRIORITIES));
+  CU_ASSERT(anchor_stream == stream->dep_prev);
+
+  /* Make sure that PRIORITY frame updates stream priority. */
+  nghttp2_priority_spec_init(&pri_spec, 5, 1, 0);
+  nghttp2_frame_priority_init(&frame.priority, 1, &pri_spec);
+  nghttp2_bufs_reset(&bufs);
+  rv = nghttp2_frame_pack_priority(&bufs, &frame.priority);
+
+  CU_ASSERT(0 == rv);
+
+  nghttp2_frame_priority_free(&frame.priority);
+
+  buf = &bufs.head->buf;
+  rv = nghttp2_session_mem_recv(session, buf->pos, nghttp2_buf_len(buf));
+
+  CU_ASSERT((ssize_t)nghttp2_buf_len(buf) == rv);
+
+  anchor_stream = nghttp2_session_get_stream_raw(session, 5);
+
+  CU_ASSERT(NGHTTP2_STREAM_IDLE == anchor_stream->state);
+  CU_ASSERT(&session->root == anchor_stream->dep_prev);
+  CU_ASSERT(anchor_stream == stream->dep_prev);
+
+  /* Make sure that PRIORITY_UPDATE frame is ignored. */
+  frame.ext.payload = &priority_update;
+  nghttp2_frame_priority_update_init(&frame.ext, 1, (uint8_t *)field_value,
+                                     sizeof(field_value) - 1);
+  nghttp2_bufs_reset(&bufs);
+  nghttp2_frame_pack_priority_update(&bufs, &frame.ext);
+
+  ud.frame_recv_cb_called = 0;
+  buf = &bufs.head->buf;
+  rv = nghttp2_session_mem_recv(session, buf->pos, nghttp2_buf_len(buf));
+
+  CU_ASSERT((ssize_t)nghttp2_buf_len(buf) == rv);
+  CU_ASSERT(0 == ud.frame_recv_cb_called);
+  CU_ASSERT(NGHTTP2_EXTPRI_DEFAULT_URGENCY == stream->extpri);
+
+  nghttp2_hd_deflate_free(&deflater);
+  nghttp2_session_del(session);
+
+  /* Server does not fallback to RFC 7540 priorities. */
+  nghttp2_session_server_new2(&session, &callbacks, &ud, option);
+
+  rv = nghttp2_submit_settings(session, NGHTTP2_FLAG_NONE, &iv, 1);
+
+  CU_ASSERT(0 == rv);
+
+  rv = nghttp2_session_send(session);
+
+  CU_ASSERT(0 == rv);
+
+  iv.settings_id = NGHTTP2_SETTINGS_NO_RFC7540_PRIORITIES;
+  iv.value = 0;
+
+  nghttp2_frame_settings_init(&frame.settings, NGHTTP2_FLAG_NONE,
+                              dup_iv(&iv, 1), 1);
+  nghttp2_bufs_reset(&bufs);
+  rv = nghttp2_frame_pack_settings(&bufs, &frame.settings);
+
+  CU_ASSERT(0 == rv);
+
+  nghttp2_frame_settings_free(&frame.settings, mem);
+
+  buf = &bufs.head->buf;
+  rv = nghttp2_session_mem_recv(session, buf->pos, nghttp2_buf_len(buf));
+
+  CU_ASSERT((ssize_t)nghttp2_buf_len(buf) == rv);
+  CU_ASSERT(0 == session->fallback_rfc7540_priorities);
+
+  nghttp2_hd_deflate_init(&deflater, mem);
+
+  nvlen = ARRLEN(reqnv);
+  nghttp2_nv_array_copy(&nva, reqnv, nvlen, mem);
+  nghttp2_priority_spec_init(&pri_spec, 3, 111, 1);
+  nghttp2_frame_headers_init(&frame.headers,
+                             NGHTTP2_FLAG_END_HEADERS | NGHTTP2_FLAG_PRIORITY,
+                             1, NGHTTP2_HCAT_HEADERS, &pri_spec, nva, nvlen);
+  nghttp2_bufs_reset(&bufs);
+  rv = nghttp2_frame_pack_headers(&bufs, &frame.headers, &deflater);
+
+  CU_ASSERT(0 == rv);
+
+  nghttp2_frame_headers_free(&frame.headers, mem);
+
+  buf = &bufs.head->buf;
+  rv = nghttp2_session_mem_recv(session, buf->pos, nghttp2_buf_len(buf));
+
+  CU_ASSERT((ssize_t)nghttp2_buf_len(buf) == rv);
+  CU_ASSERT(NULL == nghttp2_session_get_stream_raw(session, 3));
+
+  stream = nghttp2_session_get_stream(session, 1);
+
+  CU_ASSERT(NGHTTP2_STREAM_OPENING == stream->state);
+  CU_ASSERT(stream->flags & NGHTTP2_STREAM_FLAG_NO_RFC7540_PRIORITIES);
+
+  nghttp2_hd_deflate_free(&deflater);
+  nghttp2_session_del(session);
+
+  nghttp2_option_del(option);
+  nghttp2_bufs_free(&bufs);
+}
+
 static void check_nghttp2_http_recv_headers_fail(
     nghttp2_session *session, nghttp2_hd_deflater *deflater, int32_t stream_id,
     int stream_state, const nghttp2_nv *nva, size_t nvlen) {

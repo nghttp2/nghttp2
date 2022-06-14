@@ -130,3 +130,9 @@ void nghttp2_option_set_max_settings(nghttp2_option *option, size_t val) {
   option->opt_set_mask |= NGHTTP2_OPT_MAX_SETTINGS;
   option->max_settings = val;
 }
+
+void nghttp2_option_set_server_fallback_rfc7540_priorities(
+    nghttp2_option *option, int val) {
+  option->opt_set_mask |= NGHTTP2_OPT_SERVER_FALLBACK_RFC7540_PRIORITIES;
+  option->server_fallback_rfc7540_priorities = val;
+}
