@@ -479,3 +479,48 @@ its creation, like so:
 When ALTSVC is received, :type:`nghttp2_on_frame_recv_callback` will
 be called as usual.
 
+Stream priorities
+-----------------
+
+By default, the stream prioritization scheme described in :rfc:`7540`
+is used.  This scheme has been formally deprecated by :rfc:`9113`.  In
+order to disable it, send
+:enum:`nghttp2_settings_id.NGHTTP2_SETTINGS_NO_RFC7540_PRIORITIES` of
+value of 1 via `nghttp2_submit_settings()`.  This settings ID is
+defined by :rfc:`9218`.  The sender of this settings value disables
+RFC 7540 priorities, and instead it enables RFC 9218 Extensible
+Prioritization Scheme.  This new prioritization scheme has 2 methods
+to convey the stream priorities to a remote endpoint: Priority header
+field and PRIORITY_UPDATE frame.  nghttp2 supports both methods.  In
+order to receive and process PRIORITY_UPDATE frame, server has to call
+``nghttp2_option_set_builtin_recv_extension_type(option,
+NGHTTP2_PRIORITY_UPDATE)`` (see the above section), and pass the
+option to `nghttp2_session_server_new2()` or
+`nghttp2_session_server_new3()` to create a server session.  Client
+can send Priority header field via `nghttp2_submit_request()`.  It can
+also send PRIORITY_UPDATE frame via
+`nghttp2_submit_priority_update()`.  Server processes Priority header
+field in a request header field and updates the stream priority unless
+HTTP messaging rule enforcement is disabled (see
+`nghttp2_option_set_no_http_messaging()`).
+
+For the purpose of smooth migration from RFC 7540 priorities, client
+is advised to send
+:enum:`nghttp2_settings_id.NGHTTP2_SETTINGS_NO_RFC7540_PRIORITIES` of
+value of 1.  Until it receives the first server SETTINGS frame, it can
+send both RFC 7540 and RFC 9128 priority signals.  If client receives
+SETTINGS_NO_RFC7540_PRIORITIES of value of 0, or it is omitted ,
+client stops sending PRIORITY_UPDATE frame.  Priority header field
+will be sent in anyway since it is an end-to-end signal.  If
+SETTINGS_NO_RFC7540_PRIORITIES of value of 1 is received, client stops
+sending RFC 7540 priority signals.  This is the advice described in
+:rfc:`9218#section-2.1.1`.
+
+Server has an optional mechanism to fallback to RFC 7540 priorities.
+By default, if server sends SETTINGS_NO_RFC7540_PRIORITIES of value of
+1, it completely disables RFC 7540 priorities and no fallback.  By
+setting nonzero value to
+`nghttp2_option_set_server_fallback_rfc7540_priorities()`, server
+falls back to RFC 7540 priorities if it sends
+SETTINGS_NO_RFC7540_PRIORITIES value of value of 1, and client omits
+SETTINGS_NO_RFC7540_PRIORITIES in its SETTINGS frame.
