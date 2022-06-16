@@ -10698,6 +10698,84 @@ void test_nghttp2_session_change_stream_priority(void) {
   nghttp2_session_del(session);
 }
 
+void test_nghttp2_session_change_extpri_stream_priority(void) {
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+  nghttp2_bufs bufs;
+  nghttp2_buf *buf;
+  ssize_t rv;
+  nghttp2_option *option;
+  nghttp2_extension frame;
+  nghttp2_ext_priority_update priority_update;
+  nghttp2_extpri extpri;
+  nghttp2_stream *stream;
+  static const uint8_t field_value[] = "u=2";
+
+  memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
+
+  frame_pack_bufs_init(&bufs);
+
+  nghttp2_option_new(&option);
+  nghttp2_option_set_builtin_recv_extension_type(option,
+                                                 NGHTTP2_PRIORITY_UPDATE);
+
+  nghttp2_session_server_new2(&session, &callbacks, NULL, option);
+
+  session->pending_no_rfc7540_priorities = 1;
+
+  open_recv_stream(session, 1);
+
+  extpri.urgency = NGHTTP2_EXTPRI_URGENCY_LOW + 1;
+  extpri.inc = 1;
+
+  rv = nghttp2_session_change_extpri_stream_priority(
+      session, 1, &extpri, /* ignore_client_signal = */ 0);
+
+  CU_ASSERT(0 == rv);
+
+  stream = nghttp2_session_get_stream(session, 1);
+
+  CU_ASSERT(NGHTTP2_EXTPRI_URGENCY_LOW ==
+            nghttp2_extpri_uint8_urgency(stream->extpri));
+  CU_ASSERT(1 == nghttp2_extpri_uint8_inc(stream->extpri));
+
+  /* Client can still update stream priority. */
+  frame.payload = &priority_update;
+  nghttp2_frame_priority_update_init(&frame, 1, (uint8_t *)field_value,
+                                     sizeof(field_value) - 1);
+  nghttp2_frame_pack_priority_update(&bufs, &frame);
+
+  buf = &bufs.head->buf;
+  rv = nghttp2_session_mem_recv(session, buf->pos, nghttp2_buf_len(buf));
+
+  CU_ASSERT((ssize_t)nghttp2_buf_len(buf) == rv);
+  CU_ASSERT(2 == stream->extpri);
+
+  /* Start to ignore client priority signal for this stream. */
+  rv = nghttp2_session_change_extpri_stream_priority(
+      session, 1, &extpri, /* ignore_client_signal = */ 1);
+
+  CU_ASSERT(0 == rv);
+
+  stream = nghttp2_session_get_stream(session, 1);
+
+  CU_ASSERT(NGHTTP2_EXTPRI_URGENCY_LOW ==
+            nghttp2_extpri_uint8_urgency(stream->extpri));
+  CU_ASSERT(1 == nghttp2_extpri_uint8_inc(stream->extpri));
+
+  buf = &bufs.head->buf;
+  rv = nghttp2_session_mem_recv(session, buf->pos, nghttp2_buf_len(buf));
+
+  CU_ASSERT((ssize_t)nghttp2_buf_len(buf) == rv);
+  CU_ASSERT(NGHTTP2_EXTPRI_URGENCY_LOW ==
+            nghttp2_extpri_uint8_urgency(stream->extpri));
+  CU_ASSERT(1 == nghttp2_extpri_uint8_inc(stream->extpri));
+
+  nghttp2_session_del(session);
+  nghttp2_option_del(option);
+  nghttp2_bufs_free(&bufs);
+}
+
 void test_nghttp2_session_create_idle_stream(void) {
   nghttp2_session *session;
   nghttp2_session_callbacks callbacks;
