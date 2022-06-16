@@ -681,12 +681,12 @@ int nghttp2_submit_priority_update(nghttp2_session *session, uint8_t flags,
 
   mem = &session->mem;
 
-  if (session->remote_settings.no_rfc7540_priorities == 0) {
-    return 0;
-  }
-
   if (session->server) {
     return NGHTTP2_ERR_INVALID_STATE;
+  }
+
+  if (session->remote_settings.no_rfc7540_priorities == 0) {
+    return 0;
   }
 
   if (stream_id == 0 || 4 + field_value_len > NGHTTP2_MAX_PAYLOADLEN) {
