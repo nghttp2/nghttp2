@@ -1045,8 +1045,8 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
   flow_control_ = true;
 
   // TODO Maybe call from outside?
-  std::array<nghttp2_settings_entry, 4> entry;
-  size_t nentry = 2;
+  std::array<nghttp2_settings_entry, 5> entry;
+  size_t nentry = 3;
 
   entry[0].settings_id = NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS;
   entry[0].value = http2conf.upstream.max_concurrent_streams;
@@ -1057,6 +1057,9 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
   } else {
     entry[1].value = http2conf.upstream.window_size;
   }
+
+  entry[2].settings_id = NGHTTP2_SETTINGS_NO_RFC7540_PRIORITIES;
+  entry[2].value = 1;
 
   if (!config->http2_proxy) {
     entry[nentry].settings_id = NGHTTP2_SETTINGS_ENABLE_CONNECT_PROTOCOL;

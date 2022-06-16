@@ -1911,6 +1911,10 @@ void fill_default_config(Config *config) {
     nghttp2_option_set_no_recv_client_magic(upstreamconf.option, 1);
     nghttp2_option_set_max_deflate_dynamic_table_size(
         upstreamconf.option, upstreamconf.encoder_dynamic_table_size);
+    nghttp2_option_set_server_fallback_rfc7540_priorities(upstreamconf.option,
+                                                          1);
+    nghttp2_option_set_builtin_recv_extension_type(upstreamconf.option,
+                                                   NGHTTP2_PRIORITY_UPDATE);
 
     // For API endpoint, we enable automatic window update.  This is
     // because we are a sink.
