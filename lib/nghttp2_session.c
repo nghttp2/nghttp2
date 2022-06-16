@@ -4084,6 +4084,7 @@ static int session_end_stream_headers_received(nghttp2_session *session,
   if (session->server && session_enforce_http_messaging(session) &&
       frame->headers.cat == NGHTTP2_HCAT_REQUEST &&
       (stream->flags & NGHTTP2_STREAM_FLAG_NO_RFC7540_PRIORITIES) &&
+      !(stream->flags & NGHTTP2_STREAM_FLAG_IGNORE_CLIENT_PRIORITIES) &&
       (stream->http_flags & NGHTTP2_HTTP_FLAG_PRIORITY)) {
     rv = session_update_stream_priority(session, stream, stream->http_extpri);
     if (rv != 0) {
@@ -5333,6 +5334,9 @@ int nghttp2_session_on_priority_update_received(nghttp2_session *session,
   stream = nghttp2_session_get_stream_raw(session, priority_update->stream_id);
   if (stream) {
     /* Stream already exists. */
+    if (stream->flags & NGHTTP2_STREAM_FLAG_IGNORE_CLIENT_PRIORITIES) {
+      return session_call_on_frame_received(session, frame);
+    }
   } else if (session_detect_idle_stream(session, priority_update->stream_id)) {
     if (session->num_idle_streams + session->num_incoming_streams >=
         session->local_settings.max_concurrent_streams) {
@@ -8374,4 +8378,39 @@ nghttp2_session_get_hd_deflate_dynamic_table_size(nghttp2_session *session) {
 
 void nghttp2_session_set_user_data(nghttp2_session *session, void *user_data) {
   session->user_data = user_data;
+}
+
+int nghttp2_session_change_extpri_stream_priority(
+    nghttp2_session *session, int32_t stream_id,
+    const nghttp2_extpri *extpri_in, int ignore_client_signal) {
+  nghttp2_stream *stream;
+  nghttp2_extpri extpri = *extpri_in;
+
+  if (!session->server) {
+    return NGHTTP2_ERR_INVALID_STATE;
+  }
+
+  if (session->pending_no_rfc7540_priorities != 1) {
+    return 0;
+  }
+
+  if (stream_id == 0) {
+    return NGHTTP2_ERR_INVALID_ARGUMENT;
+  }
+
+  stream = nghttp2_session_get_stream_raw(session, stream_id);
+  if (!stream) {
+    return NGHTTP2_ERR_INVALID_ARGUMENT;
+  }
+
+  if (extpri.urgency > NGHTTP2_EXTPRI_URGENCY_LOW) {
+    extpri.urgency = NGHTTP2_EXTPRI_URGENCY_LOW;
+  }
+
+  if (ignore_client_signal) {
+    stream->flags |= NGHTTP2_STREAM_FLAG_IGNORE_CLIENT_PRIORITIES;
+  }
+
+  return session_update_stream_priority(session, stream,
+                                        nghttp2_extpri_to_uint8(&extpri));
 }

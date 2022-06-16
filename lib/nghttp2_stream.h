@@ -94,6 +94,8 @@ typedef enum {
   /* Indicates that this stream is not subject to RFC7540
      priorities scheme. */
   NGHTTP2_STREAM_FLAG_NO_RFC7540_PRIORITIES = 0x10,
+  /* Ignore client RFC 9218 priority signal. */
+  NGHTTP2_STREAM_FLAG_IGNORE_CLIENT_PRIORITIES = 0x20,
 } nghttp2_stream_flag;
 
 /* HTTP related flags to enforce HTTP semantics */

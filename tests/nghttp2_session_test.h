@@ -155,6 +155,7 @@ void test_nghttp2_session_defer_then_close(void);
 void test_nghttp2_session_detach_item_from_closed_stream(void);
 void test_nghttp2_session_flooding(void);
 void test_nghttp2_session_change_stream_priority(void);
+void test_nghttp2_session_change_extpri_stream_priority(void);
 void test_nghttp2_session_create_idle_stream(void);
 void test_nghttp2_session_repeated_priority_change(void);
 void test_nghttp2_session_repeated_priority_submission(void);
