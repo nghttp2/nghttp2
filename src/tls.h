@@ -46,26 +46,26 @@ public:
   LibsslGlobalLock &operator=(const LibsslGlobalLock &) = delete;
 };
 
-// Recommended general purpose "Modern compatibility" cipher suites by
-// mozilla.
+// Recommended general purpose "Intermediate compatibility" cipher
+// suites for TLSv1.2 by mozilla.
 //
 // https://wiki.mozilla.org/Security/Server_Side_TLS
 constexpr char DEFAULT_CIPHER_LIST[] =
-    "ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-"
-    "CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-"
-    "SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-"
-    "AES256-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256";
+    "ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-"
+    "AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-"
+    "POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-"
+    "AES256-GCM-SHA384";
 
+// Recommended general purpose "Modern compatibility" cipher suites
+// for TLSv1.3 by mozilla.
+//
+// https://wiki.mozilla.org/Security/Server_Side_TLS
 constexpr char DEFAULT_TLS13_CIPHER_LIST[] =
-#if OPENSSL_3_0_0_API
-    "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256"
-#elif OPENSSL_1_1_1_API && !defined(OPENSSL_IS_BORINGSSL)
-    TLS_DEFAULT_CIPHERSUITES
-#else  // !OPENSSL_3_0_0_API && !(OPENSSL_1_1_1_API &&
-       // !defined(OPENSSL_IS_BORINGSSL))
+#if OPENSSL_1_1_1_API && !defined(OPENSSL_IS_BORINGSSL)
+    "TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256"
+#else
     ""
-#endif // !OPENSSL_3_0_0_API && !(OPENSSL_1_1_1_API &&
-       // !defined(OPENSSL_IS_BORINGSSL))
+#endif
     ;
 
 constexpr auto NGHTTP2_TLS_MIN_VERSION = TLS1_VERSION;
