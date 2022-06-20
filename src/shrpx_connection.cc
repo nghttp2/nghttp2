@@ -60,7 +60,11 @@ Connection::Connection(struct ev_loop *loop, int fd, SSL *ssl,
                        IOCb readcb, TimerCb timeoutcb, void *data,
                        size_t tls_dyn_rec_warmup_threshold,
                        ev_tstamp tls_dyn_rec_idle_timeout, Proto proto)
-    : tls{DefaultMemchunks(mcpool), DefaultPeekMemchunks(mcpool),
+    :
+#ifdef ENABLE_HTTP3
+      conn_ref{nullptr, this},
+#endif // ENABLE_HTTP3
+      tls{DefaultMemchunks(mcpool), DefaultPeekMemchunks(mcpool),
           DefaultMemchunks(mcpool)},
       wlimit(loop, &wev, write_limit.rate, write_limit.burst),
       rlimit(loop, &rev, read_limit.rate, read_limit.burst, this),
@@ -97,21 +101,24 @@ Connection::~Connection() { disconnect(); }
 
 void Connection::disconnect() {
   if (tls.ssl) {
-    SSL_set_shutdown(tls.ssl,
-                     SSL_get_shutdown(tls.ssl) | SSL_RECEIVED_SHUTDOWN);
-    ERR_clear_error();
+    if (proto != Proto::HTTP3) {
+      SSL_set_shutdown(tls.ssl,
+                       SSL_get_shutdown(tls.ssl) | SSL_RECEIVED_SHUTDOWN);
+      ERR_clear_error();
 
-    if (tls.cached_session) {
-      SSL_SESSION_free(tls.cached_session);
-      tls.cached_session = nullptr;
+      if (tls.cached_session) {
+        SSL_SESSION_free(tls.cached_session);
+        tls.cached_session = nullptr;
+      }
+
+      if (tls.cached_session_lookup_req) {
+        tls.cached_session_lookup_req->canceled = true;
+        tls.cached_session_lookup_req = nullptr;
+      }
+
+      SSL_shutdown(tls.ssl);
     }
 
-    if (tls.cached_session_lookup_req) {
-      tls.cached_session_lookup_req->canceled = true;
-      tls.cached_session_lookup_req = nullptr;
-    }
-
-    SSL_shutdown(tls.ssl);
     SSL_free(tls.ssl);
     tls.ssl = nullptr;
 

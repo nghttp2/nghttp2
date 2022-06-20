@@ -243,127 +243,6 @@ ngtcp2_tstamp timestamp(struct ev_loop *loop) {
 }
 } // namespace
 
-#ifdef HAVE_LIBNGTCP2_CRYPTO_OPENSSL
-namespace {
-int set_encryption_secrets(SSL *ssl, OSSL_ENCRYPTION_LEVEL ossl_level,
-                           const uint8_t *rx_secret, const uint8_t *tx_secret,
-                           size_t secret_len) {
-  auto c = static_cast<Client *>(SSL_get_app_data(ssl));
-  auto level = ngtcp2_crypto_openssl_from_ossl_encryption_level(ossl_level);
-
-  if (c->quic_on_rx_secret(level, rx_secret, secret_len) != 0) {
-    return 0;
-  }
-
-  if (c->quic_on_tx_secret(level, tx_secret, secret_len) != 0) {
-    return 0;
-  }
-
-  return 1;
-}
-} // namespace
-
-namespace {
-int add_handshake_data(SSL *ssl, OSSL_ENCRYPTION_LEVEL ossl_level,
-                       const uint8_t *data, size_t len) {
-  auto c = static_cast<Client *>(SSL_get_app_data(ssl));
-  if (c->quic_write_client_handshake(
-          ngtcp2_crypto_openssl_from_ossl_encryption_level(ossl_level), data,
-          len) != 0) {
-    return 0;
-  }
-  return 1;
-}
-} // namespace
-
-namespace {
-int flush_flight(SSL *ssl) { return 1; }
-} // namespace
-
-namespace {
-int send_alert(SSL *ssl, enum ssl_encryption_level_t level, uint8_t alert) {
-  auto c = static_cast<Client *>(SSL_get_app_data(ssl));
-  c->quic_set_tls_alert(alert);
-  return 1;
-}
-} // namespace
-
-namespace {
-auto quic_method = SSL_QUIC_METHOD{
-    set_encryption_secrets,
-    add_handshake_data,
-    flush_flight,
-    send_alert,
-};
-} // namespace
-#endif // HAVE_LIBNGTCP2_CRYPTO_OPENSSL
-
-#ifdef HAVE_LIBNGTCP2_CRYPTO_BORINGSSL
-namespace {
-int set_read_secret(SSL *ssl, ssl_encryption_level_t ssl_level,
-                    const SSL_CIPHER *cipher, const uint8_t *secret,
-                    size_t secretlen) {
-  auto c = static_cast<Client *>(SSL_get_app_data(ssl));
-
-  if (c->quic_on_rx_secret(
-          ngtcp2_crypto_boringssl_from_ssl_encryption_level(ssl_level), secret,
-          secretlen) != 0) {
-    return 0;
-  }
-
-  return 1;
-}
-} // namespace
-
-namespace {
-int set_write_secret(SSL *ssl, ssl_encryption_level_t ssl_level,
-                     const SSL_CIPHER *cipher, const uint8_t *secret,
-                     size_t secretlen) {
-  auto c = static_cast<Client *>(SSL_get_app_data(ssl));
-
-  if (c->quic_on_tx_secret(
-          ngtcp2_crypto_boringssl_from_ssl_encryption_level(ssl_level), secret,
-          secretlen) != 0) {
-    return 0;
-  }
-
-  return 1;
-}
-} // namespace
-
-namespace {
-int add_handshake_data(SSL *ssl, ssl_encryption_level_t ssl_level,
-                       const uint8_t *data, size_t len) {
-  auto c = static_cast<Client *>(SSL_get_app_data(ssl));
-  if (c->quic_write_client_handshake(
-          ngtcp2_crypto_boringssl_from_ssl_encryption_level(ssl_level), data,
-          len) != 0) {
-    return 0;
-  }
-  return 1;
-}
-} // namespace
-
-namespace {
-int flush_flight(SSL *ssl) { return 1; }
-} // namespace
-
-namespace {
-int send_alert(SSL *ssl, ssl_encryption_level_t level, uint8_t alert) {
-  auto c = static_cast<Client *>(SSL_get_app_data(ssl));
-  c->quic_set_tls_alert(alert);
-  return 1;
-}
-} // namespace
-
-namespace {
-auto quic_method = SSL_QUIC_METHOD{
-    set_read_secret, set_write_secret, add_handshake_data,
-    flush_flight,    send_alert,
-};
-} // namespace
-#endif // HAVE_LIBNGTCP2_CRYPTO_BORINGSSL
-
 // qlog write callback -- excerpted from ngtcp2/examples/client_base.cc
 namespace {
 void qlog_write_cb(void *user_data, uint32_t flags, const void *data,
@@ -385,6 +264,39 @@ void rand(uint8_t *dest, size_t destlen, const ngtcp2_rand_ctx *rand_ctx) {
 }
 } // namespace
 
+namespace {
+int recv_rx_key(ngtcp2_conn *conn, ngtcp2_crypto_level level, void *user_data) {
+  if (level != NGTCP2_CRYPTO_LEVEL_APPLICATION) {
+    return 0;
+  }
+
+  auto c = static_cast<Client *>(user_data);
+
+  if (c->quic_make_http3_session() != 0) {
+    return NGTCP2_ERR_CALLBACK_FAILURE;
+  }
+
+  return 0;
+}
+} // namespace
+
+int Client::quic_make_http3_session() {
+  auto s = std::make_unique<Http3Session>(this);
+  if (s->init_conn() == -1) {
+    return -1;
+  }
+  session = std::move(s);
+
+  return 0;
+}
+
+namespace {
+ngtcp2_conn *get_conn(ngtcp2_crypto_conn_ref *conn_ref) {
+  auto c = static_cast<Client *>(conn_ref->user_data);
+  return c->quic.conn;
+}
+} // namespace
+
 int Client::quic_init(const sockaddr *local_addr, socklen_t local_addrlen,
                       const sockaddr *remote_addr, socklen_t remote_addrlen) {
   int rv;
@@ -392,9 +304,11 @@ int Client::quic_init(const sockaddr *local_addr, socklen_t local_addrlen,
   if (!ssl) {
     ssl = SSL_new(worker->ssl_ctx);
 
-    SSL_set_app_data(ssl, this);
+    quic.conn_ref.get_conn = get_conn;
+    quic.conn_ref.user_data = this;
+
+    SSL_set_app_data(ssl, &quic.conn_ref);
     SSL_set_connect_state(ssl);
-    SSL_set_quic_method(ssl, &quic_method);
     SSL_set_quic_use_legacy_codepoint(ssl, 0);
   }
 
@@ -435,6 +349,9 @@ int Client::quic_init(const sockaddr *local_addr, socklen_t local_addrlen,
       nullptr, // lost_datagram
       ngtcp2_crypto_get_path_challenge_data_cb,
       h2load::stream_stop_sending,
+      nullptr, // version_negotiation
+      h2load::recv_rx_key,
+      nullptr, // recv_tx_key
   };
 
   ngtcp2_cid scid, dcid;
@@ -546,42 +463,6 @@ void Client::quic_close_connection() {
             ps.path.remote.addrlen, buf.data(), nwrite, 0);
 }
 
-int Client::quic_on_rx_secret(ngtcp2_crypto_level level, const uint8_t *secret,
-                              size_t secretlen) {
-  if (ngtcp2_crypto_derive_and_install_rx_key(quic.conn, nullptr, nullptr,
-                                              nullptr, level, secret,
-                                              secretlen) != 0) {
-    std::cerr << "ngtcp2_crypto_derive_and_install_rx_key() failed"
-              << std::endl;
-    return -1;
-  }
-
-  if (level == NGTCP2_CRYPTO_LEVEL_APPLICATION) {
-    auto s = std::make_unique<Http3Session>(this);
-    if (s->init_conn() == -1) {
-      return -1;
-    }
-    session = std::move(s);
-  }
-
-  return 0;
-}
-
-int Client::quic_on_tx_secret(ngtcp2_crypto_level level, const uint8_t *secret,
-                              size_t secretlen) {
-  if (ngtcp2_crypto_derive_and_install_tx_key(quic.conn, nullptr, nullptr,
-                                              nullptr, level, secret,
-                                              secretlen) != 0) {
-    std::cerr << "ngtcp2_crypto_derive_and_install_tx_key() failed"
-              << std::endl;
-    return -1;
-  }
-
-  return 0;
-}
-
-void Client::quic_set_tls_alert(uint8_t alert) { quic.tls_alert = alert; }
-
 int Client::quic_write_client_handshake(ngtcp2_crypto_level level,
                                         const uint8_t *data, size_t datalen) {
   int rv;
@@ -670,7 +551,8 @@ int Client::read_quic() {
       if (!quic.last_error.error_code) {
         if (rv == NGTCP2_ERR_CRYPTO) {
           ngtcp2_connection_close_error_set_transport_error_tls_alert(
-              &quic.last_error, quic.tls_alert, nullptr, 0);
+              &quic.last_error, ngtcp2_conn_get_tls_alert(quic.conn), nullptr,
+              0);
         } else {
           ngtcp2_connection_close_error_set_transport_error_liberr(
               &quic.last_error, rv, nullptr, 0);

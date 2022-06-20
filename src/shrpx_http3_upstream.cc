@@ -100,12 +100,20 @@ size_t downstream_queue_size(Worker *worker) {
 }
 } // namespace
 
+namespace {
+ngtcp2_conn *get_conn(ngtcp2_crypto_conn_ref *conn_ref) {
+  auto conn = static_cast<Connection *>(conn_ref->user_data);
+  auto handler = static_cast<ClientHandler *>(conn->data);
+  auto upstream = static_cast<Http3Upstream *>(handler->get_upstream());
+  return upstream->get_conn();
+}
+} // namespace
+
 Http3Upstream::Http3Upstream(ClientHandler *handler)
     : handler_{handler},
       qlog_fd_{-1},
       hashed_scid_{},
       conn_{nullptr},
-      tls_alert_{0},
       httpconn_{nullptr},
       downstream_queue_{downstream_queue_size(handler->get_worker()),
                         !get_config()->http2_proxy},
@@ -113,6 +121,9 @@ Http3Upstream::Http3Upstream(ClientHandler *handler)
       tx_{
           .data = std::unique_ptr<uint8_t[]>(new uint8_t[64_k]),
       } {
+  auto conn = handler_->get_connection();
+  conn->conn_ref.get_conn = shrpx::get_conn;
+
   ev_timer_init(&timer_, timeoutcb, 0., 0.);
   timer_.data = this;
 
@@ -493,6 +504,21 @@ int Http3Upstream::handshake_completed() {
   return 0;
 }
 
+namespace {
+int recv_tx_key(ngtcp2_conn *conn, ngtcp2_crypto_level level, void *user_data) {
+  if (level != NGTCP2_CRYPTO_LEVEL_APPLICATION) {
+    return 0;
+  }
+
+  auto upstream = static_cast<Http3Upstream *>(user_data);
+  if (upstream->setup_httpconn() != 0) {
+    return NGTCP2_ERR_CALLBACK_FAILURE;
+  }
+
+  return 0;
+}
+} // namespace
+
 int Http3Upstream::init(const UpstreamAddr *faddr, const Address &remote_addr,
                         const Address &local_addr,
                         const ngtcp2_pkt_hd &initial_hd,
@@ -540,6 +566,9 @@ int Http3Upstream::init(const UpstreamAddr *faddr, const Address &remote_addr,
       nullptr, // lost_datagram
       ngtcp2_crypto_get_path_challenge_data_cb,
       shrpx::stream_stop_sending,
+      nullptr, // version_negotiation
+      nullptr, // recv_rx_key
+      shrpx::recv_tx_key,
   };
 
   auto config = get_config();
@@ -1795,7 +1824,7 @@ int Http3Upstream::on_read(const UpstreamAddr *faddr,
     case NGTCP2_ERR_CRYPTO:
       if (!last_error_.error_code) {
         ngtcp2_connection_close_error_set_transport_error_tls_alert(
-            &last_error_, tls_alert_, nullptr, 0);
+            &last_error_, ngtcp2_conn_get_tls_alert(conn_), nullptr, 0);
       }
       break;
     case NGTCP2_ERR_DROP_CONN:
@@ -1943,47 +1972,6 @@ int Http3Upstream::handle_error() {
 
   return -1;
 }
-
-int Http3Upstream::on_rx_secret(ngtcp2_crypto_level level,
-                                const uint8_t *secret, size_t secretlen) {
-  if (ngtcp2_crypto_derive_and_install_rx_key(conn_, nullptr, nullptr, nullptr,
-                                              level, secret, secretlen) != 0) {
-    ULOG(ERROR, this) << "ngtcp2_crypto_derive_and_install_rx_key failed";
-    return -1;
-  }
-
-  return 0;
-}
-
-int Http3Upstream::on_tx_secret(ngtcp2_crypto_level level,
-                                const uint8_t *secret, size_t secretlen) {
-  if (ngtcp2_crypto_derive_and_install_tx_key(conn_, nullptr, nullptr, nullptr,
-                                              level, secret, secretlen) != 0) {
-    ULOG(ERROR, this) << "ngtcp2_crypto_derive_and_install_tx_key failed";
-    return -1;
-  }
-
-  if (level == NGTCP2_CRYPTO_LEVEL_APPLICATION && setup_httpconn() != 0) {
-    return -1;
-  }
-
-  return 0;
-}
-
-int Http3Upstream::add_crypto_data(ngtcp2_crypto_level level,
-                                   const uint8_t *data, size_t datalen) {
-  int rv = ngtcp2_conn_submit_crypto_data(conn_, level, data, datalen);
-
-  if (rv != 0) {
-    ULOG(ERROR, this) << "ngtcp2_conn_submit_crypto_data: "
-                      << ngtcp2_strerror(rv);
-    return -1;
-  }
-
-  return 0;
-}
-
-void Http3Upstream::set_tls_alert(uint8_t alert) { tls_alert_ = alert; }
 
 int Http3Upstream::handle_expiry() {
   int rv;
@@ -2646,11 +2634,10 @@ int Http3Upstream::setup_httpconn() {
     return -1;
   }
 
-  ngtcp2_transport_params params;
-  ngtcp2_conn_get_local_transport_params(conn_, &params);
+  auto params = ngtcp2_conn_get_local_transport_params(conn_);
 
   nghttp3_conn_set_max_client_streams_bidi(httpconn_,
-                                           params.initial_max_streams_bidi);
+                                           params->initial_max_streams_bidi);
 
   int64_t ctrl_stream_id;
 
@@ -2932,5 +2919,7 @@ int Http3Upstream::open_qlog_file(const StringRef &dir,
 
   return fd;
 }
+
+ngtcp2_conn *Http3Upstream::get_conn() const { return conn_; }
 
 } // namespace shrpx
