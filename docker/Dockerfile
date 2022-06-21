@@ -36,7 +36,7 @@ RUN git clone --depth 1 -b v0.6.0 https://github.com/ngtcp2/ngtcp2 && \
     cd .. && \
     rm -rf ngtcp2
 
-RUN git clone --depth 1 -b v0.7.0 https://github.com/libbpf/libbpf && \
+RUN git clone --depth 1 -b v0.8.0 https://github.com/libbpf/libbpf && \
     cd libbpf && \
     PREFIX=/usr/local make -C src install && \
     cd .. && \
