@@ -92,13 +92,21 @@ if (err == HPE_OK) {
 ```
 For more information on API usage, please refer to [src/native/api.h](https://github.com/nodejs/llhttp/blob/main/src/native/api.h).
 
+## Build Instructions
+
+Make sure you have [Node.js](https://nodejs.org/), npm and npx installed. Then under project directory run:
+
+```sh
+npm install
+make
+```
+
 ---
 
 ### Bindings to other languages
 
 * Python: [pallas/pyllhttp][8]
 * Ruby: [metabahn/llhttp][9]
-
 
 ### Using with CMake
 
@@ -112,6 +120,28 @@ FetchContent_MakeAvailable(llhttp)
 
 target_link_libraries(${EXAMPLE_PROJECT_NAME} ${PROJECT_LIBRARIES} llhttp ${PROJECT_NAME})
 ```
+
+## Building on Windows
+
+### Installation
+
+* `choco install git`
+* `choco install node`
+* `choco install llvm` (or install the `C++ Clang tools for Windows` optional package from the Visual Studio 2019 installer)
+* `choco install make` (or if you have MinGW, it comes bundled)
+
+1. Ensure that `Clang` and `make` are in your system path.
+2. Using Git Bash, clone the repo to your preferred location.
+3. Cd into the cloned directory and run `npm install`
+5. Run `make`
+6. Your `repo/build` directory should now have `libllhttp.a` and `libllhttp.so` static and dynamic libraries.
+7. When building your executable, you can link to these libraries. Make sure to set the build folder as an include path when building so you can reference the declarations in `repo/build/llhttp.h`.
+
+### A simple example on linking with the library:
+
+Assuming you have an executable `main.cpp` in your current working directory, you would run: `clang++ -Os -g3 -Wall -Wextra -Wno-unused-parameter -I/path/to/llhttp/build main.cpp /path/to/llhttp/build/libllhttp.a -o main.exe`.
+
+If you are getting `unresolved external symbol` linker errors you are likely attempting to build `llhttp.c` without linking it with object files from `api.c` and `http.c`.
 
 #### LICENSE
 
