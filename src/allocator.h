@@ -190,14 +190,14 @@ StringRef make_string_ref(BlockAllocator &alloc, const StringRef &src) {
 
 // private function used in concat_string_ref.  this is the base
 // function of concat_string_ref_count().
-inline size_t concat_string_ref_count(size_t acc) { return acc; }
+inline constexpr size_t concat_string_ref_count(size_t acc) { return acc; }
 
 // private function used in concat_string_ref.  This function counts
 // the sum of length of given arguments.  The calculated length is
 // accumulated, and passed to the next function.
 template <typename... Args>
-size_t concat_string_ref_count(size_t acc, const StringRef &value,
-                               Args &&...args) {
+constexpr size_t concat_string_ref_count(size_t acc, const StringRef &value,
+                                         Args &&...args) {
   return concat_string_ref_count(acc + value.size(),
                                  std::forward<Args>(args)...);
 }
