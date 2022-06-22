@@ -2220,11 +2220,11 @@ int Http3Upstream::http_end_request_headers(Downstream *downstream, int fin) {
 
   auto content_length = req.fs.header(http2::HD_CONTENT_LENGTH);
   if (content_length) {
-    // libnghttp2 guarantees this can be parsed
+    // libnghttp3 guarantees this can be parsed
     req.fs.content_length = util::parse_uint(content_length->value);
   }
 
-  // presence of mandatory header fields are guaranteed by libnghttp2.
+  // presence of mandatory header fields are guaranteed by libnghttp3.
   auto authority = req.fs.header(http2::HD__AUTHORITY);
   auto path = req.fs.header(http2::HD__PATH);
   auto method = req.fs.header(http2::HD__METHOD);
