@@ -1466,7 +1466,7 @@ int Client::write_udp(const sockaddr *addr, socklen_t addrlen,
 
   auto nwrite = sendmsg(fd, &msg, 0);
   if (nwrite < 0) {
-    if (nwrite == EAGAIN || nwrite == EWOULDBLOCK) {
+    if (errno == EAGAIN || errno == EWOULDBLOCK) {
       return 1;
     }
 
