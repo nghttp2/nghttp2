@@ -593,17 +593,13 @@ int Client::write_quic() {
   std::array<nghttp3_vec, 16> vec;
   size_t pktcnt = 0;
   auto max_udp_payload_size = ngtcp2_conn_get_max_udp_payload_size(quic.conn);
+#ifdef UDP_SEGMENT
   auto path_max_udp_payload_size =
       ngtcp2_conn_get_path_max_udp_payload_size(quic.conn);
+#endif // UDP_SEGMENT
   size_t max_pktcnt =
-#ifdef UDP_SEGMENT
-      worker->config->no_udp_gso
-          ? 1
-          : std::min(static_cast<size_t>(10),
-                     static_cast<size_t>(64_k / max_udp_payload_size));
-#else  // !UDP_SEGMENT
-      1;
-#endif // !UDP_SEGMENT
+      std::min(static_cast<size_t>(10),
+               static_cast<size_t>(64_k / max_udp_payload_size));
   uint8_t *bufpos = quic.tx.data.get();
   ngtcp2_path_storage ps;
   size_t gso_size = 0;
@@ -685,6 +681,32 @@ int Client::write_quic() {
 
     bufpos += nwrite;
 
+#ifdef UDP_SEGMENT
+    if (worker->config->no_udp_gso) {
+#endif // UDP_SEGMENT
+      auto data = quic.tx.data.get();
+      auto datalen = bufpos - quic.tx.data.get();
+      rv = write_udp(ps.path.remote.addr, ps.path.remote.addrlen, data, datalen,
+                     0);
+      if (rv == 1) {
+        on_send_blocked(ps.path.remote, data, datalen, 0);
+        signal_write();
+        return 0;
+      }
+
+      if (++pktcnt == max_pktcnt) {
+        signal_write();
+        return 0;
+      }
+
+      bufpos = quic.tx.data.get();
+
+#ifdef UDP_SEGMENT
+      continue;
+    }
+#endif // UDP_SEGMENT
+
+#ifdef UDP_SEGMENT
     if (pktcnt == 0) {
       gso_size = nwrite;
     } else if (static_cast<size_t>(nwrite) > gso_size ||
@@ -722,6 +744,7 @@ int Client::write_quic() {
       signal_write();
       return 0;
     }
+#endif // UDP_SEGMENT
   }
 }
 
