@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "H2LOAD" "1" "Feb 23, 2022" "1.47.0" "nghttp2"
-.SH NAME
-h2load \- HTTP/2 benchmarking tool
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "H2LOAD" "1" "Jun 23, 2022" "1.48.0" "nghttp2"
+.SH NAME
+h2load \- HTTP/2 benchmarking tool
 .SH SYNOPSIS
 .sp
 \fBh2load\fP [OPTIONS]... [URI]...
@@ -132,7 +132,7 @@ Add/Override a header to the requests.
 Set  allowed cipher  list  for TLSv1.2  or earlier.   The
 format of the string is described in OpenSSL ciphers(1).
 .sp
-Default: \fBECDHE\-ECDSA\-AES256\-GCM\-SHA384:ECDHE\-RSA\-AES256\-GCM\-SHA384:ECDHE\-ECDSA\-CHACHA20\-POLY1305:ECDHE\-RSA\-CHACHA20\-POLY1305:ECDHE\-ECDSA\-AES128\-GCM\-SHA256:ECDHE\-RSA\-AES128\-GCM\-SHA256:ECDHE\-ECDSA\-AES256\-SHA384:ECDHE\-RSA\-AES256\-SHA384:ECDHE\-ECDSA\-AES128\-SHA256:ECDHE\-RSA\-AES128\-SHA256\fP
+Default: \fBECDHE\-ECDSA\-AES128\-GCM\-SHA256:ECDHE\-RSA\-AES128\-GCM\-SHA256:ECDHE\-ECDSA\-AES256\-GCM\-SHA384:ECDHE\-RSA\-AES256\-GCM\-SHA384:ECDHE\-ECDSA\-CHACHA20\-POLY1305:ECDHE\-RSA\-CHACHA20\-POLY1305:DHE\-RSA\-AES128\-GCM\-SHA256:DHE\-RSA\-AES256\-GCM\-SHA384\fP
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -337,6 +337,11 @@ Disable UDP GSO.
 .TP
 .B \-\-max\-udp\-payload\-size=<SIZE>
 Specify the maximum outgoing UDP datagram payload size.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-ktls
+Enable ktls.
 .UNINDENT
 .INDENT 0.0
 .TP

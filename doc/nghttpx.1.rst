@@ -193,7 +193,18 @@ Connections
     If a request scheme is "https", then Secure attribute is
     set.  Otherwise, it  is not set.  If  <SECURE> is "yes",
     the  Secure attribute  is  always set.   If <SECURE>  is
-    "no", the Secure attribute is always omitted.
+    "no",   the   Secure   attribute  is   always   omitted.
+    "affinity-cookie-stickiness=<STICKINESS>"       controls
+    stickiness  of   this  affinity.   If   <STICKINESS>  is
+    "loose", removing or adding a backend server might break
+    the affinity  and the  request might  be forwarded  to a
+    different backend server.   If <STICKINESS> is "strict",
+    removing the designated  backend server breaks affinity,
+    but adding  new backend server does  not cause breakage.
+    If  the designated  backend server  becomes unavailable,
+    new backend server is chosen  as if the request does not
+    have  an  affinity  cookie.   <STICKINESS>  defaults  to
+    "loose".
 
     By default, name resolution of backend host name is done
     at  start  up,  or reloading  configuration.   If  "dns"
@@ -628,7 +639,7 @@ SSL/TLS
     This option  sets cipher suites for  TLSv1.2 or earlier.
     Use :option:`--tls13-ciphers` for TLSv1.3.
 
-    Default: ``ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256``
+    Default: ``ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384``
 
 .. option:: --tls13-ciphers=<SUITE>
 
@@ -637,7 +648,7 @@ SSL/TLS
     This  option  sets  cipher   suites  for  TLSv1.3.   Use
     :option:`--ciphers` for TLSv1.2 or earlier.
 
-    Default: ``TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256``
+    Default: ``TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256``
 
 .. option:: --client-ciphers=<SUITE>
 
@@ -646,7 +657,7 @@ SSL/TLS
     This option  sets cipher suites for  TLSv1.2 or earlier.
     Use :option:`--tls13-client-ciphers` for TLSv1.3.
 
-    Default: ``ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256``
+    Default: ``ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384``
 
 .. option:: --tls13-client-ciphers=<SUITE>
 
@@ -655,7 +666,7 @@ SSL/TLS
     This  option  sets  cipher   suites  for  TLSv1.3.   Use
     :option:`--tls13-client-ciphers` for TLSv1.2 or earlier.
 
-    Default: ``TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256``
+    Default: ``TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256``
 
 .. option:: --ecdh-curves=<LIST>
 
@@ -1025,6 +1036,11 @@ SSL/TLS
     accepts.
 
     Default: ``16K``
+
+.. option:: --tls-ktls
+
+    Enable   ktls.    For   server,  ktls   is   enable   if
+    :option:`--tls-session-cache-memcached` is not configured.
 
 
 HTTP/2

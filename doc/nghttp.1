@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTP" "1" "Feb 23, 2022" "1.47.0" "nghttp2"
-.SH NAME
-nghttp \- HTTP/2 client
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "NGHTTP" "1" "Jun 23, 2022" "1.48.0" "nghttp2"
+.SH NAME
+nghttp \- HTTP/2 client
 .SH SYNOPSIS
 .sp
 \fBnghttp\fP [OPTIONS]... <URI>...
@@ -239,6 +239,16 @@ combined with the \fI\%\-d\fP option.
 .B \-y, \-\-no\-verify\-peer
 Suppress  warning  on  server  certificate  verification
 failure.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-ktls
+Enable ktls.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-no\-rfc7540\-pri
+Disable RFC7540 priorities.
 .UNINDENT
 .INDENT 0.0
 .TP

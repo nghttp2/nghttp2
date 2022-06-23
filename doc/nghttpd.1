@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTPD" "1" "Feb 23, 2022" "1.47.0" "nghttp2"
-.SH NAME
-nghttpd \- HTTP/2 server
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "NGHTTPD" "1" "Jun 23, 2022" "1.48.0" "nghttp2"
+.SH NAME
+nghttpd \- HTTP/2 server
 .SH SYNOPSIS
 .sp
 \fBnghttpd\fP [OPTION]... <PORT> [<PRIVATE_KEY> <CERT>]
@@ -201,6 +201,16 @@ Default: \fB/etc/mime.types\fP
 .TP
 .B \-\-no\-content\-length
 Don\(aqt send content\-length header field.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-ktls
+Enable ktls.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-no\-rfc7540\-pri
+Disable RFC7540 priorities.
 .UNINDENT
 .INDENT 0.0
 .TP

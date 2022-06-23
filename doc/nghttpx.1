@@ -1,8 +1,5 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTPX" "1" "Feb 23, 2022" "1.47.0" "nghttp2"
-.SH NAME
-nghttpx \- HTTP/2 proxy
 .
 .nr rst2man-indent-level 0
 .
@@ -30,6 +27,9 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
+.TH "NGHTTPX" "1" "Jun 23, 2022" "1.48.0" "nghttp2"
+.SH NAME
+nghttpx \- HTTP/2 proxy
 .SH SYNOPSIS
 .sp
 \fBnghttpx\fP [OPTIONS]... [<PRIVATE_KEY> <CERT>]
@@ -209,7 +209,18 @@ the Secure attribute is  determined by a request scheme.
 If a request scheme is "https", then Secure attribute is
 set.  Otherwise, it  is not set.  If  <SECURE> is "yes",
 the  Secure attribute  is  always set.   If <SECURE>  is
-"no", the Secure attribute is always omitted.
+"no",   the   Secure   attribute  is   always   omitted.
+"affinity\-cookie\-stickiness=<STICKINESS>"       controls
+stickiness  of   this  affinity.   If   <STICKINESS>  is
+"loose", removing or adding a backend server might break
+the affinity  and the  request might  be forwarded  to a
+different backend server.   If <STICKINESS> is "strict",
+removing the designated  backend server breaks affinity,
+but adding  new backend server does  not cause breakage.
+If  the designated  backend server  becomes unavailable,
+new backend server is chosen  as if the request does not
+have  an  affinity  cookie.   <STICKINESS>  defaults  to
+"loose".
 .sp
 By default, name resolution of backend host name is done
 at  start  up,  or reloading  configuration.   If  "dns"
@@ -672,7 +683,7 @@ format of the string is described in OpenSSL ciphers(1).
 This option  sets cipher suites for  TLSv1.2 or earlier.
 Use \fI\%\-\-tls13\-ciphers\fP for TLSv1.3.
 .sp
-Default: \fBECDHE\-ECDSA\-AES256\-GCM\-SHA384:ECDHE\-RSA\-AES256\-GCM\-SHA384:ECDHE\-ECDSA\-CHACHA20\-POLY1305:ECDHE\-RSA\-CHACHA20\-POLY1305:ECDHE\-ECDSA\-AES128\-GCM\-SHA256:ECDHE\-RSA\-AES128\-GCM\-SHA256:ECDHE\-ECDSA\-AES256\-SHA384:ECDHE\-RSA\-AES256\-SHA384:ECDHE\-ECDSA\-AES128\-SHA256:ECDHE\-RSA\-AES128\-SHA256\fP
+Default: \fBECDHE\-ECDSA\-AES128\-GCM\-SHA256:ECDHE\-RSA\-AES128\-GCM\-SHA256:ECDHE\-ECDSA\-AES256\-GCM\-SHA384:ECDHE\-RSA\-AES256\-GCM\-SHA384:ECDHE\-ECDSA\-CHACHA20\-POLY1305:ECDHE\-RSA\-CHACHA20\-POLY1305:DHE\-RSA\-AES128\-GCM\-SHA256:DHE\-RSA\-AES256\-GCM\-SHA384\fP
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -682,7 +693,7 @@ format of the string is described in OpenSSL ciphers(1).
 This  option  sets  cipher   suites  for  TLSv1.3.   Use
 \fI\%\-\-ciphers\fP for TLSv1.2 or earlier.
 .sp
-Default: \fBTLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256\fP
+Default: \fBTLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256\fP
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -692,7 +703,7 @@ format of the string is described in OpenSSL ciphers(1).
 This option  sets cipher suites for  TLSv1.2 or earlier.
 Use \fI\%\-\-tls13\-client\-ciphers\fP for TLSv1.3.
 .sp
-Default: \fBECDHE\-ECDSA\-AES256\-GCM\-SHA384:ECDHE\-RSA\-AES256\-GCM\-SHA384:ECDHE\-ECDSA\-CHACHA20\-POLY1305:ECDHE\-RSA\-CHACHA20\-POLY1305:ECDHE\-ECDSA\-AES128\-GCM\-SHA256:ECDHE\-RSA\-AES128\-GCM\-SHA256:ECDHE\-ECDSA\-AES256\-SHA384:ECDHE\-RSA\-AES256\-SHA384:ECDHE\-ECDSA\-AES128\-SHA256:ECDHE\-RSA\-AES128\-SHA256\fP
+Default: \fBECDHE\-ECDSA\-AES128\-GCM\-SHA256:ECDHE\-RSA\-AES128\-GCM\-SHA256:ECDHE\-ECDSA\-AES256\-GCM\-SHA384:ECDHE\-RSA\-AES256\-GCM\-SHA384:ECDHE\-ECDSA\-CHACHA20\-POLY1305:ECDHE\-RSA\-CHACHA20\-POLY1305:DHE\-RSA\-AES128\-GCM\-SHA256:DHE\-RSA\-AES256\-GCM\-SHA384\fP
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -702,7 +713,7 @@ format of the string is described in OpenSSL ciphers(1).
 This  option  sets  cipher   suites  for  TLSv1.3.   Use
 \fI\%\-\-tls13\-client\-ciphers\fP for TLSv1.2 or earlier.
 .sp
-Default: \fBTLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256\fP
+Default: \fBTLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256\fP
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -1113,6 +1124,12 @@ Sets  the  maximum  amount  of 0\-RTT  data  that  server
 accepts.
 .sp
 Default: \fB16K\fP
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-tls\-ktls
+Enable   ktls.    For   server,  ktls   is   enable   if
+\fI\%\-\-tls\-session\-cache\-memcached\fP is not configured.
 .UNINDENT
 .SS HTTP/2
 .INDENT 0.0
