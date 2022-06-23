@@ -1885,9 +1885,49 @@ void test_nghttp2_session_recv_headers_with_extpri(void) {
   CU_ASSERT(2 == nghttp2_extpri_uint8_urgency(stream->extpri));
   CU_ASSERT(1 == nghttp2_extpri_uint8_inc(stream->extpri));
 
-  nghttp2_bufs_free(&bufs);
   nghttp2_hd_deflate_free(&deflater);
   nghttp2_session_del(session);
+
+  nghttp2_bufs_reset(&bufs);
+
+  /* Client should ignore priority header field included in
+     PUSH_PROMISE. */
+  nghttp2_session_client_new(&session, &callbacks, NULL);
+
+  nghttp2_submit_settings(session, NGHTTP2_FLAG_NONE, &iv, 1);
+
+  open_sent_stream(session, 1);
+
+  nghttp2_hd_deflate_init(&deflater, mem);
+
+  nvlen = ARRLEN(extpri_reqnv);
+  nghttp2_nv_array_copy(&nva, extpri_reqnv, nvlen, mem);
+
+  nghttp2_frame_push_promise_init(&frame.push_promise, NGHTTP2_FLAG_END_HEADERS,
+                                  1, 2, nva, nvlen);
+
+  rv = nghttp2_frame_pack_push_promise(&bufs, &frame.push_promise, &deflater);
+
+  CU_ASSERT(0 == rv);
+  CU_ASSERT(nghttp2_bufs_len(&bufs) > 0);
+
+  nghttp2_frame_push_promise_free(&frame.push_promise, mem);
+
+  buf = &bufs.head->buf;
+  assert(nghttp2_bufs_len(&bufs) == nghttp2_buf_len(buf));
+
+  rv = nghttp2_session_mem_recv(session, buf->pos, nghttp2_buf_len(buf));
+
+  stream = nghttp2_session_get_stream(session, 2);
+
+  CU_ASSERT(NGHTTP2_EXTPRI_DEFAULT_URGENCY ==
+            nghttp2_extpri_uint8_urgency(stream->http_extpri));
+  CU_ASSERT(NGHTTP2_EXTPRI_DEFAULT_URGENCY ==
+            nghttp2_extpri_uint8_urgency(stream->extpri));
+
+  nghttp2_hd_deflate_free(&deflater);
+  nghttp2_session_del(session);
+  nghttp2_bufs_free(&bufs);
 }
 
 void test_nghttp2_session_server_recv_push_response(void) {
