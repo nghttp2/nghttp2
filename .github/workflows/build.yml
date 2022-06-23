@@ -10,7 +10,7 @@ jobs:
         compiler: [gcc, clang]
         buildtool: [autotools, cmake]
         http3: [http3, no-http3]
-        openssl: [openssl1, openssl3]
+        openssl: [openssl1, openssl3, boringssl]
         exclude:
         - os: macos-11
           openssl: openssl3
@@ -21,6 +21,12 @@ jobs:
         - # disable macos cmake because of include path issue
           os: macos-11
           buildtool: cmake
+        - os: macos-11
+          openssl: boringssl
+        - openssl: boringssl
+          buildtool: cmake
+        - openssl: boringssl
+          compiler: gcc
 
     runs-on: ${{ matrix.os }}
 
@@ -116,6 +122,29 @@ jobs:
         ./config enable-ktls --prefix=$PWD/build --libdir=$PWD/build/lib
         make -j"$(nproc 2> /dev/null || sysctl -n hw.ncpu)"
         make install_sw
+    - name: Build BoringSSL
+      if: matrix.openssl == 'boringssl'
+      run: |
+        git clone https://boringssl.googlesource.com/boringssl
+        cd boringssl
+        git checkout 27ffcc6e19bbafddf1b59ec0bc6df2904de7eb2c
+        mkdir build
+        cd build
+        cmake -DCMAKE_POSITION_INDEPENDENT_CODE=ON ..
+        make -j"$(nproc 2> /dev/null || sysctl -n hw.ncpu)"
+        cd ..
+
+        OPENSSL_CFLAGS="-I$PWD/include/"
+        OPENSSL_LIBS="-L$PWD/build/ssl -lssl -L$PWD/build/crypto -lcrypto -pthread"
+        EXTRA_NGTCP2_OPTS="$EXTRA_NGTCP2_OPTS --without-openssl --with-boringssl"
+        EXTRA_AUTOTOOLS_OPTS="$EXTRA_AUTOTOOLS_OPTS --without-neverbleed --without-jemalloc"
+
+        echo 'OPENSSL_CFLAGS='"$OPENSSL_CFLAGS" >> $GITHUB_ENV
+        echo 'OPENSSL_LIBS='"$OPENSSL_LIBS" >> $GITHUB_ENV
+        echo 'BORINGSSL_CFLAGS='"$OPENSSL_CFLAGS" >> $GITHUB_ENV
+        echo 'BORINGSSL_LIBS='"$OPENSSL_LIBS" >> $GITHUB_ENV
+        echo 'EXTRA_NGTCP2_OPTS='"$EXTRA_NGTCP2_OPTS" >> "$GITHUB_ENV"
+        echo 'EXTRA_AUTOTOOLS_OPTS='"$EXTRA_AUTOTOOLS_OPTS" >> $GITHUB_ENV
     - name: Build nghttp3
       if: matrix.http3 == 'http3'
       run: |
@@ -131,7 +160,7 @@ jobs:
         git clone --depth 1 -b v0.6.0 https://github.com/ngtcp2/ngtcp2
         cd ngtcp2
         autoreconf -i
-        ./configure --prefix=$PWD/build --enable-lib-only PKG_CONFIG_PATH="../openssl/build/lib/pkgconfig"
+        ./configure --prefix=$PWD/build --enable-lib-only PKG_CONFIG_PATH="../openssl/build/lib/pkgconfig" $EXTRA_NGTCP2_OPTS
         make -j"$(nproc 2> /dev/null || sysctl -n hw.ncpu)" check
         make install
     - name: Setup extra environment variables for HTTP/3
