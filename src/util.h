@@ -916,6 +916,12 @@ std::mt19937 make_mt19937();
 // daemon() using fork().
 int daemonize(int nochdir, int noclose);
 
+// Returns |s| from which trailing white spaces (SPC or HTAB) are
+// removed.  If any white spaces are removed, new string is allocated
+// by |balloc| and returned.  Otherwise, the copy of |s| is returned
+// without allocation.
+StringRef rstrip(BlockAllocator &balloc, const StringRef &s);
+
 #ifdef ENABLE_HTTP3
 int msghdr_get_local_addr(Address &dest, msghdr *msg, int family);
 

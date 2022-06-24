@@ -695,4 +695,14 @@ void test_util_split_str(void) {
       util::split_str(StringRef::from_lit("alpha,bravo,charlie"), ',', 1));
 }
 
+void test_util_rstrip(void) {
+  BlockAllocator balloc(4096, 4096);
+
+  CU_ASSERT("alpha" == util::rstrip(balloc, StringRef::from_lit("alpha")));
+  CU_ASSERT("alpha" == util::rstrip(balloc, StringRef::from_lit("alpha ")));
+  CU_ASSERT("alpha" == util::rstrip(balloc, StringRef::from_lit("alpha \t")));
+  CU_ASSERT("" == util::rstrip(balloc, StringRef::from_lit("")));
+  CU_ASSERT("" == util::rstrip(balloc, StringRef::from_lit("\t\t\t   ")));
+}
+
 } // namespace shrpx

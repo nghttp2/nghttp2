@@ -1688,6 +1688,19 @@ int daemonize(int nochdir, int noclose) {
 #endif // !__APPLE__
 }
 
+StringRef rstrip(BlockAllocator &balloc, const StringRef &s) {
+  auto it = std::rbegin(s);
+  for (; it != std::rend(s) && (*it == ' ' || *it == '\t'); ++it)
+    ;
+
+  auto len = it - std::rbegin(s);
+  if (len == 0) {
+    return s;
+  }
+
+  return make_string_ref(balloc, StringRef{s.c_str(), s.size() - len});
+}
+
 #ifdef ENABLE_HTTP3
 int msghdr_get_local_addr(Address &dest, msghdr *msg, int family) {
   switch (family) {

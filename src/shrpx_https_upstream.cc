@@ -328,6 +328,11 @@ int htp_hdrs_completecb(llhttp_t *htp) {
 
   auto downstream = upstream->get_downstream();
   auto &req = downstream->request();
+  auto &balloc = downstream->get_block_allocator();
+
+  for (auto &kv : req.fs.headers()) {
+    kv.value = util::rstrip(balloc, kv.value);
+  }
 
   auto lgconf = log_config();
   lgconf->update_tstamp(std::chrono::system_clock::now());
@@ -397,7 +402,6 @@ int htp_hdrs_completecb(llhttp_t *htp) {
   downstream->inspect_http1_request();
 
   auto faddr = handler->get_upstream_addr();
-  auto &balloc = downstream->get_block_allocator();
   auto config = get_config();
 
   if (method != HTTP_CONNECT) {
@@ -555,6 +559,13 @@ int htp_msg_completecb(llhttp_t *htp) {
   }
   auto handler = upstream->get_client_handler();
   auto downstream = upstream->get_downstream();
+  auto &req = downstream->request();
+  auto &balloc = downstream->get_block_allocator();
+
+  for (auto &kv : req.fs.trailers()) {
+    kv.value = util::rstrip(balloc, kv.value);
+  }
+
   downstream->set_request_state(DownstreamState::MSG_COMPLETE);
   rv = downstream->end_upload_data();
   if (rv != 0) {
