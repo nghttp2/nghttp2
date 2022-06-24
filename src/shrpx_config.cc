@@ -379,7 +379,7 @@ HeaderRefs::value_type parse_header(BlockAllocator &balloc,
                 make_string_ref(balloc, StringRef{value, std::end(optarg)}));
 
   if (!nghttp2_check_header_name(nv.name.byte(), nv.name.size()) ||
-      !nghttp2_check_header_value(nv.value.byte(), nv.value.size())) {
+      !nghttp2_check_header_value_rfc9113(nv.value.byte(), nv.value.size())) {
     return {};
   }
 

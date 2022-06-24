@@ -431,6 +431,8 @@ int main(void) {
                    test_nghttp2_check_header_name) ||
       !CU_add_test(pSuite, "check_header_value",
                    test_nghttp2_check_header_value) ||
+      !CU_add_test(pSuite, "check_header_value_rfc9113",
+                   test_nghttp2_check_header_value_rfc9113) ||
       !CU_add_test(pSuite, "bufs_add", test_nghttp2_bufs_add) ||
       !CU_add_test(pSuite, "bufs_add_stack_buffer_overflow_bug",
                    test_nghttp2_bufs_add_stack_buffer_overflow_bug) ||

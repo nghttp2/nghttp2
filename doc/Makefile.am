@@ -30,6 +30,7 @@ APIDOCS= \
 	nghttp2_check_authority.rst \
 	nghttp2_check_header_name.rst \
 	nghttp2_check_header_value.rst \
+	nghttp2_check_header_value_rfc9113.rst \
 	nghttp2_check_method.rst \
 	nghttp2_check_path.rst \
 	nghttp2_hd_deflate_bound.rst \
