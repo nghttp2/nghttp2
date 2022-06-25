@@ -912,6 +912,12 @@ int htp_hdrs_completecb(llhttp_t *htp) {
   auto &resp = downstream->response();
   int rv;
 
+  auto &balloc = downstream->get_block_allocator();
+
+  for (auto &kv : resp.fs.headers()) {
+    kv.value = util::rstrip(balloc, kv.value);
+  }
+
   auto config = get_config();
   auto &loggingconf = config->logging;
 
@@ -1138,6 +1144,12 @@ int htp_bodycb(llhttp_t *htp, const char *data, size_t len) {
 namespace {
 int htp_msg_completecb(llhttp_t *htp) {
   auto downstream = static_cast<Downstream *>(htp->data);
+  auto &resp = downstream->response();
+  auto &balloc = downstream->get_block_allocator();
+
+  for (auto &kv : resp.fs.trailers()) {
+    kv.value = util::rstrip(balloc, kv.value);
+  }
 
   // llhttp does not treat "200 connection established" response
   // against CONNECT request, and in that case, this function is not

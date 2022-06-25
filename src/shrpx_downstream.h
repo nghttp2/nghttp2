@@ -75,6 +75,7 @@ public:
   const HeaderRefs &trailers() const { return trailers_; }
 
   HeaderRefs &headers() { return headers_; }
+  HeaderRefs &trailers() { return trailers_; }
 
   const void add_extra_buffer_size(size_t n) { buffer_size_ += n; }
   size_t buffer_size() const { return buffer_size_; }
