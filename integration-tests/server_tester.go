@@ -76,6 +76,10 @@ type options struct {
 	// tlsConfig is the client side TLS configuration that is used
 	// when tls is true.
 	tlsConfig *tls.Config
+	// tcpData is additional data that are written to connection
+	// before TLS handshake starts.  This field is ignored if tls
+	// is false.
+	tcpData []byte
 }
 
 // newServerTester creates test context.
@@ -204,9 +208,15 @@ func newServerTester(t *testing.T, opts options) *serverTester {
 	for {
 		time.Sleep(50 * time.Millisecond)
 
-		var conn net.Conn
-		var err error
-		if opts.tls {
+		conn, err := net.Dial("tcp", authority)
+		if err == nil && opts.tls {
+			if len(opts.tcpData) > 0 {
+				if _, err := conn.Write(opts.tcpData); err != nil {
+					st.Close()
+					st.t.Fatal("Error writing TCP data")
+				}
+			}
+
 			var tlsConfig *tls.Config
 			if opts.tlsConfig == nil {
 				tlsConfig = new(tls.Config)
@@ -219,9 +229,16 @@ func newServerTester(t *testing.T, opts options) *serverTester {
 			} else {
 				tlsConfig.NextProtos = []string{"h2"}
 			}
-			conn, err = tls.Dial("tcp", authority, tlsConfig)
-		} else {
-			conn, err = net.Dial("tcp", authority)
+			tlsConn := tls.Client(conn, tlsConfig)
+			err = tlsConn.Handshake()
+			if err == nil {
+				cs := tlsConn.ConnectionState()
+				if !cs.NegotiatedProtocolIsMutual {
+					st.Close()
+					st.t.Fatalf("Error negotiated next protocol is not mutual")
+				}
+				conn = tlsConn
+			}
 		}
 		if err != nil {
 			retry += 1
@@ -230,14 +247,6 @@ func newServerTester(t *testing.T, opts options) *serverTester {
 				st.t.Fatalf("Error server is not responding too long; server command-line arguments may be invalid")
 			}
 			continue
-		}
-		if opts.tls {
-			tlsConn := conn.(*tls.Conn)
-			cs := tlsConn.ConnectionState()
-			if !cs.NegotiatedProtocolIsMutual {
-				st.Close()
-				st.t.Fatalf("Error negotiated next protocol is not mutual")
-			}
 		}
 		st.conn = conn
 		break

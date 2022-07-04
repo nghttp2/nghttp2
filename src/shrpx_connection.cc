@@ -1156,6 +1156,42 @@ ssize_t Connection::read_clear(void *data, size_t len) {
   return nread;
 }
 
+ssize_t Connection::read_nolim_clear(void *data, size_t len) {
+  ssize_t nread;
+  while ((nread = read(fd, data, len)) == -1 && errno == EINTR)
+    ;
+  if (nread == -1) {
+    if (errno == EAGAIN || errno == EWOULDBLOCK) {
+      return 0;
+    }
+    return SHRPX_ERR_NETWORK;
+  }
+
+  if (nread == 0) {
+    return SHRPX_ERR_EOF;
+  }
+
+  return nread;
+}
+
+ssize_t Connection::peek_clear(void *data, size_t len) {
+  ssize_t nread;
+  while ((nread = recv(fd, data, len, MSG_PEEK)) == -1 && errno == EINTR)
+    ;
+  if (nread == -1) {
+    if (errno == EAGAIN || errno == EWOULDBLOCK) {
+      return 0;
+    }
+    return SHRPX_ERR_NETWORK;
+  }
+
+  if (nread == 0) {
+    return SHRPX_ERR_EOF;
+  }
+
+  return nread;
+}
+
 void Connection::handle_tls_pending_read() {
   if (!ev_is_active(&rev)) {
     return;
