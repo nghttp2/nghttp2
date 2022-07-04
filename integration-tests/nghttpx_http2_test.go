@@ -1383,6 +1383,82 @@ func TestH2H1ProxyProtocolV1TCP6(t *testing.T) {
 	}
 }
 
+// TestH2H1ProxyProtocolV1TCP4TLS tests PROXY protocol version 1 over
+// TLS containing TCP4 entry is accepted and X-Forwarded-For contains
+// advertised src address.
+func TestH2H1ProxyProtocolV1TCP4TLS(t *testing.T) {
+	opts := options{
+		args: []string{
+			"--accept-proxy-protocol",
+			"--add-x-forwarded-for",
+			"--add-forwarded=for",
+			"--forwarded-for=ip",
+		},
+		handler: func(w http.ResponseWriter, r *http.Request) {
+			if got, want := r.Header.Get("X-Forwarded-For"), "192.168.0.2"; got != want {
+				t.Errorf("X-Forwarded-For: %v; want %v", got, want)
+			}
+			if got, want := r.Header.Get("Forwarded"), "for=192.168.0.2"; got != want {
+				t.Errorf("Forwarded: %v; want %v", got, want)
+			}
+		},
+		tls:     true,
+		tcpData: []byte("PROXY TCP4 192.168.0.2 192.168.0.100 12345 8080\r\n"),
+	}
+	st := newServerTester(t, opts)
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name: "TestH2H1ProxyProtocolV1TCP4TLS",
+	})
+
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+
+	if got, want := res.status, 200; got != want {
+		t.Errorf("res.status: %v; want %v", got, want)
+	}
+}
+
+// TestH2H1ProxyProtocolV1TCP6TLS tests PROXY protocol version 1 over
+// TLS containing TCP6 entry is accepted and X-Forwarded-For contains
+// advertised src address.
+func TestH2H1ProxyProtocolV1TCP6TLS(t *testing.T) {
+	opts := options{
+		args: []string{
+			"--accept-proxy-protocol",
+			"--add-x-forwarded-for",
+			"--add-forwarded=for",
+			"--forwarded-for=ip",
+		},
+		handler: func(w http.ResponseWriter, r *http.Request) {
+			if got, want := r.Header.Get("X-Forwarded-For"), "2001:0db8:85a3:0000:0000:8a2e:0370:7334"; got != want {
+				t.Errorf("X-Forwarded-For: %v; want %v", got, want)
+			}
+			if got, want := r.Header.Get("Forwarded"), `for="[2001:0db8:85a3:0000:0000:8a2e:0370:7334]"`; got != want {
+				t.Errorf("Forwarded: %v; want %v", got, want)
+			}
+		},
+		tls:     true,
+		tcpData: []byte("PROXY TCP6 2001:0db8:85a3:0000:0000:8a2e:0370:7334 ::1 12345 8080\r\n"),
+	}
+	st := newServerTester(t, opts)
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name: "TestH2H1ProxyProtocolV1TCP6TLS",
+	})
+
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+
+	if got, want := res.status, 200; got != want {
+		t.Errorf("res.status: %v; want %v", got, want)
+	}
+}
+
 // TestH2H1ProxyProtocolV1Unknown tests PROXY protocol version 1
 // containing UNKNOWN entry is accepted.
 func TestH2H1ProxyProtocolV1Unknown(t *testing.T) {
@@ -1844,6 +1920,110 @@ func TestH2H1ProxyProtocolV2TCP6(t *testing.T) {
 
 	res, err := st.http2(requestParam{
 		name: "TestH2H1ProxyProtocolV2TCP6",
+	})
+
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+
+	if got, want := res.status, 200; got != want {
+		t.Errorf("res.status: %v; want %v", got, want)
+	}
+}
+
+// TestH2H1ProxyProtocolV2TCP4TLS tests PROXY protocol version 2 over
+// TLS containing AF_INET family is accepted and X-Forwarded-For
+// contains advertised src address.
+func TestH2H1ProxyProtocolV2TCP4TLS(t *testing.T) {
+	var v2Hdr bytes.Buffer
+	writeProxyProtocolV2(&v2Hdr, proxyProtocolV2{
+		command: proxyProtocolV2CommandProxy,
+		sourceAddress: &net.TCPAddr{
+			IP:   net.ParseIP("192.168.0.2").To4(),
+			Port: 12345,
+		},
+		destinationAddress: &net.TCPAddr{
+			IP:   net.ParseIP("192.168.0.100").To4(),
+			Port: 8080,
+		},
+		additionalData: []byte("foobar"),
+	})
+
+	opts := options{
+		args: []string{
+			"--accept-proxy-protocol",
+			"--add-x-forwarded-for",
+			"--add-forwarded=for",
+			"--forwarded-for=ip",
+		},
+		handler: func(w http.ResponseWriter, r *http.Request) {
+			if got, want := r.Header.Get("X-Forwarded-For"), "192.168.0.2"; got != want {
+				t.Errorf("X-Forwarded-For: %v; want %v", got, want)
+			}
+			if got, want := r.Header.Get("Forwarded"), "for=192.168.0.2"; got != want {
+				t.Errorf("Forwarded: %v; want %v", got, want)
+			}
+		},
+		tls:     true,
+		tcpData: v2Hdr.Bytes(),
+	}
+	st := newServerTester(t, opts)
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name: "TestH2H1ProxyProtocolV2TCP4TLS",
+	})
+
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+
+	if got, want := res.status, 200; got != want {
+		t.Errorf("res.status: %v; want %v", got, want)
+	}
+}
+
+// TestH2H1ProxyProtocolV2TCP6TLS tests PROXY protocol version 2 over
+// TLS containing AF_INET6 family is accepted and X-Forwarded-For
+// contains advertised src address.
+func TestH2H1ProxyProtocolV2TCP6TLS(t *testing.T) {
+	var v2Hdr bytes.Buffer
+	writeProxyProtocolV2(&v2Hdr, proxyProtocolV2{
+		command: proxyProtocolV2CommandProxy,
+		sourceAddress: &net.TCPAddr{
+			IP:   net.ParseIP("2001:0db8:85a3:0000:0000:8a2e:0370:7334"),
+			Port: 12345,
+		},
+		destinationAddress: &net.TCPAddr{
+			IP:   net.ParseIP("::1"),
+			Port: 8080,
+		},
+		additionalData: []byte("foobar"),
+	})
+
+	opts := options{
+		args: []string{
+			"--accept-proxy-protocol",
+			"--add-x-forwarded-for",
+			"--add-forwarded=for",
+			"--forwarded-for=ip",
+		},
+		handler: func(w http.ResponseWriter, r *http.Request) {
+			if got, want := r.Header.Get("X-Forwarded-For"), "2001:db8:85a3::8a2e:370:7334"; got != want {
+				t.Errorf("X-Forwarded-For: %v; want %v", got, want)
+			}
+			if got, want := r.Header.Get("Forwarded"), `for="[2001:db8:85a3::8a2e:370:7334]"`; got != want {
+				t.Errorf("Forwarded: %v; want %v", got, want)
+			}
+		},
+		tls:     true,
+		tcpData: v2Hdr.Bytes(),
+	}
+	st := newServerTester(t, opts)
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name: "TestH2H1ProxyProtocolV2TCP6TLS",
 	})
 
 	if err != nil {

@@ -141,6 +141,10 @@ struct Connection {
   ssize_t write_clear(const void *data, size_t len);
   ssize_t writev_clear(struct iovec *iov, int iovcnt);
   ssize_t read_clear(void *data, size_t len);
+  // Read at most |len| bytes of data from socket without rate limit.
+  ssize_t read_nolim_clear(void *data, size_t len);
+  // Peek at most |len| bytes of data from socket without rate limit.
+  ssize_t peek_clear(void *data, size_t len);
 
   void handle_tls_pending_read();
 

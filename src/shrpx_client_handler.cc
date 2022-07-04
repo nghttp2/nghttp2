@@ -181,6 +181,35 @@ int ClientHandler::write_clear() {
   return 0;
 }
 
+int ClientHandler::proxy_protocol_peek_clear() {
+  rb_.ensure_chunk();
+
+  assert(rb_.rleft() == 0);
+
+  auto nread = conn_.peek_clear(rb_.last(), rb_.wleft());
+  if (nread < 0) {
+    return -1;
+  }
+  if (nread == 0) {
+    return 0;
+  }
+
+  if (LOG_ENABLED(INFO)) {
+    CLOG(INFO, this) << "PROXY-protocol: Peek " << nread
+                     << " bytes from socket";
+  }
+
+  rb_.write(nread);
+
+  if (on_read() != 0) {
+    return -1;
+  }
+
+  rb_.reset();
+
+  return 0;
+}
+
 int ClientHandler::tls_handshake() {
   ev_timer_again(conn_.loop, &conn_.rt);
 
@@ -446,7 +475,7 @@ ClientHandler::ClientHandler(Worker *worker, int fd, SSL *ssl,
   if (!faddr->quic) {
     if (faddr_->accept_proxy_protocol ||
         config->conn.upstream.accept_proxy_protocol) {
-      read_ = &ClientHandler::read_clear;
+      read_ = &ClientHandler::proxy_protocol_peek_clear;
       write_ = &ClientHandler::noop;
       on_read_ = &ClientHandler::proxy_protocol_read;
       on_write_ = &ClientHandler::upstream_noop;
@@ -1257,18 +1286,24 @@ ssize_t parse_proxy_line_port(const uint8_t *first, const uint8_t *last) {
 } // namespace
 
 int ClientHandler::on_proxy_protocol_finish() {
-  if (conn_.tls.ssl) {
-    conn_.tls.rbuf.append(rb_.pos(), rb_.rleft());
-    rb_.reset();
+  auto len = rb_.pos() - rb_.begin();
+
+  assert(len);
+
+  if (LOG_ENABLED(INFO)) {
+    CLOG(INFO, this) << "PROXY-protocol: Draining " << len
+                     << " bytes from socket";
   }
 
-  setup_upstream_io_callback();
+  rb_.reset();
 
-  // Run on_read to process data left in buffer since they are not
-  // notified further
-  if (on_read() != 0) {
+  if (conn_.read_nolim_clear(rb_.pos(), len) < 0) {
     return -1;
   }
+
+  rb_.reset();
+
+  setup_upstream_io_callback();
 
   return 0;
 }

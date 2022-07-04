@@ -68,6 +68,8 @@ public:
   // Performs clear text I/O
   int read_clear();
   int write_clear();
+  // Specialized for PROXY-protocol use; peek data from socket.
+  int proxy_protocol_peek_clear();
   // Performs TLS handshake
   int tls_handshake();
   // Performs TLS I/O
