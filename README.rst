@@ -11,8 +11,6 @@ HTTP/2.
 
 An HPACK encoder and decoder are available as a public API.
 
-An experimental high level C++ library is also available.
-
 We have Python bindings of this library, but we do not have full
 code coverage yet.
 
@@ -106,7 +104,8 @@ To mitigate heap fragmentation in long running server programs
      Alpine Linux currently does not support malloc replacement
      due to musl limitations. See details in issue `#762 <https://github.com/nghttp2/nghttp2/issues/762>`_.
 
-libnghttp2_asio C++ library requires the following packages:
+libnghttp2_asio C++ library (deprecated) requires the following
+packages:
 
 * libboost-dev >= 1.54.0
 * libboost-thread-dev >= 1.54.0
@@ -1433,6 +1432,8 @@ corresponding header set was processed.  The format is the same as
 
 libnghttp2_asio: High level HTTP/2 C++ library
 ----------------------------------------------
+
+libnghttp2_asio has been deprecated.
 
 libnghttp2_asio is C++ library built on top of libnghttp2 and provides
 high level abstraction API to build HTTP/2 applications.  It depends
