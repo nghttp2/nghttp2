@@ -1,6 +1,11 @@
 Python API Reference
 ====================
 
+.. warning::
+
+    Python bindings have been deprecated due to maintenance issue.  It
+    will not get any updates.  It will be removed at the end of 2022.
+
 .. py:module:: nghttp2
 
 nghttp2 offers some high level Python API to C library.  The bindings
