@@ -11,9 +11,6 @@ HTTP/2.
 
 An HPACK encoder and decoder are available as a public API.
 
-We have Python bindings of this library, but we do not have full
-code coverage yet.
-
 Development Status
 ------------------
 
@@ -110,7 +107,7 @@ packages:
 * libboost-dev >= 1.54.0
 * libboost-thread-dev >= 1.54.0
 
-The Python bindings require the following packages:
+The Python bindings (deprecated) require the following packages:
 
 * cython >= 0.19
 * python >= 3.8
@@ -1531,6 +1528,8 @@ For more details, see the documentation of libnghttp2_asio.
 
 Python bindings
 ---------------
+
+Python bindings have been deprecated.
 
 The ``python`` directory contains nghttp2 Python bindings.  The
 bindings currently provide HPACK compressor and decompressor classes
