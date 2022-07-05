@@ -229,6 +229,50 @@ jobs:
         cd $NGHTTP2_CMAKE_DIR/integration-tests
         make itprep it
 
+  build-cross:
+    strategy:
+      matrix:
+        host: [x86_64-w64-mingw32, i686-w64-mingw32]
+
+    runs-on: ubuntu-22.04
+
+    env:
+      HOST: ${{ matrix.host }}
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Linux setup
+      run: |
+        sudo dpkg --add-architecture i386
+        sudo apt-get update
+        sudo apt-get install \
+          gcc-mingw-w64 \
+          autoconf \
+          automake \
+          autotools-dev \
+          libtool \
+          pkg-config \
+          wine
+    - name: Build CUnit
+      run: |
+        curl -LO https://jaist.dl.sourceforge.net/project/cunit/CUnit/2.1-3/CUnit-2.1-3.tar.bz2
+        tar xf CUnit-2.1-3.tar.bz2
+        cd CUnit-2.1-3
+        ./bootstrap
+        ./configure --disable-shared --host="$HOST" --prefix="$PWD/build"
+        make -j$(nproc) install
+    - name: Configure autotools
+      run: |
+        autoreconf -i && \
+        ./configure --enable-werror --enable-lib-only --with-cunit \
+          --host="$HOST" PKG_CONFIG_PATH="$PWD/CUnit-2.1-3/build/lib/pkgconfig"
+    - name: Build nghttp2
+      run: |
+        make -j$(nproc)
+        make -j$(nproc) check TESTS=""
+        cd tests
+        wine main.exe
+
   build-windows:
     runs-on: windows-latest
 
