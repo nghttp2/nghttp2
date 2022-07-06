@@ -106,8 +106,10 @@ jobs:
     - name: Build quictls/openssl v1.1.1
       if: matrix.http3 == 'http3' && matrix.openssl == 'openssl1'
       run: |
-        git clone --depth 1 -b OpenSSL_1_1_1p+quic https://github.com/quictls/openssl
+        git clone --depth 1 -b OpenSSL_1_1_1q+quic https://github.com/quictls/openssl
         cd openssl
+        curl -L https://github.com/openssl/openssl/commit/60f011f584d80447e86cae1d1bd3ae24bc13235b.patch -o memcmp.patch
+        patch -p1 < memcmp.patch
         ./config --prefix=$PWD/build
         make -j"$(nproc 2> /dev/null || sysctl -n hw.ncpu)"
         make install_sw
@@ -117,7 +119,7 @@ jobs:
         unset CPPFLAGS
         unset LDFLAGS
 
-        git clone --depth 1 -b openssl-3.0.4+quic https://github.com/quictls/openssl
+        git clone --depth 1 -b openssl-3.0.5+quic https://github.com/quictls/openssl
         cd openssl
         ./config enable-ktls --prefix=$PWD/build --libdir=$PWD/build/lib
         make -j"$(nproc 2> /dev/null || sysctl -n hw.ncpu)"
