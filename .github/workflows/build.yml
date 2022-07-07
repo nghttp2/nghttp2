@@ -272,6 +272,9 @@ jobs:
       run: |
         make -j$(nproc)
         make -j$(nproc) check TESTS=""
+    - name: Run tests
+      if: matrix.host == 'x86_64-w64-mingw32'
+      run: |
         cd tests
         wine main.exe
 
