@@ -52,6 +52,7 @@ public:
   void recv_header(int64_t stream_id, const nghttp3_vec *name,
                    const nghttp3_vec *value);
   int stop_sending(int64_t stream_id, uint64_t app_error_code);
+  int reset_stream(int64_t stream_id, uint64_t app_error_code);
 
   int close_stream(int64_t stream_id, uint64_t app_error_code);
   int shutdown_stream_read(int64_t stream_id);
