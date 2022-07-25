@@ -637,15 +637,11 @@ int Client::write_quic() {
       switch (nwrite) {
       case NGTCP2_ERR_STREAM_DATA_BLOCKED:
         assert(ndatalen == -1);
-        if (s->block_stream(stream_id) != 0) {
-          return -1;
-        }
+        s->block_stream(stream_id);
         continue;
       case NGTCP2_ERR_STREAM_SHUT_WR:
         assert(ndatalen == -1);
-        if (s->shutdown_stream_write(stream_id) != 0) {
-          return -1;
-        }
+        s->shutdown_stream_write(stream_id);
         continue;
       case NGTCP2_ERR_WRITE_MORE:
         assert(ndatalen >= 0);
