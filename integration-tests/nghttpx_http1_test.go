@@ -91,13 +91,8 @@ func TestH1H1MultipleRequestCL(t *testing.T) {
 	st := newServerTester(t, opts)
 	defer st.Close()
 
-	if _, err := io.WriteString(st.conn, fmt.Sprintf(`GET / HTTP/1.1
-Host: %v
-Test-Case: TestH1H1MultipleRequestCL
-Content-Length: 0
-Content-Length: 0
-
-`, st.authority)); err != nil {
+	if _, err := io.WriteString(st.conn, fmt.Sprintf("GET / HTTP/1.1\r\nHost: %v\r\nTest-Case: TestH1H1MultipleRequestCL\r\nContent-Length: 0\r\nContent-Length: 0\r\n\r\n",
+		st.authority)); err != nil {
 		t.Fatalf("Error io.WriteString() = %v", err)
 	}
 
@@ -1309,12 +1304,8 @@ func TestH1ResponseBeforeRequestEnd(t *testing.T) {
 	st := newServerTester(t, opts)
 	defer st.Close()
 
-	if _, err := io.WriteString(st.conn, fmt.Sprintf(`POST / HTTP/1.1
-Host: %v
-Test-Case: TestH1ResponseBeforeRequestEnd
-Content-Length: 1000000
-
-`, st.authority)); err != nil {
+	if _, err := io.WriteString(st.conn, fmt.Sprintf("POST / HTTP/1.1\r\nHost: %v\r\nTest-Case: TestH1ResponseBeforeRequestEnd\r\nContent-Length: 1000000\r\n\r\n",
+		st.authority)); err != nil {
 		t.Fatalf("Error io.WriteString() = %v", err)
 	}
 
