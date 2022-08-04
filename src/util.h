@@ -879,6 +879,26 @@ void random_bytes(OutputIt first, OutputIt last, Generator &gen) {
   std::generate(first, last, [&dis, &gen]() { return dis(gen); });
 }
 
+// Shuffles the range [|first|, |last|] by calling swap function |fun|
+// for each pair.  |fun| takes 2 RandomIt iterators.  If |fun| is
+// noop, no modification is made.
+template <typename RandomIt, typename Generator, typename SwapFun>
+void shuffle(RandomIt first, RandomIt last, Generator &&gen, SwapFun fun) {
+  auto len = std::distance(first, last);
+  if (len < 2) {
+    return;
+  }
+
+  for (unsigned int i = 0; i < static_cast<unsigned int>(len - 1); ++i) {
+    auto dis = std::uniform_int_distribution<unsigned int>(i, len - 1);
+    auto j = dis(gen);
+    if (i == j) {
+      continue;
+    }
+    fun(first + i, first + j);
+  }
+}
+
 template <typename OutputIterator, typename CharT, size_t N>
 OutputIterator copy_lit(OutputIterator it, CharT (&s)[N]) {
   return std::copy_n(s, N - 1, it);
