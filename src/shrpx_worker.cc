@@ -360,6 +360,10 @@ void Worker::replace_downstream_config(
         addr.seq = seq++;
       }
 
+      util::shuffle(std::begin(shared_addr->addrs),
+                    std::end(shared_addr->addrs), randgen_,
+                    [](auto i, auto j) { std::swap((*i).seq, (*j).seq); });
+
       if (shared_addr->affinity.type == SessionAffinity::NONE) {
         std::map<StringRef, WeightGroup *> wgs;
         size_t num_wgs = 0;
