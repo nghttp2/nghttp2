@@ -62,4 +62,4 @@ clang-format:
 	test -z $${CLANGFORMAT} && CLANGFORMAT="clang-format"; \
 	$${CLANGFORMAT} -i lib/*.{c,h} lib/includes/nghttp2/*.h \
 	src/*.{c,cc,h} src/includes/nghttp2/*.h examples/*.{c,cc} \
-	tests/*.{c,h} bpf/*.c
+	tests/*.{c,h} bpf/*.c fuzz/*.cc

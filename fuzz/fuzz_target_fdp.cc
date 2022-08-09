@@ -76,7 +76,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
   /* Initialise a random iv */
   nghttp2_settings_entry *iv;
   int size_of_iv = data_provider.ConsumeIntegralInRange(1, 10);
-  iv = (nghttp2_settings_entry*)malloc(sizeof(nghttp2_settings_entry)*size_of_iv);
+  iv = (nghttp2_settings_entry *)malloc(sizeof(nghttp2_settings_entry) *
+                                        size_of_iv);
   for (int i = 0; i < size_of_iv; i++) {
     iv[i].settings_id = data_provider.ConsumeIntegralInRange(0, 1000);
     iv[i].value = data_provider.ConsumeIntegralInRange(0, 1000);
