@@ -32,13 +32,6 @@ static void fuzz_free_nv(nghttp2_nv *nv) {
   free(nv->value);
 }
 
-static nghttp2_nv *fuzz_headers(nghttp2_mem *mem,
-                                FuzzedDataProvider* data_provider) {
-  nghttp2_nv *nva = (nghttp2_nv *)mem->malloc(
-      sizeof(nghttp2_nv) * HEADERS_LENGTH, NULL);
-  return nva;
-}
-
 void check_frame_pack_headers(FuzzedDataProvider* data_provider) {
   nghttp2_hd_deflater deflater;
   nghttp2_hd_inflater inflater;
@@ -74,23 +67,26 @@ void check_frame_pack_headers(FuzzedDataProvider* data_provider) {
 
   /* Perform a set of operations with the fuzz data */
   rv = nghttp2_frame_pack_headers(&bufs, &frame, &deflater);
-  unpack_framebuf((nghttp2_frame *)&oframe, &bufs);
+  if (rv == 0) {
+    unpack_framebuf((nghttp2_frame *)&oframe, &bufs);
 
-  inflate_hd(&inflater, &out, &bufs, NGHTTP2_FRAME_HDLEN, mem);
-  nva_out_reset(&out, mem);
+    inflate_hd(&inflater, &out, &bufs, NGHTTP2_FRAME_HDLEN, mem);
+    nva_out_reset(&out, mem);
+    nghttp2_bufs_reset(&bufs);
+  }
 
   nghttp2_nv *nva2 = NULL;
   rv = nghttp2_nv_array_copy(&nva2, nva, nvlen, mem);
-  nghttp2_nv_array_del(nva2, mem);
+  if (rv == 0) {
+    nghttp2_nv_array_del(nva2, mem);
+  }
 
   /* Cleanup */
   for (int i = 0; i < HEADERS_LENGTH; i++) {
     fuzz_free_nv(&nva[i]);
   }
 
-  nghttp2_bufs_reset(&bufs);
   nghttp2_bufs_free(&bufs);
-
   nghttp2_frame_headers_free(&frame, mem);
   nghttp2_hd_inflate_free(&inflater);
   nghttp2_hd_deflate_free(&deflater);
@@ -130,11 +126,15 @@ void check_frame_push_promise(FuzzedDataProvider* data_provider) {
                                   (1U << 31) - 1, nva, nvlen);
 
   rv = nghttp2_frame_pack_push_promise(&bufs, &frame, &deflater);
-  unpack_framebuf((nghttp2_frame *)&oframe, &bufs);
+  if (rv == 0) {
+    unpack_framebuf((nghttp2_frame *)&oframe, &bufs);
+  }
 
   nghttp2_nv *nva2 = NULL;
   rv = nghttp2_nv_array_copy(&nva2, nva, nvlen, mem);
-  nghttp2_nv_array_del(nva2, mem);
+  if (rv == 0) {
+    nghttp2_nv_array_del(nva2, mem);
+  }
 
   /* Cleanup */
   for (int i = 0; i < HEADERS_LENGTH; i++) {
