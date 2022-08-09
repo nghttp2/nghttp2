@@ -250,9 +250,15 @@ int main(int argc, char **argv) {
     case 'V':
       config.verify_client = true;
       break;
-    case 'b':
-      config.padding = strtol(optarg, nullptr, 10);
+    case 'b': {
+      auto n = util::parse_uint(optarg);
+      if (n == -1) {
+        std::cerr << "-b: Bad option value: " << optarg << std::endl;
+        exit(EXIT_FAILURE);
+      }
+      config.padding = n;
       break;
+    }
     case 'd':
       config.htdocs = optarg;
       break;
@@ -274,13 +280,12 @@ int main(int argc, char **argv) {
       std::cerr << "-n: WARNING: Threading disabled at build time, "
                 << "no threads created." << std::endl;
 #else
-      char *end;
-      errno = 0;
-      config.num_worker = strtoul(optarg, &end, 10);
-      if (errno == ERANGE || *end != '\0' || config.num_worker == 0) {
+      auto n = util::parse_uint(optarg);
+      if (n == -1) {
         std::cerr << "-n: Bad option value: " << optarg << std::endl;
         exit(EXIT_FAILURE);
       }
+      config.num_worker = n;
 #endif // NOTHREADS
       break;
     }
@@ -311,10 +316,8 @@ int main(int argc, char **argv) {
       break;
     case 'w':
     case 'W': {
-      char *endptr;
-      errno = 0;
-      auto n = strtoul(optarg, &endptr, 10);
-      if (errno != 0 || *endptr != '\0' || n >= 31) {
+      auto n = util::parse_uint(optarg);
+      if (n == -1 || n > 30) {
         std::cerr << "-" << static_cast<char>(c)
                   << ": specify the integer in the range [0, 30], inclusive"
                   << std::endl;
@@ -432,7 +435,15 @@ int main(int argc, char **argv) {
     exit(EXIT_FAILURE);
   }
 
-  config.port = strtol(argv[optind++], nullptr, 10);
+  {
+    auto portStr = argv[optind++];
+    auto n = util::parse_uint(portStr);
+    if (n == -1 || n > std::numeric_limits<uint16_t>::max()) {
+      std::cerr << "<PORT>: Bad value: " << portStr << std::endl;
+      exit(EXIT_FAILURE);
+    }
+    config.port = n;
+  }
 
   if (!config.no_tls) {
     config.private_key_file = argv[optind++];
