@@ -423,26 +423,6 @@ int parse_uint_with_unit(T *dest, const StringRef &opt,
 }
 } // namespace
 
-// Parses |optarg| as signed integer.  This requires |optarg| to be
-// NULL-terminated string.
-template <typename T>
-int parse_int(T *dest, const StringRef &opt, const char *optarg) {
-  char *end = nullptr;
-
-  errno = 0;
-
-  auto val = strtol(optarg, &end, 10);
-
-  if (!optarg[0] || errno != 0 || *end) {
-    LOG(ERROR) << opt << ": bad value.  Specify an integer.";
-    return -1;
-  }
-
-  *dest = val;
-
-  return 0;
-}
-
 namespace {
 int parse_altsvc(AltSvc &altsvc, const StringRef &opt,
                  const StringRef &optarg) {
