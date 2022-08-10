@@ -12,10 +12,10 @@ extern "C" {
 
 static nghttp2_nv fuzz_make_nv(std::string s1, std::string s2) {
   nghttp2_nv nv;
-  uint8_t *n = (uint8_t*) malloc(s1.size());
+  uint8_t *n = (uint8_t *)malloc(s1.size());
   memcpy(n, s1.c_str(), s1.size());
 
-  uint8_t *v = (uint8_t*) malloc(s2.size());
+  uint8_t *v = (uint8_t *)malloc(s2.size());
   memcpy(v, s2.c_str(), s2.size());
 
   nv.name = n;
@@ -32,7 +32,7 @@ static void fuzz_free_nv(nghttp2_nv *nv) {
   free(nv->value);
 }
 
-void check_frame_pack_headers(FuzzedDataProvider* data_provider) {
+void check_frame_pack_headers(FuzzedDataProvider *data_provider) {
   nghttp2_hd_deflater deflater;
   nghttp2_hd_inflater inflater;
   nghttp2_headers frame, oframe;
@@ -92,7 +92,7 @@ void check_frame_pack_headers(FuzzedDataProvider* data_provider) {
   nghttp2_hd_deflate_free(&deflater);
 }
 
-void check_frame_push_promise(FuzzedDataProvider* data_provider) {
+void check_frame_push_promise(FuzzedDataProvider *data_provider) {
   nghttp2_hd_deflater deflater;
   nghttp2_hd_inflater inflater;
   nghttp2_push_promise frame, oframe;
@@ -158,4 +158,3 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
 }
 
 } // extern C
-
