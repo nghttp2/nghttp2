@@ -1252,22 +1252,16 @@ int ConnectionHandler::quic_ipc_read() {
   // At the moment, UpstreamAddr index is unknown.
   pkt->upstream_addr_index = static_cast<size_t>(-1);
 
-  uint32_t version;
-  const uint8_t *dcid;
-  size_t dcidlen;
-  const uint8_t *scid;
-  size_t scidlen;
+  ngtcp2_version_cid vc;
 
-  auto rv =
-      ngtcp2_pkt_decode_version_cid(&version, &dcid, &dcidlen, &scid, &scidlen,
-                                    p, datalen, SHRPX_QUIC_SCIDLEN);
+  auto rv = ngtcp2_pkt_decode_version_cid(&vc, p, datalen, SHRPX_QUIC_SCIDLEN);
   if (rv < 0) {
     LOG(ERROR) << "ngtcp2_pkt_decode_version_cid: " << ngtcp2_strerror(rv);
 
     return -1;
   }
 
-  if (dcidlen != SHRPX_QUIC_SCIDLEN) {
+  if (vc.dcidlen != SHRPX_QUIC_SCIDLEN) {
     LOG(ERROR) << "DCID length is invalid";
     return -1;
   }
@@ -1295,7 +1289,7 @@ int ConnectionHandler::quic_ipc_read() {
   std::array<uint8_t, SHRPX_QUIC_DECRYPTED_DCIDLEN> decrypted_dcid;
 
   if (decrypt_quic_connection_id(decrypted_dcid.data(),
-                                 dcid + SHRPX_QUIC_CID_PREFIX_OFFSET,
+                                 vc.dcid + SHRPX_QUIC_CID_PREFIX_OFFSET,
                                  qkm.cid_encryption_key.data()) != 0) {
     return -1;
   }
