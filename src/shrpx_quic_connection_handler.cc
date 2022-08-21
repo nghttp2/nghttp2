@@ -213,15 +213,16 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
         break;
       }
 
-      if (vc.dcidlen != SHRPX_QUIC_SCIDLEN) {
-        // Initial packets with token must have DCID chosen by server.
-        return 0;
-      }
-
-      auto qkm = select_quic_keying_material(*qkms.get(), vc.dcid);
-
       switch (hd.token.base[0]) {
-      case NGTCP2_CRYPTO_TOKEN_MAGIC_RETRY:
+      case NGTCP2_CRYPTO_TOKEN_MAGIC_RETRY: {
+        if (vc.dcidlen != SHRPX_QUIC_SCIDLEN) {
+          // Initial packets with Retry token must have DCID chosen by
+          // server.
+          return 0;
+        }
+
+        auto qkm = select_quic_keying_material(*qkms.get(), vc.dcid);
+
         if (verify_retry_token(odcid, hd.token.base, hd.token.len, hd.version,
                                hd.dcid, &remote_addr.su.sa, remote_addr.len,
                                qkm->secret.data(), qkm->secret.size()) != 0) {
@@ -248,7 +249,19 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
         tokenlen = hd.token.len;
 
         break;
-      case NGTCP2_CRYPTO_TOKEN_MAGIC_REGULAR:
+      }
+      case NGTCP2_CRYPTO_TOKEN_MAGIC_REGULAR: {
+        // If a token is a regular token, it must be at least
+        // NGTCP2_MIN_INITIAL_DCIDLEN bytes long.
+        if (vc.dcidlen < NGTCP2_MIN_INITIAL_DCIDLEN) {
+          return 0;
+        }
+
+        // Regarding the QUIC secret that encrypted this token, DCID
+        // is a client chosen one, and we have no information embedded
+        // in a token.  Just use the first QUIC secret.
+        auto qkm = &qkms->keying_materials.front();
+
         if (verify_token(hd.token.base, hd.token.len, &remote_addr.su.sa,
                          remote_addr.len, qkm->secret.data(),
                          qkm->secret.size()) != 0) {
@@ -276,6 +289,7 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
         tokenlen = hd.token.len;
 
         break;
+      }
       default:
         if (quicconf.upstream.require_token) {
           send_retry(faddr, vc.version, vc.dcid, vc.dcidlen, vc.scid,
