@@ -15,7 +15,7 @@ RUN git clone --depth 1 -b OpenSSL_1_1_1q+quic https://github.com/quictls/openss
     cd .. && \
     rm -rf openssl
 
-RUN git clone --depth 1 -b v0.6.0 https://github.com/ngtcp2/nghttp3 && \
+RUN git clone --depth 1 -b v0.7.0 https://github.com/ngtcp2/nghttp3 && \
     cd nghttp3 && \
     autoreconf -i && \
     ./configure --enable-lib-only && \
@@ -24,7 +24,7 @@ RUN git clone --depth 1 -b v0.6.0 https://github.com/ngtcp2/nghttp3 && \
     cd .. && \
     rm -rf nghttp3
 
-RUN git clone --depth 1 -b v0.7.0 https://github.com/ngtcp2/ngtcp2 && \
+RUN git clone --depth 1 -b v0.8.0 https://github.com/ngtcp2/ngtcp2 && \
     cd ngtcp2 && \
     autoreconf -i && \
     ./configure --enable-lib-only \

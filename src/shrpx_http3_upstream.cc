@@ -1773,13 +1773,10 @@ int Http3Upstream::on_read(const UpstreamAddr *faddr,
       auto worker = handler_->get_worker();
       auto quic_conn_handler = worker->get_quic_connection_handler();
 
-      uint32_t version;
-      const uint8_t *dcid, *scid;
-      size_t dcidlen, scidlen;
+      ngtcp2_version_cid vc;
 
-      rv = ngtcp2_pkt_decode_version_cid(&version, &dcid, &dcidlen, &scid,
-                                         &scidlen, data, datalen,
-                                         SHRPX_QUIC_SCIDLEN);
+      rv =
+          ngtcp2_pkt_decode_version_cid(&vc, data, datalen, SHRPX_QUIC_SCIDLEN);
       if (rv != 0) {
         return -1;
       }
@@ -1787,11 +1784,11 @@ int Http3Upstream::on_read(const UpstreamAddr *faddr,
       if (worker->get_graceful_shutdown()) {
         ngtcp2_cid ini_dcid, ini_scid;
 
-        ngtcp2_cid_init(&ini_dcid, dcid, dcidlen);
-        ngtcp2_cid_init(&ini_scid, scid, scidlen);
+        ngtcp2_cid_init(&ini_dcid, vc.dcid, vc.dcidlen);
+        ngtcp2_cid_init(&ini_scid, vc.scid, vc.scidlen);
 
         quic_conn_handler->send_connection_close(
-            faddr, version, ini_dcid, ini_scid, remote_addr, local_addr,
+            faddr, vc.version, ini_dcid, ini_scid, remote_addr, local_addr,
             NGTCP2_CONNECTION_REFUSED, datalen * 3);
 
         return -1;
@@ -1799,9 +1796,9 @@ int Http3Upstream::on_read(const UpstreamAddr *faddr,
 
       retry_close_ = true;
 
-      quic_conn_handler->send_retry(handler_->get_upstream_addr(), version,
-                                    dcid, dcidlen, scid, scidlen, remote_addr,
-                                    local_addr, datalen * 3);
+      quic_conn_handler->send_retry(handler_->get_upstream_addr(), vc.version,
+                                    vc.dcid, vc.dcidlen, vc.scid, vc.scidlen,
+                                    remote_addr, local_addr, datalen * 3);
 
       return -1;
     }
