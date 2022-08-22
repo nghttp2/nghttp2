@@ -94,7 +94,7 @@ jobs:
     - name: Build libbpf
       if: matrix.http3 == 'http3' && matrix.compiler == 'clang' && runner.os == 'Linux'
       run: |
-        git clone -b v0.8.0 https://github.com/libbpf/libbpf
+        git clone -b v0.8.1 https://github.com/libbpf/libbpf
         cd libbpf
         PREFIX=$PWD/build make -C src install
 
