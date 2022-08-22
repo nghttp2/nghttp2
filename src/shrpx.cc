@@ -1093,7 +1093,7 @@ std::vector<InheritedAddr> get_inherited_addr_from_env(Config *config) {
     auto portenv = getenv(ENV_PORT.c_str());
     if (portenv) {
       size_t i = 1;
-      for (auto env_name : {ENV_LISTENER4_FD, ENV_LISTENER6_FD}) {
+      for (const auto &env_name : {ENV_LISTENER4_FD, ENV_LISTENER6_FD}) {
         auto fdenv = getenv(env_name.c_str());
         if (fdenv) {
           auto name = ENV_ACCEPT_PREFIX.str();
