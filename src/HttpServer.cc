@@ -1805,7 +1805,7 @@ void worker_acceptcb(struct ev_loop *loop, ev_async *w, int revents) {
     q.swap(worker->q);
   }
 
-  for (auto c : q) {
+  for (const auto &c : q) {
     sessions->accept_connection(c.fd);
   }
 }
