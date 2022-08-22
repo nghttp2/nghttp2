@@ -479,7 +479,7 @@ int Http3Upstream::handshake_completed() {
     return -1;
   }
 
-  std::array<uint8_t, NGTCP2_CRYPTO_MAX_REGULAR_TOKENLEN> token;
+  std::array<uint8_t, NGTCP2_CRYPTO_MAX_REGULAR_TOKENLEN + 1> token;
   size_t tokenlen;
 
   auto path = ngtcp2_conn_get_path(conn_);
@@ -493,6 +493,10 @@ int Http3Upstream::handshake_completed() {
                      qkm.secret.size()) != 0) {
     return 0;
   }
+
+  assert(tokenlen == NGTCP2_CRYPTO_MAX_REGULAR_TOKENLEN);
+
+  token[tokenlen++] = qkm.id;
 
   auto rv = ngtcp2_conn_submit_new_token(conn_, token.data(), tokenlen);
   if (rv != 0) {

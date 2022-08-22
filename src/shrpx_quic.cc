@@ -358,10 +358,9 @@ int generate_quic_connection_id_encryption_key(uint8_t *key, size_t keylen,
 }
 
 const QUICKeyingMaterial *
-select_quic_keying_material(const QUICKeyingMaterials &qkms,
-                            const uint8_t *cid) {
+select_quic_keying_material(const QUICKeyingMaterials &qkms, uint8_t km_id) {
   for (auto &qkm : qkms.keying_materials) {
-    if (((*cid) & 0xc0) == qkm.id) {
+    if (km_id == qkm.id) {
       return &qkm;
     }
   }

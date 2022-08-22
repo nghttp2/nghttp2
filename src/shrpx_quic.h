@@ -76,6 +76,7 @@ constexpr size_t SHRPX_QUIC_STATELESS_RESET_BURST = 100;
 constexpr size_t SHRPX_QUIC_SECRET_RESERVEDLEN = 4;
 constexpr size_t SHRPX_QUIC_SECRETLEN = 32;
 constexpr size_t SHRPX_QUIC_SALTLEN = 32;
+constexpr uint8_t SHRPX_QUIC_DCID_KM_ID_MASK = 0xc0;
 
 ngtcp2_tstamp quic_timestamp();
 
@@ -130,8 +131,7 @@ int generate_quic_connection_id_encryption_key(uint8_t *key, size_t keylen,
                                                size_t saltlen);
 
 const QUICKeyingMaterial *
-select_quic_keying_material(const QUICKeyingMaterials &qkms,
-                            const uint8_t *cid);
+select_quic_keying_material(const QUICKeyingMaterials &qkms, uint8_t km_id);
 
 } // namespace shrpx
 

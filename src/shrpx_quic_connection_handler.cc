@@ -128,7 +128,8 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
     const QUICKeyingMaterial *qkm = nullptr;
 
     if (vc.dcidlen == SHRPX_QUIC_SCIDLEN) {
-      qkm = select_quic_keying_material(*qkms.get(), vc.dcid);
+      qkm = select_quic_keying_material(
+          *qkms.get(), vc.dcid[0] & SHRPX_QUIC_DCID_KM_ID_MASK);
 
       if (decrypt_quic_connection_id(decrypted_dcid.data(),
                                      vc.dcid + SHRPX_QUIC_CID_PREFIX_OFFSET,
@@ -221,7 +222,8 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
           return 0;
         }
 
-        auto qkm = select_quic_keying_material(*qkms.get(), vc.dcid);
+        auto qkm = select_quic_keying_material(
+            *qkms.get(), vc.dcid[0] & SHRPX_QUIC_DCID_KM_ID_MASK);
 
         if (verify_retry_token(odcid, hd.token.base, hd.token.len, hd.version,
                                hd.dcid, &remote_addr.su.sa, remote_addr.len,
@@ -257,12 +259,26 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
           return 0;
         }
 
-        // Regarding the QUIC secret that encrypted this token, DCID
-        // is a client chosen one, and we have no information embedded
-        // in a token.  Just use the first QUIC secret.
-        auto qkm = &qkms->keying_materials.front();
+        if (hd.token.len != NGTCP2_CRYPTO_MAX_REGULAR_TOKENLEN + 1) {
+          if (LOG_ENABLED(INFO)) {
+            LOG(INFO) << "Failed to validate token from remote="
+                      << util::to_numeric_addr(&remote_addr);
+          }
 
-        if (verify_token(hd.token.base, hd.token.len, &remote_addr.su.sa,
+          if (quicconf.upstream.require_token) {
+            send_retry(faddr, vc.version, vc.dcid, vc.dcidlen, vc.scid,
+                       vc.scidlen, remote_addr, local_addr, datalen * 3);
+
+            return 0;
+          }
+
+          break;
+        }
+
+        auto qkm = select_quic_keying_material(
+            *qkms.get(), hd.token.base[NGTCP2_CRYPTO_MAX_REGULAR_TOKENLEN]);
+
+        if (verify_token(hd.token.base, hd.token.len - 1, &remote_addr.su.sa,
                          remote_addr.len, qkm->secret.data(),
                          qkm->secret.size()) != 0) {
           if (LOG_ENABLED(INFO)) {
