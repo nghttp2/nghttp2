@@ -96,6 +96,9 @@ typedef enum {
   NGHTTP2_STREAM_FLAG_NO_RFC7540_PRIORITIES = 0x10,
   /* Ignore client RFC 9218 priority signal. */
   NGHTTP2_STREAM_FLAG_IGNORE_CLIENT_PRIORITIES = 0x20,
+  /* Indicates that RFC 9113 leading and trailing white spaces
+     validation against a field value is not performed. */
+  NGHTTP2_STREAM_FLAG_NO_RFC9113_LEADING_AND_TRAILING_WS_VALIDATION = 0x40,
 } nghttp2_stream_flag;
 
 /* HTTP related flags to enforce HTTP semantics */

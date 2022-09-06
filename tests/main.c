@@ -363,6 +363,9 @@ int main(void) {
                    test_nghttp2_http_push_promise) ||
       !CU_add_test(pSuite, "http_head_method_upgrade_workaround",
                    test_nghttp2_http_head_method_upgrade_workaround) ||
+      !CU_add_test(
+          pSuite, "http_no_rfc9113_leading_and_trailing_ws_validation",
+          test_nghttp2_http_no_rfc9113_leading_and_trailing_ws_validation) ||
       !CU_add_test(pSuite, "frame_pack_headers",
                    test_nghttp2_frame_pack_headers) ||
       !CU_add_test(pSuite, "frame_pack_headers_frame_too_large",
