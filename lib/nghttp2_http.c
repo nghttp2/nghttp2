@@ -336,6 +336,16 @@ static int check_scheme(const uint8_t *value, size_t len) {
   return 1;
 }
 
+static int lws(const uint8_t *s, size_t n) {
+  size_t i;
+  for (i = 0; i < n; ++i) {
+    if (s[i] != ' ' && s[i] != '\t') {
+      return 0;
+    }
+  }
+  return 1;
+}
+
 int nghttp2_http_on_header(nghttp2_session *session, nghttp2_stream *stream,
                            nghttp2_frame *frame, nghttp2_hd_nv *nv,
                            int trailer) {
@@ -385,6 +395,15 @@ int nghttp2_http_on_header(nghttp2_session *session, nghttp2_stream *stream,
   case NGHTTP2_TOKEN__SCHEME:
     rv = check_scheme(nv->value->base, nv->value->len);
     break;
+  case NGHTTP2_TOKEN__PROTOCOL:
+    /* Check the value consists of just white spaces, which was done
+       in check_pseudo_header before
+       nghttp2_check_header_value_rfc9113 has been introduced. */
+    if (lws(nv->value->base, nv->value->len)) {
+      rv = 0;
+      break;
+    }
+    /* fall through */
   default:
     rv = nghttp2_check_header_value_rfc9113(nv->value->base, nv->value->len);
   }
