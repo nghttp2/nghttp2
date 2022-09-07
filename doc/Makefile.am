@@ -69,6 +69,7 @@ APIDOCS= \
 	nghttp2_option_set_no_closed_streams.rst \
 	nghttp2_option_set_no_http_messaging.rst \
 	nghttp2_option_set_no_recv_client_magic.rst \
+	nghttp2_option_set_no_rfc9113_leading_and_trailing_ws_validation.rst \
 	nghttp2_option_set_peer_max_concurrent_streams.rst \
 	nghttp2_option_set_server_fallback_rfc7540_priorities.rst \
 	nghttp2_option_set_user_recv_extension_type.rst \

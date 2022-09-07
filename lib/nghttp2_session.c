@@ -566,6 +566,13 @@ static int session_new(nghttp2_session **session_ptr,
       (*session_ptr)->opt_flags |=
           NGHTTP2_OPTMASK_SERVER_FALLBACK_RFC7540_PRIORITIES;
     }
+
+    if ((option->opt_set_mask &
+         NGHTTP2_OPT_NO_RFC9113_LEADING_AND_TRAILING_WS_VALIDATION) &&
+        option->no_rfc9113_leading_and_trailing_ws_validation) {
+      (*session_ptr)->opt_flags |=
+          NGHTTP2_OPTMASK_NO_RFC9113_LEADING_AND_TRAILING_WS_VALIDATION;
+    }
   }
 
   rv = nghttp2_hd_deflate_init2(&(*session_ptr)->hd_deflater,
@@ -1295,6 +1302,11 @@ nghttp2_stream *nghttp2_session_open_stream(nghttp2_session *session,
 
   mem = &session->mem;
   stream = nghttp2_session_get_stream_raw(session, stream_id);
+
+  if (session->opt_flags &
+      NGHTTP2_OPTMASK_NO_RFC9113_LEADING_AND_TRAILING_WS_VALIDATION) {
+    flags |= NGHTTP2_STREAM_FLAG_NO_RFC9113_LEADING_AND_TRAILING_WS_VALIDATION;
+  }
 
   if (stream) {
     assert(stream->state == NGHTTP2_STREAM_IDLE);
