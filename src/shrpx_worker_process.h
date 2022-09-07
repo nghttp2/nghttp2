@@ -27,6 +27,14 @@
 
 #include "shrpx.h"
 
+#include <vector>
+#include <array>
+
+#include "shrpx_connection_handler.h"
+#ifdef ENABLE_HTTP3
+#  include "shrpx_quic.h"
+#endif // ENABLE_HTTP3
+
 namespace shrpx {
 
 class ConnectionHandler;
@@ -38,6 +46,16 @@ struct WorkerProcessConfig {
   int server_fd;
   // IPv6 socket, or -1 if not used
   int server_fd6;
+#ifdef ENABLE_HTTP3
+  // CID prefixes for the new worker process.
+  std::vector<std::array<uint8_t, SHRPX_QUIC_CID_PREFIXLEN>> cid_prefixes;
+  // IPC socket to read forwarded QUIC UDP datagram from the current
+  // worker process.
+  int quic_ipc_fd;
+  // Lingering worker processes which were created before this worker
+  // process to forward QUIC UDP datagram during reload.
+  std::vector<QUICLingeringWorkerProcess> quic_lingering_worker_processes;
+#endif // ENABLE_HTTP3
 };
 
 int worker_process_event_loop(WorkerProcessConfig *wpconf);

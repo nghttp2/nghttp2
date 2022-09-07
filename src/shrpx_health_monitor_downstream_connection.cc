@@ -98,7 +98,8 @@ int HealthMonitorDownstreamConnection::on_read() { return 0; }
 
 int HealthMonitorDownstreamConnection::on_write() { return 0; }
 
-void HealthMonitorDownstreamConnection::on_upstream_change(Upstream *uptream) {}
+void HealthMonitorDownstreamConnection::on_upstream_change(Upstream *upstream) {
+}
 
 bool HealthMonitorDownstreamConnection::poolable() const { return false; }
 

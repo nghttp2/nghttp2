@@ -45,6 +45,7 @@
 
 #include "template.h"
 #include "comp_helper.h"
+#include "util.h"
 
 namespace nghttp2 {
 
@@ -381,8 +382,6 @@ constexpr static struct option long_options[] = {
     {nullptr, 0, nullptr, 0}};
 
 int main(int argc, char **argv) {
-  char *end;
-
   config.table_size = 4_k;
   config.deflate_table_size = 4_k;
   config.http1text = 0;
@@ -401,24 +400,26 @@ int main(int argc, char **argv) {
       // --http1text
       config.http1text = 1;
       break;
-    case 's':
+    case 's': {
       // --table-size
-      errno = 0;
-      config.table_size = strtoul(optarg, &end, 10);
-      if (errno == ERANGE || *end != '\0') {
+      auto n = util::parse_uint(optarg);
+      if (n == -1) {
         fprintf(stderr, "-s: Bad option value\n");
         exit(EXIT_FAILURE);
       }
+      config.table_size = n;
       break;
-    case 'S':
+    }
+    case 'S': {
       // --deflate-table-size
-      errno = 0;
-      config.deflate_table_size = strtoul(optarg, &end, 10);
-      if (errno == ERANGE || *end != '\0') {
+      auto n = util::parse_uint(optarg);
+      if (n == -1) {
         fprintf(stderr, "-S: Bad option value\n");
         exit(EXIT_FAILURE);
       }
+      config.deflate_table_size = n;
       break;
+    }
     case 'd':
       // --dump-header-table
       config.dump_header_table = 1;

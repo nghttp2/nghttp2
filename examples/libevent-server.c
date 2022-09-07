@@ -142,9 +142,8 @@ static int alpn_select_proto_cb(SSL *ssl, const unsigned char **out,
 /* Create SSL_CTX. */
 static SSL_CTX *create_ssl_ctx(const char *key_file, const char *cert_file) {
   SSL_CTX *ssl_ctx;
-  EC_KEY *ecdh;
 
-  ssl_ctx = SSL_CTX_new(SSLv23_server_method());
+  ssl_ctx = SSL_CTX_new(TLS_server_method());
   if (!ssl_ctx) {
     errx(1, "Could not create SSL/TLS context: %s",
          ERR_error_string(ERR_get_error(), NULL));
@@ -153,14 +152,23 @@ static SSL_CTX *create_ssl_ctx(const char *key_file, const char *cert_file) {
                       SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 |
                           SSL_OP_NO_COMPRESSION |
                           SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION);
-
-  ecdh = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
-  if (!ecdh) {
-    errx(1, "EC_KEY_new_by_curv_name failed: %s",
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+  if (SSL_CTX_set1_curves_list(ssl_ctx, "P-256") != 1) {
+    errx(1, "SSL_CTX_set1_curves_list failed: %s",
          ERR_error_string(ERR_get_error(), NULL));
   }
-  SSL_CTX_set_tmp_ecdh(ssl_ctx, ecdh);
-  EC_KEY_free(ecdh);
+#else  /* !(OPENSSL_VERSION_NUMBER >= 0x30000000L) */
+  {
+    EC_KEY *ecdh;
+    ecdh = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
+    if (!ecdh) {
+      errx(1, "EC_KEY_new_by_curv_name failed: %s",
+           ERR_error_string(ERR_get_error(), NULL));
+    }
+    SSL_CTX_set_tmp_ecdh(ssl_ctx, ecdh);
+    EC_KEY_free(ecdh);
+  }
+#endif /* !(OPENSSL_VERSION_NUMBER >= 0x30000000L) */
 
   if (SSL_CTX_use_PrivateKey_file(ssl_ctx, key_file, SSL_FILETYPE_PEM) != 1) {
     errx(1, "Could not read private key file %s", key_file);
@@ -809,8 +817,18 @@ int main(int argc, char **argv) {
   act.sa_handler = SIG_IGN;
   sigaction(SIGPIPE, &act, NULL);
 
+#if OPENSSL_VERSION_NUMBER >= 0x1010000fL
+  /* No explicit initialization is required. */
+#elif defined(OPENSSL_IS_BORINGSSL)
+  CRYPTO_library_init();
+#else  /* !(OPENSSL_VERSION_NUMBER >= 0x1010000fL) &&                          \
+          !defined(OPENSSL_IS_BORINGSSL) */
+  OPENSSL_config(NULL);
   SSL_load_error_strings();
   SSL_library_init();
+  OpenSSL_add_all_algorithms();
+#endif /* !(OPENSSL_VERSION_NUMBER >= 0x1010000fL) &&                          \
+          !defined(OPENSSL_IS_BORINGSSL) */
 
   run(argv[1], argv[2], argv[3]);
   return 0;

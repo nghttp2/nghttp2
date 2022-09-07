@@ -74,6 +74,8 @@ constexpr size_t NGHTTP2_MAX_UINT64_DIGITS = str_size("18446744073709551615");
 
 namespace util {
 
+extern const char UPPER_XDIGITS[];
+
 inline bool is_alpha(const char c) {
   return ('A' <= c && c <= 'Z') || ('a' <= c && c <= 'z');
 }
@@ -136,9 +138,51 @@ StringRef percent_decode(BlockAllocator &balloc, const StringRef &src);
 // Percent encode |target| if character is not in token or '%'.
 StringRef percent_encode_token(BlockAllocator &balloc, const StringRef &target);
 
+template <typename OutputIt>
+OutputIt percent_encode_token(OutputIt it, const StringRef &target) {
+  for (auto first = std::begin(target); first != std::end(target); ++first) {
+    uint8_t c = *first;
+
+    if (c != '%' && in_token(c)) {
+      *it++ = c;
+      continue;
+    }
+
+    *it++ = '%';
+    *it++ = UPPER_XDIGITS[c >> 4];
+    *it++ = UPPER_XDIGITS[(c & 0x0f)];
+  }
+
+  return it;
+}
+
+// Returns the number of bytes written by percent_encode_token with
+// the same |target| parameter.  The return value does not include a
+// terminal NUL byte.
+size_t percent_encode_tokenlen(const StringRef &target);
+
 // Returns quotedString version of |target|.  Currently, this function
 // just replace '"' with '\"'.
 StringRef quote_string(BlockAllocator &balloc, const StringRef &target);
+
+template <typename OutputIt>
+OutputIt quote_string(OutputIt it, const StringRef &target) {
+  for (auto c : target) {
+    if (c == '"') {
+      *it++ = '\\';
+      *it++ = '"';
+    } else {
+      *it++ = c;
+    }
+  }
+
+  return it;
+}
+
+// Returns the number of bytes written by quote_string with the same
+// |target| parameter.  The return value does not include a terminal
+// NUL byte.
+size_t quote_stringlen(const StringRef &target);
 
 std::string format_hex(const unsigned char *s, size_t len);
 
@@ -170,6 +214,15 @@ OutputIt format_hex(OutputIt it, const StringRef &s) {
 // == true.
 StringRef decode_hex(BlockAllocator &balloc, const StringRef &s);
 
+template <typename OutputIt>
+OutputIt decode_hex(OutputIt d_first, const StringRef &s) {
+  for (auto it = std::begin(s); it != std::end(s); it += 2) {
+    *d_first++ = (hex_to_uint(*it) << 4) | hex_to_uint(*(it + 1));
+  }
+
+  return d_first;
+}
+
 // Returns given time |t| from epoch in HTTP Date format (e.g., Mon,
 // 10 Oct 2016 10:25:58 GMT).
 std::string http_date(time_t t);
@@ -193,6 +246,11 @@ std::string iso8601_date(int64_t ms);
 // pointed by |res|.  The buffer must be at least 29 bytes long.  This
 // function returns the one beyond the last position.
 char *iso8601_date(char *res, int64_t ms);
+
+// Writes given time |t| from epoch in ISO 8601 basic format into the
+// buffer pointed by |res|.  The buffer must be at least 24 bytes
+// long.  This function returns the one beyond the last position.
+char *iso8601_basic_date(char *res, int64_t ms);
 
 time_t parse_http_date(const StringRef &s);
 
@@ -443,8 +501,6 @@ template <typename T> std::string utos_funit(T n) {
   return dtos(static_cast<double>(n) / (1 << b)) + u;
 }
 
-extern const char UPPER_XDIGITS[];
-
 template <typename T> std::string utox(T n) {
   std::string res;
   if (n == 0) {
@@ -505,6 +561,8 @@ std::string numeric_name(const struct sockaddr *sa, socklen_t salen);
 // IPv6 address, address is enclosed by square brackets ([]).
 std::string to_numeric_addr(const Address *addr);
 
+std::string to_numeric_addr(const struct sockaddr *sa, socklen_t salen);
+
 // Sets |port| to |addr|.
 void set_port(Address &addr, uint16_t port);
 
@@ -514,7 +572,7 @@ std::string ascii_dump(const uint8_t *data, size_t len);
 
 // Returns absolute path of executable path.  If argc == 0 or |cwd| is
 // nullptr, this function returns nullptr.  If argv[0] starts with
-// '/', this function returns argv[0].  Oterwise return cwd + "/" +
+// '/', this function returns argv[0].  Otherwise return cwd + "/" +
 // argv[0].  If non-null is returned, it is NULL-terminated string and
 // dynamically allocated by malloc.  The caller is responsible to free
 // it.
@@ -562,6 +620,11 @@ std::vector<std::string> parse_config_str_list(const StringRef &s,
 // treated as a part of substring.
 std::vector<StringRef> split_str(const StringRef &s, char delim);
 
+// Behaves like split_str, but this variant splits at most |n| - 1
+// times and returns at most |n| sub-strings.  If |n| is zero, it
+// falls back to split_str.
+std::vector<StringRef> split_str(const StringRef &s, char delim, size_t n);
+
 // Writes given time |tp| in Common Log format (e.g.,
 // 03/Jul/2014:00:19:38 +0900) in buffer pointed by |out|.  The buffer
 // must be at least 27 bytes, including terminal NULL byte.  Expected
@@ -599,6 +662,20 @@ template <typename T> StringRef format_iso8601(char *out, const T &tp) {
   return StringRef{out, p};
 }
 
+// Writes given time |tp| in ISO 8601 basic format (e.g.,
+// 20141115T125824.741Z or 20141115T125824.741+0900) in buffer pointed
+// by |out|.  The buffer must be at least 25 bytes, including terminal
+// NULL byte.  Expected type of |tp| is std::chrono::time_point.  This
+// function returns StringRef wrapping the buffer pointed by |out|,
+// and this string is terminated by NULL.
+template <typename T> StringRef format_iso8601_basic(char *out, const T &tp) {
+  auto t = std::chrono::duration_cast<std::chrono::milliseconds>(
+      tp.time_since_epoch());
+  auto p = iso8601_basic_date(out, t.count());
+  *p = '\0';
+  return StringRef{out, p};
+}
+
 // Writes given time |tp| in HTTP Date format (e.g., Mon, 10 Oct 2016
 // 10:25:58 GMT) in buffer pointed by |out|.  The buffer must be at
 // least 30 bytes, including terminal NULL byte.  Expected type of
@@ -626,6 +703,9 @@ int make_socket_nonblocking(int fd);
 int make_socket_nodelay(int fd);
 
 int create_nonblock_socket(int family);
+int create_nonblock_udp_socket(int family);
+
+int bind_any_addr_udp(int fd, int family);
 
 bool check_socket_connected(int fd);
 
@@ -682,18 +762,71 @@ std::string format_duration(const std::chrono::microseconds &u);
 // Just like above, but this takes |t| as seconds.
 std::string format_duration(double t);
 
+// The maximum buffer size including terminal NULL to store the result
+// of make_hostport.
+constexpr size_t max_hostport = NI_MAXHOST + /* [] for IPv6 */ 2 + /* : */ 1 +
+                                /* port */ 5 + /* terminal NULL */ 1;
+
+// Just like make_http_hostport(), but doesn't treat 80 and 443
+// specially.
+StringRef make_hostport(BlockAllocator &balloc, const StringRef &host,
+                        uint16_t port);
+
+template <typename OutputIt>
+StringRef make_hostport(OutputIt first, const StringRef &host, uint16_t port) {
+  auto ipv6 = ipv6_numeric_addr(host.c_str());
+  auto serv = utos(port);
+  auto p = first;
+
+  if (ipv6) {
+    *p++ = '[';
+  }
+
+  p = std::copy(std::begin(host), std::end(host), p);
+
+  if (ipv6) {
+    *p++ = ']';
+  }
+
+  *p++ = ':';
+
+  p = std::copy(std::begin(serv), std::end(serv), p);
+
+  *p = '\0';
+
+  return StringRef{first, p};
+}
+
 // Creates "host:port" string using given |host| and |port|.  If
 // |host| is numeric IPv6 address (e.g., ::1), it is enclosed by "["
 // and "]".  If |port| is 80 or 443, port part is omitted.
 StringRef make_http_hostport(BlockAllocator &balloc, const StringRef &host,
                              uint16_t port);
 
-// Just like make_http_hostport(), but doesn't treat 80 and 443
-// specially.
-std::string make_hostport(const StringRef &host, uint16_t port);
+template <typename OutputIt>
+StringRef make_http_hostport(OutputIt first, const StringRef &host,
+                             uint16_t port) {
+  if (port != 80 && port != 443) {
+    return make_hostport(first, host, port);
+  }
 
-StringRef make_hostport(BlockAllocator &balloc, const StringRef &host,
-                        uint16_t port);
+  auto ipv6 = ipv6_numeric_addr(host.c_str());
+  auto p = first;
+
+  if (ipv6) {
+    *p++ = '[';
+  }
+
+  p = std::copy(std::begin(host), std::end(host), p);
+
+  if (ipv6) {
+    *p++ = ']';
+  }
+
+  *p = '\0';
+
+  return StringRef{first, p};
+}
 
 // Dumps |src| of length |len| in the format similar to `hexdump -C`.
 void hexdump(FILE *out, const uint8_t *src, size_t len);
@@ -746,6 +879,26 @@ void random_bytes(OutputIt first, OutputIt last, Generator &gen) {
   std::generate(first, last, [&dis, &gen]() { return dis(gen); });
 }
 
+// Shuffles the range [|first|, |last|] by calling swap function |fun|
+// for each pair.  |fun| takes 2 RandomIt iterators.  If |fun| is
+// noop, no modification is made.
+template <typename RandomIt, typename Generator, typename SwapFun>
+void shuffle(RandomIt first, RandomIt last, Generator &&gen, SwapFun fun) {
+  auto len = std::distance(first, last);
+  if (len < 2) {
+    return;
+  }
+
+  for (unsigned int i = 0; i < static_cast<unsigned int>(len - 1); ++i) {
+    auto dis = std::uniform_int_distribution<unsigned int>(i, len - 1);
+    auto j = dis(gen);
+    if (i == j) {
+      continue;
+    }
+    fun(first + i, first + j);
+  }
+}
+
 template <typename OutputIterator, typename CharT, size_t N>
 OutputIterator copy_lit(OutputIterator it, CharT (&s)[N]) {
   return std::copy_n(s, N - 1, it);
@@ -782,6 +935,20 @@ std::mt19937 make_mt19937();
 // daemonize calls daemon(3).  If __APPLE__ is defined, it implements
 // daemon() using fork().
 int daemonize(int nochdir, int noclose);
+
+// Returns |s| from which trailing white spaces (SPC or HTAB) are
+// removed.  If any white spaces are removed, new string is allocated
+// by |balloc| and returned.  Otherwise, the copy of |s| is returned
+// without allocation.
+StringRef rstrip(BlockAllocator &balloc, const StringRef &s);
+
+#ifdef ENABLE_HTTP3
+int msghdr_get_local_addr(Address &dest, msghdr *msg, int family);
+
+unsigned int msghdr_get_ecn(msghdr *msg, int family);
+
+int fd_set_send_ecn(int fd, int family, unsigned int ecn);
+#endif // ENABLE_HTTP3
 
 } // namespace util
 

@@ -45,6 +45,7 @@
 #include "shrpx_memcached_dispatcher.h"
 #include "shrpx_signal.h"
 #include "shrpx_log.h"
+#include "xsi_strerror.h"
 #include "util.h"
 #include "template.h"
 
@@ -112,7 +113,11 @@ void serial_event_async_cb(struct ev_loop *loop, ev_async *w, int revent) {
 } // namespace
 
 ConnectionHandler::ConnectionHandler(struct ev_loop *loop, std::mt19937 &gen)
-    : gen_(gen),
+    :
+#ifdef ENABLE_HTTP3
+      quic_ipc_fd_(-1),
+#endif // ENABLE_HTTP3
+      gen_(gen),
       single_worker_(nullptr),
       loop_(loop),
 #ifdef HAVE_NEVERBLEED
@@ -156,6 +161,19 @@ ConnectionHandler::~ConnectionHandler() {
   ev_timer_stop(loop_, &ocsp_timer_);
   ev_timer_stop(loop_, &disable_acceptor_timer_);
 
+#ifdef ENABLE_HTTP3
+  for (auto ssl_ctx : quic_all_ssl_ctx_) {
+    if (ssl_ctx == nullptr) {
+      continue;
+    }
+
+    auto tls_ctx_data =
+        static_cast<tls::TLSContextData *>(SSL_CTX_get_app_data(ssl_ctx));
+    delete tls_ctx_data;
+    SSL_CTX_free(ssl_ctx);
+  }
+#endif // ENABLE_HTTP3
+
   for (auto ssl_ctx : all_ssl_ctx_) {
     auto tls_ctx_data =
         static_cast<tls::TLSContextData *>(SSL_CTX_get_app_data(ssl_ctx));
@@ -179,24 +197,24 @@ void ConnectionHandler::set_ticket_keys_to_worker(
 }
 
 void ConnectionHandler::worker_reopen_log_files() {
-  WorkerEvent wev{};
-
-  wev.type = WorkerEventType::REOPEN_LOG;
-
   for (auto &worker : workers_) {
-    worker->send(wev);
+    WorkerEvent wev{};
+
+    wev.type = WorkerEventType::REOPEN_LOG;
+
+    worker->send(std::move(wev));
   }
 }
 
 void ConnectionHandler::worker_replace_downstream(
     std::shared_ptr<DownstreamConfig> downstreamconf) {
-  WorkerEvent wev{};
-
-  wev.type = WorkerEventType::REPLACE_DOWNSTREAM;
-  wev.downstreamconf = std::move(downstreamconf);
-
   for (auto &worker : workers_) {
-    worker->send(wev);
+    WorkerEvent wev{};
+
+    wev.type = WorkerEventType::REPLACE_DOWNSTREAM;
+    wev.downstreamconf = downstreamconf;
+
+    worker->send(std::move(wev));
   }
 }
 
@@ -209,6 +227,18 @@ int ConnectionHandler::create_single_worker() {
       nb_
 #endif // HAVE_NEVERBLEED
   );
+
+#ifdef ENABLE_HTTP3
+  quic_cert_tree_ = tls::create_cert_lookup_tree();
+  auto quic_sv_ssl_ctx = tls::setup_quic_server_ssl_context(
+      quic_all_ssl_ctx_, quic_indexed_ssl_ctx_, quic_cert_tree_.get()
+#  ifdef HAVE_NEVERBLEED
+                                                    ,
+      nb_
+#  endif // HAVE_NEVERBLEED
+  );
+#endif // ENABLE_HTTP3
+
   auto cl_ssl_ctx = tls::setup_downstream_client_ssl_context(
 #ifdef HAVE_NEVERBLEED
       nb_
@@ -217,6 +247,9 @@ int ConnectionHandler::create_single_worker() {
 
   if (cl_ssl_ctx) {
     all_ssl_ctx_.push_back(cl_ssl_ctx);
+#ifdef ENABLE_HTTP3
+    quic_all_ssl_ctx_.push_back(nullptr);
+#endif // ENABLE_HTTP3
   }
 
   auto config = get_config();
@@ -233,17 +266,42 @@ int ConnectionHandler::create_single_worker() {
           tlsconf.cacert, memcachedconf.cert_file,
           memcachedconf.private_key_file, nullptr);
       all_ssl_ctx_.push_back(session_cache_ssl_ctx);
+#ifdef ENABLE_HTTP3
+      quic_all_ssl_ctx_.push_back(nullptr);
+#endif // ENABLE_HTTP3
     }
   }
 
+#if defined(ENABLE_HTTP3) && defined(HAVE_LIBBPF)
+  quic_bpf_refs_.resize(config->conn.quic_listener.addrs.size());
+#endif // ENABLE_HTTP3 && HAVE_LIBBPF
+
+#ifdef ENABLE_HTTP3
+  assert(cid_prefixes_.size() == 1);
+  const auto &cid_prefix = cid_prefixes_[0];
+#endif // ENABLE_HTTP3
+
   single_worker_ = std::make_unique<Worker>(
       loop_, sv_ssl_ctx, cl_ssl_ctx, session_cache_ssl_ctx, cert_tree_.get(),
+#ifdef ENABLE_HTTP3
+      quic_sv_ssl_ctx, quic_cert_tree_.get(), cid_prefix.data(),
+      cid_prefix.size(),
+#  ifdef HAVE_LIBBPF
+      /* index = */ 0,
+#  endif // HAVE_LIBBPF
+#endif   // ENABLE_HTTP3
       ticket_keys_, this, config->conn.downstream);
 #ifdef HAVE_MRUBY
   if (single_worker_->create_mruby_context() != 0) {
     return -1;
   }
 #endif // HAVE_MRUBY
+
+#ifdef ENABLE_HTTP3
+  if (single_worker_->setup_quic_server_socket() != 0) {
+    return -1;
+  }
+#endif // ENABLE_HTTP3
 
   return 0;
 }
@@ -260,6 +318,18 @@ int ConnectionHandler::create_worker_thread(size_t num) {
       nb_
 #  endif // HAVE_NEVERBLEED
   );
+
+#  ifdef ENABLE_HTTP3
+  quic_cert_tree_ = tls::create_cert_lookup_tree();
+  auto quic_sv_ssl_ctx = tls::setup_quic_server_ssl_context(
+      quic_all_ssl_ctx_, quic_indexed_ssl_ctx_, quic_cert_tree_.get()
+#    ifdef HAVE_NEVERBLEED
+                                                    ,
+      nb_
+#    endif // HAVE_NEVERBLEED
+  );
+#  endif // ENABLE_HTTP3
+
   auto cl_ssl_ctx = tls::setup_downstream_client_ssl_context(
 #  ifdef HAVE_NEVERBLEED
       nb_
@@ -268,11 +338,18 @@ int ConnectionHandler::create_worker_thread(size_t num) {
 
   if (cl_ssl_ctx) {
     all_ssl_ctx_.push_back(cl_ssl_ctx);
+#  ifdef ENABLE_HTTP3
+    quic_all_ssl_ctx_.push_back(nullptr);
+#  endif // ENABLE_HTTP3
   }
 
   auto config = get_config();
   auto &tlsconf = config->tls;
   auto &apiconf = config->api;
+
+#  if defined(ENABLE_HTTP3) && defined(HAVE_LIBBPF)
+  quic_bpf_refs_.resize(config->conn.quic_listener.addrs.size());
+#  endif // ENABLE_HTTP3 && HAVE_LIBBPF
 
   // We have dedicated worker for API request processing.
   if (apiconf.enabled) {
@@ -291,20 +368,45 @@ int ConnectionHandler::create_worker_thread(size_t num) {
           tlsconf.cacert, memcachedconf.cert_file,
           memcachedconf.private_key_file, nullptr);
       all_ssl_ctx_.push_back(session_cache_ssl_ctx);
+#  ifdef ENABLE_HTTP3
+      quic_all_ssl_ctx_.push_back(nullptr);
+#  endif // ENABLE_HTTP3
     }
   }
+
+#  ifdef ENABLE_HTTP3
+  assert(cid_prefixes_.size() == num);
+#  endif // ENABLE_HTTP3
 
   for (size_t i = 0; i < num; ++i) {
     auto loop = ev_loop_new(config->ev_loop_flags);
 
+#  ifdef ENABLE_HTTP3
+    const auto &cid_prefix = cid_prefixes_[i];
+#  endif // ENABLE_HTTP3
+
     auto worker = std::make_unique<Worker>(
         loop, sv_ssl_ctx, cl_ssl_ctx, session_cache_ssl_ctx, cert_tree_.get(),
+#  ifdef ENABLE_HTTP3
+        quic_sv_ssl_ctx, quic_cert_tree_.get(), cid_prefix.data(),
+        cid_prefix.size(),
+#    ifdef HAVE_LIBBPF
+        i,
+#    endif // HAVE_LIBBPF
+#  endif   // ENABLE_HTTP3
         ticket_keys_, this, config->conn.downstream);
 #  ifdef HAVE_MRUBY
     if (worker->create_mruby_context() != 0) {
       return -1;
     }
 #  endif // HAVE_MRUBY
+
+#  ifdef ENABLE_HTTP3
+    if ((!apiconf.enabled || i != 0) &&
+        worker->setup_quic_server_socket() != 0) {
+      return -1;
+    }
+#  endif // ENABLE_HTTP3
 
     workers_.push_back(std::move(worker));
     worker_loops_.push_back(loop);
@@ -345,15 +447,15 @@ void ConnectionHandler::graceful_shutdown_worker() {
     return;
   }
 
-  WorkerEvent wev{};
-  wev.type = WorkerEventType::GRACEFUL_SHUTDOWN;
-
   if (LOG_ENABLED(INFO)) {
     LLOG(INFO, this) << "Sending graceful shutdown signal to worker";
   }
 
   for (auto &worker : workers_) {
-    worker->send(wev);
+    WorkerEvent wev{};
+    wev.type = WorkerEventType::GRACEFUL_SHUTDOWN;
+
+    worker->send(std::move(wev));
   }
 
 #ifndef NOTHREADS
@@ -436,7 +538,7 @@ int ConnectionHandler::handle_connection(int fd, sockaddr *addr, int addrlen,
   wev.client_addrlen = addrlen;
   wev.faddr = faddr;
 
-  worker->send(wev);
+  worker->send(std::move(wev));
 
   return 0;
 }
@@ -602,6 +704,9 @@ void ConnectionHandler::handle_ocsp_complete() {
   ev_child_stop(loop_, &ocsp_.chldev);
 
   assert(ocsp_.next < all_ssl_ctx_.size());
+#ifdef ENABLE_HTTP3
+  assert(all_ssl_ctx_.size() == quic_all_ssl_ctx_.size());
+#endif // ENABLE_HTTP3
 
   auto ssl_ctx = all_ssl_ctx_[ocsp_.next];
   auto tls_ctx_data =
@@ -629,6 +734,32 @@ void ConnectionHandler::handle_ocsp_complete() {
   if (tlsconf.ocsp.no_verify ||
       tls::verify_ocsp_response(ssl_ctx, ocsp_.resp.data(),
                                 ocsp_.resp.size()) == 0) {
+#ifdef ENABLE_HTTP3
+    // We have list of SSL_CTX with the same certificate in
+    // quic_all_ssl_ctx_ as well.  Some SSL_CTXs are missing there in
+    // that case we get nullptr.
+    auto quic_ssl_ctx = quic_all_ssl_ctx_[ocsp_.next];
+    if (quic_ssl_ctx) {
+#  ifndef OPENSSL_IS_BORINGSSL
+      auto quic_tls_ctx_data = static_cast<tls::TLSContextData *>(
+          SSL_CTX_get_app_data(quic_ssl_ctx));
+#    ifdef HAVE_ATOMIC_STD_SHARED_PTR
+      std::atomic_store_explicit(
+          &quic_tls_ctx_data->ocsp_data,
+          std::make_shared<std::vector<uint8_t>>(ocsp_.resp),
+          std::memory_order_release);
+#    else  // !HAVE_ATOMIC_STD_SHARED_PTR
+      std::lock_guard<std::mutex> g(quic_tls_ctx_data->mu);
+      quic_tls_ctx_data->ocsp_data =
+          std::make_shared<std::vector<uint8_t>>(ocsp_.resp);
+#    endif // !HAVE_ATOMIC_STD_SHARED_PTR
+#  else    // OPENSSL_IS_BORINGSSL
+      SSL_CTX_set_ocsp_response(quic_ssl_ctx, ocsp_.resp.data(),
+                                ocsp_.resp.size());
+#  endif   // OPENSSL_IS_BORINGSSL
+    }
+#endif // ENABLE_HTTP3
+
 #ifndef OPENSSL_IS_BORINGSSL
 #  ifdef HAVE_ATOMIC_STD_SHARED_PTR
     std::atomic_store_explicit(
@@ -809,6 +940,9 @@ SSL_CTX *ConnectionHandler::create_tls_ticket_key_memcached_ssl_ctx() {
       nullptr);
 
   all_ssl_ctx_.push_back(ssl_ctx);
+#ifdef ENABLE_HTTP3
+  quic_all_ssl_ctx_.push_back(nullptr);
+#endif // ENABLE_HTTP3
 
   return ssl_ctx;
 }
@@ -871,8 +1005,317 @@ ConnectionHandler::get_indexed_ssl_ctx(size_t idx) const {
   return indexed_ssl_ctx_[idx];
 }
 
+#ifdef ENABLE_HTTP3
+const std::vector<SSL_CTX *> &
+ConnectionHandler::get_quic_indexed_ssl_ctx(size_t idx) const {
+  return quic_indexed_ssl_ctx_[idx];
+}
+#endif // ENABLE_HTTP3
+
 void ConnectionHandler::set_enable_acceptor_on_ocsp_completion(bool f) {
   enable_acceptor_on_ocsp_completion_ = f;
 }
+
+#ifdef ENABLE_HTTP3
+int ConnectionHandler::forward_quic_packet(
+    const UpstreamAddr *faddr, const Address &remote_addr,
+    const Address &local_addr, const ngtcp2_pkt_info &pi,
+    const uint8_t *cid_prefix, const uint8_t *data, size_t datalen) {
+  assert(!get_config()->single_thread);
+
+  for (auto &worker : workers_) {
+    if (!std::equal(cid_prefix, cid_prefix + SHRPX_QUIC_CID_PREFIXLEN,
+                    worker->get_cid_prefix())) {
+      continue;
+    }
+
+    WorkerEvent wev{};
+    wev.type = WorkerEventType::QUIC_PKT_FORWARD;
+    wev.quic_pkt = std::make_unique<QUICPacket>(faddr->index, remote_addr,
+                                                local_addr, pi, data, datalen);
+
+    worker->send(std::move(wev));
+
+    return 0;
+  }
+
+  return -1;
+}
+
+void ConnectionHandler::set_quic_keying_materials(
+    std::shared_ptr<QUICKeyingMaterials> qkms) {
+  quic_keying_materials_ = std::move(qkms);
+}
+
+const std::shared_ptr<QUICKeyingMaterials> &
+ConnectionHandler::get_quic_keying_materials() const {
+  return quic_keying_materials_;
+}
+
+void ConnectionHandler::set_cid_prefixes(
+    const std::vector<std::array<uint8_t, SHRPX_QUIC_CID_PREFIXLEN>>
+        &cid_prefixes) {
+  cid_prefixes_ = cid_prefixes;
+}
+
+QUICLingeringWorkerProcess *
+ConnectionHandler::match_quic_lingering_worker_process_cid_prefix(
+    const uint8_t *dcid, size_t dcidlen) {
+  assert(dcidlen >= SHRPX_QUIC_CID_PREFIXLEN);
+
+  for (auto &lwps : quic_lingering_worker_processes_) {
+    for (auto &cid_prefix : lwps.cid_prefixes) {
+      if (std::equal(std::begin(cid_prefix), std::end(cid_prefix), dcid)) {
+        return &lwps;
+      }
+    }
+  }
+
+  return nullptr;
+}
+
+#  ifdef HAVE_LIBBPF
+std::vector<BPFRef> &ConnectionHandler::get_quic_bpf_refs() {
+  return quic_bpf_refs_;
+}
+
+void ConnectionHandler::unload_bpf_objects() {
+  LOG(NOTICE) << "Unloading BPF objects";
+
+  for (auto &ref : quic_bpf_refs_) {
+    if (ref.obj == nullptr) {
+      continue;
+    }
+
+    bpf_object__close(ref.obj);
+
+    ref.obj = nullptr;
+  }
+}
+#  endif // HAVE_LIBBPF
+
+void ConnectionHandler::set_quic_ipc_fd(int fd) { quic_ipc_fd_ = fd; }
+
+void ConnectionHandler::set_quic_lingering_worker_processes(
+    const std::vector<QUICLingeringWorkerProcess> &quic_lwps) {
+  quic_lingering_worker_processes_ = quic_lwps;
+}
+
+int ConnectionHandler::forward_quic_packet_to_lingering_worker_process(
+    QUICLingeringWorkerProcess *quic_lwp, const Address &remote_addr,
+    const Address &local_addr, const ngtcp2_pkt_info &pi, const uint8_t *data,
+    size_t datalen) {
+  std::array<uint8_t, 512> header;
+
+  assert(header.size() >= 1 + 1 + 1 + 1 + sizeof(sockaddr_storage) * 2);
+  assert(remote_addr.len > 0);
+  assert(local_addr.len > 0);
+
+  auto p = header.data();
+
+  *p++ = static_cast<uint8_t>(QUICIPCType::DGRAM_FORWARD);
+  *p++ = static_cast<uint8_t>(remote_addr.len - 1);
+  p = std::copy_n(reinterpret_cast<const uint8_t *>(&remote_addr.su),
+                  remote_addr.len, p);
+  *p++ = static_cast<uint8_t>(local_addr.len - 1);
+  p = std::copy_n(reinterpret_cast<const uint8_t *>(&local_addr.su),
+                  local_addr.len, p);
+  *p++ = pi.ecn;
+
+  iovec msg_iov[] = {
+      {
+          .iov_base = header.data(),
+          .iov_len = static_cast<size_t>(p - header.data()),
+      },
+      {
+          .iov_base = const_cast<uint8_t *>(data),
+          .iov_len = datalen,
+      },
+  };
+
+  msghdr msg{};
+  msg.msg_iov = msg_iov;
+  msg.msg_iovlen = array_size(msg_iov);
+
+  ssize_t nwrite;
+
+  while ((nwrite = sendmsg(quic_lwp->quic_ipc_fd, &msg, 0)) == -1 &&
+         errno == EINTR)
+    ;
+
+  if (nwrite == -1) {
+    std::array<char, STRERROR_BUFSIZE> errbuf;
+
+    auto error = errno;
+    LOG(ERROR) << "Failed to send QUIC IPC message: "
+               << xsi_strerror(error, errbuf.data(), errbuf.size());
+
+    return -1;
+  }
+
+  return 0;
+}
+
+int ConnectionHandler::quic_ipc_read() {
+  std::array<uint8_t, 65536> buf;
+
+  ssize_t nread;
+
+  while ((nread = recv(quic_ipc_fd_, buf.data(), buf.size(), 0)) == -1 &&
+         errno == EINTR)
+    ;
+
+  if (nread == -1) {
+    std::array<char, STRERROR_BUFSIZE> errbuf;
+
+    auto error = errno;
+    LOG(ERROR) << "Failed to read data from QUIC IPC channel: "
+               << xsi_strerror(error, errbuf.data(), errbuf.size());
+
+    return -1;
+  }
+
+  if (nread == 0) {
+    return 0;
+  }
+
+  size_t len = 1 + 1 + 1 + 1;
+
+  // Wire format:
+  // TYPE(1) REMOTE_ADDRLEN(1) REMOTE_ADDR(N) LOCAL_ADDRLEN(1) LOCAL_ADDR(N)
+  // ECN(1) DGRAM_PAYLOAD(N)
+  //
+  // When encoding, REMOTE_ADDRLEN and LOCAL_ADDRLEN are decremented
+  // by 1.
+  if (static_cast<size_t>(nread) < len) {
+    return 0;
+  }
+
+  auto p = buf.data();
+  if (*p != static_cast<uint8_t>(QUICIPCType::DGRAM_FORWARD)) {
+    LOG(ERROR) << "Unknown QUICIPCType: " << static_cast<uint32_t>(*p);
+
+    return -1;
+  }
+
+  ++p;
+
+  auto pkt = std::make_unique<QUICPacket>();
+
+  auto remote_addrlen = static_cast<size_t>(*p++) + 1;
+  if (remote_addrlen > sizeof(sockaddr_storage)) {
+    LOG(ERROR) << "The length of remote address is too large: "
+               << remote_addrlen;
+
+    return -1;
+  }
+
+  len += remote_addrlen;
+
+  if (static_cast<size_t>(nread) < len) {
+    LOG(ERROR) << "Insufficient QUIC IPC message length";
+
+    return -1;
+  }
+
+  pkt->remote_addr.len = remote_addrlen;
+  memcpy(&pkt->remote_addr.su, p, remote_addrlen);
+
+  p += remote_addrlen;
+
+  auto local_addrlen = static_cast<size_t>(*p++) + 1;
+  if (local_addrlen > sizeof(sockaddr_storage)) {
+    LOG(ERROR) << "The length of local address is too large: " << local_addrlen;
+
+    return -1;
+  }
+
+  len += local_addrlen;
+
+  if (static_cast<size_t>(nread) < len) {
+    LOG(ERROR) << "Insufficient QUIC IPC message length";
+
+    return -1;
+  }
+
+  pkt->local_addr.len = local_addrlen;
+  memcpy(&pkt->local_addr.su, p, local_addrlen);
+
+  p += local_addrlen;
+
+  pkt->pi.ecn = *p++;
+
+  auto datalen = nread - (p - buf.data());
+
+  pkt->data.assign(p, p + datalen);
+
+  // At the moment, UpstreamAddr index is unknown.
+  pkt->upstream_addr_index = static_cast<size_t>(-1);
+
+  ngtcp2_version_cid vc;
+
+  auto rv = ngtcp2_pkt_decode_version_cid(&vc, p, datalen, SHRPX_QUIC_SCIDLEN);
+  if (rv < 0) {
+    LOG(ERROR) << "ngtcp2_pkt_decode_version_cid: " << ngtcp2_strerror(rv);
+
+    return -1;
+  }
+
+  if (vc.dcidlen != SHRPX_QUIC_SCIDLEN) {
+    LOG(ERROR) << "DCID length is invalid";
+    return -1;
+  }
+
+  if (single_worker_) {
+    auto faddr = single_worker_->find_quic_upstream_addr(pkt->local_addr);
+    if (faddr == nullptr) {
+      LOG(ERROR) << "No suitable upstream address found";
+
+      return 0;
+    }
+
+    auto quic_conn_handler = single_worker_->get_quic_connection_handler();
+
+    // Ignore return value
+    quic_conn_handler->handle_packet(faddr, pkt->remote_addr, pkt->local_addr,
+                                     pkt->pi, pkt->data.data(),
+                                     pkt->data.size());
+
+    return 0;
+  }
+
+  auto &qkm = quic_keying_materials_->keying_materials.front();
+
+  std::array<uint8_t, SHRPX_QUIC_DECRYPTED_DCIDLEN> decrypted_dcid;
+
+  if (decrypt_quic_connection_id(decrypted_dcid.data(),
+                                 vc.dcid + SHRPX_QUIC_CID_PREFIX_OFFSET,
+                                 qkm.cid_encryption_key.data()) != 0) {
+    return -1;
+  }
+
+  for (auto &worker : workers_) {
+    if (!std::equal(std::begin(decrypted_dcid),
+                    std::begin(decrypted_dcid) + SHRPX_QUIC_CID_PREFIXLEN,
+                    worker->get_cid_prefix())) {
+      continue;
+    }
+
+    WorkerEvent wev{
+        .type = WorkerEventType::QUIC_PKT_FORWARD,
+        .quic_pkt = std::move(pkt),
+    };
+    worker->send(std::move(wev));
+
+    return 0;
+  }
+
+  if (LOG_ENABLED(INFO)) {
+    LOG(INFO) << "No worker to match CID prefix";
+  }
+
+  return 0;
+}
+#endif // ENABLE_HTTP3
 
 } // namespace shrpx

@@ -328,6 +328,11 @@ int htp_hdrs_completecb(llhttp_t *htp) {
 
   auto downstream = upstream->get_downstream();
   auto &req = downstream->request();
+  auto &balloc = downstream->get_block_allocator();
+
+  for (auto &kv : req.fs.headers()) {
+    kv.value = util::rstrip(balloc, kv.value);
+  }
 
   auto lgconf = log_config();
   lgconf->update_tstamp(std::chrono::system_clock::now());
@@ -397,7 +402,6 @@ int htp_hdrs_completecb(llhttp_t *htp) {
   downstream->inspect_http1_request();
 
   auto faddr = handler->get_upstream_addr();
-  auto &balloc = downstream->get_block_allocator();
   auto config = get_config();
 
   if (method != HTTP_CONNECT) {
@@ -433,11 +437,17 @@ int htp_hdrs_completecb(llhttp_t *htp) {
 
   downstream->set_request_state(DownstreamState::HEADER_COMPLETE);
 
+  auto &resp = downstream->response();
+
+  if (config->http.require_http_scheme &&
+      !http::check_http_scheme(req.scheme, handler->get_ssl() != nullptr)) {
+    resp.http_status = 400;
+    return -1;
+  }
+
 #ifdef HAVE_MRUBY
   auto worker = handler->get_worker();
   auto mruby_ctx = worker->get_mruby_context();
-
-  auto &resp = downstream->response();
 
   if (mruby_ctx->run_on_request_proc(downstream) != 0) {
     resp.http_status = 500;
@@ -457,7 +467,9 @@ int htp_hdrs_completecb(llhttp_t *htp) {
     return 0;
   }
 
+#ifdef HAVE_MRUBY
   DownstreamConnection *dconn_ptr;
+#endif // HAVE_MRUBY
 
   for (;;) {
     auto dconn = handler->get_downstream_connection(rv, downstream);
@@ -547,6 +559,13 @@ int htp_msg_completecb(llhttp_t *htp) {
   }
   auto handler = upstream->get_client_handler();
   auto downstream = upstream->get_downstream();
+  auto &req = downstream->request();
+  auto &balloc = downstream->get_block_allocator();
+
+  for (auto &kv : req.fs.trailers()) {
+    kv.value = util::rstrip(balloc, kv.value);
+  }
+
   downstream->set_request_state(DownstreamState::MSG_COMPLETE);
   rv = downstream->end_upload_data();
   if (rv != 0) {
@@ -559,8 +578,7 @@ int htp_msg_completecb(llhttp_t *htp) {
       // signal_write() to run on_write().
       return HPE_PAUSED;
     }
-    llhttp_set_error_reason(htp, "could not finish request body");
-    return HPE_USER;
+    return -1;
   }
 
   if (handler->get_http2_upgrade_allowed() &&
@@ -748,6 +766,13 @@ int HttpsUpstream::on_write() {
       handler_->repeat_read_timer();
 
       return resume_read(SHRPX_NO_BUFFER, nullptr, 0);
+    } else {
+      // If the request is not complete, close the connection.
+      delete_downstream();
+
+      handler_->set_should_close_after_write(true);
+
+      return 0;
     }
   }
 
@@ -1049,18 +1074,6 @@ std::unique_ptr<Downstream> HttpsUpstream::pop_downstream() {
   return std::unique_ptr<Downstream>(downstream_.release());
 }
 
-namespace {
-void write_altsvc(DefaultMemchunks *buf, BlockAllocator &balloc,
-                  const AltSvc &altsvc) {
-  buf->append(util::percent_encode_token(balloc, altsvc.protocol_id));
-  buf->append("=\"");
-  buf->append(util::quote_string(balloc, altsvc.host));
-  buf->append(':');
-  buf->append(altsvc.service);
-  buf->append('"');
-}
-} // namespace
-
 int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
   if (LOG_ENABLED(INFO)) {
     if (downstream->get_non_final_response()) {
@@ -1219,13 +1232,7 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
     // We won't change or alter alt-svc from backend for now
     if (!httpconf.altsvcs.empty()) {
       buf->append("Alt-Svc: ");
-
-      auto &altsvcs = httpconf.altsvcs;
-      write_altsvc(buf, downstream->get_block_allocator(), altsvcs[0]);
-      for (size_t i = 1; i < altsvcs.size(); ++i) {
-        buf->append(", ");
-        write_altsvc(buf, downstream->get_block_allocator(), altsvcs[i]);
-      }
+      buf->append(httpconf.altsvc_header_value);
       buf->append("\r\n");
     }
   }

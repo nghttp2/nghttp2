@@ -45,11 +45,19 @@
 
 #include <nghttp2/nghttp2.h>
 
+#ifdef ENABLE_HTTP3
+#  include <ngtcp2/ngtcp2.h>
+#  include <ngtcp2/ngtcp2_crypto.h>
+#endif // ENABLE_HTTP3
+
 #include <ev.h>
 
 #include <openssl/ssl.h>
 
 #include "http2.h"
+#ifdef ENABLE_HTTP3
+#  include "quic.h"
+#endif // ENABLE_HTTP3
 #include "memchunk.h"
 #include "template.h"
 
@@ -72,8 +80,13 @@ struct Config {
   std::string connect_to_host;
   std::string ifile;
   std::string ciphers;
+  std::string tls13_ciphers;
+  // supported groups (or curves).
+  std::string groups;
   // length of upload data
   int64_t data_length;
+  // memory mapped upload data
+  uint8_t *data;
   addrinfo *addrs;
   size_t nreqs;
   size_t nclients;
@@ -82,6 +95,7 @@ struct Config {
   ssize_t max_concurrent_streams;
   size_t window_bits;
   size_t connection_window_bits;
+  size_t max_frame_size;
   // rate at which connections should be made
   size_t rate;
   ev_tstamp rate_period;
@@ -100,6 +114,8 @@ struct Config {
   int data_fd;
   // file descriptor to write per-request stats to.
   int log_fd;
+  // base file name of qlog output files
+  std::string qlog_file_base;
   uint16_t port;
   uint16_t default_port;
   uint16_t connect_to_port;
@@ -116,6 +132,12 @@ struct Config {
   std::vector<std::string> npn_list;
   // The number of request per second for each client.
   double rps;
+  // Disables GSO for UDP connections.
+  bool no_udp_gso;
+  // The maximum UDP datagram payload size to send.
+  size_t max_udp_payload_size;
+  // Enable ktls.
+  bool ktls;
 
   Config();
   ~Config();
@@ -124,6 +146,7 @@ struct Config {
   bool is_timing_based_mode() const;
   bool has_base_uri() const;
   bool rps_enabled() const;
+  bool is_quic() const;
 };
 
 struct RequestStat {
@@ -220,6 +243,10 @@ struct Stats {
   std::vector<RequestStat> req_stats;
   // The statistics per client
   std::vector<ClientStat> client_stats;
+  // The number of UDP datagrams received.
+  size_t udp_dgram_recv;
+  // The number of UDP datagrams sent.
+  size_t udp_dgram_sent;
 };
 
 enum ClientState { CLIENT_IDLE, CLIENT_CONNECTED };
@@ -245,6 +272,7 @@ struct Sampling {
 
 struct Worker {
   MemchunkPool mcpool;
+  std::mt19937 randgen;
   Stats stats;
   Sampling request_times_smp;
   Sampling client_smp;
@@ -309,6 +337,29 @@ struct Client {
   std::function<int(Client &)> readfn, writefn;
   Worker *worker;
   SSL *ssl;
+#ifdef ENABLE_HTTP3
+  struct {
+    ngtcp2_crypto_conn_ref conn_ref;
+    ev_timer pkt_timer;
+    ngtcp2_conn *conn;
+    ngtcp2_connection_close_error last_error;
+    bool close_requested;
+    FILE *qlog_file;
+
+    struct {
+      bool send_blocked;
+      size_t num_blocked;
+      size_t num_blocked_sent;
+      struct {
+        Address remote_addr;
+        const uint8_t *data;
+        size_t datalen;
+        size_t gso_size;
+      } blocked[2];
+      std::unique_ptr<uint8_t[]> data;
+    } tx;
+  } quic;
+#endif // ENABLE_HTTP3
   ev_timer request_timeout_watcher;
   addrinfo *next_addr;
   // Address for the current address.  When try_new_connection() is
@@ -332,6 +383,7 @@ struct Client {
   // The client id per worker
   uint32_t id;
   int fd;
+  Address local_addr;
   ev_timer conn_active_watcher;
   ev_timer conn_inactivity_watcher;
   std::string selected_proto;
@@ -419,6 +471,37 @@ struct Client {
   void record_client_end_time();
 
   void signal_write();
+
+#ifdef ENABLE_HTTP3
+  // QUIC
+  int quic_init(const sockaddr *local_addr, socklen_t local_addrlen,
+                const sockaddr *remote_addr, socklen_t remote_addrlen);
+  void quic_free();
+  int read_quic();
+  int write_quic();
+  int write_udp(const sockaddr *addr, socklen_t addrlen, const uint8_t *data,
+                size_t datalen, size_t gso_size);
+  void on_send_blocked(const ngtcp2_addr &remote_addr, const uint8_t *data,
+                       size_t datalen, size_t gso_size);
+  int send_blocked_packet();
+  void quic_close_connection();
+
+  int quic_handshake_completed();
+  int quic_recv_stream_data(uint32_t flags, int64_t stream_id,
+                            const uint8_t *data, size_t datalen);
+  int quic_acked_stream_data_offset(int64_t stream_id, size_t datalen);
+  int quic_stream_close(int64_t stream_id, uint64_t app_error_code);
+  int quic_stream_reset(int64_t stream_id, uint64_t app_error_code);
+  int quic_stream_stop_sending(int64_t stream_id, uint64_t app_error_code);
+  int quic_extend_max_local_streams();
+
+  int quic_write_client_handshake(ngtcp2_crypto_level level,
+                                  const uint8_t *data, size_t datalen);
+  int quic_pkt_timeout();
+  void quic_restart_pkt_timer();
+  void quic_write_qlog(const void *data, size_t datalen);
+  int quic_make_http3_session();
+#endif // ENABLE_HTTP3
 };
 
 } // namespace h2load

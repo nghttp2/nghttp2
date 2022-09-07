@@ -52,7 +52,7 @@ static int init_suite1(void) { return 0; }
 static int clean_suite1(void) { return 0; }
 
 int main(int argc, char *argv[]) {
-  CU_pSuite pSuite = NULL;
+  CU_pSuite pSuite = nullptr;
   unsigned int num_tests_failed;
 
   nghttp2::tls::libssl_init();
@@ -65,7 +65,7 @@ int main(int argc, char *argv[]) {
 
   // add a suite to the registry
   pSuite = CU_add_suite("shrpx_TestSuite", init_suite1, clean_suite1);
-  if (NULL == pSuite) {
+  if (nullptr == pSuite) {
     CU_cleanup_registry();
     return CU_get_error();
   }
@@ -135,6 +135,10 @@ int main(int argc, char *argv[]) {
                    shrpx::test_shrpx_http_create_via_header_value) ||
       !CU_add_test(pSuite, "http_create_affinity_cookie",
                    shrpx::test_shrpx_http_create_affinity_cookie) ||
+      !CU_add_test(pSuite, "http_create_atlsvc_header_field_value",
+                   shrpx::test_shrpx_http_create_altsvc_header_value) ||
+      !CU_add_test(pSuite, "http_check_http_scheme",
+                   shrpx::test_shrpx_http_check_http_scheme) ||
       !CU_add_test(pSuite, "router_match", shrpx::test_shrpx_router_match) ||
       !CU_add_test(pSuite, "router_match_wildcard",
                    shrpx::test_shrpx_router_match_wildcard) ||
@@ -197,6 +201,8 @@ int main(int argc, char *argv[]) {
                    shrpx::test_util_extract_host) ||
       !CU_add_test(pSuite, "util_split_hostport",
                    shrpx::test_util_split_hostport) ||
+      !CU_add_test(pSuite, "util_split_str", shrpx::test_util_split_str) ||
+      !CU_add_test(pSuite, "util_rstrip", shrpx::test_util_rstrip) ||
       !CU_add_test(pSuite, "gzip_inflate", test_nghttp2_gzip_inflate) ||
       !CU_add_test(pSuite, "buffer_write", nghttp2::test_buffer_write) ||
       !CU_add_test(pSuite, "pool_recycle", nghttp2::test_pool_recycle) ||

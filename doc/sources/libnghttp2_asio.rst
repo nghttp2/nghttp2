@@ -1,6 +1,12 @@
 libnghttp2_asio: High level HTTP/2 C++ library
 ==============================================
 
+.. warning::
+
+    libnghttp2_asio has been deprecated in this repository due to
+    maintenance issue and will be removed at the end of 2022.  It has
+    moved to https://github.com/nghttp2/nghttp2-asio.
+
 libnghttp2_asio is C++ library built on top of libnghttp2 and provides
 high level abstraction API to build HTTP/2 applications.  It depends
 on Boost::ASIO library and OpenSSL.  Currently libnghttp2_asio

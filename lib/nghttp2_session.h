@@ -53,7 +53,9 @@ typedef enum {
   NGHTTP2_OPTMASK_NO_HTTP_MESSAGING = 1 << 2,
   NGHTTP2_OPTMASK_NO_AUTO_PING_ACK = 1 << 3,
   NGHTTP2_OPTMASK_NO_CLOSED_STREAMS = 1 << 4,
-  NGHTTP2_OPTMASK_NO_AUTO_SETTINGS_ACK = 1 << 5,
+  NGHTTP2_OPTMASK_SERVER_FALLBACK_RFC7540_PRIORITIES = 1 << 5,
+  NGHTTP2_OPTMASK_NO_RFC9113_LEADING_AND_TRAILING_WS_VALIDATION = 1 << 6,
+  NGHTTP2_OPTMASK_NO_AUTO_SETTINGS_ACK = 1 << 7,
 } nghttp2_optmask;
 
 /*
@@ -63,7 +65,8 @@ typedef enum {
 typedef enum {
   NGHTTP2_TYPEMASK_NONE = 0,
   NGHTTP2_TYPEMASK_ALTSVC = 1 << 0,
-  NGHTTP2_TYPEMASK_ORIGIN = 1 << 1
+  NGHTTP2_TYPEMASK_ORIGIN = 1 << 1,
+  NGHTTP2_TYPEMASK_PRIORITY_UPDATE = 1 << 2
 } nghttp2_typemask;
 
 typedef enum {
@@ -152,10 +155,8 @@ typedef struct {
   /* padding length for the current frame */
   size_t padlen;
   nghttp2_inbound_state state;
-  /* Small buffer.  Currently the largest contiguous chunk to buffer
-     is frame header.  We buffer part of payload, but they are smaller
-     than frame header. */
-  uint8_t raw_sbuf[NGHTTP2_FRAME_HDLEN];
+  /* Small fixed sized buffer. */
+  uint8_t raw_sbuf[32];
 } nghttp2_inbound_frame;
 
 typedef struct {
@@ -166,6 +167,7 @@ typedef struct {
   uint32_t max_frame_size;
   uint32_t max_header_list_size;
   uint32_t enable_connect_protocol;
+  uint32_t no_rfc7540_priorities;
 } nghttp2_settings_storage;
 
 typedef enum {
@@ -203,6 +205,12 @@ struct nghttp2_session {
      response) frame, which are subject to
      SETTINGS_MAX_CONCURRENT_STREAMS limit. */
   nghttp2_outbound_queue ob_syn;
+  /* Queues for DATA frames which is used when
+     SETTINGS_NO_RFC7540_PRIORITIES is enabled.  This implements RFC
+     9218 extensible prioritization scheme. */
+  struct {
+    nghttp2_pq ob_data;
+  } sched[NGHTTP2_EXTPRI_URGENCY_LEVELS];
   nghttp2_active_outbound_item aob;
   nghttp2_inbound_frame iframe;
   nghttp2_hd_deflater hd_deflater;
@@ -228,6 +236,9 @@ struct nghttp2_session {
   /* Queue of In-flight SETTINGS values.  SETTINGS bearing ACK is not
      considered as in-flight. */
   nghttp2_inflight_settings *inflight_settings_head;
+  /* Sequential number across all streams to process streams in
+     FIFO. */
+  uint64_t stream_seq;
   /* The number of outgoing streams. This will be capped by
      remote_settings.max_concurrent_streams. */
   size_t num_outgoing_streams;
@@ -329,6 +340,11 @@ struct nghttp2_session {
   /* Unacked local ENABLE_CONNECT_PROTOCOL value.  We use this to
      accept :protocol header field before SETTINGS_ACK is received. */
   uint8_t pending_enable_connect_protocol;
+  /* Unacked local SETTINGS_NO_RFC7540_PRIORITIES value, which is
+     effective before it is acknowledged. */
+  uint8_t pending_no_rfc7540_priorities;
+  /* Turn on fallback to RFC 7540 priorities; for server use only. */
+  uint8_t fallback_rfc7540_priorities;
   /* Nonzero if the session is server side. */
   uint8_t server;
   /* Flags indicating GOAWAY is sent and/or received. The flags are
@@ -409,7 +425,7 @@ int nghttp2_session_add_rst_stream(nghttp2_session *session, int32_t stream_id,
                                    uint32_t error_code);
 
 /*
- * Adds PING frame. This is a convenient functin built on top of
+ * Adds PING frame. This is a convenient function built on top of
  * nghttp2_session_add_frame() to add PING easily.
  *
  * If the |opaque_data| is not NULL, it must point to 8 bytes memory
@@ -773,6 +789,19 @@ int nghttp2_session_on_altsvc_received(nghttp2_session *session,
  */
 int nghttp2_session_on_origin_received(nghttp2_session *session,
                                        nghttp2_frame *frame);
+
+/*
+ * Called when PRIORITY_UPDATE is received, assuming |frame| is
+ * properly initialized.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * NGHTTP2_ERR_CALLBACK_FAILURE
+ *     The callback function failed.
+ */
+int nghttp2_session_on_priority_update_received(nghttp2_session *session,
+                                                nghttp2_frame *frame);
 
 /*
  * Called when DATA is received, assuming |frame| is properly

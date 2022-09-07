@@ -113,7 +113,7 @@ void downstream_wtimeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
 
 // upstream could be nullptr for unittests
 Downstream::Downstream(Upstream *upstream, MemchunkPool *mcpool,
-                       int32_t stream_id)
+                       int64_t stream_id)
     : dlnext(nullptr),
       dlprev(nullptr),
       response_sent_body_length(0),
@@ -145,7 +145,8 @@ Downstream::Downstream(Upstream *upstream, MemchunkPool *mcpool,
       accesslog_written_(false),
       new_affinity_cookie_(false),
       blocked_request_data_eof_(false),
-      expect_100_continue_(false) {
+      expect_100_continue_(false),
+      stop_reading_(false) {
 
   auto &timeoutconf = get_config()->http2.timeout;
 
@@ -164,6 +165,9 @@ Downstream::Downstream(Upstream *upstream, MemchunkPool *mcpool,
   downstream_wtimer_.data = this;
 
   rcbufs_.reserve(32);
+#ifdef ENABLE_HTTP3
+  rcbufs3_.reserve(32);
+#endif // ENABLE_HTTP3
 }
 
 Downstream::~Downstream() {
@@ -202,6 +206,12 @@ Downstream::~Downstream() {
   // DownstreamConnection may refer to this object.  Delete it now
   // explicitly.
   dconn_.reset();
+
+#ifdef ENABLE_HTTP3
+  for (auto rcbuf : rcbufs3_) {
+    nghttp3_rcbuf_decref(rcbuf);
+  }
+#endif // ENABLE_HTTP3
 
   for (auto rcbuf : rcbufs_) {
     nghttp2_rcbuf_decref(rcbuf);
@@ -605,9 +615,9 @@ void Downstream::reset_upstream(Upstream *upstream) {
 
 Upstream *Downstream::get_upstream() const { return upstream_; }
 
-void Downstream::set_stream_id(int32_t stream_id) { stream_id_ = stream_id; }
+void Downstream::set_stream_id(int64_t stream_id) { stream_id_ = stream_id; }
 
-int32_t Downstream::get_stream_id() const { return stream_id_; }
+int64_t Downstream::get_stream_id() const { return stream_id_; }
 
 void Downstream::set_request_state(DownstreamState state) {
   request_state_ = state;
@@ -886,7 +896,8 @@ bool Downstream::get_non_final_response() const {
 }
 
 bool Downstream::supports_non_final_response() const {
-  return req_.http_major == 2 || (req_.http_major == 1 && req_.http_minor == 1);
+  return req_.http_major == 3 || req_.http_major == 2 ||
+         (req_.http_major == 1 && req_.http_minor == 1);
 }
 
 bool Downstream::get_upgraded() const { return upgraded_; }
@@ -904,11 +915,11 @@ StringRef Downstream::get_http2_settings() const {
   return http2_settings->value;
 }
 
-void Downstream::set_downstream_stream_id(int32_t stream_id) {
+void Downstream::set_downstream_stream_id(int64_t stream_id) {
   downstream_stream_id_ = stream_id;
 }
 
-int32_t Downstream::get_downstream_stream_id() const {
+int64_t Downstream::get_downstream_stream_id() const {
   return downstream_stream_id_;
 }
 
@@ -937,7 +948,8 @@ bool Downstream::expect_response_trailer() const {
   // In HTTP/2, if final response HEADERS does not bear END_STREAM it
   // is possible trailer fields might come, regardless of request
   // method or status code.
-  return !resp_.headers_only && resp_.http_major == 2;
+  return !resp_.headers_only &&
+         (resp_.http_major == 3 || resp_.http_major == 2);
 }
 
 namespace {
@@ -1115,11 +1127,11 @@ DefaultMemchunks Downstream::pop_response_buf() {
   return std::move(response_buf_);
 }
 
-void Downstream::set_assoc_stream_id(int32_t stream_id) {
+void Downstream::set_assoc_stream_id(int64_t stream_id) {
   assoc_stream_id_ = stream_id;
 }
 
-int32_t Downstream::get_assoc_stream_id() const { return assoc_stream_id_; }
+int64_t Downstream::get_assoc_stream_id() const { return assoc_stream_id_; }
 
 BlockAllocator &Downstream::get_block_allocator() { return balloc_; }
 
@@ -1127,6 +1139,13 @@ void Downstream::add_rcbuf(nghttp2_rcbuf *rcbuf) {
   nghttp2_rcbuf_incref(rcbuf);
   rcbufs_.push_back(rcbuf);
 }
+
+#ifdef ENABLE_HTTP3
+void Downstream::add_rcbuf(nghttp3_rcbuf *rcbuf) {
+  nghttp3_rcbuf_incref(rcbuf);
+  rcbufs3_.push_back(rcbuf);
+}
+#endif // ENABLE_HTTP3
 
 void Downstream::set_downstream_addr_group(
     const std::shared_ptr<DownstreamAddrGroup> &group) {
@@ -1168,5 +1187,9 @@ void Downstream::set_ws_key(const StringRef &key) { ws_key_ = key; }
 bool Downstream::get_expect_100_continue() const {
   return expect_100_continue_;
 }
+
+bool Downstream::get_stop_reading() const { return stop_reading_; }
+
+void Downstream::set_stop_reading(bool f) { stop_reading_ = f; }
 
 } // namespace shrpx

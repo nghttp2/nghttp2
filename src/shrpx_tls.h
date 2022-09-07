@@ -100,6 +100,18 @@ SSL_CTX *create_ssl_client_context(
                                 unsigned char *outlen, const unsigned char *in,
                                 unsigned int inlen, void *arg));
 
+#ifdef ENABLE_HTTP3
+SSL_CTX *create_quic_ssl_client_context(
+#  ifdef HAVE_NEVERBLEED
+    neverbleed_t *nb,
+#  endif // HAVE_NEVERBLEED
+    const StringRef &cacert, const StringRef &cert_file,
+    const StringRef &private_key_file,
+    int (*next_proto_select_cb)(SSL *s, unsigned char **out,
+                                unsigned char *outlen, const unsigned char *in,
+                                unsigned int inlen, void *arg));
+#endif // ENABLE_HTTP3
+
 ClientHandler *accept_connection(Worker *worker, int fd, sockaddr *addr,
                                  int addrlen, const UpstreamAddr *faddr);
 
@@ -216,6 +228,18 @@ setup_server_ssl_context(std::vector<SSL_CTX *> &all_ssl_ctx,
                          neverbleed_t *nb
 #endif // HAVE_NEVERBLEED
 );
+
+#ifdef ENABLE_HTTP3
+SSL_CTX *setup_quic_server_ssl_context(
+    std::vector<SSL_CTX *> &all_ssl_ctx,
+    std::vector<std::vector<SSL_CTX *>> &indexed_ssl_ctx,
+    CertLookupTree *cert_tree
+#  ifdef HAVE_NEVERBLEED
+    ,
+    neverbleed_t *nb
+#  endif // HAVE_NEVERBLEED
+);
+#endif // ENABLE_HTTP3
 
 // Setups client side SSL_CTX.
 SSL_CTX *setup_downstream_client_ssl_context(

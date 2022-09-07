@@ -79,6 +79,8 @@ const char *strsettingsid(int32_t id) {
     return "SETTINGS_MAX_HEADER_LIST_SIZE";
   case NGHTTP2_SETTINGS_ENABLE_CONNECT_PROTOCOL:
     return "SETTINGS_ENABLE_CONNECT_PROTOCOL";
+  case NGHTTP2_SETTINGS_NO_RFC7540_PRIORITIES:
+    return "SETTINGS_NO_RFC7540_PRIORITIES";
   default:
     return "UNKNOWN";
   }
@@ -110,6 +112,8 @@ std::string strframetype(uint8_t type) {
     return "ALTSVC";
   case NGHTTP2_ORIGIN:
     return "ORIGIN";
+  case NGHTTP2_PRIORITY_UPDATE:
+    return "PRIORITY_UPDATE";
   }
 
   std::string s = "extension(0x";
@@ -362,6 +366,17 @@ void print_frame(print_type ptype, const nghttp2_frame *frame) {
       print_frame_attr_indent();
       fprintf(outfile, "[%.*s]\n", (int)ent->origin_len, ent->origin);
     }
+    break;
+  }
+  case NGHTTP2_PRIORITY_UPDATE: {
+    auto priority_update =
+        static_cast<nghttp2_ext_priority_update *>(frame->ext.payload);
+    print_frame_attr_indent();
+    fprintf(outfile,
+            "(prioritized_stream_id=%d, priority_field_value=[%.*s])\n",
+            priority_update->stream_id,
+            static_cast<int>(priority_update->field_value_len),
+            priority_update->field_value);
     break;
   }
   default:

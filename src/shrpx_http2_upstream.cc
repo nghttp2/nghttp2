@@ -419,10 +419,16 @@ int Http2Upstream::on_request_headers(Downstream *downstream,
 
   downstream->set_request_state(DownstreamState::HEADER_COMPLETE);
 
+  if (config->http.require_http_scheme &&
+      !http::check_http_scheme(req.scheme, handler_->get_ssl() != nullptr)) {
+    if (error_reply(downstream, 400) != 0) {
+      return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
+    }
+    return 0;
+  }
+
 #ifdef HAVE_MRUBY
-  auto upstream = downstream->get_upstream();
-  auto handler = upstream->get_client_handler();
-  auto worker = handler->get_worker();
+  auto worker = handler_->get_worker();
   auto mruby_ctx = worker->get_mruby_context();
 
   if (mruby_ctx->run_on_request_proc(downstream) != 0) {
@@ -460,7 +466,9 @@ void Http2Upstream::start_downstream(Downstream *downstream) {
 void Http2Upstream::initiate_downstream(Downstream *downstream) {
   int rv;
 
+#ifdef HAVE_MRUBY
   DownstreamConnection *dconn_ptr;
+#endif // HAVE_MRUBY
 
   for (;;) {
     auto dconn = handler_->get_downstream_connection(rv, downstream);
@@ -1037,8 +1045,8 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
   flow_control_ = true;
 
   // TODO Maybe call from outside?
-  std::array<nghttp2_settings_entry, 4> entry;
-  size_t nentry = 2;
+  std::array<nghttp2_settings_entry, 5> entry;
+  size_t nentry = 3;
 
   entry[0].settings_id = NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS;
   entry[0].value = http2conf.upstream.max_concurrent_streams;
@@ -1049,6 +1057,9 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
   } else {
     entry[1].value = http2conf.upstream.window_size;
   }
+
+  entry[2].settings_id = NGHTTP2_SETTINGS_NO_RFC7540_PRIORITIES;
+  entry[2].value = 1;
 
   if (!config->http2_proxy) {
     entry[nentry].settings_id = NGHTTP2_SETTINGS_ENABLE_CONNECT_PROTOCOL;
@@ -1070,13 +1081,12 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
                       << nghttp2_strerror(rv);
   }
 
-  auto window_size =
-      faddr->alt_mode != UpstreamAltMode::NONE
-          ? std::numeric_limits<int32_t>::max()
-          : http2conf.upstream.optimize_window_size
-                ? std::min(http2conf.upstream.connection_window_size,
-                           NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE)
-                : http2conf.upstream.connection_window_size;
+  auto window_size = faddr->alt_mode != UpstreamAltMode::NONE
+                         ? std::numeric_limits<int32_t>::max()
+                     : http2conf.upstream.optimize_window_size
+                         ? std::min(http2conf.upstream.connection_window_size,
+                                    NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE)
+                         : http2conf.upstream.connection_window_size;
 
   rv = nghttp2_session_set_local_window_size(session_, NGHTTP2_FLAG_NONE, 0,
                                              window_size);
@@ -1318,7 +1328,7 @@ int Http2Upstream::downstream_eof(DownstreamConnection *dconn) {
   downstream->pop_downstream_connection();
   // dconn was deleted
   dconn = nullptr;
-  // downstream wil be deleted in on_stream_close_callback.
+  // downstream will be deleted in on_stream_close_callback.
   if (downstream->get_response_state() == DownstreamState::HEADER_COMPLETE) {
     // Server may indicate the end of the request by EOF
     if (LOG_ENABLED(INFO)) {
@@ -1726,9 +1736,9 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
   }
 
   auto nva = std::vector<nghttp2_nv>();
-  // 5 means :status and possible server, via, x-http2-push, and
-  // set-cookie (for affinity cookie) header field.
-  nva.reserve(resp.fs.headers().size() + 5 +
+  // 6 means :status and possible server, via, x-http2-push, alt-svc,
+  // and set-cookie (for affinity cookie) header field.
+  nva.reserve(resp.fs.headers().size() + 6 +
               httpconf.add_response_headers.size());
 
   if (downstream->get_non_final_response()) {
@@ -1793,6 +1803,14 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
       auto cookie_str = http::create_affinity_cookie(
           balloc, cookieconf.name, affinity_cookie, cookieconf.path, secure);
       nva.push_back(http2::make_nv_ls_nocopy("set-cookie", cookie_str));
+    }
+  }
+
+  if (!resp.fs.header(http2::HD_ALT_SVC)) {
+    // We won't change or alter alt-svc from backend for now
+    if (!httpconf.http2_altsvc_header_value.empty()) {
+      nva.push_back(http2::make_nv_ls_nocopy(
+          "alt-svc", httpconf.http2_altsvc_header_value));
     }
   }
 
@@ -2176,7 +2194,7 @@ int Http2Upstream::submit_push_promise(const StringRef &scheme,
   // 4 for :method, :scheme, :path and :authority
   nva.reserve(4 + req.fs.headers().size());
 
-  // juse use "GET" for now
+  // just use "GET" for now
   nva.push_back(http2::make_nv_ll(":method", "GET"));
   nva.push_back(http2::make_nv_ls_nocopy(":scheme", scheme));
   nva.push_back(http2::make_nv_ls_nocopy(":path", path));

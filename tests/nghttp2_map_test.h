@@ -1,7 +1,8 @@
 /*
  * nghttp2 - HTTP/2 C Library
  *
- * Copyright (c) 2012 Tatsuhiro Tsujikawa
+ * Copyright (c) 2017 ngtcp2 contributors
+ * Copyright (c) 2012 nghttp2 contributors
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -32,5 +33,6 @@
 void test_nghttp2_map(void);
 void test_nghttp2_map_functional(void);
 void test_nghttp2_map_each_free(void);
+void test_nghttp2_map_clear(void);
 
 #endif /* NGHTTP2_MAP_TEST_H */

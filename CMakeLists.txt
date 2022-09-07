@@ -24,13 +24,13 @@
 
 cmake_minimum_required(VERSION 3.0)
 # XXX using 1.8.90 instead of 1.9.0-DEV
-project(nghttp2 VERSION 1.43.90)
+project(nghttp2 VERSION 1.49.90)
 
 # See versioning rule:
-#  http://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
-set(LT_CURRENT  34)
-set(LT_REVISION 1)
-set(LT_AGE      20)
+#  https://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
+set(LT_CURRENT  37)
+set(LT_REVISION 0)
+set(LT_AGE      23)
 
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
 include(Version)
@@ -61,6 +61,18 @@ find_package(OpenSSL 1.0.1)
 find_package(Libev 4.11)
 find_package(Libcares 1.7.5)
 find_package(ZLIB 1.2.3)
+find_package(Libngtcp2 0.0.0)
+find_package(Libngtcp2_crypto_openssl 0.0.0)
+if(LIBNGTCP2_CRYPTO_OPENSSL_FOUND)
+  set(HAVE_LIBNGTCP2_CRYPTO_OPENSSL 1)
+endif()
+find_package(Libnghttp3 0.0.0)
+if(WITH_LIBBPF)
+  find_package(Libbpf 0.4.0)
+  if(NOT LIBBPF_FOUND)
+    message(FATAL_ERROR "libbpf was requested (WITH_LIBBPF=1) but not found.")
+  endif()
+endif()
 if(OPENSSL_FOUND AND LIBEV_FOUND AND ZLIB_FOUND)
   set(ENABLE_APP_DEFAULT ON)
 else()
@@ -167,7 +179,7 @@ endif()
 # case "$host" in
 #   *android*)
 #     android_build=yes
-#     # android does not need -pthread, but needs followng 3 libs for C++
+#     # android does not need -pthread, but needs following 3 libs for C++
 #     APPLDFLAGS="$APPLDFLAGS -lstdc++ -latomic -lsupc++"
 
 # dl: openssl requires libdl when it is statically linked.
@@ -182,9 +194,21 @@ if(HAVE_CUNIT)
 endif()
 
 # openssl (for src)
+include(CheckSymbolExists)
 set(HAVE_OPENSSL    ${OPENSSL_FOUND})
 if(OPENSSL_FOUND)
   set(OPENSSL_INCLUDE_DIRS  ${OPENSSL_INCLUDE_DIR})
+  cmake_push_check_state()
+  set(CMAKE_REQUIRED_INCLUDES   "${OPENSSL_INCLUDE_DIR}")
+  set(CMAKE_REQUIRED_LIBRARIES  "${OPENSSL_LIBRARIES}")
+  if(WIN32)
+    set(CMAKE_REQUIRED_LIBRARIES "${CMAKE_REQUIRED_LIBRARIES}" "ws2_32" "bcrypt")
+  endif()
+  check_symbol_exists(SSL_is_quic "openssl/ssl.h" HAVE_SSL_IS_QUIC)
+  if(NOT HAVE_SSL_IS_QUIC)
+    message(WARNING "OpenSSL in ${OPENSSL_LIBRARIES} does not have SSL_is_quic.  HTTP/3 support cannot be enabled")
+  endif()
+  cmake_pop_check_state()
 else()
   set(OPENSSL_INCLUDE_DIRS  "")
   set(OPENSSL_LIBRARIES     "")
@@ -223,9 +247,29 @@ if(ENABLE_ASIO_LIB)
   find_package(Boost 1.54.0 REQUIRED system thread)
 endif()
 
+# libbpf (for bpf)
+set(HAVE_LIBBPF ${LIBBPF_FOUND})
+if(LIBBPF_FOUND)
+  set(BPFCFLAGS -Wall -O2 -g)
+  if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    # For Debian/Ubuntu
+    set(EXTRABPFCFLAGS -I/usr/include/${CMAKE_SYSTEM_PROCESSOR}-linux-gnu)
+  endif()
+
+  check_c_source_compiles("
+#include <linux/bpf.h>
+int main() { enum bpf_stats_type foo; (void)foo; }" HAVE_BPF_STATS_TYPE)
+endif()
+
 # The nghttp, nghttpd and nghttpx under src depend on zlib, OpenSSL and libev
 if(ENABLE_APP AND NOT (ZLIB_FOUND AND OPENSSL_FOUND AND LIBEV_FOUND))
   message(FATAL_ERROR "Applications were requested (ENABLE_APP=1) but dependencies are not met.")
+endif()
+
+# HTTP/3 requires quictls/openssl, libngtcp2, libngtcp2_crypto_openssl
+# and libnghttp3.
+if(ENABLE_HTTP3 AND NOT (HAVE_SSL_IS_QUIC AND LIBNGTCP2_FOUND AND LIBNGTCP2_CRYPTO_OPENSSL_FOUND AND LIBNGHTTP3_FOUND))
+  message(FATAL_ERROR "HTTP/3 was requested (ENABLE_HTTP3=1) but dependencies are not met.")
 endif()
 
 # HPACK tools requires jansson
@@ -448,11 +492,16 @@ foreach(name
   configure_file("${name}.in" "${name}" @ONLY)
 endforeach()
 
+if(APPLE)
+  add_definitions(-D__APPLE_USE_RFC_3542)
+endif()
+
 include_directories(
   "${CMAKE_CURRENT_BINARY_DIR}" # for config.h
 )
 # For use in src/CMakeLists.txt
 set(PKGDATADIR "${CMAKE_INSTALL_FULL_DATADIR}/${CMAKE_PROJECT_NAME}")
+set(PKGLIBDIR "${CMAKE_INSTALL_FULL_LIBDIR}/${CMAKE_PROJECT_NAME}")
 
 install(FILES README.rst DESTINATION "${CMAKE_INSTALL_DOCDIR}")
 
@@ -466,9 +515,12 @@ add_subdirectory(python)
 add_subdirectory(tests)
 #add_subdirectory(tests/testdata)
 add_subdirectory(integration-tests)
-add_subdirectory(doc)
+if(ENABLE_DOC)
+  add_subdirectory(doc)
+endif()
 add_subdirectory(contrib)
 add_subdirectory(script)
+add_subdirectory(bpf)
 
 
 string(TOUPPER "${CMAKE_BUILD_TYPE}" _build_type)
@@ -499,6 +551,10 @@ message(STATUS "summary of build options:
       Libxml2:        ${HAVE_LIBXML2} (LIBS='${LIBXML2_LIBRARIES}')
       Libev:          ${HAVE_LIBEV} (LIBS='${LIBEV_LIBRARIES}')
       Libc-ares:      ${HAVE_LIBCARES} (LIBS='${LIBCARES_LIBRARIES}')
+      Libngtcp2:      ${HAVE_LIBNGTCP2} (LIBS='${LIBNGTCP2_LIBRARIES}')
+      Libngtcp2_crypto_openssl: ${HAVE_LIBNGTCP2_CRYPTO_OPENSSL} (LIBS='${LIBNGTCP2_CRYPTO_OPENSSL_LIBRARIES}')
+      Libnghttp3:     ${HAVE_LIBNGHTTP3} (LIBS='${LIBNGHTTP3_LIBRARIES}')
+      Libbpf:         ${HAVE_LIBBPF} (LIBS='${LIBBPF_LIBRARIES}')
       Libevent(SSL):  ${HAVE_LIBEVENT_OPENSSL} (LIBS='${LIBEVENT_OPENSSL_LIBRARIES}')
       Jansson:        ${HAVE_JANSSON} (LIBS='${JANSSON_LIBRARIES}')
       Jemalloc:       ${HAVE_JEMALLOC} (LIBS='${JEMALLOC_LIBRARIES}')
@@ -517,6 +573,7 @@ message(STATUS "summary of build options:
       Examples:       ${ENABLE_EXAMPLES}
       Python bindings:${ENABLE_PYTHON_BINDINGS}
       Threading:      ${ENABLE_THREADS}
+      HTTP/3(EXPERIMENTAL): ${ENABLE_HTTP3}
 ")
 if(ENABLE_LIB_ONLY_DISABLED_OTHERS)
   message("Only the library will be built. To build other components "

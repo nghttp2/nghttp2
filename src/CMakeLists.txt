@@ -15,10 +15,14 @@ include_directories(
   ${JEMALLOC_INCLUDE_DIRS}
   ${LIBXML2_INCLUDE_DIRS}
   ${LIBEV_INCLUDE_DIRS}
+  ${LIBNGHTTP3_INCLUDE_DIRS}
+  ${LIBNGTCP2_INCLUDE_DIRS}
+  ${LIBNGTCP2_CRYPTO_OPENSSL_INCLUDE_DIRS}
   ${OPENSSL_INCLUDE_DIRS}
   ${LIBCARES_INCLUDE_DIRS}
   ${JANSSON_INCLUDE_DIRS}
   ${ZLIB_INCLUDE_DIRS}
+  ${LIBBPF_INCLUDE_DIRS}
 )
 
 # XXX per-target?
@@ -27,11 +31,15 @@ link_libraries(
   ${JEMALLOC_LIBRARIES}
   ${LIBXML2_LIBRARIES}
   ${LIBEV_LIBRARIES}
+  ${LIBNGHTTP3_LIBRARIES}
+  ${LIBNGTCP2_LIBRARIES}
+  ${LIBNGTCP2_CRYPTO_OPENSSL_LIBRARIES}
   ${OPENSSL_LIBRARIES}
   ${LIBCARES_LIBRARIES}
   ${JANSSON_LIBRARIES}
   ${ZLIB_LIBRARIES}
   ${APP_LIBRARIES}
+  ${LIBBPF_LIBRARIES}
 )
 
 if(ENABLE_APP)
@@ -67,7 +75,13 @@ if(ENABLE_APP)
     h2load_http2_session.cc
     h2load_http1_session.cc
   )
-
+  if(ENABLE_HTTP3)
+    list(APPEND H2LOAD_SOURCES
+      h2load_http3_session.cc
+      h2load_quic.cc
+      quic.cc
+    )
+  endif()
 
   # Common libnhttpx sources (used for nghttpx and unit tests)
   set(NGHTTPX_SRCS
@@ -104,6 +118,7 @@ if(ENABLE_APP)
     shrpx_router.cc
     shrpx_api_downstream_connection.cc
     shrpx_health_monitor_downstream_connection.cc
+    shrpx_null_downstream_connection.cc
     shrpx_exec.cc
     shrpx_dns_resolver.cc
     shrpx_dual_dns_resolver.cc
@@ -117,6 +132,16 @@ if(ENABLE_APP)
       shrpx_mruby_module_env.cc
       shrpx_mruby_module_request.cc
       shrpx_mruby_module_response.cc
+    )
+  endif()
+  if(ENABLE_HTTP3)
+    list(APPEND NGHTTPX_SRCS
+     shrpx_quic.cc
+     shrpx_quic_listener.cc
+     shrpx_quic_connection_handler.cc
+     shrpx_http3_upstream.cc
+     http3.cc
+     quic.cc
     )
   endif()
   add_library(nghttpx_static STATIC ${NGHTTPX_SRCS})
@@ -189,7 +214,10 @@ if(ENABLE_APP)
   add_executable(nghttpx  ${NGHTTPX-bin_SOURCES} $<TARGET_OBJECTS:llhttp>
     $<TARGET_OBJECTS:url-parser>
   )
-  target_compile_definitions(nghttpx PRIVATE "-DPKGDATADIR=\"${PKGDATADIR}\"")
+  target_compile_definitions(nghttpx PRIVATE
+    "-DPKGDATADIR=\"${PKGDATADIR}\""
+    "-DPKGLIBDIR=\"${PKGLIBDIR}\""
+  )
   target_link_libraries(nghttpx nghttpx_static)
   add_executable(h2load   ${H2LOAD_SOURCES}   $<TARGET_OBJECTS:llhttp>
     $<TARGET_OBJECTS:url-parser>
@@ -207,6 +235,8 @@ if(ENABLE_HPACK_TOOLS)
   set(deflatehd_SOURCES
     deflatehd.cc
     comp_helper.c
+    util.cc
+    timegm.c
   )
   add_executable(inflatehd ${inflatehd_SOURCES})
   add_executable(deflatehd ${deflatehd_SOURCES})

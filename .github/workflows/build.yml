@@ -1,25 +1,43 @@
 name: build
 
-on: push
+on: [push, pull_request]
 
 jobs:
   build:
-    runs-on: ${{ matrix.os }}
-
     strategy:
       matrix:
-        os: [ubuntu-20.04, macos-10.15]
+        os: [ubuntu-22.04, macos-11]
         compiler: [gcc, clang]
         buildtool: [autotools, cmake]
+        http3: [http3, no-http3]
+        openssl: [openssl1, openssl3, boringssl]
+        exclude:
+        - os: macos-11
+          openssl: openssl3
+        - http3: no-http3
+          openssl: openssl3
+        - os: macos-11
+          compiler: gcc
+        - # disable macos cmake because of include path issue
+          os: macos-11
+          buildtool: cmake
+        - os: macos-11
+          openssl: boringssl
+        - openssl: boringssl
+          buildtool: cmake
+        - openssl: boringssl
+          compiler: gcc
+
+    runs-on: ${{ matrix.os }}
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Linux setup
       if: runner.os == 'Linux'
       run: |
         sudo apt-get install \
-          g++-8 \
-          clang-10 \
+          g++-11 \
+          clang-12 \
           autoconf \
           automake \
           autotools-dev \
@@ -34,6 +52,7 @@ jobs:
           libjansson-dev \
           libjemalloc-dev \
           libc-ares-dev \
+          libelf-dev \
           cmake \
           cmake-data
         echo 'CPPFLAGS=-fsanitize=address,undefined -fno-sanitize-recover=undefined -g' >> $GITHUB_ENV
@@ -52,13 +71,11 @@ jobs:
           pkg-config \
           libtool
         echo 'PKG_CONFIG_PATH=/usr/local/opt/libressl/lib/pkgconfig:/usr/local/opt/libxml2/lib/pkgconfig' >> $GITHUB_ENV
-        # This fixes infamous 'stdio.h not found' error.
-        echo 'SDKROOT='"$(xcrun --sdk macosx --show-sdk-path)" >> $GITHUB_ENV
     - name: Setup clang (Linux)
       if: runner.os == 'Linux' && matrix.compiler == 'clang'
       run: |
-        echo 'CC=clang-10' >> $GITHUB_ENV
-        echo 'CXX=clang++-10' >> $GITHUB_ENV
+        echo 'CC=clang-12' >> $GITHUB_ENV
+        echo 'CXX=clang++-12' >> $GITHUB_ENV
     - name: Setup clang (MacOS)
       if: runner.os == 'macOS' && matrix.compiler == 'clang'
       run: |
@@ -67,39 +84,208 @@ jobs:
     - name: Setup gcc (Linux)
       if: runner.os == 'Linux' && matrix.compiler == 'gcc'
       run: |
-        echo 'CC=gcc-8' >> $GITHUB_ENV
-        echo 'CXX=g++-8' >> $GITHUB_ENV
+        echo 'CC=gcc-11' >> $GITHUB_ENV
+        echo 'CXX=g++-11' >> $GITHUB_ENV
     - name: Setup gcc (MacOS)
       if: runner.os == 'macOS' && matrix.compiler == 'gcc'
       run: |
         echo 'CC=gcc' >> $GITHUB_ENV
         echo 'CXX=g++' >> $GITHUB_ENV
+    - name: Build libbpf
+      if: matrix.http3 == 'http3' && matrix.compiler == 'clang' && runner.os == 'Linux'
+      run: |
+        git clone -b v0.8.1 https://github.com/libbpf/libbpf
+        cd libbpf
+        PREFIX=$PWD/build make -C src install
+
+        EXTRA_AUTOTOOLS_OPTS="--with-libbpf"
+        EXTRA_CMAKE_OPTS="-DWITH_LIBBPF=1"
+
+        echo 'EXTRA_AUTOTOOLS_OPTS='"$EXTRA_AUTOTOOLS_OPTS" >> $GITHUB_ENV
+        echo 'EXTRA_CMAKE_OPTS='"$EXTRA_CMAKE_OPTS" >> $GITHUB_ENV
+    - name: Build quictls/openssl v1.1.1
+      if: matrix.http3 == 'http3' && matrix.openssl == 'openssl1'
+      run: |
+        git clone --depth 1 -b OpenSSL_1_1_1q+quic https://github.com/quictls/openssl
+        cd openssl
+        ./config --prefix=$PWD/build
+        make -j"$(nproc 2> /dev/null || sysctl -n hw.ncpu)"
+        make install_sw
+    - name: Build quictls/openssl v3.0.x
+      if: matrix.http3 == 'http3' && matrix.openssl == 'openssl3'
+      run: |
+        unset CPPFLAGS
+        unset LDFLAGS
+
+        git clone --depth 1 -b openssl-3.0.5+quic https://github.com/quictls/openssl
+        cd openssl
+        ./config enable-ktls --prefix=$PWD/build --libdir=$PWD/build/lib
+        make -j"$(nproc 2> /dev/null || sysctl -n hw.ncpu)"
+        make install_sw
+    - name: Build BoringSSL
+      if: matrix.openssl == 'boringssl'
+      run: |
+        git clone https://boringssl.googlesource.com/boringssl
+        cd boringssl
+        git checkout a6d321b11fa80496b7c8ae6405468c212d4f5c87
+        mkdir build
+        cd build
+        cmake -DCMAKE_POSITION_INDEPENDENT_CODE=ON ..
+        make -j"$(nproc 2> /dev/null || sysctl -n hw.ncpu)"
+        cd ..
+
+        OPENSSL_CFLAGS="-I$PWD/include/"
+        OPENSSL_LIBS="-L$PWD/build/ssl -lssl -L$PWD/build/crypto -lcrypto -pthread"
+        EXTRA_NGTCP2_OPTS="$EXTRA_NGTCP2_OPTS --without-openssl --with-boringssl"
+        EXTRA_AUTOTOOLS_OPTS="$EXTRA_AUTOTOOLS_OPTS --without-neverbleed --without-jemalloc"
+
+        echo 'OPENSSL_CFLAGS='"$OPENSSL_CFLAGS" >> $GITHUB_ENV
+        echo 'OPENSSL_LIBS='"$OPENSSL_LIBS" >> $GITHUB_ENV
+        echo 'BORINGSSL_CFLAGS='"$OPENSSL_CFLAGS" >> $GITHUB_ENV
+        echo 'BORINGSSL_LIBS='"$OPENSSL_LIBS" >> $GITHUB_ENV
+        echo 'EXTRA_NGTCP2_OPTS='"$EXTRA_NGTCP2_OPTS" >> "$GITHUB_ENV"
+        echo 'EXTRA_AUTOTOOLS_OPTS='"$EXTRA_AUTOTOOLS_OPTS" >> $GITHUB_ENV
+    - name: Build nghttp3
+      if: matrix.http3 == 'http3'
+      run: |
+        git clone --depth 1 -b v0.7.0 https://github.com/ngtcp2/nghttp3
+        cd nghttp3
+        autoreconf -i
+        ./configure --prefix=$PWD/build --enable-lib-only
+        make -j"$(nproc 2> /dev/null || sysctl -n hw.ncpu)" check
+        make install
+    - name: Build ngtcp2
+      if: matrix.http3 == 'http3'
+      run: |
+        git clone --depth 1 -b v0.8.1 https://github.com/ngtcp2/ngtcp2
+        cd ngtcp2
+        autoreconf -i
+        ./configure --prefix=$PWD/build --enable-lib-only PKG_CONFIG_PATH="../openssl/build/lib/pkgconfig" $EXTRA_NGTCP2_OPTS
+        make -j"$(nproc 2> /dev/null || sysctl -n hw.ncpu)" check
+        make install
+    - name: Setup extra environment variables for HTTP/3
+      if: matrix.http3 == 'http3'
+      run: |
+        PKG_CONFIG_PATH="$PWD/openssl/build/lib/pkgconfig:$PWD/nghttp3/build/lib/pkgconfig:$PWD/ngtcp2/build/lib/pkgconfig:$PWD/libbpf/build/lib64/pkgconfig:$PKG_CONFIG_PATH"
+        LDFLAGS="$LDFLAGS -Wl,-rpath,$PWD/openssl/build/lib -Wl,-rpath,$PWD/libbpf/build/lib64"
+        EXTRA_AUTOTOOLS_OPTS="--enable-http3 $EXTRA_AUTOTOOLS_OPTS"
+        EXTRA_CMAKE_OPTS="-DENABLE_HTTP3=1 $EXTRA_CMAKE_OPTS"
+
+        echo 'PKG_CONFIG_PATH='"$PKG_CONFIG_PATH" >> $GITHUB_ENV
+        echo 'LDFLAGS='"$LDFLAGS" >> $GITHUB_ENV
+        echo 'EXTRA_AUTOTOOLS_OPTS='"$EXTRA_AUTOTOOLS_OPTS" >> $GITHUB_ENV
+        echo 'EXTRA_CMAKE_OPTS='"$EXTRA_CMAKE_OPTS" >> $GITHUB_ENV
     - name: Setup git submodules
       run: |
         git submodule update --init
     - name: Configure autotools
-      if: matrix.buildtool == 'autotools'
       run: |
         autoreconf -i
-        ./configure --enable-werror --with-mruby
-    - name: Configure cmake
-      if: matrix.buildtool == 'cmake'
+        ./configure
+    - name: Configure cmake (Linux)
+      if: matrix.buildtool == 'cmake' && runner.os == 'Linux'
       run: |
-        cmake -DENABLE_WERROR=1 -DWITH_MRUBY=1 -DWITH_NEVERBLEED=1 -DCPPFLAGS="$CPPFLAGS" -DLDFLAGS="$LDFLAGS" .
-    - name: Build nghttp2 with autotools
-      if: matrix.buildtool == 'autotools'
+        make dist
+        VERSION=$(grep PACKAGE_VERSION config.h | cut -d' ' -f3 | tr -d '"')
+        tar xf nghttp2-$VERSION.tar.gz
+        cd nghttp2-$VERSION
+        echo 'NGHTTP2_CMAKE_DIR='"$PWD" >> $GITHUB_ENV
+
+        cmake -DENABLE_WERROR=1 -DWITH_MRUBY=1 -DWITH_NEVERBLEED=1 -DENABLE_APP=1 $EXTRA_CMAKE_OPTS -DCPPFLAGS="$CPPFLAGS" -DLDFLAGS="$LDFLAGS" .
+    - name: Configure cmake (MacOS)
+      if: matrix.buildtool == 'cmake' && runner.os == 'macOS'
       run: |
-        make distcheck \
-          DISTCHECK_CONFIGURE_FLAGS="--with-mruby --with-neverbleed --enable-werror CPPFLAGS=\"$CPPFLAGS\" LDFLAGS=\"$LDFLAGS\""
+        make dist
+        VERSION=$(grep PACKAGE_VERSION config.h | cut -d' ' -f3 | tr -d '"')
+        tar xf nghttp2-$VERSION.tar.gz
+        cd nghttp2-$VERSION
+        echo 'NGHTTP2_CMAKE_DIR='"$PWD" >> $GITHUB_ENV
+
+        # This fixes infamous 'stdio.h not found' error.
+        echo 'SDKROOT='"$(xcrun --sdk macosx --show-sdk-path)" >> $GITHUB_ENV
+
+        cmake -DENABLE_WERROR=1 -DWITH_MRUBY=1 -DENABLE_APP=1 $EXTRA_CMAKE_OPTS -DCPPFLAGS="$CPPFLAGS" -DLDFLAGS="$LDFLAGS" .
+    - name: Build nghttp2 with autotools (Linux)
+      if: matrix.buildtool == 'autotools' && runner.os == 'Linux'
+      run: |
+        make -j"$(nproc)" distcheck \
+          DISTCHECK_CONFIGURE_FLAGS="--with-mruby --with-neverbleed --with-libev --enable-werror $EXTRA_AUTOTOOLS_OPTS CPPFLAGS=\"$CPPFLAGS\" LDFLAGS=\"$LDFLAGS\""
+    - name: Build nghttp2 with autotools (MacOS)
+      if: matrix.buildtool == 'autotools' && runner.os == 'macOS'
+      run: |
+        make -j"$(sysctl -n hw.ncpu)" distcheck \
+          DISTCHECK_CONFIGURE_FLAGS="--with-mruby --with-libev --enable-werror $EXTRA_AUTOTOOLS_OPTS CPPFLAGS=\"$CPPFLAGS\" LDFLAGS=\"$LDFLAGS\""
     - name: Build nghttp2 with cmake
       if: matrix.buildtool == 'cmake'
       run: |
-        make
-        make check
+        cd $NGHTTP2_CMAKE_DIR
+        make -j"$(nproc 2> /dev/null || sysctl -n hw.ncpu)"
+        make -j"$(nproc 2> /dev/null || sysctl -n hw.ncpu)" check
     - name: Integration test
       # Integration tests for nghttpx; autotools erases build
       # artifacts.
       if: matrix.buildtool == 'cmake'
       run: |
-        cd integration-tests
+        cd $NGHTTP2_CMAKE_DIR/integration-tests
         make itprep it
+
+  build-cross:
+    strategy:
+      matrix:
+        host: [x86_64-w64-mingw32, i686-w64-mingw32]
+
+    runs-on: ubuntu-22.04
+
+    env:
+      HOST: ${{ matrix.host }}
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Linux setup
+      run: |
+        sudo dpkg --add-architecture i386
+        sudo apt-get update
+        sudo apt-get install \
+          gcc-mingw-w64 \
+          autoconf \
+          automake \
+          autotools-dev \
+          libtool \
+          pkg-config \
+          wine
+    - name: Build CUnit
+      run: |
+        curl -LO https://jaist.dl.sourceforge.net/project/cunit/CUnit/2.1-3/CUnit-2.1-3.tar.bz2
+        tar xf CUnit-2.1-3.tar.bz2
+        cd CUnit-2.1-3
+        ./bootstrap
+        ./configure --disable-shared --host="$HOST" --prefix="$PWD/build"
+        make -j$(nproc) install
+    - name: Configure autotools
+      run: |
+        autoreconf -i && \
+        ./configure --enable-werror --enable-lib-only --with-cunit \
+          --host="$HOST" PKG_CONFIG_PATH="$PWD/CUnit-2.1-3/build/lib/pkgconfig"
+    - name: Build nghttp2
+      run: |
+        make -j$(nproc)
+        make -j$(nproc) check TESTS=""
+    - name: Run tests
+      if: matrix.host == 'x86_64-w64-mingw32'
+      run: |
+        cd tests
+        wine main.exe
+
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Configure cmake
+      run: |
+        mkdir build
+        cd build
+        cmake ..
+    - name: Build nghttp2
+      run: |
+        cmake --build build

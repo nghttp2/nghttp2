@@ -50,6 +50,10 @@
 #include "shrpx_live_check.h"
 #include "shrpx_connect_blocker.h"
 #include "shrpx_dns_tracker.h"
+#ifdef ENABLE_HTTP3
+#  include "shrpx_quic_connection_handler.h"
+#  include "shrpx_quic.h"
+#endif // ENABLE_HTTP3
 #include "allocator.h"
 
 using namespace nghttp2;
@@ -61,6 +65,9 @@ class ConnectBlocker;
 class MemcachedDispatcher;
 struct UpstreamAddr;
 class ConnectionHandler;
+#ifdef ENABLE_HTTP3
+class QUICListener;
+#endif // ENABLE_HTTP3
 
 #ifdef HAVE_MRUBY
 namespace mruby {
@@ -126,6 +133,9 @@ struct DownstreamAddr {
   // Weight of the weight group which this address belongs to.  Its
   // range is [1, 256], inclusive.
   uint32_t group_weight;
+  // affinity hash for this address.  It is assigned when strict
+  // stickiness is enabled.
+  uint32_t affinity_hash;
   // true if TLS is used in this backend
   bool tls;
   // true if dynamic DNS is enabled
@@ -153,7 +163,7 @@ struct DownstreamAddrEntryGreater {
     if (d == 0) {
       return rhs.seq < lhs.seq;
     }
-    return d <= MAX_DOWNSTREAM_ADDR_WEIGHT;
+    return d <= 2 * MAX_DOWNSTREAM_ADDR_WEIGHT - 1;
   }
 };
 
@@ -182,7 +192,7 @@ struct WeightGroupEntryGreater {
     if (d == 0) {
       return rhs.seq < lhs.seq;
     }
-    return d <= MAX_DOWNSTREAM_ADDR_WEIGHT;
+    return d <= 2 * MAX_DOWNSTREAM_ADDR_WEIGHT - 1;
   }
 };
 
@@ -191,6 +201,7 @@ struct SharedDownstreamAddr {
       : balloc(1024, 1024),
         affinity{SessionAffinity::NONE},
         redirect_if_not_tls{false},
+        dnf{false},
         timeout{} {}
 
   SharedDownstreamAddr(const SharedDownstreamAddr &) = delete;
@@ -207,6 +218,9 @@ struct SharedDownstreamAddr {
   // Bunch of session affinity hash.  Only used if affinity ==
   // SessionAffinity::IP.
   std::vector<AffinityHash> affinity_hash;
+  // Maps affinity hash of each DownstreamAddr to its index in addrs.
+  // It is only assigned when strict stickiness is enabled.
+  std::unordered_map<uint32_t, size_t> affinity_hash_map;
 #ifdef HAVE_MRUBY
   std::shared_ptr<mruby::MRubyContext> mruby_ctx;
 #endif // HAVE_MRUBY
@@ -216,6 +230,8 @@ struct SharedDownstreamAddr {
   // true if this group requires that client connection must be TLS,
   // and the request must be redirected to https URI.
   bool redirect_if_not_tls;
+  // true if a request should not be forwarded to a backend.
+  bool dnf;
   // Timeouts for backend connection.
   struct {
     ev_tstamp read;
@@ -242,13 +258,36 @@ struct DownstreamAddrGroup {
 
 struct WorkerStat {
   size_t num_connections;
+  size_t num_close_waits;
 };
+
+#ifdef ENABLE_HTTP3
+struct QUICPacket {
+  QUICPacket(size_t upstream_addr_index, const Address &remote_addr,
+             const Address &local_addr, const ngtcp2_pkt_info &pi,
+             const uint8_t *data, size_t datalen)
+      : upstream_addr_index{upstream_addr_index},
+        remote_addr{remote_addr},
+        local_addr{local_addr},
+        pi{pi},
+        data{data, data + datalen} {}
+  QUICPacket() : upstream_addr_index{}, remote_addr{}, local_addr{}, pi{} {}
+  size_t upstream_addr_index;
+  Address remote_addr;
+  Address local_addr;
+  ngtcp2_pkt_info pi;
+  std::vector<uint8_t> data;
+};
+#endif // ENABLE_HTTP3
 
 enum class WorkerEventType {
   NEW_CONNECTION = 0x01,
   REOPEN_LOG = 0x02,
   GRACEFUL_SHUTDOWN = 0x03,
   REPLACE_DOWNSTREAM = 0x04,
+#ifdef ENABLE_HTTP3
+  QUIC_PKT_FORWARD = 0x05,
+#endif // ENABLE_HTTP3
 };
 
 struct WorkerEvent {
@@ -261,6 +300,9 @@ struct WorkerEvent {
   };
   std::shared_ptr<TicketKeys> ticket_keys;
   std::shared_ptr<DownstreamConfig> downstreamconf;
+#ifdef ENABLE_HTTP3
+  std::unique_ptr<QUICPacket> quic_pkt;
+#endif // ENABLE_HTTP3
 };
 
 class Worker {
@@ -268,6 +310,13 @@ public:
   Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
          SSL_CTX *tls_session_cache_memcached_ssl_ctx,
          tls::CertLookupTree *cert_tree,
+#ifdef ENABLE_HTTP3
+         SSL_CTX *quic_sv_ssl_ctx, tls::CertLookupTree *quic_cert_tree,
+         const uint8_t *cid_prefix, size_t cid_prefixlen,
+#  ifdef HAVE_LIBBPF
+         size_t index,
+#  endif // HAVE_LIBBPF
+#endif   // ENABLE_HTTP3
          const std::shared_ptr<TicketKeys> &ticket_keys,
          ConnectionHandler *conn_handler,
          std::shared_ptr<DownstreamConfig> downstreamconf);
@@ -275,9 +324,12 @@ public:
   void run_async();
   void wait();
   void process_events();
-  void send(const WorkerEvent &event);
+  void send(WorkerEvent event);
 
   tls::CertLookupTree *get_cert_lookup_tree() const;
+#ifdef ENABLE_HTTP3
+  tls::CertLookupTree *get_quic_cert_lookup_tree() const;
+#endif // ENABLE_HTTP3
 
   // These 2 functions make a lock m_ to get/set ticket keys
   // atomically.
@@ -288,6 +340,9 @@ public:
   struct ev_loop *get_loop() const;
   SSL_CTX *get_sv_ssl_ctx() const;
   SSL_CTX *get_cl_ssl_ctx() const;
+#ifdef ENABLE_HTTP3
+  SSL_CTX *get_quic_sv_ssl_ctx() const;
+#endif // ENABLE_HTTP3
 
   void set_graceful_shutdown(bool f);
   bool get_graceful_shutdown() const;
@@ -317,12 +372,37 @@ public:
 
   ConnectionHandler *get_connection_handler() const;
 
+#ifdef ENABLE_HTTP3
+  QUICConnectionHandler *get_quic_connection_handler();
+
+  int setup_quic_server_socket();
+
+  const uint8_t *get_cid_prefix() const;
+
+#  ifdef HAVE_LIBBPF
+  bool should_attach_bpf() const;
+
+  bool should_update_bpf_map() const;
+
+  uint32_t compute_sk_index() const;
+#  endif // HAVE_LIBBPF
+
+  int create_quic_server_socket(UpstreamAddr &addr);
+
+  // Returns a pointer to UpstreamAddr which matches |local_addr|.
+  const UpstreamAddr *find_quic_upstream_addr(const Address &local_addr);
+#endif // ENABLE_HTTP3
+
   DNSTracker *get_dns_tracker();
 
 private:
 #ifndef NOTHREADS
   std::future<void> fut_;
 #endif // NOTHREADS
+#if defined(ENABLE_HTTP3) && defined(HAVE_LIBBPF)
+  // Unique index of this worker.
+  size_t index_;
+#endif // ENABLE_HTTP3 && HAVE_LIBBPF
   std::mutex m_;
   std::deque<WorkerEvent> q_;
   std::mt19937 randgen_;
@@ -332,6 +412,12 @@ private:
   MemchunkPool mcpool_;
   WorkerStat worker_stat_;
   DNSTracker dns_tracker_;
+
+#ifdef ENABLE_HTTP3
+  std::array<uint8_t, SHRPX_QUIC_CID_PREFIXLEN> cid_prefix_;
+  std::vector<UpstreamAddr> quic_upstream_addrs_;
+  std::vector<std::unique_ptr<QUICListener>> quic_listeners_;
+#endif // ENABLE_HTTP3
 
   std::shared_ptr<DownstreamConfig> downstreamconf_;
   std::unique_ptr<MemcachedDispatcher> session_cache_memcached_dispatcher_;
@@ -346,6 +432,12 @@ private:
   SSL_CTX *cl_ssl_ctx_;
   tls::CertLookupTree *cert_tree_;
   ConnectionHandler *conn_handler_;
+#ifdef ENABLE_HTTP3
+  SSL_CTX *quic_sv_ssl_ctx_;
+  tls::CertLookupTree *quic_cert_tree_;
+
+  QUICConnectionHandler quic_conn_handler_;
+#endif // ENABLE_HTTP3
 
 #ifndef HAVE_ATOMIC_STD_SHARED_PTR
   std::mutex ticket_keys_m_;
@@ -353,7 +445,7 @@ private:
   std::shared_ptr<TicketKeys> ticket_keys_;
   std::vector<std::shared_ptr<DownstreamAddrGroup>> downstream_addr_groups_;
   // Worker level blocker for downstream connection.  For example,
-  // this is used when file decriptor is exhausted.
+  // this is used when file descriptor is exhausted.
   std::unique_ptr<ConnectBlocker> connect_blocker_;
 
   bool graceful_shutdown_;
@@ -375,6 +467,13 @@ size_t match_downstream_addr_group(
 // the actual address used to connect to backend, and it could be
 // nullptr.  This function may schedule live check.
 void downstream_failure(DownstreamAddr *addr, const Address *raddr);
+
+#ifdef ENABLE_HTTP3
+// Creates unpredictable SHRPX_QUIC_CID_PREFIXLEN bytes sequence which
+// is used as a prefix of QUIC Connection ID.  This function returns
+// -1 on failure.  |server_id| must be 2 bytes long.
+int create_cid_prefix(uint8_t *cid_prefix, const uint8_t *server_id);
+#endif // ENABLE_HTTP3
 
 } // namespace shrpx
 

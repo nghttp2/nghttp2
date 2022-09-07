@@ -90,7 +90,7 @@ int nghttp2_inet_pton(int af, const char *src, void *dst) {
 
   int size = sizeof(struct in6_addr);
 
-  if (WSAStringToAddress(addr, af, NULL, (LPSOCKADDR)dst, &size) == 0)
+  if (WSAStringToAddress(addr, af, nullptr, (LPSOCKADDR)dst, &size) == 0)
     return 1;
   return 0;
 #  endif
@@ -167,24 +167,29 @@ bool in_attr_char(char c) {
 StringRef percent_encode_token(BlockAllocator &balloc,
                                const StringRef &target) {
   auto iov = make_byte_ref(balloc, target.size() * 3 + 1);
-  auto p = iov.base;
+  auto p = percent_encode_token(iov.base, target);
+
+  *p = '\0';
+
+  return StringRef{iov.base, p};
+}
+
+size_t percent_encode_tokenlen(const StringRef &target) {
+  size_t n = 0;
 
   for (auto first = std::begin(target); first != std::end(target); ++first) {
     uint8_t c = *first;
 
     if (c != '%' && in_token(c)) {
-      *p++ = c;
+      ++n;
       continue;
     }
 
-    *p++ = '%';
-    *p++ = UPPER_XDIGITS[c >> 4];
-    *p++ = UPPER_XDIGITS[(c & 0x0f)];
+    // percent-encoded character '%ff'
+    n += 3;
   }
 
-  *p = '\0';
-
-  return StringRef{iov.base, p};
+  return n;
 }
 
 uint32_t hex_to_uint(char c) {
@@ -208,19 +213,25 @@ StringRef quote_string(BlockAllocator &balloc, const StringRef &target) {
   }
 
   auto iov = make_byte_ref(balloc, target.size() + cnt + 1);
-  auto p = iov.base;
+  auto p = quote_string(iov.base, target);
 
-  for (auto c : target) {
-    if (c == '"') {
-      *p++ = '\\';
-      *p++ = '"';
-    } else {
-      *p++ = c;
-    }
-  }
   *p = '\0';
 
   return StringRef{iov.base, p};
+}
+
+size_t quote_stringlen(const StringRef &target) {
+  size_t n = 0;
+
+  for (auto c : target) {
+    if (c == '"') {
+      n += 2;
+    } else {
+      ++n;
+    }
+  }
+
+  return n;
 }
 
 namespace {
@@ -379,6 +390,47 @@ char *iso8601_date(char *res, int64_t ms) {
     }
     p = cpydig(p, gmtoff / 3600, 2);
     *p++ = ':';
+    p = cpydig(p, (gmtoff % 3600) / 60, 2);
+  }
+
+  return p;
+}
+
+char *iso8601_basic_date(char *res, int64_t ms) {
+  time_t sec = ms / 1000;
+
+  tm tms;
+  if (localtime_r(&sec, &tms) == nullptr) {
+    return res;
+  }
+
+  auto p = res;
+
+  p = cpydig(p, tms.tm_year + 1900, 4);
+  p = cpydig(p, tms.tm_mon + 1, 2);
+  p = cpydig(p, tms.tm_mday, 2);
+  *p++ = 'T';
+  p = cpydig(p, tms.tm_hour, 2);
+  p = cpydig(p, tms.tm_min, 2);
+  p = cpydig(p, tms.tm_sec, 2);
+  *p++ = '.';
+  p = cpydig(p, ms % 1000, 3);
+
+#ifdef HAVE_STRUCT_TM_TM_GMTOFF
+  auto gmtoff = tms.tm_gmtoff;
+#else  // !HAVE_STRUCT_TM_TM_GMTOFF
+  auto gmtoff = nghttp2_timegm(&tms) - sec;
+#endif // !HAVE_STRUCT_TM_TM_GMTOFF
+  if (gmtoff == 0) {
+    *p++ = 'Z';
+  } else {
+    if (gmtoff > 0) {
+      *p++ = '+';
+    } else {
+      *p++ = '-';
+      gmtoff = -gmtoff;
+    }
+    p = cpydig(p, gmtoff / 3600, 2);
     p = cpydig(p, (gmtoff % 3600) / 60, 2);
   }
 
@@ -686,18 +738,21 @@ std::string numeric_name(const struct sockaddr *sa, socklen_t salen) {
 }
 
 std::string to_numeric_addr(const Address *addr) {
-  auto family = addr->su.storage.ss_family;
+  return to_numeric_addr(&addr->su.sa, addr->len);
+}
+
+std::string to_numeric_addr(const struct sockaddr *sa, socklen_t salen) {
+  auto family = sa->sa_family;
 #ifndef _WIN32
   if (family == AF_UNIX) {
-    return addr->su.un.sun_path;
+    return reinterpret_cast<const sockaddr_un *>(sa)->sun_path;
   }
 #endif // !_WIN32
 
   std::array<char, NI_MAXHOST> host;
   std::array<char, NI_MAXSERV> serv;
-  auto rv =
-      getnameinfo(&addr->su.sa, addr->len, host.data(), host.size(),
-                  serv.data(), serv.size(), NI_NUMERICHOST | NI_NUMERICSERV);
+  auto rv = getnameinfo(sa, salen, host.data(), host.size(), serv.data(),
+                        serv.size(), NI_NUMERICHOST | NI_NUMERICSERV);
   if (rv != 0) {
     return "unknown";
   }
@@ -868,6 +923,42 @@ std::vector<StringRef> split_str(const StringRef &s, char delim) {
   return list;
 }
 
+std::vector<StringRef> split_str(const StringRef &s, char delim, size_t n) {
+  if (n == 0) {
+    return split_str(s, delim);
+  }
+
+  if (n == 1) {
+    return {s};
+  }
+
+  size_t len = 1;
+  auto last = std::end(s);
+  StringRef::const_iterator d;
+  for (auto first = std::begin(s);
+       len < n && (d = std::find(first, last, delim)) != last;
+       ++len, first = d + 1)
+    ;
+
+  auto list = std::vector<StringRef>(len);
+
+  len = 0;
+  for (auto first = std::begin(s);; ++len) {
+    if (len == n - 1) {
+      list[len] = StringRef{first, last};
+      break;
+    }
+
+    auto stop = std::find(first, last, delim);
+    list[len] = StringRef{first, stop};
+    if (stop == last) {
+      break;
+    }
+    first = stop + 1;
+  }
+  return list;
+}
+
 std::vector<std::string> parse_config_str_list(const StringRef &s, char delim) {
   auto sublist = split_str(s, delim);
   auto res = std::vector<std::string>();
@@ -943,6 +1034,56 @@ int create_nonblock_socket(int family) {
   }
 
   return fd;
+}
+
+int create_nonblock_udp_socket(int family) {
+#ifdef SOCK_NONBLOCK
+  auto fd = socket(family, SOCK_DGRAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
+
+  if (fd == -1) {
+    return -1;
+  }
+#else  // !SOCK_NONBLOCK
+  auto fd = socket(family, SOCK_DGRAM, 0);
+
+  if (fd == -1) {
+    return -1;
+  }
+
+  make_socket_nonblocking(fd);
+  make_socket_closeonexec(fd);
+#endif // !SOCK_NONBLOCK
+
+  return fd;
+}
+
+int bind_any_addr_udp(int fd, int family) {
+  addrinfo hints{};
+  addrinfo *res, *rp;
+  int rv;
+
+  hints.ai_family = family;
+  hints.ai_socktype = SOCK_DGRAM;
+  hints.ai_flags = AI_PASSIVE;
+
+  rv = getaddrinfo(nullptr, "0", &hints, &res);
+  if (rv != 0) {
+    return -1;
+  }
+
+  for (rp = res; rp; rp = rp->ai_next) {
+    if (bind(fd, rp->ai_addr, rp->ai_addrlen) != -1) {
+      break;
+    }
+  }
+
+  freeaddrinfo(res);
+
+  if (!rp) {
+    return -1;
+  }
+
+  return 0;
 }
 
 bool check_socket_connected(int fd) {
@@ -1184,81 +1325,14 @@ std::string dtos(double n) {
 
 StringRef make_http_hostport(BlockAllocator &balloc, const StringRef &host,
                              uint16_t port) {
-  if (port != 80 && port != 443) {
-    return make_hostport(balloc, host, port);
-  }
-
-  auto ipv6 = ipv6_numeric_addr(host.c_str());
-
-  auto iov = make_byte_ref(balloc, host.size() + (ipv6 ? 2 : 0) + 1);
-  auto p = iov.base;
-
-  if (ipv6) {
-    *p++ = '[';
-  }
-
-  p = std::copy(std::begin(host), std::end(host), p);
-
-  if (ipv6) {
-    *p++ = ']';
-  }
-
-  *p = '\0';
-
-  return StringRef{iov.base, p};
-}
-
-std::string make_hostport(const StringRef &host, uint16_t port) {
-  auto ipv6 = ipv6_numeric_addr(host.c_str());
-  auto serv = utos(port);
-
-  std::string hostport;
-  hostport.resize(host.size() + (ipv6 ? 2 : 0) + 1 + serv.size());
-
-  auto p = &hostport[0];
-
-  if (ipv6) {
-    *p++ = '[';
-  }
-
-  p = std::copy_n(host.c_str(), host.size(), p);
-
-  if (ipv6) {
-    *p++ = ']';
-  }
-
-  *p++ = ':';
-  std::copy_n(serv.c_str(), serv.size(), p);
-
-  return hostport;
+  auto iov = make_byte_ref(balloc, host.size() + 2 + 1 + 5 + 1);
+  return make_http_hostport(iov.base, host, port);
 }
 
 StringRef make_hostport(BlockAllocator &balloc, const StringRef &host,
                         uint16_t port) {
-  auto ipv6 = ipv6_numeric_addr(host.c_str());
-  auto serv = utos(port);
-
-  auto iov =
-      make_byte_ref(balloc, host.size() + (ipv6 ? 2 : 0) + 1 + serv.size());
-  auto p = iov.base;
-
-  if (ipv6) {
-    *p++ = '[';
-  }
-
-  p = std::copy(std::begin(host), std::end(host), p);
-
-  if (ipv6) {
-    *p++ = ']';
-  }
-
-  *p++ = ':';
-
-  p = std::copy(std::begin(serv), std::end(serv), p);
-
-  *p = '\0';
-
-  return StringRef{iov.base, p};
+  auto iov = make_byte_ref(balloc, host.size() + 2 + 1 + 5 + 1);
+  return make_hostport(iov.base, host, port);
 }
 
 namespace {
@@ -1509,10 +1583,7 @@ bool is_hex_string(const StringRef &s) {
 
 StringRef decode_hex(BlockAllocator &balloc, const StringRef &s) {
   auto iov = make_byte_ref(balloc, s.size() + 1);
-  auto p = iov.base;
-  for (auto it = std::begin(s); it != std::end(s); it += 2) {
-    *p++ = (hex_to_uint(*it) << 4) | hex_to_uint(*(it + 1));
-  }
+  auto p = decode_hex(iov.base, s);
   *p = '\0';
   return StringRef{iov.base, p};
 }
@@ -1578,7 +1649,7 @@ std::mt19937 make_mt19937() {
 }
 
 int daemonize(int nochdir, int noclose) {
-#if defined(__APPLE__)
+#ifdef __APPLE__
   pid_t pid;
   pid = fork();
   if (pid == -1) {
@@ -1612,10 +1683,105 @@ int daemonize(int nochdir, int noclose) {
     }
   }
   return 0;
-#else  // !defined(__APPLE__)
+#else  // !__APPLE__
   return daemon(nochdir, noclose);
-#endif // !defined(__APPLE__)
+#endif // !__APPLE__
 }
+
+StringRef rstrip(BlockAllocator &balloc, const StringRef &s) {
+  auto it = std::rbegin(s);
+  for (; it != std::rend(s) && (*it == ' ' || *it == '\t'); ++it)
+    ;
+
+  auto len = it - std::rbegin(s);
+  if (len == 0) {
+    return s;
+  }
+
+  return make_string_ref(balloc, StringRef{s.c_str(), s.size() - len});
+}
+
+#ifdef ENABLE_HTTP3
+int msghdr_get_local_addr(Address &dest, msghdr *msg, int family) {
+  switch (family) {
+  case AF_INET:
+    for (auto cmsg = CMSG_FIRSTHDR(msg); cmsg; cmsg = CMSG_NXTHDR(msg, cmsg)) {
+      if (cmsg->cmsg_level == IPPROTO_IP && cmsg->cmsg_type == IP_PKTINFO) {
+        auto pktinfo = reinterpret_cast<in_pktinfo *>(CMSG_DATA(cmsg));
+        dest.len = sizeof(dest.su.in);
+        auto &sa = dest.su.in;
+        sa.sin_family = AF_INET;
+        sa.sin_addr = pktinfo->ipi_addr;
+
+        return 0;
+      }
+    }
+
+    return -1;
+  case AF_INET6:
+    for (auto cmsg = CMSG_FIRSTHDR(msg); cmsg; cmsg = CMSG_NXTHDR(msg, cmsg)) {
+      if (cmsg->cmsg_level == IPPROTO_IPV6 && cmsg->cmsg_type == IPV6_PKTINFO) {
+        auto pktinfo = reinterpret_cast<in6_pktinfo *>(CMSG_DATA(cmsg));
+        dest.len = sizeof(dest.su.in6);
+        auto &sa = dest.su.in6;
+        sa.sin6_family = AF_INET6;
+        sa.sin6_addr = pktinfo->ipi6_addr;
+        return 0;
+      }
+    }
+
+    return -1;
+  }
+
+  return -1;
+}
+
+unsigned int msghdr_get_ecn(msghdr *msg, int family) {
+  switch (family) {
+  case AF_INET:
+    for (auto cmsg = CMSG_FIRSTHDR(msg); cmsg; cmsg = CMSG_NXTHDR(msg, cmsg)) {
+      if (cmsg->cmsg_level == IPPROTO_IP && cmsg->cmsg_type == IP_TOS &&
+          cmsg->cmsg_len) {
+        return *reinterpret_cast<uint8_t *>(CMSG_DATA(cmsg));
+      }
+    }
+
+    return 0;
+  case AF_INET6:
+    for (auto cmsg = CMSG_FIRSTHDR(msg); cmsg; cmsg = CMSG_NXTHDR(msg, cmsg)) {
+      if (cmsg->cmsg_level == IPPROTO_IPV6 && cmsg->cmsg_type == IPV6_TCLASS &&
+          cmsg->cmsg_len) {
+        return *reinterpret_cast<uint8_t *>(CMSG_DATA(cmsg));
+      }
+    }
+
+    return 0;
+  }
+
+  return 0;
+}
+
+int fd_set_send_ecn(int fd, int family, unsigned int ecn) {
+  switch (family) {
+  case AF_INET:
+    if (setsockopt(fd, IPPROTO_IP, IP_TOS, &ecn,
+                   static_cast<socklen_t>(sizeof(ecn))) == -1) {
+      return -1;
+    }
+
+    return 0;
+  case AF_INET6:
+    if (setsockopt(fd, IPPROTO_IPV6, IPV6_TCLASS, &ecn,
+                   static_cast<socklen_t>(sizeof(ecn))) == -1) {
+      return -1;
+    }
+
+    return 0;
+  }
+
+  return -1;
+}
+#endif // ENABLE_HTTP3
 
 } // namespace util
 

@@ -159,6 +159,14 @@ OPTIONS
 
     Don't send content-length header field.
 
+.. option:: --ktls
+
+    Enable ktls.
+
+.. option:: --no-rfc7540-pri
+
+    Disable RFC7540 priorities.
+
 .. option:: --version
 
     Display version information and exit.

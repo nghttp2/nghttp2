@@ -493,7 +493,7 @@ class RubyModuleIndex(Index):
         # list of all modules, sorted by module name
         modules = sorted(_iteritems(self.domain.data['modules']),
                          key=lambda x: x[0].lower())
-        # sort out collapsable modules
+        # sort out collapsible modules
         prev_modname = ''
         num_toplevels = 0
         for modname, (docname, synopsis, platforms, deprecated) in modules:

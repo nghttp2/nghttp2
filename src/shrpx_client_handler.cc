@@ -50,6 +50,10 @@
 #include "shrpx_connect_blocker.h"
 #include "shrpx_api_downstream_connection.h"
 #include "shrpx_health_monitor_downstream_connection.h"
+#include "shrpx_null_downstream_connection.h"
+#ifdef ENABLE_HTTP3
+#  include "shrpx_http3_upstream.h"
+#endif // ENABLE_HTTP3
 #include "shrpx_log.h"
 #include "util.h"
 #include "template.h"
@@ -177,6 +181,35 @@ int ClientHandler::write_clear() {
   return 0;
 }
 
+int ClientHandler::proxy_protocol_peek_clear() {
+  rb_.ensure_chunk();
+
+  assert(rb_.rleft() == 0);
+
+  auto nread = conn_.peek_clear(rb_.last(), rb_.wleft());
+  if (nread < 0) {
+    return -1;
+  }
+  if (nread == 0) {
+    return 0;
+  }
+
+  if (LOG_ENABLED(INFO)) {
+    CLOG(INFO, this) << "PROXY-protocol: Peek " << nread
+                     << " bytes from socket";
+  }
+
+  rb_.write(nread);
+
+  if (on_read() != 0) {
+    return -1;
+  }
+
+  rb_.reset();
+
+  return 0;
+}
+
 int ClientHandler::tls_handshake() {
   ev_timer_again(conn_.loop, &conn_.rt);
 
@@ -284,6 +317,20 @@ int ClientHandler::write_tls() {
     }
   }
 }
+
+#ifdef ENABLE_HTTP3
+int ClientHandler::read_quic(const UpstreamAddr *faddr,
+                             const Address &remote_addr,
+                             const Address &local_addr,
+                             const ngtcp2_pkt_info &pi, const uint8_t *data,
+                             size_t datalen) {
+  auto upstream = static_cast<Http3Upstream *>(upstream_.get());
+
+  return upstream->on_read(faddr, remote_addr, local_addr, pi, data, datalen);
+}
+
+int ClientHandler::write_quic() { return upstream_->on_write(); }
+#endif // ENABLE_HTTP3
 
 int ClientHandler::upstream_noop() { return 0; }
 
@@ -401,7 +448,8 @@ ClientHandler::ClientHandler(Worker *worker, int fd, SSL *ssl,
             get_config()->conn.upstream.ratelimit.write,
             get_config()->conn.upstream.ratelimit.read, writecb, readcb,
             timeoutcb, this, get_config()->tls.dyn_rec.warmup_threshold,
-            get_config()->tls.dyn_rec.idle_timeout, Proto::NONE),
+            get_config()->tls.dyn_rec.idle_timeout,
+            faddr->quic ? Proto::HTTP3 : Proto::NONE),
       ipaddr_(make_string_ref(balloc_, ipaddr)),
       port_(make_string_ref(balloc_, port)),
       faddr_(faddr),
@@ -417,19 +465,23 @@ ClientHandler::ClientHandler(Worker *worker, int fd, SSL *ssl,
 
   reneg_shutdown_timer_.data = this;
 
-  conn_.rlimit.startw();
+  if (!faddr->quic) {
+    conn_.rlimit.startw();
+  }
   ev_timer_again(conn_.loop, &conn_.rt);
 
   auto config = get_config();
 
-  if (faddr_->accept_proxy_protocol ||
-      config->conn.upstream.accept_proxy_protocol) {
-    read_ = &ClientHandler::read_clear;
-    write_ = &ClientHandler::noop;
-    on_read_ = &ClientHandler::proxy_protocol_read;
-    on_write_ = &ClientHandler::upstream_noop;
-  } else {
-    setup_upstream_io_callback();
+  if (!faddr->quic) {
+    if (faddr_->accept_proxy_protocol ||
+        config->conn.upstream.accept_proxy_protocol) {
+      read_ = &ClientHandler::proxy_protocol_peek_clear;
+      write_ = &ClientHandler::noop;
+      on_read_ = &ClientHandler::proxy_protocol_read;
+      on_write_ = &ClientHandler::upstream_noop;
+    } else {
+      setup_upstream_io_callback();
+    }
   }
 
   auto &fwdconf = config->http.forwarded;
@@ -491,6 +543,18 @@ void ClientHandler::setup_upstream_io_callback() {
   }
 }
 
+#ifdef ENABLE_HTTP3
+void ClientHandler::setup_http3_upstream(
+    std::unique_ptr<Http3Upstream> &&upstream) {
+  upstream_ = std::move(upstream);
+  write_ = &ClientHandler::write_quic;
+
+  auto config = get_config();
+
+  reset_upstream_read_timeout(config->conn.upstream.timeout.http3_read);
+}
+#endif // ENABLE_HTTP3
+
 ClientHandler::~ClientHandler() {
   if (LOG_ENABLED(INFO)) {
     CLOG(INFO, this) << "Deleting";
@@ -511,7 +575,8 @@ ClientHandler::~ClientHandler() {
 
   // TODO If backend is http/2, and it is in CONNECTED state, signal
   // it and make it loopbreak when output is zero.
-  if (worker_->get_graceful_shutdown() && worker_stat->num_connections == 0) {
+  if (worker_->get_graceful_shutdown() && worker_stat->num_connections == 0 &&
+      worker_stat->num_close_waits == 0) {
     ev_break(conn_.loop);
   }
 
@@ -811,6 +876,12 @@ DownstreamAddr *ClientHandler::get_downstream_addr(int &err,
       hash = affinity_hash_;
       break;
     case SessionAffinity::COOKIE:
+      if (shared_addr->affinity.cookie.stickiness ==
+          SessionAffinityCookieStickiness::STRICT) {
+        return get_downstream_addr_strict_affinity(err, shared_addr,
+                                                   downstream);
+      }
+
       hash = get_affinity_cookie(downstream, shared_addr->affinity.cookie.name);
       break;
     default:
@@ -848,7 +919,6 @@ DownstreamAddr *ClientHandler::get_downstream_addr(int &err,
         err = -1;
         return nullptr;
       }
-      aff_idx = i;
     }
 
     return addr;
@@ -886,6 +956,69 @@ DownstreamAddr *ClientHandler::get_downstream_addr(int &err,
       return addr;
     }
   }
+}
+
+DownstreamAddr *ClientHandler::get_downstream_addr_strict_affinity(
+    int &err, const std::shared_ptr<SharedDownstreamAddr> &shared_addr,
+    Downstream *downstream) {
+  const auto &affinity_hash = shared_addr->affinity_hash;
+
+  auto h = downstream->find_affinity_cookie(shared_addr->affinity.cookie.name);
+  if (h) {
+    auto it = shared_addr->affinity_hash_map.find(h);
+    if (it != std::end(shared_addr->affinity_hash_map)) {
+      auto addr = &shared_addr->addrs[(*it).second];
+      if (!addr->connect_blocker->blocked()) {
+        return addr;
+      }
+    }
+  } else {
+    auto d = std::uniform_int_distribution<uint32_t>(
+        1, std::numeric_limits<uint32_t>::max());
+    auto rh = d(worker_->get_randgen());
+    h = util::hash32(StringRef{reinterpret_cast<uint8_t *>(&rh),
+                               reinterpret_cast<uint8_t *>(&rh) + sizeof(rh)});
+  }
+
+  // Client is not bound to a particular backend, or the bound backend
+  // is not found, or is blocked.  Find new backend using h.  Using
+  // existing h allows us to find new server in a deterministic way.
+  // It is preferable because multiple concurrent requests with the
+  // stale cookie might be in-flight.
+  auto it = std::lower_bound(
+      std::begin(affinity_hash), std::end(affinity_hash), h,
+      [](const AffinityHash &lhs, uint32_t rhs) { return lhs.hash < rhs; });
+
+  if (it == std::end(affinity_hash)) {
+    it = std::begin(affinity_hash);
+  }
+
+  auto aff_idx =
+      static_cast<size_t>(std::distance(std::begin(affinity_hash), it));
+  auto idx = (*it).idx;
+  auto addr = &shared_addr->addrs[idx];
+
+  if (addr->connect_blocker->blocked()) {
+    size_t i;
+    for (i = aff_idx + 1; i != aff_idx; ++i) {
+      if (i == shared_addr->affinity_hash.size()) {
+        i = 0;
+      }
+      addr = &shared_addr->addrs[shared_addr->affinity_hash[i].idx];
+      if (addr->connect_blocker->blocked()) {
+        continue;
+      }
+      break;
+    }
+    if (i == aff_idx) {
+      err = -1;
+      return nullptr;
+    }
+  }
+
+  downstream->renew_affinity_cookie(addr->affinity_hash);
+
+  return addr;
 }
 
 std::unique_ptr<DownstreamConnection>
@@ -973,6 +1106,13 @@ ClientHandler::get_downstream_connection(int &err, Downstream *downstream) {
   }
 
   auto &group = groups[group_idx];
+
+  if (group->shared_addr->dnf) {
+    auto dconn = std::make_unique<NullDownstreamConnection>(group);
+    dconn->set_client_handler(this);
+    return dconn;
+  }
+
   auto addr = get_downstream_addr(err, group.get(), downstream);
   if (addr == nullptr) {
     return nullptr;
@@ -1146,18 +1286,24 @@ ssize_t parse_proxy_line_port(const uint8_t *first, const uint8_t *last) {
 } // namespace
 
 int ClientHandler::on_proxy_protocol_finish() {
-  if (conn_.tls.ssl) {
-    conn_.tls.rbuf.append(rb_.pos(), rb_.rleft());
-    rb_.reset();
+  auto len = rb_.pos() - rb_.begin();
+
+  assert(len);
+
+  if (LOG_ENABLED(INFO)) {
+    CLOG(INFO, this) << "PROXY-protocol: Draining " << len
+                     << " bytes from socket";
   }
 
-  setup_upstream_io_callback();
+  rb_.reset();
 
-  // Run on_read to process data left in buffer since they are not
-  // notified further
-  if (on_read() != 0) {
+  if (conn_.read_nolim_clear(rb_.pos(), len) < 0) {
     return -1;
   }
+
+  rb_.reset();
+
+  setup_upstream_io_callback();
 
   return 0;
 }
@@ -1555,5 +1701,14 @@ StringRef ClientHandler::get_tls_sni() const { return sni_; }
 StringRef ClientHandler::get_alpn() const { return alpn_; }
 
 BlockAllocator &ClientHandler::get_block_allocator() { return balloc_; }
+
+void ClientHandler::set_alpn_from_conn() {
+  const unsigned char *alpn;
+  unsigned int alpnlen;
+
+  SSL_get0_alpn_selected(conn_.tls.ssl, &alpn, &alpnlen);
+
+  alpn_ = make_string_ref(balloc_, StringRef{alpn, alpnlen});
+}
 
 } // namespace shrpx

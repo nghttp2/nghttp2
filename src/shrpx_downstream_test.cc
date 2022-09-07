@@ -168,6 +168,11 @@ void test_downstream_supports_non_final_response(void) {
   Downstream d(nullptr, nullptr, 0);
   auto &req = d.request();
 
+  req.http_major = 3;
+  req.http_minor = 0;
+
+  CU_ASSERT(d.supports_non_final_response());
+
   req.http_major = 2;
   req.http_minor = 0;
 

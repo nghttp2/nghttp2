@@ -97,6 +97,8 @@ struct Config {
   bool no_push;
   bool expect_continue;
   bool verify_peer;
+  bool ktls;
+  bool no_rfc7540_pri;
 };
 
 enum class RequestState { INITIAL, ON_REQUEST, ON_RESPONSE, ON_COMPLETE };

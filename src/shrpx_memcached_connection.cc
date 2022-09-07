@@ -115,7 +115,7 @@ MemcachedConnection::MemcachedConnection(const Address *addr,
       try_count_(0),
       connected_(false) {}
 
-MemcachedConnection::~MemcachedConnection() { disconnect(); }
+MemcachedConnection::~MemcachedConnection() { conn_.disconnect(); }
 
 namespace {
 void clear_request(std::deque<std::unique_ptr<MemcachedRequest>> &q) {

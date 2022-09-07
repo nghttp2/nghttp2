@@ -78,3 +78,15 @@
 
 /* Define to 1 if you have the <unistd.h> header file. */
 #cmakedefine HAVE_UNISTD_H 1
+
+/* Define to 1 if HTTP/3 is enabled. */
+#cmakedefine ENABLE_HTTP3 1
+
+/* Define to 1 if you have `libbpf` library. */
+#cmakedefine HAVE_LIBBPF 1
+
+/* Define to 1 if you have enum bpf_stats_type in linux/bpf.h. */
+#cmakedefine HAVE_BPF_STATS_TYPE 1
+
+/* Define to 1 if you have `libngtcp2_crypto_openssl` library. */
+#cmakedefine HAVE_LIBNGTCP2_CRYPTO_OPENSSL

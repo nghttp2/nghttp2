@@ -82,6 +82,8 @@ struct Config {
   bool hexdump;
   bool echo_upload;
   bool no_content_length;
+  bool ktls;
+  bool no_rfc7540_pri;
   Config();
   ~Config();
 };
@@ -242,7 +244,7 @@ private:
 };
 
 ssize_t file_read_callback(nghttp2_session *session, int32_t stream_id,
-                           uint8_t *buf, size_t length, int *eof,
+                           uint8_t *buf, size_t length, uint32_t *data_flags,
                            nghttp2_data_source *source, void *user_data);
 
 } // namespace nghttp2

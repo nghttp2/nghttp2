@@ -215,7 +215,7 @@ void Http2Session::on_connect() {
 
   nghttp2_option_del(opt);
 
-  std::array<nghttp2_settings_entry, 3> iv;
+  std::array<nghttp2_settings_entry, 4> iv;
   size_t niv = 2;
   iv[0].settings_id = NGHTTP2_SETTINGS_ENABLE_PUSH;
   iv[0].value = 0;
@@ -225,6 +225,11 @@ void Http2Session::on_connect() {
   if (config->header_table_size != NGHTTP2_DEFAULT_HEADER_TABLE_SIZE) {
     iv[niv].settings_id = NGHTTP2_SETTINGS_HEADER_TABLE_SIZE;
     iv[niv].value = config->header_table_size;
+    ++niv;
+  }
+  if (config->max_frame_size != 16_k) {
+    iv[niv].settings_id = NGHTTP2_SETTINGS_MAX_FRAME_SIZE;
+    iv[niv].value = config->max_frame_size;
     ++niv;
   }
 

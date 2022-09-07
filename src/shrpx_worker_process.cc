@@ -123,7 +123,9 @@ void graceful_shutdown(ConnectionHandler *conn_handler) {
 
   auto single_worker = conn_handler->get_single_worker();
   if (single_worker) {
-    if (single_worker->get_worker_stat()->num_connections == 0) {
+    auto worker_stat = single_worker->get_worker_stat();
+    if (worker_stat->num_connections == 0 &&
+        worker_stat->num_close_waits == 0) {
       ev_break(conn_handler->get_loop());
     }
 
@@ -177,6 +179,20 @@ void ipc_readcb(struct ev_loop *loop, ev_io *w, int revents) {
   }
 }
 } // namespace
+
+#ifdef ENABLE_HTTP3
+namespace {
+void quic_ipc_readcb(struct ev_loop *loop, ev_io *w, int revents) {
+  auto conn_handler = static_cast<ConnectionHandler *>(w->data);
+
+  if (conn_handler->quic_ipc_read() != 0) {
+    LOG(ERROR) << "Failed to read data from QUIC IPC channel";
+
+    return;
+  }
+}
+} // namespace
+#endif // ENABLE_HTTP3
 
 namespace {
 int generate_ticket_key(TicketKey &ticket_key) {
@@ -411,13 +427,6 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
 
   auto gen = util::make_mt19937();
 
-  auto conn_handler = std::make_unique<ConnectionHandler>(loop, gen);
-
-  for (auto &addr : config->conn.listener.addrs) {
-    conn_handler->add_acceptor(
-        std::make_unique<AcceptHandler>(&addr, conn_handler.get()));
-  }
-
 #ifdef HAVE_NEVERBLEED
   std::array<char, NEVERBLEED_ERRBUF_SIZE> nb_errbuf;
   auto nb = std::make_unique<neverbleed_t>();
@@ -428,14 +437,29 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
 
   LOG(NOTICE) << "neverbleed process [" << nb->daemon_pid << "] spawned";
 
-  conn_handler->set_neverbleed(nb.get());
-
   ev_child nb_childev;
 
   ev_child_init(&nb_childev, nb_child_cb, nb->daemon_pid, 0);
   nb_childev.data = nullptr;
   ev_child_start(loop, &nb_childev);
 #endif // HAVE_NEVERBLEED
+
+  auto conn_handler = std::make_unique<ConnectionHandler>(loop, gen);
+
+#ifdef HAVE_NEVERBLEED
+  conn_handler->set_neverbleed(nb.get());
+#endif // HAVE_NEVERBLEED
+
+#ifdef ENABLE_HTTP3
+  conn_handler->set_quic_ipc_fd(wpconf->quic_ipc_fd);
+  conn_handler->set_quic_lingering_worker_processes(
+      wpconf->quic_lingering_worker_processes);
+#endif // ENABLE_HTTP3
+
+  for (auto &addr : config->conn.listener.addrs) {
+    conn_handler->add_acceptor(
+        std::make_unique<AcceptHandler>(&addr, conn_handler.get()));
+  }
 
   MemchunkPool mcpool;
 
@@ -494,6 +518,57 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
     }
   }
 
+#ifdef ENABLE_HTTP3
+  auto &quicconf = config->quic;
+
+  std::shared_ptr<QUICKeyingMaterials> qkms;
+
+  if (!quicconf.upstream.secret_file.empty()) {
+    qkms = read_quic_secret_file(quicconf.upstream.secret_file);
+    if (!qkms) {
+      LOG(WARN) << "Use QUIC keying materials generated internally";
+    }
+  }
+
+  if (!qkms) {
+    qkms = std::make_shared<QUICKeyingMaterials>();
+    qkms->keying_materials.resize(1);
+
+    auto &qkm = qkms->keying_materials.front();
+
+    if (RAND_bytes(qkm.reserved.data(), qkm.reserved.size()) != 1) {
+      LOG(ERROR) << "Failed to generate QUIC secret reserved data";
+      return -1;
+    }
+
+    if (RAND_bytes(qkm.secret.data(), qkm.secret.size()) != 1) {
+      LOG(ERROR) << "Failed to generate QUIC secret";
+      return -1;
+    }
+
+    if (RAND_bytes(qkm.salt.data(), qkm.salt.size()) != 1) {
+      LOG(ERROR) << "Failed to generate QUIC salt";
+      return -1;
+    }
+  }
+
+  for (auto &qkm : qkms->keying_materials) {
+    if (generate_quic_connection_id_encryption_key(
+            qkm.cid_encryption_key.data(), qkm.cid_encryption_key.size(),
+            qkm.secret.data(), qkm.secret.size(), qkm.salt.data(),
+            qkm.salt.size()) != 0) {
+      LOG(ERROR) << "Failed to generate QUIC Connection ID encryption key";
+      return -1;
+    }
+  }
+
+  conn_handler->set_quic_keying_materials(std::move(qkms));
+
+  conn_handler->set_cid_prefixes(wpconf->cid_prefixes);
+  conn_handler->set_quic_lingering_worker_processes(
+      wpconf->quic_lingering_worker_processes);
+#endif // ENABLE_HTTP3
+
   if (config->single_thread) {
     rv = conn_handler->create_single_worker();
     if (rv != 0) {
@@ -528,6 +603,10 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
 #endif // !NOTHREADS
   }
 
+#if defined(ENABLE_HTTP3) && defined(HAVE_LIBBPF)
+  conn_handler->unload_bpf_objects();
+#endif // defined(ENABLE_HTTP3) && defined(HAVE_LIBBPF)
+
   drop_privileges(
 #ifdef HAVE_NEVERBLEED
       nb.get()
@@ -538,6 +617,13 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
   ev_io_init(&ipcev, ipc_readcb, wpconf->ipc_fd, EV_READ);
   ipcev.data = conn_handler.get();
   ev_io_start(loop, &ipcev);
+
+#ifdef ENABLE_HTTP3
+  ev_io quic_ipcev;
+  ev_io_init(&quic_ipcev, quic_ipc_readcb, wpconf->quic_ipc_fd, EV_READ);
+  quic_ipcev.data = conn_handler.get();
+  ev_io_start(loop, &quic_ipcev);
+#endif // ENABLE_HTTP3
 
   if (tls::upstream_tls_enabled(config->conn) && !config->tls.ocsp.disabled) {
     if (config->tls.ocsp.startup) {

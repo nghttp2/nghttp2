@@ -39,6 +39,7 @@ enum ErrorCode {
   SHRPX_ERR_DCONN_CANCELED = -103,
   SHRPX_ERR_RETRY = -104,
   SHRPX_ERR_TLS_REQUIRED = -105,
+  SHRPX_ERR_SEND_BLOCKED = -106,
 };
 
 } // namespace shrpx

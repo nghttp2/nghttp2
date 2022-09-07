@@ -1,7 +1,8 @@
 /*
  * nghttp2 - HTTP/2 C Library
  *
- * Copyright (c) 2012 Tatsuhiro Tsujikawa
+ * Copyright (c) 2017 ngtcp2 contributors
+ * Copyright (c) 2012 nghttp2 contributors
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -29,12 +30,13 @@
 #include "nghttp2_map.h"
 
 typedef struct strentry {
-  nghttp2_map_entry map_entry;
+  nghttp2_map_key_type key;
   const char *str;
 } strentry;
 
-static void strentry_init(strentry *entry, key_type key, const char *str) {
-  nghttp2_map_entry_init(&entry->map_entry, key);
+static void strentry_init(strentry *entry, nghttp2_map_key_type key,
+                          const char *str) {
+  entry->key = key;
   entry->str = str;
 }
 
@@ -49,23 +51,23 @@ void test_nghttp2_map(void) {
   strentry_init(&baz, 3, "baz");
   strentry_init(&shrubbery, 4, "shrubbery");
 
-  CU_ASSERT(0 == nghttp2_map_insert(&map, &foo.map_entry));
+  CU_ASSERT(0 == nghttp2_map_insert(&map, foo.key, &foo));
   CU_ASSERT(strcmp("foo", ((strentry *)nghttp2_map_find(&map, 1))->str) == 0);
   CU_ASSERT(1 == nghttp2_map_size(&map));
 
   CU_ASSERT(NGHTTP2_ERR_INVALID_ARGUMENT ==
-            nghttp2_map_insert(&map, &FOO.map_entry));
+            nghttp2_map_insert(&map, FOO.key, &FOO));
 
   CU_ASSERT(1 == nghttp2_map_size(&map));
   CU_ASSERT(strcmp("foo", ((strentry *)nghttp2_map_find(&map, 1))->str) == 0);
 
-  CU_ASSERT(0 == nghttp2_map_insert(&map, &bar.map_entry));
+  CU_ASSERT(0 == nghttp2_map_insert(&map, bar.key, &bar));
   CU_ASSERT(2 == nghttp2_map_size(&map));
 
-  CU_ASSERT(0 == nghttp2_map_insert(&map, &baz.map_entry));
+  CU_ASSERT(0 == nghttp2_map_insert(&map, baz.key, &baz));
   CU_ASSERT(3 == nghttp2_map_size(&map));
 
-  CU_ASSERT(0 == nghttp2_map_insert(&map, &shrubbery.map_entry));
+  CU_ASSERT(0 == nghttp2_map_insert(&map, shrubbery.key, &shrubbery));
   CU_ASSERT(4 == nghttp2_map_size(&map));
 
   CU_ASSERT(strcmp("baz", ((strentry *)nghttp2_map_find(&map, 3))->str) == 0);
@@ -100,8 +102,8 @@ static void shuffle(int *a, int n) {
   }
 }
 
-static int eachfun(nghttp2_map_entry *entry, void *ptr) {
-  (void)entry;
+static int eachfun(void *data, void *ptr) {
+  (void)data;
   (void)ptr;
 
   return 0;
@@ -114,51 +116,56 @@ static int order[NUM_ENT];
 void test_nghttp2_map_functional(void) {
   nghttp2_map map;
   int i;
+  strentry *ent;
 
   nghttp2_map_init(&map, nghttp2_mem_default());
   for (i = 0; i < NUM_ENT; ++i) {
-    strentry_init(&arr[i], i + 1, "foo");
+    strentry_init(&arr[i], (nghttp2_map_key_type)(i + 1), "foo");
     order[i] = i + 1;
   }
   /* insertion */
   shuffle(order, NUM_ENT);
   for (i = 0; i < NUM_ENT; ++i) {
-    CU_ASSERT(0 == nghttp2_map_insert(&map, &arr[order[i] - 1].map_entry));
+    ent = &arr[order[i] - 1];
+    CU_ASSERT(0 == nghttp2_map_insert(&map, ent->key, ent));
   }
+
+  CU_ASSERT(NUM_ENT == nghttp2_map_size(&map));
+
   /* traverse */
   nghttp2_map_each(&map, eachfun, NULL);
   /* find */
   shuffle(order, NUM_ENT);
   for (i = 0; i < NUM_ENT; ++i) {
-    nghttp2_map_find(&map, order[i]);
+    CU_ASSERT(NULL != nghttp2_map_find(&map, (nghttp2_map_key_type)order[i]));
   }
   /* remove */
-  shuffle(order, NUM_ENT);
   for (i = 0; i < NUM_ENT; ++i) {
-    CU_ASSERT(0 == nghttp2_map_remove(&map, order[i]));
+    CU_ASSERT(0 == nghttp2_map_remove(&map, (nghttp2_map_key_type)order[i]));
   }
 
   /* each_free (but no op function for testing purpose) */
   for (i = 0; i < NUM_ENT; ++i) {
-    strentry_init(&arr[i], i + 1, "foo");
+    strentry_init(&arr[i], (nghttp2_map_key_type)(i + 1), "foo");
   }
   /* insert once again */
   for (i = 0; i < NUM_ENT; ++i) {
-    CU_ASSERT(0 == nghttp2_map_insert(&map, &arr[i].map_entry));
+    ent = &arr[i];
+    CU_ASSERT(0 == nghttp2_map_insert(&map, ent->key, ent));
   }
   nghttp2_map_each_free(&map, eachfun, NULL);
   nghttp2_map_free(&map);
 }
 
-static int entry_free(nghttp2_map_entry *entry, void *ptr) {
-  nghttp2_mem *mem = ptr;
+static int entry_free(void *data, void *ptr) {
+  const nghttp2_mem *mem = ptr;
 
-  mem->free(entry, NULL);
+  mem->free(data, NULL);
   return 0;
 }
 
 void test_nghttp2_map_each_free(void) {
-  nghttp2_mem *mem = nghttp2_mem_default();
+  const nghttp2_mem *mem = nghttp2_mem_default();
   strentry *foo = mem->malloc(sizeof(strentry), NULL),
            *bar = mem->malloc(sizeof(strentry), NULL),
            *baz = mem->malloc(sizeof(strentry), NULL),
@@ -171,11 +178,29 @@ void test_nghttp2_map_each_free(void) {
   strentry_init(baz, 3, "baz");
   strentry_init(shrubbery, 4, "shrubbery");
 
-  nghttp2_map_insert(&map, &foo->map_entry);
-  nghttp2_map_insert(&map, &bar->map_entry);
-  nghttp2_map_insert(&map, &baz->map_entry);
-  nghttp2_map_insert(&map, &shrubbery->map_entry);
+  nghttp2_map_insert(&map, foo->key, foo);
+  nghttp2_map_insert(&map, bar->key, bar);
+  nghttp2_map_insert(&map, baz->key, baz);
+  nghttp2_map_insert(&map, shrubbery->key, shrubbery);
 
-  nghttp2_map_each_free(&map, entry_free, mem);
+  nghttp2_map_each_free(&map, entry_free, (void *)mem);
+  nghttp2_map_free(&map);
+}
+
+void test_nghttp2_map_clear(void) {
+  nghttp2_mem *mem = nghttp2_mem_default();
+  nghttp2_map map;
+  strentry foo;
+
+  strentry_init(&foo, 1, "foo");
+
+  nghttp2_map_init(&map, mem);
+
+  CU_ASSERT(0 == nghttp2_map_insert(&map, foo.key, &foo));
+
+  nghttp2_map_clear(&map);
+
+  CU_ASSERT(0 == nghttp2_map_size(&map));
+
   nghttp2_map_free(&map);
 }

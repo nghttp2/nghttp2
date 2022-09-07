@@ -20,8 +20,6 @@ for i in range(256):
         sys.stdout.write('1 /* {}    */, '.format(chr(i)))
     elif 0x80 <= i:
         sys.stdout.write('1 /* {} */, '.format(hex(i)))
-    elif 0 == i:
-        sys.stdout.write('1 /* NUL  */, ')
     else:
         sys.stdout.write('0 /* {} */, '.format(name(i)))
     if (i + 1)%4 == 0:
