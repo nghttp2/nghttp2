@@ -75,7 +75,7 @@ struct ResolverEntry {
 
 class DNSTracker {
 public:
-  DNSTracker(struct ev_loop *loop);
+  DNSTracker(struct ev_loop *loop, int family);
   ~DNSTracker();
 
   // Lookups host name described in |dnsq|.  If name lookup finishes
@@ -111,6 +111,8 @@ private:
   // increase memory consumption, interval could be very long.
   ev_timer gc_timer_;
   struct ev_loop *loop_;
+  // IP version preference.
+  int family_;
 };
 
 } // namespace shrpx

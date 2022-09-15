@@ -36,7 +36,8 @@ void gccb(struct ev_loop *loop, ev_timer *w, int revents) {
 }
 } // namespace
 
-DNSTracker::DNSTracker(struct ev_loop *loop) : loop_(loop) {
+DNSTracker::DNSTracker(struct ev_loop *loop, int family)
+    : loop_(loop), family_(family) {
   ev_timer_init(&gc_timer_, gccb, 0., 12_h);
   gc_timer_.data = this;
 }
@@ -111,7 +112,7 @@ DNSResolverStatus DNSTracker::resolve(Address *result, DNSQuery *dnsq) {
       LOG(INFO) << "DNS entry not found for " << dnsq->host;
     }
 
-    auto resolv = std::make_unique<DualDNSResolver>(loop_);
+    auto resolv = std::make_unique<DualDNSResolver>(loop_, family_);
     auto host_copy =
         ImmutableString{std::begin(dnsq->host), std::end(dnsq->host)};
     auto host = StringRef{host_copy};
@@ -180,7 +181,7 @@ DNSResolverStatus DNSTracker::resolve(Address *result, DNSQuery *dnsq) {
                 << ", but it has been expired";
     }
 
-    auto resolv = std::make_unique<DualDNSResolver>(loop_);
+    auto resolv = std::make_unique<DualDNSResolver>(loop_, family_);
     auto host = StringRef{ent.host};
 
     rv = resolv->resolve(host);

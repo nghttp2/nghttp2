@@ -26,8 +26,8 @@
 
 namespace shrpx {
 
-DualDNSResolver::DualDNSResolver(struct ev_loop *loop)
-    : resolv4_(loop), resolv6_(loop) {
+DualDNSResolver::DualDNSResolver(struct ev_loop *loop, int family)
+    : family_(family), resolv4_(loop), resolv6_(loop) {
   auto cb = [this](DNSResolverStatus, const Address *) {
     Address result;
 
@@ -44,14 +44,22 @@ DualDNSResolver::DualDNSResolver(struct ev_loop *loop)
     cb(status, &result);
   };
 
-  resolv4_.set_complete_cb(cb);
-  resolv6_.set_complete_cb(cb);
+  if (family_ == AF_UNSPEC || family_ == AF_INET) {
+    resolv4_.set_complete_cb(cb);
+  }
+  if (family_ == AF_UNSPEC || family_ == AF_INET6) {
+    resolv6_.set_complete_cb(cb);
+  }
 }
 
 int DualDNSResolver::resolve(const StringRef &host) {
-  int rv4, rv6;
-  rv4 = resolv4_.resolve(host, AF_INET);
-  rv6 = resolv6_.resolve(host, AF_INET6);
+  int rv4 = 0, rv6 = 0;
+  if (family_ == AF_UNSPEC || family_ == AF_INET) {
+    rv4 = resolv4_.resolve(host, AF_INET);
+  }
+  if (family_ == AF_UNSPEC || family_ == AF_INET6) {
+    rv6 = resolv6_.resolve(host, AF_INET6);
+  }
 
   if (rv4 != 0 && rv6 != 0) {
     return -1;

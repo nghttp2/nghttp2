@@ -42,7 +42,11 @@ namespace shrpx {
 // how CompleteCb is called have the same semantics with DNSResolver.
 class DualDNSResolver {
 public:
-  DualDNSResolver(struct ev_loop *loop);
+  // |family| controls IP version preference.  If |family| ==
+  // AF_UNSPEC, bot A and AAAA lookups are performed.  If |family| ==
+  // AF_INET, only A lookup is performed.  If |family| == AF_INET6,
+  // only AAAA lookup is performed.
+  DualDNSResolver(struct ev_loop *loop, int family);
 
   // Resolves |host|.  |host| must be NULL-terminated string.
   int resolve(const StringRef &host);
@@ -51,6 +55,8 @@ public:
   DNSResolverStatus get_status(Address *result) const;
 
 private:
+  // IP version preference.
+  int family_;
   // For A record
   DNSResolver resolv4_;
   // For AAAA record

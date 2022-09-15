@@ -161,7 +161,7 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
 #endif // ENABLE_HTTP3 && HAVE_LIBBPF
       randgen_(util::make_mt19937()),
       worker_stat_{},
-      dns_tracker_(loop),
+      dns_tracker_(loop, get_config()->conn.downstream->family),
 #ifdef ENABLE_HTTP3
       quic_upstream_addrs_{get_config()->conn.quic_listener.addrs},
 #endif // ENABLE_HTTP3
