@@ -12,7 +12,7 @@
 
 
 # Only use standalone-toolchain for reduce size
-FROM ubuntu:xenial
+FROM ubuntu:bionic
 MAINTAINER Tatsuhiro Tsujikawa
 ENV ANDROID_HOME /root
 ENV TOOLCHAIN $ANDROID_HOME/toolchain
@@ -26,7 +26,7 @@ RUN apt-get update && \
       automake autotools-dev libtool pkg-config git \
       curl dpkg-dev libxml2-dev genisoimage libc6-i386 \
       lib32stdc++6 python&& \
-    rm -rf /var/cache/apk/*
+    rm -rf /var/cache/apt/*
 
 # Install toolchain
 RUN curl -L -O https://dl.google.com/android/repository/android-ndk-$NDK_VERSION-linux-x86_64.zip && \
@@ -42,12 +42,12 @@ RUN curl -L -O https://dl.google.com/android/repository/android-ndk-$NDK_VERSION
 ENV PREFIX /root/usr/local
 
 # Setup version of libraries
-ENV OPENSSL_VERSION 1.0.2d
+ENV OPENSSL_VERSION 1.0.2u
 ENV SPDYLAY_VERSION v1.4.0
 ENV LIBEV_VERSION 4.19
-ENV ZLIB_VERSION 1.2.8
-ENV CARES_VERSION 1.13.0
-ENV NGHTTP2_VERSION v1.24.0
+ENV ZLIB_VERSION 1.2.11
+ENV CARES_VERSION 1.17.2
+ENV NGHTTP2_VERSION v1.40.0
 
 WORKDIR /root/build
 RUN git clone https://github.com/tatsuhiro-t/spdylay -b $SPDYLAY_VERSION --depth 1
