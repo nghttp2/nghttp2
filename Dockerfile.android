@@ -55,7 +55,7 @@ RUN curl -L -O https://www.openssl.org/source/openssl-$OPENSSL_VERSION.tar.gz &&
 
 WORKDIR /root/build/openssl-$OPENSSL_VERSION
 RUN export ANDROID_NDK_HOME=$NDK PATH=$TOOLCHAIN/bin:$PATH && \
-    ./Configure --prefix=$PREFIX android-arm64 && \
+    ./Configure no-shared --prefix=$PREFIX android-arm64 && \
     make && make install_sw
 
 WORKDIR /root/build
