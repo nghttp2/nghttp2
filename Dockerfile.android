@@ -27,7 +27,6 @@ ENV LD $TOOLCHAIN/bin/ld
 ENV RANDLIB $TOOLCHAIN/bin/llvm-ranlib
 ENV STRIP $TOOLCHAIN/bin/llvm-strip
 ENV PREFIX /root/usr/local
-ENV PATH $TOOLCHAIN/bin:$PATH
 
 WORKDIR /root
 RUN apt-get update && \
@@ -55,8 +54,8 @@ RUN curl -L -O https://www.openssl.org/source/openssl-$OPENSSL_VERSION.tar.gz &&
     rm openssl-$OPENSSL_VERSION.tar.gz
 
 WORKDIR /root/build/openssl-$OPENSSL_VERSION
-RUN export ANDROID_NDK_HOME=$NDK && \
-    ./Configure --prefix=$PREFIX android-arm64 && \
+RUN export ANDROID_NDK_HOME=$NDK PATH=$TOOLCHAIN/bin:$PATH && \
+    ./Configure no-shared --prefix=$PREFIX android-arm64 && \
     make && make install_sw
 
 WORKDIR /root/build
@@ -112,7 +111,6 @@ RUN autoreconf -i && \
     --disable-shared \
     --host=$TARGET \
     --build=`dpkg-architecture -qDEB_BUILD_GNU_TYPE` \
-    --with-xml-prefix="$PREFIX" \
     --without-libxml2 \
     --disable-python-bindings \
     --disable-examples \
