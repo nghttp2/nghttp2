@@ -448,7 +448,11 @@ void test_util_localtime_date(void) {
   if (tz) {
     tz = strdup(tz);
   }
+#ifdef __linux__
+  setenv("TZ", "NZST-12:00:00:00", 1);
+#else  // !__linux__
   setenv("TZ", ":Pacific/Auckland", 1);
+#endif // !__linux__
   tzset();
 
   CU_ASSERT_STRING_EQUAL("02/Oct/2001:00:34:56 +1200",
