@@ -116,16 +116,6 @@ The Python bindings (deprecated) require the following packages:
 * python >= 3.8
 * python-setuptools
 
-If you are using Ubuntu 16.04 LTS (Xenial Xerus) or Debian 8 (jessie)
-and above, run the following to install the required packages:
-
-.. code-block:: text
-
-    sudo apt-get install g++ make binutils autoconf automake autotools-dev libtool pkg-config \
-      zlib1g-dev libcunit1-dev libssl-dev libxml2-dev libev-dev libevent-dev libjansson-dev \
-      libc-ares-dev libjemalloc-dev libsystemd-dev \
-      cython python3-dev python-setuptools
-
 To enable mruby support for nghttpx, `mruby
 <https://github.com/mruby/mruby>`_ is required.  We need to build
 mruby with C++ ABI explicitly turned on, and probably need other
@@ -222,6 +212,18 @@ language features.
    specified, pkg-config is not used for detection, and user is
    responsible to specify the correct values to these variables.  For
    complete list of these variables, run ``./configure -h``.
+
+If you are using Ubuntu 22.04 LTS, run the following to install the
+required packages:
+
+.. code-block:: text
+
+    sudo apt-get install g++ clang make binutils autoconf automake \
+      autotools-dev libtool pkg-config \
+      zlib1g-dev libcunit1-dev libssl-dev libxml2-dev libev-dev \
+      libevent-dev libjansson-dev \
+      libc-ares-dev libjemalloc-dev libsystemd-dev \
+      ruby-dev bison libelf-dev
 
 Building nghttp2 from release tar archive
 -----------------------------------------
@@ -406,7 +408,7 @@ Build nghttp2:
    $ autoreconf -i
    $ ./configure --with-mruby --with-neverbleed --enable-http3 --with-libbpf \
          --disable-python-bindings \
-         CC=clang-12 CXX=clang++-12 \
+         CC=clang-14 CXX=clang++-14 \
          PKG_CONFIG_PATH="$PWD/../openssl/build/lib/pkgconfig:$PWD/../nghttp3/build/lib/pkgconfig:$PWD/../ngtcp2/build/lib/pkgconfig:$PWD/../libbpf/build/lib64/pkgconfig" \
          LDFLAGS="$LDFLAGS -Wl,-rpath,$PWD/../openssl/build/lib -Wl,-rpath,$PWD/../libbpf/build/lib64"
    $ make -j$(nproc)
