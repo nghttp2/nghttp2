@@ -94,7 +94,7 @@ AC_ARG_ENABLE([examples],
 
 AC_ARG_ENABLE([python-bindings],
     [AS_HELP_STRING([--enable-python-bindings],
-                    [Build Python bindings [default=check]])],
+                    [Build Python bindings [default=no]])],
     [request_python_bindings=$enableval], [request_python_bindings=check])
 
 AC_ARG_ENABLE([failmalloc],
