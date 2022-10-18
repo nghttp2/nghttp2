@@ -611,7 +611,7 @@ int Http3Upstream::init(const UpstreamAddr *faddr, const Address &remote_addr,
   settings.cc_algo = quicconf.upstream.congestion_controller;
   settings.max_window = http3conf.upstream.max_connection_window_size;
   settings.max_stream_window = http3conf.upstream.max_window_size;
-  settings.max_udp_payload_size = SHRPX_QUIC_MAX_UDP_PAYLOAD_SIZE;
+  settings.max_tx_udp_payload_size = SHRPX_QUIC_MAX_UDP_PAYLOAD_SIZE;
   settings.rand_ctx.native_handle = &worker->get_randgen();
   settings.token = ngtcp2_vec{const_cast<uint8_t *>(token), tokenlen};
 
@@ -738,14 +738,12 @@ int Http3Upstream::on_write() {
 
 int Http3Upstream::write_streams() {
   std::array<nghttp3_vec, 16> vec;
-  auto max_udp_payload_size = ngtcp2_conn_get_max_udp_payload_size(conn_);
+  auto max_udp_payload_size = ngtcp2_conn_get_max_tx_udp_payload_size(conn_);
 #ifdef UDP_SEGMENT
   auto path_max_udp_payload_size =
-      ngtcp2_conn_get_path_max_udp_payload_size(conn_);
+      ngtcp2_conn_get_path_max_tx_udp_payload_size(conn_);
 #endif // UDP_SEGMENT
-  size_t max_pktcnt =
-      std::min(static_cast<size_t>(64_k), ngtcp2_conn_get_send_quantum(conn_)) /
-      max_udp_payload_size;
+  auto max_pktcnt = ngtcp2_conn_get_send_quantum(conn_) / max_udp_payload_size;
   ngtcp2_pkt_info pi, prev_pi;
   uint8_t *bufpos = tx_.data.get();
   ngtcp2_path_storage ps, prev_ps;

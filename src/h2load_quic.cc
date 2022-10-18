@@ -387,8 +387,8 @@ int Client::quic_init(const sockaddr *local_addr, socklen_t local_addrlen,
     settings.qlog.write = qlog_write_cb;
   }
   if (config->max_udp_payload_size) {
-    settings.max_udp_payload_size = config->max_udp_payload_size;
-    settings.no_udp_payload_size_shaping = 1;
+    settings.max_tx_udp_payload_size = config->max_udp_payload_size;
+    settings.no_tx_udp_payload_size_shaping = 1;
   }
 
   ngtcp2_transport_params params;
@@ -592,14 +592,14 @@ int Client::write_quic() {
 
   std::array<nghttp3_vec, 16> vec;
   size_t pktcnt = 0;
-  auto max_udp_payload_size = ngtcp2_conn_get_max_udp_payload_size(quic.conn);
+  auto max_udp_payload_size =
+      ngtcp2_conn_get_max_tx_udp_payload_size(quic.conn);
 #ifdef UDP_SEGMENT
   auto path_max_udp_payload_size =
-      ngtcp2_conn_get_path_max_udp_payload_size(quic.conn);
+      ngtcp2_conn_get_path_max_tx_udp_payload_size(quic.conn);
 #endif // UDP_SEGMENT
-  size_t max_pktcnt =
-      std::min(static_cast<size_t>(10),
-               static_cast<size_t>(64_k / max_udp_payload_size));
+  auto max_pktcnt =
+      ngtcp2_conn_get_send_quantum(quic.conn) / max_udp_payload_size;
   uint8_t *bufpos = quic.tx.data.get();
   ngtcp2_path_storage ps;
   size_t gso_size = 0;
