@@ -1265,6 +1265,7 @@ int parse_mapping(Config *config, DownstreamAddrConfig &addr,
                   downstreamconf.balloc, params.affinity.cookie.path);
             }
             g.affinity.cookie.secure = params.affinity.cookie.secure;
+            g.affinity.cookie.stickiness = params.affinity.cookie.stickiness;
           }
         } else if (g.affinity.type != params.affinity.type ||
                    g.affinity.cookie.name != params.affinity.cookie.name ||
