@@ -35,12 +35,18 @@ namespace client {
 
 using boost::asio::ip::tcp;
 
-using ssl_socket = boost::asio::ssl::stream<tcp::socket>;
+using ssl_socket = boost::asio::ssl::stream<tcp::socket&>;
 
 class session_tls_impl : public session_impl {
 public:
   session_tls_impl(boost::asio::io_service &io_service,
                    boost::asio::ssl::context &tls_ctx, const std::string &host,
+                   const std::string &service,
+                   const boost::posix_time::time_duration &connect_timeout);
+  session_tls_impl(boost::asio::io_service &io_service,
+                   boost::asio::ssl::context &tls_ctx,
+                   const boost::asio::ip::tcp::endpoint & local_endpoint,
+                   const std::string &host,
                    const std::string &service,
                    const boost::posix_time::time_duration &connect_timeout);
   virtual ~session_tls_impl();
@@ -56,6 +62,7 @@ public:
   virtual void shutdown_socket();
 
 private:
+  tcp::socket tcp_socket_;
   ssl_socket socket_;
 };
 
