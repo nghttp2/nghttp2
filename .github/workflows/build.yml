@@ -181,7 +181,7 @@ jobs:
     - name: Configure autotools
       run: |
         autoreconf -i
-        ./configure --disable-python-bindings
+        ./configure
     - name: Configure cmake (Linux)
       if: matrix.buildtool == 'cmake' && runner.os == 'Linux'
       run: |
