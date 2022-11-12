@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/lucas-clemente/quic-go/http3"
 	"github.com/tatsuhiro-t/go-nghttp2"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/hpack"
@@ -80,10 +81,17 @@ type options struct {
 	// before TLS handshake starts.  This field is ignored if tls
 	// is false.
 	tcpData []byte
+	// quic, if set to true, sets up QUIC frontend connection.
+	// quic implies tls = true.
+	quic bool
 }
 
 // newServerTester creates test context.
 func newServerTester(t *testing.T, opts options) *serverTester {
+	if opts.quic {
+		opts.tls = true
+	}
+
 	if opts.handler == nil {
 		opts.handler = noopHandler
 	}
@@ -181,6 +189,12 @@ func newServerTester(t *testing.T, opts options) *serverTester {
 
 	args = append(args, fmt.Sprintf("-f127.0.0.1,%v%v%v", serverPort, noTLS, proxyProto), b,
 		"--errorlog-file="+logDir+"/log.txt", "-LINFO")
+
+	if opts.quic {
+		args = append(args,
+			fmt.Sprintf("-f127.0.0.1,%v;quic", serverPort),
+			"--no-quic-bpf")
+	}
 
 	authority := fmt.Sprintf("127.0.0.1:%v", opts.connectPort)
 
@@ -370,6 +384,78 @@ func (st *serverTester) websocket(rp requestParam) (*serverResponse, error) {
 
 	res := &serverResponse{
 		body: msg[:n],
+	}
+
+	return res, nil
+}
+
+func (st *serverTester) http3(rp requestParam) (*serverResponse, error) {
+	rt := &http3.RoundTripper{
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: true,
+		},
+	}
+
+	defer rt.Close()
+
+	c := &http.Client{
+		Transport: rt,
+	}
+
+	method := "GET"
+	if rp.method != "" {
+		method = rp.method
+	}
+
+	var body io.Reader
+
+	if rp.body != nil {
+		body = bytes.NewBuffer(rp.body)
+	}
+
+	reqURL := st.url
+
+	if rp.path != "" {
+		u, err := url.Parse(st.url)
+		if err != nil {
+			st.t.Fatalf("Error parsing URL from st.url %v: %v", st.url, err)
+		}
+		u.Path = ""
+		u.RawQuery = ""
+		reqURL = u.String() + rp.path
+	}
+
+	req, err := http.NewRequest(method, reqURL, body)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, h := range rp.header {
+		req.Header.Add(h.Name, h.Value)
+	}
+
+	req.Header.Add("Test-Case", rp.name)
+
+	// TODO http3 package does not support trailer at the time of
+	// this writing.
+
+	resp, err := c.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	res := &serverResponse{
+		status:    resp.StatusCode,
+		header:    resp.Header,
+		body:      respBody,
+		connClose: resp.Close,
 	}
 
 	return res, nil
