@@ -39,6 +39,12 @@ EXTRA_DIST = \
 	req-return.rb \
 	resp-return.rb
 
+GO_TEST_TAGS =
+
+if ENABLE_HTTP3
+GO_TEST_TAGS += quic
+endif # ENABLE_HTTP3
+
 it:
 	for i in $(GO_FILES); do [ -e $(builddir)/$$i ] || cp $(srcdir)/$$i $(builddir); done
-	sh setenv go test -v
+	sh setenv go test -v --tags=${GO_TEST_TAGS}
