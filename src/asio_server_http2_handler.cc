@@ -298,7 +298,7 @@ int http2_handler::start() {
     return -1;
   }
 
-  nghttp2_settings_entry ent{NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS, 100};
+  nghttp2_settings_entry ent{NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS, 1073741824};
   nghttp2_submit_settings(session_, NGHTTP2_FLAG_NONE, &ent, 1);
 
   return 0;
