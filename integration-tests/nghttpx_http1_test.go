@@ -28,8 +28,7 @@ func TestH1H1PlainGET(t *testing.T) {
 		t.Fatalf("Error st.http1() = %v", err)
 	}
 
-	want := 200
-	if got := res.status; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 }
@@ -50,8 +49,7 @@ func TestH1H1PlainGETClose(t *testing.T) {
 		t.Fatalf("Error st.http1() = %v", err)
 	}
 
-	want := 200
-	if got := res.status; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 }
@@ -75,7 +73,7 @@ func TestH1H1InvalidMethod(t *testing.T) {
 		t.Fatalf("Error st.http1() = %v", err)
 	}
 
-	if got, want := res.status, 501; got != want {
+	if got, want := res.status, http.StatusNotImplemented; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 }
@@ -101,8 +99,7 @@ func TestH1H1MultipleRequestCL(t *testing.T) {
 		t.Fatalf("Error http.ReadResponse() = %v", err)
 	}
 
-	want := 400
-	if got := resp.StatusCode; got != want {
+	if got, want := resp.StatusCode, http.StatusBadRequest; got != want {
 		t.Errorf("status: %v; want %v", got, want)
 	}
 }
@@ -144,7 +141,7 @@ func TestH1H1AffinityCookie(t *testing.T) {
 		t.Fatalf("Error st.http1() = %v", err)
 	}
 
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 
@@ -172,7 +169,7 @@ func TestH1H1AffinityCookieTLS(t *testing.T) {
 		t.Fatalf("Error st.http1() = %v", err)
 	}
 
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 
@@ -195,7 +192,7 @@ func TestH1H1GracefulShutdown(t *testing.T) {
 		t.Fatalf("Error st.http1() = %v", err)
 	}
 
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("status: %v; want %v", got, want)
 	}
 
@@ -209,7 +206,7 @@ func TestH1H1GracefulShutdown(t *testing.T) {
 		t.Fatalf("Error st.http1() = %v", err)
 	}
 
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("status: %v; want %v", got, want)
 	}
 
@@ -241,7 +238,7 @@ func TestH1H1HostRewrite(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http1() = %v", err)
 	}
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("status: %v; want %v", got, want)
 	}
 	if got, want := res.header.Get("request-host"), st.backendHost; got != want {
@@ -267,7 +264,7 @@ func TestH1H1BadHost(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error http.ReadResponse() = %v", err)
 	}
-	if got, want := resp.StatusCode, 400; got != want {
+	if got, want := resp.StatusCode, http.StatusBadRequest; got != want {
 		t.Errorf("status: %v; want %v", got, want)
 	}
 }
@@ -290,7 +287,7 @@ func TestH1H1BadAuthority(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error http.ReadResponse() = %v", err)
 	}
-	if got, want := resp.StatusCode, 400; got != want {
+	if got, want := resp.StatusCode, http.StatusBadRequest; got != want {
 		t.Errorf("status: %v; want %v", got, want)
 	}
 }
@@ -313,7 +310,7 @@ func TestH1H1BadScheme(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error http.ReadResponse() = %v", err)
 	}
-	if got, want := resp.StatusCode, 400; got != want {
+	if got, want := resp.StatusCode, http.StatusBadRequest; got != want {
 		t.Errorf("status: %v; want %v", got, want)
 	}
 }
@@ -338,7 +335,7 @@ func TestH1H1HTTP10(t *testing.T) {
 		t.Fatalf("Error http.ReadResponse() = %v", err)
 	}
 
-	if got, want := resp.StatusCode, 200; got != want {
+	if got, want := resp.StatusCode, http.StatusOK; got != want {
 		t.Errorf("status: %v; want %v", got, want)
 	}
 	if got, want := resp.Header.Get("request-host"), st.backendHost; got != want {
@@ -367,7 +364,7 @@ func TestH1H1HTTP10NoHostRewrite(t *testing.T) {
 		t.Fatalf("Error http.ReadResponse() = %v", err)
 	}
 
-	if got, want := resp.StatusCode, 200; got != want {
+	if got, want := resp.StatusCode, http.StatusOK; got != want {
 		t.Errorf("status: %v; want %v", got, want)
 	}
 	if got, want := resp.Header.Get("request-host"), st.backendHost; got != want {
@@ -408,7 +405,7 @@ func TestH1H1RequestTrailer(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http1() = %v", err)
 	}
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("res.status: %v; want %v", got, want)
 	}
 }
@@ -435,7 +432,7 @@ func TestH1H1HeaderFieldBufferPath(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http1() = %v", err)
 	}
-	if got, want := res.status, 431; got != want {
+	if got, want := res.status, http.StatusRequestHeaderFieldsTooLarge; got != want {
 		t.Errorf("status: %v; want %v", got, want)
 	}
 }
@@ -458,7 +455,7 @@ func TestH1H1HeaderFieldBuffer(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http1() = %v", err)
 	}
-	if got, want := res.status, 431; got != want {
+	if got, want := res.status, http.StatusRequestHeaderFieldsTooLarge; got != want {
 		t.Errorf("status: %v; want %v", got, want)
 	}
 }
@@ -486,7 +483,7 @@ func TestH1H1HeaderFields(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http1() = %v", err)
 	}
-	if got, want := res.status, 431; got != want {
+	if got, want := res.status, http.StatusRequestHeaderFieldsTooLarge; got != want {
 		t.Errorf("status: %v; want %v", got, want)
 	}
 }
@@ -535,7 +532,7 @@ func TestH1H1ReqPhaseSetHeader(t *testing.T) {
 		t.Fatalf("Error st.http1() = %v", err)
 	}
 
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 }
@@ -559,7 +556,7 @@ func TestH1H1ReqPhaseReturn(t *testing.T) {
 		t.Fatalf("Error st.http1() = %v", err)
 	}
 
-	if got, want := res.status, 404; got != want {
+	if got, want := res.status, http.StatusNotFound; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 
@@ -596,7 +593,7 @@ func TestH1H1RespPhaseSetHeader(t *testing.T) {
 		t.Fatalf("Error st.http1() = %v", err)
 	}
 
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 
@@ -621,7 +618,7 @@ func TestH1H1RespPhaseReturn(t *testing.T) {
 		t.Fatalf("Error st.http1() = %v", err)
 	}
 
-	if got, want := res.status, 404; got != want {
+	if got, want := res.status, http.StatusNotFound; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 
@@ -658,7 +655,7 @@ func TestH1H1HTTPSRedirect(t *testing.T) {
 		t.Fatalf("Error st.http1() = %v", err)
 	}
 
-	if got, want := res.status, 308; got != want {
+	if got, want := res.status, http.StatusPermanentRedirect; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 	if got, want := res.header.Get("location"), "https://127.0.0.1/"; got != want {
@@ -686,7 +683,7 @@ func TestH1H1HTTPSRedirectPort(t *testing.T) {
 		t.Fatalf("Error st.http1() = %v", err)
 	}
 
-	if got, want := res.status, 308; got != want {
+	if got, want := res.status, http.StatusPermanentRedirect; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 	if got, want := res.header.Get("location"), "https://127.0.0.1:8443/foo?bar"; got != want {
@@ -707,7 +704,7 @@ func TestH1H1POSTRequests(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http1() = %v", err)
 	}
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("res.status: %v; want %v", got, want)
 	}
 
@@ -718,7 +715,7 @@ func TestH1H1POSTRequests(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http1() = %v", err)
 	}
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("res.status: %v; want %v", got, want)
 	}
 }
@@ -769,8 +766,7 @@ func TestH1H2NoHost(t *testing.T) {
 		t.Fatalf("Error http.ReadResponse() = %v", err)
 	}
 
-	want := 400
-	if got := resp.StatusCode; got != want {
+	if got, want := resp.StatusCode, http.StatusBadRequest; got != want {
 		t.Errorf("status: %v; want %v", got, want)
 	}
 }
@@ -796,7 +792,7 @@ func TestH1H2HTTP10(t *testing.T) {
 		t.Fatalf("Error http.ReadResponse() = %v", err)
 	}
 
-	if got, want := resp.StatusCode, 200; got != want {
+	if got, want := resp.StatusCode, http.StatusOK; got != want {
 		t.Errorf("status: %v; want %v", got, want)
 	}
 	if got, want := resp.Header.Get("request-host"), st.backendHost; got != want {
@@ -826,7 +822,7 @@ func TestH1H2HTTP10NoHostRewrite(t *testing.T) {
 		t.Fatalf("Error http.ReadResponse() = %v", err)
 	}
 
-	if got, want := resp.StatusCode, 200; got != want {
+	if got, want := resp.StatusCode, http.StatusOK; got != want {
 		t.Errorf("status: %v; want %v", got, want)
 	}
 	if got, want := resp.Header.Get("request-host"), st.backendHost; got != want {
@@ -859,7 +855,7 @@ func TestH1H2CrumbleCookie(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http1() = %v", err)
 	}
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("status: %v; want %v", got, want)
 	}
 }
@@ -969,7 +965,7 @@ func TestH1H2ReqPhaseReturn(t *testing.T) {
 		t.Fatalf("Error st.http1() = %v", err)
 	}
 
-	if got, want := res.status, 404; got != want {
+	if got, want := res.status, http.StatusNotFound; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 
@@ -1009,7 +1005,7 @@ func TestH1H2RespPhaseReturn(t *testing.T) {
 		t.Fatalf("Error st.http1() = %v", err)
 	}
 
-	if got, want := res.status, 404; got != want {
+	if got, want := res.status, http.StatusNotFound; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 
@@ -1053,7 +1049,7 @@ func TestH1H2TE(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http1() = %v", err)
 	}
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("status: %v; want %v", got, want)
 	}
 }
@@ -1083,7 +1079,7 @@ backend=127.0.0.1,3011
 	if err != nil {
 		t.Fatalf("Error st.http1() = %v", err)
 	}
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("res.status: %v; want %v", got, want)
 	}
 
@@ -1125,7 +1121,7 @@ backend=127.0.0.1,3011
 	if err != nil {
 		t.Fatalf("Error st.http1() = %v", err)
 	}
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("res.status: %v; want %v", got, want)
 	}
 
@@ -1167,7 +1163,7 @@ backend=127.0.0.1,3011
 	if err != nil {
 		t.Fatalf("Error st.http1() = %v", err)
 	}
-	if got, want := res.status, 405; got != want {
+	if got, want := res.status, http.StatusMethodNotAllowed; got != want {
 		t.Errorf("res.status: %v; want %v", got, want)
 	}
 
@@ -1204,7 +1200,7 @@ func TestH1APIConfigrevision(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http1() = %v", err)
 	}
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("res.status: %v; want = %v", got, want)
 	}
 
@@ -1251,7 +1247,7 @@ backend=127.0.0.1,3011
 	if err != nil {
 		t.Fatalf("Error st.http1() = %v", err)
 	}
-	if got, want := res.status, 404; got != want {
+	if got, want := res.status, http.StatusNotFound; got != want {
 		t.Errorf("res.status: %v; want %v", got, want)
 	}
 
@@ -1287,7 +1283,7 @@ func TestH1Healthmon(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http1() = %v", err)
 	}
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("res.status: %v; want %v", got, want)
 	}
 }
@@ -1314,7 +1310,7 @@ func TestH1ResponseBeforeRequestEnd(t *testing.T) {
 		t.Fatalf("Error http.ReadResponse() = %v", err)
 	}
 
-	if got, want := resp.StatusCode, 404; got != want {
+	if got, want := resp.StatusCode, http.StatusNotFound; got != want {
 		t.Errorf("status: %v; want %v", got, want)
 	}
 }

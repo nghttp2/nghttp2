@@ -27,8 +27,7 @@ func TestH3H1PlainGET(t *testing.T) {
 		t.Fatalf("Error st.http3() = %v", err)
 	}
 
-	want := 200
-	if got := res.status; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 }
@@ -84,7 +83,7 @@ func TestH3H1RequestBody(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http3() = %v", err)
 	}
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("res.status: %v; want %v", got, want)
 	}
 }
@@ -213,7 +212,7 @@ func TestH3H1HTTPSRedirect(t *testing.T) {
 		t.Fatalf("Error st.http3() = %v", err)
 	}
 
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 }
@@ -236,7 +235,7 @@ func TestH3H1AffinityCookieTLS(t *testing.T) {
 		t.Fatalf("Error st.http3() = %v", err)
 	}
 
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 
@@ -270,7 +269,7 @@ func TestH3H2ReqPhaseReturn(t *testing.T) {
 		t.Fatalf("Error st.http3() = %v", err)
 	}
 
-	if got, want := res.status, 404; got != want {
+	if got, want := res.status, http.StatusNotFound; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 
@@ -311,7 +310,7 @@ func TestH3H2RespPhaseReturn(t *testing.T) {
 		t.Fatalf("Error st.http3() = %v", err)
 	}
 
-	if got, want := res.status, 404; got != want {
+	if got, want := res.status, http.StatusNotFound; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 
@@ -352,7 +351,7 @@ func TestH3ResponseBeforeRequestEnd(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http3() = %v", err)
 	}
-	if got, want := res.status, 404; got != want {
+	if got, want := res.status, http.StatusNotFound; got != want {
 		t.Errorf("res.status: %v; want %v", got, want)
 	}
 }
