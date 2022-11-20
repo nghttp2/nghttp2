@@ -171,3 +171,26 @@ func TestH3H1NoVia(t *testing.T) {
 		t.Errorf("Via: %v; want %v", got, want)
 	}
 }
+
+// TestH3H1BadResponseCL tests that server returns error when
+// content-length response header field value does not match its
+// response body size.
+func TestH3H1BadResponseCL(t *testing.T) {
+	opts := options{
+		handler: func(w http.ResponseWriter, r *http.Request) {
+			// we set content-length: 1024, but only send 3 bytes.
+			w.Header().Add("Content-Length", "1024")
+			w.Write([]byte("foo"))
+		},
+		quic: true,
+	}
+	st := newServerTester(t, opts)
+	defer st.Close()
+
+	_, err := st.http3(requestParam{
+		name: "TestH3H1BadResponseCL",
+	})
+	if err == nil {
+		t.Fatal("st.http3() should fail")
+	}
+}
