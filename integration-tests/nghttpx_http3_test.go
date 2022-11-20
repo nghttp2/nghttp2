@@ -331,3 +331,28 @@ func TestH3H2RespPhaseReturn(t *testing.T) {
 		t.Errorf("body = %v; want %v", got, want)
 	}
 }
+
+// TestH3ResponseBeforeRequestEnd tests the situation where response
+// ends before request body finishes.
+func TestH3ResponseBeforeRequestEnd(t *testing.T) {
+	opts := options{
+		args: []string{"--mruby-file=" + testDir + "/req-return.rb"},
+		handler: func(w http.ResponseWriter, r *http.Request) {
+			t.Fatal("request should not be forwarded")
+		},
+		quic: true,
+	}
+	st := newServerTester(t, opts)
+	defer st.Close()
+
+	res, err := st.http3(requestParam{
+		name:        "TestH3ResponseBeforeRequestEnd",
+		noEndStream: true,
+	})
+	if err != nil {
+		t.Fatalf("Error st.http3() = %v", err)
+	}
+	if got, want := res.status, 404; got != want {
+		t.Errorf("res.status: %v; want %v", got, want)
+	}
+}
