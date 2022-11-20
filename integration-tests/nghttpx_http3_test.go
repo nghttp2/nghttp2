@@ -356,3 +356,35 @@ func TestH3ResponseBeforeRequestEnd(t *testing.T) {
 		t.Errorf("res.status: %v; want %v", got, want)
 	}
 }
+
+// TestH3H1ChunkedEndsPrematurely tests that a stream is reset if the
+// backend chunked encoded response ends prematurely.
+func TestH3H1ChunkedEndsPrematurely(t *testing.T) {
+	opts := options{
+		handler: func(w http.ResponseWriter, r *http.Request) {
+			hj, ok := w.(http.Hijacker)
+			if !ok {
+				http.Error(w, "Could not hijack the connection", http.StatusInternalServerError)
+				return
+			}
+			conn, bufrw, err := hj.Hijack()
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			defer conn.Close()
+			bufrw.WriteString("HTTP/1.1 200\r\nTransfer-Encoding: chunked\r\n\r\n")
+			bufrw.Flush()
+		},
+		quic: true,
+	}
+	st := newServerTester(t, opts)
+	defer st.Close()
+
+	_, err := st.http3(requestParam{
+		name: "TestH3H1ChunkedEndsPrematurely",
+	})
+	if err == nil {
+		t.Fatal("st.http3() should fail")
+	}
+}
