@@ -194,3 +194,25 @@ func TestH3H1BadResponseCL(t *testing.T) {
 		t.Fatal("st.http3() should fail")
 	}
 }
+
+// TestH3H1HTTPSRedirect tests that HTTPS redirect should not happen
+// with HTTP/3.
+func TestH3H1HTTPSRedirect(t *testing.T) {
+	opts := options{
+		args: []string{"--redirect-if-not-tls"},
+		quic: true,
+	}
+	st := newServerTester(t, opts)
+	defer st.Close()
+
+	res, err := st.http3(requestParam{
+		name: "TestH3H1HTTPSRedirect",
+	})
+	if err != nil {
+		t.Fatalf("Error st.http3() = %v", err)
+	}
+
+	if got, want := res.status, 200; got != want {
+		t.Errorf("status = %v; want %v", got, want)
+	}
+}
