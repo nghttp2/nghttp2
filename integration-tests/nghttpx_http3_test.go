@@ -7,6 +7,7 @@ import (
 	"crypto/rand"
 	"io"
 	"net/http"
+	"regexp"
 	"testing"
 
 	"golang.org/x/net/http2/hpack"
@@ -214,5 +215,34 @@ func TestH3H1HTTPSRedirect(t *testing.T) {
 
 	if got, want := res.status, 200; got != want {
 		t.Errorf("status = %v; want %v", got, want)
+	}
+}
+
+// TestH3H1AffinityCookieTLS tests that affinity cookie is sent back
+// in https.
+func TestH3H1AffinityCookieTLS(t *testing.T) {
+	opts := options{
+		args: []string{"--affinity-cookie"},
+		quic: true,
+	}
+	st := newServerTester(t, opts)
+	defer st.Close()
+
+	res, err := st.http3(requestParam{
+		name:   "TestH3H1AffinityCookieTLS",
+		scheme: "https",
+	})
+	if err != nil {
+		t.Fatalf("Error st.http3() = %v", err)
+	}
+
+	if got, want := res.status, 200; got != want {
+		t.Errorf("status = %v; want %v", got, want)
+	}
+
+	const pattern = `affinity=[0-9a-f]{8}; Path=/foo/bar; Secure`
+	validCookie := regexp.MustCompile(pattern)
+	if got := res.header.Get("Set-Cookie"); !validCookie.MatchString(got) {
+		t.Errorf("Set-Cookie: %v; want pattern %v", got, pattern)
 	}
 }
