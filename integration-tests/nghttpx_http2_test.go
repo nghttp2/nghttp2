@@ -30,9 +30,8 @@ func TestH2H1PlainGET(t *testing.T) {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
 
-	want := 200
-	if res.status != want {
-		t.Errorf("status = %v; want %v", res.status, want)
+	if got, want := res.status, http.StatusOK; got != want {
+		t.Errorf("status = %v; want %v", got, want)
 	}
 }
 
@@ -60,7 +59,7 @@ func TestH2H1AddXfp(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 }
@@ -92,7 +91,7 @@ func TestH2H1NoAddXfp(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 }
@@ -120,7 +119,7 @@ func TestH2H1StripXfp(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 }
@@ -148,7 +147,7 @@ func TestH2H1StripNoAddXfp(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 }
@@ -175,7 +174,7 @@ func TestH2H1AddXff(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 }
@@ -205,7 +204,7 @@ func TestH2H1AddXff2(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 }
@@ -233,7 +232,7 @@ func TestH2H1StripXff(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 }
@@ -266,7 +265,7 @@ func TestH2H1StripAddXff(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 }
@@ -295,7 +294,7 @@ func TestH2H1AddForwardedObfuscated(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("status: %v; want %v", got, want)
 	}
 }
@@ -322,7 +321,7 @@ func TestH2H1AddForwardedByIP(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("status: %v; want %v", got, want)
 	}
 }
@@ -352,7 +351,7 @@ func TestH2H1AddForwardedForIP(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("status: %v; want %v", got, want)
 	}
 }
@@ -381,7 +380,7 @@ func TestH2H1AddForwardedMerge(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("status: %v; want %v", got, want)
 	}
 }
@@ -413,7 +412,7 @@ func TestH2H1AddForwardedStrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("status: %v; want %v", got, want)
 	}
 }
@@ -441,7 +440,7 @@ func TestH2H1StripForwarded(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("status: %v; want %v", got, want)
 	}
 }
@@ -472,7 +471,7 @@ func TestH2H1AddForwardedStatic(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("status: %v; want %v", got, want)
 	}
 }
@@ -575,7 +574,7 @@ func TestH2H1HostRewrite(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("status: %v; want %v", got, want)
 	}
 	if got, want := res.header.Get("request-host"), st.backendHost; got != want {
@@ -600,7 +599,7 @@ func TestH2H1NoHostRewrite(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("status: %v; want %v", got, want)
 	}
 	if got, want := res.header.Get("request-host"), st.frontendHost; got != want {
@@ -718,7 +717,7 @@ func TestH2H1ChunkedRequestBody(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 }
@@ -813,7 +812,7 @@ func TestH2H1InvalidMethod(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
-	if got, want := res.status, 501; got != want {
+	if got, want := res.status, http.StatusNotImplemented; got != want {
 		t.Errorf("status: %v; want %v", got, want)
 	}
 }
@@ -888,7 +887,7 @@ func TestH2H1AssembleCookies(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("status: %v; want %v", got, want)
 	}
 }
@@ -908,7 +907,7 @@ func TestH2H1TETrailers(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("status: %v; want %v", got, want)
 	}
 }
@@ -982,7 +981,7 @@ func TestH2H1TLSXfp(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("res.status: %v; want %v", got, want)
 	}
 }
@@ -1007,18 +1006,18 @@ func TestH2H1ServerPush(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("res.status: %v; want %v", got, want)
 	}
 	if got, want := len(res.pushResponse), 2; got != want {
 		t.Fatalf("len(res.pushResponse): %v; want %v", got, want)
 	}
 	mainCSS := res.pushResponse[0]
-	if got, want := mainCSS.status, 200; got != want {
+	if got, want := mainCSS.status, http.StatusOK; got != want {
 		t.Errorf("mainCSS.status: %v; want %v", got, want)
 	}
 	themeCSS := res.pushResponse[1]
-	if got, want := themeCSS.status, 200; got != want {
+	if got, want := themeCSS.status, http.StatusOK; got != want {
 		t.Errorf("themeCSS.status: %v; want %v", got, want)
 	}
 }
@@ -1056,7 +1055,7 @@ func TestH2H1RequestTrailer(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("res.status: %v; want %v", got, want)
 	}
 }
@@ -1079,7 +1078,7 @@ func TestH2H1HeaderFieldBuffer(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
-	if got, want := res.status, 431; got != want {
+	if got, want := res.status, http.StatusRequestHeaderFieldsTooLarge; got != want {
 		t.Errorf("status: %v; want %v", got, want)
 	}
 }
@@ -1104,7 +1103,7 @@ func TestH2H1HeaderFields(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
-	if got, want := res.status, 431; got != want {
+	if got, want := res.status, http.StatusRequestHeaderFieldsTooLarge; got != want {
 		t.Errorf("status: %v; want %v", got, want)
 	}
 }
@@ -1130,7 +1129,7 @@ func TestH2H1ReqPhaseSetHeader(t *testing.T) {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
 
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 }
@@ -1154,7 +1153,7 @@ func TestH2H1ReqPhaseReturn(t *testing.T) {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
 
-	if got, want := res.status, 404; got != want {
+	if got, want := res.status, http.StatusNotFound; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 
@@ -1191,7 +1190,7 @@ func TestH2H1RespPhaseSetHeader(t *testing.T) {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
 
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 
@@ -1216,7 +1215,7 @@ func TestH2H1RespPhaseReturn(t *testing.T) {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
 
-	if got, want := res.status, 404; got != want {
+	if got, want := res.status, http.StatusNotFound; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 
@@ -1255,7 +1254,7 @@ func TestH2H1Upgrade(t *testing.T) {
 		t.Fatalf("Error st.http1() = %v", err)
 	}
 
-	if got, want := res.status, 101; got != want {
+	if got, want := res.status, http.StatusSwitchingProtocols; got != want {
 		t.Errorf("res.status: %v; want %v", got, want)
 	}
 
@@ -1265,7 +1264,7 @@ func TestH2H1Upgrade(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("res.status: %v; want %v", got, want)
 	}
 }
@@ -1302,7 +1301,7 @@ func TestH2H1ProxyProtocolV1ForwardedForObfuscated(t *testing.T) {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
 
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("res.status: %v; want %v", got, want)
 	}
 }
@@ -1340,7 +1339,7 @@ func TestH2H1ProxyProtocolV1TCP4(t *testing.T) {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
 
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("res.status: %v; want %v", got, want)
 	}
 }
@@ -1378,7 +1377,7 @@ func TestH2H1ProxyProtocolV1TCP6(t *testing.T) {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
 
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("res.status: %v; want %v", got, want)
 	}
 }
@@ -1416,7 +1415,7 @@ func TestH2H1ProxyProtocolV1TCP4TLS(t *testing.T) {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
 
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("res.status: %v; want %v", got, want)
 	}
 }
@@ -1454,7 +1453,7 @@ func TestH2H1ProxyProtocolV1TCP6TLS(t *testing.T) {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
 
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("res.status: %v; want %v", got, want)
 	}
 }
@@ -1491,7 +1490,7 @@ func TestH2H1ProxyProtocolV1Unknown(t *testing.T) {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
 
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("res.status: %v; want %v", got, want)
 	}
 }
@@ -1518,7 +1517,7 @@ func TestH2H1ProxyProtocolV1JustUnknown(t *testing.T) {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
 
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("res.status: %v; want %v", got, want)
 	}
 }
@@ -1875,7 +1874,7 @@ func TestH2H1ProxyProtocolV2TCP4(t *testing.T) {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
 
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("res.status: %v; want %v", got, want)
 	}
 }
@@ -1926,7 +1925,7 @@ func TestH2H1ProxyProtocolV2TCP6(t *testing.T) {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
 
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("res.status: %v; want %v", got, want)
 	}
 }
@@ -1978,7 +1977,7 @@ func TestH2H1ProxyProtocolV2TCP4TLS(t *testing.T) {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
 
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("res.status: %v; want %v", got, want)
 	}
 }
@@ -2030,7 +2029,7 @@ func TestH2H1ProxyProtocolV2TCP6TLS(t *testing.T) {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
 
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("res.status: %v; want %v", got, want)
 	}
 }
@@ -2080,7 +2079,7 @@ func TestH2H1ProxyProtocolV2Local(t *testing.T) {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
 
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("res.status: %v; want %v", got, want)
 	}
 }
@@ -2163,7 +2162,7 @@ func TestH2H1ProxyProtocolV2Unix(t *testing.T) {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
 
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("res.status: %v; want %v", got, want)
 	}
 }
@@ -2205,7 +2204,7 @@ func TestH2H1ProxyProtocolV2Unspec(t *testing.T) {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
 
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("res.status: %v; want %v", got, want)
 	}
 }
@@ -2226,7 +2225,7 @@ func TestH2H1ExternalDNS(t *testing.T) {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
 
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 }
@@ -2247,7 +2246,7 @@ func TestH2H1DNS(t *testing.T) {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
 
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 }
@@ -2268,7 +2267,7 @@ func TestH2H1HTTPSRedirect(t *testing.T) {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
 
-	if got, want := res.status, 308; got != want {
+	if got, want := res.status, http.StatusPermanentRedirect; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 	if got, want := res.header.Get("location"), "https://127.0.0.1/"; got != want {
@@ -2296,7 +2295,7 @@ func TestH2H1HTTPSRedirectPort(t *testing.T) {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
 
-	if got, want := res.status, 308; got != want {
+	if got, want := res.status, http.StatusPermanentRedirect; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 	if got, want := res.header.Get("location"), "https://127.0.0.1:8443/foo?bar"; got != want {
@@ -2322,7 +2321,7 @@ func TestH2H1Code204(t *testing.T) {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
 
-	if got, want := res.status, 204; got != want {
+	if got, want := res.status, http.StatusNoContent; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 }
@@ -2357,7 +2356,7 @@ func TestH2H1Code204CL0(t *testing.T) {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
 
-	if got, want := res.status, 204; got != want {
+	if got, want := res.status, http.StatusNoContent; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 
@@ -2396,7 +2395,7 @@ func TestH2H1Code204CLNonzero(t *testing.T) {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
 
-	if got, want := res.status, 502; got != want {
+	if got, want := res.status, http.StatusBadGateway; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 }
@@ -2431,7 +2430,7 @@ func TestH2H1Code204TE(t *testing.T) {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
 
-	if got, want := res.status, 502; got != want {
+	if got, want := res.status, http.StatusBadGateway; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 }
@@ -2452,7 +2451,7 @@ func TestH2H1AffinityCookie(t *testing.T) {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
 
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 
@@ -2481,7 +2480,7 @@ func TestH2H1AffinityCookieTLS(t *testing.T) {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
 
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 
@@ -2659,7 +2658,7 @@ func TestH2H2HostRewrite(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("status: %v; want %v", got, want)
 	}
 	if got, want := res.header.Get("request-host"), st.backendHost; got != want {
@@ -2685,7 +2684,7 @@ func TestH2H2NoHostRewrite(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("status: %v; want %v", got, want)
 	}
 	if got, want := res.header.Get("request-host"), st.frontendHost; got != want {
@@ -2715,7 +2714,7 @@ func TestH2H2TLSXfp(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("res.status: %v; want %v", got, want)
 	}
 }
@@ -2748,7 +2747,7 @@ func TestH2H2AddXfp(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 }
@@ -2782,7 +2781,7 @@ func TestH2H2NoAddXfp(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 }
@@ -2812,7 +2811,7 @@ func TestH2H2StripXfp(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 }
@@ -2841,7 +2840,7 @@ func TestH2H2StripNoAddXfp(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 }
@@ -2869,7 +2868,7 @@ func TestH2H2AddXff(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 }
@@ -2900,7 +2899,7 @@ func TestH2H2AddXff2(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 }
@@ -2932,7 +2931,7 @@ func TestH2H2StripXff(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 }
@@ -2967,7 +2966,7 @@ func TestH2H2StripAddXff(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 }
@@ -3000,7 +2999,7 @@ func TestH2H2AddForwarded(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("status: %v; want %v", got, want)
 	}
 }
@@ -3036,7 +3035,7 @@ func TestH2H2AddForwardedMerge(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("status: %v; want %v", got, want)
 	}
 }
@@ -3073,7 +3072,7 @@ func TestH2H2AddForwardedStrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("status: %v; want %v", got, want)
 	}
 }
@@ -3103,7 +3102,7 @@ func TestH2H2StripForwarded(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("status: %v; want %v", got, want)
 	}
 }
@@ -3130,7 +3129,7 @@ func TestH2H2ReqPhaseReturn(t *testing.T) {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
 
-	if got, want := res.status, 404; got != want {
+	if got, want := res.status, http.StatusNotFound; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 
@@ -3170,7 +3169,7 @@ func TestH2H2RespPhaseReturn(t *testing.T) {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
 
-	if got, want := res.status, 404; got != want {
+	if got, want := res.status, http.StatusNotFound; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 
@@ -3207,7 +3206,7 @@ func TestH2H2ExternalDNS(t *testing.T) {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
 
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 }
@@ -3228,7 +3227,7 @@ func TestH2H2DNS(t *testing.T) {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
 
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 }
@@ -3252,7 +3251,7 @@ func TestH2H2Code204(t *testing.T) {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
 
-	if got, want := res.status, 204; got != want {
+	if got, want := res.status, http.StatusNoContent; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 }
@@ -3282,7 +3281,7 @@ backend=127.0.0.1,3011
 	if err != nil {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("res.status: %v; want %v", got, want)
 	}
 
@@ -3324,7 +3323,7 @@ backend=127.0.0.1,3011
 	if err != nil {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("res.status: %v; want %v", got, want)
 	}
 
@@ -3366,7 +3365,7 @@ backend=127.0.0.1,3011
 	if err != nil {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
-	if got, want := res.status, 405; got != want {
+	if got, want := res.status, http.StatusMethodNotAllowed; got != want {
 		t.Errorf("res.status: %v; want %v", got, want)
 	}
 
@@ -3403,7 +3402,7 @@ func TestH2APIConfigrevision(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("res.status: %v; want = %v", got, want)
 	}
 
@@ -3450,7 +3449,7 @@ backend=127.0.0.1,3011
 	if err != nil {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
-	if got, want := res.status, 404; got != want {
+	if got, want := res.status, http.StatusNotFound; got != want {
 		t.Errorf("res.status: %v; want %v", got, want)
 	}
 
@@ -3486,7 +3485,7 @@ func TestH2Healthmon(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("res.status: %v; want %v", got, want)
 	}
 }
@@ -3510,7 +3509,7 @@ func TestH2ResponseBeforeRequestEnd(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
-	if got, want := res.status, 404; got != want {
+	if got, want := res.status, http.StatusNotFound; got != want {
 		t.Errorf("res.status: %v; want %v", got, want)
 	}
 }
@@ -3570,7 +3569,7 @@ func TestH2H1RequireHTTPSchemeHTTPSWithoutEncryption(t *testing.T) {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
 
-	if got, want := res.status, 400; got != want {
+	if got, want := res.status, http.StatusBadRequest; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 }
@@ -3596,7 +3595,7 @@ func TestH2H1RequireHTTPSchemeHTTPWithEncryption(t *testing.T) {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
 
-	if got, want := res.status, 400; got != want {
+	if got, want := res.status, http.StatusBadRequest; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 }
@@ -3622,7 +3621,7 @@ func TestH2H1RequireHTTPSchemeUnknownSchemeWithoutEncryption(t *testing.T) {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
 
-	if got, want := res.status, 400; got != want {
+	if got, want := res.status, http.StatusBadRequest; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 }
@@ -3648,7 +3647,7 @@ func TestH2H1RequireHTTPSchemeUnknownSchemeWithEncryption(t *testing.T) {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
 
-	if got, want := res.status, 400; got != want {
+	if got, want := res.status, http.StatusBadRequest; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 }
