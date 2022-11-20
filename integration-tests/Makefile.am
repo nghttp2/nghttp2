@@ -24,6 +24,7 @@
 GO_FILES = \
 	nghttpx_http1_test.go \
 	nghttpx_http2_test.go \
+	nghttpx_http3_test.go \
 	server_tester.go
 
 EXTRA_DIST = \
