@@ -642,7 +642,9 @@ func TestH2H1BadResponseCL(t *testing.T) {
 		handler: func(w http.ResponseWriter, r *http.Request) {
 			// we set content-length: 1024, but only send 3 bytes.
 			w.Header().Add("Content-Length", "1024")
-			w.Write([]byte("foo"))
+			if _, err := w.Write([]byte("foo")); err != nil {
+				t.Fatalf("Error w.Write() = %v", err)
+			}
 		},
 	}
 	st := newServerTester(t, opts)
@@ -1273,7 +1275,7 @@ func TestH2H1Upgrade(t *testing.T) {
 // header field includes obfuscated address even if PROXY protocol
 // version 1 containing TCP4 entry is accepted.
 func TestH2H1ProxyProtocolV1ForwardedForObfuscated(t *testing.T) {
-	pattern := fmt.Sprintf(`^for=_[^;]+$`)
+	pattern := `^for=_[^;]+$`
 	validFwd := regexp.MustCompile(pattern)
 	opts := options{
 		args: []string{
@@ -1291,7 +1293,9 @@ func TestH2H1ProxyProtocolV1ForwardedForObfuscated(t *testing.T) {
 	st := newServerTester(t, opts)
 	defer st.Close()
 
-	st.conn.Write([]byte("PROXY TCP4 192.168.0.2 192.168.0.100 12345 8080\r\n"))
+	if _, err := st.conn.Write([]byte("PROXY TCP4 192.168.0.2 192.168.0.100 12345 8080\r\n")); err != nil {
+		t.Fatalf("Error st.conn.Write() = %v", err)
+	}
 
 	res, err := st.http2(requestParam{
 		name: "TestH2H1ProxyProtocolV1ForwardedForObfuscated",
@@ -1329,7 +1333,9 @@ func TestH2H1ProxyProtocolV1TCP4(t *testing.T) {
 	st := newServerTester(t, opts)
 	defer st.Close()
 
-	st.conn.Write([]byte("PROXY TCP4 192.168.0.2 192.168.0.100 12345 8080\r\n"))
+	if _, err := st.conn.Write([]byte("PROXY TCP4 192.168.0.2 192.168.0.100 12345 8080\r\n")); err != nil {
+		t.Fatalf("Error st.conn.Write() = %v", err)
+	}
 
 	res, err := st.http2(requestParam{
 		name: "TestH2H1ProxyProtocolV1TCP4",
@@ -1367,7 +1373,9 @@ func TestH2H1ProxyProtocolV1TCP6(t *testing.T) {
 	st := newServerTester(t, opts)
 	defer st.Close()
 
-	st.conn.Write([]byte("PROXY TCP6 2001:0db8:85a3:0000:0000:8a2e:0370:7334 ::1 12345 8080\r\n"))
+	if _, err := st.conn.Write([]byte("PROXY TCP6 2001:0db8:85a3:0000:0000:8a2e:0370:7334 ::1 12345 8080\r\n")); err != nil {
+		t.Fatalf("Error st.conn.Write() = %v", err)
+	}
 
 	res, err := st.http2(requestParam{
 		name: "TestH2H1ProxyProtocolV1TCP6",
@@ -1480,7 +1488,9 @@ func TestH2H1ProxyProtocolV1Unknown(t *testing.T) {
 	st := newServerTester(t, opts)
 	defer st.Close()
 
-	st.conn.Write([]byte("PROXY UNKNOWN 192.168.0.2 192.168.0.100 12345 8080\r\n"))
+	if _, err := st.conn.Write([]byte("PROXY UNKNOWN 192.168.0.2 192.168.0.100 12345 8080\r\n")); err != nil {
+		t.Fatalf("Error st.conn.Write() = %v", err)
+	}
 
 	res, err := st.http2(requestParam{
 		name: "TestH2H1ProxyProtocolV1Unknown",
@@ -1507,7 +1517,9 @@ func TestH2H1ProxyProtocolV1JustUnknown(t *testing.T) {
 	st := newServerTester(t, opts)
 	defer st.Close()
 
-	st.conn.Write([]byte("PROXY UNKNOWN\r\n"))
+	if _, err := st.conn.Write([]byte("PROXY UNKNOWN\r\n")); err != nil {
+		t.Fatalf("Error st.conn.Write() = %v", err)
+	}
 
 	res, err := st.http2(requestParam{
 		name: "TestH2H1ProxyProtocolV1JustUnknown",
@@ -1534,7 +1546,9 @@ func TestH2H1ProxyProtocolV1TooLongLine(t *testing.T) {
 	st := newServerTester(t, opts)
 	defer st.Close()
 
-	st.conn.Write([]byte("PROXY UNKNOWN ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff 65535 655350\r\n"))
+	if _, err := st.conn.Write([]byte("PROXY UNKNOWN ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff 65535 655350\r\n")); err != nil {
+		t.Fatalf("Error st.conn.Write() = %v", err)
+	}
 
 	_, err := st.http2(requestParam{
 		name: "TestH2H1ProxyProtocolV1TooLongLine",
@@ -1554,7 +1568,9 @@ func TestH2H1ProxyProtocolV1BadLineEnd(t *testing.T) {
 	st := newServerTester(t, opts)
 	defer st.Close()
 
-	st.conn.Write([]byte("PROXY TCP6 ::1 ::1 12345 8080\r \n"))
+	if _, err := st.conn.Write([]byte("PROXY TCP6 ::1 ::1 12345 8080\r \n")); err != nil {
+		t.Fatalf("Error st.conn.Write() = %v", err)
+	}
 
 	_, err := st.http2(requestParam{
 		name: "TestH2H1ProxyProtocolV1BadLineEnd",
@@ -1574,7 +1590,9 @@ func TestH2H1ProxyProtocolV1NoEnd(t *testing.T) {
 	st := newServerTester(t, opts)
 	defer st.Close()
 
-	st.conn.Write([]byte("PROXY TCP6 ::1 ::1 12345 8080"))
+	if _, err := st.conn.Write([]byte("PROXY TCP6 ::1 ::1 12345 8080")); err != nil {
+		t.Fatalf("Error st.conn.Write() = %v", err)
+	}
 
 	_, err := st.http2(requestParam{
 		name: "TestH2H1ProxyProtocolV1NoEnd",
@@ -1596,7 +1614,9 @@ func TestH2H1ProxyProtocolV1EmbeddedNULL(t *testing.T) {
 
 	b := []byte("PROXY TCP6 ::1*foo ::1 12345 8080\r\n")
 	b[14] = 0
-	st.conn.Write(b)
+	if _, err := st.conn.Write(b); err != nil {
+		t.Fatalf("Error st.conn.Write() = %v", err)
+	}
 
 	_, err := st.http2(requestParam{
 		name: "TestH2H1ProxyProtocolV1EmbeddedNULL",
@@ -1616,7 +1636,9 @@ func TestH2H1ProxyProtocolV1MissingSrcPort(t *testing.T) {
 	st := newServerTester(t, opts)
 	defer st.Close()
 
-	st.conn.Write([]byte("PROXY TCP6 ::1 ::1  8080\r\n"))
+	if _, err := st.conn.Write([]byte("PROXY TCP6 ::1 ::1  8080\r\n")); err != nil {
+		t.Fatalf("Error st.conn.Write() = %v", err)
+	}
 
 	_, err := st.http2(requestParam{
 		name: "TestH2H1ProxyProtocolV1MissingSrcPort",
@@ -1636,7 +1658,9 @@ func TestH2H1ProxyProtocolV1MissingDstPort(t *testing.T) {
 	st := newServerTester(t, opts)
 	defer st.Close()
 
-	st.conn.Write([]byte("PROXY TCP6 ::1 ::1 12345 \r\n"))
+	if _, err := st.conn.Write([]byte("PROXY TCP6 ::1 ::1 12345 \r\n")); err != nil {
+		t.Fatalf("Error st.conn.Write() = %v", err)
+	}
 
 	_, err := st.http2(requestParam{
 		name: "TestH2H1ProxyProtocolV1MissingDstPort",
@@ -1656,7 +1680,9 @@ func TestH2H1ProxyProtocolV1InvalidSrcPort(t *testing.T) {
 	st := newServerTester(t, opts)
 	defer st.Close()
 
-	st.conn.Write([]byte("PROXY TCP6 ::1 ::1 123x 8080\r\n"))
+	if _, err := st.conn.Write([]byte("PROXY TCP6 ::1 ::1 123x 8080\r\n")); err != nil {
+		t.Fatalf("Error st.conn.Write() = %v", err)
+	}
 
 	_, err := st.http2(requestParam{
 		name: "TestH2H1ProxyProtocolV1InvalidSrcPort",
@@ -1676,7 +1702,9 @@ func TestH2H1ProxyProtocolV1InvalidDstPort(t *testing.T) {
 	st := newServerTester(t, opts)
 	defer st.Close()
 
-	st.conn.Write([]byte("PROXY TCP6 ::1 ::1 123456 80x\r\n"))
+	if _, err := st.conn.Write([]byte("PROXY TCP6 ::1 ::1 123456 80x\r\n")); err != nil {
+		t.Fatalf("Error st.conn.Write() = %v", err)
+	}
 
 	_, err := st.http2(requestParam{
 		name: "TestH2H1ProxyProtocolV1InvalidDstPort",
@@ -1697,7 +1725,9 @@ func TestH2H1ProxyProtocolV1LeadingZeroPort(t *testing.T) {
 	st := newServerTester(t, opts)
 	defer st.Close()
 
-	st.conn.Write([]byte("PROXY TCP6 ::1 ::1 03000 8080\r\n"))
+	if _, err := st.conn.Write([]byte("PROXY TCP6 ::1 ::1 03000 8080\r\n")); err != nil {
+		t.Fatalf("Error st.conn.Write() = %v", err)
+	}
 
 	_, err := st.http2(requestParam{
 		name: "TestH2H1ProxyProtocolV1LeadingZeroPort",
@@ -1717,7 +1747,9 @@ func TestH2H1ProxyProtocolV1TooLargeSrcPort(t *testing.T) {
 	st := newServerTester(t, opts)
 	defer st.Close()
 
-	st.conn.Write([]byte("PROXY TCP6 ::1 ::1 65536 8080\r\n"))
+	if _, err := st.conn.Write([]byte("PROXY TCP6 ::1 ::1 65536 8080\r\n")); err != nil {
+		t.Fatalf("Error st.conn.Write() = %v", err)
+	}
 
 	_, err := st.http2(requestParam{
 		name: "TestH2H1ProxyProtocolV1TooLargeSrcPort",
@@ -1737,7 +1769,9 @@ func TestH2H1ProxyProtocolV1TooLargeDstPort(t *testing.T) {
 	st := newServerTester(t, opts)
 	defer st.Close()
 
-	st.conn.Write([]byte("PROXY TCP6 ::1 ::1 12345 65536\r\n"))
+	if _, err := st.conn.Write([]byte("PROXY TCP6 ::1 ::1 12345 65536\r\n")); err != nil {
+		t.Fatalf("Error st.conn.Write() = %v", err)
+	}
 
 	_, err := st.http2(requestParam{
 		name: "TestH2H1ProxyProtocolV1TooLargeDstPort",
@@ -1757,7 +1791,9 @@ func TestH2H1ProxyProtocolV1InvalidSrcAddr(t *testing.T) {
 	st := newServerTester(t, opts)
 	defer st.Close()
 
-	st.conn.Write([]byte("PROXY TCP6 192.168.0.1 ::1 12345 8080\r\n"))
+	if _, err := st.conn.Write([]byte("PROXY TCP6 192.168.0.1 ::1 12345 8080\r\n")); err != nil {
+		t.Fatalf("Error st.conn.Write() = %v", err)
+	}
 
 	_, err := st.http2(requestParam{
 		name: "TestH2H1ProxyProtocolV1InvalidSrcAddr",
@@ -1777,7 +1813,9 @@ func TestH2H1ProxyProtocolV1InvalidDstAddr(t *testing.T) {
 	st := newServerTester(t, opts)
 	defer st.Close()
 
-	st.conn.Write([]byte("PROXY TCP6 ::1 192.168.0.1 12345 8080\r\n"))
+	if _, err := st.conn.Write([]byte("PROXY TCP6 ::1 192.168.0.1 12345 8080\r\n")); err != nil {
+		t.Fatalf("Error st.conn.Write() = %v", err)
+	}
 
 	_, err := st.http2(requestParam{
 		name: "TestH2H1ProxyProtocolV1InvalidDstAddr",
@@ -1797,7 +1835,9 @@ func TestH2H1ProxyProtocolV1InvalidProtoFamily(t *testing.T) {
 	st := newServerTester(t, opts)
 	defer st.Close()
 
-	st.conn.Write([]byte("PROXY UNIX ::1 ::1 12345 8080\r\n"))
+	if _, err := st.conn.Write([]byte("PROXY UNIX ::1 ::1 12345 8080\r\n")); err != nil {
+		t.Fatalf("Error st.conn.Write() = %v", err)
+	}
 
 	_, err := st.http2(requestParam{
 		name: "TestH2H1ProxyProtocolV1InvalidProtoFamily",
@@ -1817,7 +1857,9 @@ func TestH2H1ProxyProtocolV1InvalidID(t *testing.T) {
 	st := newServerTester(t, opts)
 	defer st.Close()
 
-	st.conn.Write([]byte("PR0XY TCP6 ::1 ::1 12345 8080\r\n"))
+	if _, err := st.conn.Write([]byte("PR0XY TCP6 ::1 ::1 12345 8080\r\n")); err != nil {
+		t.Fatalf("Error st.conn.Write() = %v", err)
+	}
 
 	_, err := st.http2(requestParam{
 		name: "TestH2H1ProxyProtocolV1InvalidID",
@@ -1852,7 +1894,7 @@ func TestH2H1ProxyProtocolV2TCP4(t *testing.T) {
 	defer st.Close()
 
 	var b bytes.Buffer
-	writeProxyProtocolV2(&b, proxyProtocolV2{
+	if err := writeProxyProtocolV2(&b, proxyProtocolV2{
 		command: proxyProtocolV2CommandProxy,
 		sourceAddress: &net.TCPAddr{
 			IP:   net.ParseIP("192.168.0.2").To4(),
@@ -1863,8 +1905,13 @@ func TestH2H1ProxyProtocolV2TCP4(t *testing.T) {
 			Port: 8080,
 		},
 		additionalData: []byte("foobar"),
-	})
-	st.conn.Write(b.Bytes())
+	}); err != nil {
+		t.Fatalf("Error writeProxyProtocolV2() = %v", err)
+	}
+
+	if _, err := st.conn.Write(b.Bytes()); err != nil {
+		t.Fatalf("Error st.conn.Write() = %v", err)
+	}
 
 	res, err := st.http2(requestParam{
 		name: "TestH2H1ProxyProtocolV2TCP4",
@@ -1903,7 +1950,7 @@ func TestH2H1ProxyProtocolV2TCP6(t *testing.T) {
 	defer st.Close()
 
 	var b bytes.Buffer
-	writeProxyProtocolV2(&b, proxyProtocolV2{
+	if err := writeProxyProtocolV2(&b, proxyProtocolV2{
 		command: proxyProtocolV2CommandProxy,
 		sourceAddress: &net.TCPAddr{
 			IP:   net.ParseIP("2001:0db8:85a3:0000:0000:8a2e:0370:7334"),
@@ -1914,8 +1961,13 @@ func TestH2H1ProxyProtocolV2TCP6(t *testing.T) {
 			Port: 8080,
 		},
 		additionalData: []byte("foobar"),
-	})
-	st.conn.Write(b.Bytes())
+	}); err != nil {
+		t.Fatalf("Error writeProxyProtocolV2() = %v", err)
+	}
+
+	if _, err := st.conn.Write(b.Bytes()); err != nil {
+		t.Fatalf("Error st.conn.Write() = %v", err)
+	}
 
 	res, err := st.http2(requestParam{
 		name: "TestH2H1ProxyProtocolV2TCP6",
@@ -1935,7 +1987,7 @@ func TestH2H1ProxyProtocolV2TCP6(t *testing.T) {
 // contains advertised src address.
 func TestH2H1ProxyProtocolV2TCP4TLS(t *testing.T) {
 	var v2Hdr bytes.Buffer
-	writeProxyProtocolV2(&v2Hdr, proxyProtocolV2{
+	if err := writeProxyProtocolV2(&v2Hdr, proxyProtocolV2{
 		command: proxyProtocolV2CommandProxy,
 		sourceAddress: &net.TCPAddr{
 			IP:   net.ParseIP("192.168.0.2").To4(),
@@ -1946,7 +1998,9 @@ func TestH2H1ProxyProtocolV2TCP4TLS(t *testing.T) {
 			Port: 8080,
 		},
 		additionalData: []byte("foobar"),
-	})
+	}); err != nil {
+		t.Fatalf("Error writeProxyProtocolV2() = %v", err)
+	}
 
 	opts := options{
 		args: []string{
@@ -1987,7 +2041,7 @@ func TestH2H1ProxyProtocolV2TCP4TLS(t *testing.T) {
 // contains advertised src address.
 func TestH2H1ProxyProtocolV2TCP6TLS(t *testing.T) {
 	var v2Hdr bytes.Buffer
-	writeProxyProtocolV2(&v2Hdr, proxyProtocolV2{
+	if err := writeProxyProtocolV2(&v2Hdr, proxyProtocolV2{
 		command: proxyProtocolV2CommandProxy,
 		sourceAddress: &net.TCPAddr{
 			IP:   net.ParseIP("2001:0db8:85a3:0000:0000:8a2e:0370:7334"),
@@ -1998,7 +2052,9 @@ func TestH2H1ProxyProtocolV2TCP6TLS(t *testing.T) {
 			Port: 8080,
 		},
 		additionalData: []byte("foobar"),
-	})
+	}); err != nil {
+		t.Fatalf("Error writeProxyProtocolV2() = %v", err)
+	}
 
 	opts := options{
 		args: []string{
@@ -2057,7 +2113,7 @@ func TestH2H1ProxyProtocolV2Local(t *testing.T) {
 	defer st.Close()
 
 	var b bytes.Buffer
-	writeProxyProtocolV2(&b, proxyProtocolV2{
+	if err := writeProxyProtocolV2(&b, proxyProtocolV2{
 		command: proxyProtocolV2CommandLocal,
 		sourceAddress: &net.TCPAddr{
 			IP:   net.ParseIP("192.168.0.2").To4(),
@@ -2068,8 +2124,13 @@ func TestH2H1ProxyProtocolV2Local(t *testing.T) {
 			Port: 8080,
 		},
 		additionalData: []byte("foobar"),
-	})
-	st.conn.Write(b.Bytes())
+	}); err != nil {
+		t.Fatalf("Error writeProxyProtocolV2() = %v", err)
+	}
+
+	if _, err := st.conn.Write(b.Bytes()); err != nil {
+		t.Fatalf("Error st.conn.Write() = %v", err)
+	}
 
 	res, err := st.http2(requestParam{
 		name: "TestH2H1ProxyProtocolV2Local",
@@ -2094,7 +2155,7 @@ func TestH2H1ProxyProtocolV2UnknownCmd(t *testing.T) {
 	defer st.Close()
 
 	var b bytes.Buffer
-	writeProxyProtocolV2(&b, proxyProtocolV2{
+	if err := writeProxyProtocolV2(&b, proxyProtocolV2{
 		command: 0xf,
 		sourceAddress: &net.TCPAddr{
 			IP:   net.ParseIP("192.168.0.2").To4(),
@@ -2105,8 +2166,13 @@ func TestH2H1ProxyProtocolV2UnknownCmd(t *testing.T) {
 			Port: 8080,
 		},
 		additionalData: []byte("foobar"),
-	})
-	st.conn.Write(b.Bytes())
+	}); err != nil {
+		t.Fatalf("Error writeProxyProtocolV2() = %v", err)
+	}
+
+	if _, err := st.conn.Write(b.Bytes()); err != nil {
+		t.Fatalf("Error st.conn.Write() = %v", err)
+	}
 
 	_, err := st.http2(requestParam{
 		name: "TestH2H1ProxyProtocolV2UnknownCmd",
@@ -2140,7 +2206,7 @@ func TestH2H1ProxyProtocolV2Unix(t *testing.T) {
 	defer st.Close()
 
 	var b bytes.Buffer
-	writeProxyProtocolV2(&b, proxyProtocolV2{
+	if err := writeProxyProtocolV2(&b, proxyProtocolV2{
 		command: proxyProtocolV2CommandProxy,
 		sourceAddress: &net.UnixAddr{
 			Name: "/foo",
@@ -2151,8 +2217,13 @@ func TestH2H1ProxyProtocolV2Unix(t *testing.T) {
 			Net:  "unix",
 		},
 		additionalData: []byte("foobar"),
-	})
-	st.conn.Write(b.Bytes())
+	}); err != nil {
+		t.Fatalf("Error writeProxyProtocolV2() = %v", err)
+	}
+
+	if _, err := st.conn.Write(b.Bytes()); err != nil {
+		t.Fatalf("Error st.conn.Write() = %v", err)
+	}
 
 	res, err := st.http2(requestParam{
 		name: "TestH2H1ProxyProtocolV2Unix",
@@ -2190,11 +2261,16 @@ func TestH2H1ProxyProtocolV2Unspec(t *testing.T) {
 	defer st.Close()
 
 	var b bytes.Buffer
-	writeProxyProtocolV2(&b, proxyProtocolV2{
+	if err := writeProxyProtocolV2(&b, proxyProtocolV2{
 		command:        proxyProtocolV2CommandProxy,
 		additionalData: []byte("foobar"),
-	})
-	st.conn.Write(b.Bytes())
+	}); err != nil {
+		t.Fatalf("Error writeProxyProtocolV2() = %v", err)
+	}
+
+	if _, err := st.conn.Write(b.Bytes()); err != nil {
+		t.Fatalf("Error st.conn.Write() = %v", err)
+	}
 
 	res, err := st.http2(requestParam{
 		name: "TestH2H1ProxyProtocolV2Unspec",
@@ -2342,7 +2418,9 @@ func TestH2H1Code204CL0(t *testing.T) {
 				return
 			}
 			defer conn.Close()
-			bufrw.WriteString("HTTP/1.1 204\r\nContent-Length: 0\r\n\r\n")
+			if _, err := bufrw.WriteString("HTTP/1.1 204\r\nContent-Length: 0\r\n\r\n"); err != nil {
+				t.Fatalf("Error bufrw.WriteString() = %v", err)
+			}
 			bufrw.Flush()
 		},
 	}
@@ -2381,7 +2459,9 @@ func TestH2H1Code204CLNonzero(t *testing.T) {
 				return
 			}
 			defer conn.Close()
-			bufrw.WriteString("HTTP/1.1 204\r\nContent-Length: 1\r\n\r\n")
+			if _, err := bufrw.WriteString("HTTP/1.1 204\r\nContent-Length: 1\r\n\r\n"); err != nil {
+				t.Fatalf("Error bufrw.WriteString() = %v", err)
+			}
 			bufrw.Flush()
 		},
 	}
@@ -2416,7 +2496,9 @@ func TestH2H1Code204TE(t *testing.T) {
 				return
 			}
 			defer conn.Close()
-			bufrw.WriteString("HTTP/1.1 204\r\nTransfer-Encoding: chunked\r\n\r\n")
+			if _, err := bufrw.WriteString("HTTP/1.1 204\r\nTransfer-Encoding: chunked\r\n\r\n"); err != nil {
+				t.Fatalf("Error bufrw.WriteString() = %v", err)
+			}
 			bufrw.Flush()
 		},
 	}
@@ -2522,7 +2604,10 @@ func TestH2H1GracefulShutdown(t *testing.T) {
 	}
 
 	// send SIGQUIT signal to nghttpx to perform graceful shutdown
-	st.cmd.Process.Signal(syscall.SIGQUIT)
+	if err := st.cmd.Process.Signal(syscall.SIGQUIT); err != nil {
+		t.Fatalf("Error st.cmd.Process.Signal() = %v", err)
+	}
+
 	time.Sleep(150 * time.Millisecond)
 
 	// after signal, finish request body
@@ -2546,7 +2631,7 @@ func TestH2H1GracefulShutdown(t *testing.T) {
 		}
 		switch f := fr.(type) {
 		case *http2.GoAwayFrame:
-			numGoAway += 1
+			numGoAway++
 			want := http2.ErrCodeNo
 			if got := f.ErrCode; got != want {
 				t.Fatalf("f.ErrCode(%v): %v; want %v", numGoAway, got, want)
@@ -3530,7 +3615,9 @@ func TestH2H1ChunkedEndsPrematurely(t *testing.T) {
 				return
 			}
 			defer conn.Close()
-			bufrw.WriteString("HTTP/1.1 200\r\nTransfer-Encoding: chunked\r\n\r\n")
+			if _, err := bufrw.WriteString("HTTP/1.1 200\r\nTransfer-Encoding: chunked\r\n\r\n"); err != nil {
+				t.Fatalf("Error bufrw.WriteString() = %v", err)
+			}
 			bufrw.Flush()
 		},
 	}
