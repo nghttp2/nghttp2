@@ -180,7 +180,9 @@ func TestH3H1BadResponseCL(t *testing.T) {
 		handler: func(w http.ResponseWriter, r *http.Request) {
 			// we set content-length: 1024, but only send 3 bytes.
 			w.Header().Add("Content-Length", "1024")
-			w.Write([]byte("foo"))
+			if _, err := w.Write([]byte("foo")); err != nil {
+				t.Fatalf("Error w.Write() = %v", err)
+			}
 		},
 		quic: true,
 	}
@@ -372,7 +374,9 @@ func TestH3H1ChunkedEndsPrematurely(t *testing.T) {
 				return
 			}
 			defer conn.Close()
-			bufrw.WriteString("HTTP/1.1 200\r\nTransfer-Encoding: chunked\r\n\r\n")
+			if _, err := bufrw.WriteString("HTTP/1.1 200\r\nTransfer-Encoding: chunked\r\n\r\n"); err != nil {
+				t.Fatalf("Error bufrw.WriteString() = %v", err)
+			}
 			bufrw.Flush()
 		},
 		quic: true,

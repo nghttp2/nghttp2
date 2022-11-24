@@ -99,6 +99,8 @@ func TestH1H1MultipleRequestCL(t *testing.T) {
 		t.Fatalf("Error http.ReadResponse() = %v", err)
 	}
 
+	defer resp.Body.Close()
+
 	if got, want := resp.StatusCode, http.StatusBadRequest; got != want {
 		t.Errorf("status: %v; want %v", got, want)
 	}
@@ -196,7 +198,10 @@ func TestH1H1GracefulShutdown(t *testing.T) {
 		t.Errorf("status: %v; want %v", got, want)
 	}
 
-	st.cmd.Process.Signal(syscall.SIGQUIT)
+	if err := st.cmd.Process.Signal(syscall.SIGQUIT); err != nil {
+		t.Fatalf("Error st.cmd.Process.Signal() = %v", err)
+	}
+
 	time.Sleep(150 * time.Millisecond)
 
 	res, err = st.http1(requestParam{
@@ -264,6 +269,9 @@ func TestH1H1BadHost(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error http.ReadResponse() = %v", err)
 	}
+
+	defer resp.Body.Close()
+
 	if got, want := resp.StatusCode, http.StatusBadRequest; got != want {
 		t.Errorf("status: %v; want %v", got, want)
 	}
@@ -287,6 +295,9 @@ func TestH1H1BadAuthority(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error http.ReadResponse() = %v", err)
 	}
+
+	defer resp.Body.Close()
+
 	if got, want := resp.StatusCode, http.StatusBadRequest; got != want {
 		t.Errorf("status: %v; want %v", got, want)
 	}
@@ -310,6 +321,9 @@ func TestH1H1BadScheme(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error http.ReadResponse() = %v", err)
 	}
+
+	defer resp.Body.Close()
+
 	if got, want := resp.StatusCode, http.StatusBadRequest; got != want {
 		t.Errorf("status: %v; want %v", got, want)
 	}
@@ -334,6 +348,8 @@ func TestH1H1HTTP10(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error http.ReadResponse() = %v", err)
 	}
+
+	defer resp.Body.Close()
 
 	if got, want := resp.StatusCode, http.StatusOK; got != want {
 		t.Errorf("status: %v; want %v", got, want)
@@ -363,6 +379,8 @@ func TestH1H1HTTP10NoHostRewrite(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error http.ReadResponse() = %v", err)
 	}
+
+	defer resp.Body.Close()
 
 	if got, want := resp.StatusCode, http.StatusOK; got != want {
 		t.Errorf("status: %v; want %v", got, want)
@@ -492,20 +510,19 @@ func TestH1H1HeaderFields(t *testing.T) {
 func TestH1H1Websocket(t *testing.T) {
 	opts := options{
 		handler: websocket.Handler(func(ws *websocket.Conn) {
-			io.Copy(ws, ws)
+			if _, err := io.Copy(ws, ws); err != nil {
+				t.Fatalf("Error io.Copy() = %v", err)
+			}
 		}).ServeHTTP,
 	}
 	st := newServerTester(t, opts)
 	defer st.Close()
 
 	content := []byte("hello world")
-	res, err := st.websocket(requestParam{
+	res := st.websocket(requestParam{
 		name: "TestH1H1Websocket",
 		body: content,
 	})
-	if err != nil {
-		t.Fatalf("Error st.websocket() = %v", err)
-	}
 	if got, want := res.body, content; !bytes.Equal(got, want) {
 		t.Errorf("echo: %q; want %q", got, want)
 	}
@@ -766,6 +783,8 @@ func TestH1H2NoHost(t *testing.T) {
 		t.Fatalf("Error http.ReadResponse() = %v", err)
 	}
 
+	defer resp.Body.Close()
+
 	if got, want := resp.StatusCode, http.StatusBadRequest; got != want {
 		t.Errorf("status: %v; want %v", got, want)
 	}
@@ -791,6 +810,8 @@ func TestH1H2HTTP10(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error http.ReadResponse() = %v", err)
 	}
+
+	defer resp.Body.Close()
 
 	if got, want := resp.StatusCode, http.StatusOK; got != want {
 		t.Errorf("status: %v; want %v", got, want)
@@ -821,6 +842,8 @@ func TestH1H2HTTP10NoHostRewrite(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error http.ReadResponse() = %v", err)
 	}
+
+	defer resp.Body.Close()
 
 	if got, want := resp.StatusCode, http.StatusOK; got != want {
 		t.Errorf("status: %v; want %v", got, want)
@@ -1310,6 +1333,8 @@ func TestH1ResponseBeforeRequestEnd(t *testing.T) {
 		t.Fatalf("Error http.ReadResponse() = %v", err)
 	}
 
+	defer resp.Body.Close()
+
 	if got, want := resp.StatusCode, http.StatusNotFound; got != want {
 		t.Errorf("status: %v; want %v", got, want)
 	}
@@ -1331,7 +1356,9 @@ func TestH1H1ChunkedEndsPrematurely(t *testing.T) {
 				return
 			}
 			defer conn.Close()
-			bufrw.WriteString("HTTP/1.1 200\r\nTransfer-Encoding: chunked\r\n\r\n")
+			if _, err := bufrw.WriteString("HTTP/1.1 200\r\nTransfer-Encoding: chunked\r\n\r\n"); err != nil {
+				t.Fatalf("Error bufrw.WriteString() = %v", err)
+			}
 			bufrw.Flush()
 		},
 	}
