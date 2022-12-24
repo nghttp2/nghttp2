@@ -54,4 +54,3 @@ _VC_ROOT/
 .depend.MSVC
 *.pyd
 *.egg-info/
-python/nghttp2.c

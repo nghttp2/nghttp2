@@ -30,7 +30,6 @@
     --host=$TARGET \
     --build=`dpkg-architecture -qDEB_BUILD_GNU_TYPE` \
     --without-libxml2 \
-    --disable-python-bindings \
     --disable-examples \
     --disable-threads \
     CPPFLAGS="-fPIE -I$PREFIX/include" \

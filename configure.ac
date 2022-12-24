@@ -87,11 +87,6 @@ AC_ARG_ENABLE([examples],
                     [Build examples [default=check]])],
     [request_examples=$enableval], [request_examples=check])
 
-AC_ARG_ENABLE([python-bindings],
-    [AS_HELP_STRING([--enable-python-bindings],
-                    [Build Python bindings [default=no]])],
-    [request_python_bindings=$enableval], [request_python_bindings=no])
-
 AC_ARG_ENABLE([failmalloc],
     [AS_HELP_STRING([--disable-failmalloc],
                     [Do not build failmalloc test program])],
@@ -99,7 +94,7 @@ AC_ARG_ENABLE([failmalloc],
 
 AC_ARG_ENABLE([lib-only],
     [AS_HELP_STRING([--enable-lib-only],
-                    [Build libnghttp2 only.  This is a short hand for --disable-app --disable-examples --disable-hpack-tools --disable-python-bindings])],
+                    [Build libnghttp2 only.  This is a short hand for --disable-app --disable-examples --disable-hpack-tools])],
     [request_lib_only=$enableval], [request_lib_only=no])
 
 AC_ARG_ENABLE([http3],
@@ -167,11 +162,6 @@ AC_ARG_WITH([neverbleed],
                     [Use neverbleed [default=no]])],
     [request_neverbleed=$withval], [request_neverbleed=no])
 
-AC_ARG_WITH([cython],
-    [AS_HELP_STRING([--with-cython=PATH],
-                    [Use cython in given PATH])],
-    [cython_path=$withval], [])
-
 AC_ARG_WITH([libngtcp2],
     [AS_HELP_STRING([--with-libngtcp2],
                     [Use libngtcp2 [default=check]])],
@@ -188,8 +178,6 @@ AC_ARG_WITH([libbpf],
     [request_libbpf=$withval], [request_libbpf=no])
 
 dnl Define variables
-AC_ARG_VAR([CYTHON], [the Cython executable])
-
 AC_ARG_VAR([LIBEV_CFLAGS], [C compiler flags for libev, skipping any checks])
 AC_ARG_VAR([LIBEV_LIBS], [linker flags for libev, skipping any checks])
 
@@ -215,16 +203,10 @@ PKG_PROG_PKG_CONFIG([0.20])
 
 AM_PATH_PYTHON([3.8],, [:])
 
-if test "x$request_python_bindings" = "xyes" &&
-   test "x$PYTHON" = "x:"; then
-  AC_MSG_ERROR([python was requested (enable-python-bindings) but not found])
-fi
-
 if [test "x$request_lib_only" = "xyes"]; then
   request_app=no
   request_hpack_tools=no
   request_examples=no
-  request_python_bindings=no
   request_http3=no
   request_libxml2=no
   request_jansson=no
@@ -240,19 +222,6 @@ if [test "x$request_lib_only" = "xyes"]; then
   request_libngtcp2=no
   request_libnghttp3=no
   request_libbpf=no
-fi
-
-if test "x$request_python_bindings" != "xno" &&
-   test "x$PYTHON" != "x:"; then
-  # version check is broken
-  AX_PYTHON_DEVEL()
-fi
-
-if test "x${cython_path}" = "x"; then
-  AC_CHECK_PROGS([CYTHON], [cython.py cython])
-else
-  CYTHON=${cython_path}
-  AC_SUBST([CYTHON])
 fi
 
 if test "x$GCC" = "xyes" -o "x$CC" = "xclang" ; then
@@ -857,27 +826,6 @@ AM_CONDITIONAL([ENABLE_THIRD_PARTY], [ test "x${enable_third_party}" = "xyes" ])
 AM_CONDITIONAL([HAVE_MRUBY], [test "x${have_mruby}" = "xyes"])
 AM_CONDITIONAL([HAVE_NEVERBLEED], [test "x${have_neverbleed}" = "xyes"])
 
-# Python bindings
-enable_python_bindings=no
-if test "x${request_python_bindings}" != "xno" &&
-   test "x${CYTHON}" != "x" &&
-   test "x${PYTHON}" != "x:" &&
-   test "x${PYTHON_VERSION}" != "x"; then
-  enable_python_bindings=yes
-fi
-
-if test "x${request_python_bindings}" = "xyes" &&
-   test "x${enable_python_bindings}" != "xyes"; then
-  AC_MSG_ERROR([python bindings were requested (--enable-python-bindings) but dependencies are not met.])
-fi
-
-AM_CONDITIONAL([ENABLE_PYTHON_BINDINGS],
-               [test "x${enable_python_bindings}" = "xyes"])
-
-# Produce cython conditional, so that we can distribute generated C
-# source
-AM_CONDITIONAL([HAVE_CYTHON], [test "x${CYTHON}" != "x"])
-
 # failmalloc tests
 enable_failmalloc=no
 if test "x${request_failmalloc}" = "xyes"; then
@@ -1126,8 +1074,6 @@ AC_CONFIG_FILES([
   src/Makefile
   bpf/Makefile
   examples/Makefile
-  python/Makefile
-  python/setup.py
   integration-tests/Makefile
   integration-tests/config.go
   integration-tests/setenv
@@ -1140,7 +1086,6 @@ AC_CONFIG_FILES([
   doc/tutorial-hpack.rst
   doc/nghttpx-howto.rst
   doc/h2load-howto.rst
-  doc/python-apiref.rst
   doc/building-android-binary.rst
   doc/nghttp2.h.rst
   doc/nghttp2ver.h.rst
@@ -1185,10 +1130,6 @@ AC_MSG_NOTICE([summary of build options:
     Python:
       Python:         ${PYTHON}
       PYTHON_VERSION: ${PYTHON_VERSION}
-      pyexecdir:      ${pyexecdir}
-      PYTHON_CPPFLAGS:${PYTHON_CPPFLAGS}
-      PYTHON_LIBS:    ${PYTHON_LIBS}
-      Cython:         ${CYTHON}
     Test:
       CUnit:          ${have_cunit} (CFLAGS='${CUNIT_CFLAGS}' LIBS='${CUNIT_LIBS}')
       Failmalloc:     ${enable_failmalloc}
@@ -1215,7 +1156,6 @@ AC_MSG_NOTICE([summary of build options:
       Applications:   ${enable_app}
       HPACK tools:    ${enable_hpack_tools}
       Examples:       ${enable_examples}
-      Python bindings:${enable_python_bindings}
       Threading:      ${enable_threads}
       HTTP/3 (EXPERIMENTAL): ${enable_http3}
 ])
