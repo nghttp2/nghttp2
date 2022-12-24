@@ -82,11 +82,6 @@ AC_ARG_ENABLE([hpack-tools],
                     [Build HPACK tools [default=check]])],
     [request_hpack_tools=$enableval], [request_hpack_tools=check])
 
-AC_ARG_ENABLE([asio-lib],
-    [AS_HELP_STRING([--enable-asio-lib],
-                    [Build C++ libnghttp2_asio library [default=no]])],
-    [request_asio_lib=$enableval], [request_asio_lib=no])
-
 AC_ARG_ENABLE([examples],
     [AS_HELP_STRING([--enable-examples],
                     [Build examples [default=check]])],
@@ -763,25 +758,6 @@ if test "x${request_jemalloc}" = "xyes" &&
   AC_MSG_ERROR([jemalloc was requested (--with-jemalloc) but not found])
 fi
 
-# Check Boost Asio library
-have_asio_lib=no
-
-if test "x${request_asio_lib}" = "xyes"; then
-  AX_BOOST_BASE([1.54.0], [have_boost_base=yes], [have_boost_base=no])
-
-  if test "x${have_boost_base}" = "xyes"; then
-    AX_BOOST_ASIO()
-    AX_BOOST_SYSTEM()
-    AX_BOOST_THREAD()
-
-    if test "x${ax_cv_boost_asio}" = "xyes" &&
-       test "x${ax_cv_boost_system}" = "xyes" &&
-       test "x${ax_cv_boost_thread}" = "xyes"; then
-      have_asio_lib=yes
-    fi
-  fi
-fi
-
 # The nghttp, nghttpd and nghttpx under src depend on zlib, OpenSSL,
 # libev, and libc-ares.
 enable_app=no
@@ -834,16 +810,6 @@ fi
 
 AM_CONDITIONAL([ENABLE_HPACK_TOOLS], [ test "x${enable_hpack_tools}" = "xyes" ])
 
-# C++ library libnghttp2_asio
-
-enable_asio_lib=no
-if test "x${request_asio_lib}" != "xno" &&
-   test "x${have_asio_lib}" = "xyes"; then
-  enable_asio_lib=yes
-fi
-
-AM_CONDITIONAL([ENABLE_ASIO_LIB], [ test "x${enable_asio_lib}" = "xyes" ])
-
 # The example programs depend on OpenSSL and libevent_openssl
 enable_examples=no
 if test "x${request_examples}" != "xno" &&
@@ -866,8 +832,7 @@ have_mruby=no
 have_neverbleed=no
 if test "x${enable_examples}" = "xyes" ||
    test "x${enable_app}" = "xyes" ||
-   test "x${enable_hpack_tools}" = "xyes" ||
-   test "x${enable_asio_lib}" = "xyes"; then
+   test "x${enable_hpack_tools}" = "xyes"; then
   enable_third_party=yes
 
   # mruby (for src/nghttpx)
@@ -1159,8 +1124,6 @@ AC_CONFIG_FILES([
   tests/testdata/Makefile
   third-party/Makefile
   src/Makefile
-  src/includes/Makefile
-  src/libnghttp2_asio.pc
   bpf/Makefile
   examples/Makefile
   python/Makefile
@@ -1177,14 +1140,10 @@ AC_CONFIG_FILES([
   doc/tutorial-hpack.rst
   doc/nghttpx-howto.rst
   doc/h2load-howto.rst
-  doc/libnghttp2_asio.rst
   doc/python-apiref.rst
   doc/building-android-binary.rst
   doc/nghttp2.h.rst
   doc/nghttp2ver.h.rst
-  doc/asio_http2.h.rst
-  doc/asio_http2_server.h.rst
-  doc/asio_http2_client.h.rst
   doc/contribute.rst
   contrib/Makefile
   script/Makefile
@@ -1248,11 +1207,6 @@ AC_MSG_NOTICE([summary of build options:
       Jemalloc:       ${have_jemalloc} (CFLAGS='${JEMALLOC_CFLAGS}' LIBS='${JEMALLOC_LIBS}')
       Zlib:           ${have_zlib} (CFLAGS='${ZLIB_CFLAGS}' LIBS='${ZLIB_LIBS}')
       Systemd:        ${have_libsystemd} (CFLAGS='${SYSTEMD_CFLAGS}' LIBS='${SYSTEMD_LIBS}')
-      Boost CPPFLAGS: ${BOOST_CPPFLAGS}
-      Boost LDFLAGS:  ${BOOST_LDFLAGS}
-      Boost::ASIO:    ${BOOST_ASIO_LIB}
-      Boost::System:  ${BOOST_SYSTEM_LIB}
-      Boost::Thread:  ${BOOST_THREAD_LIB}
     Third-party:
       http-parser:    ${enable_third_party}
       MRuby:          ${have_mruby} (CFLAGS='${LIBMRUBY_CFLAGS}' LIBS='${LIBMRUBY_LIBS}')
@@ -1260,7 +1214,6 @@ AC_MSG_NOTICE([summary of build options:
     Features:
       Applications:   ${enable_app}
       HPACK tools:    ${enable_hpack_tools}
-      Libnghttp2_asio:${enable_asio_lib}
       Examples:       ${enable_examples}
       Python bindings:${enable_python_bindings}
       Threading:      ${enable_threads}

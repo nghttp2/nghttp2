@@ -7,7 +7,6 @@ option(ENABLE_APP       "Build applications (nghttp, nghttpd, nghttpx and h2load
   ${ENABLE_APP_DEFAULT})
 option(ENABLE_HPACK_TOOLS "Build HPACK tools"
   ${ENABLE_HPACK_TOOLS_DEFAULT})
-option(ENABLE_ASIO_LIB  "Build C++ libnghttp2_asio library")
 option(ENABLE_EXAMPLES  "Build examples"
   ${ENABLE_EXAMPLES_DEFAULT})
 option(ENABLE_PYTHON_BINDINGS "Build Python bindings"
