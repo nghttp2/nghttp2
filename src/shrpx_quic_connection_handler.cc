@@ -552,10 +552,10 @@ int QUICConnectionHandler::send_version_negotiation(
     const UpstreamAddr *faddr, uint32_t version, const uint8_t *ini_dcid,
     size_t ini_dcidlen, const uint8_t *ini_scid, size_t ini_scidlen,
     const Address &remote_addr, const Address &local_addr) {
-  std::array<uint32_t, 2> sv;
-
-  sv[0] = generate_reserved_version(remote_addr, version);
-  sv[1] = NGTCP2_PROTO_VER_V1;
+  std::array<uint32_t, 2> sv{
+      generate_reserved_version(remote_addr, version),
+      NGTCP2_PROTO_VER_V1,
+  };
 
   std::array<uint8_t, NGTCP2_MAX_UDP_PAYLOAD_SIZE> buf;
 
