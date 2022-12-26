@@ -44,7 +44,7 @@ RUN curl -L -O https://dl.google.com/android/repository/android-ndk-$NDK_VERSION
 # Setup version of libraries
 ENV OPENSSL_VERSION 1.1.1q
 ENV LIBEV_VERSION 4.33
-ENV ZLIB_VERSION 1.2.12
+ENV ZLIB_VERSION 1.2.13
 ENV CARES_VERSION 1.18.1
 ENV NGHTTP2_VERSION master
 
