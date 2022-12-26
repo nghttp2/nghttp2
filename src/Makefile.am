@@ -37,7 +37,6 @@ AM_CPPFLAGS = \
 	-I$(top_srcdir)/lib/includes \
 	-I$(top_builddir)/lib/includes \
 	-I$(top_srcdir)/lib \
-	-I$(top_srcdir)/src/includes \
 	-I$(top_srcdir)/third-party \
 	-I$(top_srcdir)/third-party/llhttp/include \
 	@JEMALLOC_CFLAGS@ \

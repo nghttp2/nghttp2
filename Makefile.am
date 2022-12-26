@@ -55,5 +55,5 @@ clang-format:
 	CLANGFORMAT=`git config --get clangformat.binary`; \
 	test -z $${CLANGFORMAT} && CLANGFORMAT="clang-format"; \
 	$${CLANGFORMAT} -i lib/*.{c,h} lib/includes/nghttp2/*.h \
-	src/*.{c,cc,h} src/includes/nghttp2/*.h examples/*.{c,cc} \
+	src/*.{c,cc,h} examples/*.{c,cc} \
 	tests/*.{c,h} bpf/*.c fuzz/*.cc
