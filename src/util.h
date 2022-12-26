@@ -106,9 +106,6 @@ std::string percent_encode(const unsigned char *target, size_t len);
 
 std::string percent_encode(const std::string &target);
 
-// percent-encode path component of URI |s|.
-std::string percent_encode_path(const std::string &s);
-
 template <typename InputIt>
 std::string percent_decode(InputIt first, InputIt last) {
   std::string result;

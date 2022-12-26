@@ -37,7 +37,6 @@ void test_util_inp_strlower(void);
 void test_util_to_base64(void);
 void test_util_to_token68(void);
 void test_util_percent_encode_token(void);
-void test_util_percent_encode_path(void);
 void test_util_percent_decode(void);
 void test_util_quote_string(void);
 void test_util_utox(void);
