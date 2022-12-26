@@ -43,7 +43,6 @@
 #endif // HAVE_NETINET_IN_H
 #ifdef _WIN32
 #  include <ws2tcpip.h>
-#  include <boost/date_time/posix_time/posix_time.hpp>
 #else // !_WIN32
 #  include <netinet/tcp.h>
 #endif // !_WIN32
@@ -58,6 +57,7 @@
 #include <cstring>
 #include <iostream>
 #include <fstream>
+#include <iomanip>
 
 #include <openssl/evp.h>
 
@@ -437,34 +437,22 @@ char *iso8601_basic_date(char *res, int64_t ms) {
   return p;
 }
 
-#ifdef _WIN32
-namespace bt = boost::posix_time;
-// one-time definition of the locale that is used to parse UTC strings
-// (note that the time_input_facet is ref-counted and deleted automatically)
-static const std::locale
-    ptime_locale(std::locale::classic(),
-                 new bt::time_input_facet("%a, %d %b %Y %H:%M:%S GMT"));
-#endif //_WIN32
-
 time_t parse_http_date(const StringRef &s) {
-#ifdef _WIN32
-  // there is no strptime - use boost
-  std::stringstream sstr(s.str());
-  sstr.imbue(ptime_locale);
-  bt::ptime ltime;
-  sstr >> ltime;
-  if (!sstr)
-    return 0;
-
-  return boost::posix_time::to_time_t(ltime);
-#else  // !_WIN32
   tm tm{};
+#ifdef _WIN32
+  // there is no strptime - use std::get_time
+  std::stringstream sstr(s.str());
+  sstr >> std::get_time(&tm, "%a, %d %b %Y %H:%M:%S GMT");
+  if (sstr.fail()) {
+    return 0;
+  }
+#else  // !_WIN32
   char *r = strptime(s.c_str(), "%a, %d %b %Y %H:%M:%S GMT", &tm);
   if (r == 0) {
     return 0;
   }
-  return nghttp2_timegm_without_yday(&tm);
 #endif // !_WIN32
+  return nghttp2_timegm_without_yday(&tm);
 }
 
 time_t parse_openssl_asn1_time_print(const StringRef &s) {

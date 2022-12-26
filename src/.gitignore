@@ -1,6 +1,3 @@
-# generated files
-libnghttp2_asio.pc
-
 # programs
 deflatehd
 h2load

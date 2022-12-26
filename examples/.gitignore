@@ -3,7 +3,3 @@ libevent-client
 libevent-server
 deflate
 tiny-nghttpd
-asio-sv
-asio-sv2
-asio-cl
-asio-cl2

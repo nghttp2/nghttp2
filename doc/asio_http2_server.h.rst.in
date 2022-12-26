@@ -1,5 +1,0 @@
-asio_http2_server.h
-===================
-
-.. literalinclude:: @top_srcdir@/src/includes/nghttp2/asio_http2_server.h
-   :language: cpp

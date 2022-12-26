@@ -243,10 +243,6 @@ endif()
 # jemalloc
 set(HAVE_JEMALLOC   ${JEMALLOC_FOUND})
 
-if(ENABLE_ASIO_LIB)
-  find_package(Boost 1.54.0 REQUIRED system thread)
-endif()
-
 # libbpf (for bpf)
 set(HAVE_LIBBPF ${LIBBPF_FOUND})
 if(LIBBPF_FOUND)
@@ -277,13 +273,13 @@ if(ENABLE_HPACK_TOOLS AND NOT HAVE_JANSSON)
   message(FATAL_ERROR "HPACK tools were requested (ENABLE_HPACK_TOOLS=1) but dependencies are not met.")
 endif()
 
-# C++ library libnghttp2_asio
+# examples
 if(ENABLE_EXAMPLES AND NOT (OPENSSL_FOUND AND LIBEVENT_OPENSSL_FOUND))
   message(FATAL_ERROR "examples were requested (ENABLE_EXAMPLES=1) but dependencies are not met.")
 endif()
 
 # third-party http-parser only be built when needed
-if(ENABLE_EXAMPLES OR ENABLE_APP OR ENABLE_HPACK_TOOLS OR ENABLE_ASIO_LIB)
+if(ENABLE_EXAMPLES OR ENABLE_APP OR ENABLE_HPACK_TOOLS)
   set(ENABLE_THIRD_PARTY 1)
   # mruby (for src/nghttpx)
   set(HAVE_MRUBY      ${WITH_MRUBY})
@@ -467,7 +463,6 @@ set(sbindir         "${CMAKE_INSTALL_FULL_SBINDIR}")
 foreach(name
    lib/libnghttp2.pc
    lib/includes/nghttp2/nghttp2ver.h
-   src/libnghttp2_asio.pc
    python/setup.py
    integration-tests/config.go
    integration-tests/setenv
@@ -479,14 +474,10 @@ foreach(name
    doc/tutorial-hpack.rst
    doc/nghttpx-howto.rst
    doc/h2load-howto.rst
-   doc/libnghttp2_asio.rst
    doc/python-apiref.rst
    doc/building-android-binary.rst
    doc/nghttp2.h.rst
    doc/nghttp2ver.h.rst
-   doc/asio_http2.h.rst
-   doc/asio_http2_server.h.rst
-   doc/asio_http2_client.h.rst
    doc/contribute.rst
 )
   configure_file("${name}.in" "${name}" @ONLY)
@@ -560,8 +551,6 @@ message(STATUS "summary of build options:
       Jemalloc:       ${HAVE_JEMALLOC} (LIBS='${JEMALLOC_LIBRARIES}')
       Zlib:           ${HAVE_ZLIB} (LIBS='${ZLIB_LIBRARIES}')
       Systemd:        ${HAVE_SYSTEMD} (LIBS='${SYSTEMD_LIBRARIES}')
-      Boost::System:  ${Boost_SYSTEM_LIBRARY}
-      Boost::Thread:  ${Boost_THREAD_LIBRARY}
     Third-party:
       http-parser:    ${ENABLE_THIRD_PARTY}
       MRuby:          ${HAVE_MRUBY}
@@ -569,7 +558,6 @@ message(STATUS "summary of build options:
     Features:
       Applications:   ${ENABLE_APP}
       HPACK tools:    ${ENABLE_HPACK_TOOLS}
-      Libnghttp2_asio:${ENABLE_ASIO_LIB}
       Examples:       ${ENABLE_EXAMPLES}
       Python bindings:${ENABLE_PYTHON_BINDINGS}
       Threading:      ${ENABLE_THREADS}
