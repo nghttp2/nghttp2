@@ -30,7 +30,6 @@ AM_CXXFLAGS = $(WARNCXXFLAGS) $(CXX1XCXXFLAGS)
 AM_CPPFLAGS = \
 	-I$(top_srcdir)/lib/includes \
 	-I$(top_builddir)/lib/includes \
-	-I$(top_srcdir)/src/includes \
 	-I$(top_srcdir)/third-party \
 	@LIBEVENT_OPENSSL_CFLAGS@ \
 	@OPENSSL_CFLAGS@ \

@@ -6,7 +6,6 @@ if(HAVE_CUNIT)
   include_directories(
     "${CMAKE_SOURCE_DIR}/lib/includes"
     "${CMAKE_SOURCE_DIR}/lib"
-    "${CMAKE_SOURCE_DIR}/src/includes"
     "${CMAKE_BINARY_DIR}/lib/includes"
     ${CUNIT_INCLUDE_DIRS}
   )
