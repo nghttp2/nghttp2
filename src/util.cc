@@ -135,22 +135,6 @@ std::string percent_encode(const std::string &target) {
                         target.size());
 }
 
-std::string percent_encode_path(const std::string &s) {
-  std::string dest;
-  for (auto c : s) {
-    if (in_rfc3986_unreserved_chars(c) || in_rfc3986_sub_delims(c) ||
-        c == '/') {
-      dest += c;
-      continue;
-    }
-
-    dest += '%';
-    dest += UPPER_XDIGITS[(c >> 4) & 0x0f];
-    dest += UPPER_XDIGITS[(c & 0x0f)];
-  }
-  return dest;
-}
-
 bool in_token(char c) {
   static constexpr char extra[] = {'!', '#', '$', '%', '&', '\'', '*', '+',
                                    '-', '.', '^', '_', '`', '|',  '~'};
