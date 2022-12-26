@@ -33,7 +33,7 @@ RUN apt-get update && \
     apt-get install -y unzip make binutils autoconf \
       automake autotools-dev libtool pkg-config git \
       curl dpkg-dev libxml2-dev genisoimage libc6-i386 \
-      lib32stdc++6 python3 && \
+      lib32stdc++6 && \
     rm -rf /var/cache/apt/*
 
 # Download NDK
@@ -112,7 +112,6 @@ RUN autoreconf -i && \
     --host=$TARGET \
     --build=`dpkg-architecture -qDEB_BUILD_GNU_TYPE` \
     --without-libxml2 \
-    --disable-python-bindings \
     --disable-examples \
     --disable-threads \
       CPPFLAGS="-fPIE -I$PREFIX/include" \

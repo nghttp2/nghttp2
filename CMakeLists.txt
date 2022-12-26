@@ -52,9 +52,8 @@ endif()
 
 include(GNUInstallDirs)
 
-# For Python bindings and documentation
-# (Must be called before PythonLibs for matching versions.)
-find_package(PythonInterp)
+# For documentation
+find_package(Python3 COMPONENTS Interpreter)
 
 # Auto-detection of features that can be toggled
 find_package(OpenSSL 1.0.1)
@@ -84,13 +83,6 @@ set(ENABLE_HPACK_TOOLS_DEFAULT ${JANSSON_FOUND})
 # 2.0.8 is required because we use evconnlistener_set_error_cb()
 find_package(Libevent 2.0.8 COMPONENTS core extra openssl)
 set(ENABLE_EXAMPLES_DEFAULT ${LIBEVENT_OPENSSL_FOUND})
-find_package(Cython)
-find_package(PythonLibs)
-if(CYTHON_FOUND AND PYTHONLIBS_FOUND)
-  set(ENABLE_PYTHON_BINDINGS_DEFAULT ON)
-else()
-  set(ENABLE_PYTHON_BINDINGS_DEFAULT OFF)
-endif()
 
 find_package(LibXml2 2.6.26)
 set(WITH_LIBXML2_DEFAULT    ${LIBXML2_FOUND})
@@ -99,8 +91,7 @@ set(WITH_JEMALLOC_DEFAULT   ${JEMALLOC_FOUND})
 
 include(CMakeOptions.txt)
 
-if(ENABLE_LIB_ONLY AND (ENABLE_APP OR ENABLE_HPACK_TOOLS OR ENABLE_EXAMPLES OR
-  ENABLE_PYTHON_BINDINGS))
+if(ENABLE_LIB_ONLY AND (ENABLE_APP OR ENABLE_HPACK_TOOLS OR ENABLE_EXAMPLES))
   # Remember when disabled options are disabled for later diagnostics.
   set(ENABLE_LIB_ONLY_DISABLED_OTHERS 1)
 else()
@@ -110,7 +101,6 @@ if(ENABLE_LIB_ONLY)
   set(ENABLE_APP            OFF)
   set(ENABLE_HPACK_TOOLS    OFF)
   set(ENABLE_EXAMPLES       OFF)
-  set(ENABLE_PYTHON_BINDINGS OFF)
 endif()
 
 # Do not disable assertions based on CMAKE_BUILD_TYPE.
@@ -155,20 +145,6 @@ cmake_pop_check_state()
 # Checks for libraries.
 # Additional libraries required for programs under src directory.
 set(APP_LIBRARIES)
-
-if(ENABLE_PYTHON_BINDINGS)
-  if(NOT (CYTHON_FOUND AND PYTHONLIBS_FOUND))
-    message(FATAL_ERROR "python bindings were requested "
-      "(ENABLE_PYTHON_BINDINGS=1) but dependencies are not met.")
-  endif()
-  if(NOT PYTHON_VERSION_STRING STREQUAL PYTHONLIBS_VERSION_STRING)
-    message(FATAL_ERROR
-      "Python executable and library must have the same version!"
-      " Found Python ${PYTHON_VERSION_STRING} and"
-      " PythonLibs ${PYTHONLIBS_VERSION_STRING}"
-    )
-  endif()
-endif()
 
 set(CMAKE_THREAD_PREFER_PTHREAD 1)
 find_package(Threads)
@@ -463,7 +439,6 @@ set(sbindir         "${CMAKE_INSTALL_FULL_SBINDIR}")
 foreach(name
    lib/libnghttp2.pc
    lib/includes/nghttp2/nghttp2ver.h
-   python/setup.py
    integration-tests/config.go
    integration-tests/setenv
    doc/conf.py
@@ -474,7 +449,6 @@ foreach(name
    doc/tutorial-hpack.rst
    doc/nghttpx-howto.rst
    doc/h2load-howto.rst
-   doc/python-apiref.rst
    doc/building-android-binary.rst
    doc/nghttp2.h.rst
    doc/nghttp2ver.h.rst
@@ -502,7 +476,6 @@ add_subdirectory(third-party)
 add_subdirectory(src)
 #add_subdirectory(src/includes)
 add_subdirectory(examples)
-add_subdirectory(python)
 add_subdirectory(tests)
 #add_subdirectory(tests/testdata)
 add_subdirectory(integration-tests)
@@ -530,10 +503,8 @@ message(STATUS "summary of build options:
       WARNCFLAGS:     ${WARNCFLAGS}
       CXX1XCXXFLAGS:  ${CXX1XCXXFLAGS}
     Python:
-      Python:         ${PYTHON_EXECUTABLE}
-      PYTHON_VERSION: ${PYTHON_VERSION_STRING}
-      Library version:${PYTHONLIBS_VERSION_STRING}
-      Cython:         ${CYTHON_EXECUTABLE}
+      Python:          ${Python3_EXECUTABLE}
+      Python3_VERSION: ${Python3_VERSION}
     Test:
       CUnit:          ${HAVE_CUNIT} (LIBS='${CUNIT_LIBRARIES}')
       Failmalloc:     ${ENABLE_FAILMALLOC}
@@ -559,7 +530,6 @@ message(STATUS "summary of build options:
       Applications:   ${ENABLE_APP}
       HPACK tools:    ${ENABLE_HPACK_TOOLS}
       Examples:       ${ENABLE_EXAMPLES}
-      Python bindings:${ENABLE_PYTHON_BINDINGS}
       Threading:      ${ENABLE_THREADS}
       HTTP/3(EXPERIMENTAL): ${ENABLE_HTTP3}
 ")

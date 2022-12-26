@@ -206,7 +206,6 @@ EXTRA_DIST = \
 	sources/tutorial-hpack.rst \
 	sources/nghttpx-howto.rst \
 	sources/h2load-howto.rst \
-	sources/python-apiref.rst \
 	sources/building-android-binary.rst \
 	sources/contribute.rst \
 	sources/security.rst \

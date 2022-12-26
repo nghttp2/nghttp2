@@ -47,7 +47,7 @@ RUN git clone --depth 1 https://github.com/nghttp2/nghttp2.git && \
     git submodule update --init && \
     autoreconf -i && \
     ./configure --disable-examples --disable-hpack-tools \
-        --disable-python-bindings --with-mruby --with-neverbleed \
+        --with-mruby --with-neverbleed \
         --enable-http3 --with-libbpf \
         CC=clang CXX=clang++ \
         LIBTOOL_LDFLAGS="-static-libtool-libs" \

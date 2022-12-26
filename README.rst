@@ -103,12 +103,6 @@ To mitigate heap fragmentation in long running server programs
      Alpine Linux currently does not support malloc replacement
      due to musl limitations. See details in issue `#762 <https://github.com/nghttp2/nghttp2/issues/762>`_.
 
-The Python bindings (deprecated) require the following packages:
-
-* cython >= 0.19
-* python >= 3.8
-* python-setuptools
-
 To enable mruby support for nghttpx, `mruby
 <https://github.com/mruby/mruby>`_ is required.  We need to build
 mruby with C++ ABI explicitly turned on, and probably need other
@@ -400,7 +394,6 @@ Build nghttp2:
    $ git submodule update --init
    $ autoreconf -i
    $ ./configure --with-mruby --with-neverbleed --enable-http3 --with-libbpf \
-         --disable-python-bindings \
          CC=clang-14 CXX=clang++-14 \
          PKG_CONFIG_PATH="$PWD/../openssl/build/lib/pkgconfig:$PWD/../nghttp3/build/lib/pkgconfig:$PWD/../ngtcp2/build/lib/pkgconfig:$PWD/../libbpf/build/lib64/pkgconfig" \
          LDFLAGS="$LDFLAGS -Wl,-rpath,$PWD/../openssl/build/lib -Wl,-rpath,$PWD/../libbpf/build/lib64"
@@ -1424,124 +1417,6 @@ With the ``-d`` option, the extra ``header_table`` key is added and its
 associated value includes the state of the dynamic header table after the
 corresponding header set was processed.  The format is the same as
 ``deflatehd``.
-
-Python bindings
----------------
-
-Python bindings have been deprecated.
-
-The ``python`` directory contains nghttp2 Python bindings.  The
-bindings currently provide HPACK compressor and decompressor classes
-and an HTTP/2 server.
-
-The extension module is called ``nghttp2``.
-
-``make`` will build the bindings and target Python version is
-determined by the ``configure`` script.  If the detected Python version is not
-what you expect, specify a path to Python executable in a ``PYTHON``
-variable as an argument to configure script (e.g., ``./configure
-PYTHON=/usr/bin/python3.8``).
-
-The following example code illustrates basic usage of the HPACK compressor
-and decompressor in Python:
-
-.. code-block:: python
-
-    import binascii
-    import nghttp2
-
-    deflater = nghttp2.HDDeflater()
-    inflater = nghttp2.HDInflater()
-
-    data = deflater.deflate([(b'foo', b'bar'),
-                             (b'baz', b'buz')])
-    print(binascii.b2a_hex(data))
-
-    hdrs = inflater.inflate(data)
-    print(hdrs)
-
-The ``nghttp2.HTTP2Server`` class builds on top of the asyncio event
-loop.  On construction, *RequestHandlerClass* must be given, which
-must be a subclass of ``nghttp2.BaseRequestHandler`` class.
-
-The ``BaseRequestHandler`` class is used to handle the HTTP/2 stream.
-By default, it does nothing.  It must be subclassed to handle each
-event callback method.
-
-The first callback method invoked is ``on_headers()``.  It is called
-when HEADERS frame, which includes the request header fields, has arrived.
-
-If the request has a request body, ``on_data(data)`` is invoked for each
-chunk of received data.
-
-Once the entire request is received, ``on_request_done()`` is invoked.
-
-When the stream is closed, ``on_close(error_code)`` is called.
-
-The application can send a response using ``send_response()`` method.
-It can be used in ``on_headers()``, ``on_data()`` or
-``on_request_done()``.
-
-The application can push resources using the ``push()`` method.  It must be
-used before the ``send_response()`` call.
-
-The following instance variables are available:
-
-client_address
-    Contains a tuple of the form (host, port) referring to the
-    client's address.
-
-stream_id
-    Stream ID of this stream.
-
-scheme
-    Scheme of the request URI.  This is a value of :scheme header
-    field.
-
-method
-    Method of this stream.  This is a value of :method header field.
-
-host
-    This is a value of :authority or host header field.
-
-path
-    This is a value of :path header field.
-
-The following example illustrates the HTTP2Server and
-BaseRequestHandler usage:
-
-.. code-block:: python
-
-    #!/usr/bin/env python3
-
-    import io, ssl
-    import nghttp2
-
-    class Handler(nghttp2.BaseRequestHandler):
-
-        def on_headers(self):
-            self.push(path='/css/bootstrap.css',
-                      request_headers = [('content-length', '3')],
-                      status=200,
-                      body='foo')
-
-            self.push(path='/js/bootstrap.js',
-                      method='GET',
-                      request_headers = [('content-length', '10')],
-                      status=200,
-                      body='foobarbuzz')
-
-            self.send_response(status=200,
-                               headers = [('content-type', 'text/plain')],
-                               body=io.BytesIO(b'nghttp2-python FTW'))
-
-    ctx = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
-    ctx.options = ssl.OP_ALL | ssl.OP_NO_SSLv2
-    ctx.load_cert_chain('server.crt', 'server.key')
-
-    # give None to ssl to make the server non-SSL/TLS
-    server = nghttp2.HTTP2Server(('127.0.0.1', 8443), Handler, ssl=ctx)
-    server.serve_forever()
 
 Contribution
 ------------

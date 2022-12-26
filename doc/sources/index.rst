@@ -31,7 +31,6 @@ Contents:
    h2load-howto
    programmers-guide
    apiref
-   python-apiref
    nghttp2.h
    nghttp2ver.h
    Source <https://github.com/nghttp2/nghttp2>

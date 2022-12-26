@@ -13,7 +13,6 @@ nghttp2_*.rst
 nghttp2ver.h.rst
 nghttpx-howto.rst
 package_README.rst
-python-apiref.rst
 tutorial-client.rst
 tutorial-hpack.rst
 tutorial-server.rst
