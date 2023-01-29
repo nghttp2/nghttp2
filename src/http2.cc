@@ -1744,9 +1744,15 @@ StringRef path_join(BlockAllocator &balloc, const StringRef &base_path,
   for (; first != last;) {
     if (*first == '.') {
       if (first + 1 == last) {
+        if (*(p - 1) != '/') {
+          p = eat_file(res.base, p);
+        }
         break;
       }
       if (*(first + 1) == '/') {
+        if (*(p - 1) != '/') {
+          p = eat_file(res.base, p);
+        }
         first += 2;
         continue;
       }
