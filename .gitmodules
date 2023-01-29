@@ -4,4 +4,4 @@
 [submodule "third-party/neverbleed"]
 	path = third-party/neverbleed
 	url = https://github.com/tatsuhiro-t/neverbleed.git
-	branch = openssl111fix
+	branch = nghttp2
