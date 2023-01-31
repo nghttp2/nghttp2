@@ -613,7 +613,8 @@ int Http3Upstream::init(const UpstreamAddr *faddr, const Address &remote_addr,
   settings.max_stream_window = http3conf.upstream.max_window_size;
   settings.max_tx_udp_payload_size = SHRPX_QUIC_MAX_UDP_PAYLOAD_SIZE;
   settings.rand_ctx.native_handle = &worker->get_randgen();
-  settings.token = ngtcp2_vec{const_cast<uint8_t *>(token), tokenlen};
+  settings.token = token;
+  settings.tokenlen = tokenlen;
 
   ngtcp2_transport_params params;
   ngtcp2_transport_params_default(&params);

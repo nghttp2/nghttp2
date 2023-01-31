@@ -127,7 +127,7 @@ jobs:
       run: |
         git clone https://boringssl.googlesource.com/boringssl
         cd boringssl
-        git checkout 31bad2514d21f6207f3925ba56754611c462a873
+        git checkout 80a243e07ef77156af66efa7d22ac35aba44c1b3
         mkdir build
         cd build
         cmake -DCMAKE_POSITION_INDEPENDENT_CODE=ON ..
@@ -157,7 +157,7 @@ jobs:
     - name: Build ngtcp2
       if: matrix.http3 == 'http3'
       run: |
-        git clone --depth 1 -b v0.12.0 https://github.com/ngtcp2/ngtcp2
+        git clone --depth 1 -b v0.13.0 https://github.com/ngtcp2/ngtcp2
         cd ngtcp2
         autoreconf -i
         ./configure --prefix=$PWD/build --enable-lib-only PKG_CONFIG_PATH="../openssl/build/lib/pkgconfig" $EXTRA_NGTCP2_OPTS

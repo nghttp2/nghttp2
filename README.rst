@@ -129,8 +129,8 @@ following libraries are required:
 * `OpenSSL with QUIC support
   <https://github.com/quictls/openssl/tree/OpenSSL_1_1_1s+quic>`_; or
   `BoringSSL <https://boringssl.googlesource.com/boringssl/>`_ (commit
-  31bad2514d21f6207f3925ba56754611c462a873)
-* `ngtcp2 <https://github.com/ngtcp2/ngtcp2>`_ >= 0.10.0
+  80a243e07ef77156af66efa7d22ac35aba44c1b3)
+* `ngtcp2 <https://github.com/ngtcp2/ngtcp2>`_ >= 0.13.0
 * `nghttp3 <https://github.com/ngtcp2/nghttp3>`_ >= 0.7.0
 
 Use ``--enable-http3`` configure option to enable HTTP/3 feature for
@@ -366,7 +366,7 @@ Build ngtcp2:
 
 .. code-block:: text
 
-   $ git clone --depth 1 -b v0.12.0 https://github.com/ngtcp2/ngtcp2
+   $ git clone --depth 1 -b v0.13.0 https://github.com/ngtcp2/ngtcp2
    $ cd ngtcp2
    $ autoreconf -i
    $ ./configure --prefix=$PWD/build --enable-lib-only \
