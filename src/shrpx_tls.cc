@@ -55,6 +55,9 @@
 #  include <openssl/core_names.h>
 #  include <openssl/decoder.h>
 #endif // OPENSSL_3_0_0_API
+#ifdef OPENSSL_IS_BORINGSSL
+#  include <openssl/hmac.h>
+#endif // OPENSSL_IS_BORINGSSL
 
 #include <nghttp2/nghttp2.h>
 

@@ -203,7 +203,7 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
         return 0;
       }
 
-      if (hd.token.len == 0) {
+      if (hd.tokenlen == 0) {
         if (quicconf.upstream.require_token) {
           send_retry(faddr, vc.version, vc.dcid, vc.dcidlen, vc.scid,
                      vc.scidlen, remote_addr, local_addr, datalen * 3);
@@ -214,7 +214,7 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
         break;
       }
 
-      switch (hd.token.base[0]) {
+      switch (hd.token[0]) {
       case NGTCP2_CRYPTO_TOKEN_MAGIC_RETRY: {
         if (vc.dcidlen != SHRPX_QUIC_SCIDLEN) {
           // Initial packets with Retry token must have DCID chosen by
@@ -225,7 +225,7 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
         auto qkm = select_quic_keying_material(
             *qkms.get(), vc.dcid[0] & SHRPX_QUIC_DCID_KM_ID_MASK);
 
-        if (verify_retry_token(odcid, hd.token.base, hd.token.len, hd.version,
+        if (verify_retry_token(odcid, hd.token, hd.tokenlen, hd.version,
                                hd.dcid, &remote_addr.su.sa, remote_addr.len,
                                qkm->secret.data(), qkm->secret.size()) != 0) {
           if (LOG_ENABLED(INFO)) {
@@ -247,8 +247,8 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
         }
 
         podcid = &odcid;
-        token = hd.token.base;
-        tokenlen = hd.token.len;
+        token = hd.token;
+        tokenlen = hd.tokenlen;
 
         break;
       }
@@ -259,7 +259,7 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
           return 0;
         }
 
-        if (hd.token.len != NGTCP2_CRYPTO_MAX_REGULAR_TOKENLEN + 1) {
+        if (hd.tokenlen != NGTCP2_CRYPTO_MAX_REGULAR_TOKENLEN + 1) {
           if (LOG_ENABLED(INFO)) {
             LOG(INFO) << "Failed to validate token from remote="
                       << util::to_numeric_addr(&remote_addr);
@@ -276,9 +276,9 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
         }
 
         auto qkm = select_quic_keying_material(
-            *qkms.get(), hd.token.base[NGTCP2_CRYPTO_MAX_REGULAR_TOKENLEN]);
+            *qkms.get(), hd.token[NGTCP2_CRYPTO_MAX_REGULAR_TOKENLEN]);
 
-        if (verify_token(hd.token.base, hd.token.len - 1, &remote_addr.su.sa,
+        if (verify_token(hd.token, hd.tokenlen - 1, &remote_addr.su.sa,
                          remote_addr.len, qkm->secret.data(),
                          qkm->secret.size()) != 0) {
           if (LOG_ENABLED(INFO)) {
@@ -301,8 +301,8 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
                     << util::to_numeric_addr(&remote_addr);
         }
 
-        token = hd.token.base;
-        tokenlen = hd.token.len;
+        token = hd.token;
+        tokenlen = hd.tokenlen;
 
         break;
       }
