@@ -929,6 +929,10 @@ ssize_t Connection::write_tls(const void *data, size_t len) {
 
   tls.last_write_idle = -1.;
 
+  auto &tlsconf = get_config()->tls;
+  auto via_bio =
+      tls.server_handshake && !tlsconf.session_cache.memcached.host.empty();
+
   ERR_clear_error();
 
 #if OPENSSL_1_1_1_API && !defined(OPENSSL_IS_BORINGSSL)
@@ -958,7 +962,12 @@ ssize_t Connection::write_tls(const void *data, size_t len) {
     case SSL_ERROR_WANT_WRITE:
       tls.last_writelen = len;
       // starting write watcher and timer is done in write_clear via
-      // bio.
+      // bio otherwise.
+      if (!via_bio) {
+        wlimit.startw();
+        ev_timer_again(loop, &wt);
+      }
+
       return 0;
     case SSL_ERROR_SSL:
       if (LOG_ENABLED(INFO)) {
@@ -971,6 +980,14 @@ ssize_t Connection::write_tls(const void *data, size_t len) {
         LOG(INFO) << "SSL_write: SSL_get_error returned " << err;
       }
       return SHRPX_ERR_NETWORK;
+    }
+  }
+
+  if (!via_bio) {
+    wlimit.drain(rv);
+
+    if (ev_is_active(&wt)) {
+      ev_timer_again(loop, &wt);
     }
   }
 
