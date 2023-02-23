@@ -2,8 +2,175 @@ name: build
 
 on: [push, pull_request]
 
+env:
+  LIBBPF_VERSION: v1.1.0
+  OPENSSL1_VERSION: 1_1_1t+quic
+  OPENSSL3_VERSION: 3.0.8+quic
+  BORINGSSL_VERSION: 80a243e07ef77156af66efa7d22ac35aba44c1b3
+  NGHTTP3_VERSION: v0.8.0
+  NGTCP2_VERSION: v0.13.1
+
 jobs:
+  build-cache:
+    strategy:
+      matrix:
+        os: [ubuntu-22.04, macos-11]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Restore libbpf cache
+      id: cache-libbpf
+      uses: actions/cache@v3
+      if: runner.os == 'Linux'
+      with:
+        path: libbpf/build
+        key: ${{ runner.os }}-libbpf-${{ env.LIBBPF_VERSION }}
+    - name: Restore OpenSSL v1.1.1 cache
+      id: cache-openssl1
+      uses: actions/cache@v3
+      with:
+        path: openssl1/build
+        key: ${{ runner.os }}-openssl-${{ env.OPENSSL1_VERSION }}
+    - name: Restore OpenSSL v3.0.x cache
+      id: cache-openssl3
+      uses: actions/cache@v3
+      with:
+        path: openssl3/build
+        key: ${{ runner.os }}-openssl-${{ env.OPENSSL3_VERSION }}
+    - name: Restore BoringSSL cache
+      id: cache-boringssl
+      uses: actions/cache@v3
+      with:
+        path: |
+          boringssl/build/crypto/libcrypto.a
+          boringssl/build/ssl/libssl.a
+          boringssl/include
+        key: ${{ runner.os }}-boringssl-${{ env.BORINGSSL_VERSION }}
+    - name: Restore nghttp3 cache
+      id: cache-nghttp3
+      uses: actions/cache@v3
+      with:
+        path: nghttp3/build
+        key: ${{ runner.os }}-nghttp3-${{ env.NGHTTP3_VERSION }}
+    - name: Restore ngtcp2 + quictls/openssl v1.1.1 cache
+      id: cache-ngtcp2-openssl1
+      uses: actions/cache@v3
+      with:
+        path: ngtcp2-openssl1/build
+        key: ${{ runner.os }}-ngtcp2-${{ env.NGTCP2_VERSION }}-openssl-${{ env.OPENSSL1_VERSION }}
+    - name: Restore ngtcp2 + quictls/openssl v3.0.x cache
+      id: cache-ngtcp2-openssl3
+      uses: actions/cache@v3
+      with:
+        path: ngtcp2-openssl3/build
+        key: ${{ runner.os }}-ngtcp2-${{ env.NGTCP2_VERSION }}-openssl-${{ env.OPENSSL3_VERSION }}
+    - id: settings
+      if: |
+        (steps.cache-libbpf.outputs.cache-hit != 'true' && runner.os == 'Linux') ||
+        steps.cache-openssl1.outputs.cache-hit != 'true' ||
+        steps.cache-openssl3.outputs.cache-hit != 'true' ||
+        steps.cache-boringssl.outputs.cache-hit != 'true' ||
+        steps.cache-nghttp3.outputs.cache-hit != 'true' ||
+        steps.cache-ngtcp2-openssl1.outputs.cache-hit != 'true' ||
+        steps.cache-ngtcp2-openssl3.outputs.cache-hit != 'true'
+      run: |
+        echo 'needs-build=true' >> $GITHUB_OUTPUT
+    - name: Linux setup
+      if: runner.os == 'Linux' && steps.settings.outputs.needs-build == 'true'
+      run: |
+        sudo apt-get install \
+          g++-12 \
+          clang-14 \
+          autoconf \
+          automake \
+          autotools-dev \
+          libtool \
+          pkg-config \
+          libelf-dev \
+          cmake \
+          cmake-data
+    - name: MacOS setup
+      if: runner.os == 'macOS'
+      run: |
+        brew install \
+          autoconf \
+          automake \
+          pkg-config \
+          libtool
+    - name: Build libbpf
+      if: steps.cache-libbpf.outputs.cache-hit != 'true' && runner.os == 'Linux'
+      run: |
+        git clone -b ${{ env.LIBBPF_VERSION }} https://github.com/libbpf/libbpf
+        cd libbpf
+        make -C src install PREFIX=$PWD/build
+    - name: Build quictls/openssl v1.1.1
+      if: steps.cache-openssl1.outputs.cache-hit != 'true'
+      run: |
+        git clone --depth 1 -b OpenSSL_${{ env.OPENSSL1_VERSION }} https://github.com/quictls/openssl openssl1
+        cd openssl1
+        ./config --prefix=$PWD/build
+        make -j"$(nproc 2> /dev/null || sysctl -n hw.ncpu)"
+        make install_sw
+    - name: Build quictls/openssl v3.0.x
+      if: steps.cache-openssl3.outputs.cache-hit != 'true'
+      run: |
+        git clone --depth 1 -b openssl-${{ env.OPENSSL3_VERSION }} https://github.com/quictls/openssl openssl3
+        cd openssl3
+        ./config enable-ktls --prefix=$PWD/build --libdir=$PWD/build/lib
+        make -j"$(nproc 2> /dev/null || sysctl -n hw.ncpu)"
+        make install_sw
+    - name: Build BoringSSL
+      if: steps.cache-boringssl.outputs.cache-hit != 'true'
+      run: |
+        git clone https://boringssl.googlesource.com/boringssl
+        cd boringssl
+        git checkout ${{ env.BORINGSSL_VERSION }}
+        mkdir build
+        cd build
+        cmake -DCMAKE_POSITION_INDEPENDENT_CODE=ON ..
+        make -j"$(nproc 2> /dev/null || sysctl -n hw.ncpu)"
+    - name: Build nghttp3
+      if: steps.cache-nghttp3.outputs.cache-hit != 'true'
+      run: |
+        git clone --depth 1 -b ${{ env.NGHTTP3_VERSION}} https://github.com/ngtcp2/nghttp3
+        cd nghttp3
+        autoreconf -i
+        ./configure --prefix=$PWD/build --enable-lib-only
+        make -j"$(nproc 2> /dev/null || sysctl -n hw.ncpu)" check
+        make install
+    - name: Build ngtcp2 + quictls/openssl v1.1.1
+      if: steps.cache-ngtcp2-openssl1.outputs.cache-hit != 'true'
+      run: |
+        git clone --depth 1 -b ${{ env.NGTCP2_VERSION }} https://github.com/ngtcp2/ngtcp2 ngtcp2-openssl1
+        cd ngtcp2-openssl1
+        autoreconf -i
+        ./configure --prefix=$PWD/build --enable-lib-only \
+          PKG_CONFIG_PATH="../openssl1/build/lib/pkgconfig" \
+          BORINGSSL_CFLAGS="-I$PWD/../boringssl/include/" \
+          BORINGSSL_LIBS="-L$PWD/../boringssl/build/ssl -lssl -L$PWD/../boringssl/build/crypto -lcrypto" \
+          --with-boringssl
+        make -j"$(nproc 2> /dev/null || sysctl -n hw.ncpu)" check
+        make install
+    - name: Build ngtcp2 + quictls/openssl v3.0.x
+      if: steps.cache-ngtcp2-openssl3.outputs.cache-hit != 'true'
+      run: |
+        git clone --depth 1 -b ${{ env.NGTCP2_VERSION }} https://github.com/ngtcp2/ngtcp2 ngtcp2-openssl3
+        cd ngtcp2-openssl3
+        autoreconf -i
+        ./configure --prefix=$PWD/build --enable-lib-only \
+          PKG_CONFIG_PATH="../openssl3/build/lib/pkgconfig" \
+          BORINGSSL_CFLAGS="-I$PWD/../boringssl/include/" \
+          BORINGSSL_LIBS="-L$PWD/../boringssl/build/ssl -lssl -L$PWD/../boringssl/build/crypto -lcrypto" \
+          --with-boringssl
+        make -j"$(nproc 2> /dev/null || sysctl -n hw.ncpu)" check
+        make install
+
   build:
+    needs:
+    - build-cache
+
     strategy:
       matrix:
         os: [ubuntu-22.04, macos-11]
@@ -91,83 +258,87 @@ jobs:
       run: |
         echo 'CC=gcc' >> $GITHUB_ENV
         echo 'CXX=g++' >> $GITHUB_ENV
-    - name: Build libbpf
+    - name: Restore libbpf cache
+      uses: actions/cache/restore@v3
+      if: matrix.http3 == 'http3' && matrix.compiler == 'clang' && runner.os == 'Linux'
+      with:
+        path: libbpf/build
+        key: ${{ runner.os }}-libbpf-${{ env.LIBBPF_VERSION }}
+        fail-on-cache-miss: true
+    - name: Set libbpf variables
       if: matrix.http3 == 'http3' && matrix.compiler == 'clang' && runner.os == 'Linux'
       run: |
-        git clone -b v1.1.0 https://github.com/libbpf/libbpf
         cd libbpf
-        PREFIX=$PWD/build make -C src install
 
         EXTRA_AUTOTOOLS_OPTS="--with-libbpf"
         EXTRA_CMAKE_OPTS="-DWITH_LIBBPF=1"
 
         echo 'EXTRA_AUTOTOOLS_OPTS='"$EXTRA_AUTOTOOLS_OPTS" >> $GITHUB_ENV
         echo 'EXTRA_CMAKE_OPTS='"$EXTRA_CMAKE_OPTS" >> $GITHUB_ENV
-    - name: Build quictls/openssl v1.1.1
+    - name: Restore quictls/openssl v1.1.1 cache
+      uses: actions/cache/restore@v3
       if: matrix.http3 == 'http3' && matrix.openssl == 'openssl1'
-      run: |
-        git clone --depth 1 -b OpenSSL_1_1_1t+quic https://github.com/quictls/openssl
-        cd openssl
-        ./config --prefix=$PWD/build
-        make -j"$(nproc 2> /dev/null || sysctl -n hw.ncpu)"
-        make install_sw
-    - name: Build quictls/openssl v3.0.x
+      with:
+        path: openssl1/build
+        key: ${{ runner.os }}-openssl-${{ env.OPENSSL1_VERSION }}
+        fail-on-cache-miss: true
+    - name: Restore quictls/openssl v3.0.x cache
+      uses: actions/cache/restore@v3
       if: matrix.http3 == 'http3' && matrix.openssl == 'openssl3'
-      run: |
-        unset CPPFLAGS
-        unset LDFLAGS
-
-        git clone --depth 1 -b openssl-3.0.8+quic https://github.com/quictls/openssl
-        cd openssl
-        ./config enable-ktls --prefix=$PWD/build --libdir=$PWD/build/lib
-        make -j"$(nproc 2> /dev/null || sysctl -n hw.ncpu)"
-        make install_sw
-    - name: Build BoringSSL
+      with:
+        path: openssl3/build
+        key: ${{ runner.os }}-openssl-${{ env.OPENSSL3_VERSION }}
+        fail-on-cache-miss: true
+    - name: Restore BoringSSL cache
+      uses: actions/cache/restore@v3
+      if: matrix.openssl == 'boringssl'
+      with:
+        path: |
+          boringssl/build/crypto/libcrypto.a
+          boringssl/build/ssl/libssl.a
+          boringssl/include
+        key: ${{ runner.os }}-boringssl-${{ env.BORINGSSL_VERSION }}
+        fail-on-cache-miss: true
+    - name: Set BoringSSL variables
       if: matrix.openssl == 'boringssl'
       run: |
-        git clone https://boringssl.googlesource.com/boringssl
         cd boringssl
-        git checkout 80a243e07ef77156af66efa7d22ac35aba44c1b3
-        mkdir build
-        cd build
-        cmake -DCMAKE_POSITION_INDEPENDENT_CODE=ON ..
-        make -j"$(nproc 2> /dev/null || sysctl -n hw.ncpu)"
-        cd ..
 
         OPENSSL_CFLAGS="-I$PWD/include/"
         OPENSSL_LIBS="-L$PWD/build/ssl -lssl -L$PWD/build/crypto -lcrypto -pthread"
-        EXTRA_NGTCP2_OPTS="$EXTRA_NGTCP2_OPTS --without-openssl --with-boringssl"
         EXTRA_AUTOTOOLS_OPTS="$EXTRA_AUTOTOOLS_OPTS --without-neverbleed --without-jemalloc"
 
         echo 'OPENSSL_CFLAGS='"$OPENSSL_CFLAGS" >> $GITHUB_ENV
         echo 'OPENSSL_LIBS='"$OPENSSL_LIBS" >> $GITHUB_ENV
         echo 'BORINGSSL_CFLAGS='"$OPENSSL_CFLAGS" >> $GITHUB_ENV
         echo 'BORINGSSL_LIBS='"$OPENSSL_LIBS" >> $GITHUB_ENV
-        echo 'EXTRA_NGTCP2_OPTS='"$EXTRA_NGTCP2_OPTS" >> "$GITHUB_ENV"
         echo 'EXTRA_AUTOTOOLS_OPTS='"$EXTRA_AUTOTOOLS_OPTS" >> $GITHUB_ENV
-    - name: Build nghttp3
+    - name: Restore nghttp3 cache
+      uses: actions/cache/restore@v3
       if: matrix.http3 == 'http3'
-      run: |
-        git clone --depth 1 -b v0.8.0 https://github.com/ngtcp2/nghttp3
-        cd nghttp3
-        autoreconf -i
-        ./configure --prefix=$PWD/build --enable-lib-only
-        make -j"$(nproc 2> /dev/null || sysctl -n hw.ncpu)" check
-        make install
-    - name: Build ngtcp2
-      if: matrix.http3 == 'http3'
-      run: |
-        git clone --depth 1 -b v0.13.1 https://github.com/ngtcp2/ngtcp2
-        cd ngtcp2
-        autoreconf -i
-        ./configure --prefix=$PWD/build --enable-lib-only PKG_CONFIG_PATH="../openssl/build/lib/pkgconfig" $EXTRA_NGTCP2_OPTS
-        make -j"$(nproc 2> /dev/null || sysctl -n hw.ncpu)" check
-        make install
+      with:
+        path: nghttp3/build
+        key: ${{ runner.os }}-nghttp3-${{ env.NGHTTP3_VERSION }}
+        fail-on-cache-miss: true
+    - name: Restore ngtcp2 + quictls/openssl v1.1.1 cache
+      uses: actions/cache/restore@v3
+      if: matrix.http3 == 'http3' && (matrix.openssl == 'openssl1' || matrix.openssl == 'boringssl')
+      with:
+        path: ngtcp2-openssl1/build
+        key: ${{ runner.os }}-ngtcp2-${{ env.NGTCP2_VERSION }}-openssl-${{ env.OPENSSL1_VERSION }}
+        fail-on-cache-miss: true
+    - name: Restore ngtcp2 + quictls/openssl v3.0.x cache
+      uses: actions/cache/restore@v3
+      if: matrix.http3 == 'http3' && matrix.openssl == 'openssl3'
+      with:
+        path: ngtcp2-openssl3/build
+        key: ${{ runner.os }}-ngtcp2-${{ env.NGTCP2_VERSION }}-openssl-${{ env.OPENSSL3_VERSION }}
+        fail-on-cache-miss: true
     - name: Setup extra environment variables for HTTP/3
       if: matrix.http3 == 'http3'
       run: |
-        PKG_CONFIG_PATH="$PWD/openssl/build/lib/pkgconfig:$PWD/nghttp3/build/lib/pkgconfig:$PWD/ngtcp2/build/lib/pkgconfig:$PWD/libbpf/build/lib64/pkgconfig:$PKG_CONFIG_PATH"
-        LDFLAGS="$LDFLAGS -Wl,-rpath,$PWD/openssl/build/lib -Wl,-rpath,$PWD/libbpf/build/lib64"
+        PKG_CONFIG_PATH="$PWD/openssl1/build/lib/pkgconfig:$PWD/openssl3/build/lib/pkgconfig:$PWD/nghttp3/build/lib/pkgconfig:$PWD/ngtcp2-openssl1/build/lib/pkgconfig:$PWD/ngtcp2-openssl3/build/lib/pkgconfig:$PWD/libbpf/build/lib64/pkgconfig:$PKG_CONFIG_PATH"
+        LDFLAGS="$LDFLAGS -Wl,-rpath,$PWD/openssl1/build/lib -Wl,-rpath,$PWD/openssl3/build/lib -Wl,-rpath,$PWD/libbpf/build/lib64"
         EXTRA_AUTOTOOLS_OPTS="--enable-http3 $EXTRA_AUTOTOOLS_OPTS"
         EXTRA_CMAKE_OPTS="-DENABLE_HTTP3=1 $EXTRA_CMAKE_OPTS"
 
