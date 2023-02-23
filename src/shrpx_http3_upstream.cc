@@ -732,6 +732,10 @@ int Http3Upstream::on_write() {
     return -1;
   }
 
+  if (httpconn_ && nghttp3_conn_is_drained(httpconn_)) {
+    return -1;
+  }
+
   reset_timer();
 
   return 0;
@@ -1498,6 +1502,11 @@ void Http3Upstream::on_handler_delete() {
     ngtcp2_connection_close_error ccerr;
     ngtcp2_connection_close_error_default(&ccerr);
 
+    if (worker->get_graceful_shutdown() &&
+        !ngtcp2_conn_get_handshake_completed(conn_)) {
+      ccerr.error_code = NGTCP2_CONNECTION_REFUSED;
+    }
+
     auto nwrite = ngtcp2_conn_write_connection_close(
         conn_, &ps.path, &pi, conn_close_.data(), conn_close_.size(), &ccerr,
         quic_timestamp());
@@ -1759,24 +1768,18 @@ int Http3Upstream::on_read(const UpstreamAddr *faddr,
       auto worker = handler_->get_worker();
       auto quic_conn_handler = worker->get_quic_connection_handler();
 
+      if (worker->get_graceful_shutdown()) {
+        ngtcp2_connection_close_error_set_transport_error(
+            &last_error_, NGTCP2_CONNECTION_REFUSED, nullptr, 0);
+
+        return handle_error();
+      }
+
       ngtcp2_version_cid vc;
 
       rv =
           ngtcp2_pkt_decode_version_cid(&vc, data, datalen, SHRPX_QUIC_SCIDLEN);
       if (rv != 0) {
-        return -1;
-      }
-
-      if (worker->get_graceful_shutdown()) {
-        ngtcp2_cid ini_dcid, ini_scid;
-
-        ngtcp2_cid_init(&ini_dcid, vc.dcid, vc.dcidlen);
-        ngtcp2_cid_init(&ini_scid, vc.scid, vc.scidlen);
-
-        quic_conn_handler->send_connection_close(
-            faddr, vc.version, ini_dcid, ini_scid, remote_addr, local_addr,
-            NGTCP2_CONNECTION_REFUSED, datalen * 3);
-
         return -1;
       }
 
@@ -2781,6 +2784,10 @@ int Http3Upstream::start_graceful_shutdown() {
 
   if (ev_is_active(&shutdown_timer_)) {
     return 0;
+  }
+
+  if (!httpconn_) {
+    return -1;
   }
 
   rv = nghttp3_conn_submit_shutdown_notice(httpconn_);
