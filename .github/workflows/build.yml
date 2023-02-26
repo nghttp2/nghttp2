@@ -392,6 +392,10 @@ jobs:
         cd $NGHTTP2_CMAKE_DIR
         make -j"$(nproc 2> /dev/null || sysctl -n hw.ncpu)"
         make -j"$(nproc 2> /dev/null || sysctl -n hw.ncpu)" check
+    - uses: actions/setup-go@v3
+      if: matrix.buildtool == 'cmake'
+      with:
+        go-version: '1.19'
     - name: Integration test
       # Integration tests for nghttpx; autotools erases build
       # artifacts.
