@@ -658,6 +658,15 @@ int HttpsUpstream::on_read() {
   auto htperr = llhttp_execute(&htp_, reinterpret_cast<const char *>(rb->pos()),
                                rb->rleft());
 
+  if (htperr == HPE_PAUSED_UPGRADE &&
+      rb->pos() ==
+          reinterpret_cast<const uint8_t *>(llhttp_get_error_pos(&htp_))) {
+    llhttp_resume_after_upgrade(&htp_);
+
+    htperr = llhttp_execute(&htp_, reinterpret_cast<const char *>(rb->pos()),
+                            rb->rleft());
+  }
+
   auto nread =
       htperr == HPE_OK
           ? rb->rleft()
