@@ -2,6 +2,8 @@ name: build
 
 on: [push, pull_request]
 
+permissions: read-all
+
 env:
   LIBBPF_VERSION: v1.1.0
   OPENSSL1_VERSION: 1_1_1t+quic
