@@ -218,23 +218,6 @@ struct WorkerProcess {
         cid_prefixes(cid_prefixes)
 #endif // ENABLE_HTTP3
   {
-    ev_signal_init(&reopen_log_signalev, signal_cb, REOPEN_LOG_SIGNAL);
-    reopen_log_signalev.data = this;
-    ev_signal_start(loop, &reopen_log_signalev);
-
-    ev_signal_init(&exec_binary_signalev, signal_cb, EXEC_BINARY_SIGNAL);
-    exec_binary_signalev.data = this;
-    ev_signal_start(loop, &exec_binary_signalev);
-
-    ev_signal_init(&graceful_shutdown_signalev, signal_cb,
-                   GRACEFUL_SHUTDOWN_SIGNAL);
-    graceful_shutdown_signalev.data = this;
-    ev_signal_start(loop, &graceful_shutdown_signalev);
-
-    ev_signal_init(&reload_signalev, signal_cb, RELOAD_SIGNAL);
-    reload_signalev.data = this;
-    ev_signal_start(loop, &reload_signalev);
-
     ev_child_init(&worker_process_childev, worker_process_child_cb, worker_pid,
                   0);
     worker_process_childev.data = this;
@@ -242,8 +225,6 @@ struct WorkerProcess {
   }
 
   ~WorkerProcess() {
-    shutdown_signal_watchers();
-
     ev_child_stop(loop, &worker_process_childev);
 
 #ifdef ENABLE_HTTP3
@@ -258,17 +239,6 @@ struct WorkerProcess {
     }
   }
 
-  void shutdown_signal_watchers() {
-    ev_signal_stop(loop, &reopen_log_signalev);
-    ev_signal_stop(loop, &exec_binary_signalev);
-    ev_signal_stop(loop, &graceful_shutdown_signalev);
-    ev_signal_stop(loop, &reload_signalev);
-  }
-
-  ev_signal reopen_log_signalev;
-  ev_signal exec_binary_signalev;
-  ev_signal graceful_shutdown_signalev;
-  ev_signal reload_signalev;
   ev_child worker_process_childev;
   struct ev_loop *loop;
   pid_t worker_pid;
@@ -281,7 +251,7 @@ struct WorkerProcess {
 };
 
 namespace {
-void reload_config(WorkerProcess *wp);
+void reload_config();
 } // namespace
 
 namespace {
@@ -700,15 +670,12 @@ void reopen_log(WorkerProcess *wp) {
 
 namespace {
 void signal_cb(struct ev_loop *loop, ev_signal *w, int revents) {
-  auto wp = static_cast<WorkerProcess *>(w->data);
-  if (wp->worker_pid == -1) {
-    ev_break(loop);
-    return;
-  }
-
   switch (w->signum) {
   case REOPEN_LOG_SIGNAL:
-    reopen_log(wp);
+    for (auto &wp : worker_processes) {
+      reopen_log(wp.get());
+    }
+
     return;
   case EXEC_BINARY_SIGNAL:
     exec_binary();
@@ -718,12 +685,17 @@ void signal_cb(struct ev_loop *loop, ev_signal *w, int revents) {
     for (auto &addr : listenerconf.addrs) {
       close(addr.fd);
     }
-    ipc_send(wp, SHRPX_IPC_GRACEFUL_SHUTDOWN);
-    worker_process_set_termination_deadline(wp, loop);
+
+    for (auto &wp : worker_processes) {
+      ipc_send(wp.get(), SHRPX_IPC_GRACEFUL_SHUTDOWN);
+      worker_process_set_termination_deadline(wp.get(), loop);
+    }
+
     return;
   }
   case RELOAD_SIGNAL:
-    reload_config(wp);
+    reload_config();
+
     return;
   default:
     worker_process_kill(w->signum, loop);
@@ -1470,6 +1442,39 @@ collect_quic_lingering_worker_processes() {
 #endif // ENABLE_HTTP3
 
 namespace {
+ev_signal reopen_log_signalev;
+ev_signal exec_binary_signalev;
+ev_signal graceful_shutdown_signalev;
+ev_signal reload_signalev;
+} // namespace
+
+namespace {
+void start_signal_watchers(struct ev_loop *loop) {
+  ev_signal_init(&reopen_log_signalev, signal_cb, REOPEN_LOG_SIGNAL);
+  ev_signal_start(loop, &reopen_log_signalev);
+
+  ev_signal_init(&exec_binary_signalev, signal_cb, EXEC_BINARY_SIGNAL);
+  ev_signal_start(loop, &exec_binary_signalev);
+
+  ev_signal_init(&graceful_shutdown_signalev, signal_cb,
+                 GRACEFUL_SHUTDOWN_SIGNAL);
+  ev_signal_start(loop, &graceful_shutdown_signalev);
+
+  ev_signal_init(&reload_signalev, signal_cb, RELOAD_SIGNAL);
+  ev_signal_start(loop, &reload_signalev);
+}
+} // namespace
+
+namespace {
+void shutdown_signal_watchers(struct ev_loop *loop) {
+  ev_signal_stop(loop, &reload_signalev);
+  ev_signal_stop(loop, &graceful_shutdown_signalev);
+  ev_signal_stop(loop, &exec_binary_signalev);
+  ev_signal_stop(loop, &reopen_log_signalev);
+}
+} // namespace
+
+namespace {
 // Creates worker process, and returns PID of worker process.  On
 // success, file descriptor for IPC (send only) is assigned to
 // |main_ipc_fd|.  In child process, we will close file descriptors
@@ -1553,6 +1558,10 @@ pid_t fork_worker_process(
       wp->quic_ipc_fd = -1;
     }
 #endif // ENABLE_HTTP3
+
+    if (!config->single_process) {
+      shutdown_signal_watchers(EV_DEFAULT);
+    }
 
     // Remove all WorkerProcesses to stop any registered watcher on
     // default loop.
@@ -1713,6 +1722,10 @@ int event_loop() {
   }
 #endif // ENABLE_HTTP3
 
+  if (!config->single_process) {
+    start_signal_watchers(loop);
+  }
+
   auto pid = fork_worker_process(ipc_fd
 #ifdef ENABLE_HTTP3
                                  ,
@@ -1760,6 +1773,10 @@ int event_loop() {
   ev_run(loop, 0);
 
   ev_timer_stop(loop, &worker_process_grace_period_timer);
+
+  if (!config->single_process) {
+    shutdown_signal_watchers(loop);
+  }
 
   return 0;
 }
@@ -3826,7 +3843,7 @@ void close_not_inherited_fd(Config *config,
 } // namespace
 
 namespace {
-void reload_config(WorkerProcess *wp) {
+void reload_config() {
   int rv;
 
   LOG(NOTICE) << "Reloading configuration";
@@ -3909,8 +3926,6 @@ void reload_config(WorkerProcess *wp) {
   auto &last_wp = worker_processes.back();
   ipc_send(last_wp.get(), SHRPX_IPC_GRACEFUL_SHUTDOWN);
   worker_process_set_termination_deadline(last_wp.get(), loop);
-  // We no longer use signals for this worker.
-  last_wp->shutdown_signal_watchers();
 
   worker_process_add(std::make_unique<WorkerProcess>(loop, pid, ipc_fd
 #ifdef ENABLE_HTTP3
