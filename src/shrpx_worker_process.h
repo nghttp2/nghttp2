@@ -42,6 +42,8 @@ class ConnectionHandler;
 struct WorkerProcessConfig {
   // IPC socket to read event from main process
   int ipc_fd;
+  // IPC socket to tell that a worker process is ready for service.
+  int ready_ipc_fd;
   // IPv4 or UNIX domain socket, or -1 if not used
   int server_fd;
   // IPv6 socket, or -1 if not used
