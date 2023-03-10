@@ -1545,6 +1545,9 @@ pid_t fork_worker_process(
   }
 
   if (pid == 0) {
+    // We are in new process now, update pid for logger.
+    log_config()->pid = getpid();
+
     ev_loop_fork(EV_DEFAULT);
 
     for (auto &addr : config->conn.listener.addrs) {
