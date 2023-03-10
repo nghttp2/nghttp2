@@ -417,18 +417,6 @@ void worker_process_kill(int signum, struct ev_loop *loop) {
 } // namespace
 
 namespace {
-// Returns the last PID of worker process.  Returns -1 if there is no
-// worker process at the moment.
-int worker_process_last_pid() {
-  if (worker_processes.empty()) {
-    return -1;
-  }
-
-  return worker_processes.back()->worker_pid;
-}
-} // namespace
-
-namespace {
 int save_pid() {
   std::array<char, STRERROR_BUFSIZE> errbuf;
   auto config = get_config();
@@ -751,11 +739,9 @@ void worker_process_child_cb(struct ev_loop *loop, ev_child *w, int revents) {
 
   log_chld(w->rpid, w->rstatus, "Worker process");
 
-  auto pid = wp->worker_pid;
-
   worker_process_remove(wp, loop);
 
-  if (worker_process_last_pid() == pid) {
+  if (worker_processes.empty()) {
     ev_break(loop);
   }
 }
