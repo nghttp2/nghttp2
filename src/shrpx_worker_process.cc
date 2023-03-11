@@ -405,6 +405,29 @@ void nb_child_cb(struct ev_loop *loop, ev_child *w, int revents) {
 } // namespace
 #endif // HAVE_NEVERBLEED
 
+namespace {
+int send_ready_event(int ready_ipc_fd) {
+  std::array<char, STRERROR_BUFSIZE> errbuf;
+  auto pid = getpid();
+  ssize_t nwrite;
+
+  while ((nwrite = write(ready_ipc_fd, &pid, sizeof(pid))) == -1 &&
+         errno == EINTR)
+    ;
+
+  if (nwrite < 0) {
+    auto error = errno;
+
+    LOG(ERROR) << "Writing PID to ready IPC channel failed: "
+               << xsi_strerror(error, errbuf.data(), errbuf.size());
+
+    return -1;
+  }
+
+  return 0;
+}
+} // namespace
+
 int worker_process_event_loop(WorkerProcessConfig *wpconf) {
   int rv;
   std::array<char, STRERROR_BUFSIZE> errbuf;
@@ -636,6 +659,10 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
 
   if (LOG_ENABLED(INFO)) {
     LOG(INFO) << "Entering event loop";
+  }
+
+  if (send_ready_event(wpconf->ready_ipc_fd) != 0) {
+    return -1;
   }
 
   ev_run(loop, 0);
