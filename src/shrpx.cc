@@ -1891,7 +1891,8 @@ int event_loop() {
 
   shutdown_worker_process_ready_ipc_watcher(loop);
 
-  if (!config->single_process) {
+  // config is now stale if reload has happened.
+  if (!get_config()->single_process) {
     shutdown_signal_watchers(loop);
   }
 
