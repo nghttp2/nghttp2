@@ -1813,7 +1813,6 @@ StringRef get_common_name(X509 *cert) {
 }
 } // namespace
 
-namespace {
 int verify_numeric_hostname(X509 *cert, const StringRef &hostname,
                             const Address *addr) {
   const void *saddr;
@@ -1875,15 +1874,8 @@ int verify_numeric_hostname(X509 *cert, const StringRef &hostname,
 
   return -1;
 }
-} // namespace
 
-namespace {
-int verify_hostname(X509 *cert, const StringRef &hostname,
-                    const Address *addr) {
-  if (util::numeric_host(hostname.c_str())) {
-    return verify_numeric_hostname(cert, hostname, addr);
-  }
-
+int verify_dns_hostname(X509 *cert, const StringRef &hostname) {
   auto altnames = static_cast<GENERAL_NAMES *>(
       X509_get_ext_d2i(cert, NID_subject_alt_name, nullptr, nullptr));
   if (altnames) {
@@ -1950,6 +1942,16 @@ int verify_hostname(X509 *cert, const StringRef &hostname,
   OPENSSL_free(const_cast<char *>(cn.c_str()));
 
   return rv ? 0 : -1;
+}
+
+namespace {
+int verify_hostname(X509 *cert, const StringRef &hostname,
+                    const Address *addr) {
+  if (util::numeric_host(hostname.c_str())) {
+    return verify_numeric_hostname(cert, hostname, addr);
+  }
+
+  return verify_dns_hostname(cert, hostname);
 }
 } // namespace
 

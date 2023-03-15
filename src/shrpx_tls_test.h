@@ -34,6 +34,8 @@ namespace shrpx {
 void test_shrpx_tls_create_lookup_tree(void);
 void test_shrpx_tls_cert_lookup_tree_add_ssl_ctx(void);
 void test_shrpx_tls_tls_hostname_match(void);
+void test_shrpx_tls_verify_numeric_hostname(void);
+void test_shrpx_tls_verify_dns_hostname(void);
 
 } // namespace shrpx
 

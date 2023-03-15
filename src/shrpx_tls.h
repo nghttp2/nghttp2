@@ -122,6 +122,16 @@ int check_cert(SSL *ssl, const Address *addr, const StringRef &host);
 // point to &addr->addr.
 int check_cert(SSL *ssl, const DownstreamAddr *addr, const Address *raddr);
 
+// Verify |cert| using numeric IP address.  |hostname| and |addr|
+// should contain the same numeric IP address.  This function returns
+// 0 if it succeeds, or -1.
+int verify_numeric_hostname(X509 *cert, const StringRef &hostname,
+                            const Address *addr);
+
+// Verify |cert| using DNS name hostname.  This function returns 0 if
+// it succeeds, or -1.
+int verify_dns_hostname(X509 *cert, const StringRef &hostname);
+
 struct WildcardRevPrefix {
   WildcardRevPrefix(const StringRef &prefix, size_t idx)
       : prefix(std::begin(prefix), std::end(prefix)), idx(idx) {}
