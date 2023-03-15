@@ -77,6 +77,10 @@ int main(int argc, char *argv[]) {
                    shrpx::test_shrpx_tls_cert_lookup_tree_add_ssl_ctx) ||
       !CU_add_test(pSuite, "tls_tls_hostname_match",
                    shrpx::test_shrpx_tls_tls_hostname_match) ||
+      !CU_add_test(pSuite, "tls_tls_verify_numeric_hostname",
+                   shrpx::test_shrpx_tls_verify_numeric_hostname) ||
+      !CU_add_test(pSuite, "tls_tls_verify_dns_hostname",
+                   shrpx::test_shrpx_tls_verify_dns_hostname) ||
       !CU_add_test(pSuite, "http2_add_header", shrpx::test_http2_add_header) ||
       !CU_add_test(pSuite, "http2_get_header", shrpx::test_http2_get_header) ||
       !CU_add_test(pSuite, "http2_copy_headers_to_nva",

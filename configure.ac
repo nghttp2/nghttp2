@@ -1072,6 +1072,7 @@ AC_CONFIG_FILES([
   tests/testdata/Makefile
   third-party/Makefile
   src/Makefile
+  src/testdata/Makefile
   bpf/Makefile
   examples/Makefile
   integration-tests/Makefile
