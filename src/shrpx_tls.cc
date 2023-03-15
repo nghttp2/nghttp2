@@ -1817,12 +1817,15 @@ namespace {
 int verify_numeric_hostname(X509 *cert, const StringRef &hostname,
                             const Address *addr) {
   const void *saddr;
+  size_t saddrlen;
   switch (addr->su.storage.ss_family) {
   case AF_INET:
     saddr = &addr->su.in.sin_addr;
+    saddrlen = sizeof(addr->su.in.sin_addr);
     break;
   case AF_INET6:
     saddr = &addr->su.in6.sin6_addr;
+    saddrlen = sizeof(addr->su.in6.sin6_addr);
     break;
   default:
     return -1;
@@ -1847,7 +1850,7 @@ int verify_numeric_hostname(X509 *cert, const StringRef &hostname,
       size_t ip_addrlen = altname->d.iPAddress->length;
 
       ip_found = true;
-      if (addr->len == ip_addrlen && memcmp(saddr, ip_addr, ip_addrlen) == 0) {
+      if (saddrlen == ip_addrlen && memcmp(saddr, ip_addr, ip_addrlen) == 0) {
         return 0;
       }
     }
