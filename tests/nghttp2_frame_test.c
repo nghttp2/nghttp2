@@ -68,7 +68,7 @@ static void check_frame_header(size_t length, uint8_t type, uint8_t flags,
   CU_ASSERT(0 == hd->reserved);
 }
 
-void test_nghttp2_frame_pack_headers() {
+void test_nghttp2_frame_pack_headers(void) {
   nghttp2_hd_deflater deflater;
   nghttp2_hd_inflater inflater;
   nghttp2_headers frame, oframe;
@@ -276,7 +276,7 @@ void test_nghttp2_frame_pack_rst_stream(void) {
   nghttp2_bufs_free(&bufs);
 }
 
-void test_nghttp2_frame_pack_settings() {
+void test_nghttp2_frame_pack_settings(void) {
   nghttp2_settings frame, oframe;
   nghttp2_bufs bufs;
   int i;
@@ -311,7 +311,7 @@ void test_nghttp2_frame_pack_settings() {
   nghttp2_frame_settings_free(&oframe, mem);
 }
 
-void test_nghttp2_frame_pack_push_promise() {
+void test_nghttp2_frame_pack_push_promise(void) {
   nghttp2_hd_deflater deflater;
   nghttp2_hd_inflater inflater;
   nghttp2_push_promise frame, oframe;
@@ -384,7 +384,7 @@ void test_nghttp2_frame_pack_ping(void) {
   nghttp2_frame_ping_free(&frame);
 }
 
-void test_nghttp2_frame_pack_goaway() {
+void test_nghttp2_frame_pack_goaway(void) {
   nghttp2_goaway frame, oframe;
   nghttp2_bufs bufs;
   size_t opaque_data_len = 16;
