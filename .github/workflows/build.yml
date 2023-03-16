@@ -94,7 +94,7 @@ jobs:
           cmake \
           cmake-data
     - name: MacOS setup
-      if: runner.os == 'macOS'
+      if: runner.os == 'macOS' && steps.settings.outputs.needs-build == 'true'
       run: |
         brew install \
           autoconf \
