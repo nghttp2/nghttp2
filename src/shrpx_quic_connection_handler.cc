@@ -319,21 +319,6 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
 
       break;
     }
-    case NGTCP2_ERR_RETRY:
-      if (worker_->get_graceful_shutdown()) {
-        send_connection_close(faddr, hd.version, hd.dcid, hd.scid, remote_addr,
-                              local_addr, NGTCP2_CONNECTION_REFUSED,
-                              datalen * 3);
-        return 0;
-      }
-
-      send_retry(faddr, vc.version, vc.dcid, vc.dcidlen, vc.scid, vc.scidlen,
-                 remote_addr, local_addr, datalen * 3);
-      return 0;
-    case NGTCP2_ERR_VERSION_NEGOTIATION:
-      send_version_negotiation(faddr, vc.version, vc.dcid, vc.dcidlen, vc.scid,
-                               vc.scidlen, remote_addr, local_addr);
-      return 0;
     default:
       if (!config->single_thread && !(data[0] & 0x80) &&
           vc.dcidlen == SHRPX_QUIC_SCIDLEN &&

@@ -629,24 +629,28 @@ int Http3Upstream::init(const UpstreamAddr *faddr, const Address &remote_addr,
 
 #ifdef OPENSSL_IS_BORINGSSL
   if (quicconf.upstream.early_data) {
-    ngtcp2_transport_params early_data_params{
-        .initial_max_stream_data_bidi_local =
-            params.initial_max_stream_data_bidi_local,
-        .initial_max_stream_data_bidi_remote =
-            params.initial_max_stream_data_bidi_remote,
-        .initial_max_stream_data_uni = params.initial_max_stream_data_uni,
-        .initial_max_data = params.initial_max_data,
-        .initial_max_streams_bidi = params.initial_max_streams_bidi,
-        .initial_max_streams_uni = params.initial_max_streams_uni,
-    };
+    ngtcp2_transport_params early_data_params;
+
+    ngtcp2_transport_params_default(&early_data_params);
+
+    early_data_params.initial_max_stream_data_bidi_local =
+        params.initial_max_stream_data_bidi_local;
+    early_data_params.initial_max_stream_data_bidi_remote =
+        params.initial_max_stream_data_bidi_remote;
+    early_data_params.initial_max_stream_data_uni =
+        params.initial_max_stream_data_uni;
+    early_data_params.initial_max_data = params.initial_max_data;
+    early_data_params.initial_max_streams_bidi =
+        params.initial_max_streams_bidi;
+    early_data_params.initial_max_streams_uni = params.initial_max_streams_uni;
 
     // TODO include HTTP/3 SETTINGS
 
     std::array<uint8_t, 128> quic_early_data_ctx;
 
-    auto quic_early_data_ctxlen = ngtcp2_encode_transport_params(
+    auto quic_early_data_ctxlen = ngtcp2_transport_params_encode(
         quic_early_data_ctx.data(), quic_early_data_ctx.size(),
-        NGTCP2_TRANSPORT_PARAMS_TYPE_ENCRYPTED_EXTENSIONS, &early_data_params);
+        &early_data_params);
 
     assert(quic_early_data_ctxlen > 0);
     assert(static_cast<size_t>(quic_early_data_ctxlen) <=
@@ -668,6 +672,8 @@ int Http3Upstream::init(const UpstreamAddr *faddr, const Address &remote_addr,
   } else {
     params.original_dcid = initial_hd.dcid;
   }
+
+  params.original_dcid_present = 1;
 
   rv = generate_quic_stateless_reset_token(
       params.stateless_reset_token, scid, qkm.secret.data(), qkm.secret.size());
