@@ -734,6 +734,8 @@ int Http3Upstream::on_write() {
     }
   }
 
+  handler_->get_connection()->wlimit.stopw();
+
   if (write_streams() != 0) {
     return -1;
   }
@@ -855,17 +857,11 @@ int Http3Upstream::write_streams() {
           on_send_blocked(faddr, prev_ps.path.remote, prev_ps.path.local,
                           prev_pi, data, datalen, gso_size);
 
-          ngtcp2_conn_update_pkt_tx_time(conn_, ts);
-
           signal_write_upstream_addr(faddr);
-
-          return 0;
         }
       }
 
       ngtcp2_conn_update_pkt_tx_time(conn_, ts);
-
-      handler_->get_connection()->wlimit.stopw();
 
       return 0;
     }
@@ -912,9 +908,9 @@ int Http3Upstream::write_streams() {
         if (rv == SHRPX_ERR_SEND_BLOCKED) {
           on_send_blocked(faddr, ps.path.remote, ps.path.local, pi, data,
                           nwrite, 0);
-        }
 
-        signal_write_upstream_addr(faddr);
+          signal_write_upstream_addr(faddr);
+        }
       }
       }
 
@@ -934,11 +930,11 @@ int Http3Upstream::write_streams() {
       if (rv == SHRPX_ERR_SEND_BLOCKED) {
         on_send_blocked(faddr, ps.path.remote, ps.path.local, pi, data, datalen,
                         gso_size);
+
+        signal_write_upstream_addr(faddr);
       }
 
       ngtcp2_conn_update_pkt_tx_time(conn_, ts);
-
-      signal_write_upstream_addr(faddr);
 
       return 0;
     }
@@ -963,8 +959,6 @@ int Http3Upstream::write_streams() {
 
     if (++pktcnt == max_pktcnt) {
       ngtcp2_conn_update_pkt_tx_time(conn_, ts);
-
-      signal_write_upstream_addr(faddr);
 
       return 0;
     }
