@@ -454,15 +454,28 @@ jobs:
         wine main.exe
 
   build-windows:
+    strategy:
+      matrix:
+        arch: [x86, x64]
+        include:
+        - arch: x86
+          platform: Win32
+        - arch: x64
+          platform: x64
+
     runs-on: windows-latest
 
     steps:
     - uses: actions/checkout@v3
+    - uses: microsoft/setup-msbuild@v1
+    - run: |
+        vcpkg --triplet=${{ matrix.arch }}-windows install cunit
     - name: Configure cmake
       run: |
         mkdir build
         cd build
-        cmake ..
+        cmake -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DCMAKE_GENERATOR_PLATFORM=${{ matrix.platform }} -DVCPKG_TARGET_TRIPLET=${{ matrix.arch}}-windows ..
     - name: Build nghttp2
       run: |
         cmake --build build
+        cmake --build build --target check
