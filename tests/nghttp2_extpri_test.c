@@ -25,6 +25,8 @@
  */
 #include "nghttp2_extpri_test.h"
 
+#include <stdio.h>
+
 #include <CUnit/CUnit.h>
 
 #include "nghttp2_extpri.h"

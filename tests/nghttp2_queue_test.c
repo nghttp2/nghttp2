@@ -24,6 +24,8 @@
  */
 #include "nghttp2_queue_test.h"
 
+#include <stdio.h>
+
 #include <CUnit/CUnit.h>
 
 #include "nghttp2_queue.h"
