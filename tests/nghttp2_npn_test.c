@@ -24,6 +24,7 @@
  */
 #include "nghttp2_npn_test.h"
 
+#include <stdio.h>
 #include <string.h>
 
 #include <CUnit/CUnit.h>

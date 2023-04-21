@@ -24,6 +24,8 @@
  */
 #include "nghttp2_pq_test.h"
 
+#include <stdio.h>
+
 #include <CUnit/CUnit.h>
 
 #include "nghttp2_pq.h"

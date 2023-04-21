@@ -572,8 +572,7 @@ static ssize_t defer_data_source_read_callback(nghttp2_session *session,
 }
 
 static int on_stream_close_callback(nghttp2_session *session, int32_t stream_id,
-                                    nghttp2_error_code error_code,
-                                    void *user_data) {
+                                    uint32_t error_code, void *user_data) {
   my_user_data *my_data = (my_user_data *)user_data;
   (void)session;
   (void)stream_id;

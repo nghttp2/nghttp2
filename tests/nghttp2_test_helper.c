@@ -24,6 +24,7 @@
  */
 #include "nghttp2_test_helper.h"
 
+#include <stdio.h>
 #include <assert.h>
 
 #include <CUnit/CUnit.h>
