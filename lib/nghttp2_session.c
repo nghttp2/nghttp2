@@ -584,10 +584,6 @@ static int session_new(nghttp2_session **session_ptr,
   if (rv != 0) {
     goto fail_hd_inflater;
   }
-  rv = nghttp2_map_init(&(*session_ptr)->streams, mem);
-  if (rv != 0) {
-    goto fail_map;
-  }
 
   nbuffer = ((*session_ptr)->max_send_header_block_length +
              NGHTTP2_FRAMEBUF_CHUNKLEN - 1) /
@@ -604,6 +600,8 @@ static int session_new(nghttp2_session **session_ptr,
   if (rv != 0) {
     goto fail_aob_framebuf;
   }
+
+  nghttp2_map_init(&(*session_ptr)->streams, mem);
 
   active_outbound_item_reset(&(*session_ptr)->aob, mem);
 
@@ -637,8 +635,6 @@ static int session_new(nghttp2_session **session_ptr,
   return 0;
 
 fail_aob_framebuf:
-  nghttp2_map_free(&(*session_ptr)->streams);
-fail_map:
   nghttp2_hd_inflate_free(&(*session_ptr)->hd_inflater);
 fail_hd_inflater:
   nghttp2_hd_deflate_free(&(*session_ptr)->hd_deflater);
