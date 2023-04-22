@@ -31,7 +31,5 @@
 #endif /* HAVE_CONFIG_H */
 
 void test_nghttp2_http_parse_priority(void);
-void test_nghttp2_sf_parse_item(void);
-void test_nghttp2_sf_parse_inner_list(void);
 
 #endif /* NGHTTP2_HTTP_TEST_H */

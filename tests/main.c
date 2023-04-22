@@ -449,9 +449,6 @@ int main(void) {
       !CU_add_test(pSuite, "bufs_realloc", test_nghttp2_bufs_realloc) ||
       !CU_add_test(pSuite, "http_parse_priority",
                    test_nghttp2_http_parse_priority) ||
-      !CU_add_test(pSuite, "sf_parse_item", test_nghttp2_sf_parse_item) ||
-      !CU_add_test(pSuite, "sf_parse_inner_list",
-                   test_nghttp2_sf_parse_inner_list) ||
       !CU_add_test(pSuite, "extpri_to_uint8", test_nghttp2_extpri_to_uint8)) {
     CU_cleanup_registry();
     return (int)CU_get_error();
