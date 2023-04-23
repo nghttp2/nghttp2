@@ -342,7 +342,7 @@ struct Client {
     ngtcp2_crypto_conn_ref conn_ref;
     ev_timer pkt_timer;
     ngtcp2_conn *conn;
-    ngtcp2_connection_close_error last_error;
+    ngtcp2_ccerr last_error;
     bool close_requested;
     FILE *qlog_file;
 
