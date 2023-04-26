@@ -153,6 +153,8 @@ public:
 
   ngtcp2_conn *get_conn() const;
 
+  int send_new_token(const ngtcp2_addr *remote_addr);
+
 private:
   ClientHandler *handler_;
   ev_timer timer_;
