@@ -479,19 +479,42 @@ int Http3Upstream::handshake_completed() {
     return -1;
   }
 
+  auto path = ngtcp2_conn_get_path(conn_);
+
+  return send_new_token(&path->remote);
+}
+
+namespace {
+int path_validation(ngtcp2_conn *conn, uint32_t flags, const ngtcp2_path *path,
+                    const ngtcp2_path *old_path,
+                    ngtcp2_path_validation_result res, void *user_data) {
+  if (res != NGTCP2_PATH_VALIDATION_RESULT_SUCCESS ||
+      !(flags & NGTCP2_PATH_VALIDATION_FLAG_NEW_TOKEN)) {
+    return 0;
+  }
+
+  auto upstream = static_cast<Http3Upstream *>(user_data);
+  if (upstream->send_new_token(&path->remote) != 0) {
+    return NGTCP2_ERR_CALLBACK_FAILURE;
+  }
+
+  return 0;
+}
+} // namespace
+
+int Http3Upstream::send_new_token(const ngtcp2_addr *remote_addr) {
   std::array<uint8_t, NGTCP2_CRYPTO_MAX_REGULAR_TOKENLEN + 1> token;
   size_t tokenlen;
 
-  auto path = ngtcp2_conn_get_path(conn_);
   auto worker = handler_->get_worker();
   auto conn_handler = worker->get_connection_handler();
   auto &qkms = conn_handler->get_quic_keying_materials();
   auto &qkm = qkms->keying_materials.front();
 
-  if (generate_token(token.data(), tokenlen, path->remote.addr,
-                     path->remote.addrlen, qkm.secret.data(),
+  if (generate_token(token.data(), tokenlen, remote_addr->addr,
+                     remote_addr->addrlen, qkm.secret.data(),
                      qkm.secret.size()) != 0) {
-    return 0;
+    return -1;
   }
 
   assert(tokenlen == NGTCP2_CRYPTO_MAX_REGULAR_TOKENLEN);
@@ -554,7 +577,7 @@ int Http3Upstream::init(const UpstreamAddr *faddr, const Address &remote_addr,
       get_new_connection_id,
       remove_connection_id,
       ngtcp2_crypto_update_key_cb,
-      nullptr, // path_validation
+      shrpx::path_validation,
       nullptr, // select_preferred_addr
       shrpx::stream_reset,
       shrpx::extend_max_remote_streams_bidi,
