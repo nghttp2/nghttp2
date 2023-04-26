@@ -506,7 +506,7 @@ Client::Client(uint32_t id, Worker *worker, size_t req_todo)
     quic.tx.data = std::make_unique<uint8_t[]>(64_k);
   }
 
-  ngtcp2_connection_close_error_default(&quic.last_error);
+  ngtcp2_ccerr_default(&quic.last_error);
 #endif // ENABLE_HTTP3
 }
 

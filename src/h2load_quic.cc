@@ -496,8 +496,7 @@ int Client::quic_pkt_timeout() {
 
   rv = ngtcp2_conn_handle_expiry(quic.conn, now);
   if (rv != 0) {
-    ngtcp2_connection_close_error_set_transport_error_liberr(&quic.last_error,
-                                                             rv, nullptr, 0);
+    ngtcp2_ccerr_set_liberr(&quic.last_error, rv, nullptr, 0);
     return -1;
   }
 
@@ -550,12 +549,11 @@ int Client::read_quic() {
 
       if (!quic.last_error.error_code) {
         if (rv == NGTCP2_ERR_CRYPTO) {
-          ngtcp2_connection_close_error_set_transport_error_tls_alert(
-              &quic.last_error, ngtcp2_conn_get_tls_alert(quic.conn), nullptr,
-              0);
+          ngtcp2_ccerr_set_tls_alert(&quic.last_error,
+                                     ngtcp2_conn_get_tls_alert(quic.conn),
+                                     nullptr, 0);
         } else {
-          ngtcp2_connection_close_error_set_transport_error_liberr(
-              &quic.last_error, rv, nullptr, 0);
+          ngtcp2_ccerr_set_liberr(&quic.last_error, rv, nullptr, 0);
         }
       }
 
@@ -651,8 +649,7 @@ int Client::write_quic() {
         continue;
       }
 
-      ngtcp2_connection_close_error_set_transport_error_liberr(
-          &quic.last_error, nwrite, nullptr, 0);
+      ngtcp2_ccerr_set_liberr(&quic.last_error, nwrite, nullptr, 0);
       return -1;
     } else if (ndatalen >= 0 && s->add_write_offset(stream_id, ndatalen) != 0) {
       return -1;

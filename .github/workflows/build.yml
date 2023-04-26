@@ -7,10 +7,10 @@ permissions: read-all
 env:
   LIBBPF_VERSION: v1.1.0
   OPENSSL1_VERSION: 1_1_1t+quic
-  OPENSSL3_VERSION: 3.0.8+quic
-  BORINGSSL_VERSION: 74646566e93de7551bfdfc5f49de7462f13d1d05
-  NGHTTP3_VERSION: v0.10.0
-  NGTCP2_VERSION: v0.14.0
+  OPENSSL3_VERSION: 3.1.0+quic
+  BORINGSSL_VERSION: b0b1f9dfc583c96d5f91b7f8cdb7efabcf22793b
+  NGHTTP3_VERSION: v0.11.0
+  NGTCP2_VERSION: v0.15.0
 
 jobs:
   build-cache:
@@ -35,7 +35,7 @@ jobs:
       with:
         path: openssl1/build
         key: ${{ runner.os }}-openssl-${{ env.OPENSSL1_VERSION }}
-    - name: Restore OpenSSL v3.0.x cache
+    - name: Restore OpenSSL v3.x cache
       id: cache-openssl3
       uses: actions/cache@v3
       with:
@@ -62,7 +62,7 @@ jobs:
       with:
         path: ngtcp2-openssl1/build
         key: ${{ runner.os }}-ngtcp2-${{ env.NGTCP2_VERSION }}-openssl-${{ env.OPENSSL1_VERSION }}
-    - name: Restore ngtcp2 + quictls/openssl v3.0.x cache
+    - name: Restore ngtcp2 + quictls/openssl v3.x cache
       id: cache-ngtcp2-openssl3
       uses: actions/cache@v3
       with:
@@ -115,7 +115,7 @@ jobs:
         ./config --prefix=$PWD/build
         make -j"$(nproc 2> /dev/null || sysctl -n hw.ncpu)"
         make install_sw
-    - name: Build quictls/openssl v3.0.x
+    - name: Build quictls/openssl v3.x
       if: steps.cache-openssl3.outputs.cache-hit != 'true'
       run: |
         git clone --depth 1 -b openssl-${{ env.OPENSSL3_VERSION }} https://github.com/quictls/openssl openssl3
@@ -155,7 +155,7 @@ jobs:
           --with-boringssl
         make -j"$(nproc 2> /dev/null || sysctl -n hw.ncpu)" check
         make install
-    - name: Build ngtcp2 + quictls/openssl v3.0.x
+    - name: Build ngtcp2 + quictls/openssl v3.x
       if: steps.cache-ngtcp2-openssl3.outputs.cache-hit != 'true'
       run: |
         git clone --depth 1 -b ${{ env.NGTCP2_VERSION }} https://github.com/ngtcp2/ngtcp2 ngtcp2-openssl3
@@ -284,7 +284,7 @@ jobs:
         path: openssl1/build
         key: ${{ runner.os }}-openssl-${{ env.OPENSSL1_VERSION }}
         fail-on-cache-miss: true
-    - name: Restore quictls/openssl v3.0.x cache
+    - name: Restore quictls/openssl v3.x cache
       uses: actions/cache/restore@v3
       if: matrix.http3 == 'http3' && matrix.openssl == 'openssl3'
       with:
@@ -329,7 +329,7 @@ jobs:
         path: ngtcp2-openssl1/build
         key: ${{ runner.os }}-ngtcp2-${{ env.NGTCP2_VERSION }}-openssl-${{ env.OPENSSL1_VERSION }}
         fail-on-cache-miss: true
-    - name: Restore ngtcp2 + quictls/openssl v3.0.x cache
+    - name: Restore ngtcp2 + quictls/openssl v3.x cache
       uses: actions/cache/restore@v3
       if: matrix.http3 == 'http3' && matrix.openssl == 'openssl3'
       with:
