@@ -480,14 +480,9 @@ std::chrono::steady_clock::time_point get_time() {
 ssize_t deflate_data(uint8_t *out, size_t outlen, const uint8_t *in,
                      size_t inlen) {
   int rv;
-  z_stream zst;
+  z_stream zst{};
   uint8_t temp_out[8_k];
   auto temp_outlen = sizeof(temp_out);
-
-  zst.next_in = Z_NULL;
-  zst.zalloc = Z_NULL;
-  zst.zfree = Z_NULL;
-  zst.opaque = Z_NULL;
 
   rv = deflateInit2(&zst, Z_DEFAULT_COMPRESSION, Z_DEFLATED, 31, 9,
                     Z_DEFAULT_STRATEGY);
