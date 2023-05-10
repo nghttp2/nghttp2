@@ -27,7 +27,7 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
-.TH "NGHTTP" "1" "Feb 13, 2023" "1.52.0" "nghttp2"
+.TH "NGHTTP" "1" "May 10, 2023" "1.53.0" "nghttp2"
 .SH NAME
 nghttp \- HTTP/2 client
 .SH SYNOPSIS
@@ -280,7 +280,7 @@ the easy way to test out the dependency priority in server
 implementation.
 .sp
 When connection is established, nghttp sends 5 PRIORITY frames to idle
-streams 3, 5, 7, 9 and 11 to create "anchor" nodes in dependency
+streams 3, 5, 7, 9 and 11 to create \(dqanchor\(dq nodes in dependency
 tree:
 .INDENT 0.0
 .INDENT 3.5
@@ -320,8 +320,8 @@ URI given in command\-line as html, and extracts resource links from
 it.  When requesting those resources, nghttp uses dependency according
 to its resource type.
 .sp
-For CSS, and Javascript files inside "head" element, they depend on
-stream 3 with the weight 2.  The Javascript files outside "head"
+For CSS, and Javascript files inside \(dqhead\(dq element, they depend on
+stream 3 with the weight 2.  The Javascript files outside \(dqhead\(dq
 element depend on stream 5 with the weight 2.  The mages depend on
 stream 11 with the weight 12.  The other resources (e.g., icon) depend
 on stream 11 with the weight 2.

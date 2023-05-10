@@ -27,7 +27,7 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
-.TH "NGHTTPX" "1" "Feb 13, 2023" "1.52.0" "nghttp2"
+.TH "NGHTTPX" "1" "May 10, 2023" "1.53.0" "nghttp2"
 .SH NAME
 nghttpx \- HTTP/2 proxy
 .SH SYNOPSIS
@@ -40,13 +40,13 @@ A reverse proxy for HTTP/3, HTTP/2, and HTTP/1.
 .TP
 .B <PRIVATE_KEY>
 Set  path  to  server\(aqs private  key.   Required  unless
-"no\-tls" parameter is used in \fI\%\-\-frontend\fP option.
+\(dqno\-tls\(dq parameter is used in \fI\%\-\-frontend\fP option.
 .UNINDENT
 .INDENT 0.0
 .TP
 .B <CERT>
 Set  path  to  server\(aqs  certificate.   Required  unless
-"no\-tls"  parameter is  used in  \fI\%\-\-frontend\fP option.   To
+\(dqno\-tls\(dq  parameter is  used in  \fI\%\-\-frontend\fP option.   To
 make OCSP stapling work, this must be an absolute path.
 .UNINDENT
 .SH OPTIONS
@@ -59,56 +59,56 @@ The options are categorized into several groups.
 Set  backend  host  and   port.   The  multiple  backend
 addresses are  accepted by repeating this  option.  UNIX
 domain socket  can be  specified by prefixing  path name
-with "unix:" (e.g., unix:/var/run/backend.sock).
+with \(dqunix:\(dq (e.g., unix:/var/run/backend.sock).
 .sp
 Optionally, if <PATTERN>s are given, the backend address
 is  only  used  if  request matches  the  pattern.   The
 pattern  matching is  closely  designed  to ServeMux  in
 net/http package of  Go programming language.  <PATTERN>
 consists of  path, host +  path or just host.   The path
-must start  with "\fI/\fP".  If  it ends with "\fI/\fP",  it matches
+must start  with \(dq\fI/\fP\(dq.  If  it ends with \(dq\fI/\fP\(dq,  it matches
 all  request path  in  its subtree.   To  deal with  the
 request  to the  directory without  trailing slash,  the
-path which ends  with "\fI/\fP" also matches  the request path
-which  only  lacks  trailing  \(aq\fI/\fP\(aq  (e.g.,  path  "\fI/foo/\fP"
-matches request path  "\fI/foo\fP").  If it does  not end with
-"\fI/\fP", it  performs exact match against  the request path.
+path which ends  with \(dq\fI/\fP\(dq also matches  the request path
+which  only  lacks  trailing  \(aq\fI/\fP\(aq  (e.g.,  path  \(dq\fI/foo/\fP\(dq
+matches request path  \(dq\fI/foo\fP\(dq).  If it does  not end with
+\(dq\fI/\fP\(dq, it  performs exact match against  the request path.
 If  host  is given,  it  performs  a match  against  the
 request host.   For a  request received on  the frontend
-listener with  "sni\-fwd" parameter enabled, SNI  host is
+listener with  \(dqsni\-fwd\(dq parameter enabled, SNI  host is
 used instead of a request host.  If host alone is given,
-"\fI/\fP" is  appended to it,  so that it matches  all request
-paths  under the  host  (e.g., specifying  "nghttp2.org"
-equals  to "nghttp2.org/").   CONNECT method  is treated
+\(dq\fI/\fP\(dq is  appended to it,  so that it matches  all request
+paths  under the  host  (e.g., specifying  \(dqnghttp2.org\(dq
+equals  to \(dqnghttp2.org/\(dq).   CONNECT method  is treated
 specially.  It  does not have  path, and we  don\(aqt allow
 empty path.  To workaround  this, we assume that CONNECT
-method has "\fI/\fP" as path.
+method has \(dq\fI/\fP\(dq as path.
 .sp
 Patterns with  host take  precedence over  patterns with
 just path.   Then, longer patterns take  precedence over
 shorter ones.
 .sp
-Host  can  include "*"  in  the  left most  position  to
+Host  can  include \(dq*\(dq  in  the  left most  position  to
 indicate  wildcard match  (only suffix  match is  done).
-The "*" must match at least one character.  For example,
-host    pattern    "*.nghttp2.org"    matches    against
-"www.nghttp2.org"  and  "git.ngttp2.org", but  does  not
-match  against  "nghttp2.org".   The exact  hosts  match
+The \(dq*\(dq must match at least one character.  For example,
+host    pattern    \(dq*.nghttp2.org\(dq    matches    against
+\(dqwww.nghttp2.org\(dq  and  \(dqgit.ngttp2.org\(dq, but  does  not
+match  against  \(dqnghttp2.org\(dq.   The exact  hosts  match
 takes precedence over the wildcard hosts match.
 .sp
-If path  part ends with  "*", it is treated  as wildcard
+If path  part ends with  \(dq*\(dq, it is treated  as wildcard
 path.  The  wildcard path  behaves differently  from the
 normal path.  For normal path,  match is made around the
-boundary of path component  separator,"\fI/\fP".  On the other
+boundary of path component  separator,\(dq\fI/\fP\(dq.  On the other
 hand, the wildcard  path does not take  into account the
 path component  separator.  All paths which  include the
-wildcard  path  without  last  "*" as  prefix,  and  are
-strictly longer than wildcard  path without last "*" are
-matched.  "*"  must match  at least one  character.  For
-example,  the   pattern  "\fI/foo*\fP"  matches   "\fI/foo/\fP"  and
-"\fI/foobar\fP".  But it does not match "\fI/foo\fP", or "\fI/fo\fP".
+wildcard  path  without  last  \(dq*\(dq as  prefix,  and  are
+strictly longer than wildcard  path without last \(dq*\(dq are
+matched.  \(dq*\(dq  must match  at least one  character.  For
+example,  the   pattern  \(dq\fI/foo*\fP\(dq  matches   \(dq\fI/foo/\fP\(dq  and
+\(dq\fI/foobar\fP\(dq.  But it does not match \(dq\fI/foo\fP\(dq, or \(dq\fI/fo\fP\(dq.
 .sp
-If <PATTERN> is omitted or  empty string, "\fI/\fP" is used as
+If <PATTERN> is omitted or  empty string, \(dq\fI/\fP\(dq is used as
 pattern,  which  matches  all request  paths  (catch\-all
 pattern).  The catch\-all backend must be given.
 .sp
@@ -116,16 +116,16 @@ When doing  a match, nghttpx made  some normalization to
 pattern, request host and path.  For host part, they are
 converted to lower case.  For path part, percent\-encoded
 unreserved characters  defined in RFC 3986  are decoded,
-and any  dot\-segments (".."  and ".")   are resolved and
+and any  dot\-segments (\(dq..\(dq  and \(dq.\(dq)   are resolved and
 removed.
 .sp
 For   example,   \fI\%\-b\fP\(aq127.0.0.1,8080;nghttp2.org/httpbin/\(aq
-matches the  request host "nghttp2.org" and  the request
-path "\fI/httpbin/get\fP", but does not match the request host
-"nghttp2.org" and the request path "\fI/index.html\fP".
+matches the  request host \(dqnghttp2.org\(dq and  the request
+path \(dq\fI/httpbin/get\fP\(dq, but does not match the request host
+\(dqnghttp2.org\(dq and the request path \(dq\fI/index.html\fP\(dq.
 .sp
 The  multiple <PATTERN>s  can  be specified,  delimiting
-them            by           ":".             Specifying
+them            by           \(dq:\(dq.             Specifying
 \fI\%\-b\fP\(aq127.0.0.1,8080;nghttp2.org:www.nghttp2.org\(aq  has  the
 same  effect  to specify  \fI\%\-b\fP\(aq127.0.0.1,8080;nghttp2.org\(aq
 and \fI\%\-b\fP\(aq127.0.0.1,8080;www.nghttp2.org\(aq.
@@ -134,45 +134,45 @@ The backend addresses sharing same <PATTERN> are grouped
 together forming  load balancing  group.
 .sp
 Several parameters <PARAM> are accepted after <PATTERN>.
-The  parameters are  delimited  by  ";".  The  available
-parameters       are:      "proto=<PROTO>",       "tls",
-"sni=<SNI_HOST>",         "fall=<N>",        "rise=<N>",
-"affinity=<METHOD>",    "dns",    "redirect\-if\-not\-tls",
-"upgrade\-scheme",                        "mruby=<PATH>",
-"read\-timeout=<DURATION>",   "write\-timeout=<DURATION>",
-"group=<GROUP>",  "group\-weight=<N>", "weight=<N>",  and
-"dnf".    The  parameter   consists   of  keyword,   and
-optionally followed by "="  and value.  For example, the
-parameter "proto=h2" consists of the keyword "proto" and
-value "h2".  The parameter "tls" consists of the keyword
-"tls"  without value.   Each parameter  is described  as
+The  parameters are  delimited  by  \(dq;\(dq.  The  available
+parameters       are:      \(dqproto=<PROTO>\(dq,       \(dqtls\(dq,
+\(dqsni=<SNI_HOST>\(dq,         \(dqfall=<N>\(dq,        \(dqrise=<N>\(dq,
+\(dqaffinity=<METHOD>\(dq,    \(dqdns\(dq,    \(dqredirect\-if\-not\-tls\(dq,
+\(dqupgrade\-scheme\(dq,                        \(dqmruby=<PATH>\(dq,
+\(dqread\-timeout=<DURATION>\(dq,   \(dqwrite\-timeout=<DURATION>\(dq,
+\(dqgroup=<GROUP>\(dq,  \(dqgroup\-weight=<N>\(dq, \(dqweight=<N>\(dq,  and
+\(dqdnf\(dq.    The  parameter   consists   of  keyword,   and
+optionally followed by \(dq=\(dq  and value.  For example, the
+parameter \(dqproto=h2\(dq consists of the keyword \(dqproto\(dq and
+value \(dqh2\(dq.  The parameter \(dqtls\(dq consists of the keyword
+\(dqtls\(dq  without value.   Each parameter  is described  as
 follows.
 .sp
 The backend application protocol  can be specified using
-optional  "proto"   parameter,  and   in  the   form  of
-"proto=<PROTO>".  <PROTO> should be one of the following
-list  without  quotes:  "h2", "http/1.1".   The  default
-value of <PROTO> is  "http/1.1".  Note that usually "h2"
+optional  \(dqproto\(dq   parameter,  and   in  the   form  of
+\(dqproto=<PROTO>\(dq.  <PROTO> should be one of the following
+list  without  quotes:  \(dqh2\(dq, \(dqhttp/1.1\(dq.   The  default
+value of <PROTO> is  \(dqhttp/1.1\(dq.  Note that usually \(dqh2\(dq
 refers to HTTP/2  over TLS.  But in this  option, it may
-mean HTTP/2  over cleartext TCP unless  "tls" keyword is
+mean HTTP/2  over cleartext TCP unless  \(dqtls\(dq keyword is
 used (see below).
 .sp
-TLS  can   be  enabled  by  specifying   optional  "tls"
+TLS  can   be  enabled  by  specifying   optional  \(dqtls\(dq
 parameter.  TLS is not enabled by default.
 .sp
-With "sni=<SNI_HOST>" parameter, it can override the TLS
+With \(dqsni=<SNI_HOST>\(dq parameter, it can override the TLS
 SNI  field  value  with  given  <SNI_HOST>.   This  will
 default to the backend <HOST> name
 .sp
 The  feature  to detect  whether  backend  is online  or
-offline can be enabled  using optional "fall" and "rise"
-parameters.   Using  "fall=<N>"  parameter,  if  nghttpx
+offline can be enabled  using optional \(dqfall\(dq and \(dqrise\(dq
+parameters.   Using  \(dqfall=<N>\(dq  parameter,  if  nghttpx
 cannot connect  to a  this backend <N>  times in  a row,
 this  backend  is  assumed  to be  offline,  and  it  is
 excluded from load balancing.  If <N> is 0, this backend
 never  be excluded  from load  balancing whatever  times
 nghttpx cannot connect  to it, and this  is the default.
-There is  also "rise=<N>" parameter.  After  backend was
+There is  also \(dqrise=<N>\(dq parameter.  After  backend was
 excluded from load balancing group, nghttpx periodically
 attempts to make a connection to the failed backend, and
 if the  connection is made  successfully <N> times  in a
@@ -182,80 +182,80 @@ backend  is permanently  offline, once  it goes  in that
 state, and this is the default behaviour.
 .sp
 The     session     affinity    is     enabled     using
-"affinity=<METHOD>"  parameter.   If  "ip" is  given  in
+\(dqaffinity=<METHOD>\(dq  parameter.   If  \(dqip\(dq is  given  in
 <METHOD>, client  IP based session affinity  is enabled.
-If "cookie"  is given in <METHOD>,  cookie based session
-affinity is  enabled.  If  "none" is given  in <METHOD>,
+If \(dqcookie\(dq  is given in <METHOD>,  cookie based session
+affinity is  enabled.  If  \(dqnone\(dq is given  in <METHOD>,
 session affinity  is disabled, and this  is the default.
 The session  affinity is  enabled per <PATTERN>.   If at
-least  one backend  has  "affinity"  parameter, and  its
-<METHOD> is not "none",  session affinity is enabled for
+least  one backend  has  \(dqaffinity\(dq  parameter, and  its
+<METHOD> is not \(dqnone\(dq,  session affinity is enabled for
 all backend  servers sharing the same  <PATTERN>.  It is
-advised  to  set  "affinity" parameter  to  all  backend
+advised  to  set  \(dqaffinity\(dq parameter  to  all  backend
 explicitly if session affinity  is desired.  The session
 affinity  may   break  if   one  of  the   backend  gets
 unreachable,  or   backend  settings  are   reloaded  or
 replaced by API.
 .sp
-If   "affinity=cookie"    is   used,    the   additional
+If   \(dqaffinity=cookie\(dq    is   used,    the   additional
 configuration                is                required.
-"affinity\-cookie\-name=<NAME>" must be  used to specify a
+\(dqaffinity\-cookie\-name=<NAME>\(dq must be  used to specify a
 name     of     cookie      to     use.      Optionally,
-"affinity\-cookie\-path=<PATH>" can  be used to  specify a
+\(dqaffinity\-cookie\-path=<PATH>\(dq can  be used to  specify a
 path   which   cookie    is   applied.    The   optional
-"affinity\-cookie\-secure=<SECURE>"  controls  the  Secure
-attribute of a cookie.  The default value is "auto", and
+\(dqaffinity\-cookie\-secure=<SECURE>\(dq  controls  the  Secure
+attribute of a cookie.  The default value is \(dqauto\(dq, and
 the Secure attribute is  determined by a request scheme.
-If a request scheme is "https", then Secure attribute is
-set.  Otherwise, it  is not set.  If  <SECURE> is "yes",
+If a request scheme is \(dqhttps\(dq, then Secure attribute is
+set.  Otherwise, it  is not set.  If  <SECURE> is \(dqyes\(dq,
 the  Secure attribute  is  always set.   If <SECURE>  is
-"no",   the   Secure   attribute  is   always   omitted.
-"affinity\-cookie\-stickiness=<STICKINESS>"       controls
+\(dqno\(dq,   the   Secure   attribute  is   always   omitted.
+\(dqaffinity\-cookie\-stickiness=<STICKINESS>\(dq       controls
 stickiness  of   this  affinity.   If   <STICKINESS>  is
-"loose", removing or adding a backend server might break
+\(dqloose\(dq, removing or adding a backend server might break
 the affinity  and the  request might  be forwarded  to a
-different backend server.   If <STICKINESS> is "strict",
+different backend server.   If <STICKINESS> is \(dqstrict\(dq,
 removing the designated  backend server breaks affinity,
 but adding  new backend server does  not cause breakage.
 If  the designated  backend server  becomes unavailable,
 new backend server is chosen  as if the request does not
 have  an  affinity  cookie.   <STICKINESS>  defaults  to
-"loose".
+\(dqloose\(dq.
 .sp
 By default, name resolution of backend host name is done
-at  start  up,  or reloading  configuration.   If  "dns"
+at  start  up,  or reloading  configuration.   If  \(dqdns\(dq
 parameter   is  given,   name  resolution   takes  place
 dynamically.  This is useful  if backend address changes
-frequently.   If  "dns"  is given,  name  resolution  of
+frequently.   If  \(dqdns\(dq  is given,  name  resolution  of
 backend   host   name   at  start   up,   or   reloading
 configuration is skipped.
 .sp
-If "redirect\-if\-not\-tls" parameter  is used, the matched
+If \(dqredirect\-if\-not\-tls\(dq parameter  is used, the matched
 backend  requires   that  frontend  connection   is  TLS
 encrypted.  If it isn\(aqt, nghttpx responds to the request
 with 308  status code, and  https URI the  client should
 use instead  is included in Location  header field.  The
 port number in  redirect URI is 443 by  default, and can
 be  changed using  \fI\%\-\-redirect\-https\-port\fP option.   If at
-least one  backend has  "redirect\-if\-not\-tls" parameter,
+least one  backend has  \(dqredirect\-if\-not\-tls\(dq parameter,
 this feature is enabled  for all backend servers sharing
 the   same   <PATTERN>.    It    is   advised   to   set
-"redirect\-if\-no\-tls"    parameter   to    all   backends
+\(dqredirect\-if\-no\-tls\(dq    parameter   to    all   backends
 explicitly if this feature is desired.
 .sp
-If "upgrade\-scheme"  parameter is used along  with "tls"
+If \(dqupgrade\-scheme\(dq  parameter is used along  with \(dqtls\(dq
 parameter, HTTP/2 :scheme pseudo header field is changed
-to "https" from "http" when forwarding a request to this
+to \(dqhttps\(dq from \(dqhttp\(dq when forwarding a request to this
 particular backend.  This is  a workaround for a backend
-server  which  requires  "https" :scheme  pseudo  header
+server  which  requires  \(dqhttps\(dq :scheme  pseudo  header
 field on TLS encrypted connection.
 .sp
-"mruby=<PATH>"  parameter  specifies  a  path  to  mruby
+\(dqmruby=<PATH>\(dq  parameter  specifies  a  path  to  mruby
 script  file  which  is  invoked when  this  pattern  is
 matched.  All backends which share the same pattern must
 have the same mruby path.
 .sp
-"read\-timeout=<DURATION>" and "write\-timeout=<DURATION>"
+\(dqread\-timeout=<DURATION>\(dq and \(dqwrite\-timeout=<DURATION>\(dq
 parameters  specify the  read and  write timeout  of the
 backend connection  when this  pattern is  matched.  All
 backends which share the same pattern must have the same
@@ -263,42 +263,42 @@ timeouts.  If these timeouts  are entirely omitted for a
 pattern,            \fI\%\-\-backend\-read\-timeout\fP           and
 \fI\%\-\-backend\-write\-timeout\fP are used.
 .sp
-"group=<GROUP>"  parameter specifies  the name  of group
+\(dqgroup=<GROUP>\(dq  parameter specifies  the name  of group
 this backend address belongs to.  By default, it belongs
 to  the unnamed  default group.   The name  of group  is
-unique   per   pattern.   "group\-weight=<N>"   parameter
+unique   per   pattern.   \(dqgroup\-weight=<N>\(dq   parameter
 specifies the  weight of  the group.  The  higher weight
 gets  more frequently  selected  by  the load  balancing
 algorithm.  <N> must be  [1, 256] inclusive.  The weight
 8 has 4 times more weight  than 2.  <N> must be the same
 for  all addresses  which  share the  same <GROUP>.   If
-"group\-weight" is  omitted in an address,  but the other
+\(dqgroup\-weight\(dq is  omitted in an address,  but the other
 address  which  belongs  to  the  same  group  specifies
-"group\-weight",   its    weight   is   used.     If   no
-"group\-weight"  is  specified  for  all  addresses,  the
-weight of a group becomes 1.  "group" and "group\-weight"
+\(dqgroup\-weight\(dq,   its    weight   is   used.     If   no
+\(dqgroup\-weight\(dq  is  specified  for  all  addresses,  the
+weight of a group becomes 1.  \(dqgroup\(dq and \(dqgroup\-weight\(dq
 are ignored if session affinity is enabled.
 .sp
-"weight=<N>"  parameter  specifies  the  weight  of  the
+\(dqweight=<N>\(dq  parameter  specifies  the  weight  of  the
 backend  address  inside  a  group  which  this  address
 belongs  to.  The  higher  weight  gets more  frequently
 selected by  the load balancing algorithm.   <N> must be
 [1,  256] inclusive.   The  weight 8  has  4 times  more
 weight  than weight  2.  If  this parameter  is omitted,
-weight  becomes  1.   "weight"  is  ignored  if  session
+weight  becomes  1.   \(dqweight\(dq  is  ignored  if  session
 affinity is enabled.
 .sp
-If "dnf" parameter is  specified, an incoming request is
+If \(dqdnf\(dq parameter is  specified, an incoming request is
 not forwarded to a backend  and just consumed along with
 the  request body  (actually a  backend server  never be
 contacted).  It  is expected  that the HTTP  response is
-generated by mruby  script (see "mruby=<PATH>" parameter
-above).  "dnf" is an abbreviation of "do not forward".
+generated by mruby  script (see \(dqmruby=<PATH>\(dq parameter
+above).  \(dqdnf\(dq is an abbreviation of \(dqdo not forward\(dq.
 .sp
-Since ";" and ":" are  used as delimiter, <PATTERN> must
-not contain  these characters.  In order  to include ":"
-in  <PATTERN>,  one  has  to  specify  "%3A"  (which  is
-percent\-encoded  from of  ":") instead.   Since ";"  has
+Since \(dq;\(dq and \(dq:\(dq are  used as delimiter, <PATTERN> must
+not contain  these characters.  In order  to include \(dq:\(dq
+in  <PATTERN>,  one  has  to  specify  \(dq%3A\(dq  (which  is
+percent\-encoded  from of  \(dq:\(dq) instead.   Since \(dq;\(dq  has
 special  meaning  in shell,  the  option  value must  be
 quoted.
 .sp
@@ -310,23 +310,23 @@ Default: \fB127.0.0.1,80\fP
 Set  frontend  host and  port.   If  <HOST> is  \(aq*\(aq,  it
 assumes  all addresses  including  both  IPv4 and  IPv6.
 UNIX domain  socket can  be specified by  prefixing path
-name  with  "unix:" (e.g.,  unix:/var/run/nghttpx.sock).
+name  with  \(dqunix:\(dq (e.g.,  unix:/var/run/nghttpx.sock).
 This  option can  be used  multiple times  to listen  to
 multiple addresses.
 .sp
 This option  can take  0 or  more parameters,  which are
-described  below.   Note   that  "api"  and  "healthmon"
+described  below.   Note   that  \(dqapi\(dq  and  \(dqhealthmon\(dq
 parameters are mutually exclusive.
 .sp
-Optionally, TLS  can be disabled by  specifying "no\-tls"
+Optionally, TLS  can be disabled by  specifying \(dqno\-tls\(dq
 parameter.  TLS is enabled by default.
 .sp
-If "sni\-fwd" parameter is  used, when performing a match
+If \(dqsni\-fwd\(dq parameter is  used, when performing a match
 to select a backend server,  SNI host name received from
 the client  is used  instead of  the request  host.  See
 \fI\%\-\-backend\fP option about the pattern match.
 .sp
-To  make this  frontend as  API endpoint,  specify "api"
+To  make this  frontend as  API endpoint,  specify \(dqapi\(dq
 parameter.   This   is  disabled  by  default.    It  is
 important  to  limit the  access  to  the API  frontend.
 Otherwise, someone  may change  the backend  server, and
@@ -334,18 +334,18 @@ break your services,  or expose confidential information
 to the outside the world.
 .sp
 To  make  this  frontend  as  health  monitor  endpoint,
-specify  "healthmon"  parameter.   This is  disabled  by
+specify  \(dqhealthmon\(dq  parameter.   This is  disabled  by
 default.  Any  requests which come through  this address
 are replied with 200 HTTP status, without no body.
 .sp
 To accept  PROXY protocol  version 1  and 2  on frontend
-connection,  specify  "proxyproto" parameter.   This  is
+connection,  specify  \(dqproxyproto\(dq parameter.   This  is
 disabled by default.
 .sp
-To  receive   HTTP/3  (QUIC)  traffic,   specify  "quic"
+To  receive   HTTP/3  (QUIC)  traffic,   specify  \(dqquic\(dq
 parameter.  It  makes nghttpx listen on  UDP port rather
-than  TCP   port.   UNIX   domain  socket,   "api",  and
-"healthmon"  parameters  cannot   be  used  with  "quic"
+than  TCP   port.   UNIX   domain  socket,   \(dqapi\(dq,  and
+\(dqhealthmon\(dq  parameters  cannot   be  used  with  \(dqquic\(dq
 parameter.
 .sp
 Default: \fB*,3000\fP
@@ -361,9 +361,9 @@ Default: \fB65536\fP
 .TP
 .B \-\-backend\-address\-family=(auto|IPv4|IPv6)
 Specify  address  family  of  backend  connections.   If
-"auto" is given, both IPv4  and IPv6 are considered.  If
-"IPv4" is  given, only  IPv4 address is  considered.  If
-"IPv6" is given, only IPv6 address is considered.
+\(dqauto\(dq is given, both IPv4  and IPv6 are considered.  If
+\(dqIPv4\(dq is  given, only  IPv4 address is  considered.  If
+\(dqIPv6\(dq is given, only IPv6 address is considered.
 .sp
 Default: \fBauto\fP
 .UNINDENT
@@ -538,7 +538,7 @@ Default: \fB128K\fP
 .INDENT 0.0
 .TP
 .B \-\-fastopen=<N>
-Enables  "TCP Fast  Open" for  the listening  socket and
+Enables  \(dqTCP Fast  Open\(dq for  the listening  socket and
 limits the  maximum length for the  queue of connections
 that have not yet completed the three\-way handshake.  If
 value is 0 then fast open is disabled.
@@ -664,7 +664,7 @@ Default: \fB10s\fP
 .TP
 .B \-\-backend\-max\-backoff=<DURATION>
 Specify  maximum backoff  interval.  This  is used  when
-doing health  check against offline backend  (see "fail"
+doing health  check against offline backend  (see \(dqfail\(dq
 parameter  in \fI\%\-\-backend\fP  option).   It is  also used  to
 limit  the  maximum   interval  to  temporarily  disable
 backend  when nghttpx  failed to  connect to  it.  These
@@ -766,9 +766,9 @@ used  multiple  times.   To  make  OCSP  stapling  work,
 <CERTPATH> must be absolute path.
 .sp
 Additional parameter  can be specified in  <PARAM>.  The
-available <PARAM> is "sct\-dir=<DIR>".
+available <PARAM> is \(dqsct\-dir=<DIR>\(dq.
 .sp
-"sct\-dir=<DIR>"  specifies the  path to  directory which
+\(dqsct\-dir=<DIR>\(dq  specifies the  path to  directory which
 contains        *.sct        files        for        TLS
 signed_certificate_timestamp extension (RFC 6962).  This
 feature   requires   OpenSSL   >=   1.0.2.    See   also
@@ -833,7 +833,7 @@ done in  case\-insensitive manner.  The  versions between
 \fI\%\-\-tls\-min\-proto\-version\fP and  \fI\%\-\-tls\-max\-proto\-version\fP are
 enabled.  If the protocol list advertised by client does
 not  overlap  this range,  you  will  receive the  error
-message "unknown protocol".  If a protocol version lower
+message \(dqunknown protocol\(dq.  If a protocol version lower
 than TLSv1.2 is specified, make sure that the compatible
 ciphers are  included in \fI\%\-\-ciphers\fP option.   The default
 cipher  list  only   includes  ciphers  compatible  with
@@ -850,7 +850,7 @@ done in  case\-insensitive manner.  The  versions between
 \fI\%\-\-tls\-min\-proto\-version\fP and  \fI\%\-\-tls\-max\-proto\-version\fP are
 enabled.  If the protocol list advertised by client does
 not  overlap  this range,  you  will  receive the  error
-message "unknown protocol".  The available versions are:
+message \(dqunknown protocol\(dq.  The available versions are:
 TLSv1.3, TLSv1.2, TLSv1.1, and TLSv1.0
 .sp
 Default: \fBTLSv1.3\fP
@@ -891,18 +891,18 @@ ticket key generator is required.  nghttpx just gets TLS
 ticket  keys  from  memcached, and  use  them,  possibly
 replacing current set  of keys.  It is up  to extern TLS
 ticket  key generator  to rotate  keys frequently.   See
-"TLS SESSION  TICKET RESUMPTION" section in  manual page
+\(dqTLS SESSION  TICKET RESUMPTION\(dq section in  manual page
 to know the data format in memcached entry.  Optionally,
 memcached  connection  can  be  encrypted  with  TLS  by
-specifying "tls" parameter.
+specifying \(dqtls\(dq parameter.
 .UNINDENT
 .INDENT 0.0
 .TP
 .B \-\-tls\-ticket\-key\-memcached\-address\-family=(auto|IPv4|IPv6)
 Specify address  family of memcached connections  to get
-TLS ticket keys.  If "auto" is given, both IPv4 and IPv6
-are considered.   If "IPv4" is given,  only IPv4 address
-is considered.  If "IPv6" is given, only IPv6 address is
+TLS ticket keys.  If \(dqauto\(dq is given, both IPv4 and IPv6
+are considered.   If \(dqIPv4\(dq is given,  only IPv4 address
+is considered.  If \(dqIPv6\(dq is given, only IPv6 address is
 considered.
 .sp
 Default: \fBauto\fP
@@ -920,7 +920,7 @@ Default: \fB10m\fP
 Set  maximum   number  of  consecutive   retries  before
 abandoning TLS ticket key  retrieval.  If this number is
 reached,  the  attempt  is considered  as  failure,  and
-"failure" count  is incremented by 1,  which contributed
+\(dqfailure\(dq count  is incremented by 1,  which contributed
 to            the            value            controlled
 \fI\%\-\-tls\-ticket\-key\-memcached\-max\-fail\fP option.
 .sp
@@ -993,16 +993,16 @@ Disable OCSP stapling.
 Specify  address of  memcached server  to store  session
 cache.   This  enables   shared  session  cache  between
 multiple   nghttpx  instances.    Optionally,  memcached
-connection can be encrypted with TLS by specifying "tls"
+connection can be encrypted with TLS by specifying \(dqtls\(dq
 parameter.
 .UNINDENT
 .INDENT 0.0
 .TP
 .B \-\-tls\-session\-cache\-memcached\-address\-family=(auto|IPv4|IPv6)
 Specify address family of memcached connections to store
-session cache.  If  "auto" is given, both  IPv4 and IPv6
-are considered.   If "IPv4" is given,  only IPv4 address
-is considered.  If "IPv6" is given, only IPv6 address is
+session cache.  If  \(dqauto\(dq is given, both  IPv4 and IPv6
+are considered.   If \(dqIPv4\(dq is given,  only IPv4 address
+is considered.  If \(dqIPv6\(dq is given, only IPv6 address is
 considered.
 .sp
 Default: \fBauto\fP
@@ -1113,7 +1113,7 @@ By  default,   except  for  QUIC   connections,  nghttpx
 postpones forwarding  HTTP requests sent in  early data,
 including  those  sent in  partially  in  it, until  TLS
 handshake  finishes.  If  all backend  server recognizes
-"Early\-Data"  header  field,  using  this  option  makes
+\(dqEarly\-Data\(dq  header  field,  using  this  option  makes
 nghttpx  not postpone  forwarding request  and get  full
 potential of 0\-RTT data.
 .UNINDENT
@@ -1274,7 +1274,7 @@ Default: \fB4K\fP
 .INDENT 0.0
 .TP
 .B (default mode)
-Accept  HTTP/2,  and  HTTP/1.1 over  SSL/TLS.   "no\-tls"
+Accept  HTTP/2,  and  HTTP/1.1 over  SSL/TLS.   \(dqno\-tls\(dq
 parameter is  used in  \fI\%\-\-frontend\fP option,  accept HTTP/2
 and HTTP/1.1 over cleartext  TCP.  The incoming HTTP/1.1
 connection  can  be  upgraded  to  HTTP/2  through  HTTP
@@ -1365,16 +1365,16 @@ $tls_protocol: protocol for SSL/TLS connection.
 .IP \(bu 2
 $tls_session_id: session ID for SSL/TLS connection.
 .IP \(bu 2
-$tls_session_reused:  "r"   if  SSL/TLS   session  was
-reused.  Otherwise, "."
+$tls_session_reused:  \(dqr\(dq   if  SSL/TLS   session  was
+reused.  Otherwise, \(dq.\(dq
 .IP \(bu 2
 $tls_sni: SNI server name for SSL/TLS connection.
 .IP \(bu 2
 $backend_host:  backend  host   used  to  fulfill  the
-request.  "\-" if backend host is not available.
+request.  \(dq\-\(dq if backend host is not available.
 .IP \(bu 2
 $backend_port:  backend  port   used  to  fulfill  the
-request.  "\-" if backend host is not available.
+request.  \(dq\-\(dq if backend host is not available.
 .IP \(bu 2
 $method: HTTP method
 .IP \(bu 2
@@ -1389,10 +1389,10 @@ $protocol_version:   HTTP  version   (e.g.,  HTTP/1.1,
 HTTP/2)
 .UNINDENT
 .sp
-The  variable  can  be  enclosed  by  "{"  and  "}"  for
+The  variable  can  be  enclosed  by  \(dq{\(dq  and  \(dq}\(dq  for
 disambiguation (e.g., ${remote_addr}).
 .sp
-Default: \fB$remote_addr \- \- [$time_local] "$request" $status $body_bytes_sent "$http_referer" "$http_user_agent"\fP
+Default: \fB$remote_addr \- \- [$time_local] \(dq$request\(dq $status $body_bytes_sent \(dq$http_referer\(dq \(dq$http_user_agent\(dq\fP
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -1456,8 +1456,8 @@ client requests.
 .B \-\-add\-forwarded=<LIST>
 Append RFC  7239 Forwarded header field  with parameters
 specified in comma delimited list <LIST>.  The supported
-parameters  are "by",  "for", "host",  and "proto".   By
-default,  the value  of  "by" and  "for" parameters  are
+parameters  are \(dqby\(dq,  \(dqfor\(dq, \(dqhost\(dq,  and \(dqproto\(dq.   By
+default,  the value  of  \(dqby\(dq and  \(dqfor\(dq parameters  are
 obfuscated     string.     See     \fI\%\-\-forwarded\-by\fP    and
 \fI\%\-\-forwarded\-for\fP options respectively.  Note that nghttpx
 does  not  translate non\-standard  X\-Forwarded\-*  header
@@ -1472,15 +1472,15 @@ requests.
 .INDENT 0.0
 .TP
 .B \-\-forwarded\-by=(obfuscated|ip|<VALUE>)
-Specify the parameter value sent out with "by" parameter
-of Forwarded  header field.   If "obfuscated"  is given,
-the string is randomly generated at startup.  If "ip" is
+Specify the parameter value sent out with \(dqby\(dq parameter
+of Forwarded  header field.   If \(dqobfuscated\(dq  is given,
+the string is randomly generated at startup.  If \(dqip\(dq is
 given,   the  interface   address  of   the  connection,
-including port number, is  sent with "by" parameter.  In
-case of UNIX domain  socket, "localhost" is used instead
+including port number, is  sent with \(dqby\(dq parameter.  In
+case of UNIX domain  socket, \(dqlocalhost\(dq is used instead
 of address and  port.  User can also  specify the static
 obfuscated string.  The limitation is that it must start
-with   "_",  and   only   consists   of  character   set
+with   \(dq_\(dq,  and   only   consists   of  character   set
 [A\-Za\-z0\-9._\-], as described in RFC 7239.
 .sp
 Default: \fBobfuscated\fP
@@ -1488,13 +1488,13 @@ Default: \fBobfuscated\fP
 .INDENT 0.0
 .TP
 .B \-\-forwarded\-for=(obfuscated|ip)
-Specify  the   parameter  value  sent  out   with  "for"
-parameter of Forwarded header field.  If "obfuscated" is
+Specify  the   parameter  value  sent  out   with  \(dqfor\(dq
+parameter of Forwarded header field.  If \(dqobfuscated\(dq is
 given, the string is  randomly generated for each client
-connection.  If "ip" is given, the remote client address
+connection.  If \(dqip\(dq is given, the remote client address
 of  the connection,  without port  number, is  sent with
-"for"  parameter.   In  case   of  UNIX  domain  socket,
-"localhost" is used instead of address.
+\(dqfor\(dq  parameter.   In  case   of  UNIX  domain  socket,
+\(dqlocalhost\(dq is used instead of address.
 .sp
 Default: \fBobfuscated\fP
 .UNINDENT
@@ -1534,7 +1534,7 @@ they  are treated  as  nothing is  specified.  They  are
 advertised  in alt\-svc  header  field  only in  HTTP/1.1
 frontend.   This option  can be  used multiple  times to
 specify multiple alternative services.
-Example: \fI\%\-\-altsvc\fP="h2,443,,,ma=3600; persist=1"
+Example: \fI\%\-\-altsvc\fP=\(dqh2,443,,,ma=3600; persist=1\(dq
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -1549,7 +1549,7 @@ Specify additional header field to add to request header
 set.  This  option just  appends header field  and won\(aqt
 replace anything  already set.  This option  can be used
 several  times   to  specify  multiple   header  fields.
-Example: \fI\%\-\-add\-request\-header\fP="foo: bar"
+Example: \fI\%\-\-add\-request\-header\fP=\(dqfoo: bar\(dq
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -1558,7 +1558,7 @@ Specify  additional  header  field to  add  to  response
 header set.   This option just appends  header field and
 won\(aqt replace anything already  set.  This option can be
 used several  times to  specify multiple  header fields.
-Example: \fI\%\-\-add\-response\-header\fP="foo: bar"
+Example: \fI\%\-\-add\-response\-header\fP=\(dqfoo: bar\(dq
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -1604,7 +1604,7 @@ Default: \fB500\fP
 Set file path  to custom error page  served when nghttpx
 originally  generates  HTTP  error status  code  <CODE>.
 <CODE> must be greater than or equal to 400, and at most
-599.  If "*"  is used instead of <CODE>,  it matches all
+599.  If \(dq*\(dq  is used instead of <CODE>,  it matches all
 HTTP  status  code.  If  error  status  code comes  from
 backend server, the custom error pages are not used.
 .UNINDENT
@@ -1627,7 +1627,7 @@ regardless of this option.
 .B \-\-redirect\-https\-port=<PORT>
 Specify the port number which appears in Location header
 field  when  redirect  to  HTTPS  URI  is  made  due  to
-"redirect\-if\-not\-tls" parameter in \fI\%\-\-backend\fP option.
+\(dqredirect\-if\-not\-tls\(dq parameter in \fI\%\-\-backend\fP option.
 .sp
 Default: \fB443\fP
 .UNINDENT
@@ -1807,7 +1807,7 @@ Default: \fB/usr/local/lib/nghttp2/reuseport_kern.o\fP
 .TP
 .B \-\-frontend\-quic\-early\-data
 Enable early data on frontend QUIC connections.  nghttpx
-sends "Early\-Data" header field to a backend server if a
+sends \(dqEarly\-Data\(dq header field to a backend server if a
 request is received in early  data and handshake has not
 finished.  All backend servers should deal with possibly
 replayed requests.
@@ -1818,8 +1818,8 @@ replayed requests.
 Specify a  directory where  a qlog  file is  written for
 frontend QUIC  connections.  A qlog file  is created per
 each QUIC  connection.  The  file name is  ISO8601 basic
-format, followed by "\-", server Source Connection ID and
-".sqlog".
+format, followed by \(dq\-\(dq, server Source Connection ID and
+\(dq.sqlog\(dq.
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -1832,8 +1832,8 @@ NEW_TOKEN frame in the previous connection.
 .TP
 .B \-\-frontend\-quic\-congestion\-controller=<CC>
 Specify a congestion controller algorithm for a frontend
-QUIC connection.  <CC> should  be one of "cubic", "bbr",
-and "bbr2".
+QUIC connection.  <CC> should  be one of \(dqcubic\(dq, \(dqbbr\(dq,
+and \(dqbbr2\(dq.
 .sp
 Default: \fBcubic\fP
 .UNINDENT
@@ -2008,7 +2008,7 @@ instead of:
 .sp
 .nf
 .ft C
-add\-request\-header="foo: bar"
+add\-request\-header=\(dqfoo: bar\(dq
 .ft P
 .fi
 .UNINDENT
@@ -2127,7 +2127,7 @@ Link: </css/theme.css>; rel=preload
 Currently, the following restriction is applied for server push:
 .INDENT 0.0
 .IP 1. 3
-The associated stream must have method "GET" or "POST".  The
+The associated stream must have method \(dqGET\(dq or \(dqPOST\(dq.  The
 associated stream\(aqs status code must be 200.
 .UNINDENT
 .sp
@@ -2295,7 +2295,7 @@ response without forwarding request to backend servers.
 There are 2 levels of mruby script invocations: global and
 per\-pattern.  The global mruby script is set by \fI\%\-\-mruby\-file\fP
 option and is called for all requests.  The per\-pattern mruby script
-is set by "mruby" parameter in \fI\%\-b\fP option.  It is invoked for
+is set by \(dqmruby\(dq parameter in \fI\%\-b\fP option.  It is invoked for
 a request which matches the particular pattern.  The order of hook
 invocation is: global request phase hook, per\-pattern request phase
 hook, per\-pattern response phase hook, and finally global response
@@ -2362,7 +2362,7 @@ Return the current phase.
 .TP
 .B attribute [R] remote_addr
 Return IP address of a remote client.  If connection is made
-via UNIX domain socket, this returns the string "localhost".
+via UNIX domain socket, this returns the string \(dqlocalhost\(dq.
 .UNINDENT
 .INDENT 7.0
 .TP
@@ -2504,7 +2504,7 @@ not include authority component of URI.  This may include
 query component.  nghttpx makes certain normalization for
 path.  It decodes percent\-encoding for unreserved characters
 (see \fI\%https://tools.ietf.org/html/rfc3986#section\-2.3\fP), and
-resolves ".." and ".".  But it may leave characters which
+resolves \(dq..\(dq and \(dq.\(dq.  But it may leave characters which
 should be percent\-encoded as is. So be careful when comparing
 path against desired string.
 .UNINDENT
@@ -2646,7 +2646,7 @@ Modify request path:
 .ft C
 class App
   def on_req(env)
-    env.req.path = "/apps#{env.req.path}"
+    env.req.path = \(dq/apps#{env.req.path}\(dq
   end
 end
 
@@ -2667,12 +2667,12 @@ addresses:
 .ft C
 class App
   def on_req(env)
-    allowed_clients = ["127.0.0.1", "::1"]
+    allowed_clients = [\(dq127.0.0.1\(dq, \(dq::1\(dq]
 
-    if env.req.path.start_with?("/log/") &&
+    if env.req.path.start_with?(\(dq/log/\(dq) &&
        !allowed_clients.include?(env.remote_addr) then
       env.resp.status = 404
-      env.resp.return "permission denied"
+      env.resp.return \(dqpermission denied\(dq
     end
   end
 end
@@ -2686,7 +2686,7 @@ App.new
 .sp
 nghttpx exposes API endpoints to manipulate it via HTTP based API.  By
 default, API endpoint is disabled.  To enable it, add a dedicated
-frontend for API using \fI\%\-\-frontend\fP option with "api"
+frontend for API using \fI\%\-\-frontend\fP option with \(dqapi\(dq
 parameter.  All requests which come from this frontend address, will
 be treated as API request.
 .sp
@@ -2713,7 +2713,7 @@ HTTP status code
 Additionally, depending on the API endpoint, \fBdata\fP key may be
 present, and its value contains the API endpoint specific data.
 .sp
-We wrote "normally", since nghttpx may return ordinal HTML response in
+We wrote \(dqnormally\(dq, since nghttpx may return ordinal HTML response in
 some cases where the error has occurred before reaching API endpoint
 (e.g., header field is too large).
 .sp
@@ -2737,7 +2737,7 @@ connections or requests.  It also avoids any process creation as is
 the case with hot swapping with signals.
 .sp
 The one limitation is that only numeric IP address is allowed in
-\fI\%backend\fP in request body unless "dns" parameter
+\fI\%backend\fP in request body unless \(dqdns\(dq parameter
 is used while non numeric hostname is allowed in command\-line or
 configuration file is read using \fI\%\-\-conf\fP\&.
 .SS GET /api/v1beta1/configrevision

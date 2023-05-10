@@ -27,7 +27,7 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
-.TH "H2LOAD" "1" "Feb 13, 2023" "1.52.0" "nghttp2"
+.TH "H2LOAD" "1" "May 10, 2023" "1.53.0" "nghttp2"
 .SH NAME
 h2load \- HTTP/2 benchmarking tool
 .SH SYNOPSIS
@@ -246,7 +246,7 @@ mutually exclusive.
 Specify URI from which the scheme, host and port will be
 used  for  all requests.   The  base  URI overrides  all
 values  defined either  at  the command  line or  inside
-input files.  If argument  starts with "unix:", then the
+input files.  If argument  starts with \(dqunix:\(dq, then the
 rest  of the  argument will  be treated  as UNIX  domain
 socket path.   The connection is made  through that path
 instead of TCP.   In this case, scheme  is inferred from
@@ -305,9 +305,9 @@ to buffering.  Status code is \-1 for failed streams.
 .B \-\-qlog\-file\-base=<PATH>
 Enable qlog output and specify base file name for qlogs.
 Qlog is emitted  for each connection.  For  a given base
-name   "base",    each   output   file    name   becomes
-"base.M.N.sqlog" where M is worker ID and N is client ID
-(e.g. "base.0.3.sqlog").  Only effective in QUIC runs.
+name   \(dqbase\(dq,    each   output   file    name   becomes
+\(dqbase.M.N.sqlog\(dq where M is worker ID and N is client ID
+(e.g. \(dqbase.0.3.sqlog\(dq).  Only effective in QUIC runs.
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -408,7 +408,7 @@ The number of status code h2load received.
 .INDENT 7.0
 .TP
 .B total
-The number of bytes received from the server "on the wire".  If
+The number of bytes received from the server \(dqon the wire\(dq.  If
 requests were made via TLS, this value is the number of decrypted
 bytes.
 .TP
