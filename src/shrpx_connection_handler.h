@@ -107,8 +107,8 @@ struct SerialEvent {
 #  ifdef HAVE_LIBBPF
 struct BPFRef {
   bpf_object *obj;
-  int reuseport_array;
-  int cid_prefix_map;
+  bpf_map *reuseport_array;
+  bpf_map *cid_prefix_map;
 };
 #  endif // HAVE_LIBBPF
 
