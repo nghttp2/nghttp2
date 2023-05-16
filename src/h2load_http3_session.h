@@ -64,6 +64,7 @@ public:
   ssize_t write_stream(int64_t &stream_id, int &fin, nghttp3_vec *vec,
                        size_t veccnt);
   void block_stream(int64_t stream_id);
+  int unblock_stream(int64_t stream_id);
   void shutdown_stream_write(int64_t stream_id);
   int add_write_offset(int64_t stream_id, size_t ndatalen);
   int add_ack_offset(int64_t stream_id, size_t datalen);
