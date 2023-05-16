@@ -197,6 +197,28 @@ int Client::quic_extend_max_local_streams() {
 }
 
 namespace {
+int extend_max_stream_data(ngtcp2_conn *conn, int64_t stream_id,
+                           uint64_t max_data, void *user_data,
+                           void *stream_user_data) {
+  auto c = static_cast<Client *>(user_data);
+
+  if (c->quic_extend_max_stream_data(stream_id) != 0) {
+    return NGTCP2_ERR_CALLBACK_FAILURE;
+  }
+
+  return 0;
+}
+} // namespace
+
+int Client::quic_extend_max_stream_data(int64_t stream_id) {
+  auto s = static_cast<Http3Session *>(session.get());
+  if (s->unblock_stream(stream_id) != 0) {
+    return -1;
+  }
+  return 0;
+}
+
+namespace {
 int get_new_connection_id(ngtcp2_conn *conn, ngtcp2_cid *cid, uint8_t *token,
                           size_t cidlen, void *user_data) {
   if (RAND_bytes(cid->data, cidlen) != 1) {
@@ -338,7 +360,7 @@ int Client::quic_init(const sockaddr *local_addr, socklen_t local_addrlen,
       h2load::stream_reset,
       nullptr, // extend_max_remote_streams_bidi
       nullptr, // extend_max_remote_streams_uni
-      nullptr, // extend_max_stream_data
+      h2load::extend_max_stream_data,
       nullptr, // dcid_status
       nullptr, // handshake_confirmed
       nullptr, // recv_new_token

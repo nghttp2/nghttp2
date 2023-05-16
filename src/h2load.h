@@ -494,6 +494,7 @@ struct Client {
   int quic_stream_reset(int64_t stream_id, uint64_t app_error_code);
   int quic_stream_stop_sending(int64_t stream_id, uint64_t app_error_code);
   int quic_extend_max_local_streams();
+  int quic_extend_max_stream_data(int64_t stream_id);
 
   int quic_write_client_handshake(ngtcp2_crypto_level level,
                                   const uint8_t *data, size_t datalen);
