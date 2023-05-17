@@ -72,6 +72,8 @@
 #  define O_BINARY (0)
 #endif // O_BINARY
 
+using namespace std::chrono_literals;
+
 namespace nghttp2 {
 
 namespace {
@@ -194,7 +196,7 @@ void release_fd_cb(struct ev_loop *loop, ev_timer *w, int revents);
 } // namespace
 
 namespace {
-constexpr ev_tstamp FILE_ENTRY_MAX_AGE = 10.;
+constexpr auto FILE_ENTRY_MAX_AGE = 10s;
 } // namespace
 
 namespace {
@@ -202,13 +204,15 @@ constexpr size_t FILE_ENTRY_EVICT_THRES = 2048;
 } // namespace
 
 namespace {
-bool need_validation_file_entry(const FileEntry *ent, ev_tstamp now) {
+bool need_validation_file_entry(
+    const FileEntry *ent, const std::chrono::steady_clock::time_point &now) {
   return ent->last_valid + FILE_ENTRY_MAX_AGE < now;
 }
 } // namespace
 
 namespace {
-bool validate_file_entry(FileEntry *ent, ev_tstamp now) {
+bool validate_file_entry(FileEntry *ent,
+                         const std::chrono::steady_clock::time_point &now) {
   struct stat stbuf;
   int rv;
 
@@ -335,7 +339,7 @@ public:
       return nullptr;
     }
 
-    auto now = ev_now(loop_);
+    auto now = std::chrono::steady_clock::now();
 
     for (auto it = range.first; it != range.second;) {
       auto &ent = (*it).second;
@@ -1197,7 +1201,7 @@ bool prepare_upload_temp_store(Stream *stream, Http2Handler *hd) {
   // now.  We will update it when we get whole request body.
   auto path = std::string("echo:") + tempfn;
   stream->file_ent =
-      sessions->cache_fd(path, FileEntry(path, 0, 0, fd, nullptr, 0, true));
+      sessions->cache_fd(path, FileEntry(path, 0, 0, fd, nullptr, {}, true));
   stream->echo_upload = true;
   return true;
 }
@@ -1368,7 +1372,7 @@ void prepare_response(Stream *stream, Http2Handler *hd,
 
     file_ent = sessions->cache_fd(
         file_path, FileEntry(file_path, buf.st_size, buf.st_mtime, file,
-                             content_type, ev_now(sessions->get_loop())));
+                             content_type, std::chrono::steady_clock::now()));
   }
 
   stream->file_ent = file_ent;
@@ -1969,7 +1973,7 @@ FileEntry make_status_body(int status, uint16_t port) {
     assert(0);
   }
 
-  return FileEntry(util::utos(status), nwrite, 0, fd, nullptr, 0);
+  return FileEntry(util::utos(status), nwrite, 0, fd, nullptr, {});
 }
 } // namespace
 
