@@ -58,7 +58,7 @@ struct TLSSessionCache {
   // i2d_SSL_SESSION(3SSL).
   std::vector<uint8_t> session_data;
   // The last time stamp when this cache entry is created or updated.
-  ev_tstamp last_updated;
+  std::chrono::steady_clock::time_point last_updated;
 };
 
 // This struct stores the additional information per SSL_CTX.  This is
@@ -283,7 +283,7 @@ bool tls_hostname_match(const StringRef &pattern, const StringRef &hostname);
 // Depending on the existing cache's time stamp, |session| might not
 // be cached.
 void try_cache_tls_session(TLSSessionCache *cache, SSL_SESSION *session,
-                           ev_tstamp t);
+                           const std::chrono::steady_clock::time_point &t);
 
 // Returns cached session associated |addr|.  If no cache entry is
 // found associated to |addr|, nullptr will be returned.

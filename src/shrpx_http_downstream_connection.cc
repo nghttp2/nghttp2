@@ -450,7 +450,7 @@ int HttpDownstreamConnection::initiate_connection() {
     ev_set_cb(&conn_.rt, timeoutcb);
     if (conn_.read_timeout < group_->shared_addr->timeout.read) {
       conn_.read_timeout = group_->shared_addr->timeout.read;
-      conn_.last_read = ev_now(conn_.loop);
+      conn_.last_read = std::chrono::steady_clock::now();
     } else {
       conn_.again_rt(group_->shared_addr->timeout.read);
     }
@@ -875,7 +875,7 @@ void HttpDownstreamConnection::detach_downstream(Downstream *downstream) {
   ev_set_cb(&conn_.rt, idle_timeoutcb);
   if (conn_.read_timeout < downstreamconf.timeout.idle_read) {
     conn_.read_timeout = downstreamconf.timeout.idle_read;
-    conn_.last_read = ev_now(conn_.loop);
+    conn_.last_read = std::chrono::steady_clock::now();
   } else {
     conn_.again_rt(downstreamconf.timeout.idle_read);
   }
@@ -1231,7 +1231,7 @@ int HttpDownstreamConnection::write_first() {
 }
 
 int HttpDownstreamConnection::read_clear() {
-  conn_.last_read = ev_now(conn_.loop);
+  conn_.last_read = std::chrono::steady_clock::now();
 
   std::array<uint8_t, 16_k> buf;
   int rv;
@@ -1270,7 +1270,7 @@ int HttpDownstreamConnection::read_clear() {
 }
 
 int HttpDownstreamConnection::write_clear() {
-  conn_.last_read = ev_now(conn_.loop);
+  conn_.last_read = std::chrono::steady_clock::now();
 
   auto upstream = downstream_->get_upstream();
   auto input = downstream_->get_request_buf();
@@ -1318,7 +1318,7 @@ int HttpDownstreamConnection::write_clear() {
 int HttpDownstreamConnection::tls_handshake() {
   ERR_clear_error();
 
-  conn_.last_read = ev_now(conn_.loop);
+  conn_.last_read = std::chrono::steady_clock::now();
 
   auto rv = conn_.tls_handshake();
   if (rv == SHRPX_ERR_INPROGRESS) {
@@ -1360,7 +1360,7 @@ int HttpDownstreamConnection::tls_handshake() {
 }
 
 int HttpDownstreamConnection::read_tls() {
-  conn_.last_read = ev_now(conn_.loop);
+  conn_.last_read = std::chrono::steady_clock::now();
 
   ERR_clear_error();
 
@@ -1401,7 +1401,7 @@ int HttpDownstreamConnection::read_tls() {
 }
 
 int HttpDownstreamConnection::write_tls() {
-  conn_.last_read = ev_now(conn_.loop);
+  conn_.last_read = std::chrono::steady_clock::now();
 
   ERR_clear_error();
 

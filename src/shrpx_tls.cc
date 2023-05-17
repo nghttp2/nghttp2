@@ -90,6 +90,7 @@
 #include "timegm.h"
 
 using namespace nghttp2;
+using namespace std::chrono_literals;
 
 namespace shrpx {
 
@@ -383,7 +384,7 @@ int tls_session_client_new_cb(SSL *ssl, SSL_SESSION *session) {
   }
 
   try_cache_tls_session(conn->tls.client_session_cache, session,
-                        ev_now(conn->loop));
+                        std::chrono::steady_clock::now());
 
   return 0;
 }
@@ -2427,8 +2428,8 @@ std::vector<uint8_t> serialize_ssl_session(SSL_SESSION *session) {
 } // namespace
 
 void try_cache_tls_session(TLSSessionCache *cache, SSL_SESSION *session,
-                           ev_tstamp t) {
-  if (cache->last_updated + 1_min > t) {
+                           const std::chrono::steady_clock::time_point &t) {
+  if (cache->last_updated + 1min > t) {
     if (LOG_ENABLED(INFO)) {
       LOG(INFO) << "Client session cache entry is still fresh.";
     }
@@ -2437,7 +2438,7 @@ void try_cache_tls_session(TLSSessionCache *cache, SSL_SESSION *session,
 
   if (LOG_ENABLED(INFO)) {
     LOG(INFO) << "Update client cache entry "
-              << "timestamp = " << t;
+              << "timestamp = " << t.time_since_epoch().count();
   }
 
   cache->session_data = serialize_ssl_session(session);

@@ -2018,7 +2018,7 @@ int Http2Session::connected() {
 }
 
 int Http2Session::read_clear() {
-  conn_.last_read = ev_now(conn_.loop);
+  conn_.last_read = std::chrono::steady_clock::now();
 
   std::array<uint8_t, 16_k> buf;
 
@@ -2040,7 +2040,7 @@ int Http2Session::read_clear() {
 }
 
 int Http2Session::write_clear() {
-  conn_.last_read = ev_now(conn_.loop);
+  conn_.last_read = std::chrono::steady_clock::now();
 
   std::array<struct iovec, MAX_WR_IOVCNT> iov;
 
@@ -2081,7 +2081,7 @@ int Http2Session::write_clear() {
 }
 
 int Http2Session::tls_handshake() {
-  conn_.last_read = ev_now(conn_.loop);
+  conn_.last_read = std::chrono::steady_clock::now();
 
   ERR_clear_error();
 
@@ -2120,7 +2120,7 @@ int Http2Session::tls_handshake() {
 }
 
 int Http2Session::read_tls() {
-  conn_.last_read = ev_now(conn_.loop);
+  conn_.last_read = std::chrono::steady_clock::now();
 
   std::array<uint8_t, 16_k> buf;
 
@@ -2144,7 +2144,7 @@ int Http2Session::read_tls() {
 }
 
 int Http2Session::write_tls() {
-  conn_.last_read = ev_now(conn_.loop);
+  conn_.last_read = std::chrono::steady_clock::now();
 
   ERR_clear_error();
 
