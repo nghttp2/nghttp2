@@ -260,8 +260,10 @@ int generate_cid(ngtcp2_cid &dest) {
 } // namespace
 
 namespace {
-ngtcp2_tstamp timestamp(struct ev_loop *loop) {
-  return ev_now(loop) * NGTCP2_SECONDS;
+ngtcp2_tstamp quic_timestamp() {
+  return std::chrono::duration_cast<std::chrono::nanoseconds>(
+             std::chrono::steady_clock::now().time_since_epoch())
+      .count();
 }
 } // namespace
 
@@ -391,7 +393,7 @@ int Client::quic_init(const sockaddr *local_addr, socklen_t local_addrlen,
   if (config->verbose) {
     settings.log_printf = debug_log_printf;
   }
-  settings.initial_ts = timestamp(worker->loop);
+  settings.initial_ts = quic_timestamp();
   settings.rand_ctx.native_handle = &worker->randgen;
   if (!config->qlog_file_base.empty()) {
     assert(quic.qlog_file == nullptr);
@@ -475,7 +477,7 @@ void Client::quic_close_connection() {
 
   auto nwrite = ngtcp2_conn_write_connection_close(
       quic.conn, &ps.path, nullptr, buf.data(), buf.size(), &quic.last_error,
-      timestamp(worker->loop));
+      quic_timestamp());
 
   if (nwrite <= 0) {
     return;
@@ -514,7 +516,7 @@ void quic_pkt_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
 
 int Client::quic_pkt_timeout() {
   int rv;
-  auto now = timestamp(worker->loop);
+  auto now = quic_timestamp();
 
   rv = ngtcp2_conn_handle_expiry(quic.conn, now);
   if (rv != 0) {
@@ -527,7 +529,7 @@ int Client::quic_pkt_timeout() {
 
 void Client::quic_restart_pkt_timer() {
   auto expiry = ngtcp2_conn_get_expiry(quic.conn);
-  auto now = timestamp(worker->loop);
+  auto now = quic_timestamp();
   auto t = expiry > now ? static_cast<ev_tstamp>(expiry - now) / NGTCP2_SECONDS
                         : 1e-9;
   quic.pkt_timer.repeat = t;
@@ -541,6 +543,8 @@ int Client::read_quic() {
   int rv;
   size_t pktcnt = 0;
   ngtcp2_pkt_info pi{};
+
+  auto ts = quic_timestamp();
 
   for (;;) {
     auto nread =
@@ -564,8 +568,7 @@ int Client::read_quic() {
         },
     };
 
-    rv = ngtcp2_conn_read_pkt(quic.conn, &path, &pi, buf.data(), nread,
-                              timestamp(worker->loop));
+    rv = ngtcp2_conn_read_pkt(quic.conn, &path, &pi, buf.data(), nread, ts);
     if (rv != 0) {
       std::cerr << "ngtcp2_conn_read_pkt: " << ngtcp2_strerror(rv) << std::endl;
 
@@ -627,6 +630,7 @@ int Client::write_quic() {
   ngtcp2_path_storage_zero(&ps);
 
   auto s = static_cast<Http3Session *>(session.get());
+  auto ts = quic_timestamp();
 
   for (;;) {
     int64_t stream_id = -1;
@@ -651,8 +655,7 @@ int Client::write_quic() {
 
     auto nwrite = ngtcp2_conn_writev_stream(
         quic.conn, &ps.path, nullptr, bufpos, max_udp_payload_size, &ndatalen,
-        flags, stream_id, reinterpret_cast<const ngtcp2_vec *>(v), vcnt,
-        timestamp(worker->loop));
+        flags, stream_id, reinterpret_cast<const ngtcp2_vec *>(v), vcnt, ts);
     if (nwrite < 0) {
       switch (nwrite) {
       case NGTCP2_ERR_STREAM_DATA_BLOCKED:
