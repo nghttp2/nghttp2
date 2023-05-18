@@ -47,6 +47,8 @@
 #include <map>
 #include <random>
 
+#include <ev.h>
+
 #include "url-parser/url_parser.h"
 
 #include "template.h"
@@ -693,6 +695,15 @@ template <typename Clock, typename Rep> Rep clock_precision() {
   std::chrono::duration<Rep, std::nano> duration = typename Clock::duration(1);
 
   return duration.count();
+}
+
+template <typename Duration = std::chrono::steady_clock::duration>
+Duration duration_from(ev_tstamp d) {
+  return std::chrono::duration_cast<Duration>(std::chrono::duration<double>(d));
+}
+
+template <typename Duration> ev_tstamp ev_tstamp_from(const Duration &d) {
+  return std::chrono::duration<double>(d).count();
 }
 
 int make_socket_closeonexec(int fd);

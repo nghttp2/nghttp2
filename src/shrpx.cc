@@ -210,8 +210,7 @@ struct WorkerProcess {
                 )
       : loop(loop),
         worker_pid(worker_pid),
-        ipc_fd(ipc_fd),
-        termination_deadline(0.)
+        ipc_fd(ipc_fd)
 #ifdef ENABLE_HTTP3
         ,
         quic_ipc_fd(quic_ipc_fd),
@@ -243,7 +242,7 @@ struct WorkerProcess {
   struct ev_loop *loop;
   pid_t worker_pid;
   int ipc_fd;
-  ev_tstamp termination_deadline;
+  std::chrono::steady_clock::time_point termination_deadline;
 #ifdef ENABLE_HTTP3
   int quic_ipc_fd;
   std::vector<std::array<uint8_t, SHRPX_QUIC_CID_PREFIXLEN>> cid_prefixes;
@@ -265,21 +264,22 @@ ev_timer worker_process_grace_period_timer;
 namespace {
 void worker_process_grace_period_timercb(struct ev_loop *loop, ev_timer *w,
                                          int revents) {
-  auto now = ev_now(loop);
-  ev_tstamp next_repeat = 0.;
+  auto now = std::chrono::steady_clock::now();
+  auto next_repeat = std::chrono::steady_clock::duration::zero();
 
   for (auto it = std::begin(worker_processes);
        it != std::end(worker_processes);) {
     auto &wp = *it;
-    if (!(wp->termination_deadline > 0.)) {
+    if (wp->termination_deadline.time_since_epoch().count() == 0) {
       ++it;
 
       continue;
     }
 
     auto d = wp->termination_deadline - now;
-    if (d > 0) {
-      if (!(next_repeat > 0.) || d < next_repeat) {
+    if (d.count() > 0) {
+      if (next_repeat == std::chrono::steady_clock::duration::zero() ||
+          d < next_repeat) {
         next_repeat = d;
       }
 
@@ -294,8 +294,8 @@ void worker_process_grace_period_timercb(struct ev_loop *loop, ev_timer *w,
     it = worker_processes.erase(it);
   }
 
-  if (next_repeat > 0.) {
-    w->repeat = next_repeat;
+  if (next_repeat.count() > 0) {
+    w->repeat = util::ev_tstamp_from(next_repeat);
     ev_timer_again(loop, w);
 
     return;
@@ -315,7 +315,8 @@ void worker_process_set_termination_deadline(WorkerProcess *wp,
   }
 
   wp->termination_deadline =
-      ev_now(loop) + config->worker_process_grace_shutdown_period;
+      std::chrono::steady_clock::now() +
+      util::duration_from(config->worker_process_grace_shutdown_period);
 
   if (!ev_is_active(&worker_process_grace_period_timer)) {
     worker_process_grace_period_timer.repeat =

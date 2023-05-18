@@ -28,6 +28,7 @@
 #include "shrpx.h"
 
 #include <map>
+#include <chrono>
 
 #include "shrpx_dual_dns_resolver.h"
 
@@ -70,7 +71,7 @@ struct ResolverEntry {
   // result and its expiry time
   Address result;
   // time point when cached result expires.
-  ev_tstamp expiry;
+  std::chrono::steady_clock::time_point expiry;
 };
 
 class DNSTracker {

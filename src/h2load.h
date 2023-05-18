@@ -73,7 +73,7 @@ struct Worker;
 struct Config {
   std::vector<std::vector<nghttp2_nv>> nva;
   std::vector<std::string> h1reqs;
-  std::vector<ev_tstamp> timings;
+  std::vector<std::chrono::steady_clock::duration> timings;
   nghttp2::Headers custom_headers;
   std::string scheme;
   std::string host;
@@ -396,7 +396,7 @@ struct Client {
   ev_timer rps_watcher;
   // The timestamp that starts the period which contributes to the
   // next request generation.
-  ev_tstamp rps_duration_started;
+  std::chrono::steady_clock::time_point rps_duration_started;
   // The number of requests allowed by rps, but limited by stream
   // concurrency.
   size_t rps_req_pending;

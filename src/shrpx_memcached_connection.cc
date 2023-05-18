@@ -259,7 +259,7 @@ int MemcachedConnection::on_read() { return do_read_(*this); }
 int MemcachedConnection::tls_handshake() {
   ERR_clear_error();
 
-  conn_.last_read = ev_now(conn_.loop);
+  conn_.last_read = std::chrono::steady_clock::now();
 
   auto rv = conn_.tls_handshake();
   if (rv == SHRPX_ERR_INPROGRESS) {
@@ -301,7 +301,7 @@ int MemcachedConnection::write_tls() {
     return 0;
   }
 
-  conn_.last_read = ev_now(conn_.loop);
+  conn_.last_read = std::chrono::steady_clock::now();
 
   std::array<struct iovec, MAX_WR_IOVCNT> iov;
   std::array<uint8_t, 16_k> buf;
@@ -340,7 +340,7 @@ int MemcachedConnection::read_tls() {
     return 0;
   }
 
-  conn_.last_read = ev_now(conn_.loop);
+  conn_.last_read = std::chrono::steady_clock::now();
 
   for (;;) {
     auto nread = conn_.read_tls(recvbuf_.last, recvbuf_.wleft());
@@ -368,7 +368,7 @@ int MemcachedConnection::write_clear() {
     return 0;
   }
 
-  conn_.last_read = ev_now(conn_.loop);
+  conn_.last_read = std::chrono::steady_clock::now();
 
   std::array<struct iovec, MAX_WR_IOVCNT> iov;
 
@@ -396,7 +396,7 @@ int MemcachedConnection::read_clear() {
     return 0;
   }
 
-  conn_.last_read = ev_now(conn_.loop);
+  conn_.last_read = std::chrono::steady_clock::now();
 
   for (;;) {
     auto nread = conn_.read_clear(recvbuf_.last, recvbuf_.wleft());

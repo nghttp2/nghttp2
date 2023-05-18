@@ -377,7 +377,7 @@ int LiveCheck::connected() {
 }
 
 int LiveCheck::tls_handshake() {
-  conn_.last_read = ev_now(conn_.loop);
+  conn_.last_read = std::chrono::steady_clock::now();
 
   ERR_clear_error();
 
@@ -446,7 +446,7 @@ int LiveCheck::tls_handshake() {
 }
 
 int LiveCheck::read_tls() {
-  conn_.last_read = ev_now(conn_.loop);
+  conn_.last_read = std::chrono::steady_clock::now();
 
   std::array<uint8_t, 4_k> buf;
 
@@ -470,7 +470,7 @@ int LiveCheck::read_tls() {
 }
 
 int LiveCheck::write_tls() {
-  conn_.last_read = ev_now(conn_.loop);
+  conn_.last_read = std::chrono::steady_clock::now();
 
   ERR_clear_error();
 
@@ -519,7 +519,7 @@ int LiveCheck::write_tls() {
 }
 
 int LiveCheck::read_clear() {
-  conn_.last_read = ev_now(conn_.loop);
+  conn_.last_read = std::chrono::steady_clock::now();
 
   std::array<uint8_t, 4_k> buf;
 
@@ -541,7 +541,7 @@ int LiveCheck::read_clear() {
 }
 
 int LiveCheck::write_clear() {
-  conn_.last_read = ev_now(conn_.loop);
+  conn_.last_read = std::chrono::steady_clock::now();
 
   struct iovec iov;
 

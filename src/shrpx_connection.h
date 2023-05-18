@@ -66,7 +66,7 @@ struct TLSConnection {
   SSL_SESSION *cached_session;
   MemcachedRequest *cached_session_lookup_req;
   tls::TLSSessionCache *client_session_cache;
-  ev_tstamp last_write_idle;
+  std::chrono::steady_clock::time_point last_write_idle;
   size_t warmup_writelen;
   // length passed to SSL_write and SSL_read last time.  This is
   // required since these functions require the exact same parameters
@@ -178,14 +178,14 @@ struct Connection {
   void *data;
   int fd;
   size_t tls_dyn_rec_warmup_threshold;
-  ev_tstamp tls_dyn_rec_idle_timeout;
+  std::chrono::steady_clock::duration tls_dyn_rec_idle_timeout;
   // Application protocol used over the connection.  This field is not
   // used in this object at the moment.  The rest of the program may
   // use this value when it is useful.
   Proto proto;
   // The point of time when last read is observed.  Note: since we use
   // |rt| as idle timer, the activity is not limited to read.
-  ev_tstamp last_read;
+  std::chrono::steady_clock::time_point last_read;
   // Timeout for read timer |rt|.
   ev_tstamp read_timeout;
 };
