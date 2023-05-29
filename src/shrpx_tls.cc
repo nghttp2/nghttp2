@@ -2599,13 +2599,6 @@ StringRef get_x509_issuer_name(BlockAllocator &balloc, X509 *x) {
   return get_x509_name(balloc, X509_get_issuer_name(x));
 }
 
-#ifdef WORDS_BIGENDIAN
-#  define bswap64(N) (N)
-#else /* !WORDS_BIGENDIAN */
-#  define bswap64(N)                                                           \
-    ((uint64_t)(ntohl((uint32_t)(N))) << 32 | ntohl((uint32_t)((N) >> 32)))
-#endif /* !WORDS_BIGENDIAN */
-
 StringRef get_x509_serial(BlockAllocator &balloc, X509 *x) {
   auto sn = X509_get_serialNumber(x);
   auto bn = BN_new();
