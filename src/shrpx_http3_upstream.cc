@@ -532,8 +532,9 @@ int Http3Upstream::send_new_token(const ngtcp2_addr *remote_addr) {
 }
 
 namespace {
-int recv_tx_key(ngtcp2_conn *conn, ngtcp2_crypto_level level, void *user_data) {
-  if (level != NGTCP2_CRYPTO_LEVEL_APPLICATION) {
+int recv_tx_key(ngtcp2_conn *conn, ngtcp2_encryption_level level,
+                void *user_data) {
+  if (level != NGTCP2_ENCRYPTION_LEVEL_1RTT) {
     return 0;
   }
 
@@ -623,8 +624,7 @@ int Http3Upstream::init(const UpstreamAddr *faddr, const Address &remote_addr,
     auto fd = open_qlog_file(quicconf.upstream.qlog.dir, scid);
     if (fd != -1) {
       qlog_fd_ = fd;
-      settings.qlog.odcid = initial_hd.dcid;
-      settings.qlog.write = shrpx::qlog_write;
+      settings.qlog_write = shrpx::qlog_write;
     }
   }
 
@@ -1511,8 +1511,8 @@ void Http3Upstream::on_handler_delete() {
   }
 
   // If this is not idle close, send CONNECTION_CLOSE.
-  if (!ngtcp2_conn_is_in_closing_period(conn_) &&
-      !ngtcp2_conn_is_in_draining_period(conn_)) {
+  if (!ngtcp2_conn_in_closing_period(conn_) &&
+      !ngtcp2_conn_in_draining_period(conn_)) {
     ngtcp2_path_storage ps;
     ngtcp2_pkt_info pi;
     conn_close_.resize(SHRPX_QUIC_CONN_CLOSE_PKTLEN);
@@ -1926,8 +1926,8 @@ void Http3Upstream::signal_write_upstream_addr(const UpstreamAddr *faddr) {
 }
 
 int Http3Upstream::handle_error() {
-  if (ngtcp2_conn_is_in_closing_period(conn_) ||
-      ngtcp2_conn_is_in_draining_period(conn_)) {
+  if (ngtcp2_conn_in_closing_period(conn_) ||
+      ngtcp2_conn_in_draining_period(conn_)) {
     return -1;
   }
 
@@ -2546,7 +2546,8 @@ int http_stop_sending(nghttp3_conn *conn, int64_t stream_id,
 
 int Http3Upstream::http_stop_sending(int64_t stream_id,
                                      uint64_t app_error_code) {
-  auto rv = ngtcp2_conn_shutdown_stream_read(conn_, stream_id, app_error_code);
+  auto rv =
+      ngtcp2_conn_shutdown_stream_read(conn_, 0, stream_id, app_error_code);
   if (ngtcp2_err_is_fatal(rv)) {
     ULOG(ERROR, this) << "ngtcp2_conn_shutdown_stream_read: "
                       << ngtcp2_strerror(rv);
@@ -2572,7 +2573,8 @@ int http_reset_stream(nghttp3_conn *conn, int64_t stream_id,
 
 int Http3Upstream::http_reset_stream(int64_t stream_id,
                                      uint64_t app_error_code) {
-  auto rv = ngtcp2_conn_shutdown_stream_write(conn_, stream_id, app_error_code);
+  auto rv =
+      ngtcp2_conn_shutdown_stream_write(conn_, 0, stream_id, app_error_code);
   if (ngtcp2_err_is_fatal(rv)) {
     ULOG(ERROR, this) << "ngtcp2_conn_shutdown_stream_write: "
                       << ngtcp2_strerror(rv);
@@ -2725,7 +2727,7 @@ int Http3Upstream::shutdown_stream(Downstream *downstream,
                      << " with app_error_code=" << app_error_code;
   }
 
-  auto rv = ngtcp2_conn_shutdown_stream(conn_, stream_id, app_error_code);
+  auto rv = ngtcp2_conn_shutdown_stream(conn_, 0, stream_id, app_error_code);
   if (rv != 0) {
     ULOG(FATAL, this) << "ngtcp2_conn_shutdown_stream() failed: "
                       << ngtcp2_strerror(rv);
@@ -2737,8 +2739,8 @@ int Http3Upstream::shutdown_stream(Downstream *downstream,
 
 int Http3Upstream::shutdown_stream_read(int64_t stream_id,
                                         uint64_t app_error_code) {
-  auto rv =
-      ngtcp2_conn_shutdown_stream_read(conn_, stream_id, NGHTTP3_H3_NO_ERROR);
+  auto rv = ngtcp2_conn_shutdown_stream_read(conn_, 0, stream_id,
+                                             NGHTTP3_H3_NO_ERROR);
   if (ngtcp2_err_is_fatal(rv)) {
     ULOG(FATAL, this) << "ngtcp2_conn_shutdown_stream_read: "
                       << ngtcp2_strerror(rv);

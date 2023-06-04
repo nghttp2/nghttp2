@@ -127,11 +127,11 @@ To enable the experimental HTTP/3 support for h2load and nghttpx, the
 following libraries are required:
 
 * `OpenSSL with QUIC support
-  <https://github.com/quictls/openssl/tree/OpenSSL_1_1_1t+quic>`_; or
+  <https://github.com/quictls/openssl/tree/OpenSSL_1_1_1u+quic>`_; or
   `BoringSSL <https://boringssl.googlesource.com/boringssl/>`_ (commit
-  b0b1f9dfc583c96d5f91b7f8cdb7efabcf22793b)
-* `ngtcp2 <https://github.com/ngtcp2/ngtcp2>`_ >= 0.15.0
-* `nghttp3 <https://github.com/ngtcp2/nghttp3>`_ >= 0.9.0
+  b0341041b03ea71d8371a9692aedae263fc06ee9)
+* `ngtcp2 <https://github.com/ngtcp2/ngtcp2>`_ 0.16.x
+* `nghttp3 <https://github.com/ngtcp2/nghttp3>`_ 0.12.x
 
 Use ``--enable-http3`` configure option to enable HTTP/3 feature for
 h2load and nghttpx.
@@ -343,7 +343,7 @@ Build custom OpenSSL:
 
 .. code-block:: text
 
-   $ git clone --depth 1 -b OpenSSL_1_1_1t+quic https://github.com/quictls/openssl
+   $ git clone --depth 1 -b OpenSSL_1_1_1u+quic https://github.com/quictls/openssl
    $ cd openssl
    $ ./config --prefix=$PWD/build --openssldir=/etc/ssl
    $ make -j$(nproc)
@@ -354,7 +354,7 @@ Build nghttp3:
 
 .. code-block:: text
 
-   $ git clone --depth 1 -b v0.11.0 https://github.com/ngtcp2/nghttp3
+   $ git clone --depth 1 -b v0.12.0 https://github.com/ngtcp2/nghttp3
    $ cd nghttp3
    $ autoreconf -i
    $ ./configure --prefix=$PWD/build --enable-lib-only
@@ -366,7 +366,7 @@ Build ngtcp2:
 
 .. code-block:: text
 
-   $ git clone --depth 1 -b v0.15.0 https://github.com/ngtcp2/ngtcp2
+   $ git clone --depth 1 -b v0.16.0 https://github.com/ngtcp2/ngtcp2
    $ cd ngtcp2
    $ autoreconf -i
    $ ./configure --prefix=$PWD/build --enable-lib-only \
