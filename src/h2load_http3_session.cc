@@ -224,7 +224,7 @@ int stop_sending(nghttp3_conn *conn, int64_t stream_id, uint64_t app_error_code,
 } // namespace
 
 int Http3Session::stop_sending(int64_t stream_id, uint64_t app_error_code) {
-  auto rv = ngtcp2_conn_shutdown_stream_read(client_->quic.conn, stream_id,
+  auto rv = ngtcp2_conn_shutdown_stream_read(client_->quic.conn, 0, stream_id,
                                              app_error_code);
   if (rv != 0) {
     std::cerr << "ngtcp2_conn_shutdown_stream_read: " << ngtcp2_strerror(rv)
@@ -246,7 +246,7 @@ int reset_stream(nghttp3_conn *conn, int64_t stream_id, uint64_t app_error_code,
 } // namespace
 
 int Http3Session::reset_stream(int64_t stream_id, uint64_t app_error_code) {
-  auto rv = ngtcp2_conn_shutdown_stream_write(client_->quic.conn, stream_id,
+  auto rv = ngtcp2_conn_shutdown_stream_write(client_->quic.conn, 0, stream_id,
                                               app_error_code);
   if (rv != 0) {
     std::cerr << "ngtcp2_conn_shutdown_stream_write: " << ngtcp2_strerror(rv)

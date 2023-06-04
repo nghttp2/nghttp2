@@ -289,8 +289,9 @@ void rand(uint8_t *dest, size_t destlen, const ngtcp2_rand_ctx *rand_ctx) {
 } // namespace
 
 namespace {
-int recv_rx_key(ngtcp2_conn *conn, ngtcp2_crypto_level level, void *user_data) {
-  if (level != NGTCP2_CRYPTO_LEVEL_APPLICATION) {
+int recv_rx_key(ngtcp2_conn *conn, ngtcp2_encryption_level level,
+                void *user_data) {
+  if (level != NGTCP2_ENCRYPTION_LEVEL_1RTT) {
     return 0;
   }
 
@@ -408,7 +409,7 @@ int Client::quic_init(const sockaddr *local_addr, socklen_t local_addrlen,
       std::cerr << "Failed to open a qlog file: " << path << std::endl;
       return -1;
     }
-    settings.qlog.write = qlog_write_cb;
+    settings.qlog_write = qlog_write_cb;
   }
   if (config->max_udp_payload_size) {
     settings.max_tx_udp_payload_size = config->max_udp_payload_size;
@@ -487,7 +488,7 @@ void Client::quic_close_connection() {
             ps.path.remote.addrlen, buf.data(), nwrite, 0);
 }
 
-int Client::quic_write_client_handshake(ngtcp2_crypto_level level,
+int Client::quic_write_client_handshake(ngtcp2_encryption_level level,
                                         const uint8_t *data, size_t datalen) {
   int rv;
 
