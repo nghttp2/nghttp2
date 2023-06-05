@@ -1895,7 +1895,7 @@ class ListenEventHandler {
 public:
   ListenEventHandler(Sessions *sessions, int fd,
                      std::shared_ptr<AcceptHandler> acceptor)
-      : acceptor_(acceptor), sessions_(sessions), fd_(fd) {
+      : acceptor_(std::move(acceptor)), sessions_(sessions), fd_(fd) {
     ev_io_init(&w_, acceptcb, fd, EV_READ);
     w_.data = this;
     ev_io_start(sessions_->get_loop(), &w_);
