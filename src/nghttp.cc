@@ -451,10 +451,9 @@ constexpr llhttp_settings_t htp_hooks = {
 
 namespace {
 int submit_request(HttpClient *client, const Headers &headers, Request *req) {
-  auto path = req->make_reqpath();
   auto scheme = util::get_uri_field(req->uri.c_str(), req->u, UF_SCHEMA);
   auto build_headers = Headers{{":method", req->data_prd ? "POST" : "GET"},
-                               {":path", path},
+                               {":path", req->make_reqpath()},
                                {":scheme", scheme.str()},
                                {":authority", client->hostport},
                                {"accept", "*/*"},
