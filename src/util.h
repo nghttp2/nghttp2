@@ -47,7 +47,9 @@
 #include <map>
 #include <random>
 
-#include <ev.h>
+#ifdef HAVE_LIBEV
+#  include <ev.h>
+#endif // HAVE_LIBEV
 
 #include "url-parser/url_parser.h"
 
@@ -697,6 +699,7 @@ template <typename Clock, typename Rep> Rep clock_precision() {
   return duration.count();
 }
 
+#ifdef HAVE_LIBEV
 template <typename Duration = std::chrono::steady_clock::duration>
 Duration duration_from(ev_tstamp d) {
   return std::chrono::duration_cast<Duration>(std::chrono::duration<double>(d));
@@ -705,6 +708,7 @@ Duration duration_from(ev_tstamp d) {
 template <typename Duration> ev_tstamp ev_tstamp_from(const Duration &d) {
   return std::chrono::duration<double>(d).count();
 }
+#endif // HAVE_LIBEV
 
 int make_socket_closeonexec(int fd);
 int make_socket_nonblocking(int fd);

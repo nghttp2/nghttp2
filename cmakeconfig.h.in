@@ -90,3 +90,6 @@
 
 /* Define to 1 if you have `libngtcp2_crypto_openssl` library. */
 #cmakedefine HAVE_LIBNGTCP2_CRYPTO_OPENSSL
+
+/* Define to 1 if you have `libev` library. */
+#cmakedefine HAVE_LIBEV 1

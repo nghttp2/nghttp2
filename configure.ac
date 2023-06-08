@@ -433,6 +433,10 @@ if test "x${request_libev}" != "xno"; then
   else
     have_libev=yes
   fi
+
+  if test "x${have_libev}" = "xyes"; then
+    AC_DEFINE([HAVE_LIBEV], [1], [Define to 1 if you have `libev` library.])
+  fi
 fi
 
 if test "x${request_libev}" = "xyes" &&
