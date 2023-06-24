@@ -574,10 +574,9 @@ mruby:
 	MRUBY_CONFIG="${abs_builddir}/mruby/build/build_config.rb" \
 	BUILD_DIR="${abs_builddir}/mruby/build" \
 	INSTALL_DIR="${abs_builddir}/mruby/build/install/bin" \
-	CC="${CC}" CXX="$(firstword $(CXX))" LD="${LD}" \
-	CFLAGS="${CPPFLAGS} ${CFLAGS}" \
-	CXXFLAGS="$(wordlist 2, $(words $(CXX)), $(CXX)) ${CPPFLAGS} ${CXXFLAGS}" \
-	LDFLAGS="${LDFLAGS}" \
+	MRUBY_CC="${CC}" MRUBY_CXX="$(firstword $(CXX))" MRUBY_LD="${LD}" \
+	MRUBY_AR="${AR}" \
+	HOST="${host}" BUILD="${build}" \
 	"${srcdir}/mruby/minirake" -f "${srcdir}/mruby/Rakefile"
 
 all-local: mruby
@@ -586,7 +585,7 @@ clean-local:
 	[ ! -f "${abs_builddir}/mruby/build/build_config.rb" ] || \
 	MRUBY_CONFIG="${abs_builddir}/mruby/build/build_config.rb" \
 	BUILD_DIR="${abs_builddir}/mruby/build" \
-	CC="${CC}" \
+	MRUBY_CC="${CC}" \
 	"${srcdir}/mruby/minirake" -f "${srcdir}/mruby/Rakefile" clean
 
 endif # HAVE_MRUBY
