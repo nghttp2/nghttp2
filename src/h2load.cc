@@ -541,6 +541,14 @@ int Client::make_socket(addrinfo *addr) {
       return -1;
     }
 
+#  ifdef UDP_GRO
+    int val = 1;
+    if (setsockopt(fd, IPPROTO_UDP, UDP_GRO, &val, sizeof(val)) != 0) {
+      std::cerr << "setsockopt UDP_GRO failed" << std::endl;
+      return -1;
+    }
+#  endif // UDP_GRO
+
     rv = util::bind_any_addr_udp(fd, addr->ai_family);
     if (rv != 0) {
       close(fd);

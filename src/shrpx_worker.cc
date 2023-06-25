@@ -27,6 +27,7 @@
 #ifdef HAVE_UNISTD_H
 #  include <unistd.h>
 #endif // HAVE_UNISTD_H
+#include <netinet/udp.h>
 
 #include <cstdio>
 #include <memory>
@@ -891,6 +892,16 @@ int Worker::create_quic_server_socket(UpstreamAddr &faddr) {
       }
 #  endif // defined(IP_MTU_DISCOVER) && defined(IP_PMTUDISC_DO)
     }
+
+#  ifdef UDP_GRO
+    if (setsockopt(fd, IPPROTO_UDP, UDP_GRO, &val, sizeof(val)) == -1) {
+      auto error = errno;
+      LOG(WARN) << "Failed to set UDP_GRO option to listener socket: "
+                << xsi_strerror(error, errbuf.data(), errbuf.size());
+      close(fd);
+      continue;
+    }
+#  endif // UDP_GRO
 
     if (bind(fd, rp->ai_addr, rp->ai_addrlen) == -1) {
       auto error = errno;
