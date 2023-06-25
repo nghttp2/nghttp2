@@ -41,6 +41,7 @@
 #ifdef HAVE_NETINET_IN_H
 #  include <netinet/in.h>
 #endif // HAVE_NETINET_IN_H
+#include <netinet/udp.h>
 #ifdef _WIN32
 #  include <ws2tcpip.h>
 #else // !_WIN32
@@ -1731,6 +1732,22 @@ unsigned int msghdr_get_ecn(msghdr *msg, int family) {
   }
 
   return 0;
+}
+
+size_t msghdr_get_udp_gro(msghdr *msg) {
+  uint16_t gso_size = 0;
+
+#  ifdef UDP_GRO
+  for (auto cmsg = CMSG_FIRSTHDR(msg); cmsg; cmsg = CMSG_NXTHDR(msg, cmsg)) {
+    if (cmsg->cmsg_level == SOL_UDP && cmsg->cmsg_type == UDP_GRO) {
+      memcpy(&gso_size, CMSG_DATA(cmsg), sizeof(gso_size));
+
+      break;
+    }
+  }
+#  endif // UDP_GRO
+
+  return gso_size;
 }
 
 int fd_set_send_ecn(int fd, int family, unsigned int ecn) {

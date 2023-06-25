@@ -538,20 +538,38 @@ void Client::quic_restart_pkt_timer() {
 }
 
 int Client::read_quic() {
-  std::array<uint8_t, 65536> buf;
+  std::array<uint8_t, 65535> buf;
   sockaddr_union su;
-  socklen_t addrlen = sizeof(su);
   int rv;
   size_t pktcnt = 0;
   ngtcp2_pkt_info pi{};
 
+  iovec msg_iov;
+  msg_iov.iov_base = buf.data();
+  msg_iov.iov_len = buf.size();
+
+  msghdr msg{};
+  msg.msg_name = &su;
+  msg.msg_iov = &msg_iov;
+  msg.msg_iovlen = 1;
+
+  uint8_t msg_ctrl[CMSG_SPACE(sizeof(uint16_t))];
+  msg.msg_control = msg_ctrl;
+
   auto ts = quic_timestamp();
 
   for (;;) {
-    auto nread =
-        recvfrom(fd, buf.data(), buf.size(), MSG_DONTWAIT, &su.sa, &addrlen);
+    msg.msg_namelen = sizeof(su);
+    msg.msg_controllen = sizeof(msg_ctrl);
+
+    auto nread = recvmsg(fd, &msg, 0);
     if (nread == -1) {
       return 0;
+    }
+
+    auto gso_size = util::msghdr_get_udp_gro(&msg);
+    if (gso_size == 0) {
+      gso_size = static_cast<size_t>(nread);
     }
 
     assert(quic.conn);
@@ -565,28 +583,41 @@ int Client::read_quic() {
         },
         {
             &su.sa,
-            addrlen,
+            msg.msg_namelen,
         },
     };
 
-    rv = ngtcp2_conn_read_pkt(quic.conn, &path, &pi, buf.data(), nread, ts);
-    if (rv != 0) {
-      std::cerr << "ngtcp2_conn_read_pkt: " << ngtcp2_strerror(rv) << std::endl;
+    auto data = buf.data();
 
-      if (!quic.last_error.error_code) {
-        if (rv == NGTCP2_ERR_CRYPTO) {
-          ngtcp2_ccerr_set_tls_alert(&quic.last_error,
-                                     ngtcp2_conn_get_tls_alert(quic.conn),
-                                     nullptr, 0);
-        } else {
-          ngtcp2_ccerr_set_liberr(&quic.last_error, rv, nullptr, 0);
+    for (;;) {
+      auto datalen = std::min(static_cast<size_t>(nread), gso_size);
+
+      ++pktcnt;
+
+      rv = ngtcp2_conn_read_pkt(quic.conn, &path, &pi, data, datalen, ts);
+      if (rv != 0) {
+        if (!quic.last_error.error_code) {
+          if (rv == NGTCP2_ERR_CRYPTO) {
+            ngtcp2_ccerr_set_tls_alert(&quic.last_error,
+                                       ngtcp2_conn_get_tls_alert(quic.conn),
+                                       nullptr, 0);
+          } else {
+            ngtcp2_ccerr_set_liberr(&quic.last_error, rv, nullptr, 0);
+          }
         }
+
+        return -1;
       }
 
-      return -1;
+      nread -= datalen;
+      if (nread == 0) {
+        break;
+      }
+
+      data += datalen;
     }
 
-    if (++pktcnt == 100) {
+    if (pktcnt >= 100) {
       break;
     }
   }
