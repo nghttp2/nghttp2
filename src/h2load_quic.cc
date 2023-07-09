@@ -28,9 +28,9 @@
 
 #include <iostream>
 
-#ifdef HAVE_LIBNGTCP2_CRYPTO_OPENSSL
-#  include <ngtcp2/ngtcp2_crypto_openssl.h>
-#endif // HAVE_LIBNGTCP2_CRYPTO_OPENSSL
+#ifdef HAVE_LIBNGTCP2_CRYPTO_QUICTLS
+#  include <ngtcp2/ngtcp2_crypto_quictls.h>
+#endif // HAVE_LIBNGTCP2_CRYPTO_QUICTLS
 #ifdef HAVE_LIBNGTCP2_CRYPTO_BORINGSSL
 #  include <ngtcp2/ngtcp2_crypto_boringssl.h>
 #endif // HAVE_LIBNGTCP2_CRYPTO_BORINGSSL

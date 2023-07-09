@@ -508,7 +508,7 @@ fi
 # ngtcp2 (for src)
 have_libngtcp2=no
 if test "x${request_libngtcp2}" != "xno"; then
-  PKG_CHECK_MODULES([LIBNGTCP2], [libngtcp2 >= 0.16.0], [have_libngtcp2=yes],
+  PKG_CHECK_MODULES([LIBNGTCP2], [libngtcp2 >= 0.17.0], [have_libngtcp2=yes],
                     [have_libngtcp2=no])
   if test "x${have_libngtcp2}" = "xno"; then
     AC_MSG_NOTICE($LIBNGTCP2_PKG_ERRORS)
@@ -520,26 +520,26 @@ if test "x${request_libngtcp2}" = "xyes" &&
   AC_MSG_ERROR([libngtcp2 was requested (--with-libngtcp2) but not found])
 fi
 
-# ngtcp2_crypto_openssl (for src)
-have_libngtcp2_crypto_openssl=no
+# ngtcp2_crypto_quictls (for src)
+have_libngtcp2_crypto_quictls=no
 if test "x${have_ssl_is_quic}" = "xyes" &&
    test "x${request_libngtcp2}" != "xno"; then
-  PKG_CHECK_MODULES([LIBNGTCP2_CRYPTO_OPENSSL],
-                    [libngtcp2_crypto_openssl >= 0.16.0],
-                    [have_libngtcp2_crypto_openssl=yes],
-                    [have_libngtcp2_crypto_openssl=no])
-  if test "x${have_libngtcp2_crypto_openssl}" = "xno"; then
-    AC_MSG_NOTICE($LIBNGTCP2_CRYPTO_OPENSSL_PKG_ERRORS)
+  PKG_CHECK_MODULES([LIBNGTCP2_CRYPTO_QUICTLS],
+                    [libngtcp2_crypto_quictls >= 0.17.0],
+                    [have_libngtcp2_crypto_quictls=yes],
+                    [have_libngtcp2_crypto_quictls=no])
+  if test "x${have_libngtcp2_crypto_quictls}" = "xno"; then
+    AC_MSG_NOTICE($LIBNGTCP2_CRYPTO_QUICTLS_PKG_ERRORS)
   else
-    AC_DEFINE([HAVE_LIBNGTCP2_CRYPTO_OPENSSL], [1],
-              [Define to 1 if you have `libngtcp2_crypto_openssl` library.])
+    AC_DEFINE([HAVE_LIBNGTCP2_CRYPTO_QUICTLS], [1],
+              [Define to 1 if you have `libngtcp2_crypto_quictls` library.])
   fi
 fi
 
 if test "x${have_ssl_is_quic}" = "xyes" &&
    test "x${request_libngtcp2}" = "xyes" &&
-   test "x${have_libngtcp2_crypto_openssl}" != "xyes"; then
-  AC_MSG_ERROR([libngtcp2_crypto_openssl was requested (--with-libngtcp2) but not found])
+   test "x${have_libngtcp2_crypto_quictls}" != "xyes"; then
+  AC_MSG_ERROR([libngtcp2_crypto_quictls was requested (--with-libngtcp2) but not found])
 fi
 
 # ngtcp2_crypto_boringssl (for src)
@@ -567,7 +567,7 @@ fi
 # nghttp3 (for src)
 have_libnghttp3=no
 if test "x${request_libnghttp3}" != "xno"; then
-  PKG_CHECK_MODULES([LIBNGHTTP3], [libnghttp3 >= 0.12.0], [have_libnghttp3=yes],
+  PKG_CHECK_MODULES([LIBNGHTTP3], [libnghttp3 >= 0.13.0], [have_libnghttp3=yes],
                     [have_libnghttp3=no])
   if test "x${have_libnghttp3}" = "xno"; then
     AC_MSG_NOTICE($LIBNGHTTP3_PKG_ERRORS)
@@ -755,7 +755,7 @@ if test "x${request_http3}" != "xno" &&
    (test "x${have_ssl_is_quic}" = "xyes" ||
     test "x${have_boringssl_quic}" = "xyes") &&
    test "x${have_libngtcp2}" = "xyes" &&
-   (test "x${have_libngtcp2_crypto_openssl}" = "xyes" ||
+   (test "x${have_libngtcp2_crypto_quictls}" = "xyes" ||
     test "x${have_libngtcp2_crypto_boringssl}" = "xyes") &&
    test "x${have_libnghttp3}" = "xyes"; then
   enable_http3=yes
@@ -1144,7 +1144,7 @@ AC_MSG_NOTICE([summary of build options:
       Libev:          ${have_libev} (CFLAGS='${LIBEV_CFLAGS}' LIBS='${LIBEV_LIBS}')
       Libc-ares:      ${have_libcares} (CFLAGS='${LIBCARES_CFLAGS}' LIBS='${LIBCARES_LIBS}')
       libngtcp2:      ${have_libngtcp2} (CFLAGS='${LIBNGTCP2_CFLAGS}' LIBS='${LIBNGTCP2_LIBS}')
-      libngtcp2_crypto_openssl: ${have_libngtcp2_crypto_openssl} (CFLAGS='${LIBNGTCP2_CRYPTO_OPENSSL_CFLAGS}' LIBS='${LIBNGTCP2_CRYPTO_OPENSSL_LIBS}')
+      libngtcp2_crypto_quictls: ${have_libngtcp2_crypto_quictls} (CFLAGS='${LIBNGTCP2_CRYPTO_QUICTLS_CFLAGS}' LIBS='${LIBNGTCP2_CRYPTO_QUICTLS_LIBS}')
       libngtcp2_crypto_boringssl: ${have_libngtcp2_crypto_boringssl} (CFLAGS='${LIBNGTCP2_CRYPTO_BORINGSSL_CFLAGS}' LIBS='${LIBNGTCP2_CRYPTO_BORINGSSL_LIBS}')
       libnghttp3:     ${have_libnghttp3} (CFLAGS='${LIBNGHTTP3_CFLAGS}' LIBS='${LIBNGHTTP3_LIBS}')
       libbpf:         ${have_libbpf} (CFLAGS='${LIBBPF_CFLAGS}' LIBS='${LIBBPF_LIBS}')
