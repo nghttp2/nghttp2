@@ -61,9 +61,9 @@ find_package(Libev 4.11)
 find_package(Libcares 1.7.5)
 find_package(ZLIB 1.2.3)
 find_package(Libngtcp2 0.0.0)
-find_package(Libngtcp2_crypto_openssl 0.0.0)
-if(LIBNGTCP2_CRYPTO_OPENSSL_FOUND)
-  set(HAVE_LIBNGTCP2_CRYPTO_OPENSSL 1)
+find_package(Libngtcp2_crypto_quictls 0.0.0)
+if(LIBNGTCP2_CRYPTO_QUICTLS_FOUND)
+  set(HAVE_LIBNGTCP2_CRYPTO_QUICTLS 1)
 endif()
 find_package(Libnghttp3 0.0.0)
 if(WITH_LIBBPF)
@@ -238,9 +238,9 @@ if(ENABLE_APP AND NOT (ZLIB_FOUND AND OPENSSL_FOUND AND LIBEV_FOUND))
   message(FATAL_ERROR "Applications were requested (ENABLE_APP=1) but dependencies are not met.")
 endif()
 
-# HTTP/3 requires quictls/openssl, libngtcp2, libngtcp2_crypto_openssl
+# HTTP/3 requires quictls/openssl, libngtcp2, libngtcp2_crypto_quictls
 # and libnghttp3.
-if(ENABLE_HTTP3 AND NOT (HAVE_SSL_IS_QUIC AND LIBNGTCP2_FOUND AND LIBNGTCP2_CRYPTO_OPENSSL_FOUND AND LIBNGHTTP3_FOUND))
+if(ENABLE_HTTP3 AND NOT (HAVE_SSL_IS_QUIC AND LIBNGTCP2_FOUND AND LIBNGTCP2_CRYPTO_QUICTLS_FOUND AND LIBNGHTTP3_FOUND))
   message(FATAL_ERROR "HTTP/3 was requested (ENABLE_HTTP3=1) but dependencies are not met.")
 endif()
 
@@ -513,7 +513,7 @@ message(STATUS "summary of build options:
       Libev:          ${HAVE_LIBEV} (LIBS='${LIBEV_LIBRARIES}')
       Libc-ares:      ${HAVE_LIBCARES} (LIBS='${LIBCARES_LIBRARIES}')
       Libngtcp2:      ${HAVE_LIBNGTCP2} (LIBS='${LIBNGTCP2_LIBRARIES}')
-      Libngtcp2_crypto_openssl: ${HAVE_LIBNGTCP2_CRYPTO_OPENSSL} (LIBS='${LIBNGTCP2_CRYPTO_OPENSSL_LIBRARIES}')
+      Libngtcp2_crypto_quictls: ${HAVE_LIBNGTCP2_CRYPTO_QUICTLS} (LIBS='${LIBNGTCP2_CRYPTO_QUICTLS_LIBRARIES}')
       Libnghttp3:     ${HAVE_LIBNGHTTP3} (LIBS='${LIBNGHTTP3_LIBRARIES}')
       Libbpf:         ${HAVE_LIBBPF} (LIBS='${LIBBPF_LIBRARIES}')
       Libevent(SSL):  ${HAVE_LIBEVENT_OPENSSL} (LIBS='${LIBEVENT_OPENSSL_LIBRARIES}')

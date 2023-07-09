@@ -130,8 +130,8 @@ following libraries are required:
   <https://github.com/quictls/openssl/tree/OpenSSL_1_1_1u+quic>`_; or
   `BoringSSL <https://boringssl.googlesource.com/boringssl/>`_ (commit
   b0341041b03ea71d8371a9692aedae263fc06ee9)
-* `ngtcp2 <https://github.com/ngtcp2/ngtcp2>`_ 0.16.x
-* `nghttp3 <https://github.com/ngtcp2/nghttp3>`_ 0.12.x
+* `ngtcp2 <https://github.com/ngtcp2/ngtcp2>`_ 0.17.x
+* `nghttp3 <https://github.com/ngtcp2/nghttp3>`_ 0.13.x
 
 Use ``--enable-http3`` configure option to enable HTTP/3 feature for
 h2load and nghttpx.
@@ -354,7 +354,7 @@ Build nghttp3:
 
 .. code-block:: text
 
-   $ git clone --depth 1 -b v0.12.0 https://github.com/ngtcp2/nghttp3
+   $ git clone --depth 1 -b v0.13.0 https://github.com/ngtcp2/nghttp3
    $ cd nghttp3
    $ autoreconf -i
    $ ./configure --prefix=$PWD/build --enable-lib-only
@@ -366,7 +366,7 @@ Build ngtcp2:
 
 .. code-block:: text
 
-   $ git clone --depth 1 -b v0.16.0 https://github.com/ngtcp2/ngtcp2
+   $ git clone --depth 1 -b v0.17.0 https://github.com/ngtcp2/ngtcp2
    $ cd ngtcp2
    $ autoreconf -i
    $ ./configure --prefix=$PWD/build --enable-lib-only \

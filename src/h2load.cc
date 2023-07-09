@@ -51,9 +51,9 @@
 #include <openssl/err.h>
 
 #ifdef ENABLE_HTTP3
-#  ifdef HAVE_LIBNGTCP2_CRYPTO_OPENSSL
-#    include <ngtcp2/ngtcp2_crypto_openssl.h>
-#  endif // HAVE_LIBNGTCP2_CRYPTO_OPENSSL
+#  ifdef HAVE_LIBNGTCP2_CRYPTO_QUICTLS
+#    include <ngtcp2/ngtcp2_crypto_quictls.h>
+#  endif // HAVE_LIBNGTCP2_CRYPTO_QUICTLS
 #  ifdef HAVE_LIBNGTCP2_CRYPTO_BORINGSSL
 #    include <ngtcp2/ngtcp2_crypto_boringssl.h>
 #  endif // HAVE_LIBNGTCP2_CRYPTO_BORINGSSL
@@ -2927,13 +2927,13 @@ int main(int argc, char **argv) {
 
   if (config.is_quic()) {
 #ifdef ENABLE_HTTP3
-#  ifdef HAVE_LIBNGTCP2_CRYPTO_OPENSSL
-    if (ngtcp2_crypto_openssl_configure_client_context(ssl_ctx) != 0) {
-      std::cerr << "ngtcp2_crypto_openssl_configure_client_context failed"
+#  ifdef HAVE_LIBNGTCP2_CRYPTO_QUICTLS
+    if (ngtcp2_crypto_quictls_configure_client_context(ssl_ctx) != 0) {
+      std::cerr << "ngtcp2_crypto_quictls_configure_client_context failed"
                 << std::endl;
       exit(EXIT_FAILURE);
     }
-#  endif // HAVE_LIBNGTCP2_CRYPTO_OPENSSL
+#  endif // HAVE_LIBNGTCP2_CRYPTO_QUICTLS
 #  ifdef HAVE_LIBNGTCP2_CRYPTO_BORINGSSL
     if (ngtcp2_crypto_boringssl_configure_client_context(ssl_ctx) != 0) {
       std::cerr << "ngtcp2_crypto_boringssl_configure_client_context failed"

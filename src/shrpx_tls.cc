@@ -64,9 +64,9 @@
 #ifdef ENABLE_HTTP3
 #  include <ngtcp2/ngtcp2.h>
 #  include <ngtcp2/ngtcp2_crypto.h>
-#  ifdef HAVE_LIBNGTCP2_CRYPTO_OPENSSL
-#    include <ngtcp2/ngtcp2_crypto_openssl.h>
-#  endif // HAVE_LIBNGTCP2_CRYPTO_OPENSSL
+#  ifdef HAVE_LIBNGTCP2_CRYPTO_QUICTLS
+#    include <ngtcp2/ngtcp2_crypto_quictls.h>
+#  endif // HAVE_LIBNGTCP2_CRYPTO_QUICTLS
 #  ifdef HAVE_LIBNGTCP2_CRYPTO_BORINGSSL
 #    include <ngtcp2/ngtcp2_crypto_boringssl.h>
 #  endif // HAVE_LIBNGTCP2_CRYPTO_BORINGSSL
@@ -1258,12 +1258,12 @@ SSL_CTX *create_quic_ssl_context(const char *private_key_file,
 
   SSL_CTX_set_options(ssl_ctx, ssl_opts);
 
-#  ifdef HAVE_LIBNGTCP2_CRYPTO_OPENSSL
-  if (ngtcp2_crypto_openssl_configure_server_context(ssl_ctx) != 0) {
-    LOG(FATAL) << "ngtcp2_crypto_openssl_configure_server_context failed";
+#  ifdef HAVE_LIBNGTCP2_CRYPTO_QUICTLS
+  if (ngtcp2_crypto_quictls_configure_server_context(ssl_ctx) != 0) {
+    LOG(FATAL) << "ngtcp2_crypto_quictls_configure_server_context failed";
     DIE();
   }
-#  endif // HAVE_LIBNGTCP2_CRYPTO_OPENSSL
+#  endif // HAVE_LIBNGTCP2_CRYPTO_QUICTLS
 #  ifdef HAVE_LIBNGTCP2_CRYPTO_BORINGSSL
   if (ngtcp2_crypto_boringssl_configure_server_context(ssl_ctx) != 0) {
     LOG(FATAL) << "ngtcp2_crypto_boringssl_configure_server_context failed";
