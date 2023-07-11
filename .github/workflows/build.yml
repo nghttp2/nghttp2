@@ -16,7 +16,7 @@ jobs:
   build-cache:
     strategy:
       matrix:
-        os: [ubuntu-22.04, macos-11]
+        os: [ubuntu-22.04, macos-12]
 
     runs-on: ${{ matrix.os }}
 
@@ -175,22 +175,22 @@ jobs:
 
     strategy:
       matrix:
-        os: [ubuntu-22.04, macos-11]
+        os: [ubuntu-22.04, macos-12]
         compiler: [gcc, clang]
         buildtool: [autotools, cmake]
         http3: [http3, no-http3]
         openssl: [openssl1, openssl3, boringssl]
         exclude:
-        - os: macos-11
+        - os: macos-12
           openssl: openssl3
         - http3: no-http3
           openssl: openssl3
-        - os: macos-11
+        - os: macos-12
           compiler: gcc
         - # disable macos cmake because of include path issue
-          os: macos-11
+          os: macos-12
           buildtool: cmake
-        - os: macos-11
+        - os: macos-12
           openssl: boringssl
         - openssl: boringssl
           buildtool: cmake
