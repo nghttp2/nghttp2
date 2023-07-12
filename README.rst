@@ -129,7 +129,7 @@ following libraries are required:
 * `OpenSSL with QUIC support
   <https://github.com/quictls/openssl/tree/OpenSSL_1_1_1u+quic>`_; or
   `BoringSSL <https://boringssl.googlesource.com/boringssl/>`_ (commit
-  b0341041b03ea71d8371a9692aedae263fc06ee9)
+  80dcb67d4481fb1194b9669917e35580c32dc388)
 * `ngtcp2 <https://github.com/ngtcp2/ngtcp2>`_ 0.17.x
 * `nghttp3 <https://github.com/ngtcp2/nghttp3>`_ 0.13.x
 
