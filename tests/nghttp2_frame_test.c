@@ -210,7 +210,6 @@ void test_nghttp2_frame_pack_priority(void) {
   nghttp2_priority frame, oframe;
   nghttp2_bufs bufs;
   nghttp2_priority_spec pri_spec;
-  int rv;
 
   frame_pack_bufs_init(&bufs);
 
@@ -218,9 +217,8 @@ void test_nghttp2_frame_pack_priority(void) {
   nghttp2_priority_spec_init(&pri_spec, 1000000009, 12, 1);
 
   nghttp2_frame_priority_init(&frame, 1000000007, &pri_spec);
-  rv = nghttp2_frame_pack_priority(&bufs, &frame);
+  nghttp2_frame_pack_priority(&bufs, &frame);
 
-  CU_ASSERT(0 == rv);
   CU_ASSERT(NGHTTP2_FRAME_HDLEN + 5 == nghttp2_bufs_len(&bufs));
   CU_ASSERT(0 == unpack_framebuf((nghttp2_frame *)&oframe, &bufs));
   check_frame_header(5, NGHTTP2_PRIORITY, NGHTTP2_FLAG_NONE, 1000000007,
@@ -240,14 +238,12 @@ void test_nghttp2_frame_pack_priority(void) {
 void test_nghttp2_frame_pack_rst_stream(void) {
   nghttp2_rst_stream frame, oframe;
   nghttp2_bufs bufs;
-  int rv;
 
   frame_pack_bufs_init(&bufs);
 
   nghttp2_frame_rst_stream_init(&frame, 1000000007, NGHTTP2_PROTOCOL_ERROR);
-  rv = nghttp2_frame_pack_rst_stream(&bufs, &frame);
+  nghttp2_frame_pack_rst_stream(&bufs, &frame);
 
-  CU_ASSERT(0 == rv);
   CU_ASSERT(NGHTTP2_FRAME_HDLEN + 4 == nghttp2_bufs_len(&bufs));
   CU_ASSERT(0 == unpack_framebuf((nghttp2_frame *)&oframe, &bufs));
   check_frame_header(4, NGHTTP2_RST_STREAM, NGHTTP2_FLAG_NONE, 1000000007,
@@ -259,9 +255,8 @@ void test_nghttp2_frame_pack_rst_stream(void) {
 
   /* Unknown error code is passed to callback as is */
   frame.error_code = 1000000009;
-  rv = nghttp2_frame_pack_rst_stream(&bufs, &frame);
+  nghttp2_frame_pack_rst_stream(&bufs, &frame);
 
-  CU_ASSERT(0 == rv);
   CU_ASSERT(0 == unpack_framebuf((nghttp2_frame *)&oframe, &bufs));
 
   check_frame_header(4, NGHTTP2_RST_STREAM, NGHTTP2_FLAG_NONE, 1000000007,
@@ -365,14 +360,12 @@ void test_nghttp2_frame_pack_ping(void) {
   nghttp2_ping frame, oframe;
   nghttp2_bufs bufs;
   const uint8_t opaque_data[] = "01234567";
-  int rv;
 
   frame_pack_bufs_init(&bufs);
 
   nghttp2_frame_ping_init(&frame, NGHTTP2_FLAG_ACK, opaque_data);
-  rv = nghttp2_frame_pack_ping(&bufs, &frame);
+  nghttp2_frame_pack_ping(&bufs, &frame);
 
-  CU_ASSERT(0 == rv);
   CU_ASSERT(NGHTTP2_FRAME_HDLEN + 8 == nghttp2_bufs_len(&bufs));
   CU_ASSERT(0 == unpack_framebuf((nghttp2_frame *)&oframe, &bufs));
   check_frame_header(8, NGHTTP2_PING, NGHTTP2_FLAG_ACK, 0, &oframe.hd);
@@ -435,14 +428,12 @@ void test_nghttp2_frame_pack_goaway(void) {
 void test_nghttp2_frame_pack_window_update(void) {
   nghttp2_window_update frame, oframe;
   nghttp2_bufs bufs;
-  int rv;
 
   frame_pack_bufs_init(&bufs);
 
   nghttp2_frame_window_update_init(&frame, NGHTTP2_FLAG_NONE, 1000000007, 4096);
-  rv = nghttp2_frame_pack_window_update(&bufs, &frame);
+  nghttp2_frame_pack_window_update(&bufs, &frame);
 
-  CU_ASSERT(0 == rv);
   CU_ASSERT(NGHTTP2_FRAME_HDLEN + 4 == nghttp2_bufs_len(&bufs));
   CU_ASSERT(0 == unpack_framebuf((nghttp2_frame *)&oframe, &bufs));
   check_frame_header(4, NGHTTP2_WINDOW_UPDATE, NGHTTP2_FLAG_NONE, 1000000007,
@@ -485,9 +476,8 @@ void test_nghttp2_frame_pack_altsvc(void) {
 
   payloadlen = 2 + sizeof(origin) - 1 + sizeof(field_value) - 1;
 
-  rv = nghttp2_frame_pack_altsvc(&bufs, &frame);
+  nghttp2_frame_pack_altsvc(&bufs, &frame);
 
-  CU_ASSERT(0 == rv);
   CU_ASSERT(NGHTTP2_FRAME_HDLEN + payloadlen == nghttp2_bufs_len(&bufs));
 
   rv = unpack_framebuf((nghttp2_frame *)&oframe, &bufs);
@@ -618,9 +608,8 @@ void test_nghttp2_frame_pack_priority_update(void) {
 
   payloadlen = 4 + sizeof(field_value) - 1;
 
-  rv = nghttp2_frame_pack_priority_update(&bufs, &frame);
+  nghttp2_frame_pack_priority_update(&bufs, &frame);
 
-  CU_ASSERT(0 == rv);
   CU_ASSERT(NGHTTP2_FRAME_HDLEN + payloadlen == nghttp2_bufs_len(&bufs));
 
   rv = unpack_framebuf((nghttp2_frame *)&oframe, &bufs);

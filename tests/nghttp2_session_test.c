@@ -729,9 +729,7 @@ void test_nghttp2_session_recv(void) {
   /* Receive PRIORITY */
   nghttp2_frame_priority_init(&frame.priority, 5, &pri_spec_default);
 
-  rv = nghttp2_frame_pack_priority(&bufs, &frame.priority);
-
-  CU_ASSERT(0 == rv);
+  nghttp2_frame_pack_priority(&bufs, &frame.priority);
 
   nghttp2_frame_priority_free(&frame.priority);
 
@@ -755,9 +753,7 @@ void test_nghttp2_session_recv(void) {
   /* Receive PING with too large payload */
   nghttp2_frame_ping_init(&frame.ping, NGHTTP2_FLAG_NONE, NULL);
 
-  rv = nghttp2_frame_pack_ping(&bufs, &frame.ping);
-
-  CU_ASSERT(0 == rv);
+  nghttp2_frame_pack_ping(&bufs, &frame.ping);
 
   /* Add extra 16 bytes */
   nghttp2_bufs_seek_last_present(&bufs);
@@ -1410,9 +1406,8 @@ void test_nghttp2_session_recv_continuation(void) {
   nghttp2_frame_priority_init(&frame.priority, 1, &pri_spec);
   nghttp2_bufs_reset(&bufs);
 
-  rv = nghttp2_frame_pack_priority(&bufs, &frame.priority);
+  nghttp2_frame_pack_priority(&bufs, &frame.priority);
 
-  CU_ASSERT(0 == rv);
   CU_ASSERT(nghttp2_bufs_len(&bufs) > 0);
 
   memcpy(data + datalen, buf->pos, nghttp2_buf_len(buf));
@@ -9672,9 +9667,7 @@ void test_nghttp2_session_stream_get_state(void) {
   /* Create idle stream by PRIORITY frame */
   nghttp2_frame_priority_init(&frame.priority, 7, &pri_spec_default);
 
-  rv = nghttp2_frame_pack_priority(&bufs, &frame.priority);
-
-  CU_ASSERT(0 == rv);
+  nghttp2_frame_pack_priority(&bufs, &frame.priority);
 
   nghttp2_frame_priority_free(&frame.priority);
 
@@ -11880,9 +11873,7 @@ void test_nghttp2_session_server_fallback_rfc7540_priorities(void) {
   nghttp2_priority_spec_init(&pri_spec, 5, 1, 0);
   nghttp2_frame_priority_init(&frame.priority, 1, &pri_spec);
   nghttp2_bufs_reset(&bufs);
-  rv = nghttp2_frame_pack_priority(&bufs, &frame.priority);
-
-  CU_ASSERT(0 == rv);
+  nghttp2_frame_pack_priority(&bufs, &frame.priority);
 
   nghttp2_frame_priority_free(&frame.priority);
 

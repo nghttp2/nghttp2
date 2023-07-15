@@ -2205,7 +2205,6 @@ static ssize_t session_call_select_padding(nghttp2_session *session,
    frame->push_promise has also padlen in the same position. */
 static int session_headers_add_pad(nghttp2_session *session,
                                    nghttp2_frame *frame) {
-  int rv;
   ssize_t padded_payloadlen;
   nghttp2_active_outbound_item *aob;
   nghttp2_bufs *framebufs;
@@ -2230,11 +2229,7 @@ static int session_headers_add_pad(nghttp2_session *session,
   DEBUGF("send: padding selected: payloadlen=%zd, padlen=%zu\n",
          padded_payloadlen, padlen);
 
-  rv = nghttp2_frame_add_pad(framebufs, &frame->hd, padlen, 0);
-
-  if (rv != 0) {
-    return rv;
-  }
+  nghttp2_frame_add_pad(framebufs, &frame->hd, padlen, 0);
 
   frame->headers.padlen = padlen;
 
@@ -4372,17 +4367,12 @@ int nghttp2_session_on_headers_received(nghttp2_session *session,
 }
 
 static int session_process_headers_frame(nghttp2_session *session) {
-  int rv;
   nghttp2_inbound_frame *iframe = &session->iframe;
   nghttp2_frame *frame = &iframe->frame;
   nghttp2_stream *stream;
 
-  rv = nghttp2_frame_unpack_headers_payload(&frame->headers, iframe->sbuf.pos);
+  nghttp2_frame_unpack_headers_payload(&frame->headers, iframe->sbuf.pos);
 
-  if (rv != 0) {
-    return nghttp2_session_terminate_session_with_reason(
-        session, NGHTTP2_PROTOCOL_ERROR, "HEADERS: could not unpack");
-  }
   stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
   if (!stream) {
     frame->headers.cat = NGHTTP2_HCAT_REQUEST;
@@ -5045,17 +5035,11 @@ int nghttp2_session_on_push_promise_received(nghttp2_session *session,
 }
 
 static int session_process_push_promise_frame(nghttp2_session *session) {
-  int rv;
   nghttp2_inbound_frame *iframe = &session->iframe;
   nghttp2_frame *frame = &iframe->frame;
 
-  rv = nghttp2_frame_unpack_push_promise_payload(&frame->push_promise,
-                                                 iframe->sbuf.pos);
-
-  if (rv != 0) {
-    return nghttp2_session_terminate_session_with_reason(
-        session, NGHTTP2_PROTOCOL_ERROR, "PUSH_PROMISE: could not unpack");
-  }
+  nghttp2_frame_unpack_push_promise_payload(&frame->push_promise,
+                                            iframe->sbuf.pos);
 
   return nghttp2_session_on_push_promise_received(session, frame);
 }
@@ -7756,11 +7740,8 @@ int nghttp2_session_pack_data(nghttp2_session *session, nghttp2_bufs *bufs,
 
   nghttp2_frame_pack_frame_hd(buf->pos, &frame->hd);
 
-  rv = nghttp2_frame_add_pad(bufs, &frame->hd, frame->data.padlen,
-                             aux_data->no_copy);
-  if (rv != 0) {
-    return rv;
-  }
+  nghttp2_frame_add_pad(bufs, &frame->hd, frame->data.padlen,
+                        aux_data->no_copy);
 
   session_reschedule_stream(session, stream);
 
