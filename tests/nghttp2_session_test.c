@@ -4406,8 +4406,7 @@ void test_nghttp2_session_on_window_update_received(void) {
   CU_ASSERT(NGHTTP2_INITIAL_WINDOW_SIZE + 16 * 1024 ==
             stream->remote_window_size);
 
-  CU_ASSERT(0 == nghttp2_stream_defer_item(
-                     stream, NGHTTP2_STREAM_FLAG_DEFERRED_FLOW_CONTROL));
+  nghttp2_stream_defer_item(stream, NGHTTP2_STREAM_FLAG_DEFERRED_FLOW_CONTROL);
 
   CU_ASSERT(0 == nghttp2_session_on_window_update_received(session, &frame));
   CU_ASSERT(2 == user_data.frame_recv_cb_called);

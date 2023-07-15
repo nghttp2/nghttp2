@@ -937,8 +937,8 @@ static int session_ob_data_push(nghttp2_session *session,
   return 0;
 }
 
-static int session_ob_data_remove(nghttp2_session *session,
-                                  nghttp2_stream *stream) {
+static void session_ob_data_remove(nghttp2_session *session,
+                                   nghttp2_stream *stream) {
   uint32_t urgency;
 
   assert(stream->flags & NGHTTP2_STREAM_FLAG_NO_RFC7540_PRIORITIES);
@@ -951,8 +951,6 @@ static int session_ob_data_remove(nghttp2_session *session,
   nghttp2_pq_remove(&session->sched[urgency].ob_data, &stream->pq_entry);
 
   stream->queued = 0;
-
-  return 0;
 }
 
 static int session_attach_stream_item(nghttp2_session *session,
@@ -972,38 +970,28 @@ static int session_attach_stream_item(nghttp2_session *session,
   return session_ob_data_push(session, stream);
 }
 
-static int session_detach_stream_item(nghttp2_session *session,
-                                      nghttp2_stream *stream) {
-  int rv;
-
-  rv = nghttp2_stream_detach_item(stream);
-  if (rv != 0) {
-    return rv;
-  }
+static void session_detach_stream_item(nghttp2_session *session,
+                                       nghttp2_stream *stream) {
+  nghttp2_stream_detach_item(stream);
 
   if (!(stream->flags & NGHTTP2_STREAM_FLAG_NO_RFC7540_PRIORITIES) ||
       !stream->queued) {
-    return 0;
+    return;
   }
 
-  return session_ob_data_remove(session, stream);
+  session_ob_data_remove(session, stream);
 }
 
-static int session_defer_stream_item(nghttp2_session *session,
-                                     nghttp2_stream *stream, uint8_t flags) {
-  int rv;
-
-  rv = nghttp2_stream_defer_item(stream, flags);
-  if (rv != 0) {
-    return rv;
-  }
+static void session_defer_stream_item(nghttp2_session *session,
+                                      nghttp2_stream *stream, uint8_t flags) {
+  nghttp2_stream_defer_item(stream, flags);
 
   if (!(stream->flags & NGHTTP2_STREAM_FLAG_NO_RFC7540_PRIORITIES) ||
       !stream->queued) {
-    return 0;
+    return;
   }
 
-  return session_ob_data_remove(session, stream);
+  session_ob_data_remove(session, stream);
 }
 
 static int session_resume_deferred_stream_item(nghttp2_session *session,
@@ -1476,11 +1464,7 @@ int nghttp2_session_close_stream(nghttp2_session *session, int32_t stream_id,
 
     item = stream->item;
 
-    rv = session_detach_stream_item(session, stream);
-
-    if (rv != 0) {
-      return rv;
-    }
+    session_detach_stream_item(session, stream);
 
     /* If item is queued, it will be deleted when it is popped
        (nghttp2_session_prep_frame() will fail).  If session->aob.item
@@ -2333,13 +2317,7 @@ static int session_prep_frame(nghttp2_session *session,
       // Search stream including closed again.
       stream = nghttp2_session_get_stream_raw(session, frame->hd.stream_id);
       if (stream) {
-        int rv2;
-
-        rv2 = session_detach_stream_item(session, stream);
-
-        if (nghttp2_is_fatal(rv2)) {
-          return rv2;
-        }
+        session_detach_stream_item(session, stream);
       }
 
       return rv;
@@ -2354,12 +2332,8 @@ static int session_prep_frame(nghttp2_session *session,
          queue when session->remote_window_size > 0 */
       assert(session->remote_window_size > 0);
 
-      rv = session_defer_stream_item(session, stream,
-                                     NGHTTP2_STREAM_FLAG_DEFERRED_FLOW_CONTROL);
-
-      if (nghttp2_is_fatal(rv)) {
-        return rv;
-      }
+      session_defer_stream_item(session, stream,
+                                NGHTTP2_STREAM_FLAG_DEFERRED_FLOW_CONTROL);
 
       session->aob.item = NULL;
       active_outbound_item_reset(&session->aob, mem);
@@ -2373,23 +2347,15 @@ static int session_prep_frame(nghttp2_session *session,
       return rv;
     }
     if (rv == NGHTTP2_ERR_DEFERRED) {
-      rv = session_defer_stream_item(session, stream,
-                                     NGHTTP2_STREAM_FLAG_DEFERRED_USER);
-
-      if (nghttp2_is_fatal(rv)) {
-        return rv;
-      }
+      session_defer_stream_item(session, stream,
+                                NGHTTP2_STREAM_FLAG_DEFERRED_USER);
 
       session->aob.item = NULL;
       active_outbound_item_reset(&session->aob, mem);
       return NGHTTP2_ERR_DEFERRED;
     }
     if (rv == NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE) {
-      rv = session_detach_stream_item(session, stream);
-
-      if (nghttp2_is_fatal(rv)) {
-        return rv;
-      }
+      session_detach_stream_item(session, stream);
 
       rv = nghttp2_session_add_rst_stream(session, frame->hd.stream_id,
                                           NGHTTP2_INTERNAL_ERROR);
@@ -2399,13 +2365,7 @@ static int session_prep_frame(nghttp2_session *session,
       return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
     }
     if (rv != 0) {
-      int rv2;
-
-      rv2 = session_detach_stream_item(session, stream);
-
-      if (nghttp2_is_fatal(rv2)) {
-        return rv2;
-      }
+      session_detach_stream_item(session, stream);
 
       return rv;
     }
@@ -2907,10 +2867,7 @@ static int session_after_frame_sent1(nghttp2_session *session) {
     }
 
     if (stream && aux_data->eof) {
-      rv = session_detach_stream_item(session, stream);
-      if (nghttp2_is_fatal(rv)) {
-        return rv;
-      }
+      session_detach_stream_item(session, stream);
 
       /* Call on_frame_send_callback after
          nghttp2_stream_detach_item(), so that application can issue
@@ -3153,7 +3110,6 @@ static int session_after_frame_sent1(nghttp2_session *session) {
  *     The callback function failed.
  */
 static int session_after_frame_sent2(nghttp2_session *session) {
-  int rv;
   nghttp2_active_outbound_item *aob = &session->aob;
   nghttp2_outbound_item *item = aob->item;
   nghttp2_bufs *framebufs = &aob->framebufs;
@@ -3208,11 +3164,7 @@ static int session_after_frame_sent2(nghttp2_session *session) {
      further data. */
   if (nghttp2_session_predicate_data_send(session, stream) != 0) {
     if (stream) {
-      rv = session_detach_stream_item(session, stream);
-
-      if (nghttp2_is_fatal(rv)) {
-        return rv;
-      }
+      session_detach_stream_item(session, stream);
     }
 
     active_outbound_item_reset(aob, mem);
@@ -3506,11 +3458,7 @@ static ssize_t nghttp2_session_mem_send_internal(nghttp2_session *session,
       }
 
       if (rv == NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE) {
-        rv = session_detach_stream_item(session, stream);
-
-        if (nghttp2_is_fatal(rv)) {
-          return rv;
-        }
+        session_detach_stream_item(session, stream);
 
         rv = nghttp2_session_add_rst_stream(session, frame->hd.stream_id,
                                             NGHTTP2_INTERNAL_ERROR);
