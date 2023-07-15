@@ -3095,16 +3095,8 @@ static int session_after_frame_sent1(nghttp2_session *session) {
 /*
  * Called after a frame is sent and session_after_frame_sent1.  This
  * function is responsible to reset session->aob.
- *
- * This function returns 0 if it succeeds, or one of the following
- * negative error codes:
- *
- * NGHTTP2_ERR_NOMEM
- *     Out of memory.
- * NGHTTP2_ERR_CALLBACK_FAILURE
- *     The callback function failed.
  */
-static int session_after_frame_sent2(nghttp2_session *session) {
+static void session_after_frame_sent2(nghttp2_session *session) {
   nghttp2_active_outbound_item *aob = &session->aob;
   nghttp2_outbound_item *item = aob->item;
   nghttp2_bufs *framebufs = &aob->framebufs;
@@ -3127,13 +3119,13 @@ static int session_after_frame_sent2(nghttp2_session *session) {
         DEBUGF("send: next CONTINUATION frame, %zu bytes\n",
                nghttp2_buf_len(&framebufs->cur->buf));
 
-        return 0;
+        return;
       }
     }
 
     active_outbound_item_reset(&session->aob, mem);
 
-    return 0;
+    return;
   }
 
   /* DATA frame */
@@ -3147,7 +3139,7 @@ static int session_after_frame_sent2(nghttp2_session *session) {
   if (aux_data->eof) {
     active_outbound_item_reset(aob, mem);
 
-    return 0;
+    return;
   }
 
   /* Reset no_copy here because next write may not use this. */
@@ -3164,13 +3156,13 @@ static int session_after_frame_sent2(nghttp2_session *session) {
 
     active_outbound_item_reset(aob, mem);
 
-    return 0;
+    return;
   }
 
   aob->item = NULL;
   active_outbound_item_reset(&session->aob, mem);
 
-  return 0;
+  return;
 }
 
 static int session_call_send_data(nghttp2_session *session,
@@ -3401,7 +3393,7 @@ static ssize_t nghttp2_session_mem_send_internal(nghttp2_session *session,
 
         /* Frame has completely sent */
         if (fast_cb) {
-          rv = session_after_frame_sent2(session);
+          session_after_frame_sent2(session);
         } else {
           rv = session_after_frame_sent1(session);
           if (rv < 0) {
@@ -3409,12 +3401,7 @@ static ssize_t nghttp2_session_mem_send_internal(nghttp2_session *session,
             assert(nghttp2_is_fatal(rv));
             return rv;
           }
-          rv = session_after_frame_sent2(session);
-        }
-        if (rv < 0) {
-          /* FATAL */
-          assert(nghttp2_is_fatal(rv));
-          return rv;
+          session_after_frame_sent2(session);
         }
         /* We have already adjusted the next state */
         break;
@@ -3477,11 +3464,7 @@ static ssize_t nghttp2_session_mem_send_internal(nghttp2_session *session,
         assert(nghttp2_is_fatal(rv));
         return rv;
       }
-      rv = session_after_frame_sent2(session);
-      if (rv < 0) {
-        assert(nghttp2_is_fatal(rv));
-        return rv;
-      }
+      session_after_frame_sent2(session);
 
       /* We have already adjusted the next state */
 
