@@ -1469,7 +1469,8 @@ int Client::write_udp(const sockaddr *addr, socklen_t addrlen,
     cm->cmsg_level = SOL_UDP;
     cm->cmsg_type = UDP_SEGMENT;
     cm->cmsg_len = CMSG_LEN(sizeof(uint16_t));
-    *(reinterpret_cast<uint16_t *>(CMSG_DATA(cm))) = gso_size;
+    uint16_t n = gso_size;
+    memcpy(CMSG_DATA(cm), &n, sizeof(n));
   }
 #  endif // UDP_SEGMENT
 

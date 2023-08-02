@@ -1683,11 +1683,12 @@ int msghdr_get_local_addr(Address &dest, msghdr *msg, int family) {
   case AF_INET:
     for (auto cmsg = CMSG_FIRSTHDR(msg); cmsg; cmsg = CMSG_NXTHDR(msg, cmsg)) {
       if (cmsg->cmsg_level == IPPROTO_IP && cmsg->cmsg_type == IP_PKTINFO) {
-        auto pktinfo = reinterpret_cast<in_pktinfo *>(CMSG_DATA(cmsg));
+        in_pktinfo pktinfo;
+        memcpy(&pktinfo, CMSG_DATA(cmsg), sizeof(pktinfo));
         dest.len = sizeof(dest.su.in);
         auto &sa = dest.su.in;
         sa.sin_family = AF_INET;
-        sa.sin_addr = pktinfo->ipi_addr;
+        sa.sin_addr = pktinfo.ipi_addr;
 
         return 0;
       }
@@ -1697,11 +1698,12 @@ int msghdr_get_local_addr(Address &dest, msghdr *msg, int family) {
   case AF_INET6:
     for (auto cmsg = CMSG_FIRSTHDR(msg); cmsg; cmsg = CMSG_NXTHDR(msg, cmsg)) {
       if (cmsg->cmsg_level == IPPROTO_IPV6 && cmsg->cmsg_type == IPV6_PKTINFO) {
-        auto pktinfo = reinterpret_cast<in6_pktinfo *>(CMSG_DATA(cmsg));
+        in6_pktinfo pktinfo;
+        memcpy(&pktinfo, CMSG_DATA(cmsg), sizeof(pktinfo));
         dest.len = sizeof(dest.su.in6);
         auto &sa = dest.su.in6;
         sa.sin6_family = AF_INET6;
-        sa.sin6_addr = pktinfo->ipi6_addr;
+        sa.sin6_addr = pktinfo.ipi6_addr;
         return 0;
       }
     }
