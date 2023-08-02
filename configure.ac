@@ -847,6 +847,7 @@ AC_CHECK_HEADERS([ \
   limits.h \
   netdb.h \
   netinet/in.h \
+  netinet/ip.h \
   pwd.h \
   stddef.h \
   stdint.h \
