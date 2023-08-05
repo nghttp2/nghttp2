@@ -127,7 +127,7 @@ To enable the experimental HTTP/3 support for h2load and nghttpx, the
 following libraries are required:
 
 * `OpenSSL with QUIC support
-  <https://github.com/quictls/openssl/tree/OpenSSL_1_1_1u+quic>`_; or
+  <https://github.com/quictls/openssl/tree/OpenSSL_1_1_1v+quic>`_; or
   `BoringSSL <https://boringssl.googlesource.com/boringssl/>`_ (commit
   80dcb67d4481fb1194b9669917e35580c32dc388)
 * `ngtcp2 <https://github.com/ngtcp2/ngtcp2>`_ 0.17.x
@@ -343,7 +343,7 @@ Build custom OpenSSL:
 
 .. code-block:: text
 
-   $ git clone --depth 1 -b OpenSSL_1_1_1u+quic https://github.com/quictls/openssl
+   $ git clone --depth 1 -b OpenSSL_1_1_1v+quic https://github.com/quictls/openssl
    $ cd openssl
    $ ./config --prefix=$PWD/build --openssldir=/etc/ssl
    $ make -j$(nproc)
