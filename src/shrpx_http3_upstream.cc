@@ -1560,9 +1560,7 @@ void Http3Upstream::on_handler_delete() {
   auto cw = std::make_unique<CloseWait>(worker, std::move(scids),
                                         std::move(conn_close_), d);
 
-  quic_conn_handler->add_close_wait(cw.get());
-
-  cw.release();
+  quic_conn_handler->add_close_wait(cw.release());
 }
 
 int Http3Upstream::on_downstream_reset(Downstream *downstream, bool no_retry) {
