@@ -3521,14 +3521,14 @@ HTTP/3 and QUIC:
   --frontend-quic-congestion-controller=<CC>
               Specify a congestion controller algorithm for a frontend
               QUIC connection.  <CC> should  be one of "cubic", "bbr",
-              and "bbr2".
+              and "bbrv2".
               Default: )"
       << (config->quic.upstream.congestion_controller == NGTCP2_CC_ALGO_CUBIC
               ? "cubic"
               : (config->quic.upstream.congestion_controller ==
                          NGTCP2_CC_ALGO_BBR
                      ? "bbr"
-                     : "bbr2"))
+                     : "bbrv2"))
       << R"(
   --frontend-quic-secret-file=<PATH>
               Path to file that contains secure random data to be used

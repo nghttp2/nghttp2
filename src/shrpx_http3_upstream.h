@@ -89,7 +89,8 @@ public:
 
   int init(const UpstreamAddr *faddr, const Address &remote_addr,
            const Address &local_addr, const ngtcp2_pkt_hd &initial_hd,
-           const ngtcp2_cid *odcid, const uint8_t *token, size_t tokenlen);
+           const ngtcp2_cid *odcid, const uint8_t *token, size_t tokenlen,
+           ngtcp2_token_type token_type);
 
   int on_read(const UpstreamAddr *faddr, const Address &remote_addr,
               const Address &local_addr, const ngtcp2_pkt_info &pi,

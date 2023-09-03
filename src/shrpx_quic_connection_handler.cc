@@ -172,6 +172,7 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
     ngtcp2_cid odcid, *podcid = nullptr;
     const uint8_t *token = nullptr;
     size_t tokenlen = 0;
+    ngtcp2_token_type token_type = NGTCP2_TOKEN_TYPE_UNKNOWN;
 
     switch (ngtcp2_accept(&hd, data, datalen)) {
     case 0: {
@@ -249,6 +250,7 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
         podcid = &odcid;
         token = hd.token;
         tokenlen = hd.tokenlen;
+        token_type = NGTCP2_TOKEN_TYPE_RETRY;
 
         break;
       }
@@ -303,6 +305,7 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
 
         token = hd.token;
         tokenlen = hd.tokenlen;
+        token_type = NGTCP2_TOKEN_TYPE_NEW_TOKEN;
 
         break;
       }
@@ -342,7 +345,7 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
     }
 
     handler = handle_new_connection(faddr, remote_addr, local_addr, hd, podcid,
-                                    token, tokenlen);
+                                    token, tokenlen, token_type);
     if (handler == nullptr) {
       return 0;
     }
@@ -364,7 +367,7 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
 ClientHandler *QUICConnectionHandler::handle_new_connection(
     const UpstreamAddr *faddr, const Address &remote_addr,
     const Address &local_addr, const ngtcp2_pkt_hd &hd, const ngtcp2_cid *odcid,
-    const uint8_t *token, size_t tokenlen) {
+    const uint8_t *token, size_t tokenlen, ngtcp2_token_type token_type) {
   std::array<char, NI_MAXHOST> host;
   std::array<char, NI_MAXSERV> service;
   int rv;
@@ -415,8 +418,8 @@ ClientHandler *QUICConnectionHandler::handle_new_connection(
       StringRef{service.data()}, remote_addr.su.sa.sa_family, faddr);
 
   auto upstream = std::make_unique<Http3Upstream>(handler.get());
-  if (upstream->init(faddr, remote_addr, local_addr, hd, odcid, token,
-                     tokenlen) != 0) {
+  if (upstream->init(faddr, remote_addr, local_addr, hd, odcid, token, tokenlen,
+                     token_type) != 0) {
     return nullptr;
   }
 
