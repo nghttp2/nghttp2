@@ -529,9 +529,7 @@ int QUICConnectionHandler::send_retry(
   auto cw = std::make_unique<CloseWait>(worker_, std::vector<ngtcp2_cid>{idcid},
                                         std::move(buf), d);
 
-  add_close_wait(cw.get());
-
-  cw.release();
+  add_close_wait(cw.release());
 
   return 0;
 }
