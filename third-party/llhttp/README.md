@@ -287,7 +287,7 @@ protocol support to highly non-compliant clients/server.
 No `HPE_INVALID_HEADER_TOKEN` will be raised for incorrect header values when
 lenient parsing is "on".
 
-**USE AT YOUR OWN RISK!**
+**Enabling this flag can pose a security issue since you will be exposed to request smuggling attacks. USE WITH CAUTION!**
 
 ### `void llhttp_set_lenient_chunked_length(llhttp_t* parser, int enabled)`
 
@@ -300,23 +300,22 @@ conjunction with `Content-Length`.
 This error is important to prevent HTTP request smuggling, but may be less desirable
 for small number of cases involving legacy servers.
 
-**USE AT YOUR OWN RISK!**
+**Enabling this flag can pose a security issue since you will be exposed to request smuggling attacks. USE WITH CAUTION!**
 
 ### `void llhttp_set_lenient_keep_alive(llhttp_t* parser, int enabled)`
 
 Enables/disables lenient handling of `Connection: close` and HTTP/1.0
 requests responses.
 
-Normally `llhttp` would error on (in strict mode) or discard (in loose mode)
-the HTTP request/response after the request/response with `Connection: close`
-and `Content-Length`. 
+Normally `llhttp` would error the HTTP request/response 
+after the request/response with `Connection: close` and `Content-Length`. 
 
 This is important to prevent cache poisoning attacks,
 but might interact badly with outdated and insecure clients. 
 
 With this flag the extra request/response will be parsed normally.
 
-**USE AT YOUR OWN RISK!**
+**Enabling this flag can pose a security issue since you will be exposed to poisoning attacks. USE WITH CAUTION!**
 
 ### `void llhttp_set_lenient_transfer_encoding(llhttp_t* parser, int enabled)`
 
@@ -331,7 +330,48 @@ avoid request smuggling.
 
 With this flag the extra value will be parsed normally.
 
-**USE AT YOUR OWN RISK!**
+**Enabling this flag can pose a security issue since you will be exposed to request smuggling attacks. USE WITH CAUTION!**
+
+### `void llhttp_set_lenient_version(llhttp_t* parser, int enabled)`
+
+Enables/disables lenient handling of HTTP version.
+
+Normally `llhttp` would error when the HTTP version in the request or status line
+is not `0.9`, `1.0`, `1.1` or `2.0`.
+With this flag the extra value will be parsed normally.
+
+**Enabling this flag can pose a security issue since you will allow unsupported HTTP versions. USE WITH CAUTION!**
+
+### `void llhttp_set_lenient_data_after_close(llhttp_t* parser, int enabled)`
+
+Enables/disables lenient handling of additional data received after a message ends
+and keep-alive is disabled.
+
+Normally `llhttp` would error when additional unexpected data is received if the message
+contains the `Connection` header with `close` value.
+With this flag the extra data will discarded without throwing an error.
+
+**Enabling this flag can pose a security issue since you will be exposed to poisoning attacks. USE WITH CAUTION!**
+
+### `void llhttp_set_lenient_optional_lf_after_cr(llhttp_t* parser, int enabled)`
+
+Enables/disables lenient handling of incomplete CRLF sequences.
+
+Normally `llhttp` would error when a CR is not followed by LF when terminating the
+request line, the status line, the headers or a chunk header.
+With this flag only a CR is required to terminate such sections.
+
+**Enabling this flag can pose a security issue since you will be exposed to request smuggling attacks. USE WITH CAUTION!**
+
+### `void llhttp_set_lenient_optional_crlf_after_chunk(llhttp_t* parser, int enabled)`
+
+Enables/disables lenient handling of chunks not separated via CRLF.
+
+Normally `llhttp` would error when after a chunk data a CRLF is missing before
+starting a new chunk.
+With this flag the new chunk can start immediately after the previous one.
+
+**Enabling this flag can pose a security issue since you will be exposed to request smuggling attacks. USE WITH CAUTION!**
 
 ## Build Instructions
 
