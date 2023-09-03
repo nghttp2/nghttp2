@@ -116,12 +116,11 @@ public:
                             const Address &remote_addr,
                             const Address &local_addr, uint64_t error_code,
                             size_t max_pktlen);
-  ClientHandler *handle_new_connection(const UpstreamAddr *faddr,
-                                       const Address &remote_addr,
-                                       const Address &local_addr,
-                                       const ngtcp2_pkt_hd &hd,
-                                       const ngtcp2_cid *odcid,
-                                       const uint8_t *token, size_t tokenlen);
+  ClientHandler *
+  handle_new_connection(const UpstreamAddr *faddr, const Address &remote_addr,
+                        const Address &local_addr, const ngtcp2_pkt_hd &hd,
+                        const ngtcp2_cid *odcid, const uint8_t *token,
+                        size_t tokenlen, ngtcp2_token_type token_type);
   void add_connection_id(const ngtcp2_cid &cid, ClientHandler *handler);
   void remove_connection_id(const ngtcp2_cid &cid);
 

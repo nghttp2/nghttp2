@@ -508,7 +508,7 @@ fi
 # ngtcp2 (for src)
 have_libngtcp2=no
 if test "x${request_libngtcp2}" != "xno"; then
-  PKG_CHECK_MODULES([LIBNGTCP2], [libngtcp2 >= 0.17.0], [have_libngtcp2=yes],
+  PKG_CHECK_MODULES([LIBNGTCP2], [libngtcp2 >= 0.19.0], [have_libngtcp2=yes],
                     [have_libngtcp2=no])
   if test "x${have_libngtcp2}" = "xno"; then
     AC_MSG_NOTICE($LIBNGTCP2_PKG_ERRORS)
@@ -525,7 +525,7 @@ have_libngtcp2_crypto_quictls=no
 if test "x${have_ssl_is_quic}" = "xyes" &&
    test "x${request_libngtcp2}" != "xno"; then
   PKG_CHECK_MODULES([LIBNGTCP2_CRYPTO_QUICTLS],
-                    [libngtcp2_crypto_quictls >= 0.17.0],
+                    [libngtcp2_crypto_quictls >= 0.19.0],
                     [have_libngtcp2_crypto_quictls=yes],
                     [have_libngtcp2_crypto_quictls=no])
   if test "x${have_libngtcp2_crypto_quictls}" = "xno"; then
@@ -567,7 +567,7 @@ fi
 # nghttp3 (for src)
 have_libnghttp3=no
 if test "x${request_libnghttp3}" != "xno"; then
-  PKG_CHECK_MODULES([LIBNGHTTP3], [libnghttp3 >= 0.13.0], [have_libnghttp3=yes],
+  PKG_CHECK_MODULES([LIBNGHTTP3], [libnghttp3 >= 0.15.0], [have_libnghttp3=yes],
                     [have_libnghttp3=no])
   if test "x${have_libnghttp3}" = "xno"; then
     AC_MSG_NOTICE($LIBNGHTTP3_PKG_ERRORS)
