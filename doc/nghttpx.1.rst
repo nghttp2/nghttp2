@@ -1674,7 +1674,7 @@ HTTP/3 and QUIC
 
     Specify a congestion controller algorithm for a frontend
     QUIC connection.  <CC> should  be one of "cubic", "bbr",
-    and "bbr2".
+    and "bbrv2".
 
     Default: ``cubic``
 
