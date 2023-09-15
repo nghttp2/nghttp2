@@ -21,7 +21,7 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Restore libbpf cache
       id: cache-libbpf
       uses: actions/cache@v3
@@ -200,7 +200,7 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Linux setup
       if: runner.os == 'Linux'
       run: |
@@ -417,7 +417,7 @@ jobs:
       HOST: ${{ matrix.host }}
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Linux setup
       run: |
         sudo dpkg --add-architecture i386
@@ -466,7 +466,7 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: microsoft/setup-msbuild@v1
     - run: |
         vcpkg --triplet=${{ matrix.arch }}-windows install cunit
