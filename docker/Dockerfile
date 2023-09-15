@@ -1,4 +1,4 @@
-FROM debian:11 as build
+FROM debian:12 as build
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
@@ -63,7 +63,7 @@ RUN git clone --depth 1 https://github.com/nghttp2/nghttp2.git && \
     cd .. && \
     rm -rf nghttp2
 
-FROM gcr.io/distroless/base-debian11
+FROM gcr.io/distroless/base-debian12
 
 COPY --from=build \
     /usr/local/share/nghttp2/ \
