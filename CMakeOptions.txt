@@ -25,4 +25,6 @@ option(WITH_MRUBY       "Use mruby")
 option(WITH_NEVERBLEED  "Use neverbleed")
 option(WITH_LIBBPF      "Use libbpf")
 
+option(RELOCATABLE_PKGCONFIG "Make the pkg-config files relocatable")
+
 # vim: ft=cmake:
