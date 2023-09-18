@@ -25,9 +25,7 @@
 #ifndef NGHTTP2_CALLBACKS_H
 #define NGHTTP2_CALLBACKS_H
 
-#ifdef HAVE_CONFIG_H
-#  include <config.h>
-#endif /* HAVE_CONFIG_H */
+#include "nghttp2_config.h"
 
 #include <nghttp2/nghttp2.h>
 

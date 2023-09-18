@@ -25,9 +25,7 @@
 #ifndef SHRPX_TLS_TEST_H
 #define SHRPX_TLS_TEST_H
 
-#ifdef HAVE_CONFIG_H
-#  include <config.h>
-#endif // HAVE_CONFIG_H
+#include "nghttp2_config.h"
 
 namespace shrpx {
 

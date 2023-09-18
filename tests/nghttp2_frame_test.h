@@ -25,9 +25,7 @@
 #ifndef NGHTTP2_FRAME_TEST_H
 #define NGHTTP2_FRAME_TEST_H
 
-#ifdef HAVE_CONFIG_H
-#  include <config.h>
-#endif /* HAVE_CONFIG_H */
+#include "nghttp2_config.h"
 
 void test_nghttp2_frame_pack_headers(void);
 void test_nghttp2_frame_pack_headers_frame_too_large(void);

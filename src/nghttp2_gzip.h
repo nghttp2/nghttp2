@@ -24,9 +24,7 @@
  */
 #ifndef NGHTTP2_GZIP_H
 
-#  ifdef HAVE_CONFIG_H
-#    include <config.h>
-#  endif /* HAVE_CONFIG_H */
+#  include "nghttp2_config.h"
 #  include <zlib.h>
 
 #  include <nghttp2/nghttp2.h>

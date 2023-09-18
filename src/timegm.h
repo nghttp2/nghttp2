@@ -25,9 +25,7 @@
 #ifndef TIMEGM_H
 #define TIMEGM_H
 
-#ifdef HAVE_CONFIG_H
-#  include <config.h>
-#endif /* HAVE_CONFIG_H */
+#include "nghttp2_config.h"
 
 #ifdef __cplusplus
 extern "C" {
