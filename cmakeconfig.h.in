@@ -31,8 +31,14 @@
 /* Define to 1 if you have the `accept4` function. */
 #cmakedefine HAVE_ACCEPT4 1
 
+/* Define to 1 if you have the `clock_gettime` function. */
+#cmakedefine HAVE_CLOCK_GETTIME 1
+
 /* Define to 1 if you have the `mkostemp` function. */
 #cmakedefine HAVE_MKOSTEMP 1
+
+/* Define to 1 if you have the `GetTickCount64` function. */
+#cmakedefine HAVE_GETTICKCOUNT64 1
 
 /* Define to 1 if you have the `initgroups` function. */
 #cmakedefine01 HAVE_DECL_INITGROUPS
@@ -72,6 +78,9 @@
 
 /* Define to 1 if you have the <sys/time.h> header file. */
 #cmakedefine HAVE_SYS_TIME_H 1
+
+/* Define to 1 if you have the <sysinfoapi.h> header file. */
+#cmakedefine HAVE_SYSINFOAPI_H 1
 
 /* Define to 1 if you have the <syslog.h> header file. */
 #cmakedefine HAVE_SYSLOG_H 1

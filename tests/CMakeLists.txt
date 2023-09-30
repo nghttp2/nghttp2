@@ -22,6 +22,7 @@ if(HAVE_CUNIT)
     nghttp2_buf_test.c
     nghttp2_http_test.c
     nghttp2_extpri_test.c
+    nghttp2_ratelim_test.c
   )
 
   add_executable(main EXCLUDE_FROM_ALL
