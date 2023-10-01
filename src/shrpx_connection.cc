@@ -1019,6 +1019,10 @@ ssize_t Connection::read_tls(void *data, size_t len) {
     tls.last_readlen = 0;
   }
 
+  auto &tlsconf = get_config()->tls;
+  auto via_bio =
+      tls.server_handshake && !tlsconf.session_cache.memcached.host.empty();
+
 #if OPENSSL_1_1_1_API && !defined(OPENSSL_IS_BORINGSSL)
   if (!tls.early_data_finish) {
     // TLSv1.3 handshake is still going on.
@@ -1056,6 +1060,11 @@ ssize_t Connection::read_tls(void *data, size_t len) {
       // We may have stopped write watcher in write_tls.
       wlimit.startw();
     }
+
+    if (!via_bio) {
+      rlimit.drain(nread);
+    }
+
     return nread;
   }
 #endif // OPENSSL_1_1_1_API && !defined(OPENSSL_IS_BORINGSSL)
@@ -1086,6 +1095,10 @@ ssize_t Connection::read_tls(void *data, size_t len) {
       }
       return SHRPX_ERR_NETWORK;
     }
+  }
+
+  if (!via_bio) {
+    rlimit.drain(rv);
   }
 
   return rv;
