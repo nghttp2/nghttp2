@@ -1675,10 +1675,10 @@ pid_t fork_worker_process(
     }
 #endif // ENABLE_HTTP3
 
-    close(worker_process_ready_ipc_fd[0]);
-    shutdown_worker_process_ready_ipc_watcher(EV_DEFAULT);
-
     if (!config->single_process) {
+      close(worker_process_ready_ipc_fd[0]);
+      shutdown_worker_process_ready_ipc_watcher(EV_DEFAULT);
+
       shutdown_signal_watchers(EV_DEFAULT);
     }
 
