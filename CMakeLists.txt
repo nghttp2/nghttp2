@@ -339,74 +339,12 @@ if(CMAKE_C_COMPILER_ID MATCHES "MSVC")
   endif()
 else()
   if(ENABLE_WERROR)
-    extract_valid_c_flags(WARNCFLAGS    -Werror)
-    extract_valid_c_flags(WARNCXXFLAGS  -Werror)
+    set(WARNCFLAGS   "-Werror")
+    set(WARNCXXFLAGS "-Werror")
   endif()
 
-  # For C compiler
-  extract_valid_c_flags(WARNCFLAGS
-    -Wall
-    -Wextra
-    -Wmissing-prototypes
-    -Wstrict-prototypes
-    -Wmissing-declarations
-    -Wpointer-arith
-    -Wdeclaration-after-statement
-    -Wformat-security
-    -Wwrite-strings
-    -Wshadow
-    -Winline
-    -Wnested-externs
-    -Wfloat-equal
-    -Wundef
-    -Wendif-labels
-    -Wempty-body
-    -Wcast-align
-    -Wclobbered
-    -Wvla
-    -Wpragmas
-    -Wunreachable-code
-    -Waddress
-    -Wattributes
-    -Wdiv-by-zero
-    -Wshorten-64-to-32
-
-    -Wconversion
-    -Wextended-offsetof
-    -Wformat-nonliteral
-    -Wlanguage-extension-token
-    -Wmissing-field-initializers
-    -Wmissing-noreturn
-    -Wmissing-variable-declarations
-    # Not used because we cannot change public structs
-    # -Wpadded
-    -Wsign-conversion
-    # Not used because this basically disallows default case
-    # -Wswitch-enum
-    -Wunreachable-code-break
-    -Wunused-macros
-    -Wunused-parameter
-    -Wredundant-decls
-    # Only work with Clang for the moment
-    -Wheader-guard
-    # This is required because we pass format string as "const char*.
-    -Wno-format-nonliteral
-  )
-
-  extract_valid_cxx_flags(WARNCXXFLAGS
-    # For C++ compiler
-    -Wall
-    -Wformat-security
-  )
-endif()
-
-if(ENABLE_STATIC_CRT)
-  foreach(lang C CXX)
-    foreach(suffix "" _DEBUG _MINSIZEREL _RELEASE _RELWITHDEBINFO)
-      set(var "CMAKE_${lang}_FLAGS${suffix}")
-      string(REPLACE "/MD" "/MT" ${var} "${${var}}")
-    endforeach()
-  endforeach()
+  include(PickyWarningsC)
+  include(PickyWarningsCXX)
 endif()
 
 if(ENABLE_DEBUG)
