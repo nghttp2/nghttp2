@@ -277,6 +277,7 @@ check_include_file("netinet/ip.h"   HAVE_NETINET_IP_H)
 check_include_file("pwd.h"          HAVE_PWD_H)
 check_include_file("sys/socket.h"   HAVE_SYS_SOCKET_H)
 check_include_file("sys/time.h"     HAVE_SYS_TIME_H)
+check_include_file("sysinfoapi.h"   HAVE_SYSINFOAPI_H)
 check_include_file("syslog.h"       HAVE_SYSLOG_H)
 check_include_file("time.h"         HAVE_TIME_H)
 check_include_file("unistd.h"       HAVE_UNISTD_H)
@@ -317,7 +318,10 @@ check_type_size("time_t"  SIZEOF_TIME_T)
 include(CheckFunctionExists)
 check_function_exists(_Exit     HAVE__EXIT)
 check_function_exists(accept4   HAVE_ACCEPT4)
+check_function_exists(clock_gettime HAVE_CLOCK_GETTIME)
 check_function_exists(mkostemp  HAVE_MKOSTEMP)
+
+check_symbol_exists(GetTickCount64 sysinfoapi.h HAVE_GETTICKCOUNT64)
 
 include(CheckSymbolExists)
 # XXX does this correctly detect initgroups (un)availability on cygwin?
