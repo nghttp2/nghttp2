@@ -125,6 +125,7 @@ public:
   void consume(int64_t stream_id, size_t nconsumed);
   void remove_downstream(Downstream *downstream);
   int stream_close(int64_t stream_id, uint64_t app_error_code);
+  int stream_reset(int64_t stream_id);
   void log_response_headers(Downstream *downstream,
                             const std::vector<nghttp3_nv> &nva) const;
   int http_acked_stream_data(Downstream *downstream, uint64_t datalen);
