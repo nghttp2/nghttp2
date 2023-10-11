@@ -421,13 +421,31 @@ int stream_reset(ngtcp2_conn *conn, int64_t stream_id, uint64_t final_size,
                  void *stream_user_data) {
   auto upstream = static_cast<Http3Upstream *>(user_data);
 
-  if (upstream->http_shutdown_stream_read(stream_id) != 0) {
+  if (upstream->stream_reset(stream_id) != 0) {
     return NGTCP2_ERR_CALLBACK_FAILURE;
   }
 
   return 0;
 }
 } // namespace
+
+int Http3Upstream::stream_reset(int64_t stream_id) {
+  if (http_shutdown_stream_read(stream_id) != 0) {
+    return -1;
+  }
+
+  if (ngtcp2_is_bidi_stream(stream_id)) {
+    auto rv = ngtcp2_conn_shutdown_stream_write(conn_, 0, stream_id,
+                                                NGHTTP3_H3_NO_ERROR);
+    if (rv != 0) {
+      ULOG(ERROR, this) << "ngtcp2_conn_shutdown_stream_write: "
+                        << ngtcp2_strerror(rv);
+      return -1;
+    }
+  }
+
+  return 0;
+}
 
 int Http3Upstream::http_shutdown_stream_read(int64_t stream_id) {
   if (!httpconn_) {
