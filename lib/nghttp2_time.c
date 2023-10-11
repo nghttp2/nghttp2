@@ -44,7 +44,9 @@ static uint64_t time_now_sec(void) {
 }
 #endif /* HAVE_GETTICKCOUNT64 */
 
-#ifdef HAVE_CLOCK_GETTIME
+#ifdef HAVE_GETTICKCOUNT64
+uint64_t nghttp2_time_now_sec(void) { return GetTickCount64() / 1000; }
+#elif defined(HAVE_CLOCK_GETTIME)
 uint64_t nghttp2_time_now_sec(void) {
   struct timespec tp;
   int rv = clock_gettime(CLOCK_MONOTONIC, &tp);
@@ -55,8 +57,6 @@ uint64_t nghttp2_time_now_sec(void) {
 
   return (uint64_t)tp.tv_sec;
 }
-#elif defined(HAVE_GETTICKCOUNT64)
-uint64_t nghttp2_time_now_sec(void) { return GetTickCount64() / 1000; }
 #else  /* !HAVE_CLOCK_GETTIME && !HAVE_GETTICKCOUNT64 */
 uint64_t nghttp2_time_now_sec(void) { return time_now_sec(); }
 #endif /* !HAVE_CLOCK_GETTIME && !HAVE_GETTICKCOUNT64 */
