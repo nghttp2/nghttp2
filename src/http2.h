@@ -444,6 +444,11 @@ StringRef make_websocket_accept_token(uint8_t *dest, const StringRef &key);
 // HTTP/0.9 or HTTP/1.0).
 bool legacy_http1(int major, int minor);
 
+// Returns true if transfer-encoding field value |s| conforms RFC
+// strictly.  This function does not allow empty value, BWS, and empty
+// list elements.
+bool check_transfer_encoding(const StringRef &s);
+
 } // namespace http2
 
 } // namespace nghttp2

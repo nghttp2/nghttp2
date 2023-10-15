@@ -1490,3 +1490,142 @@ func TestH1H1ChunkedEndsPrematurely(t *testing.T) {
 		t.Fatal("st.http1() should fail")
 	}
 }
+
+// TestH1H1RequestMalformedTransferEncoding tests that server rejects
+// request which contains malformed transfer-encoding.
+func TestH1H1RequestMalformedTransferEncoding(t *testing.T) {
+	opts := options{
+		handler: func(w http.ResponseWriter, r *http.Request) {
+			t.Errorf("server should not forward bad request")
+		},
+	}
+	st := newServerTester(t, opts)
+	defer st.Close()
+
+	if _, err := io.WriteString(st.conn, fmt.Sprintf("GET / HTTP/1.1\r\nHost: %v\r\nTest-Case: TestH1H1RequestMalformedTransferEncoding\r\nTransfer-Encoding: ,chunked\r\n\r\n",
+		st.authority)); err != nil {
+		t.Fatalf("Error io.WriteString() = %v", err)
+	}
+
+	resp, err := http.ReadResponse(bufio.NewReader(st.conn), nil)
+	if err != nil {
+		t.Fatalf("Error http.ReadResponse() = %v", err)
+	}
+
+	defer resp.Body.Close()
+
+	if got, want := resp.StatusCode, http.StatusBadRequest; got != want {
+		t.Errorf("status: %v; want %v", got, want)
+	}
+}
+
+// TestH1H1ResponseMalformedTransferEncoding tests a request fails if
+// its response contains malformed transfer-encoding.
+func TestH1H1ResponseMalformedTransferEncoding(t *testing.T) {
+	opts := options{
+		handler: func(w http.ResponseWriter, r *http.Request) {
+			hj, ok := w.(http.Hijacker)
+			if !ok {
+				http.Error(w, "Could not hijack the connection", http.StatusInternalServerError)
+				return
+			}
+			conn, bufrw, err := hj.Hijack()
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			defer conn.Close()
+			if _, err := bufrw.WriteString("HTTP/1.1 200\r\nTransfer-Encoding: ,chunked\r\n\r\n"); err != nil {
+				t.Fatalf("Error bufrw.WriteString() = %v", err)
+			}
+			bufrw.Flush()
+		},
+	}
+	st := newServerTester(t, opts)
+	defer st.Close()
+
+	res, err := st.http1(requestParam{
+		name: "TestH1H1ResponseMalformedTransferEncoding",
+	})
+	if err != nil {
+		t.Fatalf("Error st.http1() = %v", err)
+	}
+	if got, want := res.status, http.StatusBadGateway; got != want {
+		t.Errorf("res.status: %v; want %v", got, want)
+	}
+}
+
+// TestH1H1ResponseUnknownTransferEncoding tests a request succeeds if
+// its response contains unknown transfer-encoding.
+func TestH1H1ResponseUnknownTransferEncoding(t *testing.T) {
+	opts := options{
+		handler: func(w http.ResponseWriter, r *http.Request) {
+			hj, ok := w.(http.Hijacker)
+			if !ok {
+				http.Error(w, "Could not hijack the connection", http.StatusInternalServerError)
+				return
+			}
+			conn, bufrw, err := hj.Hijack()
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			defer conn.Close()
+			if _, err := bufrw.WriteString("HTTP/1.1 200\r\nTransfer-Encoding: foo\r\n\r\n"); err != nil {
+				t.Fatalf("Error bufrw.WriteString() = %v", err)
+			}
+			bufrw.Flush()
+		},
+	}
+	st := newServerTester(t, opts)
+	defer st.Close()
+
+	if _, err := io.WriteString(st.conn, fmt.Sprintf("GET / HTTP/1.1\r\nHost: %v\r\nTest-Case: TestH1H1ResponseUnknownTransferEncoding\r\n\r\n",
+		st.authority)); err != nil {
+		t.Fatalf("Error: io.WriteString() = %v", err)
+	}
+
+	r := bufio.NewReader(st.conn)
+
+	resp := make([]byte, 4096)
+
+	resplen, err := r.Read(resp)
+	if err != nil {
+		t.Fatalf("Error: r.Read() = %v", err)
+	}
+
+	resp = resp[:resplen]
+
+	const expect = "HTTP/1.1 200 OK\r\nTransfer-Encoding: foo\r\nConnection: close\r\nServer: nghttpx\r\nVia: 1.1 nghttpx\r\n\r\n"
+
+	if got, want := string(resp), expect; got != want {
+		t.Errorf("resp = %v, want %v", got, want)
+	}
+}
+
+// TestH1H1RequestHTTP10TransferEncoding tests that server rejects
+// HTTP/1.0 request which contains transfer-encoding.
+func TestH1H1RequestHTTP10TransferEncoding(t *testing.T) {
+	opts := options{
+		handler: func(w http.ResponseWriter, r *http.Request) {
+			t.Errorf("server should not forward bad request")
+		},
+	}
+	st := newServerTester(t, opts)
+	defer st.Close()
+
+	if _, err := io.WriteString(st.conn, "GET / HTTP/1.0\r\nTest-Case: TestH1H1RequestHTTP10TransferEncoding\r\nTransfer-Encoding: chunked\r\n\r\n"); err != nil {
+		t.Fatalf("Error io.WriteString() = %v", err)
+	}
+
+	resp, err := http.ReadResponse(bufio.NewReader(st.conn), nil)
+	if err != nil {
+		t.Fatalf("Error http.ReadResponse() = %v", err)
+	}
+
+	defer resp.Body.Close()
+
+	if got, want := resp.StatusCode, http.StatusBadRequest; got != want {
+		t.Errorf("status: %v; want %v", got, want)
+	}
+}

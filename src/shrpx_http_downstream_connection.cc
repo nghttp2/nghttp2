@@ -929,6 +929,11 @@ int htp_hdrs_completecb(llhttp_t *htp) {
 
   for (auto &kv : resp.fs.headers()) {
     kv.value = util::rstrip(balloc, kv.value);
+
+    if (kv.token == http2::HD_TRANSFER_ENCODING &&
+        !http2::check_transfer_encoding(kv.value)) {
+      return -1;
+    }
   }
 
   auto config = get_config();
@@ -1004,6 +1009,16 @@ int htp_hdrs_completecb(llhttp_t *htp) {
   resp.connection_close = !llhttp_should_keep_alive(htp);
   downstream->set_response_state(DownstreamState::HEADER_COMPLETE);
   downstream->inspect_http1_response();
+
+  if (htp->flags & F_CHUNKED) {
+    downstream->set_chunked_response(true);
+  }
+
+  auto transfer_encoding = resp.fs.header(http2::HD_TRANSFER_ENCODING);
+  if (transfer_encoding && !downstream->get_chunked_response()) {
+    resp.connection_close = true;
+  }
+
   if (downstream->get_upgraded()) {
     // content-length must be ignored for upgraded connection.
     resp.fs.content_length = -1;

@@ -345,6 +345,11 @@ int htp_hdrs_completecb(llhttp_t *htp) {
 
   for (auto &kv : req.fs.headers()) {
     kv.value = util::rstrip(balloc, kv.value);
+
+    if (kv.token == http2::HD_TRANSFER_ENCODING &&
+        !http2::check_transfer_encoding(kv.value)) {
+      return -1;
+    }
   }
 
   auto lgconf = log_config();
@@ -413,6 +418,16 @@ int htp_hdrs_completecb(llhttp_t *htp) {
   }
 
   downstream->inspect_http1_request();
+
+  if (htp->flags & F_CHUNKED) {
+    downstream->set_chunked_request(true);
+  }
+
+  auto transfer_encoding = req.fs.header(http2::HD_TRANSFER_ENCODING);
+  if (transfer_encoding &&
+      http2::legacy_http1(req.http_major, req.http_minor)) {
+    return -1;
+  }
 
   auto faddr = handler->get_upstream_addr();
   auto config = get_config();

@@ -1189,4 +1189,61 @@ void test_http2_contains_trailers(void) {
   CU_ASSERT(http2::contains_trailers(StringRef::from_lit(",trailers")));
 }
 
+void test_http2_check_transfer_encoding(void) {
+  CU_ASSERT(http2::check_transfer_encoding(StringRef::from_lit("chunked")));
+  CU_ASSERT(http2::check_transfer_encoding(StringRef::from_lit("foo,chunked")));
+  CU_ASSERT(
+      http2::check_transfer_encoding(StringRef::from_lit("foo,  chunked")));
+  CU_ASSERT(
+      http2::check_transfer_encoding(StringRef::from_lit("foo   ,  chunked")));
+  CU_ASSERT(
+      http2::check_transfer_encoding(StringRef::from_lit("chunked;foo=bar")));
+  CU_ASSERT(
+      http2::check_transfer_encoding(StringRef::from_lit("chunked ; foo=bar")));
+  CU_ASSERT(http2::check_transfer_encoding(
+      StringRef::from_lit(R"(chunked;foo="bar")")));
+  CU_ASSERT(http2::check_transfer_encoding(
+      StringRef::from_lit(R"(chunked;foo="\bar\"";FOO=BAR)")));
+  CU_ASSERT(
+      http2::check_transfer_encoding(StringRef::from_lit(R"(chunked;foo="")")));
+  CU_ASSERT(http2::check_transfer_encoding(
+      StringRef::from_lit(R"(chunked;foo="bar" , gzip)")));
+
+  CU_ASSERT(!http2::check_transfer_encoding(StringRef{}));
+  CU_ASSERT(!http2::check_transfer_encoding(StringRef::from_lit(",chunked")));
+  CU_ASSERT(!http2::check_transfer_encoding(StringRef::from_lit("chunked,")));
+  CU_ASSERT(!http2::check_transfer_encoding(StringRef::from_lit("chunked, ")));
+  CU_ASSERT(
+      !http2::check_transfer_encoding(StringRef::from_lit("foo,,chunked")));
+  CU_ASSERT(
+      !http2::check_transfer_encoding(StringRef::from_lit("chunked;foo")));
+  CU_ASSERT(!http2::check_transfer_encoding(StringRef::from_lit("chunked;")));
+  CU_ASSERT(
+      !http2::check_transfer_encoding(StringRef::from_lit("chunked;foo=bar;")));
+  CU_ASSERT(
+      !http2::check_transfer_encoding(StringRef::from_lit("chunked;?=bar")));
+  CU_ASSERT(
+      !http2::check_transfer_encoding(StringRef::from_lit("chunked;=bar")));
+  CU_ASSERT(!http2::check_transfer_encoding(StringRef::from_lit("chunked;;")));
+  CU_ASSERT(!http2::check_transfer_encoding(StringRef::from_lit("chunked?")));
+  CU_ASSERT(!http2::check_transfer_encoding(StringRef::from_lit(",")));
+  CU_ASSERT(!http2::check_transfer_encoding(StringRef::from_lit(" ")));
+  CU_ASSERT(!http2::check_transfer_encoding(StringRef::from_lit(";")));
+  CU_ASSERT(!http2::check_transfer_encoding(StringRef::from_lit("\"")));
+  CU_ASSERT(!http2::check_transfer_encoding(
+      StringRef::from_lit(R"(chunked;foo="bar)")));
+  CU_ASSERT(!http2::check_transfer_encoding(
+      StringRef::from_lit(R"(chunked;foo="bar\)")));
+  CU_ASSERT(
+      !http2::check_transfer_encoding(StringRef::from_lit(R"(chunked;foo="bar\)"
+                                                          "\x0a"
+                                                          R"(")")));
+  CU_ASSERT(
+      !http2::check_transfer_encoding(StringRef::from_lit(R"(chunked;foo=")"
+                                                          "\x0a"
+                                                          R"(")")));
+  CU_ASSERT(!http2::check_transfer_encoding(
+      StringRef::from_lit(R"(chunked;foo="bar",,gzip)")));
+}
+
 } // namespace shrpx
