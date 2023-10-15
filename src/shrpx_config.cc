@@ -4116,10 +4116,8 @@ int parse_config(Config *config, int optid, const StringRef &opt,
       config->quic.upstream.congestion_controller = NGTCP2_CC_ALGO_CUBIC;
     } else if (util::strieq_l("bbr", optarg)) {
       config->quic.upstream.congestion_controller = NGTCP2_CC_ALGO_BBR;
-    } else if (util::strieq_l("bbrv2", optarg)) {
-      config->quic.upstream.congestion_controller = NGTCP2_CC_ALGO_BBR_V2;
     } else {
-      LOG(ERROR) << opt << ": must be one of cubic, bbr, and bbrv2";
+      LOG(ERROR) << opt << ": must be either cubic or bbr";
       return -1;
     }
 #endif // ENABLE_HTTP3
