@@ -3522,15 +3522,12 @@ HTTP/3 and QUIC:
               NEW_TOKEN frame in the previous connection.
   --frontend-quic-congestion-controller=<CC>
               Specify a congestion controller algorithm for a frontend
-              QUIC connection.  <CC> should  be one of "cubic", "bbr",
-              and "bbrv2".
+              QUIC  connection.   <CC>  should be  either  "cubic"  or
+              "bbr".
               Default: )"
       << (config->quic.upstream.congestion_controller == NGTCP2_CC_ALGO_CUBIC
               ? "cubic"
-              : (config->quic.upstream.congestion_controller ==
-                         NGTCP2_CC_ALGO_BBR
-                     ? "bbr"
-                     : "bbrv2"))
+              : "bbr")
       << R"(
   --frontend-quic-secret-file=<PATH>
               Path to file that contains secure random data to be used
