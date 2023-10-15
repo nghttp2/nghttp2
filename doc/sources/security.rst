@@ -20,19 +20,14 @@ privately.  We also discuss the disclosure date to the public.
 We make a new release with the fix at the same time when the
 vulnerability is disclosed to public.
 
-At least 7 days before the public disclosure date, we will post
-security advisory (which includes all the details of the vulnerability
-and the possible mitigation strategies) and the patches to fix the
-issue to `distros@openwall
-<https://oss-security.openwall.org/wiki/mailing-lists/distros>`_
-mailing list.  We also open a new issue on `nghttp2 issue tracker
+At least 7 days before the public disclosure date, we open a new issue
+on `nghttp2 issue tracker
 <https://github.com/nghttp2/nghttp2/issues>`_ which notifies that the
 upcoming release will have a security fix.  The ``SECURITY`` label is
-attached to this kind of issue.
+attached to this kind of issue.  The issue is not opened if a
+vulnerability is already disclosed, and it is publicly known that
+nghttp2 is affected by that.
 
 Before few hours of new release, we merge the fixes to the master
 branch (and/or a release branch if necessary) and make a new release.
-Security advisory is disclosed on GitHub.  We also post the
-vulnerability information to `oss-security
-<https://oss-security.openwall.org/wiki/mailing-lists/oss-security>`_
-mailing list.
+Security advisory is disclosed on GitHub.
