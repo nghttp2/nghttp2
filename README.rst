@@ -1456,12 +1456,10 @@ released, or mitigation is worked out.
 
 In the future, we may setup a dedicated mail address for this purpose.
 
-Release schedule
-----------------
+Versioning
+----------
 
-In general, we follow `Semantic Versioning <http://semver.org/>`_.  We
-release MINOR version update every month, and usually we ship it
-around 25th day of every month.
+In general, we follow `Semantic Versioning <http://semver.org/>`_.
 
 We may release PATCH releases between the regular releases, mainly for
 severe security bug fixes.
