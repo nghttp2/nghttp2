@@ -404,7 +404,7 @@ jobs:
       if: matrix.buildtool == 'cmake'
       run: |
         cd $NGHTTP2_CMAKE_DIR/integration-tests
-        make itprep it
+        make nghttp2_itprep nghttp2_it
 
   build-cross:
     strategy:

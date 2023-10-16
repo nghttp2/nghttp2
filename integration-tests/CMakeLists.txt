@@ -18,7 +18,7 @@ set(EXTRA_DIST
   resp-return.rb
 )
 
-add_custom_target(itprep
+add_custom_target(nghttp2_itprep
   COMMAND go get -d -v golang.org/x/net/http2
   COMMAND go get -d -v github.com/tatsuhiro-t/go-nghttp2
   COMMAND go get -d -v golang.org/x/net/websocket
@@ -40,7 +40,7 @@ if(NOT CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_CURRENT_BINARY_DIR)
   endforeach()
 endif()
 
-add_custom_target(it
+add_custom_target(nghttp2_it
   COMMAND sh setenv go test -v
   DEPENDS ${GO_BUILD_FILES}
 )
