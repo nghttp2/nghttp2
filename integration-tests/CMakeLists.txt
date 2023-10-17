@@ -41,7 +41,11 @@ if(NOT CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_CURRENT_BINARY_DIR)
   endforeach()
 endif()
 
+if(ENABLE_HTTP3)
+  set(GO_TEST_TAGS quic)
+endif()
+
 add_custom_target(it
-  COMMAND sh setenv go test -v
+  COMMAND sh setenv go test -v --tags=${GO_TEST_TAGS}
   DEPENDS ${GO_BUILD_FILES}
 )
