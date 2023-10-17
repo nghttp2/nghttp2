@@ -1044,12 +1044,39 @@ InputIt skip_to_right_dquote(InputIt first, InputIt last) {
     switch (*first) {
     case '"':
       return first;
+      // quoted-pair
     case '\\':
       ++first;
       if (first == last) {
         return first;
       }
+
+      switch (*first) {
+      case '\t':
+      case ' ':
+        break;
+      default:
+        if ((0x21 <= *first && *first <= 0x7e) /* VCHAR */ ||
+            (0x80 <= *first && *first <= 0xff) /* obs-text */) {
+          break;
+        }
+
+        return last;
+      }
+
       break;
+      // qdtext
+    case '\t':
+    case ' ':
+    case '!':
+      break;
+    default:
+      if ((0x23 <= *first && *first <= 0x5b) ||
+          (0x5d <= *first && *first <= 0x7e)) {
+        break;
+      }
+
+      return last;
     }
     ++first;
   }
@@ -1955,6 +1982,108 @@ StringRef make_websocket_accept_token(uint8_t *dest, const StringRef &key) {
 
 bool legacy_http1(int major, int minor) {
   return major <= 0 || (major == 1 && minor == 0);
+}
+
+bool check_transfer_encoding(const StringRef &s) {
+  if (s.empty()) {
+    return false;
+  }
+
+  auto it = std::begin(s);
+
+  for (;;) {
+    // token
+    if (!util::in_token(*it)) {
+      return false;
+    }
+
+    ++it;
+
+    for (; it != std::end(s) && util::in_token(*it); ++it)
+      ;
+
+    if (it == std::end(s)) {
+      return true;
+    }
+
+    for (;;) {
+      // OWS
+      it = skip_lws(it, std::end(s));
+      if (it == std::end(s)) {
+        return false;
+      }
+
+      if (*it == ',') {
+        ++it;
+
+        it = skip_lws(it, std::end(s));
+        if (it == std::end(s)) {
+          return false;
+        }
+
+        break;
+      }
+
+      if (*it != ';') {
+        return false;
+      }
+
+      ++it;
+
+      // transfer-parameter follows
+
+      // OWS
+      it = skip_lws(it, std::end(s));
+      if (it == std::end(s)) {
+        return false;
+      }
+
+      // token
+      if (!util::in_token(*it)) {
+        return false;
+      }
+
+      ++it;
+
+      for (; it != std::end(s) && util::in_token(*it); ++it)
+        ;
+
+      if (it == std::end(s)) {
+        return false;
+      }
+
+      // No BWS allowed
+      if (*it != '=') {
+        return false;
+      }
+
+      ++it;
+
+      if (util::in_token(*it)) {
+        // token
+        ++it;
+
+        for (; it != std::end(s) && util::in_token(*it); ++it)
+          ;
+      } else if (*it == '"') {
+        // quoted-string
+        ++it;
+
+        it = skip_to_right_dquote(it, std::end(s));
+        if (it == std::end(s)) {
+          return false;
+        }
+
+        ++it;
+      } else {
+        return false;
+      }
+
+      if (it == std::end(s)) {
+        return true;
+      }
+    }
+  }
 }
 
 } // namespace http2
