@@ -2,6 +2,7 @@ set(GO_FILES
   nghttpx_http1_test.go
   nghttpx_http2_test.go
   server_tester.go
+  server_tester_http3.go
 )
 
 # XXX unused
@@ -40,7 +41,11 @@ if(NOT CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_CURRENT_BINARY_DIR)
   endforeach()
 endif()
 
+if(ENABLE_HTTP3)
+  set(GO_TEST_TAGS quic)
+endif()
+
 add_custom_target(it
-  COMMAND sh setenv go test -v
+  COMMAND sh setenv go test -v --tags=${GO_TEST_TAGS}
   DEPENDS ${GO_BUILD_FILES}
 )
