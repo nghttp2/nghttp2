@@ -2,6 +2,7 @@ set(GO_FILES
   nghttpx_http1_test.go
   nghttpx_http2_test.go
   server_tester.go
+  server_tester_http3.go
 )
 
 # XXX unused
