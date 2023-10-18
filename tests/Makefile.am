@@ -81,6 +81,7 @@ AM_CFLAGS = $(WARNCFLAGS) \
 	-I${top_srcdir}/lib/includes \
 	-I${top_builddir}/lib/includes \
 	-DBUILDING_NGHTTP2 \
+	-DNGHTTP2_STATICLIB \
 	@CUNIT_CFLAGS@ @DEFS@
 
 TESTS = main
