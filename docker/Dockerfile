@@ -24,7 +24,7 @@ RUN git clone --depth 1 -b v1.0.0 https://github.com/ngtcp2/nghttp3 && \
     cd .. && \
     rm -rf nghttp3
 
-RUN git clone --depth 1 -b v1.0.0 https://github.com/ngtcp2/ngtcp2 && \
+RUN git clone --depth 1 -b v1.0.1 https://github.com/ngtcp2/ngtcp2 && \
     cd ngtcp2 && \
     autoreconf -i && \
     ./configure --enable-lib-only \
