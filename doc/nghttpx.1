@@ -27,7 +27,7 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
-.TH "NGHTTPX" "1" "Oct 10, 2023" "1.57.0" "nghttp2"
+.TH "NGHTTPX" "1" "Oct 27, 2023" "1.58.0" "nghttp2"
 .SH NAME
 nghttpx \- HTTP/2 proxy
 .SH SYNOPSIS
@@ -1834,8 +1834,8 @@ NEW_TOKEN frame in the previous connection.
 .TP
 .B \-\-frontend\-quic\-congestion\-controller=<CC>
 Specify a congestion controller algorithm for a frontend
-QUIC connection.  <CC> should  be one of \(dqcubic\(dq, \(dqbbr\(dq,
-and \(dqbbrv2\(dq.
+QUIC  connection.   <CC>  should be  either  \(dqcubic\(dq  or
+\(dqbbr\(dq.
 .sp
 Default: \fBcubic\fP
 .UNINDENT
