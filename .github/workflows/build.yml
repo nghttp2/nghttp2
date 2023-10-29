@@ -84,7 +84,7 @@ jobs:
       run: |
         sudo apt-get install \
           g++-12 \
-          clang-14 \
+          clang-15 \
           autoconf \
           automake \
           autotools-dev \
@@ -206,7 +206,7 @@ jobs:
       run: |
         sudo apt-get install \
           g++-12 \
-          clang-14 \
+          clang-15 \
           autoconf \
           automake \
           autotools-dev \
@@ -243,8 +243,8 @@ jobs:
     - name: Setup clang (Linux)
       if: runner.os == 'Linux' && matrix.compiler == 'clang'
       run: |
-        echo 'CC=clang-14' >> $GITHUB_ENV
-        echo 'CXX=clang++-14' >> $GITHUB_ENV
+        echo 'CC=clang-15' >> $GITHUB_ENV
+        echo 'CXX=clang++-15' >> $GITHUB_ENV
     - name: Setup clang (MacOS)
       if: runner.os == 'macOS' && matrix.compiler == 'clang'
       run: |
