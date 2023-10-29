@@ -3,10 +3,30 @@ Language:        Cpp
 AccessModifierOffset: -2
 AlignAfterOpenBracket: Align
 AlignArrayOfStructures: None
-AlignConsecutiveMacros: None
-AlignConsecutiveAssignments: None
-AlignConsecutiveBitFields: None
-AlignConsecutiveDeclarations: None
+AlignConsecutiveAssignments:
+  Enabled:         false
+  AcrossEmptyLines: false
+  AcrossComments:  false
+  AlignCompound:   false
+  PadOperators:    true
+AlignConsecutiveBitFields:
+  Enabled:         false
+  AcrossEmptyLines: false
+  AcrossComments:  false
+  AlignCompound:   false
+  PadOperators:    true
+AlignConsecutiveDeclarations:
+  Enabled:         false
+  AcrossEmptyLines: false
+  AcrossComments:  false
+  AlignCompound:   false
+  PadOperators:    true
+AlignConsecutiveMacros:
+  Enabled:         false
+  AcrossEmptyLines: false
+  AcrossComments:  false
+  AlignCompound:   false
+  PadOperators:    true
 AlignEscapedNewlines: Right
 AlignOperands:   Align
 AlignTrailingComments: true
@@ -47,7 +67,7 @@ BraceWrapping:
   SplitEmptyRecord: true
   SplitEmptyNamespace: true
 BreakBeforeBinaryOperators: None
-BreakBeforeConceptDeclarations: true
+BreakBeforeConceptDeclarations: Always
 BreakBeforeBraces: Attach
 BreakBeforeInheritanceComma: false
 BreakInheritanceList: BeforeColon
@@ -102,9 +122,10 @@ IndentCaseBlocks: false
 IndentGotoLabels: true
 IndentPPDirectives: AfterHash
 IndentExternBlock: AfterExternBlock
-IndentRequires:  false
+IndentRequiresClause: false
 IndentWidth:     2
 IndentWrappedFunctionNames: false
+InsertBraces:    false
 InsertTrailingCommas: None
 JavaScriptQuotes: Leave
 JavaScriptWrapImports: true
@@ -134,6 +155,7 @@ PPIndentWidth:   -1
 ReferenceAlignment: Pointer
 ReflowComments:  true
 RemoveBracesLLVM: false
+RequiresClausePosition: OwnLine
 SeparateDefinitionBlocks: Leave
 ShortNamespaceLines: 1
 SortIncludes:    Never
@@ -155,6 +177,8 @@ SpaceBeforeParensOptions:
   AfterFunctionDeclarationName: false
   AfterIfMacros:   true
   AfterOverloadedOperator: false
+  AfterRequiresInClause: false
+  AfterRequiresInExpression: false
   BeforeNonEmptyParentheses: false
 SpaceAroundPointerQualifiers: Default
 SpaceBeforeRangeBasedForLoopColon: true

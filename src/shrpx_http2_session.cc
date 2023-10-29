@@ -1834,9 +1834,7 @@ void Http2Session::signal_write() {
   }
 }
 
-struct ev_loop *Http2Session::get_loop() const {
-  return conn_.loop;
-}
+struct ev_loop *Http2Session::get_loop() const { return conn_.loop; }
 
 ev_io *Http2Session::get_wev() { return &conn_.wev; }
 

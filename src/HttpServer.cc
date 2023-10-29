@@ -291,9 +291,7 @@ public:
     return ssl;
   }
   const Config *get_config() const { return config_; }
-  struct ev_loop *get_loop() const {
-    return loop_;
-  }
+  struct ev_loop *get_loop() const { return loop_; }
   int64_t get_next_session_id() {
     auto session_id = next_session_id_;
     if (next_session_id_ == std::numeric_limits<int64_t>::max()) {
@@ -585,9 +583,7 @@ Http2Handler::~Http2Handler() {
 
 void Http2Handler::remove_self() { sessions_->remove_handler(this); }
 
-struct ev_loop *Http2Handler::get_loop() const {
-  return sessions_->get_loop();
-}
+struct ev_loop *Http2Handler::get_loop() const { return sessions_->get_loop(); }
 
 Http2Handler::WriteBuf *Http2Handler::get_wb() { return &wb_; }
 
