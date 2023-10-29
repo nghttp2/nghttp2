@@ -602,9 +602,7 @@ void Worker::set_ticket_keys(std::shared_ptr<TicketKeys> ticket_keys) {
 
 WorkerStat *Worker::get_worker_stat() { return &worker_stat_; }
 
-struct ev_loop *Worker::get_loop() const {
-  return loop_;
-}
+struct ev_loop *Worker::get_loop() const { return loop_; }
 
 SSL_CTX *Worker::get_sv_ssl_ctx() const { return sv_ssl_ctx_; }
 

@@ -587,9 +587,7 @@ ClientHandler::~ClientHandler() {
 
 Upstream *ClientHandler::get_upstream() { return upstream_.get(); }
 
-struct ev_loop *ClientHandler::get_loop() const {
-  return conn_.loop;
-}
+struct ev_loop *ClientHandler::get_loop() const { return conn_.loop; }
 
 void ClientHandler::reset_upstream_read_timeout(ev_tstamp t) {
   conn_.rt.repeat = t;
