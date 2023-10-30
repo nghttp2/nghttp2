@@ -41,6 +41,7 @@
 #include "ssl_compat.h"
 
 using namespace nghttp2;
+using namespace std::chrono_literals;
 
 namespace shrpx {
 
@@ -72,9 +73,8 @@ Connection::Connection(struct ev_loop *loop, int fd, SSL *ssl,
       data(data),
       fd(fd),
       tls_dyn_rec_warmup_threshold(tls_dyn_rec_warmup_threshold),
-      tls_dyn_rec_idle_timeout(tls_dyn_rec_idle_timeout),
+      tls_dyn_rec_idle_timeout(util::duration_from(tls_dyn_rec_idle_timeout)),
       proto(proto),
-      last_read(0.),
       read_timeout(read_timeout) {
 
   ev_io_init(&wev, writecb, fd, EV_WRITE);
@@ -88,9 +88,6 @@ Connection::Connection(struct ev_loop *loop, int fd, SSL *ssl,
 
   wt.data = this;
   rt.data = this;
-
-  // set 0. to double field explicitly just in case
-  tls.last_write_idle = 0.;
 
   if (ssl) {
     set_ssl(ssl);
@@ -124,7 +121,7 @@ void Connection::disconnect() {
 
     tls.wbuf.reset();
     tls.rbuf.reset();
-    tls.last_write_idle = 0.;
+    tls.last_write_idle = {};
     tls.warmup_writelen = 0;
     tls.last_writelen = 0;
     tls.last_readlen = 0;
@@ -881,9 +878,9 @@ size_t Connection::get_tls_write_limit() {
     return std::numeric_limits<ssize_t>::max();
   }
 
-  auto t = ev_now(loop);
+  auto t = std::chrono::steady_clock::now();
 
-  if (tls.last_write_idle >= 0. &&
+  if (tls.last_write_idle.time_since_epoch().count() >= 0 &&
       t - tls.last_write_idle > tls_dyn_rec_idle_timeout) {
     // Time out, use small record size
     tls.warmup_writelen = 0;
@@ -904,8 +901,8 @@ void Connection::update_tls_warmup_writelen(size_t n) {
 }
 
 void Connection::start_tls_write_idle() {
-  if (tls.last_write_idle < 0.) {
-    tls.last_write_idle = ev_now(loop);
+  if (tls.last_write_idle.time_since_epoch().count() < 0) {
+    tls.last_write_idle = std::chrono::steady_clock::now();
   }
 }
 
@@ -927,7 +924,11 @@ ssize_t Connection::write_tls(const void *data, size_t len) {
     tls.last_writelen = 0;
   }
 
-  tls.last_write_idle = -1.;
+  tls.last_write_idle = std::chrono::steady_clock::time_point(-1s);
+
+  auto &tlsconf = get_config()->tls;
+  auto via_bio =
+      tls.server_handshake && !tlsconf.session_cache.memcached.host.empty();
 
   ERR_clear_error();
 
@@ -958,7 +959,12 @@ ssize_t Connection::write_tls(const void *data, size_t len) {
     case SSL_ERROR_WANT_WRITE:
       tls.last_writelen = len;
       // starting write watcher and timer is done in write_clear via
-      // bio.
+      // bio otherwise.
+      if (!via_bio) {
+        wlimit.startw();
+        ev_timer_again(loop, &wt);
+      }
+
       return 0;
     case SSL_ERROR_SSL:
       if (LOG_ENABLED(INFO)) {
@@ -971,6 +977,14 @@ ssize_t Connection::write_tls(const void *data, size_t len) {
         LOG(INFO) << "SSL_write: SSL_get_error returned " << err;
       }
       return SHRPX_ERR_NETWORK;
+    }
+  }
+
+  if (!via_bio) {
+    wlimit.drain(rv);
+
+    if (ev_is_active(&wt)) {
+      ev_timer_again(loop, &wt);
     }
   }
 
@@ -1004,6 +1018,10 @@ ssize_t Connection::read_tls(void *data, size_t len) {
     len = tls.last_readlen;
     tls.last_readlen = 0;
   }
+
+  auto &tlsconf = get_config()->tls;
+  auto via_bio =
+      tls.server_handshake && !tlsconf.session_cache.memcached.host.empty();
 
 #if OPENSSL_1_1_1_API && !defined(OPENSSL_IS_BORINGSSL)
   if (!tls.early_data_finish) {
@@ -1042,6 +1060,11 @@ ssize_t Connection::read_tls(void *data, size_t len) {
       // We may have stopped write watcher in write_tls.
       wlimit.startw();
     }
+
+    if (!via_bio) {
+      rlimit.drain(nread);
+    }
+
     return nread;
   }
 #endif // OPENSSL_1_1_1_API && !defined(OPENSSL_IS_BORINGSSL)
@@ -1072,6 +1095,10 @@ ssize_t Connection::read_tls(void *data, size_t len) {
       }
       return SHRPX_ERR_NETWORK;
     }
+  }
+
+  if (!via_bio) {
+    rlimit.drain(rv);
   }
 
   return rv;
@@ -1268,17 +1295,18 @@ void Connection::again_rt(ev_tstamp t) {
   read_timeout = t;
   rt.repeat = t;
   ev_timer_again(loop, &rt);
-  last_read = ev_now(loop);
+  last_read = std::chrono::steady_clock::now();
 }
 
 void Connection::again_rt() {
   rt.repeat = read_timeout;
   ev_timer_again(loop, &rt);
-  last_read = ev_now(loop);
+  last_read = std::chrono::steady_clock::now();
 }
 
 bool Connection::expired_rt() {
-  auto delta = read_timeout - (ev_now(loop) - last_read);
+  auto delta = read_timeout - util::ev_tstamp_from(
+                                  std::chrono::steady_clock::now() - last_read);
   if (delta < 1e-9) {
     return true;
   }

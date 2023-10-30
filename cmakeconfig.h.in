@@ -31,8 +31,14 @@
 /* Define to 1 if you have the `accept4` function. */
 #cmakedefine HAVE_ACCEPT4 1
 
+/* Define to 1 if you have the `clock_gettime` function. */
+#cmakedefine HAVE_CLOCK_GETTIME 1
+
 /* Define to 1 if you have the `mkostemp` function. */
 #cmakedefine HAVE_MKOSTEMP 1
+
+/* Define to 1 if you have the `GetTickCount64` function. */
+#cmakedefine HAVE_GETTICKCOUNT64 1
 
 /* Define to 1 if you have the `initgroups` function. */
 #cmakedefine01 HAVE_DECL_INITGROUPS
@@ -61,6 +67,9 @@
 /* Define to 1 if you have the <netinet/in.h> header file. */
 #cmakedefine HAVE_NETINET_IN_H 1
 
+/* Define to 1 if you have the <netinet/ip.h> header file. */
+#cmakedefine HAVE_NETINET_IP_H 1
+
 /* Define to 1 if you have the <pwd.h> header file. */
 #cmakedefine HAVE_PWD_H 1
 
@@ -69,6 +78,9 @@
 
 /* Define to 1 if you have the <sys/time.h> header file. */
 #cmakedefine HAVE_SYS_TIME_H 1
+
+/* Define to 1 if you have the <sysinfoapi.h> header file. */
+#cmakedefine HAVE_SYSINFOAPI_H 1
 
 /* Define to 1 if you have the <syslog.h> header file. */
 #cmakedefine HAVE_SYSLOG_H 1
@@ -88,5 +100,8 @@
 /* Define to 1 if you have enum bpf_stats_type in linux/bpf.h. */
 #cmakedefine HAVE_BPF_STATS_TYPE 1
 
-/* Define to 1 if you have `libngtcp2_crypto_openssl` library. */
-#cmakedefine HAVE_LIBNGTCP2_CRYPTO_OPENSSL
+/* Define to 1 if you have `libngtcp2_crypto_quictls` library. */
+#cmakedefine HAVE_LIBNGTCP2_CRYPTO_QUICTLS
+
+/* Define to 1 if you have `libev` library. */
+#cmakedefine HAVE_LIBEV 1

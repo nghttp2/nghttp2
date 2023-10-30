@@ -172,6 +172,7 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
     ngtcp2_cid odcid, *podcid = nullptr;
     const uint8_t *token = nullptr;
     size_t tokenlen = 0;
+    ngtcp2_token_type token_type = NGTCP2_TOKEN_TYPE_UNKNOWN;
 
     switch (ngtcp2_accept(&hd, data, datalen)) {
     case 0: {
@@ -203,7 +204,7 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
         return 0;
       }
 
-      if (hd.token.len == 0) {
+      if (hd.tokenlen == 0) {
         if (quicconf.upstream.require_token) {
           send_retry(faddr, vc.version, vc.dcid, vc.dcidlen, vc.scid,
                      vc.scidlen, remote_addr, local_addr, datalen * 3);
@@ -214,7 +215,7 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
         break;
       }
 
-      switch (hd.token.base[0]) {
+      switch (hd.token[0]) {
       case NGTCP2_CRYPTO_TOKEN_MAGIC_RETRY: {
         if (vc.dcidlen != SHRPX_QUIC_SCIDLEN) {
           // Initial packets with Retry token must have DCID chosen by
@@ -225,7 +226,7 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
         auto qkm = select_quic_keying_material(
             *qkms.get(), vc.dcid[0] & SHRPX_QUIC_DCID_KM_ID_MASK);
 
-        if (verify_retry_token(odcid, hd.token.base, hd.token.len, hd.version,
+        if (verify_retry_token(odcid, hd.token, hd.tokenlen, hd.version,
                                hd.dcid, &remote_addr.su.sa, remote_addr.len,
                                qkm->secret.data(), qkm->secret.size()) != 0) {
           if (LOG_ENABLED(INFO)) {
@@ -247,8 +248,9 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
         }
 
         podcid = &odcid;
-        token = hd.token.base;
-        tokenlen = hd.token.len;
+        token = hd.token;
+        tokenlen = hd.tokenlen;
+        token_type = NGTCP2_TOKEN_TYPE_RETRY;
 
         break;
       }
@@ -259,7 +261,7 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
           return 0;
         }
 
-        if (hd.token.len != NGTCP2_CRYPTO_MAX_REGULAR_TOKENLEN + 1) {
+        if (hd.tokenlen != NGTCP2_CRYPTO_MAX_REGULAR_TOKENLEN + 1) {
           if (LOG_ENABLED(INFO)) {
             LOG(INFO) << "Failed to validate token from remote="
                       << util::to_numeric_addr(&remote_addr);
@@ -276,9 +278,9 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
         }
 
         auto qkm = select_quic_keying_material(
-            *qkms.get(), hd.token.base[NGTCP2_CRYPTO_MAX_REGULAR_TOKENLEN]);
+            *qkms.get(), hd.token[NGTCP2_CRYPTO_MAX_REGULAR_TOKENLEN]);
 
-        if (verify_token(hd.token.base, hd.token.len - 1, &remote_addr.su.sa,
+        if (verify_token(hd.token, hd.tokenlen - 1, &remote_addr.su.sa,
                          remote_addr.len, qkm->secret.data(),
                          qkm->secret.size()) != 0) {
           if (LOG_ENABLED(INFO)) {
@@ -301,8 +303,9 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
                     << util::to_numeric_addr(&remote_addr);
         }
 
-        token = hd.token.base;
-        tokenlen = hd.token.len;
+        token = hd.token;
+        tokenlen = hd.tokenlen;
+        token_type = NGTCP2_TOKEN_TYPE_NEW_TOKEN;
 
         break;
       }
@@ -319,21 +322,6 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
 
       break;
     }
-    case NGTCP2_ERR_RETRY:
-      if (worker_->get_graceful_shutdown()) {
-        send_connection_close(faddr, hd.version, hd.dcid, hd.scid, remote_addr,
-                              local_addr, NGTCP2_CONNECTION_REFUSED,
-                              datalen * 3);
-        return 0;
-      }
-
-      send_retry(faddr, vc.version, vc.dcid, vc.dcidlen, vc.scid, vc.scidlen,
-                 remote_addr, local_addr, datalen * 3);
-      return 0;
-    case NGTCP2_ERR_VERSION_NEGOTIATION:
-      send_version_negotiation(faddr, vc.version, vc.dcid, vc.dcidlen, vc.scid,
-                               vc.scidlen, remote_addr, local_addr);
-      return 0;
     default:
       if (!config->single_thread && !(data[0] & 0x80) &&
           vc.dcidlen == SHRPX_QUIC_SCIDLEN &&
@@ -357,7 +345,7 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
     }
 
     handler = handle_new_connection(faddr, remote_addr, local_addr, hd, podcid,
-                                    token, tokenlen);
+                                    token, tokenlen, token_type);
     if (handler == nullptr) {
       return 0;
     }
@@ -379,7 +367,7 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
 ClientHandler *QUICConnectionHandler::handle_new_connection(
     const UpstreamAddr *faddr, const Address &remote_addr,
     const Address &local_addr, const ngtcp2_pkt_hd &hd, const ngtcp2_cid *odcid,
-    const uint8_t *token, size_t tokenlen) {
+    const uint8_t *token, size_t tokenlen, ngtcp2_token_type token_type) {
   std::array<char, NI_MAXHOST> host;
   std::array<char, NI_MAXSERV> service;
   int rv;
@@ -430,8 +418,8 @@ ClientHandler *QUICConnectionHandler::handle_new_connection(
       StringRef{service.data()}, remote_addr.su.sa.sa_family, faddr);
 
   auto upstream = std::make_unique<Http3Upstream>(handler.get());
-  if (upstream->init(faddr, remote_addr, local_addr, hd, odcid, token,
-                     tokenlen) != 0) {
+  if (upstream->init(faddr, remote_addr, local_addr, hd, odcid, token, tokenlen,
+                     token_type) != 0) {
     return nullptr;
   }
 
@@ -541,9 +529,7 @@ int QUICConnectionHandler::send_retry(
   auto cw = std::make_unique<CloseWait>(worker_, std::vector<ngtcp2_cid>{idcid},
                                         std::move(buf), d);
 
-  add_close_wait(cw.get());
-
-  cw.release();
+  add_close_wait(cw.release());
 
   return 0;
 }
@@ -552,10 +538,10 @@ int QUICConnectionHandler::send_version_negotiation(
     const UpstreamAddr *faddr, uint32_t version, const uint8_t *ini_dcid,
     size_t ini_dcidlen, const uint8_t *ini_scid, size_t ini_scidlen,
     const Address &remote_addr, const Address &local_addr) {
-  std::array<uint32_t, 2> sv;
-
-  sv[0] = generate_reserved_version(remote_addr, version);
-  sv[1] = NGTCP2_PROTO_VER_V1;
+  std::array<uint32_t, 2> sv{
+      generate_reserved_version(remote_addr, version),
+      NGTCP2_PROTO_VER_V1,
+  };
 
   std::array<uint8_t, NGTCP2_MAX_UDP_PAYLOAD_SIZE> buf;
 

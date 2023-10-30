@@ -572,8 +572,7 @@ static ssize_t defer_data_source_read_callback(nghttp2_session *session,
 }
 
 static int on_stream_close_callback(nghttp2_session *session, int32_t stream_id,
-                                    nghttp2_error_code error_code,
-                                    void *user_data) {
+                                    uint32_t error_code, void *user_data) {
   my_user_data *my_data = (my_user_data *)user_data;
   (void)session;
   (void)stream_id;
@@ -583,6 +582,15 @@ static int on_stream_close_callback(nghttp2_session *session, int32_t stream_id,
   my_data->stream_close_error_code = error_code;
 
   return 0;
+}
+
+static int fatal_error_on_stream_close_callback(nghttp2_session *session,
+                                                int32_t stream_id,
+                                                uint32_t error_code,
+                                                void *user_data) {
+  on_stream_close_callback(session, stream_id, error_code, user_data);
+
+  return NGHTTP2_ERR_CALLBACK_FAILURE;
 }
 
 static ssize_t pack_extension_callback(nghttp2_session *session, uint8_t *buf,
@@ -721,9 +729,7 @@ void test_nghttp2_session_recv(void) {
   /* Receive PRIORITY */
   nghttp2_frame_priority_init(&frame.priority, 5, &pri_spec_default);
 
-  rv = nghttp2_frame_pack_priority(&bufs, &frame.priority);
-
-  CU_ASSERT(0 == rv);
+  nghttp2_frame_pack_priority(&bufs, &frame.priority);
 
   nghttp2_frame_priority_free(&frame.priority);
 
@@ -747,9 +753,7 @@ void test_nghttp2_session_recv(void) {
   /* Receive PING with too large payload */
   nghttp2_frame_ping_init(&frame.ping, NGHTTP2_FLAG_NONE, NULL);
 
-  rv = nghttp2_frame_pack_ping(&bufs, &frame.ping);
-
-  CU_ASSERT(0 == rv);
+  nghttp2_frame_pack_ping(&bufs, &frame.ping);
 
   /* Add extra 16 bytes */
   nghttp2_bufs_seek_last_present(&bufs);
@@ -1402,9 +1406,8 @@ void test_nghttp2_session_recv_continuation(void) {
   nghttp2_frame_priority_init(&frame.priority, 1, &pri_spec);
   nghttp2_bufs_reset(&bufs);
 
-  rv = nghttp2_frame_pack_priority(&bufs, &frame.priority);
+  nghttp2_frame_pack_priority(&bufs, &frame.priority);
 
-  CU_ASSERT(0 == rv);
   CU_ASSERT(nghttp2_bufs_len(&bufs) > 0);
 
   memcpy(data + datalen, buf->pos, nghttp2_buf_len(buf));
@@ -4297,6 +4300,8 @@ void test_nghttp2_session_on_goaway_received(void) {
   nghttp2_frame frame;
   int i;
   nghttp2_mem *mem;
+  const uint8_t *data;
+  ssize_t datalen;
 
   mem = nghttp2_mem_default();
   user_data.frame_recv_cb_called = 0;
@@ -4338,6 +4343,29 @@ void test_nghttp2_session_on_goaway_received(void) {
 
   nghttp2_frame_goaway_free(&frame.goaway, mem);
   nghttp2_session_del(session);
+
+  /* Make sure that no memory leak when stream_close callback fails
+     with a fatal error */
+  memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
+  callbacks.on_stream_close_callback = fatal_error_on_stream_close_callback;
+
+  memset(&user_data, 0, sizeof(user_data));
+
+  nghttp2_session_client_new(&session, &callbacks, &user_data);
+
+  nghttp2_frame_goaway_init(&frame.goaway, 0, NGHTTP2_NO_ERROR, NULL, 0);
+
+  CU_ASSERT(0 == nghttp2_session_on_goaway_received(session, &frame));
+
+  nghttp2_submit_request(session, NULL, reqnv, ARRLEN(reqnv), NULL, NULL);
+
+  datalen = nghttp2_session_mem_send(session, &data);
+
+  CU_ASSERT(NGHTTP2_ERR_CALLBACK_FAILURE == datalen);
+  CU_ASSERT(1 == user_data.stream_close_cb_called);
+
+  nghttp2_frame_goaway_free(&frame.goaway, mem);
+  nghttp2_session_del(session);
 }
 
 void test_nghttp2_session_on_window_update_received(void) {
@@ -4373,8 +4401,7 @@ void test_nghttp2_session_on_window_update_received(void) {
   CU_ASSERT(NGHTTP2_INITIAL_WINDOW_SIZE + 16 * 1024 ==
             stream->remote_window_size);
 
-  CU_ASSERT(0 == nghttp2_stream_defer_item(
-                     stream, NGHTTP2_STREAM_FLAG_DEFERRED_FLOW_CONTROL));
+  nghttp2_stream_defer_item(stream, NGHTTP2_STREAM_FLAG_DEFERRED_FLOW_CONTROL);
 
   CU_ASSERT(0 == nghttp2_session_on_window_update_received(session, &frame));
   CU_ASSERT(2 == user_data.frame_recv_cb_called);
@@ -9640,9 +9667,7 @@ void test_nghttp2_session_stream_get_state(void) {
   /* Create idle stream by PRIORITY frame */
   nghttp2_frame_priority_init(&frame.priority, 7, &pri_spec_default);
 
-  rv = nghttp2_frame_pack_priority(&bufs, &frame.priority);
-
-  CU_ASSERT(0 == rv);
+  nghttp2_frame_pack_priority(&bufs, &frame.priority);
 
   nghttp2_frame_priority_free(&frame.priority);
 
@@ -11848,9 +11873,7 @@ void test_nghttp2_session_server_fallback_rfc7540_priorities(void) {
   nghttp2_priority_spec_init(&pri_spec, 5, 1, 0);
   nghttp2_frame_priority_init(&frame.priority, 1, &pri_spec);
   nghttp2_bufs_reset(&bufs);
-  rv = nghttp2_frame_pack_priority(&bufs, &frame.priority);
-
-  CU_ASSERT(0 == rv);
+  nghttp2_frame_pack_priority(&bufs, &frame.priority);
 
   nghttp2_frame_priority_free(&frame.priority);
 
@@ -11943,6 +11966,109 @@ void test_nghttp2_session_server_fallback_rfc7540_priorities(void) {
 
   nghttp2_option_del(option);
   nghttp2_bufs_free(&bufs);
+}
+
+void test_nghttp2_session_stream_reset_ratelim(void) {
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+  nghttp2_frame frame;
+  ssize_t rv;
+  nghttp2_bufs bufs;
+  nghttp2_buf *buf;
+  nghttp2_mem *mem;
+  size_t i;
+  nghttp2_hd_deflater deflater;
+  size_t nvlen;
+  nghttp2_nv *nva;
+  int32_t stream_id;
+  nghttp2_outbound_item *item;
+  nghttp2_option *option;
+
+  mem = nghttp2_mem_default();
+  frame_pack_bufs_init(&bufs);
+
+  memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
+  callbacks.send_callback = null_send_callback;
+
+  nghttp2_option_new(&option);
+  nghttp2_option_set_stream_reset_rate_limit(
+      option, NGHTTP2_DEFAULT_STREAM_RESET_BURST, 0);
+
+  nghttp2_session_server_new2(&session, &callbacks, NULL, option);
+
+  nghttp2_frame_settings_init(&frame.settings, NGHTTP2_FLAG_NONE, NULL, 0);
+  rv = nghttp2_frame_pack_settings(&bufs, &frame.settings);
+
+  CU_ASSERT(0 == rv);
+
+  nghttp2_frame_settings_free(&frame.settings, mem);
+
+  buf = &bufs.head->buf;
+  rv = nghttp2_session_mem_recv(session, buf->pos, nghttp2_buf_len(buf));
+
+  CU_ASSERT((ssize_t)nghttp2_buf_len(buf) == rv);
+
+  /* Send SETTINGS ACK */
+  rv = nghttp2_session_send(session);
+
+  CU_ASSERT(0 == rv);
+
+  nghttp2_hd_deflate_init(&deflater, mem);
+
+  for (i = 0; i < NGHTTP2_DEFAULT_STREAM_RESET_BURST + 2; ++i) {
+    stream_id = (int32_t)(i * 2 + 1);
+
+    nghttp2_bufs_reset(&bufs);
+
+    /* HEADERS */
+    nvlen = ARRLEN(reqnv);
+    nghttp2_nv_array_copy(&nva, reqnv, nvlen, mem);
+    nghttp2_frame_headers_init(&frame.headers, NGHTTP2_FLAG_END_HEADERS,
+                               stream_id, NGHTTP2_HCAT_HEADERS, NULL, nva,
+                               nvlen);
+    rv = nghttp2_frame_pack_headers(&bufs, &frame.headers, &deflater);
+
+    CU_ASSERT(0 == rv);
+
+    nghttp2_frame_headers_free(&frame.headers, mem);
+
+    buf = &bufs.head->buf;
+    rv = nghttp2_session_mem_recv(session, buf->pos, nghttp2_buf_len(buf));
+
+    CU_ASSERT((ssize_t)nghttp2_buf_len(buf) == rv);
+
+    nghttp2_bufs_reset(&bufs);
+
+    /* RST_STREAM */
+    nghttp2_frame_rst_stream_init(&frame.rst_stream, stream_id,
+                                  NGHTTP2_NO_ERROR);
+    nghttp2_frame_pack_rst_stream(&bufs, &frame.rst_stream);
+    nghttp2_frame_rst_stream_free(&frame.rst_stream);
+
+    buf = &bufs.head->buf;
+    rv = nghttp2_session_mem_recv(session, buf->pos, nghttp2_buf_len(buf));
+
+    CU_ASSERT((ssize_t)nghttp2_buf_len(buf) == rv);
+
+    if (i < NGHTTP2_DEFAULT_STREAM_RESET_BURST) {
+      CU_ASSERT(0 == nghttp2_outbound_queue_size(&session->ob_reg));
+
+      continue;
+    }
+
+    CU_ASSERT(1 == nghttp2_outbound_queue_size(&session->ob_reg));
+
+    item = nghttp2_session_get_next_ob_item(session);
+
+    CU_ASSERT(NGHTTP2_GOAWAY == item->frame.hd.type);
+    CU_ASSERT(NGHTTP2_DEFAULT_STREAM_RESET_BURST * 2 + 1 ==
+              item->frame.goaway.last_stream_id);
+  }
+
+  nghttp2_hd_deflate_free(&deflater);
+  nghttp2_session_del(session);
+  nghttp2_bufs_free(&bufs);
+  nghttp2_option_del(option);
 }
 
 static void check_nghttp2_http_recv_headers_fail(

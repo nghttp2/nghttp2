@@ -1402,17 +1402,19 @@ HTTP
 .. option:: --add-request-header=<HEADER>
 
     Specify additional header field to add to request header
-    set.  This  option just  appends header field  and won't
-    replace anything  already set.  This option  can be used
-    several  times   to  specify  multiple   header  fields.
+    set.   The field  name must  be lowercase.   This option
+    just  appends header  field and  won't replace  anything
+    already set.  This  option can be used  several times to
+    specify multiple header fields.
     Example: :option:`--add-request-header`\="foo: bar"
 
 .. option:: --add-response-header=<HEADER>
 
     Specify  additional  header  field to  add  to  response
-    header set.   This option just appends  header field and
-    won't replace anything already  set.  This option can be
-    used several  times to  specify multiple  header fields.
+    header  set.  The  field name  must be  lowercase.  This
+    option  just  appends  header field  and  won't  replace
+    anything already  set.  This option can  be used several
+    times to specify multiple header fields.
     Example: :option:`--add-response-header`\="foo: bar"
 
 .. option:: --request-header-field-buffer=<SIZE>
@@ -1673,8 +1675,8 @@ HTTP/3 and QUIC
 .. option:: --frontend-quic-congestion-controller=<CC>
 
     Specify a congestion controller algorithm for a frontend
-    QUIC connection.  <CC> should  be one of "cubic", "bbr",
-    and "bbr2".
+    QUIC  connection.   <CC>  should be  either  "cubic"  or
+    "bbr".
 
     Default: ``cubic``
 

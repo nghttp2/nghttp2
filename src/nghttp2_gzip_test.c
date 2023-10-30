@@ -36,11 +36,7 @@
 static size_t deflate_data(uint8_t *out, size_t outlen, const uint8_t *in,
                            size_t inlen) {
   int rv;
-  z_stream zst;
-  zst.next_in = Z_NULL;
-  zst.zalloc = Z_NULL;
-  zst.zfree = Z_NULL;
-  zst.opaque = Z_NULL;
+  z_stream zst = {0};
 
   rv = deflateInit(&zst, Z_DEFAULT_COMPRESSION);
   CU_ASSERT(rv == Z_OK);

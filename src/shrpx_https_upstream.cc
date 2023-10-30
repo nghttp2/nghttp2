@@ -66,13 +66,26 @@ constexpr llhttp_settings_t htp_hooks = {
     htp_msg_begin,       // llhttp_cb      on_message_begin;
     htp_uricb,           // llhttp_data_cb on_url;
     nullptr,             // llhttp_data_cb on_status;
+    nullptr,             // llhttp_data_cb on_method;
+    nullptr,             // llhttp_data_cb on_version;
     htp_hdr_keycb,       // llhttp_data_cb on_header_field;
     htp_hdr_valcb,       // llhttp_data_cb on_header_value;
+    nullptr,             // llhttp_data_cb on_chunk_extension_name;
+    nullptr,             // llhttp_data_cb on_chunk_extension_value;
     htp_hdrs_completecb, // llhttp_cb      on_headers_complete;
     htp_bodycb,          // llhttp_data_cb on_body;
     htp_msg_completecb,  // llhttp_cb      on_message_complete;
+    nullptr,             // llhttp_cb      on_url_complete;
+    nullptr,             // llhttp_cb      on_status_complete;
+    nullptr,             // llhttp_cb      on_method_complete;
+    nullptr,             // llhttp_cb      on_version_complete;
+    nullptr,             // llhttp_cb      on_header_field_complete;
+    nullptr,             // llhttp_cb      on_header_value_complete;
+    nullptr,             // llhttp_cb      on_chunk_extension_name_complete;
+    nullptr,             // llhttp_cb      on_chunk_extension_value_complete;
     nullptr,             // llhttp_cb      on_chunk_header;
     nullptr,             // llhttp_cb      on_chunk_complete;
+    nullptr,             // llhttp_cb      on_reset;
 };
 } // namespace
 
@@ -332,6 +345,11 @@ int htp_hdrs_completecb(llhttp_t *htp) {
 
   for (auto &kv : req.fs.headers()) {
     kv.value = util::rstrip(balloc, kv.value);
+
+    if (kv.token == http2::HD_TRANSFER_ENCODING &&
+        !http2::check_transfer_encoding(kv.value)) {
+      return -1;
+    }
   }
 
   auto lgconf = log_config();
@@ -400,6 +418,16 @@ int htp_hdrs_completecb(llhttp_t *htp) {
   }
 
   downstream->inspect_http1_request();
+
+  if (htp->flags & F_CHUNKED) {
+    downstream->set_chunked_request(true);
+  }
+
+  auto transfer_encoding = req.fs.header(http2::HD_TRANSFER_ENCODING);
+  if (transfer_encoding &&
+      http2::legacy_http1(req.http_major, req.http_minor)) {
+    return -1;
+  }
 
   auto faddr = handler->get_upstream_addr();
   auto config = get_config();
@@ -644,6 +672,15 @@ int HttpsUpstream::on_read() {
   // llhttp_execute() does nothing once it entered error state.
   auto htperr = llhttp_execute(&htp_, reinterpret_cast<const char *>(rb->pos()),
                                rb->rleft());
+
+  if (htperr == HPE_PAUSED_UPGRADE &&
+      rb->pos() ==
+          reinterpret_cast<const uint8_t *>(llhttp_get_error_pos(&htp_))) {
+    llhttp_resume_after_upgrade(&htp_);
+
+    htperr = llhttp_execute(&htp_, reinterpret_cast<const char *>(rb->pos()),
+                            rb->rleft());
+  }
 
   auto nread =
       htperr == HPE_OK

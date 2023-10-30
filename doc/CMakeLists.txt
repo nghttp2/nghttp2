@@ -180,8 +180,6 @@ set(EXTRA_DIST
   sources/tutorial-hpack.rst
   sources/nghttpx-howto.rst
   sources/h2load-howto.rst
-  sources/libnghttp2_asio.rst
-  sources/python-apiref.rst
   sources/building-android-binary.rst
   sources/contribute.rst
   _exts/rubydomain/LICENSE.rubydomain
@@ -269,7 +267,7 @@ add_custom_command(
     apiref.rst
     ${APIDOCS}
   COMMAND
-    "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/mkapiref.py"
+    "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/mkapiref.py"
     apiref.rst macros.rst enums.rst types.rst .
     ${apiref_SOURCES}
   DEPENDS

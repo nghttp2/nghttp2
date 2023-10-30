@@ -55,15 +55,18 @@
 #  include <openssl/core_names.h>
 #  include <openssl/decoder.h>
 #endif // OPENSSL_3_0_0_API
+#ifdef OPENSSL_IS_BORINGSSL
+#  include <openssl/hmac.h>
+#endif // OPENSSL_IS_BORINGSSL
 
 #include <nghttp2/nghttp2.h>
 
 #ifdef ENABLE_HTTP3
 #  include <ngtcp2/ngtcp2.h>
 #  include <ngtcp2/ngtcp2_crypto.h>
-#  ifdef HAVE_LIBNGTCP2_CRYPTO_OPENSSL
-#    include <ngtcp2/ngtcp2_crypto_openssl.h>
-#  endif // HAVE_LIBNGTCP2_CRYPTO_OPENSSL
+#  ifdef HAVE_LIBNGTCP2_CRYPTO_QUICTLS
+#    include <ngtcp2/ngtcp2_crypto_quictls.h>
+#  endif // HAVE_LIBNGTCP2_CRYPTO_QUICTLS
 #  ifdef HAVE_LIBNGTCP2_CRYPTO_BORINGSSL
 #    include <ngtcp2/ngtcp2_crypto_boringssl.h>
 #  endif // HAVE_LIBNGTCP2_CRYPTO_BORINGSSL
@@ -87,6 +90,7 @@
 #include "timegm.h"
 
 using namespace nghttp2;
+using namespace std::chrono_literals;
 
 namespace shrpx {
 
@@ -380,7 +384,7 @@ int tls_session_client_new_cb(SSL *ssl, SSL_SESSION *session) {
   }
 
   try_cache_tls_session(conn->tls.client_session_cache, session,
-                        ev_now(conn->loop));
+                        std::chrono::steady_clock::now());
 
   return 0;
 }
@@ -1082,6 +1086,7 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
                                   SSL_FILETYPE_PEM) != 1) {
     LOG(FATAL) << "SSL_CTX_use_PrivateKey_file failed: "
                << ERR_error_string(ERR_get_error(), nullptr);
+    DIE();
   }
 #else  // HAVE_NEVERBLEED
   std::array<char, NEVERBLEED_ERRBUF_SIZE> errbuf;
@@ -1253,12 +1258,12 @@ SSL_CTX *create_quic_ssl_context(const char *private_key_file,
 
   SSL_CTX_set_options(ssl_ctx, ssl_opts);
 
-#  ifdef HAVE_LIBNGTCP2_CRYPTO_OPENSSL
-  if (ngtcp2_crypto_openssl_configure_server_context(ssl_ctx) != 0) {
-    LOG(FATAL) << "ngtcp2_crypto_openssl_configure_server_context failed";
+#  ifdef HAVE_LIBNGTCP2_CRYPTO_QUICTLS
+  if (ngtcp2_crypto_quictls_configure_server_context(ssl_ctx) != 0) {
+    LOG(FATAL) << "ngtcp2_crypto_quictls_configure_server_context failed";
     DIE();
   }
-#  endif // HAVE_LIBNGTCP2_CRYPTO_OPENSSL
+#  endif // HAVE_LIBNGTCP2_CRYPTO_QUICTLS
 #  ifdef HAVE_LIBNGTCP2_CRYPTO_BORINGSSL
   if (ngtcp2_crypto_boringssl_configure_server_context(ssl_ctx) != 0) {
     LOG(FATAL) << "ngtcp2_crypto_boringssl_configure_server_context failed";
@@ -1377,6 +1382,7 @@ SSL_CTX *create_quic_ssl_context(const char *private_key_file,
                                   SSL_FILETYPE_PEM) != 1) {
     LOG(FATAL) << "SSL_CTX_use_PrivateKey_file failed: "
                << ERR_error_string(ERR_get_error(), nullptr);
+    DIE();
   }
 #  else  // HAVE_NEVERBLEED
   std::array<char, NEVERBLEED_ERRBUF_SIZE> errbuf;
@@ -1808,16 +1814,18 @@ StringRef get_common_name(X509 *cert) {
 }
 } // namespace
 
-namespace {
 int verify_numeric_hostname(X509 *cert, const StringRef &hostname,
                             const Address *addr) {
   const void *saddr;
+  size_t saddrlen;
   switch (addr->su.storage.ss_family) {
   case AF_INET:
     saddr = &addr->su.in.sin_addr;
+    saddrlen = sizeof(addr->su.in.sin_addr);
     break;
   case AF_INET6:
     saddr = &addr->su.in6.sin6_addr;
+    saddrlen = sizeof(addr->su.in6.sin6_addr);
     break;
   default:
     return -1;
@@ -1842,7 +1850,7 @@ int verify_numeric_hostname(X509 *cert, const StringRef &hostname,
       size_t ip_addrlen = altname->d.iPAddress->length;
 
       ip_found = true;
-      if (addr->len == ip_addrlen && memcmp(saddr, ip_addr, ip_addrlen) == 0) {
+      if (saddrlen == ip_addrlen && memcmp(saddr, ip_addr, ip_addrlen) == 0) {
         return 0;
       }
     }
@@ -1867,15 +1875,8 @@ int verify_numeric_hostname(X509 *cert, const StringRef &hostname,
 
   return -1;
 }
-} // namespace
 
-namespace {
-int verify_hostname(X509 *cert, const StringRef &hostname,
-                    const Address *addr) {
-  if (util::numeric_host(hostname.c_str())) {
-    return verify_numeric_hostname(cert, hostname, addr);
-  }
-
+int verify_dns_hostname(X509 *cert, const StringRef &hostname) {
   auto altnames = static_cast<GENERAL_NAMES *>(
       X509_get_ext_d2i(cert, NID_subject_alt_name, nullptr, nullptr));
   if (altnames) {
@@ -1942,6 +1943,16 @@ int verify_hostname(X509 *cert, const StringRef &hostname,
   OPENSSL_free(const_cast<char *>(cn.c_str()));
 
   return rv ? 0 : -1;
+}
+
+namespace {
+int verify_hostname(X509 *cert, const StringRef &hostname,
+                    const Address *addr) {
+  if (util::numeric_host(hostname.c_str())) {
+    return verify_numeric_hostname(cert, hostname, addr);
+  }
+
+  return verify_dns_hostname(cert, hostname);
 }
 } // namespace
 
@@ -2417,8 +2428,8 @@ std::vector<uint8_t> serialize_ssl_session(SSL_SESSION *session) {
 } // namespace
 
 void try_cache_tls_session(TLSSessionCache *cache, SSL_SESSION *session,
-                           ev_tstamp t) {
-  if (cache->last_updated + 1_min > t) {
+                           const std::chrono::steady_clock::time_point &t) {
+  if (cache->last_updated + 1min > t) {
     if (LOG_ENABLED(INFO)) {
       LOG(INFO) << "Client session cache entry is still fresh.";
     }
@@ -2427,7 +2438,7 @@ void try_cache_tls_session(TLSSessionCache *cache, SSL_SESSION *session,
 
   if (LOG_ENABLED(INFO)) {
     LOG(INFO) << "Update client cache entry "
-              << "timestamp = " << t;
+              << "timestamp = " << t.time_since_epoch().count();
   }
 
   cache->session_data = serialize_ssl_session(session);
@@ -2587,13 +2598,6 @@ StringRef get_x509_subject_name(BlockAllocator &balloc, X509 *x) {
 StringRef get_x509_issuer_name(BlockAllocator &balloc, X509 *x) {
   return get_x509_name(balloc, X509_get_issuer_name(x));
 }
-
-#ifdef WORDS_BIGENDIAN
-#  define bswap64(N) (N)
-#else /* !WORDS_BIGENDIAN */
-#  define bswap64(N)                                                           \
-    ((uint64_t)(ntohl((uint32_t)(N))) << 32 | ntohl((uint32_t)((N) >> 32)))
-#endif /* !WORDS_BIGENDIAN */
 
 StringRef get_x509_serial(BlockAllocator &balloc, X509 *x) {
   auto sn = X509_get_serialNumber(x);

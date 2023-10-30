@@ -77,6 +77,10 @@ int main(int argc, char *argv[]) {
                    shrpx::test_shrpx_tls_cert_lookup_tree_add_ssl_ctx) ||
       !CU_add_test(pSuite, "tls_tls_hostname_match",
                    shrpx::test_shrpx_tls_tls_hostname_match) ||
+      !CU_add_test(pSuite, "tls_tls_verify_numeric_hostname",
+                   shrpx::test_shrpx_tls_verify_numeric_hostname) ||
+      !CU_add_test(pSuite, "tls_tls_verify_dns_hostname",
+                   shrpx::test_shrpx_tls_verify_dns_hostname) ||
       !CU_add_test(pSuite, "http2_add_header", shrpx::test_http2_add_header) ||
       !CU_add_test(pSuite, "http2_get_header", shrpx::test_http2_get_header) ||
       !CU_add_test(pSuite, "http2_copy_headers_to_nva",
@@ -105,6 +109,8 @@ int main(int argc, char *argv[]) {
                    shrpx::test_http2_construct_push_component) ||
       !CU_add_test(pSuite, "http2_contains_trailers",
                    shrpx::test_http2_contains_trailers) ||
+      !CU_add_test(pSuite, "http2_check_transfer_encoding",
+                   shrpx::test_http2_check_transfer_encoding) ||
       !CU_add_test(pSuite, "downstream_field_store_append_last_header",
                    shrpx::test_downstream_field_store_append_last_header) ||
       !CU_add_test(pSuite, "downstream_field_store_header",
@@ -152,8 +158,6 @@ int main(int argc, char *argv[]) {
       !CU_add_test(pSuite, "util_to_token68", shrpx::test_util_to_token68) ||
       !CU_add_test(pSuite, "util_percent_encode_token",
                    shrpx::test_util_percent_encode_token) ||
-      !CU_add_test(pSuite, "util_percent_encode_path",
-                   shrpx::test_util_percent_encode_path) ||
       !CU_add_test(pSuite, "util_percent_decode",
                    shrpx::test_util_percent_decode) ||
       !CU_add_test(pSuite, "util_quote_string",

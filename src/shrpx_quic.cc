@@ -66,11 +66,11 @@ int quic_send_packet(const UpstreamAddr *faddr, const sockaddr *remote_sa,
   msg.msg_iov = &msg_iov;
   msg.msg_iovlen = 1;
 
-  uint8_t msg_ctrl[
+  uint8_t msg_ctrl[CMSG_SPACE(sizeof(int)) +
 #ifdef UDP_SEGMENT
-      CMSG_SPACE(sizeof(uint16_t)) +
+                   CMSG_SPACE(sizeof(uint16_t)) +
 #endif // UDP_SEGMENT
-      CMSG_SPACE(sizeof(in6_pktinfo))];
+                   CMSG_SPACE(sizeof(in6_pktinfo))];
 
   memset(msg_ctrl, 0, sizeof(msg_ctrl));
 
@@ -87,11 +87,12 @@ int quic_send_packet(const UpstreamAddr *faddr, const sockaddr *remote_sa,
     cm->cmsg_level = IPPROTO_IP;
     cm->cmsg_type = IP_PKTINFO;
     cm->cmsg_len = CMSG_LEN(sizeof(in_pktinfo));
-    auto pktinfo = reinterpret_cast<in_pktinfo *>(CMSG_DATA(cm));
-    memset(pktinfo, 0, sizeof(in_pktinfo));
+    in_pktinfo pktinfo{};
     auto addrin =
         reinterpret_cast<sockaddr_in *>(const_cast<sockaddr *>(local_sa));
-    pktinfo->ipi_spec_dst = addrin->sin_addr;
+    pktinfo.ipi_spec_dst = addrin->sin_addr;
+    memcpy(CMSG_DATA(cm), &pktinfo, sizeof(pktinfo));
+
     break;
   }
   case AF_INET6: {
@@ -99,11 +100,12 @@ int quic_send_packet(const UpstreamAddr *faddr, const sockaddr *remote_sa,
     cm->cmsg_level = IPPROTO_IPV6;
     cm->cmsg_type = IPV6_PKTINFO;
     cm->cmsg_len = CMSG_LEN(sizeof(in6_pktinfo));
-    auto pktinfo = reinterpret_cast<in6_pktinfo *>(CMSG_DATA(cm));
-    memset(pktinfo, 0, sizeof(in6_pktinfo));
+    in6_pktinfo pktinfo{};
     auto addrin =
         reinterpret_cast<sockaddr_in6 *>(const_cast<sockaddr *>(local_sa));
-    pktinfo->ipi6_addr = addrin->sin6_addr;
+    pktinfo.ipi6_addr = addrin->sin6_addr;
+    memcpy(CMSG_DATA(cm), &pktinfo, sizeof(pktinfo));
+
     break;
   }
   default:
@@ -117,13 +119,33 @@ int quic_send_packet(const UpstreamAddr *faddr, const sockaddr *remote_sa,
     cm->cmsg_level = SOL_UDP;
     cm->cmsg_type = UDP_SEGMENT;
     cm->cmsg_len = CMSG_LEN(sizeof(uint16_t));
-    *(reinterpret_cast<uint16_t *>(CMSG_DATA(cm))) = gso_size;
+    uint16_t n = gso_size;
+    memcpy(CMSG_DATA(cm), &n, sizeof(n));
   }
 #endif // UDP_SEGMENT
 
-  msg.msg_controllen = controllen;
+  controllen += CMSG_SPACE(sizeof(int));
+  cm = CMSG_NXTHDR(&msg, cm);
+  cm->cmsg_len = CMSG_LEN(sizeof(int));
+  unsigned int tos = pi.ecn;
+  memcpy(CMSG_DATA(cm), &tos, sizeof(tos));
 
-  util::fd_set_send_ecn(faddr->fd, local_sa->sa_family, pi.ecn);
+  switch (local_sa->sa_family) {
+  case AF_INET:
+    cm->cmsg_level = IPPROTO_IP;
+    cm->cmsg_type = IP_TOS;
+
+    break;
+  case AF_INET6:
+    cm->cmsg_level = IPPROTO_IPV6;
+    cm->cmsg_type = IPV6_TCLASS;
+
+    break;
+  default:
+    assert(0);
+  }
+
+  msg.msg_controllen = controllen;
 
   ssize_t nwrite;
 

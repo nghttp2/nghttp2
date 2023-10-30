@@ -144,11 +144,6 @@ void test_util_percent_encode_token(void) {
             util::percent_encode_token(balloc, StringRef::from_lit("http 2")));
 }
 
-void test_util_percent_encode_path(void) {
-  CU_ASSERT("/foo1/bar%3F&/%0A" == util::percent_encode_path("/foo1/bar?&/"
-                                                             "\x0a"));
-}
-
 void test_util_percent_decode(void) {
   {
     std::string s = "%66%6F%6f%62%61%72";
@@ -448,7 +443,11 @@ void test_util_localtime_date(void) {
   if (tz) {
     tz = strdup(tz);
   }
+#ifdef __linux__
+  setenv("TZ", "NZST-12:00:00:00", 1);
+#else  // !__linux__
   setenv("TZ", ":Pacific/Auckland", 1);
+#endif // !__linux__
   tzset();
 
   CU_ASSERT_STRING_EQUAL("02/Oct/2001:00:34:56 +1200",

@@ -194,4 +194,146 @@ void test_shrpx_tls_tls_hostname_match(void) {
   CU_ASSERT(!tls_hostname_match_wrapper("example.com", "www.example.com"));
 }
 
+static X509 *load_cert(const char *path) {
+  auto f = fopen(path, "r");
+  auto cert = PEM_read_X509(f, nullptr, nullptr, nullptr);
+
+  fclose(f);
+
+  return cert;
+}
+
+static Address parse_addr(const char *ipaddr) {
+  addrinfo hints{};
+
+  hints.ai_family = AF_UNSPEC;
+  hints.ai_flags = AI_NUMERICHOST | AI_NUMERICSERV;
+
+  addrinfo *res = nullptr;
+
+  auto rv = getaddrinfo(ipaddr, "443", &hints, &res);
+
+  CU_ASSERT(0 == rv);
+  CU_ASSERT(nullptr != res);
+
+  Address addr;
+  addr.len = res->ai_addrlen;
+  memcpy(&addr.su, res->ai_addr, res->ai_addrlen);
+
+  freeaddrinfo(res);
+
+  return addr;
+}
+
+void test_shrpx_tls_verify_numeric_hostname(void) {
+  {
+    // Successful IPv4 address match in SAN
+    static constexpr char ipaddr[] = "127.0.0.1";
+    auto cert = load_cert(NGHTTP2_SRC_DIR "/testdata/verify_hostname.crt");
+    auto addr = parse_addr(ipaddr);
+    auto rv =
+        tls::verify_numeric_hostname(cert, StringRef::from_lit(ipaddr), &addr);
+
+    CU_ASSERT(0 == rv);
+
+    X509_free(cert);
+  }
+
+  {
+    // Successful IPv6 address match in SAN
+    static constexpr char ipaddr[] = "::1";
+    auto cert = load_cert(NGHTTP2_SRC_DIR "/testdata/verify_hostname.crt");
+    auto addr = parse_addr(ipaddr);
+    auto rv =
+        tls::verify_numeric_hostname(cert, StringRef::from_lit(ipaddr), &addr);
+
+    CU_ASSERT(0 == rv);
+
+    X509_free(cert);
+  }
+
+  {
+    // Unsuccessful IPv4 address match in SAN
+    static constexpr char ipaddr[] = "192.168.0.127";
+    auto cert = load_cert(NGHTTP2_SRC_DIR "/testdata/verify_hostname.crt");
+    auto addr = parse_addr(ipaddr);
+    auto rv =
+        tls::verify_numeric_hostname(cert, StringRef::from_lit(ipaddr), &addr);
+
+    CU_ASSERT(-1 == rv);
+
+    X509_free(cert);
+  }
+
+  {
+    // CommonName is not used if SAN is available
+    static constexpr char ipaddr[] = "192.168.0.1";
+    auto cert = load_cert(NGHTTP2_SRC_DIR "/testdata/ipaddr.crt");
+    auto addr = parse_addr(ipaddr);
+    auto rv =
+        tls::verify_numeric_hostname(cert, StringRef::from_lit(ipaddr), &addr);
+
+    CU_ASSERT(-1 == rv);
+
+    X509_free(cert);
+  }
+
+  {
+    // Successful IPv4 address match in CommonName
+    static constexpr char ipaddr[] = "127.0.0.1";
+    auto cert = load_cert(NGHTTP2_SRC_DIR "/testdata/nosan_ip.crt");
+    auto addr = parse_addr(ipaddr);
+    auto rv =
+        tls::verify_numeric_hostname(cert, StringRef::from_lit(ipaddr), &addr);
+
+    CU_ASSERT(0 == rv);
+
+    X509_free(cert);
+  }
+}
+
+void test_shrpx_tls_verify_dns_hostname(void) {
+  {
+    // Successful exact DNS name match in SAN
+    auto cert = load_cert(NGHTTP2_SRC_DIR "/testdata/verify_hostname.crt");
+    auto rv = tls::verify_dns_hostname(
+        cert, StringRef::from_lit("nghttp2.example.com"));
+
+    CU_ASSERT(0 == rv);
+
+    X509_free(cert);
+  }
+
+  {
+    // Successful wildcard DNS name match in SAN
+    auto cert = load_cert(NGHTTP2_SRC_DIR "/testdata/verify_hostname.crt");
+    auto rv = tls::verify_dns_hostname(
+        cert, StringRef::from_lit("www.nghttp2.example.com"));
+
+    CU_ASSERT(0 == rv);
+
+    X509_free(cert);
+  }
+
+  {
+    // CommonName is not used if SAN is available.
+    auto cert = load_cert(NGHTTP2_SRC_DIR "/testdata/verify_hostname.crt");
+    auto rv = tls::verify_dns_hostname(cert, StringRef::from_lit("localhost"));
+
+    CU_ASSERT(-1 == rv);
+
+    X509_free(cert);
+  }
+
+  {
+    // Successful DNS name match in CommonName
+    auto cert = load_cert(NGHTTP2_SRC_DIR "/testdata/nosan.crt");
+    auto rv = tls::verify_dns_hostname(cert, StringRef::from_lit("localhost"));
+
+    CU_ASSERT(0 == rv);
+
+    X509_free(cert);
+  }
+}
+
 } // namespace shrpx

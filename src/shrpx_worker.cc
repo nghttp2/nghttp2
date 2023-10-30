@@ -27,6 +27,7 @@
 #ifdef HAVE_UNISTD_H
 #  include <unistd.h>
 #endif // HAVE_UNISTD_H
+#include <netinet/udp.h>
 
 #include <cstdio>
 #include <memory>
@@ -161,7 +162,7 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
 #endif // ENABLE_HTTP3 && HAVE_LIBBPF
       randgen_(util::make_mt19937()),
       worker_stat_{},
-      dns_tracker_(loop),
+      dns_tracker_(loop, get_config()->conn.downstream->family),
 #ifdef ENABLE_HTTP3
       quic_upstream_addrs_{get_config()->conn.quic_listener.addrs},
 #endif // ENABLE_HTTP3
@@ -601,9 +602,7 @@ void Worker::set_ticket_keys(std::shared_ptr<TicketKeys> ticket_keys) {
 
 WorkerStat *Worker::get_worker_stat() { return &worker_stat_; }
 
-struct ev_loop *Worker::get_loop() const {
-  return loop_;
-}
+struct ev_loop *Worker::get_loop() const { return loop_; }
 
 SSL_CTX *Worker::get_sv_ssl_ctx() const { return sv_ssl_ctx_; }
 
@@ -892,6 +891,16 @@ int Worker::create_quic_server_socket(UpstreamAddr &faddr) {
 #  endif // defined(IP_MTU_DISCOVER) && defined(IP_PMTUDISC_DO)
     }
 
+#  ifdef UDP_GRO
+    if (setsockopt(fd, IPPROTO_UDP, UDP_GRO, &val, sizeof(val)) == -1) {
+      auto error = errno;
+      LOG(WARN) << "Failed to set UDP_GRO option to listener socket: "
+                << xsi_strerror(error, errbuf.data(), errbuf.size());
+      close(fd);
+      continue;
+    }
+#  endif // UDP_GRO
+
     if (bind(fd, rp->ai_addr, rp->ai_addrlen) == -1) {
       auto error = errno;
       LOG(WARN) << "bind() syscall failed: "
@@ -919,8 +928,9 @@ int Worker::create_quic_server_socket(UpstreamAddr &faddr) {
 
       rv = bpf_object__load(obj);
       if (rv != 0) {
+        auto error = errno;
         LOG(FATAL) << "Failed to load bpf object file: "
-                   << xsi_strerror(-rv, errbuf.data(), errbuf.size());
+                   << xsi_strerror(error, errbuf.data(), errbuf.size());
         close(fd);
         return -1;
       }
@@ -938,9 +948,9 @@ int Worker::create_quic_server_socket(UpstreamAddr &faddr) {
 
       ref.obj = obj;
 
-      auto reuseport_array =
+      ref.reuseport_array =
           bpf_object__find_map_by_name(obj, "reuseport_array");
-      if (!reuseport_array) {
+      if (!ref.reuseport_array) {
         auto error = errno;
         LOG(FATAL) << "Failed to get reuseport_array: "
                    << xsi_strerror(error, errbuf.data(), errbuf.size());
@@ -948,18 +958,14 @@ int Worker::create_quic_server_socket(UpstreamAddr &faddr) {
         return -1;
       }
 
-      ref.reuseport_array = bpf_map__fd(reuseport_array);
-
-      auto cid_prefix_map = bpf_object__find_map_by_name(obj, "cid_prefix_map");
-      if (!cid_prefix_map) {
+      ref.cid_prefix_map = bpf_object__find_map_by_name(obj, "cid_prefix_map");
+      if (!ref.cid_prefix_map) {
         auto error = errno;
         LOG(FATAL) << "Failed to get cid_prefix_map: "
                    << xsi_strerror(error, errbuf.data(), errbuf.size());
         close(fd);
         return -1;
       }
-
-      ref.cid_prefix_map = bpf_map__fd(cid_prefix_map);
 
       auto sk_info = bpf_object__find_map_by_name(obj, "sk_info");
       if (!sk_info) {
@@ -973,11 +979,12 @@ int Worker::create_quic_server_socket(UpstreamAddr &faddr) {
       constexpr uint32_t zero = 0;
       uint64_t num_socks = config->num_worker;
 
-      rv =
-          bpf_map_update_elem(bpf_map__fd(sk_info), &zero, &num_socks, BPF_ANY);
+      rv = bpf_map__update_elem(sk_info, &zero, sizeof(zero), &num_socks,
+                                sizeof(num_socks), BPF_ANY);
       if (rv != 0) {
+        auto error = errno;
         LOG(FATAL) << "Failed to update sk_info: "
-                   << xsi_strerror(-rv, errbuf.data(), errbuf.size());
+                   << xsi_strerror(error, errbuf.data(), errbuf.size());
         close(fd);
         return -1;
       }
@@ -988,20 +995,25 @@ int Worker::create_quic_server_socket(UpstreamAddr &faddr) {
       auto &qkms = conn_handler_->get_quic_keying_materials();
       auto &qkm = qkms->keying_materials.front();
 
-      rv = bpf_map_update_elem(bpf_map__fd(sk_info), &key_high_idx,
-                               qkm.cid_encryption_key.data(), BPF_ANY);
+      rv = bpf_map__update_elem(sk_info, &key_high_idx, sizeof(key_high_idx),
+                                qkm.cid_encryption_key.data(),
+                                qkm.cid_encryption_key.size() / 2, BPF_ANY);
       if (rv != 0) {
+        auto error = errno;
         LOG(FATAL) << "Failed to update key_high_idx sk_info: "
-                   << xsi_strerror(-rv, errbuf.data(), errbuf.size());
+                   << xsi_strerror(error, errbuf.data(), errbuf.size());
         close(fd);
         return -1;
       }
 
-      rv = bpf_map_update_elem(bpf_map__fd(sk_info), &key_low_idx,
-                               qkm.cid_encryption_key.data() + 8, BPF_ANY);
+      rv = bpf_map__update_elem(sk_info, &key_low_idx, sizeof(key_low_idx),
+                                qkm.cid_encryption_key.data() +
+                                    qkm.cid_encryption_key.size() / 2,
+                                qkm.cid_encryption_key.size() / 2, BPF_ANY);
       if (rv != 0) {
+        auto error = errno;
         LOG(FATAL) << "Failed to update key_low_idx sk_info: "
-                   << xsi_strerror(-rv, errbuf.data(), errbuf.size());
+                   << xsi_strerror(error, errbuf.data(), errbuf.size());
         close(fd);
         return -1;
       }
@@ -1021,20 +1033,23 @@ int Worker::create_quic_server_socket(UpstreamAddr &faddr) {
       const auto &ref = quic_bpf_refs[faddr.index];
       auto sk_index = compute_sk_index();
 
-      rv =
-          bpf_map_update_elem(ref.reuseport_array, &sk_index, &fd, BPF_NOEXIST);
+      rv = bpf_map__update_elem(ref.reuseport_array, &sk_index,
+                                sizeof(sk_index), &fd, sizeof(fd), BPF_NOEXIST);
       if (rv != 0) {
+        auto error = errno;
         LOG(FATAL) << "Failed to update reuseport_array: "
-                   << xsi_strerror(-rv, errbuf.data(), errbuf.size());
+                   << xsi_strerror(error, errbuf.data(), errbuf.size());
         close(fd);
         return -1;
       }
 
-      rv = bpf_map_update_elem(ref.cid_prefix_map, cid_prefix_.data(),
-                               &sk_index, BPF_NOEXIST);
+      rv = bpf_map__update_elem(ref.cid_prefix_map, cid_prefix_.data(),
+                                cid_prefix_.size(), &sk_index, sizeof(sk_index),
+                                BPF_NOEXIST);
       if (rv != 0) {
+        auto error = errno;
         LOG(FATAL) << "Failed to update cid_prefix_map: "
-                   << xsi_strerror(-rv, errbuf.data(), errbuf.size());
+                   << xsi_strerror(error, errbuf.data(), errbuf.size());
         close(fd);
         return -1;
       }

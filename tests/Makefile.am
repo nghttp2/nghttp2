@@ -42,7 +42,8 @@ OBJECTS = main.c nghttp2_pq_test.c nghttp2_map_test.c nghttp2_queue_test.c \
 	nghttp2_helper_test.c \
 	nghttp2_buf_test.c \
 	nghttp2_http_test.c \
-	nghttp2_extpri_test.c
+	nghttp2_extpri_test.c \
+	nghttp2_ratelim_test.c
 
 HFILES = nghttp2_pq_test.h nghttp2_map_test.h nghttp2_queue_test.h \
 	nghttp2_session_test.h \
@@ -51,7 +52,8 @@ HFILES = nghttp2_pq_test.h nghttp2_map_test.h nghttp2_queue_test.h \
 	nghttp2_test_helper.h \
 	nghttp2_buf_test.h \
 	nghttp2_http_test.h \
-	nghttp2_extpri_test.h
+	nghttp2_extpri_test.h \
+	nghttp2_ratelim_test.h
 
 main_SOURCES = $(HFILES) $(OBJECTS)
 
@@ -79,6 +81,7 @@ AM_CFLAGS = $(WARNCFLAGS) \
 	-I${top_srcdir}/lib/includes \
 	-I${top_builddir}/lib/includes \
 	-DBUILDING_NGHTTP2 \
+	-DNGHTTP2_STATICLIB \
 	@CUNIT_CFLAGS@ @DEFS@
 
 TESTS = main

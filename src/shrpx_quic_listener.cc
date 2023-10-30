@@ -59,8 +59,8 @@ void QUICListener::on_read() {
   msg.msg_iov = &msg_iov;
   msg.msg_iovlen = 1;
 
-  uint8_t
-      msg_ctrl[CMSG_SPACE(sizeof(uint8_t)) + CMSG_SPACE(sizeof(in6_pktinfo))];
+  uint8_t msg_ctrl[CMSG_SPACE(sizeof(int)) + CMSG_SPACE(sizeof(in6_pktinfo)) +
+                   CMSG_SPACE(sizeof(uint16_t))];
   msg.msg_control = msg_ctrl;
 
   auto quic_conn_handler = worker_->get_quic_connection_handler();
@@ -74,11 +74,11 @@ void QUICListener::on_read() {
       return;
     }
 
-    ++pktcnt;
-
     Address local_addr{};
     if (util::msghdr_get_local_addr(local_addr, &msg, su.storage.ss_family) !=
         0) {
+      ++pktcnt;
+
       continue;
     }
 
@@ -88,24 +88,44 @@ void QUICListener::on_read() {
         .ecn = util::msghdr_get_ecn(&msg, su.storage.ss_family),
     };
 
-    if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "QUIC received packet: local="
-                << util::to_numeric_addr(&local_addr)
-                << " remote=" << util::to_numeric_addr(&su.sa, msg.msg_namelen)
-                << " ecn=" << log::hex << pi.ecn << log::dec << " " << nread
-                << " bytes";
+    auto gso_size = util::msghdr_get_udp_gro(&msg);
+    if (gso_size == 0) {
+      gso_size = static_cast<size_t>(nread);
     }
 
-    if (nread == 0) {
-      continue;
+    auto data = buf.data();
+
+    for (;;) {
+      auto datalen = std::min(static_cast<size_t>(nread), gso_size);
+
+      ++pktcnt;
+
+      if (LOG_ENABLED(INFO)) {
+        LOG(INFO) << "QUIC received packet: local="
+                  << util::to_numeric_addr(&local_addr) << " remote="
+                  << util::to_numeric_addr(&su.sa, msg.msg_namelen)
+                  << " ecn=" << log::hex << pi.ecn << log::dec << " " << datalen
+                  << " bytes";
+      }
+
+      if (datalen == 0) {
+        break;
+      }
+
+      Address remote_addr;
+      remote_addr.su = su;
+      remote_addr.len = msg.msg_namelen;
+
+      quic_conn_handler->handle_packet(faddr_, remote_addr, local_addr, pi,
+                                       data, datalen);
+
+      nread -= datalen;
+      if (nread == 0) {
+        break;
+      }
+
+      data += datalen;
     }
-
-    Address remote_addr;
-    remote_addr.su = su;
-    remote_addr.len = msg.msg_namelen;
-
-    quic_conn_handler->handle_packet(faddr_, remote_addr, local_addr, pi,
-                                     buf.data(), nread);
   }
 }
 

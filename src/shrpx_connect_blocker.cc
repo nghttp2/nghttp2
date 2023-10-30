@@ -43,8 +43,8 @@ ConnectBlocker::ConnectBlocker(std::mt19937 &gen, struct ev_loop *loop,
                                std::function<void()> block_func,
                                std::function<void()> unblock_func)
     : gen_(gen),
-      block_func_(block_func),
-      unblock_func_(unblock_func),
+      block_func_(std::move(block_func)),
+      unblock_func_(std::move(unblock_func)),
       loop_(loop),
       fail_count_(0),
       offline_(false) {

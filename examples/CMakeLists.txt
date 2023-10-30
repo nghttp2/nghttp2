@@ -34,24 +34,4 @@ if(ENABLE_EXAMPLES)
   add_executable(deflate          deflate.c $<TARGET_OBJECTS:llhttp>
     $<TARGET_OBJECTS:url-parser>
   )
-
-  if(ENABLE_ASIO_LIB)
-    foreach(name asio-sv asio-sv2 asio-cl asio-cl2)
-      add_executable(${name} ${name}.cc $<TARGET_OBJECTS:llhttp>
-        $<TARGET_OBJECTS:url-parser>
-      )
-      target_include_directories(${name} PRIVATE
-        ${OPENSSL_INCLUDE_DIRS}
-        ${Boost_INCLUDE_DIRS}
-      )
-      target_link_libraries(${name}
-        nghttp2
-        nghttp2_asio
-        ${JEMALLOC_LIBRARIES}
-        ${OPENSSL_LIBRARIES}
-        ${Boost_LIBRARIES}
-        ${APP_LIBRARIES}
-      )
-    endforeach()
-  endif()
 endif()

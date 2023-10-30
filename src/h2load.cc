@@ -51,9 +51,9 @@
 #include <openssl/err.h>
 
 #ifdef ENABLE_HTTP3
-#  ifdef HAVE_LIBNGTCP2_CRYPTO_OPENSSL
-#    include <ngtcp2/ngtcp2_crypto_openssl.h>
-#  endif // HAVE_LIBNGTCP2_CRYPTO_OPENSSL
+#  ifdef HAVE_LIBNGTCP2_CRYPTO_QUICTLS
+#    include <ngtcp2/ngtcp2_crypto_quictls.h>
+#  endif // HAVE_LIBNGTCP2_CRYPTO_QUICTLS
 #  ifdef HAVE_LIBNGTCP2_CRYPTO_BORINGSSL
 #    include <ngtcp2/ngtcp2_crypto_boringssl.h>
 #  endif // HAVE_LIBNGTCP2_CRYPTO_BORINGSSL
@@ -344,11 +344,13 @@ void rps_cb(struct ev_loop *loop, ev_timer *w, int revents) {
     return;
   }
 
-  auto now = ev_now(loop);
+  auto now = std::chrono::steady_clock::now();
   auto d = now - client->rps_duration_started;
-  auto n = static_cast<size_t>(round(d * config.rps));
+  auto n = static_cast<size_t>(
+      round(std::chrono::duration<double>(d).count() * config.rps));
   client->rps_req_pending += n;
-  client->rps_duration_started = now - d + static_cast<double>(n) / config.rps;
+  client->rps_duration_started +=
+      util::duration_from(static_cast<double>(n) / config.rps);
 
   if (client->rps_req_pending == 0) {
     return;
@@ -425,10 +427,10 @@ void client_request_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
     return;
   }
 
-  ev_tstamp duration =
+  auto duration =
       config.timings[client->reqidx] - config.timings[client->reqidx - 1];
 
-  while (duration < 1e-9) {
+  while (duration < std::chrono::duration<double>(1e-9)) {
     if (client->submit_request() != 0) {
       ev_timer_stop(client->worker->loop, w);
       client->process_request_failure();
@@ -443,7 +445,7 @@ void client_request_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
         config.timings[client->reqidx] - config.timings[client->reqidx - 1];
   }
 
-  client->request_timeout_watcher.repeat = duration;
+  client->request_timeout_watcher.repeat = util::ev_tstamp_from(duration);
   ev_timer_again(client->worker->loop, &client->request_timeout_watcher);
 }
 } // namespace
@@ -470,7 +472,6 @@ Client::Client(uint32_t id, Worker *worker, size_t req_todo)
       local_addr{},
       new_connection_requested(false),
       final(false),
-      rps_duration_started(0),
       rps_req_pending(0),
       rps_req_inflight(0) {
   if (req_todo == 0) { // this means infinite number of requests are to be made
@@ -506,7 +507,7 @@ Client::Client(uint32_t id, Worker *worker, size_t req_todo)
     quic.tx.data = std::make_unique<uint8_t[]>(64_k);
   }
 
-  ngtcp2_connection_close_error_default(&quic.last_error);
+  ngtcp2_ccerr_default(&quic.last_error);
 #endif // ENABLE_HTTP3
 }
 
@@ -539,6 +540,14 @@ int Client::make_socket(addrinfo *addr) {
     if (fd == -1) {
       return -1;
     }
+
+#  ifdef UDP_GRO
+    int val = 1;
+    if (setsockopt(fd, IPPROTO_UDP, UDP_GRO, &val, sizeof(val)) != 0) {
+      std::cerr << "setsockopt UDP_GRO failed" << std::endl;
+      return -1;
+    }
+#  endif // UDP_GRO
 
     rv = util::bind_any_addr_udp(fd, addr->ai_family);
     if (rv != 0) {
@@ -1178,7 +1187,7 @@ int Client::connection_made() {
   if (config.rps_enabled()) {
     rps_watcher.repeat = std::max(0.01, 1. / config.rps);
     ev_timer_again(worker->loop, &rps_watcher);
-    rps_duration_started = ev_now(worker->loop);
+    rps_duration_started = std::chrono::steady_clock::now();
   }
 
   if (config.rps_enabled()) {
@@ -1202,9 +1211,9 @@ int Client::connection_made() {
     }
   } else {
 
-    ev_tstamp duration = config.timings[reqidx];
+    auto duration = config.timings[reqidx];
 
-    while (duration < 1e-9) {
+    while (duration < std::chrono::duration<double>(1e-9)) {
       if (submit_request() != 0) {
         process_request_failure();
         break;
@@ -1217,10 +1226,10 @@ int Client::connection_made() {
       }
     }
 
-    if (duration >= 1e-9) {
+    if (duration >= std::chrono::duration<double>(1e-9)) {
       // double check since we may have break due to reqidx wraps
       // around back to 0
-      request_timeout_watcher.repeat = duration;
+      request_timeout_watcher.repeat = util::ev_tstamp_from(duration);
       ev_timer_again(worker->loop, &request_timeout_watcher);
     }
   }
@@ -1460,7 +1469,8 @@ int Client::write_udp(const sockaddr *addr, socklen_t addrlen,
     cm->cmsg_level = SOL_UDP;
     cm->cmsg_type = UDP_SEGMENT;
     cm->cmsg_len = CMSG_LEN(sizeof(uint16_t));
-    *(reinterpret_cast<uint16_t *>(CMSG_DATA(cm))) = gso_size;
+    uint16_t n = gso_size;
+    memcpy(CMSG_DATA(cm), &n, sizeof(n));
   }
 #  endif // UDP_SEGMENT
 
@@ -1971,9 +1981,10 @@ std::vector<std::string> read_uri_from_file(std::istream &infile) {
 } // namespace
 
 namespace {
-void read_script_from_file(std::istream &infile,
-                           std::vector<ev_tstamp> &timings,
-                           std::vector<std::string> &uris) {
+void read_script_from_file(
+    std::istream &infile,
+    std::vector<std::chrono::steady_clock::duration> &timings,
+    std::vector<std::string> &uris) {
   std::string script_line;
   int line_count = 0;
   while (std::getline(infile, script_line)) {
@@ -2006,7 +2017,9 @@ void read_script_from_file(std::istream &infile,
       exit(EXIT_FAILURE);
     }
 
-    timings.push_back(v / 1000.0);
+    timings.emplace_back(
+        std::chrono::duration_cast<std::chrono::steady_clock::duration>(
+            std::chrono::duration<double, std::milli>(v)));
     uris.push_back(script_line.substr(pos + 1, script_line.size()));
   }
 }
@@ -2915,13 +2928,13 @@ int main(int argc, char **argv) {
 
   if (config.is_quic()) {
 #ifdef ENABLE_HTTP3
-#  ifdef HAVE_LIBNGTCP2_CRYPTO_OPENSSL
-    if (ngtcp2_crypto_openssl_configure_client_context(ssl_ctx) != 0) {
-      std::cerr << "ngtcp2_crypto_openssl_configure_client_context failed"
+#  ifdef HAVE_LIBNGTCP2_CRYPTO_QUICTLS
+    if (ngtcp2_crypto_quictls_configure_client_context(ssl_ctx) != 0) {
+      std::cerr << "ngtcp2_crypto_quictls_configure_client_context failed"
                 << std::endl;
       exit(EXIT_FAILURE);
     }
-#  endif // HAVE_LIBNGTCP2_CRYPTO_OPENSSL
+#  endif // HAVE_LIBNGTCP2_CRYPTO_QUICTLS
 #  ifdef HAVE_LIBNGTCP2_CRYPTO_BORINGSSL
     if (ngtcp2_crypto_boringssl_configure_client_context(ssl_ctx) != 0) {
       std::cerr << "ngtcp2_crypto_boringssl_configure_client_context failed"

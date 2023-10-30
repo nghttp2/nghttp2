@@ -89,7 +89,8 @@ public:
 
   int init(const UpstreamAddr *faddr, const Address &remote_addr,
            const Address &local_addr, const ngtcp2_pkt_hd &initial_hd,
-           const ngtcp2_cid *odcid, const uint8_t *token, size_t tokenlen);
+           const ngtcp2_cid *odcid, const uint8_t *token, size_t tokenlen,
+           ngtcp2_token_type token_type);
 
   int on_read(const UpstreamAddr *faddr, const Address &remote_addr,
               const Address &local_addr, const ngtcp2_pkt_info &pi,
@@ -120,11 +121,11 @@ public:
   void initiate_downstream(Downstream *downstream);
   int shutdown_stream(Downstream *downstream, uint64_t app_error_code);
   int shutdown_stream_read(int64_t stream_id, uint64_t app_error_code);
-  int redirect_to_https(Downstream *downstream);
   int http_stream_close(Downstream *downstream, uint64_t app_error_code);
   void consume(int64_t stream_id, size_t nconsumed);
   void remove_downstream(Downstream *downstream);
   int stream_close(int64_t stream_id, uint64_t app_error_code);
+  int stream_reset(int64_t stream_id);
   void log_response_headers(Downstream *downstream,
                             const std::vector<nghttp3_nv> &nva) const;
   int http_acked_stream_data(Downstream *downstream, uint64_t datalen);
@@ -154,6 +155,8 @@ public:
 
   ngtcp2_conn *get_conn() const;
 
+  int send_new_token(const ngtcp2_addr *remote_addr);
+
 private:
   ClientHandler *handler_;
   ev_timer timer_;
@@ -162,7 +165,7 @@ private:
   int qlog_fd_;
   ngtcp2_cid hashed_scid_;
   ngtcp2_conn *conn_;
-  ngtcp2_connection_close_error last_error_;
+  ngtcp2_ccerr last_error_;
   nghttp3_conn *httpconn_;
   DownstreamQueue downstream_queue_;
   bool retry_close_;

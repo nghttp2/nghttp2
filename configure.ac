@@ -25,7 +25,7 @@ dnl Do not change user variables!
 dnl https://www.gnu.org/software/automake/manual/html_node/Flag-Variables-Ordering.html
 
 AC_PREREQ(2.61)
-AC_INIT([nghttp2], [1.50.0-DEV], [t-tujikawa@users.sourceforge.net])
+AC_INIT([nghttp2], [1.59.0-DEV], [t-tujikawa@users.sourceforge.net])
 AC_CONFIG_AUX_DIR([.])
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_HEADERS([config.h])
@@ -44,9 +44,9 @@ m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 
 dnl See versioning rule:
 dnl  https://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
-AC_SUBST(LT_CURRENT, 37)
-AC_SUBST(LT_REVISION, 0)
-AC_SUBST(LT_AGE, 23)
+AC_SUBST(LT_CURRENT, 39)
+AC_SUBST(LT_REVISION, 1)
+AC_SUBST(LT_AGE, 25)
 
 major=`echo $PACKAGE_VERSION |cut -d. -f1 | sed -e "s/[^0-9]//g"`
 minor=`echo $PACKAGE_VERSION |cut -d. -f2 | sed -e "s/[^0-9]//g"`
@@ -82,20 +82,10 @@ AC_ARG_ENABLE([hpack-tools],
                     [Build HPACK tools [default=check]])],
     [request_hpack_tools=$enableval], [request_hpack_tools=check])
 
-AC_ARG_ENABLE([asio-lib],
-    [AS_HELP_STRING([--enable-asio-lib],
-                    [Build C++ libnghttp2_asio library [default=no]])],
-    [request_asio_lib=$enableval], [request_asio_lib=no])
-
 AC_ARG_ENABLE([examples],
     [AS_HELP_STRING([--enable-examples],
                     [Build examples [default=check]])],
     [request_examples=$enableval], [request_examples=check])
-
-AC_ARG_ENABLE([python-bindings],
-    [AS_HELP_STRING([--enable-python-bindings],
-                    [Build Python bindings [default=check]])],
-    [request_python_bindings=$enableval], [request_python_bindings=check])
 
 AC_ARG_ENABLE([failmalloc],
     [AS_HELP_STRING([--disable-failmalloc],
@@ -104,7 +94,7 @@ AC_ARG_ENABLE([failmalloc],
 
 AC_ARG_ENABLE([lib-only],
     [AS_HELP_STRING([--enable-lib-only],
-                    [Build libnghttp2 only.  This is a short hand for --disable-app --disable-examples --disable-hpack-tools --disable-python-bindings])],
+                    [Build libnghttp2 only.  This is a short hand for --disable-app --disable-examples --disable-hpack-tools])],
     [request_lib_only=$enableval], [request_lib_only=no])
 
 AC_ARG_ENABLE([http3],
@@ -172,11 +162,6 @@ AC_ARG_WITH([neverbleed],
                     [Use neverbleed [default=no]])],
     [request_neverbleed=$withval], [request_neverbleed=no])
 
-AC_ARG_WITH([cython],
-    [AS_HELP_STRING([--with-cython=PATH],
-                    [Use cython in given PATH])],
-    [cython_path=$withval], [])
-
 AC_ARG_WITH([libngtcp2],
     [AS_HELP_STRING([--with-libngtcp2],
                     [Use libngtcp2 [default=check]])],
@@ -193,8 +178,6 @@ AC_ARG_WITH([libbpf],
     [request_libbpf=$withval], [request_libbpf=no])
 
 dnl Define variables
-AC_ARG_VAR([CYTHON], [the Cython executable])
-
 AC_ARG_VAR([LIBEV_CFLAGS], [C compiler flags for libev, skipping any checks])
 AC_ARG_VAR([LIBEV_LIBS], [linker flags for libev, skipping any checks])
 
@@ -220,16 +203,10 @@ PKG_PROG_PKG_CONFIG([0.20])
 
 AM_PATH_PYTHON([3.8],, [:])
 
-if test "x$request_python_bindings" = "xyes" &&
-   test "x$PYTHON" = "x:"; then
-  AC_MSG_ERROR([python was requested (enable-python-bindings) but not found])
-fi
-
 if [test "x$request_lib_only" = "xyes"]; then
   request_app=no
   request_hpack_tools=no
   request_examples=no
-  request_python_bindings=no
   request_http3=no
   request_libxml2=no
   request_jansson=no
@@ -247,19 +224,6 @@ if [test "x$request_lib_only" = "xyes"]; then
   request_libbpf=no
 fi
 
-if test "x$request_python_bindings" != "xno" &&
-   test "x$PYTHON" != "x:"; then
-  # version check is broken
-  AX_PYTHON_DEVEL()
-fi
-
-if test "x${cython_path}" = "x"; then
-  AC_CHECK_PROGS([CYTHON], [cython.py cython])
-else
-  CYTHON=${cython_path}
-  AC_SUBST([CYTHON])
-fi
-
 if test "x$GCC" = "xyes" -o "x$CC" = "xclang" ; then
   AC_DEFINE([NGHTTP2_NORETURN], [__attribute__((noreturn))], [Hint to the compiler that a function never return])
 else
@@ -269,7 +233,7 @@ fi
 save_CXXFLAGS="$CXXFLAGS"
 CXXFLAGS=
 
-AX_CXX_COMPILE_STDCXX([14], [noext], [optional])
+AX_CXX_COMPILE_STDCXX([14], [], [optional])
 
 CXX1XCXXFLAGS="$CXXFLAGS"
 CXXFLAGS="$save_CXXFLAGS"
@@ -364,8 +328,8 @@ APPLDFLAGS=
 case "$host_os" in
   *android*)
     android_build=yes
-    # android does not need -pthread, but needs following 3 libs for C++
-    APPLDFLAGS="$APPLDFLAGS -lstdc++ -latomic -lsupc++"
+    # android does not need -pthread, but needs following 2 libs for C++
+    APPLDFLAGS="$APPLDFLAGS -lstdc++ -latomic"
     ;;
   *)
     PTHREAD_LDFLAGS="-pthread"
@@ -469,6 +433,10 @@ if test "x${request_libev}" != "xno"; then
   else
     have_libev=yes
   fi
+
+  if test "x${have_libev}" = "xyes"; then
+    AC_DEFINE([HAVE_LIBEV], [1], [Define to 1 if you have `libev` library.])
+  fi
 fi
 
 if test "x${request_libev}" = "xyes" &&
@@ -540,7 +508,7 @@ fi
 # ngtcp2 (for src)
 have_libngtcp2=no
 if test "x${request_libngtcp2}" != "xno"; then
-  PKG_CHECK_MODULES([LIBNGTCP2], [libngtcp2 >= 0.8.0], [have_libngtcp2=yes],
+  PKG_CHECK_MODULES([LIBNGTCP2], [libngtcp2 >= 1.0.0], [have_libngtcp2=yes],
                     [have_libngtcp2=no])
   if test "x${have_libngtcp2}" = "xno"; then
     AC_MSG_NOTICE($LIBNGTCP2_PKG_ERRORS)
@@ -552,26 +520,26 @@ if test "x${request_libngtcp2}" = "xyes" &&
   AC_MSG_ERROR([libngtcp2 was requested (--with-libngtcp2) but not found])
 fi
 
-# ngtcp2_crypto_openssl (for src)
-have_libngtcp2_crypto_openssl=no
+# ngtcp2_crypto_quictls (for src)
+have_libngtcp2_crypto_quictls=no
 if test "x${have_ssl_is_quic}" = "xyes" &&
    test "x${request_libngtcp2}" != "xno"; then
-  PKG_CHECK_MODULES([LIBNGTCP2_CRYPTO_OPENSSL],
-                    [libngtcp2_crypto_openssl >= 0.8.0],
-                    [have_libngtcp2_crypto_openssl=yes],
-                    [have_libngtcp2_crypto_openssl=no])
-  if test "x${have_libngtcp2_crypto_openssl}" = "xno"; then
-    AC_MSG_NOTICE($LIBNGTCP2_CRYPTO_OPENSSL_PKG_ERRORS)
+  PKG_CHECK_MODULES([LIBNGTCP2_CRYPTO_QUICTLS],
+                    [libngtcp2_crypto_quictls >= 1.0.0],
+                    [have_libngtcp2_crypto_quictls=yes],
+                    [have_libngtcp2_crypto_quictls=no])
+  if test "x${have_libngtcp2_crypto_quictls}" = "xno"; then
+    AC_MSG_NOTICE($LIBNGTCP2_CRYPTO_QUICTLS_PKG_ERRORS)
   else
-    AC_DEFINE([HAVE_LIBNGTCP2_CRYPTO_OPENSSL], [1],
-              [Define to 1 if you have `libngtcp2_crypto_openssl` library.])
+    AC_DEFINE([HAVE_LIBNGTCP2_CRYPTO_QUICTLS], [1],
+              [Define to 1 if you have `libngtcp2_crypto_quictls` library.])
   fi
 fi
 
 if test "x${have_ssl_is_quic}" = "xyes" &&
    test "x${request_libngtcp2}" = "xyes" &&
-   test "x${have_libngtcp2_crypto_openssl}" != "xyes"; then
-  AC_MSG_ERROR([libngtcp2_crypto_openssl was requested (--with-libngtcp2) but not found])
+   test "x${have_libngtcp2_crypto_quictls}" != "xyes"; then
+  AC_MSG_ERROR([libngtcp2_crypto_quictls was requested (--with-libngtcp2) but not found])
 fi
 
 # ngtcp2_crypto_boringssl (for src)
@@ -599,7 +567,7 @@ fi
 # nghttp3 (for src)
 have_libnghttp3=no
 if test "x${request_libnghttp3}" != "xno"; then
-  PKG_CHECK_MODULES([LIBNGHTTP3], [libnghttp3 >= 0.7.0], [have_libnghttp3=yes],
+  PKG_CHECK_MODULES([LIBNGHTTP3], [libnghttp3 >= 1.0.0], [have_libnghttp3=yes],
                     [have_libnghttp3=no])
   if test "x${have_libnghttp3}" = "xno"; then
     AC_MSG_NOTICE($LIBNGHTTP3_PKG_ERRORS)
@@ -763,25 +731,6 @@ if test "x${request_jemalloc}" = "xyes" &&
   AC_MSG_ERROR([jemalloc was requested (--with-jemalloc) but not found])
 fi
 
-# Check Boost Asio library
-have_asio_lib=no
-
-if test "x${request_asio_lib}" = "xyes"; then
-  AX_BOOST_BASE([1.54.0], [have_boost_base=yes], [have_boost_base=no])
-
-  if test "x${have_boost_base}" = "xyes"; then
-    AX_BOOST_ASIO()
-    AX_BOOST_SYSTEM()
-    AX_BOOST_THREAD()
-
-    if test "x${ax_cv_boost_asio}" = "xyes" &&
-       test "x${ax_cv_boost_system}" = "xyes" &&
-       test "x${ax_cv_boost_thread}" = "xyes"; then
-      have_asio_lib=yes
-    fi
-  fi
-fi
-
 # The nghttp, nghttpd and nghttpx under src depend on zlib, OpenSSL,
 # libev, and libc-ares.
 enable_app=no
@@ -806,7 +755,7 @@ if test "x${request_http3}" != "xno" &&
    (test "x${have_ssl_is_quic}" = "xyes" ||
     test "x${have_boringssl_quic}" = "xyes") &&
    test "x${have_libngtcp2}" = "xyes" &&
-   (test "x${have_libngtcp2_crypto_openssl}" = "xyes" ||
+   (test "x${have_libngtcp2_crypto_quictls}" = "xyes" ||
     test "x${have_libngtcp2_crypto_boringssl}" = "xyes") &&
    test "x${have_libnghttp3}" = "xyes"; then
   enable_http3=yes
@@ -834,16 +783,6 @@ fi
 
 AM_CONDITIONAL([ENABLE_HPACK_TOOLS], [ test "x${enable_hpack_tools}" = "xyes" ])
 
-# C++ library libnghttp2_asio
-
-enable_asio_lib=no
-if test "x${request_asio_lib}" != "xno" &&
-   test "x${have_asio_lib}" = "xyes"; then
-  enable_asio_lib=yes
-fi
-
-AM_CONDITIONAL([ENABLE_ASIO_LIB], [ test "x${enable_asio_lib}" = "xyes" ])
-
 # The example programs depend on OpenSSL and libevent_openssl
 enable_examples=no
 if test "x${request_examples}" != "xno" &&
@@ -866,8 +805,7 @@ have_mruby=no
 have_neverbleed=no
 if test "x${enable_examples}" = "xyes" ||
    test "x${enable_app}" = "xyes" ||
-   test "x${enable_hpack_tools}" = "xyes" ||
-   test "x${enable_asio_lib}" = "xyes"; then
+   test "x${enable_hpack_tools}" = "xyes"; then
   enable_third_party=yes
 
   # mruby (for src/nghttpx)
@@ -892,27 +830,6 @@ AM_CONDITIONAL([ENABLE_THIRD_PARTY], [ test "x${enable_third_party}" = "xyes" ])
 AM_CONDITIONAL([HAVE_MRUBY], [test "x${have_mruby}" = "xyes"])
 AM_CONDITIONAL([HAVE_NEVERBLEED], [test "x${have_neverbleed}" = "xyes"])
 
-# Python bindings
-enable_python_bindings=no
-if test "x${request_python_bindings}" != "xno" &&
-   test "x${CYTHON}" != "x" &&
-   test "x${PYTHON}" != "x:" &&
-   test "x${PYTHON_VERSION}" != "x"; then
-  enable_python_bindings=yes
-fi
-
-if test "x${request_python_bindings}" = "xyes" &&
-   test "x${enable_python_bindings}" != "xyes"; then
-  AC_MSG_ERROR([python bindings were requested (--enable-python-bindings) but dependencies are not met.])
-fi
-
-AM_CONDITIONAL([ENABLE_PYTHON_BINDINGS],
-               [test "x${enable_python_bindings}" = "xyes"])
-
-# Produce cython conditional, so that we can distribute generated C
-# source
-AM_CONDITIONAL([HAVE_CYTHON], [test "x${CYTHON}" != "x"])
-
 # failmalloc tests
 enable_failmalloc=no
 if test "x${request_failmalloc}" = "xyes"; then
@@ -930,6 +847,7 @@ AC_CHECK_HEADERS([ \
   limits.h \
   netdb.h \
   netinet/in.h \
+  netinet/ip.h \
   pwd.h \
   stddef.h \
   stdint.h \
@@ -937,6 +855,7 @@ AC_CHECK_HEADERS([ \
   string.h \
   sys/socket.h \
   sys/time.h \
+  sysinfoapi.h \
   syslog.h \
   time.h \
   unistd.h \
@@ -1011,6 +930,7 @@ AC_FUNC_STRNLEN
 AC_CHECK_FUNCS([ \
   _Exit \
   accept4 \
+  clock_gettime \
   dup2 \
   getcwd \
   getpwnam \
@@ -1035,6 +955,25 @@ AC_CHECK_FUNCS([ \
 
 AC_CHECK_FUNC([timerfd_create],
               [have_timerfd_create=yes], [have_timerfd_create=no])
+
+AC_MSG_CHECKING([checking for GetTickCount64])
+AC_LINK_IFELSE([AC_LANG_PROGRAM(
+[[
+#include <sysinfoapi.h>
+]],
+[[
+GetTickCount64();
+]])],
+[have_gettickcount64=yes],
+[have_gettickcount64=no])
+
+if test "x${have_gettickcount64}" = "xyes"; then
+  AC_MSG_RESULT([yes])
+  AC_DEFINE([HAVE_GETTICKCOUNT64], [1],
+            [Define to 1 if you have `GetTickCount64` function.])
+else
+  AC_MSG_RESULT([no])
+fi
 
 # For cygwin: we can link initgroups, so AC_CHECK_FUNCS succeeds, but
 # cygwin disables initgroups due to feature test macro magic with our
@@ -1159,12 +1098,9 @@ AC_CONFIG_FILES([
   tests/testdata/Makefile
   third-party/Makefile
   src/Makefile
-  src/includes/Makefile
-  src/libnghttp2_asio.pc
+  src/testdata/Makefile
   bpf/Makefile
   examples/Makefile
-  python/Makefile
-  python/setup.py
   integration-tests/Makefile
   integration-tests/config.go
   integration-tests/setenv
@@ -1177,14 +1113,9 @@ AC_CONFIG_FILES([
   doc/tutorial-hpack.rst
   doc/nghttpx-howto.rst
   doc/h2load-howto.rst
-  doc/libnghttp2_asio.rst
-  doc/python-apiref.rst
   doc/building-android-binary.rst
   doc/nghttp2.h.rst
   doc/nghttp2ver.h.rst
-  doc/asio_http2.h.rst
-  doc/asio_http2_server.h.rst
-  doc/asio_http2_client.h.rst
   doc/contribute.rst
   contrib/Makefile
   script/Makefile
@@ -1226,10 +1157,6 @@ AC_MSG_NOTICE([summary of build options:
     Python:
       Python:         ${PYTHON}
       PYTHON_VERSION: ${PYTHON_VERSION}
-      pyexecdir:      ${pyexecdir}
-      PYTHON_CPPFLAGS:${PYTHON_CPPFLAGS}
-      PYTHON_LIBS:    ${PYTHON_LIBS}
-      Cython:         ${CYTHON}
     Test:
       CUnit:          ${have_cunit} (CFLAGS='${CUNIT_CFLAGS}' LIBS='${CUNIT_LIBS}')
       Failmalloc:     ${enable_failmalloc}
@@ -1239,7 +1166,7 @@ AC_MSG_NOTICE([summary of build options:
       Libev:          ${have_libev} (CFLAGS='${LIBEV_CFLAGS}' LIBS='${LIBEV_LIBS}')
       Libc-ares:      ${have_libcares} (CFLAGS='${LIBCARES_CFLAGS}' LIBS='${LIBCARES_LIBS}')
       libngtcp2:      ${have_libngtcp2} (CFLAGS='${LIBNGTCP2_CFLAGS}' LIBS='${LIBNGTCP2_LIBS}')
-      libngtcp2_crypto_openssl: ${have_libngtcp2_crypto_openssl} (CFLAGS='${LIBNGTCP2_CRYPTO_OPENSSL_CFLAGS}' LIBS='${LIBNGTCP2_CRYPTO_OPENSSL_LIBS}')
+      libngtcp2_crypto_quictls: ${have_libngtcp2_crypto_quictls} (CFLAGS='${LIBNGTCP2_CRYPTO_QUICTLS_CFLAGS}' LIBS='${LIBNGTCP2_CRYPTO_QUICTLS_LIBS}')
       libngtcp2_crypto_boringssl: ${have_libngtcp2_crypto_boringssl} (CFLAGS='${LIBNGTCP2_CRYPTO_BORINGSSL_CFLAGS}' LIBS='${LIBNGTCP2_CRYPTO_BORINGSSL_LIBS}')
       libnghttp3:     ${have_libnghttp3} (CFLAGS='${LIBNGHTTP3_CFLAGS}' LIBS='${LIBNGHTTP3_LIBS}')
       libbpf:         ${have_libbpf} (CFLAGS='${LIBBPF_CFLAGS}' LIBS='${LIBBPF_LIBS}')
@@ -1248,11 +1175,6 @@ AC_MSG_NOTICE([summary of build options:
       Jemalloc:       ${have_jemalloc} (CFLAGS='${JEMALLOC_CFLAGS}' LIBS='${JEMALLOC_LIBS}')
       Zlib:           ${have_zlib} (CFLAGS='${ZLIB_CFLAGS}' LIBS='${ZLIB_LIBS}')
       Systemd:        ${have_libsystemd} (CFLAGS='${SYSTEMD_CFLAGS}' LIBS='${SYSTEMD_LIBS}')
-      Boost CPPFLAGS: ${BOOST_CPPFLAGS}
-      Boost LDFLAGS:  ${BOOST_LDFLAGS}
-      Boost::ASIO:    ${BOOST_ASIO_LIB}
-      Boost::System:  ${BOOST_SYSTEM_LIB}
-      Boost::Thread:  ${BOOST_THREAD_LIB}
     Third-party:
       http-parser:    ${enable_third_party}
       MRuby:          ${have_mruby} (CFLAGS='${LIBMRUBY_CFLAGS}' LIBS='${LIBMRUBY_LIBS}')
@@ -1260,9 +1182,7 @@ AC_MSG_NOTICE([summary of build options:
     Features:
       Applications:   ${enable_app}
       HPACK tools:    ${enable_hpack_tools}
-      Libnghttp2_asio:${enable_asio_lib}
       Examples:       ${enable_examples}
-      Python bindings:${enable_python_bindings}
       Threading:      ${enable_threads}
       HTTP/3 (EXPERIMENTAL): ${enable_http3}
 ])

@@ -20,7 +20,7 @@
 # LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-SUBDIRS = includes
+SUBDIRS = testdata
 
 EXTRA_DIST = \
 	CMakeLists.txt \
@@ -39,14 +39,13 @@ AM_CPPFLAGS = \
 	-I$(top_srcdir)/lib/includes \
 	-I$(top_builddir)/lib/includes \
 	-I$(top_srcdir)/lib \
-	-I$(top_srcdir)/src/includes \
 	-I$(top_srcdir)/third-party \
 	-I$(top_srcdir)/third-party/llhttp/include \
 	@JEMALLOC_CFLAGS@ \
 	@LIBXML2_CFLAGS@ \
 	@LIBEV_CFLAGS@ \
 	@LIBNGHTTP3_CFLAGS@ \
-	@LIBNGTCP2_CRYPTO_OPENSSL_CFLAGS@ \
+	@LIBNGTCP2_CRYPTO_QUICTLS_CFLAGS@ \
 	@LIBNGTCP2_CRYPTO_BORINGSSL_CFLAGS@ \
 	@LIBNGTCP2_CFLAGS@ \
 	@OPENSSL_CFLAGS@ \
@@ -65,7 +64,7 @@ LDADD = $(top_builddir)/lib/libnghttp2.la \
 	@LIBXML2_LIBS@ \
 	@LIBEV_LIBS@ \
 	@LIBNGHTTP3_LIBS@ \
-	@LIBNGTCP2_CRYPTO_OPENSSL_LIBS@ \
+	@LIBNGTCP2_CRYPTO_QUICTLS_LIBS@ \
 	@LIBNGTCP2_CRYPTO_BORINGSSL_LIBS@ \
 	@LIBNGTCP2_LIBS@ \
 	@OPENSSL_LIBS@ \
@@ -95,10 +94,10 @@ endif # HAVE_LIBXML2
 
 nghttp_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} nghttp.cc nghttp.h \
 	${HTML_PARSER_OBJECTS} ${HTML_PARSER_HFILES} \
-	tls.cc tls.h
+	tls.cc tls.h ssl_compat.h
 
 nghttpd_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} nghttpd.cc \
-	tls.cc tls.h \
+	tls.cc tls.h ssl_compat.h \
 	HttpServer.cc HttpServer.h
 
 bin_PROGRAMS += h2load
@@ -106,7 +105,7 @@ bin_PROGRAMS += h2load
 h2load_SOURCES = util.cc util.h \
 	http2.cc http2.h h2load.cc h2load.h \
 	timegm.c timegm.h \
-	tls.cc tls.h \
+	tls.cc tls.h ssl_compat.h \
 	h2load_session.h \
 	h2load_http2_session.cc h2load_http2_session.h \
 	h2load_http1_session.cc h2load_http1_session.h
@@ -121,7 +120,7 @@ endif # ENABLE_HTTP3
 NGHTTPX_SRCS = \
 	util.cc util.h http2.cc http2.h timegm.c timegm.h base64.h \
 	app_helper.cc app_helper.h \
-	tls.cc tls.h \
+	tls.cc tls.h ssl_compat.h \
 	shrpx_config.cc shrpx_config.h \
 	shrpx_error.h \
 	shrpx_accept_handler.cc shrpx_accept_handler.h \
@@ -256,56 +255,3 @@ inflatehd_SOURCES = inflatehd.cc $(HPACK_TOOLS_COMMON_SRCS)
 deflatehd_SOURCES = deflatehd.cc $(HPACK_TOOLS_COMMON_SRCS)
 
 endif # ENABLE_HPACK_TOOLS
-
-if ENABLE_ASIO_LIB
-
-pkgconfigdir = $(libdir)/pkgconfig
-pkgconfig_DATA = libnghttp2_asio.pc
-DISTCLEANFILES = $(pkgconfig_DATA)
-
-lib_LTLIBRARIES = libnghttp2_asio.la
-
-libnghttp2_asio_la_SOURCES = \
-	util.cc util.h http2.cc http2.h \
-	tls.cc tls.h \
-	ssl_compat.h \
-	timegm.c timegm.h \
-	asio_common.cc asio_common.h \
-	asio_io_service_pool.cc asio_io_service_pool.h \
-	asio_server_http2.cc \
-	asio_server_http2_impl.cc asio_server_http2_impl.h \
-	asio_server.cc asio_server.h \
-	asio_server_http2_handler.cc asio_server_http2_handler.h \
-	asio_server_connection.h \
-	asio_server_request.cc \
-	asio_server_request_impl.cc asio_server_request_impl.h \
-	asio_server_response.cc \
-	asio_server_response_impl.cc asio_server_response_impl.h \
-	asio_server_stream.cc asio_server_stream.h \
-	asio_server_serve_mux.cc asio_server_serve_mux.h \
-	asio_server_request_handler.cc asio_server_request_handler.h \
-	asio_server_tls_context.cc asio_server_tls_context.h \
-	asio_client_session.cc \
-	asio_client_session_impl.cc asio_client_session_impl.h \
-	asio_client_session_tcp_impl.cc asio_client_session_tcp_impl.h \
-	asio_client_session_tls_impl.cc asio_client_session_tls_impl.h \
-	asio_client_response.cc \
-	asio_client_response_impl.cc asio_client_response_impl.h \
-	asio_client_request.cc \
-	asio_client_request_impl.cc asio_client_request_impl.h \
-	asio_client_stream.cc asio_client_stream.h \
-	asio_client_tls_context.cc asio_client_tls_context.h
-
-libnghttp2_asio_la_CPPFLAGS = ${AM_CPPFLAGS} ${BOOST_CPPFLAGS}
-libnghttp2_asio_la_LDFLAGS = $(AM_LDFLAGS) -no-undefined -version-info 1:0:0
-libnghttp2_asio_la_LIBADD = \
-	$(top_builddir)/lib/libnghttp2.la \
-	$(top_builddir)/third-party/liburl-parser.la \
-	$(top_builddir)/third-party/libllhttp.la \
-	@OPENSSL_LIBS@ \
-	${BOOST_LDFLAGS} \
-	${BOOST_ASIO_LIB} \
-	${BOOST_THREAD_LIB} \
-	${BOOST_SYSTEM_LIB}
-
-endif # ENABLE_ASIO_LIB

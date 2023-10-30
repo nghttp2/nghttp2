@@ -73,7 +73,7 @@ struct Worker;
 struct Config {
   std::vector<std::vector<nghttp2_nv>> nva;
   std::vector<std::string> h1reqs;
-  std::vector<ev_tstamp> timings;
+  std::vector<std::chrono::steady_clock::duration> timings;
   nghttp2::Headers custom_headers;
   std::string scheme;
   std::string host;
@@ -342,7 +342,7 @@ struct Client {
     ngtcp2_crypto_conn_ref conn_ref;
     ev_timer pkt_timer;
     ngtcp2_conn *conn;
-    ngtcp2_connection_close_error last_error;
+    ngtcp2_ccerr last_error;
     bool close_requested;
     FILE *qlog_file;
 
@@ -396,7 +396,7 @@ struct Client {
   ev_timer rps_watcher;
   // The timestamp that starts the period which contributes to the
   // next request generation.
-  ev_tstamp rps_duration_started;
+  std::chrono::steady_clock::time_point rps_duration_started;
   // The number of requests allowed by rps, but limited by stream
   // concurrency.
   size_t rps_req_pending;
@@ -494,8 +494,9 @@ struct Client {
   int quic_stream_reset(int64_t stream_id, uint64_t app_error_code);
   int quic_stream_stop_sending(int64_t stream_id, uint64_t app_error_code);
   int quic_extend_max_local_streams();
+  int quic_extend_max_stream_data(int64_t stream_id);
 
-  int quic_write_client_handshake(ngtcp2_crypto_level level,
+  int quic_write_client_handshake(ngtcp2_encryption_level level,
                                   const uint8_t *data, size_t datalen);
   int quic_pkt_timeout();
   void quic_restart_pkt_timer();

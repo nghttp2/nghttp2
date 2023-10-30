@@ -58,7 +58,7 @@ struct TLSSessionCache {
   // i2d_SSL_SESSION(3SSL).
   std::vector<uint8_t> session_data;
   // The last time stamp when this cache entry is created or updated.
-  ev_tstamp last_updated;
+  std::chrono::steady_clock::time_point last_updated;
 };
 
 // This struct stores the additional information per SSL_CTX.  This is
@@ -121,6 +121,16 @@ int check_cert(SSL *ssl, const Address *addr, const StringRef &host);
 // |addr| and numeric address in |raddr|.  Note that |raddr| might not
 // point to &addr->addr.
 int check_cert(SSL *ssl, const DownstreamAddr *addr, const Address *raddr);
+
+// Verify |cert| using numeric IP address.  |hostname| and |addr|
+// should contain the same numeric IP address.  This function returns
+// 0 if it succeeds, or -1.
+int verify_numeric_hostname(X509 *cert, const StringRef &hostname,
+                            const Address *addr);
+
+// Verify |cert| using DNS name hostname.  This function returns 0 if
+// it succeeds, or -1.
+int verify_dns_hostname(X509 *cert, const StringRef &hostname);
 
 struct WildcardRevPrefix {
   WildcardRevPrefix(const StringRef &prefix, size_t idx)
@@ -273,7 +283,7 @@ bool tls_hostname_match(const StringRef &pattern, const StringRef &hostname);
 // Depending on the existing cache's time stamp, |session| might not
 // be cached.
 void try_cache_tls_session(TLSSessionCache *cache, SSL_SESSION *session,
-                           ev_tstamp t);
+                           const std::chrono::steady_clock::time_point &t);
 
 // Returns cached session associated |addr|.  If no cache entry is
 // found associated to |addr|, nullptr will be returned.

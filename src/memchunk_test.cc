@@ -151,9 +151,9 @@ void test_memchunks_riovec(void) {
   MemchunkPool16 pool;
   Memchunks16 chunks(&pool);
 
-  char buf[3 * 16];
+  std::array<char, 3 * 16> buf{};
 
-  chunks.append(buf, sizeof(buf));
+  chunks.append(buf.data(), buf.size());
 
   std::array<struct iovec, 2> iov;
   auto iovcnt = chunks.riovec(iov.data(), iov.size());
@@ -184,8 +184,8 @@ void test_memchunks_recycle(void) {
   MemchunkPool16 pool;
   {
     Memchunks16 chunks(&pool);
-    char buf[32];
-    chunks.append(buf, sizeof(buf));
+    std::array<char, 32> buf{};
+    chunks.append(buf.data(), buf.size());
   }
   CU_ASSERT(32 == pool.poolsize);
   CU_ASSERT(nullptr != pool.freelist);

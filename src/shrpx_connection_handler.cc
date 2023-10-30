@@ -543,9 +543,7 @@ int ConnectionHandler::handle_connection(int fd, sockaddr *addr, int addrlen,
   return 0;
 }
 
-struct ev_loop *ConnectionHandler::get_loop() const {
-  return loop_;
-}
+struct ev_loop *ConnectionHandler::get_loop() const { return loop_; }
 
 Worker *ConnectionHandler::get_single_worker() const {
   return single_worker_.get();

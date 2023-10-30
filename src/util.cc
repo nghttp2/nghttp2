@@ -41,9 +41,12 @@
 #ifdef HAVE_NETINET_IN_H
 #  include <netinet/in.h>
 #endif // HAVE_NETINET_IN_H
+#ifdef HAVE_NETINET_IP_H
+#  include <netinet/ip.h>
+#endif // HAVE_NETINET_IP_H
+#include <netinet/udp.h>
 #ifdef _WIN32
 #  include <ws2tcpip.h>
-#  include <boost/date_time/posix_time/posix_time.hpp>
 #else // !_WIN32
 #  include <netinet/tcp.h>
 #endif // !_WIN32
@@ -58,6 +61,7 @@
 #include <cstring>
 #include <iostream>
 #include <fstream>
+#include <iomanip>
 
 #include <openssl/evp.h>
 
@@ -101,17 +105,34 @@ int nghttp2_inet_pton(int af, const char *src, void *dst) {
 const char UPPER_XDIGITS[] = "0123456789ABCDEF";
 
 bool in_rfc3986_unreserved_chars(const char c) {
-  static constexpr char unreserved[] = {'-', '.', '_', '~'};
-  return is_alpha(c) || is_digit(c) ||
-         std::find(std::begin(unreserved), std::end(unreserved), c) !=
-             std::end(unreserved);
+  switch (c) {
+  case '-':
+  case '.':
+  case '_':
+  case '~':
+    return true;
+  }
+
+  return is_alpha(c) || is_digit(c);
 }
 
 bool in_rfc3986_sub_delims(const char c) {
-  static constexpr char sub_delims[] = {'!', '$', '&', '\'', '(', ')',
-                                        '*', '+', ',', ';',  '='};
-  return std::find(std::begin(sub_delims), std::end(sub_delims), c) !=
-         std::end(sub_delims);
+  switch (c) {
+  case '!':
+  case '$':
+  case '&':
+  case '\'':
+  case '(':
+  case ')':
+  case '*':
+  case '+':
+  case ',':
+  case ';':
+  case '=':
+    return true;
+  }
+
+  return false;
 }
 
 std::string percent_encode(const unsigned char *target, size_t len) {
@@ -135,33 +156,38 @@ std::string percent_encode(const std::string &target) {
                         target.size());
 }
 
-std::string percent_encode_path(const std::string &s) {
-  std::string dest;
-  for (auto c : s) {
-    if (in_rfc3986_unreserved_chars(c) || in_rfc3986_sub_delims(c) ||
-        c == '/') {
-      dest += c;
-      continue;
-    }
-
-    dest += '%';
-    dest += UPPER_XDIGITS[(c >> 4) & 0x0f];
-    dest += UPPER_XDIGITS[(c & 0x0f)];
-  }
-  return dest;
-}
-
 bool in_token(char c) {
-  static constexpr char extra[] = {'!', '#', '$', '%', '&', '\'', '*', '+',
-                                   '-', '.', '^', '_', '`', '|',  '~'};
-  return is_alpha(c) || is_digit(c) ||
-         std::find(std::begin(extra), std::end(extra), c) != std::end(extra);
+  switch (c) {
+  case '!':
+  case '#':
+  case '$':
+  case '%':
+  case '&':
+  case '\'':
+  case '*':
+  case '+':
+  case '-':
+  case '.':
+  case '^':
+  case '_':
+  case '`':
+  case '|':
+  case '~':
+    return true;
+  }
+
+  return is_alpha(c) || is_digit(c);
 }
 
 bool in_attr_char(char c) {
-  static constexpr char bad[] = {'*', '\'', '%'};
-  return util::in_token(c) &&
-         std::find(std::begin(bad), std::end(bad), c) == std::end(bad);
+  switch (c) {
+  case '*':
+  case '\'':
+  case '%':
+    return false;
+  }
+
+  return util::in_token(c);
 }
 
 StringRef percent_encode_token(BlockAllocator &balloc,
@@ -437,34 +463,22 @@ char *iso8601_basic_date(char *res, int64_t ms) {
   return p;
 }
 
-#ifdef _WIN32
-namespace bt = boost::posix_time;
-// one-time definition of the locale that is used to parse UTC strings
-// (note that the time_input_facet is ref-counted and deleted automatically)
-static const std::locale
-    ptime_locale(std::locale::classic(),
-                 new bt::time_input_facet("%a, %d %b %Y %H:%M:%S GMT"));
-#endif //_WIN32
-
 time_t parse_http_date(const StringRef &s) {
-#ifdef _WIN32
-  // there is no strptime - use boost
-  std::stringstream sstr(s.str());
-  sstr.imbue(ptime_locale);
-  bt::ptime ltime;
-  sstr >> ltime;
-  if (!sstr)
-    return 0;
-
-  return boost::posix_time::to_time_t(ltime);
-#else  // !_WIN32
   tm tm{};
+#ifdef _WIN32
+  // there is no strptime - use std::get_time
+  std::stringstream sstr(s.str());
+  sstr >> std::get_time(&tm, "%a, %d %b %Y %H:%M:%S GMT");
+  if (sstr.fail()) {
+    return 0;
+  }
+#else  // !_WIN32
   char *r = strptime(s.c_str(), "%a, %d %b %Y %H:%M:%S GMT", &tm);
   if (r == 0) {
     return 0;
   }
-  return nghttp2_timegm_without_yday(&tm);
 #endif // !_WIN32
+  return nghttp2_timegm_without_yday(&tm);
 }
 
 time_t parse_openssl_asn1_time_print(const StringRef &s) {
@@ -1707,11 +1721,12 @@ int msghdr_get_local_addr(Address &dest, msghdr *msg, int family) {
   case AF_INET:
     for (auto cmsg = CMSG_FIRSTHDR(msg); cmsg; cmsg = CMSG_NXTHDR(msg, cmsg)) {
       if (cmsg->cmsg_level == IPPROTO_IP && cmsg->cmsg_type == IP_PKTINFO) {
-        auto pktinfo = reinterpret_cast<in_pktinfo *>(CMSG_DATA(cmsg));
+        in_pktinfo pktinfo;
+        memcpy(&pktinfo, CMSG_DATA(cmsg), sizeof(pktinfo));
         dest.len = sizeof(dest.su.in);
         auto &sa = dest.su.in;
         sa.sin_family = AF_INET;
-        sa.sin_addr = pktinfo->ipi_addr;
+        sa.sin_addr = pktinfo.ipi_addr;
 
         return 0;
       }
@@ -1721,11 +1736,12 @@ int msghdr_get_local_addr(Address &dest, msghdr *msg, int family) {
   case AF_INET6:
     for (auto cmsg = CMSG_FIRSTHDR(msg); cmsg; cmsg = CMSG_NXTHDR(msg, cmsg)) {
       if (cmsg->cmsg_level == IPPROTO_IPV6 && cmsg->cmsg_type == IPV6_PKTINFO) {
-        auto pktinfo = reinterpret_cast<in6_pktinfo *>(CMSG_DATA(cmsg));
+        in6_pktinfo pktinfo;
+        memcpy(&pktinfo, CMSG_DATA(cmsg), sizeof(pktinfo));
         dest.len = sizeof(dest.su.in6);
         auto &sa = dest.su.in6;
         sa.sin6_family = AF_INET6;
-        sa.sin6_addr = pktinfo->ipi6_addr;
+        sa.sin6_addr = pktinfo.ipi6_addr;
         return 0;
       }
     }
@@ -1736,13 +1752,18 @@ int msghdr_get_local_addr(Address &dest, msghdr *msg, int family) {
   return -1;
 }
 
-unsigned int msghdr_get_ecn(msghdr *msg, int family) {
+uint8_t msghdr_get_ecn(msghdr *msg, int family) {
   switch (family) {
   case AF_INET:
     for (auto cmsg = CMSG_FIRSTHDR(msg); cmsg; cmsg = CMSG_NXTHDR(msg, cmsg)) {
-      if (cmsg->cmsg_level == IPPROTO_IP && cmsg->cmsg_type == IP_TOS &&
-          cmsg->cmsg_len) {
-        return *reinterpret_cast<uint8_t *>(CMSG_DATA(cmsg));
+      if (cmsg->cmsg_level == IPPROTO_IP &&
+#  ifdef __APPLE__
+          cmsg->cmsg_type == IP_RECVTOS
+#  else  // !__APPLE__
+          cmsg->cmsg_type == IP_TOS
+#  endif // !__APPLE__
+          && cmsg->cmsg_len) {
+        return *reinterpret_cast<uint8_t *>(CMSG_DATA(cmsg)) & IPTOS_ECN_MASK;
       }
     }
 
@@ -1751,7 +1772,11 @@ unsigned int msghdr_get_ecn(msghdr *msg, int family) {
     for (auto cmsg = CMSG_FIRSTHDR(msg); cmsg; cmsg = CMSG_NXTHDR(msg, cmsg)) {
       if (cmsg->cmsg_level == IPPROTO_IPV6 && cmsg->cmsg_type == IPV6_TCLASS &&
           cmsg->cmsg_len) {
-        return *reinterpret_cast<uint8_t *>(CMSG_DATA(cmsg));
+        unsigned int tos;
+
+        memcpy(&tos, CMSG_DATA(cmsg), sizeof(tos));
+
+        return tos & IPTOS_ECN_MASK;
       }
     }
 
@@ -1761,25 +1786,20 @@ unsigned int msghdr_get_ecn(msghdr *msg, int family) {
   return 0;
 }
 
-int fd_set_send_ecn(int fd, int family, unsigned int ecn) {
-  switch (family) {
-  case AF_INET:
-    if (setsockopt(fd, IPPROTO_IP, IP_TOS, &ecn,
-                   static_cast<socklen_t>(sizeof(ecn))) == -1) {
-      return -1;
-    }
+size_t msghdr_get_udp_gro(msghdr *msg) {
+  uint16_t gso_size = 0;
 
-    return 0;
-  case AF_INET6:
-    if (setsockopt(fd, IPPROTO_IPV6, IPV6_TCLASS, &ecn,
-                   static_cast<socklen_t>(sizeof(ecn))) == -1) {
-      return -1;
-    }
+#  ifdef UDP_GRO
+  for (auto cmsg = CMSG_FIRSTHDR(msg); cmsg; cmsg = CMSG_NXTHDR(msg, cmsg)) {
+    if (cmsg->cmsg_level == SOL_UDP && cmsg->cmsg_type == UDP_GRO) {
+      memcpy(&gso_size, CMSG_DATA(cmsg), sizeof(gso_size));
 
-    return 0;
+      break;
+    }
   }
+#  endif // UDP_GRO
 
-  return -1;
+  return gso_size;
 }
 #endif // ENABLE_HTTP3
 

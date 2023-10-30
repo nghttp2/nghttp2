@@ -587,9 +587,7 @@ ClientHandler::~ClientHandler() {
 
 Upstream *ClientHandler::get_upstream() { return upstream_.get(); }
 
-struct ev_loop *ClientHandler::get_loop() const {
-  return conn_.loop;
-}
+struct ev_loop *ClientHandler::get_loop() const { return conn_.loop; }
 
 void ClientHandler::reset_upstream_read_timeout(ev_tstamp t) {
   conn_.rt.repeat = t;
@@ -811,8 +809,7 @@ uint32_t ClientHandler::get_affinity_cookie(Downstream *downstream,
     return h;
   }
 
-  auto d = std::uniform_int_distribution<uint32_t>(
-      1, std::numeric_limits<uint32_t>::max());
+  auto d = std::uniform_int_distribution<uint32_t>(1);
   auto rh = d(worker_->get_randgen());
   h = util::hash32(StringRef{reinterpret_cast<uint8_t *>(&rh),
                              reinterpret_cast<uint8_t *>(&rh) + sizeof(rh)});
@@ -973,8 +970,7 @@ DownstreamAddr *ClientHandler::get_downstream_addr_strict_affinity(
       }
     }
   } else {
-    auto d = std::uniform_int_distribution<uint32_t>(
-        1, std::numeric_limits<uint32_t>::max());
+    auto d = std::uniform_int_distribution<uint32_t>(1);
     auto rh = d(worker_->get_randgen());
     h = util::hash32(StringRef{reinterpret_cast<uint8_t *>(&rh),
                                reinterpret_cast<uint8_t *>(&rh) + sizeof(rh)});

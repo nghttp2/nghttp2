@@ -42,6 +42,7 @@
 #include "nghttp2_buf_test.h"
 #include "nghttp2_http_test.h"
 #include "nghttp2_extpri_test.h"
+#include "nghttp2_ratelim_test.h"
 
 extern int nghttp2_enable_strict_preface;
 
@@ -343,6 +344,8 @@ int main(void) {
                    test_nghttp2_session_no_rfc7540_priorities) ||
       !CU_add_test(pSuite, "session_server_fallback_rfc7540_priorities",
                    test_nghttp2_session_server_fallback_rfc7540_priorities) ||
+      !CU_add_test(pSuite, "session_stream_reset_ratelim",
+                   test_nghttp2_session_stream_reset_ratelim) ||
       !CU_add_test(pSuite, "http_mandatory_headers",
                    test_nghttp2_http_mandatory_headers) ||
       !CU_add_test(pSuite, "http_content_length",
@@ -449,10 +452,9 @@ int main(void) {
       !CU_add_test(pSuite, "bufs_realloc", test_nghttp2_bufs_realloc) ||
       !CU_add_test(pSuite, "http_parse_priority",
                    test_nghttp2_http_parse_priority) ||
-      !CU_add_test(pSuite, "sf_parse_item", test_nghttp2_sf_parse_item) ||
-      !CU_add_test(pSuite, "sf_parse_inner_list",
-                   test_nghttp2_sf_parse_inner_list) ||
-      !CU_add_test(pSuite, "extpri_to_uint8", test_nghttp2_extpri_to_uint8)) {
+      !CU_add_test(pSuite, "extpri_to_uint8", test_nghttp2_extpri_to_uint8) ||
+      !CU_add_test(pSuite, "ratelim_update", test_nghttp2_ratelim_update) ||
+      !CU_add_test(pSuite, "ratelim_drain", test_nghttp2_ratelim_drain)) {
     CU_cleanup_registry();
     return (int)CU_get_error();
   }

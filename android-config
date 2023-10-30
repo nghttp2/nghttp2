@@ -23,25 +23,15 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-if [ -z "$ANDROID_HOME" ]; then
-    echo 'No $ANDROID_HOME specified.'
-    exit 1
-fi
-PREFIX="$ANDROID_HOME"/usr/local
-TOOLCHAIN="$ANDROID_HOME"/toolchain
-PATH="$TOOLCHAIN"/bin:"$PATH"
+. ./android-env
 
 ./configure \
     --disable-shared \
-    --host=arm-linux-androideabi \
+    --host=$TARGET \
     --build=`dpkg-architecture -qDEB_BUILD_GNU_TYPE` \
-    --with-xml-prefix="$PREFIX" \
     --without-libxml2 \
-    --disable-python-bindings \
     --disable-examples \
     --disable-threads \
-    CC="$TOOLCHAIN"/bin/arm-linux-androideabi-clang \
-    CXX="$TOOLCHAIN"/bin/arm-linux-androideabi-clang++ \
     CPPFLAGS="-fPIE -I$PREFIX/include" \
     PKG_CONFIG_LIBDIR="$PREFIX/lib/pkgconfig" \
     LDFLAGS="-fPIE -pie -L$PREFIX/lib"

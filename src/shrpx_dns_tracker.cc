@@ -36,7 +36,8 @@ void gccb(struct ev_loop *loop, ev_timer *w, int revents) {
 }
 } // namespace
 
-DNSTracker::DNSTracker(struct ev_loop *loop) : loop_(loop) {
+DNSTracker::DNSTracker(struct ev_loop *loop, int family)
+    : loop_(loop), family_(family) {
   ev_timer_init(&gc_timer_, gccb, 0., 12_h);
   gc_timer_.data = this;
 }
@@ -70,7 +71,8 @@ ResolverEntry DNSTracker::make_entry(std::unique_ptr<DualDNSResolver> resolv,
   switch (status) {
   case DNSResolverStatus::ERROR:
   case DNSResolverStatus::OK:
-    ent.expiry = ev_now(loop_) + dnsconf.timeout.cache;
+    ent.expiry = std::chrono::steady_clock::now() +
+                 util::duration_from(dnsconf.timeout.cache);
     break;
   default:
     break;
@@ -91,7 +93,8 @@ void DNSTracker::update_entry(ResolverEntry &ent,
   switch (status) {
   case DNSResolverStatus::ERROR:
   case DNSResolverStatus::OK:
-    ent.expiry = ev_now(loop_) + dnsconf.timeout.cache;
+    ent.expiry = std::chrono::steady_clock::now() +
+                 util::duration_from(dnsconf.timeout.cache);
     break;
   default:
     break;
@@ -111,7 +114,7 @@ DNSResolverStatus DNSTracker::resolve(Address *result, DNSQuery *dnsq) {
       LOG(INFO) << "DNS entry not found for " << dnsq->host;
     }
 
-    auto resolv = std::make_unique<DualDNSResolver>(loop_);
+    auto resolv = std::make_unique<DualDNSResolver>(loop_, family_);
     auto host_copy =
         ImmutableString{std::begin(dnsq->host), std::end(dnsq->host)};
     auto host = StringRef{host_copy};
@@ -174,13 +177,14 @@ DNSResolverStatus DNSTracker::resolve(Address *result, DNSQuery *dnsq) {
 
   auto &ent = (*it).second;
 
-  if (ent.status != DNSResolverStatus::RUNNING && ent.expiry < ev_now(loop_)) {
+  if (ent.status != DNSResolverStatus::RUNNING &&
+      ent.expiry < std::chrono::steady_clock::now()) {
     if (LOG_ENABLED(INFO)) {
       LOG(INFO) << "DNS entry found for " << dnsq->host
                 << ", but it has been expired";
     }
 
-    auto resolv = std::make_unique<DualDNSResolver>(loop_);
+    auto resolv = std::make_unique<DualDNSResolver>(loop_, family_);
     auto host = StringRef{ent.host};
 
     rv = resolv->resolve(host);
@@ -251,9 +255,8 @@ DNSResolverStatus DNSTracker::resolve(Address *result, DNSQuery *dnsq) {
 }
 
 void DNSTracker::add_to_qlist(ResolverEntry &ent, DNSQuery *dnsq) {
-  auto loop = loop_;
   ent.resolv->set_complete_cb(
-      [&ent, loop](DNSResolverStatus status, const Address *result) {
+      [&ent](DNSResolverStatus status, const Address *result) {
         auto &qlist = ent.qlist;
         while (!qlist.empty()) {
           auto head = qlist.head;
@@ -268,7 +271,8 @@ void DNSTracker::add_to_qlist(ResolverEntry &ent, DNSQuery *dnsq) {
 
         ent.resolv.reset();
         ent.status = status;
-        ent.expiry = ev_now(loop) + dnsconf.timeout.cache;
+        ent.expiry = std::chrono::steady_clock::now() +
+                     util::duration_from(dnsconf.timeout.cache);
         if (ent.status == DNSResolverStatus::OK) {
           ent.result = *result;
         }
@@ -305,7 +309,7 @@ void DNSTracker::gc() {
     LOG(INFO) << "Starting removing expired DNS cache entries";
   }
 
-  auto now = ev_now(loop_);
+  auto now = std::chrono::steady_clock::now();
   for (auto it = std::begin(ents_); it != std::end(ents_);) {
     auto &ent = (*it).second;
     if (ent.expiry >= now) {

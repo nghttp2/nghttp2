@@ -72,6 +72,8 @@
 #  define O_BINARY (0)
 #endif // O_BINARY
 
+using namespace std::chrono_literals;
+
 namespace nghttp2 {
 
 namespace {
@@ -194,7 +196,7 @@ void release_fd_cb(struct ev_loop *loop, ev_timer *w, int revents);
 } // namespace
 
 namespace {
-constexpr ev_tstamp FILE_ENTRY_MAX_AGE = 10.;
+constexpr auto FILE_ENTRY_MAX_AGE = 10s;
 } // namespace
 
 namespace {
@@ -202,13 +204,15 @@ constexpr size_t FILE_ENTRY_EVICT_THRES = 2048;
 } // namespace
 
 namespace {
-bool need_validation_file_entry(const FileEntry *ent, ev_tstamp now) {
+bool need_validation_file_entry(
+    const FileEntry *ent, const std::chrono::steady_clock::time_point &now) {
   return ent->last_valid + FILE_ENTRY_MAX_AGE < now;
 }
 } // namespace
 
 namespace {
-bool validate_file_entry(FileEntry *ent, ev_tstamp now) {
+bool validate_file_entry(FileEntry *ent,
+                         const std::chrono::steady_clock::time_point &now) {
   struct stat stbuf;
   int rv;
 
@@ -287,9 +291,7 @@ public:
     return ssl;
   }
   const Config *get_config() const { return config_; }
-  struct ev_loop *get_loop() const {
-    return loop_;
-  }
+  struct ev_loop *get_loop() const { return loop_; }
   int64_t get_next_session_id() {
     auto session_id = next_session_id_;
     if (next_session_id_ == std::numeric_limits<int64_t>::max()) {
@@ -335,7 +337,7 @@ public:
       return nullptr;
     }
 
-    auto now = ev_now(loop_);
+    auto now = std::chrono::steady_clock::now();
 
     for (auto it = range.first; it != range.second;) {
       auto &ent = (*it).second;
@@ -581,9 +583,7 @@ Http2Handler::~Http2Handler() {
 
 void Http2Handler::remove_self() { sessions_->remove_handler(this); }
 
-struct ev_loop *Http2Handler::get_loop() const {
-  return sessions_->get_loop();
-}
+struct ev_loop *Http2Handler::get_loop() const { return sessions_->get_loop(); }
 
 Http2Handler::WriteBuf *Http2Handler::get_wb() { return &wb_; }
 
@@ -750,37 +750,37 @@ int Http2Handler::read_tls() {
 
   ERR_clear_error();
 
-  for (;;) {
-    auto rv = SSL_read(ssl_, buf.data(), buf.size());
+  auto rv = SSL_read(ssl_, buf.data(), buf.size());
 
-    if (rv <= 0) {
-      auto err = SSL_get_error(ssl_, rv);
-      switch (err) {
-      case SSL_ERROR_WANT_READ:
-        return write_(*this);
-      case SSL_ERROR_WANT_WRITE:
-        // renegotiation started
-        return -1;
-      default:
-        return -1;
-      }
-    }
-
-    auto nread = rv;
-
-    if (get_config()->hexdump) {
-      util::hexdump(stdout, buf.data(), nread);
-    }
-
-    rv = nghttp2_session_mem_recv(session_, buf.data(), nread);
-    if (rv < 0) {
-      if (rv != NGHTTP2_ERR_BAD_CLIENT_MAGIC) {
-        std::cerr << "nghttp2_session_mem_recv() returned error: "
-                  << nghttp2_strerror(rv) << std::endl;
-      }
+  if (rv <= 0) {
+    auto err = SSL_get_error(ssl_, rv);
+    switch (err) {
+    case SSL_ERROR_WANT_READ:
+      return write_(*this);
+    case SSL_ERROR_WANT_WRITE:
+      // renegotiation started
+      return -1;
+    default:
       return -1;
     }
   }
+
+  auto nread = rv;
+
+  if (get_config()->hexdump) {
+    util::hexdump(stdout, buf.data(), nread);
+  }
+
+  rv = nghttp2_session_mem_recv(session_, buf.data(), nread);
+  if (rv < 0) {
+    if (rv != NGHTTP2_ERR_BAD_CLIENT_MAGIC) {
+      std::cerr << "nghttp2_session_mem_recv() returned error: "
+                << nghttp2_strerror(rv) << std::endl;
+    }
+    return -1;
+  }
+
+  return write_(*this);
 }
 
 int Http2Handler::write_tls() {
@@ -1197,7 +1197,7 @@ bool prepare_upload_temp_store(Stream *stream, Http2Handler *hd) {
   // now.  We will update it when we get whole request body.
   auto path = std::string("echo:") + tempfn;
   stream->file_ent =
-      sessions->cache_fd(path, FileEntry(path, 0, 0, fd, nullptr, 0, true));
+      sessions->cache_fd(path, FileEntry(path, 0, 0, fd, nullptr, {}, true));
   stream->echo_upload = true;
   return true;
 }
@@ -1368,7 +1368,7 @@ void prepare_response(Stream *stream, Http2Handler *hd,
 
     file_ent = sessions->cache_fd(
         file_path, FileEntry(file_path, buf.st_size, buf.st_mtime, file,
-                             content_type, ev_now(sessions->get_loop())));
+                             content_type, std::chrono::steady_clock::now()));
   }
 
   stream->file_ent = file_ent;
@@ -1891,7 +1891,7 @@ class ListenEventHandler {
 public:
   ListenEventHandler(Sessions *sessions, int fd,
                      std::shared_ptr<AcceptHandler> acceptor)
-      : acceptor_(acceptor), sessions_(sessions), fd_(fd) {
+      : acceptor_(std::move(acceptor)), sessions_(sessions), fd_(fd) {
     ev_io_init(&w_, acceptcb, fd, EV_READ);
     w_.data = this;
     ev_io_start(sessions_->get_loop(), &w_);
@@ -1969,7 +1969,7 @@ FileEntry make_status_body(int status, uint16_t port) {
     assert(0);
   }
 
-  return FileEntry(util::utos(status), nwrite, 0, fd, nullptr, 0);
+  return FileEntry(util::utos(status), nwrite, 0, fd, nullptr, {});
 }
 } // namespace
 

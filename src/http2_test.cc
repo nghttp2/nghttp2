@@ -873,6 +873,169 @@ void test_http2_path_join(void) {
     CU_ASSERT("/alpha/bravo?charlie" ==
               http2::path_join(base, baseq, rel, relq));
   }
+  // Test cases from RFC 3986, section 5.4.
+  constexpr auto base = StringRef::from_lit("/b/c/d;p");
+  constexpr auto baseq = StringRef::from_lit("q");
+  {
+    auto rel = StringRef::from_lit("g");
+    auto relq = StringRef{};
+    CU_ASSERT("/b/c/g" == http2::path_join(base, baseq, rel, relq));
+  }
+  {
+    auto rel = StringRef::from_lit("./g");
+    auto relq = StringRef{};
+    CU_ASSERT("/b/c/g" == http2::path_join(base, baseq, rel, relq));
+  }
+  {
+    auto rel = StringRef::from_lit("g/");
+    auto relq = StringRef{};
+    CU_ASSERT("/b/c/g/" == http2::path_join(base, baseq, rel, relq));
+  }
+  {
+    auto rel = StringRef::from_lit("/g");
+    auto relq = StringRef{};
+    CU_ASSERT("/g" == http2::path_join(base, baseq, rel, relq));
+  }
+  {
+    auto rel = StringRef{};
+    auto relq = StringRef::from_lit("y");
+    CU_ASSERT("/b/c/d;p?y" == http2::path_join(base, baseq, rel, relq));
+  }
+  {
+    auto rel = StringRef::from_lit("g");
+    auto relq = StringRef::from_lit("y");
+    CU_ASSERT("/b/c/g?y" == http2::path_join(base, baseq, rel, relq));
+  }
+  {
+    auto rel = StringRef::from_lit(";x");
+    auto relq = StringRef{};
+    CU_ASSERT("/b/c/;x" == http2::path_join(base, baseq, rel, relq));
+  }
+  {
+    auto rel = StringRef::from_lit("g;x");
+    auto relq = StringRef{};
+    CU_ASSERT("/b/c/g;x" == http2::path_join(base, baseq, rel, relq));
+  }
+  {
+    auto rel = StringRef::from_lit("g;x");
+    auto relq = StringRef::from_lit("y");
+    CU_ASSERT("/b/c/g;x?y" == http2::path_join(base, baseq, rel, relq));
+  }
+  {
+    auto rel = StringRef{};
+    auto relq = StringRef{};
+    CU_ASSERT("/b/c/d;p?q" == http2::path_join(base, baseq, rel, relq));
+  }
+  {
+    auto rel = StringRef::from_lit(".");
+    auto relq = StringRef{};
+    CU_ASSERT("/b/c/" == http2::path_join(base, baseq, rel, relq));
+  }
+  {
+    auto rel = StringRef::from_lit("./");
+    auto relq = StringRef{};
+    CU_ASSERT("/b/c/" == http2::path_join(base, baseq, rel, relq));
+  }
+  {
+    auto rel = StringRef::from_lit("..");
+    auto relq = StringRef{};
+    CU_ASSERT("/b/" == http2::path_join(base, baseq, rel, relq));
+  }
+  {
+    auto rel = StringRef::from_lit("../");
+    auto relq = StringRef{};
+    CU_ASSERT("/b/" == http2::path_join(base, baseq, rel, relq));
+  }
+  {
+    auto rel = StringRef::from_lit("../g");
+    auto relq = StringRef{};
+    CU_ASSERT("/b/g" == http2::path_join(base, baseq, rel, relq));
+  }
+  {
+    auto rel = StringRef::from_lit("../..");
+    auto relq = StringRef{};
+    CU_ASSERT("/" == http2::path_join(base, baseq, rel, relq));
+  }
+  {
+    auto rel = StringRef::from_lit("../../");
+    auto relq = StringRef{};
+    CU_ASSERT("/" == http2::path_join(base, baseq, rel, relq));
+  }
+  {
+    auto rel = StringRef::from_lit("../../g");
+    auto relq = StringRef{};
+    CU_ASSERT("/g" == http2::path_join(base, baseq, rel, relq));
+  }
+  {
+    auto rel = StringRef::from_lit("../../../g");
+    auto relq = StringRef{};
+    CU_ASSERT("/g" == http2::path_join(base, baseq, rel, relq));
+  }
+  {
+    auto rel = StringRef::from_lit("../../../../g");
+    auto relq = StringRef{};
+    CU_ASSERT("/g" == http2::path_join(base, baseq, rel, relq));
+  }
+  {
+    auto rel = StringRef::from_lit("/./g");
+    auto relq = StringRef{};
+    CU_ASSERT("/g" == http2::path_join(base, baseq, rel, relq));
+  }
+  {
+    auto rel = StringRef::from_lit("/../g");
+    auto relq = StringRef{};
+    CU_ASSERT("/g" == http2::path_join(base, baseq, rel, relq));
+  }
+  {
+    auto rel = StringRef::from_lit("g.");
+    auto relq = StringRef{};
+    CU_ASSERT("/b/c/g." == http2::path_join(base, baseq, rel, relq));
+  }
+  {
+    auto rel = StringRef::from_lit(".g");
+    auto relq = StringRef{};
+    CU_ASSERT("/b/c/.g" == http2::path_join(base, baseq, rel, relq));
+  }
+  {
+    auto rel = StringRef::from_lit("g..");
+    auto relq = StringRef{};
+    CU_ASSERT("/b/c/g.." == http2::path_join(base, baseq, rel, relq));
+  }
+  {
+    auto rel = StringRef::from_lit("..g");
+    auto relq = StringRef{};
+    CU_ASSERT("/b/c/..g" == http2::path_join(base, baseq, rel, relq));
+  }
+  {
+    auto rel = StringRef::from_lit("./../g");
+    auto relq = StringRef{};
+    CU_ASSERT("/b/g" == http2::path_join(base, baseq, rel, relq));
+  }
+  {
+    auto rel = StringRef::from_lit("./g/.");
+    auto relq = StringRef{};
+    CU_ASSERT("/b/c/g/" == http2::path_join(base, baseq, rel, relq));
+  }
+  {
+    auto rel = StringRef::from_lit("g/./h");
+    auto relq = StringRef{};
+    CU_ASSERT("/b/c/g/h" == http2::path_join(base, baseq, rel, relq));
+  }
+  {
+    auto rel = StringRef::from_lit("g/../h");
+    auto relq = StringRef{};
+    CU_ASSERT("/b/c/h" == http2::path_join(base, baseq, rel, relq));
+  }
+  {
+    auto rel = StringRef::from_lit("g;x=1/./y");
+    auto relq = StringRef{};
+    CU_ASSERT("/b/c/g;x=1/y" == http2::path_join(base, baseq, rel, relq));
+  }
+  {
+    auto rel = StringRef::from_lit("g;x=1/../y");
+    auto relq = StringRef{};
+    CU_ASSERT("/b/c/y" == http2::path_join(base, baseq, rel, relq));
+  }
 }
 
 void test_http2_normalize_path(void) {
@@ -1024,6 +1187,63 @@ void test_http2_contains_trailers(void) {
   CU_ASSERT(
       http2::contains_trailers(StringRef::from_lit("foo, trailers ,bar")));
   CU_ASSERT(http2::contains_trailers(StringRef::from_lit(",trailers")));
+}
+
+void test_http2_check_transfer_encoding(void) {
+  CU_ASSERT(http2::check_transfer_encoding(StringRef::from_lit("chunked")));
+  CU_ASSERT(http2::check_transfer_encoding(StringRef::from_lit("foo,chunked")));
+  CU_ASSERT(
+      http2::check_transfer_encoding(StringRef::from_lit("foo,  chunked")));
+  CU_ASSERT(
+      http2::check_transfer_encoding(StringRef::from_lit("foo   ,  chunked")));
+  CU_ASSERT(
+      http2::check_transfer_encoding(StringRef::from_lit("chunked;foo=bar")));
+  CU_ASSERT(
+      http2::check_transfer_encoding(StringRef::from_lit("chunked ; foo=bar")));
+  CU_ASSERT(http2::check_transfer_encoding(
+      StringRef::from_lit(R"(chunked;foo="bar")")));
+  CU_ASSERT(http2::check_transfer_encoding(
+      StringRef::from_lit(R"(chunked;foo="\bar\"";FOO=BAR)")));
+  CU_ASSERT(
+      http2::check_transfer_encoding(StringRef::from_lit(R"(chunked;foo="")")));
+  CU_ASSERT(http2::check_transfer_encoding(
+      StringRef::from_lit(R"(chunked;foo="bar" , gzip)")));
+
+  CU_ASSERT(!http2::check_transfer_encoding(StringRef{}));
+  CU_ASSERT(!http2::check_transfer_encoding(StringRef::from_lit(",chunked")));
+  CU_ASSERT(!http2::check_transfer_encoding(StringRef::from_lit("chunked,")));
+  CU_ASSERT(!http2::check_transfer_encoding(StringRef::from_lit("chunked, ")));
+  CU_ASSERT(
+      !http2::check_transfer_encoding(StringRef::from_lit("foo,,chunked")));
+  CU_ASSERT(
+      !http2::check_transfer_encoding(StringRef::from_lit("chunked;foo")));
+  CU_ASSERT(!http2::check_transfer_encoding(StringRef::from_lit("chunked;")));
+  CU_ASSERT(
+      !http2::check_transfer_encoding(StringRef::from_lit("chunked;foo=bar;")));
+  CU_ASSERT(
+      !http2::check_transfer_encoding(StringRef::from_lit("chunked;?=bar")));
+  CU_ASSERT(
+      !http2::check_transfer_encoding(StringRef::from_lit("chunked;=bar")));
+  CU_ASSERT(!http2::check_transfer_encoding(StringRef::from_lit("chunked;;")));
+  CU_ASSERT(!http2::check_transfer_encoding(StringRef::from_lit("chunked?")));
+  CU_ASSERT(!http2::check_transfer_encoding(StringRef::from_lit(",")));
+  CU_ASSERT(!http2::check_transfer_encoding(StringRef::from_lit(" ")));
+  CU_ASSERT(!http2::check_transfer_encoding(StringRef::from_lit(";")));
+  CU_ASSERT(!http2::check_transfer_encoding(StringRef::from_lit("\"")));
+  CU_ASSERT(!http2::check_transfer_encoding(
+      StringRef::from_lit(R"(chunked;foo="bar)")));
+  CU_ASSERT(!http2::check_transfer_encoding(
+      StringRef::from_lit(R"(chunked;foo="bar\)")));
+  CU_ASSERT(
+      !http2::check_transfer_encoding(StringRef::from_lit(R"(chunked;foo="bar\)"
+                                                          "\x0a"
+                                                          R"(")")));
+  CU_ASSERT(
+      !http2::check_transfer_encoding(StringRef::from_lit(R"(chunked;foo=")"
+                                                          "\x0a"
+                                                          R"(")")));
+  CU_ASSERT(!http2::check_transfer_encoding(
+      StringRef::from_lit(R"(chunked;foo="bar",,gzip)")));
 }
 
 } // namespace shrpx

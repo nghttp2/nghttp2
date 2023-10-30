@@ -426,22 +426,34 @@ constexpr llhttp_settings_t htp_hooks = {
     htp_msg_begincb,    // llhttp_cb      on_message_begin;
     nullptr,            // llhttp_data_cb on_url;
     nullptr,            // llhttp_data_cb on_status;
+    nullptr,            // llhttp_data_cb on_method;
+    nullptr,            // llhttp_data_cb on_version;
     nullptr,            // llhttp_data_cb on_header_field;
     nullptr,            // llhttp_data_cb on_header_value;
+    nullptr,            // llhttp_data_cb on_chunk_extension_name;
+    nullptr,            // llhttp_data_cb on_chunk_extension_value;
     nullptr,            // llhttp_cb      on_headers_complete;
     nullptr,            // llhttp_data_cb on_body;
     htp_msg_completecb, // llhttp_cb      on_message_complete;
-    nullptr,            // llhttp_cb      on_chunk_header
-    nullptr,            // llhttp_cb      on_chunk_complete
+    nullptr,            // llhttp_cb      on_url_complete;
+    nullptr,            // llhttp_cb      on_status_complete;
+    nullptr,            // llhttp_cb      on_method_complete;
+    nullptr,            // llhttp_cb      on_version_complete;
+    nullptr,            // llhttp_cb      on_header_field_complete;
+    nullptr,            // llhttp_cb      on_header_value_complete;
+    nullptr,            // llhttp_cb      on_chunk_extension_name_complete;
+    nullptr,            // llhttp_cb      on_chunk_extension_value_complete;
+    nullptr,            // llhttp_cb      on_chunk_header;
+    nullptr,            // llhttp_cb      on_chunk_complete;
+    nullptr,            // llhttp_cb      on_reset;
 };
 } // namespace
 
 namespace {
 int submit_request(HttpClient *client, const Headers &headers, Request *req) {
-  auto path = req->make_reqpath();
   auto scheme = util::get_uri_field(req->uri.c_str(), req->u, UF_SCHEMA);
   auto build_headers = Headers{{":method", req->data_prd ? "POST" : "GET"},
-                               {":path", path},
+                               {":path", req->make_reqpath()},
                                {":scheme", scheme.str()},
                                {":authority", client->hostport},
                                {"accept", "*/*"},

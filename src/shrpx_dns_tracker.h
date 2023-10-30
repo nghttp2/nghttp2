@@ -28,6 +28,7 @@
 #include "shrpx.h"
 
 #include <map>
+#include <chrono>
 
 #include "shrpx_dual_dns_resolver.h"
 
@@ -70,12 +71,12 @@ struct ResolverEntry {
   // result and its expiry time
   Address result;
   // time point when cached result expires.
-  ev_tstamp expiry;
+  std::chrono::steady_clock::time_point expiry;
 };
 
 class DNSTracker {
 public:
-  DNSTracker(struct ev_loop *loop);
+  DNSTracker(struct ev_loop *loop, int family);
   ~DNSTracker();
 
   // Lookups host name described in |dnsq|.  If name lookup finishes
@@ -111,6 +112,8 @@ private:
   // increase memory consumption, interval could be very long.
   ev_timer gc_timer_;
   struct ev_loop *loop_;
+  // IP version preference.
+  int family_;
 };
 
 } // namespace shrpx

@@ -100,6 +100,7 @@ EXTRA_DIST += \
 	mruby/lib/mruby/lockfile.rb \
 	mruby/lib/mruby/build.rb \
 	mruby/lib/mruby/core_ext.rb \
+	mruby/lib/mruby/doc.rb \
 	mruby/lib/mruby/gem.rb \
 	mruby/lib/mruby/presym.rb \
 	mruby/lib/mruby/source.rb \
@@ -107,6 +108,10 @@ EXTRA_DIST += \
 	mruby/examples/mrbgems/ruby_extension_example/README.md \
 	mruby/examples/mrbgems/ruby_extension_example/test/example.rb \
 	mruby/examples/mrbgems/ruby_extension_example/mrblib/example.rb \
+	mruby/examples/mrbgems/cdata_extension_example/mrbgem.rake \
+	mruby/examples/mrbgems/cdata_extension_example/README.md \
+	mruby/examples/mrbgems/cdata_extension_example/test/example.c \
+	mruby/examples/mrbgems/cdata_extension_example/src/example.c \
 	mruby/examples/mrbgems/c_and_ruby_extension_example/mrbgem.rake \
 	mruby/examples/mrbgems/c_and_ruby_extension_example/README.md \
 	mruby/examples/mrbgems/c_and_ruby_extension_example/test/example.rb \
@@ -117,6 +122,9 @@ EXTRA_DIST += \
 	mruby/examples/mrbgems/c_extension_example/test/example.rb \
 	mruby/examples/mrbgems/c_extension_example/test/example.c \
 	mruby/examples/mrbgems/c_extension_example/src/example.c \
+	mruby/examples/mrbgems/mruby-YOUR-bigint/TODO-HINT.md \
+	mruby/examples/mrbgems/mruby-YOUR-bigint/core/bigint.c \
+	mruby/examples/mrbgems/mruby-YOUR-bigint/mrbgem.rake \
 	mruby/test/bintest.rb \
 	mruby/test/t/enumerable.rb \
 	mruby/test/t/comparable.rb \
@@ -162,8 +170,10 @@ EXTRA_DIST += \
 	mruby/test/t/standarderror.rb \
 	mruby/test/t/superclass.rb \
 	mruby/test/assert.rb \
+	mruby/super-linter.report/.keep \
 	mruby/TODO.md \
 	mruby/Doxyfile \
+	mruby/mrblib/00kernel.rb \
 	mruby/mrblib/range.rb \
 	mruby/mrblib/kernel.rb \
 	mruby/mrblib/hash.rb \
@@ -186,12 +196,15 @@ EXTRA_DIST += \
 	mruby/src/load.c \
 	mruby/src/codedump.c \
 	mruby/src/error.c \
+	mruby/src/readfloat.c \
 	mruby/src/state.c \
 	mruby/src/string.c \
 	mruby/src/numeric.c \
+	mruby/src/readnum.c \
 	mruby/src/enum.c \
 	mruby/src/print.c \
 	mruby/src/readint.c \
+	mruby/src/numops.c \
 	mruby/src/hash.c \
 	mruby/src/version.c \
 	mruby/src/backtrace.c \
@@ -210,7 +223,6 @@ EXTRA_DIST += \
 	mruby/src/compar.c \
 	mruby/src/value_array.h \
 	mruby/src/pool.c \
-	mruby/src/readflt.c \
 	mruby/mruby-source.gemspec \
 	mruby/mrbgems/mruby-eval/mrbgem.rake \
 	mruby/mrbgems/mruby-eval/test/eval.rb \
@@ -223,6 +235,12 @@ EXTRA_DIST += \
 	mruby/mrbgems/mruby-string-ext/mrblib/string.rb \
 	mruby/mrbgems/mruby-string-ext/src/string.c \
 	mruby/mrbgems/default-no-stdio.gembox \
+	mruby/mrbgems/mruby-set/mrbgem.rake \
+	mruby/mrbgems/mruby-set/README.md \
+	mruby/mrbgems/mruby-set/test/set.rb \
+	mruby/mrbgems/mruby-set/mrblib/set.rb \
+	mruby/mrbgems/mruby-set/LICENSE \
+	mruby/mrbgems/mruby-set/mruby-set.gem \
 	mruby/mrbgems/mruby-method/mrbgem.rake \
 	mruby/mrbgems/mruby-method/README.md \
 	mruby/mrbgems/mruby-method/test/method.rb \
@@ -249,6 +267,12 @@ EXTRA_DIST += \
 	mruby/mrbgems/mruby-struct/test/struct.rb \
 	mruby/mrbgems/mruby-struct/mrblib/struct.rb \
 	mruby/mrbgems/mruby-struct/src/struct.c \
+	mruby/mrbgems/mruby-bigint/core/bigint.c \
+	mruby/mrbgems/mruby-bigint/core/bigint.h \
+	mruby/mrbgems/mruby-bigint/mrbgem.rake \
+	mruby/mrbgems/mruby-bigint/README.md \
+	mruby/mrbgems/mruby-bigint/test/bigint.rb \
+	mruby/mrbgems/mruby-bigint/README-fgmp.md \
 	mruby/mrbgems/mruby-symbol-ext/mrbgem.rake \
 	mruby/mrbgems/mruby-symbol-ext/test/symbol.rb \
 	mruby/mrbgems/mruby-symbol-ext/mrblib/symbol.rb \
@@ -283,6 +307,16 @@ EXTRA_DIST += \
 	mruby/mrbgems/mruby-proc-ext/test/proc.c \
 	mruby/mrbgems/mruby-proc-ext/mrblib/proc.rb \
 	mruby/mrbgems/mruby-proc-ext/src/proc.c \
+	mruby/mrbgems/mruby-data/mrbgem.rake \
+	mruby/mrbgems/mruby-data/test/data.rb \
+	mruby/mrbgems/mruby-data/src/data.c \
+	mruby/mrbgems/mruby-dir/mrbgem.rake \
+	mruby/mrbgems/mruby-dir/README.md \
+	mruby/mrbgems/mruby-dir/test/dir.rb \
+	mruby/mrbgems/mruby-dir/test/dirtest.c \
+	mruby/mrbgems/mruby-dir/mrblib/dir.rb \
+	mruby/mrbgems/mruby-dir/src/Win/dirent.c \
+	mruby/mrbgems/mruby-dir/src/dir.c \
 	mruby/mrbgems/mruby-object-ext/mrbgem.rake \
 	mruby/mrbgems/mruby-object-ext/test/nil.rb \
 	mruby/mrbgems/mruby-object-ext/test/object.rb \
@@ -292,6 +326,7 @@ EXTRA_DIST += \
 	mruby/mrbgems/mruby-kernel-ext/test/kernel.rb \
 	mruby/mrbgems/mruby-kernel-ext/src/kernel.c \
 	mruby/mrbgems/mruby-class-ext/mrbgem.rake \
+	mruby/mrbgems/mruby-class-ext/test/class.rb \
 	mruby/mrbgems/mruby-class-ext/test/module.rb \
 	mruby/mrbgems/mruby-class-ext/mrblib/module.rb \
 	mruby/mrbgems/mruby-class-ext/src/class.c \
@@ -425,12 +460,21 @@ EXTRA_DIST += \
 	mruby/mrbgems/mruby-bin-strip/tools/mruby-strip/mruby-strip.c \
 	mruby/mrbgems/mruby-bin-strip/mrbgem.rake \
 	mruby/mrbgems/mruby-bin-strip/bintest/mruby-strip.rb \
+	mruby/mrbgems/mruby-errno/mrbgem.rake \
+	mruby/mrbgems/mruby-errno/README.md \
+	mruby/mrbgems/mruby-errno/test/errno.rb \
+	mruby/mrbgems/mruby-errno/mrblib/errno.rb \
+	mruby/mrbgems/mruby-errno/src/gen.rb \
+	mruby/mrbgems/mruby-errno/src/known_errors_def.cstub \
+	mruby/mrbgems/mruby-errno/src/known_errors.def \
+	mruby/mrbgems/mruby-errno/src/errno.c \
 	mruby/mrbgems/mruby-toplevel-ext/mrbgem.rake \
 	mruby/mrbgems/mruby-toplevel-ext/test/toplevel.rb \
 	mruby/mrbgems/mruby-toplevel-ext/mrblib/toplevel.rb \
 	mruby/mrbgems/mruby-math/mrbgem.rake \
 	mruby/mrbgems/mruby-math/test/math.rb \
 	mruby/mrbgems/mruby-math/src/math.c \
+	mruby/mrbgems/mruby-bin-mrbc/tools/mrbc/stub.c \
 	mruby/mrbgems/mruby-bin-mrbc/tools/mrbc/mrbc.c \
 	mruby/mrbgems/mruby-bin-mrbc/mrbgem.rake \
 	mruby/mrbgems/mruby-bin-mrbc/bintest/mrbc.rb \
@@ -451,6 +495,7 @@ EXTRA_DIST += \
 	mruby/doc/internal/opcode.md \
 	mruby/doc/internal/boxing.md \
 	mruby/doc/limitations.md \
+	mruby/doc/mruby3.2.md \
 	mruby/doc/guides/compile.md \
 	mruby/doc/guides/mrbgems.md \
 	mruby/doc/guides/debugger.md \
@@ -484,6 +529,7 @@ EXTRA_DIST += \
 	mruby/include/mruby/boxing_nan.h \
 	mruby/include/mruby/value.h \
 	mruby/include/mruby/endian.h \
+	mruby/include/mruby/internal.h \
 	mruby/include/mruby/dump.h \
 	mruby/include/mruby/version.h \
 	mruby/include/mruby/khash.h \
@@ -528,10 +574,9 @@ mruby:
 	MRUBY_CONFIG="${abs_builddir}/mruby/build/build_config.rb" \
 	BUILD_DIR="${abs_builddir}/mruby/build" \
 	INSTALL_DIR="${abs_builddir}/mruby/build/install/bin" \
-	CC="${CC}" CXX="$(firstword $(CXX))" LD="${LD}" \
-	CFLAGS="${CPPFLAGS} ${CFLAGS}" \
-	CXXFLAGS="$(wordlist 2, $(words $(CXX)), $(CXX)) ${CPPFLAGS} ${CXXFLAGS}" \
-	LDFLAGS="${LDFLAGS}" \
+	MRUBY_CC="${CC}" MRUBY_CXX="$(firstword $(CXX))" MRUBY_LD="${LD}" \
+	MRUBY_AR="${AR}" \
+	HOST="${host}" BUILD="${build}" \
 	"${srcdir}/mruby/minirake" -f "${srcdir}/mruby/Rakefile"
 
 all-local: mruby
@@ -540,7 +585,7 @@ clean-local:
 	[ ! -f "${abs_builddir}/mruby/build/build_config.rb" ] || \
 	MRUBY_CONFIG="${abs_builddir}/mruby/build/build_config.rb" \
 	BUILD_DIR="${abs_builddir}/mruby/build" \
-	CC="${CC}" \
+	MRUBY_CC="${CC}" \
 	"${srcdir}/mruby/minirake" -f "${srcdir}/mruby/Rakefile" clean
 
 endif # HAVE_MRUBY

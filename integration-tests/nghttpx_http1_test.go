@@ -28,8 +28,7 @@ func TestH1H1PlainGET(t *testing.T) {
 		t.Fatalf("Error st.http1() = %v", err)
 	}
 
-	want := 200
-	if got := res.status; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 }
@@ -50,8 +49,7 @@ func TestH1H1PlainGETClose(t *testing.T) {
 		t.Fatalf("Error st.http1() = %v", err)
 	}
 
-	want := 200
-	if got := res.status; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 }
@@ -75,7 +73,7 @@ func TestH1H1InvalidMethod(t *testing.T) {
 		t.Fatalf("Error st.http1() = %v", err)
 	}
 
-	if got, want := res.status, 501; got != want {
+	if got, want := res.status, http.StatusNotImplemented; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 }
@@ -101,8 +99,9 @@ func TestH1H1MultipleRequestCL(t *testing.T) {
 		t.Fatalf("Error http.ReadResponse() = %v", err)
 	}
 
-	want := 400
-	if got := resp.StatusCode; got != want {
+	defer resp.Body.Close()
+
+	if got, want := resp.StatusCode, http.StatusBadRequest; got != want {
 		t.Errorf("status: %v; want %v", got, want)
 	}
 }
@@ -144,7 +143,7 @@ func TestH1H1AffinityCookie(t *testing.T) {
 		t.Fatalf("Error st.http1() = %v", err)
 	}
 
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 
@@ -172,7 +171,7 @@ func TestH1H1AffinityCookieTLS(t *testing.T) {
 		t.Fatalf("Error st.http1() = %v", err)
 	}
 
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 
@@ -195,11 +194,14 @@ func TestH1H1GracefulShutdown(t *testing.T) {
 		t.Fatalf("Error st.http1() = %v", err)
 	}
 
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("status: %v; want %v", got, want)
 	}
 
-	st.cmd.Process.Signal(syscall.SIGQUIT)
+	if err := st.cmd.Process.Signal(syscall.SIGQUIT); err != nil {
+		t.Fatalf("Error st.cmd.Process.Signal() = %v", err)
+	}
+
 	time.Sleep(150 * time.Millisecond)
 
 	res, err = st.http1(requestParam{
@@ -209,7 +211,7 @@ func TestH1H1GracefulShutdown(t *testing.T) {
 		t.Fatalf("Error st.http1() = %v", err)
 	}
 
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("status: %v; want %v", got, want)
 	}
 
@@ -241,7 +243,7 @@ func TestH1H1HostRewrite(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http1() = %v", err)
 	}
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("status: %v; want %v", got, want)
 	}
 	if got, want := res.header.Get("request-host"), st.backendHost; got != want {
@@ -267,7 +269,10 @@ func TestH1H1BadHost(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error http.ReadResponse() = %v", err)
 	}
-	if got, want := resp.StatusCode, 400; got != want {
+
+	defer resp.Body.Close()
+
+	if got, want := resp.StatusCode, http.StatusBadRequest; got != want {
 		t.Errorf("status: %v; want %v", got, want)
 	}
 }
@@ -290,7 +295,10 @@ func TestH1H1BadAuthority(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error http.ReadResponse() = %v", err)
 	}
-	if got, want := resp.StatusCode, 400; got != want {
+
+	defer resp.Body.Close()
+
+	if got, want := resp.StatusCode, http.StatusBadRequest; got != want {
 		t.Errorf("status: %v; want %v", got, want)
 	}
 }
@@ -313,7 +321,10 @@ func TestH1H1BadScheme(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error http.ReadResponse() = %v", err)
 	}
-	if got, want := resp.StatusCode, 400; got != want {
+
+	defer resp.Body.Close()
+
+	if got, want := resp.StatusCode, http.StatusBadRequest; got != want {
 		t.Errorf("status: %v; want %v", got, want)
 	}
 }
@@ -338,7 +349,9 @@ func TestH1H1HTTP10(t *testing.T) {
 		t.Fatalf("Error http.ReadResponse() = %v", err)
 	}
 
-	if got, want := resp.StatusCode, 200; got != want {
+	defer resp.Body.Close()
+
+	if got, want := resp.StatusCode, http.StatusOK; got != want {
 		t.Errorf("status: %v; want %v", got, want)
 	}
 	if got, want := resp.Header.Get("request-host"), st.backendHost; got != want {
@@ -367,7 +380,9 @@ func TestH1H1HTTP10NoHostRewrite(t *testing.T) {
 		t.Fatalf("Error http.ReadResponse() = %v", err)
 	}
 
-	if got, want := resp.StatusCode, 200; got != want {
+	defer resp.Body.Close()
+
+	if got, want := resp.StatusCode, http.StatusOK; got != want {
 		t.Errorf("status: %v; want %v", got, want)
 	}
 	if got, want := resp.Header.Get("request-host"), st.backendHost; got != want {
@@ -408,7 +423,7 @@ func TestH1H1RequestTrailer(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http1() = %v", err)
 	}
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("res.status: %v; want %v", got, want)
 	}
 }
@@ -435,7 +450,7 @@ func TestH1H1HeaderFieldBufferPath(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http1() = %v", err)
 	}
-	if got, want := res.status, 431; got != want {
+	if got, want := res.status, http.StatusRequestHeaderFieldsTooLarge; got != want {
 		t.Errorf("status: %v; want %v", got, want)
 	}
 }
@@ -458,7 +473,7 @@ func TestH1H1HeaderFieldBuffer(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http1() = %v", err)
 	}
-	if got, want := res.status, 431; got != want {
+	if got, want := res.status, http.StatusRequestHeaderFieldsTooLarge; got != want {
 		t.Errorf("status: %v; want %v", got, want)
 	}
 }
@@ -486,7 +501,7 @@ func TestH1H1HeaderFields(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http1() = %v", err)
 	}
-	if got, want := res.status, 431; got != want {
+	if got, want := res.status, http.StatusRequestHeaderFieldsTooLarge; got != want {
 		t.Errorf("status: %v; want %v", got, want)
 	}
 }
@@ -495,20 +510,19 @@ func TestH1H1HeaderFields(t *testing.T) {
 func TestH1H1Websocket(t *testing.T) {
 	opts := options{
 		handler: websocket.Handler(func(ws *websocket.Conn) {
-			io.Copy(ws, ws)
+			if _, err := io.Copy(ws, ws); err != nil {
+				t.Fatalf("Error io.Copy() = %v", err)
+			}
 		}).ServeHTTP,
 	}
 	st := newServerTester(t, opts)
 	defer st.Close()
 
 	content := []byte("hello world")
-	res, err := st.websocket(requestParam{
+	res := st.websocket(requestParam{
 		name: "TestH1H1Websocket",
 		body: content,
 	})
-	if err != nil {
-		t.Fatalf("Error st.websocket() = %v", err)
-	}
 	if got, want := res.body, content; !bytes.Equal(got, want) {
 		t.Errorf("echo: %q; want %q", got, want)
 	}
@@ -535,7 +549,7 @@ func TestH1H1ReqPhaseSetHeader(t *testing.T) {
 		t.Fatalf("Error st.http1() = %v", err)
 	}
 
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 }
@@ -559,7 +573,7 @@ func TestH1H1ReqPhaseReturn(t *testing.T) {
 		t.Fatalf("Error st.http1() = %v", err)
 	}
 
-	if got, want := res.status, 404; got != want {
+	if got, want := res.status, http.StatusNotFound; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 
@@ -580,6 +594,76 @@ func TestH1H1ReqPhaseReturn(t *testing.T) {
 	}
 }
 
+// TestH1H1ReqPhaseReturnCONNECTMethod tests that mruby request phase
+// hook resets llhttp HPE_PAUSED_UPGRADE.
+func TestH1H1ReqPhaseReturnCONNECTMethod(t *testing.T) {
+	opts := options{
+		args: []string{"--mruby-file=" + testDir + "/req-return.rb"},
+		handler: func(w http.ResponseWriter, r *http.Request) {
+			t.Fatalf("request should not be forwarded")
+		},
+	}
+	st := newServerTester(t, opts)
+	defer st.Close()
+
+	if _, err := io.WriteString(st.conn, "CONNECT 127.0.0.1:443 HTTP/1.1\r\nTest-Case: TestH1H1ReqPhaseReturnCONNECTMethod\r\nHost: 127.0.0.1:443\r\n\r\n"); err != nil {
+		t.Fatalf("Error io.WriteString() = %v", err)
+	}
+
+	resp, err := http.ReadResponse(bufio.NewReader(st.conn), nil)
+	if err != nil {
+		t.Fatalf("Error http.ReadResponse() = %v", err)
+	}
+
+	defer resp.Body.Close()
+
+	if got, want := resp.StatusCode, http.StatusNotFound; got != want {
+		t.Errorf("status: %v; want %v", got, want)
+	}
+
+	hdCheck := func() {
+		hdtests := []struct {
+			k, v string
+		}{
+			{"content-length", "20"},
+			{"from", "mruby"},
+		}
+
+		for _, tt := range hdtests {
+			if got, want := resp.Header.Get(tt.k), tt.v; got != want {
+				t.Errorf("%v = %v; want %v", tt.k, got, want)
+			}
+		}
+
+		if _, err := io.ReadAll(resp.Body); err != nil {
+			t.Fatalf("Error io.ReadAll() = %v", err)
+		}
+	}
+
+	hdCheck()
+
+	if _, err := io.WriteString(st.conn, "CONNECT 127.0.0.1:443 HTTP/1.1\r\nTest-Case: TestH1H1ReqPhaseReturnCONNECTMethod\r\nHost: 127.0.0.1:443\r\n\r\n"); err != nil {
+		t.Fatalf("Error io.WriteString() = %v", err)
+	}
+
+	resp, err = http.ReadResponse(bufio.NewReader(st.conn), nil)
+	if err != nil {
+		t.Fatalf("Error http.ReadResponse() = %v", err)
+	}
+
+	defer resp.Body.Close()
+
+	if got, want := resp.StatusCode, http.StatusNotFound; got != want {
+		t.Errorf("status: %v; want %v", got, want)
+	}
+
+	hdCheck()
+
+	if _, err := io.ReadAll(resp.Body); err != nil {
+		t.Fatalf("Error io.ReadAll() = %v", err)
+	}
+}
+
 // TestH1H1RespPhaseSetHeader tests mruby response phase hook modifies
 // response header fields.
 func TestH1H1RespPhaseSetHeader(t *testing.T) {
@@ -596,7 +680,7 @@ func TestH1H1RespPhaseSetHeader(t *testing.T) {
 		t.Fatalf("Error st.http1() = %v", err)
 	}
 
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 
@@ -621,7 +705,7 @@ func TestH1H1RespPhaseReturn(t *testing.T) {
 		t.Fatalf("Error st.http1() = %v", err)
 	}
 
-	if got, want := res.status, 404; got != want {
+	if got, want := res.status, http.StatusNotFound; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 
@@ -658,7 +742,7 @@ func TestH1H1HTTPSRedirect(t *testing.T) {
 		t.Fatalf("Error st.http1() = %v", err)
 	}
 
-	if got, want := res.status, 308; got != want {
+	if got, want := res.status, http.StatusPermanentRedirect; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 	if got, want := res.header.Get("location"), "https://127.0.0.1/"; got != want {
@@ -686,7 +770,7 @@ func TestH1H1HTTPSRedirectPort(t *testing.T) {
 		t.Fatalf("Error st.http1() = %v", err)
 	}
 
-	if got, want := res.status, 308; got != want {
+	if got, want := res.status, http.StatusPermanentRedirect; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 	if got, want := res.header.Get("location"), "https://127.0.0.1:8443/foo?bar"; got != want {
@@ -707,7 +791,7 @@ func TestH1H1POSTRequests(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http1() = %v", err)
 	}
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("res.status: %v; want %v", got, want)
 	}
 
@@ -718,8 +802,56 @@ func TestH1H1POSTRequests(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http1() = %v", err)
 	}
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("res.status: %v; want %v", got, want)
+	}
+}
+
+// TestH1H1CONNECTMethodFailure tests that CONNECT method failure
+// resets llhttp HPE_PAUSED_UPGRADE.
+func TestH1H1CONNECTMethodFailure(t *testing.T) {
+	opts := options{
+		handler: func(w http.ResponseWriter, r *http.Request) {
+			if r.Header.Get("required-header") == "" {
+				w.WriteHeader(http.StatusNotFound)
+			}
+		},
+	}
+	st := newServerTester(t, opts)
+	defer st.Close()
+
+	if _, err := io.WriteString(st.conn, "CONNECT 127.0.0.1:443 HTTP/1.1\r\nTest-Case: TestH1H1CONNECTMethodFailure\r\nHost: 127.0.0.1:443\r\n\r\n"); err != nil {
+		t.Fatalf("Error io.WriteString() = %v", err)
+	}
+
+	resp, err := http.ReadResponse(bufio.NewReader(st.conn), nil)
+	if err != nil {
+		t.Fatalf("Error http.ReadResponse() = %v", err)
+	}
+
+	defer resp.Body.Close()
+
+	if got, want := resp.StatusCode, http.StatusNotFound; got != want {
+		t.Errorf("status: %v; want %v", got, want)
+	}
+
+	if _, err := io.ReadAll(resp.Body); err != nil {
+		t.Fatalf("Error io.ReadAll() = %v", err)
+	}
+
+	if _, err := io.WriteString(st.conn, "CONNECT 127.0.0.1:443 HTTP/1.1\r\nTest-Case: TestH1H1CONNECTMethodFailure\r\nHost: 127.0.0.1:443\r\nrequired-header: foo\r\n\r\n"); err != nil {
+		t.Fatalf("Error io.WriteString() = %v", err)
+	}
+
+	resp, err = http.ReadResponse(bufio.NewReader(st.conn), nil)
+	if err != nil {
+		t.Fatalf("Error http.ReadResponse() = %v", err)
+	}
+
+	defer resp.Body.Close()
+
+	if got, want := resp.StatusCode, http.StatusOK; got != want {
+		t.Errorf("status: %v; want %v", got, want)
 	}
 }
 
@@ -769,8 +901,9 @@ func TestH1H2NoHost(t *testing.T) {
 		t.Fatalf("Error http.ReadResponse() = %v", err)
 	}
 
-	want := 400
-	if got := resp.StatusCode; got != want {
+	defer resp.Body.Close()
+
+	if got, want := resp.StatusCode, http.StatusBadRequest; got != want {
 		t.Errorf("status: %v; want %v", got, want)
 	}
 }
@@ -796,7 +929,9 @@ func TestH1H2HTTP10(t *testing.T) {
 		t.Fatalf("Error http.ReadResponse() = %v", err)
 	}
 
-	if got, want := resp.StatusCode, 200; got != want {
+	defer resp.Body.Close()
+
+	if got, want := resp.StatusCode, http.StatusOK; got != want {
 		t.Errorf("status: %v; want %v", got, want)
 	}
 	if got, want := resp.Header.Get("request-host"), st.backendHost; got != want {
@@ -826,7 +961,9 @@ func TestH1H2HTTP10NoHostRewrite(t *testing.T) {
 		t.Fatalf("Error http.ReadResponse() = %v", err)
 	}
 
-	if got, want := resp.StatusCode, 200; got != want {
+	defer resp.Body.Close()
+
+	if got, want := resp.StatusCode, http.StatusOK; got != want {
 		t.Errorf("status: %v; want %v", got, want)
 	}
 	if got, want := resp.Header.Get("request-host"), st.backendHost; got != want {
@@ -859,7 +996,7 @@ func TestH1H2CrumbleCookie(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http1() = %v", err)
 	}
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("status: %v; want %v", got, want)
 	}
 }
@@ -969,7 +1106,7 @@ func TestH1H2ReqPhaseReturn(t *testing.T) {
 		t.Fatalf("Error st.http1() = %v", err)
 	}
 
-	if got, want := res.status, 404; got != want {
+	if got, want := res.status, http.StatusNotFound; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 
@@ -1009,7 +1146,7 @@ func TestH1H2RespPhaseReturn(t *testing.T) {
 		t.Fatalf("Error st.http1() = %v", err)
 	}
 
-	if got, want := res.status, 404; got != want {
+	if got, want := res.status, http.StatusNotFound; got != want {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 
@@ -1053,7 +1190,7 @@ func TestH1H2TE(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http1() = %v", err)
 	}
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("status: %v; want %v", got, want)
 	}
 }
@@ -1083,7 +1220,7 @@ backend=127.0.0.1,3011
 	if err != nil {
 		t.Fatalf("Error st.http1() = %v", err)
 	}
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("res.status: %v; want %v", got, want)
 	}
 
@@ -1125,7 +1262,7 @@ backend=127.0.0.1,3011
 	if err != nil {
 		t.Fatalf("Error st.http1() = %v", err)
 	}
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("res.status: %v; want %v", got, want)
 	}
 
@@ -1167,7 +1304,7 @@ backend=127.0.0.1,3011
 	if err != nil {
 		t.Fatalf("Error st.http1() = %v", err)
 	}
-	if got, want := res.status, 405; got != want {
+	if got, want := res.status, http.StatusMethodNotAllowed; got != want {
 		t.Errorf("res.status: %v; want %v", got, want)
 	}
 
@@ -1204,7 +1341,7 @@ func TestH1APIConfigrevision(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http1() = %v", err)
 	}
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("res.status: %v; want = %v", got, want)
 	}
 
@@ -1251,7 +1388,7 @@ backend=127.0.0.1,3011
 	if err != nil {
 		t.Fatalf("Error st.http1() = %v", err)
 	}
-	if got, want := res.status, 404; got != want {
+	if got, want := res.status, http.StatusNotFound; got != want {
 		t.Errorf("res.status: %v; want %v", got, want)
 	}
 
@@ -1287,7 +1424,7 @@ func TestH1Healthmon(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http1() = %v", err)
 	}
-	if got, want := res.status, 200; got != want {
+	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("res.status: %v; want %v", got, want)
 	}
 }
@@ -1314,7 +1451,9 @@ func TestH1ResponseBeforeRequestEnd(t *testing.T) {
 		t.Fatalf("Error http.ReadResponse() = %v", err)
 	}
 
-	if got, want := resp.StatusCode, 404; got != want {
+	defer resp.Body.Close()
+
+	if got, want := resp.StatusCode, http.StatusNotFound; got != want {
 		t.Errorf("status: %v; want %v", got, want)
 	}
 }
@@ -1335,7 +1474,9 @@ func TestH1H1ChunkedEndsPrematurely(t *testing.T) {
 				return
 			}
 			defer conn.Close()
-			bufrw.WriteString("HTTP/1.1 200\r\nTransfer-Encoding: chunked\r\n\r\n")
+			if _, err := bufrw.WriteString("HTTP/1.1 200\r\nTransfer-Encoding: chunked\r\n\r\n"); err != nil {
+				t.Fatalf("Error bufrw.WriteString() = %v", err)
+			}
 			bufrw.Flush()
 		},
 	}
@@ -1347,5 +1488,144 @@ func TestH1H1ChunkedEndsPrematurely(t *testing.T) {
 	})
 	if err == nil {
 		t.Fatal("st.http1() should fail")
+	}
+}
+
+// TestH1H1RequestMalformedTransferEncoding tests that server rejects
+// request which contains malformed transfer-encoding.
+func TestH1H1RequestMalformedTransferEncoding(t *testing.T) {
+	opts := options{
+		handler: func(w http.ResponseWriter, r *http.Request) {
+			t.Errorf("server should not forward bad request")
+		},
+	}
+	st := newServerTester(t, opts)
+	defer st.Close()
+
+	if _, err := io.WriteString(st.conn, fmt.Sprintf("GET / HTTP/1.1\r\nHost: %v\r\nTest-Case: TestH1H1RequestMalformedTransferEncoding\r\nTransfer-Encoding: ,chunked\r\n\r\n",
+		st.authority)); err != nil {
+		t.Fatalf("Error io.WriteString() = %v", err)
+	}
+
+	resp, err := http.ReadResponse(bufio.NewReader(st.conn), nil)
+	if err != nil {
+		t.Fatalf("Error http.ReadResponse() = %v", err)
+	}
+
+	defer resp.Body.Close()
+
+	if got, want := resp.StatusCode, http.StatusBadRequest; got != want {
+		t.Errorf("status: %v; want %v", got, want)
+	}
+}
+
+// TestH1H1ResponseMalformedTransferEncoding tests a request fails if
+// its response contains malformed transfer-encoding.
+func TestH1H1ResponseMalformedTransferEncoding(t *testing.T) {
+	opts := options{
+		handler: func(w http.ResponseWriter, r *http.Request) {
+			hj, ok := w.(http.Hijacker)
+			if !ok {
+				http.Error(w, "Could not hijack the connection", http.StatusInternalServerError)
+				return
+			}
+			conn, bufrw, err := hj.Hijack()
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			defer conn.Close()
+			if _, err := bufrw.WriteString("HTTP/1.1 200\r\nTransfer-Encoding: ,chunked\r\n\r\n"); err != nil {
+				t.Fatalf("Error bufrw.WriteString() = %v", err)
+			}
+			bufrw.Flush()
+		},
+	}
+	st := newServerTester(t, opts)
+	defer st.Close()
+
+	res, err := st.http1(requestParam{
+		name: "TestH1H1ResponseMalformedTransferEncoding",
+	})
+	if err != nil {
+		t.Fatalf("Error st.http1() = %v", err)
+	}
+	if got, want := res.status, http.StatusBadGateway; got != want {
+		t.Errorf("res.status: %v; want %v", got, want)
+	}
+}
+
+// TestH1H1ResponseUnknownTransferEncoding tests a request succeeds if
+// its response contains unknown transfer-encoding.
+func TestH1H1ResponseUnknownTransferEncoding(t *testing.T) {
+	opts := options{
+		handler: func(w http.ResponseWriter, r *http.Request) {
+			hj, ok := w.(http.Hijacker)
+			if !ok {
+				http.Error(w, "Could not hijack the connection", http.StatusInternalServerError)
+				return
+			}
+			conn, bufrw, err := hj.Hijack()
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			defer conn.Close()
+			if _, err := bufrw.WriteString("HTTP/1.1 200\r\nTransfer-Encoding: foo\r\n\r\n"); err != nil {
+				t.Fatalf("Error bufrw.WriteString() = %v", err)
+			}
+			bufrw.Flush()
+		},
+	}
+	st := newServerTester(t, opts)
+	defer st.Close()
+
+	if _, err := io.WriteString(st.conn, fmt.Sprintf("GET / HTTP/1.1\r\nHost: %v\r\nTest-Case: TestH1H1ResponseUnknownTransferEncoding\r\n\r\n",
+		st.authority)); err != nil {
+		t.Fatalf("Error: io.WriteString() = %v", err)
+	}
+
+	r := bufio.NewReader(st.conn)
+
+	resp := make([]byte, 4096)
+
+	resplen, err := r.Read(resp)
+	if err != nil {
+		t.Fatalf("Error: r.Read() = %v", err)
+	}
+
+	resp = resp[:resplen]
+
+	const expect = "HTTP/1.1 200 OK\r\nTransfer-Encoding: foo\r\nConnection: close\r\nServer: nghttpx\r\nVia: 1.1 nghttpx\r\n\r\n"
+
+	if got, want := string(resp), expect; got != want {
+		t.Errorf("resp = %v, want %v", got, want)
+	}
+}
+
+// TestH1H1RequestHTTP10TransferEncoding tests that server rejects
+// HTTP/1.0 request which contains transfer-encoding.
+func TestH1H1RequestHTTP10TransferEncoding(t *testing.T) {
+	opts := options{
+		handler: func(w http.ResponseWriter, r *http.Request) {
+			t.Errorf("server should not forward bad request")
+		},
+	}
+	st := newServerTester(t, opts)
+	defer st.Close()
+
+	if _, err := io.WriteString(st.conn, "GET / HTTP/1.0\r\nTest-Case: TestH1H1RequestHTTP10TransferEncoding\r\nTransfer-Encoding: chunked\r\n\r\n"); err != nil {
+		t.Fatalf("Error io.WriteString() = %v", err)
+	}
+
+	resp, err := http.ReadResponse(bufio.NewReader(st.conn), nil)
+	if err != nil {
+		t.Fatalf("Error http.ReadResponse() = %v", err)
+	}
+
+	defer resp.Body.Close()
+
+	if got, want := resp.StatusCode, http.StatusBadRequest; got != want {
+		t.Errorf("status: %v; want %v", got, want)
 	}
 }

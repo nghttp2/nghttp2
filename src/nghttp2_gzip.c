@@ -28,16 +28,10 @@
 
 int nghttp2_gzip_inflate_new(nghttp2_gzip **inflater_ptr) {
   int rv;
-  *inflater_ptr = malloc(sizeof(nghttp2_gzip));
+  *inflater_ptr = calloc(1, sizeof(nghttp2_gzip));
   if (*inflater_ptr == NULL) {
     return -1;
   }
-  (*inflater_ptr)->finished = 0;
-  (*inflater_ptr)->zst.next_in = Z_NULL;
-  (*inflater_ptr)->zst.avail_in = 0;
-  (*inflater_ptr)->zst.zalloc = Z_NULL;
-  (*inflater_ptr)->zst.zfree = Z_NULL;
-  (*inflater_ptr)->zst.opaque = Z_NULL;
   rv = inflateInit2(&(*inflater_ptr)->zst, 47);
   if (rv != Z_OK) {
     free(*inflater_ptr);
