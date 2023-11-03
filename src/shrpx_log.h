@@ -45,43 +45,53 @@ using namespace nghttp2;
 
 #define LOG_ENABLED(SEVERITY) (ENABLE_LOG && shrpx::Log::log_enabled(SEVERITY))
 
-#define LOG(SEVERITY) shrpx::Log(SEVERITY, __FILE__, __LINE__)
+#ifdef __FILE_NAME__
+#  define NGHTTP2_FILE_NAME __FILE_NAME__
+#else // !__FILE_NAME__
+#  define NGHTTP2_FILE_NAME __FILE__
+#endif // !__FILE_NAME__
+
+#define LOG(SEVERITY) shrpx::Log(SEVERITY, NGHTTP2_FILE_NAME, __LINE__)
 
 // Listener log
 #define LLOG(SEVERITY, LISTEN)                                                 \
-  (shrpx::Log(SEVERITY, __FILE__, __LINE__) << "[LISTEN:" << LISTEN << "] ")
+  (shrpx::Log(SEVERITY, NGHTTP2_FILE_NAME, __LINE__)                           \
+   << "[LISTEN:" << LISTEN << "] ")
 
 // Worker log
 #define WLOG(SEVERITY, WORKER)                                                 \
-  (shrpx::Log(SEVERITY, __FILE__, __LINE__) << "[WORKER:" << WORKER << "] ")
+  (shrpx::Log(SEVERITY, NGHTTP2_FILE_NAME, __LINE__)                           \
+   << "[WORKER:" << WORKER << "] ")
 
 // ClientHandler log
 #define CLOG(SEVERITY, CLIENT_HANDLER)                                         \
-  (shrpx::Log(SEVERITY, __FILE__, __LINE__)                                    \
+  (shrpx::Log(SEVERITY, NGHTTP2_FILE_NAME, __LINE__)                           \
    << "[CLIENT_HANDLER:" << CLIENT_HANDLER << "] ")
 
 // Upstream log
 #define ULOG(SEVERITY, UPSTREAM)                                               \
-  (shrpx::Log(SEVERITY, __FILE__, __LINE__) << "[UPSTREAM:" << UPSTREAM        \
-                                            << "]"                             \
-                                               " ")
+  (shrpx::Log(SEVERITY, NGHTTP2_FILE_NAME, __LINE__)                           \
+   << "[UPSTREAM:" << UPSTREAM << "] ")
 
 // Downstream log
 #define DLOG(SEVERITY, DOWNSTREAM)                                             \
-  (shrpx::Log(SEVERITY, __FILE__, __LINE__)                                    \
+  (shrpx::Log(SEVERITY, NGHTTP2_FILE_NAME, __LINE__)                           \
    << "[DOWNSTREAM:" << DOWNSTREAM << "] ")
 
 // Downstream connection log
 #define DCLOG(SEVERITY, DCONN)                                                 \
-  (shrpx::Log(SEVERITY, __FILE__, __LINE__) << "[DCONN:" << DCONN << "] ")
+  (shrpx::Log(SEVERITY, NGHTTP2_FILE_NAME, __LINE__)                           \
+   << "[DCONN:" << DCONN << "] ")
 
 // Downstream HTTP2 session log
 #define SSLOG(SEVERITY, HTTP2)                                                 \
-  (shrpx::Log(SEVERITY, __FILE__, __LINE__) << "[DHTTP2:" << HTTP2 << "] ")
+  (shrpx::Log(SEVERITY, NGHTTP2_FILE_NAME, __LINE__)                           \
+   << "[DHTTP2:" << HTTP2 << "] ")
 
 // Memcached connection log
 #define MCLOG(SEVERITY, MCONN)                                                 \
-  (shrpx::Log(SEVERITY, __FILE__, __LINE__) << "[MCONN:" << MCONN << "] ")
+  (shrpx::Log(SEVERITY, NGHTTP2_FILE_NAME, __LINE__)                           \
+   << "[MCONN:" << MCONN << "] ")
 
 namespace shrpx {
 
