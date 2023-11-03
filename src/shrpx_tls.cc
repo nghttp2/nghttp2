@@ -357,8 +357,8 @@ int ocsp_resp_cb(SSL *ssl, void *arg) {
     return SSL_TLSEXT_ERR_OK;
   }
 
-  auto buf =
-      static_cast<uint8_t *>(CRYPTO_malloc(data->size(), __FILE__, __LINE__));
+  auto buf = static_cast<uint8_t *>(
+      CRYPTO_malloc(data->size(), NGHTTP2_FILE_NAME, __LINE__));
 
   if (!buf) {
     return SSL_TLSEXT_ERR_OK;
