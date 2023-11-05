@@ -35,6 +35,7 @@ HEADERS = [
     "early-data",
     "sec-websocket-accept",
     "sec-websocket-key",
+    "priority",
     # disallowed h1 headers
     'connection',
     'keep-alive',

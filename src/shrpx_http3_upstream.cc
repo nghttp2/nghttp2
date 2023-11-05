@@ -1427,6 +1427,32 @@ int Http3Upstream::on_downstream_header_complete(Downstream *downstream) {
     log_response_headers(downstream, nva);
   }
 
+  auto priority = resp.fs.header(http2::HD_PRIORITY);
+  if (priority) {
+    nghttp3_pri pri;
+
+    if (nghttp3_conn_get_stream_priority(httpconn_, &pri,
+                                         downstream->get_stream_id()) == 0) {
+      nghttp2_extpri extpri;
+
+      extpri.urgency = pri.urgency;
+      extpri.inc = pri.inc;
+
+      if (nghttp2_extpri_parse_priority(&extpri, priority->value.byte(),
+                                        priority->value.size()) == 0) {
+        pri.urgency = extpri.urgency;
+        pri.inc = extpri.inc;
+
+        rv = nghttp3_conn_set_server_stream_priority(
+            httpconn_, downstream->get_stream_id(), &pri);
+        if (rv != 0) {
+          ULOG(ERROR, this) << "nghttp3_conn_set_server_stream_priority: "
+                            << nghttp3_strerror(rv);
+        }
+      }
+    }
+  }
+
   nghttp3_data_reader data_read;
   data_read.read_data = downstream_read_data_callback;
 

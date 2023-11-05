@@ -1858,6 +1858,24 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
                    nva.size());
   }
 
+  auto priority = resp.fs.header(http2::HD_PRIORITY);
+  if (priority) {
+    nghttp2_extpri extpri;
+
+    if (nghttp2_session_get_extpri_stream_priority(
+            session_, &extpri, downstream->get_stream_id()) == 0 &&
+        nghttp2_extpri_parse_priority(&extpri, priority->value.byte(),
+                                      priority->value.size()) == 0) {
+      rv = nghttp2_session_change_extpri_stream_priority(
+          session_, downstream->get_stream_id(), &extpri,
+          /* ignore_client_signal = */ 1);
+      if (rv != 0) {
+        ULOG(ERROR, this) << "nghttp2_session_change_extpri_stream_priority: "
+                          << nghttp2_strerror(rv);
+      }
+    }
+  }
+
   nghttp2_data_provider data_prd;
   data_prd.source.ptr = downstream;
   data_prd.read_callback = downstream_data_read_callback;

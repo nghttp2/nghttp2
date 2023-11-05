@@ -831,6 +831,11 @@ int lookup_token(const uint8_t *name, size_t namelen) {
         return HD_LOCATION;
       }
       break;
+    case 'y':
+      if (util::streq_l("priorit", name, 7)) {
+        return HD_PRIORITY;
+      }
+      break;
     }
     break;
   case 9:
