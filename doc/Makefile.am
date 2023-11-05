@@ -33,6 +33,7 @@ APIDOCS= \
 	nghttp2_check_header_value_rfc9113.rst \
 	nghttp2_check_method.rst \
 	nghttp2_check_path.rst \
+	nghttp2_extpri_parse_priority.rst \
 	nghttp2_hd_deflate_bound.rst \
 	nghttp2_hd_deflate_change_table_size.rst \
 	nghttp2_hd_deflate_del.rst \
@@ -125,6 +126,7 @@ APIDOCS= \
 	nghttp2_session_find_stream.rst \
 	nghttp2_session_get_effective_local_window_size.rst \
 	nghttp2_session_get_effective_recv_data_length.rst \
+	nghttp2_session_get_extpri_stream_priority.rst \
 	nghttp2_session_get_hd_deflate_dynamic_table_size.rst \
 	nghttp2_session_get_hd_inflate_dynamic_table_size.rst \
 	nghttp2_session_get_last_proc_stream_id.rst \

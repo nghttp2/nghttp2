@@ -10772,7 +10772,7 @@ void test_nghttp2_session_change_extpri_stream_priority(void) {
   nghttp2_option *option;
   nghttp2_extension frame;
   nghttp2_ext_priority_update priority_update;
-  nghttp2_extpri extpri;
+  nghttp2_extpri extpri, nextpri;
   nghttp2_stream *stream;
   static const uint8_t field_value[] = "u=2";
 
@@ -10803,6 +10803,12 @@ void test_nghttp2_session_change_extpri_stream_priority(void) {
   CU_ASSERT(NGHTTP2_EXTPRI_URGENCY_LOW ==
             nghttp2_extpri_uint8_urgency(stream->extpri));
   CU_ASSERT(1 == nghttp2_extpri_uint8_inc(stream->extpri));
+
+  rv = nghttp2_session_get_extpri_stream_priority(session, &nextpri, 1);
+
+  CU_ASSERT(0 == rv);
+  CU_ASSERT(NGHTTP2_EXTPRI_URGENCY_LOW == nextpri.urgency);
+  CU_ASSERT(1 == nextpri.inc);
 
   /* Client can still update stream priority. */
   frame.payload = &priority_update;
