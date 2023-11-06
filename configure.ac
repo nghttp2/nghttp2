@@ -985,6 +985,10 @@ AC_CHECK_DECLS([initgroups], [], [], [[
   #include <grp.h>
 ]])
 
+AC_CHECK_DECLS([CLOCK_MONOTONIC], [], [], [[
+#include <time.h>
+]])
+
 save_CFLAGS=$CFLAGS
 save_CXXFLAGS=$CXXFLAGS
 
