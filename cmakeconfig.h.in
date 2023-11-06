@@ -43,6 +43,9 @@
 /* Define to 1 if you have the `initgroups` function. */
 #cmakedefine01 HAVE_DECL_INITGROUPS
 
+/* Define to 1 if you have the `CLOCK_MONOTONIC` defined. */
+#cmakedefine01 HAVE_DECL_CLOCK_MONOTONIC
+
 /* Define to 1 to enable debug output. */
 #cmakedefine DEBUGBUILD 1
 
