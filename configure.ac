@@ -856,7 +856,6 @@ AC_CHECK_HEADERS([ \
   sys/socket.h \
   sys/time.h \
   syslog.h \
-  time.h \
   unistd.h \
   windows.h \
 ])

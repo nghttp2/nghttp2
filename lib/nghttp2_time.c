@@ -24,13 +24,11 @@
  */
 #include "nghttp2_time.h"
 
-#ifdef HAVE_TIME_H
-#  include <time.h>
-#endif /* HAVE_TIME_H */
-
 #ifdef HAVE_WINDOWS_H
 #  include <windows.h>
 #endif /* HAVE_WINDOWS_H */
+
+#include <time.h>
 
 #if !defined(HAVE_GETTICKCOUNT64) || defined(__CYGWIN__)
 static uint64_t time_now_sec(void) {

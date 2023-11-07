@@ -24,9 +24,6 @@
  */
 #include "util.h"
 
-#ifdef HAVE_TIME_H
-#  include <time.h>
-#endif // HAVE_TIME_H
 #include <sys/types.h>
 #ifdef HAVE_SYS_SOCKET_H
 #  include <sys/socket.h>
@@ -59,6 +56,7 @@
 #include <cassert>
 #include <cstdio>
 #include <cstring>
+#include <ctime>
 #include <iostream>
 #include <fstream>
 #include <iomanip>
