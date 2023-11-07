@@ -907,12 +907,6 @@ if test "x$have_struct_tm_tm_gmtoff" = "xyes"; then
             [Define to 1 if you have `struct tm.tm_gmtoff` member.])
 fi
 
-# Check size of pointer to decide we need 8 bytes alignment
-# adjustment.
-AC_CHECK_SIZEOF([int *])
-
-AC_CHECK_SIZEOF([time_t])
-
 # Checks for library functions.
 
 # Don't check malloc, since it does not play nicely with C++ stdlib

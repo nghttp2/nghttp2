@@ -309,10 +309,6 @@ endif()
 include(CheckStructHasMember)
 check_struct_has_member("struct tm" tm_gmtoff time.h HAVE_STRUCT_TM_TM_GMTOFF)
 
-# Check size of pointer to decide we need 8 bytes alignment adjustment.
-check_type_size("int *"   SIZEOF_INT_P)
-check_type_size("time_t"  SIZEOF_TIME_T)
-
 # Checks for library functions.
 include(CheckFunctionExists)
 check_function_exists(_Exit     HAVE__EXIT)
