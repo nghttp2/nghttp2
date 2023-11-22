@@ -2081,6 +2081,27 @@ int parse_header_table_size(uint32_t &dst, const char *opt,
 } // namespace
 
 namespace {
+std::string make_http_authority(const Config &config) {
+  std::string host;
+
+  if (util::numeric_host(config.host.c_str(), AF_INET6)) {
+    host += '[';
+    host += config.host;
+    host += ']';
+  } else {
+    host = config.host;
+  }
+
+  if (config.port != config.default_port) {
+    host += ':';
+    host += util::utos(config.port);
+  }
+
+  return host;
+}
+} // namespace
+
+namespace {
 void print_version(std::ostream &out) {
   out << "h2load nghttp2/" NGHTTP2_VERSION << std::endl;
 }
@@ -3005,12 +3026,7 @@ int main(int argc, char **argv) {
   std::string user_agent = "h2load nghttp2/" NGHTTP2_VERSION;
   Headers shared_nva;
   shared_nva.emplace_back(":scheme", config.scheme);
-  if (config.port != config.default_port) {
-    shared_nva.emplace_back(":authority",
-                            config.host + ":" + util::utos(config.port));
-  } else {
-    shared_nva.emplace_back(":authority", config.host);
-  }
+  shared_nva.emplace_back(":authority", make_http_authority(config));
   shared_nva.emplace_back(":method", config.data_fd == -1 ? "GET" : "POST");
   shared_nva.emplace_back("user-agent", user_agent);
 
