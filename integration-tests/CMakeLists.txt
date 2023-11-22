@@ -19,12 +19,6 @@ set(EXTRA_DIST
   resp-return.rb
 )
 
-add_custom_target(itprep
-  COMMAND go get -d -v golang.org/x/net/http2
-  COMMAND go get -d -v github.com/tatsuhiro-t/go-nghttp2
-  COMMAND go get -d -v golang.org/x/net/websocket
-)
-
 # 'go test' requires both config.go and the test files in the same directory.
 # For out-of-tree builds, config.go is normally not placed next to the source
 # files, so copy the tests to the build directory as a workaround.
