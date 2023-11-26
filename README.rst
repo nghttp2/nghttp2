@@ -131,7 +131,7 @@ following libraries are required:
   `BoringSSL <https://boringssl.googlesource.com/boringssl/>`_ (commit
   6ca49385b168f47a50e7172d82a590b218f55e4d)
 * `ngtcp2 <https://github.com/ngtcp2/ngtcp2>`_ >= 1.0.0
-* `nghttp3 <https://github.com/ngtcp2/nghttp3>`_ >= 1.0.0
+* `nghttp3 <https://github.com/ngtcp2/nghttp3>`_ >= 1.1.0
 
 Use ``--enable-http3`` configure option to enable HTTP/3 feature for
 h2load and nghttpx.
