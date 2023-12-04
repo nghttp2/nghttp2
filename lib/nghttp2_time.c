@@ -28,9 +28,9 @@
 #  include <time.h>
 #endif /* HAVE_TIME_H */
 
-#ifdef HAVE_SYSINFOAPI_H
-#  include <sysinfoapi.h>
-#endif /* HAVE_SYSINFOAPI_H */
+#ifdef HAVE_WINDOWS_H
+#  include <windows.h>
+#endif /* HAVE_WINDOWS_H */
 
 #if !defined(HAVE_GETTICKCOUNT64) || defined(__CYGWIN__)
 static uint64_t time_now_sec(void) {

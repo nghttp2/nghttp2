@@ -277,10 +277,10 @@ check_include_file("netinet/ip.h"   HAVE_NETINET_IP_H)
 check_include_file("pwd.h"          HAVE_PWD_H)
 check_include_file("sys/socket.h"   HAVE_SYS_SOCKET_H)
 check_include_file("sys/time.h"     HAVE_SYS_TIME_H)
-check_include_file("sysinfoapi.h"   HAVE_SYSINFOAPI_H)
 check_include_file("syslog.h"       HAVE_SYSLOG_H)
 check_include_file("time.h"         HAVE_TIME_H)
 check_include_file("unistd.h"       HAVE_UNISTD_H)
+check_include_file("windows.h"      HAVE_WINDOWS_H)
 
 include(CheckTypeSize)
 # Checks for typedefs, structures, and compiler characteristics.

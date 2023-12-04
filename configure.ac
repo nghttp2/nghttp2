@@ -855,10 +855,10 @@ AC_CHECK_HEADERS([ \
   string.h \
   sys/socket.h \
   sys/time.h \
-  sysinfoapi.h \
   syslog.h \
   time.h \
   unistd.h \
+  windows.h \
 ])
 
 # Checks for typedefs, structures, and compiler characteristics.
@@ -959,7 +959,7 @@ AC_CHECK_FUNC([timerfd_create],
 AC_MSG_CHECKING([checking for GetTickCount64])
 AC_LINK_IFELSE([AC_LANG_PROGRAM(
 [[
-#include <sysinfoapi.h>
+#include <windows.h>
 ]],
 [[
 GetTickCount64();
