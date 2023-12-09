@@ -82,9 +82,6 @@
 /* Define to 1 if you have the <sys/time.h> header file. */
 #cmakedefine HAVE_SYS_TIME_H 1
 
-/* Define to 1 if you have the <sysinfoapi.h> header file. */
-#cmakedefine HAVE_SYSINFOAPI_H 1
-
 /* Define to 1 if you have the <syslog.h> header file. */
 #cmakedefine HAVE_SYSLOG_H 1
 
@@ -93,6 +90,9 @@
 
 /* Define to 1 if you have the <unistd.h> header file. */
 #cmakedefine HAVE_UNISTD_H 1
+
+/* Define to 1 if you have the <windows.h> header file. */
+#cmakedefine HAVE_WINDOWS_H 1
 
 /* Define to 1 if HTTP/3 is enabled. */
 #cmakedefine ENABLE_HTTP3 1
