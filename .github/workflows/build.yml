@@ -394,7 +394,7 @@ jobs:
         cd $NGHTTP2_CMAKE_DIR
         make -j"$(nproc 2> /dev/null || sysctl -n hw.ncpu)"
         make -j"$(nproc 2> /dev/null || sysctl -n hw.ncpu)" check
-    - uses: actions/setup-go@v4
+    - uses: actions/setup-go@v5
       if: matrix.buildtool == 'cmake'
       with:
         go-version-file: go.mod
