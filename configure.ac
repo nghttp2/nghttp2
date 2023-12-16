@@ -457,17 +457,17 @@ if test "x${request_openssl}" != "xno"; then
     CFLAGS="$OPENSSL_CFLAGS $CFLAGS"
     LIBS="$OPENSSL_LIBS $LIBS"
 
-    # quictls/openssl has SSL_is_quic.
-    have_ssl_is_quic=no
-    AC_MSG_CHECKING([for SSL_is_quic])
+    # quictls/openssl has SSL_provide_quic_data.  boringssl also has
+    # it.  We will deal with it later.
+    have_ssl_provide_quic_data=no
+    AC_MSG_CHECKING([for SSL_provide_quic_data])
     AC_LINK_IFELSE([AC_LANG_PROGRAM([[
       #include <openssl/ssl.h>
     ]], [[
-      SSL *ssl = NULL;
-      SSL_is_quic(ssl);
+      SSL_provide_quic_data(NULL, 0, NULL, 0);
     ]])],
-    [AC_MSG_RESULT([yes]); have_ssl_is_quic=yes],
-    [AC_MSG_RESULT([no]); have_ssl_is_quic=no])
+    [AC_MSG_RESULT([yes]); have_ssl_provide_quic_data=yes],
+    [AC_MSG_RESULT([no]); have_ssl_provide_quic_data=no])
 
     # boringssl has SSL_set_quic_early_data_context.
     AC_MSG_CHECKING([for SSL_set_quic_early_data_context])
@@ -522,7 +522,8 @@ fi
 
 # ngtcp2_crypto_quictls (for src)
 have_libngtcp2_crypto_quictls=no
-if test "x${have_ssl_is_quic}" = "xyes" &&
+if test "x${have_ssl_provide_quic_data}" = "xyes" &&
+   test "x${have_boringssl_quic}" != "xyes" &&
    test "x${request_libngtcp2}" != "xno"; then
   PKG_CHECK_MODULES([LIBNGTCP2_CRYPTO_QUICTLS],
                     [libngtcp2_crypto_quictls >= 1.0.0],
@@ -536,7 +537,8 @@ if test "x${have_ssl_is_quic}" = "xyes" &&
   fi
 fi
 
-if test "x${have_ssl_is_quic}" = "xyes" &&
+if test "x${have_ssl_provide_quic_data}" = "xyes" &&
+   test "x${have_boringssl_quic}" != "xyes" &&
    test "x${request_libngtcp2}" = "xyes" &&
    test "x${have_libngtcp2_crypto_quictls}" != "xyes"; then
   AC_MSG_ERROR([libngtcp2_crypto_quictls was requested (--with-libngtcp2) but not found])
@@ -752,8 +754,6 @@ AM_CONDITIONAL([ENABLE_APP], [ test "x${enable_app}" = "xyes" ])
 # Check HTTP/3 support
 enable_http3=no
 if test "x${request_http3}" != "xno" &&
-   (test "x${have_ssl_is_quic}" = "xyes" ||
-    test "x${have_boringssl_quic}" = "xyes") &&
    test "x${have_libngtcp2}" = "xyes" &&
    (test "x${have_libngtcp2_crypto_quictls}" = "xyes" ||
     test "x${have_libngtcp2_crypto_boringssl}" = "xyes") &&

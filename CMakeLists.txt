@@ -180,9 +180,9 @@ if(OPENSSL_FOUND)
   if(WIN32)
     set(CMAKE_REQUIRED_LIBRARIES "${CMAKE_REQUIRED_LIBRARIES}" "ws2_32" "bcrypt")
   endif()
-  check_symbol_exists(SSL_is_quic "openssl/ssl.h" HAVE_SSL_IS_QUIC)
-  if(NOT HAVE_SSL_IS_QUIC)
-    message(WARNING "OpenSSL in ${OPENSSL_LIBRARIES} does not have SSL_is_quic.  HTTP/3 support cannot be enabled")
+  check_symbol_exists(SSL_provide_quic_data "openssl/ssl.h" HAVE_SSL_PROVIDE_QUIC_DATA)
+  if(NOT HAVE_SSL_PROVIDE_QUIC_DATA)
+    message(WARNING "OpenSSL in ${OPENSSL_LIBRARIES} does not have SSL_provide_quic_data.  HTTP/3 support cannot be enabled")
   endif()
   cmake_pop_check_state()
 else()
@@ -240,7 +240,7 @@ endif()
 
 # HTTP/3 requires quictls/openssl, libngtcp2, libngtcp2_crypto_quictls
 # and libnghttp3.
-if(ENABLE_HTTP3 AND NOT (HAVE_SSL_IS_QUIC AND LIBNGTCP2_FOUND AND LIBNGTCP2_CRYPTO_QUICTLS_FOUND AND LIBNGHTTP3_FOUND))
+if(ENABLE_HTTP3 AND NOT (HAVE_SSL_PROVIDE_QUIC_DATA AND LIBNGTCP2_FOUND AND LIBNGTCP2_CRYPTO_QUICTLS_FOUND AND LIBNGHTTP3_FOUND))
   message(FATAL_ERROR "HTTP/3 was requested (ENABLE_HTTP3=1) but dependencies are not met.")
 endif()
 
