@@ -151,24 +151,24 @@ bool check_http2_requirement(SSL *ssl) {
 void libssl_init() {
 #if OPENSSL_1_1_API
 // No explicit initialization is required.
-#elif defined(OPENSSL_IS_BORINGSSL)
+#elif defined(NGHTTP2_OPENSSL_IS_BORINGSSL)
   CRYPTO_library_init();
-#else  // !OPENSSL_1_1_API && !defined(OPENSSL_IS_BORINGSSL)
+#else  // !OPENSSL_1_1_API && !defined(NGHTTP2_OPENSSL_IS_BORINGSSL)
   OPENSSL_config(nullptr);
   SSL_load_error_strings();
   SSL_library_init();
   OpenSSL_add_all_algorithms();
-#endif // !OPENSSL_1_1_API && !defined(OPENSSL_IS_BORINGSSL)
+#endif // !OPENSSL_1_1_API && !defined(NGHTTP2_OPENSSL_IS_BORINGSSL)
 }
 
 int ssl_ctx_set_proto_versions(SSL_CTX *ssl_ctx, int min, int max) {
-#if OPENSSL_1_1_API || defined(OPENSSL_IS_BORINGSSL)
+#if OPENSSL_1_1_API || defined(NGHTTP2_OPENSSL_IS_BORINGSSL)
   if (SSL_CTX_set_min_proto_version(ssl_ctx, min) != 1 ||
       SSL_CTX_set_max_proto_version(ssl_ctx, max) != 1) {
     return -1;
   }
   return 0;
-#else  // !OPENSSL_1_1_API && !defined(OPENSSL_IS_BORINGSSL)
+#else  // !OPENSSL_1_1_API && !defined(NGHTTP2_OPENSSL_IS_BORINGSSL)
   long int opts = 0;
 
   // TODO We depends on the ordering of protocol version macro in
@@ -193,7 +193,7 @@ int ssl_ctx_set_proto_versions(SSL_CTX *ssl_ctx, int min, int max) {
   SSL_CTX_set_options(ssl_ctx, opts);
 
   return 0;
-#endif // !OPENSSL_1_1_API && !defined(OPENSSL_IS_BORINGSSL)
+#endif // !OPENSSL_1_1_API && !defined(NGHTTP2_OPENSSL_IS_BORINGSSL)
 }
 
 } // namespace tls

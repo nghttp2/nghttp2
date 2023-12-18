@@ -699,14 +699,14 @@ int HttpClient::initiate_connection() {
 
 #if LIBRESSL_2_7_API ||                                                        \
     (!LIBRESSL_IN_USE && OPENSSL_VERSION_NUMBER >= 0x10002000L) ||             \
-    defined(OPENSSL_IS_BORINGSSL)
+    defined(NGHTTP2_OPENSSL_IS_BORINGSSL)
       auto param = SSL_get0_param(ssl);
       X509_VERIFY_PARAM_set_hostflags(param, 0);
       X509_VERIFY_PARAM_set1_host(param, host_string.c_str(),
                                   host_string.size());
 #endif // LIBRESSL_2_7_API || (!LIBRESSL_IN_USE &&
        // OPENSSL_VERSION_NUMBER >= 0x10002000L) ||
-       // defined(OPENSSL_IS_BORINGSSL)
+       // defined(NGHTTP2_OPENSSL_IS_BORINGSSL)
       SSL_set_verify(ssl, SSL_VERIFY_PEER, verify_cb);
 
       if (!util::numeric_host(host_string.c_str())) {
