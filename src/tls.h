@@ -61,7 +61,7 @@ constexpr char DEFAULT_CIPHER_LIST[] =
 //
 // https://wiki.mozilla.org/Security/Server_Side_TLS
 constexpr char DEFAULT_TLS13_CIPHER_LIST[] =
-#if OPENSSL_1_1_1_API && !defined(OPENSSL_IS_BORINGSSL)
+#if OPENSSL_1_1_1_API && !defined(NGHTTP2_OPENSSL_IS_BORINGSSL)
     "TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256"
 #else
     ""

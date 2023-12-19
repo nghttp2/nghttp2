@@ -48,6 +48,7 @@
 #include "xsi_strerror.h"
 #include "util.h"
 #include "template.h"
+#include "ssl_compat.h"
 
 using namespace nghttp2;
 
@@ -738,7 +739,7 @@ void ConnectionHandler::handle_ocsp_complete() {
     // that case we get nullptr.
     auto quic_ssl_ctx = quic_all_ssl_ctx_[ocsp_.next];
     if (quic_ssl_ctx) {
-#  ifndef OPENSSL_IS_BORINGSSL
+#  ifndef NGHTTP2_OPENSSL_IS_BORINGSSL
       auto quic_tls_ctx_data = static_cast<tls::TLSContextData *>(
           SSL_CTX_get_app_data(quic_ssl_ctx));
 #    ifdef HAVE_ATOMIC_STD_SHARED_PTR
@@ -751,14 +752,14 @@ void ConnectionHandler::handle_ocsp_complete() {
       quic_tls_ctx_data->ocsp_data =
           std::make_shared<std::vector<uint8_t>>(ocsp_.resp);
 #    endif // !HAVE_ATOMIC_STD_SHARED_PTR
-#  else    // OPENSSL_IS_BORINGSSL
+#  else    // NGHTTP2_OPENSSL_IS_BORINGSSL
       SSL_CTX_set_ocsp_response(quic_ssl_ctx, ocsp_.resp.data(),
                                 ocsp_.resp.size());
-#  endif   // OPENSSL_IS_BORINGSSL
+#  endif   // NGHTTP2_OPENSSL_IS_BORINGSSL
     }
 #endif // ENABLE_HTTP3
 
-#ifndef OPENSSL_IS_BORINGSSL
+#ifndef NGHTTP2_OPENSSL_IS_BORINGSSL
 #  ifdef HAVE_ATOMIC_STD_SHARED_PTR
     std::atomic_store_explicit(
         &tls_ctx_data->ocsp_data,
@@ -769,9 +770,9 @@ void ConnectionHandler::handle_ocsp_complete() {
     tls_ctx_data->ocsp_data =
         std::make_shared<std::vector<uint8_t>>(std::move(ocsp_.resp));
 #  endif // !HAVE_ATOMIC_STD_SHARED_PTR
-#else    // OPENSSL_IS_BORINGSSL
+#else    // NGHTTP2_OPENSSL_IS_BORINGSSL
     SSL_CTX_set_ocsp_response(ssl_ctx, ocsp_.resp.data(), ocsp_.resp.size());
-#endif   // OPENSSL_IS_BORINGSSL
+#endif   // NGHTTP2_OPENSSL_IS_BORINGSSL
   }
 
   ++ocsp_.next;

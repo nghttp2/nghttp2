@@ -46,6 +46,7 @@
 #endif // HAVE_MRUBY
 #include "http3.h"
 #include "util.h"
+#include "ssl_compat.h"
 
 namespace shrpx {
 
@@ -671,7 +672,7 @@ int Http3Upstream::init(const UpstreamAddr *faddr, const Address &remote_addr,
   params.max_idle_timeout = static_cast<ngtcp2_tstamp>(
       quicconf.upstream.timeout.idle * NGTCP2_SECONDS);
 
-#ifdef OPENSSL_IS_BORINGSSL
+#ifdef NGHTTP2_OPENSSL_IS_BORINGSSL
   if (quicconf.upstream.early_data) {
     ngtcp2_transport_params early_data_params;
 
@@ -707,7 +708,7 @@ int Http3Upstream::init(const UpstreamAddr *faddr, const Address &remote_addr,
       return -1;
     }
   }
-#endif // OPENSSL_IS_BORINGSSL
+#endif // NGHTTP2_OPENSSL_IS_BORINGSSL
 
   if (odcid) {
     params.original_dcid = *odcid;

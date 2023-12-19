@@ -407,7 +407,7 @@ int Connection::tls_handshake() {
 
   ERR_clear_error();
 
-#if OPENSSL_1_1_1_API && !defined(OPENSSL_IS_BORINGSSL)
+#if OPENSSL_1_1_1_API && !defined(NGHTTP2_OPENSSL_IS_BORINGSSL)
   if (!tls.server_handshake || tls.early_data_finish) {
     rv = SSL_do_handshake(tls.ssl);
   } else {
@@ -458,9 +458,9 @@ int Connection::tls_handshake() {
       }
     }
   }
-#else  // !(OPENSSL_1_1_1_API && !defined(OPENSSL_IS_BORINGSSL))
+#else  // !(OPENSSL_1_1_1_API && !defined(NGHTTP2_OPENSSL_IS_BORINGSSL))
   rv = SSL_do_handshake(tls.ssl);
-#endif // !(OPENSSL_1_1_1_API && !defined(OPENSSL_IS_BORINGSSL))
+#endif // !(OPENSSL_1_1_1_API && !defined(NGHTTP2_OPENSSL_IS_BORINGSSL))
 
   if (rv <= 0) {
     auto err = SSL_get_error(tls.ssl, rv);
@@ -509,9 +509,9 @@ int Connection::tls_handshake() {
   // routine.  We have to check HTTP/2 requirement if HTTP/2 was
   // negotiated before sending finished message to the peer.
   if ((rv != 1
-#ifdef OPENSSL_IS_BORINGSSL
+#ifdef NGHTTP2_OPENSSL_IS_BORINGSSL
        || SSL_in_init(tls.ssl)
-#endif // OPENSSL_IS_BORINGSSL
+#endif // NGHTTP2_OPENSSL_IS_BORINGSSL
            ) &&
       tls.wbuf.rleft()) {
     // First write indicates that resumption stuff has done.
@@ -549,7 +549,7 @@ int Connection::tls_handshake() {
     return SHRPX_ERR_INPROGRESS;
   }
 
-#ifdef OPENSSL_IS_BORINGSSL
+#ifdef NGHTTP2_OPENSSL_IS_BORINGSSL
   if (!tlsconf.no_postpone_early_data && SSL_in_early_data(tls.ssl) &&
       SSL_in_init(tls.ssl)) {
     auto nread = SSL_read(tls.ssl, buf.data(), buf.size());
@@ -581,7 +581,7 @@ int Connection::tls_handshake() {
       return SHRPX_ERR_INPROGRESS;
     }
   }
-#endif // OPENSSL_IS_BORINGSSL
+#endif // NGHTTP2_OPENSSL_IS_BORINGSSL
 
   // Handshake was done
 
@@ -611,14 +611,14 @@ int Connection::tls_handshake_simple() {
   }
 
   int rv;
-#if OPENSSL_1_1_1_API || defined(OPENSSL_IS_BORINGSSL)
+#if OPENSSL_1_1_1_API || defined(NGHTTP2_OPENSSL_IS_BORINGSSL)
   auto &tlsconf = get_config()->tls;
   std::array<uint8_t, 16_k> buf;
-#endif // OPENSSL_1_1_1_API || defined(OPENSSL_IS_BORINGSSL)
+#endif // OPENSSL_1_1_1_API || defined(NGHTTP2_OPENSSL_IS_BORINGSSL)
 
   ERR_clear_error();
 
-#if OPENSSL_1_1_1_API && !defined(OPENSSL_IS_BORINGSSL)
+#if OPENSSL_1_1_1_API && !defined(NGHTTP2_OPENSSL_IS_BORINGSSL)
   if (!tls.server_handshake || tls.early_data_finish) {
     rv = SSL_do_handshake(tls.ssl);
   } else {
@@ -663,9 +663,9 @@ int Connection::tls_handshake_simple() {
       }
     }
   }
-#else  // !(OPENSSL_1_1_1_API && !defined(OPENSSL_IS_BORINGSSL))
+#else  // !(OPENSSL_1_1_1_API && !defined(NGHTTP2_OPENSSL_IS_BORINGSSL))
   rv = SSL_do_handshake(tls.ssl);
-#endif // !(OPENSSL_1_1_1_API && !defined(OPENSSL_IS_BORINGSSL))
+#endif // !(OPENSSL_1_1_1_API && !defined(NGHTTP2_OPENSSL_IS_BORINGSSL))
 
   if (rv <= 0) {
     auto err = SSL_get_error(tls.ssl, rv);
@@ -704,7 +704,7 @@ int Connection::tls_handshake_simple() {
     return SHRPX_ERR_INPROGRESS;
   }
 
-#ifdef OPENSSL_IS_BORINGSSL
+#ifdef NGHTTP2_OPENSSL_IS_BORINGSSL
   if (!tlsconf.no_postpone_early_data && SSL_in_early_data(tls.ssl) &&
       SSL_in_init(tls.ssl)) {
     auto nread = SSL_read(tls.ssl, buf.data(), buf.size());
@@ -736,7 +736,7 @@ int Connection::tls_handshake_simple() {
       return SHRPX_ERR_INPROGRESS;
     }
   }
-#endif // OPENSSL_IS_BORINGSSL
+#endif // NGHTTP2_OPENSSL_IS_BORINGSSL
 
   // Handshake was done
 
@@ -771,7 +771,7 @@ int Connection::write_tls_pending_handshake() {
     tls.wbuf.drain(nwrite);
   }
 
-#ifdef OPENSSL_IS_BORINGSSL
+#ifdef NGHTTP2_OPENSSL_IS_BORINGSSL
   if (!SSL_in_init(tls.ssl)) {
     // This will send a session ticket.
     auto nwrite = SSL_write(tls.ssl, "", 0);
@@ -799,7 +799,7 @@ int Connection::write_tls_pending_handshake() {
       }
     }
   }
-#endif // OPENSSL_IS_BORINGSSL
+#endif // NGHTTP2_OPENSSL_IS_BORINGSSL
 
   // We have to start read watcher, since later stage of code expects
   // this.
@@ -932,7 +932,7 @@ ssize_t Connection::write_tls(const void *data, size_t len) {
 
   ERR_clear_error();
 
-#if OPENSSL_1_1_1_API && !defined(OPENSSL_IS_BORINGSSL)
+#if OPENSSL_1_1_1_API && !defined(NGHTTP2_OPENSSL_IS_BORINGSSL)
   int rv;
   if (SSL_is_init_finished(tls.ssl)) {
     rv = SSL_write(tls.ssl, data, len);
@@ -944,9 +944,9 @@ ssize_t Connection::write_tls(const void *data, size_t len) {
       rv = nwrite;
     }
   }
-#else  // !(OPENSSL_1_1_1_API && !defined(OPENSSL_IS_BORINGSSL))
+#else  // !(OPENSSL_1_1_1_API && !defined(NGHTTP2_OPENSSL_IS_BORINGSSL))
   auto rv = SSL_write(tls.ssl, data, len);
-#endif // !(OPENSSL_1_1_1_API && !defined(OPENSSL_IS_BORINGSSL))
+#endif // !(OPENSSL_1_1_1_API && !defined(NGHTTP2_OPENSSL_IS_BORINGSSL))
 
   if (rv <= 0) {
     auto err = SSL_get_error(tls.ssl, rv);
@@ -1023,7 +1023,7 @@ ssize_t Connection::read_tls(void *data, size_t len) {
   auto via_bio =
       tls.server_handshake && !tlsconf.session_cache.memcached.host.empty();
 
-#if OPENSSL_1_1_1_API && !defined(OPENSSL_IS_BORINGSSL)
+#if OPENSSL_1_1_1_API && !defined(NGHTTP2_OPENSSL_IS_BORINGSSL)
   if (!tls.early_data_finish) {
     // TLSv1.3 handshake is still going on.
     size_t nread;
@@ -1067,7 +1067,7 @@ ssize_t Connection::read_tls(void *data, size_t len) {
 
     return nread;
   }
-#endif // OPENSSL_1_1_1_API && !defined(OPENSSL_IS_BORINGSSL)
+#endif // OPENSSL_1_1_1_API && !defined(NGHTTP2_OPENSSL_IS_BORINGSSL)
 
   auto rv = SSL_read(tls.ssl, data, len);
 

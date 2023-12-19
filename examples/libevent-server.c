@@ -819,16 +819,16 @@ int main(int argc, char **argv) {
 
 #if OPENSSL_VERSION_NUMBER >= 0x1010000fL
   /* No explicit initialization is required. */
-#elif defined(OPENSSL_IS_BORINGSSL)
+#elif defined(OPENSSL_IS_BORINGSSL) || defined(OPENSSL_IS_AWSLC)
   CRYPTO_library_init();
 #else  /* !(OPENSSL_VERSION_NUMBER >= 0x1010000fL) &&                          \
-          !defined(OPENSSL_IS_BORINGSSL) */
+          !defined(OPENSSL_IS_BORINGSSL) && !defined(OPENSSL_IS_AWSLC) */
   OPENSSL_config(NULL);
   SSL_load_error_strings();
   SSL_library_init();
   OpenSSL_add_all_algorithms();
 #endif /* !(OPENSSL_VERSION_NUMBER >= 0x1010000fL) &&                          \
-          !defined(OPENSSL_IS_BORINGSSL) */
+          !defined(OPENSSL_IS_BORINGSSL) && !defined(OPENSSL_IS_AWSLC) */
 
   run(argv[1], argv[2], argv[3]);
   return 0;
