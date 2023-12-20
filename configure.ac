@@ -447,7 +447,7 @@ fi
 # openssl (for src)
 have_openssl=no
 if test "x${request_openssl}" != "xno"; then
-  PKG_CHECK_MODULES([OPENSSL], [openssl >= 1.0.1],
+  PKG_CHECK_MODULES([OPENSSL], [openssl >= 1.1.1],
                     [have_openssl=yes], [have_openssl=no])
   if test "x${have_openssl}" = "xno"; then
     AC_MSG_NOTICE($OPENSSL_PKG_ERRORS)

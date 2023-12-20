@@ -2157,23 +2157,12 @@ int HttpServer::run() {
     SSL_CTX_set_session_cache_mode(ssl_ctx, SSL_SESS_CACHE_SERVER);
 
 #ifndef OPENSSL_NO_EC
-#  if !LIBRESSL_LEGACY_API && OPENSSL_VERSION_NUMBER >= 0x10002000L
     if (SSL_CTX_set1_curves_list(ssl_ctx, "P-256") != 1) {
       std::cerr << "SSL_CTX_set1_curves_list failed: "
                 << ERR_error_string(ERR_get_error(), nullptr);
       return -1;
     }
-#  else  // !(!LIBRESSL_LEGACY_API && OPENSSL_VERSION_NUMBER >= 0x10002000L)
-    auto ecdh = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
-    if (ecdh == nullptr) {
-      std::cerr << "EC_KEY_new_by_curv_name failed: "
-                << ERR_error_string(ERR_get_error(), nullptr);
-      return -1;
-    }
-    SSL_CTX_set_tmp_ecdh(ssl_ctx, ecdh);
-    EC_KEY_free(ecdh);
-#  endif // !(!LIBRESSL_LEGACY_API && OPENSSL_VERSION_NUMBER >= 0x10002000L)
-#endif   // OPENSSL_NO_EC
+#endif // OPENSSL_NO_EC
 
     if (!config_->dh_param_file.empty()) {
       // Read DH parameters from file

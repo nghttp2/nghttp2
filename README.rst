@@ -66,14 +66,11 @@ To build and run the application programs (``nghttp``, ``nghttpd``,
 ``nghttpx`` and ``h2load``) in the ``src`` directory, the following packages
 are required:
 
-* OpenSSL >= 1.0.1
+* OpenSSL >= 1.1.1; or LibreSSL >= 3.8.1; or aws-lc >= 1.19.0; or
+  BoringSSL
 * libev >= 4.11
 * zlib >= 1.2.3
 * libc-ares >= 1.7.5
-
-ALPN support requires OpenSSL >= 1.0.2 (released 22 January 2015).
-LibreSSL >= 2.2.0 can be used instead of OpenSSL, but OpenSSL has more
-features than LibreSSL at the time of this writing.
 
 To enable ``-a`` option (getting linked assets from the downloaded
 resource) in ``nghttp``, the following package is required:
@@ -118,16 +115,17 @@ required:
 * bison
 
 nghttpx supports `neverbleed <https://github.com/h2o/neverbleed>`_,
-privilege separation engine for OpenSSL / LibreSSL.  In short, it
-minimizes the risk of private key leakage when serious bug like
-Heartbleed is exploited.  The neverbleed is disabled by default.  To
-enable it, use ``--with-neverbleed`` configure option.
+privilege separation engine for OpenSSL.  In short, it minimizes the
+risk of private key leakage when serious bug like Heartbleed is
+exploited.  The neverbleed is disabled by default.  To enable it, use
+``--with-neverbleed`` configure option.
 
 To enable the experimental HTTP/3 support for h2load and nghttpx, the
 following libraries are required:
 
 * `OpenSSL with QUIC support
   <https://github.com/quictls/openssl/tree/OpenSSL_1_1_1w+quic>`_; or
+  LibreSSL (does not support 0RTT); or aws-lc; or
   `BoringSSL <https://boringssl.googlesource.com/boringssl/>`_ (commit
   6ca49385b168f47a50e7172d82a590b218f55e4d)
 * `ngtcp2 <https://github.com/ngtcp2/ngtcp2>`_ >= 1.0.0

@@ -37,15 +37,6 @@ namespace nghttp2 {
 
 namespace tls {
 
-// Acquire OpenSSL global lock to share SSL_CTX across multiple
-// threads. The constructor acquires lock and destructor unlocks.
-class LibsslGlobalLock {
-public:
-  LibsslGlobalLock();
-  LibsslGlobalLock(const LibsslGlobalLock &) = delete;
-  LibsslGlobalLock &operator=(const LibsslGlobalLock &) = delete;
-};
-
 // Recommended general purpose "Intermediate compatibility" cipher
 // suites for TLSv1.2 by mozilla.
 //
@@ -61,11 +52,11 @@ constexpr char DEFAULT_CIPHER_LIST[] =
 //
 // https://wiki.mozilla.org/Security/Server_Side_TLS
 constexpr char DEFAULT_TLS13_CIPHER_LIST[] =
-#if OPENSSL_1_1_1_API && !defined(NGHTTP2_OPENSSL_IS_BORINGSSL)
+#if defined(NGHTTP2_GENUINE_OPENSSL) || defined(NGHTTP2_OPENSSL_IS_LIBRESSL)
     "TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256"
-#else
+#else  // !NGHTTP2_GENUINE_OPENSSL && !NGHTTP2_OPENSSL_IS_LIBRESSL
     ""
-#endif
+#endif // !NGHTTP2_GENUINE_OPENSSL && !NGHTTP2_OPENSSL_IS_LIBRESSL
     ;
 
 constexpr auto NGHTTP2_TLS_MIN_VERSION = TLS1_VERSION;
@@ -101,9 +92,6 @@ bool check_http2_cipher_block_list(SSL *ssl);
 // 2. The negotiated cipher cuite is not listed in the block list
 //    described in RFC 7540.
 bool check_http2_requirement(SSL *ssl);
-
-// Initializes OpenSSL library
-void libssl_init();
 
 // Sets TLS min and max versions to |ssl_ctx|.  This function returns
 // 0 if it succeeds, or -1.

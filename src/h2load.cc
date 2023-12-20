@@ -87,7 +87,6 @@ bool recorded(const std::chrono::steady_clock::time_point &t) {
 }
 } // namespace
 
-#if OPENSSL_1_1_1_API
 namespace {
 std::ofstream keylog_file;
 void keylog_callback(const SSL *ssl, const char *line) {
@@ -96,7 +95,6 @@ void keylog_callback(const SSL *ssl, const char *line) {
   keylog_file.flush();
 }
 } // namespace
-#endif // OPENSSL_1_1_1_API
 
 Config::Config()
     : ciphers(tls::DEFAULT_CIPHER_LIST),
@@ -2347,12 +2345,6 @@ Options:
 } // namespace
 
 int main(int argc, char **argv) {
-  tls::libssl_init();
-
-#ifndef NOTHREADS
-  tls::LibsslGlobalLock lock;
-#endif // NOTHREADS
-
   std::string datafile;
   std::string logfile;
   std::string qlog_base;
@@ -2979,26 +2971,19 @@ int main(int argc, char **argv) {
     exit(EXIT_FAILURE);
   }
 
-#if OPENSSL_1_1_1_API && !defined(NGHTTP2_OPENSSL_IS_BORINGSSL)
+#if defined(NGHTTP2_GENUINE_OPENSSL) || defined(NGHTTP2_OPENSSL_IS_LIBRESSL)
   if (SSL_CTX_set_ciphersuites(ssl_ctx, config.tls13_ciphers.c_str()) == 0) {
     std::cerr << "SSL_CTX_set_ciphersuites with " << config.tls13_ciphers
               << " failed: " << ERR_error_string(ERR_get_error(), nullptr)
               << std::endl;
     exit(EXIT_FAILURE);
   }
-#endif // OPENSSL_1_1_1_API && !defined(NGHTTP2_OPENSSL_IS_BORINGSSL)
+#endif // NGHTTP2_GENUINE_OPENSSL || NGHTTP2_OPENSSL_IS_LIBRESSL
 
-#if OPENSSL_1_1_1_API
   if (SSL_CTX_set1_groups_list(ssl_ctx, config.groups.c_str()) != 1) {
     std::cerr << "SSL_CTX_set1_groups_list failed" << std::endl;
     exit(EXIT_FAILURE);
   }
-#else  // !OPENSSL_1_1_1_API
-  if (SSL_CTX_set1_curves_list(ssl_ctx, config.groups.c_str()) != 1) {
-    std::cerr << "SSL_CTX_set1_curves_list failed" << std::endl;
-    exit(EXIT_FAILURE);
-  }
-#endif // !OPENSSL_1_1_1_API
 
 #ifndef OPENSSL_NO_NEXTPROTONEG
   SSL_CTX_set_next_proto_select_cb(ssl_ctx, client_select_next_proto_cb,
@@ -3014,7 +2999,6 @@ int main(int argc, char **argv) {
   SSL_CTX_set_alpn_protos(ssl_ctx, proto_list.data(), proto_list.size());
 #endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 
-#if OPENSSL_1_1_1_API
   auto keylog_filename = getenv("SSLKEYLOGFILE");
   if (keylog_filename) {
     keylog_file.open(keylog_filename, std::ios_base::app);
@@ -3022,7 +3006,6 @@ int main(int argc, char **argv) {
       SSL_CTX_set_keylog_callback(ssl_ctx, keylog_callback);
     }
   }
-#endif // OPENSSL_1_1_1_API
 
   std::string user_agent = "h2load nghttp2/" NGHTTP2_VERSION;
   Headers shared_nva;

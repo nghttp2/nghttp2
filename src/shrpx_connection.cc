@@ -45,14 +45,6 @@ using namespace std::chrono_literals;
 
 namespace shrpx {
 
-#if !LIBRESSL_3_5_API && !LIBRESSL_2_7_API && !OPENSSL_1_1_API
-
-void *BIO_get_data(BIO *bio) { return bio->ptr; }
-void BIO_set_data(BIO *bio, void *ptr) { bio->ptr = ptr; }
-void BIO_set_init(BIO *bio, int init) { bio->init = init; }
-
-#endif // !LIBRESSL_3_5_API && !LIBRESSL_2_7_API && !OPENSSL_1_1_API
-
 Connection::Connection(struct ev_loop *loop, int fd, SSL *ssl,
                        MemchunkPool *mcpool, ev_tstamp write_timeout,
                        ev_tstamp read_timeout,
@@ -263,14 +255,8 @@ long shrpx_bio_ctrl(BIO *b, int cmd, long num, void *ptr) {
 
 namespace {
 int shrpx_bio_create(BIO *b) {
-#if OPENSSL_1_1_API || LIBRESSL_3_5_API
   BIO_set_init(b, 1);
-#else  // !OPENSSL_1_1_API && !LIBRESSL_3_5_API
-  b->init = 1;
-  b->num = 0;
-  b->ptr = nullptr;
-  b->flags = 0;
-#endif // !OPENSSL_1_1_API && !LIBRESSL_3_5_API
+
   return 1;
 }
 } // namespace
@@ -281,17 +267,9 @@ int shrpx_bio_destroy(BIO *b) {
     return 0;
   }
 
-#if !OPENSSL_1_1_API && !LIBRESSL_3_5_API
-  b->ptr = nullptr;
-  b->init = 0;
-  b->flags = 0;
-#endif // !OPENSSL_1_1_API && !LIBRESSL_3_5_API
-
   return 1;
 }
 } // namespace
-
-#if OPENSSL_1_1_API || LIBRESSL_3_5_API
 
 BIO_METHOD *create_bio_method() {
   auto meth = BIO_meth_new(BIO_TYPE_FD, "nghttpx-bio");
@@ -305,20 +283,6 @@ BIO_METHOD *create_bio_method() {
 
   return meth;
 }
-
-#else // !OPENSSL_1_1_API && !LIBRESSL_3_5_API
-
-BIO_METHOD *create_bio_method() {
-  static auto meth = new BIO_METHOD{
-      BIO_TYPE_FD,    "nghttpx-bio",    shrpx_bio_write,
-      shrpx_bio_read, shrpx_bio_puts,   shrpx_bio_gets,
-      shrpx_bio_ctrl, shrpx_bio_create, shrpx_bio_destroy,
-  };
-
-  return meth;
-}
-
-#endif // !OPENSSL_1_1_API && !LIBRESSL_3_5_API
 
 void Connection::set_ssl(SSL *ssl) {
   tls.ssl = ssl;
@@ -407,7 +371,7 @@ int Connection::tls_handshake() {
 
   ERR_clear_error();
 
-#if OPENSSL_1_1_1_API && !defined(NGHTTP2_OPENSSL_IS_BORINGSSL)
+#ifdef NGHTTP2_GENUINE_OPENSSL
   if (!tls.server_handshake || tls.early_data_finish) {
     rv = SSL_do_handshake(tls.ssl);
   } else {
@@ -458,9 +422,9 @@ int Connection::tls_handshake() {
       }
     }
   }
-#else  // !(OPENSSL_1_1_1_API && !defined(NGHTTP2_OPENSSL_IS_BORINGSSL))
+#else  // !NGHTTP2_GENUINE_OPENSSL
   rv = SSL_do_handshake(tls.ssl);
-#endif // !(OPENSSL_1_1_1_API && !defined(NGHTTP2_OPENSSL_IS_BORINGSSL))
+#endif // !NGHTTP2_GENUINE_OPENSSL
 
   if (rv <= 0) {
     auto err = SSL_get_error(tls.ssl, rv);
@@ -611,14 +575,14 @@ int Connection::tls_handshake_simple() {
   }
 
   int rv;
-#if OPENSSL_1_1_1_API || defined(NGHTTP2_OPENSSL_IS_BORINGSSL)
+#if defined(NGHTTP2_GENUINE_OPENSSL) || defined(NGHTTP2_OPENSSL_IS_BORINGSSL)
   auto &tlsconf = get_config()->tls;
   std::array<uint8_t, 16_k> buf;
-#endif // OPENSSL_1_1_1_API || defined(NGHTTP2_OPENSSL_IS_BORINGSSL)
+#endif // NGHTTP2_GENUINE_OPENSSL || NGHTTP2_OPENSSL_IS_BORINGSSL
 
   ERR_clear_error();
 
-#if OPENSSL_1_1_1_API && !defined(NGHTTP2_OPENSSL_IS_BORINGSSL)
+#ifdef NGHTTP2_GENUINE_OPENSSL
   if (!tls.server_handshake || tls.early_data_finish) {
     rv = SSL_do_handshake(tls.ssl);
   } else {
@@ -663,9 +627,9 @@ int Connection::tls_handshake_simple() {
       }
     }
   }
-#else  // !(OPENSSL_1_1_1_API && !defined(NGHTTP2_OPENSSL_IS_BORINGSSL))
+#else  // !NGHTTP2_GENUINE_OPENSSL
   rv = SSL_do_handshake(tls.ssl);
-#endif // !(OPENSSL_1_1_1_API && !defined(NGHTTP2_OPENSSL_IS_BORINGSSL))
+#endif // !NGHTTP2_GENUINE_OPENSSL
 
   if (rv <= 0) {
     auto err = SSL_get_error(tls.ssl, rv);
@@ -932,7 +896,7 @@ ssize_t Connection::write_tls(const void *data, size_t len) {
 
   ERR_clear_error();
 
-#if OPENSSL_1_1_1_API && !defined(NGHTTP2_OPENSSL_IS_BORINGSSL)
+#ifdef NGHTTP2_GENUINE_OPENSSL
   int rv;
   if (SSL_is_init_finished(tls.ssl)) {
     rv = SSL_write(tls.ssl, data, len);
@@ -944,9 +908,9 @@ ssize_t Connection::write_tls(const void *data, size_t len) {
       rv = nwrite;
     }
   }
-#else  // !(OPENSSL_1_1_1_API && !defined(NGHTTP2_OPENSSL_IS_BORINGSSL))
+#else  // !NGHTTP2_GENUINE_OPENSSL
   auto rv = SSL_write(tls.ssl, data, len);
-#endif // !(OPENSSL_1_1_1_API && !defined(NGHTTP2_OPENSSL_IS_BORINGSSL))
+#endif // !NGHTTP2_GENUINE_OPENSSL
 
   if (rv <= 0) {
     auto err = SSL_get_error(tls.ssl, rv);
@@ -996,11 +960,11 @@ ssize_t Connection::write_tls(const void *data, size_t len) {
 ssize_t Connection::read_tls(void *data, size_t len) {
   ERR_clear_error();
 
-#if OPENSSL_1_1_1_API
+#if defined(NGHTTP2_GENUINE_OPENSSL) || defined(NGHTTP2_OPENSSL_IS_BORINGSSL)
   if (tls.earlybuf.rleft()) {
     return tls.earlybuf.remove(data, len);
   }
-#endif // OPENSSL_1_1_1_API
+#endif // NGHTTP2_GENUINE_OPENSSL || NGHTTP2_OPENSSL_IS_BORINGSSL
 
   // SSL_read requires the same arguments (buf pointer and its
   // length) on SSL_ERROR_WANT_READ or SSL_ERROR_WANT_WRITE.
@@ -1023,7 +987,7 @@ ssize_t Connection::read_tls(void *data, size_t len) {
   auto via_bio =
       tls.server_handshake && !tlsconf.session_cache.memcached.host.empty();
 
-#if OPENSSL_1_1_1_API && !defined(NGHTTP2_OPENSSL_IS_BORINGSSL)
+#ifdef NGHTTP2_GENUINE_OPENSSL
   if (!tls.early_data_finish) {
     // TLSv1.3 handshake is still going on.
     size_t nread;
@@ -1067,7 +1031,7 @@ ssize_t Connection::read_tls(void *data, size_t len) {
 
     return nread;
   }
-#endif // OPENSSL_1_1_1_API && !defined(NGHTTP2_OPENSSL_IS_BORINGSSL)
+#endif // NGHTTP2_GENUINE_OPENSSL
 
   auto rv = SSL_read(tls.ssl, data, len);
 

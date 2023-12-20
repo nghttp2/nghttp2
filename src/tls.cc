@@ -38,42 +38,6 @@ namespace nghttp2 {
 
 namespace tls {
 
-#if OPENSSL_1_1_API
-
-// CRYPTO_LOCK is deprecated as of OpenSSL 1.1.0
-LibsslGlobalLock::LibsslGlobalLock() {}
-
-#else // !OPENSSL_1_1_API
-
-namespace {
-std::mutex *ssl_global_locks;
-} // namespace
-
-namespace {
-void ssl_locking_cb(int mode, int type, const char *file, int line) {
-  if (mode & CRYPTO_LOCK) {
-    ssl_global_locks[type].lock();
-  } else {
-    ssl_global_locks[type].unlock();
-  }
-}
-} // namespace
-
-LibsslGlobalLock::LibsslGlobalLock() {
-  if (ssl_global_locks) {
-    std::cerr << "OpenSSL global lock has been already set" << std::endl;
-    assert(0);
-  }
-  ssl_global_locks = new std::mutex[CRYPTO_num_locks()];
-  // CRYPTO_set_id_callback(ssl_thread_id); OpenSSL manual says that
-  // if threadid_func is not specified using
-  // CRYPTO_THREADID_set_callback(), then default implementation is
-  // used. We use this default one.
-  CRYPTO_set_locking_callback(ssl_locking_cb);
-}
-
-#endif // !OPENSSL_1_1_API
-
 const char *get_tls_protocol(SSL *ssl) {
   switch (SSL_version(ssl)) {
   case SSL2_VERSION:
@@ -148,52 +112,12 @@ bool check_http2_requirement(SSL *ssl) {
   return check_http2_tls_version(ssl) && !check_http2_cipher_block_list(ssl);
 }
 
-void libssl_init() {
-#if OPENSSL_1_1_API
-// No explicit initialization is required.
-#elif defined(NGHTTP2_OPENSSL_IS_BORINGSSL)
-  CRYPTO_library_init();
-#else  // !OPENSSL_1_1_API && !defined(NGHTTP2_OPENSSL_IS_BORINGSSL)
-  OPENSSL_config(nullptr);
-  SSL_load_error_strings();
-  SSL_library_init();
-  OpenSSL_add_all_algorithms();
-#endif // !OPENSSL_1_1_API && !defined(NGHTTP2_OPENSSL_IS_BORINGSSL)
-}
-
 int ssl_ctx_set_proto_versions(SSL_CTX *ssl_ctx, int min, int max) {
-#if OPENSSL_1_1_API || defined(NGHTTP2_OPENSSL_IS_BORINGSSL)
   if (SSL_CTX_set_min_proto_version(ssl_ctx, min) != 1 ||
       SSL_CTX_set_max_proto_version(ssl_ctx, max) != 1) {
     return -1;
   }
   return 0;
-#else  // !OPENSSL_1_1_API && !defined(NGHTTP2_OPENSSL_IS_BORINGSSL)
-  long int opts = 0;
-
-  // TODO We depends on the ordering of protocol version macro in
-  // OpenSSL.
-  if (min > TLS1_VERSION) {
-    opts |= SSL_OP_NO_TLSv1;
-  }
-  if (min > TLS1_1_VERSION) {
-    opts |= SSL_OP_NO_TLSv1_1;
-  }
-  if (min > TLS1_2_VERSION) {
-    opts |= SSL_OP_NO_TLSv1_2;
-  }
-
-  if (max < TLS1_2_VERSION) {
-    opts |= SSL_OP_NO_TLSv1_2;
-  }
-  if (max < TLS1_1_VERSION) {
-    opts |= SSL_OP_NO_TLSv1_1;
-  }
-
-  SSL_CTX_set_options(ssl_ctx, opts);
-
-  return 0;
-#endif // !OPENSSL_1_1_API && !defined(NGHTTP2_OPENSSL_IS_BORINGSSL)
 }
 
 } // namespace tls
