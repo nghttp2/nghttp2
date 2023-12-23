@@ -833,8 +833,6 @@ void Client::process_request_failure() {
 
 namespace {
 void print_server_tmp_key(SSL *ssl) {
-// libressl does not have SSL_get_server_tmp_key
-#if OPENSSL_VERSION_NUMBER >= 0x10002000L && defined(SSL_get_server_tmp_key)
   EVP_PKEY *key;
 
   if (!SSL_get_server_tmp_key(ssl, &key)) {
@@ -854,7 +852,7 @@ void print_server_tmp_key(SSL *ssl) {
     std::cout << "DH " << EVP_PKEY_bits(key) << " bits" << std::endl;
     break;
   case EVP_PKEY_EC: {
-#  if OPENSSL_3_0_0_API
+#if OPENSSL_3_0_0_API
     std::array<char, 64> curve_name;
     const char *cname;
     if (!EVP_PKEY_get_utf8_string_param(key, "group", curve_name.data(),
@@ -863,7 +861,7 @@ void print_server_tmp_key(SSL *ssl) {
     } else {
       cname = curve_name.data();
     }
-#  else  // !OPENSSL_3_0_0_API
+#else  // !OPENSSL_3_0_0_API
     auto ec = EVP_PKEY_get1_EC_KEY(key);
     auto ec_del = defer(EC_KEY_free, ec);
     auto nid = EC_GROUP_get_curve_name(EC_KEY_get0_group(ec));
@@ -871,7 +869,7 @@ void print_server_tmp_key(SSL *ssl) {
     if (!cname) {
       cname = OBJ_nid2sn(nid);
     }
-#  endif // !OPENSSL_3_0_0_API
+#endif // !OPENSSL_3_0_0_API
 
     std::cout << "ECDH " << cname << " " << EVP_PKEY_bits(key) << " bits"
               << std::endl;
@@ -882,7 +880,6 @@ void print_server_tmp_key(SSL *ssl) {
               << std::endl;
     break;
   }
-#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 }
 } // namespace
 
@@ -1101,11 +1098,9 @@ int Client::connection_made() {
 #ifndef OPENSSL_NO_NEXTPROTONEG
     SSL_get0_next_proto_negotiated(ssl, &next_proto, &next_proto_len);
 #endif // !OPENSSL_NO_NEXTPROTONEG
-#if OPENSSL_VERSION_NUMBER >= 0x10002000L
     if (next_proto == nullptr) {
       SSL_get0_alpn_selected(ssl, &next_proto, &next_proto_len);
     }
-#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 
     if (next_proto) {
       auto proto = StringRef{next_proto, next_proto_len};
@@ -2990,14 +2985,12 @@ int main(int argc, char **argv) {
                                    nullptr);
 #endif // !OPENSSL_NO_NEXTPROTONEG
 
-#if OPENSSL_VERSION_NUMBER >= 0x10002000L
   std::vector<unsigned char> proto_list;
   for (const auto &proto : config.npn_list) {
     std::copy_n(proto.c_str(), proto.size(), std::back_inserter(proto_list));
   }
 
   SSL_CTX_set_alpn_protos(ssl_ctx, proto_list.data(), proto_list.size());
-#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 
   auto keylog_filename = getenv("SSLKEYLOGFILE");
   if (keylog_filename) {
