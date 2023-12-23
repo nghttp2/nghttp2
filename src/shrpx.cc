@@ -1992,11 +1992,7 @@ void fill_default_config(Config *config) {
   tlsconf.max_proto_version =
       tls::proto_version_from_string(DEFAULT_TLS_MAX_PROTO_VERSION);
   tlsconf.max_early_data = 16_k;
-#if OPENSSL_1_1_API || defined(NGHTTP2_OPENSSL_IS_BORINGSSL)
   tlsconf.ecdh_curves = StringRef::from_lit("X25519:P-256:P-384:P-521");
-#else  // !OPENSSL_1_1_API && !defined(NGHTTP2_OPENSSL_IS_BORINGSSL)
-  tlsconf.ecdh_curves = StringRef::from_lit("P-256:P-384:P-521");
-#endif // !OPENSSL_1_1_API && !defined(NGHTTP2_OPENSSL_IS_BORINGSSL)
 
   auto &httpconf = config->http;
   httpconf.server_name = StringRef::from_lit("nghttpx");
@@ -4059,15 +4055,9 @@ int main(int argc, char **argv) {
   int rv;
   std::array<char, STRERROR_BUFSIZE> errbuf;
 
-  nghttp2::tls::libssl_init();
-
 #ifdef HAVE_LIBBPF
   libbpf_set_strict_mode(LIBBPF_STRICT_ALL);
 #endif // HAVE_LIBBPF
-
-#ifndef NOTHREADS
-  nghttp2::tls::LibsslGlobalLock lock;
-#endif // NOTHREADS
 
   Log::set_severity_level(NOTICE);
   create_config();

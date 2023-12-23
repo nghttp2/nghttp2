@@ -55,8 +55,6 @@ int main(int argc, char *argv[]) {
   CU_pSuite pSuite = nullptr;
   unsigned int num_tests_failed;
 
-  nghttp2::tls::libssl_init();
-
   shrpx::create_config();
 
   // initialize the CUnit test registry

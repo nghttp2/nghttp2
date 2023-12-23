@@ -193,12 +193,6 @@ Options:
 } // namespace
 
 int main(int argc, char **argv) {
-  tls::libssl_init();
-
-#ifndef NOTHREADS
-  tls::LibsslGlobalLock lock;
-#endif // NOTHREADS
-
   Config config;
   bool color = false;
   auto mime_types_file_set_manually = false;

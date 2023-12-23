@@ -1531,16 +1531,6 @@ uint32_t hash32(const StringRef &s) {
   return h;
 }
 
-#if !OPENSSL_1_1_API
-namespace {
-EVP_MD_CTX *EVP_MD_CTX_new(void) { return EVP_MD_CTX_create(); }
-} // namespace
-
-namespace {
-void EVP_MD_CTX_free(EVP_MD_CTX *ctx) { EVP_MD_CTX_destroy(ctx); }
-} // namespace
-#endif // !OPENSSL_1_1_API
-
 namespace {
 int message_digest(uint8_t *res, const EVP_MD *meth, const StringRef &s) {
   int rv;
