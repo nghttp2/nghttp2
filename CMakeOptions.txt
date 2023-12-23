@@ -25,5 +25,6 @@ option(WITH_JEMALLOC    "Use jemalloc"
 option(WITH_MRUBY       "Use mruby")
 option(WITH_NEVERBLEED  "Use neverbleed")
 option(WITH_LIBBPF      "Use libbpf")
+option(WITH_WOLFSSL     "Use wolfSSL")
 
 # vim: ft=cmake:

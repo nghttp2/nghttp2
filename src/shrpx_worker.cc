@@ -32,7 +32,14 @@
 #include <cstdio>
 #include <memory>
 
-#include <openssl/rand.h>
+#include "ssl_compat.h"
+
+#ifdef NGHTTP2_OPENSSL_IS_WOLFSSL
+#  include <wolfssl/options.h>
+#  include <wolfssl/openssl/rand.h>
+#else // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#  include <openssl/rand.h>
+#endif // !NGHTTP2_OPENSSL_IS_WOLFSSL
 
 #ifdef HAVE_LIBBPF
 #  include <bpf/bpf.h>
@@ -435,6 +442,10 @@ void Worker::run_async() {
     (void)reopen_log_files(get_config()->logging);
     ev_run(loop_);
     delete_log_config();
+
+#  ifdef NGHTTP2_OPENSSL_IS_WOLFSSL
+    wc_ecc_fp_free();
+#  endif // NGHTTP2_OPENSSL_IS_WOLFSSL
   });
 #endif // !NOTHREADS
 }

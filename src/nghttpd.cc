@@ -41,8 +41,6 @@
 #include <iostream>
 #include <string>
 
-#include <openssl/ssl.h>
-#include <openssl/err.h>
 #include <nghttp2/nghttp2.h>
 
 #include "app_helper.h"

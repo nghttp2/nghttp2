@@ -12,6 +12,7 @@ env:
   AWSLC_VERSION: v1.29.0
   NGHTTP3_VERSION: v1.4.0
   NGTCP2_VERSION: v1.6.0
+  WOLFSSL_VERSION: v5.7.0-stable
 
 jobs:
   build-cache:
@@ -61,6 +62,12 @@ jobs:
           aws-lc/build/ssl/libssl.a
           aws-lc/include
         key: ${{ matrix.os }}-awslc-${{ env.AWSLC_VERSION }}
+    - name: Restore wolfSSL cache
+      id: cache-wolfssl
+      uses: actions/cache@v4
+      with:
+        path: wolfssl/build
+        key: ${{ matrix.os }}-wolfssl-${{ env.WOLFSSL_VERSION }}
     - name: Restore nghttp3 cache
       id: cache-nghttp3
       uses: actions/cache@v4
@@ -86,6 +93,7 @@ jobs:
         steps.cache-openssl3.outputs.cache-hit != 'true' ||
         steps.cache-boringssl.outputs.cache-hit != 'true' ||
         steps.cache-awslc.outputs.cache-hit != 'true' ||
+        steps.cache-wolfssl.outputs.cache-hit != 'true' ||
         steps.cache-nghttp3.outputs.cache-hit != 'true' ||
         steps.cache-ngtcp2-openssl1.outputs.cache-hit != 'true' ||
         steps.cache-ngtcp2-openssl3.outputs.cache-hit != 'true'
@@ -156,6 +164,16 @@ jobs:
         cd aws-lc
         cmake -B build -DDISABLE_GO=ON
         make -j"$(nproc 2> /dev/null || sysctl -n hw.ncpu)" -C build
+    - name: Build wolfSSL
+      if: steps.cache-wolfssl.outputs.cache-hit != 'true'
+      run: |
+        git clone --depth 1 -b ${{ env.WOLFSSL_VERSION }} https://github.com/wolfSSL/wolfssl
+        cd wolfssl
+        autoreconf -i
+        ./configure --prefix=$PWD/build --enable-all \
+          --enable-harden --disable-ech
+        make -j"$(nproc 2> /dev/null || sysctl -n hw.ncpu)"
+        make install
     - name: Build nghttp3
       if: steps.cache-nghttp3.outputs.cache-hit != 'true'
       run: |
@@ -172,10 +190,11 @@ jobs:
         cd ngtcp2-openssl1
         autoreconf -i
         ./configure --prefix=$PWD/build --enable-lib-only \
-          PKG_CONFIG_PATH="../openssl1/build/lib/pkgconfig" \
+          PKG_CONFIG_PATH="../openssl1/build/lib/pkgconfig:../wolfssl/build/lib/pkgconfig" \
           BORINGSSL_CFLAGS="-I$PWD/../boringssl/include/" \
           BORINGSSL_LIBS="-L$PWD/../boringssl/build/ssl -lssl -L$PWD/../boringssl/build/crypto -lcrypto" \
-          --with-boringssl
+          --with-boringssl \
+          --with-wolfssl
         make -j"$(nproc 2> /dev/null || sysctl -n hw.ncpu)" check
         make install
     - name: Build ngtcp2 + quictls/openssl v3.x + aws-lc
@@ -202,7 +221,7 @@ jobs:
         compiler: [gcc, clang]
         buildtool: [autotools, cmake]
         http3: [http3, no-http3]
-        openssl: [openssl1, openssl3, boringssl, awslc]
+        openssl: [openssl1, openssl3, boringssl, awslc, wolfssl]
         exclude:
         - os: macos-13
           openssl: openssl3
@@ -405,6 +424,21 @@ jobs:
         echo 'BORINGSSL_CFLAGS='"$OPENSSL_CFLAGS" >> $GITHUB_ENV
         echo 'BORINGSSL_LIBS='"$OPENSSL_LIBS" >> $GITHUB_ENV
         echo 'EXTRA_AUTOTOOLS_OPTS='"$EXTRA_AUTOTOOLS_OPTS" >> $GITHUB_ENV
+    - name: Restore wolfSSL cache
+      uses: actions/cache/restore@v4
+      if: matrix.openssl == 'wolfssl'
+      with:
+        path: wolfssl/build
+        key: ${{ matrix.os }}-wolfssl-${{ env.WOLFSSL_VERSION }}
+        fail-on-cache-miss: true
+    - name: Set wolfSSL variables
+      if: matrix.openssl == 'wolfssl'
+      run: |
+        EXTRA_AUTOTOOLS_OPTS="$EXTRA_AUTOTOOLS_OPTS --with-wolfssl --without-neverbleed"
+        EXTRA_CMAKE_OPTS="$EXTRA_CMAKE_OPTS -DWITH_WOLFSSL=1 -DWITH_NEVERBLEED=0 -DENABLE_EXAMPLES=0"
+
+        echo 'EXTRA_AUTOTOOLS_OPTS='"$EXTRA_AUTOTOOLS_OPTS" >> $GITHUB_ENV
+        echo 'EXTRA_CMAKE_OPTS='"$EXTRA_CMAKE_OPTS" >> $GITHUB_ENV
     - name: Restore nghttp3 cache
       uses: actions/cache/restore@v4
       if: matrix.http3 == 'http3'
@@ -414,7 +448,7 @@ jobs:
         fail-on-cache-miss: true
     - name: Restore ngtcp2 + quictls/openssl v1.1.1 cache + BoringSSL
       uses: actions/cache/restore@v4
-      if: matrix.http3 == 'http3' && (matrix.openssl == 'openssl1' || matrix.openssl == 'boringssl')
+      if: matrix.http3 == 'http3' && (matrix.openssl == 'openssl1' || matrix.openssl == 'boringssl' || matrix.openssl == 'wolfssl')
       with:
         path: ngtcp2-openssl1/build
         key: ${{ matrix.os }}-ngtcp2-${{ env.NGTCP2_VERSION }}-openssl-${{ env.OPENSSL1_VERSION }}
@@ -429,7 +463,7 @@ jobs:
     - name: Setup extra environment variables
       if: matrix.http3 == 'no-http3'
       run: |
-        PKG_CONFIG_PATH="$PWD/openssl1/build/lib/pkgconfig:$PWD/openssl3/build/lib/pkgconfig"
+        PKG_CONFIG_PATH="$PWD/openssl1/build/lib/pkgconfig:$PWD/openssl3/build/lib/pkgconfig:$PWD/wolfssl/build/lib/pkgconfig:$PKG_CONFIG_PATH"
         LDFLAGS="$LDFLAGS -Wl,-rpath,$PWD/openssl1/build/lib -Wl,-rpath,$PWD/openssl3/build/lib"
 
         echo 'PKG_CONFIG_PATH='"$PKG_CONFIG_PATH" >> $GITHUB_ENV
@@ -437,7 +471,7 @@ jobs:
     - name: Setup extra environment variables for HTTP/3
       if: matrix.http3 == 'http3'
       run: |
-        PKG_CONFIG_PATH="$PWD/openssl1/build/lib/pkgconfig:$PWD/openssl3/build/lib/pkgconfig:$PWD/nghttp3/build/lib/pkgconfig:$PWD/ngtcp2-openssl1/build/lib/pkgconfig:$PWD/ngtcp2-openssl3/build/lib/pkgconfig:$PWD/libbpf/build/lib64/pkgconfig:$PKG_CONFIG_PATH"
+        PKG_CONFIG_PATH="$PWD/openssl1/build/lib/pkgconfig:$PWD/openssl3/build/lib/pkgconfig:$PWD/wolfssl/build/lib/pkgconfig:$PWD/nghttp3/build/lib/pkgconfig:$PWD/ngtcp2-openssl1/build/lib/pkgconfig:$PWD/ngtcp2-openssl3/build/lib/pkgconfig:$PWD/libbpf/build/lib64/pkgconfig:$PKG_CONFIG_PATH"
         LDFLAGS="$LDFLAGS -Wl,-rpath,$PWD/openssl1/build/lib -Wl,-rpath,$PWD/openssl3/build/lib -Wl,-rpath,$PWD/libbpf/build/lib64"
         EXTRA_AUTOTOOLS_OPTS="--enable-http3 $EXTRA_AUTOTOOLS_OPTS"
         EXTRA_CMAKE_OPTS="-DENABLE_HTTP3=1 $EXTRA_CMAKE_OPTS"

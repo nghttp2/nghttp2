@@ -41,17 +41,17 @@ int exec_read_command(Process &proc, char *const argv[]) {
   int rv;
   int pfd[2];
 
-#ifdef O_CLOEXEC
+#if defined(HAVE_PIPE2) && defined(O_CLOEXEC)
   if (pipe2(pfd, O_CLOEXEC) == -1) {
     return -1;
   }
-#else  // !O_CLOEXEC
+#else  // !HAVE_PIPE2 || !O_CLOEXEC
   if (pipe(pfd) == -1) {
     return -1;
   }
   util::make_socket_closeonexec(pfd[0]);
   util::make_socket_closeonexec(pfd[1]);
-#endif // !O_CLOEXEC
+#endif // !HAVE_PIPE2 || !O_CLOEXEC
 
   auto closer = defer([&pfd]() {
     if (pfd[0] != -1) {

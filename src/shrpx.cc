@@ -73,9 +73,18 @@
 #include <random>
 #include <span>
 
-#include <openssl/ssl.h>
-#include <openssl/err.h>
-#include <openssl/rand.h>
+#include "ssl_compat.h"
+
+#ifdef NGHTTP2_OPENSSL_IS_WOLFSSL
+#  include <wolfssl/options.h>
+#  include <wolfssl/openssl/ssl.h>
+#  include <wolfssl/openssl/err.h>
+#  include <wolfssl/openssl/rand.h>
+#else // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#  include <openssl/ssl.h>
+#  include <openssl/err.h>
+#  include <openssl/rand.h>
+#endif // !NGHTTP2_OPENSSL_IS_WOLFSSL
 #include <ev.h>
 
 #include <nghttp2/nghttp2.h>
@@ -102,7 +111,6 @@
 #include "tls.h"
 #include "template.h"
 #include "allocator.h"
-#include "ssl_compat.h"
 #include "xsi_strerror.h"
 
 extern char **environ;
@@ -3788,7 +3796,12 @@ int process_options(Config *config,
     return -1;
   }
 
+#if defined(NGHTTP2_GENUINE_OPENSSL) ||                                        \
+    defined(NGHTTP2_OPENSSL_IS_BORINGSSL) ||                                   \
+    defined(NGHTTP2_OPENSSL_IS_LIBRESSL)
   tlsconf.bio_method = create_bio_method();
+#endif // NGHTTP2_GENUINE_OPENSSL || NGHTTP2_OPENSSL_IS_BORINGSSL ||
+       // NGHTTP2_OPENSSL_IS_LIBRESSL
 
   auto &listenerconf = config->conn.listener;
   auto &upstreamconf = config->conn.upstream;

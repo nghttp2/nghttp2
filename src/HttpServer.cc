@@ -54,11 +54,17 @@
 
 #include "ssl_compat.h"
 
-#include <openssl/err.h>
-#include <openssl/dh.h>
-#if OPENSSL_3_0_0_API
-#  include <openssl/decoder.h>
-#endif // OPENSSL_3_0_0_API
+#ifdef NGHTTP2_OPENSSL_IS_WOLFSSL
+#  include <wolfssl/options.h>
+#  include <wolfssl/openssl/err.h>
+#  include <wolfssl/openssl/dh.h>
+#else // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#  include <openssl/err.h>
+#  include <openssl/dh.h>
+#  if OPENSSL_3_0_0_API
+#    include <openssl/decoder.h>
+#  endif // OPENSSL_3_0_0_API
+#endif   // !NGHTTP2_OPENSSL_IS_WOLFSSL
 
 #include <zlib.h>
 
@@ -1813,6 +1819,10 @@ void run_worker(Worker *worker) {
   auto loop = worker->sessions->get_loop();
 
   ev_run(loop, 0);
+
+#ifdef NGHTTP2_OPENSSL_IS_WOLFSSL
+  wc_ecc_fp_free();
+#endif // NGHTTP2_OPENSSL_IS_WOLFSSL
 }
 } // namespace
 
@@ -2135,6 +2145,14 @@ int HttpServer::run() {
       std::cerr << ERR_error_string(ERR_get_error(), nullptr) << std::endl;
       return -1;
     }
+
+#ifdef NGHTTP2_OPENSSL_IS_WOLFSSL
+    if (SSL_CTX_set_ciphersuites(ssl_ctx,
+                                 tls::DEFAULT_TLS13_CIPHER_LIST.data()) == 0) {
+      std::cerr << ERR_error_string(ERR_get_error(), nullptr) << std::endl;
+      return -1;
+    }
+#endif // NGHTTP2_OPENSSL_IS_WOLFSSL
 
     const unsigned char sid_ctx[] = "nghttpd";
     SSL_CTX_set_session_id_context(ssl_ctx, sid_ctx, sizeof(sid_ctx) - 1);
