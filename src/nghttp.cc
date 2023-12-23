@@ -1132,11 +1132,7 @@ int HttpClient::connection_made() {
         }
         break;
       }
-#if OPENSSL_VERSION_NUMBER >= 0x10002000L
       SSL_get0_alpn_selected(ssl, &next_proto, &next_proto_len);
-#else  // OPENSSL_VERSION_NUMBER < 0x10002000L
-      break;
-#endif // OPENSSL_VERSION_NUMBER < 0x10002000L
     }
     if (!next_proto) {
       print_protocol_nego_error();
@@ -2347,11 +2343,9 @@ int communicate(
                                      nullptr);
 #endif // !OPENSSL_NO_NEXTPROTONEG
 
-#if OPENSSL_VERSION_NUMBER >= 0x10002000L
     auto proto_list = util::get_default_alpn();
 
     SSL_CTX_set_alpn_protos(ssl_ctx, proto_list.data(), proto_list.size());
-#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
   }
   {
     HttpClient client{callbacks, loop, ssl_ctx};

@@ -646,7 +646,6 @@ void info_callback(const SSL *ssl, int where, int ret) {
 }
 } // namespace
 
-#if OPENSSL_VERSION_NUMBER >= 0x10002000L
 namespace {
 int alpn_select_proto_cb(SSL *ssl, const unsigned char **out,
                          unsigned char *outlen, const unsigned char *in,
@@ -675,7 +674,6 @@ int alpn_select_proto_cb(SSL *ssl, const unsigned char **out,
   return SSL_TLSEXT_ERR_NOACK;
 }
 } // namespace
-#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 
 #ifdef ENABLE_HTTP3
 namespace {
@@ -1071,10 +1069,8 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
 #ifndef OPENSSL_NO_NEXTPROTONEG
   SSL_CTX_set_next_protos_advertised_cb(ssl_ctx, next_proto_cb, nullptr);
 #endif // !OPENSSL_NO_NEXTPROTONEG
-#if OPENSSL_VERSION_NUMBER >= 0x10002000L
   // ALPN selection callback
   SSL_CTX_set_alpn_select_cb(ssl_ctx, alpn_select_proto_cb, nullptr);
-#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 
   auto tls_ctx_data = new TLSContextData();
   tls_ctx_data->cert_file = cert_file;
@@ -1328,10 +1324,8 @@ SSL_CTX *create_quic_ssl_context(const char *private_key_file,
   SSL_CTX_set_tlsext_status_cb(ssl_ctx, ocsp_resp_cb);
 #  endif // NGHTTP2_OPENSSL_IS_BORINGSSL
 
-#  if OPENSSL_VERSION_NUMBER >= 0x10002000L
   // ALPN selection callback
   SSL_CTX_set_alpn_select_cb(ssl_ctx, quic_alpn_select_proto_cb, nullptr);
-#  endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 
   auto tls_ctx_data = new TLSContextData();
   tls_ctx_data->cert_file = cert_file;
@@ -2260,18 +2254,14 @@ SSL_CTX *setup_downstream_client_ssl_context(
 }
 
 void setup_downstream_http2_alpn(SSL *ssl) {
-#if OPENSSL_VERSION_NUMBER >= 0x10002000L
   // ALPN advertisement
   auto alpn = util::get_default_alpn();
   SSL_set_alpn_protos(ssl, alpn.data(), alpn.size());
-#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 }
 
 void setup_downstream_http1_alpn(SSL *ssl) {
-#if OPENSSL_VERSION_NUMBER >= 0x10002000L
   // ALPN advertisement
   SSL_set_alpn_protos(ssl, NGHTTP2_H1_1_ALPN.byte(), NGHTTP2_H1_1_ALPN.size());
-#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 }
 
 std::unique_ptr<CertLookupTree> create_cert_lookup_tree() {
