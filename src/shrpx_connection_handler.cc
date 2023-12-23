@@ -265,7 +265,7 @@ int ConnectionHandler::create_single_worker() {
           nb_,
 #endif // HAVE_NEVERBLEED
           tlsconf.cacert, memcachedconf.cert_file,
-          memcachedconf.private_key_file, nullptr);
+          memcachedconf.private_key_file);
       all_ssl_ctx_.push_back(session_cache_ssl_ctx);
 #ifdef ENABLE_HTTP3
       quic_all_ssl_ctx_.push_back(nullptr);
@@ -367,7 +367,7 @@ int ConnectionHandler::create_worker_thread(size_t num) {
           nb_,
 #  endif // HAVE_NEVERBLEED
           tlsconf.cacert, memcachedconf.cert_file,
-          memcachedconf.private_key_file, nullptr);
+          memcachedconf.private_key_file);
       all_ssl_ctx_.push_back(session_cache_ssl_ctx);
 #  ifdef ENABLE_HTTP3
       quic_all_ssl_ctx_.push_back(nullptr);
@@ -935,8 +935,7 @@ SSL_CTX *ConnectionHandler::create_tls_ticket_key_memcached_ssl_ctx() {
 #ifdef HAVE_NEVERBLEED
       nb_,
 #endif // HAVE_NEVERBLEED
-      tlsconf.cacert, memcachedconf.cert_file, memcachedconf.private_key_file,
-      nullptr);
+      tlsconf.cacert, memcachedconf.cert_file, memcachedconf.private_key_file);
 
   all_ssl_ctx_.push_back(ssl_ctx);
 #ifdef ENABLE_HTTP3

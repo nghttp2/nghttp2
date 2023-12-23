@@ -127,7 +127,7 @@ struct Config {
   bool base_uri_unix;
   // used when UNIX domain socket is used (base_uri_unix is true).
   sockaddr_un unix_addr;
-  // list of supported NPN/ALPN protocol strings in the order of
+  // list of supported ALPN protocol strings in the order of
   // preference.
   std::vector<std::string> npn_list;
   // The number of request per second for each client.

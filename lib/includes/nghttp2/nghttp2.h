@@ -5022,11 +5022,10 @@ NGHTTP2_EXTERN int nghttp2_nv_compare_name(const nghttp2_nv *lhs,
 /**
  * @function
  *
- * A helper function for dealing with NPN in client side or ALPN in
- * server side.  The |in| contains peer's protocol list in preferable
- * order.  The format of |in| is length-prefixed and not
- * null-terminated.  For example, ``h2`` and
- * ``http/1.1`` stored in |in| like this::
+ * A helper function for dealing with ALPN in server side.  The |in|
+ * contains peer's protocol list in preferable order.  The format of
+ * |in| is length-prefixed and not null-terminated.  For example,
+ * ``h2`` and ``http/1.1`` stored in |in| like this::
  *
  *     in[0] = 2
  *     in[1..2] = "h2"
@@ -5051,20 +5050,18 @@ NGHTTP2_EXTERN int nghttp2_nv_compare_name(const nghttp2_nv *lhs,
  *
  * For ALPN, refer to https://tools.ietf.org/html/rfc7301
  *
- * See http://technotes.googlecode.com/git/nextprotoneg.html for more
- * details about NPN.
+ * To use this method you should do something like::
  *
- * For NPN, to use this method you should do something like::
- *
- *     static int select_next_proto_cb(SSL* ssl,
- *                                     unsigned char **out,
+ *     static int alpn_select_proto_cb(SSL* ssl,
+ *                                     const unsigned char **out,
  *                                     unsigned char *outlen,
  *                                     const unsigned char *in,
  *                                     unsigned int inlen,
  *                                     void *arg)
  *     {
  *         int rv;
- *         rv = nghttp2_select_next_protocol(out, outlen, in, inlen);
+ *         rv = nghttp2_select_next_protocol((unsigned char**)out, outlen,
+ *                                           in, inlen);
  *         if (rv == -1) {
  *             return SSL_TLSEXT_ERR_NOACK;
  *         }
@@ -5074,7 +5071,7 @@ NGHTTP2_EXTERN int nghttp2_nv_compare_name(const nghttp2_nv *lhs,
  *         return SSL_TLSEXT_ERR_OK;
  *     }
  *     ...
- *     SSL_CTX_set_next_proto_select_cb(ssl_ctx, select_next_proto_cb, my_obj);
+ *     SSL_CTX_set_alpn_select_cb(ssl_ctx, alpn_select_proto_cb, my_obj);
  *
  */
 NGHTTP2_EXTERN int nghttp2_select_next_protocol(unsigned char **out,

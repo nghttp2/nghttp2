@@ -20,7 +20,7 @@ known as "HTTP/2 router".
 By default, frontend connection is encrypted using SSL/TLS.  So
 server's private key and certificate must be supplied to the command
 line (or through configuration file).  In this case, the frontend
-protocol selection will be done via ALPN or NPN.
+protocol selection will be done via ALPN.
 
 To turn off encryption on frontend connection, use ``no-tls`` keyword
 in :option:`--frontend` option.  HTTP/2 and HTTP/1 are available on

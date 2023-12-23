@@ -308,23 +308,6 @@ static int on_stream_close_callback(nghttp2_session *session, int32_t stream_id,
   return 0;
 }
 
-#ifndef OPENSSL_NO_NEXTPROTONEG
-/* NPN TLS extension client callback. We check that server advertised
-   the HTTP/2 protocol the nghttp2 library supports. If not, exit
-   the program. */
-static int select_next_proto_cb(SSL *ssl, unsigned char **out,
-                                unsigned char *outlen, const unsigned char *in,
-                                unsigned int inlen, void *arg) {
-  (void)ssl;
-  (void)arg;
-
-  if (nghttp2_select_next_protocol(out, outlen, in, inlen) <= 0) {
-    errx(1, "Server did not advertise " NGHTTP2_PROTO_VERSION_ID);
-  }
-  return SSL_TLSEXT_ERR_OK;
-}
-#endif /* !OPENSSL_NO_NEXTPROTONEG */
-
 /* Create SSL_CTX. */
 static SSL_CTX *create_ssl_ctx(void) {
   SSL_CTX *ssl_ctx;
@@ -337,9 +320,6 @@ static SSL_CTX *create_ssl_ctx(void) {
                       SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 |
                           SSL_OP_NO_COMPRESSION |
                           SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION);
-#ifndef OPENSSL_NO_NEXTPROTONEG
-  SSL_CTX_set_next_proto_select_cb(ssl_ctx, select_next_proto_cb, NULL);
-#endif /* !OPENSSL_NO_NEXTPROTONEG */
 
   SSL_CTX_set_alpn_protos(ssl_ctx, (const unsigned char *)"\x02h2", 3);
 
@@ -506,9 +486,6 @@ static void eventcb(struct bufferevent *bev, short events, void *ptr) {
 
     ssl = bufferevent_openssl_get_ssl(session_data->bev);
 
-#ifndef OPENSSL_NO_NEXTPROTONEG
-    SSL_get0_next_proto_negotiated(ssl, &alpn, &alpnlen);
-#endif /* !OPENSSL_NO_NEXTPROTONEG */
     if (alpn == NULL) {
       SSL_get0_alpn_selected(ssl, &alpn, &alpnlen);
     }

@@ -1095,12 +1095,7 @@ int Client::connection_made() {
     const unsigned char *next_proto = nullptr;
     unsigned int next_proto_len;
 
-#ifndef OPENSSL_NO_NEXTPROTONEG
-    SSL_get0_next_proto_negotiated(ssl, &next_proto, &next_proto_len);
-#endif // !OPENSSL_NO_NEXTPROTONEG
-    if (next_proto == nullptr) {
-      SSL_get0_alpn_selected(ssl, &next_proto, &next_proto_len);
-    }
+    SSL_get0_alpn_selected(ssl, &next_proto, &next_proto_len);
 
     if (next_proto) {
       auto proto = StringRef{next_proto, next_proto_len};
@@ -1130,9 +1125,8 @@ int Client::connection_made() {
 
       for (const auto &proto : config.npn_list) {
         if (util::streq(NGHTTP2_H1_1_ALPN, StringRef{proto})) {
-          std::cout
-              << "Server does not support NPN/ALPN. Falling back to HTTP/1.1."
-              << std::endl;
+          std::cout << "Server does not support ALPN. Falling back to HTTP/1.1."
+                    << std::endl;
           session = std::make_unique<Http1Session>(this);
           selected_proto = NGHTTP2_H1_1.str();
           break;
@@ -1882,23 +1876,6 @@ std::string get_reqline(const char *uri, const http_parser_url &u) {
 }
 } // namespace
 
-#ifndef OPENSSL_NO_NEXTPROTONEG
-namespace {
-int client_select_next_proto_cb(SSL *ssl, unsigned char **out,
-                                unsigned char *outlen, const unsigned char *in,
-                                unsigned int inlen, void *arg) {
-  if (util::select_protocol(const_cast<const unsigned char **>(out), outlen, in,
-                            inlen, config.npn_list)) {
-    return SSL_TLSEXT_ERR_OK;
-  }
-
-  // OpenSSL will terminate handshake with fatal alert if we return
-  // NOACK.  So there is no way to fallback.
-  return SSL_TLSEXT_ERR_NOACK;
-}
-} // namespace
-#endif // !OPENSSL_NO_NEXTPROTONEG
-
 namespace {
 constexpr char UNIX_PATH_PREFIX[] = "unix:";
 } // namespace
@@ -2273,10 +2250,9 @@ Options:
   --npn-list=<LIST>
               Comma delimited list of  ALPN protocol identifier sorted
               in the  order of preference.  That  means most desirable
-              protocol comes  first.  This  is used  in both  ALPN and
-              NPN.  The parameter must be  delimited by a single comma
-              only  and any  white spaces  are  treated as  a part  of
-              protocol string.
+              protocol comes  first.  The parameter must  be delimited
+              by a single comma only  and any white spaces are treated
+              as a part of protocol string.
               Default: )"
       << DEFAULT_NPN_LIST << R"(
   --h1        Short        hand         for        --npn-list=http/1.1
@@ -2979,11 +2955,6 @@ int main(int argc, char **argv) {
     std::cerr << "SSL_CTX_set1_groups_list failed" << std::endl;
     exit(EXIT_FAILURE);
   }
-
-#ifndef OPENSSL_NO_NEXTPROTONEG
-  SSL_CTX_set_next_proto_select_cb(ssl_ctx, client_select_next_proto_cb,
-                                   nullptr);
-#endif // !OPENSSL_NO_NEXTPROTONEG
 
   std::vector<unsigned char> proto_list;
   for (const auto &proto : config.npn_list) {

@@ -18,34 +18,8 @@ note that nghttp2 itself does not depend on libevent.
 
 The client starts with some libevent and OpenSSL setup in the
 ``main()`` and ``run()`` functions. This setup isn't specific to
-nghttp2, but one thing you should look at is setup of the NPN
-callback.  The NPN callback is used by the client to select the next
-application protocol over TLS. In this tutorial, we use the
-`nghttp2_select_next_protocol()` helper function to select the HTTP/2
-protocol the library supports::
-
-    static int select_next_proto_cb(SSL *ssl _U_, unsigned char **out,
-                                    unsigned char *outlen, const unsigned char *in,
-                                    unsigned int inlen, void *arg _U_) {
-      if (nghttp2_select_next_protocol(out, outlen, in, inlen) <= 0) {
-        errx(1, "Server did not advertise " NGHTTP2_PROTO_VERSION_ID);
-      }
-      return SSL_TLSEXT_ERR_OK;
-    }
-
-If you are following TLS related RFC, you know that NPN is not the
-standardized way to negotiate HTTP/2.  NPN itself is not event
-published as RFC.  The standard way to negotiate HTTP/2 is ALPN,
-Application-Layer Protocol Negotiation Extension, defined in `RFC 7301
-<https://tools.ietf.org/html/rfc7301>`_.  The one caveat of ALPN is
-that OpenSSL >= 1.0.2 is required.  We use macro to enable/disable
-ALPN support depending on OpenSSL version.  OpenSSL's ALPN
-implementation does not require callback function like the above.  But
-we have to instruct OpenSSL SSL_CTX to use ALPN, which we'll talk
-about soon.
-
-The callback is added to the SSL_CTX object using
-``SSL_CTX_set_next_proto_select_cb()``::
+nghttp2, but one thing you should look at is setup of ALPN.  Client
+tells application protocols that it supports to server via ALPN::
 
     static SSL_CTX *create_ssl_ctx(void) {
       SSL_CTX *ssl_ctx;
@@ -58,7 +32,6 @@ The callback is added to the SSL_CTX object using
                           SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 |
                               SSL_OP_NO_COMPRESSION |
                               SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION);
-      SSL_CTX_set_next_proto_select_cb(ssl_ctx, select_next_proto_cb, NULL);
 
       SSL_CTX_set_alpn_protos(ssl_ctx, (const unsigned char *)"\x02h2", 3);
 
@@ -153,10 +126,7 @@ underlying network socket::
 
         ssl = bufferevent_openssl_get_ssl(session_data->bev);
 
-        SSL_get0_next_proto_negotiated(ssl, &alpn, &alpnlen);
-        if (alpn == NULL) {
-          SSL_get0_alpn_selected(ssl, &alpn, &alpnlen);
-        }
+        SSL_get0_alpn_selected(ssl, &alpn, &alpnlen);
 
         if (alpn == NULL || alpnlen != 2 || memcmp("h2", alpn, 2) != 0) {
           fprintf(stderr, "h2 is not negotiated\n");

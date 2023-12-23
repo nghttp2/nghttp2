@@ -21,33 +21,11 @@ note that nghttp2 itself does not depend on libevent.
 
 The server starts with some libevent and OpenSSL setup in the
 ``main()`` and ``run()`` functions. This setup isn't specific to
-nghttp2, but one thing you should look at is setup of the NPN
-callback. The NPN callback is used by the server to advertise which
-application protocols the server supports to a client.  In this
-example program, when creating the ``SSL_CTX`` object, we store the
-application protocol name in the wire format of NPN in a statically
-allocated buffer. This is safe because we only create one ``SSL_CTX``
-object in the program's entire lifetime.
-
-If you are following TLS related RFC, you know that NPN is not the
-standardized way to negotiate HTTP/2.  NPN itself is not even
-published as RFC.  The standard way to negotiate HTTP/2 is ALPN,
-Application-Layer Protocol Negotiation Extension, defined in `RFC 7301
-<https://tools.ietf.org/html/rfc7301>`_.  The one caveat of ALPN is
-that OpenSSL >= 1.0.2 is required.  We use macro to enable/disable
-ALPN support depending on OpenSSL version.  In ALPN, client sends the
-list of supported application protocols, and server selects one of
-them.  We provide the callback for it::
-
-    static unsigned char next_proto_list[256];
-    static size_t next_proto_list_len;
-
-    static int next_proto_cb(SSL *s _U_, const unsigned char **data,
-                             unsigned int *len, void *arg _U_) {
-      *data = next_proto_list;
-      *len = (unsigned int)next_proto_list_len;
-      return SSL_TLSEXT_ERR_OK;
-    }
+nghttp2, but one thing you should look at is setup of ALPN callback.
+The ALPN callback is used by the server to select application
+protocols offered by client.  In ALPN, client sends the list of
+supported application protocols, and server selects one of them.  We
+provide the callback for it::
 
     static int alpn_select_proto_cb(SSL *ssl _U_, const unsigned char **out,
                                     unsigned char *outlen, const unsigned char *in,
@@ -71,27 +49,10 @@ them.  We provide the callback for it::
 
       ...
 
-      next_proto_list[0] = NGHTTP2_PROTO_VERSION_ID_LEN;
-      memcpy(&next_proto_list[1], NGHTTP2_PROTO_VERSION_ID,
-             NGHTTP2_PROTO_VERSION_ID_LEN);
-      next_proto_list_len = 1 + NGHTTP2_PROTO_VERSION_ID_LEN;
-
-      SSL_CTX_set_next_protos_advertised_cb(ssl_ctx, next_proto_cb, NULL);
-
       SSL_CTX_set_alpn_select_cb(ssl_ctx, alpn_select_proto_cb, NULL);
 
       return ssl_ctx;
     }
-
-The wire format of NPN is a sequence of length prefixed strings, with
-exactly one byte used to specify the length of each protocol
-identifier.  In this tutorial, we advertise the specific HTTP/2
-protocol version the current nghttp2 library supports, which is
-exported in the identifier :macro:`NGHTTP2_PROTO_VERSION_ID`. The
-``next_proto_cb()`` function is the server-side NPN callback. In the
-OpenSSL implementation, we just assign the pointer to the NPN buffers
-we filled in earlier. The NPN callback function is set to the
-``SSL_CTX`` object using ``SSL_CTX_set_next_protos_advertised_cb()``.
 
 In ``alpn_select_proto_cb()``, we use `nghttp2_select_next_protocol()`
 to select application protocol.  The `nghttp2_select_next_protocol()`
@@ -209,10 +170,7 @@ underlying network socket::
 
         ssl = bufferevent_openssl_get_ssl(session_data->bev);
 
-        SSL_get0_next_proto_negotiated(ssl, &alpn, &alpnlen);
-        if (alpn == NULL) {
-          SSL_get0_alpn_selected(ssl, &alpn, &alpnlen);
-        }
+        SSL_get0_alpn_selected(ssl, &alpn, &alpnlen);
 
         if (alpn == NULL || alpnlen != 2 || memcmp("h2", alpn, 2) != 0) {
           fprintf(stderr, "%s h2 is not negotiated\n", session_data->client_addr);

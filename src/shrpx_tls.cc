@@ -96,18 +96,6 @@ namespace shrpx {
 
 namespace tls {
 
-#ifndef OPENSSL_NO_NEXTPROTONEG
-namespace {
-int next_proto_cb(SSL *s, const unsigned char **data, unsigned int *len,
-                  void *arg) {
-  auto &prefs = get_config()->tls.alpn_prefs;
-  *data = prefs.data();
-  *len = prefs.size();
-  return SSL_TLSEXT_ERR_OK;
-}
-} // namespace
-#endif // !OPENSSL_NO_NEXTPROTONEG
-
 namespace {
 int verify_callback(int preverify_ok, X509_STORE_CTX *ctx) {
   if (!preverify_ok) {
@@ -1065,10 +1053,6 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
   SSL_CTX_set_early_data_enabled(ssl_ctx, 1);
 #endif // NGHTTP2_OPENSSL_IS_BORINGSSL
 
-  // NPN advertisement
-#ifndef OPENSSL_NO_NEXTPROTONEG
-  SSL_CTX_set_next_protos_advertised_cb(ssl_ctx, next_proto_cb, nullptr);
-#endif // !OPENSSL_NO_NEXTPROTONEG
   // ALPN selection callback
   SSL_CTX_set_alpn_select_cb(ssl_ctx, alpn_select_proto_cb, nullptr);
 
@@ -1384,62 +1368,12 @@ SSL_CTX *create_quic_ssl_context(const char *private_key_file,
 }
 #endif // ENABLE_HTTP3
 
-namespace {
-int select_h2_next_proto_cb(SSL *ssl, unsigned char **out,
-                            unsigned char *outlen, const unsigned char *in,
-                            unsigned int inlen, void *arg) {
-  if (!util::select_h2(const_cast<const unsigned char **>(out), outlen, in,
-                       inlen)) {
-    return SSL_TLSEXT_ERR_NOACK;
-  }
-
-  return SSL_TLSEXT_ERR_OK;
-}
-} // namespace
-
-namespace {
-int select_h1_next_proto_cb(SSL *ssl, unsigned char **out,
-                            unsigned char *outlen, const unsigned char *in,
-                            unsigned int inlen, void *arg) {
-  auto end = in + inlen;
-  for (; in < end;) {
-    if (util::streq(NGHTTP2_H1_1_ALPN, StringRef{in, in + (in[0] + 1)})) {
-      *out = const_cast<unsigned char *>(in) + 1;
-      *outlen = in[0];
-      return SSL_TLSEXT_ERR_OK;
-    }
-    in += in[0] + 1;
-  }
-
-  return SSL_TLSEXT_ERR_NOACK;
-}
-} // namespace
-
-namespace {
-int select_next_proto_cb(SSL *ssl, unsigned char **out, unsigned char *outlen,
-                         const unsigned char *in, unsigned int inlen,
-                         void *arg) {
-  auto conn = static_cast<Connection *>(SSL_get_app_data(ssl));
-  switch (conn->proto) {
-  case Proto::HTTP1:
-    return select_h1_next_proto_cb(ssl, out, outlen, in, inlen, arg);
-  case Proto::HTTP2:
-    return select_h2_next_proto_cb(ssl, out, outlen, in, inlen, arg);
-  default:
-    return SSL_TLSEXT_ERR_NOACK;
-  }
-}
-} // namespace
-
 SSL_CTX *create_ssl_client_context(
 #ifdef HAVE_NEVERBLEED
     neverbleed_t *nb,
 #endif // HAVE_NEVERBLEED
     const StringRef &cacert, const StringRef &cert_file,
-    const StringRef &private_key_file,
-    int (*next_proto_select_cb)(SSL *s, unsigned char **out,
-                                unsigned char *outlen, const unsigned char *in,
-                                unsigned int inlen, void *arg)) {
+    const StringRef &private_key_file) {
   auto ssl_ctx = SSL_CTX_new(TLS_client_method());
   if (!ssl_ctx) {
     LOG(FATAL) << ERR_error_string(ERR_get_error(), nullptr);
@@ -1538,12 +1472,6 @@ SSL_CTX *create_ssl_client_context(
 #ifndef OPENSSL_NO_PSK
   SSL_CTX_set_psk_client_callback(ssl_ctx, psk_client_cb);
 #endif // !OPENSSL_NO_PSK
-
-  // NPN selection callback.  This is required to set SSL_CTX because
-  // OpenSSL does not offer SSL_set_next_proto_select_cb.
-#ifndef OPENSSL_NO_NEXTPROTONEG
-  SSL_CTX_set_next_proto_select_cb(ssl_ctx, next_proto_select_cb, nullptr);
-#endif // !OPENSSL_NO_NEXTPROTONEG
 
   return ssl_ctx;
 }
@@ -2249,8 +2177,8 @@ SSL_CTX *setup_downstream_client_ssl_context(
 #ifdef HAVE_NEVERBLEED
       nb,
 #endif // HAVE_NEVERBLEED
-      tlsconf.cacert, tlsconf.client.cert_file, tlsconf.client.private_key_file,
-      select_next_proto_cb);
+      tlsconf.cacert, tlsconf.client.cert_file,
+      tlsconf.client.private_key_file);
 }
 
 void setup_downstream_http2_alpn(SSL *ssl) {

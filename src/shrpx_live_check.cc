@@ -405,12 +405,7 @@ int LiveCheck::tls_handshake() {
   const unsigned char *next_proto = nullptr;
   unsigned int next_proto_len = 0;
 
-#ifndef OPENSSL_NO_NEXTPROTONEG
-  SSL_get0_next_proto_negotiated(conn_.tls.ssl, &next_proto, &next_proto_len);
-#endif // !OPENSSL_NO_NEXTPROTONEG
-  if (next_proto == nullptr) {
-    SSL_get0_alpn_selected(conn_.tls.ssl, &next_proto, &next_proto_len);
-  }
+  SSL_get0_alpn_selected(conn_.tls.ssl, &next_proto, &next_proto_len);
 
   auto proto = StringRef{next_proto, next_proto_len};
 

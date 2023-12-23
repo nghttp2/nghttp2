@@ -2801,10 +2801,9 @@ SSL/TLS:
   --npn-list=<LIST>
               Comma delimited list of  ALPN protocol identifier sorted
               in the  order of preference.  That  means most desirable
-              protocol comes  first.  This  is used  in both  ALPN and
-              NPN.  The parameter must be  delimited by a single comma
-              only  and any  white spaces  are  treated as  a part  of
-              protocol string.
+              protocol comes  first.  The parameter must  be delimited
+              by a single comma only  and any white spaces are treated
+              as a part of protocol string.
               Default: )"
       << DEFAULT_NPN_LIST
       << R"(

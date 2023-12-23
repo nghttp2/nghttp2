@@ -106,21 +106,6 @@ struct app_context {
   struct event_base *evbase;
 };
 
-static unsigned char next_proto_list[256];
-static size_t next_proto_list_len;
-
-#ifndef OPENSSL_NO_NEXTPROTONEG
-static int next_proto_cb(SSL *ssl, const unsigned char **data,
-                         unsigned int *len, void *arg) {
-  (void)ssl;
-  (void)arg;
-
-  *data = next_proto_list;
-  *len = (unsigned int)next_proto_list_len;
-  return SSL_TLSEXT_ERR_OK;
-}
-#endif /* !OPENSSL_NO_NEXTPROTONEG */
-
 static int alpn_select_proto_cb(SSL *ssl, const unsigned char **out,
                                 unsigned char *outlen, const unsigned char *in,
                                 unsigned int inlen, void *arg) {
@@ -174,15 +159,6 @@ static SSL_CTX *create_ssl_ctx(const char *key_file, const char *cert_file) {
   if (SSL_CTX_use_certificate_chain_file(ssl_ctx, cert_file) != 1) {
     errx(1, "Could not read certificate file %s", cert_file);
   }
-
-  next_proto_list[0] = NGHTTP2_PROTO_VERSION_ID_LEN;
-  memcpy(&next_proto_list[1], NGHTTP2_PROTO_VERSION_ID,
-         NGHTTP2_PROTO_VERSION_ID_LEN);
-  next_proto_list_len = 1 + NGHTTP2_PROTO_VERSION_ID_LEN;
-
-#ifndef OPENSSL_NO_NEXTPROTONEG
-  SSL_CTX_set_next_protos_advertised_cb(ssl_ctx, next_proto_cb, NULL);
-#endif /* !OPENSSL_NO_NEXTPROTONEG */
 
   SSL_CTX_set_alpn_select_cb(ssl_ctx, alpn_select_proto_cb, NULL);
 
@@ -698,12 +674,7 @@ static void eventcb(struct bufferevent *bev, short events, void *ptr) {
 
     ssl = bufferevent_openssl_get_ssl(session_data->bev);
 
-#ifndef OPENSSL_NO_NEXTPROTONEG
-    SSL_get0_next_proto_negotiated(ssl, &alpn, &alpnlen);
-#endif /* !OPENSSL_NO_NEXTPROTONEG */
-    if (alpn == NULL) {
-      SSL_get0_alpn_selected(ssl, &alpn, &alpnlen);
-    }
+    SSL_get0_alpn_selected(ssl, &alpn, &alpnlen);
 
     if (alpn == NULL || alpnlen != 2 || memcmp("h2", alpn, 2) != 0) {
       fprintf(stderr, "%s h2 is not negotiated\n", session_data->client_addr);

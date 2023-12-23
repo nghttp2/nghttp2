@@ -753,7 +753,7 @@ struct TLSConfig {
   // The list of additional TLS certificate pair
   std::vector<TLSCertificate> subcerts;
   std::vector<unsigned char> alpn_prefs;
-  // list of supported NPN/ALPN protocol strings in the order of
+  // list of supported ALPN protocol strings in the order of
   // preference.
   std::vector<StringRef> npn_list;
   // list of supported SSL/TLS protocol strings.
