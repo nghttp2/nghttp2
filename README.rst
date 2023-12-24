@@ -972,12 +972,15 @@ threads to avoid saturating a single core on client side.
    servers.
 
 If the experimental HTTP/3 is enabled, h2load can send requests to
-HTTP/3 server.  To do this, specify ``h3`` to ``--npn-list`` option
+HTTP/3 server.  To do this, specify ``h3`` to ``--alpn-list`` option
 like so:
 
 .. code-block:: text
 
-    $ h2load --npn-list h3 https://127.0.0.1:4433
+    $ h2load --alpn-list h3 https://127.0.0.1:4433
+
+For nghttp2 v1.58 or earlier, use ``--npn-list`` instead of
+``--alpn-list``.
 
 HPACK tools
 -----------

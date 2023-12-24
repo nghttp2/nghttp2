@@ -129,7 +129,7 @@ struct Config {
   sockaddr_un unix_addr;
   // list of supported ALPN protocol strings in the order of
   // preference.
-  std::vector<std::string> npn_list;
+  std::vector<std::string> alpn_list;
   // The number of request per second for each client.
   double rps;
   // Disables GSO for UDP connections.

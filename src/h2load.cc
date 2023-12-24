@@ -155,8 +155,8 @@ bool Config::has_base_uri() const { return (!this->base_uri.empty()); }
 bool Config::rps_enabled() const { return this->rps > 0.0; }
 bool Config::is_quic() const {
 #ifdef ENABLE_HTTP3
-  return !npn_list.empty() &&
-         (npn_list[0] == NGHTTP3_ALPN_H3 || npn_list[0] == "\x5h3-29");
+  return !alpn_list.empty() &&
+         (alpn_list[0] == NGHTTP3_ALPN_H3 || alpn_list[0] == "\x5h3-29");
 #else  // !ENABLE_HTTP3
   return false;
 #endif // !ENABLE_HTTP3
@@ -1123,7 +1123,7 @@ int Client::connection_made() {
       std::cout << "No protocol negotiated. Fallback behaviour may be activated"
                 << std::endl;
 
-      for (const auto &proto : config.npn_list) {
+      for (const auto &proto : config.alpn_list) {
         if (util::streq(NGHTTP2_H1_1_ALPN, StringRef{proto})) {
           std::cout << "Server does not support ALPN. Falling back to HTTP/1.1."
                     << std::endl;
@@ -1142,7 +1142,7 @@ int Client::connection_made() {
       std::cout
           << "No supported protocol was negotiated. Supported protocols were:"
           << std::endl;
-      for (const auto &proto : config.npn_list) {
+      for (const auto &proto : config.alpn_list) {
         std::cout << proto.substr(1) << std::endl;
       }
       disconnect();
@@ -2087,7 +2087,7 @@ benchmarking tool for HTTP/2 server)"
 } // namespace
 
 namespace {
-constexpr char DEFAULT_NPN_LIST[] = "h2,h2-16,h2-14,http/1.1";
+constexpr char DEFAULT_ALPN_LIST[] = "h2,h2-16,h2-14,http/1.1";
 } // namespace
 
 namespace {
@@ -2247,15 +2247,15 @@ Options:
               instead of TCP.   In this case, scheme  is inferred from
               the first  URI appeared  in the  command line  or inside
               input files as usual.
-  --npn-list=<LIST>
+  --alpn-list=<LIST>
               Comma delimited list of  ALPN protocol identifier sorted
               in the  order of preference.  That  means most desirable
               protocol comes  first.  The parameter must  be delimited
               by a single comma only  and any white spaces are treated
               as a part of protocol string.
               Default: )"
-      << DEFAULT_NPN_LIST << R"(
-  --h1        Short        hand         for        --npn-list=http/1.1
+      << DEFAULT_ALPN_LIST << R"(
+  --h1        Short        hand        for        --alpn-list=http/1.1
               --no-tls-proto=http/1.1,    which   effectively    force
               http/1.1 for both http and https URI.
   --header-table-size=<SIZE>
@@ -2359,6 +2359,7 @@ int main(int argc, char **argv) {
         {"qlog-file-base", required_argument, &flag, 16},
         {"max-udp-payload-size", required_argument, &flag, 17},
         {"ktls", no_argument, &flag, 18},
+        {"alpn-list", required_argument, &flag, 19},
         {nullptr, 0, nullptr, 0}};
     int option_index = 0;
     auto c = getopt_long(argc, argv,
@@ -2586,10 +2587,6 @@ int main(int argc, char **argv) {
         config.ifile = optarg;
         config.timing_script = true;
         break;
-      case 4:
-        // npn-list option
-        config.npn_list = util::parse_config_str_list(StringRef{optarg});
-        break;
       case 5:
         // rate-period
         config.rate_period = util::parse_duration_with_unit(optarg);
@@ -2600,7 +2597,7 @@ int main(int argc, char **argv) {
         break;
       case 6:
         // --h1
-        config.npn_list =
+        config.alpn_list =
             util::parse_config_str_list(StringRef::from_lit("http/1.1"));
         config.no_tls_proto = Config::PROTO_HTTP1_1;
         break;
@@ -2690,6 +2687,15 @@ int main(int argc, char **argv) {
         // --ktls
         config.ktls = true;
         break;
+      case 4:
+        // npn-list option
+        std::cerr << "--npn-list: deprecated.  Use --alpn-list instead."
+                  << std::endl;
+        // fall through
+      case 19:
+        // alpn-list option
+        config.alpn_list = util::parse_config_str_list(StringRef{optarg});
+        break;
       }
       break;
     default:
@@ -2710,13 +2716,13 @@ int main(int argc, char **argv) {
     exit(EXIT_FAILURE);
   }
 
-  if (config.npn_list.empty()) {
-    config.npn_list =
-        util::parse_config_str_list(StringRef::from_lit(DEFAULT_NPN_LIST));
+  if (config.alpn_list.empty()) {
+    config.alpn_list =
+        util::parse_config_str_list(StringRef::from_lit(DEFAULT_ALPN_LIST));
   }
 
   // serialize the APLN tokens
-  for (auto &proto : config.npn_list) {
+  for (auto &proto : config.alpn_list) {
     proto.insert(proto.begin(), static_cast<unsigned char>(proto.size()));
   }
 
@@ -2957,7 +2963,7 @@ int main(int argc, char **argv) {
   }
 
   std::vector<unsigned char> proto_list;
-  for (const auto &proto : config.npn_list) {
+  for (const auto &proto : config.alpn_list) {
     std::copy_n(proto.c_str(), proto.size(), std::back_inserter(proto_list));
   }
 
