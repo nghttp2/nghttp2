@@ -200,6 +200,7 @@ OPTIONS = [
     "frontend-quic-initial-rtt",
     "require-http-scheme",
     "tls-ktls",
+    "alpn-list",
 ]
 
 LOGVARS = [

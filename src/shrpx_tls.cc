@@ -638,10 +638,10 @@ namespace {
 int alpn_select_proto_cb(SSL *ssl, const unsigned char **out,
                          unsigned char *outlen, const unsigned char *in,
                          unsigned int inlen, void *arg) {
-  // We assume that get_config()->npn_list contains ALPN protocol
+  // We assume that get_config()->alpn_list contains ALPN protocol
   // identifier sorted by preference order.  So we just break when we
   // found the first overlap.
-  for (const auto &target_proto_id : get_config()->tls.npn_list) {
+  for (const auto &target_proto_id : get_config()->tls.alpn_list) {
     for (auto p = in, end = in + inlen; p < end;) {
       auto proto_id = p + 1;
       auto proto_len = *p;

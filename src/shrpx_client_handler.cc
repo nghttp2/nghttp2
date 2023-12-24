@@ -634,7 +634,7 @@ int ClientHandler::validate_next_proto() {
     proto = StringRef::from_lit("http/1.1");
   }
 
-  if (!tls::in_proto_list(get_config()->tls.npn_list, proto)) {
+  if (!tls::in_proto_list(get_config()->tls.alpn_list, proto)) {
     if (LOG_ENABLED(INFO)) {
       CLOG(INFO, this) << "The negotiated protocol is not supported: " << proto;
     }
