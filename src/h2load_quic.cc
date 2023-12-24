@@ -438,11 +438,11 @@ int Client::quic_init(const sockaddr *local_addr, socklen_t local_addrlen,
       },
   };
 
-  assert(config->npn_list.size());
+  assert(config->alpn_list.size());
 
   uint32_t quic_version;
 
-  if (config->npn_list[0] == NGHTTP3_ALPN_H3) {
+  if (config->alpn_list[0] == NGHTTP3_ALPN_H3) {
     quic_version = NGTCP2_PROTO_VER_V1;
   } else {
     quic_version = NGTCP2_PROTO_VER_MIN;

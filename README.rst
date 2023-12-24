@@ -29,10 +29,10 @@ Public Test Server
 The following endpoints are available to try out our nghttp2
 implementation.
 
-* https://nghttp2.org/ (TLS + ALPN/NPN and HTTP/3)
+* https://nghttp2.org/ (TLS + ALPN and HTTP/3)
 
   This endpoint supports ``h2``, ``h2-16``, ``h2-14``, and
-  ``http/1.1`` via ALPN/NPN and requires TLSv1.2 for HTTP/2
+  ``http/1.1`` via ALPN and requires TLSv1.2 for HTTP/2
   connection.
 
   It also supports HTTP/3.
@@ -537,7 +537,7 @@ nghttp - client
 +++++++++++++++
 
 ``nghttp`` is a HTTP/2 client.  It can connect to the HTTP/2 server
-with prior knowledge, HTTP Upgrade and NPN/ALPN TLS extension.
+with prior knowledge, HTTP Upgrade and ALPN TLS extension.
 
 It has verbose output mode for framing information.  Here is sample
 output from ``nghttp`` client:
@@ -763,8 +763,8 @@ nghttpd - server
 By default, it uses SSL/TLS connection.  Use ``--no-tls`` option to
 disable it.
 
-``nghttpd`` only accepts HTTP/2 connections via NPN/ALPN or direct
-HTTP/2 connections.  No HTTP Upgrade is supported.
+``nghttpd`` only accepts HTTP/2 connections via ALPN or direct HTTP/2
+connections.  No HTTP Upgrade is supported.
 
 The ``-p`` option allows users to configure server push.
 
@@ -845,7 +845,7 @@ to know how to migrate from earlier releases.
 ``nghttpx`` implements `important performance-oriented features
 <https://istlsfastyet.com/#server-performance>`_ in TLS, such as
 session IDs, session tickets (with automatic key rotation), OCSP
-stapling, dynamic record sizing, ALPN/NPN, forward secrecy and HTTP/2.
+stapling, dynamic record sizing, ALPN, forward secrecy and HTTP/2.
 ``nghttpx`` also offers the functionality to share session cache and
 ticket keys among multiple ``nghttpx`` instances via memcached.
 
@@ -972,12 +972,15 @@ threads to avoid saturating a single core on client side.
    servers.
 
 If the experimental HTTP/3 is enabled, h2load can send requests to
-HTTP/3 server.  To do this, specify ``h3`` to ``--npn-list`` option
+HTTP/3 server.  To do this, specify ``h3`` to ``--alpn-list`` option
 like so:
 
 .. code-block:: text
 
-    $ h2load --npn-list h3 https://127.0.0.1:4433
+    $ h2load --alpn-list h3 https://127.0.0.1:4433
+
+For nghttp2 v1.58 or earlier, use ``--npn-list`` instead of
+``--alpn-list``.
 
 HPACK tools
 -----------

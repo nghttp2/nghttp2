@@ -86,6 +86,7 @@ APIDOCS= \
 	nghttp2_rcbuf_incref.rst \
 	nghttp2_rcbuf_is_static.rst \
 	nghttp2_select_next_protocol.rst \
+	nghttp2_select_alpn.rst \
 	nghttp2_session_callbacks_del.rst \
 	nghttp2_session_callbacks_new.rst \
 	nghttp2_session_callbacks_set_before_frame_send_callback.rst \

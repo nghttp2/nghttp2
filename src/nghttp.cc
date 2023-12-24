@@ -1115,24 +1115,19 @@ int HttpClient::connection_made() {
   }
 
   if (ssl) {
-    // Check NPN or ALPN result
+    // Check ALPN result
     const unsigned char *next_proto = nullptr;
     unsigned int next_proto_len;
-#ifndef OPENSSL_NO_NEXTPROTONEG
-    SSL_get0_next_proto_negotiated(ssl, &next_proto, &next_proto_len);
-#endif // !OPENSSL_NO_NEXTPROTONEG
-    for (int i = 0; i < 2; ++i) {
-      if (next_proto) {
-        auto proto = StringRef{next_proto, next_proto_len};
-        if (config.verbose) {
-          std::cout << "The negotiated protocol: " << proto << std::endl;
-        }
-        if (!util::check_h2_is_selected(proto)) {
-          next_proto = nullptr;
-        }
-        break;
+
+    SSL_get0_alpn_selected(ssl, &next_proto, &next_proto_len);
+    if (next_proto) {
+      auto proto = StringRef{next_proto, next_proto_len};
+      if (config.verbose) {
+        std::cout << "The negotiated protocol: " << proto << std::endl;
       }
-      SSL_get0_alpn_selected(ssl, &next_proto, &next_proto_len);
+      if (!util::check_h2_is_selected(proto)) {
+        next_proto = nullptr;
+      }
     }
     if (!next_proto) {
       print_protocol_nego_error();
@@ -2242,32 +2237,6 @@ id  responseEnd requestStart  process code size request path)"
 }
 } // namespace
 
-#ifndef OPENSSL_NO_NEXTPROTONEG
-namespace {
-int client_select_next_proto_cb(SSL *ssl, unsigned char **out,
-                                unsigned char *outlen, const unsigned char *in,
-                                unsigned int inlen, void *arg) {
-  if (config.verbose) {
-    print_timer();
-    std::cout << "[NPN] server offers:" << std::endl;
-  }
-  for (unsigned int i = 0; i < inlen; i += in[i] + 1) {
-    if (config.verbose) {
-      std::cout << "          * ";
-      std::cout.write(reinterpret_cast<const char *>(&in[i + 1]), in[i]);
-      std::cout << std::endl;
-    }
-  }
-  if (!util::select_h2(const_cast<const unsigned char **>(out), outlen, in,
-                       inlen)) {
-    print_protocol_nego_error();
-    return SSL_TLSEXT_ERR_NOACK;
-  }
-  return SSL_TLSEXT_ERR_OK;
-}
-} // namespace
-#endif // !OPENSSL_NO_NEXTPROTONEG
-
 namespace {
 int communicate(
     const std::string &scheme, const std::string &host, uint16_t port,
@@ -2338,10 +2307,6 @@ int communicate(
         goto fin;
       }
     }
-#ifndef OPENSSL_NO_NEXTPROTONEG
-    SSL_CTX_set_next_proto_select_cb(ssl_ctx, client_select_next_proto_cb,
-                                     nullptr);
-#endif // !OPENSSL_NO_NEXTPROTONEG
 
     auto proto_list = util::get_default_alpn();
 

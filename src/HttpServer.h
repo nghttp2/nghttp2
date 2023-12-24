@@ -167,7 +167,7 @@ public:
   int on_read();
   int on_write();
   int connection_made();
-  int verify_npn_result();
+  int verify_alpn_result();
 
   int submit_file_response(const StringRef &status, Stream *stream,
                            time_t last_modified, off_t file_length,

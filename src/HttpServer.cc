@@ -725,7 +725,7 @@ int Http2Handler::tls_handshake() {
     std::cerr << "SSL/TLS handshake completed" << std::endl;
   }
 
-  if (verify_npn_result() != 0) {
+  if (verify_alpn_result() != 0) {
     return -1;
   }
 
@@ -892,25 +892,18 @@ int Http2Handler::connection_made() {
   return on_write();
 }
 
-int Http2Handler::verify_npn_result() {
+int Http2Handler::verify_alpn_result() {
   const unsigned char *next_proto = nullptr;
   unsigned int next_proto_len;
-  // Check the negotiated protocol in NPN or ALPN
-#ifndef OPENSSL_NO_NEXTPROTONEG
-  SSL_get0_next_proto_negotiated(ssl_, &next_proto, &next_proto_len);
-#endif // !OPENSSL_NO_NEXTPROTONEG
-  for (int i = 0; i < 2; ++i) {
-    if (next_proto) {
-      auto proto = StringRef{next_proto, next_proto_len};
-      if (sessions_->get_config()->verbose) {
-        std::cout << "The negotiated protocol: " << proto << std::endl;
-      }
-      if (util::check_h2_is_selected(proto)) {
-        return 0;
-      }
-      break;
-    } else {
-      SSL_get0_alpn_selected(ssl_, &next_proto, &next_proto_len);
+  // Check the negotiated protocol in ALPN
+  SSL_get0_alpn_selected(ssl_, &next_proto, &next_proto_len);
+  if (next_proto) {
+    auto proto = StringRef{next_proto, next_proto_len};
+    if (sessions_->get_config()->verbose) {
+      std::cout << "The negotiated protocol: " << proto << std::endl;
+    }
+    if (util::check_h2_is_selected(proto)) {
+      return 0;
     }
   }
   if (sessions_->get_config()->verbose) {
@@ -1988,18 +1981,6 @@ HttpServer::HttpServer(const Config *config) : config_(config) {
   };
 }
 
-#ifndef OPENSSL_NO_NEXTPROTONEG
-namespace {
-int next_proto_cb(SSL *s, const unsigned char **data, unsigned int *len,
-                  void *arg) {
-  auto next_proto = static_cast<std::vector<unsigned char> *>(arg);
-  *data = next_proto->data();
-  *len = next_proto->size();
-  return SSL_TLSEXT_ERR_OK;
-}
-} // namespace
-#endif // !OPENSSL_NO_NEXTPROTONEG
-
 namespace {
 int verify_callback(int preverify_ok, X509_STORE_CTX *ctx) {
   // We don't verify the client certificate. Just request it for the
@@ -2222,9 +2203,6 @@ int HttpServer::run() {
 
     next_proto = util::get_default_alpn();
 
-#ifndef OPENSSL_NO_NEXTPROTONEG
-    SSL_CTX_set_next_protos_advertised_cb(ssl_ctx, next_proto_cb, &next_proto);
-#endif // !OPENSSL_NO_NEXTPROTONEG
     // ALPN selection callback
     SSL_CTX_set_alpn_select_cb(ssl_ctx, alpn_select_proto_cb, this);
   }

@@ -1912,6 +1912,11 @@ int option_lookup_token(const char *name, size_t namelen) {
         return SHRPX_OPTID_LOG_LEVEL;
       }
       break;
+    case 't':
+      if (util::strieq_l("alpn-lis", name, 8)) {
+        return SHRPX_OPTID_ALPN_LIST;
+      }
+      break;
     }
     break;
   case 10:
@@ -3341,15 +3346,6 @@ int parse_config(Config *config, int optid, const StringRef &opt,
   case SHRPX_OPTID_WORKER_WRITE_BURST:
     LOG(WARN) << opt << ": not implemented yet";
     return 0;
-  case SHRPX_OPTID_NPN_LIST: {
-    auto list = util::split_str(optarg, ',');
-    config->tls.npn_list.resize(list.size());
-    for (size_t i = 0; i < list.size(); ++i) {
-      config->tls.npn_list[i] = make_string_ref(config->balloc, list[i]);
-    }
-
-    return 0;
-  }
   case SHRPX_OPTID_TLS_PROTO_LIST: {
     LOG(WARN) << opt
               << ": deprecated.  Use tls-min-proto-version and "
@@ -4174,6 +4170,18 @@ int parse_config(Config *config, int optid, const StringRef &opt,
   case SHRPX_OPTID_TLS_KTLS:
     config->tls.ktls = util::strieq_l("yes", optarg);
     return 0;
+  case SHRPX_OPTID_NPN_LIST:
+    LOG(WARN) << opt << ": deprecated.  Use alpn-list instead.";
+    // fall through
+  case SHRPX_OPTID_ALPN_LIST: {
+    auto list = util::split_str(optarg, ',');
+    config->tls.alpn_list.resize(list.size());
+    for (size_t i = 0; i < list.size(); ++i) {
+      config->tls.alpn_list[i] = make_string_ref(config->balloc, list[i]);
+    }
+
+    return 0;
+  }
   case SHRPX_OPTID_CONF:
     LOG(WARN) << "conf: ignored";
 

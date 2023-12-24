@@ -30,8 +30,8 @@ In order to set benchmark settings, specify following 3 options.
 :option:`-m`
    The max concurrent streams to issue per client.  Default: 1
 
-For SSL/TLS connection, the protocol will be negotiated via ALPN/NPN.
-You can set specific protocols in :option:`--npn-list` option.  For
+For SSL/TLS connection, the protocol will be negotiated via ALPN.  You
+can set specific protocols in :option:`--alpn-list` option.  For
 cleartext connection, the default protocol is HTTP/2.  To change the
 protocol in cleartext connection, use :option:`--no-tls-proto` option.
 For convenience, :option:`--h1` option forces HTTP/1.1 for both
@@ -139,4 +139,4 @@ h2load supports HTTP/3 if it is built with HTTP/3 enabled.  HTTP/3
 support is experimental.
 
 In order to send HTTP/3 request, specify ``h3`` to
-:option:`--npn-list`.
+:option:`--alpn-list`.
