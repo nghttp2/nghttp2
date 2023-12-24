@@ -22,13 +22,13 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#ifndef NGHTTP2_NPN_TEST_H
-#define NGHTTP2_NPN_TEST_H
+#ifndef NGHTTP2_ALPN_TEST_H
+#define NGHTTP2_ALPN_TEST_H
 
 #ifdef HAVE_CONFIG_H
 #  include <config.h>
 #endif /* HAVE_CONFIG_H */
 
-void test_nghttp2_npn(void);
+void test_nghttp2_alpn(void);
 
-#endif /* NGHTTP2_NPN_TEST_H */
+#endif /* NGHTTP2_ALPN_TEST_H */

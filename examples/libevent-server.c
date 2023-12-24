@@ -113,7 +113,7 @@ static int alpn_select_proto_cb(SSL *ssl, const unsigned char **out,
   (void)ssl;
   (void)arg;
 
-  rv = nghttp2_select_next_protocol((unsigned char **)out, outlen, in, inlen);
+  rv = nghttp2_select_alpn(out, outlen, in, inlen);
 
   if (rv != 1) {
     return SSL_TLSEXT_ERR_NOACK;

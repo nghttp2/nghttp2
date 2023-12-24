@@ -32,7 +32,7 @@ provide the callback for it::
                                     unsigned int inlen, void *arg _U_) {
       int rv;
 
-      rv = nghttp2_select_next_protocol((unsigned char **)out, outlen, in, inlen);
+      rv = nghttp2_select_alpn(out, outlen, in, inlen);
 
       if (rv != 1) {
         return SSL_TLSEXT_ERR_NOACK;
@@ -54,9 +54,9 @@ provide the callback for it::
       return ssl_ctx;
     }
 
-In ``alpn_select_proto_cb()``, we use `nghttp2_select_next_protocol()`
-to select application protocol.  The `nghttp2_select_next_protocol()`
-returns 1 only if it selected h2 (ALPN identifier for HTTP/2), and out
+In ``alpn_select_proto_cb()``, we use `nghttp2_select_alpn()` to
+select application protocol.  The `nghttp2_select_alpn()` returns 1
+only if it selected h2 (ALPN identifier for HTTP/2), and out
 parameters were assigned accordingly.
 
 Next, let's take a look at the main structures used by the example
