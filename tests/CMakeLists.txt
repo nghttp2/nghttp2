@@ -52,9 +52,4 @@ if(HAVE_CUNIT)
     add_test(failmalloc failmalloc)
     add_dependencies(check failmalloc)
   endif()
-
-  if(ENABLE_APP)
-    # EXTRA_DIST = end_to_end.py
-    # TESTS += end_to_end.py
-  endif()
 endif()
