@@ -1099,6 +1099,11 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
                << ERR_error_string(ERR_get_error(), nullptr);
     DIE();
   }
+  if (SSL_CTX_set_recv_max_early_data(ssl_ctx, tlsconf.max_early_data) != 1) {
+    LOG(FATAL) << "SSL_CTX_set_recv_max_early_data failed: "
+               << ERR_error_string(ERR_get_error(), nullptr);
+    DIE();
+  }
 #endif // NGHTTP2_GENUINE_OPENSSL
 
 #ifndef OPENSSL_NO_PSK
