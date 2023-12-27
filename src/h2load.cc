@@ -947,6 +947,10 @@ void Client::on_header(int32_t stream_id, const uint8_t *name, size_t namelen,
       }
     }
 
+    if (status < 200) {
+      return;
+    }
+
     stream.req_stat.status = status;
     if (status >= 200 && status < 300) {
       ++worker->stats.status[2];
