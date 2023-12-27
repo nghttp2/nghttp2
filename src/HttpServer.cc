@@ -2219,6 +2219,9 @@ int HttpServer::run() {
   }
 
   ev_run(loop, 0);
+
+  SSL_CTX_free(ssl_ctx);
+
   return 0;
 }
 
