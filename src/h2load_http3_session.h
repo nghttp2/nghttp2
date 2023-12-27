@@ -46,6 +46,7 @@ public:
 
   int init_conn();
   int stream_close(int64_t stream_id, uint64_t app_error_code);
+  int end_stream(int64_t stream_id);
   void recv_data(int64_t stream_id, const uint8_t *data, size_t datalen);
   void consume(int64_t stream_id, size_t nconsumed);
   void begin_headers(int64_t stream_id);
