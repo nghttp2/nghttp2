@@ -507,7 +507,7 @@ void Worker::process_events() {
     }
 
     if (LOG_ENABLED(INFO)) {
-      WLOG(INFO, this) << "CLIENT_HANDLER:" << client_handler << " created ";
+      WLOG(INFO, this) << "CLIENT_HANDLER:" << client_handler << " created";
     }
 
     break;
