@@ -47,8 +47,7 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
                        const uint8_t *value, size_t valuelen, uint8_t flags,
                        void *user_data) {
   auto client = static_cast<Client *>(user_data);
-  if (frame->hd.type != NGHTTP2_HEADERS ||
-      frame->headers.cat != NGHTTP2_HCAT_RESPONSE) {
+  if (frame->hd.type != NGHTTP2_HEADERS) {
     return 0;
   }
   client->on_header(frame->hd.stream_id, name, namelen, value, valuelen);
@@ -70,15 +69,17 @@ namespace {
 int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
                            void *user_data) {
   auto client = static_cast<Client *>(user_data);
-  if (frame->hd.type != NGHTTP2_HEADERS ||
-      frame->headers.cat != NGHTTP2_HCAT_RESPONSE) {
-    return 0;
-  }
-  client->worker->stats.bytes_head +=
-      frame->hd.length - frame->headers.padlen -
-      ((frame->hd.flags & NGHTTP2_FLAG_PRIORITY) ? 5 : 0);
-  if (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
-    client->record_ttfb();
+  switch (frame->hd.type) {
+  case NGHTTP2_HEADERS:
+    client->worker->stats.bytes_head +=
+        frame->hd.length - frame->headers.padlen -
+        ((frame->hd.flags & NGHTTP2_FLAG_PRIORITY) ? 5 : 0);
+    // fall through
+  case NGHTTP2_DATA:
+    if (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
+      client->record_ttfb();
+    }
+    break;
   }
   return 0;
 }
