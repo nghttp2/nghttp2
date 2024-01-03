@@ -45,11 +45,11 @@ time_t nghttp2_timegm(struct tm *tm) {
   days = (tm->tm_year - 70) * 365 + num_leap_year + tm->tm_yday;
   t = ((int64_t)days * 24 + tm->tm_hour) * 3600 + tm->tm_min * 60 + tm->tm_sec;
 
-#if SIZEOF_TIME_T == 4
-  if (t < INT32_MIN || t > INT32_MAX) {
-    return -1;
+  if (sizeof(time_t) == 4) {
+    if (t < INT32_MIN || t > INT32_MAX) {
+      return -1;
+    }
   }
-#endif /* SIZEOF_TIME_T == 4 */
 
   return (time_t)t;
 }
@@ -78,11 +78,11 @@ time_t nghttp2_timegm_without_yday(struct tm *tm) {
   }
   t = ((int64_t)days * 24 + tm->tm_hour) * 3600 + tm->tm_min * 60 + tm->tm_sec;
 
-#if SIZEOF_TIME_T == 4
-  if (t < INT32_MIN || t > INT32_MAX) {
-    return -1;
+  if (sizeof(time_t) == 4) {
+    if (t < INT32_MIN || t > INT32_MAX) {
+      return -1;
+    }
   }
-#endif /* SIZEOF_TIME_T == 4 */
 
   return (time_t)t;
 }

@@ -19,12 +19,6 @@
 /* Define to 1 if you have `neverbleed` library. */
 #cmakedefine HAVE_NEVERBLEED 1
 
-/* sizeof(int *) */
-#cmakedefine SIZEOF_INT_P   @SIZEOF_INT_P@
-
-/* sizeof(time_t) */
-#cmakedefine SIZEOF_TIME_T  @SIZEOF_TIME_T@
-
 /* Define to 1 if you have the `_Exit` function. */
 #cmakedefine HAVE__EXIT 1
 
@@ -84,9 +78,6 @@
 
 /* Define to 1 if you have the <syslog.h> header file. */
 #cmakedefine HAVE_SYSLOG_H 1
-
-/* Define to 1 if you have the <time.h> header file. */
-#cmakedefine HAVE_TIME_H 1
 
 /* Define to 1 if you have the <unistd.h> header file. */
 #cmakedefine HAVE_UNISTD_H 1

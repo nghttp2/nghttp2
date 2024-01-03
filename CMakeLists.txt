@@ -281,7 +281,6 @@ check_include_file("pwd.h"          HAVE_PWD_H)
 check_include_file("sys/socket.h"   HAVE_SYS_SOCKET_H)
 check_include_file("sys/time.h"     HAVE_SYS_TIME_H)
 check_include_file("syslog.h"       HAVE_SYSLOG_H)
-check_include_file("time.h"         HAVE_TIME_H)
 check_include_file("unistd.h"       HAVE_UNISTD_H)
 check_include_file("windows.h"      HAVE_WINDOWS_H)
 
@@ -312,10 +311,6 @@ endif()
 
 include(CheckStructHasMember)
 check_struct_has_member("struct tm" tm_gmtoff time.h HAVE_STRUCT_TM_TM_GMTOFF)
-
-# Check size of pointer to decide we need 8 bytes alignment adjustment.
-check_type_size("int *"   SIZEOF_INT_P)
-check_type_size("time_t"  SIZEOF_TIME_T)
 
 # Checks for library functions.
 include(CheckFunctionExists)

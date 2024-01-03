@@ -856,7 +856,6 @@ AC_CHECK_HEADERS([ \
   sys/socket.h \
   sys/time.h \
   syslog.h \
-  time.h \
   unistd.h \
   windows.h \
 ])
@@ -907,12 +906,6 @@ if test "x$have_struct_tm_tm_gmtoff" = "xyes"; then
   AC_DEFINE([HAVE_STRUCT_TM_TM_GMTOFF], [1],
             [Define to 1 if you have `struct tm.tm_gmtoff` member.])
 fi
-
-# Check size of pointer to decide we need 8 bytes alignment
-# adjustment.
-AC_CHECK_SIZEOF([int *])
-
-AC_CHECK_SIZEOF([time_t])
 
 # Checks for library functions.
 
