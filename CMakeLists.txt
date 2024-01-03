@@ -56,10 +56,13 @@ include(GNUInstallDirs)
 find_package(Python3 COMPONENTS Interpreter)
 
 # Auto-detection of features that can be toggled
+if(NOT ENABLE_LIB_ONLY)
+  find_package(Libev 4.11)
+  find_package(Libcares 1.7.5)
+  find_package(ZLIB 1.2.3)
+endif()
+
 find_package(OpenSSL 1.1.1)
-find_package(Libev 4.11)
-find_package(Libcares 1.7.5)
-find_package(ZLIB 1.2.3)
 find_package(Libngtcp2 1.0.0)
 find_package(Libngtcp2_crypto_quictls 1.0.0)
 if(LIBNGTCP2_CRYPTO_QUICTLS_FOUND)
