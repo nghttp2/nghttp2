@@ -1097,7 +1097,7 @@ bool check_link_param_empty(const char *first, const char *last,
                             const char *pat, size_t patlen) {
   if (first + patlen <= last) {
     if (std::equal(pat, pat + patlen, first, util::CaseCmp())) {
-      // we only accept URI if pat is followd by "" (e.g.,
+      // we only accept URI if pat is followed by "" (e.g.,
       // loadpolicy="") here.
       if (first + patlen + 2 <= last) {
         if (*(first + patlen) != '"' || *(first + patlen + 1) != '"') {

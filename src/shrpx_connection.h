@@ -158,7 +158,7 @@ struct Connection {
 
   // Restarts read timer with timeout value |t|.
   void again_rt(ev_tstamp t);
-  // Restarts read timer without chainging timeout.
+  // Restarts read timer without changing timeout.
   void again_rt();
   // Returns true if read timer expired.
   bool expired_rt();
@@ -192,7 +192,7 @@ struct Connection {
 
 #ifdef ENABLE_HTTP3
 static_assert(std::is_standard_layout<Connection>::value,
-              "Conneciton is not standard layout");
+              "Connection is not standard layout");
 #endif // ENABLE_HTTP3
 
 // Creates BIO_method shared by all SSL objects.

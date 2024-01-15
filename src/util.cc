@@ -617,7 +617,7 @@ void show_candidates(const char *unkopt, const option *options) {
     if (istarts_with(options[i].name, options[i].name + optnamelen, unkopt,
                      unkopt + unkoptlen)) {
       if (optnamelen == static_cast<size_t>(unkoptlen)) {
-        // Exact match, then we don't show any condidates.
+        // Exact match, then we don't show any candidates.
         return;
       }
       ++prefix_match;
