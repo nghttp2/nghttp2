@@ -3302,7 +3302,7 @@ static ssize_t nghttp2_session_mem_send_internal(nghttp2_session *session,
         }
 
         if (rv == NGHTTP2_ERR_HEADER_COMP) {
-          /* If header compression error occurred, should terminiate
+          /* If header compression error occurred, should terminate
              connection. */
           rv = nghttp2_session_terminate_session(session,
                                                  NGHTTP2_INTERNAL_ERROR);

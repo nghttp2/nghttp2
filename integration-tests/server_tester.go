@@ -652,7 +652,7 @@ type serverResponse struct {
 	errCode      http2.ErrCode     // error code received in HTTP/2 RST_STREAM or GOAWAY
 	connErr      bool              // true if HTTP/2 connection error
 	connClose    bool              // Connection: close is included in response header in HTTP/1 test
-	reqHeader    http.Header       // http request header, currently only sotres pushed request header
+	reqHeader    http.Header       // http request header, currently only stores pushed request header
 	pushResponse []*serverResponse // pushed response
 }
 

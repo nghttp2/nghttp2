@@ -1997,7 +1997,7 @@ typedef int (*nghttp2_on_extension_chunk_recv_callback)(
  * ``NULL``.  The |*payload| is available as ``frame->ext.payload`` in
  * :type:`nghttp2_on_frame_recv_callback`.  Therefore if application
  * can free that memory inside :type:`nghttp2_on_frame_recv_callback`
- * callback.  Of course, application has a liberty not ot use
+ * callback.  Of course, application has a liberty not to use
  * |*payload|, and do its own mechanism to process extension frames.
  *
  * To abort processing this extension frame, return

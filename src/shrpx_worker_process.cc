@@ -398,7 +398,7 @@ void nb_child_cb(struct ev_loop *loop, ev_child *w, int revents) {
 
   ev_child_stop(loop, w);
 
-  LOG(FATAL) << "neverbleed process exitted; aborting now";
+  LOG(FATAL) << "neverbleed process exited; aborting now";
 
   nghttp2_Exit(EXIT_FAILURE);
 }

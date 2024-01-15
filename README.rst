@@ -103,7 +103,7 @@ To mitigate heap fragmentation in long running server programs
 To enable mruby support for nghttpx, `mruby
 <https://github.com/mruby/mruby>`_ is required.  We need to build
 mruby with C++ ABI explicitly turned on, and probably need other
-mrgems, mruby is manged by git submodule under third-party/mruby
+mrgems, mruby is managed by git submodule under third-party/mruby
 directory.  Currently, mruby support for nghttpx is disabled by
 default.  To enable mruby support, use ``--with-mruby`` configure
 option.  Note that at the time of this writing, libmruby-dev and mruby
