@@ -1,7 +1,7 @@
 FROM debian:12 as build
 
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
         git clang make binutils autoconf automake autotools-dev libtool \
         pkg-config \
         zlib1g-dev libev-dev libjemalloc-dev ruby-dev libc-ares-dev bison \
