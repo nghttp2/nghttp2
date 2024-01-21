@@ -24,7 +24,7 @@
 
 cmake_minimum_required(VERSION 3.5)
 # XXX using 1.8.90 instead of 1.9.0-DEV
-project(nghttp2 VERSION 1.59.0)
+project(nghttp2 VERSION 1.59.90)
 
 # See versioning rule:
 #  https://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
