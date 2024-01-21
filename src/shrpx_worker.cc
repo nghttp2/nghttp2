@@ -399,7 +399,7 @@ void Worker::replace_downstream_config(
         }
       }
 
-      dst->shared_addr = shared_addr;
+      dst->shared_addr = std::move(shared_addr);
 
       addr_groups_indexer.emplace(std::move(dkey), i);
     } else {
