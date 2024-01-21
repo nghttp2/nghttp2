@@ -2322,7 +2322,6 @@ Options:
 int main(int argc, char **argv) {
   std::string datafile;
   std::string logfile;
-  std::string qlog_base;
   bool nreqs_set_manually = false;
   while (1) {
     static int flag = 0;
@@ -2669,7 +2668,7 @@ int main(int argc, char **argv) {
         break;
       case 16:
         // --qlog-file-base
-        qlog_base = optarg;
+        config.qlog_file_base = optarg;
         break;
       case 17: {
         // --max-udp-payload-size
@@ -2884,16 +2883,9 @@ int main(int argc, char **argv) {
     }
   }
 
-  if (!qlog_base.empty()) {
-    if (!config.is_quic()) {
-      std::cerr
-          << "Warning: --qlog-file-base: only effective in quic, ignoring."
-          << std::endl;
-    } else {
-#ifdef ENABLE_HTTP3
-      config.qlog_file_base = qlog_base;
-#endif // ENABLE_HTTP3
-    }
+  if (!config.qlog_file_base.empty() && !config.is_quic()) {
+    std::cerr << "Warning: --qlog-file-base: only effective in quic, ignoring."
+              << std::endl;
   }
 
   struct sigaction act {};

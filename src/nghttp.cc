@@ -993,7 +993,7 @@ int HttpClient::on_upgrade_connect() {
   auto headers = Headers{{"host", hostport},
                          {"connection", "Upgrade, HTTP2-Settings"},
                          {"upgrade", NGHTTP2_CLEARTEXT_PROTO_VERSION_ID},
-                         {"http2-settings", token68},
+                         {"http2-settings", std::move(token68)},
                          {"accept", "*/*"},
                          {"user-agent", "nghttp2/" NGHTTP2_VERSION}};
   auto initial_headerslen = headers.size();
