@@ -213,20 +213,19 @@ OPTIONS
     the first  URI appeared  in the  command line  or inside
     input files as usual.
 
-.. option:: --npn-list=<LIST>
+.. option:: --alpn-list=<LIST>
 
     Comma delimited list of  ALPN protocol identifier sorted
     in the  order of preference.  That  means most desirable
-    protocol comes  first.  This  is used  in both  ALPN and
-    NPN.  The parameter must be  delimited by a single comma
-    only  and any  white spaces  are  treated as  a part  of
-    protocol string.
+    protocol comes  first.  The parameter must  be delimited
+    by a single comma only  and any white spaces are treated
+    as a part of protocol string.
 
     Default: ``h2,h2-16,h2-14,http/1.1``
 
 .. option:: --h1
 
-    Short        hand         for        :option:`--npn-list`\=http/1.1
+    Short        hand        for        :option:`--alpn-list`\=http/1.1
     :option:`--no-tls-proto`\=http/1.1,    which   effectively    force
     http/1.1 for both http and https URI.
 

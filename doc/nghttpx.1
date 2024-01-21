@@ -27,7 +27,7 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
-.TH "NGHTTPX" "1" "Oct 27, 2023" "1.58.0" "nghttp2"
+.TH "NGHTTPX" "1" "Jan 21, 2024" "1.59.0" "nghttp2"
 .SH NAME
 nghttpx \- HTTP/2 proxy
 .SH SYNOPSIS
@@ -783,13 +783,12 @@ available.
 .UNINDENT
 .INDENT 0.0
 .TP
-.B \-\-npn\-list=<LIST>
+.B \-\-alpn\-list=<LIST>
 Comma delimited list of  ALPN protocol identifier sorted
 in the  order of preference.  That  means most desirable
-protocol comes  first.  This  is used  in both  ALPN and
-NPN.  The parameter must be  delimited by a single comma
-only  and any  white spaces  are  treated as  a part  of
-protocol string.
+protocol comes  first.  The parameter must  be delimited
+by a single comma only  and any white spaces are treated
+as a part of protocol string.
 .sp
 Default: \fBh2,h2\-16,h2\-14,http/1.1\fP
 .UNINDENT
