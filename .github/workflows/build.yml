@@ -9,6 +9,7 @@ env:
   OPENSSL1_VERSION: 1_1_1w+quic
   OPENSSL3_VERSION: 3.1.4+quic
   BORINGSSL_VERSION: 6ca49385b168f47a50e7172d82a590b218f55e4d
+  AWSLC_VERSION: v1.20.0
   NGHTTP3_VERSION: v1.1.0
   NGTCP2_VERSION: v1.1.0
 
@@ -50,6 +51,15 @@ jobs:
           boringssl/build/ssl/libssl.a
           boringssl/include
         key: ${{ runner.os }}-boringssl-${{ env.BORINGSSL_VERSION }}
+    - name: Restore aws-lc cache
+      id: cache-awslc
+      uses: actions/cache@v3
+      with:
+        path: |
+          aws-lc/build/crypto/libcrypto.a
+          aws-lc/build/ssl/libssl.a
+          aws-lc/include
+        key: ${{ runner.os }}-awslc-${{ env.AWSLC_VERSION }}
     - name: Restore nghttp3 cache
       id: cache-nghttp3
       uses: actions/cache@v3
@@ -74,6 +84,7 @@ jobs:
         steps.cache-openssl1.outputs.cache-hit != 'true' ||
         steps.cache-openssl3.outputs.cache-hit != 'true' ||
         steps.cache-boringssl.outputs.cache-hit != 'true' ||
+        steps.cache-awslc.outputs.cache-hit != 'true' ||
         steps.cache-nghttp3.outputs.cache-hit != 'true' ||
         steps.cache-ngtcp2-openssl1.outputs.cache-hit != 'true' ||
         steps.cache-ngtcp2-openssl3.outputs.cache-hit != 'true'
@@ -133,6 +144,13 @@ jobs:
         cd build
         cmake -DCMAKE_POSITION_INDEPENDENT_CODE=ON ..
         make -j"$(nproc 2> /dev/null || sysctl -n hw.ncpu)"
+    - name: Build aws-lc
+      if: steps.cache-awslc.outputs.cache-hit != 'true'
+      run: |
+        git clone --depth 1 -b "${AWSLC_VERSION}" https://github.com/aws/aws-lc
+        cd aws-lc
+        cmake -B build -DDISABLE_GO=ON
+        make -j"$(nproc 2> /dev/null || sysctl -n hw.ncpu)" -C build
     - name: Build nghttp3
       if: steps.cache-nghttp3.outputs.cache-hit != 'true'
       run: |
@@ -142,7 +160,7 @@ jobs:
         ./configure --prefix=$PWD/build --enable-lib-only
         make -j"$(nproc 2> /dev/null || sysctl -n hw.ncpu)" check
         make install
-    - name: Build ngtcp2 + quictls/openssl v1.1.1
+    - name: Build ngtcp2 + quictls/openssl v1.1.1 + BoringSSL
       if: steps.cache-ngtcp2-openssl1.outputs.cache-hit != 'true'
       run: |
         git clone --depth 1 -b ${{ env.NGTCP2_VERSION }} https://github.com/ngtcp2/ngtcp2 ngtcp2-openssl1
@@ -155,7 +173,7 @@ jobs:
           --with-boringssl
         make -j"$(nproc 2> /dev/null || sysctl -n hw.ncpu)" check
         make install
-    - name: Build ngtcp2 + quictls/openssl v3.x
+    - name: Build ngtcp2 + quictls/openssl v3.x + aws-lc
       if: steps.cache-ngtcp2-openssl3.outputs.cache-hit != 'true'
       run: |
         git clone --depth 1 -b ${{ env.NGTCP2_VERSION }} https://github.com/ngtcp2/ngtcp2 ngtcp2-openssl3
@@ -163,8 +181,8 @@ jobs:
         autoreconf -i
         ./configure --prefix=$PWD/build --enable-lib-only \
           PKG_CONFIG_PATH="../openssl3/build/lib/pkgconfig" \
-          BORINGSSL_CFLAGS="-I$PWD/../boringssl/include/" \
-          BORINGSSL_LIBS="-L$PWD/../boringssl/build/ssl -lssl -L$PWD/../boringssl/build/crypto -lcrypto" \
+          BORINGSSL_CFLAGS="-I$PWD/../aws-lc/include/" \
+          BORINGSSL_LIBS="-L$PWD/../aws-lc/build/ssl -lssl -L$PWD/../aws-lc/build/crypto -lcrypto" \
           --with-boringssl
         make -j"$(nproc 2> /dev/null || sysctl -n hw.ncpu)" check
         make install
@@ -179,7 +197,7 @@ jobs:
         compiler: [gcc, clang]
         buildtool: [autotools, cmake]
         http3: [http3, no-http3]
-        openssl: [openssl1, openssl3, boringssl]
+        openssl: [openssl1, openssl3, boringssl, awslc]
         exclude:
         - os: macos-12
           openssl: openssl3
@@ -195,6 +213,12 @@ jobs:
         - openssl: boringssl
           buildtool: cmake
         - openssl: boringssl
+          compiler: gcc
+        - os: macos-12
+          openssl: awslc
+        - openssl: awslc
+          buildtool: cmake
+        - openssl: awslc
           compiler: gcc
 
     runs-on: ${{ matrix.os }}
@@ -301,10 +325,34 @@ jobs:
           boringssl/include
         key: ${{ runner.os }}-boringssl-${{ env.BORINGSSL_VERSION }}
         fail-on-cache-miss: true
+    - name: Restore aws-lc cache
+      uses: actions/cache/restore@v3
+      if: matrix.openssl == 'awslc'
+      with:
+        path: |
+          aws-lc/build/crypto/libcrypto.a
+          aws-lc/build/ssl/libssl.a
+          aws-lc/include
+        key: ${{ runner.os }}-awslc-${{ env.AWSLC_VERSION }}
+        fail-on-cache-miss: true
     - name: Set BoringSSL variables
       if: matrix.openssl == 'boringssl'
       run: |
         cd boringssl
+
+        OPENSSL_CFLAGS="-I$PWD/include/"
+        OPENSSL_LIBS="-L$PWD/build/ssl -lssl -L$PWD/build/crypto -lcrypto -pthread"
+        EXTRA_AUTOTOOLS_OPTS="$EXTRA_AUTOTOOLS_OPTS --without-neverbleed --without-jemalloc"
+
+        echo 'OPENSSL_CFLAGS='"$OPENSSL_CFLAGS" >> $GITHUB_ENV
+        echo 'OPENSSL_LIBS='"$OPENSSL_LIBS" >> $GITHUB_ENV
+        echo 'BORINGSSL_CFLAGS='"$OPENSSL_CFLAGS" >> $GITHUB_ENV
+        echo 'BORINGSSL_LIBS='"$OPENSSL_LIBS" >> $GITHUB_ENV
+        echo 'EXTRA_AUTOTOOLS_OPTS='"$EXTRA_AUTOTOOLS_OPTS" >> $GITHUB_ENV
+    - name: Set aws-lc variables
+      if: matrix.openssl == 'awslc'
+      run: |
+        cd aws-lc
 
         OPENSSL_CFLAGS="-I$PWD/include/"
         OPENSSL_LIBS="-L$PWD/build/ssl -lssl -L$PWD/build/crypto -lcrypto -pthread"
@@ -322,16 +370,16 @@ jobs:
         path: nghttp3/build
         key: ${{ runner.os }}-nghttp3-${{ env.NGHTTP3_VERSION }}
         fail-on-cache-miss: true
-    - name: Restore ngtcp2 + quictls/openssl v1.1.1 cache
+    - name: Restore ngtcp2 + quictls/openssl v1.1.1 cache + BoringSSL
       uses: actions/cache/restore@v3
       if: matrix.http3 == 'http3' && (matrix.openssl == 'openssl1' || matrix.openssl == 'boringssl')
       with:
         path: ngtcp2-openssl1/build
         key: ${{ runner.os }}-ngtcp2-${{ env.NGTCP2_VERSION }}-openssl-${{ env.OPENSSL1_VERSION }}
         fail-on-cache-miss: true
-    - name: Restore ngtcp2 + quictls/openssl v3.x cache
+    - name: Restore ngtcp2 + quictls/openssl v3.x cache + aws-lc
       uses: actions/cache/restore@v3
-      if: matrix.http3 == 'http3' && matrix.openssl == 'openssl3'
+      if: matrix.http3 == 'http3' && (matrix.openssl == 'openssl3' || matrix.openssl == 'awslc')
       with:
         path: ngtcp2-openssl3/build
         key: ${{ runner.os }}-ngtcp2-${{ env.NGTCP2_VERSION }}-openssl-${{ env.OPENSSL3_VERSION }}
