@@ -137,8 +137,11 @@ jobs:
     - name: Build BoringSSL
       if: steps.cache-boringssl.outputs.cache-hit != 'true'
       run: |
-        git clone https://boringssl.googlesource.com/boringssl
+        mkdir boringssl
         cd boringssl
+        git init
+        git remote add origin https://boringssl.googlesource.com/boringssl
+        git fetch origin --depth 1 ${{ env.BORINGSSL_VERSION }}
         git checkout ${{ env.BORINGSSL_VERSION }}
         mkdir build
         cd build
@@ -398,7 +401,7 @@ jobs:
         echo 'EXTRA_CMAKE_OPTS='"$EXTRA_CMAKE_OPTS" >> $GITHUB_ENV
     - name: Setup git submodules
       run: |
-        git submodule update --init
+        git submodule update --init --depth 1
     - name: Configure autotools
       run: |
         autoreconf -i

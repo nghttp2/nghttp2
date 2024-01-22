@@ -44,7 +44,7 @@ RUN git clone --depth 1 -b v1.3.0 https://github.com/libbpf/libbpf && \
 
 RUN git clone --depth 1 https://github.com/nghttp2/nghttp2.git && \
     cd nghttp2 && \
-    git submodule update --init && \
+    git submodule update --init --depth 1 && \
     autoreconf -i && \
     ./configure --disable-examples --disable-hpack-tools \
         --with-mruby --with-neverbleed \
