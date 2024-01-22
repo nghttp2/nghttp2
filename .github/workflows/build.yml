@@ -25,26 +25,26 @@ jobs:
     - uses: actions/checkout@v4
     - name: Restore libbpf cache
       id: cache-libbpf
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       if: runner.os == 'Linux'
       with:
         path: libbpf/build
         key: ${{ runner.os }}-libbpf-${{ env.LIBBPF_VERSION }}
     - name: Restore OpenSSL v1.1.1 cache
       id: cache-openssl1
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: openssl1/build
         key: ${{ runner.os }}-openssl-${{ env.OPENSSL1_VERSION }}
     - name: Restore OpenSSL v3.x cache
       id: cache-openssl3
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: openssl3/build
         key: ${{ runner.os }}-openssl-${{ env.OPENSSL3_VERSION }}
     - name: Restore BoringSSL cache
       id: cache-boringssl
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: |
           boringssl/build/crypto/libcrypto.a
@@ -53,7 +53,7 @@ jobs:
         key: ${{ runner.os }}-boringssl-${{ env.BORINGSSL_VERSION }}
     - name: Restore aws-lc cache
       id: cache-awslc
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: |
           aws-lc/build/crypto/libcrypto.a
@@ -62,19 +62,19 @@ jobs:
         key: ${{ runner.os }}-awslc-${{ env.AWSLC_VERSION }}
     - name: Restore nghttp3 cache
       id: cache-nghttp3
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: nghttp3/build
         key: ${{ runner.os }}-nghttp3-${{ env.NGHTTP3_VERSION }}
     - name: Restore ngtcp2 + quictls/openssl v1.1.1 cache
       id: cache-ngtcp2-openssl1
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ngtcp2-openssl1/build
         key: ${{ runner.os }}-ngtcp2-${{ env.NGTCP2_VERSION }}-openssl-${{ env.OPENSSL1_VERSION }}
     - name: Restore ngtcp2 + quictls/openssl v3.x cache
       id: cache-ngtcp2-openssl3
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ngtcp2-openssl3/build
         key: ${{ runner.os }}-ngtcp2-${{ env.NGTCP2_VERSION }}-openssl-${{ env.OPENSSL3_VERSION }}
@@ -288,7 +288,7 @@ jobs:
         echo 'CC=gcc' >> $GITHUB_ENV
         echo 'CXX=g++' >> $GITHUB_ENV
     - name: Restore libbpf cache
-      uses: actions/cache/restore@v3
+      uses: actions/cache/restore@v4
       if: matrix.http3 == 'http3' && matrix.compiler == 'clang' && runner.os == 'Linux'
       with:
         path: libbpf/build
@@ -305,21 +305,21 @@ jobs:
         echo 'EXTRA_AUTOTOOLS_OPTS='"$EXTRA_AUTOTOOLS_OPTS" >> $GITHUB_ENV
         echo 'EXTRA_CMAKE_OPTS='"$EXTRA_CMAKE_OPTS" >> $GITHUB_ENV
     - name: Restore quictls/openssl v1.1.1 cache
-      uses: actions/cache/restore@v3
+      uses: actions/cache/restore@v4
       if: matrix.http3 == 'http3' && matrix.openssl == 'openssl1'
       with:
         path: openssl1/build
         key: ${{ runner.os }}-openssl-${{ env.OPENSSL1_VERSION }}
         fail-on-cache-miss: true
     - name: Restore quictls/openssl v3.x cache
-      uses: actions/cache/restore@v3
+      uses: actions/cache/restore@v4
       if: matrix.http3 == 'http3' && matrix.openssl == 'openssl3'
       with:
         path: openssl3/build
         key: ${{ runner.os }}-openssl-${{ env.OPENSSL3_VERSION }}
         fail-on-cache-miss: true
     - name: Restore BoringSSL cache
-      uses: actions/cache/restore@v3
+      uses: actions/cache/restore@v4
       if: matrix.openssl == 'boringssl'
       with:
         path: |
@@ -329,7 +329,7 @@ jobs:
         key: ${{ runner.os }}-boringssl-${{ env.BORINGSSL_VERSION }}
         fail-on-cache-miss: true
     - name: Restore aws-lc cache
-      uses: actions/cache/restore@v3
+      uses: actions/cache/restore@v4
       if: matrix.openssl == 'awslc'
       with:
         path: |
@@ -367,21 +367,21 @@ jobs:
         echo 'BORINGSSL_LIBS='"$OPENSSL_LIBS" >> $GITHUB_ENV
         echo 'EXTRA_AUTOTOOLS_OPTS='"$EXTRA_AUTOTOOLS_OPTS" >> $GITHUB_ENV
     - name: Restore nghttp3 cache
-      uses: actions/cache/restore@v3
+      uses: actions/cache/restore@v4
       if: matrix.http3 == 'http3'
       with:
         path: nghttp3/build
         key: ${{ runner.os }}-nghttp3-${{ env.NGHTTP3_VERSION }}
         fail-on-cache-miss: true
     - name: Restore ngtcp2 + quictls/openssl v1.1.1 cache + BoringSSL
-      uses: actions/cache/restore@v3
+      uses: actions/cache/restore@v4
       if: matrix.http3 == 'http3' && (matrix.openssl == 'openssl1' || matrix.openssl == 'boringssl')
       with:
         path: ngtcp2-openssl1/build
         key: ${{ runner.os }}-ngtcp2-${{ env.NGTCP2_VERSION }}-openssl-${{ env.OPENSSL1_VERSION }}
         fail-on-cache-miss: true
     - name: Restore ngtcp2 + quictls/openssl v3.x cache + aws-lc
-      uses: actions/cache/restore@v3
+      uses: actions/cache/restore@v4
       if: matrix.http3 == 'http3' && (matrix.openssl == 'openssl3' || matrix.openssl == 'awslc')
       with:
         path: ngtcp2-openssl3/build
