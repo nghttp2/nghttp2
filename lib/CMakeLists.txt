@@ -60,6 +60,7 @@ if(BUILD_SHARED_LIBS)
   )
 
   install(TARGETS nghttp2 EXPORT ${EXPORT_SET})
+  list(APPEND nghttp2_exports nghttp2)
 endif()
 
 if(HAVE_CUNIT OR BUILD_STATIC_LIBS)
@@ -82,6 +83,7 @@ if(HAVE_CUNIT OR BUILD_STATIC_LIBS)
 
   if(BUILD_STATIC_LIBS)
     install(TARGETS nghttp2_static EXPORT ${EXPORT_SET})
+    list(APPEND nghttp2_exports nghttp2_static)
   endif()
 endif()
 
@@ -91,7 +93,11 @@ else()
   set(LIB_SELECTED nghttp2_static)
 endif()
 
-add_library(nghttp2::nghttp2 ALIAS ${LIB_SELECTED})
+add_library(${PROJECT_NAME}::nghttp2 ALIAS ${LIB_SELECTED})
 
 install(FILES "${CMAKE_CURRENT_BINARY_DIR}/libnghttp2.pc"
   DESTINATION "${CMAKE_INSTALL_LIBDIR}/pkgconfig")
+
+install(EXPORT ${EXPORT_SET}
+  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}
+  NAMESPACE ${PROJECT_NAME}::)
