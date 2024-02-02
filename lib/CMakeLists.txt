@@ -42,39 +42,54 @@ if(WIN32)
 endif()
 
 # Public shared library
-if(ENABLE_SHARED_LIB)
+if(BUILD_SHARED_LIBS)
   add_library(nghttp2 SHARED ${NGHTTP2_SOURCES} ${NGHTTP2_RES})
+
   set_target_properties(nghttp2 PROPERTIES
     COMPILE_FLAGS "${WARNCFLAGS}"
     VERSION ${LT_VERSION} SOVERSION ${LT_SOVERSION}
     C_VISIBILITY_PRESET hidden
   )
+
   target_include_directories(nghttp2 INTERFACE
-    "${CMAKE_CURRENT_BINARY_DIR}/includes"
-    "${CMAKE_CURRENT_SOURCE_DIR}/includes"
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/includes>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/includes>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
   )
 
-  install(TARGETS nghttp2
-    ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
-    LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
-    RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
+  install(TARGETS nghttp2)
 endif()
 
-if(HAVE_CUNIT OR ENABLE_STATIC_LIB)
+if(HAVE_CUNIT OR BUILD_STATIC_LIBS)
   # Static library (for unittests because of symbol visibility)
   add_library(nghttp2_static STATIC ${NGHTTP2_SOURCES})
+
   set_target_properties(nghttp2_static PROPERTIES
     COMPILE_FLAGS "${WARNCFLAGS}"
     VERSION ${LT_VERSION} SOVERSION ${LT_SOVERSION}
     ARCHIVE_OUTPUT_NAME nghttp2${STATIC_LIB_SUFFIX}
   )
+
+  target_include_directories(nghttp2 INTERFACE
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/includes>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/includes>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+  )
+
   target_compile_definitions(nghttp2_static PUBLIC "-DNGHTTP2_STATICLIB")
-  if(ENABLE_STATIC_LIB)
-    install(TARGETS nghttp2_static
-      DESTINATION "${CMAKE_INSTALL_LIBDIR}")
+
+  if(BUILD_STATIC_LIBS)
+    install(TARGETS nghttp2_static)
   endif()
 endif()
 
+if(BUILD_SHARED_LIBS)
+  set(LIB_SELECTED nghttp2)
+else()
+  set(LIB_SELECTED nghttp2_static)
+endif()
+
+add_library(nghttp2::nghttp2 ALIAS ${LIB_SELECTED})
 
 install(FILES "${CMAKE_CURRENT_BINARY_DIR}/libnghttp2.pc"
   DESTINATION "${CMAKE_INSTALL_LIBDIR}/pkgconfig")
