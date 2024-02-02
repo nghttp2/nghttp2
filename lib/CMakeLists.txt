@@ -41,6 +41,8 @@ if(WIN32)
   set(NGHTTP2_RES ${CMAKE_CURRENT_BINARY_DIR}/version.rc)
 endif()
 
+set(EXPORT_SET "${PROJECT_NAME}-targets")
+
 # Public shared library
 if(BUILD_SHARED_LIBS)
   add_library(nghttp2 SHARED ${NGHTTP2_SOURCES} ${NGHTTP2_RES})
@@ -57,7 +59,7 @@ if(BUILD_SHARED_LIBS)
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
   )
 
-  install(TARGETS nghttp2)
+  install(TARGETS nghttp2 EXPORT ${EXPORT_SET})
 endif()
 
 if(HAVE_CUNIT OR BUILD_STATIC_LIBS)
@@ -79,7 +81,7 @@ if(HAVE_CUNIT OR BUILD_STATIC_LIBS)
   target_compile_definitions(nghttp2_static PUBLIC "-DNGHTTP2_STATICLIB")
 
   if(BUILD_STATIC_LIBS)
-    install(TARGETS nghttp2_static)
+    install(TARGETS nghttp2_static EXPORT ${EXPORT_SET})
   endif()
 endif()
 
