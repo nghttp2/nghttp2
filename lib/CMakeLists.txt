@@ -73,7 +73,7 @@ if(HAVE_CUNIT OR BUILD_STATIC_LIBS)
     ARCHIVE_OUTPUT_NAME nghttp2${STATIC_LIB_SUFFIX}
   )
 
-  target_include_directories(nghttp2 INTERFACE
+  target_include_directories(nghttp2_static INTERFACE
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/includes>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/includes>
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
