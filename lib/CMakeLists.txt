@@ -31,6 +31,8 @@ set(NGHTTP2_SOURCES
 )
 
 set(NGHTTP2_RES "")
+set(STATIC_LIB "nghttp2_static")
+set(SHARED_LIB "nghttp2")
 
 if(WIN32)
   configure_file(
@@ -45,52 +47,52 @@ set(EXPORT_SET "${PROJECT_NAME}-targets")
 
 # Public shared library
 if(BUILD_SHARED_LIBS)
-  add_library(nghttp2 SHARED ${NGHTTP2_SOURCES} ${NGHTTP2_RES})
+  add_library(${SHARED_LIB} SHARED ${NGHTTP2_SOURCES} ${NGHTTP2_RES})
 
-  set_target_properties(nghttp2 PROPERTIES
+  set_target_properties(${SHARED_LIB} PROPERTIES
     COMPILE_FLAGS "${WARNCFLAGS}"
     VERSION ${LT_VERSION} SOVERSION ${LT_SOVERSION}
     C_VISIBILITY_PRESET hidden
   )
 
-  target_include_directories(nghttp2 INTERFACE
+  target_include_directories(${SHARED_LIB} INTERFACE
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/includes>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/includes>
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
   )
 
-  install(TARGETS nghttp2 EXPORT ${EXPORT_SET})
-  list(APPEND nghttp2_exports nghttp2)
+  install(TARGETS ${SHARED_LIB} EXPORT ${EXPORT_SET})
+  list(APPEND nghttp2_exports ${SHARED_LIB})
 endif()
 
 if(HAVE_CUNIT OR BUILD_STATIC_LIBS)
   # Static library (for unittests because of symbol visibility)
-  add_library(nghttp2_static STATIC ${NGHTTP2_SOURCES})
+  add_library(${STATIC_LIB} STATIC ${NGHTTP2_SOURCES})
 
-  set_target_properties(nghttp2_static PROPERTIES
+  set_target_properties(${STATIC_LIB} PROPERTIES
     COMPILE_FLAGS "${WARNCFLAGS}"
     VERSION ${LT_VERSION} SOVERSION ${LT_SOVERSION}
     ARCHIVE_OUTPUT_NAME nghttp2${STATIC_LIB_SUFFIX}
   )
 
-  target_include_directories(nghttp2_static INTERFACE
+  target_include_directories(${STATIC_LIB} INTERFACE
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/includes>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/includes>
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
   )
 
-  target_compile_definitions(nghttp2_static PUBLIC "-DNGHTTP2_STATICLIB")
+  target_compile_definitions(${STATIC_LIB} PUBLIC "-DNGHTTP2_STATICLIB")
 
   if(BUILD_STATIC_LIBS)
-    install(TARGETS nghttp2_static EXPORT ${EXPORT_SET})
-    list(APPEND nghttp2_exports nghttp2_static)
+    install(TARGETS ${STATIC_LIB} EXPORT ${EXPORT_SET})
+    list(APPEND nghttp2_exports ${STATIC_LIB})
   endif()
 endif()
 
 if(BUILD_SHARED_LIBS)
-  set(LIB_SELECTED nghttp2)
+  set(LIB_SELECTED ${SHARED_LIB})
 else()
-  set(LIB_SELECTED nghttp2_static)
+  set(LIB_SELECTED ${STATIC_LIB})
 endif()
 
 add_library(${PROJECT_NAME}::nghttp2 ALIAS ${LIB_SELECTED})
