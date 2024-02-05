@@ -221,8 +221,7 @@ if(ENABLE_APP)
     $<TARGET_OBJECTS:url-parser>
   )
 
-  install(TARGETS nghttp nghttpd nghttpx h2load
-    RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
+  install(TARGETS nghttp nghttpd nghttpx h2load)
 endif()
 
 if(ENABLE_HPACK_TOOLS)
@@ -238,6 +237,5 @@ if(ENABLE_HPACK_TOOLS)
   )
   add_executable(inflatehd ${inflatehd_SOURCES})
   add_executable(deflatehd ${deflatehd_SOURCES})
-  install(TARGETS inflatehd deflatehd
-    RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
+  install(TARGETS inflatehd deflatehd)
 endif()
