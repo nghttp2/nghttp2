@@ -519,7 +519,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-    - uses: microsoft/setup-msbuild@v1
+    - uses: microsoft/setup-msbuild@v2
     - run: |
         vcpkg --triplet=${{ matrix.arch }}-windows install cunit
     - name: Configure cmake
