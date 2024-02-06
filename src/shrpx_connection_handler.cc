@@ -739,40 +739,31 @@ void ConnectionHandler::handle_ocsp_complete() {
     // that case we get nullptr.
     auto quic_ssl_ctx = quic_all_ssl_ctx_[ocsp_.next];
     if (quic_ssl_ctx) {
-#  ifndef NGHTTP2_OPENSSL_IS_BORINGSSL
       auto quic_tls_ctx_data = static_cast<tls::TLSContextData *>(
           SSL_CTX_get_app_data(quic_ssl_ctx));
-#    ifdef HAVE_ATOMIC_STD_SHARED_PTR
+#  ifdef HAVE_ATOMIC_STD_SHARED_PTR
       std::atomic_store_explicit(
           &quic_tls_ctx_data->ocsp_data,
           std::make_shared<std::vector<uint8_t>>(ocsp_.resp),
           std::memory_order_release);
-#    else  // !HAVE_ATOMIC_STD_SHARED_PTR
+#  else  // !HAVE_ATOMIC_STD_SHARED_PTR
       std::lock_guard<std::mutex> g(quic_tls_ctx_data->mu);
       quic_tls_ctx_data->ocsp_data =
           std::make_shared<std::vector<uint8_t>>(ocsp_.resp);
-#    endif // !HAVE_ATOMIC_STD_SHARED_PTR
-#  else    // NGHTTP2_OPENSSL_IS_BORINGSSL
-      SSL_CTX_set_ocsp_response(quic_ssl_ctx, ocsp_.resp.data(),
-                                ocsp_.resp.size());
-#  endif   // NGHTTP2_OPENSSL_IS_BORINGSSL
+#  endif // !HAVE_ATOMIC_STD_SHARED_PTR
     }
 #endif // ENABLE_HTTP3
 
-#ifndef NGHTTP2_OPENSSL_IS_BORINGSSL
-#  ifdef HAVE_ATOMIC_STD_SHARED_PTR
+#ifdef HAVE_ATOMIC_STD_SHARED_PTR
     std::atomic_store_explicit(
         &tls_ctx_data->ocsp_data,
         std::make_shared<std::vector<uint8_t>>(std::move(ocsp_.resp)),
         std::memory_order_release);
-#  else  // !HAVE_ATOMIC_STD_SHARED_PTR
+#else  // !HAVE_ATOMIC_STD_SHARED_PTR
     std::lock_guard<std::mutex> g(tls_ctx_data->mu);
     tls_ctx_data->ocsp_data =
         std::make_shared<std::vector<uint8_t>>(std::move(ocsp_.resp));
-#  endif // !HAVE_ATOMIC_STD_SHARED_PTR
-#else    // NGHTTP2_OPENSSL_IS_BORINGSSL
-    SSL_CTX_set_ocsp_response(ssl_ctx, ocsp_.resp.data(), ocsp_.resp.size());
-#endif   // NGHTTP2_OPENSSL_IS_BORINGSSL
+#endif // !HAVE_ATOMIC_STD_SHARED_PTR
   }
 
   ++ocsp_.next;

@@ -158,6 +158,35 @@ int ssl_pem_passwd_cb(char *buf, int size, int rwflag, void *user_data) {
 } // namespace
 
 namespace {
+std::shared_ptr<std::vector<uint8_t>>
+get_ocsp_data(TLSContextData *tls_ctx_data) {
+#ifdef HAVE_ATOMIC_STD_SHARED_PTR
+  return std::atomic_load_explicit(&tls_ctx_data->ocsp_data,
+                                   std::memory_order_acquire);
+#else  // !HAVE_ATOMIC_STD_SHARED_PTR
+  std::lock_guard<std::mutex> g(tls_ctx_data->mu);
+  return tls_ctx_data->ocsp_data;
+#endif // !HAVE_ATOMIC_STD_SHARED_PTR
+}
+} // namespace
+
+namespace {
+void set_ocsp_response(SSL *ssl) {
+#ifdef NGHTTP2_OPENSSL_IS_BORINGSSL
+  auto tls_ctx_data =
+      static_cast<TLSContextData *>(SSL_CTX_get_app_data(SSL_get_SSL_CTX(ssl)));
+  auto data = get_ocsp_data(tls_ctx_data);
+
+  if (!data) {
+    return;
+  }
+
+  SSL_set_ocsp_response(ssl, data->data(), data->size());
+#endif // NGHTTP2_OPENSSL_IS_BORINGSSL
+}
+} // namespace
+
+namespace {
 // *al is set to SSL_AD_UNRECOGNIZED_NAME by openssl, so we don't have
 // to set it explicitly.
 int servername_callback(SSL *ssl, int *al, void *arg) {
@@ -167,12 +196,16 @@ int servername_callback(SSL *ssl, int *al, void *arg) {
 
   auto rawhost = SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name);
   if (rawhost == nullptr) {
+    set_ocsp_response(ssl);
+
     return SSL_TLSEXT_ERR_NOACK;
   }
 
   auto len = strlen(rawhost);
   // NI_MAXHOST includes terminal NULL.
   if (len == 0 || len + 1 > NI_MAXHOST) {
+    set_ocsp_response(ssl);
+
     return SSL_TLSEXT_ERR_NOACK;
   }
 
@@ -194,6 +227,8 @@ int servername_callback(SSL *ssl, int *al, void *arg) {
 
   auto idx = cert_tree->lookup(hostname);
   if (idx == -1) {
+    set_ocsp_response(ssl);
+
     return SSL_TLSEXT_ERR_NOACK;
   }
 
@@ -290,24 +325,13 @@ int servername_callback(SSL *ssl, int *al, void *arg) {
 
   SSL_set_SSL_CTX(ssl, ssl_ctx_list[0]);
 
+  set_ocsp_response(ssl);
+
   return SSL_TLSEXT_ERR_OK;
 }
 } // namespace
 
 #ifndef NGHTTP2_OPENSSL_IS_BORINGSSL
-namespace {
-std::shared_ptr<std::vector<uint8_t>>
-get_ocsp_data(TLSContextData *tls_ctx_data) {
-#  ifdef HAVE_ATOMIC_STD_SHARED_PTR
-  return std::atomic_load_explicit(&tls_ctx_data->ocsp_data,
-                                   std::memory_order_acquire);
-#  else  // !HAVE_ATOMIC_STD_SHARED_PTR
-  std::lock_guard<std::mutex> g(tls_ctx_data->mu);
-  return tls_ctx_data->ocsp_data;
-#  endif // !HAVE_ATOMIC_STD_SHARED_PTR
-}
-} // namespace
-
 namespace {
 int ocsp_resp_cb(SSL *ssl, void *arg) {
   auto ssl_ctx = SSL_get_SSL_CTX(ssl);
