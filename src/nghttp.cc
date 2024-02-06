@@ -2311,6 +2311,17 @@ int communicate(
     auto proto_list = util::get_default_alpn();
 
     SSL_CTX_set_alpn_protos(ssl_ctx, proto_list.data(), proto_list.size());
+
+#if defined(NGHTTP2_OPENSSL_IS_BORINGSSL) && defined(HAVE_LIBBROTLI)
+    if (!SSL_CTX_add_cert_compression_alg(
+            ssl_ctx, nghttp2::tls::CERTIFICATE_COMPRESSION_ALGO_BROTLI,
+            nghttp2::tls::cert_compress, nghttp2::tls::cert_decompress)) {
+      std::cerr << "[ERROR] SSL_CTX_add_cert_compression_alg failed."
+                << std::endl;
+      result = -1;
+      goto fin;
+    }
+#endif // NGHTTP2_OPENSSL_IS_BORINGSSL && HAVE_LIBBROTLI
   }
   {
     HttpClient client{callbacks, loop, ssl_ctx};

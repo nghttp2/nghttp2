@@ -249,6 +249,7 @@ jobs:
           libjemalloc-dev \
           libc-ares-dev \
           libelf-dev \
+          libbrotli-dev \
           cmake \
           cmake-data
         echo 'CPPFLAGS=-fsanitize=address,undefined -fno-sanitize-recover=undefined -g' >> $GITHUB_ENV
@@ -262,6 +263,7 @@ jobs:
           c-ares \
           cunit \
           libressl \
+          brotli \
           autoconf \
           automake \
           pkg-config \
@@ -433,12 +435,12 @@ jobs:
       if: matrix.buildtool == 'autotools' && runner.os == 'Linux'
       run: |
         make -j"$(nproc)" distcheck \
-          DISTCHECK_CONFIGURE_FLAGS="--with-mruby --with-neverbleed --with-libev --enable-werror $EXTRA_AUTOTOOLS_OPTS CPPFLAGS=\"$CPPFLAGS\" LDFLAGS=\"$LDFLAGS\""
+          DISTCHECK_CONFIGURE_FLAGS="--with-mruby --with-neverbleed --with-libev --with-librotlienc --with-libbrotlidec --enable-werror $EXTRA_AUTOTOOLS_OPTS CPPFLAGS=\"$CPPFLAGS\" LDFLAGS=\"$LDFLAGS\""
     - name: Build nghttp2 with autotools (MacOS)
       if: matrix.buildtool == 'autotools' && runner.os == 'macOS'
       run: |
         make -j"$(sysctl -n hw.ncpu)" distcheck \
-          DISTCHECK_CONFIGURE_FLAGS="--with-mruby --with-libev --enable-werror $EXTRA_AUTOTOOLS_OPTS CPPFLAGS=\"$CPPFLAGS\" LDFLAGS=\"$LDFLAGS\""
+          DISTCHECK_CONFIGURE_FLAGS="--with-mruby --with-libev --with-librotlienc --with-libbrotlidec --enable-werror $EXTRA_AUTOTOOLS_OPTS CPPFLAGS=\"$CPPFLAGS\" LDFLAGS=\"$LDFLAGS\""
     - name: Build nghttp2 with cmake
       if: matrix.buildtool == 'cmake'
       run: |

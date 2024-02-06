@@ -2973,6 +2973,15 @@ int main(int argc, char **argv) {
     }
   }
 
+#if defined(NGHTTP2_OPENSSL_IS_BORINGSSL) && defined(HAVE_LIBBROTLI)
+  if (!SSL_CTX_add_cert_compression_alg(
+          ssl_ctx, nghttp2::tls::CERTIFICATE_COMPRESSION_ALGO_BROTLI,
+          nghttp2::tls::cert_compress, nghttp2::tls::cert_decompress)) {
+    std::cerr << "SSL_CTX_add_cert_compression_alg failed" << std::endl;
+    exit(EXIT_FAILURE);
+  }
+#endif // NGHTTP2_OPENSSL_IS_BORINGSSL && HAVE_LIBBROTLI
+
   std::string user_agent = "h2load nghttp2/" NGHTTP2_VERSION;
   Headers shared_nva;
   shared_nva.emplace_back(":scheme", config.scheme);
