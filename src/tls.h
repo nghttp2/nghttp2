@@ -97,6 +97,15 @@ bool check_http2_requirement(SSL *ssl);
 // 0 if it succeeds, or -1.
 int ssl_ctx_set_proto_versions(SSL_CTX *ssl_ctx, int min, int max);
 
+constexpr uint16_t CERTIFICATE_COMPRESSION_ALGO_BROTLI = 2;
+
+#if defined(NGHTTP2_OPENSSL_IS_BORINGSSL) && defined(HAVE_LIBBROTLI)
+int cert_compress(SSL *ssl, CBB *out, const uint8_t *in, size_t in_len);
+
+int cert_decompress(SSL *ssl, CRYPTO_BUFFER **out, size_t uncompressed_len,
+                    const uint8_t *in, size_t in_len);
+#endif // NGHTTP2_OPENSSL_IS_BORINGSSL && HAVE_LIBBROTLI
+
 } // namespace tls
 
 } // namespace nghttp2

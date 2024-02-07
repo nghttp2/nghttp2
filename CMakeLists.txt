@@ -60,6 +60,8 @@ if(NOT ENABLE_LIB_ONLY)
   find_package(Libev 4.11)
   find_package(Libcares 1.7.5)
   find_package(ZLIB 1.2.3)
+  find_package(Libbrotlienc 1.0.9)
+  find_package(Libbrotlidec 1.0.9)
 endif()
 
 find_package(OpenSSL 1.1.1)
@@ -474,6 +476,8 @@ message(STATUS "summary of build options:
       Jemalloc:       ${HAVE_JEMALLOC} (LIBS='${JEMALLOC_LIBRARIES}')
       Zlib:           ${HAVE_ZLIB} (LIBS='${ZLIB_LIBRARIES}')
       Systemd:        ${HAVE_SYSTEMD} (LIBS='${SYSTEMD_LIBRARIES}')
+      Libbrotlienc:   ${HAVE_LIBBROTLIENC} (LIBS='${LIBBROTLIENC_LIBRARIES}')
+      Libbrotlidec:   ${HAVE_LIBBROTLIDEC} (LIBS='${LIBBROTLIDEC_LIBRARIES}')
     Third-party:
       http-parser:    ${ENABLE_THIRD_PARTY}
       MRuby:          ${HAVE_MRUBY}

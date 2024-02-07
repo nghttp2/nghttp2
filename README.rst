@@ -100,6 +100,11 @@ To mitigate heap fragmentation in long running server programs
      Alpine Linux currently does not support malloc replacement
      due to musl limitations. See details in issue `#762 <https://github.com/nghttp2/nghttp2/issues/762>`_.
 
+For BoringSSL or aws-lc build, to enable :rfc:`8879` TLS Certificate
+Compression in applications, the following library is required:
+
+* libbrotli-dev >= 1.0.9
+
 To enable mruby support for nghttpx, `mruby
 <https://github.com/mruby/mruby>`_ is required.  We need to build
 mruby with C++ ABI explicitly turned on, and probably need other

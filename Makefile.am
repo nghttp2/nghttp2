@@ -45,6 +45,8 @@ EXTRA_DIST = nghttpx.conf.sample proxy.pac.sample android-config android-env \
 	cmake/FindLibnghttp3.cmake \
 	cmake/FindLibngtcp2.cmake \
 	cmake/FindLibngtcp2_crypto_quictls.cmake \
+	cmake/FindLibbrotlienc.cmake \
+	cmake/FindLibbrotlidec.cmake \
 	cmake/PickyWarningsC.cmake \
 	cmake/PickyWarningsCXX.cmake
 

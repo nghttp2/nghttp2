@@ -177,6 +177,16 @@ AC_ARG_WITH([libbpf],
                     [Use libbpf [default=no]])],
     [request_libbpf=$withval], [request_libbpf=no])
 
+AC_ARG_WITH([libbrotlienc],
+    [AS_HELP_STRING([--with-libbrotlienc],
+                    [Use libbrotlienc [default=check]])],
+    [request_libbrotlienc=$withval], [request_libbrotlienc=check])
+
+AC_ARG_WITH([libbrotlidec],
+    [AS_HELP_STRING([--with-libbrotlidec],
+                    [Use libbrotlidec [default=check]])],
+    [request_libbrotlidec=$withval], [request_libbrotlidec=check])
+
 dnl Define variables
 AC_ARG_VAR([LIBEV_CFLAGS], [C compiler flags for libev, skipping any checks])
 AC_ARG_VAR([LIBEV_LIBS], [linker flags for libev, skipping any checks])
@@ -625,6 +635,47 @@ if test "x${request_libbpf}" = "xyes" &&
 fi
 
 AM_CONDITIONAL([HAVE_LIBBPF], [ test "x${have_libbpf}" = "xyes" ])
+
+# libbrotlienc (for src)
+have_libbrotlienc=no
+if test "x${request_libbrotlienc}" != "xno"; then
+  PKG_CHECK_MODULES([LIBBROTLIENC], [libbrotlienc >= 1.0.9],
+                    [have_libbrotlienc=yes],
+                    [have_libbrotlienc=no])
+  if test "x${have_libbrotlienc}" = "xno"; then
+    AC_MSG_NOTICE($LIBBROTLIENC_PKG_ERRORS)
+  fi
+fi
+
+if test "x${request_libbrotlienc}" = "xyes" &&
+   test "x${have_libbrotlienc}" != "xyes"; then
+  AC_MSG_ERROR([libbrotlienc was requested (--with-libbrotlienc) but not found])
+fi
+
+# libbrotlidec (for src)
+have_libbrotlidec=no
+if test "x${request_libbrotlidec}" != "xno"; then
+  PKG_CHECK_MODULES([LIBBROTLIDEC], [libbrotlidec >= 1.0.9],
+                    [have_libbrotlidec=yes],
+                    [have_libbrotlidec=no])
+  if test "x${have_libbrotlidec}" = "xno"; then
+    AC_MSG_NOTICE($LIBBROTLIDEC_PKG_ERRORS)
+  fi
+fi
+
+if test "x${request_libbrotlidec}" = "xyes" &&
+   test "x${have_libbrotlidec}" != "xyes"; then
+  AC_MSG_ERROR([libbrotlidec was requested (--with-libbrotlidec) but not found])
+fi
+
+have_libbrotli=no
+if test "x${have_libbrotlienc}" = "xyes" &&
+   test "x${have_libbrotlidec}" = "xyes"; then
+  have_libbrotli=yes
+
+  AC_DEFINE([HAVE_LIBBROTLI], [1],
+            [Define to 1 if you have `libbrotlienc` and libbrotlidec` libraries.])
+fi
 
 # libevent_openssl (for examples)
 # 2.0.8 is required because we use evconnlistener_set_error_cb()
@@ -1172,6 +1223,8 @@ AC_MSG_NOTICE([summary of build options:
       Jemalloc:       ${have_jemalloc} (CFLAGS='${JEMALLOC_CFLAGS}' LIBS='${JEMALLOC_LIBS}')
       Zlib:           ${have_zlib} (CFLAGS='${ZLIB_CFLAGS}' LIBS='${ZLIB_LIBS}')
       Systemd:        ${have_libsystemd} (CFLAGS='${SYSTEMD_CFLAGS}' LIBS='${SYSTEMD_LIBS}')
+      Libbrotlienc    ${have_libbrotlienc} (CFLAGS="${LIBBROTLIENC_CFLAGS}' LIBS='${LIBBROTLIENC_LIBS}')
+      Libbrotlidec    ${have_libbrotlidec} (CFLAGS="${LIBBROTLIDEC_CFLAGS}' LIBS='${LIBBROTLIDEC_LIBS}')
     Third-party:
       http-parser:    ${enable_third_party}
       MRuby:          ${have_mruby} (CFLAGS='${LIBMRUBY_CFLAGS}' LIBS='${LIBMRUBY_LIBS}')
