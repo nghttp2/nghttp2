@@ -35,6 +35,10 @@
 #include <nghttp2/nghttp2.h>
 #include "nghttp2_mem.h"
 
+#ifndef __printflike
+#  define __printflike(fmtarg, firstvararg)
+#endif
+
 #define nghttp2_min(A, B) ((A) < (B) ? (A) : (B))
 #define nghttp2_max(A, B) ((A) > (B) ? (A) : (B))
 
