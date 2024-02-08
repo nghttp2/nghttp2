@@ -674,7 +674,7 @@ if test "x${have_libbrotlienc}" = "xyes" &&
   have_libbrotli=yes
 
   AC_DEFINE([HAVE_LIBBROTLI], [1],
-            [Define to 1 if you have `libbrotlienc` and libbrotlidec` libraries.])
+            [Define to 1 if you have `libbrotlienc` and `libbrotlidec` libraries.])
 fi
 
 # libevent_openssl (for examples)
