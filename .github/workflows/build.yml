@@ -435,12 +435,12 @@ jobs:
       if: matrix.buildtool == 'autotools' && runner.os == 'Linux'
       run: |
         make -j"$(nproc)" distcheck \
-          DISTCHECK_CONFIGURE_FLAGS="--with-mruby --with-neverbleed --with-libev --with-librotlienc --with-libbrotlidec --enable-werror $EXTRA_AUTOTOOLS_OPTS CPPFLAGS=\"$CPPFLAGS\" LDFLAGS=\"$LDFLAGS\""
+          DISTCHECK_CONFIGURE_FLAGS="--with-mruby --with-neverbleed --with-libev --with-libbrotlienc --with-libbrotlidec --enable-werror $EXTRA_AUTOTOOLS_OPTS CPPFLAGS=\"$CPPFLAGS\" LDFLAGS=\"$LDFLAGS\""
     - name: Build nghttp2 with autotools (MacOS)
       if: matrix.buildtool == 'autotools' && runner.os == 'macOS'
       run: |
         make -j"$(sysctl -n hw.ncpu)" distcheck \
-          DISTCHECK_CONFIGURE_FLAGS="--with-mruby --with-libev --with-librotlienc --with-libbrotlidec --enable-werror $EXTRA_AUTOTOOLS_OPTS CPPFLAGS=\"$CPPFLAGS\" LDFLAGS=\"$LDFLAGS\""
+          DISTCHECK_CONFIGURE_FLAGS="--with-mruby --with-libev --with-libbrotlienc --with-libbrotlidec --enable-werror $EXTRA_AUTOTOOLS_OPTS CPPFLAGS=\"$CPPFLAGS\" LDFLAGS=\"$LDFLAGS\""
     - name: Build nghttp2 with cmake
       if: matrix.buildtool == 'cmake'
       run: |
