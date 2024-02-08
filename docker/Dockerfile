@@ -1,19 +1,21 @@
 FROM debian:12 as build
 
+ARG NGHTTP2_BRANCH=master
+
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
         git clang make binutils autoconf automake autotools-dev libtool \
-        pkg-config \
+        pkg-config cmake cmake-data \
         zlib1g-dev libev-dev libjemalloc-dev ruby-dev libc-ares-dev bison \
-        libelf-dev
+        libelf-dev libbrotli-dev
 
-RUN git clone --depth 1 -b OpenSSL_1_1_1w+quic https://github.com/quictls/openssl && \
-    cd openssl && \
-    ./config --openssldir=/etc/ssl && \
-    make -j$(nproc) && \
-    make install_sw && \
+RUN git clone --depth 1 -b v1.20.0 https://github.com/aws/aws-lc && \
+    cd aws-lc && \
+    cmake -B build -DDISABLE_GO=ON && \
+    make -j$(nproc) -C build && \
+    cmake --install build && \
     cd .. && \
-    rm -rf openssl
+    rm -rf aws-lc
 
 RUN git clone --depth 1 -b v1.1.0 https://github.com/ngtcp2/nghttp3 && \
     cd nghttp3 && \
@@ -27,9 +29,9 @@ RUN git clone --depth 1 -b v1.1.0 https://github.com/ngtcp2/nghttp3 && \
 RUN git clone --depth 1 -b v1.2.0 https://github.com/ngtcp2/ngtcp2 && \
     cd ngtcp2 && \
     autoreconf -i && \
-    ./configure --enable-lib-only \
+    ./configure --enable-lib-only --with-boringssl \
         LIBTOOL_LDFLAGS="-static-libtool-libs" \
-        OPENSSL_LIBS="-l:libssl.a -l:libcrypto.a -ldl -lpthread" \
+        BORINGSSL_LIBS="-l:libssl.a -l:libcrypto.a" \
         PKG_CONFIG_PATH="/usr/local/lib64/pkgconfig" && \
     make -j$(nproc) && \
     make install-strip && \
@@ -42,21 +44,24 @@ RUN git clone --depth 1 -b v1.3.0 https://github.com/libbpf/libbpf && \
     cd .. && \
     rm -rf libbpf
 
-RUN git clone --depth 1 https://github.com/nghttp2/nghttp2.git && \
+RUN git clone --depth 1 -b $NGHTTP2_BRANCH https://github.com/nghttp2/nghttp2 && \
     cd nghttp2 && \
     git submodule update --init --depth 1 && \
     autoreconf -i && \
     ./configure --disable-examples --disable-hpack-tools \
-        --with-mruby --with-neverbleed \
+        --with-mruby \
         --enable-http3 --with-libbpf \
+        --with-libbrotlienc --with-libbrotlidec \
         CC=clang CXX=clang++ \
         LIBTOOL_LDFLAGS="-static-libtool-libs" \
-        OPENSSL_LIBS="-l:libssl.a -l:libcrypto.a -ldl -pthread" \
+        OPENSSL_LIBS="-l:libssl.a -l:libcrypto.a" \
         LIBEV_LIBS="-l:libev.a" \
         JEMALLOC_LIBS="-l:libjemalloc.a" \
         LIBCARES_LIBS="-l:libcares.a" \
         ZLIB_LIBS="-l:libz.a" \
         LIBBPF_LIBS="-L/usr/local/lib64 -l:libbpf.a -l:libelf.a" \
+        LIBBROTLIENC_LIBS="-l:libbrotlienc.a -l:libbrotlicommon.a" \
+        LIBBROTLIDEC_LIBS="-l:libbrotlidec.a -l:libbrotlicommon.a" \
         LDFLAGS="-static-libgcc -static-libstdc++" \
         PKG_CONFIG_PATH="/usr/local/lib64/pkgconfig" && \
     make -j$(nproc) install-strip && \
