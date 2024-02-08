@@ -129,7 +129,7 @@ int ssl_ctx_set_proto_versions(SSL_CTX *ssl_ctx, int min, int max) {
 int cert_compress(SSL *ssl, CBB *out, const uint8_t *in, size_t in_len) {
   uint8_t *dest;
 
-  size_t compressed_size = BrotliEncoderMaxCompressedSize(in_len);
+  auto compressed_size = BrotliEncoderMaxCompressedSize(in_len);
   if (compressed_size == 0) {
     return 0;
   }
