@@ -179,13 +179,13 @@ AC_ARG_WITH([libbpf],
 
 AC_ARG_WITH([libbrotlienc],
     [AS_HELP_STRING([--with-libbrotlienc],
-                    [Use libbrotlienc [default=check]])],
-    [request_libbrotlienc=$withval], [request_libbrotlienc=check])
+                    [Use libbrotlienc [default=no]])],
+    [request_libbrotlienc=$withval], [request_libbrotlienc=no])
 
 AC_ARG_WITH([libbrotlidec],
     [AS_HELP_STRING([--with-libbrotlidec],
-                    [Use libbrotlidec [default=check]])],
-    [request_libbrotlidec=$withval], [request_libbrotlidec=check])
+                    [Use libbrotlidec [default=no]])],
+    [request_libbrotlidec=$withval], [request_libbrotlidec=no])
 
 dnl Define variables
 AC_ARG_VAR([LIBEV_CFLAGS], [C compiler flags for libev, skipping any checks])
