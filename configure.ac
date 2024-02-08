@@ -179,13 +179,13 @@ AC_ARG_WITH([libbpf],
 
 AC_ARG_WITH([libbrotlienc],
     [AS_HELP_STRING([--with-libbrotlienc],
-                    [Use libbrotlienc [default=check]])],
-    [request_libbrotlienc=$withval], [request_libbrotlienc=check])
+                    [Use libbrotlienc [default=no]])],
+    [request_libbrotlienc=$withval], [request_libbrotlienc=no])
 
 AC_ARG_WITH([libbrotlidec],
     [AS_HELP_STRING([--with-libbrotlidec],
-                    [Use libbrotlidec [default=check]])],
-    [request_libbrotlidec=$withval], [request_libbrotlidec=check])
+                    [Use libbrotlidec [default=no]])],
+    [request_libbrotlidec=$withval], [request_libbrotlidec=no])
 
 dnl Define variables
 AC_ARG_VAR([LIBEV_CFLAGS], [C compiler flags for libev, skipping any checks])
@@ -674,7 +674,7 @@ if test "x${have_libbrotlienc}" = "xyes" &&
   have_libbrotli=yes
 
   AC_DEFINE([HAVE_LIBBROTLI], [1],
-            [Define to 1 if you have `libbrotlienc` and libbrotlidec` libraries.])
+            [Define to 1 if you have `libbrotlienc` and `libbrotlidec` libraries.])
 fi
 
 # libevent_openssl (for examples)
@@ -1223,8 +1223,8 @@ AC_MSG_NOTICE([summary of build options:
       Jemalloc:       ${have_jemalloc} (CFLAGS='${JEMALLOC_CFLAGS}' LIBS='${JEMALLOC_LIBS}')
       Zlib:           ${have_zlib} (CFLAGS='${ZLIB_CFLAGS}' LIBS='${ZLIB_LIBS}')
       Systemd:        ${have_libsystemd} (CFLAGS='${SYSTEMD_CFLAGS}' LIBS='${SYSTEMD_LIBS}')
-      Libbrotlienc    ${have_libbrotlienc} (CFLAGS="${LIBBROTLIENC_CFLAGS}' LIBS='${LIBBROTLIENC_LIBS}')
-      Libbrotlidec    ${have_libbrotlidec} (CFLAGS="${LIBBROTLIDEC_CFLAGS}' LIBS='${LIBBROTLIDEC_LIBS}')
+      Libbrotlienc:   ${have_libbrotlienc} (CFLAGS="${LIBBROTLIENC_CFLAGS}' LIBS='${LIBBROTLIENC_LIBS}')
+      Libbrotlidec:   ${have_libbrotlidec} (CFLAGS="${LIBBROTLIDEC_CFLAGS}' LIBS='${LIBBROTLIDEC_LIBS}')
     Third-party:
       http-parser:    ${enable_third_party}
       MRuby:          ${have_mruby} (CFLAGS='${LIBMRUBY_CFLAGS}' LIBS='${LIBMRUBY_LIBS}')

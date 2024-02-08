@@ -99,3 +99,6 @@
 
 /* Define to 1 if you have `libev` library. */
 #cmakedefine HAVE_LIBEV 1
+
+/* Define to 1 if you have `libbrotlienc` and `libbrotlidec` libraries. */
+#cmakedefine HAVE_LIBBROTLI 1
