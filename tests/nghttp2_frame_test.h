@@ -29,19 +29,25 @@
 #  include <config.h>
 #endif /* HAVE_CONFIG_H */
 
-void test_nghttp2_frame_pack_headers(void);
-void test_nghttp2_frame_pack_headers_frame_too_large(void);
-void test_nghttp2_frame_pack_priority(void);
-void test_nghttp2_frame_pack_rst_stream(void);
-void test_nghttp2_frame_pack_settings(void);
-void test_nghttp2_frame_pack_push_promise(void);
-void test_nghttp2_frame_pack_ping(void);
-void test_nghttp2_frame_pack_goaway(void);
-void test_nghttp2_frame_pack_window_update(void);
-void test_nghttp2_frame_pack_altsvc(void);
-void test_nghttp2_frame_pack_origin(void);
-void test_nghttp2_frame_pack_priority_update(void);
-void test_nghttp2_nv_array_copy(void);
-void test_nghttp2_iv_check(void);
+#define MUNIT_ENABLE_ASSERT_ALIASES
+
+#include "munit.h"
+
+extern const MunitSuite frame_suite;
+
+munit_void_test_decl(test_nghttp2_frame_pack_headers);
+munit_void_test_decl(test_nghttp2_frame_pack_headers_frame_too_large);
+munit_void_test_decl(test_nghttp2_frame_pack_priority);
+munit_void_test_decl(test_nghttp2_frame_pack_rst_stream);
+munit_void_test_decl(test_nghttp2_frame_pack_settings);
+munit_void_test_decl(test_nghttp2_frame_pack_push_promise);
+munit_void_test_decl(test_nghttp2_frame_pack_ping);
+munit_void_test_decl(test_nghttp2_frame_pack_goaway);
+munit_void_test_decl(test_nghttp2_frame_pack_window_update);
+munit_void_test_decl(test_nghttp2_frame_pack_altsvc);
+munit_void_test_decl(test_nghttp2_frame_pack_origin);
+munit_void_test_decl(test_nghttp2_frame_pack_priority_update);
+munit_void_test_decl(test_nghttp2_nv_array_copy);
+munit_void_test_decl(test_nghttp2_iv_check);
 
 #endif /* NGHTTP2_FRAME_TEST_H */

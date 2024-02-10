@@ -30,9 +30,15 @@
 #  include <config.h>
 #endif /* HAVE_CONFIG_H */
 
-void test_nghttp2_map(void);
-void test_nghttp2_map_functional(void);
-void test_nghttp2_map_each_free(void);
-void test_nghttp2_map_clear(void);
+#define MUNIT_ENABLE_ASSERT_ALIASES
+
+#include "munit.h"
+
+extern const MunitSuite map_suite;
+
+munit_void_test_decl(test_nghttp2_map);
+munit_void_test_decl(test_nghttp2_map_functional);
+munit_void_test_decl(test_nghttp2_map_each_free);
+munit_void_test_decl(test_nghttp2_map_clear);
 
 #endif /* NGHTTP2_MAP_TEST_H */

@@ -167,45 +167,45 @@ if(ENABLE_APP)
     target_link_libraries(nghttpx_static neverbleed)
   endif()
 
-
-  if(HAVE_CUNIT)
-    set(NGHTTPX_UNITTEST_SOURCES
-      shrpx-unittest.cc
-      shrpx_tls_test.cc
-      shrpx_downstream_test.cc
-      shrpx_config_test.cc
-      shrpx_worker_test.cc
-      shrpx_http_test.cc
-      shrpx_router_test.cc
-      http2_test.cc
-      util_test.cc
-      nghttp2_gzip_test.c
-      nghttp2_gzip.c
-      buffer_test.cc
-      memchunk_test.cc
-      template_test.cc
-      base64_test.cc
+  set(NGHTTPX_UNITTEST_SOURCES
+    shrpx-unittest.cc
+    shrpx_tls_test.cc
+    shrpx_downstream_test.cc
+    shrpx_config_test.cc
+    shrpx_worker_test.cc
+    shrpx_http_test.cc
+    shrpx_router_test.cc
+    http2_test.cc
+    util_test.cc
+    nghttp2_gzip_test.c
+    nghttp2_gzip.c
+    buffer_test.cc
+    memchunk_test.cc
+    template_test.cc
+    base64_test.cc
+    ${CMAKE_SOURCE_DIR}/tests/munit/munit.c
+  )
+  add_executable(nghttpx-unittest EXCLUDE_FROM_ALL
+    ${NGHTTPX_UNITTEST_SOURCES}
+    $<TARGET_OBJECTS:llhttp>
+    $<TARGET_OBJECTS:url-parser>
     )
-    add_executable(nghttpx-unittest EXCLUDE_FROM_ALL
-      ${NGHTTPX_UNITTEST_SOURCES}
-      $<TARGET_OBJECTS:llhttp>
-      $<TARGET_OBJECTS:url-parser>
-    )
-    target_include_directories(nghttpx-unittest PRIVATE ${CUNIT_INCLUDE_DIRS})
-    target_compile_definitions(nghttpx-unittest
-      PRIVATE "-DNGHTTP2_SRC_DIR=\"${CMAKE_SOURCE_DIR}/src\""
-    )
-    target_link_libraries(nghttpx-unittest nghttpx_static ${CUNIT_LIBRARIES})
-    if(HAVE_MRUBY)
-      target_link_libraries(nghttpx-unittest mruby-lib)
-    endif()
-    if(HAVE_NEVERBLEED)
-      target_link_libraries(nghttpx-unittest neverbleed)
-    endif()
-
-    add_test(nghttpx-unittest nghttpx-unittest)
-    add_dependencies(check nghttpx-unittest)
+  target_include_directories(nghttpx-unittest PRIVATE
+    ${CMAKE_SOURCE_DIR}/tests/munit
+  )
+  target_compile_definitions(nghttpx-unittest
+    PRIVATE "-DNGHTTP2_SRC_DIR=\"${CMAKE_SOURCE_DIR}/src\""
+  )
+  target_link_libraries(nghttpx-unittest nghttpx_static)
+  if(HAVE_MRUBY)
+    target_link_libraries(nghttpx-unittest mruby-lib)
   endif()
+  if(HAVE_NEVERBLEED)
+    target_link_libraries(nghttpx-unittest neverbleed)
+  endif()
+
+  add_test(nghttpx-unittest nghttpx-unittest)
+  add_dependencies(check nghttpx-unittest)
 
   add_executable(nghttp   ${NGHTTP_SOURCES}   $<TARGET_OBJECTS:llhttp>
     $<TARGET_OBJECTS:url-parser>

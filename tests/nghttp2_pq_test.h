@@ -29,8 +29,14 @@
 #  include <config.h>
 #endif /* HAVE_CONFIG_H */
 
-void test_nghttp2_pq(void);
-void test_nghttp2_pq_update(void);
-void test_nghttp2_pq_remove(void);
+#define MUNIT_ENABLE_ASSERT_ALIASES
+
+#include "munit.h"
+
+extern const MunitSuite pq_suite;
+
+munit_void_test_decl(test_nghttp2_pq);
+munit_void_test_decl(test_nghttp2_pq_update);
+munit_void_test_decl(test_nghttp2_pq_remove);
 
 #endif /* NGHTTP2_PQ_TEST_H */

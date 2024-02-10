@@ -29,6 +29,8 @@
 #  include <config.h>
 #endif /* HAVE_CONFIG_H */
 
+#include "munit.h"
+
 #include "nghttp2_frame.h"
 #include "nghttp2_hd.h"
 #include "nghttp2_session.h"
@@ -52,7 +54,9 @@
     nghttp2_nv_array_sort(a, len);                                             \
     nghttp2_nv_array_sort(b, len);                                             \
     for (i_ = 0; i_ < (ssize_t)len; ++i_) {                                    \
-      CU_ASSERT(nghttp2_nv_equal(&a[i_], &b[i_]));                             \
+      assert_memn_equal(a[i_].name, a[i_].namelen, b[i_].name, b[i_].namelen); \
+      assert_memn_equal(a[i_].value, a[i_].valuelen, b[i_].value,              \
+                        b[i_].valuelen);                                       \
     }                                                                          \
     mem->free(b, NULL);                                                        \
     mem->free(a, NULL);                                                        \

@@ -29,14 +29,20 @@
 #  include <config.h>
 #endif /* HAVE_CONFIG_H */
 
-void test_nghttp2_bufs_add(void);
-void test_nghttp2_bufs_add_stack_buffer_overflow_bug(void);
-void test_nghttp2_bufs_addb(void);
-void test_nghttp2_bufs_orb(void);
-void test_nghttp2_bufs_remove(void);
-void test_nghttp2_bufs_reset(void);
-void test_nghttp2_bufs_advance(void);
-void test_nghttp2_bufs_next_present(void);
-void test_nghttp2_bufs_realloc(void);
+#define MUNIT_ENABLE_ASSERT_ALIASES
+
+#include "munit.h"
+
+extern const MunitSuite buf_suite;
+
+munit_void_test_decl(test_nghttp2_bufs_add);
+munit_void_test_decl(test_nghttp2_bufs_add_stack_buffer_overflow_bug);
+munit_void_test_decl(test_nghttp2_bufs_addb);
+munit_void_test_decl(test_nghttp2_bufs_orb);
+munit_void_test_decl(test_nghttp2_bufs_remove);
+munit_void_test_decl(test_nghttp2_bufs_reset);
+munit_void_test_decl(test_nghttp2_bufs_advance);
+munit_void_test_decl(test_nghttp2_bufs_next_present);
+munit_void_test_decl(test_nghttp2_bufs_realloc);
 
 #endif /* NGHTTP2_BUF_TEST_H */

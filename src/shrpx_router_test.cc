@@ -24,11 +24,24 @@
  */
 #include "shrpx_router_test.h"
 
-#include <CUnit/CUnit.h>
+#include "munitxx.h"
 
 #include "shrpx_router.h"
 
 namespace shrpx {
+
+namespace {
+const MunitTest tests[]{
+    munit_void_test(test_shrpx_router_match),
+    munit_void_test(test_shrpx_router_match_wildcard),
+    munit_void_test(test_shrpx_router_match_prefix),
+    munit_test_end(),
+};
+} // namespace
+
+const MunitSuite router_suite{
+    "/router", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
+};
 
 struct Pattern {
   StringRef pattern;
@@ -61,42 +74,42 @@ void test_shrpx_router_match(void) {
   idx = router.match(StringRef::from_lit("nghttp2.org"),
                      StringRef::from_lit("/"));
 
-  CU_ASSERT(0 == idx);
+  assert_ssize(0, ==, idx);
 
   idx = router.match(StringRef::from_lit("nghttp2.org"),
                      StringRef::from_lit("/alpha"));
 
-  CU_ASSERT(1 == idx);
+  assert_ssize(1, ==, idx);
 
   idx = router.match(StringRef::from_lit("nghttp2.org"),
                      StringRef::from_lit("/alpha/"));
 
-  CU_ASSERT(2 == idx);
+  assert_ssize(2, ==, idx);
 
   idx = router.match(StringRef::from_lit("nghttp2.org"),
                      StringRef::from_lit("/alpha/charlie"));
 
-  CU_ASSERT(2 == idx);
+  assert_ssize(2, ==, idx);
 
   idx = router.match(StringRef::from_lit("nghttp2.org"),
                      StringRef::from_lit("/alpha/bravo/"));
 
-  CU_ASSERT(3 == idx);
+  assert_ssize(3, ==, idx);
 
   // matches pattern when last '/' is missing in path
   idx = router.match(StringRef::from_lit("nghttp2.org"),
                      StringRef::from_lit("/alpha/bravo"));
 
-  CU_ASSERT(3 == idx);
+  assert_ssize(3, ==, idx);
 
   idx = router.match(StringRef::from_lit("www2.nghttp2.org"),
                      StringRef::from_lit("/alpha"));
 
-  CU_ASSERT(8 == idx);
+  assert_ssize(8, ==, idx);
 
   idx = router.match(StringRef{}, StringRef::from_lit("/alpha"));
 
-  CU_ASSERT(5 == idx);
+  assert_ssize(5, ==, idx);
 }
 
 void test_shrpx_router_match_wildcard(void) {
@@ -115,32 +128,41 @@ void test_shrpx_router_match_wildcard(void) {
     router.add_route(p.pattern, p.idx, p.wildcard);
   }
 
-  CU_ASSERT(0 == router.match(StringRef::from_lit("nghttp2.org"),
-                              StringRef::from_lit("/")));
+  assert_ssize(0, ==,
+               router.match(StringRef::from_lit("nghttp2.org"),
+                            StringRef::from_lit("/")));
 
-  CU_ASSERT(1 == router.match(StringRef::from_lit("nghttp2.org"),
-                              StringRef::from_lit("/a")));
+  assert_ssize(1, ==,
+               router.match(StringRef::from_lit("nghttp2.org"),
+                            StringRef::from_lit("/a")));
 
-  CU_ASSERT(1 == router.match(StringRef::from_lit("nghttp2.org"),
-                              StringRef::from_lit("/charlie")));
+  assert_ssize(1, ==,
+               router.match(StringRef::from_lit("nghttp2.org"),
+                            StringRef::from_lit("/charlie")));
 
-  CU_ASSERT(2 == router.match(StringRef::from_lit("nghttp2.org"),
-                              StringRef::from_lit("/alpha")));
+  assert_ssize(2, ==,
+               router.match(StringRef::from_lit("nghttp2.org"),
+                            StringRef::from_lit("/alpha")));
 
-  CU_ASSERT(2 == router.match(StringRef::from_lit("nghttp2.org"),
-                              StringRef::from_lit("/alpha/")));
+  assert_ssize(2, ==,
+               router.match(StringRef::from_lit("nghttp2.org"),
+                            StringRef::from_lit("/alpha/")));
 
-  CU_ASSERT(3 == router.match(StringRef::from_lit("nghttp2.org"),
-                              StringRef::from_lit("/alpha/b")));
+  assert_ssize(3, ==,
+               router.match(StringRef::from_lit("nghttp2.org"),
+                            StringRef::from_lit("/alpha/b")));
 
-  CU_ASSERT(4 == router.match(StringRef::from_lit("nghttp2.org"),
-                              StringRef::from_lit("/bravo")));
+  assert_ssize(4, ==,
+               router.match(StringRef::from_lit("nghttp2.org"),
+                            StringRef::from_lit("/bravo")));
 
-  CU_ASSERT(5 == router.match(StringRef::from_lit("nghttp2.org"),
-                              StringRef::from_lit("/bravocharlie")));
+  assert_ssize(5, ==,
+               router.match(StringRef::from_lit("nghttp2.org"),
+                            StringRef::from_lit("/bravocharlie")));
 
-  CU_ASSERT(5 == router.match(StringRef::from_lit("nghttp2.org"),
-                              StringRef::from_lit("/bravo/")));
+  assert_ssize(5, ==,
+               router.match(StringRef::from_lit("nghttp2.org"),
+                            StringRef::from_lit("/bravo/")));
 }
 
 void test_shrpx_router_match_prefix(void) {
@@ -166,19 +188,19 @@ void test_shrpx_router_match_prefix(void) {
   idx = router.match_prefix(&nread, &node,
                             StringRef::from_lit("gro.2ptthgn.gmi.ahpla.ovarb"));
 
-  CU_ASSERT(0 == idx);
-  CU_ASSERT(12 == nread);
+  assert_ssize(0, ==, idx);
+  assert_size(12, ==, nread);
 
   idx = router.match_prefix(&nread, &node,
                             StringRef::from_lit("gmi.ahpla.ovarb"));
 
-  CU_ASSERT(2 == idx);
-  CU_ASSERT(4 == nread);
+  assert_ssize(2, ==, idx);
+  assert_size(4, ==, nread);
 
   idx = router.match_prefix(&nread, &node, StringRef::from_lit("ahpla.ovarb"));
 
-  CU_ASSERT(3 == idx);
-  CU_ASSERT(6 == nread);
+  assert_ssize(3, ==, idx);
+  assert_ssize(6, ==, nread);
 }
 
 } // namespace shrpx

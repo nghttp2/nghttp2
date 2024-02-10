@@ -26,9 +26,18 @@
 
 #include <stdio.h>
 
-#include <CUnit/CUnit.h>
-
 #include "nghttp2_pq.h"
+
+static const MunitTest tests[] = {
+    munit_void_test(test_nghttp2_pq),
+    munit_void_test(test_nghttp2_pq_update),
+    munit_void_test(test_nghttp2_pq_remove),
+    munit_test_end(),
+};
+
+const MunitSuite pq_suite = {
+    "/pq", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
+};
 
 typedef struct {
   nghttp2_pq_entry ent;
@@ -59,59 +68,59 @@ void test_nghttp2_pq(void) {
   string_entry *top;
 
   nghttp2_pq_init(&pq, pq_less, nghttp2_mem_default());
-  CU_ASSERT(nghttp2_pq_empty(&pq));
-  CU_ASSERT(0 == nghttp2_pq_size(&pq));
-  CU_ASSERT(0 == nghttp2_pq_push(&pq, &string_entry_new("foo")->ent));
-  CU_ASSERT(0 == nghttp2_pq_empty(&pq));
-  CU_ASSERT(1 == nghttp2_pq_size(&pq));
+  assert_true(nghttp2_pq_empty(&pq));
+  assert_size(0, ==, nghttp2_pq_size(&pq));
+  assert_int(0, ==, nghttp2_pq_push(&pq, &string_entry_new("foo")->ent));
+  assert_false(nghttp2_pq_empty(&pq));
+  assert_size(1, ==, nghttp2_pq_size(&pq));
   top = (string_entry *)nghttp2_pq_top(&pq);
-  CU_ASSERT(strcmp("foo", top->s) == 0);
-  CU_ASSERT(0 == nghttp2_pq_push(&pq, &string_entry_new("bar")->ent));
+  assert_string_equal("foo", top->s);
+  assert_int(0, ==, nghttp2_pq_push(&pq, &string_entry_new("bar")->ent));
   top = (string_entry *)nghttp2_pq_top(&pq);
-  CU_ASSERT(strcmp("bar", top->s) == 0);
-  CU_ASSERT(0 == nghttp2_pq_push(&pq, &string_entry_new("baz")->ent));
+  assert_string_equal("bar", top->s);
+  assert_int(0, ==, nghttp2_pq_push(&pq, &string_entry_new("baz")->ent));
   top = (string_entry *)nghttp2_pq_top(&pq);
-  CU_ASSERT(strcmp("bar", top->s) == 0);
-  CU_ASSERT(0 == nghttp2_pq_push(&pq, &string_entry_new("C")->ent));
-  CU_ASSERT(4 == nghttp2_pq_size(&pq));
+  assert_string_equal("bar", top->s);
+  assert_int(0, ==, nghttp2_pq_push(&pq, &string_entry_new("C")->ent));
+  assert_size(4, ==, nghttp2_pq_size(&pq));
 
   top = (string_entry *)nghttp2_pq_top(&pq);
-  CU_ASSERT(strcmp("C", top->s) == 0);
+  assert_string_equal("C", top->s);
   string_entry_del(top);
   nghttp2_pq_pop(&pq);
 
-  CU_ASSERT(3 == nghttp2_pq_size(&pq));
+  assert_size(3, ==, nghttp2_pq_size(&pq));
 
   top = (string_entry *)nghttp2_pq_top(&pq);
-  CU_ASSERT(strcmp("bar", top->s) == 0);
-  nghttp2_pq_pop(&pq);
-  string_entry_del(top);
-
-  top = (string_entry *)nghttp2_pq_top(&pq);
-  CU_ASSERT(strcmp("baz", top->s) == 0);
+  assert_string_equal("bar", top->s);
   nghttp2_pq_pop(&pq);
   string_entry_del(top);
 
   top = (string_entry *)nghttp2_pq_top(&pq);
-  CU_ASSERT(strcmp("foo", top->s) == 0);
+  assert_string_equal("baz", top->s);
   nghttp2_pq_pop(&pq);
   string_entry_del(top);
 
-  CU_ASSERT(nghttp2_pq_empty(&pq));
-  CU_ASSERT(0 == nghttp2_pq_size(&pq));
-  CU_ASSERT(NULL == nghttp2_pq_top(&pq));
+  top = (string_entry *)nghttp2_pq_top(&pq);
+  assert_string_equal("foo", top->s);
+  nghttp2_pq_pop(&pq);
+  string_entry_del(top);
+
+  assert_true(nghttp2_pq_empty(&pq));
+  assert_size(0, ==, nghttp2_pq_size(&pq));
+  assert_null(nghttp2_pq_top(&pq));
 
   /* Add bunch of entry to see realloc works */
   for (i = 0; i < 10000; ++i) {
-    CU_ASSERT(0 == nghttp2_pq_push(&pq, &string_entry_new("foo")->ent));
-    CU_ASSERT((size_t)(i + 1) == nghttp2_pq_size(&pq));
+    assert_int(0, ==, nghttp2_pq_push(&pq, &string_entry_new("foo")->ent));
+    assert_size((size_t)(i + 1), ==, nghttp2_pq_size(&pq));
   }
   for (i = 10000; i > 0; --i) {
     top = (string_entry *)nghttp2_pq_top(&pq);
-    CU_ASSERT(NULL != top);
+    assert_not_null(top);
     nghttp2_pq_pop(&pq);
     string_entry_del(top);
-    CU_ASSERT((size_t)(i - 1) == nghttp2_pq_size(&pq));
+    assert_size((size_t)(i - 1), ==, nghttp2_pq_size(&pq));
   }
 
   nghttp2_pq_free(&pq);
@@ -160,7 +169,7 @@ void test_nghttp2_pq_update(void) {
 
   for (i = 0; i < (int)(sizeof(nodes) / sizeof(nodes[0])); ++i) {
     nd = (node *)nghttp2_pq_top(&pq);
-    CU_ASSERT(ans[i] == nd->key);
+    assert_int(ans[i], ==, nd->key);
     nghttp2_pq_pop(&pq);
   }
 
@@ -180,8 +189,8 @@ static void check_nodes(nghttp2_pq *pq, size_t n, int *ans_key, int *ans_val) {
   size_t i;
   for (i = 0; i < n; ++i) {
     node *nd = (node *)nghttp2_pq_top(pq);
-    CU_ASSERT(ans_key[i] == nd->key);
-    CU_ASSERT(ans_val[i] == nd->val);
+    assert_int(ans_key[i], ==, nd->key);
+    assert_int(ans_val[i], ==, nd->val);
     nghttp2_pq_pop(pq);
   }
 }

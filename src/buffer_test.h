@@ -29,9 +29,15 @@
 #  include <config.h>
 #endif // HAVE_CONFIG_H
 
+#define MUNIT_ENABLE_ASSERT_ALIASES
+
+#include "munit.h"
+
 namespace nghttp2 {
 
-void test_buffer_write(void);
+extern const MunitSuite buffer_suite;
+
+munit_void_test_decl(test_buffer_write);
 
 } // namespace nghttp2
 

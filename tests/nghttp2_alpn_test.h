@@ -29,6 +29,12 @@
 #  include <config.h>
 #endif /* HAVE_CONFIG_H */
 
-void test_nghttp2_alpn(void);
+#define MUNIT_ENABLE_ASSERT_ALIASES
+
+#include "munit.h"
+
+extern const MunitSuite alpn_suite;
+
+munit_void_test_decl(test_nghttp2_alpn);
 
 #endif /* NGHTTP2_ALPN_TEST_H */

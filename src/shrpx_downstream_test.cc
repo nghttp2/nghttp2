@@ -26,11 +26,28 @@
 
 #include <iostream>
 
-#include <CUnit/CUnit.h>
+#include "munitxx.h"
 
 #include "shrpx_downstream.h"
 
 namespace shrpx {
+
+namespace {
+const MunitTest tests[]{
+    munit_void_test(test_downstream_field_store_append_last_header),
+    munit_void_test(test_downstream_field_store_header),
+    munit_void_test(test_downstream_crumble_request_cookie),
+    munit_void_test(test_downstream_assemble_request_cookie),
+    munit_void_test(test_downstream_rewrite_location_response_header),
+    munit_void_test(test_downstream_supports_non_final_response),
+    munit_void_test(test_downstream_find_affinity_cookie),
+    munit_test_end(),
+};
+} // namespace
+
+const MunitSuite downstream_suite{
+    "/downstream", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
+};
 
 void test_downstream_field_store_append_last_header(void) {
   BlockAllocator balloc(16, 16);
@@ -57,7 +74,7 @@ void test_downstream_field_store_append_last_header(void) {
       HeaderRefs{{StringRef::from_lit("alphabravogolf0123456789"),
                   StringRef::from_lit("CharliedeltAecho0123456789")},
                  {StringRef::from_lit("echo"), StringRef::from_lit("foxtrot")}};
-  CU_ASSERT(ans == fs.headers());
+  assert_true(ans == fs.headers());
 }
 
 void test_downstream_field_store_header(void) {
@@ -72,14 +89,14 @@ void test_downstream_field_store_header(void) {
                       http2::HD_CONTENT_LENGTH);
 
   // By token
-  CU_ASSERT(HeaderRef(StringRef{":authority"}, StringRef{"1"}) ==
-            *fs.header(http2::HD__AUTHORITY));
-  CU_ASSERT(nullptr == fs.header(http2::HD__METHOD));
+  assert_true(HeaderRef(StringRef{":authority"}, StringRef{"1"}) ==
+              *fs.header(http2::HD__AUTHORITY));
+  assert_null(fs.header(http2::HD__METHOD));
 
   // By name
-  CU_ASSERT(HeaderRef(StringRef{"alpha"}, StringRef{"0"}) ==
-            *fs.header(StringRef::from_lit("alpha")));
-  CU_ASSERT(nullptr == fs.header(StringRef::from_lit("bravo")));
+  assert_true(HeaderRef(StringRef{"alpha"}, StringRef{"0"}) ==
+              *fs.header(StringRef::from_lit("alpha")));
+  assert_null(fs.header(StringRef::from_lit("bravo")));
 }
 
 void test_downstream_crumble_request_cookie(void) {
@@ -103,8 +120,8 @@ void test_downstream_crumble_request_cookie(void) {
 
   auto num_cookies = d.count_crumble_request_cookie();
 
-  CU_ASSERT(5 == nva.size());
-  CU_ASSERT(5 == num_cookies);
+  assert_size(5, ==, nva.size());
+  assert_size(5, ==, num_cookies);
 
   HeaderRefs cookies;
   std::transform(std::begin(nva), std::end(nva), std::back_inserter(cookies),
@@ -121,10 +138,10 @@ void test_downstream_crumble_request_cookie(void) {
       {StringRef::from_lit("cookie"), StringRef::from_lit("delta")},
       {StringRef::from_lit("cookie"), StringRef::from_lit("echo")}};
 
-  CU_ASSERT(ans == cookies);
-  CU_ASSERT(cookies[0].no_index);
-  CU_ASSERT(cookies[1].no_index);
-  CU_ASSERT(cookies[2].no_index);
+  assert_true(ans == cookies);
+  assert_true(cookies[0].no_index);
+  assert_true(cookies[1].no_index);
+  assert_true(cookies[2].no_index);
 }
 
 void test_downstream_assemble_request_cookie(void) {
@@ -147,7 +164,8 @@ void test_downstream_assemble_request_cookie(void) {
   req.fs.add_header_token(StringRef::from_lit("cookie"),
                           StringRef::from_lit("delta;;"), false,
                           http2::HD_COOKIE);
-  CU_ASSERT("alpha; bravo; charlie; delta" == d.assemble_request_cookie());
+  assert_stdstring_equal("alpha; bravo; charlie; delta",
+                         d.assemble_request_cookie().str());
 }
 
 void test_downstream_rewrite_location_response_header(void) {
@@ -161,7 +179,7 @@ void test_downstream_rewrite_location_response_header(void) {
                            false, http2::HD_LOCATION);
   d.rewrite_location_response_header(StringRef::from_lit("https"));
   auto location = resp.fs.header(http2::HD_LOCATION);
-  CU_ASSERT("https://localhost:8443/" == (*location).value);
+  assert_stdstring_equal("https://localhost:8443/", (*location).value.str());
 }
 
 void test_downstream_supports_non_final_response(void) {
@@ -171,27 +189,27 @@ void test_downstream_supports_non_final_response(void) {
   req.http_major = 3;
   req.http_minor = 0;
 
-  CU_ASSERT(d.supports_non_final_response());
+  assert_true(d.supports_non_final_response());
 
   req.http_major = 2;
   req.http_minor = 0;
 
-  CU_ASSERT(d.supports_non_final_response());
+  assert_true(d.supports_non_final_response());
 
   req.http_major = 1;
   req.http_minor = 1;
 
-  CU_ASSERT(d.supports_non_final_response());
+  assert_true(d.supports_non_final_response());
 
   req.http_major = 1;
   req.http_minor = 0;
 
-  CU_ASSERT(!d.supports_non_final_response());
+  assert_false(d.supports_non_final_response());
 
   req.http_major = 0;
   req.http_minor = 9;
 
-  CU_ASSERT(!d.supports_non_final_response());
+  assert_false(d.supports_non_final_response());
 }
 
 void test_downstream_find_affinity_cookie(void) {
@@ -217,15 +235,15 @@ void test_downstream_find_affinity_cookie(void) {
 
   aff = d.find_affinity_cookie(StringRef::from_lit("lb"));
 
-  CU_ASSERT(0xdeadbeef == aff);
+  assert_uint32(0xdeadbeef, ==, aff);
 
   aff = d.find_affinity_cookie(StringRef::from_lit("LB"));
 
-  CU_ASSERT(0xf1f2f3f4 == aff);
+  assert_uint32(0xf1f2f3f4, ==, aff);
 
   aff = d.find_affinity_cookie(StringRef::from_lit("short"));
 
-  CU_ASSERT(0 == aff);
+  assert_uint32(0, ==, aff);
 }
 
 } // namespace shrpx

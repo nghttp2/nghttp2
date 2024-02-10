@@ -28,10 +28,19 @@
 #include <stdio.h>
 #include <assert.h>
 
-#include <CUnit/CUnit.h>
+#include "munit.h"
 
 #include "nghttp2_http.h"
 #include "nghttp2_test_helper.h"
+
+static const MunitTest tests[] = {
+    munit_void_test(test_nghttp2_http_parse_priority),
+    munit_test_end(),
+};
+
+const MunitSuite http_suite = {
+    "/http", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
+};
 
 void test_nghttp2_http_parse_priority(void) {
   int rv;
@@ -42,9 +51,9 @@ void test_nghttp2_http_parse_priority(void) {
 
     rv = nghttp2_http_parse_priority(&pri, v, sizeof(v) - 1);
 
-    CU_ASSERT(0 == rv);
-    CU_ASSERT((uint32_t)-1 == pri.urgency);
-    CU_ASSERT(-1 == pri.inc);
+    assert_int(0, ==, rv);
+    assert_uint32((uint32_t)-1, ==, pri.urgency);
+    assert_int(-1, ==, pri.inc);
   }
 
   {
@@ -53,9 +62,9 @@ void test_nghttp2_http_parse_priority(void) {
 
     rv = nghttp2_http_parse_priority(&pri, v, sizeof(v) - 1);
 
-    CU_ASSERT(0 == rv);
-    CU_ASSERT((uint32_t)7 == pri.urgency);
-    CU_ASSERT(1 == pri.inc);
+    assert_int(0, ==, rv);
+    assert_uint32((uint32_t)7, ==, pri.urgency);
+    assert_int(1, ==, pri.inc);
   }
 
   {
@@ -64,9 +73,9 @@ void test_nghttp2_http_parse_priority(void) {
 
     rv = nghttp2_http_parse_priority(&pri, v, sizeof(v) - 1);
 
-    CU_ASSERT(0 == rv);
-    CU_ASSERT((uint32_t)0 == pri.urgency);
-    CU_ASSERT(0 == pri.inc);
+    assert_int(0, ==, rv);
+    assert_uint32((uint32_t)0, ==, pri.urgency);
+    assert_int(0, ==, pri.inc);
   }
 
   {
@@ -75,9 +84,9 @@ void test_nghttp2_http_parse_priority(void) {
 
     rv = nghttp2_http_parse_priority(&pri, v, sizeof(v) - 1);
 
-    CU_ASSERT(0 == rv);
-    CU_ASSERT((uint32_t)3 == pri.urgency);
-    CU_ASSERT(1 == pri.inc);
+    assert_int(0, ==, rv);
+    assert_uint32((uint32_t)3, ==, pri.urgency);
+    assert_int(1, ==, pri.inc);
   }
 
   {
@@ -86,9 +95,9 @@ void test_nghttp2_http_parse_priority(void) {
 
     rv = nghttp2_http_parse_priority(&pri, v, sizeof(v) - 1);
 
-    CU_ASSERT(0 == rv);
-    CU_ASSERT((uint32_t)6 == pri.urgency);
-    CU_ASSERT(0 == pri.inc);
+    assert_int(0, ==, rv);
+    assert_uint32((uint32_t)6, ==, pri.urgency);
+    assert_int(0, ==, pri.inc);
   }
 
   {
@@ -97,7 +106,7 @@ void test_nghttp2_http_parse_priority(void) {
 
     rv = nghttp2_http_parse_priority(&pri, v, sizeof(v) - 1);
 
-    CU_ASSERT(NGHTTP2_ERR_INVALID_ARGUMENT == rv);
+    assert_int(NGHTTP2_ERR_INVALID_ARGUMENT, ==, rv);
   }
 
   {
@@ -106,7 +115,7 @@ void test_nghttp2_http_parse_priority(void) {
 
     rv = nghttp2_http_parse_priority(&pri, v, sizeof(v) - 1);
 
-    CU_ASSERT(NGHTTP2_ERR_INVALID_ARGUMENT == rv);
+    assert_int(NGHTTP2_ERR_INVALID_ARGUMENT, ==, rv);
   }
 
   {
@@ -115,7 +124,7 @@ void test_nghttp2_http_parse_priority(void) {
 
     rv = nghttp2_http_parse_priority(&pri, v, sizeof(v) - 1);
 
-    CU_ASSERT(NGHTTP2_ERR_INVALID_ARGUMENT == rv);
+    assert_int(NGHTTP2_ERR_INVALID_ARGUMENT, ==, rv);
   }
 
   {
@@ -124,7 +133,7 @@ void test_nghttp2_http_parse_priority(void) {
 
     rv = nghttp2_http_parse_priority(&pri, v, sizeof(v) - 1);
 
-    CU_ASSERT(NGHTTP2_ERR_INVALID_ARGUMENT == rv);
+    assert_int(NGHTTP2_ERR_INVALID_ARGUMENT, ==, rv);
   }
 
   {
@@ -133,9 +142,9 @@ void test_nghttp2_http_parse_priority(void) {
 
     rv = nghttp2_http_parse_priority(&pri, v, sizeof(v) - 1);
 
-    CU_ASSERT(0 == rv);
-    CU_ASSERT((uint32_t)-1 == pri.urgency);
-    CU_ASSERT(1 == pri.inc);
+    assert_int(0, ==, rv);
+    assert_uint32((uint32_t)-1, ==, pri.urgency);
+    assert_int(1, ==, pri.inc);
   }
 
   {
@@ -144,7 +153,7 @@ void test_nghttp2_http_parse_priority(void) {
 
     rv = nghttp2_http_parse_priority(&pri, v, sizeof(v) - 1);
 
-    CU_ASSERT(NGHTTP2_ERR_INVALID_ARGUMENT == rv);
+    assert_int(NGHTTP2_ERR_INVALID_ARGUMENT, ==, rv);
   }
 
   {
@@ -153,7 +162,7 @@ void test_nghttp2_http_parse_priority(void) {
 
     rv = nghttp2_http_parse_priority(&pri, v, sizeof(v) - 1);
 
-    CU_ASSERT(NGHTTP2_ERR_INVALID_ARGUMENT == rv);
+    assert_int(NGHTTP2_ERR_INVALID_ARGUMENT, ==, rv);
   }
 
   {
@@ -162,7 +171,7 @@ void test_nghttp2_http_parse_priority(void) {
 
     rv = nghttp2_http_parse_priority(&pri, v, sizeof(v) - 1);
 
-    CU_ASSERT(NGHTTP2_ERR_INVALID_ARGUMENT == rv);
+    assert_int(NGHTTP2_ERR_INVALID_ARGUMENT, ==, rv);
   }
 
   {
@@ -171,7 +180,7 @@ void test_nghttp2_http_parse_priority(void) {
 
     rv = nghttp2_http_parse_priority(&pri, v, sizeof(v) - 1);
 
-    CU_ASSERT(NGHTTP2_ERR_INVALID_ARGUMENT == rv);
+    assert_int(NGHTTP2_ERR_INVALID_ARGUMENT, ==, rv);
   }
 
   {
@@ -180,7 +189,7 @@ void test_nghttp2_http_parse_priority(void) {
 
     rv = nghttp2_http_parse_priority(&pri, v, sizeof(v) - 1);
 
-    CU_ASSERT(NGHTTP2_ERR_INVALID_ARGUMENT == rv);
+    assert_int(NGHTTP2_ERR_INVALID_ARGUMENT, ==, rv);
   }
 
   {
@@ -190,9 +199,9 @@ void test_nghttp2_http_parse_priority(void) {
 
     rv = nghttp2_http_parse_priority(&pri, v, sizeof(v) - 1);
 
-    CU_ASSERT(0 == rv);
-    CU_ASSERT((uint32_t)2 == pri.urgency);
-    CU_ASSERT(1 == pri.inc);
+    assert_int(0, ==, rv);
+    assert_uint32((uint32_t)2, ==, pri.urgency);
+    assert_int(1, ==, pri.inc);
   }
 
   {
@@ -201,6 +210,6 @@ void test_nghttp2_http_parse_priority(void) {
 
     rv = nghttp2_http_parse_priority(&pri, v, sizeof(v));
 
-    CU_ASSERT(NGHTTP2_ERR_INVALID_ARGUMENT == rv);
+    assert_int(NGHTTP2_ERR_INVALID_ARGUMENT, ==, rv);
   }
 }

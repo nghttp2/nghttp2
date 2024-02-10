@@ -29,13 +29,19 @@
 #  include <config.h>
 #endif // HAVE_CONFIG_H
 
+#define MUNIT_ENABLE_ASSERT_ALIASES
+
+#include "munit.h"
+
 namespace shrpx {
 
-void test_shrpx_tls_create_lookup_tree(void);
-void test_shrpx_tls_cert_lookup_tree_add_ssl_ctx(void);
-void test_shrpx_tls_tls_hostname_match(void);
-void test_shrpx_tls_verify_numeric_hostname(void);
-void test_shrpx_tls_verify_dns_hostname(void);
+extern const MunitSuite tls_suite;
+
+munit_void_test_decl(test_shrpx_tls_create_lookup_tree);
+munit_void_test_decl(test_shrpx_tls_cert_lookup_tree_add_ssl_ctx);
+munit_void_test_decl(test_shrpx_tls_tls_hostname_match);
+munit_void_test_decl(test_shrpx_tls_verify_numeric_hostname);
+munit_void_test_decl(test_shrpx_tls_verify_dns_hostname);
 
 } // namespace shrpx
 

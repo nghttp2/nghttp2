@@ -167,12 +167,8 @@ endif()
 # XXX shouldn't ${CMAKE_DL_LIBS} be appended to OPENSSL_LIBRARIES instead of
 # APP_LIBRARIES if it is really specific to OpenSSL?
 
-find_package(CUnit 2.1)
 enable_testing()
-set(HAVE_CUNIT      ${CUNIT_FOUND})
-if(HAVE_CUNIT)
-  add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND})
-endif()
+add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND})
 
 # openssl (for src)
 include(CheckSymbolExists)
@@ -467,7 +463,6 @@ message(STATUS "summary of build options:
       Python:          ${Python3_EXECUTABLE}
       Python3_VERSION: ${Python3_VERSION}
     Test:
-      CUnit:          ${HAVE_CUNIT} (LIBS='${CUNIT_LIBRARIES}')
       Failmalloc:     ${ENABLE_FAILMALLOC}
     Libs:
       OpenSSL:        ${HAVE_OPENSSL} (LIBS='${OPENSSL_LIBRARIES}')

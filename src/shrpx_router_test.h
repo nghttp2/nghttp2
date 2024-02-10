@@ -29,11 +29,17 @@
 #  include <config.h>
 #endif // HAVE_CONFIG_H
 
+#define MUNIT_ENABLE_ASSERT_ALIASES
+
+#include "munit.h"
+
 namespace shrpx {
 
-void test_shrpx_router_match(void);
-void test_shrpx_router_match_wildcard(void);
-void test_shrpx_router_match_prefix(void);
+extern const MunitSuite router_suite;
+
+munit_void_test_decl(test_shrpx_router_match);
+munit_void_test_decl(test_shrpx_router_match_wildcard);
+munit_void_test_decl(test_shrpx_router_match_prefix);
 
 } // namespace shrpx
 

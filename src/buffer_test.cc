@@ -28,7 +28,7 @@
 #include <iostream>
 #include <tuple>
 
-#include <CUnit/CUnit.h>
+#include "munitxx.h"
 
 #include <nghttp2/nghttp2.h>
 
@@ -36,43 +36,54 @@
 
 namespace nghttp2 {
 
+namespace {
+const MunitTest tests[]{
+    munit_void_test(test_buffer_write),
+    munit_test_end(),
+};
+} // namespace
+
+const MunitSuite buffer_suite{
+    "/buffer", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
+};
+
 void test_buffer_write(void) {
   Buffer<16> b;
-  CU_ASSERT(0 == b.rleft());
-  CU_ASSERT(16 == b.wleft());
+  assert_size(0, ==, b.rleft());
+  assert_size(16, ==, b.wleft());
 
   b.write("012", 3);
 
-  CU_ASSERT(3 == b.rleft());
-  CU_ASSERT(13 == b.wleft());
-  CU_ASSERT(b.pos == std::begin(b.buf));
+  assert_size(3, ==, b.rleft());
+  assert_size(13, ==, b.wleft());
+  assert_ptr_equal(b.pos, std::begin(b.buf));
 
   b.drain(3);
 
-  CU_ASSERT(0 == b.rleft());
-  CU_ASSERT(13 == b.wleft());
-  CU_ASSERT(3 == b.pos - std::begin(b.buf));
+  assert_size(0, ==, b.rleft());
+  assert_size(13, ==, b.wleft());
+  assert_ptrdiff(3, ==, b.pos - std::begin(b.buf));
 
   auto n = b.write("0123456789ABCDEF", 16);
 
-  CU_ASSERT(n == 13);
+  assert_ssize(13, ==, n);
 
-  CU_ASSERT(13 == b.rleft());
-  CU_ASSERT(0 == b.wleft());
-  CU_ASSERT(3 == b.pos - std::begin(b.buf));
-  CU_ASSERT(0 == memcmp(b.pos, "0123456789ABC", 13));
+  assert_size(13, ==, b.rleft());
+  assert_size(0, ==, b.wleft());
+  assert_ptrdiff(3, ==, b.pos - std::begin(b.buf));
+  assert_memory_equal(13, b.pos, "0123456789ABC");
 
   b.reset();
 
-  CU_ASSERT(0 == b.rleft());
-  CU_ASSERT(16 == b.wleft());
-  CU_ASSERT(b.pos == std::begin(b.buf));
+  assert_size(0, ==, b.rleft());
+  assert_size(16, ==, b.wleft());
+  assert_ptr_equal(b.pos, std::begin(b.buf));
 
   b.write(5);
 
-  CU_ASSERT(5 == b.rleft());
-  CU_ASSERT(11 == b.wleft());
-  CU_ASSERT(b.pos == std::begin(b.buf));
+  assert_size(5, ==, b.rleft());
+  assert_size(11, ==, b.wleft());
+  assert_ptr_equal(b.pos, std::begin(b.buf));
 }
 
 } // namespace nghttp2

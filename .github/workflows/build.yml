@@ -240,7 +240,6 @@ jobs:
           libtool \
           pkg-config \
           zlib1g-dev \
-          libcunit1-dev \
           libssl-dev \
           libxml2-dev \
           libev-dev \
@@ -261,7 +260,6 @@ jobs:
           libev \
           libevent \
           c-ares \
-          cunit \
           libressl \
           brotli \
           autoconf \
@@ -483,20 +481,12 @@ jobs:
           libtool \
           pkg-config \
           wine
-    - name: Build CUnit
-      run: |
-        curl -LO https://jaist.dl.sourceforge.net/project/cunit/CUnit/2.1-3/CUnit-2.1-3.tar.bz2
-        tar xf CUnit-2.1-3.tar.bz2
-        cd CUnit-2.1-3
-        ./bootstrap
-        ./configure --disable-shared --host="$HOST" --prefix="$PWD/build"
-        make -j$(nproc) install
     - name: Configure autotools
       run: |
+        git submodule update --init --depth 1
         autoreconf -i && \
-        ./configure --enable-werror --enable-lib-only --with-cunit \
-          --host="$HOST" PKG_CONFIG_PATH="$PWD/CUnit-2.1-3/build/lib/pkgconfig" \
-          CFLAGS="-g -O2 -D_WIN32_WINNT=0x0600"
+        ./configure --enable-werror --enable-lib-only  --host="$HOST" \
+          CFLAGS="-g -O2 -D_WIN32_WINNT=0x0600" LIBS="-pthread"
     - name: Build nghttp2
       run: |
         make -j$(nproc)
@@ -504,6 +494,7 @@ jobs:
     - name: Run tests
       if: matrix.host == 'x86_64-w64-mingw32'
       run: |
+        export WINEPATH=/usr/x86_64-w64-mingw32/lib
         cd tests
         wine main.exe
 
@@ -522,10 +513,9 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - uses: microsoft/setup-msbuild@v2
-    - run: |
-        vcpkg --triplet=${{ matrix.arch }}-windows install cunit
     - name: Configure cmake
       run: |
+        git submodule update --init --depth 1
         mkdir build
         cd build
         cmake -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DCMAKE_GENERATOR_PLATFORM=${{ matrix.platform }} -DVCPKG_TARGET_TRIPLET=${{ matrix.arch}}-windows ..

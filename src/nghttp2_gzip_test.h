@@ -33,7 +33,13 @@
 extern "C" {
 #endif
 
-void test_nghttp2_gzip_inflate(void);
+#define MUNIT_ENABLE_ASSERT_ALIASES
+
+#include "munit.h"
+
+extern const MunitSuite gzip_suite;
+
+munit_void_test_decl(test_nghttp2_gzip_inflate);
 
 #ifdef __cplusplus
 }

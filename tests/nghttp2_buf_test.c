@@ -26,10 +26,27 @@
 
 #include <stdio.h>
 
-#include <CUnit/CUnit.h>
+#include "munit.h"
 
 #include "nghttp2_buf.h"
 #include "nghttp2_test_helper.h"
+
+static const MunitTest tests[] = {
+    munit_void_test(test_nghttp2_bufs_add),
+    munit_void_test(test_nghttp2_bufs_add_stack_buffer_overflow_bug),
+    munit_void_test(test_nghttp2_bufs_addb),
+    munit_void_test(test_nghttp2_bufs_orb),
+    munit_void_test(test_nghttp2_bufs_remove),
+    munit_void_test(test_nghttp2_bufs_reset),
+    munit_void_test(test_nghttp2_bufs_advance),
+    munit_void_test(test_nghttp2_bufs_next_present),
+    munit_void_test(test_nghttp2_bufs_realloc),
+    munit_test_end(),
+};
+
+const MunitSuite buf_suite = {
+    "/buf", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
+};
 
 void test_nghttp2_bufs_add(void) {
   int rv;
@@ -40,27 +57,27 @@ void test_nghttp2_bufs_add(void) {
   mem = nghttp2_mem_default();
 
   rv = nghttp2_bufs_init(&bufs, 1000, 3, mem);
-  CU_ASSERT(0 == rv);
+  assert_int(0, ==, rv);
 
-  CU_ASSERT(bufs.cur->buf.pos == bufs.cur->buf.last);
+  assert_ptr_equal(bufs.cur->buf.pos, bufs.cur->buf.last);
 
   rv = nghttp2_bufs_add(&bufs, data, 493);
-  CU_ASSERT(0 == rv);
-  CU_ASSERT(493 == nghttp2_buf_len(&bufs.cur->buf));
-  CU_ASSERT(493 == nghttp2_bufs_len(&bufs));
-  CU_ASSERT(507 == nghttp2_bufs_cur_avail(&bufs));
+  assert_int(0, ==, rv);
+  assert_size(493, ==, nghttp2_buf_len(&bufs.cur->buf));
+  assert_size(493, ==, nghttp2_bufs_len(&bufs));
+  assert_size(507, ==, nghttp2_bufs_cur_avail(&bufs));
 
   rv = nghttp2_bufs_add(&bufs, data, 507);
-  CU_ASSERT(0 == rv);
-  CU_ASSERT(1000 == nghttp2_buf_len(&bufs.cur->buf));
-  CU_ASSERT(1000 == nghttp2_bufs_len(&bufs));
-  CU_ASSERT(bufs.cur == bufs.head);
+  assert_int(0, ==, rv);
+  assert_size(1000, ==, nghttp2_buf_len(&bufs.cur->buf));
+  assert_size(1000, ==, nghttp2_bufs_len(&bufs));
+  assert_ptr_equal(bufs.cur, bufs.head);
 
   rv = nghttp2_bufs_add(&bufs, data, 1);
-  CU_ASSERT(0 == rv);
-  CU_ASSERT(1 == nghttp2_buf_len(&bufs.cur->buf));
-  CU_ASSERT(1001 == nghttp2_bufs_len(&bufs));
-  CU_ASSERT(bufs.cur == bufs.head->next);
+  assert_int(0, ==, rv);
+  assert_size(1, ==, nghttp2_buf_len(&bufs.cur->buf));
+  assert_size(1001, ==, nghttp2_bufs_len(&bufs));
+  assert_ptr_equal(bufs.cur, bufs.head->next);
 
   nghttp2_bufs_free(&bufs);
 }
@@ -75,12 +92,12 @@ void test_nghttp2_bufs_add_stack_buffer_overflow_bug(void) {
   mem = nghttp2_mem_default();
 
   rv = nghttp2_bufs_init(&bufs, 100, 200, mem);
-  CU_ASSERT(0 == rv);
+  assert_int(0, ==, rv);
 
   rv = nghttp2_bufs_add(&bufs, data, sizeof(data));
 
-  CU_ASSERT(0 == rv);
-  CU_ASSERT(sizeof(data) == nghttp2_bufs_len(&bufs));
+  assert_int(0, ==, rv);
+  assert_size(sizeof(data), ==, nghttp2_bufs_len(&bufs));
 
   nghttp2_bufs_free(&bufs);
 }
@@ -94,59 +111,59 @@ void test_nghttp2_bufs_addb(void) {
   mem = nghttp2_mem_default();
 
   rv = nghttp2_bufs_init(&bufs, 1000, 3, mem);
-  CU_ASSERT(0 == rv);
+  assert_int(0, ==, rv);
 
   rv = nghttp2_bufs_addb(&bufs, 14);
-  CU_ASSERT(0 == rv);
-  CU_ASSERT(1 == nghttp2_buf_len(&bufs.cur->buf));
-  CU_ASSERT(1 == nghttp2_bufs_len(&bufs));
-  CU_ASSERT(14 == *bufs.cur->buf.pos);
+  assert_int(0, ==, rv);
+  assert_size(1, ==, nghttp2_buf_len(&bufs.cur->buf));
+  assert_size(1, ==, nghttp2_bufs_len(&bufs));
+  assert_uint8(14, ==, *bufs.cur->buf.pos);
 
   for (i = 0; i < 999; ++i) {
     rv = nghttp2_bufs_addb(&bufs, 254);
 
-    CU_ASSERT(0 == rv);
-    CU_ASSERT((size_t)(i + 2) == nghttp2_buf_len(&bufs.cur->buf));
-    CU_ASSERT((size_t)(i + 2) == nghttp2_bufs_len(&bufs));
-    CU_ASSERT(254 == *(bufs.cur->buf.last - 1));
-    CU_ASSERT(bufs.cur == bufs.head);
+    assert_int(0, ==, rv);
+    assert_size((size_t)(i + 2), ==, nghttp2_buf_len(&bufs.cur->buf));
+    assert_size((size_t)(i + 2), ==, nghttp2_bufs_len(&bufs));
+    assert_uint8(254, ==, *(bufs.cur->buf.last - 1));
+    assert_ptr_equal(bufs.cur, bufs.head);
   }
 
   rv = nghttp2_bufs_addb(&bufs, 253);
-  CU_ASSERT(0 == rv);
-  CU_ASSERT(1 == nghttp2_buf_len(&bufs.cur->buf));
-  CU_ASSERT(1001 == nghttp2_bufs_len(&bufs));
-  CU_ASSERT(253 == *(bufs.cur->buf.last - 1));
-  CU_ASSERT(bufs.cur == bufs.head->next);
+  assert_int(0, ==, rv);
+  assert_size(1, ==, nghttp2_buf_len(&bufs.cur->buf));
+  assert_size(1001, ==, nghttp2_bufs_len(&bufs));
+  assert_uint8(253, ==, *(bufs.cur->buf.last - 1));
+  assert_ptr_equal(bufs.cur, bufs.head->next);
 
   rv = nghttp2_bufs_addb_hold(&bufs, 15);
-  CU_ASSERT(0 == rv);
-  CU_ASSERT(1 == nghttp2_buf_len(&bufs.cur->buf));
-  CU_ASSERT(1001 == nghttp2_bufs_len(&bufs));
-  CU_ASSERT(15 == *(bufs.cur->buf.last));
+  assert_int(0, ==, rv);
+  assert_size(1, ==, nghttp2_buf_len(&bufs.cur->buf));
+  assert_size(1001, ==, nghttp2_bufs_len(&bufs));
+  assert_uint8(15, ==, *(bufs.cur->buf.last));
 
   /* test fast version */
 
   nghttp2_bufs_fast_addb(&bufs, 240);
 
-  CU_ASSERT(2 == nghttp2_buf_len(&bufs.cur->buf));
-  CU_ASSERT(1002 == nghttp2_bufs_len(&bufs));
-  CU_ASSERT(240 == *(bufs.cur->buf.last - 1));
+  assert_size(2, ==, nghttp2_buf_len(&bufs.cur->buf));
+  assert_size(1002, ==, nghttp2_bufs_len(&bufs));
+  assert_uint8(240, ==, *(bufs.cur->buf.last - 1));
 
   nghttp2_bufs_fast_addb_hold(&bufs, 113);
 
-  CU_ASSERT(2 == nghttp2_buf_len(&bufs.cur->buf));
-  CU_ASSERT(1002 == nghttp2_bufs_len(&bufs));
-  CU_ASSERT(113 == *(bufs.cur->buf.last));
+  assert_size(2, ==, nghttp2_buf_len(&bufs.cur->buf));
+  assert_size(1002, ==, nghttp2_bufs_len(&bufs));
+  assert_uint8(113, ==, *(bufs.cur->buf.last));
 
   /* addb_hold when last == end */
   bufs.cur->buf.last = bufs.cur->buf.end;
 
   rv = nghttp2_bufs_addb_hold(&bufs, 19);
-  CU_ASSERT(0 == rv);
-  CU_ASSERT(0 == nghttp2_buf_len(&bufs.cur->buf));
-  CU_ASSERT(2000 == nghttp2_bufs_len(&bufs));
-  CU_ASSERT(19 == *(bufs.cur->buf.last));
+  assert_int(0, ==, rv);
+  assert_size(0, ==, nghttp2_buf_len(&bufs.cur->buf));
+  assert_size(2000, ==, nghttp2_bufs_len(&bufs));
+  assert_uint8(19, ==, *(bufs.cur->buf.last));
 
   nghttp2_bufs_free(&bufs);
 }
@@ -159,28 +176,28 @@ void test_nghttp2_bufs_orb(void) {
   mem = nghttp2_mem_default();
 
   rv = nghttp2_bufs_init(&bufs, 1000, 3, mem);
-  CU_ASSERT(0 == rv);
+  assert_int(0, ==, rv);
 
   *(bufs.cur->buf.last) = 0;
 
   rv = nghttp2_bufs_orb_hold(&bufs, 15);
-  CU_ASSERT(0 == rv);
-  CU_ASSERT(0 == nghttp2_buf_len(&bufs.cur->buf));
-  CU_ASSERT(0 == nghttp2_bufs_len(&bufs));
-  CU_ASSERT(15 == *(bufs.cur->buf.last));
+  assert_int(0, ==, rv);
+  assert_size(0, ==, nghttp2_buf_len(&bufs.cur->buf));
+  assert_size(0, ==, nghttp2_bufs_len(&bufs));
+  assert_uint8(15, ==, *(bufs.cur->buf.last));
 
   rv = nghttp2_bufs_orb(&bufs, 240);
-  CU_ASSERT(0 == rv);
-  CU_ASSERT(1 == nghttp2_buf_len(&bufs.cur->buf));
-  CU_ASSERT(1 == nghttp2_bufs_len(&bufs));
-  CU_ASSERT(255 == *(bufs.cur->buf.last - 1));
+  assert_int(0, ==, rv);
+  assert_size(1, ==, nghttp2_buf_len(&bufs.cur->buf));
+  assert_size(1, ==, nghttp2_bufs_len(&bufs));
+  assert_uint8(255, ==, *(bufs.cur->buf.last - 1));
 
   *(bufs.cur->buf.last) = 0;
   nghttp2_bufs_fast_orb_hold(&bufs, 240);
-  CU_ASSERT(240 == *(bufs.cur->buf.last));
+  assert_uint8(240, ==, *(bufs.cur->buf.last));
 
   nghttp2_bufs_fast_orb(&bufs, 15);
-  CU_ASSERT(255 == *(bufs.cur->buf.last - 1));
+  assert_uint8(255, ==, *(bufs.cur->buf.last - 1));
 
   nghttp2_bufs_free(&bufs);
 }
@@ -197,30 +214,30 @@ void test_nghttp2_bufs_remove(void) {
   mem = nghttp2_mem_default();
 
   rv = nghttp2_bufs_init(&bufs, 1000, 3, mem);
-  CU_ASSERT(0 == rv);
+  assert_int(0, ==, rv);
 
   nghttp2_buf_shift_right(&bufs.cur->buf, 10);
 
   rv = nghttp2_bufs_add(&bufs, "hello ", 6);
-  CU_ASSERT(0 == rv);
+  assert_int(0, ==, rv);
 
   for (i = 0; i < 2; ++i) {
     chain = bufs.cur;
 
     rv = nghttp2_bufs_advance(&bufs);
-    CU_ASSERT(0 == rv);
+    assert_int(0, ==, rv);
 
-    CU_ASSERT(chain->next == bufs.cur);
+    assert_ptr_equal(chain->next, bufs.cur);
   }
 
   rv = nghttp2_bufs_add(&bufs, "world", 5);
-  CU_ASSERT(0 == rv);
+  assert_int(0, ==, rv);
 
   outlen = nghttp2_bufs_remove(&bufs, &out);
-  CU_ASSERT(11 == outlen);
+  assert_ssize(11, ==, outlen);
 
-  CU_ASSERT(0 == memcmp("hello world", out, (size_t)outlen));
-  CU_ASSERT(11 == nghttp2_bufs_len(&bufs));
+  assert_memory_equal((size_t)outlen, "hello world", out);
+  assert_size(11, ==, nghttp2_bufs_len(&bufs));
 
   mem->free(out, NULL);
   nghttp2_bufs_free(&bufs);
@@ -236,30 +253,30 @@ void test_nghttp2_bufs_reset(void) {
   mem = nghttp2_mem_default();
 
   rv = nghttp2_bufs_init3(&bufs, 250, 3, 1, offset, mem);
-  CU_ASSERT(0 == rv);
+  assert_int(0, ==, rv);
 
   rv = nghttp2_bufs_add(&bufs, "foo", 3);
-  CU_ASSERT(0 == rv);
+  assert_int(0, ==, rv);
 
   rv = nghttp2_bufs_advance(&bufs);
-  CU_ASSERT(0 == rv);
+  assert_int(0, ==, rv);
 
   rv = nghttp2_bufs_add(&bufs, "bar", 3);
-  CU_ASSERT(0 == rv);
+  assert_int(0, ==, rv);
 
-  CU_ASSERT(6 == nghttp2_bufs_len(&bufs));
+  assert_size(6, ==, nghttp2_bufs_len(&bufs));
 
   nghttp2_bufs_reset(&bufs);
 
-  CU_ASSERT(0 == nghttp2_bufs_len(&bufs));
-  CU_ASSERT(bufs.cur == bufs.head);
+  assert_size(0, ==, nghttp2_bufs_len(&bufs));
+  assert_ptr_equal(bufs.cur, bufs.head);
 
   for (ci = bufs.head; ci; ci = ci->next) {
-    CU_ASSERT((ssize_t)offset == ci->buf.pos - ci->buf.begin);
-    CU_ASSERT(ci->buf.pos == ci->buf.last);
+    assert_ptrdiff((ptrdiff_t)offset, ==, ci->buf.pos - ci->buf.begin);
+    assert_ptr_equal(ci->buf.pos, ci->buf.last);
   }
 
-  CU_ASSERT(bufs.head->next == NULL);
+  assert_null(bufs.head->next);
 
   nghttp2_bufs_free(&bufs);
 }
@@ -273,15 +290,15 @@ void test_nghttp2_bufs_advance(void) {
   mem = nghttp2_mem_default();
 
   rv = nghttp2_bufs_init(&bufs, 250, 3, mem);
-  CU_ASSERT(0 == rv);
+  assert_int(0, ==, rv);
 
   for (i = 0; i < 2; ++i) {
     rv = nghttp2_bufs_advance(&bufs);
-    CU_ASSERT(0 == rv);
+    assert_int(0, ==, rv);
   }
 
   rv = nghttp2_bufs_advance(&bufs);
-  CU_ASSERT(NGHTTP2_ERR_BUFFER_ERROR == rv);
+  assert_int(NGHTTP2_ERR_BUFFER_ERROR, ==, rv);
 
   nghttp2_bufs_free(&bufs);
 }
@@ -294,25 +311,25 @@ void test_nghttp2_bufs_next_present(void) {
   mem = nghttp2_mem_default();
 
   rv = nghttp2_bufs_init(&bufs, 250, 3, mem);
-  CU_ASSERT(0 == rv);
+  assert_int(0, ==, rv);
 
-  CU_ASSERT(0 == nghttp2_bufs_next_present(&bufs));
+  assert_false(nghttp2_bufs_next_present(&bufs));
 
   rv = nghttp2_bufs_advance(&bufs);
-  CU_ASSERT(0 == rv);
+  assert_int(0, ==, rv);
 
   nghttp2_bufs_rewind(&bufs);
 
-  CU_ASSERT(0 == nghttp2_bufs_next_present(&bufs));
+  assert_false(nghttp2_bufs_next_present(&bufs));
 
   bufs.cur = bufs.head->next;
 
   rv = nghttp2_bufs_addb(&bufs, 1);
-  CU_ASSERT(0 == rv);
+  assert_int(0, ==, rv);
 
   nghttp2_bufs_rewind(&bufs);
 
-  CU_ASSERT(0 != nghttp2_bufs_next_present(&bufs));
+  assert_true(nghttp2_bufs_next_present(&bufs));
 
   nghttp2_bufs_free(&bufs);
 }
@@ -325,20 +342,20 @@ void test_nghttp2_bufs_realloc(void) {
   mem = nghttp2_mem_default();
 
   rv = nghttp2_bufs_init3(&bufs, 266, 3, 1, 10, mem);
-  CU_ASSERT(0 == rv);
+  assert_int(0, ==, rv);
 
   /* Create new buffer to see that these buffers are deallocated on
      realloc */
   rv = nghttp2_bufs_advance(&bufs);
-  CU_ASSERT(0 == rv);
+  assert_int(0, ==, rv);
 
   rv = nghttp2_bufs_realloc(&bufs, 522);
-  CU_ASSERT(0 == rv);
+  assert_int(0, ==, rv);
 
-  CU_ASSERT(512 == nghttp2_bufs_cur_avail(&bufs));
+  assert_size(512, ==, nghttp2_bufs_cur_avail(&bufs));
 
   rv = nghttp2_bufs_realloc(&bufs, 9);
-  CU_ASSERT(NGHTTP2_ERR_INVALID_ARGUMENT == rv);
+  assert_int(NGHTTP2_ERR_INVALID_ARGUMENT, ==, rv);
 
   nghttp2_bufs_free(&bufs);
 }

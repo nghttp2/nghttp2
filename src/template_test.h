@@ -29,10 +29,16 @@
 #  include <config.h>
 #endif // HAVE_CONFIG_H
 
+#define MUNIT_ENABLE_ASSERT_ALIASES
+
+#include "munit.h"
+
 namespace nghttp2 {
 
-void test_template_immutable_string(void);
-void test_template_string_ref(void);
+extern const MunitSuite template_suite;
+
+munit_void_test_decl(test_template_immutable_string);
+munit_void_test_decl(test_template_string_ref);
 
 } // namespace nghttp2
 
