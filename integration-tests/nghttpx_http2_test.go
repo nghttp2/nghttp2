@@ -40,7 +40,7 @@ func TestH2H1PlainGET(t *testing.T) {
 func TestH2H1AddXfp(t *testing.T) {
 	opts := options{
 		args: []string{"--no-strip-incoming-x-forwarded-proto"},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(_ http.ResponseWriter, r *http.Request) {
 			xfp := r.Header.Get("X-Forwarded-Proto")
 			if got, want := xfp, "foo, http"; got != want {
 				t.Errorf("X-Forwarded-Proto = %q; want %q", got, want)
@@ -72,7 +72,7 @@ func TestH2H1NoAddXfp(t *testing.T) {
 			"--no-add-x-forwarded-proto",
 			"--no-strip-incoming-x-forwarded-proto",
 		},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(_ http.ResponseWriter, r *http.Request) {
 			xfp := r.Header.Get("X-Forwarded-Proto")
 			if got, want := xfp, "foo"; got != want {
 				t.Errorf("X-Forwarded-Proto = %q; want %q", got, want)
@@ -100,7 +100,7 @@ func TestH2H1NoAddXfp(t *testing.T) {
 // x-forwarded-proto header field.
 func TestH2H1StripXfp(t *testing.T) {
 	opts := options{
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(_ http.ResponseWriter, r *http.Request) {
 			xfp := r.Header.Get("X-Forwarded-Proto")
 			if got, want := xfp, "http"; got != want {
 				t.Errorf("X-Forwarded-Proto = %q; want %q", got, want)
@@ -129,7 +129,7 @@ func TestH2H1StripXfp(t *testing.T) {
 func TestH2H1StripNoAddXfp(t *testing.T) {
 	opts := options{
 		args: []string{"--no-add-x-forwarded-proto"},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(_ http.ResponseWriter, r *http.Request) {
 			if got, found := r.Header["X-Forwarded-Proto"]; found {
 				t.Errorf("X-Forwarded-Proto = %q; want nothing", got)
 			}
@@ -157,7 +157,7 @@ func TestH2H1StripNoAddXfp(t *testing.T) {
 func TestH2H1AddXff(t *testing.T) {
 	opts := options{
 		args: []string{"--add-x-forwarded-for"},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(_ http.ResponseWriter, r *http.Request) {
 			xff := r.Header.Get("X-Forwarded-For")
 			want := "127.0.0.1"
 			if xff != want {
@@ -184,7 +184,7 @@ func TestH2H1AddXff(t *testing.T) {
 func TestH2H1AddXff2(t *testing.T) {
 	opts := options{
 		args: []string{"--add-x-forwarded-for"},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(_ http.ResponseWriter, r *http.Request) {
 			xff := r.Header.Get("X-Forwarded-For")
 			want := "host, 127.0.0.1"
 			if xff != want {
@@ -214,7 +214,7 @@ func TestH2H1AddXff2(t *testing.T) {
 func TestH2H1StripXff(t *testing.T) {
 	opts := options{
 		args: []string{"--strip-incoming-x-forwarded-for"},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(_ http.ResponseWriter, r *http.Request) {
 			if xff, found := r.Header["X-Forwarded-For"]; found {
 				t.Errorf("X-Forwarded-For = %v; want nothing", xff)
 			}
@@ -245,7 +245,7 @@ func TestH2H1StripAddXff(t *testing.T) {
 			"--strip-incoming-x-forwarded-for",
 			"--add-x-forwarded-for",
 		},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(_ http.ResponseWriter, r *http.Request) {
 			xff := r.Header.Get("X-Forwarded-For")
 			want := "127.0.0.1"
 			if xff != want {
@@ -275,7 +275,7 @@ func TestH2H1StripAddXff(t *testing.T) {
 func TestH2H1AddForwardedObfuscated(t *testing.T) {
 	opts := options{
 		args: []string{"--add-forwarded=by,for,host,proto"},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(_ http.ResponseWriter, r *http.Request) {
 			pattern := fmt.Sprintf(`by=_[^;]+;for=_[^;]+;host="127\.0\.0\.1:%v";proto=http`, serverPort)
 			validFwd := regexp.MustCompile(pattern)
 			got := r.Header.Get("Forwarded")
@@ -304,7 +304,7 @@ func TestH2H1AddForwardedObfuscated(t *testing.T) {
 func TestH2H1AddForwardedByIP(t *testing.T) {
 	opts := options{
 		args: []string{"--add-forwarded=by,for", "--forwarded-by=ip"},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(_ http.ResponseWriter, r *http.Request) {
 			pattern := fmt.Sprintf(`by="127\.0\.0\.1:%v";for=_[^;]+`, serverPort)
 			validFwd := regexp.MustCompile(pattern)
 			if got := r.Header.Get("Forwarded"); !validFwd.MatchString(got) {
@@ -335,7 +335,7 @@ func TestH2H1AddForwardedForIP(t *testing.T) {
 			"--forwarded-by=_alpha",
 			"--forwarded-for=ip",
 		},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(_ http.ResponseWriter, r *http.Request) {
 			want := fmt.Sprintf(`by=_alpha;for=127.0.0.1;host="127.0.0.1:%v";proto=http`, serverPort)
 			if got := r.Header.Get("Forwarded"); got != want {
 				t.Errorf("Forwarded = %v; want %v", got, want)
@@ -362,7 +362,7 @@ func TestH2H1AddForwardedForIP(t *testing.T) {
 func TestH2H1AddForwardedMerge(t *testing.T) {
 	opts := options{
 		args: []string{"--add-forwarded=proto"},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(_ http.ResponseWriter, r *http.Request) {
 			if got, want := r.Header.Get("Forwarded"), `host=foo, proto=http`; got != want {
 				t.Errorf("Forwarded = %v; want %v", got, want)
 			}
@@ -394,7 +394,7 @@ func TestH2H1AddForwardedStrip(t *testing.T) {
 			"--strip-incoming-forwarded",
 			"--add-forwarded=proto",
 		},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(_ http.ResponseWriter, r *http.Request) {
 			if got, want := r.Header.Get("Forwarded"), `proto=http`; got != want {
 				t.Errorf("Forwarded = %v; want %v", got, want)
 			}
@@ -422,7 +422,7 @@ func TestH2H1AddForwardedStrip(t *testing.T) {
 func TestH2H1StripForwarded(t *testing.T) {
 	opts := options{
 		args: []string{"--strip-incoming-forwarded"},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(_ http.ResponseWriter, r *http.Request) {
 			if got, found := r.Header["Forwarded"]; found {
 				t.Errorf("Forwarded = %v; want nothing", got)
 			}
@@ -454,7 +454,7 @@ func TestH2H1AddForwardedStatic(t *testing.T) {
 			"--add-forwarded=by,for",
 			"--forwarded-by=_alpha",
 		},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(_ http.ResponseWriter, r *http.Request) {
 			pattern := `by=_alpha;for=_[^;]+`
 			validFwd := regexp.MustCompile(pattern)
 			if got := r.Header.Get("Forwarded"); !validFwd.MatchString(got) {
@@ -480,7 +480,7 @@ func TestH2H1AddForwardedStatic(t *testing.T) {
 // from backend server.
 func TestH2H1GenerateVia(t *testing.T) {
 	opts := options{
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(_ http.ResponseWriter, r *http.Request) {
 			if got, want := r.Header.Get("Via"), "2 nghttpx"; got != want {
 				t.Errorf("Via: %v; want %v", got, want)
 			}
@@ -639,7 +639,7 @@ func TestH2H1BadRequestCL(t *testing.T) {
 // response body size.
 func TestH2H1BadResponseCL(t *testing.T) {
 	opts := options{
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(w http.ResponseWriter, _ *http.Request) {
 			// we set content-length: 1024, but only send 3 bytes.
 			w.Header().Add("Content-Length", "1024")
 			if _, err := w.Write([]byte("foo")); err != nil {
@@ -667,7 +667,7 @@ func TestH2H1BadResponseCL(t *testing.T) {
 // works.
 func TestH2H1LocationRewrite(t *testing.T) {
 	opts := options{
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(w http.ResponseWriter, _ *http.Request) {
 			// TODO we cannot get st.ts's port number
 			// here.. 8443 is just a place holder.  We
 			// ignore it on rewrite.
@@ -693,7 +693,7 @@ func TestH2H1LocationRewrite(t *testing.T) {
 // TestH2H1ChunkedRequestBody tests that chunked request body works.
 func TestH2H1ChunkedRequestBody(t *testing.T) {
 	opts := options{
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(_ http.ResponseWriter, r *http.Request) {
 			want := "[chunked]"
 			if got := fmt.Sprint(r.TransferEncoding); got != want {
 				t.Errorf("Transfer-Encoding: %v; want %v", got, want)
@@ -728,7 +728,7 @@ func TestH2H1ChunkedRequestBody(t *testing.T) {
 // multiple Content-Length request header fields.
 func TestH2H1MultipleRequestCL(t *testing.T) {
 	opts := options{
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(http.ResponseWriter, *http.Request) {
 			t.Errorf("server should not forward bad request")
 		},
 	}
@@ -754,7 +754,7 @@ func TestH2H1MultipleRequestCL(t *testing.T) {
 // Content-Length which cannot be parsed as a number.
 func TestH2H1InvalidRequestCL(t *testing.T) {
 	opts := options{
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(http.ResponseWriter, *http.Request) {
 			t.Errorf("server should not forward bad request")
 		},
 	}
@@ -800,7 +800,7 @@ func TestH2H1InvalidRequestCL(t *testing.T) {
 // 501.
 func TestH2H1InvalidMethod(t *testing.T) {
 	opts := options{
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(http.ResponseWriter, *http.Request) {
 			t.Errorf("server should not forward this request")
 		},
 	}
@@ -823,7 +823,7 @@ func TestH2H1InvalidMethod(t *testing.T) {
 // bad characters in :authority header field.
 func TestH2H1BadAuthority(t *testing.T) {
 	opts := options{
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(http.ResponseWriter, *http.Request) {
 			t.Errorf("server should not forward this request")
 		},
 	}
@@ -846,7 +846,7 @@ func TestH2H1BadAuthority(t *testing.T) {
 // bad characters in :scheme header field.
 func TestH2H1BadScheme(t *testing.T) {
 	opts := options{
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(http.ResponseWriter, *http.Request) {
 			t.Errorf("server should not forward this request")
 		},
 	}
@@ -869,7 +869,7 @@ func TestH2H1BadScheme(t *testing.T) {
 // request is assembled into 1 when forwarding to HTTP/1 backend link.
 func TestH2H1AssembleCookies(t *testing.T) {
 	opts := options{
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(_ http.ResponseWriter, r *http.Request) {
 			if got, want := r.Header.Get("Cookie"), "alpha; bravo; charlie"; got != want {
 				t.Errorf("Cookie: %v; want %v", got, want)
 			}
@@ -918,7 +918,7 @@ func TestH2H1TETrailers(t *testing.T) {
 // field contains gzip.
 func TestH2H1TEGzip(t *testing.T) {
 	opts := options{
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(http.ResponseWriter, *http.Request) {
 			t.Error("server should not forward bad request")
 		},
 	}
@@ -967,7 +967,7 @@ func TestH2H1SNI(t *testing.T) {
 // connection is encrypted.
 func TestH2H1TLSXfp(t *testing.T) {
 	opts := options{
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(_ http.ResponseWriter, r *http.Request) {
 			if got, want := r.Header.Get("x-forwarded-proto"), "http"; got != want {
 				t.Errorf("x-forwarded-proto: want %v; got %v", want, got)
 			}
@@ -1028,7 +1028,7 @@ func TestH2H1ServerPush(t *testing.T) {
 // backend.
 func TestH2H1RequestTrailer(t *testing.T) {
 	opts := options{
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(_ http.ResponseWriter, r *http.Request) {
 			buf := make([]byte, 4096)
 			for {
 				_, err := r.Body.Read(buf)
@@ -1067,7 +1067,7 @@ func TestH2H1RequestTrailer(t *testing.T) {
 func TestH2H1HeaderFieldBuffer(t *testing.T) {
 	opts := options{
 		args: []string{"--request-header-field-buffer=10"},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(http.ResponseWriter, *http.Request) {
 			t.Fatal("execution path should not be here")
 		},
 	}
@@ -1090,7 +1090,7 @@ func TestH2H1HeaderFieldBuffer(t *testing.T) {
 func TestH2H1HeaderFields(t *testing.T) {
 	opts := options{
 		args: []string{"--max-request-header-fields=1"},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(http.ResponseWriter, *http.Request) {
 			t.Fatal("execution path should not be here")
 		},
 	}
@@ -1115,7 +1115,7 @@ func TestH2H1HeaderFields(t *testing.T) {
 func TestH2H1ReqPhaseSetHeader(t *testing.T) {
 	opts := options{
 		args: []string{"--mruby-file=" + testDir + "/req-set-header.rb"},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(_ http.ResponseWriter, r *http.Request) {
 			if got, want := r.Header.Get("User-Agent"), "mruby"; got != want {
 				t.Errorf("User-Agent = %v; want %v", got, want)
 			}
@@ -1141,7 +1141,7 @@ func TestH2H1ReqPhaseSetHeader(t *testing.T) {
 func TestH2H1ReqPhaseReturn(t *testing.T) {
 	opts := options{
 		args: []string{"--mruby-file=" + testDir + "/req-return.rb"},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(http.ResponseWriter, *http.Request) {
 			t.Fatalf("request should not be forwarded")
 		},
 	}
@@ -1284,7 +1284,7 @@ func TestH2H1ProxyProtocolV1ForwardedForObfuscated(t *testing.T) {
 			"--add-forwarded=for",
 			"--forwarded-for=obfuscated",
 		},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(_ http.ResponseWriter, r *http.Request) {
 			if got := r.Header.Get("Forwarded"); !validFwd.MatchString(got) {
 				t.Errorf("Forwarded: %v; want pattern %v", got, pattern)
 			}
@@ -1321,7 +1321,7 @@ func TestH2H1ProxyProtocolV1TCP4(t *testing.T) {
 			"--add-forwarded=for",
 			"--forwarded-for=ip",
 		},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(_ http.ResponseWriter, r *http.Request) {
 			if got, want := r.Header.Get("X-Forwarded-For"), "192.168.0.2"; got != want {
 				t.Errorf("X-Forwarded-For: %v; want %v", got, want)
 			}
@@ -1361,7 +1361,7 @@ func TestH2H1ProxyProtocolV1TCP6(t *testing.T) {
 			"--add-forwarded=for",
 			"--forwarded-for=ip",
 		},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(_ http.ResponseWriter, r *http.Request) {
 			if got, want := r.Header.Get("X-Forwarded-For"), "2001:0db8:85a3:0000:0000:8a2e:0370:7334"; got != want {
 				t.Errorf("X-Forwarded-For: %v; want %v", got, want)
 			}
@@ -1401,7 +1401,7 @@ func TestH2H1ProxyProtocolV1TCP4TLS(t *testing.T) {
 			"--add-forwarded=for",
 			"--forwarded-for=ip",
 		},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(_ http.ResponseWriter, r *http.Request) {
 			if got, want := r.Header.Get("X-Forwarded-For"), "192.168.0.2"; got != want {
 				t.Errorf("X-Forwarded-For: %v; want %v", got, want)
 			}
@@ -1439,7 +1439,7 @@ func TestH2H1ProxyProtocolV1TCP6TLS(t *testing.T) {
 			"--add-forwarded=for",
 			"--forwarded-for=ip",
 		},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(_ http.ResponseWriter, r *http.Request) {
 			if got, want := r.Header.Get("X-Forwarded-For"), "2001:0db8:85a3:0000:0000:8a2e:0370:7334"; got != want {
 				t.Errorf("X-Forwarded-For: %v; want %v", got, want)
 			}
@@ -1476,7 +1476,7 @@ func TestH2H1ProxyProtocolV1Unknown(t *testing.T) {
 			"--add-forwarded=for",
 			"--forwarded-for=ip",
 		},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(_ http.ResponseWriter, r *http.Request) {
 			if got, notWant := r.Header.Get("X-Forwarded-For"), "192.168.0.2"; got == notWant {
 				t.Errorf("X-Forwarded-For: %v; want something else", got)
 			}
@@ -1881,7 +1881,7 @@ func TestH2H1ProxyProtocolV2TCP4(t *testing.T) {
 			"--add-forwarded=for",
 			"--forwarded-for=ip",
 		},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(_ http.ResponseWriter, r *http.Request) {
 			if got, want := r.Header.Get("X-Forwarded-For"), "192.168.0.2"; got != want {
 				t.Errorf("X-Forwarded-For: %v; want %v", got, want)
 			}
@@ -1937,7 +1937,7 @@ func TestH2H1ProxyProtocolV2TCP6(t *testing.T) {
 			"--add-forwarded=for",
 			"--forwarded-for=ip",
 		},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(_ http.ResponseWriter, r *http.Request) {
 			if got, want := r.Header.Get("X-Forwarded-For"), "2001:db8:85a3::8a2e:370:7334"; got != want {
 				t.Errorf("X-Forwarded-For: %v; want %v", got, want)
 			}
@@ -2009,7 +2009,7 @@ func TestH2H1ProxyProtocolV2TCP4TLS(t *testing.T) {
 			"--add-forwarded=for",
 			"--forwarded-for=ip",
 		},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(_ http.ResponseWriter, r *http.Request) {
 			if got, want := r.Header.Get("X-Forwarded-For"), "192.168.0.2"; got != want {
 				t.Errorf("X-Forwarded-For: %v; want %v", got, want)
 			}
@@ -2063,7 +2063,7 @@ func TestH2H1ProxyProtocolV2TCP6TLS(t *testing.T) {
 			"--add-forwarded=for",
 			"--forwarded-for=ip",
 		},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(_ http.ResponseWriter, r *http.Request) {
 			if got, want := r.Header.Get("X-Forwarded-For"), "2001:db8:85a3::8a2e:370:7334"; got != want {
 				t.Errorf("X-Forwarded-For: %v; want %v", got, want)
 			}
@@ -2100,7 +2100,7 @@ func TestH2H1ProxyProtocolV2Local(t *testing.T) {
 			"--add-forwarded=for",
 			"--forwarded-for=ip",
 		},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(_ http.ResponseWriter, r *http.Request) {
 			if got, want := r.Header.Get("X-Forwarded-For"), "127.0.0.1"; got != want {
 				t.Errorf("X-Forwarded-For: %v; want %v", got, want)
 			}
@@ -2193,7 +2193,7 @@ func TestH2H1ProxyProtocolV2Unix(t *testing.T) {
 			"--add-forwarded=for",
 			"--forwarded-for=ip",
 		},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(_ http.ResponseWriter, r *http.Request) {
 			if got, want := r.Header.Get("X-Forwarded-For"), "127.0.0.1"; got != want {
 				t.Errorf("X-Forwarded-For: %v; want %v", got, want)
 			}
@@ -2248,7 +2248,7 @@ func TestH2H1ProxyProtocolV2Unspec(t *testing.T) {
 			"--add-forwarded=for",
 			"--forwarded-for=ip",
 		},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(_ http.ResponseWriter, r *http.Request) {
 			if got, want := r.Header.Get("X-Forwarded-For"), "127.0.0.1"; got != want {
 				t.Errorf("X-Forwarded-For: %v; want %v", got, want)
 			}
@@ -2383,7 +2383,7 @@ func TestH2H1HTTPSRedirectPort(t *testing.T) {
 // transfer-encoding is valid.
 func TestH2H1Code204(t *testing.T) {
 	opts := options{
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(w http.ResponseWriter, _ *http.Request) {
 			w.WriteHeader(http.StatusNoContent)
 		},
 	}
@@ -2406,7 +2406,7 @@ func TestH2H1Code204(t *testing.T) {
 // is allowed.
 func TestH2H1Code204CL0(t *testing.T) {
 	opts := options{
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(w http.ResponseWriter, _ *http.Request) {
 			hj, ok := w.(http.Hijacker)
 			if !ok {
 				http.Error(w, "Could not hijack the connection", http.StatusInternalServerError)
@@ -2447,7 +2447,7 @@ func TestH2H1Code204CL0(t *testing.T) {
 // content-length is not allowed.
 func TestH2H1Code204CLNonzero(t *testing.T) {
 	opts := options{
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(w http.ResponseWriter, _ *http.Request) {
 			hj, ok := w.(http.Hijacker)
 			if !ok {
 				http.Error(w, "Could not hijack the connection", http.StatusInternalServerError)
@@ -2484,7 +2484,7 @@ func TestH2H1Code204CLNonzero(t *testing.T) {
 // not allowed.
 func TestH2H1Code204TE(t *testing.T) {
 	opts := options{
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(w http.ResponseWriter, _ *http.Request) {
 			hj, ok := w.(http.Hijacker)
 			if !ok {
 				http.Error(w, "Could not hijack the connection", http.StatusInternalServerError)
@@ -2659,7 +2659,7 @@ func TestH2H1GracefulShutdown(t *testing.T) {
 func TestH2H2MultipleResponseCL(t *testing.T) {
 	opts := options{
 		args: []string{"--http2-bridge"},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(w http.ResponseWriter, _ *http.Request) {
 			w.Header().Add("content-length", "1")
 			w.Header().Add("content-length", "1")
 		},
@@ -2684,7 +2684,7 @@ func TestH2H2MultipleResponseCL(t *testing.T) {
 func TestH2H2InvalidResponseCL(t *testing.T) {
 	opts := options{
 		args: []string{"--http2-bridge"},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(w http.ResponseWriter, _ *http.Request) {
 			w.Header().Add("content-length", "")
 		},
 	}
@@ -2783,7 +2783,7 @@ func TestH2H2NoHostRewrite(t *testing.T) {
 func TestH2H2TLSXfp(t *testing.T) {
 	opts := options{
 		args: []string{"--http2-bridge"},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(_ http.ResponseWriter, r *http.Request) {
 			if got, want := r.Header.Get("x-forwarded-proto"), "http"; got != want {
 				t.Errorf("x-forwarded-proto: want %v; got %v", want, got)
 			}
@@ -2812,7 +2812,7 @@ func TestH2H2AddXfp(t *testing.T) {
 			"--http2-bridge",
 			"--no-strip-incoming-x-forwarded-proto",
 		},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(_ http.ResponseWriter, r *http.Request) {
 			xfp := r.Header.Get("X-Forwarded-Proto")
 			if got, want := xfp, "foo, http"; got != want {
 				t.Errorf("X-Forwarded-Proto = %q; want %q", got, want)
@@ -2846,7 +2846,7 @@ func TestH2H2NoAddXfp(t *testing.T) {
 			"--no-add-x-forwarded-proto",
 			"--no-strip-incoming-x-forwarded-proto",
 		},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(_ http.ResponseWriter, r *http.Request) {
 			xfp := r.Header.Get("X-Forwarded-Proto")
 			if got, want := xfp, "foo"; got != want {
 				t.Errorf("X-Forwarded-Proto = %q; want %q", got, want)
@@ -2876,7 +2876,7 @@ func TestH2H2NoAddXfp(t *testing.T) {
 func TestH2H2StripXfp(t *testing.T) {
 	opts := options{
 		args: []string{"--http2-bridge"},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(_ http.ResponseWriter, r *http.Request) {
 			xfp := r.Header.Get("X-Forwarded-Proto")
 			if got, want := xfp, "http"; got != want {
 				t.Errorf("X-Forwarded-Proto = %q; want %q", got, want)
@@ -2906,7 +2906,7 @@ func TestH2H2StripXfp(t *testing.T) {
 func TestH2H2StripNoAddXfp(t *testing.T) {
 	opts := options{
 		args: []string{"--http2-bridge", "--no-add-x-forwarded-proto"},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(_ http.ResponseWriter, r *http.Request) {
 			if got, found := r.Header["X-Forwarded-Proto"]; found {
 				t.Errorf("X-Forwarded-Proto = %q; want nothing", got)
 			}
@@ -2935,7 +2935,7 @@ func TestH2H2StripNoAddXfp(t *testing.T) {
 func TestH2H2AddXff(t *testing.T) {
 	opts := options{
 		args: []string{"--http2-bridge", "--add-x-forwarded-for"},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(_ http.ResponseWriter, r *http.Request) {
 			xff := r.Header.Get("X-Forwarded-For")
 			want := "127.0.0.1"
 			if xff != want {
@@ -2963,7 +2963,7 @@ func TestH2H2AddXff(t *testing.T) {
 func TestH2H2AddXff2(t *testing.T) {
 	opts := options{
 		args: []string{"--http2-bridge", "--add-x-forwarded-for"},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(_ http.ResponseWriter, r *http.Request) {
 			xff := r.Header.Get("X-Forwarded-For")
 			want := "host, 127.0.0.1"
 			if xff != want {
@@ -2997,7 +2997,7 @@ func TestH2H2StripXff(t *testing.T) {
 			"--http2-bridge",
 			"--strip-incoming-x-forwarded-for",
 		},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(_ http.ResponseWriter, r *http.Request) {
 			if xff, found := r.Header["X-Forwarded-For"]; found {
 				t.Errorf("X-Forwarded-For = %v; want nothing", xff)
 			}
@@ -3030,7 +3030,7 @@ func TestH2H2StripAddXff(t *testing.T) {
 			"--strip-incoming-x-forwarded-for",
 			"--add-x-forwarded-for",
 		},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(_ http.ResponseWriter, r *http.Request) {
 			xff := r.Header.Get("X-Forwarded-For")
 			want := "127.0.0.1"
 			if xff != want {
@@ -3065,7 +3065,7 @@ func TestH2H2AddForwarded(t *testing.T) {
 			"--add-forwarded=by,for,host,proto",
 			"--forwarded-by=_alpha",
 		},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(_ http.ResponseWriter, r *http.Request) {
 			pattern := fmt.Sprintf(`by=_alpha;for=_[^;]+;host="127\.0\.0\.1:%v";proto=https`, serverPort)
 			validFwd := regexp.MustCompile(pattern)
 			if got := r.Header.Get("Forwarded"); !validFwd.MatchString(got) {
@@ -3099,7 +3099,7 @@ func TestH2H2AddForwardedMerge(t *testing.T) {
 			"--add-forwarded=by,host,proto",
 			"--forwarded-by=_alpha",
 		},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(_ http.ResponseWriter, r *http.Request) {
 			want := fmt.Sprintf(`host=foo, by=_alpha;host="127.0.0.1:%v";proto=https`, serverPort)
 			if got := r.Header.Get("Forwarded"); got != want {
 				t.Errorf("Forwarded = %v; want %v", got, want)
@@ -3136,7 +3136,7 @@ func TestH2H2AddForwardedStrip(t *testing.T) {
 			"--add-forwarded=by,host,proto",
 			"--forwarded-by=_alpha",
 		},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(_ http.ResponseWriter, r *http.Request) {
 			want := fmt.Sprintf(`by=_alpha;host="127.0.0.1:%v";proto=https`, serverPort)
 			if got := r.Header.Get("Forwarded"); got != want {
 				t.Errorf("Forwarded = %v; want %v", got, want)
@@ -3167,7 +3167,7 @@ func TestH2H2AddForwardedStrip(t *testing.T) {
 func TestH2H2StripForwarded(t *testing.T) {
 	opts := options{
 		args: []string{"--http2-bridge", "--strip-incoming-forwarded"},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(_ http.ResponseWriter, r *http.Request) {
 			if got, found := r.Header["Forwarded"]; found {
 				t.Errorf("Forwarded = %v; want nothing", got)
 			}
@@ -3200,7 +3200,7 @@ func TestH2H2ReqPhaseReturn(t *testing.T) {
 			"--http2-bridge",
 			"--mruby-file=" + testDir + "/req-return.rb",
 		},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(http.ResponseWriter, *http.Request) {
 			t.Fatalf("request should not be forwarded")
 		},
 	}
@@ -3322,7 +3322,7 @@ func TestH2H2DNS(t *testing.T) {
 func TestH2H2Code204(t *testing.T) {
 	opts := options{
 		args: []string{"--http2-bridge"},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(w http.ResponseWriter, _ *http.Request) {
 			w.WriteHeader(http.StatusNoContent)
 		},
 	}
@@ -3346,7 +3346,7 @@ func TestH2H2Code204(t *testing.T) {
 func TestH2APIBackendconfig(t *testing.T) {
 	opts := options{
 		args: []string{"-f127.0.0.1,3010;api;no-tls"},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(http.ResponseWriter, *http.Request) {
 			t.Fatalf("request should not be forwarded")
 		},
 		connectPort: 3010,
@@ -3388,7 +3388,7 @@ backend=127.0.0.1,3011
 func TestH2APIBackendconfigQuery(t *testing.T) {
 	opts := options{
 		args: []string{"-f127.0.0.1,3010;api;no-tls"},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(http.ResponseWriter, *http.Request) {
 			t.Fatalf("request should not be forwarded")
 		},
 		connectPort: 3010,
@@ -3430,7 +3430,7 @@ backend=127.0.0.1,3011
 func TestH2APIBackendconfigBadMethod(t *testing.T) {
 	opts := options{
 		args: []string{"-f127.0.0.1,3010;api;no-tls"},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(http.ResponseWriter, *http.Request) {
 			t.Fatalf("request should not be forwarded")
 		},
 		connectPort: 3010,
@@ -3471,7 +3471,7 @@ backend=127.0.0.1,3011
 func TestH2APIConfigrevision(t *testing.T) {
 	opts := options{
 		args: []string{"-f127.0.0.1,3010;api;no-tls"},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(http.ResponseWriter, *http.Request) {
 			t.Fatalf("request should not be forwarded")
 		},
 		connectPort: 3010,
@@ -3514,7 +3514,7 @@ func TestH2APIConfigrevision(t *testing.T) {
 func TestH2APINotFound(t *testing.T) {
 	opts := options{
 		args: []string{"-f127.0.0.1,3010;api;no-tls"},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(http.ResponseWriter, *http.Request) {
 			t.Fatalf("request should not be forwarded")
 		},
 		connectPort: 3010,
@@ -3555,7 +3555,7 @@ backend=127.0.0.1,3011
 func TestH2Healthmon(t *testing.T) {
 	opts := options{
 		args: []string{"-f127.0.0.1,3011;healthmon;no-tls"},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(http.ResponseWriter, *http.Request) {
 			t.Fatalf("request should not be forwarded")
 		},
 		connectPort: 3011,
@@ -3580,7 +3580,7 @@ func TestH2Healthmon(t *testing.T) {
 func TestH2ResponseBeforeRequestEnd(t *testing.T) {
 	opts := options{
 		args: []string{"--mruby-file=" + testDir + "/req-return.rb"},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(http.ResponseWriter, *http.Request) {
 			t.Fatal("request should not be forwarded")
 		},
 	}
@@ -3603,7 +3603,7 @@ func TestH2ResponseBeforeRequestEnd(t *testing.T) {
 // backend chunked encoded response ends prematurely.
 func TestH2H1ChunkedEndsPrematurely(t *testing.T) {
 	opts := options{
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(w http.ResponseWriter, _ *http.Request) {
 			hj, ok := w.(http.Hijacker)
 			if !ok {
 				http.Error(w, "Could not hijack the connection", http.StatusInternalServerError)
@@ -3641,7 +3641,7 @@ func TestH2H1ChunkedEndsPrematurely(t *testing.T) {
 func TestH2H1RequireHTTPSchemeHTTPSWithoutEncryption(t *testing.T) {
 	opts := options{
 		args: []string{"--require-http-scheme"},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(http.ResponseWriter, *http.Request) {
 			t.Errorf("server should not forward this request")
 		},
 	}
@@ -3666,7 +3666,7 @@ func TestH2H1RequireHTTPSchemeHTTPSWithoutEncryption(t *testing.T) {
 func TestH2H1RequireHTTPSchemeHTTPWithEncryption(t *testing.T) {
 	opts := options{
 		args: []string{"--require-http-scheme"},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(http.ResponseWriter, *http.Request) {
 			t.Errorf("server should not forward this request")
 		},
 		tls: true,
@@ -3693,7 +3693,7 @@ func TestH2H1RequireHTTPSchemeHTTPWithEncryption(t *testing.T) {
 func TestH2H1RequireHTTPSchemeUnknownSchemeWithoutEncryption(t *testing.T) {
 	opts := options{
 		args: []string{"--require-http-scheme"},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(http.ResponseWriter, *http.Request) {
 			t.Errorf("server should not forward this request")
 		},
 	}
@@ -3718,7 +3718,7 @@ func TestH2H1RequireHTTPSchemeUnknownSchemeWithoutEncryption(t *testing.T) {
 func TestH2H1RequireHTTPSchemeUnknownSchemeWithEncryption(t *testing.T) {
 	opts := options{
 		args: []string{"--require-http-scheme"},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(http.ResponseWriter, *http.Request) {
 			t.Errorf("server should not forward this request")
 		},
 		tls: true,
