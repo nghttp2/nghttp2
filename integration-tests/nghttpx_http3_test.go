@@ -41,7 +41,7 @@ func TestH3H1RequestBody(t *testing.T) {
 	}
 
 	opts := options{
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(_ http.ResponseWriter, r *http.Request) {
 			buf := make([]byte, 4096)
 			buflen := 0
 			p := buf
@@ -92,7 +92,7 @@ func TestH3H1RequestBody(t *testing.T) {
 // and from backend server.
 func TestH3H1GenerateVia(t *testing.T) {
 	opts := options{
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(_ http.ResponseWriter, r *http.Request) {
 			if got, want := r.Header.Get("Via"), "3 nghttpx"; got != want {
 				t.Errorf("Via: %v; want %v", got, want)
 			}
@@ -177,7 +177,7 @@ func TestH3H1NoVia(t *testing.T) {
 // response body size.
 func TestH3H1BadResponseCL(t *testing.T) {
 	opts := options{
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(w http.ResponseWriter, _ *http.Request) {
 			// we set content-length: 1024, but only send 3 bytes.
 			w.Header().Add("Content-Length", "1024")
 			if _, err := w.Write([]byte("foo")); err != nil {
@@ -256,7 +256,7 @@ func TestH3H2ReqPhaseReturn(t *testing.T) {
 			"--http2-bridge",
 			"--mruby-file=" + testDir + "/req-return.rb",
 		},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(http.ResponseWriter, *http.Request) {
 			t.Fatalf("request should not be forwarded")
 		},
 		quic: true,
@@ -338,7 +338,7 @@ func TestH3H2RespPhaseReturn(t *testing.T) {
 func TestH3ResponseBeforeRequestEnd(t *testing.T) {
 	opts := options{
 		args: []string{"--mruby-file=" + testDir + "/req-return.rb"},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(http.ResponseWriter, *http.Request) {
 			t.Fatal("request should not be forwarded")
 		},
 		quic: true,
@@ -362,7 +362,7 @@ func TestH3ResponseBeforeRequestEnd(t *testing.T) {
 // backend chunked encoded response ends prematurely.
 func TestH3H1ChunkedEndsPrematurely(t *testing.T) {
 	opts := options{
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(w http.ResponseWriter, _ *http.Request) {
 			hj, ok := w.(http.Hijacker)
 			if !ok {
 				http.Error(w, "Could not hijack the connection", http.StatusInternalServerError)

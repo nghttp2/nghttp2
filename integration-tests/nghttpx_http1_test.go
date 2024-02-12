@@ -58,7 +58,7 @@ func TestH1H1PlainGETClose(t *testing.T) {
 // 501 status code
 func TestH1H1InvalidMethod(t *testing.T) {
 	opts := options{
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(http.ResponseWriter, *http.Request) {
 			t.Errorf("server should not forward this request")
 		},
 	}
@@ -82,7 +82,7 @@ func TestH1H1InvalidMethod(t *testing.T) {
 // contains multiple Content-Length header fields.
 func TestH1H1MultipleRequestCL(t *testing.T) {
 	opts := options{
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(http.ResponseWriter, *http.Request) {
 			t.Errorf("server should not forward bad request")
 		},
 	}
@@ -255,7 +255,7 @@ func TestH1H1HostRewrite(t *testing.T) {
 // characters in host header field.
 func TestH1H1BadHost(t *testing.T) {
 	opts := options{
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(http.ResponseWriter, *http.Request) {
 			t.Errorf("server should not forward this request")
 		},
 	}
@@ -281,7 +281,7 @@ func TestH1H1BadHost(t *testing.T) {
 // bad characters in authority component of requset URI.
 func TestH1H1BadAuthority(t *testing.T) {
 	opts := options{
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(http.ResponseWriter, *http.Request) {
 			t.Errorf("server should not forward this request")
 		},
 	}
@@ -307,7 +307,7 @@ func TestH1H1BadAuthority(t *testing.T) {
 // bad characters in scheme component of requset URI.
 func TestH1H1BadScheme(t *testing.T) {
 	opts := options{
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(http.ResponseWriter, *http.Request) {
 			t.Errorf("server should not forward this request")
 		},
 	}
@@ -394,7 +394,7 @@ func TestH1H1HTTP10NoHostRewrite(t *testing.T) {
 // backend.
 func TestH1H1RequestTrailer(t *testing.T) {
 	opts := options{
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(_ http.ResponseWriter, r *http.Request) {
 			buf := make([]byte, 4096)
 			for {
 				_, err := r.Body.Read(buf)
@@ -436,7 +436,7 @@ func TestH1H1HeaderFieldBufferPath(t *testing.T) {
 	// limit.
 	opts := options{
 		args: []string{"--request-header-field-buffer=100"},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(http.ResponseWriter, *http.Request) {
 			t.Fatal("execution path should not be here")
 		},
 	}
@@ -460,7 +460,7 @@ func TestH1H1HeaderFieldBufferPath(t *testing.T) {
 func TestH1H1HeaderFieldBuffer(t *testing.T) {
 	opts := options{
 		args: []string{"--request-header-field-buffer=10"},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(http.ResponseWriter, *http.Request) {
 			t.Fatal("execution path should not be here")
 		},
 	}
@@ -483,7 +483,7 @@ func TestH1H1HeaderFieldBuffer(t *testing.T) {
 func TestH1H1HeaderFields(t *testing.T) {
 	opts := options{
 		args: []string{"--max-request-header-fields=1"},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(http.ResponseWriter, *http.Request) {
 			t.Fatal("execution path should not be here")
 		},
 	}
@@ -533,7 +533,7 @@ func TestH1H1Websocket(t *testing.T) {
 func TestH1H1ReqPhaseSetHeader(t *testing.T) {
 	opts := options{
 		args: []string{"--mruby-file=" + testDir + "/req-set-header.rb"},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(_ http.ResponseWriter, r *http.Request) {
 			if got, want := r.Header.Get("User-Agent"), "mruby"; got != want {
 				t.Errorf("User-Agent = %v; want %v", got, want)
 			}
@@ -559,7 +559,7 @@ func TestH1H1ReqPhaseSetHeader(t *testing.T) {
 func TestH1H1ReqPhaseReturn(t *testing.T) {
 	opts := options{
 		args: []string{"--mruby-file=" + testDir + "/req-return.rb"},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(http.ResponseWriter, *http.Request) {
 			t.Fatalf("request should not be forwarded")
 		},
 	}
@@ -599,7 +599,7 @@ func TestH1H1ReqPhaseReturn(t *testing.T) {
 func TestH1H1ReqPhaseReturnCONNECTMethod(t *testing.T) {
 	opts := options{
 		args: []string{"--mruby-file=" + testDir + "/req-return.rb"},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(http.ResponseWriter, *http.Request) {
 			t.Fatalf("request should not be forwarded")
 		},
 	}
@@ -884,7 +884,7 @@ func TestH1H1CONNECTMethodFailure(t *testing.T) {
 func TestH1H2NoHost(t *testing.T) {
 	opts := options{
 		args: []string{"--http2-bridge"},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(http.ResponseWriter, *http.Request) {
 			t.Errorf("server should not forward bad request")
 		},
 	}
@@ -978,7 +978,7 @@ func TestH1H2HTTP10NoHostRewrite(t *testing.T) {
 func TestH1H2CrumbleCookie(t *testing.T) {
 	opts := options{
 		args: []string{"--http2-bridge"},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(_ http.ResponseWriter, r *http.Request) {
 			if got, want := r.Header.Get("Cookie"), "alpha; bravo; charlie"; got != want {
 				t.Errorf("Cookie: %v; want %v", got, want)
 			}
@@ -1006,7 +1006,7 @@ func TestH1H2CrumbleCookie(t *testing.T) {
 func TestH1H2GenerateVia(t *testing.T) {
 	opts := options{
 		args: []string{"--http2-bridge"},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(_ http.ResponseWriter, r *http.Request) {
 			if got, want := r.Header.Get("Via"), "1.1 nghttpx"; got != want {
 				t.Errorf("Via: %v; want %v", got, want)
 			}
@@ -1092,7 +1092,7 @@ func TestH1H2ReqPhaseReturn(t *testing.T) {
 			"--http2-bridge",
 			"--mruby-file=" + testDir + "/req-return.rb",
 		},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(http.ResponseWriter, *http.Request) {
 			t.Fatalf("request should not be forwarded")
 		},
 	}
@@ -1172,7 +1172,7 @@ func TestH1H2RespPhaseReturn(t *testing.T) {
 func TestH1H2TE(t *testing.T) {
 	opts := options{
 		args: []string{"--http2-bridge"},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(_ http.ResponseWriter, r *http.Request) {
 			if got, want := r.Header.Get("te"), "trailers"; got != want {
 				t.Errorf("te: %v; want %v", got, want)
 			}
@@ -1200,7 +1200,7 @@ func TestH1H2TE(t *testing.T) {
 func TestH1APIBackendconfig(t *testing.T) {
 	opts := options{
 		args: []string{"-f127.0.0.1,3010;api;no-tls"},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(http.ResponseWriter, *http.Request) {
 			t.Fatalf("request should not be forwarded")
 		},
 		connectPort: 3010,
@@ -1242,7 +1242,7 @@ backend=127.0.0.1,3011
 func TestH1APIBackendconfigQuery(t *testing.T) {
 	opts := options{
 		args: []string{"-f127.0.0.1,3010;api;no-tls"},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(http.ResponseWriter, *http.Request) {
 			t.Fatalf("request should not be forwarded")
 		},
 		connectPort: 3010,
@@ -1284,7 +1284,7 @@ backend=127.0.0.1,3011
 func TestH1APIBackendconfigBadMethod(t *testing.T) {
 	opts := options{
 		args: []string{"-f127.0.0.1,3010;api;no-tls"},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(http.ResponseWriter, *http.Request) {
 			t.Fatalf("request should not be forwarded")
 		},
 		connectPort: 3010,
@@ -1325,7 +1325,7 @@ backend=127.0.0.1,3011
 func TestH1APIConfigrevision(t *testing.T) {
 	opts := options{
 		args: []string{"-f127.0.0.1,3010;api;no-tls"},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(http.ResponseWriter, *http.Request) {
 			t.Fatalf("request should not be forwarded")
 		},
 		connectPort: 3010,
@@ -1368,7 +1368,7 @@ func TestH1APIConfigrevision(t *testing.T) {
 func TestH1APINotFound(t *testing.T) {
 	opts := options{
 		args: []string{"-f127.0.0.1,3010;api;no-tls"},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(http.ResponseWriter, *http.Request) {
 			t.Fatalf("request should not be forwarded")
 		},
 		connectPort: 3010,
@@ -1409,7 +1409,7 @@ backend=127.0.0.1,3011
 func TestH1Healthmon(t *testing.T) {
 	opts := options{
 		args: []string{"-f127.0.0.1,3011;healthmon;no-tls"},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(http.ResponseWriter, *http.Request) {
 			t.Fatalf("request should not be forwarded")
 		},
 		connectPort: 3011,
@@ -1434,7 +1434,7 @@ func TestH1Healthmon(t *testing.T) {
 func TestH1ResponseBeforeRequestEnd(t *testing.T) {
 	opts := options{
 		args: []string{"--mruby-file=" + testDir + "/req-return.rb"},
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(http.ResponseWriter, *http.Request) {
 			t.Fatal("request should not be forwarded")
 		},
 	}
@@ -1462,7 +1462,7 @@ func TestH1ResponseBeforeRequestEnd(t *testing.T) {
 // if the backend chunked encoded response ends prematurely.
 func TestH1H1ChunkedEndsPrematurely(t *testing.T) {
 	opts := options{
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(w http.ResponseWriter, _ *http.Request) {
 			hj, ok := w.(http.Hijacker)
 			if !ok {
 				http.Error(w, "Could not hijack the connection", http.StatusInternalServerError)
@@ -1495,7 +1495,7 @@ func TestH1H1ChunkedEndsPrematurely(t *testing.T) {
 // request which contains malformed transfer-encoding.
 func TestH1H1RequestMalformedTransferEncoding(t *testing.T) {
 	opts := options{
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(http.ResponseWriter, *http.Request) {
 			t.Errorf("server should not forward bad request")
 		},
 	}
@@ -1523,7 +1523,7 @@ func TestH1H1RequestMalformedTransferEncoding(t *testing.T) {
 // its response contains malformed transfer-encoding.
 func TestH1H1ResponseMalformedTransferEncoding(t *testing.T) {
 	opts := options{
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(w http.ResponseWriter, _ *http.Request) {
 			hj, ok := w.(http.Hijacker)
 			if !ok {
 				http.Error(w, "Could not hijack the connection", http.StatusInternalServerError)
@@ -1559,7 +1559,7 @@ func TestH1H1ResponseMalformedTransferEncoding(t *testing.T) {
 // its response contains unknown transfer-encoding.
 func TestH1H1ResponseUnknownTransferEncoding(t *testing.T) {
 	opts := options{
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(w http.ResponseWriter, _ *http.Request) {
 			hj, ok := w.(http.Hijacker)
 			if !ok {
 				http.Error(w, "Could not hijack the connection", http.StatusInternalServerError)
@@ -1607,7 +1607,7 @@ func TestH1H1ResponseUnknownTransferEncoding(t *testing.T) {
 // HTTP/1.0 request which contains transfer-encoding.
 func TestH1H1RequestHTTP10TransferEncoding(t *testing.T) {
 	opts := options{
-		handler: func(w http.ResponseWriter, r *http.Request) {
+		handler: func(http.ResponseWriter, *http.Request) {
 			t.Errorf("server should not forward bad request")
 		},
 	}
