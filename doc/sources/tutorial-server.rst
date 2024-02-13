@@ -220,7 +220,7 @@ session object and several callbacks::
 
       nghttp2_session_callbacks_new(&callbacks);
 
-      nghttp2_session_callbacks_set_send_callback(callbacks, send_callback);
+      nghttp2_session_callbacks_set_send_callback2(callbacks, send_callback);
 
       nghttp2_session_callbacks_set_on_frame_recv_callback(callbacks,
                                                            on_frame_recv_callback);
@@ -275,12 +275,12 @@ this pending data. To process the received data, we call the
 ``session_recv()`` function::
 
     static int session_recv(http2_session_data *session_data) {
-      ssize_t readlen;
+      nghttp2_ssize readlen;
       struct evbuffer *input = bufferevent_get_input(session_data->bev);
       size_t datalen = evbuffer_get_length(input);
       unsigned char *data = evbuffer_pullup(input, -1);
 
-      readlen = nghttp2_session_mem_recv(session_data->session, data, datalen);
+      readlen = nghttp2_session_mem_recv2(session_data->session, data, datalen);
       if (readlen < 0) {
         warnx("Fatal error: %s", nghttp2_strerror((int)readlen));
         return -1;
@@ -296,9 +296,9 @@ this pending data. To process the received data, we call the
     }
 
 In this function, we feed all unprocessed but already received data to
-the nghttp2 session object using the `nghttp2_session_mem_recv()`
-function. The `nghttp2_session_mem_recv()` function processes the data
-and may both invoke the previously setup callbacks and also queue
+the nghttp2 session object using the `nghttp2_session_mem_recv2()`
+function. The `nghttp2_session_mem_recv2()` function processes the
+data and may both invoke the previously setup callbacks and also queue
 outgoing frames. To send any pending outgoing frames, we immediately
 call ``session_send()``.
 
@@ -316,11 +316,12 @@ The ``session_send()`` function is defined as follows::
 
 The `nghttp2_session_send()` function serializes the frame into wire
 format and calls the ``send_callback()``, which is of type
-:type:`nghttp2_send_callback`.  The ``send_callback()`` is defined as
+:type:`nghttp2_send_callback2`.  The ``send_callback()`` is defined as
 follows::
 
-    static ssize_t send_callback(nghttp2_session *session _U_, const uint8_t *data,
-                                 size_t length, int flags _U_, void *user_data) {
+    static nghttp2_ssize send_callback(nghttp2_session *session _U_,
+                                       const uint8_t *data, size_t length,
+                                       int flags _U_, void *user_data) {
       http2_session_data *session_data = (http2_session_data *)user_data;
       struct bufferevent *bev = session_data->bev;
       /* Avoid excessive buffering in server side. */
@@ -329,7 +330,7 @@ follows::
         return NGHTTP2_ERR_WOULDBLOCK;
       }
       bufferevent_write(bev, data, length);
-      return (ssize_t)length;
+      return (nghttp2_ssize)length;
     }
 
 Since we use bufferevent to abstract network I/O, we just write the
@@ -509,11 +510,11 @@ Sending the file content is performed by the ``send_response()`` function::
     static int send_response(nghttp2_session *session, int32_t stream_id,
                              nghttp2_nv *nva, size_t nvlen, int fd) {
       int rv;
-      nghttp2_data_provider data_prd;
+      nghttp2_data_provider2 data_prd;
       data_prd.source.fd = fd;
       data_prd.read_callback = file_read_callback;
 
-      rv = nghttp2_submit_response(session, stream_id, nva, nvlen, &data_prd);
+      rv = nghttp2_submit_response2(session, stream_id, nva, nvlen, &data_prd);
       if (rv != 0) {
         warnx("Fatal error: %s", nghttp2_strerror(rv));
         return -1;
@@ -521,7 +522,7 @@ Sending the file content is performed by the ``send_response()`` function::
       return 0;
     }
 
-nghttp2 uses the :type:`nghttp2_data_provider` structure to send the
+nghttp2 uses the :type:`nghttp2_data_provider2` structure to send the
 entity body to the remote peer. The ``source`` member of this
 structure is a union, which can be either a void pointer or an int
 (which is intended to be used as file descriptor). In this example
@@ -529,11 +530,11 @@ server, we use it as a file descriptor. We also set the
 ``file_read_callback()`` callback function to read the contents of the
 file::
 
-    static ssize_t file_read_callback(nghttp2_session *session _U_,
-                                      int32_t stream_id _U_, uint8_t *buf,
-                                      size_t length, uint32_t *data_flags,
-                                      nghttp2_data_source *source,
-                                      void *user_data _U_) {
+    static nghttp2_ssize file_read_callback(nghttp2_session *session _U_,
+                                            int32_t stream_id _U_, uint8_t *buf,
+                                            size_t length, uint32_t *data_flags,
+                                            nghttp2_data_source *source,
+                                            void *user_data _U_) {
       int fd = source->fd;
       ssize_t r;
       while ((r = read(fd, buf, length)) == -1 && errno == EINTR)
@@ -544,7 +545,7 @@ file::
       if (r == 0) {
         *data_flags |= NGHTTP2_DATA_FLAG_EOF;
       }
-      return r;
+      return (nghttp2_ssize)r;
     }
 
 If an error occurs while reading the file, we return
@@ -553,8 +554,8 @@ library to send RST_STREAM to the stream.  When all data has been
 read, the :macro:`NGHTTP2_DATA_FLAG_EOF` flag is set to signal nghttp2
 that we have finished reading the file.
 
-The `nghttp2_submit_response()` function is used to send the response to the
-remote peer.
+The `nghttp2_submit_response2()` function is used to send the response
+to the remote peer.
 
 The ``on_stream_close_callback()`` function is invoked when the stream
 is about to close::

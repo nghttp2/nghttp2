@@ -68,7 +68,7 @@ The example follows::
      * Callback function invoked when |session| wants to send data to
      * remote peer.
      */
-    typedef ssize_t (*nghttp2_send_callback)
+    typedef nghttp2_ssize (*nghttp2_send_callback2)
     (nghttp2_session *session,
      const uint8_t *data, size_t length, int flags, void *user_data);
 

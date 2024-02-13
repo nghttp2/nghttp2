@@ -44,7 +44,7 @@ namespace {
 void send_pending(nghttp2_session *session) {
   for (;;) {
     const uint8_t *data;
-    auto n = nghttp2_session_mem_send(session, &data);
+    auto n = nghttp2_session_mem_send2(session, &data);
     if (n == 0) {
       return;
     }
@@ -87,7 +87,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
   send_pending(session);
 
   std::vector<uint8_t> d = data_provider.ConsumeRemainingBytes<uint8_t>();
-  nghttp2_session_mem_recv(session, d.data(), d.size());
+  nghttp2_session_mem_recv2(session, d.data(), d.size());
 
   send_pending(session);
 

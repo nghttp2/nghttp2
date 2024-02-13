@@ -171,7 +171,7 @@ session object and several callbacks::
 
       nghttp2_session_callbacks_new(&callbacks);
 
-      nghttp2_session_callbacks_set_send_callback(callbacks, send_callback);
+      nghttp2_session_callbacks_set_send_callback2(callbacks, send_callback);
 
       nghttp2_session_callbacks_set_on_frame_recv_callback(callbacks,
                                                            on_frame_recv_callback);
@@ -246,8 +246,8 @@ HTTP request in the ``submit_request()`` function::
           MAKE_NV(":path", stream_data->path, stream_data->pathlen)};
       fprintf(stderr, "Request headers:\n");
       print_headers(stderr, hdrs, ARRLEN(hdrs));
-      stream_id = nghttp2_submit_request(session_data->session, NULL, hdrs,
-                                         ARRLEN(hdrs), NULL, stream_data);
+      stream_id = nghttp2_submit_request2(session_data->session, NULL, hdrs,
+                                          ARRLEN(hdrs), NULL, stream_data);
       if (stream_id < 0) {
         errx(1, "Could not submit HTTP request: %s", nghttp2_strerror(stream_id));
       }
@@ -258,11 +258,11 @@ HTTP request in the ``submit_request()`` function::
 We build the HTTP request header fields in ``hdrs``, which is an array
 of :type:`nghttp2_nv`. There are four header fields to be sent:
 ``:method``, ``:scheme``, ``:authority``, and ``:path``. To queue the
-HTTP request, we call `nghttp2_submit_request()`. The ``stream_data``
+HTTP request, we call `nghttp2_submit_request2()`. The ``stream_data``
 is passed via the *stream_user_data* parameter, which is helpfully
 later passed back to callback functions.
 
-`nghttp2_submit_request()` returns the newly assigned stream ID for
+`nghttp2_submit_request2()` returns the newly assigned stream ID for
 the request.
 
 The next bufferevent callback is ``readcb()``, which is invoked when
@@ -270,12 +270,12 @@ data is available to read from the bufferevent input buffer::
 
     static void readcb(struct bufferevent *bev, void *ptr) {
       http2_session_data *session_data = (http2_session_data *)ptr;
-      ssize_t readlen;
+      nghttp2_ssize readlen;
       struct evbuffer *input = bufferevent_get_input(bev);
       size_t datalen = evbuffer_get_length(input);
       unsigned char *data = evbuffer_pullup(input, -1);
 
-      readlen = nghttp2_session_mem_recv(session_data->session, data, datalen);
+      readlen = nghttp2_session_mem_recv2(session_data->session, data, datalen);
       if (readlen < 0) {
         warnx("Fatal error: %s", nghttp2_strerror((int)readlen));
         delete_http2_session_data(session_data);
@@ -293,8 +293,8 @@ data is available to read from the bufferevent input buffer::
     }
 
 In this function we feed all unprocessed, received data to the nghttp2
-session object using the `nghttp2_session_mem_recv()` function.
-`nghttp2_session_mem_recv()` processes the received data and may
+session object using the `nghttp2_session_mem_recv2()` function.
+`nghttp2_session_mem_recv2()` processes the received data and may
 invoke nghttp2 callbacks and queue frames for transmission.  Since
 there may be pending frames for transmission, we call immediately
 ``session_send()`` to send them.  ``session_send()`` is defined as
@@ -313,15 +313,16 @@ follows::
 
 The `nghttp2_session_send()` function serializes pending frames into
 wire format and calls the ``send_callback()`` function to send them.
-``send_callback()`` has type :type:`nghttp2_send_callback` and is
+``send_callback()`` has type :type:`nghttp2_send_callback2` and is
 defined as::
 
-    static ssize_t send_callback(nghttp2_session *session _U_, const uint8_t *data,
-                                 size_t length, int flags _U_, void *user_data) {
+    static nghttp2_ssize send_callback(nghttp2_session *session _U_,
+                                       const uint8_t *data, size_t length,
+                                       int flags _U_, void *user_data) {
       http2_session_data *session_data = (http2_session_data *)user_data;
       struct bufferevent *bev = session_data->bev;
       bufferevent_write(bev, data, length);
-      return (ssize_t)length;
+      return (nghttp2_ssize)length;
     }
 
 Since we use bufferevent to abstract network I/O, we just write the

@@ -63,6 +63,7 @@ char *strndup(const char *s, size_t size);
 #include <event2/bufferevent_ssl.h>
 #include <event2/dns.h>
 
+#define NGHTTP2_NO_SSIZE_T
 #include <nghttp2/nghttp2.h>
 
 #include "url-parser/url_parser.h"
@@ -196,18 +197,19 @@ static void print_headers(FILE *f, nghttp2_nv *nva, size_t nvlen) {
   fprintf(f, "\n");
 }
 
-/* nghttp2_send_callback. Here we transmit the |data|, |length| bytes,
-   to the network. Because we are using libevent bufferevent, we just
-   write those bytes into bufferevent buffer. */
-static ssize_t send_callback(nghttp2_session *session, const uint8_t *data,
-                             size_t length, int flags, void *user_data) {
+/* nghttp2_send_callback2. Here we transmit the |data|, |length|
+   bytes, to the network. Because we are using libevent bufferevent,
+   we just write those bytes into bufferevent buffer. */
+static nghttp2_ssize send_callback(nghttp2_session *session,
+                                   const uint8_t *data, size_t length,
+                                   int flags, void *user_data) {
   http2_session_data *session_data = (http2_session_data *)user_data;
   struct bufferevent *bev = session_data->bev;
   (void)session;
   (void)flags;
 
   bufferevent_write(bev, data, length);
-  return (ssize_t)length;
+  return (nghttp2_ssize)length;
 }
 
 /* nghttp2_on_header_callback: Called when nghttp2 library emits
@@ -342,7 +344,7 @@ static void initialize_nghttp2_session(http2_session_data *session_data) {
 
   nghttp2_session_callbacks_new(&callbacks);
 
-  nghttp2_session_callbacks_set_send_callback(callbacks, send_callback);
+  nghttp2_session_callbacks_set_send_callback2(callbacks, send_callback);
 
   nghttp2_session_callbacks_set_on_frame_recv_callback(callbacks,
                                                        on_frame_recv_callback);
@@ -403,8 +405,8 @@ static void submit_request(http2_session_data *session_data) {
       MAKE_NV(":path", stream_data->path, stream_data->pathlen)};
   fprintf(stderr, "Request headers:\n");
   print_headers(stderr, hdrs, ARRLEN(hdrs));
-  stream_id = nghttp2_submit_request(session_data->session, NULL, hdrs,
-                                     ARRLEN(hdrs), NULL, stream_data);
+  stream_id = nghttp2_submit_request2(session_data->session, NULL, hdrs,
+                                      ARRLEN(hdrs), NULL, stream_data);
   if (stream_id < 0) {
     errx(1, "Could not submit HTTP request: %s", nghttp2_strerror(stream_id));
   }
@@ -431,12 +433,12 @@ static int session_send(http2_session_data *session_data) {
    context. To send them, we call session_send() in the end. */
 static void readcb(struct bufferevent *bev, void *ptr) {
   http2_session_data *session_data = (http2_session_data *)ptr;
-  ssize_t readlen;
+  nghttp2_ssize readlen;
   struct evbuffer *input = bufferevent_get_input(bev);
   size_t datalen = evbuffer_get_length(input);
   unsigned char *data = evbuffer_pullup(input, -1);
 
-  readlen = nghttp2_session_mem_recv(session_data->session, data, datalen);
+  readlen = nghttp2_session_mem_recv2(session_data->session, data, datalen);
   if (readlen < 0) {
     warnx("Fatal error: %s", nghttp2_strerror((int)readlen));
     delete_http2_session_data(session_data);

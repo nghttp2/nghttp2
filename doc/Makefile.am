@@ -42,7 +42,9 @@ APIDOCS= \
 	nghttp2_hd_deflate_get_num_table_entries.rst \
 	nghttp2_hd_deflate_get_table_entry.rst \
 	nghttp2_hd_deflate_hd.rst \
+	nghttp2_hd_deflate_hd2.rst \
 	nghttp2_hd_deflate_hd_vec.rst \
+	nghttp2_hd_deflate_hd_vec2.rst \
 	nghttp2_hd_deflate_new.rst \
 	nghttp2_hd_deflate_new2.rst \
 	nghttp2_hd_inflate_change_table_size.rst \
@@ -54,6 +56,7 @@ APIDOCS= \
 	nghttp2_hd_inflate_get_table_entry.rst \
 	nghttp2_hd_inflate_hd.rst \
 	nghttp2_hd_inflate_hd2.rst \
+	nghttp2_hd_inflate_hd3.rst \
 	nghttp2_hd_inflate_new.rst \
 	nghttp2_hd_inflate_new2.rst \
 	nghttp2_http2_strerror.rst \
@@ -78,6 +81,7 @@ APIDOCS= \
 	nghttp2_option_set_max_settings.rst \
 	nghttp2_option_set_stream_reset_rate_limit.rst \
 	nghttp2_pack_settings_payload.rst \
+	nghttp2_pack_settings_payload2.rst \
 	nghttp2_priority_spec_check_default.rst \
 	nghttp2_priority_spec_default_init.rst \
 	nghttp2_priority_spec_init.rst \
@@ -91,6 +95,7 @@ APIDOCS= \
 	nghttp2_session_callbacks_new.rst \
 	nghttp2_session_callbacks_set_before_frame_send_callback.rst \
 	nghttp2_session_callbacks_set_data_source_read_length_callback.rst \
+	nghttp2_session_callbacks_set_data_source_read_length_callback2.rst \
 	nghttp2_session_callbacks_set_error_callback.rst \
 	nghttp2_session_callbacks_set_error_callback2.rst \
 	nghttp2_session_callbacks_set_on_begin_frame_callback.rst \
@@ -107,9 +112,13 @@ APIDOCS= \
 	nghttp2_session_callbacks_set_on_invalid_header_callback2.rst \
 	nghttp2_session_callbacks_set_on_stream_close_callback.rst \
 	nghttp2_session_callbacks_set_pack_extension_callback.rst \
+	nghttp2_session_callbacks_set_pack_extension_callback2.rst \
 	nghttp2_session_callbacks_set_recv_callback.rst \
+	nghttp2_session_callbacks_set_recv_callback2.rst \
 	nghttp2_session_callbacks_set_select_padding_callback.rst \
+	nghttp2_session_callbacks_set_select_padding_callback2.rst \
 	nghttp2_session_callbacks_set_send_callback.rst \
+	nghttp2_session_callbacks_set_send_callback2.rst \
 	nghttp2_session_callbacks_set_send_data_callback.rst \
 	nghttp2_session_callbacks_set_unpack_extension_callback.rst \
 	nghttp2_session_change_extpri_stream_priority.rst \
@@ -146,7 +155,9 @@ APIDOCS= \
 	nghttp2_session_get_stream_remote_window_size.rst \
 	nghttp2_session_get_stream_user_data.rst \
 	nghttp2_session_mem_recv.rst \
+	nghttp2_session_mem_recv2.rst \
 	nghttp2_session_mem_send.rst \
+	nghttp2_session_mem_send2.rst \
 	nghttp2_session_recv.rst \
 	nghttp2_session_resume_data.rst \
 	nghttp2_session_send.rst \
@@ -174,6 +185,7 @@ APIDOCS= \
 	nghttp2_strerror.rst \
 	nghttp2_submit_altsvc.rst \
 	nghttp2_submit_data.rst \
+	nghttp2_submit_data2.rst \
 	nghttp2_submit_extension.rst \
 	nghttp2_submit_goaway.rst \
 	nghttp2_submit_headers.rst \
@@ -183,7 +195,9 @@ APIDOCS= \
 	nghttp2_submit_priority_update.rst \
 	nghttp2_submit_push_promise.rst \
 	nghttp2_submit_request.rst \
+	nghttp2_submit_request2.rst \
 	nghttp2_submit_response.rst \
+	nghttp2_submit_response2.rst \
 	nghttp2_submit_rst_stream.rst \
 	nghttp2_submit_settings.rst \
 	nghttp2_submit_shutdown_notice.rst \

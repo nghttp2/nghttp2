@@ -60,8 +60,8 @@ void nva_out_reset(nva_out *out, nghttp2_mem *mem);
 
 void add_out(nva_out *out, nghttp2_nv *nv, nghttp2_mem *mem);
 
-ssize_t inflate_hd(nghttp2_hd_inflater *inflater, nva_out *out,
-                   nghttp2_bufs *bufs, size_t offset, nghttp2_mem *mem);
+nghttp2_ssize inflate_hd(nghttp2_hd_inflater *inflater, nva_out *out,
+                         nghttp2_bufs *bufs, size_t offset, nghttp2_mem *mem);
 
 int pack_headers(nghttp2_bufs *bufs, nghttp2_hd_deflater *deflater,
                  int32_t stream_id, uint8_t flags, const nghttp2_nv *nva,

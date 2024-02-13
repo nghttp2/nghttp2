@@ -29,6 +29,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#define NGHTTP2_NO_SSIZE_T
 #include <nghttp2/nghttp2.h>
 
 #define MAKE_NV(K, V)                                                          \
@@ -93,7 +94,7 @@ int main(void) {
 static void deflate(nghttp2_hd_deflater *deflater,
                     nghttp2_hd_inflater *inflater, const nghttp2_nv *const nva,
                     size_t nvlen) {
-  ssize_t rv;
+  nghttp2_ssize rv;
   uint8_t *buf;
   size_t buflen;
   size_t outlen;
@@ -118,10 +119,10 @@ static void deflate(nghttp2_hd_deflater *deflater,
   buflen = nghttp2_hd_deflate_bound(deflater, nva, nvlen);
   buf = malloc(buflen);
 
-  rv = nghttp2_hd_deflate_hd(deflater, buf, buflen, nva, nvlen);
+  rv = nghttp2_hd_deflate_hd2(deflater, buf, buflen, nva, nvlen);
 
   if (rv < 0) {
-    fprintf(stderr, "nghttp2_hd_deflate_hd() failed with error: %s\n",
+    fprintf(stderr, "nghttp2_hd_deflate_hd2() failed with error: %s\n",
             nghttp2_strerror((int)rv));
 
     free(buf);
@@ -166,17 +167,18 @@ static void deflate(nghttp2_hd_deflater *deflater,
 
 int inflate_header_block(nghttp2_hd_inflater *inflater, uint8_t *in,
                          size_t inlen, int final) {
-  ssize_t rv;
+  nghttp2_ssize rv;
 
   for (;;) {
     nghttp2_nv nv;
     int inflate_flags = 0;
     size_t proclen;
 
-    rv = nghttp2_hd_inflate_hd(inflater, &nv, &inflate_flags, in, inlen, final);
+    rv =
+        nghttp2_hd_inflate_hd3(inflater, &nv, &inflate_flags, in, inlen, final);
 
     if (rv < 0) {
-      fprintf(stderr, "inflate failed with error code %zd", rv);
+      fprintf(stderr, "inflate failed with error code %td", rv);
       return -1;
     }
 

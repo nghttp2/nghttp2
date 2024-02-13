@@ -24,11 +24,11 @@ deflater object for the dynamic header table.  If in doubt, just
 specify 4096 here, which is the default upper bound of dynamic header
 table buffer size.
 
-To encode header fields, use the `nghttp2_hd_deflate_hd()` function::
+To encode header fields, use the `nghttp2_hd_deflate_hd2()` function::
 
-    ssize_t nghttp2_hd_deflate_hd(nghttp2_hd_deflater *deflater,
-                                  uint8_t *buf, size_t buflen,
-                                  const nghttp2_nv *nva, size_t nvlen);
+    nghttp2_ssize nghttp2_hd_deflate_hd2(nghttp2_hd_deflater *deflater,
+                                         uint8_t *buf, size_t buflen,
+                                         const nghttp2_nv *nva, size_t nvlen);
 
 The *deflater* is the deflater object initialized by
 `nghttp2_hd_deflate_new()` described above. The encoded byte string is
@@ -44,7 +44,7 @@ cookies), set the :macro:`NGHTTP2_NV_FLAG_NO_INDEX` flag in
 sensitive header fields by compression based attacks: This is achieved
 by not inserting the header field into the dynamic header table.
 
-`nghttp2_hd_deflate_hd()` processes all headers given in *nva*.  The
+`nghttp2_hd_deflate_hd2()` processes all headers given in *nva*.  The
 *nva* must include all request or response header fields to be sent in
 one HEADERS (or optionally following (multiple) CONTINUATION
 frame(s)).  The *buf* must have enough space to store the encoded
@@ -55,13 +55,13 @@ of the encoded result length, use `nghttp2_hd_deflate_bound()`::
                                     const nghttp2_nv *nva, size_t nvlen);
 
 Pass this function the same parameters (*deflater*, *nva*, and
-*nvlen*) which will be passed to `nghttp2_hd_deflate_hd()`.
+*nvlen*) which will be passed to `nghttp2_hd_deflate_hd2()`.
 
-Subsequent calls to `nghttp2_hd_deflate_hd()` will use the current
+Subsequent calls to `nghttp2_hd_deflate_hd2()` will use the current
 encoder state and perform differential encoding, which yields HPAC's
 fundamental compression gain.
 
-If `nghttp2_hd_deflate_hd()` fails, the failure is fatal and any
+If `nghttp2_hd_deflate_hd2()` fails, the failure is fatal and any
 further calls with the same deflater object will fail.  Thus it's very
 important to use `nghttp2_hd_deflate_bound()` to determine the
 required size of the output buffer.
@@ -78,14 +78,14 @@ header data.  To initialize the object, use
 
     int nghttp2_hd_inflate_new(nghttp2_hd_inflater **inflater_ptr);
 
-To inflate header data, use `nghttp2_hd_inflate_hd2()`::
+To inflate header data, use `nghttp2_hd_inflate_hd3()`::
 
-    ssize_t nghttp2_hd_inflate_hd2(nghttp2_hd_inflater *inflater,
-                                   nghttp2_nv *nv_out, int *inflate_flags,
-                                   const uint8_t *in, size_t inlen,
-                                   int in_final);
+    nghttp2_ssize nghttp2_hd_inflate_hd3(nghttp2_hd_inflater *inflater,
+					 nghttp2_nv *nv_out, int *inflate_flags,
+					 const uint8_t *in, size_t inlen,
+					 int in_final);
 
-`nghttp2_hd_inflate_hd2()` reads a stream of bytes and outputs a
+`nghttp2_hd_inflate_hd3()` reads a stream of bytes and outputs a
 single header field at a time. Multiple calls are normally required to
 read a full stream of bytes and output all of the header fields.
 
@@ -119,7 +119,7 @@ If *in_final* is zero and the :macro:`NGHTTP2_HD_INFLATE_EMIT` flag is
 not set, it indicates that all given data was processed.  The caller
 is required to pass additional data.
 
-Example usage of `nghttp2_hd_inflate_hd2()` is shown in the
+Example usage of `nghttp2_hd_inflate_hd3()` is shown in the
 `inflate_header_block()` function in `deflate.c`_.
 
 Finally, to delete a :type:`nghttp2_hd_inflater` object, use

@@ -480,7 +480,7 @@ Previously nghttp2 library did not send client magic, which is first
 24 bytes byte string of client connection preface, and client
 applications have to send it by themselves.  Since v1.0.0, client
 magic is sent by library via first call of ``nghttp2_session_send()``
-or ``nghttp2_session_mem_send()``.
+or ``nghttp2_session_mem_send2()``.
 
 The client applications which send client magic must remove the
 relevant code.

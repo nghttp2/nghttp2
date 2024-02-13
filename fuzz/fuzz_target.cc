@@ -40,7 +40,7 @@ namespace {
 void send_pending(nghttp2_session *session) {
   for (;;) {
     const uint8_t *data;
-    auto n = nghttp2_session_mem_send(session, &data);
+    auto n = nghttp2_session_mem_send2(session, &data);
     if (n == 0) {
       return;
     }
@@ -70,7 +70,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
   nghttp2_settings_entry iv{NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS, 100};
   nghttp2_submit_settings(session, NGHTTP2_FLAG_NONE, &iv, 1);
   send_pending(session);
-  nghttp2_session_mem_recv(session, data, size);
+  nghttp2_session_mem_recv2(session, data, size);
   send_pending(session);
 
   nghttp2_session_del(session);

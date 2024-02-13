@@ -134,8 +134,8 @@ void test_nghttp2_frame_pack_headers(void) {
   assert_int32(NGHTTP2_DEFAULT_WEIGHT, ==, oframe.pri_spec.weight);
 
   hdblocklen = nghttp2_bufs_len(&bufs) - NGHTTP2_FRAME_HDLEN;
-  assert_ssize((ssize_t)hdblocklen, ==,
-               inflate_hd(&inflater, &out, &bufs, NGHTTP2_FRAME_HDLEN, mem));
+  assert_ptrdiff((nghttp2_ssize)hdblocklen, ==,
+                 inflate_hd(&inflater, &out, &bufs, NGHTTP2_FRAME_HDLEN, mem));
 
   assert_size(7, ==, out.nvlen);
   assert_true(nvnameeq("method", &out.nva[0]));
@@ -168,11 +168,11 @@ void test_nghttp2_frame_pack_headers(void) {
 
   hdblocklen = nghttp2_bufs_len(&bufs) - NGHTTP2_FRAME_HDLEN -
                nghttp2_frame_priority_len(oframe.hd.flags);
-  assert_ssize((ssize_t)hdblocklen, ==,
-               inflate_hd(&inflater, &out, &bufs,
-                          NGHTTP2_FRAME_HDLEN +
-                              nghttp2_frame_priority_len(oframe.hd.flags),
-                          mem));
+  assert_ptrdiff((nghttp2_ssize)hdblocklen, ==,
+                 inflate_hd(&inflater, &out, &bufs,
+                            NGHTTP2_FRAME_HDLEN +
+                                nghttp2_frame_priority_len(oframe.hd.flags),
+                            mem));
 
   nghttp2_nv_array_sort(out.nva, out.nvlen);
   assert_true(nvnameeq("method", &out.nva[0]));
@@ -363,8 +363,8 @@ void test_nghttp2_frame_pack_push_promise(void) {
   assert_int32((1U << 31) - 1, ==, oframe.promised_stream_id);
 
   hdblocklen = nghttp2_bufs_len(&bufs) - NGHTTP2_FRAME_HDLEN - 4;
-  assert_ssize(
-      (ssize_t)hdblocklen, ==,
+  assert_ptrdiff(
+      (nghttp2_ssize)hdblocklen, ==,
       inflate_hd(&inflater, &out, &bufs, NGHTTP2_FRAME_HDLEN + 4, mem));
 
   assert_size(7, ==, out.nvlen);
@@ -650,7 +650,7 @@ void test_nghttp2_frame_pack_priority_update(void) {
 
 void test_nghttp2_nv_array_copy(void) {
   nghttp2_nv *nva;
-  ssize_t rv;
+  int rv;
   nghttp2_nv emptynv[] = {MAKE_NV("", ""), MAKE_NV("", "")};
   nghttp2_nv nv[] = {MAKE_NV("alpha", "bravo"), MAKE_NV("charlie", "delta")};
   nghttp2_nv bignv;
@@ -666,11 +666,11 @@ void test_nghttp2_nv_array_copy(void) {
   memset(bignv.value, '0', bignv.valuelen);
 
   rv = nghttp2_nv_array_copy(&nva, NULL, 0, mem);
-  assert_ssize(0, ==, rv);
+  assert_int(0, ==, rv);
   assert_null(nva);
 
   rv = nghttp2_nv_array_copy(&nva, emptynv, ARRLEN(emptynv), mem);
-  assert_ssize(0, ==, rv);
+  assert_int(0, ==, rv);
   assert_size(0, ==, nva[0].namelen);
   assert_size(0, ==, nva[0].valuelen);
   assert_size(0, ==, nva[1].namelen);
@@ -679,7 +679,7 @@ void test_nghttp2_nv_array_copy(void) {
   nghttp2_nv_array_del(nva, mem);
 
   rv = nghttp2_nv_array_copy(&nva, nv, ARRLEN(nv), mem);
-  assert_ssize(0, ==, rv);
+  assert_int(0, ==, rv);
   assert_size(5, ==, nva[0].namelen);
   assert_memory_equal(5, "alpha", nva[0].name);
   assert_size(5, ==, nva[0].valuelen);
@@ -693,7 +693,7 @@ void test_nghttp2_nv_array_copy(void) {
 
   /* Large header field is acceptable */
   rv = nghttp2_nv_array_copy(&nva, &bignv, 1, mem);
-  assert_ssize(0, ==, rv);
+  assert_int(0, ==, rv);
 
   nghttp2_nv_array_del(nva, mem);
 
