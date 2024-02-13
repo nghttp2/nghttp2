@@ -171,6 +171,7 @@ void test_nghttp2_session_server_fallback_rfc7540_priorities(void);
 void test_nghttp2_session_stream_reset_ratelim(void);
 void test_nghttp2_http_mandatory_headers(void);
 void test_nghttp2_http_content_length(void);
+void test_nghttp2_http_content_length_close(void);
 void test_nghttp2_http_content_length_mismatch(void);
 void test_nghttp2_http_non_final_response(void);
 void test_nghttp2_http_trailer_headers(void);

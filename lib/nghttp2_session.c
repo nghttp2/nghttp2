@@ -1487,6 +1487,11 @@ int nghttp2_session_close_stream(nghttp2_session *session, int32_t stream_id,
     }
   }
 
+  if (error_code == NGHTTP2_NO_ERROR &&
+      nghttp2_http_on_remote_end_stream(stream) == -1) {
+    error_code = NGHTTP2_PROTOCOL_ERROR;
+  }
+
   /* We call on_stream_close_callback even if stream->state is
      NGHTTP2_STREAM_INITIAL. This will happen while sending request
      HEADERS, a local endpoint receives RST_STREAM for that stream. It

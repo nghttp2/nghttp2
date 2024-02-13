@@ -12525,6 +12525,59 @@ void test_nghttp2_http_content_length(void) {
   nghttp2_bufs_free(&bufs);
 }
 
+void test_nghttp2_http_content_length_close(void) {
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+  nghttp2_hd_deflater deflater;
+  nghttp2_mem *mem;
+  nghttp2_bufs bufs;
+  ssize_t rv;
+  nghttp2_stream *stream;
+  my_user_data ud;
+  const nghttp2_nv cl_resnv[] = {MAKE_NV(":status", "200"),
+                                 MAKE_NV("content-length", "9000000000")};
+
+  mem = nghttp2_mem_default();
+  frame_pack_bufs_init(&bufs);
+
+  memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
+  callbacks.send_callback = null_send_callback;
+  callbacks.on_stream_close_callback = on_stream_close_callback;
+
+  ud.stream_close_cb_called = 0;
+
+  nghttp2_session_client_new(&session, &callbacks, &ud);
+
+  nghttp2_hd_deflate_init(&deflater, mem);
+
+  stream = open_sent_stream2(session, 1, NGHTTP2_STREAM_OPENING);
+
+  rv = pack_headers(&bufs, &deflater, 1, NGHTTP2_FLAG_END_HEADERS, cl_resnv,
+                    ARRLEN(cl_resnv), mem);
+  CU_ASSERT(0 == rv);
+
+  rv = nghttp2_session_mem_recv(session, bufs.head->buf.pos,
+                                nghttp2_buf_len(&bufs.head->buf));
+
+  CU_ASSERT((ssize_t)nghttp2_buf_len(&bufs.head->buf) == rv);
+  CU_ASSERT(NULL == nghttp2_session_get_next_ob_item(session));
+  CU_ASSERT(9000000000LL == stream->content_length);
+  CU_ASSERT(200 == stream->status_code);
+  CU_ASSERT(0 == ud.stream_close_cb_called);
+
+  CU_ASSERT(nghttp2_session_close_stream(session, 1, NGHTTP2_NO_ERROR) == 0);
+  CU_ASSERT(ud.stream_close_cb_called == 1);
+  CU_ASSERT(ud.stream_close_error_code != NGHTTP2_NO_ERROR);
+
+  nghttp2_hd_deflate_free(&deflater);
+
+  nghttp2_session_del(session);
+
+  nghttp2_bufs_reset(&bufs);
+
+  nghttp2_bufs_free(&bufs);
+}
+
 void test_nghttp2_http_content_length_mismatch(void) {
   nghttp2_session *session;
   nghttp2_session_callbacks callbacks;
