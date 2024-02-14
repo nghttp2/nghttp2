@@ -32,6 +32,7 @@
 #include "nghttp2_hd.h"
 #include "nghttp2_frame.h"
 #include "nghttp2_test_helper.h"
+#include "nghttp2_assertion.h"
 
 static const MunitTest tests[] = {
     munit_void_test(test_nghttp2_hd_deflate),

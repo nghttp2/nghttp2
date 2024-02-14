@@ -29,8 +29,6 @@
 #  include <config.h>
 #endif /* HAVE_CONFIG_H */
 
-#include "munit.h"
-
 #include "nghttp2_frame.h"
 #include "nghttp2_hd.h"
 #include "nghttp2_session.h"
@@ -41,26 +39,6 @@
         sizeof((VALUE)) - 1, NGHTTP2_NV_FLAG_NONE                              \
   }
 #define ARRLEN(ARR) (sizeof(ARR) / sizeof(ARR[0]))
-
-#define assert_nv_equal(A, B, len, mem)                                        \
-  do {                                                                         \
-    size_t alloclen = sizeof(nghttp2_nv) * len;                                \
-    const nghttp2_nv *sa = A, *sb = B;                                         \
-    nghttp2_nv *a = mem->malloc(alloclen, NULL);                               \
-    nghttp2_nv *b = mem->malloc(alloclen, NULL);                               \
-    ssize_t i_;                                                                \
-    memcpy(a, sa, alloclen);                                                   \
-    memcpy(b, sb, alloclen);                                                   \
-    nghttp2_nv_array_sort(a, len);                                             \
-    nghttp2_nv_array_sort(b, len);                                             \
-    for (i_ = 0; i_ < (ssize_t)len; ++i_) {                                    \
-      assert_memn_equal(a[i_].name, a[i_].namelen, b[i_].name, b[i_].namelen); \
-      assert_memn_equal(a[i_].value, a[i_].valuelen, b[i_].value,              \
-                        b[i_].valuelen);                                       \
-    }                                                                          \
-    mem->free(b, NULL);                                                        \
-    mem->free(a, NULL);                                                        \
-  } while (0);
 
 int unpack_framebuf(nghttp2_frame *frame, nghttp2_bufs *bufs);
 

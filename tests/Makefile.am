@@ -48,6 +48,7 @@ HFILES = nghttp2_pq_test.h nghttp2_map_test.h nghttp2_queue_test.h \
 	nghttp2_session_test.h \
 	nghttp2_frame_test.h nghttp2_stream_test.h nghttp2_hd_test.h \
 	nghttp2_alpn_test.h nghttp2_helper_test.h \
+	nghttp2_assertion.h \
 	nghttp2_test_helper.h \
 	nghttp2_buf_test.h \
 	nghttp2_http_test.h \

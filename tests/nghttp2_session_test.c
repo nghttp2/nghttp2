@@ -34,6 +34,7 @@
 #include "nghttp2_net.h"
 #include "nghttp2_helper.h"
 #include "nghttp2_test_helper.h"
+#include "nghttp2_assertion.h"
 #include "nghttp2_priority_spec.h"
 #include "nghttp2_extpri.h"
 
