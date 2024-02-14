@@ -29,13 +29,18 @@
 #  include <config.h>
 #endif // HAVE_CONFIG_H
 
+#define MUNIT_ENABLE_ASSERT_ALIASES
+
+#include "munit.h"
+
 namespace shrpx {
 
-void test_shrpx_config_parse_header(void);
-void test_shrpx_config_parse_log_format(void);
-void test_shrpx_config_read_tls_ticket_key_file(void);
-void test_shrpx_config_read_tls_ticket_key_file_aes_256(void);
-void test_shrpx_config_match_downstream_addr_group(void);
+extern const MunitSuite config_suite;
+
+munit_void_test_decl(test_shrpx_config_parse_header);
+munit_void_test_decl(test_shrpx_config_parse_log_format);
+munit_void_test_decl(test_shrpx_config_read_tls_ticket_key_file);
+munit_void_test_decl(test_shrpx_config_read_tls_ticket_key_file_aes_256);
 
 } // namespace shrpx
 

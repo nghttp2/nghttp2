@@ -29,13 +29,19 @@
 #  include <config.h>
 #endif // HAVE_CONFIG_H
 
+#define MUNIT_ENABLE_ASSERT_ALIASES
+
+#include "munit.h"
+
 namespace shrpx {
 
-void test_shrpx_http_create_forwarded(void);
-void test_shrpx_http_create_via_header_value(void);
-void test_shrpx_http_create_affinity_cookie(void);
-void test_shrpx_http_create_altsvc_header_value(void);
-void test_shrpx_http_check_http_scheme(void);
+extern const MunitSuite http_suite;
+
+munit_void_test_decl(test_shrpx_http_create_forwarded);
+munit_void_test_decl(test_shrpx_http_create_via_header_value);
+munit_void_test_decl(test_shrpx_http_create_affinity_cookie);
+munit_void_test_decl(test_shrpx_http_create_altsvc_header_value);
+munit_void_test_decl(test_shrpx_http_check_http_scheme);
 
 } // namespace shrpx
 

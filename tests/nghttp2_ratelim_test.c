@@ -26,67 +26,77 @@
 
 #include <stdio.h>
 
-#include <CUnit/CUnit.h>
+#include "munit.h"
 
 #include "nghttp2_ratelim.h"
+
+static const MunitTest tests[] = {
+    munit_void_test(test_nghttp2_ratelim_update),
+    munit_void_test(test_nghttp2_ratelim_drain),
+    munit_test_end(),
+};
+
+const MunitSuite ratelim_suite = {
+    "/ratelim", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
+};
 
 void test_nghttp2_ratelim_update(void) {
   nghttp2_ratelim rl;
 
   nghttp2_ratelim_init(&rl, 1000, 21);
 
-  CU_ASSERT(1000 == rl.val);
-  CU_ASSERT(1000 == rl.burst);
-  CU_ASSERT(21 == rl.rate);
-  CU_ASSERT(0 == rl.tstamp);
+  assert_uint64(1000, ==, rl.val);
+  assert_uint64(1000, ==, rl.burst);
+  assert_uint64(21, ==, rl.rate);
+  assert_uint64(0, ==, rl.tstamp);
 
   nghttp2_ratelim_update(&rl, 999);
 
-  CU_ASSERT(1000 == rl.val);
-  CU_ASSERT(999 == rl.tstamp);
+  assert_uint64(1000, ==, rl.val);
+  assert_uint64(999, ==, rl.tstamp);
 
   nghttp2_ratelim_drain(&rl, 100);
 
-  CU_ASSERT(900 == rl.val);
+  assert_uint64(900, ==, rl.val);
 
   nghttp2_ratelim_update(&rl, 1000);
 
-  CU_ASSERT(921 == rl.val);
+  assert_uint64(921, ==, rl.val);
 
   nghttp2_ratelim_update(&rl, 1002);
 
-  CU_ASSERT(963 == rl.val);
+  assert_uint64(963, ==, rl.val);
 
   nghttp2_ratelim_update(&rl, 1004);
 
-  CU_ASSERT(1000 == rl.val);
-  CU_ASSERT(1004 == rl.tstamp);
+  assert_uint64(1000, ==, rl.val);
+  assert_uint64(1004, ==, rl.tstamp);
 
   /* timer skew */
   nghttp2_ratelim_init(&rl, 1000, 21);
   nghttp2_ratelim_update(&rl, 1);
 
-  CU_ASSERT(1000 == rl.val);
+  assert_uint64(1000, ==, rl.val);
 
   nghttp2_ratelim_update(&rl, 0);
 
-  CU_ASSERT(1000 == rl.val);
+  assert_uint64(1000, ==, rl.val);
 
   /* rate * duration overflow */
   nghttp2_ratelim_init(&rl, 1000, 100);
   nghttp2_ratelim_drain(&rl, 999);
 
-  CU_ASSERT(1 == rl.val);
+  assert_uint64(1, ==, rl.val);
 
   nghttp2_ratelim_update(&rl, UINT64_MAX);
 
-  CU_ASSERT(1000 == rl.val);
+  assert_uint64(1000, ==, rl.val);
 
   /* val + rate * duration overflow */
   nghttp2_ratelim_init(&rl, UINT64_MAX - 1, 2);
   nghttp2_ratelim_update(&rl, 1);
 
-  CU_ASSERT(UINT64_MAX - 1 == rl.val);
+  assert_uint64(UINT64_MAX - 1, ==, rl.val);
 }
 
 void test_nghttp2_ratelim_drain(void) {
@@ -94,8 +104,8 @@ void test_nghttp2_ratelim_drain(void) {
 
   nghttp2_ratelim_init(&rl, 100, 7);
 
-  CU_ASSERT(-1 == nghttp2_ratelim_drain(&rl, 101));
-  CU_ASSERT(0 == nghttp2_ratelim_drain(&rl, 51));
-  CU_ASSERT(0 == nghttp2_ratelim_drain(&rl, 49));
-  CU_ASSERT(-1 == nghttp2_ratelim_drain(&rl, 1));
+  assert_int(-1, ==, nghttp2_ratelim_drain(&rl, 101));
+  assert_int(0, ==, nghttp2_ratelim_drain(&rl, 51));
+  assert_int(0, ==, nghttp2_ratelim_drain(&rl, 49));
+  assert_int(-1, ==, nghttp2_ratelim_drain(&rl, 1));
 }

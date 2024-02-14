@@ -29,9 +29,15 @@
 #  include <config.h>
 #endif // HAVE_CONFIG_H
 
+#define MUNIT_ENABLE_ASSERT_ALIASES
+
+#include "munit.h"
+
 namespace shrpx {
 
-void test_shrpx_worker_match_downstream_addr_group(void);
+extern const MunitSuite worker_suite;
+
+munit_void_test_decl(test_shrpx_worker_match_downstream_addr_group);
 
 } // namespace shrpx
 

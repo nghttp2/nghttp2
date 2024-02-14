@@ -48,11 +48,6 @@ The following package is required to build the libnghttp2 library:
 
 * pkg-config >= 0.20
 
-To build and run the unit test programs, the following package is
-required:
-
-* cunit >= 2.1
-
 To build the documentation, you need to install:
 
 * sphinx (http://sphinx-doc.org/)
@@ -210,7 +205,7 @@ required packages:
 
     sudo apt-get install g++ clang make binutils autoconf automake \
       autotools-dev libtool pkg-config \
-      zlib1g-dev libcunit1-dev libssl-dev libxml2-dev libev-dev \
+      zlib1g-dev libssl-dev libxml2-dev libev-dev \
       libevent-dev libjansson-dev \
       libc-ares-dev libjemalloc-dev libsystemd-dev \
       ruby-dev bison libelf-dev

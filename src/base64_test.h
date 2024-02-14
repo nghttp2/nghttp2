@@ -29,10 +29,16 @@
 #  include <config.h>
 #endif // HAVE_CONFIG_H
 
+#define MUNIT_ENABLE_ASSERT_ALIASES
+
+#include "munit.h"
+
 namespace nghttp2 {
 
-void test_base64_encode(void);
-void test_base64_decode(void);
+extern const MunitSuite base64_suite;
+
+munit_void_test_decl(test_base64_encode);
+munit_void_test_decl(test_base64_decode);
 
 } // namespace nghttp2
 

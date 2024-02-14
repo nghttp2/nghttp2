@@ -85,7 +85,6 @@ if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX OR CMAKE_C_COMPILER_ID MA
     -Wstrict-prototypes                  # clang  1.0  gcc  3.3
   # -Wswitch-enum                        # clang  3.0  gcc  4.1               # Not used because this basically disallows default case
     -Wunreachable-code                   # clang  3.0  gcc  4.1
-    -Wunused-macros                      # clang  3.0  gcc  4.1
     -Wunused-parameter                   # clang  3.0  gcc  4.1
     -Wvla                                # clang  2.8  gcc  4.3
   )

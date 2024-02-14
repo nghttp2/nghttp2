@@ -27,8 +27,6 @@
 #include <stdio.h>
 #include <assert.h>
 
-#include <CUnit/CUnit.h>
-
 #include "nghttp2_helper.h"
 #include "nghttp2_priority_spec.h"
 

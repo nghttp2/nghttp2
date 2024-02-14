@@ -26,9 +26,21 @@
 
 #include <stdio.h>
 
-#include <CUnit/CUnit.h>
+#include "munit.h"
 
 #include "nghttp2_helper.h"
+
+static const MunitTest tests[] = {
+    munit_void_test(test_nghttp2_adjust_local_window_size),
+    munit_void_test(test_nghttp2_check_header_name),
+    munit_void_test(test_nghttp2_check_header_value),
+    munit_void_test(test_nghttp2_check_header_value_rfc9113),
+    munit_test_end(),
+};
+
+const MunitSuite helper_suite = {
+    "/helper", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
+};
 
 void test_nghttp2_adjust_local_window_size(void) {
   int32_t local_window_size = 100;
@@ -37,123 +49,132 @@ void test_nghttp2_adjust_local_window_size(void) {
   int32_t delta;
 
   delta = 0;
-  CU_ASSERT(0 == nghttp2_adjust_local_window_size(&local_window_size,
-                                                  &recv_window_size,
-                                                  &recv_reduction, &delta));
-  CU_ASSERT(100 == local_window_size);
-  CU_ASSERT(50 == recv_window_size);
-  CU_ASSERT(0 == recv_reduction);
-  CU_ASSERT(0 == delta);
+  assert_int(0, ==,
+             nghttp2_adjust_local_window_size(&local_window_size,
+                                              &recv_window_size,
+                                              &recv_reduction, &delta));
+  assert_int32(100, ==, local_window_size);
+  assert_int32(50, ==, recv_window_size);
+  assert_int32(0, ==, recv_reduction);
+  assert_int32(0, ==, delta);
 
   delta = 49;
-  CU_ASSERT(0 == nghttp2_adjust_local_window_size(&local_window_size,
-                                                  &recv_window_size,
-                                                  &recv_reduction, &delta));
-  CU_ASSERT(100 == local_window_size);
-  CU_ASSERT(1 == recv_window_size);
-  CU_ASSERT(0 == recv_reduction);
-  CU_ASSERT(49 == delta);
+  assert_int(0, ==,
+             nghttp2_adjust_local_window_size(&local_window_size,
+                                              &recv_window_size,
+                                              &recv_reduction, &delta));
+  assert_int32(100, ==, local_window_size);
+  assert_int32(1, ==, recv_window_size);
+  assert_int32(0, ==, recv_reduction);
+  assert_int32(49, ==, delta);
 
   delta = 1;
-  CU_ASSERT(0 == nghttp2_adjust_local_window_size(&local_window_size,
-                                                  &recv_window_size,
-                                                  &recv_reduction, &delta));
-  CU_ASSERT(100 == local_window_size);
-  CU_ASSERT(0 == recv_window_size);
-  CU_ASSERT(0 == recv_reduction);
-  CU_ASSERT(1 == delta);
+  assert_int(0, ==,
+             nghttp2_adjust_local_window_size(&local_window_size,
+                                              &recv_window_size,
+                                              &recv_reduction, &delta));
+  assert_int32(100, ==, local_window_size);
+  assert_int32(0, ==, recv_window_size);
+  assert_int32(0, ==, recv_reduction);
+  assert_int32(1, ==, delta);
 
   delta = 1;
-  CU_ASSERT(0 == nghttp2_adjust_local_window_size(&local_window_size,
-                                                  &recv_window_size,
-                                                  &recv_reduction, &delta));
-  CU_ASSERT(101 == local_window_size);
-  CU_ASSERT(0 == recv_window_size);
-  CU_ASSERT(0 == recv_reduction);
-  CU_ASSERT(1 == delta);
+  assert_int(0, ==,
+             nghttp2_adjust_local_window_size(&local_window_size,
+                                              &recv_window_size,
+                                              &recv_reduction, &delta));
+  assert_int32(101, ==, local_window_size);
+  assert_int32(0, ==, recv_window_size);
+  assert_int32(0, ==, recv_reduction);
+  assert_int32(1, ==, delta);
 
   delta = -1;
-  CU_ASSERT(0 == nghttp2_adjust_local_window_size(&local_window_size,
-                                                  &recv_window_size,
-                                                  &recv_reduction, &delta));
-  CU_ASSERT(100 == local_window_size);
-  CU_ASSERT(-1 == recv_window_size);
-  CU_ASSERT(1 == recv_reduction);
-  CU_ASSERT(0 == delta);
+  assert_int(0, ==,
+             nghttp2_adjust_local_window_size(&local_window_size,
+                                              &recv_window_size,
+                                              &recv_reduction, &delta));
+  assert_int32(100, ==, local_window_size);
+  assert_int32(-1, ==, recv_window_size);
+  assert_int32(1, ==, recv_reduction);
+  assert_int32(0, ==, delta);
 
   delta = 1;
-  CU_ASSERT(0 == nghttp2_adjust_local_window_size(&local_window_size,
-                                                  &recv_window_size,
-                                                  &recv_reduction, &delta));
-  CU_ASSERT(101 == local_window_size);
-  CU_ASSERT(0 == recv_window_size);
-  CU_ASSERT(0 == recv_reduction);
-  CU_ASSERT(0 == delta);
+  assert_int(0, ==,
+             nghttp2_adjust_local_window_size(&local_window_size,
+                                              &recv_window_size,
+                                              &recv_reduction, &delta));
+  assert_int32(101, ==, local_window_size);
+  assert_int32(0, ==, recv_window_size);
+  assert_int32(0, ==, recv_reduction);
+  assert_int32(0, ==, delta);
 
   delta = 100;
-  CU_ASSERT(0 == nghttp2_adjust_local_window_size(&local_window_size,
-                                                  &recv_window_size,
-                                                  &recv_reduction, &delta));
-  CU_ASSERT(201 == local_window_size);
-  CU_ASSERT(0 == recv_window_size);
-  CU_ASSERT(0 == recv_reduction);
-  CU_ASSERT(100 == delta);
+  assert_int(0, ==,
+             nghttp2_adjust_local_window_size(&local_window_size,
+                                              &recv_window_size,
+                                              &recv_reduction, &delta));
+  assert_int32(201, ==, local_window_size);
+  assert_int32(0, ==, recv_window_size);
+  assert_int32(0, ==, recv_reduction);
+  assert_int32(100, ==, delta);
 
   delta = -3;
-  CU_ASSERT(0 == nghttp2_adjust_local_window_size(&local_window_size,
-                                                  &recv_window_size,
-                                                  &recv_reduction, &delta));
-  CU_ASSERT(198 == local_window_size);
-  CU_ASSERT(-3 == recv_window_size);
-  CU_ASSERT(3 == recv_reduction);
-  CU_ASSERT(0 == delta);
+  assert_int(0, ==,
+             nghttp2_adjust_local_window_size(&local_window_size,
+                                              &recv_window_size,
+                                              &recv_reduction, &delta));
+  assert_int32(198, ==, local_window_size);
+  assert_int32(-3, ==, recv_window_size);
+  assert_int32(3, ==, recv_reduction);
+  assert_int32(0, ==, delta);
 
   recv_window_size += 3;
 
   delta = 3;
-  CU_ASSERT(0 == nghttp2_adjust_local_window_size(&local_window_size,
-                                                  &recv_window_size,
-                                                  &recv_reduction, &delta));
-  CU_ASSERT(201 == local_window_size);
-  CU_ASSERT(3 == recv_window_size);
-  CU_ASSERT(0 == recv_reduction);
-  CU_ASSERT(0 == delta);
+  assert_int(0, ==,
+             nghttp2_adjust_local_window_size(&local_window_size,
+                                              &recv_window_size,
+                                              &recv_reduction, &delta));
+  assert_int32(201, ==, local_window_size);
+  assert_int32(3, ==, recv_window_size);
+  assert_int32(0, ==, recv_reduction);
+  assert_int32(0, ==, delta);
 
   local_window_size = 100;
   recv_window_size = 50;
   recv_reduction = 0;
   delta = INT32_MAX;
-  CU_ASSERT(NGHTTP2_ERR_FLOW_CONTROL ==
-            nghttp2_adjust_local_window_size(&local_window_size,
-                                             &recv_window_size, &recv_reduction,
-                                             &delta));
-  CU_ASSERT(100 == local_window_size);
-  CU_ASSERT(50 == recv_window_size);
-  CU_ASSERT(0 == recv_reduction);
-  CU_ASSERT(INT32_MAX == delta);
+  assert_int(NGHTTP2_ERR_FLOW_CONTROL, ==,
+             nghttp2_adjust_local_window_size(&local_window_size,
+                                              &recv_window_size,
+                                              &recv_reduction, &delta));
+  assert_int32(100, ==, local_window_size);
+  assert_int32(50, ==, recv_window_size);
+  assert_int32(0, ==, recv_reduction);
+  assert_int32(INT32_MAX, ==, delta);
 
   delta = INT32_MIN;
-  CU_ASSERT(NGHTTP2_ERR_FLOW_CONTROL ==
-            nghttp2_adjust_local_window_size(&local_window_size,
-                                             &recv_window_size, &recv_reduction,
-                                             &delta));
-  CU_ASSERT(100 == local_window_size);
-  CU_ASSERT(50 == recv_window_size);
-  CU_ASSERT(0 == recv_reduction);
-  CU_ASSERT(INT32_MIN == delta);
+  assert_int(NGHTTP2_ERR_FLOW_CONTROL, ==,
+             nghttp2_adjust_local_window_size(&local_window_size,
+                                              &recv_window_size,
+                                              &recv_reduction, &delta));
+  assert_int32(100, ==, local_window_size);
+  assert_int32(50, ==, recv_window_size);
+  assert_int32(0, ==, recv_reduction);
+  assert_int32(INT32_MIN, ==, delta);
 }
 
 #define check_header_name(S)                                                   \
   nghttp2_check_header_name((const uint8_t *)S, sizeof(S) - 1)
 
 void test_nghttp2_check_header_name(void) {
-  CU_ASSERT(check_header_name(":path"));
-  CU_ASSERT(check_header_name("path"));
-  CU_ASSERT(check_header_name("!#$%&'*+-.^_`|~"));
-  CU_ASSERT(!check_header_name(":PATH"));
-  CU_ASSERT(!check_header_name("path:"));
-  CU_ASSERT(!check_header_name(""));
-  CU_ASSERT(!check_header_name(":"));
+  assert_true(check_header_name(":path"));
+  assert_true(check_header_name("path"));
+  assert_true(check_header_name("!#$%&'*+-.^_`|~"));
+  assert_false(check_header_name(":PATH"));
+  assert_false(check_header_name("path:"));
+  assert_false(check_header_name(""));
+  assert_false(check_header_name(":"));
 }
 
 #define check_header_value(S)                                                  \
@@ -164,13 +185,13 @@ void test_nghttp2_check_header_value(void) {
   uint8_t badval1[] = {'a', 0x1fu, 'b'};
   uint8_t badval2[] = {'a', 0x7fu, 'b'};
 
-  CU_ASSERT(check_header_value(" !|}~"));
-  CU_ASSERT(check_header_value(goodval));
-  CU_ASSERT(!check_header_value(badval1));
-  CU_ASSERT(!check_header_value(badval2));
-  CU_ASSERT(check_header_value(""));
-  CU_ASSERT(check_header_value(" "));
-  CU_ASSERT(check_header_value("\t"));
+  assert_true(check_header_value(" !|}~"));
+  assert_true(check_header_value(goodval));
+  assert_false(check_header_value(badval1));
+  assert_false(check_header_value(badval2));
+  assert_true(check_header_value(""));
+  assert_true(check_header_value(" "));
+  assert_true(check_header_value("\t"));
 }
 
 #define check_header_value_rfc9113(S)                                          \
@@ -181,15 +202,15 @@ void test_nghttp2_check_header_value_rfc9113(void) {
   uint8_t badval1[] = {'a', 0x1fu, 'b'};
   uint8_t badval2[] = {'a', 0x7fu, 'b'};
 
-  CU_ASSERT(check_header_value_rfc9113("!|}~"));
-  CU_ASSERT(!check_header_value_rfc9113(" !|}~"));
-  CU_ASSERT(!check_header_value_rfc9113("!|}~ "));
-  CU_ASSERT(!check_header_value_rfc9113("\t!|}~"));
-  CU_ASSERT(!check_header_value_rfc9113("!|}~\t"));
-  CU_ASSERT(check_header_value_rfc9113(goodval));
-  CU_ASSERT(!check_header_value_rfc9113(badval1));
-  CU_ASSERT(!check_header_value_rfc9113(badval2));
-  CU_ASSERT(check_header_value_rfc9113(""));
-  CU_ASSERT(!check_header_value_rfc9113(" "));
-  CU_ASSERT(!check_header_value_rfc9113("\t"));
+  assert_true(check_header_value_rfc9113("!|}~"));
+  assert_false(check_header_value_rfc9113(" !|}~"));
+  assert_false(check_header_value_rfc9113("!|}~ "));
+  assert_false(check_header_value_rfc9113("\t!|}~"));
+  assert_false(check_header_value_rfc9113("!|}~\t"));
+  assert_true(check_header_value_rfc9113(goodval));
+  assert_false(check_header_value_rfc9113(badval1));
+  assert_false(check_header_value_rfc9113(badval2));
+  assert_true(check_header_value_rfc9113(""));
+  assert_false(check_header_value_rfc9113(" "));
+  assert_false(check_header_value_rfc9113("\t"));
 }

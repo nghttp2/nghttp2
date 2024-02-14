@@ -29,7 +29,13 @@
 #  include <config.h>
 #endif /* HAVE_CONFIG_H */
 
-void test_nghttp2_ratelim_update(void);
-void test_nghttp2_ratelim_drain(void);
+#define MUNIT_ENABLE_ASSERT_ALIASES
+
+#include "munit.h"
+
+extern const MunitSuite ratelim_suite;
+
+munit_void_test_decl(test_nghttp2_ratelim_update);
+munit_void_test_decl(test_nghttp2_ratelim_drain);
 
 #endif /* NGHTTP2_RATELIM_TEST_H */

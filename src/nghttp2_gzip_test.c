@@ -27,11 +27,20 @@
 #include <stdio.h>
 #include <assert.h>
 
-#include <CUnit/CUnit.h>
+#include "munit.h"
 
 #include <zlib.h>
 
 #include "nghttp2_gzip.h"
+
+static const MunitTest tests[] = {
+    munit_void_test(test_nghttp2_gzip_inflate),
+    munit_test_end(),
+};
+
+const MunitSuite gzip_suite = {
+    "/gzip", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
+};
 
 static size_t deflate_data(uint8_t *out, size_t outlen, const uint8_t *in,
                            size_t inlen) {
@@ -39,14 +48,14 @@ static size_t deflate_data(uint8_t *out, size_t outlen, const uint8_t *in,
   z_stream zst = {0};
 
   rv = deflateInit(&zst, Z_DEFAULT_COMPRESSION);
-  CU_ASSERT(rv == Z_OK);
+  assert_int(Z_OK, ==, rv);
 
   zst.avail_in = (unsigned int)inlen;
   zst.next_in = (uint8_t *)in;
   zst.avail_out = (unsigned int)outlen;
   zst.next_out = out;
   rv = deflate(&zst, Z_SYNC_FLUSH);
-  CU_ASSERT(rv == Z_OK);
+  assert_int(Z_OK, ==, rv);
 
   deflateEnd(&zst);
 
@@ -71,41 +80,44 @@ void test_nghttp2_gzip_inflate(void) {
 
   inlen = deflate_data(in, inlen, (const uint8_t *)input, sizeof(input) - 1);
 
-  CU_ASSERT(0 == nghttp2_gzip_inflate_new(&inflater));
+  assert_int(0, ==, nghttp2_gzip_inflate_new(&inflater));
   /* First 16 bytes */
   inptr = in;
   inproclen = inlen;
   outproclen = 16;
-  CU_ASSERT(
-      0 == nghttp2_gzip_inflate(inflater, out, &outproclen, inptr, &inproclen));
-  CU_ASSERT(16 == outproclen);
-  CU_ASSERT(inproclen > 0);
-  CU_ASSERT(0 == memcmp(inputptr, out, outproclen));
+  assert_int(
+      0, ==,
+      nghttp2_gzip_inflate(inflater, out, &outproclen, inptr, &inproclen));
+  assert_size(16, ==, outproclen);
+  assert_size(0, <, inproclen);
+  assert_memory_equal(outproclen, inputptr, out);
   /* Next 32 bytes */
   inptr += inproclen;
   inlen -= inproclen;
   inproclen = inlen;
   inputptr += outproclen;
   outproclen = 32;
-  CU_ASSERT(
-      0 == nghttp2_gzip_inflate(inflater, out, &outproclen, inptr, &inproclen));
-  CU_ASSERT(32 == outproclen);
-  CU_ASSERT(inproclen > 0);
-  CU_ASSERT(0 == memcmp(inputptr, out, outproclen));
+  assert_int(
+      0, ==,
+      nghttp2_gzip_inflate(inflater, out, &outproclen, inptr, &inproclen));
+  assert_size(32, ==, outproclen);
+  assert_size(0, <, inproclen);
+  assert_memory_equal(outproclen, inputptr, out);
   /* Rest */
   inptr += inproclen;
   inlen -= inproclen;
   inproclen = inlen;
   inputptr += outproclen;
   outproclen = sizeof(out);
-  CU_ASSERT(
-      0 == nghttp2_gzip_inflate(inflater, out, &outproclen, inptr, &inproclen));
-  CU_ASSERT(sizeof(input) - 49 == outproclen);
-  CU_ASSERT(inproclen > 0);
-  CU_ASSERT(0 == memcmp(inputptr, out, outproclen));
+  assert_int(
+      0, ==,
+      nghttp2_gzip_inflate(inflater, out, &outproclen, inptr, &inproclen));
+  assert_size(sizeof(input) - 49, ==, outproclen);
+  assert_size(0, <, inproclen);
+  assert_memory_equal(outproclen, inputptr, out);
 
   inlen -= inproclen;
-  CU_ASSERT(0 == inlen);
+  assert_size(0, ==, inlen);
 
   nghttp2_gzip_inflate_del(inflater);
 }

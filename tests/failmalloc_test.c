@@ -27,7 +27,7 @@
 #include <stdio.h>
 #include <assert.h>
 
-#include <CUnit/CUnit.h>
+#include "munit.h"
 
 #include "nghttp2_session.h"
 #include "nghttp2_stream.h"
@@ -35,6 +35,19 @@
 #include "nghttp2_helper.h"
 #include "malloc_wrapper.h"
 #include "nghttp2_test_helper.h"
+
+static const MunitTest tests[] = {
+    munit_void_test(test_nghttp2_session_send),
+    munit_void_test(test_nghttp2_session_send_server),
+    munit_void_test(test_nghttp2_session_recv),
+    munit_void_test(test_nghttp2_frame),
+    munit_void_test(test_nghttp2_hd),
+    munit_test_end(),
+};
+
+const MunitSuite failmalloc_suite = {
+    "/failmalloc", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
+};
 
 typedef struct {
   uint8_t data[8192];

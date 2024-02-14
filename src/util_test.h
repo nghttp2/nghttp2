@@ -29,46 +29,52 @@
 #  include <config.h>
 #endif // HAVE_CONFIG_H
 
+#define MUNIT_ENABLE_ASSERT_ALIASES
+
+#include "munit.h"
+
 namespace shrpx {
 
-void test_util_streq(void);
-void test_util_strieq(void);
-void test_util_inp_strlower(void);
-void test_util_to_base64(void);
-void test_util_to_token68(void);
-void test_util_percent_encode_token(void);
-void test_util_percent_decode(void);
-void test_util_quote_string(void);
-void test_util_utox(void);
-void test_util_http_date(void);
-void test_util_select_h2(void);
-void test_util_ipv6_numeric_addr(void);
-void test_util_utos(void);
-void test_util_make_string_ref_uint(void);
-void test_util_utos_unit(void);
-void test_util_utos_funit(void);
-void test_util_parse_uint_with_unit(void);
-void test_util_parse_uint(void);
-void test_util_parse_duration_with_unit(void);
-void test_util_duration_str(void);
-void test_util_format_duration(void);
-void test_util_starts_with(void);
-void test_util_ends_with(void);
-void test_util_parse_http_date(void);
-void test_util_localtime_date(void);
-void test_util_get_uint64(void);
-void test_util_parse_config_str_list(void);
-void test_util_make_http_hostport(void);
-void test_util_make_hostport(void);
-void test_util_strifind(void);
-void test_util_random_alpha_digit(void);
-void test_util_format_hex(void);
-void test_util_is_hex_string(void);
-void test_util_decode_hex(void);
-void test_util_extract_host(void);
-void test_util_split_hostport(void);
-void test_util_split_str(void);
-void test_util_rstrip(void);
+extern const MunitSuite util_suite;
+
+munit_void_test_decl(test_util_streq);
+munit_void_test_decl(test_util_strieq);
+munit_void_test_decl(test_util_inp_strlower);
+munit_void_test_decl(test_util_to_base64);
+munit_void_test_decl(test_util_to_token68);
+munit_void_test_decl(test_util_percent_encode_token);
+munit_void_test_decl(test_util_percent_decode);
+munit_void_test_decl(test_util_quote_string);
+munit_void_test_decl(test_util_utox);
+munit_void_test_decl(test_util_http_date);
+munit_void_test_decl(test_util_select_h2);
+munit_void_test_decl(test_util_ipv6_numeric_addr);
+munit_void_test_decl(test_util_utos);
+munit_void_test_decl(test_util_make_string_ref_uint);
+munit_void_test_decl(test_util_utos_unit);
+munit_void_test_decl(test_util_utos_funit);
+munit_void_test_decl(test_util_parse_uint_with_unit);
+munit_void_test_decl(test_util_parse_uint);
+munit_void_test_decl(test_util_parse_duration_with_unit);
+munit_void_test_decl(test_util_duration_str);
+munit_void_test_decl(test_util_format_duration);
+munit_void_test_decl(test_util_starts_with);
+munit_void_test_decl(test_util_ends_with);
+munit_void_test_decl(test_util_parse_http_date);
+munit_void_test_decl(test_util_localtime_date);
+munit_void_test_decl(test_util_get_uint64);
+munit_void_test_decl(test_util_parse_config_str_list);
+munit_void_test_decl(test_util_make_http_hostport);
+munit_void_test_decl(test_util_make_hostport);
+munit_void_test_decl(test_util_strifind);
+munit_void_test_decl(test_util_random_alpha_digit);
+munit_void_test_decl(test_util_format_hex);
+munit_void_test_decl(test_util_is_hex_string);
+munit_void_test_decl(test_util_decode_hex);
+munit_void_test_decl(test_util_extract_host);
+munit_void_test_decl(test_util_split_hostport);
+munit_void_test_decl(test_util_split_str);
+munit_void_test_decl(test_util_rstrip);
 
 } // namespace shrpx
 

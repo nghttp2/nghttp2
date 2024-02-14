@@ -26,6 +26,4 @@
 
 #include <stdio.h>
 
-#include <CUnit/CUnit.h>
-
 #include "nghttp2_stream.h"

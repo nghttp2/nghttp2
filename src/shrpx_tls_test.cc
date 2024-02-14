@@ -24,7 +24,7 @@
  */
 #include "shrpx_tls_test.h"
 
-#include <CUnit/CUnit.h>
+#include "munitxx.h"
 
 #include "shrpx_tls.h"
 #include "shrpx_log.h"
@@ -34,6 +34,21 @@
 using namespace nghttp2;
 
 namespace shrpx {
+
+namespace {
+const MunitTest tests[]{
+    munit_void_test(test_shrpx_tls_create_lookup_tree),
+    munit_void_test(test_shrpx_tls_cert_lookup_tree_add_ssl_ctx),
+    munit_void_test(test_shrpx_tls_tls_hostname_match),
+    munit_void_test(test_shrpx_tls_verify_numeric_hostname),
+    munit_void_test(test_shrpx_tls_verify_dns_hostname),
+    munit_test_end(),
+};
+} // namespace
+
+const MunitSuite tls_suite{
+    "/tls", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
+};
 
 void test_shrpx_tls_create_lookup_tree(void) {
   auto tree = std::make_unique<tls::CertLookupTree>();
@@ -58,24 +73,24 @@ void test_shrpx_tls_create_lookup_tree(void) {
 
   tree->dump();
 
-  CU_ASSERT(0 == tree->lookup(hostnames[0]));
-  CU_ASSERT(1 == tree->lookup(hostnames[1]));
-  CU_ASSERT(2 == tree->lookup(StringRef::from_lit("2www.example.org")));
-  CU_ASSERT(-1 == tree->lookup(StringRef::from_lit("www2.example.org")));
-  CU_ASSERT(3 == tree->lookup(StringRef::from_lit("xy1.host.domain")));
+  assert_ssize(0, ==, tree->lookup(hostnames[0]));
+  assert_ssize(1, ==, tree->lookup(hostnames[1]));
+  assert_ssize(2, ==, tree->lookup(StringRef::from_lit("2www.example.org")));
+  assert_ssize(-1, ==, tree->lookup(StringRef::from_lit("www2.example.org")));
+  assert_ssize(3, ==, tree->lookup(StringRef::from_lit("xy1.host.domain")));
   // Does not match *yy.host.domain, because * must match at least 1
   // character.
-  CU_ASSERT(-1 == tree->lookup(StringRef::from_lit("yy.host.domain")));
-  CU_ASSERT(4 == tree->lookup(StringRef::from_lit("xyy.host.domain")));
-  CU_ASSERT(-1 == tree->lookup(StringRef{}));
-  CU_ASSERT(5 == tree->lookup(hostnames[5]));
-  CU_ASSERT(6 == tree->lookup(hostnames[6]));
+  assert_ssize(-1, ==, tree->lookup(StringRef::from_lit("yy.host.domain")));
+  assert_ssize(4, ==, tree->lookup(StringRef::from_lit("xyy.host.domain")));
+  assert_ssize(-1, ==, tree->lookup(StringRef{}));
+  assert_ssize(5, ==, tree->lookup(hostnames[5]));
+  assert_ssize(6, ==, tree->lookup(hostnames[6]));
   static constexpr char h6[] = "pdylay.sourceforge.net";
   for (int i = 0; i < 7; ++i) {
-    CU_ASSERT(-1 == tree->lookup(StringRef{h6 + i, str_size(h6) - i}));
+    assert_ssize(-1, ==, tree->lookup(StringRef{h6 + i, str_size(h6) - i}));
   }
-  CU_ASSERT(8 == tree->lookup(StringRef::from_lit("x.foo.bar")));
-  CU_ASSERT(9 == tree->lookup(hostnames[9]));
+  assert_ssize(8, ==, tree->lookup(StringRef::from_lit("x.foo.bar")));
+  assert_ssize(9, ==, tree->lookup(hostnames[9]));
 
   constexpr StringRef names[] = {
       StringRef::from_lit("rab"),  // 1
@@ -90,7 +105,7 @@ void test_shrpx_tls_create_lookup_tree(void) {
     tree->add_cert(names[idx], idx);
   }
   for (size_t i = 0; i < num; ++i) {
-    CU_ASSERT((ssize_t)i == tree->lookup(names[i]));
+    assert_ssize((ssize_t)i, ==, tree->lookup(names[i]));
   }
 }
 
@@ -128,7 +143,7 @@ void test_shrpx_tls_cert_lookup_tree_add_ssl_ctx(void) {
   SSL_CTX_set_app_data(nghttp2_ssl_ctx, nghttp2_tls_ctx_data.get());
   rv = SSL_CTX_use_certificate_chain_file(nghttp2_ssl_ctx, nghttp2_certfile);
 
-  CU_ASSERT(1 == rv);
+  assert_int(1, ==, rv);
 
   static constexpr char examples_certfile[] =
       NGHTTP2_SRC_DIR "/test.example.com.pem";
@@ -139,7 +154,7 @@ void test_shrpx_tls_cert_lookup_tree_add_ssl_ctx(void) {
   SSL_CTX_set_app_data(examples_ssl_ctx, examples_tls_ctx_data.get());
   rv = SSL_CTX_use_certificate_chain_file(examples_ssl_ctx, examples_certfile);
 
-  CU_ASSERT(1 == rv);
+  assert_int(1, ==, rv);
 
   tls::CertLookupTree tree;
   std::vector<std::vector<SSL_CTX *>> indexed_ssl_ctx;
@@ -147,18 +162,19 @@ void test_shrpx_tls_cert_lookup_tree_add_ssl_ctx(void) {
   rv = tls::cert_lookup_tree_add_ssl_ctx(&tree, indexed_ssl_ctx,
                                          nghttp2_ssl_ctx);
 
-  CU_ASSERT(0 == rv);
+  assert_int(0, ==, rv);
 
   rv = tls::cert_lookup_tree_add_ssl_ctx(&tree, indexed_ssl_ctx,
                                          examples_ssl_ctx);
 
-  CU_ASSERT(0 == rv);
+  assert_int(0, ==, rv);
 
-  CU_ASSERT(-1 == tree.lookup(StringRef::from_lit("not-used.nghttp2.org")));
-  CU_ASSERT(0 == tree.lookup(StringRef::from_lit("test.nghttp2.org")));
-  CU_ASSERT(1 == tree.lookup(StringRef::from_lit("w.test.nghttp2.org")));
-  CU_ASSERT(2 == tree.lookup(StringRef::from_lit("www.test.nghttp2.org")));
-  CU_ASSERT(3 == tree.lookup(StringRef::from_lit("test.example.com")));
+  assert_ssize(-1, ==,
+               tree.lookup(StringRef::from_lit("not-used.nghttp2.org")));
+  assert_ssize(0, ==, tree.lookup(StringRef::from_lit("test.nghttp2.org")));
+  assert_ssize(1, ==, tree.lookup(StringRef::from_lit("w.test.nghttp2.org")));
+  assert_ssize(2, ==, tree.lookup(StringRef::from_lit("www.test.nghttp2.org")));
+  assert_ssize(3, ==, tree.lookup(StringRef::from_lit("test.example.com")));
 }
 
 template <size_t N, size_t M>
@@ -168,30 +184,32 @@ bool tls_hostname_match_wrapper(const char (&pattern)[N],
 }
 
 void test_shrpx_tls_tls_hostname_match(void) {
-  CU_ASSERT(tls_hostname_match_wrapper("example.com", "example.com"));
-  CU_ASSERT(tls_hostname_match_wrapper("example.com", "EXAMPLE.com"));
+  assert_true(tls_hostname_match_wrapper("example.com", "example.com"));
+  assert_true(tls_hostname_match_wrapper("example.com", "EXAMPLE.com"));
 
   // check wildcard
-  CU_ASSERT(tls_hostname_match_wrapper("*.example.com", "www.example.com"));
-  CU_ASSERT(tls_hostname_match_wrapper("*w.example.com", "www.example.com"));
-  CU_ASSERT(tls_hostname_match_wrapper("www*.example.com", "www1.example.com"));
-  CU_ASSERT(
+  assert_true(tls_hostname_match_wrapper("*.example.com", "www.example.com"));
+  assert_true(tls_hostname_match_wrapper("*w.example.com", "www.example.com"));
+  assert_true(
+      tls_hostname_match_wrapper("www*.example.com", "www1.example.com"));
+  assert_true(
       tls_hostname_match_wrapper("www*.example.com", "WWW12.EXAMPLE.com"));
   // at least 2 dots are required after '*'
-  CU_ASSERT(!tls_hostname_match_wrapper("*.com", "example.com"));
-  CU_ASSERT(!tls_hostname_match_wrapper("*", "example.com"));
+  assert_false(tls_hostname_match_wrapper("*.com", "example.com"));
+  assert_false(tls_hostname_match_wrapper("*", "example.com"));
   // '*' must be in left most label
-  CU_ASSERT(
-      !tls_hostname_match_wrapper("blog.*.example.com", "blog.my.example.com"));
+  assert_false(
+      tls_hostname_match_wrapper("blog.*.example.com", "blog.my.example.com"));
   // prefix is wrong
-  CU_ASSERT(
-      !tls_hostname_match_wrapper("client*.example.com", "server.example.com"));
+  assert_false(
+      tls_hostname_match_wrapper("client*.example.com", "server.example.com"));
   // '*' must match at least one character
-  CU_ASSERT(!tls_hostname_match_wrapper("www*.example.com", "www.example.com"));
+  assert_false(
+      tls_hostname_match_wrapper("www*.example.com", "www.example.com"));
 
-  CU_ASSERT(!tls_hostname_match_wrapper("example.com", "nghttp2.org"));
-  CU_ASSERT(!tls_hostname_match_wrapper("www.example.com", "example.com"));
-  CU_ASSERT(!tls_hostname_match_wrapper("example.com", "www.example.com"));
+  assert_false(tls_hostname_match_wrapper("example.com", "nghttp2.org"));
+  assert_false(tls_hostname_match_wrapper("www.example.com", "example.com"));
+  assert_false(tls_hostname_match_wrapper("example.com", "www.example.com"));
 }
 
 static X509 *load_cert(const char *path) {
@@ -213,8 +231,8 @@ static Address parse_addr(const char *ipaddr) {
 
   auto rv = getaddrinfo(ipaddr, "443", &hints, &res);
 
-  CU_ASSERT(0 == rv);
-  CU_ASSERT(nullptr != res);
+  assert_int(0, ==, rv);
+  assert_not_null(res);
 
   Address addr;
   addr.len = res->ai_addrlen;
@@ -234,7 +252,7 @@ void test_shrpx_tls_verify_numeric_hostname(void) {
     auto rv =
         tls::verify_numeric_hostname(cert, StringRef::from_lit(ipaddr), &addr);
 
-    CU_ASSERT(0 == rv);
+    assert_int(0, ==, rv);
 
     X509_free(cert);
   }
@@ -247,7 +265,7 @@ void test_shrpx_tls_verify_numeric_hostname(void) {
     auto rv =
         tls::verify_numeric_hostname(cert, StringRef::from_lit(ipaddr), &addr);
 
-    CU_ASSERT(0 == rv);
+    assert_int(0, ==, rv);
 
     X509_free(cert);
   }
@@ -260,7 +278,7 @@ void test_shrpx_tls_verify_numeric_hostname(void) {
     auto rv =
         tls::verify_numeric_hostname(cert, StringRef::from_lit(ipaddr), &addr);
 
-    CU_ASSERT(-1 == rv);
+    assert_int(-1, ==, rv);
 
     X509_free(cert);
   }
@@ -273,7 +291,7 @@ void test_shrpx_tls_verify_numeric_hostname(void) {
     auto rv =
         tls::verify_numeric_hostname(cert, StringRef::from_lit(ipaddr), &addr);
 
-    CU_ASSERT(-1 == rv);
+    assert_int(-1, ==, rv);
 
     X509_free(cert);
   }
@@ -286,7 +304,7 @@ void test_shrpx_tls_verify_numeric_hostname(void) {
     auto rv =
         tls::verify_numeric_hostname(cert, StringRef::from_lit(ipaddr), &addr);
 
-    CU_ASSERT(0 == rv);
+    assert_int(0, ==, rv);
 
     X509_free(cert);
   }
@@ -299,7 +317,7 @@ void test_shrpx_tls_verify_dns_hostname(void) {
     auto rv = tls::verify_dns_hostname(
         cert, StringRef::from_lit("nghttp2.example.com"));
 
-    CU_ASSERT(0 == rv);
+    assert_int(0, ==, rv);
 
     X509_free(cert);
   }
@@ -310,7 +328,7 @@ void test_shrpx_tls_verify_dns_hostname(void) {
     auto rv = tls::verify_dns_hostname(
         cert, StringRef::from_lit("www.nghttp2.example.com"));
 
-    CU_ASSERT(0 == rv);
+    assert_int(0, ==, rv);
 
     X509_free(cert);
   }
@@ -320,7 +338,7 @@ void test_shrpx_tls_verify_dns_hostname(void) {
     auto cert = load_cert(NGHTTP2_SRC_DIR "/testdata/verify_hostname.crt");
     auto rv = tls::verify_dns_hostname(cert, StringRef::from_lit("localhost"));
 
-    CU_ASSERT(-1 == rv);
+    assert_int(-1, ==, rv);
 
     X509_free(cert);
   }
@@ -330,7 +348,7 @@ void test_shrpx_tls_verify_dns_hostname(void) {
     auto cert = load_cert(NGHTTP2_SRC_DIR "/testdata/nosan.crt");
     auto rv = tls::verify_dns_hostname(cert, StringRef::from_lit("localhost"));
 
-    CU_ASSERT(0 == rv);
+    assert_int(0, ==, rv);
 
     X509_free(cert);
   }

@@ -29,25 +29,31 @@
 #  include <config.h>
 #endif // HAVE_CONFIG_H
 
+#define MUNIT_ENABLE_ASSERT_ALIASES
+
+#include "munit.h"
+
 namespace shrpx {
 
-void test_http2_add_header(void);
-void test_http2_get_header(void);
-void test_http2_copy_headers_to_nva(void);
-void test_http2_build_http1_headers_from_headers(void);
-void test_http2_lws(void);
-void test_http2_rewrite_location_uri(void);
-void test_http2_parse_http_status_code(void);
-void test_http2_index_header(void);
-void test_http2_lookup_token(void);
-void test_http2_parse_link_header(void);
-void test_http2_path_join(void);
-void test_http2_normalize_path(void);
-void test_http2_rewrite_clean_path(void);
-void test_http2_get_pure_path_component(void);
-void test_http2_construct_push_component(void);
-void test_http2_contains_trailers(void);
-void test_http2_check_transfer_encoding(void);
+extern const MunitSuite http2_suite;
+
+munit_void_test_decl(test_http2_add_header);
+munit_void_test_decl(test_http2_get_header);
+munit_void_test_decl(test_http2_copy_headers_to_nva);
+munit_void_test_decl(test_http2_build_http1_headers_from_headers);
+munit_void_test_decl(test_http2_lws);
+munit_void_test_decl(test_http2_rewrite_location_uri);
+munit_void_test_decl(test_http2_parse_http_status_code);
+munit_void_test_decl(test_http2_index_header);
+munit_void_test_decl(test_http2_lookup_token);
+munit_void_test_decl(test_http2_parse_link_header);
+munit_void_test_decl(test_http2_path_join);
+munit_void_test_decl(test_http2_normalize_path);
+munit_void_test_decl(test_http2_rewrite_clean_path);
+munit_void_test_decl(test_http2_get_pure_path_component);
+munit_void_test_decl(test_http2_construct_push_component);
+munit_void_test_decl(test_http2_contains_trailers);
+munit_void_test_decl(test_http2_check_transfer_encoding);
 
 } // namespace shrpx
 

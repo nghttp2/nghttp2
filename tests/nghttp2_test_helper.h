@@ -40,24 +40,6 @@
   }
 #define ARRLEN(ARR) (sizeof(ARR) / sizeof(ARR[0]))
 
-#define assert_nv_equal(A, B, len, mem)                                        \
-  do {                                                                         \
-    size_t alloclen = sizeof(nghttp2_nv) * len;                                \
-    const nghttp2_nv *sa = A, *sb = B;                                         \
-    nghttp2_nv *a = mem->malloc(alloclen, NULL);                               \
-    nghttp2_nv *b = mem->malloc(alloclen, NULL);                               \
-    ssize_t i_;                                                                \
-    memcpy(a, sa, alloclen);                                                   \
-    memcpy(b, sb, alloclen);                                                   \
-    nghttp2_nv_array_sort(a, len);                                             \
-    nghttp2_nv_array_sort(b, len);                                             \
-    for (i_ = 0; i_ < (ssize_t)len; ++i_) {                                    \
-      CU_ASSERT(nghttp2_nv_equal(&a[i_], &b[i_]));                             \
-    }                                                                          \
-    mem->free(b, NULL);                                                        \
-    mem->free(a, NULL);                                                        \
-  } while (0);
-
 int unpack_framebuf(nghttp2_frame *frame, nghttp2_bufs *bufs);
 
 int unpack_frame(nghttp2_frame *frame, const uint8_t *in, size_t len);

@@ -29,27 +29,33 @@
 #  include <config.h>
 #endif /* HAVE_CONFIG_H */
 
-void test_nghttp2_hd_deflate(void);
-void test_nghttp2_hd_deflate_same_indexed_repr(void);
-void test_nghttp2_hd_inflate_indexed(void);
-void test_nghttp2_hd_inflate_indname_noinc(void);
-void test_nghttp2_hd_inflate_indname_inc(void);
-void test_nghttp2_hd_inflate_indname_inc_eviction(void);
-void test_nghttp2_hd_inflate_newname_noinc(void);
-void test_nghttp2_hd_inflate_newname_inc(void);
-void test_nghttp2_hd_inflate_clearall_inc(void);
-void test_nghttp2_hd_inflate_zero_length_huffman(void);
-void test_nghttp2_hd_inflate_expect_table_size_update(void);
-void test_nghttp2_hd_inflate_unexpected_table_size_update(void);
-void test_nghttp2_hd_ringbuf_reserve(void);
-void test_nghttp2_hd_change_table_size(void);
-void test_nghttp2_hd_deflate_inflate(void);
-void test_nghttp2_hd_no_index(void);
-void test_nghttp2_hd_deflate_bound(void);
-void test_nghttp2_hd_public_api(void);
-void test_nghttp2_hd_deflate_hd_vec(void);
-void test_nghttp2_hd_decode_length(void);
-void test_nghttp2_hd_huff_encode(void);
-void test_nghttp2_hd_huff_decode(void);
+#define MUNIT_ENABLE_ASSERT_ALIASES
+
+#include "munit.h"
+
+extern const MunitSuite hd_suite;
+
+munit_void_test_decl(test_nghttp2_hd_deflate);
+munit_void_test_decl(test_nghttp2_hd_deflate_same_indexed_repr);
+munit_void_test_decl(test_nghttp2_hd_inflate_indexed);
+munit_void_test_decl(test_nghttp2_hd_inflate_indname_noinc);
+munit_void_test_decl(test_nghttp2_hd_inflate_indname_inc);
+munit_void_test_decl(test_nghttp2_hd_inflate_indname_inc_eviction);
+munit_void_test_decl(test_nghttp2_hd_inflate_newname_noinc);
+munit_void_test_decl(test_nghttp2_hd_inflate_newname_inc);
+munit_void_test_decl(test_nghttp2_hd_inflate_clearall_inc);
+munit_void_test_decl(test_nghttp2_hd_inflate_zero_length_huffman);
+munit_void_test_decl(test_nghttp2_hd_inflate_expect_table_size_update);
+munit_void_test_decl(test_nghttp2_hd_inflate_unexpected_table_size_update);
+munit_void_test_decl(test_nghttp2_hd_ringbuf_reserve);
+munit_void_test_decl(test_nghttp2_hd_change_table_size);
+munit_void_test_decl(test_nghttp2_hd_deflate_inflate);
+munit_void_test_decl(test_nghttp2_hd_no_index);
+munit_void_test_decl(test_nghttp2_hd_deflate_bound);
+munit_void_test_decl(test_nghttp2_hd_public_api);
+munit_void_test_decl(test_nghttp2_hd_deflate_hd_vec);
+munit_void_test_decl(test_nghttp2_hd_decode_length);
+munit_void_test_decl(test_nghttp2_hd_huff_encode);
+munit_void_test_decl(test_nghttp2_hd_huff_decode);
 
 #endif /* NGHTTP2_HD_TEST_H */

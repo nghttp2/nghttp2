@@ -26,25 +26,34 @@
 
 #include <stdio.h>
 
-#include <CUnit/CUnit.h>
+#include "munit.h"
 
 #include "nghttp2_queue.h"
+
+static const MunitTest tests[] = {
+    munit_void_test(test_nghttp2_queue),
+    munit_test_end(),
+};
+
+const MunitSuite queue_suite = {
+    "/queue", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
+};
 
 void test_nghttp2_queue(void) {
   int ints[] = {1, 2, 3, 4, 5};
   int i;
   nghttp2_queue queue;
   nghttp2_queue_init(&queue);
-  CU_ASSERT(nghttp2_queue_empty(&queue));
+  assert_true(nghttp2_queue_empty(&queue));
   for (i = 0; i < 5; ++i) {
     nghttp2_queue_push(&queue, &ints[i]);
-    CU_ASSERT_EQUAL(ints[0], *(int *)(nghttp2_queue_front(&queue)));
-    CU_ASSERT(!nghttp2_queue_empty(&queue));
+    assert_int(ints[0], ==, *(int *)(nghttp2_queue_front(&queue)));
+    assert_false(nghttp2_queue_empty(&queue));
   }
   for (i = 0; i < 5; ++i) {
-    CU_ASSERT_EQUAL(ints[i], *(int *)(nghttp2_queue_front(&queue)));
+    assert_int(ints[i], ==, *(int *)(nghttp2_queue_front(&queue)));
     nghttp2_queue_pop(&queue);
   }
-  CU_ASSERT(nghttp2_queue_empty(&queue));
+  assert_true(nghttp2_queue_empty(&queue));
   nghttp2_queue_free(&queue);
 }

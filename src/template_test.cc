@@ -28,80 +28,92 @@
 #include <iostream>
 #include <sstream>
 
-#include <CUnit/CUnit.h>
+#include "munitxx.h"
 
 #include "template.h"
 
 namespace nghttp2 {
 
+namespace {
+const MunitTest tests[]{
+    munit_void_test(test_template_immutable_string),
+    munit_void_test(test_template_string_ref),
+    munit_test_end(),
+};
+} // namespace
+
+const MunitSuite template_suite{
+    "/template", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
+};
+
 void test_template_immutable_string(void) {
   ImmutableString null;
 
-  CU_ASSERT("" == null);
-  CU_ASSERT(0 == null.size());
-  CU_ASSERT(null.empty());
+  assert_string_equal("", null.c_str());
+  assert_size(0, ==, null.size());
+  assert_true(null.empty());
 
   ImmutableString from_cstr("alpha");
 
-  CU_ASSERT(0 == strcmp("alpha", from_cstr.c_str()));
-  CU_ASSERT(5 == from_cstr.size());
-  CU_ASSERT(!from_cstr.empty());
-  CU_ASSERT("alpha" == from_cstr);
-  CU_ASSERT(from_cstr == "alpha");
-  CU_ASSERT(std::string("alpha") == from_cstr);
-  CU_ASSERT(from_cstr == std::string("alpha"));
+  assert_string_equal("alpha", from_cstr.c_str());
+  assert_size(5, ==, from_cstr.size());
+  assert_false(from_cstr.empty());
+  assert_true("alpha" == from_cstr);
+  assert_true(from_cstr == "alpha");
+  assert_true(std::string("alpha") == from_cstr);
+  assert_true(from_cstr == std::string("alpha"));
 
   // copy constructor
   ImmutableString src("charlie");
   ImmutableString copy = src;
 
-  CU_ASSERT("charlie" == copy);
-  CU_ASSERT(7 == copy.size());
+  assert_string_equal("charlie", copy.c_str());
+  assert_size(7, ==, copy.size());
 
   // copy assignment
   ImmutableString copy2;
   copy2 = src;
 
-  CU_ASSERT("charlie" == copy2);
-  CU_ASSERT(7 == copy2.size());
+  assert_string_equal("charlie", copy2.c_str());
+  assert_size(7, ==, copy2.size());
 
   // move constructor
   ImmutableString move = std::move(copy);
 
-  CU_ASSERT("charlie" == move);
-  CU_ASSERT(7 == move.size());
-  CU_ASSERT("" == copy);
-  CU_ASSERT(0 == copy.size());
+  assert_string_equal("charlie", move.c_str());
+  assert_size(7, ==, move.size());
+  assert_string_equal("", copy.c_str());
+  assert_size(0, ==, copy.size());
 
   // move assignment
   move = std::move(from_cstr);
 
-  CU_ASSERT("alpha" == move);
-  CU_ASSERT(5 == move.size());
-  CU_ASSERT("" == from_cstr);
-  CU_ASSERT(0 == from_cstr.size());
+  assert_string_equal("alpha", move.c_str());
+  assert_size(5, ==, move.size());
+  assert_string_equal("", from_cstr.c_str());
+  assert_size(0, ==, from_cstr.size());
 
   // from string literal
-  auto from_lit = StringRef::from_lit("bravo");
+  auto from_lit = ImmutableString::from_lit("bravo");
 
-  CU_ASSERT("bravo" == from_lit);
-  CU_ASSERT(5 == from_lit.size());
+  assert_string_equal("bravo", from_lit.c_str());
+  assert_size(5, ==, from_lit.size());
 
   // equality
   ImmutableString eq("delta");
 
-  CU_ASSERT("delta1" != eq);
-  CU_ASSERT("delt" != eq);
-  CU_ASSERT(eq != "delta1");
-  CU_ASSERT(eq != "delt");
+  assert_true("delta1" != eq);
+  assert_true("delt" != eq);
+  assert_true(eq != "delta1");
+  assert_true(eq != "delt");
 
   // operator[]
   ImmutableString br_op("foxtrot");
 
-  CU_ASSERT('f' == br_op[0]);
-  CU_ASSERT('o' == br_op[1]);
-  CU_ASSERT('t' == br_op[6]);
-  CU_ASSERT('\0' == br_op[7]);
+  assert_char('f', ==, br_op[0]);
+  assert_char('o', ==, br_op[1]);
+  assert_char('t', ==, br_op[6]);
+  assert_char('\0', ==, br_op[7]);
 
   // operator==(const ImmutableString &, const ImmutableString &)
   {
@@ -109,9 +121,9 @@ void test_template_immutable_string(void) {
     ImmutableString b("foo");
     ImmutableString c("fo");
 
-    CU_ASSERT(a == b);
-    CU_ASSERT(a != c);
-    CU_ASSERT(c != b);
+    assert_true(a == b);
+    assert_true(a != c);
+    assert_true(c != b);
   }
 
   // operator<<
@@ -120,7 +132,7 @@ void test_template_immutable_string(void) {
     std::stringstream ss;
     ss << a;
 
-    CU_ASSERT("foo" == ss.str());
+    assert_stdstring_equal("foo", ss.str());
   }
 
   // operator +=(std::string &, const ImmutableString &)
@@ -128,60 +140,60 @@ void test_template_immutable_string(void) {
     std::string a = "alpha";
     a += ImmutableString("bravo");
 
-    CU_ASSERT("alphabravo" == a);
+    assert_stdstring_equal("alphabravo", a);
   }
 }
 
 void test_template_string_ref(void) {
   StringRef empty;
 
-  CU_ASSERT("" == empty);
-  CU_ASSERT(0 == empty.size());
+  assert_stdstring_equal("", empty.str());
+  assert_size(0, ==, empty.size());
 
   // from std::string
   std::string alpha = "alpha";
 
   StringRef ref(alpha);
 
-  CU_ASSERT("alpha" == ref);
-  CU_ASSERT(ref == "alpha");
-  CU_ASSERT(alpha == ref);
-  CU_ASSERT(ref == alpha);
-  CU_ASSERT(5 == ref.size());
+  assert_true("alpha" == ref);
+  assert_true(ref == "alpha");
+  assert_true(alpha == ref);
+  assert_true(ref == alpha);
+  assert_size(5, ==, ref.size());
 
   // from string literal
   auto from_lit = StringRef::from_lit("alpha");
 
-  CU_ASSERT("alpha" == from_lit);
-  CU_ASSERT(5 == from_lit.size());
+  assert_stdstring_equal("alpha", from_lit.str());
+  assert_size(5, ==, from_lit.size());
 
   // from ImmutableString
   auto im = ImmutableString::from_lit("bravo");
 
   StringRef imref(im);
 
-  CU_ASSERT("bravo" == imref);
-  CU_ASSERT(5 == imref.size());
+  assert_stdstring_equal("bravo", imref.str());
+  assert_size(5, ==, imref.size());
 
   // from C-string
   StringRef cstrref("charlie");
 
-  CU_ASSERT("charlie" == cstrref);
-  CU_ASSERT(7 == cstrref.size());
+  assert_stdstring_equal("charlie", cstrref.str());
+  assert_size(7, ==, cstrref.size());
 
   // from C-string and its length
   StringRef cstrnref("delta", 5);
 
-  CU_ASSERT("delta" == cstrnref);
-  CU_ASSERT(5 == cstrnref.size());
+  assert_stdstring_equal("delta", cstrnref.str());
+  assert_size(5, ==, cstrnref.size());
 
   // operator[]
   StringRef br_op("foxtrot");
 
-  CU_ASSERT('f' == br_op[0]);
-  CU_ASSERT('o' == br_op[1]);
-  CU_ASSERT('t' == br_op[6]);
-  CU_ASSERT('\0' == br_op[7]);
+  assert_char('f', ==, br_op[0]);
+  assert_char('o', ==, br_op[1]);
+  assert_char('t', ==, br_op[6]);
+  assert_char('\0', ==, br_op[7]);
 
   // operator<<
   {
@@ -189,7 +201,7 @@ void test_template_string_ref(void) {
     std::stringstream ss;
     ss << a;
 
-    CU_ASSERT("foo" == ss.str());
+    assert_stdstring_equal("foo", ss.str());
   }
 
   // operator +=(std::string &, const StringRef &)
@@ -197,7 +209,7 @@ void test_template_string_ref(void) {
     std::string a = "alpha";
     a += StringRef("bravo");
 
-    CU_ASSERT("alphabravo" == a);
+    assert_stdstring_equal("alphabravo", a);
   }
 }
 

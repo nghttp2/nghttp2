@@ -24,7 +24,7 @@
  */
 #include "memchunk_test.h"
 
-#include <CUnit/CUnit.h>
+#include "munitxx.h"
 
 #include <nghttp2/nghttp2.h>
 
@@ -33,52 +33,72 @@
 
 namespace nghttp2 {
 
+namespace {
+const MunitTest tests[]{
+    munit_void_test(test_pool_recycle),
+    munit_void_test(test_memchunks_append),
+    munit_void_test(test_memchunks_drain),
+    munit_void_test(test_memchunks_riovec),
+    munit_void_test(test_memchunks_recycle),
+    munit_void_test(test_memchunks_reset),
+    munit_void_test(test_peek_memchunks_append),
+    munit_void_test(test_peek_memchunks_disable_peek_drain),
+    munit_void_test(test_peek_memchunks_disable_peek_no_drain),
+    munit_void_test(test_peek_memchunks_reset),
+    munit_test_end(),
+};
+} // namespace
+
+const MunitSuite memchunk_suite{
+    "/memchunk", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
+};
+
 void test_pool_recycle(void) {
   MemchunkPool pool;
 
-  CU_ASSERT(!pool.pool);
-  CU_ASSERT(0 == pool.poolsize);
-  CU_ASSERT(nullptr == pool.freelist);
+  assert_null(pool.pool);
+  assert_size(0, ==, pool.poolsize);
+  assert_null(pool.freelist);
 
   auto m1 = pool.get();
 
-  CU_ASSERT(m1 == pool.pool);
-  CU_ASSERT(MemchunkPool::value_type::size == pool.poolsize);
-  CU_ASSERT(nullptr == pool.freelist);
+  assert_ptr_equal(m1, pool.pool);
+  assert_size(MemchunkPool::value_type::size, ==, pool.poolsize);
+  assert_null(pool.freelist);
 
   auto m2 = pool.get();
 
-  CU_ASSERT(m2 == pool.pool);
-  CU_ASSERT(2 * MemchunkPool::value_type::size == pool.poolsize);
-  CU_ASSERT(nullptr == pool.freelist);
-  CU_ASSERT(m1 == m2->knext);
-  CU_ASSERT(nullptr == m1->knext);
+  assert_ptr_equal(m2, pool.pool);
+  assert_size(2 * MemchunkPool::value_type::size, ==, pool.poolsize);
+  assert_null(pool.freelist);
+  assert_ptr_equal(m1, m2->knext);
+  assert_null(m1->knext);
 
   auto m3 = pool.get();
 
-  CU_ASSERT(m3 == pool.pool);
-  CU_ASSERT(3 * MemchunkPool::value_type::size == pool.poolsize);
-  CU_ASSERT(nullptr == pool.freelist);
+  assert_ptr_equal(m3, pool.pool);
+  assert_size(3 * MemchunkPool::value_type::size, ==, pool.poolsize);
+  assert_null(pool.freelist);
 
   pool.recycle(m3);
 
-  CU_ASSERT(m3 == pool.pool);
-  CU_ASSERT(3 * MemchunkPool::value_type::size == pool.poolsize);
-  CU_ASSERT(m3 == pool.freelist);
+  assert_ptr_equal(m3, pool.pool);
+  assert_size(3 * MemchunkPool::value_type::size, ==, pool.poolsize);
+  assert_ptr_equal(m3, pool.freelist);
 
   auto m4 = pool.get();
 
-  CU_ASSERT(m3 == m4);
-  CU_ASSERT(m4 == pool.pool);
-  CU_ASSERT(3 * MemchunkPool::value_type::size == pool.poolsize);
-  CU_ASSERT(nullptr == pool.freelist);
+  assert_ptr_equal(m3, m4);
+  assert_ptr_equal(m4, pool.pool);
+  assert_size(3 * MemchunkPool::value_type::size, ==, pool.poolsize);
+  assert_null(pool.freelist);
 
   pool.recycle(m2);
   pool.recycle(m1);
 
-  CU_ASSERT(m1 == pool.freelist);
-  CU_ASSERT(m2 == m1->next);
-  CU_ASSERT(nullptr == m2->next);
+  assert_ptr_equal(m1, pool.freelist);
+  assert_ptr_equal(m2, m1->next);
+  assert_null(m2->next);
 }
 
 using Memchunk16 = Memchunk<16>;
@@ -94,37 +114,37 @@ void test_memchunks_append(void) {
 
   auto m = chunks.tail;
 
-  CU_ASSERT(3 == m->len());
-  CU_ASSERT(13 == m->left());
+  assert_size(3, ==, m->len());
+  assert_size(13, ==, m->left());
 
   chunks.append("3456789abcdef@");
 
-  CU_ASSERT(16 == m->len());
-  CU_ASSERT(0 == m->left());
+  assert_size(16, ==, m->len());
+  assert_size(0, ==, m->left());
 
   m = chunks.tail;
 
-  CU_ASSERT(1 == m->len());
-  CU_ASSERT(15 == m->left());
-  CU_ASSERT(17 == chunks.rleft());
+  assert_size(1, ==, m->len());
+  assert_size(15, ==, m->left());
+  assert_size(17, ==, chunks.rleft());
 
   char buf[16];
   size_t nread;
 
   nread = chunks.remove(buf, 8);
 
-  CU_ASSERT(8 == nread);
-  CU_ASSERT(0 == memcmp("01234567", buf, nread));
-  CU_ASSERT(9 == chunks.rleft());
+  assert_size(8, ==, nread);
+  assert_memory_equal(nread, "01234567", buf);
+  assert_size(9, ==, chunks.rleft());
 
   nread = chunks.remove(buf, sizeof(buf));
 
-  CU_ASSERT(9 == nread);
-  CU_ASSERT(0 == memcmp("89abcdef@", buf, nread));
-  CU_ASSERT(0 == chunks.rleft());
-  CU_ASSERT(nullptr == chunks.head);
-  CU_ASSERT(nullptr == chunks.tail);
-  CU_ASSERT(32 == pool.poolsize);
+  assert_size(9, ==, nread);
+  assert_memory_equal(nread, "89abcdef@", buf);
+  assert_size(0, ==, chunks.rleft());
+  assert_null(chunks.head);
+  assert_null(chunks.tail);
+  assert_size(32, ==, pool.poolsize);
 }
 
 void test_memchunks_drain(void) {
@@ -137,14 +157,14 @@ void test_memchunks_drain(void) {
 
   nread = chunks.drain(3);
 
-  CU_ASSERT(3 == nread);
+  assert_size(3, ==, nread);
 
   char buf[16];
 
   nread = chunks.remove(buf, sizeof(buf));
 
-  CU_ASSERT(7 == nread);
-  CU_ASSERT(0 == memcmp("3456789", buf, nread));
+  assert_size(7, ==, nread);
+  assert_memory_equal(nread, "3456789", buf);
 }
 
 void test_memchunks_riovec(void) {
@@ -160,24 +180,24 @@ void test_memchunks_riovec(void) {
 
   auto m = chunks.head;
 
-  CU_ASSERT(2 == iovcnt);
-  CU_ASSERT(m->buf.data() == iov[0].iov_base);
-  CU_ASSERT(m->len() == iov[0].iov_len);
+  assert_int(2, ==, iovcnt);
+  assert_ptr_equal(m->buf.data(), iov[0].iov_base);
+  assert_size(m->len(), ==, iov[0].iov_len);
 
   m = m->next;
 
-  CU_ASSERT(m->buf.data() == iov[1].iov_base);
-  CU_ASSERT(m->len() == iov[1].iov_len);
+  assert_ptr_equal(m->buf.data(), iov[1].iov_base);
+  assert_size(m->len(), ==, iov[1].iov_len);
 
   chunks.drain(2 * 16);
 
   iovcnt = chunks.riovec(iov.data(), iov.size());
 
-  CU_ASSERT(1 == iovcnt);
+  assert_int(1, ==, iovcnt);
 
   m = chunks.head;
-  CU_ASSERT(m->buf.data() == iov[0].iov_base);
-  CU_ASSERT(m->len() == iov[0].iov_len);
+  assert_ptr_equal(m->buf.data(), iov[0].iov_base);
+  assert_size(m->len(), ==, iov[0].iov_len);
 }
 
 void test_memchunks_recycle(void) {
@@ -187,14 +207,14 @@ void test_memchunks_recycle(void) {
     std::array<char, 32> buf{};
     chunks.append(buf.data(), buf.size());
   }
-  CU_ASSERT(32 == pool.poolsize);
-  CU_ASSERT(nullptr != pool.freelist);
+  assert_size(32, ==, pool.poolsize);
+  assert_not_null(pool.freelist);
 
   auto m = pool.freelist;
   m = m->next;
 
-  CU_ASSERT(nullptr != m);
-  CU_ASSERT(nullptr == m->next);
+  assert_not_null(m);
+  assert_null(m->next);
 }
 
 void test_memchunks_reset(void) {
@@ -205,19 +225,19 @@ void test_memchunks_reset(void) {
 
   chunks.append(b.data(), b.size());
 
-  CU_ASSERT(32 == chunks.rleft());
+  assert_size(32, ==, chunks.rleft());
 
   chunks.reset();
 
-  CU_ASSERT(0 == chunks.rleft());
-  CU_ASSERT(nullptr == chunks.head);
-  CU_ASSERT(nullptr == chunks.tail);
+  assert_size(0, ==, chunks.rleft());
+  assert_null(chunks.head);
+  assert_null(chunks.tail);
 
   auto m = pool.freelist;
 
-  CU_ASSERT(nullptr != m);
-  CU_ASSERT(nullptr != m->next);
-  CU_ASSERT(nullptr == m->next->next);
+  assert_not_null(m);
+  assert_not_null(m->next);
+  assert_null(m->next->next);
 }
 
 void test_peek_memchunks_append(void) {
@@ -232,27 +252,27 @@ void test_peek_memchunks_append(void) {
 
   pchunks.append(b.data(), b.size());
 
-  CU_ASSERT(32 == pchunks.rleft());
-  CU_ASSERT(32 == pchunks.rleft_buffered());
+  assert_size(32, ==, pchunks.rleft());
+  assert_size(32, ==, pchunks.rleft_buffered());
 
-  CU_ASSERT(0 == pchunks.remove(nullptr, 0));
+  assert_size(0, ==, pchunks.remove(nullptr, 0));
 
-  CU_ASSERT(32 == pchunks.rleft());
-  CU_ASSERT(32 == pchunks.rleft_buffered());
+  assert_size(32, ==, pchunks.rleft());
+  assert_size(32, ==, pchunks.rleft_buffered());
 
-  CU_ASSERT(12 == pchunks.remove(d.data(), 12));
+  assert_size(12, ==, pchunks.remove(d.data(), 12));
 
-  CU_ASSERT(std::equal(std::begin(b), std::begin(b) + 12, std::begin(d)));
+  assert_true(std::equal(std::begin(b), std::begin(b) + 12, std::begin(d)));
 
-  CU_ASSERT(20 == pchunks.rleft());
-  CU_ASSERT(32 == pchunks.rleft_buffered());
+  assert_size(20, ==, pchunks.rleft());
+  assert_size(32, ==, pchunks.rleft_buffered());
 
-  CU_ASSERT(20 == pchunks.remove(d.data(), d.size()));
+  assert_size(20, ==, pchunks.remove(d.data(), d.size()));
 
-  CU_ASSERT(std::equal(std::begin(b) + 12, std::end(b), std::begin(d)));
+  assert_true(std::equal(std::begin(b) + 12, std::end(b), std::begin(d)));
 
-  CU_ASSERT(0 == pchunks.rleft());
-  CU_ASSERT(32 == pchunks.rleft_buffered());
+  assert_size(0, ==, pchunks.rleft());
+  assert_size(32, ==, pchunks.rleft_buffered());
 }
 
 void test_peek_memchunks_disable_peek_drain(void) {
@@ -267,20 +287,20 @@ void test_peek_memchunks_disable_peek_drain(void) {
 
   pchunks.append(b.data(), b.size());
 
-  CU_ASSERT(12 == pchunks.remove(d.data(), 12));
+  assert_size(12, ==, pchunks.remove(d.data(), 12));
 
   pchunks.disable_peek(true);
 
-  CU_ASSERT(!pchunks.peeking);
-  CU_ASSERT(20 == pchunks.rleft());
-  CU_ASSERT(20 == pchunks.rleft_buffered());
+  assert_false(pchunks.peeking);
+  assert_size(20, ==, pchunks.rleft());
+  assert_size(20, ==, pchunks.rleft_buffered());
 
-  CU_ASSERT(20 == pchunks.remove(d.data(), d.size()));
+  assert_size(20, ==, pchunks.remove(d.data(), d.size()));
 
-  CU_ASSERT(std::equal(std::begin(b) + 12, std::end(b), std::begin(d)));
+  assert_true(std::equal(std::begin(b) + 12, std::end(b), std::begin(d)));
 
-  CU_ASSERT(0 == pchunks.rleft());
-  CU_ASSERT(0 == pchunks.rleft_buffered());
+  assert_size(0, ==, pchunks.rleft());
+  assert_size(0, ==, pchunks.rleft_buffered());
 }
 
 void test_peek_memchunks_disable_peek_no_drain(void) {
@@ -295,20 +315,20 @@ void test_peek_memchunks_disable_peek_no_drain(void) {
 
   pchunks.append(b.data(), b.size());
 
-  CU_ASSERT(12 == pchunks.remove(d.data(), 12));
+  assert_size(12, ==, pchunks.remove(d.data(), 12));
 
   pchunks.disable_peek(false);
 
-  CU_ASSERT(!pchunks.peeking);
-  CU_ASSERT(32 == pchunks.rleft());
-  CU_ASSERT(32 == pchunks.rleft_buffered());
+  assert_false(pchunks.peeking);
+  assert_size(32, ==, pchunks.rleft());
+  assert_size(32, ==, pchunks.rleft_buffered());
 
-  CU_ASSERT(32 == pchunks.remove(d.data(), d.size()));
+  assert_size(32, ==, pchunks.remove(d.data(), d.size()));
 
-  CU_ASSERT(std::equal(std::begin(b), std::end(b), std::begin(d)));
+  assert_true(std::equal(std::begin(b), std::end(b), std::begin(d)));
 
-  CU_ASSERT(0 == pchunks.rleft());
-  CU_ASSERT(0 == pchunks.rleft_buffered());
+  assert_size(0, ==, pchunks.rleft());
+  assert_size(0, ==, pchunks.rleft_buffered());
 }
 
 void test_peek_memchunks_reset(void) {
@@ -323,18 +343,18 @@ void test_peek_memchunks_reset(void) {
 
   pchunks.append(b.data(), b.size());
 
-  CU_ASSERT(12 == pchunks.remove(d.data(), 12));
+  assert_size(12, ==, pchunks.remove(d.data(), 12));
 
   pchunks.disable_peek(true);
   pchunks.reset();
 
-  CU_ASSERT(0 == pchunks.rleft());
-  CU_ASSERT(0 == pchunks.rleft_buffered());
+  assert_size(0, ==, pchunks.rleft());
+  assert_size(0, ==, pchunks.rleft_buffered());
 
-  CU_ASSERT(nullptr == pchunks.cur);
-  CU_ASSERT(nullptr == pchunks.cur_pos);
-  CU_ASSERT(nullptr == pchunks.cur_last);
-  CU_ASSERT(pchunks.peeking);
+  assert_null(pchunks.cur);
+  assert_null(pchunks.cur_pos);
+  assert_null(pchunks.cur_last);
+  assert_true(pchunks.peeking);
 }
 
 } // namespace nghttp2

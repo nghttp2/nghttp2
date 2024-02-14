@@ -5,3 +5,6 @@
 	path = third-party/neverbleed
 	url = https://github.com/tatsuhiro-t/neverbleed.git
 	branch = nghttp2
+[submodule "tests/munit"]
+	path = tests/munit
+	url = https://github.com/ngtcp2/munit

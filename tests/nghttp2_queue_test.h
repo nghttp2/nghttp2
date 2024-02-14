@@ -29,6 +29,12 @@
 #  include <config.h>
 #endif /* HAVE_CONFIG_H */
 
-void test_nghttp2_queue(void);
+#define MUNIT_ENABLE_ASSERT_ALIASES
+
+#include "munit.h"
+
+extern const MunitSuite queue_suite;
+
+munit_void_test_decl(test_nghttp2_queue);
 
 #endif /* NGHTTP2_QUEUE_TEST_H */
