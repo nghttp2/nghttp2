@@ -4159,7 +4159,8 @@ NGHTTP2_EXTERN int nghttp2_session_consume_stream(nghttp2_session *session,
  *
  *   Deprecated.  :rfc:`7540` priorities are deprecated by
  *   :rfc:`9113`.  Consider migrating to :rfc:`9218` extensible
- *   prioritization scheme.
+ *   prioritization scheme.  In the future release after the end of
+ *   2024, this function will always return 0 without doing anything.
  *
  * Changes priority of existing stream denoted by |stream_id|.  The
  * new priority specification is |pri_spec|.
@@ -4204,7 +4205,8 @@ nghttp2_session_change_stream_priority(nghttp2_session *session,
  *
  *   Deprecated.  :rfc:`7540` priorities are deprecated by
  *   :rfc:`9113`.  Consider migrating to :rfc:`9218` extensible
- *   prioritization scheme.
+ *   prioritization scheme.  In the future release after the end of
+ *   2024, this function will always return 0 without doing anything.
  *
  * Creates idle stream with the given |stream_id|, and priority
  * |pri_spec|.
@@ -4576,7 +4578,9 @@ NGHTTP2_EXTERN int32_t nghttp2_submit_request(
  * request.  ``NULL`` means the default priority (see
  * `nghttp2_priority_spec_default_init()`).  To specify the priority,
  * use `nghttp2_priority_spec_init()`.  If |pri_spec| is not ``NULL``,
- * this function will copy its data members.
+ * this function will copy its data members.  In the future release
+ * after the end of 2024, this function will ignore |pri_spec| and
+ * behave as if ``NULL`` is given.
  *
  * The ``pri_spec->weight`` must be in [:macro:`NGHTTP2_MIN_WEIGHT`,
  * :macro:`NGHTTP2_MAX_WEIGHT`], inclusive.  If ``pri_spec->weight``
@@ -4879,7 +4883,9 @@ NGHTTP2_EXTERN int nghttp2_submit_trailer(nghttp2_session *session,
  * request.  ``NULL`` means the default priority (see
  * `nghttp2_priority_spec_default_init()`).  To specify the priority,
  * use `nghttp2_priority_spec_init()`.  If |pri_spec| is not ``NULL``,
- * this function will copy its data members.
+ * this function will copy its data members.  In the future release
+ * after the end of 2024, this function will ignore |pri_spec| and
+ * behave as if ``NULL`` is given.
  *
  * The ``pri_spec->weight`` must be in [:macro:`NGHTTP2_MIN_WEIGHT`,
  * :macro:`NGHTTP2_MAX_WEIGHT`], inclusive.  If ``pri_spec->weight``
@@ -5057,7 +5063,8 @@ NGHTTP2_EXTERN int nghttp2_submit_data2(nghttp2_session *session, uint8_t flags,
  *
  *   Deprecated.  :rfc:`7540` priorities are deprecated by
  *   :rfc:`9113`.  Consider migrating to :rfc:`9218` extensible
- *   prioritization scheme.
+ *   prioritization scheme.  In the future release after the end of
+ *   2024, this function will always return 0 without doing anything.
  *
  * Submits PRIORITY frame to change the priority of stream |stream_id|
  * to the priority specification |pri_spec|.
@@ -6852,7 +6859,8 @@ nghttp2_session_get_root_stream(nghttp2_session *session);
  *
  *   Deprecated.  :rfc:`7540` priorities are deprecated by
  *   :rfc:`9113`.  Consider migrating to :rfc:`9218` extensible
- *   prioritization scheme.
+ *   prioritization scheme.  In the future release after the end of
+ *   2024, this function will always return NULL.
  *
  * Returns the parent stream of |stream| in dependency tree.  Returns
  * NULL if there is no such stream.
@@ -6869,7 +6877,8 @@ NGHTTP2_EXTERN int32_t nghttp2_stream_get_stream_id(nghttp2_stream *stream);
  *
  *   Deprecated.  :rfc:`7540` priorities are deprecated by
  *   :rfc:`9113`.  Consider migrating to :rfc:`9218` extensible
- *   prioritization scheme.
+ *   prioritization scheme.  In the future release after the end of
+ *   2024, this function will always return NULL.
  *
  * Returns the next sibling stream of |stream| in dependency tree.
  * Returns NULL if there is no such stream.
@@ -6884,7 +6893,8 @@ nghttp2_stream_get_next_sibling(nghttp2_stream *stream);
  *
  *   Deprecated.  :rfc:`7540` priorities are deprecated by
  *   :rfc:`9113`.  Consider migrating to :rfc:`9218` extensible
- *   prioritization scheme.
+ *   prioritization scheme.  In the future release after the end of
+ *   2024, this function will always return NULL.
  *
  * Returns the previous sibling stream of |stream| in dependency tree.
  * Returns NULL if there is no such stream.
@@ -6899,7 +6909,8 @@ nghttp2_stream_get_previous_sibling(nghttp2_stream *stream);
  *
  *   Deprecated.  :rfc:`7540` priorities are deprecated by
  *   :rfc:`9113`.  Consider migrating to :rfc:`9218` extensible
- *   prioritization scheme.
+ *   prioritization scheme.  In the future release after the end of
+ *   2024, this function will always return NULL.
  *
  * Returns the first child stream of |stream| in dependency tree.
  * Returns NULL if there is no such stream.
@@ -6914,7 +6925,9 @@ nghttp2_stream_get_first_child(nghttp2_stream *stream);
  *
  *   Deprecated.  :rfc:`7540` priorities are deprecated by
  *   :rfc:`9113`.  Consider migrating to :rfc:`9218` extensible
- *   prioritization scheme.
+ *   prioritization scheme.  In the future release after the end of
+ *   2024, this function will always return
+ *   :macro:`NGHTTP2_DEFAULT_WEIGHT`.
  *
  * Returns dependency weight to the parent stream of |stream|.
  */
@@ -6927,7 +6940,8 @@ NGHTTP2_EXTERN int32_t nghttp2_stream_get_weight(nghttp2_stream *stream);
  *
  *   Deprecated.  :rfc:`7540` priorities are deprecated by
  *   :rfc:`9113`.  Consider migrating to :rfc:`9218` extensible
- *   prioritization scheme.
+ *   prioritization scheme.  In the future release after the end of
+ *   2024, this function will always return 0.
  *
  * Returns the sum of the weight for |stream|'s children.
  */
