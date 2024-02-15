@@ -124,9 +124,10 @@ int before_frame_send_callback(nghttp2_session *session,
 } // namespace
 
 namespace {
-ssize_t file_read_callback(nghttp2_session *session, int32_t stream_id,
-                           uint8_t *buf, size_t length, uint32_t *data_flags,
-                           nghttp2_data_source *source, void *user_data) {
+nghttp2_ssize file_read_callback(nghttp2_session *session, int32_t stream_id,
+                                 uint8_t *buf, size_t length,
+                                 uint32_t *data_flags,
+                                 nghttp2_data_source *source, void *user_data) {
   auto client = static_cast<Client *>(user_data);
   auto config = client->worker->config;
   auto req_stat = client->get_req_stat(stream_id);
@@ -158,8 +159,8 @@ ssize_t file_read_callback(nghttp2_session *session, int32_t stream_id,
 } // namespace
 
 namespace {
-ssize_t send_callback(nghttp2_session *session, const uint8_t *data,
-                      size_t length, int flags, void *user_data) {
+nghttp2_ssize send_callback(nghttp2_session *session, const uint8_t *data,
+                            size_t length, int flags, void *user_data) {
   auto client = static_cast<Client *>(user_data);
   auto &wb = client->wb;
 
@@ -198,7 +199,7 @@ void Http2Session::on_connect() {
   nghttp2_session_callbacks_set_before_frame_send_callback(
       callbacks, before_frame_send_callback);
 
-  nghttp2_session_callbacks_set_send_callback(callbacks, send_callback);
+  nghttp2_session_callbacks_set_send_callback2(callbacks, send_callback);
 
   nghttp2_option *opt;
 
@@ -257,11 +258,11 @@ int Http2Session::submit_request() {
     client_->reqidx = 0;
   }
 
-  nghttp2_data_provider prd{{0}, file_read_callback};
+  nghttp2_data_provider2 prd{{0}, file_read_callback};
 
   auto stream_id =
-      nghttp2_submit_request(session_, nullptr, nva.data(), nva.size(),
-                             config->data_fd == -1 ? nullptr : &prd, nullptr);
+      nghttp2_submit_request2(session_, nullptr, nva.data(), nva.size(),
+                              config->data_fd == -1 ? nullptr : &prd, nullptr);
   if (stream_id < 0) {
     return -1;
   }
@@ -272,7 +273,7 @@ int Http2Session::submit_request() {
 }
 
 int Http2Session::on_read(const uint8_t *data, size_t len) {
-  auto rv = nghttp2_session_mem_recv(session_, data, len);
+  auto rv = nghttp2_session_mem_recv2(session_, data, len);
   if (rv < 0) {
     return -1;
   }

@@ -755,15 +755,15 @@ void Http2Session::remove_stream_data(StreamData *sd) {
 
 int Http2Session::submit_request(Http2DownstreamConnection *dconn,
                                  const nghttp2_nv *nva, size_t nvlen,
-                                 const nghttp2_data_provider *data_prd) {
+                                 const nghttp2_data_provider2 *data_prd) {
   assert(state_ == Http2SessionState::CONNECTED);
   auto sd = std::make_unique<StreamData>();
   sd->dlnext = sd->dlprev = nullptr;
   // TODO Specify nullptr to pri_spec for now
-  auto stream_id =
-      nghttp2_submit_request(session_, nullptr, nva, nvlen, data_prd, sd.get());
+  auto stream_id = nghttp2_submit_request2(session_, nullptr, nva, nvlen,
+                                           data_prd, sd.get());
   if (stream_id < 0) {
-    SSLOG(FATAL, this) << "nghttp2_submit_request() failed: "
+    SSLOG(FATAL, this) << "nghttp2_submit_request2() failed: "
                        << nghttp2_strerror(stream_id);
     return -1;
   }
@@ -1653,7 +1653,7 @@ nghttp2_session_callbacks *create_http2_downstream_callbacks() {
                                                    send_data_callback);
 
   if (get_config()->padding) {
-    nghttp2_session_callbacks_set_select_padding_callback(
+    nghttp2_session_callbacks_set_select_padding_callback2(
         callbacks, http::select_padding_callback);
   }
 
@@ -1754,11 +1754,9 @@ int Http2Session::on_read(const uint8_t *data, size_t datalen) {
 int Http2Session::on_write() { return on_write_(*this); }
 
 int Http2Session::downstream_read(const uint8_t *data, size_t datalen) {
-  ssize_t rv;
-
-  rv = nghttp2_session_mem_recv(session_, data, datalen);
+  auto rv = nghttp2_session_mem_recv2(session_, data, datalen);
   if (rv < 0) {
-    SSLOG(ERROR, this) << "nghttp2_session_mem_recv() returned error: "
+    SSLOG(ERROR, this) << "nghttp2_session_mem_recv2() returned error: "
                        << nghttp2_strerror(rv);
     return -1;
   }
@@ -1778,9 +1776,9 @@ int Http2Session::downstream_read(const uint8_t *data, size_t datalen) {
 int Http2Session::downstream_write() {
   for (;;) {
     const uint8_t *data;
-    auto datalen = nghttp2_session_mem_send(session_, &data);
+    auto datalen = nghttp2_session_mem_send2(session_, &data);
     if (datalen < 0) {
-      SSLOG(ERROR, this) << "nghttp2_session_mem_send() returned error: "
+      SSLOG(ERROR, this) << "nghttp2_session_mem_send2() returned error: "
                          << nghttp2_strerror(datalen);
       return -1;
     }

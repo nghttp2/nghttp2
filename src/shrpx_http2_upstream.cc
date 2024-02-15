@@ -717,7 +717,7 @@ int on_frame_send_callback(nghttp2_session *session, const nghttp2_frame *frame,
         upstream, handler->get_mcpool(), promised_stream_id);
     auto &req = promised_downstream->request();
 
-    // As long as we use nghttp2_session_mem_send(), setting stream
+    // As long as we use nghttp2_session_mem_send2(), setting stream
     // user data here should not fail.  This is because this callback
     // is called just after frame was serialized.  So no worries about
     // hanging Downstream.
@@ -995,7 +995,7 @@ nghttp2_session_callbacks *create_http2_upstream_callbacks() {
   auto config = get_config();
 
   if (config->padding) {
-    nghttp2_session_callbacks_set_select_padding_callback(
+    nghttp2_session_callbacks_set_select_padding_callback2(
         callbacks, http::select_padding_callback);
   }
 
@@ -1145,21 +1145,20 @@ Http2Upstream::~Http2Upstream() {
 }
 
 int Http2Upstream::on_read() {
-  ssize_t rv = 0;
   auto rb = handler_->get_rb();
   auto rlimit = handler_->get_rlimit();
 
   if (rb->rleft()) {
-    rv = nghttp2_session_mem_recv(session_, rb->pos(), rb->rleft());
+    auto rv = nghttp2_session_mem_recv2(session_, rb->pos(), rb->rleft());
     if (rv < 0) {
       if (rv != NGHTTP2_ERR_BAD_CLIENT_MAGIC) {
-        ULOG(ERROR, this) << "nghttp2_session_mem_recv() returned error: "
+        ULOG(ERROR, this) << "nghttp2_session_mem_recv2() returned error: "
                           << nghttp2_strerror(rv);
       }
       return -1;
     }
 
-    // nghttp2_session_mem_recv should consume all input bytes on
+    // nghttp2_session_mem_recv2 should consume all input bytes on
     // success.
     assert(static_cast<size_t>(rv) == rb->rleft());
     rb->reset();
@@ -1221,10 +1220,10 @@ int Http2Upstream::on_write() {
     }
 
     const uint8_t *data;
-    auto datalen = nghttp2_session_mem_send(session_, &data);
+    auto datalen = nghttp2_session_mem_send2(session_, &data);
 
     if (datalen < 0) {
-      ULOG(ERROR, this) << "nghttp2_session_mem_send() returned error: "
+      ULOG(ERROR, this) << "nghttp2_session_mem_send2() returned error: "
                         << nghttp2_strerror(datalen);
       return -1;
     }
@@ -1436,11 +1435,11 @@ int Http2Upstream::terminate_session(uint32_t error_code) {
 }
 
 namespace {
-ssize_t downstream_data_read_callback(nghttp2_session *session,
-                                      int32_t stream_id, uint8_t *buf,
-                                      size_t length, uint32_t *data_flags,
-                                      nghttp2_data_source *source,
-                                      void *user_data) {
+nghttp2_ssize downstream_data_read_callback(nghttp2_session *session,
+                                            int32_t stream_id, uint8_t *buf,
+                                            size_t length, uint32_t *data_flags,
+                                            nghttp2_data_source *source,
+                                            void *user_data) {
   int rv;
   auto downstream = static_cast<Downstream *>(source->ptr);
   auto body = downstream->get_response_buf();
@@ -1508,7 +1507,7 @@ int Http2Upstream::send_reply(Downstream *downstream, const uint8_t *body,
                               size_t bodylen) {
   int rv;
 
-  nghttp2_data_provider data_prd, *data_prd_ptr = nullptr;
+  nghttp2_data_provider2 data_prd, *data_prd_ptr = nullptr;
 
   if (bodylen) {
     data_prd.source.ptr = downstream;
@@ -1555,10 +1554,10 @@ int Http2Upstream::send_reply(Downstream *downstream, const uint8_t *body,
     nva.push_back(http2::make_nv_nocopy(p.name, p.value));
   }
 
-  rv = nghttp2_submit_response(session_, downstream->get_stream_id(),
-                               nva.data(), nva.size(), data_prd_ptr);
+  rv = nghttp2_submit_response2(session_, downstream->get_stream_id(),
+                                nva.data(), nva.size(), data_prd_ptr);
   if (nghttp2_is_fatal(rv)) {
-    ULOG(FATAL, this) << "nghttp2_submit_response() failed: "
+    ULOG(FATAL, this) << "nghttp2_submit_response2() failed: "
                       << nghttp2_strerror(rv);
     return -1;
   }
@@ -1589,7 +1588,7 @@ int Http2Upstream::error_reply(Downstream *downstream,
   body->append(html);
   downstream->set_response_state(DownstreamState::MSG_COMPLETE);
 
-  nghttp2_data_provider data_prd;
+  nghttp2_data_provider2 data_prd;
   data_prd.source.ptr = downstream;
   data_prd.read_callback = downstream_data_read_callback;
 
@@ -1607,10 +1606,10 @@ int Http2Upstream::error_reply(Downstream *downstream,
        http2::make_nv_ls_nocopy("content-length", content_length),
        http2::make_nv_ls_nocopy("date", date)}};
 
-  rv = nghttp2_submit_response(session_, downstream->get_stream_id(),
-                               nva.data(), nva.size(), &data_prd);
+  rv = nghttp2_submit_response2(session_, downstream->get_stream_id(),
+                                nva.data(), nva.size(), &data_prd);
   if (rv < NGHTTP2_ERR_FATAL) {
-    ULOG(FATAL, this) << "nghttp2_submit_response() failed: "
+    ULOG(FATAL, this) << "nghttp2_submit_response2() failed: "
                       << nghttp2_strerror(rv);
     return -1;
   }
@@ -1876,11 +1875,11 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
     }
   }
 
-  nghttp2_data_provider data_prd;
+  nghttp2_data_provider2 data_prd;
   data_prd.source.ptr = downstream;
   data_prd.read_callback = downstream_data_read_callback;
 
-  nghttp2_data_provider *data_prdptr;
+  nghttp2_data_provider2 *data_prdptr;
 
   if (downstream->expect_response_body() ||
       downstream->expect_response_trailer()) {
@@ -1889,10 +1888,10 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
     data_prdptr = nullptr;
   }
 
-  rv = nghttp2_submit_response(session_, downstream->get_stream_id(),
-                               nva.data(), nva.size(), data_prdptr);
+  rv = nghttp2_submit_response2(session_, downstream->get_stream_id(),
+                                nva.data(), nva.size(), data_prdptr);
   if (rv != 0) {
-    ULOG(FATAL, this) << "nghttp2_submit_response() failed";
+    ULOG(FATAL, this) << "nghttp2_submit_response2() failed";
     return -1;
   }
 

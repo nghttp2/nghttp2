@@ -41,6 +41,7 @@
 
 #include <ev.h>
 
+#define NGHTTP2_NO_SSIZE_T
 #include <nghttp2/nghttp2.h>
 
 #include "http2.h"
@@ -172,14 +173,14 @@ public:
   int submit_file_response(const StringRef &status, Stream *stream,
                            time_t last_modified, off_t file_length,
                            const std::string *content_type,
-                           nghttp2_data_provider *data_prd);
+                           nghttp2_data_provider2 *data_prd);
 
   int submit_response(const StringRef &status, int32_t stream_id,
-                      nghttp2_data_provider *data_prd);
+                      nghttp2_data_provider2 *data_prd);
 
   int submit_response(const StringRef &status, int32_t stream_id,
                       const HeaderRefs &headers,
-                      nghttp2_data_provider *data_prd);
+                      nghttp2_data_provider2 *data_prd);
 
   int submit_non_final_response(const std::string &status, int32_t stream_id);
 

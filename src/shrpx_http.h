@@ -63,9 +63,9 @@ StringRef create_forwarded(BlockAllocator &balloc, int params,
 // Adds ANSI color codes to HTTP headers |hdrs|.
 std::string colorizeHeaders(const char *hdrs);
 
-ssize_t select_padding_callback(nghttp2_session *session,
-                                const nghttp2_frame *frame, size_t max_payload,
-                                void *user_data);
+nghttp2_ssize select_padding_callback(nghttp2_session *session,
+                                      const nghttp2_frame *frame,
+                                      size_t max_payload, void *user_data);
 
 // Creates set-cookie-string for cookie based affinity.  If |path| is
 // not empty, "; <path>" is added.  If |secure| is true, "; Secure" is

@@ -162,10 +162,11 @@ int Http2DownstreamConnection::submit_rst_stream(Downstream *downstream,
 }
 
 namespace {
-ssize_t http2_data_read_callback(nghttp2_session *session, int32_t stream_id,
-                                 uint8_t *buf, size_t length,
-                                 uint32_t *data_flags,
-                                 nghttp2_data_source *source, void *user_data) {
+nghttp2_ssize http2_data_read_callback(nghttp2_session *session,
+                                       int32_t stream_id, uint8_t *buf,
+                                       size_t length, uint32_t *data_flags,
+                                       nghttp2_data_source *source,
+                                       void *user_data) {
   int rv;
   auto sd = static_cast<StreamData *>(
       nghttp2_session_get_stream_user_data(session, stream_id));
@@ -476,8 +477,8 @@ int Http2DownstreamConnection::push_request_headers() {
 
   auto transfer_encoding = req.fs.header(http2::HD_TRANSFER_ENCODING);
 
-  nghttp2_data_provider *data_prdptr = nullptr;
-  nghttp2_data_provider data_prd;
+  nghttp2_data_provider2 *data_prdptr = nullptr;
+  nghttp2_data_provider2 data_prd;
 
   // Add body as long as transfer-encoding is given even if
   // req.fs.content_length == 0 to forward trailer fields.
