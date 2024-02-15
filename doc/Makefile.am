@@ -226,7 +226,6 @@ EXTRA_DIST = \
 	sources/h2load-howto.rst \
 	sources/building-android-binary.rst \
 	sources/contribute.rst \
-	sources/security.rst \
 	_exts/rubydomain/LICENSE.rubydomain \
 	_exts/rubydomain/__init__.py \
 	_exts/rubydomain/rubydomain.py \
