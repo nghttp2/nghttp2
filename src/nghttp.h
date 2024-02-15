@@ -78,7 +78,7 @@ struct Config {
   int64_t encoder_header_table_size;
   size_t padding;
   size_t max_concurrent_streams;
-  ssize_t peer_max_concurrent_streams;
+  size_t peer_max_concurrent_streams;
   int multiply;
   // milliseconds
   ev_tstamp timeout;
