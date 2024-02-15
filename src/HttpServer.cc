@@ -607,10 +607,10 @@ int Http2Handler::fill_wb() {
 
   for (;;) {
     const uint8_t *data;
-    auto datalen = nghttp2_session_mem_send(session_, &data);
+    auto datalen = nghttp2_session_mem_send2(session_, &data);
 
     if (datalen < 0) {
-      std::cerr << "nghttp2_session_mem_send() returned error: "
+      std::cerr << "nghttp2_session_mem_send2() returned error: "
                 << nghttp2_strerror(datalen) << std::endl;
       return -1;
     }
@@ -648,10 +648,10 @@ int Http2Handler::read_clear() {
     util::hexdump(stdout, buf.data(), nread);
   }
 
-  rv = nghttp2_session_mem_recv(session_, buf.data(), nread);
+  rv = nghttp2_session_mem_recv2(session_, buf.data(), nread);
   if (rv < 0) {
     if (rv != NGHTTP2_ERR_BAD_CLIENT_MAGIC) {
-      std::cerr << "nghttp2_session_mem_recv() returned error: "
+      std::cerr << "nghttp2_session_mem_recv2() returned error: "
                 << nghttp2_strerror(rv) << std::endl;
     }
     return -1;
@@ -771,10 +771,10 @@ int Http2Handler::read_tls() {
     util::hexdump(stdout, buf.data(), nread);
   }
 
-  rv = nghttp2_session_mem_recv(session_, buf.data(), nread);
+  rv = nghttp2_session_mem_recv2(session_, buf.data(), nread);
   if (rv < 0) {
     if (rv != NGHTTP2_ERR_BAD_CLIENT_MAGIC) {
-      std::cerr << "nghttp2_session_mem_recv() returned error: "
+      std::cerr << "nghttp2_session_mem_recv2() returned error: "
                 << nghttp2_strerror(rv) << std::endl;
     }
     return -1;
@@ -917,7 +917,7 @@ int Http2Handler::verify_alpn_result() {
 int Http2Handler::submit_file_response(const StringRef &status, Stream *stream,
                                        time_t last_modified, off_t file_length,
                                        const std::string *content_type,
-                                       nghttp2_data_provider *data_prd) {
+                                       nghttp2_data_provider2 *data_prd) {
   std::string last_modified_str;
   auto nva = make_array(http2::make_nv_ls_nocopy(":status", status),
                         http2::make_nv_ls_nocopy("server", NGHTTPD_SERVER),
@@ -942,13 +942,13 @@ int Http2Handler::submit_file_response(const StringRef &status, Stream *stream,
   if (!trailer_names.empty()) {
     nva[nvlen++] = http2::make_nv_ls_nocopy("trailer", trailer_names);
   }
-  return nghttp2_submit_response(session_, stream->stream_id, nva.data(), nvlen,
-                                 data_prd);
+  return nghttp2_submit_response2(session_, stream->stream_id, nva.data(),
+                                  nvlen, data_prd);
 }
 
 int Http2Handler::submit_response(const StringRef &status, int32_t stream_id,
                                   const HeaderRefs &headers,
-                                  nghttp2_data_provider *data_prd) {
+                                  nghttp2_data_provider2 *data_prd) {
   auto nva = std::vector<nghttp2_nv>();
   nva.reserve(4 + headers.size());
   nva.push_back(http2::make_nv_ls_nocopy(":status", status));
@@ -965,13 +965,13 @@ int Http2Handler::submit_response(const StringRef &status, int32_t stream_id,
   for (auto &nv : headers) {
     nva.push_back(http2::make_nv_nocopy(nv.name, nv.value, nv.no_index));
   }
-  int r = nghttp2_submit_response(session_, stream_id, nva.data(), nva.size(),
-                                  data_prd);
+  int r = nghttp2_submit_response2(session_, stream_id, nva.data(), nva.size(),
+                                   data_prd);
   return r;
 }
 
 int Http2Handler::submit_response(const StringRef &status, int32_t stream_id,
-                                  nghttp2_data_provider *data_prd) {
+                                  nghttp2_data_provider2 *data_prd) {
   auto nva = make_array(http2::make_nv_ls_nocopy(":status", status),
                         http2::make_nv_ls_nocopy("server", NGHTTPD_SERVER),
                         http2::make_nv_ls("date", sessions_->get_cached_date()),
@@ -985,8 +985,8 @@ int Http2Handler::submit_response(const StringRef &status, int32_t stream_id,
     }
   }
 
-  return nghttp2_submit_response(session_, stream_id, nva.data(), nvlen,
-                                 data_prd);
+  return nghttp2_submit_response2(session_, stream_id, nva.data(), nvlen,
+                                  data_prd);
 }
 
 int Http2Handler::submit_non_final_response(const std::string &status,
@@ -1076,9 +1076,10 @@ void Http2Handler::terminate_session(uint32_t error_code) {
   nghttp2_session_terminate_session(session_, error_code);
 }
 
-ssize_t file_read_callback(nghttp2_session *session, int32_t stream_id,
-                           uint8_t *buf, size_t length, uint32_t *data_flags,
-                           nghttp2_data_source *source, void *user_data) {
+nghttp2_ssize file_read_callback(nghttp2_session *session, int32_t stream_id,
+                                 uint8_t *buf, size_t length,
+                                 uint32_t *data_flags,
+                                 nghttp2_data_source *source, void *user_data) {
   int rv;
   auto hd = static_cast<Http2Handler *>(user_data);
   auto stream = hd->get_stream(stream_id);
@@ -1127,7 +1128,7 @@ void prepare_status_response(Stream *stream, Http2Handler *hd, int status) {
 
   // we don't set stream->file_ent since we don't want to expire it.
   stream->body_length = file_ent->length;
-  nghttp2_data_provider data_prd;
+  nghttp2_data_provider2 data_prd;
   data_prd.source.fd = file_ent->fd;
   data_prd.read_callback = file_read_callback;
 
@@ -1155,7 +1156,7 @@ void prepare_echo_response(Stream *stream, Http2Handler *hd) {
     hd->submit_rst_stream(stream, NGHTTP2_INTERNAL_ERROR);
     return;
   }
-  nghttp2_data_provider data_prd;
+  nghttp2_data_provider2 data_prd;
   data_prd.source.fd = stream->file_ent->fd;
   data_prd.read_callback = file_read_callback;
 
@@ -1378,7 +1379,7 @@ void prepare_response(Stream *stream, Http2Handler *hd,
 
   stream->body_length = file_ent->length;
 
-  nghttp2_data_provider data_prd;
+  nghttp2_data_provider2 data_prd;
 
   data_prd.source.fd = file_ent->fd;
   data_prd.read_callback = file_read_callback;
@@ -1676,9 +1677,9 @@ int send_data_callback(nghttp2_session *session, nghttp2_frame *frame,
 } // namespace
 
 namespace {
-ssize_t select_padding_callback(nghttp2_session *session,
-                                const nghttp2_frame *frame, size_t max_payload,
-                                void *user_data) {
+nghttp2_ssize select_padding_callback(nghttp2_session *session,
+                                      const nghttp2_frame *frame,
+                                      size_t max_payload, void *user_data) {
   auto hd = static_cast<Http2Handler *>(user_data);
   return std::min(max_payload, frame->hd.length + hd->get_config()->padding);
 }
@@ -1765,7 +1766,7 @@ void fill_callback(nghttp2_session_callbacks *callbacks, const Config *config) {
                                                    send_data_callback);
 
   if (config->padding) {
-    nghttp2_session_callbacks_set_select_padding_callback(
+    nghttp2_session_callbacks_set_select_padding_callback2(
         callbacks, select_padding_callback);
   }
 }
