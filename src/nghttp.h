@@ -45,6 +45,7 @@
 
 #include <ev.h>
 
+#define NGHTTP2_NO_SSIZE_T
 #include <nghttp2/nghttp2.h>
 
 #include "llhttp.h"
@@ -137,7 +138,7 @@ struct ContinueTimer {
 struct Request {
   // For pushed request, |uri| is empty and |u| is zero-cleared.
   Request(const std::string &uri, const http_parser_url &u,
-          const nghttp2_data_provider *data_prd, int64_t data_length,
+          const nghttp2_data_provider2 *data_prd, int64_t data_length,
           const nghttp2_priority_spec &pri_spec, int level = 0);
   ~Request();
 
@@ -180,7 +181,7 @@ struct Request {
   int64_t response_len;
   nghttp2_gzip *inflater;
   std::unique_ptr<HtmlParser> html_parser;
-  const nghttp2_data_provider *data_prd;
+  const nghttp2_data_provider2 *data_prd;
   size_t header_buffer_size;
   int32_t stream_id;
   int status;
@@ -246,7 +247,7 @@ struct HttpClient {
   bool all_requests_processed() const;
   void update_hostport();
   bool add_request(const std::string &uri,
-                   const nghttp2_data_provider *data_prd, int64_t data_length,
+                   const nghttp2_data_provider2 *data_prd, int64_t data_length,
                    const nghttp2_priority_spec &pri_spec, int level = 0);
 
   void record_start_time();
