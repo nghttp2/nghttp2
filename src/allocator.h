@@ -119,7 +119,7 @@ struct BlockAllocator {
     }
 
     if (!head ||
-        head->end - head->last < static_cast<ssize_t>(size + sizeof(size_t))) {
+        static_cast<size_t>(head->end - head->last) < size + sizeof(size_t)) {
       head = alloc_mem_block(block_size);
     }
 

@@ -33,6 +33,8 @@
 
 #include <openssl/ssl.h>
 
+#include <nghttp2/nghttp2.h>
+
 #ifdef ENABLE_HTTP3
 #  include <ngtcp2/ngtcp2_crypto.h>
 #endif // ENABLE_HTTP3
@@ -128,8 +130,8 @@ struct Connection {
   // underlying connection blocks), return 0.  SHRPX_ERR_EOF is
   // returned in case of EOF and no data was read.  Otherwise
   // SHRPX_ERR_NETWORK is return in case of error.
-  ssize_t write_tls(const void *data, size_t len);
-  ssize_t read_tls(void *data, size_t len);
+  nghttp2_ssize write_tls(const void *data, size_t len);
+  nghttp2_ssize read_tls(void *data, size_t len);
 
   size_t get_tls_write_limit();
   // Updates the number of bytes written in warm up period.
@@ -138,13 +140,13 @@ struct Connection {
   // determine fallback to short record size mode.
   void start_tls_write_idle();
 
-  ssize_t write_clear(const void *data, size_t len);
-  ssize_t writev_clear(struct iovec *iov, int iovcnt);
-  ssize_t read_clear(void *data, size_t len);
+  nghttp2_ssize write_clear(const void *data, size_t len);
+  nghttp2_ssize writev_clear(struct iovec *iov, int iovcnt);
+  nghttp2_ssize read_clear(void *data, size_t len);
   // Read at most |len| bytes of data from socket without rate limit.
-  ssize_t read_nolim_clear(void *data, size_t len);
+  nghttp2_ssize read_nolim_clear(void *data, size_t len);
   // Peek at most |len| bytes of data from socket without rate limit.
-  ssize_t peek_clear(void *data, size_t len);
+  nghttp2_ssize peek_clear(void *data, size_t len);
 
   void handle_tls_pending_read();
 
