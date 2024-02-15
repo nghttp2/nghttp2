@@ -93,7 +93,7 @@ struct Config {
   size_t nclients;
   size_t nthreads;
   // The maximum number of concurrent streams per session.
-  ssize_t max_concurrent_streams;
+  size_t max_concurrent_streams;
   size_t window_bits;
   size_t connection_window_bits;
   size_t max_frame_size;

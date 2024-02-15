@@ -309,7 +309,7 @@ void Http2Session::terminate() {
 }
 
 size_t Http2Session::max_concurrent_streams() {
-  return (size_t)client_->worker->config->max_concurrent_streams;
+  return client_->worker->config->max_concurrent_streams;
 }
 
 } // namespace h2load

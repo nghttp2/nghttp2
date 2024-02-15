@@ -410,7 +410,7 @@ namespace {
 void client_request_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
   auto client = static_cast<Client *>(w->data);
 
-  if (client->streams.size() >= (size_t)config.max_concurrent_streams) {
+  if (client->streams.size() >= config.max_concurrent_streams) {
     ev_timer_stop(client->worker->loop, w);
     return;
   }
@@ -3088,18 +3088,18 @@ int main(int argc, char **argv) {
 
 #ifndef NOTHREADS
   size_t nreqs_per_thread = 0;
-  ssize_t nreqs_rem = 0;
+  size_t nreqs_rem = 0;
 
   if (!config.timing_script) {
     nreqs_per_thread = config.nreqs / config.nthreads;
     nreqs_rem = config.nreqs % config.nthreads;
   }
 
-  size_t nclients_per_thread = config.nclients / config.nthreads;
-  ssize_t nclients_rem = config.nclients % config.nthreads;
+  auto nclients_per_thread = config.nclients / config.nthreads;
+  auto nclients_rem = config.nclients % config.nthreads;
 
-  size_t rate_per_thread = config.rate / config.nthreads;
-  ssize_t rate_per_thread_rem = config.rate % config.nthreads;
+  auto rate_per_thread = config.rate / config.nthreads;
+  auto rate_per_thread_rem = config.rate % config.nthreads;
 
   size_t max_samples_per_thread =
       std::max(static_cast<size_t>(256), MAX_SAMPLES / config.nthreads);

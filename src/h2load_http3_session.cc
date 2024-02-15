@@ -124,7 +124,7 @@ int Http3Session::on_write() { return -1; }
 void Http3Session::terminate() {}
 
 size_t Http3Session::max_concurrent_streams() {
-  return (size_t)client_->worker->config->max_concurrent_streams;
+  return client_->worker->config->max_concurrent_streams;
 }
 
 namespace {

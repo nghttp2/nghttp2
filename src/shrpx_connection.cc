@@ -863,7 +863,7 @@ void Connection::start_tls_write_idle() {
   }
 }
 
-ssize_t Connection::write_tls(const void *data, size_t len) {
+nghttp2_ssize Connection::write_tls(const void *data, size_t len) {
   // SSL_write requires the same arguments (buf pointer and its
   // length) on SSL_ERROR_WANT_READ or SSL_ERROR_WANT_WRITE.
   // get_write_limit() may return smaller length than previously
@@ -950,7 +950,7 @@ ssize_t Connection::write_tls(const void *data, size_t len) {
   return rv;
 }
 
-ssize_t Connection::read_tls(void *data, size_t len) {
+nghttp2_ssize Connection::read_tls(void *data, size_t len) {
   ERR_clear_error();
 
 #if defined(NGHTTP2_GENUINE_OPENSSL) || defined(NGHTTP2_OPENSSL_IS_BORINGSSL)
@@ -1061,7 +1061,7 @@ ssize_t Connection::read_tls(void *data, size_t len) {
   return rv;
 }
 
-ssize_t Connection::write_clear(const void *data, size_t len) {
+nghttp2_ssize Connection::write_clear(const void *data, size_t len) {
   len = std::min(len, wlimit.avail());
   if (len == 0) {
     return 0;
@@ -1088,7 +1088,7 @@ ssize_t Connection::write_clear(const void *data, size_t len) {
   return nwrite;
 }
 
-ssize_t Connection::writev_clear(struct iovec *iov, int iovcnt) {
+nghttp2_ssize Connection::writev_clear(struct iovec *iov, int iovcnt) {
   iovcnt = limit_iovec(iov, iovcnt, wlimit.avail());
   if (iovcnt == 0) {
     return 0;
@@ -1115,7 +1115,7 @@ ssize_t Connection::writev_clear(struct iovec *iov, int iovcnt) {
   return nwrite;
 }
 
-ssize_t Connection::read_clear(void *data, size_t len) {
+nghttp2_ssize Connection::read_clear(void *data, size_t len) {
   len = std::min(len, rlimit.avail());
   if (len == 0) {
     return 0;
@@ -1140,7 +1140,7 @@ ssize_t Connection::read_clear(void *data, size_t len) {
   return nread;
 }
 
-ssize_t Connection::read_nolim_clear(void *data, size_t len) {
+nghttp2_ssize Connection::read_nolim_clear(void *data, size_t len) {
   ssize_t nread;
   while ((nread = read(fd, data, len)) == -1 && errno == EINTR)
     ;
@@ -1158,7 +1158,7 @@ ssize_t Connection::read_nolim_clear(void *data, size_t len) {
   return nread;
 }
 
-ssize_t Connection::peek_clear(void *data, size_t len) {
+nghttp2_ssize Connection::peek_clear(void *data, size_t len) {
   ssize_t nread;
   while ((nread = recv(fd, data, len, MSG_PEEK)) == -1 && errno == EINTR)
     ;
