@@ -71,6 +71,7 @@
 #include <event2/bufferevent_ssl.h>
 #include <event2/listener.h>
 
+#define NGHTTP2_NO_SSIZE_T
 #include <nghttp2/nghttp2.h>
 
 #define OUTPUT_WOULDBLOCK_THRESHOLD (1 << 16)
@@ -277,16 +278,16 @@ static int session_send(http2_session_data *session_data) {
 }
 
 /* Read the data in the bufferevent and feed them into nghttp2 library
-   function. Invocation of nghttp2_session_mem_recv() may make
+   function. Invocation of nghttp2_session_mem_recv2() may make
    additional pending frames, so call session_send() at the end of the
    function. */
 static int session_recv(http2_session_data *session_data) {
-  ssize_t readlen;
+  nghttp2_ssize readlen;
   struct evbuffer *input = bufferevent_get_input(session_data->bev);
   size_t datalen = evbuffer_get_length(input);
   unsigned char *data = evbuffer_pullup(input, -1);
 
-  readlen = nghttp2_session_mem_recv(session_data->session, data, datalen);
+  readlen = nghttp2_session_mem_recv2(session_data->session, data, datalen);
   if (readlen < 0) {
     warnx("Fatal error: %s", nghttp2_strerror((int)readlen));
     return -1;
@@ -301,8 +302,9 @@ static int session_recv(http2_session_data *session_data) {
   return 0;
 }
 
-static ssize_t send_callback(nghttp2_session *session, const uint8_t *data,
-                             size_t length, int flags, void *user_data) {
+static nghttp2_ssize send_callback(nghttp2_session *session,
+                                   const uint8_t *data, size_t length,
+                                   int flags, void *user_data) {
   http2_session_data *session_data = (http2_session_data *)user_data;
   struct bufferevent *bev = session_data->bev;
   (void)session;
@@ -314,7 +316,7 @@ static ssize_t send_callback(nghttp2_session *session, const uint8_t *data,
     return NGHTTP2_ERR_WOULDBLOCK;
   }
   bufferevent_write(bev, data, length);
-  return (ssize_t)length;
+  return (nghttp2_ssize)length;
 }
 
 /* Returns nonzero if the string |s| ends with the substring |sub| */
@@ -370,11 +372,11 @@ static char *percent_decode(const uint8_t *value, size_t valuelen) {
   return res;
 }
 
-static ssize_t file_read_callback(nghttp2_session *session, int32_t stream_id,
-                                  uint8_t *buf, size_t length,
-                                  uint32_t *data_flags,
-                                  nghttp2_data_source *source,
-                                  void *user_data) {
+static nghttp2_ssize file_read_callback(nghttp2_session *session,
+                                        int32_t stream_id, uint8_t *buf,
+                                        size_t length, uint32_t *data_flags,
+                                        nghttp2_data_source *source,
+                                        void *user_data) {
   int fd = source->fd;
   ssize_t r;
   (void)session;
@@ -389,17 +391,17 @@ static ssize_t file_read_callback(nghttp2_session *session, int32_t stream_id,
   if (r == 0) {
     *data_flags |= NGHTTP2_DATA_FLAG_EOF;
   }
-  return r;
+  return (nghttp2_ssize)r;
 }
 
 static int send_response(nghttp2_session *session, int32_t stream_id,
                          nghttp2_nv *nva, size_t nvlen, int fd) {
   int rv;
-  nghttp2_data_provider data_prd;
+  nghttp2_data_provider2 data_prd;
   data_prd.source.fd = fd;
   data_prd.read_callback = file_read_callback;
 
-  rv = nghttp2_submit_response(session, stream_id, nva, nvlen, &data_prd);
+  rv = nghttp2_submit_response2(session, stream_id, nva, nvlen, &data_prd);
   if (rv != 0) {
     warnx("Fatal error: %s", nghttp2_strerror(rv));
     return -1;
@@ -590,7 +592,7 @@ static void initialize_nghttp2_session(http2_session_data *session_data) {
 
   nghttp2_session_callbacks_new(&callbacks);
 
-  nghttp2_session_callbacks_set_send_callback(callbacks, send_callback);
+  nghttp2_session_callbacks_set_send_callback2(callbacks, send_callback);
 
   nghttp2_session_callbacks_set_on_frame_recv_callback(callbacks,
                                                        on_frame_recv_callback);

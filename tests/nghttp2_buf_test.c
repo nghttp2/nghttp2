@@ -105,7 +105,7 @@ void test_nghttp2_bufs_add_stack_buffer_overflow_bug(void) {
 void test_nghttp2_bufs_addb(void) {
   int rv;
   nghttp2_bufs bufs;
-  ssize_t i;
+  size_t i;
   nghttp2_mem *mem;
 
   mem = nghttp2_mem_default();
@@ -123,8 +123,8 @@ void test_nghttp2_bufs_addb(void) {
     rv = nghttp2_bufs_addb(&bufs, 254);
 
     assert_int(0, ==, rv);
-    assert_size((size_t)(i + 2), ==, nghttp2_buf_len(&bufs.cur->buf));
-    assert_size((size_t)(i + 2), ==, nghttp2_bufs_len(&bufs));
+    assert_size(i + 2, ==, nghttp2_buf_len(&bufs.cur->buf));
+    assert_size(i + 2, ==, nghttp2_bufs_len(&bufs));
     assert_uint8(254, ==, *(bufs.cur->buf.last - 1));
     assert_ptr_equal(bufs.cur, bufs.head);
   }
@@ -208,7 +208,7 @@ void test_nghttp2_bufs_remove(void) {
   nghttp2_buf_chain *chain;
   int i;
   uint8_t *out;
-  ssize_t outlen;
+  nghttp2_ssize outlen;
   nghttp2_mem *mem;
 
   mem = nghttp2_mem_default();
@@ -234,7 +234,7 @@ void test_nghttp2_bufs_remove(void) {
   assert_int(0, ==, rv);
 
   outlen = nghttp2_bufs_remove(&bufs, &out);
-  assert_ssize(11, ==, outlen);
+  assert_ptrdiff(11, ==, outlen);
 
   assert_memory_equal((size_t)outlen, "hello world", out);
   assert_size(11, ==, nghttp2_bufs_len(&bufs));

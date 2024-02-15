@@ -56,6 +56,7 @@
 #include <string.h>
 #include <errno.h>
 
+#define NGHTTP2_NO_SSIZE_T
 #include <nghttp2/nghttp2.h>
 
 #include <openssl/ssl.h>
@@ -154,13 +155,14 @@ static void diec(const char *func, int error_code) {
 }
 
 /*
- * The implementation of nghttp2_send_callback type. Here we write
+ * The implementation of nghttp2_send_callback2 type. Here we write
  * |data| with size |length| to the network and return the number of
  * bytes actually written. See the documentation of
  * nghttp2_send_callback for the details.
  */
-static ssize_t send_callback(nghttp2_session *session, const uint8_t *data,
-                             size_t length, int flags, void *user_data) {
+static nghttp2_ssize send_callback(nghttp2_session *session,
+                                   const uint8_t *data, size_t length,
+                                   int flags, void *user_data) {
   struct Connection *connection;
   int rv;
   (void)session;
@@ -184,13 +186,14 @@ static ssize_t send_callback(nghttp2_session *session, const uint8_t *data,
 }
 
 /*
- * The implementation of nghttp2_recv_callback type. Here we read data
- * from the network and write them in |buf|. The capacity of |buf| is
- * |length| bytes. Returns the number of bytes stored in |buf|. See
- * the documentation of nghttp2_recv_callback for the details.
+ * The implementation of nghttp2_recv_callback2 type. Here we read
+ * data from the network and write them in |buf|. The capacity of
+ * |buf| is |length| bytes. Returns the number of bytes stored in
+ * |buf|. See the documentation of nghttp2_recv_callback for the
+ * details.
  */
-static ssize_t recv_callback(nghttp2_session *session, uint8_t *buf,
-                             size_t length, int flags, void *user_data) {
+static nghttp2_ssize recv_callback(nghttp2_session *session, uint8_t *buf,
+                                   size_t length, int flags, void *user_data) {
   struct Connection *connection;
   int rv;
   (void)session;
@@ -328,9 +331,9 @@ static int on_data_chunk_recv_callback(nghttp2_session *session, uint8_t flags,
  * recv_callback is also required.
  */
 static void setup_nghttp2_callbacks(nghttp2_session_callbacks *callbacks) {
-  nghttp2_session_callbacks_set_send_callback(callbacks, send_callback);
+  nghttp2_session_callbacks_set_send_callback2(callbacks, send_callback);
 
-  nghttp2_session_callbacks_set_recv_callback(callbacks, recv_callback);
+  nghttp2_session_callbacks_set_recv_callback2(callbacks, recv_callback);
 
   nghttp2_session_callbacks_set_on_frame_send_callback(callbacks,
                                                        on_frame_send_callback);
@@ -458,8 +461,8 @@ static void submit_request(struct Connection *connection, struct Request *req) {
                             MAKE_NV("accept", "*/*"),
                             MAKE_NV("user-agent", "nghttp2/" NGHTTP2_VERSION)};
 
-  stream_id = nghttp2_submit_request(connection->session, NULL, nva,
-                                     sizeof(nva) / sizeof(nva[0]), NULL, req);
+  stream_id = nghttp2_submit_request2(connection->session, NULL, nva,
+                                      sizeof(nva) / sizeof(nva[0]), NULL, req);
 
   if (stream_id < 0) {
     diec("nghttp2_submit_request", stream_id);

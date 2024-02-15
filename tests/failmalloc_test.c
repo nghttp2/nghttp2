@@ -72,18 +72,20 @@ static void data_feed_init(data_feed *df, nghttp2_bufs *bufs) {
   df->datalimit = df->data + data_length;
 }
 
-static ssize_t null_send_callback(nghttp2_session *session, const uint8_t *data,
-                                  size_t len, int flags, void *user_data) {
+static nghttp2_ssize null_send_callback(nghttp2_session *session,
+                                        const uint8_t *data, size_t len,
+                                        int flags, void *user_data) {
   (void)session;
   (void)data;
   (void)flags;
   (void)user_data;
 
-  return (ssize_t)len;
+  return (nghttp2_ssize)len;
 }
 
-static ssize_t data_feed_recv_callback(nghttp2_session *session, uint8_t *data,
-                                       size_t len, int flags, void *user_data) {
+static nghttp2_ssize data_feed_recv_callback(nghttp2_session *session,
+                                             uint8_t *data, size_t len,
+                                             int flags, void *user_data) {
   data_feed *df = ((my_user_data *)user_data)->df;
   size_t avail = (size_t)(df->datalimit - df->datamark);
   size_t wlen = nghttp2_min(avail, len);
@@ -92,10 +94,10 @@ static ssize_t data_feed_recv_callback(nghttp2_session *session, uint8_t *data,
 
   memcpy(data, df->datamark, wlen);
   df->datamark += wlen;
-  return (ssize_t)wlen;
+  return (nghttp2_ssize)wlen;
 }
 
-static ssize_t fixed_length_data_source_read_callback(
+static nghttp2_ssize fixed_length_data_source_read_callback(
     nghttp2_session *session, int32_t stream_id, uint8_t *buf, size_t len,
     uint32_t *data_flags, nghttp2_data_source *source, void *user_data) {
   my_user_data *ud = (my_user_data *)user_data;
@@ -114,7 +116,7 @@ static ssize_t fixed_length_data_source_read_callback(
   if (ud->data_source_length == 0) {
     *data_flags = NGHTTP2_DATA_FLAG_EOF;
   }
-  return (ssize_t)wlen;
+  return (nghttp2_ssize)wlen;
 }
 
 #define TEST_FAILMALLOC_RUN(FUN)                                               \
@@ -142,12 +144,12 @@ static void run_nghttp2_session_send(void) {
   nghttp2_session_callbacks callbacks;
   nghttp2_nv nv[] = {MAKE_NV(":host", "example.org"),
                      MAKE_NV(":scheme", "https")};
-  nghttp2_data_provider data_prd;
+  nghttp2_data_provider2 data_prd;
   nghttp2_settings_entry iv[2];
   my_user_data ud;
   int rv;
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
-  callbacks.send_callback = null_send_callback;
+  callbacks.send_callback2 = null_send_callback;
 
   data_prd.read_callback = fixed_length_data_source_read_callback;
   ud.data_source_length = 64 * 1024;
@@ -162,7 +164,7 @@ static void run_nghttp2_session_send(void) {
   if (rv != 0) {
     goto client_new_fail;
   }
-  rv = nghttp2_submit_request(session, NULL, nv, ARRLEN(nv), &data_prd, NULL);
+  rv = nghttp2_submit_request2(session, NULL, nv, ARRLEN(nv), &data_prd, NULL);
   if (rv < 0) {
     goto fail;
   }
@@ -182,7 +184,7 @@ static void run_nghttp2_session_send(void) {
   if (rv != 0) {
     goto fail;
   }
-  rv = nghttp2_submit_data(session, NGHTTP2_FLAG_END_STREAM, 3, &data_prd);
+  rv = nghttp2_submit_data2(session, NGHTTP2_FLAG_END_STREAM, 3, &data_prd);
   if (rv != 0) {
     goto fail;
   }
@@ -234,7 +236,7 @@ static void run_nghttp2_session_send_server(void) {
   nghttp2_session_callbacks *callbacks;
   int rv;
   const uint8_t *txdata;
-  ssize_t txdatalen;
+  nghttp2_ssize txdatalen;
   const uint8_t origin[] = "nghttp2.org";
   const uint8_t altsvc_field_value[] = "h2=\":443\"";
   static const uint8_t nghttp2[] = "https://nghttp2.org";
@@ -269,7 +271,7 @@ static void run_nghttp2_session_send_server(void) {
     goto fail;
   }
 
-  txdatalen = nghttp2_session_mem_send(session, &txdata);
+  txdatalen = nghttp2_session_mem_send2(session, &txdata);
 
   if (txdatalen < 0) {
     goto fail;
@@ -309,7 +311,7 @@ static void run_nghttp2_session_recv(void) {
   }
 
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
-  callbacks.recv_callback = data_feed_recv_callback;
+  callbacks.recv_callback2 = data_feed_recv_callback;
   ud.df = &df;
 
   nghttp2_failmalloc_pause();
