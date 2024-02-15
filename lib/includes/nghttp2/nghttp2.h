@@ -1133,13 +1133,13 @@ typedef enum {
 /**
  * @struct
  *
- * The structure to specify stream dependency.
- *
  * .. warning::
  *
  *   Deprecated.  :rfc:`7540` priorities are deprecated by
  *   :rfc:`9113`.  Consider migrating to :rfc:`9218` extensible
  *   prioritization scheme.
+ *
+ * The structure to specify stream dependency.
  */
 typedef struct {
   /**
@@ -1173,13 +1173,13 @@ typedef struct {
    */
   size_t padlen;
   /**
-   * The priority specification
-   *
    * .. warning::
    *
    *   Deprecated.  :rfc:`7540` priorities are deprecated by
    *   :rfc:`9113`.  Consider migrating to :rfc:`9218` extensible
    *   prioritization scheme.
+   *
+   * The priority specification
    */
   nghttp2_priority_spec pri_spec;
   /**
@@ -1199,13 +1199,13 @@ typedef struct {
 /**
  * @struct
  *
- * The PRIORITY frame.  It has the following members:
- *
  * .. warning::
  *
  *   Deprecated.  :rfc:`7540` priorities are deprecated by
  *   :rfc:`9113`.  Consider migrating to :rfc:`9218` extensible
  *   prioritization scheme.
+ *
+ * The PRIORITY frame.  It has the following members:
  */
 typedef struct {
   /**
@@ -2383,14 +2383,15 @@ typedef nghttp2_ssize (*nghttp2_pack_extension_callback2)(
 /**
  * @functypedef
  *
+ * .. warning::
+ *
+ *   Deprecated.  Use :type:`nghttp2_error_callback2` instead.
+ *
  * Callback function invoked when library provides the error message
  * intended for human consumption.  This callback is solely for
  * debugging purpose.  The |msg| is typically NULL-terminated string
  * of length |len|.  |len| does not include the sentinel NULL
  * character.
- *
- * This function is deprecated.  The new application should use
- * :type:`nghttp2_error_callback2`.
  *
  * The format of error message may change between nghttp2 library
  * versions.  The application should not depend on the particular
@@ -2794,11 +2795,14 @@ nghttp2_session_callbacks_set_on_extension_chunk_recv_callback(
 /**
  * @function
  *
+ * .. warning::
+ *
+ *   Deprecated.  Use
+ *   `nghttp2_session_callbacks_set_error_callback2()` with
+ *   :type:`nghttp2_error_callback2` instead.
+ *
  * Sets callback function invoked when library tells error message to
  * the application.
- *
- * This function is deprecated.  The new application should use
- * `nghttp2_session_callbacks_set_error_callback2()`.
  *
  * If both :type:`nghttp2_error_callback` and
  * :type:`nghttp2_error_callback2` are set, the latter takes
@@ -4252,10 +4256,6 @@ nghttp2_session_create_idle_stream(nghttp2_session *session, int32_t stream_id,
 /**
  * @function
  *
- * Performs post-process of HTTP Upgrade request.  This function can
- * be called from both client and server, but the behavior is very
- * different in each other.
- *
  * .. warning::
  *
  *   This function is deprecated in favor of
@@ -4266,6 +4266,10 @@ nghttp2_session_create_idle_stream(nghttp2_session *session, int32_t stream_id,
  *   header field (see `nghttp2_option_set_no_http_messaging()`).  If
  *   HEAD is used in request, the length of response body must be 0
  *   regardless of value included in content-length header field.
+ *
+ * Performs post-process of HTTP Upgrade request.  This function can
+ * be called from both client and server, but the behavior is very
+ * different in each other.
  *
  * If called from client side, the |settings_payload| must be the
  * value sent in ``HTTP2-Settings`` header field and must be decoded
