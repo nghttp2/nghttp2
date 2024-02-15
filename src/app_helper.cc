@@ -53,8 +53,6 @@
 #include <iomanip>
 #include <fstream>
 
-#include <zlib.h>
-
 #include "app_helper.h"
 #include "util.h"
 #include "http2.h"
@@ -475,44 +473,6 @@ std::chrono::milliseconds get_timer() {
 
 std::chrono::steady_clock::time_point get_time() {
   return std::chrono::steady_clock::now();
-}
-
-ssize_t deflate_data(uint8_t *out, size_t outlen, const uint8_t *in,
-                     size_t inlen) {
-  int rv;
-  z_stream zst{};
-  uint8_t temp_out[8_k];
-  auto temp_outlen = sizeof(temp_out);
-
-  rv = deflateInit2(&zst, Z_DEFAULT_COMPRESSION, Z_DEFLATED, 31, 9,
-                    Z_DEFAULT_STRATEGY);
-
-  if (rv != Z_OK) {
-    return -1;
-  }
-
-  zst.avail_in = inlen;
-  zst.next_in = (uint8_t *)in;
-  zst.avail_out = temp_outlen;
-  zst.next_out = temp_out;
-
-  rv = deflate(&zst, Z_FINISH);
-
-  deflateEnd(&zst);
-
-  if (rv != Z_STREAM_END) {
-    return -1;
-  }
-
-  temp_outlen -= zst.avail_out;
-
-  if (temp_outlen > outlen) {
-    return -1;
-  }
-
-  memcpy(out, temp_out, temp_outlen);
-
-  return temp_outlen;
 }
 
 } // namespace nghttp2
