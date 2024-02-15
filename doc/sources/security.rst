@@ -1,12 +1,12 @@
 Security Process
 ================
 
-If you find a vulnerability in our software, please send the email to
-"tatsuhiro.t at gmail dot com" about its details instead of submitting
+If you find a vulnerability in our software, please report it via
+GitHub "Private vulnerability reporting" feature at
+https://github.com/nghttp2/nghttp2/security instead of submitting
 issues on github issue page.  It is a standard practice not to
 disclose vulnerability information publicly until a fixed version is
-released, or mitigation is worked out.  In the future, we may setup a
-dedicated mail address for this purpose.
+released, or mitigation is worked out.
 
 If we identify that the reported issue is really a vulnerability, we
 open a new security advisory draft using `GitHub security feature
