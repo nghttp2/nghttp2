@@ -41,6 +41,7 @@
 
 #include <jansson.h>
 
+#define NGHTTP2_NO_SSIZE_T
 #include <nghttp2/nghttp2.h>
 
 #include "template.h"
@@ -113,11 +114,10 @@ static void output_to_json(nghttp2_hd_deflater *deflater, const uint8_t *buf,
 static void deflate_hd(nghttp2_hd_deflater *deflater,
                        const std::vector<nghttp2_nv> &nva, size_t inputlen,
                        int seq) {
-  ssize_t rv;
   std::array<uint8_t, 64_k> buf;
 
-  rv = nghttp2_hd_deflate_hd(deflater, buf.data(), buf.size(),
-                             (nghttp2_nv *)nva.data(), nva.size());
+  auto rv = nghttp2_hd_deflate_hd2(deflater, buf.data(), buf.size(),
+                                   (nghttp2_nv *)nva.data(), nva.size());
   if (rv < 0) {
     fprintf(stderr, "deflate failed with error code %zd at %d\n", rv, seq);
     exit(EXIT_FAILURE);
