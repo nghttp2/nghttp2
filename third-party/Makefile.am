@@ -29,11 +29,15 @@ EXTRA_DIST = CMakeLists.txt build_config.rb
 # find mruby -type f ! -ipath 'mruby/.*' | awk '{print "\t"$0" \\"}'
 EXTRA_DIST += \
 	mruby/AUTHORS \
+	mruby/docker-compose.yml \
 	mruby/codespell.txt \
 	mruby/CONTRIBUTING.md \
 	mruby/NEWS \
 	mruby/CODEOWNERS \
+	mruby/Gemfile.lock \
 	mruby/appveyor.yml \
+	mruby/Dockerfile \
+	mruby/Gemfile \
 	mruby/benchmark/plot.gpl \
 	mruby/benchmark/bm_ao_render.rb \
 	mruby/benchmark/bm_fib.rb \
@@ -52,6 +56,7 @@ EXTRA_DIST += \
 	mruby/tasks/benchmark.rake \
 	mruby/tasks/mrbgems.rake \
 	mruby/tasks/presym.rake \
+	mruby/tasks/install.rake \
 	mruby/tasks/bin.rake \
 	mruby/tasks/test.rake \
 	mruby/tasks/mrblib.rake \
@@ -66,6 +71,8 @@ EXTRA_DIST += \
 	mruby/oss-fuzz/proto_to_ruby.h \
 	mruby/build_config/cross-mingw-winetest.rb \
 	mruby/build_config/host-f32.rb \
+	mruby/build_config/nintendo_wii.rb \
+	mruby/build_config/i586-pc-msdosdjgpp.rb \
 	mruby/build_config/chipKITMax32.rb \
 	mruby/build_config/gameboyadvance.rb \
 	mruby/build_config/minimal.rb \
@@ -90,7 +97,6 @@ EXTRA_DIST += \
 	mruby/build_config/clang-asan.rb \
 	mruby/build_config/RX630.rb \
 	mruby/build_config/host-nofloat.rb \
-	mruby/build_config/android_armeabi.rb \
 	mruby/build_config/android_arm64_v8a.rb \
 	mruby/build_config/cross-32bit.rb \
 	mruby/build_config/cross-mingw.rb \
@@ -170,7 +176,6 @@ EXTRA_DIST += \
 	mruby/test/t/standarderror.rb \
 	mruby/test/t/superclass.rb \
 	mruby/test/assert.rb \
-	mruby/super-linter.report/.keep \
 	mruby/TODO.md \
 	mruby/Doxyfile \
 	mruby/mrblib/00kernel.rb \
@@ -220,11 +225,12 @@ EXTRA_DIST += \
 	mruby/src/array.c \
 	mruby/src/dump.c \
 	mruby/src/class.c \
-	mruby/src/compar.c \
 	mruby/src/value_array.h \
+	mruby/src/allocf.c \
 	mruby/src/pool.c \
 	mruby/mruby-source.gemspec \
 	mruby/mrbgems/mruby-eval/mrbgem.rake \
+	mruby/mrbgems/mruby-eval/test/binding.rb \
 	mruby/mrbgems/mruby-eval/test/eval.rb \
 	mruby/mrbgems/mruby-eval/src/eval.c \
 	mruby/mrbgems/stdlib.gembox \
@@ -244,7 +250,6 @@ EXTRA_DIST += \
 	mruby/mrbgems/mruby-method/mrbgem.rake \
 	mruby/mrbgems/mruby-method/README.md \
 	mruby/mrbgems/mruby-method/test/method.rb \
-	mruby/mrbgems/mruby-method/mrblib/kernel.rb \
 	mruby/mrbgems/mruby-method/mrblib/method.rb \
 	mruby/mrbgems/mruby-method/src/method.c \
 	mruby/mrbgems/mruby-random/mrbgem.rake \
@@ -368,7 +373,6 @@ EXTRA_DIST += \
 	mruby/mrbgems/mruby-test-inline-struct/test/inline.rb \
 	mruby/mrbgems/mruby-time/mrbgem.rake \
 	mruby/mrbgems/mruby-time/test/time.rb \
-	mruby/mrbgems/mruby-time/mrblib/time.rb \
 	mruby/mrbgems/mruby-time/src/time.c \
 	mruby/mrbgems/mruby-time/include/mruby/time.h \
 	mruby/mrbgems/mruby-proc-binding/mrbgem.rake \
@@ -408,10 +412,9 @@ EXTRA_DIST += \
 	mruby/mrbgems/mruby-numeric-ext/test/numeric.rb \
 	mruby/mrbgems/mruby-numeric-ext/mrblib/numeric_ext.rb \
 	mruby/mrbgems/mruby-numeric-ext/src/numeric_ext.c \
-	mruby/mrbgems/mruby-binding-core/mrbgem.rake \
-	mruby/mrbgems/mruby-binding-core/test/binding-core.rb \
-	mruby/mrbgems/mruby-binding-core/src/binding-core.c \
 	mruby/mrbgems/mruby-fiber/mrbgem.rake \
+	mruby/mrbgems/mruby-fiber/test/fiber2.rb \
+	mruby/mrbgems/mruby-fiber/test/fibertest.c \
 	mruby/mrbgems/mruby-fiber/test/fiber.rb \
 	mruby/mrbgems/mruby-fiber/src/fiber.c \
 	mruby/mrbgems/mruby-complex/mrbgem.rake \
@@ -496,7 +499,9 @@ EXTRA_DIST += \
 	mruby/doc/internal/boxing.md \
 	mruby/doc/limitations.md \
 	mruby/doc/mruby3.2.md \
+	mruby/doc/mruby3.3.md \
 	mruby/doc/guides/compile.md \
+	mruby/doc/guides/memory.md \
 	mruby/doc/guides/mrbgems.md \
 	mruby/doc/guides/debugger.md \
 	mruby/doc/guides/link.md \
