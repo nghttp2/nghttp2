@@ -363,6 +363,16 @@ With this flag only a CR is required to terminate such sections.
 
 **Enabling this flag can pose a security issue since you will be exposed to request smuggling attacks. USE WITH CAUTION!**
 
+### `void llhttp_set_lenient_optional_cr_before_lf(llhttp_t* parser, int enabled)`
+
+Enables/disables lenient handling of line separators.
+
+Normally `llhttp` would error when a LF is not preceded by CR when terminating the
+request line, the status line, the headers, a chunk header or a chunk data.
+With this flag only a LF is required to terminate such sections.
+
+**Enabling this flag can pose a security issue since you will be exposed to request smuggling attacks. USE WITH CAUTION!**
+
 ### `void llhttp_set_lenient_optional_crlf_after_chunk(llhttp_t* parser, int enabled)`
 
 Enables/disables lenient handling of chunks not separated via CRLF.
@@ -373,12 +383,21 @@ With this flag the new chunk can start immediately after the previous one.
 
 **Enabling this flag can pose a security issue since you will be exposed to request smuggling attacks. USE WITH CAUTION!**
 
+### `void llhttp_set_lenient_spaces_after_chunk_size(llhttp_t* parser, int enabled)`
+
+Enables/disables lenient handling of spaces after chunk size.
+
+Normally `llhttp` would error when after a chunk size is followed by one or more spaces are present instead of a CRLF or `;`.
+With this flag this check is disabled.
+
+**Enabling this flag can pose a security issue since you will be exposed to request smuggling attacks. USE WITH CAUTION!**
+
 ## Build Instructions
 
 Make sure you have [Node.js](https://nodejs.org/), npm and npx installed. Then under project directory run:
 
 ```sh
-npm install
+npm ci
 make
 ```
 
@@ -432,7 +451,7 @@ _Note that using the git repo directly (e.g., via a git repo url and tag) will n
 
 1. Ensure that `Clang` and `make` are in your system path.
 2. Using Git Bash, clone the repo to your preferred location.
-3. Cd into the cloned directory and run `npm install`
+3. Cd into the cloned directory and run `npm ci`
 5. Run `make`
 6. Your `repo/build` directory should now have `libllhttp.a` and `libllhttp.so` static and dynamic libraries.
 7. When building your executable, you can link to these libraries. Make sure to set the build folder as an include path when building so you can reference the declarations in `repo/build/llhttp.h`.
