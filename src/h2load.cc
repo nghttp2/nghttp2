@@ -582,8 +582,12 @@ int Client::make_socket(addrinfo *addr) {
     }
   }
 
-  if (ssl && !util::numeric_host(config.host.c_str())) {
-    SSL_set_tlsext_host_name(ssl, config.host.c_str());
+  if (ssl) {
+    if (!config.sni.empty()) {
+      SSL_set_tlsext_host_name(ssl, config.sni.c_str());
+    } else if (!util::numeric_host(config.host.c_str())) {
+      SSL_set_tlsext_host_name(ssl, config.host.c_str());
+    }
   }
 
   if (config.is_quic()) {
@@ -2301,6 +2305,9 @@ Options:
   --max-udp-payload-size=<SIZE>
               Specify the maximum outgoing UDP datagram payload size.
   --ktls      Enable ktls.
+  --sni=<DNSNAME>
+              Send  <DNSNAME> in  TLS  SNI, overriding  the host  name
+              specified in URI.
   -v, --verbose
               Output debug information.
   --version   Display version information and exit.
@@ -2363,6 +2370,7 @@ int main(int argc, char **argv) {
         {"max-udp-payload-size", required_argument, &flag, 17},
         {"ktls", no_argument, &flag, 18},
         {"alpn-list", required_argument, &flag, 19},
+        {"sni", required_argument, &flag, 20},
         {nullptr, 0, nullptr, 0}};
     int option_index = 0;
     auto c = getopt_long(argc, argv,
@@ -2698,6 +2706,10 @@ int main(int argc, char **argv) {
       case 19:
         // alpn-list option
         config.alpn_list = util::parse_config_str_list(StringRef{optarg});
+        break;
+      case 20:
+        // --sni
+        config.sni = optarg;
         break;
       }
       break;

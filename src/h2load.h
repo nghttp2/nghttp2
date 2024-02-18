@@ -139,6 +139,9 @@ struct Config {
   size_t max_udp_payload_size;
   // Enable ktls.
   bool ktls;
+  // sni is the value sent in TLS SNI, overriding DNS name of the
+  // remote host.
+  std::string sni;
 
   Config();
   ~Config();
