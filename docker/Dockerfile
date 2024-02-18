@@ -9,7 +9,7 @@ RUN apt-get update && \
         zlib1g-dev libev-dev libjemalloc-dev ruby-dev libc-ares-dev bison \
         libelf-dev libbrotli-dev
 
-RUN git clone --depth 1 -b v1.20.0 https://github.com/aws/aws-lc && \
+RUN git clone --depth 1 -b v1.21.0 https://github.com/aws/aws-lc && \
     cd aws-lc && \
     cmake -B build -DDISABLE_GO=ON && \
     make -j$(nproc) -C build && \
@@ -17,8 +17,9 @@ RUN git clone --depth 1 -b v1.20.0 https://github.com/aws/aws-lc && \
     cd .. && \
     rm -rf aws-lc
 
-RUN git clone --depth 1 -b v1.1.0 https://github.com/ngtcp2/nghttp3 && \
+RUN git clone --depth 1 -b v1.2.0 https://github.com/ngtcp2/nghttp3 && \
     cd nghttp3 && \
+    git submodule update --init --depth 1 && \
     autoreconf -i && \
     ./configure --enable-lib-only && \
     make -j$(nproc) && \
@@ -26,8 +27,9 @@ RUN git clone --depth 1 -b v1.1.0 https://github.com/ngtcp2/nghttp3 && \
     cd .. && \
     rm -rf nghttp3
 
-RUN git clone --depth 1 -b v1.2.0 https://github.com/ngtcp2/ngtcp2 && \
+RUN git clone --depth 1 -b v1.3.0 https://github.com/ngtcp2/ngtcp2 && \
     cd ngtcp2 && \
+    git submodule update --init --depth 1 && \
     autoreconf -i && \
     ./configure --enable-lib-only --with-boringssl \
         LIBTOOL_LDFLAGS="-static-libtool-libs" \
