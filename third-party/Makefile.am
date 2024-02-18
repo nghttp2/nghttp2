@@ -563,7 +563,7 @@ libllhttp_la_CPPFLAGS = -I${srcdir}/llhttp/include
 
 if HAVE_NEVERBLEED
 noinst_LTLIBRARIES += libneverbleed.la
-libneverbleed_la_CPPFLAGS = @OPENSSL_CFLAGS@
+libneverbleed_la_CPPFLAGS = @OPENSSL_CFLAGS@ -D_GNU_SOURCE
 libneverbleed_la_LIBADD = @OPENSSL_LIBS@
 libneverbleed_la_SOURCES = neverbleed/neverbleed.c neverbleed/neverbleed.h
 endif # HAVE_NEVERBLEED
