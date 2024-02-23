@@ -49,6 +49,8 @@
 #include <fstream>
 #include <unordered_map>
 
+#include <openssl/evp.h>
+
 #include <nghttp2/nghttp2.h>
 
 #include "url-parser/url_parser.h"
@@ -4690,5 +4692,33 @@ int resolve_hostname(Address *addr, const char *hostname, uint16_t port,
 
   return 0;
 }
+
+#ifdef ENABLE_HTTP3
+QUICKeyingMaterial::QUICKeyingMaterial(QUICKeyingMaterial &&other) noexcept
+    : cid_encryption_ctx{std::exchange(other.cid_encryption_ctx, nullptr)},
+      reserved{other.reserved},
+      secret{other.secret},
+      salt{other.salt},
+      cid_encryption_key{other.cid_encryption_key},
+      id{other.id} {}
+
+QUICKeyingMaterial::~QUICKeyingMaterial() noexcept {
+  if (cid_encryption_ctx) {
+    EVP_CIPHER_CTX_free(cid_encryption_ctx);
+  }
+}
+
+QUICKeyingMaterial &
+QUICKeyingMaterial::operator=(QUICKeyingMaterial &&other) noexcept {
+  cid_encryption_ctx = std::exchange(other.cid_encryption_ctx, nullptr);
+  reserved = other.reserved;
+  secret = other.secret;
+  salt = other.salt;
+  cid_encryption_key = other.cid_encryption_key;
+  id = other.id;
+
+  return *this;
+}
+#endif // ENABLE_HTTP3
 
 } // namespace shrpx

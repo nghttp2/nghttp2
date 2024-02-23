@@ -134,7 +134,7 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
 
       if (decrypt_quic_connection_id(decrypted_dcid.data(),
                                      vc.dcid + SHRPX_QUIC_CID_PREFIX_OFFSET,
-                                     qkm->cid_encryption_key.data()) != 0) {
+                                     qkm->cid_encryption_ctx) != 0) {
         return 0;
       }
 
@@ -186,7 +186,7 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
 
           if (decrypt_quic_connection_id(decrypted_dcid.data(),
                                          vc.dcid + SHRPX_QUIC_CID_PREFIX_OFFSET,
-                                         qkm->cid_encryption_key.data()) != 0) {
+                                         qkm->cid_encryption_ctx) != 0) {
             return 0;
           }
         }
@@ -480,7 +480,7 @@ int QUICConnectionHandler::send_retry(
 
   if (generate_quic_retry_connection_id(retry_scid, SHRPX_QUIC_SCIDLEN,
                                         quicconf.server_id.data(), qkm.id,
-                                        qkm.cid_encryption_key.data()) != 0) {
+                                        qkm.cid_encryption_ctx) != 0) {
     return -1;
   }
 

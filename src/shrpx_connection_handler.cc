@@ -1279,7 +1279,7 @@ int ConnectionHandler::quic_ipc_read() {
 
   if (decrypt_quic_connection_id(decrypted_dcid.data(),
                                  vc.dcid + SHRPX_QUIC_CID_PREFIX_OFFSET,
-                                 qkm.cid_encryption_key.data()) != 0) {
+                                 qkm.cid_encryption_ctx) != 0) {
     return -1;
   }
 
