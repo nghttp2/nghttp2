@@ -583,6 +583,16 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
       LOG(ERROR) << "Failed to generate QUIC Connection ID encryption key";
       return -1;
     }
+
+    qkm.cid_encryption_ctx = EVP_CIPHER_CTX_new();
+    if (!EVP_EncryptInit_ex(qkm.cid_encryption_ctx, EVP_aes_128_ecb(), nullptr,
+                            qkm.cid_encryption_key.data(), nullptr)) {
+      LOG(ERROR)
+          << "Failed to initialize QUIC Connection ID encryption context";
+      return -1;
+    }
+
+    EVP_CIPHER_CTX_set_padding(qkm.cid_encryption_ctx, 0);
   }
 
   conn_handler->set_quic_keying_materials(std::move(qkms));

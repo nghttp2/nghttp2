@@ -31,6 +31,8 @@
 
 #include <functional>
 
+#include <openssl/evp.h>
+
 #include <ngtcp2/ngtcp2.h>
 
 #include "network.h"
@@ -87,17 +89,17 @@ int quic_send_packet(const UpstreamAddr *faddr, const sockaddr *remote_sa,
 
 int generate_quic_retry_connection_id(ngtcp2_cid &cid, size_t cidlen,
                                       const uint8_t *server_id, uint8_t km_id,
-                                      const uint8_t *key);
+                                      EVP_CIPHER_CTX *ctx);
 
 int generate_quic_connection_id(ngtcp2_cid &cid, size_t cidlen,
                                 const uint8_t *cid_prefix, uint8_t km_id,
-                                const uint8_t *key);
+                                EVP_CIPHER_CTX *ctx);
 
 int encrypt_quic_connection_id(uint8_t *dest, const uint8_t *src,
-                               const uint8_t *key);
+                               EVP_CIPHER_CTX *ctx);
 
 int decrypt_quic_connection_id(uint8_t *dest, const uint8_t *src,
-                               const uint8_t *key);
+                               EVP_CIPHER_CTX *ctx);
 
 int generate_quic_hashed_connection_id(ngtcp2_cid &dest,
                                        const Address &remote_addr,

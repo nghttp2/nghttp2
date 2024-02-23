@@ -636,6 +636,11 @@ struct TLSCertificate {
 
 #ifdef ENABLE_HTTP3
 struct QUICKeyingMaterial {
+  QUICKeyingMaterial() noexcept = default;
+  QUICKeyingMaterial(QUICKeyingMaterial &&other) noexcept;
+  ~QUICKeyingMaterial() noexcept;
+  QUICKeyingMaterial &operator=(QUICKeyingMaterial &&other) noexcept;
+  EVP_CIPHER_CTX *cid_encryption_ctx;
   std::array<uint8_t, SHRPX_QUIC_SECRET_RESERVEDLEN> reserved;
   std::array<uint8_t, SHRPX_QUIC_SECRETLEN> secret;
   std::array<uint8_t, SHRPX_QUIC_SALTLEN> salt;

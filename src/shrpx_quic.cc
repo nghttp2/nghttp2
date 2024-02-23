@@ -175,7 +175,7 @@ int quic_send_packet(const UpstreamAddr *faddr, const sockaddr *remote_sa,
 
 int generate_quic_retry_connection_id(ngtcp2_cid &cid, size_t cidlen,
                                       const uint8_t *server_id, uint8_t km_id,
-                                      const uint8_t *key) {
+                                      EVP_CIPHER_CTX *ctx) {
   assert(cidlen == SHRPX_QUIC_SCIDLEN);
 
   if (RAND_bytes(cid.data, cidlen) != 1) {
@@ -190,12 +190,12 @@ int generate_quic_retry_connection_id(ngtcp2_cid &cid, size_t cidlen,
 
   std::copy_n(server_id, SHRPX_QUIC_SERVER_IDLEN, p);
 
-  return encrypt_quic_connection_id(p, p, key);
+  return encrypt_quic_connection_id(p, p, ctx);
 }
 
 int generate_quic_connection_id(ngtcp2_cid &cid, size_t cidlen,
                                 const uint8_t *cid_prefix, uint8_t km_id,
-                                const uint8_t *key) {
+                                EVP_CIPHER_CTX *ctx) {
   assert(cidlen == SHRPX_QUIC_SCIDLEN);
 
   if (RAND_bytes(cid.data, cidlen) != 1) {
@@ -210,20 +210,11 @@ int generate_quic_connection_id(ngtcp2_cid &cid, size_t cidlen,
 
   std::copy_n(cid_prefix, SHRPX_QUIC_CID_PREFIXLEN, p);
 
-  return encrypt_quic_connection_id(p, p, key);
+  return encrypt_quic_connection_id(p, p, ctx);
 }
 
 int encrypt_quic_connection_id(uint8_t *dest, const uint8_t *src,
-                               const uint8_t *key) {
-  auto ctx = EVP_CIPHER_CTX_new();
-  auto d = defer(EVP_CIPHER_CTX_free, ctx);
-
-  if (!EVP_EncryptInit_ex(ctx, EVP_aes_128_ecb(), nullptr, key, nullptr)) {
-    return -1;
-  }
-
-  EVP_CIPHER_CTX_set_padding(ctx, 0);
-
+                               EVP_CIPHER_CTX *ctx) {
   int len;
 
   if (!EVP_EncryptUpdate(ctx, dest, &len, src, SHRPX_QUIC_DECRYPTED_DCIDLEN) ||
@@ -235,20 +226,11 @@ int encrypt_quic_connection_id(uint8_t *dest, const uint8_t *src,
 }
 
 int decrypt_quic_connection_id(uint8_t *dest, const uint8_t *src,
-                               const uint8_t *key) {
-  auto ctx = EVP_CIPHER_CTX_new();
-  auto d = defer(EVP_CIPHER_CTX_free, ctx);
-
-  if (!EVP_DecryptInit_ex(ctx, EVP_aes_128_ecb(), nullptr, key, nullptr)) {
-    return -1;
-  }
-
-  EVP_CIPHER_CTX_set_padding(ctx, 0);
-
+                               EVP_CIPHER_CTX *ctx) {
   int len;
 
-  if (!EVP_DecryptUpdate(ctx, dest, &len, src, SHRPX_QUIC_DECRYPTED_DCIDLEN) ||
-      !EVP_DecryptFinal_ex(ctx, dest + len, &len)) {
+  if (!EVP_EncryptUpdate(ctx, dest, &len, src, SHRPX_QUIC_DECRYPTED_DCIDLEN) ||
+      !EVP_EncryptFinal_ex(ctx, dest + len, &len)) {
     return -1;
   }
 
