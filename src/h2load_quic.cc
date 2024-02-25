@@ -654,7 +654,8 @@ int Client::write_quic() {
       ngtcp2_conn_get_path_max_tx_udp_payload_size(quic.conn);
 #endif // UDP_SEGMENT
   auto max_pktcnt =
-      ngtcp2_conn_get_send_quantum(quic.conn) / max_udp_payload_size;
+      std::max(ngtcp2_conn_get_send_quantum(quic.conn) / max_udp_payload_size,
+               static_cast<size_t>(1));
   uint8_t *bufpos = quic.tx.data.get();
   ngtcp2_path_storage ps;
   size_t gso_size = 0;
