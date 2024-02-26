@@ -783,7 +783,9 @@ int Http3Upstream::write_streams() {
   auto path_max_udp_payload_size =
       ngtcp2_conn_get_path_max_tx_udp_payload_size(conn_);
 #endif // UDP_SEGMENT
-  auto max_pktcnt = ngtcp2_conn_get_send_quantum(conn_) / max_udp_payload_size;
+  auto max_pktcnt =
+      std::max(ngtcp2_conn_get_send_quantum(conn_) / max_udp_payload_size,
+               static_cast<size_t>(1));
   ngtcp2_pkt_info pi, prev_pi;
   uint8_t *bufpos = tx_.data.get();
   ngtcp2_path_storage ps, prev_ps;
