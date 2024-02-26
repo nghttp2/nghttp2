@@ -72,7 +72,6 @@ constexpr size_t SHRPX_QUIC_CID_PREFIXLEN = 8;
 constexpr size_t SHRPX_QUIC_CID_PREFIX_OFFSET = 1;
 constexpr size_t SHRPX_QUIC_DECRYPTED_DCIDLEN = 16;
 constexpr size_t SHRPX_QUIC_CID_ENCRYPTION_KEYLEN = 16;
-constexpr size_t SHRPX_QUIC_MAX_UDP_PAYLOAD_SIZE = 1472;
 constexpr size_t SHRPX_QUIC_CONN_CLOSE_PKTLEN = 256;
 constexpr size_t SHRPX_QUIC_STATELESS_RESET_BURST = 100;
 constexpr size_t SHRPX_QUIC_SECRET_RESERVEDLEN = 4;
