@@ -66,6 +66,10 @@
 #include "ssl_compat.h"
 #include "xsi_strerror.h"
 
+#ifndef AI_NUMERICSERV
+#define AI_NUMERICSERV 0
+#endif
+
 namespace shrpx {
 
 namespace {
