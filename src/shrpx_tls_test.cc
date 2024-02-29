@@ -225,7 +225,10 @@ static Address parse_addr(const char *ipaddr) {
   addrinfo hints{};
 
   hints.ai_family = AF_UNSPEC;
-  hints.ai_flags = AI_NUMERICHOST | AI_NUMERICSERV;
+  hints.ai_flags = AI_NUMERICHOST;
+#ifdef AI_NUMERICSERV
+  hints.ai_flags |= AI_NUMERICSERV;
+#endif
 
   addrinfo *res = nullptr;
 
