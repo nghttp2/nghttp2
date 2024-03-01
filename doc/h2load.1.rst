@@ -290,6 +290,11 @@ OPTIONS
 
     Enable ktls.
 
+.. option:: --sni=<DNSNAME>
+
+    Send  <DNSNAME> in  TLS  SNI, overriding  the host  name
+    specified in URI.
+
 .. option:: -v, --verbose
 
     Output debug information.

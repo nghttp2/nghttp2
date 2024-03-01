@@ -27,7 +27,7 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
-.TH "H2LOAD" "1" "Jan 21, 2024" "1.59.0" "nghttp2"
+.TH "H2LOAD" "1" "Mar 01, 2024" "1.60.0" "nghttp2"
 .SH NAME
 h2load \- HTTP/2 benchmarking tool
 .SH SYNOPSIS
@@ -341,6 +341,12 @@ Specify the maximum outgoing UDP datagram payload size.
 .TP
 .B \-\-ktls
 Enable ktls.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-sni=<DNSNAME>
+Send  <DNSNAME> in  TLS  SNI, overriding  the host  name
+specified in URI.
 .UNINDENT
 .INDENT 0.0
 .TP
