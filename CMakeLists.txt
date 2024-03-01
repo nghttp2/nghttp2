@@ -24,13 +24,13 @@
 
 cmake_minimum_required(VERSION 3.14)
 # XXX using 1.8.90 instead of 1.9.0-DEV
-project(nghttp2 VERSION 1.59.90)
+project(nghttp2 VERSION 1.60.0)
 
 # See versioning rule:
 #  https://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
-set(LT_CURRENT  40)
+set(LT_CURRENT  41)
 set(LT_REVISION 0)
-set(LT_AGE      26)
+set(LT_AGE      27)
 
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
 include(Version)
