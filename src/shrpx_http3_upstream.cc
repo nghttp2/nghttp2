@@ -2149,6 +2149,11 @@ int Http3Upstream::http_recv_request_header(Downstream *downstream,
 
     // just ignore if this is a trailer part.
     if (trailer) {
+      if (shutdown_stream_read(downstream->get_stream_id(),
+                               NGHTTP3_H3_NO_ERROR) != 0) {
+        return -1;
+      }
+
       return 0;
     }
 
