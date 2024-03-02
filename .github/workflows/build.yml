@@ -22,7 +22,8 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout
+      uses: actions/checkout@v4
     - name: Restore libbpf cache
       id: cache-libbpf
       uses: actions/cache@v4
@@ -116,13 +117,13 @@ jobs:
     - name: Build libbpf
       if: steps.cache-libbpf.outputs.cache-hit != 'true' && runner.os == 'Linux'
       run: |
-        git clone -b ${{ env.LIBBPF_VERSION }} https://github.com/libbpf/libbpf
+        git clone --recursive -b ${{ env.LIBBPF_VERSION }} https://github.com/libbpf/libbpf
         cd libbpf
         make -C src install PREFIX=$PWD/build
     - name: Build quictls/openssl v1.1.1
       if: steps.cache-openssl1.outputs.cache-hit != 'true'
       run: |
-        git clone --depth 1 -b OpenSSL_${{ env.OPENSSL1_VERSION }} https://github.com/quictls/openssl openssl1
+        git clone --recursive --depth 1 -b OpenSSL_${{ env.OPENSSL1_VERSION }} https://github.com/quictls/openssl openssl1
         cd openssl1
         ./config --prefix=$PWD/build
         make -j"$(nproc 2> /dev/null || sysctl -n hw.ncpu)"
@@ -130,7 +131,7 @@ jobs:
     - name: Build quictls/openssl v3.x
       if: steps.cache-openssl3.outputs.cache-hit != 'true'
       run: |
-        git clone --depth 1 -b openssl-${{ env.OPENSSL3_VERSION }} https://github.com/quictls/openssl openssl3
+        git clone --recursive --depth 1 -b openssl-${{ env.OPENSSL3_VERSION }} https://github.com/quictls/openssl openssl3
         cd openssl3
         ./config enable-ktls --prefix=$PWD/build --libdir=$PWD/build/lib
         make -j"$(nproc 2> /dev/null || sysctl -n hw.ncpu)"
@@ -151,16 +152,15 @@ jobs:
     - name: Build aws-lc
       if: steps.cache-awslc.outputs.cache-hit != 'true'
       run: |
-        git clone --depth 1 -b "${AWSLC_VERSION}" https://github.com/aws/aws-lc
+        git clone --recursive --depth 1 -b "${AWSLC_VERSION}" https://github.com/aws/aws-lc
         cd aws-lc
         cmake -B build -DDISABLE_GO=ON
         make -j"$(nproc 2> /dev/null || sysctl -n hw.ncpu)" -C build
     - name: Build nghttp3
       if: steps.cache-nghttp3.outputs.cache-hit != 'true'
       run: |
-        git clone --depth 1 -b ${{ env.NGHTTP3_VERSION}} https://github.com/ngtcp2/nghttp3
+        git clone --recursive --depth 1 -b ${{ env.NGHTTP3_VERSION}} https://github.com/ngtcp2/nghttp3
         cd nghttp3
-        git submodule update --init --depth 1
         autoreconf -i
         ./configure --prefix=$PWD/build --enable-lib-only
         make -j"$(nproc 2> /dev/null || sysctl -n hw.ncpu)" check
@@ -168,9 +168,8 @@ jobs:
     - name: Build ngtcp2 + quictls/openssl v1.1.1 + BoringSSL
       if: steps.cache-ngtcp2-openssl1.outputs.cache-hit != 'true'
       run: |
-        git clone --depth 1 -b ${{ env.NGTCP2_VERSION }} https://github.com/ngtcp2/ngtcp2 ngtcp2-openssl1
+        git clone --recursive --depth 1 -b ${{ env.NGTCP2_VERSION }} https://github.com/ngtcp2/ngtcp2 ngtcp2-openssl1
         cd ngtcp2-openssl1
-        git submodule update --init --depth 1
         autoreconf -i
         ./configure --prefix=$PWD/build --enable-lib-only \
           PKG_CONFIG_PATH="../openssl1/build/lib/pkgconfig" \
@@ -182,9 +181,8 @@ jobs:
     - name: Build ngtcp2 + quictls/openssl v3.x + aws-lc
       if: steps.cache-ngtcp2-openssl3.outputs.cache-hit != 'true'
       run: |
-        git clone --depth 1 -b ${{ env.NGTCP2_VERSION }} https://github.com/ngtcp2/ngtcp2 ngtcp2-openssl3
+        git clone --recursive --depth 1 -b ${{ env.NGTCP2_VERSION }} https://github.com/ngtcp2/ngtcp2 ngtcp2-openssl3
         cd ngtcp2-openssl3
-        git submodule update --init --depth 1
         autoreconf -i
         ./configure --prefix=$PWD/build --enable-lib-only \
           PKG_CONFIG_PATH="../openssl3/build/lib/pkgconfig" \
@@ -231,7 +229,10 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
     - name: Linux setup
       if: runner.os == 'Linux'
       run: |
@@ -404,9 +405,6 @@ jobs:
         echo 'LDFLAGS='"$LDFLAGS" >> $GITHUB_ENV
         echo 'EXTRA_AUTOTOOLS_OPTS='"$EXTRA_AUTOTOOLS_OPTS" >> $GITHUB_ENV
         echo 'EXTRA_CMAKE_OPTS='"$EXTRA_CMAKE_OPTS" >> $GITHUB_ENV
-    - name: Setup git submodules
-      run: |
-        git submodule update --init --depth 1
     - name: Configure autotools
       run: |
         autoreconf -i
@@ -473,7 +471,10 @@ jobs:
       HOST: ${{ matrix.host }}
 
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
     - name: Linux setup
       run: |
         sudo dpkg --add-architecture i386
@@ -488,7 +489,6 @@ jobs:
           wine
     - name: Configure autotools
       run: |
-        git submodule update --init --depth 1
         autoreconf -i && \
         ./configure --enable-werror --enable-lib-only  --host="$HOST" \
           CFLAGS="-g -O2 -D_WIN32_WINNT=0x0600" LIBS="-pthread"
@@ -516,14 +516,13 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
     - uses: microsoft/setup-msbuild@v2
     - name: Configure cmake
-      run: |
-        git submodule update --init --depth 1
-        mkdir build
-        cd build
-        cmake -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DCMAKE_GENERATOR_PLATFORM=${{ matrix.platform }} -DVCPKG_TARGET_TRIPLET=${{ matrix.arch}}-windows ..
+      run: cmake -B build -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DCMAKE_GENERATOR_PLATFORM=${{ matrix.platform }} -DVCPKG_TARGET_TRIPLET=${{ matrix.arch}}-windows
     - name: Build nghttp2
       run: |
         cmake --build build
