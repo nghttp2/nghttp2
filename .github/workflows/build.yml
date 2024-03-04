@@ -418,7 +418,7 @@ jobs:
         cd nghttp2-$VERSION
         echo 'NGHTTP2_CMAKE_DIR='"$PWD" >> $GITHUB_ENV
 
-        cmake -DENABLE_WERROR=1 -DWITH_MRUBY=1 -DWITH_NEVERBLEED=1 -DENABLE_APP=1 $EXTRA_CMAKE_OPTS -DCPPFLAGS="$CPPFLAGS" -DLDFLAGS="$LDFLAGS" .
+        cmake -DENABLE_WERROR=1 -DWITH_MRUBY=1 -DWITH_NEVERBLEED=1 -DENABLE_APP=1 $EXTRA_CMAKE_OPTS -DCPPFLAGS="$CPPFLAGS" -DLDFLAGS="$LDFLAGS" -DBUILD_STATIC_LIBS=ON -DBUILD_TESTING=ON .
     - name: Configure cmake (MacOS)
       if: matrix.buildtool == 'cmake' && runner.os == 'macOS'
       run: |
@@ -431,7 +431,7 @@ jobs:
         # This fixes infamous 'stdio.h not found' error.
         echo 'SDKROOT='"$(xcrun --sdk macosx --show-sdk-path)" >> $GITHUB_ENV
 
-        cmake -DENABLE_WERROR=1 -DWITH_MRUBY=1 -DENABLE_APP=1 $EXTRA_CMAKE_OPTS -DCPPFLAGS="$CPPFLAGS" -DLDFLAGS="$LDFLAGS" .
+        cmake -DENABLE_WERROR=1 -DWITH_MRUBY=1 -DENABLE_APP=1 $EXTRA_CMAKE_OPTS -DCPPFLAGS="$CPPFLAGS" -DLDFLAGS="$LDFLAGS" -DBUILD_STATIC_LIBS=ON -DBUILD_TESTING=ON .
     - name: Build nghttp2 with autotools (Linux)
       if: matrix.buildtool == 'autotools' && runner.os == 'Linux'
       run: |
@@ -522,7 +522,7 @@ jobs:
         submodules: recursive
     - uses: microsoft/setup-msbuild@v2
     - name: Configure cmake
-      run: cmake -B build -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DCMAKE_GENERATOR_PLATFORM=${{ matrix.platform }} -DVCPKG_TARGET_TRIPLET=${{ matrix.arch}}-windows
+      run: cmake -B build -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DCMAKE_GENERATOR_PLATFORM=${{ matrix.platform }} -DVCPKG_TARGET_TRIPLET=${{ matrix.arch}}-windows -DBUILD_STATIC_LIBS=ON -DBUILD_TESTING=ON
     - name: Build nghttp2
       run: |
         cmake --build build
