@@ -16,6 +16,7 @@ option(BUILD_STATIC_LIBS "Build libnghttp2 in static mode also" OFF)
 option(ENABLE_STATIC_CRT "Build libnghttp2 against the MS LIBCMT[d]")
 option(ENABLE_HTTP3      "Enable HTTP/3 support" OFF)
 option(ENABLE_DOC "Build documentation" ON)
+cmake_dependent_option(BUILD_TESTING "Enable tests" ON "BUILD_STATIC_LIBS" OFF)
 
 option(WITH_LIBXML2     "Use libxml2"
   ${WITH_LIBXML2_DEFAULT})
