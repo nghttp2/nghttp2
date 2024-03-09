@@ -3213,6 +3213,17 @@ nghttp2_option_set_stream_reset_rate_limit(nghttp2_option *option,
 /**
  * @function
  *
+ * This function sets the maximum number of CONTINUATION frames
+ * following an incoming HEADER frame.  If more than those frames are
+ * received, the remote endpoint is considered to be misbehaving and
+ * session will be closed.  The default value is 8.
+ */
+NGHTTP2_EXTERN void nghttp2_option_set_max_continuations(nghttp2_option *option,
+                                                         size_t val);
+
+/**
+ * @function
+ *
  * Initializes |*session_ptr| for client use.  The all members of
  * |callbacks| are copied to |*session_ptr|.  Therefore |*session_ptr|
  * does not store |callbacks|.  The |user_data| is an arbitrary user

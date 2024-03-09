@@ -77,6 +77,7 @@ APIDOCS= \
 	nghttp2_option_set_peer_max_concurrent_streams.rst \
 	nghttp2_option_set_server_fallback_rfc7540_priorities.rst \
 	nghttp2_option_set_user_recv_extension_type.rst \
+	nghttp2_option_set_max_continuations.rst \
 	nghttp2_option_set_max_outbound_ack.rst \
 	nghttp2_option_set_max_settings.rst \
 	nghttp2_option_set_stream_reset_rate_limit.rst \
