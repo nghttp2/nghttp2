@@ -69,14 +69,14 @@ RUN git clone --recursive --depth 1 -b $NGHTTP2_BRANCH https://github.com/nghttp
 
 FROM gcr.io/distroless/base-debian12
 
-COPY --from=build \
+COPY --from=build --link \
     /usr/local/share/nghttp2/ \
     /usr/local/share/nghttp2/
-COPY --from=build \
+COPY --from=build --link \
     /usr/local/bin/h2load \
     /usr/local/bin/nghttpx \
     /usr/local/bin/nghttp \
     /usr/local/bin/nghttpd \
     /usr/local/bin/
-COPY --from=build /usr/local/lib/nghttp2/reuseport_kern.o \
+COPY --from=build --link /usr/local/lib/nghttp2/reuseport_kern.o \
     /usr/local/lib/nghttp2/
