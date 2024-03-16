@@ -250,8 +250,9 @@ void Http3Upstream::http_begin_request_headers(int64_t stream_id) {
   nghttp3_conn_set_stream_user_data(httpconn_, stream_id, downstream.get());
 
   downstream->reset_upstream_rtimer();
+  downstream->repeat_header_timer();
 
-  handler_->repeat_read_timer();
+  handler_->stop_read_timer();
 
   auto &req = downstream->request();
   req.http_major = 3;
@@ -997,7 +998,18 @@ int Http3Upstream::write_streams() {
   return 0;
 }
 
-int Http3Upstream::on_timeout(Downstream *downstream) { return 0; }
+int Http3Upstream::on_timeout(Downstream *downstream) {
+  if (LOG_ENABLED(INFO)) {
+    ULOG(INFO, this) << "Stream timeout stream_id="
+                     << downstream->get_stream_id();
+  }
+
+  shutdown_stream(downstream, NGHTTP3_H3_INTERNAL_ERROR);
+
+  handler_->signal_write();
+
+  return 0;
+}
 
 int Http3Upstream::on_downstream_abort_request(Downstream *downstream,
                                                unsigned int status_code) {
@@ -2187,7 +2199,6 @@ namespace {
 int http_end_request_headers(nghttp3_conn *conn, int64_t stream_id, int fin,
                              void *user_data, void *stream_user_data) {
   auto upstream = static_cast<Http3Upstream *>(user_data);
-  auto handler = upstream->get_client_handler();
   auto downstream = static_cast<Downstream *>(stream_user_data);
 
   if (!downstream || downstream->get_stop_reading()) {
@@ -2199,7 +2210,7 @@ int http_end_request_headers(nghttp3_conn *conn, int64_t stream_id, int fin,
   }
 
   downstream->reset_upstream_rtimer();
-  handler->stop_read_timer();
+  downstream->stop_header_timer();
 
   return 0;
 }

@@ -2006,6 +2006,7 @@ void fill_default_config(Config *config) {
   httpconf.xfp.add = true;
   httpconf.xfp.strip_incoming = true;
   httpconf.early_data.strip_incoming = true;
+  httpconf.timeout.header = 1_min;
 
   auto &http2conf = config->http2;
   {
@@ -2132,20 +2133,17 @@ void fill_default_config(Config *config) {
     auto &upstreamconf = connconf.upstream;
     {
       auto &timeoutconf = upstreamconf.timeout;
-      // Read timeout for HTTP2 upstream connection
-      timeoutconf.http2_read = 3_min;
+      // Idle timeout for HTTP2 upstream connection
+      timeoutconf.http2_idle = 3_min;
 
-      // Read timeout for HTTP3 upstream connection
-      timeoutconf.http3_read = 3_min;
-
-      // Read timeout for non-HTTP2 upstream connection
-      timeoutconf.read = 1_min;
+      // Idle timeout for HTTP3 upstream connection
+      timeoutconf.http3_idle = 3_min;
 
       // Write timeout for HTTP2/non-HTTP2 upstream connection
       timeoutconf.write = 30_s;
 
-      // Keep alive timeout for HTTP/1 upstream connection
-      timeoutconf.idle_read = 1_min;
+      // Keep alive (idle) timeout for HTTP/1 upstream connection
+      timeoutconf.idle = 1_min;
     }
   }
 
@@ -2644,18 +2642,18 @@ Performance:
               this option will be simply ignored.
 
 Timeout:
-  --frontend-http2-read-timeout=<DURATION>
-              Specify read timeout for HTTP/2 frontend connection.
+  --frontend-http2-idle-timeout=<DURATION>
+              Specify idle timeout for HTTP/2 frontend connection.  If
+              no active streams exist for this duration, connection is
+              closed.
               Default: )"
-      << util::duration_str(config->conn.upstream.timeout.http2_read) << R"(
-  --frontend-http3-read-timeout=<DURATION>
-              Specify read timeout for HTTP/3 frontend connection.
+      << util::duration_str(config->conn.upstream.timeout.http2_idle) << R"(
+  --frontend-http3-idle-timeout=<DURATION>
+              Specify idle timeout for HTTP/3 frontend connection.  If
+              no active streams exist for this duration, connection is
+              closed.
               Default: )"
-      << util::duration_str(config->conn.upstream.timeout.http3_read) << R"(
-  --frontend-read-timeout=<DURATION>
-              Specify read timeout for HTTP/1.1 frontend connection.
-              Default: )"
-      << util::duration_str(config->conn.upstream.timeout.read) << R"(
+      << util::duration_str(config->conn.upstream.timeout.http3_idle) << R"(
   --frontend-write-timeout=<DURATION>
               Specify write timeout for all frontend connections.
               Default: )"
@@ -2664,7 +2662,15 @@ Timeout:
               Specify   keep-alive   timeout   for   frontend   HTTP/1
               connection.
               Default: )"
-      << util::duration_str(config->conn.upstream.timeout.idle_read) << R"(
+      << util::duration_str(config->conn.upstream.timeout.idle) << R"(
+  --frontend-header-timeout=<DURATION>
+              Specify  duration  that the  server  waits  for an  HTTP
+              request  header fields  to be  received completely.   On
+              timeout, HTTP/1 and HTTP/2  connections are closed.  For
+              HTTP/3,  the  stream  is shutdown,  and  the  connection
+              itself is left intact.
+              Default: )"
+      << util::duration_str(config->http.timeout.header) << R"(
   --stream-read-timeout=<DURATION>
               Specify  read timeout  for HTTP/2  streams.  0  means no
               timeout.
@@ -4377,6 +4383,12 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_REQUIRE_HTTP_SCHEME.c_str(), no_argument, &flag, 191},
         {SHRPX_OPT_TLS_KTLS.c_str(), no_argument, &flag, 192},
         {SHRPX_OPT_ALPN_LIST.c_str(), required_argument, &flag, 193},
+        {SHRPX_OPT_FRONTEND_HEADER_TIMEOUT.c_str(), required_argument, &flag,
+         194},
+        {SHRPX_OPT_FRONTEND_HTTP2_IDLE_TIMEOUT.c_str(), required_argument,
+         &flag, 195},
+        {SHRPX_OPT_FRONTEND_HTTP3_IDLE_TIMEOUT.c_str(), required_argument,
+         &flag, 196},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -5293,6 +5305,21 @@ int main(int argc, char **argv) {
       case 193:
         // --alpn-list
         cmdcfgs.emplace_back(SHRPX_OPT_ALPN_LIST, StringRef{optarg});
+        break;
+      case 194:
+        // --frontend-header-timeout
+        cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_HEADER_TIMEOUT,
+                             StringRef{optarg});
+        break;
+      case 195:
+        // --frontend-http2-idle-timeout
+        cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_HTTP2_IDLE_TIMEOUT,
+                             StringRef{optarg});
+        break;
+      case 196:
+        // --frontend-http3-idle-timeout
+        cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_HTTP3_IDLE_TIMEOUT,
+                             StringRef{optarg});
         break;
       default:
         break;

@@ -2396,6 +2396,9 @@ int option_lookup_token(const char *name, size_t namelen) {
       if (util::strieq_l("backend-connect-timeou", name, 22)) {
         return SHRPX_OPTID_BACKEND_CONNECT_TIMEOUT;
       }
+      if (util::strieq_l("frontend-header-timeou", name, 22)) {
+        return SHRPX_OPTID_FRONTEND_HEADER_TIMEOUT;
+      }
       break;
     }
     break;
@@ -2526,8 +2529,14 @@ int option_lookup_token(const char *name, size_t namelen) {
       }
       break;
     case 't':
+      if (util::strieq_l("frontend-http2-idle-timeou", name, 26)) {
+        return SHRPX_OPTID_FRONTEND_HTTP2_IDLE_TIMEOUT;
+      }
       if (util::strieq_l("frontend-http2-read-timeou", name, 26)) {
         return SHRPX_OPTID_FRONTEND_HTTP2_READ_TIMEOUT;
+      }
+      if (util::strieq_l("frontend-http3-idle-timeou", name, 26)) {
+        return SHRPX_OPTID_FRONTEND_HTTP3_IDLE_TIMEOUT;
       }
       if (util::strieq_l("frontend-http3-read-timeou", name, 26)) {
         return SHRPX_OPTID_FRONTEND_HTTP3_READ_TIMEOUT;
@@ -3028,10 +3037,15 @@ int parse_config(Config *config, int optid, const StringRef &opt,
 
     return 0;
   case SHRPX_OPTID_FRONTEND_HTTP2_READ_TIMEOUT:
-    return parse_duration(&config->conn.upstream.timeout.http2_read, opt,
+    LOG(WARN) << opt << ": deprecated.  Use frontend-http2-idle-timeout";
+    // fall through
+  case SHRPX_OPTID_FRONTEND_HTTP2_IDLE_TIMEOUT:
+    return parse_duration(&config->conn.upstream.timeout.http2_idle, opt,
                           optarg);
   case SHRPX_OPTID_FRONTEND_READ_TIMEOUT:
-    return parse_duration(&config->conn.upstream.timeout.read, opt, optarg);
+    LOG(WARN) << opt << ": deprecated.  Use frontend-header-timeout";
+
+    return 0;
   case SHRPX_OPTID_FRONTEND_WRITE_TIMEOUT:
     return parse_duration(&config->conn.upstream.timeout.write, opt, optarg);
   case SHRPX_OPTID_BACKEND_READ_TIMEOUT:
@@ -3907,8 +3921,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     return 0;
   }
   case SHRPX_OPTID_FRONTEND_KEEP_ALIVE_TIMEOUT:
-    return parse_duration(&config->conn.upstream.timeout.idle_read, opt,
-                          optarg);
+    return parse_duration(&config->conn.upstream.timeout.idle, opt, optarg);
   case SHRPX_OPTID_PSK_SECRETS:
 #ifndef OPENSSL_NO_PSK
     return parse_psk_secrets(config, optarg);
@@ -4032,8 +4045,11 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     return 0;
   }
   case SHRPX_OPTID_FRONTEND_HTTP3_READ_TIMEOUT:
+    LOG(WARN) << opt << ": deprecated.  Use frontend-http3-idle-timeout";
+    // fall through
+  case SHRPX_OPTID_FRONTEND_HTTP3_IDLE_TIMEOUT:
 #ifdef ENABLE_HTTP3
-    return parse_duration(&config->conn.upstream.timeout.http3_read, opt,
+    return parse_duration(&config->conn.upstream.timeout.http3_idle, opt,
                           optarg);
 #else  // !ENABLE_HTTP3
     return 0;

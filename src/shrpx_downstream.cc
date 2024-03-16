@@ -46,6 +46,23 @@
 namespace shrpx {
 
 namespace {
+void header_timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
+  auto downstream = static_cast<Downstream *>(w->data);
+  auto upstream = downstream->get_upstream();
+
+  if (LOG_ENABLED(INFO)) {
+    DLOG(INFO, downstream) << "request header timeout stream_id="
+                           << downstream->get_stream_id();
+  }
+
+  downstream->disable_upstream_rtimer();
+  downstream->disable_upstream_wtimer();
+
+  upstream->on_timeout(downstream);
+}
+} // namespace
+
+namespace {
 void upstream_timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
   auto downstream = static_cast<Downstream *>(w->data);
   auto upstream = downstream->get_upstream();
@@ -148,7 +165,12 @@ Downstream::Downstream(Upstream *upstream, MemchunkPool *mcpool,
       expect_100_continue_(false),
       stop_reading_(false) {
 
-  auto &timeoutconf = get_config()->http2.timeout;
+  auto config = get_config();
+  auto &httpconf = config->http;
+
+  ev_timer_init(&header_timer_, header_timeoutcb, 0., httpconf.timeout.header);
+
+  auto &timeoutconf = config->http2.timeout;
 
   ev_timer_init(&upstream_rtimer_, &upstream_rtimeoutcb, 0.,
                 timeoutconf.stream_read);
@@ -159,6 +181,7 @@ Downstream::Downstream(Upstream *upstream, MemchunkPool *mcpool,
   ev_timer_init(&downstream_wtimer_, &downstream_wtimeoutcb, 0.,
                 timeoutconf.stream_write);
 
+  header_timer_.data = this;
   upstream_rtimer_.data = this;
   upstream_wtimer_.data = this;
   downstream_rtimer_.data = this;
@@ -183,6 +206,7 @@ Downstream::~Downstream() {
     ev_timer_stop(loop, &upstream_wtimer_);
     ev_timer_stop(loop, &downstream_rtimer_);
     ev_timer_stop(loop, &downstream_wtimer_);
+    ev_timer_stop(loop, &header_timer_);
 
 #ifdef HAVE_MRUBY
     auto handler = upstream_->get_client_handler();
@@ -944,6 +968,18 @@ bool Downstream::expect_response_trailer() const {
   // method or status code.
   return !resp_.headers_only &&
          (resp_.http_major == 3 || resp_.http_major == 2);
+}
+
+void Downstream::repeat_header_timer() {
+  auto loop = upstream_->get_client_handler()->get_loop();
+
+  ev_timer_again(loop, &header_timer_);
+}
+
+void Downstream::stop_header_timer() {
+  auto loop = upstream_->get_client_handler()->get_loop();
+
+  ev_timer_stop(loop, &header_timer_);
 }
 
 namespace {

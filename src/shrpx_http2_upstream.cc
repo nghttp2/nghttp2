@@ -285,7 +285,10 @@ void Http2Upstream::on_start_request(const nghttp2_frame *frame) {
 
   downstream->reset_upstream_rtimer();
 
-  handler_->repeat_read_timer();
+  auto config = get_config();
+  auto &httpconf = config->http;
+
+  handler_->reset_upstream_read_timeout(httpconf.timeout.header);
 
   auto &req = downstream->request();
 
@@ -298,8 +301,6 @@ void Http2Upstream::on_start_request(const nghttp2_frame *frame) {
 
   ++num_requests_;
 
-  auto config = get_config();
-  auto &httpconf = config->http;
   if (httpconf.max_requests <= num_requests_) {
     start_graceful_shutdown();
   }
@@ -1132,7 +1133,7 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
 #endif // defined(TCP_INFO) && defined(TCP_NOTSENT_LOWAT)
 
   handler_->reset_upstream_read_timeout(
-      config->conn.upstream.timeout.http2_read);
+      config->conn.upstream.timeout.http2_idle);
 
   handler_->signal_write();
 }
@@ -1640,7 +1641,10 @@ void Http2Upstream::remove_downstream(Downstream *downstream) {
 
   if (downstream_queue_.get_downstreams() == nullptr) {
     // There is no downstream at the moment.  Start idle timer now.
-    handler_->repeat_read_timer();
+    auto config = get_config();
+    auto &upstreamconf = config->conn.upstream;
+
+    handler_->reset_upstream_read_timeout(upstreamconf.timeout.http2_idle);
   }
 }
 
