@@ -794,7 +794,7 @@ int HttpsUpstream::on_write() {
 
       auto &upstreamconf = get_config()->conn.upstream;
 
-      handler_->reset_upstream_read_timeout(upstreamconf.timeout.idle_read);
+      handler_->reset_upstream_read_timeout(upstreamconf.timeout.idle);
 
       return resume_read(SHRPX_NO_BUFFER, nullptr, 0);
     } else {

@@ -1133,7 +1133,7 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
 #endif // defined(TCP_INFO) && defined(TCP_NOTSENT_LOWAT)
 
   handler_->reset_upstream_read_timeout(
-      config->conn.upstream.timeout.http2_read);
+      config->conn.upstream.timeout.http2_idle);
 
   handler_->signal_write();
 }
@@ -1644,7 +1644,7 @@ void Http2Upstream::remove_downstream(Downstream *downstream) {
     auto config = get_config();
     auto &upstreamconf = config->conn.upstream;
 
-    handler_->reset_upstream_read_timeout(upstreamconf.timeout.http2_read);
+    handler_->reset_upstream_read_timeout(upstreamconf.timeout.http2_idle);
   }
 }
 

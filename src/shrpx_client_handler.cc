@@ -444,7 +444,7 @@ ClientHandler::ClientHandler(Worker *worker, int fd, SSL *ssl,
       rb_(worker->get_mcpool()),
       conn_(worker->get_loop(), fd, ssl, worker->get_mcpool(),
             get_config()->conn.upstream.timeout.write,
-            get_config()->conn.upstream.timeout.idle_read,
+            get_config()->conn.upstream.timeout.idle,
             get_config()->conn.upstream.ratelimit.write,
             get_config()->conn.upstream.ratelimit.read, writecb, readcb,
             timeoutcb, this, get_config()->tls.dyn_rec.warmup_threshold,
@@ -551,7 +551,7 @@ void ClientHandler::setup_http3_upstream(
 
   auto config = get_config();
 
-  reset_upstream_read_timeout(config->conn.upstream.timeout.http3_read);
+  reset_upstream_read_timeout(config->conn.upstream.timeout.http3_idle);
 }
 #endif // ENABLE_HTTP3
 

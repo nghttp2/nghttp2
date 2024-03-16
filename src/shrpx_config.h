@@ -408,6 +408,10 @@ constexpr auto SHRPX_OPT_TLS_KTLS = StringRef::from_lit("tls-ktls");
 constexpr auto SHRPX_OPT_ALPN_LIST = StringRef::from_lit("alpn-list");
 constexpr auto SHRPX_OPT_FRONTEND_HEADER_TIMEOUT =
     StringRef::from_lit("frontend-header-timeout");
+constexpr auto SHRPX_OPT_FRONTEND_HTTP2_IDLE_TIMEOUT =
+    StringRef::from_lit("frontend-http2-idle-timeout");
+constexpr auto SHRPX_OPT_FRONTEND_HTTP3_IDLE_TIMEOUT =
+    StringRef::from_lit("frontend-http3-idle-timeout");
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
@@ -1053,10 +1057,10 @@ struct ConnectionConfig {
 
   struct {
     struct {
-      ev_tstamp http2_read;
-      ev_tstamp http3_read;
+      ev_tstamp http2_idle;
+      ev_tstamp http3_idle;
       ev_tstamp write;
-      ev_tstamp idle_read;
+      ev_tstamp idle;
     } timeout;
     struct {
       RateLimitConfig read;
@@ -1260,6 +1264,7 @@ enum {
   SHRPX_OPTID_FRONTEND_HTTP2_DUMP_REQUEST_HEADER,
   SHRPX_OPTID_FRONTEND_HTTP2_DUMP_RESPONSE_HEADER,
   SHRPX_OPTID_FRONTEND_HTTP2_ENCODER_DYNAMIC_TABLE_SIZE,
+  SHRPX_OPTID_FRONTEND_HTTP2_IDLE_TIMEOUT,
   SHRPX_OPTID_FRONTEND_HTTP2_MAX_CONCURRENT_STREAMS,
   SHRPX_OPTID_FRONTEND_HTTP2_OPTIMIZE_WINDOW_SIZE,
   SHRPX_OPTID_FRONTEND_HTTP2_OPTIMIZE_WRITE_BUFFER_SIZE,
@@ -1268,6 +1273,7 @@ enum {
   SHRPX_OPTID_FRONTEND_HTTP2_WINDOW_BITS,
   SHRPX_OPTID_FRONTEND_HTTP2_WINDOW_SIZE,
   SHRPX_OPTID_FRONTEND_HTTP3_CONNECTION_WINDOW_SIZE,
+  SHRPX_OPTID_FRONTEND_HTTP3_IDLE_TIMEOUT,
   SHRPX_OPTID_FRONTEND_HTTP3_MAX_CONCURRENT_STREAMS,
   SHRPX_OPTID_FRONTEND_HTTP3_MAX_CONNECTION_WINDOW_SIZE,
   SHRPX_OPTID_FRONTEND_HTTP3_MAX_WINDOW_SIZE,
