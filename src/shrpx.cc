@@ -2006,6 +2006,7 @@ void fill_default_config(Config *config) {
   httpconf.xfp.add = true;
   httpconf.xfp.strip_incoming = true;
   httpconf.early_data.strip_incoming = true;
+  httpconf.timeout.header = 1_min;
 
   auto &http2conf = config->http2;
   {
@@ -2137,9 +2138,6 @@ void fill_default_config(Config *config) {
 
       // Read timeout for HTTP3 upstream connection
       timeoutconf.http3_read = 3_min;
-
-      // Read timeout for non-HTTP2 upstream connection
-      timeoutconf.read = 1_min;
 
       // Write timeout for HTTP2/non-HTTP2 upstream connection
       timeoutconf.write = 30_s;
@@ -2645,17 +2643,17 @@ Performance:
 
 Timeout:
   --frontend-http2-read-timeout=<DURATION>
-              Specify read timeout for HTTP/2 frontend connection.
+              Specify idle timeout for HTTP/2 frontend connection.  If
+              no active streams exist for this duration, connection is
+              closed.
               Default: )"
       << util::duration_str(config->conn.upstream.timeout.http2_read) << R"(
   --frontend-http3-read-timeout=<DURATION>
-              Specify read timeout for HTTP/3 frontend connection.
+              Specify idle timeout for HTTP/3 frontend connection.  If
+              no active streams exist for this duration, connection is
+              closed.
               Default: )"
       << util::duration_str(config->conn.upstream.timeout.http3_read) << R"(
-  --frontend-read-timeout=<DURATION>
-              Specify read timeout for HTTP/1.1 frontend connection.
-              Default: )"
-      << util::duration_str(config->conn.upstream.timeout.read) << R"(
   --frontend-write-timeout=<DURATION>
               Specify write timeout for all frontend connections.
               Default: )"
@@ -2665,6 +2663,14 @@ Timeout:
               connection.
               Default: )"
       << util::duration_str(config->conn.upstream.timeout.idle_read) << R"(
+  --frontend-header-timeout=<DURATION>
+              Specify  duration  that the  server  waits  for an  HTTP
+              request  header fields  to be  received completely.   On
+              timeout, HTTP/1 and HTTP/2  connections are closed.  For
+              HTTP/3,  the  stream  is shutdown,  and  the  connection
+              itself is left intact.
+              Default: )"
+      << util::duration_str(config->http.timeout.header) << R"(
   --stream-read-timeout=<DURATION>
               Specify  read timeout  for HTTP/2  streams.  0  means no
               timeout.
@@ -4377,6 +4383,8 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_REQUIRE_HTTP_SCHEME.c_str(), no_argument, &flag, 191},
         {SHRPX_OPT_TLS_KTLS.c_str(), no_argument, &flag, 192},
         {SHRPX_OPT_ALPN_LIST.c_str(), required_argument, &flag, 193},
+        {SHRPX_OPT_FRONTEND_HEADER_TIMEOUT.c_str(), required_argument, &flag,
+         194},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -5293,6 +5301,11 @@ int main(int argc, char **argv) {
       case 193:
         // --alpn-list
         cmdcfgs.emplace_back(SHRPX_OPT_ALPN_LIST, StringRef{optarg});
+        break;
+      case 194:
+        // --frontend-header-timeout
+        cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_HEADER_TIMEOUT,
+                             StringRef{optarg});
         break;
       default:
         break;

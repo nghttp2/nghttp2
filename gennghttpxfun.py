@@ -201,6 +201,7 @@ OPTIONS = [
     "require-http-scheme",
     "tls-ktls",
     "alpn-list",
+    "frontend-header-timeout",
 ]
 
 LOGVARS = [

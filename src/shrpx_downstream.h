@@ -448,6 +448,9 @@ public:
   // connection.
   int on_read();
 
+  void repeat_header_timer();
+  void stop_header_timer();
+
   // Resets upstream read timer.  If it is active, timeout value is
   // reset.  If it is not active, timer will be started.
   void reset_upstream_rtimer();
@@ -561,6 +564,8 @@ private:
   // The Sec-WebSocket-Key field sent to the peer.  This field is used
   // if frontend uses RFC 8441 WebSocket bootstrapping via HTTP/2.
   StringRef ws_key_;
+
+  ev_timer header_timer_;
 
   ev_timer upstream_rtimer_;
   ev_timer upstream_wtimer_;

@@ -406,6 +406,8 @@ constexpr auto SHRPX_OPT_REQUIRE_HTTP_SCHEME =
     StringRef::from_lit("require-http-scheme");
 constexpr auto SHRPX_OPT_TLS_KTLS = StringRef::from_lit("tls-ktls");
 constexpr auto SHRPX_OPT_ALPN_LIST = StringRef::from_lit("alpn-list");
+constexpr auto SHRPX_OPT_FRONTEND_HEADER_TIMEOUT =
+    StringRef::from_lit("frontend-header-timeout");
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
@@ -864,6 +866,9 @@ struct HttpConfig {
   struct {
     bool strip_incoming;
   } early_data;
+  struct {
+    ev_tstamp header;
+  } timeout;
   std::vector<AltSvc> altsvcs;
   // altsvcs serialized in a wire format.
   StringRef altsvc_header_value;
@@ -1050,7 +1055,6 @@ struct ConnectionConfig {
     struct {
       ev_tstamp http2_read;
       ev_tstamp http3_read;
-      ev_tstamp read;
       ev_tstamp write;
       ev_tstamp idle_read;
     } timeout;
@@ -1249,6 +1253,7 @@ enum {
   SHRPX_OPTID_FORWARDED_FOR,
   SHRPX_OPTID_FRONTEND,
   SHRPX_OPTID_FRONTEND_FRAME_DEBUG,
+  SHRPX_OPTID_FRONTEND_HEADER_TIMEOUT,
   SHRPX_OPTID_FRONTEND_HTTP2_CONNECTION_WINDOW_BITS,
   SHRPX_OPTID_FRONTEND_HTTP2_CONNECTION_WINDOW_SIZE,
   SHRPX_OPTID_FRONTEND_HTTP2_DECODER_DYNAMIC_TABLE_SIZE,

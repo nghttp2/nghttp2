@@ -2396,6 +2396,9 @@ int option_lookup_token(const char *name, size_t namelen) {
       if (util::strieq_l("backend-connect-timeou", name, 22)) {
         return SHRPX_OPTID_BACKEND_CONNECT_TIMEOUT;
       }
+      if (util::strieq_l("frontend-header-timeou", name, 22)) {
+        return SHRPX_OPTID_FRONTEND_HEADER_TIMEOUT;
+      }
       break;
     }
     break;
@@ -3031,7 +3034,9 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     return parse_duration(&config->conn.upstream.timeout.http2_read, opt,
                           optarg);
   case SHRPX_OPTID_FRONTEND_READ_TIMEOUT:
-    return parse_duration(&config->conn.upstream.timeout.read, opt, optarg);
+    LOG(WARN) << opt << ": deprecated.  Use frontend-header-timeout";
+
+    return 0;
   case SHRPX_OPTID_FRONTEND_WRITE_TIMEOUT:
     return parse_duration(&config->conn.upstream.timeout.write, opt, optarg);
   case SHRPX_OPTID_BACKEND_READ_TIMEOUT:

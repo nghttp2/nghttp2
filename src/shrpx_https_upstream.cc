@@ -115,12 +115,9 @@ void HttpsUpstream::on_start_request() {
 
   attach_downstream(std::move(downstream));
 
-  auto conn = handler_->get_connection();
-  auto &upstreamconf = get_config()->conn.upstream;
+  auto &httpconf = get_config()->http;
 
-  conn->rt.repeat = upstreamconf.timeout.read;
-
-  handler_->repeat_read_timer();
+  handler_->reset_upstream_read_timeout(httpconf.timeout.header);
 
   ++num_requests_;
 }
@@ -795,12 +792,9 @@ int HttpsUpstream::on_write() {
         return 0;
       }
 
-      auto conn = handler_->get_connection();
       auto &upstreamconf = get_config()->conn.upstream;
 
-      conn->rt.repeat = upstreamconf.timeout.idle_read;
-
-      handler_->repeat_read_timer();
+      handler_->reset_upstream_read_timeout(upstreamconf.timeout.idle_read);
 
       return resume_read(SHRPX_NO_BUFFER, nullptr, 0);
     } else {
