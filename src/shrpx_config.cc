@@ -3046,6 +3046,8 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     LOG(WARN) << opt << ": deprecated.  Use frontend-header-timeout";
 
     return 0;
+  case SHRPX_OPTID_FRONTEND_HEADER_TIMEOUT:
+    return parse_duration(&config->http.timeout.header, opt, optarg);
   case SHRPX_OPTID_FRONTEND_WRITE_TIMEOUT:
     return parse_duration(&config->conn.upstream.timeout.write, opt, optarg);
   case SHRPX_OPTID_BACKEND_READ_TIMEOUT:
