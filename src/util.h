@@ -840,8 +840,10 @@ StringRef make_http_hostport(OutputIt first, const StringRef &host,
   return StringRef{first, p};
 }
 
-// Dumps |src| of length |len| in the format similar to `hexdump -C`.
-void hexdump(FILE *out, const uint8_t *src, size_t len);
+// hexdump dumps |data| of length |datalen| in the format similar to
+// hexdump(1) with -C option.  This function returns 0 if it succeeds,
+// or -1.
+int hexdump(FILE *out, const void *data, size_t datalen);
 
 // Copies 2 byte unsigned integer |n| in host byte order to |buf| in
 // network byte order.
