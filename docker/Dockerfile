@@ -67,7 +67,7 @@ RUN git clone --recursive --depth 1 -b $NGHTTP2_BRANCH https://github.com/nghttp
     cd .. && \
     rm -rf nghttp2
 
-FROM gcr.io/distroless/base-debian12
+FROM gcr.io/distroless/base-nossl-debian12
 
 COPY --from=build --link \
     /usr/local/share/nghttp2/ \
