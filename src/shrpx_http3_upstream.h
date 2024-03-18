@@ -167,7 +167,6 @@ private:
   ngtcp2_ccerr last_error_;
   nghttp3_conn *httpconn_;
   DownstreamQueue downstream_queue_;
-  bool retry_close_;
   std::vector<uint8_t> conn_close_;
 
   struct {
