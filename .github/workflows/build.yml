@@ -357,7 +357,7 @@ jobs:
 
         OPENSSL_CFLAGS="-I$PWD/include/"
         OPENSSL_LIBS="-L$PWD/build/ssl -lssl -L$PWD/build/crypto -lcrypto -pthread"
-        EXTRA_AUTOTOOLS_OPTS="$EXTRA_AUTOTOOLS_OPTS --without-neverbleed --without-jemalloc"
+        EXTRA_AUTOTOOLS_OPTS="$EXTRA_AUTOTOOLS_OPTS --without-neverbleed --without-jemalloc --disable-examples"
 
         echo 'OPENSSL_CFLAGS='"$OPENSSL_CFLAGS" >> $GITHUB_ENV
         echo 'OPENSSL_LIBS='"$OPENSSL_LIBS" >> $GITHUB_ENV
