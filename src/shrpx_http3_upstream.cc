@@ -118,7 +118,6 @@ Http3Upstream::Http3Upstream(ClientHandler *handler)
       httpconn_{nullptr},
       downstream_queue_{downstream_queue_size(handler->get_worker()),
                         !get_config()->http2_proxy},
-      retry_close_{false},
       tx_{
           .data = std::unique_ptr<uint8_t[]>(new uint8_t[64_k]),
       } {
@@ -1540,8 +1539,13 @@ void Http3Upstream::on_handler_delete() {
     quic_conn_handler->remove_connection_id(cid);
   }
 
-  if (retry_close_ || last_error_.type == NGTCP2_CCERR_TYPE_IDLE_CLOSE) {
+  switch (last_error_.type) {
+  case NGTCP2_CCERR_TYPE_IDLE_CLOSE:
+  case NGTCP2_CCERR_TYPE_DROP_CONN:
+  case NGTCP2_CCERR_TYPE_RETRY:
     return;
+  default:
+    break;
   }
 
   // If this is not idle close, send CONNECTION_CLOSE.
@@ -1835,7 +1839,8 @@ int Http3Upstream::on_read(const UpstreamAddr *faddr,
         return -1;
       }
 
-      retry_close_ = true;
+      // Overwrite error if any is set
+      ngtcp2_ccerr_set_liberr(&last_error_, rv, nullptr, 0);
 
       quic_conn_handler->send_retry(handler_->get_upstream_addr(), vc.version,
                                     vc.dcid, vc.dcidlen, vc.scid, vc.scidlen,
@@ -1850,6 +1855,9 @@ int Http3Upstream::on_read(const UpstreamAddr *faddr,
       }
       break;
     case NGTCP2_ERR_DROP_CONN:
+      // Overwrite error if any is set
+      ngtcp2_ccerr_set_liberr(&last_error_, rv, nullptr, 0);
+
       return -1;
     default:
       if (!last_error_.error_code) {
