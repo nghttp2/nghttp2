@@ -533,3 +533,73 @@ jobs:
       run: |
         cmake --build build
         cmake --build build --target check
+
+  release:
+    if: github.ref_type == 'tag'
+
+    needs:
+    - build
+    - build-cross
+    - build-windows
+
+    permissions:
+      contents: write
+
+    runs-on: ubuntu-22.04
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        submodules: recursive
+    - name: Make artifacts
+      run: |
+        ver='${{ github.ref_name }}'
+
+        prev_ver=$(git tag --sort v:refname | grep -v -F "${ver}" | \
+                   grep 'v[0-9]\+\.[0-9]\+\.0' | tail -n1)
+
+        echo -n "$GPG_KEY" | gpg --batch --pinentry-mode loopback --import
+        ./makerelease.sh "${ver}" "${prev_ver}"
+      env:
+        GPG_KEY: ${{ secrets.GPG_KEY }}
+        GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+    - name: Make release
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs')
+
+          let ver = '${{ github.ref_name }}'
+
+          let {data: release} = await github.rest.repos.createRelease({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            tag_name: ver,
+            name: `nghttp2 ${ver}`,
+            draft: true,
+            generate_release_notes: true,
+            discussion_category_name: 'Announcements',
+          })
+
+          let v = ver.substring(1)
+
+          let files = [
+            'checksums.txt',
+            `nghttp2-${v}.tar.bz2`,
+            `nghttp2-${v}.tar.bz2.asc`,
+            `nghttp2-${v}.tar.gz`,
+            `nghttp2-${v}.tar.gz.asc`,
+            `nghttp2-${v}.tar.xz`,
+            `nghttp2-${v}.tar.xz.asc`,
+          ]
+
+          await Promise.all(files.map(elem =>
+            github.rest.repos.uploadReleaseAsset({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: release.id,
+              name: elem,
+              data: fs.readFileSync(elem),
+            })
+          ))
