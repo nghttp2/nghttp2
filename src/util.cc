@@ -805,9 +805,9 @@ void set_port(Address &addr, uint16_t port) {
 uint16_t get_port(const Address &addr) {
   switch (addr.su.storage.ss_family) {
   case AF_INET:
-    return addr.su.in.sin_port;
+    return ntohs(addr.su.in.sin_port);
   case AF_INET6:
-    return addr.su.in6.sin6_port;
+    return ntohs(addr.su.in6.sin6_port);
   default:
     return 0;
   }
