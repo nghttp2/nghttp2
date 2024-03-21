@@ -116,6 +116,10 @@ void QUICListener::on_read() {
       remote_addr.su = su;
       remote_addr.len = msg.msg_namelen;
 
+      if (util::get_port(remote_addr) < 1024) {
+        continue;
+      }
+
       quic_conn_handler->handle_packet(faddr_, remote_addr, local_addr, pi,
                                        data, datalen);
 

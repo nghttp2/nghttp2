@@ -567,6 +567,9 @@ std::string to_numeric_addr(const struct sockaddr *sa, socklen_t salen);
 // Sets |port| to |addr|.
 void set_port(Address &addr, uint16_t port);
 
+// Get port from |addr|.
+uint16_t get_port(const Address &addr);
+
 // Returns ASCII dump of |data| of length |len|.  Only ASCII printable
 // characters are preserved.  Other characters are replaced with ".".
 std::string ascii_dump(const uint8_t *data, size_t len);
