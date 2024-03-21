@@ -3002,7 +3002,7 @@ int main(int argc, char **argv) {
   shared_nva.emplace_back("user-agent", user_agent);
 
   // list header fields that can be overridden.
-  auto override_hdrs = make_array<std::string>(":authority", ":host", ":method",
+  auto override_hdrs = make_array<std::string>(":authority", "host", ":method",
                                                ":scheme", "user-agent");
 
   for (auto &kv : config.custom_headers) {
@@ -3010,7 +3010,7 @@ int main(int argc, char **argv) {
                   kv.name) != std::end(override_hdrs)) {
       // override header
       for (auto &nv : shared_nva) {
-        if ((nv.name == ":authority" && kv.name == ":host") ||
+        if ((nv.name == ":authority" && kv.name == "host") ||
             (nv.name == kv.name)) {
           nv.value = kv.value;
         }
