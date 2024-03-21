@@ -802,6 +802,17 @@ void set_port(Address &addr, uint16_t port) {
   }
 }
 
+uint16_t get_port(const Address &addr) {
+  switch (addr.su.storage.ss_family) {
+  case AF_INET:
+    return addr.su.in.sin_port;
+  case AF_INET6:
+    return addr.su.in6.sin6_port;
+  default:
+    return 0;
+  }
+}
+
 std::string ascii_dump(const uint8_t *data, size_t len) {
   std::string res;
 
