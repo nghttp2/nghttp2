@@ -74,6 +74,13 @@ void QUICListener::on_read() {
       return;
     }
 
+    // Packets less than 21 bytes never be a valid QUIC packet.
+    if (nread < 21) {
+      ++pktcnt;
+
+      continue;
+    }
+
     Address local_addr{};
     if (util::msghdr_get_local_addr(local_addr, &msg, su.storage.ss_family) !=
         0) {

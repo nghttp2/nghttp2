@@ -103,8 +103,9 @@ public:
                                const uint8_t *ini_scid, size_t ini_scidlen,
                                const Address &remote_addr,
                                const Address &local_addr);
-  int send_stateless_reset(const UpstreamAddr *faddr, const uint8_t *dcid,
-                           size_t dcidlen, const Address &remote_addr,
+  int send_stateless_reset(const UpstreamAddr *faddr, size_t pktlen,
+                           const uint8_t *dcid, size_t dcidlen,
+                           const Address &remote_addr,
                            const Address &local_addr);
   // Send Initial CONNECTION_CLOSE.  |ini_dcid| is the destination
   // Connection ID which appeared in Client Initial packet.
