@@ -802,14 +802,27 @@ void set_port(Address &addr, uint16_t port) {
   }
 }
 
-uint16_t get_port(const Address &addr) {
-  switch (addr.su.storage.ss_family) {
+uint16_t get_port(const sockaddr_union *su) {
+  switch (su->storage.ss_family) {
   case AF_INET:
-    return ntohs(addr.su.in.sin_port);
+    return ntohs(su->in.sin_port);
   case AF_INET6:
-    return ntohs(addr.su.in6.sin6_port);
+    return ntohs(su->in6.sin6_port);
   default:
     return 0;
+  }
+}
+
+bool quic_prohibited_port(uint16_t port) {
+  switch (port) {
+  case 1900:
+  case 5353:
+  case 11211:
+  case 20800:
+  case 27015:
+    return true;
+  default:
+    return port < 1024;
   }
 }
 
