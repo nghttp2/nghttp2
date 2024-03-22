@@ -336,9 +336,8 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
         }
       }
 
-      if (!(data[0] & 0x80)) {
-        // TODO Must be rate limited
-        send_stateless_reset(faddr, vc.dcid, vc.dcidlen, remote_addr,
+      if (!(data[0] & 0x80) && datalen >= SHRPX_QUIC_SCIDLEN + 21) {
+        send_stateless_reset(faddr, datalen, vc.dcid, vc.dcidlen, remote_addr,
                              local_addr);
       }
 
@@ -563,11 +562,9 @@ int QUICConnectionHandler::send_version_negotiation(
                           buf.data(), nwrite, 0);
 }
 
-int QUICConnectionHandler::send_stateless_reset(const UpstreamAddr *faddr,
-                                                const uint8_t *dcid,
-                                                size_t dcidlen,
-                                                const Address &remote_addr,
-                                                const Address &local_addr) {
+int QUICConnectionHandler::send_stateless_reset(
+    const UpstreamAddr *faddr, size_t pktlen, const uint8_t *dcid,
+    size_t dcidlen, const Address &remote_addr, const Address &local_addr) {
   if (stateless_reset_bucket_ == 0) {
     if (LOG_ENABLED(INFO)) {
       LOG(INFO) << "Stateless Reset bucket has been depleted";
@@ -598,17 +595,30 @@ int QUICConnectionHandler::send_stateless_reset(const UpstreamAddr *faddr,
     return -1;
   }
 
-  std::array<uint8_t, NGTCP2_MIN_STATELESS_RESET_RANDLEN> rand_bytes;
+  // SCID + minimum expansion - NGTCP2_STATELESS_RESET_TOKENLEN
+  constexpr size_t max_rand_byteslen =
+      SHRPX_QUIC_SCIDLEN + 22 - NGTCP2_STATELESS_RESET_TOKENLEN;
 
-  if (RAND_bytes(rand_bytes.data(), rand_bytes.size()) != 1) {
+  size_t rand_byteslen;
+
+  if (pktlen <= 43) {
+    // As per
+    // https://datatracker.ietf.org/doc/html/rfc9000#section-10.3
+    rand_byteslen = pktlen - NGTCP2_STATELESS_RESET_TOKENLEN - 1;
+  } else {
+    rand_byteslen = max_rand_byteslen;
+  }
+
+  std::array<uint8_t, max_rand_byteslen> rand_bytes;
+
+  if (RAND_bytes(rand_bytes.data(), rand_byteslen) != 1) {
     return -1;
   }
 
   std::array<uint8_t, NGTCP2_MAX_UDP_PAYLOAD_SIZE> buf;
 
-  auto nwrite =
-      ngtcp2_pkt_write_stateless_reset(buf.data(), buf.size(), token.data(),
-                                       rand_bytes.data(), rand_bytes.size());
+  auto nwrite = ngtcp2_pkt_write_stateless_reset(
+      buf.data(), buf.size(), token.data(), rand_bytes.data(), rand_byteslen);
   if (nwrite < 0) {
     LOG(ERROR) << "ngtcp2_pkt_write_stateless_reset: "
                << ngtcp2_strerror(nwrite);
