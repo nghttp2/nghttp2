@@ -81,6 +81,12 @@ void QUICListener::on_read() {
       continue;
     }
 
+    if (util::quic_prohibited_port(util::get_port(&su))) {
+      ++pktcnt;
+
+      continue;
+    }
+
     Address local_addr{};
     if (util::msghdr_get_local_addr(local_addr, &msg, su.storage.ss_family) !=
         0) {
@@ -122,10 +128,6 @@ void QUICListener::on_read() {
       Address remote_addr;
       remote_addr.su = su;
       remote_addr.len = msg.msg_namelen;
-
-      if (util::get_port(remote_addr) < 1024) {
-        continue;
-      }
 
       quic_conn_handler->handle_packet(faddr_, remote_addr, local_addr, pi,
                                        data, datalen);
