@@ -121,7 +121,8 @@ void QUICListener::on_read() {
                   << " bytes";
       }
 
-      if (datalen == 0) {
+      // Packets less than 21 bytes never be a valid QUIC packet.
+      if (datalen < 21) {
         break;
       }
 
