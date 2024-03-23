@@ -308,8 +308,10 @@ int nghttp2_submit_shutdown_notice(nghttp2_session *session) {
 
 int nghttp2_submit_settings(nghttp2_session *session, uint8_t flags,
                             const nghttp2_settings_entry *iv, size_t niv) {
-  (void)flags;
-  return nghttp2_session_add_settings(session, NGHTTP2_FLAG_NONE, iv, niv);
+  if (flags == NGHTTP2_FLAG_ACK && !(session->opt_flags & NGHTTP2_OPTMASK_NO_AUTO_SETTINGS_ACK)) {
+    return NGHTTP2_ERR_INVALID_ARGUMENT;
+  }
+  return nghttp2_session_add_settings(session, flags, iv, niv);
 }
 
 int32_t nghttp2_submit_push_promise(nghttp2_session *session, uint8_t flags,

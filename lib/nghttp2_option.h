@@ -71,6 +71,7 @@ typedef enum {
   NGHTTP2_OPT_SERVER_FALLBACK_RFC7540_PRIORITIES = 1 << 13,
   NGHTTP2_OPT_NO_RFC9113_LEADING_AND_TRAILING_WS_VALIDATION = 1 << 14,
   NGHTTP2_OPT_STREAM_RESET_RATE_LIMIT = 1 << 15,
+  NGHTTP2_OPT_NO_AUTO_SETTINGS_ACK = 1 << 16,
 } nghttp2_option_flag;
 
 /**
@@ -147,6 +148,10 @@ struct nghttp2_option {
    * NGHTTP2_OPT_USER_RECV_EXT_TYPES
    */
   uint8_t user_recv_ext_types[32];
+  /**
+   * NGHTTP2_OPT_NO_AUTO_SETTINGS_ACK
+   */
+  int no_auto_settings_ack;
 };
 
 #endif /* NGHTTP2_OPTION_H */

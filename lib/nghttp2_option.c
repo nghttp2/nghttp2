@@ -150,3 +150,8 @@ void nghttp2_option_set_stream_reset_rate_limit(nghttp2_option *option,
   option->stream_reset_burst = burst;
   option->stream_reset_rate = rate;
 }
+
+void nghttp2_option_set_no_auto_settings_ack(nghttp2_option *option, int val) {
+    option->opt_set_mask |= NGHTTP2_OPT_NO_AUTO_SETTINGS_ACK;
+    option->no_auto_settings_ack = val;
+}
