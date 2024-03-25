@@ -512,10 +512,10 @@ http_parse_host(const char * buf, struct http_parser_url *u, int found_at) {
     case s_http_host_v6:
     case s_http_host_v6_zone_start:
     case s_http_host_v6_zone:
-    case s_http_host_port_start:
     case s_http_userinfo:
     case s_http_userinfo_start:
       return 1;
+    case s_http_host_port_start: /* Valid to have a blank port. see RFC3986 section 3.2.3 */
     default:
       break;
   }
