@@ -25,9 +25,11 @@
 #include "tls.h"
 
 #include <cassert>
+#include <cstring>
 #include <vector>
 #include <mutex>
 #include <iostream>
+#include <fstream>
 
 #include <openssl/crypto.h>
 #include <openssl/conf.h>
@@ -175,6 +177,32 @@ int cert_decompress(SSL *ssl, CRYPTO_BUFFER **out, size_t uncompressed_len,
   return 1;
 }
 #endif // NGHTTP2_OPENSSL_IS_BORINGSSL && HAVE_LIBBROTLI
+
+namespace {
+std::ofstream keylog_file;
+
+void keylog_callback(const SSL *ssl, const char *line) {
+  keylog_file.write(line, strlen(line));
+  keylog_file.put('\n');
+  keylog_file.flush();
+}
+} // namespace
+
+int setup_keylog_callback(SSL_CTX *ssl_ctx) {
+  auto keylog_filename = getenv("SSLKEYLOGFILE");
+  if (!keylog_filename) {
+    return 0;
+  }
+
+  keylog_file.open(keylog_filename, std::ios_base::app);
+  if (!keylog_file) {
+    return -1;
+  }
+
+  SSL_CTX_set_keylog_callback(ssl_ctx, keylog_callback);
+
+  return 0;
+}
 
 } // namespace tls
 

@@ -2322,6 +2322,14 @@ int communicate(
       goto fin;
     }
 #endif // NGHTTP2_OPENSSL_IS_BORINGSSL && HAVE_LIBBROTLI
+
+    if (tls::setup_keylog_callback(ssl_ctx) != 0) {
+      std::cerr << "[ERROR] Failed to setup keylog" << std::endl;
+
+      result = -1;
+
+      goto fin;
+    }
   }
   {
     HttpClient client{callbacks, loop, ssl_ctx};

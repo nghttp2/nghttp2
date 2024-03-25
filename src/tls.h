@@ -106,6 +106,9 @@ int cert_decompress(SSL *ssl, CRYPTO_BUFFER **out, size_t uncompressed_len,
                     const uint8_t *in, size_t in_len);
 #endif // NGHTTP2_OPENSSL_IS_BORINGSSL && HAVE_LIBBROTLI
 
+// Setup keylog callback.  It returns 0 if it succeeds, or -1.
+int setup_keylog_callback(SSL_CTX *ssl_ctx);
+
 } // namespace tls
 
 } // namespace nghttp2
