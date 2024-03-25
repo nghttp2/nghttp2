@@ -1480,6 +1480,21 @@ int nghttp2_session_close_stream(nghttp2_session *session, int32_t stream_id,
 
   DEBUGF("stream: stream(%p)=%d close\n", stream, stream->stream_id);
 
+  /* We call on_stream_close_callback even if stream->state is
+     NGHTTP2_STREAM_INITIAL. This will happen while sending request
+     HEADERS, a local endpoint receives RST_STREAM for that stream. It
+     may be PROTOCOL_ERROR, but without notifying stream closure will
+     hang the stream in a local endpoint.
+  */
+
+  if (session->callbacks.on_stream_close_callback) {
+    if (session->callbacks.on_stream_close_callback(
+            session, stream_id, error_code, session->user_data) != 0) {
+
+      return NGHTTP2_ERR_CALLBACK_FAILURE;
+    }
+  }
+
   if (stream->item) {
     nghttp2_outbound_item *item;
 
@@ -1494,21 +1509,6 @@ int nghttp2_session_close_stream(nghttp2_session *session, int32_t stream_id,
     if (!item->queued && item != session->aob.item) {
       nghttp2_outbound_item_free(item, mem);
       nghttp2_mem_free(mem, item);
-    }
-  }
-
-  /* We call on_stream_close_callback even if stream->state is
-     NGHTTP2_STREAM_INITIAL. This will happen while sending request
-     HEADERS, a local endpoint receives RST_STREAM for that stream. It
-     may be PROTOCOL_ERROR, but without notifying stream closure will
-     hang the stream in a local endpoint.
-  */
-
-  if (session->callbacks.on_stream_close_callback) {
-    if (session->callbacks.on_stream_close_callback(
-            session, stream_id, error_code, session->user_data) != 0) {
-
-      return NGHTTP2_ERR_CALLBACK_FAILURE;
     }
   }
 
@@ -1566,6 +1566,11 @@ int nghttp2_session_destroy_stream(nghttp2_session *session,
     if (rv != 0) {
       return rv;
     }
+  }
+
+  if (stream->queued &&
+      (stream->flags & NGHTTP2_STREAM_FLAG_NO_RFC7540_PRIORITIES)) {
+    session_ob_data_remove(session, stream);
   }
 
   nghttp2_map_remove(&session->streams, stream->stream_id);

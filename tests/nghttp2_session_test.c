@@ -10933,6 +10933,21 @@ void test_nghttp2_session_detach_item_from_closed_stream(void) {
   assert_int(0, ==, nghttp2_session_send(session));
 
   nghttp2_session_del(session);
+
+  /* No RFC 7540 priorities */
+  nghttp2_session_server_new(&session, &callbacks, NULL);
+
+  session->pending_no_rfc7540_priorities = 1;
+
+  open_recv_stream(session, 1);
+  open_recv_stream(session, 3);
+
+  nghttp2_session_close_stream(session, 1, NGHTTP2_NO_ERROR);
+  nghttp2_session_close_stream(session, 3, NGHTTP2_NO_ERROR);
+
+  assert_int(0, ==, nghttp2_session_send(session));
+
+  nghttp2_session_del(session);
 }
 
 void test_nghttp2_session_flooding(void) {
