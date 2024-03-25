@@ -1316,9 +1316,11 @@ nghttp2_stream *nghttp2_session_open_stream(nghttp2_session *session,
     assert((stream->flags & NGHTTP2_STREAM_FLAG_NO_RFC7540_PRIORITIES) ||
            nghttp2_stream_in_dep_tree(stream));
 
+    nghttp2_session_detach_idle_stream(session, stream);
+
     if (nghttp2_stream_in_dep_tree(stream)) {
       assert(!(stream->flags & NGHTTP2_STREAM_FLAG_NO_RFC7540_PRIORITIES));
-      nghttp2_session_detach_idle_stream(session, stream);
+
       rv = nghttp2_stream_dep_remove(stream);
       if (rv != 0) {
         return NULL;
