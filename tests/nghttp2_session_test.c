@@ -10536,6 +10536,7 @@ void test_nghttp2_session_open_idle_stream(void) {
   nghttp2_stream *opened_stream;
   nghttp2_priority_spec pri_spec;
   nghttp2_frame frame;
+  nghttp2_ext_priority_update priority_update;
 
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
 
@@ -10563,6 +10564,35 @@ void test_nghttp2_session_open_idle_stream(void) {
   assert_size(0, ==, session->num_idle_streams);
   assert_null(session->idle_stream_head);
   assert_null(session->idle_stream_tail);
+
+  nghttp2_frame_priority_free(&frame.priority);
+
+  nghttp2_session_del(session);
+
+  /* No RFC 7540 priorities */
+  nghttp2_session_server_new(&session, &callbacks, NULL);
+
+  session->pending_no_rfc7540_priorities = 1;
+
+  frame.ext.payload = &priority_update;
+
+  nghttp2_frame_priority_update_init(&frame.ext, 1, (uint8_t *)"u=3",
+                                     strlen("u=3"));
+
+  assert_int(0, ==,
+             nghttp2_session_on_priority_update_received(session, &frame));
+
+  stream = nghttp2_session_get_stream_raw(session, 1);
+
+  assert_enum(nghttp2_stream_state, NGHTTP2_STREAM_IDLE, ==, stream->state);
+  assert_null(stream->closed_next);
+  assert_size(1, ==, session->num_idle_streams);
+
+  opened_stream = open_recv_stream2(session, 1, NGHTTP2_STREAM_OPENING);
+
+  assert_ptr_equal(stream, opened_stream);
+  assert_enum(nghttp2_stream_state, NGHTTP2_STREAM_OPENING, ==, stream->state);
+  assert_size(0, ==, session->num_idle_streams);
 
   nghttp2_frame_priority_free(&frame.priority);
 
@@ -10893,6 +10923,21 @@ void test_nghttp2_session_detach_item_from_closed_stream(void) {
   callbacks.on_stream_close_callback = submit_response_on_stream_close;
 
   nghttp2_session_server_new(&session, &callbacks, NULL);
+
+  open_recv_stream(session, 1);
+  open_recv_stream(session, 3);
+
+  nghttp2_session_close_stream(session, 1, NGHTTP2_NO_ERROR);
+  nghttp2_session_close_stream(session, 3, NGHTTP2_NO_ERROR);
+
+  assert_int(0, ==, nghttp2_session_send(session));
+
+  nghttp2_session_del(session);
+
+  /* No RFC 7540 priorities */
+  nghttp2_session_server_new(&session, &callbacks, NULL);
+
+  session->pending_no_rfc7540_priorities = 1;
 
   open_recv_stream(session, 1);
   open_recv_stream(session, 3);
