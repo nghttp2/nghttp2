@@ -979,7 +979,14 @@ static int session_attach_stream_item(nghttp2_session *session,
     return 0;
   }
 
-  return session_ob_data_push(session, stream);
+  rv = session_ob_data_push(session, stream);
+  if (rv != 0) {
+    nghttp2_stream_detach_item(stream);
+
+    return rv;
+  }
+
+  return 0;
 }
 
 static void session_detach_stream_item(nghttp2_session *session,
