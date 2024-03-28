@@ -324,21 +324,21 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
       break;
     }
     default:
-      if (!config->single_thread && !(data[0] & 0x80) &&
-          vc.dcidlen == SHRPX_QUIC_SCIDLEN &&
+      if (!(data[0] & 0x80) && vc.dcidlen == SHRPX_QUIC_SCIDLEN &&
           !std::equal(std::begin(decrypted_dcid),
                       std::begin(decrypted_dcid) + SHRPX_QUIC_CID_PREFIXLEN,
                       worker_->get_cid_prefix())) {
-        if (conn_handler->forward_quic_packet(faddr, remote_addr, local_addr,
+        if (!config->single_thread &&
+            conn_handler->forward_quic_packet(faddr, remote_addr, local_addr,
                                               pi, decrypted_dcid.data(), data,
                                               datalen) == 0) {
           return 0;
         }
-      }
 
-      if (!(data[0] & 0x80) && datalen >= SHRPX_QUIC_SCIDLEN + 21) {
-        send_stateless_reset(faddr, datalen, vc.dcid, vc.dcidlen, remote_addr,
-                             local_addr);
+        if (datalen >= SHRPX_QUIC_SCIDLEN + 22) {
+          send_stateless_reset(faddr, datalen, vc.dcid, vc.dcidlen, remote_addr,
+                               local_addr);
+        }
       }
 
       return 0;
