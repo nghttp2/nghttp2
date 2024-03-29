@@ -65,12 +65,16 @@ struct UpstreamAddr;
 struct QUICKeyingMaterials;
 struct QUICKeyingMaterial;
 
-constexpr size_t SHRPX_QUIC_SCIDLEN = 20;
+constexpr size_t SHRPX_QUIC_CID_WORKER_ID_OFFSET = 1;
 constexpr size_t SHRPX_QUIC_SERVER_IDLEN = 4;
-// SHRPX_QUIC_CID_PREFIXLEN includes SHRPX_QUIC_SERVER_IDLEN.
-constexpr size_t SHRPX_QUIC_CID_PREFIXLEN = 8;
-constexpr size_t SHRPX_QUIC_CID_PREFIX_OFFSET = 1;
-constexpr size_t SHRPX_QUIC_DECRYPTED_DCIDLEN = 16;
+constexpr size_t SHRPX_QUIC_SOCK_IDLEN = 4;
+constexpr size_t SHRPX_QUIC_WORKER_IDLEN =
+    SHRPX_QUIC_SERVER_IDLEN + SHRPX_QUIC_SOCK_IDLEN;
+constexpr size_t SHRPX_QUIC_CLIENT_IDLEN = 8;
+constexpr size_t SHRPX_QUIC_DECRYPTED_DCIDLEN =
+    SHRPX_QUIC_WORKER_IDLEN + SHRPX_QUIC_CLIENT_IDLEN;
+constexpr size_t SHRPX_QUIC_SCIDLEN =
+    SHRPX_QUIC_CID_WORKER_ID_OFFSET + SHRPX_QUIC_DECRYPTED_DCIDLEN;
 constexpr size_t SHRPX_QUIC_CID_ENCRYPTION_KEYLEN = 16;
 constexpr size_t SHRPX_QUIC_CONN_CLOSE_PKTLEN = 256;
 constexpr size_t SHRPX_QUIC_STATELESS_RESET_BURST = 100;
@@ -79,6 +83,32 @@ constexpr size_t SHRPX_QUIC_SECRETLEN = 32;
 constexpr size_t SHRPX_QUIC_SALTLEN = 32;
 constexpr uint8_t SHRPX_QUIC_DCID_KM_ID_MASK = 0xc0;
 
+struct WorkerID {
+  union {
+    struct {
+      uint32_t server;
+      uint32_t thread;
+    };
+    uint64_t worker;
+  };
+};
+
+static_assert(sizeof(WorkerID) == SHRPX_QUIC_WORKER_IDLEN,
+              "WorkerID length assertion failure");
+
+inline bool operator==(const WorkerID &lhd, const WorkerID &rhd) {
+  return lhd.worker == rhd.worker;
+}
+
+inline bool operator!=(const WorkerID &lhd, const WorkerID &rhd) {
+  return lhd.worker != rhd.worker;
+}
+
+struct ConnectionID {
+  WorkerID worker;
+  uint64_t client;
+};
+
 ngtcp2_tstamp quic_timestamp();
 
 int quic_send_packet(const UpstreamAddr *faddr, const sockaddr *remote_sa,
@@ -86,18 +116,16 @@ int quic_send_packet(const UpstreamAddr *faddr, const sockaddr *remote_sa,
                      size_t local_salen, const ngtcp2_pkt_info &pi,
                      const uint8_t *data, size_t datalen, size_t gso_size);
 
-int generate_quic_retry_connection_id(ngtcp2_cid &cid, size_t cidlen,
-                                      const uint8_t *server_id, uint8_t km_id,
-                                      EVP_CIPHER_CTX *ctx);
+int generate_quic_retry_connection_id(ngtcp2_cid &cid, uint32_t server_id,
+                                      uint8_t km_id, EVP_CIPHER_CTX *ctx);
 
-int generate_quic_connection_id(ngtcp2_cid &cid, size_t cidlen,
-                                const uint8_t *cid_prefix, uint8_t km_id,
-                                EVP_CIPHER_CTX *ctx);
+int generate_quic_connection_id(ngtcp2_cid &cid, const WorkerID &wid,
+                                uint8_t km_id, EVP_CIPHER_CTX *ctx);
 
 int encrypt_quic_connection_id(uint8_t *dest, const uint8_t *src,
                                EVP_CIPHER_CTX *ctx);
 
-int decrypt_quic_connection_id(uint8_t *dest, const uint8_t *src,
+int decrypt_quic_connection_id(ConnectionID &dest, const uint8_t *src,
                                EVP_CIPHER_CTX *ctx);
 
 int generate_quic_hashed_connection_id(ngtcp2_cid &dest,

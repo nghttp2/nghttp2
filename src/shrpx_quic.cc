@@ -173,42 +173,34 @@ int quic_send_packet(const UpstreamAddr *faddr, const sockaddr *remote_sa,
   return 0;
 }
 
-int generate_quic_retry_connection_id(ngtcp2_cid &cid, size_t cidlen,
-                                      const uint8_t *server_id, uint8_t km_id,
-                                      EVP_CIPHER_CTX *ctx) {
-  assert(cidlen == SHRPX_QUIC_SCIDLEN);
-
-  if (RAND_bytes(cid.data, cidlen) != 1) {
+int generate_quic_retry_connection_id(ngtcp2_cid &cid, uint32_t server_id,
+                                      uint8_t km_id, EVP_CIPHER_CTX *ctx) {
+  if (RAND_bytes(cid.data, SHRPX_QUIC_SCIDLEN) != 1) {
     return -1;
   }
 
-  cid.datalen = cidlen;
-
+  cid.datalen = SHRPX_QUIC_SCIDLEN;
   cid.data[0] = (cid.data[0] & 0x3f) | km_id;
 
-  auto p = cid.data + SHRPX_QUIC_CID_PREFIX_OFFSET;
+  auto p = cid.data + SHRPX_QUIC_CID_WORKER_ID_OFFSET;
 
-  std::copy_n(server_id, SHRPX_QUIC_SERVER_IDLEN, p);
+  std::copy_n(reinterpret_cast<uint8_t *>(&server_id), sizeof(server_id), p);
 
   return encrypt_quic_connection_id(p, p, ctx);
 }
 
-int generate_quic_connection_id(ngtcp2_cid &cid, size_t cidlen,
-                                const uint8_t *cid_prefix, uint8_t km_id,
-                                EVP_CIPHER_CTX *ctx) {
-  assert(cidlen == SHRPX_QUIC_SCIDLEN);
-
-  if (RAND_bytes(cid.data, cidlen) != 1) {
+int generate_quic_connection_id(ngtcp2_cid &cid, const WorkerID &wid,
+                                uint8_t km_id, EVP_CIPHER_CTX *ctx) {
+  if (RAND_bytes(cid.data, SHRPX_QUIC_SCIDLEN) != 1) {
     return -1;
   }
 
-  cid.datalen = cidlen;
-
+  cid.datalen = SHRPX_QUIC_SCIDLEN;
   cid.data[0] = (cid.data[0] & 0x3f) | km_id;
 
-  auto p = cid.data + SHRPX_QUIC_CID_PREFIX_OFFSET;
+  auto p = cid.data + SHRPX_QUIC_CID_WORKER_ID_OFFSET;
 
-  std::copy_n(cid_prefix, SHRPX_QUIC_CID_PREFIXLEN, p);
+  std::copy_n(reinterpret_cast<const uint8_t *>(&wid), sizeof(wid), p);
 
   return encrypt_quic_connection_id(p, p, ctx);
 }
@@ -225,12 +217,13 @@ int encrypt_quic_connection_id(uint8_t *dest, const uint8_t *src,
   return 0;
 }
 
-int decrypt_quic_connection_id(uint8_t *dest, const uint8_t *src,
+int decrypt_quic_connection_id(ConnectionID &dest, const uint8_t *src,
                                EVP_CIPHER_CTX *ctx) {
   int len;
+  auto p = reinterpret_cast<uint8_t *>(&dest);
 
-  if (!EVP_EncryptUpdate(ctx, dest, &len, src, SHRPX_QUIC_DECRYPTED_DCIDLEN) ||
-      !EVP_EncryptFinal_ex(ctx, dest + len, &len)) {
+  if (!EVP_DecryptUpdate(ctx, p, &len, src, SHRPX_QUIC_DECRYPTED_DCIDLEN) ||
+      !EVP_DecryptFinal_ex(ctx, p + len, &len)) {
     return -1;
   }
 

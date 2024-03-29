@@ -4144,12 +4144,13 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     return 0;
   case SHRPX_OPTID_QUIC_SERVER_ID:
 #ifdef ENABLE_HTTP3
-    if (optarg.size() != config->quic.server_id.size() * 2 ||
+    if (optarg.size() != sizeof(config->quic.server_id) * 2 ||
         !util::is_hex_string(optarg)) {
       LOG(ERROR) << opt << ": must be a hex-string";
       return -1;
     }
-    util::decode_hex(std::begin(config->quic.server_id), optarg);
+    util::decode_hex(reinterpret_cast<uint8_t *>(&config->quic.server_id),
+                     optarg);
 #endif // ENABLE_HTTP3
 
     return 0;
@@ -4718,6 +4719,7 @@ int resolve_hostname(Address *addr, const char *hostname, uint16_t port,
 #ifdef ENABLE_HTTP3
 QUICKeyingMaterial::QUICKeyingMaterial(QUICKeyingMaterial &&other) noexcept
     : cid_encryption_ctx{std::exchange(other.cid_encryption_ctx, nullptr)},
+      cid_decryption_ctx{std::exchange(other.cid_decryption_ctx, nullptr)},
       reserved{other.reserved},
       secret{other.secret},
       salt{other.salt},
@@ -4728,11 +4730,16 @@ QUICKeyingMaterial::~QUICKeyingMaterial() noexcept {
   if (cid_encryption_ctx) {
     EVP_CIPHER_CTX_free(cid_encryption_ctx);
   }
+
+  if (cid_decryption_ctx) {
+    EVP_CIPHER_CTX_free(cid_decryption_ctx);
+  }
 }
 
 QUICKeyingMaterial &
 QUICKeyingMaterial::operator=(QUICKeyingMaterial &&other) noexcept {
   cid_encryption_ctx = std::exchange(other.cid_encryption_ctx, nullptr);
+  cid_decryption_ctx = std::exchange(other.cid_decryption_ctx, nullptr);
   reserved = other.reserved;
   secret = other.secret;
   salt = other.salt;

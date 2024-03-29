@@ -148,7 +148,7 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
                tls::CertLookupTree *cert_tree,
 #ifdef ENABLE_HTTP3
                SSL_CTX *quic_sv_ssl_ctx, tls::CertLookupTree *quic_cert_tree,
-               const uint8_t *cid_prefix, size_t cid_prefixlen,
+               WorkerID wid,
 #  ifdef HAVE_LIBBPF
                size_t index,
 #  endif // HAVE_LIBBPF
@@ -164,6 +164,7 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
       worker_stat_{},
       dns_tracker_(loop, get_config()->conn.downstream->family),
 #ifdef ENABLE_HTTP3
+      worker_id_{std::move(wid)},
       quic_upstream_addrs_{get_config()->conn.quic_listener.addrs},
 #endif // ENABLE_HTTP3
       loop_(loop),
@@ -180,10 +181,6 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
       connect_blocker_(
           std::make_unique<ConnectBlocker>(randgen_, loop_, nullptr, nullptr)),
       graceful_shutdown_(false) {
-#ifdef ENABLE_HTTP3
-  std::copy_n(cid_prefix, cid_prefixlen, std::begin(cid_prefix_));
-#endif // ENABLE_HTTP3
-
   ev_async_init(&w_, eventcb);
   w_.data = this;
   ev_async_start(loop_, &w_);
@@ -1071,10 +1068,10 @@ int Worker::create_quic_server_socket(UpstreamAddr &faddr) {
         return -1;
       }
 
-      ref.cid_prefix_map = bpf_object__find_map_by_name(obj, "cid_prefix_map");
-      if (!ref.cid_prefix_map) {
+      ref.worker_id_map = bpf_object__find_map_by_name(obj, "worker_id_map");
+      if (!ref.worker_id_map) {
         auto error = errno;
-        LOG(FATAL) << "Failed to get cid_prefix_map: "
+        LOG(FATAL) << "Failed to get worker_id_map: "
                    << xsi_strerror(error, errbuf.data(), errbuf.size());
         close(fd);
         return -1;
@@ -1155,12 +1152,12 @@ int Worker::create_quic_server_socket(UpstreamAddr &faddr) {
         return -1;
       }
 
-      rv = bpf_map__update_elem(ref.cid_prefix_map, cid_prefix_.data(),
-                                cid_prefix_.size(), &sk_index, sizeof(sk_index),
+      rv = bpf_map__update_elem(ref.worker_id_map, &worker_id_,
+                                sizeof(worker_id_), &sk_index, sizeof(sk_index),
                                 BPF_NOEXIST);
       if (rv != 0) {
         auto error = errno;
-        LOG(FATAL) << "Failed to update cid_prefix_map: "
+        LOG(FATAL) << "Failed to update worker_id_map: "
                    << xsi_strerror(error, errbuf.data(), errbuf.size());
         close(fd);
         return -1;
@@ -1187,7 +1184,7 @@ int Worker::create_quic_server_socket(UpstreamAddr &faddr) {
   return 0;
 }
 
-const uint8_t *Worker::get_cid_prefix() const { return cid_prefix_.data(); }
+const WorkerID &Worker::get_worker_id() const { return worker_id_; }
 
 const UpstreamAddr *Worker::find_quic_upstream_addr(const Address &local_addr) {
   std::array<char, NI_MAXHOST> host;
@@ -1445,10 +1442,11 @@ void downstream_failure(DownstreamAddr *addr, const Address *raddr) {
 }
 
 #ifdef ENABLE_HTTP3
-int create_cid_prefix(uint8_t *cid_prefix, const uint8_t *server_id) {
-  auto p = std::copy_n(server_id, SHRPX_QUIC_SERVER_IDLEN, cid_prefix);
+int create_worker_id(WorkerID &dest, uint32_t server_id) {
+  dest.server = server_id;
 
-  if (RAND_bytes(p, SHRPX_QUIC_CID_PREFIXLEN - SHRPX_QUIC_SERVER_IDLEN) != 1) {
+  if (RAND_bytes(reinterpret_cast<unsigned char *>(&dest.thread),
+                 sizeof(dest.thread)) != 1) {
     return -1;
   }
 

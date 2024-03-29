@@ -211,8 +211,10 @@ int get_new_connection_id(ngtcp2_conn *conn, ngtcp2_cid *cid, uint8_t *token,
   auto &qkms = conn_handler->get_quic_keying_materials();
   auto &qkm = qkms->keying_materials.front();
 
-  if (generate_quic_connection_id(*cid, cidlen, worker->get_cid_prefix(),
-                                  qkm.id, qkm.cid_encryption_ctx) != 0) {
+  assert(SHRPX_QUIC_SCIDLEN == cidlen);
+
+  if (generate_quic_connection_id(*cid, worker->get_worker_id(), qkm.id,
+                                  qkm.cid_encryption_ctx) != 0) {
     return NGTCP2_ERR_CALLBACK_FAILURE;
   }
 
@@ -609,8 +611,7 @@ int Http3Upstream::init(const UpstreamAddr *faddr, const Address &remote_addr,
 
   ngtcp2_cid scid;
 
-  if (generate_quic_connection_id(scid, SHRPX_QUIC_SCIDLEN,
-                                  worker->get_cid_prefix(), qkm.id,
+  if (generate_quic_connection_id(scid, worker->get_worker_id(), qkm.id,
                                   qkm.cid_encryption_ctx) != 0) {
     return -1;
   }

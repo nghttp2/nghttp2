@@ -123,7 +123,7 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
   }
 
   if (it == std::end(connections_)) {
-    std::array<uint8_t, SHRPX_QUIC_DECRYPTED_DCIDLEN> decrypted_dcid;
+    ConnectionID decrypted_dcid;
 
     auto &qkms = conn_handler->get_quic_keying_materials();
     const QUICKeyingMaterial *qkm = nullptr;
@@ -132,19 +132,17 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
       qkm = select_quic_keying_material(
           *qkms.get(), vc.dcid[0] & SHRPX_QUIC_DCID_KM_ID_MASK);
 
-      if (decrypt_quic_connection_id(decrypted_dcid.data(),
-                                     vc.dcid + SHRPX_QUIC_CID_PREFIX_OFFSET,
-                                     qkm->cid_encryption_ctx) != 0) {
+      if (decrypt_quic_connection_id(decrypted_dcid,
+                                     vc.dcid + SHRPX_QUIC_CID_WORKER_ID_OFFSET,
+                                     qkm->cid_decryption_ctx) != 0) {
         return 0;
       }
 
       if (qkm != &qkms->keying_materials.front() ||
-          !std::equal(std::begin(decrypted_dcid),
-                      std::begin(decrypted_dcid) + SHRPX_QUIC_CID_PREFIXLEN,
-                      worker_->get_cid_prefix())) {
+          decrypted_dcid.worker != worker_->get_worker_id()) {
         auto quic_lwp =
-            conn_handler->match_quic_lingering_worker_process_cid_prefix(
-                decrypted_dcid.data(), decrypted_dcid.size());
+            conn_handler->match_quic_lingering_worker_process_worker_id(
+                decrypted_dcid.worker);
         if (quic_lwp) {
           if (conn_handler->forward_quic_packet_to_lingering_worker_process(
                   quic_lwp, remote_addr, local_addr, pi, data, datalen) == 0) {
@@ -177,23 +175,21 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
 
     switch (ngtcp2_accept(&hd, data, datalen)) {
     case 0: {
-      // If we get Initial and it has the CID prefix of this worker,
-      // it is likely that client is intentionally use the prefix.
-      // Just drop it.
+      // If we get Initial and it has the Worker ID of this worker, it
+      // is likely that client is intentionally use the prefix.  Just
+      // drop it.
       if (vc.dcidlen == SHRPX_QUIC_SCIDLEN) {
         if (qkm != &qkms->keying_materials.front()) {
           qkm = &qkms->keying_materials.front();
 
-          if (decrypt_quic_connection_id(decrypted_dcid.data(),
-                                         vc.dcid + SHRPX_QUIC_CID_PREFIX_OFFSET,
-                                         qkm->cid_encryption_ctx) != 0) {
+          if (decrypt_quic_connection_id(
+                  decrypted_dcid, vc.dcid + SHRPX_QUIC_CID_WORKER_ID_OFFSET,
+                  qkm->cid_decryption_ctx) != 0) {
             return 0;
           }
         }
 
-        if (std::equal(std::begin(decrypted_dcid),
-                       std::begin(decrypted_dcid) + SHRPX_QUIC_CID_PREFIXLEN,
-                       worker_->get_cid_prefix())) {
+        if (decrypted_dcid.worker == worker_->get_worker_id()) {
           return 0;
         }
       }
@@ -325,12 +321,10 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
     }
     default:
       if (!(data[0] & 0x80) && vc.dcidlen == SHRPX_QUIC_SCIDLEN &&
-          !std::equal(std::begin(decrypted_dcid),
-                      std::begin(decrypted_dcid) + SHRPX_QUIC_CID_PREFIXLEN,
-                      worker_->get_cid_prefix())) {
+          decrypted_dcid.worker != worker_->get_worker_id()) {
         if (!config->single_thread &&
             conn_handler->forward_quic_packet(faddr, remote_addr, local_addr,
-                                              pi, decrypted_dcid.data(), data,
+                                              pi, decrypted_dcid.worker, data,
                                               datalen) == 0) {
           return 0;
         }
@@ -477,8 +471,7 @@ int QUICConnectionHandler::send_retry(
 
   ngtcp2_cid retry_scid;
 
-  if (generate_quic_retry_connection_id(retry_scid, SHRPX_QUIC_SCIDLEN,
-                                        quicconf.server_id.data(), qkm.id,
+  if (generate_quic_retry_connection_id(retry_scid, quicconf.server_id, qkm.id,
                                         qkm.cid_encryption_ctx) != 0) {
     return -1;
   }

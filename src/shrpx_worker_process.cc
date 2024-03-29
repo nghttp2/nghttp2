@@ -593,11 +593,21 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
     }
 
     EVP_CIPHER_CTX_set_padding(qkm.cid_encryption_ctx, 0);
+
+    qkm.cid_decryption_ctx = EVP_CIPHER_CTX_new();
+    if (!EVP_DecryptInit_ex(qkm.cid_decryption_ctx, EVP_aes_128_ecb(), nullptr,
+                            qkm.cid_encryption_key.data(), nullptr)) {
+      LOG(ERROR)
+          << "Failed to initialize QUIC Connection ID decryption context";
+      return -1;
+    }
+
+    EVP_CIPHER_CTX_set_padding(qkm.cid_decryption_ctx, 0);
   }
 
   conn_handler->set_quic_keying_materials(std::move(qkms));
 
-  conn_handler->set_cid_prefixes(wpconf->cid_prefixes);
+  conn_handler->set_worker_ids(wpconf->worker_ids);
   conn_handler->set_quic_lingering_worker_processes(
       wpconf->quic_lingering_worker_processes);
 #endif // ENABLE_HTTP3
