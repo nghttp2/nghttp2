@@ -205,7 +205,7 @@ struct WorkerProcess {
   WorkerProcess(struct ev_loop *loop, pid_t worker_pid, int ipc_fd
 #ifdef ENABLE_HTTP3
                 ,
-                int quic_ipc_fd, std::vector<WorkerID> worker_ids
+                int quic_ipc_fd, std::vector<WorkerID> worker_ids, uint16_t seq
 #endif // ENABLE_HTTP3
                 )
       : loop(loop),
@@ -214,7 +214,8 @@ struct WorkerProcess {
 #ifdef ENABLE_HTTP3
         ,
         quic_ipc_fd(quic_ipc_fd),
-        worker_ids(std::move(worker_ids))
+        worker_ids(std::move(worker_ids)),
+        seq(seq)
 #endif // ENABLE_HTTP3
   {
     ev_child_init(&worker_process_childev, worker_process_child_cb, worker_pid,
@@ -246,6 +247,7 @@ struct WorkerProcess {
 #ifdef ENABLE_HTTP3
   int quic_ipc_fd;
   std::vector<WorkerID> worker_ids;
+  uint16_t seq;
 #endif // ENABLE_HTTP3
 };
 
@@ -255,6 +257,10 @@ void reload_config();
 
 namespace {
 std::deque<std::unique_ptr<WorkerProcess>> worker_processes;
+
+#ifdef ENABLE_HTTP3
+uint16_t worker_process_seq;
+#endif // ENABLE_HTTP3
 } // namespace
 
 namespace {
@@ -1288,9 +1294,17 @@ get_inherited_quic_lingering_worker_process_from_env() {
       p = end + 1;
     }
 
-    std::sort(std::begin(worker_ids), std::end(worker_ids));
-
     lwps.emplace_back(std::move(worker_ids), fd);
+  }
+
+  if (!lwps.empty()) {
+    const auto &lwp = lwps.back();
+
+    if (!lwp.worker_ids.empty() &&
+        worker_process_seq <= lwp.worker_ids[0].worker_process) {
+      worker_process_seq = lwp.worker_ids[0].worker_process;
+      ++worker_process_seq;
+    }
   }
 
   return lwps;
@@ -1422,7 +1436,7 @@ int create_quic_ipc_socket(std::array<int, 2> &quic_ipc_fd) {
 } // namespace
 
 namespace {
-int generate_worker_id(std::vector<WorkerID> &worker_ids,
+int generate_worker_id(std::vector<WorkerID> &worker_ids, uint16_t wp_seq,
                        const Config *config) {
   auto &apiconf = config->api;
   auto &quicconf = config->quic;
@@ -1443,13 +1457,13 @@ int generate_worker_id(std::vector<WorkerID> &worker_ids,
 
   worker_ids.resize(num_wid);
 
-  for (auto &wid : worker_ids) {
-    if (create_worker_id(wid, quicconf.server_id) != 0) {
-      return -1;
-    }
-  }
+  uint16_t idx = 0;
 
-  std::sort(std::begin(worker_ids), std::end(worker_ids));
+  for (auto &wid : worker_ids) {
+    wid.server = quicconf.server_id;
+    wid.worker_process = wp_seq;
+    wid.thread = idx++;
+  }
 
   return 0;
 }
@@ -1840,7 +1854,7 @@ int event_loop() {
 
   std::vector<WorkerID> worker_ids;
 
-  if (generate_worker_id(worker_ids, config) != 0) {
+  if (generate_worker_id(worker_ids, worker_process_seq, config) != 0) {
     return -1;
   }
 #endif // ENABLE_HTTP3
@@ -1872,13 +1886,13 @@ int event_loop() {
   ev_timer_init(&worker_process_grace_period_timer,
                 worker_process_grace_period_timercb, 0., 0.);
 
-  worker_process_add(std::make_unique<WorkerProcess>(loop, pid, ipc_fd
+  worker_process_add(std::make_unique<WorkerProcess>(
+      loop, pid, ipc_fd
 #ifdef ENABLE_HTTP3
-                                                     ,
-                                                     quic_ipc_fd,
-                                                     std::move(worker_ids)
+      ,
+      quic_ipc_fd, std::move(worker_ids), worker_process_seq++
 #endif // ENABLE_HTTP3
-                                                         ));
+      ));
 
   // Write PID file when we are ready to accept connection from peer.
   // This makes easier to write restart script for nghttpx.  Because
@@ -4010,7 +4024,8 @@ void reload_config() {
 
   std::vector<WorkerID> worker_ids;
 
-  if (generate_worker_id(worker_ids, new_config.get()) != 0) {
+  if (generate_worker_id(worker_ids, worker_process_seq, new_config.get()) !=
+      0) {
     close_not_inherited_fd(new_config.get(), iaddrs);
     return;
   }
@@ -4046,13 +4061,13 @@ void reload_config() {
 
   close_unused_inherited_addr(iaddrs);
 
-  worker_process_add(std::make_unique<WorkerProcess>(loop, pid, ipc_fd
+  worker_process_add(std::make_unique<WorkerProcess>(
+      loop, pid, ipc_fd
 #ifdef ENABLE_HTTP3
-                                                     ,
-                                                     quic_ipc_fd,
-                                                     std::move(worker_ids)
+      ,
+      quic_ipc_fd, std::move(worker_ids), worker_process_seq++
 #endif // ENABLE_HTTP3
-                                                         ));
+      ));
 
   worker_process_adjust_limit();
 

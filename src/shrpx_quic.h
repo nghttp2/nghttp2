@@ -87,7 +87,8 @@ struct WorkerID {
   union {
     struct {
       uint32_t server;
-      uint32_t thread;
+      uint16_t worker_process;
+      uint16_t thread;
     };
     uint64_t worker;
   };
@@ -102,10 +103,6 @@ inline bool operator==(const WorkerID &lhd, const WorkerID &rhd) {
 
 inline bool operator!=(const WorkerID &lhd, const WorkerID &rhd) {
   return lhd.worker != rhd.worker;
-}
-
-inline bool operator<(const WorkerID &lhd, const WorkerID &rhd) {
-  return lhd.worker < rhd.worker;
 }
 
 struct ConnectionID {

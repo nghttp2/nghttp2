@@ -468,12 +468,6 @@ size_t match_downstream_addr_group(
 // nullptr.  This function may schedule live check.
 void downstream_failure(DownstreamAddr *addr, const Address *raddr);
 
-#ifdef ENABLE_HTTP3
-// Creates WorkerID used as a prefix of QUIC Connection ID.  This
-// function returns -1 on failure.
-int create_worker_id(WorkerID &dest, uint32_t server_id);
-#endif // ENABLE_HTTP3
-
 } // namespace shrpx
 
 #endif // SHRPX_WORKER_H

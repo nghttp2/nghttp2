@@ -1039,22 +1039,35 @@ void ConnectionHandler::set_worker_ids(std::vector<WorkerID> worker_ids) {
   worker_ids_ = std::move(worker_ids);
 }
 
+namespace {
+ssize_t find_worker_index(const std::vector<WorkerID> &worker_ids,
+                          const WorkerID &wid) {
+  assert(!worker_ids.empty());
+
+  if (wid.server != worker_ids[0].server ||
+      wid.worker_process != worker_ids[0].worker_process ||
+      wid.thread >= worker_ids.size()) {
+    return -1;
+  }
+
+  return wid.thread;
+}
+} // namespace
+
 Worker *ConnectionHandler::find_worker(const WorkerID &wid) const {
-  auto it =
-      std::lower_bound(std::begin(worker_ids_), std::end(worker_ids_), wid);
-  if (it == std::end(worker_ids_) || *it != wid) {
+  auto idx = find_worker_index(worker_ids_, wid);
+  if (idx == -1) {
     return nullptr;
   }
 
-  return workers_[std::distance(std::begin(worker_ids_), it)].get();
+  return workers_[idx].get();
 }
 
 QUICLingeringWorkerProcess *
 ConnectionHandler::match_quic_lingering_worker_process_worker_id(
     const WorkerID &wid) {
   for (auto &lwps : quic_lingering_worker_processes_) {
-    if (std::binary_search(std::begin(lwps.worker_ids),
-                           std::end(lwps.worker_ids), wid)) {
+    if (find_worker_index(lwps.worker_ids, wid) != -1) {
       return &lwps;
     }
   }
