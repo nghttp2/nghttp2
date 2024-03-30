@@ -104,6 +104,10 @@ inline bool operator!=(const WorkerID &lhd, const WorkerID &rhd) {
   return lhd.worker != rhd.worker;
 }
 
+inline bool operator<(const WorkerID &lhd, const WorkerID &rhd) {
+  return lhd.worker < rhd.worker;
+}
+
 struct ConnectionID {
   WorkerID worker;
   uint64_t client;
