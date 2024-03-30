@@ -1224,7 +1224,7 @@ std::vector<QUICLingeringWorkerProcess>
 namespace {
 std::vector<QUICLingeringWorkerProcess>
 get_inherited_quic_lingering_worker_process_from_env() {
-  std::vector<QUICLingeringWorkerProcess> iwps;
+  std::vector<QUICLingeringWorkerProcess> lwps;
 
   for (size_t i = 1;; ++i) {
     auto name = ENV_QUIC_WORKER_PROCESS_PREFIX.str();
@@ -1288,10 +1288,10 @@ get_inherited_quic_lingering_worker_process_from_env() {
       p = end + 1;
     }
 
-    iwps.emplace_back(std::move(worker_ids), fd);
+    lwps.emplace_back(std::move(worker_ids), fd);
   }
 
-  return iwps;
+  return lwps;
 }
 } // namespace
 #endif // ENABLE_HTTP3
