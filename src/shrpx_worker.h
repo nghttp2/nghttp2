@@ -312,7 +312,7 @@ public:
          tls::CertLookupTree *cert_tree,
 #ifdef ENABLE_HTTP3
          SSL_CTX *quic_sv_ssl_ctx, tls::CertLookupTree *quic_cert_tree,
-         const uint8_t *cid_prefix, size_t cid_prefixlen,
+         WorkerID wid,
 #  ifdef HAVE_LIBBPF
          size_t index,
 #  endif // HAVE_LIBBPF
@@ -377,7 +377,7 @@ public:
 
   int setup_quic_server_socket();
 
-  const uint8_t *get_cid_prefix() const;
+  const WorkerID &get_worker_id() const;
 
 #  ifdef HAVE_LIBBPF
   bool should_attach_bpf() const;
@@ -414,7 +414,7 @@ private:
   DNSTracker dns_tracker_;
 
 #ifdef ENABLE_HTTP3
-  std::array<uint8_t, SHRPX_QUIC_CID_PREFIXLEN> cid_prefix_;
+  WorkerID worker_id_;
   std::vector<UpstreamAddr> quic_upstream_addrs_;
   std::vector<std::unique_ptr<QUICListener>> quic_listeners_;
 #endif // ENABLE_HTTP3
@@ -469,10 +469,9 @@ size_t match_downstream_addr_group(
 void downstream_failure(DownstreamAddr *addr, const Address *raddr);
 
 #ifdef ENABLE_HTTP3
-// Creates unpredictable SHRPX_QUIC_CID_PREFIXLEN bytes sequence which
-// is used as a prefix of QUIC Connection ID.  This function returns
-// -1 on failure.  |server_id| must be 2 bytes long.
-int create_cid_prefix(uint8_t *cid_prefix, const uint8_t *server_id);
+// Creates WorkerID used as a prefix of QUIC Connection ID.  This
+// function returns -1 on failure.
+int create_worker_id(WorkerID &dest, uint32_t server_id);
 #endif // ENABLE_HTTP3
 
 } // namespace shrpx

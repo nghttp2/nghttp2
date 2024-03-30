@@ -278,15 +278,14 @@ int ConnectionHandler::create_single_worker() {
 #endif // ENABLE_HTTP3 && HAVE_LIBBPF
 
 #ifdef ENABLE_HTTP3
-  assert(cid_prefixes_.size() == 1);
-  const auto &cid_prefix = cid_prefixes_[0];
+  assert(worker_ids_.size() == 1);
+  const auto &wid = worker_ids_[0];
 #endif // ENABLE_HTTP3
 
   single_worker_ = std::make_unique<Worker>(
       loop_, sv_ssl_ctx, cl_ssl_ctx, session_cache_ssl_ctx, cert_tree_.get(),
 #ifdef ENABLE_HTTP3
-      quic_sv_ssl_ctx, quic_cert_tree_.get(), cid_prefix.data(),
-      cid_prefix.size(),
+      quic_sv_ssl_ctx, quic_cert_tree_.get(), wid,
 #  ifdef HAVE_LIBBPF
       /* index = */ 0,
 #  endif // HAVE_LIBBPF
@@ -376,21 +375,20 @@ int ConnectionHandler::create_worker_thread(size_t num) {
   }
 
 #  ifdef ENABLE_HTTP3
-  assert(cid_prefixes_.size() == num);
+  assert(worker_ids_.size() == num);
 #  endif // ENABLE_HTTP3
 
   for (size_t i = 0; i < num; ++i) {
     auto loop = ev_loop_new(config->ev_loop_flags);
 
 #  ifdef ENABLE_HTTP3
-    const auto &cid_prefix = cid_prefixes_[i];
+    const auto &wid = worker_ids_[i];
 #  endif // ENABLE_HTTP3
 
     auto worker = std::make_unique<Worker>(
         loop, sv_ssl_ctx, cl_ssl_ctx, session_cache_ssl_ctx, cert_tree_.get(),
 #  ifdef ENABLE_HTTP3
-        quic_sv_ssl_ctx, quic_cert_tree_.get(), cid_prefix.data(),
-        cid_prefix.size(),
+        quic_sv_ssl_ctx, quic_cert_tree_.get(), wid,
 #    ifdef HAVE_LIBBPF
         i,
 #    endif // HAVE_LIBBPF
@@ -1008,13 +1006,12 @@ void ConnectionHandler::set_enable_acceptor_on_ocsp_completion(bool f) {
 #ifdef ENABLE_HTTP3
 int ConnectionHandler::forward_quic_packet(
     const UpstreamAddr *faddr, const Address &remote_addr,
-    const Address &local_addr, const ngtcp2_pkt_info &pi,
-    const uint8_t *cid_prefix, const uint8_t *data, size_t datalen) {
+    const Address &local_addr, const ngtcp2_pkt_info &pi, const WorkerID &wid,
+    const uint8_t *data, size_t datalen) {
   assert(!get_config()->single_thread);
 
   for (auto &worker : workers_) {
-    if (!std::equal(cid_prefix, cid_prefix + SHRPX_QUIC_CID_PREFIXLEN,
-                    worker->get_cid_prefix())) {
+    if (wid != worker->get_worker_id()) {
       continue;
     }
 
@@ -1041,20 +1038,16 @@ ConnectionHandler::get_quic_keying_materials() const {
   return quic_keying_materials_;
 }
 
-void ConnectionHandler::set_cid_prefixes(
-    const std::vector<std::array<uint8_t, SHRPX_QUIC_CID_PREFIXLEN>>
-        &cid_prefixes) {
-  cid_prefixes_ = cid_prefixes;
+void ConnectionHandler::set_worker_ids(std::vector<WorkerID> worker_ids) {
+  worker_ids_ = std::move(worker_ids);
 }
 
 QUICLingeringWorkerProcess *
-ConnectionHandler::match_quic_lingering_worker_process_cid_prefix(
-    const uint8_t *dcid, size_t dcidlen) {
-  assert(dcidlen >= SHRPX_QUIC_CID_PREFIXLEN);
-
+ConnectionHandler::match_quic_lingering_worker_process_worker_id(
+    const WorkerID &wid) {
   for (auto &lwps : quic_lingering_worker_processes_) {
-    for (auto &cid_prefix : lwps.cid_prefixes) {
-      if (std::equal(std::begin(cid_prefix), std::end(cid_prefix), dcid)) {
+    for (auto &lwid : lwps.worker_ids) {
+      if (wid == lwid) {
         return &lwps;
       }
     }
@@ -1275,18 +1268,16 @@ int ConnectionHandler::quic_ipc_read() {
 
   auto &qkm = quic_keying_materials_->keying_materials.front();
 
-  std::array<uint8_t, SHRPX_QUIC_DECRYPTED_DCIDLEN> decrypted_dcid;
+  ConnectionID decrypted_dcid;
 
-  if (decrypt_quic_connection_id(decrypted_dcid.data(),
-                                 vc.dcid + SHRPX_QUIC_CID_PREFIX_OFFSET,
-                                 qkm.cid_encryption_ctx) != 0) {
+  if (decrypt_quic_connection_id(decrypted_dcid,
+                                 vc.dcid + SHRPX_QUIC_CID_WORKER_ID_OFFSET,
+                                 qkm.cid_decryption_ctx) != 0) {
     return -1;
   }
 
   for (auto &worker : workers_) {
-    if (!std::equal(std::begin(decrypted_dcid),
-                    std::begin(decrypted_dcid) + SHRPX_QUIC_CID_PREFIXLEN,
-                    worker->get_cid_prefix())) {
+    if (decrypted_dcid.worker != worker->get_worker_id()) {
       continue;
     }
 
@@ -1300,7 +1291,7 @@ int ConnectionHandler::quic_ipc_read() {
   }
 
   if (LOG_ENABLED(INFO)) {
-    LOG(INFO) << "No worker to match CID prefix";
+    LOG(INFO) << "No worker to match Worker ID";
   }
 
   return 0;

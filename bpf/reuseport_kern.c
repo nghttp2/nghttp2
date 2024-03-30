@@ -325,7 +325,7 @@ struct {
   __uint(max_entries, 255);
   __type(key, __u64);
   __type(value, __u32);
-} cid_prefix_map SEC(".maps");
+} worker_id_map SEC(".maps");
 
 struct {
   __uint(type, BPF_MAP_TYPE_REUSEPORT_SOCKARRAY);
@@ -355,11 +355,11 @@ typedef struct quic_hd {
   __u8 type;
 } quic_hd;
 
-#define SV_DCIDLEN 20
+#define SV_DCIDLEN 17
 #define MAX_DCIDLEN 20
 #define MIN_DCIDLEN 8
-#define CID_PREFIXLEN 8
-#define CID_PREFIX_OFFSET 1
+#define WORKER_IDLEN 8
+#define WORKER_ID_OFFSET 1
 
 enum {
   NGTCP2_PKT_INITIAL = 0x0,
@@ -483,7 +483,7 @@ int select_reuseport(struct sk_reuseport_md *reuse_md) {
   quic_hd qhd;
   __u8 qpktbuf[6 + MAX_DCIDLEN];
   struct AES_ctx *aes_ctx;
-  __u8 *cid_prefix;
+  __u8 *worker_id;
 
   if (bpf_skb_load_bytes(reuse_md, sizeof(struct udphdr), qpktbuf,
                          sizeof(qpktbuf)) != 0) {
@@ -509,10 +509,10 @@ int select_reuseport(struct sk_reuseport_md *reuse_md) {
   case NGTCP2_PKT_INITIAL:
   case NGTCP2_PKT_0RTT:
     if (qhd.dcidlen == SV_DCIDLEN) {
-      cid_prefix = qhd.dcid + CID_PREFIX_OFFSET;
-      AES_ECB_decrypt(aes_ctx, cid_prefix);
+      worker_id = qhd.dcid + WORKER_ID_OFFSET;
+      AES_ECB_decrypt(aes_ctx, worker_id);
 
-      psk_index = bpf_map_lookup_elem(&cid_prefix_map, cid_prefix);
+      psk_index = bpf_map_lookup_elem(&worker_id_map, worker_id);
       if (psk_index != NULL) {
         sk_index = *psk_index;
 
@@ -529,10 +529,10 @@ int select_reuseport(struct sk_reuseport_md *reuse_md) {
       return SK_DROP;
     }
 
-    cid_prefix = qhd.dcid + CID_PREFIX_OFFSET;
-    AES_ECB_decrypt(aes_ctx, cid_prefix);
+    worker_id = qhd.dcid + WORKER_ID_OFFSET;
+    AES_ECB_decrypt(aes_ctx, worker_id);
 
-    psk_index = bpf_map_lookup_elem(&cid_prefix_map, cid_prefix);
+    psk_index = bpf_map_lookup_elem(&worker_id_map, worker_id);
     if (psk_index == NULL) {
       sk_index = sk_index_from_dcid(&qhd, reuse_md, *pnum_socks);
 

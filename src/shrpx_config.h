@@ -647,6 +647,7 @@ struct QUICKeyingMaterial {
   ~QUICKeyingMaterial() noexcept;
   QUICKeyingMaterial &operator=(QUICKeyingMaterial &&other) noexcept;
   EVP_CIPHER_CTX *cid_encryption_ctx;
+  EVP_CIPHER_CTX *cid_decryption_ctx;
   std::array<uint8_t, SHRPX_QUIC_SECRET_RESERVEDLEN> reserved;
   std::array<uint8_t, SHRPX_QUIC_SECRETLEN> secret;
   std::array<uint8_t, SHRPX_QUIC_SALTLEN> salt;
@@ -821,7 +822,7 @@ struct QUICConfig {
     StringRef prog_file;
     bool disabled;
   } bpf;
-  std::array<uint8_t, SHRPX_QUIC_SERVER_IDLEN> server_id;
+  uint32_t server_id;
 };
 
 struct Http3Config {
