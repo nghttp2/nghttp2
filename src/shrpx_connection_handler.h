@@ -121,6 +121,7 @@ enum class QUICIPCType {
 
 // WorkerProcesses which are in graceful shutdown period.
 struct QUICLingeringWorkerProcess {
+  // |worker_ids| must be sorted in the lexicographical order.
   QUICLingeringWorkerProcess(std::vector<WorkerID> worker_ids, int quic_ipc_fd)
       : worker_ids{std::move(worker_ids)}, quic_ipc_fd{quic_ipc_fd} {}
 
@@ -201,7 +202,9 @@ public:
   void set_quic_keying_materials(std::shared_ptr<QUICKeyingMaterials> qkms);
   const std::shared_ptr<QUICKeyingMaterials> &get_quic_keying_materials() const;
 
+  // |worker_ids| must be sorted in the lexicographical order.
   void set_worker_ids(std::vector<WorkerID> worker_ids);
+  Worker *find_worker(const WorkerID &wid) const;
 
   void set_quic_lingering_worker_processes(
       const std::vector<QUICLingeringWorkerProcess> &quic_lwps);

@@ -1010,22 +1010,19 @@ int ConnectionHandler::forward_quic_packet(
     const uint8_t *data, size_t datalen) {
   assert(!get_config()->single_thread);
 
-  for (auto &worker : workers_) {
-    if (wid != worker->get_worker_id()) {
-      continue;
-    }
-
-    WorkerEvent wev{};
-    wev.type = WorkerEventType::QUIC_PKT_FORWARD;
-    wev.quic_pkt = std::make_unique<QUICPacket>(faddr->index, remote_addr,
-                                                local_addr, pi, data, datalen);
-
-    worker->send(std::move(wev));
-
-    return 0;
+  auto worker = find_worker(wid);
+  if (worker == nullptr) {
+    return -1;
   }
 
-  return -1;
+  WorkerEvent wev{};
+  wev.type = WorkerEventType::QUIC_PKT_FORWARD;
+  wev.quic_pkt = std::make_unique<QUICPacket>(faddr->index, remote_addr,
+                                              local_addr, pi, data, datalen);
+
+  worker->send(std::move(wev));
+
+  return 0;
 }
 
 void ConnectionHandler::set_quic_keying_materials(
@@ -1042,14 +1039,23 @@ void ConnectionHandler::set_worker_ids(std::vector<WorkerID> worker_ids) {
   worker_ids_ = std::move(worker_ids);
 }
 
+Worker *ConnectionHandler::find_worker(const WorkerID &wid) const {
+  auto it =
+      std::lower_bound(std::begin(worker_ids_), std::end(worker_ids_), wid);
+  if (it == std::end(worker_ids_) || *it != wid) {
+    return nullptr;
+  }
+
+  return workers_[std::distance(std::begin(worker_ids_), it)].get();
+}
+
 QUICLingeringWorkerProcess *
 ConnectionHandler::match_quic_lingering_worker_process_worker_id(
     const WorkerID &wid) {
   for (auto &lwps : quic_lingering_worker_processes_) {
-    for (auto &lwid : lwps.worker_ids) {
-      if (wid == lwid) {
-        return &lwps;
-      }
+    if (std::binary_search(std::begin(lwps.worker_ids),
+                           std::end(lwps.worker_ids), wid)) {
+      return &lwps;
     }
   }
 
@@ -1276,23 +1282,21 @@ int ConnectionHandler::quic_ipc_read() {
     return -1;
   }
 
-  for (auto &worker : workers_) {
-    if (decrypted_dcid.worker != worker->get_worker_id()) {
-      continue;
+  auto worker = find_worker(decrypted_dcid.worker);
+  if (worker == nullptr) {
+    if (LOG_ENABLED(INFO)) {
+      LOG(INFO) << "No worker to match Worker ID";
     }
-
-    WorkerEvent wev{
-        .type = WorkerEventType::QUIC_PKT_FORWARD,
-        .quic_pkt = std::move(pkt),
-    };
-    worker->send(std::move(wev));
 
     return 0;
   }
 
-  if (LOG_ENABLED(INFO)) {
-    LOG(INFO) << "No worker to match Worker ID";
-  }
+  WorkerEvent wev{
+      .type = WorkerEventType::QUIC_PKT_FORWARD,
+      .quic_pkt = std::move(pkt),
+  };
+
+  worker->send(std::move(wev));
 
   return 0;
 }

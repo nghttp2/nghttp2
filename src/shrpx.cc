@@ -1288,6 +1288,8 @@ get_inherited_quic_lingering_worker_process_from_env() {
       p = end + 1;
     }
 
+    std::sort(std::begin(worker_ids), std::end(worker_ids));
+
     lwps.emplace_back(std::move(worker_ids), fd);
   }
 
@@ -1446,6 +1448,8 @@ int generate_worker_id(std::vector<WorkerID> &worker_ids,
       return -1;
     }
   }
+
+  std::sort(std::begin(worker_ids), std::end(worker_ids));
 
   return 0;
 }
