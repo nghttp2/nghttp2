@@ -547,7 +547,7 @@ The construction of Connection ID closely follows Block Cipher CID
 Algorithm described in `QUIC-LB draft
 <https://datatracker.ietf.org/doc/html/draft-ietf-quic-load-balancers>`_.
 A Connection ID that nghttpx generates is always 17 bytes long.  It
-uses first 2 bits as a configuration ID.  The remaining bits in the
+uses first 3 bits as a configuration ID.  The remaining bits in the
 first byte are reserved and random.  The next 4 bytes are server ID.
 The next 4 bytes are used to route UDP datagram to a correct
 ``SO_REUSEPORT`` socket.  The remaining bytes are randomly generated.

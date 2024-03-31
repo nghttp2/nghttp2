@@ -180,7 +180,7 @@ int generate_quic_retry_connection_id(ngtcp2_cid &cid, uint32_t server_id,
   }
 
   cid.datalen = SHRPX_QUIC_SCIDLEN;
-  cid.data[0] = (cid.data[0] & 0x3f) | km_id;
+  cid.data[0] = (cid.data[0] & (~SHRPX_QUIC_DCID_KM_ID_MASK)) | km_id;
 
   auto p = cid.data + SHRPX_QUIC_CID_WORKER_ID_OFFSET;
 
@@ -196,7 +196,7 @@ int generate_quic_connection_id(ngtcp2_cid &cid, const WorkerID &wid,
   }
 
   cid.datalen = SHRPX_QUIC_SCIDLEN;
-  cid.data[0] = (cid.data[0] & 0x3f) | km_id;
+  cid.data[0] = (cid.data[0] & (~SHRPX_QUIC_DCID_KM_ID_MASK)) | km_id;
 
   auto p = cid.data + SHRPX_QUIC_CID_WORKER_ID_OFFSET;
 
