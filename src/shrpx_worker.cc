@@ -1441,17 +1441,4 @@ void downstream_failure(DownstreamAddr *addr, const Address *raddr) {
   }
 }
 
-#ifdef ENABLE_HTTP3
-int create_worker_id(WorkerID &dest, uint32_t server_id) {
-  dest.server = server_id;
-
-  if (RAND_bytes(reinterpret_cast<unsigned char *>(&dest.thread),
-                 sizeof(dest.thread)) != 1) {
-    return -1;
-  }
-
-  return 0;
-}
-#endif // ENABLE_HTTP3
-
 } // namespace shrpx

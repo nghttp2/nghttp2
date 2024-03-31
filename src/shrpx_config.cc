@@ -2975,13 +2975,28 @@ int parse_config(Config *config, int optid, const StringRef &opt,
 
     return 0;
   }
-  case SHRPX_OPTID_WORKERS:
+  case SHRPX_OPTID_WORKERS: {
 #ifdef NOTHREADS
     LOG(WARN) << "Threading disabled at build time, no threads created.";
     return 0;
 #else  // !NOTHREADS
-    return parse_uint(&config->num_worker, opt, optarg);
+    size_t n;
+
+    if (parse_uint(&n, opt, optarg) != 0) {
+      return -1;
+    }
+
+    if (n > 65530) {
+      LOG(ERROR) << opt << ": the number of workers must not exceed 65530";
+
+      return -1;
+    }
+
+    config->num_worker = n;
+
+    return 0;
 #endif // !NOTHREADS
+  }
   case SHRPX_OPTID_HTTP2_MAX_CONCURRENT_STREAMS: {
     LOG(WARN) << opt << ": deprecated. Use "
               << SHRPX_OPT_FRONTEND_HTTP2_MAX_CONCURRENT_STREAMS << " and "
