@@ -484,6 +484,32 @@ int select_reuseport(struct sk_reuseport_md *reuse_md) {
   __u8 qpktbuf[6 + MAX_DCIDLEN];
   struct AES_ctx *aes_ctx;
   __u8 *worker_id;
+  __u16 remote_port;
+  __u8 *data = reuse_md->data;
+
+  /* Packets less than 22 bytes never be a valid QUIC packet. */
+  if (reuse_md->len < sizeof(struct udphdr) + 22) {
+    return SK_DROP;
+  }
+
+  if (reuse_md->data + sizeof(struct udphdr) > reuse_md->data_end) {
+    return SK_DROP;
+  }
+
+  remote_port = (data[0] << 8) + data[1];
+
+  switch (remote_port) {
+  case 1900:
+  case 5353:
+  case 11211:
+  case 20800:
+  case 27015:
+    return SK_DROP;
+  default:
+    if (remote_port < 1024) {
+      return SK_DROP;
+    }
+  }
 
   if (bpf_skb_load_bytes(reuse_md, sizeof(struct udphdr), qpktbuf,
                          sizeof(qpktbuf)) != 0) {
