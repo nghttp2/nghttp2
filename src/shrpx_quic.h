@@ -81,7 +81,7 @@ constexpr size_t SHRPX_QUIC_STATELESS_RESET_BURST = 100;
 constexpr size_t SHRPX_QUIC_SECRET_RESERVEDLEN = 4;
 constexpr size_t SHRPX_QUIC_SECRETLEN = 32;
 constexpr size_t SHRPX_QUIC_SALTLEN = 32;
-constexpr uint8_t SHRPX_QUIC_DCID_KM_ID_MASK = 0xc0;
+constexpr uint8_t SHRPX_QUIC_DCID_KM_ID_MASK = 0xe0;
 
 struct WorkerID {
   union {

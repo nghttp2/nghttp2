@@ -282,9 +282,9 @@ read_quic_secret_file(const StringRef &path) {
 
     assert(static_cast<size_t>(p - std::begin(s)) == expectedlen * 2);
 
-    qkm.id = qkm.reserved[0] & 0xc0;
+    qkm.id = qkm.reserved[0] & SHRPX_QUIC_DCID_KM_ID_MASK;
 
-    if (kms.size() == 4) {
+    if (kms.size() == 8) {
       break;
     }
   }

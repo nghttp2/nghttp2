@@ -3555,12 +3555,12 @@ HTTP/3 and QUIC:
               encrypting tokens and Connection IDs.  It is not used to
               encrypt  QUIC  packets.  Each  line  of  this file  must
               contain  exactly  136  bytes  hex-encoded  string  (when
-              decoded the byte string is  68 bytes long).  The first 2
+              decoded the byte string is  68 bytes long).  The first 3
               bits of  decoded byte  string are  used to  identify the
               keying material.  An  empty line or a  line which starts
               '#'  is ignored.   The file  can contain  more than  one
-              keying materials.  Because the  identifier is 2 bits, at
-              most 4 keying materials are  read and the remaining data
+              keying materials.  Because the  identifier is 3 bits, at
+              most 8 keying materials are  read and the remaining data
               is discarded.  The first keying  material in the file is
               primarily  used for  encryption and  decryption for  new
               connection.  The other ones are used to decrypt data for
