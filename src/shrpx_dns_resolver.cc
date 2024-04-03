@@ -335,7 +335,8 @@ void DNSResolver::on_result(int status, ares_addrinfo *ai) {
 
   if (!ap) {
     if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "Name lookup for " << name_ << "failed: no address returned";
+      LOG(INFO) << "Name lookup for " << name_
+                << " failed: no address returned";
     }
     status_ = DNSResolverStatus::ERROR;
     return;
