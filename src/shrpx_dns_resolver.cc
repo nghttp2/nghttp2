@@ -55,9 +55,11 @@ void sock_state_cb(void *data, int s, int read, int write) {
 } // namespace
 
 namespace {
-void host_cb(void *arg, int status, int timeouts, hostent *hostent) {
+void addrinfo_cb(void *arg, int status, int timeouts, ares_addrinfo *result) {
   auto resolv = static_cast<DNSResolver *>(arg);
-  resolv->on_result(status, hostent);
+  resolv->on_result(status, result);
+
+  ares_freeaddrinfo(result);
 }
 } // namespace
 
@@ -173,7 +175,10 @@ int DNSResolver::resolve(const StringRef &name, int family) {
   channel_ = chan;
   status_ = DNSResolverStatus::RUNNING;
 
-  ares_gethostbyname(channel_, name_.c_str(), family_, host_cb, this);
+  ares_addrinfo_hints hints{};
+  hints.ai_family = family_;
+
+  ares_getaddrinfo(channel_, name_.c_str(), nullptr, &hints, addrinfo_cb, this);
   reset_timeout();
 
   return 0;
@@ -285,7 +290,7 @@ void DNSResolver::start_wev(int fd) {
 
 void DNSResolver::stop_wev(int fd) { stop_ev(wevs_, loop_, fd, EV_WRITE); }
 
-void DNSResolver::on_result(int status, hostent *hostent) {
+void DNSResolver::on_result(int status, ares_addrinfo *ai) {
   stop_ev(loop_, revs_);
   stop_ev(loop_, wevs_);
   ev_timer_stop(loop_, &timer_);
@@ -299,38 +304,41 @@ void DNSResolver::on_result(int status, hostent *hostent) {
     return;
   }
 
-  auto ap = *hostent->h_addr_list;
+  auto ap = ai->nodes;
+
+  for (; ap; ap = ap->ai_next) {
+    switch (ap->ai_family) {
+    case AF_INET:
+      status_ = DNSResolverStatus::OK;
+      result_.len = sizeof(result_.su.in);
+
+      assert(sizeof(result_.su.in) == ap->ai_addrlen);
+
+      memcpy(&result_.su.in, ap->ai_addr, sizeof(result_.su.in));
+
+      break;
+    case AF_INET6:
+      status_ = DNSResolverStatus::OK;
+      result_.len = sizeof(result_.su.in6);
+
+      assert(sizeof(result_.su.in6) == ap->ai_addrlen);
+
+      memcpy(&result_.su.in6, ap->ai_addr, sizeof(result_.su.in6));
+
+      break;
+    default:
+      continue;
+    }
+
+    break;
+  }
+
   if (!ap) {
     if (LOG_ENABLED(INFO)) {
       LOG(INFO) << "Name lookup for " << name_ << "failed: no address returned";
     }
     status_ = DNSResolverStatus::ERROR;
     return;
-  }
-
-  switch (hostent->h_addrtype) {
-  case AF_INET:
-    status_ = DNSResolverStatus::OK;
-    result_.len = sizeof(result_.su.in);
-    result_.su.in = {};
-    result_.su.in.sin_family = AF_INET;
-#ifdef HAVE_SOCKADDR_IN_SIN_LEN
-    result_.su.in.sin_len = sizeof(result_.su.in);
-#endif // HAVE_SOCKADDR_IN_SIN_LEN
-    memcpy(&result_.su.in.sin_addr, ap, sizeof(result_.su.in.sin_addr));
-    break;
-  case AF_INET6:
-    status_ = DNSResolverStatus::OK;
-    result_.len = sizeof(result_.su.in6);
-    result_.su.in6 = {};
-    result_.su.in6.sin6_family = AF_INET6;
-#ifdef HAVE_SOCKADDR_IN6_SIN6_LEN
-    result_.su.in6.sin6_len = sizeof(result_.su.in6);
-#endif // HAVE_SOCKADDR_IN6_SIN6_LEN
-    memcpy(&result_.su.in6.sin6_addr, ap, sizeof(result_.su.in6.sin6_addr));
-    break;
-  default:
-    assert(0);
   }
 
   if (status_ == DNSResolverStatus::OK) {
