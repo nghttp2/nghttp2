@@ -522,23 +522,21 @@ Performance
 Timeout
 ~~~~~~~
 
-.. option:: --frontend-http2-read-timeout=<DURATION>
+.. option:: --frontend-http2-idle-timeout=<DURATION>
 
-    Specify read timeout for HTTP/2 frontend connection.
-
-    Default: ``3m``
-
-.. option:: --frontend-http3-read-timeout=<DURATION>
-
-    Specify read timeout for HTTP/3 frontend connection.
+    Specify idle timeout for HTTP/2 frontend connection.  If
+    no active streams exist for this duration, connection is
+    closed.
 
     Default: ``3m``
 
-.. option:: --frontend-read-timeout=<DURATION>
+.. option:: --frontend-http3-idle-timeout=<DURATION>
 
-    Specify read timeout for HTTP/1.1 frontend connection.
+    Specify idle timeout for HTTP/3 frontend connection.  If
+    no active streams exist for this duration, connection is
+    closed.
 
-    Default: ``1m``
+    Default: ``3m``
 
 .. option:: --frontend-write-timeout=<DURATION>
 
@@ -550,6 +548,16 @@ Timeout
 
     Specify   keep-alive   timeout   for   frontend   HTTP/1
     connection.
+
+    Default: ``1m``
+
+.. option:: --frontend-header-timeout=<DURATION>
+
+    Specify  duration  that the  server  waits  for an  HTTP
+    request  header fields  to be  received completely.   On
+    timeout, HTTP/1 and HTTP/2  connections are closed.  For
+    HTTP/3,  the  stream  is shutdown,  and  the  connection
+    itself is left intact.
 
     Default: ``1m``
 
@@ -1686,12 +1694,12 @@ HTTP/3 and QUIC
     encrypting tokens and Connection IDs.  It is not used to
     encrypt  QUIC  packets.  Each  line  of  this file  must
     contain  exactly  136  bytes  hex-encoded  string  (when
-    decoded the byte string is  68 bytes long).  The first 2
+    decoded the byte string is  68 bytes long).  The first 3
     bits of  decoded byte  string are  used to  identify the
     keying material.  An  empty line or a  line which starts
     '#'  is ignored.   The file  can contain  more than  one
-    keying materials.  Because the  identifier is 2 bits, at
-    most 4 keying materials are  read and the remaining data
+    keying materials.  Because the  identifier is 3 bits, at
+    most 8 keying materials are  read and the remaining data
     is discarded.  The first keying  material in the file is
     primarily  used for  encryption and  decryption for  new
     connection.  The other ones are used to decrypt data for
