@@ -33,7 +33,6 @@
 #include <vector>
 #include <chrono>
 
-#include "shrpx_config.h"
 #include "shrpx_log_config.h"
 #include "tls.h"
 #include "template.h"
@@ -97,6 +96,7 @@ namespace shrpx {
 
 class Downstream;
 struct DownstreamAddr;
+struct LoggingConfig;
 
 enum SeverityLevel { INFO, NOTICE, WARN, ERROR, FATAL };
 

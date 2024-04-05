@@ -149,9 +149,9 @@ requires eBPF program for reloading its configuration and hot swapping
 its executable.
 
 Compiling libnghttp2 C source code requires a C99 compiler.  gcc 4.8
-is known to be adequate.  In order to compile the C++ source code, gcc
->= 6.0 or clang >= 6.0 is required.  C++ source code requires C++14
-language features.
+is known to be adequate.  In order to compile the C++ source code,
+C++20 compliant compiler is required.  At least g++ >= 1.12 and
+clang++ >= 1.15 are known to work.
 
 .. note::
 

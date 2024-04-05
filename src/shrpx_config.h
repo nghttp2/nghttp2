@@ -51,6 +51,7 @@
 
 #include <nghttp2/nghttp2.h>
 
+#include "shrpx_log.h"
 #include "shrpx_router.h"
 #if ENABLE_HTTP3
 #  include "shrpx_quic.h"
