@@ -590,7 +590,7 @@ int QUICConnectionHandler::send_stateless_reset(
 
   // SCID + minimum expansion - NGTCP2_STATELESS_RESET_TOKENLEN
   constexpr size_t max_rand_byteslen =
-      SHRPX_QUIC_SCIDLEN + 22 - NGTCP2_STATELESS_RESET_TOKENLEN;
+      NGTCP2_MAX_CIDLEN + 22 - NGTCP2_STATELESS_RESET_TOKENLEN;
 
   size_t rand_byteslen;
 
