@@ -579,7 +579,7 @@ tls::CertLookupTree *Worker::get_quic_cert_lookup_tree() const {
 
 std::shared_ptr<TicketKeys> Worker::get_ticket_keys() {
 #ifdef HAVE_ATOMIC_STD_SHARED_PTR
-  return std::atomic_load_explicit(&ticket_keys_, std::memory_order_acquire);
+  return ticket_keys_.load(std::memory_order_acquire);
 #else  // !HAVE_ATOMIC_STD_SHARED_PTR
   std::lock_guard<std::mutex> g(ticket_keys_m_);
   return ticket_keys_;
@@ -589,8 +589,7 @@ std::shared_ptr<TicketKeys> Worker::get_ticket_keys() {
 void Worker::set_ticket_keys(std::shared_ptr<TicketKeys> ticket_keys) {
 #ifdef HAVE_ATOMIC_STD_SHARED_PTR
   // This is single writer
-  std::atomic_store_explicit(&ticket_keys_, std::move(ticket_keys),
-                             std::memory_order_release);
+  ticket_keys_.store(std::move(ticket_keys), std::memory_order_release);
 #else  // !HAVE_ATOMIC_STD_SHARED_PTR
   std::lock_guard<std::mutex> g(ticket_keys_m_);
   ticket_keys_ = std::move(ticket_keys);

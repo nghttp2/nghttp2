@@ -439,10 +439,12 @@ private:
   QUICConnectionHandler quic_conn_handler_;
 #endif // ENABLE_HTTP3
 
-#ifndef HAVE_ATOMIC_STD_SHARED_PTR
+#ifdef HAVE_ATOMIC_STD_SHARED_PTR
+  std::atomic<std::shared_ptr<TicketKeys>> ticket_keys_;
+#else  // !HAVE_ATOMIC_STD_SHARED_PTR
   std::mutex ticket_keys_m_;
-#endif // !HAVE_ATOMIC_STD_SHARED_PTR
   std::shared_ptr<TicketKeys> ticket_keys_;
+#endif // !HAVE_ATOMIC_STD_SHARED_PTR
   std::vector<std::shared_ptr<DownstreamAddrGroup>> downstream_addr_groups_;
   // Worker level blocker for downstream connection.  For example,
   // this is used when file descriptor is exhausted.

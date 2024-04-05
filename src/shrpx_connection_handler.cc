@@ -740,8 +740,7 @@ void ConnectionHandler::handle_ocsp_complete() {
       auto quic_tls_ctx_data = static_cast<tls::TLSContextData *>(
           SSL_CTX_get_app_data(quic_ssl_ctx));
 #  ifdef HAVE_ATOMIC_STD_SHARED_PTR
-      std::atomic_store_explicit(
-          &quic_tls_ctx_data->ocsp_data,
+      quic_tls_ctx_data->ocsp_data.store(
           std::make_shared<std::vector<uint8_t>>(ocsp_.resp),
           std::memory_order_release);
 #  else  // !HAVE_ATOMIC_STD_SHARED_PTR
@@ -753,8 +752,7 @@ void ConnectionHandler::handle_ocsp_complete() {
 #endif // ENABLE_HTTP3
 
 #ifdef HAVE_ATOMIC_STD_SHARED_PTR
-    std::atomic_store_explicit(
-        &tls_ctx_data->ocsp_data,
+    tls_ctx_data->ocsp_data.store(
         std::make_shared<std::vector<uint8_t>>(std::move(ocsp_.resp)),
         std::memory_order_release);
 #else  // !HAVE_ATOMIC_STD_SHARED_PTR

@@ -238,7 +238,7 @@ fi
 save_CXXFLAGS="$CXXFLAGS"
 CXXFLAGS=
 
-AX_CXX_COMPILE_STDCXX([14], [], [optional])
+AX_CXX_COMPILE_STDCXX([20], [], [optional])
 
 CXX1XCXXFLAGS="$CXXFLAGS"
 CXXFLAGS="$save_CXXFLAGS"
@@ -283,21 +283,20 @@ std::map<int, int>().emplace(1, 2);
     [have_std_map_emplace=no
      AC_MSG_RESULT([no])])
 
-# Check that std::atomic_* overloads for std::shared_ptr are
-# available.
-AC_MSG_CHECKING([whether std::atomic_* overloads for std::shared_ptr are available])
+# Check that std::atomic<std::shared_ptr<T>> is supported.
+AC_MSG_CHECKING([whether std::atomic<std::shared_ptr<T>> is supported])
 AC_COMPILE_IFELSE([AC_LANG_PROGRAM(
 [[
 #include <memory>
 ]],
 [[
-auto a = std::make_shared<int>(1000000007);
-auto p = std::atomic_load(&a);
+auto a = std::atomic<std::shared_ptr<int>>(std::make_shared<int>(1000000007));
+auto p = a.load();
 ++*p;
-std::atomic_store(&a, p);
+a.store(p);
 ]])],
     [AC_DEFINE([HAVE_ATOMIC_STD_SHARED_PTR], [1],
-               [Define to 1 if you have the std::atomic_* overloads for std::shared_ptr.])
+               [Define to 1 if you have the std::atomic<std::shared_ptr<T>> is supported.])
      have_atomic_std_shared_ptr=yes
      AC_MSG_RESULT([yes])],
     [have_atomic_std_shared_ptr=no

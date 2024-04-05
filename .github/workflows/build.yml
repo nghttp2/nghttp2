@@ -294,6 +294,8 @@ jobs:
       run: |
         echo 'CC=gcc-12' >> $GITHUB_ENV
         echo 'CXX=g++-12' >> $GITHUB_ENV
+        # g++-12 is known to produce false positive warnings.
+        echo 'CXXFLAGS=-Wno-restrict' >> $GITHUB_ENV
     - name: Setup gcc (MacOS)
       if: runner.os == 'macOS' && matrix.compiler == 'gcc'
       run: |

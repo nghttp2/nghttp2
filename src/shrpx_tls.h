@@ -72,7 +72,11 @@ struct TLSContextData {
   std::mutex mu;
 #endif // !HAVE_ATOMIC_STD_SHARED_PTR
   // OCSP response
+#ifdef HAVE_ATOMIC_STD_SHARED_PTR
+  std::atomic<std::shared_ptr<std::vector<uint8_t>>> ocsp_data;
+#else  // !HAVE_ATOMIC_STD_SHARED_PTR
   std::shared_ptr<std::vector<uint8_t>> ocsp_data;
+#endif // !HAVE_ATOMIC_STD_SHARED_PTR
 
   // Path to certificate file
   const char *cert_file;
