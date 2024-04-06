@@ -47,6 +47,7 @@
 #include <thread>
 #include <future>
 #include <random>
+#include <string_view>
 
 #include <openssl/err.h>
 
@@ -2991,8 +2992,8 @@ int main(int argc, char **argv) {
   shared_nva.emplace_back("user-agent", user_agent);
 
   // list header fields that can be overridden.
-  auto override_hdrs = make_array<std::string>(":authority", "host", ":method",
-                                               ":scheme", "user-agent");
+  auto override_hdrs = std::to_array<std::string_view>(
+      {":authority", "host", ":method", ":scheme", "user-agent"});
 
   for (auto &kv : config.custom_headers) {
     if (std::find(std::begin(override_hdrs), std::end(override_hdrs),

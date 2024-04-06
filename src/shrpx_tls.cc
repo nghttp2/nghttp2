@@ -559,14 +559,14 @@ int ticket_key_cb(SSL *ssl, unsigned char *key_name, unsigned char *iv,
     EVP_EncryptInit_ex(ctx, get_config()->tls.ticket.cipher, nullptr,
                        key.data.enc_key.data(), iv);
 #if OPENSSL_3_0_0_API
-    std::array<OSSL_PARAM, 3> params{
+    auto params = std::to_array({
         OSSL_PARAM_construct_octet_string(
             OSSL_MAC_PARAM_KEY, key.data.hmac_key.data(), key.hmac_keylen),
         OSSL_PARAM_construct_utf8_string(
             OSSL_MAC_PARAM_DIGEST,
             const_cast<char *>(EVP_MD_get0_name(key.hmac)), 0),
         OSSL_PARAM_construct_end(),
-    };
+    });
     if (!EVP_MAC_CTX_set_params(hctx, params.data())) {
       if (LOG_ENABLED(INFO)) {
         CLOG(INFO, handler) << "EVP_MAC_CTX_set_params failed";
@@ -604,14 +604,14 @@ int ticket_key_cb(SSL *ssl, unsigned char *key_name, unsigned char *iv,
 
   auto &key = keys[i];
 #if OPENSSL_3_0_0_API
-  std::array<OSSL_PARAM, 3> params{
+  auto params = std::to_array({
       OSSL_PARAM_construct_octet_string(
           OSSL_MAC_PARAM_KEY, key.data.hmac_key.data(), key.hmac_keylen),
       OSSL_PARAM_construct_utf8_string(
           OSSL_MAC_PARAM_DIGEST, const_cast<char *>(EVP_MD_get0_name(key.hmac)),
           0),
       OSSL_PARAM_construct_end(),
-  };
+  });
   if (!EVP_MAC_CTX_set_params(hctx, params.data())) {
     if (LOG_ENABLED(INFO)) {
       CLOG(INFO, handler) << "EVP_MAC_CTX_set_params failed";

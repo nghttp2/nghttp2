@@ -89,13 +89,13 @@ enum {
 };
 
 namespace {
-constexpr auto anchors = std::array<Anchor, 5>{{
+constexpr auto anchors = std::to_array<Anchor>({
     {3, 0, 201},
     {5, 0, 101},
     {7, 0, 1},
     {9, 7, 1},
     {11, 3, 1},
-}};
+});
 } // namespace
 
 Config::Config()

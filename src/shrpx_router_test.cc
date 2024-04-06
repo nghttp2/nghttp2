@@ -113,14 +113,14 @@ void test_shrpx_router_match(void) {
 }
 
 void test_shrpx_router_match_wildcard(void) {
-  constexpr auto patterns = std::array<Pattern, 6>{{
+  constexpr auto patterns = std::to_array<Pattern>({
       {StringRef::from_lit("nghttp2.org/"), 0},
       {StringRef::from_lit("nghttp2.org/"), 1, true},
       {StringRef::from_lit("nghttp2.org/alpha/"), 2},
       {StringRef::from_lit("nghttp2.org/alpha/"), 3, true},
       {StringRef::from_lit("nghttp2.org/bravo"), 4},
       {StringRef::from_lit("nghttp2.org/bravo"), 5, true},
-  }};
+  });
 
   Router router;
 
