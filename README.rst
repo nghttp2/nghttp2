@@ -127,7 +127,7 @@ following libraries are required:
   <https://github.com/quictls/openssl/tree/OpenSSL_1_1_1w+quic>`_; or
   LibreSSL (does not support 0RTT); or aws-lc; or
   `BoringSSL <https://boringssl.googlesource.com/boringssl/>`_ (commit
-  fae0964b3d44e94ca2a2d21f86e61dabe683d130)
+  077d4d2b1a768028603ae1b26287224d7f985d1f)
 * `ngtcp2 <https://github.com/ngtcp2/ngtcp2>`_ >= 1.4.0
 * `nghttp3 <https://github.com/ngtcp2/nghttp3>`_ >= 1.1.0
 
