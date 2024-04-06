@@ -2738,12 +2738,12 @@ int Http3Upstream::error_reply(Downstream *downstream,
   auto content_length = util::make_string_ref_uint(balloc, html.size());
   auto date = make_string_ref(balloc, lgconf->tstamp->time_http);
 
-  auto nva = std::array<nghttp3_nv, 5>{
+  auto nva = std::to_array(
       {http3::make_nv_ls_nocopy(":status", response_status),
        http3::make_nv_ll("content-type", "text/html; charset=UTF-8"),
        http3::make_nv_ls_nocopy("server", get_config()->http.server_name),
        http3::make_nv_ls_nocopy("content-length", content_length),
-       http3::make_nv_ls_nocopy("date", date)}};
+       http3::make_nv_ls_nocopy("date", date)});
 
   rv = nghttp3_conn_submit_response(httpconn_, downstream->get_stream_id(),
                                     nva.data(), nva.size(), &data_read);

@@ -40,17 +40,6 @@
 
 namespace nghttp2 {
 
-// std::forward is constexpr since C++14
-template <typename... T>
-constexpr std::array<
-    typename std::decay<typename std::common_type<T...>::type>::type,
-    sizeof...(T)>
-make_array(T &&...t) {
-  return std::array<
-      typename std::decay<typename std::common_type<T...>::type>::type,
-      sizeof...(T)>{{std::forward<T>(t)...}};
-}
-
 template <typename T, size_t N> constexpr size_t array_size(T (&)[N]) {
   return N;
 }

@@ -562,16 +562,16 @@ void test_util_localtime_date(void) {
 
 void test_util_get_uint64(void) {
   {
-    auto v = std::array<unsigned char, 8>{
-        {0x01, 0x12, 0x34, 0x56, 0xff, 0x9a, 0xab, 0xbc}};
+    auto v = std::to_array<unsigned char>(
+        {0x01, 0x12, 0x34, 0x56, 0xff, 0x9a, 0xab, 0xbc});
 
     auto n = util::get_uint64(v.data());
 
     assert_uint64(0x01123456ff9aabbcULL, ==, n);
   }
   {
-    auto v = std::array<unsigned char, 8>{
-        {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff}};
+    auto v = std::to_array<unsigned char>(
+        {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff});
 
     auto n = util::get_uint64(v.data());
 

@@ -925,12 +925,13 @@ int Http2Handler::submit_file_response(const StringRef &status, Stream *stream,
                                        const std::string *content_type,
                                        nghttp2_data_provider2 *data_prd) {
   std::string last_modified_str;
-  auto nva = make_array(http2::make_nv_ls_nocopy(":status", status),
-                        http2::make_nv_ls_nocopy("server", NGHTTPD_SERVER),
-                        http2::make_nv_ll("cache-control", "max-age=3600"),
-                        http2::make_nv_ls("date", sessions_->get_cached_date()),
-                        http2::make_nv_ll("", ""), http2::make_nv_ll("", ""),
-                        http2::make_nv_ll("", ""), http2::make_nv_ll("", ""));
+  auto nva =
+      std::to_array({http2::make_nv_ls_nocopy(":status", status),
+                     http2::make_nv_ls_nocopy("server", NGHTTPD_SERVER),
+                     http2::make_nv_ll("cache-control", "max-age=3600"),
+                     http2::make_nv_ls("date", sessions_->get_cached_date()),
+                     http2::make_nv_ll("", ""), http2::make_nv_ll("", ""),
+                     http2::make_nv_ll("", ""), http2::make_nv_ll("", "")});
   size_t nvlen = 4;
   if (!get_config()->no_content_length) {
     nva[nvlen++] = http2::make_nv_ls_nocopy(
@@ -978,10 +979,11 @@ int Http2Handler::submit_response(const StringRef &status, int32_t stream_id,
 
 int Http2Handler::submit_response(const StringRef &status, int32_t stream_id,
                                   nghttp2_data_provider2 *data_prd) {
-  auto nva = make_array(http2::make_nv_ls_nocopy(":status", status),
-                        http2::make_nv_ls_nocopy("server", NGHTTPD_SERVER),
-                        http2::make_nv_ls("date", sessions_->get_cached_date()),
-                        http2::make_nv_ll("", ""));
+  auto nva =
+      std::to_array({http2::make_nv_ls_nocopy(":status", status),
+                     http2::make_nv_ls_nocopy("server", NGHTTPD_SERVER),
+                     http2::make_nv_ls("date", sessions_->get_cached_date()),
+                     http2::make_nv_ll("", "")});
   size_t nvlen = 3;
 
   if (data_prd) {
@@ -997,7 +999,7 @@ int Http2Handler::submit_response(const StringRef &status, int32_t stream_id,
 
 int Http2Handler::submit_non_final_response(const std::string &status,
                                             int32_t stream_id) {
-  auto nva = make_array(http2::make_nv_ls(":status", status));
+  auto nva = std::to_array({http2::make_nv_ls(":status", status)});
   return nghttp2_submit_headers(session_, NGHTTP2_FLAG_NONE, stream_id, nullptr,
                                 nva.data(), nva.size(), nullptr);
 }
@@ -1013,10 +1015,10 @@ int Http2Handler::submit_push_promise(Stream *stream,
   auto scheme = get_config()->no_tls ? StringRef::from_lit("http")
                                      : StringRef::from_lit("https");
 
-  auto nva = make_array(http2::make_nv_ll(":method", "GET"),
-                        http2::make_nv_ls_nocopy(":path", push_path),
-                        http2::make_nv_ls_nocopy(":scheme", scheme),
-                        http2::make_nv_ls_nocopy(":authority", authority));
+  auto nva = std::to_array({http2::make_nv_ll(":method", "GET"),
+                            http2::make_nv_ls_nocopy(":path", push_path),
+                            http2::make_nv_ls_nocopy(":scheme", scheme),
+                            http2::make_nv_ls_nocopy(":authority", authority)});
 
   auto promised_stream_id = nghttp2_submit_push_promise(
       session_, NGHTTP2_FLAG_END_HEADERS, stream->stream_id, nva.data(),
