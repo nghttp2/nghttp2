@@ -39,25 +39,19 @@
 namespace shrpx {
 
 namespace {
-// List of API endpoints
-const std::array<APIEndpoint, 2> &apis() {
-  static const auto apis = new std::array<APIEndpoint, 2>{
-      APIEndpoint{
-          StringRef::from_lit("/api/v1beta1/backendconfig"),
-          true,
-          (1 << API_METHOD_POST) | (1 << API_METHOD_PUT),
-          &APIDownstreamConnection::handle_backendconfig,
-      },
-      APIEndpoint{
-          StringRef::from_lit("/api/v1beta1/configrevision"),
-          true,
-          (1 << API_METHOD_GET),
-          &APIDownstreamConnection::handle_configrevision,
-      },
-  };
+const auto backendconfig_endpoint = APIEndpoint{
+    StringRef::from_lit("/api/v1beta1/backendconfig"),
+    true,
+    (1 << API_METHOD_POST) | (1 << API_METHOD_PUT),
+    &APIDownstreamConnection::handle_backendconfig,
+};
 
-  return *apis;
-}
+const auto configrevision_endpoint = APIEndpoint{
+    StringRef::from_lit("/api/v1beta1/configrevision"),
+    true,
+    (1 << API_METHOD_GET),
+    &APIDownstreamConnection::handle_configrevision,
+};
 } // namespace
 
 namespace {
@@ -171,7 +165,7 @@ const APIEndpoint *lookup_api(const StringRef &path) {
     switch (path[25]) {
     case 'g':
       if (util::streq_l("/api/v1beta1/backendconfi", std::begin(path), 25)) {
-        return &apis()[0];
+        return &backendconfig_endpoint;
       }
       break;
     }
@@ -180,7 +174,7 @@ const APIEndpoint *lookup_api(const StringRef &path) {
     switch (path[26]) {
     case 'n':
       if (util::streq_l("/api/v1beta1/configrevisio", std::begin(path), 26)) {
-        return &apis()[1];
+        return &configrevision_endpoint;
       }
       break;
     }
