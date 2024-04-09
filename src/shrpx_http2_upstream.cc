@@ -1510,10 +1510,16 @@ int Http2Upstream::send_reply(Downstream *downstream, const uint8_t *body,
 
   nghttp2_data_provider2 data_prd, *data_prd_ptr = nullptr;
 
-  if (bodylen) {
+  const auto &req = downstream->request();
+
+  if (req.method != HTTP_HEAD && bodylen) {
     data_prd.source.ptr = downstream;
     data_prd.read_callback = downstream_data_read_callback;
     data_prd_ptr = &data_prd;
+
+    auto buf = downstream->get_response_buf();
+
+    buf->append(body, bodylen);
   }
 
   const auto &resp = downstream->response();
@@ -1563,10 +1569,6 @@ int Http2Upstream::send_reply(Downstream *downstream, const uint8_t *body,
     return -1;
   }
 
-  auto buf = downstream->get_response_buf();
-
-  buf->append(body, bodylen);
-
   downstream->set_response_state(DownstreamState::MSG_COMPLETE);
 
   if (data_prd_ptr) {
@@ -1585,13 +1587,22 @@ int Http2Upstream::error_reply(Downstream *downstream,
 
   auto html = http::create_error_html(balloc, status_code);
   resp.http_status = status_code;
-  auto body = downstream->get_response_buf();
-  body->append(html);
-  downstream->set_response_state(DownstreamState::MSG_COMPLETE);
 
-  nghttp2_data_provider2 data_prd;
-  data_prd.source.ptr = downstream;
-  data_prd.read_callback = downstream_data_read_callback;
+  nghttp2_data_provider2 data_prd, *data_prd_ptr = nullptr;
+
+  const auto &req = downstream->request();
+
+  if (req.method != HTTP_HEAD) {
+    data_prd.source.ptr = downstream;
+    data_prd.read_callback = downstream_data_read_callback;
+    data_prd_ptr = &data_prd;
+
+    auto body = downstream->get_response_buf();
+
+    body->append(html);
+  }
+
+  downstream->set_response_state(DownstreamState::MSG_COMPLETE);
 
   auto lgconf = log_config();
   lgconf->update_tstamp(std::chrono::system_clock::now());
@@ -1608,7 +1619,7 @@ int Http2Upstream::error_reply(Downstream *downstream,
        http2::make_nv_ls_nocopy("date", date)});
 
   rv = nghttp2_submit_response2(session_, downstream->get_stream_id(),
-                                nva.data(), nva.size(), &data_prd);
+                                nva.data(), nva.size(), data_prd_ptr);
   if (rv < NGHTTP2_ERR_FATAL) {
     ULOG(FATAL, this) << "nghttp2_submit_response2() failed: "
                       << nghttp2_strerror(rv);

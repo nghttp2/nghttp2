@@ -1700,9 +1700,15 @@ int Http3Upstream::send_reply(Downstream *downstream, const uint8_t *body,
 
   nghttp3_data_reader data_read, *data_read_ptr = nullptr;
 
-  if (bodylen) {
+  const auto &req = downstream->request();
+
+  if (req.method != HTTP_HEAD && bodylen) {
     data_read.read_data = downstream_read_data_callback;
     data_read_ptr = &data_read;
+
+    auto buf = downstream->get_response_buf();
+
+    buf->append(body, bodylen);
   }
 
   const auto &resp = downstream->response();
@@ -1751,10 +1757,6 @@ int Http3Upstream::send_reply(Downstream *downstream, const uint8_t *body,
                       << nghttp3_strerror(rv);
     return -1;
   }
-
-  auto buf = downstream->get_response_buf();
-
-  buf->append(body, bodylen);
 
   downstream->set_response_state(DownstreamState::MSG_COMPLETE);
 
@@ -2724,12 +2726,21 @@ int Http3Upstream::error_reply(Downstream *downstream,
 
   auto html = http::create_error_html(balloc, status_code);
   resp.http_status = status_code;
-  auto body = downstream->get_response_buf();
-  body->append(html);
-  downstream->set_response_state(DownstreamState::MSG_COMPLETE);
 
-  nghttp3_data_reader data_read;
-  data_read.read_data = downstream_read_data_callback;
+  nghttp3_data_reader data_read, *data_read_ptr = nullptr;
+
+  const auto &req = downstream->request();
+
+  if (req.method != HTTP_HEAD) {
+    data_read.read_data = downstream_read_data_callback;
+    data_read_ptr = &data_read;
+
+    auto body = downstream->get_response_buf();
+
+    body->append(html);
+  }
+
+  downstream->set_response_state(DownstreamState::MSG_COMPLETE);
 
   auto lgconf = log_config();
   lgconf->update_tstamp(std::chrono::system_clock::now());
@@ -2746,7 +2757,7 @@ int Http3Upstream::error_reply(Downstream *downstream,
        http3::make_nv_ls_nocopy("date", date)});
 
   rv = nghttp3_conn_submit_response(httpconn_, downstream->get_stream_id(),
-                                    nva.data(), nva.size(), &data_read);
+                                    nva.data(), nva.size(), data_read_ptr);
   if (nghttp3_err_is_fatal(rv)) {
     ULOG(FATAL, this) << "nghttp3_conn_submit_response() failed: "
                       << nghttp3_strerror(rv);
