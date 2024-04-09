@@ -1034,9 +1034,12 @@ int HttpsUpstream::send_reply(Downstream *downstream, const uint8_t *body,
 
   output->append("\r\n");
 
-  output->append(body, bodylen);
+  if (req.method != HTTP_HEAD) {
+    output->append(body, bodylen);
 
-  downstream->response_sent_body_length += bodylen;
+    downstream->response_sent_body_length += bodylen;
+  }
+
   downstream->set_response_state(DownstreamState::MSG_COMPLETE);
 
   return 0;
@@ -1080,9 +1083,15 @@ void HttpsUpstream::error_reply(unsigned int status_code) {
   output->append(lgconf->tstamp->time_http);
   output->append("\r\nContent-Type: text/html; "
                  "charset=UTF-8\r\nConnection: close\r\n\r\n");
-  output->append(html);
 
-  downstream->response_sent_body_length += html.size();
+  const auto &req = downstream->request();
+
+  if (req.method != HTTP_HEAD) {
+    output->append(html);
+
+    downstream->response_sent_body_length += html.size();
+  }
+
   downstream->set_response_state(DownstreamState::MSG_COMPLETE);
 }
 
