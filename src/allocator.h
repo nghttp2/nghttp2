@@ -48,6 +48,18 @@ struct MemBlock {
   uint8_t *begin, *last, *end;
 };
 
+static_assert((sizeof(MemBlock) & 0xf) == 0);
+
+struct ChunkHead {
+  union {
+    size_t size;
+    uint64_t pad1;
+  };
+  uint64_t pad2;
+};
+
+static_assert(sizeof(ChunkHead) == 16);
+
 // BlockAllocator allocates memory block with given size at once, and
 // cuts the region from it when allocation is requested.  If the
 // requested size is larger than given threshold (plus small internal
@@ -88,7 +100,7 @@ struct BlockAllocator {
   void reset() {
     for (auto mb = retain; mb;) {
       auto next = mb->next;
-      delete[] reinterpret_cast<uint8_t *>(mb);
+      operator delete[](reinterpret_cast<uint8_t *>(mb), std::align_val_t(16));
       mb = next;
     }
 
@@ -97,36 +109,40 @@ struct BlockAllocator {
   }
 
   MemBlock *alloc_mem_block(size_t size) {
-    auto block = new uint8_t[sizeof(MemBlock) + size];
+    auto block = new (std::align_val_t(16)) uint8_t[sizeof(MemBlock) + size];
     auto mb = reinterpret_cast<MemBlock *>(block);
 
     mb->next = retain;
-    mb->begin = mb->last = block + sizeof(MemBlock);
+    mb->begin = mb->last = reinterpret_cast<uint8_t *>(
+        (reinterpret_cast<intptr_t>(block + sizeof(MemBlock)) + 0xf) & ~0xf);
     mb->end = mb->begin + size;
     retain = mb;
     return mb;
   }
 
+  constexpr size_t alloc_unit(size_t size) { return sizeof(ChunkHead) + size; }
+
   void *alloc(size_t size) {
-    if (size + sizeof(size_t) >= isolation_threshold) {
-      auto len = std::max(static_cast<size_t>(16), size);
+    auto au = alloc_unit(size);
+
+    if (au >= isolation_threshold) {
+      size = std::max(static_cast<size_t>(16), size);
       // We will store the allocated size in size_t field.
-      auto mb = alloc_mem_block(len + sizeof(size_t));
-      auto sp = reinterpret_cast<size_t *>(mb->begin);
-      *sp = len;
+      auto mb = alloc_mem_block(alloc_unit(size));
+      auto ch = reinterpret_cast<ChunkHead *>(mb->begin);
+      ch->size = size;
       mb->last = mb->end;
-      return mb->begin + sizeof(size_t);
+      return mb->begin + sizeof(ChunkHead);
     }
 
-    if (!head ||
-        static_cast<size_t>(head->end - head->last) < size + sizeof(size_t)) {
+    if (!head || static_cast<size_t>(head->end - head->last) < au) {
       head = alloc_mem_block(block_size);
     }
 
     // We will store the allocated size in size_t field.
-    auto res = head->last + sizeof(size_t);
-    auto sp = reinterpret_cast<size_t *>(head->last);
-    *sp = size;
+    auto res = head->last + sizeof(ChunkHead);
+    auto ch = reinterpret_cast<ChunkHead *>(head->last);
+    ch->size = size;
 
     head->last = reinterpret_cast<uint8_t *>(
         (reinterpret_cast<intptr_t>(res + size) + 0xf) & ~0xf);
@@ -137,8 +153,9 @@ struct BlockAllocator {
   // Returns allocated size for memory pointed by |ptr|.  We assume
   // that |ptr| was returned from alloc() or realloc().
   size_t get_alloc_length(void *ptr) {
-    return *reinterpret_cast<size_t *>(static_cast<uint8_t *>(ptr) -
-                                       sizeof(size_t));
+    return reinterpret_cast<ChunkHead *>(static_cast<uint8_t *>(ptr) -
+                                         sizeof(ChunkHead))
+        ->size;
   }
 
   // Allocates memory of at least |size| bytes.  If |ptr| is nullptr,
