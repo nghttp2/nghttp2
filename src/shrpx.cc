@@ -71,6 +71,7 @@
 #include <vector>
 #include <initializer_list>
 #include <random>
+#include <span>
 
 #include <openssl/ssl.h>
 #include <openssl/err.h>
@@ -1367,7 +1368,7 @@ namespace {
 // communication is unidirectional; that is main process sends
 // messages to the worker process.  On success, ipc_fd[0] is for
 // reading, and ipc_fd[1] for writing, just like pipe(2).
-int create_ipc_socket(std::array<int, 2> &ipc_fd) {
+int create_ipc_socket(std::span<int> ipc_fd) {
   std::array<char, STRERROR_BUFSIZE> errbuf;
   int rv;
 
@@ -1379,8 +1380,7 @@ int create_ipc_socket(std::array<int, 2> &ipc_fd) {
     return -1;
   }
 
-  for (int i = 0; i < 2; ++i) {
-    auto fd = ipc_fd[i];
+  for (auto fd : ipc_fd) {
     util::make_socket_nonblocking(fd);
     util::make_socket_closeonexec(fd);
   }
@@ -1390,7 +1390,7 @@ int create_ipc_socket(std::array<int, 2> &ipc_fd) {
 } // namespace
 
 namespace {
-int create_worker_process_ready_ipc_socket(std::array<int, 2> &ipc_fd) {
+int create_worker_process_ready_ipc_socket(std::span<int> ipc_fd) {
   std::array<char, STRERROR_BUFSIZE> errbuf;
   int rv;
 
@@ -1415,7 +1415,7 @@ int create_worker_process_ready_ipc_socket(std::array<int, 2> &ipc_fd) {
 
 #ifdef ENABLE_HTTP3
 namespace {
-int create_quic_ipc_socket(std::array<int, 2> &quic_ipc_fd) {
+int create_quic_ipc_socket(std::span<int> quic_ipc_fd) {
   std::array<char, STRERROR_BUFSIZE> errbuf;
   int rv;
 
