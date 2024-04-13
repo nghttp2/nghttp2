@@ -469,6 +469,7 @@ message(STATUS "summary of build options:
       Python3_VERSION: ${Python3_VERSION}
     Test:
       Failmalloc:     ${ENABLE_FAILMALLOC}
+      Build Test:     ${BUILD_TESTING}
     Libs:
       OpenSSL:        ${HAVE_OPENSSL} (LIBS='${OPENSSL_LIBRARIES}')
       Libxml2:        ${HAVE_LIBXML2} (LIBS='${LIBXML2_LIBRARIES}')
