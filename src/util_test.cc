@@ -681,9 +681,35 @@ void test_util_format_hex(void) {
   BlockAllocator balloc(4096, 4096);
 
   assert_stdstring_equal(
-      "0ff0", util::format_hex(balloc, StringRef::from_lit("\x0f\xf0")).str());
+      "0ff0",
+      util::format_hex(balloc, std::span{StringRef::from_lit("\x0f\xf0")})
+          .str());
   assert_stdstring_equal(
-      "", util::format_hex(balloc, StringRef::from_lit("")).str());
+      "", util::format_hex(balloc, std::span<const uint8_t>{}).str());
+
+  union T {
+    uint16_t x;
+    uint8_t y[2];
+  };
+
+  auto t = T{.y = {0xbe, 0xef}};
+
+  assert_stdstring_equal("beef", util::format_hex(std::span{&t.x, 1}));
+
+  std::string o;
+  o.resize(4);
+
+  assert_true(std::end(o) ==
+              util::format_hex(std::begin(o), std::span{&t.x, 1}));
+  assert_stdstring_equal("beef", o);
+
+  struct S {
+    uint8_t x[8];
+  };
+
+  auto s = S{{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0xf8}};
+
+  assert_stdstring_equal("01020304050607f8", util::format_hex(s.x));
 }
 
 void test_util_is_hex_string(void) {

@@ -185,29 +185,36 @@ OutputIt quote_string(OutputIt it, const StringRef &target) {
 // NUL byte.
 size_t quote_stringlen(const StringRef &target);
 
-std::string format_hex(const unsigned char *s, size_t len);
-
-template <size_t N> std::string format_hex(const unsigned char (&s)[N]) {
-  return format_hex(s, N);
-}
-
-template <size_t N> std::string format_hex(const std::array<uint8_t, N> &s) {
-  return format_hex(s.data(), s.size());
-}
-
-StringRef format_hex(BlockAllocator &balloc, const StringRef &s);
-
 static constexpr char LOWER_XDIGITS[] = "0123456789abcdef";
 
-template <typename OutputIt>
-OutputIt format_hex(OutputIt it, const StringRef &s) {
-  for (auto cc : s) {
-    uint8_t c = cc;
+template <std::weakly_incrementable OutputIt>
+OutputIt format_hex(OutputIt it, std::span<const uint8_t> s) {
+  for (auto c : s) {
     *it++ = LOWER_XDIGITS[c >> 4];
     *it++ = LOWER_XDIGITS[c & 0xf];
   }
 
   return it;
+}
+
+template <typename T, size_t N = std::dynamic_extent,
+          std::weakly_incrementable OutputIt>
+OutputIt format_hex(OutputIt it, std::span<T, N> s) {
+  return format_hex(it, std::span<const uint8_t>{as_uint8_span(s)});
+}
+
+std::string format_hex(std::span<const uint8_t> s);
+
+template <typename T, size_t N = std::dynamic_extent>
+std::string format_hex(std::span<T, N> s) {
+  return format_hex(std::span<const uint8_t>{as_uint8_span(s)});
+}
+
+StringRef format_hex(BlockAllocator &balloc, std::span<const uint8_t> s);
+
+template <typename T, size_t N = std::dynamic_extent>
+StringRef format_hex(BlockAllocator &balloc, std::span<T, N> s) {
+  return format_hex(balloc, std::span<const uint8_t>{as_uint8_span(s)});
 }
 
 // decode_hex decodes hex string |s|, returns the decoded byte string.

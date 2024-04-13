@@ -38,6 +38,7 @@ namespace {
 const MunitTest tests[]{
     munit_void_test(test_template_immutable_string),
     munit_void_test(test_template_string_ref),
+    munit_void_test(test_template_as_uint8_span),
     munit_test_end(),
 };
 } // namespace
@@ -211,6 +212,26 @@ void test_template_string_ref(void) {
 
     assert_stdstring_equal("alphabravo", a);
   }
+}
+
+void test_template_as_uint8_span(void) {
+  uint32_t a[2];
+
+  memcpy(&a, "\xc0\xc1\xc2\xc3\xf0\xf1\xf2\xf3", sizeof(a));
+
+  // dynamic extent
+  auto s = as_uint8_span(std::span{a, 2});
+
+  assert_size(sizeof(a), ==, s.size());
+  assert_size(std::dynamic_extent, ==, s.extent);
+  assert_memory_equal(s.size(), &a, s.data());
+
+  // non-dynamic extent
+  auto t = as_uint8_span(std::span<uint32_t, 2>{a, 2});
+
+  assert_size(sizeof(a), ==, t.size());
+  assert_size(sizeof(a), ==, t.extent);
+  assert_memory_equal(t.size(), &a, t.data());
 }
 
 } // namespace nghttp2

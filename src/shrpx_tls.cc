@@ -401,14 +401,15 @@ int tls_session_new_cb(SSL *ssl, SSL_SESSION *session) {
   id = SSL_SESSION_get_id(session, &idlen);
 
   if (LOG_ENABLED(INFO)) {
-    LOG(INFO) << "Memcached: cache session, id=" << util::format_hex(id, idlen);
+    LOG(INFO) << "Memcached: cache session, id="
+              << util::format_hex(std::span{id, idlen});
   }
 
   auto req = std::make_unique<MemcachedRequest>();
   req->op = MemcachedOp::ADD;
   req->key = MEMCACHED_SESSION_CACHE_KEY_PREFIX.str();
   req->key +=
-      util::format_hex(balloc, StringRef{id, static_cast<size_t>(idlen)});
+      util::format_hex(balloc, std::span{id, static_cast<size_t>(idlen)});
 
   auto sessionlen = i2d_SSL_SESSION(session, nullptr);
   req->value.resize(sessionlen);
@@ -453,7 +454,7 @@ SSL_SESSION *tls_session_get_cb(SSL *ssl, const unsigned char *id, int idlen,
   if (conn->tls.cached_session) {
     if (LOG_ENABLED(INFO)) {
       LOG(INFO) << "Memcached: found cached session, id="
-                << util::format_hex(id, idlen);
+                << util::format_hex(std::span{id, static_cast<size_t>(idlen)});
     }
 
     // This is required, without this, memory leak occurs.
@@ -466,14 +467,14 @@ SSL_SESSION *tls_session_get_cb(SSL *ssl, const unsigned char *id, int idlen,
 
   if (LOG_ENABLED(INFO)) {
     LOG(INFO) << "Memcached: get cached session, id="
-              << util::format_hex(id, idlen);
+              << util::format_hex(std::span{id, static_cast<size_t>(idlen)});
   }
 
   auto req = std::make_unique<MemcachedRequest>();
   req->op = MemcachedOp::GET;
   req->key = MEMCACHED_SESSION_CACHE_KEY_PREFIX.str();
   req->key +=
-      util::format_hex(balloc, StringRef{id, static_cast<size_t>(idlen)});
+      util::format_hex(balloc, std::span{id, static_cast<size_t>(idlen)});
   req->cb = [conn](MemcachedRequest *, MemcachedResult res) {
     if (LOG_ENABLED(INFO)) {
       LOG(INFO) << "Memcached: returned status code "
@@ -592,14 +593,15 @@ int ticket_key_cb(SSL *ssl, unsigned char *key_name, unsigned char *iv,
   if (i == keys.size()) {
     if (LOG_ENABLED(INFO)) {
       CLOG(INFO, handler) << "session ticket key "
-                          << util::format_hex(key_name, 16) << " not found";
+                          << util::format_hex(std::span{key_name, 16})
+                          << " not found";
     }
     return 0;
   }
 
   if (LOG_ENABLED(INFO)) {
     CLOG(INFO, handler) << "decrypt session ticket key: "
-                        << util::format_hex(key_name, 16);
+                        << util::format_hex(std::span{key_name, 16});
   }
 
   auto &key = keys[i];
@@ -2525,7 +2527,7 @@ StringRef get_x509_serial(BlockAllocator &balloc, X509 *x) {
   auto n = BN_bn2bin(bn, b.data());
   assert(n <= 20);
 
-  return util::format_hex(balloc, StringRef{b.data(), static_cast<size_t>(n)});
+  return util::format_hex(balloc, std::span{b.data(), static_cast<size_t>(n)});
 }
 
 namespace {
