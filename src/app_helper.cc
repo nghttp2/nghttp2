@@ -115,7 +115,7 @@ std::string strframetype(uint8_t type) {
   }
 
   std::string s = "extension(0x";
-  s += util::format_hex(&type, 1);
+  s += util::format_hex(std::span{&type, 1});
   s += ')';
 
   return s;
@@ -329,7 +329,7 @@ void print_frame(print_type ptype, const nghttp2_frame *frame) {
   case NGHTTP2_PING:
     print_frame_attr_indent();
     fprintf(outfile, "(opaque_data=%s)\n",
-            util::format_hex(frame->ping.opaque_data, 8).c_str());
+            util::format_hex(frame->ping.opaque_data).c_str());
     break;
   case NGHTTP2_GOAWAY:
     print_frame_attr_indent();

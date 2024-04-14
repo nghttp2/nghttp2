@@ -172,10 +172,9 @@ mrb_value env_get_tls_client_fingerprint_md(mrb_state *mrb, const EVP_MD *md) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "could not compute client fingerprint");
   }
 
-  // TODO Use template version of format_hex
   auto &balloc = downstream->get_block_allocator();
   auto f = util::format_hex(balloc,
-                            StringRef{std::begin(buf), std::begin(buf) + slen});
+                            std::span{buf.data(), static_cast<size_t>(slen)});
   return mrb_str_new(mrb, f.c_str(), f.size());
 }
 } // namespace
@@ -403,9 +402,8 @@ mrb_value env_get_tls_session_id(mrb_state *mrb, mrb_value self) {
   unsigned int session_id_length = 0;
   auto session_id = SSL_SESSION_get_id(session, &session_id_length);
 
-  // TODO Use template version of util::format_hex.
   auto &balloc = downstream->get_block_allocator();
-  auto id = util::format_hex(balloc, StringRef{session_id, session_id_length});
+  auto id = util::format_hex(balloc, std::span{session_id, session_id_length});
   return mrb_str_new(mrb, id.c_str(), id.size());
 }
 } // namespace

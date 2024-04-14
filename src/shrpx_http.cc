@@ -193,10 +193,7 @@ StringRef create_affinity_cookie(BlockAllocator &balloc, const StringRef &name,
   p = std::copy(std::begin(name), std::end(name), p);
   *p++ = '=';
   affinity_cookie = htonl(affinity_cookie);
-  p = util::format_hex(p,
-                       StringRef{reinterpret_cast<uint8_t *>(&affinity_cookie),
-                                 reinterpret_cast<uint8_t *>(&affinity_cookie) +
-                                     sizeof(affinity_cookie)});
+  p = util::format_hex(p, std::span{&affinity_cookie, 1});
   if (!path.empty()) {
     p = std::copy(std::begin(PATH_PREFIX), std::end(PATH_PREFIX), p);
     p = std::copy(std::begin(path), std::end(path), p);

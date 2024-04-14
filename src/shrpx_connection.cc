@@ -782,8 +782,8 @@ int Connection::write_tls_pending_handshake() {
                 << " protocol=" << tls_info.protocol
                 << " resumption=" << (tls_info.session_reused ? "yes" : "no")
                 << " session_id="
-                << util::format_hex(tls_info.session_id,
-                                    tls_info.session_id_length);
+                << util::format_hex(std::span{tls_info.session_id,
+                                              tls_info.session_id_length});
     }
   }
 

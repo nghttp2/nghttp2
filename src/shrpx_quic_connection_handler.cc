@@ -621,7 +621,7 @@ int QUICConnectionHandler::send_stateless_reset(
   if (LOG_ENABLED(INFO)) {
     LOG(INFO) << "Send stateless_reset to remote="
               << util::to_numeric_addr(&remote_addr)
-              << " dcid=" << util::format_hex(dcid, dcidlen);
+              << " dcid=" << util::format_hex(std::span{dcid, dcidlen});
   }
 
   return quic_send_packet(faddr, &remote_addr.su.sa, remote_addr.len,
@@ -649,8 +649,10 @@ int QUICConnectionHandler::send_connection_close(
     LOG(INFO) << "Send Initial CONNECTION_CLOSE with error_code=" << log::hex
               << error_code << log::dec
               << " to remote=" << util::to_numeric_addr(&remote_addr)
-              << " dcid=" << util::format_hex(ini_scid.data, ini_scid.datalen)
-              << " scid=" << util::format_hex(ini_dcid.data, ini_dcid.datalen);
+              << " dcid="
+              << util::format_hex(std::span{ini_scid.data, ini_scid.datalen})
+              << " scid="
+              << util::format_hex(std::span{ini_dcid.data, ini_dcid.datalen});
   }
 
   return quic_send_packet(faddr, &remote_addr.su.sa, remote_addr.len,

@@ -496,28 +496,18 @@ char upcase(char c) {
   }
 }
 
-std::string format_hex(const unsigned char *s, size_t len) {
+std::string format_hex(std::span<const uint8_t> s) {
   std::string res;
-  res.resize(len * 2);
+  res.resize(s.size() * 2);
 
-  for (size_t i = 0; i < len; ++i) {
-    unsigned char c = s[i];
+  format_hex(std::begin(res), s);
 
-    res[i * 2] = LOWER_XDIGITS[c >> 4];
-    res[i * 2 + 1] = LOWER_XDIGITS[c & 0x0f];
-  }
   return res;
 }
 
-StringRef format_hex(BlockAllocator &balloc, const StringRef &s) {
+StringRef format_hex(BlockAllocator &balloc, std::span<const uint8_t> s) {
   auto iov = make_byte_ref(balloc, s.size() * 2 + 1);
-  auto p = iov.base;
-
-  for (auto cc : s) {
-    uint8_t c = cc;
-    *p++ = LOWER_XDIGITS[c >> 4];
-    *p++ = LOWER_XDIGITS[c & 0xf];
-  }
+  auto p = format_hex(iov.base, s);
 
   *p = '\0';
 

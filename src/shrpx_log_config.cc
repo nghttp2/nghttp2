@@ -52,8 +52,7 @@ LogConfig::LogConfig()
   auto tid_hash =
       util::hash32(StringRef{reinterpret_cast<uint8_t *>(&tid),
                              reinterpret_cast<uint8_t *>(&tid) + sizeof(tid)});
-  thread_id = util::format_hex(reinterpret_cast<uint8_t *>(&tid_hash),
-                               sizeof(tid_hash));
+  thread_id = util::format_hex(std::span{&tid_hash, 1});
 }
 
 #ifndef NOTHREADS
