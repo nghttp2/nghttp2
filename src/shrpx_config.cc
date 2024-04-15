@@ -375,13 +375,12 @@ HeaderRefs::value_type parse_header(BlockAllocator &balloc,
 
   auto name_iov =
       make_byte_ref(balloc, std::distance(std::begin(optarg), colon) + 1);
-  auto p = name_iov.base;
-  p = std::copy(std::begin(optarg), colon, p);
-  util::inp_strlower(name_iov.base, p);
+  auto p = std::copy(std::begin(optarg), colon, std::begin(name_iov));
+  util::inp_strlower(std::begin(name_iov), p);
   *p = '\0';
 
   auto nv =
-      HeaderRef(StringRef{name_iov.base, p},
+      HeaderRef(StringRef{std::begin(name_iov), p},
                 make_string_ref(balloc, StringRef{value, std::end(optarg)}));
 
   if (!nghttp2_check_header_name(nv.name.byte(), nv.name.size()) ||
@@ -781,15 +780,11 @@ std::vector<LogFragment> parse_log_format(BlockAllocator &balloc,
     {
       auto iov = make_byte_ref(
           balloc, std::distance(value, var_name + var_namelen) + 1);
-      auto p = iov.base;
-      p = std::copy(value, var_name + var_namelen, p);
-      for (auto cp = iov.base; cp != p; ++cp) {
-        if (*cp == '_') {
-          *cp = '-';
-        }
-      }
+      auto p = std::copy(value, var_name + var_namelen, std::begin(iov));
+      std::transform(std::begin(iov), p, std::begin(iov),
+                     [](auto c) { return c == '_' ? '-' : c; });
       *p = '\0';
-      res.emplace_back(type, StringRef{iov.base, p});
+      res.emplace_back(type, StringRef{std::begin(iov), p});
     }
   }
 
@@ -1235,12 +1230,12 @@ int parse_mapping(Config *config, DownstreamAddrConfig &addr,
       // This effectively makes empty pattern to "/".  2 for '/' and
       // terminal NULL character.
       auto iov = make_byte_ref(downstreamconf.balloc, raw_pattern.size() + 2);
-      auto p = iov.base;
-      p = std::copy(std::begin(raw_pattern), std::end(raw_pattern), p);
-      util::inp_strlower(iov.base, p);
+      auto p = std::copy(std::begin(raw_pattern), std::end(raw_pattern),
+                         std::begin(iov));
+      util::inp_strlower(std::begin(iov), p);
       *p++ = '/';
       *p = '\0';
-      pattern = StringRef{iov.base, p};
+      pattern = StringRef{std::begin(iov), p};
     } else {
       auto path = http2::normalize_path_colon(
           downstreamconf.balloc, StringRef{slash, std::end(raw_pattern)},
@@ -1248,12 +1243,11 @@ int parse_mapping(Config *config, DownstreamAddrConfig &addr,
       auto iov = make_byte_ref(downstreamconf.balloc,
                                std::distance(std::begin(raw_pattern), slash) +
                                    path.size() + 1);
-      auto p = iov.base;
-      p = std::copy(std::begin(raw_pattern), slash, p);
-      util::inp_strlower(iov.base, p);
+      auto p = std::copy(std::begin(raw_pattern), slash, std::begin(iov));
+      util::inp_strlower(std::begin(iov), p);
       p = std::copy(std::begin(path), std::end(path), p);
       *p = '\0';
-      pattern = StringRef{iov.base, p};
+      pattern = StringRef{std::begin(iov), p};
     }
     auto it = pattern_addr_indexer.find(pattern);
     if (it != std::end(pattern_addr_indexer)) {
@@ -1385,10 +1379,10 @@ int parse_mapping(Config *config, DownstreamAddrConfig &addr,
         router.add_route(path, idx, path_is_wildcard);
 
         auto iov = make_byte_ref(downstreamconf.balloc, host.size() + 1);
-        auto p = iov.base;
-        p = std::reverse_copy(std::begin(host), std::end(host), p);
+        auto p = std::reverse_copy(std::begin(host), std::end(host),
+                                   std::begin(iov));
         *p = '\0';
-        auto rev_host = StringRef{iov.base, p};
+        auto rev_host = StringRef{std::begin(iov), p};
 
         rw_router.add_route(rev_host, wildcard_patterns.size() - 1);
       } else {

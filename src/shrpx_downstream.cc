@@ -344,7 +344,7 @@ StringRef Downstream::assemble_request_cookie() {
   }
 
   auto iov = make_byte_ref(balloc_, len + 1);
-  auto p = iov.base;
+  auto p = std::begin(iov);
 
   for (auto &kv : req_.fs.headers()) {
     if (kv.token != http2::HD_COOKIE || kv.value.empty()) {
@@ -367,11 +367,11 @@ StringRef Downstream::assemble_request_cookie() {
   }
 
   // cut trailing "; "
-  if (p - iov.base >= 2) {
+  if (p - std::begin(iov) >= 2) {
     p -= 2;
   }
 
-  return StringRef{iov.base, p};
+  return StringRef{std::begin(iov), p};
 }
 
 uint32_t Downstream::find_affinity_cookie(const StringRef &name) {
@@ -474,12 +474,11 @@ void add_header(size_t &sum, HeaderRefs &headers, const StringRef &name,
 namespace {
 StringRef alloc_header_name(BlockAllocator &balloc, const StringRef &name) {
   auto iov = make_byte_ref(balloc, name.size() + 1);
-  auto p = iov.base;
-  p = std::copy(std::begin(name), std::end(name), p);
-  util::inp_strlower(iov.base, p);
+  auto p = std::copy(std::begin(name), std::end(name), std::begin(iov));
+  util::inp_strlower(std::begin(iov), p);
   *p = '\0';
 
-  return StringRef{iov.base, p};
+  return StringRef{std::begin(iov), p};
 }
 } // namespace
 

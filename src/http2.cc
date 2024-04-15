@@ -665,7 +665,7 @@ StringRef rewrite_location_uri(BlockAllocator &balloc, const StringRef &uri,
   }
 
   auto iov = make_byte_ref(balloc, len + 1);
-  auto p = iov.base;
+  auto p = std::begin(iov);
 
   if (!request_authority.empty()) {
     p = std::copy(std::begin(upstream_scheme), std::end(upstream_scheme), p);
@@ -690,7 +690,7 @@ StringRef rewrite_location_uri(BlockAllocator &balloc, const StringRef &uri,
 
   *p = '\0';
 
-  return StringRef{iov.base, p};
+  return StringRef{std::begin(iov), p};
 }
 
 int parse_http_status_code(const StringRef &src) {
@@ -1664,7 +1664,7 @@ int construct_push_component(BlockAllocator &balloc, StringRef &scheme,
         len += 1 + str_size("65535");
       }
       auto iov = make_byte_ref(balloc, len + 1);
-      auto p = iov.base;
+      auto p = std::begin(iov);
       p = std::copy(std::begin(auth), std::end(auth), p);
       if (port_exists) {
         *p++ = ':';
@@ -1672,7 +1672,7 @@ int construct_push_component(BlockAllocator &balloc, StringRef &scheme,
       }
       *p = '\0';
 
-      authority = StringRef{iov.base, p};
+      authority = StringRef{std::begin(iov), p};
     }
 
     if (u.field_set & (1 << UF_PATH)) {
@@ -1737,7 +1737,7 @@ StringRef path_join(BlockAllocator &balloc, const StringRef &base_path,
       balloc, std::max(static_cast<size_t>(1), base_path.size()) +
                   rel_path.size() + 1 +
                   std::max(base_query.size(), rel_query.size()) + 1);
-  auto p = res.base;
+  auto p = std::begin(res);
 
   if (rel_path.empty()) {
     if (base_path.empty()) {
@@ -1751,12 +1751,12 @@ StringRef path_join(BlockAllocator &balloc, const StringRef &base_path,
         p = std::copy(std::begin(base_query), std::end(base_query), p);
       }
       *p = '\0';
-      return StringRef{res.base, p};
+      return StringRef{std::begin(res), p};
     }
     *p++ = '?';
     p = std::copy(std::begin(rel_query), std::end(rel_query), p);
     *p = '\0';
-    return StringRef{res.base, p};
+    return StringRef{std::begin(res), p};
   }
 
   auto first = std::begin(rel_path);
@@ -1777,31 +1777,31 @@ StringRef path_join(BlockAllocator &balloc, const StringRef &base_path,
     if (*first == '.') {
       if (first + 1 == last) {
         if (*(p - 1) != '/') {
-          p = eat_file(res.base, p);
+          p = eat_file(std::begin(res), p);
         }
         break;
       }
       if (*(first + 1) == '/') {
         if (*(p - 1) != '/') {
-          p = eat_file(res.base, p);
+          p = eat_file(std::begin(res), p);
         }
         first += 2;
         continue;
       }
       if (*(first + 1) == '.') {
         if (first + 2 == last) {
-          p = eat_dir(res.base, p);
+          p = eat_dir(std::begin(res), p);
           break;
         }
         if (*(first + 2) == '/') {
-          p = eat_dir(res.base, p);
+          p = eat_dir(std::begin(res), p);
           first += 3;
           continue;
         }
       }
     }
     if (*(p - 1) != '/') {
-      p = eat_file(res.base, p);
+      p = eat_file(std::begin(res), p);
     }
     auto slash = std::find(first, last, '/');
     if (slash == last) {
@@ -1818,7 +1818,7 @@ StringRef path_join(BlockAllocator &balloc, const StringRef &base_path,
     p = std::copy(std::begin(rel_query), std::end(rel_query), p);
   }
   *p = '\0';
-  return StringRef{res.base, p};
+  return StringRef{std::begin(res), p};
 }
 
 StringRef normalize_path(BlockAllocator &balloc, const StringRef &path,
@@ -1834,7 +1834,7 @@ StringRef normalize_path(BlockAllocator &balloc, const StringRef &path,
 
   // includes last terminal NULL.
   auto result = make_byte_ref(balloc, path.size() + 1);
-  auto p = result.base;
+  auto p = std::begin(result);
 
   auto it = std::begin(path);
   for (; it + 2 < std::end(path);) {
@@ -1864,8 +1864,8 @@ StringRef normalize_path(BlockAllocator &balloc, const StringRef &path,
   p = std::copy(it, std::end(path), p);
   *p = '\0';
 
-  return path_join(balloc, StringRef{}, StringRef{}, StringRef{result.base, p},
-                   query);
+  return path_join(balloc, StringRef{}, StringRef{},
+                   StringRef{std::begin(result), p}, query);
 }
 
 StringRef normalize_path_colon(BlockAllocator &balloc, const StringRef &path,
@@ -1881,7 +1881,7 @@ StringRef normalize_path_colon(BlockAllocator &balloc, const StringRef &path,
 
   // includes last terminal NULL.
   auto result = make_byte_ref(balloc, path.size() + 1);
-  auto p = result.base;
+  auto p = std::begin(result);
 
   auto it = std::begin(path);
   for (; it + 2 < std::end(path);) {
@@ -1911,8 +1911,8 @@ StringRef normalize_path_colon(BlockAllocator &balloc, const StringRef &path,
   p = std::copy(it, std::end(path), p);
   *p = '\0';
 
-  return path_join(balloc, StringRef{}, StringRef{}, StringRef{result.base, p},
-                   query);
+  return path_join(balloc, StringRef{}, StringRef{},
+                   StringRef{std::begin(result), p}, query);
 }
 
 std::string normalize_path(const StringRef &path, const StringRef &query) {
@@ -1938,11 +1938,11 @@ StringRef rewrite_clean_path(BlockAllocator &balloc, const StringRef &src) {
 
 StringRef copy_lower(BlockAllocator &balloc, const StringRef &src) {
   auto iov = make_byte_ref(balloc, src.size() + 1);
-  auto p = iov.base;
+  auto p = std::begin(iov);
   p = std::copy(std::begin(src), std::end(src), p);
   *p = '\0';
-  util::inp_strlower(iov.base, p);
-  return StringRef{iov.base, p};
+  util::inp_strlower(std::begin(iov), p);
+  return StringRef{std::begin(iov), p};
 }
 
 bool contains_trailers(const StringRef &s) {

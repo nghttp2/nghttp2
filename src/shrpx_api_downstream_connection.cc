@@ -125,7 +125,7 @@ int APIDownstreamConnection::send_reply(unsigned int http_status,
                 api_status_str.size() + 3;
 
   auto buf = make_byte_ref(balloc, buflen);
-  auto p = buf.base;
+  auto p = std::begin(buf);
 
   p = std::copy(std::begin(M1), std::end(M1), p);
   p = std::copy(std::begin(api_status_str), std::end(api_status_str), p);
@@ -134,9 +134,9 @@ int APIDownstreamConnection::send_reply(unsigned int http_status,
   p = std::copy(std::begin(data), std::end(data), p);
   p = std::copy(std::begin(M3), std::end(M3), p);
 
-  buf.len = p - buf.base;
+  buf = buf.subspan(0, p - std::begin(buf));
 
-  auto content_length = util::make_string_ref_uint(balloc, buf.len);
+  auto content_length = util::make_string_ref_uint(balloc, buf.size());
 
   resp.fs.add_header_token(StringRef::from_lit("content-length"),
                            content_length, false, http2::HD_CONTENT_LENGTH);
@@ -151,7 +151,7 @@ int APIDownstreamConnection::send_reply(unsigned int http_status,
     break;
   }
 
-  if (upstream->send_reply(downstream_, buf.base, buf.len) != 0) {
+  if (upstream->send_reply(downstream_, buf.data(), buf.size()) != 0) {
     return -1;
   }
 
@@ -277,7 +277,7 @@ int APIDownstreamConnection::error_method_not_allowed() {
   auto &balloc = downstream_->get_block_allocator();
 
   auto iov = make_byte_ref(balloc, len + 1);
-  auto p = iov.base;
+  auto p = std::begin(iov);
   for (uint8_t i = 0; i < API_METHOD_MAX; ++i) {
     if (api_->allowed_methods & (1 << i)) {
       auto &s = API_METHOD_STRING[i];
@@ -289,8 +289,8 @@ int APIDownstreamConnection::error_method_not_allowed() {
   p -= 2;
   *p = '\0';
 
-  resp.fs.add_header_token(StringRef::from_lit("allow"), StringRef{iov.base, p},
-                           false, -1);
+  resp.fs.add_header_token(StringRef::from_lit("allow"),
+                           StringRef{std::begin(iov), p}, false, -1);
   return send_reply(405, APIStatusCode::FAILURE);
 }
 

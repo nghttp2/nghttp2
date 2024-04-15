@@ -33,6 +33,7 @@
 
 #include <cassert>
 #include <utility>
+#include <span>
 
 #include "template.h"
 
@@ -270,19 +271,10 @@ StringRef realloc_concat_string_ref(BlockAllocator &alloc,
   return StringRef{dst, len};
 }
 
-struct ByteRef {
-  // The pointer to the beginning of the buffer.
-  uint8_t *base;
-  // The length of the buffer.
-  size_t len;
-};
-
-// Makes a buffer with given size.  The resulting byte string might
-// not be NULL-terminated.
+// Makes an uninitialized buffer with given size.
 template <typename BlockAllocator>
-ByteRef make_byte_ref(BlockAllocator &alloc, size_t size) {
-  auto dst = static_cast<uint8_t *>(alloc.alloc(size));
-  return {dst, size};
+std::span<uint8_t> make_byte_ref(BlockAllocator &alloc, size_t size) {
+  return {static_cast<uint8_t *>(alloc.alloc(size)), size};
 }
 
 } // namespace nghttp2

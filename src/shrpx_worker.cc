@@ -1296,10 +1296,10 @@ size_t match_downstream_addr_group_host(
 
   if (!wildcard_patterns.empty() && !host.empty()) {
     auto rev_host_src = make_byte_ref(balloc, host.size() - 1);
-    auto ep =
-        std::copy(std::begin(host) + 1, std::end(host), rev_host_src.base);
-    std::reverse(rev_host_src.base, ep);
-    auto rev_host = StringRef{rev_host_src.base, ep};
+    auto ep = std::copy(std::begin(host) + 1, std::end(host),
+                        std::begin(rev_host_src));
+    std::reverse(std::begin(rev_host_src), ep);
+    auto rev_host = StringRef{std::begin(rev_host_src), ep};
 
     ssize_t best_group = -1;
     const RNode *last_node = nullptr;
@@ -1397,10 +1397,10 @@ size_t match_downstream_addr_group(
         return 'A' <= c || c <= 'Z';
       }) != std::end(host)) {
     auto low_host = make_byte_ref(balloc, host.size() + 1);
-    auto ep = std::copy(std::begin(host), std::end(host), low_host.base);
+    auto ep = std::copy(std::begin(host), std::end(host), std::begin(low_host));
     *ep = '\0';
-    util::inp_strlower(low_host.base, ep);
-    host = StringRef{low_host.base, ep};
+    util::inp_strlower(std::begin(low_host), ep);
+    host = StringRef{std::begin(low_host), ep};
   }
   return match_downstream_addr_group_host(routerconf, host, path, groups,
                                           catch_all, balloc);

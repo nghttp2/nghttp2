@@ -271,7 +271,7 @@ void rewrite_request_host_path_from_uri(BlockAllocator &balloc, Request &req,
   }
   if (authoritylen > authority.size()) {
     auto iovec = make_byte_ref(balloc, authoritylen + 1);
-    auto p = iovec.base;
+    auto p = std::begin(iovec);
     if (ipv6) {
       *p++ = '[';
     }
@@ -286,7 +286,7 @@ void rewrite_request_host_path_from_uri(BlockAllocator &balloc, Request &req,
     }
     *p = '\0';
 
-    req.authority = StringRef{iovec.base, p};
+    req.authority = StringRef{std::begin(iovec), p};
   } else {
     req.authority = authority;
   }

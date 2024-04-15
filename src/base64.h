@@ -210,12 +210,12 @@ StringRef decode(BlockAllocator &balloc, InputIt first, InputIt last) {
     return StringRef::from_lit("");
   }
   auto iov = make_byte_ref(balloc, len / 4 * 3 + 1);
-  auto p = iov.base;
+  auto p = std::begin(iov);
 
   p = decode(first, last, p);
   *p = '\0';
 
-  return StringRef{iov.base, p};
+  return StringRef{std::begin(iov), p};
 }
 
 } // namespace base64

@@ -555,7 +555,7 @@ StringRef construct_absolute_request_uri(BlockAllocator &balloc,
   }
 
   auto iov = make_byte_ref(balloc, len + 1);
-  auto p = iov.base;
+  auto p = std::begin(iov);
 
   if (req.scheme.empty()) {
     // We may have to log the request which lacks scheme (e.g.,
@@ -569,7 +569,7 @@ StringRef construct_absolute_request_uri(BlockAllocator &balloc,
   p = std::copy(std::begin(req.path), std::end(req.path), p);
   *p = '\0';
 
-  return StringRef{iov.base, p};
+  return StringRef{std::begin(iov), p};
 }
 } // namespace
 

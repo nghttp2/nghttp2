@@ -75,7 +75,7 @@ StringRef create_forwarded(BlockAllocator &balloc, int params,
   }
 
   auto iov = make_byte_ref(balloc, len + 1);
-  auto p = iov.base;
+  auto p = std::begin(iov);
 
   if ((params & FORWARDED_BY) && !node_by.empty()) {
     // This must be quoted-string unless it is obfuscated version
@@ -118,14 +118,14 @@ StringRef create_forwarded(BlockAllocator &balloc, int params,
     *p++ = ';';
   }
 
-  if (iov.base == p) {
+  if (std::begin(iov) == p) {
     return StringRef{};
   }
 
   --p;
   *p = '\0';
 
-  return StringRef{iov.base, p};
+  return StringRef{std::begin(iov), p};
 }
 
 std::string colorizeHeaders(const char *hdrs) {
@@ -189,8 +189,7 @@ StringRef create_affinity_cookie(BlockAllocator &balloc, const StringRef &name,
   }
 
   auto iov = make_byte_ref(balloc, len + 1);
-  auto p = iov.base;
-  p = std::copy(std::begin(name), std::end(name), p);
+  auto p = std::copy(std::begin(name), std::end(name), std::begin(iov));
   *p++ = '=';
   affinity_cookie = htonl(affinity_cookie);
   p = util::format_hex(p, std::span{&affinity_cookie, 1});
@@ -202,7 +201,7 @@ StringRef create_affinity_cookie(BlockAllocator &balloc, const StringRef &name,
     p = std::copy(std::begin(SECURE), std::end(SECURE), p);
   }
   *p = '\0';
-  return StringRef{iov.base, p};
+  return StringRef{std::begin(iov), p};
 }
 
 bool require_cookie_secure_attribute(SessionAffinityCookieSecure secure,
@@ -244,7 +243,7 @@ StringRef create_altsvc_header_value(BlockAllocator &balloc,
 
   // We will write additional ", " at the end, and cut it later.
   auto iov = make_byte_ref(balloc, len + 2);
-  auto p = iov.base;
+  auto p = std::begin(iov);
 
   for (auto &altsvc : altsvcs) {
     p = util::percent_encode_token(p, altsvc.protocol_id);
@@ -263,9 +262,9 @@ StringRef create_altsvc_header_value(BlockAllocator &balloc,
   p -= 2;
   *p = '\0';
 
-  assert(static_cast<size_t>(p - iov.base) == len);
+  assert(static_cast<size_t>(p - std::begin(iov)) == len);
 
-  return StringRef{iov.base, p};
+  return StringRef{std::begin(iov), p};
 }
 
 bool check_http_scheme(const StringRef &scheme, bool encrypted) {

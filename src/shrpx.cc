@@ -3924,12 +3924,12 @@ int process_options(Config *config,
       fwdconf.by_obfuscated.empty()) {
     // 2 for '_' and terminal NULL
     auto iov = make_byte_ref(config->balloc, SHRPX_OBFUSCATED_NODE_LENGTH + 2);
-    auto p = iov.base;
+    auto p = std::begin(iov);
     *p++ = '_';
     auto gen = util::make_mt19937();
     p = util::random_alpha_digit(p, p + SHRPX_OBFUSCATED_NODE_LENGTH, gen);
     *p = '\0';
-    fwdconf.by_obfuscated = StringRef{iov.base, p};
+    fwdconf.by_obfuscated = StringRef{std::begin(iov), p};
   }
 
   if (config->http2.upstream.debug.frame_debug) {

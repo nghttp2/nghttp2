@@ -492,13 +492,13 @@ ClientHandler::ClientHandler(Worker *worker, int fd, SSL *ssl,
       auto len = SHRPX_OBFUSCATED_NODE_LENGTH + 1;
       // 1 for terminating NUL.
       auto buf = make_byte_ref(balloc_, len + 1);
-      auto p = buf.base;
+      auto p = std::begin(buf);
       *p++ = '_';
       p = util::random_alpha_digit(p, p + SHRPX_OBFUSCATED_NODE_LENGTH,
                                    worker_->get_randgen());
       *p = '\0';
 
-      forwarded_for_ = StringRef{buf.base, p};
+      forwarded_for_ = StringRef{std::begin(buf), p};
     } else {
       init_forwarded_for(family, ipaddr_);
     }
@@ -511,13 +511,13 @@ void ClientHandler::init_forwarded_for(int family, const StringRef &ipaddr) {
     auto len = 2 + ipaddr.size();
     // 1 for terminating NUL.
     auto buf = make_byte_ref(balloc_, len + 1);
-    auto p = buf.base;
+    auto p = std::begin(buf);
     *p++ = '[';
     p = std::copy(std::begin(ipaddr), std::end(ipaddr), p);
     *p++ = ']';
     *p = '\0';
 
-    forwarded_for_ = StringRef{buf.base, p};
+    forwarded_for_ = StringRef{std::begin(buf), p};
   } else {
     // family == AF_INET or family == AF_UNIX
     forwarded_for_ = ipaddr;
