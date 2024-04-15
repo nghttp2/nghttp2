@@ -2501,9 +2501,9 @@ StringRef get_x509_name(BlockAllocator &balloc, X509_NAME *nm) {
   }
 
   auto iov = make_byte_ref(balloc, slen + 1);
-  BIO_read(b, iov.base, slen);
-  iov.base[slen] = '\0';
-  return StringRef{iov.base, static_cast<size_t>(slen)};
+  BIO_read(b, iov.data(), slen);
+  iov[slen] = '\0';
+  return StringRef{iov.data(), static_cast<size_t>(slen)};
 }
 } // namespace
 

@@ -465,10 +465,10 @@ template <typename T, typename OutputIt> OutputIt utos(OutputIt dst, T n) {
 template <typename T>
 StringRef make_string_ref_uint(BlockAllocator &balloc, T n) {
   auto iov = make_byte_ref(balloc, NGHTTP2_MAX_UINT64_DIGITS + 1);
-  auto p = iov.base;
+  auto p = std::begin(iov);
   p = util::utos(p, n);
   *p = '\0';
-  return StringRef{iov.base, p};
+  return StringRef{std::begin(iov), p};
 }
 
 template <typename T> std::string utos_unit(T n) {

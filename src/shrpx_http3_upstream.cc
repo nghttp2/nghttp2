@@ -1404,7 +1404,7 @@ int Http3Upstream::on_downstream_header_complete(Downstream *downstream) {
     }
 
     auto iov = make_byte_ref(balloc, len + 1);
-    auto p = iov.base;
+    auto p = std::begin(iov);
     if (via) {
       p = std::copy(std::begin(via->value), std::end(via->value), p);
       p = util::copy_lit(p, ", ");
@@ -1412,7 +1412,8 @@ int Http3Upstream::on_downstream_header_complete(Downstream *downstream) {
     p = http::create_via_header_value(p, resp.http_major, resp.http_minor);
     *p = '\0';
 
-    nva.push_back(http3::make_nv_ls_nocopy("via", StringRef{iov.base, p}));
+    nva.push_back(
+        http3::make_nv_ls_nocopy("via", StringRef{std::begin(iov), p}));
   }
 
   for (auto &p : httpconf.add_response_headers) {

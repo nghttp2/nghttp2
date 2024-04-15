@@ -191,11 +191,11 @@ bool in_attr_char(char c) {
 StringRef percent_encode_token(BlockAllocator &balloc,
                                const StringRef &target) {
   auto iov = make_byte_ref(balloc, target.size() * 3 + 1);
-  auto p = percent_encode_token(iov.base, target);
+  auto p = percent_encode_token(std::begin(iov), target);
 
   *p = '\0';
 
-  return StringRef{iov.base, p};
+  return StringRef{std::begin(iov), p};
 }
 
 size_t percent_encode_tokenlen(const StringRef &target) {
@@ -237,11 +237,11 @@ StringRef quote_string(BlockAllocator &balloc, const StringRef &target) {
   }
 
   auto iov = make_byte_ref(balloc, target.size() + cnt + 1);
-  auto p = quote_string(iov.base, target);
+  auto p = quote_string(std::begin(iov), target);
 
   *p = '\0';
 
-  return StringRef{iov.base, p};
+  return StringRef{std::begin(iov), p};
 }
 
 size_t quote_stringlen(const StringRef &target) {
@@ -507,11 +507,11 @@ std::string format_hex(std::span<const uint8_t> s) {
 
 StringRef format_hex(BlockAllocator &balloc, std::span<const uint8_t> s) {
   auto iov = make_byte_ref(balloc, s.size() * 2 + 1);
-  auto p = format_hex(iov.base, s);
+  auto p = format_hex(std::begin(iov), s);
 
   *p = '\0';
 
-  return StringRef{iov.base, p};
+  return StringRef{std::begin(iov), p};
 }
 
 void to_token68(std::string &base64str) {
@@ -534,19 +534,18 @@ StringRef to_base64(BlockAllocator &balloc, const StringRef &token68str) {
   // At most 3 padding '='
   auto len = token68str.size() + 3;
   auto iov = make_byte_ref(balloc, len + 1);
-  auto p = iov.base;
 
-  p = std::transform(std::begin(token68str), std::end(token68str), p,
-                     [](char c) {
-                       switch (c) {
-                       case '-':
-                         return '+';
-                       case '_':
-                         return '/';
-                       default:
-                         return c;
-                       }
-                     });
+  auto p = std::transform(std::begin(token68str), std::end(token68str),
+                          std::begin(iov), [](char c) {
+                            switch (c) {
+                            case '-':
+                              return '+';
+                            case '_':
+                              return '/';
+                            default:
+                              return c;
+                            }
+                          });
 
   auto rem = token68str.size() & 0x3;
   if (rem) {
@@ -555,7 +554,7 @@ StringRef to_base64(BlockAllocator &balloc, const StringRef &token68str) {
 
   *p = '\0';
 
-  return StringRef{iov.base, p};
+  return StringRef{std::begin(iov), p};
 }
 
 namespace {
@@ -1352,13 +1351,13 @@ std::string dtos(double n) {
 StringRef make_http_hostport(BlockAllocator &balloc, const StringRef &host,
                              uint16_t port) {
   auto iov = make_byte_ref(balloc, host.size() + 2 + 1 + 5 + 1);
-  return make_http_hostport(iov.base, host, port);
+  return make_http_hostport(std::begin(iov), host, port);
 }
 
 StringRef make_hostport(BlockAllocator &balloc, const StringRef &host,
                         uint16_t port) {
   auto iov = make_byte_ref(balloc, host.size() + 2 + 1 + 5 + 1);
-  return make_hostport(iov.base, host, port);
+  return make_hostport(std::begin(iov), host, port);
 }
 
 namespace {
@@ -1601,7 +1600,7 @@ int read_mime_types(std::map<std::string, std::string> &res,
 
 StringRef percent_decode(BlockAllocator &balloc, const StringRef &src) {
   auto iov = make_byte_ref(balloc, src.size() * 3 + 1);
-  auto p = iov.base;
+  auto p = std::begin(iov);
   for (auto first = std::begin(src); first != std::end(src); ++first) {
     if (*first != '%') {
       *p++ = *first;
@@ -1618,7 +1617,7 @@ StringRef percent_decode(BlockAllocator &balloc, const StringRef &src) {
     *p++ = *first;
   }
   *p = '\0';
-  return StringRef{iov.base, p};
+  return StringRef{std::begin(iov), p};
 }
 
 // Returns x**y
@@ -1699,9 +1698,9 @@ bool is_hex_string(const StringRef &s) {
 
 StringRef decode_hex(BlockAllocator &balloc, const StringRef &s) {
   auto iov = make_byte_ref(balloc, s.size() + 1);
-  auto p = decode_hex(iov.base, s);
+  auto p = decode_hex(std::begin(iov), s);
   *p = '\0';
-  return StringRef{iov.base, p};
+  return StringRef{std::begin(iov), p};
 }
 
 StringRef extract_host(const StringRef &hostport) {
