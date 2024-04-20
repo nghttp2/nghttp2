@@ -38,6 +38,7 @@
 #include <ostream>
 #include <utility>
 #include <span>
+#include <string_view>
 
 namespace nghttp2 {
 
@@ -392,6 +393,9 @@ public:
   StringRef(InputIt *first, InputIt *last)
       : base(reinterpret_cast<const char *>(first)),
         len(std::distance(first, last)) {}
+  template <typename T, size_t N = std::dynamic_extent>
+  explicit StringRef(std::span<T, N> s)
+      : base(reinterpret_cast<const char *>(s.data())), len(s.size_bytes()) {}
   template <typename CharT, size_t N>
   constexpr static StringRef from_lit(const CharT (&s)[N]) {
     return StringRef{s, N - 1};
@@ -431,6 +435,8 @@ public:
   const uint8_t *byte() const {
     return reinterpret_cast<const uint8_t *>(base);
   }
+
+  constexpr operator std::string_view() const noexcept { return {base, len}; }
 
 private:
   const char *base;

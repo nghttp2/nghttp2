@@ -1696,11 +1696,12 @@ bool is_hex_string(const StringRef &s) {
   return true;
 }
 
-StringRef decode_hex(BlockAllocator &balloc, const StringRef &s) {
+std::span<const uint8_t> decode_hex(BlockAllocator &balloc,
+                                    const StringRef &s) {
   auto iov = make_byte_ref(balloc, s.size() + 1);
   auto p = decode_hex(std::begin(iov), s);
   *p = '\0';
-  return StringRef{std::begin(iov), p};
+  return {std::begin(iov), p};
 }
 
 StringRef extract_host(const StringRef &hostport) {

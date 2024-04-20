@@ -1770,8 +1770,8 @@ int parse_client_psk_secrets(Config *config, const StringRef &path) {
     tlsconf.client.psk.identity =
         make_string_ref(config->balloc, StringRef{std::begin(line), sep_it});
 
-    tlsconf.client.psk.secret =
-        util::decode_hex(config->balloc, StringRef{sep_it + 1, std::end(line)});
+    tlsconf.client.psk.secret = StringRef{util::decode_hex(
+        config->balloc, StringRef{sep_it + 1, std::end(line)})};
 
     return 0;
   }
