@@ -204,10 +204,11 @@ template <typename InputIt> std::string decode(InputIt first, InputIt last) {
 }
 
 template <typename InputIt>
-StringRef decode(BlockAllocator &balloc, InputIt first, InputIt last) {
+std::span<const uint8_t> decode(BlockAllocator &balloc, InputIt first,
+                                InputIt last) {
   auto len = std::distance(first, last);
   if (len % 4 != 0) {
-    return StringRef::from_lit("");
+    return {};
   }
   auto iov = make_byte_ref(balloc, len / 4 * 3 + 1);
   auto p = std::begin(iov);
@@ -215,7 +216,7 @@ StringRef decode(BlockAllocator &balloc, InputIt first, InputIt last) {
   p = decode(first, last, p);
   *p = '\0';
 
-  return StringRef{std::begin(iov), p};
+  return {std::begin(iov), p};
 }
 
 } // namespace base64
