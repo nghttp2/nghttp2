@@ -2034,7 +2034,7 @@ namespace {
 int parse_header_table_size(uint32_t &dst, const char *opt,
                             const char *optarg) {
   auto n = util::parse_uint_with_unit(optarg);
-  if (n == -1) {
+  if (!n) {
     std::cerr << "--" << opt << ": Bad option value: " << optarg << std::endl;
     return -1;
   }
@@ -2045,7 +2045,7 @@ int parse_header_table_size(uint32_t &dst, const char *opt,
     return -1;
   }
 
-  dst = n;
+  dst = *n;
 
   return 0;
 }
@@ -2374,21 +2374,21 @@ int main(int argc, char **argv) {
     switch (c) {
     case 'n': {
       auto n = util::parse_uint(optarg);
-      if (n == -1) {
+      if (!n) {
         std::cerr << "-n: bad option value: " << optarg << std::endl;
         exit(EXIT_FAILURE);
       }
-      config.nreqs = n;
+      config.nreqs = *n;
       nreqs_set_manually = true;
       break;
     }
     case 'c': {
       auto n = util::parse_uint(optarg);
-      if (n == -1) {
+      if (!n) {
         std::cerr << "-c: bad option value: " << optarg << std::endl;
         exit(EXIT_FAILURE);
       }
-      config.nclients = n;
+      config.nclients = *n;
       break;
     }
     case 'd':
@@ -2400,55 +2400,55 @@ int main(int argc, char **argv) {
                 << "no threads created." << std::endl;
 #else
       auto n = util::parse_uint(optarg);
-      if (n == -1) {
+      if (!n) {
         std::cerr << "-t: bad option value: " << optarg << std::endl;
         exit(EXIT_FAILURE);
       }
-      config.nthreads = n;
+      config.nthreads = *n;
 #endif // NOTHREADS
       break;
     }
     case 'm': {
       auto n = util::parse_uint(optarg);
-      if (n == -1) {
+      if (!n) {
         std::cerr << "-m: bad option value: " << optarg << std::endl;
         exit(EXIT_FAILURE);
       }
-      config.max_concurrent_streams = n;
+      config.max_concurrent_streams = *n;
       break;
     }
     case 'w':
     case 'W': {
       auto n = util::parse_uint(optarg);
-      if (n == -1 || n > 30) {
+      if (!n || n > 30) {
         std::cerr << "-" << static_cast<char>(c)
                   << ": specify the integer in the range [0, 30], inclusive"
                   << std::endl;
         exit(EXIT_FAILURE);
       }
       if (c == 'w') {
-        config.window_bits = n;
+        config.window_bits = *n;
       } else {
-        config.connection_window_bits = n;
+        config.connection_window_bits = *n;
       }
       break;
     }
     case 'f': {
       auto n = util::parse_uint_with_unit(optarg);
-      if (n == -1) {
+      if (!n) {
         std::cerr << "--max-frame-size: bad option value: " << optarg
                   << std::endl;
         exit(EXIT_FAILURE);
       }
-      if (static_cast<uint64_t>(n) < 16_k) {
+      if (static_cast<uint64_t>(*n) < 16_k) {
         std::cerr << "--max-frame-size: minimum 16384" << std::endl;
         exit(EXIT_FAILURE);
       }
-      if (static_cast<uint64_t>(n) > 16_m - 1) {
+      if (static_cast<uint64_t>(*n) > 16_m - 1) {
         std::cerr << "--max-frame-size: maximum 16777215" << std::endl;
         exit(EXIT_FAILURE);
       }
-      config.max_frame_size = n;
+      config.max_frame_size = *n;
       break;
     }
     case 'H': {
@@ -2495,7 +2495,7 @@ int main(int argc, char **argv) {
     }
     case 'r': {
       auto n = util::parse_uint(optarg);
-      if (n == -1) {
+      if (!n) {
         std::cerr << "-r: bad option value: " << optarg << std::endl;
         exit(EXIT_FAILURE);
       }
@@ -2504,25 +2504,29 @@ int main(int argc, char **argv) {
                   << "must be positive." << std::endl;
         exit(EXIT_FAILURE);
       }
-      config.rate = n;
+      config.rate = *n;
       break;
     }
-    case 'T':
-      config.conn_active_timeout = util::parse_duration_with_unit(optarg);
-      if (!std::isfinite(config.conn_active_timeout)) {
+    case 'T': {
+      auto d = util::parse_duration_with_unit(optarg);
+      if (!d) {
         std::cerr << "-T: bad value for the conn_active_timeout wait time: "
                   << optarg << std::endl;
         exit(EXIT_FAILURE);
       }
+      config.conn_active_timeout = *d;
       break;
-    case 'N':
-      config.conn_inactivity_timeout = util::parse_duration_with_unit(optarg);
-      if (!std::isfinite(config.conn_inactivity_timeout)) {
+    }
+    case 'N': {
+      auto d = util::parse_duration_with_unit(optarg);
+      if (!d) {
         std::cerr << "-N: bad value for the conn_inactivity_timeout wait time: "
                   << optarg << std::endl;
         exit(EXIT_FAILURE);
       }
+      config.conn_inactivity_timeout = *d;
       break;
+    }
     case 'B': {
       auto arg = StringRef{optarg};
       config.base_uri = "";
@@ -2559,13 +2563,15 @@ int main(int argc, char **argv) {
       config.base_uri = arg.str();
       break;
     }
-    case 'D':
-      config.duration = util::parse_duration_with_unit(optarg);
-      if (!std::isfinite(config.duration)) {
+    case 'D': {
+      auto d = util::parse_duration_with_unit(optarg);
+      if (!d) {
         std::cerr << "-D: value error " << optarg << std::endl;
         exit(EXIT_FAILURE);
       }
+      config.duration = *d;
       break;
+    }
     case 'v':
       config.verbose = true;
       break;
@@ -2590,14 +2596,16 @@ int main(int argc, char **argv) {
         config.ifile = optarg;
         config.timing_script = true;
         break;
-      case 5:
+      case 5: {
         // rate-period
-        config.rate_period = util::parse_duration_with_unit(optarg);
-        if (!std::isfinite(config.rate_period)) {
+        auto d = util::parse_duration_with_unit(optarg);
+        if (!d) {
           std::cerr << "--rate-period: value error " << optarg << std::endl;
           exit(EXIT_FAILURE);
         }
+        config.rate_period = *d;
         break;
+      }
       case 6:
         // --h1
         config.alpn_list =
@@ -2618,14 +2626,16 @@ int main(int argc, char **argv) {
           exit(EXIT_FAILURE);
         }
         break;
-      case 9:
+      case 9: {
         // --warm-up-time
-        config.warm_up_time = util::parse_duration_with_unit(optarg);
-        if (!std::isfinite(config.warm_up_time)) {
+        auto d = util::parse_duration_with_unit(optarg);
+        if (!d) {
           std::cerr << "--warm-up-time: value error " << optarg << std::endl;
           exit(EXIT_FAILURE);
         }
+        config.warm_up_time = *d;
         break;
+      }
       case 10:
         // --log-file
         logfile = optarg;
@@ -2635,7 +2645,8 @@ int main(int argc, char **argv) {
         auto p = util::split_hostport(StringRef{optarg});
         int64_t port = 0;
         if (p.first.empty() ||
-            (!p.second.empty() && (port = util::parse_uint(p.second)) == -1)) {
+            (!p.second.empty() &&
+             (port = util::parse_uint(p.second).value_or(-1)) == -1)) {
           std::cerr << "--connect-to: Invalid value " << optarg << std::endl;
           exit(EXIT_FAILURE);
         }
@@ -2673,17 +2684,17 @@ int main(int argc, char **argv) {
       case 17: {
         // --max-udp-payload-size
         auto n = util::parse_uint_with_unit(optarg);
-        if (n == -1) {
+        if (!n) {
           std::cerr << "--max-udp-payload-size: bad option value: " << optarg
                     << std::endl;
           exit(EXIT_FAILURE);
         }
-        if (static_cast<uint64_t>(n) > 64_k) {
+        if (static_cast<uint64_t>(*n) > 64_k) {
           std::cerr << "--max-udp-payload-size: must not exceed 65536"
                     << std::endl;
           exit(EXIT_FAILURE);
         }
-        config.max_udp_payload_size = n;
+        config.max_udp_payload_size = *n;
         break;
       }
       case 18:

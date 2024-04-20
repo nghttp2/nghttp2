@@ -1137,58 +1137,63 @@ bool ipv6_numeric_addr(const char *host) {
 }
 
 namespace {
-std::pair<int64_t, size_t> parse_uint_digits(const void *ss, size_t len) {
-  const uint8_t *s = static_cast<const uint8_t *>(ss);
-  int64_t n = 0;
-  size_t i;
-  if (len == 0) {
-    return {-1, 0};
+std::optional<std::pair<int64_t, StringRef>>
+parse_uint_digits(const StringRef &s) {
+  if (s.empty()) {
+    return {};
   }
+
   constexpr int64_t max = std::numeric_limits<int64_t>::max();
-  for (i = 0; i < len; ++i) {
-    if ('0' <= s[i] && s[i] <= '9') {
-      if (n > max / 10) {
-        return {-1, 0};
-      }
-      n *= 10;
-      if (n > max - (s[i] - '0')) {
-        return {-1, 0};
-      }
-      n += s[i] - '0';
-      continue;
+
+  int64_t n = 0;
+  size_t i = 0;
+
+  for (auto c : s) {
+    if ('0' > c || c > '9') {
+      break;
     }
-    break;
+
+    if (n > max / 10) {
+      return {};
+    }
+
+    n *= 10;
+
+    if (n > max - (c - '0')) {
+      return {};
+    }
+
+    n += c - '0';
+
+    ++i;
   }
+
   if (i == 0) {
-    return {-1, 0};
+    return {};
   }
-  return {n, i};
+
+  return std::pair{n, s.substr(i)};
 }
 } // namespace
 
-int64_t parse_uint_with_unit(const char *s) {
-  return parse_uint_with_unit(reinterpret_cast<const uint8_t *>(s), strlen(s));
-}
-
-int64_t parse_uint_with_unit(const StringRef &s) {
-  return parse_uint_with_unit(s.byte(), s.size());
-}
-
-int64_t parse_uint_with_unit(const uint8_t *s, size_t len) {
-  int64_t n;
-  size_t i;
-  std::tie(n, i) = parse_uint_digits(s, len);
-  if (n == -1) {
-    return -1;
+std::optional<int64_t> parse_uint_with_unit(const StringRef &s) {
+  auto r = parse_uint_digits(s);
+  if (!r) {
+    return {};
   }
-  if (i == len) {
+
+  auto [n, rest] = *r;
+
+  if (rest.empty()) {
     return n;
   }
-  if (i + 1 != len) {
-    return -1;
+
+  if (rest.size() != 1) {
+    return {};
   }
+
   int mul = 1;
-  switch (s[i]) {
+  switch (rest[0]) {
   case 'K':
   case 'k':
     mul = 1 << 10;
@@ -1202,94 +1207,81 @@ int64_t parse_uint_with_unit(const uint8_t *s, size_t len) {
     mul = 1 << 30;
     break;
   default:
-    return -1;
+    return {};
   }
+
   constexpr int64_t max = std::numeric_limits<int64_t>::max();
   if (n > max / mul) {
-    return -1;
+    return {};
   }
+
   return n * mul;
 }
 
-int64_t parse_uint(const char *s) {
-  return parse_uint(reinterpret_cast<const uint8_t *>(s), strlen(s));
-}
-
-int64_t parse_uint(const std::string &s) {
-  return parse_uint(reinterpret_cast<const uint8_t *>(s.c_str()), s.size());
-}
-
-int64_t parse_uint(const StringRef &s) {
-  return parse_uint(s.byte(), s.size());
-}
-
-int64_t parse_uint(const uint8_t *s, size_t len) {
-  int64_t n;
-  size_t i;
-  std::tie(n, i) = parse_uint_digits(s, len);
-  if (n == -1 || i != len) {
-    return -1;
+std::optional<int64_t> parse_uint(const StringRef &s) {
+  auto r = parse_uint_digits(s);
+  if (!r || !(*r).second.empty()) {
+    return {};
   }
-  return n;
+
+  return (*r).first;
 }
 
-double parse_duration_with_unit(const char *s) {
-  return parse_duration_with_unit(reinterpret_cast<const uint8_t *>(s),
-                                  strlen(s));
-}
-
-double parse_duration_with_unit(const StringRef &s) {
-  return parse_duration_with_unit(s.byte(), s.size());
-}
-
-double parse_duration_with_unit(const uint8_t *s, size_t len) {
+std::optional<double> parse_duration_with_unit(const StringRef &s) {
   constexpr auto max = std::numeric_limits<int64_t>::max();
-  int64_t n;
-  size_t i;
 
-  std::tie(n, i) = parse_uint_digits(s, len);
-  if (n == -1) {
-    goto fail;
+  auto r = parse_uint_digits(s);
+  if (!r) {
+    return {};
   }
-  if (i == len) {
+
+  auto [n, rest] = *r;
+
+  if (rest.empty()) {
     return static_cast<double>(n);
   }
-  switch (s[i]) {
+
+  switch (rest[0]) {
   case 'S':
   case 's':
     // seconds
-    if (i + 1 != len) {
-      goto fail;
+    if (rest.size() != 1) {
+      return {};
     }
+
     return static_cast<double>(n);
   case 'M':
   case 'm':
-    if (i + 1 == len) {
+    if (rest.size() == 1) {
       // minutes
       if (n > max / 60) {
-        goto fail;
+        return {};
       }
+
       return static_cast<double>(n) * 60;
     }
 
-    if (i + 2 != len || (s[i + 1] != 's' && s[i + 1] != 'S')) {
-      goto fail;
+    if (rest.size() != 2 || (rest[1] != 's' && rest[1] != 'S')) {
+      return {};
     }
+
     // milliseconds
     return static_cast<double>(n) / 1000.;
   case 'H':
   case 'h':
     // hours
-    if (i + 1 != len) {
-      goto fail;
+    if (rest.size() != 1) {
+      return {};
     }
+
     if (n > max / 3600) {
-      goto fail;
+      return {};
     }
+
     return static_cast<double>(n) * 3600;
+  default:
+    return {};
   }
-fail:
-  return std::numeric_limits<double>::infinity();
 }
 
 std::string duration_str(double t) {

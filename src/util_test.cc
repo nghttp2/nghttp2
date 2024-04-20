@@ -370,65 +370,69 @@ void test_util_utos_funit(void) {
 }
 
 void test_util_parse_uint_with_unit(void) {
-  assert_int64(0, ==, util::parse_uint_with_unit("0"));
-  assert_int64(1023, ==, util::parse_uint_with_unit("1023"));
-  assert_int64(1024, ==, util::parse_uint_with_unit("1k"));
-  assert_int64(2048, ==, util::parse_uint_with_unit("2K"));
-  assert_int64(1 << 20, ==, util::parse_uint_with_unit("1m"));
-  assert_int64(1 << 21, ==, util::parse_uint_with_unit("2M"));
-  assert_int64(1 << 30, ==, util::parse_uint_with_unit("1g"));
-  assert_int64(1LL << 31, ==, util::parse_uint_with_unit("2G"));
+  assert_int64(0, ==, util::parse_uint_with_unit("0").value_or(-1));
+  assert_int64(1023, ==, util::parse_uint_with_unit("1023").value_or(-1));
+  assert_int64(1024, ==, util::parse_uint_with_unit("1k").value_or(-1));
+  assert_int64(2048, ==, util::parse_uint_with_unit("2K").value_or(-1));
+  assert_int64(1 << 20, ==, util::parse_uint_with_unit("1m").value_or(-1));
+  assert_int64(1 << 21, ==, util::parse_uint_with_unit("2M").value_or(-1));
+  assert_int64(1 << 30, ==, util::parse_uint_with_unit("1g").value_or(-1));
+  assert_int64(1LL << 31, ==, util::parse_uint_with_unit("2G").value_or(-1));
   assert_int64(9223372036854775807LL, ==,
-               util::parse_uint_with_unit("9223372036854775807"));
+               util::parse_uint_with_unit("9223372036854775807").value_or(-1));
   // check overflow case
-  assert_int64(-1, ==, util::parse_uint_with_unit("9223372036854775808"));
-  assert_int64(-1, ==, util::parse_uint_with_unit("10000000000000000000"));
-  assert_int64(-1, ==, util::parse_uint_with_unit("9223372036854775807G"));
+  assert_false(util::parse_uint_with_unit("9223372036854775808"));
+  assert_false(util::parse_uint_with_unit("10000000000000000000"));
+  assert_false(util::parse_uint_with_unit("9223372036854775807G"));
   // bad characters
-  assert_int64(-1, ==, util::parse_uint_with_unit("1.1"));
-  assert_int64(-1, ==, util::parse_uint_with_unit("1a"));
-  assert_int64(-1, ==, util::parse_uint_with_unit("a1"));
-  assert_int64(-1, ==, util::parse_uint_with_unit("1T"));
-  assert_int64(-1, ==, util::parse_uint_with_unit(""));
+  assert_false(util::parse_uint_with_unit("1.1"));
+  assert_false(util::parse_uint_with_unit("1a"));
+  assert_false(util::parse_uint_with_unit("a1"));
+  assert_false(util::parse_uint_with_unit("1T"));
+  assert_false(util::parse_uint_with_unit(""));
 }
 
 void test_util_parse_uint(void) {
-  assert_int64(0, ==, util::parse_uint("0"));
-  assert_int64(1023, ==, util::parse_uint("1023"));
-  assert_int64(-1, ==, util::parse_uint("1k"));
+  assert_int64(0, ==, util::parse_uint("0").value_or(-1));
+  assert_int64(1023, ==, util::parse_uint("1023").value_or(-1));
+  assert_false(util::parse_uint("1k"));
   assert_int64(9223372036854775807LL, ==,
-               util::parse_uint("9223372036854775807"));
+               util::parse_uint("9223372036854775807").value_or(-1));
   // check overflow case
-  assert_int64(-1, ==, util::parse_uint("9223372036854775808"));
-  assert_int64(-1, ==, util::parse_uint("10000000000000000000"));
+  assert_false(util::parse_uint("9223372036854775808"));
+  assert_false(util::parse_uint("10000000000000000000"));
   // bad characters
-  assert_int64(-1, ==, util::parse_uint("1.1"));
-  assert_int64(-1, ==, util::parse_uint("1a"));
-  assert_int64(-1, ==, util::parse_uint("a1"));
-  assert_int64(-1, ==, util::parse_uint("1T"));
-  assert_int64(-1, ==, util::parse_uint(""));
+  assert_false(util::parse_uint("1.1"));
+  assert_false(util::parse_uint("1a"));
+  assert_false(util::parse_uint("a1"));
+  assert_false(util::parse_uint("1T"));
+  assert_false(util::parse_uint(""));
 }
 
 void test_util_parse_duration_with_unit(void) {
-  assert_double(0., ==, util::parse_duration_with_unit("0"));
-  assert_double(123., ==, util::parse_duration_with_unit("123"));
-  assert_double(123., ==, util::parse_duration_with_unit("123s"));
-  assert_double(0.500, ==, util::parse_duration_with_unit("500ms"));
-  assert_double(123., ==, util::parse_duration_with_unit("123S"));
-  assert_double(0.500, ==, util::parse_duration_with_unit("500MS"));
-  assert_double(180, ==, util::parse_duration_with_unit("3m"));
-  assert_double(3600 * 5, ==, util::parse_duration_with_unit("5h"));
+  auto inf = std::numeric_limits<double>::infinity();
 
-  auto err = std::numeric_limits<double>::infinity();
+  assert_double(0., ==, util::parse_duration_with_unit("0").value_or(inf));
+  assert_double(123., ==, util::parse_duration_with_unit("123").value_or(inf));
+  assert_double(123., ==, util::parse_duration_with_unit("123s").value_or(inf));
+  assert_double(0.500, ==,
+                util::parse_duration_with_unit("500ms").value_or(inf));
+  assert_double(123., ==, util::parse_duration_with_unit("123S").value_or(inf));
+  assert_double(0.500, ==,
+                util::parse_duration_with_unit("500MS").value_or(inf));
+  assert_double(180, ==, util::parse_duration_with_unit("3m").value_or(inf));
+  assert_double(3600 * 5, ==,
+                util::parse_duration_with_unit("5h").value_or(inf));
+
   // check overflow case
-  assert_double(err, ==, util::parse_duration_with_unit("9223372036854775808"));
+  assert_false(util::parse_duration_with_unit("9223372036854775808"));
   // bad characters
-  assert_double(err, ==, util::parse_duration_with_unit("0u"));
-  assert_double(err, ==, util::parse_duration_with_unit("0xs"));
-  assert_double(err, ==, util::parse_duration_with_unit("0mt"));
-  assert_double(err, ==, util::parse_duration_with_unit("0mss"));
-  assert_double(err, ==, util::parse_duration_with_unit("s"));
-  assert_double(err, ==, util::parse_duration_with_unit("ms"));
+  assert_false(util::parse_duration_with_unit("0u"));
+  assert_false(util::parse_duration_with_unit("0xs"));
+  assert_false(util::parse_duration_with_unit("0mt"));
+  assert_false(util::parse_duration_with_unit("0mss"));
+  assert_false(util::parse_duration_with_unit("s"));
+  assert_false(util::parse_duration_with_unit("ms"));
 }
 
 void test_util_duration_str(void) {

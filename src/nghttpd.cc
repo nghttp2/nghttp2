@@ -246,11 +246,11 @@ int main(int argc, char **argv) {
       break;
     case 'b': {
       auto n = util::parse_uint(optarg);
-      if (n == -1) {
+      if (!n) {
         std::cerr << "-b: Bad option value: " << optarg << std::endl;
         exit(EXIT_FAILURE);
       }
-      config.padding = n;
+      config.padding = *n;
       break;
     }
     case 'd':
@@ -262,11 +262,11 @@ int main(int argc, char **argv) {
     case 'm': {
       // max-concurrent-streams option
       auto n = util::parse_uint(optarg);
-      if (n == -1) {
+      if (!n) {
         std::cerr << "-m: invalid argument: " << optarg << std::endl;
         exit(EXIT_FAILURE);
       }
-      config.max_concurrent_streams = n;
+      config.max_concurrent_streams = *n;
       break;
     }
     case 'n': {
@@ -275,11 +275,11 @@ int main(int argc, char **argv) {
                 << "no threads created." << std::endl;
 #else
       auto n = util::parse_uint(optarg);
-      if (n == -1) {
+      if (!n) {
         std::cerr << "-n: Bad option value: " << optarg << std::endl;
         exit(EXIT_FAILURE);
       }
-      config.num_worker = n;
+      config.num_worker = *n;
 #endif // NOTHREADS
       break;
     }
@@ -291,7 +291,7 @@ int main(int argc, char **argv) {
       break;
     case 'c': {
       auto n = util::parse_uint_with_unit(optarg);
-      if (n == -1) {
+      if (!n) {
         std::cerr << "-c: Bad option value: " << optarg << std::endl;
         exit(EXIT_FAILURE);
       }
@@ -300,7 +300,7 @@ int main(int argc, char **argv) {
                   << std::numeric_limits<uint32_t>::max() << std::endl;
         exit(EXIT_FAILURE);
       }
-      config.header_table_size = n;
+      config.header_table_size = *n;
       break;
     }
     case 'p':
@@ -311,7 +311,7 @@ int main(int argc, char **argv) {
     case 'w':
     case 'W': {
       auto n = util::parse_uint(optarg);
-      if (n == -1 || n > 30) {
+      if (!n || n > 30) {
         std::cerr << "-" << static_cast<char>(c)
                   << ": specify the integer in the range [0, 30], inclusive"
                   << std::endl;
@@ -319,9 +319,9 @@ int main(int argc, char **argv) {
       }
 
       if (c == 'w') {
-        config.window_bits = n;
+        config.window_bits = *n;
       } else {
-        config.connection_window_bits = n;
+        config.connection_window_bits = *n;
       }
 
       break;
@@ -395,7 +395,7 @@ int main(int argc, char **argv) {
       case 11: {
         // encoder-header-table-size option
         auto n = util::parse_uint_with_unit(optarg);
-        if (n == -1) {
+        if (!n) {
           std::cerr << "--encoder-header-table-size: Bad option value: "
                     << optarg << std::endl;
           exit(EXIT_FAILURE);
@@ -406,7 +406,7 @@ int main(int argc, char **argv) {
                     << std::numeric_limits<uint32_t>::max() << std::endl;
           exit(EXIT_FAILURE);
         }
-        config.encoder_header_table_size = n;
+        config.encoder_header_table_size = *n;
         break;
       }
       case 12:
@@ -432,11 +432,11 @@ int main(int argc, char **argv) {
   {
     auto portStr = argv[optind++];
     auto n = util::parse_uint(portStr);
-    if (n == -1 || n > std::numeric_limits<uint16_t>::max()) {
+    if (!n || n > std::numeric_limits<uint16_t>::max()) {
       std::cerr << "<PORT>: Bad value: " << portStr << std::endl;
       exit(EXIT_FAILURE);
     }
-    config.port = n;
+    config.port = *n;
   }
 
   if (!config.no_tls) {

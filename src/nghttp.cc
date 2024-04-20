@@ -2818,11 +2818,11 @@ int main(int argc, char **argv) {
     case 'M': {
       // peer-max-concurrent-streams option
       auto n = util::parse_uint(optarg);
-      if (n == -1) {
+      if (!n) {
         std::cerr << "-M: Bad option value: " << optarg << std::endl;
         exit(EXIT_FAILURE);
       }
-      config.peer_max_concurrent_streams = n;
+      config.peer_max_concurrent_streams = *n;
       break;
     }
     case 'O':
@@ -2833,11 +2833,11 @@ int main(int argc, char **argv) {
       exit(EXIT_SUCCESS);
     case 'b': {
       auto n = util::parse_uint(optarg);
-      if (n == -1) {
+      if (!n) {
         std::cerr << "-b: Bad option value: " << optarg << std::endl;
         exit(EXIT_FAILURE);
       }
-      config.padding = n;
+      config.padding = *n;
       break;
     }
     case 'n':
@@ -2845,13 +2845,13 @@ int main(int argc, char **argv) {
       break;
     case 'p': {
       auto n = util::parse_uint(optarg);
-      if (n == -1 || NGHTTP2_MIN_WEIGHT > n || n > NGHTTP2_MAX_WEIGHT) {
+      if (!n || NGHTTP2_MIN_WEIGHT > n || n > NGHTTP2_MAX_WEIGHT) {
         std::cerr << "-p: specify the integer in the range ["
                   << NGHTTP2_MIN_WEIGHT << ", " << NGHTTP2_MAX_WEIGHT
                   << "], inclusive" << std::endl;
         exit(EXIT_FAILURE);
       }
-      config.weight.push_back(n);
+      config.weight.push_back(*n);
       break;
     }
     case 'r':
@@ -2865,29 +2865,31 @@ int main(int argc, char **argv) {
     case 'v':
       ++config.verbose;
       break;
-    case 't':
-      config.timeout = util::parse_duration_with_unit(optarg);
-      if (config.timeout == std::numeric_limits<double>::infinity()) {
+    case 't': {
+      auto d = util::parse_duration_with_unit(optarg);
+      if (!d) {
         std::cerr << "-t: bad timeout value: " << optarg << std::endl;
         exit(EXIT_FAILURE);
       }
+      config.timeout = *d;
       break;
+    }
     case 'u':
       config.upgrade = true;
       break;
     case 'w':
     case 'W': {
       auto n = util::parse_uint(optarg);
-      if (n == -1 || n > 30) {
+      if (!n || n > 30) {
         std::cerr << "-" << static_cast<char>(c)
                   << ": specify the integer in the range [0, 30], inclusive"
                   << std::endl;
         exit(EXIT_FAILURE);
       }
       if (c == 'w') {
-        config.window_bits = n;
+        config.window_bits = *n;
       } else {
-        config.connection_window_bits = n;
+        config.connection_window_bits = *n;
       }
       break;
     }
@@ -2931,16 +2933,16 @@ int main(int argc, char **argv) {
       break;
     case 'm': {
       auto n = util::parse_uint(optarg);
-      if (n == -1) {
+      if (!n) {
         std::cerr << "-m: Bad option value: " << optarg << std::endl;
         exit(EXIT_FAILURE);
       }
-      config.multiply = n;
+      config.multiply = *n;
       break;
     }
     case 'c': {
       auto n = util::parse_uint_with_unit(optarg);
-      if (n == -1) {
+      if (!n) {
         std::cerr << "-c: Bad option value: " << optarg << std::endl;
         exit(EXIT_FAILURE);
       }
@@ -2949,8 +2951,8 @@ int main(int argc, char **argv) {
                   << std::numeric_limits<uint32_t>::max() << std::endl;
         exit(EXIT_FAILURE);
       }
-      config.header_table_size = n;
-      config.min_header_table_size = std::min(config.min_header_table_size, n);
+      config.header_table_size = *n;
+      config.min_header_table_size = std::min(config.min_header_table_size, *n);
       break;
     }
     case 'y':
@@ -3024,12 +3026,12 @@ int main(int argc, char **argv) {
       case 12: {
         // max-concurrent-streams option
         auto n = util::parse_uint(optarg);
-        if (n == -1) {
+        if (!n) {
           std::cerr << "--max-concurrent-streams: Bad option value: " << optarg
                     << std::endl;
           exit(EXIT_FAILURE);
         }
-        config.max_concurrent_streams = n;
+        config.max_concurrent_streams = *n;
         break;
       }
       case 13:
@@ -3039,7 +3041,7 @@ int main(int argc, char **argv) {
       case 14: {
         // encoder-header-table-size option
         auto n = util::parse_uint_with_unit(optarg);
-        if (n == -1) {
+        if (!n) {
           std::cerr << "--encoder-header-table-size: Bad option value: "
                     << optarg << std::endl;
           exit(EXIT_FAILURE);
@@ -3050,7 +3052,7 @@ int main(int argc, char **argv) {
                     << std::numeric_limits<uint32_t>::max() << std::endl;
           exit(EXIT_FAILURE);
         }
-        config.encoder_header_table_size = n;
+        config.encoder_header_table_size = *n;
         break;
       }
       case 15:

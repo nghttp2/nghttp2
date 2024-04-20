@@ -380,7 +380,7 @@ public:
   explicit StringRef(const std::string &s) : base(s.c_str()), len(s.size()) {}
   explicit StringRef(const ImmutableString &s)
       : base(s.c_str()), len(s.size()) {}
-  explicit StringRef(const char *s) : base(s), len(strlen(s)) {}
+  StringRef(const char *s) : base(s), len(strlen(s)) {}
   constexpr StringRef(const char *s, size_t n) : base(s), len(n) {}
   template <typename CharT>
   constexpr StringRef(const CharT *s, size_t n)
@@ -437,6 +437,12 @@ public:
   }
 
   constexpr operator std::string_view() const noexcept { return {base, len}; }
+
+  static constexpr size_type npos = size_type(-1);
+
+  constexpr StringRef substr(size_type pos = 0, size_type count = npos) const {
+    return {base + pos, std::min(count, len - pos)};
+  }
 
 private:
   const char *base;
