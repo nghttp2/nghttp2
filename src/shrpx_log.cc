@@ -569,7 +569,7 @@ StringRef construct_absolute_request_uri(BlockAllocator &balloc,
   p = std::copy(std::begin(req.path), std::end(req.path), p);
   *p = '\0';
 
-  return StringRef{std::begin(iov), p};
+  return StringRef{std::span{std::begin(iov), p}};
 }
 } // namespace
 

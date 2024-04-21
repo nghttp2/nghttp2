@@ -567,7 +567,7 @@ int HttpDownstreamConnection::push_request_headers() {
       auto p =
           base64::encode(std::begin(nonce), std::end(nonce), std::begin(iov));
       *p = '\0';
-      auto key = StringRef{std::begin(iov), p};
+      auto key = StringRef{std::span{std::begin(iov), p}};
       downstream_->set_ws_key(key);
 
       buf->append("Sec-Websocket-Key: ");

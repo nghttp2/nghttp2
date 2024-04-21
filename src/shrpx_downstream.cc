@@ -371,7 +371,7 @@ StringRef Downstream::assemble_request_cookie() {
     p -= 2;
   }
 
-  return StringRef{std::begin(iov), p};
+  return StringRef{std::span{std::begin(iov), p}};
 }
 
 uint32_t Downstream::find_affinity_cookie(const StringRef &name) {
@@ -478,7 +478,7 @@ StringRef alloc_header_name(BlockAllocator &balloc, const StringRef &name) {
   util::inp_strlower(std::begin(iov), p);
   *p = '\0';
 
-  return StringRef{std::begin(iov), p};
+  return StringRef{std::span{std::begin(iov), p}};
 }
 } // namespace
 

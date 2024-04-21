@@ -50,8 +50,7 @@ LogConfig::LogConfig()
       errorlog_tty(false) {
   auto tid = std::this_thread::get_id();
   auto tid_hash =
-      util::hash32(StringRef{reinterpret_cast<uint8_t *>(&tid),
-                             reinterpret_cast<uint8_t *>(&tid) + sizeof(tid)});
+      util::hash32(StringRef{reinterpret_cast<char *>(&tid), sizeof(tid)});
   thread_id = util::format_hex(std::span{&tid_hash, 1});
 }
 

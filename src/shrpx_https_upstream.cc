@@ -286,7 +286,7 @@ void rewrite_request_host_path_from_uri(BlockAllocator &balloc, Request &req,
     }
     *p = '\0';
 
-    req.authority = StringRef{std::begin(iovec), p};
+    req.authority = StringRef{std::span{std::begin(iovec), p}};
   } else {
     req.authority = authority;
   }
@@ -1074,7 +1074,7 @@ void HttpsUpstream::error_reply(unsigned int status_code) {
   output->append("\r\nServer: ");
   output->append(get_config()->http.server_name);
   output->append("\r\nContent-Length: ");
-  std::array<uint8_t, NGHTTP2_MAX_UINT64_DIGITS> intbuf;
+  std::array<char, NGHTTP2_MAX_UINT64_DIGITS> intbuf;
   output->append(StringRef{std::begin(intbuf),
                            util::utos(std::begin(intbuf), html.size())});
   output->append("\r\nDate: ");

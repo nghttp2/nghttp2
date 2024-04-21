@@ -213,7 +213,7 @@ int servername_callback(SSL *ssl, int *al, void *arg) {
     return SSL_TLSEXT_ERR_NOACK;
   }
 
-  std::array<uint8_t, NI_MAXHOST> buf;
+  std::array<char, NI_MAXHOST> buf;
 
   auto end_buf = std::copy_n(rawhost, len, std::begin(buf));
 
@@ -1924,7 +1924,7 @@ int check_cert(SSL *ssl, const DownstreamAddr *addr, const Address *raddr) {
 CertLookupTree::CertLookupTree() {}
 
 ssize_t CertLookupTree::add_cert(const StringRef &hostname, size_t idx) {
-  std::array<uint8_t, NI_MAXHOST> buf;
+  std::array<char, NI_MAXHOST> buf;
 
   // NI_MAXHOST includes terminal NULL byte
   if (hostname.empty() || hostname.size() + 1 > buf.size()) {
@@ -1976,7 +1976,7 @@ ssize_t CertLookupTree::add_cert(const StringRef &hostname, size_t idx) {
 }
 
 ssize_t CertLookupTree::lookup(const StringRef &hostname) {
-  std::array<uint8_t, NI_MAXHOST> buf;
+  std::array<char, NI_MAXHOST> buf;
 
   // NI_MAXHOST includes terminal NULL byte
   if (hostname.empty() || hostname.size() + 1 > buf.size()) {
@@ -2025,9 +2025,7 @@ ssize_t CertLookupTree::lookup(const StringRef &hostname) {
         continue;
       }
 
-      auto prefixlen =
-          wprefix.prefix.size() +
-          (reinterpret_cast<const uint8_t *>(&rev_host[0]) - &buf[0]);
+      auto prefixlen = wprefix.prefix.size() + (&rev_host[0] - &buf[0]);
 
       // Breaking a tie with longer suffix
       if (prefixlen < best_prefixlen) {
@@ -2050,7 +2048,7 @@ void CertLookupTree::dump() const {
 int cert_lookup_tree_add_ssl_ctx(
     CertLookupTree *lt, std::vector<std::vector<SSL_CTX *>> &indexed_ssl_ctx,
     SSL_CTX *ssl_ctx) {
-  std::array<uint8_t, NI_MAXHOST> buf;
+  std::array<char, NI_MAXHOST> buf;
 
   auto cert = SSL_CTX_get0_certificate(ssl_ctx);
   auto altnames = static_cast<GENERAL_NAMES *>(

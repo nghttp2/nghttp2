@@ -380,7 +380,7 @@ HeaderRefs::value_type parse_header(BlockAllocator &balloc,
   *p = '\0';
 
   auto nv =
-      HeaderRef(StringRef{std::begin(name_iov), p},
+      HeaderRef(StringRef{std::span{std::begin(name_iov), p}},
                 make_string_ref(balloc, StringRef{value, std::end(optarg)}));
 
   if (!nghttp2_check_header_name(nv.name.byte(), nv.name.size()) ||
@@ -784,7 +784,7 @@ std::vector<LogFragment> parse_log_format(BlockAllocator &balloc,
       std::transform(std::begin(iov), p, std::begin(iov),
                      [](auto c) { return c == '_' ? '-' : c; });
       *p = '\0';
-      res.emplace_back(type, StringRef{std::begin(iov), p});
+      res.emplace_back(type, StringRef{std::span{std::begin(iov), p}});
     }
   }
 
@@ -1235,7 +1235,7 @@ int parse_mapping(Config *config, DownstreamAddrConfig &addr,
       util::inp_strlower(std::begin(iov), p);
       *p++ = '/';
       *p = '\0';
-      pattern = StringRef{std::begin(iov), p};
+      pattern = StringRef{std::span{std::begin(iov), p}};
     } else {
       auto path = http2::normalize_path_colon(
           downstreamconf.balloc, StringRef{slash, std::end(raw_pattern)},
@@ -1247,7 +1247,7 @@ int parse_mapping(Config *config, DownstreamAddrConfig &addr,
       util::inp_strlower(std::begin(iov), p);
       p = std::copy(std::begin(path), std::end(path), p);
       *p = '\0';
-      pattern = StringRef{std::begin(iov), p};
+      pattern = StringRef{std::span{std::begin(iov), p}};
     }
     auto it = pattern_addr_indexer.find(pattern);
     if (it != std::end(pattern_addr_indexer)) {
@@ -1382,7 +1382,7 @@ int parse_mapping(Config *config, DownstreamAddrConfig &addr,
         auto p = std::reverse_copy(std::begin(host), std::end(host),
                                    std::begin(iov));
         *p = '\0';
-        auto rev_host = StringRef{std::begin(iov), p};
+        auto rev_host = StringRef{std::span{std::begin(iov), p}};
 
         rw_router.add_route(rev_host, wildcard_patterns.size() - 1);
       } else {

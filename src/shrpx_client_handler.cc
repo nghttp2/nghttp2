@@ -498,7 +498,7 @@ ClientHandler::ClientHandler(Worker *worker, int fd, SSL *ssl,
                                    worker_->get_randgen());
       *p = '\0';
 
-      forwarded_for_ = StringRef{std::begin(buf), p};
+      forwarded_for_ = StringRef{std::span{std::begin(buf), p}};
     } else {
       init_forwarded_for(family, ipaddr_);
     }
@@ -517,7 +517,7 @@ void ClientHandler::init_forwarded_for(int family, const StringRef &ipaddr) {
     *p++ = ']';
     *p = '\0';
 
-    forwarded_for_ = StringRef{std::begin(buf), p};
+    forwarded_for_ = StringRef{std::span{std::begin(buf), p}};
   } else {
     // family == AF_INET or family == AF_UNIX
     forwarded_for_ = ipaddr;
@@ -802,8 +802,7 @@ uint32_t ClientHandler::get_affinity_cookie(Downstream *downstream,
 
   auto d = std::uniform_int_distribution<uint32_t>(1);
   auto rh = d(worker_->get_randgen());
-  h = util::hash32(StringRef{reinterpret_cast<uint8_t *>(&rh),
-                             reinterpret_cast<uint8_t *>(&rh) + sizeof(rh)});
+  h = util::hash32(StringRef{reinterpret_cast<char *>(&rh), sizeof(rh)});
 
   downstream->renew_affinity_cookie(h);
 
@@ -963,8 +962,7 @@ DownstreamAddr *ClientHandler::get_downstream_addr_strict_affinity(
   } else {
     auto d = std::uniform_int_distribution<uint32_t>(1);
     auto rh = d(worker_->get_randgen());
-    h = util::hash32(StringRef{reinterpret_cast<uint8_t *>(&rh),
-                               reinterpret_cast<uint8_t *>(&rh) + sizeof(rh)});
+    h = util::hash32(StringRef{reinterpret_cast<char *>(&rh), sizeof(rh)});
   }
 
   // Client is not bound to a particular backend, or the bound backend
@@ -1482,9 +1480,10 @@ int ClientHandler::proxy_protocol_read() {
 
   rb_.drain(end + 2 - rb_.pos());
 
-  ipaddr_ =
-      make_string_ref(balloc_, StringRef{src_addr, src_addr + src_addrlen});
-  port_ = make_string_ref(balloc_, StringRef{src_port, src_port + src_portlen});
+  ipaddr_ = make_string_ref(
+      balloc_, StringRef{src_addr, static_cast<size_t>(src_addrlen)});
+  port_ = make_string_ref(
+      balloc_, StringRef{src_port, static_cast<size_t>(src_portlen)});
 
   if (LOG_ENABLED(INFO)) {
     CLOG(INFO, this) << "PROXY-protocol-v1: Finished, " << (rb_.pos() - first)

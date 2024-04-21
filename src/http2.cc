@@ -690,7 +690,7 @@ StringRef rewrite_location_uri(BlockAllocator &balloc, const StringRef &uri,
 
   *p = '\0';
 
-  return StringRef{std::begin(iov), p};
+  return StringRef{std::span{std::begin(iov), p}};
 }
 
 int parse_http_status_code(const StringRef &src) {
@@ -1672,7 +1672,7 @@ int construct_push_component(BlockAllocator &balloc, StringRef &scheme,
       }
       *p = '\0';
 
-      authority = StringRef{std::begin(iov), p};
+      authority = StringRef{std::span{std::begin(iov), p}};
     }
 
     if (u.field_set & (1 << UF_PATH)) {
@@ -1751,12 +1751,12 @@ StringRef path_join(BlockAllocator &balloc, const StringRef &base_path,
         p = std::copy(std::begin(base_query), std::end(base_query), p);
       }
       *p = '\0';
-      return StringRef{std::begin(res), p};
+      return StringRef{std::span{std::begin(res), p}};
     }
     *p++ = '?';
     p = std::copy(std::begin(rel_query), std::end(rel_query), p);
     *p = '\0';
-    return StringRef{std::begin(res), p};
+    return StringRef{std::span{std::begin(res), p}};
   }
 
   auto first = std::begin(rel_path);
@@ -1818,7 +1818,7 @@ StringRef path_join(BlockAllocator &balloc, const StringRef &base_path,
     p = std::copy(std::begin(rel_query), std::end(rel_query), p);
   }
   *p = '\0';
-  return StringRef{std::begin(res), p};
+  return StringRef{std::span{std::begin(res), p}};
 }
 
 StringRef normalize_path(BlockAllocator &balloc, const StringRef &path,
@@ -1865,7 +1865,7 @@ StringRef normalize_path(BlockAllocator &balloc, const StringRef &path,
   *p = '\0';
 
   return path_join(balloc, StringRef{}, StringRef{},
-                   StringRef{std::begin(result), p}, query);
+                   StringRef{std::span{std::begin(result), p}}, query);
 }
 
 StringRef normalize_path_colon(BlockAllocator &balloc, const StringRef &path,
@@ -1912,7 +1912,7 @@ StringRef normalize_path_colon(BlockAllocator &balloc, const StringRef &path,
   *p = '\0';
 
   return path_join(balloc, StringRef{}, StringRef{},
-                   StringRef{std::begin(result), p}, query);
+                   StringRef{std::span{std::begin(result), p}}, query);
 }
 
 std::string normalize_path(const StringRef &path, const StringRef &query) {
@@ -1942,7 +1942,7 @@ StringRef copy_lower(BlockAllocator &balloc, const StringRef &src) {
   p = std::copy(std::begin(src), std::end(src), p);
   *p = '\0';
   util::inp_strlower(std::begin(iov), p);
-  return StringRef{std::begin(iov), p};
+  return StringRef{std::span{std::begin(iov), p}};
 }
 
 bool contains_trailers(const StringRef &s) {
@@ -1977,12 +1977,13 @@ StringRef make_websocket_accept_token(uint8_t *dest, const StringRef &key) {
   std::copy_n(magic, str_size(magic), p);
 
   std::array<uint8_t, 20> h;
-  if (util::sha1(h.data(), StringRef{std::begin(s), std::end(s)}) != 0) {
+  if (util::sha1(h.data(), StringRef{std::span{std::begin(s), std::end(s)}}) !=
+      0) {
     return StringRef{};
   }
 
   auto end = base64::encode(std::begin(h), std::end(h), dest);
-  return StringRef{dest, end};
+  return StringRef{std::span{dest, end}};
 }
 
 bool legacy_http1(int major, int minor) {
