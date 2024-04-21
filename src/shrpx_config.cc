@@ -139,8 +139,8 @@ int split_host_port(char *host, size_t hostlen, uint16_t *port_ptr,
 
   auto portstr = StringRef{sep + 1, std::end(hostport)};
   auto d = util::parse_uint(portstr);
-  if (1 <= d && d <= std::numeric_limits<uint16_t>::max()) {
-    *port_ptr = d;
+  if (d && 1 <= d && d <= std::numeric_limits<uint16_t>::max()) {
+    *port_ptr = *d;
     return 0;
   }
 
@@ -394,12 +394,12 @@ HeaderRefs::value_type parse_header(BlockAllocator &balloc,
 template <typename T>
 int parse_uint(T *dest, const StringRef &opt, const StringRef &optarg) {
   auto val = util::parse_uint(optarg);
-  if (val == -1) {
+  if (!val) {
     LOG(ERROR) << opt << ": bad value.  Specify an integer >= 0.";
     return -1;
   }
 
-  *dest = val;
+  *dest = *val;
 
   return 0;
 }
@@ -409,20 +409,20 @@ template <typename T>
 int parse_uint_with_unit(T *dest, const StringRef &opt,
                          const StringRef &optarg) {
   auto n = util::parse_uint_with_unit(optarg);
-  if (n == -1) {
+  if (!n) {
     LOG(ERROR) << opt << ": bad value: '" << optarg << "'";
     return -1;
   }
 
   if (static_cast<uint64_t>(std::numeric_limits<T>::max()) <
-      static_cast<uint64_t>(n)) {
+      static_cast<uint64_t>(*n)) {
     LOG(ERROR) << opt
                << ": too large.  The value should be less than or equal to "
                << std::numeric_limits<T>::max();
     return -1;
   }
 
-  *dest = n;
+  *dest = *n;
 
   return 0;
 }
@@ -821,12 +821,12 @@ namespace {
 int parse_duration(ev_tstamp *dest, const StringRef &opt,
                    const StringRef &optarg) {
   auto t = util::parse_duration_with_unit(optarg);
-  if (t == std::numeric_limits<double>::infinity()) {
+  if (!t) {
     LOG(ERROR) << opt << ": bad value: '" << optarg << "'";
     return -1;
   }
 
-  *dest = t;
+  *dest = *t;
 
   return 0;
 }
@@ -972,11 +972,11 @@ namespace {
 int parse_downstream_param_duration(ev_tstamp &dest, const StringRef &name,
                                     const StringRef &value) {
   auto t = util::parse_duration_with_unit(value);
-  if (t == std::numeric_limits<double>::infinity()) {
+  if (!t) {
     LOG(ERROR) << "backend: " << name << ": bad value: '" << value << "'";
     return -1;
   }
-  dest = t;
+  dest = *t;
   return 0;
 }
 } // namespace
@@ -1016,12 +1016,12 @@ int parse_downstream_params(DownstreamParams &out,
       }
 
       auto n = util::parse_uint(valstr);
-      if (n == -1) {
+      if (!n) {
         LOG(ERROR) << "backend: fall: non-negative integer is expected";
         return -1;
       }
 
-      out.fall = n;
+      out.fall = *n;
     } else if (util::istarts_with_l(param, "rise=")) {
       auto valstr = StringRef{first + str_size("rise="), end};
       if (valstr.empty()) {
@@ -1030,12 +1030,12 @@ int parse_downstream_params(DownstreamParams &out,
       }
 
       auto n = util::parse_uint(valstr);
-      if (n == -1) {
+      if (!n) {
         LOG(ERROR) << "backend: rise: non-negative integer is expected";
         return -1;
       }
 
-      out.rise = n;
+      out.rise = *n;
     } else if (util::strieq_l("tls", param)) {
       out.tls = true;
     } else if (util::strieq_l("no-tls", param)) {
@@ -1122,12 +1122,12 @@ int parse_downstream_params(DownstreamParams &out,
       }
 
       auto n = util::parse_uint(valstr);
-      if (n < 1 || n > 256) {
+      if (!n || (n < 1 || n > 256)) {
         LOG(ERROR)
             << "backend: weight: non-negative integer [1, 256] is expected";
         return -1;
       }
-      out.weight = n;
+      out.weight = *n;
     } else if (util::istarts_with_l(param, "group=")) {
       auto valstr = StringRef{first + str_size("group="), end};
       if (valstr.empty()) {
@@ -1144,12 +1144,12 @@ int parse_downstream_params(DownstreamParams &out,
       }
 
       auto n = util::parse_uint(valstr);
-      if (n < 1 || n > 256) {
+      if (!n || (n < 1 || n > 256)) {
         LOG(ERROR) << "backend: group-weight: non-negative integer [1, 256] is "
                       "expected";
         return -1;
       }
-      out.group_weight = n;
+      out.group_weight = *n;
     } else if (util::strieq_l("dnf", param)) {
       out.dnf = true;
     } else if (!param.empty()) {
@@ -1449,12 +1449,12 @@ int parse_error_page(std::vector<ErrorPage> &error_pages, const StringRef &opt,
   } else {
     auto n = util::parse_uint(codestr);
 
-    if (n == -1 || n < 400 || n > 599) {
+    if (!n || n < 400 || n > 599) {
       LOG(ERROR) << opt << ": bad code: '" << codestr << "'";
       return -1;
     }
 
-    code = static_cast<unsigned int>(n);
+    code = static_cast<unsigned int>(*n);
   }
 
   auto path = StringRef{eq + 1, std::end(optarg)};
@@ -3978,7 +3978,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     return parse_tls_proto_version(config->tls.max_proto_version, opt, optarg);
   case SHRPX_OPTID_REDIRECT_HTTPS_PORT: {
     auto n = util::parse_uint(optarg);
-    if (n == -1 || n < 0 || n > 65535) {
+    if (!n || n < 0 || n > 65535) {
       LOG(ERROR) << opt
                  << ": bad value.  Specify an integer in the range [0, "
                     "65535], inclusive";

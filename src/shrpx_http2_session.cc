@@ -1171,7 +1171,8 @@ int on_response_headers(Http2Session *http2session, Downstream *downstream,
     auto content_length = resp.fs.header(http2::HD_CONTENT_LENGTH);
     if (content_length) {
       // libnghttp2 guarantees this can be parsed
-      resp.fs.content_length = util::parse_uint(content_length->value);
+      resp.fs.content_length =
+          util::parse_uint(content_length->value).value_or(-1);
     }
 
     if (resp.fs.content_length == -1 && downstream->expect_response_body()) {

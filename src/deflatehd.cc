@@ -403,21 +403,21 @@ int main(int argc, char **argv) {
     case 's': {
       // --table-size
       auto n = util::parse_uint(optarg);
-      if (n == -1) {
+      if (!n) {
         fprintf(stderr, "-s: Bad option value\n");
         exit(EXIT_FAILURE);
       }
-      config.table_size = n;
+      config.table_size = *n;
       break;
     }
     case 'S': {
       // --deflate-table-size
       auto n = util::parse_uint(optarg);
-      if (n == -1) {
+      if (!n) {
         fprintf(stderr, "-S: Bad option value\n");
         exit(EXIT_FAILURE);
       }
-      config.deflate_table_size = n;
+      config.deflate_table_size = *n;
       break;
     }
     case 'd':

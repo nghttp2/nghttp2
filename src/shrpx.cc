@@ -1109,9 +1109,8 @@ std::vector<InheritedAddr> get_inherited_addr_from_env(Config *config) {
       if (!endfd) {
         continue;
       }
-      auto fd = util::parse_uint(reinterpret_cast<const uint8_t *>(value),
-                                 endfd - value);
-      if (fd == -1) {
+      auto fd = util::parse_uint(StringRef{value, endfd});
+      if (!fd) {
         LOG(WARN) << "Could not parse file descriptor from "
                   << std::string(value, endfd - value);
         continue;
@@ -1119,26 +1118,26 @@ std::vector<InheritedAddr> get_inherited_addr_from_env(Config *config) {
 
       auto path = endfd + 1;
       if (strlen(path) == 0) {
-        LOG(WARN) << "Empty UNIX domain socket path (fd=" << fd << ")";
-        close(fd);
+        LOG(WARN) << "Empty UNIX domain socket path (fd=" << *fd << ")";
+        close(*fd);
         continue;
       }
 
       if (LOG_ENABLED(INFO)) {
-        LOG(INFO) << "Inherit UNIX domain socket fd=" << fd
+        LOG(INFO) << "Inherit UNIX domain socket fd=" << *fd
                   << ", path=" << path;
       }
 
       InheritedAddr addr{};
       addr.host = make_string_ref(config->balloc, StringRef{path});
       addr.host_unix = true;
-      addr.fd = static_cast<int>(fd);
+      addr.fd = static_cast<int>(*fd);
       iaddrs.push_back(std::move(addr));
     }
 
     if (type == StringRef::from_lit("tcp")) {
       auto fd = util::parse_uint(value);
-      if (fd == -1) {
+      if (!fd) {
         LOG(WARN) << "Could not parse file descriptor from " << value;
         continue;
       }
@@ -1146,11 +1145,11 @@ std::vector<InheritedAddr> get_inherited_addr_from_env(Config *config) {
       sockaddr_union su;
       socklen_t salen = sizeof(su);
 
-      if (getsockname(fd, &su.sa, &salen) != 0) {
+      if (getsockname(*fd, &su.sa, &salen) != 0) {
         auto error = errno;
-        LOG(WARN) << "getsockname() syscall failed (fd=" << fd
+        LOG(WARN) << "getsockname() syscall failed (fd=" << *fd
                   << "): " << xsi_strerror(error, errbuf.data(), errbuf.size());
-        close(fd);
+        close(*fd);
         continue;
       }
 
@@ -1164,7 +1163,7 @@ std::vector<InheritedAddr> get_inherited_addr_from_env(Config *config) {
         port = ntohs(su.in6.sin6_port);
         break;
       default:
-        close(fd);
+        close(*fd);
         continue;
       }
 
@@ -1172,21 +1171,21 @@ std::vector<InheritedAddr> get_inherited_addr_from_env(Config *config) {
       rv = getnameinfo(&su.sa, salen, host.data(), host.size(), nullptr, 0,
                        NI_NUMERICHOST);
       if (rv != 0) {
-        LOG(WARN) << "getnameinfo() failed (fd=" << fd
+        LOG(WARN) << "getnameinfo() failed (fd=" << *fd
                   << "): " << gai_strerror(rv);
-        close(fd);
+        close(*fd);
         continue;
       }
 
       if (LOG_ENABLED(INFO)) {
-        LOG(INFO) << "Inherit TCP socket fd=" << fd
+        LOG(INFO) << "Inherit TCP socket fd=" << *fd
                   << ", address=" << host.data() << ", port=" << port;
       }
 
       InheritedAddr addr{};
       addr.host = make_string_ref(config->balloc, StringRef{host.data()});
       addr.port = static_cast<uint16_t>(port);
-      addr.fd = static_cast<int>(fd);
+      addr.fd = static_cast<int>(*fd);
       iaddrs.push_back(std::move(addr));
       continue;
     }
@@ -1217,7 +1216,7 @@ pid_t get_orig_pid_from_env() {
   if (s == nullptr) {
     return -1;
   }
-  return util::parse_uint(s);
+  return util::parse_uint(s).value_or(-1);
 }
 } // namespace
 
@@ -1251,19 +1250,18 @@ get_inherited_quic_lingering_worker_process_from_env() {
       continue;
     }
 
-    auto fd =
-        util::parse_uint(reinterpret_cast<const uint8_t *>(env), end_fd - env);
-    if (fd == -1) {
+    auto fd = util::parse_uint(StringRef{env, end_fd});
+    if (!fd) {
       LOG(WARN) << "Could not parse file descriptor from "
                 << StringRef{env, static_cast<size_t>(end_fd - env)};
       continue;
     }
 
     if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "Inherit worker process QUIC IPC socket fd=" << fd;
+      LOG(INFO) << "Inherit worker process QUIC IPC socket fd=" << *fd;
     }
 
-    util::make_socket_closeonexec(fd);
+    util::make_socket_closeonexec(*fd);
 
     std::vector<WorkerID> worker_ids;
 
@@ -1294,7 +1292,7 @@ get_inherited_quic_lingering_worker_process_from_env() {
       p = end + 1;
     }
 
-    lwps.emplace_back(std::move(worker_ids), fd);
+    lwps.emplace_back(std::move(worker_ids), *fd);
   }
 
   if (!lwps.empty()) {

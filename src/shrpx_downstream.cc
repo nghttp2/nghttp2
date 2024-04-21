@@ -520,13 +520,13 @@ int FieldStore::parse_content_length() {
     }
 
     auto len = util::parse_uint(kv.value);
-    if (len == -1) {
+    if (!len) {
       return -1;
     }
     if (content_length != -1) {
       return -1;
     }
-    content_length = len;
+    content_length = *len;
   }
   return 0;
 }

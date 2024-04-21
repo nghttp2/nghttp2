@@ -343,7 +343,8 @@ int Http2Upstream::on_request_headers(Downstream *downstream,
   auto content_length = req.fs.header(http2::HD_CONTENT_LENGTH);
   if (content_length) {
     // libnghttp2 guarantees this can be parsed
-    req.fs.content_length = util::parse_uint(content_length->value);
+    req.fs.content_length =
+        util::parse_uint(content_length->value).value_or(-1);
   }
 
   // presence of mandatory header fields are guaranteed by libnghttp2.
