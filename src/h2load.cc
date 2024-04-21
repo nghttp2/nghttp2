@@ -2087,7 +2087,7 @@ benchmarking tool for HTTP/2 server)"
 } // namespace
 
 namespace {
-constexpr char DEFAULT_ALPN_LIST[] = "h2,h2-16,h2-14,http/1.1";
+constexpr auto DEFAULT_ALPN_LIST = "h2,h2-16,h2-14,http/1.1"_sr;
 } // namespace
 
 namespace {
@@ -2482,8 +2482,7 @@ int main(int argc, char **argv) {
       break;
     case 'p': {
       auto proto = StringRef{optarg};
-      if (util::strieq(StringRef::from_lit(NGHTTP2_CLEARTEXT_PROTO_VERSION_ID),
-                       proto)) {
+      if (util::strieq(NGHTTP2_CLEARTEXT_PROTO_VERSION_ID ""_sr, proto)) {
         config.no_tls_proto = Config::PROTO_HTTP2;
       } else if (util::strieq(NGHTTP2_H1_1, proto)) {
         config.no_tls_proto = Config::PROTO_HTTP1_1;
@@ -2608,8 +2607,7 @@ int main(int argc, char **argv) {
       }
       case 6:
         // --h1
-        config.alpn_list =
-            util::parse_config_str_list(StringRef::from_lit("http/1.1"));
+        config.alpn_list = util::parse_config_str_list("http/1.1"_sr);
         config.no_tls_proto = Config::PROTO_HTTP1_1;
         break;
       case 7:
@@ -2735,8 +2733,7 @@ int main(int argc, char **argv) {
   }
 
   if (config.alpn_list.empty()) {
-    config.alpn_list =
-        util::parse_config_str_list(StringRef::from_lit(DEFAULT_ALPN_LIST));
+    config.alpn_list = util::parse_config_str_list(DEFAULT_ALPN_LIST);
   }
 
   // serialize the APLN tokens
@@ -3078,8 +3075,8 @@ int main(int argc, char **argv) {
     }
 
     if (!content_length_str.empty()) {
-      nva.push_back(http2::make_nv(StringRef::from_lit("content-length"),
-                                   StringRef{content_length_str}));
+      nva.push_back(
+          http2::make_nv("content-length"_sr, StringRef{content_length_str}));
     }
 
     config.nva.push_back(std::move(nva));

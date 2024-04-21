@@ -380,6 +380,8 @@ public:
   constexpr StringRef(std::nullptr_t) = delete;
   constexpr explicit StringRef(const std::string &s)
       : base(s.c_str()), len(s.size()) {}
+  constexpr explicit StringRef(const std::string_view &s)
+      : base(s.data()), len(s.size()) {}
   constexpr explicit StringRef(const ImmutableString &s)
       : base(s.c_str()), len(s.size()) {}
   constexpr StringRef(const char *s) : base(s), len(traits_type::length(s)) {}
@@ -395,9 +397,6 @@ public:
       : base(s.data()), len(s.size_bytes()) {}
   explicit StringRef(std::span<const uint8_t> s)
       : base(reinterpret_cast<const char *>(s.data())), len(s.size_bytes()) {}
-  template <size_t N> static constexpr StringRef from_lit(const char (&s)[N]) {
-    return StringRef{s, N - 1};
-  }
   static constexpr StringRef from_maybe_nullptr(const char *s) noexcept {
     if (s == nullptr) {
       return StringRef();
@@ -497,6 +496,10 @@ inline std::ostream &operator<<(std::ostream &o, const StringRef &s) {
 inline std::string &operator+=(std::string &lhs, const StringRef &rhs) {
   lhs.append(rhs.data(), rhs.size());
   return lhs;
+}
+
+constexpr StringRef operator""_sr(const char *str, size_t len) noexcept {
+  return {str, len};
 }
 
 template <typename T, std::size_t N>

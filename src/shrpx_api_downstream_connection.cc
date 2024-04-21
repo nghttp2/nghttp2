@@ -40,14 +40,14 @@ namespace shrpx {
 
 namespace {
 const auto backendconfig_endpoint = APIEndpoint{
-    StringRef::from_lit("/api/v1beta1/backendconfig"),
+    "/api/v1beta1/backendconfig"_sr,
     true,
     (1 << API_METHOD_POST) | (1 << API_METHOD_PUT),
     &APIDownstreamConnection::handle_backendconfig,
 };
 
 const auto configrevision_endpoint = APIEndpoint{
-    StringRef::from_lit("/api/v1beta1/configrevision"),
+    "/api/v1beta1/configrevision"_sr,
     true,
     (1 << API_METHOD_GET),
     &APIDownstreamConnection::handle_configrevision,
@@ -57,9 +57,9 @@ const auto configrevision_endpoint = APIEndpoint{
 namespace {
 // The method string.  This must be same order of APIMethod.
 constexpr StringRef API_METHOD_STRING[] = {
-    StringRef::from_lit("GET"),
-    StringRef::from_lit("POST"),
-    StringRef::from_lit("PUT"),
+    "GET"_sr,
+    "POST"_sr,
+    "PUT"_sr,
 };
 } // namespace
 
@@ -106,18 +106,18 @@ int APIDownstreamConnection::send_reply(unsigned int http_status,
 
   switch (api_status) {
   case APIStatusCode::SUCCESS:
-    api_status_str = StringRef::from_lit("Success");
+    api_status_str = "Success"_sr;
     break;
   case APIStatusCode::FAILURE:
-    api_status_str = StringRef::from_lit("Failure");
+    api_status_str = "Failure"_sr;
     break;
   default:
     assert(0);
   }
 
-  constexpr auto M1 = StringRef::from_lit("{\"status\":\"");
-  constexpr auto M2 = StringRef::from_lit("\",\"code\":");
-  constexpr auto M3 = StringRef::from_lit("}");
+  constexpr auto M1 = "{\"status\":\""_sr;
+  constexpr auto M2 = "\",\"code\":"_sr;
+  constexpr auto M3 = "}"_sr;
 
   // 3 is the number of digits in http_status, assuming it is 3 digits
   // number.
@@ -138,15 +138,14 @@ int APIDownstreamConnection::send_reply(unsigned int http_status,
 
   auto content_length = util::make_string_ref_uint(balloc, buf.size());
 
-  resp.fs.add_header_token(StringRef::from_lit("content-length"),
-                           content_length, false, http2::HD_CONTENT_LENGTH);
+  resp.fs.add_header_token("content-length"_sr, content_length, false,
+                           http2::HD_CONTENT_LENGTH);
 
   switch (http_status) {
   case 400:
   case 405:
   case 413:
-    resp.fs.add_header_token(StringRef::from_lit("connection"),
-                             StringRef::from_lit("close"), false,
+    resp.fs.add_header_token("connection"_sr, "close"_sr, false,
                              http2::HD_CONNECTION);
     break;
   }
@@ -289,8 +288,8 @@ int APIDownstreamConnection::error_method_not_allowed() {
   p -= 2;
   *p = '\0';
 
-  resp.fs.add_header_token(StringRef::from_lit("allow"),
-                           StringRef{std::span{std::begin(iov), p}}, false, -1);
+  resp.fs.add_header_token("allow"_sr, StringRef{std::span{std::begin(iov), p}},
+                           false, -1);
   return send_reply(405, APIStatusCode::FAILURE);
 }
 
@@ -436,9 +435,8 @@ int APIDownstreamConnection::handle_configrevision() {
   //     "configRevision": N
   //   }
   auto data = concat_string_ref(
-      balloc, StringRef::from_lit(R"(,"data":{"configRevision":)"),
-      util::make_string_ref_uint(balloc, config->config_revision),
-      StringRef::from_lit("}"));
+      balloc, R"(,"data":{"configRevision":)"_sr,
+      util::make_string_ref_uint(balloc, config->config_revision), "}"_sr);
 
   send_reply(200, APIStatusCode::SUCCESS, data);
 

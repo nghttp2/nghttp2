@@ -891,8 +891,7 @@ void Downstream::inspect_http1_request() {
 
   auto expect = req_.fs.header(http2::HD_EXPECT);
   expect_100_continue_ =
-      expect &&
-      util::strieq(expect->value, StringRef::from_lit("100-continue"));
+      expect && util::strieq(expect->value, "100-continue"_sr);
 }
 
 void Downstream::inspect_http1_response() {

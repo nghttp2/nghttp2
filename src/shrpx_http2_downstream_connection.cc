@@ -377,8 +377,7 @@ int Http2DownstreamConnection::push_request_headers() {
         if (value.empty()) {
           value = fwd->value;
         } else {
-          value = concat_string_ref(balloc, fwd->value,
-                                    StringRef::from_lit(", "), value);
+          value = concat_string_ref(balloc, fwd->value, ", "_sr, value);
         }
       }
 
@@ -395,8 +394,7 @@ int Http2DownstreamConnection::push_request_headers() {
     StringRef xff_value;
     const auto &addr = upstream->get_client_handler()->get_ipaddr();
     if (xff) {
-      xff_value = concat_string_ref(balloc, xff->value,
-                                    StringRef::from_lit(", "), addr);
+      xff_value = concat_string_ref(balloc, xff->value, ", "_sr, addr);
     } else {
       xff_value = addr;
     }
@@ -414,8 +412,7 @@ int Http2DownstreamConnection::push_request_headers() {
       StringRef xfp_value;
       // We use same protocol with :scheme header field
       if (xfp) {
-        xfp_value = concat_string_ref(balloc, xfp->value,
-                                      StringRef::from_lit(", "), req.scheme);
+        xfp_value = concat_string_ref(balloc, xfp->value, ", "_sr, req.scheme);
       } else {
         xfp_value = req.scheme;
       }
