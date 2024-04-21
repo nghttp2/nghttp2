@@ -220,7 +220,7 @@ StringRef format_hex(BlockAllocator &balloc, std::span<T, N> s) {
 // decode_hex decodes hex string |s|, returns the decoded byte string.
 // This function assumes |s| is hex string, that is is_hex_string(s)
 // == true.
-StringRef decode_hex(BlockAllocator &balloc, const StringRef &s);
+std::span<const uint8_t> decode_hex(BlockAllocator &balloc, const StringRef &s);
 
 template <typename OutputIt>
 OutputIt decode_hex(OutputIt d_first, const StringRef &s) {

@@ -36,6 +36,7 @@
 #include "template.h"
 
 using namespace nghttp2;
+using namespace std::literals;
 
 namespace shrpx {
 
@@ -723,9 +724,9 @@ void test_util_is_hex_string(void) {
 void test_util_decode_hex(void) {
   BlockAllocator balloc(4096, 4096);
 
-  assert_stdstring_equal(
-      "\x0f\xf0", util::decode_hex(balloc, StringRef::from_lit("0ff0")).str());
-  assert_stdstring_equal("", util::decode_hex(balloc, StringRef{}).str());
+  assert_stdsv_equal("\x0f\xf0"sv, StringRef{util::decode_hex(
+                                       balloc, StringRef::from_lit("0ff0"))});
+  assert_stdsv_equal(""sv, StringRef{util::decode_hex(balloc, StringRef{})});
 }
 
 void test_util_extract_host(void) {
