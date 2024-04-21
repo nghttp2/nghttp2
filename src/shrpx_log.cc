@@ -173,11 +173,10 @@ Log::~Log() {
   if (errorconf.syslog) {
     if (severity_ == NOTICE) {
       syslog(severity_to_syslog_level(severity_), "[%s] %.*s",
-             SEVERITY_STR[severity_].c_str(), static_cast<int>(rleft()),
-             begin_);
+             SEVERITY_STR[severity_].data(), static_cast<int>(rleft()), begin_);
     } else {
       syslog(severity_to_syslog_level(severity_), "[%s] %.*s (%s:%d)",
-             SEVERITY_STR[severity_].c_str(), static_cast<int>(rleft()), begin_,
+             SEVERITY_STR[severity_].data(), static_cast<int>(rleft()), begin_,
              filename_, linenum_);
     }
 
@@ -192,10 +191,10 @@ Log::~Log() {
   // Error log format: <datetime> <main-pid> <current-pid>
   // <thread-id> <level> (<filename>:<line>) <msg>
   rv = snprintf(buf, sizeof(buf), "%s %d %d %s %s%s%s (%s:%d) %.*s\n",
-                lgconf->tstamp->time_iso8601.c_str(), config->pid, lgconf->pid,
+                lgconf->tstamp->time_iso8601.data(), config->pid, lgconf->pid,
                 lgconf->thread_id.c_str(), tty ? SEVERITY_COLOR[severity_] : "",
-                SEVERITY_STR[severity_].c_str(), tty ? "\033[0m" : "",
-                filename_, linenum_, static_cast<int>(rleft()), begin_);
+                SEVERITY_STR[severity_].data(), tty ? "\033[0m" : "", filename_,
+                linenum_, static_cast<int>(rleft()), begin_);
 
   if (rv < 0) {
     return;
@@ -380,7 +379,7 @@ namespace {
 template <typename OutputIterator>
 std::pair<OutputIterator, OutputIterator>
 copy(const StringRef &src, OutputIterator d_first, OutputIterator d_last) {
-  return copy(src.c_str(), src.size(), d_first, d_last);
+  return copy(src.data(), src.size(), d_first, d_last);
 }
 } // namespace
 
@@ -531,7 +530,7 @@ template <typename OutputIterator>
 std::pair<OutputIterator, OutputIterator> copy_escape(const StringRef &src,
                                                       OutputIterator d_first,
                                                       OutputIterator d_last) {
-  return copy_escape(src.c_str(), src.size(), d_first, d_last);
+  return copy_escape(src.data(), src.size(), d_first, d_last);
 }
 } // namespace
 
@@ -880,7 +879,7 @@ int reopen_log_files(const LoggingConfig &loggingconf) {
   auto &errorconf = loggingconf.error;
 
   if (!accessconf.syslog && !accessconf.file.empty()) {
-    new_accesslog_fd = open_log_file(accessconf.file.c_str());
+    new_accesslog_fd = open_log_file(accessconf.file.data());
 
     if (new_accesslog_fd == -1) {
       LOG(ERROR) << "Failed to open accesslog file " << accessconf.file;
@@ -889,7 +888,7 @@ int reopen_log_files(const LoggingConfig &loggingconf) {
   }
 
   if (!errorconf.syslog && !errorconf.file.empty()) {
-    new_errorlog_fd = open_log_file(errorconf.file.c_str());
+    new_errorlog_fd = open_log_file(errorconf.file.data());
 
     if (new_errorlog_fd == -1) {
       if (lgconf->errorlog_fd != -1) {

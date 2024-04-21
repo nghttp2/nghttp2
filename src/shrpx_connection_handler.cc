@@ -647,7 +647,7 @@ int ConnectionHandler::start_ocsp_update(const char *cert_file) {
 
   char *const argv[] = {
       const_cast<char *>(
-          get_config()->tls.ocsp.fetch_ocsp_response_file.c_str()),
+          get_config()->tls.ocsp.fetch_ocsp_response_file.data()),
       const_cast<char *>(cert_file), nullptr};
 
   Process proc;

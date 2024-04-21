@@ -391,7 +391,7 @@ int APIDownstreamConnection::handle_backendconfig() {
     auto opt = StringRef{std::span{first, eq}};
     auto optval = StringRef{std::span{eq + 1, eol}};
 
-    auto optid = option_lookup_token(opt.c_str(), opt.size());
+    auto optid = option_lookup_token(opt.data(), opt.size());
 
     switch (optid) {
     case SHRPX_OPTID_BACKEND:

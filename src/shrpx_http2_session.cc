@@ -468,11 +468,11 @@ int Http2Session::initiate_connection() {
         auto sni_name =
             addr_->sni.empty() ? StringRef{addr_->host} : StringRef{addr_->sni};
 
-        if (!util::numeric_host(sni_name.c_str())) {
+        if (!util::numeric_host(sni_name.data())) {
           // TLS extensions: SNI. There is no documentation about the return
           // code for this function (actually this is macro wrapping SSL_ctrl
           // at the time of this writing).
-          SSL_set_tlsext_host_name(conn_.tls.ssl, sni_name.c_str());
+          SSL_set_tlsext_host_name(conn_.tls.ssl, sni_name.data());
         }
 
         auto tls_session = tls::reuse_tls_session(addr_->tls_session_cache);
@@ -693,7 +693,7 @@ int Http2Session::downstream_connect_proxy() {
   }
 
   std::string req = "CONNECT ";
-  req.append(addr_->hostport.c_str(), addr_->hostport.size());
+  req.append(addr_->hostport.data(), addr_->hostport.size());
   if (addr_->port == 80 || addr_->port == 443) {
     req += ':';
     req += util::utos(addr_->port);

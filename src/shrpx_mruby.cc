@@ -144,7 +144,7 @@ RProc *compile(mrb_state *mrb, const StringRef &filename) {
     return nullptr;
   }
 
-  auto infile = fopen(filename.c_str(), "rb");
+  auto infile = fopen(filename.data(), "rb");
   if (infile == nullptr) {
     LOG(ERROR) << "Could not open mruby file " << filename;
     return nullptr;

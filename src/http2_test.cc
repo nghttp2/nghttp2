@@ -76,8 +76,8 @@ namespace {
 void check_nv(const HeaderRef &a, const nghttp2_nv *b) {
   assert_size(a.name.size(), ==, b->namelen);
   assert_size(a.value.size(), ==, b->valuelen);
-  assert_memory_equal(b->namelen, a.name.c_str(), b->name);
-  assert_memory_equal(b->valuelen, a.value.c_str(), b->value);
+  assert_memory_equal(b->namelen, a.name.data(), b->name);
+  assert_memory_equal(b->valuelen, a.value.data(), b->value);
 }
 } // namespace
 

@@ -199,7 +199,7 @@ template <typename Memchunk> struct Memchunks {
     return append(s, N - 1);
   }
   size_t append(const std::string &s) { return append(s.c_str(), s.size()); }
-  size_t append(const StringRef &s) { return append(s.c_str(), s.size()); }
+  size_t append(const StringRef &s) { return append(s.data(), s.size()); }
   size_t append(const ImmutableString &s) {
     return append(s.c_str(), s.size());
   }

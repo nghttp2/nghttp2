@@ -465,13 +465,13 @@ time_t parse_http_date(const StringRef &s) {
   tm tm{};
 #ifdef _WIN32
   // there is no strptime - use std::get_time
-  std::stringstream sstr(s.str());
+  std::stringstream sstr(s.data());
   sstr >> std::get_time(&tm, "%a, %d %b %Y %H:%M:%S GMT");
   if (sstr.fail()) {
     return 0;
   }
 #else  // !_WIN32
-  char *r = strptime(s.c_str(), "%a, %d %b %Y %H:%M:%S GMT", &tm);
+  char *r = strptime(s.data(), "%a, %d %b %Y %H:%M:%S GMT", &tm);
   if (r == 0) {
     return 0;
   }
@@ -481,7 +481,7 @@ time_t parse_http_date(const StringRef &s) {
 
 time_t parse_openssl_asn1_time_print(const StringRef &s) {
   tm tm{};
-  auto r = strptime(s.c_str(), "%b %d %H:%M:%S %Y GMT", &tm);
+  auto r = strptime(s.data(), "%b %d %H:%M:%S %Y GMT", &tm);
   if (r == nullptr) {
     return 0;
   }
@@ -1650,7 +1650,7 @@ int message_digest(uint8_t *res, const EVP_MD *meth, const StringRef &s) {
     return -1;
   }
 
-  rv = EVP_DigestUpdate(ctx, s.c_str(), s.size());
+  rv = EVP_DigestUpdate(ctx, s.data(), s.size());
   if (rv != 1) {
     return -1;
   }
@@ -1806,7 +1806,7 @@ StringRef rstrip(BlockAllocator &balloc, const StringRef &s) {
     return s;
   }
 
-  return make_string_ref(balloc, StringRef{s.c_str(), s.size() - len});
+  return make_string_ref(balloc, StringRef{s.data(), s.size() - len});
 }
 
 #ifdef ENABLE_HTTP3

@@ -429,7 +429,7 @@ public:
     return const_reverse_iterator{base};
   }
 
-  constexpr const char *c_str() const noexcept { return base; }
+  constexpr const_pointer data() const noexcept { return base; }
   constexpr size_type size() const noexcept { return len; }
   [[nodiscard]] constexpr bool empty() const noexcept { return len == 0; }
   constexpr const_reference operator[](size_type pos) const {
@@ -492,11 +492,11 @@ inline constexpr bool operator<(const StringRef &lhs,
 #endif // __APPLE__
 
 inline std::ostream &operator<<(std::ostream &o, const StringRef &s) {
-  return o.write(s.c_str(), s.size());
+  return o.write(s.data(), s.size());
 }
 
 inline std::string &operator+=(std::string &lhs, const StringRef &rhs) {
-  lhs.append(rhs.c_str(), rhs.size());
+  lhs.append(rhs.data(), rhs.size());
   return lhs;
 }
 

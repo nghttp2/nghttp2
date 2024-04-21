@@ -258,7 +258,7 @@ void rewrite_request_host_path_from_uri(BlockAllocator &balloc, Request &req,
 
   // As per https://tools.ietf.org/html/rfc7230#section-5.4, we
   // rewrite host header field with authority component.
-  auto authority = util::get_uri_field(uri.c_str(), u, UF_HOST);
+  auto authority = util::get_uri_field(uri.data(), u, UF_HOST);
   // TODO properly check IPv6 numeric address
   auto ipv6 = std::find(std::begin(authority), std::end(authority), ':') !=
               std::end(authority);
@@ -291,11 +291,11 @@ void rewrite_request_host_path_from_uri(BlockAllocator &balloc, Request &req,
     req.authority = authority;
   }
 
-  req.scheme = util::get_uri_field(uri.c_str(), u, UF_SCHEMA);
+  req.scheme = util::get_uri_field(uri.data(), u, UF_SCHEMA);
 
   StringRef path;
   if (u.field_set & (1 << UF_PATH)) {
-    path = util::get_uri_field(uri.c_str(), u, UF_PATH);
+    path = util::get_uri_field(uri.data(), u, UF_PATH);
   } else if (req.method == HTTP_OPTIONS) {
     // Server-wide OPTIONS takes following form in proxy request:
     //
@@ -314,7 +314,7 @@ void rewrite_request_host_path_from_uri(BlockAllocator &balloc, Request &req,
     auto &fdata = u.field_data[UF_QUERY];
 
     if (u.field_set & (1 << UF_PATH)) {
-      auto q = util::get_uri_field(uri.c_str(), u, UF_QUERY);
+      auto q = util::get_uri_field(uri.data(), u, UF_QUERY);
       path = StringRef{std::begin(path), std::end(q)};
     } else {
       path = concat_string_ref(balloc, path, StringRef::from_lit("?"),
@@ -431,7 +431,7 @@ int htp_hdrs_completecb(llhttp_t *htp) {
 
   if (method != HTTP_CONNECT) {
     http_parser_url u{};
-    rv = http_parser_parse_url(req.path.c_str(), req.path.size(), 0, &u);
+    rv = http_parser_parse_url(req.path.data(), req.path.size(), 0, &u);
     if (rv != 0) {
       // Expect to respond with 400 bad request
       return -1;

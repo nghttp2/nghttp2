@@ -178,7 +178,7 @@ int DNSResolver::resolve(const StringRef &name, int family) {
   ares_addrinfo_hints hints{};
   hints.ai_family = family_;
 
-  ares_getaddrinfo(channel_, name_.c_str(), nullptr, &hints, addrinfo_cb, this);
+  ares_getaddrinfo(channel_, name_.data(), nullptr, &hints, addrinfo_cb, this);
   reset_timeout();
 
   return 0;

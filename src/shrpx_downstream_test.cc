@@ -54,18 +54,18 @@ void test_downstream_field_store_append_last_header(void) {
   FieldStore fs(balloc, 0);
   fs.alloc_add_header_name(StringRef::from_lit("alpha"));
   auto bravo = StringRef::from_lit("BRAVO");
-  fs.append_last_header_key(bravo.c_str(), bravo.size());
+  fs.append_last_header_key(bravo.data(), bravo.size());
   // Add more characters so that relloc occurs
   auto golf = StringRef::from_lit("golF0123456789");
-  fs.append_last_header_key(golf.c_str(), golf.size());
+  fs.append_last_header_key(golf.data(), golf.size());
 
   auto charlie = StringRef::from_lit("Charlie");
-  fs.append_last_header_value(charlie.c_str(), charlie.size());
+  fs.append_last_header_value(charlie.data(), charlie.size());
   auto delta = StringRef::from_lit("deltA");
-  fs.append_last_header_value(delta.c_str(), delta.size());
+  fs.append_last_header_value(delta.data(), delta.size());
   // Add more characters so that relloc occurs
   auto echo = StringRef::from_lit("echo0123456789");
-  fs.append_last_header_value(echo.c_str(), echo.size());
+  fs.append_last_header_value(echo.data(), echo.size());
 
   fs.add_header_token(StringRef::from_lit("echo"),
                       StringRef::from_lit("foxtrot"), false, -1);

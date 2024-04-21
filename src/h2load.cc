@@ -1883,14 +1883,14 @@ constexpr char UNIX_PATH_PREFIX[] = "unix:";
 namespace {
 bool parse_base_uri(const StringRef &base_uri) {
   http_parser_url u{};
-  if (http_parser_parse_url(base_uri.c_str(), base_uri.size(), 0, &u) != 0 ||
+  if (http_parser_parse_url(base_uri.data(), base_uri.size(), 0, &u) != 0 ||
       !util::has_uri_field(u, UF_SCHEMA) || !util::has_uri_field(u, UF_HOST)) {
     return false;
   }
 
-  config.scheme = util::get_uri_field(base_uri.c_str(), u, UF_SCHEMA).str();
-  config.host = util::get_uri_field(base_uri.c_str(), u, UF_HOST).str();
-  config.default_port = util::get_default_port(base_uri.c_str(), u);
+  config.scheme = util::get_uri_field(base_uri.data(), u, UF_SCHEMA).str();
+  config.host = util::get_uri_field(base_uri.data(), u, UF_HOST).str();
+  config.default_port = util::get_default_port(base_uri.data(), u);
   if (util::has_uri_field(u, UF_PORT)) {
     config.port = u.port;
   } else {

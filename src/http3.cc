@@ -49,7 +49,7 @@ nghttp3_nv make_nv_internal(const StringRef &name, const StringRef &value,
   flags = nv_flags |
           (never_index ? NGHTTP3_NV_FLAG_NEVER_INDEX : NGHTTP3_NV_FLAG_NONE);
 
-  return {(uint8_t *)name.c_str(), (uint8_t *)value.c_str(), name.size(),
+  return {(uint8_t *)name.data(), (uint8_t *)value.data(), name.size(),
           value.size(), flags};
 }
 } // namespace

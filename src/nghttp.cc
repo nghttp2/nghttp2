@@ -270,7 +270,7 @@ std::string decode_host(const StringRef &host) {
   }
   // case: ::1%
   if (zone_start + 1 == std::end(host)) {
-    return StringRef{host.c_str(), host.size() - 1}.str();
+    return StringRef{host.data(), host.size() - 1}.str();
   }
   // case: ::1%12 or ::1%1
   if (zone_start + 3 >= std::end(host)) {
@@ -1435,7 +1435,7 @@ void HttpClient::update_hostport() {
         util::get_uri_field(reqvec[0]->uri.c_str(), reqvec[0]->u, UF_HOST);
     auto end = std::find(std::begin(host), std::end(host), '%');
     ss << "[";
-    ss.write(host.c_str(), end - std::begin(host));
+    ss.write(host.data(), end - std::begin(host));
     ss << "]";
   } else {
     util::write_uri_field(ss, reqvec[0]->uri.c_str(), reqvec[0]->u, UF_HOST);
