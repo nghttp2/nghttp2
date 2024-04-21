@@ -64,37 +64,28 @@ void test_shrpx_http_create_forwarded(void) {
       http::create_forwarded(
           balloc,
           FORWARDED_BY | FORWARDED_FOR | FORWARDED_HOST | FORWARDED_PROTO,
-          StringRef::from_lit("example.com:3000"), StringRef::from_lit("[::1]"),
-          StringRef::from_lit("www.example.com"),
-          StringRef::from_lit("https")));
+          "example.com:3000"_sr, "[::1]"_sr, "www.example.com"_sr, "https"_sr));
 
   assert_stdsv_equal("for=192.168.0.1"sv,
-                     http::create_forwarded(balloc, FORWARDED_FOR,
-                                            StringRef::from_lit("alpha"),
-                                            StringRef::from_lit("192.168.0.1"),
-                                            StringRef::from_lit("bravo"),
-                                            StringRef::from_lit("charlie")));
+                     http::create_forwarded(balloc, FORWARDED_FOR, "alpha"_sr,
+                                            "192.168.0.1"_sr, "bravo"_sr,
+                                            "charlie"_sr));
 
   assert_stdsv_equal(
       "by=_hidden;for=\"[::1]\""sv,
-      http::create_forwarded(balloc, FORWARDED_BY | FORWARDED_FOR,
-                             StringRef::from_lit("_hidden"),
-                             StringRef::from_lit("[::1]"),
-                             StringRef::from_lit(""), StringRef::from_lit("")));
+      http::create_forwarded(balloc, FORWARDED_BY | FORWARDED_FOR, "_hidden"_sr,
+                             "[::1]"_sr, ""_sr, ""_sr));
 
   assert_stdsv_equal(
       "by=\"[::1]\";for=_hidden"sv,
-      http::create_forwarded(balloc, FORWARDED_BY | FORWARDED_FOR,
-                             StringRef::from_lit("[::1]"),
-                             StringRef::from_lit("_hidden"),
-                             StringRef::from_lit(""), StringRef::from_lit("")));
+      http::create_forwarded(balloc, FORWARDED_BY | FORWARDED_FOR, "[::1]"_sr,
+                             "_hidden"_sr, ""_sr, ""_sr));
 
-  assert_stdsv_equal(
-      ""sv, http::create_forwarded(
-                balloc,
-                FORWARDED_BY | FORWARDED_FOR | FORWARDED_HOST | FORWARDED_PROTO,
-                StringRef::from_lit(""), StringRef::from_lit(""),
-                StringRef::from_lit(""), StringRef::from_lit("")));
+  assert_stdsv_equal(""sv, http::create_forwarded(balloc,
+                                                  FORWARDED_BY | FORWARDED_FOR |
+                                                      FORWARDED_HOST |
+                                                      FORWARDED_PROTO,
+                                                  ""_sr, ""_sr, ""_sr, ""_sr));
 }
 
 void test_shrpx_http_create_via_header_value(void) {
@@ -115,24 +106,22 @@ void test_shrpx_http_create_affinity_cookie(void) {
   BlockAllocator balloc(1024, 1024);
   StringRef c;
 
-  c = http::create_affinity_cookie(balloc, StringRef::from_lit("cookie-val"),
-                                   0xf1e2d3c4u, StringRef{}, false);
+  c = http::create_affinity_cookie(balloc, "cookie-val"_sr, 0xf1e2d3c4u,
+                                   StringRef{}, false);
 
   assert_stdsv_equal("cookie-val=f1e2d3c4"sv, c);
 
-  c = http::create_affinity_cookie(balloc, StringRef::from_lit("alpha"),
-                                   0x00000000u, StringRef{}, true);
+  c = http::create_affinity_cookie(balloc, "alpha"_sr, 0x00000000u, StringRef{},
+                                   true);
 
   assert_stdsv_equal("alpha=00000000; Secure"sv, c);
 
-  c = http::create_affinity_cookie(balloc, StringRef::from_lit("bravo"),
-                                   0x01111111u, StringRef::from_lit("bar"),
+  c = http::create_affinity_cookie(balloc, "bravo"_sr, 0x01111111u, "bar"_sr,
                                    false);
 
   assert_stdsv_equal("bravo=01111111; Path=bar"sv, c);
 
-  c = http::create_affinity_cookie(balloc, StringRef::from_lit("charlie"),
-                                   0x01111111u, StringRef::from_lit("bar"),
+  c = http::create_affinity_cookie(balloc, "charlie"_sr, 0x01111111u, "bar"_sr,
                                    true);
 
   assert_stdsv_equal("charlie=01111111; Path=bar; Secure"sv, c);
@@ -143,10 +132,10 @@ void test_shrpx_http_create_altsvc_header_value(void) {
     BlockAllocator balloc(1024, 1024);
     std::vector<AltSvc> altsvcs{
         AltSvc{
-            .protocol_id = StringRef::from_lit("h3"),
-            .host = StringRef::from_lit("127.0.0.1"),
-            .service = StringRef::from_lit("443"),
-            .params = StringRef::from_lit("ma=3600"),
+            .protocol_id = "h3"_sr,
+            .host = "127.0.0.1"_sr,
+            .service = "443"_sr,
+            .params = "ma=3600"_sr,
         },
     };
 
@@ -158,14 +147,14 @@ void test_shrpx_http_create_altsvc_header_value(void) {
     BlockAllocator balloc(1024, 1024);
     std::vector<AltSvc> altsvcs{
         AltSvc{
-            .protocol_id = StringRef::from_lit("h3"),
-            .service = StringRef::from_lit("443"),
-            .params = StringRef::from_lit("ma=3600"),
+            .protocol_id = "h3"_sr,
+            .service = "443"_sr,
+            .params = "ma=3600"_sr,
         },
         AltSvc{
-            .protocol_id = StringRef::from_lit("h3%"),
-            .host = StringRef::from_lit("\"foo\""),
-            .service = StringRef::from_lit("4433"),
+            .protocol_id = "h3%"_sr,
+            .host = "\"foo\""_sr,
+            .service = "4433"_sr,
         },
     };
 
@@ -175,12 +164,12 @@ void test_shrpx_http_create_altsvc_header_value(void) {
 }
 
 void test_shrpx_http_check_http_scheme(void) {
-  assert_true(http::check_http_scheme(StringRef::from_lit("https"), true));
-  assert_false(http::check_http_scheme(StringRef::from_lit("https"), false));
-  assert_false(http::check_http_scheme(StringRef::from_lit("http"), true));
-  assert_true(http::check_http_scheme(StringRef::from_lit("http"), false));
-  assert_false(http::check_http_scheme(StringRef::from_lit("foo"), true));
-  assert_false(http::check_http_scheme(StringRef::from_lit("foo"), false));
+  assert_true(http::check_http_scheme("https"_sr, true));
+  assert_false(http::check_http_scheme("https"_sr, false));
+  assert_false(http::check_http_scheme("http"_sr, true));
+  assert_true(http::check_http_scheme("http"_sr, false));
+  assert_false(http::check_http_scheme("foo"_sr, true));
+  assert_false(http::check_http_scheme("foo"_sr, false));
   assert_false(http::check_http_scheme(StringRef{}, true));
   assert_false(http::check_http_scheme(StringRef{}, false));
 }

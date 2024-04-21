@@ -2302,8 +2302,7 @@ int Http3Upstream::http_end_request_headers(Downstream *downstream, int fin) {
   }
 
   if (path) {
-    if (method_token == HTTP_OPTIONS &&
-        path->value == StringRef::from_lit("*")) {
+    if (method_token == HTTP_OPTIONS && path->value == "*"_sr) {
       // Server-wide OPTIONS request.  Path is empty.
     } else if (config->http2_proxy &&
                faddr->alt_mode == UpstreamAltMode::NONE) {

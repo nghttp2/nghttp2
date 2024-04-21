@@ -49,12 +49,10 @@ StringRef create_error_html(BlockAllocator &balloc, unsigned int http_status) {
   auto reason_phrase = http2::get_reason_phrase(http_status);
 
   return concat_string_ref(
-      balloc, StringRef::from_lit(R"(<!DOCTYPE html><html lang="en"><title>)"),
-      status_string, StringRef::from_lit(" "), reason_phrase,
-      StringRef::from_lit("</title><body><h1>"), status_string,
-      StringRef::from_lit(" "), reason_phrase,
-      StringRef::from_lit("</h1><footer>"), httpconf.server_name,
-      StringRef::from_lit("</footer></body></html>"));
+      balloc, R"(<!DOCTYPE html><html lang="en"><title>)"_sr, status_string,
+      " "_sr, reason_phrase, "</title><body><h1>"_sr, status_string, " "_sr,
+      reason_phrase, "</h1><footer>"_sr, httpconf.server_name,
+      "</footer></body></html>"_sr);
 }
 
 StringRef create_forwarded(BlockAllocator &balloc, int params,
@@ -176,8 +174,8 @@ nghttp2_ssize select_padding_callback(nghttp2_session *session,
 StringRef create_affinity_cookie(BlockAllocator &balloc, const StringRef &name,
                                  uint32_t affinity_cookie,
                                  const StringRef &path, bool secure) {
-  static constexpr auto PATH_PREFIX = StringRef::from_lit("; Path=");
-  static constexpr auto SECURE = StringRef::from_lit("; Secure");
+  static constexpr auto PATH_PREFIX = "; Path="_sr;
+  static constexpr auto SECURE = "; Secure"_sr;
   // <name>=<value>[; Path=<path>][; Secure]
   size_t len = name.size() + 1 + 8;
 

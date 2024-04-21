@@ -245,8 +245,8 @@ mrb_value response_return(mrb_state *mrb, mrb_value self) {
     if (cl) {
       cl->value = content_length;
     } else {
-      resp.fs.add_header_token(StringRef::from_lit("content-length"),
-                               content_length, false, http2::HD_CONTENT_LENGTH);
+      resp.fs.add_header_token("content-length"_sr, content_length, false,
+                               http2::HD_CONTENT_LENGTH);
     }
 
     resp.fs.content_length = vallen;
@@ -256,7 +256,7 @@ mrb_value response_return(mrb_state *mrb, mrb_value self) {
   if (!date) {
     auto lgconf = log_config();
     lgconf->update_tstamp(std::chrono::system_clock::now());
-    resp.fs.add_header_token(StringRef::from_lit("date"),
+    resp.fs.add_header_token("date"_sr,
                              make_string_ref(balloc, lgconf->tstamp->time_http),
                              false, http2::HD_DATE);
   }

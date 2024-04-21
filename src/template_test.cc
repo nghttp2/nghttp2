@@ -165,7 +165,7 @@ void test_template_string_ref(void) {
   assert_size(5, ==, ref.size());
 
   // from string literal
-  auto from_lit = StringRef::from_lit("alpha");
+  auto from_lit = "alpha"_sr;
 
   assert_stdsv_equal("alpha"sv, from_lit);
   assert_size(5, ==, from_lit.size());

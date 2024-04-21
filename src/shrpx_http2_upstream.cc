@@ -386,8 +386,7 @@ int Http2Upstream::on_request_headers(Downstream *downstream,
   }
 
   if (path) {
-    if (method_token == HTTP_OPTIONS &&
-        path->value == StringRef::from_lit("*")) {
+    if (method_token == HTTP_OPTIONS && path->value == "*"_sr) {
       // Server-wide OPTIONS request.  Path is empty.
     } else if (config->http2_proxy &&
                faddr->alt_mode == UpstreamAltMode::NONE) {
@@ -2020,19 +2019,16 @@ int Http2Upstream::redirect_to_https(Downstream *downstream) {
   auto &httpconf = config->http;
 
   StringRef loc;
-  if (httpconf.redirect_https_port == StringRef::from_lit("443")) {
-    loc = concat_string_ref(balloc, StringRef::from_lit("https://"), authority,
-                            req.path);
+  if (httpconf.redirect_https_port == "443"_sr) {
+    loc = concat_string_ref(balloc, "https://"_sr, authority, req.path);
   } else {
-    loc = concat_string_ref(balloc, StringRef::from_lit("https://"), authority,
-                            StringRef::from_lit(":"),
+    loc = concat_string_ref(balloc, "https://"_sr, authority, ":"_sr,
                             httpconf.redirect_https_port, req.path);
   }
 
   auto &resp = downstream->response();
   resp.http_status = 308;
-  resp.fs.add_header_token(StringRef::from_lit("location"), loc, false,
-                           http2::HD_LOCATION);
+  resp.fs.add_header_token("location"_sr, loc, false, http2::HD_LOCATION);
 
   return send_reply(downstream, nullptr, 0);
 }

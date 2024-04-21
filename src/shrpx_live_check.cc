@@ -411,7 +411,7 @@ int LiveCheck::tls_handshake() {
 
   switch (addr_->proto) {
   case Proto::HTTP1:
-    if (proto.empty() || proto == StringRef::from_lit("http/1.1")) {
+    if (proto.empty() || proto == "http/1.1"_sr) {
       break;
     }
     return -1;

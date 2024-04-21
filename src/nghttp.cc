@@ -2282,7 +2282,8 @@ int communicate(
       goto fin;
     }
 
-    if (SSL_CTX_set_cipher_list(ssl_ctx, tls::DEFAULT_CIPHER_LIST) == 0) {
+    if (SSL_CTX_set_cipher_list(ssl_ctx, tls::DEFAULT_CIPHER_LIST.data()) ==
+        0) {
       std::cerr << "[ERROR] " << ERR_error_string(ERR_get_error(), nullptr)
                 << std::endl;
       result = -1;

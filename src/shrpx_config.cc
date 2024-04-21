@@ -76,7 +76,7 @@ namespace {
 Config *config;
 } // namespace
 
-constexpr auto SHRPX_UNIX_PATH_PREFIX = StringRef::from_lit("unix:");
+constexpr auto SHRPX_UNIX_PATH_PREFIX = "unix:"_sr;
 
 const Config *get_config() { return config; }
 
@@ -1103,13 +1103,13 @@ int parse_downstream_params(DownstreamParams &out,
       out.mruby = valstr;
     } else if (util::istarts_with_l(param, "read-timeout=")) {
       if (parse_downstream_param_duration(
-              out.read_timeout, StringRef::from_lit("read-timeout"),
+              out.read_timeout, "read-timeout"_sr,
               StringRef{first + str_size("read-timeout="), end}) == -1) {
         return -1;
       }
     } else if (util::istarts_with_l(param, "write-timeout=")) {
       if (parse_downstream_param_duration(
-              out.write_timeout, StringRef::from_lit("write-timeout"),
+              out.write_timeout, "write-timeout"_sr,
               StringRef{first + str_size("write-timeout="), end}) == -1) {
         return -1;
       }
@@ -1444,7 +1444,7 @@ int parse_error_page(std::vector<ErrorPage> &error_pages, const StringRef &opt,
   auto codestr = StringRef{std::begin(optarg), eq};
   unsigned int code;
 
-  if (codestr == StringRef::from_lit("*")) {
+  if (codestr == "*"_sr) {
     code = 0;
   } else {
     auto n = util::parse_uint(codestr);
@@ -3738,7 +3738,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
       if (optarg[0] == '_') {
         fwdconf.by_obfuscated = make_string_ref(config->balloc, optarg);
       } else {
-        fwdconf.by_obfuscated = StringRef::from_lit("");
+        fwdconf.by_obfuscated = ""_sr;
       }
       break;
     case SHRPX_OPTID_FORWARDED_FOR:
@@ -4262,49 +4262,49 @@ int load_config(Config *config, const char *filename,
 StringRef str_syslog_facility(int facility) {
   switch (facility) {
   case (LOG_AUTH):
-    return StringRef::from_lit("auth");
+    return "auth"_sr;
 #ifdef LOG_AUTHPRIV
   case (LOG_AUTHPRIV):
-    return StringRef::from_lit("authpriv");
+    return "authpriv"_sr;
 #endif // LOG_AUTHPRIV
   case (LOG_CRON):
-    return StringRef::from_lit("cron");
+    return "cron"_sr;
   case (LOG_DAEMON):
-    return StringRef::from_lit("daemon");
+    return "daemon"_sr;
 #ifdef LOG_FTP
   case (LOG_FTP):
-    return StringRef::from_lit("ftp");
+    return "ftp"_sr;
 #endif // LOG_FTP
   case (LOG_KERN):
-    return StringRef::from_lit("kern");
+    return "kern"_sr;
   case (LOG_LOCAL0):
-    return StringRef::from_lit("local0");
+    return "local0"_sr;
   case (LOG_LOCAL1):
-    return StringRef::from_lit("local1");
+    return "local1"_sr;
   case (LOG_LOCAL2):
-    return StringRef::from_lit("local2");
+    return "local2"_sr;
   case (LOG_LOCAL3):
-    return StringRef::from_lit("local3");
+    return "local3"_sr;
   case (LOG_LOCAL4):
-    return StringRef::from_lit("local4");
+    return "local4"_sr;
   case (LOG_LOCAL5):
-    return StringRef::from_lit("local5");
+    return "local5"_sr;
   case (LOG_LOCAL6):
-    return StringRef::from_lit("local6");
+    return "local6"_sr;
   case (LOG_LOCAL7):
-    return StringRef::from_lit("local7");
+    return "local7"_sr;
   case (LOG_LPR):
-    return StringRef::from_lit("lpr");
+    return "lpr"_sr;
   case (LOG_MAIL):
-    return StringRef::from_lit("mail");
+    return "mail"_sr;
   case (LOG_SYSLOG):
-    return StringRef::from_lit("syslog");
+    return "syslog"_sr;
   case (LOG_USER):
-    return StringRef::from_lit("user");
+    return "user"_sr;
   case (LOG_UUCP):
-    return StringRef::from_lit("uucp");
+    return "uucp"_sr;
   default:
-    return StringRef::from_lit("(unknown)");
+    return "(unknown)"_sr;
   }
 }
 
@@ -4399,15 +4399,15 @@ int int_syslog_facility(const StringRef &strfacility) {
 StringRef strproto(Proto proto) {
   switch (proto) {
   case Proto::NONE:
-    return StringRef::from_lit("none");
+    return "none"_sr;
   case Proto::HTTP1:
-    return StringRef::from_lit("http/1.1");
+    return "http/1.1"_sr;
   case Proto::HTTP2:
-    return StringRef::from_lit("h2");
+    return "h2"_sr;
   case Proto::HTTP3:
-    return StringRef::from_lit("h3");
+    return "h3"_sr;
   case Proto::MEMCACHED:
-    return StringRef::from_lit("memcached");
+    return "memcached"_sr;
   }
 
   // gcc needs this.
@@ -4467,13 +4467,13 @@ int configure_downstream_group(Config *config, bool http2_proxy,
 
   if (addr_groups.empty()) {
     DownstreamAddrConfig addr{};
-    addr.host = StringRef::from_lit(DEFAULT_DOWNSTREAM_HOST);
+    addr.host = DEFAULT_DOWNSTREAM_HOST;
     addr.port = DEFAULT_DOWNSTREAM_PORT;
     addr.proto = Proto::HTTP1;
     addr.weight = 1;
     addr.group_weight = 1;
 
-    DownstreamAddrGroupConfig g(StringRef::from_lit("/"));
+    DownstreamAddrGroupConfig g("/"_sr);
     g.addrs.push_back(std::move(addr));
     router.add_route(g.pattern, addr_groups.size());
     addr_groups.push_back(std::move(g));
@@ -4497,7 +4497,7 @@ int configure_downstream_group(Config *config, bool http2_proxy,
   ssize_t catch_all_group = -1;
   for (size_t i = 0; i < addr_groups.size(); ++i) {
     auto &g = addr_groups[i];
-    if (g.pattern == StringRef::from_lit("/")) {
+    if (g.pattern == "/"_sr) {
       catch_all_group = i;
     }
     if (LOG_ENABLED(INFO)) {
@@ -4569,7 +4569,7 @@ int configure_downstream_group(Config *config, bool http2_proxy,
         // for AF_UNIX socket, we use "localhost" as host for backend
         // hostport.  This is used as Host header field to backend and
         // not going to be passed to any syscalls.
-        addr.hostport = StringRef::from_lit("localhost");
+        addr.hostport = "localhost"_sr;
 
         auto path = addr.host.data();
         auto pathlen = addr.host.size();

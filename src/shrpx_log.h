@@ -266,7 +266,7 @@ enum class LogFragmentType {
 };
 
 struct LogFragment {
-  LogFragment(LogFragmentType type, StringRef value = StringRef::from_lit(""))
+  LogFragment(LogFragmentType type, StringRef value = ""_sr)
       : type(type), value(std::move(value)) {}
   LogFragmentType type;
   StringRef value;

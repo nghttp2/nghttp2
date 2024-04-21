@@ -78,9 +78,8 @@ namespace nghttp2 {
 
 namespace {
 // TODO could be constexpr
-constexpr auto DEFAULT_HTML = StringRef::from_lit("index.html");
-constexpr auto NGHTTPD_SERVER =
-    StringRef::from_lit("nghttpd nghttp2/" NGHTTP2_VERSION);
+constexpr auto DEFAULT_HTML = "index.html"_sr;
+constexpr auto NGHTTPD_SERVER = "nghttpd nghttp2/" NGHTTP2_VERSION ""_sr;
 } // namespace
 
 namespace {
@@ -1012,8 +1011,7 @@ int Http2Handler::submit_push_promise(Stream *stream,
     authority = stream->header.host;
   }
 
-  auto scheme = get_config()->no_tls ? StringRef::from_lit("http")
-                                     : StringRef::from_lit("https");
+  auto scheme = get_config()->no_tls ? "http"_sr : "https"_sr;
 
   auto nva = std::to_array({http2::make_nv_ll(":method", "GET"),
                             http2::make_nv_ls_nocopy(":path", push_path),
@@ -1031,7 +1029,7 @@ int Http2Handler::submit_push_promise(Stream *stream,
   auto promised_stream = std::make_unique<Stream>(this, promised_stream_id);
 
   auto &promised_header = promised_stream->header;
-  promised_header.method = StringRef::from_lit("GET");
+  promised_header.method = "GET"_sr;
   promised_header.path = push_path;
   promised_header.scheme = scheme;
   promised_header.authority =
@@ -1142,10 +1140,9 @@ void prepare_status_response(Stream *stream, Http2Handler *hd, int status) {
 
   HeaderRefs headers;
   headers.reserve(2);
-  headers.emplace_back(StringRef::from_lit("content-type"),
-                       StringRef::from_lit("text/html; charset=UTF-8"));
+  headers.emplace_back("content-type"_sr, "text/html; charset=UTF-8"_sr);
   headers.emplace_back(
-      StringRef::from_lit("content-length"),
+      "content-length"_sr,
       util::make_string_ref_uint(stream->balloc, file_ent->length));
   hd->submit_response(StringRef{status_page->status}, stream->stream_id,
                       headers, &data_prd);
@@ -1169,15 +1166,13 @@ void prepare_echo_response(Stream *stream, Http2Handler *hd) {
   data_prd.read_callback = file_read_callback;
 
   HeaderRefs headers;
-  headers.emplace_back(StringRef::from_lit("nghttpd-response"),
-                       StringRef::from_lit("echo"));
+  headers.emplace_back("nghttpd-response"_sr, "echo"_sr);
   if (!hd->get_config()->no_content_length) {
-    headers.emplace_back(StringRef::from_lit("content-length"),
+    headers.emplace_back("content-length"_sr,
                          util::make_string_ref_uint(stream->balloc, length));
   }
 
-  hd->submit_response(StringRef::from_lit("200"), stream->stream_id, headers,
-                      &data_prd);
+  hd->submit_response("200"_sr, stream->stream_id, headers, &data_prd);
 }
 } // namespace
 
@@ -1211,10 +1206,10 @@ void prepare_redirect_response(Stream *stream, Http2Handler *hd,
     authority = stream->header.host;
   }
 
-  auto location = concat_string_ref(
-      stream->balloc, scheme, StringRef::from_lit("://"), authority, path);
+  auto location =
+      concat_string_ref(stream->balloc, scheme, "://"_sr, authority, path);
 
-  auto headers = HeaderRefs{{StringRef::from_lit("location"), location}};
+  auto headers = HeaderRefs{{"location"_sr, location}};
 
   auto sessions = hd->get_sessions();
   auto status_page = sessions->get_server()->get_status_page(status);
@@ -1341,8 +1336,8 @@ void prepare_response(Stream *stream, Http2Handler *hd,
     if (buf.st_mode & S_IFDIR) {
       close(file);
 
-      auto reqpath = concat_string_ref(stream->balloc, raw_path,
-                                       StringRef::from_lit("/"), raw_query);
+      auto reqpath =
+          concat_string_ref(stream->balloc, raw_path, "/"_sr, raw_query);
 
       prepare_redirect_response(stream, hd, reqpath, 301);
 
@@ -1372,16 +1367,15 @@ void prepare_response(Stream *stream, Http2Handler *hd,
   stream->file_ent = file_ent;
 
   if (last_mod_found && file_ent->mtime <= last_mod) {
-    hd->submit_response(StringRef::from_lit("304"), stream->stream_id, nullptr);
+    hd->submit_response("304"_sr, stream->stream_id, nullptr);
 
     return;
   }
 
   auto method = stream->header.method;
-  if (method == StringRef::from_lit("HEAD")) {
-    hd->submit_file_response(StringRef::from_lit("200"), stream,
-                             file_ent->mtime, file_ent->length,
-                             file_ent->content_type, nullptr);
+  if (method == "HEAD"_sr) {
+    hd->submit_file_response("200"_sr, stream, file_ent->mtime,
+                             file_ent->length, file_ent->content_type, nullptr);
     return;
   }
 
@@ -1392,8 +1386,8 @@ void prepare_response(Stream *stream, Http2Handler *hd,
   data_prd.source.fd = file_ent->fd;
   data_prd.read_callback = file_read_callback;
 
-  hd->submit_file_response(StringRef::from_lit("200"), stream, file_ent->mtime,
-                           file_ent->length, file_ent->content_type, &data_prd);
+  hd->submit_file_response("200"_sr, stream, file_ent->mtime, file_ent->length,
+                           file_ent->content_type, &data_prd);
 }
 } // namespace
 
@@ -1536,8 +1530,7 @@ int hd_on_frame_recv_callback(nghttp2_session *session,
 
       auto method = stream->header.method;
       if (hd->get_config()->echo_upload &&
-          (method == StringRef::from_lit("POST") ||
-           method == StringRef::from_lit("PUT"))) {
+          (method == "POST"_sr || method == "PUT"_sr)) {
         if (!prepare_upload_temp_store(stream, hd)) {
           hd->submit_rst_stream(stream, NGHTTP2_INTERNAL_ERROR);
           return 0;
@@ -2131,7 +2124,8 @@ int HttpServer::run() {
       return -1;
     }
 
-    if (SSL_CTX_set_cipher_list(ssl_ctx, tls::DEFAULT_CIPHER_LIST) == 0) {
+    if (SSL_CTX_set_cipher_list(ssl_ctx, tls::DEFAULT_CIPHER_LIST.data()) ==
+        0) {
       std::cerr << ERR_error_string(ERR_get_error(), nullptr) << std::endl;
       return -1;
     }

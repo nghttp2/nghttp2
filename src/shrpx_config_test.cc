@@ -56,32 +56,32 @@ const MunitSuite config_suite{
 void test_shrpx_config_parse_header(void) {
   BlockAllocator balloc(4096, 4096);
 
-  auto p = parse_header(balloc, StringRef::from_lit("a: b"));
+  auto p = parse_header(balloc, "a: b"_sr);
   assert_stdsv_equal("a"sv, p.name);
   assert_stdsv_equal("b"sv, p.value);
 
-  p = parse_header(balloc, StringRef::from_lit("a:  b"));
+  p = parse_header(balloc, "a:  b"_sr);
   assert_stdsv_equal("a"sv, p.name);
   assert_stdsv_equal("b"sv, p.value);
 
-  p = parse_header(balloc, StringRef::from_lit(":a: b"));
+  p = parse_header(balloc, ":a: b"_sr);
   assert_true(p.name.empty());
 
-  p = parse_header(balloc, StringRef::from_lit("a: :b"));
+  p = parse_header(balloc, "a: :b"_sr);
   assert_stdsv_equal("a"sv, p.name);
   assert_stdsv_equal(":b"sv, p.value);
 
-  p = parse_header(balloc, StringRef::from_lit(": b"));
+  p = parse_header(balloc, ": b"_sr);
   assert_true(p.name.empty());
 
-  p = parse_header(balloc, StringRef::from_lit("alpha: bravo charlie"));
+  p = parse_header(balloc, "alpha: bravo charlie"_sr);
   assert_stdsv_equal("alpha", p.name);
   assert_stdsv_equal("bravo charlie", p.value);
 
-  p = parse_header(balloc, StringRef::from_lit("a,: b"));
+  p = parse_header(balloc, "a,: b"_sr);
   assert_true(p.name.empty());
 
-  p = parse_header(balloc, StringRef::from_lit("a: b\x0a"));
+  p = parse_header(balloc, "a: b\x0a"_sr);
   assert_true(p.name.empty());
 }
 
@@ -89,10 +89,9 @@ void test_shrpx_config_parse_log_format(void) {
   BlockAllocator balloc(4096, 4096);
 
   auto res = parse_log_format(
-      balloc, StringRef::from_lit(
-                  R"($remote_addr - $remote_user [$time_local] )"
-                  R"("$request" $status $body_bytes_sent )"
-                  R"("${http_referer}" $http_host "$http_user_agent")"));
+      balloc, R"($remote_addr - $remote_user [$time_local] )"
+              R"("$request" $status $body_bytes_sent )"
+              R"("${http_referer}" $http_host "$http_user_agent")"_sr);
   assert_size(16, ==, res.size());
 
   assert_enum_class(LogFragmentType::REMOTE_ADDR, ==, res[0].type);
@@ -137,35 +136,35 @@ void test_shrpx_config_parse_log_format(void) {
   assert_enum_class(LogFragmentType::LITERAL, ==, res[15].type);
   assert_stdsv_equal("\""sv, res[15].value);
 
-  res = parse_log_format(balloc, StringRef::from_lit("$"));
+  res = parse_log_format(balloc, "$"_sr);
 
   assert_size(1, ==, res.size());
 
   assert_enum_class(LogFragmentType::LITERAL, ==, res[0].type);
   assert_stdsv_equal("$"sv, res[0].value);
 
-  res = parse_log_format(balloc, StringRef::from_lit("${"));
+  res = parse_log_format(balloc, "${"_sr);
 
   assert_size(1, ==, res.size());
 
   assert_enum_class(LogFragmentType::LITERAL, ==, res[0].type);
   assert_stdsv_equal("${"sv, res[0].value);
 
-  res = parse_log_format(balloc, StringRef::from_lit("${a"));
+  res = parse_log_format(balloc, "${a"_sr);
 
   assert_size(1, ==, res.size());
 
   assert_enum_class(LogFragmentType::LITERAL, ==, res[0].type);
   assert_stdsv_equal("${a"sv, res[0].value);
 
-  res = parse_log_format(balloc, StringRef::from_lit("${a "));
+  res = parse_log_format(balloc, "${a "_sr);
 
   assert_size(1, ==, res.size());
 
   assert_enum_class(LogFragmentType::LITERAL, ==, res[0].type);
   assert_stdsv_equal("${a "sv, res[0].value);
 
-  res = parse_log_format(balloc, StringRef::from_lit("$$remote_addr"));
+  res = parse_log_format(balloc, "$$remote_addr"_sr);
 
   assert_size(2, ==, res.size());
 

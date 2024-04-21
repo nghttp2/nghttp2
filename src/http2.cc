@@ -35,107 +35,107 @@ namespace http2 {
 StringRef get_reason_phrase(unsigned int status_code) {
   switch (status_code) {
   case 100:
-    return StringRef::from_lit("Continue");
+    return "Continue"_sr;
   case 101:
-    return StringRef::from_lit("Switching Protocols");
+    return "Switching Protocols"_sr;
   case 103:
-    return StringRef::from_lit("Early Hints");
+    return "Early Hints"_sr;
   case 200:
-    return StringRef::from_lit("OK");
+    return "OK"_sr;
   case 201:
-    return StringRef::from_lit("Created");
+    return "Created"_sr;
   case 202:
-    return StringRef::from_lit("Accepted");
+    return "Accepted"_sr;
   case 203:
-    return StringRef::from_lit("Non-Authoritative Information");
+    return "Non-Authoritative Information"_sr;
   case 204:
-    return StringRef::from_lit("No Content");
+    return "No Content"_sr;
   case 205:
-    return StringRef::from_lit("Reset Content");
+    return "Reset Content"_sr;
   case 206:
-    return StringRef::from_lit("Partial Content");
+    return "Partial Content"_sr;
   case 300:
-    return StringRef::from_lit("Multiple Choices");
+    return "Multiple Choices"_sr;
   case 301:
-    return StringRef::from_lit("Moved Permanently");
+    return "Moved Permanently"_sr;
   case 302:
-    return StringRef::from_lit("Found");
+    return "Found"_sr;
   case 303:
-    return StringRef::from_lit("See Other");
+    return "See Other"_sr;
   case 304:
-    return StringRef::from_lit("Not Modified");
+    return "Not Modified"_sr;
   case 305:
-    return StringRef::from_lit("Use Proxy");
-  // case 306: return StringRef::from_lit("(Unused)");
+    return "Use Proxy"_sr;
+  // case 306: return "(Unused)"_sr;
   case 307:
-    return StringRef::from_lit("Temporary Redirect");
+    return "Temporary Redirect"_sr;
   case 308:
-    return StringRef::from_lit("Permanent Redirect");
+    return "Permanent Redirect"_sr;
   case 400:
-    return StringRef::from_lit("Bad Request");
+    return "Bad Request"_sr;
   case 401:
-    return StringRef::from_lit("Unauthorized");
+    return "Unauthorized"_sr;
   case 402:
-    return StringRef::from_lit("Payment Required");
+    return "Payment Required"_sr;
   case 403:
-    return StringRef::from_lit("Forbidden");
+    return "Forbidden"_sr;
   case 404:
-    return StringRef::from_lit("Not Found");
+    return "Not Found"_sr;
   case 405:
-    return StringRef::from_lit("Method Not Allowed");
+    return "Method Not Allowed"_sr;
   case 406:
-    return StringRef::from_lit("Not Acceptable");
+    return "Not Acceptable"_sr;
   case 407:
-    return StringRef::from_lit("Proxy Authentication Required");
+    return "Proxy Authentication Required"_sr;
   case 408:
-    return StringRef::from_lit("Request Timeout");
+    return "Request Timeout"_sr;
   case 409:
-    return StringRef::from_lit("Conflict");
+    return "Conflict"_sr;
   case 410:
-    return StringRef::from_lit("Gone");
+    return "Gone"_sr;
   case 411:
-    return StringRef::from_lit("Length Required");
+    return "Length Required"_sr;
   case 412:
-    return StringRef::from_lit("Precondition Failed");
+    return "Precondition Failed"_sr;
   case 413:
-    return StringRef::from_lit("Payload Too Large");
+    return "Payload Too Large"_sr;
   case 414:
-    return StringRef::from_lit("URI Too Long");
+    return "URI Too Long"_sr;
   case 415:
-    return StringRef::from_lit("Unsupported Media Type");
+    return "Unsupported Media Type"_sr;
   case 416:
-    return StringRef::from_lit("Requested Range Not Satisfiable");
+    return "Requested Range Not Satisfiable"_sr;
   case 417:
-    return StringRef::from_lit("Expectation Failed");
+    return "Expectation Failed"_sr;
   case 421:
-    return StringRef::from_lit("Misdirected Request");
+    return "Misdirected Request"_sr;
   case 425:
     // https://tools.ietf.org/html/rfc8470
-    return StringRef::from_lit("Too Early");
+    return "Too Early"_sr;
   case 426:
-    return StringRef::from_lit("Upgrade Required");
+    return "Upgrade Required"_sr;
   case 428:
-    return StringRef::from_lit("Precondition Required");
+    return "Precondition Required"_sr;
   case 429:
-    return StringRef::from_lit("Too Many Requests");
+    return "Too Many Requests"_sr;
   case 431:
-    return StringRef::from_lit("Request Header Fields Too Large");
+    return "Request Header Fields Too Large"_sr;
   case 451:
-    return StringRef::from_lit("Unavailable For Legal Reasons");
+    return "Unavailable For Legal Reasons"_sr;
   case 500:
-    return StringRef::from_lit("Internal Server Error");
+    return "Internal Server Error"_sr;
   case 501:
-    return StringRef::from_lit("Not Implemented");
+    return "Not Implemented"_sr;
   case 502:
-    return StringRef::from_lit("Bad Gateway");
+    return "Bad Gateway"_sr;
   case 503:
-    return StringRef::from_lit("Service Unavailable");
+    return "Service Unavailable"_sr;
   case 504:
-    return StringRef::from_lit("Gateway Timeout");
+    return "Gateway Timeout"_sr;
   case 505:
-    return StringRef::from_lit("HTTP Version Not Supported");
+    return "HTTP Version Not Supported"_sr;
   case 511:
-    return StringRef::from_lit("Network Authentication Required");
+    return "Network Authentication Required"_sr;
   default:
     return StringRef{};
   }
@@ -144,104 +144,104 @@ StringRef get_reason_phrase(unsigned int status_code) {
 StringRef stringify_status(BlockAllocator &balloc, unsigned int status_code) {
   switch (status_code) {
   case 100:
-    return StringRef::from_lit("100");
+    return "100"_sr;
   case 101:
-    return StringRef::from_lit("101");
+    return "101"_sr;
   case 103:
-    return StringRef::from_lit("103");
+    return "103"_sr;
   case 200:
-    return StringRef::from_lit("200");
+    return "200"_sr;
   case 201:
-    return StringRef::from_lit("201");
+    return "201"_sr;
   case 202:
-    return StringRef::from_lit("202");
+    return "202"_sr;
   case 203:
-    return StringRef::from_lit("203");
+    return "203"_sr;
   case 204:
-    return StringRef::from_lit("204");
+    return "204"_sr;
   case 205:
-    return StringRef::from_lit("205");
+    return "205"_sr;
   case 206:
-    return StringRef::from_lit("206");
+    return "206"_sr;
   case 300:
-    return StringRef::from_lit("300");
+    return "300"_sr;
   case 301:
-    return StringRef::from_lit("301");
+    return "301"_sr;
   case 302:
-    return StringRef::from_lit("302");
+    return "302"_sr;
   case 303:
-    return StringRef::from_lit("303");
+    return "303"_sr;
   case 304:
-    return StringRef::from_lit("304");
+    return "304"_sr;
   case 305:
-    return StringRef::from_lit("305");
-  // case 306: return StringRef::from_lit("306");
+    return "305"_sr;
+  // case 306: return "306"_sr;
   case 307:
-    return StringRef::from_lit("307");
+    return "307"_sr;
   case 308:
-    return StringRef::from_lit("308");
+    return "308"_sr;
   case 400:
-    return StringRef::from_lit("400");
+    return "400"_sr;
   case 401:
-    return StringRef::from_lit("401");
+    return "401"_sr;
   case 402:
-    return StringRef::from_lit("402");
+    return "402"_sr;
   case 403:
-    return StringRef::from_lit("403");
+    return "403"_sr;
   case 404:
-    return StringRef::from_lit("404");
+    return "404"_sr;
   case 405:
-    return StringRef::from_lit("405");
+    return "405"_sr;
   case 406:
-    return StringRef::from_lit("406");
+    return "406"_sr;
   case 407:
-    return StringRef::from_lit("407");
+    return "407"_sr;
   case 408:
-    return StringRef::from_lit("408");
+    return "408"_sr;
   case 409:
-    return StringRef::from_lit("409");
+    return "409"_sr;
   case 410:
-    return StringRef::from_lit("410");
+    return "410"_sr;
   case 411:
-    return StringRef::from_lit("411");
+    return "411"_sr;
   case 412:
-    return StringRef::from_lit("412");
+    return "412"_sr;
   case 413:
-    return StringRef::from_lit("413");
+    return "413"_sr;
   case 414:
-    return StringRef::from_lit("414");
+    return "414"_sr;
   case 415:
-    return StringRef::from_lit("415");
+    return "415"_sr;
   case 416:
-    return StringRef::from_lit("416");
+    return "416"_sr;
   case 417:
-    return StringRef::from_lit("417");
+    return "417"_sr;
   case 421:
-    return StringRef::from_lit("421");
+    return "421"_sr;
   case 426:
-    return StringRef::from_lit("426");
+    return "426"_sr;
   case 428:
-    return StringRef::from_lit("428");
+    return "428"_sr;
   case 429:
-    return StringRef::from_lit("429");
+    return "429"_sr;
   case 431:
-    return StringRef::from_lit("431");
+    return "431"_sr;
   case 451:
-    return StringRef::from_lit("451");
+    return "451"_sr;
   case 500:
-    return StringRef::from_lit("500");
+    return "500"_sr;
   case 501:
-    return StringRef::from_lit("501");
+    return "501"_sr;
   case 502:
-    return StringRef::from_lit("502");
+    return "502"_sr;
   case 503:
-    return StringRef::from_lit("503");
+    return "503"_sr;
   case 504:
-    return StringRef::from_lit("504");
+    return "504"_sr;
   case 505:
-    return StringRef::from_lit("505");
+    return "505"_sr;
   case 511:
-    return StringRef::from_lit("511");
+    return "511"_sr;
   default:
     return util::make_string_ref_uint(balloc, status_code);
   }
@@ -1621,7 +1621,7 @@ StringRef get_pure_path_component(const StringRef &uri) {
     return StringRef{uri.data() + f.off, f.len};
   }
 
-  return StringRef::from_lit("/");
+  return "/"_sr;
 }
 
 int construct_push_component(BlockAllocator &balloc, StringRef &scheme,
@@ -1679,7 +1679,7 @@ int construct_push_component(BlockAllocator &balloc, StringRef &scheme,
       auto &f = u.field_data[UF_PATH];
       rel = StringRef{uri.data() + f.off, f.len};
     } else {
-      rel = StringRef::from_lit("/");
+      rel = "/"_sr;
     }
 
     if (u.field_set & (1 << UF_QUERY)) {
@@ -1946,7 +1946,7 @@ StringRef copy_lower(BlockAllocator &balloc, const StringRef &src) {
 }
 
 bool contains_trailers(const StringRef &s) {
-  constexpr auto trailers = StringRef::from_lit("trailers");
+  constexpr auto trailers = "trailers"_sr;
 
   for (auto p = std::begin(s), end = std::end(s);; ++p) {
     p = std::find_if(p, end, [](char c) { return c != ' ' && c != '\t'; });

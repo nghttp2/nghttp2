@@ -159,43 +159,31 @@ void test_http2_get_header(void) {
 
 namespace {
 auto headers = HeaderRefs{
-    {StringRef::from_lit("alpha"), StringRef::from_lit("0"), true},
-    {StringRef::from_lit("bravo"), StringRef::from_lit("1")},
-    {StringRef::from_lit("connection"), StringRef::from_lit("2"), false,
-     http2::HD_CONNECTION},
-    {StringRef::from_lit("connection"), StringRef::from_lit("3"), false,
-     http2::HD_CONNECTION},
-    {StringRef::from_lit("delta"), StringRef::from_lit("4")},
-    {StringRef::from_lit("expect"), StringRef::from_lit("5")},
-    {StringRef::from_lit("foxtrot"), StringRef::from_lit("6")},
-    {StringRef::from_lit("tango"), StringRef::from_lit("7")},
-    {StringRef::from_lit("te"), StringRef::from_lit("8"), false, http2::HD_TE},
-    {StringRef::from_lit("te"), StringRef::from_lit("9"), false, http2::HD_TE},
-    {StringRef::from_lit("x-forwarded-proto"), StringRef::from_lit("10"), false,
-     http2::HD_X_FORWARDED_FOR},
-    {StringRef::from_lit("x-forwarded-proto"), StringRef::from_lit("11"), false,
-     http2::HD_X_FORWARDED_FOR},
-    {StringRef::from_lit("zulu"), StringRef::from_lit("12")}};
+    {"alpha"_sr, "0"_sr, true},
+    {"bravo"_sr, "1"_sr},
+    {"connection"_sr, "2"_sr, false, http2::HD_CONNECTION},
+    {"connection"_sr, "3"_sr, false, http2::HD_CONNECTION},
+    {"delta"_sr, "4"_sr},
+    {"expect"_sr, "5"_sr},
+    {"foxtrot"_sr, "6"_sr},
+    {"tango"_sr, "7"_sr},
+    {"te"_sr, "8"_sr, false, http2::HD_TE},
+    {"te"_sr, "9"_sr, false, http2::HD_TE},
+    {"x-forwarded-proto"_sr, "10"_sr, false, http2::HD_X_FORWARDED_FOR},
+    {"x-forwarded-proto"_sr, "11"_sr, false, http2::HD_X_FORWARDED_FOR},
+    {"zulu"_sr, "12"_sr}};
 } // namespace
 
 namespace {
 auto headers2 = HeaderRefs{
-    {StringRef::from_lit("x-forwarded-for"), StringRef::from_lit("xff1"), false,
-     http2::HD_X_FORWARDED_FOR},
-    {StringRef::from_lit("x-forwarded-for"), StringRef::from_lit("xff2"), false,
-     http2::HD_X_FORWARDED_FOR},
-    {StringRef::from_lit("x-forwarded-proto"), StringRef::from_lit("xfp1"),
-     false, http2::HD_X_FORWARDED_PROTO},
-    {StringRef::from_lit("x-forwarded-proto"), StringRef::from_lit("xfp2"),
-     false, http2::HD_X_FORWARDED_PROTO},
-    {StringRef::from_lit("forwarded"), StringRef::from_lit("fwd1"), false,
-     http2::HD_FORWARDED},
-    {StringRef::from_lit("forwarded"), StringRef::from_lit("fwd2"), false,
-     http2::HD_FORWARDED},
-    {StringRef::from_lit("via"), StringRef::from_lit("via1"), false,
-     http2::HD_VIA},
-    {StringRef::from_lit("via"), StringRef::from_lit("via2"), false,
-     http2::HD_VIA},
+    {"x-forwarded-for"_sr, "xff1"_sr, false, http2::HD_X_FORWARDED_FOR},
+    {"x-forwarded-for"_sr, "xff2"_sr, false, http2::HD_X_FORWARDED_FOR},
+    {"x-forwarded-proto"_sr, "xfp1"_sr, false, http2::HD_X_FORWARDED_PROTO},
+    {"x-forwarded-proto"_sr, "xfp2"_sr, false, http2::HD_X_FORWARDED_PROTO},
+    {"forwarded"_sr, "fwd1"_sr, false, http2::HD_FORWARDED},
+    {"forwarded"_sr, "fwd2"_sr, false, http2::HD_FORWARDED},
+    {"via"_sr, "via1"_sr, false, http2::HD_VIA},
+    {"via"_sr, "via2"_sr, false, http2::HD_VIA},
 };
 } // namespace
 
@@ -331,14 +319,12 @@ void test_http2_rewrite_location_uri(void) {
 }
 
 void test_http2_parse_http_status_code(void) {
-  assert_int(200, ==,
-             http2::parse_http_status_code(StringRef::from_lit("200")));
-  assert_int(102, ==,
-             http2::parse_http_status_code(StringRef::from_lit("102")));
-  assert_int(-1, ==, http2::parse_http_status_code(StringRef::from_lit("099")));
-  assert_int(-1, ==, http2::parse_http_status_code(StringRef::from_lit("99")));
-  assert_int(-1, ==, http2::parse_http_status_code(StringRef::from_lit("-1")));
-  assert_int(-1, ==, http2::parse_http_status_code(StringRef::from_lit("20a")));
+  assert_int(200, ==, http2::parse_http_status_code("200"_sr));
+  assert_int(102, ==, http2::parse_http_status_code("102"_sr));
+  assert_int(-1, ==, http2::parse_http_status_code("099"_sr));
+  assert_int(-1, ==, http2::parse_http_status_code("99"_sr));
+  assert_int(-1, ==, http2::parse_http_status_code("-1"_sr));
+  assert_int(-1, ==, http2::parse_http_status_code("20a"_sr));
   assert_int(-1, ==, http2::parse_http_status_code(StringRef{}));
 }
 
@@ -353,396 +339,351 @@ void test_http2_index_header(void) {
 }
 
 void test_http2_lookup_token(void) {
-  assert_int(http2::HD__AUTHORITY, ==,
-             http2::lookup_token(StringRef::from_lit(":authority")));
-  assert_int(-1, ==, http2::lookup_token(StringRef::from_lit(":authorit")));
-  assert_int(-1, ==, http2::lookup_token(StringRef::from_lit(":Authority")));
-  assert_int(http2::HD_EXPECT, ==,
-             http2::lookup_token(StringRef::from_lit("expect")));
+  assert_int(http2::HD__AUTHORITY, ==, http2::lookup_token(":authority"_sr));
+  assert_int(-1, ==, http2::lookup_token(":authorit"_sr));
+  assert_int(-1, ==, http2::lookup_token(":Authority"_sr));
+  assert_int(http2::HD_EXPECT, ==, http2::lookup_token("expect"_sr));
 }
 
 void test_http2_parse_link_header(void) {
   {
     // only URI appears; we don't extract URI unless it bears rel=preload
-    auto res = http2::parse_link_header(StringRef::from_lit("<url>"));
+    auto res = http2::parse_link_header("<url>"_sr);
     assert_size(0, ==, res.size());
   }
   {
     // URI url should be extracted
+    auto res = http2::parse_link_header("<url>; rel=preload"_sr);
+    assert_size(1, ==, res.size());
+    assert_stdsv_equal("url"sv, res[0].uri);
+  }
+  {
+    // With extra link-param.  URI url should be extracted
+    auto res = http2::parse_link_header("<url>; rel=preload; as=file"_sr);
+    assert_size(1, ==, res.size());
+    assert_stdsv_equal("url"sv, res[0].uri);
+  }
+  {
+    // With extra link-param.  URI url should be extracted
+    auto res = http2::parse_link_header("<url>; as=file; rel=preload"_sr);
+    assert_size(1, ==, res.size());
+    assert_stdsv_equal("url"sv, res[0].uri);
+  }
+  {
+    // With extra link-param and quote-string.  URI url should be
+    // extracted
     auto res =
-        http2::parse_link_header(StringRef::from_lit("<url>; rel=preload"));
-    assert_size(1, ==, res.size());
-    assert_stdsv_equal("url"sv, res[0].uri);
-  }
-  {
-    // With extra link-param.  URI url should be extracted
-    auto res = http2::parse_link_header(
-        StringRef::from_lit("<url>; rel=preload; as=file"));
-    assert_size(1, ==, res.size());
-    assert_stdsv_equal("url"sv, res[0].uri);
-  }
-  {
-    // With extra link-param.  URI url should be extracted
-    auto res = http2::parse_link_header(
-        StringRef::from_lit("<url>; as=file; rel=preload"));
+        http2::parse_link_header(R"(<url>; rel=preload; title="foo,bar")"_sr);
     assert_size(1, ==, res.size());
     assert_stdsv_equal("url"sv, res[0].uri);
   }
   {
     // With extra link-param and quote-string.  URI url should be
     // extracted
-    auto res = http2::parse_link_header(
-        StringRef::from_lit(R"(<url>; rel=preload; title="foo,bar")"));
-    assert_size(1, ==, res.size());
-    assert_stdsv_equal("url"sv, res[0].uri);
-  }
-  {
-    // With extra link-param and quote-string.  URI url should be
-    // extracted
-    auto res = http2::parse_link_header(
-        StringRef::from_lit(R"(<url>; title="foo,bar"; rel=preload)"));
+    auto res =
+        http2::parse_link_header(R"(<url>; title="foo,bar"; rel=preload)"_sr);
     assert_size(1, ==, res.size());
     assert_stdsv_equal("url"sv, res[0].uri);
   }
   {
     // ',' after quote-string
     auto res = http2::parse_link_header(
-        StringRef::from_lit(R"(<url>; title="foo,bar", <url2>; rel=preload)"));
+        R"(<url>; title="foo,bar", <url2>; rel=preload)"_sr);
     assert_size(1, ==, res.size());
     assert_stdsv_equal("url2"sv, res[0].uri);
   }
   {
     // Only first URI should be extracted.
-    auto res = http2::parse_link_header(
-        StringRef::from_lit("<url>; rel=preload, <url2>"));
+    auto res = http2::parse_link_header("<url>; rel=preload, <url2>"_sr);
     assert_size(1, ==, res.size());
     assert_stdsv_equal("url"sv, res[0].uri);
   }
   {
     // Both have rel=preload, so both urls should be extracted
-    auto res = http2::parse_link_header(
-        StringRef::from_lit("<url>; rel=preload, <url2>; rel=preload"));
+    auto res =
+        http2::parse_link_header("<url>; rel=preload, <url2>; rel=preload"_sr);
     assert_size(2, ==, res.size());
     assert_stdsv_equal("url"sv, res[0].uri);
     assert_stdsv_equal("url2"sv, res[1].uri);
   }
   {
     // Second URI uri should be extracted.
-    auto res = http2::parse_link_header(
-        StringRef::from_lit("<url>, <url2>;rel=preload"));
+    auto res = http2::parse_link_header("<url>, <url2>;rel=preload"_sr);
     assert_size(1, ==, res.size());
     assert_stdsv_equal("url2"sv, res[0].uri);
   }
   {
     // Error if input ends with ';'
-    auto res =
-        http2::parse_link_header(StringRef::from_lit("<url>;rel=preload;"));
+    auto res = http2::parse_link_header("<url>;rel=preload;"_sr);
     assert_size(0, ==, res.size());
   }
   {
     // Error if link header ends with ';'
-    auto res = http2::parse_link_header(
-        StringRef::from_lit("<url>;rel=preload;, <url>"));
+    auto res = http2::parse_link_header("<url>;rel=preload;, <url>"_sr);
     assert_size(0, ==, res.size());
   }
   {
     // OK if input ends with ','
-    auto res =
-        http2::parse_link_header(StringRef::from_lit("<url>;rel=preload,"));
+    auto res = http2::parse_link_header("<url>;rel=preload,"_sr);
     assert_size(1, ==, res.size());
     assert_stdsv_equal("url"sv, res[0].uri);
   }
   {
     // Multiple repeated ','s between fields is OK
-    auto res = http2::parse_link_header(
-        StringRef::from_lit("<url>,,,<url2>;rel=preload"));
+    auto res = http2::parse_link_header("<url>,,,<url2>;rel=preload"_sr);
     assert_size(1, ==, res.size());
     assert_stdsv_equal("url2"sv, res[0].uri);
   }
   {
     // Error if url is not enclosed by <>
-    auto res =
-        http2::parse_link_header(StringRef::from_lit("url>;rel=preload"));
+    auto res = http2::parse_link_header("url>;rel=preload"_sr);
     assert_size(0, ==, res.size());
   }
   {
     // Error if url is not enclosed by <>
-    auto res =
-        http2::parse_link_header(StringRef::from_lit("<url;rel=preload"));
+    auto res = http2::parse_link_header("<url;rel=preload"_sr);
     assert_size(0, ==, res.size());
   }
   {
     // Empty parameter value is not allowed
-    auto res =
-        http2::parse_link_header(StringRef::from_lit("<url>;rel=preload; as="));
+    auto res = http2::parse_link_header("<url>;rel=preload; as="_sr);
     assert_size(0, ==, res.size());
   }
   {
     // Empty parameter value is not allowed
-    auto res =
-        http2::parse_link_header(StringRef::from_lit("<url>;as=;rel=preload"));
+    auto res = http2::parse_link_header("<url>;as=;rel=preload"_sr);
     assert_size(0, ==, res.size());
   }
   {
     // Empty parameter value is not allowed
-    auto res = http2::parse_link_header(
-        StringRef::from_lit("<url>;as=, <url>;rel=preload"));
+    auto res = http2::parse_link_header("<url>;as=, <url>;rel=preload"_sr);
     assert_size(0, ==, res.size());
   }
   {
     // Empty parameter name is not allowed
-    auto res = http2::parse_link_header(
-        StringRef::from_lit("<url>; =file; rel=preload"));
+    auto res = http2::parse_link_header("<url>; =file; rel=preload"_sr);
     assert_size(0, ==, res.size());
   }
   {
     // Without whitespaces
     auto res = http2::parse_link_header(
-        StringRef::from_lit("<url>;as=file;rel=preload,<url2>;rel=preload"));
+        "<url>;as=file;rel=preload,<url2>;rel=preload"_sr);
     assert_size(2, ==, res.size());
     assert_stdsv_equal("url"sv, res[0].uri);
     assert_stdsv_equal("url2"sv, res[1].uri);
   }
   {
     // link-extension may have no value
-    auto res =
-        http2::parse_link_header(StringRef::from_lit("<url>; as; rel=preload"));
+    auto res = http2::parse_link_header("<url>; as; rel=preload"_sr);
     assert_size(1, ==, res.size());
     assert_stdsv_equal("url"sv, res[0].uri);
   }
   {
     // ext-name-star
-    auto res = http2::parse_link_header(
-        StringRef::from_lit("<url>; foo*=bar; rel=preload"));
+    auto res = http2::parse_link_header("<url>; foo*=bar; rel=preload"_sr);
     assert_size(1, ==, res.size());
     assert_stdsv_equal("url"sv, res[0].uri);
   }
   {
     // '*' is not allowed expect for trailing one
-    auto res = http2::parse_link_header(
-        StringRef::from_lit("<url>; *=bar; rel=preload"));
+    auto res = http2::parse_link_header("<url>; *=bar; rel=preload"_sr);
     assert_size(0, ==, res.size());
   }
   {
     // '*' is not allowed expect for trailing one
-    auto res = http2::parse_link_header(
-        StringRef::from_lit("<url>; foo*bar=buzz; rel=preload"));
+    auto res = http2::parse_link_header("<url>; foo*bar=buzz; rel=preload"_sr);
     assert_size(0, ==, res.size());
   }
   {
     // ext-name-star must be followed by '='
-    auto res = http2::parse_link_header(
-        StringRef::from_lit("<url>; foo*; rel=preload"));
+    auto res = http2::parse_link_header("<url>; foo*; rel=preload"_sr);
     assert_size(0, ==, res.size());
   }
   {
     // '>' is not followed by ';'
-    auto res =
-        http2::parse_link_header(StringRef::from_lit("<url> rel=preload"));
+    auto res = http2::parse_link_header("<url> rel=preload"_sr);
     assert_size(0, ==, res.size());
   }
   {
     // Starting with whitespace is no problem.
-    auto res =
-        http2::parse_link_header(StringRef::from_lit("  <url>; rel=preload"));
+    auto res = http2::parse_link_header("  <url>; rel=preload"_sr);
     assert_size(1, ==, res.size());
     assert_stdsv_equal("url"sv, res[0].uri);
   }
   {
     // preload is a prefix of bogus rel parameter value
-    auto res =
-        http2::parse_link_header(StringRef::from_lit("<url>; rel=preloadx"));
+    auto res = http2::parse_link_header("<url>; rel=preloadx"_sr);
     assert_size(0, ==, res.size());
   }
   {
     // preload in relation-types list
-    auto res = http2::parse_link_header(
-        StringRef::from_lit(R"(<url>; rel="preload")"));
+    auto res = http2::parse_link_header(R"(<url>; rel="preload")"_sr);
     assert_size(1, ==, res.size());
     assert_stdsv_equal("url"sv, res[0].uri);
   }
   {
     // preload in relation-types list followed by another parameter
-    auto res = http2::parse_link_header(
-        StringRef::from_lit(R"(<url>; rel="preload foo")"));
+    auto res = http2::parse_link_header(R"(<url>; rel="preload foo")"_sr);
     assert_size(1, ==, res.size());
     assert_stdsv_equal("url"sv, res[0].uri);
   }
   {
     // preload in relation-types list following another parameter
-    auto res = http2::parse_link_header(
-        StringRef::from_lit(R"(<url>; rel="foo preload")"));
+    auto res = http2::parse_link_header(R"(<url>; rel="foo preload")"_sr);
     assert_size(1, ==, res.size());
     assert_stdsv_equal("url"sv, res[0].uri);
   }
   {
     // preload in relation-types list between other parameters
-    auto res = http2::parse_link_header(
-        StringRef::from_lit(R"(<url>; rel="foo preload bar")"));
+    auto res = http2::parse_link_header(R"(<url>; rel="foo preload bar")"_sr);
     assert_size(1, ==, res.size());
     assert_stdsv_equal("url"sv, res[0].uri);
   }
   {
     // preload in relation-types list between other parameters
-    auto res = http2::parse_link_header(
-        StringRef::from_lit(R"(<url>; rel="foo   preload   bar")"));
+    auto res =
+        http2::parse_link_header(R"(<url>; rel="foo   preload   bar")"_sr);
     assert_size(1, ==, res.size());
     assert_stdsv_equal("url"sv, res[0].uri);
   }
   {
     // no preload in relation-types list
-    auto res =
-        http2::parse_link_header(StringRef::from_lit(R"(<url>; rel="foo")"));
+    auto res = http2::parse_link_header(R"(<url>; rel="foo")"_sr);
     assert_size(0, ==, res.size());
   }
   {
     // no preload in relation-types list, multiple unrelated elements.
-    auto res = http2::parse_link_header(
-        StringRef::from_lit(R"(<url>; rel="foo bar")"));
+    auto res = http2::parse_link_header(R"(<url>; rel="foo bar")"_sr);
     assert_size(0, ==, res.size());
   }
   {
     // preload in relation-types list, followed by another link-value.
-    auto res = http2::parse_link_header(
-        StringRef::from_lit(R"(<url>; rel="preload", <url2>)"));
+    auto res = http2::parse_link_header(R"(<url>; rel="preload", <url2>)"_sr);
     assert_size(1, ==, res.size());
     assert_stdsv_equal("url"sv, res[0].uri);
   }
   {
     // preload in relation-types list, following another link-value.
-    auto res = http2::parse_link_header(
-        StringRef::from_lit(R"(<url>, <url2>; rel="preload")"));
+    auto res = http2::parse_link_header(R"(<url>, <url2>; rel="preload")"_sr);
     assert_size(1, ==, res.size());
     assert_stdsv_equal("url2"sv, res[0].uri);
   }
   {
     // preload in relation-types list, followed by another link-param.
-    auto res = http2::parse_link_header(
-        StringRef::from_lit(R"(<url>; rel="preload"; as="font")"));
+    auto res =
+        http2::parse_link_header(R"(<url>; rel="preload"; as="font")"_sr);
     assert_size(1, ==, res.size());
     assert_stdsv_equal("url"sv, res[0].uri);
   }
   {
     // preload in relation-types list, followed by character other
     // than ';' or ','
-    auto res = http2::parse_link_header(
-        StringRef::from_lit(R"(<url>; rel="preload".)"));
+    auto res = http2::parse_link_header(R"(<url>; rel="preload".)"_sr);
     assert_size(0, ==, res.size());
   }
   {
     // preload in relation-types list, followed by ';' but it
     // terminates input
-    auto res = http2::parse_link_header(
-        StringRef::from_lit(R"(<url>; rel="preload";)"));
+    auto res = http2::parse_link_header(R"(<url>; rel="preload";)"_sr);
     assert_size(0, ==, res.size());
   }
   {
     // preload in relation-types list, followed by ',' but it
     // terminates input
-    auto res = http2::parse_link_header(
-        StringRef::from_lit(R"(<url>; rel="preload",)"));
+    auto res = http2::parse_link_header(R"(<url>; rel="preload",)"_sr);
     assert_size(1, ==, res.size());
     assert_stdsv_equal("url"sv, res[0].uri);
   }
   {
     // preload in relation-types list but there is preceding white
     // space.
-    auto res = http2::parse_link_header(
-        StringRef::from_lit(R"(<url>; rel=" preload")"));
+    auto res = http2::parse_link_header(R"(<url>; rel=" preload")"_sr);
     assert_size(0, ==, res.size());
   }
   {
     // preload in relation-types list but there is trailing white
     // space.
-    auto res = http2::parse_link_header(
-        StringRef::from_lit(R"(<url>; rel="preload ")"));
+    auto res = http2::parse_link_header(R"(<url>; rel="preload ")"_sr);
     assert_size(0, ==, res.size());
   }
   {
     // backslash escaped characters in quoted-string
     auto res = http2::parse_link_header(
-        StringRef::from_lit(R"(<url>; rel=preload; title="foo\"baz\"bar")"));
+        R"(<url>; rel=preload; title="foo\"baz\"bar")"_sr);
     assert_size(1, ==, res.size());
     assert_stdsv_equal("url"sv, res[0].uri);
   }
   {
     // anchor="" is acceptable
-    auto res = http2::parse_link_header(
-        StringRef::from_lit(R"(<url>; rel=preload; anchor="")"));
+    auto res = http2::parse_link_header(R"(<url>; rel=preload; anchor="")"_sr);
     assert_size(1, ==, res.size());
     assert_stdsv_equal("url"sv, res[0].uri);
   }
   {
     // With anchor="#foo", url should be ignored
-    auto res = http2::parse_link_header(
-        StringRef::from_lit(R"(<url>; rel=preload; anchor="#foo")"));
+    auto res =
+        http2::parse_link_header(R"(<url>; rel=preload; anchor="#foo")"_sr);
     assert_size(0, ==, res.size());
   }
   {
     // With anchor=f, url should be ignored
-    auto res = http2::parse_link_header(
-        StringRef::from_lit("<url>; rel=preload; anchor=f"));
+    auto res = http2::parse_link_header("<url>; rel=preload; anchor=f"_sr);
     assert_size(0, ==, res.size());
   }
   {
     // First url is ignored With anchor="#foo", but url should be
     // accepted.
-    auto res = http2::parse_link_header(StringRef::from_lit(
-        R"(<url>; rel=preload; anchor="#foo", <url2>; rel=preload)"));
+    auto res = http2::parse_link_header(
+        R"(<url>; rel=preload; anchor="#foo", <url2>; rel=preload)"_sr);
     assert_size(1, ==, res.size());
     assert_stdsv_equal("url2"sv, res[0].uri);
   }
   {
     // With loadpolicy="next", url should be ignored
-    auto res = http2::parse_link_header(
-        StringRef::from_lit(R"(<url>; rel=preload; loadpolicy="next")"));
+    auto res =
+        http2::parse_link_header(R"(<url>; rel=preload; loadpolicy="next")"_sr);
     assert_size(0, ==, res.size());
   }
   {
     // url should be picked up if empty loadpolicy is specified
-    auto res = http2::parse_link_header(
-        StringRef::from_lit(R"(<url>; rel=preload; loadpolicy="")"));
+    auto res =
+        http2::parse_link_header(R"(<url>; rel=preload; loadpolicy="")"_sr);
     assert_size(1, ==, res.size());
     assert_stdsv_equal("url"sv, res[0].uri);
   }
   {
     // case-insensitive match
     auto res = http2::parse_link_header(
-        StringRef::from_lit(R"(<url>; rel=preload; ANCHOR="#foo", <url2>; )"
-                            R"(REL=PRELOAD, <url3>; REL="foo PRELOAD bar")"));
+        R"(<url>; rel=preload; ANCHOR="#foo", <url2>; )"
+        R"(REL=PRELOAD, <url3>; REL="foo PRELOAD bar")"_sr);
     assert_size(2, ==, res.size());
     assert_stdsv_equal("url2"sv, res[0].uri);
     assert_stdsv_equal("url3"sv, res[1].uri);
   }
   {
     // nopush at the end of input
-    auto res = http2::parse_link_header(
-        StringRef::from_lit("<url>; rel=preload; nopush"));
+    auto res = http2::parse_link_header("<url>; rel=preload; nopush"_sr);
     assert_size(0, ==, res.size());
   }
   {
     // nopush followed by ';'
-    auto res = http2::parse_link_header(
-        StringRef::from_lit("<url>; rel=preload; nopush; foo"));
+    auto res = http2::parse_link_header("<url>; rel=preload; nopush; foo"_sr);
     assert_size(0, ==, res.size());
   }
   {
     // nopush followed by ','
-    auto res = http2::parse_link_header(
-        StringRef::from_lit("<url>; nopush; rel=preload"));
+    auto res = http2::parse_link_header("<url>; nopush; rel=preload"_sr);
     assert_size(0, ==, res.size());
   }
   {
     // string whose prefix is nopush
-    auto res = http2::parse_link_header(
-        StringRef::from_lit("<url>; nopushyes; rel=preload"));
+    auto res = http2::parse_link_header("<url>; nopushyes; rel=preload"_sr);
     assert_size(1, ==, res.size());
     assert_stdsv_equal("url"sv, res[0].uri);
   }
   {
     // rel=preload twice
-    auto res = http2::parse_link_header(
-        StringRef::from_lit("<url>; rel=preload; rel=preload"));
+    auto res = http2::parse_link_header("<url>; rel=preload; rel=preload"_sr);
     assert_size(1, ==, res.size());
     assert_stdsv_equal("url"sv, res[0].uri);
   }
@@ -750,139 +691,139 @@ void test_http2_parse_link_header(void) {
 
 void test_http2_path_join(void) {
   {
-    auto base = StringRef::from_lit("/");
-    auto rel = StringRef::from_lit("/");
+    auto base = "/"_sr;
+    auto rel = "/"_sr;
     assert_stdstring_equal(
         "/", http2::path_join(base, StringRef{}, rel, StringRef{}));
   }
   {
-    auto base = StringRef::from_lit("/");
-    auto rel = StringRef::from_lit("/alpha");
+    auto base = "/"_sr;
+    auto rel = "/alpha"_sr;
     assert_stdstring_equal(
         "/alpha", http2::path_join(base, StringRef{}, rel, StringRef{}));
   }
   {
     // rel ends with trailing '/'
-    auto base = StringRef::from_lit("/");
-    auto rel = StringRef::from_lit("/alpha/");
+    auto base = "/"_sr;
+    auto rel = "/alpha/"_sr;
     assert_stdstring_equal(
         "/alpha/", http2::path_join(base, StringRef{}, rel, StringRef{}));
   }
   {
     // rel contains multiple components
-    auto base = StringRef::from_lit("/");
-    auto rel = StringRef::from_lit("/alpha/bravo");
+    auto base = "/"_sr;
+    auto rel = "/alpha/bravo"_sr;
     assert_stdstring_equal(
         "/alpha/bravo", http2::path_join(base, StringRef{}, rel, StringRef{}));
   }
   {
     // rel is relative
-    auto base = StringRef::from_lit("/");
-    auto rel = StringRef::from_lit("alpha/bravo");
+    auto base = "/"_sr;
+    auto rel = "alpha/bravo"_sr;
     assert_stdstring_equal(
         "/alpha/bravo", http2::path_join(base, StringRef{}, rel, StringRef{}));
   }
   {
     // rel is relative and base ends without /, which means it refers
     // to file.
-    auto base = StringRef::from_lit("/alpha");
-    auto rel = StringRef::from_lit("bravo/charlie");
+    auto base = "/alpha"_sr;
+    auto rel = "bravo/charlie"_sr;
     assert_stdstring_equal(
         "/bravo/charlie",
         http2::path_join(base, StringRef{}, rel, StringRef{}));
   }
   {
     // rel contains repeated '/'s
-    auto base = StringRef::from_lit("/");
-    auto rel = StringRef::from_lit("/alpha/////bravo/////");
+    auto base = "/"_sr;
+    auto rel = "/alpha/////bravo/////"_sr;
     assert_stdstring_equal(
         "/alpha/bravo/", http2::path_join(base, StringRef{}, rel, StringRef{}));
   }
   {
     // base ends with '/', so '..' eats 'bravo'
-    auto base = StringRef::from_lit("/alpha/bravo/");
-    auto rel = StringRef::from_lit("../charlie/delta");
+    auto base = "/alpha/bravo/"_sr;
+    auto rel = "../charlie/delta"_sr;
     assert_stdstring_equal(
         "/alpha/charlie/delta",
         http2::path_join(base, StringRef{}, rel, StringRef{}));
   }
   {
     // base does not end with '/', so '..' eats 'alpha/bravo'
-    auto base = StringRef::from_lit("/alpha/bravo");
-    auto rel = StringRef::from_lit("../charlie");
+    auto base = "/alpha/bravo"_sr;
+    auto rel = "../charlie"_sr;
     assert_stdstring_equal(
         "/charlie", http2::path_join(base, StringRef{}, rel, StringRef{}));
   }
   {
     // 'charlie' is eaten by following '..'
-    auto base = StringRef::from_lit("/alpha/bravo/");
-    auto rel = StringRef::from_lit("../charlie/../delta");
+    auto base = "/alpha/bravo/"_sr;
+    auto rel = "../charlie/../delta"_sr;
     assert_stdstring_equal(
         "/alpha/delta", http2::path_join(base, StringRef{}, rel, StringRef{}));
   }
   {
     // excessive '..' results in '/'
-    auto base = StringRef::from_lit("/alpha/bravo/");
-    auto rel = StringRef::from_lit("../../../");
+    auto base = "/alpha/bravo/"_sr;
+    auto rel = "../../../"_sr;
     assert_stdstring_equal(
         "/", http2::path_join(base, StringRef{}, rel, StringRef{}));
   }
   {
     // excessive '..'  and  path component
-    auto base = StringRef::from_lit("/alpha/bravo/");
-    auto rel = StringRef::from_lit("../../../charlie");
+    auto base = "/alpha/bravo/"_sr;
+    auto rel = "../../../charlie"_sr;
     assert_stdstring_equal(
         "/charlie", http2::path_join(base, StringRef{}, rel, StringRef{}));
   }
   {
     // rel ends with '..'
-    auto base = StringRef::from_lit("/alpha/bravo/");
-    auto rel = StringRef::from_lit("charlie/..");
+    auto base = "/alpha/bravo/"_sr;
+    auto rel = "charlie/.."_sr;
     assert_stdstring_equal(
         "/alpha/bravo/", http2::path_join(base, StringRef{}, rel, StringRef{}));
   }
   {
     // base empty and rel contains '..'
     auto base = StringRef{};
-    auto rel = StringRef::from_lit("charlie/..");
+    auto rel = "charlie/.."_sr;
     assert_stdstring_equal(
         "/", http2::path_join(base, StringRef{}, rel, StringRef{}));
   }
   {
     // '.' is ignored
-    auto base = StringRef::from_lit("/");
-    auto rel = StringRef::from_lit("charlie/././././delta");
+    auto base = "/"_sr;
+    auto rel = "charlie/././././delta"_sr;
     assert_stdstring_equal(
         "/charlie/delta",
         http2::path_join(base, StringRef{}, rel, StringRef{}));
   }
   {
     // trailing '.' is ignored
-    auto base = StringRef::from_lit("/");
-    auto rel = StringRef::from_lit("charlie/.");
+    auto base = "/"_sr;
+    auto rel = "charlie/."_sr;
     assert_stdstring_equal(
         "/charlie/", http2::path_join(base, StringRef{}, rel, StringRef{}));
   }
   {
     // query
-    auto base = StringRef::from_lit("/");
-    auto rel = StringRef::from_lit("/");
-    auto relq = StringRef::from_lit("q");
+    auto base = "/"_sr;
+    auto rel = "/"_sr;
+    auto relq = "q"_sr;
     assert_stdstring_equal("/?q",
                            http2::path_join(base, StringRef{}, rel, relq));
   }
   {
     // empty rel and query
-    auto base = StringRef::from_lit("/alpha");
+    auto base = "/alpha"_sr;
     auto rel = StringRef{};
-    auto relq = StringRef::from_lit("q");
+    auto relq = "q"_sr;
     assert_stdstring_equal("/alpha?q",
                            http2::path_join(base, StringRef{}, rel, relq));
   }
   {
     // both rel and query are empty
-    auto base = StringRef::from_lit("/alpha");
-    auto baseq = StringRef::from_lit("r");
+    auto base = "/alpha"_sr;
+    auto baseq = "r"_sr;
     auto rel = StringRef{};
     auto relq = StringRef{};
     assert_stdstring_equal("/alpha?r",
@@ -891,7 +832,7 @@ void test_http2_path_join(void) {
   {
     // empty base
     auto base = StringRef{};
-    auto rel = StringRef::from_lit("/alpha");
+    auto rel = "/alpha"_sr;
     assert_stdstring_equal(
         "/alpha", http2::path_join(base, StringRef{}, rel, StringRef{}));
   }
@@ -903,7 +844,7 @@ void test_http2_path_join(void) {
   {
     // only baseq is not empty
     auto base = StringRef{};
-    auto baseq = StringRef::from_lit("r");
+    auto baseq = "r"_sr;
     auto rel = StringRef{};
     assert_stdstring_equal("/?r",
                            http2::path_join(base, baseq, rel, StringRef{}));
@@ -912,60 +853,60 @@ void test_http2_path_join(void) {
     // path starts with multiple '/'s.
     auto base = StringRef{};
     auto baseq = StringRef{};
-    auto rel = StringRef::from_lit("//alpha//bravo");
-    auto relq = StringRef::from_lit("charlie");
+    auto rel = "//alpha//bravo"_sr;
+    auto relq = "charlie"_sr;
     assert_stdstring_equal("/alpha/bravo?charlie",
                            http2::path_join(base, baseq, rel, relq));
   }
   // Test cases from RFC 3986, section 5.4.
-  constexpr auto base = StringRef::from_lit("/b/c/d;p");
-  constexpr auto baseq = StringRef::from_lit("q");
+  constexpr auto base = "/b/c/d;p"_sr;
+  constexpr auto baseq = "q"_sr;
   {
-    auto rel = StringRef::from_lit("g");
+    auto rel = "g"_sr;
     auto relq = StringRef{};
     assert_stdstring_equal("/b/c/g", http2::path_join(base, baseq, rel, relq));
   }
   {
-    auto rel = StringRef::from_lit("./g");
+    auto rel = "./g"_sr;
     auto relq = StringRef{};
     assert_stdstring_equal("/b/c/g", http2::path_join(base, baseq, rel, relq));
   }
   {
-    auto rel = StringRef::from_lit("g/");
+    auto rel = "g/"_sr;
     auto relq = StringRef{};
     assert_stdstring_equal("/b/c/g/", http2::path_join(base, baseq, rel, relq));
   }
   {
-    auto rel = StringRef::from_lit("/g");
+    auto rel = "/g"_sr;
     auto relq = StringRef{};
     assert_stdstring_equal("/g", http2::path_join(base, baseq, rel, relq));
   }
   {
     auto rel = StringRef{};
-    auto relq = StringRef::from_lit("y");
+    auto relq = "y"_sr;
     assert_stdstring_equal("/b/c/d;p?y",
                            http2::path_join(base, baseq, rel, relq));
   }
   {
-    auto rel = StringRef::from_lit("g");
-    auto relq = StringRef::from_lit("y");
+    auto rel = "g"_sr;
+    auto relq = "y"_sr;
     assert_stdstring_equal("/b/c/g?y",
                            http2::path_join(base, baseq, rel, relq));
   }
   {
-    auto rel = StringRef::from_lit(";x");
+    auto rel = ";x"_sr;
     auto relq = StringRef{};
     assert_stdstring_equal("/b/c/;x", http2::path_join(base, baseq, rel, relq));
   }
   {
-    auto rel = StringRef::from_lit("g;x");
+    auto rel = "g;x"_sr;
     auto relq = StringRef{};
     assert_stdstring_equal("/b/c/g;x",
                            http2::path_join(base, baseq, rel, relq));
   }
   {
-    auto rel = StringRef::from_lit("g;x");
-    auto relq = StringRef::from_lit("y");
+    auto rel = "g;x"_sr;
+    auto relq = "y"_sr;
     assert_stdstring_equal("/b/c/g;x?y",
                            http2::path_join(base, baseq, rel, relq));
   }
@@ -976,116 +917,116 @@ void test_http2_path_join(void) {
                            http2::path_join(base, baseq, rel, relq));
   }
   {
-    auto rel = StringRef::from_lit(".");
+    auto rel = "."_sr;
     auto relq = StringRef{};
     assert_stdstring_equal("/b/c/", http2::path_join(base, baseq, rel, relq));
   }
   {
-    auto rel = StringRef::from_lit("./");
+    auto rel = "./"_sr;
     auto relq = StringRef{};
     assert_stdstring_equal("/b/c/", http2::path_join(base, baseq, rel, relq));
   }
   {
-    auto rel = StringRef::from_lit("..");
+    auto rel = ".."_sr;
     auto relq = StringRef{};
     assert_stdstring_equal("/b/", http2::path_join(base, baseq, rel, relq));
   }
   {
-    auto rel = StringRef::from_lit("../");
+    auto rel = "../"_sr;
     auto relq = StringRef{};
     assert_stdstring_equal("/b/", http2::path_join(base, baseq, rel, relq));
   }
   {
-    auto rel = StringRef::from_lit("../g");
+    auto rel = "../g"_sr;
     auto relq = StringRef{};
     assert_stdstring_equal("/b/g", http2::path_join(base, baseq, rel, relq));
   }
   {
-    auto rel = StringRef::from_lit("../..");
+    auto rel = "../.."_sr;
     auto relq = StringRef{};
     assert_stdstring_equal("/", http2::path_join(base, baseq, rel, relq));
   }
   {
-    auto rel = StringRef::from_lit("../../");
+    auto rel = "../../"_sr;
     auto relq = StringRef{};
     assert_stdstring_equal("/", http2::path_join(base, baseq, rel, relq));
   }
   {
-    auto rel = StringRef::from_lit("../../g");
+    auto rel = "../../g"_sr;
     auto relq = StringRef{};
     assert_stdstring_equal("/g", http2::path_join(base, baseq, rel, relq));
   }
   {
-    auto rel = StringRef::from_lit("../../../g");
+    auto rel = "../../../g"_sr;
     auto relq = StringRef{};
     assert_stdstring_equal("/g", http2::path_join(base, baseq, rel, relq));
   }
   {
-    auto rel = StringRef::from_lit("../../../../g");
+    auto rel = "../../../../g"_sr;
     auto relq = StringRef{};
     assert_stdstring_equal("/g", http2::path_join(base, baseq, rel, relq));
   }
   {
-    auto rel = StringRef::from_lit("/./g");
+    auto rel = "/./g"_sr;
     auto relq = StringRef{};
     assert_stdstring_equal("/g", http2::path_join(base, baseq, rel, relq));
   }
   {
-    auto rel = StringRef::from_lit("/../g");
+    auto rel = "/../g"_sr;
     auto relq = StringRef{};
     assert_stdstring_equal("/g", http2::path_join(base, baseq, rel, relq));
   }
   {
-    auto rel = StringRef::from_lit("g.");
+    auto rel = "g."_sr;
     auto relq = StringRef{};
     assert_stdstring_equal("/b/c/g.", http2::path_join(base, baseq, rel, relq));
   }
   {
-    auto rel = StringRef::from_lit(".g");
+    auto rel = ".g"_sr;
     auto relq = StringRef{};
     assert_stdstring_equal("/b/c/.g", http2::path_join(base, baseq, rel, relq));
   }
   {
-    auto rel = StringRef::from_lit("g..");
+    auto rel = "g.."_sr;
     auto relq = StringRef{};
     assert_stdstring_equal("/b/c/g..",
                            http2::path_join(base, baseq, rel, relq));
   }
   {
-    auto rel = StringRef::from_lit("..g");
+    auto rel = "..g"_sr;
     auto relq = StringRef{};
     assert_stdstring_equal("/b/c/..g",
                            http2::path_join(base, baseq, rel, relq));
   }
   {
-    auto rel = StringRef::from_lit("./../g");
+    auto rel = "./../g"_sr;
     auto relq = StringRef{};
     assert_stdstring_equal("/b/g", http2::path_join(base, baseq, rel, relq));
   }
   {
-    auto rel = StringRef::from_lit("./g/.");
+    auto rel = "./g/."_sr;
     auto relq = StringRef{};
     assert_stdstring_equal("/b/c/g/", http2::path_join(base, baseq, rel, relq));
   }
   {
-    auto rel = StringRef::from_lit("g/./h");
+    auto rel = "g/./h"_sr;
     auto relq = StringRef{};
     assert_stdstring_equal("/b/c/g/h",
                            http2::path_join(base, baseq, rel, relq));
   }
   {
-    auto rel = StringRef::from_lit("g/../h");
+    auto rel = "g/../h"_sr;
     auto relq = StringRef{};
     assert_stdstring_equal("/b/c/h", http2::path_join(base, baseq, rel, relq));
   }
   {
-    auto rel = StringRef::from_lit("g;x=1/./y");
+    auto rel = "g;x=1/./y"_sr;
     auto relq = StringRef{};
     assert_stdstring_equal("/b/c/g;x=1/y",
                            http2::path_join(base, baseq, rel, relq));
   }
   {
-    auto rel = StringRef::from_lit("g;x=1/../y");
+    auto rel = "g;x=1/../y"_sr;
     auto relq = StringRef{};
     assert_stdstring_equal("/b/c/y", http2::path_join(base, baseq, rel, relq));
   }
@@ -1094,31 +1035,24 @@ void test_http2_path_join(void) {
 void test_http2_normalize_path(void) {
   assert_stdstring_equal(
       "/alpha/charlie",
-      http2::normalize_path(StringRef::from_lit("/alpha/bravo/../charlie"),
-                            StringRef{}));
+      http2::normalize_path("/alpha/bravo/../charlie"_sr, StringRef{}));
 
   assert_stdstring_equal(
-      "/alpha", http2::normalize_path(StringRef::from_lit("/a%6c%70%68%61"),
-                                      StringRef{}));
+      "/alpha", http2::normalize_path("/a%6c%70%68%61"_sr, StringRef{}));
 
-  assert_stdstring_equal(
-      "/alpha%2F%3A",
-      http2::normalize_path(StringRef::from_lit("/alpha%2f%3a"), StringRef{}));
+  assert_stdstring_equal("/alpha%2F%3A",
+                         http2::normalize_path("/alpha%2f%3a"_sr, StringRef{}));
 
-  assert_stdstring_equal(
-      "/%2F", http2::normalize_path(StringRef::from_lit("%2f"), StringRef{}));
+  assert_stdstring_equal("/%2F", http2::normalize_path("%2f"_sr, StringRef{}));
 
-  assert_stdstring_equal(
-      "/%f", http2::normalize_path(StringRef::from_lit("%f"), StringRef{}));
+  assert_stdstring_equal("/%f", http2::normalize_path("%f"_sr, StringRef{}));
 
-  assert_stdstring_equal(
-      "/%", http2::normalize_path(StringRef::from_lit("%"), StringRef{}));
+  assert_stdstring_equal("/%", http2::normalize_path("%"_sr, StringRef{}));
 
   assert_stdstring_equal("/", http2::normalize_path(StringRef{}, StringRef{}));
 
   assert_stdstring_equal("/alpha?bravo",
-                         http2::normalize_path(StringRef::from_lit("/alpha"),
-                                               StringRef::from_lit("bravo")));
+                         http2::normalize_path("/alpha"_sr, "bravo"_sr));
 }
 
 void test_http2_rewrite_clean_path(void) {
@@ -1126,52 +1060,42 @@ void test_http2_rewrite_clean_path(void) {
 
   // unreserved characters
   assert_stdsv_equal("/alpha/bravo/"sv,
-                     http2::rewrite_clean_path(
-                         balloc, StringRef::from_lit("/alpha/%62ravo/")));
+                     http2::rewrite_clean_path(balloc, "/alpha/%62ravo/"_sr));
 
   // percent-encoding is converted to upper case.
-  assert_stdsv_equal(
-      "/delta%3A"sv,
-      http2::rewrite_clean_path(balloc, StringRef::from_lit("/delta%3a")));
+  assert_stdsv_equal("/delta%3A"sv,
+                     http2::rewrite_clean_path(balloc, "/delta%3a"_sr));
 
   // path component is normalized before matching
-  assert_stdsv_equal(
-      "/alpha/bravo/"sv,
-      http2::rewrite_clean_path(
-          balloc, StringRef::from_lit("/alpha/charlie/%2e././bravo/delta/..")));
+  assert_stdsv_equal("/alpha/bravo/"sv,
+                     http2::rewrite_clean_path(
+                         balloc, "/alpha/charlie/%2e././bravo/delta/.."_sr));
 
-  assert_stdsv_equal(
-      "alpha%3a"sv,
-      http2::rewrite_clean_path(balloc, StringRef::from_lit("alpha%3a")));
+  assert_stdsv_equal("alpha%3a"sv,
+                     http2::rewrite_clean_path(balloc, "alpha%3a"_sr));
 
   assert_stdsv_equal(""sv, http2::rewrite_clean_path(balloc, StringRef{}));
 
-  assert_stdsv_equal(
-      "/alpha?bravo"sv,
-      http2::rewrite_clean_path(balloc, StringRef::from_lit("//alpha?bravo")));
+  assert_stdsv_equal("/alpha?bravo"sv,
+                     http2::rewrite_clean_path(balloc, "//alpha?bravo"_sr));
 }
 
 void test_http2_get_pure_path_component(void) {
-  assert_stdsv_equal("/"sv,
-                     http2::get_pure_path_component(StringRef::from_lit("/")));
+  assert_stdsv_equal("/"sv, http2::get_pure_path_component("/"_sr));
+
+  assert_stdsv_equal("/foo"sv, http2::get_pure_path_component("/foo"_sr));
 
   assert_stdsv_equal(
-      "/foo"sv, http2::get_pure_path_component(StringRef::from_lit("/foo")));
+      "/bar"sv, http2::get_pure_path_component("https://example.org/bar"_sr));
 
-  assert_stdsv_equal("/bar"sv,
-                     http2::get_pure_path_component(
-                         StringRef::from_lit("https://example.org/bar")));
-
-  assert_stdsv_equal("/alpha"sv,
-                     http2::get_pure_path_component(
-                         StringRef::from_lit("https://example.org/alpha?q=a")));
+  assert_stdsv_equal("/alpha"sv, http2::get_pure_path_component(
+                                     "https://example.org/alpha?q=a"_sr));
 
   assert_stdsv_equal("/bravo"sv,
-                     http2::get_pure_path_component(StringRef::from_lit(
-                         "https://example.org/bravo?q=a#fragment")));
+                     http2::get_pure_path_component(
+                         "https://example.org/bravo?q=a#fragment"_sr));
 
-  assert_stdsv_equal(
-      ""sv, http2::get_pure_path_component(StringRef::from_lit("\x01\x02")));
+  assert_stdsv_equal(""sv, http2::get_pure_path_component("\x01\x02"_sr));
 }
 
 void test_http2_construct_push_component(void) {
@@ -1179,8 +1103,8 @@ void test_http2_construct_push_component(void) {
   StringRef base, uri;
   StringRef scheme, authority, path;
 
-  base = StringRef::from_lit("/b/");
-  uri = StringRef::from_lit("https://example.org/foo");
+  base = "/b/"_sr;
+  uri = "https://example.org/foo"_sr;
 
   assert_int(0, ==,
              http2::construct_push_component(balloc, scheme, authority, path,
@@ -1193,7 +1117,7 @@ void test_http2_construct_push_component(void) {
   authority = StringRef{};
   path = StringRef{};
 
-  uri = StringRef::from_lit("/foo/bar?q=a");
+  uri = "/foo/bar?q=a"_sr;
 
   assert_int(0, ==,
              http2::construct_push_component(balloc, scheme, authority, path,
@@ -1206,7 +1130,7 @@ void test_http2_construct_push_component(void) {
   authority = StringRef{};
   path = StringRef{};
 
-  uri = StringRef::from_lit("foo/../bar?q=a");
+  uri = "foo/../bar?q=a"_sr;
 
   assert_int(0, ==,
              http2::construct_push_component(balloc, scheme, authority, path,
@@ -1228,7 +1152,7 @@ void test_http2_construct_push_component(void) {
   authority = StringRef{};
   path = StringRef{};
 
-  uri = StringRef::from_lit("?q=a");
+  uri = "?q=a"_sr;
 
   assert_int(0, ==,
              http2::construct_push_component(balloc, scheme, authority, path,
@@ -1239,80 +1163,58 @@ void test_http2_construct_push_component(void) {
 }
 
 void test_http2_contains_trailers(void) {
-  assert_false(http2::contains_trailers(StringRef::from_lit("")));
-  assert_true(http2::contains_trailers(StringRef::from_lit("trailers")));
+  assert_false(http2::contains_trailers(""_sr));
+  assert_true(http2::contains_trailers("trailers"_sr));
   // Match must be case-insensitive.
-  assert_true(http2::contains_trailers(StringRef::from_lit("TRAILERS")));
-  assert_false(http2::contains_trailers(StringRef::from_lit("trailer")));
-  assert_false(http2::contains_trailers(StringRef::from_lit("trailers  3")));
-  assert_true(http2::contains_trailers(StringRef::from_lit("trailers,")));
-  assert_true(http2::contains_trailers(StringRef::from_lit("trailers,foo")));
-  assert_true(http2::contains_trailers(StringRef::from_lit("foo,trailers")));
-  assert_true(
-      http2::contains_trailers(StringRef::from_lit("foo,trailers,bar")));
-  assert_true(
-      http2::contains_trailers(StringRef::from_lit("foo, trailers ,bar")));
-  assert_true(http2::contains_trailers(StringRef::from_lit(",trailers")));
+  assert_true(http2::contains_trailers("TRAILERS"_sr));
+  assert_false(http2::contains_trailers("trailer"_sr));
+  assert_false(http2::contains_trailers("trailers  3"_sr));
+  assert_true(http2::contains_trailers("trailers,"_sr));
+  assert_true(http2::contains_trailers("trailers,foo"_sr));
+  assert_true(http2::contains_trailers("foo,trailers"_sr));
+  assert_true(http2::contains_trailers("foo,trailers,bar"_sr));
+  assert_true(http2::contains_trailers("foo, trailers ,bar"_sr));
+  assert_true(http2::contains_trailers(",trailers"_sr));
 }
 
 void test_http2_check_transfer_encoding(void) {
-  assert_true(http2::check_transfer_encoding(StringRef::from_lit("chunked")));
+  assert_true(http2::check_transfer_encoding("chunked"_sr));
+  assert_true(http2::check_transfer_encoding("foo,chunked"_sr));
+  assert_true(http2::check_transfer_encoding("foo,  chunked"_sr));
+  assert_true(http2::check_transfer_encoding("foo   ,  chunked"_sr));
+  assert_true(http2::check_transfer_encoding("chunked;foo=bar"_sr));
+  assert_true(http2::check_transfer_encoding("chunked ; foo=bar"_sr));
+  assert_true(http2::check_transfer_encoding(R"(chunked;foo="bar")"_sr));
   assert_true(
-      http2::check_transfer_encoding(StringRef::from_lit("foo,chunked")));
-  assert_true(
-      http2::check_transfer_encoding(StringRef::from_lit("foo,  chunked")));
-  assert_true(
-      http2::check_transfer_encoding(StringRef::from_lit("foo   ,  chunked")));
-  assert_true(
-      http2::check_transfer_encoding(StringRef::from_lit("chunked;foo=bar")));
-  assert_true(
-      http2::check_transfer_encoding(StringRef::from_lit("chunked ; foo=bar")));
-  assert_true(http2::check_transfer_encoding(
-      StringRef::from_lit(R"(chunked;foo="bar")")));
-  assert_true(http2::check_transfer_encoding(
-      StringRef::from_lit(R"(chunked;foo="\bar\"";FOO=BAR)")));
-  assert_true(
-      http2::check_transfer_encoding(StringRef::from_lit(R"(chunked;foo="")")));
-  assert_true(http2::check_transfer_encoding(
-      StringRef::from_lit(R"(chunked;foo="bar" , gzip)")));
+      http2::check_transfer_encoding(R"(chunked;foo="\bar\"";FOO=BAR)"_sr));
+  assert_true(http2::check_transfer_encoding(R"(chunked;foo="")"_sr));
+  assert_true(http2::check_transfer_encoding(R"(chunked;foo="bar" , gzip)"_sr));
 
   assert_false(http2::check_transfer_encoding(StringRef{}));
-  assert_false(http2::check_transfer_encoding(StringRef::from_lit(",chunked")));
-  assert_false(http2::check_transfer_encoding(StringRef::from_lit("chunked,")));
-  assert_false(
-      http2::check_transfer_encoding(StringRef::from_lit("chunked, ")));
-  assert_false(
-      http2::check_transfer_encoding(StringRef::from_lit("foo,,chunked")));
-  assert_false(
-      http2::check_transfer_encoding(StringRef::from_lit("chunked;foo")));
-  assert_false(http2::check_transfer_encoding(StringRef::from_lit("chunked;")));
-  assert_false(
-      http2::check_transfer_encoding(StringRef::from_lit("chunked;foo=bar;")));
-  assert_false(
-      http2::check_transfer_encoding(StringRef::from_lit("chunked;?=bar")));
-  assert_false(
-      http2::check_transfer_encoding(StringRef::from_lit("chunked;=bar")));
-  assert_false(
-      http2::check_transfer_encoding(StringRef::from_lit("chunked;;")));
-  assert_false(http2::check_transfer_encoding(StringRef::from_lit("chunked?")));
-  assert_false(http2::check_transfer_encoding(StringRef::from_lit(",")));
-  assert_false(http2::check_transfer_encoding(StringRef::from_lit(" ")));
-  assert_false(http2::check_transfer_encoding(StringRef::from_lit(";")));
-  assert_false(http2::check_transfer_encoding(StringRef::from_lit("\"")));
-  assert_false(http2::check_transfer_encoding(
-      StringRef::from_lit(R"(chunked;foo="bar)")));
-  assert_false(http2::check_transfer_encoding(
-      StringRef::from_lit(R"(chunked;foo="bar\)")));
-  assert_false(
-      http2::check_transfer_encoding(StringRef::from_lit(R"(chunked;foo="bar\)"
-                                                         "\x0a"
-                                                         R"(")")));
-  assert_false(
-      http2::check_transfer_encoding(StringRef::from_lit(R"(chunked;foo=")"
-                                                         "\x0a"
-                                                         R"(")")));
-  assert_false(http2::check_transfer_encoding(
-      StringRef::from_lit(R"(chunked;foo="bar",,gzip)")));
+  assert_false(http2::check_transfer_encoding(",chunked"_sr));
+  assert_false(http2::check_transfer_encoding("chunked,"_sr));
+  assert_false(http2::check_transfer_encoding("chunked, "_sr));
+  assert_false(http2::check_transfer_encoding("foo,,chunked"_sr));
+  assert_false(http2::check_transfer_encoding("chunked;foo"_sr));
+  assert_false(http2::check_transfer_encoding("chunked;"_sr));
+  assert_false(http2::check_transfer_encoding("chunked;foo=bar;"_sr));
+  assert_false(http2::check_transfer_encoding("chunked;?=bar"_sr));
+  assert_false(http2::check_transfer_encoding("chunked;=bar"_sr));
+  assert_false(http2::check_transfer_encoding("chunked;;"_sr));
+  assert_false(http2::check_transfer_encoding("chunked?"_sr));
+  assert_false(http2::check_transfer_encoding(","_sr));
+  assert_false(http2::check_transfer_encoding(" "_sr));
+  assert_false(http2::check_transfer_encoding(";"_sr));
+  assert_false(http2::check_transfer_encoding("\""_sr));
+  assert_false(http2::check_transfer_encoding(R"(chunked;foo="bar)"_sr));
+  assert_false(http2::check_transfer_encoding(R"(chunked;foo="bar\)"_sr));
+  assert_false(http2::check_transfer_encoding(R"(chunked;foo="bar\)"
+                                              "\x0a"
+                                              R"(")"_sr));
+  assert_false(http2::check_transfer_encoding(R"(chunked;foo=")"
+                                              "\x0a"
+                                              R"(")"_sr));
+  assert_false(http2::check_transfer_encoding(R"(chunked;foo="bar",,gzip)"_sr));
 }
 
 } // namespace shrpx

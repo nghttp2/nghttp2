@@ -365,7 +365,7 @@ int ocsp_resp_cb(SSL *ssl, void *arg) {
 #endif // NGHTTP2_OPENSSL_IS_BORINGSSL
 
 constexpr auto MEMCACHED_SESSION_CACHE_KEY_PREFIX =
-    StringRef::from_lit("nghttpx:tls-session-cache:");
+    "nghttpx:tls-session-cache:"_sr;
 
 namespace {
 int tls_session_client_new_cb(SSL *ssl, SSL_SESSION *session) {
@@ -699,8 +699,8 @@ int quic_alpn_select_proto_cb(SSL *ssl, const unsigned char **out,
                               unsigned char *outlen, const unsigned char *in,
                               unsigned int inlen, void *arg) {
   constexpr StringRef alpnlist[] = {
-      StringRef::from_lit("h3"),
-      StringRef::from_lit("h3-29"),
+      "h3"_sr,
+      "h3-29"_sr,
   };
 
   for (auto &alpn : alpnlist) {
@@ -930,9 +930,9 @@ struct TLSProtocol {
 };
 
 constexpr TLSProtocol TLS_PROTOS[] = {
-    TLSProtocol{StringRef::from_lit("TLSv1.2"), SSL_OP_NO_TLSv1_2},
-    TLSProtocol{StringRef::from_lit("TLSv1.1"), SSL_OP_NO_TLSv1_1},
-    TLSProtocol{StringRef::from_lit("TLSv1.0"), SSL_OP_NO_TLSv1}};
+    TLSProtocol{"TLSv1.2"_sr, SSL_OP_NO_TLSv1_2},
+    TLSProtocol{"TLSv1.1"_sr, SSL_OP_NO_TLSv1_1},
+    TLSProtocol{"TLSv1.0"_sr, SSL_OP_NO_TLSv1}};
 
 long int create_tls_proto_mask(const std::vector<StringRef> &tls_proto_list) {
   long int res = 0;

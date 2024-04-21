@@ -94,8 +94,8 @@ void start_element_func(void *user_data, const xmlChar *src_name,
     ++parser_data->inside_head;
   }
   if (util::strieq_l("link", name)) {
-    auto rel_attr = get_attr(attrs, StringRef::from_lit("rel"));
-    auto href_attr = get_attr(attrs, StringRef::from_lit("href"));
+    auto rel_attr = get_attr(attrs, "rel"_sr);
+    auto href_attr = get_attr(attrs, "href"_sr);
     if (rel_attr.empty() || href_attr.empty()) {
       return;
     }
@@ -104,7 +104,7 @@ void start_element_func(void *user_data, const xmlChar *src_name,
     } else if (util::strieq_l("stylesheet", rel_attr)) {
       add_link(parser_data, href_attr, REQ_CSS);
     } else if (util::strieq_l("preload", rel_attr)) {
-      auto as_attr = get_attr(attrs, StringRef::from_lit("as"));
+      auto as_attr = get_attr(attrs, "as"_sr);
       if (as_attr.empty()) {
         return;
       }
@@ -112,13 +112,13 @@ void start_element_func(void *user_data, const xmlChar *src_name,
                get_resource_type_for_preload_as(as_attr));
     }
   } else if (util::strieq_l("img", name)) {
-    auto src_attr = get_attr(attrs, StringRef::from_lit("src"));
+    auto src_attr = get_attr(attrs, "src"_sr);
     if (src_attr.empty()) {
       return;
     }
     add_link(parser_data, src_attr, REQ_IMG);
   } else if (util::strieq_l("script", name)) {
-    auto src_attr = get_attr(attrs, StringRef::from_lit("src"));
+    auto src_attr = get_attr(attrs, "src"_sr);
     if (src_attr.empty()) {
       return;
     }

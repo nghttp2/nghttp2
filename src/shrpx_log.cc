@@ -58,10 +58,8 @@ using namespace nghttp2;
 namespace shrpx {
 
 namespace {
-constexpr StringRef SEVERITY_STR[] = {
-    StringRef::from_lit("INFO"), StringRef::from_lit("NOTICE"),
-    StringRef::from_lit("WARN"), StringRef::from_lit("ERROR"),
-    StringRef::from_lit("FATAL")};
+constexpr StringRef SEVERITY_STR[] = {"INFO"_sr, "NOTICE"_sr, "WARN"_sr,
+                                      "ERROR"_sr, "FATAL"_sr};
 } // namespace
 
 namespace {
@@ -592,14 +590,13 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
   auto &balloc = downstream->get_block_allocator();
 
   auto downstream_addr = downstream->get_addr();
-  auto method = req.method == -1 ? StringRef::from_lit("<unknown>")
-                                 : http2::to_method_string(req.method);
-  auto path =
-      req.method == HTTP_CONNECT ? req.authority
-      : config->http2_proxy      ? construct_absolute_request_uri(balloc, req)
-      : req.path.empty() ? req.method == HTTP_OPTIONS ? StringRef::from_lit("*")
-                                                      : StringRef::from_lit("-")
-                         : req.path;
+  auto method =
+      req.method == -1 ? "<unknown>"_sr : http2::to_method_string(req.method);
+  auto path = req.method == HTTP_CONNECT ? req.authority
+              : config->http2_proxy
+                  ? construct_absolute_request_uri(balloc, req)
+              : req.path.empty() ? req.method == HTTP_OPTIONS ? "*"_sr : "-"_sr
+                                 : req.path;
   auto path_without_query =
       req.method == HTTP_CONNECT
           ? path
