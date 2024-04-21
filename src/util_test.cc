@@ -165,12 +165,10 @@ void test_util_inp_strlower(void) {
 void test_util_to_base64(void) {
   BlockAllocator balloc(4096, 4096);
 
-  assert_stdstring_equal(
-      "AAA++B/=",
-      util::to_base64(balloc, StringRef::from_lit("AAA--B_")).str());
-  assert_stdstring_equal(
-      "AAA++B/B",
-      util::to_base64(balloc, StringRef::from_lit("AAA--B_B")).str());
+  assert_stdsv_equal("AAA++B/="sv,
+                     util::to_base64(balloc, StringRef::from_lit("AAA--B_")));
+  assert_stdsv_equal("AAA++B/B"sv,
+                     util::to_base64(balloc, StringRef::from_lit("AAA--B_B")));
 }
 
 void test_util_to_token68(void) {
@@ -185,18 +183,14 @@ void test_util_to_token68(void) {
 
 void test_util_percent_encode_token(void) {
   BlockAllocator balloc(4096, 4096);
-  assert_stdstring_equal(
-      "h2",
-      util::percent_encode_token(balloc, StringRef::from_lit("h2")).str());
-  assert_stdstring_equal(
-      "h3~",
-      util::percent_encode_token(balloc, StringRef::from_lit("h3~")).str());
-  assert_stdstring_equal(
-      "100%25",
-      util::percent_encode_token(balloc, StringRef::from_lit("100%")).str());
-  assert_stdstring_equal(
-      "http%202",
-      util::percent_encode_token(balloc, StringRef::from_lit("http 2")).str());
+  assert_stdsv_equal(
+      "h2"sv, util::percent_encode_token(balloc, StringRef::from_lit("h2")));
+  assert_stdsv_equal(
+      "h3~"sv, util::percent_encode_token(balloc, StringRef::from_lit("h3~")));
+  assert_stdsv_equal("100%25"sv, util::percent_encode_token(
+                                     balloc, StringRef::from_lit("100%")));
+  assert_stdsv_equal("http%202"sv, util::percent_encode_token(
+                                       balloc, StringRef::from_lit("http 2")));
 }
 
 void test_util_percent_decode(void) {
@@ -217,27 +211,25 @@ void test_util_percent_decode(void) {
   }
   BlockAllocator balloc(1024, 1024);
 
-  assert_stdstring_equal(
-      "foobar",
-      util::percent_decode(balloc, StringRef::from_lit("%66%6F%6f%62%61%72"))
-          .str());
+  assert_stdsv_equal(
+      "foobar"sv,
+      util::percent_decode(balloc, StringRef::from_lit("%66%6F%6f%62%61%72")));
 
-  assert_stdstring_equal(
-      "f%6", util::percent_decode(balloc, StringRef::from_lit("%66%6")).str());
+  assert_stdsv_equal(
+      "f%6"sv, util::percent_decode(balloc, StringRef::from_lit("%66%6")));
 
-  assert_stdstring_equal(
-      "f%", util::percent_decode(balloc, StringRef::from_lit("%66%")).str());
+  assert_stdsv_equal("f%"sv,
+                     util::percent_decode(balloc, StringRef::from_lit("%66%")));
 }
 
 void test_util_quote_string(void) {
   BlockAllocator balloc(4096, 4096);
-  assert_stdstring_equal(
-      "alpha", util::quote_string(balloc, StringRef::from_lit("alpha")).str());
-  assert_stdstring_equal(
-      "", util::quote_string(balloc, StringRef::from_lit("")).str());
-  assert_stdstring_equal(
-      "\\\"alpha\\\"",
-      util::quote_string(balloc, StringRef::from_lit("\"alpha\"")).str());
+  assert_stdsv_equal("alpha"sv,
+                     util::quote_string(balloc, StringRef::from_lit("alpha")));
+  assert_stdsv_equal(""sv, util::quote_string(balloc, StringRef::from_lit("")));
+  assert_stdsv_equal(
+      "\\\"alpha\\\""sv,
+      util::quote_string(balloc, StringRef::from_lit("\"alpha\"")));
 }
 
 void test_util_utox(void) {
@@ -256,17 +248,15 @@ void test_util_http_date(void) {
 
   std::array<char, 30> http_buf;
 
-  assert_stdstring_equal(
-      "Thu, 01 Jan 1970 00:00:00 GMT",
+  assert_stdsv_equal(
+      "Thu, 01 Jan 1970 00:00:00 GMT"sv,
       util::format_http_date(http_buf.data(),
-                             std::chrono::system_clock::time_point())
-          .str());
-  assert_stdstring_equal(
-      "Wed, 29 Feb 2012 09:15:16 GMT",
+                             std::chrono::system_clock::time_point()));
+  assert_stdsv_equal(
+      "Wed, 29 Feb 2012 09:15:16 GMT"sv,
       util::format_http_date(http_buf.data(),
                              std::chrono::system_clock::time_point(
-                                 std::chrono::seconds(1330506916)))
-          .str());
+                                 std::chrono::seconds(1330506916))));
 }
 
 void test_util_select_h2(void) {
@@ -337,11 +327,11 @@ void test_util_utos(void) {
 void test_util_make_string_ref_uint(void) {
   BlockAllocator balloc(1024, 1024);
 
-  assert_stdstring_equal("0", util::make_string_ref_uint(balloc, 0).str());
-  assert_stdstring_equal("123", util::make_string_ref_uint(balloc, 123).str());
-  assert_stdstring_equal(
-      "18446744073709551615",
-      util::make_string_ref_uint(balloc, 18446744073709551615ULL).str());
+  assert_stdsv_equal("0"sv, util::make_string_ref_uint(balloc, 0));
+  assert_stdsv_equal("123"sv, util::make_string_ref_uint(balloc, 123));
+  assert_stdsv_equal(
+      "18446744073709551615"sv,
+      util::make_string_ref_uint(balloc, 18446744073709551615ULL));
 }
 
 void test_util_utos_unit(void) {
@@ -540,21 +530,19 @@ void test_util_localtime_date(void) {
 
   std::array<char, 27> common_buf;
 
-  assert_stdstring_equal(
-      "02/Oct/2001:00:34:56 +1200",
+  assert_stdsv_equal(
+      "02/Oct/2001:00:34:56 +1200"sv,
       util::format_common_log(common_buf.data(),
                               std::chrono::system_clock::time_point(
-                                  std::chrono::seconds(1001939696)))
-          .str());
+                                  std::chrono::seconds(1001939696))));
 
   std::array<char, 30> iso8601_buf;
 
-  assert_stdstring_equal(
-      "2001-10-02T00:34:56.123+12:00",
+  assert_stdsv_equal(
+      "2001-10-02T00:34:56.123+12:00"sv,
       util::format_iso8601(iso8601_buf.data(),
                            std::chrono::system_clock::time_point(
-                               std::chrono::milliseconds(1001939696123LL)))
-          .str());
+                               std::chrono::milliseconds(1001939696123LL))));
 
   if (tz) {
     setenv("TZ", tz, 1);
@@ -615,37 +603,32 @@ void test_util_parse_config_str_list(void) {
 void test_util_make_http_hostport(void) {
   BlockAllocator balloc(4096, 4096);
 
-  assert_stdstring_equal(
-      "localhost",
-      util::make_http_hostport(balloc, StringRef::from_lit("localhost"), 80)
-          .str());
-  assert_stdstring_equal(
-      "[::1]",
-      util::make_http_hostport(balloc, StringRef::from_lit("::1"), 443).str());
-  assert_stdstring_equal(
-      "localhost:3000",
-      util::make_http_hostport(balloc, StringRef::from_lit("localhost"), 3000)
-          .str());
+  assert_stdsv_equal(
+      "localhost"sv,
+      util::make_http_hostport(balloc, StringRef::from_lit("localhost"), 80));
+  assert_stdsv_equal("[::1]"sv, util::make_http_hostport(
+                                    balloc, StringRef::from_lit("::1"), 443));
+  assert_stdsv_equal(
+      "localhost:3000"sv,
+      util::make_http_hostport(balloc, StringRef::from_lit("localhost"), 3000));
 }
 
 void test_util_make_hostport(void) {
   std::array<char, util::max_hostport> hostport_buf;
-  assert_stdstring_equal(
-      "localhost:80", util::make_hostport(std::begin(hostport_buf),
-                                          StringRef::from_lit("localhost"), 80)
-                          .str());
-  assert_stdstring_equal("[::1]:443",
-                         util::make_hostport(std::begin(hostport_buf),
-                                             StringRef::from_lit("::1"), 443)
-                             .str());
+  assert_stdsv_equal("localhost:80"sv,
+                     util::make_hostport(std::begin(hostport_buf),
+                                         StringRef::from_lit("localhost"), 80));
+  assert_stdsv_equal("[::1]:443"sv,
+                     util::make_hostport(std::begin(hostport_buf),
+                                         StringRef::from_lit("::1"), 443));
 
   BlockAllocator balloc(4096, 4096);
-  assert_stdstring_equal(
-      "localhost:80",
-      util::make_hostport(balloc, StringRef::from_lit("localhost"), 80).str());
-  assert_stdstring_equal(
-      "[::1]:443",
-      util::make_hostport(balloc, StringRef::from_lit("::1"), 443).str());
+  assert_stdsv_equal(
+      "localhost:80"sv,
+      util::make_hostport(balloc, StringRef::from_lit("localhost"), 80));
+  assert_stdsv_equal(
+      "[::1]:443"sv,
+      util::make_hostport(balloc, StringRef::from_lit("::1"), 443));
 }
 
 void test_util_strifind(void) {
@@ -685,12 +668,11 @@ void test_util_random_alpha_digit(void) {
 void test_util_format_hex(void) {
   BlockAllocator balloc(4096, 4096);
 
-  assert_stdstring_equal(
-      "0ff0",
-      util::format_hex(balloc, std::span{StringRef::from_lit("\x0f\xf0")})
-          .str());
-  assert_stdstring_equal(
-      "", util::format_hex(balloc, std::span<const uint8_t>{}).str());
+  assert_stdsv_equal(
+      "0ff0"sv,
+      util::format_hex(balloc, std::span{StringRef::from_lit("\x0f\xf0")}));
+  assert_stdsv_equal(""sv,
+                     util::format_hex(balloc, std::span<const uint8_t>{}));
 
   union T {
     uint16_t x;
@@ -734,16 +716,13 @@ void test_util_decode_hex(void) {
 }
 
 void test_util_extract_host(void) {
-  assert_stdstring_equal("foo",
-                         util::extract_host(StringRef::from_lit("foo")).str());
-  assert_stdstring_equal("foo",
-                         util::extract_host(StringRef::from_lit("foo:")).str());
-  assert_stdstring_equal(
-      "foo", util::extract_host(StringRef::from_lit("foo:0")).str());
-  assert_stdstring_equal(
-      "[::1]", util::extract_host(StringRef::from_lit("[::1]")).str());
-  assert_stdstring_equal(
-      "[::1]", util::extract_host(StringRef::from_lit("[::1]:")).str());
+  assert_stdsv_equal("foo"sv, util::extract_host(StringRef::from_lit("foo")));
+  assert_stdsv_equal("foo"sv, util::extract_host(StringRef::from_lit("foo:")));
+  assert_stdsv_equal("foo"sv, util::extract_host(StringRef::from_lit("foo:0")));
+  assert_stdsv_equal("[::1]"sv,
+                     util::extract_host(StringRef::from_lit("[::1]")));
+  assert_stdsv_equal("[::1]"sv,
+                     util::extract_host(StringRef::from_lit("[::1]:")));
 
   assert_true(util::extract_host(StringRef::from_lit(":foo")).empty());
   assert_true(util::extract_host(StringRef::from_lit("[::1")).empty());
@@ -818,16 +797,15 @@ void test_util_split_str(void) {
 void test_util_rstrip(void) {
   BlockAllocator balloc(4096, 4096);
 
-  assert_stdstring_equal(
-      "alpha", util::rstrip(balloc, StringRef::from_lit("alpha")).str());
-  assert_stdstring_equal(
-      "alpha", util::rstrip(balloc, StringRef::from_lit("alpha ")).str());
-  assert_stdstring_equal(
-      "alpha", util::rstrip(balloc, StringRef::from_lit("alpha \t")).str());
-  assert_stdstring_equal("",
-                         util::rstrip(balloc, StringRef::from_lit("")).str());
-  assert_stdstring_equal(
-      "", util::rstrip(balloc, StringRef::from_lit("\t\t\t   ")).str());
+  assert_stdsv_equal("alpha"sv,
+                     util::rstrip(balloc, StringRef::from_lit("alpha")));
+  assert_stdsv_equal("alpha"sv,
+                     util::rstrip(balloc, StringRef::from_lit("alpha ")));
+  assert_stdsv_equal("alpha"sv,
+                     util::rstrip(balloc, StringRef::from_lit("alpha \t")));
+  assert_stdsv_equal(""sv, util::rstrip(balloc, StringRef::from_lit("")));
+  assert_stdsv_equal(""sv,
+                     util::rstrip(balloc, StringRef::from_lit("\t\t\t   ")));
 }
 
 } // namespace shrpx

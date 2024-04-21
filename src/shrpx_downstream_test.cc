@@ -30,6 +30,8 @@
 
 #include "shrpx_downstream.h"
 
+using namespace std::literals;
+
 namespace shrpx {
 
 namespace {
@@ -164,8 +166,8 @@ void test_downstream_assemble_request_cookie(void) {
   req.fs.add_header_token(StringRef::from_lit("cookie"),
                           StringRef::from_lit("delta;;"), false,
                           http2::HD_COOKIE);
-  assert_stdstring_equal("alpha; bravo; charlie; delta",
-                         d.assemble_request_cookie().str());
+  assert_stdsv_equal("alpha; bravo; charlie; delta"sv,
+                     d.assemble_request_cookie());
 }
 
 void test_downstream_rewrite_location_response_header(void) {
@@ -179,7 +181,7 @@ void test_downstream_rewrite_location_response_header(void) {
                            false, http2::HD_LOCATION);
   d.rewrite_location_response_header(StringRef::from_lit("https"));
   auto location = resp.fs.header(http2::HD_LOCATION);
-  assert_stdstring_equal("https://localhost:8443/", (*location).value.str());
+  assert_stdsv_equal("https://localhost:8443/"sv, (*location).value);
 }
 
 void test_downstream_supports_non_final_response(void) {

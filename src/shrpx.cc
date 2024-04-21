@@ -559,7 +559,7 @@ void exec_binary() {
   std::vector<ImmutableString> fd_envs;
   for (size_t i = 0; i < listenerconf.addrs.size(); ++i) {
     auto &addr = listenerconf.addrs[i];
-    auto s = ENV_ACCEPT_PREFIX.str();
+    auto s = std::string{ENV_ACCEPT_PREFIX};
     s += util::utos(i + 1);
     s += '=';
     if (addr.host_unix) {
@@ -576,7 +576,7 @@ void exec_binary() {
     envp[envidx++] = const_cast<char *>(fd_envs.back().c_str());
   }
 
-  auto ipc_fd_str = ENV_ORIG_PID.str();
+  auto ipc_fd_str = std::string{ENV_ORIG_PID};
   ipc_fd_str += '=';
   ipc_fd_str += util::utos(config->pid);
   envp[envidx++] = const_cast<char *>(ipc_fd_str.c_str());
@@ -585,7 +585,7 @@ void exec_binary() {
   std::vector<ImmutableString> quic_lwps;
   for (size_t i = 0; i < worker_processes.size(); ++i) {
     auto &wp = worker_processes[i];
-    auto s = ENV_QUIC_WORKER_PROCESS_PREFIX.str();
+    auto s = std::string{ENV_QUIC_WORKER_PROCESS_PREFIX};
     s += util::utos(i + 1);
     s += '=';
     s += util::utos(wp->quic_ipc_fd);
@@ -1062,7 +1062,7 @@ std::vector<InheritedAddr> get_inherited_addr_from_env(Config *config) {
       for (const auto &env_name : {ENV_LISTENER4_FD, ENV_LISTENER6_FD}) {
         auto fdenv = getenv(env_name.data());
         if (fdenv) {
-          auto name = ENV_ACCEPT_PREFIX.str();
+          auto name = std::string{ENV_ACCEPT_PREFIX};
           name += util::utos(i);
           std::string value = "tcp,";
           value += fdenv;
@@ -1073,7 +1073,7 @@ std::vector<InheritedAddr> get_inherited_addr_from_env(Config *config) {
     } else {
       // The return value of getenv may be allocated statically.
       if (getenv(ENV_UNIX_PATH.data()) && getenv(ENV_UNIX_FD.data())) {
-        auto name = ENV_ACCEPT_PREFIX.str();
+        auto name = std::string{ENV_ACCEPT_PREFIX};
         name += '1';
         std::string value = "unix,";
         value += getenv(ENV_UNIX_FD.data());
@@ -1085,7 +1085,7 @@ std::vector<InheritedAddr> get_inherited_addr_from_env(Config *config) {
   }
 
   for (size_t i = 1;; ++i) {
-    auto name = ENV_ACCEPT_PREFIX.str();
+    auto name = std::string{ENV_ACCEPT_PREFIX};
     name += util::utos(i);
     auto env = getenv(name.c_str());
     if (!env) {
@@ -1232,7 +1232,7 @@ get_inherited_quic_lingering_worker_process_from_env() {
   std::vector<QUICLingeringWorkerProcess> lwps;
 
   for (size_t i = 1;; ++i) {
-    auto name = ENV_QUIC_WORKER_PROCESS_PREFIX.str();
+    auto name = std::string{ENV_QUIC_WORKER_PROCESS_PREFIX};
     name += util::utos(i);
     auto env = getenv(name.c_str());
     if (!env) {

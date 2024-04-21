@@ -361,8 +361,7 @@ inline std::string &operator+=(std::string &lhs, const ImmutableString &rhs) {
 // StringRef is a reference to a string owned by something else.  So
 // it behaves like simple string, but it does not own pointer.  When
 // it is default constructed, it has empty string.  You can freely
-// copy or move around this struct, but never free its pointer.  str()
-// function can be used to export the content as std::string.
+// copy or move around this struct, but never free its pointer.
 class StringRef {
 public:
   using traits_type = std::char_traits<char>;
@@ -436,12 +435,12 @@ public:
     return *(base + pos);
   }
 
-  std::string str() const { return std::string(base, len); }
   const uint8_t *byte() const {
     return reinterpret_cast<const uint8_t *>(base);
   }
 
   constexpr operator std::string_view() const noexcept { return {base, len}; }
+  operator std::string() const noexcept { return std::string{base, len}; }
 
   static constexpr size_type npos = size_type(-1);
 

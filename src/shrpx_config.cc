@@ -3234,7 +3234,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     if (!params.sct_dir.empty()) {
       // Make sure that dir_path is NULL terminated string.
       if (read_tls_sct_from_dir(sct_data, opt,
-                                StringRef{params.sct_dir.str()}) != 0) {
+                                StringRef{std::string{params.sct_dir}}) != 0) {
         return -1;
       }
     }
@@ -4430,7 +4430,7 @@ int compute_affinity_hash(std::vector<AffinityHash> &res, size_t idx,
   std::array<uint8_t, 32> buf;
 
   for (auto i = 0; i < 20; ++i) {
-    auto t = s.str();
+    auto t = std::string{s};
     t += i;
 
     rv = util::sha256(buf.data(), StringRef{t});

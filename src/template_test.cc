@@ -32,6 +32,8 @@
 
 #include "template.h"
 
+using namespace std::literals;
+
 namespace nghttp2 {
 
 namespace {
@@ -148,7 +150,7 @@ void test_template_immutable_string(void) {
 void test_template_string_ref(void) {
   StringRef empty;
 
-  assert_stdstring_equal("", empty.str());
+  assert_stdsv_equal(""sv, empty);
   assert_size(0, ==, empty.size());
 
   // from std::string
@@ -165,7 +167,7 @@ void test_template_string_ref(void) {
   // from string literal
   auto from_lit = StringRef::from_lit("alpha");
 
-  assert_stdstring_equal("alpha", from_lit.str());
+  assert_stdsv_equal("alpha"sv, from_lit);
   assert_size(5, ==, from_lit.size());
 
   // from ImmutableString
@@ -173,19 +175,19 @@ void test_template_string_ref(void) {
 
   StringRef imref(im);
 
-  assert_stdstring_equal("bravo", imref.str());
+  assert_stdsv_equal("bravo"sv, imref);
   assert_size(5, ==, imref.size());
 
   // from C-string
   StringRef cstrref("charlie");
 
-  assert_stdstring_equal("charlie", cstrref.str());
+  assert_stdsv_equal("charlie"sv, cstrref);
   assert_size(7, ==, cstrref.size());
 
   // from C-string and its length
   StringRef cstrnref("delta", 5);
 
-  assert_stdstring_equal("delta", cstrnref.str());
+  assert_stdsv_equal("delta"sv, cstrnref);
   assert_size(5, ==, cstrnref.size());
 
   // operator[]
