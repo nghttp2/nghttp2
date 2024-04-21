@@ -361,8 +361,7 @@ inline std::string &operator+=(std::string &lhs, const ImmutableString &rhs) {
 // StringRef is a reference to a string owned by something else.  So
 // it behaves like simple string, but it does not own pointer.  When
 // it is default constructed, it has empty string.  You can freely
-// copy or move around this struct, but never free its pointer.  str()
-// function can be used to export the content as std::string.
+// copy or move around this struct, but never free its pointer.
 class StringRef {
 public:
   using traits_type = std::char_traits<char>;
@@ -429,19 +428,19 @@ public:
     return const_reverse_iterator{base};
   }
 
-  constexpr const char *c_str() const noexcept { return base; }
+  constexpr const_pointer data() const noexcept { return base; }
   constexpr size_type size() const noexcept { return len; }
   [[nodiscard]] constexpr bool empty() const noexcept { return len == 0; }
   constexpr const_reference operator[](size_type pos) const {
     return *(base + pos);
   }
 
-  std::string str() const { return std::string(base, len); }
   const uint8_t *byte() const {
     return reinterpret_cast<const uint8_t *>(base);
   }
 
   constexpr operator std::string_view() const noexcept { return {base, len}; }
+  operator std::string() const noexcept { return std::string{base, len}; }
 
   static constexpr size_type npos = size_type(-1);
 
@@ -492,11 +491,11 @@ inline constexpr bool operator<(const StringRef &lhs,
 #endif // __APPLE__
 
 inline std::ostream &operator<<(std::ostream &o, const StringRef &s) {
-  return o.write(s.c_str(), s.size());
+  return o.write(s.data(), s.size());
 }
 
 inline std::string &operator+=(std::string &lhs, const StringRef &rhs) {
-  lhs.append(rhs.c_str(), rhs.size());
+  lhs.append(rhs.data(), rhs.size());
   return lhs;
 }
 

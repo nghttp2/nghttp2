@@ -336,7 +336,7 @@ nghttp2_nv make_nv_internal(const StringRef &name, const StringRef &value,
   flags =
       nv_flags | (no_index ? NGHTTP2_NV_FLAG_NO_INDEX : NGHTTP2_NV_FLAG_NONE);
 
-  return {(uint8_t *)name.c_str(), (uint8_t *)value.c_str(), name.size(),
+  return {(uint8_t *)name.data(), (uint8_t *)value.data(), name.size(),
           value.size(), flags};
 }
 } // namespace
@@ -617,7 +617,7 @@ void dump_nv(FILE *out, const Headers &nva) {
 
 void dump_nv(FILE *out, const HeaderRefs &nva) {
   for (auto &nv : nva) {
-    fprintf(out, "%s: %s\n", nv.name.c_str(), nv.value.c_str());
+    fprintf(out, "%s: %s\n", nv.name.data(), nv.value.data());
   }
   fputc('\n', out);
   fflush(out);
@@ -1384,7 +1384,7 @@ std::string path_join(const StringRef &base_path, const StringRef &base_query,
                       const StringRef &rel_path, const StringRef &rel_query) {
   BlockAllocator balloc(1024, 1024);
 
-  return path_join(balloc, base_path, base_query, rel_path, rel_query).str();
+  return path_join(balloc, base_path, base_query, rel_path, rel_query);
 }
 
 bool expect_response_body(int status_code) {
@@ -1611,14 +1611,14 @@ StringRef get_pure_path_component(const StringRef &uri) {
   int rv;
 
   http_parser_url u{};
-  rv = http_parser_parse_url(uri.c_str(), uri.size(), 0, &u);
+  rv = http_parser_parse_url(uri.data(), uri.size(), 0, &u);
   if (rv != 0) {
     return StringRef{};
   }
 
   if (u.field_set & (1 << UF_PATH)) {
     auto &f = u.field_data[UF_PATH];
-    return StringRef{uri.c_str() + f.off, f.len};
+    return StringRef{uri.data() + f.off, f.len};
   }
 
   return StringRef::from_lit("/");
@@ -1636,7 +1636,7 @@ int construct_push_component(BlockAllocator &balloc, StringRef &scheme,
 
   http_parser_url u{};
 
-  rv = http_parser_parse_url(uri.c_str(), uri.size(), 0, &u);
+  rv = http_parser_parse_url(uri.data(), uri.size(), 0, &u);
 
   if (rv != 0) {
     if (uri[0] == '/') {
@@ -1653,11 +1653,11 @@ int construct_push_component(BlockAllocator &balloc, StringRef &scheme,
     }
   } else {
     if (u.field_set & (1 << UF_SCHEMA)) {
-      scheme = util::get_uri_field(uri.c_str(), u, UF_SCHEMA);
+      scheme = util::get_uri_field(uri.data(), u, UF_SCHEMA);
     }
 
     if (u.field_set & (1 << UF_HOST)) {
-      auto auth = util::get_uri_field(uri.c_str(), u, UF_HOST);
+      auto auth = util::get_uri_field(uri.data(), u, UF_HOST);
       auto len = auth.size();
       auto port_exists = u.field_set & (1 << UF_PORT);
       if (port_exists) {
@@ -1677,14 +1677,14 @@ int construct_push_component(BlockAllocator &balloc, StringRef &scheme,
 
     if (u.field_set & (1 << UF_PATH)) {
       auto &f = u.field_data[UF_PATH];
-      rel = StringRef{uri.c_str() + f.off, f.len};
+      rel = StringRef{uri.data() + f.off, f.len};
     } else {
       rel = StringRef::from_lit("/");
     }
 
     if (u.field_set & (1 << UF_QUERY)) {
       auto &f = u.field_data[UF_QUERY];
-      relq = StringRef{uri.c_str() + f.off, f.len};
+      relq = StringRef{uri.data() + f.off, f.len};
     }
   }
 
@@ -1918,7 +1918,7 @@ StringRef normalize_path_colon(BlockAllocator &balloc, const StringRef &path,
 std::string normalize_path(const StringRef &path, const StringRef &query) {
   BlockAllocator balloc(1024, 1024);
 
-  return normalize_path(balloc, path, query).str();
+  return normalize_path(balloc, path, query);
 }
 
 StringRef rewrite_clean_path(BlockAllocator &balloc, const StringRef &src) {

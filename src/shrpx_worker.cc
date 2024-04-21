@@ -855,7 +855,7 @@ int Worker::create_quic_server_socket(UpstreamAddr &faddr) {
 #  endif // AI_ADDRCONFIG
 
   auto node =
-      faddr.host == StringRef::from_lit("*") ? nullptr : faddr.host.c_str();
+      faddr.host == StringRef::from_lit("*") ? nullptr : faddr.host.data();
 
   addrinfo *res, *rp;
   rv = getaddrinfo(node, service.c_str(), &hints, &res);
@@ -1026,7 +1026,7 @@ int Worker::create_quic_server_socket(UpstreamAddr &faddr) {
     if (should_attach_bpf()) {
       auto &bpfconf = config->quic.bpf;
 
-      auto obj = bpf_object__open_file(bpfconf.prog_file.c_str(), nullptr);
+      auto obj = bpf_object__open_file(bpfconf.prog_file.data(), nullptr);
       if (!obj) {
         auto error = errno;
         LOG(FATAL) << "Failed to open bpf object file: "

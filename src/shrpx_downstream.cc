@@ -731,7 +731,7 @@ void Downstream::rewrite_location_response_header(
   }
 
   http_parser_url u{};
-  auto rv = http_parser_parse_url(hd->value.c_str(), hd->value.size(), 0, &u);
+  auto rv = http_parser_parse_url(hd->value.data(), hd->value.size(), 0, &u);
   if (rv != 0) {
     return;
   }
@@ -870,7 +870,7 @@ void Downstream::inspect_http1_request() {
     if (upgrade) {
       const auto &val = upgrade->value;
       // TODO Perform more strict checking for upgrade headers
-      if (util::streq_l(NGHTTP2_CLEARTEXT_PROTO_VERSION_ID, val.c_str(),
+      if (util::streq_l(NGHTTP2_CLEARTEXT_PROTO_VERSION_ID, val.data(),
                         val.size())) {
         req_.http2_upgrade_seen = true;
       } else {

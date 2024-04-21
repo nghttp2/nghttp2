@@ -299,8 +299,8 @@ int LiveCheck::initiate_connection() {
   if (addr_->tls) {
     auto sni_name =
         addr_->sni.empty() ? StringRef{addr_->host} : StringRef{addr_->sni};
-    if (!util::numeric_host(sni_name.c_str())) {
-      SSL_set_tlsext_host_name(conn_.tls.ssl, sni_name.c_str());
+    if (!util::numeric_host(sni_name.data())) {
+      SSL_set_tlsext_host_name(conn_.tls.ssl, sni_name.data());
     }
 
     auto session = tls::reuse_tls_session(addr_->tls_session_cache);

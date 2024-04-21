@@ -1115,7 +1115,7 @@ int Client::connection_made() {
 
       // Just assign next_proto to selected_proto anyway to show the
       // negotiation result.
-      selected_proto = proto.str();
+      selected_proto = proto;
     } else if (config.is_quic()) {
       std::cerr << "QUIC requires ALPN negotiation" << std::endl;
       return -1;
@@ -1128,7 +1128,7 @@ int Client::connection_made() {
           std::cout << "Server does not support ALPN. Falling back to HTTP/1.1."
                     << std::endl;
           session = std::make_unique<Http1Session>(this);
-          selected_proto = NGHTTP2_H1_1.str();
+          selected_proto = NGHTTP2_H1_1;
           break;
         }
       }
@@ -1156,7 +1156,7 @@ int Client::connection_made() {
       break;
     case Config::PROTO_HTTP1_1:
       session = std::make_unique<Http1Session>(this);
-      selected_proto = NGHTTP2_H1_1.str();
+      selected_proto = NGHTTP2_H1_1;
       break;
     default:
       // unreachable
@@ -1862,7 +1862,7 @@ std::string get_reqline(const char *uri, const http_parser_url &u) {
   std::string reqline;
 
   if (util::has_uri_field(u, UF_PATH)) {
-    reqline = util::get_uri_field(uri, u, UF_PATH).str();
+    reqline = util::get_uri_field(uri, u, UF_PATH);
   } else {
     reqline = "/";
   }
@@ -1883,14 +1883,14 @@ constexpr char UNIX_PATH_PREFIX[] = "unix:";
 namespace {
 bool parse_base_uri(const StringRef &base_uri) {
   http_parser_url u{};
-  if (http_parser_parse_url(base_uri.c_str(), base_uri.size(), 0, &u) != 0 ||
+  if (http_parser_parse_url(base_uri.data(), base_uri.size(), 0, &u) != 0 ||
       !util::has_uri_field(u, UF_SCHEMA) || !util::has_uri_field(u, UF_HOST)) {
     return false;
   }
 
-  config.scheme = util::get_uri_field(base_uri.c_str(), u, UF_SCHEMA).str();
-  config.host = util::get_uri_field(base_uri.c_str(), u, UF_HOST).str();
-  config.default_port = util::get_default_port(base_uri.c_str(), u);
+  config.scheme = util::get_uri_field(base_uri.data(), u, UF_SCHEMA);
+  config.host = util::get_uri_field(base_uri.data(), u, UF_HOST);
+  config.default_port = util::get_default_port(base_uri.data(), u);
   if (util::has_uri_field(u, UF_PORT)) {
     config.port = u.port;
   } else {
@@ -2560,7 +2560,7 @@ int main(int argc, char **argv) {
         exit(EXIT_FAILURE);
       }
 
-      config.base_uri = arg.str();
+      config.base_uri = arg;
       break;
     }
     case 'D': {
@@ -2650,7 +2650,7 @@ int main(int argc, char **argv) {
           std::cerr << "--connect-to: Invalid value " << optarg << std::endl;
           exit(EXIT_FAILURE);
         }
-        config.connect_to_host = p.first.str();
+        config.connect_to_host = p.first;
         config.connect_to_port = port;
         break;
       }

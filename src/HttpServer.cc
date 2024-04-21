@@ -1280,7 +1280,7 @@ void prepare_response(Stream *stream, Http2Handler *hd,
   }
 
   if (!hd->get_config()->push.empty()) {
-    auto push_itr = hd->get_config()->push.find(path.str());
+    auto push_itr = hd->get_config()->push.find(path);
     if (allow_push && push_itr != std::end(hd->get_config()->push)) {
       for (auto &push_path : (*push_itr).second) {
         rv = hd->submit_push_promise(stream, StringRef{push_path});

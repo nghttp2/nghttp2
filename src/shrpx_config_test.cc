@@ -35,6 +35,8 @@
 #include "shrpx_config.h"
 #include "shrpx_log.h"
 
+using namespace std::literals;
+
 namespace shrpx {
 
 namespace {
@@ -55,26 +57,26 @@ void test_shrpx_config_parse_header(void) {
   BlockAllocator balloc(4096, 4096);
 
   auto p = parse_header(balloc, StringRef::from_lit("a: b"));
-  assert_stdstring_equal("a", p.name.str());
-  assert_stdstring_equal("b", p.value.str());
+  assert_stdsv_equal("a"sv, p.name);
+  assert_stdsv_equal("b"sv, p.value);
 
   p = parse_header(balloc, StringRef::from_lit("a:  b"));
-  assert_stdstring_equal("a", p.name.str());
-  assert_stdstring_equal("b", p.value.str());
+  assert_stdsv_equal("a"sv, p.name);
+  assert_stdsv_equal("b"sv, p.value);
 
   p = parse_header(balloc, StringRef::from_lit(":a: b"));
   assert_true(p.name.empty());
 
   p = parse_header(balloc, StringRef::from_lit("a: :b"));
-  assert_stdstring_equal("a", p.name.str());
-  assert_stdstring_equal(":b", p.value.str());
+  assert_stdsv_equal("a"sv, p.name);
+  assert_stdsv_equal(":b"sv, p.value);
 
   p = parse_header(balloc, StringRef::from_lit(": b"));
   assert_true(p.name.empty());
 
   p = parse_header(balloc, StringRef::from_lit("alpha: bravo charlie"));
-  assert_stdstring_equal("alpha", p.name.str());
-  assert_stdstring_equal("bravo charlie", p.value.str());
+  assert_stdsv_equal("alpha", p.name);
+  assert_stdsv_equal("bravo charlie", p.value);
 
   p = parse_header(balloc, StringRef::from_lit("a,: b"));
   assert_true(p.name.empty());
@@ -96,82 +98,82 @@ void test_shrpx_config_parse_log_format(void) {
   assert_enum_class(LogFragmentType::REMOTE_ADDR, ==, res[0].type);
 
   assert_enum_class(LogFragmentType::LITERAL, ==, res[1].type);
-  assert_stdstring_equal(" - $remote_user [", res[1].value.str());
+  assert_stdsv_equal(" - $remote_user ["sv, res[1].value);
 
   assert_enum_class(LogFragmentType::TIME_LOCAL, ==, res[2].type);
 
   assert_enum_class(LogFragmentType::LITERAL, ==, res[3].type);
-  assert_stdstring_equal("] \"", res[3].value.str());
+  assert_stdsv_equal("] \""sv, res[3].value);
 
   assert_enum_class(LogFragmentType::REQUEST, ==, res[4].type);
 
   assert_enum_class(LogFragmentType::LITERAL, ==, res[5].type);
-  assert_stdstring_equal("\" ", res[5].value.str());
+  assert_stdsv_equal("\" "sv, res[5].value);
 
   assert_enum_class(LogFragmentType::STATUS, ==, res[6].type);
 
   assert_enum_class(LogFragmentType::LITERAL, ==, res[7].type);
-  assert_stdstring_equal(" ", res[7].value.str());
+  assert_stdsv_equal(" "sv, res[7].value);
 
   assert_enum_class(LogFragmentType::BODY_BYTES_SENT, ==, res[8].type);
 
   assert_enum_class(LogFragmentType::LITERAL, ==, res[9].type);
-  assert_stdstring_equal(" \"", res[9].value.str());
+  assert_stdsv_equal(" \""sv, res[9].value);
 
   assert_enum_class(LogFragmentType::HTTP, ==, res[10].type);
-  assert_stdstring_equal("referer", res[10].value.str());
+  assert_stdsv_equal("referer"sv, res[10].value);
 
   assert_enum_class(LogFragmentType::LITERAL, ==, res[11].type);
-  assert_stdstring_equal("\" ", res[11].value.str());
+  assert_stdsv_equal("\" "sv, res[11].value);
 
   assert_enum_class(LogFragmentType::AUTHORITY, ==, res[12].type);
 
   assert_enum_class(LogFragmentType::LITERAL, ==, res[13].type);
-  assert_stdstring_equal(" \"", res[13].value.str());
+  assert_stdsv_equal(" \""sv, res[13].value);
 
   assert_enum_class(LogFragmentType::HTTP, ==, res[14].type);
-  assert_stdstring_equal("user-agent", res[14].value.str());
+  assert_stdsv_equal("user-agent"sv, res[14].value);
 
   assert_enum_class(LogFragmentType::LITERAL, ==, res[15].type);
-  assert_stdstring_equal("\"", res[15].value.str());
+  assert_stdsv_equal("\""sv, res[15].value);
 
   res = parse_log_format(balloc, StringRef::from_lit("$"));
 
   assert_size(1, ==, res.size());
 
   assert_enum_class(LogFragmentType::LITERAL, ==, res[0].type);
-  assert_stdstring_equal("$", res[0].value.str());
+  assert_stdsv_equal("$"sv, res[0].value);
 
   res = parse_log_format(balloc, StringRef::from_lit("${"));
 
   assert_size(1, ==, res.size());
 
   assert_enum_class(LogFragmentType::LITERAL, ==, res[0].type);
-  assert_stdstring_equal("${", res[0].value.str());
+  assert_stdsv_equal("${"sv, res[0].value);
 
   res = parse_log_format(balloc, StringRef::from_lit("${a"));
 
   assert_size(1, ==, res.size());
 
   assert_enum_class(LogFragmentType::LITERAL, ==, res[0].type);
-  assert_stdstring_equal("${a", res[0].value.str());
+  assert_stdsv_equal("${a"sv, res[0].value);
 
   res = parse_log_format(balloc, StringRef::from_lit("${a "));
 
   assert_size(1, ==, res.size());
 
   assert_enum_class(LogFragmentType::LITERAL, ==, res[0].type);
-  assert_stdstring_equal("${a ", res[0].value.str());
+  assert_stdsv_equal("${a "sv, res[0].value);
 
   res = parse_log_format(balloc, StringRef::from_lit("$$remote_addr"));
 
   assert_size(2, ==, res.size());
 
   assert_enum_class(LogFragmentType::LITERAL, ==, res[0].type);
-  assert_stdstring_equal("$", res[0].value.str());
+  assert_stdsv_equal("$"sv, res[0].value);
 
   assert_enum_class(LogFragmentType::REMOTE_ADDR, ==, res[1].type);
-  assert_stdstring_equal("", res[1].value.str());
+  assert_stdsv_equal(""sv, res[1].value);
 }
 
 void test_shrpx_config_read_tls_ticket_key_file(void) {

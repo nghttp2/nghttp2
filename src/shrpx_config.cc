@@ -152,7 +152,7 @@ int split_host_port(char *host, size_t hostlen, uint16_t *port_ptr,
 namespace {
 bool is_secure(const StringRef &filename) {
   struct stat buf;
-  int rv = stat(filename.c_str(), &buf);
+  int rv = stat(filename.data(), &buf);
   if (rv == 0) {
     if ((buf.st_mode & S_IRWXU) && !(buf.st_mode & S_IRWXG) &&
         !(buf.st_mode & S_IRWXO)) {
@@ -185,7 +185,7 @@ read_tls_ticket_key_file(const std::vector<StringRef> &files,
   for (auto &file : files) {
     struct stat fst {};
 
-    if (stat(file.c_str(), &fst) == -1) {
+    if (stat(file.data(), &fst) == -1) {
       auto error = errno;
       LOG(ERROR) << "tls-ticket-key-file: could not stat file " << file
                  << ", errno=" << error;
@@ -198,7 +198,7 @@ read_tls_ticket_key_file(const std::vector<StringRef> &files,
       return nullptr;
     }
 
-    std::ifstream f(file.c_str());
+    std::ifstream f(file.data());
     if (!f) {
       LOG(ERROR) << "tls-ticket-key-file: could not open file " << file;
       return nullptr;
@@ -245,7 +245,7 @@ read_quic_secret_file(const StringRef &path) {
   auto qkms = std::make_shared<QUICKeyingMaterials>();
   auto &kms = qkms->keying_materials;
 
-  std::ifstream f(path.c_str());
+  std::ifstream f(path.data());
   if (!f) {
     LOG(ERROR) << "frontend-quic-secret-file: could not open file " << path;
     return nullptr;
@@ -350,7 +350,7 @@ std::string read_passwd_from_file(const StringRef &opt,
     return line;
   }
 
-  std::ifstream in(filename.c_str(), std::ios::binary);
+  std::ifstream in(filename.data(), std::ios::binary);
   if (!in) {
     LOG(ERROR) << opt << ": Could not open key passwd file " << filename;
     return line;
@@ -1460,7 +1460,7 @@ int parse_error_page(std::vector<ErrorPage> &error_pages, const StringRef &opt,
   auto path = StringRef{eq + 1, std::end(optarg)};
 
   std::vector<uint8_t> content;
-  auto fd = open(path.c_str(), O_RDONLY);
+  auto fd = open(path.data(), O_RDONLY);
   if (fd == -1) {
     auto error = errno;
     LOG(ERROR) << opt << ": " << optarg << ": "
@@ -1545,7 +1545,7 @@ int read_tls_sct_from_dir(std::vector<uint8_t> &dst, const StringRef &opt,
                           const StringRef &dir_path) {
   std::array<char, STRERROR_BUFSIZE> errbuf;
 
-  auto dir = opendir(dir_path.c_str());
+  auto dir = opendir(dir_path.data());
   if (dir == nullptr) {
     auto error = errno;
     LOG(ERROR) << opt << ": " << dir_path << ": "
@@ -1661,7 +1661,7 @@ namespace {
 int parse_psk_secrets(Config *config, const StringRef &path) {
   auto &tlsconf = config->tls;
 
-  std::ifstream f(path.c_str(), std::ios::binary);
+  std::ifstream f(path.data(), std::ios::binary);
   if (!f) {
     LOG(ERROR) << SHRPX_OPT_PSK_SECRETS << ": could not open file " << path;
     return -1;
@@ -1727,7 +1727,7 @@ namespace {
 int parse_client_psk_secrets(Config *config, const StringRef &path) {
   auto &tlsconf = config->tls;
 
-  std::ifstream f(path.c_str(), std::ios::binary);
+  std::ifstream f(path.data(), std::ios::binary);
   if (!f) {
     LOG(ERROR) << SHRPX_OPT_CLIENT_PSK_SECRETS << ": could not open file "
                << path;
@@ -2825,7 +2825,7 @@ int option_lookup_token(const char *name, size_t namelen) {
 int parse_config(Config *config, const StringRef &opt, const StringRef &optarg,
                  std::set<StringRef> &included_set,
                  std::map<StringRef, size_t> &pattern_addr_indexer) {
-  auto optid = option_lookup_token(opt.c_str(), opt.size());
+  auto optid = option_lookup_token(opt.data(), opt.size());
   return parse_config(config, optid, opt, optarg, included_set,
                       pattern_addr_indexer);
 }
@@ -3185,7 +3185,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
 
     return 0;
   case SHRPX_OPTID_USER: {
-    auto pwd = getpwnam(optarg.c_str());
+    auto pwd = getpwnam(optarg.data());
     if (!pwd) {
       LOG(ERROR) << opt << ": failed to get uid from " << optarg << ": "
                  << xsi_strerror(errno, errbuf.data(), errbuf.size());
@@ -3234,7 +3234,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     if (!params.sct_dir.empty()) {
       // Make sure that dir_path is NULL terminated string.
       if (read_tls_sct_from_dir(sct_data, opt,
-                                StringRef{params.sct_dir.str()}) != 0) {
+                                StringRef{std::string{params.sct_dir}}) != 0) {
         return -1;
       }
     }
@@ -3323,10 +3323,10 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     proxy = {};
     // parse URI and get hostname, port and optionally userinfo.
     http_parser_url u{};
-    int rv = http_parser_parse_url(optarg.c_str(), optarg.size(), 0, &u);
+    int rv = http_parser_parse_url(optarg.data(), optarg.size(), 0, &u);
     if (rv == 0) {
       if (u.field_set & UF_USERINFO) {
-        auto uf = util::get_uri_field(optarg.c_str(), u, UF_USERINFO);
+        auto uf = util::get_uri_field(optarg.data(), u, UF_USERINFO);
         // Surprisingly, u.field_set & UF_USERINFO is nonzero even if
         // userinfo component is empty string.
         if (!uf.empty()) {
@@ -3335,7 +3335,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
       }
       if (u.field_set & UF_HOST) {
         proxy.host = make_string_ref(
-            config->balloc, util::get_uri_field(optarg.c_str(), u, UF_HOST));
+            config->balloc, util::get_uri_field(optarg.data(), u, UF_HOST));
       } else {
         LOG(ERROR) << opt << ": no hostname specified";
         return -1;
@@ -3580,7 +3580,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
 
     included_set.insert(optarg);
     auto rv =
-        load_config(config, optarg.c_str(), included_set, pattern_addr_indexer);
+        load_config(config, optarg.data(), included_set, pattern_addr_indexer);
     included_set.erase(optarg);
 
     if (rv != 0) {
@@ -4430,7 +4430,7 @@ int compute_affinity_hash(std::vector<AffinityHash> &res, size_t idx,
   std::array<uint8_t, 32> buf;
 
   for (auto i = 0; i < 20; ++i) {
-    auto t = s.str();
+    auto t = std::string{s};
     t += i;
 
     rv = util::sha256(buf.data(), StringRef{t});
@@ -4504,7 +4504,7 @@ int configure_downstream_group(Config *config, bool http2_proxy,
       LOG(INFO) << "Host-path pattern: group " << i << ": '" << g.pattern
                 << "'";
       for (auto &addr : g.addrs) {
-        LOG(INFO) << "group " << i << " -> " << addr.host.c_str()
+        LOG(INFO) << "group " << i << " -> " << addr.host.data()
                   << (addr.host_unix ? "" : ":" + util::utos(addr.port))
                   << ", proto=" << strproto(addr.proto)
                   << (addr.tls ? ", tls" : "");
@@ -4571,7 +4571,7 @@ int configure_downstream_group(Config *config, bool http2_proxy,
         // not going to be passed to any syscalls.
         addr.hostport = StringRef::from_lit("localhost");
 
-        auto path = addr.host.c_str();
+        auto path = addr.host.data();
         auto pathlen = addr.host.size();
 
         if (pathlen + 1 > sizeof(addr.addr.su.un.sun_path)) {
@@ -4600,7 +4600,7 @@ int configure_downstream_group(Config *config, bool http2_proxy,
           util::make_hostport(std::begin(hostport_buf), addr.host, addr.port);
 
       if (!addr.dns) {
-        if (resolve_hostname(&addr.addr, addr.host.c_str(), addr.port,
+        if (resolve_hostname(&addr.addr, addr.host.data(), addr.port,
                              downstreamconf.family, resolve_flags) == -1) {
           LOG(FATAL) << "Resolving backend address failed: " << hostport;
           return -1;

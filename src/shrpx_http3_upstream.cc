@@ -2904,7 +2904,7 @@ int Http3Upstream::open_qlog_file(const StringRef &dir,
                                   const ngtcp2_cid &scid) const {
   std::array<char, sizeof("20141115T125824.741+0900")> buf;
 
-  auto path = dir.str();
+  auto path = std::string{dir};
   path += '/';
   path +=
       util::format_iso8601_basic(buf.data(), std::chrono::system_clock::now());

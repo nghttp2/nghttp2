@@ -36,6 +36,7 @@
 #include "util.h"
 
 using namespace nghttp2;
+using namespace std::literals;
 
 #define MAKE_NV(K, V)                                                          \
   {                                                                            \
@@ -76,8 +77,8 @@ namespace {
 void check_nv(const HeaderRef &a, const nghttp2_nv *b) {
   assert_size(a.name.size(), ==, b->namelen);
   assert_size(a.value.size(), ==, b->valuelen);
-  assert_memory_equal(b->namelen, a.name.c_str(), b->name);
-  assert_memory_equal(b->valuelen, a.value.c_str(), b->value);
+  assert_memory_equal(b->namelen, a.name.data(), b->name);
+  assert_memory_equal(b->valuelen, a.value.data(), b->value);
 }
 } // namespace
 
@@ -298,7 +299,7 @@ void check_rewrite_location_uri(const std::string &want, const std::string &uri,
   auto got = http2::rewrite_location_uri(
       balloc, StringRef{uri}, u, StringRef{match_host},
       StringRef{req_authority}, StringRef{upstream_scheme});
-  assert_stdstring_equal(want, got.str());
+  assert_stdsv_equal(want, got);
 }
 } // namespace
 
@@ -371,21 +372,21 @@ void test_http2_parse_link_header(void) {
     auto res =
         http2::parse_link_header(StringRef::from_lit("<url>; rel=preload"));
     assert_size(1, ==, res.size());
-    assert_stdstring_equal("url", res[0].uri.str());
+    assert_stdsv_equal("url"sv, res[0].uri);
   }
   {
     // With extra link-param.  URI url should be extracted
     auto res = http2::parse_link_header(
         StringRef::from_lit("<url>; rel=preload; as=file"));
     assert_size(1, ==, res.size());
-    assert_stdstring_equal("url", res[0].uri.str());
+    assert_stdsv_equal("url"sv, res[0].uri);
   }
   {
     // With extra link-param.  URI url should be extracted
     auto res = http2::parse_link_header(
         StringRef::from_lit("<url>; as=file; rel=preload"));
     assert_size(1, ==, res.size());
-    assert_stdstring_equal("url", res[0].uri.str());
+    assert_stdsv_equal("url"sv, res[0].uri);
   }
   {
     // With extra link-param and quote-string.  URI url should be
@@ -393,7 +394,7 @@ void test_http2_parse_link_header(void) {
     auto res = http2::parse_link_header(
         StringRef::from_lit(R"(<url>; rel=preload; title="foo,bar")"));
     assert_size(1, ==, res.size());
-    assert_stdstring_equal("url", res[0].uri.str());
+    assert_stdsv_equal("url"sv, res[0].uri);
   }
   {
     // With extra link-param and quote-string.  URI url should be
@@ -401,36 +402,36 @@ void test_http2_parse_link_header(void) {
     auto res = http2::parse_link_header(
         StringRef::from_lit(R"(<url>; title="foo,bar"; rel=preload)"));
     assert_size(1, ==, res.size());
-    assert_stdstring_equal("url", res[0].uri.str());
+    assert_stdsv_equal("url"sv, res[0].uri);
   }
   {
     // ',' after quote-string
     auto res = http2::parse_link_header(
         StringRef::from_lit(R"(<url>; title="foo,bar", <url2>; rel=preload)"));
     assert_size(1, ==, res.size());
-    assert_stdstring_equal("url2", res[0].uri.str());
+    assert_stdsv_equal("url2"sv, res[0].uri);
   }
   {
     // Only first URI should be extracted.
     auto res = http2::parse_link_header(
         StringRef::from_lit("<url>; rel=preload, <url2>"));
     assert_size(1, ==, res.size());
-    assert_stdstring_equal("url", res[0].uri.str());
+    assert_stdsv_equal("url"sv, res[0].uri);
   }
   {
     // Both have rel=preload, so both urls should be extracted
     auto res = http2::parse_link_header(
         StringRef::from_lit("<url>; rel=preload, <url2>; rel=preload"));
     assert_size(2, ==, res.size());
-    assert_stdstring_equal("url", res[0].uri.str());
-    assert_stdstring_equal("url2", res[1].uri.str());
+    assert_stdsv_equal("url"sv, res[0].uri);
+    assert_stdsv_equal("url2"sv, res[1].uri);
   }
   {
     // Second URI uri should be extracted.
     auto res = http2::parse_link_header(
         StringRef::from_lit("<url>, <url2>;rel=preload"));
     assert_size(1, ==, res.size());
-    assert_stdstring_equal("url2", res[0].uri.str());
+    assert_stdsv_equal("url2"sv, res[0].uri);
   }
   {
     // Error if input ends with ';'
@@ -449,14 +450,14 @@ void test_http2_parse_link_header(void) {
     auto res =
         http2::parse_link_header(StringRef::from_lit("<url>;rel=preload,"));
     assert_size(1, ==, res.size());
-    assert_stdstring_equal("url", res[0].uri.str());
+    assert_stdsv_equal("url"sv, res[0].uri);
   }
   {
     // Multiple repeated ','s between fields is OK
     auto res = http2::parse_link_header(
         StringRef::from_lit("<url>,,,<url2>;rel=preload"));
     assert_size(1, ==, res.size());
-    assert_stdstring_equal("url2", res[0].uri.str());
+    assert_stdsv_equal("url2"sv, res[0].uri);
   }
   {
     // Error if url is not enclosed by <>
@@ -499,22 +500,22 @@ void test_http2_parse_link_header(void) {
     auto res = http2::parse_link_header(
         StringRef::from_lit("<url>;as=file;rel=preload,<url2>;rel=preload"));
     assert_size(2, ==, res.size());
-    assert_stdstring_equal("url", res[0].uri.str());
-    assert_stdstring_equal("url2", res[1].uri.str());
+    assert_stdsv_equal("url"sv, res[0].uri);
+    assert_stdsv_equal("url2"sv, res[1].uri);
   }
   {
     // link-extension may have no value
     auto res =
         http2::parse_link_header(StringRef::from_lit("<url>; as; rel=preload"));
     assert_size(1, ==, res.size());
-    assert_stdstring_equal("url", res[0].uri.str());
+    assert_stdsv_equal("url"sv, res[0].uri);
   }
   {
     // ext-name-star
     auto res = http2::parse_link_header(
         StringRef::from_lit("<url>; foo*=bar; rel=preload"));
     assert_size(1, ==, res.size());
-    assert_stdstring_equal("url", res[0].uri.str());
+    assert_stdsv_equal("url"sv, res[0].uri);
   }
   {
     // '*' is not allowed expect for trailing one
@@ -545,7 +546,7 @@ void test_http2_parse_link_header(void) {
     auto res =
         http2::parse_link_header(StringRef::from_lit("  <url>; rel=preload"));
     assert_size(1, ==, res.size());
-    assert_stdstring_equal("url", res[0].uri.str());
+    assert_stdsv_equal("url"sv, res[0].uri);
   }
   {
     // preload is a prefix of bogus rel parameter value
@@ -558,35 +559,35 @@ void test_http2_parse_link_header(void) {
     auto res = http2::parse_link_header(
         StringRef::from_lit(R"(<url>; rel="preload")"));
     assert_size(1, ==, res.size());
-    assert_stdstring_equal("url", res[0].uri.str());
+    assert_stdsv_equal("url"sv, res[0].uri);
   }
   {
     // preload in relation-types list followed by another parameter
     auto res = http2::parse_link_header(
         StringRef::from_lit(R"(<url>; rel="preload foo")"));
     assert_size(1, ==, res.size());
-    assert_stdstring_equal("url", res[0].uri.str());
+    assert_stdsv_equal("url"sv, res[0].uri);
   }
   {
     // preload in relation-types list following another parameter
     auto res = http2::parse_link_header(
         StringRef::from_lit(R"(<url>; rel="foo preload")"));
     assert_size(1, ==, res.size());
-    assert_stdstring_equal("url", res[0].uri.str());
+    assert_stdsv_equal("url"sv, res[0].uri);
   }
   {
     // preload in relation-types list between other parameters
     auto res = http2::parse_link_header(
         StringRef::from_lit(R"(<url>; rel="foo preload bar")"));
     assert_size(1, ==, res.size());
-    assert_stdstring_equal("url", res[0].uri.str());
+    assert_stdsv_equal("url"sv, res[0].uri);
   }
   {
     // preload in relation-types list between other parameters
     auto res = http2::parse_link_header(
         StringRef::from_lit(R"(<url>; rel="foo   preload   bar")"));
     assert_size(1, ==, res.size());
-    assert_stdstring_equal("url", res[0].uri.str());
+    assert_stdsv_equal("url"sv, res[0].uri);
   }
   {
     // no preload in relation-types list
@@ -605,21 +606,21 @@ void test_http2_parse_link_header(void) {
     auto res = http2::parse_link_header(
         StringRef::from_lit(R"(<url>; rel="preload", <url2>)"));
     assert_size(1, ==, res.size());
-    assert_stdstring_equal("url", res[0].uri.str());
+    assert_stdsv_equal("url"sv, res[0].uri);
   }
   {
     // preload in relation-types list, following another link-value.
     auto res = http2::parse_link_header(
         StringRef::from_lit(R"(<url>, <url2>; rel="preload")"));
     assert_size(1, ==, res.size());
-    assert_stdstring_equal("url2", res[0].uri.str());
+    assert_stdsv_equal("url2"sv, res[0].uri);
   }
   {
     // preload in relation-types list, followed by another link-param.
     auto res = http2::parse_link_header(
         StringRef::from_lit(R"(<url>; rel="preload"; as="font")"));
     assert_size(1, ==, res.size());
-    assert_stdstring_equal("url", res[0].uri.str());
+    assert_stdsv_equal("url"sv, res[0].uri);
   }
   {
     // preload in relation-types list, followed by character other
@@ -641,7 +642,7 @@ void test_http2_parse_link_header(void) {
     auto res = http2::parse_link_header(
         StringRef::from_lit(R"(<url>; rel="preload",)"));
     assert_size(1, ==, res.size());
-    assert_stdstring_equal("url", res[0].uri.str());
+    assert_stdsv_equal("url"sv, res[0].uri);
   }
   {
     // preload in relation-types list but there is preceding white
@@ -662,14 +663,14 @@ void test_http2_parse_link_header(void) {
     auto res = http2::parse_link_header(
         StringRef::from_lit(R"(<url>; rel=preload; title="foo\"baz\"bar")"));
     assert_size(1, ==, res.size());
-    assert_stdstring_equal("url", res[0].uri.str());
+    assert_stdsv_equal("url"sv, res[0].uri);
   }
   {
     // anchor="" is acceptable
     auto res = http2::parse_link_header(
         StringRef::from_lit(R"(<url>; rel=preload; anchor="")"));
     assert_size(1, ==, res.size());
-    assert_stdstring_equal("url", res[0].uri.str());
+    assert_stdsv_equal("url"sv, res[0].uri);
   }
   {
     // With anchor="#foo", url should be ignored
@@ -689,7 +690,7 @@ void test_http2_parse_link_header(void) {
     auto res = http2::parse_link_header(StringRef::from_lit(
         R"(<url>; rel=preload; anchor="#foo", <url2>; rel=preload)"));
     assert_size(1, ==, res.size());
-    assert_stdstring_equal("url2", res[0].uri.str());
+    assert_stdsv_equal("url2"sv, res[0].uri);
   }
   {
     // With loadpolicy="next", url should be ignored
@@ -702,7 +703,7 @@ void test_http2_parse_link_header(void) {
     auto res = http2::parse_link_header(
         StringRef::from_lit(R"(<url>; rel=preload; loadpolicy="")"));
     assert_size(1, ==, res.size());
-    assert_stdstring_equal("url", res[0].uri.str());
+    assert_stdsv_equal("url"sv, res[0].uri);
   }
   {
     // case-insensitive match
@@ -710,8 +711,8 @@ void test_http2_parse_link_header(void) {
         StringRef::from_lit(R"(<url>; rel=preload; ANCHOR="#foo", <url2>; )"
                             R"(REL=PRELOAD, <url3>; REL="foo PRELOAD bar")"));
     assert_size(2, ==, res.size());
-    assert_stdstring_equal("url2", res[0].uri.str());
-    assert_stdstring_equal("url3", res[1].uri.str());
+    assert_stdsv_equal("url2"sv, res[0].uri);
+    assert_stdsv_equal("url3"sv, res[1].uri);
   }
   {
     // nopush at the end of input
@@ -736,14 +737,14 @@ void test_http2_parse_link_header(void) {
     auto res = http2::parse_link_header(
         StringRef::from_lit("<url>; nopushyes; rel=preload"));
     assert_size(1, ==, res.size());
-    assert_stdstring_equal("url", res[0].uri.str());
+    assert_stdsv_equal("url"sv, res[0].uri);
   }
   {
     // rel=preload twice
     auto res = http2::parse_link_header(
         StringRef::from_lit("<url>; rel=preload; rel=preload"));
     assert_size(1, ==, res.size());
-    assert_stdstring_equal("url", res[0].uri.str());
+    assert_stdsv_equal("url"sv, res[0].uri);
   }
 }
 
@@ -1124,64 +1125,53 @@ void test_http2_rewrite_clean_path(void) {
   BlockAllocator balloc(4096, 4096);
 
   // unreserved characters
-  assert_stdstring_equal(
-      "/alpha/bravo/",
-      http2::rewrite_clean_path(balloc, StringRef::from_lit("/alpha/%62ravo/"))
-          .str());
+  assert_stdsv_equal("/alpha/bravo/"sv,
+                     http2::rewrite_clean_path(
+                         balloc, StringRef::from_lit("/alpha/%62ravo/")));
 
   // percent-encoding is converted to upper case.
-  assert_stdstring_equal(
-      "/delta%3A",
-      http2::rewrite_clean_path(balloc, StringRef::from_lit("/delta%3a"))
-          .str());
+  assert_stdsv_equal(
+      "/delta%3A"sv,
+      http2::rewrite_clean_path(balloc, StringRef::from_lit("/delta%3a")));
 
   // path component is normalized before matching
-  assert_stdstring_equal(
-      "/alpha/bravo/",
+  assert_stdsv_equal(
+      "/alpha/bravo/"sv,
       http2::rewrite_clean_path(
-          balloc, StringRef::from_lit("/alpha/charlie/%2e././bravo/delta/.."))
-          .str());
+          balloc, StringRef::from_lit("/alpha/charlie/%2e././bravo/delta/..")));
 
-  assert_stdstring_equal(
-      "alpha%3a",
-      http2::rewrite_clean_path(balloc, StringRef::from_lit("alpha%3a")).str());
+  assert_stdsv_equal(
+      "alpha%3a"sv,
+      http2::rewrite_clean_path(balloc, StringRef::from_lit("alpha%3a")));
 
-  assert_stdstring_equal("",
-                         http2::rewrite_clean_path(balloc, StringRef{}).str());
+  assert_stdsv_equal(""sv, http2::rewrite_clean_path(balloc, StringRef{}));
 
-  assert_stdstring_equal(
-      "/alpha?bravo",
-      http2::rewrite_clean_path(balloc, StringRef::from_lit("//alpha?bravo"))
-          .str());
+  assert_stdsv_equal(
+      "/alpha?bravo"sv,
+      http2::rewrite_clean_path(balloc, StringRef::from_lit("//alpha?bravo")));
 }
 
 void test_http2_get_pure_path_component(void) {
-  assert_stdstring_equal(
-      "/", http2::get_pure_path_component(StringRef::from_lit("/")).str());
+  assert_stdsv_equal("/"sv,
+                     http2::get_pure_path_component(StringRef::from_lit("/")));
 
-  assert_stdstring_equal(
-      "/foo",
-      http2::get_pure_path_component(StringRef::from_lit("/foo")).str());
+  assert_stdsv_equal(
+      "/foo"sv, http2::get_pure_path_component(StringRef::from_lit("/foo")));
 
-  assert_stdstring_equal("/bar",
-                         http2::get_pure_path_component(
-                             StringRef::from_lit("https://example.org/bar"))
-                             .str());
+  assert_stdsv_equal("/bar"sv,
+                     http2::get_pure_path_component(
+                         StringRef::from_lit("https://example.org/bar")));
 
-  assert_stdstring_equal(
-      "/alpha", http2::get_pure_path_component(
-                    StringRef::from_lit("https://example.org/alpha?q=a"))
-                    .str());
+  assert_stdsv_equal("/alpha"sv,
+                     http2::get_pure_path_component(
+                         StringRef::from_lit("https://example.org/alpha?q=a")));
 
-  assert_stdstring_equal(
-      "/bravo",
-      http2::get_pure_path_component(
-          StringRef::from_lit("https://example.org/bravo?q=a#fragment"))
-          .str());
+  assert_stdsv_equal("/bravo"sv,
+                     http2::get_pure_path_component(StringRef::from_lit(
+                         "https://example.org/bravo?q=a#fragment")));
 
-  assert_stdstring_equal(
-      "",
-      http2::get_pure_path_component(StringRef::from_lit("\x01\x02")).str());
+  assert_stdsv_equal(
+      ""sv, http2::get_pure_path_component(StringRef::from_lit("\x01\x02")));
 }
 
 void test_http2_construct_push_component(void) {
@@ -1195,9 +1185,9 @@ void test_http2_construct_push_component(void) {
   assert_int(0, ==,
              http2::construct_push_component(balloc, scheme, authority, path,
                                              base, uri));
-  assert_stdstring_equal("https", scheme.str());
-  assert_stdstring_equal("example.org", authority.str());
-  assert_stdstring_equal("/foo", path.str());
+  assert_stdsv_equal("https"sv, scheme);
+  assert_stdsv_equal("example.org"sv, authority);
+  assert_stdsv_equal("/foo"sv, path);
 
   scheme = StringRef{};
   authority = StringRef{};
@@ -1208,9 +1198,9 @@ void test_http2_construct_push_component(void) {
   assert_int(0, ==,
              http2::construct_push_component(balloc, scheme, authority, path,
                                              base, uri));
-  assert_stdstring_equal("", scheme.str());
-  assert_stdstring_equal("", authority.str());
-  assert_stdstring_equal("/foo/bar?q=a", path.str());
+  assert_stdsv_equal(""sv, scheme);
+  assert_stdsv_equal(""sv, authority);
+  assert_stdsv_equal("/foo/bar?q=a"sv, path);
 
   scheme = StringRef{};
   authority = StringRef{};
@@ -1221,9 +1211,9 @@ void test_http2_construct_push_component(void) {
   assert_int(0, ==,
              http2::construct_push_component(balloc, scheme, authority, path,
                                              base, uri));
-  assert_stdstring_equal("", scheme.str());
-  assert_stdstring_equal("", authority.str());
-  assert_stdstring_equal("/b/bar?q=a", path.str());
+  assert_stdsv_equal(""sv, scheme);
+  assert_stdsv_equal(""sv, authority);
+  assert_stdsv_equal("/b/bar?q=a"sv, path);
 
   scheme = StringRef{};
   authority = StringRef{};
@@ -1243,9 +1233,9 @@ void test_http2_construct_push_component(void) {
   assert_int(0, ==,
              http2::construct_push_component(balloc, scheme, authority, path,
                                              base, uri));
-  assert_stdstring_equal("", scheme.str());
-  assert_stdstring_equal("", authority.str());
-  assert_stdstring_equal("/b/?q=a", path.str());
+  assert_stdsv_equal(""sv, scheme);
+  assert_stdsv_equal(""sv, authority);
+  assert_stdsv_equal("/b/?q=a"sv, path);
 }
 
 void test_http2_contains_trailers(void) {

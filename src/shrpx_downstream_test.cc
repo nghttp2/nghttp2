@@ -30,6 +30,8 @@
 
 #include "shrpx_downstream.h"
 
+using namespace std::literals;
+
 namespace shrpx {
 
 namespace {
@@ -54,18 +56,18 @@ void test_downstream_field_store_append_last_header(void) {
   FieldStore fs(balloc, 0);
   fs.alloc_add_header_name(StringRef::from_lit("alpha"));
   auto bravo = StringRef::from_lit("BRAVO");
-  fs.append_last_header_key(bravo.c_str(), bravo.size());
+  fs.append_last_header_key(bravo.data(), bravo.size());
   // Add more characters so that relloc occurs
   auto golf = StringRef::from_lit("golF0123456789");
-  fs.append_last_header_key(golf.c_str(), golf.size());
+  fs.append_last_header_key(golf.data(), golf.size());
 
   auto charlie = StringRef::from_lit("Charlie");
-  fs.append_last_header_value(charlie.c_str(), charlie.size());
+  fs.append_last_header_value(charlie.data(), charlie.size());
   auto delta = StringRef::from_lit("deltA");
-  fs.append_last_header_value(delta.c_str(), delta.size());
+  fs.append_last_header_value(delta.data(), delta.size());
   // Add more characters so that relloc occurs
   auto echo = StringRef::from_lit("echo0123456789");
-  fs.append_last_header_value(echo.c_str(), echo.size());
+  fs.append_last_header_value(echo.data(), echo.size());
 
   fs.add_header_token(StringRef::from_lit("echo"),
                       StringRef::from_lit("foxtrot"), false, -1);
@@ -164,8 +166,8 @@ void test_downstream_assemble_request_cookie(void) {
   req.fs.add_header_token(StringRef::from_lit("cookie"),
                           StringRef::from_lit("delta;;"), false,
                           http2::HD_COOKIE);
-  assert_stdstring_equal("alpha; bravo; charlie; delta",
-                         d.assemble_request_cookie().str());
+  assert_stdsv_equal("alpha; bravo; charlie; delta"sv,
+                     d.assemble_request_cookie());
 }
 
 void test_downstream_rewrite_location_response_header(void) {
@@ -179,7 +181,7 @@ void test_downstream_rewrite_location_response_header(void) {
                            false, http2::HD_LOCATION);
   d.rewrite_location_response_header(StringRef::from_lit("https"));
   auto location = resp.fs.header(http2::HD_LOCATION);
-  assert_stdstring_equal("https://localhost:8443/", (*location).value.str());
+  assert_stdsv_equal("https://localhost:8443/"sv, (*location).value);
 }
 
 void test_downstream_supports_non_final_response(void) {

@@ -787,7 +787,7 @@ StringRef make_hostport(BlockAllocator &balloc, const StringRef &host,
 
 template <typename OutputIt>
 StringRef make_hostport(OutputIt first, const StringRef &host, uint16_t port) {
-  auto ipv6 = ipv6_numeric_addr(host.c_str());
+  auto ipv6 = ipv6_numeric_addr(host.data());
   auto serv = utos(port);
   auto p = first;
 
@@ -823,7 +823,7 @@ StringRef make_http_hostport(OutputIt first, const StringRef &host,
     return make_hostport(first, host, port);
   }
 
-  auto ipv6 = ipv6_numeric_addr(host.c_str());
+  auto ipv6 = ipv6_numeric_addr(host.data());
   auto p = first;
 
   if (ipv6) {

@@ -74,7 +74,7 @@ namespace {
 void add_link(ParserData *parser_data, const StringRef &uri,
               ResourceType res_type) {
   auto u = xmlBuildURI(
-      reinterpret_cast<const xmlChar *>(uri.c_str()),
+      reinterpret_cast<const xmlChar *>(uri.data()),
       reinterpret_cast<const xmlChar *>(parser_data->base_uri.c_str()));
   if (u) {
     parser_data->links.push_back(

@@ -71,7 +71,7 @@ mrb_value request_get_method(mrb_state *mrb, mrb_value self) {
   const auto &req = downstream->request();
   auto method = http2::to_method_string(req.method);
 
-  return mrb_str_new(mrb, method.c_str(), method.size());
+  return mrb_str_new(mrb, method.data(), method.size());
 }
 } // namespace
 
@@ -107,7 +107,7 @@ mrb_value request_get_authority(mrb_state *mrb, mrb_value self) {
   auto downstream = data->downstream;
   const auto &req = downstream->request();
 
-  return mrb_str_new(mrb, req.authority.c_str(), req.authority.size());
+  return mrb_str_new(mrb, req.authority.data(), req.authority.size());
 }
 } // namespace
 
@@ -141,7 +141,7 @@ mrb_value request_get_scheme(mrb_state *mrb, mrb_value self) {
   auto downstream = data->downstream;
   const auto &req = downstream->request();
 
-  return mrb_str_new(mrb, req.scheme.c_str(), req.scheme.size());
+  return mrb_str_new(mrb, req.scheme.data(), req.scheme.size());
 }
 } // namespace
 
@@ -175,7 +175,7 @@ mrb_value request_get_path(mrb_state *mrb, mrb_value self) {
   auto downstream = data->downstream;
   const auto &req = downstream->request();
 
-  return mrb_str_new(mrb, req.path.c_str(), req.path.size());
+  return mrb_str_new(mrb, req.path.data(), req.path.size());
 }
 } // namespace
 
