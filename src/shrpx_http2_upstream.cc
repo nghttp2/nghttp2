@@ -118,7 +118,7 @@ int Http2Upstream::upgrade_upstream(HttpsUpstream *http) {
                                          std::end(http2_settings));
 
   rv = nghttp2_session_upgrade2(
-      session_, settings_payload.byte(), settings_payload.size(),
+      session_, settings_payload.data(), settings_payload.size(),
       http->get_downstream()->request().method == HTTP_HEAD, nullptr);
   if (rv != 0) {
     if (LOG_ENABLED(INFO)) {
