@@ -446,8 +446,8 @@ int Http2DownstreamConnection::push_request_headers() {
     p = http::create_via_header_value(p, req.http_major, req.http_minor);
     *p = '\0';
 
-    nva.push_back(
-        http2::make_nv_ls_nocopy("via", StringRef{std::begin(iov), p}));
+    nva.push_back(http2::make_nv_ls_nocopy(
+        "via", StringRef{std::span{std::begin(iov), p}}));
   }
 
   auto te = req.fs.header(http2::HD_TE);

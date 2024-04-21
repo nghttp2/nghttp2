@@ -287,8 +287,8 @@ public:
   const_reverse_iterator rend() const { return const_reverse_iterator{base}; }
   const_reverse_iterator crend() const { return const_reverse_iterator{base}; }
 
-  const char *c_str() const { return base; }
-  size_type size() const { return len; }
+  constexpr const char *c_str() const noexcept { return base; }
+  constexpr size_type size() const noexcept { return len; }
   bool empty() const { return len == 0; }
   const_reference operator[](size_type pos) const { return *(base + pos); }
 
@@ -376,31 +376,30 @@ public:
   using const_iterator = const_pointer;
   using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
-  constexpr StringRef() : base(""), len(0) {}
-  explicit StringRef(const std::string &s) : base(s.c_str()), len(s.size()) {}
-  explicit StringRef(const ImmutableString &s)
+  constexpr StringRef() noexcept : base(""), len(0) {}
+  constexpr StringRef(const StringRef &other) noexcept = default;
+  constexpr StringRef(std::nullptr_t) = delete;
+  constexpr explicit StringRef(const std::string &s)
       : base(s.c_str()), len(s.size()) {}
-  StringRef(const char *s) : base(s), len(strlen(s)) {}
+  constexpr explicit StringRef(const ImmutableString &s)
+      : base(s.c_str()), len(s.size()) {}
+  constexpr StringRef(const char *s) : base(s), len(traits_type::length(s)) {}
   constexpr StringRef(const char *s, size_t n) : base(s), len(n) {}
-  template <typename CharT>
-  constexpr StringRef(const CharT *s, size_t n)
+  explicit StringRef(const uint8_t *s, size_t n)
       : base(reinterpret_cast<const char *>(s)), len(n) {}
-  template <typename InputIt>
-  StringRef(InputIt first, InputIt last)
-      : base(reinterpret_cast<const char *>(&*first)),
-        len(std::distance(first, last)) {}
-  template <typename InputIt>
-  StringRef(InputIt *first, InputIt *last)
-      : base(reinterpret_cast<const char *>(first)),
-        len(std::distance(first, last)) {}
-  template <typename T, size_t N = std::dynamic_extent>
-  explicit StringRef(std::span<T, N> s)
+  template <std::contiguous_iterator InputIt,
+            typename = std::enable_if_t<
+                std::is_same_v<std::iter_value_t<InputIt>, char>>>
+  constexpr StringRef(InputIt first, InputIt last)
+      : base(std::to_address(first)), len(std::distance(first, last)) {}
+  constexpr StringRef(std::span<const char> s)
+      : base(s.data()), len(s.size_bytes()) {}
+  explicit StringRef(std::span<const uint8_t> s)
       : base(reinterpret_cast<const char *>(s.data())), len(s.size_bytes()) {}
-  template <typename CharT, size_t N>
-  constexpr static StringRef from_lit(const CharT (&s)[N]) {
+  template <size_t N> static constexpr StringRef from_lit(const char (&s)[N]) {
     return StringRef{s, N - 1};
   }
-  static StringRef from_maybe_nullptr(const char *s) {
+  static constexpr StringRef from_maybe_nullptr(const char *s) noexcept {
     if (s == nullptr) {
       return StringRef();
     }
@@ -408,25 +407,31 @@ public:
     return StringRef(s);
   }
 
-  constexpr const_iterator begin() const { return base; };
-  constexpr const_iterator cbegin() const { return base; };
+  constexpr StringRef &operator=(const StringRef &other) noexcept = default;
 
-  constexpr const_iterator end() const { return base + len; };
-  constexpr const_iterator cend() const { return base + len; };
+  constexpr const_iterator begin() const noexcept { return base; };
+  constexpr const_iterator cbegin() const noexcept { return base; };
 
-  const_reverse_iterator rbegin() const {
+  constexpr const_iterator end() const noexcept { return base + len; };
+  constexpr const_iterator cend() const noexcept { return base + len; };
+
+  constexpr const_reverse_iterator rbegin() const noexcept {
     return const_reverse_iterator{base + len};
   }
-  const_reverse_iterator crbegin() const {
+  constexpr const_reverse_iterator crbegin() const noexcept {
     return const_reverse_iterator{base + len};
   }
 
-  const_reverse_iterator rend() const { return const_reverse_iterator{base}; }
-  const_reverse_iterator crend() const { return const_reverse_iterator{base}; }
+  constexpr const_reverse_iterator rend() const noexcept {
+    return const_reverse_iterator{base};
+  }
+  constexpr const_reverse_iterator crend() const noexcept {
+    return const_reverse_iterator{base};
+  }
 
-  constexpr const char *c_str() const { return base; }
-  constexpr size_type size() const { return len; }
-  constexpr bool empty() const { return len == 0; }
+  constexpr const char *c_str() const noexcept { return base; }
+  constexpr size_type size() const noexcept { return len; }
+  [[nodiscard]] constexpr bool empty() const noexcept { return len == 0; }
   constexpr const_reference operator[](size_type pos) const {
     return *(base + pos);
   }
@@ -449,62 +454,42 @@ private:
   size_type len;
 };
 
-inline bool operator==(const StringRef &lhs, const StringRef &rhs) {
+inline constexpr bool operator==(const StringRef &lhs,
+                                 const StringRef &rhs) noexcept {
   return lhs.size() == rhs.size() &&
          std::equal(std::begin(lhs), std::end(lhs), std::begin(rhs));
 }
 
-inline bool operator==(const StringRef &lhs, const std::string &rhs) {
+inline constexpr bool operator==(const StringRef &lhs, const std::string &rhs) {
   return lhs.size() == rhs.size() &&
          std::equal(std::begin(lhs), std::end(lhs), std::begin(rhs));
 }
 
-inline bool operator==(const std::string &lhs, const StringRef &rhs) {
-  return rhs == lhs;
-}
-
-inline bool operator==(const StringRef &lhs, const char *rhs) {
-  return lhs.size() == strlen(rhs) &&
+inline constexpr bool operator==(const StringRef &lhs,
+                                 const char *rhs) noexcept {
+  return lhs.size() == std::char_traits<char>::length(rhs) &&
          std::equal(std::begin(lhs), std::end(lhs), rhs);
 }
 
-inline bool operator==(const StringRef &lhs, const ImmutableString &rhs) {
+inline constexpr bool operator==(const StringRef &lhs,
+                                 const ImmutableString &rhs) noexcept {
   return lhs.size() == rhs.size() &&
          std::equal(std::begin(lhs), std::end(lhs), std::begin(rhs));
 }
 
-inline bool operator==(const ImmutableString &lhs, const StringRef &rhs) {
-  return rhs == lhs;
+#ifndef __APPLE__
+inline constexpr std::strong_ordering
+operator<=>(const StringRef &lhs, const StringRef &rhs) noexcept {
+  return std::lexicographical_compare_three_way(std::begin(lhs), std::end(lhs),
+                                                std::begin(rhs), std::end(rhs));
 }
-
-inline bool operator==(const char *lhs, const StringRef &rhs) {
-  return rhs == lhs;
-}
-
-inline bool operator!=(const StringRef &lhs, const StringRef &rhs) {
-  return !(lhs == rhs);
-}
-
-inline bool operator!=(const StringRef &lhs, const std::string &rhs) {
-  return !(lhs == rhs);
-}
-
-inline bool operator!=(const std::string &lhs, const StringRef &rhs) {
-  return !(rhs == lhs);
-}
-
-inline bool operator!=(const StringRef &lhs, const char *rhs) {
-  return !(lhs == rhs);
-}
-
-inline bool operator!=(const char *lhs, const StringRef &rhs) {
-  return !(rhs == lhs);
-}
-
-inline bool operator<(const StringRef &lhs, const StringRef &rhs) {
+#else  // __APPLE__
+inline constexpr bool operator<(const StringRef &lhs,
+                                const StringRef &rhs) noexcept {
   return std::lexicographical_compare(std::begin(lhs), std::end(lhs),
                                       std::begin(rhs), std::end(rhs));
 }
+#endif // __APPLE__
 
 inline std::ostream &operator<<(std::ostream &o, const StringRef &s) {
   return o.write(s.c_str(), s.size());

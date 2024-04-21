@@ -1299,7 +1299,7 @@ size_t match_downstream_addr_group_host(
     auto ep = std::copy(std::begin(host) + 1, std::end(host),
                         std::begin(rev_host_src));
     std::reverse(std::begin(rev_host_src), ep);
-    auto rev_host = StringRef{std::begin(rev_host_src), ep};
+    auto rev_host = StringRef{std::span{std::begin(rev_host_src), ep}};
 
     ssize_t best_group = -1;
     const RNode *last_node = nullptr;
@@ -1400,7 +1400,7 @@ size_t match_downstream_addr_group(
     auto ep = std::copy(std::begin(host), std::end(host), std::begin(low_host));
     *ep = '\0';
     util::inp_strlower(std::begin(low_host), ep);
-    host = StringRef{std::begin(low_host), ep};
+    host = StringRef{std::span{std::begin(low_host), ep}};
   }
   return match_downstream_addr_group_host(routerconf, host, path, groups,
                                           catch_all, balloc);

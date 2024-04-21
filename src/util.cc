@@ -195,7 +195,7 @@ StringRef percent_encode_token(BlockAllocator &balloc,
 
   *p = '\0';
 
-  return StringRef{std::begin(iov), p};
+  return StringRef{std::span{std::begin(iov), p}};
 }
 
 size_t percent_encode_tokenlen(const StringRef &target) {
@@ -241,7 +241,7 @@ StringRef quote_string(BlockAllocator &balloc, const StringRef &target) {
 
   *p = '\0';
 
-  return StringRef{std::begin(iov), p};
+  return StringRef{std::span{std::begin(iov), p}};
 }
 
 size_t quote_stringlen(const StringRef &target) {
@@ -511,7 +511,7 @@ StringRef format_hex(BlockAllocator &balloc, std::span<const uint8_t> s) {
 
   *p = '\0';
 
-  return StringRef{std::begin(iov), p};
+  return StringRef{std::span{std::begin(iov), p}};
 }
 
 void to_token68(std::string &base64str) {
@@ -554,7 +554,7 @@ StringRef to_base64(BlockAllocator &balloc, const StringRef &token68str) {
 
   *p = '\0';
 
-  return StringRef{std::begin(iov), p};
+  return StringRef{std::span{std::begin(iov), p}};
 }
 
 namespace {
@@ -1609,7 +1609,7 @@ StringRef percent_decode(BlockAllocator &balloc, const StringRef &src) {
     *p++ = *first;
   }
   *p = '\0';
-  return StringRef{std::begin(iov), p};
+  return StringRef{std::span{std::begin(iov), p}};
 }
 
 // Returns x**y

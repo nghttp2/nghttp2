@@ -41,7 +41,7 @@ StringRef create_error_html(BlockAllocator &balloc, unsigned int http_status) {
   const auto &error_pages = httpconf.error_pages;
   for (const auto &page : error_pages) {
     if (page.http_status == 0 || page.http_status == http_status) {
-      return StringRef{std::begin(page.content), std::end(page.content)};
+      return StringRef{std::span{page.content}};
     }
   }
 
@@ -125,7 +125,7 @@ StringRef create_forwarded(BlockAllocator &balloc, int params,
   --p;
   *p = '\0';
 
-  return StringRef{std::begin(iov), p};
+  return StringRef{std::span{std::begin(iov), p}};
 }
 
 std::string colorizeHeaders(const char *hdrs) {
@@ -201,7 +201,7 @@ StringRef create_affinity_cookie(BlockAllocator &balloc, const StringRef &name,
     p = std::copy(std::begin(SECURE), std::end(SECURE), p);
   }
   *p = '\0';
-  return StringRef{std::begin(iov), p};
+  return StringRef{std::span{std::begin(iov), p}};
 }
 
 bool require_cookie_secure_attribute(SessionAffinityCookieSecure secure,
@@ -264,7 +264,7 @@ StringRef create_altsvc_header_value(BlockAllocator &balloc,
 
   assert(static_cast<size_t>(p - std::begin(iov)) == len);
 
-  return StringRef{std::begin(iov), p};
+  return StringRef{std::span{std::begin(iov), p}};
 }
 
 bool check_http_scheme(const StringRef &scheme, bool encrypted) {
