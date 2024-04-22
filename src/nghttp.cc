@@ -247,9 +247,9 @@ int Request::update_html_parser(const uint8_t *data, size_t len, int fin) {
 }
 
 std::string Request::make_reqpath() const {
-  std::string path = util::has_uri_field(u, UF_PATH)
-                         ? util::get_uri_field(uri.c_str(), u, UF_PATH)
-                         : "/";
+  auto path = util::has_uri_field(u, UF_PATH)
+                  ? std::string{util::get_uri_field(uri.c_str(), u, UF_PATH)}
+                  : "/"s;
   if (util::has_uri_field(u, UF_QUERY)) {
     path += '?';
     path.append(uri.c_str() + u.field_data[UF_QUERY].off,
@@ -266,15 +266,15 @@ std::string decode_host(const StringRef &host) {
   if (zone_start == std::end(host) ||
       !util::ipv6_numeric_addr(
           std::string(std::begin(host), zone_start).c_str())) {
-    return host;
+    return std::string{host};
   }
   // case: ::1%
   if (zone_start + 1 == std::end(host)) {
-    return StringRef{host.data(), host.size() - 1};
+    return {host.data(), host.size() - 1};
   }
   // case: ::1%12 or ::1%1
   if (zone_start + 3 >= std::end(host)) {
-    return host;
+    return std::string{host};
   }
   // If we see "%25", followed by more characters, then decode %25 as
   // '%'.
@@ -454,7 +454,7 @@ int submit_request(HttpClient *client, const Headers &headers, Request *req) {
   auto scheme = util::get_uri_field(req->uri.c_str(), req->u, UF_SCHEMA);
   auto build_headers = Headers{{":method", req->data_prd ? "POST" : "GET"},
                                {":path", req->make_reqpath()},
-                               {":scheme", scheme},
+                               {":scheme", std::string{scheme}},
                                {":authority", client->hostport},
                                {"accept", "*/*"},
                                {"accept-encoding", "gzip, deflate"},

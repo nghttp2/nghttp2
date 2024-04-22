@@ -1334,7 +1334,8 @@ std::string path_join(const StringRef &base_path, const StringRef &base_query,
                       const StringRef &rel_path, const StringRef &rel_query) {
   BlockAllocator balloc(1024, 1024);
 
-  return path_join(balloc, base_path, base_query, rel_path, rel_query);
+  return std::string{
+      path_join(balloc, base_path, base_query, rel_path, rel_query)};
 }
 
 bool expect_response_body(int status_code) {
@@ -1868,7 +1869,7 @@ StringRef normalize_path_colon(BlockAllocator &balloc, const StringRef &path,
 std::string normalize_path(const StringRef &path, const StringRef &query) {
   BlockAllocator balloc(1024, 1024);
 
-  return normalize_path(balloc, path, query);
+  return std::string{normalize_path(balloc, path, query)};
 }
 
 StringRef rewrite_clean_path(BlockAllocator &balloc, const StringRef &src) {
