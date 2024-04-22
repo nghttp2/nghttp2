@@ -924,29 +924,32 @@ int Http2Handler::submit_file_response(const StringRef &status, Stream *stream,
                                        const std::string *content_type,
                                        nghttp2_data_provider2 *data_prd) {
   std::string last_modified_str;
-  auto nva =
-      std::to_array({http2::make_nv_ls_nocopy(":status", status),
-                     http2::make_nv_ls_nocopy("server", NGHTTPD_SERVER),
-                     http2::make_nv_ll("cache-control", "max-age=3600"),
-                     http2::make_nv_ls("date", sessions_->get_cached_date()),
-                     http2::make_nv_ll("", ""), http2::make_nv_ll("", ""),
-                     http2::make_nv_ll("", ""), http2::make_nv_ll("", "")});
+  auto nva = std::to_array({
+      http2::make_field(":status"_sr, status),
+      http2::make_field("server"_sr, NGHTTPD_SERVER),
+      http2::make_field("cache-control"_sr, "max-age=3600"_sr),
+      http2::make_field_v("date"_sr, sessions_->get_cached_date()),
+      {},
+      {},
+      {},
+      {},
+  });
   size_t nvlen = 4;
   if (!get_config()->no_content_length) {
-    nva[nvlen++] = http2::make_nv_ls_nocopy(
-        "content-length",
+    nva[nvlen++] = http2::make_field(
+        "content-length"_sr,
         util::make_string_ref_uint(stream->balloc, file_length));
   }
   if (last_modified != 0) {
     last_modified_str = util::http_date(last_modified);
-    nva[nvlen++] = http2::make_nv_ls("last-modified", last_modified_str);
+    nva[nvlen++] = http2::make_field_v("last-modified"_sr, last_modified_str);
   }
   if (content_type) {
-    nva[nvlen++] = http2::make_nv_ls("content-type", *content_type);
+    nva[nvlen++] = http2::make_field_v("content-type"_sr, *content_type);
   }
   auto &trailer_names = get_config()->trailer_names;
   if (!trailer_names.empty()) {
-    nva[nvlen++] = http2::make_nv_ls_nocopy("trailer", trailer_names);
+    nva[nvlen++] = http2::make_field("trailer"_sr, trailer_names);
   }
   return nghttp2_submit_response2(session_, stream->stream_id, nva.data(),
                                   nvlen, data_prd);
@@ -957,19 +960,20 @@ int Http2Handler::submit_response(const StringRef &status, int32_t stream_id,
                                   nghttp2_data_provider2 *data_prd) {
   auto nva = std::vector<nghttp2_nv>();
   nva.reserve(4 + headers.size());
-  nva.push_back(http2::make_nv_ls_nocopy(":status", status));
-  nva.push_back(http2::make_nv_ls_nocopy("server", NGHTTPD_SERVER));
-  nva.push_back(http2::make_nv_ls("date", sessions_->get_cached_date()));
+  nva.push_back(http2::make_field(":status"_sr, status));
+  nva.push_back(http2::make_field("server"_sr, NGHTTPD_SERVER));
+  nva.push_back(http2::make_field_v("date"_sr, sessions_->get_cached_date()));
 
   if (data_prd) {
     auto &trailer_names = get_config()->trailer_names;
     if (!trailer_names.empty()) {
-      nva.push_back(http2::make_nv_ls_nocopy("trailer", trailer_names));
+      nva.push_back(http2::make_field("trailer"_sr, trailer_names));
     }
   }
 
   for (auto &nv : headers) {
-    nva.push_back(http2::make_nv_nocopy(nv.name, nv.value, nv.no_index));
+    nva.push_back(
+        http2::make_field(nv.name, nv.value, http2::no_index(nv.no_index)));
   }
   int r = nghttp2_submit_response2(session_, stream_id, nva.data(), nva.size(),
                                    data_prd);
@@ -978,17 +982,18 @@ int Http2Handler::submit_response(const StringRef &status, int32_t stream_id,
 
 int Http2Handler::submit_response(const StringRef &status, int32_t stream_id,
                                   nghttp2_data_provider2 *data_prd) {
-  auto nva =
-      std::to_array({http2::make_nv_ls_nocopy(":status", status),
-                     http2::make_nv_ls_nocopy("server", NGHTTPD_SERVER),
-                     http2::make_nv_ls("date", sessions_->get_cached_date()),
-                     http2::make_nv_ll("", "")});
+  auto nva = std::to_array({
+      http2::make_field(":status"_sr, status),
+      http2::make_field("server"_sr, NGHTTPD_SERVER),
+      http2::make_field_v("date"_sr, sessions_->get_cached_date()),
+      {},
+  });
   size_t nvlen = 3;
 
   if (data_prd) {
     auto &trailer_names = get_config()->trailer_names;
     if (!trailer_names.empty()) {
-      nva[nvlen++] = http2::make_nv_ls_nocopy("trailer", trailer_names);
+      nva[nvlen++] = http2::make_field("trailer"_sr, trailer_names);
     }
   }
 
@@ -998,7 +1003,7 @@ int Http2Handler::submit_response(const StringRef &status, int32_t stream_id,
 
 int Http2Handler::submit_non_final_response(const std::string &status,
                                             int32_t stream_id) {
-  auto nva = std::to_array({http2::make_nv_ls(":status", status)});
+  auto nva = std::to_array({http2::make_field_v(":status"_sr, status)});
   return nghttp2_submit_headers(session_, NGHTTP2_FLAG_NONE, stream_id, nullptr,
                                 nva.data(), nva.size(), nullptr);
 }
@@ -1013,10 +1018,10 @@ int Http2Handler::submit_push_promise(Stream *stream,
 
   auto scheme = get_config()->no_tls ? "http"_sr : "https"_sr;
 
-  auto nva = std::to_array({http2::make_nv_ll(":method", "GET"),
-                            http2::make_nv_ls_nocopy(":path", push_path),
-                            http2::make_nv_ls_nocopy(":scheme", scheme),
-                            http2::make_nv_ls_nocopy(":authority", authority)});
+  auto nva = std::to_array({http2::make_field(":method"_sr, "GET"_sr),
+                            http2::make_field(":path"_sr, push_path),
+                            http2::make_field(":scheme"_sr, scheme),
+                            http2::make_field(":authority"_sr, authority)});
 
   auto promised_stream_id = nghttp2_submit_push_promise(
       session_, NGHTTP2_FLAG_END_HEADERS, stream->stream_id, nva.data(),
@@ -1103,7 +1108,8 @@ nghttp2_ssize file_read_callback(nghttp2_session *session, int32_t stream_id,
       std::vector<nghttp2_nv> nva;
       nva.reserve(config->trailer.size());
       for (auto &kv : config->trailer) {
-        nva.push_back(http2::make_nv(kv.name, kv.value, kv.no_index));
+        nva.push_back(http2::make_field_nv(kv.name, kv.value,
+                                           http2::no_index(kv.no_index)));
       }
       rv = nghttp2_submit_trailer(session, stream_id, nva.data(), nva.size());
       if (rv != 0) {

@@ -500,7 +500,8 @@ int submit_request(HttpClient *client, const Headers &headers, Request *req) {
   nva.reserve(build_headers.size());
 
   for (auto &kv : build_headers) {
-    nva.push_back(http2::make_nv(kv.name, kv.value, kv.no_index));
+    nva.push_back(
+        http2::make_field_nv(kv.name, kv.value, http2::no_index(kv.no_index)));
   }
 
   auto method = http2::get_header(build_headers, ":method");
@@ -515,7 +516,7 @@ int submit_request(HttpClient *client, const Headers &headers, Request *req) {
       trailer_names += ", ";
       trailer_names += config.trailer[i].name;
     }
-    nva.push_back(http2::make_nv_ls("trailer", trailer_names));
+    nva.push_back(http2::make_field_v("trailer"_sr, trailer_names));
   }
 
   int32_t stream_id;
@@ -2437,7 +2438,8 @@ nghttp2_ssize file_read_callback(nghttp2_session *session, int32_t stream_id,
       std::vector<nghttp2_nv> nva;
       nva.reserve(config.trailer.size());
       for (auto &kv : config.trailer) {
-        nva.push_back(http2::make_nv(kv.name, kv.value, kv.no_index));
+        nva.push_back(http2::make_field_nv(kv.name, kv.value,
+                                           http2::no_index(kv.no_index)));
       }
       rv = nghttp2_submit_trailer(session, stream_id, nva.data(), nva.size());
       if (rv != 0) {
