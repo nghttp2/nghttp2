@@ -2243,7 +2243,7 @@ int Http3Upstream::http_end_request_headers(Downstream *downstream, int fin) {
   if (LOG_ENABLED(INFO)) {
     std::stringstream ss;
     for (auto &nv : nva) {
-      if (nv.name == "authorization") {
+      if (nv.name == "authorization"_sr) {
         ss << TTY_HTTP_HD << nv.name << TTY_RST << ": <redacted>\n";
         continue;
       }
@@ -2315,7 +2315,7 @@ int Http3Upstream::http_end_request_headers(Downstream *downstream, int fin) {
 
   auto connect_proto = req.fs.header(http2::HD__PROTOCOL);
   if (connect_proto) {
-    if (connect_proto->value != "websocket") {
+    if (connect_proto->value != "websocket"_sr) {
       if (error_reply(downstream, 400) != 0) {
         return -1;
       }

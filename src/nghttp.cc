@@ -201,9 +201,9 @@ StringRef Request::get_real_host() const {
 uint16_t Request::get_real_port() const {
   auto scheme = get_real_scheme();
   return config.host_override.empty() ? util::has_uri_field(u, UF_PORT) ? u.port
-                                        : scheme == "https"             ? 443
+                                        : scheme == "https"_sr          ? 443
                                                                         : 80
-         : config.port_override == 0  ? scheme == "https" ? 443 : 80
+         : config.port_override == 0  ? scheme == "https"_sr ? 443 : 80
                                       : config.port_override;
 }
 
@@ -224,8 +224,8 @@ void Request::init_html_parser() {
   if (ipv6_lit) {
     base_uri += ']';
   }
-  if (!((scheme == "https" && port == 443) ||
-        (scheme == "http" && port == 80))) {
+  if (!((scheme == "https"_sr && port == 443) ||
+        (scheme == "http"_sr && port == 80))) {
     base_uri += ':';
     base_uri += util::utos(port);
   }
@@ -1688,7 +1688,7 @@ void update_html_parser(HttpClient *client, Request *req, const uint8_t *data,
     }
 
     auto link_port = util::has_uri_field(u, UF_PORT) ? u.port
-                     : scheme == "https"             ? 443
+                     : scheme == "https"_sr          ? 443
                                                      : 80;
 
     if (port != link_port) {
