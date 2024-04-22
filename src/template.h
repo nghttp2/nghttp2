@@ -378,8 +378,7 @@ public:
   constexpr StringRef() noexcept : base(""), len(0) {}
   constexpr StringRef(const StringRef &other) noexcept = default;
   constexpr StringRef(std::nullptr_t) = delete;
-  constexpr explicit StringRef(const std::string &s)
-      : base(s.c_str()), len(s.size()) {}
+  constexpr StringRef(const std::string &s) : base(s.c_str()), len(s.size()) {}
   constexpr explicit StringRef(const std::string_view &s)
       : base(s.data()), len(s.size()) {}
   constexpr explicit StringRef(const ImmutableString &s)
@@ -454,11 +453,6 @@ private:
 
 inline constexpr bool operator==(const StringRef &lhs,
                                  const StringRef &rhs) noexcept {
-  return lhs.size() == rhs.size() &&
-         std::equal(std::begin(lhs), std::end(lhs), std::begin(rhs));
-}
-
-inline constexpr bool operator==(const StringRef &lhs, const std::string &rhs) {
   return lhs.size() == rhs.size() &&
          std::equal(std::begin(lhs), std::end(lhs), std::begin(rhs));
 }
