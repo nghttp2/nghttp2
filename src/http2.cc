@@ -316,56 +316,6 @@ bool non_empty_value(const HeaderRefs::value_type *nv) {
 }
 
 namespace {
-nghttp2_nv make_nv_internal(const std::string &name, const std::string &value,
-                            bool no_index, uint8_t nv_flags) {
-  uint8_t flags;
-
-  flags =
-      nv_flags | (no_index ? NGHTTP2_NV_FLAG_NO_INDEX : NGHTTP2_NV_FLAG_NONE);
-
-  return {(uint8_t *)name.c_str(), (uint8_t *)value.c_str(), name.size(),
-          value.size(), flags};
-}
-} // namespace
-
-namespace {
-nghttp2_nv make_nv_internal(const StringRef &name, const StringRef &value,
-                            bool no_index, uint8_t nv_flags) {
-  uint8_t flags;
-
-  flags =
-      nv_flags | (no_index ? NGHTTP2_NV_FLAG_NO_INDEX : NGHTTP2_NV_FLAG_NONE);
-
-  return {(uint8_t *)name.data(), (uint8_t *)value.data(), name.size(),
-          value.size(), flags};
-}
-} // namespace
-
-nghttp2_nv make_nv(const std::string &name, const std::string &value,
-                   bool no_index) {
-  return make_nv_internal(name, value, no_index, NGHTTP2_NV_FLAG_NONE);
-}
-
-nghttp2_nv make_nv(const StringRef &name, const StringRef &value,
-                   bool no_index) {
-  return make_nv_internal(name, value, no_index, NGHTTP2_NV_FLAG_NONE);
-}
-
-nghttp2_nv make_nv_nocopy(const std::string &name, const std::string &value,
-                          bool no_index) {
-  return make_nv_internal(name, value, no_index,
-                          NGHTTP2_NV_FLAG_NO_COPY_NAME |
-                              NGHTTP2_NV_FLAG_NO_COPY_VALUE);
-}
-
-nghttp2_nv make_nv_nocopy(const StringRef &name, const StringRef &value,
-                          bool no_index) {
-  return make_nv_internal(name, value, no_index,
-                          NGHTTP2_NV_FLAG_NO_COPY_NAME |
-                              NGHTTP2_NV_FLAG_NO_COPY_VALUE);
-}
-
-namespace {
 void copy_headers_to_nva_internal(std::vector<nghttp2_nv> &nva,
                                   const HeaderRefs &headers, uint8_t nv_flags,
                                   uint32_t flags) {
@@ -459,8 +409,8 @@ void copy_headers_to_nva_internal(std::vector<nghttp2_nv> &nva,
       it_via = it;
       break;
     }
-    nva.push_back(
-        make_nv_internal(kv->name, kv->value, kv->no_index, nv_flags));
+    nva.push_back(make_field_flags(kv->name, kv->value,
+                                   nv_flags | http2::no_index(kv->no_index)));
   }
 }
 } // namespace

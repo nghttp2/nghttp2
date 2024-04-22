@@ -3068,15 +3068,15 @@ int main(int argc, char **argv) {
     // 2 for :path, and possible content-length
     nva.reserve(2 + shared_nva.size());
 
-    nva.push_back(http2::make_nv_ls(":path", req));
+    nva.push_back(http2::make_field_v(":path"_sr, req));
 
     for (auto &nv : shared_nva) {
-      nva.push_back(http2::make_nv(nv.name, nv.value, false));
+      nva.push_back(http2::make_field_nv(nv.name, nv.value));
     }
 
     if (!content_length_str.empty()) {
       nva.push_back(
-          http2::make_nv("content-length"_sr, StringRef{content_length_str}));
+          http2::make_field_nv("content-length"_sr, content_length_str));
     }
 
     config.nva.push_back(std::move(nva));
