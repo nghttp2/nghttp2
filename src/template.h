@@ -438,7 +438,6 @@ public:
   }
 
   constexpr operator std::string_view() const noexcept { return {base, len}; }
-  operator std::string() const noexcept { return std::string{base, len}; }
 
   static constexpr size_type npos = size_type(-1);
 
