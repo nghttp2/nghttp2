@@ -457,12 +457,6 @@ inline constexpr bool operator==(const StringRef &lhs,
 }
 
 inline constexpr bool operator==(const StringRef &lhs,
-                                 const char *rhs) noexcept {
-  return lhs.size() == std::char_traits<char>::length(rhs) &&
-         std::equal(std::begin(lhs), std::end(lhs), rhs);
-}
-
-inline constexpr bool operator==(const StringRef &lhs,
                                  const ImmutableString &rhs) noexcept {
   return lhs.size() == rhs.size() &&
          std::equal(std::begin(lhs), std::end(lhs), std::begin(rhs));

@@ -322,7 +322,7 @@ int Http2Upstream::on_request_headers(Downstream *downstream,
   if (LOG_ENABLED(INFO)) {
     std::stringstream ss;
     for (auto &nv : nva) {
-      if (nv.name == "authorization") {
+      if (nv.name == "authorization"_sr) {
         ss << TTY_HTTP_HD << nv.name << TTY_RST << ": <redacted>\n";
         continue;
       }
@@ -399,7 +399,7 @@ int Http2Upstream::on_request_headers(Downstream *downstream,
 
   auto connect_proto = req.fs.header(http2::HD__PROTOCOL);
   if (connect_proto) {
-    if (connect_proto->value != "websocket") {
+    if (connect_proto->value != "websocket"_sr) {
       if (error_reply(downstream, 400) != 0) {
         return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
       }
@@ -2006,7 +2006,7 @@ int Http2Upstream::on_downstream_abort_request_with_https_redirect(
 
 int Http2Upstream::redirect_to_https(Downstream *downstream) {
   auto &req = downstream->request();
-  if (req.regular_connect_method() || req.scheme != "http") {
+  if (req.regular_connect_method() || req.scheme != "http"_sr) {
     return error_reply(downstream, 400);
   }
 

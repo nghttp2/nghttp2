@@ -369,7 +369,7 @@ int htp_hdrs_completecb(llhttp_t *htp) {
        << "HTTP/" << req.http_major << "." << req.http_minor << "\n";
 
     for (const auto &kv : req.fs.headers()) {
-      if (kv.name == "authorization") {
+      if (kv.name == "authorization"_sr) {
         ss << TTY_HTTP_HD << kv.name << TTY_RST << ": <redacted>\n";
         continue;
       }
@@ -1411,7 +1411,7 @@ int HttpsUpstream::on_downstream_abort_request_with_https_redirect(
 
 int HttpsUpstream::redirect_to_https(Downstream *downstream) {
   auto &req = downstream->request();
-  if (req.method == HTTP_CONNECT || req.scheme != "http" ||
+  if (req.method == HTTP_CONNECT || req.scheme != "http"_sr ||
       req.authority.empty()) {
     error_reply(400);
     return 0;

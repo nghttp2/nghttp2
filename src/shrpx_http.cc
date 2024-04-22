@@ -206,7 +206,7 @@ bool require_cookie_secure_attribute(SessionAffinityCookieSecure secure,
                                      const StringRef &scheme) {
   switch (secure) {
   case SessionAffinityCookieSecure::AUTO:
-    return scheme == "https";
+    return scheme == "https"_sr;
   case SessionAffinityCookieSecure::YES:
     return true;
   default:
@@ -266,7 +266,7 @@ StringRef create_altsvc_header_value(BlockAllocator &balloc,
 }
 
 bool check_http_scheme(const StringRef &scheme, bool encrypted) {
-  return encrypted ? scheme == "https" : scheme == "http";
+  return encrypted ? scheme == "https"_sr : scheme == "http"_sr;
 }
 
 } // namespace http

@@ -2279,7 +2279,7 @@ int Http2Session::handle_downstream_push_promise_complete(
   }
 
   // For server-wide OPTIONS request, path is empty.
-  if (method_token != HTTP_OPTIONS || path->value != "*") {
+  if (method_token != HTTP_OPTIONS || path->value != "*"_sr) {
     promised_req.path = http2::rewrite_clean_path(promised_balloc, path->value);
   }
 

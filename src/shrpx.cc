@@ -866,10 +866,12 @@ int create_tcp_server_socket(UpstreamAddr &faddr,
       continue;
     }
 
+    auto host_sr = StringRef{host};
+
     auto found = std::find_if(std::begin(iaddrs), std::end(iaddrs),
-                              [&host, &faddr](const InheritedAddr &ia) {
+                              [&host_sr, &faddr](const InheritedAddr &ia) {
                                 return !ia.used && !ia.host_unix &&
-                                       ia.host == host.data() &&
+                                       ia.host == host_sr &&
                                        ia.port == faddr.port;
                               });
 

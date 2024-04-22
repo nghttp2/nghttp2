@@ -308,7 +308,7 @@ int Http2DownstreamConnection::push_request_headers() {
     auto addr = http2session_->get_addr();
     assert(addr);
     // We will handle more protocol scheme upgrade in the future.
-    if (addr->tls && addr->upgrade_scheme && req.scheme == "http") {
+    if (addr->tls && addr->upgrade_scheme && req.scheme == "http"_sr) {
       nva.push_back(http2::make_field(":scheme"_sr, "https"_sr));
     } else {
       nva.push_back(http2::make_field(":scheme"_sr, req.scheme));
