@@ -779,17 +779,13 @@ int Http3Upstream::on_write() {
 int Http3Upstream::write_streams() {
   std::array<nghttp3_vec, 16> vec;
   auto max_udp_payload_size = ngtcp2_conn_get_max_tx_udp_payload_size(conn_);
-#ifdef UDP_SEGMENT
   auto path_max_udp_payload_size =
       ngtcp2_conn_get_path_max_tx_udp_payload_size(conn_);
-#endif // UDP_SEGMENT
-  auto max_pktcnt =
-      std::max(ngtcp2_conn_get_send_quantum(conn_) / max_udp_payload_size,
-               static_cast<size_t>(1));
   ngtcp2_pkt_info pi, prev_pi;
   uint8_t *bufpos = tx_.data.get();
+  auto bufleft =
+      std::max(ngtcp2_conn_get_send_quantum(conn_), path_max_udp_payload_size);
   ngtcp2_path_storage ps, prev_ps;
-  size_t pktcnt = 0;
   int rv;
   size_t gso_size = 0;
   auto ts = quic_timestamp();
@@ -824,9 +820,11 @@ int Http3Upstream::write_streams() {
       flags |= NGTCP2_WRITE_STREAM_FLAG_FIN;
     }
 
+    auto buflen = bufleft >= max_udp_payload_size ? max_udp_payload_size
+                                                  : path_max_udp_payload_size;
     auto nwrite = ngtcp2_conn_writev_stream(
-        conn_, &ps.path, &pi, bufpos, max_udp_payload_size, &ndatalen, flags,
-        stream_id, reinterpret_cast<const ngtcp2_vec *>(v), vcnt, ts);
+        conn_, &ps.path, &pi, bufpos, buflen, &ndatalen, flags, stream_id,
+        reinterpret_cast<const ngtcp2_vec *>(v), vcnt, ts);
     if (nwrite < 0) {
       switch (nwrite) {
       case NGTCP2_ERR_STREAM_DATA_BLOCKED:
@@ -894,10 +892,14 @@ int Http3Upstream::write_streams() {
       return 0;
     }
 
+    auto first_pkt = bufpos == tx_.data.get();
+    (void)first_pkt;
+
     bufpos += nwrite;
+    bufleft -= nwrite;
 
 #ifdef UDP_SEGMENT
-    if (pktcnt == 0) {
+    if (first_pkt) {
       ngtcp2_path_copy(&prev_ps.path, &ps.path);
       prev_pi = pi;
       gso_size = nwrite;
@@ -947,7 +949,8 @@ int Http3Upstream::write_streams() {
       return 0;
     }
 
-    if (++pktcnt == max_pktcnt || static_cast<size_t>(nwrite) < gso_size) {
+    if (bufleft < path_max_udp_payload_size ||
+        static_cast<size_t>(nwrite) < gso_size) {
       auto faddr = static_cast<UpstreamAddr *>(ps.path.user_data);
       auto data = tx_.data.get();
       auto datalen = bufpos - data;
@@ -985,7 +988,7 @@ int Http3Upstream::write_streams() {
       return 0;
     }
 
-    if (++pktcnt == max_pktcnt) {
+    if (bufleft < path_max_udp_payload_size) {
       ngtcp2_conn_update_pkt_tx_time(conn_, ts);
 
       return 0;
