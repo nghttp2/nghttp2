@@ -576,10 +576,8 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
   }
 
   for (auto &qkm : qkms->keying_materials) {
-    if (generate_quic_connection_id_encryption_key(
-            qkm.cid_encryption_key.data(), qkm.cid_encryption_key.size(),
-            qkm.secret.data(), qkm.secret.size(), qkm.salt.data(),
-            qkm.salt.size()) != 0) {
+    if (generate_quic_connection_id_encryption_key(qkm.cid_encryption_key,
+                                                   qkm.secret, qkm.salt) != 0) {
       LOG(ERROR) << "Failed to generate QUIC Connection ID encryption key";
       return -1;
     }

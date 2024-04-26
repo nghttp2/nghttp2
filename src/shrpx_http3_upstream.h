@@ -89,12 +89,12 @@ public:
 
   int init(const UpstreamAddr *faddr, const Address &remote_addr,
            const Address &local_addr, const ngtcp2_pkt_hd &initial_hd,
-           const ngtcp2_cid *odcid, const uint8_t *token, size_t tokenlen,
+           const ngtcp2_cid *odcid, std::span<const uint8_t> token,
            ngtcp2_token_type token_type);
 
   int on_read(const UpstreamAddr *faddr, const Address &remote_addr,
               const Address &local_addr, const ngtcp2_pkt_info &pi,
-              const uint8_t *data, size_t datalen);
+              std::span<const uint8_t> data);
 
   int write_streams();
 
@@ -105,8 +105,8 @@ public:
 
   int setup_httpconn();
   void add_pending_downstream(std::unique_ptr<Downstream> downstream);
-  int recv_stream_data(uint32_t flags, int64_t stream_id, const uint8_t *data,
-                       size_t datalen);
+  int recv_stream_data(uint32_t flags, int64_t stream_id,
+                       std::span<const uint8_t> data);
   int acked_stream_data_offset(int64_t stream_id, uint64_t datalen);
   int extend_max_stream_data(int64_t stream_id);
   void extend_max_remote_streams_bidi(uint64_t max_streams);
@@ -131,16 +131,15 @@ public:
   int http_shutdown_stream_read(int64_t stream_id);
   int http_reset_stream(int64_t stream_id, uint64_t app_error_code);
   int http_stop_sending(int64_t stream_id, uint64_t app_error_code);
-  int http_recv_data(Downstream *downstream, const uint8_t *data,
-                     size_t datalen);
+  int http_recv_data(Downstream *downstream, std::span<const uint8_t> data);
   int handshake_completed();
   int check_shutdown();
   int start_graceful_shutdown();
   int submit_goaway();
-  std::pair<size_t, int>
+  std::pair<std::span<const uint8_t>, int>
   send_packet(const UpstreamAddr *faddr, const sockaddr *remote_sa,
               size_t remote_salen, const sockaddr *local_sa, size_t local_salen,
-              const ngtcp2_pkt_info &pi, const uint8_t *data, size_t datalen,
+              const ngtcp2_pkt_info &pi, std::span<const uint8_t> data,
               size_t gso_size);
 
   void qlog_write(const void *data, size_t datalen, bool fin);
@@ -149,7 +148,7 @@ public:
   void on_send_blocked(const UpstreamAddr *faddr,
                        const ngtcp2_addr &remote_addr,
                        const ngtcp2_addr &local_addr, const ngtcp2_pkt_info &pi,
-                       const uint8_t *data, size_t datalen, size_t gso_size);
+                       std::span<const uint8_t> data, size_t gso_size);
   int send_blocked_packet();
   void signal_write_upstream_addr(const UpstreamAddr *faddr);
 
@@ -180,8 +179,7 @@ private:
       Address local_addr;
       Address remote_addr;
       ngtcp2_pkt_info pi;
-      const uint8_t *data;
-      size_t datalen;
+      std::span<const uint8_t> data;
       size_t gso_size;
     } blocked[2];
     std::unique_ptr<uint8_t[]> data;
