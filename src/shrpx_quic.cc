@@ -55,10 +55,11 @@ ngtcp2_tstamp quic_timestamp() {
       .count();
 }
 
-int quic_send_packet(const UpstreamAddr *faddr, const sockaddr *remote_sa,
-                     size_t remote_salen, const sockaddr *local_sa,
-                     size_t local_salen, const ngtcp2_pkt_info &pi,
-                     const uint8_t *data, size_t datalen, size_t gso_size) {
+std::pair<size_t, int>
+quic_send_packet(const UpstreamAddr *faddr, const sockaddr *remote_sa,
+                 size_t remote_salen, const sockaddr *local_sa,
+                 size_t local_salen, const ngtcp2_pkt_info &pi,
+                 const uint8_t *data, size_t datalen, size_t gso_size) {
   iovec msg_iov = {const_cast<uint8_t *>(data), datalen};
   msghdr msg{};
   msg.msg_name = const_cast<sockaddr *>(remote_sa);
@@ -159,7 +160,7 @@ int quic_send_packet(const UpstreamAddr *faddr, const sockaddr *remote_sa,
       LOG(INFO) << "sendmsg failed: errno=" << error;
     }
 
-    return -errno;
+    return {0, -errno};
   }
 
   if (LOG_ENABLED(INFO)) {
@@ -170,7 +171,7 @@ int quic_send_packet(const UpstreamAddr *faddr, const sockaddr *remote_sa,
               << " bytes";
   }
 
-  return 0;
+  return {nwrite, 0};
 }
 
 int generate_quic_retry_connection_id(ngtcp2_cid &cid, uint32_t server_id,

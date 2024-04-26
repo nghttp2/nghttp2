@@ -550,9 +550,11 @@ int QUICConnectionHandler::send_version_negotiation(
     return -1;
   }
 
-  return quic_send_packet(faddr, &remote_addr.su.sa, remote_addr.len,
-                          &local_addr.su.sa, local_addr.len, ngtcp2_pkt_info{},
-                          buf.data(), nwrite, 0);
+  auto [_, rv] = quic_send_packet(faddr, &remote_addr.su.sa, remote_addr.len,
+                                  &local_addr.su.sa, local_addr.len,
+                                  ngtcp2_pkt_info{}, buf.data(), nwrite, 0);
+
+  return rv;
 }
 
 int QUICConnectionHandler::send_stateless_reset(
@@ -572,7 +574,6 @@ int QUICConnectionHandler::send_stateless_reset(
     ev_timer_again(worker_->get_loop(), &stateless_reset_bucket_regen_timer_);
   }
 
-  int rv;
   std::array<uint8_t, NGTCP2_STATELESS_RESET_TOKENLEN> token;
   ngtcp2_cid cid;
 
@@ -582,9 +583,9 @@ int QUICConnectionHandler::send_stateless_reset(
   auto &qkms = conn_handler->get_quic_keying_materials();
   auto &qkm = qkms->keying_materials.front();
 
-  rv = generate_quic_stateless_reset_token(token.data(), cid, qkm.secret.data(),
-                                           qkm.secret.size());
-  if (rv != 0) {
+  if (auto rv = generate_quic_stateless_reset_token(
+          token.data(), cid, qkm.secret.data(), qkm.secret.size());
+      rv != 0) {
     return -1;
   }
 
@@ -624,9 +625,11 @@ int QUICConnectionHandler::send_stateless_reset(
               << " dcid=" << util::format_hex(std::span{dcid, dcidlen});
   }
 
-  return quic_send_packet(faddr, &remote_addr.su.sa, remote_addr.len,
-                          &local_addr.su.sa, local_addr.len, ngtcp2_pkt_info{},
-                          buf.data(), nwrite, 0);
+  auto [_, rv] = quic_send_packet(faddr, &remote_addr.su.sa, remote_addr.len,
+                                  &local_addr.su.sa, local_addr.len,
+                                  ngtcp2_pkt_info{}, buf.data(), nwrite, 0);
+
+  return rv;
 }
 
 int QUICConnectionHandler::send_connection_close(
@@ -655,9 +658,11 @@ int QUICConnectionHandler::send_connection_close(
               << util::format_hex(std::span{ini_dcid.data, ini_dcid.datalen});
   }
 
-  return quic_send_packet(faddr, &remote_addr.su.sa, remote_addr.len,
-                          &local_addr.su.sa, local_addr.len, ngtcp2_pkt_info{},
-                          buf.data(), nwrite, 0);
+  auto [_, rv] = quic_send_packet(faddr, &remote_addr.su.sa, remote_addr.len,
+                                  &local_addr.su.sa, local_addr.len,
+                                  ngtcp2_pkt_info{}, buf.data(), nwrite, 0);
+
+  return rv;
 }
 
 void QUICConnectionHandler::add_connection_id(const ngtcp2_cid &cid,
@@ -751,9 +756,10 @@ int CloseWait::handle_packet(const UpstreamAddr *faddr,
     return 0;
   }
 
-  if (quic_send_packet(faddr, &remote_addr.su.sa, remote_addr.len,
-                       &local_addr.su.sa, local_addr.len, ngtcp2_pkt_info{},
-                       pkt.data(), pkt.size(), 0) != 0) {
+  auto [_, rv] = quic_send_packet(faddr, &remote_addr.su.sa, remote_addr.len,
+                                  &local_addr.su.sa, local_addr.len,
+                                  ngtcp2_pkt_info{}, pkt.data(), pkt.size(), 0);
+  if (rv != 0) {
     return -1;
   }
 

@@ -137,10 +137,11 @@ public:
   int check_shutdown();
   int start_graceful_shutdown();
   int submit_goaway();
-  int send_packet(const UpstreamAddr *faddr, const sockaddr *remote_sa,
-                  size_t remote_salen, const sockaddr *local_sa,
-                  size_t local_salen, const ngtcp2_pkt_info &pi,
-                  const uint8_t *data, size_t datalen, size_t gso_size);
+  std::pair<size_t, int>
+  send_packet(const UpstreamAddr *faddr, const sockaddr *remote_sa,
+              size_t remote_salen, const sockaddr *local_sa, size_t local_salen,
+              const ngtcp2_pkt_info &pi, const uint8_t *data, size_t datalen,
+              size_t gso_size);
 
   void qlog_write(const void *data, size_t datalen, bool fin);
   int open_qlog_file(const StringRef &dir, const ngtcp2_cid &scid) const;
@@ -184,6 +185,7 @@ private:
       size_t gso_size;
     } blocked[2];
     std::unique_ptr<uint8_t[]> data;
+    bool no_gso;
   } tx_;
 };
 
