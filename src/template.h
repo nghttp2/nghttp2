@@ -224,27 +224,27 @@ public:
   using const_iterator = const_pointer;
   using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
-  ImmutableString() : len(0), base("") {}
-  ImmutableString(const char *s, size_t slen)
+  constexpr ImmutableString() : len(0), base("") {}
+  constexpr ImmutableString(const char *s, size_t slen)
       : len(slen), base(copystr(s, s + len)) {}
-  explicit ImmutableString(const char *s)
-      : len(strlen(s)), base(copystr(s, s + len)) {}
-  explicit ImmutableString(const std::string &s)
+  constexpr explicit ImmutableString(const char *s)
+      : len(traits_type::length(s)), base(copystr(s, s + len)) {}
+  constexpr explicit ImmutableString(const std::string &s)
       : len(s.size()), base(copystr(std::begin(s), std::end(s))) {}
   template <typename InputIt>
-  ImmutableString(InputIt first, InputIt last)
+  constexpr ImmutableString(InputIt first, InputIt last)
       : len(std::distance(first, last)), base(copystr(first, last)) {}
-  ImmutableString(const ImmutableString &other)
+  constexpr ImmutableString(const ImmutableString &other)
       : len(other.len), base(copystr(std::begin(other), std::end(other))) {}
-  ImmutableString(ImmutableString &&other) noexcept
+  constexpr ImmutableString(ImmutableString &&other) noexcept
       : len{std::exchange(other.len, 0)}, base{std::exchange(other.base, "")} {}
-  ~ImmutableString() {
+  constexpr ~ImmutableString() {
     if (len) {
       delete[] base;
     }
   }
 
-  ImmutableString &operator=(const ImmutableString &other) {
+  constexpr ImmutableString &operator=(const ImmutableString &other) {
     if (this == &other) {
       return *this;
     }
@@ -255,7 +255,7 @@ public:
     base = copystr(std::begin(other), std::end(other));
     return *this;
   }
-  ImmutableString &operator=(ImmutableString &&other) noexcept {
+  constexpr ImmutableString &operator=(ImmutableString &&other) noexcept {
     if (this == &other) {
       return *this;
     }
@@ -267,33 +267,41 @@ public:
     return *this;
   }
 
-  template <size_t N> static ImmutableString from_lit(const char (&s)[N]) {
+  template <size_t N>
+  static constexpr ImmutableString from_lit(const char (&s)[N]) {
     return ImmutableString(s, N - 1);
   }
 
-  const_iterator begin() const { return base; };
-  const_iterator cbegin() const { return base; };
+  constexpr const_iterator begin() const noexcept { return base; };
+  constexpr const_iterator cbegin() const noexcept { return base; };
 
-  const_iterator end() const { return base + len; };
-  const_iterator cend() const { return base + len; };
+  constexpr const_iterator end() const noexcept { return base + len; };
+  constexpr const_iterator cend() const noexcept { return base + len; };
 
-  const_reverse_iterator rbegin() const {
+  constexpr const_reverse_iterator rbegin() const noexcept {
     return const_reverse_iterator{base + len};
   }
-  const_reverse_iterator crbegin() const {
+  constexpr const_reverse_iterator crbegin() const noexcept {
     return const_reverse_iterator{base + len};
   }
 
-  const_reverse_iterator rend() const { return const_reverse_iterator{base}; }
-  const_reverse_iterator crend() const { return const_reverse_iterator{base}; }
+  constexpr const_reverse_iterator rend() const noexcept {
+    return const_reverse_iterator{base};
+  }
+  constexpr const_reverse_iterator crend() const noexcept {
+    return const_reverse_iterator{base};
+  }
 
   constexpr const char *c_str() const noexcept { return base; }
   constexpr size_type size() const noexcept { return len; }
-  bool empty() const { return len == 0; }
-  const_reference operator[](size_type pos) const { return *(base + pos); }
+  constexpr bool empty() const noexcept { return len == 0; }
+  constexpr const_reference operator[](size_type pos) const noexcept {
+    return *(base + pos);
+  }
 
 private:
-  template <typename InputIt> const char *copystr(InputIt first, InputIt last) {
+  template <typename InputIt>
+  constexpr const char *copystr(InputIt first, InputIt last) {
     if (first == last) {
       return "";
     }
@@ -306,47 +314,21 @@ private:
   const char *base;
 };
 
-inline bool operator==(const ImmutableString &lhs, const ImmutableString &rhs) {
+inline constexpr bool operator==(const ImmutableString &lhs,
+                                 const ImmutableString &rhs) {
   return lhs.size() == rhs.size() &&
          std::equal(std::begin(lhs), std::end(lhs), std::begin(rhs));
 }
 
-inline bool operator==(const ImmutableString &lhs, const std::string &rhs) {
+inline constexpr bool operator==(const ImmutableString &lhs,
+                                 const std::string &rhs) {
   return lhs.size() == rhs.size() &&
          std::equal(std::begin(lhs), std::end(lhs), std::begin(rhs));
 }
 
-inline bool operator==(const std::string &lhs, const ImmutableString &rhs) {
-  return rhs == lhs;
-}
-
-inline bool operator==(const ImmutableString &lhs, const char *rhs) {
-  return lhs.size() == strlen(rhs) &&
+inline constexpr bool operator==(const ImmutableString &lhs, const char *rhs) {
+  return lhs.size() == std::char_traits<char>::length(rhs) &&
          std::equal(std::begin(lhs), std::end(lhs), rhs);
-}
-
-inline bool operator==(const char *lhs, const ImmutableString &rhs) {
-  return rhs == lhs;
-}
-
-inline bool operator!=(const ImmutableString &lhs, const ImmutableString &rhs) {
-  return !(lhs == rhs);
-}
-
-inline bool operator!=(const ImmutableString &lhs, const std::string &rhs) {
-  return !(lhs == rhs);
-}
-
-inline bool operator!=(const std::string &lhs, const ImmutableString &rhs) {
-  return !(rhs == lhs);
-}
-
-inline bool operator!=(const ImmutableString &lhs, const char *rhs) {
-  return !(lhs == rhs);
-}
-
-inline bool operator!=(const char *lhs, const ImmutableString &rhs) {
-  return !(rhs == lhs);
 }
 
 inline std::ostream &operator<<(std::ostream &o, const ImmutableString &s) {
