@@ -325,37 +325,28 @@ template <typename S, typename T> bool istarts_with(const S &a, const T &b) {
 template <typename InputIterator1, typename InputIterator2>
 bool ends_with(InputIterator1 first1, InputIterator1 last1,
                InputIterator2 first2, InputIterator2 last2) {
-  if (last1 - first1 < last2 - first2) {
-    return false;
-  }
-  return std::equal(first2, last2, last1 - (last2 - first2));
+  auto len1 = std::distance(first1, last1);
+  auto len2 = std::distance(first2, last2);
+
+  return len1 >= len2 && std::equal(first2, last2, first1 + (len1 - len2));
 }
 
 template <typename T, typename S> bool ends_with(const T &a, const S &b) {
-  return ends_with(a.begin(), a.end(), b.begin(), b.end());
-}
-
-template <typename T, typename CharT, size_t N>
-bool ends_with_l(const T &a, const CharT (&b)[N]) {
-  return ends_with(a.begin(), a.end(), b, b + N - 1);
+  return ends_with(std::begin(a), std::end(a), std::begin(b), std::end(b));
 }
 
 template <typename InputIterator1, typename InputIterator2>
 bool iends_with(InputIterator1 first1, InputIterator1 last1,
                 InputIterator2 first2, InputIterator2 last2) {
-  if (last1 - first1 < last2 - first2) {
-    return false;
-  }
-  return std::equal(first2, last2, last1 - (last2 - first2), CaseCmp());
+  auto len1 = std::distance(first1, last1);
+  auto len2 = std::distance(first2, last2);
+
+  return len1 >= len2 &&
+         std::equal(first2, last2, first1 + (len1 - len2), CaseCmp());
 }
 
 template <typename T, typename S> bool iends_with(const T &a, const S &b) {
-  return iends_with(a.begin(), a.end(), b.begin(), b.end());
-}
-
-template <typename T, typename CharT, size_t N>
-bool iends_with_l(const T &a, const CharT (&b)[N]) {
-  return iends_with(a.begin(), a.end(), b, b + N - 1);
+  return iends_with(std::begin(a), std::end(a), std::begin(b), std::end(b));
 }
 
 template <typename InputIt1, typename InputIt2>

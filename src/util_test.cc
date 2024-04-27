@@ -464,9 +464,6 @@ void test_util_ends_with(void) {
   assert_true(util::iends_with("foo"_sr, StringRef{}));
   assert_true(util::iends_with("oFoo"_sr, "fOO"_sr));
   assert_false(util::iends_with("ofoo"_sr, "fo"_sr));
-
-  assert_true(util::iends_with_l("oFoo"_sr, "fOO"));
-  assert_false(util::iends_with_l("ofoo"_sr, "fo"));
 }
 
 void test_util_parse_http_date(void) {

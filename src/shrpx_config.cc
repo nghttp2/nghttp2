@@ -1572,7 +1572,7 @@ int read_tls_sct_from_dir(std::vector<uint8_t> &dst, const StringRef &opt,
 
     auto name = StringRef{ent->d_name};
 
-    if (name[0] == '.' || !util::iends_with_l(name, ".sct")) {
+    if (name[0] == '.' || !util::iends_with(name, ".sct"_sr)) {
       continue;
     }
 
