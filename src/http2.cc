@@ -1922,14 +1922,13 @@ bool contains_trailers(const StringRef &s) {
 }
 
 StringRef make_websocket_accept_token(uint8_t *dest, const StringRef &key) {
-  static constexpr uint8_t magic[] = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
-  std::array<uint8_t, base64::encode_length(16) + str_size(magic)> s;
+  static constexpr char magic[] = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
+  std::array<char, base64::encode_length(16) + str_size(magic)> s;
   auto p = std::copy(std::begin(key), std::end(key), std::begin(s));
   std::copy_n(magic, str_size(magic), p);
 
   std::array<uint8_t, 20> h;
-  if (util::sha1(h.data(), StringRef{std::span{std::begin(s), std::end(s)}}) !=
-      0) {
+  if (util::sha1(h.data(), StringRef{s}) != 0) {
     return StringRef{};
   }
 
