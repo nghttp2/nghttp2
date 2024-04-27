@@ -195,8 +195,7 @@ public:
 
   int forward_quic_packet(const UpstreamAddr *faddr, const Address &remote_addr,
                           const Address &local_addr, const ngtcp2_pkt_info &pi,
-                          const WorkerID &wid, const uint8_t *data,
-                          size_t datalen);
+                          const WorkerID &wid, std::span<const uint8_t> data);
 
   void set_quic_keying_materials(std::shared_ptr<QUICKeyingMaterials> qkms);
   const std::shared_ptr<QUICKeyingMaterials> &get_quic_keying_materials() const;
@@ -215,8 +214,8 @@ public:
 
   int forward_quic_packet_to_lingering_worker_process(
       QUICLingeringWorkerProcess *quic_lwp, const Address &remote_addr,
-      const Address &local_addr, const ngtcp2_pkt_info &pi, const uint8_t *data,
-      size_t datalen);
+      const Address &local_addr, const ngtcp2_pkt_info &pi,
+      std::span<const uint8_t> data);
 
   void set_quic_ipc_fd(int fd);
 

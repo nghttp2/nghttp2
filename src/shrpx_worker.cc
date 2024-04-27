@@ -555,9 +555,9 @@ void Worker::process_events() {
       faddr = &quic_upstream_addrs_[wev.quic_pkt->upstream_addr_index];
     }
 
-    quic_conn_handler_.handle_packet(
-        faddr, wev.quic_pkt->remote_addr, wev.quic_pkt->local_addr,
-        wev.quic_pkt->pi, wev.quic_pkt->data.data(), wev.quic_pkt->data.size());
+    quic_conn_handler_.handle_packet(faddr, wev.quic_pkt->remote_addr,
+                                     wev.quic_pkt->local_addr, wev.quic_pkt->pi,
+                                     wev.quic_pkt->data);
 
     break;
   }

@@ -153,7 +153,7 @@ public:
   void setup_http3_upstream(std::unique_ptr<Http3Upstream> &&upstream);
   int read_quic(const UpstreamAddr *faddr, const Address &remote_addr,
                 const Address &local_addr, const ngtcp2_pkt_info &pi,
-                const uint8_t *data, size_t datalen);
+                std::span<const uint8_t> data);
   int write_quic();
 #endif // ENABLE_HTTP3
 

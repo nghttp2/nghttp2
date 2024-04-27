@@ -106,10 +106,10 @@ void QUICListener::on_read() {
       gso_size = static_cast<size_t>(nread);
     }
 
-    auto data = buf.data();
+    auto data = std::span{std::begin(buf), static_cast<size_t>(nread)};
 
     for (;;) {
-      auto datalen = std::min(static_cast<size_t>(nread), gso_size);
+      auto datalen = std::min(data.size(), gso_size);
 
       ++pktcnt;
 
@@ -131,14 +131,12 @@ void QUICListener::on_read() {
       remote_addr.len = msg.msg_namelen;
 
       quic_conn_handler->handle_packet(faddr_, remote_addr, local_addr, pi,
-                                       data, datalen);
+                                       {std::begin(data), datalen});
 
-      nread -= datalen;
-      if (nread == 0) {
+      data = data.subspan(datalen);
+      if (data.empty() == 0) {
         break;
       }
-
-      data += datalen;
     }
   }
 }
