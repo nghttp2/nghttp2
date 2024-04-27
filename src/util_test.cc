@@ -71,7 +71,6 @@ const MunitTest tests[]{
     munit_void_test(test_util_parse_config_str_list),
     munit_void_test(test_util_make_http_hostport),
     munit_void_test(test_util_make_hostport),
-    munit_void_test(test_util_strifind),
     munit_void_test(test_util_random_alpha_digit),
     munit_void_test(test_util_format_hex),
     munit_void_test(test_util_is_hex_string),
@@ -578,21 +577,6 @@ void test_util_make_hostport(void) {
   assert_stdsv_equal("localhost:80"sv,
                      util::make_hostport(balloc, "localhost"_sr, 80));
   assert_stdsv_equal("[::1]:443"sv, util::make_hostport(balloc, "::1"_sr, 443));
-}
-
-void test_util_strifind(void) {
-  assert_true(util::strifind("gzip, deflate, bzip2"_sr, "gzip"_sr));
-
-  assert_true(util::strifind("gzip, deflate, bzip2"_sr, "dEflate"_sr));
-
-  assert_true(util::strifind("gzip, deflate, bzip2"_sr, "BZIP2"_sr));
-
-  assert_true(util::strifind("nghttp2"_sr, StringRef{}));
-
-  // Be aware this fact
-  assert_false(util::strifind(StringRef{}, StringRef{}));
-
-  assert_false(util::strifind("nghttp2"_sr, "http1"_sr));
 }
 
 void test_util_random_alpha_digit(void) {
