@@ -866,7 +866,7 @@ int create_tcp_server_socket(UpstreamAddr &faddr,
       continue;
     }
 
-    auto host_sr = StringRef{host};
+    auto host_sr = StringRef{host.data()};
 
     auto found = std::find_if(std::begin(iaddrs), std::end(iaddrs),
                               [&host_sr, &faddr](const InheritedAddr &ia) {
