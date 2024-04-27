@@ -358,9 +358,10 @@ template <typename T, typename S> bool strieq(const T &a, const S &b) {
   return strieq(std::begin(a), std::end(a), std::begin(b), std::end(b));
 }
 
-template <typename CharT, typename InputIt, size_t N>
-bool strieq_l(const CharT (&a)[N], InputIt b, size_t blen) {
-  return strieq(a, a + (N - 1), b, b + blen);
+template <typename T, typename S>
+bool strieq(const T &a, const S &b, size_t blen) {
+  return std::equal(std::begin(a), std::end(a), std::begin(b),
+                    std::next(std::begin(b), blen), CaseCmp());
 }
 
 template <typename InputIt1, typename InputIt2>
@@ -372,9 +373,10 @@ template <typename T, typename S> bool streq(const T &a, const S &b) {
   return streq(std::begin(a), std::end(a), std::begin(b), std::end(b));
 }
 
-template <typename CharT, typename InputIt, size_t N>
-bool streq_l(const CharT (&a)[N], InputIt b, size_t blen) {
-  return streq(a, a + (N - 1), b, b + blen);
+template <typename T, typename S>
+bool streq(const T &a, const S &b, size_t blen) {
+  return std::equal(std::begin(a), std::end(a), std::begin(b),
+                    std::next(std::begin(b), blen));
 }
 
 template <typename InputIt> void inp_strlower(InputIt first, InputIt last) {

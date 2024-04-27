@@ -241,5 +241,5 @@ LOGVARS = [
 ]
 
 if __name__ == '__main__':
-    gentokenlookup(OPTIONS, 'SHRPX_OPTID_', comp_fun='util::strieq_l')
-    gentokenlookup(LOGVARS, 'LogFragmentType::', comp_fun='util::strieq_l', return_type='LogFragmentType', fail_value='LogFragmentType::NONE')
+    gentokenlookup(OPTIONS, 'SHRPX_OPTID_', comp_fun='util::strieq')
+    gentokenlookup(LOGVARS, 'LogFragmentType::', comp_fun='util::strieq', return_type='LogFragmentType', fail_value='LogFragmentType::NONE')

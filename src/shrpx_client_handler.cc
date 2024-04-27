@@ -1396,7 +1396,7 @@ int ClientHandler::proxy_protocol_read() {
       }
       return -1;
     }
-    if (!util::streq_l("UNKNOWN", rb_.pos(), 7)) {
+    if (!util::streq("UNKNOWN"_sr, StringRef{rb_.pos(), 7})) {
       if (LOG_ENABLED(INFO)) {
         CLOG(INFO, this) << "PROXY-protocol-v1: Unknown INET protocol family";
       }

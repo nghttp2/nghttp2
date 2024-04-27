@@ -870,8 +870,7 @@ void Downstream::inspect_http1_request() {
     if (upgrade) {
       const auto &val = upgrade->value;
       // TODO Perform more strict checking for upgrade headers
-      if (util::streq_l(NGHTTP2_CLEARTEXT_PROTO_VERSION_ID, val.data(),
-                        val.size())) {
+      if (util::streq(NGHTTP2_CLEARTEXT_PROTO_VERSION_ID ""_sr, val)) {
         req_.http2_upgrade_seen = true;
       } else {
         req_.upgrade_request = true;

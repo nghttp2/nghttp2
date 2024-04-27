@@ -100,14 +100,14 @@ void test_util_streq(void) {
   assert_false(util::streq("alpha"_sr, "alph"_sr));
   assert_false(util::streq("alpha"_sr, "alphA"_sr));
 
-  assert_true(util::streq_l("alpha", "alpha", 5));
-  assert_true(util::streq_l("alpha", "alphabravo", 5));
-  assert_false(util::streq_l("alpha", "alphabravo", 6));
-  assert_false(util::streq_l("alphabravo", "alpha", 5));
-  assert_false(util::streq_l("alpha", "alphA", 5));
-  assert_false(util::streq_l("", "a", 1));
-  assert_true(util::streq_l("", "", 0));
-  assert_false(util::streq_l("alpha", "", 0));
+  assert_true(util::streq("alpha"_sr, "alpha"_sr, 5));
+  assert_true(util::streq("alpha"_sr, "alphabravo"_sr, 5));
+  assert_false(util::streq("alpha"_sr, "alphabravo"_sr, 6));
+  assert_false(util::streq("alphabravo"_sr, "alpha"_sr, 5));
+  assert_false(util::streq("alpha"_sr, "alphA"_sr, 5));
+  assert_false(util::streq(""_sr, "a"_sr, 1));
+  assert_true(util::streq(""_sr, ""_sr, 0));
+  assert_false(util::streq("alpha"_sr, ""_sr, 0));
 }
 
 void test_util_strieq(void) {
@@ -123,11 +123,10 @@ void test_util_strieq(void) {
   assert_false(util::strieq("alpha"_sr, "AlPhA "_sr));
   assert_false(util::strieq(""_sr, "AlPhA "_sr));
 
-  assert_true(util::strieq_l("alpha", "alpha", 5));
-  assert_true(util::strieq_l("alpha", "AlPhA", 5));
-  assert_true(util::strieq_l("", static_cast<const char *>(nullptr), 0));
-  assert_false(util::strieq_l("alpha", "AlPhA ", 6));
-  assert_false(util::strieq_l("", "AlPhA ", 6));
+  assert_true(util::strieq("alpha"_sr, "alpha"_sr, 5));
+  assert_true(util::strieq("alpha"_sr, "AlPhA"_sr, 5));
+  assert_false(util::strieq("alpha"_sr, "AlPhA "_sr, 6));
+  assert_false(util::strieq(""_sr, "AlPhA "_sr, 6));
 }
 
 void test_util_inp_strlower(void) {
