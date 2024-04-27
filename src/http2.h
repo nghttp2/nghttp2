@@ -113,16 +113,14 @@ bool lws(const char *value);
 void copy_url_component(std::string &dest, const http_parser_url *u, int field,
                         const char *url);
 
-Headers::value_type to_header(const uint8_t *name, size_t namelen,
-                              const uint8_t *value, size_t valuelen,
+Headers::value_type to_header(const StringRef &name, const StringRef &value,
                               bool no_index, int32_t token);
 
 // Add name/value pairs to |nva|.  If |no_index| is true, this
 // name/value pair won't be indexed when it is forwarded to the next
-// hop.  This function strips white spaces around |value|.
-void add_header(Headers &nva, const uint8_t *name, size_t namelen,
-                const uint8_t *value, size_t valuelen, bool no_index,
-                int32_t token);
+// hop.
+void add_header(Headers &nva, const StringRef &name, const StringRef &value,
+                bool no_index, int32_t token);
 
 // Returns pointer to the entry in |nva| which has name |name|.  If
 // more than one entries which have the name |name|, last occurrence
@@ -328,10 +326,9 @@ enum {
 
 using HeaderIndex = std::array<int16_t, HD_MAXIDX>;
 
-// Looks up header token for header name |name| of length |namelen|.
-// Only headers we are interested in are tokenized.  If header name
-// cannot be tokenized, returns -1.
-int lookup_token(const uint8_t *name, size_t namelen);
+// Looks up header token for header name |name|.  Only headers we are
+// interested in are tokenized.  If header name cannot be tokenized,
+// returns -1.
 int lookup_token(const StringRef &name);
 
 // Initializes |hdidx|, header index.  The |hdidx| must point to the

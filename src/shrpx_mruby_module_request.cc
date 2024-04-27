@@ -235,7 +235,7 @@ mrb_value request_mod_header(mrb_state *mrb, mrb_value self, bool repl) {
 
   mrb_gc_arena_restore(mrb, ai);
 
-  auto token = http2::lookup_token(keyref.byte(), keyref.size());
+  auto token = http2::lookup_token(keyref);
 
   if (repl) {
     size_t p = 0;

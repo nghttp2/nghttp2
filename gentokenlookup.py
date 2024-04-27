@@ -33,10 +33,10 @@ enum {''')
   {}MAXIDX,
 }};'''.format(prefix))
 
-def gen_index_header(tokens, prefix, value_type, comp_fun, return_type, fail_value):
+def gen_index_header(tokens, prefix, comp_fun, return_type, fail_value):
     print('''\
-{} lookup_token(const {} *name, size_t namelen) {{
-  switch (namelen) {{'''.format(return_type, value_type))
+{} lookup_token(const StringRef &name) {{
+  switch (name.size()) {{'''.format(return_type))
     b = build_header(tokens)
     for size in sorted(b.keys()):
         ents = b[size]
@@ -50,7 +50,7 @@ def gen_index_header(tokens, prefix, value_type, comp_fun, return_type, fail_val
     case '{}':'''.format(c))
             for k in headers:
                 print('''\
-      if ({}("{}", name, {})) {{
+      if ({}("{}", std::begin(name), {})) {{
         return {};
       }}'''.format(comp_fun, k[:-1], size - 1, to_enum_hd(k, prefix)))
             print('''\
@@ -63,7 +63,7 @@ def gen_index_header(tokens, prefix, value_type, comp_fun, return_type, fail_val
   return {};
 }}'''.format(fail_value))
 
-def gentokenlookup(tokens, prefix, value_type='uint8_t', comp_fun='util::streq_l', return_type='int', fail_value='-1'):
+def gentokenlookup(tokens, prefix, comp_fun='util::streq_l', return_type='int', fail_value='-1'):
     gen_enum(tokens, prefix)
     print()
-    gen_index_header(tokens, prefix, value_type, comp_fun, return_type, fail_value)
+    gen_index_header(tokens, prefix, comp_fun, return_type, fail_value)

@@ -209,7 +209,9 @@ int on_header_callback2(nghttp2_session *session, const nghttp2_frame *frame,
     return 0;
   }
 
-  auto token = http2::lookup_token(namebuf.base, namebuf.len);
+  auto nameref = StringRef{namebuf.base, namebuf.len};
+  auto valueref = StringRef{valuebuf.base, valuebuf.len};
+  auto token = http2::lookup_token(nameref);
   auto no_index = flags & NGHTTP2_NV_FLAG_NO_INDEX;
 
   downstream->add_rcbuf(name);
@@ -217,15 +219,11 @@ int on_header_callback2(nghttp2_session *session, const nghttp2_frame *frame,
 
   if (frame->headers.cat == NGHTTP2_HCAT_HEADERS) {
     // just store header fields for trailer part
-    req.fs.add_trailer_token(StringRef{namebuf.base, namebuf.len},
-                             StringRef{valuebuf.base, valuebuf.len}, no_index,
-                             token);
+    req.fs.add_trailer_token(nameref, valueref, no_index, token);
     return 0;
   }
 
-  req.fs.add_header_token(StringRef{namebuf.base, namebuf.len},
-                          StringRef{valuebuf.base, valuebuf.len}, no_index,
-                          token);
+  req.fs.add_header_token(nameref, valueref, no_index, token);
   return 0;
 }
 } // namespace
@@ -744,7 +742,7 @@ int on_frame_send_callback(nghttp2_session *session, const nghttp2_frame *frame,
       auto value =
           make_string_ref(promised_balloc, StringRef{nv.value, nv.valuelen});
 
-      auto token = http2::lookup_token(nv.name, nv.namelen);
+      auto token = http2::lookup_token(name);
       switch (token) {
       case http2::HD__METHOD:
         req.method = http2::lookup_method_token(value);

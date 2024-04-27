@@ -939,7 +939,9 @@ int on_header_callback2(nghttp2_session *session, const nghttp2_frame *frame,
       return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
     }
 
-    auto token = http2::lookup_token(namebuf.base, namebuf.len);
+    auto nameref = StringRef{namebuf.base, namebuf.len};
+    auto valueref = StringRef{valuebuf.base, valuebuf.len};
+    auto token = http2::lookup_token(nameref);
     auto no_index = flags & NGHTTP2_NV_FLAG_NO_INDEX;
 
     downstream->add_rcbuf(name);
@@ -947,15 +949,11 @@ int on_header_callback2(nghttp2_session *session, const nghttp2_frame *frame,
 
     if (trailer) {
       // just store header fields for trailer part
-      resp.fs.add_trailer_token(StringRef{namebuf.base, namebuf.len},
-                                StringRef{valuebuf.base, valuebuf.len},
-                                no_index, token);
+      resp.fs.add_trailer_token(nameref, valueref, no_index, token);
       return 0;
     }
 
-    resp.fs.add_header_token(StringRef{namebuf.base, namebuf.len},
-                             StringRef{valuebuf.base, valuebuf.len}, no_index,
-                             token);
+    resp.fs.add_header_token(nameref, valueref, no_index, token);
     return 0;
   }
   case NGHTTP2_PUSH_PROMISE: {
@@ -993,9 +991,10 @@ int on_header_callback2(nghttp2_session *session, const nghttp2_frame *frame,
     promised_downstream->add_rcbuf(name);
     promised_downstream->add_rcbuf(value);
 
-    auto token = http2::lookup_token(namebuf.base, namebuf.len);
-    promised_req.fs.add_header_token(StringRef{namebuf.base, namebuf.len},
-                                     StringRef{valuebuf.base, valuebuf.len},
+    auto nameref = StringRef{namebuf.base, namebuf.len};
+    auto valueref = StringRef{valuebuf.base, valuebuf.len};
+    auto token = http2::lookup_token(nameref);
+    promised_req.fs.add_header_token(nameref, valueref,
                                      flags & NGHTTP2_NV_FLAG_NO_INDEX, token);
 
     return 0;

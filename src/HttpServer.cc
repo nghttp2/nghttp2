@@ -1427,7 +1427,7 @@ int on_header_callback2(nghttp2_session *session, const nghttp2_frame *frame,
 
   stream->header_buffer_size += namebuf.len + valuebuf.len;
 
-  auto token = http2::lookup_token(namebuf.base, namebuf.len);
+  auto token = http2::lookup_token(StringRef{namebuf.base, namebuf.len});
 
   auto &header = stream->header;
 
