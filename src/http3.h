@@ -67,25 +67,10 @@ inline uint8_t never_index(bool never_index) {
   return never_index ? NGHTTP3_NV_FLAG_NEVER_INDEX : NGHTTP3_NV_FLAG_NONE;
 }
 
-// Appends headers in |headers| to |nv|.  |headers| must be indexed
-// before this call (its element's token field is assigned).  Certain
-// headers, including disallowed headers in HTTP/3 spec and headers
-// which require special handling (i.e. via), are not copied.  |flags|
-// is one or more of HeaderBuildOp flags.  They tell function that
-// certain header fields should not be added.
-void copy_headers_to_nva(std::vector<nghttp3_nv> &nva,
-                         const HeaderRefs &headers, uint32_t flags);
-
 // Just like copy_headers_to_nva(), but this adds
 // NGHTTP3_NV_FLAG_NO_COPY_NAME and NGHTTP3_NV_FLAG_NO_COPY_VALUE.
 void copy_headers_to_nva_nocopy(std::vector<nghttp3_nv> &nva,
                                 const HeaderRefs &headers, uint32_t flags);
-
-// Checks the header name/value pair using nghttp3_check_header_name()
-// and nghttp3_check_header_value(). If both function returns nonzero,
-// this function returns nonzero.
-int check_nv(const uint8_t *name, size_t namelen, const uint8_t *value,
-             size_t valuelen);
 
 } // namespace http3
 

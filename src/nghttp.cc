@@ -1915,10 +1915,12 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
 
     req->header_buffer_size += namelen + valuelen;
 
-    auto token = http2::lookup_token(name, namelen);
+    auto nameref = StringRef{name, namelen};
+    auto valueref = StringRef{value, valuelen};
+    auto token = http2::lookup_token(nameref);
 
     http2::index_header(req->res_hdidx, token, req->res_nva.size());
-    http2::add_header(req->res_nva, name, namelen, value, valuelen,
+    http2::add_header(req->res_nva, nameref, valueref,
                       flags & NGHTTP2_NV_FLAG_NO_INDEX, token);
     break;
   }
@@ -1939,10 +1941,12 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
 
     req->header_buffer_size += namelen + valuelen;
 
-    auto token = http2::lookup_token(name, namelen);
+    auto nameref = StringRef{name, namelen};
+    auto valueref = StringRef{value, valuelen};
+    auto token = http2::lookup_token(nameref);
 
     http2::index_header(req->req_hdidx, token, req->req_nva.size());
-    http2::add_header(req->req_nva, name, namelen, value, valuelen,
+    http2::add_header(req->req_nva, nameref, valueref,
                       flags & NGHTTP2_NV_FLAG_NO_INDEX, token);
     break;
   }

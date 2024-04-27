@@ -128,27 +128,11 @@ void copy_headers_to_nva_internal(std::vector<nghttp3_nv> &nva,
 }
 } // namespace
 
-void copy_headers_to_nva(std::vector<nghttp3_nv> &nva,
-                         const HeaderRefs &headers, uint32_t flags) {
-  copy_headers_to_nva_internal(nva, headers, NGHTTP3_NV_FLAG_NONE, flags);
-}
-
 void copy_headers_to_nva_nocopy(std::vector<nghttp3_nv> &nva,
                                 const HeaderRefs &headers, uint32_t flags) {
   copy_headers_to_nva_internal(
       nva, headers,
       NGHTTP3_NV_FLAG_NO_COPY_NAME | NGHTTP3_NV_FLAG_NO_COPY_VALUE, flags);
-}
-
-int check_nv(const uint8_t *name, size_t namelen, const uint8_t *value,
-             size_t valuelen) {
-  if (!nghttp3_check_header_name(name, namelen)) {
-    return 0;
-  }
-  if (!nghttp3_check_header_value(value, valuelen)) {
-    return 0;
-  }
-  return 1;
 }
 
 } // namespace http3

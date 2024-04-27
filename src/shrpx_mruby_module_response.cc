@@ -127,7 +127,7 @@ mrb_value response_mod_header(mrb_state *mrb, mrb_value self, bool repl) {
 
   mrb_gc_arena_restore(mrb, ai);
 
-  auto token = http2::lookup_token(keyref.byte(), keyref.size());
+  auto token = http2::lookup_token(keyref);
 
   if (repl) {
     size_t p = 0;
@@ -319,7 +319,7 @@ mrb_value response_send_info(mrb_state *mrb, mrb_value self) {
 
     mrb_gc_arena_restore(mrb, ai);
 
-    auto token = http2::lookup_token(keyref.byte(), keyref.size());
+    auto token = http2::lookup_token(keyref);
 
     if (mrb_array_p(values)) {
       auto n = RARRAY_LEN(values);

@@ -2198,22 +2198,20 @@ int Http3Upstream::http_recv_request_header(Downstream *downstream,
     return 0;
   }
 
-  auto token = http2::lookup_token(namebuf.base, namebuf.len);
+  auto nameref = StringRef{namebuf.base, namebuf.len};
+  auto valueref = StringRef{valuebuf.base, valuebuf.len};
+  auto token = http2::lookup_token(nameref);
   auto no_index = flags & NGHTTP3_NV_FLAG_NEVER_INDEX;
 
   downstream->add_rcbuf(name);
   downstream->add_rcbuf(value);
 
   if (trailer) {
-    req.fs.add_trailer_token(StringRef{namebuf.base, namebuf.len},
-                             StringRef{valuebuf.base, valuebuf.len}, no_index,
-                             token);
+    req.fs.add_trailer_token(nameref, valueref, no_index, token);
     return 0;
   }
 
-  req.fs.add_header_token(StringRef{namebuf.base, namebuf.len},
-                          StringRef{valuebuf.base, valuebuf.len}, no_index,
-                          token);
+  req.fs.add_header_token(nameref, valueref, no_index, token);
   return 0;
 }
 

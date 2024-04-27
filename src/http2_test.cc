@@ -85,52 +85,24 @@ void check_nv(const HeaderRef &a, const nghttp2_nv *b) {
 void test_http2_add_header(void) {
   auto nva = Headers();
 
-  http2::add_header(nva, (const uint8_t *)"alpha", 5, (const uint8_t *)"123", 3,
-                    false, -1);
+  http2::add_header(nva, "alpha"_sr, "123"_sr, false, -1);
   assert_true(Headers::value_type("alpha", "123") == nva[0]);
   assert_false(nva[0].no_index);
 
   nva.clear();
 
-  http2::add_header(nva, (const uint8_t *)"alpha", 5, (const uint8_t *)"", 0,
-                    true, -1);
+  http2::add_header(nva, "alpha"_sr, ""_sr, true, -1);
   assert_true(Headers::value_type("alpha", "") == nva[0]);
   assert_true(nva[0].no_index);
 
   nva.clear();
 
-  http2::add_header(nva, (const uint8_t *)"a", 1, (const uint8_t *)" b", 2,
-                    false, -1);
+  http2::add_header(nva, "a"_sr, "b"_sr, false, -1);
   assert_true(Headers::value_type("a", "b") == nva[0]);
 
   nva.clear();
 
-  http2::add_header(nva, (const uint8_t *)"a", 1, (const uint8_t *)"b ", 2,
-                    false, -1);
-  assert_true(Headers::value_type("a", "b") == nva[0]);
-
-  nva.clear();
-
-  http2::add_header(nva, (const uint8_t *)"a", 1, (const uint8_t *)"  b  ", 5,
-                    false, -1);
-  assert_true(Headers::value_type("a", "b") == nva[0]);
-
-  nva.clear();
-
-  http2::add_header(nva, (const uint8_t *)"a", 1, (const uint8_t *)"  bravo  ",
-                    9, false, -1);
-  assert_true(Headers::value_type("a", "bravo") == nva[0]);
-
-  nva.clear();
-
-  http2::add_header(nva, (const uint8_t *)"a", 1, (const uint8_t *)"    ", 4,
-                    false, -1);
-  assert_true(Headers::value_type("a", "") == nva[0]);
-
-  nva.clear();
-
-  http2::add_header(nva, (const uint8_t *)"te", 2, (const uint8_t *)"trailers",
-                    8, false, http2::HD_TE);
+  http2::add_header(nva, "te"_sr, "trailers"_sr, false, http2::HD_TE);
   assert_int32(http2::HD_TE, ==, nva[0].token);
 }
 

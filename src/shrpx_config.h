@@ -1335,8 +1335,8 @@ enum {
   SHRPX_OPTID_MAXIDX,
 };
 
-// Looks up token for given option name |name| of length |namelen|.
-int option_lookup_token(const char *name, size_t namelen);
+// Looks up token for given option name |name|.
+int option_lookup_token(const StringRef &name);
 
 // Parses option name |opt| and value |optarg|.  The results are
 // stored into the object pointed by |config|. This function returns 0
