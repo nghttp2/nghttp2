@@ -452,9 +452,6 @@ void test_util_starts_with(void) {
   assert_true(util::istarts_with("ofoo"_sr, StringRef{}));
   assert_true(util::istarts_with("fOOo"_sr, "Foo"_sr));
   assert_false(util::istarts_with("ofoo"_sr, "foo"_sr));
-
-  assert_true(util::istarts_with_l("fOOo"_sr, "Foo"));
-  assert_false(util::istarts_with_l("ofoo"_sr, "foo"));
 }
 
 void test_util_ends_with(void) {

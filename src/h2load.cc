@@ -1877,7 +1877,7 @@ std::string get_reqline(const char *uri, const http_parser_url &u) {
 } // namespace
 
 namespace {
-constexpr char UNIX_PATH_PREFIX[] = "unix:";
+constexpr auto UNIX_PATH_PREFIX = "unix:"_sr;
 } // namespace
 
 namespace {
@@ -2531,12 +2531,12 @@ int main(int argc, char **argv) {
       config.base_uri = "";
       config.base_uri_unix = false;
 
-      if (util::istarts_with_l(arg, UNIX_PATH_PREFIX)) {
+      if (util::istarts_with(arg, UNIX_PATH_PREFIX)) {
         // UNIX domain socket path
         sockaddr_un un;
 
-        auto path = StringRef{std::begin(arg) + str_size(UNIX_PATH_PREFIX),
-                              std::end(arg)};
+        auto path =
+            StringRef{std::begin(arg) + UNIX_PATH_PREFIX.size(), std::end(arg)};
 
         if (path.size() == 0 || path.size() + 1 > sizeof(un.sun_path)) {
           std::cerr << "--base-uri: invalid UNIX domain socket path: " << arg

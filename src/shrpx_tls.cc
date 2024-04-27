@@ -1685,7 +1685,7 @@ bool tls_hostname_match(const StringRef &pattern, const StringRef &hostname) {
   if (ptLeftLabelEnd == std::end(pattern) ||
       std::find(ptLeftLabelEnd + 1, std::end(pattern), '.') ==
           std::end(pattern) ||
-      ptLeftLabelEnd < ptWildcard || util::istarts_with_l(pattern, "xn--")) {
+      ptLeftLabelEnd < ptWildcard || util::istarts_with(pattern, "xn--"_sr)) {
     wildcardEnabled = false;
   }
 

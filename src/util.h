@@ -297,14 +297,12 @@ inline char lowcase(char c) {
 template <typename InputIterator1, typename InputIterator2>
 bool starts_with(InputIterator1 first1, InputIterator1 last1,
                  InputIterator2 first2, InputIterator2 last2) {
-  if (last1 - first1 < last2 - first2) {
-    return false;
-  }
-  return std::equal(first2, last2, first1);
+  return std::distance(first1, last1) >= std::distance(first2, last2) &&
+         std::equal(first2, last2, first1);
 }
 
 template <typename S, typename T> bool starts_with(const S &a, const T &b) {
-  return starts_with(a.begin(), a.end(), b.begin(), b.end());
+  return starts_with(std::begin(a), std::end(a), std::begin(b), std::end(b));
 }
 
 struct CaseCmp {
@@ -316,19 +314,12 @@ struct CaseCmp {
 template <typename InputIterator1, typename InputIterator2>
 bool istarts_with(InputIterator1 first1, InputIterator1 last1,
                   InputIterator2 first2, InputIterator2 last2) {
-  if (last1 - first1 < last2 - first2) {
-    return false;
-  }
-  return std::equal(first2, last2, first1, CaseCmp());
+  return std::distance(first1, last1) >= std::distance(first2, last2) &&
+         std::equal(first2, last2, first1, CaseCmp());
 }
 
 template <typename S, typename T> bool istarts_with(const S &a, const T &b) {
-  return istarts_with(a.begin(), a.end(), b.begin(), b.end());
-}
-
-template <typename T, typename CharT, size_t N>
-bool istarts_with_l(const T &a, const CharT (&b)[N]) {
-  return istarts_with(a.begin(), a.end(), b, b + N - 1);
+  return istarts_with(std::begin(a), std::end(a), std::begin(b), std::end(b));
 }
 
 template <typename InputIterator1, typename InputIterator2>

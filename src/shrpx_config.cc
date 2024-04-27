@@ -746,7 +746,7 @@ std::vector<LogFragment> parse_log_format(BlockAllocator &balloc,
     auto type = log_var_lookup_token(var_name);
 
     if (type == LogFragmentType::NONE) {
-      if (util::istarts_with_l(var_name, "http_")) {
+      if (util::istarts_with(var_name, "http_"_sr)) {
         if (util::streq_l("host", var_name.substr(str_size("http_")))) {
           // Special handling of host header field.  We will use
           // :authority header field if host header is missing.  This
@@ -990,7 +990,7 @@ int parse_downstream_params(DownstreamParams &out,
     auto end = std::find(first, last, ';');
     auto param = StringRef{first, end};
 
-    if (util::istarts_with_l(param, "proto=")) {
+    if (util::istarts_with(param, "proto="_sr)) {
       auto protostr = StringRef{first + str_size("proto="), end};
       if (protostr.empty()) {
         LOG(ERROR) << "backend: proto: protocol is empty";
@@ -1006,7 +1006,7 @@ int parse_downstream_params(DownstreamParams &out,
         LOG(ERROR) << "backend: proto: unknown protocol " << protostr;
         return -1;
       }
-    } else if (util::istarts_with_l(param, "fall=")) {
+    } else if (util::istarts_with(param, "fall="_sr)) {
       auto valstr = StringRef{first + str_size("fall="), end};
       if (valstr.empty()) {
         LOG(ERROR) << "backend: fall: non-negative integer is expected";
@@ -1020,7 +1020,7 @@ int parse_downstream_params(DownstreamParams &out,
       }
 
       out.fall = *n;
-    } else if (util::istarts_with_l(param, "rise=")) {
+    } else if (util::istarts_with(param, "rise="_sr)) {
       auto valstr = StringRef{first + str_size("rise="), end};
       if (valstr.empty()) {
         LOG(ERROR) << "backend: rise: non-negative integer is expected";
@@ -1038,9 +1038,9 @@ int parse_downstream_params(DownstreamParams &out,
       out.tls = true;
     } else if (util::strieq_l("no-tls", param)) {
       out.tls = false;
-    } else if (util::istarts_with_l(param, "sni=")) {
+    } else if (util::istarts_with(param, "sni="_sr)) {
       out.sni = StringRef{first + str_size("sni="), end};
-    } else if (util::istarts_with_l(param, "affinity=")) {
+    } else if (util::istarts_with(param, "affinity="_sr)) {
       auto valstr = StringRef{first + str_size("affinity="), end};
       if (util::strieq_l("none", valstr)) {
         out.affinity.type = SessionAffinity::NONE;
@@ -1053,7 +1053,7 @@ int parse_downstream_params(DownstreamParams &out,
             << "backend: affinity: value must be one of none, ip, and cookie";
         return -1;
       }
-    } else if (util::istarts_with_l(param, "affinity-cookie-name=")) {
+    } else if (util::istarts_with(param, "affinity-cookie-name="_sr)) {
       auto val = StringRef{first + str_size("affinity-cookie-name="), end};
       if (val.empty()) {
         LOG(ERROR)
@@ -1061,10 +1061,10 @@ int parse_downstream_params(DownstreamParams &out,
         return -1;
       }
       out.affinity.cookie.name = val;
-    } else if (util::istarts_with_l(param, "affinity-cookie-path=")) {
+    } else if (util::istarts_with(param, "affinity-cookie-path="_sr)) {
       out.affinity.cookie.path =
           StringRef{first + str_size("affinity-cookie-path="), end};
-    } else if (util::istarts_with_l(param, "affinity-cookie-secure=")) {
+    } else if (util::istarts_with(param, "affinity-cookie-secure="_sr)) {
       auto valstr = StringRef{first + str_size("affinity-cookie-secure="), end};
       if (util::strieq_l("auto", valstr)) {
         out.affinity.cookie.secure = SessionAffinityCookieSecure::AUTO;
@@ -1077,7 +1077,7 @@ int parse_downstream_params(DownstreamParams &out,
                       "auto, yes, and no";
         return -1;
       }
-    } else if (util::istarts_with_l(param, "affinity-cookie-stickiness=")) {
+    } else if (util::istarts_with(param, "affinity-cookie-stickiness="_sr)) {
       auto valstr =
           StringRef{first + str_size("affinity-cookie-stickiness="), end};
       if (util::strieq_l("loose", valstr)) {
@@ -1096,22 +1096,22 @@ int parse_downstream_params(DownstreamParams &out,
       out.redirect_if_not_tls = true;
     } else if (util::strieq_l("upgrade-scheme", param)) {
       out.upgrade_scheme = true;
-    } else if (util::istarts_with_l(param, "mruby=")) {
+    } else if (util::istarts_with(param, "mruby="_sr)) {
       auto valstr = StringRef{first + str_size("mruby="), end};
       out.mruby = valstr;
-    } else if (util::istarts_with_l(param, "read-timeout=")) {
+    } else if (util::istarts_with(param, "read-timeout="_sr)) {
       if (parse_downstream_param_duration(
               out.read_timeout, "read-timeout"_sr,
               StringRef{first + str_size("read-timeout="), end}) == -1) {
         return -1;
       }
-    } else if (util::istarts_with_l(param, "write-timeout=")) {
+    } else if (util::istarts_with(param, "write-timeout="_sr)) {
       if (parse_downstream_param_duration(
               out.write_timeout, "write-timeout"_sr,
               StringRef{first + str_size("write-timeout="), end}) == -1) {
         return -1;
       }
-    } else if (util::istarts_with_l(param, "weight=")) {
+    } else if (util::istarts_with(param, "weight="_sr)) {
       auto valstr = StringRef{first + str_size("weight="), end};
       if (valstr.empty()) {
         LOG(ERROR)
@@ -1126,14 +1126,14 @@ int parse_downstream_params(DownstreamParams &out,
         return -1;
       }
       out.weight = *n;
-    } else if (util::istarts_with_l(param, "group=")) {
+    } else if (util::istarts_with(param, "group="_sr)) {
       auto valstr = StringRef{first + str_size("group="), end};
       if (valstr.empty()) {
         LOG(ERROR) << "backend: group: empty string is not allowed";
         return -1;
       }
       out.group = valstr;
-    } else if (util::istarts_with_l(param, "group-weight=")) {
+    } else if (util::istarts_with(param, "group-weight="_sr)) {
       auto valstr = StringRef{first + str_size("group-weight="), end};
       if (valstr.empty()) {
         LOG(ERROR) << "backend: group-weight: non-negative integer [1, 256] is "
@@ -1507,7 +1507,7 @@ int parse_subcert_params(SubcertParams &out, const StringRef &src_params) {
     auto end = std::find(first, last, ';');
     auto param = StringRef{first, end};
 
-    if (util::istarts_with_l(param, "sct-dir=")) {
+    if (util::istarts_with(param, "sct-dir="_sr)) {
 #if defined(NGHTTP2_GENUINE_OPENSSL) || defined(NGHTTP2_OPENSSL_IS_BORINGSSL)
       auto sct_dir =
           StringRef{std::begin(param) + str_size("sct-dir="), std::end(param)};
