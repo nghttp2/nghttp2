@@ -29,56 +29,6 @@ namespace nghttp2 {
 namespace http3 {
 
 namespace {
-nghttp3_nv make_nv_internal(const std::string &name, const std::string &value,
-                            bool never_index, uint8_t nv_flags) {
-  uint8_t flags;
-
-  flags = nv_flags |
-          (never_index ? NGHTTP3_NV_FLAG_NEVER_INDEX : NGHTTP3_NV_FLAG_NONE);
-
-  return {(uint8_t *)name.c_str(), (uint8_t *)value.c_str(), name.size(),
-          value.size(), flags};
-}
-} // namespace
-
-namespace {
-nghttp3_nv make_nv_internal(const StringRef &name, const StringRef &value,
-                            bool never_index, uint8_t nv_flags) {
-  uint8_t flags;
-
-  flags = nv_flags |
-          (never_index ? NGHTTP3_NV_FLAG_NEVER_INDEX : NGHTTP3_NV_FLAG_NONE);
-
-  return {(uint8_t *)name.data(), (uint8_t *)value.data(), name.size(),
-          value.size(), flags};
-}
-} // namespace
-
-nghttp3_nv make_nv(const std::string &name, const std::string &value,
-                   bool never_index) {
-  return make_nv_internal(name, value, never_index, NGHTTP3_NV_FLAG_NONE);
-}
-
-nghttp3_nv make_nv(const StringRef &name, const StringRef &value,
-                   bool never_index) {
-  return make_nv_internal(name, value, never_index, NGHTTP3_NV_FLAG_NONE);
-}
-
-nghttp3_nv make_nv_nocopy(const std::string &name, const std::string &value,
-                          bool never_index) {
-  return make_nv_internal(name, value, never_index,
-                          NGHTTP3_NV_FLAG_NO_COPY_NAME |
-                              NGHTTP3_NV_FLAG_NO_COPY_VALUE);
-}
-
-nghttp3_nv make_nv_nocopy(const StringRef &name, const StringRef &value,
-                          bool never_index) {
-  return make_nv_internal(name, value, never_index,
-                          NGHTTP3_NV_FLAG_NO_COPY_NAME |
-                              NGHTTP3_NV_FLAG_NO_COPY_VALUE);
-}
-
-namespace {
 void copy_headers_to_nva_internal(std::vector<nghttp3_nv> &nva,
                                   const HeaderRefs &headers, uint8_t nv_flags,
                                   uint32_t flags) {
@@ -172,8 +122,8 @@ void copy_headers_to_nva_internal(std::vector<nghttp3_nv> &nva,
       it_via = it;
       break;
     }
-    nva.push_back(
-        make_nv_internal(kv->name, kv->value, kv->no_index, nv_flags));
+    nva.push_back(make_field_flags(kv->name, kv->value,
+                                   nv_flags | never_index(kv->no_index)));
   }
 }
 } // namespace

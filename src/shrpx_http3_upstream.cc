@@ -1304,7 +1304,7 @@ int Http3Upstream::on_downstream_header_complete(Downstream *downstream) {
   if (downstream->get_non_final_response()) {
     auto response_status = http2::stringify_status(balloc, resp.http_status);
 
-    nva.push_back(http3::make_nv_ls_nocopy(":status", response_status));
+    nva.push_back(http3::make_field(":status"_sr, response_status));
 
     http3::copy_headers_to_nva_nocopy(nva, resp.fs.headers(),
                                       http2::HDOP_STRIP_ALL);
@@ -1336,16 +1336,16 @@ int Http3Upstream::on_downstream_header_complete(Downstream *downstream) {
     response_status = http2::stringify_status(balloc, resp.http_status);
   }
 
-  nva.push_back(http3::make_nv_ls_nocopy(":status", response_status));
+  nva.push_back(http3::make_field(":status"_sr, response_status));
 
   http3::copy_headers_to_nva_nocopy(nva, resp.fs.headers(), striphd_flags);
 
   if (!config->http2_proxy && !httpconf.no_server_rewrite) {
-    nva.push_back(http3::make_nv_ls_nocopy("server", httpconf.server_name));
+    nva.push_back(http3::make_field("server"_sr, httpconf.server_name));
   } else {
     auto server = resp.fs.header(http2::HD_SERVER);
     if (server) {
-      nva.push_back(http3::make_nv_ls_nocopy("server", (*server).value));
+      nva.push_back(http3::make_field("server"_sr, (*server).value));
     }
   }
 
@@ -1361,14 +1361,14 @@ int Http3Upstream::on_downstream_header_complete(Downstream *downstream) {
           http::require_cookie_secure_attribute(cookieconf.secure, req.scheme);
       auto cookie_str = http::create_affinity_cookie(
           balloc, cookieconf.name, affinity_cookie, cookieconf.path, secure);
-      nva.push_back(http3::make_nv_ls_nocopy("set-cookie", cookie_str));
+      nva.push_back(http3::make_field("set-cookie"_sr, cookie_str));
     }
   }
 
   auto via = resp.fs.header(http2::HD_VIA);
   if (httpconf.no_via) {
     if (via) {
-      nva.push_back(http3::make_nv_ls_nocopy("via", (*via).value));
+      nva.push_back(http3::make_field("via"_sr, (*via).value));
     }
   } else {
     // we don't create more than 16 bytes in
@@ -1387,12 +1387,12 @@ int Http3Upstream::on_downstream_header_complete(Downstream *downstream) {
     p = http::create_via_header_value(p, resp.http_major, resp.http_minor);
     *p = '\0';
 
-    nva.push_back(http3::make_nv_ls_nocopy(
-        "via", StringRef{std::span{std::begin(iov), p}}));
+    nva.push_back(
+        http3::make_field("via"_sr, StringRef{std::span{std::begin(iov), p}}));
   }
 
   for (auto &p : httpconf.add_response_headers) {
-    nva.push_back(http3::make_nv_nocopy(p.name, p.value));
+    nva.push_back(http3::make_field(p.name, p.value));
   }
 
   if (LOG_ENABLED(INFO)) {
@@ -1700,7 +1700,7 @@ int Http3Upstream::send_reply(Downstream *downstream, const uint8_t *body,
 
   auto response_status = http2::stringify_status(balloc, resp.http_status);
 
-  nva.push_back(http3::make_nv_ls_nocopy(":status", response_status));
+  nva.push_back(http3::make_field(":status"_sr, response_status));
 
   for (auto &kv : headers) {
     if (kv.name.empty() || kv.name[0] == ':') {
@@ -1715,15 +1715,16 @@ int Http3Upstream::send_reply(Downstream *downstream, const uint8_t *body,
     case http2::HD_UPGRADE:
       continue;
     }
-    nva.push_back(http3::make_nv_nocopy(kv.name, kv.value, kv.no_index));
+    nva.push_back(
+        http3::make_field(kv.name, kv.value, http3::never_index(kv.no_index)));
   }
 
   if (!resp.fs.header(http2::HD_SERVER)) {
-    nva.push_back(http3::make_nv_ls_nocopy("server", config->http.server_name));
+    nva.push_back(http3::make_field("server"_sr, config->http.server_name));
   }
 
   for (auto &p : httpconf.add_response_headers) {
-    nva.push_back(http3::make_nv_nocopy(p.name, p.value));
+    nva.push_back(http3::make_field(p.name, p.value));
   }
 
   rv = nghttp3_conn_submit_response(httpconn_, downstream->get_stream_id(),
@@ -2760,11 +2761,11 @@ int Http3Upstream::error_reply(Downstream *downstream,
   auto date = make_string_ref(balloc, lgconf->tstamp->time_http);
 
   auto nva = std::to_array(
-      {http3::make_nv_ls_nocopy(":status", response_status),
-       http3::make_nv_ll("content-type", "text/html; charset=UTF-8"),
-       http3::make_nv_ls_nocopy("server", get_config()->http.server_name),
-       http3::make_nv_ls_nocopy("content-length", content_length),
-       http3::make_nv_ls_nocopy("date", date)});
+      {http3::make_field(":status"_sr, response_status),
+       http3::make_field("content-type"_sr, "text/html; charset=UTF-8"_sr),
+       http3::make_field("server"_sr, get_config()->http.server_name),
+       http3::make_field("content-length"_sr, content_length),
+       http3::make_field("date"_sr, date)});
 
   rv = nghttp3_conn_submit_response(httpconn_, downstream->get_stream_id(),
                                     nva.data(), nva.size(), data_read_ptr);
