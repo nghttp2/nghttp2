@@ -747,7 +747,7 @@ std::vector<LogFragment> parse_log_format(BlockAllocator &balloc,
 
     if (type == LogFragmentType::NONE) {
       if (util::istarts_with(var_name, "http_"_sr)) {
-        if (util::streq_l("host", var_name.substr(str_size("http_")))) {
+        if (util::streq("host"_sr, var_name.substr(str_size("http_")))) {
           // Special handling of host header field.  We will use
           // :authority header field if host header is missing.  This
           // is a typical case in HTTP/2.
@@ -797,15 +797,15 @@ std::vector<LogFragment> parse_log_format(BlockAllocator &balloc,
 namespace {
 int parse_address_family(int *dest, const StringRef &opt,
                          const StringRef &optarg) {
-  if (util::strieq_l("auto", optarg)) {
+  if (util::strieq("auto"_sr, optarg)) {
     *dest = AF_UNSPEC;
     return 0;
   }
-  if (util::strieq_l("IPv4", optarg)) {
+  if (util::strieq("IPv4"_sr, optarg)) {
     *dest = AF_INET;
     return 0;
   }
-  if (util::strieq_l("IPv6", optarg)) {
+  if (util::strieq("IPv6"_sr, optarg)) {
     *dest = AF_INET6;
     return 0;
   }
@@ -861,9 +861,9 @@ int parse_memcached_connection_params(MemcachedConnectionParams &out,
     auto end = std::find(first, last, ';');
     auto param = StringRef{first, end};
 
-    if (util::strieq_l("tls", param)) {
+    if (util::strieq("tls"_sr, param)) {
       out.tls = true;
-    } else if (util::strieq_l("no-tls", param)) {
+    } else if (util::strieq("no-tls"_sr, param)) {
       out.tls = false;
     } else if (!param.empty()) {
       LOG(ERROR) << opt << ": " << param << ": unknown keyword";
@@ -899,29 +899,29 @@ int parse_upstream_params(UpstreamParams &out, const StringRef &src_params) {
     auto end = std::find(first, last, ';');
     auto param = StringRef{first, end};
 
-    if (util::strieq_l("tls", param)) {
+    if (util::strieq("tls"_sr, param)) {
       out.tls = true;
-    } else if (util::strieq_l("sni-fwd", param)) {
+    } else if (util::strieq("sni-fwd"_sr, param)) {
       out.sni_fwd = true;
-    } else if (util::strieq_l("no-tls", param)) {
+    } else if (util::strieq("no-tls"_sr, param)) {
       out.tls = false;
-    } else if (util::strieq_l("api", param)) {
+    } else if (util::strieq("api"_sr, param)) {
       if (out.alt_mode != UpstreamAltMode::NONE &&
           out.alt_mode != UpstreamAltMode::API) {
         LOG(ERROR) << "frontend: api and healthmon are mutually exclusive";
         return -1;
       }
       out.alt_mode = UpstreamAltMode::API;
-    } else if (util::strieq_l("healthmon", param)) {
+    } else if (util::strieq("healthmon"_sr, param)) {
       if (out.alt_mode != UpstreamAltMode::NONE &&
           out.alt_mode != UpstreamAltMode::HEALTHMON) {
         LOG(ERROR) << "frontend: api and healthmon are mutually exclusive";
         return -1;
       }
       out.alt_mode = UpstreamAltMode::HEALTHMON;
-    } else if (util::strieq_l("proxyproto", param)) {
+    } else if (util::strieq("proxyproto"_sr, param)) {
       out.proxyproto = true;
-    } else if (util::strieq_l("quic", param)) {
+    } else if (util::strieq("quic"_sr, param)) {
 #ifdef ENABLE_HTTP3
       out.quic = true;
 #else  // !ENABLE_HTTP3
@@ -1034,19 +1034,19 @@ int parse_downstream_params(DownstreamParams &out,
       }
 
       out.rise = *n;
-    } else if (util::strieq_l("tls", param)) {
+    } else if (util::strieq("tls"_sr, param)) {
       out.tls = true;
-    } else if (util::strieq_l("no-tls", param)) {
+    } else if (util::strieq("no-tls"_sr, param)) {
       out.tls = false;
     } else if (util::istarts_with(param, "sni="_sr)) {
       out.sni = StringRef{first + str_size("sni="), end};
     } else if (util::istarts_with(param, "affinity="_sr)) {
       auto valstr = StringRef{first + str_size("affinity="), end};
-      if (util::strieq_l("none", valstr)) {
+      if (util::strieq("none"_sr, valstr)) {
         out.affinity.type = SessionAffinity::NONE;
-      } else if (util::strieq_l("ip", valstr)) {
+      } else if (util::strieq("ip"_sr, valstr)) {
         out.affinity.type = SessionAffinity::IP;
-      } else if (util::strieq_l("cookie", valstr)) {
+      } else if (util::strieq("cookie"_sr, valstr)) {
         out.affinity.type = SessionAffinity::COOKIE;
       } else {
         LOG(ERROR)
@@ -1066,11 +1066,11 @@ int parse_downstream_params(DownstreamParams &out,
           StringRef{first + str_size("affinity-cookie-path="), end};
     } else if (util::istarts_with(param, "affinity-cookie-secure="_sr)) {
       auto valstr = StringRef{first + str_size("affinity-cookie-secure="), end};
-      if (util::strieq_l("auto", valstr)) {
+      if (util::strieq("auto"_sr, valstr)) {
         out.affinity.cookie.secure = SessionAffinityCookieSecure::AUTO;
-      } else if (util::strieq_l("yes", valstr)) {
+      } else if (util::strieq("yes"_sr, valstr)) {
         out.affinity.cookie.secure = SessionAffinityCookieSecure::YES;
-      } else if (util::strieq_l("no", valstr)) {
+      } else if (util::strieq("no"_sr, valstr)) {
         out.affinity.cookie.secure = SessionAffinityCookieSecure::NO;
       } else {
         LOG(ERROR) << "backend: affinity-cookie-secure: value must be one of "
@@ -1080,9 +1080,9 @@ int parse_downstream_params(DownstreamParams &out,
     } else if (util::istarts_with(param, "affinity-cookie-stickiness="_sr)) {
       auto valstr =
           StringRef{first + str_size("affinity-cookie-stickiness="), end};
-      if (util::strieq_l("loose", valstr)) {
+      if (util::strieq("loose"_sr, valstr)) {
         out.affinity.cookie.stickiness = SessionAffinityCookieStickiness::LOOSE;
-      } else if (util::strieq_l("strict", valstr)) {
+      } else if (util::strieq("strict"_sr, valstr)) {
         out.affinity.cookie.stickiness =
             SessionAffinityCookieStickiness::STRICT;
       } else {
@@ -1090,11 +1090,11 @@ int parse_downstream_params(DownstreamParams &out,
                       "either loose or strict";
         return -1;
       }
-    } else if (util::strieq_l("dns", param)) {
+    } else if (util::strieq("dns"_sr, param)) {
       out.dns = true;
-    } else if (util::strieq_l("redirect-if-not-tls", param)) {
+    } else if (util::strieq("redirect-if-not-tls"_sr, param)) {
       out.redirect_if_not_tls = true;
-    } else if (util::strieq_l("upgrade-scheme", param)) {
+    } else if (util::strieq("upgrade-scheme"_sr, param)) {
       out.upgrade_scheme = true;
     } else if (util::istarts_with(param, "mruby="_sr)) {
       auto valstr = StringRef{first + str_size("mruby="), end};
@@ -1148,7 +1148,7 @@ int parse_downstream_params(DownstreamParams &out,
         return -1;
       }
       out.group_weight = *n;
-    } else if (util::strieq_l("dnf", param)) {
+    } else if (util::strieq("dnf"_sr, param)) {
       out.dnf = true;
     } else if (!param.empty()) {
       LOG(ERROR) << "backend: " << param << ": unknown keyword";
@@ -1405,11 +1405,11 @@ int parse_mapping(Config *config, DownstreamAddrConfig &addr,
 
 namespace {
 ForwardedNode parse_forwarded_node_type(const StringRef &optarg) {
-  if (util::strieq_l("obfuscated", optarg)) {
+  if (util::strieq("obfuscated"_sr, optarg)) {
     return ForwardedNode::OBFUSCATED;
   }
 
-  if (util::strieq_l("ip", optarg)) {
+  if (util::strieq("ip"_sr, optarg)) {
     return ForwardedNode::IP;
   }
 
@@ -3049,11 +3049,11 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     return 0;
   }
   case SHRPX_OPTID_DAEMON:
-    config->daemon = util::strieq_l("yes", optarg);
+    config->daemon = util::strieq("yes"_sr, optarg);
 
     return 0;
   case SHRPX_OPTID_HTTP2_PROXY:
-    config->http2_proxy = util::strieq_l("yes", optarg);
+    config->http2_proxy = util::strieq("yes"_sr, optarg);
 
     return 0;
   case SHRPX_OPTID_HTTP2_BRIDGE:
@@ -3067,15 +3067,15 @@ int parse_config(Config *config, int optid, const StringRef &opt,
            "and backend=<addr>,<port>;;proto=h2;tls";
     return -1;
   case SHRPX_OPTID_ADD_X_FORWARDED_FOR:
-    config->http.xff.add = util::strieq_l("yes", optarg);
+    config->http.xff.add = util::strieq("yes"_sr, optarg);
 
     return 0;
   case SHRPX_OPTID_STRIP_INCOMING_X_FORWARDED_FOR:
-    config->http.xff.strip_incoming = util::strieq_l("yes", optarg);
+    config->http.xff.strip_incoming = util::strieq("yes"_sr, optarg);
 
     return 0;
   case SHRPX_OPTID_NO_VIA:
-    config->http.no_via = util::strieq_l("yes", optarg);
+    config->http.no_via = util::strieq("yes"_sr, optarg);
 
     return 0;
   case SHRPX_OPTID_FRONTEND_HTTP2_READ_TIMEOUT:
@@ -3108,7 +3108,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
 
     return 0;
   case SHRPX_OPTID_ACCESSLOG_SYSLOG:
-    config->logging.access.syslog = util::strieq_l("yes", optarg);
+    config->logging.access.syslog = util::strieq("yes"_sr, optarg);
 
     return 0;
   case SHRPX_OPTID_ACCESSLOG_FORMAT:
@@ -3120,7 +3120,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
 
     return 0;
   case SHRPX_OPTID_ERRORLOG_SYSLOG:
-    config->logging.error.syslog = util::strieq_l("yes", optarg);
+    config->logging.error.syslog = util::strieq("yes"_sr, optarg);
 
     return 0;
   case SHRPX_OPTID_FASTOPEN:
@@ -3328,7 +3328,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
                   "backend=<addr>,<port>;;proto=h2;tls";
     return -1;
   case SHRPX_OPTID_INSECURE:
-    config->tls.insecure = util::strieq_l("yes", optarg);
+    config->tls.insecure = util::strieq("yes"_sr, optarg);
 
     return 0;
   case SHRPX_OPTID_CACERT:
@@ -3423,7 +3423,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     return 0;
   }
   case SHRPX_OPTID_VERIFY_CLIENT:
-    config->tls.client_verify.enabled = util::strieq_l("yes", optarg);
+    config->tls.client_verify.enabled = util::strieq("yes"_sr, optarg);
 
     return 0;
   case SHRPX_OPTID_VERIFY_CLIENT_CACERT:
@@ -3450,11 +3450,11 @@ int parse_config(Config *config, int optid, const StringRef &opt,
 
     return 0;
   case SHRPX_OPTID_HTTP2_NO_COOKIE_CRUMBLING:
-    config->http2.no_cookie_crumbling = util::strieq_l("yes", optarg);
+    config->http2.no_cookie_crumbling = util::strieq("yes"_sr, optarg);
 
     return 0;
   case SHRPX_OPTID_FRONTEND_FRAME_DEBUG:
-    config->http2.upstream.debug.frame_debug = util::strieq_l("yes", optarg);
+    config->http2.upstream.debug.frame_debug = util::strieq("yes"_sr, optarg);
 
     return 0;
   case SHRPX_OPTID_PADDING:
@@ -3487,7 +3487,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
   case SHRPX_OPTID_WORKER_FRONTEND_CONNECTIONS:
     return parse_uint(&config->conn.upstream.worker_connections, opt, optarg);
   case SHRPX_OPTID_NO_LOCATION_REWRITE:
-    config->http.no_location_rewrite = util::strieq_l("yes", optarg);
+    config->http.no_location_rewrite = util::strieq("yes"_sr, optarg);
 
     return 0;
   case SHRPX_OPTID_NO_HOST_REWRITE:
@@ -3571,7 +3571,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
   }
 
   case SHRPX_OPTID_NO_SERVER_PUSH:
-    config->http2.no_server_push = util::strieq_l("yes", optarg);
+    config->http2.no_server_push = util::strieq("yes"_sr, optarg);
 
     return 0;
   case SHRPX_OPTID_BACKEND_HTTP2_CONNECTIONS_PER_WORKER:
@@ -3585,7 +3585,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
   case SHRPX_OPTID_OCSP_UPDATE_INTERVAL:
     return parse_duration(&config->tls.ocsp.update_interval, opt, optarg);
   case SHRPX_OPTID_NO_OCSP:
-    config->tls.ocsp.disabled = util::strieq_l("yes", optarg);
+    config->tls.ocsp.disabled = util::strieq("yes"_sr, optarg);
 
     return 0;
   case SHRPX_OPTID_HEADER_FIELD_BUFFER:
@@ -3623,9 +3623,9 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     return 0;
   }
   case SHRPX_OPTID_TLS_TICKET_KEY_CIPHER:
-    if (util::strieq_l("aes-128-cbc", optarg)) {
+    if (util::strieq("aes-128-cbc"_sr, optarg)) {
       config->tls.ticket.cipher = EVP_aes_128_cbc();
-    } else if (util::strieq_l("aes-256-cbc", optarg)) {
+    } else if (util::strieq("aes-256-cbc"_sr, optarg)) {
       config->tls.ticket.cipher = EVP_aes_256_cbc();
     } else {
       LOG(ERROR) << opt
@@ -3636,7 +3636,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
 
     return 0;
   case SHRPX_OPTID_HOST_REWRITE:
-    config->http.no_host_rewrite = !util::strieq_l("yes", optarg);
+    config->http.no_host_rewrite = !util::strieq("yes"_sr, optarg);
 
     return 0;
   case SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED:
@@ -3717,26 +3717,27 @@ int parse_config(Config *config, int optid, const StringRef &opt,
   case SHRPX_OPTID_ACCEPT_PROXY_PROTOCOL:
     LOG(WARN) << opt << ": deprecated.  Use proxyproto keyword in "
               << SHRPX_OPT_FRONTEND << " instead.";
-    config->conn.upstream.accept_proxy_protocol = util::strieq_l("yes", optarg);
+    config->conn.upstream.accept_proxy_protocol =
+        util::strieq("yes"_sr, optarg);
 
     return 0;
   case SHRPX_OPTID_ADD_FORWARDED: {
     auto &fwdconf = config->http.forwarded;
     fwdconf.params = FORWARDED_NONE;
     for (const auto &param : util::split_str(optarg, ',')) {
-      if (util::strieq_l("by", param)) {
+      if (util::strieq("by"_sr, param)) {
         fwdconf.params |= FORWARDED_BY;
         continue;
       }
-      if (util::strieq_l("for", param)) {
+      if (util::strieq("for"_sr, param)) {
         fwdconf.params |= FORWARDED_FOR;
         continue;
       }
-      if (util::strieq_l("host", param)) {
+      if (util::strieq("host"_sr, param)) {
         fwdconf.params |= FORWARDED_HOST;
         continue;
       }
-      if (util::strieq_l("proto", param)) {
+      if (util::strieq("proto"_sr, param)) {
         fwdconf.params |= FORWARDED_PROTO;
         continue;
       }
@@ -3749,7 +3750,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     return 0;
   }
   case SHRPX_OPTID_STRIP_INCOMING_FORWARDED:
-    config->http.forwarded.strip_incoming = util::strieq_l("yes", optarg);
+    config->http.forwarded.strip_incoming = util::strieq("yes"_sr, optarg);
 
     return 0;
   case SHRPX_OPTID_FORWARDED_BY:
@@ -3786,7 +3787,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
               << SHRPX_OPT_NO_HTTP2_CIPHER_BLOCK_LIST << " instead.";
     // fall through
   case SHRPX_OPTID_NO_HTTP2_CIPHER_BLOCK_LIST:
-    config->tls.no_http2_cipher_block_list = util::strieq_l("yes", optarg);
+    config->tls.no_http2_cipher_block_list = util::strieq("yes"_sr, optarg);
     return 0;
   case SHRPX_OPTID_BACKEND_HTTP1_TLS:
   case SHRPX_OPTID_BACKEND_TLS:
@@ -3862,16 +3863,17 @@ int parse_config(Config *config, int optid, const StringRef &opt,
 
     return 0;
   case SHRPX_OPTID_NO_SERVER_REWRITE:
-    config->http.no_server_rewrite = util::strieq_l("yes", optarg);
+    config->http.no_server_rewrite = util::strieq("yes"_sr, optarg);
 
     return 0;
   case SHRPX_OPTID_FRONTEND_HTTP2_OPTIMIZE_WRITE_BUFFER_SIZE:
     config->http2.upstream.optimize_write_buffer_size =
-        util::strieq_l("yes", optarg);
+        util::strieq("yes"_sr, optarg);
 
     return 0;
   case SHRPX_OPTID_FRONTEND_HTTP2_OPTIMIZE_WINDOW_SIZE:
-    config->http2.upstream.optimize_window_size = util::strieq_l("yes", optarg);
+    config->http2.upstream.optimize_window_size =
+        util::strieq("yes"_sr, optarg);
 
     return 0;
   case SHRPX_OPTID_FRONTEND_HTTP2_WINDOW_SIZE:
@@ -3990,7 +3992,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     // fall through
   case SHRPX_OPTID_CLIENT_NO_HTTP2_CIPHER_BLOCK_LIST:
     config->tls.client.no_http2_cipher_block_list =
-        util::strieq_l("yes", optarg);
+        util::strieq("yes"_sr, optarg);
 
     return 0;
   case SHRPX_OPTID_CLIENT_CIPHERS:
@@ -4002,7 +4004,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
 
     return 0;
   case SHRPX_OPTID_ACCESSLOG_WRITE_EARLY:
-    config->logging.access.write_early = util::strieq_l("yes", optarg);
+    config->logging.access.write_early = util::strieq("yes"_sr, optarg);
 
     return 0;
   case SHRPX_OPTID_TLS_MIN_PROTO_VERSION:
@@ -4023,46 +4025,46 @@ int parse_config(Config *config, int optid, const StringRef &opt,
   case SHRPX_OPTID_FRONTEND_MAX_REQUESTS:
     return parse_uint(&config->http.max_requests, opt, optarg);
   case SHRPX_OPTID_SINGLE_THREAD:
-    config->single_thread = util::strieq_l("yes", optarg);
+    config->single_thread = util::strieq("yes"_sr, optarg);
 
     return 0;
   case SHRPX_OPTID_SINGLE_PROCESS:
-    config->single_process = util::strieq_l("yes", optarg);
+    config->single_process = util::strieq("yes"_sr, optarg);
 
     return 0;
   case SHRPX_OPTID_NO_ADD_X_FORWARDED_PROTO:
-    config->http.xfp.add = !util::strieq_l("yes", optarg);
+    config->http.xfp.add = !util::strieq("yes"_sr, optarg);
 
     return 0;
   case SHRPX_OPTID_NO_STRIP_INCOMING_X_FORWARDED_PROTO:
-    config->http.xfp.strip_incoming = !util::strieq_l("yes", optarg);
+    config->http.xfp.strip_incoming = !util::strieq("yes"_sr, optarg);
 
     return 0;
   case SHRPX_OPTID_OCSP_STARTUP:
-    config->tls.ocsp.startup = util::strieq_l("yes", optarg);
+    config->tls.ocsp.startup = util::strieq("yes"_sr, optarg);
 
     return 0;
   case SHRPX_OPTID_NO_VERIFY_OCSP:
-    config->tls.ocsp.no_verify = util::strieq_l("yes", optarg);
+    config->tls.ocsp.no_verify = util::strieq("yes"_sr, optarg);
 
     return 0;
   case SHRPX_OPTID_VERIFY_CLIENT_TOLERATE_EXPIRED:
-    config->tls.client_verify.tolerate_expired = util::strieq_l("yes", optarg);
+    config->tls.client_verify.tolerate_expired = util::strieq("yes"_sr, optarg);
 
     return 0;
   case SHRPX_OPTID_IGNORE_PER_PATTERN_MRUBY_ERROR:
-    config->ignore_per_pattern_mruby_error = util::strieq_l("yes", optarg);
+    config->ignore_per_pattern_mruby_error = util::strieq("yes"_sr, optarg);
 
     return 0;
   case SHRPX_OPTID_TLS_NO_POSTPONE_EARLY_DATA:
-    config->tls.no_postpone_early_data = util::strieq_l("yes", optarg);
+    config->tls.no_postpone_early_data = util::strieq("yes"_sr, optarg);
 
     return 0;
   case SHRPX_OPTID_TLS_MAX_EARLY_DATA: {
     return parse_uint_with_unit(&config->tls.max_early_data, opt, optarg);
   }
   case SHRPX_OPTID_NO_STRIP_INCOMING_EARLY_DATA:
-    config->http.early_data.strip_incoming = !util::strieq_l("yes", optarg);
+    config->http.early_data.strip_incoming = !util::strieq("yes"_sr, optarg);
 
     return 0;
   case SHRPX_OPTID_QUIC_BPF_PROGRAM_FILE:
@@ -4073,7 +4075,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     return 0;
   case SHRPX_OPTID_NO_QUIC_BPF:
 #ifdef ENABLE_HTTP3
-    config->quic.bpf.disabled = util::strieq_l("yes", optarg);
+    config->quic.bpf.disabled = util::strieq("yes"_sr, optarg);
 #endif // ENABLE_HTTP3
 
     return 0;
@@ -4106,7 +4108,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
 #endif // !ENABLE_HTTP3
   case SHRPX_OPTID_FRONTEND_QUIC_DEBUG_LOG:
 #ifdef ENABLE_HTTP3
-    config->quic.upstream.debug.log = util::strieq_l("yes", optarg);
+    config->quic.upstream.debug.log = util::strieq("yes"_sr, optarg);
 #endif // ENABLE_HTTP3
 
     return 0;
@@ -4155,7 +4157,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
 #endif // !ENABLE_HTTP3
   case SHRPX_OPTID_FRONTEND_QUIC_EARLY_DATA:
 #ifdef ENABLE_HTTP3
-    config->quic.upstream.early_data = util::strieq_l("yes", optarg);
+    config->quic.upstream.early_data = util::strieq("yes"_sr, optarg);
 #endif // ENABLE_HTTP3
 
     return 0;
@@ -4167,15 +4169,15 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     return 0;
   case SHRPX_OPTID_FRONTEND_QUIC_REQUIRE_TOKEN:
 #ifdef ENABLE_HTTP3
-    config->quic.upstream.require_token = util::strieq_l("yes", optarg);
+    config->quic.upstream.require_token = util::strieq("yes"_sr, optarg);
 #endif // ENABLE_HTTP3
 
     return 0;
   case SHRPX_OPTID_FRONTEND_QUIC_CONGESTION_CONTROLLER:
 #ifdef ENABLE_HTTP3
-    if (util::strieq_l("cubic", optarg)) {
+    if (util::strieq("cubic"_sr, optarg)) {
       config->quic.upstream.congestion_controller = NGTCP2_CC_ALGO_CUBIC;
-    } else if (util::strieq_l("bbr", optarg)) {
+    } else if (util::strieq("bbr"_sr, optarg)) {
       config->quic.upstream.congestion_controller = NGTCP2_CC_ALGO_BBR;
     } else {
       LOG(ERROR) << opt << ": must be either cubic or bbr";
@@ -4232,10 +4234,10 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     return 0;
   }
   case SHRPX_OPTID_REQUIRE_HTTP_SCHEME:
-    config->http.require_http_scheme = util::strieq_l("yes", optarg);
+    config->http.require_http_scheme = util::strieq("yes"_sr, optarg);
     return 0;
   case SHRPX_OPTID_TLS_KTLS:
-    config->tls.ktls = util::strieq_l("yes", optarg);
+    config->tls.ktls = util::strieq("yes"_sr, optarg);
     return 0;
   case SHRPX_OPTID_NPN_LIST:
     LOG(WARN) << opt << ": deprecated.  Use alpn-list instead.";
@@ -4342,87 +4344,87 @@ StringRef str_syslog_facility(int facility) {
 }
 
 int int_syslog_facility(const StringRef &strfacility) {
-  if (util::strieq_l("auth", strfacility)) {
+  if (util::strieq("auth"_sr, strfacility)) {
     return LOG_AUTH;
   }
 
 #ifdef LOG_AUTHPRIV
-  if (util::strieq_l("authpriv", strfacility)) {
+  if (util::strieq("authpriv"_sr, strfacility)) {
     return LOG_AUTHPRIV;
   }
 #endif // LOG_AUTHPRIV
 
-  if (util::strieq_l("cron", strfacility)) {
+  if (util::strieq("cron"_sr, strfacility)) {
     return LOG_CRON;
   }
 
-  if (util::strieq_l("daemon", strfacility)) {
+  if (util::strieq("daemon"_sr, strfacility)) {
     return LOG_DAEMON;
   }
 
 #ifdef LOG_FTP
-  if (util::strieq_l("ftp", strfacility)) {
+  if (util::strieq("ftp"_sr, strfacility)) {
     return LOG_FTP;
   }
 #endif // LOG_FTP
 
-  if (util::strieq_l("kern", strfacility)) {
+  if (util::strieq("kern"_sr, strfacility)) {
     return LOG_KERN;
   }
 
-  if (util::strieq_l("local0", strfacility)) {
+  if (util::strieq("local0"_sr, strfacility)) {
     return LOG_LOCAL0;
   }
 
-  if (util::strieq_l("local1", strfacility)) {
+  if (util::strieq("local1"_sr, strfacility)) {
     return LOG_LOCAL1;
   }
 
-  if (util::strieq_l("local2", strfacility)) {
+  if (util::strieq("local2"_sr, strfacility)) {
     return LOG_LOCAL2;
   }
 
-  if (util::strieq_l("local3", strfacility)) {
+  if (util::strieq("local3"_sr, strfacility)) {
     return LOG_LOCAL3;
   }
 
-  if (util::strieq_l("local4", strfacility)) {
+  if (util::strieq("local4"_sr, strfacility)) {
     return LOG_LOCAL4;
   }
 
-  if (util::strieq_l("local5", strfacility)) {
+  if (util::strieq("local5"_sr, strfacility)) {
     return LOG_LOCAL5;
   }
 
-  if (util::strieq_l("local6", strfacility)) {
+  if (util::strieq("local6"_sr, strfacility)) {
     return LOG_LOCAL6;
   }
 
-  if (util::strieq_l("local7", strfacility)) {
+  if (util::strieq("local7"_sr, strfacility)) {
     return LOG_LOCAL7;
   }
 
-  if (util::strieq_l("lpr", strfacility)) {
+  if (util::strieq("lpr"_sr, strfacility)) {
     return LOG_LPR;
   }
 
-  if (util::strieq_l("mail", strfacility)) {
+  if (util::strieq("mail"_sr, strfacility)) {
     return LOG_MAIL;
   }
 
-  if (util::strieq_l("news", strfacility)) {
+  if (util::strieq("news"_sr, strfacility)) {
     return LOG_NEWS;
   }
 
-  if (util::strieq_l("syslog", strfacility)) {
+  if (util::strieq("syslog"_sr, strfacility)) {
     return LOG_SYSLOG;
   }
 
-  if (util::strieq_l("user", strfacility)) {
+  if (util::strieq("user"_sr, strfacility)) {
     return LOG_USER;
   }
 
-  if (util::strieq_l("uucp", strfacility)) {
+  if (util::strieq("uucp"_sr, strfacility)) {
     return LOG_UUCP;
   }
 

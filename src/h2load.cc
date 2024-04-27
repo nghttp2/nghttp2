@@ -1103,7 +1103,7 @@ int Client::connection_made() {
 #ifdef ENABLE_HTTP3
         assert(session);
         if (!util::streq(StringRef{&NGHTTP3_ALPN_H3[1]}, proto) &&
-            !util::streq_l("h3-29", proto)) {
+            !util::streq("h3-29"_sr, proto)) {
           return -1;
         }
 #endif // ENABLE_HTTP3

@@ -129,12 +129,6 @@ void test_util_strieq(void) {
   assert_true(util::strieq_l("", static_cast<const char *>(nullptr), 0));
   assert_false(util::strieq_l("alpha", "AlPhA ", 6));
   assert_false(util::strieq_l("", "AlPhA ", 6));
-
-  assert_true(util::strieq_l("alpha", "alpha"_sr));
-  assert_true(util::strieq_l("alpha", "AlPhA"_sr));
-  assert_true(util::strieq_l("", StringRef{}));
-  assert_false(util::strieq_l("alpha", "AlPhA "_sr));
-  assert_false(util::strieq_l("", "AlPhA "_sr));
 }
 
 void test_util_inp_strlower(void) {

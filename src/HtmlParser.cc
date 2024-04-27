@@ -58,11 +58,11 @@ StringRef get_attr(const xmlChar **attrs, const StringRef &name) {
 namespace {
 ResourceType
 get_resource_type_for_preload_as(const StringRef &attribute_value) {
-  if (util::strieq_l("image", attribute_value)) {
+  if (util::strieq("image"_sr, attribute_value)) {
     return REQ_IMG;
-  } else if (util::strieq_l("style", attribute_value)) {
+  } else if (util::strieq("style"_sr, attribute_value)) {
     return REQ_CSS;
-  } else if (util::strieq_l("script", attribute_value)) {
+  } else if (util::strieq("script"_sr, attribute_value)) {
     return REQ_UNBLOCK_JS;
   } else {
     return REQ_OTHERS;
@@ -90,20 +90,20 @@ void start_element_func(void *user_data, const xmlChar *src_name,
   auto parser_data = static_cast<ParserData *>(user_data);
   auto name =
       StringRef{src_name, strlen(reinterpret_cast<const char *>(src_name))};
-  if (util::strieq_l("head", name)) {
+  if (util::strieq("head"_sr, name)) {
     ++parser_data->inside_head;
   }
-  if (util::strieq_l("link", name)) {
+  if (util::strieq("link"_sr, name)) {
     auto rel_attr = get_attr(attrs, "rel"_sr);
     auto href_attr = get_attr(attrs, "href"_sr);
     if (rel_attr.empty() || href_attr.empty()) {
       return;
     }
-    if (util::strieq_l("shortcut icon", rel_attr)) {
+    if (util::strieq("shortcut icon"_sr, rel_attr)) {
       add_link(parser_data, href_attr, REQ_OTHERS);
-    } else if (util::strieq_l("stylesheet", rel_attr)) {
+    } else if (util::strieq("stylesheet"_sr, rel_attr)) {
       add_link(parser_data, href_attr, REQ_CSS);
-    } else if (util::strieq_l("preload", rel_attr)) {
+    } else if (util::strieq("preload"_sr, rel_attr)) {
       auto as_attr = get_attr(attrs, "as"_sr);
       if (as_attr.empty()) {
         return;
@@ -111,13 +111,13 @@ void start_element_func(void *user_data, const xmlChar *src_name,
       add_link(parser_data, href_attr,
                get_resource_type_for_preload_as(as_attr));
     }
-  } else if (util::strieq_l("img", name)) {
+  } else if (util::strieq("img"_sr, name)) {
     auto src_attr = get_attr(attrs, "src"_sr);
     if (src_attr.empty()) {
       return;
     }
     add_link(parser_data, src_attr, REQ_IMG);
-  } else if (util::strieq_l("script", name)) {
+  } else if (util::strieq("script"_sr, name)) {
     auto src_attr = get_attr(attrs, "src"_sr);
     if (src_attr.empty()) {
       return;
@@ -134,8 +134,8 @@ void start_element_func(void *user_data, const xmlChar *src_name,
 namespace {
 void end_element_func(void *user_data, const xmlChar *name) {
   auto parser_data = static_cast<ParserData *>(user_data);
-  if (util::strieq_l(
-          "head",
+  if (util::strieq(
+          "head"_sr,
           StringRef{name, strlen(reinterpret_cast<const char *>(name))})) {
     --parser_data->inside_head;
   }

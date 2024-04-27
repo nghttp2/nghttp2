@@ -351,15 +351,11 @@ template <typename T, typename S> bool iends_with(const T &a, const S &b) {
 
 template <typename InputIt1, typename InputIt2>
 bool strieq(InputIt1 first1, InputIt1 last1, InputIt2 first2, InputIt2 last2) {
-  if (std::distance(first1, last1) != std::distance(first2, last2)) {
-    return false;
-  }
-
-  return std::equal(first1, last1, first2, CaseCmp());
+  return std::equal(first1, last1, first2, last2, CaseCmp());
 }
 
 template <typename T, typename S> bool strieq(const T &a, const S &b) {
-  return strieq(a.begin(), a.end(), b.begin(), b.end());
+  return strieq(std::begin(a), std::end(a), std::begin(b), std::end(b));
 }
 
 template <typename CharT, typename InputIt, size_t N>
@@ -367,31 +363,18 @@ bool strieq_l(const CharT (&a)[N], InputIt b, size_t blen) {
   return strieq(a, a + (N - 1), b, b + blen);
 }
 
-template <typename CharT, size_t N, typename T>
-bool strieq_l(const CharT (&a)[N], const T &b) {
-  return strieq(a, a + (N - 1), b.begin(), b.end());
-}
-
 template <typename InputIt1, typename InputIt2>
 bool streq(InputIt1 first1, InputIt1 last1, InputIt2 first2, InputIt2 last2) {
-  if (std::distance(first1, last1) != std::distance(first2, last2)) {
-    return false;
-  }
-  return std::equal(first1, last1, first2);
+  return std::equal(first1, last1, first2, last2);
 }
 
 template <typename T, typename S> bool streq(const T &a, const S &b) {
-  return streq(a.begin(), a.end(), b.begin(), b.end());
+  return streq(std::begin(a), std::end(a), std::begin(b), std::end(b));
 }
 
 template <typename CharT, typename InputIt, size_t N>
 bool streq_l(const CharT (&a)[N], InputIt b, size_t blen) {
   return streq(a, a + (N - 1), b, b + blen);
-}
-
-template <typename CharT, size_t N, typename T>
-bool streq_l(const CharT (&a)[N], const T &b) {
-  return streq(a, a + (N - 1), b.begin(), b.end());
 }
 
 // Returns true if |a| contains |b|.  If both |a| and |b| are empty,

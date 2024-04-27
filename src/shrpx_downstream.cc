@@ -878,7 +878,7 @@ void Downstream::inspect_http1_request() {
 
         // TODO Should we check Sec-WebSocket-Key, and
         // Sec-WebSocket-Version as well?
-        if (util::strieq_l("websocket", val)) {
+        if (util::strieq("websocket"_sr, val)) {
           req_.connect_proto = ConnectProto::WEBSOCKET;
         }
       }
