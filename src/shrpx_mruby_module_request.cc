@@ -90,7 +90,7 @@ mrb_value request_set_method(mrb_state *mrb, mrb_value self) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "method must not be empty string");
   }
   auto token =
-      http2::lookup_method_token(reinterpret_cast<const uint8_t *>(method), n);
+      http2::lookup_method_token(StringRef{method, static_cast<size_t>(n)});
   if (token == -1) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "method not supported");
   }

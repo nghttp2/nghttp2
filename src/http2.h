@@ -375,10 +375,9 @@ bool expect_response_body(int method_token, int status_code);
 // true if response has body, taking into account status code only.
 bool expect_response_body(int status_code);
 
-// Looks up method token for method name |name| of length |namelen|.
-// Only methods defined in llhttp.h (llhttp_method) are tokenized.  If
-// method name cannot be tokenized, returns -1.
-int lookup_method_token(const uint8_t *name, size_t namelen);
+// Looks up method token for method name |name|.  Only methods defined
+// in llhttp.h (llhttp_method) are tokenized.  If method name cannot
+// be tokenized, returns -1.
 int lookup_method_token(const StringRef &name);
 
 // Returns string representation of |method_token|.  This is wrapper
