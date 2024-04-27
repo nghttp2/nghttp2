@@ -128,11 +128,6 @@ void copy_headers_to_nva_internal(std::vector<nghttp3_nv> &nva,
 }
 } // namespace
 
-void copy_headers_to_nva(std::vector<nghttp3_nv> &nva,
-                         const HeaderRefs &headers, uint32_t flags) {
-  copy_headers_to_nva_internal(nva, headers, NGHTTP3_NV_FLAG_NONE, flags);
-}
-
 void copy_headers_to_nva_nocopy(std::vector<nghttp3_nv> &nva,
                                 const HeaderRefs &headers, uint32_t flags) {
   copy_headers_to_nva_internal(
