@@ -410,7 +410,7 @@ void copy_headers_to_nva_internal(std::vector<nghttp2_nv> &nva,
       break;
     }
     nva.push_back(make_field_flags(kv->name, kv->value,
-                                   nv_flags | http2::no_index(kv->no_index)));
+                                   nv_flags | no_index(kv->no_index)));
   }
 }
 } // namespace
@@ -1639,7 +1639,7 @@ int construct_push_component(BlockAllocator &balloc, StringRef &scheme,
     }
   }
 
-  path = http2::path_join(balloc, base, StringRef{}, rel, relq);
+  path = path_join(balloc, base, StringRef{}, rel, relq);
 
   return 0;
 }
