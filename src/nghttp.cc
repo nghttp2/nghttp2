@@ -978,7 +978,7 @@ int HttpClient::on_upgrade_connect() {
   } else {
     auto meth = std::find_if(
         std::begin(config.headers), std::end(config.headers),
-        [](const Header &kv) { return util::streq_l(":method", kv.name); });
+        [](const Header &kv) { return util::streq(":method"_sr, kv.name); });
 
     if (meth == std::end(config.headers)) {
       req = "GET ";
@@ -1800,8 +1800,8 @@ void check_response_header(nghttp2_session *session, Request *req) {
 
   for (auto &nv : req->res_nva) {
     if ("content-encoding" == nv.name) {
-      gzip = util::strieq_l("gzip", nv.value) ||
-             util::strieq_l("deflate", nv.value);
+      gzip = util::strieq("gzip"_sr, nv.value) ||
+             util::strieq("deflate"_sr, nv.value);
       continue;
     }
   }

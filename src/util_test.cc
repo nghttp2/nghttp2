@@ -71,7 +71,6 @@ const MunitTest tests[]{
     munit_void_test(test_util_parse_config_str_list),
     munit_void_test(test_util_make_http_hostport),
     munit_void_test(test_util_make_hostport),
-    munit_void_test(test_util_strifind),
     munit_void_test(test_util_random_alpha_digit),
     munit_void_test(test_util_format_hex),
     munit_void_test(test_util_is_hex_string),
@@ -101,14 +100,14 @@ void test_util_streq(void) {
   assert_false(util::streq("alpha"_sr, "alph"_sr));
   assert_false(util::streq("alpha"_sr, "alphA"_sr));
 
-  assert_true(util::streq_l("alpha", "alpha", 5));
-  assert_true(util::streq_l("alpha", "alphabravo", 5));
-  assert_false(util::streq_l("alpha", "alphabravo", 6));
-  assert_false(util::streq_l("alphabravo", "alpha", 5));
-  assert_false(util::streq_l("alpha", "alphA", 5));
-  assert_false(util::streq_l("", "a", 1));
-  assert_true(util::streq_l("", "", 0));
-  assert_false(util::streq_l("alpha", "", 0));
+  assert_true(util::streq("alpha"_sr, "alpha"_sr, 5));
+  assert_true(util::streq("alpha"_sr, "alphabravo"_sr, 5));
+  assert_false(util::streq("alpha"_sr, "alphabravo"_sr, 6));
+  assert_false(util::streq("alphabravo"_sr, "alpha"_sr, 5));
+  assert_false(util::streq("alpha"_sr, "alphA"_sr, 5));
+  assert_false(util::streq(""_sr, "a"_sr, 1));
+  assert_true(util::streq(""_sr, ""_sr, 0));
+  assert_false(util::streq("alpha"_sr, ""_sr, 0));
 }
 
 void test_util_strieq(void) {
@@ -124,17 +123,10 @@ void test_util_strieq(void) {
   assert_false(util::strieq("alpha"_sr, "AlPhA "_sr));
   assert_false(util::strieq(""_sr, "AlPhA "_sr));
 
-  assert_true(util::strieq_l("alpha", "alpha", 5));
-  assert_true(util::strieq_l("alpha", "AlPhA", 5));
-  assert_true(util::strieq_l("", static_cast<const char *>(nullptr), 0));
-  assert_false(util::strieq_l("alpha", "AlPhA ", 6));
-  assert_false(util::strieq_l("", "AlPhA ", 6));
-
-  assert_true(util::strieq_l("alpha", "alpha"_sr));
-  assert_true(util::strieq_l("alpha", "AlPhA"_sr));
-  assert_true(util::strieq_l("", StringRef{}));
-  assert_false(util::strieq_l("alpha", "AlPhA "_sr));
-  assert_false(util::strieq_l("", "AlPhA "_sr));
+  assert_true(util::strieq("alpha"_sr, "alpha"_sr, 5));
+  assert_true(util::strieq("alpha"_sr, "AlPhA"_sr, 5));
+  assert_false(util::strieq("alpha"_sr, "AlPhA "_sr, 6));
+  assert_false(util::strieq(""_sr, "AlPhA "_sr, 6));
 }
 
 void test_util_inp_strlower(void) {
@@ -452,9 +444,6 @@ void test_util_starts_with(void) {
   assert_true(util::istarts_with("ofoo"_sr, StringRef{}));
   assert_true(util::istarts_with("fOOo"_sr, "Foo"_sr));
   assert_false(util::istarts_with("ofoo"_sr, "foo"_sr));
-
-  assert_true(util::istarts_with_l("fOOo"_sr, "Foo"));
-  assert_false(util::istarts_with_l("ofoo"_sr, "foo"));
 }
 
 void test_util_ends_with(void) {
@@ -467,9 +456,6 @@ void test_util_ends_with(void) {
   assert_true(util::iends_with("foo"_sr, StringRef{}));
   assert_true(util::iends_with("oFoo"_sr, "fOO"_sr));
   assert_false(util::iends_with("ofoo"_sr, "fo"_sr));
-
-  assert_true(util::iends_with_l("oFoo"_sr, "fOO"));
-  assert_false(util::iends_with_l("ofoo"_sr, "fo"));
 }
 
 void test_util_parse_http_date(void) {
@@ -590,21 +576,6 @@ void test_util_make_hostport(void) {
   assert_stdsv_equal("localhost:80"sv,
                      util::make_hostport(balloc, "localhost"_sr, 80));
   assert_stdsv_equal("[::1]:443"sv, util::make_hostport(balloc, "::1"_sr, 443));
-}
-
-void test_util_strifind(void) {
-  assert_true(util::strifind("gzip, deflate, bzip2"_sr, "gzip"_sr));
-
-  assert_true(util::strifind("gzip, deflate, bzip2"_sr, "dEflate"_sr));
-
-  assert_true(util::strifind("gzip, deflate, bzip2"_sr, "BZIP2"_sr));
-
-  assert_true(util::strifind("nghttp2"_sr, StringRef{}));
-
-  // Be aware this fact
-  assert_false(util::strifind(StringRef{}, StringRef{}));
-
-  assert_false(util::strifind("nghttp2"_sr, "http1"_sr));
 }
 
 void test_util_random_alpha_digit(void) {

@@ -144,7 +144,7 @@ std::string colorizeHeaders(const char *hdrs) {
     nhdrs += TTY_HTTP_HD;
     nhdrs.append(p, np);
     nhdrs += TTY_RST;
-    auto redact = util::strieq_l("authorization", StringRef{p, np});
+    auto redact = util::strieq("authorization"_sr, StringRef{p, np});
     p = np;
     np = strchr(p, '\n');
     if (!np) {

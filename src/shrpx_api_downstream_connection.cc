@@ -163,7 +163,7 @@ const APIEndpoint *lookup_api(const StringRef &path) {
   case 26:
     switch (path[25]) {
     case 'g':
-      if (util::streq_l("/api/v1beta1/backendconfi", std::begin(path), 25)) {
+      if (util::streq("/api/v1beta1/backendconfi"_sr, path, 25)) {
         return &backendconfig_endpoint;
       }
       break;
@@ -172,7 +172,7 @@ const APIEndpoint *lookup_api(const StringRef &path) {
   case 27:
     switch (path[26]) {
     case 'n':
-      if (util::streq_l("/api/v1beta1/configrevisio", std::begin(path), 26)) {
+      if (util::streq("/api/v1beta1/configrevisio"_sr, path, 26)) {
         return &configrevision_endpoint;
       }
       break;

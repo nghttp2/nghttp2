@@ -660,7 +660,7 @@ int lookup_token(const StringRef &name) {
   case 2:
     switch (name[1]) {
     case 'e':
-      if (util::streq_l("t", std::begin(name), 1)) {
+      if (util::streq("t"_sr, name, 1)) {
         return HD_TE;
       }
       break;
@@ -669,7 +669,7 @@ int lookup_token(const StringRef &name) {
   case 3:
     switch (name[2]) {
     case 'a':
-      if (util::streq_l("vi", std::begin(name), 2)) {
+      if (util::streq("vi"_sr, name, 2)) {
         return HD_VIA;
       }
       break;
@@ -678,17 +678,17 @@ int lookup_token(const StringRef &name) {
   case 4:
     switch (name[3]) {
     case 'e':
-      if (util::streq_l("dat", std::begin(name), 3)) {
+      if (util::streq("dat"_sr, name, 3)) {
         return HD_DATE;
       }
       break;
     case 'k':
-      if (util::streq_l("lin", std::begin(name), 3)) {
+      if (util::streq("lin"_sr, name, 3)) {
         return HD_LINK;
       }
       break;
     case 't':
-      if (util::streq_l("hos", std::begin(name), 3)) {
+      if (util::streq("hos"_sr, name, 3)) {
         return HD_HOST;
       }
       break;
@@ -697,12 +697,12 @@ int lookup_token(const StringRef &name) {
   case 5:
     switch (name[4]) {
     case 'h':
-      if (util::streq_l(":pat", std::begin(name), 4)) {
+      if (util::streq(":pat"_sr, name, 4)) {
         return HD__PATH;
       }
       break;
     case 't':
-      if (util::streq_l(":hos", std::begin(name), 4)) {
+      if (util::streq(":hos"_sr, name, 4)) {
         return HD__HOST;
       }
       break;
@@ -711,17 +711,17 @@ int lookup_token(const StringRef &name) {
   case 6:
     switch (name[5]) {
     case 'e':
-      if (util::streq_l("cooki", std::begin(name), 5)) {
+      if (util::streq("cooki"_sr, name, 5)) {
         return HD_COOKIE;
       }
       break;
     case 'r':
-      if (util::streq_l("serve", std::begin(name), 5)) {
+      if (util::streq("serve"_sr, name, 5)) {
         return HD_SERVER;
       }
       break;
     case 't':
-      if (util::streq_l("expec", std::begin(name), 5)) {
+      if (util::streq("expec"_sr, name, 5)) {
         return HD_EXPECT;
       }
       break;
@@ -730,30 +730,30 @@ int lookup_token(const StringRef &name) {
   case 7:
     switch (name[6]) {
     case 'c':
-      if (util::streq_l("alt-sv", std::begin(name), 6)) {
+      if (util::streq("alt-sv"_sr, name, 6)) {
         return HD_ALT_SVC;
       }
       break;
     case 'd':
-      if (util::streq_l(":metho", std::begin(name), 6)) {
+      if (util::streq(":metho"_sr, name, 6)) {
         return HD__METHOD;
       }
       break;
     case 'e':
-      if (util::streq_l(":schem", std::begin(name), 6)) {
+      if (util::streq(":schem"_sr, name, 6)) {
         return HD__SCHEME;
       }
-      if (util::streq_l("upgrad", std::begin(name), 6)) {
+      if (util::streq("upgrad"_sr, name, 6)) {
         return HD_UPGRADE;
       }
       break;
     case 'r':
-      if (util::streq_l("traile", std::begin(name), 6)) {
+      if (util::streq("traile"_sr, name, 6)) {
         return HD_TRAILER;
       }
       break;
     case 's':
-      if (util::streq_l(":statu", std::begin(name), 6)) {
+      if (util::streq(":statu"_sr, name, 6)) {
         return HD__STATUS;
       }
       break;
@@ -762,12 +762,12 @@ int lookup_token(const StringRef &name) {
   case 8:
     switch (name[7]) {
     case 'n':
-      if (util::streq_l("locatio", std::begin(name), 7)) {
+      if (util::streq("locatio"_sr, name, 7)) {
         return HD_LOCATION;
       }
       break;
     case 'y':
-      if (util::streq_l("priorit", std::begin(name), 7)) {
+      if (util::streq("priorit"_sr, name, 7)) {
         return HD_PRIORITY;
       }
       break;
@@ -776,12 +776,12 @@ int lookup_token(const StringRef &name) {
   case 9:
     switch (name[8]) {
     case 'd':
-      if (util::streq_l("forwarde", std::begin(name), 8)) {
+      if (util::streq("forwarde"_sr, name, 8)) {
         return HD_FORWARDED;
       }
       break;
     case 'l':
-      if (util::streq_l(":protoco", std::begin(name), 8)) {
+      if (util::streq(":protoco"_sr, name, 8)) {
         return HD__PROTOCOL;
       }
       break;
@@ -790,27 +790,27 @@ int lookup_token(const StringRef &name) {
   case 10:
     switch (name[9]) {
     case 'a':
-      if (util::streq_l("early-dat", std::begin(name), 9)) {
+      if (util::streq("early-dat"_sr, name, 9)) {
         return HD_EARLY_DATA;
       }
       break;
     case 'e':
-      if (util::streq_l("keep-aliv", std::begin(name), 9)) {
+      if (util::streq("keep-aliv"_sr, name, 9)) {
         return HD_KEEP_ALIVE;
       }
       break;
     case 'n':
-      if (util::streq_l("connectio", std::begin(name), 9)) {
+      if (util::streq("connectio"_sr, name, 9)) {
         return HD_CONNECTION;
       }
       break;
     case 't':
-      if (util::streq_l("user-agen", std::begin(name), 9)) {
+      if (util::streq("user-agen"_sr, name, 9)) {
         return HD_USER_AGENT;
       }
       break;
     case 'y':
-      if (util::streq_l(":authorit", std::begin(name), 9)) {
+      if (util::streq(":authorit"_sr, name, 9)) {
         return HD__AUTHORITY;
       }
       break;
@@ -819,7 +819,7 @@ int lookup_token(const StringRef &name) {
   case 12:
     switch (name[11]) {
     case 'e':
-      if (util::streq_l("content-typ", std::begin(name), 11)) {
+      if (util::streq("content-typ"_sr, name, 11)) {
         return HD_CONTENT_TYPE;
       }
       break;
@@ -828,7 +828,7 @@ int lookup_token(const StringRef &name) {
   case 13:
     switch (name[12]) {
     case 'l':
-      if (util::streq_l("cache-contro", std::begin(name), 12)) {
+      if (util::streq("cache-contro"_sr, name, 12)) {
         return HD_CACHE_CONTROL;
       }
       break;
@@ -837,12 +837,12 @@ int lookup_token(const StringRef &name) {
   case 14:
     switch (name[13]) {
     case 'h':
-      if (util::streq_l("content-lengt", std::begin(name), 13)) {
+      if (util::streq("content-lengt"_sr, name, 13)) {
         return HD_CONTENT_LENGTH;
       }
       break;
     case 's':
-      if (util::streq_l("http2-setting", std::begin(name), 13)) {
+      if (util::streq("http2-setting"_sr, name, 13)) {
         return HD_HTTP2_SETTINGS;
       }
       break;
@@ -851,17 +851,17 @@ int lookup_token(const StringRef &name) {
   case 15:
     switch (name[14]) {
     case 'e':
-      if (util::streq_l("accept-languag", std::begin(name), 14)) {
+      if (util::streq("accept-languag"_sr, name, 14)) {
         return HD_ACCEPT_LANGUAGE;
       }
       break;
     case 'g':
-      if (util::streq_l("accept-encodin", std::begin(name), 14)) {
+      if (util::streq("accept-encodin"_sr, name, 14)) {
         return HD_ACCEPT_ENCODING;
       }
       break;
     case 'r':
-      if (util::streq_l("x-forwarded-fo", std::begin(name), 14)) {
+      if (util::streq("x-forwarded-fo"_sr, name, 14)) {
         return HD_X_FORWARDED_FOR;
       }
       break;
@@ -870,7 +870,7 @@ int lookup_token(const StringRef &name) {
   case 16:
     switch (name[15]) {
     case 'n':
-      if (util::streq_l("proxy-connectio", std::begin(name), 15)) {
+      if (util::streq("proxy-connectio"_sr, name, 15)) {
         return HD_PROXY_CONNECTION;
       }
       break;
@@ -879,22 +879,22 @@ int lookup_token(const StringRef &name) {
   case 17:
     switch (name[16]) {
     case 'e':
-      if (util::streq_l("if-modified-sinc", std::begin(name), 16)) {
+      if (util::streq("if-modified-sinc"_sr, name, 16)) {
         return HD_IF_MODIFIED_SINCE;
       }
       break;
     case 'g':
-      if (util::streq_l("transfer-encodin", std::begin(name), 16)) {
+      if (util::streq("transfer-encodin"_sr, name, 16)) {
         return HD_TRANSFER_ENCODING;
       }
       break;
     case 'o':
-      if (util::streq_l("x-forwarded-prot", std::begin(name), 16)) {
+      if (util::streq("x-forwarded-prot"_sr, name, 16)) {
         return HD_X_FORWARDED_PROTO;
       }
       break;
     case 'y':
-      if (util::streq_l("sec-websocket-ke", std::begin(name), 16)) {
+      if (util::streq("sec-websocket-ke"_sr, name, 16)) {
         return HD_SEC_WEBSOCKET_KEY;
       }
       break;
@@ -903,7 +903,7 @@ int lookup_token(const StringRef &name) {
   case 20:
     switch (name[19]) {
     case 't':
-      if (util::streq_l("sec-websocket-accep", std::begin(name), 19)) {
+      if (util::streq("sec-websocket-accep"_sr, name, 19)) {
         return HD_SEC_WEBSOCKET_ACCEPT;
       }
       break;
@@ -1342,15 +1342,15 @@ int lookup_method_token(const StringRef &name) {
   case 3:
     switch (name[2]) {
     case 'L':
-      if (util::streq_l("AC", std::begin(name), 2)) {
+      if (util::streq("AC"_sr, name, 2)) {
         return HTTP_ACL;
       }
       break;
     case 'T':
-      if (util::streq_l("GE", std::begin(name), 2)) {
+      if (util::streq("GE"_sr, name, 2)) {
         return HTTP_GET;
       }
-      if (util::streq_l("PU", std::begin(name), 2)) {
+      if (util::streq("PU"_sr, name, 2)) {
         return HTTP_PUT;
       }
       break;
@@ -1359,33 +1359,33 @@ int lookup_method_token(const StringRef &name) {
   case 4:
     switch (name[3]) {
     case 'D':
-      if (util::streq_l("BIN", std::begin(name), 3)) {
+      if (util::streq("BIN"_sr, name, 3)) {
         return HTTP_BIND;
       }
-      if (util::streq_l("HEA", std::begin(name), 3)) {
+      if (util::streq("HEA"_sr, name, 3)) {
         return HTTP_HEAD;
       }
       break;
     case 'E':
-      if (util::streq_l("MOV", std::begin(name), 3)) {
+      if (util::streq("MOV"_sr, name, 3)) {
         return HTTP_MOVE;
       }
       break;
     case 'K':
-      if (util::streq_l("LIN", std::begin(name), 3)) {
+      if (util::streq("LIN"_sr, name, 3)) {
         return HTTP_LINK;
       }
-      if (util::streq_l("LOC", std::begin(name), 3)) {
+      if (util::streq("LOC"_sr, name, 3)) {
         return HTTP_LOCK;
       }
       break;
     case 'T':
-      if (util::streq_l("POS", std::begin(name), 3)) {
+      if (util::streq("POS"_sr, name, 3)) {
         return HTTP_POST;
       }
       break;
     case 'Y':
-      if (util::streq_l("COP", std::begin(name), 3)) {
+      if (util::streq("COP"_sr, name, 3)) {
         return HTTP_COPY;
       }
       break;
@@ -1394,23 +1394,23 @@ int lookup_method_token(const StringRef &name) {
   case 5:
     switch (name[4]) {
     case 'E':
-      if (util::streq_l("MERG", std::begin(name), 4)) {
+      if (util::streq("MERG"_sr, name, 4)) {
         return HTTP_MERGE;
       }
-      if (util::streq_l("PURG", std::begin(name), 4)) {
+      if (util::streq("PURG"_sr, name, 4)) {
         return HTTP_PURGE;
       }
-      if (util::streq_l("TRAC", std::begin(name), 4)) {
+      if (util::streq("TRAC"_sr, name, 4)) {
         return HTTP_TRACE;
       }
       break;
     case 'H':
-      if (util::streq_l("PATC", std::begin(name), 4)) {
+      if (util::streq("PATC"_sr, name, 4)) {
         return HTTP_PATCH;
       }
       break;
     case 'L':
-      if (util::streq_l("MKCO", std::begin(name), 4)) {
+      if (util::streq("MKCO"_sr, name, 4)) {
         return HTTP_MKCOL;
       }
       break;
@@ -1419,41 +1419,41 @@ int lookup_method_token(const StringRef &name) {
   case 6:
     switch (name[5]) {
     case 'D':
-      if (util::streq_l("REBIN", std::begin(name), 5)) {
+      if (util::streq("REBIN"_sr, name, 5)) {
         return HTTP_REBIND;
       }
-      if (util::streq_l("UNBIN", std::begin(name), 5)) {
+      if (util::streq("UNBIN"_sr, name, 5)) {
         return HTTP_UNBIND;
       }
       break;
     case 'E':
-      if (util::streq_l("DELET", std::begin(name), 5)) {
+      if (util::streq("DELET"_sr, name, 5)) {
         return HTTP_DELETE;
       }
-      if (util::streq_l("SOURC", std::begin(name), 5)) {
+      if (util::streq("SOURC"_sr, name, 5)) {
         return HTTP_SOURCE;
       }
       break;
     case 'H':
-      if (util::streq_l("SEARC", std::begin(name), 5)) {
+      if (util::streq("SEARC"_sr, name, 5)) {
         return HTTP_SEARCH;
       }
       break;
     case 'K':
-      if (util::streq_l("UNLIN", std::begin(name), 5)) {
+      if (util::streq("UNLIN"_sr, name, 5)) {
         return HTTP_UNLINK;
       }
-      if (util::streq_l("UNLOC", std::begin(name), 5)) {
+      if (util::streq("UNLOC"_sr, name, 5)) {
         return HTTP_UNLOCK;
       }
       break;
     case 'T':
-      if (util::streq_l("REPOR", std::begin(name), 5)) {
+      if (util::streq("REPOR"_sr, name, 5)) {
         return HTTP_REPORT;
       }
       break;
     case 'Y':
-      if (util::streq_l("NOTIF", std::begin(name), 5)) {
+      if (util::streq("NOTIF"_sr, name, 5)) {
         return HTTP_NOTIFY;
       }
       break;
@@ -1462,17 +1462,17 @@ int lookup_method_token(const StringRef &name) {
   case 7:
     switch (name[6]) {
     case 'H':
-      if (util::streq_l("MSEARC", std::begin(name), 6)) {
+      if (util::streq("MSEARC"_sr, name, 6)) {
         return HTTP_MSEARCH;
       }
       break;
     case 'S':
-      if (util::streq_l("OPTION", std::begin(name), 6)) {
+      if (util::streq("OPTION"_sr, name, 6)) {
         return HTTP_OPTIONS;
       }
       break;
     case 'T':
-      if (util::streq_l("CONNEC", std::begin(name), 6)) {
+      if (util::streq("CONNEC"_sr, name, 6)) {
         return HTTP_CONNECT;
       }
       break;
@@ -1481,12 +1481,12 @@ int lookup_method_token(const StringRef &name) {
   case 8:
     switch (name[7]) {
     case 'D':
-      if (util::streq_l("PROPFIN", std::begin(name), 7)) {
+      if (util::streq("PROPFIN"_sr, name, 7)) {
         return HTTP_PROPFIND;
       }
       break;
     case 'T':
-      if (util::streq_l("CHECKOU", std::begin(name), 7)) {
+      if (util::streq("CHECKOU"_sr, name, 7)) {
         return HTTP_CHECKOUT;
       }
       break;
@@ -1495,12 +1495,12 @@ int lookup_method_token(const StringRef &name) {
   case 9:
     switch (name[8]) {
     case 'E':
-      if (util::streq_l("SUBSCRIB", std::begin(name), 8)) {
+      if (util::streq("SUBSCRIB"_sr, name, 8)) {
         return HTTP_SUBSCRIBE;
       }
       break;
     case 'H':
-      if (util::streq_l("PROPPATC", std::begin(name), 8)) {
+      if (util::streq("PROPPATC"_sr, name, 8)) {
         return HTTP_PROPPATCH;
       }
       break;
@@ -1509,12 +1509,12 @@ int lookup_method_token(const StringRef &name) {
   case 10:
     switch (name[9]) {
     case 'R':
-      if (util::streq_l("MKCALENDA", std::begin(name), 9)) {
+      if (util::streq("MKCALENDA"_sr, name, 9)) {
         return HTTP_MKCALENDAR;
       }
       break;
     case 'Y':
-      if (util::streq_l("MKACTIVIT", std::begin(name), 9)) {
+      if (util::streq("MKACTIVIT"_sr, name, 9)) {
         return HTTP_MKACTIVITY;
       }
       break;
@@ -1523,7 +1523,7 @@ int lookup_method_token(const StringRef &name) {
   case 11:
     switch (name[10]) {
     case 'E':
-      if (util::streq_l("UNSUBSCRIB", std::begin(name), 10)) {
+      if (util::streq("UNSUBSCRIB"_sr, name, 10)) {
         return HTTP_UNSUBSCRIBE;
       }
       break;

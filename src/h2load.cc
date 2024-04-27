@@ -928,7 +928,7 @@ void Client::on_header(int32_t stream_id, const uint8_t *name, size_t namelen,
   }
 
   if (stream.status_success == -1 && namelen == 7 &&
-      util::streq_l(":status", name, namelen)) {
+      util::streq(":status"_sr, StringRef{name, namelen})) {
     int status = 0;
     for (size_t i = 0; i < valuelen; ++i) {
       if ('0' <= value[i] && value[i] <= '9') {
@@ -1103,7 +1103,7 @@ int Client::connection_made() {
 #ifdef ENABLE_HTTP3
         assert(session);
         if (!util::streq(StringRef{&NGHTTP3_ALPN_H3[1]}, proto) &&
-            !util::streq_l("h3-29", proto)) {
+            !util::streq("h3-29"_sr, proto)) {
           return -1;
         }
 #endif // ENABLE_HTTP3
@@ -1877,7 +1877,7 @@ std::string get_reqline(const char *uri, const http_parser_url &u) {
 } // namespace
 
 namespace {
-constexpr char UNIX_PATH_PREFIX[] = "unix:";
+constexpr auto UNIX_PATH_PREFIX = "unix:"_sr;
 } // namespace
 
 namespace {
@@ -2531,12 +2531,12 @@ int main(int argc, char **argv) {
       config.base_uri = "";
       config.base_uri_unix = false;
 
-      if (util::istarts_with_l(arg, UNIX_PATH_PREFIX)) {
+      if (util::istarts_with(arg, UNIX_PATH_PREFIX)) {
         // UNIX domain socket path
         sockaddr_un un;
 
-        auto path = StringRef{std::begin(arg) + str_size(UNIX_PATH_PREFIX),
-                              std::end(arg)};
+        auto path =
+            StringRef{std::begin(arg) + UNIX_PATH_PREFIX.size(), std::end(arg)};
 
         if (path.size() == 0 || path.size() + 1 > sizeof(un.sun_path)) {
           std::cerr << "--base-uri: invalid UNIX domain socket path: " << arg

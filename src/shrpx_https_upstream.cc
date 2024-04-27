@@ -990,7 +990,7 @@ int HttpsUpstream::send_reply(Downstream *downstream, const uint8_t *body,
     connection_close = true;
   } else {
     auto c = resp.fs.header(http2::HD_CONNECTION);
-    if (c && util::strieq_l("close", c->value)) {
+    if (c && util::strieq("close"_sr, c->value)) {
       connection_close = true;
     }
   }

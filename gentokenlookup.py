@@ -50,7 +50,7 @@ def gen_index_header(tokens, prefix, comp_fun, return_type, fail_value):
     case '{}':'''.format(c))
             for k in headers:
                 print('''\
-      if ({}("{}", std::begin(name), {})) {{
+      if ({}("{}"_sr, name, {})) {{
         return {};
       }}'''.format(comp_fun, k[:-1], size - 1, to_enum_hd(k, prefix)))
             print('''\
@@ -63,7 +63,7 @@ def gen_index_header(tokens, prefix, comp_fun, return_type, fail_value):
   return {};
 }}'''.format(fail_value))
 
-def gentokenlookup(tokens, prefix, comp_fun='util::streq_l', return_type='int', fail_value='-1'):
+def gentokenlookup(tokens, prefix, comp_fun='util::streq', return_type='int', fail_value='-1'):
     gen_enum(tokens, prefix)
     print()
     gen_index_header(tokens, prefix, comp_fun, return_type, fail_value)

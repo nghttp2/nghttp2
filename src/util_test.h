@@ -66,7 +66,6 @@ munit_void_test_decl(test_util_get_uint64);
 munit_void_test_decl(test_util_parse_config_str_list);
 munit_void_test_decl(test_util_make_http_hostport);
 munit_void_test_decl(test_util_make_hostport);
-munit_void_test_decl(test_util_strifind);
 munit_void_test_decl(test_util_random_alpha_digit);
 munit_void_test_decl(test_util_format_hex);
 munit_void_test_decl(test_util_is_hex_string);
