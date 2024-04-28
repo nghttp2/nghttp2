@@ -855,13 +855,13 @@ void shuffle(RandomIt first, RandomIt last, Generator &&gen, SwapFun fun) {
     return;
   }
 
-  for (unsigned int i = 0; i < static_cast<unsigned int>(len - 1); ++i) {
-    auto dis = std::uniform_int_distribution<unsigned int>(i, len - 1);
-    auto j = dis(gen);
-    if (i == j) {
-      continue;
-    }
-    fun(first + i, first + j);
+  using dist_type = std::uniform_int_distribution<size_t>;
+  using param_type = dist_type::param_type;
+
+  dist_type d;
+
+  for (decltype(len) i = 0; i < len - 1; ++i) {
+    fun(first + i, first + d(gen, param_type(i, len - 1)));
   }
 }
 
