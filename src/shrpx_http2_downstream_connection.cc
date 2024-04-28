@@ -464,7 +464,7 @@ int Http2DownstreamConnection::push_request_headers() {
     for (auto &nv : nva) {
       auto name = StringRef{nv.name, nv.namelen};
 
-      if (util::streq("authorization"_sr, name)) {
+      if ("authorization"_sr == name) {
         ss << TTY_HTTP_HD << name << TTY_RST << ": <redacted>\n";
         continue;
       }

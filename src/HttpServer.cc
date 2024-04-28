@@ -1248,8 +1248,8 @@ void prepare_response(Stream *stream, Http2Handler *hd,
   auto query_pos = std::find(std::begin(reqpath), std::end(reqpath), '?');
   if (query_pos != std::end(reqpath)) {
     // Do not response to this request to allow clients to test timeouts.
-    if (util::streq("nghttpd_do_not_respond_to_req=yes"_sr,
-                    StringRef{query_pos, std::end(reqpath)})) {
+    if ("nghttpd_do_not_respond_to_req=yes"_sr ==
+        StringRef{query_pos, std::end(reqpath)}) {
       return;
     }
     raw_path = StringRef{std::begin(reqpath), query_pos};

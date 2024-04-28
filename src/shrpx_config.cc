@@ -746,7 +746,7 @@ std::vector<LogFragment> parse_log_format(BlockAllocator &balloc,
 
     if (type == LogFragmentType::NONE) {
       if (util::istarts_with(var_name, "http_"_sr)) {
-        if (util::streq("host"_sr, var_name.substr(str_size("http_")))) {
+        if ("host"_sr == var_name.substr(str_size("http_"))) {
           // Special handling of host header field.  We will use
           // :authority header field if host header is missing.  This
           // is a typical case in HTTP/2.
@@ -996,9 +996,9 @@ int parse_downstream_params(DownstreamParams &out,
         return -1;
       }
 
-      if (util::streq("h2"_sr, protostr)) {
+      if ("h2"_sr == protostr) {
         out.proto = Proto::HTTP2;
-      } else if (util::streq("http/1.1"_sr, protostr)) {
+      } else if ("http/1.1"_sr == protostr) {
         out.proto = Proto::HTTP1;
       } else {
         LOG(ERROR) << "backend: proto: unknown protocol " << protostr;

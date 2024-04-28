@@ -1229,13 +1229,13 @@ const UpstreamAddr *Worker::find_quic_upstream_addr(const Address &local_addr) {
     if (faddr.port == 443 || faddr.port == 80) {
       switch (faddr.family) {
       case AF_INET:
-        if (util::streq(faddr.hostport, "0.0.0.0"_sr)) {
+        if (faddr.hostport == "0.0.0.0"_sr) {
           fallback_faddr = &faddr;
         }
 
         break;
       case AF_INET6:
-        if (util::streq(faddr.hostport, "[::]"_sr)) {
+        if (faddr.hostport == "[::]"_sr) {
           fallback_faddr = &faddr;
         }
 

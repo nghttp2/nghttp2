@@ -364,15 +364,6 @@ bool strieq(const T &a, const S &b, size_t blen) {
                     std::next(std::begin(b), blen), CaseCmp());
 }
 
-template <typename InputIt1, typename InputIt2>
-bool streq(InputIt1 first1, InputIt1 last1, InputIt2 first2, InputIt2 last2) {
-  return std::equal(first1, last1, first2, last2);
-}
-
-template <typename T, typename S> bool streq(const T &a, const S &b) {
-  return streq(std::begin(a), std::end(a), std::begin(b), std::end(b));
-}
-
 template <typename T, typename S>
 bool streq(const T &a, const S &b, size_t blen) {
   return std::equal(std::begin(a), std::end(a), std::begin(b),

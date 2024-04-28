@@ -677,7 +677,7 @@ int alpn_select_proto_cb(SSL *ssl, const unsigned char **out,
       auto proto_len = *p;
 
       if (proto_id + proto_len <= end &&
-          util::streq(target_proto_id, StringRef{proto_id, proto_len})) {
+          target_proto_id == StringRef{proto_id, proto_len}) {
 
         *out = reinterpret_cast<const unsigned char *>(proto_id);
         *outlen = proto_len;
@@ -1802,7 +1802,7 @@ int verify_numeric_hostname(X509 *cert, const StringRef &hostname,
   }
 
   // cn is not NULL terminated
-  auto rv = util::streq(hostname, cn);
+  auto rv = hostname == cn;
   OPENSSL_free(const_cast<char *>(cn.data()));
 
   if (rv) {
@@ -2153,7 +2153,7 @@ int cert_lookup_tree_add_ssl_ctx(
 bool in_proto_list(const std::vector<StringRef> &protos,
                    const StringRef &needle) {
   for (auto &proto : protos) {
-    if (util::streq(proto, needle)) {
+    if (proto == needle) {
       return true;
     }
   }
