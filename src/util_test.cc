@@ -88,18 +88,6 @@ const MunitSuite util_suite{
 };
 
 void test_util_streq(void) {
-  assert_true(util::streq("alpha"_sr, "alpha"_sr));
-  assert_false(util::streq("alpha"_sr, "alphabravo"_sr));
-  assert_false(util::streq("alphabravo"_sr, "alpha"_sr));
-  assert_false(util::streq("alpha"_sr, "alphA"_sr));
-  assert_false(util::streq(StringRef{}, "a"_sr));
-  assert_true(util::streq(StringRef{}, StringRef{}));
-  assert_false(util::streq("alpha"_sr, StringRef{}));
-
-  assert_false(util::streq("alph"_sr, "alpha"_sr));
-  assert_false(util::streq("alpha"_sr, "alph"_sr));
-  assert_false(util::streq("alpha"_sr, "alphA"_sr));
-
   assert_true(util::streq("alpha"_sr, "alpha"_sr, 5));
   assert_true(util::streq("alpha"_sr, "alphabravo"_sr, 5));
   assert_false(util::streq("alpha"_sr, "alphabravo"_sr, 6));
@@ -272,7 +260,7 @@ void test_util_select_h2(void) {
   // picked up because it has precedence over the other.
   const unsigned char t6[] = "\x5h2-14\x5h2-16";
   assert_true(util::select_h2(&out, &outlen, t6, sizeof(t6) - 1));
-  assert_true(util::streq(NGHTTP2_H2_16, StringRef{out, outlen}));
+  assert_stdsv_equal(NGHTTP2_H2_16, (StringRef{out, outlen}));
 }
 
 void test_util_ipv6_numeric_addr(void) {

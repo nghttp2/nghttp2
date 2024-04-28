@@ -976,9 +976,9 @@ int HttpClient::on_upgrade_connect() {
     // If the request contains upload data, use OPTIONS * to upgrade
     req = "OPTIONS *";
   } else {
-    auto meth = std::find_if(
-        std::begin(config.headers), std::end(config.headers),
-        [](const Header &kv) { return util::streq(":method"_sr, kv.name); });
+    auto meth =
+        std::find_if(std::begin(config.headers), std::end(config.headers),
+                     [](const auto &kv) { return ":method"_sr == kv.name; });
 
     if (meth == std::end(config.headers)) {
       req = "GET ";

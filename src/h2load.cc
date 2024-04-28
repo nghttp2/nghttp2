@@ -928,7 +928,7 @@ void Client::on_header(int32_t stream_id, const uint8_t *name, size_t namelen,
   }
 
   if (stream.status_success == -1 && namelen == 7 &&
-      util::streq(":status"_sr, StringRef{name, namelen})) {
+      ":status"_sr == StringRef{name, namelen}) {
     int status = 0;
     for (size_t i = 0; i < valuelen; ++i) {
       if ('0' <= value[i] && value[i] <= '9') {
@@ -1102,14 +1102,13 @@ int Client::connection_made() {
       if (config.is_quic()) {
 #ifdef ENABLE_HTTP3
         assert(session);
-        if (!util::streq(StringRef{&NGHTTP3_ALPN_H3[1]}, proto) &&
-            !util::streq("h3-29"_sr, proto)) {
+        if ("h3"_sr != proto && "h3-29"_sr != proto) {
           return -1;
         }
 #endif // ENABLE_HTTP3
       } else if (util::check_h2_is_selected(proto)) {
         session = std::make_unique<Http2Session>(this);
-      } else if (util::streq(NGHTTP2_H1_1, proto)) {
+      } else if (NGHTTP2_H1_1 == proto) {
         session = std::make_unique<Http1Session>(this);
       }
 
@@ -1124,7 +1123,7 @@ int Client::connection_made() {
                 << std::endl;
 
       for (const auto &proto : config.alpn_list) {
-        if (util::streq(NGHTTP2_H1_1_ALPN, StringRef{proto})) {
+        if (NGHTTP2_H1_1_ALPN == proto) {
           std::cout << "Server does not support ALPN. Falling back to HTTP/1.1."
                     << std::endl;
           session = std::make_unique<Http1Session>(this);
