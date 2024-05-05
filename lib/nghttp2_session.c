@@ -5474,6 +5474,15 @@ int nghttp2_session_on_data_received(nghttp2_session *session,
   if (nghttp2_is_fatal(rv)) {
     return rv;
   }
+  /* it might send goaway and call session_close_stream_on_goaway in previous callback
+   * and stream might be gone after nghttp2_map_remove */
+  stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
+  if (!stream || stream->state == NGHTTP2_STREAM_CLOSING) {
+    /* This should be treated as stream error, but it results in lots
+       of RST_STREAM. So just ignore frame against nonexistent stream
+       for now. */
+    return 0;
+  }
 
   if (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
     nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_RD);
