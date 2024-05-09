@@ -827,6 +827,7 @@ void Client::process_request_failure() {
             << std::endl;
 }
 
+#ifndef NGHTTP2_OPENSSL_IS_BORINGSSL
 namespace {
 void print_server_tmp_key(SSL *ssl) {
   EVP_PKEY *key;
@@ -848,7 +849,7 @@ void print_server_tmp_key(SSL *ssl) {
     std::cout << "DH " << EVP_PKEY_bits(key) << " bits" << std::endl;
     break;
   case EVP_PKEY_EC: {
-#if OPENSSL_3_0_0_API
+#  if OPENSSL_3_0_0_API
     std::array<char, 64> curve_name;
     const char *cname;
     if (!EVP_PKEY_get_utf8_string_param(key, "group", curve_name.data(),
@@ -857,7 +858,7 @@ void print_server_tmp_key(SSL *ssl) {
     } else {
       cname = curve_name.data();
     }
-#else  // !OPENSSL_3_0_0_API
+#  else  // !OPENSSL_3_0_0_API
     auto ec = EVP_PKEY_get1_EC_KEY(key);
     auto ec_del = defer(EC_KEY_free, ec);
     auto nid = EC_GROUP_get_curve_name(EC_KEY_get0_group(ec));
@@ -865,7 +866,7 @@ void print_server_tmp_key(SSL *ssl) {
     if (!cname) {
       cname = OBJ_nid2sn(nid);
     }
-#endif // !OPENSSL_3_0_0_API
+#  endif // !OPENSSL_3_0_0_API
 
     std::cout << "ECDH " << cname << " " << EVP_PKEY_bits(key) << " bits"
               << std::endl;
@@ -878,6 +879,7 @@ void print_server_tmp_key(SSL *ssl) {
   }
 }
 } // namespace
+#endif // !NGHTTP2_OPENSSL_IS_BORINGSSL
 
 void Client::report_tls_info() {
   if (worker->id == 0 && !worker->tls_info_report_done) {
@@ -885,7 +887,9 @@ void Client::report_tls_info() {
     auto cipher = SSL_get_current_cipher(ssl);
     std::cout << "TLS Protocol: " << tls::get_tls_protocol(ssl) << "\n"
               << "Cipher: " << SSL_CIPHER_get_name(cipher) << std::endl;
+#ifndef NGHTTP2_OPENSSL_IS_BORINGSSL
     print_server_tmp_key(ssl);
+#endif // !NGHTTP2_OPENSSL_IS_BORINGSSL
   }
 }
 
