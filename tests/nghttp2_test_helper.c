@@ -174,7 +174,7 @@ nghttp2_ssize inflate_hd(nghttp2_hd_inflater *inflater, nva_out *out,
     if (offset) {
       size_t n;
 
-      n = nghttp2_min(offset, nghttp2_buf_len(&bp));
+      n = nghttp2_min_size(offset, nghttp2_buf_len(&bp));
       bp.pos += n;
       offset -= n;
     }
@@ -343,9 +343,9 @@ nghttp2_stream *open_sent_stream3(nghttp2_session *session, int32_t stream_id,
   stream = nghttp2_session_open_stream(session, stream_id, flags, pri_spec_in,
                                        initial_state, stream_user_data);
   session->last_sent_stream_id =
-      nghttp2_max(session->last_sent_stream_id, stream_id);
+      nghttp2_max_int32(session->last_sent_stream_id, stream_id);
   session->next_stream_id =
-      nghttp2_max(session->next_stream_id, (uint32_t)stream_id + 2);
+      nghttp2_max_uint32(session->next_stream_id, (uint32_t)stream_id + 2);
 
   return stream;
 }
@@ -368,9 +368,9 @@ nghttp2_stream *open_sent_stream_with_dep_weight(nghttp2_session *session,
   stream = open_stream_with_all(session, stream_id, weight, 0, dep_stream);
 
   session->last_sent_stream_id =
-      nghttp2_max(session->last_sent_stream_id, stream_id);
+      nghttp2_max_int32(session->last_sent_stream_id, stream_id);
   session->next_stream_id =
-      nghttp2_max(session->next_stream_id, (uint32_t)stream_id + 2);
+      nghttp2_max_uint32(session->next_stream_id, (uint32_t)stream_id + 2);
 
   return stream;
 }
@@ -404,7 +404,7 @@ nghttp2_stream *open_recv_stream3(nghttp2_session *session, int32_t stream_id,
   stream = nghttp2_session_open_stream(session, stream_id, flags, pri_spec_in,
                                        initial_state, stream_user_data);
   session->last_recv_stream_id =
-      nghttp2_max(session->last_recv_stream_id, stream_id);
+      nghttp2_max_int32(session->last_recv_stream_id, stream_id);
 
   return stream;
 }
@@ -427,7 +427,7 @@ nghttp2_stream *open_recv_stream_with_dep_weight(nghttp2_session *session,
   stream = open_stream_with_all(session, stream_id, weight, 0, dep_stream);
 
   session->last_recv_stream_id =
-      nghttp2_max(session->last_recv_stream_id, stream_id);
+      nghttp2_max_int32(session->last_recv_stream_id, stream_id);
 
   return stream;
 }
