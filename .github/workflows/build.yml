@@ -236,6 +236,12 @@ jobs:
           buildtool: cmake
         - openssl: awslc
           compiler: gcc
+        include:
+        - os: ubuntu-22.04
+          compiler: clang
+          buildtool: distcheck
+          http3: http3
+          openssl: awslc
 
     runs-on: ${{ matrix.os }}
 
@@ -444,55 +450,64 @@ jobs:
       run: |
         autoreconf -i
         ./configure
-    - name: Configure cmake (Linux)
-      if: matrix.buildtool == 'cmake' && runner.os == 'Linux'
+    - name: Make distribution and unpack
+      if: matrix.buildtool != 'distcheck'
       run: |
         make dist
         VERSION=$(grep PACKAGE_VERSION config.h | cut -d' ' -f3 | tr -d '"')
         tar xf nghttp2-$VERSION.tar.gz
         cd nghttp2-$VERSION
-        echo 'NGHTTP2_CMAKE_DIR='"$PWD" >> $GITHUB_ENV
+        echo 'NGHTTP2_BUILD_DIR='"$PWD" >> $GITHUB_ENV
+    - name: Configure cmake (Linux)
+      if: matrix.buildtool == 'cmake' && runner.os == 'Linux'
+      run: |
+        cd $NGHTTP2_BUILD_DIR
 
         cmake -DENABLE_WERROR=1 -DWITH_MRUBY=1 -DWITH_NEVERBLEED=1 -DENABLE_APP=1 $EXTRA_CMAKE_OPTS -DCPPFLAGS="$CPPFLAGS" -DLDFLAGS="$LDFLAGS" -DBUILD_STATIC_LIBS=ON -DBUILD_TESTING=ON .
     - name: Configure cmake (MacOS)
       if: matrix.buildtool == 'cmake' && runner.os == 'macOS'
       run: |
-        make dist
-        VERSION=$(grep PACKAGE_VERSION config.h | cut -d' ' -f3 | tr -d '"')
-        tar xf nghttp2-$VERSION.tar.gz
-        cd nghttp2-$VERSION
-        echo 'NGHTTP2_CMAKE_DIR='"$PWD" >> $GITHUB_ENV
-
         # This fixes infamous 'stdio.h not found' error.
         echo 'SDKROOT='"$(xcrun --sdk macosx --show-sdk-path)" >> $GITHUB_ENV
+
+        cd $NGHTTP2_BUILD_DIR
 
         cmake -DENABLE_WERROR=1 -DWITH_MRUBY=1 -DENABLE_APP=1 $EXTRA_CMAKE_OPTS -DCPPFLAGS="$CPPFLAGS" -DLDFLAGS="$LDFLAGS" -DBUILD_STATIC_LIBS=ON -DBUILD_TESTING=ON .
     - name: Build nghttp2 with autotools (Linux)
       if: matrix.buildtool == 'autotools' && runner.os == 'Linux'
       run: |
-        make -j"$(nproc)" distcheck \
-          DISTCHECK_CONFIGURE_FLAGS="--with-mruby --with-neverbleed --with-libev --with-libbrotlienc --with-libbrotlidec --enable-werror $EXTRA_AUTOTOOLS_OPTS CPPFLAGS=\"$CPPFLAGS\" LDFLAGS=\"$LDFLAGS\""
+        cd $NGHTTP2_BUILD_DIR
+
+        ./configure --with-mruby --with-neverbleed --with-libev --with-libbrotlienc --with-libbrotlidec --enable-werror $EXTRA_AUTOTOOLS_OPTS
+        make -j"$(nproc)" check
     - name: Build nghttp2 with autotools (MacOS)
       if: matrix.buildtool == 'autotools' && runner.os == 'macOS'
       run: |
-        make -j"$(sysctl -n hw.ncpu)" distcheck \
-          DISTCHECK_CONFIGURE_FLAGS="--with-mruby --with-libev --with-libbrotlienc --with-libbrotlidec --enable-werror $EXTRA_AUTOTOOLS_OPTS CPPFLAGS=\"$CPPFLAGS\" LDFLAGS=\"$LDFLAGS\""
+        cd $NGHTTP2_BUILD_DIR
+
+        ./configure --with-mruby --with-libev --with-libbrotlienc --with-libbrotlidec --enable-werror $EXTRA_AUTOTOOLS_OPTS
+        make -j"$(sysctl -n hw.ncpu)" check
+    - name: Build nghttp2 with autotools (distcheck)
+      if: matrix.buildtool == 'distcheck'
+      run: |
+        make -j"$(nproc)" distcheck \
+          DISTCHECK_CONFIGURE_FLAGS="--with-mruby --with-neverbleed --with-libev --with-libbrotlienc --with-libbrotlidec --enable-werror $EXTRA_AUTOTOOLS_OPTS CPPFLAGS=\"$CPPFLAGS\" LDFLAGS=\"$LDFLAGS\""
     - name: Build nghttp2 with cmake
       if: matrix.buildtool == 'cmake'
       run: |
-        cd $NGHTTP2_CMAKE_DIR
+        cd $NGHTTP2_BUILD_DIR
         make -j"$(nproc 2> /dev/null || sysctl -n hw.ncpu)"
         make -j"$(nproc 2> /dev/null || sysctl -n hw.ncpu)" check
     - uses: actions/setup-go@v5
-      if: matrix.buildtool == 'cmake'
+      if: matrix.buildtool != 'distcheck'
       with:
         go-version-file: go.mod
     - name: Integration test
       # Integration tests for nghttpx; autotools erases build
       # artifacts.
-      if: matrix.buildtool == 'cmake'
+      if: matrix.buildtool != 'distcheck'
       run: |
-        cd $NGHTTP2_CMAKE_DIR/integration-tests
+        cd $NGHTTP2_BUILD_DIR/integration-tests
         make it
 
   build-cross:
