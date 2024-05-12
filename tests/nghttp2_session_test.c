@@ -463,8 +463,8 @@ static nghttp2_ssize select_padding_callback(nghttp2_session *session,
   my_user_data *ud = (my_user_data *)user_data;
   (void)session;
 
-  return (nghttp2_ssize)nghttp2_min(max_payloadlen,
-                                    frame->hd.length + ud->padlen);
+  return (nghttp2_ssize)nghttp2_min_size(max_payloadlen,
+                                         frame->hd.length + ud->padlen);
 }
 
 static nghttp2_ssize too_large_data_source_length_callback(
@@ -5523,8 +5523,8 @@ void test_nghttp2_submit_data_read_length_too_large(void) {
   buf = &framebufs->head->buf;
   nghttp2_frame_unpack_frame_hd(&hd, buf->pos);
 
-  payloadlen = nghttp2_min(NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE,
-                           NGHTTP2_INITIAL_WINDOW_SIZE);
+  payloadlen = nghttp2_min_size(NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE,
+                                NGHTTP2_INITIAL_WINDOW_SIZE);
 
   assert_size(NGHTTP2_FRAME_HDLEN + 1 + payloadlen, ==,
               (size_t)nghttp2_buf_cap(buf));
@@ -5590,7 +5590,7 @@ static nghttp2_ssize submit_data_twice_data_source_read_callback(
   (void)user_data;
 
   *data_flags |= NGHTTP2_DATA_FLAG_EOF;
-  return (nghttp2_ssize)nghttp2_min(len, 16);
+  return (nghttp2_ssize)nghttp2_min_size(len, 16);
 }
 
 static int submit_data_twice_on_frame_send_callback(nghttp2_session *session,

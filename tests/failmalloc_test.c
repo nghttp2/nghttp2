@@ -88,7 +88,7 @@ static nghttp2_ssize data_feed_recv_callback(nghttp2_session *session,
                                              int flags, void *user_data) {
   data_feed *df = ((my_user_data *)user_data)->df;
   size_t avail = (size_t)(df->datalimit - df->datamark);
-  size_t wlen = nghttp2_min(avail, len);
+  size_t wlen = nghttp2_min_size(avail, len);
   (void)session;
   (void)flags;
 
