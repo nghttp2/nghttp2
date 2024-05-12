@@ -339,14 +339,14 @@ jobs:
         echo 'LIBEV_LIBS='"$LIBEV_LIBS" >> $GITHUB_ENV
     - name: Restore quictls/openssl v1.1.1 cache
       uses: actions/cache/restore@v4
-      if: matrix.http3 == 'http3' && matrix.openssl == 'openssl1'
+      if: matrix.openssl == 'openssl1'
       with:
         path: openssl1/build
         key: ${{ matrix.os }}-openssl-${{ env.OPENSSL1_VERSION }}
         fail-on-cache-miss: true
     - name: Restore quictls/openssl v3.x cache
       uses: actions/cache/restore@v4
-      if: matrix.http3 == 'http3' && matrix.openssl == 'openssl3'
+      if: matrix.openssl == 'openssl3'
       with:
         path: openssl3/build
         key: ${{ matrix.os }}-openssl-${{ env.OPENSSL3_VERSION }}
@@ -420,6 +420,14 @@ jobs:
         path: ngtcp2-openssl3/build
         key: ${{ matrix.os }}-ngtcp2-${{ env.NGTCP2_VERSION }}-openssl-${{ env.OPENSSL3_VERSION }}
         fail-on-cache-miss: true
+    - name: Setup extra environment variables
+      if: matrix.http3 == 'no-http3'
+      run: |
+        PKG_CONFIG_PATH="$PWD/openssl1/build/lib/pkgconfig:$PWD/openssl3/build/lib/pkgconfig"
+        LDFLAGS="$LDFLAGS -Wl,-rpath,$PWD/openssl1/build/lib -Wl,-rpath,$PWD/openssl3/build/lib"
+
+        echo 'PKG_CONFIG_PATH='"$PKG_CONFIG_PATH" >> $GITHUB_ENV
+        echo 'LDFLAGS='"$LDFLAGS" >> $GITHUB_ENV
     - name: Setup extra environment variables for HTTP/3
       if: matrix.http3 == 'http3'
       run: |
