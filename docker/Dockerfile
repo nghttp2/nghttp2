@@ -38,7 +38,7 @@ RUN git clone --recursive --depth 1 -b v1.5.0 https://github.com/ngtcp2/ngtcp2 &
     cd .. && \
     rm -rf ngtcp2
 
-RUN git clone --depth 1 -b v1.3.0 https://github.com/libbpf/libbpf && \
+RUN git clone --depth 1 -b v1.4.2 https://github.com/libbpf/libbpf && \
     cd libbpf && \
     PREFIX=/usr/local make -C src install && \
     cd .. && \
