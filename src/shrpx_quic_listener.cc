@@ -134,7 +134,7 @@ void QUICListener::on_read() {
                                        {std::begin(data), datalen});
 
       data = data.subspan(datalen);
-      if (data.empty() == 0) {
+      if (data.empty()) {
         break;
       }
     }
