@@ -150,8 +150,8 @@ its executable.
 
 Compiling libnghttp2 C source code requires a C99 compiler.  gcc 4.8
 is known to be adequate.  In order to compile the C++ source code,
-C++20 compliant compiler is required.  At least g++ >= 1.12 and
-clang++ >= 1.15 are known to work.
+C++20 compliant compiler is required.  At least g++ >= 12 and
+clang++ >= 15 are known to work.
 
 .. note::
 
