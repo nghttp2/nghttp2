@@ -127,7 +127,7 @@ following libraries are required:
   <https://github.com/quictls/openssl/tree/OpenSSL_1_1_1w+quic>`_; or
   LibreSSL (does not support 0RTT); or aws-lc; or
   `BoringSSL <https://boringssl.googlesource.com/boringssl/>`_ (commit
-  6ab7c1482bf4cdc91c87bc512aaf68ffb18975ec)
+  a220a6024f66c123019b5c080f6bd8bcaf75448c)
 * `ngtcp2 <https://github.com/ngtcp2/ngtcp2>`_ >= 1.4.0
 * `nghttp3 <https://github.com/ngtcp2/nghttp3>`_ >= 1.1.0
 
@@ -352,7 +352,7 @@ Build nghttp3:
 
 .. code-block:: text
 
-   $ git clone --depth 1 -b v1.3.0 https://github.com/ngtcp2/nghttp3
+   $ git clone --depth 1 -b v1.4.0 https://github.com/ngtcp2/nghttp3
    $ cd nghttp3
    $ git submodule update --init --depth 1
    $ autoreconf -i
@@ -365,7 +365,7 @@ Build ngtcp2:
 
 .. code-block:: text
 
-   $ git clone --depth 1 -b v1.5.0 https://github.com/ngtcp2/ngtcp2
+   $ git clone --depth 1 -b v1.6.0 https://github.com/ngtcp2/ngtcp2
    $ cd ngtcp2
    $ git submodule update --init --depth 1
    $ autoreconf -i
