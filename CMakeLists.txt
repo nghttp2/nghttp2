@@ -66,7 +66,7 @@ if(NOT ENABLE_LIB_ONLY)
   find_package(Libbrotlidec 1.0.9)
 endif()
 
-find_package(OpenSSL 1.1.1)
+find_package(OpenSSL 3.0)
 find_package(Libngtcp2 1.0.0)
 find_package(Libngtcp2_crypto_quictls 1.0.0)
 if(LIBNGTCP2_CRYPTO_QUICTLS_FOUND)
