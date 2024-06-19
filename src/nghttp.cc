@@ -47,7 +47,14 @@
 #include <sstream>
 #include <tuple>
 
-#include <openssl/err.h>
+#include "ssl_compat.h"
+
+#ifdef NGHTTP2_OPENSSL_IS_WOLFSSL
+#  include <wolfssl/options.h>
+#  include <wolfssl/openssl/err.h>
+#else // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#  include <openssl/err.h>
+#endif // !NGHTTP2_OPENSSL_IS_WOLFSSL
 
 #ifdef HAVE_JANSSON
 #  include <jansson.h>
@@ -59,7 +66,6 @@
 #include "base64.h"
 #include "tls.h"
 #include "template.h"
-#include "ssl_compat.h"
 
 #ifndef O_BINARY
 #  define O_BINARY (0)
@@ -2294,6 +2300,17 @@ int communicate(
       result = -1;
       goto fin;
     }
+
+#ifdef NGHTTP2_OPENSSL_IS_WOLFSSL
+    if (SSL_CTX_set_ciphersuites(ssl_ctx,
+                                 tls::DEFAULT_TLS13_CIPHER_LIST.data()) == 0) {
+      std::cerr << "[ERROR] " << ERR_error_string(ERR_get_error(), nullptr)
+                << std::endl;
+      result = -1;
+      goto fin;
+    }
+#endif // NGHTTP2_OPENSSL_IS_WOLFSSL
+
     if (!config.keyfile.empty()) {
       if (SSL_CTX_use_PrivateKey_file(ssl_ctx, config.keyfile.c_str(),
                                       SSL_FILETYPE_PEM) != 1) {

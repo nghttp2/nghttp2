@@ -31,6 +31,9 @@
 /* Define to 1 if you have the `mkostemp` function. */
 #cmakedefine HAVE_MKOSTEMP 1
 
+/* Define to 1 if you have the `pipe2` function. */
+#cmakedefine HAVE_PIPE2 1
+
 /* Define to 1 if you have the `GetTickCount64` function. */
 #cmakedefine HAVE_GETTICKCOUNT64 1
 
@@ -97,8 +100,14 @@
 /* Define to 1 if you have `libngtcp2_crypto_quictls` library. */
 #cmakedefine HAVE_LIBNGTCP2_CRYPTO_QUICTLS
 
+/* Define to 1 if you have `libngtcp2_crypto_wolfssl` library. */
+#cmakedefine HAVE_LIBNGTCP2_CRYPTO_WOLFSSL 1
+
 /* Define to 1 if you have `libev` library. */
 #cmakedefine HAVE_LIBEV 1
 
 /* Define to 1 if you have `libbrotlienc` and `libbrotlidec` libraries. */
 #cmakedefine HAVE_LIBBROTLI 1
+
+/* Define to 1 if you have `wolfssl` library. */
+#cmakedefine HAVE_WOLFSSL 1

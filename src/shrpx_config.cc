@@ -49,7 +49,11 @@
 #include <fstream>
 #include <unordered_map>
 
-#include <openssl/evp.h>
+#ifdef NGHTTP2_OPENSSL_IS_WOLFSSL
+#  include <wolfssl/openssl/evp.h>
+#else // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#  include <openssl/evp.h>
+#endif // !NGHTTP2_OPENSSL_IS_WOLFSSL
 
 #include <nghttp2/nghttp2.h>
 

@@ -23,7 +23,13 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 #ifndef OPENSSL_COMPAT_H
+#define OPENSSL_COMPAT_H
 
+#include "nghttp2_config.h"
+
+#ifdef HAVE_WOLFSSL
+#  define NGHTTP2_OPENSSL_IS_WOLFSSL
+#else // !HAVE_WOLFSSL
 #  include <openssl/opensslv.h>
 
 #  ifdef LIBRESSL_VERSION_NUMBER
@@ -44,5 +50,6 @@
 #  else // !NGHTTP2_GENUINE_OPENSSL
 #    define OPENSSL_3_0_0_API 0
 #  endif // !NGHTTP2_GENUINE_OPENSSL
+#endif   // !HAVE_WOLFSSL
 
 #endif // OPENSSL_COMPAT_H

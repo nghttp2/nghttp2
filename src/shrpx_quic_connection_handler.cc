@@ -24,7 +24,14 @@
  */
 #include "shrpx_quic_connection_handler.h"
 
-#include <openssl/rand.h>
+#include "ssl_compat.h"
+
+#ifdef NGHTTP2_OPENSSL_IS_WOLFSSL
+#  include <wolfssl/options.h>
+#  include <wolfssl/openssl/rand.h>
+#else // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#  include <openssl/rand.h>
+#endif // !NGHTTP2_OPENSSL_IS_WOLFSSL
 
 #include <ngtcp2/ngtcp2.h>
 #include <ngtcp2/ngtcp2_crypto.h>
@@ -34,7 +41,6 @@
 #include "shrpx_log.h"
 #include "shrpx_http3_upstream.h"
 #include "shrpx_connection_handler.h"
-#include "ssl_compat.h"
 
 namespace shrpx {
 
@@ -383,9 +389,9 @@ ClientHandler *QUICConnectionHandler::handle_new_connection(
     return nullptr;
   }
 
-#ifdef NGHTTP2_GENUINE_OPENSSL
+#if defined(NGHTTP2_GENUINE_OPENSSL) || defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
   assert(SSL_is_quic(ssl));
-#endif // NGHTTP2_GENUINE_OPENSSL
+#endif // NGHTTP2_GENUINE_OPENSSL || NGHTTP2_OPENSSL_IS_WOLFSSL
 
   SSL_set_accept_state(ssl);
 
@@ -393,7 +399,8 @@ ClientHandler *QUICConnectionHandler::handle_new_connection(
   auto &quicconf = config->quic;
 
   if (quicconf.upstream.early_data) {
-#ifdef NGHTTP2_GENUINE_OPENSSL
+#if defined(NGHTTP2_GENUINE_OPENSSL) ||                                        \
+    (defined(NGHTTP2_OPENSSL_IS_WOLFSSL) && defined(WOLFSSL_EARLY_DATA))
     SSL_set_quic_early_data_enabled(ssl, 1);
 #elif defined(NGHTTP2_OPENSSL_IS_BORINGSSL)
     SSL_set_early_data_enabled(ssl, 1);

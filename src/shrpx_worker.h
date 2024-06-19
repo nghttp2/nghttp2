@@ -38,8 +38,16 @@
 #  include <future>
 #endif // NOTHREADS
 
-#include <openssl/ssl.h>
-#include <openssl/err.h>
+#include "ssl_compat.h"
+
+#ifdef NGHTTP2_OPENSSL_IS_WOLFSSL
+#  include <wolfssl/options.h>
+#  include <wolfssl/openssl/ssl.h>
+#  include <wolfssl/openssl/err.h>
+#else // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#  include <openssl/ssl.h>
+#  include <openssl/err.h>
+#endif // !NGHTTP2_OPENSSL_IS_WOLFSSL
 
 #include <ev.h>
 

@@ -61,11 +61,17 @@
 #include <fstream>
 #include <iomanip>
 
-#include <openssl/evp.h>
+#include "ssl_compat.h"
+
+#ifdef NGHTTP2_OPENSSL_IS_WOLFSSL
+#  include <wolfssl/options.h>
+#  include <wolfssl/openssl/evp.h>
+#else // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#  include <openssl/evp.h>
+#endif // !NGHTTP2_OPENSSL_IS_WOLFSSL
 
 #include <nghttp2/nghttp2.h>
 
-#include "ssl_compat.h"
 #include "timegm.h"
 
 namespace nghttp2 {
