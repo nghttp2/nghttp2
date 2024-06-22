@@ -349,8 +349,8 @@ jobs:
       run: |
         cd libbpf
 
-        EXTRA_AUTOTOOLS_OPTS="--with-libbpf"
-        EXTRA_CMAKE_OPTS="-DWITH_LIBBPF=1"
+        EXTRA_AUTOTOOLS_OPTS="$EXTRA_AUTOTOOLS_OPTS --with-libbpf"
+        EXTRA_CMAKE_OPTS="$EXTRA_CMAKE_OPTS -DWITH_LIBBPF=1"
 
         echo 'EXTRA_AUTOTOOLS_OPTS='"$EXTRA_AUTOTOOLS_OPTS" >> $GITHUB_ENV
         echo 'EXTRA_CMAKE_OPTS='"$EXTRA_CMAKE_OPTS" >> $GITHUB_ENV
@@ -473,8 +473,8 @@ jobs:
       run: |
         PKG_CONFIG_PATH="$PWD/openssl1/build/lib/pkgconfig:$PWD/openssl3/build/lib/pkgconfig:$PWD/wolfssl/build/lib/pkgconfig:$PWD/nghttp3/build/lib/pkgconfig:$PWD/ngtcp2-openssl1/build/lib/pkgconfig:$PWD/ngtcp2-openssl3/build/lib/pkgconfig:$PWD/libbpf/build/lib64/pkgconfig:$PKG_CONFIG_PATH"
         LDFLAGS="$LDFLAGS -Wl,-rpath,$PWD/openssl1/build/lib -Wl,-rpath,$PWD/openssl3/build/lib -Wl,-rpath,$PWD/libbpf/build/lib64"
-        EXTRA_AUTOTOOLS_OPTS="--enable-http3 $EXTRA_AUTOTOOLS_OPTS"
-        EXTRA_CMAKE_OPTS="-DENABLE_HTTP3=1 $EXTRA_CMAKE_OPTS"
+        EXTRA_AUTOTOOLS_OPTS="$EXTRA_AUTOTOOLS_OPTS --enable-http3"
+        EXTRA_CMAKE_OPTS="$EXTRA_CMAKE_OPTS -DENABLE_HTTP3=1"
 
         echo 'PKG_CONFIG_PATH='"$PKG_CONFIG_PATH" >> $GITHUB_ENV
         echo 'LDFLAGS='"$LDFLAGS" >> $GITHUB_ENV
