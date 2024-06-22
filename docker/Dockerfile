@@ -9,7 +9,7 @@ RUN apt-get update && \
         zlib1g-dev libev-dev libjemalloc-dev ruby-dev libc-ares-dev bison \
         libelf-dev libbrotli-dev
 
-RUN git clone --recursive --depth 1 -b v1.29.0 https://github.com/aws/aws-lc && \
+RUN git clone --recursive --shallow-submodules --depth 1 -b v1.29.0 https://github.com/aws/aws-lc && \
     cd aws-lc && \
     cmake -B build -DDISABLE_GO=ON && \
     make -j$(nproc) -C build && \
@@ -17,7 +17,7 @@ RUN git clone --recursive --depth 1 -b v1.29.0 https://github.com/aws/aws-lc && 
     cd .. && \
     rm -rf aws-lc
 
-RUN git clone --recursive --depth 1 -b v1.4.0 https://github.com/ngtcp2/nghttp3 && \
+RUN git clone --recursive --shallow-submodules --depth 1 -b v1.4.0 https://github.com/ngtcp2/nghttp3 && \
     cd nghttp3 && \
     autoreconf -i && \
     ./configure --enable-lib-only && \
@@ -26,7 +26,7 @@ RUN git clone --recursive --depth 1 -b v1.4.0 https://github.com/ngtcp2/nghttp3 
     cd .. && \
     rm -rf nghttp3
 
-RUN git clone --recursive --depth 1 -b v1.6.0 https://github.com/ngtcp2/ngtcp2 && \
+RUN git clone --recursive --shallow-submodules --depth 1 -b v1.6.0 https://github.com/ngtcp2/ngtcp2 && \
     cd ngtcp2 && \
     autoreconf -i && \
     ./configure --enable-lib-only --with-boringssl \
@@ -44,7 +44,7 @@ RUN git clone --depth 1 -b v1.4.2 https://github.com/libbpf/libbpf && \
     cd .. && \
     rm -rf libbpf
 
-RUN git clone --recursive --depth 1 -b $NGHTTP2_BRANCH https://github.com/nghttp2/nghttp2 && \
+RUN git clone --recursive --shallow-submodules --depth 1 -b $NGHTTP2_BRANCH https://github.com/nghttp2/nghttp2 && \
     cd nghttp2 && \
     autoreconf -i && \
     ./configure --disable-examples --disable-hpack-tools \
