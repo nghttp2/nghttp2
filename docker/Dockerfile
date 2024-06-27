@@ -20,7 +20,7 @@ RUN git clone --recursive --shallow-submodules --depth 1 -b v1.29.0 https://gith
 RUN git clone --recursive --shallow-submodules --depth 1 -b v1.4.0 https://github.com/ngtcp2/nghttp3 && \
     cd nghttp3 && \
     autoreconf -i && \
-    ./configure --enable-lib-only && \
+    ./configure --disable-dependency-tracking --enable-lib-only && \
     make -j$(nproc) && \
     make install-strip && \
     cd .. && \
@@ -29,7 +29,8 @@ RUN git clone --recursive --shallow-submodules --depth 1 -b v1.4.0 https://githu
 RUN git clone --recursive --shallow-submodules --depth 1 -b v1.6.0 https://github.com/ngtcp2/ngtcp2 && \
     cd ngtcp2 && \
     autoreconf -i && \
-    ./configure --enable-lib-only --with-boringssl \
+    ./configure --disable-dependency-tracking --enable-lib-only \
+        --with-boringssl \
         LIBTOOL_LDFLAGS="-static-libtool-libs" \
         BORINGSSL_LIBS="-l:libssl.a -l:libcrypto.a" \
         PKG_CONFIG_PATH="/usr/local/lib64/pkgconfig" && \
@@ -47,7 +48,8 @@ RUN git clone --depth 1 -b v1.4.2 https://github.com/libbpf/libbpf && \
 RUN git clone --recursive --shallow-submodules --depth 1 -b $NGHTTP2_BRANCH https://github.com/nghttp2/nghttp2 && \
     cd nghttp2 && \
     autoreconf -i && \
-    ./configure --disable-examples --disable-hpack-tools \
+    ./configure --disable-dependency-tracking --disable-examples \
+        --disable-hpack-tools \
         --with-mruby \
         --enable-http3 --with-libbpf \
         --with-libbrotlienc --with-libbrotlidec \

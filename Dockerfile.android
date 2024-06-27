@@ -65,6 +65,7 @@ RUN curl -L -O http://dist.schmorp.de/libev/Attic/libev-$LIBEV_VERSION.tar.gz &&
 
 WORKDIR /root/build/libev-$LIBEV_VERSION
 RUN ./configure \
+    --disable-dependency-tracking \
     --host=$TARGET \
     --build=`dpkg-architecture -qDEB_BUILD_GNU_TYPE` \
     --prefix=$PREFIX \
@@ -96,6 +97,7 @@ RUN curl -L -O https://c-ares.haxx.se/download/c-ares-$CARES_VERSION.tar.gz && \
 
 WORKDIR /root/build/c-ares-$CARES_VERSION
 RUN ./configure \
+      --disable-dependency-tracking \
       --host=$TARGET \
       --build=`dpkg-architecture -qDEB_BUILD_GNU_TYPE` \
       --prefix=$PREFIX \
@@ -107,6 +109,7 @@ RUN git clone https://github.com/nghttp2/nghttp2 -b $NGHTTP2_VERSION --depth 1
 WORKDIR /root/build/nghttp2
 RUN autoreconf -i && \
     ./configure \
+    --disable-dependency-tracking \
     --enable-app \
     --disable-shared \
     --host=$TARGET \
