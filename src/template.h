@@ -444,19 +444,19 @@ inline constexpr bool operator==(const StringRef &lhs,
          std::equal(std::begin(lhs), std::end(lhs), std::begin(rhs));
 }
 
-#ifndef __APPLE__
+#if !defined(__APPLE__) && !defined(_LIBCPP_VERSION)
 inline constexpr std::strong_ordering
 operator<=>(const StringRef &lhs, const StringRef &rhs) noexcept {
   return std::lexicographical_compare_three_way(std::begin(lhs), std::end(lhs),
                                                 std::begin(rhs), std::end(rhs));
 }
-#else  // __APPLE__
+#else  // __APPLE__ || _LIBCPP_VERSION
 inline constexpr bool operator<(const StringRef &lhs,
                                 const StringRef &rhs) noexcept {
   return std::lexicographical_compare(std::begin(lhs), std::end(lhs),
                                       std::begin(rhs), std::end(rhs));
 }
-#endif // __APPLE__
+#endif // __APPLE__ || _LIBCPP_VERSION
 
 inline std::ostream &operator<<(std::ostream &o, const StringRef &s) {
   return o.write(s.data(), s.size());
