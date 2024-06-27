@@ -170,8 +170,8 @@ jobs:
         git clone --depth 1 -b ${{ env.WOLFSSL_VERSION }} https://github.com/wolfSSL/wolfssl
         cd wolfssl
         autoreconf -i
-        ./configure --prefix=$PWD/build --enable-all \
-          --enable-harden --disable-ech
+        ./configure --disable-dependency-tracking --prefix=$PWD/build \
+          --enable-all --enable-harden --disable-ech
         make -j"$(nproc 2> /dev/null || sysctl -n hw.ncpu)"
         make install
     - name: Build nghttp3
@@ -180,7 +180,8 @@ jobs:
         git clone --recursive --shallow-submodules --depth 1 -b ${{ env.NGHTTP3_VERSION}} https://github.com/ngtcp2/nghttp3
         cd nghttp3
         autoreconf -i
-        ./configure --prefix=$PWD/build --enable-lib-only
+        ./configure --disable-dependency-tracking --prefix=$PWD/build \
+          --enable-lib-only
         make -j"$(nproc 2> /dev/null || sysctl -n hw.ncpu)" check
         make install
     - name: Build ngtcp2 + quictls/openssl v1.1.1 + BoringSSL
@@ -193,6 +194,7 @@ jobs:
           PKG_CONFIG_PATH="../openssl1/build/lib/pkgconfig:../wolfssl/build/lib/pkgconfig" \
           BORINGSSL_CFLAGS="-I$PWD/../boringssl/include/" \
           BORINGSSL_LIBS="-L$PWD/../boringssl/build/ssl -lssl -L$PWD/../boringssl/build/crypto -lcrypto" \
+          --disable-dependency-tracking \
           --with-boringssl \
           --with-wolfssl
         make -j"$(nproc 2> /dev/null || sysctl -n hw.ncpu)" check
@@ -207,6 +209,7 @@ jobs:
           PKG_CONFIG_PATH="../openssl3/build/lib/pkgconfig" \
           BORINGSSL_CFLAGS="-I$PWD/../aws-lc/include/" \
           BORINGSSL_LIBS="-L$PWD/../aws-lc/build/ssl -lssl -L$PWD/../aws-lc/build/crypto -lcrypto" \
+          --disable-dependency-tracking \
           --with-boringssl
         make -j"$(nproc 2> /dev/null || sysctl -n hw.ncpu)" check
         make install
@@ -483,7 +486,7 @@ jobs:
     - name: Configure autotools
       run: |
         autoreconf -i
-        ./configure
+        ./configure --disable-dependency-tracking
     - name: Make distribution and unpack
       if: matrix.buildtool != 'distcheck'
       run: |
@@ -512,14 +515,14 @@ jobs:
       run: |
         cd $NGHTTP2_BUILD_DIR
 
-        ./configure --with-mruby --with-neverbleed --with-libev --with-libbrotlienc --with-libbrotlidec --enable-werror $EXTRA_AUTOTOOLS_OPTS
+        ./configure --disable-dependency-tracking --with-mruby --with-neverbleed --with-libev --with-libbrotlienc --with-libbrotlidec --enable-werror $EXTRA_AUTOTOOLS_OPTS
         make -j"$(nproc)" check
     - name: Build nghttp2 with autotools (MacOS)
       if: matrix.buildtool == 'autotools' && runner.os == 'macOS'
       run: |
         cd $NGHTTP2_BUILD_DIR
 
-        ./configure --with-mruby --with-libev --with-libbrotlienc --with-libbrotlidec --enable-werror $EXTRA_AUTOTOOLS_OPTS
+        ./configure --disable-dependency-tracking --with-mruby --with-libev --with-libbrotlienc --with-libbrotlidec --enable-werror $EXTRA_AUTOTOOLS_OPTS
         make -j"$(sysctl -n hw.ncpu)" check
     - name: Build nghttp2 with autotools (distcheck)
       if: matrix.buildtool == 'distcheck'
@@ -574,7 +577,8 @@ jobs:
     - name: Configure autotools
       run: |
         autoreconf -i && \
-        ./configure --enable-werror --enable-lib-only  --host="$HOST" \
+        ./configure --disable-dependency-tracking --enable-werror \
+          --enable-lib-only  --host="$HOST" \
           CFLAGS="-g -O2 -D_WIN32_WINNT=0x0600" LIBS="-pthread"
     - name: Build nghttp2
       run: |
