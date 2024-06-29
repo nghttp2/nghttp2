@@ -561,7 +561,7 @@ int Client::read_quic() {
   msg.msg_iov = &msg_iov;
   msg.msg_iovlen = 1;
 
-  uint8_t msg_ctrl[CMSG_SPACE(sizeof(uint16_t))];
+  uint8_t msg_ctrl[CMSG_SPACE(sizeof(int))];
   msg.msg_control = msg_ctrl;
 
   auto ts = quic_timestamp();

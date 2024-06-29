@@ -60,7 +60,7 @@ void QUICListener::on_read() {
   msg.msg_iovlen = 1;
 
   uint8_t msg_ctrl[CMSG_SPACE(sizeof(int)) + CMSG_SPACE(sizeof(in6_pktinfo)) +
-                   CMSG_SPACE(sizeof(uint16_t))];
+                   CMSG_SPACE(sizeof(int))];
   msg.msg_control = msg_ctrl;
 
   auto quic_conn_handler = worker_->get_quic_connection_handler();
