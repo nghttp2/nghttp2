@@ -309,13 +309,9 @@ jobs:
       run: |
         brew install \
           libev \
-          libevent \
-          c-ares \
           libressl \
-          brotli \
           autoconf \
           automake \
-          pkg-config \
           libtool
         echo 'PKG_CONFIG_PATH=/usr/local/opt/libressl/lib/pkgconfig:/usr/local/opt/libxml2/lib/pkgconfig' >> $GITHUB_ENV
     - name: Setup clang (Linux)
