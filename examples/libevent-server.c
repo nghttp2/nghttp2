@@ -80,8 +80,8 @@
 
 #define MAKE_NV(NAME, VALUE)                                                   \
   {                                                                            \
-    (uint8_t *)NAME, (uint8_t *)VALUE, sizeof(NAME) - 1, sizeof(VALUE) - 1,    \
-        NGHTTP2_NV_FLAG_NONE                                                   \
+      (uint8_t *)NAME,   (uint8_t *)VALUE,     sizeof(NAME) - 1,               \
+      sizeof(VALUE) - 1, NGHTTP2_NV_FLAG_NONE,                                 \
   }
 
 struct app_context;
