@@ -144,9 +144,9 @@ Use ``--with-libbpf`` configure option to build eBPF program.
 libelf-dev is needed to build libbpf.
 
 For Ubuntu 20.04, you can build libbpf from `the source code
-<https://github.com/libbpf/libbpf/releases/tag/v1.4.2>`_.  nghttpx
-requires eBPF program for reloading its configuration and hot swapping
-its executable.
+<https://github.com/libbpf/libbpf/releases>`_.  nghttpx requires eBPF
+program for reloading its configuration and hot swapping its
+executable.
 
 Compiling libnghttp2 C source code requires a C99 compiler.  gcc 4.8
 is known to be adequate.  In order to compile the C++ source code,
@@ -381,7 +381,7 @@ from source:
 
 .. code-block:: text
 
-   $ git clone --depth 1 -b v1.4.2 https://github.com/libbpf/libbpf
+   $ git clone --depth 1 -b v1.4.5 https://github.com/libbpf/libbpf
    $ cd libbpf
    $ PREFIX=$PWD/build make -C src install
    $ cd ..
