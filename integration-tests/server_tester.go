@@ -3,6 +3,7 @@ package nghttp2
 import (
 	"bufio"
 	"bytes"
+	"cmp"
 	"context"
 	"crypto/tls"
 	"encoding/binary"
@@ -15,7 +16,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
-	"sort"
+	"slices"
 	"strconv"
 	"strings"
 	"syscall"
@@ -94,14 +95,17 @@ func newServerTester(t *testing.T, opts options) *serverTester {
 	if opts.handler == nil {
 		opts.handler = noopHandler
 	}
+
 	if opts.connectPort == 0 {
 		opts.connectPort = serverPort
 	}
 
 	ts := httptest.NewUnstartedServer(opts.handler)
 
-	var args []string
-	var backendTLS, dns, externalDNS, acceptProxyProtocol, redirectIfNotTLS, affinityCookie, alpnH1 bool
+	var (
+		args                                                                                        []string
+		backendTLS, dns, externalDNS, acceptProxyProtocol, redirectIfNotTLS, affinityCookie, alpnH1 bool
+	)
 
 	for _, k := range opts.args {
 		switch k {
@@ -124,6 +128,7 @@ func newServerTester(t *testing.T, opts options) *serverTester {
 			args = append(args, k)
 		}
 	}
+
 	if backendTLS {
 		nghttp2.ConfigureServer(ts.Config, &nghttp2.Server{})
 		// According to httptest/server.go, we have to set
@@ -132,13 +137,17 @@ func newServerTester(t *testing.T, opts options) *serverTester {
 		ts.TLS = new(tls.Config)
 		ts.TLS.NextProtos = append(ts.TLS.NextProtos, "h2")
 		ts.StartTLS()
+
 		args = append(args, "-k")
 	} else {
 		ts.Start()
 	}
+
 	scheme := "http"
+
 	if opts.tls {
 		scheme = "https"
+
 		args = append(args, testDir+"/server.key", testDir+"/server.crt")
 	}
 
@@ -150,6 +159,7 @@ func newServerTester(t *testing.T, opts options) *serverTester {
 	// URL.Host looks like "127.0.0.1:8080", but we want
 	// "127.0.0.1,8080"
 	b := "-b"
+
 	if !externalDNS {
 		b += fmt.Sprintf("%v;", strings.Replace(backendURL.Host, ":", ",", -1))
 	} else {
@@ -157,6 +167,7 @@ func newServerTester(t *testing.T, opts options) *serverTester {
 		if sep == -1 {
 			t.Fatalf("backendURL.Host %v does not contain separator ':'", backendURL.Host)
 		}
+
 		// We use awesome service nip.io.
 		b += fmt.Sprintf("%v.nip.io,%v;", backendURL.Host[:sep], backendURL.Host[sep+1:])
 	}
@@ -164,6 +175,7 @@ func newServerTester(t *testing.T, opts options) *serverTester {
 	if backendTLS {
 		b += ";proto=h2;tls"
 	}
+
 	if dns {
 		b += ";dns"
 	}
@@ -177,11 +189,13 @@ func newServerTester(t *testing.T, opts options) *serverTester {
 	}
 
 	noTLS := ";no-tls"
+
 	if opts.tls {
 		noTLS = ""
 	}
 
 	var proxyProto string
+
 	if acceptProxyProtocol {
 		proxyProto = ";proxyproto"
 	}
@@ -218,6 +232,7 @@ func newServerTester(t *testing.T, opts options) *serverTester {
 	}
 
 	retry := 0
+
 	for {
 		time.Sleep(50 * time.Millisecond)
 
@@ -231,32 +246,41 @@ func newServerTester(t *testing.T, opts options) *serverTester {
 			}
 
 			var tlsConfig *tls.Config
+
 			if opts.tlsConfig == nil {
 				tlsConfig = new(tls.Config)
 			} else {
 				tlsConfig = opts.tlsConfig.Clone()
 			}
+
 			tlsConfig.InsecureSkipVerify = true
+
 			if alpnH1 {
 				tlsConfig.NextProtos = []string{"http/1.1"}
 			} else {
 				tlsConfig.NextProtos = []string{"h2"}
 			}
+
 			tlsConn := tls.Client(conn, tlsConfig)
+
 			err = tlsConn.Handshake()
 			if err == nil {
 				conn = tlsConn
 			}
 		}
+
 		if err != nil {
 			retry++
 			if retry >= 100 {
 				st.Close()
 				st.t.Fatalf("Error server is not responding too long; server command-line arguments may be invalid")
 			}
+
 			continue
 		}
+
 		st.conn = conn
+
 		break
 	}
 
@@ -273,12 +297,15 @@ func (st *serverTester) Close() {
 	if st.conn != nil {
 		st.conn.Close()
 	}
+
 	if st.cmd != nil {
 		done := make(chan struct{})
+
 		go func() {
 			if err := st.cmd.Wait(); err != nil {
 				st.t.Errorf("Error st.cmd.Wait() = %v", err)
 			}
+
 			close(done)
 		}()
 
@@ -292,9 +319,11 @@ func (st *serverTester) Close() {
 			if err := st.cmd.Process.Kill(); err != nil {
 				st.t.Errorf("Error st.cmd.Process.Kill() = %v", err)
 			}
+
 			<-done
 		}
 	}
+
 	if st.ts != nil {
 		st.ts.Close()
 	}
@@ -307,6 +336,7 @@ func (st *serverTester) readFrame() (http2.Frame, error) {
 			st.errCh <- err
 			return
 		}
+
 		st.frCh <- f
 	}()
 
@@ -347,10 +377,12 @@ func (cbr *chunkedBodyReader) Read(p []byte) (n int, err error) {
 	// after request was sent and before body returns EOF.
 	if !cbr.trailerWritten {
 		cbr.trailerWritten = true
+
 		for _, h := range cbr.trailer {
 			cbr.req.Trailer.Set(h.Name, h.Value)
 		}
 	}
+
 	return cbr.body.Read(p)
 }
 
@@ -363,6 +395,7 @@ func (st *serverTester) websocket(rp requestParam) *serverResponse {
 	}
 
 	config.Header.Add("Test-Case", rp.name)
+
 	for _, h := range rp.header {
 		config.Header.Add(h.Name, h.Value)
 	}
@@ -377,7 +410,9 @@ func (st *serverTester) websocket(rp requestParam) *serverResponse {
 	}
 
 	msg := make([]byte, 1024)
+
 	var n int
+
 	if n, err = ws.Read(msg); err != nil {
 		st.t.Fatalf("ws.Read() returned error: %v", err)
 	}
@@ -391,19 +426,25 @@ func (st *serverTester) websocket(rp requestParam) *serverResponse {
 
 func (st *serverTester) http1(rp requestParam) (*serverResponse, error) {
 	method := "GET"
+
 	if rp.method != "" {
 		method = rp.method
 	}
 
-	var body io.Reader
-	var cbr *chunkedBodyReader
+	var (
+		body io.Reader
+		cbr  *chunkedBodyReader
+	)
+
 	if rp.body != nil {
 		body = bytes.NewBuffer(rp.body)
+
 		if len(rp.trailer) != 0 {
 			cbr = &chunkedBodyReader{
 				trailer: rp.trailer,
 				body:    body,
 			}
+
 			body = cbr
 		}
 	}
@@ -415,6 +456,7 @@ func (st *serverTester) http1(rp requestParam) (*serverResponse, error) {
 		if err != nil {
 			st.t.Fatalf("Error parsing URL from st.url %v: %v", st.url, err)
 		}
+
 		u.Path = ""
 		u.RawQuery = ""
 		reqURL = u.String() + rp.path
@@ -427,30 +469,38 @@ func (st *serverTester) http1(rp requestParam) (*serverResponse, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	for _, h := range rp.header {
 		req.Header.Add(h.Name, h.Value)
 	}
+
 	req.Header.Add("Test-Case", rp.name)
+
 	if cbr != nil {
 		cbr.req = req
 		// this makes request use chunked encoding
 		req.ContentLength = -1
 		req.Trailer = make(http.Header)
+
 		for _, h := range cbr.trailer {
 			req.Trailer.Set(h.Name, "")
 		}
 	}
+
 	if err := req.Write(st.conn); err != nil {
 		return nil, err
 	}
+
 	resp, err := http.ReadResponse(bufio.NewReader(st.conn), req)
 	if err != nil {
 		return nil, err
 	}
+
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
+
 	resp.Body.Close()
 
 	res := &serverResponse{
@@ -468,6 +518,7 @@ func (st *serverTester) http2(rp requestParam) (*serverResponse, error) {
 	st.header = make(http.Header)
 
 	var id uint32
+
 	if rp.streamID != 0 {
 		id = rp.streamID
 		if id >= st.nextStreamID && id%2 == 1 {
@@ -481,6 +532,7 @@ func (st *serverTester) http2(rp requestParam) (*serverResponse, error) {
 	if !st.h2PrefaceSent {
 		st.h2PrefaceSent = true
 		fmt.Fprint(st.conn, "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n")
+
 		if err := st.fr.WriteSettings(); err != nil {
 			return nil, err
 		}
@@ -498,26 +550,32 @@ func (st *serverTester) http2(rp requestParam) (*serverResponse, error) {
 		if rp.method != "" {
 			method = rp.method
 		}
+
 		_ = st.enc.WriteField(pair(":method", method))
 
 		scheme := "http"
+
 		if rp.scheme != "" {
 			scheme = rp.scheme
 		}
+
 		_ = st.enc.WriteField(pair(":scheme", scheme))
 
 		authority := st.authority
+
 		if rp.authority != "" {
 			authority = rp.authority
 		}
+
 		_ = st.enc.WriteField(pair(":authority", authority))
 
 		path := "/"
+
 		if rp.path != "" {
 			path = rp.path
 		}
-		_ = st.enc.WriteField(pair(":path", path))
 
+		_ = st.enc.WriteField(pair(":path", path))
 		_ = st.enc.WriteField(pair("test-case", rp.name))
 
 		for _, h := range rp.header {
@@ -543,9 +601,11 @@ func (st *serverTester) http2(rp requestParam) (*serverResponse, error) {
 
 		if len(rp.trailer) != 0 {
 			st.headerBlkBuf.Reset()
+
 			for _, h := range rp.trailer {
 				_ = st.enc.WriteField(h)
 			}
+
 			err := st.fr.WriteHeaders(http2.HeadersFrameParam{
 				StreamID:      id,
 				EndStream:     true,
@@ -563,56 +623,65 @@ loop:
 		if err != nil {
 			return res, err
 		}
+
 		switch f := fr.(type) {
 		case *http2.HeadersFrame:
 			_, err := st.dec.Write(f.HeaderBlockFragment())
 			if err != nil {
 				return res, err
 			}
+
 			sr, ok := streams[f.FrameHeader.StreamID]
 			if !ok {
 				st.header = make(http.Header)
 				break
 			}
+
 			sr.header = cloneHeader(st.header)
+
 			var status int
+
 			status, err = strconv.Atoi(sr.header.Get(":status"))
 			if err != nil {
 				return res, fmt.Errorf("Error parsing status code: %w", err)
 			}
+
 			sr.status = status
-			if f.StreamEnded() {
-				if streamEnded(res, streams, sr) {
-					break loop
-				}
+
+			if f.StreamEnded() && streamEnded(res, streams, sr) {
+				break loop
 			}
 		case *http2.PushPromiseFrame:
 			_, err := st.dec.Write(f.HeaderBlockFragment())
 			if err != nil {
 				return res, err
 			}
+
 			sr := &serverResponse{
 				streamID:  f.PromiseID,
 				reqHeader: cloneHeader(st.header),
 			}
+
 			streams[sr.streamID] = sr
 		case *http2.DataFrame:
 			sr, ok := streams[f.FrameHeader.StreamID]
 			if !ok {
 				break
 			}
+
 			sr.body = append(sr.body, f.Data()...)
-			if f.StreamEnded() {
-				if streamEnded(res, streams, sr) {
-					break loop
-				}
+
+			if f.StreamEnded() && streamEnded(res, streams, sr) {
+				break loop
 			}
 		case *http2.RSTStreamFrame:
 			sr, ok := streams[f.FrameHeader.StreamID]
 			if !ok {
 				break
 			}
+
 			sr.errCode = f.ErrCode
+
 			if streamEnded(res, streams, sr) {
 				break loop
 			}
@@ -620,27 +689,36 @@ loop:
 			if f.ErrCode == http2.ErrCodeNo {
 				break
 			}
+
 			res.errCode = f.ErrCode
 			res.connErr = true
+
 			break loop
 		case *http2.SettingsFrame:
 			if f.IsAck() {
 				break
 			}
+
 			if err := st.fr.WriteSettingsAck(); err != nil {
 				return res, err
 			}
 		}
 	}
-	sort.Sort(ByStreamID(res.pushResponse))
+
+	slices.SortFunc(res.pushResponse, func(a, b *serverResponse) int {
+		return cmp.Compare(a.streamID, b.streamID)
+	})
+
 	return res, nil
 }
 
 func streamEnded(mainSr *serverResponse, streams map[uint32]*serverResponse, sr *serverResponse) bool {
 	delete(streams, sr.streamID)
+
 	if mainSr.streamID != sr.streamID {
 		mainSr.pushResponse = append(mainSr.pushResponse, sr)
 	}
+
 	return len(streams) == 0
 }
 
@@ -656,27 +734,15 @@ type serverResponse struct {
 	pushResponse []*serverResponse // pushed response
 }
 
-type ByStreamID []*serverResponse
-
-func (b ByStreamID) Len() int {
-	return len(b)
-}
-
-func (b ByStreamID) Swap(i, j int) {
-	b[i], b[j] = b[j], b[i]
-}
-
-func (b ByStreamID) Less(i, j int) bool {
-	return b[i].streamID < b[j].streamID
-}
-
 func cloneHeader(h http.Header) http.Header {
 	h2 := make(http.Header, len(h))
+
 	for k, vv := range h {
 		vv2 := make([]string, len(vv))
 		copy(vv2, vv)
 		h2[k] = vv2
 	}
+
 	return h2
 }
 
@@ -727,6 +793,7 @@ func writeProxyProtocolV2(w io.Writer, hdr proxyProtocolV2) error {
 	if _, err := w.Write([]byte{0x0D, 0x0A, 0x0D, 0x0A, 0x00, 0x0D, 0x0A, 0x51, 0x55, 0x49, 0x54, 0x0A}); err != nil {
 		return err
 	}
+
 	if _, err := w.Write([]byte{byte(0x20 | hdr.command)}); err != nil {
 		return err
 	}
@@ -734,44 +801,59 @@ func writeProxyProtocolV2(w io.Writer, hdr proxyProtocolV2) error {
 	switch srcAddr := hdr.sourceAddress.(type) {
 	case *net.TCPAddr:
 		dstAddr := hdr.destinationAddress.(*net.TCPAddr)
+
 		if len(srcAddr.IP) != len(dstAddr.IP) {
 			panic("len(srcAddr.IP) != len(dstAddr.IP)")
 		}
+
 		var fam byte
+
 		if len(srcAddr.IP) == 4 {
 			fam = byte(proxyProtocolV2FamilyInet << 4)
 		} else {
 			fam = byte(proxyProtocolV2FamilyInet6 << 4)
 		}
+
 		fam |= byte(proxyProtocolV2ProtocolStream)
+
 		if _, err := w.Write([]byte{fam}); err != nil {
 			return err
 		}
+
 		length := uint16(len(srcAddr.IP)*2 + 4 + len(hdr.additionalData))
+
 		if err := binary.Write(w, binary.BigEndian, length); err != nil {
 			return err
 		}
+
 		if _, err := w.Write(srcAddr.IP); err != nil {
 			return err
 		}
+
 		if _, err := w.Write(dstAddr.IP); err != nil {
 			return err
 		}
+
 		if err := binary.Write(w, binary.BigEndian, uint16(srcAddr.Port)); err != nil {
 			return err
 		}
+
 		if err := binary.Write(w, binary.BigEndian, uint16(dstAddr.Port)); err != nil {
 			return err
 		}
 	case *net.UnixAddr:
 		dstAddr := hdr.destinationAddress.(*net.UnixAddr)
+
 		if len(srcAddr.Name) > 108 {
 			panic("too long Unix source address")
 		}
+
 		if len(dstAddr.Name) > 108 {
 			panic("too long Unix destination address")
 		}
+
 		fam := byte(proxyProtocolV2FamilyUnix << 4)
+
 		switch srcAddr.Net {
 		case "unix":
 			fam |= byte(proxyProtocolV2ProtocolStream)
@@ -780,32 +862,43 @@ func writeProxyProtocolV2(w io.Writer, hdr proxyProtocolV2) error {
 		default:
 			fam |= byte(proxyProtocolV2ProtocolUnspec)
 		}
+
 		if _, err := w.Write([]byte{fam}); err != nil {
 			return err
 		}
+
 		length := uint16(216 + len(hdr.additionalData))
+
 		if err := binary.Write(w, binary.BigEndian, length); err != nil {
 			return err
 		}
+
 		zeros := make([]byte, 108)
+
 		if _, err := w.Write([]byte(srcAddr.Name)); err != nil {
 			return err
 		}
+
 		if _, err := w.Write(zeros[:108-len(srcAddr.Name)]); err != nil {
 			return err
 		}
+
 		if _, err := w.Write([]byte(dstAddr.Name)); err != nil {
 			return err
 		}
+
 		if _, err := w.Write(zeros[:108-len(dstAddr.Name)]); err != nil {
 			return err
 		}
 	default:
 		fam := byte(proxyProtocolV2FamilyUnspec<<4) | byte(proxyProtocolV2ProtocolUnspec)
+
 		if _, err := w.Write([]byte{fam}); err != nil {
 			return err
 		}
+
 		length := uint16(len(hdr.additionalData))
+
 		if err := binary.Write(w, binary.BigEndian, length); err != nil {
 			return err
 		}

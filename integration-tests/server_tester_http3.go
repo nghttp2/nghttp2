@@ -45,6 +45,7 @@ func (st *serverTester) http3(rp requestParam) (*serverResponse, error) {
 		if err != nil {
 			st.t.Fatalf("Error parsing URL from st.url %v: %v", st.url, err)
 		}
+
 		u.Path = ""
 		u.RawQuery = ""
 		reqURL = u.String() + rp.path
