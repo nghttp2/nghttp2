@@ -3,6 +3,7 @@ package nghttp2
 import (
 	"bufio"
 	"bytes"
+	"cmp"
 	"context"
 	"crypto/tls"
 	"encoding/binary"
@@ -15,7 +16,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
-	"sort"
+	"slices"
 	"strconv"
 	"strings"
 	"syscall"
@@ -632,7 +633,9 @@ loop:
 			}
 		}
 	}
-	sort.Sort(ByStreamID(res.pushResponse))
+	slices.SortFunc(res.pushResponse, func(a, b *serverResponse) int {
+		return cmp.Compare(a.streamID, b.streamID)
+	})
 	return res, nil
 }
 
@@ -654,20 +657,6 @@ type serverResponse struct {
 	connClose    bool              // Connection: close is included in response header in HTTP/1 test
 	reqHeader    http.Header       // http request header, currently only stores pushed request header
 	pushResponse []*serverResponse // pushed response
-}
-
-type ByStreamID []*serverResponse
-
-func (b ByStreamID) Len() int {
-	return len(b)
-}
-
-func (b ByStreamID) Swap(i, j int) {
-	b[i], b[j] = b[j], b[i]
-}
-
-func (b ByStreamID) Less(i, j int) bool {
-	return b[i].streamID < b[j].streamID
 }
 
 func cloneHeader(h http.Header) http.Header {
