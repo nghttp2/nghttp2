@@ -5,6 +5,7 @@ package nghttp2
 import (
 	"bytes"
 	"crypto/rand"
+	"errors"
 	"io"
 	"net/http"
 	"regexp"
@@ -35,6 +36,7 @@ func TestH3H1PlainGET(t *testing.T) {
 // TestH3H1RequestBody tests HTTP/3 request with body works.
 func TestH3H1RequestBody(t *testing.T) {
 	body := make([]byte, 3333)
+
 	_, err := rand.Read(body)
 	if err != nil {
 		t.Fatalf("Unable to create request body: %v", err)
@@ -57,7 +59,7 @@ func TestH3H1RequestBody(t *testing.T) {
 				buflen += n
 
 				if err != nil {
-					if err == io.EOF {
+					if errors.Is(err, io.EOF) {
 						break
 					}
 
@@ -73,6 +75,7 @@ func TestH3H1RequestBody(t *testing.T) {
 		},
 		quic: true,
 	}
+
 	st := newServerTester(t, opts)
 	defer st.Close()
 
@@ -83,6 +86,7 @@ func TestH3H1RequestBody(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http3() = %v", err)
 	}
+
 	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("res.status: %v; want %v", got, want)
 	}
@@ -99,6 +103,7 @@ func TestH3H1GenerateVia(t *testing.T) {
 		},
 		quic: true,
 	}
+
 	st := newServerTester(t, opts)
 	defer st.Close()
 
@@ -108,6 +113,7 @@ func TestH3H1GenerateVia(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http3() = %v", err)
 	}
+
 	if got, want := res.header.Get("Via"), "1.1 nghttpx"; got != want {
 		t.Errorf("Via: %v; want %v", got, want)
 	}
@@ -125,6 +131,7 @@ func TestH3H1AppendVia(t *testing.T) {
 		},
 		quic: true,
 	}
+
 	st := newServerTester(t, opts)
 	defer st.Close()
 
@@ -137,6 +144,7 @@ func TestH3H1AppendVia(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http3() = %v", err)
 	}
+
 	if got, want := res.header.Get("Via"), "bar, 1.1 nghttpx"; got != want {
 		t.Errorf("Via: %v; want %v", got, want)
 	}
@@ -155,6 +163,7 @@ func TestH3H1NoVia(t *testing.T) {
 		},
 		quic: true,
 	}
+
 	st := newServerTester(t, opts)
 	defer st.Close()
 
@@ -167,6 +176,7 @@ func TestH3H1NoVia(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http3() = %v", err)
 	}
+
 	if got, want := res.header.Get("Via"), "bar"; got != want {
 		t.Errorf("Via: %v; want %v", got, want)
 	}
@@ -186,6 +196,7 @@ func TestH3H1BadResponseCL(t *testing.T) {
 		},
 		quic: true,
 	}
+
 	st := newServerTester(t, opts)
 	defer st.Close()
 
@@ -204,6 +215,7 @@ func TestH3H1HTTPSRedirect(t *testing.T) {
 		args: []string{"--redirect-if-not-tls"},
 		quic: true,
 	}
+
 	st := newServerTester(t, opts)
 	defer st.Close()
 
@@ -226,6 +238,7 @@ func TestH3H1AffinityCookieTLS(t *testing.T) {
 		args: []string{"--affinity-cookie"},
 		quic: true,
 	}
+
 	st := newServerTester(t, opts)
 	defer st.Close()
 
@@ -243,6 +256,7 @@ func TestH3H1AffinityCookieTLS(t *testing.T) {
 
 	const pattern = `affinity=[0-9a-f]{8}; Path=/foo/bar; Secure`
 	validCookie := regexp.MustCompile(pattern)
+
 	if got := res.header.Get("Set-Cookie"); !validCookie.MatchString(got) {
 		t.Errorf("Set-Cookie: %v; want pattern %v", got, pattern)
 	}
@@ -261,6 +275,7 @@ func TestH3H2ReqPhaseReturn(t *testing.T) {
 		},
 		quic: true,
 	}
+
 	st := newServerTester(t, opts)
 	defer st.Close()
 
@@ -302,6 +317,7 @@ func TestH3H2RespPhaseReturn(t *testing.T) {
 		},
 		quic: true,
 	}
+
 	st := newServerTester(t, opts)
 	defer st.Close()
 
@@ -343,6 +359,7 @@ func TestH3ResponseBeforeRequestEnd(t *testing.T) {
 		},
 		quic: true,
 	}
+
 	st := newServerTester(t, opts)
 	defer st.Close()
 
@@ -353,6 +370,7 @@ func TestH3ResponseBeforeRequestEnd(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http3() = %v", err)
 	}
+
 	if got, want := res.status, http.StatusNotFound; got != want {
 		t.Errorf("res.status: %v; want %v", got, want)
 	}
@@ -381,6 +399,7 @@ func TestH3H1ChunkedEndsPrematurely(t *testing.T) {
 		},
 		quic: true,
 	}
+
 	st := newServerTester(t, opts)
 	defer st.Close()
 
