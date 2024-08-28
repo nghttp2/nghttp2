@@ -191,7 +191,7 @@ static int map_resize(nghttp2_map *map, uint32_t new_tablelen,
   (void)rv;
 
   new_table =
-      nghttp2_mem_calloc(map->mem, new_tablelen, sizeof(nghttp2_map_bucket));
+    nghttp2_mem_calloc(map->mem, new_tablelen, sizeof(nghttp2_map_bucket));
   if (new_table == NULL) {
     return NGHTTP2_ERR_NOMEM;
   }
@@ -236,8 +236,8 @@ int nghttp2_map_insert(nghttp2_map *map, nghttp2_map_key_type key, void *data) {
     }
   }
 
-  rv = insert(map->table, map->tablelen, map->tablelenbits, hash(key), key,
-              data);
+  rv =
+    insert(map->table, map->tablelen, map->tablelenbits, hash(key), key, data);
   if (rv != 0) {
     return rv;
   }

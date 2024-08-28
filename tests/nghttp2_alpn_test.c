@@ -32,12 +32,12 @@
 #include <nghttp2/nghttp2.h>
 
 static const MunitTest tests[] = {
-    munit_void_test(test_nghttp2_alpn),
-    munit_test_end(),
+  munit_void_test(test_nghttp2_alpn),
+  munit_test_end(),
 };
 
 const MunitSuite alpn_suite = {
-    "/alpn", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
+  "/alpn", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
 };
 
 static void http2(void) {
@@ -61,8 +61,8 @@ static void http2(void) {
 
 static void http11(void) {
   const unsigned char spdy[] = {
-      6,   's', 'p', 'd', 'y', '/', '4', 8,   's', 'p', 'd', 'y', '/',
-      '2', '.', '1', 8,   'h', 't', 't', 'p', '/', '1', '.', '1',
+    6,   's', 'p', 'd', 'y', '/', '4', 8,   's', 'p', 'd', 'y', '/',
+    '2', '.', '1', 8,   'h', 't', 't', 'p', '/', '1', '.', '1',
   };
   unsigned char outlen;
   const unsigned char *out;
@@ -82,8 +82,8 @@ static void http11(void) {
 
 static void no_overlap(void) {
   const unsigned char spdy[] = {
-      6,   's', 'p', 'd', 'y', '/', '4', 8,   's', 'p', 'd', 'y', '/',
-      '2', '.', '1', 8,   'h', 't', 't', 'p', '/', '1', '.', '0',
+    6,   's', 'p', 'd', 'y', '/', '4', 8,   's', 'p', 'd', 'y', '/',
+    '2', '.', '1', 8,   'h', 't', 't', 'p', '/', '1', '.', '0',
   };
   unsigned char outlen = 0;
   const unsigned char *out = NULL;

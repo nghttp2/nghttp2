@@ -398,8 +398,8 @@ void copy_headers_to_nva_internal(std::vector<nghttp2_nv> &nva,
       it_via = it;
       break;
     }
-    nva.push_back(make_field_flags(kv->name, kv->value,
-                                   nv_flags | no_index(kv->no_index)));
+    nva.push_back(
+      make_field_flags(kv->name, kv->value, nv_flags | no_index(kv->no_index)));
   }
 }
 } // namespace
@@ -412,8 +412,8 @@ void copy_headers_to_nva(std::vector<nghttp2_nv> &nva,
 void copy_headers_to_nva_nocopy(std::vector<nghttp2_nv> &nva,
                                 const HeaderRefs &headers, uint32_t flags) {
   copy_headers_to_nva_internal(
-      nva, headers,
-      NGHTTP2_NV_FLAG_NO_COPY_NAME | NGHTTP2_NV_FLAG_NO_COPY_VALUE, flags);
+    nva, headers, NGHTTP2_NV_FLAG_NO_COPY_NAME | NGHTTP2_NV_FLAG_NO_COPY_VALUE,
+    flags);
 }
 
 void build_http1_headers_from_headers(DefaultMemchunks *buf,
@@ -516,10 +516,10 @@ int32_t determine_window_update_transmission(nghttp2_session *session,
     recv_length = nghttp2_session_get_effective_recv_data_length(session);
     window_size = nghttp2_session_get_effective_local_window_size(session);
   } else {
-    recv_length = nghttp2_session_get_stream_effective_recv_data_length(
-        session, stream_id);
+    recv_length =
+      nghttp2_session_get_stream_effective_recv_data_length(session, stream_id);
     window_size = nghttp2_session_get_stream_effective_local_window_size(
-        session, stream_id);
+      session, stream_id);
   }
   if (recv_length != -1 && window_size != -1) {
     if (recv_length >= window_size / 2) {
@@ -609,8 +609,8 @@ StringRef rewrite_location_uri(BlockAllocator &balloc, const StringRef &uri,
   if (!request_authority.empty()) {
     p = std::copy(std::begin(upstream_scheme), std::end(upstream_scheme), p);
     p = util::copy_lit(p, "://");
-    p = std::copy(std::begin(request_authority), std::end(request_authority),
-                  p);
+    p =
+      std::copy(std::begin(request_authority), std::end(request_authority), p);
   }
   if (u.field_set & (1 << UF_PATH)) {
     field = &u.field_data[UF_PATH];
@@ -1320,7 +1320,7 @@ std::string path_join(const StringRef &base_path, const StringRef &base_query,
   BlockAllocator balloc(1024, 1024);
 
   return std::string{
-      path_join(balloc, base_path, base_query, rel_path, rel_query)};
+    path_join(balloc, base_path, base_query, rel_path, rel_query)};
 }
 
 bool expect_response_body(int status_code) {
@@ -1536,7 +1536,7 @@ int lookup_method_token(const StringRef &name) {
 StringRef to_method_string(int method_token) {
   // we happened to use same value for method with llhttp.
   return StringRef{
-      llhttp_method_name(static_cast<llhttp_method>(method_token))};
+    llhttp_method_name(static_cast<llhttp_method>(method_token))};
 }
 
 StringRef get_pure_path_component(const StringRef &uri) {
@@ -1665,10 +1665,10 @@ template <typename InputIt> InputIt eat_dir(InputIt first, InputIt last) {
 StringRef path_join(BlockAllocator &balloc, const StringRef &base_path,
                     const StringRef &base_query, const StringRef &rel_path,
                     const StringRef &rel_query) {
-  auto res = make_byte_ref(
-      balloc, std::max(static_cast<size_t>(1), base_path.size()) +
-                  rel_path.size() + 1 +
-                  std::max(base_query.size(), rel_query.size()) + 1);
+  auto res =
+    make_byte_ref(balloc, std::max(static_cast<size_t>(1), base_path.size()) +
+                            rel_path.size() + 1 +
+                            std::max(base_query.size(), rel_query.size()) + 1);
   auto p = std::begin(res);
 
   if (rel_path.empty()) {
@@ -1773,7 +1773,7 @@ StringRef normalize_path(BlockAllocator &balloc, const StringRef &path,
     if (*it == '%') {
       if (util::is_hex_digit(*(it + 1)) && util::is_hex_digit(*(it + 2))) {
         auto c =
-            (util::hex_to_uint(*(it + 1)) << 4) + util::hex_to_uint(*(it + 2));
+          (util::hex_to_uint(*(it + 1)) << 4) + util::hex_to_uint(*(it + 2));
         if (util::in_rfc3986_unreserved_chars(c)) {
           *p++ = c;
 
@@ -1820,7 +1820,7 @@ StringRef normalize_path_colon(BlockAllocator &balloc, const StringRef &path,
     if (*it == '%') {
       if (util::is_hex_digit(*(it + 1)) && util::is_hex_digit(*(it + 2))) {
         auto c =
-            (util::hex_to_uint(*(it + 1)) << 4) + util::hex_to_uint(*(it + 2));
+          (util::hex_to_uint(*(it + 1)) << 4) + util::hex_to_uint(*(it + 2));
         if (util::in_rfc3986_unreserved_chars(c) || c == ':') {
           *p++ = c;
 

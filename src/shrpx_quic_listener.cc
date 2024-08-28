@@ -37,7 +37,7 @@ void readcb(struct ev_loop *loop, ev_io *w, int revent) {
 } // namespace
 
 QUICListener::QUICListener(const UpstreamAddr *faddr, Worker *worker)
-    : faddr_{faddr}, worker_{worker} {
+  : faddr_{faddr}, worker_{worker} {
   ev_io_init(&rev_, readcb, faddr_->fd, EV_READ);
   rev_.data = this;
   ev_io_start(worker_->get_loop(), &rev_);
@@ -98,7 +98,7 @@ void QUICListener::on_read() {
     util::set_port(local_addr, faddr_->port);
 
     ngtcp2_pkt_info pi{
-        .ecn = util::msghdr_get_ecn(&msg, su.storage.ss_family),
+      .ecn = util::msghdr_get_ecn(&msg, su.storage.ss_family),
     };
 
     auto gso_size = util::msghdr_get_udp_gro(&msg);

@@ -31,12 +31,12 @@
 #include "nghttp2_queue.h"
 
 static const MunitTest tests[] = {
-    munit_void_test(test_nghttp2_queue),
-    munit_test_end(),
+  munit_void_test(test_nghttp2_queue),
+  munit_test_end(),
 };
 
 const MunitSuite queue_suite = {
-    "/queue", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
+  "/queue", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
 };
 
 void test_nghttp2_queue(void) {

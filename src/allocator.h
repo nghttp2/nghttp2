@@ -69,20 +69,20 @@ static_assert(sizeof(ChunkHead) == 16);
 // |block_size|.
 struct BlockAllocator {
   BlockAllocator(size_t block_size, size_t isolation_threshold)
-      : retain(nullptr),
-        head(nullptr),
-        block_size(block_size),
-        isolation_threshold(std::min(block_size, isolation_threshold)) {
+    : retain(nullptr),
+      head(nullptr),
+      block_size(block_size),
+      isolation_threshold(std::min(block_size, isolation_threshold)) {
     assert(isolation_threshold <= block_size);
   }
 
   ~BlockAllocator() { reset(); }
 
   BlockAllocator(BlockAllocator &&other) noexcept
-      : retain{std::exchange(other.retain, nullptr)},
-        head{std::exchange(other.head, nullptr)},
-        block_size(other.block_size),
-        isolation_threshold(other.isolation_threshold) {}
+    : retain{std::exchange(other.retain, nullptr)},
+      head{std::exchange(other.head, nullptr)},
+      block_size(other.block_size),
+      isolation_threshold(other.isolation_threshold) {}
 
   BlockAllocator &operator=(BlockAllocator &&other) noexcept {
     reset();
@@ -115,7 +115,7 @@ struct BlockAllocator {
 
     mb->next = retain;
     mb->begin = mb->last = reinterpret_cast<uint8_t *>(
-        (reinterpret_cast<intptr_t>(block + sizeof(MemBlock)) + 0xf) & ~0xf);
+      (reinterpret_cast<intptr_t>(block + sizeof(MemBlock)) + 0xf) & ~0xf);
     mb->end = mb->begin + size;
     retain = mb;
     return mb;
@@ -146,7 +146,7 @@ struct BlockAllocator {
     ch->size = size;
 
     head->last = reinterpret_cast<uint8_t *>(
-        (reinterpret_cast<intptr_t>(res + size) + 0xf) & ~0xf);
+      (reinterpret_cast<intptr_t>(res + size) + 0xf) & ~0xf);
 
     return res;
   }
@@ -156,7 +156,7 @@ struct BlockAllocator {
   size_t get_alloc_length(void *ptr) {
     return reinterpret_cast<ChunkHead *>(static_cast<uint8_t *>(ptr) -
                                          sizeof(ChunkHead))
-        ->size;
+      ->size;
   }
 
   // Allocates memory of at least |size| bytes.  If |ptr| is nullptr,
@@ -261,9 +261,9 @@ StringRef realloc_concat_string_ref(BlockAllocator &alloc,
   }
 
   auto len =
-      value.size() + concat_string_ref_count(0, std::forward<Args>(args)...);
+    value.size() + concat_string_ref_count(0, std::forward<Args>(args)...);
   auto dst = static_cast<uint8_t *>(
-      alloc.realloc(const_cast<uint8_t *>(value.byte()), len + 1));
+    alloc.realloc(const_cast<uint8_t *>(value.byte()), len + 1));
   auto p = dst + value.size();
   p = concat_string_ref_copy(p, std::forward<Args>(args)...);
   *p = '\0';

@@ -54,7 +54,7 @@ template <typename T, size_t N> constexpr size_t str_size(T (&)[N]) {
 // template can take functions returning other than void.
 template <typename F, typename... T> struct Defer {
   Defer(F &&f, T &&...t)
-      : f(std::bind(std::forward<F>(f), std::forward<T>(t)...)) {}
+    : f(std::bind(std::forward<F>(f), std::forward<T>(t)...)) {}
   Defer(Defer &&o) noexcept : f(std::move(o.f)) {}
   ~Defer() { f(); }
 
@@ -80,9 +80,9 @@ template <typename T> struct DList {
   DList &operator=(const DList &) = delete;
 
   DList(DList &&other) noexcept
-      : head{std::exchange(other.head, nullptr)},
-        tail{std::exchange(other.tail, nullptr)},
-        len{std::exchange(other.len, 0)} {}
+    : head{std::exchange(other.head, nullptr)},
+      tail{std::exchange(other.tail, nullptr)},
+      len{std::exchange(other.len, 0)} {}
 
   DList &operator=(DList &&other) noexcept {
     if (this == &other) {
@@ -218,7 +218,7 @@ public:
   using allocator_type = std::allocator<char>;
   using size_type = std::allocator_traits<allocator_type>::size_type;
   using difference_type =
-      std::allocator_traits<allocator_type>::difference_type;
+    std::allocator_traits<allocator_type>::difference_type;
   using const_reference = const value_type &;
   using const_pointer = const value_type *;
   using const_iterator = const_pointer;
@@ -226,18 +226,18 @@ public:
 
   constexpr ImmutableString() : len(0), base("") {}
   constexpr ImmutableString(const char *s, size_t slen)
-      : len(slen), base(copystr(s, s + len)) {}
+    : len(slen), base(copystr(s, s + len)) {}
   constexpr explicit ImmutableString(const char *s)
-      : len(traits_type::length(s)), base(copystr(s, s + len)) {}
+    : len(traits_type::length(s)), base(copystr(s, s + len)) {}
   constexpr explicit ImmutableString(const std::string &s)
-      : len(s.size()), base(copystr(std::begin(s), std::end(s))) {}
+    : len(s.size()), base(copystr(std::begin(s), std::end(s))) {}
   template <typename InputIt>
   constexpr ImmutableString(InputIt first, InputIt last)
-      : len(std::distance(first, last)), base(copystr(first, last)) {}
+    : len(std::distance(first, last)), base(copystr(first, last)) {}
   constexpr ImmutableString(const ImmutableString &other)
-      : len(other.len), base(copystr(std::begin(other), std::end(other))) {}
+    : len(other.len), base(copystr(std::begin(other), std::end(other))) {}
   constexpr ImmutableString(ImmutableString &&other) noexcept
-      : len{std::exchange(other.len, 0)}, base{std::exchange(other.base, "")} {}
+    : len{std::exchange(other.len, 0)}, base{std::exchange(other.base, "")} {}
   constexpr ~ImmutableString() {
     if (len) {
       delete[] base;
@@ -351,7 +351,7 @@ public:
   using allocator_type = std::allocator<char>;
   using size_type = std::allocator_traits<allocator_type>::size_type;
   using difference_type =
-      std::allocator_traits<allocator_type>::difference_type;
+    std::allocator_traits<allocator_type>::difference_type;
   using const_reference = const value_type &;
   using const_pointer = const value_type *;
   using const_iterator = const_pointer;
@@ -362,22 +362,22 @@ public:
   constexpr StringRef(std::nullptr_t) = delete;
   constexpr StringRef(const std::string &s) : base(s.c_str()), len(s.size()) {}
   constexpr explicit StringRef(const std::string_view &s)
-      : base(s.data()), len(s.size()) {}
+    : base(s.data()), len(s.size()) {}
   constexpr explicit StringRef(const ImmutableString &s)
-      : base(s.c_str()), len(s.size()) {}
+    : base(s.c_str()), len(s.size()) {}
   constexpr StringRef(const char *s) : base(s), len(traits_type::length(s)) {}
   constexpr StringRef(const char *s, size_t n) : base(s), len(n) {}
   explicit StringRef(const uint8_t *s, size_t n)
-      : base(reinterpret_cast<const char *>(s)), len(n) {}
+    : base(reinterpret_cast<const char *>(s)), len(n) {}
   template <std::contiguous_iterator InputIt,
             typename = std::enable_if_t<
-                std::is_same_v<std::iter_value_t<InputIt>, char>>>
+              std::is_same_v<std::iter_value_t<InputIt>, char>>>
   constexpr StringRef(InputIt first, InputIt last)
-      : base(std::to_address(first)), len(std::distance(first, last)) {}
+    : base(std::to_address(first)), len(std::distance(first, last)) {}
   constexpr StringRef(std::span<const char> s)
-      : base(s.data()), len(s.size_bytes()) {}
+    : base(s.data()), len(s.size_bytes()) {}
   explicit StringRef(std::span<const uint8_t> s)
-      : base(reinterpret_cast<const char *>(s.data())), len(s.size_bytes()) {}
+    : base(reinterpret_cast<const char *>(s.data())), len(s.size_bytes()) {}
   static constexpr StringRef from_maybe_nullptr(const char *s) noexcept {
     if (s == nullptr) {
       return StringRef();
@@ -472,15 +472,14 @@ constexpr StringRef operator""_sr(const char *str, size_t len) noexcept {
 }
 
 template <typename T, std::size_t N>
-[[nodiscard]] std::span<const uint8_t, N == std::dynamic_extent
-                                           ? std::dynamic_extent
-                                           : N * sizeof(T)>
+[[nodiscard]] std::span<
+  const uint8_t, N == std::dynamic_extent ? std::dynamic_extent : N * sizeof(T)>
 as_uint8_span(std::span<T, N> s) noexcept {
   return std::span < const uint8_t,
          N == std::dynamic_extent
-             ? std::dynamic_extent
-             : N * sizeof(T) > {reinterpret_cast<const uint8_t *>(s.data()),
-                                s.size_bytes()};
+           ? std::dynamic_extent
+           : N * sizeof(T) >
+               {reinterpret_cast<const uint8_t *>(s.data()), s.size_bytes()};
 }
 
 inline int run_app(std::function<int(int, char **)> app, int argc,

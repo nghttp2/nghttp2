@@ -178,7 +178,7 @@ struct DownstreamAddrEntryGreater {
 struct WeightGroup {
   std::priority_queue<DownstreamAddrEntry, std::vector<DownstreamAddrEntry>,
                       DownstreamAddrEntryGreater>
-      pq;
+    pq;
   size_t seq;
   uint32_t weight;
   uint32_t cycle;
@@ -206,11 +206,11 @@ struct WeightGroupEntryGreater {
 
 struct SharedDownstreamAddr {
   SharedDownstreamAddr()
-      : balloc(1024, 1024),
-        affinity{SessionAffinity::NONE},
-        redirect_if_not_tls{false},
-        dnf{false},
-        timeout{} {}
+    : balloc(1024, 1024),
+      affinity{SessionAffinity::NONE},
+      redirect_if_not_tls{false},
+      dnf{false},
+      timeout{} {}
 
   SharedDownstreamAddr(const SharedDownstreamAddr &) = delete;
   SharedDownstreamAddr(SharedDownstreamAddr &&) = delete;
@@ -222,7 +222,7 @@ struct SharedDownstreamAddr {
   std::vector<WeightGroup> wgs;
   std::priority_queue<WeightGroupEntry, std::vector<WeightGroupEntry>,
                       WeightGroupEntryGreater>
-      pq;
+    pq;
   // Bunch of session affinity hash.  Only used if affinity ==
   // SessionAffinity::IP.
   std::vector<AffinityHash> affinity_hash;
@@ -274,11 +274,11 @@ struct QUICPacket {
   QUICPacket(size_t upstream_addr_index, const Address &remote_addr,
              const Address &local_addr, const ngtcp2_pkt_info &pi,
              std::span<const uint8_t> data)
-      : upstream_addr_index{upstream_addr_index},
-        remote_addr{remote_addr},
-        local_addr{local_addr},
-        pi{pi},
-        data{std::begin(data), std::end(data)} {}
+    : upstream_addr_index{upstream_addr_index},
+      remote_addr{remote_addr},
+      local_addr{local_addr},
+      pi{pi},
+      data{std::begin(data), std::end(data)} {}
   QUICPacket() : upstream_addr_index{}, remote_addr{}, local_addr{}, pi{} {}
   size_t upstream_addr_index;
   Address remote_addr;
@@ -468,10 +468,10 @@ private:
 // group.  The catch-all group index is given in |catch_all|.  All
 // patterns are given in |groups|.
 size_t match_downstream_addr_group(
-    const RouterConfig &routerconfig, const StringRef &hostport,
-    const StringRef &path,
-    const std::vector<std::shared_ptr<DownstreamAddrGroup>> &groups,
-    size_t catch_all, BlockAllocator &balloc);
+  const RouterConfig &routerconfig, const StringRef &hostport,
+  const StringRef &path,
+  const std::vector<std::shared_ptr<DownstreamAddrGroup>> &groups,
+  size_t catch_all, BlockAllocator &balloc);
 
 // Calls this function if connecting to backend failed.  |raddr| is
 // the actual address used to connect to backend, and it could be

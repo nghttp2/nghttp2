@@ -64,11 +64,11 @@ constexpr StringRef SEVERITY_STR[] = {"INFO"_sr, "NOTICE"_sr, "WARN"_sr,
 
 namespace {
 constexpr const char *SEVERITY_COLOR[] = {
-    "\033[1;32m", // INFO
-    "\033[1;36m", // NOTICE
-    "\033[1;33m", // WARN
-    "\033[1;31m", // ERROR
-    "\033[1;35m", // FATAL
+  "\033[1;32m", // INFO
+  "\033[1;36m", // NOTICE
+  "\033[1;33m", // WARN
+  "\033[1;31m", // ERROR
+  "\033[1;35m", // FATAL
 };
 } // namespace
 
@@ -141,15 +141,15 @@ int severity_to_syslog_level(int severity) {
 }
 
 Log::Log(int severity, const char *filename, int linenum)
-    : buf_(*get_logbuf()),
-      begin_(buf_.data()),
-      end_(begin_ + buf_.size()),
-      last_(begin_),
-      filename_(filename),
-      flags_(0),
-      severity_(severity),
-      linenum_(linenum),
-      full_(false) {}
+  : buf_(*get_logbuf()),
+    begin_(buf_.data()),
+    end_(begin_ + buf_.size()),
+    last_(begin_),
+    filename_(filename),
+    flags_(0),
+    severity_(severity),
+    linenum_(linenum),
+    full_(false) {}
 
 Log::~Log() {
   int rv;
@@ -360,7 +360,7 @@ std::pair<OutputIterator, OutputIterator> copy(const char *src, size_t srclen,
                                                OutputIterator d_first,
                                                OutputIterator d_last) {
   auto nwrite =
-      std::min(static_cast<size_t>(std::distance(d_first, d_last)), srclen);
+    std::min(static_cast<size_t>(std::distance(d_first, d_last)), srclen);
   return std::make_pair(std::copy_n(src, nwrite, d_first), d_last);
 }
 } // namespace
@@ -410,9 +410,9 @@ template <typename OutputIterator>
 std::pair<OutputIterator, OutputIterator>
 copy_hex_low(const uint8_t *src, size_t srclen, OutputIterator d_first,
              OutputIterator d_last) {
-  auto nwrite = std::min(static_cast<size_t>(std::distance(d_first, d_last)),
-                         srclen * 2) /
-                2;
+  auto nwrite =
+    std::min(static_cast<size_t>(std::distance(d_first, d_last)), srclen * 2) /
+    2;
   for (size_t i = 0; i < nwrite; ++i) {
     *d_first++ = LOWER_XDIGITS[src[i] >> 4];
     *d_first++ = LOWER_XDIGITS[src[i] & 0xf];
@@ -437,58 +437,58 @@ namespace {
 // 1 means that character must be escaped as "\xNN", where NN is ascii
 // code of the character in hex notation.
 constexpr uint8_t ESCAPE_TBL[] = {
-    1 /* NUL  */, 1 /* SOH  */, 1 /* STX  */, 1 /* ETX  */, 1 /* EOT  */,
-    1 /* ENQ  */, 1 /* ACK  */, 1 /* BEL  */, 1 /* BS   */, 1 /* HT   */,
-    1 /* LF   */, 1 /* VT   */, 1 /* FF   */, 1 /* CR   */, 1 /* SO   */,
-    1 /* SI   */, 1 /* DLE  */, 1 /* DC1  */, 1 /* DC2  */, 1 /* DC3  */,
-    1 /* DC4  */, 1 /* NAK  */, 1 /* SYN  */, 1 /* ETB  */, 1 /* CAN  */,
-    1 /* EM   */, 1 /* SUB  */, 1 /* ESC  */, 1 /* FS   */, 1 /* GS   */,
-    1 /* RS   */, 1 /* US   */, 0 /* SPC  */, 0 /* !    */, 1 /* "    */,
-    0 /* #    */, 0 /* $    */, 0 /* %    */, 0 /* &    */, 0 /* '    */,
-    0 /* (    */, 0 /* )    */, 0 /* *    */, 0 /* +    */, 0 /* ,    */,
-    0 /* -    */, 0 /* .    */, 0 /* /    */, 0 /* 0    */, 0 /* 1    */,
-    0 /* 2    */, 0 /* 3    */, 0 /* 4    */, 0 /* 5    */, 0 /* 6    */,
-    0 /* 7    */, 0 /* 8    */, 0 /* 9    */, 0 /* :    */, 0 /* ;    */,
-    0 /* <    */, 0 /* =    */, 0 /* >    */, 0 /* ?    */, 0 /* @    */,
-    0 /* A    */, 0 /* B    */, 0 /* C    */, 0 /* D    */, 0 /* E    */,
-    0 /* F    */, 0 /* G    */, 0 /* H    */, 0 /* I    */, 0 /* J    */,
-    0 /* K    */, 0 /* L    */, 0 /* M    */, 0 /* N    */, 0 /* O    */,
-    0 /* P    */, 0 /* Q    */, 0 /* R    */, 0 /* S    */, 0 /* T    */,
-    0 /* U    */, 0 /* V    */, 0 /* W    */, 0 /* X    */, 0 /* Y    */,
-    0 /* Z    */, 0 /* [    */, 1 /* \    */, 0 /* ]    */, 0 /* ^    */,
-    0 /* _    */, 0 /* `    */, 0 /* a    */, 0 /* b    */, 0 /* c    */,
-    0 /* d    */, 0 /* e    */, 0 /* f    */, 0 /* g    */, 0 /* h    */,
-    0 /* i    */, 0 /* j    */, 0 /* k    */, 0 /* l    */, 0 /* m    */,
-    0 /* n    */, 0 /* o    */, 0 /* p    */, 0 /* q    */, 0 /* r    */,
-    0 /* s    */, 0 /* t    */, 0 /* u    */, 0 /* v    */, 0 /* w    */,
-    0 /* x    */, 0 /* y    */, 0 /* z    */, 0 /* {    */, 0 /* |    */,
-    0 /* }    */, 0 /* ~    */, 1 /* DEL  */, 1 /* 0x80 */, 1 /* 0x81 */,
-    1 /* 0x82 */, 1 /* 0x83 */, 1 /* 0x84 */, 1 /* 0x85 */, 1 /* 0x86 */,
-    1 /* 0x87 */, 1 /* 0x88 */, 1 /* 0x89 */, 1 /* 0x8a */, 1 /* 0x8b */,
-    1 /* 0x8c */, 1 /* 0x8d */, 1 /* 0x8e */, 1 /* 0x8f */, 1 /* 0x90 */,
-    1 /* 0x91 */, 1 /* 0x92 */, 1 /* 0x93 */, 1 /* 0x94 */, 1 /* 0x95 */,
-    1 /* 0x96 */, 1 /* 0x97 */, 1 /* 0x98 */, 1 /* 0x99 */, 1 /* 0x9a */,
-    1 /* 0x9b */, 1 /* 0x9c */, 1 /* 0x9d */, 1 /* 0x9e */, 1 /* 0x9f */,
-    1 /* 0xa0 */, 1 /* 0xa1 */, 1 /* 0xa2 */, 1 /* 0xa3 */, 1 /* 0xa4 */,
-    1 /* 0xa5 */, 1 /* 0xa6 */, 1 /* 0xa7 */, 1 /* 0xa8 */, 1 /* 0xa9 */,
-    1 /* 0xaa */, 1 /* 0xab */, 1 /* 0xac */, 1 /* 0xad */, 1 /* 0xae */,
-    1 /* 0xaf */, 1 /* 0xb0 */, 1 /* 0xb1 */, 1 /* 0xb2 */, 1 /* 0xb3 */,
-    1 /* 0xb4 */, 1 /* 0xb5 */, 1 /* 0xb6 */, 1 /* 0xb7 */, 1 /* 0xb8 */,
-    1 /* 0xb9 */, 1 /* 0xba */, 1 /* 0xbb */, 1 /* 0xbc */, 1 /* 0xbd */,
-    1 /* 0xbe */, 1 /* 0xbf */, 1 /* 0xc0 */, 1 /* 0xc1 */, 1 /* 0xc2 */,
-    1 /* 0xc3 */, 1 /* 0xc4 */, 1 /* 0xc5 */, 1 /* 0xc6 */, 1 /* 0xc7 */,
-    1 /* 0xc8 */, 1 /* 0xc9 */, 1 /* 0xca */, 1 /* 0xcb */, 1 /* 0xcc */,
-    1 /* 0xcd */, 1 /* 0xce */, 1 /* 0xcf */, 1 /* 0xd0 */, 1 /* 0xd1 */,
-    1 /* 0xd2 */, 1 /* 0xd3 */, 1 /* 0xd4 */, 1 /* 0xd5 */, 1 /* 0xd6 */,
-    1 /* 0xd7 */, 1 /* 0xd8 */, 1 /* 0xd9 */, 1 /* 0xda */, 1 /* 0xdb */,
-    1 /* 0xdc */, 1 /* 0xdd */, 1 /* 0xde */, 1 /* 0xdf */, 1 /* 0xe0 */,
-    1 /* 0xe1 */, 1 /* 0xe2 */, 1 /* 0xe3 */, 1 /* 0xe4 */, 1 /* 0xe5 */,
-    1 /* 0xe6 */, 1 /* 0xe7 */, 1 /* 0xe8 */, 1 /* 0xe9 */, 1 /* 0xea */,
-    1 /* 0xeb */, 1 /* 0xec */, 1 /* 0xed */, 1 /* 0xee */, 1 /* 0xef */,
-    1 /* 0xf0 */, 1 /* 0xf1 */, 1 /* 0xf2 */, 1 /* 0xf3 */, 1 /* 0xf4 */,
-    1 /* 0xf5 */, 1 /* 0xf6 */, 1 /* 0xf7 */, 1 /* 0xf8 */, 1 /* 0xf9 */,
-    1 /* 0xfa */, 1 /* 0xfb */, 1 /* 0xfc */, 1 /* 0xfd */, 1 /* 0xfe */,
-    1 /* 0xff */,
+  1 /* NUL  */, 1 /* SOH  */, 1 /* STX  */, 1 /* ETX  */, 1 /* EOT  */,
+  1 /* ENQ  */, 1 /* ACK  */, 1 /* BEL  */, 1 /* BS   */, 1 /* HT   */,
+  1 /* LF   */, 1 /* VT   */, 1 /* FF   */, 1 /* CR   */, 1 /* SO   */,
+  1 /* SI   */, 1 /* DLE  */, 1 /* DC1  */, 1 /* DC2  */, 1 /* DC3  */,
+  1 /* DC4  */, 1 /* NAK  */, 1 /* SYN  */, 1 /* ETB  */, 1 /* CAN  */,
+  1 /* EM   */, 1 /* SUB  */, 1 /* ESC  */, 1 /* FS   */, 1 /* GS   */,
+  1 /* RS   */, 1 /* US   */, 0 /* SPC  */, 0 /* !    */, 1 /* "    */,
+  0 /* #    */, 0 /* $    */, 0 /* %    */, 0 /* &    */, 0 /* '    */,
+  0 /* (    */, 0 /* )    */, 0 /* *    */, 0 /* +    */, 0 /* ,    */,
+  0 /* -    */, 0 /* .    */, 0 /* /    */, 0 /* 0    */, 0 /* 1    */,
+  0 /* 2    */, 0 /* 3    */, 0 /* 4    */, 0 /* 5    */, 0 /* 6    */,
+  0 /* 7    */, 0 /* 8    */, 0 /* 9    */, 0 /* :    */, 0 /* ;    */,
+  0 /* <    */, 0 /* =    */, 0 /* >    */, 0 /* ?    */, 0 /* @    */,
+  0 /* A    */, 0 /* B    */, 0 /* C    */, 0 /* D    */, 0 /* E    */,
+  0 /* F    */, 0 /* G    */, 0 /* H    */, 0 /* I    */, 0 /* J    */,
+  0 /* K    */, 0 /* L    */, 0 /* M    */, 0 /* N    */, 0 /* O    */,
+  0 /* P    */, 0 /* Q    */, 0 /* R    */, 0 /* S    */, 0 /* T    */,
+  0 /* U    */, 0 /* V    */, 0 /* W    */, 0 /* X    */, 0 /* Y    */,
+  0 /* Z    */, 0 /* [    */, 1 /* \    */, 0 /* ]    */, 0 /* ^    */,
+  0 /* _    */, 0 /* `    */, 0 /* a    */, 0 /* b    */, 0 /* c    */,
+  0 /* d    */, 0 /* e    */, 0 /* f    */, 0 /* g    */, 0 /* h    */,
+  0 /* i    */, 0 /* j    */, 0 /* k    */, 0 /* l    */, 0 /* m    */,
+  0 /* n    */, 0 /* o    */, 0 /* p    */, 0 /* q    */, 0 /* r    */,
+  0 /* s    */, 0 /* t    */, 0 /* u    */, 0 /* v    */, 0 /* w    */,
+  0 /* x    */, 0 /* y    */, 0 /* z    */, 0 /* {    */, 0 /* |    */,
+  0 /* }    */, 0 /* ~    */, 1 /* DEL  */, 1 /* 0x80 */, 1 /* 0x81 */,
+  1 /* 0x82 */, 1 /* 0x83 */, 1 /* 0x84 */, 1 /* 0x85 */, 1 /* 0x86 */,
+  1 /* 0x87 */, 1 /* 0x88 */, 1 /* 0x89 */, 1 /* 0x8a */, 1 /* 0x8b */,
+  1 /* 0x8c */, 1 /* 0x8d */, 1 /* 0x8e */, 1 /* 0x8f */, 1 /* 0x90 */,
+  1 /* 0x91 */, 1 /* 0x92 */, 1 /* 0x93 */, 1 /* 0x94 */, 1 /* 0x95 */,
+  1 /* 0x96 */, 1 /* 0x97 */, 1 /* 0x98 */, 1 /* 0x99 */, 1 /* 0x9a */,
+  1 /* 0x9b */, 1 /* 0x9c */, 1 /* 0x9d */, 1 /* 0x9e */, 1 /* 0x9f */,
+  1 /* 0xa0 */, 1 /* 0xa1 */, 1 /* 0xa2 */, 1 /* 0xa3 */, 1 /* 0xa4 */,
+  1 /* 0xa5 */, 1 /* 0xa6 */, 1 /* 0xa7 */, 1 /* 0xa8 */, 1 /* 0xa9 */,
+  1 /* 0xaa */, 1 /* 0xab */, 1 /* 0xac */, 1 /* 0xad */, 1 /* 0xae */,
+  1 /* 0xaf */, 1 /* 0xb0 */, 1 /* 0xb1 */, 1 /* 0xb2 */, 1 /* 0xb3 */,
+  1 /* 0xb4 */, 1 /* 0xb5 */, 1 /* 0xb6 */, 1 /* 0xb7 */, 1 /* 0xb8 */,
+  1 /* 0xb9 */, 1 /* 0xba */, 1 /* 0xbb */, 1 /* 0xbc */, 1 /* 0xbd */,
+  1 /* 0xbe */, 1 /* 0xbf */, 1 /* 0xc0 */, 1 /* 0xc1 */, 1 /* 0xc2 */,
+  1 /* 0xc3 */, 1 /* 0xc4 */, 1 /* 0xc5 */, 1 /* 0xc6 */, 1 /* 0xc7 */,
+  1 /* 0xc8 */, 1 /* 0xc9 */, 1 /* 0xca */, 1 /* 0xcb */, 1 /* 0xcc */,
+  1 /* 0xcd */, 1 /* 0xce */, 1 /* 0xcf */, 1 /* 0xd0 */, 1 /* 0xd1 */,
+  1 /* 0xd2 */, 1 /* 0xd3 */, 1 /* 0xd4 */, 1 /* 0xd5 */, 1 /* 0xd6 */,
+  1 /* 0xd7 */, 1 /* 0xd8 */, 1 /* 0xd9 */, 1 /* 0xda */, 1 /* 0xdb */,
+  1 /* 0xdc */, 1 /* 0xdd */, 1 /* 0xde */, 1 /* 0xdf */, 1 /* 0xe0 */,
+  1 /* 0xe1 */, 1 /* 0xe2 */, 1 /* 0xe3 */, 1 /* 0xe4 */, 1 /* 0xe5 */,
+  1 /* 0xe6 */, 1 /* 0xe7 */, 1 /* 0xe8 */, 1 /* 0xe9 */, 1 /* 0xea */,
+  1 /* 0xeb */, 1 /* 0xec */, 1 /* 0xed */, 1 /* 0xee */, 1 /* 0xef */,
+  1 /* 0xf0 */, 1 /* 0xf1 */, 1 /* 0xf2 */, 1 /* 0xf3 */, 1 /* 0xf4 */,
+  1 /* 0xf5 */, 1 /* 0xf6 */, 1 /* 0xf7 */, 1 /* 0xf8 */, 1 /* 0xf9 */,
+  1 /* 0xfa */, 1 /* 0xfb */, 1 /* 0xfc */, 1 /* 0xfd */, 1 /* 0xfe */,
+  1 /* 0xff */,
 };
 } // namespace
 
@@ -505,7 +505,7 @@ copy_escape(const char *src, size_t srclen, OutputIterator d_first,
     }
 
     auto n =
-        std::min(std::distance(d_first, d_last), std::distance(safe_first, p));
+      std::min(std::distance(d_first, d_last), std::distance(safe_first, p));
     d_first = std::copy_n(safe_first, n, d_first);
     if (std::distance(d_first, d_last) < 4) {
       return std::make_pair(d_first, d_last);
@@ -591,17 +591,17 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
 
   auto downstream_addr = downstream->get_addr();
   auto method =
-      req.method == -1 ? "<unknown>"_sr : http2::to_method_string(req.method);
+    req.method == -1 ? "<unknown>"_sr : http2::to_method_string(req.method);
   auto path = req.method == HTTP_CONNECT ? req.authority
               : config->http2_proxy
-                  ? construct_absolute_request_uri(balloc, req)
+                ? construct_absolute_request_uri(balloc, req)
               : req.path.empty() ? req.method == HTTP_OPTIONS ? "*"_sr : "-"_sr
                                  : req.path;
   auto path_without_query =
-      req.method == HTTP_CONNECT
-          ? path
-          : StringRef{std::begin(path),
-                      std::find(std::begin(path), std::end(path), '?')};
+    req.method == HTTP_CONNECT
+      ? path
+      : StringRef{std::begin(path),
+                  std::find(std::begin(path), std::end(path), '?')};
 
   auto p = std::begin(buf);
   auto last = std::end(buf) - 2;
@@ -682,8 +682,8 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
       break;
     case LogFragmentType::REQUEST_TIME: {
       auto t = std::chrono::duration_cast<std::chrono::milliseconds>(
-                   lgsp.request_end_time - downstream->get_request_start_time())
-                   .count();
+                 lgsp.request_end_time - downstream->get_request_start_time())
+                 .count();
       std::tie(p, last) = copy(t / 1000, p, last);
       std::tie(p, last) = copy('.', p, last);
       auto frac = t % 1000;
@@ -713,7 +713,7 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
         break;
       }
       std::tie(p, last) =
-          copy(nghttp2::tls::get_tls_protocol(lgsp.ssl), p, last);
+        copy(nghttp2::tls::get_tls_protocol(lgsp.ssl), p, last);
       break;
     case LogFragmentType::TLS_SESSION_ID: {
       auto session = SSL_get_session(lgsp.ssl);
@@ -736,7 +736,7 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
         break;
       }
       std::tie(p, last) =
-          copy(SSL_session_reused(lgsp.ssl) ? 'r' : '.', p, last);
+        copy(SSL_session_reused(lgsp.ssl) ? 'r' : '.', p, last);
       break;
     case LogFragmentType::TLS_SNI:
       if (lgsp.sni.empty()) {
@@ -762,10 +762,9 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
       }
       std::array<uint8_t, 32> buf;
       auto len = tls::get_x509_fingerprint(
-          buf.data(), buf.size(), x,
-          lf.type == LogFragmentType::TLS_CLIENT_FINGERPRINT_SHA256
-              ? EVP_sha256()
-              : EVP_sha1());
+        buf.data(), buf.size(), x,
+        lf.type == LogFragmentType::TLS_CLIENT_FINGERPRINT_SHA256 ? EVP_sha256()
+                                                                  : EVP_sha1());
 #if !OPENSSL_3_0_0_API
       X509_free(x);
 #endif // !OPENSSL_3_0_0_API
@@ -792,8 +791,8 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
         break;
       }
       auto name = lf.type == LogFragmentType::TLS_CLIENT_ISSUER_NAME
-                      ? tls::get_x509_issuer_name(balloc, x)
-                      : tls::get_x509_subject_name(balloc, x);
+                    ? tls::get_x509_issuer_name(balloc, x)
+                    : tls::get_x509_subject_name(balloc, x);
 #if !OPENSSL_3_0_0_API
       X509_free(x);
 #endif // !OPENSSL_3_0_0_API
@@ -905,7 +904,7 @@ int reopen_log_files(const LoggingConfig &loggingconf) {
   lgconf->accesslog_fd = new_accesslog_fd;
   lgconf->errorlog_fd = new_errorlog_fd;
   lgconf->errorlog_tty =
-      (new_errorlog_fd == -1) ? false : isatty(new_errorlog_fd);
+    (new_errorlog_fd == -1) ? false : isatty(new_errorlog_fd);
 
   return res;
 }
@@ -968,7 +967,6 @@ void close_log_file(int &fd) {
 }
 
 int open_log_file(const char *path) {
-
   if (strcmp(path, "/dev/stdout") == 0 ||
       strcmp(path, "/proc/self/fd/1") == 0) {
     return STDOUT_COPY;
@@ -985,7 +983,7 @@ int open_log_file(const char *path) {
 #else // !O_CLOEXEC
 
   auto fd =
-      open(path, O_WRONLY | O_APPEND | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP);
+    open(path, O_WRONLY | O_APPEND | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP);
 
   // We get race condition if execve is called at the same time.
   if (fd != -1) {

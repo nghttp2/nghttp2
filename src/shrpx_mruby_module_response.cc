@@ -121,9 +121,8 @@ mrb_value response_mod_header(mrb_state *mrb, mrb_value self, bool repl) {
 
   key = mrb_funcall(mrb, key, "downcase", 0);
 
-  auto keyref =
-      make_string_ref(balloc, StringRef{RSTRING_PTR(key),
-                                        static_cast<size_t>(RSTRING_LEN(key))});
+  auto keyref = make_string_ref(
+    balloc, StringRef{RSTRING_PTR(key), static_cast<size_t>(RSTRING_LEN(key))});
 
   mrb_gc_arena_restore(mrb, ai);
 
@@ -154,19 +153,19 @@ mrb_value response_mod_header(mrb_state *mrb, mrb_value self, bool repl) {
       }
 
       resp.fs.add_header_token(
-          keyref,
-          make_string_ref(balloc,
-                          StringRef{RSTRING_PTR(value),
-                                    static_cast<size_t>(RSTRING_LEN(value))}),
-          false, token);
+        keyref,
+        make_string_ref(balloc,
+                        StringRef{RSTRING_PTR(value),
+                                  static_cast<size_t>(RSTRING_LEN(value))}),
+        false, token);
     }
   } else if (mrb_string_p(values)) {
     resp.fs.add_header_token(
-        keyref,
-        make_string_ref(balloc,
-                        StringRef{RSTRING_PTR(values),
-                                  static_cast<size_t>(RSTRING_LEN(values))}),
-        false, token);
+      keyref,
+      make_string_ref(balloc,
+                      StringRef{RSTRING_PTR(values),
+                                static_cast<size_t>(RSTRING_LEN(values))}),
+      false, token);
   } else {
     mrb_raise(mrb, E_RUNTIME_ERROR, "value must be string");
   }
@@ -313,9 +312,9 @@ mrb_value response_send_info(mrb_state *mrb, mrb_value self) {
 
     key = mrb_funcall(mrb, key, "downcase", 0);
 
-    auto keyref = make_string_ref(
-        balloc,
-        StringRef{RSTRING_PTR(key), static_cast<size_t>(RSTRING_LEN(key))});
+    auto keyref =
+      make_string_ref(balloc, StringRef{RSTRING_PTR(key),
+                                        static_cast<size_t>(RSTRING_LEN(key))});
 
     mrb_gc_arena_restore(mrb, ai);
 
@@ -330,19 +329,19 @@ mrb_value response_send_info(mrb_state *mrb, mrb_value self) {
         }
 
         resp.fs.add_header_token(
-            keyref,
-            make_string_ref(balloc,
-                            StringRef{RSTRING_PTR(value),
-                                      static_cast<size_t>(RSTRING_LEN(value))}),
-            false, token);
+          keyref,
+          make_string_ref(balloc,
+                          StringRef{RSTRING_PTR(value),
+                                    static_cast<size_t>(RSTRING_LEN(value))}),
+          false, token);
       }
     } else if (mrb_string_p(values)) {
       resp.fs.add_header_token(
-          keyref,
-          make_string_ref(balloc,
-                          StringRef{RSTRING_PTR(values),
-                                    static_cast<size_t>(RSTRING_LEN(values))}),
-          false, token);
+        keyref,
+        make_string_ref(balloc,
+                        StringRef{RSTRING_PTR(values),
+                                  static_cast<size_t>(RSTRING_LEN(values))}),
+        false, token);
     } else {
       mrb_raise(mrb, E_RUNTIME_ERROR, "value must be string");
     }
@@ -367,7 +366,7 @@ mrb_value response_send_info(mrb_state *mrb, mrb_value self) {
 
 void init_response_class(mrb_state *mrb, RClass *module) {
   auto response_class =
-      mrb_define_class_under(mrb, module, "Response", mrb->object_class);
+    mrb_define_class_under(mrb, module, "Response", mrb->object_class);
 
   mrb_define_method(mrb, response_class, "initialize", response_init,
                     MRB_ARGS_NONE());

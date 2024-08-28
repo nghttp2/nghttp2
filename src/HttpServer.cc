@@ -100,29 +100,29 @@ void print_session_id(int64_t id) { std::cout << "[id=" << id << "] "; }
 } // namespace
 
 Config::Config()
-    : mime_types_file("/etc/mime.types"),
-      stream_read_timeout(1_min),
-      stream_write_timeout(1_min),
-      data_ptr(nullptr),
-      padding(0),
-      num_worker(1),
-      max_concurrent_streams(100),
-      header_table_size(-1),
-      encoder_header_table_size(-1),
-      window_bits(-1),
-      connection_window_bits(-1),
-      port(0),
-      verbose(false),
-      daemon(false),
-      verify_client(false),
-      no_tls(false),
-      error_gzip(false),
-      early_response(false),
-      hexdump(false),
-      echo_upload(false),
-      no_content_length(false),
-      ktls(false),
-      no_rfc7540_pri(false) {}
+  : mime_types_file("/etc/mime.types"),
+    stream_read_timeout(1_min),
+    stream_write_timeout(1_min),
+    data_ptr(nullptr),
+    padding(0),
+    num_worker(1),
+    max_concurrent_streams(100),
+    header_table_size(-1),
+    encoder_header_table_size(-1),
+    window_bits(-1),
+    connection_window_bits(-1),
+    port(0),
+    verbose(false),
+    daemon(false),
+    verify_client(false),
+    no_tls(false),
+    error_gzip(false),
+    early_response(false),
+    hexdump(false),
+    echo_upload(false),
+    no_content_length(false),
+    ktls(false),
+    no_rfc7540_pri(false) {}
 
 Config::~Config() {}
 
@@ -210,7 +210,7 @@ constexpr size_t FILE_ENTRY_EVICT_THRES = 2048;
 
 namespace {
 bool need_validation_file_entry(
-    const FileEntry *ent, const std::chrono::steady_clock::time_point &now) {
+  const FileEntry *ent, const std::chrono::steady_clock::time_point &now) {
   return ent->last_valid + FILE_ENTRY_MAX_AGE < now;
 }
 } // namespace
@@ -243,15 +243,15 @@ class Sessions {
 public:
   Sessions(HttpServer *sv, struct ev_loop *loop, const Config *config,
            SSL_CTX *ssl_ctx)
-      : sv_(sv),
-        loop_(loop),
-        config_(config),
-        ssl_ctx_(ssl_ctx),
-        callbacks_(nullptr),
-        option_(nullptr),
-        next_session_id_(1),
-        tstamp_cached_(ev_now(loop)),
-        cached_date_(util::http_date(tstamp_cached_)) {
+    : sv_(sv),
+      loop_(loop),
+      config_(config),
+      ssl_ctx_(ssl_ctx),
+      callbacks_(nullptr),
+      option_(nullptr),
+      next_session_id_(1),
+      tstamp_cached_(ev_now(loop)),
+      cached_date_(util::http_date(tstamp_cached_)) {
     nghttp2_session_callbacks_new(&callbacks_);
 
     fill_callback(callbacks_, config_);
@@ -260,7 +260,7 @@ public:
 
     if (config_->encoder_header_table_size != -1) {
       nghttp2_option_set_max_deflate_dynamic_table_size(
-          option_, config_->encoder_header_table_size);
+        option_, config_->encoder_header_table_size);
     }
 
     ev_timer_init(&release_fd_timer_, release_fd_cb, 0., RELEASE_FD_TIMEOUT);
@@ -319,7 +319,7 @@ public:
       }
     }
     auto handler =
-        std::make_unique<Http2Handler>(this, fd, ssl, get_next_session_id());
+      std::make_unique<Http2Handler>(this, fd, ssl, get_next_session_id());
     if (!ssl) {
       if (handler->connection_made() != 0) {
         return;
@@ -375,8 +375,8 @@ public:
     auto rv = fd_cache_.emplace(path, std::make_unique<FileEntry>(ent));
 #else  // !HAVE_STD_MAP_EMPLACE
     // for gcc-4.7
-    auto rv = fd_cache_.insert(
-        std::make_pair(path, std::make_unique<FileEntry>(ent)));
+    auto rv =
+      fd_cache_.insert(std::make_pair(path, std::make_unique<FileEntry>(ent)));
 #endif // !HAVE_STD_MAP_EMPLACE
     auto &res = (*rv).second;
     res->it = rv;
@@ -455,15 +455,15 @@ void release_fd_cb(struct ev_loop *loop, ev_timer *w, int revents) {
 } // namespace
 
 Stream::Stream(Http2Handler *handler, int32_t stream_id)
-    : balloc(1024, 1024),
-      header{},
-      handler(handler),
-      file_ent(nullptr),
-      body_length(0),
-      body_offset(0),
-      header_buffer_size(0),
-      stream_id(stream_id),
-      echo_upload(false) {
+  : balloc(1024, 1024),
+    header{},
+    handler(handler),
+    file_ent(nullptr),
+    body_length(0),
+    body_offset(0),
+    header_buffer_size(0),
+    stream_id(stream_id),
+    echo_upload(false) {
   auto config = handler->get_config();
   ev_timer_init(&rtimer, stream_timeout_cb, 0., config->stream_read_timeout);
   ev_timer_init(&wtimer, stream_timeout_cb, 0., config->stream_write_timeout);
@@ -539,13 +539,13 @@ void writecb(struct ev_loop *loop, ev_io *w, int revents) {
 
 Http2Handler::Http2Handler(Sessions *sessions, int fd, SSL *ssl,
                            int64_t session_id)
-    : session_id_(session_id),
-      session_(nullptr),
-      sessions_(sessions),
-      ssl_(ssl),
-      data_pending_(nullptr),
-      data_pendinglen_(0),
-      fd_(fd) {
+  : session_id_(session_id),
+    session_(nullptr),
+    sessions_(sessions),
+    ssl_(ssl),
+    data_pending_(nullptr),
+    data_pendinglen_(0),
+    fd_(fd) {
   ev_timer_init(&settings_timerev_, settings_timeout_cb, 10., 0.);
   ev_io_init(&wev_, writecb, fd, EV_WRITE);
   ev_io_init(&rev_, readcb, fd, EV_READ);
@@ -889,8 +889,8 @@ int Http2Handler::connection_made() {
 
   if (config->connection_window_bits != -1) {
     r = nghttp2_session_set_local_window_size(
-        session_, NGHTTP2_FLAG_NONE, 0,
-        (1 << config->connection_window_bits) - 1);
+      session_, NGHTTP2_FLAG_NONE, 0,
+      (1 << config->connection_window_bits) - 1);
     if (r != 0) {
       return r;
     }
@@ -931,20 +931,20 @@ int Http2Handler::submit_file_response(const StringRef &status, Stream *stream,
                                        nghttp2_data_provider2 *data_prd) {
   std::string last_modified_str;
   auto nva = std::to_array({
-      http2::make_field(":status"_sr, status),
-      http2::make_field("server"_sr, NGHTTPD_SERVER),
-      http2::make_field("cache-control"_sr, "max-age=3600"_sr),
-      http2::make_field_v("date"_sr, sessions_->get_cached_date()),
-      {},
-      {},
-      {},
-      {},
+    http2::make_field(":status"_sr, status),
+    http2::make_field("server"_sr, NGHTTPD_SERVER),
+    http2::make_field("cache-control"_sr, "max-age=3600"_sr),
+    http2::make_field_v("date"_sr, sessions_->get_cached_date()),
+    {},
+    {},
+    {},
+    {},
   });
   size_t nvlen = 4;
   if (!get_config()->no_content_length) {
     nva[nvlen++] = http2::make_field(
-        "content-length"_sr,
-        util::make_string_ref_uint(stream->balloc, file_length));
+      "content-length"_sr,
+      util::make_string_ref_uint(stream->balloc, file_length));
   }
   if (last_modified != 0) {
     last_modified_str = util::http_date(last_modified);
@@ -979,7 +979,7 @@ int Http2Handler::submit_response(const StringRef &status, int32_t stream_id,
 
   for (auto &nv : headers) {
     nva.push_back(
-        http2::make_field(nv.name, nv.value, http2::no_index(nv.no_index)));
+      http2::make_field(nv.name, nv.value, http2::no_index(nv.no_index)));
   }
   int r = nghttp2_submit_response2(session_, stream_id, nva.data(), nva.size(),
                                    data_prd);
@@ -989,10 +989,10 @@ int Http2Handler::submit_response(const StringRef &status, int32_t stream_id,
 int Http2Handler::submit_response(const StringRef &status, int32_t stream_id,
                                   nghttp2_data_provider2 *data_prd) {
   auto nva = std::to_array({
-      http2::make_field(":status"_sr, status),
-      http2::make_field("server"_sr, NGHTTPD_SERVER),
-      http2::make_field_v("date"_sr, sessions_->get_cached_date()),
-      {},
+    http2::make_field(":status"_sr, status),
+    http2::make_field("server"_sr, NGHTTPD_SERVER),
+    http2::make_field_v("date"_sr, sessions_->get_cached_date()),
+    {},
   });
   size_t nvlen = 3;
 
@@ -1030,8 +1030,8 @@ int Http2Handler::submit_push_promise(Stream *stream,
                             http2::make_field(":authority"_sr, authority)});
 
   auto promised_stream_id = nghttp2_submit_push_promise(
-      session_, NGHTTP2_FLAG_END_HEADERS, stream->stream_id, nva.data(),
-      nva.size(), nullptr);
+    session_, NGHTTP2_FLAG_END_HEADERS, stream->stream_id, nva.data(),
+    nva.size(), nullptr);
 
   if (promised_stream_id < 0) {
     return promised_stream_id;
@@ -1044,7 +1044,7 @@ int Http2Handler::submit_push_promise(Stream *stream,
   promised_header.path = push_path;
   promised_header.scheme = scheme;
   promised_header.authority =
-      make_string_ref(promised_stream->balloc, authority);
+    make_string_ref(promised_stream->balloc, authority);
 
   add_stream(promised_stream_id, std::move(promised_stream));
 
@@ -1154,8 +1154,8 @@ void prepare_status_response(Stream *stream, Http2Handler *hd, int status) {
   headers.reserve(2);
   headers.emplace_back("content-type"_sr, "text/html; charset=UTF-8"_sr);
   headers.emplace_back(
-      "content-length"_sr,
-      util::make_string_ref_uint(stream->balloc, file_ent->length));
+    "content-length"_sr,
+    util::make_string_ref_uint(stream->balloc, file_ent->length));
   hd->submit_response(StringRef{status_page->status}, stream->stream_id,
                       headers, &data_prd);
 }
@@ -1202,7 +1202,7 @@ bool prepare_upload_temp_store(Stream *stream, Http2Handler *hd) {
   // now.  We will update it when we get whole request body.
   auto path = std::string("echo:") + tempfn;
   stream->file_ent =
-      sessions->cache_fd(path, FileEntry(path, 0, 0, fd, nullptr, {}, true));
+    sessions->cache_fd(path, FileEntry(path, 0, 0, fd, nullptr, {}, true));
   stream->echo_upload = true;
   return true;
 }
@@ -1219,7 +1219,7 @@ void prepare_redirect_response(Stream *stream, Http2Handler *hd,
   }
 
   auto location =
-      concat_string_ref(stream->balloc, scheme, "://"_sr, authority, path);
+    concat_string_ref(stream->balloc, scheme, "://"_sr, authority, path);
 
   auto headers = HeaderRefs{{"location"_sr, location}};
 
@@ -1349,7 +1349,7 @@ void prepare_response(Stream *stream, Http2Handler *hd,
       close(file);
 
       auto reqpath =
-          concat_string_ref(stream->balloc, raw_path, "/"_sr, raw_query);
+        concat_string_ref(stream->balloc, raw_path, "/"_sr, raw_query);
 
       prepare_redirect_response(stream, hd, reqpath, 301);
 
@@ -1372,8 +1372,8 @@ void prepare_response(Stream *stream, Http2Handler *hd,
     }
 
     file_ent = sessions->cache_fd(
-        file_path, FileEntry(file_path, buf.st_size, buf.st_mtime, file,
-                             content_type, std::chrono::steady_clock::now()));
+      file_path, FileEntry(file_path, buf.st_size, buf.st_mtime, file,
+                           content_type, std::chrono::steady_clock::now()));
   }
 
   stream->file_ent = file_ent;
@@ -1533,7 +1533,6 @@ int hd_on_frame_recv_callback(nghttp2_session *session,
     }
 
     if (frame->headers.cat == NGHTTP2_HCAT_REQUEST) {
-
       auto expect100 = stream->header.expect;
 
       if (util::strieq("100-continue"_sr, expect100)) {
@@ -1597,7 +1596,7 @@ int hd_on_frame_send_callback(nghttp2_session *session,
     if (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
       remove_stream_write_timeout(stream);
     } else if (std::min(nghttp2_session_get_stream_remote_window_size(
-                            session, frame->hd.stream_id),
+                          session, frame->hd.stream_id),
                         nghttp2_session_get_remote_window_size(session)) <= 0) {
       // If stream is blocked by flow control, enable write timeout.
       add_stream_read_timeout_if_pending(stream);
@@ -1750,37 +1749,37 @@ int on_stream_close_callback(nghttp2_session *session, int32_t stream_id,
 namespace {
 void fill_callback(nghttp2_session_callbacks *callbacks, const Config *config) {
   nghttp2_session_callbacks_set_on_stream_close_callback(
-      callbacks, on_stream_close_callback);
+    callbacks, on_stream_close_callback);
 
   nghttp2_session_callbacks_set_on_frame_recv_callback(
-      callbacks, hd_on_frame_recv_callback);
+    callbacks, hd_on_frame_recv_callback);
 
   nghttp2_session_callbacks_set_on_frame_send_callback(
-      callbacks, hd_on_frame_send_callback);
+    callbacks, hd_on_frame_send_callback);
 
   if (config->verbose) {
     nghttp2_session_callbacks_set_on_invalid_frame_recv_callback(
-        callbacks, verbose_on_invalid_frame_recv_callback);
+      callbacks, verbose_on_invalid_frame_recv_callback);
 
     nghttp2_session_callbacks_set_error_callback2(callbacks,
                                                   verbose_error_callback);
   }
 
   nghttp2_session_callbacks_set_on_data_chunk_recv_callback(
-      callbacks, on_data_chunk_recv_callback);
+    callbacks, on_data_chunk_recv_callback);
 
   nghttp2_session_callbacks_set_on_header_callback2(callbacks,
                                                     on_header_callback2);
 
   nghttp2_session_callbacks_set_on_begin_headers_callback(
-      callbacks, on_begin_headers_callback);
+    callbacks, on_begin_headers_callback);
 
   nghttp2_session_callbacks_set_send_data_callback(callbacks,
                                                    send_data_callback);
 
   if (config->padding) {
     nghttp2_session_callbacks_set_select_padding_callback2(
-        callbacks, select_padding_callback);
+      callbacks, select_padding_callback);
   }
 }
 } // namespace
@@ -1839,7 +1838,7 @@ int get_ev_loop_flags() {
 class AcceptHandler {
 public:
   AcceptHandler(HttpServer *sv, Sessions *sessions, const Config *config)
-      : sessions_(sessions), config_(config), next_worker_(0) {
+    : sessions_(sessions), config_(config), next_worker_(0) {
     if (config_->num_worker == 1) {
       return;
     }
@@ -1849,8 +1848,8 @@ public:
       }
       auto worker = std::make_unique<Worker>();
       auto loop = ev_loop_new(get_ev_loop_flags());
-      worker->sessions = std::make_unique<Sessions>(sv, loop, config_,
-                                                    sessions_->get_ssl_ctx());
+      worker->sessions =
+        std::make_unique<Sessions>(sv, loop, config_, sessions_->get_ssl_ctx());
       ev_async_init(&worker->w, worker_acceptcb);
       worker->w.data = worker.get();
       ev_async_start(loop, &worker->w);
@@ -1898,7 +1897,7 @@ class ListenEventHandler {
 public:
   ListenEventHandler(Sessions *sessions, int fd,
                      std::shared_ptr<AcceptHandler> acceptor)
-      : acceptor_(std::move(acceptor)), sessions_(sessions), fd_(fd) {
+    : acceptor_(std::move(acceptor)), sessions_(sessions), fd_(fd) {
     ev_io_init(&w_, acceptcb, fd, EV_READ);
     w_.data = this;
     ev_io_start(sessions_->get_loop(), &w_);
@@ -1991,11 +1990,11 @@ enum {
 
 HttpServer::HttpServer(const Config *config) : config_(config) {
   status_pages_ = std::vector<StatusPage>{
-      {"200", make_status_body(200, config_->port)},
-      {"301", make_status_body(301, config_->port)},
-      {"400", make_status_body(400, config_->port)},
-      {"404", make_status_body(404, config_->port)},
-      {"405", make_status_body(405, config_->port)},
+    {"200", make_status_body(200, config_->port)},
+    {"301", make_status_body(301, config_->port)},
+    {"400", make_status_body(400, config_->port)},
+    {"404", make_status_body(404, config_->port)},
+    {"405", make_status_body(405, config_->port)},
   };
 }
 
@@ -2134,8 +2133,8 @@ int HttpServer::run() {
     SSL_CTX_set_mode(ssl_ctx, SSL_MODE_RELEASE_BUFFERS);
 
     if (nghttp2::tls::ssl_ctx_set_proto_versions(
-            ssl_ctx, nghttp2::tls::NGHTTP2_TLS_MIN_VERSION,
-            nghttp2::tls::NGHTTP2_TLS_MAX_VERSION) != 0) {
+          ssl_ctx, nghttp2::tls::NGHTTP2_TLS_MIN_VERSION,
+          nghttp2::tls::NGHTTP2_TLS_MAX_VERSION) != 0) {
       std::cerr << "Could not set TLS versions" << std::endl;
       return -1;
     }
@@ -2178,8 +2177,8 @@ int HttpServer::run() {
 #if OPENSSL_3_0_0_API
       EVP_PKEY *dh = nullptr;
       auto dctx = OSSL_DECODER_CTX_new_for_pkey(
-          &dh, "PEM", nullptr, "DH", OSSL_KEYMGMT_SELECT_DOMAIN_PARAMETERS,
-          nullptr, nullptr);
+        &dh, "PEM", nullptr, "DH", OSSL_KEYMGMT_SELECT_DOMAIN_PARAMETERS,
+        nullptr, nullptr);
 
       if (!OSSL_DECODER_from_bio(dctx, bio)) {
         std::cerr << "OSSL_DECODER_from_bio() failed: "
@@ -2224,7 +2223,7 @@ int HttpServer::run() {
     if (config_->verify_client) {
       SSL_CTX_set_verify(ssl_ctx,
                          SSL_VERIFY_PEER | SSL_VERIFY_CLIENT_ONCE |
-                             SSL_VERIFY_FAIL_IF_NO_PEER_CERT,
+                           SSL_VERIFY_FAIL_IF_NO_PEER_CERT,
                          verify_callback);
     }
 
@@ -2235,8 +2234,8 @@ int HttpServer::run() {
 
 #if defined(NGHTTP2_OPENSSL_IS_BORINGSSL) && defined(HAVE_LIBBROTLI)
     if (!SSL_CTX_add_cert_compression_alg(
-            ssl_ctx, nghttp2::tls::CERTIFICATE_COMPRESSION_ALGO_BROTLI,
-            nghttp2::tls::cert_compress, nghttp2::tls::cert_decompress)) {
+          ssl_ctx, nghttp2::tls::CERTIFICATE_COMPRESSION_ALGO_BROTLI,
+          nghttp2::tls::cert_compress, nghttp2::tls::cert_decompress)) {
       std::cerr << "SSL_CTX_add_cert_compression_alg failed." << std::endl;
       return -1;
     }

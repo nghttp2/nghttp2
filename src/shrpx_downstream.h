@@ -63,11 +63,11 @@ struct DownstreamAddr;
 class FieldStore {
 public:
   FieldStore(BlockAllocator &balloc, size_t headers_initial_capacity)
-      : content_length(-1),
-        balloc_(balloc),
-        buffer_size_(0),
-        header_key_prev_(false),
-        trailer_key_prev_(false) {
+    : content_length(-1),
+      balloc_(balloc),
+      buffer_size_(0),
+      header_key_prev_(false),
+      trailer_key_prev_(false) {
     headers_.reserve(headers_initial_capacity);
   }
 
@@ -153,19 +153,19 @@ enum class ConnectProto {
 
 struct Request {
   Request(BlockAllocator &balloc)
-      : fs(balloc, 16),
-        recv_body_length(0),
-        unconsumed_body_length(0),
-        method(-1),
-        http_major(1),
-        http_minor(1),
-        connect_proto(ConnectProto::NONE),
-        upgrade_request(false),
-        http2_upgrade_seen(false),
-        connection_close(false),
-        http2_expect_body(false),
-        no_authority(false),
-        forwarded_once(false) {}
+    : fs(balloc, 16),
+      recv_body_length(0),
+      unconsumed_body_length(0),
+      method(-1),
+      http_major(1),
+      http_minor(1),
+      connect_proto(ConnectProto::NONE),
+      upgrade_request(false),
+      http2_upgrade_seen(false),
+      connection_close(false),
+      http2_expect_body(false),
+      no_authority(false),
+      forwarded_once(false) {}
 
   void consume(size_t len) {
     assert(unconsumed_body_length >= len);
@@ -235,14 +235,14 @@ struct Request {
 
 struct Response {
   Response(BlockAllocator &balloc)
-      : fs(balloc, 32),
-        recv_body_length(0),
-        unconsumed_body_length(0),
-        http_status(0),
-        http_major(1),
-        http_minor(1),
-        connection_close(false),
-        headers_only(false) {}
+    : fs(balloc, 32),
+      recv_body_length(0),
+      unconsumed_body_length(0),
+      http_status(0),
+      http_major(1),
+      http_minor(1),
+      connection_close(false),
+      headers_only(false) {}
 
   void consume(size_t len) {
     assert(unconsumed_body_length >= len);
@@ -267,7 +267,7 @@ struct Response {
                        const StringRef &path) {
     if (!pushed_resources) {
       pushed_resources = std::make_unique<
-          std::vector<std::tuple<StringRef, StringRef, StringRef>>>();
+        std::vector<std::tuple<StringRef, StringRef, StringRef>>>();
     }
     pushed_resources->emplace_back(scheme, authority, path);
   }
@@ -282,7 +282,7 @@ struct Response {
   // that we should use more complex data structure (e.g., std::set)
   // to find the resources faster.
   std::unique_ptr<std::vector<std::tuple<StringRef, StringRef, StringRef>>>
-      pushed_resources;
+    pushed_resources;
   // the length of response body received so far
   int64_t recv_body_length;
   // The number of bytes not consumed by the application yet.  This is

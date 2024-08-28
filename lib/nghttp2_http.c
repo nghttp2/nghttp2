@@ -390,8 +390,8 @@ int nghttp2_http_on_header(nghttp2_session *session, nghttp2_stream *stream,
     if (session->server || frame->hd.type == NGHTTP2_PUSH_PROMISE) {
       rv = nghttp2_check_authority(nv->value->base, nv->value->len);
     } else if (
-        stream->flags &
-        NGHTTP2_STREAM_FLAG_NO_RFC9113_LEADING_AND_TRAILING_WS_VALIDATION) {
+      stream->flags &
+      NGHTTP2_STREAM_FLAG_NO_RFC9113_LEADING_AND_TRAILING_WS_VALIDATION) {
       rv = nghttp2_check_header_value(nv->value->base, nv->value->len);
     } else {
       rv = nghttp2_check_header_value_rfc9113(nv->value->base, nv->value->len);
@@ -435,7 +435,7 @@ int nghttp2_http_on_header(nghttp2_session *session, nghttp2_stream *stream,
   if (session->server || frame->hd.type == NGHTTP2_PUSH_PROMISE) {
     return http_request_on_header(stream, nv, trailer,
                                   session->server &&
-                                      session->pending_enable_connect_protocol);
+                                    session->pending_enable_connect_protocol);
   }
 
   return http_response_on_header(stream, nv, trailer);
@@ -453,7 +453,7 @@ int nghttp2_http_on_request_headers(nghttp2_stream *stream,
     stream->content_length = -1;
   } else {
     if ((stream->http_flags & NGHTTP2_HTTP_FLAG_REQ_HEADERS) !=
-            NGHTTP2_HTTP_FLAG_REQ_HEADERS ||
+          NGHTTP2_HTTP_FLAG_REQ_HEADERS ||
         (stream->http_flags &
          (NGHTTP2_HTTP_FLAG__AUTHORITY | NGHTTP2_HTTP_FLAG_HOST)) == 0) {
       return -1;
@@ -493,7 +493,7 @@ int nghttp2_http_on_response_headers(nghttp2_stream *stream) {
   }
 
   stream->http_flags =
-      stream->http_flags & (uint32_t)~NGHTTP2_HTTP_FLAG_EXPECT_FINAL_RESPONSE;
+    stream->http_flags & (uint32_t)~NGHTTP2_HTTP_FLAG_EXPECT_FINAL_RESPONSE;
 
   if (!expect_response_body(stream)) {
     stream->content_length = 0;

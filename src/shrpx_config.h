@@ -91,7 +91,7 @@ constexpr auto SHRPX_OPT_BACKEND = "backend"_sr;
 constexpr auto SHRPX_OPT_FRONTEND = "frontend"_sr;
 constexpr auto SHRPX_OPT_WORKERS = "workers"_sr;
 constexpr auto SHRPX_OPT_HTTP2_MAX_CONCURRENT_STREAMS =
-    "http2-max-concurrent-streams"_sr;
+  "http2-max-concurrent-streams"_sr;
 constexpr auto SHRPX_OPT_LOG_LEVEL = "log-level"_sr;
 constexpr auto SHRPX_OPT_DAEMON = "daemon"_sr;
 constexpr auto SHRPX_OPT_HTTP2_PROXY = "http2-proxy"_sr;
@@ -99,10 +99,10 @@ constexpr auto SHRPX_OPT_HTTP2_BRIDGE = "http2-bridge"_sr;
 constexpr auto SHRPX_OPT_CLIENT_PROXY = "client-proxy"_sr;
 constexpr auto SHRPX_OPT_ADD_X_FORWARDED_FOR = "add-x-forwarded-for"_sr;
 constexpr auto SHRPX_OPT_STRIP_INCOMING_X_FORWARDED_FOR =
-    "strip-incoming-x-forwarded-for"_sr;
+  "strip-incoming-x-forwarded-for"_sr;
 constexpr auto SHRPX_OPT_NO_VIA = "no-via"_sr;
 constexpr auto SHRPX_OPT_FRONTEND_HTTP2_READ_TIMEOUT =
-    "frontend-http2-read-timeout"_sr;
+  "frontend-http2-read-timeout"_sr;
 constexpr auto SHRPX_OPT_FRONTEND_READ_TIMEOUT = "frontend-read-timeout"_sr;
 constexpr auto SHRPX_OPT_FRONTEND_WRITE_TIMEOUT = "frontend-write-timeout"_sr;
 constexpr auto SHRPX_OPT_BACKEND_READ_TIMEOUT = "backend-read-timeout"_sr;
@@ -115,15 +115,15 @@ constexpr auto SHRPX_OPT_ACCESSLOG_FORMAT = "accesslog-format"_sr;
 constexpr auto SHRPX_OPT_ERRORLOG_FILE = "errorlog-file"_sr;
 constexpr auto SHRPX_OPT_ERRORLOG_SYSLOG = "errorlog-syslog"_sr;
 constexpr auto SHRPX_OPT_BACKEND_KEEP_ALIVE_TIMEOUT =
-    "backend-keep-alive-timeout"_sr;
+  "backend-keep-alive-timeout"_sr;
 constexpr auto SHRPX_OPT_FRONTEND_HTTP2_WINDOW_BITS =
-    "frontend-http2-window-bits"_sr;
+  "frontend-http2-window-bits"_sr;
 constexpr auto SHRPX_OPT_BACKEND_HTTP2_WINDOW_BITS =
-    "backend-http2-window-bits"_sr;
+  "backend-http2-window-bits"_sr;
 constexpr auto SHRPX_OPT_FRONTEND_HTTP2_CONNECTION_WINDOW_BITS =
-    "frontend-http2-connection-window-bits"_sr;
+  "frontend-http2-connection-window-bits"_sr;
 constexpr auto SHRPX_OPT_BACKEND_HTTP2_CONNECTION_WINDOW_BITS =
-    "backend-http2-connection-window-bits"_sr;
+  "backend-http2-connection-window-bits"_sr;
 constexpr auto SHRPX_OPT_FRONTEND_NO_TLS = "frontend-no-tls"_sr;
 constexpr auto SHRPX_OPT_BACKEND_NO_TLS = "backend-no-tls"_sr;
 constexpr auto SHRPX_OPT_BACKEND_TLS_SNI_FIELD = "backend-tls-sni-field"_sr;
@@ -153,35 +153,35 @@ constexpr auto SHRPX_OPT_VERIFY_CLIENT_CACERT = "verify-client-cacert"_sr;
 constexpr auto SHRPX_OPT_CLIENT_PRIVATE_KEY_FILE = "client-private-key-file"_sr;
 constexpr auto SHRPX_OPT_CLIENT_CERT_FILE = "client-cert-file"_sr;
 constexpr auto SHRPX_OPT_FRONTEND_HTTP2_DUMP_REQUEST_HEADER =
-    "frontend-http2-dump-request-header"_sr;
+  "frontend-http2-dump-request-header"_sr;
 constexpr auto SHRPX_OPT_FRONTEND_HTTP2_DUMP_RESPONSE_HEADER =
-    "frontend-http2-dump-response-header"_sr;
+  "frontend-http2-dump-response-header"_sr;
 constexpr auto SHRPX_OPT_HTTP2_NO_COOKIE_CRUMBLING =
-    "http2-no-cookie-crumbling"_sr;
+  "http2-no-cookie-crumbling"_sr;
 constexpr auto SHRPX_OPT_FRONTEND_FRAME_DEBUG = "frontend-frame-debug"_sr;
 constexpr auto SHRPX_OPT_PADDING = "padding"_sr;
 constexpr auto SHRPX_OPT_ALTSVC = "altsvc"_sr;
 constexpr auto SHRPX_OPT_ADD_REQUEST_HEADER = "add-request-header"_sr;
 constexpr auto SHRPX_OPT_ADD_RESPONSE_HEADER = "add-response-header"_sr;
 constexpr auto SHRPX_OPT_WORKER_FRONTEND_CONNECTIONS =
-    "worker-frontend-connections"_sr;
+  "worker-frontend-connections"_sr;
 constexpr auto SHRPX_OPT_NO_LOCATION_REWRITE = "no-location-rewrite"_sr;
 constexpr auto SHRPX_OPT_NO_HOST_REWRITE = "no-host-rewrite"_sr;
 constexpr auto SHRPX_OPT_BACKEND_HTTP1_CONNECTIONS_PER_HOST =
-    "backend-http1-connections-per-host"_sr;
+  "backend-http1-connections-per-host"_sr;
 constexpr auto SHRPX_OPT_BACKEND_HTTP1_CONNECTIONS_PER_FRONTEND =
-    "backend-http1-connections-per-frontend"_sr;
+  "backend-http1-connections-per-frontend"_sr;
 constexpr auto SHRPX_OPT_LISTENER_DISABLE_TIMEOUT =
-    "listener-disable-timeout"_sr;
+  "listener-disable-timeout"_sr;
 constexpr auto SHRPX_OPT_TLS_TICKET_KEY_FILE = "tls-ticket-key-file"_sr;
 constexpr auto SHRPX_OPT_RLIMIT_NOFILE = "rlimit-nofile"_sr;
 constexpr auto SHRPX_OPT_BACKEND_REQUEST_BUFFER = "backend-request-buffer"_sr;
 constexpr auto SHRPX_OPT_BACKEND_RESPONSE_BUFFER = "backend-response-buffer"_sr;
 constexpr auto SHRPX_OPT_NO_SERVER_PUSH = "no-server-push"_sr;
 constexpr auto SHRPX_OPT_BACKEND_HTTP2_CONNECTIONS_PER_WORKER =
-    "backend-http2-connections-per-worker"_sr;
+  "backend-http2-connections-per-worker"_sr;
 constexpr auto SHRPX_OPT_FETCH_OCSP_RESPONSE_FILE =
-    "fetch-ocsp-response-file"_sr;
+  "fetch-ocsp-response-file"_sr;
 constexpr auto SHRPX_OPT_OCSP_UPDATE_INTERVAL = "ocsp-update-interval"_sr;
 constexpr auto SHRPX_OPT_NO_OCSP = "no-ocsp"_sr;
 constexpr auto SHRPX_OPT_HEADER_FIELD_BUFFER = "header-field-buffer"_sr;
@@ -190,96 +190,96 @@ constexpr auto SHRPX_OPT_INCLUDE = "include"_sr;
 constexpr auto SHRPX_OPT_TLS_TICKET_KEY_CIPHER = "tls-ticket-key-cipher"_sr;
 constexpr auto SHRPX_OPT_HOST_REWRITE = "host-rewrite"_sr;
 constexpr auto SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED =
-    "tls-session-cache-memcached"_sr;
+  "tls-session-cache-memcached"_sr;
 constexpr auto SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED =
-    "tls-ticket-key-memcached"_sr;
+  "tls-ticket-key-memcached"_sr;
 constexpr auto SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_INTERVAL =
-    "tls-ticket-key-memcached-interval"_sr;
+  "tls-ticket-key-memcached-interval"_sr;
 constexpr auto SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_MAX_RETRY =
-    "tls-ticket-key-memcached-max-retry"_sr;
+  "tls-ticket-key-memcached-max-retry"_sr;
 constexpr auto SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_MAX_FAIL =
-    "tls-ticket-key-memcached-max-fail"_sr;
+  "tls-ticket-key-memcached-max-fail"_sr;
 constexpr auto SHRPX_OPT_MRUBY_FILE = "mruby-file"_sr;
 constexpr auto SHRPX_OPT_ACCEPT_PROXY_PROTOCOL = "accept-proxy-protocol"_sr;
 constexpr auto SHRPX_OPT_FASTOPEN = "fastopen"_sr;
 constexpr auto SHRPX_OPT_TLS_DYN_REC_WARMUP_THRESHOLD =
-    "tls-dyn-rec-warmup-threshold"_sr;
+  "tls-dyn-rec-warmup-threshold"_sr;
 constexpr auto SHRPX_OPT_TLS_DYN_REC_IDLE_TIMEOUT =
-    "tls-dyn-rec-idle-timeout"_sr;
+  "tls-dyn-rec-idle-timeout"_sr;
 constexpr auto SHRPX_OPT_ADD_FORWARDED = "add-forwarded"_sr;
 constexpr auto SHRPX_OPT_STRIP_INCOMING_FORWARDED =
-    "strip-incoming-forwarded"_sr;
+  "strip-incoming-forwarded"_sr;
 constexpr auto SHRPX_OPT_FORWARDED_BY = "forwarded-by"_sr;
 constexpr auto SHRPX_OPT_FORWARDED_FOR = "forwarded-for"_sr;
 constexpr auto SHRPX_OPT_REQUEST_HEADER_FIELD_BUFFER =
-    "request-header-field-buffer"_sr;
+  "request-header-field-buffer"_sr;
 constexpr auto SHRPX_OPT_MAX_REQUEST_HEADER_FIELDS =
-    "max-request-header-fields"_sr;
+  "max-request-header-fields"_sr;
 constexpr auto SHRPX_OPT_RESPONSE_HEADER_FIELD_BUFFER =
-    "response-header-field-buffer"_sr;
+  "response-header-field-buffer"_sr;
 constexpr auto SHRPX_OPT_MAX_RESPONSE_HEADER_FIELDS =
-    "max-response-header-fields"_sr;
+  "max-response-header-fields"_sr;
 constexpr auto SHRPX_OPT_NO_HTTP2_CIPHER_BLOCK_LIST =
-    "no-http2-cipher-block-list"_sr;
+  "no-http2-cipher-block-list"_sr;
 constexpr auto SHRPX_OPT_NO_HTTP2_CIPHER_BLACK_LIST =
-    "no-http2-cipher-black-list"_sr;
+  "no-http2-cipher-black-list"_sr;
 constexpr auto SHRPX_OPT_BACKEND_HTTP1_TLS = "backend-http1-tls"_sr;
 constexpr auto SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_TLS =
-    "tls-session-cache-memcached-tls"_sr;
+  "tls-session-cache-memcached-tls"_sr;
 constexpr auto SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_CERT_FILE =
-    "tls-session-cache-memcached-cert-file"_sr;
+  "tls-session-cache-memcached-cert-file"_sr;
 constexpr auto SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_PRIVATE_KEY_FILE =
-    "tls-session-cache-memcached-private-key-file"_sr;
+  "tls-session-cache-memcached-private-key-file"_sr;
 constexpr auto SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_ADDRESS_FAMILY =
-    "tls-session-cache-memcached-address-family"_sr;
+  "tls-session-cache-memcached-address-family"_sr;
 constexpr auto SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_TLS =
-    "tls-ticket-key-memcached-tls"_sr;
+  "tls-ticket-key-memcached-tls"_sr;
 constexpr auto SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_CERT_FILE =
-    "tls-ticket-key-memcached-cert-file"_sr;
+  "tls-ticket-key-memcached-cert-file"_sr;
 constexpr auto SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_PRIVATE_KEY_FILE =
-    "tls-ticket-key-memcached-private-key-file"_sr;
+  "tls-ticket-key-memcached-private-key-file"_sr;
 constexpr auto SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_ADDRESS_FAMILY =
-    "tls-ticket-key-memcached-address-family"_sr;
+  "tls-ticket-key-memcached-address-family"_sr;
 constexpr auto SHRPX_OPT_BACKEND_ADDRESS_FAMILY = "backend-address-family"_sr;
 constexpr auto SHRPX_OPT_FRONTEND_HTTP2_MAX_CONCURRENT_STREAMS =
-    "frontend-http2-max-concurrent-streams"_sr;
+  "frontend-http2-max-concurrent-streams"_sr;
 constexpr auto SHRPX_OPT_BACKEND_HTTP2_MAX_CONCURRENT_STREAMS =
-    "backend-http2-max-concurrent-streams"_sr;
+  "backend-http2-max-concurrent-streams"_sr;
 constexpr auto SHRPX_OPT_BACKEND_CONNECTIONS_PER_FRONTEND =
-    "backend-connections-per-frontend"_sr;
+  "backend-connections-per-frontend"_sr;
 constexpr auto SHRPX_OPT_BACKEND_TLS = "backend-tls"_sr;
 constexpr auto SHRPX_OPT_BACKEND_CONNECTIONS_PER_HOST =
-    "backend-connections-per-host"_sr;
+  "backend-connections-per-host"_sr;
 constexpr auto SHRPX_OPT_ERROR_PAGE = "error-page"_sr;
 constexpr auto SHRPX_OPT_NO_KQUEUE = "no-kqueue"_sr;
 constexpr auto SHRPX_OPT_FRONTEND_HTTP2_SETTINGS_TIMEOUT =
-    "frontend-http2-settings-timeout"_sr;
+  "frontend-http2-settings-timeout"_sr;
 constexpr auto SHRPX_OPT_BACKEND_HTTP2_SETTINGS_TIMEOUT =
-    "backend-http2-settings-timeout"_sr;
+  "backend-http2-settings-timeout"_sr;
 constexpr auto SHRPX_OPT_API_MAX_REQUEST_BODY = "api-max-request-body"_sr;
 constexpr auto SHRPX_OPT_BACKEND_MAX_BACKOFF = "backend-max-backoff"_sr;
 constexpr auto SHRPX_OPT_SERVER_NAME = "server-name"_sr;
 constexpr auto SHRPX_OPT_NO_SERVER_REWRITE = "no-server-rewrite"_sr;
 constexpr auto SHRPX_OPT_FRONTEND_HTTP2_OPTIMIZE_WRITE_BUFFER_SIZE =
-    "frontend-http2-optimize-write-buffer-size"_sr;
+  "frontend-http2-optimize-write-buffer-size"_sr;
 constexpr auto SHRPX_OPT_FRONTEND_HTTP2_OPTIMIZE_WINDOW_SIZE =
-    "frontend-http2-optimize-window-size"_sr;
+  "frontend-http2-optimize-window-size"_sr;
 constexpr auto SHRPX_OPT_FRONTEND_HTTP2_WINDOW_SIZE =
-    "frontend-http2-window-size"_sr;
+  "frontend-http2-window-size"_sr;
 constexpr auto SHRPX_OPT_FRONTEND_HTTP2_CONNECTION_WINDOW_SIZE =
-    "frontend-http2-connection-window-size"_sr;
+  "frontend-http2-connection-window-size"_sr;
 constexpr auto SHRPX_OPT_BACKEND_HTTP2_WINDOW_SIZE =
-    "backend-http2-window-size"_sr;
+  "backend-http2-window-size"_sr;
 constexpr auto SHRPX_OPT_BACKEND_HTTP2_CONNECTION_WINDOW_SIZE =
-    "backend-http2-connection-window-size"_sr;
+  "backend-http2-connection-window-size"_sr;
 constexpr auto SHRPX_OPT_FRONTEND_HTTP2_ENCODER_DYNAMIC_TABLE_SIZE =
-    "frontend-http2-encoder-dynamic-table-size"_sr;
+  "frontend-http2-encoder-dynamic-table-size"_sr;
 constexpr auto SHRPX_OPT_FRONTEND_HTTP2_DECODER_DYNAMIC_TABLE_SIZE =
-    "frontend-http2-decoder-dynamic-table-size"_sr;
+  "frontend-http2-decoder-dynamic-table-size"_sr;
 constexpr auto SHRPX_OPT_BACKEND_HTTP2_ENCODER_DYNAMIC_TABLE_SIZE =
-    "backend-http2-encoder-dynamic-table-size"_sr;
+  "backend-http2-encoder-dynamic-table-size"_sr;
 constexpr auto SHRPX_OPT_BACKEND_HTTP2_DECODER_DYNAMIC_TABLE_SIZE =
-    "backend-http2-decoder-dynamic-table-size"_sr;
+  "backend-http2-decoder-dynamic-table-size"_sr;
 constexpr auto SHRPX_OPT_ECDH_CURVES = "ecdh-curves"_sr;
 constexpr auto SHRPX_OPT_TLS_SCT_DIR = "tls-sct-dir"_sr;
 constexpr auto SHRPX_OPT_BACKEND_CONNECT_TIMEOUT = "backend-connect-timeout"_sr;
@@ -287,13 +287,13 @@ constexpr auto SHRPX_OPT_DNS_CACHE_TIMEOUT = "dns-cache-timeout"_sr;
 constexpr auto SHRPX_OPT_DNS_LOOKUP_TIMEOUT = "dns-lookup-timeout"_sr;
 constexpr auto SHRPX_OPT_DNS_MAX_TRY = "dns-max-try"_sr;
 constexpr auto SHRPX_OPT_FRONTEND_KEEP_ALIVE_TIMEOUT =
-    "frontend-keep-alive-timeout"_sr;
+  "frontend-keep-alive-timeout"_sr;
 constexpr auto SHRPX_OPT_PSK_SECRETS = "psk-secrets"_sr;
 constexpr auto SHRPX_OPT_CLIENT_PSK_SECRETS = "client-psk-secrets"_sr;
 constexpr auto SHRPX_OPT_CLIENT_NO_HTTP2_CIPHER_BLOCK_LIST =
-    "client-no-http2-cipher-block-list"_sr;
+  "client-no-http2-cipher-block-list"_sr;
 constexpr auto SHRPX_OPT_CLIENT_NO_HTTP2_CIPHER_BLACK_LIST =
-    "client-no-http2-cipher-black-list"_sr;
+  "client-no-http2-cipher-black-list"_sr;
 constexpr auto SHRPX_OPT_CLIENT_CIPHERS = "client-ciphers"_sr;
 constexpr auto SHRPX_OPT_ACCESSLOG_WRITE_EARLY = "accesslog-write-early"_sr;
 constexpr auto SHRPX_OPT_TLS_MIN_PROTO_VERSION = "tls-min-proto-version"_sr;
@@ -303,64 +303,64 @@ constexpr auto SHRPX_OPT_FRONTEND_MAX_REQUESTS = "frontend-max-requests"_sr;
 constexpr auto SHRPX_OPT_SINGLE_THREAD = "single-thread"_sr;
 constexpr auto SHRPX_OPT_SINGLE_PROCESS = "single-process"_sr;
 constexpr auto SHRPX_OPT_NO_ADD_X_FORWARDED_PROTO =
-    "no-add-x-forwarded-proto"_sr;
+  "no-add-x-forwarded-proto"_sr;
 constexpr auto SHRPX_OPT_NO_STRIP_INCOMING_X_FORWARDED_PROTO =
-    "no-strip-incoming-x-forwarded-proto"_sr;
+  "no-strip-incoming-x-forwarded-proto"_sr;
 constexpr auto SHRPX_OPT_OCSP_STARTUP = "ocsp-startup"_sr;
 constexpr auto SHRPX_OPT_NO_VERIFY_OCSP = "no-verify-ocsp"_sr;
 constexpr auto SHRPX_OPT_VERIFY_CLIENT_TOLERATE_EXPIRED =
-    "verify-client-tolerate-expired"_sr;
+  "verify-client-tolerate-expired"_sr;
 constexpr auto SHRPX_OPT_IGNORE_PER_PATTERN_MRUBY_ERROR =
-    "ignore-per-pattern-mruby-error"_sr;
+  "ignore-per-pattern-mruby-error"_sr;
 constexpr auto SHRPX_OPT_TLS_NO_POSTPONE_EARLY_DATA =
-    "tls-no-postpone-early-data"_sr;
+  "tls-no-postpone-early-data"_sr;
 constexpr auto SHRPX_OPT_TLS_MAX_EARLY_DATA = "tls-max-early-data"_sr;
 constexpr auto SHRPX_OPT_TLS13_CIPHERS = "tls13-ciphers"_sr;
 constexpr auto SHRPX_OPT_TLS13_CLIENT_CIPHERS = "tls13-client-ciphers"_sr;
 constexpr auto SHRPX_OPT_NO_STRIP_INCOMING_EARLY_DATA =
-    "no-strip-incoming-early-data"_sr;
+  "no-strip-incoming-early-data"_sr;
 constexpr auto SHRPX_OPT_QUIC_BPF_PROGRAM_FILE = "quic-bpf-program-file"_sr;
 constexpr auto SHRPX_OPT_NO_QUIC_BPF = "no-quic-bpf"_sr;
 constexpr auto SHRPX_OPT_HTTP2_ALTSVC = "http2-altsvc"_sr;
 constexpr auto SHRPX_OPT_FRONTEND_HTTP3_READ_TIMEOUT =
-    "frontend-http3-read-timeout"_sr;
+  "frontend-http3-read-timeout"_sr;
 constexpr auto SHRPX_OPT_FRONTEND_QUIC_IDLE_TIMEOUT =
-    "frontend-quic-idle-timeout"_sr;
+  "frontend-quic-idle-timeout"_sr;
 constexpr auto SHRPX_OPT_FRONTEND_QUIC_DEBUG_LOG = "frontend-quic-debug-log"_sr;
 constexpr auto SHRPX_OPT_FRONTEND_HTTP3_WINDOW_SIZE =
-    "frontend-http3-window-size"_sr;
+  "frontend-http3-window-size"_sr;
 constexpr auto SHRPX_OPT_FRONTEND_HTTP3_CONNECTION_WINDOW_SIZE =
-    "frontend-http3-connection-window-size"_sr;
+  "frontend-http3-connection-window-size"_sr;
 constexpr auto SHRPX_OPT_FRONTEND_HTTP3_MAX_WINDOW_SIZE =
-    "frontend-http3-max-window-size"_sr;
+  "frontend-http3-max-window-size"_sr;
 constexpr auto SHRPX_OPT_FRONTEND_HTTP3_MAX_CONNECTION_WINDOW_SIZE =
-    "frontend-http3-max-connection-window-size"_sr;
+  "frontend-http3-max-connection-window-size"_sr;
 constexpr auto SHRPX_OPT_FRONTEND_HTTP3_MAX_CONCURRENT_STREAMS =
-    "frontend-http3-max-concurrent-streams"_sr;
+  "frontend-http3-max-concurrent-streams"_sr;
 constexpr auto SHRPX_OPT_FRONTEND_QUIC_EARLY_DATA =
-    "frontend-quic-early-data"_sr;
+  "frontend-quic-early-data"_sr;
 constexpr auto SHRPX_OPT_FRONTEND_QUIC_QLOG_DIR = "frontend-quic-qlog-dir"_sr;
 constexpr auto SHRPX_OPT_FRONTEND_QUIC_REQUIRE_TOKEN =
-    "frontend-quic-require-token"_sr;
+  "frontend-quic-require-token"_sr;
 constexpr auto SHRPX_OPT_FRONTEND_QUIC_CONGESTION_CONTROLLER =
-    "frontend-quic-congestion-controller"_sr;
+  "frontend-quic-congestion-controller"_sr;
 constexpr auto SHRPX_OPT_QUIC_SERVER_ID = "quic-server-id"_sr;
 constexpr auto SHRPX_OPT_FRONTEND_QUIC_SECRET_FILE =
-    "frontend-quic-secret-file"_sr;
+  "frontend-quic-secret-file"_sr;
 constexpr auto SHRPX_OPT_RLIMIT_MEMLOCK = "rlimit-memlock"_sr;
 constexpr auto SHRPX_OPT_MAX_WORKER_PROCESSES = "max-worker-processes"_sr;
 constexpr auto SHRPX_OPT_WORKER_PROCESS_GRACE_SHUTDOWN_PERIOD =
-    "worker-process-grace-shutdown-period"_sr;
+  "worker-process-grace-shutdown-period"_sr;
 constexpr auto SHRPX_OPT_FRONTEND_QUIC_INITIAL_RTT =
-    "frontend-quic-initial-rtt"_sr;
+  "frontend-quic-initial-rtt"_sr;
 constexpr auto SHRPX_OPT_REQUIRE_HTTP_SCHEME = "require-http-scheme"_sr;
 constexpr auto SHRPX_OPT_TLS_KTLS = "tls-ktls"_sr;
 constexpr auto SHRPX_OPT_ALPN_LIST = "alpn-list"_sr;
 constexpr auto SHRPX_OPT_FRONTEND_HEADER_TIMEOUT = "frontend-header-timeout"_sr;
 constexpr auto SHRPX_OPT_FRONTEND_HTTP2_IDLE_TIMEOUT =
-    "frontend-http2-idle-timeout"_sr;
+  "frontend-http2-idle-timeout"_sr;
 constexpr auto SHRPX_OPT_FRONTEND_HTTP3_IDLE_TIMEOUT =
-    "frontend-http3-idle-timeout"_sr;
+  "frontend-http3-idle-timeout"_sr;
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
@@ -529,11 +529,11 @@ struct AffinityHash {
 
 struct DownstreamAddrGroupConfig {
   DownstreamAddrGroupConfig(const StringRef &pattern)
-      : pattern(pattern),
-        affinity{SessionAffinity::NONE},
-        redirect_if_not_tls(false),
-        dnf{false},
-        timeout{} {}
+    : pattern(pattern),
+      affinity{SessionAffinity::NONE},
+      redirect_if_not_tls(false),
+      dnf{false},
+      timeout{} {}
 
   StringRef pattern;
   StringRef mruby_file;
@@ -580,9 +580,9 @@ struct TicketKeys {
 struct TLSCertificate {
   TLSCertificate(StringRef private_key_file, StringRef cert_file,
                  std::vector<uint8_t> sct_data)
-      : private_key_file(std::move(private_key_file)),
-        cert_file(std::move(cert_file)),
-        sct_data(std::move(sct_data)) {}
+    : private_key_file(std::move(private_key_file)),
+      cert_file(std::move(cert_file)),
+      sct_data(std::move(sct_data)) {}
 
   StringRef private_key_file;
   StringRef cert_file;
@@ -943,14 +943,14 @@ struct RouterConfig {
 
 struct DownstreamConfig {
   DownstreamConfig()
-      : balloc(1024, 1024),
-        timeout{},
-        addr_group_catch_all{0},
-        connections_per_host{0},
-        connections_per_frontend{0},
-        request_buffer_size{0},
-        response_buffer_size{0},
-        family{0} {}
+    : balloc(1024, 1024),
+      timeout{},
+      addr_group_catch_all{0},
+      connections_per_host{0},
+      connections_per_frontend{0},
+      request_buffer_size{0},
+      response_buffer_size{0},
+      family{0} {}
 
   DownstreamConfig(const DownstreamConfig &) = delete;
   DownstreamConfig(DownstreamConfig &&) = delete;
@@ -1043,35 +1043,35 @@ struct DNSConfig {
 
 struct Config {
   Config()
-      : balloc(4096, 4096),
-        downstream_http_proxy{},
-        http{},
-        http2{},
-        tls{},
+    : balloc(4096, 4096),
+      downstream_http_proxy{},
+      http{},
+      http2{},
+      tls{},
 #ifdef ENABLE_HTTP3
-        quic{},
+      quic{},
 #endif // ENABLE_HTTP3
-        logging{},
-        conn{},
-        api{},
-        dns{},
-        config_revision{0},
-        num_worker{0},
-        padding{0},
-        rlimit_nofile{0},
-        rlimit_memlock{0},
-        uid{0},
-        gid{0},
-        pid{0},
-        verbose{false},
-        daemon{false},
-        http2_proxy{false},
-        single_process{false},
-        single_thread{false},
-        ignore_per_pattern_mruby_error{false},
-        ev_loop_flags{0},
-        max_worker_processes{0},
-        worker_process_grace_shutdown_period{0.} {
+      logging{},
+      conn{},
+      api{},
+      dns{},
+      config_revision{0},
+      num_worker{0},
+      padding{0},
+      rlimit_nofile{0},
+      rlimit_memlock{0},
+      uid{0},
+      gid{0},
+      pid{0},
+      verbose{false},
+      daemon{false},
+      http2_proxy{false},
+      single_process{false},
+      single_thread{false},
+      ignore_per_pattern_mruby_error{false},
+      ev_loop_flags{0},
+      max_worker_processes{0},
+      worker_process_grace_shutdown_period{0.} {
   }
   ~Config();
 

@@ -80,8 +80,8 @@
 
 #define MAKE_NV(NAME, VALUE)                                                   \
   {                                                                            \
-      (uint8_t *)NAME,   (uint8_t *)VALUE,     sizeof(NAME) - 1,               \
-      sizeof(VALUE) - 1, NGHTTP2_NV_FLAG_NONE,                                 \
+    (uint8_t *)NAME,   (uint8_t *)VALUE,     sizeof(NAME) - 1,                 \
+    sizeof(VALUE) - 1, NGHTTP2_NV_FLAG_NONE,                                   \
   }
 
 struct app_context;
@@ -132,10 +132,9 @@ static SSL_CTX *create_ssl_ctx(const char *key_file, const char *cert_file) {
     errx(1, "Could not create SSL/TLS context: %s",
          ERR_error_string(ERR_get_error(), NULL));
   }
-  SSL_CTX_set_options(ssl_ctx,
-                      SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 |
-                          SSL_OP_NO_COMPRESSION |
-                          SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION);
+  SSL_CTX_set_options(ssl_ctx, SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 |
+                                 SSL_OP_NO_COMPRESSION |
+                                 SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION);
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
   if (SSL_CTX_set1_curves_list(ssl_ctx, "P-256") != 1) {
     errx(1, "SSL_CTX_set1_curves_list failed: %s",
@@ -233,8 +232,8 @@ static http2_session_data *create_http2_session_data(app_context *app_ctx,
   session_data->app_ctx = app_ctx;
   setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, (char *)&val, sizeof(val));
   session_data->bev = bufferevent_openssl_socket_new(
-      app_ctx->evbase, fd, ssl, BUFFEREVENT_SSL_ACCEPTING,
-      BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);
+    app_ctx->evbase, fd, ssl, BUFFEREVENT_SSL_ACCEPTING,
+    BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);
   bufferevent_enable(session_data->bev, EV_READ | EV_WRITE);
   rv = getnameinfo(addr, (socklen_t)addrlen, host, sizeof(host), NULL, 0,
                    NI_NUMERICHOST);
@@ -360,7 +359,7 @@ static char *percent_decode(const uint8_t *value, size_t valuelen) {
         continue;
       }
       res[j++] =
-          (char)((hex_to_uint(value[i + 1]) << 4) + hex_to_uint(value[i + 2]));
+        (char)((hex_to_uint(value[i + 1]) << 4) + hex_to_uint(value[i + 2]));
       i += 3;
     }
     memcpy(&res[j], &value[i], 2);
@@ -422,9 +421,9 @@ static int error_reply(nghttp2_session *session,
   rv = pipe(pipefd);
   if (rv != 0) {
     warn("Could not create pipe");
-    rv = nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE,
-                                   stream_data->stream_id,
-                                   NGHTTP2_INTERNAL_ERROR);
+    rv =
+      nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE,
+                                stream_data->stream_id, NGHTTP2_INTERNAL_ERROR);
     if (rv != 0) {
       warnx("Fatal error: %s", nghttp2_strerror(rv));
       return -1;
@@ -467,7 +466,7 @@ static int on_header_callback(nghttp2_session *session,
       break;
     }
     stream_data =
-        nghttp2_session_get_stream_user_data(session, frame->hd.stream_id);
+      nghttp2_session_get_stream_user_data(session, frame->hd.stream_id);
     if (!stream_data || stream_data->request_path) {
       break;
     }
@@ -557,7 +556,7 @@ static int on_frame_recv_callback(nghttp2_session *session,
     /* Check that the client request has finished */
     if (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
       stream_data =
-          nghttp2_session_get_stream_user_data(session, frame->hd.stream_id);
+        nghttp2_session_get_stream_user_data(session, frame->hd.stream_id);
       /* For DATA and HEADERS frame, this callback may be called after
          on_stream_close_callback. Check that stream still alive. */
       if (!stream_data) {
@@ -598,13 +597,13 @@ static void initialize_nghttp2_session(http2_session_data *session_data) {
                                                        on_frame_recv_callback);
 
   nghttp2_session_callbacks_set_on_stream_close_callback(
-      callbacks, on_stream_close_callback);
+    callbacks, on_stream_close_callback);
 
   nghttp2_session_callbacks_set_on_header_callback(callbacks,
                                                    on_header_callback);
 
   nghttp2_session_callbacks_set_on_begin_headers_callback(
-      callbacks, on_begin_headers_callback);
+    callbacks, on_begin_headers_callback);
 
   nghttp2_session_server_new(&session_data->session, callbacks, session_data);
 
@@ -615,7 +614,7 @@ static void initialize_nghttp2_session(http2_session_data *session_data) {
    magic octets and SETTINGS frame */
 static int send_server_connection_header(http2_session_data *session_data) {
   nghttp2_settings_entry iv[1] = {
-      {NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS, 100}};
+    {NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS, 100}};
   int rv;
 
   rv = nghttp2_submit_settings(session_data->session, NGHTTP2_FLAG_NONE, iv,
@@ -737,8 +736,8 @@ static void start_listen(struct event_base *evbase, const char *service,
   for (rp = res; rp; rp = rp->ai_next) {
     struct evconnlistener *listener;
     listener = evconnlistener_new_bind(
-        evbase, acceptcb, app_ctx, LEV_OPT_CLOSE_ON_FREE | LEV_OPT_REUSEABLE,
-        16, rp->ai_addr, (int)rp->ai_addrlen);
+      evbase, acceptcb, app_ctx, LEV_OPT_CLOSE_ON_FREE | LEV_OPT_REUSEABLE, 16,
+      rp->ai_addr, (int)rp->ai_addrlen);
     if (listener) {
       freeaddrinfo(res);
 

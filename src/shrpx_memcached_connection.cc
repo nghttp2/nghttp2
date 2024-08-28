@@ -101,19 +101,19 @@ MemcachedConnection::MemcachedConnection(const Address *addr,
                                          const StringRef &sni_name,
                                          MemchunkPool *mcpool,
                                          std::mt19937 &gen)
-    : conn_(loop, -1, nullptr, mcpool, write_timeout, read_timeout, {}, {},
-            connectcb, readcb, timeoutcb, this, 0, 0., Proto::MEMCACHED),
-      do_read_(&MemcachedConnection::noop),
-      do_write_(&MemcachedConnection::noop),
-      sni_name_(sni_name),
-      connect_blocker_(
-          gen, loop, [] {}, [] {}),
-      parse_state_{},
-      addr_(addr),
-      ssl_ctx_(ssl_ctx),
-      sendsum_(0),
-      try_count_(0),
-      connected_(false) {}
+  : conn_(loop, -1, nullptr, mcpool, write_timeout, read_timeout, {}, {},
+          connectcb, readcb, timeoutcb, this, 0, 0., Proto::MEMCACHED),
+    do_read_(&MemcachedConnection::noop),
+    do_write_(&MemcachedConnection::noop),
+    sni_name_(sni_name),
+    connect_blocker_(
+      gen, loop, [] {}, [] {}),
+    parse_state_{},
+    addr_(addr),
+    ssl_ctx_(ssl_ctx),
+    sendsum_(0),
+    try_count_(0),
+    connected_(false) {}
 
 MemcachedConnection::~MemcachedConnection() { conn_.disconnect(); }
 
@@ -434,7 +434,7 @@ int MemcachedConnection::parse_packet() {
 
       if (recvq_.empty()) {
         MCLOG(WARN, this)
-            << "Response received, but there is no in-flight request.";
+          << "Response received, but there is no in-flight request.";
         return -1;
       }
 
@@ -454,7 +454,7 @@ int MemcachedConnection::parse_packet() {
       // skip 1 byte reserved data type
       ++in;
       parse_state_.status_code =
-          static_cast<MemcachedStatusCode>(util::get_uint16(in));
+        static_cast<MemcachedStatusCode>(util::get_uint16(in));
       in += 2;
       parse_state_.totalbody = util::get_uint32(in);
       in += 4;
@@ -465,9 +465,9 @@ int MemcachedConnection::parse_packet() {
 
       if (req->op != parse_state_.op) {
         MCLOG(WARN, this)
-            << "opcode in response does not match to the request: want "
-            << static_cast<uint32_t>(req->op) << ", got "
-            << static_cast<uint32_t>(parse_state_.op);
+          << "opcode in response does not match to the request: want "
+          << static_cast<uint32_t>(req->op) << ", got "
+          << static_cast<uint32_t>(parse_state_.op);
         return -1;
       }
 
@@ -503,8 +503,8 @@ int MemcachedConnection::parse_packet() {
         parse_state_.read_left = parse_state_.extralen;
       } else {
         parse_state_.state = MemcachedParseState::VALUE;
-        parse_state_.read_left = parse_state_.totalbody - parse_state_.keylen -
-                                 parse_state_.extralen;
+        parse_state_.read_left =
+          parse_state_.totalbody - parse_state_.keylen - parse_state_.extralen;
       }
       busy = true;
       break;
@@ -524,7 +524,7 @@ int MemcachedConnection::parse_packet() {
       // since we require keylen == 0, totalbody - extralen ==
       // valuelen
       parse_state_.read_left =
-          parse_state_.totalbody - parse_state_.keylen - parse_state_.extralen;
+        parse_state_.totalbody - parse_state_.keylen - parse_state_.extralen;
       busy = true;
       break;
     }
@@ -622,7 +622,7 @@ size_t MemcachedConnection::fill_request_buffer(struct iovec *iov,
     }
     if (buf.send_value_left) {
       iov[iovcnt++] = {req->value.data() + req->value.size() -
-                           buf.send_value_left,
+                         buf.send_value_left,
                        buf.send_value_left};
     }
   }

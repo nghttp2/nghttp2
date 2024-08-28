@@ -37,7 +37,7 @@ using namespace nghttp2;
 namespace h2load {
 
 Http2Session::Http2Session(Client *client)
-    : client_(client), session_(nullptr) {}
+  : client_(client), session_(nullptr) {}
 
 Http2Session::~Http2Session() { nghttp2_session_del(session_); }
 
@@ -72,8 +72,8 @@ int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
   switch (frame->hd.type) {
   case NGHTTP2_HEADERS:
     client->worker->stats.bytes_head +=
-        frame->hd.length - frame->headers.padlen -
-        ((frame->hd.flags & NGHTTP2_FLAG_PRIORITY) ? 5 : 0);
+      frame->hd.length - frame->headers.padlen -
+      ((frame->hd.flags & NGHTTP2_FLAG_PRIORITY) ? 5 : 0);
     // fall through
   case NGHTTP2_DATA:
     if (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
@@ -134,7 +134,7 @@ nghttp2_ssize file_read_callback(nghttp2_session *session, int32_t stream_id,
   assert(req_stat);
   ssize_t nread;
   while ((nread = pread(config->data_fd, buf, length, req_stat->data_offset)) ==
-             -1 &&
+           -1 &&
          errno == EINTR)
     ;
 
@@ -188,16 +188,16 @@ void Http2Session::on_connect() {
                                                        on_frame_recv_callback);
 
   nghttp2_session_callbacks_set_on_data_chunk_recv_callback(
-      callbacks, on_data_chunk_recv_callback);
+    callbacks, on_data_chunk_recv_callback);
 
   nghttp2_session_callbacks_set_on_stream_close_callback(
-      callbacks, on_stream_close_callback);
+    callbacks, on_stream_close_callback);
 
   nghttp2_session_callbacks_set_on_header_callback(callbacks,
                                                    on_header_callback);
 
   nghttp2_session_callbacks_set_before_frame_send_callback(
-      callbacks, before_frame_send_callback);
+    callbacks, before_frame_send_callback);
 
   nghttp2_session_callbacks_set_send_callback2(callbacks, send_callback);
 
@@ -210,7 +210,7 @@ void Http2Session::on_connect() {
 
   if (config->encoder_header_table_size != NGHTTP2_DEFAULT_HEADER_TABLE_SIZE) {
     nghttp2_option_set_max_deflate_dynamic_table_size(
-        opt, config->encoder_header_table_size);
+      opt, config->encoder_header_table_size);
   }
 
   nghttp2_session_client_new2(&session_, callbacks, client_, opt);
@@ -261,8 +261,8 @@ int Http2Session::submit_request() {
   nghttp2_data_provider2 prd{{0}, file_read_callback};
 
   auto stream_id =
-      nghttp2_submit_request2(session_, nullptr, nva.data(), nva.size(),
-                              config->data_fd == -1 ? nullptr : &prd, nullptr);
+    nghttp2_submit_request2(session_, nullptr, nva.data(), nva.size(),
+                            config->data_fd == -1 ? nullptr : &prd, nullptr);
   if (stream_id < 0) {
     return -1;
   }

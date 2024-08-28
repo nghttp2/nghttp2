@@ -35,33 +35,33 @@
 #include "nghttp2_assertion.h"
 
 static const MunitTest tests[] = {
-    munit_void_test(test_nghttp2_hd_deflate),
-    munit_void_test(test_nghttp2_hd_deflate_same_indexed_repr),
-    munit_void_test(test_nghttp2_hd_inflate_indexed),
-    munit_void_test(test_nghttp2_hd_inflate_indname_noinc),
-    munit_void_test(test_nghttp2_hd_inflate_indname_inc),
-    munit_void_test(test_nghttp2_hd_inflate_indname_inc_eviction),
-    munit_void_test(test_nghttp2_hd_inflate_newname_noinc),
-    munit_void_test(test_nghttp2_hd_inflate_newname_inc),
-    munit_void_test(test_nghttp2_hd_inflate_clearall_inc),
-    munit_void_test(test_nghttp2_hd_inflate_zero_length_huffman),
-    munit_void_test(test_nghttp2_hd_inflate_expect_table_size_update),
-    munit_void_test(test_nghttp2_hd_inflate_unexpected_table_size_update),
-    munit_void_test(test_nghttp2_hd_ringbuf_reserve),
-    munit_void_test(test_nghttp2_hd_change_table_size),
-    munit_void_test(test_nghttp2_hd_deflate_inflate),
-    munit_void_test(test_nghttp2_hd_no_index),
-    munit_void_test(test_nghttp2_hd_deflate_bound),
-    munit_void_test(test_nghttp2_hd_public_api),
-    munit_void_test(test_nghttp2_hd_deflate_hd_vec),
-    munit_void_test(test_nghttp2_hd_decode_length),
-    munit_void_test(test_nghttp2_hd_huff_encode),
-    munit_void_test(test_nghttp2_hd_huff_decode),
-    munit_test_end(),
+  munit_void_test(test_nghttp2_hd_deflate),
+  munit_void_test(test_nghttp2_hd_deflate_same_indexed_repr),
+  munit_void_test(test_nghttp2_hd_inflate_indexed),
+  munit_void_test(test_nghttp2_hd_inflate_indname_noinc),
+  munit_void_test(test_nghttp2_hd_inflate_indname_inc),
+  munit_void_test(test_nghttp2_hd_inflate_indname_inc_eviction),
+  munit_void_test(test_nghttp2_hd_inflate_newname_noinc),
+  munit_void_test(test_nghttp2_hd_inflate_newname_inc),
+  munit_void_test(test_nghttp2_hd_inflate_clearall_inc),
+  munit_void_test(test_nghttp2_hd_inflate_zero_length_huffman),
+  munit_void_test(test_nghttp2_hd_inflate_expect_table_size_update),
+  munit_void_test(test_nghttp2_hd_inflate_unexpected_table_size_update),
+  munit_void_test(test_nghttp2_hd_ringbuf_reserve),
+  munit_void_test(test_nghttp2_hd_change_table_size),
+  munit_void_test(test_nghttp2_hd_deflate_inflate),
+  munit_void_test(test_nghttp2_hd_no_index),
+  munit_void_test(test_nghttp2_hd_deflate_bound),
+  munit_void_test(test_nghttp2_hd_public_api),
+  munit_void_test(test_nghttp2_hd_deflate_hd_vec),
+  munit_void_test(test_nghttp2_hd_decode_length),
+  munit_void_test(test_nghttp2_hd_huff_encode),
+  munit_void_test(test_nghttp2_hd_huff_decode),
+  munit_test_end(),
 };
 
 const MunitSuite hd_suite = {
-    "/hd", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
+  "/hd", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
 };
 
 void test_nghttp2_hd_deflate(void) {
@@ -316,8 +316,8 @@ void test_nghttp2_hd_inflate_indname_inc(void) {
   nghttp2_hd_inflate_init(&inflater, mem);
 
   assert_int(
-      0, ==,
-      nghttp2_hd_emit_indname_block(&bufs, 57, &nv, NGHTTP2_HD_WITH_INDEXING));
+    0, ==,
+    nghttp2_hd_emit_indname_block(&bufs, 57, &nv, NGHTTP2_HD_WITH_INDEXING));
 
   blocklen = (nghttp2_ssize)nghttp2_bufs_len(&bufs);
 
@@ -329,10 +329,10 @@ void test_nghttp2_hd_inflate_indname_inc(void) {
   assert_size(1, ==, inflater.ctx.hd_table.len);
   assert_size(62, ==, nghttp2_hd_inflate_get_num_table_entries(&inflater));
   assert_nv_equal(
-      &nv,
-      nghttp2_hd_inflate_get_table_entry(
-          &inflater, NGHTTP2_STATIC_TABLE_LENGTH + inflater.ctx.hd_table.len),
-      1, mem);
+    &nv,
+    nghttp2_hd_inflate_get_table_entry(&inflater, NGHTTP2_STATIC_TABLE_LENGTH +
+                                                    inflater.ctx.hd_table.len),
+    1, mem);
 
   nva_out_reset(&out, mem);
   nghttp2_bufs_free(&bufs);
@@ -362,17 +362,17 @@ void test_nghttp2_hd_inflate_indname_inc_eviction(void) {
   nv.flags = NGHTTP2_NV_FLAG_NONE;
 
   assert_int(
-      0, ==,
-      nghttp2_hd_emit_indname_block(&bufs, 14, &nv, NGHTTP2_HD_WITH_INDEXING));
+    0, ==,
+    nghttp2_hd_emit_indname_block(&bufs, 14, &nv, NGHTTP2_HD_WITH_INDEXING));
   assert_int(
-      0, ==,
-      nghttp2_hd_emit_indname_block(&bufs, 15, &nv, NGHTTP2_HD_WITH_INDEXING));
+    0, ==,
+    nghttp2_hd_emit_indname_block(&bufs, 15, &nv, NGHTTP2_HD_WITH_INDEXING));
   assert_int(
-      0, ==,
-      nghttp2_hd_emit_indname_block(&bufs, 16, &nv, NGHTTP2_HD_WITH_INDEXING));
+    0, ==,
+    nghttp2_hd_emit_indname_block(&bufs, 16, &nv, NGHTTP2_HD_WITH_INDEXING));
   assert_int(
-      0, ==,
-      nghttp2_hd_emit_indname_block(&bufs, 17, &nv, NGHTTP2_HD_WITH_INDEXING));
+    0, ==,
+    nghttp2_hd_emit_indname_block(&bufs, 17, &nv, NGHTTP2_HD_WITH_INDEXING));
 
   blocklen = (nghttp2_ssize)nghttp2_bufs_len(&bufs);
 
@@ -453,8 +453,7 @@ void test_nghttp2_hd_inflate_newname_inc(void) {
   nghttp2_hd_inflate_init(&inflater, mem);
 
   assert_int(
-      0, ==,
-      nghttp2_hd_emit_newname_block(&bufs, &nv, NGHTTP2_HD_WITH_INDEXING));
+    0, ==, nghttp2_hd_emit_newname_block(&bufs, &nv, NGHTTP2_HD_WITH_INDEXING));
 
   blocklen = (nghttp2_ssize)nghttp2_bufs_len(&bufs);
 
@@ -465,10 +464,10 @@ void test_nghttp2_hd_inflate_newname_inc(void) {
   assert_nv_equal(&nv, out.nva, 1, mem);
   assert_size(1, ==, inflater.ctx.hd_table.len);
   assert_nv_equal(
-      &nv,
-      nghttp2_hd_inflate_get_table_entry(
-          &inflater, NGHTTP2_STATIC_TABLE_LENGTH + inflater.ctx.hd_table.len),
-      1, mem);
+    &nv,
+    nghttp2_hd_inflate_get_table_entry(&inflater, NGHTTP2_STATIC_TABLE_LENGTH +
+                                                    inflater.ctx.hd_table.len),
+    1, mem);
 
   nva_out_reset(&out, mem);
   nghttp2_bufs_free(&bufs);
@@ -501,8 +500,7 @@ void test_nghttp2_hd_inflate_clearall_inc(void) {
   nghttp2_hd_inflate_init(&inflater, mem);
 
   assert_int(
-      0, ==,
-      nghttp2_hd_emit_newname_block(&bufs, &nv, NGHTTP2_HD_WITH_INDEXING));
+    0, ==, nghttp2_hd_emit_newname_block(&bufs, &nv, NGHTTP2_HD_WITH_INDEXING));
 
   blocklen = (nghttp2_ssize)nghttp2_bufs_len(&bufs);
 
@@ -530,8 +528,7 @@ void test_nghttp2_hd_inflate_clearall_inc(void) {
   nv.valuelen = sizeof(value) - 2;
 
   assert_int(
-      0, ==,
-      nghttp2_hd_emit_newname_block(&bufs, &nv, NGHTTP2_HD_WITH_INDEXING));
+    0, ==, nghttp2_hd_emit_newname_block(&bufs, &nv, NGHTTP2_HD_WITH_INDEXING));
 
   blocklen = (nghttp2_ssize)nghttp2_bufs_len(&bufs);
 
@@ -1050,137 +1047,137 @@ void test_nghttp2_hd_deflate_inflate(void) {
   nghttp2_hd_deflater deflater;
   nghttp2_hd_inflater inflater;
   nghttp2_nv nv1[] = {
-      MAKE_NV(":status", "200 OK"),
-      MAKE_NV("access-control-allow-origin", "*"),
-      MAKE_NV("cache-control", "private, max-age=0, must-revalidate"),
-      MAKE_NV("content-length", "76073"),
-      MAKE_NV("content-type", "text/html"),
-      MAKE_NV("date", "Sat, 27 Jul 2013 06:22:12 GMT"),
-      MAKE_NV("expires", "Sat, 27 Jul 2013 06:22:12 GMT"),
-      MAKE_NV("server", "Apache"),
-      MAKE_NV("vary", "foobar"),
-      MAKE_NV("via", "1.1 alphabravo (squid/3.x.x), 1.1 nghttpx"),
-      MAKE_NV("x-cache", "MISS from alphabravo"),
-      MAKE_NV("x-cache-action", "MISS"),
-      MAKE_NV("x-cache-age", "0"),
-      MAKE_NV("x-cache-lookup", "MISS from alphabravo:3128"),
-      MAKE_NV("x-lb-nocache", "true"),
+    MAKE_NV(":status", "200 OK"),
+    MAKE_NV("access-control-allow-origin", "*"),
+    MAKE_NV("cache-control", "private, max-age=0, must-revalidate"),
+    MAKE_NV("content-length", "76073"),
+    MAKE_NV("content-type", "text/html"),
+    MAKE_NV("date", "Sat, 27 Jul 2013 06:22:12 GMT"),
+    MAKE_NV("expires", "Sat, 27 Jul 2013 06:22:12 GMT"),
+    MAKE_NV("server", "Apache"),
+    MAKE_NV("vary", "foobar"),
+    MAKE_NV("via", "1.1 alphabravo (squid/3.x.x), 1.1 nghttpx"),
+    MAKE_NV("x-cache", "MISS from alphabravo"),
+    MAKE_NV("x-cache-action", "MISS"),
+    MAKE_NV("x-cache-age", "0"),
+    MAKE_NV("x-cache-lookup", "MISS from alphabravo:3128"),
+    MAKE_NV("x-lb-nocache", "true"),
   };
   nghttp2_nv nv2[] = {
-      MAKE_NV(":status", "304 Not Modified"),
-      MAKE_NV("age", "0"),
-      MAKE_NV("cache-control", "max-age=56682045"),
-      MAKE_NV("content-type", "text/css"),
-      MAKE_NV("date", "Sat, 27 Jul 2013 06:22:12 GMT"),
-      MAKE_NV("expires", "Thu, 14 May 2015 07:22:57 GMT"),
-      MAKE_NV("last-modified", "Tue, 14 May 2013 07:22:15 GMT"),
-      MAKE_NV("vary", "Accept-Encoding"),
-      MAKE_NV("via", "1.1 alphabravo (squid/3.x.x), 1.1 nghttpx"),
-      MAKE_NV("x-cache", "HIT from alphabravo"),
-      MAKE_NV("x-cache-lookup", "HIT from alphabravo:3128")};
+    MAKE_NV(":status", "304 Not Modified"),
+    MAKE_NV("age", "0"),
+    MAKE_NV("cache-control", "max-age=56682045"),
+    MAKE_NV("content-type", "text/css"),
+    MAKE_NV("date", "Sat, 27 Jul 2013 06:22:12 GMT"),
+    MAKE_NV("expires", "Thu, 14 May 2015 07:22:57 GMT"),
+    MAKE_NV("last-modified", "Tue, 14 May 2013 07:22:15 GMT"),
+    MAKE_NV("vary", "Accept-Encoding"),
+    MAKE_NV("via", "1.1 alphabravo (squid/3.x.x), 1.1 nghttpx"),
+    MAKE_NV("x-cache", "HIT from alphabravo"),
+    MAKE_NV("x-cache-lookup", "HIT from alphabravo:3128")};
   nghttp2_nv nv3[] = {
-      MAKE_NV(":status", "304 Not Modified"),
-      MAKE_NV("age", "0"),
-      MAKE_NV("cache-control", "max-age=56682072"),
-      MAKE_NV("content-type", "text/css"),
-      MAKE_NV("date", "Sat, 27 Jul 2013 06:22:12 GMT"),
-      MAKE_NV("expires", "Thu, 14 May 2015 07:23:24 GMT"),
-      MAKE_NV("last-modified", "Tue, 14 May 2013 07:22:13 GMT"),
-      MAKE_NV("vary", "Accept-Encoding"),
-      MAKE_NV("via", "1.1 alphabravo (squid/3.x.x), 1.1 nghttpx"),
-      MAKE_NV("x-cache", "HIT from alphabravo"),
-      MAKE_NV("x-cache-lookup", "HIT from alphabravo:3128"),
+    MAKE_NV(":status", "304 Not Modified"),
+    MAKE_NV("age", "0"),
+    MAKE_NV("cache-control", "max-age=56682072"),
+    MAKE_NV("content-type", "text/css"),
+    MAKE_NV("date", "Sat, 27 Jul 2013 06:22:12 GMT"),
+    MAKE_NV("expires", "Thu, 14 May 2015 07:23:24 GMT"),
+    MAKE_NV("last-modified", "Tue, 14 May 2013 07:22:13 GMT"),
+    MAKE_NV("vary", "Accept-Encoding"),
+    MAKE_NV("via", "1.1 alphabravo (squid/3.x.x), 1.1 nghttpx"),
+    MAKE_NV("x-cache", "HIT from alphabravo"),
+    MAKE_NV("x-cache-lookup", "HIT from alphabravo:3128"),
   };
   nghttp2_nv nv4[] = {
-      MAKE_NV(":status", "304 Not Modified"),
-      MAKE_NV("age", "0"),
-      MAKE_NV("cache-control", "max-age=56682022"),
-      MAKE_NV("content-type", "text/css"),
-      MAKE_NV("date", "Sat, 27 Jul 2013 06:22:12 GMT"),
-      MAKE_NV("expires", "Thu, 14 May 2015 07:22:34 GMT"),
-      MAKE_NV("last-modified", "Tue, 14 May 2013 07:22:14 GMT"),
-      MAKE_NV("vary", "Accept-Encoding"),
-      MAKE_NV("via", "1.1 alphabravo (squid/3.x.x), 1.1 nghttpx"),
-      MAKE_NV("x-cache", "HIT from alphabravo"),
-      MAKE_NV("x-cache-lookup", "HIT from alphabravo:3128"),
+    MAKE_NV(":status", "304 Not Modified"),
+    MAKE_NV("age", "0"),
+    MAKE_NV("cache-control", "max-age=56682022"),
+    MAKE_NV("content-type", "text/css"),
+    MAKE_NV("date", "Sat, 27 Jul 2013 06:22:12 GMT"),
+    MAKE_NV("expires", "Thu, 14 May 2015 07:22:34 GMT"),
+    MAKE_NV("last-modified", "Tue, 14 May 2013 07:22:14 GMT"),
+    MAKE_NV("vary", "Accept-Encoding"),
+    MAKE_NV("via", "1.1 alphabravo (squid/3.x.x), 1.1 nghttpx"),
+    MAKE_NV("x-cache", "HIT from alphabravo"),
+    MAKE_NV("x-cache-lookup", "HIT from alphabravo:3128"),
   };
   nghttp2_nv nv5[] = {
-      MAKE_NV(":status", "304 Not Modified"),
-      MAKE_NV("age", "0"),
-      MAKE_NV("cache-control", "max-age=4461139"),
-      MAKE_NV("content-type", "application/x-javascript"),
-      MAKE_NV("date", "Sat, 27 Jul 2013 06:22:12 GMT"),
-      MAKE_NV("expires", "Mon, 16 Sep 2013 21:34:31 GMT"),
-      MAKE_NV("last-modified", "Thu, 05 May 2011 09:15:59 GMT"),
-      MAKE_NV("vary", "Accept-Encoding"),
-      MAKE_NV("via", "1.1 alphabravo (squid/3.x.x), 1.1 nghttpx"),
-      MAKE_NV("x-cache", "HIT from alphabravo"),
-      MAKE_NV("x-cache-lookup", "HIT from alphabravo:3128"),
+    MAKE_NV(":status", "304 Not Modified"),
+    MAKE_NV("age", "0"),
+    MAKE_NV("cache-control", "max-age=4461139"),
+    MAKE_NV("content-type", "application/x-javascript"),
+    MAKE_NV("date", "Sat, 27 Jul 2013 06:22:12 GMT"),
+    MAKE_NV("expires", "Mon, 16 Sep 2013 21:34:31 GMT"),
+    MAKE_NV("last-modified", "Thu, 05 May 2011 09:15:59 GMT"),
+    MAKE_NV("vary", "Accept-Encoding"),
+    MAKE_NV("via", "1.1 alphabravo (squid/3.x.x), 1.1 nghttpx"),
+    MAKE_NV("x-cache", "HIT from alphabravo"),
+    MAKE_NV("x-cache-lookup", "HIT from alphabravo:3128"),
   };
   nghttp2_nv nv6[] = {
-      MAKE_NV(":status", "304 Not Modified"),
-      MAKE_NV("age", "0"),
-      MAKE_NV("cache-control", "max-age=18645951"),
-      MAKE_NV("content-type", "application/x-javascript"),
-      MAKE_NV("date", "Sat, 27 Jul 2013 06:22:12 GMT"),
-      MAKE_NV("expires", "Fri, 28 Feb 2014 01:48:03 GMT"),
-      MAKE_NV("last-modified", "Tue, 12 Jul 2011 16:02:59 GMT"),
-      MAKE_NV("vary", "Accept-Encoding"),
-      MAKE_NV("via", "1.1 alphabravo (squid/3.x.x), 1.1 nghttpx"),
-      MAKE_NV("x-cache", "HIT from alphabravo"),
-      MAKE_NV("x-cache-lookup", "HIT from alphabravo:3128"),
+    MAKE_NV(":status", "304 Not Modified"),
+    MAKE_NV("age", "0"),
+    MAKE_NV("cache-control", "max-age=18645951"),
+    MAKE_NV("content-type", "application/x-javascript"),
+    MAKE_NV("date", "Sat, 27 Jul 2013 06:22:12 GMT"),
+    MAKE_NV("expires", "Fri, 28 Feb 2014 01:48:03 GMT"),
+    MAKE_NV("last-modified", "Tue, 12 Jul 2011 16:02:59 GMT"),
+    MAKE_NV("vary", "Accept-Encoding"),
+    MAKE_NV("via", "1.1 alphabravo (squid/3.x.x), 1.1 nghttpx"),
+    MAKE_NV("x-cache", "HIT from alphabravo"),
+    MAKE_NV("x-cache-lookup", "HIT from alphabravo:3128"),
   };
   nghttp2_nv nv7[] = {
-      MAKE_NV(":status", "304 Not Modified"),
-      MAKE_NV("age", "0"),
-      MAKE_NV("cache-control", "max-age=31536000"),
-      MAKE_NV("content-type", "application/javascript"),
-      MAKE_NV("date", "Sat, 27 Jul 2013 06:22:12 GMT"),
-      MAKE_NV("etag", "\"6807-4dc5b54e0dcc0\""),
-      MAKE_NV("expires", "Wed, 21 May 2014 08:32:17 GMT"),
-      MAKE_NV("last-modified", "Fri, 10 May 2013 11:18:51 GMT"),
-      MAKE_NV("via", "1.1 alphabravo (squid/3.x.x), 1.1 nghttpx"),
-      MAKE_NV("x-cache", "HIT from alphabravo"),
-      MAKE_NV("x-cache-lookup", "HIT from alphabravo:3128"),
+    MAKE_NV(":status", "304 Not Modified"),
+    MAKE_NV("age", "0"),
+    MAKE_NV("cache-control", "max-age=31536000"),
+    MAKE_NV("content-type", "application/javascript"),
+    MAKE_NV("date", "Sat, 27 Jul 2013 06:22:12 GMT"),
+    MAKE_NV("etag", "\"6807-4dc5b54e0dcc0\""),
+    MAKE_NV("expires", "Wed, 21 May 2014 08:32:17 GMT"),
+    MAKE_NV("last-modified", "Fri, 10 May 2013 11:18:51 GMT"),
+    MAKE_NV("via", "1.1 alphabravo (squid/3.x.x), 1.1 nghttpx"),
+    MAKE_NV("x-cache", "HIT from alphabravo"),
+    MAKE_NV("x-cache-lookup", "HIT from alphabravo:3128"),
   };
   nghttp2_nv nv8[] = {
-      MAKE_NV(":status", "304 Not Modified"),
-      MAKE_NV("age", "0"),
-      MAKE_NV("cache-control", "max-age=31536000"),
-      MAKE_NV("content-type", "application/javascript"),
-      MAKE_NV("date", "Sat, 27 Jul 2013 06:22:12 GMT"),
-      MAKE_NV("etag", "\"41c6-4de7d28585b00\""),
-      MAKE_NV("expires", "Thu, 12 Jun 2014 10:00:58 GMT"),
-      MAKE_NV("last-modified", "Thu, 06 Jun 2013 14:30:36 GMT"),
-      MAKE_NV("via", "1.1 alphabravo (squid/3.x.x), 1.1 nghttpx"),
-      MAKE_NV("x-cache", "HIT from alphabravo"),
-      MAKE_NV("x-cache-lookup", "HIT from alphabravo:3128"),
+    MAKE_NV(":status", "304 Not Modified"),
+    MAKE_NV("age", "0"),
+    MAKE_NV("cache-control", "max-age=31536000"),
+    MAKE_NV("content-type", "application/javascript"),
+    MAKE_NV("date", "Sat, 27 Jul 2013 06:22:12 GMT"),
+    MAKE_NV("etag", "\"41c6-4de7d28585b00\""),
+    MAKE_NV("expires", "Thu, 12 Jun 2014 10:00:58 GMT"),
+    MAKE_NV("last-modified", "Thu, 06 Jun 2013 14:30:36 GMT"),
+    MAKE_NV("via", "1.1 alphabravo (squid/3.x.x), 1.1 nghttpx"),
+    MAKE_NV("x-cache", "HIT from alphabravo"),
+    MAKE_NV("x-cache-lookup", "HIT from alphabravo:3128"),
   };
   nghttp2_nv nv9[] = {
-      MAKE_NV(":status", "304 Not Modified"),
-      MAKE_NV("age", "0"),
-      MAKE_NV("cache-control", "max-age=31536000"),
-      MAKE_NV("content-type", "application/javascript"),
-      MAKE_NV("date", "Sat, 27 Jul 2013 06:22:12 GMT"),
-      MAKE_NV("etag", "\"19d6e-4dc5b35a541c0\""),
-      MAKE_NV("expires", "Wed, 21 May 2014 08:32:18 GMT"),
-      MAKE_NV("last-modified", "Fri, 10 May 2013 11:10:07 GMT"),
-      MAKE_NV("via", "1.1 alphabravo (squid/3.x.x), 1.1 nghttpx"),
-      MAKE_NV("x-cache", "HIT from alphabravo"),
-      MAKE_NV("x-cache-lookup", "HIT from alphabravo:3128"),
+    MAKE_NV(":status", "304 Not Modified"),
+    MAKE_NV("age", "0"),
+    MAKE_NV("cache-control", "max-age=31536000"),
+    MAKE_NV("content-type", "application/javascript"),
+    MAKE_NV("date", "Sat, 27 Jul 2013 06:22:12 GMT"),
+    MAKE_NV("etag", "\"19d6e-4dc5b35a541c0\""),
+    MAKE_NV("expires", "Wed, 21 May 2014 08:32:18 GMT"),
+    MAKE_NV("last-modified", "Fri, 10 May 2013 11:10:07 GMT"),
+    MAKE_NV("via", "1.1 alphabravo (squid/3.x.x), 1.1 nghttpx"),
+    MAKE_NV("x-cache", "HIT from alphabravo"),
+    MAKE_NV("x-cache-lookup", "HIT from alphabravo:3128"),
   };
   nghttp2_nv nv10[] = {
-      MAKE_NV(":status", "304 Not Modified"),
-      MAKE_NV("age", "0"),
-      MAKE_NV("cache-control", "max-age=56682045"),
-      MAKE_NV("content-type", "text/css"),
-      MAKE_NV("date", "Sat, 27 Jul 2013 06:22:12 GMT"),
-      MAKE_NV("expires", "Thu, 14 May 2015 07:22:57 GMT"),
-      MAKE_NV("last-modified", "Tue, 14 May 2013 07:21:53 GMT"),
-      MAKE_NV("vary", "Accept-Encoding"),
-      MAKE_NV("via", "1.1 alphabravo (squid/3.x.x), 1.1 nghttpx"),
-      MAKE_NV("x-cache", "HIT from alphabravo"),
-      MAKE_NV("x-cache-lookup", "HIT from alphabravo:3128"),
+    MAKE_NV(":status", "304 Not Modified"),
+    MAKE_NV("age", "0"),
+    MAKE_NV("cache-control", "max-age=56682045"),
+    MAKE_NV("content-type", "text/css"),
+    MAKE_NV("date", "Sat, 27 Jul 2013 06:22:12 GMT"),
+    MAKE_NV("expires", "Thu, 14 May 2015 07:22:57 GMT"),
+    MAKE_NV("last-modified", "Tue, 14 May 2013 07:21:53 GMT"),
+    MAKE_NV("vary", "Accept-Encoding"),
+    MAKE_NV("via", "1.1 alphabravo (squid/3.x.x), 1.1 nghttpx"),
+    MAKE_NV("x-cache", "HIT from alphabravo"),
+    MAKE_NV("x-cache-lookup", "HIT from alphabravo:3128"),
   };
   nghttp2_mem *mem;
 
@@ -1210,9 +1207,9 @@ void test_nghttp2_hd_no_index(void) {
   nghttp2_bufs bufs;
   nghttp2_ssize blocklen;
   nghttp2_nv nva[] = {
-      MAKE_NV(":method", "GET"), MAKE_NV(":method", "POST"),
-      MAKE_NV(":path", "/foo"),  MAKE_NV("version", "HTTP/1.1"),
-      MAKE_NV(":method", "GET"),
+    MAKE_NV(":method", "GET"), MAKE_NV(":method", "POST"),
+    MAKE_NV(":path", "/foo"),  MAKE_NV("version", "HTTP/1.1"),
+    MAKE_NV(":method", "GET"),
   };
   size_t i;
   nva_out out;
@@ -1270,7 +1267,7 @@ void test_nghttp2_hd_deflate_bound(void) {
   bound = nghttp2_hd_deflate_bound(&deflater, nva, ARRLEN(nva));
 
   assert_size(12 + 6 * 2 * 2 + nva[0].namelen + nva[0].valuelen +
-                  nva[1].namelen + nva[1].valuelen,
+                nva[1].namelen + nva[1].valuelen,
               ==, bound);
 
   nghttp2_hd_deflate_hd_bufs(&deflater, &bufs, nva, ARRLEN(nva));
@@ -1331,12 +1328,12 @@ void test_nghttp2_hd_deflate_hd_vec(void) {
   nghttp2_hd_deflater *deflater;
   nghttp2_hd_inflater *inflater;
   nghttp2_nv nva[] = {
-      MAKE_NV(":method", "PUT"),
-      MAKE_NV(":scheme", "https"),
-      MAKE_NV(":authority", "localhost:3000"),
-      MAKE_NV(":path", "/usr/foo/alpha/bravo"),
-      MAKE_NV("content-type", "image/png"),
-      MAKE_NV("content-length", "1000000007"),
+    MAKE_NV(":method", "PUT"),
+    MAKE_NV(":scheme", "https"),
+    MAKE_NV(":authority", "localhost:3000"),
+    MAKE_NV(":path", "/usr/foo/alpha/bravo"),
+    MAKE_NV("content-type", "image/png"),
+    MAKE_NV("content-length", "1000000007"),
   };
   uint8_t buf[4096];
   nghttp2_ssize blocklen;
@@ -1448,7 +1445,7 @@ void test_nghttp2_hd_deflate_hd_vec(void) {
   }
 
   blocklen =
-      nghttp2_hd_deflate_hd_vec2(deflater, vec, buflen, nva, ARRLEN(nva));
+    nghttp2_hd_deflate_hd_vec2(deflater, vec, buflen, nva, ARRLEN(nva));
 
   assert_ptrdiff(0, <, blocklen);
 

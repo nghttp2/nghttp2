@@ -36,19 +36,19 @@ namespace shrpx {
 
 namespace {
 const MunitTest tests[]{
-    munit_void_test(test_downstream_field_store_append_last_header),
-    munit_void_test(test_downstream_field_store_header),
-    munit_void_test(test_downstream_crumble_request_cookie),
-    munit_void_test(test_downstream_assemble_request_cookie),
-    munit_void_test(test_downstream_rewrite_location_response_header),
-    munit_void_test(test_downstream_supports_non_final_response),
-    munit_void_test(test_downstream_find_affinity_cookie),
-    munit_test_end(),
+  munit_void_test(test_downstream_field_store_append_last_header),
+  munit_void_test(test_downstream_field_store_header),
+  munit_void_test(test_downstream_crumble_request_cookie),
+  munit_void_test(test_downstream_assemble_request_cookie),
+  munit_void_test(test_downstream_rewrite_location_response_header),
+  munit_void_test(test_downstream_supports_non_final_response),
+  munit_void_test(test_downstream_find_affinity_cookie),
+  munit_test_end(),
 };
 } // namespace
 
 const MunitSuite downstream_suite{
-    "/downstream", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
+  "/downstream", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
 };
 
 void test_downstream_field_store_append_last_header(void) {
@@ -71,9 +71,9 @@ void test_downstream_field_store_append_last_header(void) {
 
   fs.add_header_token("echo"_sr, "foxtrot"_sr, false, -1);
 
-  auto ans = HeaderRefs{
-      {"alphabravogolf0123456789"_sr, "CharliedeltAecho0123456789"_sr},
-      {"echo"_sr, "foxtrot"_sr}};
+  auto ans =
+    HeaderRefs{{"alphabravogolf0123456789"_sr, "CharliedeltAecho0123456789"_sr},
+               {"echo"_sr, "foxtrot"_sr}};
   assert_true(ans == fs.headers());
 }
 

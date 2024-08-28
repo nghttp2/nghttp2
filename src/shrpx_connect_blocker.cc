@@ -42,12 +42,12 @@ void connect_blocker_cb(struct ev_loop *loop, ev_timer *w, int revents) {
 ConnectBlocker::ConnectBlocker(std::mt19937 &gen, struct ev_loop *loop,
                                std::function<void()> block_func,
                                std::function<void()> unblock_func)
-    : gen_(gen),
-      block_func_(std::move(block_func)),
-      unblock_func_(std::move(unblock_func)),
-      loop_(loop),
-      fail_count_(0),
-      offline_(false) {
+  : gen_(gen),
+    block_func_(std::move(block_func)),
+    unblock_func_(std::move(unblock_func)),
+    loop_(loop),
+    fail_count_(0),
+    offline_(false) {
   ev_timer_init(&timer_, connect_blocker_cb, 0., 0.);
   timer_.data = this;
 }
@@ -82,14 +82,14 @@ void ConnectBlocker::on_failure() {
   ++fail_count_;
 
   auto base_backoff =
-      util::int_pow(MULTIPLIER, std::min(MAX_BACKOFF_EXP, fail_count_));
+    util::int_pow(MULTIPLIER, std::min(MAX_BACKOFF_EXP, fail_count_));
   auto dist = std::uniform_real_distribution<>(-JITTER * base_backoff,
                                                JITTER * base_backoff);
 
   auto &downstreamconf = *get_config()->conn.downstream;
 
   auto backoff =
-      std::min(downstreamconf.timeout.max_backoff, base_backoff + dist(gen_));
+    std::min(downstreamconf.timeout.max_backoff, base_backoff + dist(gen_));
 
   LOG(WARN) << "Could not connect " << fail_count_
             << " times in a row; sleep for " << backoff << " seconds";

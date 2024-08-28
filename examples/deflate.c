@@ -34,8 +34,8 @@
 
 #define MAKE_NV(K, V)                                                          \
   {                                                                            \
-      (uint8_t *)K,  (uint8_t *)V,         sizeof(K) - 1,                      \
-      sizeof(V) - 1, NGHTTP2_NV_FLAG_NONE,                                     \
+    (uint8_t *)K,  (uint8_t *)V,         sizeof(K) - 1,                        \
+    sizeof(V) - 1, NGHTTP2_NV_FLAG_NONE,                                       \
   }
 
 static void deflate(nghttp2_hd_deflater *deflater,
@@ -51,9 +51,9 @@ int main(void) {
   nghttp2_hd_inflater *inflater;
   /* Define 1st header set.  This is looks like a HTTP request. */
   nghttp2_nv nva1[] = {
-      MAKE_NV(":scheme", "https"), MAKE_NV(":authority", "example.org"),
-      MAKE_NV(":path", "/"), MAKE_NV("user-agent", "libnghttp2"),
-      MAKE_NV("accept-encoding", "gzip, deflate")};
+    MAKE_NV(":scheme", "https"), MAKE_NV(":authority", "example.org"),
+    MAKE_NV(":path", "/"), MAKE_NV("user-agent", "libnghttp2"),
+    MAKE_NV("accept-encoding", "gzip, deflate")};
   /* Define 2nd header set */
   nghttp2_nv nva2[] = {MAKE_NV(":scheme", "https"),
                        MAKE_NV(":authority", "example.org"),
@@ -175,7 +175,7 @@ int inflate_header_block(nghttp2_hd_inflater *inflater, uint8_t *in,
     size_t proclen;
 
     rv =
-        nghttp2_hd_inflate_hd3(inflater, &nv, &inflate_flags, in, inlen, final);
+      nghttp2_hd_inflate_hd3(inflater, &nv, &inflate_flags, in, inlen, final);
 
     if (rv < 0) {
       fprintf(stderr, "inflate failed with error code %td", rv);

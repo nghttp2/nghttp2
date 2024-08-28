@@ -628,7 +628,7 @@ void show_candidates(const char *unkopt, const option *options) {
     }
     // cost values are borrowed from git, help.c.
     int sim =
-        levenshtein(unkopt, unkoptlen, options[i].name, optnamelen, 0, 2, 1, 3);
+      levenshtein(unkopt, unkoptlen, options[i].name, optnamelen, 0, 2, 1, 3);
     cands.emplace_back(sim, options[i].name);
   }
   if (prefix_match == 1 || cands.empty()) {
@@ -708,9 +708,9 @@ bool porteq(const char *uri1, const http_parser_url &u1, const char *uri2,
             const http_parser_url &u2) {
   uint16_t port1, port2;
   port1 =
-      util::has_uri_field(u1, UF_PORT) ? u1.port : get_default_port(uri1, u1);
+    util::has_uri_field(u1, UF_PORT) ? u1.port : get_default_port(uri1, u1);
   port2 =
-      util::has_uri_field(u2, UF_PORT) ? u2.port : get_default_port(uri2, u2);
+    util::has_uri_field(u2, UF_PORT) ? u2.port : get_default_port(uri2, u2);
   return port1 == port2;
 }
 

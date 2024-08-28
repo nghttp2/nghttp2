@@ -35,25 +35,25 @@
 #include "nghttp2_priority_spec.h"
 
 static MunitTest tests[] = {
-    munit_void_test(test_nghttp2_frame_pack_headers),
-    munit_void_test(test_nghttp2_frame_pack_headers_frame_too_large),
-    munit_void_test(test_nghttp2_frame_pack_priority),
-    munit_void_test(test_nghttp2_frame_pack_rst_stream),
-    munit_void_test(test_nghttp2_frame_pack_settings),
-    munit_void_test(test_nghttp2_frame_pack_push_promise),
-    munit_void_test(test_nghttp2_frame_pack_ping),
-    munit_void_test(test_nghttp2_frame_pack_goaway),
-    munit_void_test(test_nghttp2_frame_pack_window_update),
-    munit_void_test(test_nghttp2_frame_pack_altsvc),
-    munit_void_test(test_nghttp2_frame_pack_origin),
-    munit_void_test(test_nghttp2_frame_pack_priority_update),
-    munit_void_test(test_nghttp2_nv_array_copy),
-    munit_void_test(test_nghttp2_iv_check),
-    munit_test_end(),
+  munit_void_test(test_nghttp2_frame_pack_headers),
+  munit_void_test(test_nghttp2_frame_pack_headers_frame_too_large),
+  munit_void_test(test_nghttp2_frame_pack_priority),
+  munit_void_test(test_nghttp2_frame_pack_rst_stream),
+  munit_void_test(test_nghttp2_frame_pack_settings),
+  munit_void_test(test_nghttp2_frame_pack_push_promise),
+  munit_void_test(test_nghttp2_frame_pack_ping),
+  munit_void_test(test_nghttp2_frame_pack_goaway),
+  munit_void_test(test_nghttp2_frame_pack_window_update),
+  munit_void_test(test_nghttp2_frame_pack_altsvc),
+  munit_void_test(test_nghttp2_frame_pack_origin),
+  munit_void_test(test_nghttp2_frame_pack_priority_update),
+  munit_void_test(test_nghttp2_nv_array_copy),
+  munit_void_test(test_nghttp2_iv_check),
+  munit_test_end(),
 };
 
 const MunitSuite frame_suite = {
-    "/frame", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
+  "/frame", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
 };
 
 static nghttp2_nv make_nv(const char *name, const char *value) {
@@ -116,8 +116,8 @@ void test_nghttp2_frame_pack_headers(void) {
   nghttp2_priority_spec_default_init(&pri_spec);
 
   nghttp2_frame_headers_init(
-      &frame, NGHTTP2_FLAG_END_STREAM | NGHTTP2_FLAG_END_HEADERS, 1000000007,
-      NGHTTP2_HCAT_REQUEST, &pri_spec, nva, nvlen);
+    &frame, NGHTTP2_FLAG_END_STREAM | NGHTTP2_FLAG_END_HEADERS, 1000000007,
+    NGHTTP2_HCAT_REQUEST, &pri_spec, nva, nvlen);
   rv = nghttp2_frame_pack_headers(&bufs, &frame, &deflater);
 
   nghttp2_bufs_rewind(&bufs);
@@ -126,10 +126,9 @@ void test_nghttp2_frame_pack_headers(void) {
   assert_size(0, <, nghttp2_bufs_len(&bufs));
   assert_int(0, ==, unpack_framebuf((nghttp2_frame *)&oframe, &bufs));
 
-  check_frame_header(nghttp2_bufs_len(&bufs) - NGHTTP2_FRAME_HDLEN,
-                     NGHTTP2_HEADERS,
-                     NGHTTP2_FLAG_END_STREAM | NGHTTP2_FLAG_END_HEADERS,
-                     1000000007, &oframe.hd);
+  check_frame_header(
+    nghttp2_bufs_len(&bufs) - NGHTTP2_FRAME_HDLEN, NGHTTP2_HEADERS,
+    NGHTTP2_FLAG_END_STREAM | NGHTTP2_FLAG_END_HEADERS, 1000000007, &oframe.hd);
   /* We did not include PRIORITY flag */
   assert_int32(NGHTTP2_DEFAULT_WEIGHT, ==, oframe.pri_spec.weight);
 
@@ -156,11 +155,10 @@ void test_nghttp2_frame_pack_headers(void) {
   assert_size(0, <, nghttp2_bufs_len(&bufs));
   assert_int(0, ==, unpack_framebuf((nghttp2_frame *)&oframe, &bufs));
 
-  check_frame_header(nghttp2_bufs_len(&bufs) - NGHTTP2_FRAME_HDLEN,
-                     NGHTTP2_HEADERS,
-                     NGHTTP2_FLAG_END_STREAM | NGHTTP2_FLAG_END_HEADERS |
-                         NGHTTP2_FLAG_PRIORITY,
-                     1000000007, &oframe.hd);
+  check_frame_header(
+    nghttp2_bufs_len(&bufs) - NGHTTP2_FRAME_HDLEN, NGHTTP2_HEADERS,
+    NGHTTP2_FLAG_END_STREAM | NGHTTP2_FLAG_END_HEADERS | NGHTTP2_FLAG_PRIORITY,
+    1000000007, &oframe.hd);
 
   assert_int32(1000000009, ==, oframe.pri_spec.stream_id);
   assert_int32(12, ==, oframe.pri_spec.weight);
@@ -171,7 +169,7 @@ void test_nghttp2_frame_pack_headers(void) {
   assert_ptrdiff((nghttp2_ssize)hdblocklen, ==,
                  inflate_hd(&inflater, &out, &bufs,
                             NGHTTP2_FRAME_HDLEN +
-                                nghttp2_frame_priority_len(oframe.hd.flags),
+                              nghttp2_frame_priority_len(oframe.hd.flags),
                             mem));
 
   nghttp2_nv_array_sort(out.nva, out.nvlen);
@@ -215,8 +213,8 @@ void test_nghttp2_frame_pack_headers_frame_too_large(void) {
   nghttp2_nv_array_copy(&nva, big_hds, big_hdslen, mem);
   nghttp2_hd_deflate_init(&deflater, mem);
   nghttp2_frame_headers_init(
-      &frame, NGHTTP2_FLAG_END_STREAM | NGHTTP2_FLAG_END_HEADERS, 1000000007,
-      NGHTTP2_HCAT_REQUEST, NULL, nva, big_hdslen);
+    &frame, NGHTTP2_FLAG_END_STREAM | NGHTTP2_FLAG_END_HEADERS, 1000000007,
+    NGHTTP2_HCAT_REQUEST, NULL, nva, big_hdslen);
   rv = nghttp2_frame_pack_headers(&bufs, &frame, &deflater);
   assert_int(NGHTTP2_ERR_HEADER_COMP, ==, rv);
 
@@ -364,8 +362,8 @@ void test_nghttp2_frame_pack_push_promise(void) {
 
   hdblocklen = nghttp2_bufs_len(&bufs) - NGHTTP2_FRAME_HDLEN - 4;
   assert_ptrdiff(
-      (nghttp2_ssize)hdblocklen, ==,
-      inflate_hd(&inflater, &out, &bufs, NGHTTP2_FRAME_HDLEN + 4, mem));
+    (nghttp2_ssize)hdblocklen, ==,
+    inflate_hd(&inflater, &out, &bufs, NGHTTP2_FRAME_HDLEN + 4, mem));
 
   assert_size(7, ==, out.nvlen);
   assert_true(nvnameeq("method", &out.nva[0]));
@@ -530,18 +528,18 @@ void test_nghttp2_frame_pack_origin(void) {
   static const uint8_t example[] = "https://example.com";
   static const uint8_t nghttp2[] = "https://nghttp2.org";
   nghttp2_origin_entry ov[] = {
-      {
-          (uint8_t *)example,
-          sizeof(example) - 1,
-      },
-      {
-          NULL,
-          0,
-      },
-      {
-          (uint8_t *)nghttp2,
-          sizeof(nghttp2) - 1,
-      },
+    {
+      (uint8_t *)example,
+      sizeof(example) - 1,
+    },
+    {
+      NULL,
+      0,
+    },
+    {
+      (uint8_t *)nghttp2,
+      sizeof(nghttp2) - 1,
+    },
   };
   nghttp2_mem *mem;
 

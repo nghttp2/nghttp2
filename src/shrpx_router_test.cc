@@ -32,15 +32,15 @@ namespace shrpx {
 
 namespace {
 const MunitTest tests[]{
-    munit_void_test(test_shrpx_router_match),
-    munit_void_test(test_shrpx_router_match_wildcard),
-    munit_void_test(test_shrpx_router_match_prefix),
-    munit_test_end(),
+  munit_void_test(test_shrpx_router_match),
+  munit_void_test(test_shrpx_router_match_wildcard),
+  munit_void_test(test_shrpx_router_match_prefix),
+  munit_test_end(),
 };
 } // namespace
 
 const MunitSuite router_suite{
-    "/router", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
+  "/router", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
 };
 
 struct Pattern {
@@ -51,16 +51,16 @@ struct Pattern {
 
 void test_shrpx_router_match(void) {
   auto patterns = std::vector<Pattern>{
-      {"nghttp2.org/"_sr, 0},
-      {"nghttp2.org/alpha"_sr, 1},
-      {"nghttp2.org/alpha/"_sr, 2},
-      {"nghttp2.org/alpha/bravo/"_sr, 3},
-      {"www.nghttp2.org/alpha/"_sr, 4},
-      {"/alpha"_sr, 5},
-      {"example.com/alpha/"_sr, 6},
-      {"nghttp2.org/alpha/bravo2/"_sr, 7},
-      {"www2.nghttp2.org/alpha/"_sr, 8},
-      {"www2.nghttp2.org/alpha2/"_sr, 9},
+    {"nghttp2.org/"_sr, 0},
+    {"nghttp2.org/alpha"_sr, 1},
+    {"nghttp2.org/alpha/"_sr, 2},
+    {"nghttp2.org/alpha/bravo/"_sr, 3},
+    {"www.nghttp2.org/alpha/"_sr, 4},
+    {"/alpha"_sr, 5},
+    {"example.com/alpha/"_sr, 6},
+    {"nghttp2.org/alpha/bravo2/"_sr, 7},
+    {"www2.nghttp2.org/alpha/"_sr, 8},
+    {"www2.nghttp2.org/alpha2/"_sr, 9},
   };
 
   Router router;
@@ -107,12 +107,12 @@ void test_shrpx_router_match(void) {
 
 void test_shrpx_router_match_wildcard(void) {
   constexpr auto patterns = std::to_array<Pattern>({
-      {"nghttp2.org/"_sr, 0},
-      {"nghttp2.org/"_sr, 1, true},
-      {"nghttp2.org/alpha/"_sr, 2},
-      {"nghttp2.org/alpha/"_sr, 3, true},
-      {"nghttp2.org/bravo"_sr, 4},
-      {"nghttp2.org/bravo"_sr, 5, true},
+    {"nghttp2.org/"_sr, 0},
+    {"nghttp2.org/"_sr, 1, true},
+    {"nghttp2.org/alpha/"_sr, 2},
+    {"nghttp2.org/alpha/"_sr, 3, true},
+    {"nghttp2.org/bravo"_sr, 4},
+    {"nghttp2.org/bravo"_sr, 5, true},
   });
 
   Router router;
@@ -142,10 +142,10 @@ void test_shrpx_router_match_wildcard(void) {
 
 void test_shrpx_router_match_prefix(void) {
   auto patterns = std::vector<Pattern>{
-      {"gro.2ptthgn."_sr, 0},
-      {"gro.2ptthgn.www."_sr, 1},
-      {"gro.2ptthgn.gmi."_sr, 2},
-      {"gro.2ptthgn.gmi.ahpla."_sr, 3},
+    {"gro.2ptthgn."_sr, 0},
+    {"gro.2ptthgn.www."_sr, 1},
+    {"gro.2ptthgn.gmi."_sr, 2},
+    {"gro.2ptthgn.gmi.ahpla."_sr, 3},
   };
 
   Router router;

@@ -32,13 +32,13 @@
 namespace shrpx {
 
 DownstreamQueue::HostEntry::HostEntry(ImmutableString &&key)
-    : key(std::move(key)), num_active(0) {}
+  : key(std::move(key)), num_active(0) {}
 
 DownstreamQueue::DownstreamQueue(size_t conn_max_per_host, bool unified_host)
-    : conn_max_per_host_(conn_max_per_host == 0
-                             ? std::numeric_limits<size_t>::max()
-                             : conn_max_per_host),
-      unified_host_(unified_host) {}
+  : conn_max_per_host_(conn_max_per_host == 0
+                         ? std::numeric_limits<size_t>::max()
+                         : conn_max_per_host),
+    unified_host_(unified_host) {}
 
 DownstreamQueue::~DownstreamQueue() {
   dlist_delete_all(downstreams_);
@@ -65,11 +65,11 @@ DownstreamQueue::find_host_entry(const StringRef &host) {
     auto key_ref = StringRef{key};
 #ifdef HAVE_STD_MAP_EMPLACE
     std::tie(itr, std::ignore) =
-        host_entries_.emplace(key_ref, HostEntry(std::move(key)));
+      host_entries_.emplace(key_ref, HostEntry(std::move(key)));
 #else  // !HAVE_STD_MAP_EMPLACE
     // for g++-4.7
-    std::tie(itr, std::ignore) = host_entries_.insert(
-        std::make_pair(key_ref, HostEntry(std::move(key))));
+    std::tie(itr, std::ignore) =
+      host_entries_.insert(std::make_pair(key_ref, HostEntry(std::move(key))));
 #endif // !HAVE_STD_MAP_EMPLACE
   }
   return (*itr).second;

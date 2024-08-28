@@ -147,38 +147,38 @@ int htp_body_cb(llhttp_t *htp, const char *data, size_t len) {
 
 namespace {
 constexpr llhttp_settings_t htp_hooks = {
-    htp_msg_begincb,     // llhttp_cb      on_message_begin;
-    nullptr,             // llhttp_data_cb on_url;
-    htp_statuscb,        // llhttp_data_cb on_status;
-    nullptr,             // llhttp_data_cb on_method;
-    nullptr,             // llhttp_data_cb on_version;
-    htp_hdr_keycb,       // llhttp_data_cb on_header_field;
-    htp_hdr_valcb,       // llhttp_data_cb on_header_value;
-    nullptr,             // llhttp_data_cb on_chunk_extension_name;
-    nullptr,             // llhttp_data_cb on_chunk_extension_value;
-    htp_hdrs_completecb, // llhttp_cb      on_headers_complete;
-    htp_body_cb,         // llhttp_data_cb on_body;
-    htp_msg_completecb,  // llhttp_cb      on_message_complete;
-    nullptr,             // llhttp_cb      on_url_complete;
-    nullptr,             // llhttp_cb      on_status_complete;
-    nullptr,             // llhttp_cb      on_method_complete;
-    nullptr,             // llhttp_cb      on_version_complete;
-    nullptr,             // llhttp_cb      on_header_field_complete;
-    nullptr,             // llhttp_cb      on_header_value_complete;
-    nullptr,             // llhttp_cb      on_chunk_extension_name_complete;
-    nullptr,             // llhttp_cb      on_chunk_extension_value_complete;
-    nullptr,             // llhttp_cb      on_chunk_header;
-    nullptr,             // llhttp_cb      on_chunk_complete;
-    nullptr,             // llhttp_cb      on_reset;
+  htp_msg_begincb,     // llhttp_cb      on_message_begin;
+  nullptr,             // llhttp_data_cb on_url;
+  htp_statuscb,        // llhttp_data_cb on_status;
+  nullptr,             // llhttp_data_cb on_method;
+  nullptr,             // llhttp_data_cb on_version;
+  htp_hdr_keycb,       // llhttp_data_cb on_header_field;
+  htp_hdr_valcb,       // llhttp_data_cb on_header_value;
+  nullptr,             // llhttp_data_cb on_chunk_extension_name;
+  nullptr,             // llhttp_data_cb on_chunk_extension_value;
+  htp_hdrs_completecb, // llhttp_cb      on_headers_complete;
+  htp_body_cb,         // llhttp_data_cb on_body;
+  htp_msg_completecb,  // llhttp_cb      on_message_complete;
+  nullptr,             // llhttp_cb      on_url_complete;
+  nullptr,             // llhttp_cb      on_status_complete;
+  nullptr,             // llhttp_cb      on_method_complete;
+  nullptr,             // llhttp_cb      on_version_complete;
+  nullptr,             // llhttp_cb      on_header_field_complete;
+  nullptr,             // llhttp_cb      on_header_value_complete;
+  nullptr,             // llhttp_cb      on_chunk_extension_name_complete;
+  nullptr,             // llhttp_cb      on_chunk_extension_value_complete;
+  nullptr,             // llhttp_cb      on_chunk_header;
+  nullptr,             // llhttp_cb      on_chunk_complete;
+  nullptr,             // llhttp_cb      on_reset;
 };
 } // namespace
 
 Http1Session::Http1Session(Client *client)
-    : stream_req_counter_(1),
-      stream_resp_counter_(1),
-      client_(client),
-      htp_(),
-      complete_(false) {
+  : stream_req_counter_(1),
+    stream_resp_counter_(1),
+    client_(client),
+    htp_(),
+    complete_(false) {
   llhttp_init(&htp_, HTTP_RESPONSE, &htp_hooks);
   htp_.data = this;
 }
@@ -215,12 +215,12 @@ int Http1Session::submit_request() {
 
 int Http1Session::on_read(const uint8_t *data, size_t len) {
   auto htperr =
-      llhttp_execute(&htp_, reinterpret_cast<const char *>(data), len);
+    llhttp_execute(&htp_, reinterpret_cast<const char *>(data), len);
   auto nread = htperr == HPE_OK
-                   ? len
-                   : static_cast<size_t>(reinterpret_cast<const uint8_t *>(
-                                             llhttp_get_error_pos(&htp_)) -
-                                         data);
+                 ? len
+                 : static_cast<size_t>(reinterpret_cast<const uint8_t *>(
+                                         llhttp_get_error_pos(&htp_)) -
+                                       data);
 
   if (client_->worker->config->verbose) {
     std::cout.write(reinterpret_cast<const char *>(data), nread);

@@ -49,7 +49,7 @@ Error err_transport_idle_timeout() {
 
 Error err_transport_tls(int alert) {
   return {ErrorType::Transport, ngtcp2_err_infer_quic_transport_error_code(
-                                    NGTCP2_CRYPTO_ERROR | alert)};
+                                  NGTCP2_CRYPTO_ERROR | alert)};
 }
 
 Error err_application(int liberr) {

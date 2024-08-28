@@ -42,15 +42,15 @@ Timestamp::Timestamp(const std::chrono::system_clock::time_point &tp) {
 }
 
 LogConfig::LogConfig()
-    : time_str_updated(std::chrono::system_clock::now()),
-      tstamp(std::make_shared<Timestamp>(time_str_updated)),
-      pid(getpid()),
-      accesslog_fd(-1),
-      errorlog_fd(-1),
-      errorlog_tty(false) {
+  : time_str_updated(std::chrono::system_clock::now()),
+    tstamp(std::make_shared<Timestamp>(time_str_updated)),
+    pid(getpid()),
+    accesslog_fd(-1),
+    errorlog_fd(-1),
+    errorlog_tty(false) {
   auto tid = std::this_thread::get_id();
   auto tid_hash =
-      util::hash32(StringRef{reinterpret_cast<char *>(&tid), sizeof(tid)});
+    util::hash32(StringRef{reinterpret_cast<char *>(&tid), sizeof(tid)});
   thread_id = util::format_hex(std::span{&tid_hash, 1});
 }
 
@@ -95,11 +95,11 @@ void delete_log_config() {}
 #endif   // NOTHREADS
 
 void LogConfig::update_tstamp_millis(
-    const std::chrono::system_clock::time_point &now) {
+  const std::chrono::system_clock::time_point &now) {
   if (std::chrono::duration_cast<std::chrono::milliseconds>(
-          now.time_since_epoch()) ==
+        now.time_since_epoch()) ==
       std::chrono::duration_cast<std::chrono::milliseconds>(
-          time_str_updated.time_since_epoch())) {
+        time_str_updated.time_since_epoch())) {
     return;
   }
 
@@ -109,11 +109,11 @@ void LogConfig::update_tstamp_millis(
 }
 
 void LogConfig::update_tstamp(
-    const std::chrono::system_clock::time_point &now) {
+  const std::chrono::system_clock::time_point &now) {
   if (std::chrono::duration_cast<std::chrono::seconds>(
-          now.time_since_epoch()) ==
+        now.time_since_epoch()) ==
       std::chrono::duration_cast<std::chrono::seconds>(
-          time_str_updated.time_since_epoch())) {
+        time_str_updated.time_since_epoch())) {
     return;
   }
 

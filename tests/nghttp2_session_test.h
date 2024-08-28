@@ -83,7 +83,7 @@ munit_void_test_decl(test_nghttp2_session_is_my_stream_id);
 munit_void_test_decl(test_nghttp2_session_upgrade2);
 munit_void_test_decl(test_nghttp2_session_reprioritize_stream);
 munit_void_test_decl(
-    test_nghttp2_session_reprioritize_stream_with_idle_stream_dep);
+  test_nghttp2_session_reprioritize_stream_with_idle_stream_dep);
 munit_void_test_decl(test_nghttp2_submit_data);
 munit_void_test_decl(test_nghttp2_submit_data_read_length_too_large);
 munit_void_test_decl(test_nghttp2_submit_data_read_length_smallest);
@@ -140,7 +140,7 @@ munit_void_test_decl(test_nghttp2_session_stream_dep_remove);
 munit_void_test_decl(test_nghttp2_session_stream_dep_add_subtree);
 munit_void_test_decl(test_nghttp2_session_stream_dep_remove_subtree);
 munit_void_test_decl(
-    test_nghttp2_session_stream_dep_all_your_stream_are_belong_to_us);
+  test_nghttp2_session_stream_dep_all_your_stream_are_belong_to_us);
 munit_void_test_decl(test_nghttp2_session_stream_attach_item);
 munit_void_test_decl(test_nghttp2_session_stream_attach_item_subtree);
 munit_void_test_decl(test_nghttp2_session_stream_get_state);
@@ -188,6 +188,6 @@ munit_void_test_decl(test_nghttp2_http_record_request_method);
 munit_void_test_decl(test_nghttp2_http_push_promise);
 munit_void_test_decl(test_nghttp2_http_head_method_upgrade_workaround);
 munit_void_test_decl(
-    test_nghttp2_http_no_rfc9113_leading_and_trailing_ws_validation);
+  test_nghttp2_http_no_rfc9113_leading_and_trailing_ws_validation);
 
 #endif /* NGHTTP2_SESSION_TEST_H */

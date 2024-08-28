@@ -38,15 +38,15 @@ namespace nghttp2 {
 
 namespace {
 const MunitTest tests[]{
-    munit_void_test(test_template_immutable_string),
-    munit_void_test(test_template_string_ref),
-    munit_void_test(test_template_as_uint8_span),
-    munit_test_end(),
+  munit_void_test(test_template_immutable_string),
+  munit_void_test(test_template_string_ref),
+  munit_void_test(test_template_as_uint8_span),
+  munit_test_end(),
 };
 } // namespace
 
 const MunitSuite template_suite{
-    "/template", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
+  "/template", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
 };
 
 void test_template_immutable_string(void) {

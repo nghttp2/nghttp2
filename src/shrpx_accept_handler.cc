@@ -47,7 +47,7 @@ void acceptcb(struct ev_loop *loop, ev_io *w, int revent) {
 } // namespace
 
 AcceptHandler::AcceptHandler(const UpstreamAddr *faddr, ConnectionHandler *h)
-    : conn_hnr_(h), faddr_(faddr) {
+  : conn_hnr_(h), faddr_(faddr) {
   ev_io_init(&wev_, acceptcb, faddr_->fd, EV_READ);
   wev_.data = this;
   ev_io_start(conn_hnr_->get_loop(), &wev_);
@@ -64,7 +64,7 @@ void AcceptHandler::accept_connection() {
 
 #ifdef HAVE_ACCEPT4
   auto cfd =
-      accept4(faddr_->fd, &sockaddr.sa, &addrlen, SOCK_NONBLOCK | SOCK_CLOEXEC);
+    accept4(faddr_->fd, &sockaddr.sa, &addrlen, SOCK_NONBLOCK | SOCK_CLOEXEC);
 #else  // !HAVE_ACCEPT4
   auto cfd = accept(faddr_->fd, &sockaddr.sa, &addrlen);
 #endif // !HAVE_ACCEPT4

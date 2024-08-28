@@ -40,13 +40,13 @@ namespace shrpx {
 
 namespace {
 const MunitTest tests[]{
-    munit_void_test(test_shrpx_worker_match_downstream_addr_group),
-    munit_test_end(),
+  munit_void_test(test_shrpx_worker_match_downstream_addr_group),
+  munit_test_end(),
 };
 } // namespace
 
 const MunitSuite worker_suite{
-    "/worker", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
+  "/worker", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
 };
 
 void test_shrpx_worker_match_downstream_addr_group(void) {

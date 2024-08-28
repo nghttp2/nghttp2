@@ -31,13 +31,13 @@
 #include "nghttp2_ratelim.h"
 
 static const MunitTest tests[] = {
-    munit_void_test(test_nghttp2_ratelim_update),
-    munit_void_test(test_nghttp2_ratelim_drain),
-    munit_test_end(),
+  munit_void_test(test_nghttp2_ratelim_update),
+  munit_void_test(test_nghttp2_ratelim_drain),
+  munit_test_end(),
 };
 
 const MunitSuite ratelim_suite = {
-    "/ratelim", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
+  "/ratelim", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
 };
 
 void test_nghttp2_ratelim_update(void) {

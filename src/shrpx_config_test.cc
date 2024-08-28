@@ -41,16 +41,16 @@ namespace shrpx {
 
 namespace {
 const MunitTest tests[]{
-    munit_void_test(test_shrpx_config_parse_header),
-    munit_void_test(test_shrpx_config_parse_log_format),
-    munit_void_test(test_shrpx_config_read_tls_ticket_key_file),
-    munit_void_test(test_shrpx_config_read_tls_ticket_key_file_aes_256),
-    munit_test_end(),
+  munit_void_test(test_shrpx_config_parse_header),
+  munit_void_test(test_shrpx_config_parse_log_format),
+  munit_void_test(test_shrpx_config_read_tls_ticket_key_file),
+  munit_void_test(test_shrpx_config_read_tls_ticket_key_file_aes_256),
+  munit_test_end(),
 };
 } // namespace
 
 const MunitSuite config_suite{
-    "/config_suite", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
+  "/config_suite", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
 };
 
 void test_shrpx_config_parse_header(void) {
@@ -89,9 +89,9 @@ void test_shrpx_config_parse_log_format(void) {
   BlockAllocator balloc(4096, 4096);
 
   auto res = parse_log_format(
-      balloc, R"($remote_addr - $remote_user [$time_local] )"
-              R"("$request" $status $body_bytes_sent )"
-              R"("${http_referer}" $http_host "$http_user_agent")"_sr);
+    balloc, R"($remote_addr - $remote_user [$time_local] )"
+            R"("$request" $status $body_bytes_sent )"
+            R"("${http_referer}" $http_host "$http_user_agent")"_sr);
   assert_size(16, ==, res.size());
 
   assert_enum_class(LogFragmentType::REMOTE_ADDR, ==, res[0].type);
@@ -180,19 +180,17 @@ void test_shrpx_config_read_tls_ticket_key_file(void) {
   auto fd1 = mkstemp(file1);
   assert_int(-1, !=, fd1);
   assert_ssize(
-      48, ==,
-      write(fd1, "0..............12..............34..............5", 48));
+    48, ==, write(fd1, "0..............12..............34..............5", 48));
   char file2[] = "/tmp/nghttpx-unittest.XXXXXX";
   auto fd2 = mkstemp(file2);
   assert_int(-1, !=, fd2);
   assert_ssize(
-      48, ==,
-      write(fd2, "6..............78..............9a..............b", 48));
+    48, ==, write(fd2, "6..............78..............9a..............b", 48));
 
   close(fd1);
   close(fd2);
   auto ticket_keys = read_tls_ticket_key_file(
-      {StringRef{file1}, StringRef{file2}}, EVP_aes_128_cbc(), EVP_sha256());
+    {StringRef{file1}, StringRef{file2}}, EVP_aes_128_cbc(), EVP_sha256());
   unlink(file1);
   unlink(file2);
   assert_not_null(ticket_keys.get());
@@ -241,7 +239,7 @@ void test_shrpx_config_read_tls_ticket_key_file_aes_256(void) {
   close(fd1);
   close(fd2);
   auto ticket_keys = read_tls_ticket_key_file(
-      {StringRef{file1}, StringRef{file2}}, EVP_aes_256_cbc(), EVP_sha256());
+    {StringRef{file1}, StringRef{file2}}, EVP_aes_256_cbc(), EVP_sha256());
   unlink(file1);
   unlink(file2);
   assert_not_null(ticket_keys.get());

@@ -99,11 +99,10 @@ DownstreamAddrGroup::~DownstreamAddrGroup() {}
 // DownstreamKey is used to index SharedDownstreamAddr in order to
 // find the same configuration.
 using DownstreamKey = std::tuple<
-    std::vector<
-        std::tuple<StringRef, StringRef, StringRef, size_t, size_t, Proto,
-                   uint32_t, uint32_t, uint32_t, bool, bool, bool, bool>>,
-    bool, SessionAffinity, StringRef, StringRef, SessionAffinityCookieSecure,
-    SessionAffinityCookieStickiness, int64_t, int64_t, StringRef, bool>;
+  std::vector<std::tuple<StringRef, StringRef, StringRef, size_t, size_t, Proto,
+                         uint32_t, uint32_t, uint32_t, bool, bool, bool, bool>>,
+  bool, SessionAffinity, StringRef, StringRef, SessionAffinityCookieSecure,
+  SessionAffinityCookieStickiness, int64_t, int64_t, StringRef, bool>;
 
 namespace {
 DownstreamKey
@@ -163,31 +162,31 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
                const std::shared_ptr<TicketKeys> &ticket_keys,
                ConnectionHandler *conn_handler,
                std::shared_ptr<DownstreamConfig> downstreamconf)
-    :
+  :
 #if defined(ENABLE_HTTP3) && defined(HAVE_LIBBPF)
-      index_{index},
+    index_{index},
 #endif // ENABLE_HTTP3 && HAVE_LIBBPF
-      randgen_(util::make_mt19937()),
-      worker_stat_{},
-      dns_tracker_(loop, get_config()->conn.downstream->family),
+    randgen_(util::make_mt19937()),
+    worker_stat_{},
+    dns_tracker_(loop, get_config()->conn.downstream->family),
 #ifdef ENABLE_HTTP3
-      worker_id_{std::move(wid)},
-      quic_upstream_addrs_{get_config()->conn.quic_listener.addrs},
+    worker_id_{std::move(wid)},
+    quic_upstream_addrs_{get_config()->conn.quic_listener.addrs},
 #endif // ENABLE_HTTP3
-      loop_(loop),
-      sv_ssl_ctx_(sv_ssl_ctx),
-      cl_ssl_ctx_(cl_ssl_ctx),
-      cert_tree_(cert_tree),
-      conn_handler_(conn_handler),
+    loop_(loop),
+    sv_ssl_ctx_(sv_ssl_ctx),
+    cl_ssl_ctx_(cl_ssl_ctx),
+    cert_tree_(cert_tree),
+    conn_handler_(conn_handler),
 #ifdef ENABLE_HTTP3
-      quic_sv_ssl_ctx_{quic_sv_ssl_ctx},
-      quic_cert_tree_{quic_cert_tree},
-      quic_conn_handler_{this},
+    quic_sv_ssl_ctx_{quic_sv_ssl_ctx},
+    quic_cert_tree_{quic_cert_tree},
+    quic_conn_handler_{this},
 #endif // ENABLE_HTTP3
-      ticket_keys_(ticket_keys),
-      connect_blocker_(
-          std::make_unique<ConnectBlocker>(randgen_, loop_, nullptr, nullptr)),
-      graceful_shutdown_(false) {
+    ticket_keys_(ticket_keys),
+    connect_blocker_(
+      std::make_unique<ConnectBlocker>(randgen_, loop_, nullptr, nullptr)),
+    graceful_shutdown_(false) {
   ev_async_init(&w_, eventcb);
   w_.data = this;
   ev_async_start(loop_, &w_);
@@ -202,9 +201,9 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
 
   if (!session_cacheconf.memcached.host.empty()) {
     session_cache_memcached_dispatcher_ = std::make_unique<MemcachedDispatcher>(
-        &session_cacheconf.memcached.addr, loop,
-        tls_session_cache_memcached_ssl_ctx,
-        StringRef{session_cacheconf.memcached.host}, &mcpool_, randgen_);
+      &session_cacheconf.memcached.addr, loop,
+      tls_session_cache_memcached_ssl_ctx,
+      StringRef{session_cacheconf.memcached.host}, &mcpool_, randgen_);
   }
 
   replace_downstream_config(std::move(downstreamconf));
@@ -212,9 +211,9 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
 
 namespace {
 void ensure_enqueue_addr(
-    std::priority_queue<WeightGroupEntry, std::vector<WeightGroupEntry>,
-                        WeightGroupEntryGreater> &wgpq,
-    WeightGroup *wg, DownstreamAddr *addr) {
+  std::priority_queue<WeightGroupEntry, std::vector<WeightGroupEntry>,
+                      WeightGroupEntryGreater> &wgpq,
+  WeightGroup *wg, DownstreamAddr *addr) {
   uint32_t cycle;
   if (!wg->pq.empty()) {
     auto &top = wg->pq.top();
@@ -245,7 +244,7 @@ void ensure_enqueue_addr(
 } // namespace
 
 void Worker::replace_downstream_config(
-    std::shared_ptr<DownstreamConfig> downstreamconf) {
+  std::shared_ptr<DownstreamConfig> downstreamconf) {
   for (auto &g : downstream_addr_groups_) {
     g->retired = true;
 
@@ -262,7 +261,7 @@ void Worker::replace_downstream_config(
   auto groups = downstreamconf->addr_groups;
 
   downstream_addr_groups_ =
-      std::vector<std::shared_ptr<DownstreamAddrGroup>>(groups.size());
+    std::vector<std::shared_ptr<DownstreamAddrGroup>>(groups.size());
 
   std::map<DownstreamKey, size_t> addr_groups_indexer;
 #ifdef HAVE_MRUBY
@@ -278,7 +277,7 @@ void Worker::replace_downstream_config(
 
     dst = std::make_shared<DownstreamAddrGroup>();
     dst->pattern =
-        ImmutableString{std::begin(src.pattern), std::end(src.pattern)};
+      ImmutableString{std::begin(src.pattern), std::end(src.pattern)};
 
     auto shared_addr = std::make_shared<SharedDownstreamAddr>();
 
@@ -286,10 +285,10 @@ void Worker::replace_downstream_config(
     shared_addr->affinity.type = src.affinity.type;
     if (src.affinity.type == SessionAffinity::COOKIE) {
       shared_addr->affinity.cookie.name =
-          make_string_ref(shared_addr->balloc, src.affinity.cookie.name);
+        make_string_ref(shared_addr->balloc, src.affinity.cookie.name);
       if (!src.affinity.cookie.path.empty()) {
         shared_addr->affinity.cookie.path =
-            make_string_ref(shared_addr->balloc, src.affinity.cookie.path);
+          make_string_ref(shared_addr->balloc, src.affinity.cookie.path);
       }
       shared_addr->affinity.cookie.secure = src.affinity.cookie.secure;
       shared_addr->affinity.cookie.stickiness = src.affinity.cookie.stickiness;
@@ -308,7 +307,7 @@ void Worker::replace_downstream_config(
       dst_addr.addr = src_addr.addr;
       dst_addr.host = make_string_ref(shared_addr->balloc, src_addr.host);
       dst_addr.hostport =
-          make_string_ref(shared_addr->balloc, src_addr.hostport);
+        make_string_ref(shared_addr->balloc, src_addr.hostport);
       dst_addr.port = src_addr.port;
       dst_addr.host_unix = src_addr.host_unix;
       dst_addr.weight = src_addr.weight;
@@ -346,14 +345,14 @@ void Worker::replace_downstream_config(
 
       for (auto &addr : shared_addr->addrs) {
         addr.connect_blocker = std::make_unique<ConnectBlocker>(
-            randgen_, loop_, nullptr, [shared_addr_ptr, &addr]() {
-              if (!addr.queued) {
-                if (!addr.wg) {
-                  return;
-                }
-                ensure_enqueue_addr(shared_addr_ptr->pq, addr.wg, &addr);
+          randgen_, loop_, nullptr, [shared_addr_ptr, &addr]() {
+            if (!addr.queued) {
+              if (!addr.wg) {
+                return;
               }
-            });
+              ensure_enqueue_addr(shared_addr_ptr->pq, addr.wg, &addr);
+            }
+          });
 
         addr.live_check = std::make_unique<LiveCheck>(loop_, cl_ssl_ctx_, this,
                                                       &addr, randgen_);
@@ -398,7 +397,7 @@ void Worker::replace_downstream_config(
 
         for (auto &kv : wgs) {
           shared_addr->pq.push(
-              WeightGroupEntry{kv.second, kv.second->seq, kv.second->cycle});
+            WeightGroupEntry{kv.second, kv.second->seq, kv.second->cycle});
           kv.second->queued = true;
         }
       }
@@ -493,7 +492,6 @@ void Worker::process_events() {
     }
 
     if (worker_stat_.num_connections >= worker_connections) {
-
       if (LOG_ENABLED(INFO)) {
         WLOG(INFO, this) << "Too many connections >= " << worker_connections;
       }
@@ -503,9 +501,8 @@ void Worker::process_events() {
       break;
     }
 
-    auto client_handler =
-        tls::accept_connection(this, wev.client_fd, &wev.client_addr.sa,
-                               wev.client_addrlen, wev.faddr);
+    auto client_handler = tls::accept_connection(
+      this, wev.client_fd, &wev.client_addr.sa, wev.client_addrlen, wev.faddr);
     if (!client_handler) {
       if (LOG_ENABLED(INFO)) {
         WLOG(ERROR, this) << "ClientHandler creation failed";
@@ -723,8 +720,8 @@ int Worker::setup_quic_server_socket() {
 
       if (addr.hostport == a.hostport) {
         LOG(FATAL)
-            << "QUIC frontend endpoint must be unique: a duplicate found for "
-            << addr.hostport;
+          << "QUIC frontend endpoint must be unique: a duplicate found for "
+          << addr.hostport;
 
         return -1;
       }
@@ -757,29 +754,27 @@ namespace {
 // dynamically trading ROM for RAM - This can be useful in (embedded)
 // bootloader applications, where ROM is often limited.
 const uint8_t sbox[256] = {
-    // 0 1 2 3 4 5 6 7 8 9 A B C D E F
-    0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b,
-    0xfe, 0xd7, 0xab, 0x76, 0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0,
-    0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0, 0xb7, 0xfd, 0x93, 0x26,
-    0x36, 0x3f, 0xf7, 0xcc, 0x34, 0xa5, 0xe5, 0xf1, 0x71, 0xd8, 0x31, 0x15,
-    0x04, 0xc7, 0x23, 0xc3, 0x18, 0x96, 0x05, 0x9a, 0x07, 0x12, 0x80, 0xe2,
-    0xeb, 0x27, 0xb2, 0x75, 0x09, 0x83, 0x2c, 0x1a, 0x1b, 0x6e, 0x5a, 0xa0,
-    0x52, 0x3b, 0xd6, 0xb3, 0x29, 0xe3, 0x2f, 0x84, 0x53, 0xd1, 0x00, 0xed,
-    0x20, 0xfc, 0xb1, 0x5b, 0x6a, 0xcb, 0xbe, 0x39, 0x4a, 0x4c, 0x58, 0xcf,
-    0xd0, 0xef, 0xaa, 0xfb, 0x43, 0x4d, 0x33, 0x85, 0x45, 0xf9, 0x02, 0x7f,
-    0x50, 0x3c, 0x9f, 0xa8, 0x51, 0xa3, 0x40, 0x8f, 0x92, 0x9d, 0x38, 0xf5,
-    0xbc, 0xb6, 0xda, 0x21, 0x10, 0xff, 0xf3, 0xd2, 0xcd, 0x0c, 0x13, 0xec,
-    0x5f, 0x97, 0x44, 0x17, 0xc4, 0xa7, 0x7e, 0x3d, 0x64, 0x5d, 0x19, 0x73,
-    0x60, 0x81, 0x4f, 0xdc, 0x22, 0x2a, 0x90, 0x88, 0x46, 0xee, 0xb8, 0x14,
-    0xde, 0x5e, 0x0b, 0xdb, 0xe0, 0x32, 0x3a, 0x0a, 0x49, 0x06, 0x24, 0x5c,
-    0xc2, 0xd3, 0xac, 0x62, 0x91, 0x95, 0xe4, 0x79, 0xe7, 0xc8, 0x37, 0x6d,
-    0x8d, 0xd5, 0x4e, 0xa9, 0x6c, 0x56, 0xf4, 0xea, 0x65, 0x7a, 0xae, 0x08,
-    0xba, 0x78, 0x25, 0x2e, 0x1c, 0xa6, 0xb4, 0xc6, 0xe8, 0xdd, 0x74, 0x1f,
-    0x4b, 0xbd, 0x8b, 0x8a, 0x70, 0x3e, 0xb5, 0x66, 0x48, 0x03, 0xf6, 0x0e,
-    0x61, 0x35, 0x57, 0xb9, 0x86, 0xc1, 0x1d, 0x9e, 0xe1, 0xf8, 0x98, 0x11,
-    0x69, 0xd9, 0x8e, 0x94, 0x9b, 0x1e, 0x87, 0xe9, 0xce, 0x55, 0x28, 0xdf,
-    0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f,
-    0xb0, 0x54, 0xbb, 0x16};
+  // 0 1 2 3 4 5 6 7 8 9 A B C D E F
+  0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe,
+  0xd7, 0xab, 0x76, 0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4,
+  0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0, 0xb7, 0xfd, 0x93, 0x26, 0x36, 0x3f, 0xf7,
+  0xcc, 0x34, 0xa5, 0xe5, 0xf1, 0x71, 0xd8, 0x31, 0x15, 0x04, 0xc7, 0x23, 0xc3,
+  0x18, 0x96, 0x05, 0x9a, 0x07, 0x12, 0x80, 0xe2, 0xeb, 0x27, 0xb2, 0x75, 0x09,
+  0x83, 0x2c, 0x1a, 0x1b, 0x6e, 0x5a, 0xa0, 0x52, 0x3b, 0xd6, 0xb3, 0x29, 0xe3,
+  0x2f, 0x84, 0x53, 0xd1, 0x00, 0xed, 0x20, 0xfc, 0xb1, 0x5b, 0x6a, 0xcb, 0xbe,
+  0x39, 0x4a, 0x4c, 0x58, 0xcf, 0xd0, 0xef, 0xaa, 0xfb, 0x43, 0x4d, 0x33, 0x85,
+  0x45, 0xf9, 0x02, 0x7f, 0x50, 0x3c, 0x9f, 0xa8, 0x51, 0xa3, 0x40, 0x8f, 0x92,
+  0x9d, 0x38, 0xf5, 0xbc, 0xb6, 0xda, 0x21, 0x10, 0xff, 0xf3, 0xd2, 0xcd, 0x0c,
+  0x13, 0xec, 0x5f, 0x97, 0x44, 0x17, 0xc4, 0xa7, 0x7e, 0x3d, 0x64, 0x5d, 0x19,
+  0x73, 0x60, 0x81, 0x4f, 0xdc, 0x22, 0x2a, 0x90, 0x88, 0x46, 0xee, 0xb8, 0x14,
+  0xde, 0x5e, 0x0b, 0xdb, 0xe0, 0x32, 0x3a, 0x0a, 0x49, 0x06, 0x24, 0x5c, 0xc2,
+  0xd3, 0xac, 0x62, 0x91, 0x95, 0xe4, 0x79, 0xe7, 0xc8, 0x37, 0x6d, 0x8d, 0xd5,
+  0x4e, 0xa9, 0x6c, 0x56, 0xf4, 0xea, 0x65, 0x7a, 0xae, 0x08, 0xba, 0x78, 0x25,
+  0x2e, 0x1c, 0xa6, 0xb4, 0xc6, 0xe8, 0xdd, 0x74, 0x1f, 0x4b, 0xbd, 0x8b, 0x8a,
+  0x70, 0x3e, 0xb5, 0x66, 0x48, 0x03, 0xf6, 0x0e, 0x61, 0x35, 0x57, 0xb9, 0x86,
+  0xc1, 0x1d, 0x9e, 0xe1, 0xf8, 0x98, 0x11, 0x69, 0xd9, 0x8e, 0x94, 0x9b, 0x1e,
+  0x87, 0xe9, 0xce, 0x55, 0x28, 0xdf, 0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42,
+  0x68, 0x41, 0x99, 0x2d, 0x0f, 0xb0, 0x54, 0xbb, 0x16};
 
 #    define getSBoxValue(num) (sbox[(num)])
 
@@ -951,8 +946,8 @@ int Worker::create_quic_server_socket(UpstreamAddr &faddr) {
                      static_cast<socklen_t>(sizeof(val))) == -1) {
         auto error = errno;
         LOG(WARN)
-            << "Failed to set IPV6_RECVPKTINFO option to listener socket: "
-            << xsi_strerror(error, errbuf.data(), errbuf.size());
+          << "Failed to set IPV6_RECVPKTINFO option to listener socket: "
+          << xsi_strerror(error, errbuf.data(), errbuf.size());
         close(fd);
         continue;
       }
@@ -972,8 +967,8 @@ int Worker::create_quic_server_socket(UpstreamAddr &faddr) {
                      static_cast<socklen_t>(sizeof(mtu_disc))) == -1) {
         auto error = errno;
         LOG(WARN)
-            << "Failed to set IPV6_MTU_DISCOVER option to listener socket: "
-            << xsi_strerror(error, errbuf.data(), errbuf.size());
+          << "Failed to set IPV6_MTU_DISCOVER option to listener socket: "
+          << xsi_strerror(error, errbuf.data(), errbuf.size());
         close(fd);
         continue;
       }
@@ -1068,7 +1063,7 @@ int Worker::create_quic_server_socket(UpstreamAddr &faddr) {
       ref.obj = obj;
 
       ref.reuseport_array =
-          bpf_object__find_map_by_name(obj, "reuseport_array");
+        bpf_object__find_map_by_name(obj, "reuseport_array");
       if (!ref.reuseport_array) {
         auto error = errno;
         LOG(FATAL) << "Failed to get reuseport_array: "
@@ -1126,8 +1121,8 @@ int Worker::create_quic_server_socket(UpstreamAddr &faddr) {
       KeyExpansion(aes_exp_key.data(), qkm.cid_encryption_key.data());
 
       rv =
-          bpf_map__update_elem(aes_key, &zero, sizeof(zero), aes_exp_key.data(),
-                               aes_exp_key.size(), BPF_ANY);
+        bpf_map__update_elem(aes_key, &zero, sizeof(zero), aes_exp_key.data(),
+                             aes_exp_key.size(), BPF_ANY);
       if (rv != 0) {
         auto error = errno;
         LOG(FATAL) << "Failed to update aes_key: "
@@ -1161,9 +1156,9 @@ int Worker::create_quic_server_socket(UpstreamAddr &faddr) {
         return -1;
       }
 
-      rv = bpf_map__update_elem(ref.worker_id_map, &worker_id_,
-                                sizeof(worker_id_), &sk_index, sizeof(sk_index),
-                                BPF_NOEXIST);
+      rv =
+        bpf_map__update_elem(ref.worker_id_map, &worker_id_, sizeof(worker_id_),
+                             &sk_index, sizeof(sk_index), BPF_NOEXIST);
       if (rv != 0) {
         auto error = errno;
         LOG(FATAL) << "Failed to update worker_id_map: "
@@ -1280,11 +1275,9 @@ const UpstreamAddr *Worker::find_quic_upstream_addr(const Address &local_addr) {
 
 namespace {
 size_t match_downstream_addr_group_host(
-    const RouterConfig &routerconf, const StringRef &host,
-    const StringRef &path,
-    const std::vector<std::shared_ptr<DownstreamAddrGroup>> &groups,
-    size_t catch_all, BlockAllocator &balloc) {
-
+  const RouterConfig &routerconf, const StringRef &host, const StringRef &path,
+  const std::vector<std::shared_ptr<DownstreamAddrGroup>> &groups,
+  size_t catch_all, BlockAllocator &balloc) {
   const auto &router = routerconf.router;
   const auto &rev_wildcard_router = routerconf.rev_wildcard_router;
   const auto &wildcard_patterns = routerconf.wildcard_patterns;
@@ -1305,8 +1298,8 @@ size_t match_downstream_addr_group_host(
 
   if (!wildcard_patterns.empty() && !host.empty()) {
     auto rev_host_src = make_byte_ref(balloc, host.size() - 1);
-    auto ep = std::copy(std::begin(host) + 1, std::end(host),
-                        std::begin(rev_host_src));
+    auto ep =
+      std::copy(std::begin(host) + 1, std::end(host), std::begin(rev_host_src));
     std::reverse(std::begin(rev_host_src), ep);
     auto rev_host = StringRef{std::span{std::begin(rev_host_src), ep}};
 
@@ -1316,7 +1309,7 @@ size_t match_downstream_addr_group_host(
     for (;;) {
       size_t nread = 0;
       auto wcidx =
-          rev_wildcard_router.match_prefix(&nread, &last_node, rev_host);
+        rev_wildcard_router.match_prefix(&nread, &last_node, rev_host);
       if (wcidx == -1) {
         break;
       }
@@ -1359,10 +1352,10 @@ size_t match_downstream_addr_group_host(
 } // namespace
 
 size_t match_downstream_addr_group(
-    const RouterConfig &routerconf, const StringRef &hostport,
-    const StringRef &raw_path,
-    const std::vector<std::shared_ptr<DownstreamAddrGroup>> &groups,
-    size_t catch_all, BlockAllocator &balloc) {
+  const RouterConfig &routerconf, const StringRef &hostport,
+  const StringRef &raw_path,
+  const std::vector<std::shared_ptr<DownstreamAddrGroup>> &groups,
+  size_t catch_all, BlockAllocator &balloc) {
   if (std::find(std::begin(hostport), std::end(hostport), '/') !=
       std::end(hostport)) {
     // We use '/' specially, and if '/' is included in host, it breaks

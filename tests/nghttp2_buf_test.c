@@ -32,20 +32,20 @@
 #include "nghttp2_test_helper.h"
 
 static const MunitTest tests[] = {
-    munit_void_test(test_nghttp2_bufs_add),
-    munit_void_test(test_nghttp2_bufs_add_stack_buffer_overflow_bug),
-    munit_void_test(test_nghttp2_bufs_addb),
-    munit_void_test(test_nghttp2_bufs_orb),
-    munit_void_test(test_nghttp2_bufs_remove),
-    munit_void_test(test_nghttp2_bufs_reset),
-    munit_void_test(test_nghttp2_bufs_advance),
-    munit_void_test(test_nghttp2_bufs_next_present),
-    munit_void_test(test_nghttp2_bufs_realloc),
-    munit_test_end(),
+  munit_void_test(test_nghttp2_bufs_add),
+  munit_void_test(test_nghttp2_bufs_add_stack_buffer_overflow_bug),
+  munit_void_test(test_nghttp2_bufs_addb),
+  munit_void_test(test_nghttp2_bufs_orb),
+  munit_void_test(test_nghttp2_bufs_remove),
+  munit_void_test(test_nghttp2_bufs_reset),
+  munit_void_test(test_nghttp2_bufs_advance),
+  munit_void_test(test_nghttp2_bufs_next_present),
+  munit_void_test(test_nghttp2_bufs_realloc),
+  munit_test_end(),
 };
 
 const MunitSuite buf_suite = {
-    "/buf", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
+  "/buf", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
 };
 
 void test_nghttp2_bufs_add(void) {

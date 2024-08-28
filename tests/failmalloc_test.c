@@ -37,16 +37,16 @@
 #include "nghttp2_test_helper.h"
 
 static const MunitTest tests[] = {
-    munit_void_test(test_nghttp2_session_send),
-    munit_void_test(test_nghttp2_session_send_server),
-    munit_void_test(test_nghttp2_session_recv),
-    munit_void_test(test_nghttp2_frame),
-    munit_void_test(test_nghttp2_hd),
-    munit_test_end(),
+  munit_void_test(test_nghttp2_session_send),
+  munit_void_test(test_nghttp2_session_send_server),
+  munit_void_test(test_nghttp2_session_recv),
+  munit_void_test(test_nghttp2_frame),
+  munit_void_test(test_nghttp2_hd),
+  munit_test_end(),
 };
 
 const MunitSuite failmalloc_suite = {
-    "/failmalloc", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
+  "/failmalloc", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
 };
 
 typedef struct {
@@ -98,8 +98,8 @@ static nghttp2_ssize data_feed_recv_callback(nghttp2_session *session,
 }
 
 static nghttp2_ssize fixed_length_data_source_read_callback(
-    nghttp2_session *session, int32_t stream_id, uint8_t *buf, size_t len,
-    uint32_t *data_flags, nghttp2_data_source *source, void *user_data) {
+  nghttp2_session *session, int32_t stream_id, uint8_t *buf, size_t len,
+  uint32_t *data_flags, nghttp2_data_source *source, void *user_data) {
   my_user_data *ud = (my_user_data *)user_data;
   size_t wlen;
   (void)session;
@@ -241,8 +241,8 @@ static void run_nghttp2_session_send_server(void) {
   const uint8_t altsvc_field_value[] = "h2=\":443\"";
   static const uint8_t nghttp2[] = "https://nghttp2.org";
   static const nghttp2_origin_entry ov = {
-      (uint8_t *)nghttp2,
-      sizeof(nghttp2) - 1,
+    (uint8_t *)nghttp2,
+    sizeof(nghttp2) - 1,
   };
 
   rv = nghttp2_session_callbacks_new(&callbacks);
@@ -292,10 +292,10 @@ static void run_nghttp2_session_recv(void) {
   nghttp2_frame frame;
   nghttp2_bufs bufs;
   nghttp2_nv nv[] = {
-      MAKE_NV(":method", "GET"),
-      MAKE_NV(":scheme", "https"),
-      MAKE_NV(":authority", "example.org"),
-      MAKE_NV(":path", "/"),
+    MAKE_NV(":method", "GET"),
+    MAKE_NV(":scheme", "https"),
+    MAKE_NV(":authority", "example.org"),
+    MAKE_NV(":path", "/"),
   };
   nghttp2_settings_entry iv[2];
   my_user_data ud;
@@ -493,8 +493,8 @@ static void run_nghttp2_frame_pack_settings(void) {
   buf = &bufs.head->buf;
 
   rv = nghttp2_frame_unpack_settings_payload2(
-      &oframe.settings.iv, &oframe.settings.niv, buf->pos + NGHTTP2_FRAME_HDLEN,
-      nghttp2_buf_len(buf) - NGHTTP2_FRAME_HDLEN, nghttp2_mem_fm());
+    &oframe.settings.iv, &oframe.settings.niv, buf->pos + NGHTTP2_FRAME_HDLEN,
+    nghttp2_buf_len(buf) - NGHTTP2_FRAME_HDLEN, nghttp2_mem_fm());
 
   if (rv != 0) {
     goto fail;
@@ -540,13 +540,13 @@ static void run_nghttp2_hd(void) {
   nghttp2_bufs bufs;
   int rv;
   nghttp2_nv nva1[] = {
-      MAKE_NV(":scheme", "https"), MAKE_NV(":authority", "example.org"),
-      MAKE_NV(":path", "/slashdot"),
-      MAKE_NV("accept-encoding", "gzip, deflate"), MAKE_NV("foo", "bar")};
+    MAKE_NV(":scheme", "https"), MAKE_NV(":authority", "example.org"),
+    MAKE_NV(":path", "/slashdot"), MAKE_NV("accept-encoding", "gzip, deflate"),
+    MAKE_NV("foo", "bar")};
   nghttp2_nv nva2[] = {
-      MAKE_NV(":scheme", "https"), MAKE_NV(":authority", "example.org"),
-      MAKE_NV(":path", "/style.css"), MAKE_NV("cookie", "nghttp2=FTW"),
-      MAKE_NV("foo", "bar2")};
+    MAKE_NV(":scheme", "https"), MAKE_NV(":authority", "example.org"),
+    MAKE_NV(":path", "/style.css"), MAKE_NV("cookie", "nghttp2=FTW"),
+    MAKE_NV("foo", "bar2")};
 
   rv = frame_pack_bufs_init(&bufs);
 
