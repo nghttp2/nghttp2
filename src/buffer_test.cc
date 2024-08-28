@@ -38,13 +38,13 @@ namespace nghttp2 {
 
 namespace {
 const MunitTest tests[]{
-    munit_void_test(test_buffer_write),
-    munit_test_end(),
+  munit_void_test(test_buffer_write),
+  munit_test_end(),
 };
 } // namespace
 
 const MunitSuite buffer_suite{
-    "/buffer", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
+  "/buffer", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
 };
 
 void test_buffer_write(void) {

@@ -38,7 +38,7 @@ namespace shrpx {
 namespace mruby {
 
 MRubyContext::MRubyContext(mrb_state *mrb, mrb_value app, mrb_value env)
-    : mrb_(mrb), app_(std::move(app)), env_(std::move(env)) {}
+  : mrb_(mrb), app_(std::move(app)), env_(std::move(env)) {}
 
 MRubyContext::~MRubyContext() {
   if (mrb_) {

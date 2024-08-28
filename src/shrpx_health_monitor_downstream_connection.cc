@@ -36,7 +36,7 @@ HealthMonitorDownstreamConnection::HealthMonitorDownstreamConnection() {}
 HealthMonitorDownstreamConnection::~HealthMonitorDownstreamConnection() {}
 
 int HealthMonitorDownstreamConnection::attach_downstream(
-    Downstream *downstream) {
+  Downstream *downstream) {
   if (LOG_ENABLED(INFO)) {
     DCLOG(INFO, this) << "Attaching to DOWNSTREAM:" << downstream;
   }
@@ -47,7 +47,7 @@ int HealthMonitorDownstreamConnection::attach_downstream(
 }
 
 void HealthMonitorDownstreamConnection::detach_downstream(
-    Downstream *downstream) {
+  Downstream *downstream) {
   if (LOG_ENABLED(INFO)) {
     DCLOG(INFO, this) << "Detaching from DOWNSTREAM:" << downstream;
   }
@@ -64,7 +64,7 @@ int HealthMonitorDownstreamConnection::push_request_headers() {
 }
 
 int HealthMonitorDownstreamConnection::push_upload_data_chunk(
-    const uint8_t *data, size_t datalen) {
+  const uint8_t *data, size_t datalen) {
   return 0;
 }
 

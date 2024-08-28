@@ -48,10 +48,10 @@ using namespace nghttp2;
 namespace shrpx {
 
 Http2DownstreamConnection::Http2DownstreamConnection(Http2Session *http2session)
-    : dlnext(nullptr),
-      dlprev(nullptr),
-      http2session_(http2session),
-      sd_(nullptr) {}
+  : dlnext(nullptr),
+    dlprev(nullptr),
+    http2session_(http2session),
+    sd_(nullptr) {}
 
 Http2DownstreamConnection::~Http2DownstreamConnection() {
   if (LOG_ENABLED(INFO)) {
@@ -155,7 +155,7 @@ int Http2DownstreamConnection::submit_rst_stream(Downstream *downstream,
                           << ", error_code=" << error_code;
       }
       rv = http2session_->submit_rst_stream(
-          downstream->get_downstream_stream_id(), error_code);
+        downstream->get_downstream_stream_id(), error_code);
     }
   }
   return rv;
@@ -169,7 +169,7 @@ nghttp2_ssize http2_data_read_callback(nghttp2_session *session,
                                        void *user_data) {
   int rv;
   auto sd = static_cast<StreamData *>(
-      nghttp2_session_get_stream_user_data(session, stream_id));
+    nghttp2_session_get_stream_user_data(session, stream_id));
   if (!sd || !sd->dconn) {
     return NGHTTP2_ERR_DEFERRED;
   }
@@ -196,7 +196,6 @@ nghttp2_ssize http2_data_read_callback(nghttp2_session *session,
       (!req.upgrade_request ||
        (downstream->get_response_state() == DownstreamState::HEADER_COMPLETE &&
         !downstream->get_upgraded()))) {
-
     *data_flags |= NGHTTP2_DATA_FLAG_EOF;
 
     const auto &trailers = req.fs.trailers();
@@ -299,7 +298,7 @@ int Http2DownstreamConnection::push_request_headers() {
     nva.push_back(http2::make_field(":protocol"_sr, "websocket"_sr));
   } else {
     nva.push_back(
-        http2::make_field(":method"_sr, http2::to_method_string(req.method)));
+      http2::make_field(":method"_sr, http2::to_method_string(req.method)));
   }
 
   if (!req.regular_connect_method()) {
@@ -335,11 +334,11 @@ int Http2DownstreamConnection::push_request_headers() {
   auto &earlydataconf = httpconf.early_data;
 
   uint32_t build_flags =
-      (fwdconf.strip_incoming ? http2::HDOP_STRIP_FORWARDED : 0) |
-      (xffconf.strip_incoming ? http2::HDOP_STRIP_X_FORWARDED_FOR : 0) |
-      (xfpconf.strip_incoming ? http2::HDOP_STRIP_X_FORWARDED_PROTO : 0) |
-      (earlydataconf.strip_incoming ? http2::HDOP_STRIP_EARLY_DATA : 0) |
-      http2::HDOP_STRIP_SEC_WEBSOCKET_KEY;
+    (fwdconf.strip_incoming ? http2::HDOP_STRIP_FORWARDED : 0) |
+    (xffconf.strip_incoming ? http2::HDOP_STRIP_X_FORWARDED_FOR : 0) |
+    (xfpconf.strip_incoming ? http2::HDOP_STRIP_X_FORWARDED_PROTO : 0) |
+    (earlydataconf.strip_incoming ? http2::HDOP_STRIP_EARLY_DATA : 0) |
+    http2::HDOP_STRIP_SEC_WEBSOCKET_KEY;
 
   http2::copy_headers_to_nva_nocopy(nva, req.fs.headers(), build_flags);
 
@@ -351,8 +350,7 @@ int Http2DownstreamConnection::push_request_headers() {
   auto handler = upstream->get_client_handler();
 
 #if defined(NGHTTP2_GENUINE_OPENSSL) ||                                        \
-    defined(NGHTTP2_OPENSSL_IS_BORINGSSL) ||                                   \
-    defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
+  defined(NGHTTP2_OPENSSL_IS_BORINGSSL) || defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
   auto conn = handler->get_connection();
 
   if (conn->tls.ssl && !SSL_is_init_finished(conn->tls.ssl)) {
@@ -362,7 +360,7 @@ int Http2DownstreamConnection::push_request_headers() {
        // NGHTTP2_OPENSSL_IS_WOLFSSL
 
   auto fwd =
-      fwdconf.strip_incoming ? nullptr : req.fs.header(http2::HD_FORWARDED);
+    fwdconf.strip_incoming ? nullptr : req.fs.header(http2::HD_FORWARDED);
 
   if (fwdconf.params) {
     auto params = fwdconf.params;
@@ -372,8 +370,8 @@ int Http2DownstreamConnection::push_request_headers() {
     }
 
     auto value = http::create_forwarded(
-        balloc, params, handler->get_forwarded_by(),
-        handler->get_forwarded_for(), req.authority, req.scheme);
+      balloc, params, handler->get_forwarded_by(), handler->get_forwarded_for(),
+      req.authority, req.scheme);
 
     if (fwd || !value.empty()) {
       if (fwd) {
@@ -390,8 +388,8 @@ int Http2DownstreamConnection::push_request_headers() {
     nva.push_back(http2::make_field("forwarded"_sr, fwd->value));
   }
 
-  auto xff = xffconf.strip_incoming ? nullptr
-                                    : req.fs.header(http2::HD_X_FORWARDED_FOR);
+  auto xff =
+    xffconf.strip_incoming ? nullptr : req.fs.header(http2::HD_X_FORWARDED_FOR);
 
   if (xffconf.add) {
     StringRef xff_value;
@@ -408,8 +406,8 @@ int Http2DownstreamConnection::push_request_headers() {
 
   if (!config->http2_proxy && !req.regular_connect_method()) {
     auto xfp = xfpconf.strip_incoming
-                   ? nullptr
-                   : req.fs.header(http2::HD_X_FORWARDED_PROTO);
+                 ? nullptr
+                 : req.fs.header(http2::HD_X_FORWARDED_PROTO);
 
     if (xfpconf.add) {
       StringRef xfp_value;
@@ -447,7 +445,7 @@ int Http2DownstreamConnection::push_request_headers() {
     *p = '\0';
 
     nva.push_back(
-        http2::make_field("via"_sr, StringRef{std::span{std::begin(iov), p}}));
+      http2::make_field("via"_sr, StringRef{std::span{std::begin(iov), p}}));
   }
 
   auto te = req.fs.header(http2::HD_TE);
@@ -564,8 +562,8 @@ int Http2DownstreamConnection::resume_read(IOCtrlReason reason,
   }
 
   if (consumed > 0) {
-    rv = http2session_->consume(downstream_->get_downstream_stream_id(),
-                                consumed);
+    rv =
+      http2session_->consume(downstream_->get_downstream_stream_id(), consumed);
 
     if (rv != 0) {
       return -1;

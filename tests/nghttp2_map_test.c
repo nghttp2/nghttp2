@@ -32,15 +32,15 @@
 #include "nghttp2_map.h"
 
 static const MunitTest tests[] = {
-    munit_void_test(test_nghttp2_map),
-    munit_void_test(test_nghttp2_map_functional),
-    munit_void_test(test_nghttp2_map_each_free),
-    munit_void_test(test_nghttp2_map_clear),
-    munit_test_end(),
+  munit_void_test(test_nghttp2_map),
+  munit_void_test(test_nghttp2_map_functional),
+  munit_void_test(test_nghttp2_map_each_free),
+  munit_void_test(test_nghttp2_map_clear),
+  munit_test_end(),
 };
 
 const MunitSuite map_suite = {
-    "/map", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
+  "/map", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
 };
 
 typedef struct strentry {

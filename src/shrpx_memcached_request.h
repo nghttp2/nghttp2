@@ -43,7 +43,7 @@ enum class MemcachedOp : uint8_t {
 struct MemcachedRequest;
 
 using MemcachedResultCallback =
-    std::function<void(MemcachedRequest *req, MemcachedResult res)>;
+  std::function<void(MemcachedRequest *req, MemcachedResult res)>;
 
 struct MemcachedRequest {
   std::string key;

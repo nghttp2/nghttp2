@@ -27,7 +27,7 @@
 namespace shrpx {
 
 DualDNSResolver::DualDNSResolver(struct ev_loop *loop, int family)
-    : family_(family), resolv4_(loop), resolv6_(loop) {
+  : family_(family), resolv4_(loop), resolv6_(loop) {
   auto cb = [this](DNSResolverStatus, const Address *) {
     Address result;
 

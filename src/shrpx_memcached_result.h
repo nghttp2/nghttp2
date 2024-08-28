@@ -39,7 +39,7 @@ enum class MemcachedStatusCode : uint16_t {
 struct MemcachedResult {
   MemcachedResult(MemcachedStatusCode status_code) : status_code(status_code) {}
   MemcachedResult(MemcachedStatusCode status_code, std::vector<uint8_t> value)
-      : value(std::move(value)), status_code(status_code) {}
+    : value(std::move(value)), status_code(status_code) {}
 
   std::vector<uint8_t> value;
   MemcachedStatusCode status_code;

@@ -60,11 +60,11 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
   nghttp2_session_callbacks_set_on_frame_recv_callback(callbacks,
                                                        on_frame_recv_callback);
   nghttp2_session_callbacks_set_on_begin_headers_callback(
-      callbacks, on_begin_headers_callback);
+    callbacks, on_begin_headers_callback);
   nghttp2_session_callbacks_set_on_header_callback2(callbacks,
                                                     on_header_callback2);
   nghttp2_session_callbacks_set_before_frame_send_callback(
-      callbacks, before_frame_send_callback);
+    callbacks, before_frame_send_callback);
   nghttp2_session_callbacks_set_on_frame_send_callback(callbacks,
                                                        on_frame_send_callback);
 

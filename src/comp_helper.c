@@ -52,13 +52,13 @@ json_t *dump_deflate_header_table(nghttp2_hd_deflater *deflater) {
   }
   json_object_set_new(obj, "entries", entries);
   json_object_set_new(
-      obj, "size",
-      json_integer(
-          (json_int_t)nghttp2_hd_deflate_get_dynamic_table_size(deflater)));
+    obj, "size",
+    json_integer(
+      (json_int_t)nghttp2_hd_deflate_get_dynamic_table_size(deflater)));
   json_object_set_new(
-      obj, "max_size",
-      json_integer(
-          (json_int_t)nghttp2_hd_deflate_get_max_dynamic_table_size(deflater)));
+    obj, "max_size",
+    json_integer(
+      (json_int_t)nghttp2_hd_deflate_get_max_dynamic_table_size(deflater)));
 
   return obj;
 }
@@ -84,13 +84,13 @@ json_t *dump_inflate_header_table(nghttp2_hd_inflater *inflater) {
   }
   json_object_set_new(obj, "entries", entries);
   json_object_set_new(
-      obj, "size",
-      json_integer(
-          (json_int_t)nghttp2_hd_inflate_get_dynamic_table_size(inflater)));
+    obj, "size",
+    json_integer(
+      (json_int_t)nghttp2_hd_inflate_get_dynamic_table_size(inflater)));
   json_object_set_new(
-      obj, "max_size",
-      json_integer(
-          (json_int_t)nghttp2_hd_inflate_get_max_dynamic_table_size(inflater)));
+    obj, "max_size",
+    json_integer(
+      (json_int_t)nghttp2_hd_inflate_get_max_dynamic_table_size(inflater)));
 
   return obj;
 }

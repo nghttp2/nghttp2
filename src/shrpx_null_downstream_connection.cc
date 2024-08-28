@@ -30,8 +30,8 @@
 namespace shrpx {
 
 NullDownstreamConnection::NullDownstreamConnection(
-    const std::shared_ptr<DownstreamAddrGroup> &group)
-    : group_(group) {}
+  const std::shared_ptr<DownstreamAddrGroup> &group)
+  : group_(group) {}
 
 NullDownstreamConnection::~NullDownstreamConnection() {}
 

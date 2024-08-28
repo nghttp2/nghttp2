@@ -375,11 +375,11 @@ OPTIONS:
 }
 
 constexpr static struct option long_options[] = {
-    {"http1text", no_argument, nullptr, 't'},
-    {"table-size", required_argument, nullptr, 's'},
-    {"deflate-table-size", required_argument, nullptr, 'S'},
-    {"dump-header-table", no_argument, nullptr, 'd'},
-    {nullptr, 0, nullptr, 0}};
+  {"http1text", no_argument, nullptr, 't'},
+  {"table-size", required_argument, nullptr, 's'},
+  {"deflate-table-size", required_argument, nullptr, 'S'},
+  {"dump-header-table", no_argument, nullptr, 'd'},
+  {nullptr, 0, nullptr, 0}};
 
 int main(int argc, char **argv) {
   config.table_size = 4_k;

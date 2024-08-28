@@ -181,8 +181,8 @@ public:
                                const StringRef &cookie_name);
 
   DownstreamAddr *get_downstream_addr_strict_affinity(
-      int &err, const std::shared_ptr<SharedDownstreamAddr> &shared_addr,
-      Downstream *downstream);
+    int &err, const std::shared_ptr<SharedDownstreamAddr> &shared_addr,
+    Downstream *downstream);
 
   const UpstreamAddr *get_upstream_addr() const;
 

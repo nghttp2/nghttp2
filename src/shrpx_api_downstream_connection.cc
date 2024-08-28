@@ -40,31 +40,31 @@ namespace shrpx {
 
 namespace {
 const auto backendconfig_endpoint = APIEndpoint{
-    "/api/v1beta1/backendconfig"_sr,
-    true,
-    (1 << API_METHOD_POST) | (1 << API_METHOD_PUT),
-    &APIDownstreamConnection::handle_backendconfig,
+  "/api/v1beta1/backendconfig"_sr,
+  true,
+  (1 << API_METHOD_POST) | (1 << API_METHOD_PUT),
+  &APIDownstreamConnection::handle_backendconfig,
 };
 
 const auto configrevision_endpoint = APIEndpoint{
-    "/api/v1beta1/configrevision"_sr,
-    true,
-    (1 << API_METHOD_GET),
-    &APIDownstreamConnection::handle_configrevision,
+  "/api/v1beta1/configrevision"_sr,
+  true,
+  (1 << API_METHOD_GET),
+  &APIDownstreamConnection::handle_configrevision,
 };
 } // namespace
 
 namespace {
 // The method string.  This must be same order of APIMethod.
 constexpr StringRef API_METHOD_STRING[] = {
-    "GET"_sr,
-    "POST"_sr,
-    "PUT"_sr,
+  "GET"_sr,
+  "POST"_sr,
+  "PUT"_sr,
 };
 } // namespace
 
 APIDownstreamConnection::APIDownstreamConnection(Worker *worker)
-    : worker_(worker), api_(nullptr), fd_(-1), shutdown_read_(false) {}
+  : worker_(worker), api_(nullptr), fd_(-1), shutdown_read_(false) {}
 
 APIDownstreamConnection::~APIDownstreamConnection() {
   if (fd_ != -1) {
@@ -121,8 +121,8 @@ int APIDownstreamConnection::send_reply(unsigned int http_status,
 
   // 3 is the number of digits in http_status, assuming it is 3 digits
   // number.
-  auto buflen = M1.size() + M2.size() + M3.size() + data.size() +
-                api_status_str.size() + 3;
+  auto buflen =
+    M1.size() + M2.size() + M3.size() + data.size() + api_status_str.size() + 3;
 
   auto buf = make_byte_ref(balloc, buflen);
   auto p = std::begin(buf);
@@ -187,8 +187,8 @@ int APIDownstreamConnection::push_request_headers() {
   auto &req = downstream_->request();
 
   auto path =
-      StringRef{std::begin(req.path),
-                std::find(std::begin(req.path), std::end(req.path), '?')};
+    StringRef{std::begin(req.path),
+              std::find(std::begin(req.path), std::end(req.path), '?')};
 
   api_ = lookup_api(path);
 
@@ -435,8 +435,8 @@ int APIDownstreamConnection::handle_configrevision() {
   //     "configRevision": N
   //   }
   auto data = concat_string_ref(
-      balloc, R"(,"data":{"configRevision":)"_sr,
-      util::make_string_ref_uint(balloc, config->config_revision), "}"_sr);
+    balloc, R"(,"data":{"configRevision":)"_sr,
+    util::make_string_ref_uint(balloc, config->config_revision), "}"_sr);
 
   send_reply(200, APIStatusCode::SUCCESS, data);
 

@@ -117,11 +117,11 @@ void stop_ev(struct ev_loop *loop,
 } // namespace
 
 DNSResolver::DNSResolver(struct ev_loop *loop)
-    : result_{},
-      loop_(loop),
-      channel_(nullptr),
-      family_(AF_UNSPEC),
-      status_(DNSResolverStatus::IDLE) {
+  : result_{},
+    loop_(loop),
+    channel_(nullptr),
+    family_(AF_UNSPEC),
+    status_(DNSResolverStatus::IDLE) {
   ev_timer_init(&timer_, timeoutcb, 0., 0.);
   timer_.data = this;
 }

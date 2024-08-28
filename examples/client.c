@@ -67,14 +67,14 @@ enum { IO_NONE, WANT_READ, WANT_WRITE };
 
 #define MAKE_NV(NAME, VALUE)                                                   \
   {                                                                            \
-      (uint8_t *)NAME,   (uint8_t *)VALUE,     sizeof(NAME) - 1,               \
-      sizeof(VALUE) - 1, NGHTTP2_NV_FLAG_NONE,                                 \
+    (uint8_t *)NAME,   (uint8_t *)VALUE,     sizeof(NAME) - 1,                 \
+    sizeof(VALUE) - 1, NGHTTP2_NV_FLAG_NONE,                                   \
   }
 
 #define MAKE_NV_CS(NAME, VALUE)                                                \
   {                                                                            \
-      (uint8_t *)NAME, (uint8_t *)VALUE,     sizeof(NAME) - 1,                 \
-      strlen(VALUE),   NGHTTP2_NV_FLAG_NONE,                                   \
+    (uint8_t *)NAME, (uint8_t *)VALUE,     sizeof(NAME) - 1,                   \
+    strlen(VALUE),   NGHTTP2_NV_FLAG_NONE,                                     \
   }
 
 struct Connection {
@@ -176,7 +176,7 @@ static nghttp2_ssize send_callback(nghttp2_session *session,
     int err = SSL_get_error(connection->ssl, rv);
     if (err == SSL_ERROR_WANT_WRITE || err == SSL_ERROR_WANT_READ) {
       connection->want_io =
-          (err == SSL_ERROR_WANT_READ ? WANT_READ : WANT_WRITE);
+        (err == SSL_ERROR_WANT_READ ? WANT_READ : WANT_WRITE);
       rv = NGHTTP2_ERR_WOULDBLOCK;
     } else {
       rv = NGHTTP2_ERR_CALLBACK_FAILURE;
@@ -207,7 +207,7 @@ static nghttp2_ssize recv_callback(nghttp2_session *session, uint8_t *buf,
     int err = SSL_get_error(connection->ssl, rv);
     if (err == SSL_ERROR_WANT_WRITE || err == SSL_ERROR_WANT_READ) {
       connection->want_io =
-          (err == SSL_ERROR_WANT_READ ? WANT_READ : WANT_WRITE);
+        (err == SSL_ERROR_WANT_READ ? WANT_READ : WANT_WRITE);
       rv = NGHTTP2_ERR_WOULDBLOCK;
     } else {
       rv = NGHTTP2_ERR_CALLBACK_FAILURE;
@@ -342,10 +342,10 @@ static void setup_nghttp2_callbacks(nghttp2_session_callbacks *callbacks) {
                                                        on_frame_recv_callback);
 
   nghttp2_session_callbacks_set_on_stream_close_callback(
-      callbacks, on_stream_close_callback);
+    callbacks, on_stream_close_callback);
 
   nghttp2_session_callbacks_set_on_data_chunk_recv_callback(
-      callbacks, on_data_chunk_recv_callback);
+    callbacks, on_data_chunk_recv_callback);
 }
 
 /*

@@ -29,14 +29,14 @@
 #include "nghttp2_pq.h"
 
 static const MunitTest tests[] = {
-    munit_void_test(test_nghttp2_pq),
-    munit_void_test(test_nghttp2_pq_update),
-    munit_void_test(test_nghttp2_pq_remove),
-    munit_test_end(),
+  munit_void_test(test_nghttp2_pq),
+  munit_void_test(test_nghttp2_pq_update),
+  munit_void_test(test_nghttp2_pq_remove),
+  munit_test_end(),
 };
 
 const MunitSuite pq_suite = {
-    "/pq", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
+  "/pq", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
 };
 
 typedef struct {

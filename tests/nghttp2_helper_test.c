@@ -31,15 +31,15 @@
 #include "nghttp2_helper.h"
 
 static const MunitTest tests[] = {
-    munit_void_test(test_nghttp2_adjust_local_window_size),
-    munit_void_test(test_nghttp2_check_header_name),
-    munit_void_test(test_nghttp2_check_header_value),
-    munit_void_test(test_nghttp2_check_header_value_rfc9113),
-    munit_test_end(),
+  munit_void_test(test_nghttp2_adjust_local_window_size),
+  munit_void_test(test_nghttp2_check_header_name),
+  munit_void_test(test_nghttp2_check_header_value),
+  munit_void_test(test_nghttp2_check_header_value_rfc9113),
+  munit_test_end(),
 };
 
 const MunitSuite helper_suite = {
-    "/helper", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
+  "/helper", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
 };
 
 void test_nghttp2_adjust_local_window_size(void) {
@@ -50,9 +50,8 @@ void test_nghttp2_adjust_local_window_size(void) {
 
   delta = 0;
   assert_int(0, ==,
-             nghttp2_adjust_local_window_size(&local_window_size,
-                                              &recv_window_size,
-                                              &recv_reduction, &delta));
+             nghttp2_adjust_local_window_size(
+               &local_window_size, &recv_window_size, &recv_reduction, &delta));
   assert_int32(100, ==, local_window_size);
   assert_int32(50, ==, recv_window_size);
   assert_int32(0, ==, recv_reduction);
@@ -60,9 +59,8 @@ void test_nghttp2_adjust_local_window_size(void) {
 
   delta = 49;
   assert_int(0, ==,
-             nghttp2_adjust_local_window_size(&local_window_size,
-                                              &recv_window_size,
-                                              &recv_reduction, &delta));
+             nghttp2_adjust_local_window_size(
+               &local_window_size, &recv_window_size, &recv_reduction, &delta));
   assert_int32(100, ==, local_window_size);
   assert_int32(1, ==, recv_window_size);
   assert_int32(0, ==, recv_reduction);
@@ -70,9 +68,8 @@ void test_nghttp2_adjust_local_window_size(void) {
 
   delta = 1;
   assert_int(0, ==,
-             nghttp2_adjust_local_window_size(&local_window_size,
-                                              &recv_window_size,
-                                              &recv_reduction, &delta));
+             nghttp2_adjust_local_window_size(
+               &local_window_size, &recv_window_size, &recv_reduction, &delta));
   assert_int32(100, ==, local_window_size);
   assert_int32(0, ==, recv_window_size);
   assert_int32(0, ==, recv_reduction);
@@ -80,9 +77,8 @@ void test_nghttp2_adjust_local_window_size(void) {
 
   delta = 1;
   assert_int(0, ==,
-             nghttp2_adjust_local_window_size(&local_window_size,
-                                              &recv_window_size,
-                                              &recv_reduction, &delta));
+             nghttp2_adjust_local_window_size(
+               &local_window_size, &recv_window_size, &recv_reduction, &delta));
   assert_int32(101, ==, local_window_size);
   assert_int32(0, ==, recv_window_size);
   assert_int32(0, ==, recv_reduction);
@@ -90,9 +86,8 @@ void test_nghttp2_adjust_local_window_size(void) {
 
   delta = -1;
   assert_int(0, ==,
-             nghttp2_adjust_local_window_size(&local_window_size,
-                                              &recv_window_size,
-                                              &recv_reduction, &delta));
+             nghttp2_adjust_local_window_size(
+               &local_window_size, &recv_window_size, &recv_reduction, &delta));
   assert_int32(100, ==, local_window_size);
   assert_int32(-1, ==, recv_window_size);
   assert_int32(1, ==, recv_reduction);
@@ -100,9 +95,8 @@ void test_nghttp2_adjust_local_window_size(void) {
 
   delta = 1;
   assert_int(0, ==,
-             nghttp2_adjust_local_window_size(&local_window_size,
-                                              &recv_window_size,
-                                              &recv_reduction, &delta));
+             nghttp2_adjust_local_window_size(
+               &local_window_size, &recv_window_size, &recv_reduction, &delta));
   assert_int32(101, ==, local_window_size);
   assert_int32(0, ==, recv_window_size);
   assert_int32(0, ==, recv_reduction);
@@ -110,9 +104,8 @@ void test_nghttp2_adjust_local_window_size(void) {
 
   delta = 100;
   assert_int(0, ==,
-             nghttp2_adjust_local_window_size(&local_window_size,
-                                              &recv_window_size,
-                                              &recv_reduction, &delta));
+             nghttp2_adjust_local_window_size(
+               &local_window_size, &recv_window_size, &recv_reduction, &delta));
   assert_int32(201, ==, local_window_size);
   assert_int32(0, ==, recv_window_size);
   assert_int32(0, ==, recv_reduction);
@@ -120,9 +113,8 @@ void test_nghttp2_adjust_local_window_size(void) {
 
   delta = -3;
   assert_int(0, ==,
-             nghttp2_adjust_local_window_size(&local_window_size,
-                                              &recv_window_size,
-                                              &recv_reduction, &delta));
+             nghttp2_adjust_local_window_size(
+               &local_window_size, &recv_window_size, &recv_reduction, &delta));
   assert_int32(198, ==, local_window_size);
   assert_int32(-3, ==, recv_window_size);
   assert_int32(3, ==, recv_reduction);
@@ -132,9 +124,8 @@ void test_nghttp2_adjust_local_window_size(void) {
 
   delta = 3;
   assert_int(0, ==,
-             nghttp2_adjust_local_window_size(&local_window_size,
-                                              &recv_window_size,
-                                              &recv_reduction, &delta));
+             nghttp2_adjust_local_window_size(
+               &local_window_size, &recv_window_size, &recv_reduction, &delta));
   assert_int32(201, ==, local_window_size);
   assert_int32(3, ==, recv_window_size);
   assert_int32(0, ==, recv_reduction);
@@ -145,9 +136,8 @@ void test_nghttp2_adjust_local_window_size(void) {
   recv_reduction = 0;
   delta = INT32_MAX;
   assert_int(NGHTTP2_ERR_FLOW_CONTROL, ==,
-             nghttp2_adjust_local_window_size(&local_window_size,
-                                              &recv_window_size,
-                                              &recv_reduction, &delta));
+             nghttp2_adjust_local_window_size(
+               &local_window_size, &recv_window_size, &recv_reduction, &delta));
   assert_int32(100, ==, local_window_size);
   assert_int32(50, ==, recv_window_size);
   assert_int32(0, ==, recv_reduction);
@@ -155,9 +145,8 @@ void test_nghttp2_adjust_local_window_size(void) {
 
   delta = INT32_MIN;
   assert_int(NGHTTP2_ERR_FLOW_CONTROL, ==,
-             nghttp2_adjust_local_window_size(&local_window_size,
-                                              &recv_window_size,
-                                              &recv_reduction, &delta));
+             nghttp2_adjust_local_window_size(
+               &local_window_size, &recv_window_size, &recv_reduction, &delta));
   assert_int32(100, ==, local_window_size);
   assert_int32(50, ==, recv_window_size);
   assert_int32(0, ==, recv_reduction);

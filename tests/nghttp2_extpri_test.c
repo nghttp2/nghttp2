@@ -33,12 +33,12 @@
 #include "nghttp2_test_helper.h"
 
 static const MunitTest tests[] = {
-    munit_void_test(test_nghttp2_extpri_to_uint8),
-    munit_test_end(),
+  munit_void_test(test_nghttp2_extpri_to_uint8),
+  munit_test_end(),
 };
 
 const MunitSuite extpri_suite = {
-    "/extpri", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
+  "/extpri", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
 };
 
 void test_nghttp2_extpri_to_uint8(void) {

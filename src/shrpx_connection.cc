@@ -59,21 +59,21 @@ Connection::Connection(struct ev_loop *loop, int fd, SSL *ssl,
                        IOCb readcb, TimerCb timeoutcb, void *data,
                        size_t tls_dyn_rec_warmup_threshold,
                        ev_tstamp tls_dyn_rec_idle_timeout, Proto proto)
-    :
+  :
 #ifdef ENABLE_HTTP3
-      conn_ref{nullptr, this},
+    conn_ref{nullptr, this},
 #endif // ENABLE_HTTP3
-      tls{DefaultMemchunks(mcpool), DefaultPeekMemchunks(mcpool),
-          DefaultMemchunks(mcpool)},
-      wlimit(loop, &wev, write_limit.rate, write_limit.burst),
-      rlimit(loop, &rev, read_limit.rate, read_limit.burst, this),
-      loop(loop),
-      data(data),
-      fd(fd),
-      tls_dyn_rec_warmup_threshold(tls_dyn_rec_warmup_threshold),
-      tls_dyn_rec_idle_timeout(util::duration_from(tls_dyn_rec_idle_timeout)),
-      proto(proto),
-      read_timeout(read_timeout) {
+    tls{DefaultMemchunks(mcpool), DefaultPeekMemchunks(mcpool),
+        DefaultMemchunks(mcpool)},
+    wlimit(loop, &wev, write_limit.rate, write_limit.burst),
+    rlimit(loop, &rev, read_limit.rate, read_limit.burst, this),
+    loop(loop),
+    data(data),
+    fd(fd),
+    tls_dyn_rec_warmup_threshold(tls_dyn_rec_warmup_threshold),
+    tls_dyn_rec_idle_timeout(util::duration_from(tls_dyn_rec_idle_timeout)),
+    proto(proto),
+    read_timeout(read_timeout) {
 
   ev_io_init(&wev, writecb, fd, EV_WRITE);
   ev_io_init(&rev, readcb, proto == Proto::HTTP3 ? 0 : fd, EV_READ);
@@ -153,8 +153,8 @@ void Connection::prepare_client_handshake() {
 
 void Connection::prepare_server_handshake() {
 #if defined(NGHTTP2_GENUINE_OPENSSL) ||                                        \
-    defined(NGHTTP2_OPENSSL_IS_BORINGSSL) ||                                   \
-    defined(NGHTTP2_OPENSSL_IS_LIBRESSL)
+  defined(NGHTTP2_OPENSSL_IS_BORINGSSL) ||                                     \
+  defined(NGHTTP2_OPENSSL_IS_LIBRESSL)
   auto &tlsconf = get_config()->tls;
   if (proto != Proto::HTTP3 && !tlsconf.session_cache.memcached.host.empty()) {
     auto bio = BIO_new(tlsconf.bio_method);
@@ -169,8 +169,8 @@ void Connection::prepare_server_handshake() {
 }
 
 #if defined(NGHTTP2_GENUINE_OPENSSL) ||                                        \
-    defined(NGHTTP2_OPENSSL_IS_BORINGSSL) ||                                   \
-    defined(NGHTTP2_OPENSSL_IS_LIBRESSL)
+  defined(NGHTTP2_OPENSSL_IS_BORINGSSL) ||                                     \
+  defined(NGHTTP2_OPENSSL_IS_LIBRESSL)
 // BIO implementation is inspired by openldap implementation:
 // http://www.openldap.org/devel/cvsweb.cgi/~checkout~/libraries/libldap/tls_o.c
 namespace {
@@ -495,7 +495,7 @@ int Connection::tls_handshake() {
 #  ifdef NGHTTP2_OPENSSL_IS_BORINGSSL
        || SSL_in_init(tls.ssl)
 #  endif // NGHTTP2_OPENSSL_IS_BORINGSSL
-           ) &&
+         ) &&
       tls.wbuf.rleft()) {
     // First write indicates that resumption stuff has done.
     if (tls.handshake_state != TLSHandshakeState::WRITE_STARTED) {
@@ -596,8 +596,8 @@ int Connection::tls_handshake_simple() {
 
   int rv;
 #if defined(NGHTTP2_GENUINE_OPENSSL) ||                                        \
-    defined(NGHTTP2_OPENSSL_IS_BORINGSSL) ||                                   \
-    (defined(NGHTTP2_OPENSSL_IS_WOLFSSL) && defined(WOLFSSL_EARLY_DATA))
+  defined(NGHTTP2_OPENSSL_IS_BORINGSSL) ||                                     \
+  (defined(NGHTTP2_OPENSSL_IS_WOLFSSL) && defined(WOLFSSL_EARLY_DATA))
   auto &tlsconf = get_config()->tls;
   std::array<uint8_t, 16_k> buf;
 #endif // NGHTTP2_GENUINE_OPENSSL || NGHTTP2_OPENSSL_IS_BORINGSSL ||
@@ -904,7 +904,6 @@ constexpr size_t SHRPX_SMALL_WRITE_LIMIT = 1300;
 } // namespace
 
 size_t Connection::get_tls_write_limit() {
-
   if (tls_dyn_rec_warmup_threshold == 0) {
     return std::numeric_limits<ssize_t>::max();
   }
@@ -959,7 +958,7 @@ nghttp2_ssize Connection::write_tls(const void *data, size_t len) {
 
   auto &tlsconf = get_config()->tls;
   auto via_bio =
-      tls.server_handshake && !tlsconf.session_cache.memcached.host.empty();
+    tls.server_handshake && !tlsconf.session_cache.memcached.host.empty();
 
   ERR_clear_error();
 
@@ -1028,8 +1027,7 @@ nghttp2_ssize Connection::read_tls(void *data, size_t len) {
   ERR_clear_error();
 
 #if defined(NGHTTP2_GENUINE_OPENSSL) ||                                        \
-    defined(NGHTTP2_OPENSSL_IS_BORINGSSL) ||                                   \
-    defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
+  defined(NGHTTP2_OPENSSL_IS_BORINGSSL) || defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
   if (tls.earlybuf.rleft()) {
     return tls.earlybuf.remove(data, len);
   }
@@ -1055,7 +1053,7 @@ nghttp2_ssize Connection::read_tls(void *data, size_t len) {
 
   auto &tlsconf = get_config()->tls;
   auto via_bio =
-      tls.server_handshake && !tlsconf.session_cache.memcached.host.empty();
+    tls.server_handshake && !tlsconf.session_cache.memcached.host.empty();
 
 #ifdef NGHTTP2_GENUINE_OPENSSL
   if (!tls.early_data_finish) {
@@ -1319,8 +1317,8 @@ int Connection::get_tcp_hint(TCPHint *hint) const {
   }
 
   auto avail_packets = tcp_info.tcpi_snd_cwnd > tcp_info.tcpi_unacked
-                           ? tcp_info.tcpi_snd_cwnd - tcp_info.tcpi_unacked
-                           : 0;
+                         ? tcp_info.tcpi_snd_cwnd - tcp_info.tcpi_unacked
+                         : 0;
 
   // http://www.slideshare.net/kazuho/programming-tcp-for-responsiveness
 
@@ -1341,7 +1339,7 @@ int Connection::get_tcp_hint(TCPHint *hint) const {
   }
 
   auto writable_size =
-      (avail_packets + 2) * (tcp_info.tcpi_snd_mss - tls_overhead);
+    (avail_packets + 2) * (tcp_info.tcpi_snd_mss - tls_overhead);
   if (writable_size > 16_k) {
     writable_size = writable_size & ~(16_k - 1);
   } else {
@@ -1386,7 +1384,7 @@ void Connection::again_rt() {
 
 bool Connection::expired_rt() {
   auto delta = read_timeout - util::ev_tstamp_from(
-                                  std::chrono::steady_clock::now() - last_read);
+                                std::chrono::steady_clock::now() - last_read);
   if (delta < 1e-9) {
     return true;
   }

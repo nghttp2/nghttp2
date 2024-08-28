@@ -42,29 +42,28 @@ namespace shrpx {
 
 namespace {
 const MunitTest tests[]{
-    munit_void_test(test_shrpx_http_create_forwarded),
-    munit_void_test(test_shrpx_http_create_via_header_value),
-    munit_void_test(test_shrpx_http_create_affinity_cookie),
-    munit_void_test(test_shrpx_http_create_altsvc_header_value),
-    munit_void_test(test_shrpx_http_check_http_scheme),
-    munit_test_end(),
+  munit_void_test(test_shrpx_http_create_forwarded),
+  munit_void_test(test_shrpx_http_create_via_header_value),
+  munit_void_test(test_shrpx_http_create_affinity_cookie),
+  munit_void_test(test_shrpx_http_create_altsvc_header_value),
+  munit_void_test(test_shrpx_http_check_http_scheme),
+  munit_test_end(),
 };
 } // namespace
 
 const MunitSuite http_suite{
-    "/http", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
+  "/http", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
 };
 
 void test_shrpx_http_create_forwarded(void) {
   BlockAllocator balloc(1024, 1024);
 
   assert_stdsv_equal(
-      "by=\"example.com:3000\";for=\"[::1]\";host=\"www.example.com\";"
-      "proto=https"sv,
-      http::create_forwarded(
-          balloc,
-          FORWARDED_BY | FORWARDED_FOR | FORWARDED_HOST | FORWARDED_PROTO,
-          "example.com:3000"_sr, "[::1]"_sr, "www.example.com"_sr, "https"_sr));
+    "by=\"example.com:3000\";for=\"[::1]\";host=\"www.example.com\";"
+    "proto=https"sv,
+    http::create_forwarded(
+      balloc, FORWARDED_BY | FORWARDED_FOR | FORWARDED_HOST | FORWARDED_PROTO,
+      "example.com:3000"_sr, "[::1]"_sr, "www.example.com"_sr, "https"_sr));
 
   assert_stdsv_equal("for=192.168.0.1"sv,
                      http::create_forwarded(balloc, FORWARDED_FOR, "alpha"_sr,
@@ -72,20 +71,20 @@ void test_shrpx_http_create_forwarded(void) {
                                             "charlie"_sr));
 
   assert_stdsv_equal(
-      "by=_hidden;for=\"[::1]\""sv,
-      http::create_forwarded(balloc, FORWARDED_BY | FORWARDED_FOR, "_hidden"_sr,
-                             "[::1]"_sr, ""_sr, ""_sr));
+    "by=_hidden;for=\"[::1]\""sv,
+    http::create_forwarded(balloc, FORWARDED_BY | FORWARDED_FOR, "_hidden"_sr,
+                           "[::1]"_sr, ""_sr, ""_sr));
 
   assert_stdsv_equal(
-      "by=\"[::1]\";for=_hidden"sv,
-      http::create_forwarded(balloc, FORWARDED_BY | FORWARDED_FOR, "[::1]"_sr,
-                             "_hidden"_sr, ""_sr, ""_sr));
+    "by=\"[::1]\";for=_hidden"sv,
+    http::create_forwarded(balloc, FORWARDED_BY | FORWARDED_FOR, "[::1]"_sr,
+                           "_hidden"_sr, ""_sr, ""_sr));
 
-  assert_stdsv_equal(""sv, http::create_forwarded(balloc,
-                                                  FORWARDED_BY | FORWARDED_FOR |
-                                                      FORWARDED_HOST |
-                                                      FORWARDED_PROTO,
-                                                  ""_sr, ""_sr, ""_sr, ""_sr));
+  assert_stdsv_equal(""sv,
+                     http::create_forwarded(balloc,
+                                            FORWARDED_BY | FORWARDED_FOR |
+                                              FORWARDED_HOST | FORWARDED_PROTO,
+                                            ""_sr, ""_sr, ""_sr, ""_sr));
 }
 
 void test_shrpx_http_create_via_header_value(void) {
@@ -131,12 +130,12 @@ void test_shrpx_http_create_altsvc_header_value(void) {
   {
     BlockAllocator balloc(1024, 1024);
     std::vector<AltSvc> altsvcs{
-        AltSvc{
-            .protocol_id = "h3"_sr,
-            .host = "127.0.0.1"_sr,
-            .service = "443"_sr,
-            .params = "ma=3600"_sr,
-        },
+      AltSvc{
+        .protocol_id = "h3"_sr,
+        .host = "127.0.0.1"_sr,
+        .service = "443"_sr,
+        .params = "ma=3600"_sr,
+      },
     };
 
     assert_stdsv_equal(R"(h3="127.0.0.1:443"; ma=3600)"sv,
@@ -146,16 +145,16 @@ void test_shrpx_http_create_altsvc_header_value(void) {
   {
     BlockAllocator balloc(1024, 1024);
     std::vector<AltSvc> altsvcs{
-        AltSvc{
-            .protocol_id = "h3"_sr,
-            .service = "443"_sr,
-            .params = "ma=3600"_sr,
-        },
-        AltSvc{
-            .protocol_id = "h3%"_sr,
-            .host = "\"foo\""_sr,
-            .service = "4433"_sr,
-        },
+      AltSvc{
+        .protocol_id = "h3"_sr,
+        .service = "443"_sr,
+        .params = "ma=3600"_sr,
+      },
+      AltSvc{
+        .protocol_id = "h3%"_sr,
+        .host = "\"foo\""_sr,
+        .service = "4433"_sr,
+      },
     };
 
     assert_stdsv_equal(R"(h3=":443"; ma=3600, h3%25="\"foo\":4433")"sv,

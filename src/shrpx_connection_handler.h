@@ -104,7 +104,7 @@ struct SerialEvent {
   // ctor for event uses DownstreamConfig
   SerialEvent(SerialEventType type,
               const std::shared_ptr<DownstreamConfig> &downstreamconf)
-      : type(type), downstreamconf(downstreamconf) {}
+    : type(type), downstreamconf(downstreamconf) {}
 
   SerialEventType type;
   std::shared_ptr<DownstreamConfig> downstreamconf;
@@ -129,7 +129,7 @@ enum class QUICIPCType {
 // WorkerProcesses which are in graceful shutdown period.
 struct QUICLingeringWorkerProcess {
   QUICLingeringWorkerProcess(std::vector<WorkerID> worker_ids, int quic_ipc_fd)
-      : worker_ids{std::move(worker_ids)}, quic_ipc_fd{quic_ipc_fd} {}
+    : worker_ids{std::move(worker_ids)}, quic_ipc_fd{quic_ipc_fd} {}
 
   std::vector<WorkerID> worker_ids;
   // Socket to send QUIC IPC message to this worker process.
@@ -182,7 +182,7 @@ public:
   void proceed_next_cert_ocsp();
 
   void set_tls_ticket_key_memcached_dispatcher(
-      std::unique_ptr<MemcachedDispatcher> dispatcher);
+    std::unique_ptr<MemcachedDispatcher> dispatcher);
 
   MemcachedDispatcher *get_tls_ticket_key_memcached_dispatcher() const;
   void on_tls_ticket_key_network_error(ev_timer *w);
@@ -211,7 +211,7 @@ public:
   Worker *find_worker(const WorkerID &wid) const;
 
   void set_quic_lingering_worker_processes(
-      const std::vector<QUICLingeringWorkerProcess> &quic_lwps);
+    const std::vector<QUICLingeringWorkerProcess> &quic_lwps);
 
   // Return matching QUICLingeringWorkerProcess which has a Worker ID
   // such that |dcid| starts with it.  If no such
@@ -220,9 +220,9 @@ public:
   match_quic_lingering_worker_process_worker_id(const WorkerID &wid);
 
   int forward_quic_packet_to_lingering_worker_process(
-      QUICLingeringWorkerProcess *quic_lwp, const Address &remote_addr,
-      const Address &local_addr, const ngtcp2_pkt_info &pi,
-      std::span<const uint8_t> data);
+    QUICLingeringWorkerProcess *quic_lwp, const Address &remote_addr,
+    const Address &local_addr, const ngtcp2_pkt_info &pi,
+    std::span<const uint8_t> data);
 
   void set_quic_ipc_fd(int fd);
 
@@ -241,7 +241,7 @@ public:
   // Send SerialEvent SerialEventType::REPLACE_DOWNSTREAM to this
   // object.
   void send_replace_downstream(
-      const std::shared_ptr<DownstreamConfig> &downstreamconf);
+    const std::shared_ptr<DownstreamConfig> &downstreamconf);
   // Internal function to send |ev| to this object.
   void send_serial_event(SerialEvent ev);
   // Handles SerialEvents received.

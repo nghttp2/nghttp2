@@ -60,7 +60,7 @@ namespace nghttp2 {
 
 template <size_t N> struct Memchunk {
   Memchunk(Memchunk *next_chunk)
-      : pos(std::begin(buf)), last(pos), knext(next_chunk), next(nullptr) {}
+    : pos(std::begin(buf)), last(pos), knext(next_chunk), next(nullptr) {}
   size_t len() const { return last - pos; }
   size_t left() const { return std::end(buf) - last; }
   void reset() { pos = last = std::begin(buf); }
@@ -113,22 +113,22 @@ template <typename T> struct Pool {
 
 template <typename Memchunk> struct Memchunks {
   Memchunks(Pool<Memchunk> *pool)
-      : pool(pool),
-        head(nullptr),
-        tail(nullptr),
-        len(0),
-        mark(nullptr),
-        mark_pos(nullptr),
-        mark_offset(0) {}
+    : pool(pool),
+      head(nullptr),
+      tail(nullptr),
+      len(0),
+      mark(nullptr),
+      mark_pos(nullptr),
+      mark_offset(0) {}
   Memchunks(const Memchunks &) = delete;
   Memchunks(Memchunks &&other) noexcept
-      : pool{other.pool}, // keep other.pool
-        head{std::exchange(other.head, nullptr)},
-        tail{std::exchange(other.tail, nullptr)},
-        len{std::exchange(other.len, 0)},
-        mark{std::exchange(other.mark, nullptr)},
-        mark_pos{std::exchange(other.mark_pos, nullptr)},
-        mark_offset{std::exchange(other.mark_offset, 0)} {}
+    : pool{other.pool}, // keep other.pool
+      head{std::exchange(other.head, nullptr)},
+      tail{std::exchange(other.tail, nullptr)},
+      len{std::exchange(other.len, 0)},
+      mark{std::exchange(other.mark, nullptr)},
+      mark_pos{std::exchange(other.mark_pos, nullptr)},
+      mark_offset{std::exchange(other.mark_offset, 0)} {}
   Memchunks &operator=(const Memchunks &) = delete;
   Memchunks &operator=(Memchunks &&other) noexcept {
     if (this == &other) {
@@ -426,20 +426,20 @@ template <typename Memchunk> struct Memchunks {
 // Wrapper around Memchunks to offer "peeking" functionality.
 template <typename Memchunk> struct PeekMemchunks {
   PeekMemchunks(Pool<Memchunk> *pool)
-      : memchunks(pool),
-        cur(nullptr),
-        cur_pos(nullptr),
-        cur_last(nullptr),
-        len(0),
-        peeking(true) {}
+    : memchunks(pool),
+      cur(nullptr),
+      cur_pos(nullptr),
+      cur_last(nullptr),
+      len(0),
+      peeking(true) {}
   PeekMemchunks(const PeekMemchunks &) = delete;
   PeekMemchunks(PeekMemchunks &&other) noexcept
-      : memchunks{std::move(other.memchunks)},
-        cur{std::exchange(other.cur, nullptr)},
-        cur_pos{std::exchange(other.cur_pos, nullptr)},
-        cur_last{std::exchange(other.cur_last, nullptr)},
-        len{std::exchange(other.len, 0)},
-        peeking{std::exchange(other.peeking, true)} {}
+    : memchunks{std::move(other.memchunks)},
+      cur{std::exchange(other.cur, nullptr)},
+      cur_pos{std::exchange(other.cur_pos, nullptr)},
+      cur_last{std::exchange(other.cur_last, nullptr)},
+      len{std::exchange(other.len, 0)},
+      peeking{std::exchange(other.peeking, true)} {}
   PeekMemchunks &operator=(const PeekMemchunks &) = delete;
   PeekMemchunks &operator=(PeekMemchunks &&other) noexcept {
     if (this == &other) {
@@ -569,7 +569,7 @@ template <typename Memchunk> struct MemchunkBuffer {
   MemchunkBuffer(Pool<Memchunk> *pool) : pool(pool), chunk(nullptr) {}
   MemchunkBuffer(const MemchunkBuffer &) = delete;
   MemchunkBuffer(MemchunkBuffer &&other) noexcept
-      : pool(other.pool), chunk(other.chunk) {
+    : pool(other.pool), chunk(other.chunk) {
     other.chunk = nullptr;
   }
   MemchunkBuffer &operator=(const MemchunkBuffer &) = delete;

@@ -54,8 +54,7 @@ void stateless_reset_bucket_regen_timercb(struct ev_loop *loop, ev_timer *w,
 } // namespace
 
 QUICConnectionHandler::QUICConnectionHandler(Worker *worker)
-    : worker_{worker},
-      stateless_reset_bucket_{SHRPX_QUIC_STATELESS_RESET_BURST} {
+  : worker_{worker}, stateless_reset_bucket_{SHRPX_QUIC_STATELESS_RESET_BURST} {
   ev_timer_init(&stateless_reset_bucket_regen_timer_,
                 stateless_reset_bucket_regen_timercb, 0., 1.);
   stateless_reset_bucket_regen_timer_.data = this;
@@ -137,7 +136,7 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
 
     if (vc.dcidlen == SHRPX_QUIC_SCIDLEN) {
       qkm = select_quic_keying_material(
-          *qkms.get(), vc.dcid[0] & SHRPX_QUIC_DCID_KM_ID_MASK);
+        *qkms.get(), vc.dcid[0] & SHRPX_QUIC_DCID_KM_ID_MASK);
 
       if (decrypt_quic_connection_id(decrypted_dcid,
                                      vc.dcid + SHRPX_QUIC_CID_WORKER_ID_OFFSET,
@@ -148,11 +147,11 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
       if (qkm != &qkms->keying_materials.front() ||
           decrypted_dcid.worker != worker_->get_worker_id()) {
         auto quic_lwp =
-            conn_handler->match_quic_lingering_worker_process_worker_id(
-                decrypted_dcid.worker);
+          conn_handler->match_quic_lingering_worker_process_worker_id(
+            decrypted_dcid.worker);
         if (quic_lwp) {
           if (conn_handler->forward_quic_packet_to_lingering_worker_process(
-                  quic_lwp, remote_addr, local_addr, pi, data) == 0) {
+                quic_lwp, remote_addr, local_addr, pi, data) == 0) {
             return 0;
           }
 
@@ -189,8 +188,8 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
           qkm = &qkms->keying_materials.front();
 
           if (decrypt_quic_connection_id(
-                  decrypted_dcid, vc.dcid + SHRPX_QUIC_CID_WORKER_ID_OFFSET,
-                  qkm->cid_decryption_ctx) != 0) {
+                decrypted_dcid, vc.dcid + SHRPX_QUIC_CID_WORKER_ID_OFFSET,
+                qkm->cid_decryption_ctx) != 0) {
             return 0;
           }
         }
@@ -228,7 +227,7 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
         }
 
         auto qkm = select_quic_keying_material(
-            *qkms.get(), vc.dcid[0] & SHRPX_QUIC_DCID_KM_ID_MASK);
+          *qkms.get(), vc.dcid[0] & SHRPX_QUIC_DCID_KM_ID_MASK);
 
         if (verify_retry_token(odcid, {hd.token, hd.tokenlen}, hd.version,
                                hd.dcid, &remote_addr.su.sa, remote_addr.len,
@@ -282,7 +281,7 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
         }
 
         auto qkm = select_quic_keying_material(
-            *qkms.get(), hd.token[NGTCP2_CRYPTO_MAX_REGULAR_TOKENLEN]);
+          *qkms.get(), hd.token[NGTCP2_CRYPTO_MAX_REGULAR_TOKENLEN]);
 
         if (verify_token({hd.token, hd.tokenlen}, &remote_addr.su.sa,
                          remote_addr.len, qkm->secret) != 0) {
@@ -330,8 +329,8 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
       if (!(data[0] & 0x80) && vc.dcidlen == SHRPX_QUIC_SCIDLEN &&
           decrypted_dcid.worker != worker_->get_worker_id()) {
         if (!config->single_thread && conn_handler->forward_quic_packet(
-                                          faddr, remote_addr, local_addr, pi,
-                                          decrypted_dcid.worker, data) == 0) {
+                                        faddr, remote_addr, local_addr, pi,
+                                        decrypted_dcid.worker, data) == 0) {
           return 0;
         }
 
@@ -364,9 +363,9 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
 }
 
 ClientHandler *QUICConnectionHandler::handle_new_connection(
-    const UpstreamAddr *faddr, const Address &remote_addr,
-    const Address &local_addr, const ngtcp2_pkt_hd &hd, const ngtcp2_cid *odcid,
-    std::span<const uint8_t> token, ngtcp2_token_type token_type) {
+  const UpstreamAddr *faddr, const Address &remote_addr,
+  const Address &local_addr, const ngtcp2_pkt_hd &hd, const ngtcp2_cid *odcid,
+  std::span<const uint8_t> token, ngtcp2_token_type token_type) {
   std::array<char, NI_MAXHOST> host;
   std::array<char, NI_MAXSERV> service;
   int rv;
@@ -400,7 +399,7 @@ ClientHandler *QUICConnectionHandler::handle_new_connection(
 
   if (quicconf.upstream.early_data) {
 #if defined(NGHTTP2_GENUINE_OPENSSL) ||                                        \
-    (defined(NGHTTP2_OPENSSL_IS_WOLFSSL) && defined(WOLFSSL_EARLY_DATA))
+  (defined(NGHTTP2_OPENSSL_IS_WOLFSSL) && defined(WOLFSSL_EARLY_DATA))
     SSL_set_quic_early_data_enabled(ssl, 1);
 #elif defined(NGHTTP2_OPENSSL_IS_BORINGSSL)
     SSL_set_early_data_enabled(ssl, 1);
@@ -414,8 +413,8 @@ ClientHandler *QUICConnectionHandler::handle_new_connection(
   }
 
   auto handler = std::make_unique<ClientHandler>(
-      worker_, faddr->fd, ssl, StringRef{host.data()},
-      StringRef{service.data()}, remote_addr.su.sa.sa_family, faddr);
+    worker_, faddr->fd, ssl, StringRef{host.data()}, StringRef{service.data()},
+    remote_addr.su.sa.sa_family, faddr);
 
   auto upstream = std::make_unique<Http3Upstream>(handler.get());
   if (upstream->init(faddr, remote_addr, local_addr, hd, odcid, token,
@@ -456,9 +455,9 @@ uint32_t generate_reserved_version(const Address &addr, uint32_t version) {
 } // namespace
 
 int QUICConnectionHandler::send_retry(
-    const UpstreamAddr *faddr, uint32_t version,
-    std::span<const uint8_t> ini_dcid, std::span<const uint8_t> ini_scid,
-    const Address &remote_addr, const Address &local_addr, size_t max_pktlen) {
+  const UpstreamAddr *faddr, uint32_t version,
+  std::span<const uint8_t> ini_dcid, std::span<const uint8_t> ini_scid,
+  const Address &remote_addr, const Address &local_addr, size_t max_pktlen) {
   std::array<char, NI_MAXHOST> host;
   std::array<char, NI_MAXSERV> port;
 
@@ -489,8 +488,8 @@ int QUICConnectionHandler::send_retry(
   std::array<uint8_t, NGTCP2_CRYPTO_MAX_RETRY_TOKENLEN> tokenbuf;
 
   auto token =
-      generate_retry_token(tokenbuf, version, &remote_addr.su.sa,
-                           remote_addr.len, retry_scid, idcid, qkm.secret);
+    generate_retry_token(tokenbuf, version, &remote_addr.su.sa, remote_addr.len,
+                         retry_scid, idcid, qkm.secret);
   if (!token) {
     return -1;
   }
@@ -518,7 +517,7 @@ int QUICConnectionHandler::send_retry(
   }
 
   auto d =
-      static_cast<ev_tstamp>(NGTCP2_DEFAULT_INITIAL_RTT * 3) / NGTCP2_SECONDS;
+    static_cast<ev_tstamp>(NGTCP2_DEFAULT_INITIAL_RTT * 3) / NGTCP2_SECONDS;
 
   if (LOG_ENABLED(INFO)) {
     LOG(INFO) << "Enter close-wait period " << d << "s with " << buf.size()
@@ -534,12 +533,12 @@ int QUICConnectionHandler::send_retry(
 }
 
 int QUICConnectionHandler::send_version_negotiation(
-    const UpstreamAddr *faddr, uint32_t version,
-    std::span<const uint8_t> ini_dcid, std::span<const uint8_t> ini_scid,
-    const Address &remote_addr, const Address &local_addr) {
+  const UpstreamAddr *faddr, uint32_t version,
+  std::span<const uint8_t> ini_dcid, std::span<const uint8_t> ini_scid,
+  const Address &remote_addr, const Address &local_addr) {
   auto sv = std::to_array({
-      generate_reserved_version(remote_addr, version),
-      NGTCP2_PROTO_VER_V1,
+    generate_reserved_version(remote_addr, version),
+    NGTCP2_PROTO_VER_V1,
   });
 
   std::array<uint8_t, NGTCP2_MAX_UDP_PAYLOAD_SIZE> buf;
@@ -548,8 +547,8 @@ int QUICConnectionHandler::send_version_negotiation(
   util::random_bytes(&rand_byte, &rand_byte + 1, worker_->get_randgen());
 
   auto nwrite = ngtcp2_pkt_write_version_negotiation(
-      buf.data(), buf.size(), rand_byte, ini_scid.data(), ini_scid.size(),
-      ini_dcid.data(), ini_dcid.size(), sv.data(), sv.size());
+    buf.data(), buf.size(), rand_byte, ini_scid.data(), ini_scid.size(),
+    ini_dcid.data(), ini_dcid.size(), sv.data(), sv.size());
   if (nwrite < 0) {
     LOG(ERROR) << "ngtcp2_pkt_write_version_negotiation: "
                << ngtcp2_strerror(nwrite);
@@ -591,14 +590,14 @@ int QUICConnectionHandler::send_stateless_reset(const UpstreamAddr *faddr,
   auto &qkm = qkms->keying_materials.front();
 
   if (auto rv = generate_quic_stateless_reset_token(
-          token.data(), cid, qkm.secret.data(), qkm.secret.size());
+        token.data(), cid, qkm.secret.data(), qkm.secret.size());
       rv != 0) {
     return -1;
   }
 
   // SCID + minimum expansion - NGTCP2_STATELESS_RESET_TOKENLEN
   constexpr size_t max_rand_byteslen =
-      NGTCP2_MAX_CIDLEN + 22 - NGTCP2_STATELESS_RESET_TOKENLEN;
+    NGTCP2_MAX_CIDLEN + 22 - NGTCP2_STATELESS_RESET_TOKENLEN;
 
   size_t rand_byteslen;
 
@@ -619,7 +618,7 @@ int QUICConnectionHandler::send_stateless_reset(const UpstreamAddr *faddr,
   std::array<uint8_t, NGTCP2_MAX_UDP_PAYLOAD_SIZE> buf;
 
   auto nwrite = ngtcp2_pkt_write_stateless_reset(
-      buf.data(), buf.size(), token.data(), rand_bytes.data(), rand_byteslen);
+    buf.data(), buf.size(), token.data(), rand_bytes.data(), rand_byteslen);
   if (nwrite < 0) {
     LOG(ERROR) << "ngtcp2_pkt_write_stateless_reset: "
                << ngtcp2_strerror(nwrite);
@@ -639,16 +638,16 @@ int QUICConnectionHandler::send_stateless_reset(const UpstreamAddr *faddr,
 }
 
 int QUICConnectionHandler::send_connection_close(
-    const UpstreamAddr *faddr, uint32_t version, const ngtcp2_cid &ini_dcid,
-    const ngtcp2_cid &ini_scid, const Address &remote_addr,
-    const Address &local_addr, uint64_t error_code, size_t max_pktlen) {
+  const UpstreamAddr *faddr, uint32_t version, const ngtcp2_cid &ini_dcid,
+  const ngtcp2_cid &ini_scid, const Address &remote_addr,
+  const Address &local_addr, uint64_t error_code, size_t max_pktlen) {
   std::array<uint8_t, NGTCP2_MAX_UDP_PAYLOAD_SIZE> buf;
 
   max_pktlen = std::min(max_pktlen, buf.size());
 
   auto nwrite = ngtcp2_crypto_write_connection_close(
-      buf.data(), max_pktlen, version, &ini_scid, &ini_dcid, error_code,
-      nullptr, 0);
+    buf.data(), max_pktlen, version, &ini_scid, &ini_dcid, error_code, nullptr,
+    0);
   if (nwrite < 0) {
     LOG(ERROR) << "ngtcp2_crypto_write_connection_close failed";
     return -1;
@@ -715,13 +714,13 @@ static void close_wait_timeoutcb(struct ev_loop *loop, ev_timer *w,
 
 CloseWait::CloseWait(Worker *worker, std::vector<ngtcp2_cid> scids,
                      std::vector<uint8_t> pkt, ev_tstamp period)
-    : worker{worker},
-      scids{std::move(scids)},
-      pkt{std::move(pkt)},
-      bytes_recv{0},
-      bytes_sent{0},
-      num_pkts_recv{0},
-      next_pkts_recv{1} {
+  : worker{worker},
+    scids{std::move(scids)},
+    pkt{std::move(pkt)},
+    bytes_recv{0},
+    bytes_sent{0},
+    num_pkts_recv{0},
+    next_pkts_recv{1} {
   ++worker->get_worker_stat()->num_close_waits;
 
   ev_timer_init(&timer, close_wait_timeoutcb, period, 0.);

@@ -58,8 +58,8 @@ namespace shrpx {
 
 ngtcp2_tstamp quic_timestamp() {
   return std::chrono::duration_cast<std::chrono::nanoseconds>(
-             std::chrono::steady_clock::now().time_since_epoch())
-      .count();
+           std::chrono::steady_clock::now().time_since_epoch())
+    .count();
 }
 
 int quic_send_packet(const UpstreamAddr *faddr, const sockaddr *remote_sa,
@@ -98,7 +98,7 @@ int quic_send_packet(const UpstreamAddr *faddr, const sockaddr *remote_sa,
     cm->cmsg_len = CMSG_LEN(sizeof(in_pktinfo));
     in_pktinfo pktinfo{};
     auto addrin =
-        reinterpret_cast<sockaddr_in *>(const_cast<sockaddr *>(local_sa));
+      reinterpret_cast<sockaddr_in *>(const_cast<sockaddr *>(local_sa));
     pktinfo.ipi_spec_dst = addrin->sin_addr;
     memcpy(CMSG_DATA(cm), &pktinfo, sizeof(pktinfo));
 
@@ -111,7 +111,7 @@ int quic_send_packet(const UpstreamAddr *faddr, const sockaddr *remote_sa,
     cm->cmsg_len = CMSG_LEN(sizeof(in6_pktinfo));
     in6_pktinfo pktinfo{};
     auto addrin =
-        reinterpret_cast<sockaddr_in6 *>(const_cast<sockaddr *>(local_sa));
+      reinterpret_cast<sockaddr_in6 *>(const_cast<sockaddr *>(local_sa));
     pktinfo.ipi6_addr = addrin->sin6_addr;
     memcpy(CMSG_DATA(cm), &pktinfo, sizeof(pktinfo));
 
@@ -284,12 +284,12 @@ generate_retry_token(std::span<uint8_t> token, uint32_t version,
                      const ngtcp2_cid &retry_scid, const ngtcp2_cid &odcid,
                      std::span<const uint8_t> secret) {
   auto t = std::chrono::duration_cast<std::chrono::nanoseconds>(
-               std::chrono::system_clock::now().time_since_epoch())
-               .count();
+             std::chrono::system_clock::now().time_since_epoch())
+             .count();
 
   auto tokenlen = ngtcp2_crypto_generate_retry_token(
-      token.data(), secret.data(), secret.size(), version, sa, salen,
-      &retry_scid, &odcid, t);
+    token.data(), secret.data(), secret.size(), version, sa, salen, &retry_scid,
+    &odcid, t);
   if (tokenlen < 0) {
     return {};
   }
@@ -302,12 +302,12 @@ int verify_retry_token(ngtcp2_cid &odcid, std::span<const uint8_t> token,
                        const sockaddr *sa, socklen_t salen,
                        std::span<const uint8_t> secret) {
   auto t = std::chrono::duration_cast<std::chrono::nanoseconds>(
-               std::chrono::system_clock::now().time_since_epoch())
-               .count();
+             std::chrono::system_clock::now().time_since_epoch())
+             .count();
 
   if (ngtcp2_crypto_verify_retry_token(
-          &odcid, token.data(), token.size(), secret.data(), secret.size(),
-          version, sa, salen, &dcid, 10 * NGTCP2_SECONDS, t) != 0) {
+        &odcid, token.data(), token.size(), secret.data(), secret.size(),
+        version, sa, salen, &dcid, 10 * NGTCP2_SECONDS, t) != 0) {
     return -1;
   }
 
@@ -318,11 +318,11 @@ std::optional<std::span<const uint8_t>>
 generate_token(std::span<uint8_t> token, const sockaddr *sa, size_t salen,
                std::span<const uint8_t> secret, uint8_t km_id) {
   auto t = std::chrono::duration_cast<std::chrono::nanoseconds>(
-               std::chrono::system_clock::now().time_since_epoch())
-               .count();
+             std::chrono::system_clock::now().time_since_epoch())
+             .count();
 
   auto tokenlen = ngtcp2_crypto_generate_regular_token(
-      token.data(), secret.data(), secret.size(), sa, salen, t);
+    token.data(), secret.data(), secret.size(), sa, salen, t);
   if (tokenlen < 0) {
     return {};
   }
@@ -339,12 +339,12 @@ int verify_token(std::span<const uint8_t> token, const sockaddr *sa,
   }
 
   auto t = std::chrono::duration_cast<std::chrono::nanoseconds>(
-               std::chrono::system_clock::now().time_since_epoch())
-               .count();
+             std::chrono::system_clock::now().time_since_epoch())
+             .count();
 
   if (ngtcp2_crypto_verify_regular_token(
-          token.data(), token.size() - 1, secret.data(), secret.size(), sa,
-          salen, 3600 * NGTCP2_SECONDS, t) != 0) {
+        token.data(), token.size() - 1, secret.data(), secret.size(), sa, salen,
+        3600 * NGTCP2_SECONDS, t) != 0) {
     return -1;
   }
 
@@ -357,7 +357,7 @@ int generate_quic_connection_id_encryption_key(std::span<uint8_t> key,
   constexpr uint8_t info[] = "connection id encryption key";
   ngtcp2_crypto_md sha256;
   ngtcp2_crypto_md_init(
-      &sha256, reinterpret_cast<void *>(const_cast<EVP_MD *>(EVP_sha256())));
+    &sha256, reinterpret_cast<void *>(const_cast<EVP_MD *>(EVP_sha256())));
 
   if (ngtcp2_crypto_hkdf(key.data(), key.size(), &sha256, secret.data(),
                          secret.size(), salt.data(), salt.size(), info,

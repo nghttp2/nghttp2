@@ -103,16 +103,16 @@ struct FileEntry {
             const std::string *content_type,
             const std::chrono::steady_clock::time_point &last_valid,
             bool stale = false)
-      : path(std::move(path)),
-        length(length),
-        mtime(mtime),
-        last_valid(last_valid),
-        content_type(content_type),
-        dlnext(nullptr),
-        dlprev(nullptr),
-        fd(fd),
-        usecount(1),
-        stale(stale) {}
+    : path(std::move(path)),
+      length(length),
+      mtime(mtime),
+      last_valid(last_valid),
+      content_type(content_type),
+      dlnext(nullptr),
+      dlprev(nullptr),
+      fd(fd),
+      usecount(1),
+      stale(stale) {}
   std::string path;
   std::multimap<std::string, std::unique_ptr<FileEntry>>::iterator it;
   int64_t length;

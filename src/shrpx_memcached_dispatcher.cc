@@ -36,9 +36,9 @@ MemcachedDispatcher::MemcachedDispatcher(const Address *addr,
                                          const StringRef &sni_name,
                                          MemchunkPool *mcpool,
                                          std::mt19937 &gen)
-    : loop_(loop),
-      mconn_(std::make_unique<MemcachedConnection>(addr, loop_, ssl_ctx,
-                                                   sni_name, mcpool, gen)) {}
+  : loop_(loop),
+    mconn_(std::make_unique<MemcachedConnection>(addr, loop_, ssl_ctx, sni_name,
+                                                 mcpool, gen)) {}
 
 MemcachedDispatcher::~MemcachedDispatcher() {}
 

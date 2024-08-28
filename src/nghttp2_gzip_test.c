@@ -34,12 +34,12 @@
 #include "nghttp2_gzip.h"
 
 static const MunitTest tests[] = {
-    munit_void_test(test_nghttp2_gzip_inflate),
-    munit_test_end(),
+  munit_void_test(test_nghttp2_gzip_inflate),
+  munit_test_end(),
 };
 
 const MunitSuite gzip_suite = {
-    "/gzip", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
+  "/gzip", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
 };
 
 static size_t deflate_data(uint8_t *out, size_t outlen, const uint8_t *in,
@@ -63,13 +63,13 @@ static size_t deflate_data(uint8_t *out, size_t outlen, const uint8_t *in,
 }
 
 static const char input[] =
-    "THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND "
-    "EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF "
-    "MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND "
-    "NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE "
-    "LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION "
-    "OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION "
-    "WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.";
+  "THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND "
+  "EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF "
+  "MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND "
+  "NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE "
+  "LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION "
+  "OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION "
+  "WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.";
 
 void test_nghttp2_gzip_inflate(void) {
   nghttp2_gzip *inflater;
@@ -86,8 +86,7 @@ void test_nghttp2_gzip_inflate(void) {
   inproclen = inlen;
   outproclen = 16;
   assert_int(
-      0, ==,
-      nghttp2_gzip_inflate(inflater, out, &outproclen, inptr, &inproclen));
+    0, ==, nghttp2_gzip_inflate(inflater, out, &outproclen, inptr, &inproclen));
   assert_size(16, ==, outproclen);
   assert_size(0, <, inproclen);
   assert_memory_equal(outproclen, inputptr, out);
@@ -98,8 +97,7 @@ void test_nghttp2_gzip_inflate(void) {
   inputptr += outproclen;
   outproclen = 32;
   assert_int(
-      0, ==,
-      nghttp2_gzip_inflate(inflater, out, &outproclen, inptr, &inproclen));
+    0, ==, nghttp2_gzip_inflate(inflater, out, &outproclen, inptr, &inproclen));
   assert_size(32, ==, outproclen);
   assert_size(0, <, inproclen);
   assert_memory_equal(outproclen, inputptr, out);
@@ -110,8 +108,7 @@ void test_nghttp2_gzip_inflate(void) {
   inputptr += outproclen;
   outproclen = sizeof(out);
   assert_int(
-      0, ==,
-      nghttp2_gzip_inflate(inflater, out, &outproclen, inptr, &inproclen));
+    0, ==, nghttp2_gzip_inflate(inflater, out, &outproclen, inptr, &inproclen));
   assert_size(sizeof(input) - 49, ==, outproclen);
   assert_size(0, <, inproclen);
   assert_memory_equal(outproclen, inputptr, out);

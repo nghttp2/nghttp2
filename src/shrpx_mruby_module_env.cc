@@ -173,8 +173,8 @@ mrb_value env_get_tls_client_fingerprint_md(mrb_state *mrb, const EVP_MD *md) {
   }
 
   auto &balloc = downstream->get_block_allocator();
-  auto f = util::format_hex(balloc,
-                            std::span{buf.data(), static_cast<size_t>(slen)});
+  auto f =
+    util::format_hex(balloc, std::span{buf.data(), static_cast<size_t>(slen)});
   return mrb_str_new(mrb, f.data(), f.size());
 }
 } // namespace
@@ -449,7 +449,7 @@ mrb_value env_get_tls_handshake_finished(mrb_state *mrb, mrb_value self) {
 
 void init_env_class(mrb_state *mrb, RClass *module) {
   auto env_class =
-      mrb_define_class_under(mrb, module, "Env", mrb->object_class);
+    mrb_define_class_under(mrb, module, "Env", mrb->object_class);
 
   mrb_define_method(mrb, env_class, "initialize", env_init, MRB_ARGS_NONE());
   mrb_define_method(mrb, env_class, "req", env_get_req, MRB_ARGS_NONE());

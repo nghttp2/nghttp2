@@ -37,7 +37,7 @@ void gccb(struct ev_loop *loop, ev_timer *w, int revents) {
 } // namespace
 
 DNSTracker::DNSTracker(struct ev_loop *loop, int family)
-    : loop_(loop), family_(family) {
+  : loop_(loop), family_(family) {
   ev_timer_init(&gc_timer_, gccb, 0., 12_h);
   gc_timer_.data = this;
 }
@@ -116,7 +116,7 @@ DNSResolverStatus DNSTracker::resolve(Address *result, DNSQuery *dnsq) {
 
     auto resolv = std::make_unique<DualDNSResolver>(loop_, family_);
     auto host_copy =
-        ImmutableString{std::begin(dnsq->host), std::end(dnsq->host)};
+      ImmutableString{std::begin(dnsq->host), std::end(dnsq->host)};
     auto host = StringRef{host_copy};
 
     rv = resolv->resolve(host);
@@ -158,9 +158,9 @@ DNSResolverStatus DNSTracker::resolve(Address *result, DNSQuery *dnsq) {
 
       return DNSResolverStatus::OK;
     case DNSResolverStatus::RUNNING: {
-      auto p = ents_.emplace(host,
-                             make_entry(std::move(resolv), std::move(host_copy),
-                                        DNSResolverStatus::RUNNING, nullptr));
+      auto p =
+        ents_.emplace(host, make_entry(std::move(resolv), std::move(host_copy),
+                                       DNSResolverStatus::RUNNING, nullptr));
 
       start_gc_timer();
 
@@ -256,27 +256,27 @@ DNSResolverStatus DNSTracker::resolve(Address *result, DNSQuery *dnsq) {
 
 void DNSTracker::add_to_qlist(ResolverEntry &ent, DNSQuery *dnsq) {
   ent.resolv->set_complete_cb(
-      [&ent](DNSResolverStatus status, const Address *result) {
-        auto &qlist = ent.qlist;
-        while (!qlist.empty()) {
-          auto head = qlist.head;
-          qlist.remove(head);
-          head->status = status;
-          head->in_qlist = false;
-          auto cb = head->cb;
-          cb(status, result);
-        }
+    [&ent](DNSResolverStatus status, const Address *result) {
+      auto &qlist = ent.qlist;
+      while (!qlist.empty()) {
+        auto head = qlist.head;
+        qlist.remove(head);
+        head->status = status;
+        head->in_qlist = false;
+        auto cb = head->cb;
+        cb(status, result);
+      }
 
-        auto &dnsconf = get_config()->dns;
+      auto &dnsconf = get_config()->dns;
 
-        ent.resolv.reset();
-        ent.status = status;
-        ent.expiry = std::chrono::steady_clock::now() +
-                     util::duration_from(dnsconf.timeout.cache);
-        if (ent.status == DNSResolverStatus::OK) {
-          ent.result = *result;
-        }
-      });
+      ent.resolv.reset();
+      ent.status = status;
+      ent.expiry = std::chrono::steady_clock::now() +
+                   util::duration_from(dnsconf.timeout.cache);
+      if (ent.status == DNSResolverStatus::OK) {
+        ent.result = *result;
+      }
+    });
   ent.qlist.append(dnsq);
   dnsq->in_qlist = true;
 }

@@ -40,7 +40,7 @@ void DownstreamConnectionPool::remove_all() {
 }
 
 void DownstreamConnectionPool::add_downstream_connection(
-    std::unique_ptr<DownstreamConnection> dconn) {
+  std::unique_ptr<DownstreamConnection> dconn) {
   pool_.insert(dconn.release());
 }
 
@@ -58,7 +58,7 @@ DownstreamConnectionPool::pop_downstream_connection() {
 }
 
 void DownstreamConnectionPool::remove_downstream_connection(
-    DownstreamConnection *dconn) {
+  DownstreamConnection *dconn) {
   pool_.erase(dconn);
   delete dconn;
 }

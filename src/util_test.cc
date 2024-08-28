@@ -42,49 +42,49 @@ namespace shrpx {
 
 namespace {
 const MunitTest tests[]{
-    munit_void_test(test_util_streq),
-    munit_void_test(test_util_strieq),
-    munit_void_test(test_util_inp_strlower),
-    munit_void_test(test_util_to_base64),
-    munit_void_test(test_util_to_token68),
-    munit_void_test(test_util_percent_encode_token),
-    munit_void_test(test_util_percent_decode),
-    munit_void_test(test_util_quote_string),
-    munit_void_test(test_util_utox),
-    munit_void_test(test_util_http_date),
-    munit_void_test(test_util_select_h2),
-    munit_void_test(test_util_ipv6_numeric_addr),
-    munit_void_test(test_util_utos),
-    munit_void_test(test_util_make_string_ref_uint),
-    munit_void_test(test_util_utos_unit),
-    munit_void_test(test_util_utos_funit),
-    munit_void_test(test_util_parse_uint_with_unit),
-    munit_void_test(test_util_parse_uint),
-    munit_void_test(test_util_parse_duration_with_unit),
-    munit_void_test(test_util_duration_str),
-    munit_void_test(test_util_format_duration),
-    munit_void_test(test_util_starts_with),
-    munit_void_test(test_util_ends_with),
-    munit_void_test(test_util_parse_http_date),
-    munit_void_test(test_util_localtime_date),
-    munit_void_test(test_util_get_uint64),
-    munit_void_test(test_util_parse_config_str_list),
-    munit_void_test(test_util_make_http_hostport),
-    munit_void_test(test_util_make_hostport),
-    munit_void_test(test_util_random_alpha_digit),
-    munit_void_test(test_util_format_hex),
-    munit_void_test(test_util_is_hex_string),
-    munit_void_test(test_util_decode_hex),
-    munit_void_test(test_util_extract_host),
-    munit_void_test(test_util_split_hostport),
-    munit_void_test(test_util_split_str),
-    munit_void_test(test_util_rstrip),
-    munit_test_end(),
+  munit_void_test(test_util_streq),
+  munit_void_test(test_util_strieq),
+  munit_void_test(test_util_inp_strlower),
+  munit_void_test(test_util_to_base64),
+  munit_void_test(test_util_to_token68),
+  munit_void_test(test_util_percent_encode_token),
+  munit_void_test(test_util_percent_decode),
+  munit_void_test(test_util_quote_string),
+  munit_void_test(test_util_utox),
+  munit_void_test(test_util_http_date),
+  munit_void_test(test_util_select_h2),
+  munit_void_test(test_util_ipv6_numeric_addr),
+  munit_void_test(test_util_utos),
+  munit_void_test(test_util_make_string_ref_uint),
+  munit_void_test(test_util_utos_unit),
+  munit_void_test(test_util_utos_funit),
+  munit_void_test(test_util_parse_uint_with_unit),
+  munit_void_test(test_util_parse_uint),
+  munit_void_test(test_util_parse_duration_with_unit),
+  munit_void_test(test_util_duration_str),
+  munit_void_test(test_util_format_duration),
+  munit_void_test(test_util_starts_with),
+  munit_void_test(test_util_ends_with),
+  munit_void_test(test_util_parse_http_date),
+  munit_void_test(test_util_localtime_date),
+  munit_void_test(test_util_get_uint64),
+  munit_void_test(test_util_parse_config_str_list),
+  munit_void_test(test_util_make_http_hostport),
+  munit_void_test(test_util_make_hostport),
+  munit_void_test(test_util_random_alpha_digit),
+  munit_void_test(test_util_format_hex),
+  munit_void_test(test_util_is_hex_string),
+  munit_void_test(test_util_decode_hex),
+  munit_void_test(test_util_extract_host),
+  munit_void_test(test_util_split_hostport),
+  munit_void_test(test_util_split_str),
+  munit_void_test(test_util_rstrip),
+  munit_test_end(),
 };
 } // namespace
 
 const MunitSuite util_suite{
-    "/util", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
+  "/util", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
 };
 
 void test_util_streq(void) {
@@ -208,14 +208,13 @@ void test_util_http_date(void) {
   std::array<char, 30> http_buf;
 
   assert_stdsv_equal(
-      "Thu, 01 Jan 1970 00:00:00 GMT"sv,
-      util::format_http_date(http_buf.data(),
-                             std::chrono::system_clock::time_point()));
-  assert_stdsv_equal(
-      "Wed, 29 Feb 2012 09:15:16 GMT"sv,
-      util::format_http_date(http_buf.data(),
-                             std::chrono::system_clock::time_point(
-                                 std::chrono::seconds(1330506916))));
+    "Thu, 01 Jan 1970 00:00:00 GMT"sv,
+    util::format_http_date(http_buf.data(),
+                           std::chrono::system_clock::time_point()));
+  assert_stdsv_equal("Wed, 29 Feb 2012 09:15:16 GMT"sv,
+                     util::format_http_date(
+                       http_buf.data(), std::chrono::system_clock::time_point(
+                                          std::chrono::seconds(1330506916))));
 }
 
 void test_util_select_h2(void) {
@@ -266,7 +265,7 @@ void test_util_select_h2(void) {
 void test_util_ipv6_numeric_addr(void) {
   assert_true(util::ipv6_numeric_addr("::1"));
   assert_true(
-      util::ipv6_numeric_addr("2001:0db8:85a3:0042:1000:8a2e:0370:7334"));
+    util::ipv6_numeric_addr("2001:0db8:85a3:0042:1000:8a2e:0370:7334"));
   // IPv4
   assert_false(util::ipv6_numeric_addr("127.0.0.1"));
   // not numeric address
@@ -279,8 +278,8 @@ void test_util_utos(void) {
   assert_stdstring_equal("0", (std::string{buf, util::utos(buf, 0)}));
   assert_stdstring_equal("123", (std::string{buf, util::utos(buf, 123)}));
   assert_stdstring_equal(
-      "18446744073709551615",
-      (std::string{buf, util::utos(buf, 18446744073709551615ULL)}));
+    "18446744073709551615",
+    (std::string{buf, util::utos(buf, 18446744073709551615ULL)}));
 }
 
 void test_util_make_string_ref_uint(void) {
@@ -289,8 +288,8 @@ void test_util_make_string_ref_uint(void) {
   assert_stdsv_equal("0"sv, util::make_string_ref_uint(balloc, 0));
   assert_stdsv_equal("123"sv, util::make_string_ref_uint(balloc, 123));
   assert_stdsv_equal(
-      "18446744073709551615"sv,
-      util::make_string_ref_uint(balloc, 18446744073709551615ULL));
+    "18446744073709551615"sv,
+    util::make_string_ref_uint(balloc, 18446744073709551615ULL));
 }
 
 void test_util_utos_unit(void) {
@@ -400,17 +399,17 @@ void test_util_format_duration(void) {
   assert_stdstring_equal("999us",
                          util::format_duration(std::chrono::microseconds(999)));
   assert_stdstring_equal(
-      "1.00ms", util::format_duration(std::chrono::microseconds(1000)));
+    "1.00ms", util::format_duration(std::chrono::microseconds(1000)));
   assert_stdstring_equal(
-      "1.09ms", util::format_duration(std::chrono::microseconds(1090)));
+    "1.09ms", util::format_duration(std::chrono::microseconds(1090)));
   assert_stdstring_equal(
-      "1.01ms", util::format_duration(std::chrono::microseconds(1009)));
+    "1.01ms", util::format_duration(std::chrono::microseconds(1009)));
   assert_stdstring_equal(
-      "999.99ms", util::format_duration(std::chrono::microseconds(999990)));
+    "999.99ms", util::format_duration(std::chrono::microseconds(999990)));
   assert_stdstring_equal(
-      "1.00s", util::format_duration(std::chrono::microseconds(1000000)));
+    "1.00s", util::format_duration(std::chrono::microseconds(1000000)));
   assert_stdstring_equal(
-      "1.05s", util::format_duration(std::chrono::microseconds(1050000)));
+    "1.05s", util::format_duration(std::chrono::microseconds(1050000)));
 
   assert_stdstring_equal("0us", util::format_duration(0.));
   assert_stdstring_equal("999us", util::format_duration(0.000999));
@@ -470,19 +469,18 @@ void test_util_localtime_date(void) {
 
   std::array<char, 27> common_buf;
 
-  assert_stdsv_equal(
-      "02/Oct/2001:00:34:56 +1200"sv,
-      util::format_common_log(common_buf.data(),
-                              std::chrono::system_clock::time_point(
-                                  std::chrono::seconds(1001939696))));
+  assert_stdsv_equal("02/Oct/2001:00:34:56 +1200"sv,
+                     util::format_common_log(
+                       common_buf.data(), std::chrono::system_clock::time_point(
+                                            std::chrono::seconds(1001939696))));
 
   std::array<char, 30> iso8601_buf;
 
   assert_stdsv_equal(
-      "2001-10-02T00:34:56.123+12:00"sv,
-      util::format_iso8601(iso8601_buf.data(),
-                           std::chrono::system_clock::time_point(
-                               std::chrono::milliseconds(1001939696123LL))));
+    "2001-10-02T00:34:56.123+12:00"sv,
+    util::format_iso8601(iso8601_buf.data(),
+                         std::chrono::system_clock::time_point(
+                           std::chrono::milliseconds(1001939696123LL))));
 
   if (tz) {
     setenv("TZ", tz, 1);
@@ -496,7 +494,7 @@ void test_util_localtime_date(void) {
 void test_util_get_uint64(void) {
   {
     auto v = std::to_array<unsigned char>(
-        {0x01, 0x12, 0x34, 0x56, 0xff, 0x9a, 0xab, 0xbc});
+      {0x01, 0x12, 0x34, 0x56, 0xff, 0x9a, 0xab, 0xbc});
 
     auto n = util::get_uint64(v.data());
 
@@ -504,7 +502,7 @@ void test_util_get_uint64(void) {
   }
   {
     auto v = std::to_array<unsigned char>(
-        {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff});
+      {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff});
 
     auto n = util::get_uint64(v.data());
 
@@ -554,11 +552,10 @@ void test_util_make_http_hostport(void) {
 void test_util_make_hostport(void) {
   std::array<char, util::max_hostport> hostport_buf;
   assert_stdsv_equal(
-      "localhost:80"sv,
-      util::make_hostport(std::begin(hostport_buf), "localhost"_sr, 80));
-  assert_stdsv_equal(
-      "[::1]:443"sv,
-      util::make_hostport(std::begin(hostport_buf), "::1"_sr, 443));
+    "localhost:80"sv,
+    util::make_hostport(std::begin(hostport_buf), "localhost"_sr, 80));
+  assert_stdsv_equal("[::1]:443"sv, util::make_hostport(
+                                      std::begin(hostport_buf), "::1"_sr, 443));
 
   BlockAllocator balloc(4096, 4096);
   assert_stdsv_equal("localhost:80"sv,

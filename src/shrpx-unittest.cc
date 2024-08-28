@@ -50,16 +50,16 @@ int main(int argc, char *argv[]) {
   shrpx::create_config();
 
   const MunitSuite suites[] = {
-      shrpx::tls_suite,    shrpx::downstream_suite,
-      shrpx::config_suite, shrpx::worker_suite,
-      shrpx::http_suite,   shrpx::router_suite,
-      shrpx::http2_suite,  shrpx::util_suite,
-      gzip_suite,          buffer_suite,
-      memchunk_suite,      template_suite,
-      base64_suite,        {NULL, NULL, NULL, 0, MUNIT_SUITE_OPTION_NONE},
+    shrpx::tls_suite,    shrpx::downstream_suite,
+    shrpx::config_suite, shrpx::worker_suite,
+    shrpx::http_suite,   shrpx::router_suite,
+    shrpx::http2_suite,  shrpx::util_suite,
+    gzip_suite,          buffer_suite,
+    memchunk_suite,      template_suite,
+    base64_suite,        {NULL, NULL, NULL, 0, MUNIT_SUITE_OPTION_NONE},
   };
   const MunitSuite suite = {
-      "", NULL, suites, 1, MUNIT_SUITE_OPTION_NONE,
+    "", NULL, suites, 1, MUNIT_SUITE_OPTION_NONE,
   };
 
   return munit_suite_main(&suite, NULL, argc, argv);

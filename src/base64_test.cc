@@ -39,14 +39,14 @@ namespace nghttp2 {
 
 namespace {
 const MunitTest tests[]{
-    munit_void_test(test_base64_encode),
-    munit_void_test(test_base64_decode),
-    munit_test_end(),
+  munit_void_test(test_base64_encode),
+  munit_void_test(test_base64_decode),
+  munit_test_end(),
 };
 } // namespace
 
 const MunitSuite base64_suite{
-    "/base64", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
+  "/base64", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
 };
 
 void test_base64_encode(void) {
@@ -79,31 +79,30 @@ void test_base64_decode(void) {
     auto out = base64::decode(std::begin(in), std::end(in));
     assert_stdsv_equal("\xff"sv, out);
     assert_stdsv_equal("\xff"sv, StringRef{base64::decode(
-                                     balloc, std::begin(in), std::end(in))});
+                                   balloc, std::begin(in), std::end(in))});
   }
   {
     auto in = "//4="sv;
     auto out = base64::decode(std::begin(in), std::end(in));
     assert_stdsv_equal("\xff\xfe"sv, out);
-    assert_stdsv_equal(
-        "\xff\xfe"sv,
-        StringRef{base64::decode(balloc, std::begin(in), std::end(in))});
+    assert_stdsv_equal("\xff\xfe"sv, StringRef{base64::decode(
+                                       balloc, std::begin(in), std::end(in))});
   }
   {
     auto in = "//79"sv;
     auto out = base64::decode(std::begin(in), std::end(in));
     assert_stdsv_equal("\xff\xfe\xfd"sv, out);
     assert_stdsv_equal(
-        "\xff\xfe\xfd"sv,
-        StringRef{base64::decode(balloc, std::begin(in), std::end(in))});
+      "\xff\xfe\xfd"sv,
+      StringRef{base64::decode(balloc, std::begin(in), std::end(in))});
   }
   {
     auto in = "//79/A=="sv;
     auto out = base64::decode(std::begin(in), std::end(in));
     assert_stdsv_equal("\xff\xfe\xfd\xfc"sv, out);
     assert_stdsv_equal(
-        "\xff\xfe\xfd\xfc"sv,
-        StringRef{base64::decode(balloc, std::begin(in), std::end(in))});
+      "\xff\xfe\xfd\xfc"sv,
+      StringRef{base64::decode(balloc, std::begin(in), std::end(in))});
   }
   {
     // we check the number of valid input must be multiples of 4
@@ -111,7 +110,7 @@ void test_base64_decode(void) {
     auto out = base64::decode(std::begin(in), std::end(in));
     assert_stdsv_equal(""sv, out);
     assert_stdsv_equal(
-        ""sv, StringRef{base64::decode(balloc, std::begin(in), std::end(in))});
+      ""sv, StringRef{base64::decode(balloc, std::begin(in), std::end(in))});
   }
   {
     // ending invalid character at the boundary of multiples of 4 is
@@ -120,7 +119,7 @@ void test_base64_decode(void) {
     auto out = base64::decode(std::begin(in), std::end(in));
     assert_stdsv_equal("", out);
     assert_stdsv_equal(
-        ""sv, StringRef{base64::decode(balloc, std::begin(in), std::end(in))});
+      ""sv, StringRef{base64::decode(balloc, std::begin(in), std::end(in))});
   }
   {
     // after seeing '=', subsequent input must be also '='.
@@ -128,7 +127,7 @@ void test_base64_decode(void) {
     auto out = base64::decode(std::begin(in), std::end(in));
     assert_stdsv_equal(""sv, out);
     assert_stdsv_equal(
-        ""sv, StringRef{base64::decode(balloc, std::begin(in), std::end(in))});
+      ""sv, StringRef{base64::decode(balloc, std::begin(in), std::end(in))});
   }
   {
     // additional '=' at the end is bad
@@ -136,7 +135,7 @@ void test_base64_decode(void) {
     auto out = base64::decode(std::begin(in), std::end(in));
     assert_stdsv_equal(""sv, out);
     assert_stdsv_equal(
-        ""sv, StringRef{base64::decode(balloc, std::begin(in), std::end(in))});
+      ""sv, StringRef{base64::decode(balloc, std::begin(in), std::end(in))});
   }
 }
 

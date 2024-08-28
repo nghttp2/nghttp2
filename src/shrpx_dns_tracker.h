@@ -38,12 +38,12 @@ namespace shrpx {
 
 struct DNSQuery {
   DNSQuery(StringRef host, CompleteCb cb)
-      : host(std::move(host)),
-        cb(std::move(cb)),
-        dlnext(nullptr),
-        dlprev(nullptr),
-        status(DNSResolverStatus::IDLE),
-        in_qlist(false) {}
+    : host(std::move(host)),
+      cb(std::move(cb)),
+      dlnext(nullptr),
+      dlprev(nullptr),
+      status(DNSResolverStatus::IDLE),
+      in_qlist(false) {}
 
   // Host name we lookup for.
   StringRef host;

@@ -35,22 +35,22 @@ namespace nghttp2 {
 
 namespace {
 const MunitTest tests[]{
-    munit_void_test(test_pool_recycle),
-    munit_void_test(test_memchunks_append),
-    munit_void_test(test_memchunks_drain),
-    munit_void_test(test_memchunks_riovec),
-    munit_void_test(test_memchunks_recycle),
-    munit_void_test(test_memchunks_reset),
-    munit_void_test(test_peek_memchunks_append),
-    munit_void_test(test_peek_memchunks_disable_peek_drain),
-    munit_void_test(test_peek_memchunks_disable_peek_no_drain),
-    munit_void_test(test_peek_memchunks_reset),
-    munit_test_end(),
+  munit_void_test(test_pool_recycle),
+  munit_void_test(test_memchunks_append),
+  munit_void_test(test_memchunks_drain),
+  munit_void_test(test_memchunks_riovec),
+  munit_void_test(test_memchunks_recycle),
+  munit_void_test(test_memchunks_reset),
+  munit_void_test(test_peek_memchunks_append),
+  munit_void_test(test_peek_memchunks_disable_peek_drain),
+  munit_void_test(test_peek_memchunks_disable_peek_no_drain),
+  munit_void_test(test_peek_memchunks_reset),
+  munit_test_end(),
 };
 } // namespace
 
 const MunitSuite memchunk_suite{
-    "/memchunk", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
+  "/memchunk", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
 };
 
 void test_pool_recycle(void) {
@@ -245,10 +245,10 @@ void test_peek_memchunks_append(void) {
   PeekMemchunks16 pchunks(&pool);
 
   std::array<uint8_t, 32> b{
-      '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0',
-      '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '1',
+    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0',
+    '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '1',
   },
-      d;
+    d;
 
   pchunks.append(b.data(), b.size());
 
@@ -280,10 +280,10 @@ void test_peek_memchunks_disable_peek_drain(void) {
   PeekMemchunks16 pchunks(&pool);
 
   std::array<uint8_t, 32> b{
-      '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0',
-      '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '1',
+    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0',
+    '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '1',
   },
-      d;
+    d;
 
   pchunks.append(b.data(), b.size());
 
@@ -308,10 +308,10 @@ void test_peek_memchunks_disable_peek_no_drain(void) {
   PeekMemchunks16 pchunks(&pool);
 
   std::array<uint8_t, 32> b{
-      '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0',
-      '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '1',
+    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0',
+    '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '1',
   },
-      d;
+    d;
 
   pchunks.append(b.data(), b.size());
 
@@ -336,10 +336,10 @@ void test_peek_memchunks_reset(void) {
   PeekMemchunks16 pchunks(&pool);
 
   std::array<uint8_t, 32> b{
-      '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0',
-      '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '1',
+    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0',
+    '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '1',
   },
-      d;
+    d;
 
   pchunks.append(b.data(), b.size());
 

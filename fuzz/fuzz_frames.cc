@@ -62,8 +62,8 @@ void check_frame_pack_headers(FuzzedDataProvider *data_provider) {
   nvlen = HEADERS_LENGTH;
   nghttp2_priority_spec_default_init(&pri_spec);
   nghttp2_frame_headers_init(
-      &frame, NGHTTP2_FLAG_END_STREAM | NGHTTP2_FLAG_END_HEADERS, 1000000007,
-      NGHTTP2_HCAT_REQUEST, &pri_spec, nva, nvlen);
+    &frame, NGHTTP2_FLAG_END_STREAM | NGHTTP2_FLAG_END_HEADERS, 1000000007,
+    NGHTTP2_HCAT_REQUEST, &pri_spec, nva, nvlen);
 
   /* Perform a set of operations with the fuzz data */
   rv = nghttp2_frame_pack_headers(&bufs, &frame, &deflater);

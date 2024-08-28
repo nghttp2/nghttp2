@@ -49,10 +49,10 @@ StringRef create_error_html(BlockAllocator &balloc, unsigned int http_status) {
   auto reason_phrase = http2::get_reason_phrase(http_status);
 
   return concat_string_ref(
-      balloc, R"(<!DOCTYPE html><html lang="en"><title>)"_sr, status_string,
-      " "_sr, reason_phrase, "</title><body><h1>"_sr, status_string, " "_sr,
-      reason_phrase, "</h1><footer>"_sr, httpconf.server_name,
-      "</footer></body></html>"_sr);
+    balloc, R"(<!DOCTYPE html><html lang="en"><title>)"_sr, status_string,
+    " "_sr, reason_phrase, "</title><body><h1>"_sr, status_string, " "_sr,
+    reason_phrase, "</h1><footer>"_sr, httpconf.server_name,
+    "</footer></body></html>"_sr);
 }
 
 StringRef create_forwarded(BlockAllocator &balloc, int params,

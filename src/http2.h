@@ -48,10 +48,10 @@ namespace nghttp2 {
 struct Header {
   Header(std::string name, std::string value, bool no_index = false,
          int32_t token = -1)
-      : name(std::move(name)),
-        value(std::move(value)),
-        token(token),
-        no_index(no_index) {}
+    : name(std::move(name)),
+      value(std::move(value)),
+      token(token),
+      no_index(no_index) {}
 
   Header() : token(-1), no_index(false) {}
 
@@ -72,7 +72,7 @@ struct Header {
 struct HeaderRef {
   HeaderRef(const StringRef &name, const StringRef &value,
             bool no_index = false, int32_t token = -1)
-      : name(name), value(value), token(token), no_index(no_index) {}
+    : name(name), value(value), token(token), no_index(no_index) {}
 
   HeaderRef() : token(-1), no_index(false) {}
 
@@ -157,7 +157,7 @@ inline nghttp2_nv make_field(const StringRef &name, const StringRef &value,
 inline nghttp2_nv make_field_v(const StringRef &name, const StringRef &value,
                                uint8_t flags = NGHTTP2_NV_FLAG_NONE) {
   return make_field_flags(
-      name, value, static_cast<uint8_t>(NGHTTP2_NV_FLAG_NO_COPY_NAME | flags));
+    name, value, static_cast<uint8_t>(NGHTTP2_NV_FLAG_NO_COPY_NAME | flags));
 }
 
 // Creates nghttp2_nv from |name|, |value| and |flags|.  nghttp2
