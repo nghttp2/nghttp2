@@ -34,7 +34,7 @@
 static const MunitTest tests[] = {
   munit_void_test(test_nghttp2_map),
   munit_void_test(test_nghttp2_map_functional),
-  munit_void_test(test_nghttp2_map_each_free),
+  munit_void_test(test_nghttp2_map_each),
   munit_void_test(test_nghttp2_map_clear),
   munit_test_end(),
 };
@@ -158,7 +158,7 @@ void test_nghttp2_map_functional(void) {
     assert_int(0, ==, nghttp2_map_remove(&map, (nghttp2_map_key_type)order[i]));
   }
 
-  /* each_free (but no op function for testing purpose) */
+  /* each (but no op function for testing purpose) */
   for (i = 0; i < NUM_ENT; ++i) {
     strentry_init(&arr[i], (nghttp2_map_key_type)(i + 1), "foo");
   }
@@ -167,7 +167,7 @@ void test_nghttp2_map_functional(void) {
     ent = &arr[i];
     assert_int(0, ==, nghttp2_map_insert(&map, ent->key, ent));
   }
-  nghttp2_map_each_free(&map, eachfun, NULL);
+  nghttp2_map_each(&map, eachfun, NULL);
   nghttp2_map_free(&map);
 }
 
@@ -178,7 +178,7 @@ static int entry_free(void *data, void *ptr) {
   return 0;
 }
 
-void test_nghttp2_map_each_free(void) {
+void test_nghttp2_map_each(void) {
   const nghttp2_mem *mem = nghttp2_mem_default();
   strentry *foo = mem->malloc(sizeof(strentry), NULL),
            *bar = mem->malloc(sizeof(strentry), NULL),
@@ -197,7 +197,7 @@ void test_nghttp2_map_each_free(void) {
   nghttp2_map_insert(&map, baz->key, baz);
   nghttp2_map_insert(&map, shrubbery->key, shrubbery);
 
-  nghttp2_map_each_free(&map, entry_free, (void *)mem);
+  nghttp2_map_each(&map, entry_free, (void *)mem);
   nghttp2_map_free(&map);
 }
 

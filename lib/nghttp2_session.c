@@ -814,7 +814,7 @@ void nghttp2_session_del(nghttp2_session *session) {
 
   /* Have to free streams first, so that we can check
      stream->item->queued */
-  nghttp2_map_each_free(&session->streams, free_streams, session);
+  nghttp2_map_each(&session->streams, free_streams, session);
   nghttp2_map_free(&session->streams);
 
   ob_q_free(&session->ob_urgent, mem);
