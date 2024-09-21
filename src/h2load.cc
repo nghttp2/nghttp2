@@ -1479,6 +1479,8 @@ int Client::write_udp(const sockaddr *addr, socklen_t addrlen,
     }
 
     std::cerr << "sendmsg: errno=" << errno << std::endl;
+  } else if (gso_size) {
+    worker->stats.udp_dgram_sent += (datalen + gso_size - 1) / gso_size;
   } else {
     ++worker->stats.udp_dgram_sent;
   }
