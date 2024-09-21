@@ -582,7 +582,11 @@ int Client::read_quic() {
 
     assert(quic.conn);
 
-    ++worker->stats.udp_dgram_recv;
+    if (gso_size) {
+      worker->stats.udp_dgram_recv += (nread + gso_size - 1) / gso_size;
+    } else {
+      ++worker->stats.udp_dgram_recv;
+    }
 
     auto path = ngtcp2_path{
       {
