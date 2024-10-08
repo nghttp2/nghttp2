@@ -697,6 +697,10 @@ int Client::try_again_or_fail() {
         worker->stats.req_error += req_inflight;
 
         req_inflight = 0;
+      } else if (worker->current_phase == Phase::DURATION_OVER) {
+        // fix a race condition when h2load is sending connection: close over h1
+        // prevents new clients from spawning after the test should have ended.
+        return -1;
       }
 
       // Keep using current address
