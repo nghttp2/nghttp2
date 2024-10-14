@@ -29,6 +29,7 @@ if(ENABLE_THIRD_PARTY)
       "${CMAKE_SOURCE_DIR}/third-party/neverbleed"
     )
     target_link_libraries(neverbleed ${OPENSSL_LIBRARIES})
+    target_compile_definitions(neverbleed PUBLIC _GNU_SOURCE)
   endif()
 
   if(HAVE_MRUBY)
