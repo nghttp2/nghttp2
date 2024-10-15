@@ -17,12 +17,18 @@ find_library(LIBCARES_LIBRARY
 )
 
 if(LIBCARES_INCLUDE_DIR)
-  set(_version_regex "^#define[ \t]+ARES_VERSION_STR[ \t]+\"([^\"]+)\".*")
-  file(STRINGS "${LIBCARES_INCLUDE_DIR}/ares_version.h"
-    LIBCARES_VERSION REGEX "${_version_regex}")
-  string(REGEX REPLACE "${_version_regex}" "\\1"
-    LIBCARES_VERSION "${LIBCARES_VERSION}")
-  unset(_version_regex)
+  file(READ "${LIBCARES_INCLUDE_DIR}/ares_version.h" _ares_version_h)
+  string(REGEX REPLACE ".*#define[ \t]+ARES_VERSION_MAJOR[ \t]+([0-9]+).*" "\\1"
+    _ares_version_major ${_ares_version_h})
+  string(REGEX REPLACE ".*#define[ \t]+ARES_VERSION_MINOR[ \t]+([0-9]+).*" "\\1"
+    _ares_version_minor ${_ares_version_h})
+  string(REGEX REPLACE ".*#define[ \t]+ARES_VERSION_PATCH[ \t]+([0-9]+).*" "\\1"
+    _ares_version_patch ${_ares_version_h})
+  set(LIBCARES_VERSION "${_ares_version_major}.${_ares_version_minor}.${_ares_version_patch}")
+  unset(_ares_version_patch)
+  unset(_ares_version_minor)
+  unset(_ares_version_major)
+  unset(_ares_version_h)
 endif()
 
 include(FindPackageHandleStandardArgs)
