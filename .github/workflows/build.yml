@@ -582,9 +582,8 @@ jobs:
         make -j$(nproc)
         make -j$(nproc) check TESTS=""
     - name: Run tests
-      if: matrix.host == 'x86_64-w64-mingw32'
       run: |
-        export WINEPATH=/usr/x86_64-w64-mingw32/lib
+        export WINEPATH="/usr/${{ matrix.host }}/lib;$(winepath -w /usr/lib/x86_64-linux-gnu/wine/x86_64-windows)"
         cd tests
         wine main.exe
 
