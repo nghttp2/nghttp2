@@ -586,7 +586,7 @@ http_parser_parse_url(const char *buf, size_t buflen, int is_connect,
         break;
 
       default:
-        assert(!"Unexpected state");
+        assert("Unexpected state" != NULL);
         return 1;
     }
 
@@ -624,9 +624,8 @@ http_parser_parse_url(const char *buf, size_t buflen, int is_connect,
   if (u->field_set & (1 << UF_PORT)) {
     uint16_t off;
     uint16_t len;
-    const char* p;
     const char* end;
-    unsigned long v;
+    signed long v;
 
     off = u->field_data[UF_PORT].off;
     len = u->field_data[UF_PORT].len;
