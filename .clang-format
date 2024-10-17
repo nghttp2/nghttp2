@@ -232,6 +232,8 @@ StatementAttributeLikeMacros:
 StatementMacros:
   - Q_UNUSED
   - QT_REQUIRE_VERSION
+  - nghttp2_max_def
+  - nghttp2_min_def
 TabWidth:        8
 UseTab:          Never
 VerilogBreakBetweenInstancePorts: true
