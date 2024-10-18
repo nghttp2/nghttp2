@@ -127,7 +127,7 @@ following libraries are required:
   <https://github.com/quictls/openssl/tree/OpenSSL_1_1_1w+quic>`_; or
   wolfSSL; or LibreSSL (does not support 0RTT); or aws-lc; or
   `BoringSSL <https://boringssl.googlesource.com/boringssl/>`_ (commit
-  e13f7e2ff5432205f09b4679c8a7715f1c130372)
+  76968bb3d53982560bcf08bcd0ba3e1865fe15cd)
 * `ngtcp2 <https://github.com/ngtcp2/ngtcp2>`_ >= 1.4.0
 * `nghttp3 <https://github.com/ngtcp2/nghttp3>`_ >= 1.1.0
 
@@ -341,7 +341,7 @@ Build aws-lc:
 
 .. code-block:: text
 
-   $ git clone --depth 1 -b v1.34.2 https://github.com/aws/aws-lc
+   $ git clone --depth 1 -b v1.36.1 https://github.com/aws/aws-lc
    $ cd aws-lc
    $ cmake -B build -DDISABLE_GO=ON --install-prefix=$PWD/opt
    $ make -j$(nproc) -C build
@@ -352,7 +352,7 @@ Build nghttp3:
 
 .. code-block:: text
 
-   $ git clone --depth 1 -b v1.5.0 https://github.com/ngtcp2/nghttp3
+   $ git clone --depth 1 -b v1.6.0 https://github.com/ngtcp2/nghttp3
    $ cd nghttp3
    $ git submodule update --init --depth 1
    $ autoreconf -i
@@ -365,7 +365,7 @@ Build ngtcp2:
 
 .. code-block:: text
 
-   $ git clone --depth 1 -b v1.7.0 https://github.com/ngtcp2/ngtcp2
+   $ git clone --depth 1 -b v1.8.1 https://github.com/ngtcp2/ngtcp2
    $ cd ngtcp2
    $ git submodule update --init --depth 1
    $ autoreconf -i
