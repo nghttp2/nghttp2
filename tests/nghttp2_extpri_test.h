@@ -36,6 +36,6 @@
 
 extern const MunitSuite extpri_suite;
 
-munit_void_test_decl(test_nghttp2_extpri_to_uint8);
+munit_void_test_decl(test_nghttp2_extpri_to_uint8)
 
 #endif /* NGHTTP2_EXTPRI_TEST_H */

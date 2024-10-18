@@ -39,7 +39,7 @@ extern "C" {
 
 extern const MunitSuite gzip_suite;
 
-munit_void_test_decl(test_nghttp2_gzip_inflate);
+munit_void_test_decl(test_nghttp2_gzip_inflate)
 
 #ifdef __cplusplus
 }

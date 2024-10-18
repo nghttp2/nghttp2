@@ -37,7 +37,7 @@ namespace shrpx {
 
 extern const MunitSuite worker_suite;
 
-munit_void_test_decl(test_shrpx_worker_match_downstream_addr_group);
+munit_void_test_decl(test_shrpx_worker_match_downstream_addr_group)
 
 } // namespace shrpx
 

@@ -37,10 +37,10 @@ namespace shrpx {
 
 extern const MunitSuite config_suite;
 
-munit_void_test_decl(test_shrpx_config_parse_header);
-munit_void_test_decl(test_shrpx_config_parse_log_format);
-munit_void_test_decl(test_shrpx_config_read_tls_ticket_key_file);
-munit_void_test_decl(test_shrpx_config_read_tls_ticket_key_file_aes_256);
+munit_void_test_decl(test_shrpx_config_parse_header)
+munit_void_test_decl(test_shrpx_config_parse_log_format)
+munit_void_test_decl(test_shrpx_config_read_tls_ticket_key_file)
+munit_void_test_decl(test_shrpx_config_read_tls_ticket_key_file_aes_256)
 
 } // namespace shrpx
 

@@ -232,6 +232,7 @@ StatementAttributeLikeMacros:
 StatementMacros:
   - Q_UNUSED
   - QT_REQUIRE_VERSION
+  - munit_void_test_decl
   - nghttp2_max_def
   - nghttp2_min_def
 TabWidth:        8

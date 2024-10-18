@@ -37,23 +37,23 @@ namespace shrpx {
 
 extern const MunitSuite http2_suite;
 
-munit_void_test_decl(test_http2_add_header);
-munit_void_test_decl(test_http2_get_header);
-munit_void_test_decl(test_http2_copy_headers_to_nva);
-munit_void_test_decl(test_http2_build_http1_headers_from_headers);
-munit_void_test_decl(test_http2_lws);
-munit_void_test_decl(test_http2_rewrite_location_uri);
-munit_void_test_decl(test_http2_parse_http_status_code);
-munit_void_test_decl(test_http2_index_header);
-munit_void_test_decl(test_http2_lookup_token);
-munit_void_test_decl(test_http2_parse_link_header);
-munit_void_test_decl(test_http2_path_join);
-munit_void_test_decl(test_http2_normalize_path);
-munit_void_test_decl(test_http2_rewrite_clean_path);
-munit_void_test_decl(test_http2_get_pure_path_component);
-munit_void_test_decl(test_http2_construct_push_component);
-munit_void_test_decl(test_http2_contains_trailers);
-munit_void_test_decl(test_http2_check_transfer_encoding);
+munit_void_test_decl(test_http2_add_header)
+munit_void_test_decl(test_http2_get_header)
+munit_void_test_decl(test_http2_copy_headers_to_nva)
+munit_void_test_decl(test_http2_build_http1_headers_from_headers)
+munit_void_test_decl(test_http2_lws)
+munit_void_test_decl(test_http2_rewrite_location_uri)
+munit_void_test_decl(test_http2_parse_http_status_code)
+munit_void_test_decl(test_http2_index_header)
+munit_void_test_decl(test_http2_lookup_token)
+munit_void_test_decl(test_http2_parse_link_header)
+munit_void_test_decl(test_http2_path_join)
+munit_void_test_decl(test_http2_normalize_path)
+munit_void_test_decl(test_http2_rewrite_clean_path)
+munit_void_test_decl(test_http2_get_pure_path_component)
+munit_void_test_decl(test_http2_construct_push_component)
+munit_void_test_decl(test_http2_contains_trailers)
+munit_void_test_decl(test_http2_check_transfer_encoding)
 
 } // namespace shrpx
 

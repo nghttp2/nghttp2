@@ -35,14 +35,14 @@
 
 extern const MunitSuite buf_suite;
 
-munit_void_test_decl(test_nghttp2_bufs_add);
-munit_void_test_decl(test_nghttp2_bufs_add_stack_buffer_overflow_bug);
-munit_void_test_decl(test_nghttp2_bufs_addb);
-munit_void_test_decl(test_nghttp2_bufs_orb);
-munit_void_test_decl(test_nghttp2_bufs_remove);
-munit_void_test_decl(test_nghttp2_bufs_reset);
-munit_void_test_decl(test_nghttp2_bufs_advance);
-munit_void_test_decl(test_nghttp2_bufs_next_present);
-munit_void_test_decl(test_nghttp2_bufs_realloc);
+munit_void_test_decl(test_nghttp2_bufs_add)
+munit_void_test_decl(test_nghttp2_bufs_add_stack_buffer_overflow_bug)
+munit_void_test_decl(test_nghttp2_bufs_addb)
+munit_void_test_decl(test_nghttp2_bufs_orb)
+munit_void_test_decl(test_nghttp2_bufs_remove)
+munit_void_test_decl(test_nghttp2_bufs_reset)
+munit_void_test_decl(test_nghttp2_bufs_advance)
+munit_void_test_decl(test_nghttp2_bufs_next_present)
+munit_void_test_decl(test_nghttp2_bufs_realloc)
 
 #endif /* NGHTTP2_BUF_TEST_H */

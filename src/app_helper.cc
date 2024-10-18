@@ -119,7 +119,7 @@ std::string strframetype(uint8_t type) {
   s += ')';
 
   return s;
-};
+}
 } // namespace
 
 namespace {
