@@ -272,11 +272,11 @@ public:
     return ImmutableString(s, N - 1);
   }
 
-  constexpr const_iterator begin() const noexcept { return base; };
-  constexpr const_iterator cbegin() const noexcept { return base; };
+  constexpr const_iterator begin() const noexcept { return base; }
+  constexpr const_iterator cbegin() const noexcept { return base; }
 
-  constexpr const_iterator end() const noexcept { return base + len; };
-  constexpr const_iterator cend() const noexcept { return base + len; };
+  constexpr const_iterator end() const noexcept { return base + len; }
+  constexpr const_iterator cend() const noexcept { return base + len; }
 
   constexpr const_reverse_iterator rbegin() const noexcept {
     return const_reverse_iterator{base + len};
@@ -388,11 +388,11 @@ public:
 
   constexpr StringRef &operator=(const StringRef &other) noexcept = default;
 
-  constexpr const_iterator begin() const noexcept { return base; };
-  constexpr const_iterator cbegin() const noexcept { return base; };
+  constexpr const_iterator begin() const noexcept { return base; }
+  constexpr const_iterator cbegin() const noexcept { return base; }
 
-  constexpr const_iterator end() const noexcept { return base + len; };
-  constexpr const_iterator cend() const noexcept { return base + len; };
+  constexpr const_iterator end() const noexcept { return base + len; }
+  constexpr const_iterator cend() const noexcept { return base + len; }
 
   constexpr const_reverse_iterator rbegin() const noexcept {
     return const_reverse_iterator{base + len};

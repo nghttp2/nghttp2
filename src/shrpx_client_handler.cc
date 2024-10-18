@@ -1674,7 +1674,7 @@ StringRef ClientHandler::get_forwarded_for() const { return forwarded_for_; }
 
 const UpstreamAddr *ClientHandler::get_upstream_addr() const { return faddr_; }
 
-Connection *ClientHandler::get_connection() { return &conn_; };
+Connection *ClientHandler::get_connection() { return &conn_; }
 
 void ClientHandler::set_tls_sni(const StringRef &sni) {
   sni_ = make_string_ref(balloc_, sni);

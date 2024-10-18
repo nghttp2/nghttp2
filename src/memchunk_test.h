@@ -37,16 +37,16 @@ namespace nghttp2 {
 
 extern const MunitSuite memchunk_suite;
 
-munit_void_test_decl(test_pool_recycle);
-munit_void_test_decl(test_memchunks_append);
-munit_void_test_decl(test_memchunks_drain);
-munit_void_test_decl(test_memchunks_riovec);
-munit_void_test_decl(test_memchunks_recycle);
-munit_void_test_decl(test_memchunks_reset);
-munit_void_test_decl(test_peek_memchunks_append);
-munit_void_test_decl(test_peek_memchunks_disable_peek_drain);
-munit_void_test_decl(test_peek_memchunks_disable_peek_no_drain);
-munit_void_test_decl(test_peek_memchunks_reset);
+munit_void_test_decl(test_pool_recycle)
+munit_void_test_decl(test_memchunks_append)
+munit_void_test_decl(test_memchunks_drain)
+munit_void_test_decl(test_memchunks_riovec)
+munit_void_test_decl(test_memchunks_recycle)
+munit_void_test_decl(test_memchunks_reset)
+munit_void_test_decl(test_peek_memchunks_append)
+munit_void_test_decl(test_peek_memchunks_disable_peek_drain)
+munit_void_test_decl(test_peek_memchunks_disable_peek_no_drain)
+munit_void_test_decl(test_peek_memchunks_reset)
 
 } // namespace nghttp2
 

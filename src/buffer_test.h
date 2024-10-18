@@ -37,7 +37,7 @@ namespace nghttp2 {
 
 extern const MunitSuite buffer_suite;
 
-munit_void_test_decl(test_buffer_write);
+munit_void_test_decl(test_buffer_write)
 
 } // namespace nghttp2
 

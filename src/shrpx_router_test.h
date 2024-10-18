@@ -37,9 +37,9 @@ namespace shrpx {
 
 extern const MunitSuite router_suite;
 
-munit_void_test_decl(test_shrpx_router_match);
-munit_void_test_decl(test_shrpx_router_match_wildcard);
-munit_void_test_decl(test_shrpx_router_match_prefix);
+munit_void_test_decl(test_shrpx_router_match)
+munit_void_test_decl(test_shrpx_router_match_wildcard)
+munit_void_test_decl(test_shrpx_router_match_prefix)
 
 } // namespace shrpx
 

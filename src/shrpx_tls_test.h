@@ -37,11 +37,11 @@ namespace shrpx {
 
 extern const MunitSuite tls_suite;
 
-munit_void_test_decl(test_shrpx_tls_create_lookup_tree);
-munit_void_test_decl(test_shrpx_tls_cert_lookup_tree_add_ssl_ctx);
-munit_void_test_decl(test_shrpx_tls_tls_hostname_match);
-munit_void_test_decl(test_shrpx_tls_verify_numeric_hostname);
-munit_void_test_decl(test_shrpx_tls_verify_dns_hostname);
+munit_void_test_decl(test_shrpx_tls_create_lookup_tree)
+munit_void_test_decl(test_shrpx_tls_cert_lookup_tree_add_ssl_ctx)
+munit_void_test_decl(test_shrpx_tls_tls_hostname_match)
+munit_void_test_decl(test_shrpx_tls_verify_numeric_hostname)
+munit_void_test_decl(test_shrpx_tls_verify_dns_hostname)
 
 } // namespace shrpx
 

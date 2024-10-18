@@ -37,8 +37,8 @@ namespace nghttp2 {
 
 extern const MunitSuite base64_suite;
 
-munit_void_test_decl(test_base64_encode);
-munit_void_test_decl(test_base64_decode);
+munit_void_test_decl(test_base64_encode)
+munit_void_test_decl(test_base64_decode)
 
 } // namespace nghttp2
 

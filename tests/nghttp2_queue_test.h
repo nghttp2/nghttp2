@@ -35,6 +35,6 @@
 
 extern const MunitSuite queue_suite;
 
-munit_void_test_decl(test_nghttp2_queue);
+munit_void_test_decl(test_nghttp2_queue)
 
 #endif /* NGHTTP2_QUEUE_TEST_H */

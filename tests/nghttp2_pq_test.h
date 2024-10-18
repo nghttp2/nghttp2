@@ -35,8 +35,8 @@
 
 extern const MunitSuite pq_suite;
 
-munit_void_test_decl(test_nghttp2_pq);
-munit_void_test_decl(test_nghttp2_pq_update);
-munit_void_test_decl(test_nghttp2_pq_remove);
+munit_void_test_decl(test_nghttp2_pq)
+munit_void_test_decl(test_nghttp2_pq_update)
+munit_void_test_decl(test_nghttp2_pq_remove)
 
 #endif /* NGHTTP2_PQ_TEST_H */

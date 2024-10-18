@@ -35,7 +35,7 @@
 
 extern const MunitSuite ratelim_suite;
 
-munit_void_test_decl(test_nghttp2_ratelim_update);
-munit_void_test_decl(test_nghttp2_ratelim_drain);
+munit_void_test_decl(test_nghttp2_ratelim_update)
+munit_void_test_decl(test_nghttp2_ratelim_drain)
 
 #endif /* NGHTTP2_RATELIM_TEST_H */

@@ -35,10 +35,10 @@
 
 extern const MunitSuite failmalloc_suite;
 
-munit_void_test_decl(test_nghttp2_session_send);
-munit_void_test_decl(test_nghttp2_session_send_server);
-munit_void_test_decl(test_nghttp2_session_recv);
-munit_void_test_decl(test_nghttp2_frame);
-munit_void_test_decl(test_nghttp2_hd);
+munit_void_test_decl(test_nghttp2_session_send)
+munit_void_test_decl(test_nghttp2_session_send_server)
+munit_void_test_decl(test_nghttp2_session_recv)
+munit_void_test_decl(test_nghttp2_frame)
+munit_void_test_decl(test_nghttp2_hd)
 
 #endif /* FAILMALLOC_TEST_H */

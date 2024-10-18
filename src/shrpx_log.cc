@@ -349,9 +349,9 @@ Log &Log::operator<<(const void *p) {
 }
 
 namespace log {
-void hex(Log &log) { log.set_flags(Log::fmt_hex); };
+void hex(Log &log) { log.set_flags(Log::fmt_hex); }
 
-void dec(Log &log) { log.set_flags(Log::fmt_dec); };
+void dec(Log &log) { log.set_flags(Log::fmt_dec); }
 } // namespace log
 
 namespace {
