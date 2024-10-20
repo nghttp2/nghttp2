@@ -546,7 +546,7 @@ void Client::quic_restart_pkt_timer() {
 }
 
 int Client::read_quic() {
-  std::array<uint8_t, 65535> buf;
+  std::array<uint8_t, 64_k> buf;
   sockaddr_union su;
   int rv;
   size_t pktcnt = 0;
