@@ -1242,11 +1242,13 @@ int Client::connection_made() {
 
 int Client::on_read(const uint8_t *data, size_t len) {
   auto rv = session->on_read(data, len);
+  if (worker->current_phase == Phase::MAIN_DURATION) {
+    if ( len > 0 ) {
+      worker->stats.bytes_total += len;
+    }
+  }
   if (rv != 0) {
     return -1;
-  }
-  if (worker->current_phase == Phase::MAIN_DURATION) {
-    worker->stats.bytes_total += len;
   }
   signal_write();
   return 0;
