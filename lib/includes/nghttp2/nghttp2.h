@@ -55,6 +55,11 @@ extern "C" {
 
 #include <nghttp2/nghttp2ver.h>
 
+#if defined(_MSC_VER)
+#  include <basetsd.h>
+   typedef SSIZE_T ssize_t;
+#endif
+
 #ifdef NGHTTP2_STATICLIB
 #  define NGHTTP2_EXTERN
 #elif defined(WIN32) ||                                                        \
