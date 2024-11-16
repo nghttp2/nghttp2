@@ -144,7 +144,7 @@ struct ContinueTimer {
 
 struct Request {
   // For pushed request, |uri| is empty and |u| is zero-cleared.
-  Request(const std::string &uri, const http_parser_url &u,
+  Request(const std::string &uri, const urlparse_url &u,
           const nghttp2_data_provider2 *data_prd, int64_t data_length,
           const nghttp2_priority_spec &pri_spec, int level = 0);
   ~Request();
@@ -179,7 +179,7 @@ struct Request {
   std::string method;
   // URI without fragment
   std::string uri;
-  http_parser_url u;
+  urlparse_url u;
   nghttp2_priority_spec pri_spec;
   RequestTiming timing;
   int64_t data_length;

@@ -70,7 +70,7 @@
 #  endif // HAVE_LIBNGTCP2_CRYPTO_WOLFSSL
 #endif   // ENABLE_HTTP3
 
-#include "url-parser/url_parser.h"
+#include "urlparse.h"
 
 #include "h2load_http1_session.h"
 #include "h2load_http2_session.h"
@@ -1874,18 +1874,18 @@ void resolve_host() {
 } // namespace
 
 namespace {
-std::string get_reqline(const char *uri, const http_parser_url &u) {
+std::string get_reqline(const char *uri, const urlparse_url &u) {
   std::string reqline;
 
-  if (util::has_uri_field(u, UF_PATH)) {
-    reqline = util::get_uri_field(uri, u, UF_PATH);
+  if (util::has_uri_field(u, URLPARSE_PATH)) {
+    reqline = util::get_uri_field(uri, u, URLPARSE_PATH);
   } else {
     reqline = "/";
   }
 
-  if (util::has_uri_field(u, UF_QUERY)) {
+  if (util::has_uri_field(u, URLPARSE_QUERY)) {
     reqline += '?';
-    reqline += util::get_uri_field(uri, u, UF_QUERY);
+    reqline += util::get_uri_field(uri, u, URLPARSE_QUERY);
   }
 
   return reqline;
@@ -1898,16 +1898,17 @@ constexpr auto UNIX_PATH_PREFIX = "unix:"_sr;
 
 namespace {
 bool parse_base_uri(const StringRef &base_uri) {
-  http_parser_url u{};
-  if (http_parser_parse_url(base_uri.data(), base_uri.size(), 0, &u) != 0 ||
-      !util::has_uri_field(u, UF_SCHEMA) || !util::has_uri_field(u, UF_HOST)) {
+  urlparse_url u;
+  if (urlparse_parse_url(base_uri.data(), base_uri.size(), 0, &u) != 0 ||
+      !util::has_uri_field(u, URLPARSE_SCHEMA) ||
+      !util::has_uri_field(u, URLPARSE_HOST)) {
     return false;
   }
 
-  config.scheme = util::get_uri_field(base_uri.data(), u, UF_SCHEMA);
-  config.host = util::get_uri_field(base_uri.data(), u, UF_HOST);
+  config.scheme = util::get_uri_field(base_uri.data(), u, URLPARSE_SCHEMA);
+  config.host = util::get_uri_field(base_uri.data(), u, URLPARSE_HOST);
   config.default_port = util::get_default_port(base_uri.data(), u);
-  if (util::has_uri_field(u, UF_PORT)) {
+  if (util::has_uri_field(u, URLPARSE_PORT)) {
     config.port = u.port;
   } else {
     config.port = config.default_port;
@@ -1918,7 +1919,7 @@ bool parse_base_uri(const StringRef &base_uri) {
 } // namespace
 namespace {
 // Use std::vector<std::string>::iterator explicitly, without that,
-// http_parser_url u{} fails with clang-3.4.
+// urlparse_url u{} fails with clang-3.4.
 std::vector<std::string> parse_uris(std::vector<std::string>::iterator first,
                                     std::vector<std::string>::iterator last) {
   std::vector<std::string> reqlines;
@@ -1938,11 +1939,11 @@ std::vector<std::string> parse_uris(std::vector<std::string>::iterator first,
   }
 
   for (; first != last; ++first) {
-    http_parser_url u{};
+    urlparse_url u;
 
     auto uri = (*first).c_str();
 
-    if (http_parser_parse_url(uri, (*first).size(), 0, &u) != 0) {
+    if (urlparse_parse_url(uri, (*first).size(), 0, &u) != 0) {
       std::cerr << "invalid URI: " << uri << std::endl;
       exit(EXIT_FAILURE);
     }

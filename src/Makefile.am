@@ -39,7 +39,7 @@ AM_CPPFLAGS = \
 	-I$(top_srcdir)/lib/includes \
 	-I$(top_builddir)/lib/includes \
 	-I$(top_srcdir)/lib \
-	-I$(top_srcdir)/third-party \
+	-I$(top_srcdir)/third-party/urlparse \
 	-I$(top_srcdir)/third-party/llhttp/include \
 	@JEMALLOC_CFLAGS@ \
 	@LIBXML2_CFLAGS@ \
@@ -62,7 +62,7 @@ AM_CPPFLAGS = \
 AM_LDFLAGS = @LIBTOOL_LDFLAGS@
 
 LDADD = $(top_builddir)/lib/libnghttp2.la \
-	$(top_builddir)/third-party/liburl-parser.la \
+	$(top_builddir)/third-party/liburlparse.la \
 	$(top_builddir)/third-party/libllhttp.la \
 	@JEMALLOC_LIBS@ \
 	@LIBXML2_LIBS@ \

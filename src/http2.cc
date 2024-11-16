@@ -271,7 +271,7 @@ bool lws(const char *value) {
   return true;
 }
 
-void copy_url_component(std::string &dest, const http_parser_url *u, int field,
+void copy_url_component(std::string &dest, const urlparse_url *u, int field,
                         const char *url) {
   if (u->field_set & (1 << field)) {
     dest.assign(url + u->field_data[field].off, u->field_data[field].len);
@@ -568,15 +568,15 @@ void erase_header(HeaderRef *hd) {
 }
 
 StringRef rewrite_location_uri(BlockAllocator &balloc, const StringRef &uri,
-                               const http_parser_url &u,
+                               const urlparse_url &u,
                                const StringRef &match_host,
                                const StringRef &request_authority,
                                const StringRef &upstream_scheme) {
   // We just rewrite scheme and authority.
-  if ((u.field_set & (1 << UF_HOST)) == 0) {
+  if ((u.field_set & (1 << URLPARSE_HOST)) == 0) {
     return StringRef{};
   }
-  auto field = &u.field_data[UF_HOST];
+  auto field = &u.field_data[URLPARSE_HOST];
   if (!util::starts_with(std::begin(match_host), std::end(match_host),
                          &uri[field->off], &uri[field->off] + field->len) ||
       (match_host.size() != field->len && match_host[field->len] != ':')) {
@@ -588,18 +588,18 @@ StringRef rewrite_location_uri(BlockAllocator &balloc, const StringRef &uri,
     len += upstream_scheme.size() + str_size("://") + request_authority.size();
   }
 
-  if (u.field_set & (1 << UF_PATH)) {
-    field = &u.field_data[UF_PATH];
+  if (u.field_set & (1 << URLPARSE_PATH)) {
+    field = &u.field_data[URLPARSE_PATH];
     len += field->len;
   }
 
-  if (u.field_set & (1 << UF_QUERY)) {
-    field = &u.field_data[UF_QUERY];
+  if (u.field_set & (1 << URLPARSE_QUERY)) {
+    field = &u.field_data[URLPARSE_QUERY];
     len += 1 + field->len;
   }
 
-  if (u.field_set & (1 << UF_FRAGMENT)) {
-    field = &u.field_data[UF_FRAGMENT];
+  if (u.field_set & (1 << URLPARSE_FRAGMENT)) {
+    field = &u.field_data[URLPARSE_FRAGMENT];
     len += 1 + field->len;
   }
 
@@ -612,17 +612,17 @@ StringRef rewrite_location_uri(BlockAllocator &balloc, const StringRef &uri,
     p =
       std::copy(std::begin(request_authority), std::end(request_authority), p);
   }
-  if (u.field_set & (1 << UF_PATH)) {
-    field = &u.field_data[UF_PATH];
+  if (u.field_set & (1 << URLPARSE_PATH)) {
+    field = &u.field_data[URLPARSE_PATH];
     p = std::copy_n(&uri[field->off], field->len, p);
   }
-  if (u.field_set & (1 << UF_QUERY)) {
-    field = &u.field_data[UF_QUERY];
+  if (u.field_set & (1 << URLPARSE_QUERY)) {
+    field = &u.field_data[URLPARSE_QUERY];
     *p++ = '?';
     p = std::copy_n(&uri[field->off], field->len, p);
   }
-  if (u.field_set & (1 << UF_FRAGMENT)) {
-    field = &u.field_data[UF_FRAGMENT];
+  if (u.field_set & (1 << URLPARSE_FRAGMENT)) {
+    field = &u.field_data[URLPARSE_FRAGMENT];
     *p++ = '#';
     p = std::copy_n(&uri[field->off], field->len, p);
   }
@@ -1542,14 +1542,14 @@ StringRef to_method_string(int method_token) {
 StringRef get_pure_path_component(const StringRef &uri) {
   int rv;
 
-  http_parser_url u{};
-  rv = http_parser_parse_url(uri.data(), uri.size(), 0, &u);
+  urlparse_url u;
+  rv = urlparse_parse_url(uri.data(), uri.size(), 0, &u);
   if (rv != 0) {
     return StringRef{};
   }
 
-  if (u.field_set & (1 << UF_PATH)) {
-    auto &f = u.field_data[UF_PATH];
+  if (u.field_set & (1 << URLPARSE_PATH)) {
+    auto &f = u.field_data[URLPARSE_PATH];
     return StringRef{uri.data() + f.off, f.len};
   }
 
@@ -1566,9 +1566,9 @@ int construct_push_component(BlockAllocator &balloc, StringRef &scheme,
     return -1;
   }
 
-  http_parser_url u{};
+  urlparse_url u;
 
-  rv = http_parser_parse_url(uri.data(), uri.size(), 0, &u);
+  rv = urlparse_parse_url(uri.data(), uri.size(), 0, &u);
 
   if (rv != 0) {
     if (uri[0] == '/') {
@@ -1584,14 +1584,14 @@ int construct_push_component(BlockAllocator &balloc, StringRef &scheme,
       relq = StringRef{q + 1, std::end(uri)};
     }
   } else {
-    if (u.field_set & (1 << UF_SCHEMA)) {
-      scheme = util::get_uri_field(uri.data(), u, UF_SCHEMA);
+    if (u.field_set & (1 << URLPARSE_SCHEMA)) {
+      scheme = util::get_uri_field(uri.data(), u, URLPARSE_SCHEMA);
     }
 
-    if (u.field_set & (1 << UF_HOST)) {
-      auto auth = util::get_uri_field(uri.data(), u, UF_HOST);
+    if (u.field_set & (1 << URLPARSE_HOST)) {
+      auto auth = util::get_uri_field(uri.data(), u, URLPARSE_HOST);
       auto len = auth.size();
-      auto port_exists = u.field_set & (1 << UF_PORT);
+      auto port_exists = u.field_set & (1 << URLPARSE_PORT);
       if (port_exists) {
         len += 1 + str_size("65535");
       }
@@ -1607,15 +1607,15 @@ int construct_push_component(BlockAllocator &balloc, StringRef &scheme,
       authority = StringRef{std::span{std::begin(iov), p}};
     }
 
-    if (u.field_set & (1 << UF_PATH)) {
-      auto &f = u.field_data[UF_PATH];
+    if (u.field_set & (1 << URLPARSE_PATH)) {
+      auto &f = u.field_data[URLPARSE_PATH];
       rel = StringRef{uri.data() + f.off, f.len};
     } else {
       rel = "/"_sr;
     }
 
-    if (u.field_set & (1 << UF_QUERY)) {
-      auto &f = u.field_data[UF_QUERY];
+    if (u.field_set & (1 << URLPARSE_QUERY)) {
+      auto &f = u.field_data[URLPARSE_QUERY];
       relq = StringRef{uri.data() + f.off, f.len};
     }
   }

@@ -35,7 +35,7 @@
 
 #include <nghttp2/nghttp2.h>
 
-#include "url-parser/url_parser.h"
+#include "urlparse.h"
 
 #include "util.h"
 #include "memchunk.h"
@@ -110,7 +110,7 @@ bool lws(const char *value);
 // Copies the |field| component value from |u| and |url| to the
 // |dest|. If |u| does not have |field|, then this function does
 // nothing.
-void copy_url_component(std::string &dest, const http_parser_url *u, int field,
+void copy_url_component(std::string &dest, const urlparse_url *u, int field,
                         const char *url);
 
 Headers::value_type to_header(const StringRef &name, const StringRef &value,
@@ -270,7 +270,7 @@ void erase_header(HeaderRef *hd);
 // location URI is not subject to the rewrite, this function returns
 // empty string.
 StringRef rewrite_location_uri(BlockAllocator &balloc, const StringRef &uri,
-                               const http_parser_url &u,
+                               const urlparse_url &u,
                                const StringRef &match_host,
                                const StringRef &request_authority,
                                const StringRef &upstream_scheme);

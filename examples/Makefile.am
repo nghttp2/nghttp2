@@ -30,13 +30,13 @@ AM_CXXFLAGS = $(WARNCXXFLAGS) $(CXX1XCXXFLAGS)
 AM_CPPFLAGS = \
 	-I$(top_srcdir)/lib/includes \
 	-I$(top_builddir)/lib/includes \
-	-I$(top_srcdir)/third-party \
+	-I$(top_srcdir)/third-party/urlparse \
 	@LIBEVENT_OPENSSL_CFLAGS@ \
 	@OPENSSL_CFLAGS@ \
 	@DEFS@
 AM_LDFLAGS = @LIBTOOL_LDFLAGS@
 LDADD = $(top_builddir)/lib/libnghttp2.la \
-	$(top_builddir)/third-party/liburl-parser.la \
+	$(top_builddir)/third-party/liburlparse.la \
 	@LIBEVENT_OPENSSL_LIBS@ \
 	@OPENSSL_LIBS@ \
 	@APPLDFLAGS@

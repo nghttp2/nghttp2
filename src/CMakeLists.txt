@@ -7,7 +7,7 @@ set_source_files_properties(${cxx_sources} PROPERTIES
 
 include_directories(
   "${CMAKE_CURRENT_SOURCE_DIR}/includes"
-  "${CMAKE_CURRENT_SOURCE_DIR}/../third-party"
+  "${CMAKE_CURRENT_SOURCE_DIR}/../third-party/urlparse"
   "${CMAKE_CURRENT_SOURCE_DIR}/../third-party/llhttp/include"
 
   ${JEMALLOC_INCLUDE_DIRS}
@@ -192,7 +192,7 @@ if(ENABLE_APP)
   add_executable(nghttpx-unittest EXCLUDE_FROM_ALL
     ${NGHTTPX_UNITTEST_SOURCES}
     $<TARGET_OBJECTS:llhttp>
-    $<TARGET_OBJECTS:url-parser>
+    $<TARGET_OBJECTS:urlparse>
     )
   target_include_directories(nghttpx-unittest PRIVATE
     ${CMAKE_SOURCE_DIR}/tests/munit
@@ -212,13 +212,13 @@ if(ENABLE_APP)
   add_dependencies(check nghttpx-unittest)
 
   add_executable(nghttp   ${NGHTTP_SOURCES}   $<TARGET_OBJECTS:llhttp>
-    $<TARGET_OBJECTS:url-parser>
+    $<TARGET_OBJECTS:urlparse>
   )
   add_executable(nghttpd  ${NGHTTPD_SOURCES}  $<TARGET_OBJECTS:llhttp>
-    $<TARGET_OBJECTS:url-parser>
+    $<TARGET_OBJECTS:urlparse>
   )
   add_executable(nghttpx  ${NGHTTPX-bin_SOURCES} $<TARGET_OBJECTS:llhttp>
-    $<TARGET_OBJECTS:url-parser>
+    $<TARGET_OBJECTS:urlparse>
   )
   target_compile_definitions(nghttpx PRIVATE
     "-DPKGDATADIR=\"${PKGDATADIR}\""
@@ -226,7 +226,7 @@ if(ENABLE_APP)
   )
   target_link_libraries(nghttpx nghttpx_static)
   add_executable(h2load   ${H2LOAD_SOURCES}   $<TARGET_OBJECTS:llhttp>
-    $<TARGET_OBJECTS:url-parser>
+    $<TARGET_OBJECTS:urlparse>
   )
 
   install(TARGETS nghttp nghttpd nghttpx h2load)

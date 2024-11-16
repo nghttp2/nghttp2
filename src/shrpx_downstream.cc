@@ -26,7 +26,7 @@
 
 #include <cassert>
 
-#include "url-parser/url_parser.h"
+#include "urlparse.h"
 
 #include "shrpx_upstream.h"
 #include "shrpx_client_handler.h"
@@ -729,8 +729,8 @@ void Downstream::rewrite_location_response_header(
     return;
   }
 
-  http_parser_url u{};
-  auto rv = http_parser_parse_url(hd->value.data(), hd->value.size(), 0, &u);
+  urlparse_url u;
+  auto rv = urlparse_parse_url(hd->value.data(), hd->value.size(), 0, &u);
   if (rv != 0) {
     return;
   }

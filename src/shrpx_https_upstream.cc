@@ -45,7 +45,7 @@
 #include "util.h"
 #include "template.h"
 #include "base64.h"
-#include "url-parser/url_parser.h"
+#include "urlparse.h"
 
 using namespace nghttp2;
 
@@ -252,13 +252,12 @@ int htp_hdr_valcb(llhttp_t *htp, const char *data, size_t len) {
 
 namespace {
 void rewrite_request_host_path_from_uri(BlockAllocator &balloc, Request &req,
-                                        const StringRef &uri,
-                                        http_parser_url &u) {
-  assert(u.field_set & (1 << UF_HOST));
+                                        const StringRef &uri, urlparse_url &u) {
+  assert(u.field_set & (1 << URLPARSE_HOST));
 
   // As per https://tools.ietf.org/html/rfc7230#section-5.4, we
   // rewrite host header field with authority component.
-  auto authority = util::get_uri_field(uri.data(), u, UF_HOST);
+  auto authority = util::get_uri_field(uri.data(), u, URLPARSE_HOST);
   // TODO properly check IPv6 numeric address
   auto ipv6 = std::find(std::begin(authority), std::end(authority), ':') !=
               std::end(authority);
@@ -266,7 +265,7 @@ void rewrite_request_host_path_from_uri(BlockAllocator &balloc, Request &req,
   if (ipv6) {
     authoritylen += 2;
   }
-  if (u.field_set & (1 << UF_PORT)) {
+  if (u.field_set & (1 << URLPARSE_PORT)) {
     authoritylen += 1 + str_size("65535");
   }
   if (authoritylen > authority.size()) {
@@ -280,7 +279,7 @@ void rewrite_request_host_path_from_uri(BlockAllocator &balloc, Request &req,
       *p++ = ']';
     }
 
-    if (u.field_set & (1 << UF_PORT)) {
+    if (u.field_set & (1 << URLPARSE_PORT)) {
       *p++ = ':';
       p = util::utos(p, u.port);
     }
@@ -291,11 +290,11 @@ void rewrite_request_host_path_from_uri(BlockAllocator &balloc, Request &req,
     req.authority = authority;
   }
 
-  req.scheme = util::get_uri_field(uri.data(), u, UF_SCHEMA);
+  req.scheme = util::get_uri_field(uri.data(), u, URLPARSE_SCHEMA);
 
   StringRef path;
-  if (u.field_set & (1 << UF_PATH)) {
-    path = util::get_uri_field(uri.data(), u, UF_PATH);
+  if (u.field_set & (1 << URLPARSE_PATH)) {
+    path = util::get_uri_field(uri.data(), u, URLPARSE_PATH);
   } else if (req.method == HTTP_OPTIONS) {
     // Server-wide OPTIONS takes following form in proxy request:
     //
@@ -310,11 +309,11 @@ void rewrite_request_host_path_from_uri(BlockAllocator &balloc, Request &req,
     path = "/"_sr;
   }
 
-  if (u.field_set & (1 << UF_QUERY)) {
-    auto &fdata = u.field_data[UF_QUERY];
+  if (u.field_set & (1 << URLPARSE_QUERY)) {
+    auto &fdata = u.field_data[URLPARSE_QUERY];
 
-    if (u.field_set & (1 << UF_PATH)) {
-      auto q = util::get_uri_field(uri.data(), u, UF_QUERY);
+    if (u.field_set & (1 << URLPARSE_PATH)) {
+      auto q = util::get_uri_field(uri.data(), u, URLPARSE_QUERY);
       path = StringRef{std::begin(path), std::end(q)};
     } else {
       path = concat_string_ref(balloc, path, "?"_sr,
@@ -430,14 +429,15 @@ int htp_hdrs_completecb(llhttp_t *htp) {
   auto config = get_config();
 
   if (method != HTTP_CONNECT) {
-    http_parser_url u{};
-    rv = http_parser_parse_url(req.path.data(), req.path.size(), 0, &u);
+    urlparse_url u;
+    rv = urlparse_parse_url(req.path.data(), req.path.size(), 0, &u);
     if (rv != 0) {
       // Expect to respond with 400 bad request
       return -1;
     }
-    // checking UF_HOST could be redundant, but just in case ...
-    if (!(u.field_set & (1 << UF_SCHEMA)) || !(u.field_set & (1 << UF_HOST))) {
+    // checking URLPARSE_HOST could be redundant, but just in case ...
+    if (!(u.field_set & (1 << URLPARSE_SCHEMA)) ||
+        !(u.field_set & (1 << URLPARSE_HOST))) {
       req.no_authority = true;
 
       if (method == HTTP_OPTIONS && req.path == "*"_sr) {
