@@ -30,7 +30,7 @@
 
 #include "munitxx.h"
 
-#include "url-parser/url_parser.h"
+#include "urlparse.h"
 
 #include "http2.h"
 #include "util.h"
@@ -254,8 +254,8 @@ void check_rewrite_location_uri(const std::string &want, const std::string &uri,
                                 const std::string &req_authority,
                                 const std::string &upstream_scheme) {
   BlockAllocator balloc(4096, 4096);
-  http_parser_url u{};
-  assert_int(0, ==, http_parser_parse_url(uri.c_str(), uri.size(), 0, &u));
+  urlparse_url u;
+  assert_int(0, ==, urlparse_parse_url(uri.c_str(), uri.size(), 0, &u));
   auto got = http2::rewrite_location_uri(
     balloc, StringRef{uri}, u, StringRef{match_host}, StringRef{req_authority},
     StringRef{upstream_scheme});

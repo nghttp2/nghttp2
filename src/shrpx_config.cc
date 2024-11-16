@@ -57,7 +57,7 @@
 
 #include <nghttp2/nghttp2.h>
 
-#include "url-parser/url_parser.h"
+#include "urlparse.h"
 
 #include "shrpx_log.h"
 #include "shrpx_tls.h"
@@ -3324,25 +3324,25 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     // the results.
     proxy = {};
     // parse URI and get hostname, port and optionally userinfo.
-    http_parser_url u{};
-    int rv = http_parser_parse_url(optarg.data(), optarg.size(), 0, &u);
+    urlparse_url u;
+    int rv = urlparse_parse_url(optarg.data(), optarg.size(), 0, &u);
     if (rv == 0) {
-      if (u.field_set & UF_USERINFO) {
-        auto uf = util::get_uri_field(optarg.data(), u, UF_USERINFO);
-        // Surprisingly, u.field_set & UF_USERINFO is nonzero even if
+      if (u.field_set & URLPARSE_USERINFO) {
+        auto uf = util::get_uri_field(optarg.data(), u, URLPARSE_USERINFO);
+        // Surprisingly, u.field_set & URLPARSE_USERINFO is nonzero even if
         // userinfo component is empty string.
         if (!uf.empty()) {
           proxy.userinfo = util::percent_decode(config->balloc, uf);
         }
       }
-      if (u.field_set & UF_HOST) {
+      if (u.field_set & URLPARSE_HOST) {
         proxy.host = make_string_ref(
-          config->balloc, util::get_uri_field(optarg.data(), u, UF_HOST));
+          config->balloc, util::get_uri_field(optarg.data(), u, URLPARSE_HOST));
       } else {
         LOG(ERROR) << opt << ": no hostname specified";
         return -1;
       }
-      if (u.field_set & UF_PORT) {
+      if (u.field_set & URLPARSE_PORT) {
         proxy.port = u.port;
       } else {
         LOG(ERROR) << opt << ": no port specified";

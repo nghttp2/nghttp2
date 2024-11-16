@@ -63,7 +63,7 @@ structure is defined as follows::
       /* The NULL-terminated URI string to retrieve. */
       const char *uri;
       /* Parsed result of the |uri| */
-      struct http_parser_url *u;
+      urlparse_url *u;
       /* The authority portion of the |uri|, not NULL-terminated */
       char *authority;
       /* The path portion of the |uri|, including query, not
@@ -237,11 +237,11 @@ HTTP request in the ``submit_request()`` function::
       int32_t stream_id;
       http2_stream_data *stream_data = session_data->stream_data;
       const char *uri = stream_data->uri;
-      const struct http_parser_url *u = stream_data->u;
+      const urlparse_url *u = stream_data->u;
       nghttp2_nv hdrs[] = {
           MAKE_NV2(":method", "GET"),
-          MAKE_NV(":scheme", &uri[u->field_data[UF_SCHEMA].off],
-                  u->field_data[UF_SCHEMA].len),
+          MAKE_NV(":scheme", &uri[u->field_data[URLPARSE_SCHEMA].off],
+                  u->field_data[URLPARSE_SCHEMA].len),
           MAKE_NV(":authority", stream_data->authority, stream_data->authoritylen),
           MAKE_NV(":path", stream_data->path, stream_data->pathlen)};
       fprintf(stderr, "Request headers:\n");

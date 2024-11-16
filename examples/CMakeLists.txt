@@ -8,7 +8,7 @@ if(ENABLE_EXAMPLES)
 
   include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}
-    "${CMAKE_CURRENT_SOURCE_DIR}/../third-party"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../third-party/urlparse"
     "${CMAKE_CURRENT_SOURCE_DIR}/../third-party/llhttp/include"
 
     ${LIBEVENT_INCLUDE_DIRS}
@@ -23,15 +23,15 @@ if(ENABLE_EXAMPLES)
   )
 
   add_executable(client           client.c $<TARGET_OBJECTS:llhttp>
-    $<TARGET_OBJECTS:url-parser>
+    $<TARGET_OBJECTS:urlparse>
   )
   add_executable(libevent-client  libevent-client.c $<TARGET_OBJECTS:llhttp>
-    $<TARGET_OBJECTS:url-parser>
+    $<TARGET_OBJECTS:urlparse>
   )
   add_executable(libevent-server  libevent-server.c $<TARGET_OBJECTS:llhttp>
-    $<TARGET_OBJECTS:url-parser>
+    $<TARGET_OBJECTS:urlparse>
   )
   add_executable(deflate          deflate.c $<TARGET_OBJECTS:llhttp>
-    $<TARGET_OBJECTS:url-parser>
+    $<TARGET_OBJECTS:urlparse>
   )
 endif()

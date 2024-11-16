@@ -8,3 +8,6 @@
 [submodule "tests/munit"]
 	path = tests/munit
 	url = https://github.com/ngtcp2/munit
+[submodule "third-party/urlparse"]
+	path = third-party/urlparse
+	url = https://github.com/ngtcp2/urlparse

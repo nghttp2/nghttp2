@@ -548,10 +548,10 @@ EXTRA_DIST += \
 
 if ENABLE_THIRD_PARTY
 
-noinst_LTLIBRARIES = liburl-parser.la
-liburl_parser_la_SOURCES = \
-	url-parser/url_parser.c \
-	url-parser/url_parser.h
+noinst_LTLIBRARIES = liburlparse.la
+liburlparse_la_SOURCES = \
+	urlparse/urlparse.c \
+	urlparse/urlparse.h
 
 noinst_LTLIBRARIES += libllhttp.la
 libllhttp_la_SOURCES = \

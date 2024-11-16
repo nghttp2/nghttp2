@@ -52,7 +52,7 @@
 #  include <ev.h>
 #endif // HAVE_LIBEV
 
-#include "url-parser/url_parser.h"
+#include "urlparse.h"
 
 #include "template.h"
 #include "network.h"
@@ -485,27 +485,27 @@ StringRef to_base64(BlockAllocator &balloc, const StringRef &token68str);
 
 void show_candidates(const char *unkopt, const option *options);
 
-bool has_uri_field(const http_parser_url &u, http_parser_url_fields field);
+bool has_uri_field(const urlparse_url &u, urlparse_url_fields field);
 
-bool fieldeq(const char *uri1, const http_parser_url &u1, const char *uri2,
-             const http_parser_url &u2, http_parser_url_fields field);
+bool fieldeq(const char *uri1, const urlparse_url &u1, const char *uri2,
+             const urlparse_url &u2, urlparse_url_fields field);
 
-bool fieldeq(const char *uri, const http_parser_url &u,
-             http_parser_url_fields field, const char *t);
+bool fieldeq(const char *uri, const urlparse_url &u, urlparse_url_fields field,
+             const char *t);
 
-bool fieldeq(const char *uri, const http_parser_url &u,
-             http_parser_url_fields field, const StringRef &t);
+bool fieldeq(const char *uri, const urlparse_url &u, urlparse_url_fields field,
+             const StringRef &t);
 
-StringRef get_uri_field(const char *uri, const http_parser_url &u,
-                        http_parser_url_fields field);
+StringRef get_uri_field(const char *uri, const urlparse_url &u,
+                        urlparse_url_fields field);
 
-uint16_t get_default_port(const char *uri, const http_parser_url &u);
+uint16_t get_default_port(const char *uri, const urlparse_url &u);
 
-bool porteq(const char *uri1, const http_parser_url &u1, const char *uri2,
-            const http_parser_url &u2);
+bool porteq(const char *uri1, const urlparse_url &u1, const char *uri2,
+            const urlparse_url &u2);
 
-void write_uri_field(std::ostream &o, const char *uri, const http_parser_url &u,
-                     http_parser_url_fields field);
+void write_uri_field(std::ostream &o, const char *uri, const urlparse_url &u,
+                     urlparse_url_fields field);
 
 bool numeric_host(const char *hostname);
 

@@ -162,7 +162,7 @@ std::string strip_fragment(const char *raw_uri) {
 }
 } // namespace
 
-Request::Request(const std::string &uri, const http_parser_url &u,
+Request::Request(const std::string &uri, const urlparse_url &u,
                  const nghttp2_data_provider2 *data_prd, int64_t data_length,
                  const nghttp2_priority_spec &pri_spec, int level)
   : uri(uri),
@@ -194,21 +194,22 @@ void Request::init_inflater() {
 
 StringRef Request::get_real_scheme() const {
   return config.scheme_override.empty()
-           ? util::get_uri_field(uri.c_str(), u, UF_SCHEMA)
+           ? util::get_uri_field(uri.c_str(), u, URLPARSE_SCHEMA)
            : StringRef{config.scheme_override};
 }
 
 StringRef Request::get_real_host() const {
   return config.host_override.empty()
-           ? util::get_uri_field(uri.c_str(), u, UF_HOST)
+           ? util::get_uri_field(uri.c_str(), u, URLPARSE_HOST)
            : StringRef{config.host_override};
 }
 
 uint16_t Request::get_real_port() const {
   auto scheme = get_real_scheme();
-  return config.host_override.empty() ? util::has_uri_field(u, UF_PORT) ? u.port
-                                        : scheme == "https"_sr          ? 443
-                                                                        : 80
+  return config.host_override.empty() ? util::has_uri_field(u, URLPARSE_PORT)
+                                          ? u.port
+                                        : scheme == "https"_sr ? 443
+                                                               : 80
          : config.port_override == 0  ? scheme == "https"_sr ? 443 : 80
                                       : config.port_override;
 }
@@ -235,10 +236,10 @@ void Request::init_html_parser() {
     base_uri += ':';
     base_uri += util::utos(port);
   }
-  base_uri += util::get_uri_field(uri.c_str(), u, UF_PATH);
-  if (util::has_uri_field(u, UF_QUERY)) {
+  base_uri += util::get_uri_field(uri.c_str(), u, URLPARSE_PATH);
+  if (util::has_uri_field(u, URLPARSE_QUERY)) {
     base_uri += '?';
-    base_uri += util::get_uri_field(uri.c_str(), u, UF_QUERY);
+    base_uri += util::get_uri_field(uri.c_str(), u, URLPARSE_QUERY);
   }
 
   html_parser = std::make_unique<HtmlParser>(base_uri);
@@ -253,13 +254,14 @@ int Request::update_html_parser(const uint8_t *data, size_t len, int fin) {
 }
 
 std::string Request::make_reqpath() const {
-  auto path = util::has_uri_field(u, UF_PATH)
-                ? std::string{util::get_uri_field(uri.c_str(), u, UF_PATH)}
-                : "/"s;
-  if (util::has_uri_field(u, UF_QUERY)) {
+  auto path =
+    util::has_uri_field(u, URLPARSE_PATH)
+      ? std::string{util::get_uri_field(uri.c_str(), u, URLPARSE_PATH)}
+      : "/"s;
+  if (util::has_uri_field(u, URLPARSE_QUERY)) {
     path += '?';
-    path.append(uri.c_str() + u.field_data[UF_QUERY].off,
-                u.field_data[UF_QUERY].len);
+    path.append(uri.c_str() + u.field_data[URLPARSE_QUERY].off,
+                u.field_data[URLPARSE_QUERY].len);
   }
   return path;
 }
@@ -331,9 +333,9 @@ nghttp2_priority_spec resolve_dep(int res_type) {
 } // namespace
 
 bool Request::is_ipv6_literal_addr() const {
-  if (util::has_uri_field(u, UF_HOST)) {
-    return memchr(uri.c_str() + u.field_data[UF_HOST].off, ':',
-                  u.field_data[UF_HOST].len);
+  if (util::has_uri_field(u, URLPARSE_HOST)) {
+    return memchr(uri.c_str() + u.field_data[URLPARSE_HOST].off, ':',
+                  u.field_data[URLPARSE_HOST].len);
   } else {
     return false;
   }
@@ -457,7 +459,7 @@ constexpr llhttp_settings_t htp_hooks = {
 
 namespace {
 int submit_request(HttpClient *client, const Headers &headers, Request *req) {
-  auto scheme = util::get_uri_field(req->uri.c_str(), req->u, UF_SCHEMA);
+  auto scheme = util::get_uri_field(req->uri.c_str(), req->u, URLPARSE_SCHEMA);
   auto build_headers = Headers{{":method", req->data_prd ? "POST" : "GET"},
                                {":path", req->make_reqpath()},
                                {":scheme", std::string{scheme}},
@@ -1431,22 +1433,24 @@ void HttpClient::update_hostport() {
   if (reqvec.empty()) {
     return;
   }
-  scheme = util::get_uri_field(reqvec[0]->uri.c_str(), reqvec[0]->u, UF_SCHEMA);
+  scheme =
+    util::get_uri_field(reqvec[0]->uri.c_str(), reqvec[0]->u, URLPARSE_SCHEMA);
   std::stringstream ss;
   if (reqvec[0]->is_ipv6_literal_addr()) {
     // we may have zone ID, which must start with "%25", or "%".  RFC
     // 6874 defines "%25" only, and just "%" is allowed for just
     // convenience to end-user input.
     auto host =
-      util::get_uri_field(reqvec[0]->uri.c_str(), reqvec[0]->u, UF_HOST);
+      util::get_uri_field(reqvec[0]->uri.c_str(), reqvec[0]->u, URLPARSE_HOST);
     auto end = std::find(std::begin(host), std::end(host), '%');
     ss << "[";
     ss.write(host.data(), end - std::begin(host));
     ss << "]";
   } else {
-    util::write_uri_field(ss, reqvec[0]->uri.c_str(), reqvec[0]->u, UF_HOST);
+    util::write_uri_field(ss, reqvec[0]->uri.c_str(), reqvec[0]->u,
+                          URLPARSE_HOST);
   }
-  if (util::has_uri_field(reqvec[0]->u, UF_PORT) &&
+  if (util::has_uri_field(reqvec[0]->u, URLPARSE_PORT) &&
       reqvec[0]->u.port !=
         util::get_default_port(reqvec[0]->uri.c_str(), reqvec[0]->u)) {
     ss << ":" << reqvec[0]->u.port;
@@ -1458,8 +1462,8 @@ bool HttpClient::add_request(const std::string &uri,
                              const nghttp2_data_provider2 *data_prd,
                              int64_t data_length,
                              const nghttp2_priority_spec &pri_spec, int level) {
-  http_parser_url u{};
-  if (http_parser_parse_url(uri.c_str(), uri.size(), 0, &u) != 0) {
+  urlparse_url u;
+  if (urlparse_parse_url(uri.c_str(), uri.size(), 0, &u) != 0) {
     return false;
   }
   if (path_cache.count(uri)) {
@@ -1683,19 +1687,19 @@ void update_html_parser(HttpClient *client, Request *req, const uint8_t *data,
     auto uri = strip_fragment(p.first.c_str());
     auto res_type = p.second;
 
-    http_parser_url u{};
-    if (http_parser_parse_url(uri.c_str(), uri.size(), 0, &u) != 0) {
+    urlparse_url u;
+    if (urlparse_parse_url(uri.c_str(), uri.size(), 0, &u) != 0) {
       continue;
     }
 
-    if (!util::fieldeq(uri.c_str(), u, UF_SCHEMA, scheme) ||
-        !util::fieldeq(uri.c_str(), u, UF_HOST, host)) {
+    if (!util::fieldeq(uri.c_str(), u, URLPARSE_SCHEMA, scheme) ||
+        !util::fieldeq(uri.c_str(), u, URLPARSE_HOST, host)) {
       continue;
     }
 
-    auto link_port = util::has_uri_field(u, UF_PORT) ? u.port
-                     : scheme == "https"_sr          ? 443
-                                                     : 80;
+    auto link_port = util::has_uri_field(u, URLPARSE_PORT) ? u.port
+                     : scheme == "https"_sr                ? 443
+                                                           : 80;
 
     if (port != link_port) {
       continue;
@@ -1866,7 +1870,7 @@ int on_begin_headers_callback(nghttp2_session *session,
   }
   case NGHTTP2_PUSH_PROMISE: {
     auto stream_id = frame->push_promise.promised_stream_id;
-    http_parser_url u{};
+    urlparse_url u{};
     // TODO Set pri and level
     nghttp2_priority_spec pri_spec;
 
@@ -2060,8 +2064,8 @@ int on_frame_recv_callback2(nghttp2_session *session,
     uri += "://";
     uri += authority->value;
     uri += path->value;
-    http_parser_url u{};
-    if (http_parser_parse_url(uri.c_str(), uri.size(), 0, &u) != 0) {
+    urlparse_url u;
+    if (urlparse_parse_url(uri.c_str(), uri.size(), 0, &u) != 0) {
       nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE,
                                 frame->push_promise.promised_stream_id,
                                 NGHTTP2_PROTOCOL_ERROR);
@@ -2606,24 +2610,24 @@ int run(char **uris, int n) {
   size_t next_weight_idx = 0;
 
   for (int i = 0; i < n; ++i) {
-    http_parser_url u{};
+    urlparse_url u;
     auto uri = strip_fragment(uris[i]);
-    if (http_parser_parse_url(uri.c_str(), uri.size(), 0, &u) != 0) {
+    if (urlparse_parse_url(uri.c_str(), uri.size(), 0, &u) != 0) {
       ++next_weight_idx;
       std::cerr << "[ERROR] Could not parse URI " << uri << std::endl;
       continue;
     }
-    if (!util::has_uri_field(u, UF_SCHEMA)) {
+    if (!util::has_uri_field(u, URLPARSE_SCHEMA)) {
       ++next_weight_idx;
       std::cerr << "[ERROR] URI " << uri << " does not have scheme part"
                 << std::endl;
       continue;
     }
-    auto port = util::has_uri_field(u, UF_PORT)
+    auto port = util::has_uri_field(u, URLPARSE_PORT)
                   ? u.port
                   : util::get_default_port(uri.c_str(), u);
-    auto host = decode_host(util::get_uri_field(uri.c_str(), u, UF_HOST));
-    if (!util::fieldeq(uri.c_str(), u, UF_SCHEMA, prev_scheme.c_str()) ||
+    auto host = decode_host(util::get_uri_field(uri.c_str(), u, URLPARSE_HOST));
+    if (!util::fieldeq(uri.c_str(), u, URLPARSE_SCHEMA, prev_scheme.c_str()) ||
         host != prev_host || port != prev_port) {
       if (!requests.empty()) {
         if (communicate(prev_scheme, prev_host, prev_port, std::move(requests),
@@ -2632,7 +2636,7 @@ int run(char **uris, int n) {
         }
         requests.clear();
       }
-      prev_scheme = util::get_uri_field(uri.c_str(), u, UF_SCHEMA);
+      prev_scheme = util::get_uri_field(uri.c_str(), u, URLPARSE_SCHEMA);
       prev_host = std::move(host);
       prev_port = port;
     }
@@ -3122,16 +3126,16 @@ int main(int argc, char **argv) {
   if (authority_it != std::end(config.headers)) {
     // authority_it may looks like "host:port".
     auto uri = "https://" + (*authority_it).value;
-    http_parser_url u{};
-    if (http_parser_parse_url(uri.c_str(), uri.size(), 0, &u) != 0) {
+    urlparse_url u;
+    if (urlparse_parse_url(uri.c_str(), uri.size(), 0, &u) != 0) {
       std::cerr << "[ERROR] Could not parse authority in "
                 << (*authority_it).name << ": " << (*authority_it).value
                 << std::endl;
       exit(EXIT_FAILURE);
     }
 
-    config.host_override = util::get_uri_field(uri.c_str(), u, UF_HOST);
-    if (util::has_uri_field(u, UF_PORT)) {
+    config.host_override = util::get_uri_field(uri.c_str(), u, URLPARSE_HOST);
+    if (util::has_uri_field(u, URLPARSE_PORT)) {
       config.port_override = u.port;
     }
   }
