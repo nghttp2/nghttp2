@@ -660,17 +660,17 @@ void nghttp2_http_record_request_method(nghttp2_stream *stream,
 int nghttp2_http_parse_priority(nghttp2_extpri *dest, const uint8_t *value,
                                 size_t valuelen) {
   nghttp2_extpri pri = *dest;
-  sf_parser sfp;
-  sf_vec key;
-  sf_value val;
+  sfparse_parser sfp;
+  sfparse_vec key;
+  sfparse_value val;
   int rv;
 
-  sf_parser_init(&sfp, value, valuelen);
+  sfparse_parser_init(&sfp, value, valuelen);
 
   for (;;) {
-    rv = sf_parser_dict(&sfp, &key, &val);
+    rv = sfparse_parser_dict(&sfp, &key, &val);
     if (rv != 0) {
-      if (rv == SF_ERR_EOF) {
+      if (rv == SFPARSE_ERR_EOF) {
         break;
       }
 
@@ -683,7 +683,7 @@ int nghttp2_http_parse_priority(nghttp2_extpri *dest, const uint8_t *value,
 
     switch (key.base[0]) {
     case 'i':
-      if (val.type != SF_TYPE_BOOLEAN) {
+      if (val.type != SFPARSE_TYPE_BOOLEAN) {
         return NGHTTP2_ERR_INVALID_ARGUMENT;
       }
 
@@ -691,7 +691,7 @@ int nghttp2_http_parse_priority(nghttp2_extpri *dest, const uint8_t *value,
 
       break;
     case 'u':
-      if (val.type != SF_TYPE_INTEGER ||
+      if (val.type != SFPARSE_TYPE_INTEGER ||
           val.integer < NGHTTP2_EXTPRI_URGENCY_HIGH ||
           NGHTTP2_EXTPRI_URGENCY_LOW < val.integer) {
         return NGHTTP2_ERR_INVALID_ARGUMENT;
