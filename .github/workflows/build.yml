@@ -118,7 +118,6 @@ jobs:
         brew install \
           autoconf \
           automake \
-          pkg-config \
           libtool
     - name: Build libbpf
       if: steps.cache-libbpf.outputs.cache-hit != 'true' && runner.os == 'Linux'
