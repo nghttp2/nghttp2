@@ -556,13 +556,6 @@ static int session_new(nghttp2_session **session_ptr,
     }
 
     if ((option->opt_set_mask &
-         NGHTTP2_OPT_SERVER_FALLBACK_RFC7540_PRIORITIES) &&
-        option->server_fallback_rfc7540_priorities) {
-      (*session_ptr)->opt_flags |=
-        NGHTTP2_OPTMASK_SERVER_FALLBACK_RFC7540_PRIORITIES;
-    }
-
-    if ((option->opt_set_mask &
          NGHTTP2_OPT_NO_RFC9113_LEADING_AND_TRAILING_WS_VALIDATION) &&
         option->no_rfc9113_leading_and_trailing_ws_validation) {
       (*session_ptr)->opt_flags |=
@@ -4412,12 +4405,6 @@ int nghttp2_session_on_settings_received(nghttp2_session *session,
 
   if (session->remote_settings.no_rfc7540_priorities == UINT32_MAX) {
     session->remote_settings.no_rfc7540_priorities = 0;
-
-    if (session->server && session->pending_no_rfc7540_priorities &&
-        (session->opt_flags &
-         NGHTTP2_OPTMASK_SERVER_FALLBACK_RFC7540_PRIORITIES)) {
-      session->fallback_rfc7540_priorities = 1;
-    }
   }
 
   if (!noack && !session_is_closing(session)) {
