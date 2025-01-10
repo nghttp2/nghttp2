@@ -72,7 +72,7 @@ struct Config {
 
   Headers headers;
   Headers trailer;
-  std::vector<int32_t> weight;
+  std::vector<nghttp2_extpri> extpris;
   std::string certfile;
   std::string keyfile;
   std::string datafile;
@@ -100,13 +100,11 @@ struct Config {
   bool upgrade;
   bool continuation;
   bool no_content_length;
-  bool no_dep;
   bool hexdump;
   bool no_push;
   bool expect_continue;
   bool verify_peer;
   bool ktls;
-  bool no_rfc7540_pri;
 };
 
 enum class RequestState { INITIAL, ON_REQUEST, ON_RESPONSE, ON_COMPLETE };
@@ -146,7 +144,7 @@ struct Request {
   // For pushed request, |uri| is empty and |u| is zero-cleared.
   Request(const std::string &uri, const urlparse_url &u,
           const nghttp2_data_provider2 *data_prd, int64_t data_length,
-          const nghttp2_priority_spec &pri_spec, int level = 0);
+          const nghttp2_extpri &extpri, int level = 0);
   ~Request();
 
   void init_inflater();
@@ -180,7 +178,7 @@ struct Request {
   // URI without fragment
   std::string uri;
   urlparse_url u;
-  nghttp2_priority_spec pri_spec;
+  nghttp2_extpri extpri;
   RequestTiming timing;
   int64_t data_length;
   int64_t data_offset;
@@ -255,7 +253,7 @@ struct HttpClient {
   void update_hostport();
   bool add_request(const std::string &uri,
                    const nghttp2_data_provider2 *data_prd, int64_t data_length,
-                   const nghttp2_priority_spec &pri_spec, int level = 0);
+                   const nghttp2_extpri &extpri, int level = 0);
 
   void record_start_time();
   void record_domain_lookup_end_time();

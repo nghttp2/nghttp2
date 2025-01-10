@@ -73,37 +73,6 @@
 
 namespace nghttp2 {
 
-// The anchor stream nodes when --no-dep is not used.  The stream ID =
-// 1 is excluded since it is used as first stream in upgrade case.  We
-// follows the same dependency anchor nodes as Firefox does.
-struct Anchor {
-  int32_t stream_id;
-  // stream ID this anchor depends on
-  int32_t dep_stream_id;
-  // .. with this weight.
-  int32_t weight;
-};
-
-// This is index into anchors.  Firefox uses ANCHOR_FOLLOWERS for html
-// file.
-enum {
-  ANCHOR_LEADERS,
-  ANCHOR_UNBLOCKED,
-  ANCHOR_BACKGROUND,
-  ANCHOR_SPECULATIVE,
-  ANCHOR_FOLLOWERS,
-};
-
-namespace {
-constexpr auto anchors = std::to_array<Anchor>({
-  {3, 0, 201},
-  {5, 0, 101},
-  {7, 0, 1},
-  {9, 7, 1},
-  {11, 3, 1},
-});
-} // namespace
-
 Config::Config()
   : header_table_size(-1),
     min_header_table_size(std::numeric_limits<uint32_t>::max()),
@@ -124,13 +93,11 @@ Config::Config()
     upgrade(false),
     continuation(false),
     no_content_length(false),
-    no_dep(false),
     hexdump(false),
     no_push(false),
     expect_continue(false),
     verify_peer(true),
-    ktls(false),
-    no_rfc7540_pri(false) {
+    ktls(false) {
   nghttp2_option_new(&http2_option);
   nghttp2_option_set_peer_max_concurrent_streams(http2_option,
                                                  peer_max_concurrent_streams);
@@ -164,10 +131,10 @@ std::string strip_fragment(const char *raw_uri) {
 
 Request::Request(const std::string &uri, const urlparse_url &u,
                  const nghttp2_data_provider2 *data_prd, int64_t data_length,
-                 const nghttp2_priority_spec &pri_spec, int level)
+                 const nghttp2_extpri &extpri, int level)
   : uri(uri),
     u(u),
-    pri_spec(pri_spec),
+    extpri(extpri),
     data_length(data_length),
     data_offset(0),
     response_len(0),
@@ -297,38 +264,27 @@ std::string decode_host(const StringRef &host) {
 } // namespace
 
 namespace {
-nghttp2_priority_spec resolve_dep(int res_type) {
-  nghttp2_priority_spec pri_spec;
-
-  if (config.no_dep) {
-    nghttp2_priority_spec_default_init(&pri_spec);
-
-    return pri_spec;
-  }
-
-  int32_t anchor_id;
-  int32_t weight;
+nghttp2_extpri resolve_pri(int res_type) {
   switch (res_type) {
   case REQ_CSS:
   case REQ_JS:
-    anchor_id = anchors[ANCHOR_LEADERS].stream_id;
-    weight = 32;
-    break;
+    return {
+      .urgency = 0,
+    };
   case REQ_UNBLOCK_JS:
-    anchor_id = anchors[ANCHOR_UNBLOCKED].stream_id;
-    weight = 32;
-    break;
+    return {
+      .urgency = 1,
+    };
   case REQ_IMG:
-    anchor_id = anchors[ANCHOR_FOLLOWERS].stream_id;
-    weight = 12;
-    break;
+    return {
+      .urgency = NGHTTP2_EXTPRI_DEFAULT_URGENCY,
+      .inc = 1,
+    };
   default:
-    anchor_id = anchors[ANCHOR_FOLLOWERS].stream_id;
-    weight = 32;
+    return {
+      .urgency = NGHTTP2_EXTPRI_DEFAULT_URGENCY,
+    };
   }
-
-  nghttp2_priority_spec_init(&pri_spec, anchor_id, weight, 0);
-  return pri_spec;
 }
 } // namespace
 
@@ -464,6 +420,7 @@ int submit_request(HttpClient *client, const Headers &headers, Request *req) {
                                {":path", req->make_reqpath()},
                                {":scheme", std::string{scheme}},
                                {":authority", client->hostport},
+                               {"priority", http2::encode_extpri(req->extpri)},
                                {"accept", "*/*"},
                                {"accept-encoding", "gzip, deflate"},
                                {"user-agent", "nghttp2/" NGHTTP2_VERSION}};
@@ -530,12 +487,11 @@ int submit_request(HttpClient *client, const Headers &headers, Request *req) {
   int32_t stream_id;
 
   if (expect_continue) {
-    stream_id = nghttp2_submit_headers(client->session, 0, -1, &req->pri_spec,
+    stream_id = nghttp2_submit_headers(client->session, 0, -1, nullptr,
                                        nva.data(), nva.size(), req);
   } else {
-    stream_id =
-      nghttp2_submit_request2(client->session, &req->pri_spec, nva.data(),
-                              nva.size(), req->data_prd, req);
+    stream_id = nghttp2_submit_request2(client->session, nullptr, nva.data(),
+                                        nva.size(), req->data_prd, req);
   }
 
   if (stream_id < 0) {
@@ -921,7 +877,7 @@ int HttpClient::connected() {
 
 namespace {
 size_t populate_settings(nghttp2_settings_entry *iv) {
-  size_t niv = 2;
+  size_t niv = 3;
 
   iv[0].settings_id = NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS;
   iv[0].value = config.max_concurrent_streams;
@@ -932,6 +888,9 @@ size_t populate_settings(nghttp2_settings_entry *iv) {
   } else {
     iv[1].value = NGHTTP2_INITIAL_WINDOW_SIZE;
   }
+
+  iv[2].settings_id = NGHTTP2_SETTINGS_NO_RFC7540_PRIORITIES;
+  iv[2].value = 1;
 
   if (config.header_table_size >= 0) {
     if (config.min_header_table_size < config.header_table_size) {
@@ -948,12 +907,6 @@ size_t populate_settings(nghttp2_settings_entry *iv) {
   if (config.no_push) {
     iv[niv].settings_id = NGHTTP2_SETTINGS_ENABLE_PUSH;
     iv[niv].value = 0;
-    ++niv;
-  }
-
-  if (config.no_rfc7540_pri) {
-    iv[niv].settings_id = NGHTTP2_SETTINGS_NO_RFC7540_PRIORITIES;
-    iv[niv].value = 1;
     ++niv;
   }
 
@@ -1006,6 +959,11 @@ int HttpClient::on_upgrade_connect() {
                          {"accept", "*/*"},
                          {"user-agent", "nghttp2/" NGHTTP2_VERSION}};
   auto initial_headerslen = headers.size();
+
+  if (!reqvec[0]->data_prd) {
+    headers.emplace_back("priority", http2::encode_extpri(reqvec[0]->extpri));
+    ++initial_headerslen;
+  }
 
   for (auto &kv : config.headers) {
     size_t i;
@@ -1180,51 +1138,6 @@ int HttpClient::connection_made() {
     std::array<nghttp2_settings_entry, 16> iv;
     auto niv = populate_settings(iv.data());
     rv = nghttp2_submit_settings(session, NGHTTP2_FLAG_NONE, iv.data(), niv);
-    if (rv != 0) {
-      return -1;
-    }
-  }
-  if (!config.no_dep) {
-    // Create anchor stream nodes
-    nghttp2_priority_spec pri_spec;
-
-    for (auto &anchor : anchors) {
-      nghttp2_priority_spec_init(&pri_spec, anchor.dep_stream_id, anchor.weight,
-                                 0);
-      rv = nghttp2_submit_priority(session, NGHTTP2_FLAG_NONE, anchor.stream_id,
-                                   &pri_spec);
-      if (rv != 0) {
-        return -1;
-      }
-    }
-
-    rv = nghttp2_session_set_next_stream_id(
-      session, anchors[ANCHOR_FOLLOWERS].stream_id + 2);
-    if (rv != 0) {
-      return -1;
-    }
-
-    if (need_upgrade() && !reqvec[0]->data_prd) {
-      // Amend the priority because we cannot send priority in
-      // HTTP/1.1 Upgrade.
-      auto &anchor = anchors[ANCHOR_FOLLOWERS];
-      nghttp2_priority_spec_init(&pri_spec, anchor.stream_id,
-                                 reqvec[0]->pri_spec.weight, 0);
-
-      rv = nghttp2_submit_priority(session, NGHTTP2_FLAG_NONE, 1, &pri_spec);
-      if (rv != 0) {
-        return -1;
-      }
-    }
-  } else if (need_upgrade() && !reqvec[0]->data_prd &&
-             reqvec[0]->pri_spec.weight != NGHTTP2_DEFAULT_WEIGHT) {
-    // Amend the priority because we cannot send priority in HTTP/1.1
-    // Upgrade.
-    nghttp2_priority_spec pri_spec;
-
-    nghttp2_priority_spec_init(&pri_spec, 0, reqvec[0]->pri_spec.weight, 0);
-
-    rv = nghttp2_submit_priority(session, NGHTTP2_FLAG_NONE, 1, &pri_spec);
     if (rv != 0) {
       return -1;
     }
@@ -1460,8 +1373,8 @@ void HttpClient::update_hostport() {
 
 bool HttpClient::add_request(const std::string &uri,
                              const nghttp2_data_provider2 *data_prd,
-                             int64_t data_length,
-                             const nghttp2_priority_spec &pri_spec, int level) {
+                             int64_t data_length, const nghttp2_extpri &extpri,
+                             int level) {
   urlparse_url u;
   if (urlparse_parse_url(uri.c_str(), uri.size(), 0, &u) != 0) {
     return false;
@@ -1475,7 +1388,7 @@ bool HttpClient::add_request(const std::string &uri,
   }
 
   reqvec.push_back(
-    std::make_unique<Request>(uri, u, data_prd, data_length, pri_spec, level));
+    std::make_unique<Request>(uri, u, data_prd, data_length, extpri, level));
   return true;
 }
 
@@ -1706,9 +1619,9 @@ void update_html_parser(HttpClient *client, Request *req, const uint8_t *data,
     }
 
     // No POST data for assets
-    auto pri_spec = resolve_dep(res_type);
+    auto extpri = resolve_pri(res_type);
 
-    if (client->add_request(uri, nullptr, 0, pri_spec, req->level + 1)) {
+    if (client->add_request(uri, nullptr, 0, extpri, req->level + 1)) {
       submit_request(client, config.headers, client->reqvec.back().get());
     }
   }
@@ -1871,12 +1784,11 @@ int on_begin_headers_callback(nghttp2_session *session,
   case NGHTTP2_PUSH_PROMISE: {
     auto stream_id = frame->push_promise.promised_stream_id;
     urlparse_url u{};
-    // TODO Set pri and level
-    nghttp2_priority_spec pri_spec;
+    nghttp2_extpri extpri{
+      .urgency = NGHTTP2_EXTPRI_DEFAULT_URGENCY,
+    };
 
-    nghttp2_priority_spec_default_init(&pri_spec);
-
-    auto req = std::make_unique<Request>("", u, nullptr, 0, pri_spec);
+    auto req = std::make_unique<Request>("", u, nullptr, 0, extpri);
     req->stream_id = stream_id;
 
     nghttp2_session_set_stream_user_data(session, stream_id, req.get());
@@ -2255,7 +2167,7 @@ namespace {
 int communicate(
   const std::string &scheme, const std::string &host, uint16_t port,
   std::vector<
-    std::tuple<std::string, nghttp2_data_provider2 *, int64_t, int32_t>>
+    std::tuple<std::string, nghttp2_data_provider2 *, int64_t, nghttp2_extpri>>
     requests,
   const nghttp2_session_callbacks *callbacks) {
   int result = 0;
@@ -2360,20 +2272,10 @@ int communicate(
   {
     HttpClient client{callbacks, loop, ssl_ctx};
 
-    int32_t dep_stream_id = 0;
-
-    if (!config.no_dep) {
-      dep_stream_id = anchors[ANCHOR_FOLLOWERS].stream_id;
-    }
-
     for (auto &req : requests) {
-      nghttp2_priority_spec pri_spec;
-
-      nghttp2_priority_spec_init(&pri_spec, dep_stream_id, std::get<3>(req), 0);
-
       for (int i = 0; i < config.multiply; ++i) {
         client.add_request(std::get<0>(req), std::get<1>(req), std::get<2>(req),
-                           pri_spec);
+                           std::get<3>(req));
       }
     }
     client.update_hostport();
@@ -2604,21 +2506,21 @@ int run(char **uris, int n) {
     data_prd.read_callback = file_read_callback;
   }
   std::vector<
-    std::tuple<std::string, nghttp2_data_provider2 *, int64_t, int32_t>>
+    std::tuple<std::string, nghttp2_data_provider2 *, int64_t, nghttp2_extpri>>
     requests;
 
-  size_t next_weight_idx = 0;
+  size_t next_extpri_idx = 0;
 
   for (int i = 0; i < n; ++i) {
     urlparse_url u;
     auto uri = strip_fragment(uris[i]);
     if (urlparse_parse_url(uri.c_str(), uri.size(), 0, &u) != 0) {
-      ++next_weight_idx;
+      ++next_extpri_idx;
       std::cerr << "[ERROR] Could not parse URI " << uri << std::endl;
       continue;
     }
     if (!util::has_uri_field(u, URLPARSE_SCHEMA)) {
-      ++next_weight_idx;
+      ++next_extpri_idx;
       std::cerr << "[ERROR] URI " << uri << " does not have scheme part"
                 << std::endl;
       continue;
@@ -2641,7 +2543,7 @@ int run(char **uris, int n) {
       prev_port = port;
     }
     requests.emplace_back(uri, data_fd == -1 ? nullptr : &data_prd,
-                          data_stat.st_size, config.weight[next_weight_idx++]);
+                          data_stat.st_size, config.extpris[next_extpri_idx++]);
   }
   if (!requests.empty()) {
     if (communicate(prev_scheme, prev_host, prev_port, std::move(requests),
@@ -2723,15 +2625,15 @@ Options:
               Perform HTTP Upgrade for HTTP/2.  This option is ignored
               if the request URI has https scheme.  If -d is used, the
               HTTP upgrade request is performed with OPTIONS method.
-  -p, --weight=<WEIGHT>
-              Sets  weight of  given  URI.  This  option  can be  used
-              multiple times, and  N-th -p option sets  weight of N-th
-              URI in the command line.  If  the number of -p option is
-              less than the number of URI, the last -p option value is
-              repeated.  If there is no -p option, default weight, 16,
-              is assumed.  The valid value range is
-              [)"
-      << NGHTTP2_MIN_WEIGHT << ", " << NGHTTP2_MAX_WEIGHT << R"(], inclusive.
+  --extpri=<PRI>
+              Sets RFC 9218 priority of  given URI.  <PRI> must be the
+              wire format  of priority  header field  (e.g., "u=3,i").
+              This  option  can  be  used  multiple  times,  and  N-th
+              --extpri option sets priority of N-th URI in the command
+              line.  If  the number  of this option  is less  than the
+              number of  URI, the last  option value is  repeated.  If
+              there  is   no  --extpri  option,  urgency   is  3,  and
+              incremental is false.
   -M, --peer-max-concurrent-streams=<N>
               Use  <N>  as  SETTINGS_MAX_CONCURRENT_STREAMS  value  of
               remote endpoint as if it  is received in SETTINGS frame.
@@ -2759,7 +2661,6 @@ Options:
               Send large header to test CONTINUATION.
   --no-content-length
               Don't send content-length header field.
-  --no-dep    Don't send dependency based priority hint to server.
   --hexdump   Display the  incoming traffic in  hexadecimal (Canonical
               hex+ASCII display).  If SSL/TLS  is used, decrypted data
               are used.
@@ -2833,6 +2734,7 @@ int main(int argc, char **argv) {
       {"encoder-header-table-size", required_argument, &flag, 14},
       {"ktls", no_argument, &flag, 15},
       {"no-rfc7540-pri", no_argument, &flag, 16},
+      {"extpri", required_argument, &flag, 17},
       {nullptr, 0, nullptr, 0}};
     int option_index = 0;
     int c =
@@ -2870,17 +2772,10 @@ int main(int argc, char **argv) {
     case 'n':
       config.null_out = true;
       break;
-    case 'p': {
-      auto n = util::parse_uint(optarg);
-      if (!n || NGHTTP2_MIN_WEIGHT > n || n > NGHTTP2_MAX_WEIGHT) {
-        std::cerr << "-p: specify the integer in the range ["
-                  << NGHTTP2_MIN_WEIGHT << ", " << NGHTTP2_MAX_WEIGHT
-                  << "], inclusive" << std::endl;
-        exit(EXIT_FAILURE);
-      }
-      config.weight.push_back(*n);
+    case 'p':
+      std::cerr << "[WARNING]: --weight option has been deprecated."
+                << std::endl;
       break;
-    }
     case 'r':
 #ifdef HAVE_JANSSON
       config.harfile = optarg;
@@ -3016,7 +2911,8 @@ int main(int argc, char **argv) {
         break;
       case 7:
         // no-dep option
-        config.no_dep = true;
+        std::cerr << "[WARNING]: --no-dep option has been deprecated."
+                  << std::endl;
         break;
       case 9: {
         // trailer option
@@ -3088,8 +2984,24 @@ int main(int argc, char **argv) {
         break;
       case 16:
         // no-rfc7540-pri option
-        config.no_rfc7540_pri = true;
         break;
+      case 17: {
+        // extpri option
+        nghttp2_extpri pri{
+          .urgency = NGHTTP2_EXTPRI_DEFAULT_URGENCY,
+        };
+
+        if (nghttp2_extpri_parse_priority(
+              &pri, reinterpret_cast<const uint8_t *>(optarg),
+              strlen(optarg)) != 0) {
+          std::cerr << "--extpri: Bad option value: " << optarg << std::endl;
+          exit(EXIT_FAILURE);
+        }
+
+        config.extpris.emplace_back(std::move(pri));
+
+        break;
+      }
       }
       break;
     default:
@@ -3097,13 +3009,15 @@ int main(int argc, char **argv) {
     }
   }
 
-  int32_t weight_to_fill;
-  if (config.weight.empty()) {
-    weight_to_fill = NGHTTP2_DEFAULT_WEIGHT;
-  } else {
-    weight_to_fill = config.weight.back();
+  nghttp2_extpri extpri_to_fill{
+    .urgency = NGHTTP2_EXTPRI_DEFAULT_URGENCY,
+  };
+
+  if (!config.extpris.empty()) {
+    extpri_to_fill = config.extpris.back();
   }
-  config.weight.insert(std::end(config.weight), argc - optind, weight_to_fill);
+  config.extpris.insert(std::end(config.extpris), argc - optind,
+                        extpri_to_fill);
 
   // Find scheme overridden by extra header fields.
   auto scheme_it =

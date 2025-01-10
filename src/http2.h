@@ -434,6 +434,9 @@ bool legacy_http1(int major, int minor);
 // list elements.
 bool check_transfer_encoding(const StringRef &s);
 
+// Encodes |extpri| in the wire format.
+std::string encode_extpri(const nghttp2_extpri &extpri);
+
 } // namespace http2
 
 } // namespace nghttp2
