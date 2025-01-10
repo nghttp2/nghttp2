@@ -207,7 +207,6 @@ static int http_request_on_header(nghttp2_stream *stream, nghttp2_hd_nv *nv,
     if (!trailer &&
         /* Do not parse the header field in PUSH_PROMISE. */
         (stream->stream_id & 1) &&
-        (stream->flags & NGHTTP2_STREAM_FLAG_NO_RFC7540_PRIORITIES) &&
         !(stream->http_flags & NGHTTP2_HTTP_FLAG_BAD_PRIORITY)) {
       nghttp2_extpri_from_uint8(&extpri, stream->http_extpri);
       if (nghttp2_http_parse_priority(&extpri, nv->value->base,
