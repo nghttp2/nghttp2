@@ -541,11 +541,6 @@ static int session_new(nghttp2_session **session_ptr,
       max_deflate_dynamic_table_size = option->max_deflate_dynamic_table_size;
     }
 
-    if ((option->opt_set_mask & NGHTTP2_OPT_NO_CLOSED_STREAMS) &&
-        option->no_closed_streams) {
-      (*session_ptr)->opt_flags |= NGHTTP2_OPTMASK_NO_CLOSED_STREAMS;
-    }
-
     if (option->opt_set_mask & NGHTTP2_OPT_MAX_OUTBOUND_ACK) {
       (*session_ptr)->max_outbound_ack = option->max_outbound_ack;
     }

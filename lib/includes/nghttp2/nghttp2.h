@@ -3133,14 +3133,12 @@ nghttp2_option_set_max_deflate_dynamic_table_size(nghttp2_option *option,
 /**
  * @function
  *
- * This option prevents the library from retaining closed streams to
- * maintain the priority tree.  If this option is set to nonzero,
- * applications can discard closed stream completely to save memory.
+ * .. warning::
  *
- * If
- * :enum:`nghttp2_settings_id.NGHTTP2_SETTINGS_NO_RFC7540_PRIORITIES`
- * of value of 1 is submitted via `nghttp2_submit_settings()`, any
- * closed streams are not retained regardless of this option.
+ *   Deprecated.  Closed streams are not retained anymore.
+ *
+ * This function works as before, but it does not take any effect
+ * against :type:`nghttp2_session`.
  */
 NGHTTP2_EXTERN void nghttp2_option_set_no_closed_streams(nghttp2_option *option,
                                                          int val);
