@@ -1,7 +1,7 @@
 /*
  * nghttp2 - HTTP/2 C Library
  *
- * Copyright (c) 2013 Tatsuhiro Tsujikawa
+ * Copyright (c) 2025 nghttp2 contributors
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -22,58 +22,23 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
+#ifndef SIPHASH_TEST_H
+#define SIPHASH_TEST_H
+
 #ifdef HAVE_CONFIG_H
 #  include <config.h>
 #endif // HAVE_CONFIG_H
 
+#define MUNIT_ENABLE_ASSERT_ALIASES
+
 #include "munit.h"
 
-// include test cases' include files here
-#include "shrpx_tls_test.h"
-#include "shrpx_downstream_test.h"
-#include "shrpx_config_test.h"
-#include "shrpx_worker_test.h"
-#include "http2_test.h"
-#include "util_test.h"
-#include "nghttp2_gzip_test.h"
-#include "buffer_test.h"
-#include "memchunk_test.h"
-#include "template_test.h"
-#include "shrpx_http_test.h"
-#include "base64_test.h"
-#include "shrpx_config.h"
-#include "tls.h"
-#include "shrpx_router_test.h"
-#include "shrpx_log.h"
-#ifdef ENABLE_HTTP3
-#  include "siphash_test.h"
-#endif // ENABLE_HTTP3
+namespace nghttp2 {
 
-int main(int argc, char *argv[]) {
-  shrpx::create_config();
+extern const MunitSuite siphash_suite;
 
-  const MunitSuite suites[] = {
-    shrpx::tls_suite,
-    shrpx::downstream_suite,
-    shrpx::config_suite,
-    shrpx::worker_suite,
-    shrpx::http_suite,
-    shrpx::router_suite,
-    shrpx::http2_suite,
-    shrpx::util_suite,
-    gzip_suite,
-    buffer_suite,
-    memchunk_suite,
-    template_suite,
-    base64_suite,
-#ifdef ENABLE_HTTP3
-    siphash_suite,
-#endif // ENABLE_HTTP3
-    {},
-  };
-  const MunitSuite suite = {
-    "", nullptr, suites, 1, MUNIT_SUITE_OPTION_NONE,
-  };
+munit_void_test_decl(test_siphash)
 
-  return munit_suite_main(&suite, nullptr, argc, argv);
-}
+} // namespace nghttp2
+
+#endif // SIPHASH_TEST_H
