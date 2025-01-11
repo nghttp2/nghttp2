@@ -2023,6 +2023,17 @@ bool check_transfer_encoding(const StringRef &s) {
   }
 }
 
+std::string encode_extpri(const nghttp2_extpri &extpri) {
+  std::string res = "u=";
+
+  res += extpri.urgency + '0';
+  if (extpri.inc) {
+    res += ",i";
+  }
+
+  return res;
+}
+
 } // namespace http2
 
 } // namespace nghttp2
