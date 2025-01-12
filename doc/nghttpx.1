@@ -27,7 +27,7 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
-.TH "NGHTTPX" "1" "Oct 21, 2024" "1.64.0" "nghttp2"
+.TH "NGHTTPX" "1" "Jan 12, 2025" "1.65.0-DEV" "nghttp2"
 .SH NAME
 nghttpx \- HTTP/2 proxy
 .SH SYNOPSIS
@@ -2003,11 +2003,9 @@ request header field, do this:
 .INDENT 7.0
 .INDENT 3.5
 .sp
-.nf
-.ft C
+.EX
 add\-request\-header=foo: bar
-.ft P
-.fi
+.EE
 .UNINDENT
 .UNINDENT
 .sp
@@ -2015,11 +2013,9 @@ instead of:
 .INDENT 7.0
 .INDENT 3.5
 .sp
-.nf
-.ft C
+.EX
 add\-request\-header=\(dqfoo: bar\(dq
-.ft P
-.fi
+.EE
 .UNINDENT
 .UNINDENT
 .sp
@@ -2124,12 +2120,10 @@ header field to initiate server push:
 .INDENT 0.0
 .INDENT 3.5
 .sp
-.nf
-.ft C
+.EX
 Link: </fonts/font.woff>; rel=preload
 Link: </css/theme.css>; rel=preload
-.ft P
-.fi
+.EE
 .UNINDENT
 .UNINDENT
 .sp
@@ -2224,8 +2218,7 @@ memcached is the binary format described below:
 .INDENT 0.0
 .INDENT 3.5
 .sp
-.nf
-.ft C
+.EX
 +\-\-\-\-\-\-\-\-\-\-\-\-\-\-+\-\-\-\-\-\-\-+\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-+
 | VERSION (4)  |LEN (2)|KEY(48 or 80) ...
 +\-\-\-\-\-\-\-\-\-\-\-\-\-\-+\-\-\-\-\-\-\-+\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-+
@@ -2233,8 +2226,7 @@ memcached is the binary format described below:
                |                        |
                +\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-+
                (LEN, KEY) pair can be repeated
-.ft P
-.fi
+.EE
 .UNINDENT
 .UNINDENT
 .sp
@@ -2651,8 +2643,7 @@ Modify request path:
 .INDENT 0.0
 .INDENT 3.5
 .sp
-.nf
-.ft C
+.EX
 class App
   def on_req(env)
     env.req.path = \(dq/apps#{env.req.path}\(dq
@@ -2660,8 +2651,7 @@ class App
 end
 
 App.new
-.ft P
-.fi
+.EE
 .UNINDENT
 .UNINDENT
 .sp
@@ -2672,8 +2662,7 @@ addresses:
 .INDENT 0.0
 .INDENT 3.5
 .sp
-.nf
-.ft C
+.EX
 class App
   def on_req(env)
     allowed_clients = [\(dq127.0.0.1\(dq, \(dq::1\(dq]
@@ -2687,8 +2676,7 @@ class App
 end
 
 App.new
-.ft P
-.fi
+.EE
 .UNINDENT
 .UNINDENT
 .SH API ENDPOINTS

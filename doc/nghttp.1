@@ -27,7 +27,7 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
-.TH "NGHTTP" "1" "Oct 21, 2024" "1.64.0" "nghttp2"
+.TH "NGHTTP" "1" "Jan 12, 2025" "1.65.0-DEV" "nghttp2"
 .SH NAME
 nghttp \- HTTP/2 client
 .SH SYNOPSIS
@@ -141,14 +141,15 @@ HTTP upgrade request is performed with OPTIONS method.
 .UNINDENT
 .INDENT 0.0
 .TP
-.B \-p, \-\-weight=<WEIGHT>
-Sets  weight of  given  URI.  This  option  can be  used
-multiple times, and  N\-th \fI\%\-p\fP option sets  weight of N\-th
-URI in the command line.  If  the number of \fI\%\-p\fP option is
-less than the number of URI, the last \fI\%\-p\fP option value is
-repeated.  If there is no \fI\%\-p\fP option, default weight, 16,
-is assumed.  The valid value range is
-[1, 256], inclusive.
+.B \-\-extpri=<PRI>
+Sets RFC 9218 priority of  given URI.  <PRI> must be the
+wire format  of priority  header field  (e.g., \(dqu=3,i\(dq).
+This  option  can  be  used  multiple  times,  and  N\-th
+\fI\%\-\-extpri\fP option sets priority of N\-th URI in the command
+line.  If  the number  of this option  is less  than the
+number of  URI, the last  option value is  repeated.  If
+there  is   no  \fI\%\-\-extpri\fP  option,  urgency   is  3,  and
+incremental is false.
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -202,11 +203,6 @@ Send large header to test CONTINUATION.
 .TP
 .B \-\-no\-content\-length
 Don\(aqt send content\-length header field.
-.UNINDENT
-.INDENT 0.0
-.TP
-.B \-\-no\-dep
-Don\(aqt send dependency based priority hint to server.
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -268,63 +264,6 @@ The <DURATION> argument is an integer and an optional unit (e.g., 1s
 is 1 second and 500ms is 500 milliseconds).  Units are h, m, s or ms
 (hours, minutes, seconds and milliseconds, respectively).  If a unit
 is omitted, a second is used as unit.
-.SH DEPENDENCY BASED PRIORITY
-.sp
-nghttp sends priority hints to server by default unless
-\fI\%\-\-no\-dep\fP is used.  nghttp mimics the way Firefox employs to
-manages dependency using idle streams.  We follows the behaviour of
-Firefox Nightly as of April, 2015, and nghttp\(aqs behaviour is very
-static and could be different from Firefox in detail.  But reproducing
-the same behaviour of Firefox is not our goal.  The goal is provide
-the easy way to test out the dependency priority in server
-implementation.
-.sp
-When connection is established, nghttp sends 5 PRIORITY frames to idle
-streams 3, 5, 7, 9 and 11 to create \(dqanchor\(dq nodes in dependency
-tree:
-.INDENT 0.0
-.INDENT 3.5
-.sp
-.nf
-.ft C
-         +\-\-\-\-\-+
-         |id=0 |
-         +\-\-\-\-\-+
-        ^   ^   ^
- w=201 /    |    \e w=1
-      /     |     \e
-     / w=101|      \e
- +\-\-\-\-\-+ +\-\-\-\-\-+ +\-\-\-\-\-+
- |id=3 | |id=5 | |id=7 |
- +\-\-\-\-\-+ +\-\-\-\-\-+ +\-\-\-\-\-+
-    ^               ^
-w=1 |           w=1 |
-    |               |
- +\-\-\-\-\-+         +\-\-\-\-\-+
- |id=11|         |id=9 |
- +\-\-\-\-\-+         +\-\-\-\-\-+
-.ft P
-.fi
-.UNINDENT
-.UNINDENT
-.sp
-In the above figure, \fBid\fP means stream ID, and \fBw\fP means weight.
-The stream 0 is non\-existence stream, and forms the root of the tree.
-The stream 7 and 9 are not used for now.
-.sp
-The URIs given in the command\-line depend on stream 11 with the weight
-given in \fI\%\-p\fP option, which defaults to 16.
-.sp
-If \fI\%\-a\fP option is used, nghttp parses the resource pointed by
-URI given in command\-line as html, and extracts resource links from
-it.  When requesting those resources, nghttp uses dependency according
-to its resource type.
-.sp
-For CSS, and Javascript files inside \(dqhead\(dq element, they depend on
-stream 3 with the weight 2.  The Javascript files outside \(dqhead\(dq
-element depend on stream 5 with the weight 2.  The mages depend on
-stream 11 with the weight 12.  The other resources (e.g., icon) depend
-on stream 11 with the weight 2.
 .SH SEE ALSO
 .sp
 \fBnghttpd(1)\fP, \fBnghttpx(1)\fP, \fBh2load(1)\fP
