@@ -163,10 +163,6 @@ OPTIONS
 
     Enable ktls.
 
-.. option:: --no-rfc7540-pri
-
-    Disable RFC7540 priorities.
-
 .. option:: --version
 
     Display version information and exit.
