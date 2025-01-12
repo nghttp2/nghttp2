@@ -121,8 +121,7 @@ Config::Config()
     hexdump(false),
     echo_upload(false),
     no_content_length(false),
-    ktls(false),
-    no_rfc7540_pri(false) {}
+    ktls(false) {}
 
 Config::~Config() {}
 
@@ -859,10 +858,13 @@ int Http2Handler::connection_made() {
 
   auto config = sessions_->get_config();
   std::array<nghttp2_settings_entry, 4> entry;
-  size_t niv = 1;
+  size_t niv = 2;
 
   entry[0].settings_id = NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS;
   entry[0].value = config->max_concurrent_streams;
+
+  entry[1].settings_id = NGHTTP2_SETTINGS_NO_RFC7540_PRIORITIES;
+  entry[1].value = 1;
 
   if (config->header_table_size >= 0) {
     entry[niv].settings_id = NGHTTP2_SETTINGS_HEADER_TABLE_SIZE;
@@ -873,12 +875,6 @@ int Http2Handler::connection_made() {
   if (config->window_bits != -1) {
     entry[niv].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
     entry[niv].value = (1 << config->window_bits) - 1;
-    ++niv;
-  }
-
-  if (config->no_rfc7540_pri) {
-    entry[niv].settings_id = NGHTTP2_SETTINGS_NO_RFC7540_PRIORITIES;
-    entry[niv].value = 1;
     ++niv;
   }
 
