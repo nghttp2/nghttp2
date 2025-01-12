@@ -177,8 +177,6 @@ Options:
   --no-content-length
               Don't send content-length header field.
   --ktls      Enable ktls.
-  --no-rfc7540-pri
-              Disable RFC7540 priorities.
   --version   Display version information and exit.
   -h, --help  Display this help and exit.
 
@@ -413,7 +411,8 @@ int main(int argc, char **argv) {
         break;
       case 13:
         // no-rfc7540-pri option
-        config.no_rfc7540_pri = true;
+        std::cerr << "[WARNING]: --no-rfc7540-pri option has been deprecated."
+                  << std::endl;
         break;
       }
       break;

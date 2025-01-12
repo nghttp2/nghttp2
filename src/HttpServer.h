@@ -91,7 +91,6 @@ struct Config {
   bool echo_upload;
   bool no_content_length;
   bool ktls;
-  bool no_rfc7540_pri;
   Config();
   ~Config();
 };
