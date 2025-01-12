@@ -2677,8 +2677,6 @@ Options:
               Suppress  warning  on  server  certificate  verification
               failure.
   --ktls      Enable ktls.
-  --no-rfc7540-pri
-              Disable RFC7540 priorities.
   --version   Display version information and exit.
   -h, --help  Display this help and exit.
 
@@ -2984,6 +2982,8 @@ int main(int argc, char **argv) {
         break;
       case 16:
         // no-rfc7540-pri option
+        std::cerr << "[WARNING]: --no-rfc7540-pri option has been deprecated."
+                  << std::endl;
         break;
       case 17: {
         // extpri option
