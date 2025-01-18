@@ -79,7 +79,7 @@ void add_link(ParserData *parser_data, const StringRef &uri,
   if (u) {
     parser_data->links.push_back(
       std::make_pair(reinterpret_cast<char *>(u), res_type));
-    free(u);
+    xmlFree(u);
   }
 }
 } // namespace
