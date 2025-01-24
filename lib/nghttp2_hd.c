@@ -594,9 +594,8 @@ static void hd_map_remove(nghttp2_hd_map *map, nghttp2_hd_entry *ent) {
 static int hd_ringbuf_init(nghttp2_hd_ringbuf *ringbuf, size_t bufsize,
                            nghttp2_mem *mem) {
   size_t size;
-  size_t max_size;
+  const size_t max_size = SIZE_MAX / sizeof(nghttp2_hd_entry *);
 
-  max_size = SIZE_MAX / sizeof(nghttp2_hd_entry *);
   if (bufsize > max_size) {
     return NGHTTP2_ERR_NOMEM;
   }
