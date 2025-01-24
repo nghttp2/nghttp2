@@ -600,7 +600,7 @@ static int hd_ringbuf_init(nghttp2_hd_ringbuf *ringbuf, size_t bufsize,
     return NGHTTP2_ERR_NOMEM;
   }
 
-  for (size = 1; size < bufsize && size < max_size / 2; size <<= 1)
+  for (size = 1; size < bufsize; size <<= 1)
     ;
 
   if (size * sizeof(nghttp2_hd_entry *) > max_size) {
