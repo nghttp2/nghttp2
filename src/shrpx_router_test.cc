@@ -40,7 +40,7 @@ const MunitTest tests[]{
 } // namespace
 
 const MunitSuite router_suite{
-  "/router", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
+  "/router", tests, nullptr, 1, MUNIT_SUITE_OPTION_NONE,
 };
 
 struct Pattern {

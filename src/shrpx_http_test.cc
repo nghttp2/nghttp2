@@ -52,7 +52,7 @@ const MunitTest tests[]{
 } // namespace
 
 const MunitSuite http_suite{
-  "/http", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
+  "/http", tests, nullptr, 1, MUNIT_SUITE_OPTION_NONE,
 };
 
 void test_shrpx_http_create_forwarded(void) {

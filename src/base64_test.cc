@@ -46,7 +46,7 @@ const MunitTest tests[]{
 } // namespace
 
 const MunitSuite base64_suite{
-  "/base64", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
+  "/base64", tests, nullptr, 1, MUNIT_SUITE_OPTION_NONE,
 };
 
 void test_base64_encode(void) {

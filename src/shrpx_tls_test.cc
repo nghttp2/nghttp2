@@ -48,7 +48,7 @@ const MunitTest tests[]{
 } // namespace
 
 const MunitSuite tls_suite{
-  "/tls", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
+  "/tls", tests, nullptr, 1, MUNIT_SUITE_OPTION_NONE,
 };
 
 void test_shrpx_tls_create_lookup_tree(void) {
