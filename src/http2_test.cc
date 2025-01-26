@@ -70,7 +70,7 @@ const MunitTest tests[]{
 } // namespace
 
 const MunitSuite http2_suite{
-  "/http2", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
+  "/http2", tests, nullptr, 1, MUNIT_SUITE_OPTION_NONE,
 };
 
 namespace {

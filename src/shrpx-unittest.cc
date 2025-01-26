@@ -56,11 +56,11 @@ int main(int argc, char *argv[]) {
     shrpx::http2_suite,  shrpx::util_suite,
     gzip_suite,          buffer_suite,
     memchunk_suite,      template_suite,
-    base64_suite,        {NULL, NULL, NULL, 0, MUNIT_SUITE_OPTION_NONE},
+    base64_suite,        {},
   };
   const MunitSuite suite = {
-    "", NULL, suites, 1, MUNIT_SUITE_OPTION_NONE,
+    "", nullptr, suites, 1, MUNIT_SUITE_OPTION_NONE,
   };
 
-  return munit_suite_main(&suite, NULL, argc, argv);
+  return munit_suite_main(&suite, nullptr, argc, argv);
 }

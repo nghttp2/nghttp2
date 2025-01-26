@@ -48,7 +48,7 @@ const MunitTest tests[]{
 } // namespace
 
 const MunitSuite downstream_suite{
-  "/downstream", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
+  "/downstream", tests, nullptr, 1, MUNIT_SUITE_OPTION_NONE,
 };
 
 void test_downstream_field_store_append_last_header(void) {

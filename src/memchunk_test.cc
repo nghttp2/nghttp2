@@ -50,7 +50,7 @@ const MunitTest tests[]{
 } // namespace
 
 const MunitSuite memchunk_suite{
-  "/memchunk", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
+  "/memchunk", tests, nullptr, 1, MUNIT_SUITE_OPTION_NONE,
 };
 
 void test_pool_recycle(void) {
