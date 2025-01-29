@@ -334,7 +334,7 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
           return 0;
         }
 
-        if (data.size() >= SHRPX_QUIC_SCIDLEN + 22) {
+        if (data.size() >= SHRPX_QUIC_SCIDLEN + 21) {
           send_stateless_reset(faddr, data.size(), {vc.dcid, vc.dcidlen},
                                remote_addr, local_addr);
         }
