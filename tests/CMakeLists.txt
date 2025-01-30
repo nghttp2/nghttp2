@@ -25,14 +25,22 @@ set(MAIN_SOURCES
   munit/munit.c
 )
 
+if(QNX)
+add_executable(main
+  ${MAIN_SOURCES}
+)
+else()
 add_executable(main EXCLUDE_FROM_ALL
   ${MAIN_SOURCES}
 )
+endif()
 target_link_libraries(main
   nghttp2_static
 )
-add_test(main main)
-add_dependencies(check main)
+if(NOT QNX)
+  add_test(main main)
+  add_dependencies(check main)
+endif()
 
 if(ENABLE_FAILMALLOC)
   set(FAILMALLOC_SOURCES
@@ -41,12 +49,20 @@ if(ENABLE_FAILMALLOC)
     nghttp2_test_helper.c
     munit/munit.c
   )
-  add_executable(failmalloc EXCLUDE_FROM_ALL
-    ${FAILMALLOC_SOURCES}
-  )
+  if(QNX)
+    add_executable(failmalloc
+      ${MAIN_SOURCES}
+    )
+  else()
+    add_executable(failmalloc EXCLUDE_FROM_ALL
+      ${MAIN_SOURCES}
+    )
+  endif()
   target_link_libraries(failmalloc
     nghttp2_static
   )
-  add_test(failmalloc failmalloc)
-  add_dependencies(check failmalloc)
+  if(NOT QNX)
+    add_test(failmalloc failmalloc)
+    add_dependencies(check failmalloc)
+  endif()
 endif()
