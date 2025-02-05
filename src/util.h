@@ -57,6 +57,9 @@
 #include "template.h"
 #include "network.h"
 #include "allocator.h"
+#ifdef __QNX__
+  #include <sys/time.h>
+#endif // __QNX__
 
 namespace nghttp2 {
 
