@@ -34,6 +34,9 @@
 #ifdef HAVE_NETDB_H
 #  include <netdb.h>
 #endif // HAVE_NETDB_H
+#ifdef __QNX__
+#  include <sys/time.h>
+#endif // __QNX__
 
 #include <cmath>
 #include <cstring>
@@ -57,9 +60,6 @@
 #include "template.h"
 #include "network.h"
 #include "allocator.h"
-#ifdef __QNX__
-  #include <sys/time.h>
-#endif // __QNX__
 
 namespace nghttp2 {
 
