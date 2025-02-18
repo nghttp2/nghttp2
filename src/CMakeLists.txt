@@ -148,6 +148,7 @@ if(ENABLE_APP)
      shrpx_http3_upstream.cc
      http3.cc
      quic.cc
+     siphash.cc
     )
   endif()
   add_library(nghttpx_static STATIC ${NGHTTPX_SRCS})
@@ -190,6 +191,9 @@ if(ENABLE_APP)
       base64_test.cc
       ${CMAKE_SOURCE_DIR}/tests/munit/munit.c
     )
+    if(ENABLE_HTTP3)
+      list(APPEND NGHTTPX_UNITTEST_SOURCES siphash_test.cc)
+    endif()
     add_executable(nghttpx-unittest EXCLUDE_FROM_ALL
       ${NGHTTPX_UNITTEST_SOURCES}
       $<TARGET_OBJECTS:llhttp>
