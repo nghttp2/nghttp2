@@ -58,6 +58,10 @@ if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID 
     list(APPEND WPICKY_ENABLE
       ${WPICKY_COMMON_OLD}
     )
+    list(APPEND WPICKY_ENABLE
+      # clang++-18 warns this when building with wolfSSL >= v5.7.6-stable.
+      -Wno-extern-c-compat
+    )
     # Enable based on compiler version
     if((CMAKE_CXX_COMPILER_ID STREQUAL "Clang"      AND NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 3.6) OR
        (CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang" AND NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 6.3))
