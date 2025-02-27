@@ -1138,6 +1138,8 @@ if test "x$werror" != "xno"; then
     # Disable noexcept-type warning of g++-7.  This is not harmful as
     # long as all source files are compiled with the same compiler.
     AX_CHECK_COMPILE_FLAG([-Wno-noexcept-type], [CXXFLAGS="$CXXFLAGS -Wno-noexcept-type"])
+    # clang++-18 warns this when building with wolfSSL >= v5.7.6-stable.
+    AX_CHECK_COMPILE_FLAG([-Wno-extern-c-compat], [CXXFLAGS="$CXXFLAGS -Wno-extern-c-compat"])
     AC_LANG_POP()
 fi
 
