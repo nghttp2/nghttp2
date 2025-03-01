@@ -997,7 +997,7 @@ InputIt skip_to_right_dquote(InputIt first, InputIt last) {
         break;
       default:
         if ((0x21 <= *first && *first <= 0x7e) /* VCHAR */ ||
-            (0x80 <= *first && *first <= 0xff) /* obs-text */) {
+            0x80 <= *first /* obs-text */) {
           break;
         }
 

@@ -1994,7 +1994,7 @@ int on_frame_recv_callback2(nghttp2_session *session,
     }
 
     if (config.multiply == 1) {
-      client->path_cache.insert(uri);
+      client->path_cache.emplace(std::move(uri));
     }
 
     break;
@@ -2439,7 +2439,7 @@ int run(char **uris, int n) {
   int failures = 0;
   int data_fd = -1;
   nghttp2_data_provider2 data_prd;
-  struct stat data_stat;
+  struct stat data_stat {};
 
   if (!config.datafile.empty()) {
     if (config.datafile == "-") {
