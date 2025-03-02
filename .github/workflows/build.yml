@@ -5,7 +5,7 @@ on: [push, pull_request]
 permissions: read-all
 
 env:
-  LIBBPF_VERSION: v1.4.6
+  LIBBPF_VERSION: v1.5.0
   OPENSSL1_VERSION: 1_1_1w+quic
   OPENSSL3_VERSION: 3.1.7+quic
   BORINGSSL_VERSION: 294ab9730c570213b496cfc2fc14b3c0bfcd4bcc
