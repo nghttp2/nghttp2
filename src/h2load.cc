@@ -68,6 +68,9 @@
 #  ifdef HAVE_LIBNGTCP2_CRYPTO_WOLFSSL
 #    include <ngtcp2/ngtcp2_crypto_wolfssl.h>
 #  endif // HAVE_LIBNGTCP2_CRYPTO_WOLFSSL
+#  ifdef HAVE_LIBNGTCP2_CRYPTO_OSSL
+#    include <ngtcp2/ngtcp2_crypto_ossl.h>
+#  endif // HAVE_LIBNGTCP2_CRYPTO_OSSL
 #endif   // ENABLE_HTTP3
 
 #include "urlparse.h"
@@ -514,15 +517,17 @@ Client::Client(uint32_t id, Worker *worker, size_t req_todo)
 Client::~Client() {
   disconnect();
 
+  // Free ssl before freeing QUIC resources because
+  // libngtcp2_crypto_ossl requires that ngtcp2_conn is still alive.
+  if (ssl) {
+    SSL_free(ssl);
+  }
+
 #ifdef ENABLE_HTTP3
   if (config.is_quic()) {
     quic_free();
   }
 #endif // ENABLE_HTTP3
-
-  if (ssl) {
-    SSL_free(ssl);
-  }
 
   worker->sample_client_stat(&cstat);
   ++worker->client_smp.n;
@@ -2922,6 +2927,21 @@ int main(int argc, char **argv) {
   struct sigaction act {};
   act.sa_handler = SIG_IGN;
   sigaction(SIGPIPE, &act, nullptr);
+
+#ifdef ENABLE_HTTP3
+#  ifdef HAVE_LIBNGTCP2_CRYPTO_QUICTLS
+  if (ngtcp2_crypto_quictls_init() != 0) {
+    std::cerr << "ngtcp2_crypto_quictls_init failed" << std::endl;
+    exit(EXIT_FAILURE);
+  }
+#  endif // defined(HAVE_LIBNGTCP2_CRYPTO_QUICTLS)
+#  ifdef HAVE_LIBNGTCP2_CRYPTO_OSSL
+  if (ngtcp2_crypto_ossl_init() != 0) {
+    std::cerr << "ngtcp2_crypto_ossl_init failed" << std::endl;
+    exit(EXIT_FAILURE);
+  }
+#  endif // defined(HAVE_LIBNGTCP2_CRYPTO_OSSL)
+#endif   // defined(ENABLE_HTTP3)
 
   auto ssl_ctx = SSL_CTX_new(TLS_client_method());
   if (!ssl_ctx) {

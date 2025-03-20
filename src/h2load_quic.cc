@@ -345,7 +345,22 @@ int Client::quic_init(const sockaddr *local_addr, socklen_t local_addrlen,
 
     SSL_set_app_data(ssl, &quic.conn_ref);
     SSL_set_connect_state(ssl);
+#if OPENSSL_3_5_0_API
+    if (ngtcp2_crypto_ossl_configure_client_session(ssl) != 0) {
+      std::cerr << "ngtcp2_crypto_ossl_configure_client_session failed"
+                << std::endl;
+      return -1;
+    }
+
+    rv = ngtcp2_crypto_ossl_ctx_new(&quic.ossl_ctx, ssl);
+    if (rv != 0) {
+      std::cerr << "ngtcp2_crypto_ossl_ctx_new failed with error code " << rv
+                << std::endl;
+      return -1;
+    }
+#else  // !OPENSSL_3_5_0_API
     SSL_set_quic_use_legacy_codepoint(ssl, 0);
+#endif // !OPENSSL_3_5_0_API
   }
 
   auto callbacks = ngtcp2_callbacks{
@@ -465,12 +480,20 @@ int Client::quic_init(const sockaddr *local_addr, socklen_t local_addrlen,
     return -1;
   }
 
+#if OPENSSL_3_5_0_API
+  ngtcp2_conn_set_tls_native_handle(quic.conn, quic.ossl_ctx);
+#else  // !OPENSSL_3_5_0_API
   ngtcp2_conn_set_tls_native_handle(quic.conn, ssl);
+#endif // !OPENSSL_3_5_0_API
 
   return 0;
 }
 
 void Client::quic_free() {
+#if OPENSSL_3_5_0_API
+  ngtcp2_crypto_ossl_ctx_del(quic.ossl_ctx);
+#endif // OPENSSL_3_5_0_API
+
   ngtcp2_conn_del(quic.conn);
   if (quic.qlog_file != nullptr) {
     fclose(quic.qlog_file);
