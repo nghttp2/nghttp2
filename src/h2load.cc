@@ -877,6 +877,9 @@ void print_server_tmp_key(SSL *ssl) {
     auto cname = EC_curve_nid2nist(nid);
     if (!cname) {
       cname = OBJ_nid2sn(nid);
+      if (!cname) {
+        cname = "<unknown>";
+      }
     }
 #  endif // !OPENSSL_3_0_0_API
 
