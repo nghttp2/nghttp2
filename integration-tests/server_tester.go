@@ -161,7 +161,7 @@ func newServerTester(t *testing.T, opts options) *serverTester {
 	b := "-b"
 
 	if !externalDNS {
-		b += fmt.Sprintf("%v;", strings.Replace(backendURL.Host, ":", ",", -1))
+		b += fmt.Sprintf("%v;", strings.ReplaceAll(backendURL.Host, ":", ","))
 	} else {
 		sep := strings.LastIndex(backendURL.Host, ":")
 		if sep == -1 {
@@ -631,7 +631,7 @@ loop:
 				return res, err
 			}
 
-			sr, ok := streams[f.FrameHeader.StreamID]
+			sr, ok := streams[f.StreamID]
 			if !ok {
 				st.header = make(http.Header)
 				break
@@ -643,7 +643,7 @@ loop:
 
 			status, err = strconv.Atoi(sr.header.Get(":status"))
 			if err != nil {
-				return res, fmt.Errorf("Error parsing status code: %w", err)
+				return res, fmt.Errorf("could not parse :status: %w", err)
 			}
 
 			sr.status = status
@@ -664,7 +664,7 @@ loop:
 
 			streams[sr.streamID] = sr
 		case *http2.DataFrame:
-			sr, ok := streams[f.FrameHeader.StreamID]
+			sr, ok := streams[f.StreamID]
 			if !ok {
 				break
 			}
@@ -675,7 +675,7 @@ loop:
 				break loop
 			}
 		case *http2.RSTStreamFrame:
-			sr, ok := streams[f.FrameHeader.StreamID]
+			sr, ok := streams[f.StreamID]
 			if !ok {
 				break
 			}

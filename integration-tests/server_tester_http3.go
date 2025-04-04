@@ -15,7 +15,7 @@ import (
 )
 
 func (st *serverTester) http3(rp requestParam) (*serverResponse, error) {
-	rt := &http3.RoundTripper{
+	rt := &http3.Transport{
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: true,
 		},
