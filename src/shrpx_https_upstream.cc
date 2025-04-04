@@ -1216,9 +1216,10 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
   auto worker = handler_->get_worker();
 
   // after graceful shutdown commenced, add connection: close header
-  // field.
+  // field.  If CONNECT request failed, close the connection.
   if (httpconf.max_requests <= num_requests_ ||
-      worker->get_graceful_shutdown()) {
+      worker->get_graceful_shutdown() ||
+      (connect_method && !downstream->get_upgraded())) {
     resp.connection_close = true;
   }
 

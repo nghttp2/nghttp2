@@ -882,12 +882,39 @@ func TestH1H1CONNECTMethodFailure(t *testing.T) {
 	if _, err := io.ReadAll(resp.Body); err != nil {
 		t.Fatalf("Error io.ReadAll() = %v", err)
 	}
+}
 
-	if _, err := io.WriteString(st.conn, "CONNECT 127.0.0.1:443 HTTP/1.1\r\nTest-Case: TestH1H1CONNECTMethodFailure\r\nHost: 127.0.0.1:443\r\nrequired-header: foo\r\n\r\n"); err != nil {
+// TestH1H1CONNECTMethod tests that CONNECT request succeeds.
+func TestH1H1CONNECTMethod(t *testing.T) {
+	opts := options{
+		handler: func(w http.ResponseWriter, r *http.Request) {
+			hj, ok := w.(http.Hijacker)
+			if !ok {
+				http.Error(w, "Could not hijack the connection", http.StatusInternalServerError)
+				return
+			}
+			_, bufrw, err := hj.Hijack()
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			if _, err := bufrw.WriteString("HTTP/1.1 200\r\n\r\n"); err != nil {
+				t.Fatalf("Error bufrw.WriteString() = %v", err)
+			}
+
+			bufrw.Flush()
+		},
+	}
+
+	st := newServerTester(t, opts)
+	defer st.Close()
+
+	if _, err := io.WriteString(st.conn, "CONNECT 127.0.0.1:443 HTTP/1.1\r\nTest-Case: TestH1H1CONNECTMethod\r\nHost: 127.0.0.1:443\r\n\r\n"); err != nil {
 		t.Fatalf("Error io.WriteString() = %v", err)
 	}
 
-	resp, err = http.ReadResponse(bufio.NewReader(st.conn), nil)
+	resp, err := http.ReadResponse(bufio.NewReader(st.conn), nil)
 	if err != nil {
 		t.Fatalf("Error http.ReadResponse() = %v", err)
 	}
