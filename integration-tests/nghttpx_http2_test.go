@@ -1334,7 +1334,6 @@ func TestH2H1Upgrade(t *testing.T) {
 			pair("HTTP2-Settings", "AAMAAABkAAQAAP__"),
 		},
 	})
-
 	if err != nil {
 		t.Fatalf("Error st.http1() = %v", err)
 	}
