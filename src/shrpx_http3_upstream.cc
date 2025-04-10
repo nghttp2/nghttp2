@@ -199,8 +199,11 @@ void Http3Upstream::qlog_write(const void *data, size_t datalen, bool fin) {
 
 namespace {
 void rand(uint8_t *dest, size_t destlen, const ngtcp2_rand_ctx *rand_ctx) {
-  util::random_bytes(dest, dest + destlen,
-                     *static_cast<std::mt19937 *>(rand_ctx->native_handle));
+  auto rv = RAND_bytes(dest, destlen);
+  if (rv != 1) {
+    assert(0);
+    abort();
+  }
 }
 } // namespace
 
