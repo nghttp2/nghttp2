@@ -18,7 +18,7 @@ jobs:
   build-cache:
     strategy:
       matrix:
-        os: [ubuntu-24.04, macos-13, macos-14]
+        os: [ubuntu-24.04, macos-14, macos-15]
 
     runs-on: ${{ matrix.os }}
 
@@ -217,39 +217,39 @@ jobs:
 
     strategy:
       matrix:
-        os: [ubuntu-24.04, macos-13, macos-14]
+        os: [ubuntu-24.04, macos-14, macos-15]
         compiler: [gcc, clang]
         buildtool: [autotools, cmake]
         http3: [http3, no-http3]
         openssl: [openssl1, openssl3, boringssl, awslc, wolfssl]
         exclude:
-        - os: macos-13
-          openssl: openssl3
         - os: macos-14
+          openssl: openssl3
+        - os: macos-15
           openssl: openssl3
         - http3: no-http3
           openssl: openssl3
-        - os: macos-13
-          compiler: gcc
         - os: macos-14
           compiler: gcc
-        - # disable macos cmake because of include path issue
-          os: macos-13
-          buildtool: cmake
+        - os: macos-15
+          compiler: gcc
         - # disable macos cmake because of include path issue
           os: macos-14
           buildtool: cmake
-        - os: macos-13
-          openssl: boringssl
+        - # disable macos cmake because of include path issue
+          os: macos-15
+          buildtool: cmake
         - os: macos-14
+          openssl: boringssl
+        - os: macos-15
           openssl: boringssl
         - openssl: boringssl
           buildtool: cmake
         - openssl: boringssl
           compiler: gcc
-        - os: macos-13
-          openssl: awslc
         - os: macos-14
+          openssl: awslc
+        - os: macos-15
           openssl: awslc
         - openssl: awslc
           buildtool: cmake
@@ -351,7 +351,7 @@ jobs:
         echo 'EXTRA_AUTOTOOLS_OPTS='"$EXTRA_AUTOTOOLS_OPTS" >> $GITHUB_ENV
         echo 'EXTRA_CMAKE_OPTS='"$EXTRA_CMAKE_OPTS" >> $GITHUB_ENV
     - name: Setup libev variables
-      if: matrix.os == 'macos-14'
+      if: runner.os == 'macOS'
       run: |
         LIBEV_CFLAGS="-I/opt/homebrew/Cellar/libev/4.33/include"
         LIBEV_LIBS="-L/opt/homebrew/Cellar/libev/4.33/lib -lev"
