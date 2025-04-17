@@ -105,7 +105,7 @@ RUN ./configure \
     make install
 
 WORKDIR /root/build
-RUN git clone https://github.com/nghttp2/nghttp2 -b $NGHTTP2_VERSION --depth 1
+RUN git clone --recursive  https://github.com/nghttp2/nghttp2 -b $NGHTTP2_VERSION --depth 1
 WORKDIR /root/build/nghttp2
 RUN autoreconf -i && \
     ./configure \
@@ -119,6 +119,6 @@ RUN autoreconf -i && \
     --disable-threads \
       CPPFLAGS="-fPIE -I$PREFIX/include" \
       PKG_CONFIG_LIBDIR="$PREFIX/lib/pkgconfig" \
-      LDFLAGS="-fPIE -pie -L$PREFIX/lib" && \
+      LDFLAGS="-static-libstdc++ -static-libgcc -fPIE -pie -L$PREFIX/lib" && \
     make && \
     $STRIP src/nghttpx src/nghttpd src/nghttp
