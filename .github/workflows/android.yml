@@ -1,0 +1,22 @@
+name: android
+
+on:
+  push:
+    paths:
+    - Dockerfile.android
+    - .github/workflows/android.yml
+
+permissions: read-all
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    - name: Build
+      uses: docker/build-push-action@v6
+      with:
+        file: Dockerfile.android
