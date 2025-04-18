@@ -105,7 +105,7 @@ RUN ./configure \
     make install
 
 WORKDIR /root/build
-RUN git clone --recursive  https://github.com/nghttp2/nghttp2 -b $NGHTTP2_VERSION --depth 1
+RUN git clone --recursive --shallow-submodules https://github.com/nghttp2/nghttp2 -b $NGHTTP2_VERSION --depth 1
 WORKDIR /root/build/nghttp2
 RUN autoreconf -i && \
     ./configure \
