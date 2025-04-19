@@ -388,7 +388,8 @@ ClientHandler *QUICConnectionHandler::handle_new_connection(
     return nullptr;
   }
 
-#if defined(NGHTTP2_GENUINE_OPENSSL) || defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
+#if !OPENSSL_3_5_0_API &&                                                      \
+  (defined(NGHTTP2_GENUINE_OPENSSL) || defined(NGHTTP2_OPENSSL_IS_WOLFSSL))
   assert(SSL_is_quic(ssl));
 #endif // NGHTTP2_GENUINE_OPENSSL || NGHTTP2_OPENSSL_IS_WOLFSSL
 
@@ -398,7 +399,9 @@ ClientHandler *QUICConnectionHandler::handle_new_connection(
   auto &quicconf = config->quic;
 
   if (quicconf.upstream.early_data) {
-#if defined(NGHTTP2_GENUINE_OPENSSL) ||                                        \
+#if OPENSSL_3_5_0_API
+    SSL_set_quic_tls_early_data_enabled(ssl, 1);
+#elif defined(NGHTTP2_GENUINE_OPENSSL) ||                                      \
   (defined(NGHTTP2_OPENSSL_IS_WOLFSSL) && defined(WOLFSSL_EARLY_DATA))
     SSL_set_quic_early_data_enabled(ssl, 1);
 #elif defined(NGHTTP2_OPENSSL_IS_BORINGSSL)

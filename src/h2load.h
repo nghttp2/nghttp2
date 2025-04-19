@@ -55,6 +55,10 @@
 
 #include "ssl_compat.h"
 
+#if defined(ENABLE_HTTP3) && OPENSSL_3_5_0_API
+#  include <ngtcp2/ngtcp2_crypto_ossl.h>
+#endif // defined(ENABLE_HTTP3) && OPENSSL_3_5_0_API
+
 #ifdef NGHTTP2_OPENSSL_IS_WOLFSSL
 #  include <wolfssl/options.h>
 #  include <wolfssl/openssl/ssl.h>
@@ -354,6 +358,9 @@ struct Client {
     ev_timer pkt_timer;
     ngtcp2_conn *conn;
     ngtcp2_ccerr last_error;
+#  if OPENSSL_3_5_0_API
+    ngtcp2_crypto_ossl_ctx *ossl_ctx;
+#  endif // OPENSSL_3_5_0_API
     bool close_requested;
     FILE *qlog_file;
 

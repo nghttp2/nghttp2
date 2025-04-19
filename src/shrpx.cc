@@ -92,7 +92,13 @@
 #ifdef ENABLE_HTTP3
 #  include <ngtcp2/ngtcp2.h>
 #  include <nghttp3/nghttp3.h>
-#endif // ENABLE_HTTP3
+#  ifdef HAVE_LIBNGTCP2_CRYPTO_QUICTLS
+#    include <ngtcp2/ngtcp2_crypto_quictls.h>
+#  endif // HAVE_LIBNGTCP2_CRYPTO_QUICTLS
+#  ifdef HAVE_LIBNGTCP2_CRYPTO_OSSL
+#    include <ngtcp2/ngtcp2_crypto_ossl.h>
+#  endif // HAVE_LIBNGTCP2_CRYPTO_OSSL
+#endif   // ENABLE_HTTP3
 
 #include "shrpx_config.h"
 #include "shrpx_tls.h"
@@ -5305,6 +5311,21 @@ int main(int argc, char **argv) {
     cmdcfgs.emplace_back(SHRPX_OPT_PRIVATE_KEY_FILE, StringRef{argv[optind++]});
     cmdcfgs.emplace_back(SHRPX_OPT_CERTIFICATE_FILE, StringRef{argv[optind++]});
   }
+
+#ifdef ENABLE_HTTP3
+#  ifdef HAVE_LIBNGTCP2_CRYPTO_QUICTLS
+  if (ngtcp2_crypto_quictls_init() != 0) {
+    LOG(FATAL) << "ngtcp2_crypto_quictls_init failed";
+    exit(EXIT_FAILURE);
+  }
+#  endif // defined(HAVE_LIBNGTCP2_CRYPTO_QUICTLS)
+#  ifdef HAVE_LIBNGTCP2_CRYPTO_OSSL
+  if (ngtcp2_crypto_ossl_init() != 0) {
+    LOG(FATAL) << "ngtcp2_crypto_ossl_init failed";
+    exit(EXIT_FAILURE);
+  }
+#  endif // defined(HAVE_LIBNGTCP2_CRYPTO_OSSL)
+#endif   // defined(ENABLE_HTTP3)
 
   rv = process_options(mod_config(), cmdcfgs);
   if (rv != 0) {

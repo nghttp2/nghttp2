@@ -46,7 +46,6 @@
 #endif // HAVE_MRUBY
 #include "http3.h"
 #include "util.h"
-#include "ssl_compat.h"
 
 namespace shrpx {
 
@@ -115,6 +114,9 @@ Http3Upstream::Http3Upstream(ClientHandler *handler)
     qlog_fd_{-1},
     hashed_scid_{},
     conn_{nullptr},
+#if OPENSSL_3_5_0_API
+    ossl_ctx_{nullptr},
+#endif // OPENSSL_3_5_0_API,
     httpconn_{nullptr},
     downstream_queue_{downstream_queue_size(handler->get_worker()),
                       !get_config()->http2_proxy},
@@ -148,6 +150,10 @@ Http3Upstream::~Http3Upstream() {
   ev_timer_stop(loop, &timer_);
 
   nghttp3_conn_del(httpconn_);
+
+#if OPENSSL_3_5_0_API
+  ngtcp2_crypto_ossl_ctx_del(ossl_ctx_);
+#endif // OPENSSL_3_5_0_API
 
   ngtcp2_conn_del(conn_);
 
@@ -734,7 +740,26 @@ int Http3Upstream::init(const UpstreamAddr *faddr, const Address &remote_addr,
     return -1;
   }
 
+#if OPENSSL_3_5_0_API
+  auto ssl = handler_->get_ssl();
+
+  rv = ngtcp2_crypto_ossl_configure_server_session(ssl);
+  if (rv != 0) {
+    ULOG(ERROR, this) << "ngtcp2_crypto_ossl_configure_server_session failed";
+    return -1;
+  }
+
+  rv = ngtcp2_crypto_ossl_ctx_new(&ossl_ctx_, ssl);
+  if (rv != 0) {
+    ULOG(ERROR, this) << "ngtcp2_crypto_ossl_ctx_new failed with error code "
+                      << rv;
+    return -1;
+  }
+
+  ngtcp2_conn_set_tls_native_handle(conn_, ossl_ctx_);
+#else  // !OPENSSL_3_5_0_API
   ngtcp2_conn_set_tls_native_handle(conn_, handler_->get_ssl());
+#endif // !OPENSSL_3_5_0_API
 
   auto quic_connection_handler = worker->get_quic_connection_handler();
 

@@ -34,6 +34,11 @@
 #include "shrpx_downstream_queue.h"
 #include "quic.h"
 #include "network.h"
+#include "ssl_compat.h"
+
+#if defined(ENABLE_HTTP3) && OPENSSL_3_5_0_API
+#  include <ngtcp2/ngtcp2_crypto_ossl.h>
+#endif // defined(ENABLE_HTTP3) && OPENSSL_3_5_0_API
 
 using namespace nghttp2;
 
@@ -165,6 +170,9 @@ private:
   ngtcp2_cid hashed_scid_;
   ngtcp2_conn *conn_;
   ngtcp2_ccerr last_error_;
+#if OPENSSL_3_5_0_API
+  ngtcp2_crypto_ossl_ctx *ossl_ctx_;
+#endif // OPENSSL_3_5_0_API
   nghttp3_conn *httpconn_;
   DownstreamQueue downstream_queue_;
   std::vector<uint8_t> conn_close_;
