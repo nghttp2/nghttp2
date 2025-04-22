@@ -7,7 +7,7 @@ permissions: read-all
 env:
   LIBBPF_VERSION: v1.5.0
   OPENSSL1_VERSION: 1_1_1w+quic
-  OPENSSL3_VERSION: 3.1.7+quic
+  OPENSSL3_VERSION: 3.5.0
   BORINGSSL_VERSION: 23018360710de333b3343e63cbb3bd2dceb3287d
   AWSLC_VERSION: v1.49.1
   NGHTTP3_VERSION: v1.9.0
@@ -133,12 +133,12 @@ jobs:
         ./config --prefix=$PWD/build
         make -j"$(nproc 2> /dev/null || sysctl -n hw.ncpu)"
         make install_sw
-    - name: Build quictls/openssl v3.x
+    - name: Build openssl/openssl v3.x
       if: steps.cache-openssl3.outputs.cache-hit != 'true'
       run: |
-        git clone --recursive --shallow-submodules --depth 1 -b openssl-${{ env.OPENSSL3_VERSION }} https://github.com/quictls/openssl openssl3
+        git clone --recursive --shallow-submodules --depth 1 -b openssl-${{ env.OPENSSL3_VERSION }} https://github.com/openssl/openssl openssl3
         cd openssl3
-        ./config enable-ktls --prefix=$PWD/build --libdir=$PWD/build/lib
+        ./config enable-ktls --prefix=$PWD/build
         make -j"$(nproc 2> /dev/null || sysctl -n hw.ncpu)"
         make install_sw
     - name: Build BoringSSL
@@ -203,7 +203,7 @@ jobs:
         cd ngtcp2-openssl3
         autoreconf -i
         ./configure --prefix=$PWD/build --enable-lib-only \
-          PKG_CONFIG_PATH="../openssl3/build/lib/pkgconfig" \
+          PKG_CONFIG_PATH="../openssl3/build/lib64/pkgconfig:../openssl3/build/lib/pkgconfig" \
           BORINGSSL_CFLAGS="-I$PWD/../aws-lc/include/" \
           BORINGSSL_LIBS="-L$PWD/../aws-lc/build/ssl -lssl -L$PWD/../aws-lc/build/crypto -lcrypto" \
           --disable-dependency-tracking \
@@ -223,10 +223,6 @@ jobs:
         http3: [http3, no-http3]
         openssl: [openssl1, openssl3, boringssl, awslc, wolfssl]
         exclude:
-        - os: macos-14
-          openssl: openssl3
-        - os: macos-15
-          openssl: openssl3
         - http3: no-http3
           openssl: openssl3
         - os: macos-14
@@ -365,7 +361,7 @@ jobs:
         path: openssl1/build
         key: ${{ matrix.os }}-openssl-${{ env.OPENSSL1_VERSION }}
         fail-on-cache-miss: true
-    - name: Restore quictls/openssl v3.x cache
+    - name: Restore openssl/openssl v3.x cache
       uses: actions/cache/restore@v4
       if: matrix.openssl == 'openssl3'
       with:
@@ -459,16 +455,16 @@ jobs:
     - name: Setup extra environment variables
       if: matrix.http3 == 'no-http3'
       run: |
-        PKG_CONFIG_PATH="$PWD/openssl1/build/lib/pkgconfig:$PWD/openssl3/build/lib/pkgconfig:$PWD/wolfssl/build/lib/pkgconfig:$PKG_CONFIG_PATH"
-        LDFLAGS="$LDFLAGS -Wl,-rpath,$PWD/openssl1/build/lib -Wl,-rpath,$PWD/openssl3/build/lib"
+        PKG_CONFIG_PATH="$PWD/openssl1/build/lib/pkgconfig:$PWD/openssl3/build/lib64/pkgconfig:$PWD/openssl3/build/lib/pkgconfig:$PWD/wolfssl/build/lib/pkgconfig:$PKG_CONFIG_PATH"
+        LDFLAGS="$LDFLAGS -Wl,-rpath,$PWD/openssl1/build/lib -Wl,-rpath,$PWD/openssl3/build/lib64 -Wl,-rpath,$PWD/openssl3/build/lib"
 
         echo 'PKG_CONFIG_PATH='"$PKG_CONFIG_PATH" >> $GITHUB_ENV
         echo 'LDFLAGS='"$LDFLAGS" >> $GITHUB_ENV
     - name: Setup extra environment variables for HTTP/3
       if: matrix.http3 == 'http3'
       run: |
-        PKG_CONFIG_PATH="$PWD/openssl1/build/lib/pkgconfig:$PWD/openssl3/build/lib/pkgconfig:$PWD/wolfssl/build/lib/pkgconfig:$PWD/nghttp3/build/lib/pkgconfig:$PWD/ngtcp2-openssl1/build/lib/pkgconfig:$PWD/ngtcp2-openssl3/build/lib/pkgconfig:$PWD/libbpf/build/lib64/pkgconfig:$PKG_CONFIG_PATH"
-        LDFLAGS="$LDFLAGS -Wl,-rpath,$PWD/openssl1/build/lib -Wl,-rpath,$PWD/openssl3/build/lib -Wl,-rpath,$PWD/libbpf/build/lib64"
+        PKG_CONFIG_PATH="$PWD/openssl1/build/lib/pkgconfig:$PWD/openssl3/build/lib64/pkgconfig:$PWD/openssl3/build/lib/pkgconfig:$PWD/wolfssl/build/lib/pkgconfig:$PWD/nghttp3/build/lib/pkgconfig:$PWD/ngtcp2-openssl1/build/lib/pkgconfig:$PWD/ngtcp2-openssl3/build/lib/pkgconfig:$PWD/libbpf/build/lib64/pkgconfig:$PKG_CONFIG_PATH"
+        LDFLAGS="$LDFLAGS -Wl,-rpath,$PWD/openssl1/build/lib -Wl,-rpath,$PWD/openssl3/build/lib64 -Wl,-rpath,$PWD/openssl3/build/lib -Wl,-rpath,$PWD/libbpf/build/lib64"
         EXTRA_AUTOTOOLS_OPTS="$EXTRA_AUTOTOOLS_OPTS --enable-http3"
         EXTRA_CMAKE_OPTS="$EXTRA_CMAKE_OPTS -DENABLE_HTTP3=1"
 

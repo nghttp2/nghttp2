@@ -71,15 +71,19 @@ if(WITH_WOLFSSL)
 else()
   find_package(OpenSSL 1.1.1)
 endif()
-find_package(Libngtcp2 1.0.0)
+find_package(Libngtcp2 1.12.0)
 if(OPENSSL_FOUND)
-  find_package(Libngtcp2_crypto_quictls 1.0.0)
+  find_package(Libngtcp2_crypto_quictls 1.12.0)
   if(LIBNGTCP2_CRYPTO_QUICTLS_FOUND)
     set(HAVE_LIBNGTCP2_CRYPTO_QUICTLS 1)
   endif()
+  find_package(Libngtcp2_crypto_ossl 1.12.0)
+  if(LIBNGTCP2_CRYPTO_OSSL_FOUND)
+    set(HAVE_LIBNGTCP2_CRYPTO_OSSL 1)
+  endif()
 endif()
 if(WOLFSSL_FOUND)
-  find_package(Libngtcp2_crypto_wolfssl 1.0.0)
+  find_package(Libngtcp2_crypto_wolfssl 1.12.0)
   if(LIBNGTCP2_CRYPTO_WOLFSSL_FOUND)
     set(HAVE_LIBNGTCP2_CRYPTO_WOLFSSL 1)
   endif()
@@ -199,7 +203,10 @@ if(NOT ENABLE_LIB_ONLY AND OPENSSL_FOUND)
   if(ENABLE_HTTP3)
     check_symbol_exists(SSL_provide_quic_data "openssl/ssl.h" HAVE_SSL_PROVIDE_QUIC_DATA)
     if(NOT HAVE_SSL_PROVIDE_QUIC_DATA)
-        message(WARNING "OpenSSL in ${OPENSSL_LIBRARIES} does not have SSL_provide_quic_data.  HTTP/3 support cannot be enabled")
+      check_symbol_exists(SSL_set_quic_tls_cbs "openssl/ssl.h" HAVE_SSL_SET_QUIC_TLS_CBS)
+      if(NOT HAVE_SSL_SET_QUIC_TLS_CBS)
+        message(WARNING "OpenSSL in ${OPENSSL_LIBRARIES} has neither SSL_provide_quic_data nor SSL_set_quic_tls_cbs.  HTTP/3 support cannot be enabled")
+      endif()
     endif()
   endif()
   cmake_pop_check_state()
@@ -280,11 +287,12 @@ if(ENABLE_APP AND NOT (ZLIB_FOUND AND (OPENSSL_FOUND OR WOLFSSL_FOUND) AND LIBEV
 endif()
 
 # HTTP/3 requires libngtcp2 + (quictls/openssl +
-# libngtcp2_crypto_quictls or wolfSSL + libngtcp2_crypto_wolfssl) and
-# libnghttp3.
+# libngtcp2_crypto_quictls, wolfSSL + libngtcp2_crypto_wolfssl, or
+# openssl/openssl + libngtcp2_crypto_ossl) and libnghttp3.
 if(ENABLE_HTTP3 AND NOT (LIBNGTCP2_FOUND AND LIBNGHTTP3_FOUND AND
       ((HAVE_SSL_PROVIDE_QUIC_DATA AND LIBNGTCP2_CRYPTO_QUICTLS_FOUND) OR
-	(HAVE_WOLFSSL_SSL_PROVIDE_QUIC_DATA AND LIBNGTCP2_CRYPTO_WOLFSSL_FOUND))))
+	(HAVE_WOLFSSL_SSL_PROVIDE_QUIC_DATA AND LIBNGTCP2_CRYPTO_WOLFSSL_FOUND) OR
+	(HAVE_SSL_SET_QUIC_TLS_CBS AND LIBNGTCP2_CRYPTO_OSSL_FOUND))))
   message(FATAL_ERROR "HTTP/3 was requested (ENABLE_HTTP3=1) but dependencies are not met.")
 endif()
 

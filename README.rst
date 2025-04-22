@@ -123,12 +123,12 @@ exploited.  The neverbleed is disabled by default.  To enable it, use
 To enable the experimental HTTP/3 support for h2load and nghttpx, the
 following libraries are required:
 
-* `OpenSSL with QUIC support
+* `quictls
   <https://github.com/quictls/openssl/tree/OpenSSL_1_1_1w+quic>`_; or
   wolfSSL; or LibreSSL (does not support 0RTT); or aws-lc; or
   `BoringSSL <https://boringssl.googlesource.com/boringssl/>`_ (commit
-  23018360710de333b3343e63cbb3bd2dceb3287d)
-* `ngtcp2 <https://github.com/ngtcp2/ngtcp2>`_ >= 1.4.0
+  23018360710de333b3343e63cbb3bd2dceb3287d); or OpenSSL >= 3.5.0
+* `ngtcp2 <https://github.com/ngtcp2/ngtcp2>`_ >= 1.12.0
 * `nghttp3 <https://github.com/ngtcp2/nghttp3>`_ >= 1.1.0
 
 Use ``--enable-http3`` configure option to enable HTTP/3 feature for
