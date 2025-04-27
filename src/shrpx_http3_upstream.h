@@ -146,13 +146,13 @@ public:
               size_t remote_salen, const sockaddr *local_sa, size_t local_salen,
               const ngtcp2_pkt_info &pi, std::span<const uint8_t> data,
               size_t gso_size);
+  int send_packet(const ngtcp2_path &path, const ngtcp2_pkt_info &pi,
+                  const std::span<const uint8_t> data, size_t gso_size);
 
   void qlog_write(const void *data, size_t datalen, bool fin);
   int open_qlog_file(const StringRef &dir, const ngtcp2_cid &scid) const;
 
-  void on_send_blocked(const UpstreamAddr *faddr,
-                       const ngtcp2_addr &remote_addr,
-                       const ngtcp2_addr &local_addr, const ngtcp2_pkt_info &pi,
+  void on_send_blocked(const ngtcp2_path &path, const ngtcp2_pkt_info &pi,
                        std::span<const uint8_t> data, size_t gso_size);
   int send_blocked_packet();
   void signal_write_upstream_addr(const UpstreamAddr *faddr);
