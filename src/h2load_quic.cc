@@ -519,7 +519,8 @@ void Client::quic_close_connection() {
   }
 
   write_udp(reinterpret_cast<sockaddr *>(ps.path.remote.addr),
-            ps.path.remote.addrlen, buf.data(), nwrite, 0);
+            ps.path.remote.addrlen, {buf.data(), static_cast<size_t>(nwrite)},
+            nwrite);
 }
 
 int Client::quic_write_client_handshake(ngtcp2_encryption_level level,
@@ -688,11 +689,14 @@ int Client::write_quic() {
     ngtcp2_conn_get_max_tx_udp_payload_size(quic.conn);
   auto path_max_udp_payload_size =
     ngtcp2_conn_get_path_max_tx_udp_payload_size(quic.conn);
-  uint8_t *bufpos = quic.tx.data.get();
-  auto bufleft = std::max(ngtcp2_conn_get_send_quantum(quic.conn),
-                          path_max_udp_payload_size);
+  auto txbuf = std::span{quic.tx.data.get(),
+                         std::max(ngtcp2_conn_get_send_quantum(quic.conn),
+                                  path_max_udp_payload_size)};
+  auto buf = txbuf;
   ngtcp2_path_storage ps;
   size_t gso_size = 0;
+  auto pkt = std::span<const uint8_t>{};
+  auto extra_pkt = std::span<const uint8_t>{};
 
   ngtcp2_path_storage_zero(&ps);
 
@@ -720,11 +724,12 @@ int Client::write_quic() {
       flags |= NGTCP2_WRITE_STREAM_FLAG_FIN;
     }
 
-    auto buflen = bufleft >= max_udp_payload_size ? max_udp_payload_size
-                                                  : path_max_udp_payload_size;
+    auto buflen = buf.size() >= max_udp_payload_size
+                    ? max_udp_payload_size
+                    : path_max_udp_payload_size;
     auto nwrite = ngtcp2_conn_writev_stream(
-      quic.conn, &ps.path, nullptr, bufpos, buflen, &ndatalen, flags, stream_id,
-      reinterpret_cast<const ngtcp2_vec *>(v), vcnt, ts);
+      quic.conn, &ps.path, nullptr, buf.data(), buflen, &ndatalen, flags,
+      stream_id, reinterpret_cast<const ngtcp2_vec *>(v), vcnt, ts);
     if (nwrite < 0) {
       switch (nwrite) {
       case NGTCP2_ERR_STREAM_DATA_BLOCKED:
@@ -752,97 +757,64 @@ int Client::write_quic() {
     quic_restart_pkt_timer();
 
     if (nwrite == 0) {
-      if (bufpos - quic.tx.data.get()) {
-        auto data = quic.tx.data.get();
-        auto datalen = bufpos - quic.tx.data.get();
-        rv = write_udp(ps.path.remote.addr, ps.path.remote.addrlen, data,
-                       datalen, gso_size);
-        if (rv == 1) {
-          on_send_blocked(ps.path.remote, data, datalen, gso_size);
-          signal_write();
-          return 0;
-        }
-      }
-      return 0;
-    }
-
-    auto first_pkt = bufpos == quic.tx.data.get();
-    (void)first_pkt;
-
-    bufpos += nwrite;
-    bufleft -= nwrite;
-
-#ifdef UDP_SEGMENT
-    if (worker->config->no_udp_gso) {
-#endif // UDP_SEGMENT
-      auto data = quic.tx.data.get();
-      auto datalen = bufpos - quic.tx.data.get();
-      rv = write_udp(ps.path.remote.addr, ps.path.remote.addrlen, data, datalen,
-                     0);
-      if (rv == 1) {
-        on_send_blocked(ps.path.remote, data, datalen, 0);
-        signal_write();
+      pkt = std::span{std::begin(txbuf), std::begin(buf)};
+      if (pkt.empty()) {
         return 0;
       }
 
-      if (bufleft < path_max_udp_payload_size) {
-        signal_write();
-        return 0;
-      }
-
-      bufpos = quic.tx.data.get();
-
-#ifdef UDP_SEGMENT
-      continue;
+      break;
     }
-#endif // UDP_SEGMENT
 
-#ifdef UDP_SEGMENT
-    if (first_pkt) {
+    auto last_pkt_pos = std::begin(buf);
+
+    buf = buf.subspan(nwrite);
+
+    if (last_pkt_pos == std::begin(txbuf)) {
       gso_size = nwrite;
     } else if (static_cast<size_t>(nwrite) > gso_size ||
                (gso_size > path_max_udp_payload_size &&
                 static_cast<size_t>(nwrite) != gso_size)) {
-      auto data = quic.tx.data.get();
-      auto datalen = bufpos - quic.tx.data.get() - nwrite;
-      rv = write_udp(ps.path.remote.addr, ps.path.remote.addrlen, data, datalen,
-                     gso_size);
-      if (rv == 1) {
-        on_send_blocked(ps.path.remote, data, datalen, gso_size);
-        on_send_blocked(ps.path.remote, bufpos - nwrite, nwrite, 0);
-      } else {
-        auto data = bufpos - nwrite;
-        rv = write_udp(ps.path.remote.addr, ps.path.remote.addrlen, data,
-                       nwrite, 0);
-        if (rv == 1) {
-          on_send_blocked(ps.path.remote, data, nwrite, 0);
-        }
-      }
-
-      signal_write();
-      return 0;
+      pkt = std::span{std::begin(txbuf), last_pkt_pos};
+      extra_pkt = std::span{last_pkt_pos, std::begin(buf)};
+      break;
     }
 
     // Assume that the path does not change.
-    if (bufleft < path_max_udp_payload_size ||
+    if (buf.size() < path_max_udp_payload_size ||
         static_cast<size_t>(nwrite) < gso_size) {
-      auto data = quic.tx.data.get();
-      auto datalen = bufpos - quic.tx.data.get();
-      rv = write_udp(ps.path.remote.addr, ps.path.remote.addrlen, data, datalen,
-                     gso_size);
-      if (rv == 1) {
-        on_send_blocked(ps.path.remote, data, datalen, gso_size);
-      }
-      signal_write();
-      return 0;
+      pkt = std::span{std::begin(txbuf), std::begin(buf)};
+      break;
     }
-#endif // UDP_SEGMENT
   }
+
+  if (write_udp_or_blocked(ps.path, pkt, gso_size) != 0) {
+    if (!extra_pkt.empty()) {
+      on_send_blocked(ps.path.remote, extra_pkt, extra_pkt.size());
+    }
+  } else if (!extra_pkt.empty()) {
+    write_udp_or_blocked(ps.path, extra_pkt, extra_pkt.size());
+  }
+
+  ngtcp2_conn_update_pkt_tx_time(quic.conn, ts);
+
+  return 0;
+}
+
+int Client::write_udp_or_blocked(const ngtcp2_path &path,
+                                 std::span<const uint8_t> data,
+                                 size_t gso_size) {
+  auto rest = write_udp(path.remote.addr, path.remote.addrlen, data, gso_size);
+  if (!rest.empty()) {
+    on_send_blocked(path.remote, data, gso_size);
+
+    return -1;
+  }
+
+  return 0;
 }
 
 void Client::on_send_blocked(const ngtcp2_addr &remote_addr,
-                             const uint8_t *data, size_t datalen,
-                             size_t gso_size) {
+                             std::span<const uint8_t> data, size_t gso_size) {
   assert(quic.tx.num_blocked || !quic.tx.send_blocked);
   assert(quic.tx.num_blocked < 2);
 
@@ -854,22 +826,23 @@ void Client::on_send_blocked(const ngtcp2_addr &remote_addr,
 
   p.remote_addr.len = remote_addr.addrlen;
   p.data = data;
-  p.datalen = datalen;
   p.gso_size = gso_size;
+
+  signal_write();
 }
 
 int Client::send_blocked_packet() {
-  int rv;
-
   assert(quic.tx.send_blocked);
 
   for (; quic.tx.num_blocked_sent < quic.tx.num_blocked;
        ++quic.tx.num_blocked_sent) {
     auto &p = quic.tx.blocked[quic.tx.num_blocked_sent];
 
-    rv = write_udp(&p.remote_addr.su.sa, p.remote_addr.len, p.data, p.datalen,
-                   p.gso_size);
-    if (rv == 1) {
+    auto rest =
+      write_udp(&p.remote_addr.su.sa, p.remote_addr.len, p.data, p.gso_size);
+    if (!rest.empty()) {
+      p.data = rest;
+
       signal_write();
 
       return 0;

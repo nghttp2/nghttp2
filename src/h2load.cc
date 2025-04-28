@@ -505,6 +505,9 @@ Client::Client(uint32_t id, Worker *worker, size_t req_todo)
 #ifdef ENABLE_HTTP3
   ev_timer_init(&quic.pkt_timer, quic_pkt_timeout_cb, 0., 0.);
   quic.pkt_timer.data = this;
+#  ifndef UDP_SEGMENT
+  quic.tx.no_gso = true;
+#  endif // UDP_SEGMENT
 
   if (config.is_quic()) {
     quic.tx.data = std::make_unique<uint8_t[]>(64_k);
@@ -1456,12 +1459,27 @@ int Client::write_tls() {
 }
 
 #ifdef ENABLE_HTTP3
-// Returns 1 if sendmsg is blocked.
-int Client::write_udp(const sockaddr *addr, socklen_t addrlen,
-                      const uint8_t *data, size_t datalen, size_t gso_size) {
+// Returns remaining bytes if sendmsg is blocked.
+std::span<const uint8_t> Client::write_udp(const sockaddr *addr,
+                                           socklen_t addrlen,
+                                           std::span<const uint8_t> data,
+                                           size_t gso_size) {
+  if (quic.tx.no_gso && data.size() > gso_size) {
+    for (; !data.empty();) {
+      auto len = std::min(data.size(), gso_size);
+      if (!write_udp(addr, addrlen, data.first(len), len).empty()) {
+        return data;
+      }
+
+      data = data.subspan(len);
+    }
+
+    return {};
+  }
+
   iovec msg_iov;
-  msg_iov.iov_base = const_cast<uint8_t *>(data);
-  msg_iov.iov_len = datalen;
+  msg_iov.iov_base = const_cast<uint8_t *>(data.data());
+  msg_iov.iov_len = data.size();
 
   msghdr msg{};
   msg.msg_name = const_cast<sockaddr *>(addr);
@@ -1471,7 +1489,7 @@ int Client::write_udp(const sockaddr *addr, socklen_t addrlen,
 
 #  ifdef UDP_SEGMENT
   std::array<uint8_t, CMSG_SPACE(sizeof(uint16_t))> msg_ctrl{};
-  if (gso_size && datalen > gso_size) {
+  if (data.size() > gso_size) {
     msg.msg_control = msg_ctrl.data();
     msg.msg_controllen = msg_ctrl.size();
 
@@ -1487,19 +1505,23 @@ int Client::write_udp(const sockaddr *addr, socklen_t addrlen,
   auto nwrite = sendmsg(fd, &msg, 0);
   if (nwrite < 0) {
     if (errno == EAGAIN || errno == EWOULDBLOCK) {
-      return 1;
+      return data;
+    }
+
+    if (errno == EIO && !quic.tx.no_gso) {
+      quic.tx.no_gso = true;
+
+      return write_udp(addr, addrlen, data, gso_size);
     }
 
     std::cerr << "sendmsg: errno=" << errno << std::endl;
-  } else if (gso_size) {
-    worker->stats.udp_dgram_sent += (datalen + gso_size - 1) / gso_size;
   } else {
-    ++worker->stats.udp_dgram_sent;
+    worker->stats.udp_dgram_sent += (data.size() + gso_size - 1) / gso_size;
   }
 
   ev_io_stop(worker->loop, &wev);
 
-  return 0;
+  return {};
 }
 #endif // ENABLE_HTTP3
 

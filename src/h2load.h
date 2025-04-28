@@ -42,6 +42,7 @@
 #include <memory>
 #include <chrono>
 #include <array>
+#include <span>
 
 #define NGHTTP2_NO_SSIZE_T
 #include <nghttp2/nghttp2.h>
@@ -370,11 +371,11 @@ struct Client {
       size_t num_blocked_sent;
       struct {
         Address remote_addr;
-        const uint8_t *data;
-        size_t datalen;
+        std::span<const uint8_t> data;
         size_t gso_size;
       } blocked[2];
       std::unique_ptr<uint8_t[]> data;
+      bool no_gso;
     } tx;
   } quic;
 #endif // ENABLE_HTTP3
@@ -497,10 +498,13 @@ struct Client {
   void quic_free();
   int read_quic();
   int write_quic();
-  int write_udp(const sockaddr *addr, socklen_t addrlen, const uint8_t *data,
-                size_t datalen, size_t gso_size);
-  void on_send_blocked(const ngtcp2_addr &remote_addr, const uint8_t *data,
-                       size_t datalen, size_t gso_size);
+  std::span<const uint8_t> write_udp(const sockaddr *addr, socklen_t addrlen,
+                                     std::span<const uint8_t> data,
+                                     size_t gso_size);
+  int write_udp_or_blocked(const ngtcp2_path &path,
+                           std::span<const uint8_t> data, size_t gso_size);
+  void on_send_blocked(const ngtcp2_addr &remote_addr,
+                       std::span<const uint8_t> data, size_t gso_size);
   int send_blocked_packet();
   void quic_close_connection();
 
