@@ -1858,9 +1858,8 @@ Http3Upstream::send_packet(const UpstreamAddr *faddr, const sockaddr *remote_sa,
   if (tx_.no_gso) {
     for (; !data.empty();) {
       auto len = std::min(gso_size, data.size());
-      auto rv =
-        quic_send_packet(faddr, remote_sa, remote_salen, local_sa, local_salen,
-                         pi, {std::begin(data), len}, gso_size);
+      auto rv = quic_send_packet(faddr, remote_sa, remote_salen, local_sa,
+                                 local_salen, pi, data.first(len), gso_size);
       if (rv != 0) {
         switch (rv) {
         case -EAGAIN:
