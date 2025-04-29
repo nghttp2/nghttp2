@@ -237,7 +237,7 @@ uint8_t *concat_string_ref_copy(uint8_t *p, const StringRef &value,
 // given order.  The resulting string will be NULL-terminated.
 template <typename... Args>
 StringRef concat_string_ref(BlockAllocator &alloc, Args &&...args) {
-  size_t len = concat_string_ref_count(0, std::forward<Args>(args)...);
+  auto len = concat_string_ref_count(0, std::forward<Args>(args)...);
   auto dst = static_cast<uint8_t *>(alloc.alloc(len + 1));
   auto p = dst;
   p = concat_string_ref_copy(p, std::forward<Args>(args)...);
