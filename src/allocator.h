@@ -207,7 +207,7 @@ inline StringRef make_string_ref(BlockAllocator &alloc, const StringRef &src) {
 
 // private function used in concat_string_ref.  this is the base
 // function of concat_string_ref_count().
-inline constexpr size_t concat_string_ref_count(size_t acc) { return acc; }
+constexpr size_t concat_string_ref_count(size_t acc) { return acc; }
 
 // private function used in concat_string_ref.  This function counts
 // the sum of length of given arguments.  The calculated length is
