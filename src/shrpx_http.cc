@@ -73,7 +73,7 @@ StringRef create_forwarded(BlockAllocator &balloc, int params,
   }
 
   auto iov = make_byte_ref(balloc, len + 1);
-  auto p = std::begin(iov);
+  auto p = std::ranges::begin(iov);
 
   if ((params & FORWARDED_BY) && !node_by.empty()) {
     // This must be quoted-string unless it is obfuscated version
@@ -81,49 +81,49 @@ StringRef create_forwarded(BlockAllocator &balloc, int params,
     // "localhost" for UNIX domain socket), since ':' is not allowed
     // in token.  ':' is used to separate host and port.
     if (node_by[0] == '_' || node_by[0] == 'l') {
-      p = util::copy_lit(p, "by=");
-      p = std::copy(std::begin(node_by), std::end(node_by), p);
-      p = util::copy_lit(p, ";");
+      p = std::ranges::copy("by="sv, p).out;
+      p = std::ranges::copy(node_by, p).out;
+      *p++ = ';';
     } else {
-      p = util::copy_lit(p, "by=\"");
-      p = std::copy(std::begin(node_by), std::end(node_by), p);
-      p = util::copy_lit(p, "\";");
+      p = std::ranges::copy("by=\""sv, p).out;
+      p = std::ranges::copy(node_by, p).out;
+      p = std::ranges::copy("\";"sv, p).out;
     }
   }
   if ((params & FORWARDED_FOR) && !node_for.empty()) {
     // We only quote IPv6 literal address only, which starts with '['.
     if (node_for[0] == '[') {
-      p = util::copy_lit(p, "for=\"");
-      p = std::copy(std::begin(node_for), std::end(node_for), p);
-      p = util::copy_lit(p, "\";");
+      p = std::ranges::copy("for=\""sv, p).out;
+      p = std::ranges::copy(node_for, p).out;
+      p = std::ranges::copy("\";"sv, p).out;
     } else {
-      p = util::copy_lit(p, "for=");
-      p = std::copy(std::begin(node_for), std::end(node_for), p);
-      p = util::copy_lit(p, ";");
+      p = std::ranges::copy("for="sv, p).out;
+      p = std::ranges::copy(node_for, p).out;
+      *p++ = ';';
     }
   }
   if ((params & FORWARDED_HOST) && !host.empty()) {
     // Just be quoted to skip checking characters.
-    p = util::copy_lit(p, "host=\"");
-    p = std::copy(std::begin(host), std::end(host), p);
-    p = util::copy_lit(p, "\";");
+    p = std::ranges::copy("host=\""sv, p).out;
+    p = std::ranges::copy(host, p).out;
+    p = std::ranges::copy("\";"sv, p).out;
   }
   if ((params & FORWARDED_PROTO) && !proto.empty()) {
     // Scheme production rule only allow characters which are all in
     // token.
-    p = util::copy_lit(p, "proto=");
-    p = std::copy(std::begin(proto), std::end(proto), p);
+    p = std::ranges::copy("proto="sv, p).out;
+    p = std::ranges::copy(proto, p).out;
     *p++ = ';';
   }
 
-  if (std::begin(iov) == p) {
+  if (std::ranges::begin(iov) == p) {
     return StringRef{};
   }
 
   --p;
   *p = '\0';
 
-  return StringRef{std::span{std::begin(iov), p}};
+  return StringRef{std::span{std::ranges::begin(iov), p}};
 }
 
 std::string colorizeHeaders(const char *hdrs) {
@@ -187,19 +187,19 @@ StringRef create_affinity_cookie(BlockAllocator &balloc, const StringRef &name,
   }
 
   auto iov = make_byte_ref(balloc, len + 1);
-  auto p = std::copy(std::begin(name), std::end(name), std::begin(iov));
+  auto p = std::ranges::copy(name, std::ranges::begin(iov)).out;
   *p++ = '=';
   affinity_cookie = htonl(affinity_cookie);
   p = util::format_hex(p, std::span{&affinity_cookie, 1});
   if (!path.empty()) {
-    p = std::copy(std::begin(PATH_PREFIX), std::end(PATH_PREFIX), p);
-    p = std::copy(std::begin(path), std::end(path), p);
+    p = std::ranges::copy(PATH_PREFIX, p).out;
+    p = std::ranges::copy(path, p).out;
   }
   if (secure) {
-    p = std::copy(std::begin(SECURE), std::end(SECURE), p);
+    p = std::ranges::copy(SECURE, p).out;
   }
   *p = '\0';
-  return StringRef{std::span{std::begin(iov), p}};
+  return StringRef{std::span{std::ranges::begin(iov), p}};
 }
 
 bool require_cookie_secure_attribute(SessionAffinityCookieSecure secure,
@@ -241,28 +241,28 @@ StringRef create_altsvc_header_value(BlockAllocator &balloc,
 
   // We will write additional ", " at the end, and cut it later.
   auto iov = make_byte_ref(balloc, len + 2);
-  auto p = std::begin(iov);
+  auto p = std::ranges::begin(iov);
 
   for (auto &altsvc : altsvcs) {
     p = util::percent_encode_token(p, altsvc.protocol_id);
-    p = util::copy_lit(p, "=\"");
+    p = std::ranges::copy("=\""sv, p).out;
     p = util::quote_string(p, altsvc.host);
     *p++ = ':';
-    p = std::copy(std::begin(altsvc.service), std::end(altsvc.service), p);
+    p = std::ranges::copy(altsvc.service, p).out;
     *p++ = '"';
     if (!altsvc.params.empty()) {
-      p = util::copy_lit(p, "; ");
-      p = std::copy(std::begin(altsvc.params), std::end(altsvc.params), p);
+      p = std::ranges::copy("; "sv, p).out;
+      p = std::ranges::copy(altsvc.params, p).out;
     }
-    p = util::copy_lit(p, ", ");
+    p = std::ranges::copy(", "sv, p).out;
   }
 
   p -= 2;
   *p = '\0';
 
-  assert(static_cast<size_t>(p - std::begin(iov)) == len);
+  assert(static_cast<size_t>(p - std::ranges::begin(iov)) == len);
 
-  return StringRef{std::span{std::begin(iov), p}};
+  return StringRef{std::span{std::ranges::begin(iov), p}};
 }
 
 bool check_http_scheme(const StringRef &scheme, bool encrypted) {

@@ -28,6 +28,7 @@
 #include "shrpx.h"
 
 #include <string>
+#include <algorithm>
 
 #include <nghttp2/nghttp2.h>
 
@@ -36,6 +37,7 @@
 #include "allocator.h"
 
 using namespace nghttp2;
+using namespace std::literals;
 
 namespace shrpx {
 
@@ -50,7 +52,7 @@ OutputIt create_via_header_value(OutputIt dst, int major, int minor) {
     *dst++ = '.';
     *dst++ = static_cast<char>(minor + '0');
   }
-  return util::copy_lit(dst, " nghttpx");
+  return std::ranges::copy(" nghttpx"sv, dst).out;
 }
 
 // Returns generated RFC 7239 Forwarded header field value.  The

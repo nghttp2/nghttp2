@@ -25,6 +25,7 @@
 #include "shrpx_downstream.h"
 
 #include <cassert>
+#include <algorithm>
 
 #include "urlparse.h"
 
@@ -362,7 +363,7 @@ StringRef Downstream::assemble_request_cookie() {
     }
 
     p = std::copy(std::begin(kv.value), end, p);
-    p = util::copy_lit(p, "; ");
+    p = std::ranges::copy("; "sv, p).out;
   }
 
   // cut trailing "; "
