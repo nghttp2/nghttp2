@@ -114,8 +114,9 @@ int Http2Upstream::upgrade_upstream(HttpsUpstream *http) {
   auto http2_settings = http->get_downstream()->get_http2_settings();
   http2_settings = util::to_base64(balloc, http2_settings);
 
-  auto settings_payload = base64::decode(balloc, std::begin(http2_settings),
-                                         std::end(http2_settings));
+  auto settings_payload =
+    base64::decode(balloc, std::ranges::begin(http2_settings),
+                   std::ranges::end(http2_settings));
 
   rv = nghttp2_session_upgrade2(
     session_, settings_payload.data(), settings_payload.size(),
@@ -1837,16 +1838,16 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
     }
 
     auto iov = make_byte_ref(balloc, len + 1);
-    auto p = std::begin(iov);
+    auto p = std::ranges::begin(iov);
     if (via) {
-      p = std::copy(std::begin(via->value), std::end(via->value), p);
-      p = util::copy_lit(p, ", ");
+      p = std::ranges::copy(via->value, p).out;
+      p = std::ranges::copy(", "sv, p).out;
     }
     p = http::create_via_header_value(p, resp.http_major, resp.http_minor);
     *p = '\0';
 
-    nva.push_back(
-      http2::make_field("via"_sr, StringRef{std::span{std::begin(iov), p}}));
+    nva.push_back(http2::make_field(
+      "via"_sr, StringRef{std::span{std::ranges::begin(iov), p}}));
   }
 
   for (auto &p : httpconf.add_response_headers) {
