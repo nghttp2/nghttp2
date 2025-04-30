@@ -205,12 +205,12 @@ Log::~Log() {
 }
 
 Log &Log::operator<<(const std::string &s) {
-  write_seq(std::begin(s), std::end(s));
+  write_seq(std::ranges::begin(s), std::ranges::end(s));
   return *this;
 }
 
 Log &Log::operator<<(const StringRef &s) {
-  write_seq(std::begin(s), std::end(s));
+  write_seq(std::ranges::begin(s), std::ranges::end(s));
   return *this;
 }
 
@@ -220,7 +220,7 @@ Log &Log::operator<<(const char *s) {
 }
 
 Log &Log::operator<<(const ImmutableString &s) {
-  write_seq(std::begin(s), std::end(s));
+  write_seq(std::ranges::begin(s), std::ranges::end(s));
   return *this;
 }
 
@@ -361,7 +361,7 @@ std::pair<OutputIterator, OutputIterator> copy(const char *src, size_t srclen,
                                                OutputIterator d_last) {
   auto nwrite =
     std::min(static_cast<size_t>(std::distance(d_first, d_last)), srclen);
-  return std::make_pair(std::copy_n(src, nwrite, d_first), d_last);
+  return std::make_pair(std::ranges::copy_n(src, nwrite, d_first).out, d_last);
 }
 } // namespace
 
@@ -378,14 +378,6 @@ template <typename OutputIterator>
 std::pair<OutputIterator, OutputIterator>
 copy(const StringRef &src, OutputIterator d_first, OutputIterator d_last) {
   return copy(src.data(), src.size(), d_first, d_last);
-}
-} // namespace
-
-namespace {
-template <size_t N, typename OutputIterator>
-std::pair<OutputIterator, OutputIterator>
-copy_l(const char (&src)[N], OutputIterator d_first, OutputIterator d_last) {
-  return copy(src, N - 1, d_first, d_last);
 }
 } // namespace
 
@@ -552,21 +544,21 @@ StringRef construct_absolute_request_uri(BlockAllocator &balloc,
   }
 
   auto iov = make_byte_ref(balloc, len + 1);
-  auto p = std::begin(iov);
+  auto p = std::ranges::begin(iov);
 
   if (req.scheme.empty()) {
     // We may have to log the request which lacks scheme (e.g.,
     // http/1.1 with origin form).
-    p = util::copy_lit(p, "http://");
+    p = std::ranges::copy("http://"sv, p).out;
   } else {
-    p = std::copy(std::begin(req.scheme), std::end(req.scheme), p);
-    p = util::copy_lit(p, "://");
+    p = std::ranges::copy(req.scheme, p).out;
+    p = std::ranges::copy("://"sv, p).out;
   }
-  p = std::copy(std::begin(req.authority), std::end(req.authority), p);
-  p = std::copy(std::begin(req.path), std::end(req.path), p);
+  p = std::ranges::copy(req.authority, p).out;
+  p = std::ranges::copy(req.path, p).out;
   *p = '\0';
 
-  return StringRef{std::span{std::begin(iov), p}};
+  return StringRef{std::span{std::ranges::begin(iov), p}};
 }
 } // namespace
 
@@ -600,11 +592,12 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
   auto path_without_query =
     req.method == HTTP_CONNECT
       ? path
-      : StringRef{std::begin(path),
-                  std::find(std::begin(path), std::end(path), '?')};
+      : StringRef{
+          std::ranges::begin(path),
+          std::find(std::ranges::begin(path), std::ranges::end(path), '?')};
 
-  auto p = std::begin(buf);
-  auto last = std::end(buf) - 2;
+  auto p = std::ranges::begin(buf);
+  auto last = std::ranges::end(buf) - 2;
 
   for (auto &lf : lfv) {
     switch (lf.type) {
@@ -624,7 +617,7 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
       std::tie(p, last) = copy(method, p, last);
       std::tie(p, last) = copy(' ', p, last);
       std::tie(p, last) = copy_escape(path, p, last);
-      std::tie(p, last) = copy_l(" HTTP/", p, last);
+      std::tie(p, last) = copy(" HTTP/"_sr, p, last);
       std::tie(p, last) = copy(req.http_major, p, last);
       if (req.http_major < 2) {
         std::tie(p, last) = copy('.', p, last);
@@ -641,7 +634,7 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
       std::tie(p, last) = copy_escape(path_without_query, p, last);
       break;
     case LogFragmentType::PROTOCOL_VERSION:
-      std::tie(p, last) = copy_l("HTTP/", p, last);
+      std::tie(p, last) = copy("HTTP/"_sr, p, last);
       std::tie(p, last) = copy(req.http_major, p, last);
       if (req.http_major < 2) {
         std::tie(p, last) = copy('.', p, last);
@@ -859,7 +852,7 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
 
   *p++ = '\n';
 
-  auto nwrite = std::distance(std::begin(buf), p);
+  auto nwrite = std::distance(std::ranges::begin(buf), p);
   while (write(lgconf->accesslog_fd, buf.data(), nwrite) == -1 &&
          errno == EINTR)
     ;

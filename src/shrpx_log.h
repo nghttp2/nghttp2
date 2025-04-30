@@ -32,6 +32,7 @@
 #include <memory>
 #include <vector>
 #include <chrono>
+#include <algorithm>
 
 #include "shrpx_log_config.h"
 #include "tls.h"
@@ -143,7 +144,7 @@ public:
 
     auto d = std::distance(first, last);
     auto n = std::min(wleft(), static_cast<size_t>(d));
-    last_ = std::copy(first, first + n, last_);
+    last_ = std::ranges::copy_n(first, n, last_).out;
     update_full();
   }
 
