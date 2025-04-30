@@ -902,7 +902,7 @@ int Http3Upstream::write_streams() {
     }
 
     if (nwrite == 0) {
-      pkt = std::span{std::begin(txbuf), std::begin(buf)};
+      pkt = std::span{std::ranges::begin(txbuf), std::ranges::begin(buf)};
       if (pkt.empty()) {
         return 0;
       }
@@ -910,11 +910,11 @@ int Http3Upstream::write_streams() {
       break;
     }
 
-    auto last_pkt_pos = std::begin(buf);
+    auto last_pkt_pos = std::ranges::begin(buf);
 
     buf = buf.subspan(nwrite);
 
-    if (last_pkt_pos == std::begin(txbuf)) {
+    if (last_pkt_pos == std::ranges::begin(txbuf)) {
       ngtcp2_path_copy(&prev_ps.path, &ps.path);
       prev_pi = pi;
       gso_size = nwrite;
@@ -923,14 +923,14 @@ int Http3Upstream::write_streams() {
                static_cast<size_t>(nwrite) > gso_size ||
                (gso_size > path_max_udp_payload_size &&
                 static_cast<size_t>(nwrite) != gso_size)) {
-      pkt = std::span{std::begin(txbuf), last_pkt_pos};
-      extra_pkt = std::span{last_pkt_pos, std::begin(buf)};
+      pkt = std::span{std::ranges::begin(txbuf), last_pkt_pos};
+      extra_pkt = std::span{last_pkt_pos, std::ranges::begin(buf)};
       break;
     }
 
     if (buf.size() < path_max_udp_payload_size ||
         static_cast<size_t>(nwrite) < gso_size) {
-      pkt = std::span{std::begin(txbuf), std::begin(buf)};
+      pkt = std::span{std::ranges::begin(txbuf), std::ranges::begin(buf)};
       break;
     }
   }
@@ -1375,16 +1375,16 @@ int Http3Upstream::on_downstream_header_complete(Downstream *downstream) {
     }
 
     auto iov = make_byte_ref(balloc, len + 1);
-    auto p = std::begin(iov);
+    auto p = std::ranges::begin(iov);
     if (via) {
-      p = std::copy(std::begin(via->value), std::end(via->value), p);
-      p = util::copy_lit(p, ", ");
+      p = std::ranges::copy(via->value, p).out;
+      p = std::ranges::copy(", "sv, p).out;
     }
     p = http::create_via_header_value(p, resp.http_major, resp.http_minor);
     *p = '\0';
 
-    nva.push_back(
-      http3::make_field("via"_sr, StringRef{std::span{std::begin(iov), p}}));
+    nva.push_back(http3::make_field(
+      "via"_sr, StringRef{std::span{std::ranges::begin(iov), p}}));
   }
 
   for (auto &p : httpconf.add_response_headers) {
