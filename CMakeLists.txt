@@ -369,7 +369,7 @@ check_function_exists(clock_gettime HAVE_CLOCK_GETTIME)
 check_function_exists(mkostemp  HAVE_MKOSTEMP)
 check_function_exists(pipe2     HAVE_PIPE2)
 
-check_symbol_exists(GetTickCount64 sysinfoapi.h HAVE_GETTICKCOUNT64)
+check_symbol_exists(GetTickCount64 "windows.h;sysinfoapi.h" HAVE_GETTICKCOUNT64)
 
 include(CheckSymbolExists)
 # XXX does this correctly detect initgroups (un)availability on cygwin?
