@@ -358,8 +358,8 @@ namespace {
 template <typename OutputIterator>
 OutputIterator copy(const char *src, size_t srclen, OutputIterator d_first,
                     OutputIterator d_last) {
-  auto nwrite =
-    std::min(static_cast<size_t>(std::distance(d_first, d_last)), srclen);
+  auto nwrite = std::min(
+    static_cast<size_t>(std::ranges::distance(d_first, d_last)), srclen);
   return std::ranges::copy_n(src, nwrite, d_first).out;
 }
 } // namespace
@@ -400,7 +400,8 @@ template <typename OutputIterator>
 OutputIterator copy_hex_low(const uint8_t *src, size_t srclen,
                             OutputIterator d_first, OutputIterator d_last) {
   auto nwrite =
-    std::min(static_cast<size_t>(std::distance(d_first, d_last)), srclen * 2) /
+    std::min(static_cast<size_t>(std::ranges::distance(d_first, d_last)),
+             srclen * 2) /
     2;
   for (size_t i = 0; i < nwrite; ++i) {
     *d_first++ = LOWER_XDIGITS[src[i] >> 4];
@@ -413,7 +414,7 @@ OutputIterator copy_hex_low(const uint8_t *src, size_t srclen,
 namespace {
 template <typename OutputIterator, typename T>
 OutputIterator copy(T n, OutputIterator d_first, OutputIterator d_last) {
-  if (static_cast<size_t>(std::distance(d_first, d_last)) <
+  if (static_cast<size_t>(std::ranges::distance(d_first, d_last)) <
       NGHTTP2_MAX_UINT64_DIGITS) {
     return d_last;
   }
@@ -491,10 +492,10 @@ OutputIterator copy_escape(const char *src, size_t srclen,
       continue;
     }
 
-    auto n =
-      std::min(std::distance(d_first, d_last), std::distance(safe_first, p));
-    d_first = std::copy_n(safe_first, n, d_first);
-    if (std::distance(d_first, d_last) < 4) {
+    auto n = std::min(std::ranges::distance(d_first, d_last),
+                      std::ranges::distance(safe_first, p));
+    d_first = std::ranges::copy_n(safe_first, n, d_first).out;
+    if (std::ranges::distance(d_first, d_last) < 4) {
       return d_first;
     }
     *d_first++ = '\\';
@@ -504,9 +505,9 @@ OutputIterator copy_escape(const char *src, size_t srclen,
     safe_first = p + 1;
   }
 
-  auto n = std::min(std::distance(d_first, d_last),
-                    std::distance(safe_first, src + srclen));
-  return std::copy_n(safe_first, n, d_first);
+  auto n = std::min(std::ranges::distance(d_first, d_last),
+                    std::ranges::distance(safe_first, src + srclen));
+  return std::ranges::copy_n(safe_first, n, d_first).out;
 }
 } // namespace
 
@@ -586,9 +587,7 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
   auto path_without_query =
     req.method == HTTP_CONNECT
       ? path
-      : StringRef{
-          std::ranges::begin(path),
-          std::find(std::ranges::begin(path), std::ranges::end(path), '?')};
+      : StringRef{std::ranges::begin(path), std::ranges::find(path, '?')};
 
   auto p = std::ranges::begin(buf);
   auto last = std::ranges::end(buf) - 2;

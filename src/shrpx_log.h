@@ -142,7 +142,7 @@ public:
       return;
     }
 
-    auto d = std::distance(first, last);
+    auto d = std::ranges::distance(first, last);
     auto n = std::min(wleft(), static_cast<size_t>(d));
     last_ = std::ranges::copy_n(first, n, last_).out;
     update_full();
