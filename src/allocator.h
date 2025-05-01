@@ -34,6 +34,7 @@
 #include <cassert>
 #include <utility>
 #include <span>
+#include <algorithm>
 
 #include "template.h"
 
@@ -179,7 +180,7 @@ struct BlockAllocator {
     auto nalloclen = std::max(size + 1, alloclen * 2);
 
     auto res = alloc(nalloclen);
-    std::copy_n(p, alloclen, static_cast<uint8_t *>(res));
+    std::ranges::copy_n(p, alloclen, static_cast<uint8_t *>(res));
 
     return res;
   }
@@ -197,18 +198,15 @@ struct BlockAllocator {
 
 // Makes a copy of |src|.  The resulting string will be
 // NULL-terminated.
-template <typename BlockAllocator>
-StringRef make_string_ref(BlockAllocator &alloc, const StringRef &src) {
+inline StringRef make_string_ref(BlockAllocator &alloc, const StringRef &src) {
   auto dst = static_cast<uint8_t *>(alloc.alloc(src.size() + 1));
-  auto p = dst;
-  p = std::copy(std::begin(src), std::end(src), p);
-  *p = '\0';
+  *std::ranges::copy(src, dst).out = '\0';
   return StringRef{dst, src.size()};
 }
 
 // private function used in concat_string_ref.  this is the base
 // function of concat_string_ref_count().
-inline constexpr size_t concat_string_ref_count(size_t acc) { return acc; }
+constexpr size_t concat_string_ref_count(size_t acc) { return acc; }
 
 // private function used in concat_string_ref.  This function counts
 // the sum of length of given arguments.  The calculated length is
@@ -231,15 +229,15 @@ inline uint8_t *concat_string_ref_copy(uint8_t *p) { return p; }
 template <typename... Args>
 uint8_t *concat_string_ref_copy(uint8_t *p, const StringRef &value,
                                 Args &&...args) {
-  p = std::copy(std::begin(value), std::end(value), p);
-  return concat_string_ref_copy(p, std::forward<Args>(args)...);
+  return concat_string_ref_copy(std::ranges::copy(value, p).out,
+                                std::forward<Args>(args)...);
 }
 
 // Returns the string which is the concatenation of |args| in the
 // given order.  The resulting string will be NULL-terminated.
-template <typename BlockAllocator, typename... Args>
+template <typename... Args>
 StringRef concat_string_ref(BlockAllocator &alloc, Args &&...args) {
-  size_t len = concat_string_ref_count(0, std::forward<Args>(args)...);
+  auto len = concat_string_ref_count(0, std::forward<Args>(args)...);
   auto dst = static_cast<uint8_t *>(alloc.alloc(len + 1));
   auto p = dst;
   p = concat_string_ref_copy(p, std::forward<Args>(args)...);
@@ -253,7 +251,7 @@ StringRef concat_string_ref(BlockAllocator &alloc, Args &&...args) {
 // obtained from alloc.alloc() or alloc.realloc(), and attempts to use
 // unused memory region by using alloc.realloc().  If value is empty,
 // then just call concat_string_ref().
-template <typename BlockAllocator, typename... Args>
+template <typename... Args>
 StringRef realloc_concat_string_ref(BlockAllocator &alloc,
                                     const StringRef &value, Args &&...args) {
   if (value.empty()) {
@@ -272,8 +270,7 @@ StringRef realloc_concat_string_ref(BlockAllocator &alloc,
 }
 
 // Makes an uninitialized buffer with given size.
-template <typename BlockAllocator>
-std::span<uint8_t> make_byte_ref(BlockAllocator &alloc, size_t size) {
+inline std::span<uint8_t> make_byte_ref(BlockAllocator &alloc, size_t size) {
   return {static_cast<uint8_t *>(alloc.alloc(size)), size};
 }
 
