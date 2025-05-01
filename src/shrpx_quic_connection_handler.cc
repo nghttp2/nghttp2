@@ -558,7 +558,7 @@ int QUICConnectionHandler::send_version_negotiation(
     return -1;
   }
 
-  auto pkt = std::span{std::begin(buf), static_cast<size_t>(nwrite)};
+  auto pkt = std::span{buf}.first(nwrite);
   return quic_send_packet(faddr, &remote_addr.su.sa, remote_addr.len,
                           &local_addr.su.sa, local_addr.len, ngtcp2_pkt_info{},
                           pkt, pkt.size());
@@ -634,7 +634,7 @@ int QUICConnectionHandler::send_stateless_reset(const UpstreamAddr *faddr,
               << " dcid=" << util::format_hex(dcid);
   }
 
-  auto pkt = std::span{std::begin(buf), static_cast<size_t>(nwrite)};
+  auto pkt = std::span{buf}.first(nwrite);
   return quic_send_packet(faddr, &remote_addr.su.sa, remote_addr.len,
                           &local_addr.su.sa, local_addr.len, ngtcp2_pkt_info{},
                           pkt, pkt.size());
@@ -666,7 +666,7 @@ int QUICConnectionHandler::send_connection_close(
               << util::format_hex(std::span{ini_dcid.data, ini_dcid.datalen});
   }
 
-  auto pkt = std::span{std::begin(buf), static_cast<size_t>(nwrite)};
+  auto pkt = std::span{buf}.first(nwrite);
   return quic_send_packet(faddr, &remote_addr.su.sa, remote_addr.len,
                           &local_addr.su.sa, local_addr.len, ngtcp2_pkt_info{},
                           pkt, pkt.size());
