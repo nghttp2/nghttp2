@@ -28,6 +28,8 @@
 
 #include "util.h"
 
+using namespace std::literals;
+
 namespace nghttp2 {
 
 namespace http2 {
@@ -280,9 +282,9 @@ void copy_url_component(std::string &dest, const urlparse_url *u, int field,
 
 Headers::value_type to_header(const StringRef &name, const StringRef &value,
                               bool no_index, int32_t token) {
-  return Header(std::string{std::begin(name), std::end(name)},
-                std::string{std::begin(value), std::end(value)}, no_index,
-                token);
+  return Header(std::string{std::ranges::begin(name), std::ranges::end(name)},
+                std::string{std::ranges::begin(value), std::ranges::end(value)},
+                no_index, token);
 }
 
 void add_header(Headers &nva, const StringRef &name, const StringRef &value,
@@ -308,12 +310,13 @@ namespace {
 void copy_headers_to_nva_internal(std::vector<nghttp2_nv> &nva,
                                   const HeaderRefs &headers, uint8_t nv_flags,
                                   uint32_t flags) {
-  auto it_forwarded = std::end(headers);
-  auto it_xff = std::end(headers);
-  auto it_xfp = std::end(headers);
-  auto it_via = std::end(headers);
+  auto it_forwarded = std::ranges::end(headers);
+  auto it_xff = std::ranges::end(headers);
+  auto it_xfp = std::ranges::end(headers);
+  auto it_via = std::ranges::end(headers);
 
-  for (auto it = std::begin(headers); it != std::end(headers); ++it) {
+  for (auto it = std::ranges::begin(headers); it != std::ranges::end(headers);
+       ++it) {
     auto kv = &(*it);
     if (kv->name.empty() || kv->name[0] == ':') {
       continue;
@@ -350,7 +353,7 @@ void copy_headers_to_nva_internal(std::vector<nghttp2_nv> &nva,
         continue;
       }
 
-      if (it_forwarded == std::end(headers)) {
+      if (it_forwarded == std::ranges::end(headers)) {
         it_forwarded = it;
         continue;
       }
@@ -363,7 +366,7 @@ void copy_headers_to_nva_internal(std::vector<nghttp2_nv> &nva,
         continue;
       }
 
-      if (it_xff == std::end(headers)) {
+      if (it_xff == std::ranges::end(headers)) {
         it_xff = it;
         continue;
       }
@@ -376,7 +379,7 @@ void copy_headers_to_nva_internal(std::vector<nghttp2_nv> &nva,
         continue;
       }
 
-      if (it_xfp == std::end(headers)) {
+      if (it_xfp == std::ranges::end(headers)) {
         it_xfp = it;
         continue;
       }
@@ -389,7 +392,7 @@ void copy_headers_to_nva_internal(std::vector<nghttp2_nv> &nva,
         continue;
       }
 
-      if (it_via == std::end(headers)) {
+      if (it_via == std::ranges::end(headers)) {
         it_via = it;
         continue;
       }
@@ -419,12 +422,13 @@ void copy_headers_to_nva_nocopy(std::vector<nghttp2_nv> &nva,
 void build_http1_headers_from_headers(DefaultMemchunks *buf,
                                       const HeaderRefs &headers,
                                       uint32_t flags) {
-  auto it_forwarded = std::end(headers);
-  auto it_xff = std::end(headers);
-  auto it_xfp = std::end(headers);
-  auto it_via = std::end(headers);
+  auto it_forwarded = std::ranges::end(headers);
+  auto it_xff = std::ranges::end(headers);
+  auto it_xfp = std::ranges::end(headers);
+  auto it_via = std::ranges::end(headers);
 
-  for (auto it = std::begin(headers); it != std::end(headers); ++it) {
+  for (auto it = std::ranges::begin(headers); it != std::ranges::end(headers);
+       ++it) {
     auto kv = &(*it);
     if (kv->name.empty() || kv->name[0] == ':') {
       continue;
@@ -454,7 +458,7 @@ void build_http1_headers_from_headers(DefaultMemchunks *buf,
         continue;
       }
 
-      if (it_forwarded == std::end(headers)) {
+      if (it_forwarded == std::ranges::end(headers)) {
         it_forwarded = it;
         continue;
       }
@@ -467,7 +471,7 @@ void build_http1_headers_from_headers(DefaultMemchunks *buf,
         continue;
       }
 
-      if (it_xff == std::end(headers)) {
+      if (it_xff == std::ranges::end(headers)) {
         it_xff = it;
         continue;
       }
@@ -480,7 +484,7 @@ void build_http1_headers_from_headers(DefaultMemchunks *buf,
         continue;
       }
 
-      if (it_xfp == std::end(headers)) {
+      if (it_xfp == std::ranges::end(headers)) {
         it_xfp = it;
         continue;
       }
@@ -493,7 +497,7 @@ void build_http1_headers_from_headers(DefaultMemchunks *buf,
         continue;
       }
 
-      if (it_via == std::end(headers)) {
+      if (it_via == std::ranges::end(headers)) {
         it_via = it;
         continue;
       }
@@ -577,8 +581,9 @@ StringRef rewrite_location_uri(BlockAllocator &balloc, const StringRef &uri,
     return StringRef{};
   }
   auto field = &u.field_data[URLPARSE_HOST];
-  if (!util::starts_with(std::begin(match_host), std::end(match_host),
-                         &uri[field->off], &uri[field->off] + field->len) ||
+  if (!util::starts_with(std::ranges::begin(match_host),
+                         std::ranges::end(match_host), &uri[field->off],
+                         &uri[field->off] + field->len) ||
       (match_host.size() != field->len && match_host[field->len] != ':')) {
     return StringRef{};
   }
@@ -604,32 +609,31 @@ StringRef rewrite_location_uri(BlockAllocator &balloc, const StringRef &uri,
   }
 
   auto iov = make_byte_ref(balloc, len + 1);
-  auto p = std::begin(iov);
+  auto p = std::ranges::begin(iov);
 
   if (!request_authority.empty()) {
-    p = std::copy(std::begin(upstream_scheme), std::end(upstream_scheme), p);
-    p = util::copy_lit(p, "://");
-    p =
-      std::copy(std::begin(request_authority), std::end(request_authority), p);
+    p = std::ranges::copy(upstream_scheme, p).out;
+    p = std::ranges::copy("://"sv, p).out;
+    p = std::ranges::copy(request_authority, p).out;
   }
   if (u.field_set & (1 << URLPARSE_PATH)) {
     field = &u.field_data[URLPARSE_PATH];
-    p = std::copy_n(&uri[field->off], field->len, p);
+    p = std::ranges::copy_n(&uri[field->off], field->len, p).out;
   }
   if (u.field_set & (1 << URLPARSE_QUERY)) {
     field = &u.field_data[URLPARSE_QUERY];
     *p++ = '?';
-    p = std::copy_n(&uri[field->off], field->len, p);
+    p = std::ranges::copy_n(&uri[field->off], field->len, p).out;
   }
   if (u.field_set & (1 << URLPARSE_FRAGMENT)) {
     field = &u.field_data[URLPARSE_FRAGMENT];
     *p++ = '#';
-    p = std::copy_n(&uri[field->off], field->len, p);
+    p = std::ranges::copy_n(&uri[field->off], field->len, p).out;
   }
 
   *p = '\0';
 
-  return StringRef{std::span{std::begin(iov), p}};
+  return StringRef{std::span{std::ranges::begin(iov), p}};
 }
 
 int parse_http_status_code(const StringRef &src) {
@@ -913,9 +917,7 @@ int lookup_token(const StringRef &name) {
   return -1;
 }
 
-void init_hdidx(HeaderIndex &hdidx) {
-  std::fill(std::begin(hdidx), std::end(hdidx), -1);
-}
+void init_hdidx(HeaderIndex &hdidx) { std::ranges::fill(hdidx, -1); }
 
 void index_header(HeaderIndex &hdidx, int32_t token, size_t idx) {
   if (token == -1) {
@@ -1028,43 +1030,34 @@ namespace {
 // Returns true if link-param does not match pattern |pat| of length
 // |patlen| or it has empty value ("").  |pat| should be parmname
 // followed by "=".
-bool check_link_param_empty(const char *first, const char *last,
-                            const char *pat, size_t patlen) {
-  if (first + patlen <= last) {
-    if (std::equal(pat, pat + patlen, first, util::CaseCmp())) {
-      // we only accept URI if pat is followed by "" (e.g.,
-      // loadpolicy="") here.
-      if (first + patlen + 2 <= last) {
-        if (*(first + patlen) != '"' || *(first + patlen + 1) != '"') {
-          return false;
-        }
-      } else {
-        // here we got invalid production (anchor=") or anchor=?
-        return false;
-      }
-    }
-  }
-  return true;
+bool check_link_param_empty(const std::string_view &s,
+                            const std::string_view &pat) {
+  return s.size() < pat.size() ||
+         !std::ranges::equal(s.substr(0, pat.size()), pat, util::CaseCmp()) ||
+         (s.size() >= pat.size() + 2 &&
+          // we only accept URI if pat is followed by ""
+          // (e.g., loadpolicy="") here.
+          s[pat.size()] == '"' && s[pat.size() + 1] == '"');
 }
 } // namespace
 
 namespace {
 // Returns true if link-param consists of only parmname, and it
 // matches string [pat, pat + patlen).
-bool check_link_param_without_value(const char *first, const char *last,
-                                    const char *pat, size_t patlen) {
-  if (first + patlen > last) {
+bool check_link_param_without_value(const std::string_view &s,
+                                    const std::string_view &pat) {
+  if (s.size() < pat.size()) {
     return false;
   }
 
-  if (first + patlen == last) {
-    return std::equal(pat, pat + patlen, first, util::CaseCmp());
+  if (s.size() == pat.size()) {
+    return std::ranges::equal(s, pat, util::CaseCmp());
   }
 
-  switch (*(first + patlen)) {
+  switch (s[pat.size()]) {
   case ';':
   case ',':
-    return std::equal(pat, pat + patlen, first, util::CaseCmp());
+    return std::ranges::equal(s.substr(0, pat.size()), pat, util::CaseCmp());
   }
 
   return false;
@@ -1079,7 +1072,7 @@ parse_next_link_header_once(const char *first, const char *last) {
     return {{StringRef{}}, last};
   }
   auto url_first = ++first;
-  first = std::find(first, last, '>');
+  first = std::ranges::find(first, last, '>');
   if (first == last) {
     return {{StringRef{}}, first};
   }
@@ -1110,16 +1103,15 @@ parse_next_link_header_once(const char *first, const char *last) {
     if (!ign) {
       if (!ok) {
         // rel can take several relations using quoted form.
-        static constexpr char PLP[] = "rel=\"";
-        static constexpr size_t PLPLEN = str_size(PLP);
+        static constexpr auto PLP = "rel=\""sv;
+        static constexpr auto PLT = "preload"sv;
 
-        static constexpr char PLT[] = "preload";
-        static constexpr size_t PLTLEN = str_size(PLT);
-        if (first + PLPLEN < last && *(first + PLPLEN - 1) == '"' &&
-            std::equal(PLP, PLP + PLPLEN, first, util::CaseCmp())) {
+        if (first + PLP.size() < last && *(first + PLP.size() - 1) == '"' &&
+            std::ranges::equal(PLP, std::string_view{first, PLP.size()},
+                               util::CaseCmp())) {
           // we have to search preload in whitespace separated list:
           // rel="preload something http://example.org/foo"
-          first += PLPLEN;
+          first += PLP.size();
           auto start = first;
           for (; first != last;) {
             if (*first != ' ' && *first != '"') {
@@ -1131,8 +1123,9 @@ parse_next_link_header_once(const char *first, const char *last) {
               return {{StringRef{}}, last};
             }
 
-            if (!ok && start + PLTLEN == first &&
-                std::equal(PLT, PLT + PLTLEN, start, util::CaseCmp())) {
+            if (!ok && start + PLT.size() == first &&
+                std::ranges::equal(PLT, std::string_view{start, PLT.size()},
+                                   util::CaseCmp())) {
               ok = true;
             }
 
@@ -1160,56 +1153,50 @@ parse_next_link_header_once(const char *first, const char *last) {
       }
       // we are only interested in rel=preload parameter.  Others are
       // simply skipped.
-      static constexpr char PL[] = "rel=preload";
-      static constexpr size_t PLLEN = str_size(PL);
-      if (first + PLLEN == last) {
-        if (std::equal(PL, PL + PLLEN, first, util::CaseCmp())) {
+      static constexpr auto PL = "rel=preload"sv;
+      if (first + PL.size() == last) {
+        if (std::ranges::equal(PL, std::string_view{first, PL.size()},
+                               util::CaseCmp())) {
           // ok = true;
           // this is the end of sequence
           return {{{url_first, url_last}}, last};
         }
-      } else if (first + PLLEN + 1 <= last) {
-        switch (*(first + PLLEN)) {
+      } else if (first + PL.size() + 1 <= last) {
+        switch (*(first + PL.size())) {
         case ',':
-          if (!std::equal(PL, PL + PLLEN, first, util::CaseCmp())) {
+          if (!std::ranges::equal(PL, std::string_view{first, PL.size()},
+                                  util::CaseCmp())) {
             break;
           }
           // ok = true;
           // skip including ','
-          first += PLLEN + 1;
+          first += PL.size() + 1;
           return {{{url_first, url_last}}, first};
         case ';':
-          if (!std::equal(PL, PL + PLLEN, first, util::CaseCmp())) {
+          if (!std::ranges::equal(PL, std::string_view{first, PL.size()},
+                                  util::CaseCmp())) {
             break;
           }
           ok = true;
           // skip including ';'
-          first += PLLEN + 1;
+          first += PL.size() + 1;
           // continue parse next link-param
           continue;
         }
       }
       // we have to reject URI if we have nonempty anchor parameter.
-      static constexpr char ANCHOR[] = "anchor=";
-      static constexpr size_t ANCHORLEN = str_size(ANCHOR);
-      if (!ign && !check_link_param_empty(first, last, ANCHOR, ANCHORLEN)) {
+      if (!ign && !check_link_param_empty({first, last}, "anchor="sv)) {
         ign = true;
       }
 
       // reject URI if we have non-empty loadpolicy.  This could be
       // tightened up to just pick up "next" or "insert".
-      static constexpr char LOADPOLICY[] = "loadpolicy=";
-      static constexpr size_t LOADPOLICYLEN = str_size(LOADPOLICY);
-      if (!ign &&
-          !check_link_param_empty(first, last, LOADPOLICY, LOADPOLICYLEN)) {
+      if (!ign && !check_link_param_empty({first, last}, "loadpolicy="sv)) {
         ign = true;
       }
 
       // reject URI if we have nopush attribute.
-      static constexpr char NOPUSH[] = "nopush";
-      static constexpr size_t NOPUSHLEN = str_size(NOPUSH);
-      if (!ign &&
-          check_link_param_without_value(first, last, NOPUSH, NOPUSHLEN)) {
+      if (!ign && check_link_param_without_value({first, last}, "nopush"sv)) {
         ign = true;
       }
     }
@@ -1304,8 +1291,8 @@ almost_done:
 
 std::vector<LinkHeader> parse_link_header(const StringRef &src) {
   std::vector<LinkHeader> res;
-  for (auto first = std::begin(src); first != std::end(src);) {
-    auto rv = parse_next_link_header_once(first, std::end(src));
+  for (auto first = std::ranges::begin(src); first != std::ranges::end(src);) {
+    auto rv = parse_next_link_header_once(first, std::ranges::end(src));
     first = rv.second;
     auto &link = rv.first;
     if (!link.uri.empty()) {
@@ -1576,12 +1563,12 @@ int construct_push_component(BlockAllocator &balloc, StringRef &scheme,
     }
 
     // treat link_url as relative URI.
-    auto end = std::find(std::begin(uri), std::end(uri), '#');
-    auto q = std::find(std::begin(uri), end, '?');
+    auto end = std::ranges::find(uri, '#');
+    auto q = std::ranges::find(std::ranges::begin(uri), end, '?');
 
-    rel = StringRef{std::begin(uri), q};
+    rel = StringRef{std::ranges::begin(uri), q};
     if (q != end) {
-      relq = StringRef{q + 1, std::end(uri)};
+      relq = StringRef{q + 1, std::ranges::end(uri)};
     }
   } else {
     if (u.field_set & (1 << URLPARSE_SCHEMA)) {
@@ -1596,15 +1583,15 @@ int construct_push_component(BlockAllocator &balloc, StringRef &scheme,
         len += 1 + str_size("65535");
       }
       auto iov = make_byte_ref(balloc, len + 1);
-      auto p = std::begin(iov);
-      p = std::copy(std::begin(auth), std::end(auth), p);
+      auto p = std::ranges::begin(iov);
+      p = std::ranges::copy(auth, p).out;
       if (port_exists) {
         *p++ = ':';
         p = util::utos(p, u.port);
       }
       *p = '\0';
 
-      authority = StringRef{std::span{std::begin(iov), p}};
+      authority = StringRef{std::span{std::ranges::begin(iov), p}};
     }
 
     if (u.field_set & (1 << URLPARSE_PATH)) {
@@ -1669,30 +1656,30 @@ StringRef path_join(BlockAllocator &balloc, const StringRef &base_path,
     make_byte_ref(balloc, std::max(static_cast<size_t>(1), base_path.size()) +
                             rel_path.size() + 1 +
                             std::max(base_query.size(), rel_query.size()) + 1);
-  auto p = std::begin(res);
+  auto p = std::ranges::begin(res);
 
   if (rel_path.empty()) {
     if (base_path.empty()) {
       *p++ = '/';
     } else {
-      p = std::copy(std::begin(base_path), std::end(base_path), p);
+      p = std::ranges::copy(base_path, p).out;
     }
     if (rel_query.empty()) {
       if (!base_query.empty()) {
         *p++ = '?';
-        p = std::copy(std::begin(base_query), std::end(base_query), p);
+        p = std::ranges::copy(base_query, p).out;
       }
       *p = '\0';
-      return StringRef{std::span{std::begin(res), p}};
+      return StringRef{std::span{std::ranges::begin(res), p}};
     }
     *p++ = '?';
-    p = std::copy(std::begin(rel_query), std::end(rel_query), p);
+    p = std::ranges::copy(rel_query, p).out;
     *p = '\0';
-    return StringRef{std::span{std::begin(res), p}};
+    return StringRef{std::span{std::ranges::begin(res), p}};
   }
 
-  auto first = std::begin(rel_path);
-  auto last = std::end(rel_path);
+  auto first = std::ranges::begin(rel_path);
+  auto last = std::ranges::end(rel_path);
 
   if (rel_path[0] == '/') {
     *p++ = '/';
@@ -1702,55 +1689,55 @@ StringRef path_join(BlockAllocator &balloc, const StringRef &base_path,
   } else if (base_path.empty()) {
     *p++ = '/';
   } else {
-    p = std::copy(std::begin(base_path), std::end(base_path), p);
+    p = std::ranges::copy(base_path, p).out;
   }
 
   for (; first != last;) {
     if (*first == '.') {
       if (first + 1 == last) {
         if (*(p - 1) != '/') {
-          p = eat_file(std::begin(res), p);
+          p = eat_file(std::ranges::begin(res), p);
         }
         break;
       }
       if (*(first + 1) == '/') {
         if (*(p - 1) != '/') {
-          p = eat_file(std::begin(res), p);
+          p = eat_file(std::ranges::begin(res), p);
         }
         first += 2;
         continue;
       }
       if (*(first + 1) == '.') {
         if (first + 2 == last) {
-          p = eat_dir(std::begin(res), p);
+          p = eat_dir(std::ranges::begin(res), p);
           break;
         }
         if (*(first + 2) == '/') {
-          p = eat_dir(std::begin(res), p);
+          p = eat_dir(std::ranges::begin(res), p);
           first += 3;
           continue;
         }
       }
     }
     if (*(p - 1) != '/') {
-      p = eat_file(std::begin(res), p);
+      p = eat_file(std::ranges::begin(res), p);
     }
-    auto slash = std::find(first, last, '/');
+    auto slash = std::ranges::find(first, last, '/');
     if (slash == last) {
-      p = std::copy(first, last, p);
+      p = std::ranges::copy(first, last, p).out;
       break;
     }
-    p = std::copy(first, slash + 1, p);
+    p = std::ranges::copy(first, slash + 1, p).out;
     first = slash + 1;
     for (; first != last && *first == '/'; ++first)
       ;
   }
   if (!rel_query.empty()) {
     *p++ = '?';
-    p = std::copy(std::begin(rel_query), std::end(rel_query), p);
+    p = std::ranges::copy(rel_query, p).out;
   }
   *p = '\0';
-  return StringRef{std::span{std::begin(res), p}};
+  return StringRef{std::span{std::ranges::begin(res), p}};
 }
 
 StringRef normalize_path(BlockAllocator &balloc, const StringRef &path,
@@ -1760,16 +1747,16 @@ StringRef normalize_path(BlockAllocator &balloc, const StringRef &path,
 
   // We won't find %XX if length is less than 3.
   if (path.size() < 3 ||
-      std::find(std::begin(path), std::end(path), '%') == std::end(path)) {
+      std::ranges::find(path, '%') == std::ranges::end(path)) {
     return path_join(balloc, StringRef{}, StringRef{}, path, query);
   }
 
   // includes last terminal NULL.
   auto result = make_byte_ref(balloc, path.size() + 1);
-  auto p = std::begin(result);
+  auto p = std::ranges::begin(result);
 
-  auto it = std::begin(path);
-  for (; it + 2 < std::end(path);) {
+  auto it = std::ranges::begin(path);
+  for (; it + 2 < std::ranges::end(path);) {
     if (*it == '%') {
       if (util::is_hex_digit(*(it + 1)) && util::is_hex_digit(*(it + 2))) {
         auto c =
@@ -1793,11 +1780,11 @@ StringRef normalize_path(BlockAllocator &balloc, const StringRef &path,
     *p++ = *it++;
   }
 
-  p = std::copy(it, std::end(path), p);
+  p = std::ranges::copy(it, std::ranges::end(path), p).out;
   *p = '\0';
 
   return path_join(balloc, StringRef{}, StringRef{},
-                   StringRef{std::span{std::begin(result), p}}, query);
+                   StringRef{std::span{std::ranges::begin(result), p}}, query);
 }
 
 StringRef normalize_path_colon(BlockAllocator &balloc, const StringRef &path,
@@ -1807,16 +1794,16 @@ StringRef normalize_path_colon(BlockAllocator &balloc, const StringRef &path,
 
   // We won't find %XX if length is less than 3.
   if (path.size() < 3 ||
-      std::find(std::begin(path), std::end(path), '%') == std::end(path)) {
+      std::ranges::find(path, '%') == std::ranges::end(path)) {
     return path_join(balloc, StringRef{}, StringRef{}, path, query);
   }
 
   // includes last terminal NULL.
   auto result = make_byte_ref(balloc, path.size() + 1);
-  auto p = std::begin(result);
+  auto p = std::ranges::begin(result);
 
-  auto it = std::begin(path);
-  for (; it + 2 < std::end(path);) {
+  auto it = std::ranges::begin(path);
+  for (; it + 2 < std::ranges::end(path);) {
     if (*it == '%') {
       if (util::is_hex_digit(*(it + 1)) && util::is_hex_digit(*(it + 2))) {
         auto c =
@@ -1840,11 +1827,11 @@ StringRef normalize_path_colon(BlockAllocator &balloc, const StringRef &path,
     *p++ = *it++;
   }
 
-  p = std::copy(it, std::end(path), p);
+  p = std::ranges::copy(it, std::ranges::end(path), p).out;
   *p = '\0';
 
   return path_join(balloc, StringRef{}, StringRef{},
-                   StringRef{std::span{std::begin(result), p}}, query);
+                   StringRef{std::span{std::ranges::begin(result), p}}, query);
 }
 
 std::string normalize_path(const StringRef &path, const StringRef &query) {
@@ -1858,44 +1845,45 @@ StringRef rewrite_clean_path(BlockAllocator &balloc, const StringRef &src) {
     return src;
   }
   // probably, not necessary most of the case, but just in case.
-  auto fragment = std::find(std::begin(src), std::end(src), '#');
-  auto raw_query = std::find(std::begin(src), fragment, '?');
+  auto fragment = std::ranges::find(src, '#');
+  auto raw_query = std::ranges::find(std::ranges::begin(src), fragment, '?');
   auto query = raw_query;
   if (query != fragment) {
     ++query;
   }
-  return normalize_path(balloc, StringRef{std::begin(src), raw_query},
+  return normalize_path(balloc, StringRef{std::ranges::begin(src), raw_query},
                         StringRef{query, fragment});
 }
 
 StringRef copy_lower(BlockAllocator &balloc, const StringRef &src) {
   auto iov = make_byte_ref(balloc, src.size() + 1);
-  auto p = std::begin(iov);
-  p = std::copy(std::begin(src), std::end(src), p);
+  auto p = std::ranges::begin(iov);
+  p = std::ranges::copy(src, p).out;
   *p = '\0';
-  util::inp_strlower(std::begin(iov), p);
-  return StringRef{std::span{std::begin(iov), p}};
+  util::inp_strlower(std::ranges::begin(iov), p);
+  return StringRef{std::span{std::ranges::begin(iov), p}};
 }
 
 bool contains_trailers(const StringRef &s) {
   constexpr auto trailers = "trailers"_sr;
 
-  for (auto p = std::begin(s), end = std::end(s);; ++p) {
-    p = std::find_if(p, end, [](char c) { return c != ' ' && c != '\t'; });
+  for (auto p = std::ranges::begin(s), end = std::ranges::end(s);; ++p) {
+    p = std::ranges::find_if(p, end,
+                             [](char c) { return c != ' ' && c != '\t'; });
     if (p == end || static_cast<size_t>(end - p) < trailers.size()) {
       return false;
     }
     if (util::strieq(trailers, StringRef{p, p + trailers.size()})) {
       // Make sure that there is no character other than white spaces
       // before next "," or end of string.
-      p = std::find_if(p + trailers.size(), end,
-                       [](char c) { return c != ' ' && c != '\t'; });
+      p = std::ranges::find_if(p + trailers.size(), end,
+                               [](char c) { return c != ' ' && c != '\t'; });
       if (p == end || *p == ',') {
         return true;
       }
     }
     // Skip to next ",".
-    p = std::find_if(p, end, [](char c) { return c == ','; });
+    p = std::ranges::find_if(p, end, [](char c) { return c == ','; });
     if (p == end) {
       return false;
     }
@@ -1903,17 +1891,17 @@ bool contains_trailers(const StringRef &s) {
 }
 
 StringRef make_websocket_accept_token(uint8_t *dest, const StringRef &key) {
-  static constexpr char magic[] = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
-  std::array<char, base64::encode_length(16) + str_size(magic)> s;
-  auto p = std::copy(std::begin(key), std::end(key), std::begin(s));
-  std::copy_n(magic, str_size(magic), p);
+  static constexpr auto magic = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"sv;
+  std::array<char, base64::encode_length(16) + magic.size()> s;
+  auto p = std::ranges::copy(key, std::ranges::begin(s)).out;
+  std::ranges::copy(magic, p);
 
   std::array<uint8_t, 20> h;
   if (util::sha1(h.data(), StringRef{s}) != 0) {
     return StringRef{};
   }
 
-  auto end = base64::encode(std::begin(h), std::end(h), dest);
+  auto end = base64::encode(std::ranges::begin(h), std::ranges::end(h), dest);
   return StringRef{std::span{dest, end}};
 }
 
@@ -1926,7 +1914,7 @@ bool check_transfer_encoding(const StringRef &s) {
     return false;
   }
 
-  auto it = std::begin(s);
+  auto it = std::ranges::begin(s);
 
   for (;;) {
     // token
@@ -1936,25 +1924,25 @@ bool check_transfer_encoding(const StringRef &s) {
 
     ++it;
 
-    for (; it != std::end(s) && util::in_token(*it); ++it)
+    for (; it != std::ranges::end(s) && util::in_token(*it); ++it)
       ;
 
-    if (it == std::end(s)) {
+    if (it == std::ranges::end(s)) {
       return true;
     }
 
     for (;;) {
       // OWS
-      it = skip_lws(it, std::end(s));
-      if (it == std::end(s)) {
+      it = skip_lws(it, std::ranges::end(s));
+      if (it == std::ranges::end(s)) {
         return false;
       }
 
       if (*it == ',') {
         ++it;
 
-        it = skip_lws(it, std::end(s));
-        if (it == std::end(s)) {
+        it = skip_lws(it, std::ranges::end(s));
+        if (it == std::ranges::end(s)) {
           return false;
         }
 
@@ -1970,8 +1958,8 @@ bool check_transfer_encoding(const StringRef &s) {
       // transfer-parameter follows
 
       // OWS
-      it = skip_lws(it, std::end(s));
-      if (it == std::end(s)) {
+      it = skip_lws(it, std::ranges::end(s));
+      if (it == std::ranges::end(s)) {
         return false;
       }
 
@@ -1982,10 +1970,10 @@ bool check_transfer_encoding(const StringRef &s) {
 
       ++it;
 
-      for (; it != std::end(s) && util::in_token(*it); ++it)
+      for (; it != std::ranges::end(s) && util::in_token(*it); ++it)
         ;
 
-      if (it == std::end(s)) {
+      if (it == std::ranges::end(s)) {
         return false;
       }
 
@@ -2000,14 +1988,14 @@ bool check_transfer_encoding(const StringRef &s) {
         // token
         ++it;
 
-        for (; it != std::end(s) && util::in_token(*it); ++it)
+        for (; it != std::ranges::end(s) && util::in_token(*it); ++it)
           ;
       } else if (*it == '"') {
         // quoted-string
         ++it;
 
-        it = skip_to_right_dquote(it, std::end(s));
-        if (it == std::end(s)) {
+        it = skip_to_right_dquote(it, std::ranges::end(s));
+        if (it == std::ranges::end(s)) {
           return false;
         }
 
@@ -2016,7 +2004,7 @@ bool check_transfer_encoding(const StringRef &s) {
         return false;
       }
 
-      if (it == std::end(s)) {
+      if (it == std::ranges::end(s)) {
         return true;
       }
     }
