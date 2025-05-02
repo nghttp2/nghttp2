@@ -2200,9 +2200,9 @@ void fill_default_config(Config *config) {
   {
     auto &timeoutconf = dnsconf.timeout;
     timeoutconf.cache = 10_s;
-    timeoutconf.lookup = 5_s;
+    timeoutconf.lookup = 250_ms;
   }
-  dnsconf.max_try = 2;
+  dnsconf.max_try = 3;
 }
 
 } // namespace
