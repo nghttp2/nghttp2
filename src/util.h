@@ -50,6 +50,7 @@
 #include <map>
 #include <random>
 #include <optional>
+#include <ranges>
 
 #ifdef HAVE_LIBEV
 #  include <ev.h>
@@ -297,15 +298,12 @@ inline char lowcase(char c) {
   return tbl[static_cast<unsigned char>(c)];
 }
 
-template <typename InputIterator1, typename InputIterator2>
-bool starts_with(InputIterator1 first1, InputIterator1 last1,
-                 InputIterator2 first2, InputIterator2 last2) {
-  return std::distance(first1, last1) >= std::distance(first2, last2) &&
-         std::equal(first2, last2, first1);
-}
-
-template <typename S, typename T> bool starts_with(const S &a, const T &b) {
-  return starts_with(std::begin(a), std::end(a), std::begin(b), std::end(b));
+template <std::ranges::input_range R1, std::ranges::input_range R2>
+bool starts_with(R1 &&s, R2 &&prefix) {
+  auto prefixlen = std::ranges::distance(prefix);
+  return std::ranges::distance(s) >= prefixlen &&
+         std::ranges::equal(std::views::take(std::forward<R1>(s), prefixlen),
+                            std::forward<R2>(prefix));
 }
 
 struct CaseCmp {
@@ -314,63 +312,43 @@ struct CaseCmp {
   }
 };
 
-template <typename InputIterator1, typename InputIterator2>
-bool istarts_with(InputIterator1 first1, InputIterator1 last1,
-                  InputIterator2 first2, InputIterator2 last2) {
-  return std::distance(first1, last1) >= std::distance(first2, last2) &&
-         std::equal(first2, last2, first1, CaseCmp());
+template <std::ranges::input_range R1, std::ranges::input_range R2>
+bool istarts_with(R1 &&s, R2 &&prefix) {
+  auto prefixlen = std::ranges::distance(prefix);
+  return std::ranges::distance(s) >= prefixlen &&
+         std::ranges::equal(std::views::take(std::forward<R1>(s), prefixlen),
+                            std::forward<R2>(prefix), CaseCmp());
 }
 
-template <typename S, typename T> bool istarts_with(const S &a, const T &b) {
-  return istarts_with(std::begin(a), std::end(a), std::begin(b), std::end(b));
+template <std::ranges::input_range R1, std::ranges::input_range R2>
+bool ends_with(R1 &&s, R2 &&suffix) {
+  auto slen = std::ranges::distance(s);
+  auto suffixlen = std::ranges::distance(suffix);
+  return slen >= suffixlen &&
+         std::ranges::equal(
+           std::views::drop(std::forward<R1>(s), slen - suffixlen),
+           std::forward<R2>(suffix));
 }
 
-template <typename InputIterator1, typename InputIterator2>
-bool ends_with(InputIterator1 first1, InputIterator1 last1,
-               InputIterator2 first2, InputIterator2 last2) {
-  auto len1 = std::distance(first1, last1);
-  auto len2 = std::distance(first2, last2);
-
-  return len1 >= len2 && std::equal(first2, last2, first1 + (len1 - len2));
+template <std::ranges::input_range R1, std::ranges::input_range R2>
+bool iends_with(R1 &&s, R2 &&suffix) {
+  auto slen = std::ranges::distance(s);
+  auto suffixlen = std::ranges::distance(suffix);
+  return slen >= suffixlen &&
+         std::ranges::equal(
+           std::views::drop(std::forward<R1>(s), slen - suffixlen),
+           std::forward<R2>(suffix), CaseCmp());
 }
 
-template <typename T, typename S> bool ends_with(const T &a, const S &b) {
-  return ends_with(std::begin(a), std::end(a), std::begin(b), std::end(b));
+template <std::ranges::input_range R1, std::ranges::input_range R2>
+bool strieq(R1 &&a, R2 &&b) {
+  return std::ranges::equal(std::forward<R1>(a), std::forward<R2>(b),
+                            CaseCmp());
 }
 
-template <typename InputIterator1, typename InputIterator2>
-bool iends_with(InputIterator1 first1, InputIterator1 last1,
-                InputIterator2 first2, InputIterator2 last2) {
-  auto len1 = std::distance(first1, last1);
-  auto len2 = std::distance(first2, last2);
-
-  return len1 >= len2 &&
-         std::equal(first2, last2, first1 + (len1 - len2), CaseCmp());
-}
-
-template <typename T, typename S> bool iends_with(const T &a, const S &b) {
-  return iends_with(std::begin(a), std::end(a), std::begin(b), std::end(b));
-}
-
-template <typename InputIt1, typename InputIt2>
-bool strieq(InputIt1 first1, InputIt1 last1, InputIt2 first2, InputIt2 last2) {
-  return std::equal(first1, last1, first2, last2, CaseCmp());
-}
-
-template <typename T, typename S> bool strieq(const T &a, const S &b) {
-  return strieq(std::begin(a), std::end(a), std::begin(b), std::end(b));
-}
-
-template <typename T, typename S>
-bool strieq(const T &a, const S &b, size_t blen) {
-  return std::equal(std::begin(a), std::end(a), std::begin(b),
-                    std::next(std::begin(b), blen), CaseCmp());
-}
-
-template <typename T, typename S>
-bool streq(const T &a, const S &b, size_t blen) {
-  return std::equal(std::begin(a), std::end(a), std::begin(b),
-                    std::next(std::begin(b), blen));
+template <std::ranges::input_range R1, std::ranges::input_range R2>
+bool streq(R1 &&a, R2 &&b) {
+  return std::ranges::equal(std::forward<R1>(a), std::forward<R2>(b));
 }
 
 template <typename InputIt> void inp_strlower(InputIt first, InputIt last) {

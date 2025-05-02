@@ -607,28 +607,27 @@ void show_candidates(const char *unkopt, const option *options) {
   int prefix_match = 0;
   auto cands = std::vector<std::pair<int, const char *>>();
   for (size_t i = 0; options[i].name != nullptr; ++i) {
-    auto optnamelen = strlen(options[i].name);
+    auto opt = std::string_view{options[i].name};
+    auto unk = std::string_view{unkopt, static_cast<size_t>(unkoptlen)};
+
     // Use cost 0 for prefix match
-    if (istarts_with(options[i].name, options[i].name + optnamelen, unkopt,
-                     unkopt + unkoptlen)) {
-      if (optnamelen == static_cast<size_t>(unkoptlen)) {
+    if (istarts_with(opt, unk)) {
+      if (opt.size() == unk.size()) {
         // Exact match, then we don't show any candidates.
         return;
       }
       ++prefix_match;
-      cands.emplace_back(0, options[i].name);
+      cands.emplace_back(0, opt.data());
       continue;
     }
     // Use cost 0 for suffix match, but match at least 3 characters
-    if (unkoptlen >= 3 &&
-        iends_with(options[i].name, options[i].name + optnamelen, unkopt,
-                   unkopt + unkoptlen)) {
+    if (unk.size() >= 3 && iends_with(opt, unk)) {
       cands.emplace_back(0, options[i].name);
       continue;
     }
     // cost values are borrowed from git, help.c.
     int sim =
-      levenshtein(unkopt, unkoptlen, options[i].name, optnamelen, 0, 2, 1, 3);
+      levenshtein(unk.data(), unk.size(), opt.data(), opt.size(), 0, 2, 1, 3);
     cands.emplace_back(sim, options[i].name);
   }
   if (prefix_match == 1 || cands.empty()) {

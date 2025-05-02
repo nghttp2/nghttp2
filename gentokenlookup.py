@@ -50,7 +50,7 @@ def gen_index_header(tokens, prefix, comp_fun, return_type, fail_value):
     case '{}':'''.format(c))
             for k in headers:
                 print('''\
-      if ({}("{}"_sr, name, {})) {{
+      if ({}("{}"_sr, name.substr(0, {}))) {{
         return {};
       }}'''.format(comp_fun, k[:-1], size - 1, to_enum_hd(k, prefix)))
             print('''\
