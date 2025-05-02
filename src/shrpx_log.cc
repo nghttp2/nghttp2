@@ -205,22 +205,22 @@ Log::~Log() {
 }
 
 Log &Log::operator<<(const std::string &s) {
-  write_seq(std::ranges::begin(s), std::ranges::end(s));
+  write_seq(s);
   return *this;
 }
 
 Log &Log::operator<<(const StringRef &s) {
-  write_seq(std::ranges::begin(s), std::ranges::end(s));
+  write_seq(s);
   return *this;
 }
 
 Log &Log::operator<<(const char *s) {
-  write_seq(s, s + strlen(s));
+  write_seq(std::string_view{s});
   return *this;
 }
 
 Log &Log::operator<<(const ImmutableString &s) {
-  write_seq(std::ranges::begin(s), std::ranges::end(s));
+  write_seq(s);
   return *this;
 }
 

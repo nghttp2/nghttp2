@@ -33,6 +33,7 @@
 #include <vector>
 #include <chrono>
 #include <algorithm>
+#include <ranges>
 
 #include "shrpx_log_config.h"
 #include "tls.h"
@@ -137,14 +138,13 @@ public:
     func(*this);
     return *this;
   }
-  template <typename InputIt> void write_seq(InputIt first, InputIt last) {
+  template <std::ranges::input_range R> void write_seq(R &&r) {
     if (full_) {
       return;
     }
 
-    auto d = std::ranges::distance(first, last);
-    auto n = std::min(wleft(), static_cast<size_t>(d));
-    last_ = std::ranges::copy_n(first, n, last_).out;
+    auto n = std::min(wleft(), static_cast<size_t>(std::ranges::distance(r)));
+    last_ = std::ranges::copy(std::views::take(r, n), last_).out;
     update_full();
   }
 
