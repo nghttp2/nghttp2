@@ -205,22 +205,22 @@ Log::~Log() {
 }
 
 Log &Log::operator<<(const std::string &s) {
-  write_seq(std::begin(s), std::end(s));
+  write_seq(s);
   return *this;
 }
 
 Log &Log::operator<<(const StringRef &s) {
-  write_seq(std::begin(s), std::end(s));
+  write_seq(s);
   return *this;
 }
 
 Log &Log::operator<<(const char *s) {
-  write_seq(s, s + strlen(s));
+  write_seq(std::string_view{s});
   return *this;
 }
 
 Log &Log::operator<<(const ImmutableString &s) {
-  write_seq(std::begin(s), std::end(s));
+  write_seq(s);
   return *this;
 }
 
@@ -355,49 +355,30 @@ void dec(Log &log) { log.set_flags(Log::fmt_dec); }
 } // namespace log
 
 namespace {
-template <typename OutputIterator>
-std::pair<OutputIterator, OutputIterator> copy(const char *src, size_t srclen,
-                                               OutputIterator d_first,
-                                               OutputIterator d_last) {
+template <std::ranges::input_range R>
+std::span<char> copy(R &&src, std::span<char> dest) {
   auto nwrite =
-    std::min(static_cast<size_t>(std::distance(d_first, d_last)), srclen);
-  return std::make_pair(std::copy_n(src, nwrite, d_first), d_last);
+    std::min(std::ranges::distance(src), std::ranges::distance(dest));
+  std::ranges::copy(std::views::take(src, nwrite), std::ranges::begin(dest));
+  return dest.subspan(nwrite);
 }
 } // namespace
 
 namespace {
-template <typename OutputIterator>
-std::pair<OutputIterator, OutputIterator>
-copy(const char *src, OutputIterator d_first, OutputIterator d_last) {
-  return copy(src, strlen(src), d_first, d_last);
+std::span<char> copy(const char *src, std::span<char> dest) {
+  return copy(std::string_view{src}, dest);
 }
 } // namespace
 
 namespace {
-template <typename OutputIterator>
-std::pair<OutputIterator, OutputIterator>
-copy(const StringRef &src, OutputIterator d_first, OutputIterator d_last) {
-  return copy(src.data(), src.size(), d_first, d_last);
-}
-} // namespace
-
-namespace {
-template <size_t N, typename OutputIterator>
-std::pair<OutputIterator, OutputIterator>
-copy_l(const char (&src)[N], OutputIterator d_first, OutputIterator d_last) {
-  return copy(src, N - 1, d_first, d_last);
-}
-} // namespace
-
-namespace {
-template <typename OutputIterator>
-std::pair<OutputIterator, OutputIterator> copy(char c, OutputIterator d_first,
-                                               OutputIterator d_last) {
-  if (d_first == d_last) {
-    return std::make_pair(d_last, d_last);
+std::span<char> copy(char c, std::span<char> dest) {
+  if (dest.empty()) {
+    return dest;
   }
-  *d_first++ = c;
-  return std::make_pair(d_first, d_last);
+
+  dest[0] = c;
+
+  return dest.subspan(1);
 }
 } // namespace
 
@@ -406,30 +387,31 @@ constexpr char LOWER_XDIGITS[] = "0123456789abcdef";
 } // namespace
 
 namespace {
-template <typename OutputIterator>
-std::pair<OutputIterator, OutputIterator>
-copy_hex_low(const uint8_t *src, size_t srclen, OutputIterator d_first,
-             OutputIterator d_last) {
-  auto nwrite =
-    std::min(static_cast<size_t>(std::distance(d_first, d_last)), srclen * 2) /
-    2;
-  for (size_t i = 0; i < nwrite; ++i) {
-    *d_first++ = LOWER_XDIGITS[src[i] >> 4];
-    *d_first++ = LOWER_XDIGITS[src[i] & 0xf];
+std::span<char> copy_hex_low(std::span<const uint8_t> src,
+                             std::span<char> dest) {
+  auto n = std::min(dest.size(), src.size() * 2) / 2;
+  auto d = std::ranges::begin(dest);
+
+  for (size_t i = 0; i < n; ++i) {
+    *d++ = LOWER_XDIGITS[src[i] >> 4];
+    *d++ = LOWER_XDIGITS[src[i] & 0xf];
   }
-  return std::make_pair(d_first, d_last);
+
+  if (n < src.size()) {
+    return {d, d};
+  }
+
+  return {d, std::ranges::end(dest)};
 }
 } // namespace
 
 namespace {
-template <typename OutputIterator, typename T>
-std::pair<OutputIterator, OutputIterator> copy(T n, OutputIterator d_first,
-                                               OutputIterator d_last) {
-  if (static_cast<size_t>(std::distance(d_first, d_last)) <
-      NGHTTP2_MAX_UINT64_DIGITS) {
-    return std::make_pair(d_last, d_last);
+template <std::integral T> std::span<char> copy(T n, std::span<char> dest) {
+  if (dest.size() < NGHTTP2_MAX_UINT64_DIGITS) {
+    return dest.first(0);
   }
-  return std::make_pair(util::utos(d_first, n), d_last);
+
+  return {util::utos(std::ranges::begin(dest), n), std::ranges::end(dest)};
 }
 } // namespace
 
@@ -493,42 +475,37 @@ constexpr uint8_t ESCAPE_TBL[] = {
 } // namespace
 
 namespace {
-template <typename OutputIterator>
-std::pair<OutputIterator, OutputIterator>
-copy_escape(const char *src, size_t srclen, OutputIterator d_first,
-            OutputIterator d_last) {
-  auto safe_first = src;
-  for (auto p = src; p != src + srclen && d_first != d_last; ++p) {
+std::span<char> copy_escape(const StringRef &src, std::span<char> dest) {
+  auto safe_first = std::ranges::begin(src);
+  for (auto p = safe_first; p != std::ranges::end(src) && !dest.empty(); ++p) {
     unsigned char c = *p;
     if (!ESCAPE_TBL[c]) {
       continue;
     }
 
     auto n =
-      std::min(std::distance(d_first, d_last), std::distance(safe_first, p));
-    d_first = std::copy_n(safe_first, n, d_first);
-    if (std::distance(d_first, d_last) < 4) {
-      return std::make_pair(d_first, d_last);
+      std::min(std::ranges::ssize(dest), std::ranges::distance(safe_first, p));
+    std::ranges::copy_n(safe_first, n, std::ranges::begin(dest));
+    dest = dest.subspan(n);
+
+    if (dest.size() < 4) {
+      return dest.first(0);
     }
-    *d_first++ = '\\';
-    *d_first++ = 'x';
-    *d_first++ = LOWER_XDIGITS[c >> 4];
-    *d_first++ = LOWER_XDIGITS[c & 0xf];
+
+    dest[0] = '\\';
+    dest[1] = 'x';
+    dest[2] = LOWER_XDIGITS[c >> 4];
+    dest[3] = LOWER_XDIGITS[c & 0xf];
+    dest = dest.subspan(4);
+
     safe_first = p + 1;
   }
 
-  auto n = std::min(std::distance(d_first, d_last),
-                    std::distance(safe_first, src + srclen));
-  return std::make_pair(std::copy_n(safe_first, n, d_first), d_last);
-}
-} // namespace
+  auto n = std::min(std::ranges::ssize(dest),
+                    std::ranges::distance(safe_first, std::ranges::end(src)));
+  std::ranges::copy_n(safe_first, n, std::ranges::begin(dest));
 
-namespace {
-template <typename OutputIterator>
-std::pair<OutputIterator, OutputIterator> copy_escape(const StringRef &src,
-                                                      OutputIterator d_first,
-                                                      OutputIterator d_last) {
-  return copy_escape(src.data(), src.size(), d_first, d_last);
+  return dest.subspan(n);
 }
 } // namespace
 
@@ -552,21 +529,21 @@ StringRef construct_absolute_request_uri(BlockAllocator &balloc,
   }
 
   auto iov = make_byte_ref(balloc, len + 1);
-  auto p = std::begin(iov);
+  auto p = std::ranges::begin(iov);
 
   if (req.scheme.empty()) {
     // We may have to log the request which lacks scheme (e.g.,
     // http/1.1 with origin form).
-    p = util::copy_lit(p, "http://");
+    p = std::ranges::copy("http://"sv, p).out;
   } else {
-    p = std::copy(std::begin(req.scheme), std::end(req.scheme), p);
-    p = util::copy_lit(p, "://");
+    p = std::ranges::copy(req.scheme, p).out;
+    p = std::ranges::copy("://"sv, p).out;
   }
-  p = std::copy(std::begin(req.authority), std::end(req.authority), p);
-  p = std::copy(std::begin(req.path), std::end(req.path), p);
+  p = std::ranges::copy(req.authority, p).out;
+  p = std::ranges::copy(req.path, p).out;
   *p = '\0';
 
-  return StringRef{std::span{std::begin(iov), p}};
+  return StringRef{std::span{std::ranges::begin(iov), p}};
 }
 } // namespace
 
@@ -600,155 +577,151 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
   auto path_without_query =
     req.method == HTTP_CONNECT
       ? path
-      : StringRef{std::begin(path),
-                  std::find(std::begin(path), std::end(path), '?')};
+      : StringRef{std::ranges::begin(path), std::ranges::find(path, '?')};
 
-  auto p = std::begin(buf);
-  auto last = std::end(buf) - 2;
+  auto p = std::span{buf}.first(buf.size() - 2);
 
   for (auto &lf : lfv) {
     switch (lf.type) {
     case LogFragmentType::LITERAL:
-      std::tie(p, last) = copy(lf.value, p, last);
+      p = copy(lf.value, p);
       break;
     case LogFragmentType::REMOTE_ADDR:
-      std::tie(p, last) = copy(lgsp.remote_addr, p, last);
+      p = copy(lgsp.remote_addr, p);
       break;
     case LogFragmentType::TIME_LOCAL:
-      std::tie(p, last) = copy(tstamp->time_local, p, last);
+      p = copy(tstamp->time_local, p);
       break;
     case LogFragmentType::TIME_ISO8601:
-      std::tie(p, last) = copy(tstamp->time_iso8601, p, last);
+      p = copy(tstamp->time_iso8601, p);
       break;
     case LogFragmentType::REQUEST:
-      std::tie(p, last) = copy(method, p, last);
-      std::tie(p, last) = copy(' ', p, last);
-      std::tie(p, last) = copy_escape(path, p, last);
-      std::tie(p, last) = copy_l(" HTTP/", p, last);
-      std::tie(p, last) = copy(req.http_major, p, last);
+      p = copy(method, p);
+      p = copy(' ', p);
+      p = copy_escape(path, p);
+      p = copy(" HTTP/"_sr, p);
+      p = copy(req.http_major, p);
       if (req.http_major < 2) {
-        std::tie(p, last) = copy('.', p, last);
-        std::tie(p, last) = copy(req.http_minor, p, last);
+        p = copy('.', p);
+        p = copy(req.http_minor, p);
       }
       break;
     case LogFragmentType::METHOD:
-      std::tie(p, last) = copy(method, p, last);
+      p = copy(method, p);
       break;
     case LogFragmentType::PATH:
-      std::tie(p, last) = copy_escape(path, p, last);
+      p = copy_escape(path, p);
       break;
     case LogFragmentType::PATH_WITHOUT_QUERY:
-      std::tie(p, last) = copy_escape(path_without_query, p, last);
+      p = copy_escape(path_without_query, p);
       break;
     case LogFragmentType::PROTOCOL_VERSION:
-      std::tie(p, last) = copy_l("HTTP/", p, last);
-      std::tie(p, last) = copy(req.http_major, p, last);
+      p = copy("HTTP/"_sr, p);
+      p = copy(req.http_major, p);
       if (req.http_major < 2) {
-        std::tie(p, last) = copy('.', p, last);
-        std::tie(p, last) = copy(req.http_minor, p, last);
+        p = copy('.', p);
+        p = copy(req.http_minor, p);
       }
       break;
     case LogFragmentType::STATUS:
-      std::tie(p, last) = copy(resp.http_status, p, last);
+      p = copy(resp.http_status, p);
       break;
     case LogFragmentType::BODY_BYTES_SENT:
-      std::tie(p, last) = copy(downstream->response_sent_body_length, p, last);
+      p = copy(downstream->response_sent_body_length, p);
       break;
     case LogFragmentType::HTTP: {
       auto hd = req.fs.header(lf.value);
       if (hd) {
-        std::tie(p, last) = copy_escape((*hd).value, p, last);
+        p = copy_escape((*hd).value, p);
         break;
       }
 
-      std::tie(p, last) = copy('-', p, last);
+      p = copy('-', p);
 
       break;
     }
     case LogFragmentType::AUTHORITY:
       if (!req.authority.empty()) {
-        std::tie(p, last) = copy(req.authority, p, last);
+        p = copy(req.authority, p);
         break;
       }
 
-      std::tie(p, last) = copy('-', p, last);
+      p = copy('-', p);
 
       break;
     case LogFragmentType::REMOTE_PORT:
-      std::tie(p, last) = copy(lgsp.remote_port, p, last);
+      p = copy(lgsp.remote_port, p);
       break;
     case LogFragmentType::SERVER_PORT:
-      std::tie(p, last) = copy(lgsp.server_port, p, last);
+      p = copy(lgsp.server_port, p);
       break;
     case LogFragmentType::REQUEST_TIME: {
       auto t = std::chrono::duration_cast<std::chrono::milliseconds>(
                  lgsp.request_end_time - downstream->get_request_start_time())
                  .count();
-      std::tie(p, last) = copy(t / 1000, p, last);
-      std::tie(p, last) = copy('.', p, last);
+      p = copy(t / 1000, p);
+      p = copy('.', p);
       auto frac = t % 1000;
       if (frac < 100) {
-        auto n = frac < 10 ? 2 : 1;
-        std::tie(p, last) = copy("000", n, p, last);
+        auto n = static_cast<size_t>(frac < 10 ? 2 : 1);
+        p = copy(StringRef{"000", n}, p);
       }
-      std::tie(p, last) = copy(frac, p, last);
+      p = copy(frac, p);
       break;
     }
     case LogFragmentType::PID:
-      std::tie(p, last) = copy(lgsp.pid, p, last);
+      p = copy(lgsp.pid, p);
       break;
     case LogFragmentType::ALPN:
-      std::tie(p, last) = copy_escape(lgsp.alpn, p, last);
+      p = copy_escape(lgsp.alpn, p);
       break;
     case LogFragmentType::TLS_CIPHER:
       if (!lgsp.ssl) {
-        std::tie(p, last) = copy('-', p, last);
+        p = copy('-', p);
         break;
       }
-      std::tie(p, last) = copy(SSL_get_cipher_name(lgsp.ssl), p, last);
+      p = copy(SSL_get_cipher_name(lgsp.ssl), p);
       break;
     case LogFragmentType::TLS_PROTOCOL:
       if (!lgsp.ssl) {
-        std::tie(p, last) = copy('-', p, last);
+        p = copy('-', p);
         break;
       }
-      std::tie(p, last) =
-        copy(nghttp2::tls::get_tls_protocol(lgsp.ssl), p, last);
+      p = copy(nghttp2::tls::get_tls_protocol(lgsp.ssl), p);
       break;
     case LogFragmentType::TLS_SESSION_ID: {
       auto session = SSL_get_session(lgsp.ssl);
       if (!session) {
-        std::tie(p, last) = copy('-', p, last);
+        p = copy('-', p);
         break;
       }
       unsigned int session_id_length = 0;
       auto session_id = SSL_SESSION_get_id(session, &session_id_length);
       if (session_id_length == 0) {
-        std::tie(p, last) = copy('-', p, last);
+        p = copy('-', p);
         break;
       }
-      std::tie(p, last) = copy_hex_low(session_id, session_id_length, p, last);
+      p = copy_hex_low({session_id, session_id_length}, p);
       break;
     }
     case LogFragmentType::TLS_SESSION_REUSED:
       if (!lgsp.ssl) {
-        std::tie(p, last) = copy('-', p, last);
+        p = copy('-', p);
         break;
       }
-      std::tie(p, last) =
-        copy(SSL_session_reused(lgsp.ssl) ? 'r' : '.', p, last);
+      p = copy(SSL_session_reused(lgsp.ssl) ? 'r' : '.', p);
       break;
     case LogFragmentType::TLS_SNI:
       if (lgsp.sni.empty()) {
-        std::tie(p, last) = copy('-', p, last);
+        p = copy('-', p);
         break;
       }
-      std::tie(p, last) = copy_escape(lgsp.sni, p, last);
+      p = copy_escape(lgsp.sni, p);
       break;
     case LogFragmentType::TLS_CLIENT_FINGERPRINT_SHA1:
     case LogFragmentType::TLS_CLIENT_FINGERPRINT_SHA256: {
       if (!lgsp.ssl) {
-        std::tie(p, last) = copy('-', p, last);
+        p = copy('-', p);
         break;
       }
 #if OPENSSL_3_0_0_API
@@ -757,7 +730,7 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
       auto x = SSL_get_peer_certificate(lgsp.ssl);
 #endif // !OPENSSL_3_0_0_API
       if (!x) {
-        std::tie(p, last) = copy('-', p, last);
+        p = copy('-', p);
         break;
       }
       std::array<uint8_t, 32> buf;
@@ -769,16 +742,16 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
       X509_free(x);
 #endif // !OPENSSL_3_0_0_API
       if (len <= 0) {
-        std::tie(p, last) = copy('-', p, last);
+        p = copy('-', p);
         break;
       }
-      std::tie(p, last) = copy_hex_low(buf.data(), len, p, last);
+      p = copy_hex_low({buf.data(), static_cast<size_t>(len)}, p);
       break;
     }
     case LogFragmentType::TLS_CLIENT_ISSUER_NAME:
     case LogFragmentType::TLS_CLIENT_SUBJECT_NAME: {
       if (!lgsp.ssl) {
-        std::tie(p, last) = copy('-', p, last);
+        p = copy('-', p);
         break;
       }
 #if OPENSSL_3_0_0_API
@@ -787,7 +760,7 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
       auto x = SSL_get_peer_certificate(lgsp.ssl);
 #endif // !OPENSSL_3_0_0_API
       if (!x) {
-        std::tie(p, last) = copy('-', p, last);
+        p = copy('-', p);
         break;
       }
       auto name = lf.type == LogFragmentType::TLS_CLIENT_ISSUER_NAME
@@ -797,15 +770,15 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
       X509_free(x);
 #endif // !OPENSSL_3_0_0_API
       if (name.empty()) {
-        std::tie(p, last) = copy('-', p, last);
+        p = copy('-', p);
         break;
       }
-      std::tie(p, last) = copy(name, p, last);
+      p = copy(name, p);
       break;
     }
     case LogFragmentType::TLS_CLIENT_SERIAL: {
       if (!lgsp.ssl) {
-        std::tie(p, last) = copy('-', p, last);
+        p = copy('-', p);
         break;
       }
 #if OPENSSL_3_0_0_API
@@ -814,7 +787,7 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
       auto x = SSL_get_peer_certificate(lgsp.ssl);
 #endif // !OPENSSL_3_0_0_API
       if (!x) {
-        std::tie(p, last) = copy('-', p, last);
+        p = copy('-', p);
         break;
       }
       auto sn = tls::get_x509_serial(balloc, x);
@@ -822,25 +795,25 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
       X509_free(x);
 #endif // !OPENSSL_3_0_0_API
       if (sn.empty()) {
-        std::tie(p, last) = copy('-', p, last);
+        p = copy('-', p);
         break;
       }
-      std::tie(p, last) = copy(sn, p, last);
+      p = copy(sn, p);
       break;
     }
     case LogFragmentType::BACKEND_HOST:
       if (!downstream_addr) {
-        std::tie(p, last) = copy('-', p, last);
+        p = copy('-', p);
         break;
       }
-      std::tie(p, last) = copy(downstream_addr->host, p, last);
+      p = copy(downstream_addr->host, p);
       break;
     case LogFragmentType::BACKEND_PORT:
       if (!downstream_addr) {
-        std::tie(p, last) = copy('-', p, last);
+        p = copy('-', p);
         break;
       }
-      std::tie(p, last) = copy(downstream_addr->port, p, last);
+      p = copy(downstream_addr->port, p);
       break;
     case LogFragmentType::NONE:
       break;
@@ -849,17 +822,19 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
     }
   }
 
-  *p = '\0';
-
   if (accessconf.syslog) {
+    p[0] = '\0';
+
     syslog(LOG_INFO, "%s", buf.data());
 
     return;
   }
 
-  *p++ = '\n';
+  p[0] = '\n';
+  p = p.subspan(1);
 
-  auto nwrite = std::distance(std::begin(buf), p);
+  auto nwrite = std::ranges::distance(std::ranges::begin(std::span<char>{buf}),
+                                      std::ranges::begin(p));
   while (write(lgconf->accesslog_fd, buf.data(), nwrite) == -1 &&
          errno == EINTR)
     ;
