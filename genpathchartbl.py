@@ -13,7 +13,11 @@ def name(i):
         return 'DEL '
 
 for i in range(256):
-    if (0x21 <= i and i < 0x7f):
+    if chr(i) in [
+          '[', ']', '#',
+        ]: 
+        sys.stdout.write('0 /* {}    */, '.format(chr(i)))
+    elif (0x21 <= i and i < 0x7f):
         sys.stdout.write('1 /* {}    */, '.format(chr(i)))
     elif 0x80 <= i:
         sys.stdout.write('1 /* {} */, '.format(hex(i)))
