@@ -884,6 +884,12 @@ int daemonize(int nochdir, int noclose);
 // without allocation.
 StringRef rstrip(BlockAllocator &balloc, const StringRef &s);
 
+// contains returns true if |r| contains |value|.
+template <std::ranges::input_range R, typename T>
+bool contains(R &&r, const T &value) {
+  return std::ranges::find(r, value) != std::ranges::end(r);
+}
+
 #ifdef ENABLE_HTTP3
 int msghdr_get_local_addr(Address &dest, msghdr *msg, int family);
 

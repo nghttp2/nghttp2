@@ -74,6 +74,7 @@ munit_void_test_decl(test_util_extract_host)
 munit_void_test_decl(test_util_split_hostport)
 munit_void_test_decl(test_util_split_str)
 munit_void_test_decl(test_util_rstrip)
+munit_void_test_decl(test_util_contains)
 
 } // namespace shrpx
 

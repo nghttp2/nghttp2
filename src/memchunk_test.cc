@@ -31,6 +31,8 @@
 #include "memchunk.h"
 #include "util.h"
 
+using namespace std::literals;
+
 namespace nghttp2 {
 
 namespace {
@@ -117,7 +119,7 @@ void test_memchunks_append(void) {
   assert_size(3, ==, m->len());
   assert_size(13, ==, m->left());
 
-  chunks.append("3456789abcdef@");
+  chunks.append("3456789abcdef@"sv);
 
   assert_size(16, ==, m->len());
   assert_size(0, ==, m->left());
