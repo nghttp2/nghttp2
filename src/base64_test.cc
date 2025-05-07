@@ -52,22 +52,22 @@ const MunitSuite base64_suite{
 void test_base64_encode(void) {
   {
     std::string in = "\xff";
-    auto out = base64::encode(std::begin(in), std::end(in));
+    auto out = base64::encode(in);
     assert_stdstring_equal("/w==", out);
   }
   {
     std::string in = "\xff\xfe";
-    auto out = base64::encode(std::begin(in), std::end(in));
+    auto out = base64::encode(in);
     assert_stdstring_equal("//4=", out);
   }
   {
     std::string in = "\xff\xfe\xfd";
-    auto out = base64::encode(std::begin(in), std::end(in));
+    auto out = base64::encode(in);
     assert_stdstring_equal("//79", out);
   }
   {
     std::string in = "\xff\xfe\xfd\xfc";
-    auto out = base64::encode(std::begin(in), std::end(in));
+    auto out = base64::encode(in);
     assert_stdstring_equal("//79/A==", out);
   }
 }
