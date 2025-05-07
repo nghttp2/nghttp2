@@ -114,9 +114,7 @@ int Http2Upstream::upgrade_upstream(HttpsUpstream *http) {
   auto http2_settings = http->get_downstream()->get_http2_settings();
   http2_settings = util::to_base64(balloc, http2_settings);
 
-  auto settings_payload =
-    base64::decode(balloc, std::ranges::begin(http2_settings),
-                   std::ranges::end(http2_settings));
+  auto settings_payload = base64::decode(balloc, http2_settings);
 
   rv = nghttp2_session_upgrade2(
     session_, settings_payload.data(), settings_payload.size(),
