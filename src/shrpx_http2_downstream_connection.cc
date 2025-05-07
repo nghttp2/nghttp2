@@ -435,17 +435,17 @@ int Http2DownstreamConnection::push_request_headers() {
     }
 
     auto iov = make_byte_ref(balloc, vialen + 1);
-    auto p = std::begin(iov);
+    auto p = std::ranges::begin(iov);
 
     if (via) {
-      p = std::copy(std::begin(via->value), std::end(via->value), p);
-      p = util::copy_lit(p, ", ");
+      p = std::ranges::copy(via->value, p).out;
+      p = std::ranges::copy(", "sv, p).out;
     }
     p = http::create_via_header_value(p, req.http_major, req.http_minor);
     *p = '\0';
 
-    nva.push_back(
-      http2::make_field("via"_sr, StringRef{std::span{std::begin(iov), p}}));
+    nva.push_back(http2::make_field(
+      "via"_sr, StringRef{std::span{std::ranges::begin(iov), p}}));
   }
 
   auto te = req.fs.header(http2::HD_TE);
