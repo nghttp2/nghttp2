@@ -151,7 +151,7 @@ executable.
 Compiling libnghttp2 C source code requires a C99 compiler.  gcc 4.8
 is known to be adequate.  In order to compile the C++ source code,
 C++20 compliant compiler is required.  At least g++ >= 12 and
-clang++ >= 15 are known to work.
+clang++ >= 18 are known to work.
 
 .. note::
 
@@ -395,7 +395,7 @@ Build nghttp2:
    $ git submodule update --init
    $ autoreconf -i
    $ ./configure --with-mruby --enable-http3 --with-libbpf \
-         CC=clang-15 CXX=clang++-15 \
+         CC=clang-18 CXX=clang++-18 \
          PKG_CONFIG_PATH="$PWD/../aws-lc/opt/lib/pkgconfig:$PWD/../nghttp3/build/lib/pkgconfig:$PWD/../ngtcp2/build/lib/pkgconfig:$PWD/../libbpf/build/lib64/pkgconfig" \
          LDFLAGS="$LDFLAGS -Wl,-rpath,$PWD/../aws-lc/opt/lib -Wl,-rpath,$PWD/../libbpf/build/lib64"
    $ make -j$(nproc)
