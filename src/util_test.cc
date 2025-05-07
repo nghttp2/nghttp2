@@ -88,33 +88,26 @@ const MunitSuite util_suite{
 };
 
 void test_util_streq(void) {
-  assert_true(util::streq("alpha"_sr, "alpha"_sr, 5));
-  assert_true(util::streq("alpha"_sr, "alphabravo"_sr, 5));
-  assert_false(util::streq("alpha"_sr, "alphabravo"_sr, 6));
-  assert_false(util::streq("alphabravo"_sr, "alpha"_sr, 5));
-  assert_false(util::streq("alpha"_sr, "alphA"_sr, 5));
-  assert_false(util::streq(""_sr, "a"_sr, 1));
-  assert_true(util::streq(""_sr, ""_sr, 0));
-  assert_false(util::streq("alpha"_sr, ""_sr, 0));
+  assert_true(util::streq("alpha"_sr, "alpha"_sr));
+  assert_false(util::streq("alphabravo"_sr, "alpha"_sr));
+  assert_false(util::streq("alpha"_sr, "alphA"_sr));
+  assert_false(util::streq(""_sr, "a"_sr));
+  assert_true(util::streq(""_sr, ""_sr));
+  assert_false(util::streq("alpha"_sr, ""_sr));
 }
 
 void test_util_strieq(void) {
-  assert_true(util::strieq(std::string("alpha"), std::string("alpha")));
-  assert_true(util::strieq(std::string("alpha"), std::string("AlPhA")));
-  assert_true(util::strieq(std::string(), std::string()));
-  assert_false(util::strieq(std::string("alpha"), std::string("AlPhA ")));
-  assert_false(util::strieq(std::string(), std::string("AlPhA ")));
+  assert_true(util::strieq("alpha"sv, "alpha"sv));
+  assert_true(util::strieq("alpha"sv, "AlPhA"sv));
+  assert_true(util::strieq(""sv, ""sv));
+  assert_false(util::strieq("alpha"sv, "AlPhA "sv));
+  assert_false(util::strieq(""sv, "AlPhA "sv));
 
   assert_true(util::strieq("alpha"_sr, "alpha"_sr));
   assert_true(util::strieq("alpha"_sr, "AlPhA"_sr));
   assert_true(util::strieq(StringRef{}, StringRef{}));
   assert_false(util::strieq("alpha"_sr, "AlPhA "_sr));
   assert_false(util::strieq(""_sr, "AlPhA "_sr));
-
-  assert_true(util::strieq("alpha"_sr, "alpha"_sr, 5));
-  assert_true(util::strieq("alpha"_sr, "AlPhA"_sr, 5));
-  assert_false(util::strieq("alpha"_sr, "AlPhA "_sr, 6));
-  assert_false(util::strieq(""_sr, "AlPhA "_sr, 6));
 }
 
 void test_util_inp_strlower(void) {
