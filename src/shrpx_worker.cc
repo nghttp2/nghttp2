@@ -1182,6 +1182,28 @@ int Worker::create_quic_server_socket(UpstreamAddr &faddr) {
   faddr.fd = fd;
   faddr.hostport = util::make_http_hostport(mod_config()->balloc,
                                             StringRef{host.data()}, faddr.port);
+  memcpy(&faddr.sockaddr, rp->ai_addr, rp->ai_addrlen);
+
+  switch (faddr.family) {
+  case AF_INET: {
+    static constexpr auto inaddr_any = INADDR_ANY;
+
+    faddr.sockaddr_any =
+      memcmp(&inaddr_any, &faddr.sockaddr.in.sin_addr, sizeof(inaddr_any)) == 0;
+
+    break;
+  }
+  case AF_INET6: {
+    static constexpr in6_addr in6addr_any = IN6ADDR_ANY_INIT;
+
+    faddr.sockaddr_any = memcmp(&in6addr_any, &faddr.sockaddr.in6.sin6_addr,
+                                sizeof(in6addr_any)) == 0;
+
+    break;
+  }
+  default:
+    assert(0);
+  }
 
   LOG(NOTICE) << "Listening on " << faddr.hostport << ", quic";
 
@@ -1191,81 +1213,44 @@ int Worker::create_quic_server_socket(UpstreamAddr &faddr) {
 const WorkerID &Worker::get_worker_id() const { return worker_id_; }
 
 const UpstreamAddr *Worker::find_quic_upstream_addr(const Address &local_addr) {
-  std::array<char, NI_MAXHOST> host;
-
-  auto rv = getnameinfo(&local_addr.su.sa, local_addr.len, host.data(),
-                        host.size(), nullptr, 0, NI_NUMERICHOST);
-  if (rv != 0) {
-    LOG(ERROR) << "getnameinfo: " << gai_strerror(rv);
-
-    return nullptr;
-  }
-
-  uint16_t port;
-
-  switch (local_addr.su.sa.sa_family) {
-  case AF_INET:
-    port = htons(local_addr.su.in.sin_port);
-
-    break;
-  case AF_INET6:
-    port = htons(local_addr.su.in6.sin6_port);
-
-    break;
-  default:
-    assert(0);
-    abort();
-  }
-
-  std::array<char, util::max_hostport> hostport_buf;
-
-  auto hostport = util::make_http_hostport(std::begin(hostport_buf),
-                                           StringRef{host.data()}, port);
   const UpstreamAddr *fallback_faddr = nullptr;
 
   for (auto &faddr : quic_upstream_addrs_) {
-    if (faddr.hostport == hostport) {
-      return &faddr;
-    }
-
-    if (faddr.port != port || faddr.family != local_addr.su.sa.sa_family) {
+    if (local_addr.su.sa.sa_family != faddr.family) {
       continue;
     }
 
-    if (faddr.port == 443 || faddr.port == 80) {
-      switch (faddr.family) {
-      case AF_INET:
-        if (faddr.hostport == "0.0.0.0"_sr) {
-          fallback_faddr = &faddr;
-        }
-
-        break;
-      case AF_INET6:
-        if (faddr.hostport == "[::]"_sr) {
-          fallback_faddr = &faddr;
-        }
-
-        break;
-      default:
-        assert(0);
+    switch (faddr.family) {
+    case AF_INET: {
+      const auto &addr = faddr.sockaddr.in;
+      if (local_addr.su.in.sin_port != addr.sin_port) {
+        continue;
       }
-    } else {
-      switch (faddr.family) {
-      case AF_INET:
-        if (util::starts_with(faddr.hostport, "0.0.0.0:"_sr)) {
-          fallback_faddr = &faddr;
-        }
 
-        break;
-      case AF_INET6:
-        if (util::starts_with(faddr.hostport, "[::]:"_sr)) {
-          fallback_faddr = &faddr;
-        }
-
-        break;
-      default:
-        assert(0);
+      if (memcmp(&local_addr.su.in.sin_addr, &addr.sin_addr,
+                 sizeof(addr.sin_addr)) == 0) {
+        return &faddr;
       }
+
+      break;
+    }
+    case AF_INET6: {
+      const auto &addr = faddr.sockaddr.in6;
+      if (local_addr.su.in6.sin6_port != addr.sin6_port) {
+        continue;
+      }
+
+      if (memcmp(&local_addr.su.in6.sin6_addr, &addr.sin6_addr,
+                 sizeof(addr.sin6_addr)) == 0) {
+        return &faddr;
+      }
+
+      break;
+    }
+    }
+
+    if (faddr.sockaddr_any) {
+      fallback_faddr = &faddr;
     }
   }
 

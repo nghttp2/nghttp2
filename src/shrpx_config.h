@@ -458,6 +458,9 @@ struct UpstreamAddr {
   // address is surrounded by square brackets.  If socket is UNIX
   // domain socket, this is "localhost".
   StringRef hostport;
+  // Binary representation of this address.  Only filled if quic is
+  // true.
+  sockaddr_union sockaddr;
   // frontend port.  0 if |host_unix| is true.
   uint16_t port;
   // For TCP socket, this is either AF_INET or AF_INET6.  For UNIX
@@ -475,6 +478,8 @@ struct UpstreamAddr {
   // true if client is supposed to send PROXY protocol v1 header.
   bool accept_proxy_protocol;
   bool quic;
+  // true if sockaddr contains wildcard address.
+  bool sockaddr_any;
   int fd;
 };
 
