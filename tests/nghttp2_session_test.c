@@ -6839,6 +6839,8 @@ void test_nghttp2_submit_rst_stream(void) {
   nghttp2_outbound_item *item;
   int rv;
   int32_t stream_id;
+  nghttp2_ssize datalen;
+  const uint8_t *data;
 
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
 
@@ -6930,6 +6932,41 @@ void test_nghttp2_submit_rst_stream(void) {
   assert_not_null(item);
   assert_uint8(NGHTTP2_HEADERS, ==, item->frame.hd.type);
   assert_true(item->aux_data.headers.canceled);
+
+  nghttp2_session_del(session);
+
+  /* Sending RST_STREAM to closed stream */
+  nghttp2_session_client_new(&session, &callbacks, NULL);
+
+  open_sent_stream(session, 1);
+
+  rv =
+    nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, 1, NGHTTP2_NO_ERROR);
+
+  assert_int(0, ==, rv);
+
+  item = nghttp2_outbound_queue_top(&session->ob_reg);
+
+  assert_not_null(item);
+  assert_uint8(NGHTTP2_RST_STREAM, ==, item->frame.hd.type);
+  assert_int32(1, ==, item->frame.hd.stream_id);
+
+  datalen = nghttp2_session_mem_send2(session, &data);
+
+  assert_ptrdiff(0, <, datalen);
+
+  item = nghttp2_outbound_queue_top(&session->ob_reg);
+
+  assert_null(item);
+
+  rv =
+    nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, 1, NGHTTP2_NO_ERROR);
+
+  assert_int(0, ==, rv);
+
+  item = nghttp2_outbound_queue_top(&session->ob_reg);
+
+  assert_null(item);
 
   nghttp2_session_del(session);
 }
@@ -8682,7 +8719,7 @@ void test_nghttp2_session_cancel_reserved_remote(void) {
      is just queued. */
   open_recv_stream2(session, 4, NGHTTP2_STREAM_RESERVED);
 
-  nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, 2, NGHTTP2_CANCEL);
+  nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, 4, NGHTTP2_CANCEL);
 
   nghttp2_bufs_reset(&bufs);
 
