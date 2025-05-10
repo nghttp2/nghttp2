@@ -344,16 +344,16 @@ StringRef Downstream::assemble_request_cookie() {
   }
 
   auto iov = make_byte_ref(balloc_, len + 1);
-  auto p = std::begin(iov);
+  auto p = std::ranges::begin(iov);
 
   for (auto &kv : req_.fs.headers()) {
     if (kv.token != http2::HD_COOKIE || kv.value.empty()) {
       continue;
     }
 
-    auto end = std::end(kv.value);
-    for (auto it = std::begin(kv.value) + kv.value.size();
-         it != std::begin(kv.value); --it) {
+    auto end = std::ranges::end(kv.value);
+    for (auto it = std::ranges::begin(kv.value) + kv.value.size();
+         it != std::ranges::begin(kv.value); --it) {
       auto c = *(it - 1);
       if (c == ' ' || c == ';') {
         continue;
@@ -362,16 +362,16 @@ StringRef Downstream::assemble_request_cookie() {
       break;
     }
 
-    p = std::copy(std::begin(kv.value), end, p);
+    p = std::ranges::copy(std::ranges::begin(kv.value), end, p).out;
     p = std::ranges::copy("; "sv, p).out;
   }
 
   // cut trailing "; "
-  if (p - std::begin(iov) >= 2) {
+  if (p - std::ranges::begin(iov) >= 2) {
     p -= 2;
   }
 
-  return StringRef{std::span{std::begin(iov), p}};
+  return StringRef{std::span{std::ranges::begin(iov), p}};
 }
 
 uint32_t Downstream::find_affinity_cookie(const StringRef &name) {
@@ -380,23 +380,24 @@ uint32_t Downstream::find_affinity_cookie(const StringRef &name) {
       continue;
     }
 
-    for (auto it = std::begin(kv.value); it != std::end(kv.value);) {
+    for (auto it = std::ranges::begin(kv.value);
+         it != std::ranges::end(kv.value);) {
       if (*it == '\t' || *it == ' ' || *it == ';') {
         ++it;
         continue;
       }
 
-      auto end = std::find(it, std::end(kv.value), '=');
-      if (end == std::end(kv.value)) {
+      auto end = std::ranges::find(it, std::ranges::end(kv.value), '=');
+      if (end == std::ranges::end(kv.value)) {
         return 0;
       }
 
       if (name != StringRef{it, end}) {
-        it = std::find(it, std::end(kv.value), ';');
+        it = std::ranges::find(it, std::ranges::end(kv.value), ';');
         continue;
       }
 
-      it = std::find(end + 1, std::end(kv.value), ';');
+      it = std::ranges::find(end + 1, std::ranges::end(kv.value), ';');
       auto val = StringRef{end + 1, it};
       if (val.size() != 8) {
         return 0;
@@ -424,13 +425,14 @@ size_t Downstream::count_crumble_request_cookie() {
       continue;
     }
 
-    for (auto it = std::begin(kv.value); it != std::end(kv.value);) {
+    for (auto it = std::ranges::begin(kv.value);
+         it != std::ranges::end(kv.value);) {
       if (*it == '\t' || *it == ' ' || *it == ';') {
         ++it;
         continue;
       }
 
-      it = std::find(it, std::end(kv.value), ';');
+      it = std::ranges::find(it, std::ranges::end(kv.value), ';');
 
       ++n;
     }
@@ -444,7 +446,8 @@ void Downstream::crumble_request_cookie(std::vector<nghttp2_nv> &nva) {
       continue;
     }
 
-    for (auto it = std::begin(kv.value); it != std::end(kv.value);) {
+    for (auto it = std::ranges::begin(kv.value);
+         it != std::ranges::end(kv.value);) {
       if (*it == '\t' || *it == ' ' || *it == ';') {
         ++it;
         continue;
@@ -452,7 +455,7 @@ void Downstream::crumble_request_cookie(std::vector<nghttp2_nv> &nva) {
 
       auto first = it;
 
-      it = std::find(it, std::end(kv.value), ';');
+      it = std::ranges::find(it, std::ranges::end(kv.value), ';');
 
       nva.push_back({(uint8_t *)"cookie", (uint8_t *)first, str_size("cookie"),
                      (size_t)(it - first),
@@ -474,11 +477,11 @@ void add_header(size_t &sum, HeaderRefs &headers, const StringRef &name,
 namespace {
 StringRef alloc_header_name(BlockAllocator &balloc, const StringRef &name) {
   auto iov = make_byte_ref(balloc, name.size() + 1);
-  auto p = std::copy(std::begin(name), std::end(name), std::begin(iov));
-  util::inp_strlower(std::begin(iov), p);
+  auto p = std::ranges::copy(name, std::ranges::begin(iov)).out;
+  util::inp_strlower(std::ranges::begin(iov), p);
   *p = '\0';
 
-  return StringRef{std::span{std::begin(iov), p}};
+  return StringRef{std::span{std::ranges::begin(iov), p}};
 }
 } // namespace
 

@@ -256,9 +256,9 @@ struct Response {
     if (!pushed_resources) {
       return false;
     }
-    return std::find(std::begin(*pushed_resources), std::end(*pushed_resources),
-                     std::make_tuple(scheme, authority, path)) !=
-           std::end(*pushed_resources);
+    return std::ranges::find(*pushed_resources,
+                             std::make_tuple(scheme, authority, path)) !=
+           std::ranges::end(*pushed_resources);
   }
 
   // remember that a resource denoted by scheme, authority, and path
