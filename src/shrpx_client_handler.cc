@@ -35,6 +35,7 @@
 #endif // HAVE_NETDB_H
 
 #include <cerrno>
+#include <algorithm>
 
 #include "shrpx_upstream.h"
 #include "shrpx_http2_upstream.h"
@@ -491,13 +492,13 @@ ClientHandler::ClientHandler(Worker *worker, int fd, SSL *ssl,
       auto len = SHRPX_OBFUSCATED_NODE_LENGTH + 1;
       // 1 for terminating NUL.
       auto buf = make_byte_ref(balloc_, len + 1);
-      auto p = std::begin(buf);
+      auto p = std::ranges::begin(buf);
       *p++ = '_';
       p = util::random_alpha_digit(p, p + SHRPX_OBFUSCATED_NODE_LENGTH,
                                    worker_->get_randgen());
       *p = '\0';
 
-      forwarded_for_ = StringRef{std::span{std::begin(buf), p}};
+      forwarded_for_ = StringRef{std::span{std::ranges::begin(buf), p}};
     } else {
       init_forwarded_for(family, ipaddr_);
     }
@@ -510,13 +511,13 @@ void ClientHandler::init_forwarded_for(int family, const StringRef &ipaddr) {
     auto len = 2 + ipaddr.size();
     // 1 for terminating NUL.
     auto buf = make_byte_ref(balloc_, len + 1);
-    auto p = std::begin(buf);
+    auto p = std::ranges::begin(buf);
     *p++ = '[';
-    p = std::copy(std::begin(ipaddr), std::end(ipaddr), p);
+    p = std::ranges::copy(ipaddr, p).out;
     *p++ = ']';
     *p = '\0';
 
-    forwarded_for_ = StringRef{std::span{std::begin(buf), p}};
+    forwarded_for_ = StringRef{std::span{std::ranges::begin(buf), p}};
   } else {
     // family == AF_INET or family == AF_UNIX
     forwarded_for_ = ipaddr;
@@ -876,16 +877,14 @@ DownstreamAddr *ClientHandler::get_downstream_addr(int &err,
 
     const auto &affinity_hash = shared_addr->affinity_hash;
 
-    auto it = std::lower_bound(
-      std::begin(affinity_hash), std::end(affinity_hash), hash,
-      [](const AffinityHash &lhs, uint32_t rhs) { return lhs.hash < rhs; });
-
-    if (it == std::end(affinity_hash)) {
-      it = std::begin(affinity_hash);
+    auto it =
+      std::ranges::lower_bound(affinity_hash, hash, {}, &AffinityHash::hash);
+    if (it == std::ranges::end(affinity_hash)) {
+      it = std::ranges::begin(affinity_hash);
     }
 
-    auto aff_idx =
-      static_cast<size_t>(std::distance(std::begin(affinity_hash), it));
+    auto aff_idx = static_cast<size_t>(
+      std::ranges::distance(std::ranges::begin(affinity_hash), it));
     auto idx = (*it).idx;
     auto addr = &shared_addr->addrs[idx];
 
@@ -952,7 +951,7 @@ DownstreamAddr *ClientHandler::get_downstream_addr_strict_affinity(
   auto h = downstream->find_affinity_cookie(shared_addr->affinity.cookie.name);
   if (h) {
     auto it = shared_addr->affinity_hash_map.find(h);
-    if (it != std::end(shared_addr->affinity_hash_map)) {
+    if (it != std::ranges::end(shared_addr->affinity_hash_map)) {
       auto addr = &shared_addr->addrs[(*it).second];
       if (!addr->connect_blocker->blocked()) {
         return addr;
@@ -969,16 +968,13 @@ DownstreamAddr *ClientHandler::get_downstream_addr_strict_affinity(
   // existing h allows us to find new server in a deterministic way.
   // It is preferable because multiple concurrent requests with the
   // stale cookie might be in-flight.
-  auto it = std::lower_bound(
-    std::begin(affinity_hash), std::end(affinity_hash), h,
-    [](const AffinityHash &lhs, uint32_t rhs) { return lhs.hash < rhs; });
-
-  if (it == std::end(affinity_hash)) {
-    it = std::begin(affinity_hash);
+  auto it = std::ranges::lower_bound(affinity_hash, h, {}, &AffinityHash::hash);
+  if (it == std::ranges::end(affinity_hash)) {
+    it = std::ranges::begin(affinity_hash);
   }
 
-  auto aff_idx =
-    static_cast<size_t>(std::distance(std::begin(affinity_hash), it));
+  auto aff_idx = static_cast<size_t>(
+    std::ranges::distance(std::ranges::begin(affinity_hash), it));
   auto idx = (*it).idx;
   auto addr = &shared_addr->addrs[idx];
 
@@ -1326,8 +1322,8 @@ int ClientHandler::proxy_protocol_read() {
 
   auto bufend = rb_.pos() + std::min(MAX_PROXY_LINELEN, rb_.rleft());
 
-  auto end =
-    std::find_first_of(rb_.pos(), bufend, std::begin(chrs), std::end(chrs));
+  auto end = std::ranges::find_first_of(
+    rb_.pos(), bufend, std::ranges::begin(chrs), std::ranges::end(chrs));
 
   if (end == bufend || *end == '\0' || end == rb_.pos() || *(end - 1) != '\r') {
     if (LOG_ENABLED(INFO)) {
@@ -1408,7 +1404,7 @@ int ClientHandler::proxy_protocol_read() {
   }
 
   // source address
-  auto token_end = std::find(rb_.pos(), end, ' ');
+  auto token_end = std::ranges::find(rb_.pos(), end, ' ');
   if (token_end == end) {
     if (LOG_ENABLED(INFO)) {
       CLOG(INFO, this) << "PROXY-protocol-v1: Source address not found";
@@ -1430,7 +1426,7 @@ int ClientHandler::proxy_protocol_read() {
   rb_.drain(token_end - rb_.pos() + 1);
 
   // destination address
-  token_end = std::find(rb_.pos(), end, ' ');
+  token_end = std::ranges::find(rb_.pos(), end, ' ');
   if (token_end == end) {
     if (LOG_ENABLED(INFO)) {
       CLOG(INFO, this) << "PROXY-protocol-v1: Destination address not found";
