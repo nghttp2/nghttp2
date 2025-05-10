@@ -79,6 +79,7 @@ const MunitTest tests[]{
   munit_void_test(test_util_split_hostport),
   munit_void_test(test_util_split_str),
   munit_void_test(test_util_rstrip),
+  munit_void_test(test_util_contains),
   munit_test_end(),
 };
 } // namespace
@@ -689,6 +690,13 @@ void test_util_rstrip(void) {
   assert_stdsv_equal("alpha"sv, util::rstrip(balloc, "alpha \t"_sr));
   assert_stdsv_equal(""sv, util::rstrip(balloc, ""_sr));
   assert_stdsv_equal(""sv, util::rstrip(balloc, "\t\t\t   "_sr));
+}
+
+void test_util_contains(void) {
+  assert_true(util::contains("alphabravo"sv, 'a'));
+  assert_true(util::contains("alphabravo"sv, 'o'));
+  assert_false(util::contains("alphabravo"sv, 'x'));
+  assert_false(util::contains(""sv, ' '));
 }
 
 } // namespace shrpx

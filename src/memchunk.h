@@ -168,22 +168,23 @@ template <typename Memchunk> struct Memchunks {
     ++len;
     return 1;
   }
-  size_t append(const void *src, size_t count) {
-    if (count == 0) {
+  template <std::input_iterator I> size_t append(I first, I last) {
+    if (first == last) {
       return 0;
     }
 
-    auto first = static_cast<const uint8_t *>(src);
-    auto last = first + count;
+    auto count = std::ranges::distance(first, last);
 
     if (!tail) {
       head = tail = pool->get();
     }
 
     for (;;) {
-      auto n = std::min(static_cast<size_t>(last - first), tail->left());
-      tail->last = std::copy_n(first, n, tail->last);
-      first += n;
+      auto n = std::min(static_cast<size_t>(std::ranges::distance(first, last)),
+                        tail->left());
+      auto iores = std::ranges::copy_n(first, n, tail->last);
+      first = iores.in;
+      tail->last = iores.out;
       len += n;
       if (first == last) {
         break;
@@ -196,12 +197,14 @@ template <typename Memchunk> struct Memchunks {
     return count;
   }
   template <size_t N> size_t append(const char (&s)[N]) {
-    return append(s, N - 1);
+    return append(s, s + (N - 1));
   }
-  size_t append(const std::string &s) { return append(s.c_str(), s.size()); }
-  size_t append(const StringRef &s) { return append(s.data(), s.size()); }
-  size_t append(const ImmutableString &s) {
-    return append(s.c_str(), s.size());
+  size_t append(const void *src, size_t count) {
+    auto s = static_cast<const uint8_t *>(src);
+    return append(s, s + count);
+  }
+  template <std::ranges::input_range R> size_t append(R &&r) {
+    return append(std::ranges::begin(r), std::ranges::end(r));
   }
   size_t copy(Memchunks &dest) {
     auto m = head;

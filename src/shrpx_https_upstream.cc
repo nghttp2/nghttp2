@@ -259,8 +259,7 @@ void rewrite_request_host_path_from_uri(BlockAllocator &balloc, Request &req,
   // rewrite host header field with authority component.
   auto authority = util::get_uri_field(uri.data(), u, URLPARSE_HOST);
   // TODO properly check IPv6 numeric address
-  auto ipv6 = std::find(std::begin(authority), std::end(authority), ':') !=
-              std::end(authority);
+  auto ipv6 = util::contains(authority, ':');
   auto authoritylen = authority.size();
   if (ipv6) {
     authoritylen += 2;
@@ -270,11 +269,11 @@ void rewrite_request_host_path_from_uri(BlockAllocator &balloc, Request &req,
   }
   if (authoritylen > authority.size()) {
     auto iovec = make_byte_ref(balloc, authoritylen + 1);
-    auto p = std::begin(iovec);
+    auto p = std::ranges::begin(iovec);
     if (ipv6) {
       *p++ = '[';
     }
-    p = std::copy(std::begin(authority), std::end(authority), p);
+    p = std::ranges::copy(authority, p).out;
     if (ipv6) {
       *p++ = ']';
     }
@@ -285,7 +284,7 @@ void rewrite_request_host_path_from_uri(BlockAllocator &balloc, Request &req,
     }
     *p = '\0';
 
-    req.authority = StringRef{std::span{std::begin(iovec), p}};
+    req.authority = StringRef{std::span{std::ranges::begin(iovec), p}};
   } else {
     req.authority = authority;
   }
@@ -314,7 +313,7 @@ void rewrite_request_host_path_from_uri(BlockAllocator &balloc, Request &req,
 
     if (u.field_set & (1 << URLPARSE_PATH)) {
       auto q = util::get_uri_field(uri.data(), u, URLPARSE_QUERY);
-      path = StringRef{std::begin(path), std::end(q)};
+      path = StringRef{std::ranges::begin(path), std::ranges::end(q)};
     } else {
       path = concat_string_ref(balloc, path, "?"_sr,
                                StringRef{&uri[fdata.off], fdata.len});
@@ -406,9 +405,9 @@ int htp_hdrs_completecb(llhttp_t *htp) {
     // Not allow at least '"' or '\' in host.  They are illegal in
     // authority component, also they cause headaches when we put them
     // in quoted-string.
-    if (std::find_if(std::begin(value), std::end(value), [](char c) {
+    if (std::ranges::find_if(value, [](char c) {
           return c == '"' || c == '\\';
-        }) != std::end(value)) {
+        }) != std::ranges::end(value)) {
       return -1;
     }
   }
@@ -1074,7 +1073,8 @@ void HttpsUpstream::error_reply(unsigned int status_code) {
   output->append("\r\nContent-Length: ");
   std::array<char, NGHTTP2_MAX_UINT64_DIGITS> intbuf;
   output->append(
-    StringRef{std::begin(intbuf), util::utos(std::begin(intbuf), html.size())});
+    StringRef{std::ranges::begin(intbuf),
+              util::utos(std::ranges::begin(intbuf), html.size())});
   output->append("\r\nDate: ");
   auto lgconf = log_config();
   lgconf->update_tstamp(std::chrono::system_clock::now());
@@ -1319,9 +1319,10 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
       buf->append(", ");
     }
     std::array<char, 16> viabuf;
-    auto end = http::create_via_header_value(viabuf.data(), resp.http_major,
-                                             resp.http_minor);
-    buf->append(viabuf.data(), end - std::begin(viabuf));
+    buf->append(std::ranges::begin(viabuf),
+                http::create_via_header_value(std::ranges::begin(viabuf),
+                                              resp.http_major,
+                                              resp.http_minor));
     buf->append("\r\n");
   }
 
