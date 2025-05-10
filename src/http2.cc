@@ -1900,8 +1900,7 @@ StringRef make_websocket_accept_token(uint8_t *dest, const StringRef &key) {
     return StringRef{};
   }
 
-  auto end = base64::encode(std::ranges::begin(h), std::ranges::end(h), dest);
-  return StringRef{std::span{dest, end}};
+  return StringRef{std::span{dest, base64::encode(h, dest)}};
 }
 
 bool legacy_http1(int major, int minor) {

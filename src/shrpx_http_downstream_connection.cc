@@ -569,8 +569,7 @@ int HttpDownstreamConnection::push_request_headers() {
         return -1;
       }
       auto iov = make_byte_ref(balloc, base64::encode_length(nonce.size()) + 1);
-      auto p =
-        base64::encode(std::begin(nonce), std::end(nonce), std::begin(iov));
+      auto p = base64::encode(nonce, std::begin(iov));
       *p = '\0';
       auto key = StringRef{std::span{std::begin(iov), p}};
       downstream_->set_ws_key(key);

@@ -46,55 +46,23 @@ constexpr char B64_CHARS[] = {
 };
 } // namespace
 
-template <typename InputIt> std::string encode(InputIt first, InputIt last) {
-  std::string res;
-  size_t len = last - first;
-  if (len == 0) {
-    return res;
-  }
-  size_t r = len % 3;
-  res.resize((len + 2) / 3 * 4);
-  auto j = last - r;
-  auto p = std::begin(res);
-  while (first != j) {
-    uint32_t n = static_cast<uint8_t>(*first++) << 16;
-    n += static_cast<uint8_t>(*first++) << 8;
-    n += static_cast<uint8_t>(*first++);
-    *p++ = B64_CHARS[n >> 18];
-    *p++ = B64_CHARS[(n >> 12) & 0x3fu];
-    *p++ = B64_CHARS[(n >> 6) & 0x3fu];
-    *p++ = B64_CHARS[n & 0x3fu];
-  }
-
-  if (r == 2) {
-    uint32_t n = static_cast<uint8_t>(*first++) << 16;
-    n += static_cast<uint8_t>(*first++) << 8;
-    *p++ = B64_CHARS[n >> 18];
-    *p++ = B64_CHARS[(n >> 12) & 0x3fu];
-    *p++ = B64_CHARS[(n >> 6) & 0x3fu];
-    *p++ = '=';
-  } else if (r == 1) {
-    uint32_t n = static_cast<uint8_t>(*first++) << 16;
-    *p++ = B64_CHARS[n >> 18];
-    *p++ = B64_CHARS[(n >> 12) & 0x3fu];
-    *p++ = '=';
-    *p++ = '=';
-  }
-  return res;
-}
-
 constexpr size_t encode_length(size_t n) { return (n + 2) / 3 * 4; }
 
-template <typename InputIt, typename OutputIt>
-OutputIt encode(InputIt first, InputIt last, OutputIt d_first) {
-  size_t len = last - first;
+template <std::input_iterator I, std::weakly_incrementable O>
+O encode(I first, I last, O result) {
+  auto len = std::ranges::distance(first, last);
   if (len == 0) {
-    return d_first;
+    return result;
   }
-  auto r = len % 3;
-  auto j = last - r;
-  auto p = d_first;
-  while (first != j) {
+
+  auto p = result;
+
+  for (;;) {
+    len = std::ranges::distance(first, last);
+    if (len < 3) {
+      break;
+    }
+
     uint32_t n = static_cast<uint8_t>(*first++) << 16;
     n += static_cast<uint8_t>(*first++) << 8;
     n += static_cast<uint8_t>(*first++);
@@ -104,7 +72,7 @@ OutputIt encode(InputIt first, InputIt last, OutputIt d_first) {
     *p++ = B64_CHARS[n & 0x3fu];
   }
 
-  switch (r) {
+  switch (len) {
   case 2: {
     uint32_t n = static_cast<uint8_t>(*first++) << 16;
     n += static_cast<uint8_t>(*first++) << 8;
@@ -123,21 +91,31 @@ OutputIt encode(InputIt first, InputIt last, OutputIt d_first) {
     break;
   }
   }
+
   return p;
 }
 
-template <typename InputIt>
-InputIt next_decode_input(InputIt first, InputIt last, const int *tbl) {
-  for (; first != last; ++first) {
-    if (tbl[static_cast<size_t>(*first)] != -1 || *first == '=') {
-      break;
-    }
-  }
-  return first;
+template <std::ranges::input_range R, std::weakly_incrementable O>
+O encode(R &&r, O result) {
+  return encode(std::ranges::begin(r), std::ranges::end(r), std::move(result));
 }
 
-template <typename InputIt, typename OutputIt>
-OutputIt decode(InputIt first, InputIt last, OutputIt d_first) {
+template <std::ranges::input_range R> std::string encode(R &&r) {
+  std::string res;
+  auto len = std::ranges::size(r);
+  if (len == 0) {
+    return res;
+  }
+
+  res.resize((len + 2) / 3 * 4);
+
+  encode(std::forward<R>(r), std::ranges::begin(res));
+
+  return res;
+}
+
+template <std::input_iterator I, std::weakly_incrementable O>
+O decode(I first, I last, O result) {
   static constexpr int INDEX_TABLE[] = {
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
@@ -153,29 +131,30 @@ OutputIt decode(InputIt first, InputIt last, OutputIt d_first) {
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, -1, -1, -1, -1, -1, -1, -1, -1};
-  assert(std::distance(first, last) % 4 == 0);
-  auto p = d_first;
+  assert(std::ranges::distance(first, last) % 4 == 0);
+  auto p = result;
   for (; first != last;) {
     uint32_t n = 0;
     for (int i = 1; i <= 4; ++i, ++first) {
       auto idx = INDEX_TABLE[static_cast<size_t>(*first)];
       if (idx == -1) {
         if (i <= 2) {
-          return d_first;
+          return result;
         }
         if (i == 3) {
-          if (*first == '=' && *(first + 1) == '=' && first + 2 == last) {
+          if (*first == '=' && *std::ranges::next(first, 1) == '=' &&
+              std::ranges::next(first, 2) == last) {
             *p++ = n >> 16;
             return p;
           }
-          return d_first;
+          return result;
         }
-        if (*first == '=' && first + 1 == last) {
+        if (*first == '=' && std::ranges::next(first, 1) == last) {
           *p++ = n >> 16;
           *p++ = n >> 8 & 0xffu;
           return p;
         }
-        return d_first;
+        return result;
       }
 
       n += idx << (24 - i * 6);
@@ -189,33 +168,19 @@ OutputIt decode(InputIt first, InputIt last, OutputIt d_first) {
   return p;
 }
 
-template <typename InputIt> std::string decode(InputIt first, InputIt last) {
-  auto len = std::distance(first, last);
-  if (len % 4 != 0) {
-    return "";
-  }
-  std::string res;
-  res.resize(len / 4 * 3);
-
-  res.erase(decode(first, last, std::begin(res)), std::end(res));
-
-  return res;
-}
-
-template <typename InputIt>
-std::span<const uint8_t> decode(BlockAllocator &balloc, InputIt first,
-                                InputIt last) {
-  auto len = std::distance(first, last);
+template <std::ranges::input_range R>
+std::span<const uint8_t> decode(BlockAllocator &balloc, R &&r) {
+  auto len = std::ranges::size(r);
   if (len % 4 != 0) {
     return {};
   }
   auto iov = make_byte_ref(balloc, len / 4 * 3 + 1);
-  auto p = std::begin(iov);
+  auto p = std::ranges::begin(iov);
 
-  p = decode(first, last, p);
+  p = decode(std::ranges::begin(r), std::ranges::end(r), p);
   *p = '\0';
 
-  return {std::begin(iov), p};
+  return {std::ranges::begin(iov), p};
 }
 
 } // namespace base64

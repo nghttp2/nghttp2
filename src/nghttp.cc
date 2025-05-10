@@ -928,8 +928,7 @@ int HttpClient::on_upgrade_connect() {
   }
   settings_payloadlen = rv;
   auto token68 =
-    base64::encode(std::begin(settings_payload),
-                   std::begin(settings_payload) + settings_payloadlen);
+    base64::encode(std::span{settings_payload.data(), settings_payloadlen});
   util::to_token68(token68);
 
   std::string req;

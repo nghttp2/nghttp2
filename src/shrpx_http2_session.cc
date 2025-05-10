@@ -711,7 +711,7 @@ int Http2Session::downstream_connect_proxy() {
   const auto &proxy = get_config()->downstream_http_proxy;
   if (!proxy.userinfo.empty()) {
     req += "Proxy-Authorization: Basic ";
-    req += base64::encode(std::begin(proxy.userinfo), std::end(proxy.userinfo));
+    req += base64::encode(proxy.userinfo);
     req += "\r\n";
   }
   req += "\r\n";
