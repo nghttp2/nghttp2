@@ -419,6 +419,12 @@ ClientHandler *QUICConnectionHandler::handle_new_connection(
     worker_, faddr->fd, ssl, StringRef{host.data()}, StringRef{service.data()},
     remote_addr.su.sa.sa_family, faddr);
 
+  auto &fwdconf = config->http.forwarded;
+
+  if (fwdconf.params & FORWARDED_BY) {
+    handler->set_local_hostport(&local_addr.su.sa, local_addr.len);
+  }
+
   auto upstream = std::make_unique<Http3Upstream>(handler.get());
   if (upstream->init(faddr, remote_addr, local_addr, hd, odcid, token,
                      token_type) != 0) {

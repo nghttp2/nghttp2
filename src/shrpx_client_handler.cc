@@ -1667,7 +1667,7 @@ StringRef ClientHandler::get_forwarded_by() const {
     return fwdconf.by_obfuscated;
   }
 
-  return faddr_->hostport;
+  return local_hostport_;
 }
 
 StringRef ClientHandler::get_forwarded_for() const { return forwarded_for_; }
@@ -1693,6 +1693,18 @@ void ClientHandler::set_alpn_from_conn() {
   SSL_get0_alpn_selected(conn_.tls.ssl, &alpn, &alpnlen);
 
   alpn_ = make_string_ref(balloc_, StringRef{alpn, alpnlen});
+}
+
+void ClientHandler::set_local_hostport(const sockaddr *addr,
+                                       socklen_t addrlen) {
+  std::array<char, NI_MAXHOST> host;
+
+  if (getnameinfo(addr, addrlen, host.data(), host.size(), nullptr, 0,
+                  NI_NUMERICHOST) != 0) {
+    return;
+  }
+
+  local_hostport_ = util::make_hostport(balloc_, host.data(), faddr_->port);
 }
 
 } // namespace shrpx
