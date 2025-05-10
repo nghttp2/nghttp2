@@ -890,6 +890,13 @@ bool contains(R &&r, const T &value) {
   return std::ranges::find(r, value) != std::ranges::end(r);
 }
 
+// contains returns true if |value| is contained in a range [|first|,
+// |last|).
+template <std::input_iterator I, typename T>
+constexpr bool contains(I first, I last, const T &value) {
+  return std::ranges::find(std::move(first), last, value) != last;
+}
+
 #ifdef ENABLE_HTTP3
 int msghdr_get_local_addr(Address &dest, msghdr *msg, int family);
 

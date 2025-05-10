@@ -209,6 +209,11 @@ Log &Log::operator<<(const std::string &s) {
   return *this;
 }
 
+Log &Log::operator<<(const std::string_view &s) {
+  write_seq(s);
+  return *this;
+}
+
 Log &Log::operator<<(const StringRef &s) {
   write_seq(s);
   return *this;

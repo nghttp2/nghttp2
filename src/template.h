@@ -493,6 +493,17 @@ as_writable_uint8_span(std::span<T, N> s) noexcept {
                {reinterpret_cast<uint8_t *>(s.data()), s.size_bytes()};
 }
 
+template <typename R>
+requires(std::ranges::contiguous_range<R> && std::ranges::sized_range<R> &&
+         std::ranges::borrowed_range<R> &&
+         sizeof(std::ranges::range_value_t<R>) ==
+           sizeof(std::string_view::value_type))
+[[nodiscard]] std::string_view as_string_view(R &&r) {
+  return std::string_view{
+    reinterpret_cast<std::string_view::const_pointer>(std::ranges::data(r)),
+    std::ranges::size(r)};
+}
+
 inline int run_app(std::function<int(int, char **)> app, int argc,
                    char **argv) {
   try {
