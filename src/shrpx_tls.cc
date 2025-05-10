@@ -1692,8 +1692,23 @@ ClientHandler *accept_connection(Worker *worker, int fd, sockaddr *addr,
     }
   }
 
-  return new ClientHandler(worker, fd, ssl, StringRef{host.data()},
-                           StringRef{service.data()}, addr->sa_family, faddr);
+  auto handler =
+    new ClientHandler(worker, fd, ssl, StringRef{host.data()},
+                      StringRef{service.data()}, addr->sa_family, faddr);
+
+  auto config = get_config();
+  auto &fwdconf = config->http.forwarded;
+
+  if (addr->sa_family != AF_UNIX && fwdconf.params & FORWARDED_BY) {
+    sockaddr_union su;
+    socklen_t sulen = sizeof(su);
+
+    if (getsockname(fd, &su.sa, &sulen) == 0) {
+      handler->set_local_hostport(&su.sa, sulen);
+    }
+  }
+
+  return handler;
 }
 
 bool tls_hostname_match(const StringRef &pattern, const StringRef &hostname) {

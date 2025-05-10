@@ -204,6 +204,8 @@ public:
 
   void set_alpn_from_conn();
 
+  void set_local_hostport(const sockaddr *addr, socklen_t addrlen);
+
 private:
   // Allocator to allocate memory for connection-wide objects.  Make
   // sure that the allocations must be bounded, and not proportional
@@ -224,6 +226,11 @@ private:
   StringRef forwarded_for_;
   // lowercased TLS SNI which client sent.
   StringRef sni_;
+  // The host and port of local address where the connection is
+  // accepted.  For QUIC connection, the local address may change due
+  // to client address migration, but this value stays the same for
+  // now.
+  StringRef local_hostport_;
   std::function<int(ClientHandler &)> read_, write_;
   std::function<int(ClientHandler &)> on_read_, on_write_;
   // Address of frontend listening socket
