@@ -688,7 +688,8 @@ void ConnectionHandler::read_ocsp_chunk() {
       break;
     }
 
-    std::copy_n(std::begin(buf), n, std::back_inserter(ocsp_.resp));
+    std::ranges::copy_n(std::ranges::begin(buf), n,
+                        std::back_inserter(ocsp_.resp));
   }
 
   ev_io_stop(loop_, &ocsp_.rev);
@@ -1114,11 +1115,13 @@ int ConnectionHandler::forward_quic_packet_to_lingering_worker_process(
 
   *p++ = static_cast<uint8_t>(QUICIPCType::DGRAM_FORWARD);
   *p++ = static_cast<uint8_t>(remote_addr.len - 1);
-  p = std::copy_n(reinterpret_cast<const uint8_t *>(&remote_addr.su),
-                  remote_addr.len, p);
+  p = std::ranges::copy_n(reinterpret_cast<const uint8_t *>(&remote_addr.su),
+                          remote_addr.len, p)
+        .out;
   *p++ = static_cast<uint8_t>(local_addr.len - 1);
-  p = std::copy_n(reinterpret_cast<const uint8_t *>(&local_addr.su),
-                  local_addr.len, p);
+  p = std::ranges::copy_n(reinterpret_cast<const uint8_t *>(&local_addr.su),
+                          local_addr.len, p)
+        .out;
   *p++ = pi.ecn;
 
   iovec msg_iov[] = {
