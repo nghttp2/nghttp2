@@ -40,6 +40,7 @@ extern const MunitSuite util_suite;
 munit_void_test_decl(test_util_streq)
 munit_void_test_decl(test_util_strieq)
 munit_void_test_decl(test_util_inp_strlower)
+munit_void_test_decl(test_util_tolower)
 munit_void_test_decl(test_util_to_base64)
 munit_void_test_decl(test_util_to_token68)
 munit_void_test_decl(test_util_percent_encode_token)

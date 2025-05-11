@@ -477,8 +477,7 @@ void add_header(size_t &sum, HeaderRefs &headers, const StringRef &name,
 namespace {
 StringRef alloc_header_name(BlockAllocator &balloc, const StringRef &name) {
   auto iov = make_byte_ref(balloc, name.size() + 1);
-  auto p = std::ranges::copy(name, std::ranges::begin(iov)).out;
-  util::inp_strlower(std::ranges::begin(iov), p);
+  auto p = util::tolower(name, std::ranges::begin(iov));
   *p = '\0';
 
   return as_string_ref(std::ranges::begin(iov), p);
