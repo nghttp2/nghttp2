@@ -155,7 +155,7 @@ int set_alpn_prefs(std::vector<unsigned char> &out,
 
   for (const auto &proto : protos) {
     *ptr++ = proto.size();
-    ptr = std::copy(std::begin(proto), std::end(proto), ptr);
+    ptr = std::ranges::copy(proto, ptr).out;
   }
 
   return 0;
@@ -228,11 +228,11 @@ int servername_callback(SSL *ssl, int *al, void *arg) {
 
   std::array<char, NI_MAXHOST> buf;
 
-  auto end_buf = std::copy_n(rawhost, len, std::begin(buf));
+  auto end_buf = std::ranges::copy_n(rawhost, len, std::ranges::begin(buf)).out;
 
-  util::inp_strlower(std::begin(buf), end_buf);
+  util::inp_strlower(std::ranges::begin(buf), end_buf);
 
-  auto hostname = StringRef{std::begin(buf), end_buf};
+  auto hostname = StringRef{std::ranges::begin(buf), end_buf};
 
 #ifdef ENABLE_HTTP3
   auto cert_tree = conn->proto == Proto::HTTP3
@@ -368,7 +368,7 @@ int ocsp_resp_cb(SSL *ssl, void *arg) {
     return SSL_TLSEXT_ERR_OK;
   }
 
-  std::copy(std::begin(*data), std::end(*data), buf);
+  std::ranges::copy(*data, buf);
 
   SSL_set_tlsext_status_ocsp_resp(ssl, buf, data->size());
 
@@ -433,14 +433,12 @@ int tls_session_new_cb(SSL *ssl, SSL_SESSION *session) {
     if (LOG_ENABLED(INFO)) {
       LOG(INFO) << "Memcached: session cache done.  key=" << req->key
                 << ", status_code=" << static_cast<uint16_t>(res.status_code)
-                << ", value="
-                << std::string(std::begin(res.value), std::end(res.value));
+                << ", value=" << as_string_view(res.value);
     }
     if (res.status_code != MemcachedStatusCode::NO_ERROR) {
       LOG(WARN) << "Memcached: failed to cache session key=" << req->key
                 << ", status_code=" << static_cast<uint16_t>(res.status_code)
-                << ", value="
-                << std::string(std::begin(res.value), std::end(res.value));
+                << ", value=" << as_string_view(res.value);
     }
   };
   assert(!req->canceled);
@@ -568,7 +566,7 @@ int ticket_key_cb(SSL *ssl, unsigned char *key_name, unsigned char *iv,
                           << util::format_hex(key.data.name);
     }
 
-    std::copy(std::begin(key.data.name), std::end(key.data.name), key_name);
+    std::ranges::copy(key.data.name, key_name);
 
     EVP_EncryptInit_ex(ctx, get_config()->tls.ticket.cipher, nullptr,
                        key.data.enc_key.data(), iv);
@@ -597,8 +595,8 @@ int ticket_key_cb(SSL *ssl, unsigned char *key_name, unsigned char *iv,
   size_t i;
   for (i = 0; i < keys.size(); ++i) {
     auto &key = keys[i];
-    if (std::equal(std::begin(key.data.name), std::end(key.data.name),
-                   key_name)) {
+    if (std::ranges::equal(key.data.name,
+                           std::span{key_name, key.data.name.size()})) {
       break;
     }
   }
@@ -805,7 +803,7 @@ unsigned int psk_server_cb(SSL *ssl, const char *identity, unsigned char *psk,
   auto &tlsconf = config->tls;
 
   auto it = tlsconf.psk_secrets.find(StringRef{identity});
-  if (it == std::end(tlsconf.psk_secrets)) {
+  if (it == std::ranges::end(tlsconf.psk_secrets)) {
     return 0;
   }
 
@@ -816,7 +814,7 @@ unsigned int psk_server_cb(SSL *ssl, const char *identity, unsigned char *psk,
     return 0;
   }
 
-  std::copy(std::begin(secret), std::end(secret), psk);
+  std::ranges::copy(secret, psk);
 
   return static_cast<unsigned int>(secret.size());
 }
@@ -850,8 +848,8 @@ unsigned int psk_client_cb(SSL *ssl, const char *hint, char *identity_out,
     return 0;
   }
 
-  *std::copy(std::begin(identity), std::end(identity), identity_out) = '\0';
-  std::copy(std::begin(secret), std::end(secret), psk);
+  *std::ranges::copy(identity, identity_out).out = '\0';
+  std::ranges::copy(secret, psk);
 
   return static_cast<unsigned int>(secret.size());
 }
@@ -1659,7 +1657,7 @@ ClientHandler *accept_connection(Worker *worker, int fd, sockaddr *addr,
   int rv;
 
   if (addr->sa_family == AF_UNIX) {
-    std::copy_n("localhost", sizeof("localhost"), std::begin(host));
+    *std::ranges::copy("localhost"sv, std::ranges::begin(host)).out = '\0';
     service[0] = '\0';
   } else {
     rv = getnameinfo(addr, addrlen, host.data(), host.size(), service.data(),
@@ -1712,20 +1710,19 @@ ClientHandler *accept_connection(Worker *worker, int fd, sockaddr *addr,
 }
 
 bool tls_hostname_match(const StringRef &pattern, const StringRef &hostname) {
-  auto ptWildcard = std::find(std::begin(pattern), std::end(pattern), '*');
-  if (ptWildcard == std::end(pattern)) {
+  auto ptWildcard = std::ranges::find(pattern, '*');
+  if (ptWildcard == std::ranges::end(pattern)) {
     return util::strieq(pattern, hostname);
   }
 
-  auto ptLeftLabelEnd = std::find(std::begin(pattern), std::end(pattern), '.');
+  auto ptLeftLabelEnd = std::ranges::find(pattern, '.');
   auto wildcardEnabled = true;
   // Do case-insensitive match. At least 2 dots are required to enable
   // wildcard match. Also wildcard must be in the left-most label.
   // Don't attempt to match a presented identifier where the wildcard
   // character is embedded within an A-label.
-  if (ptLeftLabelEnd == std::end(pattern) ||
-      std::find(ptLeftLabelEnd + 1, std::end(pattern), '.') ==
-        std::end(pattern) ||
+  if (ptLeftLabelEnd == std::ranges::end(pattern) ||
+      !util::contains(ptLeftLabelEnd + 1, std::ranges::end(pattern), '.') ||
       ptLeftLabelEnd < ptWildcard || util::istarts_with(pattern, "xn--"_sr)) {
     wildcardEnabled = false;
   }
@@ -1734,23 +1731,24 @@ bool tls_hostname_match(const StringRef &pattern, const StringRef &hostname) {
     return util::strieq(pattern, hostname);
   }
 
-  auto hnLeftLabelEnd =
-    std::find(std::begin(hostname), std::end(hostname), '.');
-  if (hnLeftLabelEnd == std::end(hostname) ||
-      !util::strieq(StringRef{ptLeftLabelEnd, std::end(pattern)},
-                    StringRef{hnLeftLabelEnd, std::end(hostname)})) {
+  auto hnLeftLabelEnd = std::ranges::find(hostname, '.');
+  if (hnLeftLabelEnd == std::ranges::end(hostname) ||
+      !util::strieq(StringRef{ptLeftLabelEnd, std::ranges::end(pattern)},
+                    StringRef{hnLeftLabelEnd, std::ranges::end(hostname)})) {
     return false;
   }
   // Perform wildcard match. Here '*' must match at least one
   // character.
-  if (hnLeftLabelEnd - std::begin(hostname) <
-      ptLeftLabelEnd - std::begin(pattern)) {
+  if (hnLeftLabelEnd - std::ranges::begin(hostname) <
+      ptLeftLabelEnd - std::ranges::begin(pattern)) {
     return false;
   }
-  return util::istarts_with(StringRef{std::begin(hostname), hnLeftLabelEnd},
-                            StringRef{std::begin(pattern), ptWildcard}) &&
-         util::iends_with(StringRef{std::begin(hostname), hnLeftLabelEnd},
-                          StringRef{ptWildcard + 1, ptLeftLabelEnd});
+  return util::istarts_with(
+           StringRef{std::ranges::begin(hostname), hnLeftLabelEnd},
+           StringRef{std::ranges::begin(pattern), ptWildcard}) &&
+         util::iends_with(
+           StringRef{std::ranges::begin(hostname), hnLeftLabelEnd},
+           StringRef{ptWildcard + 1, ptLeftLabelEnd});
 }
 
 namespace {
@@ -1775,7 +1773,7 @@ StringRef get_common_name(X509 *cert) {
     if (plen < 0) {
       continue;
     }
-    if (std::find(p, p + plen, '\0') != p + plen) {
+    if (util::contains(p, p + plen, '\0')) {
       // Embedded NULL is not permitted.
       continue;
     }
@@ -1875,7 +1873,7 @@ int verify_dns_hostname(X509 *cert, const StringRef &hostname) {
       if (len == 0) {
         continue;
       }
-      if (std::find(name, name + len, '\0') != name + len) {
+      if (util::contains(name, name + len, '\0')) {
         // Embedded NULL is not permitted.
         continue;
       }
@@ -1972,16 +1970,16 @@ ssize_t CertLookupTree::add_cert(const StringRef &hostname, size_t idx) {
     return -1;
   }
 
-  auto wildcard_it = std::find(std::begin(hostname), std::end(hostname), '*');
-  if (wildcard_it != std::end(hostname) &&
-      wildcard_it + 1 != std::end(hostname)) {
-    auto wildcard_prefix = StringRef{std::begin(hostname), wildcard_it};
-    auto wildcard_suffix = StringRef{wildcard_it + 1, std::end(hostname)};
+  auto wildcard_it = std::ranges::find(hostname, '*');
+  if (wildcard_it != std::ranges::end(hostname) &&
+      wildcard_it + 1 != std::ranges::end(hostname)) {
+    auto wildcard_prefix = StringRef{std::ranges::begin(hostname), wildcard_it};
+    auto wildcard_suffix =
+      StringRef{wildcard_it + 1, std::ranges::end(hostname)};
 
-    auto rev_suffix =
-      StringRef{std::begin(buf),
-                std::reverse_copy(std::begin(wildcard_suffix),
-                                  std::end(wildcard_suffix), std::begin(buf))};
+    auto rev_suffix = StringRef{
+      std::ranges::begin(buf),
+      std::ranges::reverse_copy(wildcard_suffix, std::ranges::begin(buf)).out};
 
     WildcardPattern *wpat;
 
@@ -1997,10 +1995,9 @@ ssize_t CertLookupTree::add_cert(const StringRef &hostname, size_t idx) {
       wpat = &wildcard_patterns_.back();
     }
 
-    auto rev_prefix =
-      StringRef{std::begin(buf),
-                std::reverse_copy(std::begin(wildcard_prefix),
-                                  std::end(wildcard_prefix), std::begin(buf))};
+    auto rev_prefix = StringRef{
+      std::ranges::begin(buf),
+      std::ranges::reverse_copy(wildcard_prefix, std::ranges::begin(buf)).out};
 
     for (auto &p : wpat->rev_prefix) {
       if (p.prefix == rev_prefix) {
@@ -2038,9 +2035,9 @@ ssize_t CertLookupTree::lookup(const StringRef &hostname) {
   size_t best_prefixlen = 0;
   const RNode *last_node = nullptr;
 
-  auto rev_host = StringRef{
-    std::begin(buf), std::reverse_copy(std::begin(hostname), std::end(hostname),
-                                       std::begin(buf))};
+  auto rev_host =
+    StringRef{std::ranges::begin(buf),
+              std::ranges::reverse_copy(hostname, std::ranges::begin(buf)).out};
 
   for (;;) {
     size_t nread = 0;
@@ -2056,9 +2053,11 @@ ssize_t CertLookupTree::lookup(const StringRef &hostname) {
       return best_idx;
     }
 
-    rev_host = StringRef{std::begin(rev_host) + nread, std::end(rev_host)};
+    rev_host = StringRef{std::ranges::begin(rev_host) + nread,
+                         std::ranges::end(rev_host)};
 
-    auto rev_prefix = StringRef{std::begin(rev_host) + 1, std::end(rev_host)};
+    auto rev_prefix =
+      StringRef{std::ranges::begin(rev_host) + 1, std::ranges::end(rev_host)};
 
     auto &wpat = wildcard_patterns_[wcidx];
     for (auto &wprefix : wpat.rev_prefix) {
@@ -2113,7 +2112,7 @@ int cert_lookup_tree_add_ssl_ctx(
       if (len == 0) {
         continue;
       }
-      if (std::find(name, name + len, '\0') != name + len) {
+      if (util::contains(name, name + len, '\0')) {
         // Embedded NULL is not permitted.
         continue;
       }
@@ -2131,10 +2130,11 @@ int cert_lookup_tree_add_ssl_ctx(
         continue;
       }
 
-      auto end_buf = std::copy_n(name, len, std::begin(buf));
-      util::inp_strlower(std::begin(buf), end_buf);
+      auto end_buf =
+        std::ranges::copy_n(name, len, std::ranges::begin(buf)).out;
+      util::inp_strlower(std::ranges::begin(buf), end_buf);
 
-      auto idx = lt->add_cert(StringRef{std::begin(buf), end_buf},
+      auto idx = lt->add_cert(StringRef{std::ranges::begin(buf), end_buf},
                               indexed_ssl_ctx.size());
       if (idx == -1) {
         continue;
@@ -2169,14 +2169,14 @@ int cert_lookup_tree_add_ssl_ctx(
     cn = StringRef{cn.data(), cn.size() - 1};
   }
 
-  auto end_buf = std::copy(std::begin(cn), std::end(cn), std::begin(buf));
+  auto end_buf = std::ranges::copy(cn, std::ranges::begin(buf)).out;
 
   OPENSSL_free(const_cast<char *>(cn.data()));
 
-  util::inp_strlower(std::begin(buf), end_buf);
+  util::inp_strlower(std::ranges::begin(buf), end_buf);
 
-  auto idx =
-    lt->add_cert(StringRef{std::begin(buf), end_buf}, indexed_ssl_ctx.size());
+  auto idx = lt->add_cert(StringRef{std::ranges::begin(buf), end_buf},
+                          indexed_ssl_ctx.size());
   if (idx == -1) {
     return 0;
   }
@@ -2209,8 +2209,8 @@ bool upstream_tls_enabled(const ConnectionConfig &connconf) {
 #endif // ENABLE_HTTP3
 
   const auto &faddrs = connconf.listener.addrs;
-  return std::any_of(std::begin(faddrs), std::end(faddrs),
-                     [](const UpstreamAddr &faddr) { return faddr.tls; });
+  return std::ranges::any_of(
+    faddrs, [](const UpstreamAddr &faddr) { return faddr.tls; });
 }
 
 X509 *load_certificate(const char *filename) {

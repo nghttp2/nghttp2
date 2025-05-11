@@ -41,6 +41,7 @@ const MunitTest tests[]{
   munit_void_test(test_template_immutable_string),
   munit_void_test(test_template_string_ref),
   munit_void_test(test_template_as_uint8_span),
+  munit_void_test(test_template_as_string_view),
   munit_test_end(),
 };
 } // namespace
@@ -234,6 +235,20 @@ void test_template_as_uint8_span(void) {
   assert_size(sizeof(a), ==, t.size());
   assert_size(sizeof(a), ==, t.extent);
   assert_memory_equal(t.size(), &a, t.data());
+}
+
+void test_template_as_string_view(void) {
+  {
+    auto a = std::to_array<uint8_t>({'a', 'l', 'p', 'h', 'a'});
+
+    assert_stdsv_equal("alpha"sv, as_string_view(a));
+  }
+
+  {
+    auto s = ""s;
+
+    assert_stdsv_equal(""sv, as_string_view(s));
+  }
 }
 
 } // namespace nghttp2

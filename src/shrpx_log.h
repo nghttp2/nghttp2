@@ -109,6 +109,7 @@ public:
   Log(int severity, const char *filename, int linenum);
   ~Log();
   Log &operator<<(const std::string &s);
+  Log &operator<<(const std::string_view &s);
   Log &operator<<(const char *s);
   Log &operator<<(const StringRef &s);
   Log &operator<<(const ImmutableString &s);

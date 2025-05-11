@@ -130,7 +130,7 @@ int verify_dns_hostname(X509 *cert, const StringRef &hostname);
 
 struct WildcardRevPrefix {
   WildcardRevPrefix(const StringRef &prefix, size_t idx)
-    : prefix(std::begin(prefix), std::end(prefix)), idx(idx) {}
+    : prefix(std::ranges::begin(prefix), std::ranges::end(prefix)), idx(idx) {}
 
   // "Prefix" of wildcard pattern.  It is reversed from original form.
   // For example, if the original wildcard is "test*.nghttp2.org",
