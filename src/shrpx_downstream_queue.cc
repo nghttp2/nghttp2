@@ -60,8 +60,9 @@ void DownstreamQueue::mark_failure(Downstream *downstream) {
 DownstreamQueue::HostEntry &
 DownstreamQueue::find_host_entry(const StringRef &host) {
   auto itr = host_entries_.find(host);
-  if (itr == std::end(host_entries_)) {
-    auto key = ImmutableString{std::begin(host), std::end(host)};
+  if (itr == std::ranges::end(host_entries_)) {
+    auto key =
+      ImmutableString{std::ranges::begin(host), std::ranges::end(host)};
     auto key_ref = StringRef{key};
 #ifdef HAVE_STD_MAP_EMPLACE
     std::tie(itr, std::ignore) =
@@ -102,7 +103,7 @@ void DownstreamQueue::mark_blocked(Downstream *downstream) {
 
 bool DownstreamQueue::can_activate(const StringRef &host) const {
   auto itr = host_entries_.find(make_host_key(host));
-  if (itr == std::end(host_entries_)) {
+  if (itr == std::ranges::end(host_entries_)) {
     return true;
   }
   auto &ent = (*itr).second;
