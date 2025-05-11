@@ -548,7 +548,7 @@ StringRef construct_absolute_request_uri(BlockAllocator &balloc,
   p = std::ranges::copy(req.path, p).out;
   *p = '\0';
 
-  return StringRef{std::span{std::ranges::begin(iov), p}};
+  return as_string_ref(std::ranges::begin(iov), p);
 }
 } // namespace
 

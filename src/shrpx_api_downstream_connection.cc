@@ -288,8 +288,8 @@ int APIDownstreamConnection::error_method_not_allowed() {
   p -= 2;
   *p = '\0';
 
-  resp.fs.add_header_token("allow"_sr, StringRef{std::span{std::begin(iov), p}},
-                           false, -1);
+  resp.fs.add_header_token("allow"_sr, as_string_ref(std::begin(iov), p), false,
+                           -1);
   return send_reply(405, APIStatusCode::FAILURE);
 }
 
@@ -368,7 +368,7 @@ int APIDownstreamConnection::handle_backendconfig() {
   std::set<StringRef> include_set;
   std::map<StringRef, size_t> pattern_addr_indexer;
 
-  for (auto first = reinterpret_cast<const uint8_t *>(rp),
+  for (auto first = reinterpret_cast<const char *>(rp),
             last = first + req.recv_body_length;
        first != last;) {
     auto eol = std::find(first, last, '\n');
@@ -387,8 +387,8 @@ int APIDownstreamConnection::handle_backendconfig() {
       return 0;
     }
 
-    auto opt = StringRef{std::span{first, eq}};
-    auto optval = StringRef{std::span{eq + 1, eol}};
+    auto opt = StringRef{first, eq};
+    auto optval = StringRef{eq + 1, eol};
 
     auto optid = option_lookup_token(opt);
 
