@@ -619,34 +619,16 @@ void test_util_random_alpha_digit(void) {
 void test_util_format_hex(void) {
   BlockAllocator balloc(4096, 4096);
 
-  assert_stdsv_equal("0ff0"sv,
-                     util::format_hex(balloc, std::span{"\x0f\xf0"_sr}));
-  assert_stdsv_equal(""sv,
-                     util::format_hex(balloc, std::span<const uint8_t>{}));
-
-  union T {
-    uint16_t x;
-    uint8_t y[2];
-  };
-
-  auto t = T{.y = {0xbe, 0xef}};
-
-  assert_stdstring_equal("beef", util::format_hex(std::span{&t.x, 1}));
+  assert_stdsv_equal("0ff0"sv, util::format_hex(balloc, "\x0f\xf0"_sr));
+  assert_stdsv_equal(""sv, util::format_hex(balloc, ""sv));
 
   std::string o;
   o.resize(4);
 
-  assert_true(std::end(o) ==
-              util::format_hex(std::begin(o), std::span{&t.x, 1}));
-  assert_stdstring_equal("beef", o);
-
-  struct S {
-    uint8_t x[8];
-  };
-
-  auto s = S{{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0xf8}};
-
-  assert_stdstring_equal("01020304050607f8", util::format_hex(s.x));
+  assert_true(std::ranges::end(o) ==
+              util::format_hex("\xbe\xef"sv, std::ranges::begin(o)));
+  assert_stdstring_equal("beef"s, o);
+  assert_stdstring_equal("beef"s, util::format_hex("\xbe\xef"sv));
 }
 
 void test_util_is_hex_string(void) {

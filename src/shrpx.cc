@@ -605,7 +605,7 @@ void exec_binary() {
     s += util::utos(wp->quic_ipc_fd);
     for (auto &wid : wp->worker_ids) {
       s += ',';
-      s += util::format_hex(std::span{&wid, 1});
+      s += util::format_hex(as_uint8_span(std::span{&wid, 1}));
     }
 
     quic_lwps.emplace_back(s);

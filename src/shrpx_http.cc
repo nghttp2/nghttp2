@@ -190,7 +190,7 @@ StringRef create_affinity_cookie(BlockAllocator &balloc, const StringRef &name,
   auto p = std::ranges::copy(name, std::ranges::begin(iov)).out;
   *p++ = '=';
   affinity_cookie = htonl(affinity_cookie);
-  p = util::format_hex(p, std::span{&affinity_cookie, 1});
+  p = util::format_hex(as_uint8_span(std::span{&affinity_cookie, 1}), p);
   if (!path.empty()) {
     p = std::ranges::copy(PATH_PREFIX, p).out;
     p = std::ranges::copy(path, p).out;
