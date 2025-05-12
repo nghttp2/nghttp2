@@ -533,6 +533,7 @@ jobs:
       # artifacts.
       if: matrix.buildtool != 'distcheck'
       run: |
+        sudo sh -c 'echo "127.0.0.1 127.0.0.1.nip.io" >> /etc/hosts'
         cd $NGHTTP2_BUILD_DIR/integration-tests
         make it
 
