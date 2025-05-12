@@ -254,8 +254,8 @@ void renew_ticket_key_cb(struct ev_loop *loop, ev_timer *w, int revents) {
                             .count());
 
     new_keys.resize(std::min(max_tickets, old_keys.size() + 1));
-    std::copy_n(std::begin(old_keys), new_keys.size() - 1,
-                std::begin(new_keys) + 1);
+    std::ranges::copy_n(std::ranges::begin(old_keys), new_keys.size() - 1,
+                        std::ranges::begin(new_keys) + 1);
   } else {
     ticket_keys->keys.resize(1);
   }
@@ -374,14 +374,17 @@ void memcached_get_ticket_key_cb(struct ev_loop *loop, ev_timer *w,
       key.hmac = EVP_sha256();
       key.hmac_keylen = hmac_keylen;
 
-      std::copy_n(p, key.data.name.size(), std::begin(key.data.name));
-      p += key.data.name.size();
+      p = std::ranges::copy_n(p, key.data.name.size(),
+                              std::ranges::begin(key.data.name))
+            .in;
 
-      std::copy_n(p, enc_keylen, std::begin(key.data.enc_key));
-      p += enc_keylen;
+      p =
+        std::ranges::copy_n(p, enc_keylen, std::ranges::begin(key.data.enc_key))
+          .in;
 
-      std::copy_n(p, hmac_keylen, std::begin(key.data.hmac_key));
-      p += hmac_keylen;
+      p = std::ranges::copy_n(p, hmac_keylen,
+                              std::ranges::begin(key.data.hmac_key))
+            .in;
 
       ticket_keys->keys.push_back(std::move(key));
     }
