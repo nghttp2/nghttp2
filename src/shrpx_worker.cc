@@ -112,7 +112,7 @@ create_downstream_key(const std::shared_ptr<SharedDownstreamAddr> &shared_addr,
 
   auto &addrs = std::get<0>(dkey);
   addrs.resize(shared_addr->addrs.size());
-  auto p = std::begin(addrs);
+  auto p = std::ranges::begin(addrs);
   for (auto &a : shared_addr->addrs) {
     std::get<0>(*p) = a.host;
     std::get<1>(*p) = a.sni;
@@ -129,7 +129,7 @@ create_downstream_key(const std::shared_ptr<SharedDownstreamAddr> &shared_addr,
     std::get<12>(*p) = a.upgrade_scheme;
     ++p;
   }
-  std::sort(std::begin(addrs), std::end(addrs));
+  std::ranges::sort(addrs);
 
   std::get<1>(dkey) = shared_addr->redirect_if_not_tls;
 
@@ -276,8 +276,8 @@ void Worker::replace_downstream_config(
     auto &dst = downstream_addr_groups_[i];
 
     dst = std::make_shared<DownstreamAddrGroup>();
-    dst->pattern =
-      ImmutableString{std::begin(src.pattern), std::end(src.pattern)};
+    dst->pattern = ImmutableString{std::ranges::begin(src.pattern),
+                                   std::ranges::end(src.pattern)};
 
     auto shared_addr = std::make_shared<SharedDownstreamAddr>();
 
@@ -325,7 +325,7 @@ void Worker::replace_downstream_config(
 
 #ifdef HAVE_MRUBY
     auto mruby_ctx_it = shared_mruby_ctxs.find(src.mruby_file);
-    if (mruby_ctx_it == std::end(shared_mruby_ctxs)) {
+    if (mruby_ctx_it == std::ranges::end(shared_mruby_ctxs)) {
       shared_addr->mruby_ctx = mruby::create_mruby_context(src.mruby_file);
       assert(shared_addr->mruby_ctx);
       shared_mruby_ctxs.emplace(src.mruby_file, shared_addr->mruby_ctx);
@@ -340,7 +340,7 @@ void Worker::replace_downstream_config(
     auto dkey = create_downstream_key(shared_addr, src.mruby_file);
     auto it = addr_groups_indexer.find(dkey);
 
-    if (it == std::end(addr_groups_indexer)) {
+    if (it == std::ranges::end(addr_groups_indexer)) {
       auto shared_addr_ptr = shared_addr.get();
 
       for (auto &addr : shared_addr->addrs) {
@@ -364,15 +364,15 @@ void Worker::replace_downstream_config(
         addr.seq = seq++;
       }
 
-      util::shuffle(std::begin(shared_addr->addrs),
-                    std::end(shared_addr->addrs), randgen_,
+      util::shuffle(std::ranges::begin(shared_addr->addrs),
+                    std::ranges::end(shared_addr->addrs), randgen_,
                     [](auto i, auto j) { std::swap((*i).seq, (*j).seq); });
 
       if (shared_addr->affinity.type == SessionAffinity::NONE) {
         std::map<StringRef, WeightGroup *> wgs;
         size_t num_wgs = 0;
         for (auto &addr : shared_addr->addrs) {
-          if (wgs.find(addr.group) == std::end(wgs)) {
+          if (wgs.find(addr.group) == std::ranges::end(wgs)) {
             ++num_wgs;
             wgs.emplace(addr.group, nullptr);
           }
@@ -406,7 +406,7 @@ void Worker::replace_downstream_config(
 
       addr_groups_indexer.emplace(std::move(dkey), i);
     } else {
-      auto &g = *(std::begin(downstream_addr_groups_) + (*it).second);
+      auto &g = *(std::ranges::begin(downstream_addr_groups_) + (*it).second);
       if (LOG_ENABLED(INFO)) {
         LOG(INFO) << dst->pattern << " shares the same backend group with "
                   << g->pattern;
@@ -1283,11 +1283,12 @@ size_t match_downstream_addr_group_host(
 
   if (!wildcard_patterns.empty() && !host.empty()) {
     auto rev_host_src = make_byte_ref(balloc, host.size() - 1);
-    auto ep =
-      std::copy(std::begin(host) + 1, std::end(host), std::begin(rev_host_src));
-    std::reverse(std::begin(rev_host_src), ep);
-    auto rev_host = as_string_ref(std::begin(rev_host_src), ep);
-
+    auto rev_host =
+      as_string_ref(std::ranges::begin(rev_host_src),
+                    std::ranges::reverse_copy(std::ranges::begin(host) + 1,
+                                              std::ranges::end(host),
+                                              std::ranges::begin(rev_host_src))
+                      .out);
     ssize_t best_group = -1;
     const RNode *last_node = nullptr;
 
@@ -1299,7 +1300,8 @@ size_t match_downstream_addr_group_host(
         break;
       }
 
-      rev_host = StringRef{std::begin(rev_host) + nread, std::end(rev_host)};
+      rev_host = StringRef{std::ranges::begin(rev_host) + nread,
+                           std::ranges::end(rev_host)};
 
       auto &wc = wildcard_patterns[wcidx];
       auto group = wc.router.match(StringRef{}, path);
@@ -1341,16 +1343,15 @@ size_t match_downstream_addr_group(
   const StringRef &raw_path,
   const std::vector<std::shared_ptr<DownstreamAddrGroup>> &groups,
   size_t catch_all, BlockAllocator &balloc) {
-  if (std::find(std::begin(hostport), std::end(hostport), '/') !=
-      std::end(hostport)) {
+  if (util::contains(hostport, '/')) {
     // We use '/' specially, and if '/' is included in host, it breaks
     // our code.  Select catch-all case.
     return catch_all;
   }
 
-  auto fragment = std::find(std::begin(raw_path), std::end(raw_path), '#');
-  auto query = std::find(std::begin(raw_path), fragment, '?');
-  auto path = StringRef{std::begin(raw_path), query};
+  auto fragment = std::ranges::find(raw_path, '#');
+  auto query = std::ranges::find(std::ranges::begin(raw_path), fragment, '?');
+  auto path = StringRef{std::ranges::begin(raw_path), query};
 
   if (path.empty() || path[0] != '/') {
     path = "/"_sr;
@@ -1364,30 +1365,29 @@ size_t match_downstream_addr_group(
   StringRef host;
   if (hostport[0] == '[') {
     // assume this is IPv6 numeric address
-    auto p = std::find(std::begin(hostport), std::end(hostport), ']');
-    if (p == std::end(hostport)) {
+    auto p = std::ranges::find(hostport, ']');
+    if (p == std::ranges::end(hostport)) {
       return catch_all;
     }
-    if (p + 1 < std::end(hostport) && *(p + 1) != ':') {
+    if (p + 1 < std::ranges::end(hostport) && *(p + 1) != ':') {
       return catch_all;
     }
-    host = StringRef{std::begin(hostport), p + 1};
+    host = StringRef{std::ranges::begin(hostport), p + 1};
   } else {
-    auto p = std::find(std::begin(hostport), std::end(hostport), ':');
-    if (p == std::begin(hostport)) {
+    auto p = std::ranges::find(hostport, ':');
+    if (p == std::ranges::begin(hostport)) {
       return catch_all;
     }
-    host = StringRef{std::begin(hostport), p};
+    host = StringRef{std::ranges::begin(hostport), p};
   }
 
-  if (std::find_if(std::begin(host), std::end(host), [](char c) {
-        return 'A' <= c || c <= 'Z';
-      }) != std::end(host)) {
+  if (std::ranges::find_if(host, [](char c) { return 'A' <= c && c <= 'Z'; }) !=
+      std::ranges::end(host)) {
     auto low_host = make_byte_ref(balloc, host.size() + 1);
-    auto ep = std::copy(std::begin(host), std::end(host), std::begin(low_host));
+    auto ep = std::ranges::copy(host, std::ranges::begin(low_host)).out;
     *ep = '\0';
-    util::inp_strlower(std::begin(low_host), ep);
-    host = as_string_ref(std::begin(low_host), ep);
+    util::inp_strlower(std::ranges::begin(low_host), ep);
+    host = as_string_ref(std::ranges::begin(low_host), ep);
   }
   return match_downstream_addr_group_host(routerconf, host, path, groups,
                                           catch_all, balloc);
