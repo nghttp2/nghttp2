@@ -170,6 +170,8 @@ func newServerTester(t *testing.T, opts options) *serverTester {
 
 		// We use awesome service nip.io.
 		b += fmt.Sprintf("%v.nip.io,%v;", backendURL.Host[:sep], backendURL.Host[sep+1:])
+		// Make external DNS tests less flaky.
+		args = append(args, "--backend-address-family=IPv4")
 	}
 
 	if backendTLS {
