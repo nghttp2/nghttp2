@@ -360,6 +360,26 @@ inline void inp_strlower(std::string &s) {
   inp_strlower(std::begin(s), std::end(s));
 }
 
+// Converts characters in a range [|first|, |last|) to lowercase, and
+// stores the result in another range, beginning at |result|.  It
+// returns an output iterator to the element past the last element
+// stored.
+template <std::input_iterator I, std::weakly_incrementable O>
+constexpr O tolower(I first, I last, O result) {
+  return std::ranges::transform(std::move(first), std::move(last),
+                                std::move(result), lowcase)
+    .out;
+}
+
+// Converts characters in a range |r| to lowercase, and stores the
+// result in another range, beginning at |result|.  It returns an
+// output iterator to the element past the last element stored.
+template <std::ranges::input_range R, std::weakly_incrementable O>
+constexpr O tolower(R &&r, O result) {
+  return std::ranges::transform(std::forward<R>(r), std::move(result), lowcase)
+    .out;
+}
+
 // Returns string representation of |n| with 2 fractional digits.
 std::string dtos(double n);
 

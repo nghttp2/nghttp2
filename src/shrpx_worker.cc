@@ -1384,9 +1384,8 @@ size_t match_downstream_addr_group(
   if (std::ranges::find_if(host, [](char c) { return 'A' <= c && c <= 'Z'; }) !=
       std::ranges::end(host)) {
     auto low_host = make_byte_ref(balloc, host.size() + 1);
-    auto ep = std::ranges::copy(host, std::ranges::begin(low_host)).out;
+    auto ep = util::tolower(host, std::ranges::begin(low_host));
     *ep = '\0';
-    util::inp_strlower(std::ranges::begin(low_host), ep);
     host = as_string_ref(std::ranges::begin(low_host), ep);
   }
   return match_downstream_addr_group_host(routerconf, host, path, groups,

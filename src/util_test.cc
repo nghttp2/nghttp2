@@ -45,6 +45,7 @@ const MunitTest tests[]{
   munit_void_test(test_util_streq),
   munit_void_test(test_util_strieq),
   munit_void_test(test_util_inp_strlower),
+  munit_void_test(test_util_tolower),
   munit_void_test(test_util_to_base64),
   munit_void_test(test_util_to_token68),
   munit_void_test(test_util_percent_encode_token),
@@ -123,6 +124,49 @@ void test_util_inp_strlower(void) {
   a = "";
   util::inp_strlower(a);
   assert_stdstring_equal("", a);
+}
+
+void test_util_tolower(void) {
+  std::array<char, 16> buf;
+
+  {
+    assert_stdsv_equal(
+      "alpha"sv,
+      (std::string_view{std::ranges::begin(buf),
+                        util::tolower("alPha"sv, std::ranges::begin(buf))}));
+  }
+
+  {
+    auto s = "alPha"sv;
+
+    assert_stdsv_equal(
+      "alpha"sv, (std::string_view{std::ranges::begin(buf),
+                                   util::tolower(std::ranges::begin(s),
+                                                 std::ranges::end(s),
+                                                 std::ranges::begin(buf))}));
+  }
+
+  {
+    assert_stdsv_equal(
+      ""sv, (std::string_view{std::ranges::begin(buf),
+                              util::tolower(""sv, std::ranges::begin(buf))}));
+  }
+
+  {
+    std::string s = "AlpHA\x00BraVO"s;
+
+    util::tolower(s, std::ranges::begin(s));
+
+    assert_stdstring_equal("alpha\x00bravo"s, s);
+  }
+
+  {
+    std::string s = "\xbe\xef"s;
+
+    util::tolower(s, std::ranges::begin(s));
+
+    assert_stdstring_equal("\xbe\xef"s, s);
+  }
 }
 
 void test_util_to_base64(void) {

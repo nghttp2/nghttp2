@@ -379,8 +379,7 @@ HeaderRefs::value_type parse_header(BlockAllocator &balloc,
 
   auto name_iov =
     make_byte_ref(balloc, std::distance(std::begin(optarg), colon) + 1);
-  auto p = std::copy(std::begin(optarg), colon, std::begin(name_iov));
-  util::inp_strlower(std::begin(name_iov), p);
+  auto p = util::tolower(std::begin(optarg), colon, std::begin(name_iov));
   *p = '\0';
 
   auto nv =
@@ -1232,9 +1231,7 @@ int parse_mapping(Config *config, DownstreamAddrConfig &addr,
       // This effectively makes empty pattern to "/".  2 for '/' and
       // terminal NULL character.
       auto iov = make_byte_ref(downstreamconf.balloc, raw_pattern.size() + 2);
-      auto p = std::copy(std::begin(raw_pattern), std::end(raw_pattern),
-                         std::begin(iov));
-      util::inp_strlower(std::begin(iov), p);
+      auto p = util::tolower(raw_pattern, std::begin(iov));
       *p++ = '/';
       *p = '\0';
       pattern = as_string_ref(std::begin(iov), p);
@@ -1245,8 +1242,7 @@ int parse_mapping(Config *config, DownstreamAddrConfig &addr,
       auto iov = make_byte_ref(downstreamconf.balloc,
                                std::distance(std::begin(raw_pattern), slash) +
                                  path.size() + 1);
-      auto p = std::copy(std::begin(raw_pattern), slash, std::begin(iov));
-      util::inp_strlower(std::begin(iov), p);
+      auto p = util::tolower(std::begin(raw_pattern), slash, std::begin(iov));
       p = std::copy(std::begin(path), std::end(path), p);
       *p = '\0';
       pattern = as_string_ref(std::begin(iov), p);

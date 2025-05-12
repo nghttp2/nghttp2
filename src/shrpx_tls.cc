@@ -228,9 +228,7 @@ int servername_callback(SSL *ssl, int *al, void *arg) {
 
   std::array<char, NI_MAXHOST> buf;
 
-  auto end_buf = std::ranges::copy_n(rawhost, len, std::ranges::begin(buf)).out;
-
-  util::inp_strlower(std::ranges::begin(buf), end_buf);
+  auto end_buf = util::tolower(rawhost, rawhost + len, std::ranges::begin(buf));
 
   auto hostname = StringRef{std::ranges::begin(buf), end_buf};
 
@@ -2130,9 +2128,7 @@ int cert_lookup_tree_add_ssl_ctx(
         continue;
       }
 
-      auto end_buf =
-        std::ranges::copy_n(name, len, std::ranges::begin(buf)).out;
-      util::inp_strlower(std::ranges::begin(buf), end_buf);
+      auto end_buf = util::tolower(name, name + len, std::ranges::begin(buf));
 
       auto idx = lt->add_cert(StringRef{std::ranges::begin(buf), end_buf},
                               indexed_ssl_ctx.size());
@@ -2169,11 +2165,9 @@ int cert_lookup_tree_add_ssl_ctx(
     cn = StringRef{cn.data(), cn.size() - 1};
   }
 
-  auto end_buf = std::ranges::copy(cn, std::ranges::begin(buf)).out;
+  auto end_buf = util::tolower(cn, std::ranges::begin(buf));
 
   OPENSSL_free(const_cast<char *>(cn.data()));
-
-  util::inp_strlower(std::ranges::begin(buf), end_buf);
 
   auto idx = lt->add_cert(StringRef{std::ranges::begin(buf), end_buf},
                           indexed_ssl_ctx.size());
