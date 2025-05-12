@@ -401,7 +401,7 @@ StringRef make_string_ref_uint(BlockAllocator &balloc, T n) {
   auto p = std::begin(iov);
   p = util::utos(p, n);
   *p = '\0';
-  return StringRef{std::span{std::begin(iov), p}};
+  return as_string_ref(std::begin(iov), p);
 }
 
 template <typename T> std::string utos_unit(T n) {
@@ -739,7 +739,7 @@ StringRef make_hostport(OutputIt first, const StringRef &host, uint16_t port) {
 
   *p = '\0';
 
-  return StringRef{std::span{first, p}};
+  return as_string_ref(first, p);
 }
 
 // Creates "host:port" string using given |host| and |port|.  If
@@ -770,7 +770,7 @@ StringRef make_http_hostport(OutputIt first, const StringRef &host,
 
   *p = '\0';
 
-  return StringRef{std::span{first, p}};
+  return as_string_ref(first, p);
 }
 
 // hexdump dumps |data| of length |datalen| in the format similar to

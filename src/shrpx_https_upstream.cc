@@ -284,7 +284,7 @@ void rewrite_request_host_path_from_uri(BlockAllocator &balloc, Request &req,
     }
     *p = '\0';
 
-    req.authority = StringRef{std::span{std::ranges::begin(iovec), p}};
+    req.authority = as_string_ref(std::ranges::begin(iovec), p);
   } else {
     req.authority = authority;
   }

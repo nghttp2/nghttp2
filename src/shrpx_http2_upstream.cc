@@ -1844,8 +1844,8 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
     p = http::create_via_header_value(p, resp.http_major, resp.http_minor);
     *p = '\0';
 
-    nva.push_back(http2::make_field(
-      "via"_sr, StringRef{std::span{std::ranges::begin(iov), p}}));
+    nva.push_back(
+      http2::make_field("via"_sr, as_string_ref(std::ranges::begin(iov), p)));
   }
 
   for (auto &p : httpconf.add_response_headers) {

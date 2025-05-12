@@ -504,6 +504,26 @@ requires(std::ranges::contiguous_range<R> && std::ranges::sized_range<R> &&
     std::ranges::size(r)};
 }
 
+// Returns StringRef over a given range |r|.
+template <typename R>
+requires(std::ranges::contiguous_range<R> && std::ranges::sized_range<R> &&
+         std::ranges::borrowed_range<R> &&
+         sizeof(std::ranges::range_value_t<R>) == sizeof(StringRef::value_type))
+[[nodiscard]] StringRef as_string_ref(R &&r) {
+  return StringRef{
+    reinterpret_cast<StringRef::const_pointer>(std::ranges::data(r)),
+    std::ranges::size(r)};
+}
+
+// Returns StringRef over a given range [|first|, |last|).
+template <std::contiguous_iterator I>
+requires(sizeof(std::iter_value_t<I>) == sizeof(StringRef::value_type))
+[[nodiscard]] StringRef as_string_ref(I first, I last) {
+  return StringRef{
+    reinterpret_cast<StringRef::const_pointer>(std::to_address(first)),
+    static_cast<size_t>(std::ranges::distance(first, last))};
+}
+
 inline int run_app(std::function<int(int, char **)> app, int argc,
                    char **argv) {
   try {

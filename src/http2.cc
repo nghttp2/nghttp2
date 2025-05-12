@@ -632,7 +632,7 @@ StringRef rewrite_location_uri(BlockAllocator &balloc, const StringRef &uri,
 
   *p = '\0';
 
-  return StringRef{std::span{std::ranges::begin(iov), p}};
+  return as_string_ref(std::ranges::begin(iov), p);
 }
 
 int parse_http_status_code(const StringRef &src) {
@@ -1590,7 +1590,7 @@ int construct_push_component(BlockAllocator &balloc, StringRef &scheme,
       }
       *p = '\0';
 
-      authority = StringRef{std::span{std::ranges::begin(iov), p}};
+      authority = as_string_ref(std::ranges::begin(iov), p);
     }
 
     if (u.field_set & (1 << URLPARSE_PATH)) {
@@ -1669,12 +1669,12 @@ StringRef path_join(BlockAllocator &balloc, const StringRef &base_path,
         p = std::ranges::copy(base_query, p).out;
       }
       *p = '\0';
-      return StringRef{std::span{std::ranges::begin(res), p}};
+      return as_string_ref(std::ranges::begin(res), p);
     }
     *p++ = '?';
     p = std::ranges::copy(rel_query, p).out;
     *p = '\0';
-    return StringRef{std::span{std::ranges::begin(res), p}};
+    return as_string_ref(std::ranges::begin(res), p);
   }
 
   auto first = std::ranges::begin(rel_path);
@@ -1736,7 +1736,7 @@ StringRef path_join(BlockAllocator &balloc, const StringRef &base_path,
     p = std::ranges::copy(rel_query, p).out;
   }
   *p = '\0';
-  return StringRef{std::span{std::ranges::begin(res), p}};
+  return as_string_ref(std::ranges::begin(res), p);
 }
 
 StringRef normalize_path(BlockAllocator &balloc, const StringRef &path,
@@ -1783,7 +1783,7 @@ StringRef normalize_path(BlockAllocator &balloc, const StringRef &path,
   *p = '\0';
 
   return path_join(balloc, StringRef{}, StringRef{},
-                   StringRef{std::span{std::ranges::begin(result), p}}, query);
+                   as_string_ref(std::ranges::begin(result), p), query);
 }
 
 StringRef normalize_path_colon(BlockAllocator &balloc, const StringRef &path,
@@ -1830,7 +1830,7 @@ StringRef normalize_path_colon(BlockAllocator &balloc, const StringRef &path,
   *p = '\0';
 
   return path_join(balloc, StringRef{}, StringRef{},
-                   StringRef{std::span{std::ranges::begin(result), p}}, query);
+                   as_string_ref(std::ranges::begin(result), p), query);
 }
 
 std::string normalize_path(const StringRef &path, const StringRef &query) {
@@ -1860,7 +1860,7 @@ StringRef copy_lower(BlockAllocator &balloc, const StringRef &src) {
   p = std::ranges::copy(src, p).out;
   *p = '\0';
   util::inp_strlower(std::ranges::begin(iov), p);
-  return StringRef{std::span{std::ranges::begin(iov), p}};
+  return as_string_ref(std::ranges::begin(iov), p);
 }
 
 bool contains_trailers(const StringRef &s) {
@@ -1900,7 +1900,7 @@ StringRef make_websocket_accept_token(uint8_t *dest, const StringRef &key) {
     return StringRef{};
   }
 
-  return StringRef{std::span{dest, base64::encode(h, dest)}};
+  return as_string_ref(dest, base64::encode(h, dest));
 }
 
 bool legacy_http1(int major, int minor) {

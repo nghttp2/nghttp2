@@ -3942,7 +3942,7 @@ int process_options(Config *config,
     auto gen = util::make_mt19937();
     p = util::random_alpha_digit(p, p + SHRPX_OBFUSCATED_NODE_LENGTH, gen);
     *p = '\0';
-    fwdconf.by_obfuscated = StringRef{std::span{std::begin(iov), p}};
+    fwdconf.by_obfuscated = as_string_ref(std::begin(iov), p);
   }
 
   if (config->http2.upstream.debug.frame_debug) {

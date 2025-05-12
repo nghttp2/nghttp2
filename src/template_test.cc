@@ -42,6 +42,7 @@ const MunitTest tests[]{
   munit_void_test(test_template_string_ref),
   munit_void_test(test_template_as_uint8_span),
   munit_void_test(test_template_as_string_view),
+  munit_void_test(test_template_as_string_ref),
   munit_test_end(),
 };
 } // namespace
@@ -248,6 +249,22 @@ void test_template_as_string_view(void) {
     auto s = ""s;
 
     assert_stdsv_equal(""sv, as_string_view(s));
+  }
+}
+
+void test_template_as_string_ref(void) {
+  {
+    auto a = std::to_array<uint8_t>({'a', 'l', 'p', 'h', 'a'});
+
+    assert_stdsv_equal("alpha"sv, as_string_ref(a));
+    assert_stdsv_equal("alpha"sv, as_string_ref(a.begin(), a.end()));
+  }
+
+  {
+    auto s = ""s;
+
+    assert_stdsv_equal(""sv, as_string_ref(s));
+    assert_stdsv_equal(""sv, as_string_ref(s.begin(), s.end()));
   }
 }
 

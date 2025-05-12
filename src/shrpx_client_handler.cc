@@ -498,7 +498,7 @@ ClientHandler::ClientHandler(Worker *worker, int fd, SSL *ssl,
                                    worker_->get_randgen());
       *p = '\0';
 
-      forwarded_for_ = StringRef{std::span{std::ranges::begin(buf), p}};
+      forwarded_for_ = as_string_ref(std::ranges::begin(buf), p);
     } else {
       init_forwarded_for(family, ipaddr_);
     }
@@ -517,7 +517,7 @@ void ClientHandler::init_forwarded_for(int family, const StringRef &ipaddr) {
     *p++ = ']';
     *p = '\0';
 
-    forwarded_for_ = StringRef{std::span{std::ranges::begin(buf), p}};
+    forwarded_for_ = as_string_ref(std::ranges::begin(buf), p);
   } else {
     // family == AF_INET or family == AF_UNIX
     forwarded_for_ = ipaddr;
