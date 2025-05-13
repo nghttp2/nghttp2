@@ -490,11 +490,9 @@ void append_last_header_key(BlockAllocator &balloc, bool &key_prev, size_t &sum,
   assert(key_prev);
   sum += len;
   auto &item = headers.back();
-  auto name =
-    realloc_concat_string_ref(balloc, item.name, StringRef{data, len});
-
-  auto p = const_cast<uint8_t *>(name.byte());
-  util::inp_strlower(p + name.size() - len, p + name.size());
+  auto name = realloc_concat_string_ref(
+    balloc, item.name,
+    std::views::transform(StringRef{data, len}, util::lowcase));
 
   item.name = name;
   item.token = http2::lookup_token(item.name);

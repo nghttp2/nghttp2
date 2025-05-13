@@ -211,11 +211,9 @@ constexpr size_t concat_string_ref_count(size_t acc) { return acc; }
 // private function used in concat_string_ref.  This function counts
 // the sum of length of given arguments.  The calculated length is
 // accumulated, and passed to the next function.
-template <typename... Args>
-constexpr size_t concat_string_ref_count(size_t acc, const StringRef &value,
-                                         Args &&...args) {
-  return concat_string_ref_count(acc + value.size(),
-                                 std::forward<Args>(args)...);
+template <std::ranges::input_range R, std::ranges::input_range... Args>
+constexpr size_t concat_string_ref_count(size_t acc, R &&r, Args &&...args) {
+  return concat_string_ref_count(acc + std::ranges::distance(r), args...);
 }
 
 // private function used in concat_string_ref.  this is the base
@@ -226,18 +224,17 @@ inline uint8_t *concat_string_ref_copy(uint8_t *p) { return p; }
 // given strings into |p|.  |p| is incremented by the copied length,
 // and returned.  In the end, return value points to the location one
 // beyond the last byte written.
-template <typename... Args>
-uint8_t *concat_string_ref_copy(uint8_t *p, const StringRef &value,
-                                Args &&...args) {
-  return concat_string_ref_copy(std::ranges::copy(value, p).out,
+template <std::ranges::input_range R, std::ranges::input_range... Args>
+uint8_t *concat_string_ref_copy(uint8_t *p, R &&r, Args &&...args) {
+  return concat_string_ref_copy(std::ranges::copy(std::forward<R>(r), p).out,
                                 std::forward<Args>(args)...);
 }
 
 // Returns the string which is the concatenation of |args| in the
 // given order.  The resulting string will be NULL-terminated.
-template <typename... Args>
+template <std::ranges::input_range... Args>
 StringRef concat_string_ref(BlockAllocator &alloc, Args &&...args) {
-  auto len = concat_string_ref_count(0, std::forward<Args>(args)...);
+  auto len = concat_string_ref_count(0, args...);
   auto dst = static_cast<uint8_t *>(alloc.alloc(len + 1));
   auto p = dst;
   p = concat_string_ref_copy(p, std::forward<Args>(args)...);
@@ -251,15 +248,14 @@ StringRef concat_string_ref(BlockAllocator &alloc, Args &&...args) {
 // obtained from alloc.alloc() or alloc.realloc(), and attempts to use
 // unused memory region by using alloc.realloc().  If value is empty,
 // then just call concat_string_ref().
-template <typename... Args>
+template <std::ranges::input_range... Args>
 StringRef realloc_concat_string_ref(BlockAllocator &alloc,
                                     const StringRef &value, Args &&...args) {
   if (value.empty()) {
     return concat_string_ref(alloc, std::forward<Args>(args)...);
   }
 
-  auto len =
-    value.size() + concat_string_ref_count(0, std::forward<Args>(args)...);
+  auto len = value.size() + concat_string_ref_count(0, args...);
   auto dst = static_cast<uint8_t *>(
     alloc.realloc(const_cast<uint8_t *>(value.byte()), len + 1));
   auto p = dst + value.size();
