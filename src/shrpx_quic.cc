@@ -195,7 +195,8 @@ int generate_quic_retry_connection_id(ngtcp2_cid &cid, uint32_t server_id,
 
   auto p = cid.data + SHRPX_QUIC_CID_WORKER_ID_OFFSET;
 
-  std::copy_n(reinterpret_cast<uint8_t *>(&server_id), sizeof(server_id), p);
+  std::ranges::copy_n(reinterpret_cast<uint8_t *>(&server_id),
+                      sizeof(server_id), p);
 
   return encrypt_quic_connection_id(p, p, ctx);
 }
@@ -211,7 +212,7 @@ int generate_quic_connection_id(ngtcp2_cid &cid, const WorkerID &wid,
 
   auto p = cid.data + SHRPX_QUIC_CID_WORKER_ID_OFFSET;
 
-  std::copy_n(reinterpret_cast<const uint8_t *>(&wid), sizeof(wid), p);
+  std::ranges::copy_n(reinterpret_cast<const uint8_t *>(&wid), sizeof(wid), p);
 
   return encrypt_quic_connection_id(p, p, ctx);
 }
@@ -261,7 +262,8 @@ int generate_quic_hashed_connection_id(ngtcp2_cid &dest,
 
   assert(hlen == h.size());
 
-  std::copy_n(std::begin(h), sizeof(dest.data), std::begin(dest.data));
+  std::ranges::copy_n(std::ranges::begin(h), sizeof(dest.data),
+                      std::ranges::begin(dest.data));
   dest.datalen = sizeof(dest.data);
 
   return 0;
@@ -294,7 +296,7 @@ generate_retry_token(std::span<uint8_t> token, uint32_t version,
     return {};
   }
 
-  return {{std::begin(token), static_cast<size_t>(tokenlen)}};
+  return token.first(tokenlen);
 }
 
 int verify_retry_token(ngtcp2_cid &odcid, std::span<const uint8_t> token,
@@ -329,7 +331,7 @@ generate_token(std::span<uint8_t> token, const sockaddr *sa, size_t salen,
 
   token[tokenlen++] = km_id;
 
-  return {{std::begin(token), static_cast<size_t>(tokenlen)}};
+  return token.first(tokenlen);
 }
 
 int verify_token(std::span<const uint8_t> token, const sockaddr *sa,
