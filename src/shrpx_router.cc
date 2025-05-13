@@ -41,11 +41,13 @@ Router::Router() : balloc_(1024, 1024), root_{} {}
 Router::~Router() {}
 
 namespace {
+char first_byte(const std::unique_ptr<RNode> &node) { return node->s[0]; }
+} // namespace
+
+namespace {
 RNode *find_next_node(const RNode *node, char c) {
-  auto itr = std::lower_bound(std::begin(node->next), std::end(node->next), c,
-                              [](const std::unique_ptr<RNode> &lhs,
-                                 const char c) { return lhs->s[0] < c; });
-  if (itr == std::end(node->next) || (*itr)->s[0] != c) {
+  auto itr = std::ranges::lower_bound(node->next, c, {}, first_byte);
+  if (itr == std::ranges::end(node->next) || (*itr)->s[0] != c) {
     return nullptr;
   }
 
@@ -55,10 +57,8 @@ RNode *find_next_node(const RNode *node, char c) {
 
 namespace {
 void add_next_node(RNode *node, std::unique_ptr<RNode> new_node) {
-  auto itr = std::lower_bound(std::begin(node->next), std::end(node->next),
-                              new_node->s[0],
-                              [](const std::unique_ptr<RNode> &lhs,
-                                 const char c) { return lhs->s[0] < c; });
+  auto itr =
+    std::ranges::lower_bound(node->next, new_node->s[0], {}, first_byte);
   node->next.insert(itr, std::move(new_node));
 }
 } // namespace
@@ -315,14 +315,15 @@ ssize_t Router::match(const StringRef &host, const StringRef &path) const {
   const RNode *node;
   size_t offset;
 
-  node = match_complete(&offset, &root_, std::begin(host), std::end(host));
+  node = match_complete(&offset, &root_, std::ranges::begin(host),
+                        std::ranges::end(host));
   if (node == nullptr) {
     return -1;
   }
 
   bool pattern_is_wildcard;
-  node = match_partial(&pattern_is_wildcard, node, offset, std::begin(path),
-                       std::end(path));
+  node = match_partial(&pattern_is_wildcard, node, offset,
+                       std::ranges::begin(path), std::ranges::end(path));
   if (node == nullptr || node == &root_) {
     return -1;
   }
@@ -334,7 +335,8 @@ ssize_t Router::match(const StringRef &s) const {
   const RNode *node;
   size_t offset;
 
-  node = match_complete(&offset, &root_, std::begin(s), std::end(s));
+  node =
+    match_complete(&offset, &root_, std::ranges::begin(s), std::ranges::end(s));
   if (node == nullptr) {
     return -1;
   }
@@ -394,8 +396,8 @@ ssize_t Router::match_prefix(size_t *nread, const RNode **last_node,
     *last_node = &root_;
   }
 
-  auto node =
-    ::shrpx::match_prefix(nread, *last_node, std::begin(s), std::end(s));
+  auto node = ::shrpx::match_prefix(nread, *last_node, std::ranges::begin(s),
+                                    std::ranges::end(s));
   if (node == nullptr) {
     return -1;
   }

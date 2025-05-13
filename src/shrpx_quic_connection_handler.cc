@@ -98,9 +98,9 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
   auto &quicconf = config->quic;
 
   auto it = connections_.find(dcid_key);
-  if (it == std::end(connections_)) {
+  if (it == std::ranges::end(connections_)) {
     auto cwit = close_waits_.find(dcid_key);
-    if (cwit != std::end(close_waits_)) {
+    if (cwit != std::ranges::end(close_waits_)) {
       auto cw = (*cwit).second;
 
       cw->handle_packet(faddr, remote_addr, local_addr, pi, data);
@@ -115,9 +115,9 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
       }
 
       it = connections_.find(dcid_key);
-      if (it == std::end(connections_)) {
+      if (it == std::ranges::end(connections_)) {
         auto cwit = close_waits_.find(dcid_key);
-        if (cwit != std::end(close_waits_)) {
+        if (cwit != std::ranges::end(close_waits_)) {
           auto cw = (*cwit).second;
 
           cw->handle_packet(faddr, remote_addr, local_addr, pi, data);
@@ -128,7 +128,7 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
     }
   }
 
-  if (it == std::end(connections_)) {
+  if (it == std::ranges::end(connections_)) {
     ConnectionID decrypted_dcid;
 
     auto &qkms = conn_handler->get_quic_keying_materials();

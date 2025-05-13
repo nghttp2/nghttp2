@@ -32,12 +32,13 @@ namespace {
 void copy_headers_to_nva_internal(std::vector<nghttp3_nv> &nva,
                                   const HeaderRefs &headers, uint8_t nv_flags,
                                   uint32_t flags) {
-  auto it_forwarded = std::end(headers);
-  auto it_xff = std::end(headers);
-  auto it_xfp = std::end(headers);
-  auto it_via = std::end(headers);
+  auto it_forwarded = std::ranges::end(headers);
+  auto it_xff = std::ranges::end(headers);
+  auto it_xfp = std::ranges::end(headers);
+  auto it_via = std::ranges::end(headers);
 
-  for (auto it = std::begin(headers); it != std::end(headers); ++it) {
+  for (auto it = std::ranges::begin(headers); it != std::ranges::end(headers);
+       ++it) {
     auto kv = &(*it);
     if (kv->name.empty() || kv->name[0] == ':') {
       continue;
@@ -74,7 +75,7 @@ void copy_headers_to_nva_internal(std::vector<nghttp3_nv> &nva,
         continue;
       }
 
-      if (it_forwarded == std::end(headers)) {
+      if (it_forwarded == std::ranges::end(headers)) {
         it_forwarded = it;
         continue;
       }
@@ -87,7 +88,7 @@ void copy_headers_to_nva_internal(std::vector<nghttp3_nv> &nva,
         continue;
       }
 
-      if (it_xff == std::end(headers)) {
+      if (it_xff == std::ranges::end(headers)) {
         it_xff = it;
         continue;
       }
@@ -100,7 +101,7 @@ void copy_headers_to_nva_internal(std::vector<nghttp3_nv> &nva,
         continue;
       }
 
-      if (it_xfp == std::end(headers)) {
+      if (it_xfp == std::ranges::end(headers)) {
         it_xfp = it;
         continue;
       }
@@ -113,7 +114,7 @@ void copy_headers_to_nva_internal(std::vector<nghttp3_nv> &nva,
         continue;
       }
 
-      if (it_via == std::end(headers)) {
+      if (it_via == std::ranges::end(headers)) {
         it_via = it;
         continue;
       }
