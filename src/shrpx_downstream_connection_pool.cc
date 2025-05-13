@@ -50,7 +50,7 @@ DownstreamConnectionPool::pop_downstream_connection() {
     return nullptr;
   }
 
-  auto it = std::begin(pool_);
+  auto it = std::ranges::begin(pool_);
   auto dconn = std::unique_ptr<DownstreamConnection>(*it);
   pool_.erase(it);
 
