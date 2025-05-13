@@ -192,34 +192,56 @@ size_t quote_stringlen(const StringRef &target);
 
 static constexpr char LOWER_XDIGITS[] = "0123456789abcdef";
 
-template <std::weakly_incrementable OutputIt>
-OutputIt format_hex(OutputIt it, std::span<const uint8_t> s) {
-  for (auto c : s) {
-    *it++ = LOWER_XDIGITS[c >> 4];
-    *it++ = LOWER_XDIGITS[c & 0xf];
+// Converts a range [|first|, |last|) in hex format, and stores the
+// result in another range, beginning at |result|.  It returns an
+// output iterator to the element past the last element stored.
+template <std::input_iterator I, std::weakly_incrementable O>
+requires(sizeof(std::iter_value_t<I>) == sizeof(uint8_t))
+constexpr O format_hex(I first, I last, O result) noexcept {
+  for (; first != last; ++first) {
+    uint8_t c = *first;
+    *result++ = LOWER_XDIGITS[c >> 4];
+    *result++ = LOWER_XDIGITS[c & 0xf];
   }
 
-  return it;
+  return result;
 }
 
-template <typename T, size_t N = std::dynamic_extent,
-          std::weakly_incrementable OutputIt>
-OutputIt format_hex(OutputIt it, std::span<T, N> s) {
-  return format_hex(it, std::span<const uint8_t>{as_uint8_span(s)});
+// Converts |R| in hex format, and stores the result in another range,
+// beginning at |result|.  It returns an output iterator to the
+// element past the last element stored.
+template <std::ranges::input_range R, std::weakly_incrementable O>
+requires(sizeof(std::ranges::range_value_t<R>) == sizeof(uint8_t))
+constexpr O format_hex(R &&r, O result) noexcept {
+  return format_hex(std::ranges::begin(r), std::ranges::end(r),
+                    std::move(result));
 }
 
-std::string format_hex(std::span<const uint8_t> s);
+// Converts |R| in hex format, and stores the result in a buffer
+// allocated by |balloc|.  It returns StringRef that is backed by the
+// allocated buffer.  The returned string is NULL terminated.
+template <std::ranges::input_range R>
+requires(sizeof(std::ranges::range_value_t<R>) == sizeof(uint8_t))
+StringRef format_hex(BlockAllocator &balloc, R &&r) {
+  auto iov = make_byte_ref(balloc, std::ranges::distance(r) * 2 + 1);
+  auto p = format_hex(std::forward<R>(r), std::ranges::begin(iov));
 
-template <typename T, size_t N = std::dynamic_extent>
-std::string format_hex(std::span<T, N> s) {
-  return format_hex(std::span<const uint8_t>{as_uint8_span(s)});
+  *p = '\0';
+
+  return as_string_ref(std::ranges::begin(iov), p);
 }
 
-StringRef format_hex(BlockAllocator &balloc, std::span<const uint8_t> s);
+// Converts |R| in hex format, and returns the result.
+template <std::ranges::input_range R>
+requires(sizeof(std::ranges::range_value_t<R>) == sizeof(uint8_t))
+std::string format_hex(R &&r) {
+  std::string res;
 
-template <typename T, size_t N = std::dynamic_extent>
-StringRef format_hex(BlockAllocator &balloc, std::span<T, N> s) {
-  return format_hex(balloc, std::span<const uint8_t>{as_uint8_span(s)});
+  res.resize(std::ranges::distance(r) * 2);
+
+  format_hex(std::forward<R>(r), std::ranges::begin(res));
+
+  return res;
 }
 
 // decode_hex decodes hex string |s|, returns the decoded byte string.

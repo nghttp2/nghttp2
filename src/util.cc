@@ -502,24 +502,6 @@ char upcase(char c) {
   }
 }
 
-std::string format_hex(std::span<const uint8_t> s) {
-  std::string res;
-  res.resize(s.size() * 2);
-
-  format_hex(std::begin(res), s);
-
-  return res;
-}
-
-StringRef format_hex(BlockAllocator &balloc, std::span<const uint8_t> s) {
-  auto iov = make_byte_ref(balloc, s.size() * 2 + 1);
-  auto p = format_hex(std::begin(iov), s);
-
-  *p = '\0';
-
-  return as_string_ref(std::begin(iov), p);
-}
-
 void to_token68(std::string &base64str) {
   std::transform(std::begin(base64str), std::end(base64str),
                  std::begin(base64str), [](char c) {
