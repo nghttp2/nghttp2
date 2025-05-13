@@ -125,16 +125,16 @@ int APIDownstreamConnection::send_reply(unsigned int http_status,
     M1.size() + M2.size() + M3.size() + data.size() + api_status_str.size() + 3;
 
   auto buf = make_byte_ref(balloc, buflen);
-  auto p = std::begin(buf);
+  auto p = std::ranges::begin(buf);
 
-  p = std::copy(std::begin(M1), std::end(M1), p);
-  p = std::copy(std::begin(api_status_str), std::end(api_status_str), p);
-  p = std::copy(std::begin(M2), std::end(M2), p);
+  p = std::ranges::copy(M1, p).out;
+  p = std::ranges::copy(api_status_str, p).out;
+  p = std::ranges::copy(M2, p).out;
   p = util::utos(p, http_status);
-  p = std::copy(std::begin(data), std::end(data), p);
-  p = std::copy(std::begin(M3), std::end(M3), p);
+  p = std::ranges::copy(data, p).out;
+  p = std::ranges::copy(M3, p).out;
 
-  buf = buf.subspan(0, p - std::begin(buf));
+  buf = buf.subspan(0, p - std::ranges::begin(buf));
 
   auto content_length = util::make_string_ref_uint(balloc, buf.size());
 
@@ -187,8 +187,7 @@ int APIDownstreamConnection::push_request_headers() {
   auto &req = downstream_->request();
 
   auto path =
-    StringRef{std::begin(req.path),
-              std::find(std::begin(req.path), std::end(req.path), '?')};
+    StringRef{std::ranges::begin(req.path), std::ranges::find(req.path, '?')};
 
   api_ = lookup_api(path);
 
@@ -276,20 +275,20 @@ int APIDownstreamConnection::error_method_not_allowed() {
   auto &balloc = downstream_->get_block_allocator();
 
   auto iov = make_byte_ref(balloc, len + 1);
-  auto p = std::begin(iov);
+  auto p = std::ranges::begin(iov);
   for (uint8_t i = 0; i < API_METHOD_MAX; ++i) {
     if (api_->allowed_methods & (1 << i)) {
       auto &s = API_METHOD_STRING[i];
-      p = std::copy(std::begin(s), std::end(s), p);
-      p = std::copy_n(", ", 2, p);
+      p = std::ranges::copy(s, p).out;
+      p = std::ranges::copy(", "sv, p).out;
     }
   }
 
   p -= 2;
   *p = '\0';
 
-  resp.fs.add_header_token("allow"_sr, as_string_ref(std::begin(iov), p), false,
-                           -1);
+  resp.fs.add_header_token(
+    "allow"_sr, as_string_ref(std::ranges::begin(iov), p), false, -1);
   return send_reply(405, APIStatusCode::FAILURE);
 }
 
@@ -371,7 +370,7 @@ int APIDownstreamConnection::handle_backendconfig() {
   for (auto first = reinterpret_cast<const char *>(rp),
             last = first + req.recv_body_length;
        first != last;) {
-    auto eol = std::find(first, last, '\n');
+    auto eol = std::ranges::find(first, last, '\n');
     if (eol == last) {
       break;
     }
@@ -381,7 +380,7 @@ int APIDownstreamConnection::handle_backendconfig() {
       continue;
     }
 
-    auto eq = std::find(first, eol, '=');
+    auto eq = std::ranges::find(first, eol, '=');
     if (eq == eol) {
       send_reply(400, APIStatusCode::FAILURE);
       return 0;
