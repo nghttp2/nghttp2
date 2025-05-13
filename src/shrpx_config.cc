@@ -128,20 +128,19 @@ namespace {
 int split_host_port(char *host, size_t hostlen, uint16_t *port_ptr,
                     const StringRef &hostport, const StringRef &opt) {
   // host and port in |hostport| is separated by single ','.
-  auto sep = std::find(std::begin(hostport), std::end(hostport), ',');
-  if (sep == std::end(hostport)) {
+  auto sep = std::ranges::find(hostport, ',');
+  if (sep == std::ranges::end(hostport)) {
     LOG(ERROR) << opt << ": Invalid host, port: " << hostport;
     return -1;
   }
-  size_t len = sep - std::begin(hostport);
+  size_t len = sep - std::ranges::begin(hostport);
   if (hostlen < len + 1) {
     LOG(ERROR) << opt << ": Hostname too long: " << hostport;
     return -1;
   }
-  std::copy(std::begin(hostport), sep, host);
-  host[len] = '\0';
+  *std::ranges::copy(std::ranges::begin(hostport), sep, host).out = '\0';
 
-  auto portstr = StringRef{sep + 1, std::end(hostport)};
+  auto portstr = StringRef{sep + 1, std::ranges::end(hostport)};
   auto d = util::parse_uint(portstr);
   if (d && 1 <= d && d <= std::numeric_limits<uint16_t>::max()) {
     *port_ptr = *d;
@@ -227,11 +226,12 @@ read_tls_ticket_key_file(const std::vector<StringRef> &files,
     }
 
     auto p = buf;
-    std::copy_n(p, key.data.name.size(), std::begin(key.data.name));
-    p += key.data.name.size();
-    std::copy_n(p, enc_keylen, std::begin(key.data.enc_key));
-    p += enc_keylen;
-    std::copy_n(p, hmac_keylen, std::begin(key.data.hmac_key));
+    p = std::ranges::copy_n(p, key.data.name.size(),
+                            std::ranges::begin(key.data.name))
+          .in;
+    p = std::ranges::copy_n(p, enc_keylen, std::ranges::begin(key.data.enc_key))
+          .in;
+    std::ranges::copy_n(p, hmac_keylen, std::ranges::begin(key.data.hmac_key));
 
     if (LOG_ENABLED(INFO)) {
       LOG(INFO) << "session ticket key: " << util::format_hex(key.data.name);
@@ -263,7 +263,7 @@ read_quic_secret_file(const StringRef &path) {
       continue;
     }
 
-    auto s = StringRef{std::begin(buf), std::begin(buf) + len};
+    auto s = StringRef{buf.data(), len};
     if (s.size() != expectedlen * 2 || !util::is_hex_string(s)) {
       LOG(ERROR) << "frontend-quic-secret-file: each line must be a "
                  << expectedlen * 2 << " bytes hex encoded string";
@@ -273,18 +273,19 @@ read_quic_secret_file(const StringRef &path) {
     kms.emplace_back();
     auto &qkm = kms.back();
 
-    auto p = std::begin(s);
+    auto p = std::ranges::begin(s);
 
-    util::decode_hex(std::begin(qkm.reserved),
+    util::decode_hex(std::ranges::begin(qkm.reserved),
                      StringRef{p, p + qkm.reserved.size()});
     p += qkm.reserved.size() * 2;
-    util::decode_hex(std::begin(qkm.secret),
+    util::decode_hex(std::ranges::begin(qkm.secret),
                      StringRef{p, p + qkm.secret.size()});
     p += qkm.secret.size() * 2;
-    util::decode_hex(std::begin(qkm.salt), StringRef{p, p + qkm.salt.size()});
+    util::decode_hex(std::ranges::begin(qkm.salt),
+                     StringRef{p, p + qkm.salt.size()});
     p += qkm.salt.size() * 2;
 
-    assert(static_cast<size_t>(p - std::begin(s)) == expectedlen * 2);
+    assert(static_cast<size_t>(p - std::ranges::begin(s)) == expectedlen * 2);
 
     qkm.id = qkm.reserved[0] & SHRPX_QUIC_DCID_KM_ID_MASK;
 
@@ -367,9 +368,10 @@ std::string read_passwd_from_file(const StringRef &opt,
 
 HeaderRefs::value_type parse_header(BlockAllocator &balloc,
                                     const StringRef &optarg) {
-  auto colon = std::find(std::begin(optarg), std::end(optarg), ':');
+  auto colon = std::ranges::find(optarg, ':');
 
-  if (colon == std::end(optarg) || colon == std::begin(optarg)) {
+  if (colon == std::ranges::end(optarg) ||
+      colon == std::ranges::begin(optarg)) {
     return {};
   }
 
@@ -377,14 +379,15 @@ HeaderRefs::value_type parse_header(BlockAllocator &balloc,
   for (; *value == '\t' || *value == ' '; ++value)
     ;
 
-  auto name_iov =
-    make_byte_ref(balloc, std::distance(std::begin(optarg), colon) + 1);
-  auto p = util::tolower(std::begin(optarg), colon, std::begin(name_iov));
+  auto name_iov = make_byte_ref(
+    balloc, std::ranges::distance(std::ranges::begin(optarg), colon) + 1);
+  auto p = util::tolower(std::ranges::begin(optarg), colon,
+                         std::ranges::begin(name_iov));
   *p = '\0';
 
-  auto nv =
-    HeaderRef(as_string_ref(std::begin(name_iov), p),
-              make_string_ref(balloc, StringRef{value, std::end(optarg)}));
+  auto nv = HeaderRef(
+    as_string_ref(std::ranges::begin(name_iov), p),
+    make_string_ref(balloc, StringRef{value, std::ranges::end(optarg)}));
 
   if (!nghttp2_check_header_name(nv.name.byte(), nv.name.size()) ||
       !nghttp2_check_header_value_rfc9113(nv.value.byte(), nv.value.size())) {
@@ -708,9 +711,9 @@ bool var_token(char c) {
 
 std::vector<LogFragment> parse_log_format(BlockAllocator &balloc,
                                           const StringRef &optarg) {
-  auto literal_start = std::begin(optarg);
+  auto literal_start = std::ranges::begin(optarg);
   auto p = literal_start;
-  auto eop = std::end(optarg);
+  auto eop = std::ranges::end(optarg);
 
   auto res = std::vector<LogFragment>();
 
@@ -774,19 +777,20 @@ std::vector<LogFragment> parse_log_format(BlockAllocator &balloc,
 
     literal_start = p;
 
-    if (value == std::begin(var_name)) {
+    if (value == std::ranges::begin(var_name)) {
       res.emplace_back(type);
       continue;
     }
 
     {
-      auto iov =
-        make_byte_ref(balloc, std::distance(value, std::end(var_name)) + 1);
-      auto p = std::copy(value, std::end(var_name), std::begin(iov));
-      std::transform(std::begin(iov), p, std::begin(iov),
-                     [](auto c) { return c == '_' ? '-' : c; });
+      auto iov = make_byte_ref(
+        balloc, std::ranges::distance(value, std::ranges::end(var_name)) + 1);
+      auto p = std::ranges::transform(value, std::ranges::end(var_name),
+                                      std::ranges::begin(iov),
+                                      [](auto c) { return c == '_' ? '-' : c; })
+                 .out;
       *p = '\0';
-      res.emplace_back(type, as_string_ref(std::begin(iov), p));
+      res.emplace_back(type, as_string_ref(std::ranges::begin(iov), p));
     }
   }
 
@@ -860,9 +864,9 @@ namespace {
 int parse_memcached_connection_params(MemcachedConnectionParams &out,
                                       const StringRef &src_params,
                                       const StringRef &opt) {
-  auto last = std::end(src_params);
-  for (auto first = std::begin(src_params); first != last;) {
-    auto end = std::find(first, last, ';');
+  auto last = std::ranges::end(src_params);
+  for (auto first = std::ranges::begin(src_params); first != last;) {
+    auto end = std::ranges::find(first, last, ';');
     auto param = StringRef{first, end};
 
     if (util::strieq("tls"_sr, param)) {
@@ -898,9 +902,9 @@ namespace {
 // parsed results into |out|.  This function returns 0 if it succeeds,
 // or -1.
 int parse_upstream_params(UpstreamParams &out, const StringRef &src_params) {
-  auto last = std::end(src_params);
-  for (auto first = std::begin(src_params); first != last;) {
-    auto end = std::find(first, last, ';');
+  auto last = std::ranges::end(src_params);
+  for (auto first = std::ranges::begin(src_params); first != last;) {
+    auto end = std::ranges::find(first, last, ';');
     auto param = StringRef{first, end};
 
     if (util::strieq("tls"_sr, param)) {
@@ -989,9 +993,9 @@ namespace {
 // or -1.
 int parse_downstream_params(DownstreamParams &out,
                             const StringRef &src_params) {
-  auto last = std::end(src_params);
-  for (auto first = std::begin(src_params); first != last;) {
-    auto end = std::find(first, last, ';');
+  auto last = std::ranges::end(src_params);
+  for (auto first = std::ranges::begin(src_params); first != last;) {
+    auto end = std::ranges::find(first, last, ';');
     auto param = StringRef{first, end};
 
     if (util::istarts_with(param, "proto="_sr)) {
@@ -1226,29 +1230,31 @@ int parse_mapping(Config *config, DownstreamAddrConfig &addr,
 
   for (const auto &raw_pattern : mapping) {
     StringRef pattern;
-    auto slash = std::find(std::begin(raw_pattern), std::end(raw_pattern), '/');
-    if (slash == std::end(raw_pattern)) {
+    auto slash = std::ranges::find(raw_pattern, '/');
+    if (slash == std::ranges::end(raw_pattern)) {
       // This effectively makes empty pattern to "/".  2 for '/' and
       // terminal NULL character.
       auto iov = make_byte_ref(downstreamconf.balloc, raw_pattern.size() + 2);
-      auto p = util::tolower(raw_pattern, std::begin(iov));
+      auto p = util::tolower(raw_pattern, std::ranges::begin(iov));
       *p++ = '/';
       *p = '\0';
-      pattern = as_string_ref(std::begin(iov), p);
+      pattern = as_string_ref(std::ranges::begin(iov), p);
     } else {
       auto path = http2::normalize_path_colon(
-        downstreamconf.balloc, StringRef{slash, std::end(raw_pattern)},
+        downstreamconf.balloc, StringRef{slash, std::ranges::end(raw_pattern)},
         StringRef{});
-      auto iov = make_byte_ref(downstreamconf.balloc,
-                               std::distance(std::begin(raw_pattern), slash) +
-                                 path.size() + 1);
-      auto p = util::tolower(std::begin(raw_pattern), slash, std::begin(iov));
-      p = std::copy(std::begin(path), std::end(path), p);
+      auto iov =
+        make_byte_ref(downstreamconf.balloc,
+                      std::ranges::distance(std::begin(raw_pattern), slash) +
+                        path.size() + 1);
+      auto p = util::tolower(std::ranges::begin(raw_pattern), slash,
+                             std::ranges::begin(iov));
+      p = std::ranges::copy(path, p).out;
       *p = '\0';
-      pattern = as_string_ref(std::begin(iov), p);
+      pattern = as_string_ref(std::ranges::begin(iov), p);
     }
     auto it = pattern_addr_indexer.find(pattern);
-    if (it != std::end(pattern_addr_indexer)) {
+    if (it != std::ranges::end(pattern_addr_indexer)) {
       auto &g = addr_groups[(*it).second];
       // Last value wins if we have multiple different affinity
       // value under one group.
@@ -1354,33 +1360,31 @@ int parse_mapping(Config *config, DownstreamAddrConfig &addr,
 
     if (pattern[0] == '*') {
       // wildcard pattern
-      auto path_first =
-        std::find(std::begin(g.pattern), std::end(g.pattern), '/');
+      auto path_first = std::ranges::find(g.pattern, '/');
 
-      auto host = StringRef{std::begin(g.pattern) + 1, path_first};
-      auto path = StringRef{path_first, std::end(g.pattern)};
+      auto host = StringRef{std::ranges::begin(g.pattern) + 1, path_first};
+      auto path = StringRef{path_first, std::ranges::end(g.pattern)};
 
       auto path_is_wildcard = false;
       if (path[path.size() - 1] == '*') {
-        path = StringRef{std::begin(path), std::begin(path) + path.size() - 1};
+        path = path.substr(0, path.size() - 1);
         path_is_wildcard = true;
       }
 
-      auto it = std::find_if(
-        std::begin(wildcard_patterns), std::end(wildcard_patterns),
+      auto it = std::ranges::find_if(
+        wildcard_patterns,
         [&host](const WildcardPattern &wp) { return wp.host == host; });
 
-      if (it == std::end(wildcard_patterns)) {
+      if (it == std::ranges::end(wildcard_patterns)) {
         wildcard_patterns.emplace_back(host);
 
         auto &router = wildcard_patterns.back().router;
         router.add_route(path, idx, path_is_wildcard);
 
         auto iov = make_byte_ref(downstreamconf.balloc, host.size() + 1);
-        auto p =
-          std::reverse_copy(std::begin(host), std::end(host), std::begin(iov));
+        auto p = std::ranges::reverse_copy(host, std::ranges::begin(iov)).out;
         *p = '\0';
-        auto rev_host = as_string_ref(std::begin(iov), p);
+        auto rev_host = as_string_ref(std::ranges::begin(iov), p);
 
         rw_router.add_route(rev_host, wildcard_patterns.size() - 1);
       } else {
@@ -1392,8 +1396,7 @@ int parse_mapping(Config *config, DownstreamAddrConfig &addr,
 
     auto path_is_wildcard = false;
     if (pattern[pattern.size() - 1] == '*') {
-      pattern = StringRef{std::begin(pattern),
-                          std::begin(pattern) + pattern.size() - 1};
+      pattern = pattern.substr(0, pattern.size() - 1);
       path_is_wildcard = true;
     }
 
@@ -1417,10 +1420,10 @@ ForwardedNode parse_forwarded_node_type(const StringRef &optarg) {
     return static_cast<ForwardedNode>(-1);
   }
 
-  if (std::find_if_not(std::begin(optarg), std::end(optarg), [](char c) {
+  if (std::ranges::find_if_not(optarg, [](auto c) {
         return util::is_alpha(c) || util::is_digit(c) || c == '.' || c == '_' ||
                c == '-';
-      }) != std::end(optarg)) {
+      }) != std::ranges::end(optarg)) {
     return static_cast<ForwardedNode>(-1);
   }
 
@@ -1433,13 +1436,13 @@ int parse_error_page(std::vector<ErrorPage> &error_pages, const StringRef &opt,
                      const StringRef &optarg) {
   std::array<char, STRERROR_BUFSIZE> errbuf;
 
-  auto eq = std::find(std::begin(optarg), std::end(optarg), '=');
-  if (eq == std::end(optarg) || eq + 1 == std::end(optarg)) {
+  auto eq = std::ranges::find(optarg, '=');
+  if (eq == std::ranges::end(optarg) || eq + 1 == std::ranges::end(optarg)) {
     LOG(ERROR) << opt << ": bad value: '" << optarg << "'";
     return -1;
   }
 
-  auto codestr = StringRef{std::begin(optarg), eq};
+  auto codestr = StringRef{std::ranges::begin(optarg), eq};
   unsigned int code;
 
   if (codestr == "*"_sr) {
@@ -1455,7 +1458,7 @@ int parse_error_page(std::vector<ErrorPage> &error_pages, const StringRef &opt,
     code = static_cast<unsigned int>(*n);
   }
 
-  auto path = StringRef{eq + 1, std::end(optarg)};
+  auto path = StringRef{eq + 1, std::ranges::end(optarg)};
 
   std::vector<uint8_t> content;
   auto fd = open(path.data(), O_RDONLY);
@@ -1480,7 +1483,8 @@ int parse_error_page(std::vector<ErrorPage> &error_pages, const StringRef &opt,
     if (n == 0) {
       break;
     }
-    content.insert(std::end(content), std::begin(buf), std::begin(buf) + n);
+    content.insert(std::ranges::end(content), std::ranges::begin(buf),
+                   std::ranges::begin(buf) + n);
   }
 
   error_pages.push_back(ErrorPage{std::move(content), code});
@@ -1502,15 +1506,15 @@ namespace {
 // Parses subcert parameter |src_params|, and stores parsed results
 // into |out|.  This function returns 0 if it succeeds, or -1.
 int parse_subcert_params(SubcertParams &out, const StringRef &src_params) {
-  auto last = std::end(src_params);
-  for (auto first = std::begin(src_params); first != last;) {
-    auto end = std::find(first, last, ';');
+  auto last = std::ranges::end(src_params);
+  for (auto first = std::ranges::begin(src_params); first != last;) {
+    auto end = std::ranges::find(first, last, ';');
     auto param = StringRef{first, end};
 
     if (util::istarts_with(param, "sct-dir="_sr)) {
 #if defined(NGHTTP2_GENUINE_OPENSSL) || defined(NGHTTP2_OPENSSL_IS_BORINGSSL)
-      auto sct_dir =
-        StringRef{std::begin(param) + str_size("sct-dir="), std::end(param)};
+      auto sct_dir = StringRef{std::ranges::begin(param) + str_size("sct-dir="),
+                               std::ranges::end(param)};
       if (sct_dir.empty()) {
         LOG(ERROR) << "subcert: " << param << ": empty sct-dir";
         return -1;
@@ -1554,8 +1558,8 @@ int read_tls_sct_from_dir(std::vector<uint8_t> &dst, const StringRef &opt,
   auto closer = defer(closedir, dir);
 
   // 2 bytes total length field
-  auto len_idx = std::distance(std::begin(dst), std::end(dst));
-  dst.insert(std::end(dst), 2, 0);
+  auto len_idx = dst.size();
+  dst.insert(std::ranges::end(dst), 2, 0);
 
   for (;;) {
     errno = 0;
@@ -1579,10 +1583,10 @@ int read_tls_sct_from_dir(std::vector<uint8_t> &dst, const StringRef &opt,
     std::string path;
     path.resize(dir_path.size() + 1 + name.size());
     {
-      auto p = std::begin(path);
-      p = std::copy(std::begin(dir_path), std::end(dir_path), p);
+      auto p = std::ranges::begin(path);
+      p = std::ranges::copy(dir_path, p).out;
       *p++ = '/';
-      std::copy(std::begin(name), std::end(name), p);
+      std::ranges::copy(name, p);
     }
 
     auto fd = open(path.c_str(), O_RDONLY);
@@ -1596,8 +1600,8 @@ int read_tls_sct_from_dir(std::vector<uint8_t> &dst, const StringRef &opt,
     auto closer = defer(close, fd);
 
     // 2 bytes length field for this SCT.
-    auto len_idx = std::distance(std::begin(dst), std::end(dst));
-    dst.insert(std::end(dst), 2, 0);
+    auto len_idx = dst.size();
+    dst.insert(std::ranges::end(dst), 2, 0);
 
     // *.sct file tends to be small; around 110+ bytes.
     std::array<char, 256> buf;
@@ -1617,7 +1621,8 @@ int read_tls_sct_from_dir(std::vector<uint8_t> &dst, const StringRef &opt,
         break;
       }
 
-      dst.insert(std::end(dst), std::begin(buf), std::begin(buf) + nread);
+      dst.insert(std::ranges::end(dst), std::ranges::begin(buf),
+                 std::ranges::begin(buf) + nread);
 
       if (dst.size() > MAX_SCT_EXT_LEN) {
         LOG(ERROR) << opt << ": the concatenated SCT data from " << dir_path
@@ -1673,36 +1678,36 @@ int parse_psk_secrets(Config *config, const StringRef &path) {
       continue;
     }
 
-    auto sep_it = std::find(std::begin(line), std::end(line), ':');
-    if (sep_it == std::end(line)) {
+    auto sep_it = std::ranges::find(line, ':');
+    if (sep_it == std::ranges::end(line)) {
       LOG(ERROR) << SHRPX_OPT_PSK_SECRETS
                  << ": could not fine separator at line " << lineno;
       return -1;
     }
 
-    if (sep_it == std::begin(line)) {
+    if (sep_it == std::ranges::begin(line)) {
       LOG(ERROR) << SHRPX_OPT_PSK_SECRETS << ": empty identity at line "
                  << lineno;
       return -1;
     }
 
-    if (sep_it + 1 == std::end(line)) {
+    if (sep_it + 1 == std::ranges::end(line)) {
       LOG(ERROR) << SHRPX_OPT_PSK_SECRETS << ": empty secret at line "
                  << lineno;
       return -1;
     }
 
-    if (!util::is_hex_string(StringRef{sep_it + 1, std::end(line)})) {
+    if (!util::is_hex_string(StringRef{sep_it + 1, std::ranges::end(line)})) {
       LOG(ERROR) << SHRPX_OPT_PSK_SECRETS
                  << ": secret must be hex string at line " << lineno;
       return -1;
     }
 
-    auto identity =
-      make_string_ref(config->balloc, StringRef{std::begin(line), sep_it});
+    auto identity = make_string_ref(
+      config->balloc, StringRef{std::ranges::begin(line), sep_it});
 
-    auto secret =
-      util::decode_hex(config->balloc, StringRef{sep_it + 1, std::end(line)});
+    auto secret = util::decode_hex(
+      config->balloc, StringRef{sep_it + 1, std::ranges::end(line)});
 
     auto rv = tlsconf.psk_secrets.emplace(identity, secret);
     if (!rv.second) {
@@ -1740,36 +1745,36 @@ int parse_client_psk_secrets(Config *config, const StringRef &path) {
       continue;
     }
 
-    auto sep_it = std::find(std::begin(line), std::end(line), ':');
-    if (sep_it == std::end(line)) {
+    auto sep_it = std::ranges::find(line, ':');
+    if (sep_it == std::ranges::end(line)) {
       LOG(ERROR) << SHRPX_OPT_CLIENT_PSK_SECRETS
                  << ": could not find separator at line " << lineno;
       return -1;
     }
 
-    if (sep_it == std::begin(line)) {
+    if (sep_it == std::ranges::begin(line)) {
       LOG(ERROR) << SHRPX_OPT_CLIENT_PSK_SECRETS << ": empty identity at line "
                  << lineno;
       return -1;
     }
 
-    if (sep_it + 1 == std::end(line)) {
+    if (sep_it + 1 == std::ranges::end(line)) {
       LOG(ERROR) << SHRPX_OPT_CLIENT_PSK_SECRETS << ": empty secret at line "
                  << lineno;
       return -1;
     }
 
-    if (!util::is_hex_string(StringRef{sep_it + 1, std::end(line)})) {
+    if (!util::is_hex_string(StringRef{sep_it + 1, std::ranges::end(line)})) {
       LOG(ERROR) << SHRPX_OPT_CLIENT_PSK_SECRETS
                  << ": secret must be hex string at line " << lineno;
       return -1;
     }
 
-    tlsconf.client.psk.identity =
-      make_string_ref(config->balloc, StringRef{std::begin(line), sep_it});
+    tlsconf.client.psk.identity = make_string_ref(
+      config->balloc, StringRef{std::ranges::begin(line), sep_it});
 
-    tlsconf.client.psk.secret = StringRef{
-      util::decode_hex(config->balloc, StringRef{sep_it + 1, std::end(line)})};
+    tlsconf.client.psk.secret = StringRef{util::decode_hex(
+      config->balloc, StringRef{sep_it + 1, std::ranges::end(line)})};
 
     return 0;
   }
@@ -2873,17 +2878,18 @@ int parse_config(Config *config, int optid, const StringRef &opt,
   switch (optid) {
   case SHRPX_OPTID_BACKEND: {
     auto &downstreamconf = *config->conn.downstream;
-    auto addr_end = std::find(std::begin(optarg), std::end(optarg), ';');
+    auto addr_end = std::ranges::find(optarg, ';');
 
     DownstreamAddrConfig addr{};
     if (util::istarts_with(optarg, SHRPX_UNIX_PATH_PREFIX)) {
-      auto path = std::begin(optarg) + SHRPX_UNIX_PATH_PREFIX.size();
+      auto path = std::ranges::begin(optarg) + SHRPX_UNIX_PATH_PREFIX.size();
       addr.host =
         make_string_ref(downstreamconf.balloc, StringRef{path, addr_end});
       addr.host_unix = true;
     } else {
       if (split_host_port(host, sizeof(host), &port,
-                          StringRef{std::begin(optarg), addr_end}, opt) == -1) {
+                          StringRef{std::ranges::begin(optarg), addr_end},
+                          opt) == -1) {
         return -1;
       }
 
@@ -2891,15 +2897,17 @@ int parse_config(Config *config, int optid, const StringRef &opt,
       addr.port = port;
     }
 
-    auto mapping = addr_end == std::end(optarg) ? addr_end : addr_end + 1;
-    auto mapping_end = std::find(mapping, std::end(optarg), ';');
+    auto mapping =
+      addr_end == std::ranges::end(optarg) ? addr_end : addr_end + 1;
+    auto mapping_end =
+      std::ranges::find(mapping, std::ranges::end(optarg), ';');
 
     auto params =
-      mapping_end == std::end(optarg) ? mapping_end : mapping_end + 1;
+      mapping_end == std::ranges::end(optarg) ? mapping_end : mapping_end + 1;
 
     if (parse_mapping(config, addr, pattern_addr_indexer,
                       StringRef{mapping, mapping_end},
-                      StringRef{params, std::end(optarg)}) != 0) {
+                      StringRef{params, std::ranges::end(optarg)}) != 0) {
       return -1;
     }
 
@@ -2908,8 +2916,8 @@ int parse_config(Config *config, int optid, const StringRef &opt,
   case SHRPX_OPTID_FRONTEND: {
     auto &apiconf = config->api;
 
-    auto addr_end = std::find(std::begin(optarg), std::end(optarg), ';');
-    auto src_params = StringRef{addr_end, std::end(optarg)};
+    auto addr_end = std::ranges::find(optarg, ';');
+    auto src_params = StringRef{addr_end, std::ranges::end(optarg)};
 
     UpstreamParams params{};
     params.tls = true;
@@ -2960,7 +2968,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
         return -1;
       }
 
-      auto path = std::begin(optarg) + SHRPX_UNIX_PATH_PREFIX.size();
+      auto path = std::ranges::begin(optarg) + SHRPX_UNIX_PATH_PREFIX.size();
       addr.host = make_string_ref(config->balloc, StringRef{path, addr_end});
       addr.host_unix = true;
       addr.index = addrs.size();
@@ -2971,7 +2979,8 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     }
 
     if (split_host_port(host, sizeof(host), &port,
-                        StringRef{std::begin(optarg), addr_end}, opt) == -1) {
+                        StringRef{std::ranges::begin(optarg), addr_end},
+                        opt) == -1) {
       return -1;
     }
 
@@ -3254,8 +3263,8 @@ int parse_config(Config *config, int optid, const StringRef &opt,
 
     return 0;
   case SHRPX_OPTID_SUBCERT: {
-    auto end_keys = std::find(std::begin(optarg), std::end(optarg), ';');
-    auto src_params = StringRef{end_keys, std::end(optarg)};
+    auto end_keys = std::ranges::find(optarg, ';');
+    auto src_params = StringRef{end_keys, std::ranges::end(optarg)};
 
     SubcertParams params;
     if (parse_subcert_params(params, src_params) != 0) {
@@ -3273,18 +3282,18 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     }
 
     // Private Key file and certificate file separated by ':'.
-    auto sp = std::find(std::begin(optarg), end_keys, ':');
+    auto sp = std::ranges::find(std::ranges::begin(optarg), end_keys, ':');
     if (sp == end_keys) {
       LOG(ERROR) << opt << ": missing ':' in "
-                 << StringRef{std::begin(optarg), end_keys};
+                 << StringRef{std::ranges::begin(optarg), end_keys};
       return -1;
     }
 
-    auto private_key_file = StringRef{std::begin(optarg), sp};
+    auto private_key_file = StringRef{std::ranges::begin(optarg), sp};
 
     if (private_key_file.empty()) {
       LOG(ERROR) << opt << ": missing private key file: "
-                 << StringRef{std::begin(optarg), end_keys};
+                 << StringRef{std::ranges::begin(optarg), end_keys};
       return -1;
     }
 
@@ -3292,7 +3301,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
 
     if (cert_file.empty()) {
       LOG(ERROR) << opt << ": missing certificate file: "
-                 << StringRef{std::begin(optarg), end_keys};
+                 << StringRef{std::ranges::begin(optarg), end_keys};
       return -1;
     }
 
@@ -3641,8 +3650,8 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     return 0;
   case SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED:
   case SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED: {
-    auto addr_end = std::find(std::begin(optarg), std::end(optarg), ';');
-    auto src_params = StringRef{addr_end, std::end(optarg)};
+    auto addr_end = std::ranges::find(optarg, ';');
+    auto src_params = StringRef{addr_end, std::ranges::end(optarg)};
 
     MemcachedConnectionParams params{};
     if (parse_memcached_connection_params(params, src_params, StringRef{opt}) !=
@@ -3651,7 +3660,8 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     }
 
     if (split_host_port(host, sizeof(host), &port,
-                        StringRef{std::begin(optarg), addr_end}, opt) == -1) {
+                        StringRef{std::ranges::begin(optarg), addr_end},
+                        opt) == -1) {
       return -1;
     }
 
@@ -4274,16 +4284,16 @@ int load_config(Config *config, const char *filename,
     if (line.empty() || line[0] == '#') {
       continue;
     }
-    auto eq = std::find(std::begin(line), std::end(line), '=');
-    if (eq == std::end(line)) {
+    auto eq = std::ranges::find(line, '=');
+    if (eq == std::ranges::end(line)) {
       LOG(ERROR) << "Bad configuration format in " << filename << " at line "
                  << linenum;
       return -1;
     }
     *eq = '\0';
 
-    if (parse_config(config, StringRef{std::begin(line), eq},
-                     StringRef{eq + 1, std::end(line)}, include_set,
+    if (parse_config(config, StringRef{std::ranges::begin(line), eq},
+                     StringRef{eq + 1, std::ranges::end(line)}, include_set,
                      pattern_addr_indexer) != 0) {
       return -1;
     }
@@ -4588,7 +4598,7 @@ int configure_downstream_group(Config *config, bool http2_proxy,
     for (auto &addr : g.addrs) {
       if (addr.group_weight) {
         auto it = wgchk.find(addr.group);
-        if (it == std::end(wgchk)) {
+        if (it == std::ranges::end(wgchk)) {
           wgchk.emplace(addr.group, addr.group_weight);
         } else if ((*it).second != addr.group_weight) {
           LOG(FATAL) << "backend: inconsistent group-weight for a single group";
@@ -4618,7 +4628,7 @@ int configure_downstream_group(Config *config, bool http2_proxy,
 
         addr.addr.su.un.sun_family = AF_UNIX;
         // copy path including terminal NULL
-        std::copy_n(path, pathlen + 1, addr.addr.su.un.sun_path);
+        std::ranges::copy_n(path, pathlen + 1, addr.addr.su.un.sun_path);
         addr.addr.len = sizeof(addr.addr.su.un);
 
         continue;
@@ -4627,8 +4637,8 @@ int configure_downstream_group(Config *config, bool http2_proxy,
       addr.hostport =
         util::make_http_hostport(downstreamconf.balloc, addr.host, addr.port);
 
-      auto hostport =
-        util::make_hostport(std::begin(hostport_buf), addr.host, addr.port);
+      auto hostport = util::make_hostport(std::ranges::begin(hostport_buf),
+                                          addr.host, addr.port);
 
       if (!addr.dns) {
         if (resolve_hostname(&addr.addr, addr.host.data(), addr.port,
@@ -4650,7 +4660,7 @@ int configure_downstream_group(Config *config, bool http2_proxy,
     for (auto &addr : g.addrs) {
       if (addr.group_weight == 0) {
         auto it = wgchk.find(addr.group);
-        if (it == std::end(wgchk)) {
+        if (it == std::ranges::end(wgchk)) {
           addr.group_weight = 1;
         } else {
           addr.group_weight = (*it).second;
@@ -4686,10 +4696,9 @@ int configure_downstream_group(Config *config, bool http2_proxy,
         ++idx;
       }
 
-      std::sort(std::begin(g.affinity_hash), std::end(g.affinity_hash),
-                [](const AffinityHash &lhs, const AffinityHash &rhs) {
-                  return lhs.hash < rhs.hash;
-                });
+      std::ranges::sort(g.affinity_hash, [](const auto &lhs, const auto &rhs) {
+        return lhs.hash < rhs.hash;
+      });
     }
 
     auto &timeout = g.timeout;
