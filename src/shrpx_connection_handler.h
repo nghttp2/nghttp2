@@ -67,7 +67,6 @@ namespace shrpx {
 
 class Http2Session;
 class ConnectBlocker;
-class AcceptHandler;
 class Worker;
 struct WorkerStat;
 struct TicketKeys;
@@ -141,8 +140,6 @@ class ConnectionHandler {
 public:
   ConnectionHandler(struct ev_loop *loop, std::mt19937 &gen);
   ~ConnectionHandler();
-  int handle_connection(int fd, sockaddr *addr, int addrlen,
-                        const UpstreamAddr *faddr);
   // Creates Worker object for single threaded configuration.
   int create_single_worker();
   // Creates |num| Worker objects for multi threaded configuration.
@@ -155,12 +152,6 @@ public:
   const std::shared_ptr<TicketKeys> &get_ticket_keys() const;
   struct ev_loop *get_loop() const;
   Worker *get_single_worker() const;
-  void add_acceptor(std::unique_ptr<AcceptHandler> h);
-  void delete_acceptor();
-  void enable_acceptor();
-  void disable_acceptor();
-  void sleep_acceptor(ev_tstamp t);
-  void accept_pending_connection();
   void graceful_shutdown_worker();
   void set_graceful_shutdown(bool f);
   bool get_graceful_shutdown() const;
@@ -250,8 +241,6 @@ public:
   void
   worker_replace_downstream(std::shared_ptr<DownstreamConfig> downstreamconf);
 
-  void set_enable_acceptor_on_ocsp_completion(bool f);
-
 private:
   // Stores all SSL_CTX objects.
   std::vector<SSL_CTX *> all_ssl_ctx_;
@@ -298,11 +287,9 @@ private:
   // Worker object.
   std::shared_ptr<TicketKeys> ticket_keys_;
   struct ev_loop *loop_;
-  std::vector<std::unique_ptr<AcceptHandler>> acceptors_;
 #ifdef HAVE_NEVERBLEED
   neverbleed_t *nb_;
 #endif // HAVE_NEVERBLEED
-  ev_timer disable_acceptor_timer_;
   ev_timer ocsp_timer_;
   ev_async thread_join_asyncev_;
   ev_async serial_event_asyncev_;
@@ -313,9 +300,6 @@ private:
   size_t tls_ticket_key_memcached_fail_count_;
   unsigned int worker_round_robin_cnt_;
   bool graceful_shutdown_;
-  // true if acceptors should be enabled after the initial ocsp update
-  // has finished.
-  bool enable_acceptor_on_ocsp_completion_;
 };
 
 } // namespace shrpx

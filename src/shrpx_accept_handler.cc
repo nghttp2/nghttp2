@@ -33,6 +33,7 @@
 #include "shrpx_connection_handler.h"
 #include "shrpx_config.h"
 #include "shrpx_log.h"
+#include "shrpx_worker.h"
 #include "util.h"
 
 using namespace nghttp2;
@@ -46,15 +47,15 @@ void acceptcb(struct ev_loop *loop, ev_io *w, int revent) {
 }
 } // namespace
 
-AcceptHandler::AcceptHandler(const UpstreamAddr *faddr, ConnectionHandler *h)
-  : conn_hnr_(h), faddr_(faddr) {
+AcceptHandler::AcceptHandler(Worker *worker, const UpstreamAddr *faddr)
+  : worker_(worker), faddr_(faddr) {
   ev_io_init(&wev_, acceptcb, faddr_->fd, EV_READ);
   wev_.data = this;
-  ev_io_start(conn_hnr_->get_loop(), &wev_);
+  ev_io_start(worker_->get_loop(), &wev_);
 }
 
 AcceptHandler::~AcceptHandler() {
-  ev_io_stop(conn_hnr_->get_loop(), &wev_);
+  ev_io_stop(worker_->get_loop(), &wev_);
   close(faddr_->fd);
 }
 
@@ -87,7 +88,7 @@ void AcceptHandler::accept_connection() {
     case ENFILE:
       LOG(WARN) << "acceptor: running out file descriptor; disable acceptor "
                    "temporarily";
-      conn_hnr_->sleep_acceptor(get_config()->conn.listener.timeout.sleep);
+      worker_->sleep_listener(get_config()->conn.listener.timeout.sleep);
       return;
     default:
       return;
@@ -99,12 +100,12 @@ void AcceptHandler::accept_connection() {
   util::make_socket_closeonexec(cfd);
 #endif // !HAVE_ACCEPT4
 
-  conn_hnr_->handle_connection(cfd, &sockaddr.sa, addrlen, faddr_);
+  worker_->handle_connection(cfd, &sockaddr.sa, addrlen, faddr_);
 }
 
-void AcceptHandler::enable() { ev_io_start(conn_hnr_->get_loop(), &wev_); }
+void AcceptHandler::enable() { ev_io_start(worker_->get_loop(), &wev_); }
 
-void AcceptHandler::disable() { ev_io_stop(conn_hnr_->get_loop(), &wev_); }
+void AcceptHandler::disable() { ev_io_stop(worker_->get_loop(), &wev_); }
 
 int AcceptHandler::get_fd() const { return faddr_->fd; }
 

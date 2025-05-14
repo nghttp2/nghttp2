@@ -41,7 +41,6 @@
 #include "shrpx_http2_session.h"
 #include "shrpx_connect_blocker.h"
 #include "shrpx_downstream_connection.h"
-#include "shrpx_accept_handler.h"
 #include "shrpx_memcached_dispatcher.h"
 #include "shrpx_signal.h"
 #include "shrpx_log.h"
@@ -53,20 +52,6 @@
 using namespace nghttp2;
 
 namespace shrpx {
-
-namespace {
-void acceptor_disable_cb(struct ev_loop *loop, ev_timer *w, int revent) {
-  auto h = static_cast<ConnectionHandler *>(w->data);
-
-  // If we are in graceful shutdown period, we must not enable
-  // acceptors again.
-  if (h->get_graceful_shutdown()) {
-    return;
-  }
-
-  h->enable_acceptor();
-}
-} // namespace
 
 namespace {
 void ocsp_cb(struct ev_loop *loop, ev_timer *w, int revent) {
@@ -127,11 +112,7 @@ ConnectionHandler::ConnectionHandler(struct ev_loop *loop, std::mt19937 &gen)
     tls_ticket_key_memcached_get_retry_count_(0),
     tls_ticket_key_memcached_fail_count_(0),
     worker_round_robin_cnt_(get_config()->api.enabled ? 1 : 0),
-    graceful_shutdown_(false),
-    enable_acceptor_on_ocsp_completion_(false) {
-  ev_timer_init(&disable_acceptor_timer_, acceptor_disable_cb, 0., 0.);
-  disable_acceptor_timer_.data = this;
-
+    graceful_shutdown_(false) {
   ev_timer_init(&ocsp_timer_, ocsp_cb, 0., 0.);
   ocsp_timer_.data = this;
 
@@ -160,7 +141,6 @@ ConnectionHandler::~ConnectionHandler() {
   ev_async_stop(loop_, &thread_join_asyncev_);
   ev_io_stop(loop_, &ocsp_.rev);
   ev_timer_stop(loop_, &ocsp_timer_);
-  ev_timer_stop(loop_, &disable_acceptor_timer_);
 
 #ifdef ENABLE_HTTP3
   for (auto ssl_ctx : quic_all_ssl_ctx_) {
@@ -286,16 +266,17 @@ int ConnectionHandler::create_single_worker() {
     loop_, sv_ssl_ctx, cl_ssl_ctx, session_cache_ssl_ctx, cert_tree_.get(),
 #ifdef ENABLE_HTTP3
     quic_sv_ssl_ctx, quic_cert_tree_.get(), wid,
-#  ifdef HAVE_LIBBPF
-    /* index = */ 0,
-#  endif // HAVE_LIBBPF
-#endif   // ENABLE_HTTP3
-    ticket_keys_, this, config->conn.downstream);
+#endif // ENABLE_HTTP3
+    /* index = */ 0, ticket_keys_, this, config->conn.downstream);
 #ifdef HAVE_MRUBY
   if (single_worker_->create_mruby_context() != 0) {
     return -1;
   }
 #endif // HAVE_MRUBY
+
+  if (single_worker_->setup_server_socket() != 0) {
+    return -1;
+  }
 
 #ifdef ENABLE_HTTP3
   if (single_worker_->setup_quic_server_socket() != 0) {
@@ -389,16 +370,17 @@ int ConnectionHandler::create_worker_thread(size_t num) {
       loop, sv_ssl_ctx, cl_ssl_ctx, session_cache_ssl_ctx, cert_tree_.get(),
 #  ifdef ENABLE_HTTP3
       quic_sv_ssl_ctx, quic_cert_tree_.get(), wid,
-#    ifdef HAVE_LIBBPF
-      i,
-#    endif // HAVE_LIBBPF
-#  endif   // ENABLE_HTTP3
-      ticket_keys_, this, config->conn.downstream);
+#  endif // ENABLE_HTTP3
+      i, ticket_keys_, this, config->conn.downstream);
 #  ifdef HAVE_MRUBY
     if (worker->create_mruby_context() != 0) {
       return -1;
     }
 #  endif // HAVE_MRUBY
+
+    if (worker->setup_server_socket() != 0) {
+      return -1;
+    }
 
 #  ifdef ENABLE_HTTP3
     if ((!apiconf.enabled || i != 0) &&
@@ -469,117 +451,10 @@ void ConnectionHandler::graceful_shutdown_worker() {
 #endif // NOTHREADS
 }
 
-int ConnectionHandler::handle_connection(int fd, sockaddr *addr, int addrlen,
-                                         const UpstreamAddr *faddr) {
-  if (LOG_ENABLED(INFO)) {
-    LLOG(INFO, this) << "Accepted connection from "
-                     << util::numeric_name(addr, addrlen) << ", fd=" << fd;
-  }
-
-  auto config = get_config();
-
-  if (single_worker_) {
-    auto &upstreamconf = config->conn.upstream;
-    if (single_worker_->get_worker_stat()->num_connections >=
-        upstreamconf.worker_connections) {
-      if (LOG_ENABLED(INFO)) {
-        LLOG(INFO, this) << "Too many connections >="
-                         << upstreamconf.worker_connections;
-      }
-
-      close(fd);
-      return -1;
-    }
-
-    auto client =
-      tls::accept_connection(single_worker_.get(), fd, addr, addrlen, faddr);
-    if (!client) {
-      LLOG(ERROR, this) << "ClientHandler creation failed";
-
-      close(fd);
-      return -1;
-    }
-
-    return 0;
-  }
-
-  Worker *worker;
-
-  if (faddr->alt_mode == UpstreamAltMode::API) {
-    worker = workers_[0].get();
-
-    if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "Dispatch connection to API worker #0";
-    }
-  } else {
-    worker = workers_[worker_round_robin_cnt_].get();
-
-    if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "Dispatch connection to worker #" << worker_round_robin_cnt_;
-    }
-
-    if (++worker_round_robin_cnt_ == workers_.size()) {
-      auto &apiconf = config->api;
-
-      if (apiconf.enabled) {
-        worker_round_robin_cnt_ = 1;
-      } else {
-        worker_round_robin_cnt_ = 0;
-      }
-    }
-  }
-
-  WorkerEvent wev{};
-  wev.type = WorkerEventType::NEW_CONNECTION;
-  wev.client_fd = fd;
-  memcpy(&wev.client_addr, addr, addrlen);
-  wev.client_addrlen = addrlen;
-  wev.faddr = faddr;
-
-  worker->send(std::move(wev));
-
-  return 0;
-}
-
 struct ev_loop *ConnectionHandler::get_loop() const { return loop_; }
 
 Worker *ConnectionHandler::get_single_worker() const {
   return single_worker_.get();
-}
-
-void ConnectionHandler::add_acceptor(std::unique_ptr<AcceptHandler> h) {
-  acceptors_.push_back(std::move(h));
-}
-
-void ConnectionHandler::delete_acceptor() { acceptors_.clear(); }
-
-void ConnectionHandler::enable_acceptor() {
-  for (auto &a : acceptors_) {
-    a->enable();
-  }
-}
-
-void ConnectionHandler::disable_acceptor() {
-  for (auto &a : acceptors_) {
-    a->disable();
-  }
-}
-
-void ConnectionHandler::sleep_acceptor(ev_tstamp t) {
-  if (t == 0. || ev_is_active(&disable_acceptor_timer_)) {
-    return;
-  }
-
-  disable_acceptor();
-
-  ev_timer_set(&disable_acceptor_timer_, t, 0.);
-  ev_timer_start(loop_, &disable_acceptor_timer_);
-}
-
-void ConnectionHandler::accept_pending_connection() {
-  for (auto &a : acceptors_) {
-    a->accept_connection();
-  }
 }
 
 void ConnectionHandler::set_ticket_keys(
@@ -606,7 +481,6 @@ bool ConnectionHandler::get_graceful_shutdown() const {
 }
 
 void ConnectionHandler::cancel_ocsp_update() {
-  enable_acceptor_on_ocsp_completion_ = false;
   ev_timer_stop(loop_, &ocsp_timer_);
 
   if (ocsp_.proc.pid == 0) {
@@ -784,11 +658,6 @@ void ConnectionHandler::proceed_next_cert_ocsp() {
       // We have updated all ocsp response, and schedule next update.
       ev_timer_set(&ocsp_timer_, get_config()->tls.ocsp.update_interval, 0.);
       ev_timer_start(loop_, &ocsp_timer_);
-
-      if (enable_acceptor_on_ocsp_completion_) {
-        enable_acceptor_on_ocsp_completion_ = false;
-        enable_acceptor();
-      }
 
       return;
     }
@@ -995,10 +864,6 @@ ConnectionHandler::get_quic_indexed_ssl_ctx(size_t idx) const {
   return quic_indexed_ssl_ctx_[idx];
 }
 #endif // ENABLE_HTTP3
-
-void ConnectionHandler::set_enable_acceptor_on_ocsp_completion(bool f) {
-  enable_acceptor_on_ocsp_completion_ = f;
-}
 
 #ifdef ENABLE_HTTP3
 int ConnectionHandler::forward_quic_packet(const UpstreamAddr *faddr,

@@ -120,12 +120,6 @@ void graceful_shutdown(ConnectionHandler *conn_handler) {
   LOG(NOTICE) << "Graceful shutdown signal received";
 
   conn_handler->set_graceful_shutdown(true);
-
-  // TODO What happens for the connections not established in the
-  // kernel?
-  conn_handler->accept_pending_connection();
-  conn_handler->delete_acceptor();
-
   conn_handler->graceful_shutdown_worker();
 
   auto single_worker = conn_handler->get_single_worker();
@@ -489,11 +483,6 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
     wpconf->quic_lingering_worker_processes);
 #endif // ENABLE_HTTP3
 
-  for (auto &addr : config->conn.listener.addrs) {
-    conn_handler->add_acceptor(
-      std::make_unique<AcceptHandler>(&addr, conn_handler.get()));
-  }
-
   MemchunkPool mcpool;
 
   ev_timer renew_ticket_key_timer;
@@ -654,6 +643,14 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
 #endif // !NOTHREADS
   }
 
+  // UNIX domain sockets are copied in AcceptHandler.  No need to keep
+  // the original.
+  for (auto &addr : config->conn.listener.addrs) {
+    if (addr.host_unix) {
+      close(addr.fd);
+    }
+  }
+
 #if defined(ENABLE_HTTP3) && defined(HAVE_LIBBPF)
   conn_handler->unload_bpf_objects();
 #endif // defined(ENABLE_HTTP3) && defined(HAVE_LIBBPF)
@@ -677,11 +674,6 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
 #endif // ENABLE_HTTP3
 
   if (tls::upstream_tls_enabled(config->conn) && !config->tls.ocsp.disabled) {
-    if (config->tls.ocsp.startup) {
-      conn_handler->set_enable_acceptor_on_ocsp_completion(true);
-      conn_handler->disable_acceptor();
-    }
-
     conn_handler->proceed_next_cert_ocsp();
   }
 
