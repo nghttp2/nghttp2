@@ -75,19 +75,6 @@ struct TLSContextData {
   // SCT data formatted so that this can be directly sent as
   // extension_data of signed_certificate_timestamp.
   std::vector<uint8_t> sct_data;
-#ifndef HAVE_ATOMIC_STD_SHARED_PTR
-  // Protects ocsp_data;
-  std::mutex mu;
-#endif // !HAVE_ATOMIC_STD_SHARED_PTR
-  // OCSP response
-#ifdef HAVE_ATOMIC_STD_SHARED_PTR
-  std::atomic<std::shared_ptr<std::vector<uint8_t>>> ocsp_data;
-#else  // !HAVE_ATOMIC_STD_SHARED_PTR
-  std::shared_ptr<std::vector<uint8_t>> ocsp_data;
-#endif // !HAVE_ATOMIC_STD_SHARED_PTR
-
-  // Path to certificate file
-  const char *cert_file;
 };
 
 // Create server side SSL_CTX
@@ -293,11 +280,6 @@ X509 *load_certificate(const char *filename);
 // OpenSSL header file.  This function returns -1 if |v| is not valid
 // TLS version string.
 int proto_version_from_string(const StringRef &v);
-
-// Verifies OCSP response |ocsp_resp| of length |ocsp_resplen|.  This
-// function returns 0 if it succeeds, or -1.
-int verify_ocsp_response(SSL_CTX *ssl_ctx, const uint8_t *ocsp_resp,
-                         size_t ocsp_resplen);
 
 // Stores fingerprint of |x| in |dst| of length |dstlen|.  |md|
 // specifies hash function to use, and |dstlen| must be large enough

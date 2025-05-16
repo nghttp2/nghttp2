@@ -1665,13 +1665,6 @@ void fill_default_config(Config *config) {
   }
 
   {
-    auto &ocspconf = tlsconf.ocsp;
-    // ocsp update interval = 14400 secs = 4 hours, borrowed from h2o
-    ocspconf.update_interval = 4_h;
-    ocspconf.fetch_ocsp_response_file = PKGDATADIR "/fetch-ocsp-response"_sr;
-  }
-
-  {
     auto &dyn_recconf = tlsconf.dyn_rec;
     dyn_recconf.warmup_threshold = 1_m;
     dyn_recconf.idle_timeout = 1_s;
@@ -1906,8 +1899,7 @@ void print_help(std::ostream &out) {
               Set  path  to  server's private  key.   Required  unless
               "no-tls" parameter is used in --frontend option.
   <CERT>      Set  path  to  server's  certificate.   Required  unless
-              "no-tls"  parameter is  used in  --frontend option.   To
-              make OCSP stapling work, this must be an absolute path.
+              "no-tls"  parameter is  used in  --frontend option.
 
 Options:
   The options are categorized into several groups.
@@ -2467,12 +2459,10 @@ SSL/TLS:
   --cacert=<PATH>
               Set path to trusted CA  certificate file.  It is used in
               backend  TLS connections  to verify  peer's certificate.
-              It is also used to  verify OCSP response from the script
-              set by --fetch-ocsp-response-file.  The  file must be in
-              PEM format.   It can contain multiple  certificates.  If
-              the  linked OpenSSL  is configured  to load  system wide
-              certificates, they  are loaded at startup  regardless of
-              this option.
+              The file must be in PEM format.  It can contain multiple
+              certificates.  If  the linked  OpenSSL is  configured to
+              load  system  wide  certificates,  they  are  loaded  at
+              startup regardless of this option.
   --private-key-passwd-file=<PATH>
               Path  to file  that contains  password for  the server's
               private key.   If none is  given and the private  key is
@@ -2486,8 +2476,7 @@ SSL/TLS:
               taken into  consideration.  This allows nghttpx  to send
               ECDSA certificate  to modern clients, while  sending RSA
               based certificate to older  clients.  This option can be
-              used  multiple  times.   To  make  OCSP  stapling  work,
-              <CERTPATH> must be absolute path.
+              used  multiple  times.
 
               Additional parameter  can be specified in  <PARAM>.  The
               available <PARAM> is "sct-dir=<DIR>".
@@ -2632,24 +2621,6 @@ SSL/TLS:
   --tls-ticket-key-memcached-private-key-file=<PATH>
               Path to client private  key for memcached connections to
               get TLS ticket keys.
-  --fetch-ocsp-response-file=<PATH>
-              Path to  fetch-ocsp-response script file.  It  should be
-              absolute path.
-              Default: )"
-      << config->tls.ocsp.fetch_ocsp_response_file << R"(
-  --ocsp-update-interval=<DURATION>
-              Set interval to update OCSP response cache.
-              Default: )"
-      << util::duration_str(config->tls.ocsp.update_interval) << R"(
-  --ocsp-startup
-              Start  accepting connections  after initial  attempts to
-              get OCSP responses  finish.  It does not  matter some of
-              the  attempts  fail.  This  feature  is  useful if  OCSP
-              responses   must    be   available    before   accepting
-              connections.
-  --no-verify-ocsp
-              nghttpx does not verify OCSP response.
-  --no-ocsp   Disable OCSP stapling.
   --tls-session-cache-memcached=<HOST>,<PORT>[;tls]
               Specify  address of  memcached server  to store  session
               cache.   This  enables   shared  session  cache  between
@@ -3505,16 +3476,6 @@ int process_options(Config *config,
                   "Specify them in command-line, or in configuration file "
                   "using private-key-file and certificate-file options.";
     return -1;
-  }
-
-  if (tls::upstream_tls_enabled(config->conn) && !tlsconf.ocsp.disabled) {
-    struct stat buf;
-    if (stat(tlsconf.ocsp.fetch_ocsp_response_file.data(), &buf) != 0) {
-      tlsconf.ocsp.disabled = true;
-      LOG(WARN) << "--fetch-ocsp-response-file: "
-                << tlsconf.ocsp.fetch_ocsp_response_file
-                << " not found.  OCSP stapling has been disabled.";
-    }
   }
 
   if (configure_downstream_group(config, config->http2_proxy, false, tlsconf) !=

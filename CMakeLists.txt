@@ -486,7 +486,6 @@ if(ENABLE_DOC)
   add_subdirectory(doc)
 endif()
 add_subdirectory(contrib)
-add_subdirectory(script)
 add_subdirectory(bpf)
 
 

@@ -49,16 +49,12 @@
 #  include <wolfssl/openssl/x509v3.h>
 #  include <wolfssl/openssl/rand.h>
 #  include <wolfssl/openssl/dh.h>
-#  include <wolfssl/openssl/ocsp.h>
 #else // !NGHTTP2_OPENSSL_IS_WOLFSSL
 #  include <openssl/crypto.h>
 #  include <openssl/x509.h>
 #  include <openssl/x509v3.h>
 #  include <openssl/rand.h>
 #  include <openssl/dh.h>
-#  ifndef OPENSSL_NO_OCSP
-#    include <openssl/ocsp.h>
-#  endif // OPENSSL_NO_OCSP
 #  if OPENSSL_3_0_0_API
 #    include <openssl/params.h>
 #    include <openssl/core_names.h>
@@ -176,34 +172,6 @@ int ssl_pem_passwd_cb(char *buf, int size, int rwflag, void *user_data) {
 } // namespace
 
 namespace {
-std::shared_ptr<std::vector<uint8_t>>
-get_ocsp_data(TLSContextData *tls_ctx_data) {
-#ifdef HAVE_ATOMIC_STD_SHARED_PTR
-  return tls_ctx_data->ocsp_data.load(std::memory_order_acquire);
-#else  // !HAVE_ATOMIC_STD_SHARED_PTR
-  std::lock_guard<std::mutex> g(tls_ctx_data->mu);
-  return tls_ctx_data->ocsp_data;
-#endif // !HAVE_ATOMIC_STD_SHARED_PTR
-}
-} // namespace
-
-namespace {
-void set_ocsp_response(SSL *ssl) {
-#ifdef NGHTTP2_OPENSSL_IS_BORINGSSL
-  auto tls_ctx_data =
-    static_cast<TLSContextData *>(SSL_CTX_get_app_data(SSL_get_SSL_CTX(ssl)));
-  auto data = get_ocsp_data(tls_ctx_data);
-
-  if (!data) {
-    return;
-  }
-
-  SSL_set_ocsp_response(ssl, data->data(), data->size());
-#endif // NGHTTP2_OPENSSL_IS_BORINGSSL
-}
-} // namespace
-
-namespace {
 // *al is set to SSL_AD_UNRECOGNIZED_NAME by openssl, so we don't have
 // to set it explicitly.
 int servername_callback(SSL *ssl, int *al, void *arg) {
@@ -213,16 +181,12 @@ int servername_callback(SSL *ssl, int *al, void *arg) {
 
   auto rawhost = SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name);
   if (rawhost == nullptr) {
-    set_ocsp_response(ssl);
-
     return SSL_TLSEXT_ERR_NOACK;
   }
 
   auto len = strlen(rawhost);
   // NI_MAXHOST includes terminal NULL.
   if (len == 0 || len + 1 > NI_MAXHOST) {
-    set_ocsp_response(ssl);
-
     return SSL_TLSEXT_ERR_NOACK;
   }
 
@@ -242,8 +206,6 @@ int servername_callback(SSL *ssl, int *al, void *arg) {
 
   auto idx = cert_tree->lookup(hostname);
   if (idx == -1) {
-    set_ocsp_response(ssl);
-
     return SSL_TLSEXT_ERR_NOACK;
   }
 
@@ -340,40 +302,9 @@ int servername_callback(SSL *ssl, int *al, void *arg) {
 
   SSL_set_SSL_CTX(ssl, ssl_ctx_list[0]);
 
-  set_ocsp_response(ssl);
-
   return SSL_TLSEXT_ERR_OK;
 }
 } // namespace
-
-#ifndef NGHTTP2_OPENSSL_IS_BORINGSSL
-namespace {
-int ocsp_resp_cb(SSL *ssl, void *arg) {
-  auto ssl_ctx = SSL_get_SSL_CTX(ssl);
-  auto tls_ctx_data =
-    static_cast<TLSContextData *>(SSL_CTX_get_app_data(ssl_ctx));
-
-  auto data = get_ocsp_data(tls_ctx_data);
-
-  if (!data) {
-    return SSL_TLSEXT_ERR_OK;
-  }
-
-  auto buf = static_cast<uint8_t *>(
-    CRYPTO_malloc(data->size(), NGHTTP2_FILE_NAME, __LINE__));
-
-  if (!buf) {
-    return SSL_TLSEXT_ERR_OK;
-  }
-
-  std::ranges::copy(*data, buf);
-
-  SSL_set_tlsext_status_ocsp_resp(ssl, buf, data->size());
-
-  return SSL_TLSEXT_ERR_OK;
-}
-} // namespace
-#endif // NGHTTP2_OPENSSL_IS_BORINGSSL
 
 constexpr auto MEMCACHED_SESSION_CACHE_KEY_PREFIX =
   "nghttpx:tls-session-cache:"_sr;
@@ -1159,9 +1090,6 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
 #else  // !OPENSSL_3_0_0_API
   SSL_CTX_set_tlsext_ticket_key_cb(ssl_ctx, ticket_key_cb);
 #endif // !OPENSSL_3_0_0_API
-#ifndef NGHTTP2_OPENSSL_IS_BORINGSSL
-  SSL_CTX_set_tlsext_status_cb(ssl_ctx, ocsp_resp_cb);
-#endif // NGHTTP2_OPENSSL_IS_BORINGSSL
   SSL_CTX_set_info_callback(ssl_ctx, info_callback);
 
 #ifdef NGHTTP2_OPENSSL_IS_BORINGSSL
@@ -1172,7 +1100,6 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
   SSL_CTX_set_alpn_select_cb(ssl_ctx, alpn_select_proto_cb, nullptr);
 
   auto tls_ctx_data = new TLSContextData();
-  tls_ctx_data->cert_file = cert_file;
   tls_ctx_data->sct_data = sct_data;
 
   SSL_CTX_set_app_data(ssl_ctx, tls_ctx_data);
@@ -1445,15 +1372,11 @@ SSL_CTX *create_quic_ssl_context(const char *private_key_file,
 #  else  // !OPENSSL_3_0_0_API
   SSL_CTX_set_tlsext_ticket_key_cb(ssl_ctx, ticket_key_cb);
 #  endif // !OPENSSL_3_0_0_API
-#  ifndef NGHTTP2_OPENSSL_IS_BORINGSSL
-  SSL_CTX_set_tlsext_status_cb(ssl_ctx, ocsp_resp_cb);
-#  endif // NGHTTP2_OPENSSL_IS_BORINGSSL
 
   // ALPN selection callback
   SSL_CTX_set_alpn_select_cb(ssl_ctx, quic_alpn_select_proto_cb, nullptr);
 
   auto tls_ctx_data = new TLSContextData();
-  tls_ctx_data->cert_file = cert_file;
   tls_ctx_data->sct_data = sct_data;
 
   SSL_CTX_set_app_data(ssl_ctx, tls_ctx_data);
@@ -2424,86 +2347,6 @@ int proto_version_from_string(const StringRef &v) {
     return TLS1_VERSION;
   }
   return -1;
-}
-
-int verify_ocsp_response(SSL_CTX *ssl_ctx, const uint8_t *ocsp_resp,
-                         size_t ocsp_resplen) {
-#ifndef OPENSSL_NO_OCSP
-  int rv;
-
-  STACK_OF(X509) * chain_certs;
-  SSL_CTX_get0_chain_certs(ssl_ctx, &chain_certs);
-
-  auto resp = d2i_OCSP_RESPONSE(nullptr, &ocsp_resp, ocsp_resplen);
-  if (resp == nullptr) {
-    LOG(ERROR) << "d2i_OCSP_RESPONSE failed";
-    return -1;
-  }
-  auto resp_deleter = defer(OCSP_RESPONSE_free, resp);
-
-  if (OCSP_response_status(resp) != OCSP_RESPONSE_STATUS_SUCCESSFUL) {
-    LOG(ERROR) << "OCSP response status is not successful";
-    return -1;
-  }
-
-  ERR_clear_error();
-
-  auto bs = OCSP_response_get1_basic(resp);
-  if (bs == nullptr) {
-    LOG(ERROR) << "OCSP_response_get1_basic failed: "
-               << ERR_error_string(ERR_get_error(), nullptr);
-    return -1;
-  }
-  auto bs_deleter = defer(OCSP_BASICRESP_free, bs);
-
-  auto store = SSL_CTX_get_cert_store(ssl_ctx);
-
-  ERR_clear_error();
-
-  rv = OCSP_basic_verify(bs, chain_certs, store, 0);
-
-  if (rv != 1) {
-    LOG(ERROR) << "OCSP_basic_verify failed: "
-               << ERR_error_string(ERR_get_error(), nullptr);
-    return -1;
-  }
-
-  auto sresp = OCSP_resp_get0(bs, 0);
-  if (sresp == nullptr) {
-    LOG(ERROR) << "OCSP response verification failed: no single response";
-    return -1;
-  }
-
-  auto certid = OCSP_SINGLERESP_get0_id(sresp);
-  assert(certid != nullptr);
-
-  ASN1_INTEGER *serial;
-  rv = OCSP_id_get0_info(nullptr, nullptr, nullptr, &serial,
-                         const_cast<OCSP_CERTID *>(certid));
-  if (rv != 1) {
-    LOG(ERROR) << "OCSP_id_get0_info failed";
-    return -1;
-  }
-
-  if (serial == nullptr) {
-    LOG(ERROR) << "OCSP response does not contain serial number";
-    return -1;
-  }
-
-  auto cert = SSL_CTX_get0_certificate(ssl_ctx);
-  auto cert_serial = X509_get_serialNumber(cert);
-
-  if (ASN1_INTEGER_cmp(cert_serial, serial)) {
-    LOG(ERROR) << "OCSP verification serial numbers do not match";
-    return -1;
-  }
-
-  if (LOG_ENABLED(INFO)) {
-    LOG(INFO) << "OCSP verification succeeded";
-  }
-#endif // !OPENSSL_NO_OCSP
-
-  return 0;
 }
 
 ssize_t get_x509_fingerprint(uint8_t *dst, size_t dstlen, const X509 *x,

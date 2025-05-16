@@ -54,37 +54,6 @@ using namespace nghttp2;
 namespace shrpx {
 
 namespace {
-void ocsp_cb(struct ev_loop *loop, ev_timer *w, int revent) {
-  auto h = static_cast<ConnectionHandler *>(w->data);
-
-  // If we are in graceful shutdown period, we won't do ocsp query.
-  if (h->get_graceful_shutdown()) {
-    return;
-  }
-
-  LOG(NOTICE) << "Start ocsp update";
-
-  h->proceed_next_cert_ocsp();
-}
-} // namespace
-
-namespace {
-void ocsp_read_cb(struct ev_loop *loop, ev_io *w, int revent) {
-  auto h = static_cast<ConnectionHandler *>(w->data);
-
-  h->read_ocsp_chunk();
-}
-} // namespace
-
-namespace {
-void ocsp_chld_cb(struct ev_loop *loop, ev_child *w, int revent) {
-  auto h = static_cast<ConnectionHandler *>(w->data);
-
-  h->handle_ocsp_complete();
-}
-} // namespace
-
-namespace {
 void thread_join_async_cb(struct ev_loop *loop, ev_async *w, int revent) {
   ev_break(loop);
 }
@@ -113,34 +82,17 @@ ConnectionHandler::ConnectionHandler(struct ev_loop *loop, std::mt19937 &gen)
     tls_ticket_key_memcached_fail_count_(0),
     worker_round_robin_cnt_(get_config()->api.enabled ? 1 : 0),
     graceful_shutdown_(false) {
-  ev_timer_init(&ocsp_timer_, ocsp_cb, 0., 0.);
-  ocsp_timer_.data = this;
-
-  ev_io_init(&ocsp_.rev, ocsp_read_cb, -1, EV_READ);
-  ocsp_.rev.data = this;
-
   ev_async_init(&thread_join_asyncev_, thread_join_async_cb);
 
   ev_async_init(&serial_event_asyncev_, serial_event_async_cb);
   serial_event_asyncev_.data = this;
 
   ev_async_start(loop_, &serial_event_asyncev_);
-
-  ev_child_init(&ocsp_.chldev, ocsp_chld_cb, 0, 0);
-  ocsp_.chldev.data = this;
-
-  ocsp_.next = 0;
-  ocsp_.proc.rfd = -1;
-
-  reset_ocsp();
 }
 
 ConnectionHandler::~ConnectionHandler() {
-  ev_child_stop(loop_, &ocsp_.chldev);
   ev_async_stop(loop_, &serial_event_asyncev_);
   ev_async_stop(loop_, &thread_join_asyncev_);
-  ev_io_stop(loop_, &ocsp_.rev);
-  ev_timer_stop(loop_, &ocsp_timer_);
 
 #ifdef ENABLE_HTTP3
   for (auto ssl_ctx : quic_all_ssl_ctx_) {
@@ -478,210 +430,6 @@ void ConnectionHandler::set_graceful_shutdown(bool f) {
 
 bool ConnectionHandler::get_graceful_shutdown() const {
   return graceful_shutdown_;
-}
-
-void ConnectionHandler::cancel_ocsp_update() {
-  ev_timer_stop(loop_, &ocsp_timer_);
-
-  if (ocsp_.proc.pid == 0) {
-    return;
-  }
-
-  int rv;
-
-  rv = kill(ocsp_.proc.pid, SIGTERM);
-  if (rv != 0) {
-    auto error = errno;
-    LOG(ERROR) << "Could not send signal to OCSP query process: errno="
-               << error;
-  }
-
-  while ((rv = waitpid(ocsp_.proc.pid, nullptr, 0)) == -1 && errno == EINTR)
-    ;
-  if (rv == -1) {
-    auto error = errno;
-    LOG(ERROR) << "Error occurred while we were waiting for the completion of "
-                  "OCSP query process: errno="
-               << error;
-  }
-}
-
-// inspired by h2o_read_command function from h2o project:
-// https://github.com/h2o/h2o
-int ConnectionHandler::start_ocsp_update(const char *cert_file) {
-  int rv;
-
-  if (LOG_ENABLED(INFO)) {
-    LOG(INFO) << "Start ocsp update for " << cert_file;
-  }
-
-  assert(!ev_is_active(&ocsp_.rev));
-  assert(!ev_is_active(&ocsp_.chldev));
-
-  char *const argv[] = {
-    const_cast<char *>(get_config()->tls.ocsp.fetch_ocsp_response_file.data()),
-    const_cast<char *>(cert_file), nullptr};
-
-  Process proc;
-  rv = exec_read_command(proc, argv);
-  if (rv != 0) {
-    return -1;
-  }
-
-  ocsp_.proc = proc;
-
-  ev_io_set(&ocsp_.rev, ocsp_.proc.rfd, EV_READ);
-  ev_io_start(loop_, &ocsp_.rev);
-
-  ev_child_set(&ocsp_.chldev, ocsp_.proc.pid, 0);
-  ev_child_start(loop_, &ocsp_.chldev);
-
-  return 0;
-}
-
-void ConnectionHandler::read_ocsp_chunk() {
-  std::array<uint8_t, 4_k> buf;
-  for (;;) {
-    ssize_t n;
-    while ((n = read(ocsp_.proc.rfd, buf.data(), buf.size())) == -1 &&
-           errno == EINTR)
-      ;
-
-    if (n == -1) {
-      if (errno == EAGAIN || errno == EWOULDBLOCK) {
-        return;
-      }
-      auto error = errno;
-      LOG(WARN) << "Reading from ocsp query command failed: errno=" << error;
-      ocsp_.error = error;
-
-      break;
-    }
-
-    if (n == 0) {
-      break;
-    }
-
-    std::ranges::copy_n(std::ranges::begin(buf), n,
-                        std::back_inserter(ocsp_.resp));
-  }
-
-  ev_io_stop(loop_, &ocsp_.rev);
-}
-
-void ConnectionHandler::handle_ocsp_complete() {
-  ev_io_stop(loop_, &ocsp_.rev);
-  ev_child_stop(loop_, &ocsp_.chldev);
-
-  assert(ocsp_.next < all_ssl_ctx_.size());
-#ifdef ENABLE_HTTP3
-  assert(all_ssl_ctx_.size() == quic_all_ssl_ctx_.size());
-#endif // ENABLE_HTTP3
-
-  auto ssl_ctx = all_ssl_ctx_[ocsp_.next];
-  auto tls_ctx_data =
-    static_cast<tls::TLSContextData *>(SSL_CTX_get_app_data(ssl_ctx));
-
-  auto rstatus = ocsp_.chldev.rstatus;
-  auto status = WEXITSTATUS(rstatus);
-  if (ocsp_.error || !WIFEXITED(rstatus) || status != 0) {
-    LOG(WARN) << "ocsp query command for " << tls_ctx_data->cert_file
-              << " failed: error=" << ocsp_.error << ", rstatus=" << log::hex
-              << rstatus << log::dec << ", status=" << status;
-    ++ocsp_.next;
-    proceed_next_cert_ocsp();
-    return;
-  }
-
-  if (LOG_ENABLED(INFO)) {
-    LOG(INFO) << "ocsp update for " << tls_ctx_data->cert_file
-              << " finished successfully";
-  }
-
-  auto config = get_config();
-  auto &tlsconf = config->tls;
-
-  if (tlsconf.ocsp.no_verify ||
-      tls::verify_ocsp_response(ssl_ctx, ocsp_.resp.data(),
-                                ocsp_.resp.size()) == 0) {
-#ifdef ENABLE_HTTP3
-    // We have list of SSL_CTX with the same certificate in
-    // quic_all_ssl_ctx_ as well.  Some SSL_CTXs are missing there in
-    // that case we get nullptr.
-    auto quic_ssl_ctx = quic_all_ssl_ctx_[ocsp_.next];
-    if (quic_ssl_ctx) {
-      auto quic_tls_ctx_data =
-        static_cast<tls::TLSContextData *>(SSL_CTX_get_app_data(quic_ssl_ctx));
-#  ifdef HAVE_ATOMIC_STD_SHARED_PTR
-      quic_tls_ctx_data->ocsp_data.store(
-        std::make_shared<std::vector<uint8_t>>(ocsp_.resp),
-        std::memory_order_release);
-#  else  // !HAVE_ATOMIC_STD_SHARED_PTR
-      std::lock_guard<std::mutex> g(quic_tls_ctx_data->mu);
-      quic_tls_ctx_data->ocsp_data =
-        std::make_shared<std::vector<uint8_t>>(ocsp_.resp);
-#  endif // !HAVE_ATOMIC_STD_SHARED_PTR
-    }
-#endif // ENABLE_HTTP3
-
-#ifdef HAVE_ATOMIC_STD_SHARED_PTR
-    tls_ctx_data->ocsp_data.store(
-      std::make_shared<std::vector<uint8_t>>(std::move(ocsp_.resp)),
-      std::memory_order_release);
-#else  // !HAVE_ATOMIC_STD_SHARED_PTR
-    std::lock_guard<std::mutex> g(tls_ctx_data->mu);
-    tls_ctx_data->ocsp_data =
-      std::make_shared<std::vector<uint8_t>>(std::move(ocsp_.resp));
-#endif // !HAVE_ATOMIC_STD_SHARED_PTR
-  }
-
-  ++ocsp_.next;
-  proceed_next_cert_ocsp();
-}
-
-void ConnectionHandler::reset_ocsp() {
-  if (ocsp_.proc.rfd != -1) {
-    close(ocsp_.proc.rfd);
-  }
-
-  ocsp_.proc.rfd = -1;
-  ocsp_.proc.pid = 0;
-  ocsp_.error = 0;
-  ocsp_.resp = std::vector<uint8_t>();
-}
-
-void ConnectionHandler::proceed_next_cert_ocsp() {
-  for (;;) {
-    reset_ocsp();
-    if (ocsp_.next == all_ssl_ctx_.size()) {
-      ocsp_.next = 0;
-      // We have updated all ocsp response, and schedule next update.
-      ev_timer_set(&ocsp_timer_, get_config()->tls.ocsp.update_interval, 0.);
-      ev_timer_start(loop_, &ocsp_timer_);
-
-      return;
-    }
-
-    auto ssl_ctx = all_ssl_ctx_[ocsp_.next];
-    auto tls_ctx_data =
-      static_cast<tls::TLSContextData *>(SSL_CTX_get_app_data(ssl_ctx));
-
-    // client SSL_CTX is also included in all_ssl_ctx_, but has no
-    // tls_ctx_data.
-    if (!tls_ctx_data) {
-      ++ocsp_.next;
-      continue;
-    }
-
-    auto cert_file = tls_ctx_data->cert_file;
-
-    if (start_ocsp_update(cert_file) != 0) {
-      ++ocsp_.next;
-      continue;
-    }
-
-    break;
-  }
 }
 
 void ConnectionHandler::set_tls_ticket_key_memcached_dispatcher(

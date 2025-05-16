@@ -673,10 +673,6 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
   ev_io_start(loop, &quic_ipcev);
 #endif // ENABLE_HTTP3
 
-  if (tls::upstream_tls_enabled(config->conn) && !config->tls.ocsp.disabled) {
-    conn_handler->proceed_next_cert_ocsp();
-  }
-
   if (LOG_ENABLED(INFO)) {
     LOG(INFO) << "Entering event loop";
   }
@@ -686,8 +682,6 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
   }
 
   ev_run(loop, 0);
-
-  conn_handler->cancel_ocsp_update();
 
   // Destroy SSL_CTX held in conn_handler before killing neverbleed
   // daemon.  Otherwise priv_rsa_finish yields "write error" and
