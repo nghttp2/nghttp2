@@ -41,7 +41,7 @@
 #include "nghttp2_debug.h"
 #include "nghttp2_submit.h"
 
-nghttp2_stream root;
+nghttp2_stream nghttp2_stream_root;
 
 /*
  * Returns non-zero if the number of outgoing opened streams is larger
@@ -7730,7 +7730,7 @@ int32_t nghttp2_session_get_last_proc_stream_id(nghttp2_session *session) {
 nghttp2_stream *nghttp2_session_find_stream(nghttp2_session *session,
                                             int32_t stream_id) {
   if (stream_id == 0) {
-    return &root;
+    return &nghttp2_stream_root;
   }
 
   return nghttp2_session_get_stream_raw(session, stream_id);
@@ -7739,7 +7739,7 @@ nghttp2_stream *nghttp2_session_find_stream(nghttp2_session *session,
 nghttp2_stream *nghttp2_session_get_root_stream(nghttp2_session *session) {
   (void)session;
 
-  return &root;
+  return &nghttp2_stream_root;
 }
 
 int nghttp2_session_check_server_session(nghttp2_session *session) {
