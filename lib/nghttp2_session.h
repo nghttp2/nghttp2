@@ -45,7 +45,7 @@
    preface handling. */
 extern int nghttp2_enable_strict_preface;
 
-extern nghttp2_stream root;
+extern nghttp2_stream nghttp2_stream_root;
 
 /*
  * Option flags.
