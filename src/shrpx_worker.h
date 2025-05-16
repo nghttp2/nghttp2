@@ -73,6 +73,7 @@ class ConnectBlocker;
 class MemcachedDispatcher;
 struct UpstreamAddr;
 class ConnectionHandler;
+class AcceptHandler;
 #ifdef ENABLE_HTTP3
 class QUICListener;
 #endif // ENABLE_HTTP3
@@ -289,7 +290,6 @@ struct QUICPacket {
 #endif // ENABLE_HTTP3
 
 enum class WorkerEventType {
-  NEW_CONNECTION = 0x01,
   REOPEN_LOG = 0x02,
   GRACEFUL_SHUTDOWN = 0x03,
   REPLACE_DOWNSTREAM = 0x04,
@@ -300,12 +300,6 @@ enum class WorkerEventType {
 
 struct WorkerEvent {
   WorkerEventType type;
-  struct {
-    sockaddr_union client_addr;
-    size_t client_addrlen;
-    int client_fd;
-    const UpstreamAddr *faddr;
-  };
   std::shared_ptr<TicketKeys> ticket_keys;
   std::shared_ptr<DownstreamConfig> downstreamconf;
 #ifdef ENABLE_HTTP3
@@ -321,11 +315,8 @@ public:
 #ifdef ENABLE_HTTP3
          SSL_CTX *quic_sv_ssl_ctx, tls::CertLookupTree *quic_cert_tree,
          WorkerID wid,
-#  ifdef HAVE_LIBBPF
-         size_t index,
-#  endif // HAVE_LIBBPF
-#endif   // ENABLE_HTTP3
-         const std::shared_ptr<TicketKeys> &ticket_keys,
+#endif // ENABLE_HTTP3
+         size_t index, const std::shared_ptr<TicketKeys> &ticket_keys,
          ConnectionHandler *conn_handler,
          std::shared_ptr<DownstreamConfig> downstreamconf);
   ~Worker();
@@ -380,6 +371,14 @@ public:
 
   ConnectionHandler *get_connection_handler() const;
 
+  int setup_server_socket();
+  void delete_listener();
+  void accept_pending_connection();
+  int create_tcp_server_socket(UpstreamAddr &addr);
+  void enable_listener();
+  void disable_listener();
+  void sleep_listener(ev_tstamp t);
+
 #ifdef ENABLE_HTTP3
   QUICConnectionHandler *get_quic_connection_handler();
 
@@ -403,23 +402,28 @@ public:
 
   DNSTracker *get_dns_tracker();
 
+  int handle_connection(int fd, sockaddr *addr, int addrlen,
+                        const UpstreamAddr *faddr);
+
 private:
 #ifndef NOTHREADS
   std::future<void> fut_;
 #endif // NOTHREADS
-#if defined(ENABLE_HTTP3) && defined(HAVE_LIBBPF)
   // Unique index of this worker.
   size_t index_;
-#endif // ENABLE_HTTP3 && HAVE_LIBBPF
   std::mutex m_;
   std::deque<WorkerEvent> q_;
   std::mt19937 randgen_;
   ev_async w_;
   ev_timer mcpool_clear_timer_;
   ev_timer proc_wev_timer_;
+  ev_timer disable_listener_timer_;
   MemchunkPool mcpool_;
   WorkerStat worker_stat_;
   DNSTracker dns_tracker_;
+
+  std::vector<UpstreamAddr> upstream_addrs_;
+  std::vector<std::unique_ptr<AcceptHandler>> listeners_;
 
 #ifdef ENABLE_HTTP3
   WorkerID worker_id_;

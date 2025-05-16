@@ -27,6 +27,7 @@
 #ifdef HAVE_UNISTD_H
 #  include <unistd.h>
 #endif // HAVE_UNISTD_H
+#include <netinet/tcp.h>
 #include <netinet/udp.h>
 
 #include <cstdio>
@@ -59,11 +60,20 @@
 #  include "shrpx_quic_listener.h"
 #endif // ENABLE_HTTP3
 #include "shrpx_connection_handler.h"
+#include "shrpx_accept_handler.h"
 #include "util.h"
 #include "template.h"
 #include "xsi_strerror.h"
 
 namespace shrpx {
+
+#ifndef _KERNEL_FASTOPEN
+#  define _KERNEL_FASTOPEN
+// conditional define for TCP_FASTOPEN mostly on ubuntu
+#  ifndef TCP_FASTOPEN
+#    define TCP_FASTOPEN 23
+#  endif
+#endif
 
 namespace {
 void eventcb(struct ev_loop *loop, ev_async *w, int revents) {
@@ -89,6 +99,20 @@ namespace {
 void proc_wev_cb(struct ev_loop *loop, ev_timer *w, int revents) {
   auto worker = static_cast<Worker *>(w->data);
   worker->process_events();
+}
+} // namespace
+
+namespace {
+void disable_listener_cb(struct ev_loop *loop, ev_timer *w, int revent) {
+  auto worker = static_cast<Worker *>(w->data);
+
+  // If we are in graceful shutdown period, we must not enable
+  // acceptors again.
+  if (worker->get_graceful_shutdown()) {
+    return;
+  }
+
+  worker->enable_listener();
 }
 } // namespace
 
@@ -155,20 +179,15 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
 #ifdef ENABLE_HTTP3
                SSL_CTX *quic_sv_ssl_ctx, tls::CertLookupTree *quic_cert_tree,
                WorkerID wid,
-#  ifdef HAVE_LIBBPF
-               size_t index,
-#  endif // HAVE_LIBBPF
-#endif   // ENABLE_HTTP3
-               const std::shared_ptr<TicketKeys> &ticket_keys,
+#endif // ENABLE_HTTP3
+               size_t index, const std::shared_ptr<TicketKeys> &ticket_keys,
                ConnectionHandler *conn_handler,
                std::shared_ptr<DownstreamConfig> downstreamconf)
-  :
-#if defined(ENABLE_HTTP3) && defined(HAVE_LIBBPF)
-    index_{index},
-#endif // ENABLE_HTTP3 && HAVE_LIBBPF
+  : index_{index},
     randgen_(util::make_mt19937()),
     worker_stat_{},
     dns_tracker_(loop, get_config()->conn.downstream->family),
+    upstream_addrs_{get_config()->conn.listener.addrs},
 #ifdef ENABLE_HTTP3
     worker_id_{std::move(wid)},
     quic_upstream_addrs_{get_config()->conn.quic_listener.addrs},
@@ -196,6 +215,9 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
 
   ev_timer_init(&proc_wev_timer_, proc_wev_cb, 0., 0.);
   proc_wev_timer_.data = this;
+
+  ev_timer_init(&disable_listener_timer_, disable_listener_cb, 0., 0.);
+  disable_listener_timer_.data = this;
 
   auto &session_cacheconf = get_config()->tls.session_cache;
 
@@ -420,6 +442,7 @@ Worker::~Worker() {
   ev_async_stop(loop_, &w_);
   ev_timer_stop(loop_, &mcpool_clear_timer_);
   ev_timer_stop(loop_, &proc_wev_timer_);
+  ev_timer_stop(loop_, &disable_listener_timer_);
 }
 
 void Worker::schedule_clear_mcpool() {
@@ -464,10 +487,7 @@ void Worker::process_events() {
   {
     std::lock_guard<std::mutex> g(m_);
 
-    // Process event one at a time.  This is important for
-    // WorkerEventType::NEW_CONNECTION event since accepting large
-    // number of new connections at once may delay time to 1st byte
-    // for existing connections.
+    // Process event one at a time.
 
     if (q_.empty()) {
       ev_timer_stop(loop_, &proc_wev_timer_);
@@ -482,41 +502,7 @@ void Worker::process_events() {
 
   auto config = get_config();
 
-  auto worker_connections = config->conn.upstream.worker_connections;
-
   switch (wev.type) {
-  case WorkerEventType::NEW_CONNECTION: {
-    if (LOG_ENABLED(INFO)) {
-      WLOG(INFO, this) << "WorkerEvent: client_fd=" << wev.client_fd
-                       << ", addrlen=" << wev.client_addrlen;
-    }
-
-    if (worker_stat_.num_connections >= worker_connections) {
-      if (LOG_ENABLED(INFO)) {
-        WLOG(INFO, this) << "Too many connections >= " << worker_connections;
-      }
-
-      close(wev.client_fd);
-
-      break;
-    }
-
-    auto client_handler = tls::accept_connection(
-      this, wev.client_fd, &wev.client_addr.sa, wev.client_addrlen, wev.faddr);
-    if (!client_handler) {
-      if (LOG_ENABLED(INFO)) {
-        WLOG(ERROR, this) << "ClientHandler creation failed";
-      }
-      close(wev.client_fd);
-      break;
-    }
-
-    if (LOG_ENABLED(INFO)) {
-      WLOG(INFO, this) << "CLIENT_HANDLER:" << client_handler << " created";
-    }
-
-    break;
-  }
   case WorkerEventType::REOPEN_LOG:
     WLOG(NOTICE, this) << "Reopening log files: worker process (thread " << this
                        << ")";
@@ -528,6 +514,9 @@ void Worker::process_events() {
     WLOG(NOTICE, this) << "Graceful shutdown commencing";
 
     graceful_shutdown_ = true;
+
+    accept_pending_connection();
+    delete_listener();
 
     if (worker_stat_.num_connections == 0 &&
         worker_stat_.num_close_waits == 0) {
@@ -575,6 +564,37 @@ void Worker::process_events() {
       WLOG(INFO, this) << "unknown event type " << static_cast<int>(wev.type);
     }
   }
+}
+
+void Worker::enable_listener() {
+  if (LOG_ENABLED(INFO)) {
+    WLOG(INFO, this) << "Enable listeners";
+  }
+
+  for (auto &a : listeners_) {
+    a->enable();
+  }
+}
+
+void Worker::disable_listener() {
+  if (LOG_ENABLED(INFO)) {
+    WLOG(INFO, this) << "Disable listeners";
+  }
+
+  for (auto &a : listeners_) {
+    a->disable();
+  }
+}
+
+void Worker::sleep_listener(ev_tstamp t) {
+  if (t == 0. || ev_is_active(&disable_listener_timer_)) {
+    return;
+  }
+
+  disable_listener();
+
+  ev_timer_set(&disable_listener_timer_, t, 0.);
+  ev_timer_start(loop_, &disable_listener_timer_);
 }
 
 tls::CertLookupTree *Worker::get_cert_lookup_tree() const { return cert_tree_; }
@@ -658,6 +678,207 @@ const DownstreamConfig *Worker::get_downstream_config() const {
 
 ConnectionHandler *Worker::get_connection_handler() const {
   return conn_handler_;
+}
+
+int Worker::setup_server_socket() {
+  auto config = get_config();
+  auto &apiconf = config->api;
+  auto api_isolation = apiconf.enabled && !config->single_thread;
+
+  for (auto &addr : upstream_addrs_) {
+    if (api_isolation) {
+      if (addr.alt_mode == UpstreamAltMode::API) {
+        if (index_ != 0) {
+          continue;
+        }
+      } else if (index_ == 0) {
+        continue;
+      }
+    }
+
+    if (addr.host_unix) {
+      // Copy file descriptor because AcceptHandler destructor closes
+      // addr.fd.
+      addr.fd = dup(addr.fd);
+      if (addr.fd == -1) {
+        return -1;
+      }
+
+      util::make_socket_closeonexec(addr.fd);
+    } else if (create_tcp_server_socket(addr) != 0) {
+      return -1;
+    }
+
+    listeners_.emplace_back(std::make_unique<AcceptHandler>(this, &addr));
+  }
+
+  return 0;
+}
+
+void Worker::delete_listener() { listeners_.clear(); }
+
+void Worker::accept_pending_connection() {
+  for (auto &l : listeners_) {
+    l->accept_connection();
+  }
+}
+
+int Worker::create_tcp_server_socket(UpstreamAddr &faddr) {
+  std::array<char, STRERROR_BUFSIZE> errbuf;
+  int fd = -1;
+  int rv;
+
+  auto &listenerconf = get_config()->conn.listener;
+
+  auto service = util::utos(faddr.port);
+  addrinfo hints{};
+  hints.ai_family = faddr.family;
+  hints.ai_socktype = SOCK_STREAM;
+  hints.ai_flags = AI_PASSIVE;
+#ifdef AI_ADDRCONFIG
+  hints.ai_flags |= AI_ADDRCONFIG;
+#endif // AI_ADDRCONFIG
+
+  auto node = faddr.host == "*"_sr ? nullptr : faddr.host.data();
+
+  addrinfo *res, *rp;
+  rv = getaddrinfo(node, service.c_str(), &hints, &res);
+#ifdef AI_ADDRCONFIG
+  if (rv != 0) {
+    // Retry without AI_ADDRCONFIG
+    hints.ai_flags &= ~AI_ADDRCONFIG;
+    rv = getaddrinfo(node, service.c_str(), &hints, &res);
+  }
+#endif // AI_ADDRCONFIG
+  if (rv != 0) {
+    LOG(FATAL) << "Unable to get IPv" << (faddr.family == AF_INET ? "4" : "6")
+               << " address for " << faddr.host << ", port " << faddr.port
+               << ": " << gai_strerror(rv);
+    return -1;
+  }
+
+  auto res_d = defer(freeaddrinfo, res);
+
+  std::array<char, NI_MAXHOST> host;
+
+  for (rp = res; rp; rp = rp->ai_next) {
+    rv = getnameinfo(rp->ai_addr, rp->ai_addrlen, host.data(), host.size(),
+                     nullptr, 0, NI_NUMERICHOST);
+
+    if (rv != 0) {
+      LOG(WARN) << "getnameinfo() failed: " << gai_strerror(rv);
+      continue;
+    }
+
+#ifdef SOCK_NONBLOCK
+    fd = socket(rp->ai_family, rp->ai_socktype | SOCK_NONBLOCK | SOCK_CLOEXEC,
+                rp->ai_protocol);
+    if (fd == -1) {
+      auto error = errno;
+      LOG(WARN) << "socket() syscall failed: "
+                << xsi_strerror(error, errbuf.data(), errbuf.size());
+      continue;
+    }
+#else  // !SOCK_NONBLOCK
+    fd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
+    if (fd == -1) {
+      auto error = errno;
+      LOG(WARN) << "socket() syscall failed: "
+                << xsi_strerror(error, errbuf.data(), errbuf.size());
+      continue;
+    }
+    util::make_socket_nonblocking(fd);
+    util::make_socket_closeonexec(fd);
+#endif // !SOCK_NONBLOCK
+    int val = 1;
+    if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &val,
+                   static_cast<socklen_t>(sizeof(val))) == -1) {
+      auto error = errno;
+      LOG(WARN) << "Failed to set SO_REUSEADDR option to listener socket: "
+                << xsi_strerror(error, errbuf.data(), errbuf.size());
+      close(fd);
+      continue;
+    }
+
+    if (setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &val,
+                   static_cast<socklen_t>(sizeof(val))) == -1) {
+      auto error = errno;
+      LOG(WARN) << "Failed to set SO_REUSEPORT option to listener socket: "
+                << xsi_strerror(error, errbuf.data(), errbuf.size());
+      close(fd);
+      continue;
+    }
+
+#ifdef IPV6_V6ONLY
+    if (faddr.family == AF_INET6) {
+      if (setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, &val,
+                     static_cast<socklen_t>(sizeof(val))) == -1) {
+        auto error = errno;
+        LOG(WARN) << "Failed to set IPV6_V6ONLY option to listener socket: "
+                  << xsi_strerror(error, errbuf.data(), errbuf.size());
+        close(fd);
+        continue;
+      }
+    }
+#endif // IPV6_V6ONLY
+
+#ifdef TCP_DEFER_ACCEPT
+    val = 3;
+    if (setsockopt(fd, IPPROTO_TCP, TCP_DEFER_ACCEPT, &val,
+                   static_cast<socklen_t>(sizeof(val))) == -1) {
+      auto error = errno;
+      LOG(WARN) << "Failed to set TCP_DEFER_ACCEPT option to listener socket: "
+                << xsi_strerror(error, errbuf.data(), errbuf.size());
+    }
+#endif // TCP_DEFER_ACCEPT
+
+    // When we are executing new binary, and the old binary did not
+    // bind privileged port (< 1024) for some reason, binding to those
+    // ports will fail with permission denied error.
+    if (bind(fd, rp->ai_addr, rp->ai_addrlen) == -1) {
+      auto error = errno;
+      LOG(WARN) << "bind() syscall failed: "
+                << xsi_strerror(error, errbuf.data(), errbuf.size());
+      close(fd);
+      continue;
+    }
+
+    if (listenerconf.fastopen > 0) {
+      val = listenerconf.fastopen;
+      if (setsockopt(fd, IPPROTO_TCP, TCP_FASTOPEN, &val,
+                     static_cast<socklen_t>(sizeof(val))) == -1) {
+        auto error = errno;
+        LOG(WARN) << "Failed to set TCP_FASTOPEN option to listener socket: "
+                  << xsi_strerror(error, errbuf.data(), errbuf.size());
+      }
+    }
+
+    if (listen(fd, listenerconf.backlog) == -1) {
+      auto error = errno;
+      LOG(WARN) << "listen() syscall failed: "
+                << xsi_strerror(error, errbuf.data(), errbuf.size());
+      close(fd);
+      continue;
+    }
+
+    break;
+  }
+
+  if (!rp) {
+    LOG(FATAL) << "Listening " << (faddr.family == AF_INET ? "IPv4" : "IPv6")
+               << " socket failed";
+
+    return -1;
+  }
+
+  faddr.fd = fd;
+  faddr.hostport = util::make_http_hostport(mod_config()->balloc,
+                                            StringRef{host.data()}, faddr.port);
+
+  LOG(NOTICE) << "Listening on " << faddr.hostport
+              << (faddr.tls ? ", tls" : "");
+
+  return 0;
 }
 
 #ifdef ENABLE_HTTP3
@@ -1424,6 +1645,45 @@ void downstream_failure(DownstreamAddr *addr, const Address *raddr) {
       addr->live_check->schedule();
     }
   }
+}
+
+int Worker::handle_connection(int fd, sockaddr *addr, int addrlen,
+                              const UpstreamAddr *faddr) {
+  if (LOG_ENABLED(INFO)) {
+    LLOG(INFO, this) << "Accepted connection from "
+                     << util::numeric_name(addr, addrlen) << ", fd=" << fd;
+  }
+
+  auto config = get_config();
+
+  auto max_conns = config->conn.upstream.worker_connections;
+
+  if (worker_stat_.num_connections >= max_conns) {
+    if (LOG_ENABLED(INFO)) {
+      WLOG(INFO, this) << "Too many connections >= " << max_conns;
+    }
+
+    close(fd);
+
+    return -1;
+  }
+
+  auto client_handler = tls::accept_connection(this, fd, addr, addrlen, faddr);
+  if (!client_handler) {
+    if (LOG_ENABLED(INFO)) {
+      WLOG(ERROR, this) << "ClientHandler creation failed";
+    }
+
+    close(fd);
+
+    return -1;
+  }
+
+  if (LOG_ENABLED(INFO)) {
+    WLOG(INFO, this) << "CLIENT_HANDLER:" << client_handler << " created";
+  }
+
+  return 0;
 }
 
 } // namespace shrpx

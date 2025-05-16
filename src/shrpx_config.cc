@@ -4048,6 +4048,8 @@ int parse_config(Config *config, int optid, const StringRef &opt,
 
     return 0;
   case SHRPX_OPTID_OCSP_STARTUP:
+    LOG(WARN) << opt << ": deprecated.  It has no effect";
+
     config->tls.ocsp.startup = util::strieq("yes"_sr, optarg);
 
     return 0;

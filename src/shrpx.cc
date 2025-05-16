@@ -38,7 +38,6 @@
 #ifdef HAVE_NETINET_IN_H
 #  include <netinet/in.h>
 #endif // HAVE_NETINET_IN_H
-#include <netinet/tcp.h>
 #ifdef HAVE_ARPA_INET_H
 #  include <arpa/inet.h>
 #endif // HAVE_ARPA_INET_H
@@ -125,28 +124,11 @@ using namespace nghttp2;
 
 namespace shrpx {
 
-// Deprecated: Environment variables to tell new binary the listening
-// socket's file descriptors.  They are not close-on-exec.
-constexpr auto ENV_LISTENER4_FD = "NGHTTPX_LISTENER4_FD"_sr;
-constexpr auto ENV_LISTENER6_FD = "NGHTTPX_LISTENER6_FD"_sr;
-
-// Deprecated: Environment variable to tell new binary the port number
-// the current binary is listening to.
-constexpr auto ENV_PORT = "NGHTTPX_PORT"_sr;
-
-// Deprecated: Environment variable to tell new binary the listening
-// socket's file descriptor if frontend listens UNIX domain socket.
-constexpr auto ENV_UNIX_FD = "NGHTTP2_UNIX_FD"_sr;
-// Deprecated: Environment variable to tell new binary the UNIX domain
-// socket path.
-constexpr auto ENV_UNIX_PATH = "NGHTTP2_UNIX_PATH"_sr;
-
 // Prefix of environment variables to tell new binary the listening
-// socket's file descriptor.  They are not close-on-exec.  For TCP
-// socket, the value must be comma separated 2 parameters: tcp,<FD>.
-// <FD> is file descriptor.  For UNIX domain socket, the value must be
-// comma separated 3 parameters: unix,<FD>,<PATH>.  <FD> is file
-// descriptor.  <PATH> is a path to UNIX domain socket.
+// UNIX domain socket's file descriptor and path.  They are not
+// close-on-exec.  The value must be comma separated 3 parameters:
+// unix,<FD>,<PATH>.  <FD> is file descriptor.  <PATH> is a path to
+// UNIX domain socket.
 constexpr auto ENV_ACCEPT_PREFIX = "NGHTTPX_ACCEPT_"_sr;
 
 // This environment variable contains PID of the original main
@@ -165,19 +147,6 @@ constexpr auto ENV_ORIG_PID = "NGHTTPX_ORIG_PID"_sr;
 // in hex encoded string.
 constexpr auto ENV_QUIC_WORKER_PROCESS_PREFIX =
   "NGHTTPX_QUIC_WORKER_PROCESS_"_sr;
-
-#ifndef _KERNEL_FASTOPEN
-#  define _KERNEL_FASTOPEN
-// conditional define for TCP_FASTOPEN mostly on ubuntu
-#  ifndef TCP_FASTOPEN
-#    define TCP_FASTOPEN 23
-#  endif
-
-// conditional define for SOL_TCP mostly on ubuntu
-#  ifndef SOL_TCP
-#    define SOL_TCP 6
-#  endif
-#endif
 
 // This configuration is fixed at the first startup of the main
 // process, and does not change after subsequent reloadings.
@@ -198,12 +167,9 @@ namespace {
 StartupConfig suconfig;
 } // namespace
 
-struct InheritedAddr {
-  // IP address if TCP socket.  Otherwise, UNIX domain socket path.
-  StringRef host;
-  uint16_t port;
-  // true if UNIX domain socket path
-  bool host_unix;
+struct InheritedUNIXDomainAddr {
+  // UNIX domain socket path.
+  StringRef path;
   int fd;
   bool used;
 };
@@ -573,18 +539,16 @@ void exec_binary() {
   std::vector<ImmutableString> fd_envs;
   for (size_t i = 0; i < listenerconf.addrs.size(); ++i) {
     auto &addr = listenerconf.addrs[i];
+    if (!addr.host_unix) {
+      continue;
+    }
+
     auto s = std::string{ENV_ACCEPT_PREFIX};
     s += util::utos(i + 1);
-    s += '=';
-    if (addr.host_unix) {
-      s += "unix,";
-      s += util::utos(addr.fd);
-      s += ',';
-      s += addr.host;
-    } else {
-      s += "tcp,";
-      s += util::utos(addr.fd);
-    }
+    s += "=unix,";
+    s += util::utos(addr.fd);
+    s += ',';
+    s += addr.host;
 
     fd_envs.emplace_back(s);
     envp[envidx++] = const_cast<char *>(fd_envs.back().c_str());
@@ -616,11 +580,6 @@ void exec_binary() {
   for (size_t i = 0; i < envlen; ++i) {
     auto env = StringRef{environ[i]};
     if (util::starts_with(env, ENV_ACCEPT_PREFIX) ||
-        util::starts_with(env, ENV_LISTENER4_FD) ||
-        util::starts_with(env, ENV_LISTENER6_FD) ||
-        util::starts_with(env, ENV_PORT) ||
-        util::starts_with(env, ENV_UNIX_FD) ||
-        util::starts_with(env, ENV_UNIX_PATH) ||
         util::starts_with(env, ENV_ORIG_PID) ||
         util::starts_with(env, ENV_QUIC_WORKER_PROCESS_PREFIX)) {
       continue;
@@ -705,7 +664,9 @@ void signal_cb(struct ev_loop *loop, ev_signal *w, int revents) {
   case GRACEFUL_SHUTDOWN_SIGNAL: {
     auto &listenerconf = get_config()->conn.listener;
     for (auto &addr : listenerconf.addrs) {
-      close(addr.fd);
+      if (addr.host_unix) {
+        close(addr.fd);
+      }
     }
 
     for (auto &wp : worker_processes) {
@@ -742,13 +703,12 @@ void worker_process_child_cb(struct ev_loop *loop, ev_child *w, int revents) {
 } // namespace
 
 namespace {
-int create_unix_domain_server_socket(UpstreamAddr &faddr,
-                                     std::vector<InheritedAddr> &iaddrs) {
+int create_unix_domain_server_socket(
+  UpstreamAddr &faddr, std::vector<InheritedUNIXDomainAddr> &iaddrs) {
   std::array<char, STRERROR_BUFSIZE> errbuf;
   auto found = std::find_if(
-    std::begin(iaddrs), std::end(iaddrs), [&faddr](const InheritedAddr &ia) {
-      return !ia.used && ia.host_unix && ia.host == faddr.host;
-    });
+    std::begin(iaddrs), std::end(iaddrs),
+    [&faddr](const auto &ia) { return !ia.used && ia.path == faddr.host; });
 
   if (found != std::end(iaddrs)) {
     LOG(NOTICE) << "Listening on UNIX domain socket " << faddr.host
@@ -831,228 +791,25 @@ int create_unix_domain_server_socket(UpstreamAddr &faddr,
 } // namespace
 
 namespace {
-int create_tcp_server_socket(UpstreamAddr &faddr,
-                             std::vector<InheritedAddr> &iaddrs) {
-  std::array<char, STRERROR_BUFSIZE> errbuf;
-  int fd = -1;
-  int rv;
-
-  auto &listenerconf = get_config()->conn.listener;
-
-  auto service = util::utos(faddr.port);
-  addrinfo hints{};
-  hints.ai_family = faddr.family;
-  hints.ai_socktype = SOCK_STREAM;
-  hints.ai_flags = AI_PASSIVE;
-#ifdef AI_ADDRCONFIG
-  hints.ai_flags |= AI_ADDRCONFIG;
-#endif // AI_ADDRCONFIG
-
-  auto node = faddr.host == "*"_sr ? nullptr : faddr.host.data();
-
-  addrinfo *res, *rp;
-  rv = getaddrinfo(node, service.c_str(), &hints, &res);
-#ifdef AI_ADDRCONFIG
-  if (rv != 0) {
-    // Retry without AI_ADDRCONFIG
-    hints.ai_flags &= ~AI_ADDRCONFIG;
-    rv = getaddrinfo(node, service.c_str(), &hints, &res);
-  }
-#endif // AI_ADDRCONFIG
-  if (rv != 0) {
-    LOG(FATAL) << "Unable to get IPv" << (faddr.family == AF_INET ? "4" : "6")
-               << " address for " << faddr.host << ", port " << faddr.port
-               << ": " << gai_strerror(rv);
-    return -1;
-  }
-
-  auto res_d = defer(freeaddrinfo, res);
-
-  std::array<char, NI_MAXHOST> host;
-
-  for (rp = res; rp; rp = rp->ai_next) {
-    rv = getnameinfo(rp->ai_addr, rp->ai_addrlen, host.data(), host.size(),
-                     nullptr, 0, NI_NUMERICHOST);
-
-    if (rv != 0) {
-      LOG(WARN) << "getnameinfo() failed: " << gai_strerror(rv);
-      continue;
-    }
-
-    auto host_sr = StringRef{host.data()};
-
-    auto found = std::find_if(std::begin(iaddrs), std::end(iaddrs),
-                              [&host_sr, &faddr](const InheritedAddr &ia) {
-                                return !ia.used && !ia.host_unix &&
-                                       ia.host == host_sr &&
-                                       ia.port == faddr.port;
-                              });
-
-    if (found != std::end(iaddrs)) {
-      (*found).used = true;
-      fd = (*found).fd;
-      break;
-    }
-
-#ifdef SOCK_NONBLOCK
-    fd =
-      socket(rp->ai_family, rp->ai_socktype | SOCK_NONBLOCK, rp->ai_protocol);
-    if (fd == -1) {
-      auto error = errno;
-      LOG(WARN) << "socket() syscall failed: "
-                << xsi_strerror(error, errbuf.data(), errbuf.size());
-      continue;
-    }
-#else  // !SOCK_NONBLOCK
-    fd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
-    if (fd == -1) {
-      auto error = errno;
-      LOG(WARN) << "socket() syscall failed: "
-                << xsi_strerror(error, errbuf.data(), errbuf.size());
-      continue;
-    }
-    util::make_socket_nonblocking(fd);
-#endif // !SOCK_NONBLOCK
-    int val = 1;
-    if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &val,
-                   static_cast<socklen_t>(sizeof(val))) == -1) {
-      auto error = errno;
-      LOG(WARN) << "Failed to set SO_REUSEADDR option to listener socket: "
-                << xsi_strerror(error, errbuf.data(), errbuf.size());
-      close(fd);
-      continue;
-    }
-
-#ifdef IPV6_V6ONLY
-    if (faddr.family == AF_INET6) {
-      if (setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, &val,
-                     static_cast<socklen_t>(sizeof(val))) == -1) {
-        auto error = errno;
-        LOG(WARN) << "Failed to set IPV6_V6ONLY option to listener socket: "
-                  << xsi_strerror(error, errbuf.data(), errbuf.size());
-        close(fd);
-        continue;
-      }
-    }
-#endif // IPV6_V6ONLY
-
-#ifdef TCP_DEFER_ACCEPT
-    val = 3;
-    if (setsockopt(fd, IPPROTO_TCP, TCP_DEFER_ACCEPT, &val,
-                   static_cast<socklen_t>(sizeof(val))) == -1) {
-      auto error = errno;
-      LOG(WARN) << "Failed to set TCP_DEFER_ACCEPT option to listener socket: "
-                << xsi_strerror(error, errbuf.data(), errbuf.size());
-    }
-#endif // TCP_DEFER_ACCEPT
-
-    // When we are executing new binary, and the old binary did not
-    // bind privileged port (< 1024) for some reason, binding to those
-    // ports will fail with permission denied error.
-    if (bind(fd, rp->ai_addr, rp->ai_addrlen) == -1) {
-      auto error = errno;
-      LOG(WARN) << "bind() syscall failed: "
-                << xsi_strerror(error, errbuf.data(), errbuf.size());
-      close(fd);
-      continue;
-    }
-
-    if (listenerconf.fastopen > 0) {
-      val = listenerconf.fastopen;
-      if (setsockopt(fd, SOL_TCP, TCP_FASTOPEN, &val,
-                     static_cast<socklen_t>(sizeof(val))) == -1) {
-        auto error = errno;
-        LOG(WARN) << "Failed to set TCP_FASTOPEN option to listener socket: "
-                  << xsi_strerror(error, errbuf.data(), errbuf.size());
-      }
-    }
-
-    if (listen(fd, listenerconf.backlog) == -1) {
-      auto error = errno;
-      LOG(WARN) << "listen() syscall failed: "
-                << xsi_strerror(error, errbuf.data(), errbuf.size());
-      close(fd);
-      continue;
-    }
-
-    break;
-  }
-
-  if (!rp) {
-    LOG(FATAL) << "Listening " << (faddr.family == AF_INET ? "IPv4" : "IPv6")
-               << " socket failed";
-
-    return -1;
-  }
-
-  faddr.fd = fd;
-  faddr.hostport = util::make_http_hostport(mod_config()->balloc,
-                                            StringRef{host.data()}, faddr.port);
-
-  LOG(NOTICE) << "Listening on " << faddr.hostport
-              << (faddr.tls ? ", tls" : "");
-
-  return 0;
-}
-} // namespace
-
-namespace {
-// Returns array of InheritedAddr constructed from |config|.  This
+// Returns array of InheritedUNIXDomainAddr constructed from |config|.  This
 // function is intended to be used when reloading configuration, and
 // |config| is usually a current configuration.
-std::vector<InheritedAddr>
-get_inherited_addr_from_config(BlockAllocator &balloc, Config *config) {
-  std::array<char, STRERROR_BUFSIZE> errbuf;
-  int rv;
-
+std::vector<InheritedUNIXDomainAddr>
+get_inherited_unix_domain_socket_from_config(BlockAllocator &balloc,
+                                             Config *config) {
   auto &listenerconf = config->conn.listener;
 
-  std::vector<InheritedAddr> iaddrs(listenerconf.addrs.size());
+  std::vector<InheritedUNIXDomainAddr> iaddrs;
 
-  size_t idx = 0;
   for (auto &addr : listenerconf.addrs) {
-    auto &iaddr = iaddrs[idx++];
-
-    if (addr.host_unix) {
-      iaddr.host = addr.host;
-      iaddr.host_unix = true;
-      iaddr.fd = addr.fd;
-
+    if (!addr.host_unix) {
       continue;
     }
 
-    iaddr.port = addr.port;
-    iaddr.fd = addr.fd;
-
-    // We have to getsockname/getnameinfo for fd, since we may have
-    // '*' appear in addr.host, which makes comparison against "real"
-    // address fail.
-
-    sockaddr_union su;
-    socklen_t salen = sizeof(su);
-
-    // We already added entry to iaddrs.  Even if we got errors, we
-    // don't remove it.  This is required because we have to close the
-    // socket if it is not reused.  The empty host name usually does
-    // not match anything.
-
-    if (getsockname(addr.fd, &su.sa, &salen) != 0) {
-      auto error = errno;
-      LOG(WARN) << "getsockname() syscall failed (fd=" << addr.fd
-                << "): " << xsi_strerror(error, errbuf.data(), errbuf.size());
-      continue;
-    }
-
-    std::array<char, NI_MAXHOST> host;
-    rv = getnameinfo(&su.sa, salen, host.data(), host.size(), nullptr, 0,
-                     NI_NUMERICHOST);
-    if (rv != 0) {
-      LOG(WARN) << "getnameinfo() failed (fd=" << addr.fd
-                << "): " << gai_strerror(rv);
-      continue;
-    }
-
-    iaddr.host = make_string_ref(balloc, StringRef{host.data()});
+    iaddrs.emplace_back(InheritedUNIXDomainAddr{
+      .path = addr.host,
+      .fd = addr.fd,
+    });
   }
 
   return iaddrs;
@@ -1060,43 +817,11 @@ get_inherited_addr_from_config(BlockAllocator &balloc, Config *config) {
 } // namespace
 
 namespace {
-// Returns array of InheritedAddr constructed from environment
-// variables.  This function handles the old environment variable
-// names used in 1.7.0 or earlier.
-std::vector<InheritedAddr> get_inherited_addr_from_env(Config *config) {
-  std::array<char, STRERROR_BUFSIZE> errbuf;
-  int rv;
-  std::vector<InheritedAddr> iaddrs;
-
-  {
-    // Upgrade from 1.7.0 or earlier
-    auto portenv = getenv(ENV_PORT.data());
-    if (portenv) {
-      size_t i = 1;
-      for (const auto &env_name : {ENV_LISTENER4_FD, ENV_LISTENER6_FD}) {
-        auto fdenv = getenv(env_name.data());
-        if (fdenv) {
-          auto name = std::string{ENV_ACCEPT_PREFIX};
-          name += util::utos(i);
-          std::string value = "tcp,";
-          value += fdenv;
-          setenv(name.c_str(), value.c_str(), 0);
-          ++i;
-        }
-      }
-    } else {
-      // The return value of getenv may be allocated statically.
-      if (getenv(ENV_UNIX_PATH.data()) && getenv(ENV_UNIX_FD.data())) {
-        auto name = std::string{ENV_ACCEPT_PREFIX};
-        name += '1';
-        std::string value = "unix,";
-        value += getenv(ENV_UNIX_FD.data());
-        value += ',';
-        value += getenv(ENV_UNIX_PATH.data());
-        setenv(name.c_str(), value.c_str(), 0);
-      }
-    }
-  }
+// Returns array of InheritedUNIXDomainAddr constructed from environment
+// variables.
+std::vector<InheritedUNIXDomainAddr>
+get_inherited_unix_domain_socket_from_env(Config *config) {
+  std::vector<InheritedUNIXDomainAddr> iaddrs;
 
   for (size_t i = 1;; ++i) {
     auto name = std::string{ENV_ACCEPT_PREFIX};
@@ -1118,91 +843,36 @@ std::vector<InheritedAddr> get_inherited_addr_from_env(Config *config) {
     auto type = StringRef(env, end_type);
     auto value = end_type + 1;
 
-    if (type == "unix"_sr) {
-      auto endfd = strchr(value, ',');
-      if (!endfd) {
-        continue;
-      }
-      auto fd = util::parse_uint(StringRef{value, endfd});
-      if (!fd) {
-        LOG(WARN) << "Could not parse file descriptor from "
-                  << std::string(value, endfd - value);
-        continue;
-      }
-
-      auto path = endfd + 1;
-      if (strlen(path) == 0) {
-        LOG(WARN) << "Empty UNIX domain socket path (fd=" << *fd << ")";
-        close(*fd);
-        continue;
-      }
-
-      if (LOG_ENABLED(INFO)) {
-        LOG(INFO) << "Inherit UNIX domain socket fd=" << *fd
-                  << ", path=" << path;
-      }
-
-      InheritedAddr addr{};
-      addr.host = make_string_ref(config->balloc, StringRef{path});
-      addr.host_unix = true;
-      addr.fd = static_cast<int>(*fd);
-      iaddrs.push_back(std::move(addr));
-    }
-
-    if (type == "tcp"_sr) {
-      auto fd = util::parse_uint(value);
-      if (!fd) {
-        LOG(WARN) << "Could not parse file descriptor from " << value;
-        continue;
-      }
-
-      sockaddr_union su;
-      socklen_t salen = sizeof(su);
-
-      if (getsockname(*fd, &su.sa, &salen) != 0) {
-        auto error = errno;
-        LOG(WARN) << "getsockname() syscall failed (fd=" << *fd
-                  << "): " << xsi_strerror(error, errbuf.data(), errbuf.size());
-        close(*fd);
-        continue;
-      }
-
-      uint16_t port;
-
-      switch (su.storage.ss_family) {
-      case AF_INET:
-        port = ntohs(su.in.sin_port);
-        break;
-      case AF_INET6:
-        port = ntohs(su.in6.sin6_port);
-        break;
-      default:
-        close(*fd);
-        continue;
-      }
-
-      std::array<char, NI_MAXHOST> host;
-      rv = getnameinfo(&su.sa, salen, host.data(), host.size(), nullptr, 0,
-                       NI_NUMERICHOST);
-      if (rv != 0) {
-        LOG(WARN) << "getnameinfo() failed (fd=" << *fd
-                  << "): " << gai_strerror(rv);
-        close(*fd);
-        continue;
-      }
-
-      if (LOG_ENABLED(INFO)) {
-        LOG(INFO) << "Inherit TCP socket fd=" << *fd
-                  << ", address=" << host.data() << ", port=" << port;
-      }
-
-      InheritedAddr addr{};
-      addr.host = make_string_ref(config->balloc, StringRef{host.data()});
-      addr.port = static_cast<uint16_t>(port);
-      addr.fd = static_cast<int>(*fd);
-      iaddrs.push_back(std::move(addr));
+    if (type != "unix"_sr) {
       continue;
     }
+
+    auto endfd = strchr(value, ',');
+    if (!endfd) {
+      continue;
+    }
+    auto fd = util::parse_uint(StringRef{value, endfd});
+    if (!fd) {
+      LOG(WARN) << "Could not parse file descriptor from "
+                << std::string(value, endfd - value);
+      continue;
+    }
+
+    auto path = endfd + 1;
+    if (strlen(path) == 0) {
+      LOG(WARN) << "Empty UNIX domain socket path (fd=" << *fd << ")";
+      close(*fd);
+      continue;
+    }
+
+    if (LOG_ENABLED(INFO)) {
+      LOG(INFO) << "Inherit UNIX domain socket fd=" << *fd << ", path=" << path;
+    }
+
+    iaddrs.emplace_back(InheritedUNIXDomainAddr{
+      .path = make_string_ref(config->balloc, StringRef{path}),
+      .fd = static_cast<int>(*fd),
+    });
   }
 
   return iaddrs;
@@ -1211,7 +881,8 @@ std::vector<InheritedAddr> get_inherited_addr_from_env(Config *config) {
 
 namespace {
 // Closes all sockets which are not reused.
-void close_unused_inherited_addr(const std::vector<InheritedAddr> &iaddrs) {
+void close_unused_inherited_addr(
+  const std::vector<InheritedUNIXDomainAddr> &iaddrs) {
   for (auto &ia : iaddrs) {
     if (ia.used) {
       continue;
@@ -1325,31 +996,29 @@ get_inherited_quic_lingering_worker_process_from_env() {
 #endif // ENABLE_HTTP3
 
 namespace {
-int create_acceptor_socket(Config *config, std::vector<InheritedAddr> &iaddrs) {
+int create_unix_domain_listener_socket(
+  Config *config, std::vector<InheritedUNIXDomainAddr> &iaddrs) {
   std::array<char, STRERROR_BUFSIZE> errbuf;
   auto &listenerconf = config->conn.listener;
 
   for (auto &addr : listenerconf.addrs) {
-    if (addr.host_unix) {
-      if (create_unix_domain_server_socket(addr, iaddrs) != 0) {
-        return -1;
-      }
-
-      if (config->uid != 0) {
-        // fd is not associated to inode, so we cannot use fchown(2)
-        // here.  https://lkml.org/lkml/2004/11/1/84
-        if (chown(addr.host.data(), config->uid, config->gid) == -1) {
-          auto error = errno;
-          LOG(WARN) << "Changing owner of UNIX domain socket " << addr.host
-                    << " failed: "
-                    << xsi_strerror(error, errbuf.data(), errbuf.size());
-        }
-      }
+    if (!addr.host_unix) {
       continue;
     }
 
-    if (create_tcp_server_socket(addr, iaddrs) != 0) {
+    if (create_unix_domain_server_socket(addr, iaddrs) != 0) {
       return -1;
+    }
+
+    if (config->uid != 0) {
+      // fd is not associated to inode, so we cannot use fchown(2)
+      // here.  https://lkml.org/lkml/2004/11/1/84
+      if (chown(addr.host.data(), config->uid, config->gid) == -1) {
+        auto error = errno;
+        LOG(WARN) << "Changing owner of UNIX domain socket " << addr.host
+                  << " failed: "
+                  << xsi_strerror(error, errbuf.data(), errbuf.size());
+      }
     }
   }
 
@@ -1632,7 +1301,7 @@ pid_t fork_worker_process(int &main_ipc_fd
                           int &wp_quic_ipc_fd
 #endif // ENABLE_HTTP3
                           ,
-                          const std::vector<InheritedAddr> &iaddrs
+                          const std::vector<InheritedUNIXDomainAddr> &iaddrs
 #ifdef ENABLE_HTTP3
                           ,
                           std::vector<WorkerID> worker_ids,
@@ -1686,7 +1355,9 @@ pid_t fork_worker_process(int &main_ipc_fd
     ev_loop_fork(EV_DEFAULT);
 
     for (auto &addr : config->conn.listener.addrs) {
-      util::make_socket_closeonexec(addr.fd);
+      if (addr.host_unix) {
+        util::make_socket_closeonexec(addr.fd);
+      }
     }
 
 #ifdef ENABLE_HTTP3
@@ -1839,9 +1510,9 @@ int event_loop() {
   shrpx_sd_notifyf(0, "MAINPID=%d\n", config->pid);
 
   {
-    auto iaddrs = get_inherited_addr_from_env(config);
+    auto iaddrs = get_inherited_unix_domain_socket_from_env(config);
 
-    if (create_acceptor_socket(config, iaddrs) != 0) {
+    if (create_unix_domain_listener_socket(config, iaddrs) != 0) {
       return -1;
     }
 
@@ -3974,14 +3645,18 @@ int process_options(Config *config,
 namespace {
 // Closes file descriptor which are opened for listeners in config,
 // and are not inherited from |iaddrs|.
-void close_not_inherited_fd(Config *config,
-                            const std::vector<InheritedAddr> &iaddrs) {
+void close_not_inherited_fd(
+  Config *config, const std::vector<InheritedUNIXDomainAddr> &iaddrs) {
   auto &listenerconf = config->conn.listener;
 
   for (auto &addr : listenerconf.addrs) {
-    auto inherited = std::find_if(
-      std::begin(iaddrs), std::end(iaddrs),
-      [&addr](const InheritedAddr &iaddr) { return addr.fd == iaddr.fd; });
+    if (!addr.host_unix) {
+      continue;
+    }
+
+    auto inherited =
+      std::find_if(std::begin(iaddrs), std::end(iaddrs),
+                   [&addr](const auto &iaddr) { return addr.fd == iaddr.fd; });
 
     if (inherited != std::end(iaddrs)) {
       continue;
@@ -4017,9 +3692,10 @@ void reload_config() {
     return;
   }
 
-  auto iaddrs = get_inherited_addr_from_config(new_config->balloc, cur_config);
+  auto iaddrs = get_inherited_unix_domain_socket_from_config(new_config->balloc,
+                                                             cur_config);
 
-  if (create_acceptor_socket(new_config.get(), iaddrs) != 0) {
+  if (create_unix_domain_listener_socket(new_config.get(), iaddrs) != 0) {
     close_not_inherited_fd(new_config.get(), iaddrs);
     return;
   }
