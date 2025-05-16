@@ -27,7 +27,7 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
-.TH "NGHTTPX" "1" "Jan 12, 2025" "1.65.0-DEV" "nghttp2"
+.TH "NGHTTPX" "1" "May 16, 2025" "1.66.0-DEV" "nghttp2"
 .SH NAME
 nghttpx \- HTTP/2 proxy
 .SH SYNOPSIS
@@ -46,8 +46,7 @@ Set  path  to  server\(aqs private  key.   Required  unless
 .TP
 .B <CERT>
 Set  path  to  server\(aqs  certificate.   Required  unless
-\(dqno\-tls\(dq  parameter is  used in  \fI\%\-\-frontend\fP option.   To
-make OCSP stapling work, this must be an absolute path.
+\(dqno\-tls\(dq  parameter is  used in  \fI\%\-\-frontend\fP option.
 .UNINDENT
 .SH OPTIONS
 .sp
@@ -745,12 +744,10 @@ enabled for backend connections.
 .B \-\-cacert=<PATH>
 Set path to trusted CA  certificate file.  It is used in
 backend  TLS connections  to verify  peer\(aqs certificate.
-It is also used to  verify OCSP response from the script
-set by \fI\%\-\-fetch\-ocsp\-response\-file\fP\&.  The  file must be in
-PEM format.   It can contain multiple  certificates.  If
-the  linked OpenSSL  is configured  to load  system wide
-certificates, they  are loaded at startup  regardless of
-this option.
+The file must be in PEM format.  It can contain multiple
+certificates.  If  the linked  OpenSSL is  configured to
+load  system  wide  certificates,  they  are  loaded  at
+startup regardless of this option.
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -770,8 +767,7 @@ curves (e.g., P\-256) between  client and server are also
 taken into  consideration.  This allows nghttpx  to send
 ECDSA certificate  to modern clients, while  sending RSA
 based certificate to older  clients.  This option can be
-used  multiple  times.   To  make  OCSP  stapling  work,
-<CERTPATH> must be absolute path.
+used  multiple  times.
 .sp
 Additional parameter  can be specified in  <PARAM>.  The
 available <PARAM> is \(dqsct\-dir=<DIR>\(dq.
@@ -959,40 +955,6 @@ get TLS ticket keys.
 .B \-\-tls\-ticket\-key\-memcached\-private\-key\-file=<PATH>
 Path to client private  key for memcached connections to
 get TLS ticket keys.
-.UNINDENT
-.INDENT 0.0
-.TP
-.B \-\-fetch\-ocsp\-response\-file=<PATH>
-Path to  fetch\-ocsp\-response script file.  It  should be
-absolute path.
-.sp
-Default: \fB/usr/local/share/nghttp2/fetch\-ocsp\-response\fP
-.UNINDENT
-.INDENT 0.0
-.TP
-.B \-\-ocsp\-update\-interval=<DURATION>
-Set interval to update OCSP response cache.
-.sp
-Default: \fB4h\fP
-.UNINDENT
-.INDENT 0.0
-.TP
-.B \-\-ocsp\-startup
-Start  accepting connections  after initial  attempts to
-get OCSP responses  finish.  It does not  matter some of
-the  attempts  fail.  This  feature  is  useful if  OCSP
-responses   must    be   available    before   accepting
-connections.
-.UNINDENT
-.INDENT 0.0
-.TP
-.B \-\-no\-verify\-ocsp
-nghttpx does not verify OCSP response.
-.UNINDENT
-.INDENT 0.0
-.TP
-.B \-\-no\-ocsp
-Disable OCSP stapling.
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -1675,7 +1637,7 @@ initial  DNS  query.  For  the  2nd  and later  queries,
 server is  given time based  on this timeout, and  it is
 scaled linearly.
 .sp
-Default: \fB5s\fP
+Default: \fB250ms\fP
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -1683,7 +1645,7 @@ Default: \fB5s\fP
 Set the number of DNS query before nghttpx gives up name
 lookup.
 .sp
-Default: \fB2\fP
+Default: \fB3\fP
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -2154,35 +2116,6 @@ specified socket already exists in the file system, nghttpx first
 deletes it.  However, if SIGUSR2 is used to execute new binary and
 both old and new configurations use same filename, new binary does not
 delete the socket and continues to use it.
-.SH OCSP STAPLING
-.sp
-OCSP query is done using external Python script
-\fBfetch\-ocsp\-response\fP, which has been originally developed in Perl
-as part of h2o project (\X'tty: link https://github.com/h2o/h2o'\fI\%https://github.com/h2o/h2o\fP\X'tty: link'), and was
-translated into Python.
-.sp
-The script file is usually installed under
-\fB$(prefix)/share/nghttp2/\fP directory.  The actual path to script can
-be customized using \fI\%\-\-fetch\-ocsp\-response\-file\fP option.
-.sp
-If OCSP query is failed, previous OCSP response, if any, is continued
-to be used.
-.sp
-\fI\%\-\-fetch\-ocsp\-response\-file\fP option provides wide range of
-possibility to manage OCSP response.  It can take an arbitrary script
-or executable.  The requirement is that it supports the command\-line
-interface of \fBfetch\-ocsp\-response\fP script, and it must return a
-valid DER encoded OCSP response on success.  It must return exit code
-0 on success, and 75 for temporary error, and the other error code for
-generic failure.  For large cluster of servers, it is not efficient
-for each server to perform OCSP query using \fBfetch\-ocsp\-response\fP\&.
-Instead, you can retrieve OCSP response in some way, and store it in a
-disk or a shared database.  Then specify a program in
-\fI\%\-\-fetch\-ocsp\-response\-file\fP to fetch it from those stores.
-This could provide a way to share the OCSP response between fleet of
-servers, and also any OCSP query strategy can be applied which may be
-beyond the ability of nghttpx itself or \fBfetch\-ocsp\-response\fP
-script.
 .SH TLS SESSION RESUMPTION
 .sp
 nghttpx supports TLS session resumption through both session ID and
