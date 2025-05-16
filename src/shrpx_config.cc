@@ -3587,15 +3587,13 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     LOG(WARN) << opt << ": deprecated.";
     return 0;
   case SHRPX_OPTID_FETCH_OCSP_RESPONSE_FILE:
-    config->tls.ocsp.fetch_ocsp_response_file =
-      make_string_ref(config->balloc, optarg);
-
+    LOG(WARN) << opt << ": deprecated.  It has no effect";
     return 0;
   case SHRPX_OPTID_OCSP_UPDATE_INTERVAL:
-    return parse_duration(&config->tls.ocsp.update_interval, opt, optarg);
+    LOG(WARN) << opt << ": deprecated.  It has no effect";
+    return 0;
   case SHRPX_OPTID_NO_OCSP:
-    config->tls.ocsp.disabled = util::strieq("yes"_sr, optarg);
-
+    LOG(WARN) << opt << ": deprecated.  It has no effect";
     return 0;
   case SHRPX_OPTID_HEADER_FIELD_BUFFER:
     LOG(WARN) << opt
@@ -4049,13 +4047,9 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     return 0;
   case SHRPX_OPTID_OCSP_STARTUP:
     LOG(WARN) << opt << ": deprecated.  It has no effect";
-
-    config->tls.ocsp.startup = util::strieq("yes"_sr, optarg);
-
     return 0;
   case SHRPX_OPTID_NO_VERIFY_OCSP:
-    config->tls.ocsp.no_verify = util::strieq("yes"_sr, optarg);
-
+    LOG(WARN) << opt << ": deprecated.  It has no effect";
     return 0;
   case SHRPX_OPTID_VERIFY_CLIENT_TOLERATE_EXPIRED:
     config->tls.client_verify.tolerate_expired = util::strieq("yes"_sr, optarg);

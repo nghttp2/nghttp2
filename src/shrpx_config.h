@@ -680,15 +680,6 @@ struct TLSConfig {
     ev_tstamp idle_timeout;
   } dyn_rec;
 
-  // OCSP related configurations
-  struct {
-    ev_tstamp update_interval;
-    StringRef fetch_ocsp_response_file;
-    bool disabled;
-    bool startup;
-    bool no_verify;
-  } ocsp;
-
   // Client verification configurations
   struct {
     // Path to file containing CA certificate solely used for client

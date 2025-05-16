@@ -140,7 +140,6 @@ void test_shrpx_tls_cert_lookup_tree_add_ssl_ctx(void) {
   auto nghttp2_ssl_ctx = SSL_CTX_new(TLS_server_method());
   auto nghttp2_ssl_ctx_del = defer(SSL_CTX_free, nghttp2_ssl_ctx);
   auto nghttp2_tls_ctx_data = std::make_unique<tls::TLSContextData>();
-  nghttp2_tls_ctx_data->cert_file = nghttp2_certfile;
   SSL_CTX_set_app_data(nghttp2_ssl_ctx, nghttp2_tls_ctx_data.get());
   rv = SSL_CTX_use_certificate_chain_file(nghttp2_ssl_ctx, nghttp2_certfile);
 
@@ -151,7 +150,6 @@ void test_shrpx_tls_cert_lookup_tree_add_ssl_ctx(void) {
   auto examples_ssl_ctx = SSL_CTX_new(TLS_server_method());
   auto examples_ssl_ctx_del = defer(SSL_CTX_free, examples_ssl_ctx);
   auto examples_tls_ctx_data = std::make_unique<tls::TLSContextData>();
-  examples_tls_ctx_data->cert_file = examples_certfile;
   SSL_CTX_set_app_data(examples_ssl_ctx, examples_tls_ctx_data.get());
   rv = SSL_CTX_use_certificate_chain_file(examples_ssl_ctx, examples_certfile);
 

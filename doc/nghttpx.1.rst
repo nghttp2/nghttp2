@@ -25,8 +25,7 @@ A reverse proxy for HTTP/3, HTTP/2, and HTTP/1.
 .. describe:: <CERT>
 
     Set  path  to  server's  certificate.   Required  unless
-    "no-tls"  parameter is  used in  :option:`--frontend` option.   To
-    make OCSP stapling work, this must be an absolute path.
+    "no-tls"  parameter is  used in  :option:`--frontend` option.
 
 
 OPTIONS
@@ -695,12 +694,10 @@ SSL/TLS
 
     Set path to trusted CA  certificate file.  It is used in
     backend  TLS connections  to verify  peer's certificate.
-    It is also used to  verify OCSP response from the script
-    set by :option:`--fetch-ocsp-response-file`\.  The  file must be in
-    PEM format.   It can contain multiple  certificates.  If
-    the  linked OpenSSL  is configured  to load  system wide
-    certificates, they  are loaded at startup  regardless of
-    this option.
+    The file must be in PEM format.  It can contain multiple
+    certificates.  If  the linked  OpenSSL is  configured to
+    load  system  wide  certificates,  they  are  loaded  at
+    startup regardless of this option.
 
 .. option:: --private-key-passwd-file=<PATH>
 
@@ -718,8 +715,7 @@ SSL/TLS
     taken into  consideration.  This allows nghttpx  to send
     ECDSA certificate  to modern clients, while  sending RSA
     based certificate to older  clients.  This option can be
-    used  multiple  times.   To  make  OCSP  stapling  work,
-    <CERTPATH> must be absolute path.
+    used  multiple  times.
 
     Additional parameter  can be specified in  <PARAM>.  The
     available <PARAM> is "sct-dir=<DIR>".
@@ -889,35 +885,6 @@ SSL/TLS
 
     Path to client private  key for memcached connections to
     get TLS ticket keys.
-
-.. option:: --fetch-ocsp-response-file=<PATH>
-
-    Path to  fetch-ocsp-response script file.  It  should be
-    absolute path.
-
-    Default: ``/usr/local/share/nghttp2/fetch-ocsp-response``
-
-.. option:: --ocsp-update-interval=<DURATION>
-
-    Set interval to update OCSP response cache.
-
-    Default: ``4h``
-
-.. option:: --ocsp-startup
-
-    Start  accepting connections  after initial  attempts to
-    get OCSP responses  finish.  It does not  matter some of
-    the  attempts  fail.  This  feature  is  useful if  OCSP
-    responses   must    be   available    before   accepting
-    connections.
-
-.. option:: --no-verify-ocsp
-
-    nghttpx does not verify OCSP response.
-
-.. option:: --no-ocsp
-
-    Disable OCSP stapling.
 
 .. option:: --tls-session-cache-memcached=<HOST>,<PORT>[;tls]
 
@@ -1524,14 +1491,14 @@ DNS
     server is  given time based  on this timeout, and  it is
     scaled linearly.
 
-    Default: ``5s``
+    Default: ``250ms``
 
 .. option:: --dns-max-try=<N>
 
     Set the number of DNS query before nghttpx gives up name
     lookup.
 
-    Default: ``2``
+    Default: ``3``
 
 .. option:: --frontend-max-requests=<N>
 
@@ -1970,37 +1937,6 @@ specified socket already exists in the file system, nghttpx first
 deletes it.  However, if SIGUSR2 is used to execute new binary and
 both old and new configurations use same filename, new binary does not
 delete the socket and continues to use it.
-
-OCSP STAPLING
--------------
-
-OCSP query is done using external Python script
-``fetch-ocsp-response``, which has been originally developed in Perl
-as part of h2o project (https://github.com/h2o/h2o), and was
-translated into Python.
-
-The script file is usually installed under
-``$(prefix)/share/nghttp2/`` directory.  The actual path to script can
-be customized using :option:`--fetch-ocsp-response-file` option.
-
-If OCSP query is failed, previous OCSP response, if any, is continued
-to be used.
-
-:option:`--fetch-ocsp-response-file` option provides wide range of
-possibility to manage OCSP response.  It can take an arbitrary script
-or executable.  The requirement is that it supports the command-line
-interface of ``fetch-ocsp-response`` script, and it must return a
-valid DER encoded OCSP response on success.  It must return exit code
-0 on success, and 75 for temporary error, and the other error code for
-generic failure.  For large cluster of servers, it is not efficient
-for each server to perform OCSP query using ``fetch-ocsp-response``.
-Instead, you can retrieve OCSP response in some way, and store it in a
-disk or a shared database.  Then specify a program in
-:option:`--fetch-ocsp-response-file` to fetch it from those stores.
-This could provide a way to share the OCSP response between fleet of
-servers, and also any OCSP query strategy can be applied which may be
-beyond the ability of nghttpx itself or ``fetch-ocsp-response``
-script.
 
 TLS SESSION RESUMPTION
 ----------------------
