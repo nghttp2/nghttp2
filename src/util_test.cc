@@ -297,7 +297,7 @@ void test_util_select_h2(void) {
   // picked up because it has precedence over the other.
   const unsigned char t6[] = "\x5h2-14\x5h2-16";
   assert_true(util::select_h2(&out, &outlen, t6, sizeof(t6) - 1));
-  assert_stdsv_equal(NGHTTP2_H2_16, (StringRef{out, outlen}));
+  assert_stdsv_equal(NGHTTP2_H2_16, as_string_ref(out, outlen));
 }
 
 void test_util_ipv6_numeric_addr(void) {
@@ -643,8 +643,9 @@ void test_util_decode_hex(void) {
   BlockAllocator balloc(4096, 4096);
 
   assert_stdsv_equal("\x0f\xf0"sv,
-                     StringRef{util::decode_hex(balloc, "0ff0"_sr)});
-  assert_stdsv_equal(""sv, StringRef{util::decode_hex(balloc, StringRef{})});
+                     as_string_view(util::decode_hex(balloc, "0ff0"_sr)));
+  assert_stdsv_equal(""sv,
+                     as_string_view(util::decode_hex(balloc, StringRef{})));
 }
 
 void test_util_extract_host(void) {

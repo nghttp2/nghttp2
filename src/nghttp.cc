@@ -1087,7 +1087,7 @@ int HttpClient::connection_made() {
 
     SSL_get0_alpn_selected(ssl, &next_proto, &next_proto_len);
     if (next_proto) {
-      auto proto = StringRef{next_proto, next_proto_len};
+      auto proto = as_string_ref(next_proto, next_proto_len);
       if (config.verbose) {
         std::cout << "The negotiated protocol: " << proto << std::endl;
       }
@@ -1836,8 +1836,8 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
 
     req->header_buffer_size += namelen + valuelen;
 
-    auto nameref = StringRef{name, namelen};
-    auto valueref = StringRef{value, valuelen};
+    auto nameref = as_string_ref(name, namelen);
+    auto valueref = as_string_ref(value, valuelen);
     auto token = http2::lookup_token(nameref);
 
     http2::index_header(req->res_hdidx, token, req->res_nva.size());
@@ -1862,8 +1862,8 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
 
     req->header_buffer_size += namelen + valuelen;
 
-    auto nameref = StringRef{name, namelen};
-    auto valueref = StringRef{value, valuelen};
+    auto nameref = as_string_ref(name, namelen);
+    auto valueref = as_string_ref(value, valuelen);
     auto token = http2::lookup_token(nameref);
 
     http2::index_header(req->req_hdidx, token, req->req_nva.size());

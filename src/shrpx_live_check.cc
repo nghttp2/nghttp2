@@ -407,7 +407,7 @@ int LiveCheck::tls_handshake() {
 
   SSL_get0_alpn_selected(conn_.tls.ssl, &next_proto, &next_proto_len);
 
-  auto proto = StringRef{next_proto, next_proto_len};
+  auto proto = as_string_ref(next_proto, next_proto_len);
 
   switch (addr_->proto) {
   case Proto::HTTP1:

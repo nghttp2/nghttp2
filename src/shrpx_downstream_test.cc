@@ -115,12 +115,11 @@ void test_downstream_crumble_request_cookie(void) {
   assert_size(5, ==, num_cookies);
 
   HeaderRefs cookies;
-  std::transform(std::begin(nva), std::end(nva), std::back_inserter(cookies),
-                 [](const nghttp2_nv &nv) {
-                   return HeaderRef(StringRef{nv.name, nv.namelen},
-                                    StringRef{nv.value, nv.valuelen},
-                                    nv.flags & NGHTTP2_NV_FLAG_NO_INDEX);
-                 });
+  std::ranges::transform(nva, std::back_inserter(cookies), [](const auto &nv) {
+    return HeaderRef(as_string_ref(nv.name, nv.namelen),
+                     as_string_ref(nv.value, nv.valuelen),
+                     nv.flags & NGHTTP2_NV_FLAG_NO_INDEX);
+  });
 
   HeaderRefs ans = {{"cookie"_sr, "alpha"_sr},
                     {"cookie"_sr, "bravo"_sr},

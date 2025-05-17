@@ -955,7 +955,7 @@ void Client::on_header(int32_t stream_id, const uint8_t *name, size_t namelen,
   }
 
   if (stream.status_success == -1 && namelen == 7 &&
-      ":status"_sr == StringRef{name, namelen}) {
+      ":status"_sr == as_string_ref(name, namelen)) {
     int status = 0;
     for (size_t i = 0; i < valuelen; ++i) {
       if ('0' <= value[i] && value[i] <= '9') {
@@ -1125,7 +1125,7 @@ int Client::connection_made() {
     SSL_get0_alpn_selected(ssl, &next_proto, &next_proto_len);
 
     if (next_proto) {
-      auto proto = StringRef{next_proto, next_proto_len};
+      auto proto = as_string_ref(next_proto, next_proto_len);
       if (config.is_quic()) {
 #ifdef ENABLE_HTTP3
         assert(session);

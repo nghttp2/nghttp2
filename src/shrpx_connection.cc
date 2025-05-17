@@ -412,7 +412,7 @@ int Connection::check_http2_requirement() {
 
   SSL_get0_alpn_selected(tls.ssl, &next_proto, &next_proto_len);
   if (next_proto == nullptr ||
-      !util::check_h2_is_selected(StringRef{next_proto, next_proto_len})) {
+      !util::check_h2_is_selected(as_string_ref(next_proto, next_proto_len))) {
     return 0;
   }
   if (!nghttp2::tls::check_http2_tls_version(tls.ssl)) {

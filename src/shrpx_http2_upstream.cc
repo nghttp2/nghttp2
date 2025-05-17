@@ -208,8 +208,8 @@ int on_header_callback2(nghttp2_session *session, const nghttp2_frame *frame,
     return 0;
   }
 
-  auto nameref = StringRef{namebuf.base, namebuf.len};
-  auto valueref = StringRef{valuebuf.base, valuebuf.len};
+  auto nameref = as_string_ref(namebuf.base, namebuf.len);
+  auto valueref = as_string_ref(valuebuf.base, valuebuf.len);
   auto token = http2::lookup_token(nameref);
   auto no_index = flags & NGHTTP2_NV_FLAG_NO_INDEX;
 
@@ -245,8 +245,9 @@ int on_invalid_header_callback2(nghttp2_session *session,
 
     ULOG(INFO, upstream) << "Invalid header field for stream_id="
                          << frame->hd.stream_id << ": name=["
-                         << StringRef{namebuf.base, namebuf.len} << "], value=["
-                         << StringRef{valuebuf.base, valuebuf.len} << "]";
+                         << as_string_ref(namebuf.base, namebuf.len)
+                         << "], value=["
+                         << as_string_ref(valuebuf.base, valuebuf.len) << "]";
   }
 
   upstream->rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
@@ -736,9 +737,9 @@ int on_frame_send_callback(nghttp2_session *session, const nghttp2_frame *frame,
       auto &nv = frame->push_promise.nva[i];
 
       auto name =
-        make_string_ref(promised_balloc, StringRef{nv.name, nv.namelen});
+        make_string_ref(promised_balloc, as_string_ref(nv.name, nv.namelen));
       auto value =
-        make_string_ref(promised_balloc, StringRef{nv.value, nv.valuelen});
+        make_string_ref(promised_balloc, as_string_ref(nv.value, nv.valuelen));
 
       auto token = http2::lookup_token(name);
       switch (token) {
@@ -1873,8 +1874,9 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
 
     if (nghttp2_session_get_extpri_stream_priority(
           session_, &extpri, downstream->get_stream_id()) == 0 &&
-        nghttp2_extpri_parse_priority(&extpri, priority->value.byte(),
-                                      priority->value.size()) == 0) {
+        nghttp2_extpri_parse_priority(
+          &extpri, reinterpret_cast<const uint8_t *>(priority->value.data()),
+          priority->value.size()) == 0) {
       rv = nghttp2_session_change_extpri_stream_priority(
         session_, downstream->get_stream_id(), &extpri,
         /* ignore_client_signal = */ 1);
@@ -2051,8 +2053,8 @@ void Http2Upstream::log_response_headers(
   Downstream *downstream, const std::vector<nghttp2_nv> &nva) const {
   std::stringstream ss;
   for (auto &nv : nva) {
-    ss << TTY_HTTP_HD << StringRef{nv.name, nv.namelen} << TTY_RST << ": "
-       << StringRef{nv.value, nv.valuelen} << "\n";
+    ss << TTY_HTTP_HD << as_string_ref(nv.name, nv.namelen) << TTY_RST << ": "
+       << as_string_ref(nv.value, nv.valuelen) << "\n";
   }
   ULOG(INFO, this) << "HTTP response headers. stream_id="
                    << downstream->get_stream_id() << "\n"
@@ -2261,8 +2263,8 @@ int Http2Upstream::submit_push_promise(const StringRef &scheme,
   if (LOG_ENABLED(INFO)) {
     std::stringstream ss;
     for (auto &nv : nva) {
-      ss << TTY_HTTP_HD << StringRef{nv.name, nv.namelen} << TTY_RST << ": "
-         << StringRef{nv.value, nv.valuelen} << "\n";
+      ss << TTY_HTTP_HD << as_string_ref(nv.name, nv.namelen) << TTY_RST << ": "
+         << as_string_ref(nv.value, nv.valuelen) << "\n";
     }
     ULOG(INFO, this) << "HTTP push request headers. promised_stream_id="
                      << promised_stream_id << "\n"

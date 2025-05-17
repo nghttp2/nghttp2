@@ -44,11 +44,9 @@ StringRef get_attr(const xmlChar **attrs, const StringRef &name) {
     return StringRef{};
   }
   for (; *attrs; attrs += 2) {
-    if (util::strieq(
-          StringRef{attrs[0], strlen(reinterpret_cast<const char *>(attrs[0]))},
-          name)) {
-      return StringRef{attrs[1],
-                       strlen(reinterpret_cast<const char *>(attrs[1]))};
+    if (util::strieq(StringRef{reinterpret_cast<const char *>(attrs[0])},
+                     name)) {
+      return StringRef{reinterpret_cast<const char *>(attrs[1])};
     }
   }
   return StringRef{};
@@ -88,8 +86,7 @@ namespace {
 void start_element_func(void *user_data, const xmlChar *src_name,
                         const xmlChar **attrs) {
   auto parser_data = static_cast<ParserData *>(user_data);
-  auto name =
-    StringRef{src_name, strlen(reinterpret_cast<const char *>(src_name))};
+  auto name = StringRef{reinterpret_cast<const char *>(src_name)};
   if (util::strieq("head"_sr, name)) {
     ++parser_data->inside_head;
   }
@@ -134,9 +131,8 @@ void start_element_func(void *user_data, const xmlChar *src_name,
 namespace {
 void end_element_func(void *user_data, const xmlChar *name) {
   auto parser_data = static_cast<ParserData *>(user_data);
-  if (util::strieq(
-        "head"_sr,
-        StringRef{name, strlen(reinterpret_cast<const char *>(name))})) {
+  if (util::strieq("head"_sr,
+                   StringRef{reinterpret_cast<const char *>(name)})) {
     --parser_data->inside_head;
   }
 }

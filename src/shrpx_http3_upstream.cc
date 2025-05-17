@@ -1401,8 +1401,9 @@ int Http3Upstream::on_downstream_header_complete(Downstream *downstream) {
 
     if (nghttp3_conn_get_stream_priority(httpconn_, &pri,
                                          downstream->get_stream_id()) == 0 &&
-        nghttp3_pri_parse_priority(&pri, priority->value.byte(),
-                                   priority->value.size()) == 0) {
+        nghttp3_pri_parse_priority(
+          &pri, reinterpret_cast<const uint8_t *>(priority->value.data()),
+          priority->value.size()) == 0) {
       rv = nghttp3_conn_set_server_stream_priority(
         httpconn_, downstream->get_stream_id(), &pri);
       if (rv != 0) {
@@ -2191,8 +2192,8 @@ int Http3Upstream::http_recv_request_header(Downstream *downstream,
     return 0;
   }
 
-  auto nameref = StringRef{namebuf.base, namebuf.len};
-  auto valueref = StringRef{valuebuf.base, valuebuf.len};
+  auto nameref = as_string_ref(namebuf.base, namebuf.len);
+  auto valueref = as_string_ref(valuebuf.base, valuebuf.len);
   auto token = http2::lookup_token(nameref);
   auto no_index = flags & NGHTTP3_NV_FLAG_NEVER_INDEX;
 
@@ -2836,8 +2837,8 @@ void Http3Upstream::log_response_headers(
   Downstream *downstream, const std::vector<nghttp3_nv> &nva) const {
   std::stringstream ss;
   for (auto &nv : nva) {
-    ss << TTY_HTTP_HD << StringRef{nv.name, nv.namelen} << TTY_RST << ": "
-       << StringRef{nv.value, nv.valuelen} << "\n";
+    ss << TTY_HTTP_HD << as_string_ref(nv.name, nv.namelen) << TTY_RST << ": "
+       << as_string_ref(nv.value, nv.valuelen) << "\n";
   }
   ULOG(INFO, this) << "HTTP response headers. stream_id="
                    << downstream->get_stream_id() << "\n"

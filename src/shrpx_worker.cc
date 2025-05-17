@@ -287,8 +287,7 @@ void Worker::replace_downstream_config(
     auto &dst = downstream_addr_groups_[i];
 
     dst = std::make_shared<DownstreamAddrGroup>();
-    dst->pattern = ImmutableString{std::ranges::begin(src.pattern),
-                                   std::ranges::end(src.pattern)};
+    dst->pattern = ImmutableString{src.pattern};
 
     auto shared_addr = std::make_shared<SharedDownstreamAddr>();
 

@@ -472,14 +472,14 @@ int alpn_select_proto_cb(SSL *ssl, const unsigned char **out,
   // We assume that get_config()->alpn_list contains ALPN protocol
   // identifier sorted by preference order.  So we just break when we
   // found the first overlap.
-  for (const auto &target_proto_id : get_config()->tls.alpn_list) {
+  for (const auto &alpn : get_config()->tls.alpn_list) {
     for (auto p = in, end = in + inlen; p < end;) {
       auto proto_id = p + 1;
       auto proto_len = *p;
 
-      if (proto_id + proto_len <= end &&
-          target_proto_id == StringRef{proto_id, proto_len}) {
-        *out = reinterpret_cast<const unsigned char *>(proto_id);
+      if (alpn.size() == proto_len &&
+          memcmp(alpn.data(), proto_id, alpn.size()) == 0) {
+        *out = proto_id;
         *outlen = proto_len;
 
         return SSL_TLSEXT_ERR_OK;
@@ -509,7 +509,7 @@ int quic_alpn_select_proto_cb(SSL *ssl, const unsigned char **out,
       auto proto_len = *p;
 
       if (alpn.size() == proto_len &&
-          memcmp(alpn.byte(), proto_id, alpn.size()) == 0) {
+          memcmp(alpn.data(), proto_id, alpn.size()) == 0) {
         *out = proto_id;
         *outlen = proto_len;
 
@@ -1561,7 +1561,7 @@ StringRef get_common_name(X509 *cert) {
       continue;
     }
 
-    return StringRef{p, static_cast<size_t>(plen)};
+    return as_string_ref(p, static_cast<size_t>(plen));
   }
   return StringRef{};
 }
@@ -1665,7 +1665,7 @@ int verify_dns_hostname(X509 *cert, const StringRef &hostname) {
 
       dns_found = true;
 
-      if (tls_hostname_match(StringRef{name, static_cast<size_t>(len)},
+      if (tls_hostname_match(as_string_ref(name, static_cast<size_t>(len)),
                              hostname)) {
         return 0;
       }
@@ -2139,7 +2139,9 @@ void setup_downstream_http2_alpn(SSL *ssl) {
 
 void setup_downstream_http1_alpn(SSL *ssl) {
   // ALPN advertisement
-  SSL_set_alpn_protos(ssl, NGHTTP2_H1_1_ALPN.byte(), NGHTTP2_H1_1_ALPN.size());
+  SSL_set_alpn_protos(
+    ssl, reinterpret_cast<const uint8_t *>(NGHTTP2_H1_1_ALPN.data()),
+    NGHTTP2_H1_1_ALPN.size());
 }
 
 std::unique_ptr<CertLookupTree> create_cert_lookup_tree() {
@@ -2234,7 +2236,7 @@ StringRef get_x509_name(BlockAllocator &balloc, X509_NAME *nm) {
   auto iov = make_byte_ref(balloc, slen + 1);
   BIO_read(b, iov.data(), slen);
   iov[slen] = '\0';
-  return StringRef{iov.data(), static_cast<size_t>(slen)};
+  return as_string_ref(iov.first(slen));
 }
 } // namespace
 
