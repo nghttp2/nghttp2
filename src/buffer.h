@@ -27,49 +27,46 @@
 
 #include "nghttp2_config.h"
 
-#include <cstring>
 #include <algorithm>
-#include <array>
 
 namespace nghttp2 {
 
 template <size_t N> struct Buffer {
-  Buffer() : pos(std::begin(buf)), last(pos) {}
+  constexpr Buffer() noexcept : pos(buf), last(pos) {}
   // Returns the number of bytes to read.
-  size_t rleft() const { return last - pos; }
+  constexpr size_t rleft() const noexcept { return last - pos; }
   // Returns the number of bytes this buffer can store.
-  size_t wleft() const { return std::end(buf) - last; }
+  constexpr size_t wleft() const noexcept { return &buf[N] - last; }
   // Writes up to min(wleft(), |count|) bytes from buffer pointed by
   // |src|.  Returns number of bytes written.
-  size_t write(const void *src, size_t count) {
+  constexpr size_t write(const void *src, size_t count) {
     count = std::min(count, wleft());
     auto p = static_cast<const uint8_t *>(src);
-    last = std::copy_n(p, count, last);
+    last = std::ranges::copy_n(p, count, last).out;
     return count;
   }
-  size_t write(size_t count) {
+  constexpr size_t write(size_t count) {
     count = std::min(count, wleft());
     last += count;
     return count;
   }
   // Drains min(rleft(), |count|) bytes from start of the buffer.
-  size_t drain(size_t count) {
+  constexpr size_t drain(size_t count) {
     count = std::min(count, rleft());
     pos += count;
     return count;
   }
-  size_t drain_reset(size_t count) {
+  constexpr size_t drain_reset(size_t count) {
     count = std::min(count, rleft());
-    std::copy(pos + count, last, std::begin(buf));
-    last = std::begin(buf) + (last - (pos + count));
-    pos = std::begin(buf);
+    last = std::ranges::copy(pos + count, last, buf).out;
+    pos = buf;
     return count;
   }
-  void reset() { pos = last = std::begin(buf); }
-  uint8_t *begin() { return std::begin(buf); }
-  uint8_t &operator[](size_t n) { return buf[n]; }
-  const uint8_t &operator[](size_t n) const { return buf[n]; }
-  std::array<uint8_t, N> buf;
+  constexpr void reset() noexcept { pos = last = buf; }
+  constexpr uint8_t *begin() noexcept { return buf; }
+  constexpr uint8_t &operator[](size_t n) { return buf[n]; }
+  constexpr const uint8_t &operator[](size_t n) const { return buf[n]; }
+  uint8_t buf[N];
   uint8_t *pos, *last;
 };
 
