@@ -254,32 +254,28 @@ void worker_process_grace_period_timercb(struct ev_loop *loop, ev_timer *w,
   auto now = std::chrono::steady_clock::now();
   auto next_repeat = std::chrono::steady_clock::duration::zero();
 
-  for (auto it = std::begin(worker_processes);
-       it != std::end(worker_processes);) {
-    auto &wp = *it;
-    if (wp->termination_deadline.time_since_epoch().count() == 0) {
-      ++it;
-
-      continue;
-    }
-
-    auto d = wp->termination_deadline - now;
-    if (d.count() > 0) {
-      if (next_repeat == std::chrono::steady_clock::duration::zero() ||
-          d < next_repeat) {
-        next_repeat = d;
+  auto r =
+    std::ranges::remove_if(worker_processes, [&now, &next_repeat](auto &wp) {
+      if (wp->termination_deadline.time_since_epoch().count() == 0) {
+        return false;
       }
 
-      ++it;
+      auto d = wp->termination_deadline - now;
+      if (d.count() > 0) {
+        if (next_repeat == std::chrono::steady_clock::duration::zero() ||
+            d < next_repeat) {
+          next_repeat = d;
+        }
 
-      continue;
-    }
+        return false;
+      }
 
-    LOG(NOTICE) << "Deleting worker process pid=" << wp->worker_pid
-                << " because its grace shutdown period is over";
+      LOG(NOTICE) << "Deleting worker process pid=" << wp->worker_pid
+                  << " because its grace shutdown period is over";
 
-    it = worker_processes.erase(it);
-  }
+      return true;
+    });
+  worker_processes.erase(std::ranges::begin(r), std::ranges::end(r));
 
   if (next_repeat.count() > 0) {
     w->repeat = util::ev_tstamp_from(next_repeat);
@@ -322,21 +318,14 @@ void worker_process_add(std::unique_ptr<WorkerProcess> wp) {
 
 namespace {
 void worker_process_remove(const WorkerProcess *wp, struct ev_loop *loop) {
-  for (auto it = std::begin(worker_processes); it != std::end(worker_processes);
-       ++it) {
-    auto &s = *it;
-
-    if (s.get() != wp) {
-      continue;
-    }
-
+  auto it = std::ranges::find_if(worker_processes,
+                                 [wp](auto &s) { return s.get() == wp; });
+  if (it != std::ranges::end(worker_processes)) {
     worker_processes.erase(it);
 
     if (worker_processes.empty()) {
       ev_timer_stop(loop, &worker_process_grace_period_timer);
     }
-
-    break;
   }
 }
 } // namespace
@@ -386,8 +375,8 @@ int save_pid() {
   auto buf = std::make_unique<char[]>(len + 1);
   auto p = buf.get();
 
-  p = std::copy(std::begin(pid_file), std::end(pid_file), p);
-  p = std::copy(std::begin(SUFFIX), std::end(SUFFIX), p);
+  p = std::ranges::copy(pid_file, p).out;
+  p = std::ranges::copy(SUFFIX, p).out;
   *p = '\0';
 
   auto temp_path = buf.get();
@@ -706,11 +695,11 @@ namespace {
 int create_unix_domain_server_socket(
   UpstreamAddr &faddr, std::vector<InheritedUNIXDomainAddr> &iaddrs) {
   std::array<char, STRERROR_BUFSIZE> errbuf;
-  auto found = std::find_if(
-    std::begin(iaddrs), std::end(iaddrs),
-    [&faddr](const auto &ia) { return !ia.used && ia.path == faddr.host; });
+  auto found = std::ranges::find_if(iaddrs, [&faddr](const auto &ia) {
+    return !ia.used && ia.path == faddr.host;
+  });
 
-  if (found != std::end(iaddrs)) {
+  if (found != std::ranges::end(iaddrs)) {
     LOG(NOTICE) << "Listening on UNIX domain socket " << faddr.host
                 << (faddr.tls ? ", tls" : "");
     (*found).used = true;
@@ -757,7 +746,8 @@ int create_unix_domain_server_socket(
     return -1;
   }
   // copy path including terminal NULL
-  std::copy_n(faddr.host.data(), faddr.host.size() + 1, addr.un.sun_path);
+  std::ranges::copy_n(faddr.host.data(), faddr.host.size() + 1,
+                      addr.un.sun_path);
 
   // unlink (remove) already existing UNIX domain socket path
   unlink(faddr.host.data());
@@ -930,7 +920,7 @@ get_inherited_quic_lingering_worker_process_from_env() {
 
     auto envend = env + strlen(env);
 
-    auto end_fd = std::find(env, envend, ',');
+    auto end_fd = std::ranges::find(env, envend, ',');
     if (end_fd == envend) {
       continue;
     }
@@ -952,7 +942,7 @@ get_inherited_quic_lingering_worker_process_from_env() {
 
     auto p = end_fd + 1;
     for (;;) {
-      auto end = std::find(p, envend, ',');
+      auto end = std::ranges::find(p, envend, ',');
 
       auto hex_wid = StringRef{p, end};
       if (hex_wid.size() != SHRPX_QUIC_WORKER_IDLEN * 2 ||
@@ -1153,8 +1143,8 @@ namespace {
 std::vector<QUICLingeringWorkerProcess>
 collect_quic_lingering_worker_processes() {
   std::vector<QUICLingeringWorkerProcess> quic_lwps{
-    std::begin(inherited_quic_lingering_worker_processes),
-    std::end(inherited_quic_lingering_worker_processes)};
+    std::ranges::begin(inherited_quic_lingering_worker_processes),
+    std::ranges::end(inherited_quic_lingering_worker_processes)};
 
   for (auto &wp : worker_processes) {
     quic_lwps.emplace_back(wp->worker_ids, wp->quic_ipc_fd);
@@ -3454,7 +3444,7 @@ int process_options(Config *config,
 
   auto &proxy = config->downstream_http_proxy;
   if (!proxy.host.empty()) {
-    auto hostport = util::make_hostport(std::begin(hostport_buf),
+    auto hostport = util::make_hostport(std::ranges::begin(hostport_buf),
                                         StringRef{proxy.host}, proxy.port);
     if (resolve_hostname(&proxy.addr, proxy.host.data(), proxy.port,
                          AF_UNSPEC) == -1) {
@@ -3469,7 +3459,7 @@ int process_options(Config *config,
     auto &memcachedconf = tlsconf.ticket.memcached;
     if (!memcachedconf.host.empty()) {
       auto hostport =
-        util::make_hostport(std::begin(hostport_buf),
+        util::make_hostport(std::ranges::begin(hostport_buf),
                             StringRef{memcachedconf.host}, memcachedconf.port);
       if (resolve_hostname(&memcachedconf.addr, memcachedconf.host.data(),
                            memcachedconf.port, memcachedconf.family) == -1) {
@@ -3514,12 +3504,12 @@ int process_options(Config *config,
       fwdconf.by_obfuscated.empty()) {
     // 2 for '_' and terminal NULL
     auto iov = make_byte_ref(config->balloc, SHRPX_OBFUSCATED_NODE_LENGTH + 2);
-    auto p = std::begin(iov);
+    auto p = std::ranges::begin(iov);
     *p++ = '_';
     auto gen = util::make_mt19937();
     p = util::random_alpha_digit(p, p + SHRPX_OBFUSCATED_NODE_LENGTH, gen);
     *p = '\0';
-    fwdconf.by_obfuscated = as_string_ref(std::begin(iov), p);
+    fwdconf.by_obfuscated = as_string_ref(std::ranges::begin(iov), p);
   }
 
   if (config->http2.upstream.debug.frame_debug) {
@@ -3560,11 +3550,10 @@ void close_not_inherited_fd(
       continue;
     }
 
-    auto inherited =
-      std::find_if(std::begin(iaddrs), std::end(iaddrs),
-                   [&addr](const auto &iaddr) { return addr.fd == iaddr.fd; });
+    auto inherited = std::ranges::find_if(
+      iaddrs, [&addr](const auto &iaddr) { return addr.fd == iaddr.fd; });
 
-    if (inherited != std::end(iaddrs)) {
+    if (inherited != std::ranges::end(iaddrs)) {
       continue;
     }
 
