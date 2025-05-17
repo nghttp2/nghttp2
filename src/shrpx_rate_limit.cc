@@ -109,7 +109,7 @@ void RateLimit::stopw() {
 
 void RateLimit::handle_tls_pending_read() {
   if (!conn_ || !conn_->tls.ssl ||
-      (SSL_pending(conn_->tls.ssl) == 0 && conn_->tls.rbuf.rleft() == 0 &&
+      (SSL_pending(conn_->tls.ssl) == 0 &&
        (!conn_->tls.initial_handshake_done ||
         conn_->tls.earlybuf.rleft() == 0))) {
     return;

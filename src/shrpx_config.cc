@@ -3647,6 +3647,8 @@ int parse_config(Config *config, int optid, const StringRef &opt,
 
     return 0;
   case SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED:
+    LOG(WARN) << opt << ": deprecated.  It has no effect";
+    return 0;
   case SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED: {
     auto addr_end = std::ranges::find(optarg, ';');
     auto src_params = StringRef{addr_end, std::ranges::end(optarg)};
@@ -3663,22 +3665,10 @@ int parse_config(Config *config, int optid, const StringRef &opt,
       return -1;
     }
 
-    switch (optid) {
-    case SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED: {
-      auto &memcachedconf = config->tls.session_cache.memcached;
-      memcachedconf.host = make_string_ref(config->balloc, StringRef{host});
-      memcachedconf.port = port;
-      memcachedconf.tls = params.tls;
-      break;
-    }
-    case SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED: {
-      auto &memcachedconf = config->tls.ticket.memcached;
-      memcachedconf.host = make_string_ref(config->balloc, StringRef{host});
-      memcachedconf.port = port;
-      memcachedconf.tls = params.tls;
-      break;
-    }
-    };
+    auto &memcachedconf = config->tls.ticket.memcached;
+    memcachedconf.host = make_string_ref(config->balloc, StringRef{host});
+    memcachedconf.port = port;
+    memcachedconf.tls = params.tls;
 
     return 0;
   }
@@ -3803,18 +3793,13 @@ int parse_config(Config *config, int optid, const StringRef &opt,
               << SHRPX_OPT_BACKEND << " instead.";
     return 0;
   case SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED_TLS:
-    LOG(WARN) << opt << ": deprecated.  Use tls keyword in "
-              << SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED;
+    LOG(WARN) << opt << ": deprecated.  It has no effect";
     return 0;
   case SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED_CERT_FILE:
-    config->tls.session_cache.memcached.cert_file =
-      make_string_ref(config->balloc, optarg);
-
+    LOG(WARN) << opt << ": deprecated.  It has no effect";
     return 0;
   case SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED_PRIVATE_KEY_FILE:
-    config->tls.session_cache.memcached.private_key_file =
-      make_string_ref(config->balloc, optarg);
-
+    LOG(WARN) << opt << ": deprecated.  It has no effect";
     return 0;
   case SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED_TLS:
     LOG(WARN) << opt << ": deprecated.  Use tls keyword in "
@@ -3834,8 +3819,8 @@ int parse_config(Config *config, int optid, const StringRef &opt,
     return parse_address_family(&config->tls.ticket.memcached.family, opt,
                                 optarg);
   case SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED_ADDRESS_FAMILY:
-    return parse_address_family(&config->tls.session_cache.memcached.family,
-                                opt, optarg);
+    LOG(WARN) << opt << ": deprecated.  It has no effect";
+    return 0;
   case SHRPX_OPTID_BACKEND_ADDRESS_FAMILY:
     return parse_address_family(&config->conn.downstream->family, opt, optarg);
   case SHRPX_OPTID_FRONTEND_HTTP2_MAX_CONCURRENT_STREAMS:

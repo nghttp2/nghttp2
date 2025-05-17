@@ -52,28 +52,14 @@
 
 namespace shrpx {
 
-struct MemcachedRequest;
-
 namespace tls {
 struct TLSSessionCache;
 } // namespace tls
 
-enum class TLSHandshakeState {
-  NORMAL,
-  WAIT_FOR_SESSION_CACHE,
-  GOT_SESSION_CACHE,
-  CANCEL_SESSION_CACHE,
-  WRITE_STARTED,
-};
-
 struct TLSConnection {
-  DefaultMemchunks wbuf;
-  DefaultPeekMemchunks rbuf;
   // Stores TLSv1.3 early data.
   DefaultMemchunks earlybuf;
   SSL *ssl;
-  SSL_SESSION *cached_session;
-  MemcachedRequest *cached_session_lookup_req;
   tls::TLSSessionCache *client_session_cache;
   std::chrono::steady_clock::time_point last_write_idle;
   size_t warmup_writelen;
@@ -81,7 +67,6 @@ struct TLSConnection {
   // required since these functions require the exact same parameters
   // on non-blocking I/O.
   size_t last_writelen, last_readlen;
-  TLSHandshakeState handshake_state;
   bool initial_handshake_done;
   bool reneg_started;
   // true if ssl is prepared to do handshake as server.
@@ -122,7 +107,6 @@ struct Connection {
   void prepare_server_handshake();
 
   int tls_handshake();
-  int tls_handshake_simple();
   int write_tls_pending_handshake();
 
   int check_http2_requirement();
@@ -203,9 +187,6 @@ struct Connection {
 static_assert(std::is_standard_layout<Connection>::value,
               "Connection is not standard layout");
 #endif // ENABLE_HTTP3
-
-// Creates BIO_method shared by all SSL objects.
-BIO_METHOD *create_bio_method();
 
 } // namespace shrpx
 

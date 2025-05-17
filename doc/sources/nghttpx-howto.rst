@@ -167,8 +167,7 @@ Enable SSL/TLS on memcached connection
 
 By default, memcached connection is not encrypted.  To enable
 encryption, use ``tls`` keyword in
-:option:`--tls-ticket-key-memcached` for TLS ticket key, and
-:option:`--tls-session-cache-memcached` for TLS session cache.
+:option:`--tls-ticket-key-memcached`.
 
 Specifying additional server certificates
 -----------------------------------------

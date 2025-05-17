@@ -43,10 +43,6 @@ const MunitTest tests[]{
   munit_void_test(test_memchunks_riovec),
   munit_void_test(test_memchunks_recycle),
   munit_void_test(test_memchunks_reset),
-  munit_void_test(test_peek_memchunks_append),
-  munit_void_test(test_peek_memchunks_disable_peek_drain),
-  munit_void_test(test_peek_memchunks_disable_peek_no_drain),
-  munit_void_test(test_peek_memchunks_reset),
   munit_test_end(),
 };
 } // namespace
@@ -106,7 +102,6 @@ void test_pool_recycle(void) {
 using Memchunk16 = Memchunk<16>;
 using MemchunkPool16 = Pool<Memchunk16>;
 using Memchunks16 = Memchunks<Memchunk16>;
-using PeekMemchunks16 = PeekMemchunks<Memchunk16>;
 
 void test_memchunks_append(void) {
   MemchunkPool16 pool;
@@ -240,123 +235,6 @@ void test_memchunks_reset(void) {
   assert_not_null(m);
   assert_not_null(m->next);
   assert_null(m->next->next);
-}
-
-void test_peek_memchunks_append(void) {
-  MemchunkPool16 pool;
-  PeekMemchunks16 pchunks(&pool);
-
-  std::array<uint8_t, 32> b{
-    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0',
-    '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '1',
-  },
-    d;
-
-  pchunks.append(b.data(), b.size());
-
-  assert_size(32, ==, pchunks.rleft());
-  assert_size(32, ==, pchunks.rleft_buffered());
-
-  assert_size(0, ==, pchunks.remove(nullptr, 0));
-
-  assert_size(32, ==, pchunks.rleft());
-  assert_size(32, ==, pchunks.rleft_buffered());
-
-  assert_size(12, ==, pchunks.remove(d.data(), 12));
-
-  assert_true(std::equal(std::begin(b), std::begin(b) + 12, std::begin(d)));
-
-  assert_size(20, ==, pchunks.rleft());
-  assert_size(32, ==, pchunks.rleft_buffered());
-
-  assert_size(20, ==, pchunks.remove(d.data(), d.size()));
-
-  assert_true(std::equal(std::begin(b) + 12, std::end(b), std::begin(d)));
-
-  assert_size(0, ==, pchunks.rleft());
-  assert_size(32, ==, pchunks.rleft_buffered());
-}
-
-void test_peek_memchunks_disable_peek_drain(void) {
-  MemchunkPool16 pool;
-  PeekMemchunks16 pchunks(&pool);
-
-  std::array<uint8_t, 32> b{
-    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0',
-    '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '1',
-  },
-    d;
-
-  pchunks.append(b.data(), b.size());
-
-  assert_size(12, ==, pchunks.remove(d.data(), 12));
-
-  pchunks.disable_peek(true);
-
-  assert_false(pchunks.peeking);
-  assert_size(20, ==, pchunks.rleft());
-  assert_size(20, ==, pchunks.rleft_buffered());
-
-  assert_size(20, ==, pchunks.remove(d.data(), d.size()));
-
-  assert_true(std::equal(std::begin(b) + 12, std::end(b), std::begin(d)));
-
-  assert_size(0, ==, pchunks.rleft());
-  assert_size(0, ==, pchunks.rleft_buffered());
-}
-
-void test_peek_memchunks_disable_peek_no_drain(void) {
-  MemchunkPool16 pool;
-  PeekMemchunks16 pchunks(&pool);
-
-  std::array<uint8_t, 32> b{
-    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0',
-    '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '1',
-  },
-    d;
-
-  pchunks.append(b.data(), b.size());
-
-  assert_size(12, ==, pchunks.remove(d.data(), 12));
-
-  pchunks.disable_peek(false);
-
-  assert_false(pchunks.peeking);
-  assert_size(32, ==, pchunks.rleft());
-  assert_size(32, ==, pchunks.rleft_buffered());
-
-  assert_size(32, ==, pchunks.remove(d.data(), d.size()));
-
-  assert_true(std::equal(std::begin(b), std::end(b), std::begin(d)));
-
-  assert_size(0, ==, pchunks.rleft());
-  assert_size(0, ==, pchunks.rleft_buffered());
-}
-
-void test_peek_memchunks_reset(void) {
-  MemchunkPool16 pool;
-  PeekMemchunks16 pchunks(&pool);
-
-  std::array<uint8_t, 32> b{
-    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0',
-    '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '1',
-  },
-    d;
-
-  pchunks.append(b.data(), b.size());
-
-  assert_size(12, ==, pchunks.remove(d.data(), 12));
-
-  pchunks.disable_peek(true);
-  pchunks.reset();
-
-  assert_size(0, ==, pchunks.rleft());
-  assert_size(0, ==, pchunks.rleft_buffered());
-
-  assert_null(pchunks.cur);
-  assert_null(pchunks.cur_pos);
-  assert_null(pchunks.cur_last);
-  assert_true(pchunks.peeking);
 }
 
 } // namespace nghttp2

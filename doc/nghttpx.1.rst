@@ -886,34 +886,6 @@ SSL/TLS
     Path to client private  key for memcached connections to
     get TLS ticket keys.
 
-.. option:: --tls-session-cache-memcached=<HOST>,<PORT>[;tls]
-
-    Specify  address of  memcached server  to store  session
-    cache.   This  enables   shared  session  cache  between
-    multiple   nghttpx  instances.    Optionally,  memcached
-    connection can be encrypted with TLS by specifying "tls"
-    parameter.
-
-.. option:: --tls-session-cache-memcached-address-family=(auto|IPv4|IPv6)
-
-    Specify address family of memcached connections to store
-    session cache.  If  "auto" is given, both  IPv4 and IPv6
-    are considered.   If "IPv4" is given,  only IPv4 address
-    is considered.  If "IPv6" is given, only IPv6 address is
-    considered.
-
-    Default: ``auto``
-
-.. option:: --tls-session-cache-memcached-cert-file=<PATH>
-
-    Path to client certificate  for memcached connections to
-    store session cache.
-
-.. option:: --tls-session-cache-memcached-private-key-file=<PATH>
-
-    Path to client private  key for memcached connections to
-    store session cache.
-
 .. option:: --tls-dyn-rec-warmup-threshold=<SIZE>
 
     Specify the  threshold size for TLS  dynamic record size
@@ -1013,8 +985,7 @@ SSL/TLS
 
 .. option:: --tls-ktls
 
-    Enable   ktls.    For   server,  ktls   is   enable   if
-    :option:`--tls-session-cache-memcached` is not configured.
+    Enable ktls.
 
 
 HTTP/2
@@ -1948,16 +1919,6 @@ SESSION ID RESUMPTION
 ~~~~~~~~~~~~~~~~~~~~~
 
 By default, session ID is shared by all worker threads.
-
-If :option:`--tls-session-cache-memcached` is given, nghttpx will
-insert serialized session data to memcached with
-``nghttpx:tls-session-cache:`` + lowercase hex string of session ID
-as a memcached entry key, with expiry time 12 hours.  Session timeout
-is set to 12 hours.
-
-By default, connections to memcached server are not encrypted.  To
-enable encryption, use ``tls`` keyword in
-:option:`--tls-session-cache-memcached` option.
 
 TLS SESSION TICKET RESUMPTION
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -849,8 +849,8 @@ to know how to migrate from earlier releases.
 <https://istlsfastyet.com/#server-performance>`_ in TLS, such as
 session IDs, session tickets (with automatic key rotation), dynamic
 record sizing, ALPN, forward secrecy and HTTP/2.  ``nghttpx`` also
-offers the functionality to share session cache and ticket keys among
-multiple ``nghttpx`` instances via memcached.
+offers the functionality to share ticket keys among multiple
+``nghttpx`` instances via memcached.
 
 ``nghttpx`` has 2 operation modes:
 

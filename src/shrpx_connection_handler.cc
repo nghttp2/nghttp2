@@ -186,24 +186,6 @@ int ConnectionHandler::create_single_worker() {
   }
 
   auto config = get_config();
-  auto &tlsconf = config->tls;
-
-  SSL_CTX *session_cache_ssl_ctx = nullptr;
-  {
-    auto &memcachedconf = config->tls.session_cache.memcached;
-    if (memcachedconf.tls) {
-      session_cache_ssl_ctx = tls::create_ssl_client_context(
-#ifdef HAVE_NEVERBLEED
-        nb_,
-#endif // HAVE_NEVERBLEED
-        tlsconf.cacert, memcachedconf.cert_file,
-        memcachedconf.private_key_file);
-      all_ssl_ctx_.push_back(session_cache_ssl_ctx);
-#ifdef ENABLE_HTTP3
-      quic_all_ssl_ctx_.push_back(nullptr);
-#endif // ENABLE_HTTP3
-    }
-  }
 
 #if defined(ENABLE_HTTP3) && defined(HAVE_LIBBPF)
   quic_bpf_refs_.resize(config->conn.quic_listener.addrs.size());
@@ -215,7 +197,7 @@ int ConnectionHandler::create_single_worker() {
 #endif // ENABLE_HTTP3
 
   single_worker_ = std::make_unique<Worker>(
-    loop_, sv_ssl_ctx, cl_ssl_ctx, session_cache_ssl_ctx, cert_tree_.get(),
+    loop_, sv_ssl_ctx, cl_ssl_ctx, cert_tree_.get(),
 #ifdef ENABLE_HTTP3
     quic_sv_ssl_ctx, quic_cert_tree_.get(), wid,
 #endif // ENABLE_HTTP3
@@ -277,7 +259,6 @@ int ConnectionHandler::create_worker_thread(size_t num) {
   }
 
   auto config = get_config();
-  auto &tlsconf = config->tls;
   auto &apiconf = config->api;
 
 #  if defined(ENABLE_HTTP3) && defined(HAVE_LIBBPF)
@@ -287,24 +268,6 @@ int ConnectionHandler::create_worker_thread(size_t num) {
   // We have dedicated worker for API request processing.
   if (apiconf.enabled) {
     ++num;
-  }
-
-  SSL_CTX *session_cache_ssl_ctx = nullptr;
-  {
-    auto &memcachedconf = config->tls.session_cache.memcached;
-
-    if (memcachedconf.tls) {
-      session_cache_ssl_ctx = tls::create_ssl_client_context(
-#  ifdef HAVE_NEVERBLEED
-        nb_,
-#  endif // HAVE_NEVERBLEED
-        tlsconf.cacert, memcachedconf.cert_file,
-        memcachedconf.private_key_file);
-      all_ssl_ctx_.push_back(session_cache_ssl_ctx);
-#  ifdef ENABLE_HTTP3
-      quic_all_ssl_ctx_.push_back(nullptr);
-#  endif // ENABLE_HTTP3
-    }
   }
 
 #  ifdef ENABLE_HTTP3
@@ -318,12 +281,12 @@ int ConnectionHandler::create_worker_thread(size_t num) {
     const auto &wid = worker_ids_[i];
 #  endif // ENABLE_HTTP3
 
-    auto worker = std::make_unique<Worker>(
-      loop, sv_ssl_ctx, cl_ssl_ctx, session_cache_ssl_ctx, cert_tree_.get(),
+    auto worker =
+      std::make_unique<Worker>(loop, sv_ssl_ctx, cl_ssl_ctx, cert_tree_.get(),
 #  ifdef ENABLE_HTTP3
-      quic_sv_ssl_ctx, quic_cert_tree_.get(), wid,
+                               quic_sv_ssl_ctx, quic_cert_tree_.get(), wid,
 #  endif // ENABLE_HTTP3
-      i, ticket_keys_, this, config->conn.downstream);
+                               i, ticket_keys_, this, config->conn.downstream);
 #  ifdef HAVE_MRUBY
     if (worker->create_mruby_context() != 0) {
       return -1;

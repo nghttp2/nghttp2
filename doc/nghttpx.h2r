@@ -167,16 +167,6 @@ SESSION ID RESUMPTION
 
 By default, session ID is shared by all worker threads.
 
-If :option:`--tls-session-cache-memcached` is given, nghttpx will
-insert serialized session data to memcached with
-``nghttpx:tls-session-cache:`` + lowercase hex string of session ID
-as a memcached entry key, with expiry time 12 hours.  Session timeout
-is set to 12 hours.
-
-By default, connections to memcached server are not encrypted.  To
-enable encryption, use ``tls`` keyword in
-:option:`--tls-session-cache-memcached` option.
-
 TLS SESSION TICKET RESUMPTION
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

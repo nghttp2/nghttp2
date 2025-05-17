@@ -27,7 +27,7 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
-.TH "NGHTTPX" "1" "May 16, 2025" "1.66.0-DEV" "nghttp2"
+.TH "NGHTTPX" "1" "May 17, 2025" "1.66.0-DEV" "nghttp2"
 .SH NAME
 nghttpx \- HTTP/2 proxy
 .SH SYNOPSIS
@@ -958,38 +958,6 @@ get TLS ticket keys.
 .UNINDENT
 .INDENT 0.0
 .TP
-.B \-\-tls\-session\-cache\-memcached=<HOST>,<PORT>[;tls]
-Specify  address of  memcached server  to store  session
-cache.   This  enables   shared  session  cache  between
-multiple   nghttpx  instances.    Optionally,  memcached
-connection can be encrypted with TLS by specifying \(dqtls\(dq
-parameter.
-.UNINDENT
-.INDENT 0.0
-.TP
-.B \-\-tls\-session\-cache\-memcached\-address\-family=(auto|IPv4|IPv6)
-Specify address family of memcached connections to store
-session cache.  If  \(dqauto\(dq is given, both  IPv4 and IPv6
-are considered.   If \(dqIPv4\(dq is given,  only IPv4 address
-is considered.  If \(dqIPv6\(dq is given, only IPv6 address is
-considered.
-.sp
-Default: \fBauto\fP
-.UNINDENT
-.INDENT 0.0
-.TP
-.B \-\-tls\-session\-cache\-memcached\-cert\-file=<PATH>
-Path to client certificate  for memcached connections to
-store session cache.
-.UNINDENT
-.INDENT 0.0
-.TP
-.B \-\-tls\-session\-cache\-memcached\-private\-key\-file=<PATH>
-Path to client private  key for memcached connections to
-store session cache.
-.UNINDENT
-.INDENT 0.0
-.TP
 .B \-\-tls\-dyn\-rec\-warmup\-threshold=<SIZE>
 Specify the  threshold size for TLS  dynamic record size
 behaviour.  During  a TLS  session, after  the threshold
@@ -1097,8 +1065,7 @@ Default: \fB16K\fP
 .INDENT 0.0
 .TP
 .B \-\-tls\-ktls
-Enable   ktls.    For   server,  ktls   is   enable   if
-\fI\%\-\-tls\-session\-cache\-memcached\fP is not configured.
+Enable ktls.
 .UNINDENT
 .SS HTTP/2
 .INDENT 0.0
@@ -2123,16 +2090,6 @@ session ticket.
 .SS SESSION ID RESUMPTION
 .sp
 By default, session ID is shared by all worker threads.
-.sp
-If \fI\%\-\-tls\-session\-cache\-memcached\fP is given, nghttpx will
-insert serialized session data to memcached with
-\fBnghttpx:tls\-session\-cache:\fP + lowercase hex string of session ID
-as a memcached entry key, with expiry time 12 hours.  Session timeout
-is set to 12 hours.
-.sp
-By default, connections to memcached server are not encrypted.  To
-enable encryption, use \fBtls\fP keyword in
-\fI\%\-\-tls\-session\-cache\-memcached\fP option.
 .SS TLS SESSION TICKET RESUMPTION
 .sp
 By default, session ticket is shared by all worker threads.  The
