@@ -52,7 +52,6 @@
 #include "shrpx_client_handler.h"
 #include "shrpx_http2_session.h"
 #include "shrpx_log_config.h"
-#include "shrpx_memcached_dispatcher.h"
 #ifdef HAVE_MRUBY
 #  include "shrpx_mruby.h"
 #endif // HAVE_MRUBY
@@ -174,7 +173,6 @@ create_downstream_key(const std::shared_ptr<SharedDownstreamAddr> &shared_addr,
 } // namespace
 
 Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
-               SSL_CTX *tls_session_cache_memcached_ssl_ctx,
                tls::CertLookupTree *cert_tree,
 #ifdef ENABLE_HTTP3
                SSL_CTX *quic_sv_ssl_ctx, tls::CertLookupTree *quic_cert_tree,
@@ -218,15 +216,6 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
 
   ev_timer_init(&disable_listener_timer_, disable_listener_cb, 0., 0.);
   disable_listener_timer_.data = this;
-
-  auto &session_cacheconf = get_config()->tls.session_cache;
-
-  if (!session_cacheconf.memcached.host.empty()) {
-    session_cache_memcached_dispatcher_ = std::make_unique<MemcachedDispatcher>(
-      &session_cacheconf.memcached.addr, loop,
-      tls_session_cache_memcached_ssl_ctx,
-      StringRef{session_cacheconf.memcached.host}, &mcpool_, randgen_);
-  }
 
   replace_downstream_config(std::move(downstreamconf));
 }
@@ -641,10 +630,6 @@ void Worker::set_graceful_shutdown(bool f) { graceful_shutdown_ = f; }
 bool Worker::get_graceful_shutdown() const { return graceful_shutdown_; }
 
 MemchunkPool *Worker::get_mcpool() { return &mcpool_; }
-
-MemcachedDispatcher *Worker::get_session_cache_memcached_dispatcher() {
-  return session_cache_memcached_dispatcher_.get();
-}
 
 std::mt19937 &Worker::get_randgen() { return randgen_; }
 

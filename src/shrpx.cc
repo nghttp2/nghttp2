@@ -1655,12 +1655,6 @@ void fill_default_config(Config *config) {
       memcachedconf.family = AF_UNSPEC;
     }
 
-    auto &session_cacheconf = tlsconf.session_cache;
-    {
-      auto &memcachedconf = session_cacheconf.memcached;
-      memcachedconf.family = AF_UNSPEC;
-    }
-
     ticketconf.cipher = EVP_aes_128_cbc();
   }
 
@@ -2621,25 +2615,6 @@ SSL/TLS:
   --tls-ticket-key-memcached-private-key-file=<PATH>
               Path to client private  key for memcached connections to
               get TLS ticket keys.
-  --tls-session-cache-memcached=<HOST>,<PORT>[;tls]
-              Specify  address of  memcached server  to store  session
-              cache.   This  enables   shared  session  cache  between
-              multiple   nghttpx  instances.    Optionally,  memcached
-              connection can be encrypted with TLS by specifying "tls"
-              parameter.
-  --tls-session-cache-memcached-address-family=(auto|IPv4|IPv6)
-              Specify address family of memcached connections to store
-              session cache.  If  "auto" is given, both  IPv4 and IPv6
-              are considered.   If "IPv4" is given,  only IPv4 address
-              is considered.  If "IPv6" is given, only IPv6 address is
-              considered.
-              Default: auto
-  --tls-session-cache-memcached-cert-file=<PATH>
-              Path to client certificate  for memcached connections to
-              store session cache.
-  --tls-session-cache-memcached-private-key-file=<PATH>
-              Path to client private  key for memcached connections to
-              store session cache.
   --tls-dyn-rec-warmup-threshold=<SIZE>
               Specify the  threshold size for TLS  dynamic record size
               behaviour.  During  a TLS  session, after  the threshold
@@ -2719,8 +2694,7 @@ SSL/TLS:
               accepts.
               Default: )"
       << util::utos_unit(config->tls.max_early_data) << R"(
-  --tls-ktls  Enable   ktls.    For   server,  ktls   is   enable   if
-              --tls-session-cache-memcached is not configured.
+  --tls-ktls  Enable ktls.
 
 HTTP/2:
   -c, --frontend-http2-max-concurrent-streams=<N>
@@ -3443,13 +3417,6 @@ int process_options(Config *config,
     return -1;
   }
 
-#if defined(NGHTTP2_GENUINE_OPENSSL) ||                                        \
-  defined(NGHTTP2_OPENSSL_IS_BORINGSSL) ||                                     \
-  defined(NGHTTP2_OPENSSL_IS_LIBRESSL)
-  tlsconf.bio_method = create_bio_method();
-#endif // NGHTTP2_GENUINE_OPENSSL || NGHTTP2_OPENSSL_IS_BORINGSSL ||
-       // NGHTTP2_OPENSSL_IS_LIBRESSL
-
   auto &listenerconf = config->conn.listener;
   auto &upstreamconf = config->conn.upstream;
 
@@ -3496,28 +3463,6 @@ int process_options(Config *config,
     }
     LOG(NOTICE) << "Backend HTTP proxy address: " << hostport << " -> "
                 << util::to_numeric_addr(&proxy.addr);
-  }
-
-  {
-    auto &memcachedconf = tlsconf.session_cache.memcached;
-    if (!memcachedconf.host.empty()) {
-      auto hostport =
-        util::make_hostport(std::begin(hostport_buf),
-                            StringRef{memcachedconf.host}, memcachedconf.port);
-      if (resolve_hostname(&memcachedconf.addr, memcachedconf.host.data(),
-                           memcachedconf.port, memcachedconf.family) == -1) {
-        LOG(FATAL)
-          << "Resolving memcached address for TLS session cache failed: "
-          << hostport;
-        return -1;
-      }
-      LOG(NOTICE) << "Memcached address for TLS session cache: " << hostport
-                  << " -> " << util::to_numeric_addr(&memcachedconf.addr);
-      if (memcachedconf.tls) {
-        LOG(NOTICE) << "Connection to memcached for TLS session cache will be "
-                       "encrypted by TLS";
-      }
-    }
   }
 
   {

@@ -306,9 +306,6 @@ int servername_callback(SSL *ssl, int *al, void *arg) {
 }
 } // namespace
 
-constexpr auto MEMCACHED_SESSION_CACHE_KEY_PREFIX =
-  "nghttpx:tls-session-cache:"_sr;
-
 namespace {
 int tls_session_client_new_cb(SSL *ssl, SSL_SESSION *session) {
   auto conn = static_cast<Connection *>(SSL_get_app_data(ssl));
@@ -320,141 +317,6 @@ int tls_session_client_new_cb(SSL *ssl, SSL_SESSION *session) {
                         std::chrono::steady_clock::now());
 
   return 0;
-}
-} // namespace
-
-namespace {
-int tls_session_new_cb(SSL *ssl, SSL_SESSION *session) {
-  auto conn = static_cast<Connection *>(SSL_get_app_data(ssl));
-  auto handler = static_cast<ClientHandler *>(conn->data);
-  auto worker = handler->get_worker();
-  auto dispatcher = worker->get_session_cache_memcached_dispatcher();
-  auto &balloc = handler->get_block_allocator();
-
-#ifdef TLS1_3_VERSION
-  if (SSL_version(ssl) == TLS1_3_VERSION) {
-    return 0;
-  }
-#endif // TLS1_3_VERSION
-
-  const unsigned char *id;
-  unsigned int idlen;
-
-  id = SSL_SESSION_get_id(session, &idlen);
-
-  if (LOG_ENABLED(INFO)) {
-    LOG(INFO) << "Memcached: cache session, id="
-              << util::format_hex(std::span{id, idlen});
-  }
-
-  auto req = std::make_unique<MemcachedRequest>();
-  req->op = MemcachedOp::ADD;
-  req->key = MEMCACHED_SESSION_CACHE_KEY_PREFIX;
-  req->key +=
-    util::format_hex(balloc, std::span{id, static_cast<size_t>(idlen)});
-
-  auto sessionlen = i2d_SSL_SESSION(session, nullptr);
-  req->value.resize(sessionlen);
-  auto buf = &req->value[0];
-  i2d_SSL_SESSION(session, &buf);
-  req->expiry = 12_h;
-  req->cb = [](MemcachedRequest *req, MemcachedResult res) {
-    if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "Memcached: session cache done.  key=" << req->key
-                << ", status_code=" << static_cast<uint16_t>(res.status_code)
-                << ", value=" << as_string_view(res.value);
-    }
-    if (res.status_code != MemcachedStatusCode::NO_ERROR) {
-      LOG(WARN) << "Memcached: failed to cache session key=" << req->key
-                << ", status_code=" << static_cast<uint16_t>(res.status_code)
-                << ", value=" << as_string_view(res.value);
-    }
-  };
-  assert(!req->canceled);
-
-  dispatcher->add_request(std::move(req));
-
-  return 0;
-}
-} // namespace
-
-namespace {
-SSL_SESSION *tls_session_get_cb(SSL *ssl, const unsigned char *id, int idlen,
-                                int *copy) {
-  auto conn = static_cast<Connection *>(SSL_get_app_data(ssl));
-  auto handler = static_cast<ClientHandler *>(conn->data);
-  auto worker = handler->get_worker();
-  auto dispatcher = worker->get_session_cache_memcached_dispatcher();
-  auto &balloc = handler->get_block_allocator();
-
-  if (idlen == 0) {
-    return nullptr;
-  }
-
-  if (conn->tls.cached_session) {
-    if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "Memcached: found cached session, id="
-                << util::format_hex(std::span{id, static_cast<size_t>(idlen)});
-    }
-
-    // This is required, without this, memory leak occurs.
-    *copy = 0;
-
-    auto session = conn->tls.cached_session;
-    conn->tls.cached_session = nullptr;
-    return session;
-  }
-
-  if (LOG_ENABLED(INFO)) {
-    LOG(INFO) << "Memcached: get cached session, id="
-              << util::format_hex(std::span{id, static_cast<size_t>(idlen)});
-  }
-
-  auto req = std::make_unique<MemcachedRequest>();
-  req->op = MemcachedOp::GET;
-  req->key = MEMCACHED_SESSION_CACHE_KEY_PREFIX;
-  req->key +=
-    util::format_hex(balloc, std::span{id, static_cast<size_t>(idlen)});
-  req->cb = [conn](MemcachedRequest *, MemcachedResult res) {
-    if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "Memcached: returned status code "
-                << static_cast<uint16_t>(res.status_code);
-    }
-
-    // We might stop reading, so start it again
-    conn->rlimit.startw();
-    ev_timer_again(conn->loop, &conn->rt);
-
-    conn->wlimit.startw();
-    ev_timer_again(conn->loop, &conn->wt);
-
-    conn->tls.cached_session_lookup_req = nullptr;
-    if (res.status_code != MemcachedStatusCode::NO_ERROR) {
-      conn->tls.handshake_state = TLSHandshakeState::CANCEL_SESSION_CACHE;
-      return;
-    }
-
-    const uint8_t *p = res.value.data();
-
-    auto session = d2i_SSL_SESSION(nullptr, &p, res.value.size());
-    if (!session) {
-      if (LOG_ENABLED(INFO)) {
-        LOG(INFO) << "cannot materialize session";
-      }
-      conn->tls.handshake_state = TLSHandshakeState::CANCEL_SESSION_CACHE;
-      return;
-    }
-
-    conn->tls.cached_session = session;
-    conn->tls.handshake_state = TLSHandshakeState::GOT_SESSION_CACHE;
-  };
-
-  conn->tls.handshake_state = TLSHandshakeState::WAIT_FOR_SESSION_CACHE;
-  conn->tls.cached_session_lookup_req = req.get();
-
-  dispatcher->add_request(std::move(req));
-
-  return nullptr;
 }
 } // namespace
 
@@ -939,11 +801,6 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
   const unsigned char sid_ctx[] = "shrpx";
   SSL_CTX_set_session_id_context(ssl_ctx, sid_ctx, sizeof(sid_ctx) - 1);
   SSL_CTX_set_session_cache_mode(ssl_ctx, SSL_SESS_CACHE_SERVER);
-
-  if (!tlsconf.session_cache.memcached.host.empty()) {
-    SSL_CTX_sess_set_new_cb(ssl_ctx, tls_session_new_cb);
-    SSL_CTX_sess_set_get_cb(ssl_ctx, tls_session_get_cb);
-  }
 
   SSL_CTX_set_timeout(ssl_ctx, tlsconf.session_timeout.count());
 

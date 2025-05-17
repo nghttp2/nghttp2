@@ -656,24 +656,6 @@ struct TLSConfig {
     bool cipher_given;
   } ticket;
 
-  // Session cache related configurations
-  struct {
-    struct {
-      Address addr;
-      uint16_t port;
-      // Hostname of memcached server.  This is also used as SNI field
-      // if TLS is enabled.
-      StringRef host;
-      // Client private key and certificate for authentication
-      StringRef private_key_file;
-      StringRef cert_file;
-      // Address family of memcached connection.  One of either
-      // AF_INET, AF_INET6 or AF_UNSPEC.
-      int family;
-      bool tls;
-    } memcached;
-  } session_cache;
-
   // Dynamic record sizing configurations
   struct {
     size_t warmup_threshold;
