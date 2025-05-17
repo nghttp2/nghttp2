@@ -43,6 +43,7 @@ const MunitTest tests[]{
   munit_void_test(test_memchunks_riovec),
   munit_void_test(test_memchunks_recycle),
   munit_void_test(test_memchunks_reset),
+  munit_void_test(test_memchunkbuffer_drain_reset),
   munit_test_end(),
 };
 } // namespace
@@ -102,6 +103,7 @@ void test_pool_recycle(void) {
 using Memchunk16 = Memchunk<16>;
 using MemchunkPool16 = Pool<Memchunk16>;
 using Memchunks16 = Memchunks<Memchunk16>;
+using MemchunkBuffer16 = MemchunkBuffer<Memchunk16>;
 
 void test_memchunks_append(void) {
   MemchunkPool16 pool;
@@ -235,6 +237,23 @@ void test_memchunks_reset(void) {
   assert_not_null(m);
   assert_not_null(m->next);
   assert_null(m->next->next);
+}
+
+void test_memchunkbuffer_drain_reset(void) {
+  MemchunkPool16 pool;
+  MemchunkBuffer16 buf(&pool);
+
+  buf.ensure_chunk();
+  auto data = "0123456789"sv;
+  std::ranges::copy(data, buf.begin());
+  buf.write(data.size());
+
+  auto nread = buf.drain_reset(3);
+
+  assert_size(3, ==, nread);
+  assert_true(buf.begin() == buf.chunk->pos);
+  assert_size(7, ==, buf.rleft());
+  assert_true(buf.begin() + buf.rleft() == buf.chunk->last);
 }
 
 } // namespace nghttp2
