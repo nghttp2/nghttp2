@@ -43,6 +43,7 @@ munit_void_test_decl(test_memchunks_drain)
 munit_void_test_decl(test_memchunks_riovec)
 munit_void_test_decl(test_memchunks_recycle)
 munit_void_test_decl(test_memchunks_reset)
+munit_void_test_decl(test_memchunkbuffer_drain_reset)
 
 } // namespace nghttp2
 

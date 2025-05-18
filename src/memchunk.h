@@ -60,10 +60,13 @@ namespace nghttp2 {
 
 template <size_t N> struct Memchunk {
   Memchunk(Memchunk *next_chunk)
-    : pos(std::begin(buf)), last(pos), knext(next_chunk), next(nullptr) {}
+    : pos(std::ranges::begin(buf)),
+      last(pos),
+      knext(next_chunk),
+      next(nullptr) {}
   size_t len() const { return last - pos; }
-  size_t left() const { return std::end(buf) - last; }
-  void reset() { pos = last = std::begin(buf); }
+  size_t left() const { return std::ranges::end(buf) - last; }
+  void reset() { pos = last = std::ranges::begin(buf); }
   std::array<uint8_t, N> buf;
   uint8_t *pos, *last;
   Memchunk *knext;
@@ -231,8 +234,9 @@ template <typename Memchunk> struct Memchunks {
       auto n = std::min(static_cast<size_t>(last - first), m->len());
 
       assert(m->len());
-      first = std::copy_n(m->pos, n, first);
-      m->pos += n;
+      auto iores = std::ranges::copy_n(m->pos, n, first);
+      m->pos = iores.in;
+      first = iores.out;
       len -= n;
       if (m->len() > 0) {
         break;
@@ -510,7 +514,7 @@ template <typename Memchunk> struct MemchunkBuffer {
   size_t write(const void *src, size_t count) {
     count = std::min(count, wleft());
     auto p = static_cast<const uint8_t *>(src);
-    chunk->last = std::copy_n(p, count, chunk->last);
+    chunk->last = std::ranges::copy_n(p, count, chunk->last).out;
     return count;
   }
   size_t write(size_t count) {
@@ -525,13 +529,14 @@ template <typename Memchunk> struct MemchunkBuffer {
   }
   size_t drain_reset(size_t count) {
     count = std::min(count, rleft());
-    std::copy(chunk->pos + count, chunk->last, std::begin(chunk->buf));
-    chunk->last = std::begin(chunk->buf) + (chunk->last - (chunk->pos + count));
-    chunk->pos = std::begin(chunk->buf);
+    chunk->last = std::ranges::copy(chunk->pos + count, chunk->last,
+                                    std::ranges::begin(chunk->buf))
+                    .out;
+    chunk->pos = std::ranges::begin(chunk->buf);
     return count;
   }
   void reset() { chunk->reset(); }
-  uint8_t *begin() { return std::begin(chunk->buf); }
+  uint8_t *begin() { return std::ranges::begin(chunk->buf); }
   uint8_t &operator[](size_t n) { return chunk->buf[n]; }
   const uint8_t &operator[](size_t n) const { return chunk->buf[n]; }
 
