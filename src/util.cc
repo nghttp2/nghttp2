@@ -139,50 +139,6 @@ bool in_rfc3986_sub_delims(const char c) {
   return false;
 }
 
-std::string percent_encode(const unsigned char *target, size_t len) {
-  std::string dest;
-  for (size_t i = 0; i < len; ++i) {
-    unsigned char c = target[i];
-
-    if (in_rfc3986_unreserved_chars(c)) {
-      dest += c;
-    } else {
-      dest += '%';
-      dest += UPPER_XDIGITS[c >> 4];
-      dest += UPPER_XDIGITS[(c & 0x0f)];
-    }
-  }
-  return dest;
-}
-
-std::string percent_encode(const std::string &target) {
-  return percent_encode(reinterpret_cast<const unsigned char *>(target.c_str()),
-                        target.size());
-}
-
-bool in_token(char c) {
-  switch (c) {
-  case '!':
-  case '#':
-  case '$':
-  case '%':
-  case '&':
-  case '\'':
-  case '*':
-  case '+':
-  case '-':
-  case '.':
-  case '^':
-  case '_':
-  case '`':
-  case '|':
-  case '~':
-    return true;
-  }
-
-  return is_alpha(c) || is_digit(c);
-}
-
 bool in_attr_char(char c) {
   switch (c) {
   case '*':
@@ -192,47 +148,6 @@ bool in_attr_char(char c) {
   }
 
   return util::in_token(c);
-}
-
-StringRef percent_encode_token(BlockAllocator &balloc,
-                               const StringRef &target) {
-  auto iov = make_byte_ref(balloc, target.size() * 3 + 1);
-  auto p = percent_encode_token(std::begin(iov), target);
-
-  *p = '\0';
-
-  return as_string_ref(std::begin(iov), p);
-}
-
-size_t percent_encode_tokenlen(const StringRef &target) {
-  size_t n = 0;
-
-  for (auto first = std::begin(target); first != std::end(target); ++first) {
-    uint8_t c = *first;
-
-    if (c != '%' && in_token(c)) {
-      ++n;
-      continue;
-    }
-
-    // percent-encoded character '%ff'
-    n += 3;
-  }
-
-  return n;
-}
-
-uint32_t hex_to_uint(char c) {
-  if (c <= '9') {
-    return c - '0';
-  }
-  if (c <= 'Z') {
-    return c - 'A' + 10;
-  }
-  if (c <= 'z') {
-    return c - 'a' + 10;
-  }
-  return 256;
 }
 
 StringRef quote_string(BlockAllocator &balloc, const StringRef &target) {
@@ -1575,28 +1490,6 @@ int read_mime_types(std::map<std::string, std::string> &res,
   }
 
   return 0;
-}
-
-StringRef percent_decode(BlockAllocator &balloc, const StringRef &src) {
-  auto iov = make_byte_ref(balloc, src.size() * 3 + 1);
-  auto p = std::begin(iov);
-  for (auto first = std::begin(src); first != std::end(src); ++first) {
-    if (*first != '%') {
-      *p++ = *first;
-      continue;
-    }
-
-    if (first + 1 != std::end(src) && first + 2 != std::end(src) &&
-        is_hex_digit(*(first + 1)) && is_hex_digit(*(first + 2))) {
-      *p++ = (hex_to_uint(*(first + 1)) << 4) + hex_to_uint(*(first + 2));
-      first += 2;
-      continue;
-    }
-
-    *p++ = *first;
-  }
-  *p = '\0';
-  return as_string_ref(std::begin(iov), p);
 }
 
 // Returns x**y

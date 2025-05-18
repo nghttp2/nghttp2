@@ -85,13 +85,13 @@ namespace util {
 
 extern const char UPPER_XDIGITS[];
 
-inline bool is_alpha(const char c) {
+constexpr bool is_alpha(const char c) noexcept {
   return ('A' <= c && c <= 'Z') || ('a' <= c && c <= 'z');
 }
 
-inline bool is_digit(const char c) { return '0' <= c && c <= '9'; }
+constexpr bool is_digit(const char c) noexcept { return '0' <= c && c <= '9'; }
 
-inline bool is_hex_digit(const char c) {
+constexpr bool is_hex_digit(const char c) noexcept {
   return is_digit(c) || ('A' <= c && c <= 'F') || ('a' <= c && c <= 'f');
 }
 
@@ -103,69 +103,161 @@ bool in_rfc3986_unreserved_chars(const char c);
 bool in_rfc3986_sub_delims(const char c);
 
 // Returns true if |c| is in token (HTTP-p1, Section 3.2.6)
-bool in_token(char c);
+constexpr bool in_token(char c) noexcept {
+  switch (c) {
+  case '!':
+  case '#':
+  case '$':
+  case '%':
+  case '&':
+  case '\'':
+  case '*':
+  case '+':
+  case '-':
+  case '.':
+  case '^':
+  case '_':
+  case '`':
+  case '|':
+  case '~':
+    return true;
+  }
+
+  return is_alpha(c) || is_digit(c);
+}
 
 bool in_attr_char(char c);
 
+static constexpr auto hex_to_uint_tbl = []() {
+  std::array<uint32_t, 256> tbl;
+
+  std::ranges::fill(tbl, 256);
+
+  for (char i = '0'; i <= '9'; ++i) {
+    tbl[static_cast<uint8_t>(i)] = i - '0';
+  }
+
+  for (char i = 'A'; i <= 'F'; ++i) {
+    tbl[static_cast<uint8_t>(i)] = i - 'A' + 10;
+  }
+
+  for (char i = 'a'; i <= 'f'; ++i) {
+    tbl[static_cast<uint8_t>(i)] = i - 'a' + 10;
+  }
+
+  return tbl;
+}();
+
 // Returns integer corresponding to hex notation |c|.  If
 // is_hex_digit(c) is false, it returns 256.
-uint32_t hex_to_uint(char c);
+constexpr uint32_t hex_to_uint(char c) noexcept {
+  return hex_to_uint_tbl[static_cast<uint8_t>(c)];
+}
 
-std::string percent_encode(const unsigned char *target, size_t len);
-
-std::string percent_encode(const std::string &target);
-
-template <typename InputIt>
-std::string percent_decode(InputIt first, InputIt last) {
-  std::string result;
-  result.resize(last - first);
-  auto p = std::begin(result);
+template <std::input_iterator I, std::weakly_incrementable O>
+constexpr O percent_decode(I first, I last, O result) {
   for (; first != last; ++first) {
     if (*first != '%') {
-      *p++ = *first;
+      *result++ = *first;
       continue;
     }
 
-    if (first + 1 != last && first + 2 != last && is_hex_digit(*(first + 1)) &&
-        is_hex_digit(*(first + 2))) {
-      *p++ = (hex_to_uint(*(first + 1)) << 4) + hex_to_uint(*(first + 2));
-      first += 2;
+    auto dig1 = std::ranges::next(first, 1);
+    if (dig1 == last || !is_hex_digit(*dig1)) {
+      *result++ = *first;
       continue;
     }
 
-    *p++ = *first;
+    auto dig2 = std::ranges::next(dig1, 1);
+    if (dig2 == last || !is_hex_digit(*dig2)) {
+      *result++ = *first;
+      continue;
+    }
+
+    *result++ = (hex_to_uint(*dig1) << 4) | hex_to_uint(*dig2);
+
+    first = dig2;
   }
-  result.resize(p - std::begin(result));
+
   return result;
 }
 
-StringRef percent_decode(BlockAllocator &balloc, const StringRef &src);
+template <std::input_iterator I>
+constexpr std::string percent_decode(I first, I last) {
+  std::string result;
 
-// Percent encode |target| if character is not in token or '%'.
-StringRef percent_encode_token(BlockAllocator &balloc, const StringRef &target);
+  result.resize(std::ranges::distance(first, last));
 
-template <typename OutputIt>
-OutputIt percent_encode_token(OutputIt it, const StringRef &target) {
-  for (auto first = std::begin(target); first != std::end(target); ++first) {
+  auto p = percent_decode(std::move(first), std::move(last),
+                          std::ranges::begin(result));
+
+  result.resize(std::ranges::distance(std::ranges::begin(result), p));
+
+  return result;
+}
+
+template <std::ranges::input_range R>
+constexpr std::string percent_decode(R &&r) {
+  return percent_decode(std::ranges::begin(r), std::ranges::end(r));
+}
+
+template <std::ranges::input_range R>
+StringRef percent_decode(BlockAllocator &balloc, R &&r) {
+  auto iov = make_byte_ref(balloc, std::ranges::distance(r) + 1);
+
+  auto p = percent_decode(std::ranges::begin(r), std::ranges::end(r),
+                          std::ranges::begin(iov));
+
+  *p = '\0';
+
+  return as_string_ref(std::ranges::begin(iov), p);
+}
+
+// Percent encode a range [|first|, |last|) if a character is not in
+// token or '%'.
+template <std::input_iterator I, std::weakly_incrementable O>
+constexpr O percent_encode_token(I first, I last, O result) noexcept {
+  for (; first != last; ++first) {
     uint8_t c = *first;
 
     if (c != '%' && in_token(c)) {
-      *it++ = c;
+      *result++ = c;
       continue;
     }
 
-    *it++ = '%';
-    *it++ = UPPER_XDIGITS[c >> 4];
-    *it++ = UPPER_XDIGITS[(c & 0x0f)];
+    *result++ = '%';
+    *result++ = UPPER_XDIGITS[c >> 4];
+    *result++ = UPPER_XDIGITS[(c & 0x0f)];
   }
 
-  return it;
+  return result;
+}
+
+template <std::ranges::input_range R, std::weakly_incrementable O>
+constexpr O percent_encode_token(R &&r, O result) {
+  return percent_encode_token(std::ranges::begin(r), std::ranges::end(r),
+                              std::move(result));
 }
 
 // Returns the number of bytes written by percent_encode_token with
-// the same |target| parameter.  The return value does not include a
+// the same |r| parameter.  The return value does not include a
 // terminal NUL byte.
-size_t percent_encode_tokenlen(const StringRef &target);
+template <std::ranges::input_range R>
+constexpr size_t percent_encode_tokenlen(R &&r) noexcept {
+  size_t n = 0;
+
+  for (auto c : r) {
+    if (c != '%' && in_token(c)) {
+      ++n;
+      continue;
+    }
+
+    // percent-encoded character '%ff'
+    n += 3;
+  }
+
+  return n;
+}
 
 // Returns quotedString version of |target|.  Currently, this function
 // just replace '"' with '\"'.

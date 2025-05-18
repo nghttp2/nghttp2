@@ -81,6 +81,7 @@ const MunitTest tests[]{
   munit_void_test(test_util_split_str),
   munit_void_test(test_util_rstrip),
   munit_void_test(test_util_contains),
+  munit_void_test(test_util_hex_to_uint),
   munit_test_end(),
 };
 } // namespace
@@ -187,12 +188,31 @@ void test_util_to_token68(void) {
 }
 
 void test_util_percent_encode_token(void) {
-  BlockAllocator balloc(4096, 4096);
-  assert_stdsv_equal("h2"sv, util::percent_encode_token(balloc, "h2"_sr));
-  assert_stdsv_equal("h3~"sv, util::percent_encode_token(balloc, "h3~"_sr));
-  assert_stdsv_equal("100%25"sv, util::percent_encode_token(balloc, "100%"_sr));
+  std::array<char, 64> buf;
+
+  assert_stdsv_equal(
+    "h2"sv, as_string_view(buf.begin(),
+                           util::percent_encode_token("h2"_sr, buf.begin())));
+
+  assert_size("h2"sv.size(), ==, util::percent_encode_tokenlen("h2"sv));
+
+  assert_stdsv_equal(
+    "h3~"sv, as_string_view(buf.begin(),
+                            util::percent_encode_token("h3~"_sr, buf.begin())));
+
+  assert_size("h3~"sv.size(), ==, util::percent_encode_tokenlen("h3~"sv));
+
+  assert_stdsv_equal("100%25"sv,
+                     as_string_view(buf.begin(), util::percent_encode_token(
+                                                   "100%"_sr, buf.begin())));
+  assert_size("100%25"sv.size(), ==, util::percent_encode_tokenlen("100%"sv));
+
   assert_stdsv_equal("http%202"sv,
-                     util::percent_encode_token(balloc, "http 2"_sr));
+                     as_string_view(buf.begin(), util::percent_encode_token(
+                                                   "http 2"_sr, buf.begin())));
+
+  assert_size("http%202"sv.size(), ==,
+              util::percent_encode_tokenlen("http 2"sv));
 }
 
 void test_util_percent_decode(void) {
@@ -203,8 +223,7 @@ void test_util_percent_decode(void) {
   }
   {
     std::string s = "%66%6";
-    assert_stdstring_equal("f%6",
-                           util::percent_decode(std::begin(s), std::end(s)));
+    assert_stdstring_equal("f%6", util::percent_decode(s));
   }
   {
     std::string s = "%66%";
@@ -724,6 +743,26 @@ void test_util_contains(void) {
   assert_true(util::contains("alphabravo"sv, 'o'));
   assert_false(util::contains("alphabravo"sv, 'x'));
   assert_false(util::contains(""sv, ' '));
+}
+
+void test_util_hex_to_uint(void) {
+  for (size_t i = 0; i < 256; ++i) {
+    if (!util::is_hex_digit(i)) {
+      assert_uint32(256, ==, util::hex_to_uint(i));
+    }
+  }
+
+  for (size_t i = 0; i < 10; ++i) {
+    assert_uint32(i, ==, util::hex_to_uint('0' + i));
+  }
+
+  for (size_t i = 0; i < 6; ++i) {
+    assert_uint32(i + 10, ==, util::hex_to_uint('A' + i));
+  }
+
+  for (size_t i = 0; i < 6; ++i) {
+    assert_uint32(i + 10, ==, util::hex_to_uint('a' + i));
+  }
 }
 
 } // namespace shrpx
