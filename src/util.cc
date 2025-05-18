@@ -139,27 +139,6 @@ bool in_rfc3986_sub_delims(const char c) {
   return false;
 }
 
-std::string percent_encode(const unsigned char *target, size_t len) {
-  std::string dest;
-  for (size_t i = 0; i < len; ++i) {
-    unsigned char c = target[i];
-
-    if (in_rfc3986_unreserved_chars(c)) {
-      dest += c;
-    } else {
-      dest += '%';
-      dest += UPPER_XDIGITS[c >> 4];
-      dest += UPPER_XDIGITS[(c & 0x0f)];
-    }
-  }
-  return dest;
-}
-
-std::string percent_encode(const std::string &target) {
-  return percent_encode(reinterpret_cast<const unsigned char *>(target.c_str()),
-                        target.size());
-}
-
 bool in_attr_char(char c) {
   switch (c) {
   case '*':

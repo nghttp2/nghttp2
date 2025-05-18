@@ -132,10 +132,6 @@ bool in_attr_char(char c);
 // is_hex_digit(c) is false, it returns 256.
 uint32_t hex_to_uint(char c);
 
-std::string percent_encode(const unsigned char *target, size_t len);
-
-std::string percent_encode(const std::string &target);
-
 template <std::input_iterator I, std::weakly_incrementable O>
 constexpr O percent_decode(I first, I last, O result) {
   for (; first != last; ++first) {
