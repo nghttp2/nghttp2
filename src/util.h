@@ -115,31 +115,64 @@ std::string percent_encode(const unsigned char *target, size_t len);
 
 std::string percent_encode(const std::string &target);
 
-template <typename InputIt>
-std::string percent_decode(InputIt first, InputIt last) {
-  std::string result;
-  result.resize(last - first);
-  auto p = std::begin(result);
+template <std::input_iterator I, std::weakly_incrementable O>
+constexpr O percent_decode(I first, I last, O result) {
   for (; first != last; ++first) {
     if (*first != '%') {
-      *p++ = *first;
+      *result++ = *first;
       continue;
     }
 
-    if (first + 1 != last && first + 2 != last && is_hex_digit(*(first + 1)) &&
-        is_hex_digit(*(first + 2))) {
-      *p++ = (hex_to_uint(*(first + 1)) << 4) + hex_to_uint(*(first + 2));
-      first += 2;
+    auto dig1 = std::ranges::next(first, 1);
+    if (dig1 == last || !is_hex_digit(*dig1)) {
+      *result++ = *first;
       continue;
     }
 
-    *p++ = *first;
+    auto dig2 = std::ranges::next(dig1, 1);
+    if (dig2 == last || !is_hex_digit(*dig2)) {
+      *result++ = *first;
+      continue;
+    }
+
+    *result++ = (hex_to_uint(*dig1) << 4) | hex_to_uint(*dig2);
+
+    first = dig2;
   }
-  result.resize(p - std::begin(result));
+
   return result;
 }
 
-StringRef percent_decode(BlockAllocator &balloc, const StringRef &src);
+template <std::input_iterator I>
+constexpr std::string percent_decode(I first, I last) {
+  std::string result;
+
+  result.resize(std::ranges::distance(first, last));
+
+  auto p = percent_decode(std::move(first), std::move(last),
+                          std::ranges::begin(result));
+
+  result.resize(std::ranges::distance(std::ranges::begin(result), p));
+
+  return result;
+}
+
+template <std::ranges::input_range R>
+constexpr std::string percent_decode(R &&r) {
+  return percent_decode(std::ranges::begin(r), std::ranges::end(r));
+}
+
+template <std::ranges::input_range R>
+StringRef percent_decode(BlockAllocator &balloc, R &&r) {
+  auto iov = make_byte_ref(balloc, std::ranges::distance(r) + 1);
+
+  auto p = percent_decode(std::ranges::begin(r), std::ranges::end(r),
+                          std::ranges::begin(iov));
+
+  *p = '\0';
+
+  return as_string_ref(std::ranges::begin(iov), p);
+}
 
 // Percent encode |target| if character is not in token or '%'.
 StringRef percent_encode_token(BlockAllocator &balloc, const StringRef &target);

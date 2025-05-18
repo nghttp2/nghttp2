@@ -1577,28 +1577,6 @@ int read_mime_types(std::map<std::string, std::string> &res,
   return 0;
 }
 
-StringRef percent_decode(BlockAllocator &balloc, const StringRef &src) {
-  auto iov = make_byte_ref(balloc, src.size() * 3 + 1);
-  auto p = std::begin(iov);
-  for (auto first = std::begin(src); first != std::end(src); ++first) {
-    if (*first != '%') {
-      *p++ = *first;
-      continue;
-    }
-
-    if (first + 1 != std::end(src) && first + 2 != std::end(src) &&
-        is_hex_digit(*(first + 1)) && is_hex_digit(*(first + 2))) {
-      *p++ = (hex_to_uint(*(first + 1)) << 4) + hex_to_uint(*(first + 2));
-      first += 2;
-      continue;
-    }
-
-    *p++ = *first;
-  }
-  *p = '\0';
-  return as_string_ref(std::begin(iov), p);
-}
-
 // Returns x**y
 double int_pow(double x, size_t y) {
   auto res = 1.;

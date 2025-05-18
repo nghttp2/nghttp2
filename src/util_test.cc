@@ -203,8 +203,7 @@ void test_util_percent_decode(void) {
   }
   {
     std::string s = "%66%6";
-    assert_stdstring_equal("f%6",
-                           util::percent_decode(std::begin(s), std::end(s)));
+    assert_stdstring_equal("f%6", util::percent_decode(s));
   }
   {
     std::string s = "%66%";
