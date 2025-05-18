@@ -150,35 +150,6 @@ bool in_attr_char(char c) {
   return util::in_token(c);
 }
 
-StringRef quote_string(BlockAllocator &balloc, const StringRef &target) {
-  auto cnt = std::count(std::begin(target), std::end(target), '"');
-
-  if (cnt == 0) {
-    return make_string_ref(balloc, target);
-  }
-
-  auto iov = make_byte_ref(balloc, target.size() + cnt + 1);
-  auto p = quote_string(std::begin(iov), target);
-
-  *p = '\0';
-
-  return as_string_ref(std::begin(iov), p);
-}
-
-size_t quote_stringlen(const StringRef &target) {
-  size_t n = 0;
-
-  for (auto c : target) {
-    if (c == '"') {
-      n += 2;
-    } else {
-      ++n;
-    }
-  }
-
-  return n;
-}
-
 namespace {
 template <typename Iterator>
 Iterator cpydig(Iterator d, uint32_t n, size_t len) {

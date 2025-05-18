@@ -259,28 +259,62 @@ constexpr size_t percent_encode_tokenlen(R &&r) noexcept {
   return n;
 }
 
-// Returns quotedString version of |target|.  Currently, this function
+// Quote a range [|first|, |last|) and stores the result in another
+// range, beginning at |result|.  It returns an output iterator to the
+// element past the last element stored.  Currently, this function
 // just replace '"' with '\"'.
-StringRef quote_string(BlockAllocator &balloc, const StringRef &target);
-
-template <typename OutputIt>
-OutputIt quote_string(OutputIt it, const StringRef &target) {
-  for (auto c : target) {
-    if (c == '"') {
-      *it++ = '\\';
-      *it++ = '"';
+template <std::input_iterator I, std::weakly_incrementable O>
+constexpr O quote_string(I first, I last, O result) noexcept {
+  for (; first != last; ++first) {
+    if (*first == '"') {
+      *result++ = '\\';
+      *result++ = '"';
     } else {
-      *it++ = c;
+      *result++ = *first;
     }
   }
 
-  return it;
+  return result;
+}
+
+template <std::ranges::input_range R, std::weakly_incrementable O>
+constexpr O quote_string(R &&r, O result) {
+  return quote_string(std::ranges::begin(r), std::ranges::end(r),
+                      std::move(result));
+}
+
+template <std::ranges::input_range R>
+StringRef quote_string(BlockAllocator &balloc, R &&r) {
+  auto cnt = std::ranges::count(r, '"');
+
+  if (cnt == 0) {
+    return make_string_ref(balloc, std::forward<R>(r));
+  }
+
+  auto iov = make_byte_ref(balloc, std::ranges::distance(r) + cnt + 1);
+  auto p = quote_string(std::forward<R>(r), std::ranges::begin(iov));
+
+  *p = '\0';
+
+  return as_string_ref(std::ranges::begin(iov), p);
 }
 
 // Returns the number of bytes written by quote_string with the same
-// |target| parameter.  The return value does not include a terminal
-// NUL byte.
-size_t quote_stringlen(const StringRef &target);
+// |r| parameter.  The return value does not include a terminal NUL
+// byte.
+template <std::ranges::input_range R> constexpr size_t quote_stringlen(R &&r) {
+  size_t n = 0;
+
+  for (auto c : r) {
+    if (c == '"') {
+      n += 2;
+    } else {
+      ++n;
+    }
+  }
+
+  return n;
+}
 
 static constexpr char LOWER_XDIGITS[] = "0123456789abcdef";
 
