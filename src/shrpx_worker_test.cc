@@ -205,15 +205,15 @@ void test_shrpx_worker_match_downstream_addr_group(void) {
 
   // Test for wildcard hosts
   auto g1 = std::make_shared<DownstreamAddrGroup>();
-  g1->pattern = ImmutableString::from_lit("git.nghttp2.org");
+  g1->pattern = "git.nghttp2.org"_is;
   groups.push_back(std::move(g1));
 
   auto g2 = std::make_shared<DownstreamAddrGroup>();
-  g2->pattern = ImmutableString::from_lit(".nghttp2.org");
+  g2->pattern = ".nghttp2.org"_is;
   groups.push_back(std::move(g2));
 
   auto g3 = std::make_shared<DownstreamAddrGroup>();
-  g3->pattern = ImmutableString::from_lit(".local");
+  g3->pattern = ".local"_is;
   groups.push_back(std::move(g3));
 
   wp.emplace_back("git.nghttp2.org"_sr);

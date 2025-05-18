@@ -103,7 +103,7 @@ void test_template_immutable_string(void) {
   assert_size(0, ==, from_cstr.size());
 
   // from string literal
-  auto from_lit = ImmutableString::from_lit("bravo");
+  auto from_lit = "bravo"_is;
 
   assert_string_equal("bravo", from_lit.c_str());
   assert_size(5, ==, from_lit.size());
@@ -177,7 +177,7 @@ void test_template_string_ref(void) {
   assert_size(5, ==, from_lit.size());
 
   // from ImmutableString
-  auto im = ImmutableString::from_lit("bravo");
+  auto im = "bravo"_is;
 
   StringRef imref(im);
 

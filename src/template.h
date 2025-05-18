@@ -245,11 +245,6 @@ public:
     return *this;
   }
 
-  template <size_t N>
-  static constexpr ImmutableString from_lit(const char (&s)[N]) {
-    return ImmutableString(s, N - 1);
-  }
-
   constexpr const_iterator begin() const noexcept { return base; }
   constexpr const_iterator cbegin() const noexcept { return base; }
 
@@ -309,6 +304,10 @@ inline std::ostream &operator<<(std::ostream &o, const ImmutableString &s) {
 inline std::string &operator+=(std::string &lhs, const ImmutableString &rhs) {
   lhs.append(rhs.c_str(), rhs.size());
   return lhs;
+}
+
+constexpr ImmutableString operator""_is(const char *str, size_t len) {
+  return {str, len};
 }
 
 // StringRef is a reference to a string owned by something else.  So
