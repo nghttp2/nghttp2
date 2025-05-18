@@ -946,8 +946,8 @@ int on_header_callback2(nghttp2_session *session, const nghttp2_frame *frame,
       return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
     }
 
-    auto nameref = StringRef{namebuf.base, namebuf.len};
-    auto valueref = StringRef{valuebuf.base, valuebuf.len};
+    auto nameref = as_string_ref(namebuf.base, namebuf.len);
+    auto valueref = as_string_ref(valuebuf.base, valuebuf.len);
     auto token = http2::lookup_token(nameref);
     auto no_index = flags & NGHTTP2_NV_FLAG_NO_INDEX;
 
@@ -998,8 +998,8 @@ int on_header_callback2(nghttp2_session *session, const nghttp2_frame *frame,
     promised_downstream->add_rcbuf(name);
     promised_downstream->add_rcbuf(value);
 
-    auto nameref = StringRef{namebuf.base, namebuf.len};
-    auto valueref = StringRef{valuebuf.base, valuebuf.len};
+    auto nameref = as_string_ref(namebuf.base, namebuf.len);
+    auto valueref = as_string_ref(valuebuf.base, valuebuf.len);
     auto token = http2::lookup_token(nameref);
     promised_req.fs.add_header_token(nameref, valueref,
                                      flags & NGHTTP2_NV_FLAG_NO_INDEX, token);
@@ -1039,8 +1039,8 @@ int on_invalid_header_callback2(nghttp2_session *session,
     SSLOG(INFO, http2session)
       << "Invalid header field for stream_id=" << stream_id
       << " in frame type=" << static_cast<uint32_t>(frame->hd.type)
-      << ": name=[" << StringRef{namebuf.base, namebuf.len} << "], value=["
-      << StringRef{valuebuf.base, valuebuf.len} << "]";
+      << ": name=[" << as_string_ref(namebuf.base, namebuf.len) << "], value=["
+      << as_string_ref(valuebuf.base, valuebuf.len) << "]";
   }
 
   http2session->submit_rst_stream(stream_id, NGHTTP2_PROTOCOL_ERROR);
@@ -1681,7 +1681,7 @@ int Http2Session::connection_made() {
       return -1;
     }
 
-    auto proto = StringRef{next_proto, next_proto_len};
+    auto proto = as_string_ref(next_proto, next_proto_len);
     if (LOG_ENABLED(INFO)) {
       SSLOG(INFO, this) << "Negotiated next protocol: " << proto;
     }

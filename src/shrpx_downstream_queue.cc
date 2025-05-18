@@ -61,8 +61,7 @@ DownstreamQueue::HostEntry &
 DownstreamQueue::find_host_entry(const StringRef &host) {
   auto itr = host_entries_.find(host);
   if (itr == std::ranges::end(host_entries_)) {
-    auto key =
-      ImmutableString{std::ranges::begin(host), std::ranges::end(host)};
+    auto key = ImmutableString{host};
     auto key_ref = StringRef{key};
 #ifdef HAVE_STD_MAP_EMPLACE
     std::tie(itr, std::ignore) =

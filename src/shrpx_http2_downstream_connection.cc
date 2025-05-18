@@ -463,14 +463,14 @@ int Http2DownstreamConnection::push_request_headers() {
   if (LOG_ENABLED(INFO)) {
     std::stringstream ss;
     for (auto &nv : nva) {
-      auto name = StringRef{nv.name, nv.namelen};
+      auto name = as_string_ref(nv.name, nv.namelen);
 
       if ("authorization"_sr == name) {
         ss << TTY_HTTP_HD << name << TTY_RST << ": <redacted>\n";
         continue;
       }
       ss << TTY_HTTP_HD << name << TTY_RST << ": "
-         << StringRef{nv.value, nv.valuelen} << "\n";
+         << as_string_ref(nv.value, nv.valuelen) << "\n";
     }
     DCLOG(INFO, this) << "HTTP request headers\n" << ss.str();
   }

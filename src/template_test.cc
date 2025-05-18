@@ -68,6 +68,10 @@ void test_template_immutable_string(void) {
   assert_true(std::string("alpha") == from_cstr);
   assert_true(from_cstr == std::string("alpha"));
 
+  ImmutableString from_stdstr("alpha"s);
+
+  assert_true("alpha" == from_stdstr);
+
   // copy constructor
   ImmutableString src("charlie");
   ImmutableString copy = src;
@@ -258,6 +262,7 @@ void test_template_as_string_ref(void) {
 
     assert_stdsv_equal("alpha"sv, as_string_ref(a));
     assert_stdsv_equal("alpha"sv, as_string_ref(a.begin(), a.end()));
+    assert_stdsv_equal("alp"sv, as_string_ref(a.begin(), 3));
   }
 
   {

@@ -619,7 +619,7 @@ int ClientHandler::validate_next_proto() {
   StringRef proto;
 
   if (next_proto) {
-    proto = StringRef{next_proto, next_proto_len};
+    proto = as_string_ref(next_proto, next_proto_len);
 
     if (LOG_ENABLED(INFO)) {
       CLOG(INFO, this) << "The negotiated next protocol: " << proto;
@@ -1343,7 +1343,7 @@ int ClientHandler::proxy_protocol_read() {
     return -1;
   }
 
-  if (HEADER != StringRef{rb_.pos(), HEADER.size()}) {
+  if (HEADER != as_string_ref(rb_.pos(), HEADER.size())) {
     if (LOG_ENABLED(INFO)) {
       CLOG(INFO, this) << "PROXY-protocol-v1: Bad PROXY protocol version 1 ID";
     }
@@ -1391,7 +1391,7 @@ int ClientHandler::proxy_protocol_read() {
       }
       return -1;
     }
-    if ("UNKNOWN"_sr != StringRef{rb_.pos(), 7}) {
+    if ("UNKNOWN"_sr != as_string_ref(rb_.pos(), 7)) {
       if (LOG_ENABLED(INFO)) {
         CLOG(INFO, this) << "PROXY-protocol-v1: Unknown INET protocol family";
       }
@@ -1475,9 +1475,9 @@ int ClientHandler::proxy_protocol_read() {
   rb_.drain(end + 2 - rb_.pos());
 
   ipaddr_ = make_string_ref(
-    balloc_, StringRef{src_addr, static_cast<size_t>(src_addrlen)});
+    balloc_, as_string_ref(src_addr, static_cast<size_t>(src_addrlen)));
   port_ = make_string_ref(
-    balloc_, StringRef{src_port, static_cast<size_t>(src_portlen)});
+    balloc_, as_string_ref(src_port, static_cast<size_t>(src_portlen)));
 
   if (LOG_ENABLED(INFO)) {
     CLOG(INFO, this) << "PROXY-protocol-v1: Finished, " << (rb_.pos() - first)
@@ -1688,7 +1688,7 @@ void ClientHandler::set_alpn_from_conn() {
 
   SSL_get0_alpn_selected(conn_.tls.ssl, &alpn, &alpnlen);
 
-  alpn_ = make_string_ref(balloc_, StringRef{alpn, alpnlen});
+  alpn_ = make_string_ref(balloc_, as_string_ref(alpn, alpnlen));
 }
 
 void ClientHandler::set_local_hostport(const sockaddr *addr,

@@ -196,12 +196,22 @@ struct BlockAllocator {
   size_t isolation_threshold;
 };
 
+// Makes a copy of a range [|first|, |last|).  The resulting string
+// will be NULL-terminated.
+template <std::input_iterator I>
+StringRef make_string_ref(BlockAllocator &alloc, I first, I last) {
+  auto dst =
+    static_cast<char *>(alloc.alloc(std::ranges::distance(first, last) + 1));
+  auto p = std::ranges::copy(first, last, dst).out;
+  *p = '\0';
+
+  return StringRef{dst, p};
+}
+
 // Makes a copy of |src|.  The resulting string will be
 // NULL-terminated.
 inline StringRef make_string_ref(BlockAllocator &alloc, const StringRef &src) {
-  auto dst = static_cast<uint8_t *>(alloc.alloc(src.size() + 1));
-  *std::ranges::copy(src, dst).out = '\0';
-  return StringRef{dst, src.size()};
+  return make_string_ref(alloc, std::ranges::begin(src), std::ranges::end(src));
 }
 
 // private function used in concat_string_ref.  this is the base
@@ -239,7 +249,7 @@ StringRef concat_string_ref(BlockAllocator &alloc, Args &&...args) {
   auto p = dst;
   p = concat_string_ref_copy(p, std::forward<Args>(args)...);
   *p = '\0';
-  return StringRef{dst, len};
+  return as_string_ref(dst, p);
 }
 
 // Returns the string which is the concatenation of |value| and |args|
@@ -256,13 +266,14 @@ StringRef realloc_concat_string_ref(BlockAllocator &alloc,
   }
 
   auto len = value.size() + concat_string_ref_count(0, args...);
-  auto dst = static_cast<uint8_t *>(
-    alloc.realloc(const_cast<uint8_t *>(value.byte()), len + 1));
+  auto dst = static_cast<uint8_t *>(alloc.realloc(
+    const_cast<uint8_t *>(reinterpret_cast<const uint8_t *>(value.data())),
+    len + 1));
   auto p = dst + value.size();
   p = concat_string_ref_copy(p, std::forward<Args>(args)...);
   *p = '\0';
 
-  return StringRef{dst, len};
+  return as_string_ref(dst, p);
 }
 
 // Makes an uninitialized buffer with given size.

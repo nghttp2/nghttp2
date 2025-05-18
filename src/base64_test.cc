@@ -76,41 +76,43 @@ void test_base64_decode(void) {
   BlockAllocator balloc(4096, 4096);
   {
     auto in = "/w=="sv;
-    assert_stdsv_equal("\xff"sv, StringRef{base64::decode(balloc, in)});
+    assert_stdsv_equal("\xff"sv, as_string_view(base64::decode(balloc, in)));
   }
   {
     auto in = "//4="sv;
-    assert_stdsv_equal("\xff\xfe"sv, StringRef{base64::decode(balloc, in)});
+    assert_stdsv_equal("\xff\xfe"sv,
+                       as_string_view(base64::decode(balloc, in)));
   }
   {
     auto in = "//79"sv;
-    assert_stdsv_equal("\xff\xfe\xfd"sv, StringRef{base64::decode(balloc, in)});
+    assert_stdsv_equal("\xff\xfe\xfd"sv,
+                       as_string_view(base64::decode(balloc, in)));
   }
   {
     auto in = "//79/A=="sv;
     assert_stdsv_equal("\xff\xfe\xfd\xfc"sv,
-                       StringRef{base64::decode(balloc, in)});
+                       as_string_view(base64::decode(balloc, in)));
   }
   {
     // we check the number of valid input must be multiples of 4
     auto in = "//79="sv;
-    assert_stdsv_equal(""sv, StringRef{base64::decode(balloc, in)});
+    assert_stdsv_equal(""sv, as_string_view(base64::decode(balloc, in)));
   }
   {
     // ending invalid character at the boundary of multiples of 4 is
     // bad
     auto in = "bmdodHRw\n"sv;
-    assert_stdsv_equal(""sv, StringRef{base64::decode(balloc, in)});
+    assert_stdsv_equal(""sv, as_string_view(base64::decode(balloc, in)));
   }
   {
     // after seeing '=', subsequent input must be also '='.
     auto in = "//79/A=A"sv;
-    assert_stdsv_equal(""sv, StringRef{base64::decode(balloc, in)});
+    assert_stdsv_equal(""sv, as_string_view(base64::decode(balloc, in)));
   }
   {
     // additional '=' at the end is bad
     auto in = "//79/A======"sv;
-    assert_stdsv_equal(""sv, StringRef{base64::decode(balloc, in)});
+    assert_stdsv_equal(""sv, as_string_view(base64::decode(balloc, in)));
   }
 }
 

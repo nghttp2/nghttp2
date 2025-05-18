@@ -124,31 +124,38 @@ TicketKeys::~TicketKeys() {
   }
 }
 
+struct HostPort {
+  StringRef host;
+  uint16_t port;
+};
+
 namespace {
-int split_host_port(char *host, size_t hostlen, uint16_t *port_ptr,
-                    const StringRef &hostport, const StringRef &opt) {
+std::optional<HostPort> split_host_port(BlockAllocator &balloc,
+                                        const StringRef &hostport,
+                                        const StringRef &opt) {
   // host and port in |hostport| is separated by single ','.
   auto sep = std::ranges::find(hostport, ',');
   if (sep == std::ranges::end(hostport)) {
     LOG(ERROR) << opt << ": Invalid host, port: " << hostport;
-    return -1;
+    return {};
   }
   size_t len = sep - std::ranges::begin(hostport);
-  if (hostlen < len + 1) {
+  if (NI_MAXHOST < len + 1) {
     LOG(ERROR) << opt << ": Hostname too long: " << hostport;
-    return -1;
+    return {};
   }
-  *std::ranges::copy(std::ranges::begin(hostport), sep, host).out = '\0';
 
   auto portstr = StringRef{sep + 1, std::ranges::end(hostport)};
   auto d = util::parse_uint(portstr);
-  if (d && 1 <= d && d <= std::numeric_limits<uint16_t>::max()) {
-    *port_ptr = *d;
-    return 0;
+  if (!d || 1 > d || d > std::numeric_limits<uint16_t>::max()) {
+    LOG(ERROR) << opt << ": Port is invalid: " << portstr;
+    return {};
   }
 
-  LOG(ERROR) << opt << ": Port is invalid: " << portstr;
-  return -1;
+  return HostPort{
+    .host = make_string_ref(balloc, std::ranges::begin(hostport), sep),
+    .port = static_cast<uint16_t>(*d),
+  };
 }
 } // namespace
 
@@ -181,8 +188,8 @@ read_tls_ticket_key_file(const std::vector<StringRef> &files,
     hmac_keylen = 16;
   }
   auto expectedlen = keys[0].data.name.size() + enc_keylen + hmac_keylen;
-  char buf[256];
-  assert(sizeof(buf) >= expectedlen);
+  std::array<char, 256> buf;
+  assert(buf.size() >= expectedlen);
 
   size_t i = 0;
   for (auto &file : files) {
@@ -207,7 +214,7 @@ read_tls_ticket_key_file(const std::vector<StringRef> &files,
       return nullptr;
     }
 
-    f.read(buf, expectedlen);
+    f.read(buf.data(), expectedlen);
     if (static_cast<size_t>(f.gcount()) != expectedlen) {
       LOG(ERROR) << "tls-ticket-key-file: want to read " << expectedlen
                  << " bytes but only read " << f.gcount() << " bytes from "
@@ -225,7 +232,7 @@ read_tls_ticket_key_file(const std::vector<StringRef> &files,
                 << ", hmac_keylen=" << key.hmac_keylen;
     }
 
-    auto p = buf;
+    auto p = std::ranges::begin(buf);
     p = std::ranges::copy_n(p, key.data.name.size(),
                             std::ranges::begin(key.data.name))
           .in;
@@ -389,8 +396,10 @@ HeaderRefs::value_type parse_header(BlockAllocator &balloc,
     as_string_ref(std::ranges::begin(name_iov), p),
     make_string_ref(balloc, StringRef{value, std::ranges::end(optarg)}));
 
-  if (!nghttp2_check_header_name(nv.name.byte(), nv.name.size()) ||
-      !nghttp2_check_header_value_rfc9113(nv.value.byte(), nv.value.size())) {
+  if (!nghttp2_check_header_name(
+        reinterpret_cast<const uint8_t *>(nv.name.data()), nv.name.size()) ||
+      !nghttp2_check_header_value_rfc9113(
+        reinterpret_cast<const uint8_t *>(nv.value.data()), nv.value.size())) {
     return {};
   }
 
@@ -1706,8 +1715,8 @@ int parse_psk_secrets(Config *config, const StringRef &path) {
     auto identity = make_string_ref(
       config->balloc, StringRef{std::ranges::begin(line), sep_it});
 
-    auto secret = util::decode_hex(
-      config->balloc, StringRef{sep_it + 1, std::ranges::end(line)});
+    auto secret = as_string_ref(util::decode_hex(
+      config->balloc, StringRef{sep_it + 1, std::ranges::end(line)}));
 
     auto rv = tlsconf.psk_secrets.emplace(identity, secret);
     if (!rv.second) {
@@ -1773,8 +1782,8 @@ int parse_client_psk_secrets(Config *config, const StringRef &path) {
     tlsconf.client.psk.identity = make_string_ref(
       config->balloc, StringRef{std::ranges::begin(line), sep_it});
 
-    tlsconf.client.psk.secret = StringRef{util::decode_hex(
-      config->balloc, StringRef{sep_it + 1, std::ranges::end(line)})};
+    tlsconf.client.psk.secret = as_string_ref(util::decode_hex(
+      config->balloc, StringRef{sep_it + 1, std::ranges::end(line)}));
 
     return 0;
   }
@@ -2872,8 +2881,6 @@ int parse_config(Config *config, int optid, const StringRef &opt,
                  const StringRef &optarg, std::set<StringRef> &included_set,
                  std::map<StringRef, size_t> &pattern_addr_indexer) {
   std::array<char, STRERROR_BUFSIZE> errbuf;
-  char host[NI_MAXHOST];
-  uint16_t port;
 
   switch (optid) {
   case SHRPX_OPTID_BACKEND: {
@@ -2887,14 +2894,15 @@ int parse_config(Config *config, int optid, const StringRef &opt,
         make_string_ref(downstreamconf.balloc, StringRef{path, addr_end});
       addr.host_unix = true;
     } else {
-      if (split_host_port(host, sizeof(host), &port,
-                          StringRef{std::ranges::begin(optarg), addr_end},
-                          opt) == -1) {
+      auto hp =
+        split_host_port(downstreamconf.balloc,
+                        StringRef{std::ranges::begin(optarg), addr_end}, opt);
+      if (!hp) {
         return -1;
       }
 
-      addr.host = make_string_ref(downstreamconf.balloc, StringRef{host});
-      addr.port = port;
+      addr.host = std::move(hp->host);
+      addr.port = hp->port;
     }
 
     auto mapping =
@@ -2978,23 +2986,23 @@ int parse_config(Config *config, int optid, const StringRef &opt,
       return 0;
     }
 
-    if (split_host_port(host, sizeof(host), &port,
-                        StringRef{std::ranges::begin(optarg), addr_end},
-                        opt) == -1) {
+    auto hp = split_host_port(
+      config->balloc, StringRef{std::ranges::begin(optarg), addr_end}, opt);
+    if (!hp) {
       return -1;
     }
 
-    addr.host = make_string_ref(config->balloc, StringRef{host});
-    addr.port = port;
+    addr.host = std::move(hp->host);
+    addr.port = hp->port;
 
-    if (util::numeric_host(host, AF_INET)) {
+    if (util::numeric_host(addr.host.data(), AF_INET)) {
       addr.family = AF_INET;
       addr.index = addrs.size();
       addrs.push_back(std::move(addr));
       return 0;
     }
 
-    if (util::numeric_host(host, AF_INET6)) {
+    if (util::numeric_host(addr.host.data(), AF_INET6)) {
       addr.family = AF_INET6;
       addr.index = addrs.size();
       addrs.push_back(std::move(addr));
@@ -3659,15 +3667,15 @@ int parse_config(Config *config, int optid, const StringRef &opt,
       return -1;
     }
 
-    if (split_host_port(host, sizeof(host), &port,
-                        StringRef{std::ranges::begin(optarg), addr_end},
-                        opt) == -1) {
+    auto hp = split_host_port(
+      config->balloc, StringRef{std::ranges::begin(optarg), addr_end}, opt);
+    if (!hp) {
       return -1;
     }
 
     auto &memcachedconf = config->tls.ticket.memcached;
-    memcachedconf.host = make_string_ref(config->balloc, StringRef{host});
-    memcachedconf.port = port;
+    memcachedconf.host = std::move(hp->host);
+    memcachedconf.port = hp->port;
     memcachedconf.tls = params.tls;
 
     return 0;
@@ -4660,8 +4668,8 @@ int configure_downstream_group(Config *config, bool http2_proxy,
             key = addr.hostport;
           }
         } else {
-          auto p = reinterpret_cast<uint8_t *>(&addr.addr.su);
-          key = StringRef{p, addr.addr.len};
+          key =
+            StringRef{reinterpret_cast<char *>(&addr.addr.su), addr.addr.len};
         }
         rv = compute_affinity_hash(g.affinity_hash, idx, key);
         if (rv != 0) {
@@ -4725,9 +4733,9 @@ int resolve_hostname(Address *addr, const char *hostname, uint16_t port,
 
   auto res_d = defer(freeaddrinfo, res);
 
-  char host[NI_MAXHOST];
-  rv = getnameinfo(res->ai_addr, res->ai_addrlen, host, sizeof(host), nullptr,
-                   0, NI_NUMERICHOST);
+  std::array<char, NI_MAXHOST> host;
+  rv = getnameinfo(res->ai_addr, res->ai_addrlen, host.data(), host.size(),
+                   nullptr, 0, NI_NUMERICHOST);
   if (rv != 0) {
     LOG(FATAL) << "Address resolution for " << hostname
                << " failed: " << gai_strerror(rv);
@@ -4737,7 +4745,7 @@ int resolve_hostname(Address *addr, const char *hostname, uint16_t port,
 
   if (LOG_ENABLED(INFO)) {
     LOG(INFO) << "Address resolution for " << hostname
-              << " succeeded: " << host;
+              << " succeeded: " << host.data();
   }
 
   memcpy(&addr->su, res->ai_addr, res->ai_addrlen);

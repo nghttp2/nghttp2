@@ -905,7 +905,7 @@ int Http2Handler::verify_alpn_result() {
   // Check the negotiated protocol in ALPN
   SSL_get0_alpn_selected(ssl_, &next_proto, &next_proto_len);
   if (next_proto) {
-    auto proto = StringRef{next_proto, next_proto_len};
+    auto proto = as_string_ref(next_proto, next_proto_len);
     if (sessions_->get_config()->verbose) {
       std::cout << "The negotiated protocol: " << proto << std::endl;
     }
@@ -1429,43 +1429,43 @@ int on_header_callback2(nghttp2_session *session, const nghttp2_frame *frame,
 
   stream->header_buffer_size += namebuf.len + valuebuf.len;
 
-  auto token = http2::lookup_token(StringRef{namebuf.base, namebuf.len});
+  auto token = http2::lookup_token(as_string_ref(namebuf.base, namebuf.len));
 
   auto &header = stream->header;
 
   switch (token) {
   case http2::HD__METHOD:
-    header.method = StringRef{valuebuf.base, valuebuf.len};
+    header.method = as_string_ref(valuebuf.base, valuebuf.len);
     header.rcbuf.method = value;
     nghttp2_rcbuf_incref(value);
     break;
   case http2::HD__SCHEME:
-    header.scheme = StringRef{valuebuf.base, valuebuf.len};
+    header.scheme = as_string_ref(valuebuf.base, valuebuf.len);
     header.rcbuf.scheme = value;
     nghttp2_rcbuf_incref(value);
     break;
   case http2::HD__AUTHORITY:
-    header.authority = StringRef{valuebuf.base, valuebuf.len};
+    header.authority = as_string_ref(valuebuf.base, valuebuf.len);
     header.rcbuf.authority = value;
     nghttp2_rcbuf_incref(value);
     break;
   case http2::HD_HOST:
-    header.host = StringRef{valuebuf.base, valuebuf.len};
+    header.host = as_string_ref(valuebuf.base, valuebuf.len);
     header.rcbuf.host = value;
     nghttp2_rcbuf_incref(value);
     break;
   case http2::HD__PATH:
-    header.path = StringRef{valuebuf.base, valuebuf.len};
+    header.path = as_string_ref(valuebuf.base, valuebuf.len);
     header.rcbuf.path = value;
     nghttp2_rcbuf_incref(value);
     break;
   case http2::HD_IF_MODIFIED_SINCE:
-    header.ims = StringRef{valuebuf.base, valuebuf.len};
+    header.ims = as_string_ref(valuebuf.base, valuebuf.len);
     header.rcbuf.ims = value;
     nghttp2_rcbuf_incref(value);
     break;
   case http2::HD_EXPECT:
-    header.expect = StringRef{valuebuf.base, valuebuf.len};
+    header.expect = as_string_ref(valuebuf.base, valuebuf.len);
     header.rcbuf.expect = value;
     nghttp2_rcbuf_incref(value);
     break;

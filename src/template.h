@@ -169,43 +169,6 @@ constexpr double operator"" _s(unsigned long long s) { return s; }
 // milliseconds
 constexpr double operator"" _ms(unsigned long long ms) { return ms / 1000.; }
 
-// Returns a copy of NULL-terminated string [first, last).
-template <typename InputIt>
-std::unique_ptr<char[]> strcopy(InputIt first, InputIt last) {
-  auto res = std::make_unique<char[]>(last - first + 1);
-  *std::copy(first, last, res.get()) = '\0';
-  return res;
-}
-
-// Returns a copy of NULL-terminated string |val|.
-inline std::unique_ptr<char[]> strcopy(const char *val) {
-  return strcopy(val, val + strlen(val));
-}
-
-inline std::unique_ptr<char[]> strcopy(const char *val, size_t n) {
-  return strcopy(val, val + n);
-}
-
-// Returns a copy of val.c_str().
-inline std::unique_ptr<char[]> strcopy(const std::string &val) {
-  return strcopy(std::begin(val), std::end(val));
-}
-
-inline std::unique_ptr<char[]> strcopy(const std::unique_ptr<char[]> &val) {
-  if (!val) {
-    return nullptr;
-  }
-  return strcopy(val.get());
-}
-
-inline std::unique_ptr<char[]> strcopy(const std::unique_ptr<char[]> &val,
-                                       size_t n) {
-  if (!val) {
-    return nullptr;
-  }
-  return strcopy(val.get(), val.get() + n);
-}
-
 // ImmutableString represents string that is immutable unlike
 // std::string.  It has c_str() and size() functions to mimic
 // std::string.  It manages buffer by itself.  Just like std::string,
@@ -224,20 +187,35 @@ public:
   using const_iterator = const_pointer;
   using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
-  constexpr ImmutableString() : len(0), base("") {}
+  constexpr ImmutableString() noexcept : len(0), base("") {}
+
   constexpr ImmutableString(const char *s, size_t slen)
     : len(slen), base(copystr(s, s + len)) {}
+
   constexpr explicit ImmutableString(const char *s)
     : len(traits_type::length(s)), base(copystr(s, s + len)) {}
-  constexpr explicit ImmutableString(const std::string &s)
-    : len(s.size()), base(copystr(std::begin(s), std::end(s))) {}
-  template <typename InputIt>
-  constexpr ImmutableString(InputIt first, InputIt last)
-    : len(std::distance(first, last)), base(copystr(first, last)) {}
+
+  ImmutableString(std::nullptr_t) = delete;
+
+  template <std::ranges::input_range R>
+  requires(std::is_same_v<std::ranges::range_value_t<R>, value_type> &&
+           !std::is_same_v<std::remove_cvref_t<R>, ImmutableString> &&
+           !std::is_array_v<std::remove_cvref_t<R>>)
+  constexpr explicit ImmutableString(R &&r)
+    : len(std::ranges::distance(r)), base(copystr(std::forward<R>(r))) {}
+
+  template <std::input_iterator I>
+  requires(std::is_same_v<std::iter_value_t<I>, value_type>)
+  constexpr ImmutableString(I first, I last)
+    : len(std::ranges::distance(first, last)),
+      base(copystr(std::move(first), std::move(last))) {}
+
   constexpr ImmutableString(const ImmutableString &other)
-    : len(other.len), base(copystr(std::begin(other), std::end(other))) {}
+    : len(other.len), base(copystr(other)) {}
+
   constexpr ImmutableString(ImmutableString &&other) noexcept
     : len{std::exchange(other.len, 0)}, base{std::exchange(other.base, "")} {}
+
   constexpr ~ImmutableString() {
     if (len) {
       delete[] base;
@@ -252,7 +230,7 @@ public:
       delete[] base;
     }
     len = other.len;
-    base = copystr(std::begin(other), std::end(other));
+    base = copystr(other);
     return *this;
   }
   constexpr ImmutableString &operator=(ImmutableString &&other) noexcept {
@@ -292,7 +270,8 @@ public:
     return const_reverse_iterator{base};
   }
 
-  constexpr const char *c_str() const noexcept { return base; }
+  constexpr const_pointer c_str() const noexcept { return base; }
+  constexpr const_pointer data() const noexcept { return base; }
   constexpr size_type size() const noexcept { return len; }
   constexpr bool empty() const noexcept { return len == 0; }
   constexpr const_reference operator[](size_type pos) const noexcept {
@@ -300,35 +279,27 @@ public:
   }
 
 private:
-  template <typename InputIt>
-  constexpr const char *copystr(InputIt first, InputIt last) {
-    if (first == last) {
+  template <std::input_iterator I>
+  constexpr const char *copystr(I first, I last) {
+    auto len = std::ranges::distance(first, last);
+    if (len == 0) {
       return "";
     }
-    auto res = new char[std::distance(first, last) + 1];
-    *std::copy(first, last, res) = '\0';
+    auto res = new char[len + 1];
+    *std::ranges::copy(first, last, res).out = '\0';
     return res;
+  }
+
+  template <std::ranges::input_range R> constexpr const char *copystr(R &&r) {
+    return copystr(std::ranges::begin(r), std::ranges::end(r));
   }
 
   size_type len;
   const char *base;
 };
 
-inline constexpr bool operator==(const ImmutableString &lhs,
-                                 const ImmutableString &rhs) {
-  return lhs.size() == rhs.size() &&
-         std::equal(std::begin(lhs), std::end(lhs), std::begin(rhs));
-}
-
-inline constexpr bool operator==(const ImmutableString &lhs,
-                                 const std::string &rhs) {
-  return lhs.size() == rhs.size() &&
-         std::equal(std::begin(lhs), std::end(lhs), std::begin(rhs));
-}
-
-inline constexpr bool operator==(const ImmutableString &lhs, const char *rhs) {
-  return lhs.size() == std::char_traits<char>::length(rhs) &&
-         std::equal(std::begin(lhs), std::end(lhs), rhs);
+inline bool operator==(const ImmutableString &lhs, const ImmutableString &rhs) {
+  return std::ranges::equal(lhs, rhs);
 }
 
 inline std::ostream &operator<<(std::ostream &o, const ImmutableString &s) {
@@ -358,33 +329,34 @@ public:
   using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
   constexpr StringRef() noexcept : base(""), len(0) {}
-  constexpr StringRef(const StringRef &other) noexcept = default;
-  constexpr StringRef(std::nullptr_t) = delete;
-  constexpr StringRef(const std::string &s) : base(s.c_str()), len(s.size()) {}
-  constexpr explicit StringRef(const std::string_view &s)
-    : base(s.data()), len(s.size()) {}
-  constexpr explicit StringRef(const ImmutableString &s)
-    : base(s.c_str()), len(s.size()) {}
-  constexpr StringRef(const char *s) : base(s), len(traits_type::length(s)) {}
-  constexpr StringRef(const char *s, size_t n) : base(s), len(n) {}
-  explicit StringRef(const uint8_t *s, size_t n)
-    : base(reinterpret_cast<const char *>(s)), len(n) {}
-  template <std::contiguous_iterator InputIt,
-            typename = std::enable_if_t<
-              std::is_same_v<std::iter_value_t<InputIt>, char>>>
-  constexpr StringRef(InputIt first, InputIt last)
-    : base(std::to_address(first)), len(std::distance(first, last)) {}
-  constexpr StringRef(std::span<const char> s)
-    : base(s.data()), len(s.size_bytes()) {}
-  explicit StringRef(std::span<const uint8_t> s)
-    : base(reinterpret_cast<const char *>(s.data())), len(s.size_bytes()) {}
-  static constexpr StringRef from_maybe_nullptr(const char *s) noexcept {
-    if (s == nullptr) {
-      return StringRef();
-    }
 
-    return StringRef(s);
-  }
+  constexpr StringRef(const StringRef &other) noexcept = default;
+
+  StringRef(std::nullptr_t) = delete;
+
+  constexpr StringRef(const char *s) : base(s), len(traits_type::length(s)) {}
+
+  constexpr StringRef(const char *s, size_t n) : base(s), len(n) {}
+
+  constexpr StringRef(const std::string &s) : base(s.data()), len(s.size()) {}
+
+  constexpr StringRef(const ImmutableString &s)
+    : base(s.data()), len(s.size()) {}
+
+  template <typename R>
+  requires(std::ranges::contiguous_range<R> && std::ranges::sized_range<R> &&
+           std::ranges::borrowed_range<R> &&
+           std::is_same_v<std::ranges::range_value_t<R>, value_type> &&
+           !std::is_same_v<std::remove_cvref_t<R>, StringRef> &&
+           !std::is_array_v<std::remove_cvref_t<R>>)
+  constexpr explicit StringRef(R &&r)
+    : base(std::ranges::data(r)), len(std::ranges::size(r)) {}
+
+  template <std::contiguous_iterator I>
+  requires(std::is_same_v<std::iter_value_t<I>, value_type>)
+  constexpr StringRef(I first, I last)
+    : base(std::to_address(first)),
+      len(std::ranges::distance(std::move(first), std::move(last))) {}
 
   constexpr StringRef &operator=(const StringRef &other) noexcept = default;
 
@@ -415,10 +387,6 @@ public:
     return *(base + pos);
   }
 
-  const uint8_t *byte() const {
-    return reinterpret_cast<const uint8_t *>(base);
-  }
-
   constexpr operator std::string_view() const noexcept { return {base, len}; }
 
   static constexpr size_type npos = size_type(-1);
@@ -428,33 +396,26 @@ public:
   }
 
 private:
-  const char *base;
+  const_pointer base;
   size_type len;
 };
 
 inline constexpr bool operator==(const StringRef &lhs,
                                  const StringRef &rhs) noexcept {
-  return lhs.size() == rhs.size() &&
-         std::equal(std::begin(lhs), std::end(lhs), std::begin(rhs));
-}
-
-inline constexpr bool operator==(const StringRef &lhs,
-                                 const ImmutableString &rhs) noexcept {
-  return lhs.size() == rhs.size() &&
-         std::equal(std::begin(lhs), std::end(lhs), std::begin(rhs));
+  return std::ranges::equal(lhs, rhs);
 }
 
 #if !defined(__APPLE__) && !defined(_LIBCPP_VERSION)
 inline constexpr std::strong_ordering
 operator<=>(const StringRef &lhs, const StringRef &rhs) noexcept {
-  return std::lexicographical_compare_three_way(std::begin(lhs), std::end(lhs),
-                                                std::begin(rhs), std::end(rhs));
+  return std::lexicographical_compare_three_way(
+    std::ranges::begin(lhs), std::ranges::end(lhs), std::ranges::begin(rhs),
+    std::ranges::end(rhs));
 }
 #else  // __APPLE__ || _LIBCPP_VERSION
 inline constexpr bool operator<(const StringRef &lhs,
                                 const StringRef &rhs) noexcept {
-  return std::lexicographical_compare(std::begin(lhs), std::end(lhs),
-                                      std::begin(rhs), std::end(rhs));
+  return std::ranges::lexicographical_compare(lhs, rhs);
 }
 #endif // __APPLE__ || _LIBCPP_VERSION
 
@@ -522,6 +483,14 @@ requires(sizeof(std::iter_value_t<I>) == sizeof(StringRef::value_type))
   return StringRef{
     reinterpret_cast<StringRef::const_pointer>(std::to_address(first)),
     static_cast<size_t>(std::ranges::distance(first, last))};
+}
+
+// Returns StringRef over a given range [|first|, |first| + |n|).
+template <std::contiguous_iterator I>
+requires(sizeof(std::iter_value_t<I>) == sizeof(StringRef::value_type))
+[[nodiscard]] StringRef as_string_ref(I first, size_t n) {
+  return StringRef{
+    reinterpret_cast<StringRef::const_pointer>(std::to_address(first)), n};
 }
 
 inline int run_app(std::function<int(int, char **)> app, int argc,
