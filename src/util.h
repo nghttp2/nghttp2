@@ -91,7 +91,7 @@ constexpr bool is_alpha(const char c) noexcept {
 
 constexpr bool is_digit(const char c) noexcept { return '0' <= c && c <= '9'; }
 
-inline bool is_hex_digit(const char c) {
+constexpr bool is_hex_digit(const char c) noexcept {
   return is_digit(c) || ('A' <= c && c <= 'F') || ('a' <= c && c <= 'f');
 }
 
@@ -128,9 +128,31 @@ constexpr bool in_token(char c) noexcept {
 
 bool in_attr_char(char c);
 
+static constexpr auto hex_to_uint_tbl = []() {
+  std::array<uint32_t, 256> tbl;
+
+  std::ranges::fill(tbl, 256);
+
+  for (char i = '0'; i <= '9'; ++i) {
+    tbl[static_cast<uint8_t>(i)] = i - '0';
+  }
+
+  for (char i = 'A'; i <= 'F'; ++i) {
+    tbl[static_cast<uint8_t>(i)] = i - 'A' + 10;
+  }
+
+  for (char i = 'a'; i <= 'f'; ++i) {
+    tbl[static_cast<uint8_t>(i)] = i - 'a' + 10;
+  }
+
+  return tbl;
+}();
+
 // Returns integer corresponding to hex notation |c|.  If
 // is_hex_digit(c) is false, it returns 256.
-uint32_t hex_to_uint(char c);
+constexpr uint32_t hex_to_uint(char c) noexcept {
+  return hex_to_uint_tbl[static_cast<uint8_t>(c)];
+}
 
 template <std::input_iterator I, std::weakly_incrementable O>
 constexpr O percent_decode(I first, I last, O result) {

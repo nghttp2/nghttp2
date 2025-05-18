@@ -81,6 +81,7 @@ const MunitTest tests[]{
   munit_void_test(test_util_split_str),
   munit_void_test(test_util_rstrip),
   munit_void_test(test_util_contains),
+  munit_void_test(test_util_hex_to_uint),
   munit_test_end(),
 };
 } // namespace
@@ -742,6 +743,26 @@ void test_util_contains(void) {
   assert_true(util::contains("alphabravo"sv, 'o'));
   assert_false(util::contains("alphabravo"sv, 'x'));
   assert_false(util::contains(""sv, ' '));
+}
+
+void test_util_hex_to_uint(void) {
+  for (size_t i = 0; i < 256; ++i) {
+    if (!util::is_hex_digit(i)) {
+      assert_uint32(256, ==, util::hex_to_uint(i));
+    }
+  }
+
+  for (size_t i = 0; i < 10; ++i) {
+    assert_uint32(i, ==, util::hex_to_uint('0' + i));
+  }
+
+  for (size_t i = 0; i < 6; ++i) {
+    assert_uint32(i + 10, ==, util::hex_to_uint('A' + i));
+  }
+
+  for (size_t i = 0; i < 6; ++i) {
+    assert_uint32(i + 10, ==, util::hex_to_uint('a' + i));
+  }
 }
 
 } // namespace shrpx

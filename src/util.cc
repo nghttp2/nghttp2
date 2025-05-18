@@ -168,19 +168,6 @@ size_t percent_encode_tokenlen(const StringRef &target) {
   return n;
 }
 
-uint32_t hex_to_uint(char c) {
-  if (c <= '9') {
-    return c - '0';
-  }
-  if (c <= 'Z') {
-    return c - 'A' + 10;
-  }
-  if (c <= 'z') {
-    return c - 'a' + 10;
-  }
-  return 256;
-}
-
 StringRef quote_string(BlockAllocator &balloc, const StringRef &target) {
   auto cnt = std::count(std::begin(target), std::end(target), '"');
 
