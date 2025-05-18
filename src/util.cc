@@ -150,24 +150,6 @@ bool in_attr_char(char c) {
   return util::in_token(c);
 }
 
-size_t percent_encode_tokenlen(const StringRef &target) {
-  size_t n = 0;
-
-  for (auto first = std::begin(target); first != std::end(target); ++first) {
-    uint8_t c = *first;
-
-    if (c != '%' && in_token(c)) {
-      ++n;
-      continue;
-    }
-
-    // percent-encoded character '%ff'
-    n += 3;
-  }
-
-  return n;
-}
-
 StringRef quote_string(BlockAllocator &balloc, const StringRef &target) {
   auto cnt = std::count(std::begin(target), std::end(target), '"');
 
