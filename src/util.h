@@ -85,11 +85,11 @@ namespace util {
 
 extern const char UPPER_XDIGITS[];
 
-inline bool is_alpha(const char c) {
+constexpr bool is_alpha(const char c) noexcept {
   return ('A' <= c && c <= 'Z') || ('a' <= c && c <= 'z');
 }
 
-inline bool is_digit(const char c) { return '0' <= c && c <= '9'; }
+constexpr bool is_digit(const char c) noexcept { return '0' <= c && c <= '9'; }
 
 inline bool is_hex_digit(const char c) {
   return is_digit(c) || ('A' <= c && c <= 'F') || ('a' <= c && c <= 'f');
@@ -103,7 +103,28 @@ bool in_rfc3986_unreserved_chars(const char c);
 bool in_rfc3986_sub_delims(const char c);
 
 // Returns true if |c| is in token (HTTP-p1, Section 3.2.6)
-bool in_token(char c);
+constexpr bool in_token(char c) noexcept {
+  switch (c) {
+  case '!':
+  case '#':
+  case '$':
+  case '%':
+  case '&':
+  case '\'':
+  case '*':
+  case '+':
+  case '-':
+  case '.':
+  case '^':
+  case '_':
+  case '`':
+  case '|':
+  case '~':
+    return true;
+  }
+
+  return is_alpha(c) || is_digit(c);
+}
 
 bool in_attr_char(char c);
 
@@ -174,31 +195,51 @@ StringRef percent_decode(BlockAllocator &balloc, R &&r) {
   return as_string_ref(std::ranges::begin(iov), p);
 }
 
-// Percent encode |target| if character is not in token or '%'.
-StringRef percent_encode_token(BlockAllocator &balloc, const StringRef &target);
-
-template <typename OutputIt>
-OutputIt percent_encode_token(OutputIt it, const StringRef &target) {
-  for (auto first = std::begin(target); first != std::end(target); ++first) {
+// Percent encode a range [|first|, |last|) if a character is not in
+// token or '%'.
+template <std::input_iterator I, std::weakly_incrementable O>
+constexpr O percent_encode_token(I first, I last, O result) noexcept {
+  for (; first != last; ++first) {
     uint8_t c = *first;
 
     if (c != '%' && in_token(c)) {
-      *it++ = c;
+      *result++ = c;
       continue;
     }
 
-    *it++ = '%';
-    *it++ = UPPER_XDIGITS[c >> 4];
-    *it++ = UPPER_XDIGITS[(c & 0x0f)];
+    *result++ = '%';
+    *result++ = UPPER_XDIGITS[c >> 4];
+    *result++ = UPPER_XDIGITS[(c & 0x0f)];
   }
 
-  return it;
+  return result;
+}
+
+template <std::ranges::input_range R, std::weakly_incrementable O>
+constexpr O percent_encode_token(R &&r, O result) {
+  return percent_encode_token(std::ranges::begin(r), std::ranges::end(r),
+                              std::move(result));
 }
 
 // Returns the number of bytes written by percent_encode_token with
-// the same |target| parameter.  The return value does not include a
+// the same |r| parameter.  The return value does not include a
 // terminal NUL byte.
-size_t percent_encode_tokenlen(const StringRef &target);
+template <std::ranges::input_range R>
+constexpr size_t percent_encode_tokenlen(R &&r) noexcept {
+  size_t n = 0;
+
+  for (auto c : r) {
+    if (c != '%' && in_token(c)) {
+      ++n;
+      continue;
+    }
+
+    // percent-encoded character '%ff'
+    n += 3;
+  }
+
+  return n;
+}
 
 // Returns quotedString version of |target|.  Currently, this function
 // just replace '"' with '\"'.

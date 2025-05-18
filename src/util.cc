@@ -160,29 +160,6 @@ std::string percent_encode(const std::string &target) {
                         target.size());
 }
 
-bool in_token(char c) {
-  switch (c) {
-  case '!':
-  case '#':
-  case '$':
-  case '%':
-  case '&':
-  case '\'':
-  case '*':
-  case '+':
-  case '-':
-  case '.':
-  case '^':
-  case '_':
-  case '`':
-  case '|':
-  case '~':
-    return true;
-  }
-
-  return is_alpha(c) || is_digit(c);
-}
-
 bool in_attr_char(char c) {
   switch (c) {
   case '*':
@@ -192,16 +169,6 @@ bool in_attr_char(char c) {
   }
 
   return util::in_token(c);
-}
-
-StringRef percent_encode_token(BlockAllocator &balloc,
-                               const StringRef &target) {
-  auto iov = make_byte_ref(balloc, target.size() * 3 + 1);
-  auto p = percent_encode_token(std::begin(iov), target);
-
-  *p = '\0';
-
-  return as_string_ref(std::begin(iov), p);
 }
 
 size_t percent_encode_tokenlen(const StringRef &target) {

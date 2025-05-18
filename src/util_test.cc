@@ -187,12 +187,31 @@ void test_util_to_token68(void) {
 }
 
 void test_util_percent_encode_token(void) {
-  BlockAllocator balloc(4096, 4096);
-  assert_stdsv_equal("h2"sv, util::percent_encode_token(balloc, "h2"_sr));
-  assert_stdsv_equal("h3~"sv, util::percent_encode_token(balloc, "h3~"_sr));
-  assert_stdsv_equal("100%25"sv, util::percent_encode_token(balloc, "100%"_sr));
+  std::array<char, 64> buf;
+
+  assert_stdsv_equal(
+    "h2"sv, as_string_view(buf.begin(),
+                           util::percent_encode_token("h2"_sr, buf.begin())));
+
+  assert_size("h2"sv.size(), ==, util::percent_encode_tokenlen("h2"sv));
+
+  assert_stdsv_equal(
+    "h3~"sv, as_string_view(buf.begin(),
+                            util::percent_encode_token("h3~"_sr, buf.begin())));
+
+  assert_size("h3~"sv.size(), ==, util::percent_encode_tokenlen("h3~"sv));
+
+  assert_stdsv_equal("100%25"sv,
+                     as_string_view(buf.begin(), util::percent_encode_token(
+                                                   "100%"_sr, buf.begin())));
+  assert_size("100%25"sv.size(), ==, util::percent_encode_tokenlen("100%"sv));
+
   assert_stdsv_equal("http%202"sv,
-                     util::percent_encode_token(balloc, "http 2"_sr));
+                     as_string_view(buf.begin(), util::percent_encode_token(
+                                                   "http 2"_sr, buf.begin())));
+
+  assert_size("http%202"sv.size(), ==,
+              util::percent_encode_tokenlen("http 2"sv));
 }
 
 void test_util_percent_decode(void) {

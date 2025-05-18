@@ -464,6 +464,15 @@ requires(std::ranges::contiguous_range<R> && std::ranges::sized_range<R> &&
     std::ranges::size(r)};
 }
 
+// Returns std::string_view over a given range [|first|, |last|).
+template <std::contiguous_iterator I>
+requires(sizeof(std::iter_value_t<I>) == sizeof(std::string_view::value_type))
+[[nodiscard]] std::string_view as_string_view(I first, I last) {
+  return std::string_view{
+    reinterpret_cast<std::string_view::const_pointer>(std::to_address(first)),
+    static_cast<size_t>(std::ranges::distance(first, last))};
+}
+
 // Returns StringRef over a given range |r|.
 template <typename R>
 requires(std::ranges::contiguous_range<R> && std::ranges::sized_range<R> &&
