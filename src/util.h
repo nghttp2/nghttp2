@@ -377,7 +377,7 @@ StringRef format_hex(BlockAllocator &balloc, R &&r) {
 // Converts |R| in hex format, and returns the result.
 template <std::ranges::input_range R>
 requires(sizeof(std::ranges::range_value_t<R>) == sizeof(uint8_t))
-std::string format_hex(R &&r) {
+constexpr std::string format_hex(R &&r) {
   std::string res;
 
   res.resize(std::ranges::distance(r) * 2);
