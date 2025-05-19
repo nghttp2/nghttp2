@@ -1586,7 +1586,7 @@ int construct_push_component(BlockAllocator &balloc, StringRef &scheme,
       p = std::ranges::copy(auth, p).out;
       if (port_exists) {
         *p++ = ':';
-        p = util::utos(p, u.port);
+        p = util::utos(u.port, p);
       }
       *p = '\0';
 

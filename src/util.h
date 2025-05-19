@@ -532,49 +532,64 @@ constexpr O tolower(R &&r, O result) {
 // Returns string representation of |n| with 2 fractional digits.
 std::string dtos(double n);
 
-template <typename T> std::string utos(T n) {
-  std::string res;
+template <std::integral T> constexpr std::string utos(T n) {
+  using namespace std::literals;
+
   if (n == 0) {
-    res = "0";
-    return res;
+    return "0"s;
   }
+
   size_t nlen = 0;
   for (auto t = n; t; t /= 10, ++nlen)
     ;
+
+  std::string res;
+
   res.resize(nlen);
+
   for (; n; n /= 10) {
     res[--nlen] = (n % 10) + '0';
   }
+
   return res;
 }
 
-template <typename T, typename OutputIt> OutputIt utos(OutputIt dst, T n) {
+template <std::integral T, std::weakly_incrementable O>
+constexpr O utos(T n, O result) {
   if (n == 0) {
-    *dst++ = '0';
-    return dst;
+    *result++ = '0';
+    return result;
   }
+
   size_t nlen = 0;
+
   for (auto t = n; t; t /= 10, ++nlen)
     ;
-  auto p = dst + nlen;
-  auto res = p;
+
+  result = std::ranges::next(result, nlen);
+  auto p = result;
+
   for (; n; n /= 10) {
     *--p = (n % 10) + '0';
   }
-  return res;
+
+  return result;
 }
 
-template <typename T>
+template <std::integral T>
 StringRef make_string_ref_uint(BlockAllocator &balloc, T n) {
   auto iov = make_byte_ref(balloc, NGHTTP2_MAX_UINT64_DIGITS + 1);
-  auto p = std::begin(iov);
-  p = util::utos(p, n);
+  auto p = std::ranges::begin(iov);
+
+  p = util::utos(n, p);
   *p = '\0';
-  return as_string_ref(std::begin(iov), p);
+
+  return as_string_ref(std::ranges::begin(iov), p);
 }
 
-template <typename T> std::string utos_unit(T n) {
-  char u = 0;
+template <std::integral T> constexpr std::string utos_unit(T n) {
+  char u;
+
   if (n >= (1 << 30)) {
     u = 'G';
     n /= (1 << 30);
@@ -584,17 +599,18 @@ template <typename T> std::string utos_unit(T n) {
   } else if (n >= (1 << 10)) {
     u = 'K';
     n /= (1 << 10);
-  }
-  if (u == 0) {
+  } else {
     return utos(n);
   }
+
   return utos(n) + u;
 }
 
 // Like utos_unit(), but 2 digits fraction part is followed.
-template <typename T> std::string utos_funit(T n) {
-  char u = 0;
-  int b = 0;
+template <std::integral T> constexpr std::string utos_funit(T n) {
+  char u;
+  int b;
+
   if (n >= (1 << 30)) {
     u = 'G';
     b = 30;
@@ -604,28 +620,36 @@ template <typename T> std::string utos_funit(T n) {
   } else if (n >= (1 << 10)) {
     u = 'K';
     b = 10;
-  }
-  if (b == 0) {
+  } else {
     return utos(n);
   }
+
   return dtos(static_cast<double>(n) / (1 << b)) + u;
 }
 
-template <typename T> std::string utox(T n) {
-  std::string res;
+template <std::integral T> constexpr std::string utox(T n) {
+  using namespace std::literals;
+
   if (n == 0) {
-    res = "0";
-    return res;
+    return "0"s;
   }
+
   int i = 0;
   T t = n;
+
   for (; t; t /= 16, ++i)
     ;
+
+  std::string res;
+
   res.resize(i);
+
   --i;
+
   for (; n; --i, n /= 16) {
     res[i] = UPPER_XDIGITS[(n & 0x0f)];
   }
+
   return res;
 }
 

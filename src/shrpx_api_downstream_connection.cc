@@ -130,7 +130,7 @@ int APIDownstreamConnection::send_reply(unsigned int http_status,
   p = std::ranges::copy(M1, p).out;
   p = std::ranges::copy(api_status_str, p).out;
   p = std::ranges::copy(M2, p).out;
-  p = util::utos(p, http_status);
+  p = util::utos(http_status, p);
   p = std::ranges::copy(data, p).out;
   p = std::ranges::copy(M3, p).out;
 
