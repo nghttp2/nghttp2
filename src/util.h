@@ -549,15 +549,6 @@ constexpr bool streq(R1 &&a, R2 &&b) {
   return std::ranges::equal(std::forward<R1>(a), std::forward<R2>(b));
 }
 
-template <typename InputIt> void inp_strlower(InputIt first, InputIt last) {
-  std::transform(first, last, first, lowcase);
-}
-
-// Lowercase |s| in place.
-inline void inp_strlower(std::string &s) {
-  inp_strlower(std::begin(s), std::end(s));
-}
-
 // Converts characters in a range [|first|, |last|) to lowercase, and
 // stores the result in another range, beginning at |result|.  It
 // returns an output iterator to the element past the last element
