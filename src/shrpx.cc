@@ -957,8 +957,8 @@ get_inherited_quic_lingering_worker_process_from_env() {
 
       worker_ids.emplace_back();
 
-      util::decode_hex(reinterpret_cast<uint8_t *>(&worker_ids.back()),
-                       hex_wid);
+      util::decode_hex(hex_wid,
+                       reinterpret_cast<uint8_t *>(&worker_ids.back()));
 
       if (end == envend) {
         break;
