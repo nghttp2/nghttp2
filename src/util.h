@@ -95,8 +95,25 @@ constexpr bool is_hex_digit(const char c) noexcept {
   return is_digit(c) || ('A' <= c && c <= 'F') || ('a' <= c && c <= 'f');
 }
 
-// Returns true if |s| is hex string.
-bool is_hex_string(const StringRef &s);
+// Returns true if a range [|first|, |last|) is hex string.
+template <std::input_iterator I> constexpr bool is_hex_string(I first, I last) {
+  if (std::ranges::distance(first, last) % 2) {
+    return false;
+  }
+
+  for (; first != last; ++first) {
+    if (!is_hex_digit(*first)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+// Returns true if |r| is hex string.
+template <std::ranges::input_range R> constexpr bool is_hex_string(R &&r) {
+  return is_hex_string(std::ranges::begin(r), std::ranges::end(r));
+}
 
 bool in_rfc3986_unreserved_chars(const char c);
 
@@ -370,18 +387,50 @@ std::string format_hex(R &&r) {
   return res;
 }
 
-// decode_hex decodes hex string |s|, returns the decoded byte string.
-// This function assumes |s| is hex string, that is is_hex_string(s)
-// == true.
-std::span<const uint8_t> decode_hex(BlockAllocator &balloc, const StringRef &s);
-
-template <typename OutputIt>
-OutputIt decode_hex(OutputIt d_first, const StringRef &s) {
-  for (auto it = std::begin(s); it != std::end(s); it += 2) {
-    *d_first++ = (hex_to_uint(*it) << 4) | hex_to_uint(*(it + 1));
+// decode_hex decodes hex string in a range [|first|, |last|), and
+// stores the result in another range, beginning at |result|.  It
+// returns an output iterator to the element past the last element
+// stored.  This function assumes a range [|first|, |last|) is hex
+// string, that is is_hex_string(|first|, |last|) == true.
+template <std::input_iterator I, std::weakly_incrementable O>
+constexpr O decode_hex(I first, I last, O result) {
+  for (; first != last; first = std::ranges::next(first, 2)) {
+    *result++ =
+      (hex_to_uint(*first) << 4) | hex_to_uint(*std::ranges::next(first, 1));
   }
 
-  return d_first;
+  return result;
+}
+
+// decode_hex decodes hex string |r|, and stores the result in another
+// range, beginning at |result|.  It returns an output iterator to the
+// element past the last element stored.  This function assumes |r| is
+// hex string, that is is_hex_string(r) == true.
+template <std::ranges::input_range R, std::weakly_incrementable O>
+constexpr O decode_hex(R &&r, O result) {
+  return decode_hex(std::ranges::begin(r), std::ranges::end(r),
+                    std::move(result));
+}
+
+// decode_hex decodes hex string in a range [|first|, |last|), returns
+// the decoded byte string, which is not NULL terminated.  This
+// function assumes a range [|first|, |last|) is hex string, that is
+// is_hex_string(|first|, |last|) == true.
+template <std::input_iterator I>
+std::span<const uint8_t> decode_hex(BlockAllocator &balloc, I first, I last) {
+  auto iov = make_byte_ref(balloc, std::ranges::distance(first, last) / 2);
+  auto p =
+    decode_hex(std::move(first), std::move(last), std::ranges::begin(iov));
+
+  return {std::ranges::begin(iov), p};
+}
+
+// decode_hex decodes hex string |r|, returns the decoded byte string,
+// which is not NULL terminated.  This function assumes |r| is hex
+// string, that is is_hex_string(r) == true.
+template <std::ranges::input_range R>
+std::span<const uint8_t> decode_hex(BlockAllocator &balloc, R &&r) {
+  return decode_hex(balloc, std::ranges::begin(r), std::ranges::end(r));
 }
 
 // Returns given time |t| from epoch in HTTP Date format (e.g., Mon,

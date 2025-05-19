@@ -1525,28 +1525,6 @@ int sha1(uint8_t *res, const StringRef &s) {
   return message_digest(res, EVP_sha1(), s);
 }
 
-bool is_hex_string(const StringRef &s) {
-  if (s.size() % 2) {
-    return false;
-  }
-
-  for (auto c : s) {
-    if (!is_hex_digit(c)) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
-std::span<const uint8_t> decode_hex(BlockAllocator &balloc,
-                                    const StringRef &s) {
-  auto iov = make_byte_ref(balloc, s.size() + 1);
-  auto p = decode_hex(std::begin(iov), s);
-  *p = '\0';
-  return {std::begin(iov), p};
-}
-
 StringRef extract_host(const StringRef &hostport) {
   if (hostport[0] == '[') {
     // assume this is IPv6 numeric address

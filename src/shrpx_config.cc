@@ -282,14 +282,12 @@ read_quic_secret_file(const StringRef &path) {
 
     auto p = std::ranges::begin(s);
 
-    util::decode_hex(std::ranges::begin(qkm.reserved),
-                     StringRef{p, p + qkm.reserved.size()});
+    util::decode_hex(p, p + qkm.reserved.size(),
+                     std::ranges::begin(qkm.reserved));
     p += qkm.reserved.size() * 2;
-    util::decode_hex(std::ranges::begin(qkm.secret),
-                     StringRef{p, p + qkm.secret.size()});
+    util::decode_hex(p, p + qkm.secret.size(), std::ranges::begin(qkm.secret));
     p += qkm.secret.size() * 2;
-    util::decode_hex(std::ranges::begin(qkm.salt),
-                     StringRef{p, p + qkm.salt.size()});
+    util::decode_hex(p, p + qkm.salt.size(), std::ranges::begin(qkm.salt));
     p += qkm.salt.size() * 2;
 
     assert(static_cast<size_t>(p - std::ranges::begin(s)) == expectedlen * 2);
@@ -1706,7 +1704,7 @@ int parse_psk_secrets(Config *config, const StringRef &path) {
       return -1;
     }
 
-    if (!util::is_hex_string(StringRef{sep_it + 1, std::ranges::end(line)})) {
+    if (!util::is_hex_string(sep_it + 1, std::ranges::end(line))) {
       LOG(ERROR) << SHRPX_OPT_PSK_SECRETS
                  << ": secret must be hex string at line " << lineno;
       return -1;
@@ -1715,8 +1713,8 @@ int parse_psk_secrets(Config *config, const StringRef &path) {
     auto identity = make_string_ref(
       config->balloc, StringRef{std::ranges::begin(line), sep_it});
 
-    auto secret = as_string_ref(util::decode_hex(
-      config->balloc, StringRef{sep_it + 1, std::ranges::end(line)}));
+    auto secret = as_string_ref(
+      util::decode_hex(config->balloc, sep_it + 1, std::ranges::end(line)));
 
     auto rv = tlsconf.psk_secrets.emplace(identity, secret);
     if (!rv.second) {
@@ -1773,7 +1771,7 @@ int parse_client_psk_secrets(Config *config, const StringRef &path) {
       return -1;
     }
 
-    if (!util::is_hex_string(StringRef{sep_it + 1, std::ranges::end(line)})) {
+    if (!util::is_hex_string(sep_it + 1, std::ranges::end(line))) {
       LOG(ERROR) << SHRPX_OPT_CLIENT_PSK_SECRETS
                  << ": secret must be hex string at line " << lineno;
       return -1;
@@ -1782,8 +1780,8 @@ int parse_client_psk_secrets(Config *config, const StringRef &path) {
     tlsconf.client.psk.identity = make_string_ref(
       config->balloc, StringRef{std::ranges::begin(line), sep_it});
 
-    tlsconf.client.psk.secret = as_string_ref(util::decode_hex(
-      config->balloc, StringRef{sep_it + 1, std::ranges::end(line)}));
+    tlsconf.client.psk.secret = as_string_ref(
+      util::decode_hex(config->balloc, sep_it + 1, std::ranges::end(line)));
 
     return 0;
   }
@@ -4189,8 +4187,8 @@ int parse_config(Config *config, int optid, const StringRef &opt,
       LOG(ERROR) << opt << ": must be a hex-string";
       return -1;
     }
-    util::decode_hex(reinterpret_cast<uint8_t *>(&config->quic.server_id),
-                     optarg);
+    util::decode_hex(optarg,
+                     reinterpret_cast<uint8_t *>(&config->quic.server_id));
 #endif // ENABLE_HTTP3
 
     return 0;
