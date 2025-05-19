@@ -416,7 +416,7 @@ template <std::integral T> std::span<char> copy(T n, std::span<char> dest) {
     return dest.first(0);
   }
 
-  return {util::utos(std::ranges::begin(dest), n), std::ranges::end(dest)};
+  return {util::utos(n, std::ranges::begin(dest)), std::ranges::end(dest)};
 }
 } // namespace
 

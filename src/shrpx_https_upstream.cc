@@ -280,7 +280,7 @@ void rewrite_request_host_path_from_uri(BlockAllocator &balloc, Request &req,
 
     if (u.field_set & (1 << URLPARSE_PORT)) {
       *p++ = ':';
-      p = util::utos(p, u.port);
+      p = util::utos(u.port, p);
     }
     *p = '\0';
 
@@ -1072,9 +1072,8 @@ void HttpsUpstream::error_reply(unsigned int status_code) {
   output->append(get_config()->http.server_name);
   output->append("\r\nContent-Length: ");
   std::array<char, NGHTTP2_MAX_UINT64_DIGITS> intbuf;
-  output->append(
-    StringRef{std::ranges::begin(intbuf),
-              util::utos(std::ranges::begin(intbuf), html.size())});
+  output->append(std::ranges::begin(intbuf),
+                 util::utos(html.size(), std::ranges::begin(intbuf)));
   output->append("\r\nDate: ");
   auto lgconf = log_config();
   lgconf->update_tstamp(std::chrono::system_clock::now());

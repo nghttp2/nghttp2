@@ -1058,16 +1058,16 @@ void Client::on_stream_close(int32_t stream_id, bool success, bool final) {
 
       std::array<uint8_t, 256> buf;
       auto p = std::begin(buf);
-      p = util::utos(p, start.count());
+      p = util::utos(start.count(), p);
       *p++ = '\t';
       if (success) {
-        p = util::utos(p, req_stat->status);
+        p = util::utos(req_stat->status, p);
       } else {
         *p++ = '-';
         *p++ = '1';
       }
       *p++ = '\t';
-      p = util::utos(p, delta.count());
+      p = util::utos(delta.count(), p);
       *p++ = '\n';
 
       auto nwrite = static_cast<size_t>(std::distance(std::begin(buf), p));

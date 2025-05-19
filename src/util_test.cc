@@ -336,11 +336,11 @@ void test_util_ipv6_numeric_addr(void) {
 void test_util_utos(void) {
   uint8_t buf[32];
 
-  assert_stdstring_equal("0", (std::string{buf, util::utos(buf, 0)}));
-  assert_stdstring_equal("123", (std::string{buf, util::utos(buf, 123)}));
+  assert_stdstring_equal("0", (std::string{buf, util::utos(0, buf)}));
+  assert_stdstring_equal("123", (std::string{buf, util::utos(123, buf)}));
   assert_stdstring_equal(
     "18446744073709551615",
-    (std::string{buf, util::utos(buf, 18446744073709551615ULL)}));
+    (std::string{buf, util::utos(18446744073709551615ULL, buf)}));
 }
 
 void test_util_make_string_ref_uint(void) {
