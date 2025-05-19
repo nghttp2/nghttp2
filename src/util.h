@@ -128,7 +128,7 @@ constexpr bool in_token(char c) noexcept {
 
 bool in_attr_char(char c);
 
-static constexpr auto hex_to_uint_tbl = []() {
+constinit const auto hex_to_uint_tbl = []() {
   std::array<uint32_t, 256> tbl;
 
   std::ranges::fill(tbl, 256);
