@@ -208,10 +208,11 @@ StringRef make_string_ref(BlockAllocator &alloc, I first, I last) {
   return StringRef{dst, p};
 }
 
-// Makes a copy of |src|.  The resulting string will be
+// Makes a copy of |r| as StringRef.  The resulting string will be
 // NULL-terminated.
-inline StringRef make_string_ref(BlockAllocator &alloc, const StringRef &src) {
-  return make_string_ref(alloc, std::ranges::begin(src), std::ranges::end(src));
+template <std::ranges::input_range R>
+StringRef make_string_ref(BlockAllocator &alloc, R &&r) {
+  return make_string_ref(alloc, std::ranges::begin(r), std::ranges::end(r));
 }
 
 // private function used in concat_string_ref.  this is the base

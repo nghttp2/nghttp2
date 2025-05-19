@@ -246,7 +246,7 @@ StringRef create_altsvc_header_value(BlockAllocator &balloc,
   for (auto &altsvc : altsvcs) {
     p = util::percent_encode_token(altsvc.protocol_id, p);
     p = std::ranges::copy("=\""sv, p).out;
-    p = util::quote_string(p, altsvc.host);
+    p = util::quote_string(altsvc.host, p);
     *p++ = ':';
     p = std::ranges::copy(altsvc.service, p).out;
     *p++ = '"';

@@ -246,6 +246,10 @@ void test_util_quote_string(void) {
   assert_stdsv_equal(""sv, util::quote_string(balloc, ""_sr));
   assert_stdsv_equal("\\\"alpha\\\""sv,
                      util::quote_string(balloc, "\"alpha\""_sr));
+
+  assert_size("\\\"alpha\\\""sv.size(), ==,
+              util::quote_stringlen("\"alpha\""_sr));
+  assert_size(0, ==, util::quote_stringlen(""_sr));
 }
 
 void test_util_utox(void) {
