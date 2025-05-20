@@ -172,6 +172,7 @@ constexpr uint32_t hex_to_uint(char c) noexcept {
 }
 
 template <std::input_iterator I, std::weakly_incrementable O>
+requires(std::indirectly_copyable<I, O>)
 constexpr O percent_decode(I first, I last, O result) {
   for (; first != last; ++first) {
     if (*first != '%') {
@@ -233,6 +234,7 @@ StringRef percent_decode(BlockAllocator &balloc, R &&r) {
 // Percent encode a range [|first|, |last|) if a character is not in
 // token or '%'.
 template <std::input_iterator I, std::weakly_incrementable O>
+requires(std::indirectly_copyable<I, O>)
 constexpr O percent_encode_token(I first, I last, O result) noexcept {
   for (; first != last; ++first) {
     uint8_t c = *first;
@@ -251,6 +253,7 @@ constexpr O percent_encode_token(I first, I last, O result) noexcept {
 }
 
 template <std::ranges::input_range R, std::weakly_incrementable O>
+requires(std::indirectly_copyable<std::ranges::iterator_t<R>, O>)
 constexpr O percent_encode_token(R &&r, O result) {
   return percent_encode_token(std::ranges::begin(r), std::ranges::end(r),
                               std::move(result));
@@ -281,6 +284,7 @@ constexpr size_t percent_encode_tokenlen(R &&r) noexcept {
 // element past the last element stored.  Currently, this function
 // just replace '"' with '\"'.
 template <std::input_iterator I, std::weakly_incrementable O>
+requires(std::indirectly_copyable<I, O>)
 constexpr O quote_string(I first, I last, O result) noexcept {
   for (; first != last; ++first) {
     if (*first == '"') {
@@ -295,6 +299,7 @@ constexpr O quote_string(I first, I last, O result) noexcept {
 }
 
 template <std::ranges::input_range R, std::weakly_incrementable O>
+requires(std::indirectly_copyable<std::ranges::iterator_t<R>, O>)
 constexpr O quote_string(R &&r, O result) {
   return quote_string(std::ranges::begin(r), std::ranges::end(r),
                       std::move(result));
@@ -339,7 +344,8 @@ static constexpr char LOWER_XDIGITS[] = "0123456789abcdef";
 // result in another range, beginning at |result|.  It returns an
 // output iterator to the element past the last element stored.
 template <std::input_iterator I, std::weakly_incrementable O>
-requires(sizeof(std::iter_value_t<I>) == sizeof(uint8_t))
+requires(std::indirectly_writable<O, char> &&
+         sizeof(std::iter_value_t<I>) == sizeof(uint8_t))
 constexpr O format_hex(I first, I last, O result) noexcept {
   for (; first != last; ++first) {
     uint8_t c = *first;
@@ -354,7 +360,8 @@ constexpr O format_hex(I first, I last, O result) noexcept {
 // beginning at |result|.  It returns an output iterator to the
 // element past the last element stored.
 template <std::ranges::input_range R, std::weakly_incrementable O>
-requires(sizeof(std::ranges::range_value_t<R>) == sizeof(uint8_t))
+requires(std::indirectly_writable<O, char> &&
+         sizeof(std::ranges::range_value_t<R>) == sizeof(uint8_t))
 constexpr O format_hex(R &&r, O result) noexcept {
   return format_hex(std::ranges::begin(r), std::ranges::end(r),
                     std::move(result));
@@ -393,10 +400,11 @@ constexpr std::string format_hex(R &&r) {
 // stored.  This function assumes a range [|first|, |last|) is hex
 // string, that is is_hex_string(|first|, |last|) == true.
 template <std::input_iterator I, std::weakly_incrementable O>
+requires(std::indirectly_writable<O, uint8_t>)
 constexpr O decode_hex(I first, I last, O result) {
   for (; first != last; first = std::ranges::next(first, 2)) {
-    *result++ =
-      (hex_to_uint(*first) << 4) | hex_to_uint(*std::ranges::next(first, 1));
+    *result++ = static_cast<uint8_t>((hex_to_uint(*first) << 4) |
+                                     hex_to_uint(*std::ranges::next(first, 1)));
   }
 
   return result;
@@ -407,6 +415,7 @@ constexpr O decode_hex(I first, I last, O result) {
 // element past the last element stored.  This function assumes |r| is
 // hex string, that is is_hex_string(r) == true.
 template <std::ranges::input_range R, std::weakly_incrementable O>
+requires(std::indirectly_writable<O, uint8_t>)
 constexpr O decode_hex(R &&r, O result) {
   return decode_hex(std::ranges::begin(r), std::ranges::end(r),
                     std::move(result));
@@ -554,6 +563,7 @@ constexpr bool streq(R1 &&a, R2 &&b) {
 // returns an output iterator to the element past the last element
 // stored.
 template <std::input_iterator I, std::weakly_incrementable O>
+requires(std::indirectly_copyable<I, O>)
 constexpr O tolower(I first, I last, O result) {
   return std::ranges::transform(std::move(first), std::move(last),
                                 std::move(result), lowcase)
@@ -564,6 +574,7 @@ constexpr O tolower(I first, I last, O result) {
 // result in another range, beginning at |result|.  It returns an
 // output iterator to the element past the last element stored.
 template <std::ranges::input_range R, std::weakly_incrementable O>
+requires(std::indirectly_copyable<std::ranges::iterator_t<R>, O>)
 constexpr O tolower(R &&r, O result) {
   return std::ranges::transform(std::forward<R>(r), std::move(result), lowcase)
     .out;
@@ -595,6 +606,7 @@ template <std::integral T> constexpr std::string utos(T n) {
 }
 
 template <std::integral T, std::weakly_incrementable O>
+requires(std::indirectly_writable<O, char>)
 constexpr O utos(T n, O result) {
   if (n == 0) {
     *result++ = '0';
