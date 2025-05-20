@@ -49,6 +49,7 @@ constexpr char B64_CHARS[] = {
 constexpr size_t encode_length(size_t n) { return (n + 2) / 3 * 4; }
 
 template <std::input_iterator I, std::weakly_incrementable O>
+requires(std::indirectly_writable<O, char>)
 O encode(I first, I last, O result) {
   auto len = std::ranges::distance(first, last);
   if (len == 0) {
@@ -96,6 +97,7 @@ O encode(I first, I last, O result) {
 }
 
 template <std::ranges::input_range R, std::weakly_incrementable O>
+requires(std::indirectly_writable<O, char>)
 O encode(R &&r, O result) {
   return encode(std::ranges::begin(r), std::ranges::end(r), std::move(result));
 }
@@ -115,6 +117,7 @@ template <std::ranges::input_range R> std::string encode(R &&r) {
 }
 
 template <std::input_iterator I, std::weakly_incrementable O>
+requires(std::indirectly_writable<O, uint8_t>)
 O decode(I first, I last, O result) {
   static constexpr int INDEX_TABLE[] = {
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
