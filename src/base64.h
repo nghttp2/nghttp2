@@ -50,7 +50,7 @@ constexpr size_t encode_length(size_t n) { return (n + 2) / 3 * 4; }
 
 template <std::input_iterator I, std::weakly_incrementable O>
 requires(std::indirectly_writable<O, char>)
-O encode(I first, I last, O result) {
+constexpr O encode(I first, I last, O result) {
   auto len = std::ranges::distance(first, last);
   if (len == 0) {
     return result;
@@ -98,11 +98,11 @@ O encode(I first, I last, O result) {
 
 template <std::ranges::input_range R, std::weakly_incrementable O>
 requires(std::indirectly_writable<O, char>)
-O encode(R &&r, O result) {
+constexpr O encode(R &&r, O result) {
   return encode(std::ranges::begin(r), std::ranges::end(r), std::move(result));
 }
 
-template <std::ranges::input_range R> std::string encode(R &&r) {
+template <std::ranges::input_range R> constexpr std::string encode(R &&r) {
   std::string res;
   auto len = std::ranges::size(r);
   if (len == 0) {
@@ -116,30 +116,31 @@ template <std::ranges::input_range R> std::string encode(R &&r) {
   return res;
 }
 
+constinit const int B64_INDEX_TABLE[] = {
+  -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+  -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+  -1, -1, -1, -1, -1, 62, -1, -1, -1, 63, 52, 53, 54, 55, 56, 57, 58, 59, 60,
+  61, -1, -1, -1, -1, -1, -1, -1, 0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10,
+  11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, -1, -1, -1, -1,
+  -1, -1, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42,
+  43, 44, 45, 46, 47, 48, 49, 50, 51, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+  -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+  -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+  -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+  -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+  -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+  -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+  -1, -1, -1, -1, -1, -1, -1, -1, -1};
+
 template <std::input_iterator I, std::weakly_incrementable O>
 requires(std::indirectly_writable<O, uint8_t>)
-O decode(I first, I last, O result) {
-  static constexpr int INDEX_TABLE[] = {
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, 62, -1, -1, -1, 63, 52, 53, 54, 55, 56, 57, 58, 59, 60,
-    61, -1, -1, -1, -1, -1, -1, -1, 0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10,
-    11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, -1, -1, -1, -1,
-    -1, -1, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42,
-    43, 44, 45, 46, 47, 48, 49, 50, 51, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1, -1};
+constexpr O decode(I first, I last, O result) {
   assert(std::ranges::distance(first, last) % 4 == 0);
   auto p = result;
   for (; first != last;) {
     uint32_t n = 0;
     for (int i = 1; i <= 4; ++i, ++first) {
-      auto idx = INDEX_TABLE[static_cast<size_t>(*first)];
+      auto idx = B64_INDEX_TABLE[static_cast<size_t>(*first)];
       if (idx == -1) {
         if (i <= 2) {
           return result;
