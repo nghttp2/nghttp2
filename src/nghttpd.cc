@@ -350,13 +350,13 @@ int main(int argc, char **argv) {
       case 6: {
         // trailer option
         auto header = optarg;
-        auto value = strchr(optarg, ':');
-        if (!value) {
+        auto name_end = strchr(optarg, ':');
+        if (!name_end) {
           std::cerr << "--trailer: invalid header: " << optarg << std::endl;
           exit(EXIT_FAILURE);
         }
-        *value = 0;
-        value++;
+        *name_end = 0;
+        auto value = name_end + 1;
         while (isspace(*value)) {
           value++;
         }
@@ -367,8 +367,8 @@ int main(int argc, char **argv) {
                     << std::endl;
           exit(EXIT_FAILURE);
         }
+        util::tolower(header, name_end, header);
         config.trailer.emplace_back(header, value, false);
-        util::inp_strlower(config.trailer.back().name);
         break;
       }
       case 7:

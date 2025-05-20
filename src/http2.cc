@@ -1854,15 +1854,6 @@ StringRef rewrite_clean_path(BlockAllocator &balloc, const StringRef &src) {
                         StringRef{query, fragment});
 }
 
-StringRef copy_lower(BlockAllocator &balloc, const StringRef &src) {
-  auto iov = make_byte_ref(balloc, src.size() + 1);
-  auto p = std::ranges::begin(iov);
-  p = std::ranges::copy(src, p).out;
-  *p = '\0';
-  util::inp_strlower(std::ranges::begin(iov), p);
-  return as_string_ref(std::ranges::begin(iov), p);
-}
-
 bool contains_trailers(const StringRef &s) {
   constexpr auto trailers = "trailers"_sr;
 

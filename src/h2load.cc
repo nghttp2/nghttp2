@@ -2500,13 +2500,13 @@ int main(int argc, char **argv) {
     case 'H': {
       char *header = optarg;
       // Skip first possible ':' in the header name
-      char *value = strchr(optarg + 1, ':');
-      if (!value || (header[0] == ':' && header + 1 == value)) {
+      auto name_end = strchr(optarg + 1, ':');
+      if (!name_end || (header[0] == ':' && header + 1 == name_end)) {
         std::cerr << "-H: invalid header: " << optarg << std::endl;
         exit(EXIT_FAILURE);
       }
-      *value = 0;
-      value++;
+      *name_end = 0;
+      auto value = name_end + 1;
       while (isspace(*value)) {
         value++;
       }
@@ -2519,8 +2519,8 @@ int main(int argc, char **argv) {
       }
       // Note that there is no processing currently to handle multiple
       // message-header fields with the same field name
+      util::tolower(header, name_end, header);
       config.custom_headers.emplace_back(header, value);
-      util::inp_strlower(config.custom_headers.back().name);
       break;
     }
     case 'i':

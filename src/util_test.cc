@@ -44,7 +44,6 @@ namespace {
 const MunitTest tests[]{
   munit_void_test(test_util_streq),
   munit_void_test(test_util_strieq),
-  munit_void_test(test_util_inp_strlower),
   munit_void_test(test_util_tolower),
   munit_void_test(test_util_to_base64),
   munit_void_test(test_util_to_token68),
@@ -111,20 +110,6 @@ void test_util_strieq(void) {
   assert_true(util::strieq(StringRef{}, StringRef{}));
   assert_false(util::strieq("alpha"_sr, "AlPhA "_sr));
   assert_false(util::strieq(""_sr, "AlPhA "_sr));
-}
-
-void test_util_inp_strlower(void) {
-  std::string a("alPha");
-  util::inp_strlower(a);
-  assert_stdstring_equal("alpha", a);
-
-  a = "ALPHA123BRAVO";
-  util::inp_strlower(a);
-  assert_stdstring_equal("alpha123bravo", a);
-
-  a = "";
-  util::inp_strlower(a);
-  assert_stdstring_equal("", a);
 }
 
 void test_util_tolower(void) {
