@@ -3444,8 +3444,8 @@ int process_options(Config *config,
 
   auto &proxy = config->downstream_http_proxy;
   if (!proxy.host.empty()) {
-    auto hostport = util::make_hostport(std::ranges::begin(hostport_buf),
-                                        StringRef{proxy.host}, proxy.port);
+    auto hostport = util::make_hostport(proxy.host, proxy.port,
+                                        std::ranges::begin(hostport_buf));
     if (resolve_hostname(&proxy.addr, proxy.host.data(), proxy.port,
                          AF_UNSPEC) == -1) {
       LOG(FATAL) << "Resolving backend HTTP proxy address failed: " << hostport;
@@ -3459,8 +3459,8 @@ int process_options(Config *config,
     auto &memcachedconf = tlsconf.ticket.memcached;
     if (!memcachedconf.host.empty()) {
       auto hostport =
-        util::make_hostport(std::ranges::begin(hostport_buf),
-                            StringRef{memcachedconf.host}, memcachedconf.port);
+        util::make_hostport(memcachedconf.host, memcachedconf.port,
+                            std::ranges::begin(hostport_buf));
       if (resolve_hostname(&memcachedconf.addr, memcachedconf.host.data(),
                            memcachedconf.port, memcachedconf.family) == -1) {
         LOG(FATAL) << "Resolving memcached address for TLS ticket key failed: "

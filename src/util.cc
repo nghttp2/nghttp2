@@ -1216,13 +1216,13 @@ std::string dtos(double n) {
 StringRef make_http_hostport(BlockAllocator &balloc, const StringRef &host,
                              uint16_t port) {
   auto iov = make_byte_ref(balloc, host.size() + 2 + 1 + 5 + 1);
-  return make_http_hostport(std::begin(iov), host, port);
+  return make_http_hostport(host, port, std::ranges::begin(iov));
 }
 
 StringRef make_hostport(BlockAllocator &balloc, const StringRef &host,
                         uint16_t port) {
   auto iov = make_byte_ref(balloc, host.size() + 2 + 1 + 5 + 1);
-  return make_hostport(std::begin(iov), host, port);
+  return make_hostport(host, port, std::ranges::begin(iov));
 }
 
 namespace {
