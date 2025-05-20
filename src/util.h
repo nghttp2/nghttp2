@@ -950,17 +950,17 @@ constexpr size_t max_hostport = NI_MAXHOST + /* [] for IPv6 */ 2 + /* : */ 1 +
 StringRef make_hostport(BlockAllocator &balloc, const StringRef &host,
                         uint16_t port);
 
-template <typename OutputIt>
-StringRef make_hostport(OutputIt first, const StringRef &host, uint16_t port) {
+template <std::weakly_incrementable O>
+requires(std::indirectly_writable<O, char>)
+StringRef make_hostport(const StringRef &host, uint16_t port, O result) {
   auto ipv6 = ipv6_numeric_addr(host.data());
-  auto serv = utos(port);
-  auto p = first;
+  auto p = result;
 
   if (ipv6) {
     *p++ = '[';
   }
 
-  p = std::copy(std::begin(host), std::end(host), p);
+  p = std::ranges::copy(host, p).out;
 
   if (ipv6) {
     *p++ = ']';
@@ -968,11 +968,11 @@ StringRef make_hostport(OutputIt first, const StringRef &host, uint16_t port) {
 
   *p++ = ':';
 
-  p = std::copy(std::begin(serv), std::end(serv), p);
+  p = utos(port, p);
 
   *p = '\0';
 
-  return as_string_ref(first, p);
+  return as_string_ref(result, p);
 }
 
 // Creates "host:port" string using given |host| and |port|.  If
@@ -981,21 +981,21 @@ StringRef make_hostport(OutputIt first, const StringRef &host, uint16_t port) {
 StringRef make_http_hostport(BlockAllocator &balloc, const StringRef &host,
                              uint16_t port);
 
-template <typename OutputIt>
-StringRef make_http_hostport(OutputIt first, const StringRef &host,
-                             uint16_t port) {
+template <std::weakly_incrementable O>
+requires(std::indirectly_writable<O, char>)
+StringRef make_http_hostport(const StringRef &host, uint16_t port, O result) {
   if (port != 80 && port != 443) {
-    return make_hostport(first, host, port);
+    return make_hostport(host, port, std::move(result));
   }
 
   auto ipv6 = ipv6_numeric_addr(host.data());
-  auto p = first;
+  auto p = result;
 
   if (ipv6) {
     *p++ = '[';
   }
 
-  p = std::copy(std::begin(host), std::end(host), p);
+  p = std::ranges::copy(host, p).out;
 
   if (ipv6) {
     *p++ = ']';
@@ -1003,7 +1003,7 @@ StringRef make_http_hostport(OutputIt first, const StringRef &host,
 
   *p = '\0';
 
-  return as_string_ref(first, p);
+  return as_string_ref(result, p);
 }
 
 // hexdump dumps |data| of length |datalen| in the format similar to

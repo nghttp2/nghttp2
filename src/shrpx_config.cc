@@ -4624,8 +4624,8 @@ int configure_downstream_group(Config *config, bool http2_proxy,
       addr.hostport =
         util::make_http_hostport(downstreamconf.balloc, addr.host, addr.port);
 
-      auto hostport = util::make_hostport(std::ranges::begin(hostport_buf),
-                                          addr.host, addr.port);
+      auto hostport = util::make_hostport(addr.host, addr.port,
+                                          std::ranges::begin(hostport_buf));
 
       if (!addr.dns) {
         if (resolve_hostname(&addr.addr, addr.host.data(), addr.port,

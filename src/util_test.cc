@@ -599,9 +599,10 @@ void test_util_make_hostport(void) {
   std::array<char, util::max_hostport> hostport_buf;
   assert_stdsv_equal(
     "localhost:80"sv,
-    util::make_hostport(std::begin(hostport_buf), "localhost"_sr, 80));
-  assert_stdsv_equal("[::1]:443"sv, util::make_hostport(
-                                      std::begin(hostport_buf), "::1"_sr, 443));
+    util::make_hostport("localhost"_sr, 80, std::ranges::begin(hostport_buf)));
+  assert_stdsv_equal(
+    "[::1]:443"sv,
+    util::make_hostport("::1"_sr, 443, std::ranges::begin(hostport_buf)));
 
   BlockAllocator balloc(4096, 4096);
   assert_stdsv_equal("localhost:80"sv,
