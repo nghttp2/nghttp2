@@ -163,6 +163,10 @@ if(NOT ENABLE_LIB_ONLY)
   check_cxx_source_compiles("
   #include <map>
   int main() { std::map<int, int>().emplace(1, 2); }" HAVE_STD_MAP_EMPLACE)
+  # Check that std::chrono::time_zone is available.
+  check_cxx_source_compiles("
+  #include <chrono>
+  int main() { auto tz = std::chrono::current_zone(); (void)tz; }" HAVE_STD_CHRONO_TIME_ZONE)
   cmake_pop_check_state()
 endif()
 

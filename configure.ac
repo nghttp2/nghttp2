@@ -322,6 +322,23 @@ thread_local int a = 0;
     [have_Thread_local=no
      AC_MSG_RESULT([no])])
 
+# Check that std::chrono::time_zone is available.
+AC_MSG_CHECKING([whether std::chrono::time_zone is available])
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM(
+[[
+#include <chrono>
+]],
+[[
+auto tz = std::chrono::current_zone();
+(void)tz;
+]])],
+    [AC_DEFINE([HAVE_STD_CHRONO_TIME_ZONE], [1],
+               [Define to 1 if you have the `std::chrono::time_zone`.])
+     have_std_chrono_time_zone=yes
+     AC_MSG_RESULT([yes])],
+    [have_std_chrono_time_zone=no
+     AC_MSG_RESULT([no])])
+
 CXXFLAGS=$save_CXXFLAGS
 
 AC_LANG_POP()

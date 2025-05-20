@@ -680,11 +680,27 @@ void test_util_localtime_date(void) {
 
   std::array<char, 30> iso8601_buf;
 
+#ifdef HAVE_STD_CHRONO_TIME_ZONE
+  assert_stdsv_equal(
+    "2001-10-02T00:34:56.123+12:00"sv,
+    util::format_iso8601(iso8601_buf.data(),
+                         std::chrono::system_clock::time_point(
+                           std::chrono::milliseconds(1001939696123LL)),
+                         std::chrono::locate_zone("Pacific/Auckland"sv)));
+
+  assert_stdsv_equal(
+    "2001-10-01T12:34:56.123Z"sv,
+    util::format_iso8601(iso8601_buf.data(),
+                         std::chrono::system_clock::time_point(
+                           std::chrono::milliseconds(1001939696123LL)),
+                         std::chrono::locate_zone("GMT"sv)));
+#else  // !defined(HAVE_STD_CHRONO_TIME_ZONE)
   assert_stdsv_equal(
     "2001-10-02T00:34:56.123+12:00"sv,
     util::format_iso8601(iso8601_buf.data(),
                          std::chrono::system_clock::time_point(
                            std::chrono::milliseconds(1001939696123LL))));
+#endif // !defined(HAVE_STD_CHRONO_TIME_ZONE)
 
   if (tz) {
     setenv("TZ", tz, 1);

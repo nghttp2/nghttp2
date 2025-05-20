@@ -7,6 +7,9 @@
 /* Define to 1 if you have the `std::map::emplace`. */
 #cmakedefine HAVE_STD_MAP_EMPLACE 1
 
+/* Define to 1 if you have the `std::chrono::time_zone`. */
+#cmakedefine HAVE_STD_CHRONO_TIME_ZONE 1
+
 /* Define to 1 if you have `libjansson` library. */
 #cmakedefine HAVE_JANSSON 1
 
