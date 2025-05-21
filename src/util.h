@@ -51,6 +51,7 @@
 #include <random>
 #include <optional>
 #include <ranges>
+#include <bit>
 
 #ifdef HAVE_LIBEV
 #  include <ev.h>
@@ -583,6 +584,77 @@ constexpr O tolower(R &&r, O result) {
 // Returns string representation of |n| with 2 fractional digits.
 std::string dtos(double n);
 
+constinit const auto count_digit_tbl = []() {
+  std::array<uint64_t, std::numeric_limits<uint64_t>::digits10> tbl;
+
+  uint64_t x = 10;
+
+  for (size_t i = 0; i < tbl.size(); ++i, x *= 10) {
+    tbl[i] = x - 1;
+  }
+
+  return tbl;
+}();
+
+// count_digit returns the minimum number of digits to represent |x|
+// in base 10.
+//
+// credit:
+// https://lemire.me/blog/2025/01/07/counting-the-digits-of-64-bit-integers/
+template <std::unsigned_integral T> constexpr size_t count_digit(T x) {
+  auto y = 19 * (std::numeric_limits<T>::digits - 1 -
+                 std::countl_zero(static_cast<T>(x | 1))) >>
+           6;
+
+  y += x > count_digit_tbl[y];
+
+  return y + 1;
+}
+
+constinit const auto utos_digits = []() {
+  std::array<char, 200> a;
+
+  for (size_t i = 0; i < 100; ++i) {
+    a[i * 2] = '0' + i / 10;
+    a[i * 2 + 1] = '0' + (i % 10);
+  }
+
+  return a;
+}();
+
+template <std::integral T, std::weakly_incrementable O>
+requires(std::indirectly_writable<O, char>)
+constexpr O utos(T n, O result) {
+  if (n < 10) {
+    *result++ = '0' + n;
+    return result;
+  }
+
+  if (n < 100) {
+    return std::ranges::copy_n(utos_digits.data() + n * 2, 2, result).out;
+  }
+
+  std::ranges::advance(result,
+                       count_digit(static_cast<std::make_unsigned_t<T>>(n)));
+
+  auto p = result;
+
+  for (; n >= 100; n /= 100) {
+    std::ranges::advance(p, -2);
+    std::ranges::copy_n(utos_digits.data() + (n % 100) * 2, 2, p);
+  }
+
+  if (n < 10) {
+    *--p = '0' + n;
+    return result;
+  }
+
+  std::ranges::advance(p, -2);
+  std::ranges::copy_n(utos_digits.data() + n * 2, 2, p);
+
+  return result;
+}
+
 template <std::integral T> constexpr std::string utos(T n) {
   using namespace std::literals;
 
@@ -590,47 +662,19 @@ template <std::integral T> constexpr std::string utos(T n) {
     return "0"s;
   }
 
-  size_t nlen = 0;
-  for (auto t = n; t; t /= 10, ++nlen)
-    ;
-
   std::string res;
 
-  res.resize(nlen);
+  res.resize(count_digit(static_cast<std::make_unsigned_t<T>>(n)));
 
-  for (; n; n /= 10) {
-    res[--nlen] = (n % 10) + '0';
-  }
+  utos(n, std::ranges::begin(res));
 
   return res;
 }
 
-template <std::integral T, std::weakly_incrementable O>
-requires(std::indirectly_writable<O, char>)
-constexpr O utos(T n, O result) {
-  if (n == 0) {
-    *result++ = '0';
-    return result;
-  }
-
-  size_t nlen = 0;
-
-  for (auto t = n; t; t /= 10, ++nlen)
-    ;
-
-  result = std::ranges::next(result, nlen);
-  auto p = result;
-
-  for (; n; n /= 10) {
-    *--p = (n % 10) + '0';
-  }
-
-  return result;
-}
-
 template <std::integral T>
 StringRef make_string_ref_uint(BlockAllocator &balloc, T n) {
-  auto iov = make_byte_ref(balloc, NGHTTP2_MAX_UINT64_DIGITS + 1);
+  auto iov = make_byte_ref(
+    balloc, count_digit(static_cast<std::make_unsigned_t<T>>(n)) + 1);
   auto p = std::ranges::begin(iov);
 
   p = util::utos(n, p);

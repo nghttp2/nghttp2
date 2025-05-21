@@ -54,6 +54,7 @@ const MunitTest tests[]{
   munit_void_test(test_util_http_date),
   munit_void_test(test_util_select_h2),
   munit_void_test(test_util_ipv6_numeric_addr),
+  munit_void_test(test_util_contains),
   munit_void_test(test_util_utos),
   munit_void_test(test_util_make_string_ref_uint),
   munit_void_test(test_util_utos_unit),
@@ -318,14 +319,156 @@ void test_util_ipv6_numeric_addr(void) {
   assert_false(util::ipv6_numeric_addr("localhost"));
 }
 
-void test_util_utos(void) {
-  uint8_t buf[32];
+void test_util_count_digit(void) {
+  assert_size(1, ==, util::count_digit(0u));
+  assert_size(1, ==, util::count_digit(1u));
+  assert_size(1, ==, util::count_digit(9u));
+  assert_size(2, ==, util::count_digit(10u));
+  assert_size(2, ==, util::count_digit(99u));
+  assert_size(3, ==, util::count_digit(100u));
+  assert_size(3, ==, util::count_digit(999u));
+  assert_size(4, ==, util::count_digit(1'000u));
+  assert_size(4, ==, util::count_digit(9'999u));
+  assert_size(5, ==, util::count_digit(10'000u));
+  assert_size(5, ==, util::count_digit(99'999u));
+  assert_size(6, ==, util::count_digit(100'000u));
+  assert_size(6, ==, util::count_digit(999'999u));
+  assert_size(7, ==, util::count_digit(1'000'000u));
+  assert_size(7, ==, util::count_digit(9'999'999u));
+  assert_size(8, ==, util::count_digit(10'000'000u));
+  assert_size(8, ==, util::count_digit(99'999'999u));
+  assert_size(9, ==, util::count_digit(100'000'000u));
+  assert_size(9, ==, util::count_digit(999'999'999u));
+  assert_size(10, ==, util::count_digit(1'000'000'000u));
+  assert_size(10, ==, util::count_digit(9'999'999'999u));
+  assert_size(11, ==, util::count_digit(10'000'000'000u));
+  assert_size(11, ==, util::count_digit(99'999'999'999u));
+  assert_size(12, ==, util::count_digit(100'000'000'000u));
+  assert_size(12, ==, util::count_digit(999'999'999'999u));
+  assert_size(13, ==, util::count_digit(1'000'000'000'000u));
+  assert_size(13, ==, util::count_digit(9'999'999'999'999u));
+  assert_size(14, ==, util::count_digit(10'000'000'000'000u));
+  assert_size(14, ==, util::count_digit(99'999'999'999'999u));
+  assert_size(15, ==, util::count_digit(100'000'000'000'000u));
+  assert_size(15, ==, util::count_digit(999'999'999'999'999u));
+  assert_size(16, ==, util::count_digit(1'000'000'000'000'000u));
+  assert_size(16, ==, util::count_digit(9'999'999'999'999'999u));
+  assert_size(17, ==, util::count_digit(10'000'000'000'000'000u));
+  assert_size(17, ==, util::count_digit(99'999'999'999'999'999u));
+  assert_size(18, ==, util::count_digit(100'000'000'000'000'000u));
+  assert_size(18, ==, util::count_digit(999'999'999'999'999'999u));
+  assert_size(19, ==, util::count_digit(1'000'000'000'000'000'000u));
+  assert_size(19, ==, util::count_digit(9'999'999'999'999'999'999u));
+  assert_size(20, ==, util::count_digit(10'000'000'000'000'000'000u));
+  assert_size(20, ==, util::count_digit(std::numeric_limits<uint64_t>::max()));
+}
 
-  assert_stdstring_equal("0", (std::string{buf, util::utos(0, buf)}));
-  assert_stdstring_equal("123", (std::string{buf, util::utos(123, buf)}));
-  assert_stdstring_equal(
-    "18446744073709551615",
-    (std::string{buf, util::utos(18446744073709551615ULL, buf)}));
+void test_util_utos(void) {
+  char buf[32];
+
+  assert_stdstring_equal("123"s, (std::string{buf, util::utos(123, buf)}));
+
+  assert_stdstring_equal("0"s, util::utos(0));
+  assert_stdstring_equal("123"s, util::utos(123));
+  assert_stdstring_equal("123"s, util::utos(static_cast<uint8_t>(123)));
+  assert_stdstring_equal("123"s, util::utos(static_cast<uint16_t>(123)));
+  assert_stdstring_equal("18446744073709551615"s,
+                         util::utos(18'446'744'073'709'551'615u));
+
+  assert_stdsv_equal("0"sv, (std::string_view{buf, util::utos(0, buf)}));
+  assert_stdsv_equal("1"sv, (std::string_view{buf, util::utos(1u, buf)}));
+  assert_stdsv_equal("9"sv, (std::string_view{buf, util::utos(9u, buf)}));
+  assert_stdsv_equal("10"sv, (std::string_view{buf, util::utos(10u, buf)}));
+  assert_stdsv_equal("99"sv, (std::string_view{buf, util::utos(99u, buf)}));
+  assert_stdsv_equal("100"sv, (std::string_view{buf, util::utos(100u, buf)}));
+  assert_stdsv_equal("999"sv, (std::string_view{buf, util::utos(999u, buf)}));
+  assert_stdsv_equal("1000"sv,
+                     (std::string_view{buf, util::utos(1'000u, buf)}));
+  assert_stdsv_equal("9999"sv,
+                     (std::string_view{buf, util::utos(9'999u, buf)}));
+  assert_stdsv_equal("10000"sv,
+                     (std::string_view{buf, util::utos(10'000u, buf)}));
+  assert_stdsv_equal("99999"sv,
+                     (std::string_view{buf, util::utos(99'999u, buf)}));
+  assert_stdsv_equal("100000"sv,
+                     (std::string_view{buf, util::utos(100'000u, buf)}));
+  assert_stdsv_equal("999999"sv,
+                     (std::string_view{buf, util::utos(999'999u, buf)}));
+  assert_stdsv_equal("1000000"sv,
+                     (std::string_view{buf, util::utos(1'000'000u, buf)}));
+  assert_stdsv_equal("9999999"sv,
+                     (std::string_view{buf, util::utos(9'999'999u, buf)}));
+  assert_stdsv_equal("10000000"sv,
+                     (std::string_view{buf, util::utos(10'000'000u, buf)}));
+  assert_stdsv_equal("99999999"sv,
+                     (std::string_view{buf, util::utos(99'999'999u, buf)}));
+  assert_stdsv_equal("100000000"sv,
+                     (std::string_view{buf, util::utos(100'000'000u, buf)}));
+  assert_stdsv_equal("999999999"sv,
+                     (std::string_view{buf, util::utos(999'999'999u, buf)}));
+  assert_stdsv_equal("1000000000"sv,
+                     (std::string_view{buf, util::utos(1'000'000'000u, buf)}));
+  assert_stdsv_equal("9999999999"sv,
+                     (std::string_view{buf, util::utos(9'999'999'999u, buf)}));
+  assert_stdsv_equal("10000000000"sv,
+                     (std::string_view{buf, util::utos(10'000'000'000u, buf)}));
+  assert_stdsv_equal("99999999999"sv,
+                     (std::string_view{buf, util::utos(99'999'999'999u, buf)}));
+  assert_stdsv_equal(
+    "100000000000"sv,
+    (std::string_view{buf, util::utos(100'000'000'000u, buf)}));
+  assert_stdsv_equal(
+    "999999999999"sv,
+    (std::string_view{buf, util::utos(999'999'999'999u, buf)}));
+  assert_stdsv_equal(
+    "1000000000000"sv,
+    (std::string_view{buf, util::utos(1'000'000'000'000u, buf)}));
+  assert_stdsv_equal(
+    "9999999999999"sv,
+    (std::string_view{buf, util::utos(9'999'999'999'999u, buf)}));
+  assert_stdsv_equal(
+    "10000000000000"sv,
+    (std::string_view{buf, util::utos(10'000'000'000'000u, buf)}));
+  assert_stdsv_equal(
+    "99999999999999"sv,
+    (std::string_view{buf, util::utos(99'999'999'999'999u, buf)}));
+  assert_stdsv_equal(
+    "100000000000000"sv,
+    (std::string_view{buf, util::utos(100'000'000'000'000u, buf)}));
+  assert_stdsv_equal(
+    "999999999999999"sv,
+    (std::string_view{buf, util::utos(999'999'999'999'999u, buf)}));
+  assert_stdsv_equal(
+    "1000000000000000"sv,
+    (std::string_view{buf, util::utos(1'000'000'000'000'000u, buf)}));
+  assert_stdsv_equal(
+    "9999999999999999"sv,
+    (std::string_view{buf, util::utos(9'999'999'999'999'999u, buf)}));
+  assert_stdsv_equal(
+    "10000000000000000"sv,
+    (std::string_view{buf, util::utos(10'000'000'000'000'000u, buf)}));
+  assert_stdsv_equal(
+    "99999999999999999"sv,
+    (std::string_view{buf, util::utos(99'999'999'999'999'999u, buf)}));
+  assert_stdsv_equal(
+    "100000000000000000"sv,
+    (std::string_view{buf, util::utos(100'000'000'000'000'000u, buf)}));
+  assert_stdsv_equal(
+    "999999999999999999"sv,
+    (std::string_view{buf, util::utos(999'999'999'999'999'999u, buf)}));
+  assert_stdsv_equal(
+    "1000000000000000000"sv,
+    (std::string_view{buf, util::utos(1'000'000'000'000'000'000u, buf)}));
+  assert_stdsv_equal(
+    "9999999999999999999"sv,
+    (std::string_view{buf, util::utos(9'999'999'999'999'999'999u, buf)}));
+  assert_stdsv_equal(
+    "10000000000000000000"sv,
+    (std::string_view{buf, util::utos(10'000'000'000'000'000'000u, buf)}));
+  assert_stdsv_equal(
+    "18446744073709551615"sv,
+    (std::string_view{buf,
+                      util::utos(std::numeric_limits<uint64_t>::max(), buf)}));
 }
 
 void test_util_make_string_ref_uint(void) {
