@@ -741,8 +741,8 @@ int HttpDownstreamConnection::process_blocked_request_buf() {
     auto dest = downstream_->get_request_buf();
     auto chunked = downstream_->get_chunked_request();
     if (chunked) {
-      auto chunk_size_hex = util::utox(src->rleft());
-      dest->append(chunk_size_hex);
+      std::array<char, sizeof(size_t) * 2> buf;
+      dest->append(buf.begin(), util::utox(src->rleft(), buf.begin()));
       dest->append("\r\n");
     }
 
@@ -778,8 +778,8 @@ int HttpDownstreamConnection::push_upload_data_chunk(const uint8_t *data,
   auto output = downstream_->get_request_buf();
 
   if (chunked) {
-    auto chunk_size_hex = util::utox(datalen);
-    output->append(chunk_size_hex);
+    std::array<char, sizeof(datalen) * 2> buf;
+    output->append(buf.begin(), util::utox(datalen, buf.begin()));
     output->append("\r\n");
   }
 
