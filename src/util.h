@@ -341,6 +341,17 @@ template <std::ranges::input_range R> constexpr size_t quote_stringlen(R &&r) {
 
 static constexpr char LOWER_XDIGITS[] = "0123456789abcdef";
 
+constinit const auto hexdigits = []() {
+  std::array<char, 512> tbl;
+
+  for (size_t i = 0; i < 256; ++i) {
+    tbl[i * 2] = LOWER_XDIGITS[static_cast<size_t>(i >> 4)];
+    tbl[i * 2 + 1] = LOWER_XDIGITS[static_cast<size_t>(i & 0xf)];
+  }
+
+  return tbl;
+}();
+
 // Converts a range [|first|, |last|) in hex format, and stores the
 // result in another range, beginning at |result|.  It returns an
 // output iterator to the element past the last element stored.
@@ -349,9 +360,9 @@ requires(std::indirectly_writable<O, char> &&
          sizeof(std::iter_value_t<I>) == sizeof(uint8_t))
 constexpr O format_hex(I first, I last, O result) noexcept {
   for (; first != last; ++first) {
-    uint8_t c = *first;
-    *result++ = LOWER_XDIGITS[c >> 4];
-    *result++ = LOWER_XDIGITS[c & 0xf];
+    result = std::ranges::copy_n(
+               hexdigits.data() + static_cast<uint8_t>(*first) * 2, 2, result)
+               .out;
   }
 
   return result;
