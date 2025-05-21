@@ -84,7 +84,7 @@ constexpr size_t NGHTTP2_MAX_UINT64_DIGITS = str_size("18446744073709551615");
 
 namespace util {
 
-extern const char UPPER_XDIGITS[];
+static constexpr char UPPER_XDIGITS[] = "0123456789ABCDEF";
 
 constexpr bool is_alpha(const char c) noexcept {
   return ('A' <= c && c <= 'Z') || ('a' <= c && c <= 'z');
@@ -734,30 +734,62 @@ template <std::integral T> constexpr std::string utos_funit(T n) {
   return dtos(static_cast<double>(n) / (1 << b)) + u;
 }
 
-template <std::integral T> constexpr std::string utox(T n) {
-  using namespace std::literals;
+constinit const auto upper_hexdigits = []() {
+  std::array<char, 512> tbl;
 
+  for (size_t i = 0; i < 256; ++i) {
+    tbl[i * 2] = UPPER_XDIGITS[static_cast<size_t>(i >> 4)];
+    tbl[i * 2 + 1] = UPPER_XDIGITS[static_cast<size_t>(i & 0xf)];
+  }
+
+  return tbl;
+}();
+
+template <std::integral T, std::weakly_incrementable O>
+requires(std::indirectly_writable<O, char>)
+O utox(T n, O result) {
   if (n == 0) {
-    return "0"s;
+    *result++ = '0';
+    return result;
   }
 
-  int i = 0;
-  T t = n;
+  if constexpr (std::endian::native == std::endian::little) {
+    auto end = reinterpret_cast<uint8_t *>(&n);
+    auto p = end + sizeof(n);
 
-  for (; t; t /= 16, ++i)
-    ;
+    for (; p != end && *(p - 1) == 0; --p)
+      ;
 
-  std::string res;
+    // Workaround for bogus UBSAN error
+    assert(p != end);
 
-  res.resize(i);
+    if (*(p - 1) < 16) {
+      *result++ = UPPER_XDIGITS[*--p];
+    }
 
-  --i;
+    for (; p != end; --p) {
+      result =
+        std::ranges::copy_n(upper_hexdigits.data() + *(p - 1) * 2, 2, result)
+          .out;
+    }
+  } else {
+    auto p = reinterpret_cast<uint8_t *>(&n);
+    auto end = p + sizeof(n);
 
-  for (; n; --i, n /= 16) {
-    res[i] = UPPER_XDIGITS[(n & 0x0f)];
+    for (; p != end && *p == 0; ++p)
+      ;
+
+    if (*p < 16) {
+      *result++ = UPPER_XDIGITS[*p++];
+    }
+
+    for (; p != end; ++p) {
+      result =
+        std::ranges::copy_n(upper_hexdigits.data() + *p * 2, 2, result).out;
+    }
   }
 
-  return res;
+  return result;
 }
 
 void to_token68(std::string &base64str);

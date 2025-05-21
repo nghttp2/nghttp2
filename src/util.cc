@@ -106,8 +106,6 @@ int nghttp2_inet_pton(int af, const char *src, void *dst) {
 } // namespace
 #endif // _WIN32
 
-const char UPPER_XDIGITS[] = "0123456789ABCDEF";
-
 bool in_rfc3986_unreserved_chars(const char c) {
   switch (c) {
   case '-':

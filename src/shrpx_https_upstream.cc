@@ -1349,7 +1349,8 @@ int HttpsUpstream::on_downstream_body(Downstream *downstream,
   }
   auto output = downstream->get_response_buf();
   if (downstream->get_chunked_response()) {
-    output->append(util::utox(len));
+    std::array<char, sizeof(len) * 2> buf;
+    output->append(buf.begin(), util::utox(len, buf.begin()));
     output->append("\r\n");
   }
   output->append(data, len);

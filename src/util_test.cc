@@ -239,12 +239,26 @@ void test_util_quote_string(void) {
 }
 
 void test_util_utox(void) {
-  assert_stdstring_equal("0", util::utox(0));
-  assert_stdstring_equal("1", util::utox(1));
-  assert_stdstring_equal("F", util::utox(15));
-  assert_stdstring_equal("10", util::utox(16));
-  assert_stdstring_equal("3B9ACA07", util::utox(1000000007));
-  assert_stdstring_equal("100000000", util::utox(1LL << 32));
+  std::array<char, 16> buf;
+
+  assert_stdsv_equal(
+    "0"sv, (std::string_view{buf.begin(), util::utox(0, buf.begin())}));
+  assert_stdsv_equal(
+    "1"sv, (std::string_view{buf.begin(), util::utox(1, buf.begin())}));
+  assert_stdsv_equal(
+    "F"sv, (std::string_view{buf.begin(), util::utox(15, buf.begin())}));
+  assert_stdsv_equal(
+    "10"sv, (std::string_view{buf.begin(), util::utox(16, buf.begin())}));
+  assert_stdsv_equal(
+    "3B9ACA07"sv,
+    (std::string_view{buf.begin(), util::utox(1000000007, buf.begin())}));
+  assert_stdsv_equal(
+    "B5EA98F3663B14A"sv,
+    (std::string_view{buf.begin(),
+                      util::utox(819278614785929546, buf.begin())}));
+  assert_stdsv_equal(
+    "100000000"sv,
+    (std::string_view{buf.begin(), util::utox(1LL << 32, buf.begin())}));
 }
 
 void test_util_http_date(void) {
