@@ -285,7 +285,9 @@ private:
     return res;
   }
 
-  template <std::ranges::input_range R> constexpr const char *copystr(R &&r) {
+  template <std::ranges::input_range R>
+  requires(!std::is_array_v<std::remove_cvref_t<R>>)
+  constexpr const char *copystr(R &&r) {
     return copystr(std::ranges::begin(r), std::ranges::end(r));
   }
 
@@ -456,6 +458,7 @@ as_writable_uint8_span(std::span<T, N> s) noexcept {
 template <typename R>
 requires(std::ranges::contiguous_range<R> && std::ranges::sized_range<R> &&
          std::ranges::borrowed_range<R> &&
+         !std::is_array_v<std::remove_cvref_t<R>> &&
          sizeof(std::ranges::range_value_t<R>) ==
            sizeof(std::string_view::value_type))
 [[nodiscard]] std::string_view as_string_view(R &&r) {
@@ -477,6 +480,7 @@ requires(sizeof(std::iter_value_t<I>) == sizeof(std::string_view::value_type))
 template <typename R>
 requires(std::ranges::contiguous_range<R> && std::ranges::sized_range<R> &&
          std::ranges::borrowed_range<R> &&
+         !std::is_array_v<std::remove_cvref_t<R>> &&
          sizeof(std::ranges::range_value_t<R>) == sizeof(StringRef::value_type))
 [[nodiscard]] StringRef as_string_ref(R &&r) {
   return StringRef{

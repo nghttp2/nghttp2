@@ -329,7 +329,7 @@ void print_frame(print_type ptype, const nghttp2_frame *frame) {
   case NGHTTP2_PING:
     print_frame_attr_indent();
     fprintf(outfile, "(opaque_data=%s)\n",
-            util::format_hex(frame->ping.opaque_data).c_str());
+            util::format_hex(std::span{frame->ping.opaque_data}).c_str());
     break;
   case NGHTTP2_GOAWAY:
     print_frame_attr_indent();

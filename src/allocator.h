@@ -211,6 +211,7 @@ StringRef make_string_ref(BlockAllocator &alloc, I first, I last) {
 // Makes a copy of |r| as StringRef.  The resulting string will be
 // NULL-terminated.
 template <std::ranges::input_range R>
+requires(!std::is_array_v<std::remove_cvref_t<R>>)
 StringRef make_string_ref(BlockAllocator &alloc, R &&r) {
   return make_string_ref(alloc, std::ranges::begin(r), std::ranges::end(r));
 }
@@ -223,6 +224,7 @@ constexpr size_t concat_string_ref_count(size_t acc) { return acc; }
 // the sum of length of given arguments.  The calculated length is
 // accumulated, and passed to the next function.
 template <std::ranges::input_range R, std::ranges::input_range... Args>
+requires(!std::is_array_v<std::remove_cvref_t<R>>)
 constexpr size_t concat_string_ref_count(size_t acc, R &&r, Args &&...args) {
   return concat_string_ref_count(acc + std::ranges::distance(r), args...);
 }
@@ -236,6 +238,7 @@ inline uint8_t *concat_string_ref_copy(uint8_t *p) { return p; }
 // and returned.  In the end, return value points to the location one
 // beyond the last byte written.
 template <std::ranges::input_range R, std::ranges::input_range... Args>
+requires(!std::is_array_v<std::remove_cvref_t<R>>)
 uint8_t *concat_string_ref_copy(uint8_t *p, R &&r, Args &&...args) {
   return concat_string_ref_copy(std::ranges::copy(std::forward<R>(r), p).out,
                                 std::forward<Args>(args)...);

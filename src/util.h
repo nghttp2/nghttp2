@@ -112,7 +112,9 @@ template <std::input_iterator I> constexpr bool is_hex_string(I first, I last) {
 }
 
 // Returns true if |r| is hex string.
-template <std::ranges::input_range R> constexpr bool is_hex_string(R &&r) {
+template <std::ranges::input_range R>
+requires(!std::is_array_v<std::remove_cvref_t<R>>)
+constexpr bool is_hex_string(R &&r) {
   return is_hex_string(std::ranges::begin(r), std::ranges::end(r));
 }
 
@@ -216,11 +218,13 @@ constexpr std::string percent_decode(I first, I last) {
 }
 
 template <std::ranges::input_range R>
+requires(!std::is_array_v<std::remove_cvref_t<R>>)
 constexpr std::string percent_decode(R &&r) {
   return percent_decode(std::ranges::begin(r), std::ranges::end(r));
 }
 
 template <std::ranges::input_range R>
+requires(!std::is_array_v<std::remove_cvref_t<R>>)
 StringRef percent_decode(BlockAllocator &balloc, R &&r) {
   auto iov = make_byte_ref(balloc, std::ranges::distance(r) + 1);
 
@@ -254,7 +258,8 @@ constexpr O percent_encode_token(I first, I last, O result) noexcept {
 }
 
 template <std::ranges::input_range R, std::weakly_incrementable O>
-requires(std::indirectly_copyable<std::ranges::iterator_t<R>, O>)
+requires(std::indirectly_copyable<std::ranges::iterator_t<R>, O> &&
+         !std::is_array_v<std::remove_cvref_t<R>>)
 constexpr O percent_encode_token(R &&r, O result) {
   return percent_encode_token(std::ranges::begin(r), std::ranges::end(r),
                               std::move(result));
@@ -264,6 +269,7 @@ constexpr O percent_encode_token(R &&r, O result) {
 // the same |r| parameter.  The return value does not include a
 // terminal NUL byte.
 template <std::ranges::input_range R>
+requires(!std::is_array_v<std::remove_cvref_t<R>>)
 constexpr size_t percent_encode_tokenlen(R &&r) noexcept {
   size_t n = 0;
 
@@ -300,13 +306,15 @@ constexpr O quote_string(I first, I last, O result) noexcept {
 }
 
 template <std::ranges::input_range R, std::weakly_incrementable O>
-requires(std::indirectly_copyable<std::ranges::iterator_t<R>, O>)
+requires(std::indirectly_copyable<std::ranges::iterator_t<R>, O> &&
+         !std::is_array_v<std::remove_cvref_t<R>>)
 constexpr O quote_string(R &&r, O result) {
   return quote_string(std::ranges::begin(r), std::ranges::end(r),
                       std::move(result));
 }
 
 template <std::ranges::input_range R>
+requires(!std::is_array_v<std::remove_cvref_t<R>>)
 StringRef quote_string(BlockAllocator &balloc, R &&r) {
   auto cnt = std::ranges::count(r, '"');
 
@@ -325,7 +333,9 @@ StringRef quote_string(BlockAllocator &balloc, R &&r) {
 // Returns the number of bytes written by quote_string with the same
 // |r| parameter.  The return value does not include a terminal NUL
 // byte.
-template <std::ranges::input_range R> constexpr size_t quote_stringlen(R &&r) {
+template <std::ranges::input_range R>
+requires(!std::is_array_v<std::remove_cvref_t<R>>)
+constexpr size_t quote_stringlen(R &&r) {
   size_t n = 0;
 
   for (auto c : r) {
@@ -373,6 +383,7 @@ constexpr O format_hex(I first, I last, O result) noexcept {
 // element past the last element stored.
 template <std::ranges::input_range R, std::weakly_incrementable O>
 requires(std::indirectly_writable<O, char> &&
+         !std::is_array_v<std::remove_cvref_t<R>> &&
          sizeof(std::ranges::range_value_t<R>) == sizeof(uint8_t))
 constexpr O format_hex(R &&r, O result) noexcept {
   return format_hex(std::ranges::begin(r), std::ranges::end(r),
@@ -383,7 +394,8 @@ constexpr O format_hex(R &&r, O result) noexcept {
 // allocated by |balloc|.  It returns StringRef that is backed by the
 // allocated buffer.  The returned string is NULL terminated.
 template <std::ranges::input_range R>
-requires(sizeof(std::ranges::range_value_t<R>) == sizeof(uint8_t))
+requires(!std::is_array_v<std::remove_cvref_t<R>> &&
+         sizeof(std::ranges::range_value_t<R>) == sizeof(uint8_t))
 StringRef format_hex(BlockAllocator &balloc, R &&r) {
   auto iov = make_byte_ref(balloc, std::ranges::distance(r) * 2 + 1);
   auto p = format_hex(std::forward<R>(r), std::ranges::begin(iov));
@@ -395,7 +407,8 @@ StringRef format_hex(BlockAllocator &balloc, R &&r) {
 
 // Converts |R| in hex format, and returns the result.
 template <std::ranges::input_range R>
-requires(sizeof(std::ranges::range_value_t<R>) == sizeof(uint8_t))
+requires(!std::is_array_v<std::remove_cvref_t<R>> &&
+         sizeof(std::ranges::range_value_t<R>) == sizeof(uint8_t))
 constexpr std::string format_hex(R &&r) {
   std::string res;
 
@@ -427,7 +440,8 @@ constexpr O decode_hex(I first, I last, O result) {
 // element past the last element stored.  This function assumes |r| is
 // hex string, that is is_hex_string(r) == true.
 template <std::ranges::input_range R, std::weakly_incrementable O>
-requires(std::indirectly_writable<O, uint8_t>)
+requires(std::indirectly_writable<O, uint8_t> &&
+         !std::is_array_v<std::remove_cvref_t<R>>)
 constexpr O decode_hex(R &&r, O result) {
   return decode_hex(std::ranges::begin(r), std::ranges::end(r),
                     std::move(result));
@@ -450,6 +464,7 @@ std::span<const uint8_t> decode_hex(BlockAllocator &balloc, I first, I last) {
 // which is not NULL terminated.  This function assumes |r| is hex
 // string, that is is_hex_string(r) == true.
 template <std::ranges::input_range R>
+requires(!std::is_array_v<std::remove_cvref_t<R>>)
 std::span<const uint8_t> decode_hex(BlockAllocator &balloc, R &&r) {
   return decode_hex(balloc, std::ranges::begin(r), std::ranges::end(r));
 }
@@ -586,7 +601,8 @@ constexpr O tolower(I first, I last, O result) {
 // result in another range, beginning at |result|.  It returns an
 // output iterator to the element past the last element stored.
 template <std::ranges::input_range R, std::weakly_incrementable O>
-requires(std::indirectly_copyable<std::ranges::iterator_t<R>, O>)
+requires(std::indirectly_copyable<std::ranges::iterator_t<R>, O> &&
+         !std::is_array_v<std::remove_cvref_t<R>>)
 constexpr O tolower(R &&r, O result) {
   return std::ranges::transform(std::forward<R>(r), std::move(result), lowcase)
     .out;
@@ -1218,6 +1234,7 @@ StringRef rstrip(BlockAllocator &balloc, const StringRef &s);
 
 // contains returns true if |r| contains |value|.
 template <std::ranges::input_range R, typename T>
+requires(!std::is_array_v<std::remove_cvref_t<R>>)
 bool contains(R &&r, const T &value) {
   return std::ranges::find(r, value) != std::ranges::end(r);
 }
