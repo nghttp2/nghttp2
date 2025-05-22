@@ -74,6 +74,8 @@
 
 #include "timegm.h"
 
+using namespace std::literals;
+
 namespace nghttp2 {
 
 namespace util {
@@ -176,10 +178,30 @@ O cpydig4(uint32_t n, O result) {
 } // namespace
 
 namespace {
-constexpr const char *MONTH[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                                 "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
-constexpr const char *DAY_OF_WEEK[] = {"Sun", "Mon", "Tue", "Wed",
-                                       "Thu", "Fri", "Sat"};
+constinit const auto MONTH = std::to_array({
+  "Jan"sv,
+  "Feb"sv,
+  "Mar"sv,
+  "Apr"sv,
+  "May"sv,
+  "Jun"sv,
+  "Jul"sv,
+  "Aug"sv,
+  "Sep"sv,
+  "Oct"sv,
+  "Nov"sv,
+  "Dec"sv,
+});
+
+constinit const auto WEEKDAY = std::to_array({
+  "Sun"sv,
+  "Mon"sv,
+  "Tue"sv,
+  "Wed"sv,
+  "Thu"sv,
+  "Fri"sv,
+  "Sat"sv,
+});
 } // namespace
 
 std::string http_date(time_t t) {
@@ -198,14 +220,12 @@ char *http_date(char *res, time_t t) {
 
   auto p = res;
 
-  auto s = DAY_OF_WEEK[tms.tm_wday];
-  p = std::copy_n(s, 3, p);
+  p = std::ranges::copy(WEEKDAY[tms.tm_wday], p).out;
   *p++ = ',';
   *p++ = ' ';
   p = cpydig2(tms.tm_mday, p);
   *p++ = ' ';
-  s = MONTH[tms.tm_mon];
-  p = std::copy_n(s, 3, p);
+  p = std::ranges::copy(MONTH[tms.tm_mon], p).out;
   *p++ = ' ';
   p = cpydig4(tms.tm_year + 1900, p);
   *p++ = ' ';
@@ -214,8 +234,7 @@ char *http_date(char *res, time_t t) {
   p = cpydig2(tms.tm_min, p);
   *p++ = ':';
   p = cpydig2(tms.tm_sec, p);
-  s = " GMT";
-  p = std::copy_n(s, 4, p);
+  p = std::ranges::copy(" GMT"sv, p).out;
 
   return p;
 }
@@ -238,8 +257,7 @@ char *common_log_date(char *res, time_t t) {
 
   p = cpydig2(tms.tm_mday, p);
   *p++ = '/';
-  auto s = MONTH[tms.tm_mon];
-  p = std::copy_n(s, 3, p);
+  p = std::ranges::copy(MONTH[tms.tm_mon], p).out;
   *p++ = '/';
   p = cpydig4(tms.tm_year + 1900, p);
   *p++ = ':';
