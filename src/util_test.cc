@@ -74,6 +74,7 @@ const MunitTest tests[]{
   munit_void_test(test_util_make_hostport),
   munit_void_test(test_util_random_alpha_digit),
   munit_void_test(test_util_format_hex),
+  munit_void_test(test_util_format_upper_hex),
   munit_void_test(test_util_is_hex_string),
   munit_void_test(test_util_decode_hex),
   munit_void_test(test_util_extract_host),
@@ -795,6 +796,43 @@ void test_util_format_hex(void) {
               util::format_hex("\xbe\xef"sv, std::ranges::begin(o)));
   assert_stdstring_equal("beef"s, o);
   assert_stdstring_equal("beef"s, util::format_hex("\xbe\xef"sv));
+
+  std::array<char, 64> buf;
+
+  assert_stdsv_equal(
+    "00"sv, (std::string_view{buf.begin(), util::format_hex(0, buf.begin())}));
+  assert_stdsv_equal(
+    "0a"sv,
+    (std::string_view{buf.begin(), util::format_hex(0xa, buf.begin())}));
+  assert_stdsv_equal(
+    "7c"sv,
+    (std::string_view{buf.begin(), util::format_hex(0x07c, buf.begin())}));
+  assert_stdsv_equal(
+    "eb"sv,
+    (std::string_view{buf.begin(), util::format_hex(0xeb, buf.begin())}));
+  assert_stdsv_equal(
+    "ff"sv,
+    (std::string_view{buf.begin(), util::format_hex(0xff, buf.begin())}));
+}
+
+void test_util_format_upper_hex(void) {
+  std::array<char, 64> buf;
+
+  assert_stdsv_equal(
+    "00"sv,
+    (std::string_view{buf.begin(), util::format_upper_hex(0, buf.begin())}));
+  assert_stdsv_equal(
+    "0A"sv,
+    (std::string_view{buf.begin(), util::format_upper_hex(0xa, buf.begin())}));
+  assert_stdsv_equal(
+    "7C"sv, (std::string_view{buf.begin(),
+                              util::format_upper_hex(0x07c, buf.begin())}));
+  assert_stdsv_equal(
+    "EB"sv,
+    (std::string_view{buf.begin(), util::format_upper_hex(0xeb, buf.begin())}));
+  assert_stdsv_equal(
+    "FF"sv,
+    (std::string_view{buf.begin(), util::format_upper_hex(0xff, buf.begin())}));
 }
 
 void test_util_is_hex_string(void) {

@@ -389,19 +389,10 @@ std::span<char> copy(char c, std::span<char> dest) {
 } // namespace
 
 namespace {
-constexpr char LOWER_XDIGITS[] = "0123456789abcdef";
-} // namespace
-
-namespace {
 std::span<char> copy_hex_low(std::span<const uint8_t> src,
                              std::span<char> dest) {
   auto n = std::min(dest.size(), src.size() * 2) / 2;
-  auto d = std::ranges::begin(dest);
-
-  for (size_t i = 0; i < n; ++i) {
-    *d++ = LOWER_XDIGITS[src[i] >> 4];
-    *d++ = LOWER_XDIGITS[src[i] & 0xf];
-  }
+  auto d = util::format_hex(src.first(n), dest.begin());
 
   if (n < src.size()) {
     return {d, d};
@@ -500,8 +491,7 @@ std::span<char> copy_escape(const StringRef &src, std::span<char> dest) {
 
     dest[0] = '\\';
     dest[1] = 'x';
-    dest[2] = LOWER_XDIGITS[c >> 4];
-    dest[3] = LOWER_XDIGITS[c & 0xf];
+    util::format_hex(c, dest.begin() + 2);
     dest = dest.subspan(4);
 
     safe_first = p + 1;
