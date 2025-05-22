@@ -74,6 +74,8 @@
 
 #include "timegm.h"
 
+using namespace std::literals;
+
 namespace nghttp2 {
 
 namespace util {
@@ -149,24 +151,57 @@ bool in_attr_char(char c) {
 }
 
 namespace {
-template <typename Iterator>
-Iterator cpydig(Iterator d, uint32_t n, size_t len) {
-  auto p = d + len - 1;
-
-  do {
-    *p-- = (n % 10) + '0';
-    n /= 10;
-  } while (p >= d);
-
-  return d + len;
+template <std::weakly_incrementable O>
+requires(std::indirectly_writable<O, char>)
+O cpydig2(uint32_t n, O result) {
+  return std::ranges::copy_n(utos_digits.data() + n * 2, 2, result).out;
 }
 } // namespace
 
 namespace {
-constexpr const char *MONTH[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                                 "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
-constexpr const char *DAY_OF_WEEK[] = {"Sun", "Mon", "Tue", "Wed",
-                                       "Thu", "Fri", "Sat"};
+template <std::weakly_incrementable O>
+requires(std::indirectly_writable<O, char>)
+O cpydig3(uint32_t n, O result) {
+  *result++ = '0' + (n / 100) % 10;
+  return std::ranges::copy_n(utos_digits.data() + (n % 100) * 2, 2, result).out;
+}
+} // namespace
+
+namespace {
+template <std::weakly_incrementable O>
+requires(std::indirectly_writable<O, char>)
+O cpydig4(uint32_t n, O result) {
+  result =
+    std::ranges::copy_n(utos_digits.data() + (n / 100) * 2, 2, result).out;
+  return std::ranges::copy_n(utos_digits.data() + (n % 100) * 2, 2, result).out;
+}
+} // namespace
+
+namespace {
+constinit const auto MONTH = std::to_array({
+  "Jan"sv,
+  "Feb"sv,
+  "Mar"sv,
+  "Apr"sv,
+  "May"sv,
+  "Jun"sv,
+  "Jul"sv,
+  "Aug"sv,
+  "Sep"sv,
+  "Oct"sv,
+  "Nov"sv,
+  "Dec"sv,
+});
+
+constinit const auto WEEKDAY = std::to_array({
+  "Sun"sv,
+  "Mon"sv,
+  "Tue"sv,
+  "Wed"sv,
+  "Thu"sv,
+  "Fri"sv,
+  "Sat"sv,
+});
 } // namespace
 
 std::string http_date(time_t t) {
@@ -185,24 +220,21 @@ char *http_date(char *res, time_t t) {
 
   auto p = res;
 
-  auto s = DAY_OF_WEEK[tms.tm_wday];
-  p = std::copy_n(s, 3, p);
+  p = std::ranges::copy(WEEKDAY[tms.tm_wday], p).out;
   *p++ = ',';
   *p++ = ' ';
-  p = cpydig(p, tms.tm_mday, 2);
+  p = cpydig2(tms.tm_mday, p);
   *p++ = ' ';
-  s = MONTH[tms.tm_mon];
-  p = std::copy_n(s, 3, p);
+  p = std::ranges::copy(MONTH[tms.tm_mon], p).out;
   *p++ = ' ';
-  p = cpydig(p, tms.tm_year + 1900, 4);
+  p = cpydig4(tms.tm_year + 1900, p);
   *p++ = ' ';
-  p = cpydig(p, tms.tm_hour, 2);
+  p = cpydig2(tms.tm_hour, p);
   *p++ = ':';
-  p = cpydig(p, tms.tm_min, 2);
+  p = cpydig2(tms.tm_min, p);
   *p++ = ':';
-  p = cpydig(p, tms.tm_sec, 2);
-  s = " GMT";
-  p = std::copy_n(s, 4, p);
+  p = cpydig2(tms.tm_sec, p);
+  p = std::ranges::copy(" GMT"sv, p).out;
 
   return p;
 }
@@ -223,18 +255,17 @@ char *common_log_date(char *res, time_t t) {
 
   auto p = res;
 
-  p = cpydig(p, tms.tm_mday, 2);
+  p = cpydig2(tms.tm_mday, p);
   *p++ = '/';
-  auto s = MONTH[tms.tm_mon];
-  p = std::copy_n(s, 3, p);
+  p = std::ranges::copy(MONTH[tms.tm_mon], p).out;
   *p++ = '/';
-  p = cpydig(p, tms.tm_year + 1900, 4);
+  p = cpydig4(tms.tm_year + 1900, p);
   *p++ = ':';
-  p = cpydig(p, tms.tm_hour, 2);
+  p = cpydig2(tms.tm_hour, p);
   *p++ = ':';
-  p = cpydig(p, tms.tm_min, 2);
+  p = cpydig2(tms.tm_min, p);
   *p++ = ':';
-  p = cpydig(p, tms.tm_sec, 2);
+  p = cpydig2(tms.tm_sec, p);
   *p++ = ' ';
 
 #ifdef HAVE_STRUCT_TM_TM_GMTOFF
@@ -249,8 +280,8 @@ char *common_log_date(char *res, time_t t) {
     gmtoff = -gmtoff;
   }
 
-  p = cpydig(p, gmtoff / 3600, 2);
-  p = cpydig(p, (gmtoff % 3600) / 60, 2);
+  p = cpydig2(gmtoff / 3600, p);
+  p = cpydig2((gmtoff % 3600) / 60, p);
 
   return p;
 }
@@ -274,19 +305,19 @@ char *iso8601_date(char *res, int64_t ms) {
 
   auto p = res;
 
-  p = cpydig(p, tms.tm_year + 1900, 4);
+  p = cpydig4(tms.tm_year + 1900, p);
   *p++ = '-';
-  p = cpydig(p, tms.tm_mon + 1, 2);
+  p = cpydig2(tms.tm_mon + 1, p);
   *p++ = '-';
-  p = cpydig(p, tms.tm_mday, 2);
+  p = cpydig2(tms.tm_mday, p);
   *p++ = 'T';
-  p = cpydig(p, tms.tm_hour, 2);
+  p = cpydig2(tms.tm_hour, p);
   *p++ = ':';
-  p = cpydig(p, tms.tm_min, 2);
+  p = cpydig2(tms.tm_min, p);
   *p++ = ':';
-  p = cpydig(p, tms.tm_sec, 2);
+  p = cpydig2(tms.tm_sec, p);
   *p++ = '.';
-  p = cpydig(p, ms % 1000, 3);
+  p = cpydig3(ms % 1000, p);
 
 #ifdef HAVE_STRUCT_TM_TM_GMTOFF
   auto gmtoff = tms.tm_gmtoff;
@@ -302,9 +333,9 @@ char *iso8601_date(char *res, int64_t ms) {
       *p++ = '-';
       gmtoff = -gmtoff;
     }
-    p = cpydig(p, gmtoff / 3600, 2);
+    p = cpydig2(gmtoff / 3600, p);
     *p++ = ':';
-    p = cpydig(p, (gmtoff % 3600) / 60, 2);
+    p = cpydig2((gmtoff % 3600) / 60, p);
   }
 
   return p;
@@ -329,22 +360,22 @@ StringRef format_iso8601(char *out,
 
   auto p = out;
 
-  p = cpydig(p, static_cast<int>(ymd.year()), 4);
+  p = cpydig4(static_cast<int>(ymd.year()), p);
   *p++ = '-';
-  p = cpydig(p, static_cast<uint32_t>(ymd.month()), 2);
+  p = cpydig2(static_cast<uint32_t>(ymd.month()), p);
   *p++ = '-';
-  p = cpydig(p, static_cast<uint32_t>(ymd.day()), 2);
+  p = cpydig2(static_cast<uint32_t>(ymd.day()), p);
   *p++ = 'T';
 
   auto hms = std::chrono::hh_mm_ss{lt - days};
 
-  p = cpydig(p, hms.hours().count(), 2);
+  p = cpydig2(hms.hours().count(), p);
   *p++ = ':';
-  p = cpydig(p, hms.minutes().count(), 2);
+  p = cpydig2(hms.minutes().count(), p);
   *p++ = ':';
-  p = cpydig(p, hms.seconds().count(), 2);
+  p = cpydig2(hms.seconds().count(), p);
   *p++ = '.';
-  p = cpydig(p, hms.subseconds().count(), 3);
+  p = cpydig3(hms.subseconds().count(), p);
 
   auto sys_info = zt.get_info();
   auto gmtoff =
@@ -358,9 +389,9 @@ StringRef format_iso8601(char *out,
       *p++ = '-';
       gmtoff = -gmtoff;
     }
-    p = cpydig(p, gmtoff / 60, 2);
+    p = cpydig2(gmtoff / 60, p);
     *p++ = ':';
-    p = cpydig(p, (gmtoff % 60), 2);
+    p = cpydig2((gmtoff % 60), p);
   }
 
   *p = '\0';
@@ -379,15 +410,15 @@ char *iso8601_basic_date(char *res, int64_t ms) {
 
   auto p = res;
 
-  p = cpydig(p, tms.tm_year + 1900, 4);
-  p = cpydig(p, tms.tm_mon + 1, 2);
-  p = cpydig(p, tms.tm_mday, 2);
+  p = cpydig4(tms.tm_year + 1900, p);
+  p = cpydig2(tms.tm_mon + 1, p);
+  p = cpydig2(tms.tm_mday, p);
   *p++ = 'T';
-  p = cpydig(p, tms.tm_hour, 2);
-  p = cpydig(p, tms.tm_min, 2);
-  p = cpydig(p, tms.tm_sec, 2);
+  p = cpydig2(tms.tm_hour, p);
+  p = cpydig2(tms.tm_min, p);
+  p = cpydig2(tms.tm_sec, p);
   *p++ = '.';
-  p = cpydig(p, ms % 1000, 3);
+  p = cpydig3(ms % 1000, p);
 
 #ifdef HAVE_STRUCT_TM_TM_GMTOFF
   auto gmtoff = tms.tm_gmtoff;
@@ -403,8 +434,8 @@ char *iso8601_basic_date(char *res, int64_t ms) {
       *p++ = '-';
       gmtoff = -gmtoff;
     }
-    p = cpydig(p, gmtoff / 3600, 2);
-    p = cpydig(p, (gmtoff % 3600) / 60, 2);
+    p = cpydig2(gmtoff / 3600, p);
+    p = cpydig2((gmtoff % 3600) / 60, p);
   }
 
   return p;
