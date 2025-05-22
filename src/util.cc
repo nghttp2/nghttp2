@@ -1229,8 +1229,7 @@ uint8_t *hexdump_addr(uint8_t *dest, size_t addr) {
   for (size_t i = 0; i < 4; ++i) {
     auto a = (addr >> (3 - i) * 8) & 0xff;
 
-    *dest++ = LOWER_XDIGITS[a >> 4];
-    *dest++ = LOWER_XDIGITS[a & 0xf];
+    dest = format_hex(a, dest);
   }
 
   return dest;
@@ -1260,8 +1259,7 @@ uint8_t *hexdump8(uint8_t *dest, const uint8_t *data, size_t datalen) {
   size_t i;
 
   for (i = 0; i < datalen; ++i) {
-    *dest++ = LOWER_XDIGITS[data[i] >> 4];
-    *dest++ = LOWER_XDIGITS[data[i] & 0xf];
+    dest = format_hex(data[i], dest);
     *dest++ = ' ';
   }
 

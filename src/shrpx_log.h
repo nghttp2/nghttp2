@@ -156,26 +156,7 @@ public:
       return;
     }
 
-    if (n == 0) {
-      if (wleft() < 4 /* for "0x00" */) {
-        full_ = true;
-        return;
-      }
-      *last_++ = '0';
-      *last_++ = 'x';
-      *last_++ = '0';
-      *last_++ = '0';
-      update_full();
-      return;
-    }
-
-    size_t nlen = 0;
-    for (auto t = n; t; t >>= 8, ++nlen)
-      ;
-
-    nlen *= 2;
-
-    if (wleft() < 2 /* for "0x" */ + nlen) {
+    if (wleft() < "0x"sv.size() + sizeof(T) * 2) {
       full_ = true;
       return;
     }
@@ -183,15 +164,8 @@ public:
     *last_++ = '0';
     *last_++ = 'x';
 
-    last_ += nlen;
+    last_ = util::format_hex(n, last_);
     update_full();
-
-    auto p = last_ - 1;
-    for (; n; n >>= 8) {
-      uint8_t b = n & 0xff;
-      *p-- = util::LOWER_XDIGITS[b & 0xf];
-      *p-- = util::LOWER_XDIGITS[b >> 4];
-    }
   }
   static void set_severity_level(int severity);
   // Returns the severity level by |name|.  Returns -1 if |name| is

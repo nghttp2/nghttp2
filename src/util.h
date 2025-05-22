@@ -84,8 +84,6 @@ constexpr size_t NGHTTP2_MAX_UINT64_DIGITS = str_size("18446744073709551615");
 
 namespace util {
 
-static constexpr char UPPER_XDIGITS[] = "0123456789ABCDEF";
-
 constexpr bool is_alpha(const char c) noexcept {
   return ('A' <= c && c <= 'Z') || ('a' <= c && c <= 'z');
 }
@@ -236,56 +234,6 @@ StringRef percent_decode(BlockAllocator &balloc, R &&r) {
   return as_string_ref(std::ranges::begin(iov), p);
 }
 
-// Percent encode a range [|first|, |last|) if a character is not in
-// token or '%'.
-template <std::input_iterator I, std::weakly_incrementable O>
-requires(std::indirectly_copyable<I, O>)
-constexpr O percent_encode_token(I first, I last, O result) noexcept {
-  for (; first != last; ++first) {
-    uint8_t c = *first;
-
-    if (c != '%' && in_token(c)) {
-      *result++ = c;
-      continue;
-    }
-
-    *result++ = '%';
-    *result++ = UPPER_XDIGITS[c >> 4];
-    *result++ = UPPER_XDIGITS[(c & 0x0f)];
-  }
-
-  return result;
-}
-
-template <std::ranges::input_range R, std::weakly_incrementable O>
-requires(std::indirectly_copyable<std::ranges::iterator_t<R>, O> &&
-         !std::is_array_v<std::remove_cvref_t<R>>)
-constexpr O percent_encode_token(R &&r, O result) {
-  return percent_encode_token(std::ranges::begin(r), std::ranges::end(r),
-                              std::move(result));
-}
-
-// Returns the number of bytes written by percent_encode_token with
-// the same |r| parameter.  The return value does not include a
-// terminal NUL byte.
-template <std::ranges::input_range R>
-requires(!std::is_array_v<std::remove_cvref_t<R>>)
-constexpr size_t percent_encode_tokenlen(R &&r) noexcept {
-  size_t n = 0;
-
-  for (auto c : r) {
-    if (c != '%' && in_token(c)) {
-      ++n;
-      continue;
-    }
-
-    // percent-encoded character '%ff'
-    n += 3;
-  }
-
-  return n;
-}
-
 // Quote a range [|first|, |last|) and stores the result in another
 // range, beginning at |result|.  It returns an output iterator to the
 // element past the last element stored.  Currently, this function
@@ -349,9 +297,9 @@ constexpr size_t quote_stringlen(R &&r) {
   return n;
 }
 
-static constexpr char LOWER_XDIGITS[] = "0123456789abcdef";
-
 constinit const auto hexdigits = []() {
+  constexpr char LOWER_XDIGITS[] = "0123456789abcdef";
+
   std::array<char, 512> tbl;
 
   for (size_t i = 0; i < 256; ++i) {
@@ -419,6 +367,31 @@ constexpr std::string format_hex(R &&r) {
   return res;
 }
 
+template <std::weakly_incrementable O>
+requires(std::indirectly_writable<O, char>)
+constexpr O format_hex(uint8_t c, O result) {
+  return std::ranges::copy_n(hexdigits.data() + c * 2, 2, result).out;
+}
+
+constinit const auto upper_hexdigits = []() {
+  constexpr char UPPER_XDIGITS[] = "0123456789ABCDEF";
+
+  std::array<char, 512> tbl;
+
+  for (size_t i = 0; i < 256; ++i) {
+    tbl[i * 2] = UPPER_XDIGITS[static_cast<size_t>(i >> 4)];
+    tbl[i * 2 + 1] = UPPER_XDIGITS[static_cast<size_t>(i & 0xf)];
+  }
+
+  return tbl;
+}();
+
+template <std::weakly_incrementable O>
+requires(std::indirectly_writable<O, char>)
+constexpr O format_upper_hex(uint8_t c, O result) {
+  return std::ranges::copy_n(upper_hexdigits.data() + c * 2, 2, result).out;
+}
+
 // decode_hex decodes hex string in a range [|first|, |last|), and
 // stores the result in another range, beginning at |result|.  It
 // returns an output iterator to the element past the last element
@@ -467,6 +440,55 @@ template <std::ranges::input_range R>
 requires(!std::is_array_v<std::remove_cvref_t<R>>)
 std::span<const uint8_t> decode_hex(BlockAllocator &balloc, R &&r) {
   return decode_hex(balloc, std::ranges::begin(r), std::ranges::end(r));
+}
+
+// Percent encode a range [|first|, |last|) if a character is not in
+// token or '%'.
+template <std::input_iterator I, std::weakly_incrementable O>
+requires(std::indirectly_copyable<I, O>)
+constexpr O percent_encode_token(I first, I last, O result) noexcept {
+  for (; first != last; ++first) {
+    uint8_t c = *first;
+
+    if (c != '%' && in_token(c)) {
+      *result++ = c;
+      continue;
+    }
+
+    *result++ = '%';
+    result = format_upper_hex(c, result);
+  }
+
+  return result;
+}
+
+template <std::ranges::input_range R, std::weakly_incrementable O>
+requires(std::indirectly_copyable<std::ranges::iterator_t<R>, O> &&
+         !std::is_array_v<std::remove_cvref_t<R>>)
+constexpr O percent_encode_token(R &&r, O result) {
+  return percent_encode_token(std::ranges::begin(r), std::ranges::end(r),
+                              std::move(result));
+}
+
+// Returns the number of bytes written by percent_encode_token with
+// the same |r| parameter.  The return value does not include a
+// terminal NUL byte.
+template <std::ranges::input_range R>
+requires(!std::is_array_v<std::remove_cvref_t<R>>)
+constexpr size_t percent_encode_tokenlen(R &&r) noexcept {
+  size_t n = 0;
+
+  for (auto c : r) {
+    if (c != '%' && in_token(c)) {
+      ++n;
+      continue;
+    }
+
+    // percent-encoded character '%ff'
+    n += 3;
+  }
+
+  return n;
 }
 
 // Returns given time |t| from epoch in HTTP Date format (e.g., Mon,
@@ -750,17 +772,6 @@ template <std::integral T> constexpr std::string utos_funit(T n) {
   return dtos(static_cast<double>(n) / (1 << b)) + u;
 }
 
-constinit const auto upper_hexdigits = []() {
-  std::array<char, 512> tbl;
-
-  for (size_t i = 0; i < 256; ++i) {
-    tbl[i * 2] = UPPER_XDIGITS[static_cast<size_t>(i >> 4)];
-    tbl[i * 2 + 1] = UPPER_XDIGITS[static_cast<size_t>(i & 0xf)];
-  }
-
-  return tbl;
-}();
-
 template <std::integral T, std::weakly_incrementable O>
 requires(std::indirectly_writable<O, char>)
 O utox(T n, O result) {
@@ -780,13 +791,11 @@ O utox(T n, O result) {
     assert(p != end);
 
     if (*(p - 1) < 16) {
-      *result++ = UPPER_XDIGITS[*--p];
+      *result++ = upper_hexdigits[*--p * 2 + 1];
     }
 
     for (; p != end; --p) {
-      result =
-        std::ranges::copy_n(upper_hexdigits.data() + *(p - 1) * 2, 2, result)
-          .out;
+      result = format_upper_hex(*(p - 1), result);
     }
   } else {
     auto p = reinterpret_cast<uint8_t *>(&n);
@@ -796,12 +805,11 @@ O utox(T n, O result) {
       ;
 
     if (*p < 16) {
-      *result++ = UPPER_XDIGITS[*p++];
+      *result++ = upper_hexdigits[*p++ * 2 + 1];
     }
 
     for (; p != end; ++p) {
-      result =
-        std::ranges::copy_n(upper_hexdigits.data() + *p * 2, 2, result).out;
+      result = format_upper_hex(*p, result);
     }
   }
 
