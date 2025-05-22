@@ -951,6 +951,21 @@ template <typename T> std::string format_iso8601(const T &tp) {
   return iso8601_date(t.count());
 }
 
+#ifdef HAVE_STD_CHRONO_TIME_ZONE
+// Writes given time |tp| in ISO 8601 format (e.g.,
+// 2014-11-15T12:58:24.741Z or 2014-11-15T12:58:24.741+09:00) in
+// buffer pointed by |out|.  The buffer must be at least 30 bytes,
+// including terminal NULL byte.  This function returns StringRef
+// wrapping the buffer pointed by |out|, and this string is terminated
+// by NULL.
+StringRef format_iso8601(char *out,
+                         const std::chrono::system_clock::time_point &tp);
+
+// Works like above but with a given time zone.
+StringRef format_iso8601(char *out,
+                         const std::chrono::system_clock::time_point &tp,
+                         const std::chrono::time_zone *tz);
+#else  // !defined(HAVE_STD_CHRONO_TIME_ZONE)
 // Writes given time |tp| in ISO 8601 format (e.g.,
 // 2014-11-15T12:58:24.741Z or 2014-11-15T12:58:24.741+09:00) in
 // buffer pointed by |out|.  The buffer must be at least 30 bytes,
@@ -964,6 +979,7 @@ template <typename T> StringRef format_iso8601(char *out, const T &tp) {
   *p = '\0';
   return StringRef{out, p};
 }
+#endif // !defined(HAVE_STD_CHRONO_TIME_ZONE)
 
 // Writes given time |tp| in ISO 8601 basic format (e.g.,
 // 20141115T125824.741Z or 20141115T125824.741+0900) in buffer pointed

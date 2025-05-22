@@ -310,6 +310,65 @@ char *iso8601_date(char *res, int64_t ms) {
   return p;
 }
 
+#ifdef HAVE_STD_CHRONO_TIME_ZONE
+StringRef format_iso8601(char *out,
+                         const std::chrono::system_clock::time_point &tp) {
+  static auto tz = std::chrono::current_zone();
+
+  return format_iso8601(out, tp, tz);
+}
+
+StringRef format_iso8601(char *out,
+                         const std::chrono::system_clock::time_point &tp,
+                         const std::chrono::time_zone *tz) {
+  auto t = std::chrono::floor<std::chrono::milliseconds>(tp);
+  auto zt = std::chrono::zoned_time{tz, t};
+  auto lt = zt.get_local_time();
+  auto days = std::chrono::floor<std::chrono::days>(lt);
+  auto ymd = std::chrono::year_month_day{days};
+
+  auto p = out;
+
+  p = cpydig(p, static_cast<int>(ymd.year()), 4);
+  *p++ = '-';
+  p = cpydig(p, static_cast<uint32_t>(ymd.month()), 2);
+  *p++ = '-';
+  p = cpydig(p, static_cast<uint32_t>(ymd.day()), 2);
+  *p++ = 'T';
+
+  auto hms = std::chrono::hh_mm_ss{lt - days};
+
+  p = cpydig(p, hms.hours().count(), 2);
+  *p++ = ':';
+  p = cpydig(p, hms.minutes().count(), 2);
+  *p++ = ':';
+  p = cpydig(p, hms.seconds().count(), 2);
+  *p++ = '.';
+  p = cpydig(p, hms.subseconds().count(), 3);
+
+  auto sys_info = zt.get_info();
+  auto gmtoff =
+    std::chrono::duration_cast<std::chrono::minutes>(sys_info.offset).count();
+  if (gmtoff == 0) {
+    *p++ = 'Z';
+  } else {
+    if (gmtoff > 0) {
+      *p++ = '+';
+    } else {
+      *p++ = '-';
+      gmtoff = -gmtoff;
+    }
+    p = cpydig(p, gmtoff / 60, 2);
+    *p++ = ':';
+    p = cpydig(p, (gmtoff % 60), 2);
+  }
+
+  *p = '\0';
+
+  return {out, p};
+}
+#endif // defined(HAVE_STD_CHRONO_TIME_ZONE)
+
 char *iso8601_basic_date(char *res, int64_t ms) {
   time_t sec = ms / 1000;
 
