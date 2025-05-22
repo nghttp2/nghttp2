@@ -361,6 +361,7 @@ void dec(Log &log) { log.set_flags(Log::fmt_dec); }
 
 namespace {
 template <std::ranges::input_range R>
+requires(!std::is_array_v<std::remove_cvref_t<R>>)
 std::span<char> copy(R &&src, std::span<char> dest) {
   auto nwrite =
     std::min(std::ranges::distance(src), std::ranges::distance(dest));

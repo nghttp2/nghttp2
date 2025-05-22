@@ -97,12 +97,15 @@ constexpr O encode(I first, I last, O result) {
 }
 
 template <std::ranges::input_range R, std::weakly_incrementable O>
-requires(std::indirectly_writable<O, char>)
+requires(std::indirectly_writable<O, char> &&
+         !std::is_array_v<std::remove_cvref_t<R>>)
 constexpr O encode(R &&r, O result) {
   return encode(std::ranges::begin(r), std::ranges::end(r), std::move(result));
 }
 
-template <std::ranges::input_range R> constexpr std::string encode(R &&r) {
+template <std::ranges::input_range R>
+requires(!std::is_array_v<std::remove_cvref_t<R>>)
+constexpr std::string encode(R &&r) {
   std::string res;
   auto len = std::ranges::size(r);
   if (len == 0) {
@@ -173,6 +176,7 @@ constexpr O decode(I first, I last, O result) {
 }
 
 template <std::ranges::input_range R>
+requires(!std::is_array_v<std::remove_cvref_t<R>>)
 std::span<const uint8_t> decode(BlockAllocator &balloc, R &&r) {
   auto len = std::ranges::size(r);
   if (len % 4 != 0) {

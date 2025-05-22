@@ -139,7 +139,9 @@ public:
     func(*this);
     return *this;
   }
-  template <std::ranges::input_range R> void write_seq(R &&r) {
+  template <std::ranges::input_range R>
+  requires(!std::is_array_v<std::remove_cvref_t<R>>)
+  void write_seq(R &&r) {
     if (full_) {
       return;
     }

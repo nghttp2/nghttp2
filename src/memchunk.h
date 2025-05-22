@@ -206,7 +206,9 @@ template <typename Memchunk> struct Memchunks {
     auto s = static_cast<const uint8_t *>(src);
     return append(s, s + count);
   }
-  template <std::ranges::input_range R> size_t append(R &&r) {
+  template <std::ranges::input_range R>
+  requires(!std::is_array_v<std::remove_cvref_t<R>>)
+  size_t append(R &&r) {
     return append(std::ranges::begin(r), std::ranges::end(r));
   }
   size_t copy(Memchunks &dest) {
