@@ -286,59 +286,16 @@ char *common_log_date(char *res, time_t t) {
   return p;
 }
 
-std::string iso8601_date(int64_t ms) {
+std::string format_iso8601(const std::chrono::system_clock::time_point &tp) {
   // 2014-11-15T12:58:24.741Z
   // 2014-11-15T12:58:24.741+09:00
   std::string res(29, 0);
-  auto p = iso8601_date(&res[0], ms);
-  res.resize(p - &res[0]);
+
+  auto s = format_iso8601(res.data(), tp);
+
+  res.resize(s.size());
+
   return res;
-}
-
-char *iso8601_date(char *res, int64_t ms) {
-  time_t sec = ms / 1000;
-
-  tm tms;
-  if (localtime_r(&sec, &tms) == nullptr) {
-    return res;
-  }
-
-  auto p = res;
-
-  p = cpydig4(tms.tm_year + 1900, p);
-  *p++ = '-';
-  p = cpydig2(tms.tm_mon + 1, p);
-  *p++ = '-';
-  p = cpydig2(tms.tm_mday, p);
-  *p++ = 'T';
-  p = cpydig2(tms.tm_hour, p);
-  *p++ = ':';
-  p = cpydig2(tms.tm_min, p);
-  *p++ = ':';
-  p = cpydig2(tms.tm_sec, p);
-  *p++ = '.';
-  p = cpydig3(ms % 1000, p);
-
-#ifdef HAVE_STRUCT_TM_TM_GMTOFF
-  auto gmtoff = tms.tm_gmtoff;
-#else  // !HAVE_STRUCT_TM_TM_GMTOFF
-  auto gmtoff = nghttp2_timegm(&tms) - sec;
-#endif // !HAVE_STRUCT_TM_TM_GMTOFF
-  if (gmtoff == 0) {
-    *p++ = 'Z';
-  } else {
-    if (gmtoff > 0) {
-      *p++ = '+';
-    } else {
-      *p++ = '-';
-      gmtoff = -gmtoff;
-    }
-    p = cpydig2(gmtoff / 3600, p);
-    *p++ = ':';
-    p = cpydig2((gmtoff % 3600) / 60, p);
-  }
-
-  return p;
 }
 
 #ifdef HAVE_STD_CHRONO_TIME_ZONE
@@ -398,7 +355,65 @@ StringRef format_iso8601(char *out,
 
   return {out, p};
 }
-#endif // defined(HAVE_STD_CHRONO_TIME_ZONE)
+#else // !defined(HAVE_STD_CHRONO_TIME_ZONE)
+namespace {
+char *iso8601_date(char *out, const std::chrono::system_clock::time_point &tp) {
+  auto ms =
+    std::chrono::duration_cast<std::chrono::milliseconds>(tp.time_since_epoch())
+      .count();
+  time_t sec = ms / 1000;
+
+  tm tms;
+  if (localtime_r(&sec, &tms) == nullptr) {
+    return out;
+  }
+
+  auto p = out;
+
+  p = cpydig4(tms.tm_year + 1900, p);
+  *p++ = '-';
+  p = cpydig2(tms.tm_mon + 1, p);
+  *p++ = '-';
+  p = cpydig2(tms.tm_mday, p);
+  *p++ = 'T';
+  p = cpydig2(tms.tm_hour, p);
+  *p++ = ':';
+  p = cpydig2(tms.tm_min, p);
+  *p++ = ':';
+  p = cpydig2(tms.tm_sec, p);
+  *p++ = '.';
+  p = cpydig3(ms % 1000, p);
+
+#  ifdef HAVE_STRUCT_TM_TM_GMTOFF
+  auto gmtoff = tms.tm_gmtoff;
+#  else  // !HAVE_STRUCT_TM_TM_GMTOFF
+  auto gmtoff = nghttp2_timegm(&tms) - sec;
+#  endif // !HAVE_STRUCT_TM_TM_GMTOFF
+  if (gmtoff == 0) {
+    *p++ = 'Z';
+  } else {
+    if (gmtoff > 0) {
+      *p++ = '+';
+    } else {
+      *p++ = '-';
+      gmtoff = -gmtoff;
+    }
+    p = cpydig2(gmtoff / 3600, p);
+    *p++ = ':';
+    p = cpydig2((gmtoff % 3600) / 60, p);
+  }
+
+  return p;
+}
+} // namespace
+
+StringRef format_iso8601(char *out,
+                         const std::chrono::system_clock::time_point &tp) {
+  auto p = iso8601_date(out, tp);
+  *p = '\0';
+  return StringRef{out, p};
+}
+#endif   // !defined(HAVE_STD_CHRONO_TIME_ZONE)
 
 char *iso8601_basic_date(char *res, int64_t ms) {
   time_t sec = ms / 1000;
