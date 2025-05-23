@@ -491,14 +491,6 @@ constexpr size_t percent_encode_tokenlen(R &&r) noexcept {
   return n;
 }
 
-// Returns given time |t| from epoch in HTTP Date format (e.g., Mon,
-// 10 Oct 2016 10:25:58 GMT).
-std::string http_date(time_t t);
-// Writes given time |t| from epoch in HTTP Date format into the
-// buffer pointed by |res|.  The buffer must be at least 29 bytes
-// long.  This function returns the one beyond the last position.
-char *http_date(char *res, time_t t);
-
 time_t parse_http_date(const StringRef &s);
 
 // Parses time formatted as "MMM DD HH:MM:SS YYYY [GMT]" (e.g., Feb 3
@@ -957,19 +949,17 @@ StringRef format_iso8601_basic(char *out,
                                const std::chrono::time_zone *tz);
 #endif // defined(HAVE_STD_CHRONO_TIME_ZONE)
 
+// Returns given time |tp| in HTTP Date format (e.g., Mon, 10 Oct 2016
+// 10:25:58 GMT)
+std::string format_http_date(const std::chrono::system_clock::time_point &tp);
+
 // Writes given time |tp| in HTTP Date format (e.g., Mon, 10 Oct 2016
 // 10:25:58 GMT) in buffer pointed by |out|.  The buffer must be at
-// least 30 bytes, including terminal NULL byte.  Expected type of
-// |tp| is std::chrono::time_point.  This function returns StringRef
-// wrapping the buffer pointed by |out|, and this string is terminated
-// by NULL.
-template <typename T> StringRef format_http_date(char *out, const T &tp) {
-  auto t =
-    std::chrono::duration_cast<std::chrono::seconds>(tp.time_since_epoch());
-  auto p = http_date(out, t.count());
-  *p = '\0';
-  return StringRef{out, p};
-}
+// least 30 bytes, including terminal NULL byte.  This function
+// returns StringRef wrapping the buffer pointed by |out|, and this
+// string is terminated by NULL.
+StringRef format_http_date(char *out,
+                           const std::chrono::system_clock::time_point &tp);
 
 // Return the system precision of the template parameter |Clock| as
 // a nanosecond value of type |Rep|

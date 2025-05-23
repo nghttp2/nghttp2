@@ -204,39 +204,15 @@ constinit const auto WEEKDAY = std::to_array({
 });
 } // namespace
 
-std::string http_date(time_t t) {
-  /* Sat, 27 Sep 2014 06:31:15 GMT */
-  std::string res(29, 0);
-  http_date(&res[0], t);
+std::string format_http_date(const std::chrono::system_clock::time_point &tp) {
+  // Sat, 27 Sep 2014 06:31:15 GMT
+  std::string res(29 + /* NUL */ 1, 0);
+
+  auto s = format_http_date(res.data(), tp);
+
+  res.resize(s.size());
+
   return res;
-}
-
-char *http_date(char *res, time_t t) {
-  struct tm tms;
-
-  if (gmtime_r(&t, &tms) == nullptr) {
-    return res;
-  }
-
-  auto p = res;
-
-  p = std::ranges::copy(WEEKDAY[tms.tm_wday], p).out;
-  *p++ = ',';
-  *p++ = ' ';
-  p = cpydig2(tms.tm_mday, p);
-  *p++ = ' ';
-  p = std::ranges::copy(MONTH[tms.tm_mon], p).out;
-  *p++ = ' ';
-  p = cpydig4(tms.tm_year + 1900, p);
-  *p++ = ' ';
-  p = cpydig2(tms.tm_hour, p);
-  *p++ = ':';
-  p = cpydig2(tms.tm_min, p);
-  *p++ = ':';
-  p = cpydig2(tms.tm_sec, p);
-  p = std::ranges::copy(" GMT"sv, p).out;
-
-  return p;
 }
 
 std::string format_iso8601(const std::chrono::system_clock::time_point &tp) {
@@ -414,6 +390,39 @@ StringRef format_common_log(char *out,
 
   return {out, p};
 }
+
+StringRef format_http_date(char *out,
+                           const std::chrono::system_clock::time_point &tp) {
+  auto t = std::chrono::floor<std::chrono::seconds>(tp);
+  auto days = std::chrono::floor<std::chrono::days>(t);
+  auto ymd = std::chrono::year_month_day{days};
+  auto weekday = std::chrono::weekday{ymd};
+
+  auto p = out;
+
+  p = std::ranges::copy(WEEKDAY[weekday.c_encoding()], p).out;
+  *p++ = ',';
+  *p++ = ' ';
+  p = cpydig2(static_cast<uint32_t>(ymd.day()), p);
+  *p++ = ' ';
+  p = std::ranges::copy(MONTH[static_cast<uint32_t>(ymd.month()) - 1], p).out;
+  *p++ = ' ';
+  p = cpydig4(static_cast<int>(ymd.year()), p);
+  *p++ = ' ';
+
+  auto hms = std::chrono::hh_mm_ss{t - days};
+
+  p = cpydig2(hms.hours().count(), p);
+  *p++ = ':';
+  p = cpydig2(hms.minutes().count(), p);
+  *p++ = ':';
+  p = cpydig2(hms.seconds().count(), p);
+  p = std::ranges::copy(" GMT"sv, p).out;
+
+  *p = '\0';
+
+  return {out, p};
+}
 #else // !defined(HAVE_STD_CHRONO_TIME_ZONE)
 namespace {
 char *iso8601_date(char *out, const std::chrono::system_clock::time_point &tp) {
@@ -574,6 +583,45 @@ char *common_log_date(char *out,
 StringRef format_common_log(char *out,
                             const std::chrono::system_clock::time_point &tp) {
   auto p = common_log_date(out, tp);
+  *p = '\0';
+  return {out, p};
+}
+
+namespace {
+char *http_date(char *out, const std::chrono::system_clock::time_point &tp) {
+  time_t t =
+    std::chrono::floor<std::chrono::seconds>(tp.time_since_epoch()).count();
+  struct tm tms;
+
+  if (gmtime_r(&t, &tms) == nullptr) {
+    return out;
+  }
+
+  auto p = out;
+
+  p = std::ranges::copy(WEEKDAY[tms.tm_wday], p).out;
+  *p++ = ',';
+  *p++ = ' ';
+  p = cpydig2(tms.tm_mday, p);
+  *p++ = ' ';
+  p = std::ranges::copy(MONTH[tms.tm_mon], p).out;
+  *p++ = ' ';
+  p = cpydig4(tms.tm_year + 1900, p);
+  *p++ = ' ';
+  p = cpydig2(tms.tm_hour, p);
+  *p++ = ':';
+  p = cpydig2(tms.tm_min, p);
+  *p++ = ':';
+  p = cpydig2(tms.tm_sec, p);
+  p = std::ranges::copy(" GMT"sv, p).out;
+
+  return p;
+}
+} // namespace
+
+StringRef format_http_date(char *out,
+                           const std::chrono::system_clock::time_point &tp) {
+  auto p = http_date(out, tp);
   *p = '\0';
   return {out, p};
 }
