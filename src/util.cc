@@ -239,53 +239,6 @@ char *http_date(char *res, time_t t) {
   return p;
 }
 
-std::string common_log_date(time_t t) {
-  // 03/Jul/2014:00:19:38 +0900
-  std::string res(26, 0);
-  common_log_date(&res[0], t);
-  return res;
-}
-
-char *common_log_date(char *res, time_t t) {
-  struct tm tms;
-
-  if (localtime_r(&t, &tms) == nullptr) {
-    return res;
-  }
-
-  auto p = res;
-
-  p = cpydig2(tms.tm_mday, p);
-  *p++ = '/';
-  p = std::ranges::copy(MONTH[tms.tm_mon], p).out;
-  *p++ = '/';
-  p = cpydig4(tms.tm_year + 1900, p);
-  *p++ = ':';
-  p = cpydig2(tms.tm_hour, p);
-  *p++ = ':';
-  p = cpydig2(tms.tm_min, p);
-  *p++ = ':';
-  p = cpydig2(tms.tm_sec, p);
-  *p++ = ' ';
-
-#ifdef HAVE_STRUCT_TM_TM_GMTOFF
-  auto gmtoff = tms.tm_gmtoff;
-#else  // !HAVE_STRUCT_TM_TM_GMTOFF
-  auto gmtoff = nghttp2_timegm(&tms) - t;
-#endif // !HAVE_STRUCT_TM_TM_GMTOFF
-  if (gmtoff >= 0) {
-    *p++ = '+';
-  } else {
-    *p++ = '-';
-    gmtoff = -gmtoff;
-  }
-
-  p = cpydig2(gmtoff / 3600, p);
-  p = cpydig2((gmtoff % 3600) / 60, p);
-
-  return p;
-}
-
 std::string format_iso8601(const std::chrono::system_clock::time_point &tp) {
   // 2014-11-15T12:58:24.741Z
   // 2014-11-15T12:58:24.741+09:00
@@ -411,6 +364,56 @@ StringRef format_iso8601_basic(char *out,
 
   return {out, p};
 }
+
+StringRef format_common_log(char *out,
+                            const std::chrono::system_clock::time_point &tp) {
+  return format_common_log(out, tp, get_current_time_zone());
+}
+
+StringRef format_common_log(char *out,
+                            const std::chrono::system_clock::time_point &tp,
+                            const std::chrono::time_zone *tz) {
+  auto t = std::chrono::floor<std::chrono::milliseconds>(tp);
+  auto zt = std::chrono::zoned_time{tz, t};
+  auto lt = zt.get_local_time();
+  auto days = std::chrono::floor<std::chrono::days>(lt);
+  auto ymd = std::chrono::year_month_day{days};
+
+  auto p = out;
+
+  p = cpydig2(static_cast<uint32_t>(ymd.day()), p);
+  *p++ = '/';
+  p = std::ranges::copy(MONTH[static_cast<uint32_t>(ymd.month()) - 1], p).out;
+  *p++ = '/';
+  p = cpydig4(static_cast<int>(ymd.year()), p);
+  *p++ = ':';
+
+  auto hms = std::chrono::hh_mm_ss{lt - days};
+
+  p = cpydig2(hms.hours().count(), p);
+  *p++ = ':';
+  p = cpydig2(hms.minutes().count(), p);
+  *p++ = ':';
+  p = cpydig2(hms.seconds().count(), p);
+  *p++ = ' ';
+
+  auto sys_info = zt.get_info();
+  auto gmtoff =
+    std::chrono::floor<std::chrono::minutes>(sys_info.offset).count();
+  if (gmtoff >= 0) {
+    *p++ = '+';
+  } else {
+    *p++ = '-';
+    gmtoff = -gmtoff;
+  }
+
+  p = cpydig2(gmtoff / 60, p);
+  p = cpydig2(gmtoff % 60, p);
+
+  *p = '\0';
+
+  return {out, p};
+}
 #else // !defined(HAVE_STD_CHRONO_TIME_ZONE)
 namespace {
 char *iso8601_date(char *out, const std::chrono::system_clock::time_point &tp) {
@@ -519,6 +522,58 @@ StringRef
 format_iso8601_basic(char *out,
                      const std::chrono::system_clock::time_point &tp) {
   auto p = iso8601_basic_date(out, tp);
+  *p = '\0';
+  return {out, p};
+}
+
+namespace {
+char *common_log_date(char *out,
+                      const std::chrono::system_clock::time_point &tp) {
+  time_t t =
+    std::chrono::floor<std::chrono::seconds>(tp.time_since_epoch()).count();
+  struct tm tms;
+
+  if (localtime_r(&t, &tms) == nullptr) {
+    return out;
+  }
+
+  auto p = out;
+
+  p = cpydig2(tms.tm_mday, p);
+  *p++ = '/';
+  p = std::ranges::copy(MONTH[tms.tm_mon], p).out;
+  *p++ = '/';
+  p = cpydig4(tms.tm_year + 1900, p);
+  *p++ = ':';
+  p = cpydig2(tms.tm_hour, p);
+  *p++ = ':';
+  p = cpydig2(tms.tm_min, p);
+  *p++ = ':';
+  p = cpydig2(tms.tm_sec, p);
+  *p++ = ' ';
+
+#  ifdef HAVE_STRUCT_TM_TM_GMTOFF
+  auto gmtoff = tms.tm_gmtoff;
+#  else  // !HAVE_STRUCT_TM_TM_GMTOFF
+  auto gmtoff = nghttp2_timegm(&tms) - t;
+#  endif // !HAVE_STRUCT_TM_TM_GMTOFF
+  if (gmtoff >= 0) {
+    *p++ = '+';
+  } else {
+    *p++ = '-';
+    gmtoff = -gmtoff;
+  }
+
+  p = cpydig2(gmtoff / 3600, p);
+  p = cpydig2((gmtoff % 3600) / 60, p);
+
+  return p;
+}
+} // namespace
+
+StringRef format_common_log(char *out,
+                            const std::chrono::system_clock::time_point &tp) {
+  auto p = common_log_date(out, tp);
   *p = '\0';
   return {out, p};
 }
