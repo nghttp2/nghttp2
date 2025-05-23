@@ -276,10 +276,10 @@ void test_util_http_date(void) {
     "Thu, 01 Jan 1970 00:00:00 GMT"sv,
     util::format_http_date(http_buf.data(),
                            std::chrono::system_clock::time_point()));
-  assert_stdsv_equal("Wed, 29 Feb 2012 09:15:16 GMT"sv,
-                     util::format_http_date(
-                       http_buf.data(), std::chrono::system_clock::time_point(
-                                          std::chrono::seconds(1330506916))));
+  assert_stdsv_equal(
+    "Wed, 29 Feb 2012 09:15:16 GMT"sv,
+    util::format_http_date(http_buf.data(),
+                           std::chrono::system_clock::from_time_t(1330506916)));
 }
 
 void test_util_select_h2(void) {
@@ -677,10 +677,9 @@ void test_util_localtime_date(void) {
 
   assert_stdsv_equal(
     "02/Oct/2001:00:34:56 +1200"sv,
-    util::format_common_log(
-      buf.data(),
-      std::chrono::system_clock::time_point(std::chrono::seconds(1001939696)),
-      std::chrono::locate_zone("Pacific/Auckland"sv)));
+    util::format_common_log(buf.data(),
+                            std::chrono::system_clock::from_time_t(1001939696),
+                            std::chrono::locate_zone("Pacific/Auckland"sv)));
 
   assert_stdsv_equal(
     "2001-10-01T12:34:56.123Z"sv,
@@ -698,10 +697,9 @@ void test_util_localtime_date(void) {
 
   assert_stdsv_equal(
     "01/Oct/2001:12:34:56 +0000"sv,
-    util::format_common_log(
-      buf.data(),
-      std::chrono::system_clock::time_point(std::chrono::seconds(1001939696)),
-      std::chrono::locate_zone("GMT"sv)));
+    util::format_common_log(buf.data(),
+                            std::chrono::system_clock::from_time_t(1001939696),
+                            std::chrono::locate_zone("GMT"sv)));
 #else // !defined(HAVE_STD_CHRONO_TIME_ZONE)
   auto tz = getenv("TZ");
   if (tz) {
@@ -728,8 +726,8 @@ void test_util_localtime_date(void) {
 
   assert_stdsv_equal(
     "02/Oct/2001:00:34:56 +1200"sv,
-    util::format_common_log(buf.data(), std::chrono::system_clock::time_point(
-                                          std::chrono::seconds(1001939696))));
+    util::format_common_log(
+      buf.data(), std::chrono::system_clock::from_time_t(1001939696)));
 
   if (tz) {
     setenv("TZ", tz, 1);

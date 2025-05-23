@@ -218,7 +218,7 @@ std::string format_http_date(const std::chrono::system_clock::time_point &tp) {
 std::string format_iso8601(const std::chrono::system_clock::time_point &tp) {
   // 2014-11-15T12:58:24.741Z
   // 2014-11-15T12:58:24.741+09:00
-  std::string res(29, 0);
+  std::string res(29 + /* NUL */ 1, 0);
 
   auto s = format_iso8601(res.data(), tp);
 
