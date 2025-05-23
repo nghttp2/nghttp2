@@ -250,7 +250,9 @@ public:
       option_(nullptr),
       next_session_id_(1),
       tstamp_cached_(ev_now(loop)),
-      cached_date_(util::http_date(tstamp_cached_)) {
+      cached_date_(
+        util::format_http_date(std::chrono::system_clock::from_time_t(
+          static_cast<time_t>(tstamp_cached_)))) {
     nghttp2_session_callbacks_new(&callbacks_);
 
     fill_callback(callbacks_, config_);
@@ -326,7 +328,11 @@ public:
     }
     add_handler(handler.release());
   }
-  void update_cached_date() { cached_date_ = util::http_date(tstamp_cached_); }
+  void update_cached_date() {
+    cached_date_ =
+      util::format_http_date(std::chrono::system_clock::from_time_t(
+        static_cast<time_t>(tstamp_cached_)));
+  }
   const std::string &get_cached_date() {
     auto t = ev_now(loop_);
     if (t != tstamp_cached_) {
@@ -943,7 +949,8 @@ int Http2Handler::submit_file_response(const StringRef &status, Stream *stream,
       util::make_string_ref_uint(stream->balloc, file_length));
   }
   if (last_modified != 0) {
-    last_modified_str = util::http_date(last_modified);
+    last_modified_str = util::format_http_date(
+      std::chrono::system_clock::from_time_t(last_modified));
     nva[nvlen++] = http2::make_field_v("last-modified"_sr, last_modified_str);
   }
   if (content_type) {

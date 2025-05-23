@@ -263,9 +263,12 @@ void test_util_utox(void) {
 }
 
 void test_util_http_date(void) {
-  assert_stdstring_equal("Thu, 01 Jan 1970 00:00:00 GMT", util::http_date(0));
-  assert_stdstring_equal("Wed, 29 Feb 2012 09:15:16 GMT",
-                         util::http_date(1330506916));
+  assert_stdstring_equal(
+    "Thu, 01 Jan 1970 00:00:00 GMT"s,
+    util::format_http_date(std::chrono::system_clock::time_point()));
+  assert_stdstring_equal(
+    "Wed, 29 Feb 2012 09:15:16 GMT"s,
+    util::format_http_date(std::chrono::system_clock::from_time_t(1330506916)));
 
   std::array<char, 30> http_buf;
 
