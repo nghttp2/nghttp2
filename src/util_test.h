@@ -78,6 +78,13 @@ munit_void_test_decl(test_util_split_str)
 munit_void_test_decl(test_util_rstrip)
 munit_void_test_decl(test_util_contains)
 munit_void_test_decl(test_util_hex_to_uint)
+munit_void_test_decl(test_util_is_alpha)
+munit_void_test_decl(test_util_is_digit)
+munit_void_test_decl(test_util_is_hex_digit)
+munit_void_test_decl(test_util_in_rfc3986_unreserved_chars)
+munit_void_test_decl(test_util_in_rfc3986_sub_delims)
+munit_void_test_decl(test_util_in_token)
+munit_void_test_decl(test_util_in_attr_char)
 
 } // namespace shrpx
 

@@ -108,48 +108,6 @@ int nghttp2_inet_pton(int af, const char *src, void *dst) {
 } // namespace
 #endif // _WIN32
 
-bool in_rfc3986_unreserved_chars(const char c) {
-  switch (c) {
-  case '-':
-  case '.':
-  case '_':
-  case '~':
-    return true;
-  }
-
-  return is_alpha(c) || is_digit(c);
-}
-
-bool in_rfc3986_sub_delims(const char c) {
-  switch (c) {
-  case '!':
-  case '$':
-  case '&':
-  case '\'':
-  case '(':
-  case ')':
-  case '*':
-  case '+':
-  case ',':
-  case ';':
-  case '=':
-    return true;
-  }
-
-  return false;
-}
-
-bool in_attr_char(char c) {
-  switch (c) {
-  case '*':
-  case '\'':
-  case '%':
-    return false;
-  }
-
-  return util::in_token(c);
-}
-
 namespace {
 template <std::weakly_incrementable O>
 requires(std::indirectly_writable<O, char>)

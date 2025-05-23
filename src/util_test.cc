@@ -83,6 +83,13 @@ const MunitTest tests[]{
   munit_void_test(test_util_rstrip),
   munit_void_test(test_util_contains),
   munit_void_test(test_util_hex_to_uint),
+  munit_void_test(test_util_is_alpha),
+  munit_void_test(test_util_is_digit),
+  munit_void_test(test_util_is_hex_digit),
+  munit_void_test(test_util_in_rfc3986_unreserved_chars),
+  munit_void_test(test_util_in_rfc3986_sub_delims),
+  munit_void_test(test_util_in_token),
+  munit_void_test(test_util_in_attr_char),
   munit_test_end(),
 };
 } // namespace
@@ -991,6 +998,125 @@ void test_util_hex_to_uint(void) {
 
   for (size_t i = 0; i < 6; ++i) {
     assert_uint32(i + 10, ==, util::hex_to_uint('a' + i));
+  }
+}
+
+void test_util_is_alpha(void) {
+  for (size_t i = 0; i < 256; ++i) {
+    if (('A' <= i && i <= 'Z') || ('a' <= i && i <= 'z')) {
+      assert_true(util::is_alpha(i));
+    } else {
+      assert_false(util::is_alpha(i));
+    }
+  }
+}
+
+void test_util_is_digit(void) {
+  for (size_t i = 0; i < 256; ++i) {
+    if ('0' <= i && i <= '9') {
+      assert_true(util::is_digit(i));
+    } else {
+      assert_false(util::is_digit(i));
+    }
+  }
+}
+
+void test_util_is_hex_digit(void) {
+  for (size_t i = 0; i < 256; ++i) {
+    if (util::is_digit(i) || ('A' <= i && i <= 'F') || ('a' <= i && i <= 'f')) {
+      assert_true(util::is_hex_digit(i));
+    } else {
+      assert_false(util::is_hex_digit(i));
+    }
+  }
+}
+
+void test_util_in_rfc3986_unreserved_chars(void) {
+  for (size_t i = 0; i < 256; ++i) {
+    switch (i) {
+    case '-':
+    case '.':
+    case '_':
+    case '~':
+      assert_true(util::in_rfc3986_unreserved_chars(i));
+      break;
+    default:
+      if (util::is_digit(i) || util::is_alpha(i)) {
+        assert_true(util::in_rfc3986_unreserved_chars(i));
+      } else {
+        assert_false(util::in_rfc3986_unreserved_chars(i));
+      }
+    }
+  }
+}
+
+void test_util_in_rfc3986_sub_delims(void) {
+  for (size_t i = 0; i < 256; ++i) {
+    switch (i) {
+    case '!':
+    case '$':
+    case '&':
+    case '\'':
+    case '(':
+    case ')':
+    case '*':
+    case '+':
+    case ',':
+    case ';':
+    case '=':
+      assert_true(util::in_rfc3986_sub_delims(i));
+      break;
+    default:
+      assert_false(util::in_rfc3986_sub_delims(i));
+    }
+  }
+}
+
+void test_util_in_token(void) {
+  for (size_t i = 0; i < 256; ++i) {
+    switch (i) {
+    case '!':
+    case '#':
+    case '$':
+    case '%':
+    case '&':
+    case '\'':
+    case '*':
+    case '+':
+    case '-':
+    case '.':
+    case '^':
+    case '_':
+    case '`':
+    case '|':
+    case '~':
+      assert_true(util::in_token(i));
+      break;
+    default:
+      if (util::is_digit(i) || util::is_alpha(i)) {
+        assert_true(util::in_token(i));
+      } else {
+        assert_false(util::in_token(i));
+      }
+    }
+  }
+}
+
+void test_util_in_attr_char(void) {
+  for (size_t i = 0; i < 256; ++i) {
+    switch (i) {
+    case '%':
+    case '\'':
+    case '*':
+      assert_false(util::in_attr_char(i));
+      break;
+    default:
+      if (util::in_token(i)) {
+        assert_true(util::in_attr_char(i));
+      } else {
+        assert_false(util::in_attr_char(i));
+      }
+    }
   }
 }
 
