@@ -299,11 +299,16 @@ std::string format_iso8601(const std::chrono::system_clock::time_point &tp) {
 }
 
 #ifdef HAVE_STD_CHRONO_TIME_ZONE
+namespace {
+const std::chrono::time_zone *get_current_time_zone() {
+  static auto tz = std::chrono::current_zone();
+  return tz;
+}
+} // namespace
+
 StringRef format_iso8601(char *out,
                          const std::chrono::system_clock::time_point &tp) {
-  static auto tz = std::chrono::current_zone();
-
-  return format_iso8601(out, tp, tz);
+  return format_iso8601(out, tp, get_current_time_zone());
 }
 
 StringRef format_iso8601(char *out,
@@ -355,12 +360,62 @@ StringRef format_iso8601(char *out,
 
   return {out, p};
 }
+
+StringRef
+format_iso8601_basic(char *out,
+                     const std::chrono::system_clock::time_point &tp) {
+  return format_iso8601_basic(out, tp, get_current_time_zone());
+}
+
+StringRef format_iso8601_basic(char *out,
+                               const std::chrono::system_clock::time_point &tp,
+                               const std::chrono::time_zone *tz) {
+  auto t = std::chrono::floor<std::chrono::milliseconds>(tp);
+  auto zt = std::chrono::zoned_time{tz, t};
+  auto lt = zt.get_local_time();
+  auto days = std::chrono::floor<std::chrono::days>(lt);
+  auto ymd = std::chrono::year_month_day{days};
+
+  auto p = out;
+
+  p = cpydig4(static_cast<int>(ymd.year()), p);
+  p = cpydig2(static_cast<uint32_t>(ymd.month()), p);
+  p = cpydig2(static_cast<uint32_t>(ymd.day()), p);
+  *p++ = 'T';
+
+  auto hms = std::chrono::hh_mm_ss{lt - days};
+
+  p = cpydig2(hms.hours().count(), p);
+  p = cpydig2(hms.minutes().count(), p);
+  p = cpydig2(hms.seconds().count(), p);
+  *p++ = '.';
+  p = cpydig3(hms.subseconds().count(), p);
+
+  auto sys_info = zt.get_info();
+  auto gmtoff =
+    std::chrono::floor<std::chrono::minutes>(sys_info.offset).count();
+  if (gmtoff == 0) {
+    *p++ = 'Z';
+  } else {
+    if (gmtoff > 0) {
+      *p++ = '+';
+    } else {
+      *p++ = '-';
+      gmtoff = -gmtoff;
+    }
+    p = cpydig2(gmtoff / 60, p);
+    p = cpydig2(gmtoff % 60, p);
+  }
+
+  *p = '\0';
+
+  return {out, p};
+}
 #else // !defined(HAVE_STD_CHRONO_TIME_ZONE)
 namespace {
 char *iso8601_date(char *out, const std::chrono::system_clock::time_point &tp) {
-  auto ms =
-    std::chrono::duration_cast<std::chrono::milliseconds>(tp.time_since_epoch())
-      .count();
+  auto ms = std::chrono::floor<std::chrono::milliseconds>(tp.time_since_epoch())
+              .count();
   time_t sec = ms / 1000;
 
   tm tms;
@@ -413,17 +468,20 @@ StringRef format_iso8601(char *out,
   *p = '\0';
   return StringRef{out, p};
 }
-#endif   // !defined(HAVE_STD_CHRONO_TIME_ZONE)
 
-char *iso8601_basic_date(char *res, int64_t ms) {
+namespace {
+char *iso8601_basic_date(char *out,
+                         const std::chrono::system_clock::time_point &tp) {
+  auto ms = std::chrono::floor<std::chrono::milliseconds>(tp.time_since_epoch())
+              .count();
   time_t sec = ms / 1000;
 
   tm tms;
   if (localtime_r(&sec, &tms) == nullptr) {
-    return res;
+    return out;
   }
 
-  auto p = res;
+  auto p = out;
 
   p = cpydig4(tms.tm_year + 1900, p);
   p = cpydig2(tms.tm_mon + 1, p);
@@ -435,11 +493,11 @@ char *iso8601_basic_date(char *res, int64_t ms) {
   *p++ = '.';
   p = cpydig3(ms % 1000, p);
 
-#ifdef HAVE_STRUCT_TM_TM_GMTOFF
+#  ifdef HAVE_STRUCT_TM_TM_GMTOFF
   auto gmtoff = tms.tm_gmtoff;
-#else  // !HAVE_STRUCT_TM_TM_GMTOFF
+#  else  // !HAVE_STRUCT_TM_TM_GMTOFF
   auto gmtoff = nghttp2_timegm(&tms) - sec;
-#endif // !HAVE_STRUCT_TM_TM_GMTOFF
+#  endif // !HAVE_STRUCT_TM_TM_GMTOFF
   if (gmtoff == 0) {
     *p++ = 'Z';
   } else {
@@ -455,6 +513,16 @@ char *iso8601_basic_date(char *res, int64_t ms) {
 
   return p;
 }
+} // namespace
+
+StringRef
+format_iso8601_basic(char *out,
+                     const std::chrono::system_clock::time_point &tp) {
+  auto p = iso8601_basic_date(out, tp);
+  *p = '\0';
+  return {out, p};
+}
+#endif   // !defined(HAVE_STD_CHRONO_TIME_ZONE)
 
 time_t parse_http_date(const StringRef &s) {
   tm tm{};
