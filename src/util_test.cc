@@ -655,70 +655,78 @@ void test_util_parse_http_date(void) {
 }
 
 void test_util_localtime_date(void) {
-  auto tz = getenv("TZ");
-  if (tz) {
-    tz = strdup(tz);
-  }
-#ifdef __linux__
-  setenv("TZ", "NZST-12:00:00:00", 1);
-#else  // !__linux__
-  setenv("TZ", ":Pacific/Auckland", 1);
-#endif // !__linux__
-  tzset();
-
-  assert_stdstring_equal("02/Oct/2001:00:34:56 +1200",
-                         util::common_log_date(1001939696));
-
-  std::array<char, 27> common_buf;
-
-  assert_stdsv_equal("02/Oct/2001:00:34:56 +1200"sv,
-                     util::format_common_log(
-                       common_buf.data(), std::chrono::system_clock::time_point(
-                                            std::chrono::seconds(1001939696))));
-
-  std::array<char, 30> iso8601_buf;
+  std::array<char, 30> buf;
 
 #ifdef HAVE_STD_CHRONO_TIME_ZONE
   assert_stdsv_equal(
     "2001-10-02T00:34:56.123+12:00"sv,
-    util::format_iso8601(iso8601_buf.data(),
+    util::format_iso8601(buf.data(),
                          std::chrono::system_clock::time_point(
                            std::chrono::milliseconds(1001939696123LL)),
                          std::chrono::locate_zone("Pacific/Auckland"sv)));
 
   assert_stdsv_equal(
     "20011002T003456.123+1200"sv,
-    util::format_iso8601_basic(iso8601_buf.data(),
+    util::format_iso8601_basic(buf.data(),
                                std::chrono::system_clock::time_point(
                                  std::chrono::milliseconds(1001939696123LL)),
                                std::chrono::locate_zone("Pacific/Auckland"sv)));
 
   assert_stdsv_equal(
+    "02/Oct/2001:00:34:56 +1200"sv,
+    util::format_common_log(
+      buf.data(),
+      std::chrono::system_clock::time_point(std::chrono::seconds(1001939696)),
+      std::chrono::locate_zone("Pacific/Auckland"sv)));
+
+  assert_stdsv_equal(
     "2001-10-01T12:34:56.123Z"sv,
-    util::format_iso8601(iso8601_buf.data(),
+    util::format_iso8601(buf.data(),
                          std::chrono::system_clock::time_point(
                            std::chrono::milliseconds(1001939696123LL)),
                          std::chrono::locate_zone("GMT"sv)));
 
   assert_stdsv_equal(
     "20011001T123456.123Z"sv,
-    util::format_iso8601_basic(iso8601_buf.data(),
+    util::format_iso8601_basic(buf.data(),
                                std::chrono::system_clock::time_point(
                                  std::chrono::milliseconds(1001939696123LL)),
                                std::chrono::locate_zone("GMT"sv)));
-#else  // !defined(HAVE_STD_CHRONO_TIME_ZONE)
+
+  assert_stdsv_equal(
+    "01/Oct/2001:12:34:56 +0000"sv,
+    util::format_common_log(
+      buf.data(),
+      std::chrono::system_clock::time_point(std::chrono::seconds(1001939696)),
+      std::chrono::locate_zone("GMT"sv)));
+#else // !defined(HAVE_STD_CHRONO_TIME_ZONE)
+  auto tz = getenv("TZ");
+  if (tz) {
+    tz = strdup(tz);
+  }
+#  ifdef __linux__
+  setenv("TZ", "NZST-12:00:00:00", 1);
+#  else  // !__linux__
+  setenv("TZ", ":Pacific/Auckland", 1);
+#  endif // !__linux__
+  tzset();
+
   assert_stdsv_equal(
     "2001-10-02T00:34:56.123+12:00"sv,
-    util::format_iso8601(iso8601_buf.data(),
+    util::format_iso8601(buf.data(),
                          std::chrono::system_clock::time_point(
                            std::chrono::milliseconds(1001939696123LL))));
 
   assert_stdsv_equal(
     "20011002T003456.123+1200"sv,
-    util::format_iso8601_basic(iso8601_buf.data(),
+    util::format_iso8601_basic(buf.data(),
                                std::chrono::system_clock::time_point(
                                  std::chrono::milliseconds(1001939696123LL))));
-#endif // !defined(HAVE_STD_CHRONO_TIME_ZONE)
+
+  assert_stdsv_equal(
+    "02/Oct/2001:00:34:56 +1200"sv,
+    util::format_common_log(buf.data(), std::chrono::system_clock::time_point(
+                                          std::chrono::seconds(1001939696))));
 
   if (tz) {
     setenv("TZ", tz, 1);
@@ -727,6 +735,7 @@ void test_util_localtime_date(void) {
     unsetenv("TZ");
   }
   tzset();
+#endif   // !defined(HAVE_STD_CHRONO_TIME_ZONE)
 }
 
 void test_util_get_uint64(void) {

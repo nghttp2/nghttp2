@@ -499,14 +499,6 @@ std::string http_date(time_t t);
 // long.  This function returns the one beyond the last position.
 char *http_date(char *res, time_t t);
 
-// Returns given time |t| from epoch in Common Log format (e.g.,
-// 03/Jul/2014:00:19:38 +0900)
-std::string common_log_date(time_t t);
-// Writes given time |t| from epoch in Common Log format into the
-// buffer pointed by |res|.  The buffer must be at least 26 bytes
-// long.  This function returns the one beyond the last position.
-char *common_log_date(char *res, time_t t);
-
 time_t parse_http_date(const StringRef &s);
 
 // Parses time formatted as "MMM DD HH:MM:SS YYYY [GMT]" (e.g., Feb 3
@@ -917,17 +909,18 @@ std::vector<StringRef> split_str(const StringRef &s, char delim, size_t n);
 
 // Writes given time |tp| in Common Log format (e.g.,
 // 03/Jul/2014:00:19:38 +0900) in buffer pointed by |out|.  The buffer
-// must be at least 27 bytes, including terminal NULL byte.  Expected
-// type of |tp| is std::chrono::time_point.  This function returns
-// StringRef wrapping the buffer pointed by |out|, and this string is
-// terminated by NULL.
-template <typename T> StringRef format_common_log(char *out, const T &tp) {
-  auto t =
-    std::chrono::duration_cast<std::chrono::seconds>(tp.time_since_epoch());
-  auto p = common_log_date(out, t.count());
-  *p = '\0';
-  return StringRef{out, p};
-}
+// must be at least 27 bytes, including terminal NULL byte.  This
+// function returns StringRef wrapping the buffer pointed by |out|,
+// and this string is terminated by NULL.
+StringRef format_common_log(char *out,
+                            const std::chrono::system_clock::time_point &tp);
+
+#ifdef HAVE_STD_CHRONO_TIME_ZONE
+// Works like above but with a given time zone.
+StringRef format_common_log(char *out,
+                            const std::chrono::system_clock::time_point &tp,
+                            const std::chrono::time_zone *tz);
+#endif // defined(HAVE_STD_CHRONO_TIME_ZONE)
 
 // Returns given time |tp| in ISO 8601 format (e.g.,
 // 2014-11-15T12:58:24.741Z or 2014-11-15T12:58:24.741+09:00).
