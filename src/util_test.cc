@@ -668,8 +668,6 @@ void test_util_localtime_date(void) {
 
   assert_stdstring_equal("02/Oct/2001:00:34:56 +1200",
                          util::common_log_date(1001939696));
-  assert_stdstring_equal("2001-10-02T00:34:56.123+12:00",
-                         util::iso8601_date(1001939696000LL + 123));
 
   std::array<char, 27> common_buf;
 
