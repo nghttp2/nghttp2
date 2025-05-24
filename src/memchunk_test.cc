@@ -43,6 +43,7 @@ const MunitTest tests[]{
   munit_void_test(test_memchunks_riovec),
   munit_void_test(test_memchunks_recycle),
   munit_void_test(test_memchunks_reset),
+  munit_void_test(test_memchunks_reserve),
   munit_void_test(test_memchunkbuffer_drain_reset),
   munit_test_end(),
 };
@@ -237,6 +238,45 @@ void test_memchunks_reset(void) {
   assert_not_null(m);
   assert_not_null(m->next);
   assert_null(m->next->next);
+}
+
+void test_memchunks_reserve(void) {
+  MemchunkPool16 pool;
+  Memchunks16 chunks(&pool);
+  std::array<iovec, 2> iov;
+
+  chunks.reserve(8);
+  chunks.last(std::ranges::copy("foobar00"sv, chunks.last()).out);
+
+  assert_size(8, ==, chunks.rleft());
+
+  auto iovcnt = chunks.riovec(iov.data(), iov.size());
+
+  assert_int(1, ==, iovcnt);
+  assert_stdsv_equal(
+    "foobar00"sv,
+    (std::string_view{reinterpret_cast<const char *>(iov[0].iov_base),
+                      iov[0].iov_len}));
+
+  chunks.reset();
+
+  chunks.append("012345678"sv);
+  chunks.reserve(8);
+  chunks.last(std::ranges::copy("foobar00"sv, chunks.last()).out);
+
+  assert_size(17, ==, chunks.rleft());
+
+  iovcnt = chunks.riovec(iov.data(), iov.size());
+
+  assert_int(2, ==, iovcnt);
+  assert_stdsv_equal(
+    "012345678"sv,
+    (std::string_view{reinterpret_cast<const char *>(iov[0].iov_base),
+                      iov[0].iov_len}));
+  assert_stdsv_equal(
+    "foobar00"sv,
+    (std::string_view{reinterpret_cast<const char *>(iov[1].iov_base),
+                      iov[1].iov_len}));
 }
 
 void test_memchunkbuffer_drain_reset(void) {
