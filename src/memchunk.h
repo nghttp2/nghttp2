@@ -199,9 +199,6 @@ template <typename Memchunk> struct Memchunks {
 
     return count;
   }
-  template <size_t N> size_t append(const char (&s)[N]) {
-    return append(s, s + (N - 1));
-  }
   size_t append(const void *src, size_t count) {
     auto s = static_cast<const uint8_t *>(src);
     return append(s, s + count);

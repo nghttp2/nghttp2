@@ -109,7 +109,7 @@ void test_memchunks_append(void) {
   MemchunkPool16 pool;
   Memchunks16 chunks(&pool);
 
-  chunks.append("012");
+  chunks.append("012"sv);
 
   auto m = chunks.tail;
 
@@ -150,7 +150,7 @@ void test_memchunks_drain(void) {
   MemchunkPool16 pool;
   Memchunks16 chunks(&pool);
 
-  chunks.append("0123456789");
+  chunks.append("0123456789"sv);
 
   size_t nread;
 
