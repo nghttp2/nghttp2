@@ -403,7 +403,8 @@ std::span<char> copy_hex_low(std::span<const uint8_t> src,
 } // namespace
 
 namespace {
-template <std::integral T> std::span<char> copy(T n, std::span<char> dest) {
+template <std::unsigned_integral T>
+std::span<char> copy(T n, std::span<char> dest) {
   if (dest.size() < NGHTTP2_MAX_UINT64_DIGITS) {
     return dest.first(0);
   }
@@ -892,7 +893,7 @@ void log_chld(pid_t pid, int rstatus, const char *msg) {
     } else {
       signalstr += "UNKNOWN(";
     }
-    signalstr += util::utos(sig);
+    signalstr += util::utos(as_unsigned(sig));
     signalstr += ')';
   }
 

@@ -1373,11 +1373,11 @@ std::string duration_str(double t) {
   if (t == 0.) {
     return "0";
   }
-  auto frac = static_cast<int64_t>(t * 1000) % 1000;
+  auto frac = static_cast<uint64_t>(t * 1000) % 1000;
   if (frac > 0) {
-    return utos(static_cast<int64_t>(t * 1000)) + "ms";
+    return utos(static_cast<uint64_t>(t * 1000)) + "ms";
   }
-  auto v = static_cast<int64_t>(t);
+  auto v = static_cast<uint64_t>(t);
   if (v % 60) {
     return utos(v) + "s";
   }
@@ -1392,7 +1392,7 @@ std::string duration_str(double t) {
 std::string format_duration(const std::chrono::microseconds &u) {
   const char *unit = "us";
   int d = 0;
-  auto t = u.count();
+  auto t = as_unsigned(u.count());
   if (t >= 1000000) {
     d = 1000000;
     unit = "s";
@@ -1414,13 +1414,13 @@ std::string format_duration(double t) {
     unit = "ms";
   } else {
     t *= 1000000.;
-    return utos(static_cast<int64_t>(t)) + unit;
+    return utos(static_cast<uint64_t>(t)) + unit;
   }
   return dtos(t) + unit;
 }
 
 std::string dtos(double n) {
-  auto m = llround(100. * n);
+  auto m = as_unsigned(llround(100. * n));
   auto f = utos(m % 100);
   return utos(m / 100) + "." + (f.size() == 1 ? "0" : "") + f;
 }

@@ -946,7 +946,7 @@ int Http2Handler::submit_file_response(const StringRef &status, Stream *stream,
   if (!get_config()->no_content_length) {
     nva[nvlen++] = http2::make_field(
       "content-length"_sr,
-      util::make_string_ref_uint(stream->balloc, file_length));
+      util::make_string_ref_uint(stream->balloc, as_unsigned(file_length)));
   }
   if (last_modified != 0) {
     last_modified_str = util::format_http_date(
@@ -1158,7 +1158,7 @@ void prepare_status_response(Stream *stream, Http2Handler *hd, int status) {
   headers.emplace_back("content-type"_sr, "text/html; charset=UTF-8"_sr);
   headers.emplace_back(
     "content-length"_sr,
-    util::make_string_ref_uint(stream->balloc, file_ent->length));
+    util::make_string_ref_uint(stream->balloc, as_unsigned(file_ent->length)));
   hd->submit_response(StringRef{status_page->status}, stream->stream_id,
                       headers, &data_prd);
 }
@@ -1183,8 +1183,9 @@ void prepare_echo_response(Stream *stream, Http2Handler *hd) {
   HeaderRefs headers;
   headers.emplace_back("nghttpd-response"_sr, "echo"_sr);
   if (!hd->get_config()->no_content_length) {
-    headers.emplace_back("content-length"_sr,
-                         util::make_string_ref_uint(stream->balloc, length));
+    headers.emplace_back(
+      "content-length"_sr,
+      util::make_string_ref_uint(stream->balloc, as_unsigned(length)));
   }
 
   hd->submit_response("200"_sr, stream->stream_id, headers, &data_prd);
@@ -1978,7 +1979,7 @@ FileEntry make_status_body(int status, uint16_t port) {
     assert(0);
   }
 
-  return FileEntry(util::utos(status), nwrite, 0, fd, nullptr, {});
+  return FileEntry(util::utos(as_unsigned(status)), nwrite, 0, fd, nullptr, {});
 }
 } // namespace
 

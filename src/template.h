@@ -505,6 +505,11 @@ requires(sizeof(std::iter_value_t<I>) == sizeof(StringRef::value_type))
     reinterpret_cast<StringRef::const_pointer>(std::to_address(first)), n};
 }
 
+template <std::integral T>
+[[nodiscard]] constexpr auto as_unsigned(T n) noexcept {
+  return static_cast<std::make_unsigned_t<T>>(n);
+}
+
 inline int run_app(std::function<int(int, char **)> app, int argc,
                    char **argv) {
   try {
