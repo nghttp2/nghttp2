@@ -202,7 +202,7 @@ public:
            !std::is_same_v<std::remove_cvref_t<R>, ImmutableString> &&
            !std::is_array_v<std::remove_cvref_t<R>>)
   constexpr explicit ImmutableString(R &&r)
-    : len(std::ranges::distance(r)), base(copystr(std::forward<R>(r))) {}
+    : len(std::ranges::size(r)), base(copystr(std::forward<R>(r))) {}
 
   template <std::input_iterator I>
   requires(std::is_same_v<std::iter_value_t<I>, value_type>)

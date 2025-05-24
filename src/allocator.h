@@ -226,7 +226,7 @@ constexpr size_t concat_string_ref_count(size_t acc) { return acc; }
 template <std::ranges::input_range R, std::ranges::input_range... Args>
 requires(!std::is_array_v<std::remove_cvref_t<R>>)
 constexpr size_t concat_string_ref_count(size_t acc, R &&r, Args &&...args) {
-  return concat_string_ref_count(acc + std::ranges::distance(r), args...);
+  return concat_string_ref_count(acc + std::ranges::size(r), args...);
 }
 
 // private function used in concat_string_ref.  this is the base

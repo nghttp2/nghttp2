@@ -146,7 +146,7 @@ public:
       return;
     }
 
-    auto n = std::min(wleft(), static_cast<size_t>(std::ranges::distance(r)));
+    auto n = std::min(wleft(), static_cast<size_t>(std::ranges::size(r)));
     last_ = std::ranges::copy(std::views::take(r, n), last_).out;
     update_full();
   }

@@ -297,7 +297,7 @@ constexpr std::string percent_decode(R &&r) {
 template <std::ranges::input_range R>
 requires(!std::is_array_v<std::remove_cvref_t<R>>)
 StringRef percent_decode(BlockAllocator &balloc, R &&r) {
-  auto iov = make_byte_ref(balloc, std::ranges::distance(r) + 1);
+  auto iov = make_byte_ref(balloc, std::ranges::size(r) + 1);
 
   auto p = percent_decode(std::ranges::begin(r), std::ranges::end(r),
                           std::ranges::begin(iov));
@@ -343,7 +343,7 @@ StringRef quote_string(BlockAllocator &balloc, R &&r) {
     return make_string_ref(balloc, std::forward<R>(r));
   }
 
-  auto iov = make_byte_ref(balloc, std::ranges::distance(r) + cnt + 1);
+  auto iov = make_byte_ref(balloc, std::ranges::size(r) + cnt + 1);
   auto p = quote_string(std::forward<R>(r), std::ranges::begin(iov));
 
   *p = '\0';
@@ -418,7 +418,7 @@ template <std::ranges::input_range R>
 requires(!std::is_array_v<std::remove_cvref_t<R>> &&
          sizeof(std::ranges::range_value_t<R>) == sizeof(uint8_t))
 StringRef format_hex(BlockAllocator &balloc, R &&r) {
-  auto iov = make_byte_ref(balloc, std::ranges::distance(r) * 2 + 1);
+  auto iov = make_byte_ref(balloc, std::ranges::size(r) * 2 + 1);
   auto p = format_hex(std::forward<R>(r), std::ranges::begin(iov));
 
   *p = '\0';
@@ -433,7 +433,7 @@ requires(!std::is_array_v<std::remove_cvref_t<R>> &&
 constexpr std::string format_hex(R &&r) {
   std::string res;
 
-  res.resize(std::ranges::distance(r) * 2);
+  res.resize(std::ranges::size(r) * 2);
 
   format_hex(std::forward<R>(r), std::ranges::begin(res));
 
