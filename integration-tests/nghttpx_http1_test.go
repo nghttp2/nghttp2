@@ -1714,7 +1714,7 @@ func TestH1H1ResponseUnknownTransferEncoding(t *testing.T) {
 
 	resp = resp[:resplen]
 
-	const expect = "HTTP/1.1 200 OK\r\nTransfer-Encoding: foo\r\nConnection: close\r\nServer: nghttpx\r\nVia: 1.1 nghttpx\r\n\r\n"
+	const expect = "HTTP/1.1 200 OK\r\ntransfer-encoding: foo\r\nconnection: close\r\nserver: nghttpx\r\nvia: 1.1 nghttpx\r\n\r\n"
 
 	if got, want := string(resp), expect; got != want {
 		t.Errorf("resp = %v, want %v", got, want)
