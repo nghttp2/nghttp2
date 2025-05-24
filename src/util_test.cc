@@ -24,6 +24,14 @@
  */
 #include "util_test.h"
 
+#include <sys/types.h>
+#ifdef HAVE_SYS_SOCKET_H
+#  include <sys/socket.h>
+#endif // HAVE_SYS_SOCKET_H
+#ifdef HAVE_NETDB_H
+#  include <netdb.h>
+#endif // HAVE_NETDB_H
+
 #include <cstring>
 #include <iostream>
 #include <random>
@@ -91,6 +99,7 @@ const MunitTest tests[]{
   munit_void_test(test_util_in_token),
   munit_void_test(test_util_in_attr_char),
   munit_void_test(test_util_upcase),
+  munit_void_test(test_util_to_numeric_addr),
   munit_test_end(),
 };
 } // namespace
@@ -1129,6 +1138,34 @@ void test_util_upcase(void) {
       assert_char(i, ==, util::upcase(i));
     }
   }
+}
+
+void test_util_to_numeric_addr(void) {
+  addrinfo hints{
+    .ai_flags = AI_NUMERICHOST | AI_NUMERICSERV,
+    .ai_family = AF_UNSPEC,
+  };
+
+  addrinfo *res;
+
+  auto rv = getaddrinfo("192.168.0.1", "443", &hints, &res);
+
+  assert_int(0, ==, rv);
+
+  assert_stdstring_equal("192.168.0.1:443"s,
+                         util::to_numeric_addr(res->ai_addr, res->ai_addrlen));
+
+  freeaddrinfo(res);
+
+  rv = getaddrinfo("2001:0db8:85a3:0000:0000:8a2e:0370:7334", "4443", &hints,
+                   &res);
+
+  assert_int(0, ==, rv);
+
+  assert_stdstring_equal("[2001:db8:85a3::8a2e:370:7334]:4443"s,
+                         util::to_numeric_addr(res->ai_addr, res->ai_addrlen));
+
+  freeaddrinfo(res);
 }
 
 } // namespace shrpx

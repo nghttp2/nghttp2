@@ -846,32 +846,36 @@ std::string to_numeric_addr(const struct sockaddr *sa, socklen_t salen) {
   }
 #endif // !_WIN32
 
-  std::array<char, NI_MAXHOST> host;
-  std::array<char, NI_MAXSERV> serv;
-  auto rv = getnameinfo(sa, salen, host.data(), host.size(), serv.data(),
-                        serv.size(), NI_NUMERICHOST | NI_NUMERICSERV);
+  std::array<char, NI_MAXHOST> hostbuf;
+  std::array<char, NI_MAXSERV> servbuf;
+
+  auto rv =
+    getnameinfo(sa, salen, hostbuf.data(), hostbuf.size(), servbuf.data(),
+                servbuf.size(), NI_NUMERICHOST | NI_NUMERICSERV);
   if (rv != 0) {
     return "unknown";
   }
 
-  auto hostlen = strlen(host.data());
-  auto servlen = strlen(serv.data());
+  auto host = std::string_view{hostbuf.data()};
+  auto serv = std::string_view{servbuf.data()};
 
   std::string s;
   char *p;
+
   if (family == AF_INET6) {
-    s.resize(hostlen + servlen + 2 + 1);
+    s.resize(host.size() + serv.size() + 2 + 1);
     p = &s[0];
     *p++ = '[';
-    p = std::ranges::copy_n(host.data(), hostlen, p).out;
+    p = std::ranges::copy(host, p).out;
     *p++ = ']';
   } else {
-    s.resize(hostlen + servlen + 1);
+    s.resize(host.size() + serv.size() + 1);
     p = &s[0];
-    p = std::ranges::copy_n(host.data(), hostlen, p).out;
+    p = std::ranges::copy(host, p).out;
   }
+
   *p++ = ':';
-  std::ranges::copy_n(serv.data(), servlen, p);
+  std::ranges::copy(serv, p);
 
   return s;
 }
