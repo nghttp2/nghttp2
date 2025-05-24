@@ -1010,14 +1010,14 @@ int HttpsUpstream::send_reply(Downstream *downstream, const uint8_t *body,
     if (kv.name.empty() || kv.name[0] == ':') {
       continue;
     }
-    http2::capitalize(output, kv.name);
+    output->append(kv.name);
     output->append(": ");
     output->append(kv.value);
     output->append("\r\n");
   }
 
   if (!resp.fs.header(http2::HD_SERVER)) {
-    output->append("Server: ");
+    output->append("server: ");
     output->append(config->http.server_name);
     output->append("\r\n");
   }
@@ -1068,18 +1068,18 @@ void HttpsUpstream::error_reply(unsigned int status_code) {
   output->append(http2::stringify_status(balloc, status_code));
   output->append(' ');
   output->append(http2::get_reason_phrase(status_code));
-  output->append("\r\nServer: ");
+  output->append("\r\nserver: ");
   output->append(get_config()->http.server_name);
-  output->append("\r\nContent-Length: ");
+  output->append("\r\ncontent-length: ");
   std::array<char, NGHTTP2_MAX_UINT64_DIGITS> intbuf;
   output->append(std::ranges::begin(intbuf),
                  util::utos(html.size(), std::ranges::begin(intbuf)));
-  output->append("\r\nDate: ");
+  output->append("\r\ndate: ");
   auto lgconf = log_config();
   lgconf->update_tstamp(std::chrono::system_clock::now());
   output->append(lgconf->tstamp->time_http);
-  output->append("\r\nContent-Type: text/html; "
-                 "charset=UTF-8\r\nConnection: close\r\n\r\n");
+  output->append("\r\ncontent-type: text/html; "
+                 "charset=UTF-8\r\nconnection: close\r\n\r\n");
 
   const auto &req = downstream->request();
 
@@ -1227,16 +1227,16 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
   if (!req.connection_close && !resp.connection_close) {
     if (req.http_major <= 0 || req.http_minor <= 0) {
       // We add this header for HTTP/1.0 or HTTP/0.9 clients
-      buf->append("Connection: Keep-Alive\r\n");
+      buf->append("connection: Keep-Alive\r\n");
     }
   } else if (!downstream->get_upgraded()) {
-    buf->append("Connection: close\r\n");
+    buf->append("connection: close\r\n");
   }
 
   if (!connect_method && downstream->get_upgraded()) {
     if (req.connect_proto == ConnectProto::WEBSOCKET &&
         resp.http_status / 100 == 2) {
-      buf->append("Upgrade: websocket\r\nConnection: Upgrade\r\n");
+      buf->append("upgrade: websocket\r\nconnection: Upgrade\r\n");
       auto key = req.fs.header(http2::HD_SEC_WEBSOCKET_KEY);
       if (!key || key->value.size() != base64::encode_length(16)) {
         return -1;
@@ -1246,20 +1246,20 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
       if (accept.empty()) {
         return -1;
       }
-      buf->append("Sec-WebSocket-Accept: ");
+      buf->append("sec-websocket-accept: ");
       buf->append(accept);
       buf->append("\r\n");
     } else {
       auto connection = resp.fs.header(http2::HD_CONNECTION);
       if (connection) {
-        buf->append("Connection: ");
+        buf->append("connection: ");
         buf->append((*connection).value);
         buf->append("\r\n");
       }
 
       auto upgrade = resp.fs.header(http2::HD_UPGRADE);
       if (upgrade) {
-        buf->append("Upgrade: ");
+        buf->append("upgrade: ");
         buf->append((*upgrade).value);
         buf->append("\r\n");
       }
@@ -1269,20 +1269,20 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
   if (!resp.fs.header(http2::HD_ALT_SVC)) {
     // We won't change or alter alt-svc from backend for now
     if (!httpconf.altsvcs.empty()) {
-      buf->append("Alt-Svc: ");
+      buf->append("alt-svc: ");
       buf->append(httpconf.altsvc_header_value);
       buf->append("\r\n");
     }
   }
 
   if (!config->http2_proxy && !httpconf.no_server_rewrite) {
-    buf->append("Server: ");
+    buf->append("server: ");
     buf->append(httpconf.server_name);
     buf->append("\r\n");
   } else {
     auto server = resp.fs.header(http2::HD_SERVER);
     if (server) {
-      buf->append("Server: ");
+      buf->append("server: ");
       buf->append((*server).value);
       buf->append("\r\n");
     }
@@ -1298,7 +1298,7 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
         http::require_cookie_secure_attribute(cookieconf.secure, req.scheme);
       auto cookie_str = http::create_affinity_cookie(
         balloc, cookieconf.name, affinity_cookie, cookieconf.path, secure);
-      buf->append("Set-Cookie: ");
+      buf->append("set-cookie: ");
       buf->append(cookie_str);
       buf->append("\r\n");
     }
@@ -1307,12 +1307,12 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
   auto via = resp.fs.header(http2::HD_VIA);
   if (httpconf.no_via) {
     if (via) {
-      buf->append("Via: ");
+      buf->append("via: ");
       buf->append((*via).value);
       buf->append("\r\n");
     }
   } else {
-    buf->append("Via: ");
+    buf->append("via: ");
     if (via) {
       buf->append((*via).value);
       buf->append(", ");

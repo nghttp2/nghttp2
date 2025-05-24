@@ -705,12 +705,12 @@ int Http2Session::downstream_connect_proxy() {
     req += ':';
     req += util::utos(addr_->port);
   }
-  req += " HTTP/1.1\r\nHost: ";
+  req += " HTTP/1.1\r\nhost: ";
   req += addr_->host;
   req += "\r\n";
   const auto &proxy = get_config()->downstream_http_proxy;
   if (!proxy.userinfo.empty()) {
-    req += "Proxy-Authorization: Basic ";
+    req += "proxy-authorization: Basic ";
     req += base64::encode(proxy.userinfo);
     req += "\r\n";
   }
