@@ -1172,9 +1172,7 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
   buf->append('0' + req.http_minor);
   buf->append(' ');
   if (req.connect_proto != ConnectProto::NONE && downstream->get_upgraded()) {
-    buf->append(http2::stringify_status(balloc, 101));
-    buf->append(' ');
-    buf->append(http2::get_reason_phrase(101));
+    buf->append("101 Switching Protocols"sv);
   } else {
     buf->append(http2::stringify_status(balloc, resp.http_status));
     buf->append(' ');
