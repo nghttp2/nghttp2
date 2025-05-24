@@ -222,8 +222,8 @@ void test_util_percent_encode_token(void) {
 void test_util_percent_decode(void) {
   {
     std::string s = "%66%6F%6f%62%61%72";
-    assert_stdstring_equal("foobar",
-                           util::percent_decode(std::begin(s), std::end(s)));
+    assert_stdstring_equal("foobar", util::percent_decode(std::ranges::begin(s),
+                                                          std::ranges::end(s)));
   }
   {
     std::string s = "%66%6";
@@ -231,8 +231,8 @@ void test_util_percent_decode(void) {
   }
   {
     std::string s = "%66%";
-    assert_stdstring_equal("f%",
-                           util::percent_decode(std::begin(s), std::end(s)));
+    assert_stdstring_equal(
+      "f%", util::percent_decode(std::ranges::begin(s), std::ranges::end(s)));
   }
   BlockAllocator balloc(1024, 1024);
 
@@ -828,9 +828,10 @@ void test_util_random_alpha_digit(void) {
   std::mt19937 gen(rd());
   std::array<uint8_t, 19> data;
 
-  auto p = util::random_alpha_digit(std::begin(data), std::end(data), gen);
+  auto p = util::random_alpha_digit(std::ranges::begin(data),
+                                    std::ranges::end(data), gen);
 
-  assert_true(std::end(data) == p);
+  assert_true(std::ranges::end(data) == p);
 
   for (auto b : data) {
     assert_true(('A' <= b && b <= 'Z') || ('a' <= b && b <= 'z') ||

@@ -196,25 +196,19 @@ void test_shrpx_config_read_tls_ticket_key_file(void) {
   assert_not_null(ticket_keys.get());
   assert_size(2, ==, ticket_keys->keys.size());
   auto key = &ticket_keys->keys[0];
-  assert_true(std::equal(std::begin(key->data.name), std::end(key->data.name),
-                         "0..............1"));
-  assert_true(std::equal(std::begin(key->data.enc_key),
-                         std::begin(key->data.enc_key) + 16,
-                         "2..............3"));
-  assert_true(std::equal(std::begin(key->data.hmac_key),
-                         std::begin(key->data.hmac_key) + 16,
-                         "4..............5"));
+  assert_true(std::ranges::equal(key->data.name, "0..............1"sv));
+  assert_true(std::ranges::equal(std::span{key->data.enc_key}.first(16),
+                                 "2..............3"sv));
+  assert_true(std::ranges::equal(std::span{key->data.hmac_key}.first(16),
+                                 "4..............5"sv));
   assert_size(16, ==, key->hmac_keylen);
 
   key = &ticket_keys->keys[1];
-  assert_true(std::equal(std::begin(key->data.name), std::end(key->data.name),
-                         "6..............7"));
-  assert_true(std::equal(std::begin(key->data.enc_key),
-                         std::begin(key->data.enc_key) + 16,
-                         "8..............9"));
-  assert_true(std::equal(std::begin(key->data.hmac_key),
-                         std::begin(key->data.hmac_key) + 16,
-                         "a..............b"));
+  assert_true(std::ranges::equal(key->data.name, "6..............7"sv));
+  assert_true(std::ranges::equal(std::span{key->data.enc_key}.first(16),
+                                 "8..............9"sv));
+  assert_true(std::ranges::equal(std::span{key->data.hmac_key}.first(16),
+                                 "a..............b"sv));
   assert_size(16, ==, key->hmac_keylen);
 }
 
@@ -245,24 +239,18 @@ void test_shrpx_config_read_tls_ticket_key_file_aes_256(void) {
   assert_not_null(ticket_keys.get());
   assert_size(2, ==, ticket_keys->keys.size());
   auto key = &ticket_keys->keys[0];
-  assert_true(std::equal(std::begin(key->data.name), std::end(key->data.name),
-                         "0..............1"));
-  assert_true(std::equal(std::begin(key->data.enc_key),
-                         std::end(key->data.enc_key),
-                         "2..............................3"));
-  assert_true(std::equal(std::begin(key->data.hmac_key),
-                         std::end(key->data.hmac_key),
-                         "4..............................5"));
+  assert_true(std::ranges::equal(key->data.name, "0..............1"sv));
+  assert_true(std::ranges::equal(key->data.enc_key,
+                                 "2..............................3"sv));
+  assert_true(std::ranges::equal(key->data.hmac_key,
+                                 "4..............................5"sv));
 
   key = &ticket_keys->keys[1];
-  assert_true(std::equal(std::begin(key->data.name), std::end(key->data.name),
-                         "6..............7"));
-  assert_true(std::equal(std::begin(key->data.enc_key),
-                         std::end(key->data.enc_key),
-                         "8..............................9"));
-  assert_true(std::equal(std::begin(key->data.hmac_key),
-                         std::end(key->data.hmac_key),
-                         "a..............................b"));
+  assert_true(std::ranges::equal(key->data.name, "6..............7"sv));
+  assert_true(std::ranges::equal(key->data.enc_key,
+                                 "8..............................9"sv));
+  assert_true(std::ranges::equal(key->data.hmac_key,
+                                 "a..............................b"sv));
 }
 
 } // namespace shrpx

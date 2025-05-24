@@ -49,7 +49,7 @@ const MunitSuite siphash_suite{
 
 void test_siphash(void) {
   std::array<uint8_t, 16> key_bytes;
-  std::iota(std::begin(key_bytes), std::end(key_bytes), 0);
+  std::iota(std::ranges::begin(key_bytes), std::ranges::end(key_bytes), 0);
 
   std::array<uint64_t, 2> key;
   memcpy(key.data(), key_bytes.data(), key_bytes.size());
@@ -60,7 +60,7 @@ void test_siphash(void) {
   }
 
   std::array<uint8_t, 15> input;
-  std::iota(std::begin(input), std::end(input), 0);
+  std::iota(std::ranges::begin(input), std::ranges::end(input), 0);
 
   assert_uint64(0xa129ca6149be45e5ull, ==, siphash24(key, input));
 }
