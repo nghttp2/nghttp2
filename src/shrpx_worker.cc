@@ -374,8 +374,7 @@ void Worker::replace_downstream_config(
         addr.seq = seq++;
       }
 
-      util::shuffle(std::ranges::begin(shared_addr->addrs),
-                    std::ranges::end(shared_addr->addrs), randgen_,
+      util::shuffle(shared_addr->addrs, randgen_,
                     [](auto i, auto j) { std::swap((*i).seq, (*j).seq); });
 
       if (shared_addr->affinity.type == SessionAffinity::NONE) {

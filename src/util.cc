@@ -613,19 +613,18 @@ time_t parse_openssl_asn1_time_print(const StringRef &s) {
 }
 
 void to_token68(std::string &base64str) {
-  std::transform(std::begin(base64str), std::end(base64str),
-                 std::begin(base64str), [](char c) {
-                   switch (c) {
-                   case '+':
-                     return '-';
-                   case '/':
-                     return '_';
-                   default:
-                     return c;
-                   }
-                 });
-  base64str.erase(std::find(std::begin(base64str), std::end(base64str), '='),
-                  std::end(base64str));
+  std::ranges::transform(base64str, std::ranges::begin(base64str), [](char c) {
+    switch (c) {
+    case '+':
+      return '-';
+    case '/':
+      return '_';
+    default:
+      return c;
+    }
+  });
+  base64str.erase(std::ranges::find(base64str, '='),
+                  std::ranges::end(base64str));
 }
 
 StringRef to_base64(BlockAllocator &balloc, const StringRef &token68str) {
@@ -633,26 +632,26 @@ StringRef to_base64(BlockAllocator &balloc, const StringRef &token68str) {
   auto len = token68str.size() + 3;
   auto iov = make_byte_ref(balloc, len + 1);
 
-  auto p = std::transform(std::begin(token68str), std::end(token68str),
-                          std::begin(iov), [](char c) {
-                            switch (c) {
-                            case '-':
-                              return '+';
-                            case '_':
-                              return '/';
-                            default:
-                              return c;
-                            }
-                          });
+  auto p =
+    std::ranges::transform(token68str, std::ranges::begin(iov), [](char c) {
+      switch (c) {
+      case '-':
+        return '+';
+      case '_':
+        return '/';
+      default:
+        return c;
+      }
+    }).out;
 
   auto rem = token68str.size() & 0x3;
   if (rem) {
-    p = std::fill_n(p, 4 - rem, '=');
+    p = std::ranges::fill_n(p, 4 - rem, '=');
   }
 
   *p = '\0';
 
-  return as_string_ref(std::begin(iov), p);
+  return as_string_ref(std::ranges::begin(iov), p);
 }
 
 namespace {
@@ -677,7 +676,7 @@ int levenshtein(const char *a, size_t alen, const char *b, size_t blen,
       dp[0][j] = std::min(dp[0][j],
                           std::min(dp[1][j] + delcost, dp[0][j - 1] + addcost));
     }
-    std::rotate(std::begin(dp), std::begin(dp) + 2, std::end(dp));
+    std::ranges::rotate(dp, std::ranges::begin(dp) + 2);
   }
   return dp[1][blen];
 }
@@ -725,7 +724,7 @@ void show_candidates(const char *unkopt, const option *options) {
   if (prefix_match == 1 || cands.empty()) {
     return;
   }
-  std::sort(std::begin(cands), std::end(cands));
+  std::ranges::sort(cands);
   int threshold = cands[0].first;
   // threshold value is a magic value.
   if (threshold > 6) {
@@ -864,15 +863,15 @@ std::string to_numeric_addr(const struct sockaddr *sa, socklen_t salen) {
     s.resize(hostlen + servlen + 2 + 1);
     p = &s[0];
     *p++ = '[';
-    p = std::copy_n(host.data(), hostlen, p);
+    p = std::ranges::copy_n(host.data(), hostlen, p).out;
     *p++ = ']';
   } else {
     s.resize(hostlen + servlen + 1);
     p = &s[0];
-    p = std::copy_n(host.data(), hostlen, p);
+    p = std::ranges::copy_n(host.data(), hostlen, p).out;
   }
   *p++ = ':';
-  std::copy_n(serv.data(), servlen, p);
+  std::ranges::copy_n(serv.data(), servlen, p);
 
   return s;
 }
@@ -981,7 +980,7 @@ bool select_proto(const unsigned char **out, unsigned char *outlen,
                   const unsigned char *in, unsigned int inlen,
                   const StringRef &key) {
   for (auto p = in, end = in + inlen; p + key.size() <= end; p += *p + 1) {
-    if (std::equal(std::begin(key), std::end(key), p)) {
+    if (std::ranges::equal(key, as_string_ref(p, key.size()))) {
       *out = p + 1;
       *outlen = *p;
       return true;
@@ -1014,28 +1013,29 @@ std::vector<unsigned char> get_default_alpn() {
   auto res = std::vector<unsigned char>(NGHTTP2_H2_ALPN.size() +
                                         NGHTTP2_H2_16_ALPN.size() +
                                         NGHTTP2_H2_14_ALPN.size());
-  auto p = std::begin(res);
+  auto p = std::ranges::begin(res);
 
-  p = std::copy_n(std::begin(NGHTTP2_H2_ALPN), NGHTTP2_H2_ALPN.size(), p);
-  p = std::copy_n(std::begin(NGHTTP2_H2_16_ALPN), NGHTTP2_H2_16_ALPN.size(), p);
-  p = std::copy_n(std::begin(NGHTTP2_H2_14_ALPN), NGHTTP2_H2_14_ALPN.size(), p);
+  p = std::ranges::copy(NGHTTP2_H2_ALPN, p).out;
+  p = std::ranges::copy(NGHTTP2_H2_16_ALPN, p).out;
+  p = std::ranges::copy(NGHTTP2_H2_14_ALPN, p).out;
 
   return res;
 }
 
 std::vector<StringRef> split_str(const StringRef &s, char delim) {
   size_t len = 1;
-  auto last = std::end(s);
+  auto last = std::ranges::end(s);
   StringRef::const_iterator d;
-  for (auto first = std::begin(s); (d = std::find(first, last, delim)) != last;
+  for (auto first = std::ranges::begin(s);
+       (d = std::ranges::find(first, last, delim)) != last;
        ++len, first = d + 1)
     ;
 
   auto list = std::vector<StringRef>(len);
 
   len = 0;
-  for (auto first = std::begin(s);; ++len) {
-    auto stop = std::find(first, last, delim);
+  for (auto first = std::ranges::begin(s);; ++len) {
+    auto stop = std::ranges::find(first, last, delim);
     list[len] = StringRef{first, stop};
     if (stop == last) {
       break;
@@ -1055,23 +1055,23 @@ std::vector<StringRef> split_str(const StringRef &s, char delim, size_t n) {
   }
 
   size_t len = 1;
-  auto last = std::end(s);
+  auto last = std::ranges::end(s);
   StringRef::const_iterator d;
-  for (auto first = std::begin(s);
-       len < n && (d = std::find(first, last, delim)) != last;
+  for (auto first = std::ranges::begin(s);
+       len < n && (d = std::ranges::find(first, last, delim)) != last;
        ++len, first = d + 1)
     ;
 
   auto list = std::vector<StringRef>(len);
 
   len = 0;
-  for (auto first = std::begin(s);; ++len) {
+  for (auto first = std::ranges::begin(s);; ++len) {
     if (len == n - 1) {
       list[len] = StringRef{first, last};
       break;
     }
 
-    auto stop = std::find(first, last, delim);
+    auto stop = std::ranges::find(first, last, delim);
     list[len] = StringRef{first, stop};
     if (stop == last) {
       break;
@@ -1086,7 +1086,7 @@ std::vector<std::string> parse_config_str_list(const StringRef &s, char delim) {
   auto res = std::vector<std::string>();
   res.reserve(sublist.size());
   for (const auto &s : sublist) {
-    res.emplace_back(std::begin(s), std::end(s));
+    res.emplace_back(std::ranges::begin(s), std::ranges::end(s));
   }
   return res;
 }
@@ -1569,7 +1569,7 @@ int hexdump(FILE *out, const void *data, size_t datalen) {
       n = 16;
 
       if (offset > 0) {
-        if (std::equal(s - 16, s, s)) {
+        if (std::ranges::equal(s - 16, s, s, s + 16)) {
           if (repeated) {
             continue;
           }
@@ -1660,24 +1660,27 @@ int read_mime_types(std::map<std::string, std::string> &res,
       continue;
     }
 
-    auto type_end = std::find_if(std::begin(line), std::end(line), delim_pred);
-    if (type_end == std::begin(line)) {
+    auto type_end = std::ranges::find_if(line, delim_pred);
+    if (type_end == std::ranges::begin(line)) {
       continue;
     }
 
     auto ext_end = type_end;
     for (;;) {
-      auto ext_start = std::find_if_not(ext_end, std::end(line), delim_pred);
-      if (ext_start == std::end(line)) {
+      auto ext_start =
+        std::ranges::find_if_not(ext_end, std::ranges::end(line), delim_pred);
+      if (ext_start == std::ranges::end(line)) {
         break;
       }
-      ext_end = std::find_if(ext_start, std::end(line), delim_pred);
+      ext_end =
+        std::ranges::find_if(ext_start, std::ranges::end(line), delim_pred);
 #ifdef HAVE_STD_MAP_EMPLACE
       res.emplace(std::string(ext_start, ext_end),
-                  std::string(std::begin(line), type_end));
+                  std::string(std::ranges::begin(line), type_end));
 #else  // !HAVE_STD_MAP_EMPLACE
-      res.insert(std::make_pair(std::string(ext_start, ext_end),
-                                std::string(std::begin(line), type_end)));
+      res.insert(
+        std::make_pair(std::string(ext_start, ext_end),
+                       std::string(std::ranges::begin(line), type_end)));
 #endif // !HAVE_STD_MAP_EMPLACE
     }
   }
@@ -1750,21 +1753,21 @@ int sha1(uint8_t *res, const StringRef &s) {
 StringRef extract_host(const StringRef &hostport) {
   if (hostport[0] == '[') {
     // assume this is IPv6 numeric address
-    auto p = std::find(std::begin(hostport), std::end(hostport), ']');
-    if (p == std::end(hostport)) {
+    auto p = std::ranges::find(hostport, ']');
+    if (p == std::ranges::end(hostport)) {
       return StringRef{};
     }
-    if (p + 1 < std::end(hostport) && *(p + 1) != ':') {
+    if (p + 1 < std::ranges::end(hostport) && *(p + 1) != ':') {
       return StringRef{};
     }
-    return StringRef{std::begin(hostport), p + 1};
+    return StringRef{std::ranges::begin(hostport), p + 1};
   }
 
-  auto p = std::find(std::begin(hostport), std::end(hostport), ':');
-  if (p == std::begin(hostport)) {
+  auto p = std::ranges::find(hostport, ':');
+  if (p == std::ranges::begin(hostport)) {
     return StringRef{};
   }
-  return StringRef{std::begin(hostport), p};
+  return StringRef{std::ranges::begin(hostport), p};
 }
 
 std::pair<StringRef, StringRef> split_hostport(const StringRef &hostport) {
@@ -1773,33 +1776,33 @@ std::pair<StringRef, StringRef> split_hostport(const StringRef &hostport) {
   }
   if (hostport[0] == '[') {
     // assume this is IPv6 numeric address
-    auto p = std::find(std::begin(hostport), std::end(hostport), ']');
-    if (p == std::end(hostport)) {
+    auto p = std::ranges::find(hostport, ']');
+    if (p == std::ranges::end(hostport)) {
       return {};
     }
-    if (p + 1 == std::end(hostport)) {
-      return {StringRef{std::begin(hostport) + 1, p}, {}};
+    if (p + 1 == std::ranges::end(hostport)) {
+      return {StringRef{std::ranges::begin(hostport) + 1, p}, {}};
     }
-    if (*(p + 1) != ':' || p + 2 == std::end(hostport)) {
+    if (*(p + 1) != ':' || p + 2 == std::ranges::end(hostport)) {
       return {};
     }
-    return {StringRef{std::begin(hostport) + 1, p},
-            StringRef{p + 2, std::end(hostport)}};
+    return {StringRef{std::ranges::begin(hostport) + 1, p},
+            StringRef{p + 2, std::ranges::end(hostport)}};
   }
 
-  auto p = std::find(std::begin(hostport), std::end(hostport), ':');
-  if (p == std::begin(hostport)) {
+  auto p = std::ranges::find(hostport, ':');
+  if (p == std::ranges::begin(hostport)) {
     return {};
   }
-  if (p == std::end(hostport)) {
-    return {StringRef{std::begin(hostport), p}, {}};
+  if (p == std::ranges::end(hostport)) {
+    return {StringRef{std::ranges::begin(hostport), p}, {}};
   }
-  if (p + 1 == std::end(hostport)) {
+  if (p + 1 == std::ranges::end(hostport)) {
     return {};
   }
 
-  return {StringRef{std::begin(hostport), p},
-          StringRef{p + 1, std::end(hostport)}};
+  return {StringRef{std::ranges::begin(hostport), p},
+          StringRef{p + 1, std::ranges::end(hostport)}};
 }
 
 std::mt19937 make_mt19937() {
@@ -1848,11 +1851,11 @@ int daemonize(int nochdir, int noclose) {
 }
 
 StringRef rstrip(BlockAllocator &balloc, const StringRef &s) {
-  auto it = std::rbegin(s);
-  for (; it != std::rend(s) && (*it == ' ' || *it == '\t'); ++it)
+  auto it = std::ranges::rbegin(s);
+  for (; it != std::ranges::rend(s) && (*it == ' ' || *it == '\t'); ++it)
     ;
 
-  auto len = it - std::rbegin(s);
+  auto len = it - std::ranges::rbegin(s);
   if (len == 0) {
     return s;
   }
