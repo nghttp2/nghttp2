@@ -692,10 +692,10 @@ int HttpDownstreamConnection::push_request_headers() {
       buf->append((*via).value);
       buf->append(", ");
     }
-    std::array<char, 16> viabuf;
-    auto end = http::create_via_header_value(viabuf.data(), req.http_major,
-                                             req.http_minor);
-    buf->append(viabuf.data(), end - viabuf.data());
+
+    buf->reserve(16);
+    buf->last(http::create_via_header_value(buf->last(), req.http_major,
+                                            req.http_minor));
     buf->append("\r\n");
   }
 
@@ -741,8 +741,8 @@ int HttpDownstreamConnection::process_blocked_request_buf() {
     auto dest = downstream_->get_request_buf();
     auto chunked = downstream_->get_chunked_request();
     if (chunked) {
-      std::array<char, sizeof(size_t) * 2> buf;
-      dest->append(buf.begin(), util::utox(src->rleft(), buf.begin()));
+      dest->reserve(sizeof(size_t) * 2);
+      dest->last(util::utox(src->rleft(), dest->last()));
       dest->append("\r\n");
     }
 
@@ -778,8 +778,8 @@ int HttpDownstreamConnection::push_upload_data_chunk(const uint8_t *data,
   auto output = downstream_->get_request_buf();
 
   if (chunked) {
-    std::array<char, sizeof(datalen) * 2> buf;
-    output->append(buf.begin(), util::utox(datalen, buf.begin()));
+    output->reserve(sizeof(datalen) * 2);
+    output->last(util::utox(datalen, output->last()));
     output->append("\r\n");
   }
 
