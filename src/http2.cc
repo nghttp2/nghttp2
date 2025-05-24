@@ -496,9 +496,9 @@ void build_http1_headers_from_headers(DefaultMemchunks *buf,
       break;
     }
     buf->append(kv->name);
-    buf->append(": ");
+    buf->append(": "sv);
     buf->append(kv->value);
-    buf->append("\r\n");
+    buf->append("\r\n"sv);
   }
 }
 

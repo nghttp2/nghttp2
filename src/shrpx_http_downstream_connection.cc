@@ -518,18 +518,18 @@ int HttpDownstreamConnection::push_request_headers() {
     // send a request to a HTTP/1 proxy.
     assert(!req.scheme.empty());
     buf->append(req.scheme);
-    buf->append("://");
+    buf->append("://"sv);
     buf->append(authority);
     buf->append(req.path);
   } else if (req.method == HTTP_OPTIONS && req.path.empty()) {
     // Server-wide OPTIONS
-    buf->append("*");
+    buf->append('*');
   } else {
     buf->append(req.path);
   }
-  buf->append(" HTTP/1.1\r\nhost: ");
+  buf->append(" HTTP/1.1\r\nhost: "sv);
   buf->append(authority);
-  buf->append("\r\n");
+  buf->append("\r\n"sv);
 
   auto &fwdconf = httpconf.forwarded;
   auto &xffconf = httpconf.xff;
@@ -549,9 +549,9 @@ int HttpDownstreamConnection::push_request_headers() {
 
   auto cookie = downstream_->assemble_request_cookie();
   if (!cookie.empty()) {
-    buf->append("cookie: ");
+    buf->append("cookie: "sv);
     buf->append(cookie);
-    buf->append("\r\n");
+    buf->append("\r\n"sv);
   }
 
   // set transfer-encoding only when content-length is unknown and
@@ -559,7 +559,7 @@ int HttpDownstreamConnection::push_request_headers() {
   if (req.method != HTTP_CONNECT && req.http2_expect_body &&
       req.fs.content_length == -1) {
     downstream_->set_chunked_request(true);
-    buf->append("transfer-encoding: chunked\r\n");
+    buf->append("transfer-encoding: chunked\r\n"sv);
   }
 
   if (req.connect_proto == ConnectProto::WEBSOCKET) {
@@ -574,28 +574,28 @@ int HttpDownstreamConnection::push_request_headers() {
       auto key = as_string_ref(std::ranges::begin(iov), p);
       downstream_->set_ws_key(key);
 
-      buf->append("sec-websocket-key: ");
+      buf->append("sec-websocket-key: "sv);
       buf->append(key);
-      buf->append("\r\n");
+      buf->append("\r\n"sv);
     }
 
-    buf->append("upgrade: websocket\r\nconnection: Upgrade\r\n");
+    buf->append("upgrade: websocket\r\nconnection: Upgrade\r\n"sv);
   } else if (!connect_method && req.upgrade_request) {
     auto connection = req.fs.header(http2::HD_CONNECTION);
     if (connection) {
-      buf->append("connection: ");
+      buf->append("connection: "sv);
       buf->append((*connection).value);
-      buf->append("\r\n");
+      buf->append("\r\n"sv);
     }
 
     auto upgrade = req.fs.header(http2::HD_UPGRADE);
     if (upgrade) {
-      buf->append("upgrade: ");
+      buf->append("upgrade: "sv);
       buf->append((*upgrade).value);
-      buf->append("\r\n");
+      buf->append("\r\n"sv);
     }
   } else if (req.connection_close) {
-    buf->append("connection: close\r\n");
+    buf->append("connection: close\r\n"sv);
   }
 
   auto upstream = downstream_->get_upstream();
@@ -606,7 +606,7 @@ int HttpDownstreamConnection::push_request_headers() {
   auto conn = handler->get_connection();
 
   if (conn->tls.ssl && !SSL_is_init_finished(conn->tls.ssl)) {
-    buf->append("early-data: 1\r\n");
+    buf->append("early-data: 1\r\n"sv);
   }
 #endif // NGHTTP2_GENUINE_OPENSSL || NGHTTP2_OPENSSL_IS_BORINGSSL ||
        // NGHTTP2_OPENSSL_IS_WOLFSSL
@@ -626,38 +626,38 @@ int HttpDownstreamConnection::push_request_headers() {
       req.authority, req.scheme);
 
     if (fwd || !value.empty()) {
-      buf->append("forwarded: ");
+      buf->append("forwarded: "sv);
       if (fwd) {
         buf->append(fwd->value);
 
         if (!value.empty()) {
-          buf->append(", ");
+          buf->append(", "sv);
         }
       }
       buf->append(value);
-      buf->append("\r\n");
+      buf->append("\r\n"sv);
     }
   } else if (fwd) {
-    buf->append("forwarded: ");
+    buf->append("forwarded: "sv);
     buf->append(fwd->value);
-    buf->append("\r\n");
+    buf->append("\r\n"sv);
   }
 
   auto xff =
     xffconf.strip_incoming ? nullptr : req.fs.header(http2::HD_X_FORWARDED_FOR);
 
   if (xffconf.add) {
-    buf->append("x-forwarded-for: ");
+    buf->append("x-forwarded-for: "sv);
     if (xff) {
       buf->append((*xff).value);
-      buf->append(", ");
+      buf->append(", "sv);
     }
     buf->append(client_handler_->get_ipaddr());
-    buf->append("\r\n");
+    buf->append("\r\n"sv);
   } else if (xff) {
-    buf->append("x-forwarded-for: ");
+    buf->append("x-forwarded-for: "sv);
     buf->append((*xff).value);
-    buf->append("\r\n");
+    buf->append("\r\n"sv);
   }
   if (!config->http2_proxy && !connect_method) {
     auto xfp = xfpconf.strip_incoming
@@ -665,48 +665,48 @@ int HttpDownstreamConnection::push_request_headers() {
                  : req.fs.header(http2::HD_X_FORWARDED_PROTO);
 
     if (xfpconf.add) {
-      buf->append("x-forwarded-proto: ");
+      buf->append("x-forwarded-proto: "sv);
       if (xfp) {
         buf->append((*xfp).value);
-        buf->append(", ");
+        buf->append(", "sv);
       }
       assert(!req.scheme.empty());
       buf->append(req.scheme);
-      buf->append("\r\n");
+      buf->append("\r\n"sv);
     } else if (xfp) {
-      buf->append("x-forwarded-proto: ");
+      buf->append("x-forwarded-proto: "sv);
       buf->append((*xfp).value);
-      buf->append("\r\n");
+      buf->append("\r\n"sv);
     }
   }
   auto via = req.fs.header(http2::HD_VIA);
   if (httpconf.no_via) {
     if (via) {
-      buf->append("via: ");
+      buf->append("via: "sv);
       buf->append((*via).value);
-      buf->append("\r\n");
+      buf->append("\r\n"sv);
     }
   } else {
-    buf->append("via: ");
+    buf->append("via: "sv);
     if (via) {
       buf->append((*via).value);
-      buf->append(", ");
+      buf->append(", "sv);
     }
 
     buf->reserve(16);
     buf->last(http::create_via_header_value(buf->last(), req.http_major,
                                             req.http_minor));
-    buf->append("\r\n");
+    buf->append("\r\n"sv);
   }
 
   for (auto &p : httpconf.add_request_headers) {
     buf->append(p.name);
-    buf->append(": ");
+    buf->append(": "sv);
     buf->append(p.value);
-    buf->append("\r\n");
+    buf->append("\r\n"sv);
   }
 
-  buf->append("\r\n");
+  buf->append("\r\n"sv);
 
   if (LOG_ENABLED(INFO)) {
     std::string nhdrs;
@@ -743,13 +743,13 @@ int HttpDownstreamConnection::process_blocked_request_buf() {
     if (chunked) {
       dest->reserve(sizeof(size_t) * 2);
       dest->last(util::utox(src->rleft(), dest->last()));
-      dest->append("\r\n");
+      dest->append("\r\n"sv);
     }
 
     src->copy(*dest);
 
     if (chunked) {
-      dest->append("\r\n");
+      dest->append("\r\n"sv);
     }
   }
 
@@ -780,13 +780,13 @@ int HttpDownstreamConnection::push_upload_data_chunk(const uint8_t *data,
   if (chunked) {
     output->reserve(sizeof(datalen) * 2);
     output->last(util::utox(datalen, output->last()));
-    output->append("\r\n");
+    output->append("\r\n"sv);
   }
 
   output->append(data, datalen);
 
   if (chunked) {
-    output->append("\r\n");
+    output->append("\r\n"sv);
   }
 
   signal_write();
@@ -820,12 +820,12 @@ void HttpDownstreamConnection::end_upload_data_chunk() {
   auto output = downstream_->get_request_buf();
   const auto &trailers = req.fs.trailers();
   if (trailers.empty()) {
-    output->append("0\r\n\r\n");
+    output->append("0\r\n\r\n"sv);
   } else {
-    output->append("0\r\n");
+    output->append("0\r\n"sv);
     http2::build_http1_headers_from_headers(output, trailers,
                                             http2::HDOP_STRIP_ALL);
-    output->append("\r\n");
+    output->append("\r\n"sv);
   }
 }
 
