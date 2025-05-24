@@ -239,7 +239,8 @@ mrb_value response_return(mrb_state *mrb, mrb_value self) {
 
     resp.fs.content_length = -1;
   } else {
-    auto content_length = util::make_string_ref_uint(balloc, vallen);
+    auto content_length =
+      util::make_string_ref_uint(balloc, as_unsigned(vallen));
 
     if (cl) {
       cl->value = content_length;

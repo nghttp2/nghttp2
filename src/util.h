@@ -731,7 +731,7 @@ constinit const auto utos_digits = []() {
   return a;
 }();
 
-template <std::integral T, std::weakly_incrementable O>
+template <std::unsigned_integral T, std::weakly_incrementable O>
 requires(std::indirectly_writable<O, char>)
 constexpr O utos(T n, O result) {
   if (n < 10) {
@@ -764,7 +764,7 @@ constexpr O utos(T n, O result) {
   return result;
 }
 
-template <std::integral T> constexpr std::string utos(T n) {
+template <std::unsigned_integral T> constexpr std::string utos(T n) {
   using namespace std::literals;
 
   if (n == 0) {
@@ -780,7 +780,7 @@ template <std::integral T> constexpr std::string utos(T n) {
   return res;
 }
 
-template <std::integral T>
+template <std::unsigned_integral T>
 StringRef make_string_ref_uint(BlockAllocator &balloc, T n) {
   auto iov = make_byte_ref(
     balloc, count_digit(static_cast<std::make_unsigned_t<T>>(n)) + 1);
@@ -792,7 +792,7 @@ StringRef make_string_ref_uint(BlockAllocator &balloc, T n) {
   return as_string_ref(std::ranges::begin(iov), p);
 }
 
-template <std::integral T> constexpr std::string utos_unit(T n) {
+template <std::unsigned_integral T> constexpr std::string utos_unit(T n) {
   char u;
 
   if (n >= (1 << 30)) {
@@ -812,7 +812,7 @@ template <std::integral T> constexpr std::string utos_unit(T n) {
 }
 
 // Like utos_unit(), but 2 digits fraction part is followed.
-template <std::integral T> constexpr std::string utos_funit(T n) {
+template <std::unsigned_integral T> constexpr std::string utos_funit(T n) {
   char u;
   int b;
 

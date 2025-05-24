@@ -395,16 +395,16 @@ void test_util_count_digit(void) {
 void test_util_utos(void) {
   char buf[32];
 
-  assert_stdstring_equal("123"s, (std::string{buf, util::utos(123, buf)}));
+  assert_stdstring_equal("123"s, (std::string{buf, util::utos(123u, buf)}));
 
-  assert_stdstring_equal("0"s, util::utos(0));
-  assert_stdstring_equal("123"s, util::utos(123));
+  assert_stdstring_equal("0"s, util::utos(0u));
+  assert_stdstring_equal("123"s, util::utos(123u));
   assert_stdstring_equal("123"s, util::utos(static_cast<uint8_t>(123)));
   assert_stdstring_equal("123"s, util::utos(static_cast<uint16_t>(123)));
   assert_stdstring_equal("18446744073709551615"s,
                          util::utos(18'446'744'073'709'551'615u));
 
-  assert_stdsv_equal("0"sv, (std::string_view{buf, util::utos(0, buf)}));
+  assert_stdsv_equal("0"sv, (std::string_view{buf, util::utos(0u, buf)}));
   assert_stdsv_equal("1"sv, (std::string_view{buf, util::utos(1u, buf)}));
   assert_stdsv_equal("9"sv, (std::string_view{buf, util::utos(9u, buf)}));
   assert_stdsv_equal("10"sv, (std::string_view{buf, util::utos(10u, buf)}));
@@ -503,36 +503,36 @@ void test_util_utos(void) {
 void test_util_make_string_ref_uint(void) {
   BlockAllocator balloc(1024, 1024);
 
-  assert_stdsv_equal("0"sv, util::make_string_ref_uint(balloc, 0));
-  assert_stdsv_equal("123"sv, util::make_string_ref_uint(balloc, 123));
+  assert_stdsv_equal("0"sv, util::make_string_ref_uint(balloc, 0u));
+  assert_stdsv_equal("123"sv, util::make_string_ref_uint(balloc, 123u));
   assert_stdsv_equal(
     "18446744073709551615"sv,
     util::make_string_ref_uint(balloc, 18446744073709551615ULL));
 }
 
 void test_util_utos_unit(void) {
-  assert_stdstring_equal("0", util::utos_unit(0));
-  assert_stdstring_equal("1023", util::utos_unit(1023));
-  assert_stdstring_equal("1K", util::utos_unit(1024));
-  assert_stdstring_equal("1K", util::utos_unit(1025));
-  assert_stdstring_equal("1M", util::utos_unit(1 << 20));
-  assert_stdstring_equal("1G", util::utos_unit(1 << 30));
-  assert_stdstring_equal("1024G", util::utos_unit(1LL << 40));
+  assert_stdstring_equal("0", util::utos_unit(0u));
+  assert_stdstring_equal("1023", util::utos_unit(1023u));
+  assert_stdstring_equal("1K", util::utos_unit(1024u));
+  assert_stdstring_equal("1K", util::utos_unit(1025u));
+  assert_stdstring_equal("1M", util::utos_unit(1u << 20));
+  assert_stdstring_equal("1G", util::utos_unit(1u << 30));
+  assert_stdstring_equal("1024G", util::utos_unit(1ULL << 40));
 }
 
 void test_util_utos_funit(void) {
-  assert_stdstring_equal("0", util::utos_funit(0));
-  assert_stdstring_equal("1023", util::utos_funit(1023));
-  assert_stdstring_equal("1.00K", util::utos_funit(1024));
-  assert_stdstring_equal("1.00K", util::utos_funit(1025));
-  assert_stdstring_equal("1.09K", util::utos_funit(1119));
-  assert_stdstring_equal("1.27K", util::utos_funit(1300));
-  assert_stdstring_equal("1.00M", util::utos_funit(1 << 20));
-  assert_stdstring_equal("1.18M", util::utos_funit(1234567));
-  assert_stdstring_equal("1.00G", util::utos_funit(1 << 30));
+  assert_stdstring_equal("0", util::utos_funit(0u));
+  assert_stdstring_equal("1023", util::utos_funit(1023u));
+  assert_stdstring_equal("1.00K", util::utos_funit(1024u));
+  assert_stdstring_equal("1.00K", util::utos_funit(1025u));
+  assert_stdstring_equal("1.09K", util::utos_funit(1119u));
+  assert_stdstring_equal("1.27K", util::utos_funit(1300u));
+  assert_stdstring_equal("1.00M", util::utos_funit(1u << 20));
+  assert_stdstring_equal("1.18M", util::utos_funit(1234567u));
+  assert_stdstring_equal("1.00G", util::utos_funit(1u << 30));
   assert_stdstring_equal("4492450797.23G",
-                         util::utos_funit(4823732313248234343LL));
-  assert_stdstring_equal("1024.00G", util::utos_funit(1LL << 40));
+                         util::utos_funit(4823732313248234343ULL));
+  assert_stdstring_equal("1024.00G", util::utos_funit(1ULL << 40));
 }
 
 void test_util_parse_uint_with_unit(void) {

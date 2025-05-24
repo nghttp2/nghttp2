@@ -1058,16 +1058,16 @@ void Client::on_stream_close(int32_t stream_id, bool success, bool final) {
 
       std::array<uint8_t, 256> buf;
       auto p = std::begin(buf);
-      p = util::utos(start.count(), p);
+      p = util::utos(as_unsigned(start.count()), p);
       *p++ = '\t';
       if (success) {
-        p = util::utos(req_stat->status, p);
+        p = util::utos(as_unsigned(req_stat->status), p);
       } else {
         *p++ = '-';
         *p++ = '1';
       }
       *p++ = '\t';
-      p = util::utos(delta.count(), p);
+      p = util::utos(as_unsigned(delta.count()), p);
       *p++ = '\n';
 
       auto nwrite = static_cast<size_t>(std::distance(std::begin(buf), p));
@@ -3101,7 +3101,7 @@ int main(int argc, char **argv) {
 
   std::string content_length_str;
   if (config.data_fd != -1) {
-    content_length_str = util::utos(config.data_length);
+    content_length_str = util::utos(as_unsigned(config.data_length));
   }
 
   auto method_it =
@@ -3334,7 +3334,7 @@ int main(int argc, char **argv) {
   std::cout << std::fixed << std::setprecision(2) << R"(
 finished in )"
             << util::format_duration(duration) << ", " << rps << " req/s, "
-            << util::utos_funit(bps) << R"(B/s
+            << util::utos_funit(as_unsigned(bps)) << R"(B/s
 requests: )" << stats.req_todo
             << " total, " << stats.req_started << " started, " << stats.req_done
             << " done, " << stats.req_status_success << " succeeded, "
@@ -3343,11 +3343,12 @@ requests: )" << stats.req_todo
 status codes: )"
             << stats.status[2] << " 2xx, " << stats.status[3] << " 3xx, "
             << stats.status[4] << " 4xx, " << stats.status[5] << R"( 5xx
-traffic: )" << util::utos_funit(stats.bytes_total)
+traffic: )" << util::utos_funit(as_unsigned(stats.bytes_total))
             << "B (" << stats.bytes_total << ") total, "
-            << util::utos_funit(stats.bytes_head) << "B (" << stats.bytes_head
-            << ") headers (space savings " << header_space_savings * 100
-            << "%), " << util::utos_funit(stats.bytes_body) << "B ("
+            << util::utos_funit(as_unsigned(stats.bytes_head)) << "B ("
+            << stats.bytes_head << ") headers (space savings "
+            << header_space_savings * 100 << "%), "
+            << util::utos_funit(as_unsigned(stats.bytes_body)) << "B ("
             << stats.bytes_body << R"() data)" << std::endl;
 #ifdef ENABLE_HTTP3
   if (config.is_quic()) {

@@ -438,7 +438,7 @@ int submit_request(HttpClient *client, const Headers &headers, Request *req) {
   if (req->data_prd) {
     if (!config.no_content_length) {
       build_headers.emplace_back("content-length",
-                                 util::utos(req->data_length));
+                                 util::utos(as_unsigned(req->data_length)));
     }
     if (config.expect_continue) {
       expect_continue = true;
@@ -1574,8 +1574,9 @@ void HttpClient::output_har(FILE *outfile) {
     json_object_set_new(timings, "receive", json_real(receive_delta));
 
     json_object_set_new(entry, "pageref", json_string(PAGE_ID));
-    json_object_set_new(entry, "connection",
-                        json_string(util::utos(req->stream_id).c_str()));
+    json_object_set_new(
+      entry, "connection",
+      json_string(util::utos(as_unsigned(req->stream_id)).c_str()));
   }
 
   json_dumpf(root, outfile, JSON_PRESERVE_ORDER | JSON_INDENT(2));
@@ -2156,7 +2157,7 @@ id  responseEnd requestStart  process code size request path)"
               << ("+" + util::format_duration(request_start)) << " "
               << std::setw(8) << util::format_duration(total) << " "
               << std::setw(4) << req->status << " " << std::setw(4)
-              << util::utos_unit(req->response_len) << " "
+              << util::utos_unit(as_unsigned(req->response_len)) << " "
               << req->make_reqpath() << std::endl;
   }
 }

@@ -389,7 +389,7 @@ int save_pid() {
     return -1;
   }
 
-  auto content = util::utos(config->pid) + '\n';
+  auto content = util::utos(as_unsigned(config->pid)) + '\n';
 
   if (write(fd, content.c_str(), content.size()) == -1) {
     auto error = errno;
@@ -535,7 +535,7 @@ void exec_binary() {
     auto s = std::string{ENV_ACCEPT_PREFIX};
     s += util::utos(i + 1);
     s += "=unix,";
-    s += util::utos(addr.fd);
+    s += util::utos(as_unsigned(addr.fd));
     s += ',';
     s += addr.host;
 
@@ -545,7 +545,7 @@ void exec_binary() {
 
   auto ipc_fd_str = std::string{ENV_ORIG_PID};
   ipc_fd_str += '=';
-  ipc_fd_str += util::utos(config->pid);
+  ipc_fd_str += util::utos(as_unsigned(config->pid));
   envp[envidx++] = const_cast<char *>(ipc_fd_str.c_str());
 
 #ifdef ENABLE_HTTP3
@@ -555,7 +555,7 @@ void exec_binary() {
     auto s = std::string{ENV_QUIC_WORKER_PROCESS_PREFIX};
     s += util::utos(i + 1);
     s += '=';
-    s += util::utos(wp->quic_ipc_fd);
+    s += util::utos(as_unsigned(wp->quic_ipc_fd));
     for (auto &wid : wp->worker_ids) {
       s += ',';
       s += util::format_hex(as_uint8_span(std::span{&wid, 1}));
@@ -3205,12 +3205,14 @@ HTTP/3 and QUIC:
               Sets  the  per-stream  initial  window  size  of  HTTP/3
               frontend connection.
               Default: )"
-      << util::utos_unit(config->http3.upstream.window_size) << R"(
+      << util::utos_unit(as_unsigned(config->http3.upstream.window_size)) << R"(
   --frontend-http3-connection-window-size=<SIZE>
               Sets the  per-connection window size of  HTTP/3 frontend
               connection.
               Default: )"
-      << util::utos_unit(config->http3.upstream.connection_window_size) << R"(
+      << util::utos_unit(
+           as_unsigned(config->http3.upstream.connection_window_size))
+      << R"(
   --frontend-http3-max-window-size=<SIZE>
               Sets  the  maximum  per-stream  window  size  of  HTTP/3
               frontend connection.  The window  size is adjusted based
@@ -3218,7 +3220,8 @@ HTTP/3 and QUIC:
               is the  value specified  by --frontend-http3-window-size
               and the window size grows up to <SIZE> bytes.
               Default: )"
-      << util::utos_unit(config->http3.upstream.max_window_size) << R"(
+      << util::utos_unit(as_unsigned(config->http3.upstream.max_window_size))
+      << R"(
   --frontend-http3-max-connection-window-size=<SIZE>
               Sets the  maximum per-connection  window size  of HTTP/3
               frontend connection.  The window  size is adjusted based
@@ -3227,7 +3230,8 @@ HTTP/3 and QUIC:
               --frontend-http3-connection-window-size  and the  window
               size grows up to <SIZE> bytes.
               Default: )"
-      << util::utos_unit(config->http3.upstream.max_connection_window_size)
+      << util::utos_unit(
+           as_unsigned(config->http3.upstream.max_connection_window_size))
       << R"(
   --frontend-http3-max-concurrent-streams=<N>
               Set the maximum number of  the concurrent streams in one
