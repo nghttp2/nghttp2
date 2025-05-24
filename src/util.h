@@ -1242,18 +1242,19 @@ OutputIt random_alpha_digit(OutputIt first, OutputIt last, Generator &gen) {
 }
 
 // Fills random bytes to the range [|first|, |last|).
-template <typename OutputIt, typename Generator>
-void random_bytes(OutputIt first, OutputIt last, Generator &gen) {
+template <std::input_or_output_iterator O, typename Generator>
+void random_bytes(O first, O last, Generator &&gen) {
   std::uniform_int_distribution<uint8_t> dis;
-  std::generate(first, last, [&dis, &gen]() { return dis(gen); });
+  std::ranges::generate(std::move(first), std::move(last),
+                        [&dis, &gen]() { return dis(gen); });
 }
 
-// Shuffles the range [|first|, |last|] by calling swap function |fun|
-// for each pair.  |fun| takes 2 RandomIt iterators.  If |fun| is
+// Shuffles the range [|first|, |last|] by calling swap function
+// |swap| for each pair.  |swap| takes 2 iterators.  If |swap| is
 // noop, no modification is made.
-template <typename RandomIt, typename Generator, typename SwapFun>
-void shuffle(RandomIt first, RandomIt last, Generator &&gen, SwapFun fun) {
-  auto len = std::distance(first, last);
+template <std::random_access_iterator I, typename Generator, typename Swap>
+void shuffle(I first, I last, Generator &&gen, Swap swap) {
+  auto len = std::ranges::distance(first, last);
   if (len < 2) {
     return;
   }
@@ -1264,8 +1265,15 @@ void shuffle(RandomIt first, RandomIt last, Generator &&gen, SwapFun fun) {
   dist_type d;
 
   for (decltype(len) i = 0; i < len - 1; ++i) {
-    fun(first + i, first + d(gen, param_type(i, len - 1)));
+    swap(first + i, first + d(gen, param_type(i, len - 1)));
   }
+}
+
+template <std::ranges::input_range R, typename Generator, typename Swap>
+requires(!std::is_array_v<std::remove_cvref_t<R>>)
+void shuffle(R &&r, Generator &&gen, Swap swap) {
+  return shuffle(std::ranges::begin(r), std::ranges::end(r),
+                 std::forward<Generator>(gen), std::move(swap));
 }
 
 // Returns x**y
