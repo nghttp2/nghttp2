@@ -84,14 +84,41 @@ constexpr size_t NGHTTP2_MAX_UINT64_DIGITS = str_size("18446744073709551615");
 
 namespace util {
 
-constexpr bool is_alpha(const char c) noexcept {
-  return ('A' <= c && c <= 'Z') || ('a' <= c && c <= 'z');
+template <std::predicate<size_t> Pred>
+constexpr auto pred_tbl_gen256(Pred pred) {
+  std::array<bool, 256> tbl;
+
+  for (size_t i = 0; i < tbl.size(); ++i) {
+    tbl[i] = pred(i);
+  }
+
+  return tbl;
 }
 
-constexpr bool is_digit(const char c) noexcept { return '0' <= c && c <= '9'; }
+constexpr auto alpha_pred(size_t i) noexcept {
+  return ('A' <= i && i <= 'Z') || ('a' <= i && i <= 'z');
+}
 
-constexpr bool is_hex_digit(const char c) noexcept {
-  return is_digit(c) || ('A' <= c && c <= 'F') || ('a' <= c && c <= 'f');
+constinit const auto is_alpha_tbl = pred_tbl_gen256(alpha_pred);
+
+constexpr bool is_alpha(char c) noexcept {
+  return is_alpha_tbl[static_cast<uint8_t>(c)];
+}
+
+constexpr auto digit_pred(size_t i) noexcept { return '0' <= i && i <= '9'; }
+
+constinit const auto is_digit_tbl = pred_tbl_gen256(digit_pred);
+
+constexpr bool is_digit(char c) noexcept {
+  return is_digit_tbl[static_cast<uint8_t>(c)];
+}
+
+constinit const auto is_hex_digit_tbl = pred_tbl_gen256([](auto i) {
+  return digit_pred(i) || ('A' <= i && i <= 'F') || ('a' <= i && i <= 'f');
+});
+
+constexpr bool is_hex_digit(char c) noexcept {
+  return is_hex_digit_tbl[static_cast<uint8_t>(c)];
 }
 
 // Returns true if a range [|first|, |last|) is hex string.
@@ -116,13 +143,48 @@ constexpr bool is_hex_string(R &&r) {
   return is_hex_string(std::ranges::begin(r), std::ranges::end(r));
 }
 
-bool in_rfc3986_unreserved_chars(const char c);
+constinit const auto in_rfc3986_unreserved_chars_tbl =
+  pred_tbl_gen256([](size_t i) {
+    switch (i) {
+    case '-':
+    case '.':
+    case '_':
+    case '~':
+      return true;
+    }
 
-bool in_rfc3986_sub_delims(const char c);
+    return digit_pred(i) || alpha_pred(i);
+  });
 
-// Returns true if |c| is in token (HTTP-p1, Section 3.2.6)
-constexpr bool in_token(char c) noexcept {
-  switch (c) {
+constexpr bool in_rfc3986_unreserved_chars(char c) noexcept {
+  return in_rfc3986_unreserved_chars_tbl[static_cast<uint8_t>(c)];
+}
+
+constinit const auto in_rfc3986_sub_delims_tbl = pred_tbl_gen256([](size_t i) {
+  switch (i) {
+  case '!':
+  case '$':
+  case '&':
+  case '\'':
+  case '(':
+  case ')':
+  case '*':
+  case '+':
+  case ',':
+  case ';':
+  case '=':
+    return true;
+  }
+
+  return false;
+});
+
+constexpr bool in_rfc3986_sub_delims(char c) noexcept {
+  return in_rfc3986_sub_delims_tbl[static_cast<uint8_t>(c)];
+}
+
+constexpr auto token_pred(size_t i) noexcept {
+  switch (i) {
   case '!':
   case '#':
   case '$':
@@ -141,10 +203,30 @@ constexpr bool in_token(char c) noexcept {
     return true;
   }
 
-  return is_alpha(c) || is_digit(c);
+  return digit_pred(i) || alpha_pred(i);
 }
 
-bool in_attr_char(char c);
+constinit const auto in_token_tbl = pred_tbl_gen256(token_pred);
+
+// Returns true if |c| is in token (HTTP-p1, Section 3.2.6)
+constexpr bool in_token(char c) noexcept {
+  return in_token_tbl[static_cast<uint8_t>(c)];
+}
+
+constinit const auto in_attr_char_tbl = pred_tbl_gen256([](size_t i) {
+  switch (i) {
+  case '*':
+  case '\'':
+  case '%':
+    return false;
+  }
+
+  return token_pred(i);
+});
+
+constexpr bool in_attr_char(char c) noexcept {
+  return in_attr_char_tbl[static_cast<uint8_t>(c)];
+}
 
 constinit const auto hex_to_uint_tbl = []() {
   std::array<uint32_t, 256> tbl;
