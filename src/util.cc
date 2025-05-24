@@ -975,8 +975,7 @@ int64_t to_time64(const timeval &tv) {
 }
 
 bool check_h2_is_selected(const StringRef &proto) {
-  return NGHTTP2_H2 == proto || NGHTTP2_H2_16 == proto ||
-         NGHTTP2_H2_14 == proto;
+  return NGHTTP2_H2 == proto;
 }
 
 namespace {
@@ -996,9 +995,7 @@ bool select_proto(const unsigned char **out, unsigned char *outlen,
 
 bool select_h2(const unsigned char **out, unsigned char *outlen,
                const unsigned char *in, unsigned int inlen) {
-  return select_proto(out, outlen, in, inlen, NGHTTP2_H2_ALPN) ||
-         select_proto(out, outlen, in, inlen, NGHTTP2_H2_16_ALPN) ||
-         select_proto(out, outlen, in, inlen, NGHTTP2_H2_14_ALPN);
+  return select_proto(out, outlen, in, inlen, NGHTTP2_H2_ALPN);
 }
 
 bool select_protocol(const unsigned char **out, unsigned char *outlen,
@@ -1014,14 +1011,10 @@ bool select_protocol(const unsigned char **out, unsigned char *outlen,
 }
 
 std::vector<unsigned char> get_default_alpn() {
-  auto res = std::vector<unsigned char>(NGHTTP2_H2_ALPN.size() +
-                                        NGHTTP2_H2_16_ALPN.size() +
-                                        NGHTTP2_H2_14_ALPN.size());
+  auto res = std::vector<unsigned char>(NGHTTP2_H2_ALPN.size());
   auto p = std::ranges::begin(res);
 
   p = std::ranges::copy(NGHTTP2_H2_ALPN, p).out;
-  p = std::ranges::copy(NGHTTP2_H2_16_ALPN, p).out;
-  p = std::ranges::copy(NGHTTP2_H2_14_ALPN, p).out;
 
   return res;
 }

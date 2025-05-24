@@ -31,9 +31,8 @@ implementation.
 
 * https://nghttp2.org/ (TLS + ALPN and HTTP/3)
 
-  This endpoint supports ``h2``, ``h2-16``, ``h2-14``, and
-  ``http/1.1`` via ALPN and requires TLSv1.2 for HTTP/2
-  connection.
+  This endpoint supports ``h2`` and ``http/1.1`` via ALPN and requires
+  TLSv1.2 for HTTP/2 connection.
 
   It also supports HTTP/3.
 

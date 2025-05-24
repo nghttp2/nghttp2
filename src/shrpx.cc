@@ -1601,7 +1601,7 @@ bool conf_exists(const char *path) {
 } // namespace
 
 namespace {
-constexpr auto DEFAULT_ALPN_LIST = "h2,h2-16,h2-14,http/1.1"_sr;
+constexpr auto DEFAULT_ALPN_LIST = "h2,http/1.1"_sr;
 } // namespace
 
 namespace {
