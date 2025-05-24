@@ -85,6 +85,7 @@ munit_void_test_decl(test_util_in_rfc3986_unreserved_chars)
 munit_void_test_decl(test_util_in_rfc3986_sub_delims)
 munit_void_test_decl(test_util_in_token)
 munit_void_test_decl(test_util_in_attr_char)
+munit_void_test_decl(test_util_upcase)
 
 } // namespace shrpx
 

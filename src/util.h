@@ -580,7 +580,23 @@ time_t parse_http_date(const StringRef &s);
 // ASN1_TIME_print().
 time_t parse_openssl_asn1_time_print(const StringRef &s);
 
-char upcase(char c);
+constinit const auto upcase_tbl = []() {
+  std::array<char, 256> tbl;
+
+  for (size_t i = 0; i < 256; ++i) {
+    if ('a' <= i && i <= 'z') {
+      tbl[i] = i - 'a' + 'A';
+    } else {
+      tbl[i] = i;
+    }
+  }
+
+  return tbl;
+}();
+
+constexpr char upcase(char c) noexcept {
+  return upcase_tbl[static_cast<uint8_t>(c)];
+}
 
 static constexpr uint8_t lowcase_tbl[] = {
   0,   1,   2,   3,   4,   5,   6,   7,   8,   9,   10,  11,  12,  13,  14,
