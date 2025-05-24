@@ -95,7 +95,7 @@ uint64_t siphash24(std::span<const uint64_t, 2> key,
   }
 
   std::array<uint8_t, sizeof(uint64_t)> last_block{};
-  std::ranges::copy(input, std::begin(last_block));
+  std::ranges::copy(input, std::ranges::begin(last_block));
   last_block.back() = orig_input_len & 0xff;
 
   auto last_block_word = CRYPTO_load_u64_le(last_block);

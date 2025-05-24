@@ -755,7 +755,7 @@ std::vector<LogFragment> parse_log_format(BlockAllocator &balloc,
       var_name = StringRef{var_name_start, p};
     }
 
-    auto value = std::begin(var_name);
+    auto value = std::ranges::begin(var_name);
 
     auto type = log_var_lookup_token(var_name);
 
@@ -1250,10 +1250,10 @@ int parse_mapping(Config *config, DownstreamAddrConfig &addr,
       auto path = http2::normalize_path_colon(
         downstreamconf.balloc, StringRef{slash, std::ranges::end(raw_pattern)},
         StringRef{});
-      auto iov =
-        make_byte_ref(downstreamconf.balloc,
-                      std::ranges::distance(std::begin(raw_pattern), slash) +
-                        path.size() + 1);
+      auto iov = make_byte_ref(
+        downstreamconf.balloc,
+        std::ranges::distance(std::ranges::begin(raw_pattern), slash) +
+          path.size() + 1);
       auto p = util::tolower(std::ranges::begin(raw_pattern), slash,
                              std::ranges::begin(iov));
       p = std::ranges::copy(path, p).out;
