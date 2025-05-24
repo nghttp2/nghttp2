@@ -15,7 +15,7 @@
 FROM ubuntu:24.04
 MAINTAINER Tatsuhiro Tsujikawa
 
-ENV NDK_VERSION r26d
+ENV NDK_VERSION r27c
 ENV NDK /root/android-ndk-$NDK_VERSION
 ENV TOOLCHAIN $NDK/toolchains/llvm/prebuilt/linux-x86_64
 ENV TARGET aarch64-linux-android
