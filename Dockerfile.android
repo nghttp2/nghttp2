@@ -13,7 +13,7 @@
 
 # Only use standalone-toolchain for reduce size
 FROM ubuntu:24.04
-MAINTAINER Tatsuhiro Tsujikawa
+LABEL org.opencontainers.image.authors="Tatsuhiro Tsujikawa"
 
 ENV NDK_VERSION r27c
 ENV NDK /root/android-ndk-$NDK_VERSION
