@@ -30,16 +30,94 @@ EXTRA_DIST = CMakeLists.txt build_config.rb
 EXTRA_DIST += \
 	mruby/AUTHORS \
 	mruby/docker-compose.yml \
-	mruby/codespell.txt \
 	mruby/CONTRIBUTING.md \
 	mruby/NEWS \
-	mruby/CODEOWNERS \
+	mruby/tools/lrama/LEGAL.md \
+	mruby/tools/lrama/exe/lrama \
+	mruby/tools/lrama/lib/lrama/state.rb \
+	mruby/tools/lrama/lib/lrama/counterexamples/path.rb \
+	mruby/tools/lrama/lib/lrama/counterexamples/start_path.rb \
+	mruby/tools/lrama/lib/lrama/counterexamples/state_item.rb \
+	mruby/tools/lrama/lib/lrama/counterexamples/example.rb \
+	mruby/tools/lrama/lib/lrama/counterexamples/derivation.rb \
+	mruby/tools/lrama/lib/lrama/counterexamples/production_path.rb \
+	mruby/tools/lrama/lib/lrama/counterexamples/transition_path.rb \
+	mruby/tools/lrama/lib/lrama/counterexamples/triple.rb \
+	mruby/tools/lrama/lib/lrama/states.rb \
+	mruby/tools/lrama/lib/lrama/option_parser.rb \
+	mruby/tools/lrama/lib/lrama/states_reporter.rb \
+	mruby/tools/lrama/lib/lrama/grammar/counter.rb \
+	mruby/tools/lrama/lib/lrama/grammar/code/rule_action.rb \
+	mruby/tools/lrama/lib/lrama/grammar/code/initial_action_code.rb \
+	mruby/tools/lrama/lib/lrama/grammar/code/printer_code.rb \
+	mruby/tools/lrama/lib/lrama/grammar/code/no_reference_code.rb \
+	mruby/tools/lrama/lib/lrama/grammar/code/destructor_code.rb \
+	mruby/tools/lrama/lib/lrama/grammar/union.rb \
+	mruby/tools/lrama/lib/lrama/grammar/destructor.rb \
+	mruby/tools/lrama/lib/lrama/grammar/binding.rb \
+	mruby/tools/lrama/lib/lrama/grammar/reference.rb \
+	mruby/tools/lrama/lib/lrama/grammar/symbols/resolver.rb \
+	mruby/tools/lrama/lib/lrama/grammar/auxiliary.rb \
+	mruby/tools/lrama/lib/lrama/grammar/symbols.rb \
+	mruby/tools/lrama/lib/lrama/grammar/stdlib.y \
+	mruby/tools/lrama/lib/lrama/grammar/type.rb \
+	mruby/tools/lrama/lib/lrama/grammar/percent_code.rb \
+	mruby/tools/lrama/lib/lrama/grammar/rule.rb \
+	mruby/tools/lrama/lib/lrama/grammar/symbol.rb \
+	mruby/tools/lrama/lib/lrama/grammar/error_token.rb \
+	mruby/tools/lrama/lib/lrama/grammar/rule_builder.rb \
+	mruby/tools/lrama/lib/lrama/grammar/printer.rb \
+	mruby/tools/lrama/lib/lrama/grammar/code.rb \
+	mruby/tools/lrama/lib/lrama/grammar/parameterizing_rule/resolver.rb \
+	mruby/tools/lrama/lib/lrama/grammar/parameterizing_rule/rhs.rb \
+	mruby/tools/lrama/lib/lrama/grammar/parameterizing_rule/rule.rb \
+	mruby/tools/lrama/lib/lrama/grammar/parameterizing_rule.rb \
+	mruby/tools/lrama/lib/lrama/grammar/precedence.rb \
+	mruby/tools/lrama/lib/lrama/digraph.rb \
+	mruby/tools/lrama/lib/lrama/grammar_validator.rb \
+	mruby/tools/lrama/lib/lrama/context.rb \
+	mruby/tools/lrama/lib/lrama/version.rb \
+	mruby/tools/lrama/lib/lrama/bitmap.rb \
+	mruby/tools/lrama/lib/lrama/state/resolved_conflict.rb \
+	mruby/tools/lrama/lib/lrama/state/reduce.rb \
+	mruby/tools/lrama/lib/lrama/state/shift_reduce_conflict.rb \
+	mruby/tools/lrama/lib/lrama/state/shift.rb \
+	mruby/tools/lrama/lib/lrama/state/reduce_reduce_conflict.rb \
+	mruby/tools/lrama/lib/lrama/output.rb \
+	mruby/tools/lrama/lib/lrama/counterexamples.rb \
+	mruby/tools/lrama/lib/lrama/trace_reporter.rb \
+	mruby/tools/lrama/lib/lrama/diagnostics.rb \
+	mruby/tools/lrama/lib/lrama/command.rb \
+	mruby/tools/lrama/lib/lrama/logger.rb \
+	mruby/tools/lrama/lib/lrama/report/duration.rb \
+	mruby/tools/lrama/lib/lrama/report/profile.rb \
+	mruby/tools/lrama/lib/lrama/lexer.rb \
+	mruby/tools/lrama/lib/lrama/parser.rb \
+	mruby/tools/lrama/lib/lrama/grammar.rb \
+	mruby/tools/lrama/lib/lrama/options.rb \
+	mruby/tools/lrama/lib/lrama/lexer/token.rb \
+	mruby/tools/lrama/lib/lrama/lexer/location.rb \
+	mruby/tools/lrama/lib/lrama/lexer/token/char.rb \
+	mruby/tools/lrama/lib/lrama/lexer/token/instantiate_rule.rb \
+	mruby/tools/lrama/lib/lrama/lexer/token/ident.rb \
+	mruby/tools/lrama/lib/lrama/lexer/token/user_code.rb \
+	mruby/tools/lrama/lib/lrama/lexer/token/tag.rb \
+	mruby/tools/lrama/lib/lrama/lexer/grammar_file.rb \
+	mruby/tools/lrama/lib/lrama/report.rb \
+	mruby/tools/lrama/lib/lrama/states/item.rb \
+	mruby/tools/lrama/lib/lrama.rb \
+	mruby/tools/lrama/template/bison/yacc.h \
+	mruby/tools/lrama/template/bison/yacc.c \
+	mruby/tools/lrama/template/bison/_yacc.h \
+	mruby/tools/lrama/MIT \
+	mruby/tools/lrama/NEWS.md \
 	mruby/Gemfile.lock \
 	mruby/appveyor.yml \
 	mruby/Dockerfile \
 	mruby/Gemfile \
 	mruby/benchmark/plot.gpl \
 	mruby/benchmark/bm_ao_render.rb \
+	mruby/benchmark/bm_so_mandelbrot.rb \
 	mruby/benchmark/bm_fib.rb \
 	mruby/benchmark/bm_so_lists.rb \
 	mruby/benchmark/bm_app_lc_fizzbuzz.rb \
@@ -52,6 +130,7 @@ EXTRA_DIST += \
 	mruby/tasks/toolchains/android.rake \
 	mruby/tasks/toolchains/gcc.rake \
 	mruby/tasks/toolchains/clang.rake \
+	mruby/tasks/toolchains/emscripten.rake \
 	mruby/tasks/doc.rake \
 	mruby/tasks/benchmark.rake \
 	mruby/tasks/mrbgems.rake \
@@ -82,8 +161,10 @@ EXTRA_DIST += \
 	mruby/build_config/bench.rb \
 	mruby/build_config/host-cxx.rb \
 	mruby/build_config/mrbc.rb \
+	mruby/build_config/no-float.rb \
 	mruby/build_config/ArduinoDue.rb \
 	mruby/build_config/IntelEdison.rb \
+	mruby/build_config/playstationportable.rb \
 	mruby/build_config/boxing.rb \
 	mruby/build_config/IntelGalileo.rb \
 	mruby/build_config/ci/msvc.rb \
@@ -92,13 +173,17 @@ EXTRA_DIST += \
 	mruby/build_config/serenity.rb \
 	mruby/build_config/dreamcast_shelf.rb \
 	mruby/build_config/default.rb \
+	mruby/build_config/emscripten.rb \
 	mruby/build_config/android_armeabi_v7a_neon_hard.rb \
 	mruby/build_config/host-gprof.rb \
 	mruby/build_config/clang-asan.rb \
 	mruby/build_config/RX630.rb \
+	mruby/build_config/luckfox_pico.rb \
 	mruby/build_config/host-nofloat.rb \
+	mruby/build_config/emscripten-cxx.rb \
 	mruby/build_config/android_arm64_v8a.rb \
 	mruby/build_config/cross-32bit.rb \
+	mruby/build_config/milkv_duo.rb \
 	mruby/build_config/cross-mingw.rb \
 	mruby/build_config/helpers/wine_runner.rb \
 	mruby/lib/mruby/build/command.rb \
@@ -178,11 +263,9 @@ EXTRA_DIST += \
 	mruby/test/assert.rb \
 	mruby/TODO.md \
 	mruby/Doxyfile \
-	mruby/mrblib/00kernel.rb \
 	mruby/mrblib/range.rb \
 	mruby/mrblib/kernel.rb \
 	mruby/mrblib/hash.rb \
-	mruby/mrblib/00class.rb \
 	mruby/mrblib/10error.rb \
 	mruby/mrblib/array.rb \
 	mruby/mrblib/string.rb \
@@ -196,7 +279,6 @@ EXTRA_DIST += \
 	mruby/src/variable.c \
 	mruby/src/cdump.c \
 	mruby/src/init.c \
-	mruby/src/opcode.h \
 	mruby/src/gc.c \
 	mruby/src/load.c \
 	mruby/src/codedump.c \
@@ -208,6 +290,7 @@ EXTRA_DIST += \
 	mruby/src/readnum.c \
 	mruby/src/enum.c \
 	mruby/src/print.c \
+	mruby/src/mempool.c \
 	mruby/src/readint.c \
 	mruby/src/numops.c \
 	mruby/src/hash.c \
@@ -218,7 +301,6 @@ EXTRA_DIST += \
 	mruby/src/vm.c \
 	mruby/src/debug.c \
 	mruby/src/symbol.c \
-	mruby/src/error.h \
 	mruby/src/kernel.c \
 	mruby/src/object.c \
 	mruby/src/proc.c \
@@ -227,7 +309,6 @@ EXTRA_DIST += \
 	mruby/src/class.c \
 	mruby/src/value_array.h \
 	mruby/src/allocf.c \
-	mruby/src/pool.c \
 	mruby/mruby-source.gemspec \
 	mruby/mrbgems/mruby-eval/mrbgem.rake \
 	mruby/mrbgems/mruby-eval/test/binding.rb \
@@ -263,6 +344,7 @@ EXTRA_DIST += \
 	mruby/mrbgems/mruby-cmath/test/cmath.rb \
 	mruby/mrbgems/mruby-cmath/src/cmath.c \
 	mruby/mrbgems/mruby-compar-ext/mrbgem.rake \
+	mruby/mrbgems/mruby-compar-ext/test/compar.rb \
 	mruby/mrbgems/mruby-compar-ext/mrblib/compar.rb \
 	mruby/mrbgems/mruby-pack/mrbgem.rake \
 	mruby/mrbgems/mruby-pack/README.md \
@@ -323,6 +405,7 @@ EXTRA_DIST += \
 	mruby/mrbgems/mruby-dir/src/Win/dirent.c \
 	mruby/mrbgems/mruby-dir/src/dir.c \
 	mruby/mrbgems/mruby-object-ext/mrbgem.rake \
+	mruby/mrbgems/mruby-object-ext/test/object_ext.c \
 	mruby/mrbgems/mruby-object-ext/test/nil.rb \
 	mruby/mrbgems/mruby-object-ext/test/object.rb \
 	mruby/mrbgems/mruby-object-ext/mrblib/object.rb \
@@ -339,13 +422,10 @@ EXTRA_DIST += \
 	mruby/mrbgems/mruby-binding/test/binding.rb \
 	mruby/mrbgems/mruby-binding/test/binding.c \
 	mruby/mrbgems/mruby-binding/src/binding.c \
-	mruby/mrbgems/mruby-print/mrbgem.rake \
-	mruby/mrbgems/mruby-print/mrblib/print.rb \
-	mruby/mrbgems/mruby-print/src/print.c \
 	mruby/mrbgems/mruby-hash-ext/mrbgem.rake \
 	mruby/mrbgems/mruby-hash-ext/test/hash.rb \
 	mruby/mrbgems/mruby-hash-ext/mrblib/hash.rb \
-	mruby/mrbgems/mruby-hash-ext/src/hash-ext.c \
+	mruby/mrbgems/mruby-hash-ext/src/hash_ext.c \
 	mruby/mrbgems/mruby-sleep/example/sleep.rb \
 	mruby/mrbgems/mruby-sleep/mrbgem.rake \
 	mruby/mrbgems/mruby-sleep/README.md \
@@ -376,9 +456,9 @@ EXTRA_DIST += \
 	mruby/mrbgems/mruby-time/src/time.c \
 	mruby/mrbgems/mruby-time/include/mruby/time.h \
 	mruby/mrbgems/mruby-proc-binding/mrbgem.rake \
-	mruby/mrbgems/mruby-proc-binding/test/proc-binding.c \
-	mruby/mrbgems/mruby-proc-binding/test/proc-binding.rb \
-	mruby/mrbgems/mruby-proc-binding/src/proc-binding.c \
+	mruby/mrbgems/mruby-proc-binding/test/proc_binding.c \
+	mruby/mrbgems/mruby-proc-binding/test/proc_binding.rb \
+	mruby/mrbgems/mruby-proc-binding/src/proc_binding.c \
 	mruby/mrbgems/stdlib-ext.gembox \
 	mruby/mrbgems/metaprog.gembox \
 	mruby/mrbgems/mruby-enumerator/mrbgem.rake \
@@ -422,7 +502,7 @@ EXTRA_DIST += \
 	mruby/mrbgems/mruby-complex/mrblib/complex.rb \
 	mruby/mrbgems/mruby-complex/src/complex.c \
 	mruby/mrbgems/mruby-exit/mrbgem.rake \
-	mruby/mrbgems/mruby-exit/src/mruby-exit.c \
+	mruby/mrbgems/mruby-exit/src/mruby_exit.c \
 	mruby/mrbgems/mruby-error/mrbgem.rake \
 	mruby/mrbgems/mruby-error/test/exception.rb \
 	mruby/mrbgems/mruby-error/test/exception.c \
@@ -460,9 +540,9 @@ EXTRA_DIST += \
 	mruby/mrbgems/mruby-enum-lazy/mrbgem.rake \
 	mruby/mrbgems/mruby-enum-lazy/test/lazy.rb \
 	mruby/mrbgems/mruby-enum-lazy/mrblib/lazy.rb \
-	mruby/mrbgems/mruby-bin-strip/tools/mruby-strip/mruby-strip.c \
+	mruby/mrbgems/mruby-bin-strip/tools/mruby-strip/mruby_strip.c \
 	mruby/mrbgems/mruby-bin-strip/mrbgem.rake \
-	mruby/mrbgems/mruby-bin-strip/bintest/mruby-strip.rb \
+	mruby/mrbgems/mruby-bin-strip/bintest/mruby_strip.rb \
 	mruby/mrbgems/mruby-errno/mrbgem.rake \
 	mruby/mrbgems/mruby-errno/README.md \
 	mruby/mrbgems/mruby-errno/test/errno.rb \
@@ -481,6 +561,10 @@ EXTRA_DIST += \
 	mruby/mrbgems/mruby-bin-mrbc/tools/mrbc/mrbc.c \
 	mruby/mrbgems/mruby-bin-mrbc/mrbgem.rake \
 	mruby/mrbgems/mruby-bin-mrbc/bintest/mrbc.rb \
+	mruby/mrbgems/mruby-encoding/mrbgem.rake \
+	mruby/mrbgems/mruby-encoding/test/string.rb \
+	mruby/mrbgems/mruby-encoding/test/numeric.rb \
+	mruby/mrbgems/mruby-encoding/src/encoding.c \
 	mruby/mrbgems/stdlib-io.gembox \
 	mruby/mrbgems/default.gembox \
 	mruby/mrbgems/mruby-os-memsize/mrbgem.rake \
@@ -499,11 +583,13 @@ EXTRA_DIST += \
 	mruby/doc/internal/boxing.md \
 	mruby/doc/limitations.md \
 	mruby/doc/mruby3.2.md \
+	mruby/doc/mruby3.4.md \
 	mruby/doc/mruby3.3.md \
 	mruby/doc/guides/compile.md \
 	mruby/doc/guides/memory.md \
 	mruby/doc/guides/mrbgems.md \
 	mruby/doc/guides/debugger.md \
+	mruby/doc/guides/hier.md \
 	mruby/doc/guides/link.md \
 	mruby/doc/guides/symbol.md \
 	mruby/doc/guides/gc-arena-howto.md \
@@ -514,6 +600,7 @@ EXTRA_DIST += \
 	mruby/include/mruby/hash.h \
 	mruby/include/mruby/string.h \
 	mruby/include/mruby/presym.h \
+	mruby/include/mruby/mempool.h \
 	mruby/include/mruby/object.h \
 	mruby/include/mruby/class.h \
 	mruby/include/mruby/ops.h \
