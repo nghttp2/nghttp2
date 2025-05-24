@@ -90,15 +90,17 @@ void test_shrpx_http_create_forwarded(void) {
 void test_shrpx_http_create_via_header_value(void) {
   std::array<char, 16> buf;
 
-  auto end = http::create_via_header_value(std::begin(buf), 1, 1);
+  auto end = http::create_via_header_value(std::ranges::begin(buf), 1, 1);
 
-  assert_stdstring_equal("1.1 nghttpx", (std::string{std::begin(buf), end}));
+  assert_stdstring_equal("1.1 nghttpx",
+                         (std::string{std::ranges::begin(buf), end}));
 
-  std::fill(std::begin(buf), std::end(buf), '\0');
+  std::ranges::fill(buf, '\0');
 
-  end = http::create_via_header_value(std::begin(buf), 2, 0);
+  end = http::create_via_header_value(std::ranges::begin(buf), 2, 0);
 
-  assert_stdstring_equal("2 nghttpx", (std::string{std::begin(buf), end}));
+  assert_stdstring_equal("2 nghttpx",
+                         (std::string{std::ranges::begin(buf), end}));
 }
 
 void test_shrpx_http_create_affinity_cookie(void) {

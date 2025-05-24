@@ -278,7 +278,7 @@ struct QUICPacket {
       remote_addr{remote_addr},
       local_addr{local_addr},
       pi{pi},
-      data{std::begin(data), std::end(data)} {}
+      data{std::ranges::begin(data), std::ranges::end(data)} {}
   QUICPacket() : upstream_addr_index{}, remote_addr{}, local_addr{}, pi{} {}
   size_t upstream_addr_index;
   Address remote_addr;
