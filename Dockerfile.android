@@ -12,7 +12,7 @@
 
 
 # Only use standalone-toolchain for reduce size
-FROM ubuntu:22.04
+FROM ubuntu:24.04
 MAINTAINER Tatsuhiro Tsujikawa
 
 ENV NDK_VERSION r26d
