@@ -90,6 +90,7 @@ const MunitTest tests[]{
   munit_void_test(test_util_in_rfc3986_sub_delims),
   munit_void_test(test_util_in_token),
   munit_void_test(test_util_in_attr_char),
+  munit_void_test(test_util_upcase),
   munit_test_end(),
 };
 } // namespace
@@ -1116,6 +1117,16 @@ void test_util_in_attr_char(void) {
       } else {
         assert_false(util::in_attr_char(i));
       }
+    }
+  }
+}
+
+void test_util_upcase(void) {
+  for (size_t i = 0; i < 256; ++i) {
+    if ('a' <= i && i <= 'z') {
+      assert_char(i - 'a' + 'A', ==, util::upcase(i));
+    } else {
+      assert_char(i, ==, util::upcase(i));
     }
   }
 }

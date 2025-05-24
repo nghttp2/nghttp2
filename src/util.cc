@@ -612,14 +612,6 @@ time_t parse_openssl_asn1_time_print(const StringRef &s) {
   return nghttp2_timegm_without_yday(&tm);
 }
 
-char upcase(char c) {
-  if ('a' <= c && c <= 'z') {
-    return c - 'a' + 'A';
-  } else {
-    return c;
-  }
-}
-
 void to_token68(std::string &base64str) {
   std::transform(std::begin(base64str), std::end(base64str),
                  std::begin(base64str), [](char c) {
