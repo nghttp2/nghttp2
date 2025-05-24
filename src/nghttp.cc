@@ -2245,9 +2245,9 @@ int communicate(
       }
     }
 
-    auto proto_list = util::get_default_alpn();
-
-    SSL_CTX_set_alpn_protos(ssl_ctx, proto_list.data(), proto_list.size());
+    SSL_CTX_set_alpn_protos(
+      ssl_ctx, reinterpret_cast<const uint8_t *>(NGHTTP2_H2_ALPN.data()),
+      NGHTTP2_H2_ALPN.size());
 
 #if defined(NGHTTP2_OPENSSL_IS_BORINGSSL) && defined(HAVE_LIBBROTLI)
     if (!SSL_CTX_add_cert_compression_alg(

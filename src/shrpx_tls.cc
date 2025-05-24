@@ -2133,8 +2133,9 @@ SSL_CTX *setup_downstream_client_ssl_context(
 
 void setup_downstream_http2_alpn(SSL *ssl) {
   // ALPN advertisement
-  auto alpn = util::get_default_alpn();
-  SSL_set_alpn_protos(ssl, alpn.data(), alpn.size());
+  SSL_set_alpn_protos(ssl,
+                      reinterpret_cast<const uint8_t *>(NGHTTP2_H2_ALPN.data()),
+                      NGHTTP2_H2_ALPN.size());
 }
 
 void setup_downstream_http1_alpn(SSL *ssl) {

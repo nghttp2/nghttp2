@@ -968,10 +968,6 @@ bool select_protocol(const unsigned char **out, unsigned char *outlen,
                      const unsigned char *in, unsigned int inlen,
                      std::vector<std::string> proto_list);
 
-// Returns default ALPN protocol list, which only contains supported
-// HTTP/2 protocol identifier.
-std::vector<unsigned char> get_default_alpn();
-
 // Parses delimited strings in |s| and returns the array of substring,
 // delimited by |delim|.  The any white spaces around substring are
 // treated as a part of substring.

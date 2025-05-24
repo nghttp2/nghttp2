@@ -1010,15 +1010,6 @@ bool select_protocol(const unsigned char **out, unsigned char *outlen,
   return false;
 }
 
-std::vector<unsigned char> get_default_alpn() {
-  auto res = std::vector<unsigned char>(NGHTTP2_H2_ALPN.size());
-  auto p = std::ranges::begin(res);
-
-  p = std::ranges::copy(NGHTTP2_H2_ALPN, p).out;
-
-  return res;
-}
-
 std::vector<StringRef> split_str(const StringRef &s, char delim) {
   size_t len = 1;
   auto last = std::ranges::end(s);
