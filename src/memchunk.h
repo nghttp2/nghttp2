@@ -211,6 +211,40 @@ template <typename Memchunk> struct Memchunks {
   size_t append(R &&r) {
     return append(std::ranges::begin(r), std::ranges::end(r));
   }
+  // reserve ensures that at least |count| bytes are available to
+  // store in the current buffer.  It assumes that the chunk size of
+  // the underlying Memchunk is at least |count| bytes.
+  void reserve(size_t count) {
+    if (!tail) {
+      head = tail = pool->get();
+    } else if (tail->left() < count) {
+      tail->next = pool->get();
+      tail = tail->next;
+    }
+
+    assert(tail->left() >= count);
+  }
+  // last returns the position of the current buffer to write.  It
+  // assumes that tail is not nullptr, which can be ensured by calling
+  // reserve.
+  uint8_t *last() const {
+    assert(tail);
+    return tail->last;
+  }
+  // last sets |last| to tail->last, and increment len by |last| -
+  // tail->last.  It assumes |last| is in a range [tail->last,
+  // tail->buf.end()], inclusive.
+  void last(uint8_t *last) {
+    assert(tail);
+
+    auto count = static_cast<size_t>(last - tail->last);
+
+    assert(count <= tail->left());
+
+    len += count;
+
+    tail->last = last;
+  }
   size_t copy(Memchunks &dest) {
     auto m = head;
     while (m) {

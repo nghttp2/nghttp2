@@ -1071,9 +1071,8 @@ void HttpsUpstream::error_reply(unsigned int status_code) {
   output->append("\r\nserver: ");
   output->append(get_config()->http.server_name);
   output->append("\r\ncontent-length: ");
-  std::array<char, NGHTTP2_MAX_UINT64_DIGITS> intbuf;
-  output->append(std::ranges::begin(intbuf),
-                 util::utos(html.size(), std::ranges::begin(intbuf)));
+  output->reserve(NGHTTP2_MAX_UINT64_DIGITS);
+  output->last(util::utos(html.size(), output->last()));
   output->append("\r\ndate: ");
   auto lgconf = log_config();
   lgconf->update_tstamp(std::chrono::system_clock::now());
@@ -1315,11 +1314,10 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
       buf->append((*via).value);
       buf->append(", ");
     }
-    std::array<char, 16> viabuf;
-    buf->append(std::ranges::begin(viabuf),
-                http::create_via_header_value(std::ranges::begin(viabuf),
-                                              resp.http_major,
-                                              resp.http_minor));
+
+    buf->reserve(16);
+    buf->last(http::create_via_header_value(buf->last(), resp.http_major,
+                                            resp.http_minor));
     buf->append("\r\n");
   }
 
@@ -1347,8 +1345,8 @@ int HttpsUpstream::on_downstream_body(Downstream *downstream,
   }
   auto output = downstream->get_response_buf();
   if (downstream->get_chunked_response()) {
-    std::array<char, sizeof(len) * 2> buf;
-    output->append(buf.begin(), util::utox(len, buf.begin()));
+    output->reserve(sizeof(len) * 2);
+    output->last(util::utox(len, output->last()));
     output->append("\r\n");
   }
   output->append(data, len);
