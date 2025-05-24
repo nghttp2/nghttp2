@@ -68,15 +68,6 @@ namespace nghttp2 {
 constexpr auto NGHTTP2_H2_ALPN = "\x2h2"_sr;
 constexpr auto NGHTTP2_H2 = "h2"_sr;
 
-// The additional HTTP/2 protocol ALPN protocol identifier we also
-// supports for our applications to make smooth migration into final
-// h2 ALPN ID.
-constexpr auto NGHTTP2_H2_16_ALPN = "\x5h2-16"_sr;
-constexpr auto NGHTTP2_H2_16 = "h2-16"_sr;
-
-constexpr auto NGHTTP2_H2_14_ALPN = "\x5h2-14"_sr;
-constexpr auto NGHTTP2_H2_14 = "h2-14"_sr;
-
 constexpr auto NGHTTP2_H1_1_ALPN = "\x8http/1.1"_sr;
 constexpr auto NGHTTP2_H1_1 = "http/1.1"_sr;
 
@@ -976,10 +967,6 @@ bool select_h2(const unsigned char **out, unsigned char *outlen,
 bool select_protocol(const unsigned char **out, unsigned char *outlen,
                      const unsigned char *in, unsigned int inlen,
                      std::vector<std::string> proto_list);
-
-// Returns default ALPN protocol list, which only contains supported
-// HTTP/2 protocol identifier.
-std::vector<unsigned char> get_default_alpn();
 
 // Parses delimited strings in |s| and returns the array of substring,
 // delimited by |delim|.  The any white spaces around substring are

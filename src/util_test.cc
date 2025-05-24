@@ -315,7 +315,7 @@ void test_util_select_h2(void) {
 
   // Check the case where id is correct but length is invalid and too
   // long.
-  const unsigned char t2[] = "\x6h2-14";
+  const unsigned char t2[] = "\x3h2";
   assert_false(util::select_h2(&out, &outlen, t2, sizeof(t2) - 1));
 
   // Check the case where h2 is located after bogus ID.
@@ -330,18 +330,12 @@ void test_util_select_h2(void) {
   outlen = 0;
 
   // Check the case that last entry's length is invalid and too long.
-  const unsigned char t4[] = "\x2h3\x6h2-14";
+  const unsigned char t4[] = "\x2h3\x6h2";
   assert_false(util::select_h2(&out, &outlen, t4, sizeof(t4) - 1));
 
   // Check the case that all entries are not supported.
   const unsigned char t5[] = "\x2h3\x2h4";
   assert_false(util::select_h2(&out, &outlen, t5, sizeof(t5) - 1));
-
-  // Check the case where 2 values are eligible, but last one is
-  // picked up because it has precedence over the other.
-  const unsigned char t6[] = "\x5h2-14\x5h2-16";
-  assert_true(util::select_h2(&out, &outlen, t6, sizeof(t6) - 1));
-  assert_stdsv_equal(NGHTTP2_H2_16, as_string_ref(out, outlen));
 }
 
 void test_util_ipv6_numeric_addr(void) {

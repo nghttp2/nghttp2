@@ -2110,7 +2110,6 @@ int alpn_select_proto_cb(SSL *ssl, const unsigned char **out,
 
 int HttpServer::run() {
   SSL_CTX *ssl_ctx = nullptr;
-  std::vector<unsigned char> next_proto;
 
   if (!config_->no_tls) {
     ssl_ctx = SSL_CTX_new(TLS_server_method());
@@ -2229,8 +2228,6 @@ int HttpServer::run() {
                            SSL_VERIFY_FAIL_IF_NO_PEER_CERT,
                          verify_callback);
     }
-
-    next_proto = util::get_default_alpn();
 
     // ALPN selection callback
     SSL_CTX_set_alpn_select_cb(ssl_ctx, alpn_select_proto_cb, this);
