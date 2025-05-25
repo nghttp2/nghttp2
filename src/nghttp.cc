@@ -186,8 +186,7 @@ void Request::init_html_parser() {
   auto scheme = get_real_scheme();
   auto host = get_real_host();
   auto port = get_real_port();
-  auto ipv6_lit =
-    std::find(std::begin(host), std::end(host), ':') != std::end(host);
+  auto ipv6_lit = util::contains(host, ':');
 
   auto base_uri = std::string{scheme};
   base_uri += "://";
@@ -237,18 +236,18 @@ namespace {
 // Perform special handling |host| if it is IPv6 literal and includes
 // zone ID per RFC 6874.
 std::string decode_host(const StringRef &host) {
-  auto zone_start = std::find(std::begin(host), std::end(host), '%');
-  if (zone_start == std::end(host) ||
+  auto zone_start = std::ranges::find(host, '%');
+  if (zone_start == std::ranges::end(host) ||
       !util::ipv6_numeric_addr(
-        std::string(std::begin(host), zone_start).c_str())) {
+        std::string(std::ranges::begin(host), zone_start).c_str())) {
     return std::string{host};
   }
   // case: ::1%
-  if (zone_start + 1 == std::end(host)) {
+  if (zone_start + 1 == std::ranges::end(host)) {
     return {host.data(), host.size() - 1};
   }
   // case: ::1%12 or ::1%1
-  if (zone_start + 3 >= std::end(host)) {
+  if (zone_start + 3 >= std::ranges::end(host)) {
     return std::string{host};
   }
   // If we see "%25", followed by more characters, then decode %25 as
@@ -256,8 +255,8 @@ std::string decode_host(const StringRef &host) {
   auto zone_id_src = (*(zone_start + 1) == '2' && *(zone_start + 2) == '5')
                        ? zone_start + 3
                        : zone_start + 1;
-  auto zone_id = util::percent_decode(zone_id_src, std::end(host));
-  auto res = std::string(std::begin(host), zone_start + 1);
+  auto zone_id = util::percent_decode(zone_id_src, std::ranges::end(host));
+  auto res = std::string(std::ranges::begin(host), zone_start + 1);
   res += zone_id;
   return res;
 }
@@ -714,9 +713,9 @@ int HttpClient::initiate_connection() {
 void HttpClient::disconnect() {
   state = ClientState::IDLE;
 
-  for (auto req = std::begin(reqvec); req != std::end(reqvec); ++req) {
-    if ((*req)->continue_timer) {
-      (*req)->continue_timer->stop();
+  for (auto &req : reqvec) {
+    if (req->continue_timer) {
+      req->continue_timer->stop();
     }
   }
 
@@ -936,11 +935,10 @@ int HttpClient::on_upgrade_connect() {
     // If the request contains upload data, use OPTIONS * to upgrade
     req = "OPTIONS *";
   } else {
-    auto meth =
-      std::find_if(std::begin(config.headers), std::end(config.headers),
-                   [](const auto &kv) { return ":method"_sr == kv.name; });
+    auto meth = std::ranges::find_if(
+      config.headers, [](const auto &kv) { return ":method"_sr == kv.name; });
 
-    if (meth == std::end(config.headers)) {
+    if (meth == std::ranges::end(config.headers)) {
       req = "GET ";
       reqvec[0]->method = "GET";
     } else {
@@ -1154,8 +1152,9 @@ int HttpClient::connection_made() {
   }
   // Adjust first request depending on the existence of the upload
   // data
-  for (auto i = std::begin(reqvec) + (need_upgrade() && !reqvec[0]->data_prd);
-       i != std::end(reqvec); ++i) {
+  for (auto i =
+         std::ranges::begin(reqvec) + (need_upgrade() && !reqvec[0]->data_prd);
+       i != std::ranges::end(reqvec); ++i) {
     if (submit_request(this, config.headers, (*i).get()) != 0) {
       return -1;
     }
@@ -1354,9 +1353,9 @@ void HttpClient::update_hostport() {
     // convenience to end-user input.
     auto host =
       util::get_uri_field(reqvec[0]->uri.c_str(), reqvec[0]->u, URLPARSE_HOST);
-    auto end = std::find(std::begin(host), std::end(host), '%');
+    auto end = std::ranges::find(host, '%');
     ss << "[";
-    ss.write(host.data(), end - std::begin(host));
+    ss.write(host.data(), end - std::ranges::begin(host));
     ss << "]";
   } else {
     util::write_uri_field(ss, reqvec[0]->uri.c_str(), reqvec[0]->u,
@@ -2112,14 +2111,13 @@ void print_stats(const HttpClient &client) {
     }
   }
 
-  std::sort(std::begin(reqs), std::end(reqs),
-            [](const Request *lhs, const Request *rhs) {
-              const auto &ltiming = lhs->timing;
-              const auto &rtiming = rhs->timing;
-              return ltiming.response_end_time < rtiming.response_end_time ||
-                     (ltiming.response_end_time == rtiming.response_end_time &&
-                      ltiming.request_start_time < rtiming.request_start_time);
-            });
+  std::ranges::sort(reqs, [](const Request *lhs, const Request *rhs) {
+    const auto &ltiming = lhs->timing;
+    const auto &rtiming = rhs->timing;
+    return ltiming.response_end_time < rtiming.response_end_time ||
+           (ltiming.response_end_time == rtiming.response_end_time &&
+            ltiming.request_start_time < rtiming.request_start_time);
+  });
 
   std::cout << R"(
 Request timing:
@@ -3016,28 +3014,25 @@ int main(int argc, char **argv) {
   if (!config.extpris.empty()) {
     extpri_to_fill = config.extpris.back();
   }
-  config.extpris.insert(std::end(config.extpris), argc - optind,
+  config.extpris.insert(std::ranges::end(config.extpris), argc - optind,
                         extpri_to_fill);
 
   // Find scheme overridden by extra header fields.
-  auto scheme_it =
-    std::find_if(std::begin(config.headers), std::end(config.headers),
-                 [](const Header &nv) { return nv.name == ":scheme"; });
-  if (scheme_it != std::end(config.headers)) {
+  auto scheme_it = std::ranges::find_if(
+    config.headers, [](const Header &nv) { return nv.name == ":scheme"; });
+  if (scheme_it != std::ranges::end(config.headers)) {
     config.scheme_override = (*scheme_it).value;
   }
 
   // Find host and port overridden by extra header fields.
-  auto authority_it =
-    std::find_if(std::begin(config.headers), std::end(config.headers),
-                 [](const Header &nv) { return nv.name == ":authority"; });
-  if (authority_it == std::end(config.headers)) {
-    authority_it =
-      std::find_if(std::begin(config.headers), std::end(config.headers),
-                   [](const Header &nv) { return nv.name == "host"; });
+  auto authority_it = std::ranges::find_if(
+    config.headers, [](const Header &nv) { return nv.name == ":authority"; });
+  if (authority_it == std::ranges::end(config.headers)) {
+    authority_it = std::ranges::find_if(
+      config.headers, [](const Header &nv) { return nv.name == "host"; });
   }
 
-  if (authority_it != std::end(config.headers)) {
+  if (authority_it != std::ranges::end(config.headers)) {
     // authority_it may looks like "host:port".
     auto uri = "https://" + (*authority_it).value;
     urlparse_url u;
