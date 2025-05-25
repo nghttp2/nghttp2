@@ -45,14 +45,24 @@ namespace http {
 
 StringRef create_error_html(BlockAllocator &balloc, unsigned int status_code);
 
+struct ViaValueGenerator {
+  template <std::weakly_incrementable O>
+  requires(std::indirectly_writable<O, char>)
+  constexpr O operator()(int major, int minor, O result) {
+    *result++ = static_cast<char>(major + '0');
+
+    if (major < 2) {
+      *result++ = '.';
+      *result++ = static_cast<char>(minor + '0');
+    }
+
+    return std::ranges::copy(" nghttpx"sv, result).out;
+  }
+};
+
 template <typename OutputIt>
 OutputIt create_via_header_value(OutputIt dst, int major, int minor) {
-  *dst++ = static_cast<char>(major + '0');
-  if (major < 2) {
-    *dst++ = '.';
-    *dst++ = static_cast<char>(minor + '0');
-  }
-  return std::ranges::copy(" nghttpx"sv, dst).out;
+  return ViaValueGenerator{}(major, minor, std::move(dst));
 }
 
 // Returns generated RFC 7239 Forwarded header field value.  The

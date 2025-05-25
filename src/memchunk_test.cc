@@ -245,8 +245,9 @@ void test_memchunks_reserve(void) {
   Memchunks16 chunks(&pool);
   std::array<iovec, 2> iov;
 
-  chunks.reserve(8);
-  chunks.last(std::ranges::copy("foobar00"sv, chunks.last()).out);
+  chunks.append(8, [](auto result) {
+    return std::ranges::copy("foobar00"sv, std::move(result)).out;
+  });
 
   assert_size(8, ==, chunks.rleft());
 
@@ -261,8 +262,9 @@ void test_memchunks_reserve(void) {
   chunks.reset();
 
   chunks.append("012345678"sv);
-  chunks.reserve(8);
-  chunks.last(std::ranges::copy("foobar00"sv, chunks.last()).out);
+  chunks.append(8, [](auto result) {
+    return std::ranges::copy("foobar00"sv, std::move(result)).out;
+  });
 
   assert_size(17, ==, chunks.rleft());
 

@@ -1071,8 +1071,8 @@ void HttpsUpstream::error_reply(unsigned int status_code) {
   output->append("\r\nserver: "sv);
   output->append(get_config()->http.server_name);
   output->append("\r\ncontent-length: "sv);
-  output->reserve(NGHTTP2_MAX_UINT64_DIGITS);
-  output->last(util::utos(html.size(), output->last()));
+  output->append(NGHTTP2_MAX_UINT64_DIGITS,
+                 std::bind_front(util::UIntFormatter{}, html.size()));
   output->append("\r\ndate: "sv);
   auto lgconf = log_config();
   lgconf->update_tstamp(std::chrono::system_clock::now());
@@ -1315,9 +1315,8 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
       buf->append(", "sv);
     }
 
-    buf->reserve(16);
-    buf->last(http::create_via_header_value(buf->last(), resp.http_major,
-                                            resp.http_minor));
+    buf->append(16, std::bind_front(http::ViaValueGenerator{}, resp.http_major,
+                                    resp.http_minor));
     buf->append("\r\n"sv);
   }
 
@@ -1345,8 +1344,8 @@ int HttpsUpstream::on_downstream_body(Downstream *downstream,
   }
   auto output = downstream->get_response_buf();
   if (downstream->get_chunked_response()) {
-    output->reserve(sizeof(len) * 2);
-    output->last(util::utox(len, output->last()));
+    output->append(sizeof(len) * 2,
+                   std::bind_front(util::CompactHexFormatter{}, len));
     output->append("\r\n"sv);
   }
   output->append(data, len);
