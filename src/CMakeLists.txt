@@ -127,7 +127,6 @@ if(ENABLE_APP)
     shrpx_api_downstream_connection.cc
     shrpx_health_monitor_downstream_connection.cc
     shrpx_null_downstream_connection.cc
-    shrpx_exec.cc
     shrpx_dns_resolver.cc
     shrpx_dual_dns_resolver.cc
     shrpx_dns_tracker.cc

@@ -61,7 +61,6 @@
 
 #include "shrpx_downstream_connection_pool.h"
 #include "shrpx_config.h"
-#include "shrpx_exec.h"
 
 namespace shrpx {
 
