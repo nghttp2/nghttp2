@@ -941,7 +941,7 @@ void Client::on_request(int32_t stream_id) { streams[stream_id] = Stream(); }
 void Client::on_header(int32_t stream_id, const uint8_t *name, size_t namelen,
                        const uint8_t *value, size_t valuelen) {
   auto itr = streams.find(stream_id);
-  if (itr == std::end(streams)) {
+  if (itr == std::ranges::end(streams)) {
     return;
   }
   auto &stream = (*itr).second;
@@ -992,7 +992,7 @@ void Client::on_header(int32_t stream_id, const uint8_t *name, size_t namelen,
 
 void Client::on_status_code(int32_t stream_id, uint16_t status) {
   auto itr = streams.find(stream_id);
-  if (itr == std::end(streams)) {
+  if (itr == std::ranges::end(streams)) {
     return;
   }
   auto &stream = (*itr).second;
@@ -1057,7 +1057,7 @@ void Client::on_stream_close(int32_t stream_id, bool success, bool final) {
         req_stat->stream_close_time - req_stat->request_time);
 
       std::array<uint8_t, 256> buf;
-      auto p = std::begin(buf);
+      auto p = std::ranges::begin(buf);
       p = util::utos(as_unsigned(start.count()), p);
       *p++ = '\t';
       if (success) {
@@ -1070,7 +1070,8 @@ void Client::on_stream_close(int32_t stream_id, bool success, bool final) {
       p = util::utos(as_unsigned(delta.count()), p);
       *p++ = '\n';
 
-      auto nwrite = static_cast<size_t>(std::distance(std::begin(buf), p));
+      auto nwrite =
+        static_cast<size_t>(std::ranges::distance(std::ranges::begin(buf), p));
       assert(nwrite <= buf.size());
       while (write(worker->config->log_fd, buf.data(), nwrite) == -1 &&
              errno == EINTR)
@@ -1108,7 +1109,7 @@ void Client::on_stream_close(int32_t stream_id, bool success, bool final) {
 
 RequestStat *Client::get_req_stat(int32_t stream_id) {
   auto it = streams.find(stream_id);
-  if (it == std::end(streams)) {
+  if (it == std::ranges::end(streams)) {
     return nullptr;
   }
 
@@ -1742,9 +1743,8 @@ double within_sd(const std::vector<double> &samples, double mean, double sd) {
   }
   auto lower = mean - sd;
   auto upper = mean + sd;
-  auto m = std::count_if(
-    std::begin(samples), std::end(samples),
-    [&lower, &upper](double t) { return lower <= t && t <= upper; });
+  auto m = std::ranges::count_if(
+    samples, [&lower, &upper](double t) { return lower <= t && t <= upper; });
   return (m / static_cast<double>(samples.size())) * 100;
 }
 } // namespace
@@ -2581,8 +2581,8 @@ int main(int argc, char **argv) {
         // UNIX domain socket path
         sockaddr_un un;
 
-        auto path =
-          StringRef{std::begin(arg) + UNIX_PATH_PREFIX.size(), std::end(arg)};
+        auto path = StringRef{std::ranges::begin(arg) + UNIX_PATH_PREFIX.size(),
+                              std::ranges::end(arg)};
 
         if (path.size() == 0 || path.size() + 1 > sizeof(un.sun_path)) {
           std::cerr << "--base-uri: invalid UNIX domain socket path: " << arg
@@ -2593,7 +2593,7 @@ int main(int argc, char **argv) {
         config.base_uri_unix = true;
 
         auto &unix_addr = config.unix_addr;
-        std::copy(std::begin(path), std::end(path), unix_addr.sun_path);
+        std::ranges::copy(path, unix_addr.sun_path);
         unix_addr.sun_path[path.size()] = '\0';
         unix_addr.sun_family = AF_UNIX;
 
@@ -2791,8 +2791,8 @@ int main(int argc, char **argv) {
 
   if (config.ifile.empty()) {
     std::vector<std::string> uris;
-    std::copy(&argv[optind], &argv[argc], std::back_inserter(uris));
-    reqlines = parse_uris(std::begin(uris), std::end(uris));
+    std::ranges::copy(&argv[optind], &argv[argc], std::back_inserter(uris));
+    reqlines = parse_uris(std::ranges::begin(uris), std::ranges::end(uris));
   } else {
     std::vector<std::string> uris;
     if (!config.timing_script) {
@@ -2834,7 +2834,7 @@ int main(int argc, char **argv) {
       }
     }
 
-    reqlines = parse_uris(std::begin(uris), std::end(uris));
+    reqlines = parse_uris(std::ranges::begin(uris), std::ranges::end(uris));
   }
 
   if (reqlines.empty()) {
@@ -3052,7 +3052,7 @@ int main(int argc, char **argv) {
 
   std::vector<unsigned char> proto_list;
   for (const auto &proto : config.alpn_list) {
-    std::copy_n(proto.c_str(), proto.size(), std::back_inserter(proto_list));
+    std::ranges::copy(proto, std::back_inserter(proto_list));
   }
 
   SSL_CTX_set_alpn_protos(ssl_ctx, proto_list.data(), proto_list.size());
@@ -3084,8 +3084,7 @@ int main(int argc, char **argv) {
     {":authority", "host", ":method", ":scheme", "user-agent"});
 
   for (auto &kv : config.custom_headers) {
-    if (std::find(std::begin(override_hdrs), std::end(override_hdrs),
-                  kv.name) != std::end(override_hdrs)) {
+    if (util::contains(override_hdrs, kv.name)) {
       // override header
       for (auto &nv : shared_nva) {
         if ((nv.name == ":authority" && kv.name == "host") ||
@@ -3104,10 +3103,9 @@ int main(int argc, char **argv) {
     content_length_str = util::utos(as_unsigned(config.data_length));
   }
 
-  auto method_it =
-    std::find_if(std::begin(shared_nva), std::end(shared_nva),
-                 [](const Header &nv) { return nv.name == ":method"; });
-  assert(method_it != std::end(shared_nva));
+  auto method_it = std::ranges::find_if(
+    shared_nva, [](const Header &nv) { return nv.name == ":method"; });
+  assert(method_it != std::ranges::end(shared_nva));
 
   config.h1reqs.reserve(reqlines.size());
   config.nva.reserve(reqlines.size());
