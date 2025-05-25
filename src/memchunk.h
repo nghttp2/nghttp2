@@ -160,7 +160,7 @@ template <typename Memchunk> struct Memchunks {
       m = next;
     }
   }
-  size_t append(char c) {
+  void append(char c) {
     if (!tail) {
       head = tail = pool->get();
     } else if (tail->left() == 0) {
@@ -169,14 +169,11 @@ template <typename Memchunk> struct Memchunks {
     }
     *tail->last++ = c;
     ++len;
-    return 1;
   }
-  template <std::input_iterator I> size_t append(I first, I last) {
+  template <std::input_iterator I> void append(I first, I last) {
     if (first == last) {
-      return 0;
+      return;
     }
-
-    auto count = std::ranges::distance(first, last);
 
     if (!tail) {
       head = tail = pool->get();
@@ -197,16 +194,16 @@ template <typename Memchunk> struct Memchunks {
       tail = tail->next;
     }
 
-    return count;
+    return;
   }
-  size_t append(const void *src, size_t count) {
+  void append(const void *src, size_t count) {
     auto s = static_cast<const uint8_t *>(src);
-    return append(s, s + count);
+    append(s, s + count);
   }
   template <std::ranges::input_range R>
   requires(!std::is_array_v<std::remove_cvref_t<R>>)
-  size_t append(R &&r) {
-    return append(std::ranges::begin(r), std::ranges::end(r));
+  void append(R &&r) {
+    append(std::ranges::begin(r), std::ranges::end(r));
   }
   // first ensures that at least |max_count| bytes are available to
   // store in the current buffer, assuming that the chunk size of the
@@ -217,7 +214,7 @@ template <typename Memchunk> struct Memchunks {
   template <typename F>
   requires(std::invocable<F &, uint8_t *> &&
            std::is_same_v<std::invoke_result_t<F &, uint8_t *>, uint8_t *>)
-  size_t append(size_t max_count, F f) {
+  void append(size_t max_count, F f) {
     if (!tail) {
       head = tail = pool->get();
     } else if (tail->left() < max_count) {
@@ -228,12 +225,8 @@ template <typename Memchunk> struct Memchunks {
     assert(tail->left() >= max_count);
 
     auto last = f(tail->last);
-    auto count = last - tail->last;
-
-    len += count;
+    len += last - tail->last;
     tail->last = last;
-
-    return count;
   }
   size_t copy(Memchunks &dest) {
     auto m = head;
