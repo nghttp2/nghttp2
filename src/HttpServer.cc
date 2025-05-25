@@ -413,7 +413,8 @@ public:
     // cache.  The timer will be started when there is no handler.
   }
   void release_unused_fd() {
-    for (auto i = std::begin(fd_cache_); i != std::end(fd_cache_);) {
+    for (auto i = std::ranges::begin(fd_cache_);
+         i != std::ranges::end(fd_cache_);) {
       auto &ent = (*i).second;
       if (ent->usecount != 0) {
         ++i;
@@ -1073,7 +1074,7 @@ void Http2Handler::remove_stream(int32_t stream_id) {
 
 Stream *Http2Handler::get_stream(int32_t stream_id) {
   auto itr = id2stream_.find(stream_id);
-  if (itr == std::end(id2stream_)) {
+  if (itr == std::ranges::end(id2stream_)) {
     return nullptr;
   } else {
     return (*itr).second.get();
@@ -1255,15 +1256,15 @@ void prepare_response(Stream *stream, Http2Handler *hd,
   }
 
   StringRef raw_path, raw_query;
-  auto query_pos = std::find(std::begin(reqpath), std::end(reqpath), '?');
-  if (query_pos != std::end(reqpath)) {
+  auto query_pos = std::ranges::find(reqpath, '?');
+  if (query_pos != std::ranges::end(reqpath)) {
     // Do not response to this request to allow clients to test timeouts.
     if ("nghttpd_do_not_respond_to_req=yes"_sr ==
-        StringRef{query_pos, std::end(reqpath)}) {
+        StringRef{query_pos, std::ranges::end(reqpath)}) {
       return;
     }
-    raw_path = StringRef{std::begin(reqpath), query_pos};
-    raw_query = StringRef{query_pos, std::end(reqpath)};
+    raw_path = StringRef{std::ranges::begin(reqpath), query_pos};
+    raw_query = StringRef{query_pos, std::ranges::end(reqpath)};
   } else {
     raw_path = reqpath;
   }
@@ -1271,17 +1272,16 @@ void prepare_response(Stream *stream, Http2Handler *hd,
   auto sessions = hd->get_sessions();
 
   StringRef path;
-  if (std::find(std::begin(raw_path), std::end(raw_path), '%') ==
-      std::end(raw_path)) {
-    path = raw_path;
-  } else {
+  if (util::contains(raw_path, '%')) {
     path = util::percent_decode(stream->balloc, raw_path);
+  } else {
+    path = raw_path;
   }
 
   path = http2::path_join(stream->balloc, StringRef{}, StringRef{}, path,
                           StringRef{});
 
-  if (std::find(std::begin(path), std::end(path), '\\') != std::end(path)) {
+  if (util::contains(path, '\\')) {
     if (stream->file_ent) {
       sessions->release_fd(stream->file_ent);
       stream->file_ent = nullptr;
@@ -1292,7 +1292,7 @@ void prepare_response(Stream *stream, Http2Handler *hd,
 
   if (!hd->get_config()->push.empty()) {
     auto push_itr = hd->get_config()->push.find(std::string{path});
-    if (allow_push && push_itr != std::end(hd->get_config()->push)) {
+    if (allow_push && push_itr != std::ranges::end(hd->get_config()->push)) {
       for (auto &push_path : (*push_itr).second) {
         rv = hd->submit_push_promise(stream, StringRef{push_path});
         if (rv != 0) {
@@ -1317,10 +1317,10 @@ void prepare_response(Stream *stream, Http2Handler *hd,
     auto p = &file_path[0];
 
     auto &htdocs = hd->get_config()->htdocs;
-    p = std::copy(std::begin(htdocs), std::end(htdocs), p);
-    p = std::copy(std::begin(path), std::end(path), p);
+    p = std::ranges::copy(htdocs, p).out;
+    p = std::ranges::copy(path, p).out;
     if (trailing_slash) {
-      std::copy(std::begin(DEFAULT_HTML), std::end(DEFAULT_HTML), p);
+      std::ranges::copy(DEFAULT_HTML, p);
     }
   }
 
@@ -1370,7 +1370,7 @@ void prepare_response(Stream *stream, Http2Handler *hd,
 
       const auto &mime_types = hd->get_config()->mime_types;
       auto content_type_itr = mime_types.find(ext);
-      if (content_type_itr != std::end(mime_types)) {
+      if (content_type_itr != std::ranges::end(mime_types)) {
         content_type = &(*content_type_itr).second;
       }
     }
@@ -1657,7 +1657,7 @@ int send_data_callback(nghttp2_session *session, nghttp2_frame *frame,
 
   auto p = wb->last;
 
-  p = std::copy_n(framehd, 9, p);
+  p = std::ranges::copy_n(framehd, 9, p).out;
 
   if (padlen) {
     *p++ = padlen - 1;
@@ -1682,7 +1682,7 @@ int send_data_callback(nghttp2_session *session, nghttp2_frame *frame,
   }
 
   if (padlen) {
-    std::fill(p, p + padlen - 1, 0);
+    std::ranges::fill(p, p + padlen - 1, 0);
     p += padlen - 1;
   }
 
