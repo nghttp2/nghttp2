@@ -168,7 +168,9 @@ nghttp2_ssize send_callback(nghttp2_session *session, const uint8_t *data,
     return NGHTTP2_ERR_WOULDBLOCK;
   }
 
-  return wb.append(data, length);
+  wb.append(data, length);
+
+  return length;
 }
 } // namespace
 
