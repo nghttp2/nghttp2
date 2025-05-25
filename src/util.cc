@@ -613,18 +613,19 @@ time_t parse_openssl_asn1_time_print(const StringRef &s) {
 }
 
 void to_token68(std::string &base64str) {
-  std::ranges::transform(base64str, std::ranges::begin(base64str), [](char c) {
-    switch (c) {
+  for (auto it = base64str.begin(); it != base64str.end(); ++it) {
+    switch (*it) {
     case '+':
-      return '-';
+      *it = '-';
+      break;
     case '/':
-      return '_';
-    default:
-      return c;
+      *it = '_';
+      break;
+    case '=':
+      base64str.erase(it, base64str.end());
+      return;
     }
-  });
-  base64str.erase(std::ranges::find(base64str, '='),
-                  std::ranges::end(base64str));
+  }
 }
 
 StringRef to_base64(BlockAllocator &balloc, const StringRef &token68str) {
