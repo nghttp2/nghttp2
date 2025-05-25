@@ -731,37 +731,45 @@ constinit const auto utos_digits = []() {
   return a;
 }();
 
+struct UIntFormatter {
+  template <std::unsigned_integral T, std::weakly_incrementable O>
+  requires(std::indirectly_writable<O, char>)
+  constexpr O operator()(T n, O result) {
+    if (n < 10) {
+      *result++ = '0' + n;
+      return result;
+    }
+
+    if (n < 100) {
+      return std::ranges::copy_n(utos_digits.data() + n * 2, 2, result).out;
+    }
+
+    std::ranges::advance(result,
+                         count_digit(static_cast<std::make_unsigned_t<T>>(n)));
+
+    auto p = result;
+
+    for (; n >= 100; n /= 100) {
+      std::ranges::advance(p, -2);
+      std::ranges::copy_n(utos_digits.data() + (n % 100) * 2, 2, p);
+    }
+
+    if (n < 10) {
+      *--p = '0' + n;
+      return result;
+    }
+
+    std::ranges::advance(p, -2);
+    std::ranges::copy_n(utos_digits.data() + n * 2, 2, p);
+
+    return result;
+  }
+};
+
 template <std::unsigned_integral T, std::weakly_incrementable O>
 requires(std::indirectly_writable<O, char>)
 constexpr O utos(T n, O result) {
-  if (n < 10) {
-    *result++ = '0' + n;
-    return result;
-  }
-
-  if (n < 100) {
-    return std::ranges::copy_n(utos_digits.data() + n * 2, 2, result).out;
-  }
-
-  std::ranges::advance(result,
-                       count_digit(static_cast<std::make_unsigned_t<T>>(n)));
-
-  auto p = result;
-
-  for (; n >= 100; n /= 100) {
-    std::ranges::advance(p, -2);
-    std::ranges::copy_n(utos_digits.data() + (n % 100) * 2, 2, p);
-  }
-
-  if (n < 10) {
-    *--p = '0' + n;
-    return result;
-  }
-
-  std::ranges::advance(p, -2);
-  std::ranges::copy_n(utos_digits.data() + n * 2, 2, p);
-
-  return result;
+  return UIntFormatter{}(std::move(n), std::move(result));
 }
 
 template <std::unsigned_integral T> constexpr std::string utos(T n) {
@@ -832,48 +840,56 @@ template <std::unsigned_integral T> constexpr std::string utos_funit(T n) {
   return dtos(static_cast<double>(n) / (1 << b)) + u;
 }
 
+struct CompactHexFormatter {
+  template <std::integral T, std::weakly_incrementable O>
+  requires(std::indirectly_writable<O, char>)
+  O operator()(T n, O result) {
+    if (n == 0) {
+      *result++ = '0';
+      return result;
+    }
+
+    if constexpr (std::endian::native == std::endian::little) {
+      auto end = reinterpret_cast<uint8_t *>(&n);
+      auto p = end + sizeof(n);
+
+      for (; p != end && *(p - 1) == 0; --p)
+        ;
+
+      // Workaround for bogus UBSAN error
+      assert(p != end);
+
+      if (*(p - 1) < 16) {
+        *result++ = upper_hexdigits[*--p * 2 + 1];
+      }
+
+      for (; p != end; --p) {
+        result = format_upper_hex(*(p - 1), result);
+      }
+    } else {
+      auto p = reinterpret_cast<uint8_t *>(&n);
+      auto end = p + sizeof(n);
+
+      for (; p != end && *p == 0; ++p)
+        ;
+
+      if (*p < 16) {
+        *result++ = upper_hexdigits[*p++ * 2 + 1];
+      }
+
+      for (; p != end; ++p) {
+        result = format_upper_hex(*p, result);
+      }
+    }
+
+    return result;
+  }
+};
+
 template <std::integral T, std::weakly_incrementable O>
 requires(std::indirectly_writable<O, char>)
 O utox(T n, O result) {
-  if (n == 0) {
-    *result++ = '0';
-    return result;
-  }
-
-  if constexpr (std::endian::native == std::endian::little) {
-    auto end = reinterpret_cast<uint8_t *>(&n);
-    auto p = end + sizeof(n);
-
-    for (; p != end && *(p - 1) == 0; --p)
-      ;
-
-    // Workaround for bogus UBSAN error
-    assert(p != end);
-
-    if (*(p - 1) < 16) {
-      *result++ = upper_hexdigits[*--p * 2 + 1];
-    }
-
-    for (; p != end; --p) {
-      result = format_upper_hex(*(p - 1), result);
-    }
-  } else {
-    auto p = reinterpret_cast<uint8_t *>(&n);
-    auto end = p + sizeof(n);
-
-    for (; p != end && *p == 0; ++p)
-      ;
-
-    if (*p < 16) {
-      *result++ = upper_hexdigits[*p++ * 2 + 1];
-    }
-
-    for (; p != end; ++p) {
-      result = format_upper_hex(*p, result);
-    }
-  }
-
-  return result;
+  return CompactHexFormatter{}(std::move(n), std::move(result));
 }
 
 void to_token68(std::string &base64str);

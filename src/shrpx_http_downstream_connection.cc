@@ -693,9 +693,8 @@ int HttpDownstreamConnection::push_request_headers() {
       buf->append(", "sv);
     }
 
-    buf->reserve(16);
-    buf->last(http::create_via_header_value(buf->last(), req.http_major,
-                                            req.http_minor));
+    buf->append(16, std::bind_front(http::ViaValueGenerator{}, req.http_major,
+                                    req.http_minor));
     buf->append("\r\n"sv);
   }
 
@@ -741,8 +740,8 @@ int HttpDownstreamConnection::process_blocked_request_buf() {
     auto dest = downstream_->get_request_buf();
     auto chunked = downstream_->get_chunked_request();
     if (chunked) {
-      dest->reserve(sizeof(size_t) * 2);
-      dest->last(util::utox(src->rleft(), dest->last()));
+      dest->append(sizeof(size_t) * 2,
+                   std::bind_front(util::CompactHexFormatter{}, src->rleft()));
       dest->append("\r\n"sv);
     }
 
@@ -778,8 +777,8 @@ int HttpDownstreamConnection::push_upload_data_chunk(const uint8_t *data,
   auto output = downstream_->get_request_buf();
 
   if (chunked) {
-    output->reserve(sizeof(datalen) * 2);
-    output->last(util::utox(datalen, output->last()));
+    output->append(sizeof(datalen) * 2,
+                   std::bind_front(util::CompactHexFormatter{}, datalen));
     output->append("\r\n"sv);
   }
 

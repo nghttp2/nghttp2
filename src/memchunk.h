@@ -208,39 +208,32 @@ template <typename Memchunk> struct Memchunks {
   size_t append(R &&r) {
     return append(std::ranges::begin(r), std::ranges::end(r));
   }
-  // reserve ensures that at least |count| bytes are available to
-  // store in the current buffer.  It assumes that the chunk size of
-  // the underlying Memchunk is at least |count| bytes.
-  void reserve(size_t count) {
+  // first ensures that at least |max_count| bytes are available to
+  // store in the current buffer, assuming that the chunk size of the
+  // underlying Memchunk is at least |max_count| bytes.  Then call
+  // |f|(tail->last) to write data into buffer directly.  |f| must not
+  // write more than |max_count| bytes.  It must return the position
+  // of the buffer past the last position written.
+  template <typename F>
+  requires(std::invocable<F &, uint8_t *> &&
+           std::is_same_v<std::invoke_result_t<F &, uint8_t *>, uint8_t *>)
+  size_t append(size_t max_count, F f) {
     if (!tail) {
       head = tail = pool->get();
-    } else if (tail->left() < count) {
+    } else if (tail->left() < max_count) {
       tail->next = pool->get();
       tail = tail->next;
     }
 
-    assert(tail->left() >= count);
-  }
-  // last returns the position of the current buffer to write.  It
-  // assumes that tail is not nullptr, which can be ensured by calling
-  // reserve.
-  uint8_t *last() const {
-    assert(tail);
-    return tail->last;
-  }
-  // last sets |last| to tail->last, and increment len by |last| -
-  // tail->last.  It assumes |last| is in a range [tail->last,
-  // tail->buf.end()], inclusive.
-  void last(uint8_t *last) {
-    assert(tail);
+    assert(tail->left() >= max_count);
 
-    auto count = static_cast<size_t>(last - tail->last);
-
-    assert(count <= tail->left());
+    auto last = f(tail->last);
+    auto count = last - tail->last;
 
     len += count;
-
     tail->last = last;
+
+    return count;
   }
   size_t copy(Memchunks &dest) {
     auto m = head;
