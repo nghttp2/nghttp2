@@ -757,7 +757,7 @@ int Client::write_quic() {
     quic_restart_pkt_timer();
 
     if (nwrite == 0) {
-      pkt = std::span{std::begin(txbuf), std::begin(buf)};
+      pkt = std::span{std::ranges::begin(txbuf), std::ranges::begin(buf)};
       if (pkt.empty()) {
         return 0;
       }
@@ -765,24 +765,24 @@ int Client::write_quic() {
       break;
     }
 
-    auto last_pkt_pos = std::begin(buf);
+    auto last_pkt_pos = std::ranges::begin(buf);
 
     buf = buf.subspan(nwrite);
 
-    if (last_pkt_pos == std::begin(txbuf)) {
+    if (last_pkt_pos == std::ranges::begin(txbuf)) {
       gso_size = nwrite;
     } else if (static_cast<size_t>(nwrite) > gso_size ||
                (gso_size > path_max_udp_payload_size &&
                 static_cast<size_t>(nwrite) != gso_size)) {
-      pkt = std::span{std::begin(txbuf), last_pkt_pos};
-      extra_pkt = std::span{last_pkt_pos, std::begin(buf)};
+      pkt = std::span{std::ranges::begin(txbuf), last_pkt_pos};
+      extra_pkt = std::span{last_pkt_pos, std::ranges::begin(buf)};
       break;
     }
 
     // Assume that the path does not change.
     if (buf.size() < path_max_udp_payload_size ||
         static_cast<size_t>(nwrite) < gso_size) {
-      pkt = std::span{std::begin(txbuf), std::begin(buf)};
+      pkt = std::span{std::ranges::begin(txbuf), std::ranges::begin(buf)};
       break;
     }
   }
