@@ -1441,13 +1441,7 @@ StringRef make_hostport(BlockAllocator &balloc, const StringRef &host,
 namespace {
 uint8_t *hexdump_addr(uint8_t *dest, size_t addr) {
   // Lower 32 bits are displayed.
-  for (size_t i = 0; i < 4; ++i) {
-    auto a = (addr >> (3 - i) * 8) & 0xff;
-
-    dest = format_hex(a, dest);
-  }
-
-  return dest;
+  return format_hex(static_cast<uint32_t>(addr), dest);
 }
 } // namespace
 

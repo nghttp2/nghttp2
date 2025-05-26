@@ -151,7 +151,7 @@ public:
     update_full();
   }
 
-  template <typename T> void write_hex(T n) {
+  template <std::unsigned_integral T> void write_hex(T n) {
     if (full_) {
       return;
     }

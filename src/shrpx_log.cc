@@ -235,7 +235,7 @@ Log &Log::operator<<(long long n) {
   }
 
   if (flags_ & fmt_hex) {
-    write_hex(n);
+    write_hex(as_unsigned(n));
     return *this;
   }
 
@@ -476,7 +476,7 @@ namespace {
 std::span<char> copy_escape(const StringRef &src, std::span<char> dest) {
   auto safe_first = std::ranges::begin(src);
   for (auto p = safe_first; p != std::ranges::end(src) && !dest.empty(); ++p) {
-    unsigned char c = *p;
+    uint8_t c = *p;
     if (!ESCAPE_TBL[c]) {
       continue;
     }
