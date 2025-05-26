@@ -696,9 +696,10 @@ std::string dtos(double n);
 constinit const auto count_digit_tbl = []() {
   std::array<uint64_t, std::numeric_limits<uint64_t>::digits10> tbl;
 
-  uint64_t x = 10;
+  uint64_t x = 1;
 
-  for (size_t i = 0; i < tbl.size(); ++i, x *= 10) {
+  for (size_t i = 0; i < tbl.size(); ++i) {
+    x *= 10;
     tbl[i] = x - 1;
   }
 
