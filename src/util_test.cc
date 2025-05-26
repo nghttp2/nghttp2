@@ -856,19 +856,28 @@ void test_util_format_hex(void) {
   std::array<char, 64> buf;
 
   assert_stdsv_equal(
-    "00"sv, (std::string_view{buf.begin(), util::format_hex(0, buf.begin())}));
+    "00"sv,
+    (std::string_view{
+      buf.begin(), util::format_hex(static_cast<uint8_t>(0u), buf.begin())}));
   assert_stdsv_equal(
-    "0a"sv,
-    (std::string_view{buf.begin(), util::format_hex(0xa, buf.begin())}));
+    "ec"sv,
+    (std::string_view{buf.begin(), util::format_hex(static_cast<uint8_t>(0xecu),
+                                                    buf.begin())}));
   assert_stdsv_equal(
-    "7c"sv,
-    (std::string_view{buf.begin(), util::format_hex(0x07c, buf.begin())}));
+    "00000000"sv,
+    (std::string_view{buf.begin(), util::format_hex(0u, buf.begin())}));
   assert_stdsv_equal(
-    "eb"sv,
-    (std::string_view{buf.begin(), util::format_hex(0xeb, buf.begin())}));
+    "0000ab01"sv,
+    (std::string_view{buf.begin(), util::format_hex(0xab01u, buf.begin())}));
   assert_stdsv_equal(
-    "ff"sv,
-    (std::string_view{buf.begin(), util::format_hex(0xff, buf.begin())}));
+    "deadbeefbaadf00d"sv,
+    (std::string_view{buf.begin(),
+                      util::format_hex(0xdeadbeefbaadf00du, buf.begin())}));
+  assert_stdsv_equal(
+    "ffffffffffffffff"sv,
+    (std::string_view{
+      buf.begin(),
+      util::format_hex(std::numeric_limits<uint64_t>::max(), buf.begin())}));
 }
 
 void test_util_format_upper_hex(void) {

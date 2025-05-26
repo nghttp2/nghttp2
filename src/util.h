@@ -440,10 +440,31 @@ constexpr std::string format_hex(R &&r) {
   return res;
 }
 
-template <std::weakly_incrementable O>
+template <std::unsigned_integral T, std::weakly_incrementable O>
 requires(std::indirectly_writable<O, char>)
-constexpr O format_hex(uint8_t c, O result) {
-  return std::ranges::copy_n(hexdigits.data() + c * 2, 2, result).out;
+constexpr O format_hex(T n, O result) {
+  if constexpr (sizeof(n) == 1) {
+    return std::ranges::copy_n(hexdigits.data() + n * 2, 2, result).out;
+  }
+
+  if constexpr (std::endian::native == std::endian::little) {
+    auto end = reinterpret_cast<uint8_t *>(&n);
+    auto p = end + sizeof(n);
+
+    for (; p != end; --p) {
+      result =
+        std::ranges::copy_n(hexdigits.data() + *(p - 1) * 2, 2, result).out;
+    }
+  } else {
+    auto p = reinterpret_cast<uint8_t *>(&n);
+    auto end = p + sizeof(n);
+
+    for (; p != end; ++p) {
+      result = std::ranges::copy_n(hexdigits.data() + *p * 2, 2, result).out;
+    }
+  }
+
+  return result;
 }
 
 constinit const auto upper_hexdigits = []() {
