@@ -65,6 +65,7 @@ const MunitTest tests[]{
   munit_void_test(test_http2_construct_push_component),
   munit_void_test(test_http2_contains_trailers),
   munit_void_test(test_http2_check_transfer_encoding),
+  munit_void_test(test_http2_capitalize),
   munit_test_end(),
 };
 } // namespace
@@ -1185,6 +1186,96 @@ void test_http2_check_transfer_encoding(void) {
                                               "\x0a"
                                               R"(")"_sr));
   assert_false(http2::check_transfer_encoding(R"(chunked;foo="bar",,gzip)"_sr));
+}
+
+void test_http2_capitalize(void) {
+  MemchunkPool pool;
+  DefaultMemchunks m{&pool};
+  iovec iov;
+
+  {
+    http2::capitalize(&m, "content-length"_sr);
+    auto iovcnt = m.riovec(&iov, 1);
+
+    assert_int(1, ==, iovcnt);
+    assert_stdsv_equal(
+      "Content-Length"sv,
+      (std::string_view{static_cast<const char *>(iov.iov_base), iov.iov_len}));
+
+    m.reset();
+  }
+
+  {
+    http2::capitalize(&m, "altsvc"_sr);
+    auto iovcnt = m.riovec(&iov, 1);
+
+    assert_int(1, ==, iovcnt);
+    assert_stdsv_equal(
+      "Altsvc"sv,
+      (std::string_view{static_cast<const char *>(iov.iov_base), iov.iov_len}));
+
+    m.reset();
+  }
+
+  {
+    http2::capitalize(&m, "altsvc-"_sr);
+    auto iovcnt = m.riovec(&iov, 1);
+
+    assert_int(1, ==, iovcnt);
+    assert_stdsv_equal(
+      "Altsvc-"sv,
+      (std::string_view{static_cast<const char *>(iov.iov_base), iov.iov_len}));
+
+    m.reset();
+  }
+
+  {
+    http2::capitalize(&m, "alt--svc"_sr);
+    auto iovcnt = m.riovec(&iov, 1);
+
+    assert_int(1, ==, iovcnt);
+    assert_stdsv_equal(
+      "Alt--Svc"sv,
+      (std::string_view{static_cast<const char *>(iov.iov_base), iov.iov_len}));
+
+    m.reset();
+  }
+
+  {
+    http2::capitalize(&m, "sec-websocket----------------key"_sr);
+    auto iovcnt = m.riovec(&iov, 1);
+
+    assert_int(1, ==, iovcnt);
+    assert_stdsv_equal(
+      "Sec-Websocket----------------Key"sv,
+      (std::string_view{static_cast<const char *>(iov.iov_base), iov.iov_len}));
+
+    m.reset();
+  }
+
+  {
+    http2::capitalize(&m, "content--------------------length"_sr);
+    auto iovcnt = m.riovec(&iov, 1);
+
+    assert_int(1, ==, iovcnt);
+    assert_stdsv_equal(
+      "Content--------------------Length"sv,
+      (std::string_view{static_cast<const char *>(iov.iov_base), iov.iov_len}));
+
+    m.reset();
+  }
+
+  {
+    http2::capitalize(&m, "content--------------------length-"_sr);
+    auto iovcnt = m.riovec(&iov, 1);
+
+    assert_int(1, ==, iovcnt);
+    assert_stdsv_equal(
+      "Content--------------------Length-"sv,
+      (std::string_view{static_cast<const char *>(iov.iov_base), iov.iov_len}));
+
+    m.reset();
+  }
 }
 
 } // namespace shrpx
