@@ -376,7 +376,7 @@ std::span<char> copy_hex_low(std::span<const uint8_t> src,
 namespace {
 template <std::unsigned_integral T>
 std::span<char> copy(T n, std::span<char> dest) {
-  if (dest.size() < NGHTTP2_MAX_UINT64_DIGITS) {
+  if (dest.size() < std::numeric_limits<T>::digits10 + 1) {
     return dest.first(0);
   }
 
