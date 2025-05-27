@@ -54,6 +54,7 @@ munit_void_test_decl(test_http2_get_pure_path_component)
 munit_void_test_decl(test_http2_construct_push_component)
 munit_void_test_decl(test_http2_contains_trailers)
 munit_void_test_decl(test_http2_check_transfer_encoding)
+munit_void_test_decl(test_http2_capitalize)
 
 } // namespace shrpx
 

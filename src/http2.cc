@@ -249,15 +249,58 @@ StringRef stringify_status(BlockAllocator &balloc, unsigned int status_code) {
   }
 }
 
-void capitalize(DefaultMemchunks *buf, const StringRef &s) {
-  buf->append(util::upcase(s[0]));
-  for (size_t i = 1; i < s.size(); ++i) {
-    if (s[i - 1] == '-') {
-      buf->append(util::upcase(s[i]));
-    } else {
-      buf->append(s[i]);
+struct Capitalizer {
+  template <std::weakly_incrementable O>
+  requires(std::indirectly_writable<O, char>)
+  constexpr O operator()(const StringRef &s, O result) noexcept {
+    *result++ = util::upcase(s[0]);
+
+    for (size_t i = 1; i < s.size(); ++i) {
+      if (s[i - 1] == '-') {
+        *result++ = util::upcase(s[i]);
+      } else {
+        *result++ = s[i];
+      }
     }
+
+    return result;
   }
+};
+
+namespace {
+void capitalize_long(DefaultMemchunks *buf, const StringRef &s) {
+  buf->append(util::upcase(s[0]));
+
+  auto it = s.begin() + 1;
+
+  for (; it != s.end();) {
+    auto p = std::ranges::find(it, s.end(), '-');
+    p = std::ranges::find_if(p, s.end(), [](auto c) { return c != '-'; });
+
+    buf->append(it, p);
+
+    if (p == s.end()) {
+      return;
+    }
+
+    buf->append(util::upcase(*p));
+
+    it = p + 1;
+  }
+}
+} // namespace
+
+void capitalize(DefaultMemchunks *buf, const StringRef &s) {
+  assert(!s.empty());
+
+  constexpr size_t max_namelen = 32;
+
+  if (s.size() > max_namelen) {
+    capitalize_long(buf, s);
+    return;
+  }
+
+  buf->append(s.size(), std::bind_front(Capitalizer{}, s));
 }
 
 bool lws(const char *value) {
