@@ -113,20 +113,53 @@ public:
   Log &operator<<(const char *s);
   Log &operator<<(const StringRef &s);
   Log &operator<<(const ImmutableString &s);
-  Log &operator<<(short n) { return *this << static_cast<long long>(n); }
-  Log &operator<<(int n) { return *this << static_cast<long long>(n); }
-  Log &operator<<(long n) { return *this << static_cast<long long>(n); }
-  Log &operator<<(long long n);
-  Log &operator<<(unsigned short n) {
-    return *this << static_cast<unsigned long long>(n);
+  template <std::signed_integral T> Log &operator<<(T n) {
+    if (full_) {
+      return *this;
+    }
+
+    if (n >= 0) {
+      return *this << as_unsigned(n);
+    }
+
+    if (flags_ & fmt_hex) {
+      write_hex(as_unsigned(n));
+      return *this;
+    }
+
+    if (wleft() < std::numeric_limits<T>::digits10 + 1 + /* sign */ 1) {
+      full_ = true;
+      return *this;
+    }
+
+    *last_++ = '-';
+
+    last_ = util::utos(
+      static_cast<std::make_unsigned_t<T>>(0u - as_unsigned(n)), last_);
+    update_full();
+
+    return *this;
   }
-  Log &operator<<(unsigned int n) {
-    return *this << static_cast<unsigned long long>(n);
+  template <std::unsigned_integral T> Log &operator<<(T n) {
+    if (full_) {
+      return *this;
+    }
+
+    if (flags_ & fmt_hex) {
+      write_hex(n);
+      return *this;
+    }
+
+    if (wleft() < std::numeric_limits<T>::digits10 + 1) {
+      full_ = true;
+      return *this;
+    }
+
+    last_ = util::utos(n, last_);
+    update_full();
+
+    return *this;
   }
-  Log &operator<<(unsigned long n) {
-    return *this << static_cast<unsigned long long>(n);
-  }
-  Log &operator<<(unsigned long long n);
   Log &operator<<(float n) { return *this << static_cast<double>(n); }
   Log &operator<<(double n);
   Log &operator<<(long double n);
