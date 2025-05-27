@@ -214,25 +214,25 @@ void test_http2_build_http1_headers_from_headers(void) {
   http2::build_http1_headers_from_headers(&buf, headers,
                                           http2::HDOP_STRIP_X_FORWARDED_FOR);
   auto hdrs = std::string(buf.head->pos, buf.head->last);
-  assert_stdstring_equal("alpha: 0\r\n"
-                         "bravo: 1\r\n"
-                         "delta: 4\r\n"
-                         "expect: 5\r\n"
-                         "foxtrot: 6\r\n"
-                         "tango: 7\r\n"
-                         "te: 8\r\n"
-                         "te: 9\r\n"
-                         "zulu: 12\r\n",
+  assert_stdstring_equal("Alpha: 0\r\n"
+                         "Bravo: 1\r\n"
+                         "Delta: 4\r\n"
+                         "Expect: 5\r\n"
+                         "Foxtrot: 6\r\n"
+                         "Tango: 7\r\n"
+                         "Te: 8\r\n"
+                         "Te: 9\r\n"
+                         "Zulu: 12\r\n",
                          hdrs);
 
   buf.reset();
 
   http2::build_http1_headers_from_headers(&buf, headers2, http2::HDOP_NONE);
   hdrs = std::string(buf.head->pos, buf.head->last);
-  assert_stdstring_equal("x-forwarded-for: xff1\r\n"
-                         "x-forwarded-proto: xfp1\r\n"
-                         "forwarded: fwd1\r\n"
-                         "via: via1\r\n",
+  assert_stdstring_equal("X-Forwarded-For: xff1\r\n"
+                         "X-Forwarded-Proto: xfp1\r\n"
+                         "Forwarded: fwd1\r\n"
+                         "Via: via1\r\n",
                          hdrs);
 
   buf.reset();
