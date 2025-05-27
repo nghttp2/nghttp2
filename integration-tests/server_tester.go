@@ -208,7 +208,19 @@ func newServerTester(t *testing.T, opts options) *serverTester {
 	if opts.quic {
 		args = append(args,
 			fmt.Sprintf("-f127.0.0.1,%v;quic", serverPort),
-			"--no-quic-bpf")
+			"--no-quic-bpf",
+			// quic-go client just closes connection after
+			// receiving the first GOAWAY without any
+			// indication like sending CONNECTION_CLOSE if
+			// there is no active stream.  If that
+			// happens, server keeps resending 2nd GOAWAY
+			// until idle timeout passes.  If that happens
+			// during Close(), the process will be killed
+			// because the default idle timeout is longer
+			// than the close timeout.  Shorten the idle
+			// timeout to prevent it from happening.
+			"--frontend-quic-idle-timeout=5",
+		)
 	}
 
 	authority := fmt.Sprintf("127.0.0.1:%v", opts.connectPort)
