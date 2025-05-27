@@ -71,8 +71,6 @@ constexpr auto NGHTTP2_H2 = "h2"_sr;
 constexpr auto NGHTTP2_H1_1_ALPN = "\x8http/1.1"_sr;
 constexpr auto NGHTTP2_H1_1 = "http/1.1"_sr;
 
-constexpr size_t NGHTTP2_MAX_UINT64_DIGITS = str_size("18446744073709551615");
-
 namespace util {
 
 template <std::predicate<size_t> Pred>

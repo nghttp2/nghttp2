@@ -1071,7 +1071,7 @@ void HttpsUpstream::error_reply(unsigned int status_code) {
   output->append("\r\nServer: "sv);
   output->append(get_config()->http.server_name);
   output->append("\r\nContent-Length: "sv);
-  output->append(NGHTTP2_MAX_UINT64_DIGITS,
+  output->append(std::numeric_limits<decltype(html.size())>::digits10 + 1,
                  std::bind_front(util::UIntFormatter{}, html.size()));
   output->append("\r\nDate: "sv);
   auto lgconf = log_config();
