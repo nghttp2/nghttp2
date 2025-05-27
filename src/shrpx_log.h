@@ -215,14 +215,14 @@ public:
 
 private:
   size_t rleft() { return last_ - begin_; }
-  size_t wleft() { return end_ - last_; }
-  void update_full() { full_ = last_ == end_; }
+  size_t wleft() { return end_ - last_ - /* terminal NUL or LF */ 1; }
+  void update_full() { full_ = wleft() == 0; }
 
   LogBuffer &buf_;
   uint8_t *begin_;
   uint8_t *end_;
   uint8_t *last_;
-  const char *filename_;
+  StringRef filename_;
   uint32_t flags_;
   int severity_;
   int linenum_;

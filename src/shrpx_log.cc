@@ -63,12 +63,12 @@ constexpr StringRef SEVERITY_STR[] = {"INFO"_sr, "NOTICE"_sr, "WARN"_sr,
 } // namespace
 
 namespace {
-constexpr const char *SEVERITY_COLOR[] = {
-  "\033[1;32m", // INFO
-  "\033[1;36m", // NOTICE
-  "\033[1;33m", // WARN
-  "\033[1;31m", // ERROR
-  "\033[1;35m", // FATAL
+constexpr StringRef SEVERITY_COLOR[] = {
+  "\033[1;32m"_sr, // INFO
+  "\033[1;36m"_sr, // NOTICE
+  "\033[1;33m"_sr, // WARN
+  "\033[1;31m"_sr, // ERROR
+  "\033[1;35m"_sr, // FATAL
 };
 } // namespace
 
@@ -149,13 +149,11 @@ Log::Log(int severity, const char *filename, int linenum)
     flags_(0),
     severity_(severity),
     linenum_(linenum),
-    full_(false) {}
-
-Log::~Log() {
-  int rv;
+    full_(false) {
   auto config = get_config();
 
   if (!config) {
+    full_ = true;
     return;
   }
 
@@ -165,42 +163,82 @@ Log::~Log() {
 
   if (!log_enabled(severity_) ||
       (lgconf->errorlog_fd == -1 && !errorconf.syslog)) {
+    full_ = true;
     return;
   }
 
   if (errorconf.syslog) {
-    if (severity_ == NOTICE) {
-      syslog(severity_to_syslog_level(severity_), "[%s] %.*s",
-             SEVERITY_STR[severity_].data(), static_cast<int>(rleft()), begin_);
-    } else {
-      syslog(severity_to_syslog_level(severity_), "[%s] %.*s (%s:%d)",
-             SEVERITY_STR[severity_].data(), static_cast<int>(rleft()), begin_,
-             filename_, linenum_);
-    }
+    *last_++ = '[';
+    last_ = std::ranges::copy(SEVERITY_STR[severity_], last_).out;
+    last_ = std::ranges::copy("] "sv, last_).out;
 
     return;
   }
 
-  char buf[4_k];
   auto tty = lgconf->errorlog_tty;
 
   lgconf->update_tstamp_millis(std::chrono::system_clock::now());
 
   // Error log format: <datetime> <main-pid> <current-pid>
   // <thread-id> <level> (<filename>:<line>) <msg>
-  rv = snprintf(buf, sizeof(buf), "%s %d %d %s %s%s%s (%s:%d) %.*s\n",
-                lgconf->tstamp->time_iso8601.data(), config->pid, lgconf->pid,
-                lgconf->thread_id.c_str(), tty ? SEVERITY_COLOR[severity_] : "",
-                SEVERITY_STR[severity_].data(), tty ? "\033[0m" : "", filename_,
-                linenum_, static_cast<int>(rleft()), begin_);
+  last_ = std::ranges::copy(lgconf->tstamp->time_iso8601, last_).out;
+  *last_++ = ' ';
+  last_ = util::utos(as_unsigned(config->pid), last_);
+  *last_++ = ' ';
+  last_ = util::utos(as_unsigned(lgconf->pid), last_);
+  *last_++ = ' ';
+  last_ = std::ranges::copy(lgconf->thread_id, last_).out;
+  *last_++ = ' ';
 
-  if (rv < 0) {
+  if (tty) {
+    last_ = std::ranges::copy(SEVERITY_COLOR[severity_], last_).out;
+  }
+
+  last_ = std::ranges::copy(SEVERITY_STR[severity_], last_).out;
+
+  if (tty) {
+    last_ = std::ranges::copy("\033[0m"sv, last_).out;
+  }
+
+  last_ = std::ranges::copy(" ("sv, last_).out;
+  last_ = std::ranges::copy(filename_, last_).out;
+  *last_++ = ':';
+  last_ = util::utos(as_unsigned(linenum_), last_);
+  last_ = std::ranges::copy(") "sv, last_).out;
+}
+
+Log::~Log() {
+  if (last_ == begin_) {
     return;
   }
 
-  auto nwrite = std::min(static_cast<size_t>(rv), sizeof(buf) - 1);
+  auto config = get_config();
+  auto &errorconf = config->logging.error;
 
-  while (write(lgconf->errorlog_fd, buf, nwrite) == -1 && errno == EINTR)
+  if (errorconf.syslog) {
+    if (severity_ != NOTICE &&
+        wleft() >= " ("sv.size() + filename_.size() + /* : */ 1 +
+                     std::numeric_limits<decltype(linenum_)>::digits10 + 1 +
+                     /* ) */ 1) {
+      last_ = std::ranges::copy(" ("sv, last_).out;
+      last_ = std::ranges::copy(filename_, last_).out;
+      *last_++ = ':';
+      last_ = util::utos(as_unsigned(linenum_), last_);
+      *last_++ = ')';
+    }
+
+    *last_ = '\0';
+
+    syslog(severity_to_syslog_level(severity_), "%s", begin_);
+
+    return;
+  }
+
+  auto lgconf = log_config();
+
+  *last_++ = '\n';
+
+  while (write(lgconf->errorlog_fd, begin_, rleft()) == -1 && errno == EINTR)
     ;
 }
 
