@@ -77,8 +77,9 @@ Http2DownstreamConnection::~Http2DownstreamConnection() {
 
       auto &resp = downstream_->response();
 
-      http2session_->consume(downstream_->get_downstream_stream_id(),
-                             resp.unconsumed_body_length);
+      http2session_->consume(
+        static_cast<int32_t>(downstream_->get_downstream_stream_id()),
+        resp.unconsumed_body_length);
 
       resp.unconsumed_body_length = 0;
 
@@ -124,8 +125,9 @@ void Http2DownstreamConnection::detach_downstream(Downstream *downstream) {
       http2session_->signal_write();
     }
 
-    http2session_->consume(downstream_->get_downstream_stream_id(),
-                           resp.unconsumed_body_length);
+    http2session_->consume(
+      static_cast<int32_t>(downstream_->get_downstream_stream_id()),
+      resp.unconsumed_body_length);
 
     resp.unconsumed_body_length = 0;
 
@@ -155,7 +157,8 @@ int Http2DownstreamConnection::submit_rst_stream(Downstream *downstream,
                           << ", error_code=" << error_code;
       }
       rv = http2session_->submit_rst_stream(
-        downstream->get_downstream_stream_id(), error_code);
+        static_cast<int32_t>(downstream->get_downstream_stream_id()),
+        error_code);
     }
   }
   return rv;
@@ -222,7 +225,7 @@ nghttp2_ssize http2_data_read_callback(nghttp2_session *session,
     return NGHTTP2_ERR_DEFERRED;
   }
 
-  return nread;
+  return as_signed(nread);
 }
 } // namespace
 
@@ -366,7 +369,7 @@ int Http2DownstreamConnection::push_request_headers() {
     auto params = fwdconf.params;
 
     if (config->http2_proxy || req.regular_connect_method()) {
-      params &= ~FORWARDED_PROTO;
+      params &= static_cast<uint32_t>(~FORWARDED_PROTO);
     }
 
     auto value = http::create_forwarded(
@@ -562,8 +565,8 @@ int Http2DownstreamConnection::resume_read(IOCtrlReason reason,
   }
 
   if (consumed > 0) {
-    rv =
-      http2session_->consume(downstream_->get_downstream_stream_id(), consumed);
+    rv = http2session_->consume(
+      static_cast<int32_t>(downstream_->get_downstream_stream_id()), consumed);
 
     if (rv != 0) {
       return -1;

@@ -223,7 +223,8 @@ int Http1Session::on_read(const uint8_t *data, size_t len) {
                                        data);
 
   if (client_->worker->config->verbose) {
-    std::cout.write(reinterpret_cast<const char *>(data), nread);
+    std::cout.write(reinterpret_cast<const char *>(data),
+                    static_cast<std::streamsize>(nread));
   }
 
   if (htperr == HPE_PAUSED) {
@@ -272,7 +273,7 @@ int Http1Session::on_write() {
 
     req_stat->data_offset += nread;
 
-    wb.append(buf.data(), nread);
+    wb.append(buf.data(), as_unsigned(nread));
 
     if (client_->worker->config->verbose) {
       std::cout << "[send " << nread << " byte(s)]" << std::endl;

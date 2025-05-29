@@ -997,68 +997,73 @@ void test_util_contains(void) {
 
 void test_util_hex_to_uint(void) {
   for (size_t i = 0; i < 256; ++i) {
-    if (!util::is_hex_digit(i)) {
-      assert_uint32(256, ==, util::hex_to_uint(i));
+    auto c = static_cast<char>(i);
+    if (!util::is_hex_digit(c)) {
+      assert_uint32(256, ==, util::hex_to_uint(c));
     }
   }
 
-  for (size_t i = 0; i < 10; ++i) {
-    assert_uint32(i, ==, util::hex_to_uint('0' + i));
+  for (uint32_t i = 0; i < 10; ++i) {
+    assert_uint32(i, ==, util::hex_to_uint(static_cast<char>('0' + i)));
   }
 
-  for (size_t i = 0; i < 6; ++i) {
-    assert_uint32(i + 10, ==, util::hex_to_uint('A' + i));
+  for (uint32_t i = 0; i < 6; ++i) {
+    assert_uint32(i + 10, ==, util::hex_to_uint(static_cast<char>('A' + i)));
   }
 
-  for (size_t i = 0; i < 6; ++i) {
-    assert_uint32(i + 10, ==, util::hex_to_uint('a' + i));
+  for (uint32_t i = 0; i < 6; ++i) {
+    assert_uint32(i + 10, ==, util::hex_to_uint(static_cast<char>('a' + i)));
   }
 }
 
 void test_util_is_alpha(void) {
   for (size_t i = 0; i < 256; ++i) {
-    if (('A' <= i && i <= 'Z') || ('a' <= i && i <= 'z')) {
-      assert_true(util::is_alpha(i));
+    auto c = static_cast<char>(i);
+    if (('A' <= c && c <= 'Z') || ('a' <= c && c <= 'z')) {
+      assert_true(util::is_alpha(c));
     } else {
-      assert_false(util::is_alpha(i));
+      assert_false(util::is_alpha(c));
     }
   }
 }
 
 void test_util_is_digit(void) {
   for (size_t i = 0; i < 256; ++i) {
-    if ('0' <= i && i <= '9') {
-      assert_true(util::is_digit(i));
+    auto c = static_cast<char>(i);
+    if ('0' <= c && c <= '9') {
+      assert_true(util::is_digit(c));
     } else {
-      assert_false(util::is_digit(i));
+      assert_false(util::is_digit(c));
     }
   }
 }
 
 void test_util_is_hex_digit(void) {
   for (size_t i = 0; i < 256; ++i) {
-    if (util::is_digit(i) || ('A' <= i && i <= 'F') || ('a' <= i && i <= 'f')) {
-      assert_true(util::is_hex_digit(i));
+    auto c = static_cast<char>(i);
+    if (util::is_digit(c) || ('A' <= c && c <= 'F') || ('a' <= c && c <= 'f')) {
+      assert_true(util::is_hex_digit(c));
     } else {
-      assert_false(util::is_hex_digit(i));
+      assert_false(util::is_hex_digit(c));
     }
   }
 }
 
 void test_util_in_rfc3986_unreserved_chars(void) {
   for (size_t i = 0; i < 256; ++i) {
-    switch (i) {
+    auto c = static_cast<char>(i);
+    switch (c) {
     case '-':
     case '.':
     case '_':
     case '~':
-      assert_true(util::in_rfc3986_unreserved_chars(i));
+      assert_true(util::in_rfc3986_unreserved_chars(c));
       break;
     default:
-      if (util::is_digit(i) || util::is_alpha(i)) {
-        assert_true(util::in_rfc3986_unreserved_chars(i));
+      if (util::is_digit(c) || util::is_alpha(c)) {
+        assert_true(util::in_rfc3986_unreserved_chars(c));
       } else {
-        assert_false(util::in_rfc3986_unreserved_chars(i));
+        assert_false(util::in_rfc3986_unreserved_chars(c));
       }
     }
   }
@@ -1066,7 +1071,8 @@ void test_util_in_rfc3986_unreserved_chars(void) {
 
 void test_util_in_rfc3986_sub_delims(void) {
   for (size_t i = 0; i < 256; ++i) {
-    switch (i) {
+    auto c = static_cast<char>(i);
+    switch (c) {
     case '!':
     case '$':
     case '&':
@@ -1078,17 +1084,18 @@ void test_util_in_rfc3986_sub_delims(void) {
     case ',':
     case ';':
     case '=':
-      assert_true(util::in_rfc3986_sub_delims(i));
+      assert_true(util::in_rfc3986_sub_delims(c));
       break;
     default:
-      assert_false(util::in_rfc3986_sub_delims(i));
+      assert_false(util::in_rfc3986_sub_delims(c));
     }
   }
 }
 
 void test_util_in_token(void) {
   for (size_t i = 0; i < 256; ++i) {
-    switch (i) {
+    auto c = static_cast<char>(i);
+    switch (c) {
     case '!':
     case '#':
     case '$':
@@ -1104,13 +1111,13 @@ void test_util_in_token(void) {
     case '`':
     case '|':
     case '~':
-      assert_true(util::in_token(i));
+      assert_true(util::in_token(c));
       break;
     default:
-      if (util::is_digit(i) || util::is_alpha(i)) {
-        assert_true(util::in_token(i));
+      if (util::is_digit(c) || util::is_alpha(c)) {
+        assert_true(util::in_token(c));
       } else {
-        assert_false(util::in_token(i));
+        assert_false(util::in_token(c));
       }
     }
   }
@@ -1118,17 +1125,18 @@ void test_util_in_token(void) {
 
 void test_util_in_attr_char(void) {
   for (size_t i = 0; i < 256; ++i) {
-    switch (i) {
+    auto c = static_cast<char>(i);
+    switch (c) {
     case '%':
     case '\'':
     case '*':
-      assert_false(util::in_attr_char(i));
+      assert_false(util::in_attr_char(c));
       break;
     default:
-      if (util::in_token(i)) {
-        assert_true(util::in_attr_char(i));
+      if (util::in_token(c)) {
+        assert_true(util::in_attr_char(c));
       } else {
-        assert_false(util::in_attr_char(i));
+        assert_false(util::in_attr_char(c));
       }
     }
   }
@@ -1136,10 +1144,11 @@ void test_util_in_attr_char(void) {
 
 void test_util_upcase(void) {
   for (size_t i = 0; i < 256; ++i) {
-    if ('a' <= i && i <= 'z') {
-      assert_char(i - 'a' + 'A', ==, util::upcase(i));
+    auto c = static_cast<char>(i);
+    if ('a' <= c && c <= 'z') {
+      assert_char(static_cast<char>(c - 'a' + 'A'), ==, util::upcase(c));
     } else {
-      assert_char(i, ==, util::upcase(i));
+      assert_char(c, ==, util::upcase(c));
     }
   }
 }

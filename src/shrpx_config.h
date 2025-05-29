@@ -702,7 +702,7 @@ struct TLSConfig {
   BIO_METHOD *bio_method;
   // Bit mask to disable SSL/TLS protocol versions.  This will be
   // passed to SSL_CTX_set_options().
-  long int tls_proto_mask;
+  nghttp2_ssl_op_type tls_proto_mask;
   StringRef backend_sni_name;
   std::chrono::seconds session_timeout;
   StringRef private_key_file;
@@ -1102,7 +1102,7 @@ struct Config {
   // Ignore mruby compile error for per-pattern mruby script.
   bool ignore_per_pattern_mruby_error;
   // flags passed to ev_default_loop() and ev_loop_new()
-  int ev_loop_flags;
+  uint32_t ev_loop_flags;
   size_t max_worker_processes;
   ev_tstamp worker_process_grace_shutdown_period;
 };

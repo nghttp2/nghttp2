@@ -96,7 +96,7 @@ SSL_CTX *create_ssl_client_context(
   const StringRef &private_key_file);
 
 ClientHandler *accept_connection(Worker *worker, int fd, sockaddr *addr,
-                                 int addrlen, const UpstreamAddr *faddr);
+                                 socklen_t addrlen, const UpstreamAddr *faddr);
 
 // Check peer's certificate against given |address| and |host|.
 int check_cert(SSL *ssl, const Address *addr, const StringRef &host);
@@ -199,7 +199,8 @@ bool check_http2_requirement(SSL *ssl);
 // Returns SSL/TLS option mask to disable SSL/TLS protocol version not
 // included in |tls_proto_list|.  The returned mask can be directly
 // passed to SSL_CTX_set_options().
-long int create_tls_proto_mask(const std::vector<StringRef> &tls_proto_list);
+nghttp2_ssl_op_type
+create_tls_proto_mask(const std::vector<StringRef> &tls_proto_list);
 
 int set_alpn_prefs(std::vector<unsigned char> &out,
                    const std::vector<StringRef> &protos);

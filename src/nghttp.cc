@@ -99,8 +99,8 @@ Config::Config()
     verify_peer(true),
     ktls(false) {
   nghttp2_option_new(&http2_option);
-  nghttp2_option_set_peer_max_concurrent_streams(http2_option,
-                                                 peer_max_concurrent_streams);
+  nghttp2_option_set_peer_max_concurrent_streams(
+    http2_option, static_cast<uint32_t>(peer_max_concurrent_streams));
   nghttp2_option_set_builtin_recv_extension_type(http2_option, NGHTTP2_ALTSVC);
   nghttp2_option_set_builtin_recv_extension_type(http2_option, NGHTTP2_ORIGIN);
 }
@@ -124,8 +124,7 @@ std::string strip_fragment(const char *raw_uri) {
   const char *end;
   for (end = raw_uri; *end && *end != '#'; ++end)
     ;
-  size_t len = end - raw_uri;
-  return std::string(raw_uri, len);
+  return std::string(raw_uri, end);
 }
 } // namespace
 
@@ -297,19 +296,19 @@ bool Request::is_ipv6_literal_addr() const {
 }
 
 Headers::value_type *Request::get_res_header(int32_t token) {
-  auto idx = res_hdidx[token];
+  auto idx = res_hdidx[static_cast<size_t>(token)];
   if (idx == -1) {
     return nullptr;
   }
-  return &res_nva[idx];
+  return &res_nva[static_cast<size_t>(idx)];
 }
 
 Headers::value_type *Request::get_req_header(int32_t token) {
-  auto idx = req_hdidx[token];
+  auto idx = req_hdidx[static_cast<size_t>(token)];
   if (idx == -1) {
     return nullptr;
   }
-  return &req_nva[idx];
+  return &req_nva[static_cast<size_t>(idx)];
 }
 
 void Request::record_request_start_time() {
@@ -663,8 +662,9 @@ int HttpClient::initiate_connection() {
 
       auto param = SSL_get0_param(ssl);
       X509_VERIFY_PARAM_set_hostflags(param, 0);
-      X509_VERIFY_PARAM_set1_host(param, host_string.c_str(),
-                                  host_string.size());
+      X509_VERIFY_PARAM_set1_host(
+        param, host_string.c_str(),
+        static_cast<nghttp2_ssl_verify_host_length_type>(host_string.size()));
       SSL_set_verify(ssl, SSL_VERIFY_PEER, verify_cb);
 
       if (!util::numeric_host(host_string.c_str())) {
@@ -765,7 +765,7 @@ int HttpClient::read_clear() {
       return -1;
     }
 
-    if (on_readfn(*this, buf.data(), nread) != 0) {
+    if (on_readfn(*this, buf.data(), as_unsigned(nread)) != 0) {
       return -1;
     }
   }
@@ -801,7 +801,7 @@ int HttpClient::write_clear() {
       return -1;
     }
 
-    wb.drain(nwrite);
+    wb.drain(as_unsigned(nwrite));
   }
 
   ev_io_stop(loop, &wev);
@@ -879,7 +879,7 @@ size_t populate_settings(nghttp2_settings_entry *iv) {
   size_t niv = 3;
 
   iv[0].settings_id = NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS;
-  iv[0].value = config.max_concurrent_streams;
+  iv[0].value = static_cast<uint32_t>(config.max_concurrent_streams);
 
   iv[1].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
   if (config.window_bits != -1) {
@@ -894,12 +894,12 @@ size_t populate_settings(nghttp2_settings_entry *iv) {
   if (config.header_table_size >= 0) {
     if (config.min_header_table_size < config.header_table_size) {
       iv[niv].settings_id = NGHTTP2_SETTINGS_HEADER_TABLE_SIZE;
-      iv[niv].value = config.min_header_table_size;
+      iv[niv].value = static_cast<uint32_t>(config.min_header_table_size);
       ++niv;
     }
 
     iv[niv].settings_id = NGHTTP2_SETTINGS_HEADER_TABLE_SIZE;
-    iv[niv].value = config.header_table_size;
+    iv[niv].value = static_cast<uint32_t>(config.header_table_size);
     ++niv;
   }
 
@@ -925,7 +925,7 @@ int HttpClient::on_upgrade_connect() {
   if (rv < 0) {
     return -1;
   }
-  settings_payloadlen = rv;
+  settings_payloadlen = as_unsigned(rv);
   auto token68 =
     base64::encode(std::span{settings_payload.data(), settings_payloadlen});
   util::to_token68(token68);
@@ -1021,7 +1021,8 @@ int HttpClient::on_upgrade_read(const uint8_t *data, size_t len) {
                                        data);
 
   if (config.verbose) {
-    std::cout.write(reinterpret_cast<const char *>(data), nread);
+    std::cout.write(reinterpret_cast<const char *>(data),
+                    static_cast<std::streamsize>(nread));
   }
 
   if (htperr != HPE_OK && htperr != HPE_PAUSED_UPGRADE) {
@@ -1173,7 +1174,7 @@ int HttpClient::on_read(const uint8_t *data, size_t len) {
   auto rv = nghttp2_session_mem_recv2(session, data, len);
   if (rv < 0) {
     std::cerr << "[ERROR] nghttp2_session_mem_recv2() returned error: "
-              << nghttp2_strerror(rv) << std::endl;
+              << nghttp2_strerror(static_cast<int>(rv)) << std::endl;
     return -1;
   }
 
@@ -1199,7 +1200,7 @@ int HttpClient::on_write() {
     auto len = nghttp2_session_mem_send2(session, &data);
     if (len < 0) {
       std::cerr << "[ERROR] nghttp2_session_send2() returned error: "
-                << nghttp2_strerror(len) << std::endl;
+                << nghttp2_strerror(static_cast<int>(len)) << std::endl;
       return -1;
     }
 
@@ -1207,7 +1208,7 @@ int HttpClient::on_write() {
       break;
     }
 
-    wb.append(data, len);
+    wb.append(data, as_unsigned(len));
   }
 
   if (nghttp2_session_want_read(session) == 0 &&
@@ -1284,7 +1285,7 @@ int HttpClient::read_tls() {
       }
     }
 
-    if (on_readfn(*this, buf.data(), rv) != 0) {
+    if (on_readfn(*this, buf.data(), static_cast<size_t>(rv)) != 0) {
       return -1;
     }
   }
@@ -1308,7 +1309,7 @@ int HttpClient::write_tls() {
       break;
     }
 
-    auto rv = SSL_write(ssl, iov.iov_base, iov.iov_len);
+    auto rv = SSL_write(ssl, iov.iov_base, static_cast<int>(iov.iov_len));
 
     if (rv <= 0) {
       auto err = SSL_get_error(ssl, rv);
@@ -1325,7 +1326,7 @@ int HttpClient::write_tls() {
       }
     }
 
-    wb.drain(rv);
+    wb.drain(static_cast<size_t>(rv));
   }
 
   ev_io_stop(loop, &wev);
@@ -1441,14 +1442,16 @@ void HttpClient::output_har(FILE *outfile) {
   auto entries = json_array();
   json_object_set_new(log, "entries", entries);
 
-  auto dns_delta = std::chrono::duration_cast<std::chrono::microseconds>(
-                     timing.domain_lookup_end_time - timing.start_time)
-                     .count() /
-                   1000.0;
+  auto dns_delta =
+    static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(
+                          timing.domain_lookup_end_time - timing.start_time)
+                          .count()) /
+    1000.0;
   auto connect_delta =
-    std::chrono::duration_cast<std::chrono::microseconds>(
-      timing.connect_end_time - timing.domain_lookup_end_time)
-      .count() /
+    static_cast<double>(
+      std::chrono::duration_cast<std::chrono::microseconds>(
+        timing.connect_end_time - timing.domain_lookup_end_time)
+        .count()) /
     1000.0;
 
   for (size_t i = 0; i < reqvec.size(); ++i) {
@@ -1470,22 +1473,25 @@ void HttpClient::output_har(FILE *outfile) {
               req_timing.request_start_time - timing.start_time);
 
     auto wait_delta =
-      std::chrono::duration_cast<std::chrono::microseconds>(
-        req_timing.response_start_time - req_timing.request_start_time)
-        .count() /
+      static_cast<double>(
+        std::chrono::duration_cast<std::chrono::microseconds>(
+          req_timing.response_start_time - req_timing.request_start_time)
+          .count()) /
       1000.0;
     auto receive_delta =
-      std::chrono::duration_cast<std::chrono::microseconds>(
-        req_timing.response_end_time - req_timing.response_start_time)
-        .count() /
+      static_cast<double>(
+        std::chrono::duration_cast<std::chrono::microseconds>(
+          req_timing.response_end_time - req_timing.response_start_time)
+          .count()) /
       1000.0;
 
     auto time_sum =
-      std::chrono::duration_cast<std::chrono::microseconds>(
-        (i == 0)
-          ? (req_timing.response_end_time - timing.start_time)
-          : (req_timing.response_end_time - req_timing.request_start_time))
-        .count() /
+      static_cast<double>(
+        std::chrono::duration_cast<std::chrono::microseconds>(
+          (i == 0)
+            ? (req_timing.response_end_time - timing.start_time)
+            : (req_timing.response_end_time - req_timing.request_start_time))
+          .count()) /
       1000.0;
 
     json_object_set_new(
@@ -1668,7 +1674,8 @@ int on_data_chunk_recv_callback(nghttp2_session *session, uint8_t flags,
       }
 
       if (!config.null_out) {
-        std::cout.write(reinterpret_cast<const char *>(out.data()), outlen);
+        std::cout.write(reinterpret_cast<const char *>(out.data()),
+                        static_cast<std::streamsize>(outlen));
       }
 
       update_html_parser(client, req, out.data(), outlen, 0);
@@ -1680,7 +1687,8 @@ int on_data_chunk_recv_callback(nghttp2_session *session, uint8_t flags,
   }
 
   if (!config.null_out) {
-    std::cout.write(reinterpret_cast<const char *>(data), len);
+    std::cout.write(reinterpret_cast<const char *>(data),
+                    static_cast<std::streamsize>(len));
   }
 
   update_html_parser(client, req, data, len, 0);
@@ -1693,7 +1701,7 @@ namespace {
 nghttp2_ssize select_padding_callback(nghttp2_session *session,
                                       const nghttp2_frame *frame,
                                       size_t max_payload, void *user_data) {
-  return std::min(max_payload, frame->hd.length + config.padding);
+  return as_signed(std::min(max_payload, frame->hd.length + config.padding));
 }
 } // namespace
 
@@ -2180,9 +2188,10 @@ int communicate(
       goto fin;
     }
 
-    auto ssl_opts = (SSL_OP_ALL & ~SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS) |
-                    SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_COMPRESSION |
-                    SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION;
+    auto ssl_opts = static_cast<nghttp2_ssl_op_type>(
+      (SSL_OP_ALL & ~SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS) | SSL_OP_NO_SSLv2 |
+      SSL_OP_NO_SSLv3 | SSL_OP_NO_COMPRESSION |
+      SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION);
 
 #ifdef SSL_OP_ENABLE_KTLS
     if (config.ktls) {
@@ -2471,7 +2480,7 @@ int run(char **uris, int n) {
                       << std::endl;
             return 1;
           }
-          while ((wret = write(data_fd, buf.data(), rret)) == -1 &&
+          while ((wret = write(data_fd, buf.data(), as_unsigned(rret))) == -1 &&
                  errno == EINTR)
             ;
           if (wret != rret) {
@@ -2747,7 +2756,7 @@ int main(int argc, char **argv) {
         std::cerr << "-M: Bad option value: " << optarg << std::endl;
         exit(EXIT_FAILURE);
       }
-      config.peer_max_concurrent_streams = *n;
+      config.peer_max_concurrent_streams = static_cast<size_t>(*n);
       break;
     }
     case 'O':
@@ -2762,7 +2771,7 @@ int main(int argc, char **argv) {
         std::cerr << "-b: Bad option value: " << optarg << std::endl;
         exit(EXIT_FAILURE);
       }
-      config.padding = *n;
+      config.padding = static_cast<size_t>(*n);
       break;
     }
     case 'n':
@@ -2805,9 +2814,9 @@ int main(int argc, char **argv) {
         exit(EXIT_FAILURE);
       }
       if (c == 'w') {
-        config.window_bits = *n;
+        config.window_bits = static_cast<int>(*n);
       } else {
-        config.connection_window_bits = *n;
+        config.connection_window_bits = static_cast<int>(*n);
       }
       break;
     }
@@ -2855,7 +2864,7 @@ int main(int argc, char **argv) {
         std::cerr << "-m: Bad option value: " << optarg << std::endl;
         exit(EXIT_FAILURE);
       }
-      config.multiply = *n;
+      config.multiply = static_cast<int>(*n);
       break;
     }
     case 'c': {
@@ -2950,7 +2959,7 @@ int main(int argc, char **argv) {
                     << std::endl;
           exit(EXIT_FAILURE);
         }
-        config.max_concurrent_streams = *n;
+        config.max_concurrent_streams = static_cast<size_t>(*n);
         break;
       }
       case 13:
@@ -3014,8 +3023,8 @@ int main(int argc, char **argv) {
   if (!config.extpris.empty()) {
     extpri_to_fill = config.extpris.back();
   }
-  config.extpris.insert(std::ranges::end(config.extpris), argc - optind,
-                        extpri_to_fill);
+  config.extpris.insert(std::ranges::end(config.extpris),
+                        static_cast<size_t>(argc - optind), extpri_to_fill);
 
   // Find scheme overridden by extra header fields.
   auto scheme_it = std::ranges::find_if(
@@ -3052,11 +3061,13 @@ int main(int argc, char **argv) {
   set_color_output(color || isatty(fileno(stdout)));
 
   nghttp2_option_set_peer_max_concurrent_streams(
-    config.http2_option, config.peer_max_concurrent_streams);
+    config.http2_option,
+    static_cast<uint32_t>(config.peer_max_concurrent_streams));
 
   if (config.encoder_header_table_size != -1) {
     nghttp2_option_set_max_deflate_dynamic_table_size(
-      config.http2_option, config.encoder_header_table_size);
+      config.http2_option,
+      static_cast<size_t>(config.encoder_header_table_size));
   }
 
   struct sigaction act {};

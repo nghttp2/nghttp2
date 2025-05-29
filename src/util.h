@@ -223,15 +223,15 @@ constinit const auto hex_to_uint_tbl = []() {
   std::ranges::fill(tbl, 256);
 
   for (char i = '0'; i <= '9'; ++i) {
-    tbl[static_cast<uint8_t>(i)] = i - '0';
+    tbl[static_cast<uint8_t>(i)] = static_cast<uint32_t>(i - '0');
   }
 
   for (char i = 'A'; i <= 'F'; ++i) {
-    tbl[static_cast<uint8_t>(i)] = i - 'A' + 10;
+    tbl[static_cast<uint8_t>(i)] = static_cast<uint32_t>(i - 'A' + 10);
   }
 
   for (char i = 'a'; i <= 'f'; ++i) {
-    tbl[static_cast<uint8_t>(i)] = i - 'a' + 10;
+    tbl[static_cast<uint8_t>(i)] = static_cast<uint32_t>(i - 'a' + 10);
   }
 
   return tbl;
@@ -246,25 +246,28 @@ constexpr uint32_t hex_to_uint(char c) noexcept {
 template <std::input_iterator I, std::weakly_incrementable O>
 requires(std::indirectly_copyable<I, O>)
 constexpr O percent_decode(I first, I last, O result) {
+  using result_type = std::iter_value_t<O>;
+
   for (; first != last; ++first) {
     if (*first != '%') {
-      *result++ = *first;
+      *result++ = static_cast<result_type>(*first);
       continue;
     }
 
     auto dig1 = std::ranges::next(first, 1);
     if (dig1 == last || !is_hex_digit(*dig1)) {
-      *result++ = *first;
+      *result++ = static_cast<result_type>(*first);
       continue;
     }
 
     auto dig2 = std::ranges::next(dig1, 1);
     if (dig2 == last || !is_hex_digit(*dig2)) {
-      *result++ = *first;
+      *result++ = static_cast<result_type>(*first);
       continue;
     }
 
-    *result++ = (hex_to_uint(*dig1) << 4) | hex_to_uint(*dig2);
+    *result++ =
+      static_cast<result_type>((hex_to_uint(*dig1) << 4) | hex_to_uint(*dig2));
 
     first = dig2;
   }
@@ -276,12 +279,13 @@ template <std::input_iterator I>
 constexpr std::string percent_decode(I first, I last) {
   std::string result;
 
-  result.resize(std::ranges::distance(first, last));
+  result.resize(as_unsigned(std::ranges::distance(first, last)));
 
   auto p = percent_decode(std::move(first), std::move(last),
                           std::ranges::begin(result));
 
-  result.resize(std::ranges::distance(std::ranges::begin(result), p));
+  result.resize(
+    as_unsigned(std::ranges::distance(std::ranges::begin(result), p)));
 
   return result;
 }
@@ -295,7 +299,7 @@ constexpr std::string percent_decode(R &&r) {
 template <std::ranges::input_range R>
 requires(!std::is_array_v<std::remove_cvref_t<R>>)
 StringRef percent_decode(BlockAllocator &balloc, R &&r) {
-  auto iov = make_byte_ref(balloc, std::ranges::distance(r) + 1);
+  auto iov = make_byte_ref(balloc, std::ranges::size(r) + 1);
 
   auto p = percent_decode(std::ranges::begin(r), std::ranges::end(r),
                           std::ranges::begin(iov));
@@ -317,7 +321,7 @@ constexpr O quote_string(I first, I last, O result) noexcept {
       *result++ = '\\';
       *result++ = '"';
     } else {
-      *result++ = *first;
+      *result++ = static_cast<std::iter_value_t<O>>(*first);
     }
   }
 
@@ -341,7 +345,8 @@ StringRef quote_string(BlockAllocator &balloc, R &&r) {
     return make_string_ref(balloc, std::forward<R>(r));
   }
 
-  auto iov = make_byte_ref(balloc, std::ranges::distance(r) + cnt + 1);
+  auto iov =
+    make_byte_ref(balloc, std::ranges::size(r) + static_cast<size_t>(cnt) + 1);
   auto p = quote_string(std::forward<R>(r), std::ranges::begin(iov));
 
   *p = '\0';
@@ -416,7 +421,7 @@ template <std::ranges::input_range R>
 requires(!std::is_array_v<std::remove_cvref_t<R>> &&
          sizeof(std::ranges::range_value_t<R>) == sizeof(uint8_t))
 StringRef format_hex(BlockAllocator &balloc, R &&r) {
-  auto iov = make_byte_ref(balloc, std::ranges::distance(r) * 2 + 1);
+  auto iov = make_byte_ref(balloc, std::ranges::size(r) * 2 + 1);
   auto p = format_hex(std::forward<R>(r), std::ranges::begin(iov));
 
   *p = '\0';
@@ -431,7 +436,7 @@ requires(!std::is_array_v<std::remove_cvref_t<R>> &&
 constexpr std::string format_hex(R &&r) {
   std::string res;
 
-  res.resize(std::ranges::distance(r) * 2);
+  res.resize(as_unsigned(std::ranges::distance(r) * 2));
 
   format_hex(std::forward<R>(r), std::ranges::begin(res));
 
@@ -493,8 +498,8 @@ template <std::input_iterator I, std::weakly_incrementable O>
 requires(std::indirectly_writable<O, uint8_t>)
 constexpr O decode_hex(I first, I last, O result) {
   for (; first != last; first = std::ranges::next(first, 2)) {
-    *result++ = static_cast<uint8_t>((hex_to_uint(*first) << 4) |
-                                     hex_to_uint(*std::ranges::next(first, 1)));
+    *result++ = static_cast<std::iter_value_t<O>>(
+      (hex_to_uint(*first) << 4) | hex_to_uint(*std::ranges::next(first, 1)));
   }
 
   return result;
@@ -518,7 +523,8 @@ constexpr O decode_hex(R &&r, O result) {
 // is_hex_string(|first|, |last|) == true.
 template <std::input_iterator I>
 std::span<const uint8_t> decode_hex(BlockAllocator &balloc, I first, I last) {
-  auto iov = make_byte_ref(balloc, std::ranges::distance(first, last) / 2);
+  auto iov =
+    make_byte_ref(balloc, as_unsigned(std::ranges::distance(first, last) / 2));
   auto p =
     decode_hex(std::move(first), std::move(last), std::ranges::begin(iov));
 
@@ -539,11 +545,13 @@ std::span<const uint8_t> decode_hex(BlockAllocator &balloc, R &&r) {
 template <std::input_iterator I, std::weakly_incrementable O>
 requires(std::indirectly_copyable<I, O>)
 constexpr O percent_encode_token(I first, I last, O result) noexcept {
-  for (; first != last; ++first) {
-    uint8_t c = *first;
+  using result_type = std::iter_value_t<O>;
 
-    if (c != '%' && in_token(c)) {
-      *result++ = c;
+  for (; first != last; ++first) {
+    auto c = static_cast<uint8_t>(*first);
+
+    if (c != '%' && in_token(as_signed(c))) {
+      *result++ = static_cast<result_type>(c);
       continue;
     }
 
@@ -595,9 +603,9 @@ constinit const auto upcase_tbl = []() {
 
   for (size_t i = 0; i < 256; ++i) {
     if ('a' <= i && i <= 'z') {
-      tbl[i] = i - 'a' + 'A';
+      tbl[i] = static_cast<char>(i - 'a' + 'A');
     } else {
-      tbl[i] = i;
+      tbl[i] = static_cast<char>(i);
     }
   }
 
@@ -731,9 +739,9 @@ constinit const auto count_digit_tbl = []() {
 // credit:
 // https://lemire.me/blog/2025/01/07/counting-the-digits-of-64-bit-integers/
 template <std::unsigned_integral T> constexpr size_t count_digit(T x) {
-  auto y = 19 * (std::numeric_limits<T>::digits - 1 -
-                 std::countl_zero(static_cast<T>(x | 1))) >>
-           6;
+  auto y = static_cast<size_t>(19 * (std::numeric_limits<T>::digits - 1 -
+                                     std::countl_zero(static_cast<T>(x | 1))) >>
+                               6);
 
   y += x > count_digit_tbl[y];
 
@@ -744,8 +752,8 @@ constinit const auto utos_digits = []() {
   std::array<char, 200> a;
 
   for (size_t i = 0; i < 100; ++i) {
-    a[i * 2] = '0' + i / 10;
-    a[i * 2 + 1] = '0' + (i % 10);
+    a[i * 2] = '0' + static_cast<char>(i / 10);
+    a[i * 2 + 1] = '0' + static_cast<char>(i % 10);
   }
 
   return a;
@@ -755,8 +763,10 @@ struct UIntFormatter {
   template <std::unsigned_integral T, std::weakly_incrementable O>
   requires(std::indirectly_writable<O, char>)
   constexpr O operator()(T n, O result) {
+    using result_type = std::iter_value_t<O>;
+
     if (n < 10) {
-      *result++ = '0' + n;
+      *result++ = static_cast<result_type>('0' + static_cast<char>(n));
       return result;
     }
 
@@ -764,8 +774,8 @@ struct UIntFormatter {
       return std::ranges::copy_n(utos_digits.data() + n * 2, 2, result).out;
     }
 
-    std::ranges::advance(result,
-                         count_digit(static_cast<std::make_unsigned_t<T>>(n)));
+    std::ranges::advance(
+      result, as_signed(count_digit(static_cast<std::make_unsigned_t<T>>(n))));
 
     auto p = result;
 
@@ -775,7 +785,7 @@ struct UIntFormatter {
     }
 
     if (n < 10) {
-      *--p = '0' + n;
+      *--p = static_cast<result_type>('0' + static_cast<char>(n));
       return result;
     }
 
@@ -864,6 +874,8 @@ struct CompactHexFormatter {
   template <std::integral T, std::weakly_incrementable O>
   requires(std::indirectly_writable<O, char>)
   O operator()(T n, O result) {
+    using result_type = std::iter_value_t<O>;
+
     if (n == 0) {
       *result++ = '0';
       return result;
@@ -880,7 +892,7 @@ struct CompactHexFormatter {
       assert(p != end);
 
       if (*(p - 1) < 16) {
-        *result++ = upper_hexdigits[*--p * 2 + 1];
+        *result++ = static_cast<result_type>(upper_hexdigits[*--p * 2 + 1]);
       }
 
       for (; p != end; --p) {
@@ -894,7 +906,7 @@ struct CompactHexFormatter {
         ;
 
       if (*p < 16) {
-        *result++ = upper_hexdigits[*p++ * 2 + 1];
+        *result++ = static_cast<result_type>(upper_hexdigits[*p++ * 2 + 1]);
       }
 
       for (; p != end; ++p) {
@@ -975,7 +987,7 @@ std::string ascii_dump(const uint8_t *data, size_t len);
 // argv[0].  If non-null is returned, it is NULL-terminated string and
 // dynamically allocated by malloc.  The caller is responsible to free
 // it.
-char *get_exec_path(int argc, char **const argv, const char *cwd);
+char *get_exec_path(size_t argc, char **const argv, const char *cwd);
 
 // Validates path so that it does not contain directory traversal
 // vector.  Returns true if path is safe.  The |path| must start with
@@ -1259,7 +1271,7 @@ OutputIt random_alpha_digit(OutputIt first, OutputIt last, Generator &gen) {
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
   std::uniform_int_distribution<> dis(0, 26 * 2 + 10 - 1);
   for (; first != last; ++first) {
-    *first = s[dis(gen)];
+    *first = static_cast<std::iter_value_t<OutputIt>>(s[dis(gen)]);
   }
   return first;
 }
@@ -1282,7 +1294,7 @@ void shuffle(I first, I last, Generator &&gen, Swap swap) {
     return;
   }
 
-  using dist_type = std::uniform_int_distribution<size_t>;
+  using dist_type = std::uniform_int_distribution<decltype(len)>;
   using param_type = dist_type::param_type;
 
   dist_type d;

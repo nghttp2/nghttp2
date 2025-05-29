@@ -120,7 +120,7 @@ namespace {
 template <std::weakly_incrementable O>
 requires(std::indirectly_writable<O, char>)
 O cpydig3(uint32_t n, O result) {
-  *result++ = '0' + (n / 100) % 10;
+  *result++ = '0' + static_cast<char>((n / 100) % 10);
   return std::ranges::copy_n(utos_digits.data() + (n % 100) * 2, 2, result).out;
 }
 } // namespace
@@ -209,7 +209,7 @@ StringRef format_iso8601(char *out,
 
   auto p = out;
 
-  p = cpydig4(static_cast<int>(ymd.year()), p);
+  p = cpydig4(as_unsigned(static_cast<int>(ymd.year())), p);
   *p++ = '-';
   p = cpydig2(static_cast<uint32_t>(ymd.month()), p);
   *p++ = '-';
@@ -218,13 +218,13 @@ StringRef format_iso8601(char *out,
 
   auto hms = std::chrono::hh_mm_ss{lt - days};
 
-  p = cpydig2(hms.hours().count(), p);
+  p = cpydig2(static_cast<uint32_t>(hms.hours().count()), p);
   *p++ = ':';
-  p = cpydig2(hms.minutes().count(), p);
+  p = cpydig2(static_cast<uint32_t>(hms.minutes().count()), p);
   *p++ = ':';
-  p = cpydig2(hms.seconds().count(), p);
+  p = cpydig2(static_cast<uint32_t>(hms.seconds().count()), p);
   *p++ = '.';
-  p = cpydig3(hms.subseconds().count(), p);
+  p = cpydig3(static_cast<uint32_t>(hms.subseconds().count()), p);
 
   auto sys_info = zt.get_info();
   auto gmtoff =
@@ -238,9 +238,9 @@ StringRef format_iso8601(char *out,
       *p++ = '-';
       gmtoff = -gmtoff;
     }
-    p = cpydig2(gmtoff / 60, p);
+    p = cpydig2(static_cast<uint32_t>(gmtoff / 60), p);
     *p++ = ':';
-    p = cpydig2((gmtoff % 60), p);
+    p = cpydig2(static_cast<uint32_t>(gmtoff % 60), p);
   }
 
   *p = '\0';
@@ -265,18 +265,18 @@ StringRef format_iso8601_basic(char *out,
 
   auto p = out;
 
-  p = cpydig4(static_cast<int>(ymd.year()), p);
+  p = cpydig4(as_unsigned(static_cast<int>(ymd.year())), p);
   p = cpydig2(static_cast<uint32_t>(ymd.month()), p);
   p = cpydig2(static_cast<uint32_t>(ymd.day()), p);
   *p++ = 'T';
 
   auto hms = std::chrono::hh_mm_ss{lt - days};
 
-  p = cpydig2(hms.hours().count(), p);
-  p = cpydig2(hms.minutes().count(), p);
-  p = cpydig2(hms.seconds().count(), p);
+  p = cpydig2(static_cast<uint32_t>(hms.hours().count()), p);
+  p = cpydig2(static_cast<uint32_t>(hms.minutes().count()), p);
+  p = cpydig2(static_cast<uint32_t>(hms.seconds().count()), p);
   *p++ = '.';
-  p = cpydig3(hms.subseconds().count(), p);
+  p = cpydig3(static_cast<uint32_t>(hms.subseconds().count()), p);
 
   auto sys_info = zt.get_info();
   auto gmtoff =
@@ -290,8 +290,8 @@ StringRef format_iso8601_basic(char *out,
       *p++ = '-';
       gmtoff = -gmtoff;
     }
-    p = cpydig2(gmtoff / 60, p);
-    p = cpydig2(gmtoff % 60, p);
+    p = cpydig2(static_cast<uint32_t>(gmtoff / 60), p);
+    p = cpydig2(static_cast<uint32_t>(gmtoff % 60), p);
   }
 
   *p = '\0';
@@ -319,16 +319,16 @@ StringRef format_common_log(char *out,
   *p++ = '/';
   p = std::ranges::copy(MONTH[static_cast<uint32_t>(ymd.month()) - 1], p).out;
   *p++ = '/';
-  p = cpydig4(static_cast<int>(ymd.year()), p);
+  p = cpydig4(as_unsigned(static_cast<int>(ymd.year())), p);
   *p++ = ':';
 
   auto hms = std::chrono::hh_mm_ss{lt - days};
 
-  p = cpydig2(hms.hours().count(), p);
+  p = cpydig2(static_cast<uint32_t>(hms.hours().count()), p);
   *p++ = ':';
-  p = cpydig2(hms.minutes().count(), p);
+  p = cpydig2(static_cast<uint32_t>(hms.minutes().count()), p);
   *p++ = ':';
-  p = cpydig2(hms.seconds().count(), p);
+  p = cpydig2(static_cast<uint32_t>(hms.seconds().count()), p);
   *p++ = ' ';
 
   auto sys_info = zt.get_info();
@@ -341,8 +341,8 @@ StringRef format_common_log(char *out,
     gmtoff = -gmtoff;
   }
 
-  p = cpydig2(gmtoff / 60, p);
-  p = cpydig2(gmtoff % 60, p);
+  p = cpydig2(static_cast<uint32_t>(gmtoff / 60), p);
+  p = cpydig2(static_cast<uint32_t>(gmtoff % 60), p);
 
   *p = '\0';
 
@@ -365,16 +365,16 @@ StringRef format_http_date(char *out,
   *p++ = ' ';
   p = std::ranges::copy(MONTH[static_cast<uint32_t>(ymd.month()) - 1], p).out;
   *p++ = ' ';
-  p = cpydig4(static_cast<int>(ymd.year()), p);
+  p = cpydig4(as_unsigned(static_cast<int>(ymd.year())), p);
   *p++ = ' ';
 
   auto hms = std::chrono::hh_mm_ss{t - days};
 
-  p = cpydig2(hms.hours().count(), p);
+  p = cpydig2(static_cast<uint32_t>(hms.hours().count()), p);
   *p++ = ':';
-  p = cpydig2(hms.minutes().count(), p);
+  p = cpydig2(static_cast<uint32_t>(hms.minutes().count()), p);
   *p++ = ':';
-  p = cpydig2(hms.seconds().count(), p);
+  p = cpydig2(static_cast<uint32_t>(hms.seconds().count()), p);
   p = std::ranges::copy(" GMT"sv, p).out;
 
   *p = '\0';
@@ -395,19 +395,19 @@ char *iso8601_date(char *out, const std::chrono::system_clock::time_point &tp) {
 
   auto p = out;
 
-  p = cpydig4(tms.tm_year + 1900, p);
+  p = cpydig4(static_cast<uint32_t>(tms.tm_year + 1900), p);
   *p++ = '-';
-  p = cpydig2(tms.tm_mon + 1, p);
+  p = cpydig2(static_cast<uint32_t>(tms.tm_mon + 1), p);
   *p++ = '-';
-  p = cpydig2(tms.tm_mday, p);
+  p = cpydig2(static_cast<uint32_t>(tms.tm_mday), p);
   *p++ = 'T';
-  p = cpydig2(tms.tm_hour, p);
+  p = cpydig2(static_cast<uint32_t>(tms.tm_hour), p);
   *p++ = ':';
-  p = cpydig2(tms.tm_min, p);
+  p = cpydig2(static_cast<uint32_t>(tms.tm_min), p);
   *p++ = ':';
-  p = cpydig2(tms.tm_sec, p);
+  p = cpydig2(static_cast<uint32_t>(tms.tm_sec), p);
   *p++ = '.';
-  p = cpydig3(ms % 1000, p);
+  p = cpydig3(static_cast<uint32_t>(ms % 1000), p);
 
 #  ifdef HAVE_STRUCT_TM_TM_GMTOFF
   auto gmtoff = tms.tm_gmtoff;
@@ -423,9 +423,9 @@ char *iso8601_date(char *out, const std::chrono::system_clock::time_point &tp) {
       *p++ = '-';
       gmtoff = -gmtoff;
     }
-    p = cpydig2(gmtoff / 3600, p);
+    p = cpydig2(static_cast<uint32_t>(gmtoff / 3600), p);
     *p++ = ':';
-    p = cpydig2((gmtoff % 3600) / 60, p);
+    p = cpydig2(static_cast<uint32_t>((gmtoff % 3600) / 60), p);
   }
 
   return p;
@@ -453,15 +453,15 @@ char *iso8601_basic_date(char *out,
 
   auto p = out;
 
-  p = cpydig4(tms.tm_year + 1900, p);
-  p = cpydig2(tms.tm_mon + 1, p);
-  p = cpydig2(tms.tm_mday, p);
+  p = cpydig4(static_cast<uint32_t>(tms.tm_year + 1900), p);
+  p = cpydig2(static_cast<uint32_t>(tms.tm_mon + 1), p);
+  p = cpydig2(static_cast<uint32_t>(tms.tm_mday), p);
   *p++ = 'T';
-  p = cpydig2(tms.tm_hour, p);
-  p = cpydig2(tms.tm_min, p);
-  p = cpydig2(tms.tm_sec, p);
+  p = cpydig2(static_cast<uint32_t>(tms.tm_hour), p);
+  p = cpydig2(static_cast<uint32_t>(tms.tm_min), p);
+  p = cpydig2(static_cast<uint32_t>(tms.tm_sec), p);
   *p++ = '.';
-  p = cpydig3(ms % 1000, p);
+  p = cpydig3(static_cast<uint32_t>(ms % 1000), p);
 
 #  ifdef HAVE_STRUCT_TM_TM_GMTOFF
   auto gmtoff = tms.tm_gmtoff;
@@ -477,8 +477,8 @@ char *iso8601_basic_date(char *out,
       *p++ = '-';
       gmtoff = -gmtoff;
     }
-    p = cpydig2(gmtoff / 3600, p);
-    p = cpydig2((gmtoff % 3600) / 60, p);
+    p = cpydig2(static_cast<uint32_t>(gmtoff / 3600), p);
+    p = cpydig2(static_cast<uint32_t>((gmtoff % 3600) / 60), p);
   }
 
   return p;
@@ -506,17 +506,17 @@ char *common_log_date(char *out,
 
   auto p = out;
 
-  p = cpydig2(tms.tm_mday, p);
+  p = cpydig2(static_cast<uint32_t>(tms.tm_mday), p);
   *p++ = '/';
-  p = std::ranges::copy(MONTH[tms.tm_mon], p).out;
+  p = std::ranges::copy(MONTH[static_cast<size_t>(tms.tm_mon)], p).out;
   *p++ = '/';
-  p = cpydig4(tms.tm_year + 1900, p);
+  p = cpydig4(static_cast<uint32_t>(tms.tm_year + 1900), p);
   *p++ = ':';
-  p = cpydig2(tms.tm_hour, p);
+  p = cpydig2(static_cast<uint32_t>(tms.tm_hour), p);
   *p++ = ':';
-  p = cpydig2(tms.tm_min, p);
+  p = cpydig2(static_cast<uint32_t>(tms.tm_min), p);
   *p++ = ':';
-  p = cpydig2(tms.tm_sec, p);
+  p = cpydig2(static_cast<uint32_t>(tms.tm_sec), p);
   *p++ = ' ';
 
 #  ifdef HAVE_STRUCT_TM_TM_GMTOFF
@@ -531,8 +531,8 @@ char *common_log_date(char *out,
     gmtoff = -gmtoff;
   }
 
-  p = cpydig2(gmtoff / 3600, p);
-  p = cpydig2((gmtoff % 3600) / 60, p);
+  p = cpydig2(static_cast<uint32_t>(gmtoff / 3600), p);
+  p = cpydig2(static_cast<uint32_t>((gmtoff % 3600) / 60), p);
 
   return p;
 }
@@ -557,20 +557,20 @@ char *http_date(char *out, const std::chrono::system_clock::time_point &tp) {
 
   auto p = out;
 
-  p = std::ranges::copy(WEEKDAY[tms.tm_wday], p).out;
+  p = std::ranges::copy(WEEKDAY[static_cast<size_t>(tms.tm_wday)], p).out;
   *p++ = ',';
   *p++ = ' ';
-  p = cpydig2(tms.tm_mday, p);
+  p = cpydig2(static_cast<uint32_t>(tms.tm_mday), p);
   *p++ = ' ';
-  p = std::ranges::copy(MONTH[tms.tm_mon], p).out;
+  p = std::ranges::copy(MONTH[static_cast<size_t>(tms.tm_mon)], p).out;
   *p++ = ' ';
-  p = cpydig4(tms.tm_year + 1900, p);
+  p = cpydig4(static_cast<uint32_t>(tms.tm_year + 1900), p);
   *p++ = ' ';
-  p = cpydig2(tms.tm_hour, p);
+  p = cpydig2(static_cast<uint32_t>(tms.tm_hour), p);
   *p++ = ':';
-  p = cpydig2(tms.tm_min, p);
+  p = cpydig2(static_cast<uint32_t>(tms.tm_min), p);
   *p++ = ':';
-  p = cpydig2(tms.tm_sec, p);
+  p = cpydig2(static_cast<uint32_t>(tms.tm_sec), p);
   p = std::ranges::copy(" GMT"sv, p).out;
 
   return p;
@@ -647,7 +647,7 @@ StringRef to_base64(BlockAllocator &balloc, const StringRef &token68str) {
 
   auto rem = token68str.size() & 0x3;
   if (rem) {
-    p = std::ranges::fill_n(p, 4 - rem, '=');
+    p = std::ranges::fill_n(p, as_signed(4 - rem), '=');
   }
 
   *p = '\0';
@@ -660,15 +660,17 @@ namespace {
 // with given costs.  swapcost, subcost, addcost and delcost are cost
 // to swap 2 adjacent characters, substitute characters, add character
 // and delete character respectively.
-int levenshtein(const char *a, size_t alen, const char *b, size_t blen,
-                int swapcost, int subcost, int addcost, int delcost) {
-  auto dp = std::vector<std::vector<int>>(3, std::vector<int>(blen + 1));
-  for (size_t i = 0; i <= blen; ++i) {
+uint32_t levenshtein(const char *a, size_t alen, const char *b, size_t blen,
+                     uint32_t swapcost, uint32_t subcost, uint32_t addcost,
+                     uint32_t delcost) {
+  auto dp =
+    std::vector<std::vector<uint32_t>>(3, std::vector<uint32_t>(blen + 1));
+  for (uint32_t i = 0; i <= static_cast<uint32_t>(blen); ++i) {
     dp[1][i] = i * addcost;
   }
-  for (size_t i = 1; i <= alen; ++i) {
+  for (uint32_t i = 1; i <= static_cast<uint32_t>(alen); ++i) {
     dp[0][0] = i * delcost;
-    for (size_t j = 1; j <= blen; ++j) {
+    for (uint32_t j = 1; j <= static_cast<uint32_t>(blen); ++j) {
       dp[0][j] = dp[1][j - 1] + (a[i - 1] == b[j - 1] ? 0 : subcost);
       if (i >= 2 && j >= 2 && a[i - 1] != b[j - 1] && a[i - 2] == b[j - 1] &&
           a[i - 1] == b[j - 2]) {
@@ -697,7 +699,7 @@ void show_candidates(const char *unkopt, const option *options) {
     return;
   }
   int prefix_match = 0;
-  auto cands = std::vector<std::pair<int, const char *>>();
+  auto cands = std::vector<std::pair<uint32_t, const char *>>();
   for (size_t i = 0; options[i].name != nullptr; ++i) {
     auto opt = std::string_view{options[i].name};
     auto unk = std::string_view{unkopt, static_cast<size_t>(unkoptlen)};
@@ -718,7 +720,7 @@ void show_candidates(const char *unkopt, const option *options) {
       continue;
     }
     // cost values are borrowed from git, help.c.
-    int sim =
+    auto sim =
       levenshtein(unk.data(), unk.size(), opt.data(), opt.size(), 0, 2, 1, 3);
     cands.emplace_back(sim, options[i].name);
   }
@@ -726,7 +728,7 @@ void show_candidates(const char *unkopt, const option *options) {
     return;
   }
   std::ranges::sort(cands);
-  int threshold = cands[0].first;
+  auto threshold = cands[0].first;
   // threshold value is a magic value.
   if (threshold > 6) {
     return;
@@ -836,7 +838,7 @@ std::string numeric_name(const struct sockaddr *sa, socklen_t salen) {
 }
 
 std::string to_numeric_addr(const Address *addr) {
-  return to_numeric_addr(&addr->su.sa, addr->len);
+  return to_numeric_addr(&addr->su.sa, static_cast<socklen_t>(addr->len));
 }
 
 std::string to_numeric_addr(const struct sockaddr *sa, socklen_t salen) {
@@ -923,7 +925,7 @@ std::string ascii_dump(const uint8_t *data, size_t len) {
     auto c = data[i];
 
     if (c >= 0x20 && c < 0x7f) {
-      res += c;
+      res += as_signed(c);
     } else {
       res += '.';
     }
@@ -932,7 +934,7 @@ std::string ascii_dump(const uint8_t *data, size_t len) {
   return res;
 }
 
-char *get_exec_path(int argc, char **const argv, const char *cwd) {
+char *get_exec_path(size_t argc, char **const argv, const char *cwd) {
   if (argc == 0 || cwd == nullptr) {
     return nullptr;
   }
@@ -1622,8 +1624,8 @@ uint64_t get_uint64(const uint8_t *data) {
   n += static_cast<uint64_t>(data[2]) << 40;
   n += static_cast<uint64_t>(data[3]) << 32;
   n += static_cast<uint64_t>(data[4]) << 24;
-  n += data[5] << 16;
-  n += data[6] << 8;
+  n += static_cast<uint64_t>(data[5]) << 16;
+  n += static_cast<uint64_t>(data[6]) << 8;
   n += data[7];
   return n;
 }
@@ -1686,7 +1688,7 @@ uint32_t hash32(const StringRef &s) {
   size_t i;
 
   for (i = 0; i < s.size(); ++i) {
-    h ^= s[i];
+    h ^= static_cast<uint8_t>(s[i]);
     h += (h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24);
   }
 
@@ -1714,7 +1716,7 @@ int message_digest(uint8_t *res, const EVP_MD *meth, const StringRef &s) {
     return -1;
   }
 
-  unsigned int mdlen = EVP_MD_size(meth);
+  auto mdlen = static_cast<unsigned int>(EVP_MD_size(meth));
 
   rv = EVP_DigestFinal_ex(ctx, res, &mdlen);
   if (rv != 1) {
@@ -1838,7 +1840,7 @@ StringRef rstrip(BlockAllocator &balloc, const StringRef &s) {
   for (; it != std::ranges::rend(s) && (*it == ' ' || *it == '\t'); ++it)
     ;
 
-  auto len = it - std::ranges::rbegin(s);
+  auto len = as_unsigned(it - std::ranges::rbegin(s));
   if (len == 0) {
     return s;
   }

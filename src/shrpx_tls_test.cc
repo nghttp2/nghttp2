@@ -87,7 +87,7 @@ void test_shrpx_tls_create_lookup_tree(void) {
   assert_ssize(5, ==, tree->lookup(hostnames[5]));
   assert_ssize(6, ==, tree->lookup(hostnames[6]));
   static constexpr char h6[] = "pdylay.sourceforge.net";
-  for (int i = 0; i < 7; ++i) {
+  for (size_t i = 0; i < 7; ++i) {
     assert_ssize(-1, ==, tree->lookup(StringRef{h6 + i, str_size(h6) - i}));
   }
   assert_ssize(8, ==, tree->lookup("x.foo.bar"_sr));

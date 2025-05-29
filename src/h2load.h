@@ -68,9 +68,6 @@
 #endif // !NGHTTP2_OPENSSL_IS_WOLFSSL
 
 #include "http2.h"
-#ifdef ENABLE_HTTP3
-#  include "quic.h"
-#endif // ENABLE_HTTP3
 #include "memchunk.h"
 #include "template.h"
 
@@ -345,7 +342,7 @@ struct Stream {
 
 struct Client {
   DefaultMemchunks wb;
-  std::unordered_map<int32_t, Stream> streams;
+  std::unordered_map<int64_t, Stream> streams;
   ClientStat cstat;
   std::unique_ptr<Session> session;
   ev_io wev;
@@ -467,19 +464,19 @@ struct Client {
 
   int connection_made();
 
-  void on_request(int32_t stream_id);
-  void on_header(int32_t stream_id, const uint8_t *name, size_t namelen,
+  void on_request(int64_t stream_id);
+  void on_header(int64_t stream_id, const uint8_t *name, size_t namelen,
                  const uint8_t *value, size_t valuelen);
-  void on_status_code(int32_t stream_id, uint16_t status);
+  void on_status_code(int64_t stream_id, uint16_t status);
   // |success| == true means that the request/response was exchanged
   // |successfully, but it does not mean response carried successful
   // |HTTP status code.
-  void on_stream_close(int32_t stream_id, bool success, bool final = false);
+  void on_stream_close(int64_t stream_id, bool success, bool final = false);
   // Returns RequestStat for |stream_id|.  This function must be
   // called after on_request(stream_id), and before
   // on_stream_close(stream_id, ...).  Otherwise, this will return
   // nullptr.
-  RequestStat *get_req_stat(int32_t stream_id);
+  RequestStat *get_req_stat(int64_t stream_id);
 
   void record_request_time(RequestStat *req_stat);
   void record_connect_start_time();

@@ -261,7 +261,7 @@ public:
 
     if (config_->encoder_header_table_size != -1) {
       nghttp2_option_set_max_deflate_dynamic_table_size(
-        option_, config_->encoder_header_table_size);
+        option_, as_unsigned(config_->encoder_header_table_size));
     }
 
     ev_timer_init(&release_fd_timer_, release_fd_cb, 0., RELEASE_FD_TIMEOUT);
@@ -622,16 +622,16 @@ int Http2Handler::fill_wb() {
 
     if (datalen < 0) {
       std::cerr << "nghttp2_session_mem_send2() returned error: "
-                << nghttp2_strerror(datalen) << std::endl;
+                << nghttp2_strerror(static_cast<int>(datalen)) << std::endl;
       return -1;
     }
     if (datalen == 0) {
       break;
     }
-    auto n = wb_.write(data, datalen);
+    auto n = wb_.write(data, as_unsigned(datalen));
     if (n < static_cast<decltype(n)>(datalen)) {
       data_pending_ = data + n;
-      data_pendinglen_ = datalen - n;
+      data_pendinglen_ = as_unsigned(datalen) - n;
       break;
     }
   }
@@ -639,7 +639,6 @@ int Http2Handler::fill_wb() {
 }
 
 int Http2Handler::read_clear() {
-  int rv;
   std::array<uint8_t, 8_k> buf;
 
   ssize_t nread;
@@ -656,14 +655,15 @@ int Http2Handler::read_clear() {
   }
 
   if (get_config()->hexdump) {
-    util::hexdump(stdout, buf.data(), nread);
+    util::hexdump(stdout, buf.data(), as_unsigned(nread));
   }
 
-  rv = nghttp2_session_mem_recv2(session_, buf.data(), nread);
-  if (rv < 0) {
-    if (rv != NGHTTP2_ERR_BAD_CLIENT_MAGIC) {
+  auto nrecv =
+    nghttp2_session_mem_recv2(session_, buf.data(), as_unsigned(nread));
+  if (nrecv < 0) {
+    if (nrecv != NGHTTP2_ERR_BAD_CLIENT_MAGIC) {
       std::cerr << "nghttp2_session_mem_recv2() returned error: "
-                << nghttp2_strerror(rv) << std::endl;
+                << nghttp2_strerror(static_cast<int>(nrecv)) << std::endl;
     }
     return -1;
   }
@@ -686,7 +686,7 @@ int Http2Handler::write_clear() {
         }
         return -1;
       }
-      wb_.drain(nwrite);
+      wb_.drain(as_unsigned(nwrite));
       continue;
     }
     wb_.reset();
@@ -777,17 +777,17 @@ int Http2Handler::read_tls() {
       }
     }
 
-    auto nread = rv;
+    auto nread = static_cast<size_t>(rv);
 
     if (get_config()->hexdump) {
       util::hexdump(stdout, buf.data(), nread);
     }
 
-    rv = nghttp2_session_mem_recv2(session_, buf.data(), nread);
-    if (rv < 0) {
-      if (rv != NGHTTP2_ERR_BAD_CLIENT_MAGIC) {
+    auto nrecv = nghttp2_session_mem_recv2(session_, buf.data(), nread);
+    if (nrecv < 0) {
+      if (nrecv != NGHTTP2_ERR_BAD_CLIENT_MAGIC) {
         std::cerr << "nghttp2_session_mem_recv2() returned error: "
-                  << nghttp2_strerror(rv) << std::endl;
+                  << nghttp2_strerror(static_cast<int>(nrecv)) << std::endl;
       }
       return -1;
     }
@@ -807,7 +807,7 @@ int Http2Handler::write_tls() {
 
   for (;;) {
     if (wb_.rleft() > 0) {
-      auto rv = SSL_write(ssl_, wb_.pos, wb_.rleft());
+      auto rv = SSL_write(ssl_, wb_.pos, static_cast<int>(wb_.rleft()));
 
       if (rv <= 0) {
         auto err = SSL_get_error(ssl_, rv);
@@ -823,7 +823,7 @@ int Http2Handler::write_tls() {
         }
       }
 
-      wb_.drain(rv);
+      wb_.drain(static_cast<size_t>(rv));
       continue;
     }
     wb_.reset();
@@ -868,14 +868,14 @@ int Http2Handler::connection_made() {
   size_t niv = 2;
 
   entry[0].settings_id = NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS;
-  entry[0].value = config->max_concurrent_streams;
+  entry[0].value = static_cast<uint32_t>(config->max_concurrent_streams);
 
   entry[1].settings_id = NGHTTP2_SETTINGS_NO_RFC7540_PRIORITIES;
   entry[1].value = 1;
 
   if (config->header_table_size >= 0) {
     entry[niv].settings_id = NGHTTP2_SETTINGS_HEADER_TABLE_SIZE;
-    entry[niv].value = config->header_table_size;
+    entry[niv].value = static_cast<uint32_t>(config->header_table_size);
     ++niv;
   }
 
@@ -1660,7 +1660,7 @@ int send_data_callback(nghttp2_session *session, nghttp2_frame *frame,
   p = std::ranges::copy_n(framehd, 9, p).out;
 
   if (padlen) {
-    *p++ = padlen - 1;
+    *p++ = static_cast<uint8_t>(padlen - 1);
   }
 
   while (length) {
@@ -1677,7 +1677,7 @@ int send_data_callback(nghttp2_session *session, nghttp2_frame *frame,
     }
 
     stream->body_offset += nread;
-    length -= nread;
+    length -= as_unsigned(nread);
     p += nread;
   }
 
@@ -1697,7 +1697,8 @@ nghttp2_ssize select_padding_callback(nghttp2_session *session,
                                       const nghttp2_frame *frame,
                                       size_t max_payload, void *user_data) {
   auto hd = static_cast<Http2Handler *>(user_data);
-  return std::min(max_payload, frame->hd.length + hd->get_config()->padding);
+  return as_signed(
+    std::min(max_payload, frame->hd.length + hd->get_config()->padding));
 }
 } // namespace
 
@@ -1723,7 +1724,7 @@ int on_data_chunk_recv_callback(nghttp2_session *session, uint8_t flags,
         hd->submit_rst_stream(stream, NGHTTP2_INTERNAL_ERROR);
         return 0;
       }
-      len -= n;
+      len -= as_unsigned(n);
       data += n;
     }
   }
@@ -1830,7 +1831,7 @@ void run_worker(Worker *worker) {
 } // namespace
 
 namespace {
-int get_ev_loop_flags() {
+unsigned int get_ev_loop_flags() {
   if (ev_supported_backends() & ~ev_recommended_backends() & EVBACKEND_KQUEUE) {
     return ev_recommended_backends() | EVBACKEND_KQUEUE;
   }
@@ -1938,7 +1939,7 @@ void acceptcb(struct ev_loop *loop, ev_io *w, int revents) {
 } // namespace
 
 namespace {
-FileEntry make_status_body(int status, uint16_t port) {
+FileEntry make_status_body(uint32_t status, uint16_t port) {
   BlockAllocator balloc(1024, 1024);
 
   auto status_string = http2::stringify_status(balloc, status);
@@ -1979,7 +1980,7 @@ FileEntry make_status_body(int status, uint16_t port) {
     assert(0);
   }
 
-  return FileEntry(util::utos(as_unsigned(status)), nwrite, 0, fd, nullptr, {});
+  return FileEntry(util::utos(status), nwrite, 0, fd, nullptr, {});
 }
 } // namespace
 
@@ -2119,11 +2120,11 @@ int HttpServer::run() {
       return -1;
     }
 
-    auto ssl_opts = (SSL_OP_ALL & ~SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS) |
-                    SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_COMPRESSION |
-                    SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION |
-                    SSL_OP_SINGLE_ECDH_USE | SSL_OP_NO_TICKET |
-                    SSL_OP_CIPHER_SERVER_PREFERENCE;
+    auto ssl_opts = static_cast<nghttp2_ssl_op_type>(
+      (SSL_OP_ALL & ~SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS) | SSL_OP_NO_SSLv2 |
+      SSL_OP_NO_SSLv3 | SSL_OP_NO_COMPRESSION |
+      SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION | SSL_OP_SINGLE_ECDH_USE |
+      SSL_OP_NO_TICKET | SSL_OP_CIPHER_SERVER_PREFERENCE);
 
 #ifdef SSL_OP_ENABLE_KTLS
     if (config_->ktls) {

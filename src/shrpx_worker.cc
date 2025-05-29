@@ -125,7 +125,7 @@ using DownstreamKey = std::tuple<
   std::vector<std::tuple<StringRef, StringRef, StringRef, size_t, size_t, Proto,
                          uint32_t, uint32_t, uint32_t, bool, bool, bool, bool>>,
   bool, SessionAffinity, StringRef, StringRef, SessionAffinityCookieSecure,
-  SessionAffinityCookieStickiness, int64_t, int64_t, StringRef, bool>;
+  SessionAffinityCookieStickiness, ev_tstamp, ev_tstamp, StringRef, bool>;
 
 namespace {
 DownstreamKey
@@ -415,7 +415,8 @@ void Worker::replace_downstream_config(
 
       addr_groups_indexer.emplace(std::move(dkey), i);
     } else {
-      auto &g = *(std::ranges::begin(downstream_addr_groups_) + (*it).second);
+      auto &g = *(std::ranges::begin(downstream_addr_groups_) +
+                  as_signed((*it).second));
       if (LOG_ENABLED(INFO)) {
         LOG(INFO) << dst->pattern << " shares the same backend group with "
                   << g->pattern;
@@ -902,10 +903,10 @@ uint32_t Worker::compute_sk_index() const {
   auto &apiconf = config->api;
 
   if (!config->single_thread && apiconf.enabled) {
-    return index_ - 1;
+    return static_cast<uint32_t>(index_ - 1);
   }
 
-  return index_;
+  return static_cast<uint32_t>(index_);
 }
 #  endif // HAVE_LIBBPF
 
@@ -1480,9 +1481,9 @@ size_t match_downstream_addr_group_host(
   if (group != -1) {
     if (LOG_ENABLED(INFO)) {
       LOG(INFO) << "Found pattern with query " << host << path
-                << ", matched pattern=" << groups[group]->pattern;
+                << ", matched pattern=" << groups[as_unsigned(group)]->pattern;
     }
-    return group;
+    return as_unsigned(group);
   }
 
   if (!wildcard_patterns.empty() && !host.empty()) {
@@ -1507,14 +1508,15 @@ size_t match_downstream_addr_group_host(
       rev_host = StringRef{std::ranges::begin(rev_host) + nread,
                            std::ranges::end(rev_host)};
 
-      auto &wc = wildcard_patterns[wcidx];
+      auto &wc = wildcard_patterns[as_unsigned(wcidx)];
       auto group = wc.router.match(StringRef{}, path);
       if (group != -1) {
         // We sorted wildcard_patterns in a way that first match is the
         // longest host pattern.
         if (LOG_ENABLED(INFO)) {
           LOG(INFO) << "Found wildcard pattern with query " << host << path
-                    << ", matched pattern=" << groups[group]->pattern;
+                    << ", matched pattern="
+                    << groups[as_unsigned(group)]->pattern;
         }
 
         best_group = group;
@@ -1522,7 +1524,7 @@ size_t match_downstream_addr_group_host(
     }
 
     if (best_group != -1) {
-      return best_group;
+      return as_unsigned(best_group);
     }
   }
 
@@ -1530,9 +1532,9 @@ size_t match_downstream_addr_group_host(
   if (group != -1) {
     if (LOG_ENABLED(INFO)) {
       LOG(INFO) << "Found pattern with query " << path
-                << ", matched pattern=" << groups[group]->pattern;
+                << ", matched pattern=" << groups[as_unsigned(group)]->pattern;
     }
-    return group;
+    return as_unsigned(group);
   }
 
   if (LOG_ENABLED(INFO)) {
@@ -1630,7 +1632,7 @@ void downstream_failure(DownstreamAddr *addr, const Address *raddr) {
   }
 }
 
-int Worker::handle_connection(int fd, sockaddr *addr, int addrlen,
+int Worker::handle_connection(int fd, sockaddr *addr, socklen_t addrlen,
                               const UpstreamAddr *faddr) {
   if (LOG_ENABLED(INFO)) {
     LLOG(INFO, this) << "Accepted connection from "

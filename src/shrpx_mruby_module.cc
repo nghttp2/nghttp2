@@ -94,13 +94,16 @@ mrb_value create_headers_hash(mrb_state *mrb, const HeaderRefs &headers) {
     }
     auto ai = mrb_gc_arena_save(mrb);
 
-    auto key = mrb_str_new(mrb, hd.name.data(), hd.name.size());
+    auto key =
+      mrb_str_new(mrb, hd.name.data(), static_cast<mrb_int>(hd.name.size()));
     auto ary = mrb_hash_get(mrb, hash, key);
     if (mrb_nil_p(ary)) {
       ary = mrb_ary_new(mrb);
       mrb_hash_set(mrb, hash, key, ary);
     }
-    mrb_ary_push(mrb, ary, mrb_str_new(mrb, hd.value.data(), hd.value.size()));
+    mrb_ary_push(
+      mrb, ary,
+      mrb_str_new(mrb, hd.value.data(), static_cast<mrb_int>(hd.value.size())));
 
     mrb_gc_arena_restore(mrb, ai);
   }

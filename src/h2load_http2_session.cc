@@ -55,9 +55,11 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
 
   if (client->worker->config->verbose) {
     std::cout << "[stream_id=" << frame->hd.stream_id << "] ";
-    std::cout.write(reinterpret_cast<const char *>(name), namelen);
+    std::cout.write(reinterpret_cast<const char *>(name),
+                    static_cast<std::streamsize>(namelen));
     std::cout << ": ";
-    std::cout.write(reinterpret_cast<const char *>(value), valuelen);
+    std::cout.write(reinterpret_cast<const char *>(value),
+                    static_cast<std::streamsize>(valuelen));
     std::cout << "\n";
   }
 
@@ -170,7 +172,7 @@ nghttp2_ssize send_callback(nghttp2_session *session, const uint8_t *data,
 
   wb.append(data, length);
 
-  return length;
+  return as_signed(length);
 }
 } // namespace
 
@@ -233,7 +235,7 @@ void Http2Session::on_connect() {
   }
   if (config->max_frame_size != 16_k) {
     iv[niv].settings_id = NGHTTP2_SETTINGS_MAX_FRAME_SIZE;
-    iv[niv].value = config->max_frame_size;
+    iv[niv].value = static_cast<uint32_t>(config->max_frame_size);
     ++niv;
   }
 

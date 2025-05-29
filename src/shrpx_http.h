@@ -49,11 +49,13 @@ struct ViaValueGenerator {
   template <std::weakly_incrementable O>
   requires(std::indirectly_writable<O, char>)
   constexpr O operator()(int major, int minor, O result) {
-    *result++ = static_cast<char>(major + '0');
+    using result_type = std::iter_value_t<O>;
+
+    *result++ = static_cast<result_type>(major + '0');
 
     if (major < 2) {
       *result++ = '.';
-      *result++ = static_cast<char>(minor + '0');
+      *result++ = static_cast<result_type>(minor + '0');
     }
 
     return std::ranges::copy(" nghttpx"sv, result).out;
@@ -68,7 +70,7 @@ OutputIt create_via_header_value(OutputIt dst, int major, int minor) {
 // Returns generated RFC 7239 Forwarded header field value.  The
 // |params| is bitwise-OR of zero or more of shrpx_forwarded_param
 // defined in shrpx_config.h.
-StringRef create_forwarded(BlockAllocator &balloc, int params,
+StringRef create_forwarded(BlockAllocator &balloc, uint32_t params,
                            const StringRef &node_by, const StringRef &node_for,
                            const StringRef &host, const StringRef &proto);
 

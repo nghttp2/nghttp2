@@ -146,7 +146,7 @@ int ClientHandler::read_clear() {
       return -1;
     }
 
-    rb_.write(nread);
+    rb_.write(as_unsigned(nread));
     should_break = true;
   }
 }
@@ -173,7 +173,7 @@ int ClientHandler::write_clear() {
       return 0;
     }
 
-    upstream_->response_drain(nwrite);
+    upstream_->response_drain(as_unsigned(nwrite));
   }
 
   conn_.wlimit.stopw();
@@ -200,7 +200,7 @@ int ClientHandler::proxy_protocol_peek_clear() {
                      << " bytes from socket";
   }
 
-  rb_.write(nread);
+  rb_.write(as_unsigned(nread));
 
   if (on_read() != 0) {
     return -1;
@@ -276,7 +276,7 @@ int ClientHandler::read_tls() {
       return -1;
     }
 
-    rb_.write(nread);
+    rb_.write(as_unsigned(nread));
     should_break = true;
   }
 }
@@ -310,7 +310,7 @@ int ClientHandler::write_tls() {
       return 0;
     }
 
-    upstream_->response_drain(nwrite);
+    upstream_->response_drain(as_unsigned(nwrite));
 
     iovcnt = upstream_->response_riovec(&iov, 1);
     if (iovcnt == 0) {
@@ -1245,13 +1245,13 @@ ssize_t parse_proxy_line_port(const uint8_t *first, const uint8_t *last) {
   }
 
   if (*p == '0') {
-    if (p + 1 != last && util::is_digit(*(p + 1))) {
+    if (p + 1 != last && util::is_digit(as_signed(*(p + 1)))) {
       return -1;
     }
     return 1;
   }
 
-  for (; p != last && util::is_digit(*p); ++p) {
+  for (; p != last && util::is_digit(as_signed(*p)); ++p) {
     port *= 10;
     port += *p - '0';
 
@@ -1265,7 +1265,7 @@ ssize_t parse_proxy_line_port(const uint8_t *first, const uint8_t *last) {
 } // namespace
 
 int ClientHandler::on_proxy_protocol_finish() {
-  auto len = rb_.pos() - rb_.begin();
+  auto len = as_unsigned(rb_.pos() - rb_.begin());
 
   assert(len);
 
@@ -1398,7 +1398,7 @@ int ClientHandler::proxy_protocol_read() {
       return -1;
     }
 
-    rb_.drain(end + 2 - rb_.pos());
+    rb_.drain(as_unsigned(end + 2 - rb_.pos()));
 
     return on_proxy_protocol_finish();
   }
@@ -1423,7 +1423,7 @@ int ClientHandler::proxy_protocol_read() {
   auto src_addr = rb_.pos();
   auto src_addrlen = token_end - rb_.pos();
 
-  rb_.drain(token_end - rb_.pos() + 1);
+  rb_.drain(as_unsigned(token_end - rb_.pos() + 1));
 
   // destination address
   token_end = std::ranges::find(rb_.pos(), end, ' ');
@@ -1444,7 +1444,7 @@ int ClientHandler::proxy_protocol_read() {
 
   // Currently we don't use destination address
 
-  rb_.drain(token_end - rb_.pos() + 1);
+  rb_.drain(as_unsigned(token_end - rb_.pos() + 1));
 
   // source port
   auto n = parse_proxy_line_port(rb_.pos(), end);
@@ -1459,7 +1459,7 @@ int ClientHandler::proxy_protocol_read() {
   auto src_port = rb_.pos();
   auto src_portlen = n;
 
-  rb_.drain(n + 1);
+  rb_.drain(as_unsigned(n + 1));
 
   // destination  port
   n = parse_proxy_line_port(rb_.pos(), end);
@@ -1472,7 +1472,7 @@ int ClientHandler::proxy_protocol_read() {
 
   // Currently we don't use destination port
 
-  rb_.drain(end + 2 - rb_.pos());
+  rb_.drain(as_unsigned(end + 2 - rb_.pos()));
 
   ipaddr_ = make_string_ref(
     balloc_, as_string_ref(src_addr, static_cast<size_t>(src_addrlen)));
@@ -1640,7 +1640,7 @@ int ClientHandler::proxy_protocol_v2_read() {
   if (LOG_ENABLED(INFO)) {
     CLOG(INFO, this) << "PROXY-protocol-v2: Finished reading proxy addresses, "
                      << p - rb_.pos() << " bytes read, "
-                     << PROXY_PROTO_V2_HDLEN + len - (p - rb_.pos())
+                     << PROXY_PROTO_V2_HDLEN + len - as_unsigned(p - rb_.pos())
                      << " bytes left";
   }
 

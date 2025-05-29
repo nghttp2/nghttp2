@@ -64,8 +64,10 @@ template <size_t N> struct Memchunk {
       last(pos),
       knext(next_chunk),
       next(nullptr) {}
-  size_t len() const { return last - pos; }
-  size_t left() const { return std::ranges::end(buf) - last; }
+  size_t len() const { return as_unsigned(last - pos); }
+  size_t left() const {
+    return static_cast<size_t>(std::ranges::end(buf) - last);
+  }
   void reset() { pos = last = std::ranges::begin(buf); }
   std::array<uint8_t, N> buf;
   uint8_t *pos, *last;
@@ -167,7 +169,7 @@ template <typename Memchunk> struct Memchunks {
       tail->next = pool->get();
       tail = tail->next;
     }
-    *tail->last++ = c;
+    *tail->last++ = as_unsigned(c);
     ++len;
   }
   template <std::input_iterator I> void append(I first, I last) {
@@ -182,7 +184,7 @@ template <typename Memchunk> struct Memchunks {
     for (;;) {
       auto n = std::min(static_cast<size_t>(std::ranges::distance(first, last)),
                         tail->left());
-      auto iores = std::ranges::copy_n(first, n, tail->last);
+      auto iores = std::ranges::copy_n(first, as_signed(n), tail->last);
       first = iores.in;
       tail->last = iores.out;
       len += n;
@@ -225,7 +227,7 @@ template <typename Memchunk> struct Memchunks {
     assert(tail->left() >= max_count);
 
     auto last = f(tail->last);
-    len += last - tail->last;
+    len += static_cast<size_t>(last - tail->last);
     tail->last = last;
   }
   size_t copy(Memchunks &dest) {
@@ -253,7 +255,7 @@ template <typename Memchunk> struct Memchunks {
       auto n = std::min(static_cast<size_t>(last - first), m->len());
 
       assert(m->len());
-      auto iores = std::ranges::copy_n(m->pos, n, first);
+      auto iores = std::ranges::copy_n(m->pos, as_signed(n), first);
       m->pos = iores.in;
       first = iores.out;
       len -= n;
@@ -268,7 +270,7 @@ template <typename Memchunk> struct Memchunks {
       tail = nullptr;
     }
 
-    return first - static_cast<uint8_t *>(dest);
+    return as_unsigned(first - static_cast<uint8_t *>(dest));
   }
   size_t remove(Memchunks &dest, size_t count) {
     assert(mark == nullptr);
@@ -404,7 +406,7 @@ template <typename Memchunk> struct Memchunks {
     if (mark) {
       if (mark_pos != mark->last) {
         iov[0].iov_base = mark_pos;
-        iov[0].iov_len = mark->len() - (mark_pos - mark->pos);
+        iov[0].iov_len = mark->len() - as_unsigned(mark_pos - mark->pos);
 
         mark_pos = mark->last;
         mark_offset += iov[0].iov_len;

@@ -160,7 +160,7 @@ struct StartupConfig {
   // The pointer to argv, this is a deep copy of original argv.
   char **argv;
   // The number of elements in argv.
-  int argc;
+  size_t argc;
 };
 
 namespace {
@@ -508,7 +508,7 @@ void exec_binary() {
   auto argv = std::make_unique<char *[]>(suconfig.argc + 1);
 
   argv[0] = exec_path;
-  for (int i = 1; i < suconfig.argc; ++i) {
+  for (size_t i = 1; i < suconfig.argc; ++i) {
     argv[i] = suconfig.argv[i];
   }
   argv[suconfig.argc] = nullptr;
@@ -581,11 +581,11 @@ void exec_binary() {
 
   if (LOG_ENABLED(INFO)) {
     LOG(INFO) << "cmdline";
-    for (int i = 0; argv[i]; ++i) {
+    for (size_t i = 0; argv[i]; ++i) {
       LOG(INFO) << i << ": " << argv[i];
     }
     LOG(INFO) << "environ";
-    for (int i = 0; envp[i]; ++i) {
+    for (size_t i = 0; envp[i]; ++i) {
       LOG(INFO) << i << ": " << envp[i];
     }
   }
@@ -746,7 +746,7 @@ int create_unix_domain_server_socket(
     return -1;
   }
   // copy path including terminal NULL
-  std::ranges::copy_n(faddr.host.data(), faddr.host.size() + 1,
+  std::ranges::copy_n(faddr.host.data(), as_signed(faddr.host.size() + 1),
                       addr.un.sun_path);
 
   // unlink (remove) already existing UNIX domain socket path
@@ -844,14 +844,14 @@ get_inherited_unix_domain_socket_from_env(Config *config) {
     auto fd = util::parse_uint(StringRef{value, endfd});
     if (!fd) {
       LOG(WARN) << "Could not parse file descriptor from "
-                << std::string(value, endfd - value);
+                << StringRef{value, endfd};
       continue;
     }
 
     auto path = endfd + 1;
     if (strlen(path) == 0) {
       LOG(WARN) << "Empty UNIX domain socket path (fd=" << *fd << ")";
-      close(*fd);
+      close(static_cast<int>(*fd));
       continue;
     }
 
@@ -891,7 +891,7 @@ pid_t get_orig_pid_from_env() {
   if (s == nullptr) {
     return -1;
   }
-  return util::parse_uint(s).value_or(-1);
+  return static_cast<pid_t>(util::parse_uint(s).value_or(-1));
 }
 } // namespace
 
@@ -936,7 +936,7 @@ get_inherited_quic_lingering_worker_process_from_env() {
       LOG(INFO) << "Inherit worker process QUIC IPC socket fd=" << *fd;
     }
 
-    util::make_socket_closeonexec(*fd);
+    util::make_socket_closeonexec(static_cast<int>(*fd));
 
     std::vector<WorkerID> worker_ids;
 
@@ -3686,8 +3686,8 @@ int main(int argc, char **argv) {
   suconfig.original_argv = argv;
 
   // We have to copy argv, since getopt_long may change its content.
-  suconfig.argc = argc;
-  suconfig.argv = new char *[argc];
+  suconfig.argc = static_cast<size_t>(argc);
+  suconfig.argv = new char *[static_cast<size_t>(argc)];
 
   for (int i = 0; i < argc; ++i) {
     suconfig.argv[i] = strdup(argv[i]);

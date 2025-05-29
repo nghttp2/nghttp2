@@ -253,13 +253,15 @@ struct Capitalizer {
   template <std::weakly_incrementable O>
   requires(std::indirectly_writable<O, char>)
   constexpr O operator()(const StringRef &s, O result) noexcept {
-    *result++ = util::upcase(s[0]);
+    using result_type = std::iter_value_t<O>;
+
+    *result++ = static_cast<result_type>(util::upcase(s[0]));
 
     for (size_t i = 1; i < s.size(); ++i) {
       if (s[i - 1] == '-') {
-        *result++ = util::upcase(s[i]);
+        *result++ = static_cast<result_type>(util::upcase(s[i]));
       } else {
-        *result++ = s[i];
+        *result++ = static_cast<result_type>(s[i]);
       }
     }
 
@@ -630,7 +632,7 @@ StringRef rewrite_location_uri(BlockAllocator &balloc, const StringRef &uri,
     return StringRef{};
   }
 
-  auto len = 0;
+  size_t len = 0;
   if (!request_authority.empty()) {
     len += upstream_scheme.size() + str_size("://") + request_authority.size();
   }
@@ -966,25 +968,25 @@ void index_header(HeaderIndex &hdidx, int32_t token, size_t idx) {
     return;
   }
   assert(token < HD_MAXIDX);
-  hdidx[token] = idx;
+  hdidx[static_cast<size_t>(token)] = static_cast<int16_t>(idx);
 }
 
 const Headers::value_type *get_header(const HeaderIndex &hdidx, int32_t token,
                                       const Headers &nva) {
-  auto i = hdidx[token];
+  auto i = hdidx[static_cast<size_t>(token)];
   if (i == -1) {
     return nullptr;
   }
-  return &nva[i];
+  return &nva[static_cast<size_t>(i)];
 }
 
 Headers::value_type *get_header(const HeaderIndex &hdidx, int32_t token,
                                 Headers &nva) {
-  auto i = hdidx[token];
+  auto i = hdidx[static_cast<size_t>(token)];
   if (i == -1) {
     return nullptr;
   }
-  return &nva[i];
+  return &nva[static_cast<size_t>(i)];
 }
 
 namespace {
@@ -1352,16 +1354,16 @@ std::string path_join(const StringRef &base_path, const StringRef &base_query,
     path_join(balloc, base_path, base_query, rel_path, rel_query)};
 }
 
-bool expect_response_body(int status_code) {
+bool expect_response_body(uint32_t status_code) {
   return status_code == 101 ||
          (status_code / 100 != 1 && status_code != 304 && status_code != 204);
 }
 
-bool expect_response_body(const std::string &method, int status_code) {
+bool expect_response_body(const std::string &method, uint32_t status_code) {
   return method != "HEAD" && expect_response_body(status_code);
 }
 
-bool expect_response_body(int method_token, int status_code) {
+bool expect_response_body(int method_token, uint32_t status_code) {
   return method_token != HTTP_HEAD && expect_response_body(status_code);
 }
 
@@ -1801,25 +1803,25 @@ StringRef normalize_path(BlockAllocator &balloc, const StringRef &path,
   for (; it + 2 < std::ranges::end(path);) {
     if (*it == '%') {
       if (util::is_hex_digit(*(it + 1)) && util::is_hex_digit(*(it + 2))) {
-        auto c =
-          (util::hex_to_uint(*(it + 1)) << 4) + util::hex_to_uint(*(it + 2));
+        auto c = static_cast<char>((util::hex_to_uint(*(it + 1)) << 4) +
+                                   util::hex_to_uint(*(it + 2)));
         if (util::in_rfc3986_unreserved_chars(c)) {
-          *p++ = c;
+          *p++ = as_unsigned(c);
 
           it += 3;
 
           continue;
         }
         *p++ = '%';
-        *p++ = util::upcase(*(it + 1));
-        *p++ = util::upcase(*(it + 2));
+        *p++ = as_unsigned(util::upcase(*(it + 1)));
+        *p++ = as_unsigned(util::upcase(*(it + 2)));
 
         it += 3;
 
         continue;
       }
     }
-    *p++ = *it++;
+    *p++ = as_unsigned(*it++);
   }
 
   p = std::ranges::copy(it, std::ranges::end(path), p).out;
@@ -1848,25 +1850,25 @@ StringRef normalize_path_colon(BlockAllocator &balloc, const StringRef &path,
   for (; it + 2 < std::ranges::end(path);) {
     if (*it == '%') {
       if (util::is_hex_digit(*(it + 1)) && util::is_hex_digit(*(it + 2))) {
-        auto c =
-          (util::hex_to_uint(*(it + 1)) << 4) + util::hex_to_uint(*(it + 2));
+        auto c = static_cast<char>((util::hex_to_uint(*(it + 1)) << 4) +
+                                   util::hex_to_uint(*(it + 2)));
         if (util::in_rfc3986_unreserved_chars(c) || c == ':') {
-          *p++ = c;
+          *p++ = as_unsigned(c);
 
           it += 3;
 
           continue;
         }
         *p++ = '%';
-        *p++ = util::upcase(*(it + 1));
-        *p++ = util::upcase(*(it + 2));
+        *p++ = as_unsigned(util::upcase(*(it + 1)));
+        *p++ = as_unsigned(util::upcase(*(it + 2)));
 
         it += 3;
 
         continue;
       }
     }
-    *p++ = *it++;
+    *p++ = as_unsigned(*it++);
   }
 
   p = std::ranges::copy(it, std::ranges::end(path), p).out;
@@ -2046,7 +2048,7 @@ bool check_transfer_encoding(const StringRef &s) {
 std::string encode_extpri(const nghttp2_extpri &extpri) {
   std::string res = "u=";
 
-  res += extpri.urgency + '0';
+  res += static_cast<char>(extpri.urgency) + '0';
   if (extpri.inc) {
     res += ",i";
   }

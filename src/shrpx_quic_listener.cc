@@ -106,7 +106,7 @@ void QUICListener::on_read() {
       gso_size = static_cast<size_t>(nread);
     }
 
-    auto data = std::span{buf}.first(nread);
+    auto data = std::span{buf}.first(as_unsigned(nread));
 
     for (;;) {
       auto datalen = std::min(data.size(), gso_size);

@@ -87,7 +87,7 @@ mrb_value response_set_status(mrb_state *mrb, mrb_value self) {
               "invalid status; it should be [200, 999], inclusive");
   }
 
-  resp.http_status = status;
+  resp.http_status = static_cast<uint32_t>(status);
 
   return self;
 }
@@ -225,7 +225,7 @@ mrb_value response_return(mrb_state *mrb, mrb_value self) {
 
   if (downstream->expect_response_body() && vallen > 0) {
     body = reinterpret_cast<const uint8_t *>(val);
-    bodylen = vallen;
+    bodylen = as_unsigned(vallen);
   }
 
   auto cl = resp.fs.header(http2::HD_CONTENT_LENGTH);
@@ -348,7 +348,7 @@ mrb_value response_send_info(mrb_state *mrb, mrb_value self) {
     }
   }
 
-  resp.http_status = http_status;
+  resp.http_status = static_cast<uint32_t>(http_status);
 
   auto upstream = downstream->get_upstream();
 

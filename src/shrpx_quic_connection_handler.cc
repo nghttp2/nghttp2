@@ -230,7 +230,8 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
           *qkms.get(), vc.dcid[0] & SHRPX_QUIC_DCID_KM_ID_MASK);
 
         if (verify_retry_token(odcid, {hd.token, hd.tokenlen}, hd.version,
-                               hd.dcid, &remote_addr.su.sa, remote_addr.len,
+                               hd.dcid, &remote_addr.su.sa,
+                               static_cast<socklen_t>(remote_addr.len),
                                qkm->secret) != 0) {
           if (LOG_ENABLED(INFO)) {
             LOG(INFO) << "Failed to validate Retry token from remote="
@@ -284,7 +285,8 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
           *qkms.get(), hd.token[NGTCP2_CRYPTO_MAX_REGULAR_TOKENLEN]);
 
         if (verify_token({hd.token, hd.tokenlen}, &remote_addr.su.sa,
-                         remote_addr.len, qkm->secret) != 0) {
+                         static_cast<socklen_t>(remote_addr.len),
+                         qkm->secret) != 0) {
           if (LOG_ENABLED(INFO)) {
             LOG(INFO) << "Failed to validate token from remote="
                       << util::to_numeric_addr(&remote_addr);
@@ -370,8 +372,8 @@ ClientHandler *QUICConnectionHandler::handle_new_connection(
   std::array<char, NI_MAXSERV> service;
   int rv;
 
-  rv = getnameinfo(&remote_addr.su.sa, remote_addr.len, host.data(),
-                   host.size(), service.data(), service.size(),
+  rv = getnameinfo(&remote_addr.su.sa, static_cast<socklen_t>(remote_addr.len),
+                   host.data(), host.size(), service.data(), service.size(),
                    NI_NUMERICHOST | NI_NUMERICSERV);
   if (rv != 0) {
     LOG(ERROR) << "getnameinfo() failed: " << gai_strerror(rv);
@@ -422,7 +424,8 @@ ClientHandler *QUICConnectionHandler::handle_new_connection(
   auto &fwdconf = config->http.forwarded;
 
   if (fwdconf.params & FORWARDED_BY) {
-    handler->set_local_hostport(&local_addr.su.sa, local_addr.len);
+    handler->set_local_hostport(&local_addr.su.sa,
+                                static_cast<socklen_t>(local_addr.len));
   }
 
   auto upstream = std::make_unique<Http3Upstream>(handler.get());
@@ -470,8 +473,8 @@ int QUICConnectionHandler::send_retry(
   std::array<char, NI_MAXHOST> host;
   std::array<char, NI_MAXSERV> port;
 
-  if (getnameinfo(&remote_addr.su.sa, remote_addr.len, host.data(), host.size(),
-                  port.data(), port.size(),
+  if (getnameinfo(&remote_addr.su.sa, static_cast<socklen_t>(remote_addr.len),
+                  host.data(), host.size(), port.data(), port.size(),
                   NI_NUMERICHOST | NI_NUMERICSERV) != 0) {
     return -1;
   }
@@ -496,9 +499,9 @@ int QUICConnectionHandler::send_retry(
 
   std::array<uint8_t, NGTCP2_CRYPTO_MAX_RETRY_TOKENLEN> tokenbuf;
 
-  auto token =
-    generate_retry_token(tokenbuf, version, &remote_addr.su.sa, remote_addr.len,
-                         retry_scid, idcid, qkm.secret);
+  auto token = generate_retry_token(tokenbuf, version, &remote_addr.su.sa,
+                                    static_cast<socklen_t>(remote_addr.len),
+                                    retry_scid, idcid, qkm.secret);
   if (!token) {
     return -1;
   }
@@ -510,11 +513,12 @@ int QUICConnectionHandler::send_retry(
                                           &iscid, &retry_scid, &idcid,
                                           token->data(), token->size());
   if (nwrite < 0) {
-    LOG(ERROR) << "ngtcp2_crypto_write_retry: " << ngtcp2_strerror(nwrite);
+    LOG(ERROR) << "ngtcp2_crypto_write_retry: "
+               << ngtcp2_strerror(static_cast<int>(nwrite));
     return -1;
   }
 
-  buf.resize(nwrite);
+  buf.resize(as_unsigned(nwrite));
 
   quic_send_packet(faddr, &remote_addr.su.sa, remote_addr.len,
                    &local_addr.su.sa, local_addr.len, ngtcp2_pkt_info{}, buf,
@@ -560,11 +564,11 @@ int QUICConnectionHandler::send_version_negotiation(
     ini_dcid.data(), ini_dcid.size(), sv.data(), sv.size());
   if (nwrite < 0) {
     LOG(ERROR) << "ngtcp2_pkt_write_version_negotiation: "
-               << ngtcp2_strerror(nwrite);
+               << ngtcp2_strerror(static_cast<int>(nwrite));
     return -1;
   }
 
-  auto pkt = std::span{buf}.first(nwrite);
+  auto pkt = std::span{buf}.first(as_unsigned(nwrite));
   return quic_send_packet(faddr, &remote_addr.su.sa, remote_addr.len,
                           &local_addr.su.sa, local_addr.len, ngtcp2_pkt_info{},
                           pkt, pkt.size());
@@ -620,7 +624,8 @@ int QUICConnectionHandler::send_stateless_reset(const UpstreamAddr *faddr,
 
   std::array<uint8_t, max_rand_byteslen> rand_bytes;
 
-  if (RAND_bytes(rand_bytes.data(), rand_byteslen) != 1) {
+  if (RAND_bytes(rand_bytes.data(), static_cast<nghttp2_ssl_rand_length_type>(
+                                      rand_byteslen)) != 1) {
     return -1;
   }
 
@@ -630,7 +635,7 @@ int QUICConnectionHandler::send_stateless_reset(const UpstreamAddr *faddr,
     buf.data(), buf.size(), token.data(), rand_bytes.data(), rand_byteslen);
   if (nwrite < 0) {
     LOG(ERROR) << "ngtcp2_pkt_write_stateless_reset: "
-               << ngtcp2_strerror(nwrite);
+               << ngtcp2_strerror(static_cast<int>(nwrite));
     return -1;
   }
 
@@ -640,7 +645,7 @@ int QUICConnectionHandler::send_stateless_reset(const UpstreamAddr *faddr,
               << " dcid=" << util::format_hex(dcid);
   }
 
-  auto pkt = std::span{buf}.first(nwrite);
+  auto pkt = std::span{buf}.first(as_unsigned(nwrite));
   return quic_send_packet(faddr, &remote_addr.su.sa, remote_addr.len,
                           &local_addr.su.sa, local_addr.len, ngtcp2_pkt_info{},
                           pkt, pkt.size());
@@ -672,7 +677,7 @@ int QUICConnectionHandler::send_connection_close(
               << util::format_hex(std::span{ini_dcid.data, ini_dcid.datalen});
   }
 
-  auto pkt = std::span{buf}.first(nwrite);
+  auto pkt = std::span{buf}.first(as_unsigned(nwrite));
   return quic_send_packet(faddr, &remote_addr.su.sa, remote_addr.len,
                           &local_addr.su.sa, local_addr.len, ngtcp2_pkt_info{},
                           pkt, pkt.size());

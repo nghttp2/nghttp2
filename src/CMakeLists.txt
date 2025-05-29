@@ -87,7 +87,6 @@ if(ENABLE_APP)
     list(APPEND H2LOAD_SOURCES
       h2load_http3_session.cc
       h2load_quic.cc
-      quic.cc
     )
   endif()
 
@@ -148,7 +147,6 @@ if(ENABLE_APP)
      shrpx_quic_connection_handler.cc
      shrpx_http3_upstream.cc
      http3.cc
-     quic.cc
      siphash.cc
     )
   endif()

@@ -571,8 +571,8 @@ int Client::make_socket(addrinfo *addr) {
     }
     local_addr.len = addrlen;
 
-    if (quic_init(&local_addr.su.sa, local_addr.len, addr->ai_addr,
-                  addr->ai_addrlen) != 0) {
+    if (quic_init(&local_addr.su.sa, static_cast<socklen_t>(local_addr.len),
+                  addr->ai_addr, addr->ai_addrlen) != 0) {
       std::cerr << "quic_init failed" << std::endl;
       return -1;
     }
@@ -936,9 +936,9 @@ void Client::terminate_session() {
   signal_write();
 }
 
-void Client::on_request(int32_t stream_id) { streams[stream_id] = Stream(); }
+void Client::on_request(int64_t stream_id) { streams[stream_id] = Stream(); }
 
-void Client::on_header(int32_t stream_id, const uint8_t *name, size_t namelen,
+void Client::on_header(int64_t stream_id, const uint8_t *name, size_t namelen,
                        const uint8_t *value, size_t valuelen) {
   auto itr = streams.find(stream_id);
   if (itr == std::ranges::end(streams)) {
@@ -982,7 +982,7 @@ void Client::on_header(int32_t stream_id, const uint8_t *name, size_t namelen,
       ++worker->stats.status[3];
       stream.status_success = 1;
     } else if (status < 600) {
-      ++worker->stats.status[status / 100];
+      ++worker->stats.status[static_cast<size_t>(status / 100)];
       stream.status_success = 0;
     } else {
       stream.status_success = 0;
@@ -990,7 +990,7 @@ void Client::on_header(int32_t stream_id, const uint8_t *name, size_t namelen,
   }
 }
 
-void Client::on_status_code(int32_t stream_id, uint16_t status) {
+void Client::on_status_code(int64_t stream_id, uint16_t status) {
   auto itr = streams.find(stream_id);
   if (itr == std::ranges::end(streams)) {
     return;
@@ -1017,7 +1017,7 @@ void Client::on_status_code(int32_t stream_id, uint16_t status) {
   }
 }
 
-void Client::on_stream_close(int32_t stream_id, bool success, bool final) {
+void Client::on_stream_close(int64_t stream_id, bool success, bool final) {
   if (worker->current_phase == Phase::MAIN_DURATION) {
     if (req_inflight > 0) {
       --req_inflight;
@@ -1107,7 +1107,7 @@ void Client::on_stream_close(int32_t stream_id, bool success, bool final) {
   }
 }
 
-RequestStat *Client::get_req_stat(int32_t stream_id) {
+RequestStat *Client::get_req_stat(int64_t stream_id) {
   auto it = streams.find(stream_id);
   if (it == std::ranges::end(streams)) {
     return nullptr;
@@ -1293,7 +1293,7 @@ int Client::read_clear() {
       return -1;
     }
 
-    if (on_read(buf, nread) != 0) {
+    if (on_read(buf, as_unsigned(nread)) != 0) {
       return -1;
     }
   }
@@ -1327,7 +1327,7 @@ int Client::write_clear() {
       return -1;
     }
 
-    wb.drain(nwrite);
+    wb.drain(as_unsigned(nwrite));
   }
 
   ev_io_stop(worker->loop, &wev);
@@ -1413,7 +1413,7 @@ int Client::read_tls() {
       }
     }
 
-    if (on_read(buf, rv) != 0) {
+    if (on_read(buf, static_cast<size_t>(rv)) != 0) {
       return -1;
     }
   }
@@ -1435,7 +1435,7 @@ int Client::write_tls() {
       break;
     }
 
-    auto rv = SSL_write(ssl, iov.iov_base, iov.iov_len);
+    auto rv = SSL_write(ssl, iov.iov_base, static_cast<int>(iov.iov_len));
 
     if (rv <= 0) {
       auto err = SSL_get_error(ssl, rv);
@@ -1451,7 +1451,7 @@ int Client::write_tls() {
       }
     }
 
-    wb.drain(rv);
+    wb.drain(static_cast<size_t>(rv));
   }
 
   ev_io_stop(worker->loop, &wev);
@@ -1498,7 +1498,7 @@ std::span<const uint8_t> Client::write_udp(const sockaddr *addr,
     cm->cmsg_level = SOL_UDP;
     cm->cmsg_type = UDP_SEGMENT;
     cm->cmsg_len = CMSG_LEN(sizeof(uint16_t));
-    uint16_t n = gso_size;
+    auto n = static_cast<uint16_t>(gso_size);
     memcpy(CMSG_DATA(cm), &n, sizeof(n));
   }
 #  endif // UDP_SEGMENT
@@ -1574,7 +1574,7 @@ void Client::signal_write() { ev_io_start(worker->loop, &wev); }
 void Client::try_new_connection() { new_connection_requested = true; }
 
 namespace {
-int get_ev_loop_flags() {
+unsigned int get_ev_loop_flags() {
   if (ev_supported_backends() & ~ev_recommended_backends() & EVBACKEND_KQUEUE) {
     return ev_recommended_backends() | EVBACKEND_KQUEUE;
   }
@@ -1656,7 +1656,7 @@ void Worker::free_client(Client *deleted_client) {
     if (client == deleted_client) {
       client->req_todo = client->req_done;
       stats.req_todo += client->req_todo;
-      auto index = &client - &clients[0];
+      auto index = as_unsigned(&client - &clients[0]);
       clients[index] = nullptr;
       return;
     }
@@ -1745,7 +1745,7 @@ double within_sd(const std::vector<double> &samples, double mean, double sd) {
   auto upper = mean + sd;
   auto m = std::ranges::count_if(
     samples, [&lower, &upper](double t) { return lower <= t && t <= upper; });
-  return (m / static_cast<double>(samples.size())) * 100;
+  return (static_cast<double>(m) / static_cast<double>(samples.size())) * 100;
 }
 } // namespace
 
@@ -1772,14 +1772,14 @@ SDStat compute_time_stat(const std::vector<double> &samples,
     res.max = std::max(res.max, t);
     sum += t;
 
-    auto na = a + (t - a) / n;
+    auto na = a + (t - a) / static_cast<double>(n);
     q += (t - a) * (t - na);
     a = na;
   }
 
   assert(n > 0);
-  res.mean = sum / n;
-  res.sd = sqrt(q / (sampling && n > 1 ? n - 1 : n));
+  res.mean = sum / static_cast<double>(n);
+  res.sd = sqrt(q / static_cast<double>(sampling && n > 1 ? n - 1 : n));
   res.within_sd = within_sd(samples, res.mean, res.sd);
 
   return res;
@@ -1829,7 +1829,7 @@ process_time_stats(const std::vector<std::unique_ptr<Worker>> &workers) {
                    cstat.client_end_time - cstat.client_start_time)
                    .count();
         if (t > 1e-9) {
-          rps_values.push_back(cstat.req_success / t);
+          rps_values.push_back(static_cast<double>(cstat.req_success) / t);
         }
       }
 
@@ -2091,7 +2091,7 @@ int parse_header_table_size(uint32_t &dst, const char *opt,
     return -1;
   }
 
-  dst = *n;
+  dst = static_cast<uint32_t>(*n);
 
   return 0;
 }
@@ -2424,7 +2424,7 @@ int main(int argc, char **argv) {
         std::cerr << "-n: bad option value: " << optarg << std::endl;
         exit(EXIT_FAILURE);
       }
-      config.nreqs = *n;
+      config.nreqs = static_cast<size_t>(*n);
       nreqs_set_manually = true;
       break;
     }
@@ -2434,7 +2434,7 @@ int main(int argc, char **argv) {
         std::cerr << "-c: bad option value: " << optarg << std::endl;
         exit(EXIT_FAILURE);
       }
-      config.nclients = *n;
+      config.nclients = static_cast<size_t>(*n);
       break;
     }
     case 'd':
@@ -2450,7 +2450,7 @@ int main(int argc, char **argv) {
         std::cerr << "-t: bad option value: " << optarg << std::endl;
         exit(EXIT_FAILURE);
       }
-      config.nthreads = *n;
+      config.nthreads = static_cast<size_t>(*n);
 #endif // NOTHREADS
       break;
     }
@@ -2460,7 +2460,7 @@ int main(int argc, char **argv) {
         std::cerr << "-m: bad option value: " << optarg << std::endl;
         exit(EXIT_FAILURE);
       }
-      config.max_concurrent_streams = *n;
+      config.max_concurrent_streams = static_cast<size_t>(*n);
       break;
     }
     case 'w':
@@ -2473,9 +2473,9 @@ int main(int argc, char **argv) {
         exit(EXIT_FAILURE);
       }
       if (c == 'w') {
-        config.window_bits = *n;
+        config.window_bits = static_cast<size_t>(*n);
       } else {
-        config.connection_window_bits = *n;
+        config.connection_window_bits = static_cast<size_t>(*n);
       }
       break;
     }
@@ -2494,7 +2494,7 @@ int main(int argc, char **argv) {
         std::cerr << "--max-frame-size: maximum 16777215" << std::endl;
         exit(EXIT_FAILURE);
       }
-      config.max_frame_size = *n;
+      config.max_frame_size = static_cast<size_t>(*n);
       break;
     }
     case 'H': {
@@ -2549,7 +2549,7 @@ int main(int argc, char **argv) {
                   << "must be positive." << std::endl;
         exit(EXIT_FAILURE);
       }
-      config.rate = *n;
+      config.rate = static_cast<size_t>(*n);
       break;
     }
     case 'T': {
@@ -2695,7 +2695,7 @@ int main(int argc, char **argv) {
           exit(EXIT_FAILURE);
         }
         config.connect_to_host = p.first;
-        config.connect_to_port = port;
+        config.connect_to_port = static_cast<uint16_t>(port);
         break;
       }
       case 12: {
@@ -2738,7 +2738,7 @@ int main(int argc, char **argv) {
                     << std::endl;
           exit(EXIT_FAILURE);
         }
-        config.max_udp_payload_size = *n;
+        config.max_udp_payload_size = static_cast<size_t>(*n);
         break;
       }
       case 18:
@@ -2784,7 +2784,7 @@ int main(int argc, char **argv) {
 
   // serialize the APLN tokens
   for (auto &proto : config.alpn_list) {
-    proto.insert(proto.begin(), static_cast<unsigned char>(proto.size()));
+    proto.insert(proto.begin(), static_cast<char>(proto.size()));
   }
 
   std::vector<std::string> reqlines;
@@ -2923,8 +2923,8 @@ int main(int argc, char **argv) {
       exit(EXIT_FAILURE);
     }
     config.data_length = data_stat.st_size;
-    auto addr = mmap(nullptr, config.data_length, PROT_READ, MAP_SHARED,
-                     config.data_fd, 0);
+    auto addr = mmap(nullptr, static_cast<size_t>(config.data_length),
+                     PROT_READ, MAP_SHARED, config.data_fd, 0);
     if (addr == MAP_FAILED) {
       std::cerr << "-d: Could not mmap file " << datafile << std::endl;
       exit(EXIT_FAILURE);
@@ -2972,9 +2972,10 @@ int main(int argc, char **argv) {
     exit(EXIT_FAILURE);
   }
 
-  auto ssl_opts = (SSL_OP_ALL & ~SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS) |
-                  SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_COMPRESSION |
-                  SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION;
+  auto ssl_opts = static_cast<nghttp2_ssl_op_type>(
+    (SSL_OP_ALL & ~SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS) | SSL_OP_NO_SSLv2 |
+    SSL_OP_NO_SSLv3 | SSL_OP_NO_COMPRESSION |
+    SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION);
 
 #ifdef SSL_OP_ENABLE_KTLS
   if (config.ktls) {
@@ -3055,7 +3056,8 @@ int main(int argc, char **argv) {
     std::ranges::copy(proto, std::back_inserter(proto_list));
   }
 
-  SSL_CTX_set_alpn_protos(ssl_ctx, proto_list.data(), proto_list.size());
+  SSL_CTX_set_alpn_protos(ssl_ctx, proto_list.data(),
+                          static_cast<uint32_t>(proto_list.size()));
 
   if (tls::setup_keylog_callback(ssl_ctx) != 0) {
     std::cerr << "Failed to setup keylog" << std::endl;
@@ -3224,8 +3226,8 @@ int main(int argc, char **argv) {
       }
     }
 
-    workers.push_back(
-      create_worker(i, ssl_ctx, nreqs, nclients, rate, max_samples_per_thread));
+    workers.push_back(create_worker(static_cast<uint32_t>(i), ssl_ctx, nreqs,
+                                    nclients, rate, max_samples_per_thread));
     auto &worker = workers.back();
     futures.push_back(
       std::async(std::launch::async, [&worker, &mu, &cv, &ready]() {
@@ -3313,20 +3315,22 @@ int main(int argc, char **argv) {
   if (duration.count() > 0) {
     if (config.is_timing_based_mode()) {
       // we only want to consider the main duration if warm-up is given
-      rps = stats.req_success / config.duration;
-      bps = stats.bytes_total / config.duration;
+      rps = static_cast<ev_tstamp>(stats.req_success) / config.duration;
+      bps = static_cast<int64_t>(static_cast<ev_tstamp>(stats.bytes_total) /
+                                 config.duration);
     } else {
       auto secd = std::chrono::duration_cast<
         std::chrono::duration<double, std::chrono::seconds::period>>(duration);
-      rps = stats.req_success / secd.count();
-      bps = stats.bytes_total / secd.count();
+      rps = static_cast<double>(stats.req_success) / secd.count();
+      bps = static_cast<int64_t>(static_cast<double>(stats.bytes_total) /
+                                 secd.count());
     }
   }
 
   double header_space_savings = 0.;
   if (stats.bytes_head_decomp > 0) {
-    header_space_savings =
-      1. - static_cast<double>(stats.bytes_head) / stats.bytes_head_decomp;
+    header_space_savings = 1. - static_cast<double>(stats.bytes_head) /
+                                  static_cast<double>(stats.bytes_head_decomp);
   }
 
   std::cout << std::fixed << std::setprecision(2) << R"(

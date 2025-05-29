@@ -32,7 +32,6 @@
 
 #include "shrpx_upstream.h"
 #include "shrpx_downstream_queue.h"
-#include "quic.h"
 #include "network.h"
 #include "ssl_compat.h"
 

@@ -150,7 +150,7 @@ int set_alpn_prefs(std::vector<unsigned char> &out,
   auto ptr = out.data();
 
   for (const auto &proto : protos) {
-    *ptr++ = proto.size();
+    *ptr++ = static_cast<unsigned char>(proto.size());
     ptr = std::ranges::copy(proto, ptr).out;
   }
 
@@ -160,14 +160,14 @@ int set_alpn_prefs(std::vector<unsigned char> &out,
 namespace {
 int ssl_pem_passwd_cb(char *buf, int size, int rwflag, void *user_data) {
   auto config = static_cast<Config *>(user_data);
-  auto len = static_cast<int>(config->tls.private_key_passwd.size());
-  if (size < len + 1) {
+  auto len = config->tls.private_key_passwd.size();
+  if (static_cast<size_t>(size) < len + 1) {
     LOG(ERROR) << "ssl_pem_passwd_cb: buf is too small " << size;
     return 0;
   }
   // Copy string including last '\0'.
   memcpy(buf, config->tls.private_key_passwd.data(), len + 1);
-  return len;
+  return static_cast<int>(len);
 }
 } // namespace
 
@@ -214,11 +214,13 @@ int servername_callback(SSL *ssl, int *al, void *arg) {
   auto conn_handler = worker->get_connection_handler();
 
 #ifdef ENABLE_HTTP3
-  const auto &ssl_ctx_list = conn->proto == Proto::HTTP3
-                               ? conn_handler->get_quic_indexed_ssl_ctx(idx)
-                               : conn_handler->get_indexed_ssl_ctx(idx);
+  const auto &ssl_ctx_list =
+    conn->proto == Proto::HTTP3
+      ? conn_handler->get_quic_indexed_ssl_ctx(as_unsigned(idx))
+      : conn_handler->get_indexed_ssl_ctx(as_unsigned(idx));
 #else  // !ENABLE_HTTP3
-  const auto &ssl_ctx_list = conn_handler->get_indexed_ssl_ctx(idx);
+  const auto &ssl_ctx_list =
+    conn_handler->get_indexed_ssl_ctx(as_unsigned(idx));
 #endif // !ENABLE_HTTP3
 
   assert(!ssl_ctx_list.empty());
@@ -230,7 +232,8 @@ int servername_callback(SSL *ssl, int *al, void *arg) {
   for (idx = 0; idx < num_sigalgs; ++idx) {
     int signhash;
 
-    SSL_get_sigalgs(ssl, idx, nullptr, nullptr, &signhash, nullptr, nullptr);
+    SSL_get_sigalgs(ssl, static_cast<int>(idx), nullptr, nullptr, &signhash,
+                    nullptr, nullptr);
     switch (signhash) {
     case NID_ecdsa_with_SHA256:
     case NID_ecdsa_with_SHA384:
@@ -257,7 +260,7 @@ int servername_callback(SSL *ssl, int *al, void *arg) {
     // It looks like only short name is defined in OpenSSL.  No idea
     // which one to use because it is unknown that which one
     // EVP_PKEY_get_utf8_string_param("group") returns.
-    auto shared_curve_name = OBJ_nid2sn(shared_curve);
+    auto shared_curve_name = OBJ_nid2sn(static_cast<int>(shared_curve));
     if (shared_curve_name == nullptr) {
       continue;
     }
@@ -377,8 +380,9 @@ int ticket_key_cb(SSL *ssl, unsigned char *key_name, unsigned char *iv,
       return -1;
     }
 #else  // !OPENSSL_3_0_0_API
-    HMAC_Init_ex(hctx, key.data.hmac_key.data(), key.hmac_keylen, key.hmac,
-                 nullptr);
+    HMAC_Init_ex(hctx, key.data.hmac_key.data(),
+                 static_cast<nghttp2_ssl_key_length_type>(key.hmac_keylen),
+                 key.hmac, nullptr);
 #endif // !OPENSSL_3_0_0_API
     return 1;
   }
@@ -422,8 +426,9 @@ int ticket_key_cb(SSL *ssl, unsigned char *key_name, unsigned char *iv,
     return -1;
   }
 #else  // !OPENSSL_3_0_0_API
-  HMAC_Init_ex(hctx, key.data.hmac_key.data(), key.hmac_keylen, key.hmac,
-               nullptr);
+  HMAC_Init_ex(hctx, key.data.hmac_key.data(),
+               static_cast<nghttp2_ssl_key_length_type>(key.hmac_keylen),
+               key.hmac, nullptr);
 #endif // !OPENSSL_3_0_0_API
   EVP_DecryptInit_ex(ctx, key.cipher, nullptr, key.data.enc_key.data(), iv);
 
@@ -726,7 +731,7 @@ int cert_decompress(SSL *ssl, CRYPTO_BUFFER **out, size_t uncompressed_len,
 
 struct TLSProtocol {
   StringRef name;
-  long int mask;
+  nghttp2_ssl_op_type mask;
 };
 
 constexpr TLSProtocol TLS_PROTOS[] = {
@@ -734,8 +739,9 @@ constexpr TLSProtocol TLS_PROTOS[] = {
   TLSProtocol{"TLSv1.1"_sr, SSL_OP_NO_TLSv1_1},
   TLSProtocol{"TLSv1.0"_sr, SSL_OP_NO_TLSv1}};
 
-long int create_tls_proto_mask(const std::vector<StringRef> &tls_proto_list) {
-  long int res = 0;
+nghttp2_ssl_op_type
+create_tls_proto_mask(const std::vector<StringRef> &tls_proto_list) {
+  nghttp2_ssl_op_type res = 0;
 
   for (auto &supported : TLS_PROTOS) {
     auto ok = false;
@@ -765,21 +771,22 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
     DIE();
   }
 
-  auto ssl_opts = (SSL_OP_ALL & ~SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS) |
-                  SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_COMPRESSION |
-                  SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION |
-                  SSL_OP_SINGLE_ECDH_USE | SSL_OP_SINGLE_DH_USE |
-                  SSL_OP_CIPHER_SERVER_PREFERENCE
+  auto ssl_opts = static_cast<nghttp2_ssl_op_type>(
+    (SSL_OP_ALL & ~SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS) | SSL_OP_NO_SSLv2 |
+    SSL_OP_NO_SSLv3 | SSL_OP_NO_COMPRESSION |
+    SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION | SSL_OP_SINGLE_ECDH_USE |
+    SSL_OP_SINGLE_DH_USE |
+    SSL_OP_CIPHER_SERVER_PREFERENCE
 #ifdef NGHTTP2_GENUINE_OPENSSL
-                  // The reason for disabling built-in anti-replay in
-                  // OpenSSL is that it only works if client gets back
-                  // to the same server.  The freshness check
-                  // described in
-                  // https://tools.ietf.org/html/rfc8446#section-8.3
-                  // is still performed.
-                  | SSL_OP_NO_ANTI_REPLAY
+    // The reason for disabling built-in anti-replay in
+    // OpenSSL is that it only works if client gets back
+    // to the same server.  The freshness check
+    // described in
+    // https://tools.ietf.org/html/rfc8446#section-8.3
+    // is still performed.
+    | SSL_OP_NO_ANTI_REPLAY
 #endif // NGHTTP2_GENUINE_OPENSSL
-    ;
+  );
 
   auto config = mod_config();
   auto &tlsconf = config->tls;
@@ -802,7 +809,8 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
   SSL_CTX_set_session_id_context(ssl_ctx, sid_ctx, sizeof(sid_ctx) - 1);
   SSL_CTX_set_session_cache_mode(ssl_ctx, SSL_SESS_CACHE_SERVER);
 
-  SSL_CTX_set_timeout(ssl_ctx, tlsconf.session_timeout.count());
+  SSL_CTX_set_timeout(ssl_ctx, static_cast<nghttp2_ssl_timeout_type>(
+                                 tlsconf.session_timeout.count()));
 
   if (SSL_CTX_set_cipher_list(ssl_ctx, tlsconf.ciphers.data()) == 0) {
     LOG(FATAL) << "SSL_CTX_set_cipher_list " << tlsconf.ciphers
@@ -1083,7 +1091,8 @@ SSL_CTX *create_quic_ssl_context(const char *private_key_file,
   SSL_CTX_set_session_id_context(ssl_ctx, sid_ctx, sizeof(sid_ctx) - 1);
   SSL_CTX_set_session_cache_mode(ssl_ctx, SSL_SESS_CACHE_OFF);
 
-  SSL_CTX_set_timeout(ssl_ctx, tlsconf.session_timeout.count());
+  SSL_CTX_set_timeout(ssl_ctx, static_cast<nghttp2_ssl_timeout_type>(
+                                 tlsconf.session_timeout.count()));
 
   if (SSL_CTX_set_cipher_list(ssl_ctx, tlsconf.ciphers.data()) == 0) {
     LOG(FATAL) << "SSL_CTX_set_cipher_list " << tlsconf.ciphers
@@ -1312,9 +1321,10 @@ SSL_CTX *create_ssl_client_context(
     DIE();
   }
 
-  auto ssl_opts = (SSL_OP_ALL & ~SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS) |
-                  SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_COMPRESSION |
-                  SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION;
+  auto ssl_opts = static_cast<nghttp2_ssl_op_type>(
+    (SSL_OP_ALL & ~SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS) | SSL_OP_NO_SSLv2 |
+    SSL_OP_NO_SSLv3 | SSL_OP_NO_COMPRESSION |
+    SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION);
 
   auto &tlsconf = get_config()->tls;
 
@@ -1429,7 +1439,7 @@ SSL *create_ssl(SSL_CTX *ssl_ctx) {
 }
 
 ClientHandler *accept_connection(Worker *worker, int fd, sockaddr *addr,
-                                 int addrlen, const UpstreamAddr *faddr) {
+                                 socklen_t addrlen, const UpstreamAddr *faddr) {
   std::array<char, NI_MAXHOST> host;
   std::array<char, NI_MAXSERV> service;
   int rv;
@@ -1588,10 +1598,11 @@ int verify_numeric_hostname(X509 *cert, const StringRef &hostname,
     X509_get_ext_d2i(cert, NID_subject_alt_name, nullptr, nullptr));
   if (altnames) {
     auto altnames_deleter = defer(GENERAL_NAMES_free, altnames);
-    size_t n = sk_GENERAL_NAME_num(altnames);
+    auto n = static_cast<size_t>(sk_GENERAL_NAME_num(altnames));
     auto ip_found = false;
     for (size_t i = 0; i < n; ++i) {
-      auto altname = sk_GENERAL_NAME_value(altnames, i);
+      auto altname = sk_GENERAL_NAME_value(
+        altnames, static_cast<nghttp2_ssl_stack_index_type>(i));
       if (altname->type != GEN_IPADD) {
         continue;
       }
@@ -1600,7 +1611,7 @@ int verify_numeric_hostname(X509 *cert, const StringRef &hostname,
       if (!ip_addr) {
         continue;
       }
-      size_t ip_addrlen = altname->d.iPAddress->length;
+      auto ip_addrlen = static_cast<size_t>(altname->d.iPAddress->length);
 
       ip_found = true;
       if (saddrlen == ip_addrlen && memcmp(saddr, ip_addr, ip_addrlen) == 0) {
@@ -1635,9 +1646,10 @@ int verify_dns_hostname(X509 *cert, const StringRef &hostname) {
   if (altnames) {
     auto dns_found = false;
     auto altnames_deleter = defer(GENERAL_NAMES_free, altnames);
-    size_t n = sk_GENERAL_NAME_num(altnames);
+    auto n = static_cast<size_t>(sk_GENERAL_NAME_num(altnames));
     for (size_t i = 0; i < n; ++i) {
-      auto altname = sk_GENERAL_NAME_value(altnames, i);
+      auto altname = sk_GENERAL_NAME_value(
+        altnames, static_cast<nghttp2_ssl_stack_index_type>(i));
       if (altname->type != GEN_DNS) {
         continue;
       }
@@ -1767,7 +1779,7 @@ ssize_t CertLookupTree::add_cert(const StringRef &hostname, size_t idx) {
 
       assert(wcidx != -1);
 
-      wpat = &wildcard_patterns_[wcidx];
+      wpat = &wildcard_patterns_[as_unsigned(wcidx)];
     } else {
       wildcard_patterns_.emplace_back();
       wpat = &wildcard_patterns_.back();
@@ -1779,16 +1791,16 @@ ssize_t CertLookupTree::add_cert(const StringRef &hostname, size_t idx) {
 
     for (auto &p : wpat->rev_prefix) {
       if (p.prefix == rev_prefix) {
-        return p.idx;
+        return as_signed(p.idx);
       }
     }
 
     wpat->rev_prefix.emplace_back(rev_prefix, idx);
 
-    return idx;
+    return as_signed(idx);
   }
 
-  return router_.add_route(hostname, idx);
+  return as_signed(router_.add_route(hostname, idx));
 }
 
 ssize_t CertLookupTree::lookup(const StringRef &hostname) {
@@ -1837,20 +1849,21 @@ ssize_t CertLookupTree::lookup(const StringRef &hostname) {
     auto rev_prefix =
       StringRef{std::ranges::begin(rev_host) + 1, std::ranges::end(rev_host)};
 
-    auto &wpat = wildcard_patterns_[wcidx];
+    auto &wpat = wildcard_patterns_[as_unsigned(wcidx)];
     for (auto &wprefix : wpat.rev_prefix) {
       if (!util::ends_with(rev_prefix, wprefix.prefix)) {
         continue;
       }
 
-      auto prefixlen = wprefix.prefix.size() + (&rev_host[0] - &buf[0]);
+      auto prefixlen =
+        wprefix.prefix.size() + as_unsigned(&rev_host[0] - &buf[0]);
 
       // Breaking a tie with longer suffix
       if (prefixlen < best_prefixlen) {
         continue;
       }
 
-      best_idx = wprefix.idx;
+      best_idx = as_signed(wprefix.idx);
       best_prefixlen = prefixlen;
     }
   }
@@ -1873,10 +1886,11 @@ int cert_lookup_tree_add_ssl_ctx(
     X509_get_ext_d2i(cert, NID_subject_alt_name, nullptr, nullptr));
   if (altnames) {
     auto altnames_deleter = defer(GENERAL_NAMES_free, altnames);
-    size_t n = sk_GENERAL_NAME_num(altnames);
+    auto n = static_cast<size_t>(sk_GENERAL_NAME_num(altnames));
     auto dns_found = false;
     for (size_t i = 0; i < n; ++i) {
-      auto altname = sk_GENERAL_NAME_value(altnames, i);
+      auto altname = sk_GENERAL_NAME_value(
+        altnames, static_cast<nghttp2_ssl_stack_index_type>(i));
       if (altname->type != GEN_DNS) {
         continue;
       }
@@ -1917,7 +1931,7 @@ int cert_lookup_tree_add_ssl_ctx(
       }
 
       if (static_cast<size_t>(idx) < indexed_ssl_ctx.size()) {
-        indexed_ssl_ctx[idx].push_back(ssl_ctx);
+        indexed_ssl_ctx[as_unsigned(idx)].push_back(ssl_ctx);
       } else {
         assert(static_cast<size_t>(idx) == indexed_ssl_ctx.size());
         indexed_ssl_ctx.emplace_back(std::vector<SSL_CTX *>{ssl_ctx});
@@ -1956,7 +1970,7 @@ int cert_lookup_tree_add_ssl_ctx(
   }
 
   if (static_cast<size_t>(idx) < indexed_ssl_ctx.size()) {
-    indexed_ssl_ctx[idx].push_back(ssl_ctx);
+    indexed_ssl_ctx[as_unsigned(idx)].push_back(ssl_ctx);
   } else {
     assert(static_cast<size_t>(idx) == indexed_ssl_ctx.size());
     indexed_ssl_ctx.emplace_back(std::vector<SSL_CTX *>{ssl_ctx});
@@ -2155,7 +2169,7 @@ std::unique_ptr<CertLookupTree> create_cert_lookup_tree() {
 
 namespace {
 std::vector<uint8_t> serialize_ssl_session(SSL_SESSION *session) {
-  auto len = i2d_SSL_SESSION(session, nullptr);
+  auto len = static_cast<size_t>(i2d_SSL_SESSION(session, nullptr));
   auto buf = std::vector<uint8_t>(len);
   auto p = buf.data();
   i2d_SSL_SESSION(session, &p);
@@ -2188,7 +2202,7 @@ SSL_SESSION *reuse_tls_session(const TLSSessionCache &cache) {
   }
 
   auto p = cache.session_data.data();
-  return d2i_SSL_SESSION(nullptr, &p, cache.session_data.size());
+  return d2i_SSL_SESSION(nullptr, &p, as_signed(cache.session_data.size()));
 }
 
 int proto_version_from_string(const StringRef &v) {
@@ -2211,7 +2225,7 @@ int proto_version_from_string(const StringRef &v) {
 
 ssize_t get_x509_fingerprint(uint8_t *dst, size_t dstlen, const X509 *x,
                              const EVP_MD *md) {
-  unsigned int len = dstlen;
+  auto len = static_cast<unsigned int>(dstlen);
   if (X509_digest(x, md, dst, &len) != 1) {
     return -1;
   }
@@ -2234,10 +2248,10 @@ StringRef get_x509_name(BlockAllocator &balloc, X509_NAME *nm) {
     return StringRef{};
   }
 
-  auto iov = make_byte_ref(balloc, slen + 1);
+  auto iov = make_byte_ref(balloc, static_cast<size_t>(slen) + 1);
   BIO_read(b, iov.data(), slen);
-  iov[slen] = '\0';
-  return as_string_ref(iov.first(slen));
+  iov[static_cast<size_t>(slen)] = '\0';
+  return as_string_ref(iov.first(static_cast<size_t>(slen)));
 }
 } // namespace
 

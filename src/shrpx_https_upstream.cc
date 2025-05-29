@@ -385,7 +385,11 @@ int htp_hdrs_completecb(llhttp_t *htp) {
     // content-length header field.  If we don't have both
     // transfer-encoding and content-length header field, we assume
     // that there is no request body.
-    req.fs.content_length = htp->content_length;
+    if (htp->content_length > std::numeric_limits<int64_t>::max()) {
+      return -1;
+    }
+
+    req.fs.content_length = static_cast<int64_t>(htp->content_length);
   }
 
   auto host = req.fs.header(http2::HD_HOST);
@@ -677,11 +681,10 @@ int HttpsUpstream::on_read() {
                             rb->rleft());
   }
 
-  auto nread =
-    htperr == HPE_OK
-      ? rb->rleft()
-      : reinterpret_cast<const uint8_t *>(llhttp_get_error_pos(&htp_)) -
-          rb->pos();
+  auto nread = htperr == HPE_OK ? rb->rleft()
+                                : as_unsigned(reinterpret_cast<const uint8_t *>(
+                                                llhttp_get_error_pos(&htp_)) -
+                                              rb->pos());
   rb->drain(nread);
   rlimit->startw();
 
@@ -1166,9 +1169,9 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
 
   auto buf = downstream->get_response_buf();
   buf->append("HTTP/"sv);
-  buf->append('0' + req.http_major);
+  buf->append('0' + static_cast<char>(req.http_major));
   buf->append('.');
-  buf->append('0' + req.http_minor);
+  buf->append('0' + static_cast<char>(req.http_minor));
   buf->append(' ');
   if (req.connect_proto != ConnectProto::NONE && downstream->get_upgraded()) {
     buf->append("101 Switching Protocols"sv);
@@ -1202,10 +1205,11 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
     return 0;
   }
 
-  auto build_flags = (http2::HDOP_STRIP_ALL & ~http2::HDOP_STRIP_VIA) |
-                     (!http2::legacy_http1(req.http_major, req.http_minor)
-                        ? 0
-                        : http2::HDOP_STRIP_TRANSFER_ENCODING);
+  auto build_flags =
+    static_cast<uint32_t>((http2::HDOP_STRIP_ALL & ~http2::HDOP_STRIP_VIA) |
+                          (!http2::legacy_http1(req.http_major, req.http_minor)
+                             ? 0
+                             : http2::HDOP_STRIP_TRANSFER_ENCODING));
 
   http2::build_http1_headers_from_headers(buf, resp.fs.headers(), build_flags);
 

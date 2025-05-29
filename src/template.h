@@ -42,6 +42,16 @@
 
 namespace nghttp2 {
 
+template <std::integral T>
+[[nodiscard]] constexpr auto as_unsigned(T n) noexcept {
+  return static_cast<std::make_unsigned_t<T>>(n);
+}
+
+template <std::unsigned_integral T>
+[[nodiscard]] constexpr auto as_signed(T n) noexcept {
+  return static_cast<std::make_signed_t<T>>(n);
+}
+
 template <typename T, size_t N> constexpr size_t array_size(T (&)[N]) {
   return N;
 }
@@ -158,16 +168,24 @@ constexpr unsigned long long operator"" _g(unsigned long long g) {
 // User-defined literals for time, converted into double in seconds
 
 // hours
-constexpr double operator"" _h(unsigned long long h) { return h * 60 * 60; }
+constexpr double operator"" _h(unsigned long long h) {
+  return static_cast<double>(h * 60 * 60);
+}
 
 // minutes
-constexpr double operator"" _min(unsigned long long min) { return min * 60; }
+constexpr double operator"" _min(unsigned long long min) {
+  return static_cast<double>(min * 60);
+}
 
 // seconds
-constexpr double operator"" _s(unsigned long long s) { return s; }
+constexpr double operator"" _s(unsigned long long s) {
+  return static_cast<double>(s);
+}
 
 // milliseconds
-constexpr double operator"" _ms(unsigned long long ms) { return ms / 1000.; }
+constexpr double operator"" _ms(unsigned long long ms) {
+  return static_cast<double>(ms) / 1000.;
+}
 
 // ImmutableString represents string that is immutable unlike
 // std::string.  It has c_str() and size() functions to mimic
@@ -202,12 +220,12 @@ public:
            !std::is_same_v<std::remove_cvref_t<R>, ImmutableString> &&
            !std::is_array_v<std::remove_cvref_t<R>>)
   constexpr explicit ImmutableString(R &&r)
-    : len(std::ranges::distance(r)), base(copystr(std::forward<R>(r))) {}
+    : len(std::ranges::size(r)), base(copystr(std::forward<R>(r))) {}
 
   template <std::input_iterator I>
   requires(std::is_same_v<std::iter_value_t<I>, value_type>)
   constexpr ImmutableString(I first, I last)
-    : len(std::ranges::distance(first, last)),
+    : len(as_unsigned(std::ranges::distance(first, last))),
       base(copystr(std::move(first), std::move(last))) {}
 
   constexpr ImmutableString(const ImmutableString &other)
@@ -276,7 +294,7 @@ public:
 private:
   template <std::input_iterator I>
   constexpr const char *copystr(I first, I last) {
-    auto len = std::ranges::distance(first, last);
+    auto len = static_cast<size_t>(std::ranges::distance(first, last));
     if (len == 0) {
       return "";
     }
@@ -300,7 +318,7 @@ inline bool operator==(const ImmutableString &lhs, const ImmutableString &rhs) {
 }
 
 inline std::ostream &operator<<(std::ostream &o, const ImmutableString &s) {
-  return o.write(s.c_str(), s.size());
+  return o.write(s.c_str(), static_cast<std::streamsize>(s.size()));
 }
 
 inline std::string &operator+=(std::string &lhs, const ImmutableString &rhs) {
@@ -357,7 +375,8 @@ public:
   requires(std::is_same_v<std::iter_value_t<I>, value_type>)
   constexpr StringRef(I first, I last)
     : base(std::to_address(first)),
-      len(std::ranges::distance(std::move(first), std::move(last))) {}
+      len(static_cast<size_type>(
+        std::ranges::distance(std::move(first), std::move(last)))) {}
 
   constexpr StringRef &operator=(const StringRef &other) noexcept = default;
 
@@ -421,7 +440,7 @@ inline constexpr bool operator<(const StringRef &lhs,
 #endif // __APPLE__ || _LIBCPP_VERSION
 
 inline std::ostream &operator<<(std::ostream &o, const StringRef &s) {
-  return o.write(s.data(), s.size());
+  return o.write(s.data(), static_cast<std::streamsize>(s.size()));
 }
 
 inline std::string &operator+=(std::string &lhs, const StringRef &rhs) {
@@ -503,11 +522,6 @@ requires(sizeof(std::iter_value_t<I>) == sizeof(StringRef::value_type))
 [[nodiscard]] StringRef as_string_ref(I first, size_t n) {
   return StringRef{
     reinterpret_cast<StringRef::const_pointer>(std::to_address(first)), n};
-}
-
-template <std::integral T>
-[[nodiscard]] constexpr auto as_unsigned(T n) noexcept {
-  return static_cast<std::make_unsigned_t<T>>(n);
 }
 
 inline int run_app(std::function<int(int, char **)> app, int argc,

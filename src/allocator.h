@@ -180,7 +180,7 @@ struct BlockAllocator {
     auto nalloclen = std::max(size + 1, alloclen * 2);
 
     auto res = alloc(nalloclen);
-    std::ranges::copy_n(p, alloclen, static_cast<uint8_t *>(res));
+    std::ranges::copy_n(p, as_signed(alloclen), static_cast<uint8_t *>(res));
 
     return res;
   }
@@ -200,8 +200,8 @@ struct BlockAllocator {
 // will be NULL-terminated.
 template <std::input_iterator I>
 StringRef make_string_ref(BlockAllocator &alloc, I first, I last) {
-  auto dst =
-    static_cast<char *>(alloc.alloc(std::ranges::distance(first, last) + 1));
+  auto dst = static_cast<char *>(
+    alloc.alloc(static_cast<size_t>(std::ranges::distance(first, last) + 1)));
   auto p = std::ranges::copy(first, last, dst).out;
   *p = '\0';
 
@@ -226,7 +226,7 @@ constexpr size_t concat_string_ref_count(size_t acc) { return acc; }
 template <std::ranges::input_range R, std::ranges::input_range... Args>
 requires(!std::is_array_v<std::remove_cvref_t<R>>)
 constexpr size_t concat_string_ref_count(size_t acc, R &&r, Args &&...args) {
-  return concat_string_ref_count(acc + std::ranges::distance(r), args...);
+  return concat_string_ref_count(acc + std::ranges::size(r), args...);
 }
 
 // private function used in concat_string_ref.  this is the base

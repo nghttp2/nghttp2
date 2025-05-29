@@ -74,9 +74,9 @@ void Router::add_node(RNode *node, const char *pattern, size_t patlen,
 size_t Router::add_route(const StringRef &pattern, size_t idx, bool wildcard) {
   ssize_t index = -1, wildcard_index = -1;
   if (wildcard) {
-    wildcard_index = idx;
+    wildcard_index = as_signed(idx);
   } else {
-    index = idx;
+    index = as_signed(idx);
   }
 
   auto node = &root_;
@@ -105,7 +105,7 @@ size_t Router::add_route(const StringRef &pattern, size_t idx, bool wildcard) {
         if (index != -1) {
           if (node->index != -1) {
             // Return the existing index for duplicates.
-            return node->index;
+            return as_unsigned(node->index);
           }
           node->index = index;
           return idx;
@@ -114,7 +114,7 @@ size_t Router::add_route(const StringRef &pattern, size_t idx, bool wildcard) {
         assert(wildcard_index != -1);
 
         if (node->wildcard_index != -1) {
-          return node->wildcard_index;
+          return as_unsigned(node->wildcard_index);
         }
         node->wildcard_index = wildcard_index;
         return idx;
@@ -374,14 +374,14 @@ const RNode *match_prefix(size_t *nread, const RNode *node, const char *first,
 
     if (p != last) {
       if (node->index != -1) {
-        *nread = p - first;
+        *nread = as_unsigned(p - first);
         return node;
       }
       continue;
     }
 
     if (node->len == n) {
-      *nread = p - first;
+      *nread = as_unsigned(p - first);
       return node;
     }
 
