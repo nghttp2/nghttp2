@@ -228,7 +228,7 @@ StringRef format_iso8601(char *out,
 
   auto sys_info = zt.get_info();
   auto gmtoff =
-    std::chrono::duration_cast<std::chrono::minutes>(sys_info.offset).count();
+    std::chrono::floor<std::chrono::minutes>(sys_info.offset).count();
   if (gmtoff == 0) {
     *p++ = 'Z';
   } else {
