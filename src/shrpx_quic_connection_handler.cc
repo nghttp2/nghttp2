@@ -230,8 +230,7 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
           *qkms.get(), vc.dcid[0] & SHRPX_QUIC_DCID_KM_ID_MASK);
 
         if (verify_retry_token(odcid, {hd.token, hd.tokenlen}, hd.version,
-                               hd.dcid, &remote_addr.su.sa,
-                               static_cast<socklen_t>(remote_addr.len),
+                               hd.dcid, &remote_addr.su.sa, remote_addr.len,
                                qkm->secret) != 0) {
           if (LOG_ENABLED(INFO)) {
             LOG(INFO) << "Failed to validate Retry token from remote="
@@ -285,8 +284,7 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
           *qkms.get(), hd.token[NGTCP2_CRYPTO_MAX_REGULAR_TOKENLEN]);
 
         if (verify_token({hd.token, hd.tokenlen}, &remote_addr.su.sa,
-                         static_cast<socklen_t>(remote_addr.len),
-                         qkm->secret) != 0) {
+                         remote_addr.len, qkm->secret) != 0) {
           if (LOG_ENABLED(INFO)) {
             LOG(INFO) << "Failed to validate token from remote="
                       << util::to_numeric_addr(&remote_addr);
@@ -372,8 +370,8 @@ ClientHandler *QUICConnectionHandler::handle_new_connection(
   std::array<char, NI_MAXSERV> service;
   int rv;
 
-  rv = getnameinfo(&remote_addr.su.sa, static_cast<socklen_t>(remote_addr.len),
-                   host.data(), host.size(), service.data(), service.size(),
+  rv = getnameinfo(&remote_addr.su.sa, remote_addr.len, host.data(),
+                   host.size(), service.data(), service.size(),
                    NI_NUMERICHOST | NI_NUMERICSERV);
   if (rv != 0) {
     LOG(ERROR) << "getnameinfo() failed: " << gai_strerror(rv);
@@ -424,8 +422,7 @@ ClientHandler *QUICConnectionHandler::handle_new_connection(
   auto &fwdconf = config->http.forwarded;
 
   if (fwdconf.params & FORWARDED_BY) {
-    handler->set_local_hostport(&local_addr.su.sa,
-                                static_cast<socklen_t>(local_addr.len));
+    handler->set_local_hostport(&local_addr.su.sa, local_addr.len);
   }
 
   auto upstream = std::make_unique<Http3Upstream>(handler.get());
@@ -473,8 +470,8 @@ int QUICConnectionHandler::send_retry(
   std::array<char, NI_MAXHOST> host;
   std::array<char, NI_MAXSERV> port;
 
-  if (getnameinfo(&remote_addr.su.sa, static_cast<socklen_t>(remote_addr.len),
-                  host.data(), host.size(), port.data(), port.size(),
+  if (getnameinfo(&remote_addr.su.sa, remote_addr.len, host.data(), host.size(),
+                  port.data(), port.size(),
                   NI_NUMERICHOST | NI_NUMERICSERV) != 0) {
     return -1;
   }
@@ -499,9 +496,9 @@ int QUICConnectionHandler::send_retry(
 
   std::array<uint8_t, NGTCP2_CRYPTO_MAX_RETRY_TOKENLEN> tokenbuf;
 
-  auto token = generate_retry_token(tokenbuf, version, &remote_addr.su.sa,
-                                    static_cast<socklen_t>(remote_addr.len),
-                                    retry_scid, idcid, qkm.secret);
+  auto token =
+    generate_retry_token(tokenbuf, version, &remote_addr.su.sa, remote_addr.len,
+                         retry_scid, idcid, qkm.secret);
   if (!token) {
     return -1;
   }

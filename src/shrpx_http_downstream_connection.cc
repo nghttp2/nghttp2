@@ -398,7 +398,7 @@ int HttpDownstreamConnection::initiate_connection() {
 
     worker_blocker->on_success();
 
-    rv = connect(conn_.fd, &raddr->su.sa, static_cast<socklen_t>(raddr->len));
+    rv = connect(conn_.fd, &raddr->su.sa, raddr->len);
     if (rv != 0 && errno != EINPROGRESS) {
       auto error = errno;
       DCLOG(WARN, this) << "connect() failed; addr="

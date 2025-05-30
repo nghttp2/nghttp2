@@ -412,8 +412,7 @@ int Http2Session::initiate_connection() {
       return -1;
     }
 
-    rv = connect(conn_.fd, &proxy.addr.su.sa,
-                 static_cast<socklen_t>(proxy.addr.len));
+    rv = connect(conn_.fd, &proxy.addr.su.sa, proxy.addr.len);
     if (rv != 0 && errno != EINPROGRESS) {
       auto error = errno;
       SSLOG(WARN, this) << "Backend proxy connect() failed; addr="
@@ -538,8 +537,7 @@ int Http2Session::initiate_connection() {
 
         rv = connect(conn_.fd,
                      // TODO maybe not thread-safe?
-                     const_cast<sockaddr *>(&raddr_->su.sa),
-                     static_cast<socklen_t>(raddr_->len));
+                     const_cast<sockaddr *>(&raddr_->su.sa), raddr_->len);
         if (rv != 0 && errno != EINPROGRESS) {
           auto error = errno;
           SSLOG(WARN, this)
@@ -603,7 +601,7 @@ int Http2Session::initiate_connection() {
         worker_blocker->on_success();
 
         rv = connect(conn_.fd, const_cast<sockaddr *>(&raddr_->su.sa),
-                     static_cast<socklen_t>(raddr_->len));
+                     raddr_->len);
         if (rv != 0 && errno != EINPROGRESS) {
           auto error = errno;
           SSLOG(WARN, this)

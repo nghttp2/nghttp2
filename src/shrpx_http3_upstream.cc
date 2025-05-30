@@ -732,11 +732,11 @@ int Http3Upstream::init(const UpstreamAddr *faddr, const Address &remote_addr,
   auto path = ngtcp2_path{
     {
       const_cast<sockaddr *>(&local_addr.su.sa),
-      static_cast<socklen_t>(local_addr.len),
+      local_addr.len,
     },
     {
       const_cast<sockaddr *>(&remote_addr.su.sa),
-      static_cast<socklen_t>(remote_addr.len),
+      remote_addr.len,
     },
     const_cast<UpstreamAddr *>(faddr),
   };
@@ -1798,11 +1798,11 @@ int Http3Upstream::on_read(const UpstreamAddr *faddr,
   auto path = ngtcp2_path{
     {
       const_cast<sockaddr *>(&local_addr.su.sa),
-      static_cast<socklen_t>(local_addr.len),
+      local_addr.len,
     },
     {
       const_cast<sockaddr *>(&remote_addr.su.sa),
-      static_cast<socklen_t>(remote_addr.len),
+      remote_addr.len,
     },
     const_cast<UpstreamAddr *>(faddr),
   };
@@ -1868,8 +1868,8 @@ int Http3Upstream::on_read(const UpstreamAddr *faddr,
 
 std::pair<std::span<const uint8_t>, int>
 Http3Upstream::send_packet(const UpstreamAddr *faddr, const sockaddr *remote_sa,
-                           size_t remote_salen, const sockaddr *local_sa,
-                           size_t local_salen, const ngtcp2_pkt_info &pi,
+                           socklen_t remote_salen, const sockaddr *local_sa,
+                           socklen_t local_salen, const ngtcp2_pkt_info &pi,
                            std::span<const uint8_t> data, size_t gso_size) {
   if (tx_.no_gso) {
     for (; !data.empty();) {

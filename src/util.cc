@@ -838,7 +838,7 @@ std::string numeric_name(const struct sockaddr *sa, socklen_t salen) {
 }
 
 std::string to_numeric_addr(const Address *addr) {
-  return to_numeric_addr(&addr->su.sa, static_cast<socklen_t>(addr->len));
+  return to_numeric_addr(&addr->su.sa, addr->len);
 }
 
 std::string to_numeric_addr(const struct sockaddr *sa, socklen_t salen) {

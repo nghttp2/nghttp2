@@ -170,7 +170,7 @@ int MemcachedConnection::initiate_connection() {
   }
 
   int rv;
-  rv = connect(conn_.fd, &addr_->su.sa, static_cast<socklen_t>(addr_->len));
+  rv = connect(conn_.fd, &addr_->su.sa, addr_->len);
   if (rv != 0 && errno != EINPROGRESS) {
     auto error = errno;
     MCLOG(WARN, this) << "connect() failed; errno=" << error;

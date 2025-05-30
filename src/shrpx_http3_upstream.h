@@ -142,9 +142,9 @@ public:
   int submit_goaway();
   std::pair<std::span<const uint8_t>, int>
   send_packet(const UpstreamAddr *faddr, const sockaddr *remote_sa,
-              size_t remote_salen, const sockaddr *local_sa, size_t local_salen,
-              const ngtcp2_pkt_info &pi, std::span<const uint8_t> data,
-              size_t gso_size);
+              socklen_t remote_salen, const sockaddr *local_sa,
+              socklen_t local_salen, const ngtcp2_pkt_info &pi,
+              std::span<const uint8_t> data, size_t gso_size);
   int send_packet(const ngtcp2_path &path, const ngtcp2_pkt_info &pi,
                   const std::span<const uint8_t> data, size_t gso_size);
 

@@ -346,8 +346,7 @@ void DNSResolver::on_result(int status, ares_addrinfo *ai) {
   if (status_ == DNSResolverStatus::OK) {
     if (LOG_ENABLED(INFO)) {
       LOG(INFO) << "Name lookup succeeded: " << name_ << " -> "
-                << util::numeric_name(&result_.su.sa,
-                                      static_cast<socklen_t>(result_.len));
+                << util::numeric_name(&result_.su.sa, result_.len);
     }
     return;
   }
