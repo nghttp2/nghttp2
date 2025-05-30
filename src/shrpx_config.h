@@ -699,7 +699,6 @@ struct TLSConfig {
   // list of supported SSL/TLS protocol strings.
   std::vector<StringRef> tls_proto_list;
   std::vector<uint8_t> sct_data;
-  BIO_METHOD *bio_method;
   // Bit mask to disable SSL/TLS protocol versions.  This will be
   // passed to SSL_CTX_set_options().
   nghttp2_ssl_op_type tls_proto_mask;
