@@ -37,7 +37,7 @@
 
 #include <string>
 #include <vector>
-#include <set>
+#include <unordered_set>
 #include <chrono>
 #include <memory>
 
@@ -268,7 +268,7 @@ struct HttpClient {
   std::vector<std::unique_ptr<Request>> reqvec;
   // Insert path already added in reqvec to prevent multiple request
   // for 1 resource.
-  std::set<std::string> path_cache;
+  std::unordered_set<std::string> path_cache;
   std::string scheme;
   std::string host;
   std::string hostport;

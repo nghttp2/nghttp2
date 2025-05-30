@@ -28,7 +28,7 @@
 #include "shrpx.h"
 
 #include <memory>
-#include <set>
+#include <unordered_set>
 
 namespace shrpx {
 
@@ -45,7 +45,7 @@ public:
   void remove_all();
 
 private:
-  std::set<DownstreamConnection *> pool_;
+  std::unordered_set<DownstreamConnection *> pool_;
 };
 
 } // namespace shrpx

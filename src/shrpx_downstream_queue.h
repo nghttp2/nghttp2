@@ -29,7 +29,6 @@
 
 #include <cinttypes>
 #include <unordered_map>
-#include <set>
 #include <memory>
 
 #include "template.h"

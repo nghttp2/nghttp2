@@ -2873,7 +2873,7 @@ int option_lookup_token(const StringRef &name) {
 }
 
 int parse_config(Config *config, const StringRef &opt, const StringRef &optarg,
-                 std::set<StringRef> &included_set,
+                 std::unordered_set<StringRef> &included_set,
                  std::unordered_map<StringRef, size_t> &pattern_addr_indexer) {
   auto optid = option_lookup_token(opt);
   return parse_config(config, optid, opt, optarg, included_set,
@@ -2881,7 +2881,8 @@ int parse_config(Config *config, const StringRef &opt, const StringRef &optarg,
 }
 
 int parse_config(Config *config, int optid, const StringRef &opt,
-                 const StringRef &optarg, std::set<StringRef> &included_set,
+                 const StringRef &optarg,
+                 std::unordered_set<StringRef> &included_set,
                  std::unordered_map<StringRef, size_t> &pattern_addr_indexer) {
   std::array<char, STRERROR_BUFSIZE> errbuf;
 
@@ -3624,7 +3625,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
   case SHRPX_OPTID_MAX_RESPONSE_HEADER_FIELDS:
     return parse_uint(&config->http.max_response_header_fields, opt, optarg);
   case SHRPX_OPTID_INCLUDE: {
-    if (included_set.count(optarg)) {
+    if (included_set.contains(optarg)) {
       LOG(ERROR) << opt << ": " << optarg << " has already been included";
       return -1;
     }
@@ -4263,7 +4264,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
 }
 
 int load_config(Config *config, const char *filename,
-                std::set<StringRef> &include_set,
+                std::unordered_set<StringRef> &include_set,
                 std::unordered_map<StringRef, size_t> &pattern_addr_indexer) {
   std::ifstream in(filename, std::ios::binary);
   if (!in) {
