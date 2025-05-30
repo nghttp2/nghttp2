@@ -432,7 +432,7 @@ public:
 private:
   std::set<Http2Handler *> handlers_;
   // cache for file descriptors to read file.
-  std::multimap<std::string, std::unique_ptr<FileEntry>> fd_cache_;
+  std::unordered_multimap<std::string, std::unique_ptr<FileEntry>> fd_cache_;
   DList<FileEntry> fd_cache_lru_;
   HttpServer *sv_;
   struct ev_loop *loop_;

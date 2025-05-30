@@ -28,7 +28,7 @@
 #include "shrpx.h"
 
 #include <cinttypes>
-#include <map>
+#include <unordered_map>
 #include <set>
 #include <memory>
 
@@ -67,7 +67,7 @@ public:
     size_t num_active;
   };
 
-  using HostEntryMap = std::map<StringRef, HostEntry>;
+  using HostEntryMap = std::unordered_map<StringRef, HostEntry>;
 
   // conn_max_per_host == 0 means no limit for downstream connection.
   DownstreamQueue(size_t conn_max_per_host = 0, bool unified_host = true);

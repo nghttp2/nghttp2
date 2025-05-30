@@ -1194,7 +1194,7 @@ namespace {
 //
 // This function returns 0 if it succeeds, or -1.
 int parse_mapping(Config *config, DownstreamAddrConfig &addr,
-                  std::map<StringRef, size_t> &pattern_addr_indexer,
+                  std::unordered_map<StringRef, size_t> &pattern_addr_indexer,
                   const StringRef &src_pattern, const StringRef &src_params) {
   // This returns at least 1 element (it could be empty string).  We
   // will append '/' to all patterns, so it becomes catch-all pattern.
@@ -2874,7 +2874,7 @@ int option_lookup_token(const StringRef &name) {
 
 int parse_config(Config *config, const StringRef &opt, const StringRef &optarg,
                  std::set<StringRef> &included_set,
-                 std::map<StringRef, size_t> &pattern_addr_indexer) {
+                 std::unordered_map<StringRef, size_t> &pattern_addr_indexer) {
   auto optid = option_lookup_token(opt);
   return parse_config(config, optid, opt, optarg, included_set,
                       pattern_addr_indexer);
@@ -2882,7 +2882,7 @@ int parse_config(Config *config, const StringRef &opt, const StringRef &optarg,
 
 int parse_config(Config *config, int optid, const StringRef &opt,
                  const StringRef &optarg, std::set<StringRef> &included_set,
-                 std::map<StringRef, size_t> &pattern_addr_indexer) {
+                 std::unordered_map<StringRef, size_t> &pattern_addr_indexer) {
   std::array<char, STRERROR_BUFSIZE> errbuf;
 
   switch (optid) {
@@ -4264,7 +4264,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
 
 int load_config(Config *config, const char *filename,
                 std::set<StringRef> &include_set,
-                std::map<StringRef, size_t> &pattern_addr_indexer) {
+                std::unordered_map<StringRef, size_t> &pattern_addr_indexer) {
   std::ifstream in(filename, std::ios::binary);
   if (!in) {
     LOG(ERROR) << "Could not open config file " << filename;

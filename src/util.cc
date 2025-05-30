@@ -1630,7 +1630,7 @@ uint64_t get_uint64(const uint8_t *data) {
   return n;
 }
 
-int read_mime_types(std::map<std::string, std::string> &res,
+int read_mime_types(std::unordered_map<std::string, std::string> &res,
                     const char *filename) {
   std::ifstream infile(filename);
   if (!infile) {

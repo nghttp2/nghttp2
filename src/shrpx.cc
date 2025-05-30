@@ -3275,7 +3275,7 @@ namespace {
 int process_options(Config *config,
                     std::vector<std::pair<StringRef, StringRef>> &cmdcfgs) {
   std::array<char, STRERROR_BUFSIZE> errbuf;
-  std::map<StringRef, size_t> pattern_addr_indexer;
+  std::unordered_map<StringRef, size_t> pattern_addr_indexer;
   if (conf_exists(config->conf_path.data())) {
     LOG(NOTICE) << "Loading configuration from " << config->conf_path;
     std::set<StringRef> include_set;
