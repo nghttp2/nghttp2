@@ -83,7 +83,7 @@ void Http3Session::read_data(nghttp3_vec *vec, size_t veccnt,
   auto config = client_->worker->config;
 
   vec[0].base = config->data;
-  vec[0].len = config->data_length;
+  vec[0].len = static_cast<size_t>(config->data_length);
   *pflags |= NGHTTP3_DATA_FLAG_EOF;
 }
 
@@ -410,11 +410,12 @@ ssize_t Http3Session::read_stream(uint32_t flags, int64_t stream_id,
   auto nconsumed = nghttp3_conn_read_stream(
     conn_, stream_id, data, datalen, flags & NGTCP2_STREAM_DATA_FLAG_FIN);
   if (nconsumed < 0) {
-    std::cerr << "nghttp3_conn_read_stream: " << nghttp3_strerror(nconsumed)
-              << std::endl;
+    std::cerr << "nghttp3_conn_read_stream: "
+              << nghttp3_strerror(static_cast<int>(nconsumed)) << std::endl;
     ngtcp2_ccerr_set_application_error(
       &client_->quic.last_error,
-      nghttp3_err_infer_quic_app_error_code(nconsumed), nullptr, 0);
+      nghttp3_err_infer_quic_app_error_code(static_cast<int>(nconsumed)),
+      nullptr, 0);
     return -1;
   }
   return nconsumed;
@@ -426,8 +427,9 @@ ssize_t Http3Session::write_stream(int64_t &stream_id, int &fin,
     nghttp3_conn_writev_stream(conn_, &stream_id, &fin, vec, veccnt);
   if (sveccnt < 0) {
     ngtcp2_ccerr_set_application_error(
-      &client_->quic.last_error, nghttp3_err_infer_quic_app_error_code(sveccnt),
-      nullptr, 0);
+      &client_->quic.last_error,
+      nghttp3_err_infer_quic_app_error_code(static_cast<int>(sveccnt)), nullptr,
+      0);
     return -1;
   }
   return sveccnt;

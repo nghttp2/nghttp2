@@ -284,7 +284,7 @@ int LiveCheck::initiate_connection() {
     return -1;
   }
 
-  rv = connect(conn_.fd, &raddr_->su.sa, raddr_->len);
+  rv = connect(conn_.fd, &raddr_->su.sa, static_cast<socklen_t>(raddr_->len));
   if (rv != 0 && errno != EINPROGRESS) {
     auto error = errno;
     LOG(WARN) << "connect() failed; addr=" << util::to_numeric_addr(raddr_)
@@ -453,10 +453,10 @@ int LiveCheck::read_tls() {
     }
 
     if (nread < 0) {
-      return nread;
+      return static_cast<int>(nread);
     }
 
-    if (on_read(buf.data(), nread) != 0) {
+    if (on_read(buf.data(), as_unsigned(nread)) != 0) {
       return -1;
     }
   }
@@ -483,10 +483,10 @@ int LiveCheck::write_tls() {
       }
 
       if (nwrite < 0) {
-        return nwrite;
+        return static_cast<int>(nwrite);
       }
 
-      wb_.drain(nwrite);
+      wb_.drain(as_unsigned(nwrite));
 
       continue;
     }
@@ -524,10 +524,10 @@ int LiveCheck::read_clear() {
     }
 
     if (nread < 0) {
-      return nread;
+      return static_cast<int>(nread);
     }
 
-    if (on_read(buf.data(), nread) != 0) {
+    if (on_read(buf.data(), as_unsigned(nread)) != 0) {
       return -1;
     }
   }
@@ -552,10 +552,10 @@ int LiveCheck::write_clear() {
       }
 
       if (nwrite < 0) {
-        return nwrite;
+        return static_cast<int>(nwrite);
       }
 
-      wb_.drain(nwrite);
+      wb_.drain(as_unsigned(nwrite));
 
       continue;
     }
@@ -583,7 +583,7 @@ int LiveCheck::on_read(const uint8_t *data, size_t len) {
   auto rv = nghttp2_session_mem_recv2(session_, data, len);
   if (rv < 0) {
     LOG(ERROR) << "nghttp2_session_mem_recv2() returned error: "
-               << nghttp2_strerror(rv);
+               << nghttp2_strerror(static_cast<int>(rv));
     return -1;
   }
 
@@ -621,13 +621,13 @@ int LiveCheck::on_write() {
 
     if (datalen < 0) {
       LOG(ERROR) << "nghttp2_session_mem_send2() returned error: "
-                 << nghttp2_strerror(datalen);
+                 << nghttp2_strerror(static_cast<int>(datalen));
       return -1;
     }
     if (datalen == 0) {
       break;
     }
-    wb_.append(data, datalen);
+    wb_.append(data, as_unsigned(datalen));
 
     if (wb_.rleft() >= MAX_BUFFER_SIZE) {
       break;

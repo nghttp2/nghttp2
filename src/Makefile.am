@@ -123,8 +123,7 @@ h2load_SOURCES = util.cc util.h \
 if ENABLE_HTTP3
 h2load_SOURCES += \
 	h2load_http3_session.cc h2load_http3_session.h \
-	h2load_quic.cc h2load_quic.h \
-	quic.cc quic.h
+	h2load_quic.cc h2load_quic.h
 endif # ENABLE_HTTP3
 
 NGHTTPX_SRCS = \
@@ -190,7 +189,6 @@ NGHTTPX_SRCS += \
 	shrpx_quic_connection_handler.cc shrpx_quic_connection_handler.h \
 	shrpx_http3_upstream.cc shrpx_http3_upstream.h \
 	http3.cc http3.h \
-	quic.cc quic.h \
 	siphash.cc siphash.h
 endif # ENABLE_HTTP3
 

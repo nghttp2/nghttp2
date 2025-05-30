@@ -635,7 +635,7 @@ Worker *ConnectionHandler::find_worker(const WorkerID &wid) const {
     return nullptr;
   }
 
-  return workers_[idx].get();
+  return workers_[as_unsigned(idx)].get();
 }
 
 QUICLingeringWorkerProcess *
@@ -692,11 +692,11 @@ int ConnectionHandler::forward_quic_packet_to_lingering_worker_process(
   *p++ = static_cast<uint8_t>(QUICIPCType::DGRAM_FORWARD);
   *p++ = static_cast<uint8_t>(remote_addr.len - 1);
   p = std::ranges::copy_n(reinterpret_cast<const uint8_t *>(&remote_addr.su),
-                          remote_addr.len, p)
+                          as_signed(remote_addr.len), p)
         .out;
   *p++ = static_cast<uint8_t>(local_addr.len - 1);
   p = std::ranges::copy_n(reinterpret_cast<const uint8_t *>(&local_addr.su),
-                          local_addr.len, p)
+                          as_signed(local_addr.len), p)
         .out;
   *p++ = pi.ecn;
 
@@ -823,7 +823,7 @@ int ConnectionHandler::quic_ipc_read() {
 
   pkt->pi.ecn = *p++;
 
-  auto datalen = nread - (p - buf.data());
+  auto datalen = static_cast<size_t>(nread - (p - buf.data()));
 
   pkt->data.assign(p, p + datalen);
 

@@ -1184,6 +1184,7 @@ if test "x$werror" != "xno"; then
     AX_CHECK_COMPILE_FLAG([-Wformat-security], [CXXFLAGS="$CXXFLAGS -Wformat-security"])
     AX_CHECK_COMPILE_FLAG([-Wsometimes-uninitialized], [CXXFLAGS="$CXXFLAGS -Wsometimes-uninitialized"])
     AX_CHECK_COMPILE_FLAG([-Wextra-semi], [CXXFLAGS="$CXXFLAGS -Wextra-semi"])
+    AX_CHECK_COMPILE_FLAG([-Wconversion], [CXXFLAGS="$CXXFLAGS -Wconversion"])
     # Disable noexcept-type warning of g++-7.  This is not harmful as
     # long as all source files are compiled with the same compiler.
     AX_CHECK_COMPILE_FLAG([-Wno-noexcept-type], [CXXFLAGS="$CXXFLAGS -Wno-noexcept-type"])

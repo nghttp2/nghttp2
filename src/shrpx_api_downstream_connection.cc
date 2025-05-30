@@ -134,7 +134,7 @@ int APIDownstreamConnection::send_reply(unsigned int http_status,
   p = std::ranges::copy(data, p).out;
   p = std::ranges::copy(M3, p).out;
 
-  buf = buf.subspan(0, p - std::ranges::begin(buf));
+  buf = buf.first(as_unsigned(p - std::ranges::begin(buf)));
 
   auto content_length = util::make_string_ref_uint(balloc, buf.size());
 
@@ -342,7 +342,8 @@ int APIDownstreamConnection::handle_backendconfig() {
     return 0;
   }
 
-  auto rp = mmap(nullptr, req.recv_body_length, PROT_READ, MAP_SHARED, fd_, 0);
+  auto rp = mmap(nullptr, static_cast<size_t>(req.recv_body_length), PROT_READ,
+                 MAP_SHARED, fd_, 0);
   if (rp == reinterpret_cast<void *>(-1)) {
     send_reply(500, APIStatusCode::FAILURE);
     return 0;

@@ -177,9 +177,9 @@ xmlSAXHandler saxHandler = {
 
 int HtmlParser::parse_chunk(const char *chunk, size_t size, int fin) {
   if (!parser_ctx_) {
-    parser_ctx_ =
-      htmlCreatePushParserCtxt(&saxHandler, &parser_data_, chunk, size,
-                               base_uri_.c_str(), XML_CHAR_ENCODING_NONE);
+    parser_ctx_ = htmlCreatePushParserCtxt(
+      &saxHandler, &parser_data_, chunk, static_cast<int>(size),
+      base_uri_.c_str(), XML_CHAR_ENCODING_NONE);
     if (!parser_ctx_) {
       return -1;
     } else {
@@ -195,7 +195,7 @@ int HtmlParser::parse_chunk(const char *chunk, size_t size, int fin) {
 }
 
 int HtmlParser::parse_chunk_internal(const char *chunk, size_t size, int fin) {
-  int rv = htmlParseChunk(parser_ctx_, chunk, size, fin);
+  int rv = htmlParseChunk(parser_ctx_, chunk, static_cast<int>(size), fin);
   if (rv == 0) {
     return 0;
   } else {

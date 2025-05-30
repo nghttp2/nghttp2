@@ -173,7 +173,7 @@ void test_shrpx_router_match_prefix(void) {
   idx = router.match_prefix(&nread, &node, "ahpla.ovarb"_sr);
 
   assert_ssize(3, ==, idx);
-  assert_ssize(6, ==, nread);
+  assert_size(6, ==, nread);
 }
 
 } // namespace shrpx

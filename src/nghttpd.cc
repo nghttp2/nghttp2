@@ -246,7 +246,7 @@ int main(int argc, char **argv) {
         std::cerr << "-b: Bad option value: " << optarg << std::endl;
         exit(EXIT_FAILURE);
       }
-      config.padding = *n;
+      config.padding = static_cast<size_t>(*n);
       break;
     }
     case 'd':
@@ -262,7 +262,7 @@ int main(int argc, char **argv) {
         std::cerr << "-m: invalid argument: " << optarg << std::endl;
         exit(EXIT_FAILURE);
       }
-      config.max_concurrent_streams = *n;
+      config.max_concurrent_streams = static_cast<size_t>(*n);
       break;
     }
     case 'n': {
@@ -275,7 +275,7 @@ int main(int argc, char **argv) {
         std::cerr << "-n: Bad option value: " << optarg << std::endl;
         exit(EXIT_FAILURE);
       }
-      config.num_worker = *n;
+      config.num_worker = static_cast<size_t>(*n);
 #endif // NOTHREADS
       break;
     }
@@ -315,9 +315,9 @@ int main(int argc, char **argv) {
       }
 
       if (c == 'w') {
-        config.window_bits = *n;
+        config.window_bits = static_cast<int>(*n);
       } else {
-        config.connection_window_bits = *n;
+        config.connection_window_bits = static_cast<int>(*n);
       }
 
       break;
@@ -433,7 +433,7 @@ int main(int argc, char **argv) {
       std::cerr << "<PORT>: Bad value: " << portStr << std::endl;
       exit(EXIT_FAILURE);
     }
-    config.port = *n;
+    config.port = static_cast<uint16_t>(*n);
   }
 
   if (!config.no_tls) {

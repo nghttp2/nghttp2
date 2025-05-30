@@ -847,7 +847,7 @@ int send_data_callback(nghttp2_session *session, nghttp2_frame *frame,
   wb->append(framehd, 9);
   if (frame->data.padlen > 0) {
     padlen = frame->data.padlen - 1;
-    wb->append(static_cast<uint8_t>(padlen));
+    wb->append(static_cast<char>(padlen));
   }
 
   body->remove(*wb, length);
@@ -1047,13 +1047,14 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
   size_t nentry = 3;
 
   entry[0].settings_id = NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS;
-  entry[0].value = http2conf.upstream.max_concurrent_streams;
+  entry[0].value =
+    static_cast<uint32_t>(http2conf.upstream.max_concurrent_streams);
 
   entry[1].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
   if (faddr->alt_mode != UpstreamAltMode::NONE) {
     entry[1].value = (1u << 31) - 1;
   } else {
-    entry[1].value = http2conf.upstream.window_size;
+    entry[1].value = as_unsigned(http2conf.upstream.window_size);
   }
 
   entry[2].settings_id = NGHTTP2_SETTINGS_NO_RFC7540_PRIORITIES;
@@ -1068,7 +1069,8 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
   if (http2conf.upstream.decoder_dynamic_table_size !=
       NGHTTP2_DEFAULT_HEADER_TABLE_SIZE) {
     entry[nentry].settings_id = NGHTTP2_SETTINGS_HEADER_TABLE_SIZE;
-    entry[nentry].value = http2conf.upstream.decoder_dynamic_table_size;
+    entry[nentry].value =
+      static_cast<uint32_t>(http2conf.upstream.decoder_dynamic_table_size);
     ++nentry;
   }
 
@@ -1151,7 +1153,7 @@ int Http2Upstream::on_read() {
     if (rv < 0) {
       if (rv != NGHTTP2_ERR_BAD_CLIENT_MAGIC) {
         ULOG(ERROR, this) << "nghttp2_session_mem_recv2() returned error: "
-                          << nghttp2_strerror(rv);
+                          << nghttp2_strerror(static_cast<int>(rv));
       }
       return -1;
     }
@@ -1222,13 +1224,13 @@ int Http2Upstream::on_write() {
 
     if (datalen < 0) {
       ULOG(ERROR, this) << "nghttp2_session_mem_send2() returned error: "
-                        << nghttp2_strerror(datalen);
+                        << nghttp2_strerror(static_cast<int>(datalen));
       return -1;
     }
     if (datalen == 0) {
       break;
     }
-    wb_.append(data, datalen);
+    wb_.append(data, as_unsigned(datalen));
   }
 
   if (nghttp2_session_want_read(session_) == 0 &&
@@ -1412,8 +1414,9 @@ int Http2Upstream::rst_stream(Downstream *downstream, uint32_t error_code) {
                      << " with error_code=" << error_code;
   }
   int rv;
-  rv = nghttp2_submit_rst_stream(session_, NGHTTP2_FLAG_NONE,
-                                 downstream->get_stream_id(), error_code);
+  rv = nghttp2_submit_rst_stream(
+    session_, NGHTTP2_FLAG_NONE,
+    static_cast<int32_t>(downstream->get_stream_id()), error_code);
   if (rv < NGHTTP2_ERR_FATAL) {
     ULOG(FATAL, this) << "nghttp2_submit_rst_stream() failed: "
                       << nghttp2_strerror(rv);
@@ -1495,7 +1498,7 @@ nghttp2_ssize downstream_data_read_callback(nghttp2_session *session,
     return NGHTTP2_ERR_DEFERRED;
   }
 
-  return nread;
+  return as_signed(nread);
 }
 } // namespace
 
@@ -1557,8 +1560,9 @@ int Http2Upstream::send_reply(Downstream *downstream, const uint8_t *body,
     nva.push_back(http2::make_field(p.name, p.value));
   }
 
-  rv = nghttp2_submit_response2(session_, downstream->get_stream_id(),
-                                nva.data(), nva.size(), data_prd_ptr);
+  rv = nghttp2_submit_response2(
+    session_, static_cast<int32_t>(downstream->get_stream_id()), nva.data(),
+    nva.size(), data_prd_ptr);
   if (nghttp2_is_fatal(rv)) {
     ULOG(FATAL, this) << "nghttp2_submit_response2() failed: "
                       << nghttp2_strerror(rv);
@@ -1614,8 +1618,9 @@ int Http2Upstream::error_reply(Downstream *downstream,
      http2::make_field("content-length"_sr, content_length),
      http2::make_field("date"_sr, date)});
 
-  rv = nghttp2_submit_response2(session_, downstream->get_stream_id(),
-                                nva.data(), nva.size(), data_prd_ptr);
+  rv = nghttp2_submit_response2(
+    session_, static_cast<int32_t>(downstream->get_stream_id()), nva.data(),
+    nva.size(), data_prd_ptr);
   if (rv < NGHTTP2_ERR_FATAL) {
     ULOG(FATAL, this) << "nghttp2_submit_response2() failed: "
                       << nghttp2_strerror(rv);
@@ -1637,8 +1642,8 @@ void Http2Upstream::remove_downstream(Downstream *downstream) {
     handler_->write_accesslog(downstream);
   }
 
-  nghttp2_session_set_stream_user_data(session_, downstream->get_stream_id(),
-                                       nullptr);
+  nghttp2_session_set_stream_user_data(
+    session_, static_cast<int32_t>(downstream->get_stream_id()), nullptr);
 
   auto next_downstream = downstream_queue_.remove_and_get_blocked(downstream);
 
@@ -1762,9 +1767,10 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
       log_response_headers(downstream, nva);
     }
 
-    rv = nghttp2_submit_headers(session_, NGHTTP2_FLAG_NONE,
-                                downstream->get_stream_id(), nullptr,
-                                nva.data(), nva.size(), nullptr);
+    rv =
+      nghttp2_submit_headers(session_, NGHTTP2_FLAG_NONE,
+                             static_cast<int32_t>(downstream->get_stream_id()),
+                             nullptr, nva.data(), nva.size(), nullptr);
 
     resp.fs.clear_headers();
 
@@ -1776,7 +1782,8 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
     return 0;
   }
 
-  auto striphd_flags = http2::HDOP_STRIP_ALL & ~http2::HDOP_STRIP_VIA;
+  auto striphd_flags =
+    static_cast<uint32_t>(http2::HDOP_STRIP_ALL & ~http2::HDOP_STRIP_VIA);
   StringRef response_status;
 
   if (req.connect_proto == ConnectProto::WEBSOCKET && resp.http_status == 101) {
@@ -1873,12 +1880,13 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
     nghttp2_extpri extpri;
 
     if (nghttp2_session_get_extpri_stream_priority(
-          session_, &extpri, downstream->get_stream_id()) == 0 &&
+          session_, &extpri,
+          static_cast<int32_t>(downstream->get_stream_id())) == 0 &&
         nghttp2_extpri_parse_priority(
           &extpri, reinterpret_cast<const uint8_t *>(priority->value.data()),
           priority->value.size()) == 0) {
       rv = nghttp2_session_change_extpri_stream_priority(
-        session_, downstream->get_stream_id(), &extpri,
+        session_, static_cast<int32_t>(downstream->get_stream_id()), &extpri,
         /* ignore_client_signal = */ 1);
       if (rv != 0) {
         ULOG(ERROR, this) << "nghttp2_session_change_extpri_stream_priority: "
@@ -1900,8 +1908,9 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
     data_prdptr = nullptr;
   }
 
-  rv = nghttp2_submit_response2(session_, downstream->get_stream_id(),
-                                nva.data(), nva.size(), data_prdptr);
+  rv = nghttp2_submit_response2(
+    session_, static_cast<int32_t>(downstream->get_stream_id()), nva.data(),
+    nva.size(), data_prdptr);
   if (rv != 0) {
     ULOG(FATAL, this) << "nghttp2_submit_response2() failed";
     return -1;
@@ -1923,7 +1932,8 @@ int Http2Upstream::on_downstream_body(Downstream *downstream,
   body->append(data, len);
 
   if (flush) {
-    nghttp2_session_resume_data(session_, downstream->get_stream_id());
+    nghttp2_session_resume_data(
+      session_, static_cast<int32_t>(downstream->get_stream_id()));
 
     downstream->ensure_upstream_wtimer();
   }
@@ -1946,7 +1956,8 @@ int Http2Upstream::on_downstream_body_complete(Downstream *downstream) {
     return 0;
   }
 
-  nghttp2_session_resume_data(session_, downstream->get_stream_id());
+  nghttp2_session_resume_data(
+    session_, static_cast<int32_t>(downstream->get_stream_id()));
   downstream->ensure_upstream_wtimer();
 
   return 0;
@@ -1959,7 +1970,8 @@ void Http2Upstream::pause_read(IOCtrlReason reason) {}
 int Http2Upstream::resume_read(IOCtrlReason reason, Downstream *downstream,
                                size_t consumed) {
   if (get_flow_control()) {
-    if (consume(downstream->get_stream_id(), consumed) != 0) {
+    if (consume(static_cast<int32_t>(downstream->get_stream_id()), consumed) !=
+        0) {
       return -1;
     }
 
@@ -2246,8 +2258,9 @@ int Http2Upstream::submit_push_promise(const StringRef &scheme,
   }
 
   auto promised_stream_id = nghttp2_submit_push_promise(
-    session_, NGHTTP2_FLAG_NONE, downstream->get_stream_id(), nva.data(),
-    nva.size(), nullptr);
+    session_, NGHTTP2_FLAG_NONE,
+    static_cast<int32_t>(downstream->get_stream_id()), nva.data(), nva.size(),
+    nullptr);
 
   if (promised_stream_id < 0) {
     if (LOG_ENABLED(INFO)) {
@@ -2389,8 +2402,9 @@ int Http2Upstream::on_downstream_push_promise_complete(
   }
 
   auto promised_stream_id = nghttp2_submit_push_promise(
-    session_, NGHTTP2_FLAG_NONE, downstream->get_stream_id(), nva.data(),
-    nva.size(), promised_downstream);
+    session_, NGHTTP2_FLAG_NONE,
+    static_cast<int32_t>(downstream->get_stream_id()), nva.data(), nva.size(),
+    promised_downstream);
   if (promised_stream_id < 0) {
     return -1;
   }

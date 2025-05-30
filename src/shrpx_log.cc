@@ -117,7 +117,7 @@ void Log::set_severity_level(int severity) { severity_thres_ = severity; }
 int Log::get_severity_level_by_name(const StringRef &name) {
   for (size_t i = 0, max = array_size(SEVERITY_STR); i < max; ++i) {
     if (name == SEVERITY_STR[i]) {
-      return i;
+      return static_cast<int>(i);
     }
   }
   return -1;
@@ -334,9 +334,9 @@ namespace {
 template <std::ranges::input_range R>
 requires(!std::is_array_v<std::remove_cvref_t<R>>)
 std::span<char> copy(R &&src, std::span<char> dest) {
-  auto nwrite =
-    std::min(std::ranges::distance(src), std::ranges::distance(dest));
-  std::ranges::copy(std::views::take(src, nwrite), std::ranges::begin(dest));
+  auto nwrite = std::min(std::ranges::size(src), std::ranges::size(dest));
+  std::ranges::copy(std::views::take(src, as_signed(nwrite)),
+                    std::ranges::begin(dest));
   return dest.subspan(nwrite);
 }
 } // namespace
@@ -447,14 +447,14 @@ namespace {
 std::span<char> copy_escape(const StringRef &src, std::span<char> dest) {
   auto safe_first = std::ranges::begin(src);
   for (auto p = safe_first; p != std::ranges::end(src) && !dest.empty(); ++p) {
-    uint8_t c = *p;
+    auto c = as_unsigned(*p);
     if (!ESCAPE_TBL[c]) {
       continue;
     }
 
-    auto n =
-      std::min(std::ranges::ssize(dest), std::ranges::distance(safe_first, p));
-    std::ranges::copy_n(safe_first, n, std::ranges::begin(dest));
+    auto n = std::min(std::ranges::size(dest),
+                      as_unsigned(std::ranges::distance(safe_first, p)));
+    std::ranges::copy_n(safe_first, as_signed(n), std::ranges::begin(dest));
     dest = dest.subspan(n);
 
     if (dest.size() < 4) {
@@ -469,9 +469,10 @@ std::span<char> copy_escape(const StringRef &src, std::span<char> dest) {
     safe_first = p + 1;
   }
 
-  auto n = std::min(std::ranges::ssize(dest),
-                    std::ranges::distance(safe_first, std::ranges::end(src)));
-  std::ranges::copy_n(safe_first, n, std::ranges::begin(dest));
+  auto n = std::min(
+    std::ranges::size(dest),
+    as_unsigned(std::ranges::distance(safe_first, std::ranges::end(src))));
+  std::ranges::copy_n(safe_first, as_signed(n), std::ranges::begin(dest));
 
   return dest.subspan(n);
 }
@@ -568,10 +569,10 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
       p = copy(' ', p);
       p = copy_escape(path, p);
       p = copy(" HTTP/"_sr, p);
-      p = copy(req.http_major, p);
+      p = copy(as_unsigned(req.http_major), p);
       if (req.http_major < 2) {
         p = copy('.', p);
-        p = copy(req.http_minor, p);
+        p = copy(as_unsigned(req.http_minor), p);
       }
       break;
     case LogFragmentType::METHOD:
@@ -585,17 +586,17 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
       break;
     case LogFragmentType::PROTOCOL_VERSION:
       p = copy("HTTP/"_sr, p);
-      p = copy(req.http_major, p);
+      p = copy(as_unsigned(req.http_major), p);
       if (req.http_major < 2) {
         p = copy('.', p);
-        p = copy(req.http_minor, p);
+        p = copy(as_unsigned(req.http_minor), p);
       }
       break;
     case LogFragmentType::STATUS:
       p = copy(resp.http_status, p);
       break;
     case LogFragmentType::BODY_BYTES_SENT:
-      p = copy(downstream->response_sent_body_length, p);
+      p = copy(as_unsigned(downstream->response_sent_body_length), p);
       break;
     case LogFragmentType::HTTP: {
       auto hd = req.fs.header(lf.value);
@@ -627,18 +628,18 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
       auto t = std::chrono::duration_cast<std::chrono::milliseconds>(
                  lgsp.request_end_time - downstream->get_request_start_time())
                  .count();
-      p = copy(t / 1000, p);
+      p = copy(as_unsigned(t / 1000), p);
       p = copy('.', p);
       auto frac = t % 1000;
       if (frac < 100) {
         auto n = static_cast<size_t>(frac < 10 ? 2 : 1);
         p = copy(StringRef{"000", n}, p);
       }
-      p = copy(frac, p);
+      p = copy(as_unsigned(frac), p);
       break;
     }
     case LogFragmentType::PID:
-      p = copy(lgsp.pid, p);
+      p = copy(as_unsigned(lgsp.pid), p);
       break;
     case LogFragmentType::ALPN:
       p = copy_escape(lgsp.alpn, p);
@@ -801,8 +802,8 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
   p[0] = '\n';
   p = p.subspan(1);
 
-  auto nwrite = std::ranges::distance(std::ranges::begin(std::span<char>{buf}),
-                                      std::ranges::begin(p));
+  auto nwrite = as_unsigned(std::ranges::distance(
+    std::ranges::begin(std::span<char>{buf}), std::ranges::begin(p)));
   while (write(lgconf->accesslog_fd, buf.data(), nwrite) == -1 &&
          errno == EINTR)
     ;

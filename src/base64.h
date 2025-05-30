@@ -51,6 +51,8 @@ constexpr size_t encode_length(size_t n) { return (n + 2) / 3 * 4; }
 template <std::input_iterator I, std::weakly_incrementable O>
 requires(std::indirectly_writable<O, char>)
 constexpr O encode(I first, I last, O result) {
+  using result_type = std::iter_value_t<O>;
+
   auto len = std::ranges::distance(first, last);
   if (len == 0) {
     return result;
@@ -64,29 +66,29 @@ constexpr O encode(I first, I last, O result) {
       break;
     }
 
-    uint32_t n = static_cast<uint8_t>(*first++) << 16;
-    n += static_cast<uint8_t>(*first++) << 8;
+    auto n = static_cast<uint32_t>(static_cast<uint8_t>(*first++) << 16);
+    n += static_cast<uint32_t>(static_cast<uint8_t>(*first++) << 8);
     n += static_cast<uint8_t>(*first++);
-    *p++ = B64_CHARS[n >> 18];
-    *p++ = B64_CHARS[(n >> 12) & 0x3fu];
-    *p++ = B64_CHARS[(n >> 6) & 0x3fu];
-    *p++ = B64_CHARS[n & 0x3fu];
+    *p++ = static_cast<result_type>(B64_CHARS[n >> 18]);
+    *p++ = static_cast<result_type>(B64_CHARS[(n >> 12) & 0x3fu]);
+    *p++ = static_cast<result_type>(B64_CHARS[(n >> 6) & 0x3fu]);
+    *p++ = static_cast<result_type>(B64_CHARS[n & 0x3fu]);
   }
 
   switch (len) {
   case 2: {
-    uint32_t n = static_cast<uint8_t>(*first++) << 16;
-    n += static_cast<uint8_t>(*first++) << 8;
-    *p++ = B64_CHARS[n >> 18];
-    *p++ = B64_CHARS[(n >> 12) & 0x3fu];
-    *p++ = B64_CHARS[(n >> 6) & 0x3fu];
+    auto n = static_cast<uint32_t>(static_cast<uint8_t>(*first++) << 16);
+    n += static_cast<uint32_t>(static_cast<uint8_t>(*first++) << 8);
+    *p++ = static_cast<result_type>(B64_CHARS[n >> 18]);
+    *p++ = static_cast<result_type>(B64_CHARS[(n >> 12) & 0x3fu]);
+    *p++ = static_cast<result_type>(B64_CHARS[(n >> 6) & 0x3fu]);
     *p++ = '=';
     break;
   }
   case 1: {
-    uint32_t n = static_cast<uint8_t>(*first++) << 16;
-    *p++ = B64_CHARS[n >> 18];
-    *p++ = B64_CHARS[(n >> 12) & 0x3fu];
+    auto n = static_cast<uint32_t>(static_cast<uint8_t>(*first++) << 16);
+    *p++ = static_cast<result_type>(B64_CHARS[n >> 18]);
+    *p++ = static_cast<result_type>(B64_CHARS[(n >> 12) & 0x3fu]);
     *p++ = '=';
     *p++ = '=';
     break;
@@ -138,6 +140,8 @@ constinit const int B64_INDEX_TABLE[] = {
 template <std::input_iterator I, std::weakly_incrementable O>
 requires(std::indirectly_writable<O, uint8_t>)
 constexpr O decode(I first, I last, O result) {
+  using result_type = std::iter_value_t<O>;
+
   assert(std::ranges::distance(first, last) % 4 == 0);
   auto p = result;
   for (; first != last;) {
@@ -151,23 +155,23 @@ constexpr O decode(I first, I last, O result) {
         if (i == 3) {
           if (*first == '=' && *std::ranges::next(first, 1) == '=' &&
               std::ranges::next(first, 2) == last) {
-            *p++ = n >> 16;
+            *p++ = static_cast<result_type>(n >> 16);
             return p;
           }
           return result;
         }
         if (*first == '=' && std::ranges::next(first, 1) == last) {
-          *p++ = n >> 16;
+          *p++ = static_cast<result_type>(n >> 16);
           *p++ = n >> 8 & 0xffu;
           return p;
         }
         return result;
       }
 
-      n += idx << (24 - i * 6);
+      n += static_cast<uint32_t>(idx) << (24 - i * 6);
     }
 
-    *p++ = n >> 16;
+    *p++ = static_cast<result_type>(n >> 16);
     *p++ = n >> 8 & 0xffu;
     *p++ = n & 0xffu;
   }

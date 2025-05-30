@@ -158,7 +158,7 @@ int DNSResolver::resolve(const StringRef &name, int family) {
   opts.sock_state_cb = sock_state_cb;
   opts.sock_state_cb_data = this;
   opts.timeout = static_cast<int>(dnsconf.timeout.lookup * 1000);
-  opts.tries = dnsconf.max_try;
+  opts.tries = static_cast<int>(dnsconf.max_try);
 
   auto optmask = ARES_OPT_SOCK_STATE_CB | ARES_OPT_TIMEOUTMS | ARES_OPT_TRIES;
 
@@ -225,7 +225,8 @@ void DNSResolver::reset_timeout() {
   }
   // To avoid that timer_.repeat becomes 0, which makes ev_timer_again
   // useless, add tiny fraction of time.
-  timer_.repeat = tv->tv_sec + tv->tv_usec / 1000000. + 1e-9;
+  timer_.repeat = static_cast<double>(tv->tv_sec) +
+                  static_cast<double>(tv->tv_usec) / 1000000. + 1e-9;
   ev_timer_again(loop_, &timer_);
 }
 
@@ -345,7 +346,8 @@ void DNSResolver::on_result(int status, ares_addrinfo *ai) {
   if (status_ == DNSResolverStatus::OK) {
     if (LOG_ENABLED(INFO)) {
       LOG(INFO) << "Name lookup succeeded: " << name_ << " -> "
-                << util::numeric_name(&result_.su.sa, result_.len);
+                << util::numeric_name(&result_.su.sa,
+                                      static_cast<socklen_t>(result_.len));
     }
     return;
   }

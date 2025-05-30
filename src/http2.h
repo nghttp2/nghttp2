@@ -369,11 +369,11 @@ StringRef path_join(BlockAllocator &balloc, const StringRef &base_path,
 
 // true if response has body, taking into account the request method
 // and status code.
-bool expect_response_body(const std::string &method, int status_code);
-bool expect_response_body(int method_token, int status_code);
+bool expect_response_body(const std::string &method, uint32_t status_code);
+bool expect_response_body(int method_token, uint32_t status_code);
 
 // true if response has body, taking into account status code only.
-bool expect_response_body(int status_code);
+bool expect_response_body(uint32_t status_code);
 
 // Looks up method token for method name |name|.  Only methods defined
 // in llhttp.h (llhttp_method) are tokenized.  If method name cannot

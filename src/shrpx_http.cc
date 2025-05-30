@@ -55,7 +55,7 @@ StringRef create_error_html(BlockAllocator &balloc, unsigned int http_status) {
     "</footer></body></html>"_sr);
 }
 
-StringRef create_forwarded(BlockAllocator &balloc, int params,
+StringRef create_forwarded(BlockAllocator &balloc, uint32_t params,
                            const StringRef &node_by, const StringRef &node_for,
                            const StringRef &host, const StringRef &proto) {
   size_t len = 0;
@@ -168,7 +168,8 @@ std::string colorizeHeaders(const char *hdrs) {
 nghttp2_ssize select_padding_callback(nghttp2_session *session,
                                       const nghttp2_frame *frame,
                                       size_t max_payload, void *user_data) {
-  return std::min(max_payload, frame->hd.length + get_config()->padding);
+  return as_signed(
+    std::min(max_payload, frame->hd.length + get_config()->padding));
 }
 
 StringRef create_affinity_cookie(BlockAllocator &balloc, const StringRef &name,

@@ -126,8 +126,10 @@ bool check_http2_requirement(SSL *ssl) {
 }
 
 int ssl_ctx_set_proto_versions(SSL_CTX *ssl_ctx, int min, int max) {
-  if (SSL_CTX_set_min_proto_version(ssl_ctx, min) != 1 ||
-      SSL_CTX_set_max_proto_version(ssl_ctx, max) != 1) {
+  if (SSL_CTX_set_min_proto_version(
+        ssl_ctx, static_cast<nghttp2_ssl_proto_version_type>(min)) != 1 ||
+      SSL_CTX_set_max_proto_version(
+        ssl_ctx, static_cast<nghttp2_ssl_proto_version_type>(max)) != 1) {
     return -1;
   }
   return 0;
@@ -192,7 +194,7 @@ namespace {
 std::ofstream keylog_file;
 
 void keylog_callback(const SSL *ssl, const char *line) {
-  keylog_file.write(line, strlen(line));
+  keylog_file.write(line, static_cast<std::streamsize>(strlen(line)));
   keylog_file.put('\n');
   keylog_file.flush();
 }

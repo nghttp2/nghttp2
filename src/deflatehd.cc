@@ -64,9 +64,9 @@ static size_t output_sum;
 
 static char to_hex_digit(uint8_t n) {
   if (n > 9) {
-    return n - 10 + 'a';
+    return static_cast<char>(n - 10 + 'a');
   }
-  return n + '0';
+  return static_cast<char>(n + '0');
 }
 
 static void to_hex(char *dest, const uint8_t *src, size_t len) {
@@ -82,11 +82,15 @@ static void output_to_json(nghttp2_hd_deflater *deflater, const uint8_t *buf,
                            const std::vector<nghttp2_nv> &nva, int seq) {
   auto hex = std::vector<char>(buflen * 2);
   auto obj = json_object();
-  auto comp_ratio = inputlen == 0 ? 0.0 : (double)buflen / inputlen * 100;
+  auto comp_ratio = inputlen == 0 ? 0.0
+                                  : static_cast<double>(buflen) /
+                                      static_cast<double>(inputlen) * 100;
 
   json_object_set_new(obj, "seq", json_integer(seq));
-  json_object_set_new(obj, "input_length", json_integer(inputlen));
-  json_object_set_new(obj, "output_length", json_integer(buflen));
+  json_object_set_new(obj, "input_length",
+                      json_integer(static_cast<json_int_t>(inputlen)));
+  json_object_set_new(obj, "output_length",
+                      json_integer(static_cast<json_int_t>(buflen)));
   json_object_set_new(obj, "percentage_of_original_size",
                       json_real(comp_ratio));
 
@@ -99,8 +103,9 @@ static void output_to_json(nghttp2_hd_deflater *deflater, const uint8_t *buf,
   json_object_set_new(obj, "headers", dump_headers(nva.data(), nva.size()));
   if (seq == 0) {
     // We only change the header table size only once at the beginning
-    json_object_set_new(obj, "header_table_size",
-                        json_integer(config.table_size));
+    json_object_set_new(
+      obj, "header_table_size",
+      json_integer(static_cast<json_int_t>(config.table_size)));
   }
   if (config.dump_header_table) {
     json_object_set_new(obj, "header_table",
@@ -124,9 +129,9 @@ static void deflate_hd(nghttp2_hd_deflater *deflater,
   }
 
   input_sum += inputlen;
-  output_sum += rv;
+  output_sum += as_unsigned(rv);
 
-  output_to_json(deflater, buf.data(), rv, inputlen, nva, seq);
+  output_to_json(deflater, buf.data(), as_unsigned(rv), inputlen, nva, seq);
 }
 
 static int deflate_hd_json(json_t *obj, nghttp2_hd_deflater *deflater,
@@ -224,7 +229,7 @@ static int perform(void) {
       fprintf(stderr, "Unexpected JSON type at %zu. It should be object.\n", i);
       continue;
     }
-    if (deflate_hd_json(obj, deflater, i) != 0) {
+    if (deflate_hd_json(obj, deflater, static_cast<int>(i)) != 0) {
       continue;
     }
     if (i + 1 < len) {
@@ -407,7 +412,7 @@ int main(int argc, char **argv) {
         fprintf(stderr, "-s: Bad option value\n");
         exit(EXIT_FAILURE);
       }
-      config.table_size = *n;
+      config.table_size = static_cast<size_t>(*n);
       break;
     }
     case 'S': {
@@ -417,7 +422,7 @@ int main(int argc, char **argv) {
         fprintf(stderr, "-S: Bad option value\n");
         exit(EXIT_FAILURE);
       }
-      config.deflate_table_size = *n;
+      config.deflate_table_size = static_cast<size_t>(*n);
       break;
     }
     case 'd':
@@ -436,7 +441,9 @@ int main(int argc, char **argv) {
     perform();
   }
 
-  auto comp_ratio = input_sum == 0 ? 0.0 : (double)output_sum / input_sum;
+  auto comp_ratio = input_sum == 0 ? 0.0
+                                   : static_cast<double>(output_sum) /
+                                       static_cast<double>(input_sum);
 
   fprintf(stderr, "Overall: input=%zu output=%zu ratio=%.02f\n", input_sum,
           output_sum, comp_ratio);

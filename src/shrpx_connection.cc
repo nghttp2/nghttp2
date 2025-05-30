@@ -329,7 +329,7 @@ int Connection::tls_handshake() {
         return SHRPX_ERR_NETWORK;
       }
     } else {
-      tls.earlybuf.append(buf.data(), nread);
+      tls.earlybuf.append(buf.data(), static_cast<size_t>(nread));
     }
 
     if (SSL_in_init(tls.ssl)) {
@@ -503,17 +503,17 @@ nghttp2_ssize Connection::write_tls(const void *data, size_t len) {
 #ifdef NGHTTP2_GENUINE_OPENSSL
   int rv;
   if (SSL_is_init_finished(tls.ssl)) {
-    rv = SSL_write(tls.ssl, data, len);
+    rv = SSL_write(tls.ssl, data, static_cast<int>(len));
   } else {
     size_t nwrite;
     rv = SSL_write_early_data(tls.ssl, data, len, &nwrite);
     // Use the same semantics with SSL_write.
     if (rv == 1) {
-      rv = nwrite;
+      rv = static_cast<int>(nwrite);
     }
   }
 #else  // !NGHTTP2_GENUINE_OPENSSL
-  auto rv = SSL_write(tls.ssl, data, len);
+  auto rv = SSL_write(tls.ssl, data, static_cast<int>(len));
 #endif // !NGHTTP2_GENUINE_OPENSSL
 
   if (rv <= 0) {
@@ -544,13 +544,13 @@ nghttp2_ssize Connection::write_tls(const void *data, size_t len) {
     }
   }
 
-  wlimit.drain(rv);
+  wlimit.drain(static_cast<size_t>(rv));
 
   if (ev_is_active(&wt)) {
     ev_timer_again(loop, &wt);
   }
 
-  update_tls_warmup_writelen(rv);
+  update_tls_warmup_writelen(static_cast<size_t>(rv));
 
   return rv;
 }
@@ -561,7 +561,7 @@ nghttp2_ssize Connection::read_tls(void *data, size_t len) {
 #if defined(NGHTTP2_GENUINE_OPENSSL) ||                                        \
   defined(NGHTTP2_OPENSSL_IS_BORINGSSL) || defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
   if (tls.earlybuf.rleft()) {
-    return tls.earlybuf.remove(data, len);
+    return as_signed(tls.earlybuf.remove(data, len));
   }
 #endif // NGHTTP2_GENUINE_OPENSSL || NGHTTP2_OPENSSL_IS_BORINGSSL ||
        // defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
@@ -623,7 +623,7 @@ nghttp2_ssize Connection::read_tls(void *data, size_t len) {
 
     rlimit.drain(nread);
 
-    return nread;
+    return as_signed(nread);
   }
 #endif // NGHTTP2_GENUINE_OPENSSL
 
@@ -667,11 +667,11 @@ nghttp2_ssize Connection::read_tls(void *data, size_t len) {
 
     rlimit.drain(nread);
 
-    return nread;
+    return as_signed(nread);
   }
 #endif // NGHTTP2_OPENSSL_IS_WOLFSSL && WOLFSSL_EARLY_DATA
 
-  auto rv = SSL_read(tls.ssl, data, len);
+  auto rv = SSL_read(tls.ssl, data, static_cast<int>(len));
 
   if (rv <= 0) {
     auto err = SSL_get_error(tls.ssl, rv);
@@ -699,7 +699,7 @@ nghttp2_ssize Connection::read_tls(void *data, size_t len) {
     }
   }
 
-  rlimit.drain(rv);
+  rlimit.drain(static_cast<size_t>(rv));
 
   return rv;
 }
@@ -722,7 +722,7 @@ nghttp2_ssize Connection::write_clear(const void *data, size_t len) {
     return SHRPX_ERR_NETWORK;
   }
 
-  wlimit.drain(nwrite);
+  wlimit.drain(as_unsigned(nwrite));
 
   if (ev_is_active(&wt)) {
     ev_timer_again(loop, &wt);
@@ -749,7 +749,7 @@ nghttp2_ssize Connection::writev_clear(struct iovec *iov, int iovcnt) {
     return SHRPX_ERR_NETWORK;
   }
 
-  wlimit.drain(nwrite);
+  wlimit.drain(as_unsigned(nwrite));
 
   if (ev_is_active(&wt)) {
     ev_timer_again(loop, &wt);
@@ -778,7 +778,7 @@ nghttp2_ssize Connection::read_clear(void *data, size_t len) {
     return SHRPX_ERR_EOF;
   }
 
-  rlimit.drain(nread);
+  rlimit.drain(as_unsigned(nread));
 
   return nread;
 }

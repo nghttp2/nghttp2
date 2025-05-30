@@ -398,7 +398,7 @@ public:
 
   DNSTracker *get_dns_tracker();
 
-  int handle_connection(int fd, sockaddr *addr, int addrlen,
+  int handle_connection(int fd, sockaddr *addr, socklen_t addrlen,
                         const UpstreamAddr *faddr);
 
 private:

@@ -66,7 +66,7 @@ void test_buffer_write(void) {
 
   auto n = b.write("0123456789ABCDEF", 16);
 
-  assert_ssize(13, ==, n);
+  assert_size(13, ==, n);
 
   assert_size(13, ==, b.rleft());
   assert_size(0, ==, b.wleft());

@@ -161,7 +161,7 @@ auto headers2 = HeaderRefs{
 } // namespace
 
 void test_http2_copy_headers_to_nva(void) {
-  auto ans = std::vector<int>{0, 1, 4, 5, 6, 7, 12};
+  auto ans = std::vector<size_t>{0, 1, 4, 5, 6, 7, 12};
   std::vector<nghttp2_nv> nva;
 
   http2::copy_headers_to_nva_nocopy(nva, headers,
@@ -196,7 +196,7 @@ void test_http2_copy_headers_to_nva(void) {
 
   nva.clear();
 
-  auto ans2 = std::vector<int>{0, 2, 4, 6};
+  auto ans2 = std::vector<size_t>{0, 2, 4, 6};
   http2::copy_headers_to_nva(nva, headers2, http2::HDOP_NONE);
   assert_size(ans2.size(), ==, nva.size());
   for (size_t i = 0; i < ans2.size(); ++i) {
@@ -308,7 +308,7 @@ void test_http2_index_header(void) {
   http2::index_header(hdidx, http2::HD__AUTHORITY, 0);
   http2::index_header(hdidx, -1, 1);
 
-  assert_uint16(0, ==, hdidx[http2::HD__AUTHORITY]);
+  assert_int16(0, ==, hdidx[http2::HD__AUTHORITY]);
 }
 
 void test_http2_lookup_token(void) {

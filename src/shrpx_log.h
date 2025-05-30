@@ -180,7 +180,7 @@ public:
     }
 
     auto n = std::min(wleft(), static_cast<size_t>(std::ranges::distance(r)));
-    last_ = std::ranges::copy(std::views::take(r, n), last_).out;
+    last_ = std::ranges::copy(std::views::take(r, as_signed(n)), last_).out;
     update_full();
   }
 
@@ -211,11 +211,13 @@ public:
     fmt_hex = 0x01,
   };
 
-  void set_flags(int flags) { flags_ = flags; }
+  void set_flags(uint32_t flags) { flags_ = flags; }
 
 private:
-  size_t rleft() { return last_ - begin_; }
-  size_t wleft() { return end_ - last_ - /* terminal NUL or LF */ 1; }
+  size_t rleft() { return as_unsigned(last_ - begin_); }
+  size_t wleft() {
+    return as_unsigned(end_ - last_ - /* terminal NUL or LF */ 1);
+  }
   void update_full() { full_ = wleft() == 0; }
 
   LogBuffer &buf_;

@@ -139,7 +139,7 @@ std::optional<HostPort> split_host_port(BlockAllocator &balloc,
     LOG(ERROR) << opt << ": Invalid host, port: " << hostport;
     return {};
   }
-  size_t len = sep - std::ranges::begin(hostport);
+  auto len = as_unsigned(sep - std::ranges::begin(hostport));
   if (NI_MAXHOST < len + 1) {
     LOG(ERROR) << opt << ": Hostname too long: " << hostport;
     return {};
@@ -180,8 +180,8 @@ read_tls_ticket_key_file(const std::vector<StringRef> &files,
   auto ticket_keys = std::make_unique<TicketKeys>();
   auto &keys = ticket_keys->keys;
   keys.resize(files.size());
-  auto enc_keylen = EVP_CIPHER_key_length(cipher);
-  auto hmac_keylen = EVP_MD_size(hmac);
+  auto enc_keylen = static_cast<size_t>(EVP_CIPHER_key_length(cipher));
+  auto hmac_keylen = static_cast<size_t>(EVP_MD_size(hmac));
   if (cipher == EVP_aes_128_cbc()) {
     // backward compatibility, as a legacy of using same file format
     // with nginx and apache.
@@ -214,7 +214,7 @@ read_tls_ticket_key_file(const std::vector<StringRef> &files,
       return nullptr;
     }
 
-    f.read(buf.data(), expectedlen);
+    f.read(buf.data(), static_cast<std::streamsize>(expectedlen));
     if (static_cast<size_t>(f.gcount()) != expectedlen) {
       LOG(ERROR) << "tls-ticket-key-file: want to read " << expectedlen
                  << " bytes but only read " << f.gcount() << " bytes from "
@@ -233,12 +233,14 @@ read_tls_ticket_key_file(const std::vector<StringRef> &files,
     }
 
     auto p = std::ranges::begin(buf);
-    p = std::ranges::copy_n(p, key.data.name.size(),
+    p = std::ranges::copy_n(p, as_signed(key.data.name.size()),
                             std::ranges::begin(key.data.name))
           .in;
-    p = std::ranges::copy_n(p, enc_keylen, std::ranges::begin(key.data.enc_key))
+    p = std::ranges::copy_n(p, as_signed(enc_keylen),
+                            std::ranges::begin(key.data.enc_key))
           .in;
-    std::ranges::copy_n(p, hmac_keylen, std::ranges::begin(key.data.hmac_key));
+    std::ranges::copy_n(p, as_signed(hmac_keylen),
+                        std::ranges::begin(key.data.hmac_key));
 
     if (LOG_ENABLED(INFO)) {
       LOG(INFO) << "session ticket key: " << util::format_hex(key.data.name);
@@ -385,7 +387,8 @@ HeaderRefs::value_type parse_header(BlockAllocator &balloc,
     ;
 
   auto name_iov = make_byte_ref(
-    balloc, std::ranges::distance(std::ranges::begin(optarg), colon) + 1);
+    balloc,
+    as_unsigned(std::ranges::distance(std::ranges::begin(optarg), colon) + 1));
   auto p = util::tolower(std::ranges::begin(optarg), colon,
                          std::ranges::begin(name_iov));
   *p = '\0';
@@ -412,7 +415,7 @@ int parse_uint(T *dest, const StringRef &opt, const StringRef &optarg) {
     return -1;
   }
 
-  *dest = *val;
+  *dest = static_cast<T>(*val);
 
   return 0;
 }
@@ -437,7 +440,7 @@ int parse_uint_with_unit(T *dest, const StringRef &opt,
     }
   }
 
-  *dest = *n;
+  *dest = static_cast<T>(*n);
 
   return 0;
 }
@@ -469,7 +472,7 @@ int parse_altsvc(AltSvc &altsvc, const StringRef &opt,
 
   altsvc.protocol_id = make_string_ref(config->balloc, tokens[0]);
 
-  altsvc.port = port;
+  altsvc.port = static_cast<uint16_t>(port);
   altsvc.service = make_string_ref(config->balloc, tokens[1]);
 
   if (tokens.size() > 2) {
@@ -791,7 +794,9 @@ std::vector<LogFragment> parse_log_format(BlockAllocator &balloc,
 
     {
       auto iov = make_byte_ref(
-        balloc, std::ranges::distance(value, std::ranges::end(var_name)) + 1);
+        balloc,
+        as_unsigned(std::ranges::distance(value, std::ranges::end(var_name)) +
+                    1));
       auto p = std::ranges::transform(value, std::ranges::end(var_name),
                                       std::ranges::begin(iov),
                                       [](auto c) { return c == '_' ? '-' : c; })
@@ -1033,7 +1038,7 @@ int parse_downstream_params(DownstreamParams &out,
         return -1;
       }
 
-      out.fall = *n;
+      out.fall = static_cast<size_t>(*n);
     } else if (util::istarts_with(param, "rise="_sr)) {
       auto valstr = StringRef{first + str_size("rise="), end};
       if (valstr.empty()) {
@@ -1047,7 +1052,7 @@ int parse_downstream_params(DownstreamParams &out,
         return -1;
       }
 
-      out.rise = *n;
+      out.rise = static_cast<size_t>(*n);
     } else if (util::strieq("tls"_sr, param)) {
       out.tls = true;
     } else if (util::strieq("no-tls"_sr, param)) {
@@ -1139,7 +1144,7 @@ int parse_downstream_params(DownstreamParams &out,
           << "backend: weight: non-negative integer [1, 256] is expected";
         return -1;
       }
-      out.weight = *n;
+      out.weight = static_cast<uint32_t>(*n);
     } else if (util::istarts_with(param, "group="_sr)) {
       auto valstr = StringRef{first + str_size("group="), end};
       if (valstr.empty()) {
@@ -1161,7 +1166,7 @@ int parse_downstream_params(DownstreamParams &out,
                       "expected";
         return -1;
       }
-      out.group_weight = *n;
+      out.group_weight = static_cast<uint32_t>(*n);
     } else if (util::strieq("dnf"_sr, param)) {
       out.dnf = true;
     } else if (!param.empty()) {
@@ -1250,10 +1255,10 @@ int parse_mapping(Config *config, DownstreamAddrConfig &addr,
       auto path = http2::normalize_path_colon(
         downstreamconf.balloc, StringRef{slash, std::ranges::end(raw_pattern)},
         StringRef{});
-      auto iov = make_byte_ref(
-        downstreamconf.balloc,
-        std::ranges::distance(std::ranges::begin(raw_pattern), slash) +
-          path.size() + 1);
+      auto iov = make_byte_ref(downstreamconf.balloc,
+                               as_unsigned(std::ranges::distance(
+                                 std::ranges::begin(raw_pattern), slash)) +
+                                 path.size() + 1);
       auto p = util::tolower(std::ranges::begin(raw_pattern), slash,
                              std::ranges::begin(iov));
       p = std::ranges::copy(path, p).out;
@@ -1645,8 +1650,8 @@ int read_tls_sct_from_dir(std::vector<uint8_t> &dst, const StringRef &opt,
       continue;
     }
 
-    dst[len_idx] = len >> 8;
-    dst[len_idx + 1] = len;
+    dst[len_idx] = static_cast<uint8_t>(len >> 8);
+    dst[len_idx + 1] = static_cast<uint8_t>(len);
   }
 
   auto len = dst.size() - len_idx - 2;
@@ -1656,8 +1661,8 @@ int read_tls_sct_from_dir(std::vector<uint8_t> &dst, const StringRef &opt,
     return 0;
   }
 
-  dst[len_idx] = len >> 8;
-  dst[len_idx + 1] = len;
+  dst[len_idx] = static_cast<uint8_t>(len >> 8);
+  dst[len_idx + 1] = static_cast<uint8_t>(len);
 
   return 0;
 }
@@ -3529,7 +3534,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
       return -1;
     }
 
-    config->conn.downstream->connections_per_host = n;
+    config->conn.downstream->connections_per_host = static_cast<size_t>(n);
 
     return 0;
   }
@@ -3559,7 +3564,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
       return -1;
     }
 
-    config->rlimit_nofile = n;
+    config->rlimit_nofile = static_cast<size_t>(n);
 
     return 0;
   }
@@ -3691,7 +3696,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
       return -1;
     }
 
-    config->tls.ticket.memcached.max_retry = n;
+    config->tls.ticket.memcached.max_retry = static_cast<size_t>(n);
     return 0;
   }
   case SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED_MAX_FAIL:
@@ -3843,7 +3848,8 @@ int parse_config(Config *config, int optid, const StringRef &opt,
       return 0;
     }
 
-    config->ev_loop_flags = ev_recommended_backends() & ~EVBACKEND_KQUEUE;
+    config->ev_loop_flags =
+      ev_recommended_backends() & static_cast<uint32_t>(~EVBACKEND_KQUEUE);
 
     return 0;
   case SHRPX_OPTID_FRONTEND_HTTP2_SETTINGS_TIMEOUT:
@@ -3961,7 +3967,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
       return -1;
     }
 
-    config->dns.max_try = n;
+    config->dns.max_try = static_cast<size_t>(n);
     return 0;
   }
   case SHRPX_OPTID_FRONTEND_KEEP_ALIVE_TIMEOUT:
@@ -4211,7 +4217,7 @@ int parse_config(Config *config, int optid, const StringRef &opt,
       return -1;
     }
 
-    config->rlimit_memlock = n;
+    config->rlimit_memlock = static_cast<size_t>(n);
 
     return 0;
   }
@@ -4460,14 +4466,14 @@ int compute_affinity_hash(std::vector<AffinityHash> &res, size_t idx,
 
   for (auto i = 0; i < 20; ++i) {
     auto t = std::string{s};
-    t += i;
+    t += static_cast<char>(i);
 
     rv = util::sha256(buf.data(), StringRef{t});
     if (rv != 0) {
       return -1;
     }
 
-    for (int i = 0; i < 8; ++i) {
+    for (size_t i = 0; i < 8; ++i) {
       auto h = (static_cast<uint32_t>(buf[4 * i]) << 24) |
                (static_cast<uint32_t>(buf[4 * i + 1]) << 16) |
                (static_cast<uint32_t>(buf[4 * i + 2]) << 8) |
@@ -4527,7 +4533,7 @@ int configure_downstream_group(Config *config, bool http2_proxy,
   for (size_t i = 0; i < addr_groups.size(); ++i) {
     auto &g = addr_groups[i];
     if (g.pattern == "/"_sr) {
-      catch_all_group = i;
+      catch_all_group = as_signed(i);
     }
     if (LOG_ENABLED(INFO)) {
       LOG(INFO) << "Host-path pattern: group " << i << ": '" << g.pattern
@@ -4570,7 +4576,7 @@ int configure_downstream_group(Config *config, bool http2_proxy,
     return -1;
   }
 
-  downstreamconf.addr_group_catch_all = catch_all_group;
+  downstreamconf.addr_group_catch_all = as_unsigned(catch_all_group);
 
   if (LOG_ENABLED(INFO)) {
     LOG(INFO) << "Catch-all pattern is group " << catch_all_group;
@@ -4615,7 +4621,8 @@ int configure_downstream_group(Config *config, bool http2_proxy,
 
         addr.addr.su.un.sun_family = AF_UNIX;
         // copy path including terminal NULL
-        std::ranges::copy_n(path, pathlen + 1, addr.addr.su.un.sun_path);
+        std::ranges::copy_n(path, as_signed(pathlen + 1),
+                            addr.addr.su.un.sun_path);
         addr.addr.len = sizeof(addr.addr.su.un);
 
         continue;

@@ -398,7 +398,7 @@ int HttpDownstreamConnection::initiate_connection() {
 
     worker_blocker->on_success();
 
-    rv = connect(conn_.fd, &raddr->su.sa, raddr->len);
+    rv = connect(conn_.fd, &raddr->su.sa, static_cast<socklen_t>(raddr->len));
     if (rv != 0 && errno != EINPROGRESS) {
       auto error = errno;
       DCLOG(WARN, this) << "connect() failed; addr="
@@ -618,7 +618,7 @@ int HttpDownstreamConnection::push_request_headers() {
     auto params = fwdconf.params;
 
     if (config->http2_proxy || connect_method) {
-      params &= ~FORWARDED_PROTO;
+      params &= static_cast<uint32_t>(~FORWARDED_PROTO);
     }
 
     auto value = http::create_forwarded(
@@ -1276,10 +1276,10 @@ int HttpDownstreamConnection::read_clear() {
         }
       }
 
-      return nread;
+      return static_cast<int>(nread);
     }
 
-    rv = process_input(buf.data(), nread);
+    rv = process_input(buf.data(), as_unsigned(nread));
     if (rv != 0) {
       return rv;
     }
@@ -1309,7 +1309,7 @@ int HttpDownstreamConnection::write_clear() {
 
     if (nwrite < 0) {
       if (!first_write_done_) {
-        return nwrite;
+        return static_cast<int>(nwrite);
       }
       // We may have pending data in receive buffer which may contain
       // part of response body.  So keep reading.  Invoke read event
@@ -1320,7 +1320,7 @@ int HttpDownstreamConnection::write_clear() {
       break;
     }
 
-    input->drain(nwrite);
+    input->drain(as_unsigned(nwrite));
   }
 
   conn_.wlimit.stopw();
@@ -1407,10 +1407,10 @@ int HttpDownstreamConnection::read_tls() {
         }
       }
 
-      return nread;
+      return static_cast<int>(nread);
     }
 
-    rv = process_input(buf.data(), nread);
+    rv = process_input(buf.data(), as_unsigned(nread));
     if (rv != 0) {
       return rv;
     }
@@ -1445,7 +1445,7 @@ int HttpDownstreamConnection::write_tls() {
 
     if (nwrite < 0) {
       if (!first_write_done_) {
-        return nwrite;
+        return static_cast<int>(nwrite);
       }
       // We may have pending data in receive buffer which may contain
       // part of response body.  So keep reading.  Invoke read event
@@ -1456,7 +1456,7 @@ int HttpDownstreamConnection::write_tls() {
       break;
     }
 
-    input->drain(nwrite);
+    input->drain(as_unsigned(nwrite));
   }
 
   conn_.wlimit.stopw();

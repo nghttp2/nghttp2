@@ -412,7 +412,8 @@ int Http2Session::initiate_connection() {
       return -1;
     }
 
-    rv = connect(conn_.fd, &proxy.addr.su.sa, proxy.addr.len);
+    rv = connect(conn_.fd, &proxy.addr.su.sa,
+                 static_cast<socklen_t>(proxy.addr.len));
     if (rv != 0 && errno != EINPROGRESS) {
       auto error = errno;
       SSLOG(WARN, this) << "Backend proxy connect() failed; addr="
@@ -537,7 +538,8 @@ int Http2Session::initiate_connection() {
 
         rv = connect(conn_.fd,
                      // TODO maybe not thread-safe?
-                     const_cast<sockaddr *>(&raddr_->su.sa), raddr_->len);
+                     const_cast<sockaddr *>(&raddr_->su.sa),
+                     static_cast<socklen_t>(raddr_->len));
         if (rv != 0 && errno != EINPROGRESS) {
           auto error = errno;
           SSLOG(WARN, this)
@@ -601,7 +603,7 @@ int Http2Session::initiate_connection() {
         worker_blocker->on_success();
 
         rv = connect(conn_.fd, const_cast<sockaddr *>(&raddr_->su.sa),
-                     raddr_->len);
+                     static_cast<socklen_t>(raddr_->len));
         if (rv != 0 && errno != EINPROGRESS) {
           auto error = errno;
           SSLOG(WARN, this)
@@ -803,8 +805,8 @@ nghttp2_session *Http2Session::get_session() const { return session_; }
 int Http2Session::resume_data(Http2DownstreamConnection *dconn) {
   assert(state_ == Http2SessionState::CONNECTED);
   auto downstream = dconn->get_downstream();
-  int rv = nghttp2_session_resume_data(session_,
-                                       downstream->get_downstream_stream_id());
+  int rv = nghttp2_session_resume_data(
+    session_, static_cast<int32_t>(downstream->get_downstream_stream_id()));
   switch (rv) {
   case 0:
   case NGHTTP2_ERR_INVALID_ARGUMENT:
@@ -1119,7 +1121,7 @@ int on_response_headers(Http2Session *http2session, Downstream *downstream,
   assert(status);
   auto status_code = http2::parse_http_status_code(status->value);
 
-  resp.http_status = status_code;
+  resp.http_status = as_unsigned(status_code);
   resp.http_major = 2;
   resp.http_minor = 0;
 
@@ -1586,7 +1588,7 @@ int send_data_callback(nghttp2_session *session, nghttp2_frame *frame,
   wb->append(framehd, 9);
   if (frame->data.padlen > 0) {
     padlen = frame->data.padlen - 1;
-    wb->append(static_cast<uint8_t>(padlen));
+    wb->append(static_cast<char>(padlen));
   }
 
   input->remove(*wb, length);
@@ -1704,10 +1706,11 @@ int Http2Session::connection_made() {
   std::array<nghttp2_settings_entry, 5> entry;
   size_t nentry = 3;
   entry[0].settings_id = NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS;
-  entry[0].value = http2conf.downstream.max_concurrent_streams;
+  entry[0].value =
+    static_cast<uint32_t>(http2conf.downstream.max_concurrent_streams);
 
   entry[1].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
-  entry[1].value = http2conf.downstream.window_size;
+  entry[1].value = as_unsigned(http2conf.downstream.window_size);
 
   entry[2].settings_id = NGHTTP2_SETTINGS_NO_RFC7540_PRIORITIES;
   entry[2].value = 1;
@@ -1721,7 +1724,8 @@ int Http2Session::connection_made() {
   if (http2conf.downstream.decoder_dynamic_table_size !=
       NGHTTP2_DEFAULT_HEADER_TABLE_SIZE) {
     entry[nentry].settings_id = NGHTTP2_SETTINGS_HEADER_TABLE_SIZE;
-    entry[nentry].value = http2conf.downstream.decoder_dynamic_table_size;
+    entry[nentry].value =
+      static_cast<uint32_t>(http2conf.downstream.decoder_dynamic_table_size);
     ++nentry;
   }
 
@@ -1759,7 +1763,7 @@ int Http2Session::downstream_read(const uint8_t *data, size_t datalen) {
   auto rv = nghttp2_session_mem_recv2(session_, data, datalen);
   if (rv < 0) {
     SSLOG(ERROR, this) << "nghttp2_session_mem_recv2() returned error: "
-                       << nghttp2_strerror(rv);
+                       << nghttp2_strerror(static_cast<int>(rv));
     return -1;
   }
 
@@ -1781,13 +1785,13 @@ int Http2Session::downstream_write() {
     auto datalen = nghttp2_session_mem_send2(session_, &data);
     if (datalen < 0) {
       SSLOG(ERROR, this) << "nghttp2_session_mem_send2() returned error: "
-                         << nghttp2_strerror(datalen);
+                         << nghttp2_strerror(static_cast<int>(datalen));
       return -1;
     }
     if (datalen == 0) {
       break;
     }
-    wb_.append(data, datalen);
+    wb_.append(data, as_unsigned(datalen));
 
     if (wb_.rleft() >= MAX_BUFFER_SIZE) {
       break;
@@ -2021,10 +2025,10 @@ int Http2Session::read_clear() {
     }
 
     if (nread < 0) {
-      return nread;
+      return static_cast<int>(nread);
     }
 
-    if (on_read(buf.data(), nread) != 0) {
+    if (on_read(buf.data(), as_unsigned(nread)) != 0) {
       return -1;
     }
   }
@@ -2053,7 +2057,7 @@ int Http2Session::write_clear() {
         break;
       }
 
-      wb_.drain(nwrite);
+      wb_.drain(as_unsigned(nwrite));
       continue;
     }
 
@@ -2125,10 +2129,10 @@ int Http2Session::read_tls() {
     }
 
     if (nread < 0) {
-      return nread;
+      return static_cast<int>(nread);
     }
 
-    if (on_read(buf.data(), nread) != 0) {
+    if (on_read(buf.data(), as_unsigned(nread)) != 0) {
       return -1;
     }
   }
@@ -2163,7 +2167,7 @@ int Http2Session::write_tls() {
         break;
       }
 
-      wb_.drain(nwrite);
+      wb_.drain(as_unsigned(nwrite));
 
       continue;
     }
