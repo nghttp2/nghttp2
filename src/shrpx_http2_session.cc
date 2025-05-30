@@ -537,7 +537,7 @@ int Http2Session::initiate_connection() {
 
         rv = connect(conn_.fd,
                      // TODO maybe not thread-safe?
-                     const_cast<sockaddr *>(&raddr_->su.sa), raddr_->len);
+                     &raddr_->su.sa, raddr_->len);
         if (rv != 0 && errno != EINPROGRESS) {
           auto error = errno;
           SSLOG(WARN, this)
@@ -600,8 +600,7 @@ int Http2Session::initiate_connection() {
 
         worker_blocker->on_success();
 
-        rv = connect(conn_.fd, const_cast<sockaddr *>(&raddr_->su.sa),
-                     raddr_->len);
+        rv = connect(conn_.fd, &raddr_->su.sa, raddr_->len);
         if (rv != 0 && errno != EINPROGRESS) {
           auto error = errno;
           SSLOG(WARN, this)
