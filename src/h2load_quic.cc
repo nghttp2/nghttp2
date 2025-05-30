@@ -624,7 +624,7 @@ int Client::read_quic() {
     auto path = ngtcp2_path{
       {
         &local_addr.su.sa,
-        static_cast<socklen_t>(local_addr.len),
+        local_addr.len,
       },
       {
         &su.sa,
@@ -847,8 +847,7 @@ int Client::send_blocked_packet() {
     auto &p = quic.tx.blocked[quic.tx.num_blocked_sent];
 
     auto rest =
-      write_udp(&p.remote_addr.su.sa, static_cast<socklen_t>(p.remote_addr.len),
-                p.data, p.gso_size);
+      write_udp(&p.remote_addr.su.sa, p.remote_addr.len, p.data, p.gso_size);
     if (!rest.empty()) {
       p.data = rest;
 

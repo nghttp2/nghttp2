@@ -147,8 +147,7 @@ DNSResolverStatus DNSTracker::resolve(Address *result, DNSQuery *dnsq) {
     case DNSResolverStatus::OK:
       if (LOG_ENABLED(INFO)) {
         LOG(INFO) << "Name lookup succeeded: " << host << " -> "
-                  << util::numeric_name(&result->su.sa,
-                                        static_cast<socklen_t>(result->len));
+                  << util::numeric_name(&result->su.sa, result->len);
       }
 
       ents_.emplace(host, make_entry(nullptr, std::move(host_copy),
@@ -210,8 +209,7 @@ DNSResolverStatus DNSTracker::resolve(Address *result, DNSQuery *dnsq) {
     case DNSResolverStatus::OK:
       if (LOG_ENABLED(INFO)) {
         LOG(INFO) << "Name lookup succeeded: " << host << " -> "
-                  << util::numeric_name(&result->su.sa,
-                                        static_cast<socklen_t>(result->len));
+                  << util::numeric_name(&result->su.sa, result->len);
       }
 
       update_entry(ent, nullptr, DNSResolverStatus::OK, result);
@@ -243,8 +241,7 @@ DNSResolverStatus DNSTracker::resolve(Address *result, DNSQuery *dnsq) {
   case DNSResolverStatus::OK:
     if (LOG_ENABLED(INFO)) {
       LOG(INFO) << "Name lookup succeeded (cached): " << dnsq->host << " -> "
-                << util::numeric_name(&ent.result.su.sa,
-                                      static_cast<socklen_t>(ent.result.len));
+                << util::numeric_name(&ent.result.su.sa, ent.result.len);
     }
     if (result) {
       memcpy(result, &ent.result, sizeof(*result));

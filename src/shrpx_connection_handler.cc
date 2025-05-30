@@ -780,7 +780,7 @@ int ConnectionHandler::quic_ipc_read() {
 
   auto pkt = std::make_unique<QUICPacket>();
 
-  auto remote_addrlen = static_cast<size_t>(*p++) + 1;
+  auto remote_addrlen = static_cast<socklen_t>(*p++) + 1;
   if (remote_addrlen > sizeof(sockaddr_storage)) {
     LOG(ERROR) << "The length of remote address is too large: "
                << remote_addrlen;
@@ -801,7 +801,7 @@ int ConnectionHandler::quic_ipc_read() {
 
   p += remote_addrlen;
 
-  auto local_addrlen = static_cast<size_t>(*p++) + 1;
+  auto local_addrlen = static_cast<socklen_t>(*p++) + 1;
   if (local_addrlen > sizeof(sockaddr_storage)) {
     LOG(ERROR) << "The length of local address is too large: " << local_addrlen;
 

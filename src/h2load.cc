@@ -571,8 +571,8 @@ int Client::make_socket(addrinfo *addr) {
     }
     local_addr.len = addrlen;
 
-    if (quic_init(&local_addr.su.sa, static_cast<socklen_t>(local_addr.len),
-                  addr->ai_addr, addr->ai_addrlen) != 0) {
+    if (quic_init(&local_addr.su.sa, local_addr.len, addr->ai_addr,
+                  addr->ai_addrlen) != 0) {
       std::cerr << "quic_init failed" << std::endl;
       return -1;
     }

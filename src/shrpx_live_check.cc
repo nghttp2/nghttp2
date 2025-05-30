@@ -284,7 +284,7 @@ int LiveCheck::initiate_connection() {
     return -1;
   }
 
-  rv = connect(conn_.fd, &raddr_->su.sa, static_cast<socklen_t>(raddr_->len));
+  rv = connect(conn_.fd, &raddr_->su.sa, raddr_->len);
   if (rv != 0 && errno != EINPROGRESS) {
     auto error = errno;
     LOG(WARN) << "connect() failed; addr=" << util::to_numeric_addr(raddr_)
