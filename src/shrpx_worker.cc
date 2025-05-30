@@ -32,6 +32,7 @@
 
 #include <cstdio>
 #include <memory>
+#include <map>
 
 #include "ssl_compat.h"
 
@@ -279,7 +280,8 @@ void Worker::replace_downstream_config(
   // TODO It is a bit less efficient because
   // mruby::create_mruby_context returns std::unique_ptr and we cannot
   // use std::make_shared.
-  std::map<StringRef, std::shared_ptr<mruby::MRubyContext>> shared_mruby_ctxs;
+  std::unordered_map<StringRef, std::shared_ptr<mruby::MRubyContext>>
+    shared_mruby_ctxs;
 #endif // HAVE_MRUBY
 
   for (size_t i = 0; i < groups.size(); ++i) {
@@ -378,7 +380,7 @@ void Worker::replace_downstream_config(
                     [](auto i, auto j) { std::swap((*i).seq, (*j).seq); });
 
       if (shared_addr->affinity.type == SessionAffinity::NONE) {
-        std::map<StringRef, WeightGroup *> wgs;
+        std::unordered_map<StringRef, WeightGroup *> wgs;
         size_t num_wgs = 0;
         for (auto &addr : shared_addr->addrs) {
           if (wgs.find(addr.group) == std::ranges::end(wgs)) {

@@ -63,14 +63,8 @@ DownstreamQueue::find_host_entry(const StringRef &host) {
   if (itr == std::ranges::end(host_entries_)) {
     auto key = ImmutableString{host};
     auto key_ref = StringRef{key};
-#ifdef HAVE_STD_MAP_EMPLACE
     std::tie(itr, std::ignore) =
       host_entries_.emplace(key_ref, HostEntry(std::move(key)));
-#else  // !HAVE_STD_MAP_EMPLACE
-    // for g++-4.7
-    std::tie(itr, std::ignore) =
-      host_entries_.insert(std::make_pair(key_ref, HostEntry(std::move(key))));
-#endif // !HAVE_STD_MAP_EMPLACE
   }
   return (*itr).second;
 }

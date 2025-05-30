@@ -366,7 +366,7 @@ int APIDownstreamConnection::handle_backendconfig() {
   downstreamconf->family = src->family;
 
   std::set<StringRef> include_set;
-  std::map<StringRef, size_t> pattern_addr_indexer;
+  std::unordered_map<StringRef, size_t> pattern_addr_indexer;
 
   for (auto first = reinterpret_cast<const char *>(rp),
             last = first + req.recv_body_length;

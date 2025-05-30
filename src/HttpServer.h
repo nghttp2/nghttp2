@@ -34,7 +34,7 @@
 
 #include <string>
 #include <vector>
-#include <map>
+#include <unordered_map>
 #include <memory>
 
 #include "ssl_compat.h"
@@ -59,8 +59,8 @@
 namespace nghttp2 {
 
 struct Config {
-  std::map<std::string, std::vector<std::string>> push;
-  std::map<std::string, std::string> mime_types;
+  std::unordered_map<std::string, std::vector<std::string>> push;
+  std::unordered_map<std::string, std::string> mime_types;
   Headers trailer;
   std::string trailer_names;
   std::string htdocs;
@@ -113,7 +113,7 @@ struct FileEntry {
       usecount(1),
       stale(stale) {}
   std::string path;
-  std::multimap<std::string, std::unique_ptr<FileEntry>>::iterator it;
+  std::unordered_multimap<std::string, std::unique_ptr<FileEntry>>::iterator it;
   int64_t length;
   int64_t mtime;
   std::chrono::steady_clock::time_point last_valid;
@@ -221,7 +221,7 @@ private:
   ev_io wev_;
   ev_io rev_;
   ev_timer settings_timerev_;
-  std::map<int32_t, std::unique_ptr<Stream>> id2stream_;
+  std::unordered_map<int32_t, std::unique_ptr<Stream>> id2stream_;
   WriteBuf wb_;
   std::function<int(Http2Handler &)> read_, write_;
   int64_t session_id_;

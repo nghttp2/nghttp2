@@ -689,7 +689,7 @@ struct TLSConfig {
 
   // PSK secrets.  The key is identity, and the associated value is
   // its secret.
-  std::map<StringRef, StringRef> psk_secrets;
+  std::unordered_map<StringRef, StringRef> psk_secrets;
   // The list of additional TLS certificate pair
   std::vector<TLSCertificate> subcerts;
   std::vector<unsigned char> alpn_prefs;
@@ -1333,20 +1333,20 @@ int option_lookup_token(const StringRef &name);
 // of backends.
 int parse_config(Config *config, const StringRef &opt, const StringRef &optarg,
                  std::set<StringRef> &included_set,
-                 std::map<StringRef, size_t> &pattern_addr_indexer);
+                 std::unordered_map<StringRef, size_t> &pattern_addr_indexer);
 
 // Similar to parse_config() above, but additional |optid| which
 // should be the return value of option_lookup_token(opt).
 int parse_config(Config *config, int optid, const StringRef &opt,
                  const StringRef &optarg, std::set<StringRef> &included_set,
-                 std::map<StringRef, size_t> &pattern_addr_indexer);
+                 std::unordered_map<StringRef, size_t> &pattern_addr_indexer);
 
 // Loads configurations from |filename| and stores them in |config|.
 // This function returns 0 if it succeeds, or -1.  See parse_config()
 // for |include_set|.
 int load_config(Config *config, const char *filename,
                 std::set<StringRef> &include_set,
-                std::map<StringRef, size_t> &pattern_addr_indexer);
+                std::unordered_map<StringRef, size_t> &pattern_addr_indexer);
 
 // Parses header field in |optarg|.  We expect header field is formed
 // like "NAME: VALUE".  We require that NAME is non empty string.  ":"

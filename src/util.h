@@ -47,7 +47,7 @@
 #include <sstream>
 #include <memory>
 #include <chrono>
-#include <map>
+#include <unordered_map>
 #include <random>
 #include <optional>
 #include <ranges>
@@ -1258,7 +1258,7 @@ uint64_t get_uint64(const uint8_t *data);
 // Reads mime types file (see /etc/mime.types), and stores extension
 // -> MIME type map in |res|.  This function returns 0 if it succeeds,
 // or -1.
-int read_mime_types(std::map<std::string, std::string> &res,
+int read_mime_types(std::unordered_map<std::string, std::string> &res,
                     const char *filename);
 
 // Fills random alpha and digit byte to the range [|first|, |last|).

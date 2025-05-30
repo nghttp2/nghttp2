@@ -1630,7 +1630,7 @@ uint64_t get_uint64(const uint8_t *data) {
   return n;
 }
 
-int read_mime_types(std::map<std::string, std::string> &res,
+int read_mime_types(std::unordered_map<std::string, std::string> &res,
                     const char *filename) {
   std::ifstream infile(filename);
   if (!infile) {
@@ -1659,14 +1659,8 @@ int read_mime_types(std::map<std::string, std::string> &res,
       }
       ext_end =
         std::ranges::find_if(ext_start, std::ranges::end(line), delim_pred);
-#ifdef HAVE_STD_MAP_EMPLACE
       res.emplace(std::string(ext_start, ext_end),
                   std::string(std::ranges::begin(line), type_end));
-#else  // !HAVE_STD_MAP_EMPLACE
-      res.insert(
-        std::make_pair(std::string(ext_start, ext_end),
-                       std::string(std::ranges::begin(line), type_end)));
-#endif // !HAVE_STD_MAP_EMPLACE
     }
   }
 

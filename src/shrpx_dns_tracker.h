@@ -27,7 +27,7 @@
 
 #include "shrpx.h"
 
-#include <map>
+#include <unordered_map>
 #include <chrono>
 
 #include "shrpx_dual_dns_resolver.h"
@@ -106,7 +106,7 @@ private:
 
   void add_to_qlist(ResolverEntry &ent, DNSQuery *dnsq);
 
-  std::map<StringRef, ResolverEntry> ents_;
+  std::unordered_map<StringRef, ResolverEntry> ents_;
   // Periodically iterates ents_, and removes expired entries to avoid
   // excessive use of memory.  Since only backend API can potentially
   // increase memory consumption, interval could be very long.

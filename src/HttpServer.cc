@@ -376,13 +376,7 @@ public:
     return nullptr;
   }
   FileEntry *cache_fd(const std::string &path, const FileEntry &ent) {
-#ifdef HAVE_STD_MAP_EMPLACE
     auto rv = fd_cache_.emplace(path, std::make_unique<FileEntry>(ent));
-#else  // !HAVE_STD_MAP_EMPLACE
-    // for gcc-4.7
-    auto rv =
-      fd_cache_.insert(std::make_pair(path, std::make_unique<FileEntry>(ent)));
-#endif // !HAVE_STD_MAP_EMPLACE
     auto &res = (*rv).second;
     res->it = rv;
     fd_cache_lru_.append(res.get());
@@ -432,7 +426,7 @@ public:
 private:
   std::set<Http2Handler *> handlers_;
   // cache for file descriptors to read file.
-  std::multimap<std::string, std::unique_ptr<FileEntry>> fd_cache_;
+  std::unordered_multimap<std::string, std::unique_ptr<FileEntry>> fd_cache_;
   DList<FileEntry> fd_cache_lru_;
   HttpServer *sv_;
   struct ev_loop *loop_;
