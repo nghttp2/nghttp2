@@ -957,10 +957,10 @@ void Client::on_header(int64_t stream_id, const uint8_t *name, size_t namelen,
   if (stream.status_success == -1 && namelen == 7 &&
       ":status"_sr == as_string_ref(name, namelen)) {
     int status = 0;
-    for (size_t i = 0; i < valuelen; ++i) {
-      if (util::is_digit(as_signed(value[i]))) {
+    for (auto c : std::span{value, valuelen}) {
+      if (util::is_digit(as_signed(c))) {
         status *= 10;
-        status += value[i] - '0';
+        status += c - '0';
         if (status > 999) {
           stream.status_success = 0;
           return;
