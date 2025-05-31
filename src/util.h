@@ -774,8 +774,7 @@ struct UIntFormatter {
       return std::ranges::copy_n(utos_digits.data() + n * 2, 2, result).out;
     }
 
-    std::ranges::advance(
-      result, as_signed(count_digit(static_cast<std::make_unsigned_t<T>>(n))));
+    std::ranges::advance(result, as_signed(count_digit(n)));
 
     auto p = result;
 
@@ -811,7 +810,7 @@ template <std::unsigned_integral T> constexpr std::string utos(T n) {
 
   std::string res;
 
-  res.resize(count_digit(static_cast<std::make_unsigned_t<T>>(n)));
+  res.resize(count_digit(n));
 
   utos(n, std::ranges::begin(res));
 
