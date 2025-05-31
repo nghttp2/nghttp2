@@ -27,6 +27,7 @@
 
 #include "nghttp2_config.h"
 
+#include <cstdint>
 #include <cstring>
 #include <cstdio>
 #include <cstdlib>
