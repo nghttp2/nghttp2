@@ -392,7 +392,7 @@ constinit const auto hexdigits = []() {
 template <std::input_iterator I, std::weakly_incrementable O>
 requires(std::indirectly_writable<O, char> &&
          sizeof(std::iter_value_t<I>) == sizeof(uint8_t))
-constexpr O format_hex(I first, I last, O result) noexcept {
+constexpr O format_hex(I first, I last, O result) {
   for (; first != last; ++first) {
     result = std::ranges::copy_n(
                hexdigits.data() + static_cast<uint8_t>(*first) * 2, 2, result)
@@ -409,7 +409,7 @@ template <std::ranges::input_range R, std::weakly_incrementable O>
 requires(std::indirectly_writable<O, char> &&
          !std::is_array_v<std::remove_cvref_t<R>> &&
          sizeof(std::ranges::range_value_t<R>) == sizeof(uint8_t))
-constexpr O format_hex(R &&r, O result) noexcept {
+constexpr O format_hex(R &&r, O result) {
   return format_hex(std::ranges::begin(r), std::ranges::end(r),
                     std::move(result));
 }
