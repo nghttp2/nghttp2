@@ -958,7 +958,7 @@ void Client::on_header(int64_t stream_id, const uint8_t *name, size_t namelen,
       ":status"_sr == as_string_ref(name, namelen)) {
     int status = 0;
     for (size_t i = 0; i < valuelen; ++i) {
-      if ('0' <= value[i] && value[i] <= '9') {
+      if (util::is_digit(as_signed(value[i]))) {
         status *= 10;
         status += value[i] - '0';
         if (status > 999) {
