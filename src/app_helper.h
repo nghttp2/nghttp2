@@ -34,7 +34,6 @@
 #endif // HAVE_SYS_TIME_H
 #include <poll.h>
 
-#include <map>
 #include <chrono>
 
 #include <nghttp2/nghttp2.h>

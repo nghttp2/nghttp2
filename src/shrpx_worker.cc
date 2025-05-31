@@ -383,7 +383,7 @@ void Worker::replace_downstream_config(
         std::unordered_map<StringRef, WeightGroup *> wgs;
         size_t num_wgs = 0;
         for (auto &addr : shared_addr->addrs) {
-          if (wgs.find(addr.group) == std::ranges::end(wgs)) {
+          if (!wgs.contains(addr.group)) {
             ++num_wgs;
             wgs.emplace(addr.group, nullptr);
           }
