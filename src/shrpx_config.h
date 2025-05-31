@@ -42,7 +42,7 @@
 #include <cstdio>
 #include <vector>
 #include <memory>
-#include <set>
+#include <unordered_set>
 #include <unordered_map>
 
 #include "ssl_compat.h"
@@ -1332,20 +1332,21 @@ int option_lookup_token(const StringRef &name);
 // It is introduced to speed up loading configuration file with lots
 // of backends.
 int parse_config(Config *config, const StringRef &opt, const StringRef &optarg,
-                 std::set<StringRef> &included_set,
+                 std::unordered_set<StringRef> &included_set,
                  std::unordered_map<StringRef, size_t> &pattern_addr_indexer);
 
 // Similar to parse_config() above, but additional |optid| which
 // should be the return value of option_lookup_token(opt).
 int parse_config(Config *config, int optid, const StringRef &opt,
-                 const StringRef &optarg, std::set<StringRef> &included_set,
+                 const StringRef &optarg,
+                 std::unordered_set<StringRef> &included_set,
                  std::unordered_map<StringRef, size_t> &pattern_addr_indexer);
 
 // Loads configurations from |filename| and stores them in |config|.
 // This function returns 0 if it succeeds, or -1.  See parse_config()
 // for |include_set|.
 int load_config(Config *config, const char *filename,
-                std::set<StringRef> &include_set,
+                std::unordered_set<StringRef> &include_set,
                 std::unordered_map<StringRef, size_t> &pattern_addr_indexer);
 
 // Parses header field in |optarg|.  We expect header field is formed

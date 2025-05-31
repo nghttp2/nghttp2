@@ -1378,7 +1378,7 @@ bool HttpClient::add_request(const std::string &uri,
   if (urlparse_parse_url(uri.c_str(), uri.size(), 0, &u) != 0) {
     return false;
   }
-  if (path_cache.count(uri)) {
+  if (path_cache.contains(uri)) {
     return false;
   }
 
@@ -1993,7 +1993,7 @@ int on_frame_recv_callback2(nghttp2_session *session,
     req->uri = uri;
     req->u = u;
 
-    if (client->path_cache.count(uri)) {
+    if (client->path_cache.contains(uri)) {
       nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE,
                                 frame->push_promise.promised_stream_id,
                                 NGHTTP2_CANCEL);

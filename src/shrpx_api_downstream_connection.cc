@@ -365,7 +365,7 @@ int APIDownstreamConnection::handle_backendconfig() {
   downstreamconf->response_buffer_size = src->response_buffer_size;
   downstreamconf->family = src->family;
 
-  std::set<StringRef> include_set;
+  std::unordered_set<StringRef> include_set;
   std::unordered_map<StringRef, size_t> pattern_addr_indexer;
 
   for (auto first = reinterpret_cast<const char *>(rp),

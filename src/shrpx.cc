@@ -3278,7 +3278,7 @@ int process_options(Config *config,
   std::unordered_map<StringRef, size_t> pattern_addr_indexer;
   if (conf_exists(config->conf_path.data())) {
     LOG(NOTICE) << "Loading configuration from " << config->conf_path;
-    std::set<StringRef> include_set;
+    std::unordered_set<StringRef> include_set;
     if (load_config(config, config->conf_path.data(), include_set,
                     pattern_addr_indexer) == -1) {
       LOG(FATAL) << "Failed to load configuration from " << config->conf_path;
@@ -3291,7 +3291,7 @@ int process_options(Config *config,
   reopen_log_files(config->logging);
 
   {
-    std::set<StringRef> include_set;
+    std::unordered_set<StringRef> include_set;
 
     for (auto &p : cmdcfgs) {
       if (parse_config(config, p.first, p.second, include_set,

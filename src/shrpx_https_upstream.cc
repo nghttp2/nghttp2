@@ -25,7 +25,6 @@
 #include "shrpx_https_upstream.h"
 
 #include <cassert>
-#include <set>
 #include <sstream>
 
 #include "shrpx_client_handler.h"

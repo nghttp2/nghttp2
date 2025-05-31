@@ -46,7 +46,7 @@
 #endif // HAVE_ARPA_INET_H
 
 #include <cassert>
-#include <set>
+#include <unordered_set>
 #include <iostream>
 #include <thread>
 #include <mutex>
@@ -424,7 +424,7 @@ public:
   bool handlers_empty() const { return handlers_.empty(); }
 
 private:
-  std::set<Http2Handler *> handlers_;
+  std::unordered_set<Http2Handler *> handlers_;
   // cache for file descriptors to read file.
   std::unordered_multimap<std::string, std::unique_ptr<FileEntry>> fd_cache_;
   DList<FileEntry> fd_cache_lru_;
