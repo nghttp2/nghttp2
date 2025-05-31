@@ -392,7 +392,7 @@ constinit const auto hexdigits = []() {
 template <std::input_iterator I, std::weakly_incrementable O>
 requires(std::indirectly_writable<O, char> &&
          sizeof(std::iter_value_t<I>) == sizeof(uint8_t))
-constexpr O format_hex(I first, I last, O result) noexcept {
+constexpr O format_hex(I first, I last, O result) {
   for (; first != last; ++first) {
     result = std::ranges::copy_n(
                hexdigits.data() + static_cast<uint8_t>(*first) * 2, 2, result)
@@ -409,7 +409,7 @@ template <std::ranges::input_range R, std::weakly_incrementable O>
 requires(std::indirectly_writable<O, char> &&
          !std::is_array_v<std::remove_cvref_t<R>> &&
          sizeof(std::ranges::range_value_t<R>) == sizeof(uint8_t))
-constexpr O format_hex(R &&r, O result) noexcept {
+constexpr O format_hex(R &&r, O result) {
   return format_hex(std::ranges::begin(r), std::ranges::end(r),
                     std::move(result));
 }
@@ -774,8 +774,7 @@ struct UIntFormatter {
       return std::ranges::copy_n(utos_digits.data() + n * 2, 2, result).out;
     }
 
-    std::ranges::advance(
-      result, as_signed(count_digit(static_cast<std::make_unsigned_t<T>>(n))));
+    std::ranges::advance(result, as_signed(count_digit(n)));
 
     auto p = result;
 
@@ -811,7 +810,7 @@ template <std::unsigned_integral T> constexpr std::string utos(T n) {
 
   std::string res;
 
-  res.resize(count_digit(static_cast<std::make_unsigned_t<T>>(n)));
+  res.resize(count_digit(n));
 
   utos(n, std::ranges::begin(res));
 

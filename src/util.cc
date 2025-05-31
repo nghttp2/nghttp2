@@ -1237,7 +1237,7 @@ parse_uint_digits(const StringRef &s) {
   size_t i = 0;
 
   for (auto c : s) {
-    if ('0' > c || c > '9') {
+    if (!is_digit(c)) {
       break;
     }
 
