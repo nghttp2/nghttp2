@@ -8,11 +8,11 @@ env:
   LIBBPF_VERSION: v1.5.0
   OPENSSL1_VERSION: 1_1_1w+quic
   OPENSSL3_VERSION: 3.5.0
-  BORINGSSL_VERSION: 23018360710de333b3343e63cbb3bd2dceb3287d
-  AWSLC_VERSION: v1.49.1
-  NGHTTP3_VERSION: v1.9.0
-  NGTCP2_VERSION: v1.12.0
-  WOLFSSL_VERSION: v5.7.6-stable
+  BORINGSSL_VERSION: 9295969e1dad2c31d0d99481734c1c68dcbc6403
+  AWSLC_VERSION: v1.52.0
+  NGHTTP3_VERSION: v1.10.1
+  NGTCP2_VERSION: v1.13.0
+  WOLFSSL_VERSION: v5.8.0-stable
 
 jobs:
   build-cache:
@@ -49,8 +49,8 @@ jobs:
       uses: actions/cache@v4
       with:
         path: |
-          boringssl/build/crypto/libcrypto.a
-          boringssl/build/ssl/libssl.a
+          boringssl/build/libcrypto.a
+          boringssl/build/libssl.a
           boringssl/include
         key: ${{ matrix.os }}-boringssl-${{ env.BORINGSSL_VERSION }}
     - name: Restore aws-lc cache
@@ -190,7 +190,7 @@ jobs:
         ./configure --prefix=$PWD/build --enable-lib-only \
           PKG_CONFIG_PATH="../openssl1/build/lib/pkgconfig:../wolfssl/build/lib/pkgconfig" \
           BORINGSSL_CFLAGS="-I$PWD/../boringssl/include/" \
-          BORINGSSL_LIBS="-L$PWD/../boringssl/build/ssl -lssl -L$PWD/../boringssl/build/crypto -lcrypto" \
+          BORINGSSL_LIBS="-L$PWD/../boringssl/build -lssl -lcrypto" \
           --disable-dependency-tracking \
           --with-boringssl \
           --with-wolfssl
@@ -373,8 +373,8 @@ jobs:
       if: matrix.openssl == 'boringssl'
       with:
         path: |
-          boringssl/build/crypto/libcrypto.a
-          boringssl/build/ssl/libssl.a
+          boringssl/build/libcrypto.a
+          boringssl/build/libssl.a
           boringssl/include
         key: ${{ matrix.os }}-boringssl-${{ env.BORINGSSL_VERSION }}
         fail-on-cache-miss: true
@@ -394,7 +394,7 @@ jobs:
         cd boringssl
 
         OPENSSL_CFLAGS="-I$PWD/include/"
-        OPENSSL_LIBS="-L$PWD/build/ssl -lssl -L$PWD/build/crypto -lcrypto -pthread"
+        OPENSSL_LIBS="-L$PWD/build -lssl -lcrypto -pthread"
         EXTRA_AUTOTOOLS_OPTS="$EXTRA_AUTOTOOLS_OPTS --without-neverbleed --without-jemalloc --disable-examples"
 
         echo 'OPENSSL_CFLAGS='"$OPENSSL_CFLAGS" >> $GITHUB_ENV
