@@ -42,7 +42,7 @@ RUN git clone --recursive --shallow-submodules --depth 1 -b v1.13.0 https://gith
     cd .. && \
     rm -rf ngtcp2
 
-RUN git clone --depth 1 -b v1.5.0 https://github.com/libbpf/libbpf && \
+RUN git clone --depth 1 -b v1.5.1 https://github.com/libbpf/libbpf && \
     cd libbpf && \
     CC=clang-19 PREFIX=/usr/local make -C src install && \
     cd .. && \
