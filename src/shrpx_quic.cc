@@ -393,4 +393,25 @@ select_quic_keying_material(const QUICKeyingMaterials &qkms, uint8_t km_id) {
   return &qkms.keying_materials.front();
 }
 
+std::span<uint64_t, 2> generate_siphash_key() {
+  // Use the same technique rust does.
+  thread_local static auto key = []() {
+    std::array<uint64_t, 2> key;
+
+    auto s = as_writable_uint8_span(std::span{key});
+
+    auto rv = RAND_bytes(s.data(), s.size());
+    if (rv != 1) {
+      assert(0);
+      abort();
+    }
+
+    return key;
+  }();
+
+  ++key[0];
+
+  return key;
+}
+
 } // namespace shrpx
