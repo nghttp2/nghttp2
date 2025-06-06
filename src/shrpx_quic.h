@@ -52,12 +52,13 @@
 
 using namespace nghttp2;
 
+namespace shrpx {
+std::span<uint64_t, 2> generate_siphash_key();
+} // namespace shrpx
+
 namespace std {
 template <> struct hash<ngtcp2_cid> {
-  hash() {
-    auto s = as_writable_uint8_span(std::span{key});
-    assert(RAND_bytes(s.data(), s.size()) == 1);
-  }
+  hash() { std::ranges::copy(shrpx::generate_siphash_key(), key.begin()); }
 
   std::size_t operator()(const ngtcp2_cid &cid) const noexcept {
     return static_cast<size_t>(siphash24(key, {cid.data, cid.datalen}));
