@@ -955,7 +955,7 @@ void Client::on_header(int64_t stream_id, const uint8_t *name, size_t namelen,
   }
 
   if (stream.status_success == -1 && namelen == 7 &&
-      ":status"_sr == as_string_ref(name, namelen)) {
+      ":status"sv == as_string_view(name, namelen)) {
     int status = 0;
     for (auto c : std::span{value, valuelen}) {
       if (util::is_digit(as_signed(c))) {
@@ -1126,11 +1126,11 @@ int Client::connection_made() {
     SSL_get0_alpn_selected(ssl, &next_proto, &next_proto_len);
 
     if (next_proto) {
-      auto proto = as_string_ref(next_proto, next_proto_len);
+      auto proto = as_string_view(next_proto, next_proto_len);
       if (config.is_quic()) {
 #ifdef ENABLE_HTTP3
         assert(session);
-        if ("h3"_sr != proto && "h3-29"_sr != proto) {
+        if ("h3"sv != proto && "h3-29"sv != proto) {
           return -1;
         }
 #endif // ENABLE_HTTP3
@@ -1923,11 +1923,11 @@ std::string get_reqline(const char *uri, const urlparse_url &u) {
 } // namespace
 
 namespace {
-constexpr auto UNIX_PATH_PREFIX = "unix:"_sr;
+constexpr auto UNIX_PATH_PREFIX = "unix:"sv;
 } // namespace
 
 namespace {
-bool parse_base_uri(const StringRef &base_uri) {
+bool parse_base_uri(const std::string_view &base_uri) {
   urlparse_url u;
   if (urlparse_parse_url(base_uri.data(), base_uri.size(), 0, &u) != 0 ||
       !util::has_uri_field(u, URLPARSE_SCHEMA) ||
@@ -1960,7 +1960,7 @@ std::vector<std::string> parse_uris(std::vector<std::string>::iterator first,
   }
 
   if (!config.has_base_uri()) {
-    if (!parse_base_uri(StringRef{*first})) {
+    if (!parse_base_uri(std::string_view{*first})) {
       std::cerr << "invalid URI: " << *first << std::endl;
       exit(EXIT_FAILURE);
     }
@@ -2133,7 +2133,7 @@ benchmarking tool for HTTP/2 server)"
 } // namespace
 
 namespace {
-constexpr auto DEFAULT_ALPN_LIST = "h2,http/1.1"_sr;
+constexpr auto DEFAULT_ALPN_LIST = "h2,http/1.1"sv;
 } // namespace
 
 namespace {
@@ -2527,8 +2527,8 @@ int main(int argc, char **argv) {
       config.ifile = optarg;
       break;
     case 'p': {
-      auto proto = StringRef{optarg};
-      if (util::strieq(NGHTTP2_CLEARTEXT_PROTO_VERSION_ID ""_sr, proto)) {
+      auto proto = std::string_view{optarg};
+      if (util::strieq(NGHTTP2_CLEARTEXT_PROTO_VERSION_ID ""sv, proto)) {
         config.no_tls_proto = Config::PROTO_HTTP2;
       } else if (util::strieq(NGHTTP2_H1_1, proto)) {
         config.no_tls_proto = Config::PROTO_HTTP1_1;
@@ -2573,7 +2573,7 @@ int main(int argc, char **argv) {
       break;
     }
     case 'B': {
-      auto arg = StringRef{optarg};
+      auto arg = std::string_view{optarg};
       config.base_uri = "";
       config.base_uri_unix = false;
 
@@ -2581,8 +2581,9 @@ int main(int argc, char **argv) {
         // UNIX domain socket path
         sockaddr_un un;
 
-        auto path = StringRef{std::ranges::begin(arg) + UNIX_PATH_PREFIX.size(),
-                              std::ranges::end(arg)};
+        auto path =
+          std::string_view{std::ranges::begin(arg) + UNIX_PATH_PREFIX.size(),
+                           std::ranges::end(arg)};
 
         if (path.size() == 0 || path.size() + 1 > sizeof(un.sun_path)) {
           std::cerr << "--base-uri: invalid UNIX domain socket path: " << arg
@@ -2653,7 +2654,7 @@ int main(int argc, char **argv) {
       }
       case 6:
         // --h1
-        config.alpn_list = util::parse_config_str_list("http/1.1"_sr);
+        config.alpn_list = util::parse_config_str_list("http/1.1"sv);
         config.no_tls_proto = Config::PROTO_HTTP1_1;
         break;
       case 7:
@@ -2686,7 +2687,7 @@ int main(int argc, char **argv) {
         break;
       case 11: {
         // --connect-to
-        auto p = util::split_hostport(StringRef{optarg});
+        auto p = util::split_hostport(std::string_view{optarg});
         int64_t port = 0;
         if (p.first.empty() ||
             (!p.second.empty() &&
@@ -2752,7 +2753,8 @@ int main(int argc, char **argv) {
         // fall through
       case 19:
         // alpn-list option
-        config.alpn_list = util::parse_config_str_list(StringRef{optarg});
+        config.alpn_list =
+          util::parse_config_str_list(std::string_view{optarg});
         break;
       case 20:
         // --sni
@@ -3148,7 +3150,7 @@ int main(int argc, char **argv) {
     // 2 for :path, and possible content-length
     nva.reserve(2 + shared_nva.size());
 
-    nva.push_back(http2::make_field_v(":path"_sr, req));
+    nva.push_back(http2::make_field_v(":path"sv, req));
 
     for (auto &nv : shared_nva) {
       nva.push_back(http2::make_field_nv(nv.name, nv.value));
@@ -3156,7 +3158,7 @@ int main(int argc, char **argv) {
 
     if (!content_length_str.empty()) {
       nva.push_back(
-        http2::make_field_nv("content-length"_sr, content_length_str));
+        http2::make_field_nv("content-length"sv, content_length_str));
     }
 
     config.nva.push_back(std::move(nva));

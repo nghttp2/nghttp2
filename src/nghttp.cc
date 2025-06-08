@@ -158,25 +158,25 @@ void Request::init_inflater() {
   assert(rv == 0);
 }
 
-StringRef Request::get_real_scheme() const {
+std::string_view Request::get_real_scheme() const {
   return config.scheme_override.empty()
            ? util::get_uri_field(uri.c_str(), u, URLPARSE_SCHEMA)
-           : StringRef{config.scheme_override};
+           : std::string_view{config.scheme_override};
 }
 
-StringRef Request::get_real_host() const {
+std::string_view Request::get_real_host() const {
   return config.host_override.empty()
            ? util::get_uri_field(uri.c_str(), u, URLPARSE_HOST)
-           : StringRef{config.host_override};
+           : std::string_view{config.host_override};
 }
 
 uint16_t Request::get_real_port() const {
   auto scheme = get_real_scheme();
   return config.host_override.empty() ? util::has_uri_field(u, URLPARSE_PORT)
                                           ? u.port
-                                        : scheme == "https"_sr ? 443
-                                                               : 80
-         : config.port_override == 0  ? scheme == "https"_sr ? 443 : 80
+                                        : scheme == "https"sv ? 443
+                                                              : 80
+         : config.port_override == 0  ? scheme == "https"sv ? 443 : 80
                                       : config.port_override;
 }
 
@@ -196,8 +196,8 @@ void Request::init_html_parser() {
   if (ipv6_lit) {
     base_uri += ']';
   }
-  if (!((scheme == "https"_sr && port == 443) ||
-        (scheme == "http"_sr && port == 80))) {
+  if (!((scheme == "https"sv && port == 443) ||
+        (scheme == "http"sv && port == 80))) {
     base_uri += ':';
     base_uri += util::utos(port);
   }
@@ -234,7 +234,7 @@ std::string Request::make_reqpath() const {
 namespace {
 // Perform special handling |host| if it is IPv6 literal and includes
 // zone ID per RFC 6874.
-std::string decode_host(const StringRef &host) {
+std::string decode_host(const std::string_view &host) {
   auto zone_start = std::ranges::find(host, '%');
   if (zone_start == std::ranges::end(host) ||
       !util::ipv6_numeric_addr(
@@ -458,7 +458,7 @@ int submit_request(HttpClient *client, const Headers &headers, Request *req) {
       trailer_names += ", ";
       trailer_names += config.trailer[i].name;
     }
-    nva.push_back(http2::make_field_v("trailer"_sr, trailer_names));
+    nva.push_back(http2::make_field_v("trailer"sv, trailer_names));
   }
 
   int32_t stream_id;
@@ -915,7 +915,7 @@ int HttpClient::on_upgrade_connect() {
     req = "OPTIONS *";
   } else {
     auto meth = std::ranges::find_if(
-      config.headers, [](const auto &kv) { return ":method"_sr == kv.name; });
+      config.headers, [](const auto &kv) { return ":method"sv == kv.name; });
 
     if (meth == std::ranges::end(config.headers)) {
       req = "GET ";
@@ -1065,7 +1065,7 @@ int HttpClient::connection_made() {
 
     SSL_get0_alpn_selected(ssl, &next_proto, &next_proto_len);
     if (next_proto) {
-      auto proto = as_string_ref(next_proto, next_proto_len);
+      auto proto = as_string_view(next_proto, next_proto_len);
       if (config.verbose) {
         std::cout << "The negotiated protocol: " << proto << std::endl;
       }
@@ -1595,7 +1595,7 @@ void update_html_parser(HttpClient *client, Request *req, const uint8_t *data,
     }
 
     auto link_port = util::has_uri_field(u, URLPARSE_PORT) ? u.port
-                     : scheme == "https"_sr                ? 443
+                     : scheme == "https"sv                 ? 443
                                                            : 80;
 
     if (port != link_port) {
@@ -1698,7 +1698,8 @@ void check_response_header(nghttp2_session *session, Request *req) {
     return;
   }
 
-  auto status = http2::parse_http_status_code(StringRef{status_hd->value});
+  auto status =
+    http2::parse_http_status_code(std::string_view{status_hd->value});
   if (status == -1) {
     nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, req->stream_id,
                               NGHTTP2_PROTOCOL_ERROR);
@@ -1709,8 +1710,8 @@ void check_response_header(nghttp2_session *session, Request *req) {
 
   for (auto &nv : req->res_nva) {
     if ("content-encoding" == nv.name) {
-      gzip = util::strieq("gzip"_sr, nv.value) ||
-             util::strieq("deflate"_sr, nv.value);
+      gzip =
+        util::strieq("gzip"sv, nv.value) || util::strieq("deflate"sv, nv.value);
       continue;
     }
   }
@@ -1823,8 +1824,8 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
 
     req->header_buffer_size += namelen + valuelen;
 
-    auto nameref = as_string_ref(name, namelen);
-    auto valueref = as_string_ref(value, valuelen);
+    auto nameref = as_string_view(name, namelen);
+    auto valueref = as_string_view(value, valuelen);
     auto token = http2::lookup_token(nameref);
 
     http2::index_header(req->res_hdidx, token, req->res_nva.size());
@@ -1849,8 +1850,8 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
 
     req->header_buffer_size += namelen + valuelen;
 
-    auto nameref = as_string_ref(name, namelen);
-    auto valueref = as_string_ref(value, valuelen);
+    auto nameref = as_string_view(name, namelen);
+    auto valueref = as_string_view(value, valuelen);
     auto token = http2::lookup_token(nameref);
 
     http2::index_header(req->req_hdidx, token, req->req_nva.size());

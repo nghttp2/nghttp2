@@ -58,22 +58,23 @@ void DownstreamQueue::mark_failure(Downstream *downstream) {
 }
 
 DownstreamQueue::HostEntry &
-DownstreamQueue::find_host_entry(const StringRef &host) {
+DownstreamQueue::find_host_entry(const std::string_view &host) {
   auto itr = host_entries_.find(host);
   if (itr == std::ranges::end(host_entries_)) {
     auto key = ImmutableString{host};
-    auto key_ref = StringRef{key};
+    auto key_ref = std::string_view{key.begin(), key.end()};
     std::tie(itr, std::ignore) =
       host_entries_.emplace(key_ref, HostEntry(std::move(key)));
   }
   return (*itr).second;
 }
 
-StringRef DownstreamQueue::make_host_key(const StringRef &host) const {
-  return unified_host_ ? StringRef{} : host;
+std::string_view
+DownstreamQueue::make_host_key(const std::string_view &host) const {
+  return unified_host_ ? ""sv : host;
 }
 
-StringRef DownstreamQueue::make_host_key(Downstream *downstream) const {
+std::string_view DownstreamQueue::make_host_key(Downstream *downstream) const {
   return make_host_key(downstream->request().authority);
 }
 
@@ -94,7 +95,7 @@ void DownstreamQueue::mark_blocked(Downstream *downstream) {
   ent.blocked.append(link);
 }
 
-bool DownstreamQueue::can_activate(const StringRef &host) const {
+bool DownstreamQueue::can_activate(const std::string_view &host) const {
   auto itr = host_entries_.find(make_host_key(host));
   if (itr == std::ranges::end(host_entries_)) {
     return true;
@@ -106,7 +107,7 @@ bool DownstreamQueue::can_activate(const StringRef &host) const {
 namespace {
 bool remove_host_entry_if_empty(const DownstreamQueue::HostEntry &ent,
                                 DownstreamQueue::HostEntryMap &host_entries,
-                                const StringRef &host) {
+                                const std::string_view &host) {
   if (ent.blocked.empty() && ent.num_active == 0) {
     host_entries.erase(host);
     return true;

@@ -297,8 +297,8 @@ int LiveCheck::initiate_connection() {
   }
 
   if (addr_->tls) {
-    auto sni_name =
-      addr_->sni.empty() ? StringRef{addr_->host} : StringRef{addr_->sni};
+    auto sni_name = addr_->sni.empty() ? std::string_view{addr_->host}
+                                       : std::string_view{addr_->sni};
     if (!util::numeric_host(sni_name.data())) {
       SSL_set_tlsext_host_name(conn_.tls.ssl, sni_name.data());
     }
@@ -407,11 +407,11 @@ int LiveCheck::tls_handshake() {
 
   SSL_get0_alpn_selected(conn_.tls.ssl, &next_proto, &next_proto_len);
 
-  auto proto = as_string_ref(next_proto, next_proto_len);
+  auto proto = as_string_view(next_proto, next_proto_len);
 
   switch (addr_->proto) {
   case Proto::HTTP1:
-    if (proto.empty() || proto == "http/1.1"_sr) {
+    if (proto.empty() || proto == "http/1.1"sv) {
       break;
     }
     return -1;

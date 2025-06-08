@@ -89,8 +89,8 @@ mrb_value request_set_method(mrb_state *mrb, mrb_value self) {
   if (n == 0) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "method must not be empty string");
   }
-  auto token =
-    http2::lookup_method_token(StringRef{method, static_cast<size_t>(n)});
+  auto token = http2::lookup_method_token(
+    std::string_view{method, static_cast<size_t>(n)});
   if (token == -1) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "method not supported");
   }
@@ -129,8 +129,8 @@ mrb_value request_set_authority(mrb_state *mrb, mrb_value self) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "authority must not be empty string");
   }
 
-  req.authority =
-    make_string_ref(balloc, StringRef{authority, static_cast<size_t>(n)});
+  req.authority = make_string_ref(
+    balloc, std::string_view{authority, static_cast<size_t>(n)});
 
   return self;
 }
@@ -165,7 +165,7 @@ mrb_value request_set_scheme(mrb_state *mrb, mrb_value self) {
   }
 
   req.scheme =
-    make_string_ref(balloc, StringRef{scheme, static_cast<size_t>(n)});
+    make_string_ref(balloc, std::string_view{scheme, static_cast<size_t>(n)});
 
   return self;
 }
@@ -196,8 +196,8 @@ mrb_value request_set_path(mrb_state *mrb, mrb_value self) {
   mrb_int pathlen;
   mrb_get_args(mrb, "s", &path, &pathlen);
 
-  req.path =
-    make_string_ref(balloc, StringRef{path, static_cast<size_t>(pathlen)});
+  req.path = make_string_ref(
+    balloc, std::string_view{path, static_cast<size_t>(pathlen)});
 
   return self;
 }
@@ -233,7 +233,8 @@ mrb_value request_mod_header(mrb_state *mrb, mrb_value self, bool repl) {
   key = mrb_funcall(mrb, key, "downcase", 0);
 
   auto keyref = make_string_ref(
-    balloc, StringRef{RSTRING_PTR(key), static_cast<size_t>(RSTRING_LEN(key))});
+    balloc,
+    std::string_view{RSTRING_PTR(key), static_cast<size_t>(RSTRING_LEN(key))});
 
   mrb_gc_arena_restore(mrb, ai);
 
@@ -265,17 +266,17 @@ mrb_value request_mod_header(mrb_state *mrb, mrb_value self, bool repl) {
 
       req.fs.add_header_token(
         keyref,
-        make_string_ref(balloc,
-                        StringRef{RSTRING_PTR(value),
-                                  static_cast<size_t>(RSTRING_LEN(value))}),
+        make_string_ref(
+          balloc, std::string_view{RSTRING_PTR(value),
+                                   static_cast<size_t>(RSTRING_LEN(value))}),
         false, token);
     }
   } else if (mrb_string_p(values)) {
     req.fs.add_header_token(
       keyref,
-      make_string_ref(balloc,
-                      StringRef{RSTRING_PTR(values),
-                                static_cast<size_t>(RSTRING_LEN(values))}),
+      make_string_ref(
+        balloc, std::string_view{RSTRING_PTR(values),
+                                 static_cast<size_t>(RSTRING_LEN(values))}),
       false, token);
   } else {
     mrb_raise(mrb, E_RUNTIME_ERROR, "value must be string");
@@ -321,7 +322,8 @@ mrb_value request_push(mrb_state *mrb, mrb_value self) {
   mrb_int len;
   mrb_get_args(mrb, "s", &uri, &len);
 
-  upstream->initiate_push(downstream, StringRef{uri, static_cast<size_t>(len)});
+  upstream->initiate_push(downstream,
+                          std::string_view{uri, static_cast<size_t>(len)});
 
   return mrb_nil_value();
 }

@@ -63,28 +63,28 @@ void test_shrpx_http_create_forwarded(void) {
     "proto=https"sv,
     http::create_forwarded(
       balloc, FORWARDED_BY | FORWARDED_FOR | FORWARDED_HOST | FORWARDED_PROTO,
-      "example.com:3000"_sr, "[::1]"_sr, "www.example.com"_sr, "https"_sr));
+      "example.com:3000"sv, "[::1]"sv, "www.example.com"sv, "https"sv));
 
   assert_stdsv_equal("for=192.168.0.1"sv,
-                     http::create_forwarded(balloc, FORWARDED_FOR, "alpha"_sr,
-                                            "192.168.0.1"_sr, "bravo"_sr,
-                                            "charlie"_sr));
+                     http::create_forwarded(balloc, FORWARDED_FOR, "alpha"sv,
+                                            "192.168.0.1"sv, "bravo"sv,
+                                            "charlie"sv));
 
   assert_stdsv_equal(
     "by=_hidden;for=\"[::1]\""sv,
-    http::create_forwarded(balloc, FORWARDED_BY | FORWARDED_FOR, "_hidden"_sr,
-                           "[::1]"_sr, ""_sr, ""_sr));
+    http::create_forwarded(balloc, FORWARDED_BY | FORWARDED_FOR, "_hidden"sv,
+                           "[::1]"sv, ""sv, ""sv));
 
   assert_stdsv_equal(
     "by=\"[::1]\";for=_hidden"sv,
-    http::create_forwarded(balloc, FORWARDED_BY | FORWARDED_FOR, "[::1]"_sr,
-                           "_hidden"_sr, ""_sr, ""_sr));
+    http::create_forwarded(balloc, FORWARDED_BY | FORWARDED_FOR, "[::1]"sv,
+                           "_hidden"sv, ""sv, ""sv));
 
   assert_stdsv_equal(""sv,
                      http::create_forwarded(balloc,
                                             FORWARDED_BY | FORWARDED_FOR |
                                               FORWARDED_HOST | FORWARDED_PROTO,
-                                            ""_sr, ""_sr, ""_sr, ""_sr));
+                                            ""sv, ""sv, ""sv, ""sv));
 }
 
 void test_shrpx_http_create_via_header_value(void) {
@@ -105,24 +105,23 @@ void test_shrpx_http_create_via_header_value(void) {
 
 void test_shrpx_http_create_affinity_cookie(void) {
   BlockAllocator balloc(1024, 1024);
-  StringRef c;
+  std::string_view c;
 
-  c = http::create_affinity_cookie(balloc, "cookie-val"_sr, 0xf1e2d3c4u,
-                                   StringRef{}, false);
+  c = http::create_affinity_cookie(balloc, "cookie-val"sv, 0xf1e2d3c4u, ""sv,
+                                   false);
 
   assert_stdsv_equal("cookie-val=f1e2d3c4"sv, c);
 
-  c = http::create_affinity_cookie(balloc, "alpha"_sr, 0x00000000u, StringRef{},
-                                   true);
+  c = http::create_affinity_cookie(balloc, "alpha"sv, 0x00000000u, ""sv, true);
 
   assert_stdsv_equal("alpha=00000000; Secure"sv, c);
 
-  c = http::create_affinity_cookie(balloc, "bravo"_sr, 0x01111111u, "bar"_sr,
+  c = http::create_affinity_cookie(balloc, "bravo"sv, 0x01111111u, "bar"sv,
                                    false);
 
   assert_stdsv_equal("bravo=01111111; Path=bar"sv, c);
 
-  c = http::create_affinity_cookie(balloc, "charlie"_sr, 0x01111111u, "bar"_sr,
+  c = http::create_affinity_cookie(balloc, "charlie"sv, 0x01111111u, "bar"sv,
                                    true);
 
   assert_stdsv_equal("charlie=01111111; Path=bar; Secure"sv, c);
@@ -133,10 +132,10 @@ void test_shrpx_http_create_altsvc_header_value(void) {
     BlockAllocator balloc(1024, 1024);
     std::vector<AltSvc> altsvcs{
       AltSvc{
-        .protocol_id = "h3"_sr,
-        .host = "127.0.0.1"_sr,
-        .service = "443"_sr,
-        .params = "ma=3600"_sr,
+        .protocol_id = "h3"sv,
+        .host = "127.0.0.1"sv,
+        .service = "443"sv,
+        .params = "ma=3600"sv,
       },
     };
 
@@ -148,14 +147,14 @@ void test_shrpx_http_create_altsvc_header_value(void) {
     BlockAllocator balloc(1024, 1024);
     std::vector<AltSvc> altsvcs{
       AltSvc{
-        .protocol_id = "h3"_sr,
-        .service = "443"_sr,
-        .params = "ma=3600"_sr,
+        .protocol_id = "h3"sv,
+        .service = "443"sv,
+        .params = "ma=3600"sv,
       },
       AltSvc{
-        .protocol_id = "h3%"_sr,
-        .host = "\"foo\""_sr,
-        .service = "4433"_sr,
+        .protocol_id = "h3%"sv,
+        .host = "\"foo\""sv,
+        .service = "4433"sv,
       },
     };
 
@@ -165,14 +164,14 @@ void test_shrpx_http_create_altsvc_header_value(void) {
 }
 
 void test_shrpx_http_check_http_scheme(void) {
-  assert_true(http::check_http_scheme("https"_sr, true));
-  assert_false(http::check_http_scheme("https"_sr, false));
-  assert_false(http::check_http_scheme("http"_sr, true));
-  assert_true(http::check_http_scheme("http"_sr, false));
-  assert_false(http::check_http_scheme("foo"_sr, true));
-  assert_false(http::check_http_scheme("foo"_sr, false));
-  assert_false(http::check_http_scheme(StringRef{}, true));
-  assert_false(http::check_http_scheme(StringRef{}, false));
+  assert_true(http::check_http_scheme("https"sv, true));
+  assert_false(http::check_http_scheme("https"sv, false));
+  assert_false(http::check_http_scheme("http"sv, true));
+  assert_true(http::check_http_scheme("http"sv, false));
+  assert_false(http::check_http_scheme("foo"sv, true));
+  assert_false(http::check_http_scheme("foo"sv, false));
+  assert_false(http::check_http_scheme(""sv, true));
+  assert_false(http::check_http_scheme(""sv, false));
 }
 
 } // namespace shrpx

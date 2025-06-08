@@ -129,13 +129,13 @@ namespace shrpx {
 // close-on-exec.  The value must be comma separated 3 parameters:
 // unix,<FD>,<PATH>.  <FD> is file descriptor.  <PATH> is a path to
 // UNIX domain socket.
-constexpr auto ENV_ACCEPT_PREFIX = "NGHTTPX_ACCEPT_"_sr;
+constexpr auto ENV_ACCEPT_PREFIX = "NGHTTPX_ACCEPT_"sv;
 
 // This environment variable contains PID of the original main
 // process, assuming that it created this main process as a result of
 // SIGUSR2.  The new main process is expected to send QUIT signal to
 // the original main process to shut it down gracefully.
-constexpr auto ENV_ORIG_PID = "NGHTTPX_ORIG_PID"_sr;
+constexpr auto ENV_ORIG_PID = "NGHTTPX_ORIG_PID"sv;
 
 // Prefix of environment variables to tell new binary the QUIC IPC
 // file descriptor and Worker ID of the lingering worker process.  The
@@ -146,13 +146,13 @@ constexpr auto ENV_ORIG_PID = "NGHTTPX_ORIG_PID"_sr;
 // <FD> is the file descriptor.  <WORKER_ID_I> is the I-th Worker ID
 // in hex encoded string.
 constexpr auto ENV_QUIC_WORKER_PROCESS_PREFIX =
-  "NGHTTPX_QUIC_WORKER_PROCESS_"_sr;
+  "NGHTTPX_QUIC_WORKER_PROCESS_"sv;
 
 // This configuration is fixed at the first startup of the main
 // process, and does not change after subsequent reloadings.
 struct StartupConfig {
   // This contains all options given in command-line.
-  std::vector<std::pair<StringRef, StringRef>> cmdcfgs;
+  std::vector<std::pair<std::string_view, std::string_view>> cmdcfgs;
   // The current working directory where this process started.
   char *cwd;
   // The pointer to original argv (not sure why we have this?)
@@ -169,7 +169,7 @@ StartupConfig suconfig;
 
 struct InheritedUNIXDomainAddr {
   // UNIX domain socket path.
-  StringRef path;
+  std::string_view path;
   int fd;
   bool used;
 };
@@ -368,7 +368,7 @@ int save_pid() {
   std::array<char, STRERROR_BUFSIZE> errbuf;
   auto config = get_config();
 
-  constexpr auto SUFFIX = ".XXXXXX"_sr;
+  constexpr auto SUFFIX = ".XXXXXX"sv;
   auto &pid_file = config->pid_file;
 
   auto len = config->pid_file.size() + SUFFIX.size();
@@ -567,7 +567,7 @@ void exec_binary() {
 #endif // ENABLE_HTTP3
 
   for (size_t i = 0; i < envlen; ++i) {
-    auto env = StringRef{environ[i]};
+    auto env = std::string_view{environ[i]};
     if (util::starts_with(env, ENV_ACCEPT_PREFIX) ||
         util::starts_with(env, ENV_ORIG_PID) ||
         util::starts_with(env, ENV_QUIC_WORKER_PROCESS_PREFIX)) {
@@ -704,7 +704,7 @@ int create_unix_domain_server_socket(
                 << (faddr.tls ? ", tls" : "");
     (*found).used = true;
     faddr.fd = (*found).fd;
-    faddr.hostport = "localhost"_sr;
+    faddr.hostport = "localhost"sv;
 
     return 0;
   }
@@ -774,7 +774,7 @@ int create_unix_domain_server_socket(
               << (faddr.tls ? ", tls" : "");
 
   faddr.fd = fd;
-  faddr.hostport = "localhost"_sr;
+  faddr.hostport = "localhost"sv;
 
   return 0;
 }
@@ -830,10 +830,10 @@ get_inherited_unix_domain_socket_from_env(Config *config) {
       continue;
     }
 
-    auto type = StringRef(env, end_type);
+    auto type = std::string_view(env, end_type);
     auto value = end_type + 1;
 
-    if (type != "unix"_sr) {
+    if (type != "unix"sv) {
       continue;
     }
 
@@ -841,10 +841,10 @@ get_inherited_unix_domain_socket_from_env(Config *config) {
     if (!endfd) {
       continue;
     }
-    auto fd = util::parse_uint(StringRef{value, endfd});
+    auto fd = util::parse_uint(std::string_view{value, endfd});
     if (!fd) {
       LOG(WARN) << "Could not parse file descriptor from "
-                << StringRef{value, endfd};
+                << std::string_view{value, endfd};
       continue;
     }
 
@@ -860,7 +860,7 @@ get_inherited_unix_domain_socket_from_env(Config *config) {
     }
 
     iaddrs.emplace_back(InheritedUNIXDomainAddr{
-      .path = make_string_ref(config->balloc, StringRef{path}),
+      .path = make_string_ref(config->balloc, std::string_view{path}),
       .fd = static_cast<int>(*fd),
     });
   }
@@ -925,10 +925,10 @@ get_inherited_quic_lingering_worker_process_from_env() {
       continue;
     }
 
-    auto fd = util::parse_uint(StringRef{env, end_fd});
+    auto fd = util::parse_uint(std::string_view{env, end_fd});
     if (!fd) {
       LOG(WARN) << "Could not parse file descriptor from "
-                << StringRef{env, static_cast<size_t>(end_fd - env)};
+                << std::string_view{env, static_cast<size_t>(end_fd - env)};
       continue;
     }
 
@@ -944,7 +944,7 @@ get_inherited_quic_lingering_worker_process_from_env() {
     for (;;) {
       auto end = std::ranges::find(p, envend, ',');
 
-      auto hex_wid = StringRef{p, end};
+      auto hex_wid = std::string_view{p, end};
       if (hex_wid.size() != SHRPX_QUIC_WORKER_IDLEN * 2 ||
           !util::is_hex_string(hex_wid)) {
         LOG(WARN) << "Found invalid WorkerID=" << hex_wid;
@@ -1601,15 +1601,15 @@ bool conf_exists(const char *path) {
 } // namespace
 
 namespace {
-constexpr auto DEFAULT_ALPN_LIST = "h2,http/1.1"_sr;
+constexpr auto DEFAULT_ALPN_LIST = "h2,http/1.1"sv;
 } // namespace
 
 namespace {
-constexpr auto DEFAULT_TLS_MIN_PROTO_VERSION = "TLSv1.2"_sr;
+constexpr auto DEFAULT_TLS_MIN_PROTO_VERSION = "TLSv1.2"sv;
 #ifdef TLS1_3_VERSION
-constexpr auto DEFAULT_TLS_MAX_PROTO_VERSION = "TLSv1.3"_sr;
+constexpr auto DEFAULT_TLS_MAX_PROTO_VERSION = "TLSv1.3"sv;
 #else  // !TLS1_3_VERSION
-constexpr auto DEFAULT_TLS_MAX_PROTO_VERSION = "TLSv1.2"_sr;
+constexpr auto DEFAULT_TLS_MAX_PROTO_VERSION = "TLSv1.2"sv;
 #endif // !TLS1_3_VERSION
 } // namespace
 
@@ -1617,13 +1617,13 @@ namespace {
 constexpr auto DEFAULT_ACCESSLOG_FORMAT =
   R"($remote_addr - - [$time_local] )"
   R"("$request" $status $body_bytes_sent )"
-  R"("$http_referer" "$http_user_agent")"_sr;
+  R"("$http_referer" "$http_user_agent")"sv;
 } // namespace
 
 namespace {
 void fill_default_config(Config *config) {
   config->num_worker = 1;
-  config->conf_path = "/etc/nghttpx/nghttpx.conf"_sr;
+  config->conf_path = "/etc/nghttpx/nghttpx.conf"sv;
   config->pid = getpid();
 
 #ifdef NOTHREADS
@@ -1655,26 +1655,27 @@ void fill_default_config(Config *config) {
   }
 
   tlsconf.session_timeout = std::chrono::hours(12);
-  tlsconf.ciphers = StringRef{nghttp2::tls::DEFAULT_CIPHER_LIST};
-  tlsconf.tls13_ciphers = StringRef{nghttp2::tls::DEFAULT_TLS13_CIPHER_LIST};
-  tlsconf.client.ciphers = StringRef{nghttp2::tls::DEFAULT_CIPHER_LIST};
+  tlsconf.ciphers = std::string_view{nghttp2::tls::DEFAULT_CIPHER_LIST};
+  tlsconf.tls13_ciphers =
+    std::string_view{nghttp2::tls::DEFAULT_TLS13_CIPHER_LIST};
+  tlsconf.client.ciphers = std::string_view{nghttp2::tls::DEFAULT_CIPHER_LIST};
   tlsconf.client.tls13_ciphers =
-    StringRef{nghttp2::tls::DEFAULT_TLS13_CIPHER_LIST};
+    std::string_view{nghttp2::tls::DEFAULT_TLS13_CIPHER_LIST};
   tlsconf.min_proto_version =
     tls::proto_version_from_string(DEFAULT_TLS_MIN_PROTO_VERSION);
   tlsconf.max_proto_version =
     tls::proto_version_from_string(DEFAULT_TLS_MAX_PROTO_VERSION);
   tlsconf.max_early_data = 16_k;
-  tlsconf.ecdh_curves = "X25519:P-256:P-384:P-521"_sr;
+  tlsconf.ecdh_curves = "X25519:P-256:P-384:P-521"sv;
 
   auto &httpconf = config->http;
-  httpconf.server_name = "nghttpx"_sr;
+  httpconf.server_name = "nghttpx"sv;
   httpconf.no_host_rewrite = true;
   httpconf.request_header_field_buffer = 64_k;
   httpconf.max_request_header_fields = 100;
   httpconf.response_header_field_buffer = 64_k;
   httpconf.max_response_header_fields = 500;
-  httpconf.redirect_https_port = "443"_sr;
+  httpconf.redirect_https_port = "443"sv;
   httpconf.max_requests = std::numeric_limits<size_t>::max();
   httpconf.xfp.add = true;
   httpconf.xfp.strip_incoming = true;
@@ -1754,7 +1755,7 @@ void fill_default_config(Config *config) {
     }
 
     auto &bpfconf = quicconf.bpf;
-    bpfconf.prog_file = PKGLIBDIR "/reuseport_kern.o"_sr;
+    bpfconf.prog_file = PKGLIBDIR "/reuseport_kern.o"sv;
 
     upstreamconf.congestion_controller = NGTCP2_CC_ALGO_CUBIC;
 
@@ -1787,7 +1788,7 @@ void fill_default_config(Config *config) {
       parse_log_format(config->balloc, DEFAULT_ACCESSLOG_FORMAT);
 
     auto &errorconf = loggingconf.error;
-    errorconf.file = "/dev/stderr"_sr;
+    errorconf.file = "/dev/stderr"sv;
   }
 
   loggingconf.syslog_facility = LOG_DAEMON;
@@ -3272,13 +3273,14 @@ Misc:
 } // namespace
 
 namespace {
-int process_options(Config *config,
-                    std::vector<std::pair<StringRef, StringRef>> &cmdcfgs) {
+int process_options(
+  Config *config,
+  std::vector<std::pair<std::string_view, std::string_view>> &cmdcfgs) {
   std::array<char, STRERROR_BUFSIZE> errbuf;
-  std::unordered_map<StringRef, size_t> pattern_addr_indexer;
+  std::unordered_map<std::string_view, size_t> pattern_addr_indexer;
   if (conf_exists(config->conf_path.data())) {
     LOG(NOTICE) << "Loading configuration from " << config->conf_path;
-    std::unordered_set<StringRef> include_set;
+    std::unordered_set<std::string_view> include_set;
     if (load_config(config, config->conf_path.data(), include_set,
                     pattern_addr_indexer) == -1) {
       LOG(FATAL) << "Failed to load configuration from " << config->conf_path;
@@ -3291,7 +3293,7 @@ int process_options(Config *config,
   reopen_log_files(config->logging);
 
   {
-    std::unordered_set<StringRef> include_set;
+    std::unordered_set<std::string_view> include_set;
 
     for (auto &p : cmdcfgs) {
       if (parse_config(config, p.first, p.second, include_set,
@@ -3416,7 +3418,7 @@ int process_options(Config *config,
 
   if (listenerconf.addrs.empty()) {
     UpstreamAddr addr{};
-    addr.host = "*"_sr;
+    addr.host = "*"sv;
     addr.port = 3000;
     addr.tls = true;
     addr.family = AF_INET;
@@ -3513,7 +3515,7 @@ int process_options(Config *config,
     auto gen = util::make_mt19937();
     p = util::random_alpha_digit(p, p + SHRPX_OBFUSCATED_NODE_LENGTH, gen);
     *p = '\0';
-    fwdconf.by_obfuscated = as_string_ref(std::ranges::begin(iov), p);
+    fwdconf.by_obfuscated = as_string_view(std::ranges::begin(iov), p);
   }
 
   if (config->http2.upstream.debug.frame_debug) {
@@ -3986,38 +3988,38 @@ int main(int argc, char **argv) {
     }
     switch (c) {
     case 'D':
-      cmdcfgs.emplace_back(SHRPX_OPT_DAEMON, "yes"_sr);
+      cmdcfgs.emplace_back(SHRPX_OPT_DAEMON, "yes"sv);
       break;
     case 'L':
-      cmdcfgs.emplace_back(SHRPX_OPT_LOG_LEVEL, StringRef{optarg});
+      cmdcfgs.emplace_back(SHRPX_OPT_LOG_LEVEL, std::string_view{optarg});
       break;
     case 'b':
-      cmdcfgs.emplace_back(SHRPX_OPT_BACKEND, StringRef{optarg});
+      cmdcfgs.emplace_back(SHRPX_OPT_BACKEND, std::string_view{optarg});
       break;
     case 'c':
       cmdcfgs.emplace_back(SHRPX_OPT_HTTP2_MAX_CONCURRENT_STREAMS,
-                           StringRef{optarg});
+                           std::string_view{optarg});
       break;
     case 'f':
-      cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND, StringRef{optarg});
+      cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND, std::string_view{optarg});
       break;
     case 'h':
       print_help(std::cout);
       exit(EXIT_SUCCESS);
     case 'k':
-      cmdcfgs.emplace_back(SHRPX_OPT_INSECURE, "yes"_sr);
+      cmdcfgs.emplace_back(SHRPX_OPT_INSECURE, "yes"sv);
       break;
     case 'n':
-      cmdcfgs.emplace_back(SHRPX_OPT_WORKERS, StringRef{optarg});
+      cmdcfgs.emplace_back(SHRPX_OPT_WORKERS, std::string_view{optarg});
       break;
     case 'o':
-      cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_FRAME_DEBUG, "yes"_sr);
+      cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_FRAME_DEBUG, "yes"sv);
       break;
     case 'p':
-      cmdcfgs.emplace_back(SHRPX_OPT_CLIENT_PROXY, "yes"_sr);
+      cmdcfgs.emplace_back(SHRPX_OPT_CLIENT_PROXY, "yes"sv);
       break;
     case 's':
-      cmdcfgs.emplace_back(SHRPX_OPT_HTTP2_PROXY, "yes"_sr);
+      cmdcfgs.emplace_back(SHRPX_OPT_HTTP2_PROXY, "yes"sv);
       break;
     case 'v':
       print_version(std::cout);
@@ -4029,849 +4031,877 @@ int main(int argc, char **argv) {
       switch (flag) {
       case 1:
         // --add-x-forwarded-for
-        cmdcfgs.emplace_back(SHRPX_OPT_ADD_X_FORWARDED_FOR, "yes"_sr);
+        cmdcfgs.emplace_back(SHRPX_OPT_ADD_X_FORWARDED_FOR, "yes"sv);
         break;
       case 2:
         // --frontend-http2-read-timeout
         cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_HTTP2_READ_TIMEOUT,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 3:
         // --frontend-read-timeout
         cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_READ_TIMEOUT,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 4:
         // --frontend-write-timeout
         cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_WRITE_TIMEOUT,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 5:
         // --backend-read-timeout
-        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_READ_TIMEOUT, StringRef{optarg});
+        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_READ_TIMEOUT,
+                             std::string_view{optarg});
         break;
       case 6:
         // --backend-write-timeout
         cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_WRITE_TIMEOUT,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 7:
-        cmdcfgs.emplace_back(SHRPX_OPT_ACCESSLOG_FILE, StringRef{optarg});
+        cmdcfgs.emplace_back(SHRPX_OPT_ACCESSLOG_FILE,
+                             std::string_view{optarg});
         break;
       case 8:
         // --backend-keep-alive-timeout
         cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_KEEP_ALIVE_TIMEOUT,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 9:
         // --frontend-http2-window-bits
         cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_HTTP2_WINDOW_BITS,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 10:
-        cmdcfgs.emplace_back(SHRPX_OPT_PID_FILE, StringRef{optarg});
+        cmdcfgs.emplace_back(SHRPX_OPT_PID_FILE, std::string_view{optarg});
         break;
       case 11:
-        cmdcfgs.emplace_back(SHRPX_OPT_USER, StringRef{optarg});
+        cmdcfgs.emplace_back(SHRPX_OPT_USER, std::string_view{optarg});
         break;
       case 12:
         // --conf
         mod_config()->conf_path =
-          make_string_ref(mod_config()->balloc, StringRef{optarg});
+          make_string_ref(mod_config()->balloc, std::string_view{optarg});
         break;
       case 14:
         // --syslog-facility
-        cmdcfgs.emplace_back(SHRPX_OPT_SYSLOG_FACILITY, StringRef{optarg});
+        cmdcfgs.emplace_back(SHRPX_OPT_SYSLOG_FACILITY,
+                             std::string_view{optarg});
         break;
       case 15:
         // --backlog
-        cmdcfgs.emplace_back(SHRPX_OPT_BACKLOG, StringRef{optarg});
+        cmdcfgs.emplace_back(SHRPX_OPT_BACKLOG, std::string_view{optarg});
         break;
       case 16:
         // --ciphers
-        cmdcfgs.emplace_back(SHRPX_OPT_CIPHERS, StringRef{optarg});
+        cmdcfgs.emplace_back(SHRPX_OPT_CIPHERS, std::string_view{optarg});
         break;
       case 17:
         // --client
-        cmdcfgs.emplace_back(SHRPX_OPT_CLIENT, "yes"_sr);
+        cmdcfgs.emplace_back(SHRPX_OPT_CLIENT, "yes"sv);
         break;
       case 18:
         // --backend-http2-window-bits
         cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_HTTP2_WINDOW_BITS,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 19:
         // --cacert
-        cmdcfgs.emplace_back(SHRPX_OPT_CACERT, StringRef{optarg});
+        cmdcfgs.emplace_back(SHRPX_OPT_CACERT, std::string_view{optarg});
         break;
       case 20:
         // --backend-ipv4
-        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_IPV4, "yes"_sr);
+        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_IPV4, "yes"sv);
         break;
       case 21:
         // --backend-ipv6
-        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_IPV6, "yes"_sr);
+        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_IPV6, "yes"sv);
         break;
       case 22:
         // --private-key-passwd-file
         cmdcfgs.emplace_back(SHRPX_OPT_PRIVATE_KEY_PASSWD_FILE,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 23:
         // --no-via
-        cmdcfgs.emplace_back(SHRPX_OPT_NO_VIA, "yes"_sr);
+        cmdcfgs.emplace_back(SHRPX_OPT_NO_VIA, "yes"sv);
         break;
       case 24:
         // --subcert
-        cmdcfgs.emplace_back(SHRPX_OPT_SUBCERT, StringRef{optarg});
+        cmdcfgs.emplace_back(SHRPX_OPT_SUBCERT, std::string_view{optarg});
         break;
       case 25:
         // --http2-bridge
-        cmdcfgs.emplace_back(SHRPX_OPT_HTTP2_BRIDGE, "yes"_sr);
+        cmdcfgs.emplace_back(SHRPX_OPT_HTTP2_BRIDGE, "yes"sv);
         break;
       case 26:
         // --backend-http-proxy-uri
         cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_HTTP_PROXY_URI,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 27:
         // --backend-no-tls
-        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_NO_TLS, "yes"_sr);
+        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_NO_TLS, "yes"sv);
         break;
       case 28:
         // --ocsp-startup
-        cmdcfgs.emplace_back(SHRPX_OPT_OCSP_STARTUP, "yes"_sr);
+        cmdcfgs.emplace_back(SHRPX_OPT_OCSP_STARTUP, "yes"sv);
         break;
       case 29:
         // --frontend-no-tls
-        cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_NO_TLS, "yes"_sr);
+        cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_NO_TLS, "yes"sv);
         break;
       case 30:
         // --no-verify-ocsp
-        cmdcfgs.emplace_back(SHRPX_OPT_NO_VERIFY_OCSP, "yes"_sr);
+        cmdcfgs.emplace_back(SHRPX_OPT_NO_VERIFY_OCSP, "yes"sv);
         break;
       case 31:
         // --backend-tls-sni-field
         cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_TLS_SNI_FIELD,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 33:
         // --dh-param-file
-        cmdcfgs.emplace_back(SHRPX_OPT_DH_PARAM_FILE, StringRef{optarg});
+        cmdcfgs.emplace_back(SHRPX_OPT_DH_PARAM_FILE, std::string_view{optarg});
         break;
       case 34:
         // --read-rate
-        cmdcfgs.emplace_back(SHRPX_OPT_READ_RATE, StringRef{optarg});
+        cmdcfgs.emplace_back(SHRPX_OPT_READ_RATE, std::string_view{optarg});
         break;
       case 35:
         // --read-burst
-        cmdcfgs.emplace_back(SHRPX_OPT_READ_BURST, StringRef{optarg});
+        cmdcfgs.emplace_back(SHRPX_OPT_READ_BURST, std::string_view{optarg});
         break;
       case 36:
         // --write-rate
-        cmdcfgs.emplace_back(SHRPX_OPT_WRITE_RATE, StringRef{optarg});
+        cmdcfgs.emplace_back(SHRPX_OPT_WRITE_RATE, std::string_view{optarg});
         break;
       case 37:
         // --write-burst
-        cmdcfgs.emplace_back(SHRPX_OPT_WRITE_BURST, StringRef{optarg});
+        cmdcfgs.emplace_back(SHRPX_OPT_WRITE_BURST, std::string_view{optarg});
         break;
       case 38:
         // --npn-list
-        cmdcfgs.emplace_back(SHRPX_OPT_NPN_LIST, StringRef{optarg});
+        cmdcfgs.emplace_back(SHRPX_OPT_NPN_LIST, std::string_view{optarg});
         break;
       case 39:
         // --verify-client
-        cmdcfgs.emplace_back(SHRPX_OPT_VERIFY_CLIENT, "yes"_sr);
+        cmdcfgs.emplace_back(SHRPX_OPT_VERIFY_CLIENT, "yes"sv);
         break;
       case 40:
         // --verify-client-cacert
-        cmdcfgs.emplace_back(SHRPX_OPT_VERIFY_CLIENT_CACERT, StringRef{optarg});
+        cmdcfgs.emplace_back(SHRPX_OPT_VERIFY_CLIENT_CACERT,
+                             std::string_view{optarg});
         break;
       case 41:
         // --client-private-key-file
         cmdcfgs.emplace_back(SHRPX_OPT_CLIENT_PRIVATE_KEY_FILE,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 42:
         // --client-cert-file
-        cmdcfgs.emplace_back(SHRPX_OPT_CLIENT_CERT_FILE, StringRef{optarg});
+        cmdcfgs.emplace_back(SHRPX_OPT_CLIENT_CERT_FILE,
+                             std::string_view{optarg});
         break;
       case 43:
         // --frontend-http2-dump-request-header
         cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_HTTP2_DUMP_REQUEST_HEADER,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 44:
         // --frontend-http2-dump-response-header
         cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_HTTP2_DUMP_RESPONSE_HEADER,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 45:
         // --http2-no-cookie-crumbling
-        cmdcfgs.emplace_back(SHRPX_OPT_HTTP2_NO_COOKIE_CRUMBLING, "yes"_sr);
+        cmdcfgs.emplace_back(SHRPX_OPT_HTTP2_NO_COOKIE_CRUMBLING, "yes"sv);
         break;
       case 46:
         // --frontend-http2-connection-window-bits
         cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_HTTP2_CONNECTION_WINDOW_BITS,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 47:
         // --backend-http2-connection-window-bits
         cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_HTTP2_CONNECTION_WINDOW_BITS,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 48:
         // --tls-proto-list
-        cmdcfgs.emplace_back(SHRPX_OPT_TLS_PROTO_LIST, StringRef{optarg});
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS_PROTO_LIST,
+                             std::string_view{optarg});
         break;
       case 49:
         // --padding
-        cmdcfgs.emplace_back(SHRPX_OPT_PADDING, StringRef{optarg});
+        cmdcfgs.emplace_back(SHRPX_OPT_PADDING, std::string_view{optarg});
         break;
       case 50:
         // --worker-read-rate
-        cmdcfgs.emplace_back(SHRPX_OPT_WORKER_READ_RATE, StringRef{optarg});
+        cmdcfgs.emplace_back(SHRPX_OPT_WORKER_READ_RATE,
+                             std::string_view{optarg});
         break;
       case 51:
         // --worker-read-burst
-        cmdcfgs.emplace_back(SHRPX_OPT_WORKER_READ_BURST, StringRef{optarg});
+        cmdcfgs.emplace_back(SHRPX_OPT_WORKER_READ_BURST,
+                             std::string_view{optarg});
         break;
       case 52:
         // --worker-write-rate
-        cmdcfgs.emplace_back(SHRPX_OPT_WORKER_WRITE_RATE, StringRef{optarg});
+        cmdcfgs.emplace_back(SHRPX_OPT_WORKER_WRITE_RATE,
+                             std::string_view{optarg});
         break;
       case 53:
         // --worker-write-burst
-        cmdcfgs.emplace_back(SHRPX_OPT_WORKER_WRITE_BURST, StringRef{optarg});
+        cmdcfgs.emplace_back(SHRPX_OPT_WORKER_WRITE_BURST,
+                             std::string_view{optarg});
         break;
       case 54:
         // --altsvc
-        cmdcfgs.emplace_back(SHRPX_OPT_ALTSVC, StringRef{optarg});
+        cmdcfgs.emplace_back(SHRPX_OPT_ALTSVC, std::string_view{optarg});
         break;
       case 55:
         // --add-response-header
-        cmdcfgs.emplace_back(SHRPX_OPT_ADD_RESPONSE_HEADER, StringRef{optarg});
+        cmdcfgs.emplace_back(SHRPX_OPT_ADD_RESPONSE_HEADER,
+                             std::string_view{optarg});
         break;
       case 56:
         // --worker-frontend-connections
         cmdcfgs.emplace_back(SHRPX_OPT_WORKER_FRONTEND_CONNECTIONS,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 57:
         // --accesslog-syslog
-        cmdcfgs.emplace_back(SHRPX_OPT_ACCESSLOG_SYSLOG, "yes"_sr);
+        cmdcfgs.emplace_back(SHRPX_OPT_ACCESSLOG_SYSLOG, "yes"sv);
         break;
       case 58:
         // --errorlog-file
-        cmdcfgs.emplace_back(SHRPX_OPT_ERRORLOG_FILE, StringRef{optarg});
+        cmdcfgs.emplace_back(SHRPX_OPT_ERRORLOG_FILE, std::string_view{optarg});
         break;
       case 59:
         // --errorlog-syslog
-        cmdcfgs.emplace_back(SHRPX_OPT_ERRORLOG_SYSLOG, "yes"_sr);
+        cmdcfgs.emplace_back(SHRPX_OPT_ERRORLOG_SYSLOG, "yes"sv);
         break;
       case 60:
         // --stream-read-timeout
-        cmdcfgs.emplace_back(SHRPX_OPT_STREAM_READ_TIMEOUT, StringRef{optarg});
+        cmdcfgs.emplace_back(SHRPX_OPT_STREAM_READ_TIMEOUT,
+                             std::string_view{optarg});
         break;
       case 61:
         // --stream-write-timeout
-        cmdcfgs.emplace_back(SHRPX_OPT_STREAM_WRITE_TIMEOUT, StringRef{optarg});
+        cmdcfgs.emplace_back(SHRPX_OPT_STREAM_WRITE_TIMEOUT,
+                             std::string_view{optarg});
         break;
       case 62:
         // --no-location-rewrite
-        cmdcfgs.emplace_back(SHRPX_OPT_NO_LOCATION_REWRITE, "yes"_sr);
+        cmdcfgs.emplace_back(SHRPX_OPT_NO_LOCATION_REWRITE, "yes"sv);
         break;
       case 63:
         // --backend-http1-connections-per-host
         cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_HTTP1_CONNECTIONS_PER_HOST,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 64:
         // --listener-disable-timeout
         cmdcfgs.emplace_back(SHRPX_OPT_LISTENER_DISABLE_TIMEOUT,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 65:
         // --strip-incoming-x-forwarded-for
-        cmdcfgs.emplace_back(SHRPX_OPT_STRIP_INCOMING_X_FORWARDED_FOR,
-                             "yes"_sr);
+        cmdcfgs.emplace_back(SHRPX_OPT_STRIP_INCOMING_X_FORWARDED_FOR, "yes"sv);
         break;
       case 66:
         // --accesslog-format
-        cmdcfgs.emplace_back(SHRPX_OPT_ACCESSLOG_FORMAT, StringRef{optarg});
+        cmdcfgs.emplace_back(SHRPX_OPT_ACCESSLOG_FORMAT,
+                             std::string_view{optarg});
         break;
       case 67:
         // --backend-http1-connections-per-frontend
         cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_HTTP1_CONNECTIONS_PER_FRONTEND,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 68:
         // --tls-ticket-key-file
-        cmdcfgs.emplace_back(SHRPX_OPT_TLS_TICKET_KEY_FILE, StringRef{optarg});
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS_TICKET_KEY_FILE,
+                             std::string_view{optarg});
         break;
       case 69:
         // --rlimit-nofile
-        cmdcfgs.emplace_back(SHRPX_OPT_RLIMIT_NOFILE, StringRef{optarg});
+        cmdcfgs.emplace_back(SHRPX_OPT_RLIMIT_NOFILE, std::string_view{optarg});
         break;
       case 71:
         // --backend-response-buffer
         cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_RESPONSE_BUFFER,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 72:
         // --backend-request-buffer
         cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_REQUEST_BUFFER,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 73:
         // --no-host-rewrite
-        cmdcfgs.emplace_back(SHRPX_OPT_NO_HOST_REWRITE, "yes"_sr);
+        cmdcfgs.emplace_back(SHRPX_OPT_NO_HOST_REWRITE, "yes"sv);
         break;
       case 74:
         // --no-server-push
-        cmdcfgs.emplace_back(SHRPX_OPT_NO_SERVER_PUSH, "yes"_sr);
+        cmdcfgs.emplace_back(SHRPX_OPT_NO_SERVER_PUSH, "yes"sv);
         break;
       case 76:
         // --backend-http2-connections-per-worker
         cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_HTTP2_CONNECTIONS_PER_WORKER,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 77:
         // --fetch-ocsp-response-file
         cmdcfgs.emplace_back(SHRPX_OPT_FETCH_OCSP_RESPONSE_FILE,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 78:
         // --ocsp-update-interval
-        cmdcfgs.emplace_back(SHRPX_OPT_OCSP_UPDATE_INTERVAL, StringRef{optarg});
+        cmdcfgs.emplace_back(SHRPX_OPT_OCSP_UPDATE_INTERVAL,
+                             std::string_view{optarg});
         break;
       case 79:
         // --no-ocsp
-        cmdcfgs.emplace_back(SHRPX_OPT_NO_OCSP, "yes"_sr);
+        cmdcfgs.emplace_back(SHRPX_OPT_NO_OCSP, "yes"sv);
         break;
       case 80:
         // --header-field-buffer
-        cmdcfgs.emplace_back(SHRPX_OPT_HEADER_FIELD_BUFFER, StringRef{optarg});
+        cmdcfgs.emplace_back(SHRPX_OPT_HEADER_FIELD_BUFFER,
+                             std::string_view{optarg});
         break;
       case 81:
         // --max-header-fields
-        cmdcfgs.emplace_back(SHRPX_OPT_MAX_HEADER_FIELDS, StringRef{optarg});
+        cmdcfgs.emplace_back(SHRPX_OPT_MAX_HEADER_FIELDS,
+                             std::string_view{optarg});
         break;
       case 82:
         // --add-request-header
-        cmdcfgs.emplace_back(SHRPX_OPT_ADD_REQUEST_HEADER, StringRef{optarg});
+        cmdcfgs.emplace_back(SHRPX_OPT_ADD_REQUEST_HEADER,
+                             std::string_view{optarg});
         break;
       case 83:
         // --include
-        cmdcfgs.emplace_back(SHRPX_OPT_INCLUDE, StringRef{optarg});
+        cmdcfgs.emplace_back(SHRPX_OPT_INCLUDE, std::string_view{optarg});
         break;
       case 84:
         // --tls-ticket-key-cipher
         cmdcfgs.emplace_back(SHRPX_OPT_TLS_TICKET_KEY_CIPHER,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 85:
         // --host-rewrite
-        cmdcfgs.emplace_back(SHRPX_OPT_HOST_REWRITE, "yes"_sr);
+        cmdcfgs.emplace_back(SHRPX_OPT_HOST_REWRITE, "yes"sv);
         break;
       case 86:
         // --tls-session-cache-memcached
         cmdcfgs.emplace_back(SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 87:
         // --tls-ticket-key-memcached
         cmdcfgs.emplace_back(SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 88:
         // --tls-ticket-key-memcached-interval
         cmdcfgs.emplace_back(SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_INTERVAL,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 89:
         // --tls-ticket-key-memcached-max-retry
         cmdcfgs.emplace_back(SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_MAX_RETRY,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 90:
         // --tls-ticket-key-memcached-max-fail
         cmdcfgs.emplace_back(SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_MAX_FAIL,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 91:
         // --mruby-file
-        cmdcfgs.emplace_back(SHRPX_OPT_MRUBY_FILE, StringRef{optarg});
+        cmdcfgs.emplace_back(SHRPX_OPT_MRUBY_FILE, std::string_view{optarg});
         break;
       case 93:
         // --accept-proxy-protocol
-        cmdcfgs.emplace_back(SHRPX_OPT_ACCEPT_PROXY_PROTOCOL, "yes"_sr);
+        cmdcfgs.emplace_back(SHRPX_OPT_ACCEPT_PROXY_PROTOCOL, "yes"sv);
         break;
       case 94:
         // --fastopen
-        cmdcfgs.emplace_back(SHRPX_OPT_FASTOPEN, StringRef{optarg});
+        cmdcfgs.emplace_back(SHRPX_OPT_FASTOPEN, std::string_view{optarg});
         break;
       case 95:
         // --tls-dyn-rec-warmup-threshold
         cmdcfgs.emplace_back(SHRPX_OPT_TLS_DYN_REC_WARMUP_THRESHOLD,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 96:
         // --tls-dyn-rec-idle-timeout
         cmdcfgs.emplace_back(SHRPX_OPT_TLS_DYN_REC_IDLE_TIMEOUT,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 97:
         // --add-forwarded
-        cmdcfgs.emplace_back(SHRPX_OPT_ADD_FORWARDED, StringRef{optarg});
+        cmdcfgs.emplace_back(SHRPX_OPT_ADD_FORWARDED, std::string_view{optarg});
         break;
       case 98:
         // --strip-incoming-forwarded
-        cmdcfgs.emplace_back(SHRPX_OPT_STRIP_INCOMING_FORWARDED, "yes"_sr);
+        cmdcfgs.emplace_back(SHRPX_OPT_STRIP_INCOMING_FORWARDED, "yes"sv);
         break;
       case 99:
         // --forwarded-by
-        cmdcfgs.emplace_back(SHRPX_OPT_FORWARDED_BY, StringRef{optarg});
+        cmdcfgs.emplace_back(SHRPX_OPT_FORWARDED_BY, std::string_view{optarg});
         break;
       case 100:
         // --forwarded-for
-        cmdcfgs.emplace_back(SHRPX_OPT_FORWARDED_FOR, StringRef{optarg});
+        cmdcfgs.emplace_back(SHRPX_OPT_FORWARDED_FOR, std::string_view{optarg});
         break;
       case 101:
         // --response-header-field-buffer
         cmdcfgs.emplace_back(SHRPX_OPT_RESPONSE_HEADER_FIELD_BUFFER,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 102:
         // --max-response-header-fields
         cmdcfgs.emplace_back(SHRPX_OPT_MAX_RESPONSE_HEADER_FIELDS,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 103:
         // --no-http2-cipher-black-list
-        cmdcfgs.emplace_back(SHRPX_OPT_NO_HTTP2_CIPHER_BLACK_LIST, "yes"_sr);
+        cmdcfgs.emplace_back(SHRPX_OPT_NO_HTTP2_CIPHER_BLACK_LIST, "yes"sv);
         break;
       case 104:
         // --request-header-field-buffer
         cmdcfgs.emplace_back(SHRPX_OPT_REQUEST_HEADER_FIELD_BUFFER,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 105:
         // --max-request-header-fields
         cmdcfgs.emplace_back(SHRPX_OPT_MAX_REQUEST_HEADER_FIELDS,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 106:
         // --backend-http1-tls
-        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_HTTP1_TLS, "yes"_sr);
+        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_HTTP1_TLS, "yes"sv);
         break;
       case 108:
         // --tls-session-cache-memcached-tls
         cmdcfgs.emplace_back(SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_TLS,
-                             "yes"_sr);
+                             "yes"sv);
         break;
       case 109:
         // --tls-session-cache-memcached-cert-file
         cmdcfgs.emplace_back(SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_CERT_FILE,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 110:
         // --tls-session-cache-memcached-private-key-file
         cmdcfgs.emplace_back(
           SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_PRIVATE_KEY_FILE,
-          StringRef{optarg});
+          std::string_view{optarg});
         break;
       case 111:
         // --tls-ticket-key-memcached-tls
-        cmdcfgs.emplace_back(SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_TLS, "yes"_sr);
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_TLS, "yes"sv);
         break;
       case 112:
         // --tls-ticket-key-memcached-cert-file
         cmdcfgs.emplace_back(SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_CERT_FILE,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 113:
         // --tls-ticket-key-memcached-private-key-file
         cmdcfgs.emplace_back(
           SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_PRIVATE_KEY_FILE,
-          StringRef{optarg});
+          std::string_view{optarg});
         break;
       case 114:
         // --tls-ticket-key-memcached-address-family
         cmdcfgs.emplace_back(SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_ADDRESS_FAMILY,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 115:
         // --tls-session-cache-memcached-address-family
         cmdcfgs.emplace_back(
           SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_ADDRESS_FAMILY,
-          StringRef{optarg});
+          std::string_view{optarg});
         break;
       case 116:
         // --backend-address-family
         cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_ADDRESS_FAMILY,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 117:
         // --frontend-http2-max-concurrent-streams
         cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_HTTP2_MAX_CONCURRENT_STREAMS,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 118:
         // --backend-http2-max-concurrent-streams
         cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_HTTP2_MAX_CONCURRENT_STREAMS,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 119:
         // --backend-connections-per-frontend
         cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_CONNECTIONS_PER_FRONTEND,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 120:
         // --backend-tls
-        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_TLS, "yes"_sr);
+        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_TLS, "yes"sv);
         break;
       case 121:
         // --backend-connections-per-host
         cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_CONNECTIONS_PER_HOST,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 122:
         // --error-page
-        cmdcfgs.emplace_back(SHRPX_OPT_ERROR_PAGE, StringRef{optarg});
+        cmdcfgs.emplace_back(SHRPX_OPT_ERROR_PAGE, std::string_view{optarg});
         break;
       case 123:
         // --no-kqueue
-        cmdcfgs.emplace_back(SHRPX_OPT_NO_KQUEUE, "yes"_sr);
+        cmdcfgs.emplace_back(SHRPX_OPT_NO_KQUEUE, "yes"sv);
         break;
       case 124:
         // --frontend-http2-settings-timeout
         cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_HTTP2_SETTINGS_TIMEOUT,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 125:
         // --backend-http2-settings-timeout
         cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_HTTP2_SETTINGS_TIMEOUT,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 126:
         // --api-max-request-body
-        cmdcfgs.emplace_back(SHRPX_OPT_API_MAX_REQUEST_BODY, StringRef{optarg});
+        cmdcfgs.emplace_back(SHRPX_OPT_API_MAX_REQUEST_BODY,
+                             std::string_view{optarg});
         break;
       case 127:
         // --backend-max-backoff
-        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_MAX_BACKOFF, StringRef{optarg});
+        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_MAX_BACKOFF,
+                             std::string_view{optarg});
         break;
       case 128:
         // --server-name
-        cmdcfgs.emplace_back(SHRPX_OPT_SERVER_NAME, StringRef{optarg});
+        cmdcfgs.emplace_back(SHRPX_OPT_SERVER_NAME, std::string_view{optarg});
         break;
       case 129:
         // --no-server-rewrite
-        cmdcfgs.emplace_back(SHRPX_OPT_NO_SERVER_REWRITE, "yes"_sr);
+        cmdcfgs.emplace_back(SHRPX_OPT_NO_SERVER_REWRITE, "yes"sv);
         break;
       case 130:
         // --frontend-http2-optimize-write-buffer-size
         cmdcfgs.emplace_back(
-          SHRPX_OPT_FRONTEND_HTTP2_OPTIMIZE_WRITE_BUFFER_SIZE, "yes"_sr);
+          SHRPX_OPT_FRONTEND_HTTP2_OPTIMIZE_WRITE_BUFFER_SIZE, "yes"sv);
         break;
       case 131:
         // --frontend-http2-optimize-window-size
         cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_HTTP2_OPTIMIZE_WINDOW_SIZE,
-                             "yes"_sr);
+                             "yes"sv);
         break;
       case 132:
         // --frontend-http2-window-size
         cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_HTTP2_WINDOW_SIZE,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 133:
         // --frontend-http2-connection-window-size
         cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_HTTP2_CONNECTION_WINDOW_SIZE,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 134:
         // --backend-http2-window-size
         cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_HTTP2_WINDOW_SIZE,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 135:
         // --backend-http2-connection-window-size
         cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_HTTP2_CONNECTION_WINDOW_SIZE,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 136:
         // --frontend-http2-encoder-dynamic-table-size
         cmdcfgs.emplace_back(
           SHRPX_OPT_FRONTEND_HTTP2_ENCODER_DYNAMIC_TABLE_SIZE,
-          StringRef{optarg});
+          std::string_view{optarg});
         break;
       case 137:
         // --frontend-http2-decoder-dynamic-table-size
         cmdcfgs.emplace_back(
           SHRPX_OPT_FRONTEND_HTTP2_DECODER_DYNAMIC_TABLE_SIZE,
-          StringRef{optarg});
+          std::string_view{optarg});
         break;
       case 138:
         // --backend-http2-encoder-dynamic-table-size
         cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_HTTP2_ENCODER_DYNAMIC_TABLE_SIZE,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 139:
         // --backend-http2-decoder-dynamic-table-size
         cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_HTTP2_DECODER_DYNAMIC_TABLE_SIZE,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 140:
         // --ecdh-curves
-        cmdcfgs.emplace_back(SHRPX_OPT_ECDH_CURVES, StringRef{optarg});
+        cmdcfgs.emplace_back(SHRPX_OPT_ECDH_CURVES, std::string_view{optarg});
         break;
       case 141:
         // --tls-sct-dir
-        cmdcfgs.emplace_back(SHRPX_OPT_TLS_SCT_DIR, StringRef{optarg});
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS_SCT_DIR, std::string_view{optarg});
         break;
       case 142:
         // --backend-connect-timeout
         cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_CONNECT_TIMEOUT,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 143:
         // --dns-cache-timeout
-        cmdcfgs.emplace_back(SHRPX_OPT_DNS_CACHE_TIMEOUT, StringRef{optarg});
+        cmdcfgs.emplace_back(SHRPX_OPT_DNS_CACHE_TIMEOUT,
+                             std::string_view{optarg});
         break;
       case 144:
         // --dns-lookup-timeou
-        cmdcfgs.emplace_back(SHRPX_OPT_DNS_LOOKUP_TIMEOUT, StringRef{optarg});
+        cmdcfgs.emplace_back(SHRPX_OPT_DNS_LOOKUP_TIMEOUT,
+                             std::string_view{optarg});
         break;
       case 145:
         // --dns-max-try
-        cmdcfgs.emplace_back(SHRPX_OPT_DNS_MAX_TRY, StringRef{optarg});
+        cmdcfgs.emplace_back(SHRPX_OPT_DNS_MAX_TRY, std::string_view{optarg});
         break;
       case 146:
         // --frontend-keep-alive-timeout
         cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_KEEP_ALIVE_TIMEOUT,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 147:
         // --psk-secrets
-        cmdcfgs.emplace_back(SHRPX_OPT_PSK_SECRETS, StringRef{optarg});
+        cmdcfgs.emplace_back(SHRPX_OPT_PSK_SECRETS, std::string_view{optarg});
         break;
       case 148:
         // --client-psk-secrets
-        cmdcfgs.emplace_back(SHRPX_OPT_CLIENT_PSK_SECRETS, StringRef{optarg});
+        cmdcfgs.emplace_back(SHRPX_OPT_CLIENT_PSK_SECRETS,
+                             std::string_view{optarg});
         break;
       case 149:
         // --client-no-http2-cipher-black-list
         cmdcfgs.emplace_back(SHRPX_OPT_CLIENT_NO_HTTP2_CIPHER_BLACK_LIST,
-                             "yes"_sr);
+                             "yes"sv);
         break;
       case 150:
         // --client-ciphers
-        cmdcfgs.emplace_back(SHRPX_OPT_CLIENT_CIPHERS, StringRef{optarg});
+        cmdcfgs.emplace_back(SHRPX_OPT_CLIENT_CIPHERS,
+                             std::string_view{optarg});
         break;
       case 151:
         // --accesslog-write-early
-        cmdcfgs.emplace_back(SHRPX_OPT_ACCESSLOG_WRITE_EARLY, "yes"_sr);
+        cmdcfgs.emplace_back(SHRPX_OPT_ACCESSLOG_WRITE_EARLY, "yes"sv);
         break;
       case 152:
         // --tls-min-proto-version
         cmdcfgs.emplace_back(SHRPX_OPT_TLS_MIN_PROTO_VERSION,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 153:
         // --tls-max-proto-version
         cmdcfgs.emplace_back(SHRPX_OPT_TLS_MAX_PROTO_VERSION,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 154:
         // --redirect-https-port
-        cmdcfgs.emplace_back(SHRPX_OPT_REDIRECT_HTTPS_PORT, StringRef{optarg});
+        cmdcfgs.emplace_back(SHRPX_OPT_REDIRECT_HTTPS_PORT,
+                             std::string_view{optarg});
         break;
       case 155:
         // --frontend-max-requests
         cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_MAX_REQUESTS,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 156:
         // --single-thread
-        cmdcfgs.emplace_back(SHRPX_OPT_SINGLE_THREAD, "yes"_sr);
+        cmdcfgs.emplace_back(SHRPX_OPT_SINGLE_THREAD, "yes"sv);
         break;
       case 157:
         // --no-add-x-forwarded-proto
-        cmdcfgs.emplace_back(SHRPX_OPT_NO_ADD_X_FORWARDED_PROTO, "yes"_sr);
+        cmdcfgs.emplace_back(SHRPX_OPT_NO_ADD_X_FORWARDED_PROTO, "yes"sv);
         break;
       case 158:
         // --no-strip-incoming-x-forwarded-proto
         cmdcfgs.emplace_back(SHRPX_OPT_NO_STRIP_INCOMING_X_FORWARDED_PROTO,
-                             "yes"_sr);
+                             "yes"sv);
         break;
       case 159:
         // --single-process
-        cmdcfgs.emplace_back(SHRPX_OPT_SINGLE_PROCESS, "yes"_sr);
+        cmdcfgs.emplace_back(SHRPX_OPT_SINGLE_PROCESS, "yes"sv);
         break;
       case 160:
         // --verify-client-tolerate-expired
-        cmdcfgs.emplace_back(SHRPX_OPT_VERIFY_CLIENT_TOLERATE_EXPIRED,
-                             "yes"_sr);
+        cmdcfgs.emplace_back(SHRPX_OPT_VERIFY_CLIENT_TOLERATE_EXPIRED, "yes"sv);
         break;
       case 161:
         // --ignore-per-pattern-mruby-error
-        cmdcfgs.emplace_back(SHRPX_OPT_IGNORE_PER_PATTERN_MRUBY_ERROR,
-                             "yes"_sr);
+        cmdcfgs.emplace_back(SHRPX_OPT_IGNORE_PER_PATTERN_MRUBY_ERROR, "yes"sv);
         break;
       case 162:
         // --tls-no-postpone-early-data
-        cmdcfgs.emplace_back(SHRPX_OPT_TLS_NO_POSTPONE_EARLY_DATA, "yes"_sr);
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS_NO_POSTPONE_EARLY_DATA, "yes"sv);
         break;
       case 163:
         // --tls-max-early-data
-        cmdcfgs.emplace_back(SHRPX_OPT_TLS_MAX_EARLY_DATA, StringRef{optarg});
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS_MAX_EARLY_DATA,
+                             std::string_view{optarg});
         break;
       case 164:
         // --tls13-ciphers
-        cmdcfgs.emplace_back(SHRPX_OPT_TLS13_CIPHERS, StringRef{optarg});
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS13_CIPHERS, std::string_view{optarg});
         break;
       case 165:
         // --tls13-client-ciphers
-        cmdcfgs.emplace_back(SHRPX_OPT_TLS13_CLIENT_CIPHERS, StringRef{optarg});
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS13_CLIENT_CIPHERS,
+                             std::string_view{optarg});
         break;
       case 166:
         // --no-strip-incoming-early-data
-        cmdcfgs.emplace_back(SHRPX_OPT_NO_STRIP_INCOMING_EARLY_DATA, "yes"_sr);
+        cmdcfgs.emplace_back(SHRPX_OPT_NO_STRIP_INCOMING_EARLY_DATA, "yes"sv);
         break;
       case 167:
         // --no-http2-cipher-block-list
-        cmdcfgs.emplace_back(SHRPX_OPT_NO_HTTP2_CIPHER_BLOCK_LIST, "yes"_sr);
+        cmdcfgs.emplace_back(SHRPX_OPT_NO_HTTP2_CIPHER_BLOCK_LIST, "yes"sv);
         break;
       case 168:
         // --client-no-http2-cipher-block-list
         cmdcfgs.emplace_back(SHRPX_OPT_CLIENT_NO_HTTP2_CIPHER_BLOCK_LIST,
-                             "yes"_sr);
+                             "yes"sv);
         break;
       case 169:
         // --quic-bpf-program-file
         cmdcfgs.emplace_back(SHRPX_OPT_QUIC_BPF_PROGRAM_FILE,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 170:
         // --no-quic-bpf
-        cmdcfgs.emplace_back(SHRPX_OPT_NO_QUIC_BPF, "yes"_sr);
+        cmdcfgs.emplace_back(SHRPX_OPT_NO_QUIC_BPF, "yes"sv);
         break;
       case 171:
         // --http2-altsvc
-        cmdcfgs.emplace_back(SHRPX_OPT_HTTP2_ALTSVC, StringRef{optarg});
+        cmdcfgs.emplace_back(SHRPX_OPT_HTTP2_ALTSVC, std::string_view{optarg});
         break;
       case 172:
         // --frontend-http3-read-timeout
         cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_HTTP3_READ_TIMEOUT,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 173:
         // --frontend-quic-idle-timeout
         cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_QUIC_IDLE_TIMEOUT,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 174:
         // --frontend-quic-debug-log
-        cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_QUIC_DEBUG_LOG, "yes"_sr);
+        cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_QUIC_DEBUG_LOG, "yes"sv);
         break;
       case 175:
         // --frontend-http3-window-size
         cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_HTTP3_WINDOW_SIZE,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 176:
         // --frontend-http3-connection-window-size
         cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_HTTP3_CONNECTION_WINDOW_SIZE,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 177:
         // --frontend-http3-max-window-size
         cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_HTTP3_MAX_WINDOW_SIZE,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 178:
         // --frontend-http3-max-connection-window-size
         cmdcfgs.emplace_back(
           SHRPX_OPT_FRONTEND_HTTP3_MAX_CONNECTION_WINDOW_SIZE,
-          StringRef{optarg});
+          std::string_view{optarg});
         break;
       case 179:
         // --frontend-http3-max-concurrent-streams
         cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_HTTP3_MAX_CONCURRENT_STREAMS,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 180:
         // --frontend-quic-early-data
-        cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_QUIC_EARLY_DATA, "yes"_sr);
+        cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_QUIC_EARLY_DATA, "yes"sv);
         break;
       case 181:
         // --frontend-quic-qlog-dir
         cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_QUIC_QLOG_DIR,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 182:
         // --frontend-quic-require-token
-        cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_QUIC_REQUIRE_TOKEN, "yes"_sr);
+        cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_QUIC_REQUIRE_TOKEN, "yes"sv);
         break;
       case 183:
         // --frontend-quic-congestion-controller
         cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_QUIC_CONGESTION_CONTROLLER,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 185:
         // --quic-server-id
-        cmdcfgs.emplace_back(SHRPX_OPT_QUIC_SERVER_ID, StringRef{optarg});
+        cmdcfgs.emplace_back(SHRPX_OPT_QUIC_SERVER_ID,
+                             std::string_view{optarg});
         break;
       case 186:
         // --frontend-quic-secret-file
         cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_QUIC_SECRET_FILE,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 187:
         // --rlimit-memlock
-        cmdcfgs.emplace_back(SHRPX_OPT_RLIMIT_MEMLOCK, StringRef{optarg});
+        cmdcfgs.emplace_back(SHRPX_OPT_RLIMIT_MEMLOCK,
+                             std::string_view{optarg});
         break;
       case 188:
         // --max-worker-processes
-        cmdcfgs.emplace_back(SHRPX_OPT_MAX_WORKER_PROCESSES, StringRef{optarg});
+        cmdcfgs.emplace_back(SHRPX_OPT_MAX_WORKER_PROCESSES,
+                             std::string_view{optarg});
         break;
       case 189:
         // --worker-process-grace-shutdown-period
         cmdcfgs.emplace_back(SHRPX_OPT_WORKER_PROCESS_GRACE_SHUTDOWN_PERIOD,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 190:
         // --frontend-quic-initial-rtt
         cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_QUIC_INITIAL_RTT,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 191:
         // --require-http-scheme
-        cmdcfgs.emplace_back(SHRPX_OPT_REQUIRE_HTTP_SCHEME, "yes"_sr);
+        cmdcfgs.emplace_back(SHRPX_OPT_REQUIRE_HTTP_SCHEME, "yes"sv);
         break;
       case 192:
         // --tls-ktls
-        cmdcfgs.emplace_back(SHRPX_OPT_TLS_KTLS, "yes"_sr);
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS_KTLS, "yes"sv);
         break;
       case 193:
         // --alpn-list
-        cmdcfgs.emplace_back(SHRPX_OPT_ALPN_LIST, StringRef{optarg});
+        cmdcfgs.emplace_back(SHRPX_OPT_ALPN_LIST, std::string_view{optarg});
         break;
       case 194:
         // --frontend-header-timeout
         cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_HEADER_TIMEOUT,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 195:
         // --frontend-http2-idle-timeout
         cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_HTTP2_IDLE_TIMEOUT,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       case 196:
         // --frontend-http3-idle-timeout
         cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_HTTP3_IDLE_TIMEOUT,
-                             StringRef{optarg});
+                             std::string_view{optarg});
         break;
       default:
         break;
@@ -4883,8 +4913,10 @@ int main(int argc, char **argv) {
   }
 
   if (argc - optind >= 2) {
-    cmdcfgs.emplace_back(SHRPX_OPT_PRIVATE_KEY_FILE, StringRef{argv[optind++]});
-    cmdcfgs.emplace_back(SHRPX_OPT_CERTIFICATE_FILE, StringRef{argv[optind++]});
+    cmdcfgs.emplace_back(SHRPX_OPT_PRIVATE_KEY_FILE,
+                         std::string_view{argv[optind++]});
+    cmdcfgs.emplace_back(SHRPX_OPT_CERTIFICATE_FILE,
+                         std::string_view{argv[optind++]});
   }
 
 #ifdef ENABLE_HTTP3

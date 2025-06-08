@@ -123,15 +123,17 @@ DownstreamAddrGroup::~DownstreamAddrGroup() {}
 // DownstreamKey is used to index SharedDownstreamAddr in order to
 // find the same configuration.
 using DownstreamKey = std::tuple<
-  std::vector<std::tuple<StringRef, StringRef, StringRef, size_t, size_t, Proto,
-                         uint32_t, uint32_t, uint32_t, bool, bool, bool, bool>>,
-  bool, SessionAffinity, StringRef, StringRef, SessionAffinityCookieSecure,
-  SessionAffinityCookieStickiness, ev_tstamp, ev_tstamp, StringRef, bool>;
+  std::vector<std::tuple<std::string_view, std::string_view, std::string_view,
+                         size_t, size_t, Proto, uint32_t, uint32_t, uint32_t,
+                         bool, bool, bool, bool>>,
+  bool, SessionAffinity, std::string_view, std::string_view,
+  SessionAffinityCookieSecure, SessionAffinityCookieStickiness, ev_tstamp,
+  ev_tstamp, std::string_view, bool>;
 
 namespace {
 DownstreamKey
 create_downstream_key(const std::shared_ptr<SharedDownstreamAddr> &shared_addr,
-                      const StringRef &mruby_file) {
+                      const std::string_view &mruby_file) {
   DownstreamKey dkey;
 
   auto &addrs = std::get<0>(dkey);
@@ -280,7 +282,7 @@ void Worker::replace_downstream_config(
   // TODO It is a bit less efficient because
   // mruby::create_mruby_context returns std::unique_ptr and we cannot
   // use std::make_shared.
-  std::unordered_map<StringRef, std::shared_ptr<mruby::MRubyContext>>
+  std::unordered_map<std::string_view, std::shared_ptr<mruby::MRubyContext>>
     shared_mruby_ctxs;
 #endif // HAVE_MRUBY
 
@@ -380,7 +382,7 @@ void Worker::replace_downstream_config(
                     [](auto i, auto j) { std::swap((*i).seq, (*j).seq); });
 
       if (shared_addr->affinity.type == SessionAffinity::NONE) {
-        std::unordered_map<StringRef, WeightGroup *> wgs;
+        std::unordered_map<std::string_view, WeightGroup *> wgs;
         size_t num_wgs = 0;
         for (auto &addr : shared_addr->addrs) {
           if (!wgs.contains(addr.group)) {
@@ -636,7 +638,8 @@ std::mt19937 &Worker::get_randgen() { return randgen_; }
 
 #ifdef HAVE_MRUBY
 int Worker::create_mruby_context() {
-  mruby_ctx_ = mruby::create_mruby_context(StringRef{get_config()->mruby_file});
+  mruby_ctx_ =
+    mruby::create_mruby_context(std::string_view{get_config()->mruby_file});
   if (!mruby_ctx_) {
     return -1;
   }
@@ -725,7 +728,7 @@ int Worker::create_tcp_server_socket(UpstreamAddr &faddr) {
   hints.ai_flags |= AI_ADDRCONFIG;
 #endif // AI_ADDRCONFIG
 
-  auto node = faddr.host == "*"_sr ? nullptr : faddr.host.data();
+  auto node = faddr.host == "*"sv ? nullptr : faddr.host.data();
 
   addrinfo *res, *rp;
   rv = getaddrinfo(node, service.c_str(), &hints, &res);
@@ -858,8 +861,8 @@ int Worker::create_tcp_server_socket(UpstreamAddr &faddr) {
   }
 
   faddr.fd = fd;
-  faddr.hostport = util::make_http_hostport(mod_config()->balloc,
-                                            StringRef{host.data()}, faddr.port);
+  faddr.hostport = util::make_http_hostport(
+    mod_config()->balloc, std::string_view{host.data()}, faddr.port);
 
   LOG(NOTICE) << "Listening on " << faddr.hostport
               << (faddr.tls ? ", tls" : "");
@@ -1067,7 +1070,7 @@ int Worker::create_quic_server_socket(UpstreamAddr &faddr) {
   hints.ai_flags |= AI_ADDRCONFIG;
 #  endif // AI_ADDRCONFIG
 
-  auto node = faddr.host == "*"_sr ? nullptr : faddr.host.data();
+  auto node = faddr.host == "*"sv ? nullptr : faddr.host.data();
 
   addrinfo *res, *rp;
   rv = getaddrinfo(node, service.c_str(), &hints, &res);
@@ -1387,8 +1390,8 @@ int Worker::create_quic_server_socket(UpstreamAddr &faddr) {
   }
 
   faddr.fd = fd;
-  faddr.hostport = util::make_http_hostport(mod_config()->balloc,
-                                            StringRef{host.data()}, faddr.port);
+  faddr.hostport = util::make_http_hostport(
+    mod_config()->balloc, std::string_view{host.data()}, faddr.port);
   memcpy(&faddr.sockaddr, rp->ai_addr, rp->ai_addrlen);
 
   switch (faddr.family) {
@@ -1467,7 +1470,8 @@ const UpstreamAddr *Worker::find_quic_upstream_addr(const Address &local_addr) {
 
 namespace {
 size_t match_downstream_addr_group_host(
-  const RouterConfig &routerconf, const StringRef &host, const StringRef &path,
+  const RouterConfig &routerconf, const std::string_view &host,
+  const std::string_view &path,
   const std::vector<std::shared_ptr<DownstreamAddrGroup>> &groups,
   size_t catch_all, BlockAllocator &balloc) {
   const auto &router = routerconf.router;
@@ -1491,11 +1495,11 @@ size_t match_downstream_addr_group_host(
   if (!wildcard_patterns.empty() && !host.empty()) {
     auto rev_host_src = make_byte_ref(balloc, host.size() - 1);
     auto rev_host =
-      as_string_ref(std::ranges::begin(rev_host_src),
-                    std::ranges::reverse_copy(std::ranges::begin(host) + 1,
-                                              std::ranges::end(host),
-                                              std::ranges::begin(rev_host_src))
-                      .out);
+      as_string_view(std::ranges::begin(rev_host_src),
+                     std::ranges::reverse_copy(std::ranges::begin(host) + 1,
+                                               std::ranges::end(host),
+                                               std::ranges::begin(rev_host_src))
+                       .out);
     ssize_t best_group = -1;
     const RNode *last_node = nullptr;
 
@@ -1507,11 +1511,11 @@ size_t match_downstream_addr_group_host(
         break;
       }
 
-      rev_host = StringRef{std::ranges::begin(rev_host) + nread,
-                           std::ranges::end(rev_host)};
+      rev_host = std::string_view{std::ranges::begin(rev_host) + nread,
+                                  std::ranges::end(rev_host)};
 
       auto &wc = wildcard_patterns[as_unsigned(wcidx)];
-      auto group = wc.router.match(StringRef{}, path);
+      auto group = wc.router.match(""sv, path);
       if (group != -1) {
         // We sorted wildcard_patterns in a way that first match is the
         // longest host pattern.
@@ -1530,7 +1534,7 @@ size_t match_downstream_addr_group_host(
     }
   }
 
-  group = router.match(""_sr, path);
+  group = router.match(""sv, path);
   if (group != -1) {
     if (LOG_ENABLED(INFO)) {
       LOG(INFO) << "Found pattern with query " << path
@@ -1547,8 +1551,8 @@ size_t match_downstream_addr_group_host(
 } // namespace
 
 size_t match_downstream_addr_group(
-  const RouterConfig &routerconf, const StringRef &hostport,
-  const StringRef &raw_path,
+  const RouterConfig &routerconf, const std::string_view &hostport,
+  const std::string_view &raw_path,
   const std::vector<std::shared_ptr<DownstreamAddrGroup>> &groups,
   size_t catch_all, BlockAllocator &balloc) {
   if (util::contains(hostport, '/')) {
@@ -1559,10 +1563,10 @@ size_t match_downstream_addr_group(
 
   auto fragment = std::ranges::find(raw_path, '#');
   auto query = std::ranges::find(std::ranges::begin(raw_path), fragment, '?');
-  auto path = StringRef{std::ranges::begin(raw_path), query};
+  auto path = std::string_view{std::ranges::begin(raw_path), query};
 
   if (path.empty() || path[0] != '/') {
-    path = "/"_sr;
+    path = "/"sv;
   }
 
   if (hostport.empty()) {
@@ -1570,7 +1574,7 @@ size_t match_downstream_addr_group(
                                             catch_all, balloc);
   }
 
-  StringRef host;
+  std::string_view host;
   if (hostport[0] == '[') {
     // assume this is IPv6 numeric address
     auto p = std::ranges::find(hostport, ']');
@@ -1580,13 +1584,13 @@ size_t match_downstream_addr_group(
     if (p + 1 < std::ranges::end(hostport) && *(p + 1) != ':') {
       return catch_all;
     }
-    host = StringRef{std::ranges::begin(hostport), p + 1};
+    host = std::string_view{std::ranges::begin(hostport), p + 1};
   } else {
     auto p = std::ranges::find(hostport, ':');
     if (p == std::ranges::begin(hostport)) {
       return catch_all;
     }
-    host = StringRef{std::ranges::begin(hostport), p};
+    host = std::string_view{std::ranges::begin(hostport), p};
   }
 
   if (std::ranges::find_if(host, [](char c) { return 'A' <= c && c <= 'Z'; }) !=
@@ -1594,7 +1598,7 @@ size_t match_downstream_addr_group(
     auto low_host = make_byte_ref(balloc, host.size() + 1);
     auto ep = util::tolower(host, std::ranges::begin(low_host));
     *ep = '\0';
-    host = as_string_ref(std::ranges::begin(low_host), ep);
+    host = as_string_view(std::ranges::begin(low_host), ep);
   }
   return match_downstream_addr_group_host(routerconf, host, path, groups,
                                           catch_all, balloc);

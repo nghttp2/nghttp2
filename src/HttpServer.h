@@ -125,13 +125,13 @@ struct FileEntry {
 };
 
 struct RequestHeader {
-  StringRef method;
-  StringRef scheme;
-  StringRef authority;
-  StringRef host;
-  StringRef path;
-  StringRef ims;
-  StringRef expect;
+  std::string_view method;
+  std::string_view scheme;
+  std::string_view authority;
+  std::string_view host;
+  std::string_view path;
+  std::string_view ims;
+  std::string_view expect;
 
   struct {
     nghttp2_rcbuf *method;
@@ -176,21 +176,21 @@ public:
   int connection_made();
   int verify_alpn_result();
 
-  int submit_file_response(const StringRef &status, Stream *stream,
+  int submit_file_response(const std::string_view &status, Stream *stream,
                            time_t last_modified, off_t file_length,
                            const std::string *content_type,
                            nghttp2_data_provider2 *data_prd);
 
-  int submit_response(const StringRef &status, int32_t stream_id,
+  int submit_response(const std::string_view &status, int32_t stream_id,
                       nghttp2_data_provider2 *data_prd);
 
-  int submit_response(const StringRef &status, int32_t stream_id,
+  int submit_response(const std::string_view &status, int32_t stream_id,
                       const HeaderRefs &headers,
                       nghttp2_data_provider2 *data_prd);
 
   int submit_non_final_response(const std::string &status, int32_t stream_id);
 
-  int submit_push_promise(Stream *stream, const StringRef &push_path);
+  int submit_push_promise(Stream *stream, const std::string_view &push_path);
 
   int submit_rst_stream(Stream *stream, uint32_t error_code);
 

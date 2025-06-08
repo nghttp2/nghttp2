@@ -1314,7 +1314,7 @@ int Http3Upstream::on_downstream_header_complete(Downstream *downstream) {
   if (downstream->get_non_final_response()) {
     auto response_status = http2::stringify_status(balloc, resp.http_status);
 
-    nva.push_back(http3::make_field(":status"_sr, response_status));
+    nva.push_back(http3::make_field(":status"sv, response_status));
 
     http3::copy_headers_to_nva_nocopy(nva, resp.fs.headers(),
                                       http2::HDOP_STRIP_ALL);
@@ -1338,7 +1338,7 @@ int Http3Upstream::on_downstream_header_complete(Downstream *downstream) {
 
   auto striphd_flags =
     static_cast<uint32_t>(http2::HDOP_STRIP_ALL & ~http2::HDOP_STRIP_VIA);
-  StringRef response_status;
+  std::string_view response_status;
 
   if (req.connect_proto == ConnectProto::WEBSOCKET && resp.http_status == 101) {
     response_status = http2::stringify_status(balloc, 200);
@@ -1347,16 +1347,16 @@ int Http3Upstream::on_downstream_header_complete(Downstream *downstream) {
     response_status = http2::stringify_status(balloc, resp.http_status);
   }
 
-  nva.push_back(http3::make_field(":status"_sr, response_status));
+  nva.push_back(http3::make_field(":status"sv, response_status));
 
   http3::copy_headers_to_nva_nocopy(nva, resp.fs.headers(), striphd_flags);
 
   if (!config->http2_proxy && !httpconf.no_server_rewrite) {
-    nva.push_back(http3::make_field("server"_sr, httpconf.server_name));
+    nva.push_back(http3::make_field("server"sv, httpconf.server_name));
   } else {
     auto server = resp.fs.header(http2::HD_SERVER);
     if (server) {
-      nva.push_back(http3::make_field("server"_sr, (*server).value));
+      nva.push_back(http3::make_field("server"sv, (*server).value));
     }
   }
 
@@ -1372,14 +1372,14 @@ int Http3Upstream::on_downstream_header_complete(Downstream *downstream) {
         http::require_cookie_secure_attribute(cookieconf.secure, req.scheme);
       auto cookie_str = http::create_affinity_cookie(
         balloc, cookieconf.name, affinity_cookie, cookieconf.path, secure);
-      nva.push_back(http3::make_field("set-cookie"_sr, cookie_str));
+      nva.push_back(http3::make_field("set-cookie"sv, cookie_str));
     }
   }
 
   auto via = resp.fs.header(http2::HD_VIA);
   if (httpconf.no_via) {
     if (via) {
-      nva.push_back(http3::make_field("via"_sr, (*via).value));
+      nva.push_back(http3::make_field("via"sv, (*via).value));
     }
   } else {
     // we don't create more than 16 bytes in
@@ -1399,7 +1399,7 @@ int Http3Upstream::on_downstream_header_complete(Downstream *downstream) {
     *p = '\0';
 
     nva.push_back(
-      http3::make_field("via"_sr, as_string_ref(std::ranges::begin(iov), p)));
+      http3::make_field("via"sv, as_string_view(std::ranges::begin(iov), p)));
   }
 
   for (auto &p : httpconf.add_response_headers) {
@@ -1712,7 +1712,7 @@ int Http3Upstream::send_reply(Downstream *downstream, const uint8_t *body,
 
   auto response_status = http2::stringify_status(balloc, resp.http_status);
 
-  nva.push_back(http3::make_field(":status"_sr, response_status));
+  nva.push_back(http3::make_field(":status"sv, response_status));
 
   for (auto &kv : headers) {
     if (kv.name.empty() || kv.name[0] == ':') {
@@ -1732,7 +1732,7 @@ int Http3Upstream::send_reply(Downstream *downstream, const uint8_t *body,
   }
 
   if (!resp.fs.header(http2::HD_SERVER)) {
-    nva.push_back(http3::make_field("server"_sr, config->http.server_name));
+    nva.push_back(http3::make_field("server"sv, config->http.server_name));
   }
 
   for (auto &p : httpconf.add_response_headers) {
@@ -1761,7 +1761,8 @@ int Http3Upstream::send_reply(Downstream *downstream, const uint8_t *body,
   return 0;
 }
 
-int Http3Upstream::initiate_push(Downstream *downstream, const StringRef &uri) {
+int Http3Upstream::initiate_push(Downstream *downstream,
+                                 const std::string_view &uri) {
   return 0;
 }
 
@@ -2207,8 +2208,8 @@ int Http3Upstream::http_recv_request_header(Downstream *downstream,
     return 0;
   }
 
-  auto nameref = as_string_ref(namebuf.base, namebuf.len);
-  auto valueref = as_string_ref(valuebuf.base, valuebuf.len);
+  auto nameref = as_string_view(namebuf.base, namebuf.len);
+  auto valueref = as_string_view(valuebuf.base, valuebuf.len);
   auto token = http2::lookup_token(nameref);
   auto no_index = flags & NGHTTP3_NV_FLAG_NEVER_INDEX;
 
@@ -2260,7 +2261,7 @@ int Http3Upstream::http_end_request_headers(Downstream *downstream, int fin) {
   if (LOG_ENABLED(INFO)) {
     std::stringstream ss;
     for (auto &nv : nva) {
-      if (nv.name == "authorization"_sr) {
+      if (nv.name == "authorization"sv) {
         ss << TTY_HTTP_HD << nv.name << TTY_RST << ": <redacted>\n";
         continue;
       }
@@ -2319,7 +2320,7 @@ int Http3Upstream::http_end_request_headers(Downstream *downstream, int fin) {
   }
 
   if (path) {
-    if (method_token == HTTP_OPTIONS && path->value == "*"_sr) {
+    if (method_token == HTTP_OPTIONS && path->value == "*"sv) {
       // Server-wide OPTIONS request.  Path is empty.
     } else if (config->http2_proxy &&
                faddr->alt_mode == UpstreamAltMode::NONE) {
@@ -2332,7 +2333,7 @@ int Http3Upstream::http_end_request_headers(Downstream *downstream, int fin) {
 
   auto connect_proto = req.fs.header(http2::HD__PROTOCOL);
   if (connect_proto) {
-    if (connect_proto->value != "websocket"_sr) {
+    if (connect_proto->value != "websocket"sv) {
       if (error_reply(downstream, 400) != 0) {
         return -1;
       }
@@ -2767,11 +2768,11 @@ int Http3Upstream::error_reply(Downstream *downstream,
   auto date = make_string_ref(balloc, lgconf->tstamp->time_http);
 
   auto nva = std::to_array(
-    {http3::make_field(":status"_sr, response_status),
-     http3::make_field("content-type"_sr, "text/html; charset=UTF-8"_sr),
-     http3::make_field("server"_sr, get_config()->http.server_name),
-     http3::make_field("content-length"_sr, content_length),
-     http3::make_field("date"_sr, date)});
+    {http3::make_field(":status"sv, response_status),
+     http3::make_field("content-type"sv, "text/html; charset=UTF-8"sv),
+     http3::make_field("server"sv, get_config()->http.server_name),
+     http3::make_field("content-length"sv, content_length),
+     http3::make_field("date"sv, date)});
 
   rv = nghttp3_conn_submit_response(httpconn_, downstream->get_stream_id(),
                                     nva.data(), nva.size(), data_read_ptr);
@@ -2852,8 +2853,8 @@ void Http3Upstream::log_response_headers(
   Downstream *downstream, const std::vector<nghttp3_nv> &nva) const {
   std::stringstream ss;
   for (auto &nv : nva) {
-    ss << TTY_HTTP_HD << as_string_ref(nv.name, nv.namelen) << TTY_RST << ": "
-       << as_string_ref(nv.value, nv.valuelen) << "\n";
+    ss << TTY_HTTP_HD << as_string_view(nv.name, nv.namelen) << TTY_RST << ": "
+       << as_string_view(nv.value, nv.valuelen) << "\n";
   }
   ULOG(INFO, this) << "HTTP response headers. stream_id="
                    << downstream->get_stream_id() << "\n"
@@ -2915,7 +2916,7 @@ int Http3Upstream::submit_goaway() {
   return 0;
 }
 
-int Http3Upstream::open_qlog_file(const StringRef &dir,
+int Http3Upstream::open_qlog_file(const std::string_view &dir,
                                   const ngtcp2_cid &scid) const {
   std::array<char, sizeof("20141115T125824.741+0900")> buf;
 

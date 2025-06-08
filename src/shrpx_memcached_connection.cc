@@ -98,7 +98,7 @@ constexpr auto read_timeout = 10_s;
 
 MemcachedConnection::MemcachedConnection(const Address *addr,
                                          struct ev_loop *loop, SSL_CTX *ssl_ctx,
-                                         const StringRef &sni_name,
+                                         const std::string_view &sni_name,
                                          MemchunkPool *mcpool,
                                          std::mt19937 &gen)
   : conn_(loop, -1, nullptr, mcpool, write_timeout, read_timeout, {}, {},

@@ -98,7 +98,7 @@ constexpr uint8_t MEMCACHED_RES_MAGIC = 0x81;
 class MemcachedConnection {
 public:
   MemcachedConnection(const Address *addr, struct ev_loop *loop,
-                      SSL_CTX *ssl_ctx, const StringRef &sni_name,
+                      SSL_CTX *ssl_ctx, const std::string_view &sni_name,
                       MemchunkPool *mcpool, std::mt19937 &gen);
   ~MemcachedConnection();
 
@@ -137,7 +137,7 @@ private:
   std::deque<std::unique_ptr<MemcachedRequest>> sendq_;
   std::deque<MemcachedSendbuf> sendbufv_;
   std::function<int(MemcachedConnection &)> do_read_, do_write_;
-  StringRef sni_name_;
+  std::string_view sni_name_;
   tls::TLSSessionCache tls_session_cache_;
   ConnectBlocker connect_blocker_;
   MemcachedParseContext parse_state_;

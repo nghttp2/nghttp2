@@ -37,7 +37,7 @@ using namespace nghttp2;
 namespace shrpx {
 
 struct DNSQuery {
-  DNSQuery(StringRef host, CompleteCb cb)
+  DNSQuery(std::string_view host, CompleteCb cb)
     : host(std::move(host)),
       cb(std::move(cb)),
       dlnext(nullptr),
@@ -46,7 +46,7 @@ struct DNSQuery {
       in_qlist(false) {}
 
   // Host name we lookup for.
-  StringRef host;
+  std::string_view host;
   // Callback function called when name lookup finished.  This
   // callback is not called if name lookup finishes within
   // DNSTracker::resolve().
@@ -106,7 +106,7 @@ private:
 
   void add_to_qlist(ResolverEntry &ent, DNSQuery *dnsq);
 
-  std::unordered_map<StringRef, ResolverEntry> ents_;
+  std::unordered_map<std::string_view, ResolverEntry> ents_;
   // Periodically iterates ents_, and removes expired entries to avoid
   // excessive use of memory.  Since only backend API can potentially
   // increase memory consumption, interval could be very long.

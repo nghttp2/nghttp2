@@ -109,12 +109,12 @@ const MunitSuite util_suite{
 };
 
 void test_util_streq(void) {
-  assert_true(util::streq("alpha"_sr, "alpha"_sr));
-  assert_false(util::streq("alphabravo"_sr, "alpha"_sr));
-  assert_false(util::streq("alpha"_sr, "alphA"_sr));
-  assert_false(util::streq(""_sr, "a"_sr));
-  assert_true(util::streq(""_sr, ""_sr));
-  assert_false(util::streq("alpha"_sr, ""_sr));
+  assert_true(util::streq("alpha"sv, "alpha"sv));
+  assert_false(util::streq("alphabravo"sv, "alpha"sv));
+  assert_false(util::streq("alpha"sv, "alphA"sv));
+  assert_false(util::streq(""sv, "a"sv));
+  assert_true(util::streq(""sv, ""sv));
+  assert_false(util::streq("alpha"sv, ""sv));
 }
 
 void test_util_strieq(void) {
@@ -124,11 +124,11 @@ void test_util_strieq(void) {
   assert_false(util::strieq("alpha"sv, "AlPhA "sv));
   assert_false(util::strieq(""sv, "AlPhA "sv));
 
-  assert_true(util::strieq("alpha"_sr, "alpha"_sr));
-  assert_true(util::strieq("alpha"_sr, "AlPhA"_sr));
-  assert_true(util::strieq(StringRef{}, StringRef{}));
-  assert_false(util::strieq("alpha"_sr, "AlPhA "_sr));
-  assert_false(util::strieq(""_sr, "AlPhA "_sr));
+  assert_true(util::strieq("alpha"sv, "alpha"sv));
+  assert_true(util::strieq("alpha"sv, "AlPhA"sv));
+  assert_true(util::strieq(""sv, ""sv));
+  assert_false(util::strieq("alpha"sv, "AlPhA "sv));
+  assert_false(util::strieq(""sv, "AlPhA "sv));
 }
 
 void test_util_tolower(void) {
@@ -177,8 +177,8 @@ void test_util_tolower(void) {
 void test_util_to_base64(void) {
   BlockAllocator balloc(4096, 4096);
 
-  assert_stdsv_equal("AAA++B/="sv, util::to_base64(balloc, "AAA--B_"_sr));
-  assert_stdsv_equal("AAA++B/B"sv, util::to_base64(balloc, "AAA--B_B"_sr));
+  assert_stdsv_equal("AAA++B/="sv, util::to_base64(balloc, "AAA--B_"sv));
+  assert_stdsv_equal("AAA++B/B"sv, util::to_base64(balloc, "AAA--B_B"sv));
 }
 
 void test_util_to_token68(void) {
@@ -196,24 +196,24 @@ void test_util_percent_encode_token(void) {
 
   assert_stdsv_equal(
     "h2"sv, as_string_view(buf.begin(),
-                           util::percent_encode_token("h2"_sr, buf.begin())));
+                           util::percent_encode_token("h2"sv, buf.begin())));
 
   assert_size("h2"sv.size(), ==, util::percent_encode_tokenlen("h2"sv));
 
   assert_stdsv_equal(
     "h3~"sv, as_string_view(buf.begin(),
-                            util::percent_encode_token("h3~"_sr, buf.begin())));
+                            util::percent_encode_token("h3~"sv, buf.begin())));
 
   assert_size("h3~"sv.size(), ==, util::percent_encode_tokenlen("h3~"sv));
 
   assert_stdsv_equal("100%25"sv,
                      as_string_view(buf.begin(), util::percent_encode_token(
-                                                   "100%"_sr, buf.begin())));
+                                                   "100%"sv, buf.begin())));
   assert_size("100%25"sv.size(), ==, util::percent_encode_tokenlen("100%"sv));
 
   assert_stdsv_equal("http%202"sv,
                      as_string_view(buf.begin(), util::percent_encode_token(
-                                                   "http 2"_sr, buf.begin())));
+                                                   "http 2"sv, buf.begin())));
 
   assert_size("http%202"sv.size(), ==,
               util::percent_encode_tokenlen("http 2"sv));
@@ -237,23 +237,23 @@ void test_util_percent_decode(void) {
   BlockAllocator balloc(1024, 1024);
 
   assert_stdsv_equal("foobar"sv,
-                     util::percent_decode(balloc, "%66%6F%6f%62%61%72"_sr));
+                     util::percent_decode(balloc, "%66%6F%6f%62%61%72"sv));
 
-  assert_stdsv_equal("f%6"sv, util::percent_decode(balloc, "%66%6"_sr));
+  assert_stdsv_equal("f%6"sv, util::percent_decode(balloc, "%66%6"sv));
 
-  assert_stdsv_equal("f%"sv, util::percent_decode(balloc, "%66%"_sr));
+  assert_stdsv_equal("f%"sv, util::percent_decode(balloc, "%66%"sv));
 }
 
 void test_util_quote_string(void) {
   BlockAllocator balloc(4096, 4096);
-  assert_stdsv_equal("alpha"sv, util::quote_string(balloc, "alpha"_sr));
-  assert_stdsv_equal(""sv, util::quote_string(balloc, ""_sr));
+  assert_stdsv_equal("alpha"sv, util::quote_string(balloc, "alpha"sv));
+  assert_stdsv_equal(""sv, util::quote_string(balloc, ""sv));
   assert_stdsv_equal("\\\"alpha\\\""sv,
-                     util::quote_string(balloc, "\"alpha\""_sr));
+                     util::quote_string(balloc, "\"alpha\""sv));
 
   assert_size("\\\"alpha\\\""sv.size(), ==,
-              util::quote_stringlen("\"alpha\""_sr));
-  assert_size(0, ==, util::quote_stringlen(""_sr));
+              util::quote_stringlen("\"alpha\""sv));
+  assert_size(0, ==, util::quote_stringlen(""sv));
 }
 
 void test_util_utox(void) {
@@ -640,32 +640,32 @@ void test_util_format_duration(void) {
 }
 
 void test_util_starts_with(void) {
-  assert_true(util::starts_with("foo"_sr, "foo"_sr));
-  assert_true(util::starts_with("fooo"_sr, "foo"_sr));
-  assert_true(util::starts_with("ofoo"_sr, StringRef{}));
-  assert_false(util::starts_with("ofoo"_sr, "foo"_sr));
+  assert_true(util::starts_with("foo"sv, "foo"sv));
+  assert_true(util::starts_with("fooo"sv, "foo"sv));
+  assert_true(util::starts_with("ofoo"sv, ""sv));
+  assert_false(util::starts_with("ofoo"sv, "foo"sv));
 
-  assert_true(util::istarts_with("FOO"_sr, "fOO"_sr));
-  assert_true(util::istarts_with("ofoo"_sr, StringRef{}));
-  assert_true(util::istarts_with("fOOo"_sr, "Foo"_sr));
-  assert_false(util::istarts_with("ofoo"_sr, "foo"_sr));
+  assert_true(util::istarts_with("FOO"sv, "fOO"sv));
+  assert_true(util::istarts_with("ofoo"sv, ""sv));
+  assert_true(util::istarts_with("fOOo"sv, "Foo"sv));
+  assert_false(util::istarts_with("ofoo"sv, "foo"sv));
 }
 
 void test_util_ends_with(void) {
-  assert_true(util::ends_with("foo"_sr, "foo"_sr));
-  assert_true(util::ends_with("foo"_sr, StringRef{}));
-  assert_true(util::ends_with("ofoo"_sr, "foo"_sr));
-  assert_false(util::ends_with("ofoo"_sr, "fo"_sr));
+  assert_true(util::ends_with("foo"sv, "foo"sv));
+  assert_true(util::ends_with("foo"sv, ""sv));
+  assert_true(util::ends_with("ofoo"sv, "foo"sv));
+  assert_false(util::ends_with("ofoo"sv, "fo"sv));
 
-  assert_true(util::iends_with("fOo"_sr, "Foo"_sr));
-  assert_true(util::iends_with("foo"_sr, StringRef{}));
-  assert_true(util::iends_with("oFoo"_sr, "fOO"_sr));
-  assert_false(util::iends_with("ofoo"_sr, "fo"_sr));
+  assert_true(util::iends_with("fOo"sv, "Foo"sv));
+  assert_true(util::iends_with("foo"sv, ""sv));
+  assert_true(util::iends_with("oFoo"sv, "fOO"sv));
+  assert_false(util::iends_with("ofoo"sv, "fo"sv));
 }
 
 void test_util_parse_http_date(void) {
   assert_int64(1001939696, ==,
-               util::parse_http_date("Mon, 1 Oct 2001 12:34:56 GMT"_sr));
+               util::parse_http_date("Mon, 1 Oct 2001 12:34:56 GMT"sv));
 }
 
 void test_util_localtime_date(void) {
@@ -770,27 +770,27 @@ void test_util_get_uint64(void) {
 }
 
 void test_util_parse_config_str_list(void) {
-  auto res = util::parse_config_str_list("a"_sr);
+  auto res = util::parse_config_str_list("a"sv);
   assert_size(1, ==, res.size());
   assert_stdstring_equal("a", res[0]);
 
-  res = util::parse_config_str_list("a,"_sr);
+  res = util::parse_config_str_list("a,"sv);
   assert_size(2, ==, res.size());
   assert_stdstring_equal("a", res[0]);
   assert_stdstring_equal("", res[1]);
 
-  res = util::parse_config_str_list(":a::"_sr, ':');
+  res = util::parse_config_str_list(":a::"sv, ':');
   assert_size(4, ==, res.size());
   assert_stdstring_equal("", res[0]);
   assert_stdstring_equal("a", res[1]);
   assert_stdstring_equal("", res[2]);
   assert_stdstring_equal("", res[3]);
 
-  res = util::parse_config_str_list(StringRef{});
+  res = util::parse_config_str_list(""sv);
   assert_size(1, ==, res.size());
   assert_stdstring_equal("", res[0]);
 
-  res = util::parse_config_str_list("alpha,bravo,charlie"_sr);
+  res = util::parse_config_str_list("alpha,bravo,charlie"sv);
   assert_size(3, ==, res.size());
   assert_stdstring_equal("alpha", res[0]);
   assert_stdstring_equal("bravo", res[1]);
@@ -801,26 +801,25 @@ void test_util_make_http_hostport(void) {
   BlockAllocator balloc(4096, 4096);
 
   assert_stdsv_equal("localhost"sv,
-                     util::make_http_hostport(balloc, "localhost"_sr, 80));
-  assert_stdsv_equal("[::1]"sv,
-                     util::make_http_hostport(balloc, "::1"_sr, 443));
+                     util::make_http_hostport(balloc, "localhost"sv, 80));
+  assert_stdsv_equal("[::1]"sv, util::make_http_hostport(balloc, "::1"sv, 443));
   assert_stdsv_equal("localhost:3000"sv,
-                     util::make_http_hostport(balloc, "localhost"_sr, 3000));
+                     util::make_http_hostport(balloc, "localhost"sv, 3000));
 }
 
 void test_util_make_hostport(void) {
   std::array<char, util::max_hostport> hostport_buf;
   assert_stdsv_equal(
     "localhost:80"sv,
-    util::make_hostport("localhost"_sr, 80, std::ranges::begin(hostport_buf)));
+    util::make_hostport("localhost"sv, 80, std::ranges::begin(hostport_buf)));
   assert_stdsv_equal(
     "[::1]:443"sv,
-    util::make_hostport("::1"_sr, 443, std::ranges::begin(hostport_buf)));
+    util::make_hostport("::1"sv, 443, std::ranges::begin(hostport_buf)));
 
   BlockAllocator balloc(4096, 4096);
   assert_stdsv_equal("localhost:80"sv,
-                     util::make_hostport(balloc, "localhost"_sr, 80));
-  assert_stdsv_equal("[::1]:443"sv, util::make_hostport(balloc, "::1"_sr, 443));
+                     util::make_hostport(balloc, "localhost"sv, 80));
+  assert_stdsv_equal("[::1]:443"sv, util::make_hostport(balloc, "::1"sv, 443));
 }
 
 void test_util_random_alpha_digit(void) {
@@ -842,7 +841,7 @@ void test_util_random_alpha_digit(void) {
 void test_util_format_hex(void) {
   BlockAllocator balloc(4096, 4096);
 
-  assert_stdsv_equal("0ff0"sv, util::format_hex(balloc, "\x0f\xf0"_sr));
+  assert_stdsv_equal("0ff0"sv, util::format_hex(balloc, "\x0f\xf0"sv));
   assert_stdsv_equal(""sv, util::format_hex(balloc, ""sv));
 
   std::string o;
@@ -901,91 +900,88 @@ void test_util_format_upper_hex(void) {
 }
 
 void test_util_is_hex_string(void) {
-  assert_true(util::is_hex_string(StringRef{}));
-  assert_true(util::is_hex_string("0123456789abcdef"_sr));
-  assert_true(util::is_hex_string("0123456789ABCDEF"_sr));
-  assert_false(util::is_hex_string("000"_sr));
-  assert_false(util::is_hex_string("XX"_sr));
+  assert_true(util::is_hex_string(""sv));
+  assert_true(util::is_hex_string("0123456789abcdef"sv));
+  assert_true(util::is_hex_string("0123456789ABCDEF"sv));
+  assert_false(util::is_hex_string("000"sv));
+  assert_false(util::is_hex_string("XX"sv));
 }
 
 void test_util_decode_hex(void) {
   BlockAllocator balloc(4096, 4096);
 
   assert_stdsv_equal("\x0f\xf0"sv,
-                     as_string_view(util::decode_hex(balloc, "0ff0"_sr)));
-  assert_stdsv_equal(""sv,
-                     as_string_view(util::decode_hex(balloc, StringRef{})));
+                     as_string_view(util::decode_hex(balloc, "0ff0"sv)));
+  assert_stdsv_equal(""sv, as_string_view(util::decode_hex(balloc, ""sv)));
 }
 
 void test_util_extract_host(void) {
-  assert_stdsv_equal("foo"sv, util::extract_host("foo"_sr));
-  assert_stdsv_equal("foo"sv, util::extract_host("foo:"_sr));
-  assert_stdsv_equal("foo"sv, util::extract_host("foo:0"_sr));
-  assert_stdsv_equal("[::1]"sv, util::extract_host("[::1]"_sr));
-  assert_stdsv_equal("[::1]"sv, util::extract_host("[::1]:"_sr));
+  assert_stdsv_equal("foo"sv, util::extract_host("foo"sv));
+  assert_stdsv_equal("foo"sv, util::extract_host("foo:"sv));
+  assert_stdsv_equal("foo"sv, util::extract_host("foo:0"sv));
+  assert_stdsv_equal("[::1]"sv, util::extract_host("[::1]"sv));
+  assert_stdsv_equal("[::1]"sv, util::extract_host("[::1]:"sv));
 
-  assert_true(util::extract_host(":foo"_sr).empty());
-  assert_true(util::extract_host("[::1"_sr).empty());
-  assert_true(util::extract_host("[::1]0"_sr).empty());
-  assert_true(util::extract_host(StringRef{}).empty());
+  assert_true(util::extract_host(":foo"sv).empty());
+  assert_true(util::extract_host("[::1"sv).empty());
+  assert_true(util::extract_host("[::1]0"sv).empty());
+  assert_true(util::extract_host(""sv).empty());
 }
 
 void test_util_split_hostport(void) {
-  assert_true(std::make_pair("foo"_sr, StringRef{}) ==
-              util::split_hostport("foo"_sr));
-  assert_true(std::make_pair("foo"_sr, "80"_sr) ==
-              util::split_hostport("foo:80"_sr));
-  assert_true(std::make_pair("::1"_sr, "80"_sr) ==
-              util::split_hostport("[::1]:80"_sr));
-  assert_true(std::make_pair("::1"_sr, StringRef{}) ==
-              util::split_hostport("[::1]"_sr));
+  assert_true(std::make_pair("foo"sv, ""sv) == util::split_hostport("foo"sv));
+  assert_true(std::make_pair("foo"sv, "80"sv) ==
+              util::split_hostport("foo:80"sv));
+  assert_true(std::make_pair("::1"sv, "80"sv) ==
+              util::split_hostport("[::1]:80"sv));
+  assert_true(std::make_pair("::1"sv, ""sv) == util::split_hostport("[::1]"sv));
 
-  assert_true(std::make_pair(StringRef{}, StringRef{}) ==
-              util::split_hostport(StringRef{}));
-  assert_true(std::make_pair(StringRef{}, StringRef{}) ==
-              util::split_hostport("[::1]:"_sr));
-  assert_true(std::make_pair(StringRef{}, StringRef{}) ==
-              util::split_hostport("foo:"_sr));
-  assert_true(std::make_pair(StringRef{}, StringRef{}) ==
-              util::split_hostport("[::1:"_sr));
-  assert_true(std::make_pair(StringRef{}, StringRef{}) ==
-              util::split_hostport("[::1]80"_sr));
+  assert_true(std::make_pair(""sv, ""sv) == util::split_hostport(""sv));
+  assert_true(std::make_pair(""sv, ""sv) == util::split_hostport("[::1]:"sv));
+  assert_true(std::make_pair(""sv, ""sv) == util::split_hostport("foo:"sv));
+  assert_true(std::make_pair(""sv, ""sv) == util::split_hostport("[::1:"sv));
+  assert_true(std::make_pair(""sv, ""sv) == util::split_hostport("[::1]80"sv));
 }
 
 void test_util_split_str(void) {
-  assert_true(std::vector<StringRef>{""_sr} == util::split_str(""_sr, ','));
-  assert_true(std::vector<StringRef>{"alpha"_sr} ==
-              util::split_str("alpha"_sr, ','));
-  assert_true((std::vector<StringRef>{"alpha"_sr, ""_sr}) ==
-              util::split_str("alpha,"_sr, ','));
-  assert_true((std::vector<StringRef>{"alpha"_sr, "bravo"_sr}) ==
-              util::split_str("alpha,bravo"_sr, ','));
-  assert_true((std::vector<StringRef>{"alpha"_sr, "bravo"_sr, "charlie"_sr}) ==
-              util::split_str("alpha,bravo,charlie"_sr, ','));
-  assert_true((std::vector<StringRef>{"alpha"_sr, "bravo"_sr, "charlie"_sr}) ==
-              util::split_str("alpha,bravo,charlie"_sr, ',', 0));
-  assert_true(std::vector<StringRef>{""_sr} == util::split_str(""_sr, ',', 1));
-  assert_true(std::vector<StringRef>{""_sr} == util::split_str(""_sr, ',', 2));
-  assert_true((std::vector<StringRef>{"alpha"_sr, "bravo,charlie"_sr}) ==
-              util::split_str("alpha,bravo,charlie"_sr, ',', 2));
-  assert_true(std::vector<StringRef>{"alpha"_sr} ==
-              util::split_str("alpha"_sr, ',', 2));
-  assert_true((std::vector<StringRef>{"alpha"_sr, ""_sr}) ==
-              util::split_str("alpha,"_sr, ',', 2));
-  assert_true(std::vector<StringRef>{"alpha"_sr} ==
-              util::split_str("alpha"_sr, ',', 0));
-  assert_true(std::vector<StringRef>{"alpha,bravo,charlie"_sr} ==
-              util::split_str("alpha,bravo,charlie"_sr, ',', 1));
+  assert_true(std::vector<std::string_view>{""sv} ==
+              util::split_str(""sv, ','));
+  assert_true(std::vector<std::string_view>{"alpha"sv} ==
+              util::split_str("alpha"sv, ','));
+  assert_true((std::vector<std::string_view>{"alpha"sv, ""sv}) ==
+              util::split_str("alpha,"sv, ','));
+  assert_true((std::vector<std::string_view>{"alpha"sv, "bravo"sv}) ==
+              util::split_str("alpha,bravo"sv, ','));
+  assert_true(
+    (std::vector<std::string_view>{"alpha"sv, "bravo"sv, "charlie"sv}) ==
+    util::split_str("alpha,bravo,charlie"sv, ','));
+  assert_true(
+    (std::vector<std::string_view>{"alpha"sv, "bravo"sv, "charlie"sv}) ==
+    util::split_str("alpha,bravo,charlie"sv, ',', 0));
+  assert_true(std::vector<std::string_view>{""sv} ==
+              util::split_str(""sv, ',', 1));
+  assert_true(std::vector<std::string_view>{""sv} ==
+              util::split_str(""sv, ',', 2));
+  assert_true((std::vector<std::string_view>{"alpha"sv, "bravo,charlie"sv}) ==
+              util::split_str("alpha,bravo,charlie"sv, ',', 2));
+  assert_true(std::vector<std::string_view>{"alpha"sv} ==
+              util::split_str("alpha"sv, ',', 2));
+  assert_true((std::vector<std::string_view>{"alpha"sv, ""sv}) ==
+              util::split_str("alpha,"sv, ',', 2));
+  assert_true(std::vector<std::string_view>{"alpha"sv} ==
+              util::split_str("alpha"sv, ',', 0));
+  assert_true(std::vector<std::string_view>{"alpha,bravo,charlie"sv} ==
+              util::split_str("alpha,bravo,charlie"sv, ',', 1));
 }
 
 void test_util_rstrip(void) {
   BlockAllocator balloc(4096, 4096);
 
-  assert_stdsv_equal("alpha"sv, util::rstrip(balloc, "alpha"_sr));
-  assert_stdsv_equal("alpha"sv, util::rstrip(balloc, "alpha "_sr));
-  assert_stdsv_equal("alpha"sv, util::rstrip(balloc, "alpha \t"_sr));
-  assert_stdsv_equal(""sv, util::rstrip(balloc, ""_sr));
-  assert_stdsv_equal(""sv, util::rstrip(balloc, "\t\t\t   "_sr));
+  assert_stdsv_equal("alpha"sv, util::rstrip(balloc, "alpha"sv));
+  assert_stdsv_equal("alpha"sv, util::rstrip(balloc, "alpha "sv));
+  assert_stdsv_equal("alpha"sv, util::rstrip(balloc, "alpha \t"sv));
+  assert_stdsv_equal(""sv, util::rstrip(balloc, ""sv));
+  assert_stdsv_equal(""sv, util::rstrip(balloc, "\t\t\t   "sv));
 }
 
 void test_util_contains(void) {

@@ -70,137 +70,137 @@ void test_shrpx_worker_match_downstream_addr_group(void) {
 
   for (size_t i = 0; i < groups.size(); ++i) {
     auto &g = groups[i];
-    router.add_route(StringRef{g->pattern}, i);
+    router.add_route(std::string_view{g->pattern.begin(), g->pattern.end()}, i);
   }
 
   assert_size(0, ==,
-              match_downstream_addr_group(routerconf, "nghttp2.org"_sr, "/"_sr,
+              match_downstream_addr_group(routerconf, "nghttp2.org"sv, "/"sv,
                                           groups, 255, balloc));
 
   // port is removed
   assert_size(0, ==,
-              match_downstream_addr_group(routerconf, "nghttp2.org:8080"_sr,
-                                          "/"_sr, groups, 255, balloc));
+              match_downstream_addr_group(routerconf, "nghttp2.org:8080"sv,
+                                          "/"sv, groups, 255, balloc));
 
   // host is case-insensitive
   assert_size(4, ==,
-              match_downstream_addr_group(routerconf, "WWW.nghttp2.org"_sr,
-                                          "/alpha"_sr, groups, 255, balloc));
+              match_downstream_addr_group(routerconf, "WWW.nghttp2.org"sv,
+                                          "/alpha"sv, groups, 255, balloc));
 
   assert_size(1, ==,
-              match_downstream_addr_group(routerconf, "nghttp2.org"_sr,
-                                          "/alpha/bravo/"_sr, groups, 255,
+              match_downstream_addr_group(routerconf, "nghttp2.org"sv,
+                                          "/alpha/bravo/"sv, groups, 255,
                                           balloc));
 
   // /alpha/bravo also matches /alpha/bravo/
   assert_size(1, ==,
-              match_downstream_addr_group(routerconf, "nghttp2.org"_sr,
-                                          "/alpha/bravo"_sr, groups, 255,
+              match_downstream_addr_group(routerconf, "nghttp2.org"sv,
+                                          "/alpha/bravo"sv, groups, 255,
                                           balloc));
 
   // path part is case-sensitive
   assert_size(0, ==,
-              match_downstream_addr_group(routerconf, "nghttp2.org"_sr,
-                                          "/Alpha/bravo"_sr, groups, 255,
+              match_downstream_addr_group(routerconf, "nghttp2.org"sv,
+                                          "/Alpha/bravo"sv, groups, 255,
                                           balloc));
 
   assert_size(1, ==,
-              match_downstream_addr_group(routerconf, "nghttp2.org"_sr,
-                                          "/alpha/bravo/charlie"_sr, groups,
-                                          255, balloc));
+              match_downstream_addr_group(routerconf, "nghttp2.org"sv,
+                                          "/alpha/bravo/charlie"sv, groups, 255,
+                                          balloc));
 
   assert_size(2, ==,
-              match_downstream_addr_group(routerconf, "nghttp2.org"_sr,
-                                          "/alpha/charlie"_sr, groups, 255,
+              match_downstream_addr_group(routerconf, "nghttp2.org"sv,
+                                          "/alpha/charlie"sv, groups, 255,
                                           balloc));
 
   // pattern which does not end with '/' must match its entirely.  So
   // this matches to group 0, not group 2.
   assert_size(0, ==,
-              match_downstream_addr_group(routerconf, "nghttp2.org"_sr,
-                                          "/alpha/charlie/"_sr, groups, 255,
+              match_downstream_addr_group(routerconf, "nghttp2.org"sv,
+                                          "/alpha/charlie/"sv, groups, 255,
                                           balloc));
 
   assert_size(255, ==,
-              match_downstream_addr_group(routerconf, "example.org"_sr, "/"_sr,
+              match_downstream_addr_group(routerconf, "example.org"sv, "/"sv,
                                           groups, 255, balloc));
 
+  assert_size(
+    255, ==,
+    match_downstream_addr_group(routerconf, ""sv, "/"sv, groups, 255, balloc));
+
   assert_size(255, ==,
-              match_downstream_addr_group(routerconf, ""_sr, "/"_sr, groups,
+              match_downstream_addr_group(routerconf, ""sv, "alpha"sv, groups,
                                           255, balloc));
 
   assert_size(255, ==,
-              match_downstream_addr_group(routerconf, ""_sr, "alpha"_sr, groups,
-                                          255, balloc));
-
-  assert_size(255, ==,
-              match_downstream_addr_group(routerconf, "foo/bar"_sr, "/"_sr,
+              match_downstream_addr_group(routerconf, "foo/bar"sv, "/"sv,
                                           groups, 255, balloc));
 
   // If path is "*", only match with host + "/").
   assert_size(0, ==,
-              match_downstream_addr_group(routerconf, "nghttp2.org"_sr, "*"_sr,
+              match_downstream_addr_group(routerconf, "nghttp2.org"sv, "*"sv,
                                           groups, 255, balloc));
 
   assert_size(5, ==,
-              match_downstream_addr_group(routerconf, "[::1]"_sr, "/"_sr,
-                                          groups, 255, balloc));
+              match_downstream_addr_group(routerconf, "[::1]"sv, "/"sv, groups,
+                                          255, balloc));
   assert_size(5, ==,
-              match_downstream_addr_group(routerconf, "[::1]:8080"_sr, "/"_sr,
+              match_downstream_addr_group(routerconf, "[::1]:8080"sv, "/"sv,
                                           groups, 255, balloc));
   assert_size(255, ==,
-              match_downstream_addr_group(routerconf, "[::1"_sr, "/"_sr, groups,
+              match_downstream_addr_group(routerconf, "[::1"sv, "/"sv, groups,
                                           255, balloc));
   assert_size(255, ==,
-              match_downstream_addr_group(routerconf, "[::1]8000"_sr, "/"_sr,
+              match_downstream_addr_group(routerconf, "[::1]8000"sv, "/"sv,
                                           groups, 255, balloc));
 
   // Check the case where adding route extends tree
   assert_size(6, ==,
-              match_downstream_addr_group(routerconf, "nghttp2.org"_sr,
-                                          "/alpha/bravo/delta"_sr, groups, 255,
+              match_downstream_addr_group(routerconf, "nghttp2.org"sv,
+                                          "/alpha/bravo/delta"sv, groups, 255,
                                           balloc));
 
   assert_size(1, ==,
-              match_downstream_addr_group(routerconf, "nghttp2.org"_sr,
-                                          "/alpha/bravo/delta/"_sr, groups, 255,
+              match_downstream_addr_group(routerconf, "nghttp2.org"sv,
+                                          "/alpha/bravo/delta/"sv, groups, 255,
                                           balloc));
 
   // Check the case where query is done in a single node
   assert_size(7, ==,
-              match_downstream_addr_group(routerconf, "example.com"_sr,
-                                          "/alpha/bravo"_sr, groups, 255,
+              match_downstream_addr_group(routerconf, "example.com"sv,
+                                          "/alpha/bravo"sv, groups, 255,
                                           balloc));
 
   assert_size(255, ==,
-              match_downstream_addr_group(routerconf, "example.com"_sr,
-                                          "/alpha/bravo/"_sr, groups, 255,
+              match_downstream_addr_group(routerconf, "example.com"sv,
+                                          "/alpha/bravo/"sv, groups, 255,
                                           balloc));
 
   assert_size(255, ==,
-              match_downstream_addr_group(routerconf, "example.com"_sr,
-                                          "/alpha"_sr, groups, 255, balloc));
+              match_downstream_addr_group(routerconf, "example.com"sv,
+                                          "/alpha"sv, groups, 255, balloc));
 
   // Check the case where quey is done in a single node
   assert_size(8, ==,
-              match_downstream_addr_group(routerconf, "192.168.0.1"_sr,
-                                          "/alpha"_sr, groups, 255, balloc));
+              match_downstream_addr_group(routerconf, "192.168.0.1"sv,
+                                          "/alpha"sv, groups, 255, balloc));
 
   assert_size(8, ==,
-              match_downstream_addr_group(routerconf, "192.168.0.1"_sr,
-                                          "/alpha/"_sr, groups, 255, balloc));
+              match_downstream_addr_group(routerconf, "192.168.0.1"sv,
+                                          "/alpha/"sv, groups, 255, balloc));
 
   assert_size(8, ==,
-              match_downstream_addr_group(routerconf, "192.168.0.1"_sr,
-                                          "/alpha/bravo"_sr, groups, 255,
+              match_downstream_addr_group(routerconf, "192.168.0.1"sv,
+                                          "/alpha/bravo"sv, groups, 255,
                                           balloc));
 
   assert_size(255, ==,
-              match_downstream_addr_group(routerconf, "192.168.0.1"_sr,
-                                          "/alph"_sr, groups, 255, balloc));
+              match_downstream_addr_group(routerconf, "192.168.0.1"sv,
+                                          "/alph"sv, groups, 255, balloc));
 
   assert_size(255, ==,
-              match_downstream_addr_group(routerconf, "192.168.0.1"_sr, "/"_sr,
+              match_downstream_addr_group(routerconf, "192.168.0.1"sv, "/"sv,
                                           groups, 255, balloc));
 
   // Test for wildcard hosts
@@ -216,47 +216,47 @@ void test_shrpx_worker_match_downstream_addr_group(void) {
   g3->pattern = ".local"_is;
   groups.push_back(std::move(g3));
 
-  wp.emplace_back("git.nghttp2.org"_sr);
-  wcrouter.add_route("gro.2ptthgn.tig"_sr, 0);
-  wp.back().router.add_route("/echo/"_sr, 10);
+  wp.emplace_back("git.nghttp2.org"sv);
+  wcrouter.add_route("gro.2ptthgn.tig"sv, 0);
+  wp.back().router.add_route("/echo/"sv, 10);
 
-  wp.emplace_back(".nghttp2.org"_sr);
-  wcrouter.add_route("gro.2ptthgn."_sr, 1);
-  wp.back().router.add_route("/echo/"_sr, 11);
-  wp.back().router.add_route("/echo/foxtrot"_sr, 12);
+  wp.emplace_back(".nghttp2.org"sv);
+  wcrouter.add_route("gro.2ptthgn."sv, 1);
+  wp.back().router.add_route("/echo/"sv, 11);
+  wp.back().router.add_route("/echo/foxtrot"sv, 12);
 
-  wp.emplace_back(".local"_sr);
-  wcrouter.add_route("lacol."_sr, 2);
-  wp.back().router.add_route("/"_sr, 13);
+  wp.emplace_back(".local"sv);
+  wcrouter.add_route("lacol."sv, 2);
+  wp.back().router.add_route("/"sv, 13);
 
   assert_size(11, ==,
-              match_downstream_addr_group(routerconf, "git.nghttp2.org"_sr,
-                                          "/echo"_sr, groups, 255, balloc));
+              match_downstream_addr_group(routerconf, "git.nghttp2.org"sv,
+                                          "/echo"sv, groups, 255, balloc));
 
   assert_size(10, ==,
-              match_downstream_addr_group(routerconf, "0git.nghttp2.org"_sr,
-                                          "/echo"_sr, groups, 255, balloc));
+              match_downstream_addr_group(routerconf, "0git.nghttp2.org"sv,
+                                          "/echo"sv, groups, 255, balloc));
 
   assert_size(11, ==,
-              match_downstream_addr_group(routerconf, "it.nghttp2.org"_sr,
-                                          "/echo"_sr, groups, 255, balloc));
+              match_downstream_addr_group(routerconf, "it.nghttp2.org"sv,
+                                          "/echo"sv, groups, 255, balloc));
 
   assert_size(255, ==,
-              match_downstream_addr_group(routerconf, ".nghttp2.org"_sr,
-                                          "/echo/foxtrot"_sr, groups, 255,
+              match_downstream_addr_group(routerconf, ".nghttp2.org"sv,
+                                          "/echo/foxtrot"sv, groups, 255,
                                           balloc));
 
   assert_size(9, ==,
-              match_downstream_addr_group(routerconf, "alpha.nghttp2.org"_sr,
-                                          "/golf"_sr, groups, 255, balloc));
+              match_downstream_addr_group(routerconf, "alpha.nghttp2.org"sv,
+                                          "/golf"sv, groups, 255, balloc));
 
   assert_size(0, ==,
-              match_downstream_addr_group(routerconf, "nghttp2.org"_sr,
-                                          "/echo"_sr, groups, 255, balloc));
+              match_downstream_addr_group(routerconf, "nghttp2.org"sv,
+                                          "/echo"sv, groups, 255, balloc));
 
   assert_size(13, ==,
-              match_downstream_addr_group(routerconf, "test.local"_sr,
-                                          StringRef{}, groups, 255, balloc));
+              match_downstream_addr_group(routerconf, "test.local"sv, ""sv,
+                                          groups, 255, balloc));
 }
 
 } // namespace shrpx

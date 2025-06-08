@@ -77,7 +77,8 @@ public:
   virtual int send_reply(Downstream *downstream, const uint8_t *body,
                          size_t bodylen);
 
-  virtual int initiate_push(Downstream *downstream, const StringRef &uri);
+  virtual int initiate_push(Downstream *downstream,
+                            const std::string_view &uri);
 
   virtual int response_riovec(struct iovec *iov, int iovcnt) const;
   virtual void response_drain(size_t n);
@@ -149,7 +150,7 @@ public:
                   const std::span<const uint8_t> data, size_t gso_size);
 
   void qlog_write(const void *data, size_t datalen, bool fin);
-  int open_qlog_file(const StringRef &dir, const ngtcp2_cid &scid) const;
+  int open_qlog_file(const std::string_view &dir, const ngtcp2_cid &scid) const;
 
   void on_send_blocked(const ngtcp2_path &path, const ngtcp2_pkt_info &pi,
                        std::span<const uint8_t> data, size_t gso_size);

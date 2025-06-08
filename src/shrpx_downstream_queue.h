@@ -66,7 +66,7 @@ public:
     size_t num_active;
   };
 
-  using HostEntryMap = std::unordered_map<StringRef, HostEntry>;
+  using HostEntryMap = std::unordered_map<std::string_view, HostEntry>;
 
   // conn_max_per_host == 0 means no limit for downstream connection.
   DownstreamQueue(size_t conn_max_per_host = 0, bool unified_host = true);
@@ -85,7 +85,7 @@ public:
   void mark_blocked(Downstream *downstream);
   // Returns true if we can make downstream connection to given
   // |host|.
-  bool can_activate(const StringRef &host) const;
+  bool can_activate(const std::string_view &host) const;
   // Removes and frees |downstream| object.  If |downstream| is in
   // DispatchState::ACTIVE, and |next_blocked| is true, this function
   // may return Downstream object with the same target host in
@@ -94,9 +94,9 @@ public:
   Downstream *remove_and_get_blocked(Downstream *downstream,
                                      bool next_blocked = true);
   Downstream *get_downstreams() const;
-  HostEntry &find_host_entry(const StringRef &host);
-  StringRef make_host_key(const StringRef &host) const;
-  StringRef make_host_key(Downstream *downstream) const;
+  HostEntry &find_host_entry(const std::string_view &host);
+  std::string_view make_host_key(const std::string_view &host) const;
+  std::string_view make_host_key(Downstream *downstream) const;
 
 private:
   // Per target host structure to keep track of the number of
