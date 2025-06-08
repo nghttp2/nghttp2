@@ -379,7 +379,9 @@ mrb_value env_get_tls_protocol(mrb_state *mrb, mrb_value self) {
     return mrb_str_new_static(mrb, "", 0);
   }
 
-  return mrb_str_new_cstr(mrb, nghttp2::tls::get_tls_protocol(ssl));
+  auto proto = nghttp2::tls::get_tls_protocol(ssl);
+
+  return mrb_str_new(mrb, proto.data(), static_cast<mrb_int>(proto.size()));
 }
 } // namespace
 
