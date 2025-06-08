@@ -699,7 +699,7 @@ void show_candidates(const char *unkopt, const option *options) {
     return;
   }
   int prefix_match = 0;
-  auto cands = std::vector<std::pair<uint32_t, const char *>>();
+  auto cands = std::vector<std::pair<uint32_t, std::string_view>>();
   for (size_t i = 0; options[i].name != nullptr; ++i) {
     auto opt = std::string_view{options[i].name};
     auto unk = std::string_view{unkopt, static_cast<size_t>(unkoptlen)};
@@ -711,7 +711,7 @@ void show_candidates(const char *unkopt, const option *options) {
         return;
       }
       ++prefix_match;
-      cands.emplace_back(0, opt.data());
+      cands.emplace_back(0, opt);
       continue;
     }
     // Use cost 0 for suffix match, but match at least 3 characters
