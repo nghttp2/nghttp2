@@ -169,9 +169,12 @@ int htp_hdr_keycb(llhttp_t *htp, const char *data, size_t len) {
     llhttp_set_error_reason(htp, "too large header");
     return HPE_USER;
   }
+
+  auto name = StringRef{data, len};
+
   if (downstream->get_request_state() == DownstreamState::INITIAL) {
     if (req.fs.header_key_prev()) {
-      req.fs.append_last_header_key(data, len);
+      req.fs.append_last_header_key(name);
     } else {
       if (req.fs.num_fields() >= httpconf.max_request_header_fields) {
         if (LOG_ENABLED(INFO)) {
@@ -183,12 +186,12 @@ int htp_hdr_keycb(llhttp_t *htp, const char *data, size_t len) {
         llhttp_set_error_reason(htp, "too many headers");
         return HPE_USER;
       }
-      req.fs.alloc_add_header_name(StringRef{data, len});
+      req.fs.alloc_add_header_name(name);
     }
   } else {
     // trailer part
     if (req.fs.trailer_key_prev()) {
-      req.fs.append_last_trailer_key(data, len);
+      req.fs.append_last_trailer_key(name);
     } else {
       if (req.fs.num_fields() >= httpconf.max_request_header_fields) {
         if (LOG_ENABLED(INFO)) {
@@ -198,7 +201,7 @@ int htp_hdr_keycb(llhttp_t *htp, const char *data, size_t len) {
         llhttp_set_error_reason(htp, "too many headers");
         return HPE_USER;
       }
-      req.fs.alloc_add_trailer_name(StringRef{data, len});
+      req.fs.alloc_add_trailer_name(name);
     }
   }
   return 0;
@@ -224,10 +227,13 @@ int htp_hdr_valcb(llhttp_t *htp, const char *data, size_t len) {
     llhttp_set_error_reason(htp, "too large header");
     return HPE_USER;
   }
+
+  auto value = StringRef{data, len};
+
   if (downstream->get_request_state() == DownstreamState::INITIAL) {
-    req.fs.append_last_header_value(data, len);
+    req.fs.append_last_header_value(value);
   } else {
-    req.fs.append_last_trailer_value(data, len);
+    req.fs.append_last_trailer_value(value);
   }
   return 0;
 }

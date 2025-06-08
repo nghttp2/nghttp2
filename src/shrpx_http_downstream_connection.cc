@@ -1100,19 +1100,21 @@ int htp_hdr_keycb(llhttp_t *htp, const char *data, size_t len) {
     return -1;
   }
 
+  auto name = StringRef{data, len};
+
   if (downstream->get_response_state() == DownstreamState::INITIAL) {
     if (resp.fs.header_key_prev()) {
-      resp.fs.append_last_header_key(data, len);
+      resp.fs.append_last_header_key(name);
     } else {
       if (ensure_max_header_fields(downstream, httpconf) != 0) {
         return -1;
       }
-      resp.fs.alloc_add_header_name(StringRef{data, len});
+      resp.fs.alloc_add_header_name(name);
     }
   } else {
     // trailer part
     if (resp.fs.trailer_key_prev()) {
-      resp.fs.append_last_trailer_key(data, len);
+      resp.fs.append_last_trailer_key(name);
     } else {
       if (ensure_max_header_fields(downstream, httpconf) != 0) {
         // Could not ignore this trailer field easily, since we may
@@ -1120,7 +1122,7 @@ int htp_hdr_keycb(llhttp_t *htp, const char *data, size_t len) {
         // wrong place or crash if trailer fields are currently empty.
         return -1;
       }
-      resp.fs.alloc_add_trailer_name(StringRef{data, len});
+      resp.fs.alloc_add_trailer_name(name);
     }
   }
   return 0;
@@ -1137,10 +1139,12 @@ int htp_hdr_valcb(llhttp_t *htp, const char *data, size_t len) {
     return -1;
   }
 
+  auto value = StringRef{data, len};
+
   if (downstream->get_response_state() == DownstreamState::INITIAL) {
-    resp.fs.append_last_header_value(data, len);
+    resp.fs.append_last_header_value(value);
   } else {
-    resp.fs.append_last_trailer_value(data, len);
+    resp.fs.append_last_trailer_value(value);
   }
   return 0;
 }

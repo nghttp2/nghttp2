@@ -486,13 +486,12 @@ StringRef alloc_header_name(BlockAllocator &balloc, const StringRef &name) {
 
 namespace {
 void append_last_header_key(BlockAllocator &balloc, bool &key_prev, size_t &sum,
-                            HeaderRefs &headers, const char *data, size_t len) {
+                            HeaderRefs &headers, const StringRef &data) {
   assert(key_prev);
-  sum += len;
+  sum += data.size();
   auto &item = headers.back();
   auto name = realloc_concat_string_ref(
-    balloc, item.name,
-    std::views::transform(StringRef{data, len}, util::lowcase));
+    balloc, item.name, std::views::transform(data, util::lowcase));
 
   item.name = name;
   item.token = http2::lookup_token(item.name);
@@ -502,12 +501,11 @@ void append_last_header_key(BlockAllocator &balloc, bool &key_prev, size_t &sum,
 namespace {
 void append_last_header_value(BlockAllocator &balloc, bool &key_prev,
                               size_t &sum, HeaderRefs &headers,
-                              const char *data, size_t len) {
+                              const StringRef &data) {
   key_prev = false;
-  sum += len;
+  sum += data.size();
   auto &item = headers.back();
-  item.value =
-    realloc_concat_string_ref(balloc, item.value, StringRef{data, len});
+  item.value = realloc_concat_string_ref(balloc, item.value, data);
 }
 } // namespace
 
@@ -567,14 +565,14 @@ void FieldStore::alloc_add_header_name(const StringRef &name) {
   header_key_prev_ = true;
 }
 
-void FieldStore::append_last_header_key(const char *data, size_t len) {
+void FieldStore::append_last_header_key(const StringRef &data) {
   shrpx::append_last_header_key(balloc_, header_key_prev_, buffer_size_,
-                                headers_, data, len);
+                                headers_, data);
 }
 
-void FieldStore::append_last_header_value(const char *data, size_t len) {
+void FieldStore::append_last_header_value(const StringRef &data) {
   shrpx::append_last_header_value(balloc_, header_key_prev_, buffer_size_,
-                                  headers_, data, len);
+                                  headers_, data);
 }
 
 void FieldStore::clear_headers() {
@@ -597,14 +595,14 @@ void FieldStore::alloc_add_trailer_name(const StringRef &name) {
   trailer_key_prev_ = true;
 }
 
-void FieldStore::append_last_trailer_key(const char *data, size_t len) {
+void FieldStore::append_last_trailer_key(const StringRef &data) {
   shrpx::append_last_header_key(balloc_, trailer_key_prev_, buffer_size_,
-                                trailers_, data, len);
+                                trailers_, data);
 }
 
-void FieldStore::append_last_trailer_value(const char *data, size_t len) {
+void FieldStore::append_last_trailer_value(const StringRef &data) {
   shrpx::append_last_header_value(balloc_, trailer_key_prev_, buffer_size_,
-                                  trailers_, data, len);
+                                  trailers_, data);
 }
 
 void FieldStore::erase_content_length_and_transfer_encoding() {
