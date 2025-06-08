@@ -58,17 +58,17 @@ using namespace nghttp2;
 namespace shrpx {
 
 namespace {
-constexpr StringRef SEVERITY_STR[] = {"INFO"_sr, "NOTICE"_sr, "WARN"_sr,
-                                      "ERROR"_sr, "FATAL"_sr};
+constexpr std::string_view SEVERITY_STR[] = {"INFO"sv, "NOTICE"sv, "WARN"sv,
+                                             "ERROR"sv, "FATAL"sv};
 } // namespace
 
 namespace {
-constexpr StringRef SEVERITY_COLOR[] = {
-  "\033[1;32m"_sr, // INFO
-  "\033[1;36m"_sr, // NOTICE
-  "\033[1;33m"_sr, // WARN
-  "\033[1;31m"_sr, // ERROR
-  "\033[1;35m"_sr, // FATAL
+constexpr std::string_view SEVERITY_COLOR[] = {
+  "\033[1;32m"sv, // INFO
+  "\033[1;36m"sv, // NOTICE
+  "\033[1;33m"sv, // WARN
+  "\033[1;31m"sv, // ERROR
+  "\033[1;35m"sv, // FATAL
 };
 } // namespace
 
@@ -114,7 +114,7 @@ int Log::severity_thres_ = NOTICE;
 
 void Log::set_severity_level(int severity) { severity_thres_ = severity; }
 
-int Log::get_severity_level_by_name(const StringRef &name) {
+int Log::get_severity_level_by_name(const std::string_view &name) {
   for (size_t i = 0, max = array_size(SEVERITY_STR); i < max; ++i) {
     if (name == SEVERITY_STR[i]) {
       return static_cast<int>(i);
@@ -248,11 +248,6 @@ Log &Log::operator<<(const std::string &s) {
 }
 
 Log &Log::operator<<(const std::string_view &s) {
-  write_seq(s);
-  return *this;
-}
-
-Log &Log::operator<<(const StringRef &s) {
   write_seq(s);
   return *this;
 }
@@ -444,7 +439,7 @@ constexpr uint8_t ESCAPE_TBL[] = {
 } // namespace
 
 namespace {
-std::span<char> copy_escape(const StringRef &src, std::span<char> dest) {
+std::span<char> copy_escape(const std::string_view &src, std::span<char> dest) {
   auto safe_first = std::ranges::begin(src);
   for (auto p = safe_first; p != std::ranges::end(src) && !dest.empty(); ++p) {
     auto c = as_unsigned(*p);
@@ -484,8 +479,8 @@ namespace {
 // is mostly same routine found in
 // HttpDownstreamConnection::push_request_headers(), but vastly
 // simplified since we only care about absolute URI.
-StringRef construct_absolute_request_uri(BlockAllocator &balloc,
-                                         const Request &req) {
+std::string_view construct_absolute_request_uri(BlockAllocator &balloc,
+                                                const Request &req) {
   if (req.authority.empty()) {
     return req.path;
   }
@@ -512,7 +507,7 @@ StringRef construct_absolute_request_uri(BlockAllocator &balloc,
   p = std::ranges::copy(req.path, p).out;
   *p = '\0';
 
-  return as_string_ref(std::ranges::begin(iov), p);
+  return as_string_view(std::ranges::begin(iov), p);
 }
 } // namespace
 
@@ -537,16 +532,16 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
 
   auto downstream_addr = downstream->get_addr();
   auto method =
-    req.method == -1 ? "<unknown>"_sr : http2::to_method_string(req.method);
+    req.method == -1 ? "<unknown>"sv : http2::to_method_string(req.method);
   auto path = req.method == HTTP_CONNECT ? req.authority
               : config->http2_proxy
                 ? construct_absolute_request_uri(balloc, req)
-              : req.path.empty() ? req.method == HTTP_OPTIONS ? "*"_sr : "-"_sr
+              : req.path.empty() ? req.method == HTTP_OPTIONS ? "*"sv : "-"sv
                                  : req.path;
-  auto path_without_query =
-    req.method == HTTP_CONNECT
-      ? path
-      : StringRef{std::ranges::begin(path), std::ranges::find(path, '?')};
+  auto path_without_query = req.method == HTTP_CONNECT
+                              ? path
+                              : std::string_view{std::ranges::begin(path),
+                                                 std::ranges::find(path, '?')};
 
   auto p = std::span{buf}.first(buf.size() - 2);
 
@@ -568,7 +563,7 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
       p = copy(method, p);
       p = copy(' ', p);
       p = copy_escape(path, p);
-      p = copy(" HTTP/"_sr, p);
+      p = copy(" HTTP/"sv, p);
       p = copy(as_unsigned(req.http_major), p);
       if (req.http_major < 2) {
         p = copy('.', p);
@@ -585,7 +580,7 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
       p = copy_escape(path_without_query, p);
       break;
     case LogFragmentType::PROTOCOL_VERSION:
-      p = copy("HTTP/"_sr, p);
+      p = copy("HTTP/"sv, p);
       p = copy(as_unsigned(req.http_major), p);
       if (req.http_major < 2) {
         p = copy('.', p);
@@ -633,7 +628,7 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
       auto frac = t % 1000;
       if (frac < 100) {
         auto n = static_cast<size_t>(frac < 10 ? 2 : 1);
-        p = copy(StringRef{"000", n}, p);
+        p = copy(std::string_view{"000", n}, p);
       }
       p = copy(as_unsigned(frac), p);
       break;

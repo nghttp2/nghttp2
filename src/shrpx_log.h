@@ -111,7 +111,6 @@ public:
   Log &operator<<(const std::string &s);
   Log &operator<<(const std::string_view &s);
   Log &operator<<(const char *s);
-  Log &operator<<(const StringRef &s);
   Log &operator<<(const ImmutableString &s);
   template <std::signed_integral T> Log &operator<<(T n) {
     if (full_) {
@@ -203,7 +202,7 @@ public:
   static void set_severity_level(int severity);
   // Returns the severity level by |name|.  Returns -1 if |name| is
   // unknown.
-  static int get_severity_level_by_name(const StringRef &name);
+  static int get_severity_level_by_name(const std::string_view &name);
   static bool log_enabled(int severity) { return severity >= severity_thres_; }
 
   enum {
@@ -224,7 +223,7 @@ private:
   uint8_t *begin_;
   uint8_t *end_;
   uint8_t *last_;
-  StringRef filename_;
+  std::string_view filename_;
   uint32_t flags_;
   int severity_;
   int linenum_;
@@ -279,20 +278,20 @@ enum class LogFragmentType {
 };
 
 struct LogFragment {
-  LogFragment(LogFragmentType type, StringRef value = ""_sr)
+  LogFragment(LogFragmentType type, std::string_view value = ""sv)
     : type(type), value(std::move(value)) {}
   LogFragmentType type;
-  StringRef value;
+  std::string_view value;
 };
 
 struct LogSpec {
   Downstream *downstream;
-  StringRef remote_addr;
-  StringRef alpn;
-  StringRef sni;
+  std::string_view remote_addr;
+  std::string_view alpn;
+  std::string_view sni;
   SSL *ssl;
   std::chrono::high_resolution_clock::time_point request_end_time;
-  StringRef remote_port;
+  std::string_view remote_port;
   uint16_t server_port;
   pid_t pid;
 };

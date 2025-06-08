@@ -122,7 +122,8 @@ mrb_value response_mod_header(mrb_state *mrb, mrb_value self, bool repl) {
   key = mrb_funcall(mrb, key, "downcase", 0);
 
   auto keyref = make_string_ref(
-    balloc, StringRef{RSTRING_PTR(key), static_cast<size_t>(RSTRING_LEN(key))});
+    balloc,
+    std::string_view{RSTRING_PTR(key), static_cast<size_t>(RSTRING_LEN(key))});
 
   mrb_gc_arena_restore(mrb, ai);
 
@@ -154,17 +155,17 @@ mrb_value response_mod_header(mrb_state *mrb, mrb_value self, bool repl) {
 
       resp.fs.add_header_token(
         keyref,
-        make_string_ref(balloc,
-                        StringRef{RSTRING_PTR(value),
-                                  static_cast<size_t>(RSTRING_LEN(value))}),
+        make_string_ref(
+          balloc, std::string_view{RSTRING_PTR(value),
+                                   static_cast<size_t>(RSTRING_LEN(value))}),
         false, token);
     }
   } else if (mrb_string_p(values)) {
     resp.fs.add_header_token(
       keyref,
-      make_string_ref(balloc,
-                      StringRef{RSTRING_PTR(values),
-                                static_cast<size_t>(RSTRING_LEN(values))}),
+      make_string_ref(
+        balloc, std::string_view{RSTRING_PTR(values),
+                                 static_cast<size_t>(RSTRING_LEN(values))}),
       false, token);
   } else {
     mrb_raise(mrb, E_RUNTIME_ERROR, "value must be string");
@@ -245,7 +246,7 @@ mrb_value response_return(mrb_state *mrb, mrb_value self) {
     if (cl) {
       cl->value = content_length;
     } else {
-      resp.fs.add_header_token("content-length"_sr, content_length, false,
+      resp.fs.add_header_token("content-length"sv, content_length, false,
                                http2::HD_CONTENT_LENGTH);
     }
 
@@ -256,7 +257,7 @@ mrb_value response_return(mrb_state *mrb, mrb_value self) {
   if (!date) {
     auto lgconf = log_config();
     lgconf->update_tstamp(std::chrono::system_clock::now());
-    resp.fs.add_header_token("date"_sr,
+    resp.fs.add_header_token("date"sv,
                              make_string_ref(balloc, lgconf->tstamp->time_http),
                              false, http2::HD_DATE);
   }
@@ -313,9 +314,9 @@ mrb_value response_send_info(mrb_state *mrb, mrb_value self) {
 
     key = mrb_funcall(mrb, key, "downcase", 0);
 
-    auto keyref =
-      make_string_ref(balloc, StringRef{RSTRING_PTR(key),
-                                        static_cast<size_t>(RSTRING_LEN(key))});
+    auto keyref = make_string_ref(
+      balloc, std::string_view{RSTRING_PTR(key),
+                               static_cast<size_t>(RSTRING_LEN(key))});
 
     mrb_gc_arena_restore(mrb, ai);
 
@@ -331,17 +332,17 @@ mrb_value response_send_info(mrb_state *mrb, mrb_value self) {
 
         resp.fs.add_header_token(
           keyref,
-          make_string_ref(balloc,
-                          StringRef{RSTRING_PTR(value),
-                                    static_cast<size_t>(RSTRING_LEN(value))}),
+          make_string_ref(
+            balloc, std::string_view{RSTRING_PTR(value),
+                                     static_cast<size_t>(RSTRING_LEN(value))}),
           false, token);
       }
     } else if (mrb_string_p(values)) {
       resp.fs.add_header_token(
         keyref,
-        make_string_ref(balloc,
-                        StringRef{RSTRING_PTR(values),
-                                  static_cast<size_t>(RSTRING_LEN(values))}),
+        make_string_ref(
+          balloc, std::string_view{RSTRING_PTR(values),
+                                   static_cast<size_t>(RSTRING_LEN(values))}),
         false, token);
     } else {
       mrb_raise(mrb, E_RUNTIME_ERROR, "value must be string");

@@ -129,7 +129,7 @@ int verify_callback(int preverify_ok, X509_STORE_CTX *ctx) {
 } // namespace
 
 int set_alpn_prefs(std::vector<unsigned char> &out,
-                   const std::vector<StringRef> &protos) {
+                   const std::vector<std::string_view> &protos) {
   size_t len = 0;
 
   for (const auto &proto : protos) {
@@ -194,7 +194,7 @@ int servername_callback(SSL *ssl, int *al, void *arg) {
 
   auto end_buf = util::tolower(rawhost, rawhost + len, std::ranges::begin(buf));
 
-  auto hostname = StringRef{std::ranges::begin(buf), end_buf};
+  auto hostname = std::string_view{std::ranges::begin(buf), end_buf};
 
 #ifdef ENABLE_HTTP3
   auto cert_tree = conn->proto == Proto::HTTP3
@@ -503,9 +503,9 @@ namespace {
 int quic_alpn_select_proto_cb(SSL *ssl, const unsigned char **out,
                               unsigned char *outlen, const unsigned char *in,
                               unsigned int inlen, void *arg) {
-  constexpr StringRef alpnlist[] = {
-    "h3"_sr,
-    "h3-29"_sr,
+  constexpr std::string_view alpnlist[] = {
+    "h3"sv,
+    "h3-29"sv,
   };
 
   for (auto &alpn : alpnlist) {
@@ -598,7 +598,7 @@ unsigned int psk_server_cb(SSL *ssl, const char *identity, unsigned char *psk,
   auto config = get_config();
   auto &tlsconf = config->tls;
 
-  auto it = tlsconf.psk_secrets.find(StringRef{identity});
+  auto it = tlsconf.psk_secrets.find(std::string_view{identity});
   if (it == std::ranges::end(tlsconf.psk_secrets)) {
     return 0;
   }
@@ -730,17 +730,17 @@ int cert_decompress(SSL *ssl, CRYPTO_BUFFER **out, size_t uncompressed_len,
 #endif // NGHTTP2_OPENSSL_IS_BORINGSSL && HAVE_LIBBROTLI
 
 struct TLSProtocol {
-  StringRef name;
+  std::string_view name;
   nghttp2_ssl_op_type mask;
 };
 
 constexpr TLSProtocol TLS_PROTOS[] = {
-  TLSProtocol{"TLSv1.2"_sr, SSL_OP_NO_TLSv1_2},
-  TLSProtocol{"TLSv1.1"_sr, SSL_OP_NO_TLSv1_1},
-  TLSProtocol{"TLSv1.0"_sr, SSL_OP_NO_TLSv1}};
+  TLSProtocol{"TLSv1.2"sv, SSL_OP_NO_TLSv1_2},
+  TLSProtocol{"TLSv1.1"sv, SSL_OP_NO_TLSv1_1},
+  TLSProtocol{"TLSv1.0"sv, SSL_OP_NO_TLSv1}};
 
 nghttp2_ssl_op_type
-create_tls_proto_mask(const std::vector<StringRef> &tls_proto_list) {
+create_tls_proto_mask(const std::vector<std::string_view> &tls_proto_list) {
   nghttp2_ssl_op_type res = 0;
 
   for (auto &supported : TLS_PROTOS) {
@@ -1313,8 +1313,8 @@ SSL_CTX *create_ssl_client_context(
 #ifdef HAVE_NEVERBLEED
   neverbleed_t *nb,
 #endif // HAVE_NEVERBLEED
-  const StringRef &cacert, const StringRef &cert_file,
-  const StringRef &private_key_file) {
+  const std::string_view &cacert, const std::string_view &cert_file,
+  const std::string_view &private_key_file) {
   auto ssl_ctx = SSL_CTX_new(TLS_client_method());
   if (!ssl_ctx) {
     LOG(FATAL) << ERR_error_string(ERR_get_error(), nullptr);
@@ -1479,8 +1479,8 @@ ClientHandler *accept_connection(Worker *worker, int fd, sockaddr *addr,
   }
 
   auto handler =
-    new ClientHandler(worker, fd, ssl, StringRef{host.data()},
-                      StringRef{service.data()}, addr->sa_family, faddr);
+    new ClientHandler(worker, fd, ssl, std::string_view{host.data()},
+                      std::string_view{service.data()}, addr->sa_family, faddr);
 
   auto config = get_config();
   auto &fwdconf = config->http.forwarded;
@@ -1497,7 +1497,8 @@ ClientHandler *accept_connection(Worker *worker, int fd, sockaddr *addr,
   return handler;
 }
 
-bool tls_hostname_match(const StringRef &pattern, const StringRef &hostname) {
+bool tls_hostname_match(const std::string_view &pattern,
+                        const std::string_view &hostname) {
   auto ptWildcard = std::ranges::find(pattern, '*');
   if (ptWildcard == std::ranges::end(pattern)) {
     return util::strieq(pattern, hostname);
@@ -1511,7 +1512,7 @@ bool tls_hostname_match(const StringRef &pattern, const StringRef &hostname) {
   // character is embedded within an A-label.
   if (ptLeftLabelEnd == std::ranges::end(pattern) ||
       !util::contains(ptLeftLabelEnd + 1, std::ranges::end(pattern), '.') ||
-      ptLeftLabelEnd < ptWildcard || util::istarts_with(pattern, "xn--"_sr)) {
+      ptLeftLabelEnd < ptWildcard || util::istarts_with(pattern, "xn--"sv)) {
     wildcardEnabled = false;
   }
 
@@ -1521,8 +1522,9 @@ bool tls_hostname_match(const StringRef &pattern, const StringRef &hostname) {
 
   auto hnLeftLabelEnd = std::ranges::find(hostname, '.');
   if (hnLeftLabelEnd == std::ranges::end(hostname) ||
-      !util::strieq(StringRef{ptLeftLabelEnd, std::ranges::end(pattern)},
-                    StringRef{hnLeftLabelEnd, std::ranges::end(hostname)})) {
+      !util::strieq(
+        std::string_view{ptLeftLabelEnd, std::ranges::end(pattern)},
+        std::string_view{hnLeftLabelEnd, std::ranges::end(hostname)})) {
     return false;
   }
   // Perform wildcard match. Here '*' must match at least one
@@ -1532,21 +1534,21 @@ bool tls_hostname_match(const StringRef &pattern, const StringRef &hostname) {
     return false;
   }
   return util::istarts_with(
-           StringRef{std::ranges::begin(hostname), hnLeftLabelEnd},
-           StringRef{std::ranges::begin(pattern), ptWildcard}) &&
+           std::string_view{std::ranges::begin(hostname), hnLeftLabelEnd},
+           std::string_view{std::ranges::begin(pattern), ptWildcard}) &&
          util::iends_with(
-           StringRef{std::ranges::begin(hostname), hnLeftLabelEnd},
-           StringRef{ptWildcard + 1, ptLeftLabelEnd});
+           std::string_view{std::ranges::begin(hostname), hnLeftLabelEnd},
+           std::string_view{ptWildcard + 1, ptLeftLabelEnd});
 }
 
 namespace {
-// if return value is not empty, StringRef.c_str() must be freed using
-// OPENSSL_free().
-StringRef get_common_name(X509 *cert) {
+// if return value is not empty, std::string_view.data() must be freed
+// using OPENSSL_free().
+std::string_view get_common_name(X509 *cert) {
   auto subjectname = X509_get_subject_name(cert);
   if (!subjectname) {
     LOG(WARN) << "Could not get X509 name object from the certificate.";
-    return StringRef{};
+    return ""sv;
   }
   int lastpos = -1;
   for (;;) {
@@ -1571,13 +1573,13 @@ StringRef get_common_name(X509 *cert) {
       continue;
     }
 
-    return as_string_ref(p, static_cast<size_t>(plen));
+    return as_string_view(p, static_cast<size_t>(plen));
   }
-  return StringRef{};
+  return ""sv;
 }
 } // namespace
 
-int verify_numeric_hostname(X509 *cert, const StringRef &hostname,
+int verify_numeric_hostname(X509 *cert, const std::string_view &hostname,
                             const Address *addr) {
   const void *saddr;
   size_t saddrlen;
@@ -1640,7 +1642,7 @@ int verify_numeric_hostname(X509 *cert, const StringRef &hostname,
   return -1;
 }
 
-int verify_dns_hostname(X509 *cert, const StringRef &hostname) {
+int verify_dns_hostname(X509 *cert, const std::string_view &hostname) {
   auto altnames = static_cast<GENERAL_NAMES *>(
     X509_get_ext_d2i(cert, NID_subject_alt_name, nullptr, nullptr));
   if (altnames) {
@@ -1677,7 +1679,7 @@ int verify_dns_hostname(X509 *cert, const StringRef &hostname) {
 
       dns_found = true;
 
-      if (tls_hostname_match(as_string_ref(name, static_cast<size_t>(len)),
+      if (tls_hostname_match(as_string_view(name, static_cast<size_t>(len)),
                              hostname)) {
         return 0;
       }
@@ -1701,7 +1703,7 @@ int verify_dns_hostname(X509 *cert, const StringRef &hostname) {
 
       return -1;
     }
-    cn = StringRef{cn.data(), cn.size() - 1};
+    cn = std::string_view{cn.data(), cn.size() - 1};
   }
 
   auto rv = tls_hostname_match(cn, hostname);
@@ -1711,7 +1713,7 @@ int verify_dns_hostname(X509 *cert, const StringRef &hostname) {
 }
 
 namespace {
-int verify_hostname(X509 *cert, const StringRef &hostname,
+int verify_hostname(X509 *cert, const std::string_view &hostname,
                     const Address *addr) {
   if (util::numeric_host(hostname.data())) {
     return verify_numeric_hostname(cert, hostname, addr);
@@ -1721,7 +1723,7 @@ int verify_hostname(X509 *cert, const StringRef &hostname,
 }
 } // namespace
 
-int check_cert(SSL *ssl, const Address *addr, const StringRef &host) {
+int check_cert(SSL *ssl, const Address *addr, const std::string_view &host) {
 #if OPENSSL_3_0_0_API
   auto cert = SSL_get0_peer_certificate(ssl);
 #else  // !OPENSSL_3_0_0_API
@@ -1745,14 +1747,13 @@ int check_cert(SSL *ssl, const Address *addr, const StringRef &host) {
 }
 
 int check_cert(SSL *ssl, const DownstreamAddr *addr, const Address *raddr) {
-  auto hostname =
-    addr->sni.empty() ? StringRef{addr->host} : StringRef{addr->sni};
+  auto hostname = addr->sni.empty() ? addr->host : addr->sni;
   return check_cert(ssl, raddr, hostname);
 }
 
 CertLookupTree::CertLookupTree() {}
 
-ssize_t CertLookupTree::add_cert(const StringRef &hostname, size_t idx) {
+ssize_t CertLookupTree::add_cert(const std::string_view &hostname, size_t idx) {
   std::array<char, NI_MAXHOST> buf;
 
   // NI_MAXHOST includes terminal NULL byte
@@ -1763,11 +1764,12 @@ ssize_t CertLookupTree::add_cert(const StringRef &hostname, size_t idx) {
   auto wildcard_it = std::ranges::find(hostname, '*');
   if (wildcard_it != std::ranges::end(hostname) &&
       wildcard_it + 1 != std::ranges::end(hostname)) {
-    auto wildcard_prefix = StringRef{std::ranges::begin(hostname), wildcard_it};
+    auto wildcard_prefix =
+      std::string_view{std::ranges::begin(hostname), wildcard_it};
     auto wildcard_suffix =
-      StringRef{wildcard_it + 1, std::ranges::end(hostname)};
+      std::string_view{wildcard_it + 1, std::ranges::end(hostname)};
 
-    auto rev_suffix = StringRef{
+    auto rev_suffix = std::string_view{
       std::ranges::begin(buf),
       std::ranges::reverse_copy(wildcard_suffix, std::ranges::begin(buf)).out};
 
@@ -1785,7 +1787,7 @@ ssize_t CertLookupTree::add_cert(const StringRef &hostname, size_t idx) {
       wpat = &wildcard_patterns_.back();
     }
 
-    auto rev_prefix = StringRef{
+    auto rev_prefix = std::string_view{
       std::ranges::begin(buf),
       std::ranges::reverse_copy(wildcard_prefix, std::ranges::begin(buf)).out};
 
@@ -1803,7 +1805,7 @@ ssize_t CertLookupTree::add_cert(const StringRef &hostname, size_t idx) {
   return as_signed(router_.add_route(hostname, idx));
 }
 
-ssize_t CertLookupTree::lookup(const StringRef &hostname) {
+ssize_t CertLookupTree::lookup(const std::string_view &hostname) {
   std::array<char, NI_MAXHOST> buf;
 
   // NI_MAXHOST includes terminal NULL byte
@@ -1825,9 +1827,9 @@ ssize_t CertLookupTree::lookup(const StringRef &hostname) {
   size_t best_prefixlen = 0;
   const RNode *last_node = nullptr;
 
-  auto rev_host =
-    StringRef{std::ranges::begin(buf),
-              std::ranges::reverse_copy(hostname, std::ranges::begin(buf)).out};
+  auto rev_host = std::string_view{
+    std::ranges::begin(buf),
+    std::ranges::reverse_copy(hostname, std::ranges::begin(buf)).out};
 
   for (;;) {
     size_t nread = 0;
@@ -1843,11 +1845,11 @@ ssize_t CertLookupTree::lookup(const StringRef &hostname) {
       return best_idx;
     }
 
-    rev_host = StringRef{std::ranges::begin(rev_host) + nread,
-                         std::ranges::end(rev_host)};
+    rev_host = std::string_view{std::ranges::begin(rev_host) + nread,
+                                std::ranges::end(rev_host)};
 
-    auto rev_prefix =
-      StringRef{std::ranges::begin(rev_host) + 1, std::ranges::end(rev_host)};
+    auto rev_prefix = std::string_view{std::ranges::begin(rev_host) + 1,
+                                       std::ranges::end(rev_host)};
 
     auto &wpat = wildcard_patterns_[as_unsigned(wcidx)];
     for (auto &wprefix : wpat.rev_prefix) {
@@ -1924,8 +1926,9 @@ int cert_lookup_tree_add_ssl_ctx(
 
       auto end_buf = util::tolower(name, name + len, std::ranges::begin(buf));
 
-      auto idx = lt->add_cert(StringRef{std::ranges::begin(buf), end_buf},
-                              indexed_ssl_ctx.size());
+      auto idx =
+        lt->add_cert(std::string_view{std::ranges::begin(buf), end_buf},
+                     indexed_ssl_ctx.size());
       if (idx == -1) {
         continue;
       }
@@ -1956,14 +1959,14 @@ int cert_lookup_tree_add_ssl_ctx(
       return 0;
     }
 
-    cn = StringRef{cn.data(), cn.size() - 1};
+    cn = std::string_view{cn.data(), cn.size() - 1};
   }
 
   auto end_buf = util::tolower(cn, std::ranges::begin(buf));
 
   OPENSSL_free(const_cast<char *>(cn.data()));
 
-  auto idx = lt->add_cert(StringRef{std::ranges::begin(buf), end_buf},
+  auto idx = lt->add_cert(std::string_view{std::ranges::begin(buf), end_buf},
                           indexed_ssl_ctx.size());
   if (idx == -1) {
     return 0;
@@ -1979,8 +1982,8 @@ int cert_lookup_tree_add_ssl_ctx(
   return 0;
 }
 
-bool in_proto_list(const std::vector<StringRef> &protos,
-                   const StringRef &needle) {
+bool in_proto_list(const std::vector<std::string_view> &protos,
+                   const std::string_view &needle) {
   for (auto &proto : protos) {
     if (proto == needle) {
       return true;
@@ -2205,19 +2208,19 @@ SSL_SESSION *reuse_tls_session(const TLSSessionCache &cache) {
   return d2i_SSL_SESSION(nullptr, &p, as_signed(cache.session_data.size()));
 }
 
-int proto_version_from_string(const StringRef &v) {
+int proto_version_from_string(const std::string_view &v) {
 #ifdef TLS1_3_VERSION
-  if (util::strieq("TLSv1.3"_sr, v)) {
+  if (util::strieq("TLSv1.3"sv, v)) {
     return TLS1_3_VERSION;
   }
 #endif // TLS1_3_VERSION
-  if (util::strieq("TLSv1.2"_sr, v)) {
+  if (util::strieq("TLSv1.2"sv, v)) {
     return TLS1_2_VERSION;
   }
-  if (util::strieq("TLSv1.1"_sr, v)) {
+  if (util::strieq("TLSv1.1"sv, v)) {
     return TLS1_1_VERSION;
   }
-  if (util::strieq("TLSv1.0"_sr, v)) {
+  if (util::strieq("TLSv1.0"sv, v)) {
     return TLS1_VERSION;
   }
   return -1;
@@ -2233,10 +2236,10 @@ ssize_t get_x509_fingerprint(uint8_t *dst, size_t dstlen, const X509 *x,
 }
 
 namespace {
-StringRef get_x509_name(BlockAllocator &balloc, X509_NAME *nm) {
+std::string_view get_x509_name(BlockAllocator &balloc, X509_NAME *nm) {
   auto b = BIO_new(BIO_s_mem());
   if (!b) {
-    return StringRef{};
+    return ""sv;
   }
 
   auto b_deleter = defer(BIO_free, b);
@@ -2245,30 +2248,30 @@ StringRef get_x509_name(BlockAllocator &balloc, X509_NAME *nm) {
   // number of bytes written into b.
   auto slen = X509_NAME_print_ex(b, nm, 0, XN_FLAG_RFC2253);
   if (slen <= 0) {
-    return StringRef{};
+    return ""sv;
   }
 
   auto iov = make_byte_ref(balloc, static_cast<size_t>(slen) + 1);
   BIO_read(b, iov.data(), slen);
   iov[static_cast<size_t>(slen)] = '\0';
-  return as_string_ref(iov.first(static_cast<size_t>(slen)));
+  return as_string_view(iov.first(static_cast<size_t>(slen)));
 }
 } // namespace
 
-StringRef get_x509_subject_name(BlockAllocator &balloc, X509 *x) {
+std::string_view get_x509_subject_name(BlockAllocator &balloc, X509 *x) {
   return get_x509_name(balloc, X509_get_subject_name(x));
 }
 
-StringRef get_x509_issuer_name(BlockAllocator &balloc, X509 *x) {
+std::string_view get_x509_issuer_name(BlockAllocator &balloc, X509 *x) {
   return get_x509_name(balloc, X509_get_issuer_name(x));
 }
 
-StringRef get_x509_serial(BlockAllocator &balloc, X509 *x) {
+std::string_view get_x509_serial(BlockAllocator &balloc, X509 *x) {
   auto sn = X509_get_serialNumber(x);
   auto bn = BN_new();
   auto bn_d = defer(BN_free, bn);
   if (!ASN1_INTEGER_to_BN(sn, bn) || BN_num_bytes(bn) > 20) {
-    return StringRef{};
+    return ""sv;
   }
 
   std::array<uint8_t, 20> b;
@@ -2314,7 +2317,7 @@ int time_t_from_asn1_time(time_t &t, const ASN1_TIME *at) {
 #  endif
   auto slen = BIO_get_mem_data(b, &s);
   auto tt = util::parse_openssl_asn1_time_print(
-    StringRef{s, static_cast<size_t>(slen)});
+    std::string_view{s, static_cast<size_t>(slen)});
   if (tt == 0) {
     return -1;
   }

@@ -89,18 +89,19 @@ public:
   HeaderRefs::value_type *header(int32_t token);
   // Returns pointer to the header field with the name |name|.  If no
   // such header is found, returns nullptr.
-  const HeaderRefs::value_type *header(const StringRef &name) const;
+  const HeaderRefs::value_type *header(const std::string_view &name) const;
 
-  void add_header_token(const StringRef &name, const StringRef &value,
-                        bool no_index, int32_t token);
+  void add_header_token(const std::string_view &name,
+                        const std::string_view &value, bool no_index,
+                        int32_t token);
 
   // Adds header field name |name|.  First, the copy of header field
   // name pointed by name.c_str() of length name.size() is made, and
   // stored.
-  void alloc_add_header_name(const StringRef &name);
+  void alloc_add_header_name(const std::string_view &name);
 
-  void append_last_header_key(const StringRef &data);
-  void append_last_header_value(const StringRef &data);
+  void append_last_header_key(const std::string_view &data);
+  void append_last_header_value(const std::string_view &data);
 
   bool header_key_prev() const { return header_key_prev_; }
 
@@ -111,16 +112,17 @@ public:
   // Empties headers.
   void clear_headers();
 
-  void add_trailer_token(const StringRef &name, const StringRef &value,
-                         bool no_index, int32_t token);
+  void add_trailer_token(const std::string_view &name,
+                         const std::string_view &value, bool no_index,
+                         int32_t token);
 
   // Adds trailer field name |name|.  First, the copy of trailer field
   // name pointed by name.c_str() of length name.size() is made, and
   // stored.
-  void alloc_add_trailer_name(const StringRef &name);
+  void alloc_add_trailer_name(const std::string_view &name);
 
-  void append_last_trailer_key(const StringRef &data);
-  void append_last_trailer_value(const StringRef &data);
+  void append_last_trailer_key(const std::string_view &data);
+  void append_last_trailer_value(const std::string_view &data);
 
   bool trailer_key_prev() const { return trailer_key_prev_; }
 
@@ -185,23 +187,23 @@ struct Request {
   std::shared_ptr<Timestamp> tstamp;
   // Request scheme.  For HTTP/2, this is :scheme header field value.
   // For HTTP/1.1, this is deduced from URI or connection.
-  StringRef scheme;
+  std::string_view scheme;
   // Request authority.  This is HTTP/2 :authority header field value
   // or host header field value.  We may deduce it from absolute-form
   // HTTP/1 request.  We also store authority-form HTTP/1 request.
   // This could be empty if request comes from HTTP/1.0 without Host
   // header field and origin-form.
-  StringRef authority;
+  std::string_view authority;
   // Request path, including query component.  For HTTP/1.1, this is
   // request-target.  For HTTP/2, this is :path header field value.
   // For CONNECT request, this is empty.
-  StringRef path;
+  std::string_view path;
   // This is original authority which cannot be changed by per-pattern
   // mruby script.
-  StringRef orig_authority;
+  std::string_view orig_authority;
   // This is original path which cannot be changed by per-pattern
   // mruby script.
-  StringRef orig_path;
+  std::string_view orig_path;
   // the length of request body received so far
   int64_t recv_body_length;
   // The number of bytes not consumed by the application yet.
@@ -251,8 +253,9 @@ struct Response {
 
   // returns true if a resource denoted by scheme, authority, and path
   // has already been pushed.
-  bool is_resource_pushed(const StringRef &scheme, const StringRef &authority,
-                          const StringRef &path) const {
+  bool is_resource_pushed(const std::string_view &scheme,
+                          const std::string_view &authority,
+                          const std::string_view &path) const {
     if (!pushed_resources) {
       return false;
     }
@@ -263,11 +266,12 @@ struct Response {
 
   // remember that a resource denoted by scheme, authority, and path
   // is pushed.
-  void resource_pushed(const StringRef &scheme, const StringRef &authority,
-                       const StringRef &path) {
+  void resource_pushed(const std::string_view &scheme,
+                       const std::string_view &authority,
+                       const std::string_view &path) {
     if (!pushed_resources) {
-      pushed_resources = std::make_unique<
-        std::vector<std::tuple<StringRef, StringRef, StringRef>>>();
+      pushed_resources = std::make_unique<std::vector<
+        std::tuple<std::string_view, std::string_view, std::string_view>>>();
     }
     pushed_resources->emplace_back(scheme, authority, path);
   }
@@ -281,7 +285,8 @@ struct Response {
   // end up pushing the same resource at least twice.  It is unknown
   // that we should use more complex data structure (e.g., std::set)
   // to find the resources faster.
-  std::unique_ptr<std::vector<std::tuple<StringRef, StringRef, StringRef>>>
+  std::unique_ptr<std::vector<
+    std::tuple<std::string_view, std::string_view, std::string_view>>>
     pushed_resources;
   // the length of response body received so far
   int64_t recv_body_length;
@@ -365,7 +370,7 @@ public:
   // Returns true if the request is HTTP Upgrade for HTTP/2
   bool get_http2_upgrade_request() const;
   // Returns the value of HTTP2-Settings request header field.
-  StringRef get_http2_settings() const;
+  std::string_view get_http2_settings() const;
 
   // downstream request API
   const Request &request() const { return req_; }
@@ -378,7 +383,7 @@ public:
   void crumble_request_cookie(std::vector<nghttp2_nv> &nva);
   // Assembles request cookies.  The opposite operation against
   // crumble_request_cookie().
-  StringRef assemble_request_cookie();
+  std::string_view assemble_request_cookie();
 
   void
   set_request_start_time(std::chrono::high_resolution_clock::time_point time);
@@ -392,7 +397,7 @@ public:
   // Validates that received request body length and content-length
   // matches.
   bool validate_request_recv_body_length() const;
-  void set_request_downstream_host(const StringRef &host);
+  void set_request_downstream_host(const std::string_view &host);
   bool expect_response_body() const;
   bool expect_response_trailer() const;
   void set_request_state(DownstreamState state);
@@ -417,7 +422,8 @@ public:
   Response &response() { return resp_; }
 
   // Rewrites the location response header field.
-  void rewrite_location_response_header(const StringRef &upstream_scheme);
+  void
+  rewrite_location_response_header(const std::string_view &upstream_scheme);
 
   bool get_chunked_response() const;
   void set_chunked_response(bool f);
@@ -512,7 +518,7 @@ public:
   // cookie is given in |name|.  If an affinity cookie is found, it is
   // assigned to a member function, and is returned.  If it is not
   // found, or is malformed, returns 0.
-  uint32_t find_affinity_cookie(const StringRef &name);
+  uint32_t find_affinity_cookie(const std::string_view &name);
   // Set |h| as affinity cookie.
   void renew_affinity_cookie(uint32_t h);
   // Returns affinity cookie to send.  If it does not need to be sent,
@@ -520,7 +526,7 @@ public:
   // field, returns 0.
   uint32_t get_affinity_cookie_to_send() const;
 
-  void set_ws_key(const StringRef &key);
+  void set_ws_key(const std::string_view &key);
 
   bool get_expect_100_continue() const;
 
@@ -553,7 +559,7 @@ private:
   // host we requested to downstream.  This is used to rewrite
   // location header field to decide the location should be rewritten
   // or not.
-  StringRef request_downstream_host_;
+  std::string_view request_downstream_host_;
 
   // Data arrived in frontend before sending header fields to backend
   // are stored in this buffer.
@@ -563,7 +569,7 @@ private:
 
   // The Sec-WebSocket-Key field sent to the peer.  This field is used
   // if frontend uses RFC 8441 WebSocket bootstrapping via HTTP/2.
-  StringRef ws_key_;
+  std::string_view ws_key_;
 
   ev_timer header_timer_;
 

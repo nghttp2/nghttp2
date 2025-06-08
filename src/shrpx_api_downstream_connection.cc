@@ -40,14 +40,14 @@ namespace shrpx {
 
 namespace {
 const auto backendconfig_endpoint = APIEndpoint{
-  "/api/v1beta1/backendconfig"_sr,
+  "/api/v1beta1/backendconfig"sv,
   true,
   (1 << API_METHOD_POST) | (1 << API_METHOD_PUT),
   &APIDownstreamConnection::handle_backendconfig,
 };
 
 const auto configrevision_endpoint = APIEndpoint{
-  "/api/v1beta1/configrevision"_sr,
+  "/api/v1beta1/configrevision"sv,
   true,
   (1 << API_METHOD_GET),
   &APIDownstreamConnection::handle_configrevision,
@@ -56,10 +56,10 @@ const auto configrevision_endpoint = APIEndpoint{
 
 namespace {
 // The method string.  This must be same order of APIMethod.
-constexpr StringRef API_METHOD_STRING[] = {
-  "GET"_sr,
-  "POST"_sr,
-  "PUT"_sr,
+constexpr std::string_view API_METHOD_STRING[] = {
+  "GET"sv,
+  "POST"sv,
+  "PUT"sv,
 };
 } // namespace
 
@@ -91,7 +91,7 @@ void APIDownstreamConnection::detach_downstream(Downstream *downstream) {
 
 int APIDownstreamConnection::send_reply(unsigned int http_status,
                                         APIStatusCode api_status,
-                                        const StringRef &data) {
+                                        const std::string_view &data) {
   shutdown_read_ = true;
 
   auto upstream = downstream_->get_upstream();
@@ -102,22 +102,22 @@ int APIDownstreamConnection::send_reply(unsigned int http_status,
 
   auto &balloc = downstream_->get_block_allocator();
 
-  StringRef api_status_str;
+  std::string_view api_status_str;
 
   switch (api_status) {
   case APIStatusCode::SUCCESS:
-    api_status_str = "Success"_sr;
+    api_status_str = "Success"sv;
     break;
   case APIStatusCode::FAILURE:
-    api_status_str = "Failure"_sr;
+    api_status_str = "Failure"sv;
     break;
   default:
     assert(0);
   }
 
-  constexpr auto M1 = "{\"status\":\""_sr;
-  constexpr auto M2 = "\",\"code\":"_sr;
-  constexpr auto M3 = "}"_sr;
+  constexpr auto M1 = "{\"status\":\""sv;
+  constexpr auto M2 = "\",\"code\":"sv;
+  constexpr auto M3 = "}"sv;
 
   // 3 is the number of digits in http_status, assuming it is 3 digits
   // number.
@@ -138,14 +138,14 @@ int APIDownstreamConnection::send_reply(unsigned int http_status,
 
   auto content_length = util::make_string_ref_uint(balloc, buf.size());
 
-  resp.fs.add_header_token("content-length"_sr, content_length, false,
+  resp.fs.add_header_token("content-length"sv, content_length, false,
                            http2::HD_CONTENT_LENGTH);
 
   switch (http_status) {
   case 400:
   case 405:
   case 413:
-    resp.fs.add_header_token("connection"_sr, "close"_sr, false,
+    resp.fs.add_header_token("connection"sv, "close"sv, false,
                              http2::HD_CONNECTION);
     break;
   }
@@ -158,12 +158,12 @@ int APIDownstreamConnection::send_reply(unsigned int http_status,
 }
 
 namespace {
-const APIEndpoint *lookup_api(const StringRef &path) {
+const APIEndpoint *lookup_api(const std::string_view &path) {
   switch (path.size()) {
   case 26:
     switch (path[25]) {
     case 'g':
-      if (util::streq("/api/v1beta1/backendconfi"_sr, path.substr(0, 25))) {
+      if (util::streq("/api/v1beta1/backendconfi"sv, path.substr(0, 25))) {
         return &backendconfig_endpoint;
       }
       break;
@@ -172,7 +172,7 @@ const APIEndpoint *lookup_api(const StringRef &path) {
   case 27:
     switch (path[26]) {
     case 'n':
-      if (util::streq("/api/v1beta1/configrevisio"_sr, path.substr(0, 26))) {
+      if (util::streq("/api/v1beta1/configrevisio"sv, path.substr(0, 26))) {
         return &configrevision_endpoint;
       }
       break;
@@ -186,8 +186,8 @@ const APIEndpoint *lookup_api(const StringRef &path) {
 int APIDownstreamConnection::push_request_headers() {
   auto &req = downstream_->request();
 
-  auto path =
-    StringRef{std::ranges::begin(req.path), std::ranges::find(req.path, '?')};
+  auto path = std::string_view{std::ranges::begin(req.path),
+                               std::ranges::find(req.path, '?')};
 
   api_ = lookup_api(path);
 
@@ -288,7 +288,7 @@ int APIDownstreamConnection::error_method_not_allowed() {
   *p = '\0';
 
   resp.fs.add_header_token(
-    "allow"_sr, as_string_ref(std::ranges::begin(iov), p), false, -1);
+    "allow"sv, as_string_view(std::ranges::begin(iov), p), false, -1);
   return send_reply(405, APIStatusCode::FAILURE);
 }
 
@@ -365,8 +365,8 @@ int APIDownstreamConnection::handle_backendconfig() {
   downstreamconf->response_buffer_size = src->response_buffer_size;
   downstreamconf->family = src->family;
 
-  std::unordered_set<StringRef> include_set;
-  std::unordered_map<StringRef, size_t> pattern_addr_indexer;
+  std::unordered_set<std::string_view> include_set;
+  std::unordered_map<std::string_view, size_t> pattern_addr_indexer;
 
   for (auto first = reinterpret_cast<const char *>(rp),
             last = first + req.recv_body_length;
@@ -387,8 +387,8 @@ int APIDownstreamConnection::handle_backendconfig() {
       return 0;
     }
 
-    auto opt = StringRef{first, eq};
-    auto optval = StringRef{eq + 1, eol};
+    auto opt = std::string_view{first, eq};
+    auto optval = std::string_view{eq + 1, eol};
 
     auto optid = option_lookup_token(opt);
 
@@ -435,8 +435,8 @@ int APIDownstreamConnection::handle_configrevision() {
   //     "configRevision": N
   //   }
   auto data = concat_string_ref(
-    balloc, R"(,"data":{"configRevision":)"_sr,
-    util::make_string_ref_uint(balloc, config->config_revision), "}"_sr);
+    balloc, R"(,"data":{"configRevision":)"sv,
+    util::make_string_ref_uint(balloc, config->config_revision), "}"sv);
 
   send_reply(200, APIStatusCode::SUCCESS, data);
 

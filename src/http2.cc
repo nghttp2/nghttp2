@@ -34,216 +34,217 @@ namespace nghttp2 {
 
 namespace http2 {
 
-StringRef get_reason_phrase(unsigned int status_code) {
+std::string_view get_reason_phrase(unsigned int status_code) {
   switch (status_code) {
   case 100:
-    return "Continue"_sr;
+    return "Continue"sv;
   case 101:
-    return "Switching Protocols"_sr;
+    return "Switching Protocols"sv;
   case 103:
-    return "Early Hints"_sr;
+    return "Early Hints"sv;
   case 200:
-    return "OK"_sr;
+    return "OK"sv;
   case 201:
-    return "Created"_sr;
+    return "Created"sv;
   case 202:
-    return "Accepted"_sr;
+    return "Accepted"sv;
   case 203:
-    return "Non-Authoritative Information"_sr;
+    return "Non-Authoritative Information"sv;
   case 204:
-    return "No Content"_sr;
+    return "No Content"sv;
   case 205:
-    return "Reset Content"_sr;
+    return "Reset Content"sv;
   case 206:
-    return "Partial Content"_sr;
+    return "Partial Content"sv;
   case 300:
-    return "Multiple Choices"_sr;
+    return "Multiple Choices"sv;
   case 301:
-    return "Moved Permanently"_sr;
+    return "Moved Permanently"sv;
   case 302:
-    return "Found"_sr;
+    return "Found"sv;
   case 303:
-    return "See Other"_sr;
+    return "See Other"sv;
   case 304:
-    return "Not Modified"_sr;
+    return "Not Modified"sv;
   case 305:
-    return "Use Proxy"_sr;
-  // case 306: return "(Unused)"_sr;
+    return "Use Proxy"sv;
+  // case 306: return "(Unused)"sv;
   case 307:
-    return "Temporary Redirect"_sr;
+    return "Temporary Redirect"sv;
   case 308:
-    return "Permanent Redirect"_sr;
+    return "Permanent Redirect"sv;
   case 400:
-    return "Bad Request"_sr;
+    return "Bad Request"sv;
   case 401:
-    return "Unauthorized"_sr;
+    return "Unauthorized"sv;
   case 402:
-    return "Payment Required"_sr;
+    return "Payment Required"sv;
   case 403:
-    return "Forbidden"_sr;
+    return "Forbidden"sv;
   case 404:
-    return "Not Found"_sr;
+    return "Not Found"sv;
   case 405:
-    return "Method Not Allowed"_sr;
+    return "Method Not Allowed"sv;
   case 406:
-    return "Not Acceptable"_sr;
+    return "Not Acceptable"sv;
   case 407:
-    return "Proxy Authentication Required"_sr;
+    return "Proxy Authentication Required"sv;
   case 408:
-    return "Request Timeout"_sr;
+    return "Request Timeout"sv;
   case 409:
-    return "Conflict"_sr;
+    return "Conflict"sv;
   case 410:
-    return "Gone"_sr;
+    return "Gone"sv;
   case 411:
-    return "Length Required"_sr;
+    return "Length Required"sv;
   case 412:
-    return "Precondition Failed"_sr;
+    return "Precondition Failed"sv;
   case 413:
-    return "Payload Too Large"_sr;
+    return "Payload Too Large"sv;
   case 414:
-    return "URI Too Long"_sr;
+    return "URI Too Long"sv;
   case 415:
-    return "Unsupported Media Type"_sr;
+    return "Unsupported Media Type"sv;
   case 416:
-    return "Requested Range Not Satisfiable"_sr;
+    return "Requested Range Not Satisfiable"sv;
   case 417:
-    return "Expectation Failed"_sr;
+    return "Expectation Failed"sv;
   case 421:
-    return "Misdirected Request"_sr;
+    return "Misdirected Request"sv;
   case 425:
     // https://tools.ietf.org/html/rfc8470
-    return "Too Early"_sr;
+    return "Too Early"sv;
   case 426:
-    return "Upgrade Required"_sr;
+    return "Upgrade Required"sv;
   case 428:
-    return "Precondition Required"_sr;
+    return "Precondition Required"sv;
   case 429:
-    return "Too Many Requests"_sr;
+    return "Too Many Requests"sv;
   case 431:
-    return "Request Header Fields Too Large"_sr;
+    return "Request Header Fields Too Large"sv;
   case 451:
-    return "Unavailable For Legal Reasons"_sr;
+    return "Unavailable For Legal Reasons"sv;
   case 500:
-    return "Internal Server Error"_sr;
+    return "Internal Server Error"sv;
   case 501:
-    return "Not Implemented"_sr;
+    return "Not Implemented"sv;
   case 502:
-    return "Bad Gateway"_sr;
+    return "Bad Gateway"sv;
   case 503:
-    return "Service Unavailable"_sr;
+    return "Service Unavailable"sv;
   case 504:
-    return "Gateway Timeout"_sr;
+    return "Gateway Timeout"sv;
   case 505:
-    return "HTTP Version Not Supported"_sr;
+    return "HTTP Version Not Supported"sv;
   case 511:
-    return "Network Authentication Required"_sr;
+    return "Network Authentication Required"sv;
   default:
-    return StringRef{};
+    return ""sv;
   }
 }
 
-StringRef stringify_status(BlockAllocator &balloc, unsigned int status_code) {
+std::string_view stringify_status(BlockAllocator &balloc,
+                                  unsigned int status_code) {
   switch (status_code) {
   case 100:
-    return "100"_sr;
+    return "100"sv;
   case 101:
-    return "101"_sr;
+    return "101"sv;
   case 103:
-    return "103"_sr;
+    return "103"sv;
   case 200:
-    return "200"_sr;
+    return "200"sv;
   case 201:
-    return "201"_sr;
+    return "201"sv;
   case 202:
-    return "202"_sr;
+    return "202"sv;
   case 203:
-    return "203"_sr;
+    return "203"sv;
   case 204:
-    return "204"_sr;
+    return "204"sv;
   case 205:
-    return "205"_sr;
+    return "205"sv;
   case 206:
-    return "206"_sr;
+    return "206"sv;
   case 300:
-    return "300"_sr;
+    return "300"sv;
   case 301:
-    return "301"_sr;
+    return "301"sv;
   case 302:
-    return "302"_sr;
+    return "302"sv;
   case 303:
-    return "303"_sr;
+    return "303"sv;
   case 304:
-    return "304"_sr;
+    return "304"sv;
   case 305:
-    return "305"_sr;
-  // case 306: return "306"_sr;
+    return "305"sv;
+  // case 306: return "306"sv;
   case 307:
-    return "307"_sr;
+    return "307"sv;
   case 308:
-    return "308"_sr;
+    return "308"sv;
   case 400:
-    return "400"_sr;
+    return "400"sv;
   case 401:
-    return "401"_sr;
+    return "401"sv;
   case 402:
-    return "402"_sr;
+    return "402"sv;
   case 403:
-    return "403"_sr;
+    return "403"sv;
   case 404:
-    return "404"_sr;
+    return "404"sv;
   case 405:
-    return "405"_sr;
+    return "405"sv;
   case 406:
-    return "406"_sr;
+    return "406"sv;
   case 407:
-    return "407"_sr;
+    return "407"sv;
   case 408:
-    return "408"_sr;
+    return "408"sv;
   case 409:
-    return "409"_sr;
+    return "409"sv;
   case 410:
-    return "410"_sr;
+    return "410"sv;
   case 411:
-    return "411"_sr;
+    return "411"sv;
   case 412:
-    return "412"_sr;
+    return "412"sv;
   case 413:
-    return "413"_sr;
+    return "413"sv;
   case 414:
-    return "414"_sr;
+    return "414"sv;
   case 415:
-    return "415"_sr;
+    return "415"sv;
   case 416:
-    return "416"_sr;
+    return "416"sv;
   case 417:
-    return "417"_sr;
+    return "417"sv;
   case 421:
-    return "421"_sr;
+    return "421"sv;
   case 426:
-    return "426"_sr;
+    return "426"sv;
   case 428:
-    return "428"_sr;
+    return "428"sv;
   case 429:
-    return "429"_sr;
+    return "429"sv;
   case 431:
-    return "431"_sr;
+    return "431"sv;
   case 451:
-    return "451"_sr;
+    return "451"sv;
   case 500:
-    return "500"_sr;
+    return "500"sv;
   case 501:
-    return "501"_sr;
+    return "501"sv;
   case 502:
-    return "502"_sr;
+    return "502"sv;
   case 503:
-    return "503"_sr;
+    return "503"sv;
   case 504:
-    return "504"_sr;
+    return "504"sv;
   case 505:
-    return "505"_sr;
+    return "505"sv;
   case 511:
-    return "511"_sr;
+    return "511"sv;
   default:
     return util::make_string_ref_uint(balloc, status_code);
   }
@@ -252,7 +253,7 @@ StringRef stringify_status(BlockAllocator &balloc, unsigned int status_code) {
 struct Capitalizer {
   template <std::weakly_incrementable O>
   requires(std::indirectly_writable<O, char>)
-  constexpr O operator()(const StringRef &s, O result) noexcept {
+  constexpr O operator()(const std::string_view &s, O result) noexcept {
     using result_type = std::iter_value_t<O>;
 
     *result++ = static_cast<result_type>(util::upcase(s[0]));
@@ -270,7 +271,7 @@ struct Capitalizer {
 };
 
 namespace {
-void capitalize_long(DefaultMemchunks *buf, const StringRef &s) {
+void capitalize_long(DefaultMemchunks *buf, const std::string_view &s) {
   buf->append(util::upcase(s[0]));
 
   auto it = s.begin() + 1;
@@ -292,7 +293,7 @@ void capitalize_long(DefaultMemchunks *buf, const StringRef &s) {
 }
 } // namespace
 
-void capitalize(DefaultMemchunks *buf, const StringRef &s) {
+void capitalize(DefaultMemchunks *buf, const std::string_view &s) {
   assert(!s.empty());
 
   constexpr size_t max_namelen = 32;
@@ -305,15 +306,16 @@ void capitalize(DefaultMemchunks *buf, const StringRef &s) {
   buf->append(s.size(), std::bind_front(Capitalizer{}, s));
 }
 
-Headers::value_type to_header(const StringRef &name, const StringRef &value,
-                              bool no_index, int32_t token) {
+Headers::value_type to_header(const std::string_view &name,
+                              const std::string_view &value, bool no_index,
+                              int32_t token) {
   return Header(std::string{std::ranges::begin(name), std::ranges::end(name)},
                 std::string{std::ranges::begin(value), std::ranges::end(value)},
                 no_index, token);
 }
 
-void add_header(Headers &nva, const StringRef &name, const StringRef &value,
-                bool no_index, int32_t token) {
+void add_header(Headers &nva, const std::string_view &name,
+                const std::string_view &value, bool no_index, int32_t token) {
   nva.push_back(to_header(name, value, no_index, token));
 }
 
@@ -577,24 +579,25 @@ void dump_nv(FILE *out, const HeaderRefs &nva) {
 }
 
 void erase_header(HeaderRef *hd) {
-  hd->name = StringRef{};
+  hd->name = ""sv;
   hd->token = -1;
 }
 
-StringRef rewrite_location_uri(BlockAllocator &balloc, const StringRef &uri,
-                               const urlparse_url &u,
-                               const StringRef &match_host,
-                               const StringRef &request_authority,
-                               const StringRef &upstream_scheme) {
+std::string_view rewrite_location_uri(BlockAllocator &balloc,
+                                      const std::string_view &uri,
+                                      const urlparse_url &u,
+                                      const std::string_view &match_host,
+                                      const std::string_view &request_authority,
+                                      const std::string_view &upstream_scheme) {
   // We just rewrite scheme and authority.
   if ((u.field_set & (1 << URLPARSE_HOST)) == 0) {
-    return StringRef{};
+    return ""sv;
   }
   auto field = &u.field_data[URLPARSE_HOST];
   if (!util::starts_with(match_host,
                          std::string_view{&uri[field->off], field->len}) ||
       (match_host.size() != field->len && match_host[field->len] != ':')) {
-    return StringRef{};
+    return ""sv;
   }
 
   size_t len = 0;
@@ -642,10 +645,10 @@ StringRef rewrite_location_uri(BlockAllocator &balloc, const StringRef &uri,
 
   *p = '\0';
 
-  return as_string_ref(std::ranges::begin(iov), p);
+  return as_string_view(std::ranges::begin(iov), p);
 }
 
-int parse_http_status_code(const StringRef &src) {
+int parse_http_status_code(const std::string_view &src) {
   if (src.size() != 3) {
     return -1;
   }
@@ -668,12 +671,12 @@ int parse_http_status_code(const StringRef &src) {
 
 // This function was generated by genheaderfunc.py.  Inspired by h2o
 // header lookup.  https://github.com/h2o/h2o
-int lookup_token(const StringRef &name) {
+int lookup_token(const std::string_view &name) {
   switch (name.size()) {
   case 2:
     switch (name[1]) {
     case 'e':
-      if (util::streq("t"_sr, name.substr(0, 1))) {
+      if (util::streq("t"sv, name.substr(0, 1))) {
         return HD_TE;
       }
       break;
@@ -682,7 +685,7 @@ int lookup_token(const StringRef &name) {
   case 3:
     switch (name[2]) {
     case 'a':
-      if (util::streq("vi"_sr, name.substr(0, 2))) {
+      if (util::streq("vi"sv, name.substr(0, 2))) {
         return HD_VIA;
       }
       break;
@@ -691,17 +694,17 @@ int lookup_token(const StringRef &name) {
   case 4:
     switch (name[3]) {
     case 'e':
-      if (util::streq("dat"_sr, name.substr(0, 3))) {
+      if (util::streq("dat"sv, name.substr(0, 3))) {
         return HD_DATE;
       }
       break;
     case 'k':
-      if (util::streq("lin"_sr, name.substr(0, 3))) {
+      if (util::streq("lin"sv, name.substr(0, 3))) {
         return HD_LINK;
       }
       break;
     case 't':
-      if (util::streq("hos"_sr, name.substr(0, 3))) {
+      if (util::streq("hos"sv, name.substr(0, 3))) {
         return HD_HOST;
       }
       break;
@@ -710,12 +713,12 @@ int lookup_token(const StringRef &name) {
   case 5:
     switch (name[4]) {
     case 'h':
-      if (util::streq(":pat"_sr, name.substr(0, 4))) {
+      if (util::streq(":pat"sv, name.substr(0, 4))) {
         return HD__PATH;
       }
       break;
     case 't':
-      if (util::streq(":hos"_sr, name.substr(0, 4))) {
+      if (util::streq(":hos"sv, name.substr(0, 4))) {
         return HD__HOST;
       }
       break;
@@ -724,17 +727,17 @@ int lookup_token(const StringRef &name) {
   case 6:
     switch (name[5]) {
     case 'e':
-      if (util::streq("cooki"_sr, name.substr(0, 5))) {
+      if (util::streq("cooki"sv, name.substr(0, 5))) {
         return HD_COOKIE;
       }
       break;
     case 'r':
-      if (util::streq("serve"_sr, name.substr(0, 5))) {
+      if (util::streq("serve"sv, name.substr(0, 5))) {
         return HD_SERVER;
       }
       break;
     case 't':
-      if (util::streq("expec"_sr, name.substr(0, 5))) {
+      if (util::streq("expec"sv, name.substr(0, 5))) {
         return HD_EXPECT;
       }
       break;
@@ -743,30 +746,30 @@ int lookup_token(const StringRef &name) {
   case 7:
     switch (name[6]) {
     case 'c':
-      if (util::streq("alt-sv"_sr, name.substr(0, 6))) {
+      if (util::streq("alt-sv"sv, name.substr(0, 6))) {
         return HD_ALT_SVC;
       }
       break;
     case 'd':
-      if (util::streq(":metho"_sr, name.substr(0, 6))) {
+      if (util::streq(":metho"sv, name.substr(0, 6))) {
         return HD__METHOD;
       }
       break;
     case 'e':
-      if (util::streq(":schem"_sr, name.substr(0, 6))) {
+      if (util::streq(":schem"sv, name.substr(0, 6))) {
         return HD__SCHEME;
       }
-      if (util::streq("upgrad"_sr, name.substr(0, 6))) {
+      if (util::streq("upgrad"sv, name.substr(0, 6))) {
         return HD_UPGRADE;
       }
       break;
     case 'r':
-      if (util::streq("traile"_sr, name.substr(0, 6))) {
+      if (util::streq("traile"sv, name.substr(0, 6))) {
         return HD_TRAILER;
       }
       break;
     case 's':
-      if (util::streq(":statu"_sr, name.substr(0, 6))) {
+      if (util::streq(":statu"sv, name.substr(0, 6))) {
         return HD__STATUS;
       }
       break;
@@ -775,12 +778,12 @@ int lookup_token(const StringRef &name) {
   case 8:
     switch (name[7]) {
     case 'n':
-      if (util::streq("locatio"_sr, name.substr(0, 7))) {
+      if (util::streq("locatio"sv, name.substr(0, 7))) {
         return HD_LOCATION;
       }
       break;
     case 'y':
-      if (util::streq("priorit"_sr, name.substr(0, 7))) {
+      if (util::streq("priorit"sv, name.substr(0, 7))) {
         return HD_PRIORITY;
       }
       break;
@@ -789,12 +792,12 @@ int lookup_token(const StringRef &name) {
   case 9:
     switch (name[8]) {
     case 'd':
-      if (util::streq("forwarde"_sr, name.substr(0, 8))) {
+      if (util::streq("forwarde"sv, name.substr(0, 8))) {
         return HD_FORWARDED;
       }
       break;
     case 'l':
-      if (util::streq(":protoco"_sr, name.substr(0, 8))) {
+      if (util::streq(":protoco"sv, name.substr(0, 8))) {
         return HD__PROTOCOL;
       }
       break;
@@ -803,27 +806,27 @@ int lookup_token(const StringRef &name) {
   case 10:
     switch (name[9]) {
     case 'a':
-      if (util::streq("early-dat"_sr, name.substr(0, 9))) {
+      if (util::streq("early-dat"sv, name.substr(0, 9))) {
         return HD_EARLY_DATA;
       }
       break;
     case 'e':
-      if (util::streq("keep-aliv"_sr, name.substr(0, 9))) {
+      if (util::streq("keep-aliv"sv, name.substr(0, 9))) {
         return HD_KEEP_ALIVE;
       }
       break;
     case 'n':
-      if (util::streq("connectio"_sr, name.substr(0, 9))) {
+      if (util::streq("connectio"sv, name.substr(0, 9))) {
         return HD_CONNECTION;
       }
       break;
     case 't':
-      if (util::streq("user-agen"_sr, name.substr(0, 9))) {
+      if (util::streq("user-agen"sv, name.substr(0, 9))) {
         return HD_USER_AGENT;
       }
       break;
     case 'y':
-      if (util::streq(":authorit"_sr, name.substr(0, 9))) {
+      if (util::streq(":authorit"sv, name.substr(0, 9))) {
         return HD__AUTHORITY;
       }
       break;
@@ -832,7 +835,7 @@ int lookup_token(const StringRef &name) {
   case 12:
     switch (name[11]) {
     case 'e':
-      if (util::streq("content-typ"_sr, name.substr(0, 11))) {
+      if (util::streq("content-typ"sv, name.substr(0, 11))) {
         return HD_CONTENT_TYPE;
       }
       break;
@@ -841,7 +844,7 @@ int lookup_token(const StringRef &name) {
   case 13:
     switch (name[12]) {
     case 'l':
-      if (util::streq("cache-contro"_sr, name.substr(0, 12))) {
+      if (util::streq("cache-contro"sv, name.substr(0, 12))) {
         return HD_CACHE_CONTROL;
       }
       break;
@@ -850,12 +853,12 @@ int lookup_token(const StringRef &name) {
   case 14:
     switch (name[13]) {
     case 'h':
-      if (util::streq("content-lengt"_sr, name.substr(0, 13))) {
+      if (util::streq("content-lengt"sv, name.substr(0, 13))) {
         return HD_CONTENT_LENGTH;
       }
       break;
     case 's':
-      if (util::streq("http2-setting"_sr, name.substr(0, 13))) {
+      if (util::streq("http2-setting"sv, name.substr(0, 13))) {
         return HD_HTTP2_SETTINGS;
       }
       break;
@@ -864,17 +867,17 @@ int lookup_token(const StringRef &name) {
   case 15:
     switch (name[14]) {
     case 'e':
-      if (util::streq("accept-languag"_sr, name.substr(0, 14))) {
+      if (util::streq("accept-languag"sv, name.substr(0, 14))) {
         return HD_ACCEPT_LANGUAGE;
       }
       break;
     case 'g':
-      if (util::streq("accept-encodin"_sr, name.substr(0, 14))) {
+      if (util::streq("accept-encodin"sv, name.substr(0, 14))) {
         return HD_ACCEPT_ENCODING;
       }
       break;
     case 'r':
-      if (util::streq("x-forwarded-fo"_sr, name.substr(0, 14))) {
+      if (util::streq("x-forwarded-fo"sv, name.substr(0, 14))) {
         return HD_X_FORWARDED_FOR;
       }
       break;
@@ -883,7 +886,7 @@ int lookup_token(const StringRef &name) {
   case 16:
     switch (name[15]) {
     case 'n':
-      if (util::streq("proxy-connectio"_sr, name.substr(0, 15))) {
+      if (util::streq("proxy-connectio"sv, name.substr(0, 15))) {
         return HD_PROXY_CONNECTION;
       }
       break;
@@ -892,22 +895,22 @@ int lookup_token(const StringRef &name) {
   case 17:
     switch (name[16]) {
     case 'e':
-      if (util::streq("if-modified-sinc"_sr, name.substr(0, 16))) {
+      if (util::streq("if-modified-sinc"sv, name.substr(0, 16))) {
         return HD_IF_MODIFIED_SINCE;
       }
       break;
     case 'g':
-      if (util::streq("transfer-encodin"_sr, name.substr(0, 16))) {
+      if (util::streq("transfer-encodin"sv, name.substr(0, 16))) {
         return HD_TRANSFER_ENCODING;
       }
       break;
     case 'o':
-      if (util::streq("x-forwarded-prot"_sr, name.substr(0, 16))) {
+      if (util::streq("x-forwarded-prot"sv, name.substr(0, 16))) {
         return HD_X_FORWARDED_PROTO;
       }
       break;
     case 'y':
-      if (util::streq("sec-websocket-ke"_sr, name.substr(0, 16))) {
+      if (util::streq("sec-websocket-ke"sv, name.substr(0, 16))) {
         return HD_SEC_WEBSOCKET_KEY;
       }
       break;
@@ -916,7 +919,7 @@ int lookup_token(const StringRef &name) {
   case 20:
     switch (name[19]) {
     case 't':
-      if (util::streq("sec-websocket-accep"_sr, name.substr(0, 19))) {
+      if (util::streq("sec-websocket-accep"sv, name.substr(0, 19))) {
         return HD_SEC_WEBSOCKET_ACCEPT;
       }
       break;
@@ -1060,26 +1063,26 @@ std::pair<LinkHeader, const char *>
 parse_next_link_header_once(const char *first, const char *last) {
   first = skip_to_next_field(first, last);
   if (first == last || *first != '<') {
-    return {{StringRef{}}, last};
+    return {{""sv}, last};
   }
   auto url_first = ++first;
   first = std::ranges::find(first, last, '>');
   if (first == last) {
-    return {{StringRef{}}, first};
+    return {{""sv}, first};
   }
   auto url_last = first++;
   if (first == last) {
-    return {{StringRef{}}, first};
+    return {{""sv}, first};
   }
   // we expect ';' or ',' here
   switch (*first) {
   case ',':
-    return {{StringRef{}}, ++first};
+    return {{""sv}, ++first};
   case ';':
     ++first;
     break;
   default:
-    return {{StringRef{}}, last};
+    return {{""sv}, last};
   }
 
   auto ok = false;
@@ -1087,7 +1090,7 @@ parse_next_link_header_once(const char *first, const char *last) {
   for (;;) {
     first = skip_lws(first, last);
     if (first == last) {
-      return {{StringRef{}}, first};
+      return {{""sv}, first};
     }
     // we expect link-param
 
@@ -1111,7 +1114,7 @@ parse_next_link_header_once(const char *first, const char *last) {
             }
 
             if (start == first) {
-              return {{StringRef{}}, last};
+              return {{""sv}, last};
             }
 
             if (!ok && start + PLT.size() == first &&
@@ -1127,7 +1130,7 @@ parse_next_link_header_once(const char *first, const char *last) {
             start = first;
           }
           if (first == last) {
-            return {{StringRef{}}, last};
+            return {{""sv}, last};
           }
           assert(*first == '"');
           ++first;
@@ -1139,7 +1142,7 @@ parse_next_link_header_once(const char *first, const char *last) {
             // parse next link-param
             continue;
           }
-          return {{StringRef{}}, last};
+          return {{""sv}, last};
         }
       }
       // we are only interested in rel=preload parameter.  Others are
@@ -1209,11 +1212,11 @@ parse_next_link_header_once(const char *first, const char *last) {
       if (*first == '=' || *first == ';' || *first == ',') {
         break;
       }
-      return {{StringRef{}}, last};
+      return {{""sv}, last};
     }
     if (param_first == first) {
       // empty parmname
-      return {{StringRef{}}, last};
+      return {{""sv}, last};
     }
     // link-param without value is acceptable (see link-extension) if
     // it is not followed by '='
@@ -1230,13 +1233,13 @@ parse_next_link_header_once(const char *first, const char *last) {
     ++first;
     if (first == last) {
       // empty value is not acceptable
-      return {{StringRef{}}, first};
+      return {{""sv}, first};
     }
     if (*first == '"') {
       // quoted-string
       first = skip_to_right_dquote(first + 1, last);
       if (first == last) {
-        return {{StringRef{}}, first};
+        return {{""sv}, first};
       }
       ++first;
       if (first == last || *first == ',') {
@@ -1247,12 +1250,12 @@ parse_next_link_header_once(const char *first, const char *last) {
         // parse next link-param
         continue;
       }
-      return {{StringRef{}}, last};
+      return {{""sv}, last};
     }
     // not quoted-string, skip to next ',' or ';'
     if (*first == ',' || *first == ';') {
       // empty value
-      return {{StringRef{}}, last};
+      return {{""sv}, last};
     }
     for (; first != last; ++first) {
       if (*first == ',' || *first == ';') {
@@ -1276,11 +1279,11 @@ almost_done:
   if (ok && !ign) {
     return {{{url_first, url_last}}, first};
   }
-  return {{StringRef{}}, first};
+  return {{""sv}, first};
 }
 } // namespace
 
-std::vector<LinkHeader> parse_link_header(const StringRef &src) {
+std::vector<LinkHeader> parse_link_header(const std::string_view &src) {
   std::vector<LinkHeader> res;
   for (auto first = std::ranges::begin(src); first != std::ranges::end(src);) {
     auto rv = parse_next_link_header_once(first, std::ranges::end(src));
@@ -1293,8 +1296,10 @@ std::vector<LinkHeader> parse_link_header(const StringRef &src) {
   return res;
 }
 
-std::string path_join(const StringRef &base_path, const StringRef &base_query,
-                      const StringRef &rel_path, const StringRef &rel_query) {
+std::string path_join(const std::string_view &base_path,
+                      const std::string_view &base_query,
+                      const std::string_view &rel_path,
+                      const std::string_view &rel_query) {
   BlockAllocator balloc(1024, 1024);
 
   return std::string{
@@ -1315,20 +1320,20 @@ bool expect_response_body(int method_token, uint32_t status_code) {
 }
 
 // This function was generated by genmethodfunc.py.
-int lookup_method_token(const StringRef &name) {
+int lookup_method_token(const std::string_view &name) {
   switch (name.size()) {
   case 3:
     switch (name[2]) {
     case 'L':
-      if (util::streq("AC"_sr, name.substr(0, 2))) {
+      if (util::streq("AC"sv, name.substr(0, 2))) {
         return HTTP_ACL;
       }
       break;
     case 'T':
-      if (util::streq("GE"_sr, name.substr(0, 2))) {
+      if (util::streq("GE"sv, name.substr(0, 2))) {
         return HTTP_GET;
       }
-      if (util::streq("PU"_sr, name.substr(0, 2))) {
+      if (util::streq("PU"sv, name.substr(0, 2))) {
         return HTTP_PUT;
       }
       break;
@@ -1337,33 +1342,33 @@ int lookup_method_token(const StringRef &name) {
   case 4:
     switch (name[3]) {
     case 'D':
-      if (util::streq("BIN"_sr, name.substr(0, 3))) {
+      if (util::streq("BIN"sv, name.substr(0, 3))) {
         return HTTP_BIND;
       }
-      if (util::streq("HEA"_sr, name.substr(0, 3))) {
+      if (util::streq("HEA"sv, name.substr(0, 3))) {
         return HTTP_HEAD;
       }
       break;
     case 'E':
-      if (util::streq("MOV"_sr, name.substr(0, 3))) {
+      if (util::streq("MOV"sv, name.substr(0, 3))) {
         return HTTP_MOVE;
       }
       break;
     case 'K':
-      if (util::streq("LIN"_sr, name.substr(0, 3))) {
+      if (util::streq("LIN"sv, name.substr(0, 3))) {
         return HTTP_LINK;
       }
-      if (util::streq("LOC"_sr, name.substr(0, 3))) {
+      if (util::streq("LOC"sv, name.substr(0, 3))) {
         return HTTP_LOCK;
       }
       break;
     case 'T':
-      if (util::streq("POS"_sr, name.substr(0, 3))) {
+      if (util::streq("POS"sv, name.substr(0, 3))) {
         return HTTP_POST;
       }
       break;
     case 'Y':
-      if (util::streq("COP"_sr, name.substr(0, 3))) {
+      if (util::streq("COP"sv, name.substr(0, 3))) {
         return HTTP_COPY;
       }
       break;
@@ -1372,23 +1377,23 @@ int lookup_method_token(const StringRef &name) {
   case 5:
     switch (name[4]) {
     case 'E':
-      if (util::streq("MERG"_sr, name.substr(0, 4))) {
+      if (util::streq("MERG"sv, name.substr(0, 4))) {
         return HTTP_MERGE;
       }
-      if (util::streq("PURG"_sr, name.substr(0, 4))) {
+      if (util::streq("PURG"sv, name.substr(0, 4))) {
         return HTTP_PURGE;
       }
-      if (util::streq("TRAC"_sr, name.substr(0, 4))) {
+      if (util::streq("TRAC"sv, name.substr(0, 4))) {
         return HTTP_TRACE;
       }
       break;
     case 'H':
-      if (util::streq("PATC"_sr, name.substr(0, 4))) {
+      if (util::streq("PATC"sv, name.substr(0, 4))) {
         return HTTP_PATCH;
       }
       break;
     case 'L':
-      if (util::streq("MKCO"_sr, name.substr(0, 4))) {
+      if (util::streq("MKCO"sv, name.substr(0, 4))) {
         return HTTP_MKCOL;
       }
       break;
@@ -1397,41 +1402,41 @@ int lookup_method_token(const StringRef &name) {
   case 6:
     switch (name[5]) {
     case 'D':
-      if (util::streq("REBIN"_sr, name.substr(0, 5))) {
+      if (util::streq("REBIN"sv, name.substr(0, 5))) {
         return HTTP_REBIND;
       }
-      if (util::streq("UNBIN"_sr, name.substr(0, 5))) {
+      if (util::streq("UNBIN"sv, name.substr(0, 5))) {
         return HTTP_UNBIND;
       }
       break;
     case 'E':
-      if (util::streq("DELET"_sr, name.substr(0, 5))) {
+      if (util::streq("DELET"sv, name.substr(0, 5))) {
         return HTTP_DELETE;
       }
-      if (util::streq("SOURC"_sr, name.substr(0, 5))) {
+      if (util::streq("SOURC"sv, name.substr(0, 5))) {
         return HTTP_SOURCE;
       }
       break;
     case 'H':
-      if (util::streq("SEARC"_sr, name.substr(0, 5))) {
+      if (util::streq("SEARC"sv, name.substr(0, 5))) {
         return HTTP_SEARCH;
       }
       break;
     case 'K':
-      if (util::streq("UNLIN"_sr, name.substr(0, 5))) {
+      if (util::streq("UNLIN"sv, name.substr(0, 5))) {
         return HTTP_UNLINK;
       }
-      if (util::streq("UNLOC"_sr, name.substr(0, 5))) {
+      if (util::streq("UNLOC"sv, name.substr(0, 5))) {
         return HTTP_UNLOCK;
       }
       break;
     case 'T':
-      if (util::streq("REPOR"_sr, name.substr(0, 5))) {
+      if (util::streq("REPOR"sv, name.substr(0, 5))) {
         return HTTP_REPORT;
       }
       break;
     case 'Y':
-      if (util::streq("NOTIF"_sr, name.substr(0, 5))) {
+      if (util::streq("NOTIF"sv, name.substr(0, 5))) {
         return HTTP_NOTIFY;
       }
       break;
@@ -1440,17 +1445,17 @@ int lookup_method_token(const StringRef &name) {
   case 7:
     switch (name[6]) {
     case 'H':
-      if (util::streq("MSEARC"_sr, name.substr(0, 6))) {
+      if (util::streq("MSEARC"sv, name.substr(0, 6))) {
         return HTTP_MSEARCH;
       }
       break;
     case 'S':
-      if (util::streq("OPTION"_sr, name.substr(0, 6))) {
+      if (util::streq("OPTION"sv, name.substr(0, 6))) {
         return HTTP_OPTIONS;
       }
       break;
     case 'T':
-      if (util::streq("CONNEC"_sr, name.substr(0, 6))) {
+      if (util::streq("CONNEC"sv, name.substr(0, 6))) {
         return HTTP_CONNECT;
       }
       break;
@@ -1459,12 +1464,12 @@ int lookup_method_token(const StringRef &name) {
   case 8:
     switch (name[7]) {
     case 'D':
-      if (util::streq("PROPFIN"_sr, name.substr(0, 7))) {
+      if (util::streq("PROPFIN"sv, name.substr(0, 7))) {
         return HTTP_PROPFIND;
       }
       break;
     case 'T':
-      if (util::streq("CHECKOU"_sr, name.substr(0, 7))) {
+      if (util::streq("CHECKOU"sv, name.substr(0, 7))) {
         return HTTP_CHECKOUT;
       }
       break;
@@ -1473,12 +1478,12 @@ int lookup_method_token(const StringRef &name) {
   case 9:
     switch (name[8]) {
     case 'E':
-      if (util::streq("SUBSCRIB"_sr, name.substr(0, 8))) {
+      if (util::streq("SUBSCRIB"sv, name.substr(0, 8))) {
         return HTTP_SUBSCRIBE;
       }
       break;
     case 'H':
-      if (util::streq("PROPPATC"_sr, name.substr(0, 8))) {
+      if (util::streq("PROPPATC"sv, name.substr(0, 8))) {
         return HTTP_PROPPATCH;
       }
       break;
@@ -1487,12 +1492,12 @@ int lookup_method_token(const StringRef &name) {
   case 10:
     switch (name[9]) {
     case 'R':
-      if (util::streq("MKCALENDA"_sr, name.substr(0, 9))) {
+      if (util::streq("MKCALENDA"sv, name.substr(0, 9))) {
         return HTTP_MKCALENDAR;
       }
       break;
     case 'Y':
-      if (util::streq("MKACTIVIT"_sr, name.substr(0, 9))) {
+      if (util::streq("MKACTIVIT"sv, name.substr(0, 9))) {
         return HTTP_MKACTIVITY;
       }
       break;
@@ -1501,7 +1506,7 @@ int lookup_method_token(const StringRef &name) {
   case 11:
     switch (name[10]) {
     case 'E':
-      if (util::streq("UNSUBSCRIB"_sr, name.substr(0, 10))) {
+      if (util::streq("UNSUBSCRIB"sv, name.substr(0, 10))) {
         return HTTP_UNSUBSCRIBE;
       }
       break;
@@ -1511,34 +1516,36 @@ int lookup_method_token(const StringRef &name) {
   return -1;
 }
 
-StringRef to_method_string(int method_token) {
+std::string_view to_method_string(int method_token) {
   // we happened to use same value for method with llhttp.
-  return StringRef{
+  return std::string_view{
     llhttp_method_name(static_cast<llhttp_method>(method_token))};
 }
 
-StringRef get_pure_path_component(const StringRef &uri) {
+std::string_view get_pure_path_component(const std::string_view &uri) {
   int rv;
 
   urlparse_url u;
   rv = urlparse_parse_url(uri.data(), uri.size(), 0, &u);
   if (rv != 0) {
-    return StringRef{};
+    return ""sv;
   }
 
   if (u.field_set & (1 << URLPARSE_PATH)) {
     auto &f = u.field_data[URLPARSE_PATH];
-    return StringRef{uri.data() + f.off, f.len};
+    return std::string_view{uri.data() + f.off, f.len};
   }
 
-  return "/"_sr;
+  return "/"sv;
 }
 
-int construct_push_component(BlockAllocator &balloc, StringRef &scheme,
-                             StringRef &authority, StringRef &path,
-                             const StringRef &base, const StringRef &uri) {
+int construct_push_component(BlockAllocator &balloc, std::string_view &scheme,
+                             std::string_view &authority,
+                             std::string_view &path,
+                             const std::string_view &base,
+                             const std::string_view &uri) {
   int rv;
-  StringRef rel, relq;
+  std::string_view rel, relq;
 
   if (uri.size() == 0) {
     return -1;
@@ -1557,9 +1564,9 @@ int construct_push_component(BlockAllocator &balloc, StringRef &scheme,
     auto end = std::ranges::find(uri, '#');
     auto q = std::ranges::find(std::ranges::begin(uri), end, '?');
 
-    rel = StringRef{std::ranges::begin(uri), q};
+    rel = std::string_view{std::ranges::begin(uri), q};
     if (q != end) {
-      relq = StringRef{q + 1, std::ranges::end(uri)};
+      relq = std::string_view{q + 1, std::ranges::end(uri)};
     }
   } else {
     if (u.field_set & (1 << URLPARSE_SCHEMA)) {
@@ -1582,23 +1589,23 @@ int construct_push_component(BlockAllocator &balloc, StringRef &scheme,
       }
       *p = '\0';
 
-      authority = as_string_ref(std::ranges::begin(iov), p);
+      authority = as_string_view(std::ranges::begin(iov), p);
     }
 
     if (u.field_set & (1 << URLPARSE_PATH)) {
       auto &f = u.field_data[URLPARSE_PATH];
-      rel = StringRef{uri.data() + f.off, f.len};
+      rel = std::string_view{uri.data() + f.off, f.len};
     } else {
-      rel = "/"_sr;
+      rel = "/"sv;
     }
 
     if (u.field_set & (1 << URLPARSE_QUERY)) {
       auto &f = u.field_data[URLPARSE_QUERY];
-      relq = StringRef{uri.data() + f.off, f.len};
+      relq = std::string_view{uri.data() + f.off, f.len};
     }
   }
 
-  path = path_join(balloc, base, StringRef{}, rel, relq);
+  path = path_join(balloc, base, ""sv, rel, relq);
 
   return 0;
 }
@@ -1640,9 +1647,11 @@ template <typename InputIt> InputIt eat_dir(InputIt first, InputIt last) {
 }
 } // namespace
 
-StringRef path_join(BlockAllocator &balloc, const StringRef &base_path,
-                    const StringRef &base_query, const StringRef &rel_path,
-                    const StringRef &rel_query) {
+std::string_view path_join(BlockAllocator &balloc,
+                           const std::string_view &base_path,
+                           const std::string_view &base_query,
+                           const std::string_view &rel_path,
+                           const std::string_view &rel_query) {
   auto res =
     make_byte_ref(balloc, std::max(static_cast<size_t>(1), base_path.size()) +
                             rel_path.size() + 1 +
@@ -1661,12 +1670,12 @@ StringRef path_join(BlockAllocator &balloc, const StringRef &base_path,
         p = std::ranges::copy(base_query, p).out;
       }
       *p = '\0';
-      return as_string_ref(std::ranges::begin(res), p);
+      return as_string_view(std::ranges::begin(res), p);
     }
     *p++ = '?';
     p = std::ranges::copy(rel_query, p).out;
     *p = '\0';
-    return as_string_ref(std::ranges::begin(res), p);
+    return as_string_view(std::ranges::begin(res), p);
   }
 
   auto first = std::ranges::begin(rel_path);
@@ -1728,18 +1737,19 @@ StringRef path_join(BlockAllocator &balloc, const StringRef &base_path,
     p = std::ranges::copy(rel_query, p).out;
   }
   *p = '\0';
-  return as_string_ref(std::ranges::begin(res), p);
+  return as_string_view(std::ranges::begin(res), p);
 }
 
-StringRef normalize_path(BlockAllocator &balloc, const StringRef &path,
-                         const StringRef &query) {
+std::string_view normalize_path(BlockAllocator &balloc,
+                                const std::string_view &path,
+                                const std::string_view &query) {
   // First, decode %XX for unreserved characters, then do
   // http2::path_join
 
   // We won't find %XX if length is less than 3.
   if (path.size() < 3 ||
       std::ranges::find(path, '%') == std::ranges::end(path)) {
-    return path_join(balloc, StringRef{}, StringRef{}, path, query);
+    return path_join(balloc, ""sv, ""sv, path, query);
   }
 
   // includes last terminal NULL.
@@ -1774,19 +1784,20 @@ StringRef normalize_path(BlockAllocator &balloc, const StringRef &path,
   p = std::ranges::copy(it, std::ranges::end(path), p).out;
   *p = '\0';
 
-  return path_join(balloc, StringRef{}, StringRef{},
-                   as_string_ref(std::ranges::begin(result), p), query);
+  return path_join(balloc, ""sv, ""sv,
+                   as_string_view(std::ranges::begin(result), p), query);
 }
 
-StringRef normalize_path_colon(BlockAllocator &balloc, const StringRef &path,
-                               const StringRef &query) {
+std::string_view normalize_path_colon(BlockAllocator &balloc,
+                                      const std::string_view &path,
+                                      const std::string_view &query) {
   // First, decode %XX for unreserved characters and ':', then do
   // http2::path_join
 
   // We won't find %XX if length is less than 3.
   if (path.size() < 3 ||
       std::ranges::find(path, '%') == std::ranges::end(path)) {
-    return path_join(balloc, StringRef{}, StringRef{}, path, query);
+    return path_join(balloc, ""sv, ""sv, path, query);
   }
 
   // includes last terminal NULL.
@@ -1821,17 +1832,19 @@ StringRef normalize_path_colon(BlockAllocator &balloc, const StringRef &path,
   p = std::ranges::copy(it, std::ranges::end(path), p).out;
   *p = '\0';
 
-  return path_join(balloc, StringRef{}, StringRef{},
-                   as_string_ref(std::ranges::begin(result), p), query);
+  return path_join(balloc, ""sv, ""sv,
+                   as_string_view(std::ranges::begin(result), p), query);
 }
 
-std::string normalize_path(const StringRef &path, const StringRef &query) {
+std::string normalize_path(const std::string_view &path,
+                           const std::string_view &query) {
   BlockAllocator balloc(1024, 1024);
 
   return std::string{normalize_path(balloc, path, query)};
 }
 
-StringRef rewrite_clean_path(BlockAllocator &balloc, const StringRef &src) {
+std::string_view rewrite_clean_path(BlockAllocator &balloc,
+                                    const std::string_view &src) {
   if (src.empty() || src[0] != '/') {
     return src;
   }
@@ -1842,12 +1855,13 @@ StringRef rewrite_clean_path(BlockAllocator &balloc, const StringRef &src) {
   if (query != fragment) {
     ++query;
   }
-  return normalize_path(balloc, StringRef{std::ranges::begin(src), raw_query},
-                        StringRef{query, fragment});
+  return normalize_path(balloc,
+                        std::string_view{std::ranges::begin(src), raw_query},
+                        std::string_view{query, fragment});
 }
 
-bool contains_trailers(const StringRef &s) {
-  constexpr auto trailers = "trailers"_sr;
+bool contains_trailers(const std::string_view &s) {
+  constexpr auto trailers = "trailers"sv;
 
   for (auto p = std::ranges::begin(s), end = std::ranges::end(s);; ++p) {
     p = std::ranges::find_if(p, end,
@@ -1855,7 +1869,7 @@ bool contains_trailers(const StringRef &s) {
     if (p == end || static_cast<size_t>(end - p) < trailers.size()) {
       return false;
     }
-    if (util::strieq(trailers, StringRef{p, p + trailers.size()})) {
+    if (util::strieq(trailers, std::string_view{p, p + trailers.size()})) {
       // Make sure that there is no character other than white spaces
       // before next "," or end of string.
       p = std::ranges::find_if(p + trailers.size(), end,
@@ -1872,25 +1886,26 @@ bool contains_trailers(const StringRef &s) {
   }
 }
 
-StringRef make_websocket_accept_token(uint8_t *dest, const StringRef &key) {
+std::string_view make_websocket_accept_token(uint8_t *dest,
+                                             const std::string_view &key) {
   static constexpr auto magic = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"sv;
   std::array<char, base64::encode_length(16) + magic.size()> s;
   auto p = std::ranges::copy(key, std::ranges::begin(s)).out;
   std::ranges::copy(magic, p);
 
   std::array<uint8_t, 20> h;
-  if (util::sha1(h.data(), StringRef{s}) != 0) {
-    return StringRef{};
+  if (util::sha1(h.data(), std::string_view{s.begin(), s.end()}) != 0) {
+    return ""sv;
   }
 
-  return as_string_ref(dest, base64::encode(h, dest));
+  return as_string_view(dest, base64::encode(h, dest));
 }
 
 bool legacy_http1(int major, int minor) {
   return major <= 0 || (major == 1 && minor == 0);
 }
 
-bool check_transfer_encoding(const StringRef &s) {
+bool check_transfer_encoding(const std::string_view &s) {
   if (s.empty()) {
     return false;
   }

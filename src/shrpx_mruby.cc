@@ -139,7 +139,7 @@ mrb_value instantiate_app(mrb_state *mrb, RProc *proc) {
 // very hard to write these kind of code because mruby has almost no
 // documentation about compiling or generating code, at least at the
 // time of this writing.
-RProc *compile(mrb_state *mrb, const StringRef &filename) {
+RProc *compile(mrb_state *mrb, const std::string_view &filename) {
   if (filename.empty()) {
     return nullptr;
   }
@@ -179,7 +179,8 @@ RProc *compile(mrb_state *mrb, const StringRef &filename) {
   return proc;
 }
 
-std::unique_ptr<MRubyContext> create_mruby_context(const StringRef &filename) {
+std::unique_ptr<MRubyContext>
+create_mruby_context(const std::string_view &filename) {
   if (filename.empty()) {
     return std::make_unique<MRubyContext>(nullptr, mrb_nil_value(),
                                           mrb_nil_value());

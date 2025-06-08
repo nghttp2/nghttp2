@@ -33,7 +33,7 @@ namespace shrpx {
 
 MemcachedDispatcher::MemcachedDispatcher(const Address *addr,
                                          struct ev_loop *loop, SSL_CTX *ssl_ctx,
-                                         const StringRef &sni_name,
+                                         const std::string_view &sni_name,
                                          MemchunkPool *mcpool,
                                          std::mt19937 &gen)
   : loop_(loop),

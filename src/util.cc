@@ -74,8 +74,6 @@
 
 #include "timegm.h"
 
-using namespace std::literals;
-
 namespace nghttp2 {
 
 namespace util {
@@ -193,14 +191,14 @@ const std::chrono::time_zone *get_current_time_zone() {
 }
 } // namespace
 
-StringRef format_iso8601(char *out,
-                         const std::chrono::system_clock::time_point &tp) {
+std::string_view
+format_iso8601(char *out, const std::chrono::system_clock::time_point &tp) {
   return format_iso8601(out, tp, get_current_time_zone());
 }
 
-StringRef format_iso8601(char *out,
-                         const std::chrono::system_clock::time_point &tp,
-                         const std::chrono::time_zone *tz) {
+std::string_view format_iso8601(char *out,
+                                const std::chrono::system_clock::time_point &tp,
+                                const std::chrono::time_zone *tz) {
   auto t = std::chrono::floor<std::chrono::milliseconds>(tp);
   auto zt = std::chrono::zoned_time{tz, t};
   auto lt = zt.get_local_time();
@@ -248,15 +246,15 @@ StringRef format_iso8601(char *out,
   return {out, p};
 }
 
-StringRef
+std::string_view
 format_iso8601_basic(char *out,
                      const std::chrono::system_clock::time_point &tp) {
   return format_iso8601_basic(out, tp, get_current_time_zone());
 }
 
-StringRef format_iso8601_basic(char *out,
-                               const std::chrono::system_clock::time_point &tp,
-                               const std::chrono::time_zone *tz) {
+std::string_view
+format_iso8601_basic(char *out, const std::chrono::system_clock::time_point &tp,
+                     const std::chrono::time_zone *tz) {
   auto t = std::chrono::floor<std::chrono::milliseconds>(tp);
   auto zt = std::chrono::zoned_time{tz, t};
   auto lt = zt.get_local_time();
@@ -299,14 +297,14 @@ StringRef format_iso8601_basic(char *out,
   return {out, p};
 }
 
-StringRef format_common_log(char *out,
-                            const std::chrono::system_clock::time_point &tp) {
+std::string_view
+format_common_log(char *out, const std::chrono::system_clock::time_point &tp) {
   return format_common_log(out, tp, get_current_time_zone());
 }
 
-StringRef format_common_log(char *out,
-                            const std::chrono::system_clock::time_point &tp,
-                            const std::chrono::time_zone *tz) {
+std::string_view
+format_common_log(char *out, const std::chrono::system_clock::time_point &tp,
+                  const std::chrono::time_zone *tz) {
   auto t = std::chrono::floor<std::chrono::milliseconds>(tp);
   auto zt = std::chrono::zoned_time{tz, t};
   auto lt = zt.get_local_time();
@@ -349,8 +347,8 @@ StringRef format_common_log(char *out,
   return {out, p};
 }
 
-StringRef format_http_date(char *out,
-                           const std::chrono::system_clock::time_point &tp) {
+std::string_view
+format_http_date(char *out, const std::chrono::system_clock::time_point &tp) {
   auto t = std::chrono::floor<std::chrono::seconds>(tp);
   auto days = std::chrono::floor<std::chrono::days>(t);
   auto ymd = std::chrono::year_month_day{days};
@@ -432,11 +430,11 @@ char *iso8601_date(char *out, const std::chrono::system_clock::time_point &tp) {
 }
 } // namespace
 
-StringRef format_iso8601(char *out,
-                         const std::chrono::system_clock::time_point &tp) {
+std::string_view
+format_iso8601(char *out, const std::chrono::system_clock::time_point &tp) {
   auto p = iso8601_date(out, tp);
   *p = '\0';
-  return StringRef{out, p};
+  return std::string_view{out, p};
 }
 
 namespace {
@@ -485,7 +483,7 @@ char *iso8601_basic_date(char *out,
 }
 } // namespace
 
-StringRef
+std::string_view
 format_iso8601_basic(char *out,
                      const std::chrono::system_clock::time_point &tp) {
   auto p = iso8601_basic_date(out, tp);
@@ -538,8 +536,8 @@ char *common_log_date(char *out,
 }
 } // namespace
 
-StringRef format_common_log(char *out,
-                            const std::chrono::system_clock::time_point &tp) {
+std::string_view
+format_common_log(char *out, const std::chrono::system_clock::time_point &tp) {
   auto p = common_log_date(out, tp);
   *p = '\0';
   return {out, p};
@@ -577,15 +575,15 @@ char *http_date(char *out, const std::chrono::system_clock::time_point &tp) {
 }
 } // namespace
 
-StringRef format_http_date(char *out,
-                           const std::chrono::system_clock::time_point &tp) {
+std::string_view
+format_http_date(char *out, const std::chrono::system_clock::time_point &tp) {
   auto p = http_date(out, tp);
   *p = '\0';
   return {out, p};
 }
 #endif   // !defined(HAVE_STD_CHRONO_TIME_ZONE)
 
-time_t parse_http_date(const StringRef &s) {
+time_t parse_http_date(const std::string_view &s) {
   tm tm{};
 #ifdef _WIN32
   // there is no strptime - use std::get_time
@@ -603,7 +601,7 @@ time_t parse_http_date(const StringRef &s) {
   return nghttp2_timegm_without_yday(&tm);
 }
 
-time_t parse_openssl_asn1_time_print(const StringRef &s) {
+time_t parse_openssl_asn1_time_print(const std::string_view &s) {
   tm tm{};
   auto r = strptime(s.data(), "%b %d %H:%M:%S %Y GMT", &tm);
   if (r == nullptr) {
@@ -628,7 +626,8 @@ void to_token68(std::string &base64str) {
   }
 }
 
-StringRef to_base64(BlockAllocator &balloc, const StringRef &token68str) {
+std::string_view to_base64(BlockAllocator &balloc,
+                           const std::string_view &token68str) {
   // At most 3 padding '='
   auto len = token68str.size() + 3;
   auto iov = make_byte_ref(balloc, len + 1);
@@ -652,7 +651,7 @@ StringRef to_base64(BlockAllocator &balloc, const StringRef &token68str) {
 
   *p = '\0';
 
-  return as_string_ref(std::ranges::begin(iov), p);
+  return as_string_view(std::ranges::begin(iov), p);
 }
 
 namespace {
@@ -765,25 +764,26 @@ bool fieldeq(const char *uri1, const urlparse_url &u1, const char *uri2,
 
 bool fieldeq(const char *uri, const urlparse_url &u, urlparse_url_fields field,
              const char *t) {
-  return fieldeq(uri, u, field, StringRef{t});
+  return fieldeq(uri, u, field, std::string_view{t});
 }
 
 bool fieldeq(const char *uri, const urlparse_url &u, urlparse_url_fields field,
-             const StringRef &t) {
+             const std::string_view &t) {
   if (!has_uri_field(u, field)) {
     return t.empty();
   }
   auto &f = u.field_data[field];
-  return StringRef{uri + f.off, f.len} == t;
+  return std::string_view{uri + f.off, f.len} == t;
 }
 
-StringRef get_uri_field(const char *uri, const urlparse_url &u,
-                        urlparse_url_fields field) {
+std::string_view get_uri_field(const char *uri, const urlparse_url &u,
+                               urlparse_url_fields field) {
   if (!util::has_uri_field(u, field)) {
-    return StringRef{};
+    return ""sv;
   }
 
-  return StringRef{uri + u.field_data[field].off, u.field_data[field].len};
+  return std::string_view{uri + u.field_data[field].off,
+                          u.field_data[field].len};
 }
 
 uint16_t get_default_port(const char *uri, const urlparse_url &u) {
@@ -969,23 +969,23 @@ bool check_path(const std::string &path) {
          path.find('\\') == std::string::npos &&
          path.find("/../") == std::string::npos &&
          path.find("/./") == std::string::npos &&
-         !util::ends_with(path, "/.."_sr) && !util::ends_with(path, "/."_sr);
+         !util::ends_with(path, "/.."sv) && !util::ends_with(path, "/."sv);
 }
 
 int64_t to_time64(const timeval &tv) {
   return tv.tv_sec * 1000000 + tv.tv_usec;
 }
 
-bool check_h2_is_selected(const StringRef &proto) {
+bool check_h2_is_selected(const std::string_view &proto) {
   return NGHTTP2_H2 == proto;
 }
 
 namespace {
 bool select_proto(const unsigned char **out, unsigned char *outlen,
                   const unsigned char *in, unsigned int inlen,
-                  const StringRef &key) {
+                  const std::string_view &key) {
   for (auto p = in, end = in + inlen; p + key.size() <= end; p += *p + 1) {
-    if (std::ranges::equal(key, as_string_ref(p, key.size()))) {
+    if (std::ranges::equal(key, as_string_view(p, key.size()))) {
       *out = p + 1;
       *outlen = *p;
       return true;
@@ -1004,7 +1004,7 @@ bool select_protocol(const unsigned char **out, unsigned char *outlen,
                      const unsigned char *in, unsigned int inlen,
                      std::vector<std::string> proto_list) {
   for (const auto &proto : proto_list) {
-    if (select_proto(out, outlen, in, inlen, StringRef{proto})) {
+    if (select_proto(out, outlen, in, inlen, proto)) {
       return true;
     }
   }
@@ -1012,21 +1012,21 @@ bool select_protocol(const unsigned char **out, unsigned char *outlen,
   return false;
 }
 
-std::vector<StringRef> split_str(const StringRef &s, char delim) {
+std::vector<std::string_view> split_str(const std::string_view &s, char delim) {
   size_t len = 1;
   auto last = std::ranges::end(s);
-  StringRef::const_iterator d;
+  std::string_view::const_iterator d;
   for (auto first = std::ranges::begin(s);
        (d = std::ranges::find(first, last, delim)) != last;
        ++len, first = d + 1)
     ;
 
-  auto list = std::vector<StringRef>(len);
+  auto list = std::vector<std::string_view>(len);
 
   len = 0;
   for (auto first = std::ranges::begin(s);; ++len) {
     auto stop = std::ranges::find(first, last, delim);
-    list[len] = StringRef{first, stop};
+    list[len] = std::string_view{first, stop};
     if (stop == last) {
       break;
     }
@@ -1035,7 +1035,8 @@ std::vector<StringRef> split_str(const StringRef &s, char delim) {
   return list;
 }
 
-std::vector<StringRef> split_str(const StringRef &s, char delim, size_t n) {
+std::vector<std::string_view> split_str(const std::string_view &s, char delim,
+                                        size_t n) {
   if (n == 0) {
     return split_str(s, delim);
   }
@@ -1046,23 +1047,23 @@ std::vector<StringRef> split_str(const StringRef &s, char delim, size_t n) {
 
   size_t len = 1;
   auto last = std::ranges::end(s);
-  StringRef::const_iterator d;
+  std::string_view::const_iterator d;
   for (auto first = std::ranges::begin(s);
        len < n && (d = std::ranges::find(first, last, delim)) != last;
        ++len, first = d + 1)
     ;
 
-  auto list = std::vector<StringRef>(len);
+  auto list = std::vector<std::string_view>(len);
 
   len = 0;
   for (auto first = std::ranges::begin(s);; ++len) {
     if (len == n - 1) {
-      list[len] = StringRef{first, last};
+      list[len] = std::string_view{first, last};
       break;
     }
 
     auto stop = std::ranges::find(first, last, delim);
-    list[len] = StringRef{first, stop};
+    list[len] = std::string_view{first, stop};
     if (stop == last) {
       break;
     }
@@ -1071,7 +1072,8 @@ std::vector<StringRef> split_str(const StringRef &s, char delim, size_t n) {
   return list;
 }
 
-std::vector<std::string> parse_config_str_list(const StringRef &s, char delim) {
+std::vector<std::string> parse_config_str_list(const std::string_view &s,
+                                               char delim) {
   auto sublist = split_str(s, delim);
   auto res = std::vector<std::string>();
   res.reserve(sublist.size());
@@ -1224,8 +1226,8 @@ bool ipv6_numeric_addr(const char *host) {
 }
 
 namespace {
-std::optional<std::pair<int64_t, StringRef>>
-parse_uint_digits(const StringRef &s) {
+std::optional<std::pair<int64_t, std::string_view>>
+parse_uint_digits(const std::string_view &s) {
   if (s.empty()) {
     return {};
   }
@@ -1263,7 +1265,7 @@ parse_uint_digits(const StringRef &s) {
 }
 } // namespace
 
-std::optional<int64_t> parse_uint_with_unit(const StringRef &s) {
+std::optional<int64_t> parse_uint_with_unit(const std::string_view &s) {
   auto r = parse_uint_digits(s);
   if (!r) {
     return {};
@@ -1305,7 +1307,7 @@ std::optional<int64_t> parse_uint_with_unit(const StringRef &s) {
   return n * mul;
 }
 
-std::optional<int64_t> parse_uint(const StringRef &s) {
+std::optional<int64_t> parse_uint(const std::string_view &s) {
   auto r = parse_uint_digits(s);
   if (!r || !(*r).second.empty()) {
     return {};
@@ -1314,7 +1316,7 @@ std::optional<int64_t> parse_uint(const StringRef &s) {
   return (*r).first;
 }
 
-std::optional<double> parse_duration_with_unit(const StringRef &s) {
+std::optional<double> parse_duration_with_unit(const std::string_view &s) {
   constexpr auto max = std::numeric_limits<int64_t>::max();
 
   auto r = parse_uint_digits(s);
@@ -1427,14 +1429,15 @@ std::string dtos(double n) {
   return utos(m / 100) + "." + (f.size() == 1 ? "0" : "") + f;
 }
 
-StringRef make_http_hostport(BlockAllocator &balloc, const StringRef &host,
-                             uint16_t port) {
+std::string_view make_http_hostport(BlockAllocator &balloc,
+                                    const std::string_view &host,
+                                    uint16_t port) {
   auto iov = make_byte_ref(balloc, host.size() + 2 + 1 + 5 + 1);
   return make_http_hostport(host, port, std::ranges::begin(iov));
 }
 
-StringRef make_hostport(BlockAllocator &balloc, const StringRef &host,
-                        uint16_t port) {
+std::string_view make_hostport(BlockAllocator &balloc,
+                               const std::string_view &host, uint16_t port) {
   auto iov = make_byte_ref(balloc, host.size() + 2 + 1 + 5 + 1);
   return make_hostport(host, port, std::ranges::begin(iov));
 }
@@ -1675,7 +1678,7 @@ double int_pow(double x, size_t y) {
   return res;
 }
 
-uint32_t hash32(const StringRef &s) {
+uint32_t hash32(const std::string_view &s) {
   /* 32 bit FNV-1a: http://isthe.com/chongo/tech/comp/fnv/ */
   uint32_t h = 2166136261u;
   size_t i;
@@ -1689,7 +1692,8 @@ uint32_t hash32(const StringRef &s) {
 }
 
 namespace {
-int message_digest(uint8_t *res, const EVP_MD *meth, const StringRef &s) {
+int message_digest(uint8_t *res, const EVP_MD *meth,
+                   const std::string_view &s) {
   int rv;
 
   auto ctx = EVP_MD_CTX_new();
@@ -1720,35 +1724,40 @@ int message_digest(uint8_t *res, const EVP_MD *meth, const StringRef &s) {
 }
 } // namespace
 
-int sha256(uint8_t *res, const StringRef &s) {
+int sha256(uint8_t *res, const std::string_view &s) {
   return message_digest(res, EVP_sha256(), s);
 }
 
-int sha1(uint8_t *res, const StringRef &s) {
+int sha1(uint8_t *res, const std::string_view &s) {
   return message_digest(res, EVP_sha1(), s);
 }
 
-StringRef extract_host(const StringRef &hostport) {
+std::string_view extract_host(const std::string_view &hostport) {
+  if (hostport.empty()) {
+    return ""sv;
+  }
+
   if (hostport[0] == '[') {
     // assume this is IPv6 numeric address
     auto p = std::ranges::find(hostport, ']');
     if (p == std::ranges::end(hostport)) {
-      return StringRef{};
+      return ""sv;
     }
     if (p + 1 < std::ranges::end(hostport) && *(p + 1) != ':') {
-      return StringRef{};
+      return ""sv;
     }
-    return StringRef{std::ranges::begin(hostport), p + 1};
+    return std::string_view{std::ranges::begin(hostport), p + 1};
   }
 
   auto p = std::ranges::find(hostport, ':');
   if (p == std::ranges::begin(hostport)) {
-    return StringRef{};
+    return ""sv;
   }
-  return StringRef{std::ranges::begin(hostport), p};
+  return std::string_view{std::ranges::begin(hostport), p};
 }
 
-std::pair<StringRef, StringRef> split_hostport(const StringRef &hostport) {
+std::pair<std::string_view, std::string_view>
+split_hostport(const std::string_view &hostport) {
   if (hostport.empty()) {
     return {};
   }
@@ -1759,13 +1768,13 @@ std::pair<StringRef, StringRef> split_hostport(const StringRef &hostport) {
       return {};
     }
     if (p + 1 == std::ranges::end(hostport)) {
-      return {StringRef{std::ranges::begin(hostport) + 1, p}, {}};
+      return {std::string_view{std::ranges::begin(hostport) + 1, p}, {}};
     }
     if (*(p + 1) != ':' || p + 2 == std::ranges::end(hostport)) {
       return {};
     }
-    return {StringRef{std::ranges::begin(hostport) + 1, p},
-            StringRef{p + 2, std::ranges::end(hostport)}};
+    return {std::string_view{std::ranges::begin(hostport) + 1, p},
+            std::string_view{p + 2, std::ranges::end(hostport)}};
   }
 
   auto p = std::ranges::find(hostport, ':');
@@ -1773,14 +1782,14 @@ std::pair<StringRef, StringRef> split_hostport(const StringRef &hostport) {
     return {};
   }
   if (p == std::ranges::end(hostport)) {
-    return {StringRef{std::ranges::begin(hostport), p}, {}};
+    return {std::string_view{std::ranges::begin(hostport), p}, {}};
   }
   if (p + 1 == std::ranges::end(hostport)) {
     return {};
   }
 
-  return {StringRef{std::ranges::begin(hostport), p},
-          StringRef{p + 1, std::ranges::end(hostport)}};
+  return {std::string_view{std::ranges::begin(hostport), p},
+          std::string_view{p + 1, std::ranges::end(hostport)}};
 }
 
 std::mt19937 make_mt19937() {
@@ -1828,7 +1837,7 @@ int daemonize(int nochdir, int noclose) {
 #endif // !__APPLE__
 }
 
-StringRef rstrip(BlockAllocator &balloc, const StringRef &s) {
+std::string_view rstrip(BlockAllocator &balloc, const std::string_view &s) {
   auto it = std::ranges::rbegin(s);
   for (; it != std::ranges::rend(s) && (*it == ' ' || *it == '\t'); ++it)
     ;
@@ -1838,7 +1847,7 @@ StringRef rstrip(BlockAllocator &balloc, const StringRef &s) {
     return s;
   }
 
-  return make_string_ref(balloc, StringRef{s.data(), s.size() - len});
+  return make_string_ref(balloc, std::string_view{s.data(), s.size() - len});
 }
 
 #ifdef ENABLE_HTTP3

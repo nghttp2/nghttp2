@@ -416,8 +416,8 @@ ClientHandler *QUICConnectionHandler::handle_new_connection(
   }
 
   auto handler = std::make_unique<ClientHandler>(
-    worker_, faddr->fd, ssl, StringRef{host.data()}, StringRef{service.data()},
-    remote_addr.su.sa.sa_family, faddr);
+    worker_, faddr->fd, ssl, std::string_view{host.data()},
+    std::string_view{service.data()}, remote_addr.su.sa.sa_family, faddr);
 
   auto &fwdconf = config->http.forwarded;
 

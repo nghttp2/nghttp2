@@ -84,8 +84,8 @@ namespace nghttp2 {
 
 namespace {
 // TODO could be constexpr
-constexpr auto DEFAULT_HTML = "index.html"_sr;
-constexpr auto NGHTTPD_SERVER = "nghttpd nghttp2/" NGHTTP2_VERSION ""_sr;
+constexpr auto DEFAULT_HTML = "index.html"sv;
+constexpr auto NGHTTPD_SERVER = "nghttpd nghttp2/" NGHTTP2_VERSION ""sv;
 } // namespace
 
 namespace {
@@ -906,7 +906,7 @@ int Http2Handler::verify_alpn_result() {
   // Check the negotiated protocol in ALPN
   SSL_get0_alpn_selected(ssl_, &next_proto, &next_proto_len);
   if (next_proto) {
-    auto proto = as_string_ref(next_proto, next_proto_len);
+    auto proto = as_string_view(next_proto, next_proto_len);
     if (sessions_->get_config()->verbose) {
       std::cout << "The negotiated protocol: " << proto << std::endl;
     }
@@ -922,16 +922,17 @@ int Http2Handler::verify_alpn_result() {
   return -1;
 }
 
-int Http2Handler::submit_file_response(const StringRef &status, Stream *stream,
-                                       time_t last_modified, off_t file_length,
+int Http2Handler::submit_file_response(const std::string_view &status,
+                                       Stream *stream, time_t last_modified,
+                                       off_t file_length,
                                        const std::string *content_type,
                                        nghttp2_data_provider2 *data_prd) {
   std::string last_modified_str;
   auto nva = std::to_array({
-    http2::make_field(":status"_sr, status),
-    http2::make_field("server"_sr, NGHTTPD_SERVER),
-    http2::make_field("cache-control"_sr, "max-age=3600"_sr),
-    http2::make_field_v("date"_sr, sessions_->get_cached_date()),
+    http2::make_field(":status"sv, status),
+    http2::make_field("server"sv, NGHTTPD_SERVER),
+    http2::make_field("cache-control"sv, "max-age=3600"sv),
+    http2::make_field_v("date"sv, sessions_->get_cached_date()),
     {},
     {},
     {},
@@ -940,38 +941,38 @@ int Http2Handler::submit_file_response(const StringRef &status, Stream *stream,
   size_t nvlen = 4;
   if (!get_config()->no_content_length) {
     nva[nvlen++] = http2::make_field(
-      "content-length"_sr,
+      "content-length"sv,
       util::make_string_ref_uint(stream->balloc, as_unsigned(file_length)));
   }
   if (last_modified != 0) {
     last_modified_str = util::format_http_date(
       std::chrono::system_clock::from_time_t(last_modified));
-    nva[nvlen++] = http2::make_field_v("last-modified"_sr, last_modified_str);
+    nva[nvlen++] = http2::make_field_v("last-modified"sv, last_modified_str);
   }
   if (content_type) {
-    nva[nvlen++] = http2::make_field_v("content-type"_sr, *content_type);
+    nva[nvlen++] = http2::make_field_v("content-type"sv, *content_type);
   }
   auto &trailer_names = get_config()->trailer_names;
   if (!trailer_names.empty()) {
-    nva[nvlen++] = http2::make_field("trailer"_sr, trailer_names);
+    nva[nvlen++] = http2::make_field("trailer"sv, trailer_names);
   }
   return nghttp2_submit_response2(session_, stream->stream_id, nva.data(),
                                   nvlen, data_prd);
 }
 
-int Http2Handler::submit_response(const StringRef &status, int32_t stream_id,
-                                  const HeaderRefs &headers,
+int Http2Handler::submit_response(const std::string_view &status,
+                                  int32_t stream_id, const HeaderRefs &headers,
                                   nghttp2_data_provider2 *data_prd) {
   auto nva = std::vector<nghttp2_nv>();
   nva.reserve(4 + headers.size());
-  nva.push_back(http2::make_field(":status"_sr, status));
-  nva.push_back(http2::make_field("server"_sr, NGHTTPD_SERVER));
-  nva.push_back(http2::make_field_v("date"_sr, sessions_->get_cached_date()));
+  nva.push_back(http2::make_field(":status"sv, status));
+  nva.push_back(http2::make_field("server"sv, NGHTTPD_SERVER));
+  nva.push_back(http2::make_field_v("date"sv, sessions_->get_cached_date()));
 
   if (data_prd) {
     auto &trailer_names = get_config()->trailer_names;
     if (!trailer_names.empty()) {
-      nva.push_back(http2::make_field("trailer"_sr, trailer_names));
+      nva.push_back(http2::make_field("trailer"sv, trailer_names));
     }
   }
 
@@ -984,12 +985,13 @@ int Http2Handler::submit_response(const StringRef &status, int32_t stream_id,
   return r;
 }
 
-int Http2Handler::submit_response(const StringRef &status, int32_t stream_id,
+int Http2Handler::submit_response(const std::string_view &status,
+                                  int32_t stream_id,
                                   nghttp2_data_provider2 *data_prd) {
   auto nva = std::to_array({
-    http2::make_field(":status"_sr, status),
-    http2::make_field("server"_sr, NGHTTPD_SERVER),
-    http2::make_field_v("date"_sr, sessions_->get_cached_date()),
+    http2::make_field(":status"sv, status),
+    http2::make_field("server"sv, NGHTTPD_SERVER),
+    http2::make_field_v("date"sv, sessions_->get_cached_date()),
     {},
   });
   size_t nvlen = 3;
@@ -997,7 +999,7 @@ int Http2Handler::submit_response(const StringRef &status, int32_t stream_id,
   if (data_prd) {
     auto &trailer_names = get_config()->trailer_names;
     if (!trailer_names.empty()) {
-      nva[nvlen++] = http2::make_field("trailer"_sr, trailer_names);
+      nva[nvlen++] = http2::make_field("trailer"sv, trailer_names);
     }
   }
 
@@ -1007,25 +1009,25 @@ int Http2Handler::submit_response(const StringRef &status, int32_t stream_id,
 
 int Http2Handler::submit_non_final_response(const std::string &status,
                                             int32_t stream_id) {
-  auto nva = std::to_array({http2::make_field_v(":status"_sr, status)});
+  auto nva = std::to_array({http2::make_field_v(":status"sv, status)});
   return nghttp2_submit_headers(session_, NGHTTP2_FLAG_NONE, stream_id, nullptr,
                                 nva.data(), nva.size(), nullptr);
 }
 
 int Http2Handler::submit_push_promise(Stream *stream,
-                                      const StringRef &push_path) {
+                                      const std::string_view &push_path) {
   auto authority = stream->header.authority;
 
   if (authority.empty()) {
     authority = stream->header.host;
   }
 
-  auto scheme = get_config()->no_tls ? "http"_sr : "https"_sr;
+  auto scheme = get_config()->no_tls ? "http"sv : "https"sv;
 
-  auto nva = std::to_array({http2::make_field(":method"_sr, "GET"_sr),
-                            http2::make_field(":path"_sr, push_path),
-                            http2::make_field(":scheme"_sr, scheme),
-                            http2::make_field(":authority"_sr, authority)});
+  auto nva = std::to_array({http2::make_field(":method"sv, "GET"sv),
+                            http2::make_field(":path"sv, push_path),
+                            http2::make_field(":scheme"sv, scheme),
+                            http2::make_field(":authority"sv, authority)});
 
   auto promised_stream_id = nghttp2_submit_push_promise(
     session_, NGHTTP2_FLAG_END_HEADERS, stream->stream_id, nva.data(),
@@ -1038,7 +1040,7 @@ int Http2Handler::submit_push_promise(Stream *stream,
   auto promised_stream = std::make_unique<Stream>(this, promised_stream_id);
 
   auto &promised_header = promised_stream->header;
-  promised_header.method = "GET"_sr;
+  promised_header.method = "GET"sv;
   promised_header.path = push_path;
   promised_header.scheme = scheme;
   promised_header.authority =
@@ -1150,12 +1152,12 @@ void prepare_status_response(Stream *stream, Http2Handler *hd, int status) {
 
   HeaderRefs headers;
   headers.reserve(2);
-  headers.emplace_back("content-type"_sr, "text/html; charset=UTF-8"_sr);
+  headers.emplace_back("content-type"sv, "text/html; charset=UTF-8"sv);
   headers.emplace_back(
-    "content-length"_sr,
+    "content-length"sv,
     util::make_string_ref_uint(stream->balloc, as_unsigned(file_ent->length)));
-  hd->submit_response(StringRef{status_page->status}, stream->stream_id,
-                      headers, &data_prd);
+  hd->submit_response(status_page->status, stream->stream_id, headers,
+                      &data_prd);
 }
 } // namespace
 
@@ -1176,14 +1178,14 @@ void prepare_echo_response(Stream *stream, Http2Handler *hd) {
   data_prd.read_callback = file_read_callback;
 
   HeaderRefs headers;
-  headers.emplace_back("nghttpd-response"_sr, "echo"_sr);
+  headers.emplace_back("nghttpd-response"sv, "echo"sv);
   if (!hd->get_config()->no_content_length) {
     headers.emplace_back(
-      "content-length"_sr,
+      "content-length"sv,
       util::make_string_ref_uint(stream->balloc, as_unsigned(length)));
   }
 
-  hd->submit_response("200"_sr, stream->stream_id, headers, &data_prd);
+  hd->submit_response("200"sv, stream->stream_id, headers, &data_prd);
 }
 } // namespace
 
@@ -1209,7 +1211,7 @@ bool prepare_upload_temp_store(Stream *stream, Http2Handler *hd) {
 
 namespace {
 void prepare_redirect_response(Stream *stream, Http2Handler *hd,
-                               const StringRef &path, int status) {
+                               const std::string_view &path, int status) {
   auto scheme = stream->header.scheme;
 
   auto authority = stream->header.authority;
@@ -1218,15 +1220,14 @@ void prepare_redirect_response(Stream *stream, Http2Handler *hd,
   }
 
   auto location =
-    concat_string_ref(stream->balloc, scheme, "://"_sr, authority, path);
+    concat_string_ref(stream->balloc, scheme, "://"sv, authority, path);
 
-  auto headers = HeaderRefs{{"location"_sr, location}};
+  auto headers = HeaderRefs{{"location"sv, location}};
 
   auto sessions = hd->get_sessions();
   auto status_page = sessions->get_server()->get_status_page(status);
 
-  hd->submit_response(StringRef{status_page->status}, stream->stream_id,
-                      headers, nullptr);
+  hd->submit_response(status_page->status, stream->stream_id, headers, nullptr);
 }
 } // namespace
 
@@ -1249,31 +1250,30 @@ void prepare_response(Stream *stream, Http2Handler *hd,
     last_mod = util::parse_http_date(ims);
   }
 
-  StringRef raw_path, raw_query;
+  std::string_view raw_path, raw_query;
   auto query_pos = std::ranges::find(reqpath, '?');
   if (query_pos != std::ranges::end(reqpath)) {
     // Do not response to this request to allow clients to test timeouts.
-    if ("nghttpd_do_not_respond_to_req=yes"_sr ==
-        StringRef{query_pos, std::ranges::end(reqpath)}) {
+    if ("nghttpd_do_not_respond_to_req=yes"sv ==
+        std::string_view{query_pos, std::ranges::end(reqpath)}) {
       return;
     }
-    raw_path = StringRef{std::ranges::begin(reqpath), query_pos};
-    raw_query = StringRef{query_pos, std::ranges::end(reqpath)};
+    raw_path = std::string_view{std::ranges::begin(reqpath), query_pos};
+    raw_query = std::string_view{query_pos, std::ranges::end(reqpath)};
   } else {
     raw_path = reqpath;
   }
 
   auto sessions = hd->get_sessions();
 
-  StringRef path;
+  std::string_view path;
   if (util::contains(raw_path, '%')) {
     path = util::percent_decode(stream->balloc, raw_path);
   } else {
     path = raw_path;
   }
 
-  path = http2::path_join(stream->balloc, StringRef{}, StringRef{}, path,
-                          StringRef{});
+  path = http2::path_join(stream->balloc, ""sv, ""sv, path, ""sv);
 
   if (util::contains(path, '\\')) {
     if (stream->file_ent) {
@@ -1288,7 +1288,7 @@ void prepare_response(Stream *stream, Http2Handler *hd,
     auto push_itr = hd->get_config()->push.find(std::string{path});
     if (allow_push && push_itr != std::ranges::end(hd->get_config()->push)) {
       for (auto &push_path : (*push_itr).second) {
-        rv = hd->submit_push_promise(stream, StringRef{push_path});
+        rv = hd->submit_push_promise(stream, push_path);
         if (rv != 0) {
           std::cerr << "nghttp2_submit_push_promise() returned error: "
                     << nghttp2_strerror(rv) << std::endl;
@@ -1347,7 +1347,7 @@ void prepare_response(Stream *stream, Http2Handler *hd,
       close(file);
 
       auto reqpath =
-        concat_string_ref(stream->balloc, raw_path, "/"_sr, raw_query);
+        concat_string_ref(stream->balloc, raw_path, "/"sv, raw_query);
 
       prepare_redirect_response(stream, hd, reqpath, 301);
 
@@ -1377,15 +1377,15 @@ void prepare_response(Stream *stream, Http2Handler *hd,
   stream->file_ent = file_ent;
 
   if (last_mod_found && file_ent->mtime <= last_mod) {
-    hd->submit_response("304"_sr, stream->stream_id, nullptr);
+    hd->submit_response("304"sv, stream->stream_id, nullptr);
 
     return;
   }
 
   auto method = stream->header.method;
-  if (method == "HEAD"_sr) {
-    hd->submit_file_response("200"_sr, stream, file_ent->mtime,
-                             file_ent->length, file_ent->content_type, nullptr);
+  if (method == "HEAD"sv) {
+    hd->submit_file_response("200"sv, stream, file_ent->mtime, file_ent->length,
+                             file_ent->content_type, nullptr);
     return;
   }
 
@@ -1396,7 +1396,7 @@ void prepare_response(Stream *stream, Http2Handler *hd,
   data_prd.source.fd = file_ent->fd;
   data_prd.read_callback = file_read_callback;
 
-  hd->submit_file_response("200"_sr, stream, file_ent->mtime, file_ent->length,
+  hd->submit_file_response("200"sv, stream, file_ent->mtime, file_ent->length,
                            file_ent->content_type, &data_prd);
 }
 } // namespace
@@ -1431,43 +1431,43 @@ int on_header_callback2(nghttp2_session *session, const nghttp2_frame *frame,
 
   stream->header_buffer_size += namebuf.len + valuebuf.len;
 
-  auto token = http2::lookup_token(as_string_ref(namebuf.base, namebuf.len));
+  auto token = http2::lookup_token(as_string_view(namebuf.base, namebuf.len));
 
   auto &header = stream->header;
 
   switch (token) {
   case http2::HD__METHOD:
-    header.method = as_string_ref(valuebuf.base, valuebuf.len);
+    header.method = as_string_view(valuebuf.base, valuebuf.len);
     header.rcbuf.method = value;
     nghttp2_rcbuf_incref(value);
     break;
   case http2::HD__SCHEME:
-    header.scheme = as_string_ref(valuebuf.base, valuebuf.len);
+    header.scheme = as_string_view(valuebuf.base, valuebuf.len);
     header.rcbuf.scheme = value;
     nghttp2_rcbuf_incref(value);
     break;
   case http2::HD__AUTHORITY:
-    header.authority = as_string_ref(valuebuf.base, valuebuf.len);
+    header.authority = as_string_view(valuebuf.base, valuebuf.len);
     header.rcbuf.authority = value;
     nghttp2_rcbuf_incref(value);
     break;
   case http2::HD_HOST:
-    header.host = as_string_ref(valuebuf.base, valuebuf.len);
+    header.host = as_string_view(valuebuf.base, valuebuf.len);
     header.rcbuf.host = value;
     nghttp2_rcbuf_incref(value);
     break;
   case http2::HD__PATH:
-    header.path = as_string_ref(valuebuf.base, valuebuf.len);
+    header.path = as_string_view(valuebuf.base, valuebuf.len);
     header.rcbuf.path = value;
     nghttp2_rcbuf_incref(value);
     break;
   case http2::HD_IF_MODIFIED_SINCE:
-    header.ims = as_string_ref(valuebuf.base, valuebuf.len);
+    header.ims = as_string_view(valuebuf.base, valuebuf.len);
     header.rcbuf.ims = value;
     nghttp2_rcbuf_incref(value);
     break;
   case http2::HD_EXPECT:
-    header.expect = as_string_ref(valuebuf.base, valuebuf.len);
+    header.expect = as_string_view(valuebuf.base, valuebuf.len);
     header.rcbuf.expect = value;
     nghttp2_rcbuf_incref(value);
     break;
@@ -1533,13 +1533,13 @@ int hd_on_frame_recv_callback(nghttp2_session *session,
     if (frame->headers.cat == NGHTTP2_HCAT_REQUEST) {
       auto expect100 = stream->header.expect;
 
-      if (util::strieq("100-continue"_sr, expect100)) {
+      if (util::strieq("100-continue"sv, expect100)) {
         hd->submit_non_final_response("100", frame->hd.stream_id);
       }
 
       auto method = stream->header.method;
       if (hd->get_config()->echo_upload &&
-          (method == "POST"_sr || method == "PUT"_sr)) {
+          (method == "POST"sv || method == "PUT"sv)) {
         if (!prepare_upload_temp_store(stream, hd)) {
           hd->submit_rst_stream(stream, NGHTTP2_INTERNAL_ERROR);
           return 0;

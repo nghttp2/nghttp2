@@ -41,8 +41,8 @@ namespace nghttp2 {
 namespace http3 {
 
 // Create nghttp3_nv from |name|, |value| and |flags|.
-inline nghttp3_nv make_field_flags(const StringRef &name,
-                                   const StringRef &value,
+inline nghttp3_nv make_field_flags(const std::string_view &name,
+                                   const std::string_view &value,
                                    uint8_t flags = NGHTTP3_NV_FLAG_NONE) {
   auto ns = as_uint8_span(std::span{name});
   auto vs = as_uint8_span(std::span{value});
@@ -53,7 +53,8 @@ inline nghttp3_nv make_field_flags(const StringRef &name,
 
 // Creates nghttp3_nv from |name|, |value| and |flags|.  nghttp3
 // library does not copy them.
-inline nghttp3_nv make_field(const StringRef &name, const StringRef &value,
+inline nghttp3_nv make_field(const std::string_view &name,
+                             const std::string_view &value,
                              uint8_t flags = NGHTTP3_NV_FLAG_NONE) {
   return make_field_flags(name, value,
                           static_cast<uint8_t>(NGHTTP3_NV_FLAG_NO_COPY_NAME |

@@ -164,10 +164,10 @@ struct Request {
   void record_response_end_time();
 
   // Returns scheme taking into account overridden scheme.
-  StringRef get_real_scheme() const;
+  std::string_view get_real_scheme() const;
   // Returns request host, without port, taking into account
   // overridden host.
-  StringRef get_real_host() const;
+  std::string_view get_real_host() const;
   // Returns request port, taking into account overridden host, port,
   // and scheme.
   uint16_t get_real_port() const;

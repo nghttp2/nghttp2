@@ -505,9 +505,9 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
       }
 
       conn_handler->set_tls_ticket_key_memcached_dispatcher(
-        std::make_unique<MemcachedDispatcher>(
-          &ticketconf.memcached.addr, loop, ssl_ctx,
-          StringRef{memcachedconf.host}, &mcpool, gen));
+        std::make_unique<MemcachedDispatcher>(&ticketconf.memcached.addr, loop,
+                                              ssl_ctx, memcachedconf.host,
+                                              &mcpool, gen));
 
       ev_timer_init(&renew_ticket_key_timer, memcached_get_ticket_key_cb, 0.,
                     0.);

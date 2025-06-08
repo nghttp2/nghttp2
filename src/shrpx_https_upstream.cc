@@ -141,9 +141,9 @@ int htp_uricb(llhttp_t *htp, const char *data, size_t len) {
 
   if (req.method == HTTP_CONNECT) {
     req.authority =
-      concat_string_ref(balloc, req.authority, StringRef{data, len});
+      concat_string_ref(balloc, req.authority, std::string_view{data, len});
   } else {
-    req.path = concat_string_ref(balloc, req.path, StringRef{data, len});
+    req.path = concat_string_ref(balloc, req.path, std::string_view{data, len});
   }
 
   return 0;
@@ -170,7 +170,7 @@ int htp_hdr_keycb(llhttp_t *htp, const char *data, size_t len) {
     return HPE_USER;
   }
 
-  auto name = StringRef{data, len};
+  auto name = std::string_view{data, len};
 
   if (downstream->get_request_state() == DownstreamState::INITIAL) {
     if (req.fs.header_key_prev()) {
@@ -228,7 +228,7 @@ int htp_hdr_valcb(llhttp_t *htp, const char *data, size_t len) {
     return HPE_USER;
   }
 
-  auto value = StringRef{data, len};
+  auto value = std::string_view{data, len};
 
   if (downstream->get_request_state() == DownstreamState::INITIAL) {
     req.fs.append_last_header_value(value);
@@ -241,7 +241,8 @@ int htp_hdr_valcb(llhttp_t *htp, const char *data, size_t len) {
 
 namespace {
 void rewrite_request_host_path_from_uri(BlockAllocator &balloc, Request &req,
-                                        const StringRef &uri, urlparse_url &u) {
+                                        const std::string_view &uri,
+                                        urlparse_url &u) {
   assert(u.field_set & (1 << URLPARSE_HOST));
 
   // As per https://tools.ietf.org/html/rfc7230#section-5.4, we
@@ -273,14 +274,14 @@ void rewrite_request_host_path_from_uri(BlockAllocator &balloc, Request &req,
     }
     *p = '\0';
 
-    req.authority = as_string_ref(std::ranges::begin(iovec), p);
+    req.authority = as_string_view(std::ranges::begin(iovec), p);
   } else {
     req.authority = authority;
   }
 
   req.scheme = util::get_uri_field(uri.data(), u, URLPARSE_SCHEMA);
 
-  StringRef path;
+  std::string_view path;
   if (u.field_set & (1 << URLPARSE_PATH)) {
     path = util::get_uri_field(uri.data(), u, URLPARSE_PATH);
   } else if (req.method == HTTP_OPTIONS) {
@@ -290,11 +291,11 @@ void rewrite_request_host_path_from_uri(BlockAllocator &balloc, Request &req,
     //
     // Notice that no slash after authority. See
     // http://tools.ietf.org/html/rfc7230#section-5.3.4
-    req.path = ""_sr;
+    req.path = ""sv;
     // we ignore query component here
     return;
   } else {
-    path = "/"_sr;
+    path = "/"sv;
   }
 
   if (u.field_set & (1 << URLPARSE_QUERY)) {
@@ -302,10 +303,10 @@ void rewrite_request_host_path_from_uri(BlockAllocator &balloc, Request &req,
 
     if (u.field_set & (1 << URLPARSE_PATH)) {
       auto q = util::get_uri_field(uri.data(), u, URLPARSE_QUERY);
-      path = StringRef{std::ranges::begin(path), std::ranges::end(q)};
+      path = std::string_view{std::ranges::begin(path), std::ranges::end(q)};
     } else {
-      path = concat_string_ref(balloc, path, "?"_sr,
-                               StringRef{&uri[fdata.off], fdata.len});
+      path = concat_string_ref(balloc, path, "?"sv,
+                               std::string_view{&uri[fdata.off], fdata.len});
     }
   }
 
@@ -356,7 +357,7 @@ int htp_hdrs_completecb(llhttp_t *htp) {
        << "HTTP/" << req.http_major << "." << req.http_minor << "\n";
 
     for (const auto &kv : req.fs.headers()) {
-      if (kv.name == "authorization"_sr) {
+      if (kv.name == "authorization"sv) {
         ss << TTY_HTTP_HD << kv.name << TTY_RST << ": <redacted>\n";
         continue;
       }
@@ -432,8 +433,8 @@ int htp_hdrs_completecb(llhttp_t *htp) {
         !(u.field_set & (1 << URLPARSE_HOST))) {
       req.no_authority = true;
 
-      if (method == HTTP_OPTIONS && req.path == "*"_sr) {
-        req.path = StringRef{};
+      if (method == HTTP_OPTIONS && req.path == "*"sv) {
+        req.path = ""sv;
       } else {
         req.path = http2::rewrite_clean_path(balloc, req.path);
       }
@@ -443,9 +444,9 @@ int htp_hdrs_completecb(llhttp_t *htp) {
       }
 
       if (handler->get_ssl()) {
-        req.scheme = "https"_sr;
+        req.scheme = "https"sv;
       } else {
-        req.scheme = "http"_sr;
+        req.scheme = "http"sv;
       }
     } else {
       rewrite_request_host_path_from_uri(balloc, req, req.path, u);
@@ -536,7 +537,7 @@ int htp_hdrs_completecb(llhttp_t *htp) {
     // Continue here to make the client happy.
     if (downstream->get_expect_100_continue()) {
       auto output = downstream->get_response_buf();
-      constexpr auto res = "HTTP/1.1 100 Continue\r\n\r\n"_sr;
+      constexpr auto res = "HTTP/1.1 100 Continue\r\n\r\n"sv;
       output->append(res);
       handler->signal_write();
     }
@@ -972,7 +973,7 @@ int HttpsUpstream::send_reply(Downstream *downstream, const uint8_t *body,
 
   if (httpconf.max_requests <= num_requests_ ||
       worker->get_graceful_shutdown()) {
-    resp.fs.add_header_token("connection"_sr, "close"_sr, false,
+    resp.fs.add_header_token("connection"sv, "close"sv, false,
                              http2::HD_CONNECTION);
     connection_close = true;
   } else if (req.http_major <= 0 ||
@@ -980,7 +981,7 @@ int HttpsUpstream::send_reply(Downstream *downstream, const uint8_t *body,
     connection_close = true;
   } else {
     auto c = resp.fs.header(http2::HD_CONNECTION);
-    if (c && util::strieq("close"_sr, c->value)) {
+    if (c && util::strieq("close"sv, c->value)) {
       connection_close = true;
     }
   }
@@ -1400,7 +1401,7 @@ int HttpsUpstream::on_downstream_abort_request_with_https_redirect(
 
 int HttpsUpstream::redirect_to_https(Downstream *downstream) {
   auto &req = downstream->request();
-  if (req.method == HTTP_CONNECT || req.scheme != "http"_sr ||
+  if (req.method == HTTP_CONNECT || req.scheme != "http"sv ||
       req.authority.empty()) {
     error_reply(400);
     return 0;
@@ -1416,18 +1417,18 @@ int HttpsUpstream::redirect_to_https(Downstream *downstream) {
   auto config = get_config();
   auto &httpconf = config->http;
 
-  StringRef loc;
-  if (httpconf.redirect_https_port == "443"_sr) {
-    loc = concat_string_ref(balloc, "https://"_sr, authority, req.path);
+  std::string_view loc;
+  if (httpconf.redirect_https_port == "443"sv) {
+    loc = concat_string_ref(balloc, "https://"sv, authority, req.path);
   } else {
-    loc = concat_string_ref(balloc, "https://"_sr, authority, ":"_sr,
+    loc = concat_string_ref(balloc, "https://"sv, authority, ":"sv,
                             httpconf.redirect_https_port, req.path);
   }
 
   auto &resp = downstream->response();
   resp.http_status = 308;
-  resp.fs.add_header_token("location"_sr, loc, false, http2::HD_LOCATION);
-  resp.fs.add_header_token("connection"_sr, "close"_sr, false,
+  resp.fs.add_header_token("location"sv, loc, false, http2::HD_LOCATION);
+  resp.fs.add_header_token("connection"sv, "close"sv, false,
                            http2::HD_CONNECTION);
 
   return send_reply(downstream, nullptr, 0);
@@ -1516,7 +1517,8 @@ fail:
   return 0;
 }
 
-int HttpsUpstream::initiate_push(Downstream *downstream, const StringRef &uri) {
+int HttpsUpstream::initiate_push(Downstream *downstream,
+                                 const std::string_view &uri) {
   return 0;
 }
 

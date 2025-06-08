@@ -327,129 +327,12 @@ inline std::string &operator+=(std::string &lhs, const ImmutableString &rhs) {
   return lhs;
 }
 
-constexpr ImmutableString operator""_is(const char *str, size_t len) {
-  return {str, len};
-}
-
-// StringRef is a reference to a string owned by something else.  So
-// it behaves like simple string, but it does not own pointer.  When
-// it is default constructed, it has empty string.  You can freely
-// copy or move around this struct, but never free its pointer.
-class StringRef {
-public:
-  using traits_type = std::char_traits<char>;
-  using value_type = traits_type::char_type;
-  using allocator_type = std::allocator<char>;
-  using size_type = std::allocator_traits<allocator_type>::size_type;
-  using difference_type =
-    std::allocator_traits<allocator_type>::difference_type;
-  using const_reference = const value_type &;
-  using const_pointer = const value_type *;
-  using const_iterator = const_pointer;
-  using const_reverse_iterator = std::reverse_iterator<const_iterator>;
-
-  constexpr StringRef() noexcept : base(""), len(0) {}
-
-  constexpr StringRef(const StringRef &other) noexcept = default;
-
-  StringRef(std::nullptr_t) = delete;
-
-  constexpr StringRef(const char *s) : base(s), len(traits_type::length(s)) {}
-
-  constexpr StringRef(const char *s, size_t n) : base(s), len(n) {}
-
-  constexpr StringRef(const std::string &s) : base(s.data()), len(s.size()) {}
-
-  constexpr StringRef(const ImmutableString &s)
-    : base(s.data()), len(s.size()) {}
-
-  template <typename R>
-  requires(std::ranges::contiguous_range<R> && std::ranges::sized_range<R> &&
-           std::ranges::borrowed_range<R> &&
-           std::is_same_v<std::ranges::range_value_t<R>, value_type> &&
-           !std::is_same_v<std::remove_cvref_t<R>, StringRef> &&
-           !std::is_array_v<std::remove_cvref_t<R>>)
-  constexpr explicit StringRef(R &&r)
-    : base(std::ranges::data(r)), len(std::ranges::size(r)) {}
-
-  template <std::contiguous_iterator I>
-  requires(std::is_same_v<std::iter_value_t<I>, value_type>)
-  constexpr StringRef(I first, I last)
-    : base(std::to_address(first)),
-      len(static_cast<size_type>(
-        std::ranges::distance(std::move(first), std::move(last)))) {}
-
-  constexpr StringRef &operator=(const StringRef &other) noexcept = default;
-
-  constexpr const_iterator begin() const noexcept { return base; }
-  constexpr const_iterator cbegin() const noexcept { return base; }
-
-  constexpr const_iterator end() const noexcept { return base + len; }
-  constexpr const_iterator cend() const noexcept { return base + len; }
-
-  constexpr const_reverse_iterator rbegin() const noexcept {
-    return const_reverse_iterator{base + len};
-  }
-  constexpr const_reverse_iterator crbegin() const noexcept {
-    return const_reverse_iterator{base + len};
-  }
-
-  constexpr const_reverse_iterator rend() const noexcept {
-    return const_reverse_iterator{base};
-  }
-  constexpr const_reverse_iterator crend() const noexcept {
-    return const_reverse_iterator{base};
-  }
-
-  constexpr const_pointer data() const noexcept { return base; }
-  constexpr size_type size() const noexcept { return len; }
-  [[nodiscard]] constexpr bool empty() const noexcept { return len == 0; }
-  constexpr const_reference operator[](size_type pos) const {
-    return *(base + pos);
-  }
-
-  constexpr operator std::string_view() const noexcept { return {base, len}; }
-
-  static constexpr size_type npos = size_type(-1);
-
-  constexpr StringRef substr(size_type pos = 0, size_type count = npos) const {
-    return {base + pos, std::min(count, len - pos)};
-  }
-
-private:
-  const_pointer base;
-  size_type len;
-};
-
-inline constexpr bool operator==(const StringRef &lhs,
-                                 const StringRef &rhs) noexcept {
+inline bool operator==(const ImmutableString &lhs,
+                       const std::string_view &rhs) {
   return std::ranges::equal(lhs, rhs);
 }
 
-#if !defined(__APPLE__) && !defined(_LIBCPP_VERSION)
-inline constexpr std::strong_ordering
-operator<=>(const StringRef &lhs, const StringRef &rhs) noexcept {
-  return std::lexicographical_compare_three_way(
-    std::ranges::begin(lhs), std::ranges::end(lhs), std::ranges::begin(rhs),
-    std::ranges::end(rhs));
-}
-#else  // __APPLE__ || _LIBCPP_VERSION
-inline constexpr bool operator<(const StringRef &lhs,
-                                const StringRef &rhs) noexcept {
-  return std::ranges::lexicographical_compare(lhs, rhs);
-}
-#endif // __APPLE__ || _LIBCPP_VERSION
-
-inline std::ostream &operator<<(std::ostream &o, const StringRef &s) {
-  return o.write(s.data(), static_cast<std::streamsize>(s.size()));
-}
-
-inline std::string &operator+=(std::string &lhs, const StringRef &rhs) {
-  lhs.append(rhs.data(), rhs.size());
-  return lhs;
-}
-
-constexpr StringRef operator""_sr(const char *str, size_t len) noexcept {
+constexpr ImmutableString operator""_is(const char *str, size_t len) {
   return {str, len};
 }
 
@@ -496,33 +379,13 @@ requires(sizeof(std::iter_value_t<I>) == sizeof(std::string_view::value_type))
     static_cast<size_t>(std::ranges::distance(first, last))};
 }
 
-// Returns StringRef over a given range |r|.
-template <typename R>
-requires(std::ranges::contiguous_range<R> && std::ranges::sized_range<R> &&
-         std::ranges::borrowed_range<R> &&
-         !std::is_array_v<std::remove_cvref_t<R>> &&
-         sizeof(std::ranges::range_value_t<R>) == sizeof(StringRef::value_type))
-[[nodiscard]] StringRef as_string_ref(R &&r) {
-  return StringRef{
-    reinterpret_cast<StringRef::const_pointer>(std::ranges::data(r)),
-    std::ranges::size(r)};
-}
-
-// Returns StringRef over a given range [|first|, |last|).
+// Returns std::string_view over a given range [|first|, |first| + |n|).
 template <std::contiguous_iterator I>
-requires(sizeof(std::iter_value_t<I>) == sizeof(StringRef::value_type))
-[[nodiscard]] StringRef as_string_ref(I first, I last) {
-  return StringRef{
-    reinterpret_cast<StringRef::const_pointer>(std::to_address(first)),
-    static_cast<size_t>(std::ranges::distance(first, last))};
-}
-
-// Returns StringRef over a given range [|first|, |first| + |n|).
-template <std::contiguous_iterator I>
-requires(sizeof(std::iter_value_t<I>) == sizeof(StringRef::value_type))
-[[nodiscard]] StringRef as_string_ref(I first, size_t n) {
-  return StringRef{
-    reinterpret_cast<StringRef::const_pointer>(std::to_address(first)), n};
+requires(sizeof(std::iter_value_t<I>) == sizeof(std::string_view::value_type))
+[[nodiscard]] std::string_view as_string_view(I first, size_t n) {
+  return std::string_view{
+    reinterpret_cast<std::string_view::const_pointer>(std::to_address(first)),
+    n};
 }
 
 inline int run_app(std::function<int(int, char **)> app, int argc,
@@ -540,15 +403,5 @@ inline int run_app(std::function<int(int, char **)> app, int argc,
 }
 
 } // namespace nghttp2
-
-namespace std {
-template <> struct hash<nghttp2::StringRef> {
-  std::hash<string_view> hasher;
-
-  std::size_t operator()(const nghttp2::StringRef &s) const noexcept {
-    return hasher({s.data(), s.size()});
-  }
-};
-} // namespace std
 
 #endif // TEMPLATE_H

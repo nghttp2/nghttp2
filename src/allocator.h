@@ -199,20 +199,20 @@ struct BlockAllocator {
 // Makes a copy of a range [|first|, |last|).  The resulting string
 // will be NULL-terminated.
 template <std::input_iterator I>
-StringRef make_string_ref(BlockAllocator &alloc, I first, I last) {
+std::string_view make_string_ref(BlockAllocator &alloc, I first, I last) {
   auto dst = static_cast<char *>(
     alloc.alloc(static_cast<size_t>(std::ranges::distance(first, last) + 1)));
   auto p = std::ranges::copy(first, last, dst).out;
   *p = '\0';
 
-  return StringRef{dst, p};
+  return std::string_view{dst, p};
 }
 
-// Makes a copy of |r| as StringRef.  The resulting string will be
+// Makes a copy of |r| as std::string_view.  The resulting string will be
 // NULL-terminated.
 template <std::ranges::input_range R>
 requires(!std::is_array_v<std::remove_cvref_t<R>>)
-StringRef make_string_ref(BlockAllocator &alloc, R &&r) {
+std::string_view make_string_ref(BlockAllocator &alloc, R &&r) {
   return make_string_ref(alloc, std::ranges::begin(r), std::ranges::end(r));
 }
 
@@ -247,13 +247,13 @@ uint8_t *concat_string_ref_copy(uint8_t *p, R &&r, Args &&...args) {
 // Returns the string which is the concatenation of |args| in the
 // given order.  The resulting string will be NULL-terminated.
 template <std::ranges::input_range... Args>
-StringRef concat_string_ref(BlockAllocator &alloc, Args &&...args) {
+std::string_view concat_string_ref(BlockAllocator &alloc, Args &&...args) {
   auto len = concat_string_ref_count(0, args...);
   auto dst = static_cast<uint8_t *>(alloc.alloc(len + 1));
   auto p = dst;
   p = concat_string_ref_copy(p, std::forward<Args>(args)...);
   *p = '\0';
-  return as_string_ref(dst, p);
+  return as_string_view(dst, p);
 }
 
 // Returns the string which is the concatenation of |value| and |args|
@@ -263,8 +263,9 @@ StringRef concat_string_ref(BlockAllocator &alloc, Args &&...args) {
 // unused memory region by using alloc.realloc().  If value is empty,
 // then just call concat_string_ref().
 template <std::ranges::input_range... Args>
-StringRef realloc_concat_string_ref(BlockAllocator &alloc,
-                                    const StringRef &value, Args &&...args) {
+std::string_view realloc_concat_string_ref(BlockAllocator &alloc,
+                                           const std::string_view &value,
+                                           Args &&...args) {
   if (value.empty()) {
     return concat_string_ref(alloc, std::forward<Args>(args)...);
   }
@@ -277,7 +278,7 @@ StringRef realloc_concat_string_ref(BlockAllocator &alloc,
   p = concat_string_ref_copy(p, std::forward<Args>(args)...);
   *p = '\0';
 
-  return as_string_ref(dst, p);
+  return as_string_view(dst, p);
 }
 
 // Makes an uninitialized buffer with given size.

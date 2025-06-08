@@ -446,8 +446,9 @@ int ClientHandler::upstream_http1_connhd_read() {
 }
 
 ClientHandler::ClientHandler(Worker *worker, int fd, SSL *ssl,
-                             const StringRef &ipaddr, const StringRef &port,
-                             int family, const UpstreamAddr *faddr)
+                             const std::string_view &ipaddr,
+                             const std::string_view &port, int family,
+                             const UpstreamAddr *faddr)
   : // We use balloc_ for TLS session ID (64), ipaddr (IPv6) (39),
     // port (5), forwarded-for (IPv6) (41), alpn (5), proxyproto
     // ipaddr (15), proxyproto port (5), sni (32, estimated).  we
@@ -512,14 +513,15 @@ ClientHandler::ClientHandler(Worker *worker, int fd, SSL *ssl,
                                    worker_->get_randgen());
       *p = '\0';
 
-      forwarded_for_ = as_string_ref(std::ranges::begin(buf), p);
+      forwarded_for_ = as_string_view(std::ranges::begin(buf), p);
     } else {
       init_forwarded_for(family, ipaddr_);
     }
   }
 }
 
-void ClientHandler::init_forwarded_for(int family, const StringRef &ipaddr) {
+void ClientHandler::init_forwarded_for(int family,
+                                       const std::string_view &ipaddr) {
   if (family == AF_INET6) {
     // 2 for '[' and ']'
     auto len = 2 + ipaddr.size();
@@ -531,7 +533,7 @@ void ClientHandler::init_forwarded_for(int family, const StringRef &ipaddr) {
     *p++ = ']';
     *p = '\0';
 
-    forwarded_for_ = as_string_ref(std::ranges::begin(buf), p);
+    forwarded_for_ = as_string_view(std::ranges::begin(buf), p);
   } else {
     // family == AF_INET or family == AF_UNIX
     forwarded_for_ = ipaddr;
@@ -549,7 +551,7 @@ void ClientHandler::setup_upstream_io_callback() {
     // upgraded to HTTP/2 through HTTP Upgrade or direct HTTP/2
     // connection.
     upstream_ = std::make_unique<HttpsUpstream>(this);
-    alpn_ = "http/1.1"_sr;
+    alpn_ = "http/1.1"sv;
     read_ = &ClientHandler::read_clear;
     write_ = &ClientHandler::write_clear;
     on_read_ = &ClientHandler::upstream_http1_connhd_read;
@@ -630,10 +632,10 @@ int ClientHandler::validate_next_proto() {
 
   SSL_get0_alpn_selected(conn_.tls.ssl, &next_proto, &next_proto_len);
 
-  StringRef proto;
+  std::string_view proto;
 
   if (next_proto) {
-    proto = as_string_ref(next_proto, next_proto_len);
+    proto = as_string_view(next_proto, next_proto_len);
 
     if (LOG_ENABLED(INFO)) {
       CLOG(INFO, this) << "The negotiated next protocol: " << proto;
@@ -643,7 +645,7 @@ int ClientHandler::validate_next_proto() {
       CLOG(INFO, this) << "No protocol negotiated. Fallback to HTTP/1.1";
     }
 
-    proto = "http/1.1"_sr;
+    proto = "http/1.1"sv;
   }
 
   if (!tls::in_proto_list(get_config()->tls.alpn_list, proto)) {
@@ -671,9 +673,9 @@ int ClientHandler::validate_next_proto() {
     return 0;
   }
 
-  if (proto == "http/1.1"_sr) {
+  if (proto == "http/1.1"sv) {
     upstream_ = std::make_unique<HttpsUpstream>(this);
-    alpn_ = "http/1.1"_sr;
+    alpn_ = "http/1.1"sv;
 
     // At this point, input buffer is already filled with some bytes.
     // The read callback is not called until new data come. So consume
@@ -705,7 +707,7 @@ int ClientHandler::on_read() {
 }
 int ClientHandler::on_write() { return on_write_(*this); }
 
-const StringRef &ClientHandler::get_ipaddr() const { return ipaddr_; }
+const std::string_view &ClientHandler::get_ipaddr() const { return ipaddr_; }
 
 bool ClientHandler::get_should_close_after_write() const {
   return should_close_after_write_;
@@ -737,7 +739,7 @@ void ClientHandler::pool_downstream_connection(
 
 namespace {
 // Computes 32bits hash for session affinity for IP address |ip|.
-uint32_t compute_affinity_from_ip(const StringRef &ip) {
+uint32_t compute_affinity_from_ip(const std::string_view &ip) {
   int rv;
   std::array<uint8_t, 32> buf;
 
@@ -807,8 +809,9 @@ Http2Session *ClientHandler::get_http2_session(
   return session;
 }
 
-uint32_t ClientHandler::get_affinity_cookie(Downstream *downstream,
-                                            const StringRef &cookie_name) {
+uint32_t
+ClientHandler::get_affinity_cookie(Downstream *downstream,
+                                   const std::string_view &cookie_name) {
   auto h = downstream->find_affinity_cookie(cookie_name);
   if (h) {
     return h;
@@ -816,7 +819,7 @@ uint32_t ClientHandler::get_affinity_cookie(Downstream *downstream,
 
   auto d = std::uniform_int_distribution<uint32_t>(1);
   auto rh = d(worker_->get_randgen());
-  h = util::hash32(StringRef{reinterpret_cast<char *>(&rh), sizeof(rh)});
+  h = util::hash32(std::string_view{reinterpret_cast<char *>(&rh), sizeof(rh)});
 
   downstream->renew_affinity_cookie(h);
 
@@ -974,7 +977,8 @@ DownstreamAddr *ClientHandler::get_downstream_addr_strict_affinity(
   } else {
     auto d = std::uniform_int_distribution<uint32_t>(1);
     auto rh = d(worker_->get_randgen());
-    h = util::hash32(StringRef{reinterpret_cast<char *>(&rh), sizeof(rh)});
+    h =
+      util::hash32(std::string_view{reinterpret_cast<char *>(&rh), sizeof(rh)});
   }
 
   // Client is not bound to a particular backend, or the bound backend
@@ -1045,7 +1049,7 @@ ClientHandler::get_downstream_connection(int &err, Downstream *downstream) {
 
   auto &balloc = downstream->get_block_allocator();
 
-  StringRef authority, path;
+  std::string_view authority, path;
 
   if (req.forwarded_once) {
     if (groups.size() != 1) {
@@ -1155,7 +1159,7 @@ SSL *ClientHandler::get_ssl() const { return conn_.tls.ssl; }
 
 void ClientHandler::direct_http2_upgrade() {
   upstream_ = std::make_unique<Http2Upstream>(this);
-  alpn_ = NGHTTP2_CLEARTEXT_PROTO_VERSION_ID ""_sr;
+  alpn_ = NGHTTP2_CLEARTEXT_PROTO_VERSION_ID ""sv;
   on_read_ = &ClientHandler::upstream_read;
   write_ = &ClientHandler::write_clear;
 }
@@ -1180,7 +1184,7 @@ int ClientHandler::perform_http2_upgrade(HttpsUpstream *http) {
   upstream_.release();
   // TODO We might get other version id in HTTP2-settings, if we
   // support aliasing for h2, but we just use library default for now.
-  alpn_ = NGHTTP2_CLEARTEXT_PROTO_VERSION_ID ""_sr;
+  alpn_ = NGHTTP2_CLEARTEXT_PROTO_VERSION_ID ""sv;
   on_read_ = &ClientHandler::upstream_http2_connhd_read;
   write_ = &ClientHandler::write_clear;
 
@@ -1189,7 +1193,7 @@ int ClientHandler::perform_http2_upgrade(HttpsUpstream *http) {
   constexpr auto res = "HTTP/1.1 101 Switching Protocols\r\n"
                        "Connection: Upgrade\r\n"
                        "Upgrade: " NGHTTP2_CLEARTEXT_PROTO_VERSION_ID "\r\n"
-                       "\r\n"_sr;
+                       "\r\n"sv;
 
   output->append(res);
   upstream_ = std::move(upstream);
@@ -1200,11 +1204,11 @@ int ClientHandler::perform_http2_upgrade(HttpsUpstream *http) {
 
 bool ClientHandler::get_http2_upgrade_allowed() const { return !conn_.tls.ssl; }
 
-StringRef ClientHandler::get_upstream_scheme() const {
+std::string_view ClientHandler::get_upstream_scheme() const {
   if (conn_.tls.ssl) {
-    return "https"_sr;
+    return "https"sv;
   } else {
-    return "http"_sr;
+    return "http"sv;
   }
 }
 
@@ -1348,7 +1352,7 @@ int ClientHandler::proxy_protocol_read() {
 
   --end;
 
-  constexpr auto HEADER = "PROXY "_sr;
+  constexpr auto HEADER = "PROXY "sv;
 
   if (static_cast<size_t>(end - rb_.pos()) < HEADER.size()) {
     if (LOG_ENABLED(INFO)) {
@@ -1357,7 +1361,7 @@ int ClientHandler::proxy_protocol_read() {
     return -1;
   }
 
-  if (HEADER != as_string_ref(rb_.pos(), HEADER.size())) {
+  if (HEADER != as_string_view(rb_.pos(), HEADER.size())) {
     if (LOG_ENABLED(INFO)) {
       CLOG(INFO, this) << "PROXY-protocol-v1: Bad PROXY protocol version 1 ID";
     }
@@ -1405,7 +1409,7 @@ int ClientHandler::proxy_protocol_read() {
       }
       return -1;
     }
-    if ("UNKNOWN"_sr != as_string_ref(rb_.pos(), 7)) {
+    if ("UNKNOWN"sv != as_string_view(rb_.pos(), 7)) {
       if (LOG_ENABLED(INFO)) {
         CLOG(INFO, this) << "PROXY-protocol-v1: Unknown INET protocol family";
       }
@@ -1489,9 +1493,9 @@ int ClientHandler::proxy_protocol_read() {
   rb_.drain(as_unsigned(end + 2 - rb_.pos()));
 
   ipaddr_ = make_string_ref(
-    balloc_, as_string_ref(src_addr, static_cast<size_t>(src_addrlen)));
+    balloc_, as_string_view(src_addr, static_cast<size_t>(src_addrlen)));
   port_ = make_string_ref(
-    balloc_, as_string_ref(src_port, static_cast<size_t>(src_portlen)));
+    balloc_, as_string_view(src_port, static_cast<size_t>(src_portlen)));
 
   if (LOG_ENABLED(INFO)) {
     CLOG(INFO, this) << "PROXY-protocol-v1: Finished, " << (rb_.pos() - first)
@@ -1648,7 +1652,7 @@ int ClientHandler::proxy_protocol_v2_read() {
   // We don't use destination port.
   p += 4;
 
-  ipaddr_ = make_string_ref(balloc_, StringRef{src_addr.data()});
+  ipaddr_ = make_string_ref(balloc_, std::string_view{src_addr.data()});
   port_ = util::make_string_ref_uint(balloc_, src_port);
 
   if (LOG_ENABLED(INFO)) {
@@ -1670,7 +1674,7 @@ int ClientHandler::proxy_protocol_v2_read() {
   return on_proxy_protocol_finish();
 }
 
-StringRef ClientHandler::get_forwarded_by() const {
+std::string_view ClientHandler::get_forwarded_by() const {
   auto &fwdconf = get_config()->http.forwarded;
 
   if (fwdconf.by_node_type == ForwardedNode::OBFUSCATED) {
@@ -1680,19 +1684,21 @@ StringRef ClientHandler::get_forwarded_by() const {
   return local_hostport_;
 }
 
-StringRef ClientHandler::get_forwarded_for() const { return forwarded_for_; }
+std::string_view ClientHandler::get_forwarded_for() const {
+  return forwarded_for_;
+}
 
 const UpstreamAddr *ClientHandler::get_upstream_addr() const { return faddr_; }
 
 Connection *ClientHandler::get_connection() { return &conn_; }
 
-void ClientHandler::set_tls_sni(const StringRef &sni) {
+void ClientHandler::set_tls_sni(const std::string_view &sni) {
   sni_ = make_string_ref(balloc_, sni);
 }
 
-StringRef ClientHandler::get_tls_sni() const { return sni_; }
+std::string_view ClientHandler::get_tls_sni() const { return sni_; }
 
-StringRef ClientHandler::get_alpn() const { return alpn_; }
+std::string_view ClientHandler::get_alpn() const { return alpn_; }
 
 BlockAllocator &ClientHandler::get_block_allocator() { return balloc_; }
 
@@ -1702,7 +1708,7 @@ void ClientHandler::set_alpn_from_conn() {
 
   SSL_get0_alpn_selected(conn_.tls.ssl, &alpn, &alpnlen);
 
-  alpn_ = make_string_ref(balloc_, as_string_ref(alpn, alpnlen));
+  alpn_ = make_string_ref(balloc_, as_string_view(alpn, alpnlen));
 }
 
 void ClientHandler::set_local_hostport(const sockaddr *addr,

@@ -49,7 +49,7 @@ public:
   DualDNSResolver(struct ev_loop *loop, int family);
 
   // Resolves |host|.  |host| must be NULL-terminated string.
-  int resolve(const StringRef &host);
+  int resolve(const std::string_view &host);
   CompleteCb get_complete_cb() const;
   void set_complete_cb(CompleteCb cb);
   DNSResolverStatus get_status(Address *result) const;

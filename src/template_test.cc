@@ -39,10 +39,9 @@ namespace nghttp2 {
 namespace {
 const MunitTest tests[]{
   munit_void_test(test_template_immutable_string),
-  munit_void_test(test_template_string_ref),
   munit_void_test(test_template_as_uint8_span),
   munit_void_test(test_template_as_string_view),
-  munit_void_test(test_template_as_string_ref),
+  munit_void_test(test_template_as_string_view),
   munit_test_end(),
 };
 } // namespace
@@ -153,75 +152,6 @@ void test_template_immutable_string(void) {
   }
 }
 
-void test_template_string_ref(void) {
-  StringRef empty;
-
-  assert_stdsv_equal(""sv, empty);
-  assert_size(0, ==, empty.size());
-
-  // from std::string
-  std::string alpha = "alpha";
-
-  StringRef ref(alpha);
-
-  assert_true("alpha" == ref);
-  assert_true(ref == "alpha");
-  assert_true(alpha == ref);
-  assert_true(ref == alpha);
-  assert_size(5, ==, ref.size());
-
-  // from string literal
-  auto from_lit = "alpha"_sr;
-
-  assert_stdsv_equal("alpha"sv, from_lit);
-  assert_size(5, ==, from_lit.size());
-
-  // from ImmutableString
-  auto im = "bravo"_is;
-
-  StringRef imref(im);
-
-  assert_stdsv_equal("bravo"sv, imref);
-  assert_size(5, ==, imref.size());
-
-  // from C-string
-  StringRef cstrref("charlie");
-
-  assert_stdsv_equal("charlie"sv, cstrref);
-  assert_size(7, ==, cstrref.size());
-
-  // from C-string and its length
-  StringRef cstrnref("delta", 5);
-
-  assert_stdsv_equal("delta"sv, cstrnref);
-  assert_size(5, ==, cstrnref.size());
-
-  // operator[]
-  StringRef br_op("foxtrot");
-
-  assert_char('f', ==, br_op[0]);
-  assert_char('o', ==, br_op[1]);
-  assert_char('t', ==, br_op[6]);
-  assert_char('\0', ==, br_op[7]);
-
-  // operator<<
-  {
-    StringRef a("foo");
-    std::stringstream ss;
-    ss << a;
-
-    assert_stdstring_equal("foo", ss.str());
-  }
-
-  // operator +=(std::string &, const StringRef &)
-  {
-    std::string a = "alpha";
-    a += StringRef("bravo");
-
-    assert_stdstring_equal("alphabravo", a);
-  }
-}
-
 void test_template_as_uint8_span(void) {
   uint32_t a[2];
 
@@ -248,6 +178,7 @@ void test_template_as_string_view(void) {
 
     assert_stdsv_equal("alpha"sv, as_string_view(a));
     assert_stdsv_equal("alpha"sv, as_string_view(a.begin(), a.end()));
+    assert_stdsv_equal("alp"sv, as_string_view(a.begin(), 3));
   }
 
   {
@@ -255,23 +186,6 @@ void test_template_as_string_view(void) {
 
     assert_stdsv_equal(""sv, as_string_view(s));
     assert_stdsv_equal(""sv, as_string_view(s.begin(), s.end()));
-  }
-}
-
-void test_template_as_string_ref(void) {
-  {
-    auto a = std::to_array<uint8_t>({'a', 'l', 'p', 'h', 'a'});
-
-    assert_stdsv_equal("alpha"sv, as_string_ref(a));
-    assert_stdsv_equal("alpha"sv, as_string_ref(a.begin(), a.end()));
-    assert_stdsv_equal("alp"sv, as_string_ref(a.begin(), 3));
-  }
-
-  {
-    auto s = ""s;
-
-    assert_stdsv_equal(""sv, as_string_ref(s));
-    assert_stdsv_equal(""sv, as_string_ref(s.begin(), s.end()));
   }
 }
 

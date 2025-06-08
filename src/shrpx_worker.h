@@ -95,15 +95,15 @@ struct DownstreamAddr {
   Address addr;
   // backend address.  If |host_unix| is true, this is UNIX domain
   // socket path.
-  StringRef host;
-  StringRef hostport;
+  std::string_view host;
+  std::string_view hostport;
   // backend port.  0 if |host_unix| is true.
   uint16_t port;
   // true if |host| contains UNIX domain socket path.
   bool host_unix;
 
   // sni field to send remote server if TLS is enabled.
-  StringRef sni;
+  std::string_view sni;
 
   std::unique_ptr<ConnectBlocker> connect_blocker;
   std::unique_ptr<LiveCheck> live_check;
@@ -137,7 +137,7 @@ struct DownstreamAddr {
   // 256], inclusive.
   uint32_t weight;
   // name of group which this address belongs to.
-  StringRef group;
+  std::string_view group;
   // Weight of the weight group which this address belongs to.  Its
   // range is [1, 256], inclusive.
   uint32_t group_weight;
@@ -467,8 +467,8 @@ private:
 // group.  The catch-all group index is given in |catch_all|.  All
 // patterns are given in |groups|.
 size_t match_downstream_addr_group(
-  const RouterConfig &routerconfig, const StringRef &hostport,
-  const StringRef &path,
+  const RouterConfig &routerconfig, const std::string_view &hostport,
+  const std::string_view &path,
   const std::vector<std::shared_ptr<DownstreamAddrGroup>> &groups,
   size_t catch_all, BlockAllocator &balloc);
 

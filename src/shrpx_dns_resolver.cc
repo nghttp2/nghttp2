@@ -137,7 +137,7 @@ DNSResolver::~DNSResolver() {
   ev_timer_stop(loop_, &timer_);
 }
 
-int DNSResolver::resolve(const StringRef &name, int family) {
+int DNSResolver::resolve(const std::string_view &name, int family) {
   if (status_ != DNSResolverStatus::IDLE) {
     return -1;
   }

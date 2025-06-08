@@ -38,10 +38,8 @@ namespace nghttp2 {
 extern const MunitSuite template_suite;
 
 munit_void_test_decl(test_template_immutable_string)
-munit_void_test_decl(test_template_string_ref)
 munit_void_test_decl(test_template_as_uint8_span)
 munit_void_test_decl(test_template_as_string_view)
-munit_void_test_decl(test_template_as_string_ref)
 
 } // namespace nghttp2
 

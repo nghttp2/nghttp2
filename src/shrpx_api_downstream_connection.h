@@ -29,6 +29,7 @@
 #include "template.h"
 
 using namespace nghttp2;
+using namespace std::literals;
 
 namespace shrpx {
 
@@ -54,7 +55,7 @@ class APIDownstreamConnection;
 
 struct APIEndpoint {
   // Endpoint path.  It must start with "/api/".
-  StringRef path;
+  std::string_view path;
   // true if we evaluate request body.
   bool require_body;
   // Allowed methods.  This is bitwise OR of one or more of (1 <<
@@ -91,7 +92,7 @@ public:
   virtual DownstreamAddr *get_addr() const;
 
   int send_reply(unsigned int http_status, APIStatusCode api_status,
-                 const StringRef &data = StringRef{});
+                 const std::string_view &data = ""sv);
   int error_method_not_allowed();
 
   // Handles backendconfig API request.

@@ -208,8 +208,8 @@ int on_header_callback2(nghttp2_session *session, const nghttp2_frame *frame,
     return 0;
   }
 
-  auto nameref = as_string_ref(namebuf.base, namebuf.len);
-  auto valueref = as_string_ref(valuebuf.base, valuebuf.len);
+  auto nameref = as_string_view(namebuf.base, namebuf.len);
+  auto valueref = as_string_view(valuebuf.base, valuebuf.len);
   auto token = http2::lookup_token(nameref);
   auto no_index = flags & NGHTTP2_NV_FLAG_NO_INDEX;
 
@@ -245,9 +245,9 @@ int on_invalid_header_callback2(nghttp2_session *session,
 
     ULOG(INFO, upstream) << "Invalid header field for stream_id="
                          << frame->hd.stream_id << ": name=["
-                         << as_string_ref(namebuf.base, namebuf.len)
+                         << as_string_view(namebuf.base, namebuf.len)
                          << "], value=["
-                         << as_string_ref(valuebuf.base, valuebuf.len) << "]";
+                         << as_string_view(valuebuf.base, valuebuf.len) << "]";
   }
 
   upstream->rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
@@ -320,7 +320,7 @@ int Http2Upstream::on_request_headers(Downstream *downstream,
   if (LOG_ENABLED(INFO)) {
     std::stringstream ss;
     for (auto &nv : nva) {
-      if (nv.name == "authorization"_sr) {
+      if (nv.name == "authorization"sv) {
         ss << TTY_HTTP_HD << nv.name << TTY_RST << ": <redacted>\n";
         continue;
       }
@@ -384,7 +384,7 @@ int Http2Upstream::on_request_headers(Downstream *downstream,
   }
 
   if (path) {
-    if (method_token == HTTP_OPTIONS && path->value == "*"_sr) {
+    if (method_token == HTTP_OPTIONS && path->value == "*"sv) {
       // Server-wide OPTIONS request.  Path is empty.
     } else if (config->http2_proxy &&
                faddr->alt_mode == UpstreamAltMode::NONE) {
@@ -397,7 +397,7 @@ int Http2Upstream::on_request_headers(Downstream *downstream,
 
   auto connect_proto = req.fs.header(http2::HD__PROTOCOL);
   if (connect_proto) {
-    if (connect_proto->value != "websocket"_sr) {
+    if (connect_proto->value != "websocket"sv) {
       if (error_reply(downstream, 400) != 0) {
         return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
       }
@@ -737,9 +737,9 @@ int on_frame_send_callback(nghttp2_session *session, const nghttp2_frame *frame,
       auto &nv = frame->push_promise.nva[i];
 
       auto name =
-        make_string_ref(promised_balloc, as_string_ref(nv.name, nv.namelen));
+        make_string_ref(promised_balloc, as_string_view(nv.name, nv.namelen));
       auto value =
-        make_string_ref(promised_balloc, as_string_ref(nv.value, nv.valuelen));
+        make_string_ref(promised_balloc, as_string_view(nv.value, nv.valuelen));
 
       auto token = http2::lookup_token(name);
       switch (token) {
@@ -1533,7 +1533,7 @@ int Http2Upstream::send_reply(Downstream *downstream, const uint8_t *body,
 
   auto response_status = http2::stringify_status(balloc, resp.http_status);
 
-  nva.push_back(http2::make_field(":status"_sr, response_status));
+  nva.push_back(http2::make_field(":status"sv, response_status));
 
   for (auto &kv : headers) {
     if (kv.name.empty() || kv.name[0] == ':') {
@@ -1553,7 +1553,7 @@ int Http2Upstream::send_reply(Downstream *downstream, const uint8_t *body,
   }
 
   if (!resp.fs.header(http2::HD_SERVER)) {
-    nva.push_back(http2::make_field("server"_sr, config->http.server_name));
+    nva.push_back(http2::make_field("server"sv, config->http.server_name));
   }
 
   for (auto &p : httpconf.add_response_headers) {
@@ -1612,11 +1612,11 @@ int Http2Upstream::error_reply(Downstream *downstream,
   auto date = make_string_ref(balloc, lgconf->tstamp->time_http);
 
   auto nva = std::to_array(
-    {http2::make_field(":status"_sr, response_status),
-     http2::make_field("content-type"_sr, "text/html; charset=UTF-8"_sr),
-     http2::make_field("server"_sr, get_config()->http.server_name),
-     http2::make_field("content-length"_sr, content_length),
-     http2::make_field("date"_sr, date)});
+    {http2::make_field(":status"sv, response_status),
+     http2::make_field("content-type"sv, "text/html; charset=UTF-8"sv),
+     http2::make_field("server"sv, get_config()->http.server_name),
+     http2::make_field("content-length"sv, content_length),
+     http2::make_field("date"sv, date)});
 
   rv = nghttp2_submit_response2(
     session_, static_cast<int32_t>(downstream->get_stream_id()), nva.data(),
@@ -1758,7 +1758,7 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
   if (downstream->get_non_final_response()) {
     auto response_status = http2::stringify_status(balloc, resp.http_status);
 
-    nva.push_back(http2::make_field(":status"_sr, response_status));
+    nva.push_back(http2::make_field(":status"sv, response_status));
 
     http2::copy_headers_to_nva_nocopy(nva, resp.fs.headers(),
                                       http2::HDOP_STRIP_ALL);
@@ -1784,7 +1784,7 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
 
   auto striphd_flags =
     static_cast<uint32_t>(http2::HDOP_STRIP_ALL & ~http2::HDOP_STRIP_VIA);
-  StringRef response_status;
+  std::string_view response_status;
 
   if (req.connect_proto == ConnectProto::WEBSOCKET && resp.http_status == 101) {
     response_status = http2::stringify_status(balloc, 200);
@@ -1793,16 +1793,16 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
     response_status = http2::stringify_status(balloc, resp.http_status);
   }
 
-  nva.push_back(http2::make_field(":status"_sr, response_status));
+  nva.push_back(http2::make_field(":status"sv, response_status));
 
   http2::copy_headers_to_nva_nocopy(nva, resp.fs.headers(), striphd_flags);
 
   if (!config->http2_proxy && !httpconf.no_server_rewrite) {
-    nva.push_back(http2::make_field("server"_sr, httpconf.server_name));
+    nva.push_back(http2::make_field("server"sv, httpconf.server_name));
   } else {
     auto server = resp.fs.header(http2::HD_SERVER);
     if (server) {
-      nva.push_back(http2::make_field("server"_sr, (*server).value));
+      nva.push_back(http2::make_field("server"sv, (*server).value));
     }
   }
 
@@ -1818,7 +1818,7 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
         http::require_cookie_secure_attribute(cookieconf.secure, req.scheme);
       auto cookie_str = http::create_affinity_cookie(
         balloc, cookieconf.name, affinity_cookie, cookieconf.path, secure);
-      nva.push_back(http2::make_field("set-cookie"_sr, cookie_str));
+      nva.push_back(http2::make_field("set-cookie"sv, cookie_str));
     }
   }
 
@@ -1826,14 +1826,14 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
     // We won't change or alter alt-svc from backend for now
     if (!httpconf.http2_altsvc_header_value.empty()) {
       nva.push_back(
-        http2::make_field("alt-svc"_sr, httpconf.http2_altsvc_header_value));
+        http2::make_field("alt-svc"sv, httpconf.http2_altsvc_header_value));
     }
   }
 
   auto via = resp.fs.header(http2::HD_VIA);
   if (httpconf.no_via) {
     if (via) {
-      nva.push_back(http2::make_field("via"_sr, (*via).value));
+      nva.push_back(http2::make_field("via"sv, (*via).value));
     }
   } else {
     // we don't create more than 16 bytes in
@@ -1853,7 +1853,7 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
     *p = '\0';
 
     nva.push_back(
-      http2::make_field("via"_sr, as_string_ref(std::ranges::begin(iov), p)));
+      http2::make_field("via"sv, as_string_view(std::ranges::begin(iov), p)));
   }
 
   for (auto &p : httpconf.add_response_headers) {
@@ -1863,7 +1863,7 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
   if (downstream->get_stream_id() % 2 == 0) {
     // This header field is basically for human on client side to
     // figure out that the resource is pushed.
-    nva.push_back(http2::make_field("x-http2-push"_sr, "1"_sr));
+    nva.push_back(http2::make_field("x-http2-push"sv, "1"sv));
   }
 
   if (LOG_ENABLED(INFO)) {
@@ -2013,7 +2013,7 @@ int Http2Upstream::on_downstream_abort_request_with_https_redirect(
 
 int Http2Upstream::redirect_to_https(Downstream *downstream) {
   auto &req = downstream->request();
-  if (req.regular_connect_method() || req.scheme != "http"_sr) {
+  if (req.regular_connect_method() || req.scheme != "http"sv) {
     return error_reply(downstream, 400);
   }
 
@@ -2026,17 +2026,17 @@ int Http2Upstream::redirect_to_https(Downstream *downstream) {
   auto config = get_config();
   auto &httpconf = config->http;
 
-  StringRef loc;
-  if (httpconf.redirect_https_port == "443"_sr) {
-    loc = concat_string_ref(balloc, "https://"_sr, authority, req.path);
+  std::string_view loc;
+  if (httpconf.redirect_https_port == "443"sv) {
+    loc = concat_string_ref(balloc, "https://"sv, authority, req.path);
   } else {
-    loc = concat_string_ref(balloc, "https://"_sr, authority, ":"_sr,
+    loc = concat_string_ref(balloc, "https://"sv, authority, ":"sv,
                             httpconf.redirect_https_port, req.path);
   }
 
   auto &resp = downstream->response();
   resp.http_status = 308;
-  resp.fs.add_header_token("location"_sr, loc, false, http2::HD_LOCATION);
+  resp.fs.add_header_token("location"sv, loc, false, http2::HD_LOCATION);
 
   return send_reply(downstream, nullptr, 0);
 }
@@ -2065,8 +2065,8 @@ void Http2Upstream::log_response_headers(
   Downstream *downstream, const std::vector<nghttp2_nv> &nva) const {
   std::stringstream ss;
   for (auto &nv : nva) {
-    ss << TTY_HTTP_HD << as_string_ref(nv.name, nv.namelen) << TTY_RST << ": "
-       << as_string_ref(nv.value, nv.valuelen) << "\n";
+    ss << TTY_HTTP_HD << as_string_view(nv.name, nv.namelen) << TTY_RST << ": "
+       << as_string_view(nv.value, nv.valuelen) << "\n";
   }
   ULOG(INFO, this) << "HTTP response headers. stream_id="
                    << downstream->get_stream_id() << "\n"
@@ -2191,7 +2191,7 @@ int Http2Upstream::prepare_push_promise(Downstream *downstream) {
       continue;
     }
     for (auto &link : http2::parse_link_header(kv.value)) {
-      StringRef scheme, authority, path;
+      std::string_view scheme, authority, path;
 
       rv = http2::construct_push_component(balloc, scheme, authority, path,
                                            base, link.uri);
@@ -2222,9 +2222,9 @@ int Http2Upstream::prepare_push_promise(Downstream *downstream) {
   return 0;
 }
 
-int Http2Upstream::submit_push_promise(const StringRef &scheme,
-                                       const StringRef &authority,
-                                       const StringRef &path,
+int Http2Upstream::submit_push_promise(const std::string_view &scheme,
+                                       const std::string_view &authority,
+                                       const std::string_view &path,
                                        Downstream *downstream) {
   const auto &req = downstream->request();
 
@@ -2233,10 +2233,10 @@ int Http2Upstream::submit_push_promise(const StringRef &scheme,
   nva.reserve(4 + req.fs.headers().size());
 
   // just use "GET" for now
-  nva.push_back(http2::make_field(":method"_sr, "GET"_sr));
-  nva.push_back(http2::make_field(":scheme"_sr, scheme));
-  nva.push_back(http2::make_field(":path"_sr, path));
-  nva.push_back(http2::make_field(":authority"_sr, authority));
+  nva.push_back(http2::make_field(":method"sv, "GET"sv));
+  nva.push_back(http2::make_field(":scheme"sv, scheme));
+  nva.push_back(http2::make_field(":path"sv, path));
+  nva.push_back(http2::make_field(":authority"sv, authority));
 
   for (auto &kv : req.fs.headers()) {
     switch (kv.token) {
@@ -2276,8 +2276,8 @@ int Http2Upstream::submit_push_promise(const StringRef &scheme,
   if (LOG_ENABLED(INFO)) {
     std::stringstream ss;
     for (auto &nv : nva) {
-      ss << TTY_HTTP_HD << as_string_ref(nv.name, nv.namelen) << TTY_RST << ": "
-         << as_string_ref(nv.value, nv.valuelen) << "\n";
+      ss << TTY_HTTP_HD << as_string_view(nv.name, nv.namelen) << TTY_RST
+         << ": " << as_string_view(nv.value, nv.valuelen) << "\n";
     }
     ULOG(INFO, this) << "HTTP push request headers. promised_stream_id="
                      << promised_stream_id << "\n"
@@ -2295,7 +2295,8 @@ bool Http2Upstream::push_enabled() const {
            config->http2_proxy);
 }
 
-int Http2Upstream::initiate_push(Downstream *downstream, const StringRef &uri) {
+int Http2Upstream::initiate_push(Downstream *downstream,
+                                 const std::string_view &uri) {
   int rv;
 
   if (uri.empty() || !push_enabled() ||
@@ -2312,7 +2313,7 @@ int Http2Upstream::initiate_push(Downstream *downstream, const StringRef &uri) {
 
   auto &balloc = downstream->get_block_allocator();
 
-  StringRef scheme, authority, path;
+  std::string_view scheme, authority, path;
 
   rv =
     http2::construct_push_component(balloc, scheme, authority, path, base, uri);

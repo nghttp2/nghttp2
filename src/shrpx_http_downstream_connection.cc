@@ -411,8 +411,7 @@ int HttpDownstreamConnection::initiate_connection() {
       conn_.set_ssl(ssl);
       conn_.tls.client_session_cache = &addr_->tls_session_cache;
 
-      auto sni_name =
-        addr_->sni.empty() ? StringRef{addr_->host} : StringRef{addr_->sni};
+      auto sni_name = addr_->sni.empty() ? addr_->host : addr_->sni;
       if (!util::numeric_host(sni_name.data())) {
         SSL_set_tlsext_host_name(conn_.tls.ssl, sni_name.data());
       }
@@ -462,7 +461,6 @@ int HttpDownstreamConnection::push_request_headers() {
     return 0;
   }
 
-  const auto &downstream_hostport = addr_->hostport;
   const auto &req = downstream_->request();
 
   auto &balloc = downstream_->get_block_allocator();
@@ -476,7 +474,7 @@ int HttpDownstreamConnection::push_request_headers() {
 
   // For HTTP/1.0 request, there is no authority in request.  In that
   // case, we use backend server's host nonetheless.
-  auto authority = StringRef(downstream_hostport);
+  auto authority = addr_->hostport;
   auto no_host_rewrite =
     httpconf.no_host_rewrite || config->http2_proxy || connect_method;
 
@@ -554,7 +552,7 @@ int HttpDownstreamConnection::push_request_headers() {
       auto iov = make_byte_ref(balloc, base64::encode_length(nonce.size()) + 1);
       auto p = base64::encode(nonce, std::ranges::begin(iov));
       *p = '\0';
-      auto key = as_string_ref(std::ranges::begin(iov), p);
+      auto key = as_string_view(std::ranges::begin(iov), p);
       downstream_->set_ws_key(key);
 
       buf->append("Sec-Websocket-Key: "sv);
@@ -1100,7 +1098,7 @@ int htp_hdr_keycb(llhttp_t *htp, const char *data, size_t len) {
     return -1;
   }
 
-  auto name = StringRef{data, len};
+  auto name = std::string_view{data, len};
 
   if (downstream->get_response_state() == DownstreamState::INITIAL) {
     if (resp.fs.header_key_prev()) {
@@ -1139,7 +1137,7 @@ int htp_hdr_valcb(llhttp_t *htp, const char *data, size_t len) {
     return -1;
   }
 
-  auto value = StringRef{data, len};
+  auto value = std::string_view{data, len};
 
   if (downstream->get_response_state() == DownstreamState::INITIAL) {
     resp.fs.append_last_header_value(value);
