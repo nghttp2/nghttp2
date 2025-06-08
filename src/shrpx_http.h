@@ -75,7 +75,7 @@ StringRef create_forwarded(BlockAllocator &balloc, uint32_t params,
                            const StringRef &host, const StringRef &proto);
 
 // Adds ANSI color codes to HTTP headers |hdrs|.
-std::string colorizeHeaders(const char *hdrs);
+std::string colorize_headers(const std::string_view &hdrs);
 
 nghttp2_ssize select_padding_callback(nghttp2_session *session,
                                       const nghttp2_frame *frame,

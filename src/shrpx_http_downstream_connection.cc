@@ -696,7 +696,7 @@ int HttpDownstreamConnection::push_request_headers() {
       nhdrs.append(chunk->pos, chunk->last);
     }
     if (log_config()->errorlog_tty) {
-      nhdrs = http::colorizeHeaders(nhdrs.c_str());
+      nhdrs = http::colorize_headers(nhdrs);
     }
     DCLOG(INFO, this) << "HTTP request headers. stream_id="
                       << downstream_->get_stream_id() << "\n"

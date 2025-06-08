@@ -1439,7 +1439,7 @@ void HttpsUpstream::log_response_headers(DefaultMemchunks *buf) const {
     nhdrs.append(chunk->pos, chunk->last);
   }
   if (log_config()->errorlog_tty) {
-    nhdrs = http::colorizeHeaders(nhdrs.c_str());
+    nhdrs = http::colorize_headers(nhdrs);
   }
   ULOG(INFO, this) << "HTTP response headers\n" << nhdrs;
 }
