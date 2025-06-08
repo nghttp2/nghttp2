@@ -121,12 +121,6 @@ void test_http2_get_header(void) {
 
   rv = http2::get_header(nva, "foxtrot");
   assert_null(rv);
-
-  http2::HeaderIndex hdidx;
-  http2::init_hdidx(hdidx);
-  hdidx[http2::HD_CONTENT_LENGTH] = 6;
-  rv = http2::get_header(hdidx, http2::HD_CONTENT_LENGTH, nva);
-  assert_stdstring_equal("content-length", rv->name);
 }
 
 namespace {

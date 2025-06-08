@@ -328,13 +328,6 @@ void init_hdidx(HeaderIndex &hdidx);
 // Indexes header |token| using index |idx|.
 void index_header(HeaderIndex &hdidx, int32_t token, size_t idx);
 
-// Returns header denoted by |token| using index |hdidx|.
-const Headers::value_type *get_header(const HeaderIndex &hdidx, int32_t token,
-                                      const Headers &nva);
-
-Headers::value_type *get_header(const HeaderIndex &hdidx, int32_t token,
-                                Headers &nva);
-
 struct LinkHeader {
   // The region of URI.  This might not be NULL-terminated.
   StringRef uri;

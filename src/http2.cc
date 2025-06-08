@@ -951,24 +951,6 @@ void index_header(HeaderIndex &hdidx, int32_t token, size_t idx) {
   hdidx[static_cast<size_t>(token)] = static_cast<int16_t>(idx);
 }
 
-const Headers::value_type *get_header(const HeaderIndex &hdidx, int32_t token,
-                                      const Headers &nva) {
-  auto i = hdidx[static_cast<size_t>(token)];
-  if (i == -1) {
-    return nullptr;
-  }
-  return &nva[static_cast<size_t>(i)];
-}
-
-Headers::value_type *get_header(const HeaderIndex &hdidx, int32_t token,
-                                Headers &nva) {
-  auto i = hdidx[static_cast<size_t>(token)];
-  if (i == -1) {
-    return nullptr;
-  }
-  return &nva[static_cast<size_t>(i)];
-}
-
 namespace {
 template <typename InputIt> InputIt skip_lws(InputIt first, InputIt last) {
   for (; first != last; ++first) {
