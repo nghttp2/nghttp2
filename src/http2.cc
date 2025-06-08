@@ -559,26 +559,10 @@ int32_t determine_window_update_transmission(nghttp2_session *session,
   return -1;
 }
 
-void dump_nv(FILE *out, const char **nv) {
-  for (size_t i = 0; nv[i]; i += 2) {
-    fprintf(out, "%s: %s\n", nv[i], nv[i + 1]);
-  }
-  fputc('\n', out);
-  fflush(out);
-}
-
 void dump_nv(FILE *out, const nghttp2_nv *nva, size_t nvlen) {
   auto end = nva + nvlen;
   for (; nva != end; ++nva) {
     fprintf(out, "%s: %s\n", nva->name, nva->value);
-  }
-  fputc('\n', out);
-  fflush(out);
-}
-
-void dump_nv(FILE *out, const Headers &nva) {
-  for (auto &nv : nva) {
-    fprintf(out, "%s: %s\n", nv.name.c_str(), nv.value.c_str());
   }
   fputc('\n', out);
   fflush(out);

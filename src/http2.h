@@ -233,16 +233,9 @@ void build_http1_headers_from_headers(DefaultMemchunks *buf,
 int32_t determine_window_update_transmission(nghttp2_session *session,
                                              int32_t stream_id);
 
-// Dumps name/value pairs in |nv| to |out|. The |nv| must be
-// terminated by nullptr.
-void dump_nv(FILE *out, const char **nv);
-
-// Dumps name/value pairs in |nva| to |out|.
+// Dumps name/value pairs in |nva| of length |nvlen| to |out|.
 void dump_nv(FILE *out, const nghttp2_nv *nva, size_t nvlen);
-
 // Dumps name/value pairs in |nva| to |out|.
-void dump_nv(FILE *out, const Headers &nva);
-
 void dump_nv(FILE *out, const HeaderRefs &nva);
 
 // Ereases header in |hd|.
