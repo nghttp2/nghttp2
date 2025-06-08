@@ -1392,33 +1392,33 @@ std::string duration_str(double t) {
 }
 
 std::string format_duration(const std::chrono::microseconds &u) {
-  const char *unit = "us";
+  auto unit = "us"sv;
   int d = 0;
   auto t = as_unsigned(u.count());
   if (t >= 1000000) {
     d = 1000000;
-    unit = "s";
+    unit = "s"sv;
   } else if (t >= 1000) {
     d = 1000;
-    unit = "ms";
+    unit = "ms"sv;
   } else {
-    return utos(t) + unit;
+    return utos(t).append(unit);
   }
-  return dtos(static_cast<double>(t) / d) + unit;
+  return dtos(static_cast<double>(t) / d).append(unit);
 }
 
 std::string format_duration(double t) {
-  const char *unit = "us";
+  auto unit = "us"sv;
   if (t >= 1.) {
-    unit = "s";
+    unit = "s"sv;
   } else if (t >= 0.001) {
     t *= 1000.;
-    unit = "ms";
+    unit = "ms"sv;
   } else {
     t *= 1000000.;
-    return utos(static_cast<uint64_t>(t)) + unit;
+    return utos(static_cast<uint64_t>(t)).append(unit);
   }
-  return dtos(t) + unit;
+  return dtos(t).append(unit);
 }
 
 std::string dtos(double n) {
