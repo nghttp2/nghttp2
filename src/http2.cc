@@ -317,7 +317,8 @@ void add_header(Headers &nva, const StringRef &name, const StringRef &value,
   nva.push_back(to_header(name, value, no_index, token));
 }
 
-const Headers::value_type *get_header(const Headers &nva, const char *name) {
+const Headers::value_type *get_header(const Headers &nva,
+                                      const std::string_view &name) {
   const Headers::value_type *res = nullptr;
   for (auto &nv : nva) {
     if (nv.name == name) {

@@ -116,7 +116,8 @@ void add_header(Headers &nva, const StringRef &name, const StringRef &value,
 // Returns pointer to the entry in |nva| which has name |name|.  If
 // more than one entries which have the name |name|, last occurrence
 // in |nva| is returned.  If no such entry exist, returns nullptr.
-const Headers::value_type *get_header(const Headers &nva, const char *name);
+const Headers::value_type *get_header(const Headers &nva,
+                                      const std::string_view &name);
 
 // Returns true if the value of |nv| is not empty.
 bool non_empty_value(const HeaderRefs::value_type *nv);

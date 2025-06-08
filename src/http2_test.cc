@@ -111,15 +111,15 @@ void test_http2_get_header(void) {
                      {"charlie", "4"},       {"delta", "5"}, {"echo", "6"},
                      {"content-length", "7"}};
   const Headers::value_type *rv;
-  rv = http2::get_header(nva, "delta");
+  rv = http2::get_header(nva, "delta"sv);
   assert_not_null(rv);
   assert_stdstring_equal("delta", rv->name);
 
-  rv = http2::get_header(nva, "bravo");
+  rv = http2::get_header(nva, "bravo"sv);
   assert_not_null(rv);
   assert_stdstring_equal("bravo", rv->name);
 
-  rv = http2::get_header(nva, "foxtrot");
+  rv = http2::get_header(nva, "foxtrot"sv);
   assert_null(rv);
 }
 
