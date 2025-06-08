@@ -2236,6 +2236,11 @@ int HttpServer::run() {
       return -1;
     }
 #endif // NGHTTP2_OPENSSL_IS_BORINGSSL && HAVE_LIBBROTLI
+
+    if (tls::setup_keylog_callback(ssl_ctx) != 0) {
+      std::cerr << "Failed to setup keylog" << std::endl;
+      return -1;
+    }
   }
 
   auto loop = EV_DEFAULT;
