@@ -104,12 +104,6 @@ StringRef stringify_status(BlockAllocator &balloc, unsigned int status_code);
 
 void capitalize(DefaultMemchunks *buf, const StringRef &s);
 
-// Copies the |field| component value from |u| and |url| to the
-// |dest|. If |u| does not have |field|, then this function does
-// nothing.
-void copy_url_component(std::string &dest, const urlparse_url *u, int field,
-                        const char *url);
-
 Headers::value_type to_header(const StringRef &name, const StringRef &value,
                               bool no_index, int32_t token);
 

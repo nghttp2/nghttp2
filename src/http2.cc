@@ -305,13 +305,6 @@ void capitalize(DefaultMemchunks *buf, const StringRef &s) {
   buf->append(s.size(), std::bind_front(Capitalizer{}, s));
 }
 
-void copy_url_component(std::string &dest, const urlparse_url *u, int field,
-                        const char *url) {
-  if (u->field_set & (1 << field)) {
-    dest.assign(url + u->field_data[field].off, u->field_data[field].len);
-  }
-}
-
 Headers::value_type to_header(const StringRef &name, const StringRef &value,
                               bool no_index, int32_t token) {
   return Header(std::string{std::ranges::begin(name), std::ranges::end(name)},
