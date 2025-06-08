@@ -263,11 +263,10 @@ int Http2DownstreamConnection::push_request_headers() {
 
   // http2session_ has already in CONNECTED state, so we can get
   // addr_idx here.
-  const auto &downstream_hostport = http2session_->get_addr()->hostport;
 
   // For HTTP/1.0 request, there is no authority in request.  In that
   // case, we use backend server's host nonetheless.
-  auto authority = std::string_view(downstream_hostport);
+  auto authority = http2session_->get_addr()->hostport;
 
   if (no_host_rewrite && !req.authority.empty()) {
     authority = req.authority;

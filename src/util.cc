@@ -1004,7 +1004,7 @@ bool select_protocol(const unsigned char **out, unsigned char *outlen,
                      const unsigned char *in, unsigned int inlen,
                      std::vector<std::string> proto_list) {
   for (const auto &proto : proto_list) {
-    if (select_proto(out, outlen, in, inlen, std::string_view{proto})) {
+    if (select_proto(out, outlen, in, inlen, proto)) {
       return true;
     }
   }

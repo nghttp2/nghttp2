@@ -1156,8 +1156,8 @@ void prepare_status_response(Stream *stream, Http2Handler *hd, int status) {
   headers.emplace_back(
     "content-length"sv,
     util::make_string_ref_uint(stream->balloc, as_unsigned(file_ent->length)));
-  hd->submit_response(std::string_view{status_page->status}, stream->stream_id,
-                      headers, &data_prd);
+  hd->submit_response(status_page->status, stream->stream_id, headers,
+                      &data_prd);
 }
 } // namespace
 
@@ -1227,8 +1227,7 @@ void prepare_redirect_response(Stream *stream, Http2Handler *hd,
   auto sessions = hd->get_sessions();
   auto status_page = sessions->get_server()->get_status_page(status);
 
-  hd->submit_response(std::string_view{status_page->status}, stream->stream_id,
-                      headers, nullptr);
+  hd->submit_response(status_page->status, stream->stream_id, headers, nullptr);
 }
 } // namespace
 
@@ -1289,7 +1288,7 @@ void prepare_response(Stream *stream, Http2Handler *hd,
     auto push_itr = hd->get_config()->push.find(std::string{path});
     if (allow_push && push_itr != std::ranges::end(hd->get_config()->push)) {
       for (auto &push_path : (*push_itr).second) {
-        rv = hd->submit_push_promise(stream, std::string_view{push_path});
+        rv = hd->submit_push_promise(stream, push_path);
         if (rv != 0) {
           std::cerr << "nghttp2_submit_push_promise() returned error: "
                     << nghttp2_strerror(rv) << std::endl;

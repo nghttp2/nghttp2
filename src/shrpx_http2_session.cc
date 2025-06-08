@@ -450,8 +450,7 @@ int Http2Session::initiate_connection() {
         conn_.set_ssl(ssl);
         conn_.tls.client_session_cache = &addr_->tls_session_cache;
 
-        auto sni_name = addr_->sni.empty() ? std::string_view{addr_->host}
-                                           : std::string_view{addr_->sni};
+        auto sni_name = addr_->sni.empty() ? addr_->host : addr_->sni;
 
         if (!util::numeric_host(sni_name.data())) {
           // TLS extensions: SNI. There is no documentation about the return

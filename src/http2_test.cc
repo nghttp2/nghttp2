@@ -244,9 +244,8 @@ void check_rewrite_location_uri(const std::string &want, const std::string &uri,
   BlockAllocator balloc(4096, 4096);
   urlparse_url u;
   assert_int(0, ==, urlparse_parse_url(uri.c_str(), uri.size(), 0, &u));
-  auto got = http2::rewrite_location_uri(
-    balloc, std::string_view{uri}, u, std::string_view{match_host},
-    std::string_view{req_authority}, std::string_view{upstream_scheme});
+  auto got = http2::rewrite_location_uri(balloc, uri, u, match_host,
+                                         req_authority, upstream_scheme);
   assert_stdsv_equal(want, got);
 }
 } // namespace

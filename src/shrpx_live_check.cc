@@ -297,8 +297,7 @@ int LiveCheck::initiate_connection() {
   }
 
   if (addr_->tls) {
-    auto sni_name = addr_->sni.empty() ? std::string_view{addr_->host}
-                                       : std::string_view{addr_->sni};
+    auto sni_name = addr_->sni.empty() ? addr_->host : addr_->sni;
     if (!util::numeric_host(sni_name.data())) {
       SSL_set_tlsext_host_name(conn_.tls.ssl, sni_name.data());
     }

@@ -86,14 +86,12 @@ void test_downstream_field_store_header(void) {
                       http2::HD_CONTENT_LENGTH);
 
   // By token
-  assert_true(
-    HeaderRef(std::string_view{":authority"}, std::string_view{"1"}) ==
-    *fs.header(http2::HD__AUTHORITY));
+  assert_true(HeaderRef(":authority"sv, "1"sv) ==
+              *fs.header(http2::HD__AUTHORITY));
   assert_null(fs.header(http2::HD__METHOD));
 
   // By name
-  assert_true(HeaderRef(std::string_view{"alpha"}, std::string_view{"0"}) ==
-              *fs.header("alpha"sv));
+  assert_true(HeaderRef("alpha"sv, "0"sv) == *fs.header("alpha"sv));
   assert_null(fs.header("bravo"sv));
 }
 

@@ -1655,12 +1655,10 @@ void fill_default_config(Config *config) {
   }
 
   tlsconf.session_timeout = std::chrono::hours(12);
-  tlsconf.ciphers = std::string_view{nghttp2::tls::DEFAULT_CIPHER_LIST};
-  tlsconf.tls13_ciphers =
-    std::string_view{nghttp2::tls::DEFAULT_TLS13_CIPHER_LIST};
-  tlsconf.client.ciphers = std::string_view{nghttp2::tls::DEFAULT_CIPHER_LIST};
-  tlsconf.client.tls13_ciphers =
-    std::string_view{nghttp2::tls::DEFAULT_TLS13_CIPHER_LIST};
+  tlsconf.ciphers = nghttp2::tls::DEFAULT_CIPHER_LIST;
+  tlsconf.tls13_ciphers = nghttp2::tls::DEFAULT_TLS13_CIPHER_LIST;
+  tlsconf.client.ciphers = nghttp2::tls::DEFAULT_CIPHER_LIST;
+  tlsconf.client.tls13_ciphers = nghttp2::tls::DEFAULT_TLS13_CIPHER_LIST;
   tlsconf.min_proto_version =
     tls::proto_version_from_string(DEFAULT_TLS_MIN_PROTO_VERSION);
   tlsconf.max_proto_version =

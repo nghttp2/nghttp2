@@ -1960,7 +1960,7 @@ std::vector<std::string> parse_uris(std::vector<std::string>::iterator first,
   }
 
   if (!config.has_base_uri()) {
-    if (!parse_base_uri(std::string_view{*first})) {
+    if (!parse_base_uri(*first)) {
       std::cerr << "invalid URI: " << *first << std::endl;
       exit(EXIT_FAILURE);
     }

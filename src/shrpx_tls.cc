@@ -1542,8 +1542,8 @@ bool tls_hostname_match(const std::string_view &pattern,
 }
 
 namespace {
-// if return value is not empty, std::string_view.c_str() must be freed using
-// OPENSSL_free().
+// if return value is not empty, std::string_view.data() must be freed
+// using OPENSSL_free().
 std::string_view get_common_name(X509 *cert) {
   auto subjectname = X509_get_subject_name(cert);
   if (!subjectname) {
@@ -1747,8 +1747,7 @@ int check_cert(SSL *ssl, const Address *addr, const std::string_view &host) {
 }
 
 int check_cert(SSL *ssl, const DownstreamAddr *addr, const Address *raddr) {
-  auto hostname = addr->sni.empty() ? std::string_view{addr->host}
-                                    : std::string_view{addr->sni};
+  auto hostname = addr->sni.empty() ? addr->host : addr->sni;
   return check_cert(ssl, raddr, hostname);
 }
 

@@ -3274,8 +3274,7 @@ int parse_config(
       LOG(ERROR) << opt << ": Couldn't read key file's passwd from " << optarg;
       return -1;
     }
-    config->tls.private_key_passwd =
-      make_string_ref(config->balloc, std::string_view{passwd});
+    config->tls.private_key_passwd = make_string_ref(config->balloc, passwd);
 
     return 0;
   }
@@ -3300,8 +3299,7 @@ int parse_config(
 
     if (!params.sct_dir.empty()) {
       // Make sure that dir_path is NULL terminated string.
-      if (read_tls_sct_from_dir(
-            sct_data, opt, std::string_view{std::string{params.sct_dir}}) !=
+      if (read_tls_sct_from_dir(sct_data, opt, std::string{params.sct_dir}) !=
           0) {
         return -1;
       }
@@ -3680,8 +3678,7 @@ int parse_config(
     auto src_params = std::string_view{addr_end, std::ranges::end(optarg)};
 
     MemcachedConnectionParams params{};
-    if (parse_memcached_connection_params(params, src_params,
-                                          std::string_view{opt}) != 0) {
+    if (parse_memcached_connection_params(params, src_params, opt) != 0) {
       return -1;
     }
 
@@ -4483,7 +4480,7 @@ int compute_affinity_hash(std::vector<AffinityHash> &res, size_t idx,
     auto t = std::string{s};
     t += static_cast<char>(i);
 
-    rv = util::sha256(buf.data(), std::string_view{t});
+    rv = util::sha256(buf.data(), t);
     if (rv != 0) {
       return -1;
     }

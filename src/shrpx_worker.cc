@@ -638,8 +638,7 @@ std::mt19937 &Worker::get_randgen() { return randgen_; }
 
 #ifdef HAVE_MRUBY
 int Worker::create_mruby_context() {
-  mruby_ctx_ =
-    mruby::create_mruby_context(std::string_view{get_config()->mruby_file});
+  mruby_ctx_ = mruby::create_mruby_context(get_config()->mruby_file);
   if (!mruby_ctx_) {
     return -1;
   }

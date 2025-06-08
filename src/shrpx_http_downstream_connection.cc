@@ -411,8 +411,7 @@ int HttpDownstreamConnection::initiate_connection() {
       conn_.set_ssl(ssl);
       conn_.tls.client_session_cache = &addr_->tls_session_cache;
 
-      auto sni_name = addr_->sni.empty() ? std::string_view{addr_->host}
-                                         : std::string_view{addr_->sni};
+      auto sni_name = addr_->sni.empty() ? addr_->host : addr_->sni;
       if (!util::numeric_host(sni_name.data())) {
         SSL_set_tlsext_host_name(conn_.tls.ssl, sni_name.data());
       }
@@ -462,7 +461,6 @@ int HttpDownstreamConnection::push_request_headers() {
     return 0;
   }
 
-  const auto &downstream_hostport = addr_->hostport;
   const auto &req = downstream_->request();
 
   auto &balloc = downstream_->get_block_allocator();
@@ -476,7 +474,7 @@ int HttpDownstreamConnection::push_request_headers() {
 
   // For HTTP/1.0 request, there is no authority in request.  In that
   // case, we use backend server's host nonetheless.
-  auto authority = std::string_view(downstream_hostport);
+  auto authority = addr_->hostport;
   auto no_host_rewrite =
     httpconf.no_host_rewrite || config->http2_proxy || connect_method;
 
