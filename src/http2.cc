@@ -305,19 +305,6 @@ void capitalize(DefaultMemchunks *buf, const StringRef &s) {
   buf->append(s.size(), std::bind_front(Capitalizer{}, s));
 }
 
-bool lws(const char *value) {
-  for (; *value; ++value) {
-    switch (*value) {
-    case '\t':
-    case ' ':
-      continue;
-    default:
-      return false;
-    }
-  }
-  return true;
-}
-
 void copy_url_component(std::string &dest, const urlparse_url *u, int field,
                         const char *url) {
   if (u->field_set & (1 << field)) {

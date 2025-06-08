@@ -104,9 +104,6 @@ StringRef stringify_status(BlockAllocator &balloc, unsigned int status_code);
 
 void capitalize(DefaultMemchunks *buf, const StringRef &s);
 
-// Returns true if |value| is LWS
-bool lws(const char *value);
-
 // Copies the |field| component value from |u| and |url| to the
 // |dest|. If |u| does not have |field|, then this function does
 // nothing.

@@ -52,7 +52,6 @@ const MunitTest tests[]{
   munit_void_test(test_http2_get_header),
   munit_void_test(test_http2_copy_headers_to_nva),
   munit_void_test(test_http2_build_http1_headers_from_headers),
-  munit_void_test(test_http2_lws),
   munit_void_test(test_http2_rewrite_location_uri),
   munit_void_test(test_http2_parse_http_status_code),
   munit_void_test(test_http2_index_header),
@@ -241,12 +240,6 @@ void test_http2_build_http1_headers_from_headers(void) {
   http2::build_http1_headers_from_headers(&buf, headers2,
                                           http2::HDOP_STRIP_ALL);
   assert_size(0, ==, buf.rleft());
-}
-
-void test_http2_lws(void) {
-  assert_false(http2::lws("alpha"));
-  assert_true(http2::lws(" "));
-  assert_true(http2::lws(""));
 }
 
 namespace {
