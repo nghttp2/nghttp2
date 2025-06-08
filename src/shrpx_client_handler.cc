@@ -325,6 +325,20 @@ int ClientHandler::read_quic(const UpstreamAddr *faddr,
                              const Address &local_addr,
                              const ngtcp2_pkt_info &pi,
                              std::span<const uint8_t> data) {
+  // Rate limiting is implemented by dropping an incoming packet.
+  auto &rlimit = conn_.rlimit;
+
+  if (rlimit.avail() < data.size()) {
+    if (LOG_ENABLED(INFO)) {
+      CLOG(INFO, this) << "Dropped QUIC packet of " << data.size()
+                       << " bytes due to rate limiting";
+    }
+
+    return 0;
+  }
+
+  rlimit.drain(data.size());
+
   auto upstream = static_cast<Http3Upstream *>(upstream_.get());
 
   return upstream->on_read(faddr, remote_addr, local_addr, pi, data);
