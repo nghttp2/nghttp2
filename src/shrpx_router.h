@@ -38,7 +38,7 @@ namespace shrpx {
 
 struct RNode {
   RNode();
-  RNode(const char *s, size_t len, ssize_t index, ssize_t wildcard_index);
+  RNode(const std::string_view &s, ssize_t index, ssize_t wildcard_index);
   RNode(RNode &&) = default;
   RNode(const RNode &) = delete;
   RNode &operator=(RNode &&) = default;
@@ -48,9 +48,7 @@ struct RNode {
   std::vector<std::unique_ptr<RNode>> next;
   // Stores pointer to the string this node represents.  Not
   // NULL-terminated.
-  const char *s;
-  // Length of |s|
-  size_t len;
+  std::string_view s;
   // Index of pattern if match ends in this node.  Note that we don't
   // store duplicated pattern.
   ssize_t index;
@@ -93,7 +91,7 @@ public:
   ssize_t match_prefix(size_t *nread, const RNode **last_node,
                        const StringRef &s) const;
 
-  void add_node(RNode *node, const char *pattern, size_t patlen, ssize_t index,
+  void add_node(RNode *node, const StringRef &pattern, ssize_t index,
                 ssize_t wildcard_index);
 
   void dump() const;

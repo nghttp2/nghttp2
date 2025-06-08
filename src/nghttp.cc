@@ -446,7 +446,7 @@ int submit_request(HttpClient *client, const Headers &headers, Request *req) {
       http2::make_field_nv(kv.name, kv.value, http2::no_index(kv.no_index)));
   }
 
-  auto method = http2::get_header(build_headers, ":method");
+  auto method = http2::get_header(build_headers, ":method"sv);
   assert(method);
 
   req->method = method->value;
@@ -1529,7 +1529,7 @@ void HttpClient::output_har(FILE *outfile) {
 
     json_object_set_new(content, "size", json_integer(req->response_len));
 
-    auto content_type_ptr = http2::get_header(req->res_nva, "content-type");
+    auto content_type_ptr = http2::get_header(req->res_nva, "content-type"sv);
 
     const char *content_type = "";
     if (content_type_ptr) {

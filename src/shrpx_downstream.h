@@ -99,8 +99,8 @@ public:
   // stored.
   void alloc_add_header_name(const StringRef &name);
 
-  void append_last_header_key(const char *data, size_t len);
-  void append_last_header_value(const char *data, size_t len);
+  void append_last_header_key(const StringRef &data);
+  void append_last_header_value(const StringRef &data);
 
   bool header_key_prev() const { return header_key_prev_; }
 
@@ -119,8 +119,8 @@ public:
   // stored.
   void alloc_add_trailer_name(const StringRef &name);
 
-  void append_last_trailer_key(const char *data, size_t len);
-  void append_last_trailer_value(const char *data, size_t len);
+  void append_last_trailer_key(const StringRef &data);
+  void append_last_trailer_value(const StringRef &data);
 
   bool trailer_key_prev() const { return trailer_key_prev_; }
 

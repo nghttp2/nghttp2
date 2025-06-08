@@ -56,18 +56,18 @@ void test_downstream_field_store_append_last_header(void) {
   FieldStore fs(balloc, 0);
   fs.alloc_add_header_name("alpha"_sr);
   auto bravo = "BRAVO"_sr;
-  fs.append_last_header_key(bravo.data(), bravo.size());
+  fs.append_last_header_key(bravo);
   // Add more characters so that relloc occurs
   auto golf = "golF0123456789"_sr;
-  fs.append_last_header_key(golf.data(), golf.size());
+  fs.append_last_header_key(golf);
 
   auto charlie = "Charlie"_sr;
-  fs.append_last_header_value(charlie.data(), charlie.size());
+  fs.append_last_header_value(charlie);
   auto delta = "deltA"_sr;
-  fs.append_last_header_value(delta.data(), delta.size());
+  fs.append_last_header_value(delta);
   // Add more characters so that relloc occurs
   auto echo = "echo0123456789"_sr;
-  fs.append_last_header_value(echo.data(), echo.size());
+  fs.append_last_header_value(echo);
 
   fs.add_header_token("echo"_sr, "foxtrot"_sr, false, -1);
 

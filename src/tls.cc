@@ -51,24 +51,24 @@ namespace nghttp2 {
 
 namespace tls {
 
-const char *get_tls_protocol(SSL *ssl) {
+std::string_view get_tls_protocol(SSL *ssl) {
   switch (SSL_version(ssl)) {
   case SSL2_VERSION:
-    return "SSLv2";
+    return "SSLv2"sv;
   case SSL3_VERSION:
-    return "SSLv3";
+    return "SSLv3"sv;
 #ifdef TLS1_3_VERSION
   case TLS1_3_VERSION:
-    return "TLSv1.3";
+    return "TLSv1.3"sv;
 #endif // TLS1_3_VERSION
   case TLS1_2_VERSION:
-    return "TLSv1.2";
+    return "TLSv1.2"sv;
   case TLS1_1_VERSION:
-    return "TLSv1.1";
+    return "TLSv1.1"sv;
   case TLS1_VERSION:
-    return "TLSv1";
+    return "TLSv1"sv;
   default:
-    return "unknown";
+    return "unknown"sv;
   }
 }
 

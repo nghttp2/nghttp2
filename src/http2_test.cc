@@ -52,7 +52,6 @@ const MunitTest tests[]{
   munit_void_test(test_http2_get_header),
   munit_void_test(test_http2_copy_headers_to_nva),
   munit_void_test(test_http2_build_http1_headers_from_headers),
-  munit_void_test(test_http2_lws),
   munit_void_test(test_http2_rewrite_location_uri),
   munit_void_test(test_http2_parse_http_status_code),
   munit_void_test(test_http2_index_header),
@@ -112,22 +111,16 @@ void test_http2_get_header(void) {
                      {"charlie", "4"},       {"delta", "5"}, {"echo", "6"},
                      {"content-length", "7"}};
   const Headers::value_type *rv;
-  rv = http2::get_header(nva, "delta");
+  rv = http2::get_header(nva, "delta"sv);
   assert_not_null(rv);
   assert_stdstring_equal("delta", rv->name);
 
-  rv = http2::get_header(nva, "bravo");
+  rv = http2::get_header(nva, "bravo"sv);
   assert_not_null(rv);
   assert_stdstring_equal("bravo", rv->name);
 
-  rv = http2::get_header(nva, "foxtrot");
+  rv = http2::get_header(nva, "foxtrot"sv);
   assert_null(rv);
-
-  http2::HeaderIndex hdidx;
-  http2::init_hdidx(hdidx);
-  hdidx[http2::HD_CONTENT_LENGTH] = 6;
-  rv = http2::get_header(hdidx, http2::HD_CONTENT_LENGTH, nva);
-  assert_stdstring_equal("content-length", rv->name);
 }
 
 namespace {
@@ -241,12 +234,6 @@ void test_http2_build_http1_headers_from_headers(void) {
   http2::build_http1_headers_from_headers(&buf, headers2,
                                           http2::HDOP_STRIP_ALL);
   assert_size(0, ==, buf.rleft());
-}
-
-void test_http2_lws(void) {
-  assert_false(http2::lws("alpha"));
-  assert_true(http2::lws(" "));
-  assert_true(http2::lws(""));
 }
 
 namespace {

@@ -104,15 +104,6 @@ StringRef stringify_status(BlockAllocator &balloc, unsigned int status_code);
 
 void capitalize(DefaultMemchunks *buf, const StringRef &s);
 
-// Returns true if |value| is LWS
-bool lws(const char *value);
-
-// Copies the |field| component value from |u| and |url| to the
-// |dest|. If |u| does not have |field|, then this function does
-// nothing.
-void copy_url_component(std::string &dest, const urlparse_url *u, int field,
-                        const char *url);
-
 Headers::value_type to_header(const StringRef &name, const StringRef &value,
                               bool no_index, int32_t token);
 
@@ -125,7 +116,8 @@ void add_header(Headers &nva, const StringRef &name, const StringRef &value,
 // Returns pointer to the entry in |nva| which has name |name|.  If
 // more than one entries which have the name |name|, last occurrence
 // in |nva| is returned.  If no such entry exist, returns nullptr.
-const Headers::value_type *get_header(const Headers &nva, const char *name);
+const Headers::value_type *get_header(const Headers &nva,
+                                      const std::string_view &name);
 
 // Returns true if the value of |nv| is not empty.
 bool non_empty_value(const HeaderRefs::value_type *nv);
@@ -241,16 +233,9 @@ void build_http1_headers_from_headers(DefaultMemchunks *buf,
 int32_t determine_window_update_transmission(nghttp2_session *session,
                                              int32_t stream_id);
 
-// Dumps name/value pairs in |nv| to |out|. The |nv| must be
-// terminated by nullptr.
-void dump_nv(FILE *out, const char **nv);
-
-// Dumps name/value pairs in |nva| to |out|.
+// Dumps name/value pairs in |nva| of length |nvlen| to |out|.
 void dump_nv(FILE *out, const nghttp2_nv *nva, size_t nvlen);
-
 // Dumps name/value pairs in |nva| to |out|.
-void dump_nv(FILE *out, const Headers &nva);
-
 void dump_nv(FILE *out, const HeaderRefs &nva);
 
 // Ereases header in |hd|.
@@ -336,13 +321,6 @@ int lookup_token(const StringRef &name);
 void init_hdidx(HeaderIndex &hdidx);
 // Indexes header |token| using index |idx|.
 void index_header(HeaderIndex &hdidx, int32_t token, size_t idx);
-
-// Returns header denoted by |token| using index |hdidx|.
-const Headers::value_type *get_header(const HeaderIndex &hdidx, int32_t token,
-                                      const Headers &nva);
-
-Headers::value_type *get_header(const HeaderIndex &hdidx, int32_t token,
-                                Headers &nva);
 
 struct LinkHeader {
   // The region of URI.  This might not be NULL-terminated.

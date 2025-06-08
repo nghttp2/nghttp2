@@ -660,17 +660,17 @@ namespace {
 // with given costs.  swapcost, subcost, addcost and delcost are cost
 // to swap 2 adjacent characters, substitute characters, add character
 // and delete character respectively.
-uint32_t levenshtein(const char *a, size_t alen, const char *b, size_t blen,
+uint32_t levenshtein(const std::string_view &a, const std::string_view &b,
                      uint32_t swapcost, uint32_t subcost, uint32_t addcost,
                      uint32_t delcost) {
   auto dp =
-    std::vector<std::vector<uint32_t>>(3, std::vector<uint32_t>(blen + 1));
-  for (uint32_t i = 0; i <= static_cast<uint32_t>(blen); ++i) {
+    std::vector<std::vector<uint32_t>>(3, std::vector<uint32_t>(b.size() + 1));
+  for (uint32_t i = 0; i <= static_cast<uint32_t>(b.size()); ++i) {
     dp[1][i] = i * addcost;
   }
-  for (uint32_t i = 1; i <= static_cast<uint32_t>(alen); ++i) {
+  for (uint32_t i = 1; i <= static_cast<uint32_t>(a.size()); ++i) {
     dp[0][0] = i * delcost;
-    for (uint32_t j = 1; j <= static_cast<uint32_t>(blen); ++j) {
+    for (uint32_t j = 1; j <= static_cast<uint32_t>(b.size()); ++j) {
       dp[0][j] = dp[1][j - 1] + (a[i - 1] == b[j - 1] ? 0 : subcost);
       if (i >= 2 && j >= 2 && a[i - 1] != b[j - 1] && a[i - 2] == b[j - 1] &&
           a[i - 1] == b[j - 2]) {
@@ -681,7 +681,7 @@ uint32_t levenshtein(const char *a, size_t alen, const char *b, size_t blen,
     }
     std::ranges::rotate(dp, std::ranges::begin(dp) + 2);
   }
-  return dp[1][blen];
+  return dp[1][b.size()];
 }
 } // namespace
 
@@ -699,7 +699,7 @@ void show_candidates(const char *unkopt, const option *options) {
     return;
   }
   int prefix_match = 0;
-  auto cands = std::vector<std::pair<uint32_t, const char *>>();
+  auto cands = std::vector<std::pair<uint32_t, std::string_view>>();
   for (size_t i = 0; options[i].name != nullptr; ++i) {
     auto opt = std::string_view{options[i].name};
     auto unk = std::string_view{unkopt, static_cast<size_t>(unkoptlen)};
@@ -711,7 +711,7 @@ void show_candidates(const char *unkopt, const option *options) {
         return;
       }
       ++prefix_match;
-      cands.emplace_back(0, opt.data());
+      cands.emplace_back(0, opt);
       continue;
     }
     // Use cost 0 for suffix match, but match at least 3 characters
@@ -720,8 +720,7 @@ void show_candidates(const char *unkopt, const option *options) {
       continue;
     }
     // cost values are borrowed from git, help.c.
-    auto sim =
-      levenshtein(unk.data(), unk.size(), opt.data(), opt.size(), 0, 2, 1, 3);
+    auto sim = levenshtein(unk, opt, 0, 2, 1, 3);
     cands.emplace_back(sim, options[i].name);
   }
   if (prefix_match == 1 || cands.empty()) {
@@ -1393,33 +1392,33 @@ std::string duration_str(double t) {
 }
 
 std::string format_duration(const std::chrono::microseconds &u) {
-  const char *unit = "us";
+  auto unit = "us"sv;
   int d = 0;
   auto t = as_unsigned(u.count());
   if (t >= 1000000) {
     d = 1000000;
-    unit = "s";
+    unit = "s"sv;
   } else if (t >= 1000) {
     d = 1000;
-    unit = "ms";
+    unit = "ms"sv;
   } else {
-    return utos(t) + unit;
+    return utos(t).append(unit);
   }
-  return dtos(static_cast<double>(t) / d) + unit;
+  return dtos(static_cast<double>(t) / d).append(unit);
 }
 
 std::string format_duration(double t) {
-  const char *unit = "us";
+  auto unit = "us"sv;
   if (t >= 1.) {
-    unit = "s";
+    unit = "s"sv;
   } else if (t >= 0.001) {
     t *= 1000.;
-    unit = "ms";
+    unit = "ms"sv;
   } else {
     t *= 1000000.;
-    return utos(static_cast<uint64_t>(t)) + unit;
+    return utos(static_cast<uint64_t>(t)).append(unit);
   }
-  return dtos(t) + unit;
+  return dtos(t).append(unit);
 }
 
 std::string dtos(double n) {

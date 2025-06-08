@@ -126,42 +126,47 @@ StringRef create_forwarded(BlockAllocator &balloc, uint32_t params,
   return as_string_ref(std::ranges::begin(iov), p);
 }
 
-std::string colorizeHeaders(const char *hdrs) {
+std::string colorize_headers(const std::string_view &hdrs) {
   std::string nhdrs;
-  const char *p = strchr(hdrs, '\n');
-  if (!p) {
+  auto p = std::ranges::find(hdrs, '\n');
+  if (p == hdrs.end()) {
     // Not valid HTTP header
-    return hdrs;
+    return std::string{hdrs};
   }
-  nhdrs.append(hdrs, p + 1);
-  ++p;
+
+  nhdrs.append(hdrs.begin(), ++p);
+
   while (1) {
-    const char *np = strchr(p, ':');
-    if (!np) {
-      nhdrs.append(p);
+    auto np = std::ranges::find(p, hdrs.end(), ':');
+    if (np == hdrs.end()) {
+      nhdrs.append(p, hdrs.end());
       break;
     }
+
     nhdrs += TTY_HTTP_HD;
     nhdrs.append(p, np);
     nhdrs += TTY_RST;
+
     auto redact = util::strieq("authorization"_sr, StringRef{p, np});
+
     p = np;
-    np = strchr(p, '\n');
-    if (!np) {
-      if (redact) {
-        nhdrs.append(": <redacted>");
-      } else {
-        nhdrs.append(p);
-      }
-      break;
-    }
+
+    np = std::ranges::find(p, hdrs.end(), '\n');
+
     if (redact) {
-      nhdrs.append(": <redacted>\n");
+      nhdrs.append(": <redacted>"sv);
     } else {
-      nhdrs.append(p, np + 1);
+      nhdrs.append(p, np);
     }
+
+    if (np == hdrs.end()) {
+      return nhdrs;
+    }
+
+    nhdrs += '\n';
     p = np + 1;
   }
+
   return nhdrs;
 }
 

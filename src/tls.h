@@ -76,11 +76,11 @@ constexpr auto NGHTTP2_TLS_MAX_VERSION = TLS1_3_VERSION;
 constexpr auto NGHTTP2_TLS_MAX_VERSION = TLS1_2_VERSION;
 #endif // !TLS1_3_VERSION
 
-const char *get_tls_protocol(SSL *ssl);
+std::string_view get_tls_protocol(SSL *ssl);
 
 struct TLSSessionInfo {
   const char *cipher;
-  const char *protocol;
+  std::string_view protocol;
   const uint8_t *session_id;
   bool session_reused;
   size_t session_id_length;
