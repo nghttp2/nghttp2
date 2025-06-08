@@ -63,9 +63,9 @@ void add_next_node(RNode *node, std::unique_ptr<RNode> new_node) {
 }
 } // namespace
 
-void Router::add_node(RNode *node, const char *pattern, size_t patlen,
-                      ssize_t index, ssize_t wildcard_index) {
-  auto pat = make_string_ref(balloc_, StringRef{pattern, patlen});
+void Router::add_node(RNode *node, const StringRef &pattern, ssize_t index,
+                      ssize_t wildcard_index) {
+  auto pat = make_string_ref(balloc_, pattern);
   auto new_node = std::make_unique<RNode>(pat, index, wildcard_index);
   add_next_node(node, std::move(new_node));
 }
@@ -84,8 +84,7 @@ size_t Router::add_route(const StringRef &pattern, size_t idx, bool wildcard) {
   for (;;) {
     auto next_node = find_next_node(node, pattern[i]);
     if (next_node == nullptr) {
-      add_node(node, pattern.data() + i, pattern.size() - i, index,
-               wildcard_index);
+      add_node(node, pattern.substr(i), index, wildcard_index);
       return idx;
     }
 
@@ -150,8 +149,7 @@ size_t Router::add_route(const StringRef &pattern, size_t idx, bool wildcard) {
     i += j;
 
     assert(pattern.size() > i);
-    add_node(node, pattern.data() + i, pattern.size() - i, index,
-             wildcard_index);
+    add_node(node, pattern.substr(i), index, wildcard_index);
 
     return idx;
   }

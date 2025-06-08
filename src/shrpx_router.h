@@ -91,7 +91,7 @@ public:
   ssize_t match_prefix(size_t *nread, const RNode **last_node,
                        const StringRef &s) const;
 
-  void add_node(RNode *node, const char *pattern, size_t patlen, ssize_t index,
+  void add_node(RNode *node, const StringRef &pattern, ssize_t index,
                 ssize_t wildcard_index);
 
   void dump() const;
