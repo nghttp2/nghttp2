@@ -660,17 +660,17 @@ namespace {
 // with given costs.  swapcost, subcost, addcost and delcost are cost
 // to swap 2 adjacent characters, substitute characters, add character
 // and delete character respectively.
-uint32_t levenshtein(const char *a, size_t alen, const char *b, size_t blen,
+uint32_t levenshtein(const std::string_view &a, const std::string_view &b,
                      uint32_t swapcost, uint32_t subcost, uint32_t addcost,
                      uint32_t delcost) {
   auto dp =
-    std::vector<std::vector<uint32_t>>(3, std::vector<uint32_t>(blen + 1));
-  for (uint32_t i = 0; i <= static_cast<uint32_t>(blen); ++i) {
+    std::vector<std::vector<uint32_t>>(3, std::vector<uint32_t>(b.size() + 1));
+  for (uint32_t i = 0; i <= static_cast<uint32_t>(b.size()); ++i) {
     dp[1][i] = i * addcost;
   }
-  for (uint32_t i = 1; i <= static_cast<uint32_t>(alen); ++i) {
+  for (uint32_t i = 1; i <= static_cast<uint32_t>(a.size()); ++i) {
     dp[0][0] = i * delcost;
-    for (uint32_t j = 1; j <= static_cast<uint32_t>(blen); ++j) {
+    for (uint32_t j = 1; j <= static_cast<uint32_t>(b.size()); ++j) {
       dp[0][j] = dp[1][j - 1] + (a[i - 1] == b[j - 1] ? 0 : subcost);
       if (i >= 2 && j >= 2 && a[i - 1] != b[j - 1] && a[i - 2] == b[j - 1] &&
           a[i - 1] == b[j - 2]) {
@@ -681,7 +681,7 @@ uint32_t levenshtein(const char *a, size_t alen, const char *b, size_t blen,
     }
     std::ranges::rotate(dp, std::ranges::begin(dp) + 2);
   }
-  return dp[1][blen];
+  return dp[1][b.size()];
 }
 } // namespace
 
@@ -720,8 +720,7 @@ void show_candidates(const char *unkopt, const option *options) {
       continue;
     }
     // cost values are borrowed from git, help.c.
-    auto sim =
-      levenshtein(unk.data(), unk.size(), opt.data(), opt.size(), 0, 2, 1, 3);
+    auto sim = levenshtein(unk, opt, 0, 2, 1, 3);
     cands.emplace_back(sim, options[i].name);
   }
   if (prefix_match == 1 || cands.empty()) {
