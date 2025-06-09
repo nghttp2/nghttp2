@@ -264,15 +264,15 @@ read_quic_secret_file(const std::string_view &path) {
     return nullptr;
   }
 
-  std::array<char, 4096> buf;
+  std::string line;
 
-  while (f.getline(buf.data(), buf.size())) {
-    auto len = strlen(buf.data());
-    if (len == 0 || buf[0] == '#') {
+  while (std::getline(f, line)) {
+    if (line.empty() || line[0] == '#') {
       continue;
     }
 
-    auto s = std::string_view{buf.data(), len};
+    auto s = std::string_view{line};
+
     if (s.size() != expectedlen * 2 || !util::is_hex_string(s)) {
       LOG(ERROR) << "frontend-quic-secret-file: each line must be a "
                  << expectedlen * 2 << " bytes hex encoded string";
