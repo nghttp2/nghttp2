@@ -57,4 +57,8 @@ enum bpf_stats_type {
 };
 #endif // !HAVE_BPF_STATS_TYPE
 
+#ifdef NOTHREADS
+#  define thread_local
+#endif // defined(NOTHREADS)
+
 #endif // SHRPX_H

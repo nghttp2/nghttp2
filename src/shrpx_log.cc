@@ -72,43 +72,13 @@ constexpr std::string_view SEVERITY_COLOR[] = {
 };
 } // namespace
 
-#ifndef NOTHREADS
-#  ifdef HAVE_THREAD_LOCAL
-namespace {
-thread_local LogBuffer logbuf_;
-} // namespace
-
-namespace {
-LogBuffer *get_logbuf() { return &logbuf_; }
-} // namespace
-#  else  // !HAVE_THREAD_LOCAL
-namespace {
-pthread_key_t lckey;
-pthread_once_t lckey_once = PTHREAD_ONCE_INIT;
-} // namespace
-
-namespace {
-void make_key() { pthread_key_create(&lckey, nullptr); }
-} // namespace
-
-LogBuffer *get_logbuf() {
-  pthread_once(&lckey_once, make_key);
-  auto buf = static_cast<LogBuffer *>(pthread_getspecific(lckey));
-  if (!buf) {
-    buf = new LogBuffer();
-    pthread_setspecific(lckey, buf);
-  }
-  return buf;
-}
-#  endif // !HAVE_THREAD_LOCAL
-#else    // NOTHREADS
 namespace {
 LogBuffer *get_logbuf() {
-  static LogBuffer logbuf;
+  static thread_local LogBuffer logbuf;
+
   return &logbuf;
 }
 } // namespace
-#endif   // NOTHREADS
 
 int Log::severity_thres_ = NOTICE;
 

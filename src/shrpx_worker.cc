@@ -455,7 +455,6 @@ void Worker::run_async() {
   fut_ = std::async(std::launch::async, [this] {
     (void)reopen_log_files(get_config()->logging);
     ev_run(loop_);
-    delete_log_config();
 
 #  ifdef NGHTTP2_OPENSSL_IS_WOLFSSL
     wc_ecc_fp_free();
