@@ -4303,6 +4303,12 @@ int load_config(
       return -1;
     }
   }
+
+  if (in.bad() || (!in.eof() && in.fail())) {
+    LOG(ERROR) << "Could not read the configuration file " << filename;
+    return -1;
+  }
+
   return 0;
 }
 
