@@ -62,7 +62,7 @@ DownstreamQueue::find_host_entry(const std::string_view &host) {
   auto itr = host_entries_.find(host);
   if (itr == std::ranges::end(host_entries_)) {
     auto key = ImmutableString{host};
-    auto key_ref = std::string_view{key.begin(), key.end()};
+    auto key_ref = as_string_view(key);
     std::tie(itr, std::ignore) =
       host_entries_.emplace(key_ref, HostEntry(std::move(key)));
   }

@@ -116,7 +116,7 @@ DNSResolverStatus DNSTracker::resolve(Address *result, DNSQuery *dnsq) {
 
     auto resolv = std::make_unique<DualDNSResolver>(loop_, family_);
     auto host_copy = ImmutableString{dnsq->host};
-    auto host = std::string_view{host_copy.begin(), host_copy.end()};
+    auto host = as_string_view(host_copy);
 
     rv = resolv->resolve(host);
     if (rv != 0) {
@@ -184,7 +184,7 @@ DNSResolverStatus DNSTracker::resolve(Address *result, DNSQuery *dnsq) {
     }
 
     auto resolv = std::make_unique<DualDNSResolver>(loop_, family_);
-    auto host = std::string_view{ent.host.begin(), ent.host.end()};
+    auto host = as_string_view(ent.host);
 
     rv = resolv->resolve(host);
     if (rv != 0) {
