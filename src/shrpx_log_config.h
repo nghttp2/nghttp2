@@ -71,9 +71,6 @@ struct LogConfig {
 // descriptor for log files.
 LogConfig *log_config();
 
-// Deletes log_config
-void delete_log_config();
-
 } // namespace shrpx
 
 #endif // SHRPX_LOG_CONFIG_H

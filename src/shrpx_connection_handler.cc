@@ -361,7 +361,6 @@ void ConnectionHandler::graceful_shutdown_worker() {
     (void)reopen_log_files(get_config()->logging);
     join_worker();
     ev_async_send(get_loop(), &thread_join_asyncev_);
-    delete_log_config();
   });
 #endif // NOTHREADS
 }

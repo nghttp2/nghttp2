@@ -291,21 +291,6 @@ a.store(p);
     [have_atomic_std_shared_ptr=no
      AC_MSG_RESULT([no])])
 
-# Check that thread_local storage specifier is available
-AC_MSG_CHECKING([whether thread_local storage class specifier is available.])
-AC_COMPILE_IFELSE([AC_LANG_PROGRAM(
-,
-[[
-thread_local int a = 0;
-(void)a;
-]])],
-    [AC_DEFINE([HAVE_THREAD_LOCAL], [1],
-               [Define to 1 if you have thread_local storage specifier.])
-     have_thread_local=yes
-     AC_MSG_RESULT([yes])],
-    [have_Thread_local=no
-     AC_MSG_RESULT([no])])
-
 # Check that std::chrono::time_zone is available.
 AC_MSG_CHECKING([whether std::chrono::time_zone is available])
 AC_COMPILE_IFELSE([AC_LANG_PROGRAM(
