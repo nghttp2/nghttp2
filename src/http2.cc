@@ -1894,7 +1894,7 @@ std::string_view make_websocket_accept_token(uint8_t *dest,
   std::ranges::copy(magic, p);
 
   std::array<uint8_t, 20> h;
-  if (util::sha1(h.data(), std::string_view{s.begin(), s.end()}) != 0) {
+  if (util::sha1(h.data(), as_string_view(s)) != 0) {
     return ""sv;
   }
 
