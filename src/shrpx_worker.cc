@@ -294,9 +294,9 @@ void Worker::replace_downstream_config(
   // backendconfig API call.
   auto groups = downstreamconf->addr_groups;
 
-  auto old_downstreamconf = std::move(downstream_addr_groups_);
-  downstream_addr_groups_ =
-    std::vector<std::shared_ptr<DownstreamAddrGroup>>(groups.size());
+  auto old_addr_groups = std::exchange(
+    downstream_addr_groups_,
+    std::vector<std::shared_ptr<DownstreamAddrGroup>>(groups.size()));
 
   std::map<DownstreamKey, size_t> addr_groups_indexer;
 #ifdef HAVE_MRUBY
@@ -316,8 +316,8 @@ void Worker::replace_downstream_config(
     dst = std::make_shared<DownstreamAddrGroup>();
     dst->pattern = ImmutableString{src.pattern};
 
-    for (; k < old_downstreamconf.size() &&
-           old_downstreamconf[k]->pattern < dst->pattern;
+    for (; k < old_addr_groups.size() &&
+           old_addr_groups[k]->pattern < dst->pattern;
          ++k)
       ;
 
@@ -438,17 +438,17 @@ void Worker::replace_downstream_config(
         assert(num_wgs == 0);
 
         auto copy_cycle =
-          k < old_downstreamconf.size() &&
-          old_downstreamconf[k]->pattern == dst->pattern &&
-          old_downstreamconf[k]->shared_addr->affinity.type ==
+          k < old_addr_groups.size() &&
+          old_addr_groups[k]->pattern == dst->pattern &&
+          old_addr_groups[k]->shared_addr->affinity.type ==
             SessionAffinity::NONE &&
-          weak_equal(shared_addr->wgs, old_downstreamconf[k]->shared_addr->wgs);
+          weak_equal(shared_addr->wgs, old_addr_groups[k]->shared_addr->wgs);
 
         for (size_t i = 0; i < shared_addr->wgs.size(); ++i) {
           auto &wg = shared_addr->wgs[i];
 
           if (copy_cycle) {
-            wg.cycle = old_downstreamconf[k]->shared_addr->wgs[i].cycle;
+            wg.cycle = old_addr_groups[k]->shared_addr->wgs[i].cycle;
           }
 
           shared_addr->pq.push(WeightGroupEntry{&wg, wg.seq, wg.cycle});
