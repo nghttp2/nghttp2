@@ -332,6 +332,12 @@ inline bool operator==(const ImmutableString &lhs,
   return std::ranges::equal(lhs, rhs);
 }
 
+inline std::strong_ordering operator<=>(const ImmutableString &lhs,
+                                        const ImmutableString &rhs) noexcept {
+  return std::string_view{lhs.data(), lhs.size()} <=>
+         std::string_view{rhs.data(), rhs.size()};
+}
+
 constexpr ImmutableString operator""_is(const char *str, size_t len) {
   return {str, len};
 }

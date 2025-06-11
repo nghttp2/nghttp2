@@ -257,6 +257,26 @@ void ensure_enqueue_addr(
 }
 } // namespace
 
+namespace {
+bool weak_equal(const std::shared_ptr<SharedDownstreamAddr> &a,
+                const std::shared_ptr<SharedDownstreamAddr> &b) {
+  if (a->addrs.size() != b->addrs.size()) {
+    return false;
+  }
+
+  for (size_t i = 0; i < a->addrs.size(); ++i) {
+    const auto &x = a->addrs[i];
+    const auto &y = b->addrs[i];
+
+    if (x.host != y.host || x.port != y.port || x.weight != y.weight) {
+      return false;
+    }
+  }
+
+  return true;
+}
+} // namespace
+
 void Worker::replace_downstream_config(
   std::shared_ptr<DownstreamConfig> downstreamconf) {
   for (auto &g : downstream_addr_groups_) {
@@ -274,6 +294,7 @@ void Worker::replace_downstream_config(
   // backendconfig API call.
   auto groups = downstreamconf->addr_groups;
 
+  auto old_downstreamconf = std::move(downstream_addr_groups_);
   downstream_addr_groups_ =
     std::vector<std::shared_ptr<DownstreamAddrGroup>>(groups.size());
 
@@ -286,12 +307,19 @@ void Worker::replace_downstream_config(
     shared_mruby_ctxs;
 #endif // HAVE_MRUBY
 
+  size_t k = 0;
+
   for (size_t i = 0; i < groups.size(); ++i) {
     auto &src = groups[i];
     auto &dst = downstream_addr_groups_[i];
 
     dst = std::make_shared<DownstreamAddrGroup>();
     dst->pattern = ImmutableString{src.pattern};
+
+    for (; k < old_downstreamconf.size() &&
+           old_downstreamconf[k]->pattern < dst->pattern;
+         ++k)
+      ;
 
     auto shared_addr = std::make_shared<SharedDownstreamAddr>();
 
@@ -336,6 +364,11 @@ void Worker::replace_downstream_config(
       dst_addr.dns = src_addr.dns;
       dst_addr.upgrade_scheme = src_addr.upgrade_scheme;
     }
+
+    auto copy_cycle =
+      k < old_downstreamconf.size() &&
+      old_downstreamconf[k]->pattern == dst->pattern &&
+      weak_equal(shared_addr, old_downstreamconf[k]->shared_addr);
 
 #ifdef HAVE_MRUBY
     auto mruby_ctx_it = shared_mruby_ctxs.find(src.mruby_file);
@@ -393,7 +426,13 @@ void Worker::replace_downstream_config(
 
         shared_addr->wgs = std::vector<WeightGroup>(num_wgs);
 
-        for (auto &addr : shared_addr->addrs) {
+        for (size_t i = 0; i < shared_addr->addrs.size(); ++i) {
+          auto &addr = shared_addr->addrs[i];
+
+          if (copy_cycle) {
+            addr.cycle = old_downstreamconf[k]->shared_addr->addrs[i].cycle;
+          }
+
           auto &wg = wgs[addr.group];
           if (wg == nullptr) {
             wg = &shared_addr->wgs[--num_wgs];
