@@ -179,6 +179,7 @@ struct WeightGroup {
   std::priority_queue<DownstreamAddrEntry, std::vector<DownstreamAddrEntry>,
                       DownstreamAddrEntryGreater>
     pq;
+  std::string_view name;
   size_t seq;
   uint32_t weight;
   uint32_t cycle;

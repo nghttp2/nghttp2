@@ -258,17 +258,17 @@ void ensure_enqueue_addr(
 } // namespace
 
 namespace {
-bool weak_equal(const std::shared_ptr<SharedDownstreamAddr> &a,
-                const std::shared_ptr<SharedDownstreamAddr> &b) {
-  if (a->addrs.size() != b->addrs.size()) {
+bool weak_equal(const std::vector<WeightGroup> &a,
+                const std::vector<WeightGroup> &b) {
+  if (a.size() != b.size()) {
     return false;
   }
 
-  for (size_t i = 0; i < a->addrs.size(); ++i) {
-    const auto &x = a->addrs[i];
-    const auto &y = b->addrs[i];
+  for (size_t i = 0; i < a.size(); ++i) {
+    const auto &x = a[i];
+    const auto &y = b[i];
 
-    if (x.host != y.host || x.port != y.port || x.weight != y.weight) {
+    if (x.name != y.name || x.weight != y.weight) {
       return false;
     }
   }
@@ -365,11 +365,6 @@ void Worker::replace_downstream_config(
       dst_addr.upgrade_scheme = src_addr.upgrade_scheme;
     }
 
-    auto copy_cycle =
-      k < old_downstreamconf.size() &&
-      old_downstreamconf[k]->pattern == dst->pattern &&
-      weak_equal(shared_addr, old_downstreamconf[k]->shared_addr);
-
 #ifdef HAVE_MRUBY
     auto mruby_ctx_it = shared_mruby_ctxs.find(src.mruby_file);
     if (mruby_ctx_it == std::ranges::end(shared_mruby_ctxs)) {
@@ -426,16 +421,11 @@ void Worker::replace_downstream_config(
 
         shared_addr->wgs = std::vector<WeightGroup>(num_wgs);
 
-        for (size_t i = 0; i < shared_addr->addrs.size(); ++i) {
-          auto &addr = shared_addr->addrs[i];
-
-          if (copy_cycle) {
-            addr.cycle = old_downstreamconf[k]->shared_addr->addrs[i].cycle;
-          }
-
+        for (auto &addr : shared_addr->addrs) {
           auto &wg = wgs[addr.group];
           if (wg == nullptr) {
             wg = &shared_addr->wgs[--num_wgs];
+            wg->name = addr.group;
             wg->seq = num_wgs;
           }
 
@@ -447,10 +437,22 @@ void Worker::replace_downstream_config(
 
         assert(num_wgs == 0);
 
-        for (auto &kv : wgs) {
-          shared_addr->pq.push(
-            WeightGroupEntry{kv.second, kv.second->seq, kv.second->cycle});
-          kv.second->queued = true;
+        auto copy_cycle =
+          k < old_downstreamconf.size() &&
+          old_downstreamconf[k]->pattern == dst->pattern &&
+          old_downstreamconf[k]->shared_addr->affinity.type ==
+            SessionAffinity::NONE &&
+          weak_equal(shared_addr->wgs, old_downstreamconf[k]->shared_addr->wgs);
+
+        for (size_t i = 0; i < shared_addr->wgs.size(); ++i) {
+          auto &wg = shared_addr->wgs[i];
+
+          if (copy_cycle) {
+            wg.cycle = old_downstreamconf[k]->shared_addr->wgs[i].cycle;
+          }
+
+          shared_addr->pq.push(WeightGroupEntry{&wg, wg.seq, wg.cycle});
+          wg.queued = true;
         }
       }
 

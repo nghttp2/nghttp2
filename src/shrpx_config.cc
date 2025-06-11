@@ -4507,10 +4507,7 @@ int configure_downstream_group(Config *config, bool http2_proxy,
     auto &g = addr_groups[idx];
 
     std::ranges::sort(g.addrs, [](const auto &lhs, const auto &rhs) {
-      return lhs.host < rhs.host ||
-             (lhs.host == rhs.host && lhs.port < rhs.port) ||
-             (lhs.host == rhs.host && lhs.port == rhs.port &&
-              lhs.weight < rhs.weight);
+      return lhs.group < rhs.group;
     });
 
     if (g.pattern[0] == '*') {
