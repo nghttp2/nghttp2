@@ -40,6 +40,7 @@
 #include <utility>
 #include <span>
 #include <string_view>
+#include <compare>
 
 namespace nghttp2 {
 
@@ -330,6 +331,12 @@ inline std::string &operator+=(std::string &lhs, const ImmutableString &rhs) {
 inline bool operator==(const ImmutableString &lhs,
                        const std::string_view &rhs) {
   return std::ranges::equal(lhs, rhs);
+}
+
+inline std::strong_ordering operator<=>(const ImmutableString &lhs,
+                                        const ImmutableString &rhs) noexcept {
+  return std::string_view{lhs.data(), lhs.size()} <=>
+         std::string_view{rhs.data(), rhs.size()};
 }
 
 constexpr ImmutableString operator""_is(const char *str, size_t len) {

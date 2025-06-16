@@ -1242,11 +1242,6 @@ int parse_mapping(
   addr.upgrade_scheme = params.upgrade_scheme;
   addr.dnf = params.dnf;
 
-  auto &routerconf = downstreamconf.router;
-  auto &router = routerconf.router;
-  auto &rw_router = routerconf.rev_wildcard_router;
-  auto &wildcard_patterns = routerconf.wildcard_patterns;
-
   for (const auto &raw_pattern : mapping) {
     std::string_view pattern;
     auto slash = std::ranges::find(raw_pattern, '/');
@@ -1376,51 +1371,6 @@ int parse_mapping(
     g.timeout.read = params.read_timeout;
     g.timeout.write = params.write_timeout;
     g.dnf = params.dnf;
-
-    if (pattern[0] == '*') {
-      // wildcard pattern
-      auto path_first = std::ranges::find(g.pattern, '/');
-
-      auto host =
-        std::string_view{std::ranges::begin(g.pattern) + 1, path_first};
-      auto path = std::string_view{path_first, std::ranges::end(g.pattern)};
-
-      auto path_is_wildcard = false;
-      if (path[path.size() - 1] == '*') {
-        path = path.substr(0, path.size() - 1);
-        path_is_wildcard = true;
-      }
-
-      auto it = std::ranges::find_if(
-        wildcard_patterns,
-        [&host](const WildcardPattern &wp) { return wp.host == host; });
-
-      if (it == std::ranges::end(wildcard_patterns)) {
-        wildcard_patterns.emplace_back(host);
-
-        auto &router = wildcard_patterns.back().router;
-        router.add_route(path, idx, path_is_wildcard);
-
-        auto iov = make_byte_ref(downstreamconf.balloc, host.size() + 1);
-        auto p = std::ranges::reverse_copy(host, std::ranges::begin(iov)).out;
-        *p = '\0';
-        auto rev_host = as_string_view(std::ranges::begin(iov), p);
-
-        rw_router.add_route(rev_host, wildcard_patterns.size() - 1);
-      } else {
-        (*it).router.add_route(path, idx, path_is_wildcard);
-      }
-
-      continue;
-    }
-
-    auto path_is_wildcard = false;
-    if (pattern[pattern.size() - 1] == '*') {
-      pattern = pattern.substr(0, pattern.size() - 1);
-      path_is_wildcard = true;
-    }
-
-    router.add_route(pattern, idx, path_is_wildcard);
   }
   return 0;
 }
@@ -4517,6 +4467,8 @@ int configure_downstream_group(Config *config, bool http2_proxy,
   auto &addr_groups = downstreamconf.addr_groups;
   auto &routerconf = downstreamconf.router;
   auto &router = routerconf.router;
+  auto &rw_router = routerconf.rev_wildcard_router;
+  auto &wildcard_patterns = routerconf.wildcard_patterns;
 
   if (addr_groups.empty()) {
     DownstreamAddrConfig addr{};
@@ -4545,6 +4497,69 @@ int configure_downstream_group(Config *config, bool http2_proxy,
 
   if (LOG_ENABLED(INFO)) {
     LOG(INFO) << "Resolving backend address";
+  }
+
+  // Sort by pattern so that later we can compare the old and new
+  // backends efficiently in Worker::replace_downstream_config.
+  std::ranges::sort(addr_groups, [](const auto &lhs, const auto &rhs) {
+    return lhs.pattern < rhs.pattern;
+  });
+
+  for (size_t idx = 0; idx < addr_groups.size(); ++idx) {
+    auto &g = addr_groups[idx];
+
+    // Sort by group so that later we can see the group in the
+    // particular order in Worker::replace_downstream_config.
+    std::ranges::sort(g.addrs, [](const auto &lhs, const auto &rhs) {
+      return lhs.group < rhs.group;
+    });
+
+    if (g.pattern[0] == '*') {
+      // wildcard pattern
+      auto path_first = std::ranges::find(g.pattern, '/');
+
+      auto host =
+        std::string_view{std::ranges::begin(g.pattern) + 1, path_first};
+      auto path = std::string_view{path_first, std::ranges::end(g.pattern)};
+
+      auto path_is_wildcard = false;
+      if (path[path.size() - 1] == '*') {
+        path = path.substr(0, path.size() - 1);
+        path_is_wildcard = true;
+      }
+
+      auto it = std::ranges::find_if(
+        wildcard_patterns,
+        [&host](const WildcardPattern &wp) { return wp.host == host; });
+
+      if (it == std::ranges::end(wildcard_patterns)) {
+        wildcard_patterns.emplace_back(host);
+
+        auto &router = wildcard_patterns.back().router;
+        router.add_route(path, idx, path_is_wildcard);
+
+        auto iov = make_byte_ref(downstreamconf.balloc, host.size() + 1);
+        auto p = std::ranges::reverse_copy(host, std::ranges::begin(iov)).out;
+        *p = '\0';
+        auto rev_host = as_string_view(std::ranges::begin(iov), p);
+
+        rw_router.add_route(rev_host, wildcard_patterns.size() - 1);
+      } else {
+        (*it).router.add_route(path, idx, path_is_wildcard);
+      }
+
+      continue;
+    }
+
+    auto path_is_wildcard = false;
+    auto pattern = g.pattern;
+
+    if (pattern[pattern.size() - 1] == '*') {
+      pattern = pattern.substr(0, pattern.size() - 1);
+      path_is_wildcard = true;
+    }
+
+    router.add_route(pattern, idx, path_is_wildcard);
   }
 
   ssize_t catch_all_group = -1;
