@@ -5,6 +5,8 @@ on:
     paths:
     - Dockerfile.android
     - .github/workflows/android.yml
+    tags-ignore:
+    - '*'
 
 permissions: read-all
 
