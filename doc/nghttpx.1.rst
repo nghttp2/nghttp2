@@ -740,7 +740,7 @@ SSL/TLS
     by a single comma only  and any white spaces are treated
     as a part of protocol string.
 
-    Default: ``h2,h2-16,h2-14,http/1.1``
+    Default: ``h2,http/1.1``
 
 .. option:: --verify-client
 
