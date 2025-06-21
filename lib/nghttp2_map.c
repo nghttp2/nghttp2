@@ -31,7 +31,7 @@
 
 #include "nghttp2_helper.h"
 
-#define NGHTTP2_INITIAL_TABLE_LENBITS 4
+#define NGHTTP2_INITIAL_HASHBITS 4
 
 void nghttp2_map_init(nghttp2_map *map, nghttp2_mem *mem) {
   map->mem = mem;
@@ -78,7 +78,12 @@ int nghttp2_map_each(const nghttp2_map *map, int (*func)(void *data, void *ptr),
 }
 
 static size_t hash(nghttp2_map_key_type key, size_t bits) {
-  return (size_t)(((uint32_t)key * 2654435769u) >> (32 - bits));
+  /* hasher from
+     https://github.com/rust-lang/rustc-hash/blob/dc5c33f1283de2da64d8d7a06401d91aded03ad4/src/lib.rs
+     We do not perform finalization here because we use top bits
+     anyway. */
+  uint32_t h = (uint32_t)key * 0x93d765dd;
+  return (size_t)((h * 2654435769u) >> (32 - bits));
 }
 
 static void map_bucket_swap(nghttp2_map_bucket *a, nghttp2_map_bucket *b) {
@@ -114,12 +119,16 @@ void nghttp2_map_print_distance(const nghttp2_map *map) {
             hash(bkt->key, map->hashbits), bkt->key, idx, bkt->psl);
   }
 }
-#endif /* !WIN32 */
+#endif /* !defined(WIN32) */
 
 static int insert(nghttp2_map_bucket *table, size_t hashbits,
                   nghttp2_map_key_type key, void *data) {
   size_t idx = hash(key, hashbits);
-  nghttp2_map_bucket b = {0, key, data}, *bkt;
+  nghttp2_map_bucket b = {
+    .key = key,
+    .data = data,
+  };
+  nghttp2_map_bucket *bkt;
   size_t mask = (1u << hashbits) - 1;
 
   for (;;) {
@@ -196,7 +205,7 @@ int nghttp2_map_insert(nghttp2_map *map, nghttp2_map_key_type key, void *data) {
         return rv;
       }
     } else {
-      rv = map_resize(map, NGHTTP2_INITIAL_TABLE_LENBITS);
+      rv = map_resize(map, NGHTTP2_INITIAL_HASHBITS);
       if (rv != 0) {
         return rv;
       }
