@@ -28,7 +28,7 @@
 
 #ifdef HAVE_CONFIG_H
 #  include <config.h>
-#endif /* HAVE_CONFIG_H */
+#endif /* defined(HAVE_CONFIG_H) */
 
 #include <nghttp2/nghttp2.h>
 
@@ -123,6 +123,6 @@ int nghttp2_map_each(const nghttp2_map *map, int (*func)(void *data, void *ptr),
 
 #ifndef WIN32
 void nghttp2_map_print_distance(const nghttp2_map *map);
-#endif /* !WIN32 */
+#endif /* !defined(WIN32) */
 
-#endif /* NGHTTP2_MAP_H */
+#endif /* !defined(NGHTTP2_MAP_H) */
