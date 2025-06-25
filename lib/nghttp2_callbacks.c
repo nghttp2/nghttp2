@@ -23,21 +23,39 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 #include "nghttp2_callbacks.h"
+#include "nghttp2_mem.h"
 
 #include <stdlib.h>
 
 int nghttp2_session_callbacks_new(nghttp2_session_callbacks **callbacks_ptr) {
-  *callbacks_ptr = calloc(1, sizeof(nghttp2_session_callbacks));
+  nghttp2_session_callbacks_new2(callbacks_ptr, NULL);
+}
+
+int nghttp2_session_callbacks_new2(nghttp2_session_callbacks **callbacks_ptr,
+                                   nghttp2_mem *mem) {
+  if (mem == NULL) {
+    mem = nghttp2_mem_default();
+  }
+
+  *callbacks_ptr = nghttp2_mem_calloc(mem, 1, sizeof(nghttp2_session_callbacks));
 
   if (*callbacks_ptr == NULL) {
     return NGHTTP2_ERR_NOMEM;
   }
 
+  (*callbacks_ptr)->mem = *mem;
+
   return 0;
 }
 
 void nghttp2_session_callbacks_del(nghttp2_session_callbacks *callbacks) {
-  free(callbacks);
+  if (callbacks == NULL) {
+    return;
+  }
+  nghttp2_mem *mem;
+
+  mem = &callbacks->mem;
+  nghttp2_mem_free(mem, callbacks);
 }
 
 void nghttp2_session_callbacks_set_send_callback(
