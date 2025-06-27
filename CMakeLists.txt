@@ -340,7 +340,11 @@ check_type_size("ssize_t" SIZEOF_SSIZE_T)
 if(SIZEOF_SSIZE_T STREQUAL "")
   # ssize_t is a signed type in POSIX storing at least -1.
   # Set it to "int" to match the behavior of AC_TYPE_SSIZE_T (autotools).
-  set(ssize_t int)
+  if (MSVC)
+    set(ssize_t SSIZE_T)
+  else()
+    set(ssize_t int)
+  endif()
 endif()
 # AC_TYPE_UINT8_T
 # AC_TYPE_UINT16_T
