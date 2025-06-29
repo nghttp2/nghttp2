@@ -1194,8 +1194,8 @@ int Worker::create_quic_server_socket(UpstreamAddr &faddr) {
         continue;
       }
 
-#  if defined(IPV6_MTU_DISCOVER) && defined(IPV6_PMTUDISC_DO)
-      int mtu_disc = IPV6_PMTUDISC_DO;
+#  if defined(IPV6_MTU_DISCOVER) && defined(IPV6_PMTUDISC_PROBE)
+      int mtu_disc = IPV6_PMTUDISC_PROBE;
       if (setsockopt(fd, IPPROTO_IPV6, IPV6_MTU_DISCOVER, &mtu_disc,
                      static_cast<socklen_t>(sizeof(mtu_disc))) == -1) {
         auto error = errno;
@@ -1205,7 +1205,7 @@ int Worker::create_quic_server_socket(UpstreamAddr &faddr) {
         close(fd);
         continue;
       }
-#  endif // defined(IPV6_MTU_DISCOVER) && defined(IP_PMTUDISC_DO)
+#  endif // defined(IPV6_MTU_DISCOVER) && defined(IPV6_PMTUDISC_PROBE)
     } else {
       if (setsockopt(fd, IPPROTO_IP, IP_PKTINFO, &val,
                      static_cast<socklen_t>(sizeof(val))) == -1) {
@@ -1225,8 +1225,8 @@ int Worker::create_quic_server_socket(UpstreamAddr &faddr) {
         continue;
       }
 
-#  if defined(IP_MTU_DISCOVER) && defined(IP_PMTUDISC_DO)
-      int mtu_disc = IP_PMTUDISC_DO;
+#  if defined(IP_MTU_DISCOVER) && defined(IP_PMTUDISC_PROBE)
+      int mtu_disc = IP_PMTUDISC_PROBE;
       if (setsockopt(fd, IPPROTO_IP, IP_MTU_DISCOVER, &mtu_disc,
                      static_cast<socklen_t>(sizeof(mtu_disc))) == -1) {
         auto error = errno;
@@ -1235,7 +1235,7 @@ int Worker::create_quic_server_socket(UpstreamAddr &faddr) {
         close(fd);
         continue;
       }
-#  endif // defined(IP_MTU_DISCOVER) && defined(IP_PMTUDISC_DO)
+#  endif // defined(IP_MTU_DISCOVER) && defined(IP_PMTUDISC_PROBE)
     }
 
 #  ifdef UDP_GRO
