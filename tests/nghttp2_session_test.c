@@ -802,6 +802,10 @@ static int cancel_unpack_extension_callback(nghttp2_session *session,
   return NGHTTP2_ERR_CANCEL;
 }
 
+static void rand_callback(uint8_t *data, size_t datalen) {
+  memset(data, 0xfe, datalen);
+}
+
 static nghttp2_settings_entry *dup_iv(const nghttp2_settings_entry *iv,
                                       size_t niv) {
   return nghttp2_frame_iv_copy(iv, niv, nghttp2_mem_default());
@@ -833,6 +837,7 @@ void test_nghttp2_session_recv(void) {
   callbacks.recv_callback2 = scripted_recv_callback;
   callbacks.on_frame_recv_callback = on_frame_recv_callback;
   callbacks.on_begin_frame_callback = on_begin_frame_callback;
+  callbacks.rand_callback = rand_callback;
 
   user_data.df = &df;
 

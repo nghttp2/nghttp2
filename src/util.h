@@ -1291,6 +1291,10 @@ void random_bytes(O first, O last, Generator &&gen) {
                         [&dis, &gen]() { return dis(gen); });
 }
 
+// Fills the buffer pointed by |data| of length |destlen| with the
+// secure random bytes.
+void secure_random(uint8_t *dest, size_t destlen);
+
 // Shuffles the range [|first|, |last|] by calling swap function
 // |swap| for each pair.  |swap| takes 2 iterators.  If |swap| is
 // noop, no modification is made.

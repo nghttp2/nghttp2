@@ -205,6 +205,8 @@ void Http2Session::on_connect() {
 
   nghttp2_session_callbacks_set_send_callback2(callbacks, send_callback);
 
+  nghttp2_session_callbacks_set_rand_callback(callbacks, util::secure_random);
+
   nghttp2_option *opt;
 
   rv = nghttp2_option_new(&opt);

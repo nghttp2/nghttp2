@@ -47,6 +47,7 @@ typedef struct nghttp2_map_bucket {
 typedef struct nghttp2_map {
   nghttp2_map_bucket *table;
   nghttp2_mem *mem;
+  uint32_t seed;
   size_t size;
   size_t hashbits;
 } nghttp2_map;
@@ -54,7 +55,7 @@ typedef struct nghttp2_map {
 /*
  * nghttp2_map_init initializes the map |map|.
  */
-void nghttp2_map_init(nghttp2_map *map, nghttp2_mem *mem);
+void nghttp2_map_init(nghttp2_map *map, uint32_t seed, nghttp2_mem *mem);
 
 /*
  * nghttp2_map_free deallocates any resources allocated for |map|.

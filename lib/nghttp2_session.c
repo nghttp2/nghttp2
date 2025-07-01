@@ -438,6 +438,7 @@ static int session_new(nghttp2_session **session_ptr,
   size_t max_deflate_dynamic_table_size =
     NGHTTP2_HD_DEFAULT_MAX_DEFLATE_BUFFER_SIZE;
   size_t i;
+  uint32_t map_seed;
 
   if (mem == NULL) {
     mem = nghttp2_mem_default();
@@ -594,7 +595,13 @@ static int session_new(nghttp2_session **session_ptr,
     goto fail_aob_framebuf;
   }
 
-  nghttp2_map_init(&(*session_ptr)->streams, mem);
+  if (callbacks->rand_callback) {
+    callbacks->rand_callback((uint8_t *)&map_seed, sizeof(map_seed));
+  } else {
+    map_seed = 0;
+  }
+
+  nghttp2_map_init(&(*session_ptr)->streams, map_seed, mem);
 
   active_outbound_item_reset(&(*session_ptr)->aob, mem);
 
