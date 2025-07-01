@@ -594,7 +594,7 @@ static int session_new(nghttp2_session **session_ptr,
     goto fail_aob_framebuf;
   }
 
-  nghttp2_map_init(&(*session_ptr)->streams, mem);
+  nghttp2_map_init(&(*session_ptr)->streams, 0, mem);
 
   active_outbound_item_reset(&(*session_ptr)->aob, mem);
 

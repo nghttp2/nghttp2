@@ -43,6 +43,8 @@ const MunitSuite map_suite = {
   "/map", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
 };
 
+#define NGHTTP2_TEST_MAP_SEED 0xfefefefe
+
 typedef struct strentry {
   nghttp2_map_key_type key;
   const char *str;
@@ -57,7 +59,7 @@ static void strentry_init(strentry *entry, nghttp2_map_key_type key,
 void test_nghttp2_map(void) {
   strentry foo, FOO, bar, baz, shrubbery;
   nghttp2_map map;
-  nghttp2_map_init(&map, nghttp2_mem_default());
+  nghttp2_map_init(&map, NGHTTP2_TEST_MAP_SEED, nghttp2_mem_default());
 
   strentry_init(&foo, 1, "foo");
   strentry_init(&FOO, 1, "FOO");
@@ -132,7 +134,7 @@ void test_nghttp2_map_functional(void) {
   int i;
   strentry *ent;
 
-  nghttp2_map_init(&map, nghttp2_mem_default());
+  nghttp2_map_init(&map, NGHTTP2_TEST_MAP_SEED, nghttp2_mem_default());
   for (i = 0; i < NUM_ENT; ++i) {
     strentry_init(&arr[i], (nghttp2_map_key_type)(i + 1), "foo");
     order[i] = i + 1;
@@ -185,7 +187,7 @@ void test_nghttp2_map_each(void) {
            *baz = mem->malloc(sizeof(strentry), NULL),
            *shrubbery = mem->malloc(sizeof(strentry), NULL);
   nghttp2_map map;
-  nghttp2_map_init(&map, nghttp2_mem_default());
+  nghttp2_map_init(&map, NGHTTP2_TEST_MAP_SEED, nghttp2_mem_default());
 
   strentry_init(foo, 1, "foo");
   strentry_init(bar, 2, "bar");
@@ -208,7 +210,7 @@ void test_nghttp2_map_clear(void) {
 
   strentry_init(&foo, 1, "foo");
 
-  nghttp2_map_init(&map, mem);
+  nghttp2_map_init(&map, NGHTTP2_TEST_MAP_SEED, mem);
 
   assert_int(0, ==, nghttp2_map_insert(&map, foo.key, &foo));
 
