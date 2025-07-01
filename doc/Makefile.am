@@ -114,6 +114,7 @@ APIDOCS= \
 	nghttp2_session_callbacks_set_on_stream_close_callback.rst \
 	nghttp2_session_callbacks_set_pack_extension_callback.rst \
 	nghttp2_session_callbacks_set_pack_extension_callback2.rst \
+	nghttp2_session_callbacks_set_rand_callback.rst \
 	nghttp2_session_callbacks_set_recv_callback.rst \
 	nghttp2_session_callbacks_set_recv_callback2.rst \
 	nghttp2_session_callbacks_set_select_padding_callback.rst \

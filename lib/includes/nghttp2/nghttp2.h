@@ -2445,6 +2445,15 @@ typedef int (*nghttp2_error_callback2)(nghttp2_session *session,
                                        int lib_error_code, const char *msg,
                                        size_t len, void *user_data);
 
+/**
+ * @functypedef
+ *
+ * Callback function invoked when unpredictable data of |destlen|
+ * bytes are needed.  The implementation must write unpredictable data
+ * of |destlen| bytes into the buffer pointed by |dest|.
+ */
+typedef void (*nghttp2_rand_callback)(uint8_t *dest, size_t destlen);
+
 struct nghttp2_session_callbacks;
 
 /**
@@ -2832,6 +2841,18 @@ NGHTTP2_EXTERN void nghttp2_session_callbacks_set_error_callback(
  */
 NGHTTP2_EXTERN void nghttp2_session_callbacks_set_error_callback2(
   nghttp2_session_callbacks *cbs, nghttp2_error_callback2 error_callback2);
+
+/**
+ * @function
+ *
+ * Sets callback function invoked when unpredictable data is needed.
+ * Although this callback is optional due to the backward
+ * compatibility, it is recommended to specify it to harden the
+ * runtime behavior against suspicious activities of a remote
+ * endpoint.
+ */
+NGHTTP2_EXTERN void nghttp2_session_callbacks_set_rand_callback(
+  nghttp2_session_callbacks *cbs, nghttp2_rand_callback rand_callback);
 
 /**
  * @functypedef
