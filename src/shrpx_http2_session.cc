@@ -1635,6 +1635,8 @@ nghttp2_session_callbacks *create_http2_downstream_callbacks() {
       callbacks, http::select_padding_callback);
   }
 
+  nghttp2_session_callbacks_set_rand_callback(callbacks, util::secure_random);
+
   return callbacks;
 }
 

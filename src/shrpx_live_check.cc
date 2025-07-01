@@ -750,6 +750,7 @@ int LiveCheck::connection_made() {
                                                        on_frame_send_callback);
   nghttp2_session_callbacks_set_on_frame_recv_callback(callbacks,
                                                        on_frame_recv_callback);
+  nghttp2_session_callbacks_set_rand_callback(callbacks, util::secure_random);
 
   rv = nghttp2_session_client_new(&session_, callbacks, this);
 

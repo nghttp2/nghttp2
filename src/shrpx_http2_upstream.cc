@@ -1002,6 +1002,8 @@ nghttp2_session_callbacks *create_http2_upstream_callbacks() {
                                                   verbose_error_callback);
   }
 
+  nghttp2_session_callbacks_set_rand_callback(callbacks, util::secure_random);
+
   return callbacks;
 }
 

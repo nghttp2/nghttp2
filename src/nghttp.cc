@@ -2419,6 +2419,8 @@ int run(char **uris, int n) {
       callbacks, select_padding_callback);
   }
 
+  nghttp2_session_callbacks_set_rand_callback(callbacks, util::secure_random);
+
   std::string prev_scheme;
   std::string prev_host;
   uint16_t prev_port = 0;

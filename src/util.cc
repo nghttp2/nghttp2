@@ -66,8 +66,10 @@
 #ifdef NGHTTP2_OPENSSL_IS_WOLFSSL
 #  include <wolfssl/options.h>
 #  include <wolfssl/openssl/evp.h>
+#  include <wolfssl/openssl/rand.h>
 #else // !NGHTTP2_OPENSSL_IS_WOLFSSL
 #  include <openssl/evp.h>
+#  include <openssl/rand.h>
 #endif // !NGHTTP2_OPENSSL_IS_WOLFSSL
 
 #include <nghttp2/nghttp2.h>
@@ -1848,6 +1850,15 @@ std::string_view rstrip(BlockAllocator &balloc, const std::string_view &s) {
   }
 
   return make_string_ref(balloc, std::string_view{s.data(), s.size() - len});
+}
+
+void secure_random(uint8_t *dest, size_t destlen) {
+  auto rv =
+    RAND_bytes(dest, static_cast<nghttp2_ssl_rand_length_type>(destlen));
+  if (rv != 1) {
+    assert(0);
+    abort();
+  }
 }
 
 #ifdef ENABLE_HTTP3
