@@ -570,7 +570,7 @@ int nghttp2_submit_origin(nghttp2_session *session, uint8_t flags,
   return 0;
 
 fail_item_malloc:
-  free(ov_copy);
+  nghttp2_mem_free(mem, ov_copy);
 
   return rv;
 }
