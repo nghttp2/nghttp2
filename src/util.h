@@ -114,17 +114,8 @@ constexpr bool is_hex_digit(char c) noexcept {
 
 // Returns true if a range [|first|, |last|) is hex string.
 template <std::input_iterator I> constexpr bool is_hex_string(I first, I last) {
-  if (std::ranges::distance(first, last) % 2) {
-    return false;
-  }
-
-  for (; first != last; ++first) {
-    if (!is_hex_digit(*first)) {
-      return false;
-    }
-  }
-
-  return true;
+  return !(std::ranges::distance(first, last) & 1) &&
+         std::ranges::all_of(first, last, is_hex_digit);
 }
 
 // Returns true if |r| is hex string.
