@@ -441,6 +441,7 @@ int htp_hdrs_completecb(llhttp_t *htp) {
 
       if (host) {
         req.authority = host->value;
+        req.no_authority = false;
       }
 
       if (handler->get_ssl()) {
