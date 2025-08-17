@@ -2045,12 +2045,13 @@ typedef int (*nghttp2_on_header_callback2)(nghttp2_session *session,
  * The parameter and behaviour are similar to
  * :type:`nghttp2_on_header_callback`.  The difference is that this
  * callback is only invoked when a invalid header name/value pair is
- * received which is treated as stream error if this callback is not
- * set.  Only invalid regular header field are passed to this
- * callback.  In other words, invalid pseudo header field is not
- * passed to this callback.  Also header fields which includes upper
- * cased latter are also treated as error without passing them to this
- * callback.
+ * received which is treated as stream error if this callback returns
+ * :enum:`nghttp2_error.NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE` and
+ * :type:`nghttp2_on_invalid_header_callback2` is not set.  Only
+ * invalid regular header field are passed to this callback.  In other
+ * words, invalid pseudo header field is not passed to this callback.
+ * Also header fields which includes upper cased latter are also
+ * treated as error without passing them to this callback.
  *
  * This callback is only considered if HTTP messaging validation is
  * turned on (which is on by default, see
@@ -2082,11 +2083,12 @@ typedef int (*nghttp2_on_invalid_header_callback)(
  * The parameter and behaviour are similar to
  * :type:`nghttp2_on_header_callback2`.  The difference is that this
  * callback is only invoked when a invalid header name/value pair is
- * received which is silently ignored if this callback is not set.
- * Only invalid regular header field are passed to this callback.  In
- * other words, invalid pseudo header field is not passed to this
- * callback.  Also header fields which includes upper cased latter are
- * also treated as error without passing them to this callback.
+ * received which is silently ignored if neither this callback nor
+ * :type:`nghttp2_on_invalid_header_callback` is set.  Only invalid
+ * regular header field are passed to this callback.  In other words,
+ * invalid pseudo header field is not passed to this callback.  Also
+ * header fields which includes upper cased latter are also treated as
+ * error without passing them to this callback.
  *
  * This callback is only considered if HTTP messaging validation is
  * turned on (which is on by default, see
