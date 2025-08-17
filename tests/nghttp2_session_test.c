@@ -681,6 +681,21 @@ static int reset_on_invalid_header_callback(nghttp2_session *session,
   return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
 }
 
+static int term_on_invalid_header_callback2(nghttp2_session *session,
+                                            const nghttp2_frame *frame,
+                                            nghttp2_rcbuf *name,
+                                            nghttp2_rcbuf *value, uint8_t flags,
+                                            void *user_data) {
+  (void)session;
+  (void)frame;
+  (void)name;
+  (void)value;
+  (void)flags;
+  (void)user_data;
+
+  return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
+}
+
 static int on_begin_headers_callback(nghttp2_session *session,
                                      const nghttp2_frame *frame,
                                      void *user_data) {
@@ -1023,7 +1038,7 @@ void test_nghttp2_session_recv_invalid_frame(void) {
   assert_int(0, ==, nghttp2_session_recv(session));
   assert_int(0, ==, nghttp2_session_send(session));
   assert_int(1, ==, user_data.frame_send_cb_called);
-  assert_uint8(NGHTTP2_RST_STREAM, ==, user_data.sent_frame_type);
+  assert_uint8(NGHTTP2_GOAWAY, ==, user_data.sent_frame_type);
 
   nghttp2_bufs_free(&bufs);
   nghttp2_frame_headers_free(&frame.headers, mem);
@@ -1306,9 +1321,10 @@ void test_nghttp2_session_recv_data_no_auto_flow_control(void) {
     nghttp2_session_mem_recv2(session, data, NGHTTP2_FRAME_HDLEN + hd.length);
   assert_ptrdiff((nghttp2_ssize)(NGHTTP2_FRAME_HDLEN + hd.length), ==, rv);
 
-  /* Whole payload must be consumed now because HTTP messaging rule
-     was not honored. */
-  assert_int32((int32_t)hd.length, ==, session->consumed_size);
+  /* Session is going down because HTTP messaging rule was not
+     honored. */
+  assert_uint8(NGHTTP2_GOAWAY, ==,
+               nghttp2_session_get_next_ob_item(session)->frame.hd.type);
 
   nghttp2_session_del(session);
 
@@ -3948,13 +3964,7 @@ void test_nghttp2_session_on_settings_received(void) {
   item = nghttp2_session_get_next_ob_item(session);
 
   assert_not_null(item);
-  assert_uint8(NGHTTP2_SETTINGS, ==, item->frame.hd.type);
-
-  item = nghttp2_outbound_queue_top(&session->ob_reg);
-
-  assert_not_null(item);
-  assert_uint8(NGHTTP2_RST_STREAM, ==, item->frame.hd.type);
-  assert_enum(nghttp2_stream_state, NGHTTP2_STREAM_CLOSING, ==, stream1->state);
+  assert_uint8(NGHTTP2_GOAWAY, ==, item->frame.hd.type);
 
   nghttp2_session_del(session);
 
@@ -6141,9 +6151,8 @@ void test_nghttp2_submit_settings_update_local_window_size(void) {
              nghttp2_session_on_settings_received(session, &ack_frame, 0));
 
   item = nghttp2_session_get_next_ob_item(session);
-  assert_uint8(NGHTTP2_RST_STREAM, ==, item->frame.hd.type);
-  assert_uint32(NGHTTP2_FLOW_CONTROL_ERROR, ==,
-                item->frame.rst_stream.error_code);
+  assert_uint8(NGHTTP2_GOAWAY, ==, item->frame.hd.type);
+  assert_uint32(NGHTTP2_FLOW_CONTROL_ERROR, ==, item->frame.goaway.error_code);
 
   nghttp2_session_del(session);
   nghttp2_frame_settings_free(&ack_frame.settings, mem);
@@ -9963,19 +9972,48 @@ void test_nghttp2_session_stream_reset_ratelim(void) {
   nghttp2_option_del(option);
 }
 
-static void check_nghttp2_http_recv_headers_fail(
-  nghttp2_session *session, nghttp2_hd_deflater *deflater, int32_t stream_id,
-  int stream_state, const nghttp2_nv *nva, size_t nvlen) {
+typedef struct check_http_opts {
+  int server;
+  int connect_protocol;
+} check_http_opts;
+
+static void check_http_opts_reset(check_http_opts *opts) {
+  memset(opts, 0, sizeof(*opts));
+}
+
+static void check_nghttp2_http_recv_headers_fail(check_http_opts opts,
+                                                 int stream_state,
+                                                 const nghttp2_nv *nva,
+                                                 size_t nvlen) {
   nghttp2_mem *mem;
   nghttp2_ssize rv;
   nghttp2_outbound_item *item;
   nghttp2_bufs bufs;
-  my_user_data *ud;
+  my_user_data ud;
+  nghttp2_session *session;
+  nghttp2_hd_deflater deflater;
+  nghttp2_session_callbacks callbacks;
+  int32_t stream_id = 1;
 
   mem = nghttp2_mem_default();
   frame_pack_bufs_init(&bufs);
 
-  ud = session->user_data;
+  memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
+  callbacks.send_callback2 = null_send_callback;
+  callbacks.on_frame_recv_callback = on_frame_recv_callback;
+  callbacks.on_invalid_frame_recv_callback = on_invalid_frame_recv_callback;
+
+  if (opts.server) {
+    nghttp2_session_server_new(&session, &callbacks, &ud);
+  } else {
+    nghttp2_session_client_new(&session, &callbacks, &ud);
+  }
+
+  if (opts.connect_protocol) {
+    session->pending_enable_connect_protocol = 1;
+  }
+
+  nghttp2_hd_deflate_init(&deflater, mem);
 
   if (stream_state != -1) {
     if (nghttp2_session_is_my_stream_id(session, stream_id)) {
@@ -9985,11 +10023,11 @@ static void check_nghttp2_http_recv_headers_fail(
     }
   }
 
-  rv = pack_headers(&bufs, deflater, stream_id, NGHTTP2_FLAG_END_HEADERS, nva,
+  rv = pack_headers(&bufs, &deflater, stream_id, NGHTTP2_FLAG_END_HEADERS, nva,
                     nvlen, mem);
   assert_ptrdiff(0, ==, rv);
 
-  ud->invalid_frame_recv_cb_called = 0;
+  ud.invalid_frame_recv_cb_called = 0;
 
   rv = nghttp2_session_mem_recv2(session, bufs.head->buf.pos,
                                  nghttp2_buf_len(&bufs.head->buf));
@@ -9998,26 +10036,48 @@ static void check_nghttp2_http_recv_headers_fail(
 
   item = nghttp2_session_get_next_ob_item(session);
 
-  assert_uint8(NGHTTP2_RST_STREAM, ==, item->frame.hd.type);
-  assert_ptrdiff(1, ==, ud->invalid_frame_recv_cb_called);
+  assert_uint8(NGHTTP2_GOAWAY, ==, item->frame.hd.type);
 
   assert_int(0, ==, nghttp2_session_send(session));
 
   nghttp2_bufs_free(&bufs);
+
+  nghttp2_hd_deflate_free(&deflater);
+  nghttp2_session_del(session);
 }
 
-static void check_nghttp2_http_recv_headers_ok(
-  nghttp2_session *session, nghttp2_hd_deflater *deflater, int32_t stream_id,
-  int stream_state, const nghttp2_nv *nva, size_t nvlen) {
+static void check_nghttp2_http_recv_headers_ok(check_http_opts opts,
+                                               int stream_state,
+                                               const nghttp2_nv *nva,
+                                               size_t nvlen) {
   nghttp2_mem *mem;
   nghttp2_ssize rv;
   nghttp2_bufs bufs;
-  my_user_data *ud;
+  my_user_data ud;
+  nghttp2_session *session;
+  nghttp2_hd_deflater deflater;
+  nghttp2_session_callbacks callbacks;
+  int32_t stream_id = 1;
 
   mem = nghttp2_mem_default();
   frame_pack_bufs_init(&bufs);
 
-  ud = session->user_data;
+  memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
+  callbacks.send_callback2 = null_send_callback;
+  callbacks.on_frame_recv_callback = on_frame_recv_callback;
+  callbacks.on_invalid_frame_recv_callback = on_invalid_frame_recv_callback;
+
+  if (opts.server) {
+    nghttp2_session_server_new(&session, &callbacks, &ud);
+  } else {
+    nghttp2_session_client_new(&session, &callbacks, &ud);
+  }
+
+  if (opts.connect_protocol) {
+    session->pending_enable_connect_protocol = 1;
+  }
+
+  nghttp2_hd_deflate_init(&deflater, mem);
 
   if (stream_state != -1) {
     if (nghttp2_session_is_my_stream_id(session, stream_id)) {
@@ -10027,28 +10087,26 @@ static void check_nghttp2_http_recv_headers_ok(
     }
   }
 
-  rv = pack_headers(&bufs, deflater, stream_id, NGHTTP2_FLAG_END_HEADERS, nva,
+  rv = pack_headers(&bufs, &deflater, stream_id, NGHTTP2_FLAG_END_HEADERS, nva,
                     nvlen, mem);
   assert_ptrdiff(0, ==, rv);
 
-  ud->frame_recv_cb_called = 0;
+  ud.frame_recv_cb_called = 0;
 
   rv = nghttp2_session_mem_recv2(session, bufs.head->buf.pos,
                                  nghttp2_buf_len(&bufs.head->buf));
 
   assert_ptrdiff((nghttp2_ssize)nghttp2_buf_len(&bufs.head->buf), ==, rv);
   assert_null(nghttp2_session_get_next_ob_item(session));
-  assert_int(1, ==, ud->frame_recv_cb_called);
+  assert_int(1, ==, ud.frame_recv_cb_called);
 
   nghttp2_bufs_free(&bufs);
+
+  nghttp2_hd_deflate_free(&deflater);
+  nghttp2_session_del(session);
 }
 
 void test_nghttp2_http_mandatory_headers(void) {
-  nghttp2_session *session;
-  nghttp2_session_callbacks callbacks;
-  nghttp2_hd_deflater deflater;
-  nghttp2_mem *mem;
-  my_user_data ud;
   /* test case for response */
   const nghttp2_nv nostatus_resnv[] = {MAKE_NV("server", "foo")};
   const nghttp2_nv dupstatus_resnv[] = {MAKE_NV(":status", "200"),
@@ -10137,200 +10195,160 @@ void test_nghttp2_http_mandatory_headers(void) {
     MAKE_NV(":protocol", "websocket")};
   const nghttp2_nv regularconnect_reqnv[] = {
     MAKE_NV(":method", "CONNECT"), MAKE_NV(":authority", "localhost")};
+  check_http_opts opts;
 
-  mem = nghttp2_mem_default();
-
-  memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
-  callbacks.send_callback2 = null_send_callback;
-  callbacks.on_frame_recv_callback = on_frame_recv_callback;
-  callbacks.on_invalid_frame_recv_callback = on_invalid_frame_recv_callback;
-
-  nghttp2_session_client_new(&session, &callbacks, &ud);
-
-  nghttp2_hd_deflate_init(&deflater, mem);
+  check_http_opts_reset(&opts);
 
   /* response header lacks :status */
-  check_nghttp2_http_recv_headers_fail(session, &deflater, 1,
-                                       NGHTTP2_STREAM_OPENING, nostatus_resnv,
-                                       ARRLEN(nostatus_resnv));
+  check_nghttp2_http_recv_headers_fail(opts, NGHTTP2_STREAM_OPENING,
+                                       nostatus_resnv, ARRLEN(nostatus_resnv));
 
   /* response header has 2 :status */
-  check_nghttp2_http_recv_headers_fail(session, &deflater, 3,
-                                       NGHTTP2_STREAM_OPENING, dupstatus_resnv,
-                                       ARRLEN(dupstatus_resnv));
+  check_nghttp2_http_recv_headers_fail(
+    opts, NGHTTP2_STREAM_OPENING, dupstatus_resnv, ARRLEN(dupstatus_resnv));
 
   /* response header has bad pseudo header :scheme */
-  check_nghttp2_http_recv_headers_fail(session, &deflater, 5,
-                                       NGHTTP2_STREAM_OPENING, badpseudo_resnv,
-                                       ARRLEN(badpseudo_resnv));
+  check_nghttp2_http_recv_headers_fail(
+    opts, NGHTTP2_STREAM_OPENING, badpseudo_resnv, ARRLEN(badpseudo_resnv));
 
   /* response header has :status after regular header field */
-  check_nghttp2_http_recv_headers_fail(session, &deflater, 7,
-                                       NGHTTP2_STREAM_OPENING, latepseudo_resnv,
-                                       ARRLEN(latepseudo_resnv));
+  check_nghttp2_http_recv_headers_fail(
+    opts, NGHTTP2_STREAM_OPENING, latepseudo_resnv, ARRLEN(latepseudo_resnv));
 
   /* response header has bad status code */
-  check_nghttp2_http_recv_headers_fail(session, &deflater, 9,
-                                       NGHTTP2_STREAM_OPENING, badstatus_resnv,
-                                       ARRLEN(badstatus_resnv));
+  check_nghttp2_http_recv_headers_fail(
+    opts, NGHTTP2_STREAM_OPENING, badstatus_resnv, ARRLEN(badstatus_resnv));
 
   /* response header has bad content-length */
-  check_nghttp2_http_recv_headers_fail(session, &deflater, 11,
-                                       NGHTTP2_STREAM_OPENING, badcl_resnv,
-                                       ARRLEN(badcl_resnv));
+  check_nghttp2_http_recv_headers_fail(opts, NGHTTP2_STREAM_OPENING,
+                                       badcl_resnv, ARRLEN(badcl_resnv));
 
   /* response header has multiple content-length */
-  check_nghttp2_http_recv_headers_fail(session, &deflater, 13,
-                                       NGHTTP2_STREAM_OPENING, dupcl_resnv,
-                                       ARRLEN(dupcl_resnv));
+  check_nghttp2_http_recv_headers_fail(opts, NGHTTP2_STREAM_OPENING,
+                                       dupcl_resnv, ARRLEN(dupcl_resnv));
 
   /* response header has disallowed header field */
-  check_nghttp2_http_recv_headers_fail(session, &deflater, 15,
-                                       NGHTTP2_STREAM_OPENING, badhd_resnv,
-                                       ARRLEN(badhd_resnv));
+  check_nghttp2_http_recv_headers_fail(opts, NGHTTP2_STREAM_OPENING,
+                                       badhd_resnv, ARRLEN(badhd_resnv));
 
   /* response header has content-length with 100 status code */
-  check_nghttp2_http_recv_headers_fail(session, &deflater, 17,
-                                       NGHTTP2_STREAM_OPENING, cl1xx_resnv,
-                                       ARRLEN(cl1xx_resnv));
+  check_nghttp2_http_recv_headers_fail(opts, NGHTTP2_STREAM_OPENING,
+                                       cl1xx_resnv, ARRLEN(cl1xx_resnv));
 
   /* response header has 0 content-length with 204 status code */
-  check_nghttp2_http_recv_headers_ok(session, &deflater, 19,
-                                     NGHTTP2_STREAM_OPENING, cl204_resnv,
+  check_nghttp2_http_recv_headers_ok(opts, NGHTTP2_STREAM_OPENING, cl204_resnv,
                                      ARRLEN(cl204_resnv));
 
   /* response header has nonzero content-length with 204 status
      code */
-  check_nghttp2_http_recv_headers_fail(
-    session, &deflater, 21, NGHTTP2_STREAM_OPENING, clnonzero204_resnv,
-    ARRLEN(clnonzero204_resnv));
+  check_nghttp2_http_recv_headers_fail(opts, NGHTTP2_STREAM_OPENING,
+                                       clnonzero204_resnv,
+                                       ARRLEN(clnonzero204_resnv));
 
   /* status code 101 should not be used in HTTP/2 because it is used
      for HTTP Upgrade which HTTP/2 removes. */
-  check_nghttp2_http_recv_headers_fail(session, &deflater, 23,
-                                       NGHTTP2_STREAM_OPENING, status101_resnv,
-                                       ARRLEN(status101_resnv));
+  check_nghttp2_http_recv_headers_fail(
+    opts, NGHTTP2_STREAM_OPENING, status101_resnv, ARRLEN(status101_resnv));
 
   /* Specific characters check for host field in response header
      should not be done as its use is undefined. */
-  check_nghttp2_http_recv_headers_ok(
-    session, &deflater, 25, NGHTTP2_STREAM_OPENING, unexpectedhost_resnv,
-    ARRLEN(unexpectedhost_resnv));
-
-  nghttp2_hd_deflate_free(&deflater);
-
-  nghttp2_session_del(session);
+  check_nghttp2_http_recv_headers_ok(opts, NGHTTP2_STREAM_OPENING,
+                                     unexpectedhost_resnv,
+                                     ARRLEN(unexpectedhost_resnv));
 
   /* check server side */
-  nghttp2_session_server_new(&session, &callbacks, &ud);
-
-  nghttp2_hd_deflate_init(&deflater, mem);
+  check_http_opts_reset(&opts);
+  opts.server = 1;
 
   /* request header has no :path */
-  check_nghttp2_http_recv_headers_fail(session, &deflater, 1, -1, nopath_reqnv,
+  check_nghttp2_http_recv_headers_fail(opts, -1, nopath_reqnv,
                                        ARRLEN(nopath_reqnv));
 
   /* request header has CONNECT method, but followed by :path */
-  check_nghttp2_http_recv_headers_fail(
-    session, &deflater, 3, -1, earlyconnect_reqnv, ARRLEN(earlyconnect_reqnv));
+  check_nghttp2_http_recv_headers_fail(opts, -1, earlyconnect_reqnv,
+                                       ARRLEN(earlyconnect_reqnv));
 
   /* request header has CONNECT method following :path */
-  check_nghttp2_http_recv_headers_fail(
-    session, &deflater, 5, -1, lateconnect_reqnv, ARRLEN(lateconnect_reqnv));
+  check_nghttp2_http_recv_headers_fail(opts, -1, lateconnect_reqnv,
+                                       ARRLEN(lateconnect_reqnv));
 
   /* request header has multiple :path */
-  check_nghttp2_http_recv_headers_fail(session, &deflater, 7, -1, duppath_reqnv,
+  check_nghttp2_http_recv_headers_fail(opts, -1, duppath_reqnv,
                                        ARRLEN(duppath_reqnv));
 
   /* request header has bad content-length */
-  check_nghttp2_http_recv_headers_fail(session, &deflater, 9, -1, badcl_reqnv,
+  check_nghttp2_http_recv_headers_fail(opts, -1, badcl_reqnv,
                                        ARRLEN(badcl_reqnv));
 
   /* request header has multiple content-length */
-  check_nghttp2_http_recv_headers_fail(session, &deflater, 11, -1, dupcl_reqnv,
+  check_nghttp2_http_recv_headers_fail(opts, -1, dupcl_reqnv,
                                        ARRLEN(dupcl_reqnv));
 
   /* request header has disallowed header field */
-  check_nghttp2_http_recv_headers_fail(session, &deflater, 13, -1, badhd_reqnv,
+  check_nghttp2_http_recv_headers_fail(opts, -1, badhd_reqnv,
                                        ARRLEN(badhd_reqnv));
 
   /* request header has :authority header field containing illegal
      characters */
-  check_nghttp2_http_recv_headers_fail(
-    session, &deflater, 15, -1, badauthority_reqnv, ARRLEN(badauthority_reqnv));
+  check_nghttp2_http_recv_headers_fail(opts, -1, badauthority_reqnv,
+                                       ARRLEN(badauthority_reqnv));
 
   /* request header has regular header field containing illegal
      character before all mandatory header fields are seen. */
-  check_nghttp2_http_recv_headers_fail(session, &deflater, 17, -1,
-                                       badhdbtw_reqnv, ARRLEN(badhdbtw_reqnv));
+  check_nghttp2_http_recv_headers_fail(opts, -1, badhdbtw_reqnv,
+                                       ARRLEN(badhdbtw_reqnv));
 
   /* request header has "*" in :path header field while method is GET.
      :path is received before :method */
-  check_nghttp2_http_recv_headers_fail(
-    session, &deflater, 19, -1, asteriskget1_reqnv, ARRLEN(asteriskget1_reqnv));
+  check_nghttp2_http_recv_headers_fail(opts, -1, asteriskget1_reqnv,
+                                       ARRLEN(asteriskget1_reqnv));
 
   /* request header has "*" in :path header field while method is GET.
      :method is received before :path */
-  check_nghttp2_http_recv_headers_fail(
-    session, &deflater, 21, -1, asteriskget2_reqnv, ARRLEN(asteriskget2_reqnv));
+  check_nghttp2_http_recv_headers_fail(opts, -1, asteriskget2_reqnv,
+                                       ARRLEN(asteriskget2_reqnv));
 
   /* OPTIONS method can include "*" in :path header field.  :path is
      received before :method. */
-  check_nghttp2_http_recv_headers_ok(session, &deflater, 23, -1,
-                                     asteriskoptions1_reqnv,
+  check_nghttp2_http_recv_headers_ok(opts, -1, asteriskoptions1_reqnv,
                                      ARRLEN(asteriskoptions1_reqnv));
 
   /* OPTIONS method can include "*" in :path header field.  :method is
      received before :path. */
-  check_nghttp2_http_recv_headers_ok(session, &deflater, 25, -1,
-                                     asteriskoptions2_reqnv,
+  check_nghttp2_http_recv_headers_ok(opts, -1, asteriskoptions2_reqnv,
                                      ARRLEN(asteriskoptions2_reqnv));
 
   /* :protocol is not allowed unless it is enabled by the local
      endpoint. */
-  check_nghttp2_http_recv_headers_fail(
-    session, &deflater, 27, -1, connectproto_reqnv, ARRLEN(connectproto_reqnv));
-
-  nghttp2_hd_deflate_free(&deflater);
-
-  nghttp2_session_del(session);
+  check_nghttp2_http_recv_headers_fail(opts, -1, connectproto_reqnv,
+                                       ARRLEN(connectproto_reqnv));
 
   /* enable SETTINGS_CONNECT_PROTOCOL */
-  nghttp2_session_server_new(&session, &callbacks, &ud);
-
-  session->pending_enable_connect_protocol = 1;
-
-  nghttp2_hd_deflate_init(&deflater, mem);
+  check_http_opts_reset(&opts);
+  opts.server = 1;
+  opts.connect_protocol = 1;
 
   /* :protocol is allowed if SETTINGS_CONNECT_PROTOCOL is enabled by
      the local endpoint. */
-  check_nghttp2_http_recv_headers_ok(
-    session, &deflater, 1, -1, connectproto_reqnv, ARRLEN(connectproto_reqnv));
+  check_nghttp2_http_recv_headers_ok(opts, -1, connectproto_reqnv,
+                                     ARRLEN(connectproto_reqnv));
 
   /* :protocol is only allowed with CONNECT method. */
-  check_nghttp2_http_recv_headers_fail(session, &deflater, 3, -1,
-                                       connectprotoget_reqnv,
+  check_nghttp2_http_recv_headers_fail(opts, -1, connectprotoget_reqnv,
                                        ARRLEN(connectprotoget_reqnv));
 
   /* CONNECT method with :protocol requires :path. */
-  check_nghttp2_http_recv_headers_fail(session, &deflater, 5, -1,
-                                       connectprotonopath_reqnv,
+  check_nghttp2_http_recv_headers_fail(opts, -1, connectprotonopath_reqnv,
                                        ARRLEN(connectprotonopath_reqnv));
 
   /* CONNECT method with :protocol requires :authority. */
-  check_nghttp2_http_recv_headers_fail(session, &deflater, 7, -1,
-                                       connectprotonoauth_reqnv,
+  check_nghttp2_http_recv_headers_fail(opts, -1, connectprotonoauth_reqnv,
                                        ARRLEN(connectprotonoauth_reqnv));
 
   /* regular CONNECT method should succeed with
      SETTINGS_CONNECT_PROTOCOL */
-  check_nghttp2_http_recv_headers_ok(session, &deflater, 9, -1,
-                                     regularconnect_reqnv,
+  check_nghttp2_http_recv_headers_ok(opts, -1, regularconnect_reqnv,
                                      ARRLEN(regularconnect_reqnv));
-
-  nghttp2_hd_deflate_free(&deflater);
-
-  nghttp2_session_del(session);
 }
 
 void test_nghttp2_http_content_length(void) {
@@ -10443,18 +10461,23 @@ void test_nghttp2_http_content_length_mismatch(void) {
   assert_ptrdiff((nghttp2_ssize)nghttp2_buf_len(&bufs.head->buf), ==, rv);
 
   item = nghttp2_session_get_next_ob_item(session);
-  assert_uint8(NGHTTP2_RST_STREAM, ==, item->frame.hd.type);
+  assert_uint8(NGHTTP2_GOAWAY, ==, item->frame.hd.type);
 
   assert_int(0, ==, nghttp2_session_send(session));
 
   nghttp2_bufs_reset(&bufs);
+  nghttp2_hd_deflate_free(&deflater);
+  nghttp2_session_del(session);
 
   /* header says content-length: 20, but DATA has 0 byte */
-  rv = pack_headers(&bufs, &deflater, 3, NGHTTP2_FLAG_END_HEADERS, cl_reqnv,
+  nghttp2_session_server_new(&session, &callbacks, NULL);
+  nghttp2_hd_deflate_init(&deflater, mem);
+
+  rv = pack_headers(&bufs, &deflater, 1, NGHTTP2_FLAG_END_HEADERS, cl_reqnv,
                     ARRLEN(cl_reqnv), mem);
   assert_ptrdiff(0, ==, rv);
 
-  nghttp2_frame_hd_init(&hd, 0, NGHTTP2_DATA, NGHTTP2_FLAG_END_STREAM, 3);
+  nghttp2_frame_hd_init(&hd, 0, NGHTTP2_DATA, NGHTTP2_FLAG_END_STREAM, 1);
   nghttp2_frame_pack_frame_hd(bufs.head->buf.last, &hd);
   bufs.head->buf.last += NGHTTP2_FRAME_HDLEN;
 
@@ -10464,18 +10487,23 @@ void test_nghttp2_http_content_length_mismatch(void) {
   assert_ptrdiff((nghttp2_ssize)nghttp2_buf_len(&bufs.head->buf), ==, rv);
 
   item = nghttp2_session_get_next_ob_item(session);
-  assert_uint8(NGHTTP2_RST_STREAM, ==, item->frame.hd.type);
+  assert_uint8(NGHTTP2_GOAWAY, ==, item->frame.hd.type);
 
   assert_int(0, ==, nghttp2_session_send(session));
 
   nghttp2_bufs_reset(&bufs);
+  nghttp2_hd_deflate_free(&deflater);
+  nghttp2_session_del(session);
 
   /* header says content-length: 20, but DATA has 21 bytes */
-  rv = pack_headers(&bufs, &deflater, 5, NGHTTP2_FLAG_END_HEADERS, cl_reqnv,
+  nghttp2_session_server_new(&session, &callbacks, NULL);
+  nghttp2_hd_deflate_init(&deflater, mem);
+
+  rv = pack_headers(&bufs, &deflater, 1, NGHTTP2_FLAG_END_HEADERS, cl_reqnv,
                     ARRLEN(cl_reqnv), mem);
   assert_ptrdiff(0, ==, rv);
 
-  nghttp2_frame_hd_init(&hd, 21, NGHTTP2_DATA, NGHTTP2_FLAG_END_STREAM, 5);
+  nghttp2_frame_hd_init(&hd, 21, NGHTTP2_DATA, NGHTTP2_FLAG_END_STREAM, 1);
   nghttp2_frame_pack_frame_hd(bufs.head->buf.last, &hd);
   bufs.head->buf.last += NGHTTP2_FRAME_HDLEN + 21;
 
@@ -10485,7 +10513,7 @@ void test_nghttp2_http_content_length_mismatch(void) {
   assert_ptrdiff((nghttp2_ssize)nghttp2_buf_len(&bufs.head->buf), ==, rv);
 
   item = nghttp2_session_get_next_ob_item(session);
-  assert_uint8(NGHTTP2_RST_STREAM, ==, item->frame.hd.type);
+  assert_uint8(NGHTTP2_GOAWAY, ==, item->frame.hd.type);
 
   assert_int(0, ==, nghttp2_session_send(session));
 
@@ -10516,25 +10544,28 @@ void test_nghttp2_http_content_length_mismatch(void) {
   assert_ptrdiff((nghttp2_ssize)nghttp2_buf_len(&bufs.head->buf), ==, rv);
 
   item = nghttp2_session_get_next_ob_item(session);
-  assert_uint8(NGHTTP2_RST_STREAM, ==, item->frame.hd.type);
+  assert_uint8(NGHTTP2_GOAWAY, ==, item->frame.hd.type);
 
   assert_not_null(nghttp2_session_get_stream(session, 1));
   assert_int(0, ==, nghttp2_session_send(session));
-  /* After sending RST_STREAM, stream must be closed */
-  assert_null(nghttp2_session_get_stream(session, 1));
 
   nghttp2_bufs_reset(&bufs);
+  nghttp2_hd_deflate_free(&deflater);
+  nghttp2_session_del(session);
 
   /* header says content-length: 20, but DATA has 0 byte */
+  nghttp2_session_client_new(&session, &callbacks, NULL);
+  nghttp2_hd_deflate_init(&deflater, mem);
+
   nghttp2_submit_request2(session, NULL, reqnv, ARRLEN(reqnv), NULL, NULL);
 
   assert_int(0, ==, nghttp2_session_send(session));
 
-  rv = pack_headers(&bufs, &deflater, 3, NGHTTP2_FLAG_END_HEADERS, cl_resnv,
+  rv = pack_headers(&bufs, &deflater, 1, NGHTTP2_FLAG_END_HEADERS, cl_resnv,
                     ARRLEN(cl_resnv), mem);
   assert_ptrdiff(0, ==, rv);
 
-  nghttp2_frame_hd_init(&hd, 0, NGHTTP2_DATA, NGHTTP2_FLAG_END_STREAM, 3);
+  nghttp2_frame_hd_init(&hd, 0, NGHTTP2_DATA, NGHTTP2_FLAG_END_STREAM, 1);
   nghttp2_frame_pack_frame_hd(bufs.head->buf.last, &hd);
   bufs.head->buf.last += NGHTTP2_FRAME_HDLEN;
 
@@ -10544,25 +10575,28 @@ void test_nghttp2_http_content_length_mismatch(void) {
   assert_ptrdiff((nghttp2_ssize)nghttp2_buf_len(&bufs.head->buf), ==, rv);
 
   item = nghttp2_session_get_next_ob_item(session);
-  assert_uint8(NGHTTP2_RST_STREAM, ==, item->frame.hd.type);
+  assert_uint8(NGHTTP2_GOAWAY, ==, item->frame.hd.type);
 
-  assert_not_null(nghttp2_session_get_stream(session, 3));
+  assert_not_null(nghttp2_session_get_stream(session, 1));
   assert_int(0, ==, nghttp2_session_send(session));
-  /* After sending RST_STREAM, stream must be closed */
-  assert_null(nghttp2_session_get_stream(session, 3));
 
   nghttp2_bufs_reset(&bufs);
+  nghttp2_hd_deflate_free(&deflater);
+  nghttp2_session_del(session);
 
   /* header says content-length: 20, but DATA has 21 bytes */
+  nghttp2_session_client_new(&session, &callbacks, NULL);
+  nghttp2_hd_deflate_init(&deflater, mem);
+
   nghttp2_submit_request2(session, NULL, reqnv, ARRLEN(reqnv), NULL, NULL);
 
   assert_int(0, ==, nghttp2_session_send(session));
 
-  rv = pack_headers(&bufs, &deflater, 5, NGHTTP2_FLAG_END_HEADERS, cl_resnv,
+  rv = pack_headers(&bufs, &deflater, 1, NGHTTP2_FLAG_END_HEADERS, cl_resnv,
                     ARRLEN(cl_resnv), mem);
   assert_ptrdiff(0, ==, rv);
 
-  nghttp2_frame_hd_init(&hd, 21, NGHTTP2_DATA, NGHTTP2_FLAG_END_STREAM, 5);
+  nghttp2_frame_hd_init(&hd, 21, NGHTTP2_DATA, NGHTTP2_FLAG_END_STREAM, 1);
   nghttp2_frame_pack_frame_hd(bufs.head->buf.last, &hd);
   bufs.head->buf.last += NGHTTP2_FRAME_HDLEN + 21;
 
@@ -10572,12 +10606,10 @@ void test_nghttp2_http_content_length_mismatch(void) {
   assert_ptrdiff((nghttp2_ssize)nghttp2_buf_len(&bufs.head->buf), ==, rv);
 
   item = nghttp2_session_get_next_ob_item(session);
-  assert_uint8(NGHTTP2_RST_STREAM, ==, item->frame.hd.type);
+  assert_uint8(NGHTTP2_GOAWAY, ==, item->frame.hd.type);
 
-  assert_not_null(nghttp2_session_get_stream(session, 5));
+  assert_not_null(nghttp2_session_get_stream(session, 1));
   assert_int(0, ==, nghttp2_session_send(session));
-  /* After sending RST_STREAM, stream must be closed */
-  assert_null(nghttp2_session_get_stream(session, 5));
 
   nghttp2_bufs_reset(&bufs);
 
@@ -10625,20 +10657,25 @@ void test_nghttp2_http_non_final_response(void) {
   assert_ptrdiff((nghttp2_ssize)nghttp2_buf_len(&bufs.head->buf), ==, rv);
 
   item = nghttp2_session_get_next_ob_item(session);
-  assert_uint8(NGHTTP2_RST_STREAM, ==, item->frame.hd.type);
+  assert_uint8(NGHTTP2_GOAWAY, ==, item->frame.hd.type);
 
   assert_int(0, ==, nghttp2_session_send(session));
 
   nghttp2_bufs_reset(&bufs);
+  nghttp2_hd_deflate_free(&deflater);
+  nghttp2_session_del(session);
 
   /* non-final HEADERS followed by non-empty DATA is illegal */
-  open_sent_stream2(session, 3, NGHTTP2_STREAM_OPENING);
+  nghttp2_session_client_new(&session, &callbacks, NULL);
+  nghttp2_hd_deflate_init(&deflater, mem);
 
-  rv = pack_headers(&bufs, &deflater, 3, NGHTTP2_FLAG_END_HEADERS,
+  open_sent_stream2(session, 1, NGHTTP2_STREAM_OPENING);
+
+  rv = pack_headers(&bufs, &deflater, 1, NGHTTP2_FLAG_END_HEADERS,
                     nonfinal_resnv, ARRLEN(nonfinal_resnv), mem);
   assert_ptrdiff(0, ==, rv);
 
-  nghttp2_frame_hd_init(&hd, 10, NGHTTP2_DATA, NGHTTP2_FLAG_END_STREAM, 3);
+  nghttp2_frame_hd_init(&hd, 10, NGHTTP2_DATA, NGHTTP2_FLAG_END_STREAM, 1);
   nghttp2_frame_pack_frame_hd(bufs.head->buf.last, &hd);
   bufs.head->buf.last += NGHTTP2_FRAME_HDLEN + 10;
 
@@ -10648,21 +10685,26 @@ void test_nghttp2_http_non_final_response(void) {
   assert_ptrdiff((nghttp2_ssize)nghttp2_buf_len(&bufs.head->buf), ==, rv);
 
   item = nghttp2_session_get_next_ob_item(session);
-  assert_uint8(NGHTTP2_RST_STREAM, ==, item->frame.hd.type);
+  assert_uint8(NGHTTP2_GOAWAY, ==, item->frame.hd.type);
 
   assert_int(0, ==, nghttp2_session_send(session));
 
   nghttp2_bufs_reset(&bufs);
+  nghttp2_hd_deflate_free(&deflater);
+  nghttp2_session_del(session);
 
   /* non-final HEADERS followed by empty DATA (without END_STREAM) is
      ok */
-  open_sent_stream2(session, 5, NGHTTP2_STREAM_OPENING);
+  nghttp2_session_client_new(&session, &callbacks, NULL);
+  nghttp2_hd_deflate_init(&deflater, mem);
 
-  rv = pack_headers(&bufs, &deflater, 5, NGHTTP2_FLAG_END_HEADERS,
+  open_sent_stream2(session, 1, NGHTTP2_STREAM_OPENING);
+
+  rv = pack_headers(&bufs, &deflater, 1, NGHTTP2_FLAG_END_HEADERS,
                     nonfinal_resnv, ARRLEN(nonfinal_resnv), mem);
   assert_ptrdiff(0, ==, rv);
 
-  nghttp2_frame_hd_init(&hd, 0, NGHTTP2_DATA, NGHTTP2_FLAG_NONE, 5);
+  nghttp2_frame_hd_init(&hd, 0, NGHTTP2_DATA, NGHTTP2_FLAG_NONE, 1);
   nghttp2_frame_pack_frame_hd(bufs.head->buf.last, &hd);
   bufs.head->buf.last += NGHTTP2_FRAME_HDLEN;
 
@@ -10674,16 +10716,21 @@ void test_nghttp2_http_non_final_response(void) {
   assert_null(nghttp2_session_get_next_ob_item(session));
 
   nghttp2_bufs_reset(&bufs);
+  nghttp2_hd_deflate_free(&deflater);
+  nghttp2_session_del(session);
 
   /* non-final HEADERS followed by empty DATA (with END_STREAM) is
      illegal */
-  open_sent_stream2(session, 7, NGHTTP2_STREAM_OPENING);
+  nghttp2_session_client_new(&session, &callbacks, NULL);
+  nghttp2_hd_deflate_init(&deflater, mem);
 
-  rv = pack_headers(&bufs, &deflater, 7, NGHTTP2_FLAG_END_HEADERS,
+  open_sent_stream2(session, 1, NGHTTP2_STREAM_OPENING);
+
+  rv = pack_headers(&bufs, &deflater, 1, NGHTTP2_FLAG_END_HEADERS,
                     nonfinal_resnv, ARRLEN(nonfinal_resnv), mem);
   assert_ptrdiff(0, ==, rv);
 
-  nghttp2_frame_hd_init(&hd, 0, NGHTTP2_DATA, NGHTTP2_FLAG_END_STREAM, 7);
+  nghttp2_frame_hd_init(&hd, 0, NGHTTP2_DATA, NGHTTP2_FLAG_END_STREAM, 1);
   nghttp2_frame_pack_frame_hd(bufs.head->buf.last, &hd);
   bufs.head->buf.last += NGHTTP2_FRAME_HDLEN;
 
@@ -10694,16 +10741,21 @@ void test_nghttp2_http_non_final_response(void) {
 
   item = nghttp2_session_get_next_ob_item(session);
 
-  assert_uint8(NGHTTP2_RST_STREAM, ==, item->frame.hd.type);
+  assert_uint8(NGHTTP2_GOAWAY, ==, item->frame.hd.type);
 
   assert_int(0, ==, nghttp2_session_send(session));
 
   nghttp2_bufs_reset(&bufs);
+  nghttp2_hd_deflate_free(&deflater);
+  nghttp2_session_del(session);
 
   /* non-final HEADERS followed by final HEADERS is OK */
-  open_sent_stream2(session, 9, NGHTTP2_STREAM_OPENING);
+  nghttp2_session_client_new(&session, &callbacks, NULL);
+  nghttp2_hd_deflate_init(&deflater, mem);
 
-  rv = pack_headers(&bufs, &deflater, 9, NGHTTP2_FLAG_END_HEADERS,
+  open_sent_stream2(session, 1, NGHTTP2_STREAM_OPENING);
+
+  rv = pack_headers(&bufs, &deflater, 1, NGHTTP2_FLAG_END_HEADERS,
                     nonfinal_resnv, ARRLEN(nonfinal_resnv), mem);
   assert_ptrdiff(0, ==, rv);
 
@@ -10714,7 +10766,7 @@ void test_nghttp2_http_non_final_response(void) {
 
   nghttp2_bufs_reset(&bufs);
 
-  rv = pack_headers(&bufs, &deflater, 9, NGHTTP2_FLAG_END_HEADERS, resnv,
+  rv = pack_headers(&bufs, &deflater, 1, NGHTTP2_FLAG_END_HEADERS, resnv,
                     ARRLEN(resnv), mem);
   assert_ptrdiff(0, ==, rv);
 
@@ -10781,9 +10833,14 @@ void test_nghttp2_http_trailer_headers(void) {
   assert_null(nghttp2_session_get_next_ob_item(session));
 
   nghttp2_bufs_reset(&bufs);
+  nghttp2_hd_deflate_free(&deflater);
+  nghttp2_session_del(session);
 
   /* trailer header without END_STREAM is illegal */
-  rv = pack_headers(&bufs, &deflater, 3, NGHTTP2_FLAG_END_HEADERS, reqnv,
+  nghttp2_session_server_new(&session, &callbacks, NULL);
+  nghttp2_hd_deflate_init(&deflater, mem);
+
+  rv = pack_headers(&bufs, &deflater, 1, NGHTTP2_FLAG_END_HEADERS, reqnv,
                     ARRLEN(reqnv), mem);
   assert_ptrdiff(0, ==, rv);
 
@@ -10794,7 +10851,7 @@ void test_nghttp2_http_trailer_headers(void) {
 
   nghttp2_bufs_reset(&bufs);
 
-  rv = pack_headers(&bufs, &deflater, 3, NGHTTP2_FLAG_END_HEADERS,
+  rv = pack_headers(&bufs, &deflater, 1, NGHTTP2_FLAG_END_HEADERS,
                     trailer_reqnv, ARRLEN(trailer_reqnv), mem);
   assert_ptrdiff(0, ==, rv);
 
@@ -10805,14 +10862,19 @@ void test_nghttp2_http_trailer_headers(void) {
 
   item = nghttp2_session_get_next_ob_item(session);
 
-  assert_uint8(NGHTTP2_RST_STREAM, ==, item->frame.hd.type);
+  assert_uint8(NGHTTP2_GOAWAY, ==, item->frame.hd.type);
 
   assert_int(0, ==, nghttp2_session_send(session));
 
   nghttp2_bufs_reset(&bufs);
+  nghttp2_hd_deflate_free(&deflater);
+  nghttp2_session_del(session);
 
   /* trailer header including pseudo header field is illegal */
-  rv = pack_headers(&bufs, &deflater, 5, NGHTTP2_FLAG_END_HEADERS, reqnv,
+  nghttp2_session_server_new(&session, &callbacks, NULL);
+  nghttp2_hd_deflate_init(&deflater, mem);
+
+  rv = pack_headers(&bufs, &deflater, 1, NGHTTP2_FLAG_END_HEADERS, reqnv,
                     ARRLEN(reqnv), mem);
   assert_ptrdiff(0, ==, rv);
 
@@ -10823,7 +10885,7 @@ void test_nghttp2_http_trailer_headers(void) {
 
   nghttp2_bufs_reset(&bufs);
 
-  rv = pack_headers(&bufs, &deflater, 5, NGHTTP2_FLAG_END_HEADERS, reqnv,
+  rv = pack_headers(&bufs, &deflater, 1, NGHTTP2_FLAG_END_HEADERS, reqnv,
                     ARRLEN(reqnv), mem);
   assert_ptrdiff(0, ==, rv);
 
@@ -10834,7 +10896,7 @@ void test_nghttp2_http_trailer_headers(void) {
 
   item = nghttp2_session_get_next_ob_item(session);
 
-  assert_uint8(NGHTTP2_RST_STREAM, ==, item->frame.hd.type);
+  assert_uint8(NGHTTP2_GOAWAY, ==, item->frame.hd.type);
 
   assert_int(0, ==, nghttp2_session_send(session));
 
@@ -10901,11 +10963,10 @@ void test_nghttp2_http_ignore_regular_header(void) {
   rv = nghttp2_session_mem_recv2(session, bufs.head->buf.pos + proclen,
                                  nghttp2_buf_len(&bufs.head->buf) - proclen);
   assert_ptrdiff(0, <, rv);
-  /* Without on_invalid_frame_recv_callback, bad header causes stream
-     reset */
+  /* Without on_invalid_frame_recv_callback2, bad header is ignored. */
   item = nghttp2_session_get_next_ob_item(session);
 
-  assert_uint8(NGHTTP2_RST_STREAM, ==, item->frame.hd.type);
+  assert_null(item);
 
   proclen += (size_t)rv;
 
@@ -11186,8 +11247,7 @@ void test_nghttp2_http_push_promise(void) {
 
   item = nghttp2_session_get_next_ob_item(session);
 
-  assert_uint8(NGHTTP2_RST_STREAM, ==, item->frame.hd.type);
-  assert_int32(4, ==, item->frame.hd.stream_id);
+  assert_uint8(NGHTTP2_GOAWAY, ==, item->frame.hd.type);
 
   nghttp2_bufs_reset(&bufs);
 
@@ -11262,7 +11322,34 @@ void test_nghttp2_http_no_rfc9113_leading_and_trailing_ws_validation(void) {
   callbacks.send_callback2 = null_send_callback;
 
   /* By default, the leading and trailing white spaces validation is
-     enabled as per RFC 9113. */
+     enabled as per RFC 9113.  Without on_invalid_header_callback2,
+     they are ignored. */
+  nghttp2_session_server_new(&session, &callbacks, NULL);
+
+  nghttp2_hd_deflate_init(&deflater, mem);
+
+  rv = pack_headers(&bufs, &deflater, 1,
+                    NGHTTP2_FLAG_END_HEADERS | NGHTTP2_FLAG_END_STREAM,
+                    ws_reqnv, ARRLEN(ws_reqnv), mem);
+
+  assert_ptrdiff(0, ==, rv);
+
+  rv = nghttp2_session_mem_recv2(session, bufs.head->buf.pos,
+                                 nghttp2_buf_len(&bufs.head->buf));
+
+  assert_ptrdiff((nghttp2_ssize)nghttp2_buf_len(&bufs.head->buf), ==, rv);
+
+  item = nghttp2_session_get_next_ob_item(session);
+
+  assert_null(item);
+
+  nghttp2_bufs_reset(&bufs);
+  nghttp2_hd_deflate_free(&deflater);
+  nghttp2_session_del(session);
+
+  /* Specify on_invalid_header_callback2. */
+  callbacks.on_invalid_header_callback2 = term_on_invalid_header_callback2;
+
   nghttp2_session_server_new(&session, &callbacks, NULL);
 
   nghttp2_hd_deflate_init(&deflater, mem);
