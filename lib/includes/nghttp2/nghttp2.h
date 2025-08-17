@@ -2039,12 +2039,12 @@ typedef int (*nghttp2_on_header_callback2)(nghttp2_session *session,
 /**
  * @functypedef
  *
- * Callback function invoked when a invalid header name/value pair is
+ * Callback function invoked when an invalid header name/value pair is
  * received for the |frame|.
  *
  * The parameter and behaviour are similar to
  * :type:`nghttp2_on_header_callback`.  The difference is that this
- * callback is only invoked when a invalid header name/value pair is
+ * callback is only invoked when an invalid header name/value pair is
  * received which is treated as stream error if this callback returns
  * :enum:`nghttp2_error.NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE` and
  * :type:`nghttp2_on_invalid_header_callback2` is not set.  Only
@@ -2077,12 +2077,12 @@ typedef int (*nghttp2_on_invalid_header_callback)(
 /**
  * @functypedef
  *
- * Callback function invoked when a invalid header name/value pair is
+ * Callback function invoked when an invalid header name/value pair is
  * received for the |frame|.
  *
  * The parameter and behaviour are similar to
  * :type:`nghttp2_on_header_callback2`.  The difference is that this
- * callback is only invoked when a invalid header name/value pair is
+ * callback is only invoked when an invalid header name/value pair is
  * received which is silently ignored if neither this callback nor
  * :type:`nghttp2_on_invalid_header_callback` is set.  Only invalid
  * regular header field are passed to this callback.  In other words,
@@ -2660,7 +2660,7 @@ NGHTTP2_EXTERN void nghttp2_session_callbacks_set_on_header_callback2(
 /**
  * @function
  *
- * Sets callback function invoked when a invalid header name/value
+ * Sets callback function invoked when an invalid header name/value
  * pair is received.  If both
  * `nghttp2_session_callbacks_set_on_invalid_header_callback()` and
  * `nghttp2_session_callbacks_set_on_invalid_header_callback2()` are
@@ -2673,7 +2673,7 @@ NGHTTP2_EXTERN void nghttp2_session_callbacks_set_on_invalid_header_callback(
 /**
  * @function
  *
- * Sets callback function invoked when a invalid header name/value
+ * Sets callback function invoked when an invalid header name/value
  * pair is received.
  */
 NGHTTP2_EXTERN void nghttp2_session_callbacks_set_on_invalid_header_callback2(
