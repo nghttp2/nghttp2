@@ -394,7 +394,7 @@ Build nghttp2:
    $ git submodule update --init
    $ autoreconf -i
    $ ./configure --with-mruby --enable-http3 --with-libbpf \
-         CC=clang-18 CXX=clang++-18 \
+         CC=clang-19 CXX=clang++-19 \
          PKG_CONFIG_PATH="$PWD/../aws-lc/opt/lib/pkgconfig:$PWD/../nghttp3/build/lib/pkgconfig:$PWD/../ngtcp2/build/lib/pkgconfig:$PWD/../libbpf/build/lib64/pkgconfig" \
          LDFLAGS="$LDFLAGS -Wl,-rpath,$PWD/../aws-lc/opt/lib -Wl,-rpath,$PWD/../libbpf/build/lib64"
    $ make -j$(nproc)
