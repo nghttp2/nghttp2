@@ -2427,7 +2427,7 @@ int run(char **uris, int n) {
   int failures = 0;
   int data_fd = -1;
   nghttp2_data_provider2 data_prd;
-  struct stat data_stat {};
+  struct stat data_stat{};
 
   if (!config.datafile.empty()) {
     if (config.datafile == "-") {
@@ -3051,7 +3051,7 @@ int main(int argc, char **argv) {
       static_cast<size_t>(config.encoder_header_table_size));
   }
 
-  struct sigaction act {};
+  struct sigaction act{};
   act.sa_handler = SIG_IGN;
   sigaction(SIGPIPE, &act, nullptr);
   reset_timer();

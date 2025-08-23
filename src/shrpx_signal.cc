@@ -95,7 +95,7 @@ int shrpx_signal_set(sigset_t *set) {
 namespace {
 template <typename Signals>
 int signal_set_handler(void (*handler)(int), Signals &&sigs) {
-  struct sigaction act {};
+  struct sigaction act{};
   act.sa_handler = handler;
   sigemptyset(&act.sa_mask);
   int rv;

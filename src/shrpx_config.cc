@@ -193,7 +193,7 @@ read_tls_ticket_key_file(const std::vector<std::string_view> &files,
 
   size_t i = 0;
   for (auto &file : files) {
-    struct stat fst {};
+    struct stat fst{};
 
     if (stat(file.data(), &fst) == -1) {
       auto error = errno;
