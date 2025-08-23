@@ -2238,6 +2238,7 @@ void test_nghttp2_session_recv_unknown_frame(void) {
   nghttp2_frame_hd hd;
   nghttp2_ssize rv;
   nghttp2_outbound_item *item;
+  nghttp2_option *option;
 
   nghttp2_frame_hd_init(&hd, 16000, 99, NGHTTP2_FLAG_NONE, 0);
 
@@ -2280,6 +2281,27 @@ void test_nghttp2_session_recv_unknown_frame(void) {
   assert_uint32(NGHTTP2_ENHANCE_YOUR_CALM, ==, item->frame.goaway.error_code);
 
   nghttp2_session_del(session);
+
+  /* With glitch rate limit option */
+  nghttp2_option_new(&option);
+  nghttp2_option_set_glitch_rate_limit(option, 0, 0);
+
+  nghttp2_session_server_new2(&session, &callbacks, NULL, option);
+
+  rv = nghttp2_session_mem_recv2(session, data, datalen);
+
+  assert_ptrdiff((nghttp2_ssize)datalen, ==, rv);
+  assert_enum(nghttp2_inbound_state, NGHTTP2_IB_IGN_ALL, ==,
+              session->iframe.state);
+
+  item = nghttp2_session_get_next_ob_item(session);
+
+  assert_not_null(item);
+  assert_uint8(NGHTTP2_GOAWAY, ==, item->frame.hd.type);
+  assert_uint32(NGHTTP2_ENHANCE_YOUR_CALM, ==, item->frame.goaway.error_code);
+
+  nghttp2_session_del(session);
+  nghttp2_option_del(option);
 }
 
 void test_nghttp2_session_recv_unexpected_continuation(void) {
