@@ -2948,7 +2948,7 @@ int main(int argc, char **argv) {
               << std::endl;
   }
 
-  struct sigaction act {};
+  struct sigaction act{};
   act.sa_handler = SIG_IGN;
   sigaction(SIGPIPE, &act, nullptr);
 

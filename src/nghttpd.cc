@@ -479,7 +479,7 @@ int main(int argc, char **argv) {
 
   set_color_output(color || isatty(fileno(stdout)));
 
-  struct sigaction act {};
+  struct sigaction act{};
   act.sa_handler = SIG_IGN;
   sigaction(SIGPIPE, &act, nullptr);
 
