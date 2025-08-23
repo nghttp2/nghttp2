@@ -2237,6 +2237,7 @@ void test_nghttp2_session_recv_unknown_frame(void) {
   size_t datalen;
   nghttp2_frame_hd hd;
   nghttp2_ssize rv;
+  nghttp2_outbound_item *item;
 
   nghttp2_frame_hd_init(&hd, 16000, 99, NGHTTP2_FLAG_NONE, 0);
 
@@ -2256,6 +2257,27 @@ void test_nghttp2_session_recv_unknown_frame(void) {
   assert_ptrdiff(rv, ==, (nghttp2_ssize)datalen);
   assert_int(0, ==, ud.frame_recv_cb_called);
   assert_null(nghttp2_session_get_next_ob_item(session));
+
+  nghttp2_session_del(session);
+
+  /* Receiving too many unknown frames */
+  nghttp2_session_server_new(&session, &callbacks, NULL);
+
+  for (;;) {
+    rv = nghttp2_session_mem_recv2(session, data, datalen);
+
+    assert_ptrdiff(rv, ==, (nghttp2_ssize)datalen);
+
+    if (session->iframe.state == NGHTTP2_IB_IGN_ALL) {
+      break;
+    }
+  }
+
+  item = nghttp2_session_get_next_ob_item(session);
+
+  assert_not_null(item);
+  assert_uint8(NGHTTP2_GOAWAY, ==, item->frame.hd.type);
+  assert_uint32(NGHTTP2_ENHANCE_YOUR_CALM, ==, item->frame.goaway.error_code);
 
   nghttp2_session_del(session);
 }
