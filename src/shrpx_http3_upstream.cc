@@ -109,6 +109,10 @@ ngtcp2_conn *get_conn(ngtcp2_crypto_conn_ref *conn_ref) {
 }
 } // namespace
 
+namespace {
+constexpr size_t QUIC_TX_DATALEN = 64_k;
+} // namespace
+
 Http3Upstream::Http3Upstream(ClientHandler *handler)
   : handler_{handler},
     qlog_fd_{-1},
@@ -121,7 +125,7 @@ Http3Upstream::Http3Upstream(ClientHandler *handler)
     downstream_queue_{downstream_queue_size(handler->get_worker()),
                       !get_config()->http2_proxy},
     tx_{
-      .data = std::unique_ptr<uint8_t[]>(new uint8_t[64_k]),
+      .data = std::unique_ptr<uint8_t[]>(new uint8_t[QUIC_TX_DATALEN]),
 #ifndef UDP_SEGMENT
       .no_gso = true,
 #endif // UDP_SEGMENT
@@ -820,25 +824,21 @@ int Http3Upstream::on_write() {
   return 0;
 }
 
-int Http3Upstream::write_streams() {
-  std::array<nghttp3_vec, 16> vec;
-  auto max_udp_payload_size = ngtcp2_conn_get_max_tx_udp_payload_size(conn_);
-  auto path_max_udp_payload_size =
-    ngtcp2_conn_get_path_max_tx_udp_payload_size(conn_);
-  ngtcp2_pkt_info pi, prev_pi;
-  auto txbuf =
-    std::span{tx_.data.get(), std::max(ngtcp2_conn_get_send_quantum(conn_),
-                                       path_max_udp_payload_size)};
-  auto buf = txbuf;
-  auto pkt = std::span<const uint8_t>{};
-  auto extra_pkt = std::span<const uint8_t>{};
-  ngtcp2_path_storage ps, prev_ps;
-  int rv;
-  size_t gso_size = 0;
-  auto ts = quic_timestamp();
+namespace {
+ngtcp2_ssize write_pkt(ngtcp2_conn *conn, ngtcp2_path *path,
+                       ngtcp2_pkt_info *pi, uint8_t *dest, size_t destlen,
+                       ngtcp2_tstamp ts, void *user_data) {
+  auto upstream = static_cast<Http3Upstream *>(user_data);
 
-  ngtcp2_path_storage_zero(&ps);
-  ngtcp2_path_storage_zero(&prev_ps);
+  return upstream->write_pkt(path, pi, dest, destlen, ts);
+}
+} // namespace
+
+ngtcp2_ssize Http3Upstream::write_pkt(ngtcp2_path *path, ngtcp2_pkt_info *pi,
+                                      uint8_t *dest, size_t destlen,
+                                      ngtcp2_tstamp ts) {
+  std::array<nghttp3_vec, 16> vec;
+  int rv;
 
   for (;;) {
     int64_t stream_id = -1;
@@ -855,7 +855,7 @@ int Http3Upstream::write_streams() {
           &last_error_,
           nghttp3_err_infer_quic_app_error_code(static_cast<int>(sveccnt)),
           nullptr, 0);
-        return handle_error();
+        return NGTCP2_ERR_CALLBACK_FAILURE;
       }
     }
 
@@ -868,11 +868,8 @@ int Http3Upstream::write_streams() {
       flags |= NGTCP2_WRITE_STREAM_FLAG_FIN;
     }
 
-    auto buflen = buf.size() >= max_udp_payload_size
-                    ? max_udp_payload_size
-                    : path_max_udp_payload_size;
     auto nwrite = ngtcp2_conn_writev_stream(
-      conn_, &ps.path, &pi, buf.data(), buflen, &ndatalen, flags, stream_id,
+      conn_, path, pi, dest, destlen, &ndatalen, flags, stream_id,
       reinterpret_cast<const ngtcp2_vec *>(v), vcnt, ts);
     if (nwrite < 0) {
       switch (nwrite) {
@@ -894,7 +891,7 @@ int Http3Upstream::write_streams() {
           ngtcp2_ccerr_set_application_error(
             &last_error_, nghttp3_err_infer_quic_app_error_code(rv), nullptr,
             0);
-          return handle_error();
+          return NGTCP2_ERR_CALLBACK_FAILURE;
         }
         continue;
       }
@@ -907,8 +904,10 @@ int Http3Upstream::write_streams() {
       ngtcp2_ccerr_set_liberr(&last_error_, static_cast<int>(nwrite), nullptr,
                               0);
 
-      return handle_error();
-    } else if (ndatalen >= 0) {
+      return NGTCP2_ERR_CALLBACK_FAILURE;
+    }
+
+    if (ndatalen >= 0) {
       rv = nghttp3_conn_add_write_offset(httpconn_, stream_id,
                                          as_unsigned(ndatalen));
       if (rv != 0) {
@@ -916,64 +915,42 @@ int Http3Upstream::write_streams() {
                           << nghttp3_strerror(rv);
         ngtcp2_ccerr_set_application_error(
           &last_error_, nghttp3_err_infer_quic_app_error_code(rv), nullptr, 0);
-        return handle_error();
+        return NGTCP2_ERR_CALLBACK_FAILURE;
       }
     }
 
-    if (nwrite == 0) {
-      pkt = std::span{std::ranges::begin(txbuf), std::ranges::begin(buf)};
-      if (pkt.empty()) {
-        return 0;
-      }
+    return nwrite;
+  }
+}
 
-      break;
-    }
+int Http3Upstream::write_streams() {
+  ngtcp2_path_storage ps;
+  ngtcp2_pkt_info pi;
+  auto txbuf = std::span{tx_.data.get(), QUIC_TX_DATALEN};
+  size_t gso_size = 0;
 
-    auto last_pkt_pos = std::ranges::begin(buf);
+  ngtcp2_path_storage_zero(&ps);
 
-    buf = buf.subspan(as_unsigned(nwrite));
-
-    if (last_pkt_pos == std::ranges::begin(txbuf)) {
-      ngtcp2_path_copy(&prev_ps.path, &ps.path);
-      prev_pi = pi;
-      gso_size = as_unsigned(nwrite);
-    } else if (!ngtcp2_path_eq(&prev_ps.path, &ps.path) ||
-               prev_pi.ecn != pi.ecn ||
-               static_cast<size_t>(nwrite) > gso_size ||
-               (gso_size > path_max_udp_payload_size &&
-                static_cast<size_t>(nwrite) != gso_size)) {
-      pkt = std::span{std::ranges::begin(txbuf), last_pkt_pos};
-      extra_pkt = std::span{last_pkt_pos, std::ranges::begin(buf)};
-      break;
-    }
-
-    if (buf.size() < path_max_udp_payload_size ||
-        static_cast<size_t>(nwrite) < gso_size) {
-      pkt = std::span{std::ranges::begin(txbuf), std::ranges::begin(buf)};
-      break;
-    }
+  auto nwrite = ngtcp2_conn_write_aggregate_pkt(
+    conn_, &ps.path, &pi, txbuf.data(), txbuf.size(), &gso_size,
+    shrpx::write_pkt, quic_timestamp());
+  if (nwrite < 0) {
+    return handle_error();
   }
 
-  assert(!pkt.empty());
-
-  if (send_packet(prev_ps.path, prev_pi, pkt, gso_size) ==
-      SHRPX_ERR_SEND_BLOCKED) {
-    if (!extra_pkt.empty()) {
-      on_send_blocked(ps.path, pi, extra_pkt, extra_pkt.size());
-    }
-  } else if (!extra_pkt.empty()) {
-    send_packet(ps.path, pi, extra_pkt, extra_pkt.size());
+  if (nwrite == 0) {
+    return 0;
   }
 
-  ngtcp2_conn_update_pkt_tx_time(conn_, ts);
+  send_packet(ps.path, pi, txbuf.first(static_cast<size_t>(nwrite)), gso_size);
 
   return 0;
 }
 
-int Http3Upstream::send_packet(const ngtcp2_path &path,
-                               const ngtcp2_pkt_info &pi,
-                               const std::span<const uint8_t> data,
-                               size_t gso_size) {
+void Http3Upstream::send_packet(const ngtcp2_path &path,
+                                const ngtcp2_pkt_info &pi,
+                                const std::span<const uint8_t> data,
+                                size_t gso_size) {
   auto faddr = static_cast<UpstreamAddr *>(path.user_data);
 
   auto [rest, rv] =
@@ -984,8 +961,6 @@ int Http3Upstream::send_packet(const ngtcp2_path &path,
 
     signal_write_upstream_addr(faddr);
   }
-
-  return rv;
 }
 
 int Http3Upstream::on_timeout(Downstream *downstream) {
@@ -1937,13 +1912,12 @@ void Http3Upstream::on_send_blocked(const ngtcp2_path &path,
                                     const ngtcp2_pkt_info &pi,
                                     std::span<const uint8_t> data,
                                     size_t gso_size) {
-  assert(tx_.num_blocked || !tx_.send_blocked);
-  assert(tx_.num_blocked < 2);
+  assert(!tx_.send_blocked);
   assert(gso_size);
 
   tx_.send_blocked = true;
 
-  auto &p = tx_.blocked[tx_.num_blocked++];
+  auto &p = tx_.blocked;
 
   memcpy(&p.local_addr.su, path.local.addr, path.local.addrlen);
   memcpy(&p.remote_addr.su, path.remote.addr, path.remote.addrlen);
@@ -1959,24 +1933,20 @@ void Http3Upstream::on_send_blocked(const ngtcp2_path &path,
 int Http3Upstream::send_blocked_packet() {
   assert(tx_.send_blocked);
 
-  for (; tx_.num_blocked_sent < tx_.num_blocked; ++tx_.num_blocked_sent) {
-    auto &p = tx_.blocked[tx_.num_blocked_sent];
+  auto &p = tx_.blocked;
 
-    auto [rest, rv] = send_packet(p.faddr, &p.remote_addr.su.sa,
-                                  p.remote_addr.len, &p.local_addr.su.sa,
-                                  p.local_addr.len, p.pi, p.data, p.gso_size);
-    if (rv == SHRPX_ERR_SEND_BLOCKED) {
-      p.data = rest;
+  auto [rest, rv] = send_packet(p.faddr, &p.remote_addr.su.sa,
+                                p.remote_addr.len, &p.local_addr.su.sa,
+                                p.local_addr.len, p.pi, p.data, p.gso_size);
+  if (rv == SHRPX_ERR_SEND_BLOCKED) {
+    p.data = rest;
 
-      signal_write_upstream_addr(p.faddr);
+    signal_write_upstream_addr(p.faddr);
 
-      return 0;
-    }
+    return 0;
   }
 
   tx_.send_blocked = false;
-  tx_.num_blocked = 0;
-  tx_.num_blocked_sent = 0;
 
   return 0;
 }

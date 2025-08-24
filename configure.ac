@@ -525,7 +525,7 @@ fi
 # ngtcp2 (for src)
 have_libngtcp2=no
 if test "x${request_libngtcp2}" != "xno"; then
-  PKG_CHECK_MODULES([LIBNGTCP2], [libngtcp2 >= 1.12.0], [have_libngtcp2=yes],
+  PKG_CHECK_MODULES([LIBNGTCP2], [libngtcp2 >= 1.15.0], [have_libngtcp2=yes],
                     [have_libngtcp2=no])
   if test "x${have_libngtcp2}" = "xno"; then
     AC_MSG_NOTICE($LIBNGTCP2_PKG_ERRORS)
@@ -542,7 +542,7 @@ have_libngtcp2_crypto_wolfssl=no
 if test "x${have_wolfssl_quic}" = "xyes" &&
    test "x${request_libngtcp2}" != "xno"; then
   PKG_CHECK_MODULES([LIBNGTCP2_CRYPTO_WOLFSSL],
-                    [libngtcp2_crypto_wolfssl >= 1.12.0],
+                    [libngtcp2_crypto_wolfssl >= 1.15.0],
                     [have_libngtcp2_crypto_wolfssl=yes],
                     [have_libngtcp2_crypto_wolfssl=no])
   if test "x${have_libngtcp2_crypto_wolfssl}" = "xno"; then
@@ -565,7 +565,7 @@ if test "x${have_ssl_provide_quic_data}" = "xyes" &&
    test "x${have_boringssl_quic}" != "xyes" &&
    test "x${request_libngtcp2}" != "xno"; then
   PKG_CHECK_MODULES([LIBNGTCP2_CRYPTO_QUICTLS],
-                    [libngtcp2_crypto_quictls >= 1.12.0],
+                    [libngtcp2_crypto_quictls >= 1.15.0],
                     [have_libngtcp2_crypto_quictls=yes],
                     [have_libngtcp2_crypto_quictls=no])
   if test "x${have_libngtcp2_crypto_quictls}" = "xno"; then
@@ -610,7 +610,7 @@ have_libngtcp2_crypto_ossl=no
 if test "x${have_ossl_quic}" = "xyes" &&
    test "x${request_libngtcp2}" != "xno"; then
   PKG_CHECK_MODULES([LIBNGTCP2_CRYPTO_OSSL],
-                    [libngtcp2_crypto_ossl >= 1.12.0],
+                    [libngtcp2_crypto_ossl >= 1.15.0],
                     [have_libngtcp2_crypto_ossl=yes],
                     [have_libngtcp2_crypto_ossl=no])
   if test "x${have_libngtcp2_crypto_ossl}" = "xno"; then

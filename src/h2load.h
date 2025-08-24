@@ -364,13 +364,11 @@ struct Client {
 
     struct {
       bool send_blocked;
-      size_t num_blocked;
-      size_t num_blocked_sent;
       struct {
         Address remote_addr;
         std::span<const uint8_t> data;
         size_t gso_size;
-      } blocked[2];
+      } blocked;
       std::unique_ptr<uint8_t[]> data;
       bool no_gso;
     } tx;
@@ -495,11 +493,13 @@ struct Client {
   void quic_free();
   int read_quic();
   int write_quic();
+  ngtcp2_ssize write_quic_pkt(ngtcp2_path *path, ngtcp2_pkt_info *pi,
+                              uint8_t *dest, size_t destlen, ngtcp2_tstamp ts);
   std::span<const uint8_t> write_udp(const sockaddr *addr, socklen_t addrlen,
                                      std::span<const uint8_t> data,
                                      size_t gso_size);
-  int write_udp_or_blocked(const ngtcp2_path &path,
-                           std::span<const uint8_t> data, size_t gso_size);
+  void write_udp_or_blocked(const ngtcp2_path &path,
+                            std::span<const uint8_t> data, size_t gso_size);
   void on_send_blocked(const ngtcp2_addr &remote_addr,
                        std::span<const uint8_t> data, size_t gso_size);
   int send_blocked_packet();
