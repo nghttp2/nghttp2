@@ -28,9 +28,11 @@
 
 #include <iostream>
 
-#ifdef HAVE_LIBNGTCP2_CRYPTO_QUICTLS
+#if defined(HAVE_LIBNGTCP2_CRYPTO_QUICTLS) ||                                  \
+  defined(HAVE_LIBNGTCP2_CRYPTO_LIBRESSL)
 #  include <ngtcp2/ngtcp2_crypto_quictls.h>
-#endif // HAVE_LIBNGTCP2_CRYPTO_QUICTLS
+#endif // defined(HAVE_LIBNGTCP2_CRYPTO_QUICTLS) ||
+       // defined(HAVE_LIBNGTCP2_CRYPTO_LIBRESSL)
 #ifdef HAVE_LIBNGTCP2_CRYPTO_BORINGSSL
 #  include <ngtcp2/ngtcp2_crypto_boringssl.h>
 #endif // HAVE_LIBNGTCP2_CRYPTO_BORINGSSL

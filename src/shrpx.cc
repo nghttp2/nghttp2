@@ -91,9 +91,11 @@
 #ifdef ENABLE_HTTP3
 #  include <ngtcp2/ngtcp2.h>
 #  include <nghttp3/nghttp3.h>
-#  ifdef HAVE_LIBNGTCP2_CRYPTO_QUICTLS
+#  if defined(HAVE_LIBNGTCP2_CRYPTO_QUICTLS) ||                                \
+    defined(HAVE_LIBNGTCP2_CRYPTO_LIBRESSL)
 #    include <ngtcp2/ngtcp2_crypto_quictls.h>
-#  endif // HAVE_LIBNGTCP2_CRYPTO_QUICTLS
+#  endif // defined(HAVE_LIBNGTCP2_CRYPTO_QUICTLS) ||
+         // defined(HAVE_LIBNGTCP2_CRYPTO_LIBRESSL)
 #  ifdef HAVE_LIBNGTCP2_CRYPTO_OSSL
 #    include <ngtcp2/ngtcp2_crypto_ossl.h>
 #  endif // HAVE_LIBNGTCP2_CRYPTO_OSSL
@@ -4918,12 +4920,14 @@ int main(int argc, char **argv) {
   }
 
 #ifdef ENABLE_HTTP3
-#  ifdef HAVE_LIBNGTCP2_CRYPTO_QUICTLS
+#  if defined(HAVE_LIBNGTCP2_CRYPTO_QUICTLS) ||                                \
+    defined(HAVE_LIBNGTCP2_CRYPTO_LIBRESSL)
   if (ngtcp2_crypto_quictls_init() != 0) {
     LOG(FATAL) << "ngtcp2_crypto_quictls_init failed";
     exit(EXIT_FAILURE);
   }
-#  endif // defined(HAVE_LIBNGTCP2_CRYPTO_QUICTLS)
+#  endif // defined(HAVE_LIBNGTCP2_CRYPTO_QUICTLS) ||
+         // defined(HAVE_LIBNGTCP2_CRYPTO_LIBRESSL)
 #  ifdef HAVE_LIBNGTCP2_CRYPTO_OSSL
   if (ngtcp2_crypto_ossl_init() != 0) {
     LOG(FATAL) << "ngtcp2_crypto_ossl_init failed";
