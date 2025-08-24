@@ -571,6 +571,11 @@ static int session_new(nghttp2_session **session_ptr,
     if (option->opt_set_mask & NGHTTP2_OPT_MAX_CONTINUATIONS) {
       (*session_ptr)->max_continuations = option->max_continuations;
     }
+
+    if (option->opt_set_mask & NGHTTP2_OPT_GLITCH_RATE_LIMIT) {
+      nghttp2_ratelim_init(&(*session_ptr)->glitch_ratelim,
+                           option->glitch_burst, option->glitch_rate);
+    }
   }
 
   rv = nghttp2_hd_deflate_init2(&(*session_ptr)->hd_deflater,
