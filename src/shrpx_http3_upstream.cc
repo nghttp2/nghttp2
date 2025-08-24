@@ -205,13 +205,19 @@ void Http3Upstream::qlog_write(const void *data, size_t datalen, bool fin) {
 }
 
 namespace {
-void rand(uint8_t *dest, size_t destlen, const ngtcp2_rand_ctx *rand_ctx) {
+void rand_bytes(uint8_t *dest, size_t destlen) {
   auto rv =
     RAND_bytes(dest, static_cast<nghttp2_ssl_rand_length_type>(destlen));
   if (rv != 1) {
     assert(0);
     abort();
   }
+}
+} // namespace
+
+namespace {
+void rand(uint8_t *dest, size_t destlen, const ngtcp2_rand_ctx *rand_ctx) {
+  rand_bytes(dest, destlen);
 }
 } // namespace
 
@@ -2657,19 +2663,18 @@ int Http3Upstream::setup_httpconn() {
   }
 
   nghttp3_callbacks callbacks{
-    shrpx::http_acked_stream_data,
-    shrpx::http_stream_close,
-    shrpx::http_recv_data,
-    http_deferred_consume,
-    shrpx::http_begin_request_headers,
-    shrpx::http_recv_request_header,
-    shrpx::http_end_request_headers,
-    nullptr, // begin_trailers
-    shrpx::http_recv_request_trailer,
-    nullptr, // end_trailers
-    shrpx::http_stop_sending,
-    shrpx::http_end_stream,
-    shrpx::http_reset_stream,
+    .acked_stream_data = shrpx::http_acked_stream_data,
+    .stream_close = shrpx::http_stream_close,
+    .recv_data = shrpx::http_recv_data,
+    .deferred_consume = http_deferred_consume,
+    .begin_headers = shrpx::http_begin_request_headers,
+    .recv_header = shrpx::http_recv_request_header,
+    .end_headers = shrpx::http_end_request_headers,
+    .recv_trailer = shrpx::http_recv_request_trailer,
+    .stop_sending = shrpx::http_stop_sending,
+    .end_stream = shrpx::http_end_stream,
+    .reset_stream = shrpx::http_reset_stream,
+    .rand = shrpx::rand_bytes,
   };
 
   auto config = get_config();

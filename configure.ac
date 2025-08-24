@@ -630,7 +630,7 @@ fi
 # nghttp3 (for src)
 have_libnghttp3=no
 if test "x${request_libnghttp3}" != "xno"; then
-  PKG_CHECK_MODULES([LIBNGHTTP3], [libnghttp3 >= 1.1.0], [have_libnghttp3=yes],
+  PKG_CHECK_MODULES([LIBNGHTTP3], [libnghttp3 >= 1.11.0], [have_libnghttp3=yes],
                     [have_libnghttp3=no])
   if test "x${have_libnghttp3}" = "xno"; then
     AC_MSG_NOTICE($LIBNGHTTP3_PKG_ERRORS)
