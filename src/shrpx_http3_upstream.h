@@ -102,6 +102,8 @@ public:
               std::span<const uint8_t> data);
 
   int write_streams();
+  ngtcp2_ssize write_pkt(ngtcp2_path *path, ngtcp2_pkt_info *pi, uint8_t *dest,
+                         size_t destlen, ngtcp2_tstamp ts);
 
   int handle_error();
 
@@ -146,8 +148,8 @@ public:
               socklen_t remote_salen, const sockaddr *local_sa,
               socklen_t local_salen, const ngtcp2_pkt_info &pi,
               std::span<const uint8_t> data, size_t gso_size);
-  int send_packet(const ngtcp2_path &path, const ngtcp2_pkt_info &pi,
-                  const std::span<const uint8_t> data, size_t gso_size);
+  void send_packet(const ngtcp2_path &path, const ngtcp2_pkt_info &pi,
+                   const std::span<const uint8_t> data, size_t gso_size);
 
   void qlog_write(const void *data, size_t datalen, bool fin);
   int open_qlog_file(const std::string_view &dir, const ngtcp2_cid &scid) const;
@@ -179,8 +181,6 @@ private:
 
   struct {
     bool send_blocked;
-    size_t num_blocked;
-    size_t num_blocked_sent;
     // blocked field is effective only when send_blocked is true.
     struct {
       const UpstreamAddr *faddr;
@@ -189,7 +189,7 @@ private:
       ngtcp2_pkt_info pi;
       std::span<const uint8_t> data;
       size_t gso_size;
-    } blocked[2];
+    } blocked;
     std::unique_ptr<uint8_t[]> data;
     bool no_gso;
   } tx_;

@@ -670,6 +670,79 @@ int Client::read_quic() {
   return 0;
 }
 
+namespace {
+ngtcp2_ssize write_pkt(ngtcp2_conn *conn, ngtcp2_path *path,
+                       ngtcp2_pkt_info *pi, uint8_t *dest, size_t destlen,
+                       ngtcp2_tstamp ts, void *user_data) {
+  auto c = static_cast<Client *>(user_data);
+
+  return c->write_quic_pkt(path, pi, dest, destlen, ts);
+}
+} // namespace
+
+ngtcp2_ssize Client::write_quic_pkt(ngtcp2_path *path, ngtcp2_pkt_info *pi,
+                                    uint8_t *dest, size_t destlen,
+                                    ngtcp2_tstamp ts) {
+  std::array<nghttp3_vec, 16> vec;
+  auto s = static_cast<Http3Session *>(session.get());
+
+  for (;;) {
+    int64_t stream_id = -1;
+    int fin = 0;
+    ssize_t sveccnt = 0;
+
+    if (session && ngtcp2_conn_get_max_data_left(quic.conn)) {
+      sveccnt = s->write_stream(stream_id, fin, vec.data(), vec.size());
+      if (sveccnt == -1) {
+        return NGTCP2_ERR_CALLBACK_FAILURE;
+      }
+    }
+
+    ngtcp2_ssize ndatalen;
+    auto v = vec.data();
+    auto vcnt = static_cast<size_t>(sveccnt);
+
+    uint32_t flags = NGTCP2_WRITE_STREAM_FLAG_MORE;
+    if (fin) {
+      flags |= NGTCP2_WRITE_STREAM_FLAG_FIN;
+    }
+
+    auto nwrite = ngtcp2_conn_writev_stream(
+      quic.conn, path, nullptr, dest, destlen, &ndatalen, flags, stream_id,
+      reinterpret_cast<const ngtcp2_vec *>(v), vcnt, ts);
+    if (nwrite < 0) {
+      switch (nwrite) {
+      case NGTCP2_ERR_STREAM_DATA_BLOCKED:
+        assert(ndatalen == -1);
+        s->block_stream(stream_id);
+        continue;
+      case NGTCP2_ERR_STREAM_SHUT_WR:
+        assert(ndatalen == -1);
+        s->shutdown_stream_write(stream_id);
+        continue;
+      case NGTCP2_ERR_WRITE_MORE:
+        assert(ndatalen >= 0);
+        if (s->add_write_offset(stream_id, as_unsigned(ndatalen)) != 0) {
+          return NGTCP2_ERR_CALLBACK_FAILURE;
+        }
+        continue;
+      }
+
+      ngtcp2_ccerr_set_liberr(&quic.last_error, static_cast<int>(nwrite),
+                              nullptr, 0);
+
+      return NGTCP2_ERR_CALLBACK_FAILURE;
+    }
+
+    if (ndatalen >= 0 &&
+        s->add_write_offset(stream_id, as_unsigned(ndatalen)) != 0) {
+      return NGTCP2_ERR_CALLBACK_FAILURE;
+    }
+
+    return nwrite;
+  }
+}
+
 int Client::write_quic() {
   int rv;
 
@@ -690,145 +763,47 @@ int Client::write_quic() {
     }
   }
 
-  std::array<nghttp3_vec, 16> vec;
-  auto max_udp_payload_size =
-    ngtcp2_conn_get_max_tx_udp_payload_size(quic.conn);
-  auto path_max_udp_payload_size =
-    ngtcp2_conn_get_path_max_tx_udp_payload_size(quic.conn);
-  auto txbuf = std::span{quic.tx.data.get(),
-                         std::max(ngtcp2_conn_get_send_quantum(quic.conn),
-                                  path_max_udp_payload_size)};
-  auto buf = txbuf;
+  auto txbuf = std::span{quic.tx.data.get(), QUIC_TX_DATALEN};
   ngtcp2_path_storage ps;
   size_t gso_size = 0;
-  auto pkt = std::span<const uint8_t>{};
-  auto extra_pkt = std::span<const uint8_t>{};
 
   ngtcp2_path_storage_zero(&ps);
 
-  auto s = static_cast<Http3Session *>(session.get());
-  auto ts = quic_timestamp();
-
-  for (;;) {
-    int64_t stream_id = -1;
-    int fin = 0;
-    ssize_t sveccnt = 0;
-
-    if (session && ngtcp2_conn_get_max_data_left(quic.conn)) {
-      sveccnt = s->write_stream(stream_id, fin, vec.data(), vec.size());
-      if (sveccnt == -1) {
-        return -1;
-      }
-    }
-
-    ngtcp2_ssize ndatalen;
-    auto v = vec.data();
-    auto vcnt = static_cast<size_t>(sveccnt);
-
-    uint32_t flags = NGTCP2_WRITE_STREAM_FLAG_MORE;
-    if (fin) {
-      flags |= NGTCP2_WRITE_STREAM_FLAG_FIN;
-    }
-
-    auto buflen = buf.size() >= max_udp_payload_size
-                    ? max_udp_payload_size
-                    : path_max_udp_payload_size;
-    auto nwrite = ngtcp2_conn_writev_stream(
-      quic.conn, &ps.path, nullptr, buf.data(), buflen, &ndatalen, flags,
-      stream_id, reinterpret_cast<const ngtcp2_vec *>(v), vcnt, ts);
-    if (nwrite < 0) {
-      switch (nwrite) {
-      case NGTCP2_ERR_STREAM_DATA_BLOCKED:
-        assert(ndatalen == -1);
-        s->block_stream(stream_id);
-        continue;
-      case NGTCP2_ERR_STREAM_SHUT_WR:
-        assert(ndatalen == -1);
-        s->shutdown_stream_write(stream_id);
-        continue;
-      case NGTCP2_ERR_WRITE_MORE:
-        assert(ndatalen >= 0);
-        if (s->add_write_offset(stream_id, as_unsigned(ndatalen)) != 0) {
-          return -1;
-        }
-        continue;
-      }
-
-      ngtcp2_ccerr_set_liberr(&quic.last_error, static_cast<int>(nwrite),
-                              nullptr, 0);
-      return -1;
-    } else if (ndatalen >= 0 &&
-               s->add_write_offset(stream_id, as_unsigned(ndatalen)) != 0) {
-      return -1;
-    }
-
-    quic_restart_pkt_timer();
-
-    if (nwrite == 0) {
-      pkt = std::span{std::ranges::begin(txbuf), std::ranges::begin(buf)};
-      if (pkt.empty()) {
-        return 0;
-      }
-
-      break;
-    }
-
-    auto last_pkt_pos = std::ranges::begin(buf);
-
-    buf = buf.subspan(as_unsigned(nwrite));
-
-    if (last_pkt_pos == std::ranges::begin(txbuf)) {
-      gso_size = as_unsigned(nwrite);
-    } else if (static_cast<size_t>(nwrite) > gso_size ||
-               (gso_size > path_max_udp_payload_size &&
-                static_cast<size_t>(nwrite) != gso_size)) {
-      pkt = std::span{std::ranges::begin(txbuf), last_pkt_pos};
-      extra_pkt = std::span{last_pkt_pos, std::ranges::begin(buf)};
-      break;
-    }
-
-    // Assume that the path does not change.
-    if (buf.size() < path_max_udp_payload_size ||
-        static_cast<size_t>(nwrite) < gso_size) {
-      pkt = std::span{std::ranges::begin(txbuf), std::ranges::begin(buf)};
-      break;
-    }
+  auto nwrite = ngtcp2_conn_write_aggregate_pkt(
+    quic.conn, &ps.path, nullptr, txbuf.data(), txbuf.size(), &gso_size,
+    h2load::write_pkt, quic_timestamp());
+  if (nwrite < 0) {
+    return -1;
   }
 
-  if (write_udp_or_blocked(ps.path, pkt, gso_size) != 0) {
-    if (!extra_pkt.empty()) {
-      on_send_blocked(ps.path.remote, extra_pkt, extra_pkt.size());
-    }
-  } else if (!extra_pkt.empty()) {
-    write_udp_or_blocked(ps.path, extra_pkt, extra_pkt.size());
+  quic_restart_pkt_timer();
+
+  if (nwrite == 0) {
+    return 0;
   }
 
-  ngtcp2_conn_update_pkt_tx_time(quic.conn, ts);
+  write_udp_or_blocked(ps.path, txbuf.first(static_cast<size_t>(nwrite)),
+                       gso_size);
 
   return 0;
 }
 
-int Client::write_udp_or_blocked(const ngtcp2_path &path,
-                                 std::span<const uint8_t> data,
-                                 size_t gso_size) {
+void Client::write_udp_or_blocked(const ngtcp2_path &path,
+                                  std::span<const uint8_t> data,
+                                  size_t gso_size) {
   auto rest = write_udp(path.remote.addr, path.remote.addrlen, data, gso_size);
   if (!rest.empty()) {
     on_send_blocked(path.remote, data, gso_size);
-
-    return -1;
   }
-
-  return 0;
 }
 
 void Client::on_send_blocked(const ngtcp2_addr &remote_addr,
                              std::span<const uint8_t> data, size_t gso_size) {
-  assert(quic.tx.num_blocked || !quic.tx.send_blocked);
-  assert(quic.tx.num_blocked < 2);
+  assert(!quic.tx.send_blocked);
 
   quic.tx.send_blocked = true;
 
-  auto &p = quic.tx.blocked[quic.tx.num_blocked++];
+  auto &p = quic.tx.blocked;
 
   memcpy(&p.remote_addr.su, remote_addr.addr, remote_addr.addrlen);
 
@@ -842,24 +817,19 @@ void Client::on_send_blocked(const ngtcp2_addr &remote_addr,
 int Client::send_blocked_packet() {
   assert(quic.tx.send_blocked);
 
-  for (; quic.tx.num_blocked_sent < quic.tx.num_blocked;
-       ++quic.tx.num_blocked_sent) {
-    auto &p = quic.tx.blocked[quic.tx.num_blocked_sent];
+  auto &p = quic.tx.blocked;
 
-    auto rest =
-      write_udp(&p.remote_addr.su.sa, p.remote_addr.len, p.data, p.gso_size);
-    if (!rest.empty()) {
-      p.data = rest;
+  auto rest =
+    write_udp(&p.remote_addr.su.sa, p.remote_addr.len, p.data, p.gso_size);
+  if (!rest.empty()) {
+    p.data = rest;
 
-      signal_write();
+    signal_write();
 
-      return 0;
-    }
+    return 0;
   }
 
   quic.tx.send_blocked = false;
-  quic.tx.num_blocked = 0;
-  quic.tx.num_blocked_sent = 0;
 
   return 0;
 }
