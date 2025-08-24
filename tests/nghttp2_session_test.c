@@ -2255,7 +2255,7 @@ void test_nghttp2_session_recv_unknown_frame(void) {
   /* Unknown frame must be ignored */
   rv = nghttp2_session_mem_recv2(session, data, datalen);
 
-  assert_ptrdiff(rv, ==, (nghttp2_ssize)datalen);
+  assert_ptrdiff((nghttp2_ssize)datalen, ==, rv);
   assert_int(0, ==, ud.frame_recv_cb_called);
   assert_null(nghttp2_session_get_next_ob_item(session));
 
@@ -2267,7 +2267,7 @@ void test_nghttp2_session_recv_unknown_frame(void) {
   for (;;) {
     rv = nghttp2_session_mem_recv2(session, data, datalen);
 
-    assert_ptrdiff(rv, ==, (nghttp2_ssize)datalen);
+    assert_ptrdiff((nghttp2_ssize)datalen, ==, rv);
 
     if (session->iframe.state == NGHTTP2_IB_IGN_ALL) {
       break;
@@ -2332,7 +2332,7 @@ void test_nghttp2_session_recv_unexpected_continuation(void) {
   /* unexpected CONTINUATION must be treated as connection error */
   rv = nghttp2_session_mem_recv2(session, data, datalen);
 
-  assert_ptrdiff(rv, ==, (nghttp2_ssize)datalen);
+  assert_ptrdiff((nghttp2_ssize)datalen, ==, rv);
   assert_int(0, ==, ud.frame_recv_cb_called);
 
   item = nghttp2_session_get_next_ob_item(session);
