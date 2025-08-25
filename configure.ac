@@ -436,6 +436,13 @@ if test "x${request_openssl}" != "xno" &&
     [AC_MSG_RESULT([yes]); have_ssl_provide_quic_data=yes],
     [AC_MSG_RESULT([no]); have_ssl_provide_quic_data=no])
 
+    # Check whether this is libressl or not
+    AC_CHECK_DECLS([LIBRESSL_VERSION_NUMBER],
+                   [have_libressl=yes], [have_libressl=no],
+    [[
+    #include <openssl/opensslv.h>
+    ]])
+
     AC_MSG_CHECKING([for SSL_set_quic_tls_cbs])
     AC_LINK_IFELSE([AC_LANG_PROGRAM([[
       #include <openssl/ssl.h>
@@ -562,6 +569,7 @@ fi
 # ngtcp2_crypto_quictls (for src)
 have_libngtcp2_crypto_quictls=no
 if test "x${have_ssl_provide_quic_data}" = "xyes" &&
+   test "x${have_libressl}" != "xyes" &&
    test "x${have_boringssl_quic}" != "xyes" &&
    test "x${request_libngtcp2}" != "xno"; then
   PKG_CHECK_MODULES([LIBNGTCP2_CRYPTO_QUICTLS],
@@ -577,10 +585,35 @@ if test "x${have_ssl_provide_quic_data}" = "xyes" &&
 fi
 
 if test "x${have_ssl_provide_quic_data}" = "xyes" &&
+   test "x${have_libressl}" != "xyes" &&
    test "x${have_boringssl_quic}" != "xyes" &&
    test "x${request_libngtcp2}" = "xyes" &&
    test "x${have_libngtcp2_crypto_quictls}" != "xyes"; then
   AC_MSG_ERROR([libngtcp2_crypto_quictls was requested (--with-libngtcp2) but not found])
+fi
+
+# ngtcp2_crypto_libressl (for src)
+have_libngtcp2_crypto_libressl=no
+if test "x${have_ssl_provide_quic_data}" = "xyes" &&
+   test "x${have_libressl}" = "xyes" &&
+   test "x${request_libngtcp2}" != "xno"; then
+  PKG_CHECK_MODULES([LIBNGTCP2_CRYPTO_LIBRESSL],
+                    [libngtcp2_crypto_libressl >= 1.15.0],
+                    [have_libngtcp2_crypto_libressl=yes],
+                    [have_libngtcp2_crypto_libressl=no])
+  if test "x${have_libngtcp2_crypto_libressl}" = "xno"; then
+    AC_MSG_NOTICE($LIBNGTCP2_CRYPTO_LIBRESSL_PKG_ERRORS)
+  else
+    AC_DEFINE([HAVE_LIBNGTCP2_CRYPTO_LIBRESSL], [1],
+              [Define to 1 if you have `libngtcp2_crypto_libressl` library.])
+  fi
+fi
+
+if test "x${have_ssl_provide_quic_data}" = "xyes" &&
+   test "x${have_libressl}" = "xyes" &&
+   test "x${request_libngtcp2}" = "xyes" &&
+   test "x${have_libngtcp2_crypto_libressl}" != "xyes"; then
+  AC_MSG_ERROR([libngtcp2_crypto_libressl was requested (--with-libngtcp2) but not found])
 fi
 
 # ngtcp2_crypto_boringssl (for src)
@@ -859,6 +892,7 @@ if test "x${request_http3}" != "xno" &&
    test "x${have_libngtcp2}" = "xyes" &&
    (test "x${have_libngtcp2_crypto_wolfssl}" = "xyes" ||
     test "x${have_libngtcp2_crypto_quictls}" = "xyes" ||
+    test "x${have_libngtcp2_crypto_libressl}" = "xyes" ||
     test "x${have_libngtcp2_crypto_boringssl}" = "xyes" ||
     test "x${have_libngtcp2_crypto_ossl}" = "xyes") &&
    test "x${have_libnghttp3}" = "xyes"; then
@@ -1273,6 +1307,7 @@ AC_MSG_NOTICE([summary of build options:
       Libc-ares:      ${have_libcares} (CFLAGS='${LIBCARES_CFLAGS}' LIBS='${LIBCARES_LIBS}')
       libngtcp2:      ${have_libngtcp2} (CFLAGS='${LIBNGTCP2_CFLAGS}' LIBS='${LIBNGTCP2_LIBS}')
       libngtcp2_crypto_quictls: ${have_libngtcp2_crypto_quictls} (CFLAGS='${LIBNGTCP2_CRYPTO_QUICTLS_CFLAGS}' LIBS='${LIBNGTCP2_CRYPTO_QUICTLS_LIBS}')
+      libngtcp2_crypto_libressl: ${have_libngtcp2_crypto_libressl} (CFLAGS='${LIBNGTCP2_CRYPTO_LIBRESSL_CFLAGS}' LIBS='${LIBNGTCP2_CRYPTO_LIBRESSL_LIBS}')
       libngtcp2_crypto_boringssl: ${have_libngtcp2_crypto_boringssl} (CFLAGS='${LIBNGTCP2_CRYPTO_BORINGSSL_CFLAGS}' LIBS='${LIBNGTCP2_CRYPTO_BORINGSSL_LIBS}')
       libngtcp2_crypto_ossl: ${have_libngtcp2_crypto_ossl} (CFLAGS='${LIBNGTCP2_CRYPTO_OSSL_CFLAGS}' LIBS='${LIBNGTCP2_CRYPTO_OSSL_LIBS}')
       libnghttp3:     ${have_libnghttp3} (CFLAGS='${LIBNGHTTP3_CFLAGS}' LIBS='${LIBNGHTTP3_LIBS}')
