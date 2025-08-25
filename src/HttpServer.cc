@@ -2017,13 +2017,15 @@ int start_listen(HttpServer *sv, struct ev_loop *loop, Sessions *sessions,
   std::shared_ptr<AcceptHandler> acceptor;
   auto service = util::utos(config->port);
 
-  addrinfo hints{};
-  hints.ai_family = AF_UNSPEC;
-  hints.ai_socktype = SOCK_STREAM;
-  hints.ai_flags = AI_PASSIVE;
+  addrinfo hints{
+    .ai_flags = AI_PASSIVE
 #ifdef AI_ADDRCONFIG
-  hints.ai_flags |= AI_ADDRCONFIG;
+                | AI_ADDRCONFIG
 #endif // AI_ADDRCONFIG
+    ,
+    .ai_family = AF_UNSPEC,
+    .ai_socktype = SOCK_STREAM,
+  };
 
   if (!config->address.empty()) {
     addr = config->address.c_str();

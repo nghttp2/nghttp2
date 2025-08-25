@@ -52,16 +52,20 @@ void QUICListener::on_read() {
   sockaddr_union su;
   std::array<uint8_t, 64_k> buf;
   size_t pktcnt = 0;
-  iovec msg_iov{buf.data(), buf.size()};
-
-  msghdr msg{};
-  msg.msg_name = &su;
-  msg.msg_iov = &msg_iov;
-  msg.msg_iovlen = 1;
+  iovec msg_iov{
+    .iov_base = buf.data(),
+    .iov_len = buf.size(),
+  };
 
   uint8_t msg_ctrl[CMSG_SPACE(sizeof(int)) + CMSG_SPACE(sizeof(in6_pktinfo)) +
                    CMSG_SPACE(sizeof(int))];
-  msg.msg_control = msg_ctrl;
+
+  msghdr msg{
+    .msg_name = &su,
+    .msg_iov = &msg_iov,
+    .msg_iovlen = 1,
+    .msg_control = msg_ctrl,
+  };
 
   auto quic_conn_handler = worker_->get_quic_connection_handler();
 
@@ -126,9 +130,10 @@ void QUICListener::on_read() {
         break;
       }
 
-      Address remote_addr;
-      remote_addr.su = su;
-      remote_addr.len = msg.msg_namelen;
+      Address remote_addr{
+        .len = msg.msg_namelen,
+        .su = su,
+      };
 
       quic_conn_handler->handle_packet(faddr_, remote_addr, local_addr, pi,
                                        data.first(datalen));

@@ -3417,12 +3417,12 @@ int process_options(
   auto &upstreamconf = config->conn.upstream;
 
   if (listenerconf.addrs.empty()) {
-    UpstreamAddr addr{};
-    addr.host = "*"sv;
-    addr.port = 3000;
-    addr.tls = true;
-    addr.family = AF_INET;
-    addr.index = 0;
+    UpstreamAddr addr{
+      .host = "*"sv,
+      .port = 3000,
+      .family = AF_INET,
+      .tls = true,
+    };
     listenerconf.addrs.push_back(addr);
     addr.family = AF_INET6;
     addr.index = 1;

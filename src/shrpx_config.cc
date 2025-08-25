@@ -1210,9 +1210,10 @@ int parse_mapping(
   auto &downstreamconf = *config->conn.downstream;
   auto &addr_groups = downstreamconf.addr_groups;
 
-  DownstreamParams params{};
-  params.proto = Proto::HTTP1;
-  params.weight = 1;
+  DownstreamParams params{
+    .weight = 1,
+    .proto = Proto::HTTP1,
+  };
 
   if (parse_downstream_params(params, src_params) != 0) {
     return -1;
@@ -2891,8 +2892,9 @@ int parse_config(
     auto addr_end = std::ranges::find(optarg, ';');
     auto src_params = std::string_view{addr_end, std::ranges::end(optarg)};
 
-    UpstreamParams params{};
-    params.tls = true;
+    UpstreamParams params{
+      .tls = true,
+    };
 
     if (parse_upstream_params(params, src_params) != 0) {
       return -1;
@@ -2915,13 +2917,14 @@ int parse_config(
       }
     }
 
-    UpstreamAddr addr{};
-    addr.fd = -1;
-    addr.tls = params.tls;
-    addr.sni_fwd = params.sni_fwd;
-    addr.alt_mode = params.alt_mode;
-    addr.accept_proxy_protocol = params.proxyproto;
-    addr.quic = params.quic;
+    UpstreamAddr addr{
+      .alt_mode = params.alt_mode,
+      .tls = params.tls,
+      .sni_fwd = params.sni_fwd,
+      .accept_proxy_protocol = params.proxyproto,
+      .quic = params.quic,
+      .fd = -1,
+    };
 
     if (addr.alt_mode == UpstreamAltMode::API) {
       apiconf.enabled = true;
@@ -4471,12 +4474,13 @@ int configure_downstream_group(Config *config, bool http2_proxy,
   auto &wildcard_patterns = routerconf.wildcard_patterns;
 
   if (addr_groups.empty()) {
-    DownstreamAddrConfig addr{};
-    addr.host = DEFAULT_DOWNSTREAM_HOST;
-    addr.port = DEFAULT_DOWNSTREAM_PORT;
-    addr.proto = Proto::HTTP1;
-    addr.weight = 1;
-    addr.group_weight = 1;
+    DownstreamAddrConfig addr{
+      .host = DEFAULT_DOWNSTREAM_HOST,
+      .weight = 1,
+      .group_weight = 1,
+      .proto = Proto::HTTP1,
+      .port = DEFAULT_DOWNSTREAM_PORT,
+    };
 
     DownstreamAddrGroupConfig g("/"sv);
     g.addrs.push_back(std::move(addr));
@@ -4746,13 +4750,15 @@ int resolve_hostname(Address *addr, const char *hostname, uint16_t port,
 
   auto service = util::utos(port);
 
-  addrinfo hints{};
-  hints.ai_family = family;
-  hints.ai_socktype = SOCK_STREAM;
-  hints.ai_flags |= additional_flags;
+  addrinfo hints{
+    .ai_flags = additional_flags
 #ifdef AI_ADDRCONFIG
-  hints.ai_flags |= AI_ADDRCONFIG;
+                | AI_ADDRCONFIG
 #endif // AI_ADDRCONFIG
+    ,
+    .ai_family = family,
+    .ai_socktype = SOCK_STREAM,
+  };
   addrinfo *res;
 
   rv = getaddrinfo(hostname, service.c_str(), &hints, &res);

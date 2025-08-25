@@ -1174,13 +1174,14 @@ int create_nonblock_udp_socket(int family) {
 }
 
 int bind_any_addr_udp(int fd, int family) {
-  addrinfo hints{};
   addrinfo *res, *rp;
   int rv;
 
-  hints.ai_family = family;
-  hints.ai_socktype = SOCK_DGRAM;
-  hints.ai_flags = AI_PASSIVE;
+  addrinfo hints{
+    .ai_flags = AI_PASSIVE,
+    .ai_family = family,
+    .ai_socktype = SOCK_DGRAM,
+  };
 
   rv = getaddrinfo(nullptr, "0", &hints, &res);
   if (rv != 0) {

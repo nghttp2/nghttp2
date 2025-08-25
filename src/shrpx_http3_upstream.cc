@@ -1392,8 +1392,9 @@ int Http3Upstream::on_downstream_header_complete(Downstream *downstream) {
     }
   }
 
-  nghttp3_data_reader data_read;
-  data_read.read_data = downstream_read_data_callback;
+  nghttp3_data_reader data_read{
+    .read_data = downstream_read_data_callback,
+  };
 
   nghttp3_data_reader *data_readptr;
 

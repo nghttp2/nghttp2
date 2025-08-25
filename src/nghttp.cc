@@ -587,11 +587,11 @@ bool HttpClient::need_upgrade() const {
 int HttpClient::resolve_host(const std::string &host, uint16_t port) {
   int rv;
   this->host = host;
-  addrinfo hints{};
-  hints.ai_family = AF_UNSPEC;
-  hints.ai_socktype = SOCK_STREAM;
-  hints.ai_protocol = 0;
-  hints.ai_flags = AI_ADDRCONFIG;
+  addrinfo hints{
+    .ai_flags = AI_ADDRCONFIG,
+    .ai_family = AF_UNSPEC,
+    .ai_socktype = SOCK_STREAM,
+  };
   rv = getaddrinfo(host.c_str(), util::utos(port).c_str(), &hints, &addrs);
   if (rv != 0) {
     std::cerr << "[ERROR] getaddrinfo() failed: " << gai_strerror(rv)
@@ -1769,12 +1769,12 @@ int on_begin_headers_callback(nghttp2_session *session,
   }
   case NGHTTP2_PUSH_PROMISE: {
     auto stream_id = frame->push_promise.promised_stream_id;
-    urlparse_url u{};
     nghttp2_extpri extpri{
       .urgency = NGHTTP2_EXTPRI_DEFAULT_URGENCY,
     };
 
-    auto req = std::make_unique<Request>("", u, nullptr, 0, extpri);
+    auto req =
+      std::make_unique<Request>("", urlparse_url{}, nullptr, 0, extpri);
     req->stream_id = stream_id;
 
     nghttp2_session_set_stream_user_data(session, stream_id, req.get());

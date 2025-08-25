@@ -566,19 +566,21 @@ int Client::read_quic() {
   sockaddr_union su;
   int rv;
   size_t pktcnt = 0;
-  ngtcp2_pkt_info pi{};
+  ngtcp2_pkt_info pi;
 
-  iovec msg_iov;
-  msg_iov.iov_base = buf.data();
-  msg_iov.iov_len = buf.size();
-
-  msghdr msg{};
-  msg.msg_name = &su;
-  msg.msg_iov = &msg_iov;
-  msg.msg_iovlen = 1;
+  iovec msg_iov{
+    .iov_base = buf.data(),
+    .iov_len = buf.size(),
+  };
 
   uint8_t msg_ctrl[CMSG_SPACE(sizeof(int))];
-  msg.msg_control = msg_ctrl;
+
+  msghdr msg{
+    .msg_name = &su,
+    .msg_iov = &msg_iov,
+    .msg_iovlen = 1,
+    .msg_control = msg_ctrl,
+  };
 
   auto ts = quic_timestamp();
 
