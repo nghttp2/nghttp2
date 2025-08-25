@@ -585,45 +585,28 @@ int Http3Upstream::init(const UpstreamAddr *faddr, const Address &remote_addr,
   auto conn_handler = worker->get_connection_handler();
 
   auto callbacks = ngtcp2_callbacks{
-    nullptr, // client_initial
-    ngtcp2_crypto_recv_client_initial_cb,
-    ngtcp2_crypto_recv_crypto_data_cb,
-    shrpx::handshake_completed,
-    nullptr, // recv_version_negotiation
-    ngtcp2_crypto_encrypt_cb,
-    ngtcp2_crypto_decrypt_cb,
-    ngtcp2_crypto_hp_mask_cb,
-    shrpx::recv_stream_data,
-    shrpx::acked_stream_data_offset,
-    nullptr, // stream_open
-    shrpx::stream_close,
-    nullptr, // recv_stateless_reset
-    nullptr, // recv_retry
-    nullptr, // extend_max_local_streams_bidi
-    nullptr, // extend_max_local_streams_uni
-    rand,
-    get_new_connection_id,
-    remove_connection_id,
-    ngtcp2_crypto_update_key_cb,
-    shrpx::path_validation,
-    nullptr, // select_preferred_addr
-    shrpx::stream_reset,
-    shrpx::extend_max_remote_streams_bidi,
-    nullptr, // extend_max_remote_streams_uni
-    shrpx::extend_max_stream_data,
-    nullptr, // dcid_status
-    nullptr, // handshake_confirmed
-    nullptr, // recv_new_token
-    ngtcp2_crypto_delete_crypto_aead_ctx_cb,
-    ngtcp2_crypto_delete_crypto_cipher_ctx_cb,
-    nullptr, // recv_datagram
-    nullptr, // ack_datagram
-    nullptr, // lost_datagram
-    ngtcp2_crypto_get_path_challenge_data_cb,
-    shrpx::stream_stop_sending,
-    nullptr, // version_negotiation
-    nullptr, // recv_rx_key
-    shrpx::recv_tx_key,
+    .recv_client_initial = ngtcp2_crypto_recv_client_initial_cb,
+    .recv_crypto_data = ngtcp2_crypto_recv_crypto_data_cb,
+    .handshake_completed = shrpx::handshake_completed,
+    .encrypt = ngtcp2_crypto_encrypt_cb,
+    .decrypt = ngtcp2_crypto_decrypt_cb,
+    .hp_mask = ngtcp2_crypto_hp_mask_cb,
+    .recv_stream_data = shrpx::recv_stream_data,
+    .acked_stream_data_offset = shrpx::acked_stream_data_offset,
+    .stream_close = shrpx::stream_close,
+    .rand = rand,
+    .get_new_connection_id = get_new_connection_id,
+    .remove_connection_id = remove_connection_id,
+    .update_key = ngtcp2_crypto_update_key_cb,
+    .path_validation = shrpx::path_validation,
+    .stream_reset = shrpx::stream_reset,
+    .extend_max_remote_streams_bidi = shrpx::extend_max_remote_streams_bidi,
+    .extend_max_stream_data = shrpx::extend_max_stream_data,
+    .delete_crypto_aead_ctx = ngtcp2_crypto_delete_crypto_aead_ctx_cb,
+    .delete_crypto_cipher_ctx = ngtcp2_crypto_delete_crypto_cipher_ctx_cb,
+    .get_path_challenge_data = ngtcp2_crypto_get_path_challenge_data_cb,
+    .stream_stop_sending = shrpx::stream_stop_sending,
+    .recv_tx_key = shrpx::recv_tx_key,
   };
 
   auto config = get_config();

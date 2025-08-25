@@ -371,45 +371,27 @@ int Client::quic_init(const sockaddr *local_addr, socklen_t local_addrlen,
   }
 
   auto callbacks = ngtcp2_callbacks{
-    ngtcp2_crypto_client_initial_cb,
-    nullptr, // recv_client_initial
-    ngtcp2_crypto_recv_crypto_data_cb,
-    h2load::handshake_completed,
-    nullptr, // recv_version_negotiation
-    ngtcp2_crypto_encrypt_cb,
-    ngtcp2_crypto_decrypt_cb,
-    ngtcp2_crypto_hp_mask_cb,
-    h2load::recv_stream_data,
-    h2load::acked_stream_data_offset,
-    nullptr, // stream_open
-    h2load::stream_close,
-    nullptr, // recv_stateless_reset
-    ngtcp2_crypto_recv_retry_cb,
-    h2load::extend_max_local_streams_bidi,
-    nullptr, // extend_max_local_streams_uni
-    h2load::rand,
-    get_new_connection_id,
-    nullptr, // remove_connection_id
-    ngtcp2_crypto_update_key_cb,
-    nullptr, // path_validation
-    nullptr, // select_preferred_addr
-    h2load::stream_reset,
-    nullptr, // extend_max_remote_streams_bidi
-    nullptr, // extend_max_remote_streams_uni
-    h2load::extend_max_stream_data,
-    nullptr, // dcid_status
-    nullptr, // handshake_confirmed
-    nullptr, // recv_new_token
-    ngtcp2_crypto_delete_crypto_aead_ctx_cb,
-    ngtcp2_crypto_delete_crypto_cipher_ctx_cb,
-    nullptr, // recv_datagram
-    nullptr, // ack_datagram
-    nullptr, // lost_datagram
-    ngtcp2_crypto_get_path_challenge_data_cb,
-    h2load::stream_stop_sending,
-    nullptr, // version_negotiation
-    h2load::recv_rx_key,
-    nullptr, // recv_tx_key
+    .client_initial = ngtcp2_crypto_client_initial_cb,
+    .recv_crypto_data = ngtcp2_crypto_recv_crypto_data_cb,
+    .handshake_completed = h2load::handshake_completed,
+    .encrypt = ngtcp2_crypto_encrypt_cb,
+    .decrypt = ngtcp2_crypto_decrypt_cb,
+    .hp_mask = ngtcp2_crypto_hp_mask_cb,
+    .recv_stream_data = h2load::recv_stream_data,
+    .acked_stream_data_offset = h2load::acked_stream_data_offset,
+    .stream_close = h2load::stream_close,
+    .recv_retry = ngtcp2_crypto_recv_retry_cb,
+    .extend_max_local_streams_bidi = h2load::extend_max_local_streams_bidi,
+    .rand = h2load::rand,
+    .get_new_connection_id = get_new_connection_id,
+    .update_key = ngtcp2_crypto_update_key_cb,
+    .stream_reset = h2load::stream_reset,
+    .extend_max_stream_data = h2load::extend_max_stream_data,
+    .delete_crypto_aead_ctx = ngtcp2_crypto_delete_crypto_aead_ctx_cb,
+    .delete_crypto_cipher_ctx = ngtcp2_crypto_delete_crypto_cipher_ctx_cb,
+    .get_path_challenge_data = ngtcp2_crypto_get_path_challenge_data_cb,
+    .stream_stop_sending = h2load::stream_stop_sending,
+    .recv_rx_key = h2load::recv_rx_key,
   };
 
   ngtcp2_cid scid, dcid;
