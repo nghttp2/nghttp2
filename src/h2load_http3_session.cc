@@ -108,8 +108,9 @@ int64_t Http3Session::submit_request_internal() {
     return rv;
   }
 
-  nghttp3_data_reader dr{};
-  dr.read_data = h2load::read_data;
+  nghttp3_data_reader dr{
+    .read_data = h2load::read_data,
+  };
 
   rv = nghttp3_conn_submit_request(
     conn_, stream_id, reinterpret_cast<nghttp3_nv *>(nva.data()), nva.size(),

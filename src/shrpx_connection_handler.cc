@@ -131,23 +131,19 @@ void ConnectionHandler::set_ticket_keys_to_worker(
 
 void ConnectionHandler::worker_reopen_log_files() {
   for (auto &worker : workers_) {
-    WorkerEvent wev{};
-
-    wev.type = WorkerEventType::REOPEN_LOG;
-
-    worker->send(std::move(wev));
+    worker->send(WorkerEvent{
+      .type = WorkerEventType::REOPEN_LOG,
+    });
   }
 }
 
 void ConnectionHandler::worker_replace_downstream(
   std::shared_ptr<DownstreamConfig> downstreamconf) {
   for (auto &worker : workers_) {
-    WorkerEvent wev{};
-
-    wev.type = WorkerEventType::REPLACE_DOWNSTREAM;
-    wev.downstreamconf = downstreamconf;
-
-    worker->send(std::move(wev));
+    worker->send(WorkerEvent{
+      .type = WorkerEventType::REPLACE_DOWNSTREAM,
+      .downstreamconf = downstreamconf,
+    });
   }
 }
 
@@ -348,10 +344,9 @@ void ConnectionHandler::graceful_shutdown_worker() {
   }
 
   for (auto &worker : workers_) {
-    WorkerEvent wev{};
-    wev.type = WorkerEventType::GRACEFUL_SHUTDOWN;
-
-    worker->send(std::move(wev));
+    worker->send(WorkerEvent{
+      .type = WorkerEventType::GRACEFUL_SHUTDOWN,
+    });
   }
 
 #ifndef NOTHREADS
@@ -589,12 +584,11 @@ int ConnectionHandler::forward_quic_packet(const UpstreamAddr *faddr,
     return -1;
   }
 
-  WorkerEvent wev{};
-  wev.type = WorkerEventType::QUIC_PKT_FORWARD;
-  wev.quic_pkt = std::make_unique<QUICPacket>(faddr->index, remote_addr,
-                                              local_addr, pi, data);
-
-  worker->send(std::move(wev));
+  worker->send(WorkerEvent{
+    .type = WorkerEventType::QUIC_PKT_FORWARD,
+    .quic_pkt = std::make_unique<QUICPacket>(faddr->index, remote_addr,
+                                             local_addr, pi, data),
+  });
 
   return 0;
 }
@@ -710,9 +704,10 @@ int ConnectionHandler::forward_quic_packet_to_lingering_worker_process(
     },
   };
 
-  msghdr msg{};
-  msg.msg_iov = msg_iov;
-  msg.msg_iovlen = array_size(msg_iov);
+  msghdr msg{
+    .msg_iov = msg_iov,
+    .msg_iovlen = array_size(msg_iov),
+  };
 
   ssize_t nwrite;
 

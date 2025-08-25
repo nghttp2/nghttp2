@@ -1480,15 +1480,17 @@ std::span<const uint8_t> Client::write_udp(const sockaddr *addr,
     return {};
   }
 
-  iovec msg_iov;
-  msg_iov.iov_base = const_cast<uint8_t *>(data.data());
-  msg_iov.iov_len = data.size();
+  iovec msg_iov{
+    .iov_base = const_cast<uint8_t *>(data.data()),
+    .iov_len = data.size(),
+  };
 
-  msghdr msg{};
-  msg.msg_name = const_cast<sockaddr *>(addr);
-  msg.msg_namelen = addrlen;
-  msg.msg_iov = &msg_iov;
-  msg.msg_iovlen = 1;
+  msghdr msg{
+    .msg_name = const_cast<sockaddr *>(addr),
+    .msg_namelen = addrlen,
+    .msg_iov = &msg_iov,
+    .msg_iovlen = 1,
+  };
 
 #  ifdef UDP_SEGMENT
   std::array<uint8_t, CMSG_SPACE(sizeof(uint16_t))> msg_ctrl{};
@@ -1879,12 +1881,13 @@ void resolve_host() {
   };
 
   int rv;
-  addrinfo hints{}, *res;
+  addrinfo *res;
 
-  hints.ai_family = AF_UNSPEC;
-  hints.ai_socktype = SOCK_STREAM;
-  hints.ai_protocol = 0;
-  hints.ai_flags = AI_ADDRCONFIG;
+  addrinfo hints{
+    .ai_flags = AI_ADDRCONFIG,
+    .ai_family = AF_UNSPEC,
+    .ai_socktype = SOCK_STREAM,
+  };
 
   const auto &resolve_host =
     config.connect_to_host.empty() ? config.host : config.connect_to_host;

@@ -743,13 +743,15 @@ int Worker::create_tcp_server_socket(UpstreamAddr &faddr) {
   auto &listenerconf = get_config()->conn.listener;
 
   auto service = util::utos(faddr.port);
-  addrinfo hints{};
-  hints.ai_family = faddr.family;
-  hints.ai_socktype = SOCK_STREAM;
-  hints.ai_flags = AI_PASSIVE;
+  addrinfo hints{
+    .ai_flags = AI_PASSIVE
 #ifdef AI_ADDRCONFIG
-  hints.ai_flags |= AI_ADDRCONFIG;
+                | AI_ADDRCONFIG
 #endif // AI_ADDRCONFIG
+    ,
+    .ai_family = faddr.family,
+    .ai_socktype = SOCK_STREAM,
+  };
 
   auto node = faddr.host == "*"sv ? nullptr : faddr.host.data();
 
@@ -1085,13 +1087,15 @@ int Worker::create_quic_server_socket(UpstreamAddr &faddr) {
   int rv;
 
   auto service = util::utos(faddr.port);
-  addrinfo hints{};
-  hints.ai_family = faddr.family;
-  hints.ai_socktype = SOCK_DGRAM;
-  hints.ai_flags = AI_PASSIVE;
+  addrinfo hints{
+    .ai_flags = AI_PASSIVE
 #  ifdef AI_ADDRCONFIG
-  hints.ai_flags |= AI_ADDRCONFIG;
+                | AI_ADDRCONFIG
 #  endif // AI_ADDRCONFIG
+    ,
+    .ai_family = faddr.family,
+    .ai_socktype = SOCK_DGRAM,
+  };
 
   auto node = faddr.host == "*"sv ? nullptr : faddr.host.data();
 

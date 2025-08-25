@@ -154,11 +154,12 @@ int DNSResolver::resolve(const std::string_view &name, int family) {
 
   auto &dnsconf = get_config()->dns;
 
-  ares_options opts{};
-  opts.sock_state_cb = sock_state_cb;
-  opts.sock_state_cb_data = this;
-  opts.timeout = static_cast<int>(dnsconf.timeout.lookup * 1000);
-  opts.tries = static_cast<int>(dnsconf.max_try);
+  ares_options opts{
+    .timeout = static_cast<int>(dnsconf.timeout.lookup * 1000),
+    .tries = static_cast<int>(dnsconf.max_try),
+    .sock_state_cb = sock_state_cb,
+    .sock_state_cb_data = this,
+  };
 
   auto optmask = ARES_OPT_SOCK_STATE_CB | ARES_OPT_TIMEOUTMS | ARES_OPT_TRIES;
 
@@ -175,8 +176,9 @@ int DNSResolver::resolve(const std::string_view &name, int family) {
   channel_ = chan;
   status_ = DNSResolverStatus::RUNNING;
 
-  ares_addrinfo_hints hints{};
-  hints.ai_family = family_;
+  ares_addrinfo_hints hints{
+    .ai_family = family_,
+  };
 
   ares_getaddrinfo(channel_, name_.data(), nullptr, &hints, addrinfo_cb, this);
   reset_timeout();
