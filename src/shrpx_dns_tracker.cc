@@ -64,10 +64,11 @@ ResolverEntry DNSTracker::make_entry(std::unique_ptr<DualDNSResolver> resolv,
                                      const Address *result) {
   auto &dnsconf = get_config()->dns;
 
-  auto ent = ResolverEntry{};
-  ent.resolv = std::move(resolv);
-  ent.host = std::move(host);
-  ent.status = status;
+  auto ent = ResolverEntry{
+    .host = std::move(host),
+    .resolv = std::move(resolv),
+    .status = status,
+  };
   switch (status) {
   case DNSResolverStatus::ERROR:
   case DNSResolverStatus::OK:
