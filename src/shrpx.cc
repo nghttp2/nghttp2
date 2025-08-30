@@ -370,7 +370,7 @@ int save_pid() {
   std::array<char, STRERROR_BUFSIZE> errbuf;
   auto config = get_config();
 
-  constexpr auto SUFFIX = ".XXXXXX"sv;
+  static constexpr auto SUFFIX = ".XXXXXX"sv;
   auto &pid_file = config->pid_file;
 
   auto len = config->pid_file.size() + SUFFIX.size();

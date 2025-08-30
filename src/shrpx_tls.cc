@@ -505,7 +505,7 @@ namespace {
 int quic_alpn_select_proto_cb(SSL *ssl, const unsigned char **out,
                               unsigned char *outlen, const unsigned char *in,
                               unsigned int inlen, void *arg) {
-  constexpr std::string_view alpnlist[] = {
+  static constexpr std::string_view alpnlist[] = {
     "h3"sv,
     "h3-29"sv,
   };

@@ -49,7 +49,7 @@ namespace tls {
 // suites for TLSv1.2 by mozilla.
 //
 // https://wiki.mozilla.org/Security/Server_Side_TLS
-constexpr auto DEFAULT_CIPHER_LIST =
+inline constexpr auto DEFAULT_CIPHER_LIST =
   "ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-"
   "AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-"
   "POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-"
@@ -59,7 +59,7 @@ constexpr auto DEFAULT_CIPHER_LIST =
 // for TLSv1.3 by mozilla.
 //
 // https://wiki.mozilla.org/Security/Server_Side_TLS
-constexpr auto DEFAULT_TLS13_CIPHER_LIST =
+inline constexpr auto DEFAULT_TLS13_CIPHER_LIST =
 #if defined(NGHTTP2_GENUINE_OPENSSL) ||                                        \
   defined(NGHTTP2_OPENSSL_IS_LIBRESSL) || defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
   "TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:"
@@ -69,11 +69,11 @@ constexpr auto DEFAULT_TLS13_CIPHER_LIST =
 #endif // !NGHTTP2_GENUINE_OPENSSL && !NGHTTP2_OPENSSL_IS_LIBRESSL
   ;
 
-constexpr auto NGHTTP2_TLS_MIN_VERSION = TLS1_VERSION;
+inline constexpr auto NGHTTP2_TLS_MIN_VERSION = TLS1_VERSION;
 #ifdef TLS1_3_VERSION
-constexpr auto NGHTTP2_TLS_MAX_VERSION = TLS1_3_VERSION;
+inline constexpr auto NGHTTP2_TLS_MAX_VERSION = TLS1_3_VERSION;
 #else  // !TLS1_3_VERSION
-constexpr auto NGHTTP2_TLS_MAX_VERSION = TLS1_2_VERSION;
+inline constexpr auto NGHTTP2_TLS_MAX_VERSION = TLS1_2_VERSION;
 #endif // !TLS1_3_VERSION
 
 std::string_view get_tls_protocol(SSL *ssl);
@@ -107,7 +107,7 @@ bool check_http2_requirement(SSL *ssl);
 // 0 if it succeeds, or -1.
 int ssl_ctx_set_proto_versions(SSL_CTX *ssl_ctx, int min, int max);
 
-constexpr uint16_t CERTIFICATE_COMPRESSION_ALGO_BROTLI = 2;
+inline constexpr uint16_t CERTIFICATE_COMPRESSION_ALGO_BROTLI = 2;
 
 #if defined(NGHTTP2_OPENSSL_IS_BORINGSSL) && defined(HAVE_LIBBROTLI)
 int cert_compress(SSL *ssl, CBB *out, const uint8_t *in, size_t in_len);

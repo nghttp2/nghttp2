@@ -115,9 +115,9 @@ int APIDownstreamConnection::send_reply(unsigned int http_status,
     assert(0);
   }
 
-  constexpr auto M1 = "{\"status\":\""sv;
-  constexpr auto M2 = "\",\"code\":"sv;
-  constexpr auto M3 = "}"sv;
+  static constexpr auto M1 = "{\"status\":\""sv;
+  static constexpr auto M2 = "\",\"code\":"sv;
+  static constexpr auto M3 = "}"sv;
 
   // 3 is the number of digits in http_status, assuming it is 3 digits
   // number.

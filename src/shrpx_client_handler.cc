@@ -1190,10 +1190,11 @@ int ClientHandler::perform_http2_upgrade(HttpsUpstream *http) {
 
   input->remove(*output, input->rleft());
 
-  constexpr auto res = "HTTP/1.1 101 Switching Protocols\r\n"
-                       "Connection: Upgrade\r\n"
-                       "Upgrade: " NGHTTP2_CLEARTEXT_PROTO_VERSION_ID "\r\n"
-                       "\r\n"sv;
+  static constexpr auto res =
+    "HTTP/1.1 101 Switching Protocols\r\n"
+    "Connection: Upgrade\r\n"
+    "Upgrade: " NGHTTP2_CLEARTEXT_PROTO_VERSION_ID "\r\n"
+    "\r\n"sv;
 
   output->append(res);
   upstream_ = std::move(upstream);
@@ -1352,7 +1353,7 @@ int ClientHandler::proxy_protocol_read() {
 
   --end;
 
-  constexpr auto HEADER = "PROXY "sv;
+  static constexpr auto HEADER = "PROXY "sv;
 
   if (static_cast<size_t>(end - rb_.pos()) < HEADER.size()) {
     if (LOG_ENABLED(INFO)) {

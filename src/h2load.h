@@ -75,7 +75,7 @@ using namespace nghttp2;
 
 namespace h2load {
 
-constexpr auto BACKOFF_WRITE_BUFFER_THRES = 16_k;
+inline constexpr auto BACKOFF_WRITE_BUFFER_THRES = 16_k;
 
 class Session;
 struct Worker;

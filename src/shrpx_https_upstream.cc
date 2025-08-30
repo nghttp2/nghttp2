@@ -537,7 +537,7 @@ int htp_hdrs_completecb(llhttp_t *htp) {
     // Continue here to make the client happy.
     if (downstream->get_expect_100_continue()) {
       auto output = downstream->get_response_buf();
-      constexpr auto res = "HTTP/1.1 100 Continue\r\n\r\n"sv;
+      static constexpr auto res = "HTTP/1.1 100 Continue\r\n\r\n"sv;
       output->append(res);
       handler->signal_write();
     }

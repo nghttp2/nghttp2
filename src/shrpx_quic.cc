@@ -372,14 +372,15 @@ int verify_token(std::span<const uint8_t> token, const sockaddr *sa,
 int generate_quic_connection_id_encryption_key(std::span<uint8_t> key,
                                                std::span<const uint8_t> secret,
                                                std::span<const uint8_t> salt) {
-  constexpr uint8_t info[] = "connection id encryption key";
+  static constexpr auto info = "connection id encryption key"sv;
   ngtcp2_crypto_md sha256;
   ngtcp2_crypto_md_init(
     &sha256, reinterpret_cast<void *>(const_cast<EVP_MD *>(EVP_sha256())));
 
   if (ngtcp2_crypto_hkdf(key.data(), key.size(), &sha256, secret.data(),
-                         secret.size(), salt.data(), salt.size(), info,
-                         str_size(info)) != 0) {
+                         secret.size(), salt.data(), salt.size(),
+                         reinterpret_cast<const uint8_t *>(info.data()),
+                         info.size()) != 0) {
     return -1;
   }
 

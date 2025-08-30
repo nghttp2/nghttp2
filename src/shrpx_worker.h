@@ -156,7 +156,7 @@ struct DownstreamAddr {
   bool queued;
 };
 
-constexpr uint32_t MAX_DOWNSTREAM_ADDR_WEIGHT = 256;
+inline constexpr uint32_t MAX_DOWNSTREAM_ADDR_WEIGHT = 256;
 
 struct DownstreamAddrEntry {
   DownstreamAddr *addr;

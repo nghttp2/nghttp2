@@ -136,7 +136,7 @@ O cpydig4(uint32_t n, O result) {
 } // namespace
 
 namespace {
-constinit const auto MONTH = std::to_array({
+constexpr auto MONTH = std::to_array({
   "Jan"sv,
   "Feb"sv,
   "Mar"sv,
@@ -151,7 +151,7 @@ constinit const auto MONTH = std::to_array({
   "Dec"sv,
 });
 
-constinit const auto WEEKDAY = std::to_array({
+constexpr auto WEEKDAY = std::to_array({
   "Sun"sv,
   "Mon"sv,
   "Tue"sv,
