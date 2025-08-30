@@ -86,8 +86,8 @@ struct MemcachedSendbuf {
   size_t left() const { return headbuf.rleft() + send_value_left; }
 };
 
-constexpr uint8_t MEMCACHED_REQ_MAGIC = 0x80;
-constexpr uint8_t MEMCACHED_RES_MAGIC = 0x81;
+inline constexpr uint8_t MEMCACHED_REQ_MAGIC = 0x80;
+inline constexpr uint8_t MEMCACHED_RES_MAGIC = 0x81;
 
 // MemcachedConnection implements part of memcached binary protocol.
 // This is not full brown implementation.  Just the part we need is

@@ -67,16 +67,16 @@ using namespace std::literals;
 
 namespace nghttp2 {
 
-constexpr auto NGHTTP2_H2_ALPN = "\x2h2"sv;
-constexpr auto NGHTTP2_H2 = "h2"sv;
+inline constexpr auto NGHTTP2_H2_ALPN = "\x2h2"sv;
+inline constexpr auto NGHTTP2_H2 = "h2"sv;
 
-constexpr auto NGHTTP2_H1_1_ALPN = "\x8http/1.1"sv;
-constexpr auto NGHTTP2_H1_1 = "http/1.1"sv;
+inline constexpr auto NGHTTP2_H1_1_ALPN = "\x8http/1.1"sv;
+inline constexpr auto NGHTTP2_H1_1 = "http/1.1"sv;
 
 namespace util {
 
 template <std::predicate<size_t> Pred>
-constexpr auto pred_tbl_gen256(Pred pred) {
+consteval auto pred_tbl_gen256(Pred pred) {
   std::array<bool, 256> tbl;
 
   for (size_t i = 0; i < tbl.size(); ++i) {
@@ -86,27 +86,29 @@ constexpr auto pred_tbl_gen256(Pred pred) {
   return tbl;
 }
 
-constexpr auto alpha_pred(size_t i) noexcept {
+consteval auto alpha_pred(size_t i) noexcept {
   return ('A' <= i && i <= 'Z') || ('a' <= i && i <= 'z');
 }
 
-constinit const auto is_alpha_tbl = pred_tbl_gen256(alpha_pred);
+inline constexpr auto is_alpha_tbl = pred_tbl_gen256(alpha_pred);
 
 constexpr bool is_alpha(char c) noexcept {
   return is_alpha_tbl[static_cast<uint8_t>(c)];
 }
 
-constexpr auto digit_pred(size_t i) noexcept { return '0' <= i && i <= '9'; }
+consteval auto digit_pred(size_t i) noexcept { return '0' <= i && i <= '9'; }
 
-constinit const auto is_digit_tbl = pred_tbl_gen256(digit_pred);
+inline constexpr auto is_digit_tbl = pred_tbl_gen256(digit_pred);
 
 constexpr bool is_digit(char c) noexcept {
   return is_digit_tbl[static_cast<uint8_t>(c)];
 }
 
-constinit const auto is_hex_digit_tbl = pred_tbl_gen256([](auto i) {
+consteval auto hex_digit_pred(size_t i) noexcept {
   return digit_pred(i) || ('A' <= i && i <= 'F') || ('a' <= i && i <= 'f');
-});
+}
+
+inline constexpr auto is_hex_digit_tbl = pred_tbl_gen256(hex_digit_pred);
 
 constexpr bool is_hex_digit(char c) noexcept {
   return is_hex_digit_tbl[static_cast<uint8_t>(c)];
@@ -125,24 +127,26 @@ constexpr bool is_hex_string(R &&r) {
   return is_hex_string(std::ranges::begin(r), std::ranges::end(r));
 }
 
-constinit const auto in_rfc3986_unreserved_chars_tbl =
-  pred_tbl_gen256([](size_t i) {
-    switch (i) {
-    case '-':
-    case '.':
-    case '_':
-    case '~':
-      return true;
-    }
+consteval auto rfc3986_unreserved_chars_pred(size_t i) noexcept {
+  switch (i) {
+  case '-':
+  case '.':
+  case '_':
+  case '~':
+    return true;
+  }
 
-    return digit_pred(i) || alpha_pred(i);
-  });
+  return digit_pred(i) || alpha_pred(i);
+}
+
+inline constexpr auto in_rfc3986_unreserved_chars_tbl =
+  pred_tbl_gen256(rfc3986_unreserved_chars_pred);
 
 constexpr bool in_rfc3986_unreserved_chars(char c) noexcept {
   return in_rfc3986_unreserved_chars_tbl[static_cast<uint8_t>(c)];
 }
 
-constinit const auto in_rfc3986_sub_delims_tbl = pred_tbl_gen256([](size_t i) {
+consteval auto rfc3986_sub_delims_pred(size_t i) noexcept {
   switch (i) {
   case '!':
   case '$':
@@ -159,13 +163,16 @@ constinit const auto in_rfc3986_sub_delims_tbl = pred_tbl_gen256([](size_t i) {
   }
 
   return false;
-});
+}
+
+inline constexpr auto in_rfc3986_sub_delims_tbl =
+  pred_tbl_gen256(rfc3986_sub_delims_pred);
 
 constexpr bool in_rfc3986_sub_delims(char c) noexcept {
   return in_rfc3986_sub_delims_tbl[static_cast<uint8_t>(c)];
 }
 
-constexpr auto token_pred(size_t i) noexcept {
+consteval auto token_pred(size_t i) noexcept {
   switch (i) {
   case '!':
   case '#':
@@ -188,14 +195,14 @@ constexpr auto token_pred(size_t i) noexcept {
   return digit_pred(i) || alpha_pred(i);
 }
 
-constinit const auto in_token_tbl = pred_tbl_gen256(token_pred);
+inline constexpr auto in_token_tbl = pred_tbl_gen256(token_pred);
 
 // Returns true if |c| is in token (HTTP-p1, Section 3.2.6)
 constexpr bool in_token(char c) noexcept {
   return in_token_tbl[static_cast<uint8_t>(c)];
 }
 
-constinit const auto in_attr_char_tbl = pred_tbl_gen256([](size_t i) {
+consteval auto attr_char_pred(size_t i) noexcept {
   switch (i) {
   case '*':
   case '\'':
@@ -204,13 +211,15 @@ constinit const auto in_attr_char_tbl = pred_tbl_gen256([](size_t i) {
   }
 
   return token_pred(i);
-});
+}
+
+inline constexpr auto in_attr_char_tbl = pred_tbl_gen256(attr_char_pred);
 
 constexpr bool in_attr_char(char c) noexcept {
   return in_attr_char_tbl[static_cast<uint8_t>(c)];
 }
 
-constinit const auto hex_to_uint_tbl = []() {
+inline constexpr auto hex_to_uint_tbl = []() {
   std::array<uint32_t, 256> tbl;
 
   std::ranges::fill(tbl, 256);
@@ -366,7 +375,7 @@ constexpr size_t quote_stringlen(R &&r) {
   return n;
 }
 
-constinit const auto hexdigits = []() {
+inline constexpr auto hexdigits = []() {
   constexpr char LOWER_XDIGITS[] = "0123456789abcdef";
 
   std::array<char, 512> tbl;
@@ -463,7 +472,7 @@ constexpr O format_hex(T n, O result) {
   return result;
 }
 
-constinit const auto upper_hexdigits = []() {
+inline constexpr auto upper_hexdigits = []() {
   constexpr char UPPER_XDIGITS[] = "0123456789ABCDEF";
 
   std::array<char, 512> tbl;
@@ -591,7 +600,7 @@ time_t parse_http_date(const std::string_view &s);
 // ASN1_TIME_print().
 time_t parse_openssl_asn1_time_print(const std::string_view &s);
 
-constinit const auto upcase_tbl = []() {
+inline constexpr auto upcase_tbl = []() {
   std::array<char, 256> tbl;
 
   for (size_t i = 0; i < 256; ++i) {
@@ -609,7 +618,7 @@ constexpr char upcase(char c) noexcept {
   return upcase_tbl[static_cast<uint8_t>(c)];
 }
 
-static constexpr uint8_t lowcase_tbl[] = {
+inline constexpr uint8_t lowcase_tbl[] = {
   0,   1,   2,   3,   4,   5,   6,   7,   8,   9,   10,  11,  12,  13,  14,
   15,  16,  17,  18,  19,  20,  21,  22,  23,  24,  25,  26,  27,  28,  29,
   30,  31,  32,  33,  34,  35,  36,  37,  38,  39,  40,  41,  42,  43,  44,
@@ -713,7 +722,7 @@ constexpr O tolower(R &&r, O result) {
 // Returns string representation of |n| with 2 fractional digits.
 std::string dtos(double n);
 
-constinit const auto count_digit_tbl = []() {
+inline constexpr auto count_digit_tbl = []() {
   std::array<uint64_t, std::numeric_limits<uint64_t>::digits10> tbl;
 
   uint64_t x = 1;
@@ -741,7 +750,7 @@ template <std::unsigned_integral T> constexpr size_t count_digit(T x) {
   return y + 1;
 }
 
-constinit const auto utos_digits = []() {
+inline constexpr auto utos_digits = []() {
   std::array<char, 200> a;
 
   for (size_t i = 0; i < 100; ++i) {
@@ -1161,8 +1170,9 @@ std::string format_duration(double t);
 
 // The maximum buffer size including terminal NULL to store the result
 // of make_hostport.
-constexpr size_t max_hostport = NI_MAXHOST + /* [] for IPv6 */ 2 + /* : */ 1 +
-                                /* port */ 5 + /* terminal NULL */ 1;
+inline constexpr size_t max_hostport = NI_MAXHOST + /* [] for IPv6 */ 2 +
+                                       /* : */ 1 +
+                                       /* port */ 5 + /* terminal NULL */ 1;
 
 // Just like make_http_hostport(), but doesn't treat 80 and 443
 // specially.

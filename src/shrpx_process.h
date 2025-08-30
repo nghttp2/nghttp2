@@ -29,8 +29,8 @@
 
 namespace shrpx {
 
-constexpr uint8_t SHRPX_IPC_REOPEN_LOG = 1;
-constexpr uint8_t SHRPX_IPC_GRACEFUL_SHUTDOWN = 2;
+inline constexpr uint8_t SHRPX_IPC_REOPEN_LOG = 1;
+inline constexpr uint8_t SHRPX_IPC_GRACEFUL_SHUTDOWN = 2;
 
 } // namespace shrpx
 

@@ -36,15 +36,13 @@ namespace nghttp2 {
 
 namespace base64 {
 
-namespace {
-constexpr char B64_CHARS[] = {
+inline constexpr char B64_CHARS[] = {
   'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M',
   'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
   'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
   'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
   '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '+', '/',
 };
-} // namespace
 
 constexpr size_t encode_length(size_t n) { return (n + 2) / 3 * 4; }
 
@@ -121,7 +119,7 @@ constexpr std::string encode(R &&r) {
   return res;
 }
 
-constinit const int B64_INDEX_TABLE[] = {
+inline constexpr int B64_INDEX_TABLE[] = {
   -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
   -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
   -1, -1, -1, -1, -1, 62, -1, -1, -1, 63, 52, 53, 54, 55, 56, 57, 58, 59, 60,
