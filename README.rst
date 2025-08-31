@@ -380,7 +380,7 @@ from source:
 
 .. code-block:: text
 
-   $ git clone --depth 1 -b v1.5.1 https://github.com/libbpf/libbpf
+   $ git clone --depth 1 -b v1.6.2 https://github.com/libbpf/libbpf
    $ cd libbpf
    $ PREFIX=$PWD/build make -C src install
    $ cd ..
