@@ -28,7 +28,7 @@ RUN git clone --recursive --shallow-submodules --depth 1 -b v1.11.0 https://gith
     cd .. && \
     rm -rf nghttp3
 
-RUN git clone --recursive --shallow-submodules --depth 1 -b v1.15.0 https://github.com/ngtcp2/ngtcp2 && \
+RUN git clone --recursive --shallow-submodules --depth 1 -b v1.15.1 https://github.com/ngtcp2/ngtcp2 && \
     cd ngtcp2 && \
     autoreconf -i && \
     ./configure --disable-dependency-tracking --enable-lib-only \

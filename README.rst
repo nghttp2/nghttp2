@@ -364,7 +364,7 @@ Build ngtcp2:
 
 .. code-block:: text
 
-   $ git clone --depth 1 -b v1.15.0 https://github.com/ngtcp2/ngtcp2
+   $ git clone --depth 1 -b v1.15.1 https://github.com/ngtcp2/ngtcp2
    $ cd ngtcp2
    $ git submodule update --init --depth 1
    $ autoreconf -i
