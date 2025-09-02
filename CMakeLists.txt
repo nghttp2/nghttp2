@@ -32,7 +32,12 @@ set(LT_CURRENT  42)
 set(LT_REVISION 5)
 set(LT_AGE      28)
 
-set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
+# Appending to CMAKE_MODULE_PATH instead of prepending is important
+# when building nghttp2 as ExternalProject. This allows the parent project
+# to uniformly override the way nghttp2 and other sub-projects find packages,
+# resolving conflicts and potentially adding support for more package managers.
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+
 include(Version)
 
 math(EXPR LT_SOVERSION "${LT_CURRENT} - ${LT_AGE}")
