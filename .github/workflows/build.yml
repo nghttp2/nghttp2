@@ -639,7 +639,7 @@ jobs:
         GPG_KEY: ${{ secrets.GPG_KEY }}
         GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
     - name: Make release
-      uses: actions/github-script@v7
+      uses: actions/github-script@v8
       with:
         script: |
           const fs = require('fs')
