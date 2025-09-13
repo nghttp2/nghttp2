@@ -5843,6 +5843,12 @@ nghttp2_ssize nghttp2_session_mem_recv2(nghttp2_session *session,
           case NGHTTP2_ALTSVC:
             if ((session->builtin_recv_ext_types & NGHTTP2_TYPEMASK_ALTSVC) ==
                 0) {
+              /* Receiving too frequent unknown frames is suspicious. */
+              rv = session_update_glitch_ratelim(session);
+              if (rv != 0) {
+                return rv;
+              }
+
               busy = 1;
               iframe->state = NGHTTP2_IB_IGN_PAYLOAD;
               break;
@@ -5854,6 +5860,13 @@ nghttp2_ssize nghttp2_session_mem_recv2(nghttp2_session *session,
             iframe->frame.ext.payload = &iframe->ext_frame_payload.altsvc;
 
             if (session->server) {
+              /* Receiving too frequent ALTSVC from client is
+                 suspicious. */
+              rv = session_update_glitch_ratelim(session);
+              if (rv != 0) {
+                return rv;
+              }
+
               busy = 1;
               iframe->state = NGHTTP2_IB_IGN_PAYLOAD;
               break;
@@ -5873,6 +5886,12 @@ nghttp2_ssize nghttp2_session_mem_recv2(nghttp2_session *session,
             break;
           case NGHTTP2_ORIGIN:
             if (!(session->builtin_recv_ext_types & NGHTTP2_TYPEMASK_ORIGIN)) {
+              /* Receiving too frequent unknown frames is suspicious. */
+              rv = session_update_glitch_ratelim(session);
+              if (rv != 0) {
+                return rv;
+              }
+
               busy = 1;
               iframe->state = NGHTTP2_IB_IGN_PAYLOAD;
               break;
@@ -5884,6 +5903,13 @@ nghttp2_ssize nghttp2_session_mem_recv2(nghttp2_session *session,
 
             if (session->server || iframe->frame.hd.stream_id ||
                 (iframe->frame.hd.flags & 0xf0)) {
+              /* Receiving too frequent invalid frames is
+                 suspicious. */
+              rv = session_update_glitch_ratelim(session);
+              if (rv != 0) {
+                return rv;
+              }
+
               busy = 1;
               iframe->state = NGHTTP2_IB_IGN_PAYLOAD;
               break;
@@ -5910,6 +5936,12 @@ nghttp2_ssize nghttp2_session_mem_recv2(nghttp2_session *session,
           case NGHTTP2_PRIORITY_UPDATE:
             if ((session->builtin_recv_ext_types &
                  NGHTTP2_TYPEMASK_PRIORITY_UPDATE) == 0) {
+              /* Receiving too frequent unknown frames is suspicious. */
+              rv = session_update_glitch_ratelim(session);
+              if (rv != 0) {
+                return rv;
+              }
+
               busy = 1;
               iframe->state = NGHTTP2_IB_IGN_PAYLOAD;
               break;
