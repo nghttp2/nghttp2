@@ -45,7 +45,7 @@ m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 dnl See versioning rule:
 dnl  https://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
 AC_SUBST(LT_CURRENT, 43)
-AC_SUBST(LT_REVISION, 0)
+AC_SUBST(LT_REVISION, 1)
 AC_SUBST(LT_AGE, 29)
 
 major=`echo $PACKAGE_VERSION |cut -d. -f1 | sed -e "s/[^0-9]//g"`
