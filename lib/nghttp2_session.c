@@ -3409,11 +3409,6 @@ static int session_handle_invalid_stream2(nghttp2_session *session,
                                           int lib_error_code) {
   int rv;
 
-  rv = session_update_glitch_ratelim(session);
-  if (rv != 0) {
-    return rv;
-  }
-
   rv = nghttp2_session_add_rst_stream(
     session, stream_id, get_error_code_from_lib_error_code(lib_error_code));
   if (rv != 0) {
