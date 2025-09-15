@@ -5849,6 +5849,10 @@ nghttp2_ssize nghttp2_session_mem_recv2(nghttp2_session *session,
                 return rv;
               }
 
+              if (iframe->state == NGHTTP2_IB_IGN_ALL) {
+                return (nghttp2_ssize)inlen;
+              }
+
               busy = 1;
               iframe->state = NGHTTP2_IB_IGN_PAYLOAD;
               break;
@@ -5865,6 +5869,10 @@ nghttp2_ssize nghttp2_session_mem_recv2(nghttp2_session *session,
               rv = session_update_glitch_ratelim(session);
               if (rv != 0) {
                 return rv;
+              }
+
+              if (iframe->state == NGHTTP2_IB_IGN_ALL) {
+                return (nghttp2_ssize)inlen;
               }
 
               busy = 1;
@@ -5892,6 +5900,10 @@ nghttp2_ssize nghttp2_session_mem_recv2(nghttp2_session *session,
                 return rv;
               }
 
+              if (iframe->state == NGHTTP2_IB_IGN_ALL) {
+                return (nghttp2_ssize)inlen;
+              }
+
               busy = 1;
               iframe->state = NGHTTP2_IB_IGN_PAYLOAD;
               break;
@@ -5908,6 +5920,10 @@ nghttp2_ssize nghttp2_session_mem_recv2(nghttp2_session *session,
               rv = session_update_glitch_ratelim(session);
               if (rv != 0) {
                 return rv;
+              }
+
+              if (iframe->state == NGHTTP2_IB_IGN_ALL) {
+                return (nghttp2_ssize)inlen;
               }
 
               busy = 1;
@@ -5940,6 +5956,10 @@ nghttp2_ssize nghttp2_session_mem_recv2(nghttp2_session *session,
               rv = session_update_glitch_ratelim(session);
               if (rv != 0) {
                 return rv;
+              }
+
+              if (iframe->state == NGHTTP2_IB_IGN_ALL) {
+                return (nghttp2_ssize)inlen;
               }
 
               busy = 1;

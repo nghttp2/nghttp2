@@ -2302,6 +2302,88 @@ void test_nghttp2_session_recv_unknown_frame(void) {
 
   nghttp2_session_del(session);
   nghttp2_option_del(option);
+
+  /* Receiving too many ALTSVC frames and client does not support
+     them */
+  nghttp2_session_client_new(&session, &callbacks, NULL);
+
+  nghttp2_frame_hd_init(&hd, 100, NGHTTP2_ALTSVC, NGHTTP2_FLAG_NONE, 0);
+
+  nghttp2_frame_pack_frame_hd(data, &hd);
+  datalen = NGHTTP2_FRAME_HDLEN + hd.length;
+
+  for (;;) {
+    rv = nghttp2_session_mem_recv2(session, data, datalen);
+
+    assert_ptrdiff((nghttp2_ssize)datalen, ==, rv);
+
+    if (session->iframe.state == NGHTTP2_IB_IGN_ALL) {
+      break;
+    }
+  }
+
+  item = nghttp2_session_get_next_ob_item(session);
+
+  assert_not_null(item);
+  assert_uint8(NGHTTP2_GOAWAY, ==, item->frame.hd.type);
+  assert_uint32(NGHTTP2_ENHANCE_YOUR_CALM, ==, item->frame.goaway.error_code);
+
+  nghttp2_session_del(session);
+
+  /* Receiving too many ORIGIN frames and client does not support
+     them */
+  nghttp2_session_client_new(&session, &callbacks, NULL);
+
+  nghttp2_frame_hd_init(&hd, 100, NGHTTP2_ORIGIN, NGHTTP2_FLAG_NONE, 0);
+
+  nghttp2_frame_pack_frame_hd(data, &hd);
+  datalen = NGHTTP2_FRAME_HDLEN + hd.length;
+
+  for (;;) {
+    rv = nghttp2_session_mem_recv2(session, data, datalen);
+
+    assert_ptrdiff((nghttp2_ssize)datalen, ==, rv);
+
+    if (session->iframe.state == NGHTTP2_IB_IGN_ALL) {
+      break;
+    }
+  }
+
+  item = nghttp2_session_get_next_ob_item(session);
+
+  assert_not_null(item);
+  assert_uint8(NGHTTP2_GOAWAY, ==, item->frame.hd.type);
+  assert_uint32(NGHTTP2_ENHANCE_YOUR_CALM, ==, item->frame.goaway.error_code);
+
+  nghttp2_session_del(session);
+
+  /* Receiving too many PRIORITY_UPDATE frames and server does not
+     support them */
+  nghttp2_session_server_new(&session, &callbacks, NULL);
+
+  nghttp2_frame_hd_init(&hd, 100, NGHTTP2_PRIORITY_UPDATE, NGHTTP2_FLAG_NONE,
+                        0);
+
+  nghttp2_frame_pack_frame_hd(data, &hd);
+  datalen = NGHTTP2_FRAME_HDLEN + hd.length;
+
+  for (;;) {
+    rv = nghttp2_session_mem_recv2(session, data, datalen);
+
+    assert_ptrdiff((nghttp2_ssize)datalen, ==, rv);
+
+    if (session->iframe.state == NGHTTP2_IB_IGN_ALL) {
+      break;
+    }
+  }
+
+  item = nghttp2_session_get_next_ob_item(session);
+
+  assert_not_null(item);
+  assert_uint8(NGHTTP2_GOAWAY, ==, item->frame.hd.type);
+  assert_uint32(NGHTTP2_ENHANCE_YOUR_CALM, ==, item->frame.goaway.error_code);
+
+  nghttp2_session_del(session);
 }
 
 void test_nghttp2_session_recv_unexpected_continuation(void) {
@@ -2637,6 +2719,7 @@ void test_nghttp2_session_recv_altsvc(void) {
   nghttp2_mem *mem;
   nghttp2_ssize rv;
   nghttp2_option *option;
+  nghttp2_outbound_item *item;
   static const uint8_t origin[] = "nghttp2.org";
   static const uint8_t field_value[] = "h2=\":443\"";
 
@@ -2834,6 +2917,38 @@ void test_nghttp2_session_recv_altsvc(void) {
 
   nghttp2_session_del(session);
 
+  /* Server receives too many ALTSVC frames */
+  nghttp2_buf_reset(&buf);
+
+  nghttp2_session_server_new2(&session, &callbacks, &ud, option);
+
+  nghttp2_frame_hd_init(&hd, 2 + sizeof(origin) - 1 + sizeof(field_value) - 1,
+                        NGHTTP2_ALTSVC, NGHTTP2_FLAG_NONE, 0);
+  nghttp2_frame_pack_frame_hd(buf.last, &hd);
+  buf.last += NGHTTP2_FRAME_HDLEN;
+  nghttp2_put_uint16be(buf.last, sizeof(origin) - 1);
+  buf.last += 2;
+  buf.last = nghttp2_cpymem(buf.last, origin, sizeof(origin) - 1);
+  buf.last = nghttp2_cpymem(buf.last, field_value, sizeof(field_value) - 1);
+
+  for (;;) {
+    rv = nghttp2_session_mem_recv2(session, buf.pos, nghttp2_buf_len(&buf));
+
+    assert_ptrdiff((nghttp2_ssize)nghttp2_buf_len(&buf), ==, rv);
+
+    if (session->iframe.state == NGHTTP2_IB_IGN_ALL) {
+      break;
+    }
+  }
+
+  item = nghttp2_session_get_next_ob_item(session);
+
+  assert_not_null(item);
+  assert_uint8(NGHTTP2_GOAWAY, ==, item->frame.hd.type);
+  assert_uint32(NGHTTP2_ENHANCE_YOUR_CALM, ==, item->frame.goaway.error_code);
+
+  nghttp2_session_del(session);
+
   nghttp2_buf_free(&buf, mem);
   nghttp2_option_del(option);
 }
@@ -2848,6 +2963,7 @@ void test_nghttp2_session_recv_origin(void) {
   nghttp2_extension frame;
   nghttp2_ext_origin origin;
   nghttp2_origin_entry ov;
+  nghttp2_outbound_item *item;
   static const uint8_t nghttp2[] = "https://nghttp2.org";
 
   frame_pack_bufs_init(&bufs);
@@ -2959,6 +3075,34 @@ void test_nghttp2_session_recv_origin(void) {
 
   assert_ptrdiff((nghttp2_ssize)nghttp2_bufs_len(&bufs), ==, rv);
   assert_int(0, ==, ud.frame_recv_cb_called);
+
+  nghttp2_session_del(session);
+  nghttp2_bufs_reset(&bufs);
+
+  /* Server receives too many ORIGIN frames. */
+  nghttp2_session_server_new2(&session, &callbacks, &ud, option);
+
+  nghttp2_frame_origin_init(&frame, &ov, 1);
+  rv = nghttp2_frame_pack_origin(&bufs, &frame);
+
+  assert_ptrdiff(0, ==, rv);
+
+  for (;;) {
+    rv = nghttp2_session_mem_recv2(session, bufs.head->buf.pos,
+                                   nghttp2_bufs_len(&bufs));
+
+    assert_ptrdiff((nghttp2_ssize)nghttp2_bufs_len(&bufs), ==, rv);
+
+    if (session->iframe.state == NGHTTP2_IB_IGN_ALL) {
+      break;
+    }
+  }
+
+  item = nghttp2_session_get_next_ob_item(session);
+
+  assert_not_null(item);
+  assert_uint8(NGHTTP2_GOAWAY, ==, item->frame.hd.type);
+  assert_uint32(NGHTTP2_ENHANCE_YOUR_CALM, ==, item->frame.goaway.error_code);
 
   nghttp2_session_del(session);
   nghttp2_bufs_reset(&bufs);
