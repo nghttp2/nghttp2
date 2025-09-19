@@ -830,9 +830,8 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
 #endif // NGHTTP2_GENUINE_OPENSSL || NGHTTP2_OPENSSL_IS_LIBRESSL ||
        // NGHTTP2_OPENSSL_IS_WOLFSSL
 
-  if (SSL_CTX_set1_groups_list(ssl_ctx, tlsconf.ecdh_curves.data()) != 1) {
-    LOG(FATAL) << "SSL_CTX_set1_groups_list " << tlsconf.ecdh_curves
-               << " failed";
+  if (SSL_CTX_set1_groups_list(ssl_ctx, tlsconf.groups.data()) != 1) {
+    LOG(FATAL) << "SSL_CTX_set1_groups_list " << tlsconf.groups << " failed";
     DIE();
   }
 
@@ -1113,9 +1112,8 @@ SSL_CTX *create_quic_ssl_context(const char *private_key_file,
 #  endif // NGHTTP2_GENUINE_OPENSSL || NGHTTP2_OPENSSL_IS_LIBRESSL ||
          // NGHTTP2_OPENSSL_IS_WOLFSSL
 
-  if (SSL_CTX_set1_groups_list(ssl_ctx, tlsconf.ecdh_curves.data()) != 1) {
-    LOG(FATAL) << "SSL_CTX_set1_groups_list " << tlsconf.ecdh_curves
-               << " failed";
+  if (SSL_CTX_set1_groups_list(ssl_ctx, tlsconf.groups.data()) != 1) {
+    LOG(FATAL) << "SSL_CTX_set1_groups_list " << tlsconf.groups << " failed";
     DIE();
   }
 

@@ -1666,7 +1666,7 @@ void fill_default_config(Config *config) {
   tlsconf.max_proto_version =
     tls::proto_version_from_string(DEFAULT_TLS_MAX_PROTO_VERSION);
   tlsconf.max_early_data = 16_k;
-  tlsconf.ecdh_curves = "X25519:P-256:P-384:P-521"sv;
+  tlsconf.groups = "X25519:P-256:P-384:P-521"sv;
 
   auto &httpconf = config->http;
   httpconf.server_name = "nghttpx"sv;
@@ -2430,14 +2430,14 @@ SSL/TLS:
               --tls13-client-ciphers for TLSv1.2 or earlier.
               Default: )"
       << config->tls.client.tls13_ciphers << R"(
-  --ecdh-curves=<LIST>
-              Set  supported  curve  list  for  frontend  connections.
-              <LIST> is a  colon separated list of curve  NID or names
+  --groups=<LIST>
+              Set the  supported group list for  frontend connections.
+              <LIST> is a  colon separated list of group  NID or names
               in the preference order.  The supported curves depend on
               the  linked  OpenSSL  library.  This  function  requires
               OpenSSL >= 1.0.2.
               Default: )"
-      << config->tls.ecdh_curves << R"(
+      << config->tls.groups << R"(
   -k, --insecure
               Don't  verify backend  server's  certificate  if TLS  is
               enabled for backend connections.
@@ -3978,6 +3978,7 @@ int main(int argc, char **argv) {
        195},
       {SHRPX_OPT_FRONTEND_HTTP3_IDLE_TIMEOUT.data(), required_argument, &flag,
        196},
+      {SHRPX_OPT_GROUPS.data(), required_argument, &flag, 197},
       {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -4902,6 +4903,10 @@ int main(int argc, char **argv) {
         // --frontend-http3-idle-timeout
         cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_HTTP3_IDLE_TIMEOUT,
                              std::string_view{optarg});
+        break;
+      case 197:
+        // --groups
+        cmdcfgs.emplace_back(SHRPX_OPT_GROUPS, std::string_view{optarg});
         break;
       default:
         break;

@@ -1793,6 +1793,11 @@ int option_lookup_token(const std::string_view &name) {
         return SHRPX_OPTID_DAEMON;
       }
       break;
+    case 's':
+      if (util::strieq("group"sv, name.substr(0, 5))) {
+        return SHRPX_OPTID_GROUPS;
+      }
+      break;
     case 't':
       if (util::strieq("cacer"sv, name.substr(0, 5))) {
         return SHRPX_OPTID_CACERT;
@@ -3906,7 +3911,11 @@ int parse_config(
     return parse_uint_with_unit(
       &config->http2.downstream.decoder_dynamic_table_size, opt, optarg);
   case SHRPX_OPTID_ECDH_CURVES:
-    config->tls.ecdh_curves = make_string_ref(config->balloc, optarg);
+    LOG(WARN) << opt << ": deprecated.  Use " << SHRPX_OPT_GROUPS
+              << " instead.";
+    // fall through
+  case SHRPX_OPTID_GROUPS:
+    config->tls.groups = make_string_ref(config->balloc, optarg);
     return 0;
   case SHRPX_OPTID_TLS_SCT_DIR:
 #if defined(NGHTTP2_GENUINE_OPENSSL) || defined(NGHTTP2_OPENSSL_IS_BORINGSSL)
