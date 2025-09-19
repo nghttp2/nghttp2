@@ -231,6 +231,11 @@ int servername_callback(SSL *ssl, int *al, void *arg) {
   auto num_sigalgs =
     SSL_get_sigalgs(ssl, 0, nullptr, nullptr, nullptr, nullptr, nullptr);
 
+  auto ecdsa = false;
+#  if OPENSSL_3_5_0_API
+  auto mldsa = false;
+#  endif // OPENSSL_3_5_0_API
+
   for (idx = 0; idx < num_sigalgs; ++idx) {
     int signhash;
 
@@ -240,15 +245,35 @@ int servername_callback(SSL *ssl, int *al, void *arg) {
     case NID_ecdsa_with_SHA256:
     case NID_ecdsa_with_SHA384:
     case NID_ecdsa_with_SHA512:
+      ecdsa = true;
       break;
-    default:
-      continue;
+#  if OPENSSL_3_5_0_API
+    case NID_ML_DSA_44:
+    case NID_ML_DSA_65:
+    case NID_ML_DSA_87:
+      mldsa = true;
+      break;
+#  endif // OPENSSL_3_5_0_API
     }
-
-    break;
   }
 
-  if (idx == num_sigalgs) {
+#  if OPENSSL_3_5_0_API
+  if (mldsa) {
+    for (auto ssl_ctx : ssl_ctx_list) {
+      auto cert = SSL_CTX_get0_certificate(ssl_ctx);
+      auto pubkey = X509_get0_pubkey(cert);
+
+      if (EVP_PKEY_is_a(pubkey, "ML-DSA-44") ||
+          EVP_PKEY_is_a(pubkey, "ML-DSA-65") ||
+          EVP_PKEY_is_a(pubkey, "ML-DSA-87")) {
+        SSL_set_SSL_CTX(ssl, ssl_ctx);
+        return SSL_TLSEXT_ERR_OK;
+      }
+    }
+  }
+#  endif // OPENSSL_3_5_0_API
+
+  if (!ecdsa) {
     SSL_set_SSL_CTX(ssl, ssl_ctx_list[0]);
 
     return SSL_TLSEXT_ERR_OK;
