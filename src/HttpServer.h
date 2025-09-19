@@ -36,6 +36,7 @@
 #include <vector>
 #include <unordered_map>
 #include <memory>
+#include <string_view>
 
 #include "ssl_compat.h"
 
@@ -70,6 +71,7 @@ struct Config {
   std::string dh_param_file;
   std::string address;
   std::string mime_types_file;
+  std::string_view groups;
   ev_tstamp stream_read_timeout;
   ev_tstamp stream_write_timeout;
   void *data_ptr;

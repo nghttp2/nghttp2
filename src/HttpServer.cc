@@ -79,6 +79,7 @@
 #endif // O_BINARY
 
 using namespace std::chrono_literals;
+using namespace std::string_literals;
 
 namespace nghttp2 {
 
@@ -101,6 +102,7 @@ void print_session_id(int64_t id) { std::cout << "[id=" << id << "] "; }
 
 Config::Config()
   : mime_types_file("/etc/mime.types"),
+    groups("X25519:P-256:P-384:P-521"sv),
     stream_read_timeout(1_min),
     stream_write_timeout(1_min),
     data_ptr(nullptr),
@@ -2159,13 +2161,11 @@ int HttpServer::run() {
     SSL_CTX_set_session_id_context(ssl_ctx, sid_ctx, sizeof(sid_ctx) - 1);
     SSL_CTX_set_session_cache_mode(ssl_ctx, SSL_SESS_CACHE_SERVER);
 
-#ifndef OPENSSL_NO_EC
-    if (SSL_CTX_set1_curves_list(ssl_ctx, "P-256") != 1) {
-      std::cerr << "SSL_CTX_set1_curves_list failed: "
+    if (SSL_CTX_set1_groups_list(ssl_ctx, config_->groups.data()) != 1) {
+      std::cerr << "SSL_CTX_set1_groups_list failed: "
                 << ERR_error_string(ERR_get_error(), nullptr);
       return -1;
     }
-#endif // OPENSSL_NO_EC
 
     if (!config_->dh_param_file.empty()) {
       // Read DH parameters from file
