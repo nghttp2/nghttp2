@@ -382,6 +382,7 @@ inline constexpr auto SHRPX_OPT_FRONTEND_HTTP2_IDLE_TIMEOUT =
   "frontend-http2-idle-timeout"sv;
 inline constexpr auto SHRPX_OPT_FRONTEND_HTTP3_IDLE_TIMEOUT =
   "frontend-http3-idle-timeout"sv;
+inline constexpr auto SHRPX_OPT_GROUPS = "groups"sv;
 
 inline constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
@@ -731,7 +732,7 @@ struct TLSConfig {
   std::string_view dh_param_file;
   std::string_view ciphers;
   std::string_view tls13_ciphers;
-  std::string_view ecdh_curves;
+  std::string_view groups;
   std::string_view cacert;
   // The maximum amount of 0-RTT data that server accepts.
   uint32_t max_early_data;
@@ -1240,6 +1241,7 @@ enum {
   SHRPX_OPTID_FRONTEND_QUIC_SECRET_FILE,
   SHRPX_OPTID_FRONTEND_READ_TIMEOUT,
   SHRPX_OPTID_FRONTEND_WRITE_TIMEOUT,
+  SHRPX_OPTID_GROUPS,
   SHRPX_OPTID_HEADER_FIELD_BUFFER,
   SHRPX_OPTID_HOST_REWRITE,
   SHRPX_OPTID_HTTP2_ALTSVC,

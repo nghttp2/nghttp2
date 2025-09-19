@@ -204,6 +204,7 @@ OPTIONS = [
     "frontend-header-timeout",
     "frontend-http2-idle-timeout",
     "frontend-http3-idle-timeout",
+    "groups",
 ]
 
 LOGVARS = [
