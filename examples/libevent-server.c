@@ -136,8 +136,8 @@ static SSL_CTX *create_ssl_ctx(const char *key_file, const char *cert_file) {
                                  SSL_OP_NO_COMPRESSION |
                                  SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION);
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
-  if (SSL_CTX_set1_curves_list(ssl_ctx, "P-256") != 1) {
-    errx(1, "SSL_CTX_set1_curves_list failed: %s",
+  if (SSL_CTX_set1_groups_list(ssl_ctx, "P-256") != 1) {
+    errx(1, "SSL_CTX_set1_groups_list failed: %s",
          ERR_error_string(ERR_get_error(), NULL));
   }
 #else  /* !(OPENSSL_VERSION_NUMBER >= 0x30000000L) */

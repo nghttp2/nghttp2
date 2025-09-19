@@ -830,13 +830,11 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
 #endif // NGHTTP2_GENUINE_OPENSSL || NGHTTP2_OPENSSL_IS_LIBRESSL ||
        // NGHTTP2_OPENSSL_IS_WOLFSSL
 
-#ifndef OPENSSL_NO_EC
-  if (SSL_CTX_set1_curves_list(ssl_ctx, tlsconf.ecdh_curves.data()) != 1) {
-    LOG(FATAL) << "SSL_CTX_set1_curves_list " << tlsconf.ecdh_curves
+  if (SSL_CTX_set1_groups_list(ssl_ctx, tlsconf.ecdh_curves.data()) != 1) {
+    LOG(FATAL) << "SSL_CTX_set1_groups_list " << tlsconf.ecdh_curves
                << " failed";
     DIE();
   }
-#endif // OPENSSL_NO_EC
 
   if (!tlsconf.dh_param_file.empty()) {
     // Read DH parameters from file
@@ -1115,13 +1113,11 @@ SSL_CTX *create_quic_ssl_context(const char *private_key_file,
 #  endif // NGHTTP2_GENUINE_OPENSSL || NGHTTP2_OPENSSL_IS_LIBRESSL ||
          // NGHTTP2_OPENSSL_IS_WOLFSSL
 
-#  ifndef OPENSSL_NO_EC
-  if (SSL_CTX_set1_curves_list(ssl_ctx, tlsconf.ecdh_curves.data()) != 1) {
-    LOG(FATAL) << "SSL_CTX_set1_curves_list " << tlsconf.ecdh_curves
+  if (SSL_CTX_set1_groups_list(ssl_ctx, tlsconf.ecdh_curves.data()) != 1) {
+    LOG(FATAL) << "SSL_CTX_set1_groups_list " << tlsconf.ecdh_curves
                << " failed";
     DIE();
   }
-#  endif // OPENSSL_NO_EC
 
   if (!tlsconf.dh_param_file.empty()) {
     // Read DH parameters from file

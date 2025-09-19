@@ -3047,20 +3047,10 @@ int main(int argc, char **argv) {
 #endif // NGHTTP2_GENUINE_OPENSSL || NGHTTP2_OPENSSL_IS_LIBRESSL ||
        // NGHTTP2_OPENSSL_IS_WOLFSSL
 
-#ifdef NGHTTP2_OPENSSL_IS_WOLFSSL
-  // Passing X25519 to SSL_CTX_set1_groups_list fails for some reason.
-  if (SSL_CTX_set1_curves_list(
-        ssl_ctx, const_cast<char *>(config.groups.c_str())) != 1) {
-    std::cerr << "SSL_CTX_set1_curves_list failed: "
-              << ERR_error_string(ERR_get_error(), nullptr) << std::endl;
-    exit(EXIT_FAILURE);
-  }
-#else  // !NGHTTP2_OPENSSL_IS_WOLFSSL
   if (SSL_CTX_set1_groups_list(ssl_ctx, config.groups.c_str()) != 1) {
     std::cerr << "SSL_CTX_set1_groups_list failed" << std::endl;
     exit(EXIT_FAILURE);
   }
-#endif // !NGHTTP2_OPENSSL_IS_WOLFSSL
 
   std::vector<unsigned char> proto_list;
   for (const auto &proto : config.alpn_list) {
