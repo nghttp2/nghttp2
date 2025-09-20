@@ -2456,12 +2456,12 @@ SSL/TLS:
               Specify  additional certificate  and  private key  file.
               nghttpx will  choose certificates based on  the hostname
               indicated by client using TLS SNI extension.  If nghttpx
-              is  built with  OpenSSL  >= 1.0.2,  the shared  elliptic
-              curves (e.g., P-256) between  client and server are also
-              taken into  consideration.  This allows nghttpx  to send
-              ECDSA certificate  to modern clients, while  sending RSA
-              based certificate to older  clients.  This option can be
-              used  multiple  times.
+              is built with OpenSSL >= 1.0.2, the signature algorithms
+              (e.g., ECDSA+SHA256) presented by  client are also taken
+              into consideration.  This allows  nghttpx to send ML-DSA
+              or ECDSA  certificate to  modern clients,  while sending
+              RSA based certificate to older clients.  This option can
+              be used multiple times.
 
               Additional parameter  can be specified in  <PARAM>.  The
               available <PARAM> is "sct-dir=<DIR>".
