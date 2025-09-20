@@ -278,6 +278,26 @@ int select_ssl_ctx(SSL *ssl, const std::string_view &servername) {
   }
 #endif // NGHTTP2_OPENSSL_IS_BORINGSSL
 
+#ifdef NGHTTP2_OPENSSL_IS_WOLFSSL
+  const uint8_t *sigalgs;
+  uint16_t num_sigalgs;
+
+  if (wolfSSL_get_client_suites_sigalgs(ssl, nullptr, nullptr, &sigalgs,
+                                        &num_sigalgs) == WOLFSSL_SUCCESS) {
+    for (size_t i = 0; i < num_sigalgs; i += 2) {
+      int hashalgo;
+      int sigalgo;
+
+      if (wolfSSL_get_sigalg_info(sigalgs[i], sigalgs[i + 1], &hashalgo,
+                                  &sigalgo) == 0 &&
+          sigalgo == ECDSAk) {
+        ecdsa = true;
+        break;
+      }
+    }
+  }
+#endif // NGHTTP2_OPENSSL_IS_WOLFSSL
+
 #if OPENSSL_3_5_0_API
   if (mldsa) {
     for (auto ssl_ctx : ssl_ctx_list) {
@@ -325,17 +345,18 @@ int servername_callback(SSL *ssl, int *al, void *arg) {
     return SSL_TLSEXT_ERR_NOACK;
   }
 
-#ifndef NGHTTP2_OPENSSL_IS_BORINGSSL
+#if defined(NGHTTP2_GENUINE_OPENSSL) || defined(NGHTTP2_OPENSSL_IS_LIBRESSL)
   if (select_ssl_ctx(ssl, servername) != 0) {
     return SSL_TLSEXT_ERR_NOACK;
   }
-#endif // !defined(NGHTTP2_OPENSSL_IS_BORINGSSL)
+#endif // defined(NGHTTP2_GENUINE_OPENSSL) ||
+       // defined(NGHTTP2_OPENSSL_IS_LIBRESSL)
 
   return SSL_TLSEXT_ERR_OK;
 }
 } // namespace
 
-#ifdef NGHTTP2_OPENSSL_IS_BORINGSSL
+#if defined(NGHTTP2_OPENSSL_IS_BORINGSSL) || defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 namespace {
 int cert_cb(SSL *ssl, void *arg) {
   auto servername = get_servername(ssl);
@@ -347,7 +368,8 @@ int cert_cb(SSL *ssl, void *arg) {
   return 1;
 }
 } // namespace
-#endif // NGHTTP2_OPENSSL_IS_BORINGSSL
+#endif // defined(NGHTTP2_OPENSSL_IS_BORINGSSL) ||
+       // defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 
 namespace {
 int tls_session_client_new_cb(SSL *ssl, SSL_SESSION *session) {
@@ -987,9 +1009,10 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
                        verify_callback);
   }
   SSL_CTX_set_tlsext_servername_callback(ssl_ctx, servername_callback);
-#ifdef NGHTTP2_OPENSSL_IS_BORINGSSL
+#if defined(NGHTTP2_OPENSSL_IS_BORINGSSL) || defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
   SSL_CTX_set_cert_cb(ssl_ctx, cert_cb, nullptr);
-#endif // NGHTTP2_OPENSSL_IS_BORINGSSL
+#endif // defined(NGHTTP2_OPENSSL_IS_BORINGSSL) ||
+       // defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 #if OPENSSL_3_0_0_API
   SSL_CTX_set_tlsext_ticket_key_evp_cb(ssl_ctx, ticket_key_cb);
 #else  // !OPENSSL_3_0_0_API
@@ -1272,9 +1295,11 @@ SSL_CTX *create_quic_ssl_context(const char *private_key_file,
                        verify_callback);
   }
   SSL_CTX_set_tlsext_servername_callback(ssl_ctx, servername_callback);
-#  ifdef NGHTTP2_OPENSSL_IS_BORINGSSL
+#  if defined(NGHTTP2_OPENSSL_IS_BORINGSSL) ||                                 \
+    defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
   SSL_CTX_set_cert_cb(ssl_ctx, cert_cb, nullptr);
-#  endif // NGHTTP2_OPENSSL_IS_BORINGSSL
+#  endif // defined(NGHTTP2_OPENSSL_IS_BORINGSSL) ||
+         // defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 #  if OPENSSL_3_0_0_API
   SSL_CTX_set_tlsext_ticket_key_evp_cb(ssl_ctx, ticket_key_cb);
 #  else  // !OPENSSL_3_0_0_API
