@@ -238,9 +238,7 @@ int select_ssl_ctx(SSL *ssl, const std::string_view &servername) {
   }
 
   auto ecdsa = false;
-#if OPENSSL_3_5_0_API
   auto mldsa = false;
-#endif // OPENSSL_3_5_0_API
 
 #ifdef NGHTTP2_GENUINE_OPENSSL
   auto num_sigalgs =
@@ -304,39 +302,44 @@ int select_ssl_ctx(SSL *ssl, const std::string_view &servername) {
   }
 #endif // NGHTTP2_OPENSSL_IS_WOLFSSL
 
-#if OPENSSL_3_5_0_API
-  if (mldsa) {
-    for (auto ssl_ctx : ssl_ctx_list) {
-      auto cert = SSL_CTX_get0_certificate(ssl_ctx);
-      auto pubkey = X509_get0_pubkey(cert);
-
-      if (EVP_PKEY_is_a(pubkey, "ML-DSA-44") ||
-          EVP_PKEY_is_a(pubkey, "ML-DSA-65") ||
-          EVP_PKEY_is_a(pubkey, "ML-DSA-87")) {
-        SSL_set_SSL_CTX(ssl, ssl_ctx);
-        return 0;
-      }
-    }
-  }
-#endif // OPENSSL_3_5_0_API
-
-  if (!ecdsa) {
+  if (!ecdsa && !mldsa) {
     SSL_set_SSL_CTX(ssl, ssl_ctx_list[0]);
 
     return 0;
   }
 
-  for (auto ssl_ctx : ssl_ctx_list) {
-    auto cert = SSL_CTX_get0_certificate(ssl_ctx);
-    auto pubkey = X509_get0_pubkey(cert);
+  SSL_CTX *selected = nullptr;
 
-    if (EVP_PKEY_base_id(pubkey) == EVP_PKEY_EC) {
-      SSL_set_SSL_CTX(ssl, ssl_ctx);
-      return 0;
+  for (auto ssl_ctx : ssl_ctx_list) {
+    auto tls_ctx_data =
+      static_cast<TLSContextData *>(SSL_CTX_get_app_data(ssl_ctx));
+
+    switch (tls_ctx_data->cert_type) {
+    case EVP_PKEY_EC:
+      if (ecdsa && !selected) {
+        selected = ssl_ctx;
+      }
+
+      break;
+#if OPENSSL_3_5_0_API
+    case EVP_PKEY_ML_DSA_44:
+    case EVP_PKEY_ML_DSA_65:
+    case EVP_PKEY_ML_DSA_87:
+      if (mldsa) {
+        SSL_set_SSL_CTX(ssl, ssl_ctx);
+        return 0;
+      }
+
+      break;
+#endif // OPENSSL_3_5_0_API
     }
   }
 
-  SSL_set_SSL_CTX(ssl, ssl_ctx_list[0]);
+  if (selected) {
+    SSL_set_SSL_CTX(ssl, selected);
+  } else {
+    SSL_set_SSL_CTX(ssl, ssl_ctx_list[0]);
+  }
 
   return 0;
 }
@@ -826,6 +829,29 @@ create_tls_proto_mask(const std::vector<std::string_view> &tls_proto_list) {
   return res;
 }
 
+namespace {
+int get_cert_type(SSL_CTX *ssl_ctx) {
+  auto cert = SSL_CTX_get0_certificate(ssl_ctx);
+  auto pubkey = X509_get0_pubkey(cert);
+
+#if OPENSSL_3_5_0_API
+  if (EVP_PKEY_is_a(pubkey, "ML-DSA-44")) {
+    return EVP_PKEY_ML_DSA_44;
+  }
+
+  if (EVP_PKEY_is_a(pubkey, "ML-DSA-65")) {
+    return EVP_PKEY_ML_DSA_65;
+  }
+
+  if (EVP_PKEY_is_a(pubkey, "ML-DSA-87")) {
+    return EVP_PKEY_ML_DSA_87;
+  }
+#endif // OPENSSL_3_5_0_API
+
+  return EVP_PKEY_base_id(pubkey);
+}
+} // namespace
+
 SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
                             const std::vector<uint8_t> &sct_data
 #ifdef HAVE_NEVERBLEED
@@ -1033,8 +1059,10 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
   // ALPN selection callback
   SSL_CTX_set_alpn_select_cb(ssl_ctx, alpn_select_proto_cb, nullptr);
 
-  auto tls_ctx_data = new TLSContextData();
-  tls_ctx_data->sct_data = sct_data;
+  auto tls_ctx_data = new TLSContextData{
+    .sct_data = sct_data,
+    .cert_type = get_cert_type(ssl_ctx),
+  };
 
   SSL_CTX_set_app_data(ssl_ctx, tls_ctx_data);
 
@@ -1315,8 +1343,10 @@ SSL_CTX *create_quic_ssl_context(const char *private_key_file,
   // ALPN selection callback
   SSL_CTX_set_alpn_select_cb(ssl_ctx, quic_alpn_select_proto_cb, nullptr);
 
-  auto tls_ctx_data = new TLSContextData();
-  tls_ctx_data->sct_data = sct_data;
+  auto tls_ctx_data = new TLSContextData{
+    .sct_data = sct_data,
+    .cert_type = get_cert_type(ssl_ctx),
+  };
 
   SSL_CTX_set_app_data(ssl_ctx, tls_ctx_data);
 
