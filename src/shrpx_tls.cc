@@ -174,27 +174,31 @@ int ssl_pem_passwd_cb(char *buf, int size, int rwflag, void *user_data) {
 } // namespace
 
 namespace {
-// *al is set to SSL_AD_UNRECOGNIZED_NAME by openssl, so we don't have
-// to set it explicitly.
-int servername_callback(SSL *ssl, int *al, void *arg) {
+std::string_view get_servername(SSL *ssl) {
+  auto rawhost = SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name);
+  if (rawhost == nullptr) {
+    return ""sv;
+  }
+
+  auto servername = std::string_view{rawhost};
+  // NI_MAXHOST includes terminal NULL.
+  if (servername.empty() || servername.size() + 1 > NI_MAXHOST) {
+    return ""sv;
+  }
+
+  return servername;
+}
+} // namespace
+
+namespace {
+int select_ssl_ctx(SSL *ssl, const std::string_view &servername) {
   auto conn = static_cast<Connection *>(SSL_get_app_data(ssl));
   auto handler = static_cast<ClientHandler *>(conn->data);
   auto worker = handler->get_worker();
 
-  auto rawhost = SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name);
-  if (rawhost == nullptr) {
-    return SSL_TLSEXT_ERR_NOACK;
-  }
-
-  auto len = strlen(rawhost);
-  // NI_MAXHOST includes terminal NULL.
-  if (len == 0 || len + 1 > NI_MAXHOST) {
-    return SSL_TLSEXT_ERR_NOACK;
-  }
-
   std::array<char, NI_MAXHOST> buf;
 
-  auto end_buf = util::tolower(rawhost, rawhost + len, std::ranges::begin(buf));
+  auto end_buf = util::tolower(servername, std::ranges::begin(buf));
 
   auto hostname = std::string_view{std::ranges::begin(buf), end_buf};
 
@@ -208,7 +212,7 @@ int servername_callback(SSL *ssl, int *al, void *arg) {
 
   auto idx = cert_tree->lookup(hostname);
   if (idx == -1) {
-    return SSL_TLSEXT_ERR_NOACK;
+    return -1;
   }
 
   handler->set_tls_sni(hostname);
@@ -227,14 +231,14 @@ int servername_callback(SSL *ssl, int *al, void *arg) {
 
   assert(!ssl_ctx_list.empty());
 
+  auto ecdsa = false;
+#if OPENSSL_3_5_0_API
+  auto mldsa = false;
+#endif // OPENSSL_3_5_0_API
+
 #ifdef NGHTTP2_GENUINE_OPENSSL
   auto num_sigalgs =
     SSL_get_sigalgs(ssl, 0, nullptr, nullptr, nullptr, nullptr, nullptr);
-
-  auto ecdsa = false;
-#  if OPENSSL_3_5_0_API
-  auto mldsa = false;
-#  endif // OPENSSL_3_5_0_API
 
   for (idx = 0; idx < num_sigalgs; ++idx) {
     int signhash;
@@ -256,8 +260,25 @@ int servername_callback(SSL *ssl, int *al, void *arg) {
 #  endif // OPENSSL_3_5_0_API
     }
   }
+#endif // NGHTTP2_GENUINE_OPENSSL
 
-#  if OPENSSL_3_5_0_API
+#ifdef NGHTTP2_OPENSSL_IS_BORINGSSL
+  const uint16_t *sigalgs;
+
+  auto num_sigalgs = SSL_get0_peer_verify_algorithms(ssl, &sigalgs);
+
+  for (size_t i = 0; i < num_sigalgs && !ecdsa; ++i) {
+    switch (sigalgs[i]) {
+    case SSL_SIGN_ECDSA_SECP256R1_SHA256:
+    case SSL_SIGN_ECDSA_SECP384R1_SHA384:
+    case SSL_SIGN_ECDSA_SECP521R1_SHA512:
+      ecdsa = true;
+      break;
+    }
+  }
+#endif // NGHTTP2_OPENSSL_IS_BORINGSSL
+
+#if OPENSSL_3_5_0_API
   if (mldsa) {
     for (auto ssl_ctx : ssl_ctx_list) {
       auto cert = SSL_CTX_get0_certificate(ssl_ctx);
@@ -267,16 +288,16 @@ int servername_callback(SSL *ssl, int *al, void *arg) {
           EVP_PKEY_is_a(pubkey, "ML-DSA-65") ||
           EVP_PKEY_is_a(pubkey, "ML-DSA-87")) {
         SSL_set_SSL_CTX(ssl, ssl_ctx);
-        return SSL_TLSEXT_ERR_OK;
+        return 0;
       }
     }
   }
-#  endif // OPENSSL_3_5_0_API
+#endif // OPENSSL_3_5_0_API
 
   if (!ecdsa) {
     SSL_set_SSL_CTX(ssl, ssl_ctx_list[0]);
 
-    return SSL_TLSEXT_ERR_OK;
+    return 0;
   }
 
   for (auto ssl_ctx : ssl_ctx_list) {
@@ -285,16 +306,48 @@ int servername_callback(SSL *ssl, int *al, void *arg) {
 
     if (EVP_PKEY_base_id(pubkey) == EVP_PKEY_EC) {
       SSL_set_SSL_CTX(ssl, ssl_ctx);
-      return SSL_TLSEXT_ERR_OK;
+      return 0;
     }
   }
-#endif // NGHTTP2_GENUINE_OPENSSL
 
   SSL_set_SSL_CTX(ssl, ssl_ctx_list[0]);
+
+  return 0;
+}
+} // namespace
+
+namespace {
+// *al is set to SSL_AD_UNRECOGNIZED_NAME by openssl, so we don't have
+// to set it explicitly.
+int servername_callback(SSL *ssl, int *al, void *arg) {
+  auto servername = get_servername(ssl);
+  if (servername.empty()) {
+    return SSL_TLSEXT_ERR_NOACK;
+  }
+
+#ifndef NGHTTP2_OPENSSL_IS_BORINGSSL
+  if (select_ssl_ctx(ssl, servername) != 0) {
+    return SSL_TLSEXT_ERR_NOACK;
+  }
+#endif // !defined(NGHTTP2_OPENSSL_IS_BORINGSSL)
 
   return SSL_TLSEXT_ERR_OK;
 }
 } // namespace
+
+#ifdef NGHTTP2_OPENSSL_IS_BORINGSSL
+namespace {
+int cert_cb(SSL *ssl, void *arg) {
+  auto servername = get_servername(ssl);
+  if (!servername.empty()) {
+    // No need to check the return value.
+    select_ssl_ctx(ssl, servername);
+  }
+
+  return 1;
+}
+} // namespace
+#endif // NGHTTP2_OPENSSL_IS_BORINGSSL
 
 namespace {
 int tls_session_client_new_cb(SSL *ssl, SSL_SESSION *session) {
@@ -934,6 +987,9 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
                        verify_callback);
   }
   SSL_CTX_set_tlsext_servername_callback(ssl_ctx, servername_callback);
+#ifdef NGHTTP2_OPENSSL_IS_BORINGSSL
+  SSL_CTX_set_cert_cb(ssl_ctx, cert_cb, nullptr);
+#endif // NGHTTP2_OPENSSL_IS_BORINGSSL
 #if OPENSSL_3_0_0_API
   SSL_CTX_set_tlsext_ticket_key_evp_cb(ssl_ctx, ticket_key_cb);
 #else  // !OPENSSL_3_0_0_API
@@ -1216,6 +1272,9 @@ SSL_CTX *create_quic_ssl_context(const char *private_key_file,
                        verify_callback);
   }
   SSL_CTX_set_tlsext_servername_callback(ssl_ctx, servername_callback);
+#  ifdef NGHTTP2_OPENSSL_IS_BORINGSSL
+  SSL_CTX_set_cert_cb(ssl_ctx, cert_cb, nullptr);
+#  endif // NGHTTP2_OPENSSL_IS_BORINGSSL
 #  if OPENSSL_3_0_0_API
   SSL_CTX_set_tlsext_ticket_key_evp_cb(ssl_ctx, ticket_key_cb);
 #  else  // !OPENSSL_3_0_0_API
