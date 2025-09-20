@@ -813,8 +813,7 @@ struct TLSProtocol {
 
 constexpr TLSProtocol TLS_PROTOS[] = {
   TLSProtocol{"TLSv1.2"sv, SSL_OP_NO_TLSv1_2},
-  TLSProtocol{"TLSv1.1"sv, SSL_OP_NO_TLSv1_1},
-  TLSProtocol{"TLSv1.0"sv, SSL_OP_NO_TLSv1}};
+};
 
 nghttp2_ssl_op_type
 create_tls_proto_mask(const std::vector<std::string_view> &tls_proto_list) {
@@ -2330,12 +2329,6 @@ int proto_version_from_string(const std::string_view &v) {
 #endif // TLS1_3_VERSION
   if (util::strieq("TLSv1.2"sv, v)) {
     return TLS1_2_VERSION;
-  }
-  if (util::strieq("TLSv1.1"sv, v)) {
-    return TLS1_1_VERSION;
-  }
-  if (util::strieq("TLSv1.0"sv, v)) {
-    return TLS1_VERSION;
   }
   return -1;
 }
