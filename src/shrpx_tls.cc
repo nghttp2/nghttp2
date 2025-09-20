@@ -231,6 +231,12 @@ int select_ssl_ctx(SSL *ssl, const std::string_view &servername) {
 
   assert(!ssl_ctx_list.empty());
 
+  // fast path
+  if (ssl_ctx_list.size() == 1) {
+    SSL_set_SSL_CTX(ssl, ssl_ctx_list[0]);
+    return 0;
+  }
+
   auto ecdsa = false;
 #if OPENSSL_3_5_0_API
   auto mldsa = false;
