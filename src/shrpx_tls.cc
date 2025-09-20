@@ -279,53 +279,13 @@ int servername_callback(SSL *ssl, int *al, void *arg) {
     return SSL_TLSEXT_ERR_OK;
   }
 
-  auto num_shared_curves = SSL_get_shared_curve(ssl, -1);
+  for (auto ssl_ctx : ssl_ctx_list) {
+    auto cert = SSL_CTX_get0_certificate(ssl_ctx);
+    auto pubkey = X509_get0_pubkey(cert);
 
-  for (auto i = 0; i < num_shared_curves; ++i) {
-    auto shared_curve = SSL_get_shared_curve(ssl, i);
-#  if OPENSSL_3_0_0_API
-    // It looks like only short name is defined in OpenSSL.  No idea
-    // which one to use because it is unknown that which one
-    // EVP_PKEY_get_utf8_string_param("group") returns.
-    auto shared_curve_name = OBJ_nid2sn(static_cast<int>(shared_curve));
-    if (shared_curve_name == nullptr) {
-      continue;
-    }
-#  endif // OPENSSL_3_0_0_API
-
-    for (auto ssl_ctx : ssl_ctx_list) {
-      auto cert = SSL_CTX_get0_certificate(ssl_ctx);
-      auto pubkey = X509_get0_pubkey(cert);
-
-      if (EVP_PKEY_base_id(pubkey) != EVP_PKEY_EC) {
-        continue;
-      }
-
-#  if OPENSSL_3_0_0_API
-      std::array<char, 64> curve_name;
-      if (!EVP_PKEY_get_utf8_string_param(pubkey, "group", curve_name.data(),
-                                          curve_name.size(), nullptr)) {
-        continue;
-      }
-
-      if (strcmp(shared_curve_name, curve_name.data()) == 0) {
-        SSL_set_SSL_CTX(ssl, ssl_ctx);
-        return SSL_TLSEXT_ERR_OK;
-      }
-#  else  // !OPENSSL_3_0_0_API
-      auto eckey = EVP_PKEY_get0_EC_KEY(pubkey);
-      if (eckey == nullptr) {
-        continue;
-      }
-
-      auto ecgroup = EC_KEY_get0_group(eckey);
-      auto cert_curve = EC_GROUP_get_curve_name(ecgroup);
-
-      if (shared_curve == cert_curve) {
-        SSL_set_SSL_CTX(ssl, ssl_ctx);
-        return SSL_TLSEXT_ERR_OK;
-      }
-#  endif // !OPENSSL_3_0_0_API
+    if (EVP_PKEY_base_id(pubkey) == EVP_PKEY_EC) {
+      SSL_set_SSL_CTX(ssl, ssl_ctx);
+      return SSL_TLSEXT_ERR_OK;
     }
   }
 #endif // NGHTTP2_GENUINE_OPENSSL
