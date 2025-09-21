@@ -38,6 +38,11 @@ using nghttp2_ssl_stack_index_type = int;
 using nghttp2_ssl_timeout_type = uint32_t;
 using nghttp2_ssl_rand_length_type = int;
 using nghttp2_ssl_verify_host_length_type = unsigned int;
+
+#  define NGHTTP2_CERT_TYPE_ECDSA ECDSAk
+#  define NGHTTP2_CERT_TYPE_ML_DSA_44 ML_DSA_LEVEL2k
+#  define NGHTTP2_CERT_TYPE_ML_DSA_65 ML_DSA_LEVEL3k
+#  define NGHTTP2_CERT_TYPE_ML_DSA_87 ML_DSA_LEVEL5k
 #else // !HAVE_WOLFSSL
 #  include <openssl/opensslv.h>
 
@@ -86,6 +91,13 @@ using nghttp2_ssl_verify_host_length_type = size_t;
 #    define OPENSSL_3_0_0_API 0
 #    define OPENSSL_3_5_0_API 0
 #  endif // !NGHTTP2_GENUINE_OPENSSL
+
+#  define NGHTTP2_CERT_TYPE_ECDSA EVP_PKEY_EC
+#  if OPENSSL_3_5_0_API
+#    define NGHTTP2_CERT_TYPE_ML_DSA_44 EVP_PKEY_ML_DSA_44
+#    define NGHTTP2_CERT_TYPE_ML_DSA_65 EVP_PKEY_ML_DSA_65
+#    define NGHTTP2_CERT_TYPE_ML_DSA_87 EVP_PKEY_ML_DSA_87
+#  endif // OPENSSL_3_5_0_API
 #endif   // !HAVE_WOLFSSL
 
 #endif // OPENSSL_COMPAT_H

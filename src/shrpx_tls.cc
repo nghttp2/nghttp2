@@ -293,9 +293,18 @@ int select_ssl_ctx(SSL *ssl, const std::string_view &servername) {
       int sigalgo;
 
       if (wolfSSL_get_sigalg_info(sigalgs[i], sigalgs[i + 1], &hashalgo,
-                                  &sigalgo) == 0 &&
-          sigalgo == ECDSAk) {
+                                  &sigalgo) != 0) {
+        continue;
+      }
+
+      switch (sigalgo) {
+      case ECDSAk:
         ecdsa = true;
+        break;
+      case ML_DSA_LEVEL2k:
+      case ML_DSA_LEVEL3k:
+      case ML_DSA_LEVEL5k:
+        mldsa = true;
         break;
       }
     }
@@ -315,23 +324,23 @@ int select_ssl_ctx(SSL *ssl, const std::string_view &servername) {
       static_cast<TLSContextData *>(SSL_CTX_get_app_data(ssl_ctx));
 
     switch (tls_ctx_data->cert_type) {
-    case EVP_PKEY_EC:
+    case NGHTTP2_CERT_TYPE_ECDSA:
       if (ecdsa && !selected) {
         selected = ssl_ctx;
       }
 
       break;
-#if OPENSSL_3_5_0_API
-    case EVP_PKEY_ML_DSA_44:
-    case EVP_PKEY_ML_DSA_65:
-    case EVP_PKEY_ML_DSA_87:
+#if OPENSSL_3_5_0_API || defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
+    case NGHTTP2_CERT_TYPE_ML_DSA_44:
+    case NGHTTP2_CERT_TYPE_ML_DSA_65:
+    case NGHTTP2_CERT_TYPE_ML_DSA_87:
       if (mldsa) {
         SSL_set_SSL_CTX(ssl, ssl_ctx);
         return 0;
       }
 
       break;
-#endif // OPENSSL_3_5_0_API
+#endif // OPENSSL_3_5_0_API || defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
     }
   }
 
@@ -832,9 +841,11 @@ create_tls_proto_mask(const std::vector<std::string_view> &tls_proto_list) {
 namespace {
 int get_cert_type(SSL_CTX *ssl_ctx) {
   auto cert = SSL_CTX_get0_certificate(ssl_ctx);
+
+#ifndef NGHTTP2_OPENSSL_IS_WOLFSSL
   auto pubkey = X509_get0_pubkey(cert);
 
-#if OPENSSL_3_5_0_API
+#  if OPENSSL_3_5_0_API
   if (EVP_PKEY_is_a(pubkey, "ML-DSA-44")) {
     return EVP_PKEY_ML_DSA_44;
   }
@@ -846,9 +857,12 @@ int get_cert_type(SSL_CTX *ssl_ctx) {
   if (EVP_PKEY_is_a(pubkey, "ML-DSA-87")) {
     return EVP_PKEY_ML_DSA_87;
   }
-#endif // OPENSSL_3_5_0_API
+#  endif // OPENSSL_3_5_0_API
 
   return EVP_PKEY_base_id(pubkey);
+#else  // defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
+  return wolfSSL_X509_get_pubkey_type(cert);
+#endif // defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 }
 } // namespace
 
