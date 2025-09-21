@@ -75,6 +75,8 @@ struct TLSContextData {
   // SCT data formatted so that this can be directly sent as
   // extension_data of signed_certificate_timestamp.
   std::vector<uint8_t> sct_data;
+  // cert_type is the type of certificate (e.g., EVP_PKEY_EC).
+  int cert_type;
 };
 
 // Create server side SSL_CTX
