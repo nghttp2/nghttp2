@@ -2405,29 +2405,29 @@ SSL/TLS:
   --ciphers=<SUITE>
               Set allowed  cipher list  for frontend  connection.  The
               format of the string is described in OpenSSL ciphers(1).
-              This option  sets cipher suites for  TLSv1.2 or earlier.
-              Use --tls13-ciphers for TLSv1.3.
+              This  option  sets  cipher   suites  for  TLSv1.2.   Use
+              --tls13-ciphers for TLSv1.3.
               Default: )"
       << config->tls.ciphers << R"(
   --tls13-ciphers=<SUITE>
               Set allowed  cipher list  for frontend  connection.  The
               format of the string is described in OpenSSL ciphers(1).
               This  option  sets  cipher   suites  for  TLSv1.3.   Use
-              --ciphers for TLSv1.2 or earlier.
+              --ciphers for TLSv1.2.
               Default: )"
       << config->tls.tls13_ciphers << R"(
   --client-ciphers=<SUITE>
               Set  allowed cipher  list for  backend connection.   The
               format of the string is described in OpenSSL ciphers(1).
-              This option  sets cipher suites for  TLSv1.2 or earlier.
-              Use --tls13-client-ciphers for TLSv1.3.
+              This  option  sets  cipher   suites  for  TLSv1.2.   Use
+              --tls13-client-ciphers for TLSv1.3.
               Default: )"
       << config->tls.client.ciphers << R"(
   --tls13-client-ciphers=<SUITE>
               Set  allowed cipher  list for  backend connection.   The
               format of the string is described in OpenSSL ciphers(1).
               This  option  sets  cipher   suites  for  TLSv1.3.   Use
-              --tls13-client-ciphers for TLSv1.2 or earlier.
+              --client-ciphers for TLSv1.2.
               Default: )"
       << config->tls.client.tls13_ciphers << R"(
   --groups=<LIST>
@@ -2507,16 +2507,12 @@ SSL/TLS:
               --tls-min-proto-version and  --tls-max-proto-version are
               enabled.  If the protocol list advertised by client does
               not  overlap  this range,  you  will  receive the  error
-              message "unknown protocol".  If a protocol version lower
-              than TLSv1.2 is specified, make sure that the compatible
-              ciphers are  included in --ciphers option.   The default
-              cipher  list  only   includes  ciphers  compatible  with
-              TLSv1.2 or above.  The available versions are:
+              message "unknown protocol".  The available versions are:
               )"
 #ifdef TLS1_3_VERSION
-         "TLSv1.3, "
+         "TLSv1.3 and "
 #endif // TLS1_3_VERSION
-         "TLSv1.2, TLSv1.1, and TLSv1.0"
+         "TLSv1.2"
          R"(
               Default: )"
       << DEFAULT_TLS_MIN_PROTO_VERSION
@@ -2530,9 +2526,9 @@ SSL/TLS:
               message "unknown protocol".  The available versions are:
               )"
 #ifdef TLS1_3_VERSION
-         "TLSv1.3, "
+         "TLSv1.3 and "
 #endif // TLS1_3_VERSION
-         "TLSv1.2, TLSv1.1, and TLSv1.0"
+         "TLSv1.2"
          R"(
               Default: )"
       << DEFAULT_TLS_MAX_PROTO_VERSION << R"(
