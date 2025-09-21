@@ -191,7 +191,7 @@ std::string_view get_servername(SSL *ssl) {
 } // namespace
 
 namespace {
-int select_ssl_ctx(SSL *ssl, const std::string_view &servername) {
+void select_ssl_ctx(SSL *ssl, const std::string_view &servername) {
   auto conn = static_cast<Connection *>(SSL_get_app_data(ssl));
   auto handler = static_cast<ClientHandler *>(conn->data);
   auto worker = handler->get_worker();
@@ -212,7 +212,7 @@ int select_ssl_ctx(SSL *ssl, const std::string_view &servername) {
 
   auto idx = cert_tree->lookup(hostname);
   if (idx == -1) {
-    return -1;
+    return;
   }
 
   handler->set_tls_sni(hostname);
@@ -234,7 +234,7 @@ int select_ssl_ctx(SSL *ssl, const std::string_view &servername) {
   // fast path
   if (ssl_ctx_list.size() == 1) {
     SSL_set_SSL_CTX(ssl, ssl_ctx_list[0]);
-    return 0;
+    return;
   }
 
   auto ecdsa = false;
@@ -314,7 +314,7 @@ int select_ssl_ctx(SSL *ssl, const std::string_view &servername) {
   if (!ecdsa && !mldsa) {
     SSL_set_SSL_CTX(ssl, ssl_ctx_list[0]);
 
-    return 0;
+    return;
   }
 
   SSL_CTX *selected = nullptr;
@@ -336,7 +336,7 @@ int select_ssl_ctx(SSL *ssl, const std::string_view &servername) {
     case NGHTTP2_CERT_TYPE_ML_DSA_87:
       if (mldsa) {
         SSL_set_SSL_CTX(ssl, ssl_ctx);
-        return 0;
+        return;
       }
 
       break;
@@ -350,7 +350,7 @@ int select_ssl_ctx(SSL *ssl, const std::string_view &servername) {
     SSL_set_SSL_CTX(ssl, ssl_ctx_list[0]);
   }
 
-  return 0;
+  return;
 }
 } // namespace
 
@@ -364,9 +364,7 @@ int servername_callback(SSL *ssl, int *al, void *arg) {
   }
 
 #if defined(NGHTTP2_GENUINE_OPENSSL) || defined(NGHTTP2_OPENSSL_IS_LIBRESSL)
-  if (select_ssl_ctx(ssl, servername) != 0) {
-    return SSL_TLSEXT_ERR_NOACK;
-  }
+  select_ssl_ctx(ssl, servername);
 #endif // defined(NGHTTP2_GENUINE_OPENSSL) ||
        // defined(NGHTTP2_OPENSSL_IS_LIBRESSL)
 
@@ -379,7 +377,6 @@ namespace {
 int cert_cb(SSL *ssl, void *arg) {
   auto servername = get_servername(ssl);
   if (!servername.empty()) {
-    // No need to check the return value.
     select_ssl_ctx(ssl, servername);
   }
 
