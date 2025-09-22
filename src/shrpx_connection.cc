@@ -104,7 +104,7 @@ void Connection::disconnect() {
 
     // Unset app data here, so that ngtcp2_conn never be used by
     // libngtcp2_crypto_ossl that may be called by SSL_free.
-    SSL_set_app_data(tls.ssl, NULL);
+    SSL_set_app_data(tls.ssl, nullptr);
     SSL_free(tls.ssl);
     tls.ssl = nullptr;
 
