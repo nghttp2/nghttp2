@@ -5654,7 +5654,7 @@ nghttp2_ssize nghttp2_session_mem_recv2(nghttp2_session *session,
           DEBUGF("recv: WINDOW_UPDATE\n");
           break;
         }
-#endif /* DEBUGBUILD */
+#endif /* defined(DEBUGBUILD) */
 
         iframe->frame.hd.flags = NGHTTP2_FLAG_NONE;
 
@@ -6315,7 +6315,7 @@ nghttp2_ssize nghttp2_session_mem_recv2(nghttp2_session *session,
       } else {
         DEBUGF("recv: [IB_IGN_HEADER_BLOCK]\n");
       }
-#endif /* DEBUGBUILD */
+#endif /* defined(DEBUGBUILD) */
 
       readlen = inbound_frame_payload_readlen(iframe, in, last);
 
@@ -6547,7 +6547,7 @@ nghttp2_ssize nghttp2_session_mem_recv2(nghttp2_session *session,
       } else {
         fprintf(stderr, "recv: [IB_IGN_CONTINUATION]\n");
       }
-#endif /* DEBUGBUILD */
+#endif /* defined(DEBUGBUILD) */
 
       if (++session->num_continuations > session->max_continuations) {
         return NGHTTP2_ERR_TOO_MANY_CONTINUATIONS;
