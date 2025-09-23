@@ -83,4 +83,4 @@ private:
 
 } // namespace shrpx
 
-#endif // SHRPX_CONNECT_BLOCKER_H
+#endif // !defined(SHRPX_CONNECT_BLOCKER_H)

@@ -37,4 +37,4 @@ inline constexpr size_t QUIC_TX_DATALEN = 64_k;
 void quic_pkt_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents);
 } // namespace h2load
 
-#endif // H2LOAD_QUIC_H
+#endif // !defined(H2LOAD_QUIC_H)

@@ -56,4 +56,4 @@ struct MemcachedRequest {
 
 } // namespace shrpx
 
-#endif // SHRPX_MEMCACHED_REQUEST_H
+#endif // !defined(SHRPX_MEMCACHED_REQUEST_H)

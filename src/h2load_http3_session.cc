@@ -33,9 +33,9 @@
 #ifdef NGHTTP2_OPENSSL_IS_WOLFSSL
 #  include <wolfssl/options.h>
 #  include <wolfssl/openssl/rand.h>
-#else // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#else // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 #  include <openssl/rand.h>
-#endif // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#endif // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 
 #include "h2load.h"
 

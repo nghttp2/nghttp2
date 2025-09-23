@@ -174,11 +174,11 @@ void test_shrpx_tls_cert_lookup_tree_add_ssl_ctx(void) {
   assert_ssize(0, ==, tree.lookup("www.test.nghttp2.org"sv));
   assert_ssize(1, ==, tree.lookup("w.test.nghttp2.org"sv));
   assert_ssize(2, ==, tree.lookup("test.nghttp2.org"sv));
-#else  // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#else  // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
   assert_ssize(0, ==, tree.lookup("test.nghttp2.org"sv));
   assert_ssize(1, ==, tree.lookup("w.test.nghttp2.org"sv));
   assert_ssize(2, ==, tree.lookup("www.test.nghttp2.org"sv));
-#endif // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#endif // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
   assert_ssize(3, ==, tree.lookup("test.example.com"sv));
 }
 
@@ -234,7 +234,7 @@ static Address parse_addr(const char *ipaddr) {
   hints.ai_flags = AI_NUMERICHOST;
 #ifdef AI_NUMERICSERV
   hints.ai_flags |= AI_NUMERICSERV;
-#endif
+#endif // defined(AI_NUMERICSERV)
 
   addrinfo *res = nullptr;
 

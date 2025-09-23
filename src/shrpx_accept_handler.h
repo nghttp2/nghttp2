@@ -51,4 +51,4 @@ private:
 
 } // namespace shrpx
 
-#endif // SHRPX_ACCEPT_HANDLER_H
+#endif // !defined(SHRPX_ACCEPT_HANDLER_H)

@@ -78,4 +78,4 @@ protected:
 
 } // namespace shrpx
 
-#endif // SHRPX_DOWNSTREAM_CONNECTION_H
+#endif // !defined(SHRPX_DOWNSTREAM_CONNECTION_H)

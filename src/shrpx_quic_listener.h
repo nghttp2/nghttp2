@@ -48,4 +48,4 @@ private:
 
 } // namespace shrpx
 
-#endif // SHRPX_QUIC_LISTENER_H
+#endif // !defined(SHRPX_QUIC_LISTENER_H)

@@ -29,7 +29,7 @@
 
 #ifndef _WIN32
 #  include <sys/uio.h>
-#endif // !_WIN32
+#endif // !defined(_WIN32)
 
 #include <cassert>
 #include <utility>
@@ -288,4 +288,4 @@ inline std::span<uint8_t> make_byte_ref(BlockAllocator &alloc, size_t size) {
 
 } // namespace nghttp2
 
-#endif // ALLOCATOR_H
+#endif // !defined(ALLOCATOR_H)

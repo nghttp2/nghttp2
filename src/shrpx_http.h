@@ -112,4 +112,4 @@ bool check_http_scheme(const std::string_view &scheme, bool encrypted);
 
 } // namespace shrpx
 
-#endif // SHRPX_HTTP_H
+#endif // !defined(SHRPX_HTTP_H)

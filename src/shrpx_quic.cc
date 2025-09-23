@@ -41,9 +41,9 @@
 #ifdef NGHTTP2_OPENSSL_IS_WOLFSSL
 #  include <wolfssl/options.h>
 #  include <wolfssl/openssl/rand.h>
-#else // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#else // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 #  include <openssl/rand.h>
-#endif // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#endif // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 
 #include "shrpx_config.h"
 #include "shrpx_log.h"
@@ -77,7 +77,7 @@ int quic_send_packet(const UpstreamAddr *faddr, const sockaddr *remote_sa,
   uint8_t msg_ctrl[CMSG_SPACE(sizeof(int)) +
 #ifdef UDP_SEGMENT
                    CMSG_SPACE(sizeof(uint16_t)) +
-#endif // UDP_SEGMENT
+#endif // defined(UDP_SEGMENT)
                    CMSG_SPACE(sizeof(in6_pktinfo))]{};
 
   msghdr msg{
@@ -136,7 +136,7 @@ int quic_send_packet(const UpstreamAddr *faddr, const sockaddr *remote_sa,
     auto n = static_cast<uint16_t>(gso_size);
     memcpy(CMSG_DATA(cm), &n, sizeof(n));
   }
-#endif // UDP_SEGMENT
+#endif // defined(UDP_SEGMENT)
 
   controllen += CMSG_SPACE(sizeof(int));
   cm = CMSG_NXTHDR(&msg, cm);

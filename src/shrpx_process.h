@@ -34,4 +34,4 @@ inline constexpr uint8_t SHRPX_IPC_GRACEFUL_SHUTDOWN = 2;
 
 } // namespace shrpx
 
-#endif // SHRPX_PROCESS_H
+#endif // !defined(SHRPX_PROCESS_H)

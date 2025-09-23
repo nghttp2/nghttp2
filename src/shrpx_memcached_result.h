@@ -47,4 +47,4 @@ struct MemcachedResult {
 
 } // namespace shrpx
 
-#endif // SHRPX_MEMCACHED_RESULT_H
+#endif // !defined(SHRPX_MEMCACHED_RESULT_H)

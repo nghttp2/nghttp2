@@ -61,4 +61,4 @@ public:
 
 } // namespace shrpx
 
-#endif // SHRPX_HEALTH_MONITOR_DOWNSTREAM_CONNECTION_H
+#endif // !defined(SHRPX_HEALTH_MONITOR_DOWNSTREAM_CONNECTION_H)

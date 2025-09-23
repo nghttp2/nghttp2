@@ -40,7 +40,7 @@
 
 #ifdef ENABLE_HTTP3
 #  include <nghttp3/nghttp3.h>
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
 #include "llhttp.h"
 
@@ -504,7 +504,7 @@ public:
   void add_rcbuf(nghttp2_rcbuf *rcbuf);
 #ifdef ENABLE_HTTP3
   void add_rcbuf(nghttp3_rcbuf *rcbuf);
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
   void
   set_downstream_addr_group(const std::shared_ptr<DownstreamAddrGroup> &group);
@@ -549,7 +549,7 @@ private:
   std::vector<nghttp2_rcbuf *> rcbufs_;
 #ifdef ENABLE_HTTP3
   std::vector<nghttp3_rcbuf *> rcbufs3_;
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
   Request req_;
   Response resp_;
@@ -636,4 +636,4 @@ private:
 
 } // namespace shrpx
 
-#endif // SHRPX_DOWNSTREAM_H
+#endif // !defined(SHRPX_DOWNSTREAM_H)

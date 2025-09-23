@@ -27,7 +27,7 @@
 
 #ifdef HAVE_CONFIG_H
 #  include <config.h>
-#endif /* HAVE_CONFIG_H */
+#endif /* defined(HAVE_CONFIG_H) */
 
 #include <jansson.h>
 
@@ -35,7 +35,7 @@
 
 #ifdef __cplusplus
 extern "C" {
-#endif
+#endif /* defined(__cplusplus) */
 
 json_t *dump_deflate_header_table(nghttp2_hd_deflater *deflater);
 
@@ -52,6 +52,6 @@ void output_json_footer(void);
 
 #ifdef __cplusplus
 }
-#endif
+#endif /* defined(__cplusplus) */
 
-#endif /* NGHTTP2_COMP_HELPER_H */
+#endif /* !defined(NGHTTP2_COMP_HELPER_H) */

@@ -26,7 +26,7 @@
 
 #ifdef HAVE_UNISTD_H
 #  include <unistd.h>
-#endif // HAVE_UNISTD_H
+#endif // defined(HAVE_UNISTD_H)
 
 #include <cerrno>
 
@@ -66,9 +66,9 @@ void AcceptHandler::accept_connection() {
 #ifdef HAVE_ACCEPT4
   auto cfd =
     accept4(faddr_->fd, &sockaddr.sa, &addrlen, SOCK_NONBLOCK | SOCK_CLOEXEC);
-#else  // !HAVE_ACCEPT4
+#else  // !defined(HAVE_ACCEPT4)
   auto cfd = accept(faddr_->fd, &sockaddr.sa, &addrlen);
-#endif // !HAVE_ACCEPT4
+#endif // !defined(HAVE_ACCEPT4)
 
   if (cfd == -1) {
     switch (errno) {
@@ -79,7 +79,7 @@ void AcceptHandler::accept_connection() {
     case EHOSTDOWN:
 #ifdef ENONET
     case ENONET:
-#endif // ENONET
+#endif // defined(ENONET)
     case EHOSTUNREACH:
     case EOPNOTSUPP:
     case ENETUNREACH:
@@ -98,7 +98,7 @@ void AcceptHandler::accept_connection() {
 #ifndef HAVE_ACCEPT4
   util::make_socket_nonblocking(cfd);
   util::make_socket_closeonexec(cfd);
-#endif // !HAVE_ACCEPT4
+#endif // !defined(HAVE_ACCEPT4)
 
   worker_->handle_connection(cfd, &sockaddr.sa, addrlen, faddr_);
 }

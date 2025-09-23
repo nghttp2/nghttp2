@@ -27,10 +27,10 @@
 #include <sys/types.h>
 #ifdef HAVE_SYS_SOCKET_H
 #  include <sys/socket.h>
-#endif // HAVE_SYS_SOCKET_H
+#endif // defined(HAVE_SYS_SOCKET_H)
 #ifdef HAVE_NETDB_H
 #  include <netdb.h>
-#endif // HAVE_NETDB_H
+#endif // defined(HAVE_NETDB_H)
 
 #include <cstring>
 #include <iostream>
@@ -718,9 +718,9 @@ void test_util_localtime_date(void) {
   }
 #  ifdef __linux__
   setenv("TZ", "NZST-12:00:00:00", 1);
-#  else  // !__linux__
+#  else  // !defined(__linux__)
   setenv("TZ", ":Pacific/Auckland", 1);
-#  endif // !__linux__
+#  endif // !defined(__linux__)
   tzset();
 
   assert_stdsv_equal(

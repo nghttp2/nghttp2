@@ -34,9 +34,9 @@ struct iovec {
   void *iov_base; /* Pointer to data.  */
   size_t iov_len; /* Length of data.  */
 };
-#else // !_WIN32
+#else // !defined(_WIN32)
 #  include <sys/uio.h>
-#endif // !_WIN32
+#endif // !defined(_WIN32)
 
 #include <cassert>
 #include <cstring>
@@ -569,4 +569,4 @@ using DefaultMemchunkBuffer = MemchunkBuffer<Memchunk16K>;
 
 } // namespace nghttp2
 
-#endif // MEMCHUNK_H
+#endif // !defined(MEMCHUNK_H)

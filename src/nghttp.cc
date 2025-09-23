@@ -27,13 +27,13 @@
 #include <sys/stat.h>
 #ifdef HAVE_UNISTD_H
 #  include <unistd.h>
-#endif // HAVE_UNISTD_H
+#endif // defined(HAVE_UNISTD_H)
 #ifdef HAVE_FCNTL_H
 #  include <fcntl.h>
-#endif // HAVE_FCNTL_H
+#endif // defined(HAVE_FCNTL_H)
 #ifdef HAVE_NETINET_IN_H
 #  include <netinet/in.h>
-#endif // HAVE_NETINET_IN_H
+#endif // defined(HAVE_NETINET_IN_H)
 #include <netinet/tcp.h>
 #include <getopt.h>
 
@@ -52,13 +52,13 @@
 #ifdef NGHTTP2_OPENSSL_IS_WOLFSSL
 #  include <wolfssl/options.h>
 #  include <wolfssl/openssl/err.h>
-#else // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#else // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 #  include <openssl/err.h>
-#endif // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#endif // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 
 #ifdef HAVE_JANSSON
 #  include <jansson.h>
-#endif // HAVE_JANSSON
+#endif // defined(HAVE_JANSSON)
 
 #include "app_helper.h"
 #include "HtmlParser.h"
@@ -69,7 +69,7 @@
 
 #ifndef O_BINARY
 #  define O_BINARY (0)
-#endif // O_BINARY
+#endif // !defined(O_BINARY)
 
 namespace nghttp2 {
 
@@ -1566,7 +1566,7 @@ void HttpClient::output_har(FILE *outfile) {
   json_dumpf(root, outfile, JSON_PRESERVE_ORDER | JSON_INDENT(2));
   json_decref(root);
 }
-#endif // HAVE_JANSSON
+#endif // defined(HAVE_JANSSON)
 
 namespace {
 void update_html_parser(HttpClient *client, Request *req, const uint8_t *data,
@@ -2176,7 +2176,7 @@ int communicate(
     if (config.ktls) {
       ssl_opts |= SSL_OP_ENABLE_KTLS;
     }
-#endif // SSL_OP_ENABLE_KTLS
+#endif // defined(SSL_OP_ENABLE_KTLS)
 
     SSL_CTX_set_options(ssl_ctx, ssl_opts);
     SSL_CTX_set_mode(ssl_ctx, SSL_MODE_AUTO_RETRY);
@@ -2211,7 +2211,7 @@ int communicate(
       result = -1;
       goto fin;
     }
-#endif // NGHTTP2_OPENSSL_IS_WOLFSSL
+#endif // defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 
     if (!config.keyfile.empty()) {
       if (SSL_CTX_use_PrivateKey_file(ssl_ctx, config.keyfile.c_str(),
@@ -2245,7 +2245,8 @@ int communicate(
       result = -1;
       goto fin;
     }
-#endif // NGHTTP2_OPENSSL_IS_BORINGSSL && HAVE_LIBBROTLI
+#endif // defined(NGHTTP2_OPENSSL_IS_BORINGSSL) &&
+       // defined(HAVE_LIBBROTLI)
 
     if (tls::setup_keylog_callback(ssl_ctx) != 0) {
       std::cerr << "[ERROR] Failed to setup keylog" << std::endl;
@@ -2304,7 +2305,7 @@ int communicate(
                   << "har file could not be created." << std::endl;
       }
     }
-#endif // HAVE_JANSSON
+#endif // defined(HAVE_JANSSON)
 
     if (client.success != client.reqvec.size()) {
       std::cerr << "Some requests were not processed. total="
@@ -2765,10 +2766,10 @@ int main(int argc, char **argv) {
     case 'r':
 #ifdef HAVE_JANSSON
       config.harfile = optarg;
-#else  // !HAVE_JANSSON
+#else  // !defined(HAVE_JANSSON)
       std::cerr << "[WARNING]: -r, --har option is ignored because\n"
                 << "the binary was not compiled with libjansson." << std::endl;
-#endif // !HAVE_JANSSON
+#endif // !defined(HAVE_JANSSON)
       break;
     case 'v':
       ++config.verbose;
@@ -2828,10 +2829,10 @@ int main(int argc, char **argv) {
     case 'a':
 #ifdef HAVE_LIBXML2
       config.get_assets = true;
-#else  // !HAVE_LIBXML2
+#else  // !defined(HAVE_LIBXML2)
       std::cerr << "[WARNING]: -a, --get-assets option is ignored because\n"
                 << "the binary was not compiled with libxml2." << std::endl;
-#endif // !HAVE_LIBXML2
+#endif // !defined(HAVE_LIBXML2)
       break;
     case 's':
       config.stat = true;

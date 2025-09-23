@@ -26,10 +26,10 @@
 
 #ifdef HAVE_SYS_SOCKET_H
 #  include <sys/socket.h>
-#endif // HAVE_SYS_SOCKET_H
+#endif // defined(HAVE_SYS_SOCKET_H)
 #ifdef HAVE_NETDB_H
 #  include <netdb.h>
-#endif // HAVE_NETDB_H
+#endif // defined(HAVE_NETDB_H)
 #include <netinet/tcp.h>
 #include <pthread.h>
 #include <sys/types.h>
@@ -49,7 +49,7 @@
 #  include <wolfssl/openssl/x509v3.h>
 #  include <wolfssl/openssl/rand.h>
 #  include <wolfssl/openssl/dh.h>
-#else // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#else // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 #  include <openssl/crypto.h>
 #  include <openssl/x509.h>
 #  include <openssl/x509v3.h>
@@ -60,10 +60,10 @@
 #    include <openssl/core_names.h>
 #    include <openssl/decoder.h>
 #  endif // OPENSSL_3_0_0_API
-#endif   // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#endif   // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 #ifdef NGHTTP2_OPENSSL_IS_BORINGSSL
 #  include <openssl/hmac.h>
-#endif // NGHTTP2_OPENSSL_IS_BORINGSSL
+#endif // defined(NGHTTP2_OPENSSL_IS_BORINGSSL)
 
 #include <nghttp2/nghttp2.h>
 
@@ -77,16 +77,16 @@
          // defined(HAVE_LIBNGTCP2_CRYPTO_LIBRESSL)
 #  ifdef HAVE_LIBNGTCP2_CRYPTO_BORINGSSL
 #    include <ngtcp2/ngtcp2_crypto_boringssl.h>
-#  endif // HAVE_LIBNGTCP2_CRYPTO_BORINGSSL
+#  endif // defined(HAVE_LIBNGTCP2_CRYPTO_BORINGSSL)
 #  ifdef HAVE_LIBNGTCP2_CRYPTO_WOLFSSL
 #    include <ngtcp2/ngtcp2_crypto_wolfssl.h>
-#  endif // HAVE_LIBNGTCP2_CRYPTO_WOLFSSL
-#endif   // ENABLE_HTTP3
+#  endif // defined(HAVE_LIBNGTCP2_CRYPTO_WOLFSSL)
+#endif   // defined(ENABLE_HTTP3)
 
 #ifdef HAVE_LIBBROTLI
 #  include <brotli/encode.h>
 #  include <brotli/decode.h>
-#endif // HAVE_LIBBROTLI
+#endif // defined(HAVE_LIBBROTLI)
 
 #include "shrpx_log.h"
 #include "shrpx_client_handler.h"
@@ -99,7 +99,7 @@
 #include "shrpx_connection_handler.h"
 #ifdef ENABLE_HTTP3
 #  include "shrpx_http3_upstream.h"
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 #include "util.h"
 #include "tls.h"
 #include "template.h"
@@ -206,9 +206,9 @@ void select_ssl_ctx(SSL *ssl, const std::string_view &servername) {
   auto cert_tree = conn->proto == Proto::HTTP3
                      ? worker->get_quic_cert_lookup_tree()
                      : worker->get_cert_lookup_tree();
-#else  // !ENABLE_HTTP3
+#else  // !defined(ENABLE_HTTP3)
   auto cert_tree = worker->get_cert_lookup_tree();
-#endif // !ENABLE_HTTP3
+#endif // !defined(ENABLE_HTTP3)
 
   auto idx = cert_tree->lookup(hostname);
   if (idx == -1) {
@@ -224,10 +224,10 @@ void select_ssl_ctx(SSL *ssl, const std::string_view &servername) {
     conn->proto == Proto::HTTP3
       ? conn_handler->get_quic_indexed_ssl_ctx(as_unsigned(idx))
       : conn_handler->get_indexed_ssl_ctx(as_unsigned(idx));
-#else  // !ENABLE_HTTP3
+#else  // !defined(ENABLE_HTTP3)
   const auto &ssl_ctx_list =
     conn_handler->get_indexed_ssl_ctx(as_unsigned(idx));
-#endif // !ENABLE_HTTP3
+#endif // !defined(ENABLE_HTTP3)
 
   assert(!ssl_ctx_list.empty());
 
@@ -264,7 +264,7 @@ void select_ssl_ctx(SSL *ssl, const std::string_view &servername) {
 #  endif // OPENSSL_3_5_0_API
     }
   }
-#endif // NGHTTP2_GENUINE_OPENSSL
+#endif // defined(NGHTTP2_GENUINE_OPENSSL)
 
 #ifdef NGHTTP2_OPENSSL_IS_BORINGSSL
   const uint16_t *sigalgs;
@@ -280,7 +280,7 @@ void select_ssl_ctx(SSL *ssl, const std::string_view &servername) {
       break;
     }
   }
-#endif // NGHTTP2_OPENSSL_IS_BORINGSSL
+#endif // defined(NGHTTP2_OPENSSL_IS_BORINGSSL)
 
 #ifdef NGHTTP2_OPENSSL_IS_WOLFSSL
   const uint8_t *sigalgs;
@@ -309,7 +309,7 @@ void select_ssl_ctx(SSL *ssl, const std::string_view &servername) {
       }
     }
   }
-#endif // NGHTTP2_OPENSSL_IS_WOLFSSL
+#endif // defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 
   if (!ecdsa && !mldsa) {
     SSL_set_SSL_CTX(ssl, ssl_ctx_list[0]);
@@ -515,7 +515,7 @@ int ticket_key_cb(SSL *ssl, unsigned char *key_name, unsigned char *iv,
   if (SSL_version(ssl) == TLS1_3_VERSION) {
     return 2;
   }
-#endif // TLS1_3_VERSION
+#endif // defined(TLS1_3_VERSION)
 
   return i == 0 ? 1 : 2;
 }
@@ -528,7 +528,7 @@ void info_callback(const SSL *ssl, int where, int ret) {
   if (SSL_version(ssl) == TLS1_3_VERSION) {
     return;
   }
-#endif // TLS1_3_VERSION
+#endif // defined(TLS1_3_VERSION)
 
   // To mitigate possible DOS attack using lots of renegotiations, we
   // disable renegotiation. Since OpenSSL does not provide an easy way
@@ -605,7 +605,7 @@ int quic_alpn_select_proto_cb(SSL *ssl, const unsigned char **out,
   return SSL_TLSEXT_ERR_ALERT_FATAL;
 }
 } // namespace
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
 #ifdef NGHTTP2_GENUINE_OPENSSL
 namespace {
@@ -666,7 +666,7 @@ int sct_parse_cb(SSL *ssl, unsigned int ext_type, unsigned int context,
 }
 } // namespace
 
-#endif // NGHTTP2_GENUINE_OPENSSL
+#endif // defined(NGHTTP2_GENUINE_OPENSSL)
 
 #ifndef OPENSSL_NO_PSK
 namespace {
@@ -692,7 +692,7 @@ unsigned int psk_server_cb(SSL *ssl, const char *identity, unsigned char *psk,
   return static_cast<unsigned int>(secret.size());
 }
 } // namespace
-#endif // !OPENSSL_NO_PSK
+#endif // !defined(OPENSSL_NO_PSK)
 
 #ifndef OPENSSL_NO_PSK
 namespace {
@@ -727,7 +727,7 @@ unsigned int psk_client_cb(SSL *ssl, const char *hint, char *identity_out,
   return static_cast<unsigned int>(secret.size());
 }
 } // namespace
-#endif // !OPENSSL_NO_PSK
+#endif // !defined(OPENSSL_NO_PSK)
 
 #if defined(NGHTTP2_OPENSSL_IS_BORINGSSL) && defined(HAVE_LIBBROTLI)
 namespace {
@@ -804,7 +804,8 @@ int cert_decompress(SSL *ssl, CRYPTO_BUFFER **out, size_t uncompressed_len,
   return 1;
 }
 } // namespace
-#endif // NGHTTP2_OPENSSL_IS_BORINGSSL && HAVE_LIBBROTLI
+#endif // defined(NGHTTP2_OPENSSL_IS_BORINGSSL) &&
+       // defined(HAVE_LIBBROTLI)
 
 struct TLSProtocol {
   std::string_view name;
@@ -867,7 +868,7 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
 #ifdef HAVE_NEVERBLEED
                             ,
                             neverbleed_t *nb
-#endif // HAVE_NEVERBLEED
+#endif // defined(HAVE_NEVERBLEED)
 ) {
   auto ssl_ctx = SSL_CTX_new(TLS_server_method());
   if (!ssl_ctx) {
@@ -889,7 +890,7 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
     // https://tools.ietf.org/html/rfc8446#section-8.3
     // is still performed.
     | SSL_OP_NO_ANTI_REPLAY
-#endif // NGHTTP2_GENUINE_OPENSSL
+#endif // defined(NGHTTP2_GENUINE_OPENSSL)
   );
 
   auto config = mod_config();
@@ -899,7 +900,7 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
   if (tlsconf.ktls) {
     ssl_opts |= SSL_OP_ENABLE_KTLS;
   }
-#endif // SSL_OP_ENABLE_KTLS
+#endif // defined(SSL_OP_ENABLE_KTLS)
 
   SSL_CTX_set_options(ssl_ctx, ssl_opts | tlsconf.tls_proto_mask);
 
@@ -929,8 +930,9 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
                << " failed: " << ERR_error_string(ERR_get_error(), nullptr);
     DIE();
   }
-#endif // NGHTTP2_GENUINE_OPENSSL || NGHTTP2_OPENSSL_IS_LIBRESSL ||
-       // NGHTTP2_OPENSSL_IS_WOLFSSL
+#endif // defined(NGHTTP2_GENUINE_OPENSSL) ||
+       // defined(NGHTTP2_OPENSSL_IS_LIBRESSL) ||
+       // defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 
   if (SSL_CTX_set1_groups_list(ssl_ctx, tlsconf.groups.data()) != 1) {
     LOG(FATAL) << "SSL_CTX_set1_groups_list " << tlsconf.groups << " failed";
@@ -1004,14 +1006,14 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
                << ERR_error_string(ERR_get_error(), nullptr);
     DIE();
   }
-#else  // HAVE_NEVERBLEED
+#else  // defined(HAVE_NEVERBLEED)
   std::array<char, NEVERBLEED_ERRBUF_SIZE> errbuf;
   if (neverbleed_load_private_key_file(nb, ssl_ctx, private_key_file,
                                        errbuf.data()) != 1) {
     LOG(FATAL) << "neverbleed_load_private_key_file failed: " << errbuf.data();
     DIE();
   }
-#endif // HAVE_NEVERBLEED
+#endif // defined(HAVE_NEVERBLEED)
 
   if (SSL_CTX_use_certificate_chain_file(ssl_ctx, cert_file) != 1) {
     LOG(FATAL) << "SSL_CTX_use_certificate_file failed: "
@@ -1064,7 +1066,7 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
 
 #ifdef NGHTTP2_OPENSSL_IS_BORINGSSL
   SSL_CTX_set_early_data_enabled(ssl_ctx, 1);
-#endif // NGHTTP2_OPENSSL_IS_BORINGSSL
+#endif // defined(NGHTTP2_OPENSSL_IS_BORINGSSL)
 
   // ALPN selection callback
   SSL_CTX_set_alpn_select_cb(ssl_ctx, alpn_select_proto_cb, nullptr);
@@ -1105,7 +1107,7 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
                << ERR_error_string(ERR_get_error(), nullptr);
     DIE();
   }
-#endif // NGHTTP2_OPENSSL_IS_BORINGSSL
+#endif // defined(NGHTTP2_OPENSSL_IS_BORINGSSL)
 
 #if defined(NGHTTP2_GENUINE_OPENSSL) ||                                        \
   (defined(NGHTTP2_OPENSSL_IS_WOLFSSL) && defined(WOLFSSL_EARLY_DATA))
@@ -1114,19 +1116,20 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
                << ERR_error_string(ERR_get_error(), nullptr);
     DIE();
   }
-#endif // NGHTTP2_GENUINE_OPENSSL || (NGHTTP2_OPENSSL_IS_WOLFSSL &&
-       // WOLFSSL_EARLY_DATA)
+#endif // defined(NGHTTP2_GENUINE_OPENSSL) ||
+       // (defined(NGHTTP2_OPENSSL_IS_WOLFSSL) &&
+       // defined(WOLFSSL_EARLY_DATA))
 #ifdef NGHTTP2_GENUINE_OPENSSL
   if (SSL_CTX_set_recv_max_early_data(ssl_ctx, tlsconf.max_early_data) != 1) {
     LOG(FATAL) << "SSL_CTX_set_recv_max_early_data failed: "
                << ERR_error_string(ERR_get_error(), nullptr);
     DIE();
   }
-#endif // NGHTTP2_GENUINE_OPENSSL
+#endif // defined(NGHTTP2_GENUINE_OPENSSL)
 
 #ifndef OPENSSL_NO_PSK
   SSL_CTX_set_psk_server_callback(ssl_ctx, psk_server_cb);
-#endif // !LIBRESSL_NO_PSK
+#endif // !defined(OPENSSL_NO_PSK)
 
 #if defined(NGHTTP2_OPENSSL_IS_BORINGSSL) && defined(HAVE_LIBBROTLI)
   if (!SSL_CTX_add_cert_compression_alg(
@@ -1135,7 +1138,8 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
     LOG(FATAL) << "SSL_CTX_add_cert_compression_alg failed";
     DIE();
   }
-#endif // NGHTTP2_OPENSSL_IS_BORINGSSL && HAVE_LIBBROTLI
+#endif // defined(NGHTTP2_OPENSSL_IS_BORINGSSL) &&
+       // defined(HAVE_LIBBROTLI)
 
   return ssl_ctx;
 }
@@ -1147,7 +1151,7 @@ SSL_CTX *create_quic_ssl_context(const char *private_key_file,
 #  ifdef HAVE_NEVERBLEED
                                  ,
                                  neverbleed_t *nb
-#  endif // HAVE_NEVERBLEED
+#  endif // defined(HAVE_NEVERBLEED)
 ) {
   auto ssl_ctx = SSL_CTX_new(TLS_server_method());
   if (!ssl_ctx) {
@@ -1167,7 +1171,7 @@ SSL_CTX *create_quic_ssl_context(const char *private_key_file,
     // https://tools.ietf.org/html/rfc8446#section-8.3 is still
     // performed.
     | SSL_OP_NO_ANTI_REPLAY
-#  endif // NGHTTP2_GENUINE_OPENSSL
+#  endif // defined(NGHTTP2_GENUINE_OPENSSL)
     ;
 
   auto config = mod_config();
@@ -1188,13 +1192,13 @@ SSL_CTX *create_quic_ssl_context(const char *private_key_file,
     LOG(FATAL) << "ngtcp2_crypto_boringssl_configure_server_context failed";
     DIE();
   }
-#  endif // HAVE_LIBNGTCP2_CRYPTO_BORINGSSL
+#  endif // defined(HAVE_LIBNGTCP2_CRYPTO_BORINGSSL)
 #  ifdef HAVE_LIBNGTCP2_CRYPTO_WOLFSSL
   if (ngtcp2_crypto_wolfssl_configure_server_context(ssl_ctx) != 0) {
     LOG(FATAL) << "ngtcp2_crypto_wolfssl_configure_server_context failed";
     DIE();
   }
-#  endif // HAVE_LIBNGTCP2_CRYPTO_WOLFSSL
+#  endif // defined(HAVE_LIBNGTCP2_CRYPTO_WOLFSSL)
 
   const unsigned char sid_ctx[] = "shrpx";
   SSL_CTX_set_session_id_context(ssl_ctx, sid_ctx, sizeof(sid_ctx) - 1);
@@ -1217,8 +1221,9 @@ SSL_CTX *create_quic_ssl_context(const char *private_key_file,
                << " failed: " << ERR_error_string(ERR_get_error(), nullptr);
     DIE();
   }
-#  endif // NGHTTP2_GENUINE_OPENSSL || NGHTTP2_OPENSSL_IS_LIBRESSL ||
-         // NGHTTP2_OPENSSL_IS_WOLFSSL
+#  endif // defined(NGHTTP2_GENUINE_OPENSSL) ||
+         // defined(NGHTTP2_OPENSSL_IS_LIBRESSL) ||
+         // defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 
   if (SSL_CTX_set1_groups_list(ssl_ctx, tlsconf.groups.data()) != 1) {
     LOG(FATAL) << "SSL_CTX_set1_groups_list " << tlsconf.groups << " failed";
@@ -1292,14 +1297,14 @@ SSL_CTX *create_quic_ssl_context(const char *private_key_file,
                << ERR_error_string(ERR_get_error(), nullptr);
     DIE();
   }
-#  else  // HAVE_NEVERBLEED
+#  else  // defined(HAVE_NEVERBLEED)
   std::array<char, NEVERBLEED_ERRBUF_SIZE> errbuf;
   if (neverbleed_load_private_key_file(nb, ssl_ctx, private_key_file,
                                        errbuf.data()) != 1) {
     LOG(FATAL) << "neverbleed_load_private_key_file failed: " << errbuf.data();
     DIE();
   }
-#  endif // HAVE_NEVERBLEED
+#  endif // defined(HAVE_NEVERBLEED)
 
   if (SSL_CTX_use_certificate_chain_file(ssl_ctx, cert_file) != 1) {
     LOG(FATAL) << "SSL_CTX_use_certificate_file failed: "
@@ -1389,7 +1394,7 @@ SSL_CTX *create_quic_ssl_context(const char *private_key_file,
                << ERR_error_string(ERR_get_error(), nullptr);
     DIE();
   }
-#  endif // NGHTTP2_OPENSSL_IS_BORINGSSL
+#  endif // defined(NGHTTP2_OPENSSL_IS_BORINGSSL)
 
 #  if defined(NGHTTP2_GENUINE_OPENSSL) ||                                      \
     (defined(NGHTTP2_OPENSSL_IS_WOLFSSL) && defined(WOLFSSL_EARLY_DATA))
@@ -1402,12 +1407,13 @@ SSL_CTX *create_quic_ssl_context(const char *private_key_file,
                << ERR_error_string(ERR_get_error(), nullptr);
     DIE();
   }
-#  endif // NGHTTP2_GENUINE_OPENSSL || (NGHTTP2_OPENSSL_IS_WOLFSSL &&
-         // WOLFSSL_EARLY_DATA)
+#  endif // defined(NGHTTP2_GENUINE_OPENSSL) ||
+         // (defined(NGHTTP2_OPENSSL_IS_WOLFSSL) &&
+         // defined(WOLFSSL_EARLY_DATA))
 
 #  ifndef OPENSSL_NO_PSK
   SSL_CTX_set_psk_server_callback(ssl_ctx, psk_server_cb);
-#  endif // !LIBRESSL_NO_PSK
+#  endif // !defined(OPENSSL_NO_PSK)
 
 #  if defined(NGHTTP2_OPENSSL_IS_BORINGSSL) && defined(HAVE_LIBBROTLI)
   if (!SSL_CTX_add_cert_compression_alg(
@@ -1416,16 +1422,17 @@ SSL_CTX *create_quic_ssl_context(const char *private_key_file,
     LOG(FATAL) << "SSL_CTX_add_cert_compression_alg failed";
     DIE();
   }
-#  endif // NGHTTP2_OPENSSL_IS_BORINGSSL && HAVE_LIBBROTLI
+#  endif // defined(NGHTTP2_OPENSSL_IS_BORINGSSL) &&
+         // defined(HAVE_LIBBROTLI)
 
   return ssl_ctx;
 }
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
 SSL_CTX *create_ssl_client_context(
 #ifdef HAVE_NEVERBLEED
   neverbleed_t *nb,
-#endif // HAVE_NEVERBLEED
+#endif // defined(HAVE_NEVERBLEED)
   const std::string_view &cacert, const std::string_view &cert_file,
   const std::string_view &private_key_file) {
   auto ssl_ctx = SSL_CTX_new(TLS_client_method());
@@ -1445,7 +1452,7 @@ SSL_CTX *create_ssl_client_context(
   if (tlsconf.ktls) {
     ssl_opts |= SSL_OP_ENABLE_KTLS;
   }
-#endif // SSL_OP_ENABLE_KTLS
+#endif // defined(SSL_OP_ENABLE_KTLS)
 
   SSL_CTX_set_options(ssl_ctx, ssl_opts | tlsconf.tls_proto_mask);
 
@@ -1473,8 +1480,9 @@ SSL_CTX *create_ssl_client_context(
                << " failed: " << ERR_error_string(ERR_get_error(), nullptr);
     DIE();
   }
-#endif // NGHTTP2_GENUINE_OPENSSL || NGHTTP2_OPENSSL_IS_LIBRESSL ||
-       // NGHTTP2_OPENSSL_IS_WOLFSSL
+#endif // defined(NGHTTP2_GENUINE_OPENSSL) ||
+       // defined(NGHTTP2_OPENSSL_IS_LIBRESSL) ||
+       // defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 
   SSL_CTX_set_mode(ssl_ctx, SSL_MODE_RELEASE_BUFFERS);
 
@@ -1512,7 +1520,7 @@ SSL_CTX *create_ssl_client_context(
                  << ERR_error_string(ERR_get_error(), nullptr);
       DIE();
     }
-#else  // HAVE_NEVERBLEED
+#else  // defined(HAVE_NEVERBLEED)
     std::array<char, NEVERBLEED_ERRBUF_SIZE> errbuf;
     if (neverbleed_load_private_key_file(nb, ssl_ctx, private_key_file.data(),
                                          errbuf.data()) != 1) {
@@ -1521,12 +1529,12 @@ SSL_CTX *create_ssl_client_context(
                  << private_key_file << ": " << errbuf.data();
       DIE();
     }
-#endif // HAVE_NEVERBLEED
+#endif // defined(HAVE_NEVERBLEED)
   }
 
 #ifndef OPENSSL_NO_PSK
   SSL_CTX_set_psk_client_callback(ssl_ctx, psk_client_cb);
-#endif // !OPENSSL_NO_PSK
+#endif // !defined(OPENSSL_NO_PSK)
 
 #if defined(NGHTTP2_OPENSSL_IS_BORINGSSL) && defined(HAVE_LIBBROTLI)
   if (!SSL_CTX_add_cert_compression_alg(
@@ -1535,7 +1543,8 @@ SSL_CTX *create_ssl_client_context(
     LOG(FATAL) << "SSL_CTX_add_cert_compression_alg failed";
     DIE();
   }
-#endif // NGHTTP2_OPENSSL_IS_BORINGSSL && HAVE_LIBBROTLI
+#endif // defined(NGHTTP2_OPENSSL_IS_BORINGSSL) &&
+       // defined(HAVE_LIBBROTLI)
 
   return ssl_ctx;
 }
@@ -2110,7 +2119,7 @@ bool upstream_tls_enabled(const ConnectionConfig &connconf) {
   if (connconf.quic_listener.addrs.size()) {
     return true;
   }
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
   const auto &faddrs = connconf.listener.addrs;
   return std::ranges::any_of(
@@ -2144,7 +2153,7 @@ setup_server_ssl_context(std::vector<SSL_CTX *> &all_ssl_ctx,
 #ifdef HAVE_NEVERBLEED
                          ,
                          neverbleed_t *nb
-#endif // HAVE_NEVERBLEED
+#endif // defined(HAVE_NEVERBLEED)
 ) {
   auto config = get_config();
 
@@ -2159,7 +2168,7 @@ setup_server_ssl_context(std::vector<SSL_CTX *> &all_ssl_ctx,
 #ifdef HAVE_NEVERBLEED
                                     ,
                                     nb
-#endif // HAVE_NEVERBLEED
+#endif // defined(HAVE_NEVERBLEED)
   );
 
   all_ssl_ctx.push_back(ssl_ctx);
@@ -2177,7 +2186,7 @@ setup_server_ssl_context(std::vector<SSL_CTX *> &all_ssl_ctx,
 #ifdef HAVE_NEVERBLEED
                                       ,
                                       nb
-#endif // HAVE_NEVERBLEED
+#endif // defined(HAVE_NEVERBLEED)
     );
     all_ssl_ctx.push_back(ssl_ctx);
 
@@ -2199,7 +2208,7 @@ SSL_CTX *setup_quic_server_ssl_context(
 #  ifdef HAVE_NEVERBLEED
   ,
   neverbleed_t *nb
-#  endif // HAVE_NEVERBLEED
+#  endif // defined(HAVE_NEVERBLEED)
 ) {
   auto config = get_config();
 
@@ -2214,7 +2223,7 @@ SSL_CTX *setup_quic_server_ssl_context(
 #  ifdef HAVE_NEVERBLEED
     ,
     nb
-#  endif // HAVE_NEVERBLEED
+#  endif // defined(HAVE_NEVERBLEED)
   );
 
   all_ssl_ctx.push_back(ssl_ctx);
@@ -2232,7 +2241,7 @@ SSL_CTX *setup_quic_server_ssl_context(
 #  ifdef HAVE_NEVERBLEED
                                            ,
                                            nb
-#  endif // HAVE_NEVERBLEED
+#  endif // defined(HAVE_NEVERBLEED)
     );
     all_ssl_ctx.push_back(ssl_ctx);
 
@@ -2245,19 +2254,19 @@ SSL_CTX *setup_quic_server_ssl_context(
 
   return ssl_ctx;
 }
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
 SSL_CTX *setup_downstream_client_ssl_context(
 #ifdef HAVE_NEVERBLEED
   neverbleed_t *nb
-#endif // HAVE_NEVERBLEED
+#endif // defined(HAVE_NEVERBLEED)
 ) {
   auto &tlsconf = get_config()->tls;
 
   return create_ssl_client_context(
 #ifdef HAVE_NEVERBLEED
     nb,
-#endif // HAVE_NEVERBLEED
+#endif // defined(HAVE_NEVERBLEED)
     tlsconf.cacert, tlsconf.client.cert_file, tlsconf.client.private_key_file);
 }
 
@@ -2326,7 +2335,7 @@ int proto_version_from_string(const std::string_view &v) {
   if (util::strieq("TLSv1.3"sv, v)) {
     return TLS1_3_VERSION;
   }
-#endif // TLS1_3_VERSION
+#endif // defined(TLS1_3_VERSION)
   if (util::strieq("TLSv1.2"sv, v)) {
     return TLS1_2_VERSION;
   }
@@ -2403,8 +2412,9 @@ int time_t_from_asn1_time(time_t &t, const ASN1_TIME *at) {
   }
 
   t = nghttp2_timegm(&tm);
-#else // !NGHTTP2_GENUINE_OPENSSL && !NGHTTP2_OPENSSL_IS_LIBRESSL &&
-      // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#else  // !defined(NGHTTP2_GENUINE_OPENSSL) &&
+       // !defined(NGHTTP2_OPENSSL_IS_LIBRESSL) &&
+       // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
   auto b = BIO_new(BIO_s_mem());
   if (!b) {
     return -1;
@@ -2417,11 +2427,7 @@ int time_t_from_asn1_time(time_t &t, const ASN1_TIME *at) {
     return -1;
   }
 
-#  ifdef NGHTTP2_OPENSSL_IS_BORINGSSL
   char *s;
-#  else
-  unsigned char *s;
-#  endif
   auto slen = BIO_get_mem_data(b, &s);
   auto tt = util::parse_openssl_asn1_time_print(
     std::string_view{s, static_cast<size_t>(slen)});
@@ -2430,8 +2436,9 @@ int time_t_from_asn1_time(time_t &t, const ASN1_TIME *at) {
   }
 
   t = tt;
-#endif // !NGHTTP2_GENUINE_OPENSSL && !NGHTTP2_OPENSSL_IS_LIBRESSL &&
-       // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#endif // !defined(NGHTTP2_GENUINE_OPENSSL) &&
+       // !defined(NGHTTP2_OPENSSL_IS_LIBRESSL) &&
+       // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 
   return 0;
 }

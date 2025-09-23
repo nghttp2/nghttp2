@@ -35,7 +35,7 @@
        // defined(HAVE_LIBNGTCP2_CRYPTO_LIBRESSL)
 #ifdef HAVE_LIBNGTCP2_CRYPTO_BORINGSSL
 #  include <ngtcp2/ngtcp2_crypto_boringssl.h>
-#endif // HAVE_LIBNGTCP2_CRYPTO_BORINGSSL
+#endif // defined(HAVE_LIBNGTCP2_CRYPTO_BORINGSSL)
 
 #include "ssl_compat.h"
 
@@ -43,10 +43,10 @@
 #  include <wolfssl/options.h>
 #  include <wolfssl/openssl/err.h>
 #  include <wolfssl/openssl/rand.h>
-#else // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#else // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 #  include <openssl/err.h>
 #  include <openssl/rand.h>
-#endif // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#endif // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 
 #include "h2load_http3_session.h"
 

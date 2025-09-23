@@ -407,4 +407,4 @@ inline int run_app(std::function<int(int, char **)> app, int argc,
 
 } // namespace nghttp2
 
-#endif // TEMPLATE_H
+#endif // !defined(TEMPLATE_H)

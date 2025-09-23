@@ -36,7 +36,7 @@
 #include <queue>
 #ifndef NOTHREADS
 #  include <future>
-#endif // NOTHREADS
+#endif // !defined(NOTHREADS)
 
 #include "ssl_compat.h"
 
@@ -44,10 +44,10 @@
 #  include <wolfssl/options.h>
 #  include <wolfssl/openssl/ssl.h>
 #  include <wolfssl/openssl/err.h>
-#else // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#else // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 #  include <openssl/ssl.h>
 #  include <openssl/err.h>
-#endif // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#endif // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 
 #include <ev.h>
 
@@ -61,7 +61,7 @@
 #ifdef ENABLE_HTTP3
 #  include "shrpx_quic_connection_handler.h"
 #  include "shrpx_quic.h"
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 #include "allocator.h"
 
 using namespace nghttp2;
@@ -75,7 +75,7 @@ class ConnectionHandler;
 class AcceptHandler;
 #ifdef ENABLE_HTTP3
 class QUICListener;
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
 #ifdef HAVE_MRUBY
 namespace mruby {
@@ -83,7 +83,7 @@ namespace mruby {
 class MRubyContext;
 
 } // namespace mruby
-#endif // HAVE_MRUBY
+#endif // defined(HAVE_MRUBY)
 
 namespace tls {
 class CertLookupTree;
@@ -232,7 +232,7 @@ struct SharedDownstreamAddr {
   std::unordered_map<uint32_t, size_t> affinity_hash_map;
 #ifdef HAVE_MRUBY
   std::shared_ptr<mruby::MRubyContext> mruby_ctx;
-#endif // HAVE_MRUBY
+#endif // defined(HAVE_MRUBY)
   // Configuration for session affinity
   AffinityConfig affinity;
   // Session affinity
@@ -287,7 +287,7 @@ struct QUICPacket {
   ngtcp2_pkt_info pi;
   std::vector<uint8_t> data;
 };
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
 enum class WorkerEventType {
   REOPEN_LOG = 0x02,
@@ -295,7 +295,7 @@ enum class WorkerEventType {
   REPLACE_DOWNSTREAM = 0x04,
 #ifdef ENABLE_HTTP3
   QUIC_PKT_FORWARD = 0x05,
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 };
 
 struct WorkerEvent {
@@ -304,7 +304,7 @@ struct WorkerEvent {
   std::shared_ptr<DownstreamConfig> downstreamconf;
 #ifdef ENABLE_HTTP3
   std::unique_ptr<QUICPacket> quic_pkt;
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 };
 
 class Worker {
@@ -314,7 +314,7 @@ public:
 #ifdef ENABLE_HTTP3
          SSL_CTX *quic_sv_ssl_ctx, tls::CertLookupTree *quic_cert_tree,
          WorkerID wid,
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
          size_t index, const std::shared_ptr<TicketKeys> &ticket_keys,
          ConnectionHandler *conn_handler,
          std::shared_ptr<DownstreamConfig> downstreamconf);
@@ -327,7 +327,7 @@ public:
   tls::CertLookupTree *get_cert_lookup_tree() const;
 #ifdef ENABLE_HTTP3
   tls::CertLookupTree *get_quic_cert_lookup_tree() const;
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
   // These 2 functions make a lock m_ to get/set ticket keys
   // atomically.
@@ -340,7 +340,7 @@ public:
   SSL_CTX *get_cl_ssl_ctx() const;
 #ifdef ENABLE_HTTP3
   SSL_CTX *get_quic_sv_ssl_ctx() const;
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
   void set_graceful_shutdown(bool f);
   bool get_graceful_shutdown() const;
@@ -354,7 +354,7 @@ public:
   int create_mruby_context();
 
   mruby::MRubyContext *get_mruby_context() const;
-#endif // HAVE_MRUBY
+#endif // defined(HAVE_MRUBY)
 
   std::vector<std::shared_ptr<DownstreamAddrGroup>> &
   get_downstream_addr_groups();
@@ -389,13 +389,13 @@ public:
   bool should_update_bpf_map() const;
 
   uint32_t compute_sk_index() const;
-#  endif // HAVE_LIBBPF
+#  endif // defined(HAVE_LIBBPF)
 
   int create_quic_server_socket(UpstreamAddr &addr);
 
   // Returns a pointer to UpstreamAddr which matches |local_addr|.
   const UpstreamAddr *find_quic_upstream_addr(const Address &local_addr);
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
   DNSTracker *get_dns_tracker();
 
@@ -405,7 +405,7 @@ public:
 private:
 #ifndef NOTHREADS
   std::future<void> fut_;
-#endif // NOTHREADS
+#endif // !defined(NOTHREADS)
   // Unique index of this worker.
   size_t index_;
   std::mutex m_;
@@ -426,12 +426,12 @@ private:
   WorkerID worker_id_;
   std::vector<UpstreamAddr> quic_upstream_addrs_;
   std::vector<std::unique_ptr<QUICListener>> quic_listeners_;
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
   std::shared_ptr<DownstreamConfig> downstreamconf_;
 #ifdef HAVE_MRUBY
   std::unique_ptr<mruby::MRubyContext> mruby_ctx_;
-#endif // HAVE_MRUBY
+#endif // defined(HAVE_MRUBY)
   struct ev_loop *loop_;
 
   // Following fields are shared across threads if
@@ -445,14 +445,14 @@ private:
   tls::CertLookupTree *quic_cert_tree_;
 
   QUICConnectionHandler quic_conn_handler_;
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
 #ifdef HAVE_ATOMIC_STD_SHARED_PTR
   std::atomic<std::shared_ptr<TicketKeys>> ticket_keys_;
-#else  // !HAVE_ATOMIC_STD_SHARED_PTR
+#else  // !defined(HAVE_ATOMIC_STD_SHARED_PTR)
   std::mutex ticket_keys_m_;
   std::shared_ptr<TicketKeys> ticket_keys_;
-#endif // !HAVE_ATOMIC_STD_SHARED_PTR
+#endif // !defined(HAVE_ATOMIC_STD_SHARED_PTR)
   std::vector<std::shared_ptr<DownstreamAddrGroup>> downstream_addr_groups_;
   // Worker level blocker for downstream connection.  For example,
   // this is used when file descriptor is exhausted.
@@ -480,4 +480,4 @@ void downstream_failure(DownstreamAddr *addr, const Address *raddr);
 
 } // namespace shrpx
 
-#endif // SHRPX_WORKER_H
+#endif // !defined(SHRPX_WORKER_H)

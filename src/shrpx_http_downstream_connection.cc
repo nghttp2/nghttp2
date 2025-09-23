@@ -29,9 +29,9 @@
 #ifdef NGHTTP2_OPENSSL_IS_WOLFSSL
 #  include <wolfssl/options.h>
 #  include <wolfssl/openssl/rand.h>
-#else // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#else // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 #  include <openssl/rand.h>
-#endif // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#endif // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 
 #include "shrpx_client_handler.h"
 #include "shrpx_upstream.h"
@@ -589,8 +589,9 @@ int HttpDownstreamConnection::push_request_headers() {
   if (conn->tls.ssl && !SSL_is_init_finished(conn->tls.ssl)) {
     buf->append("Early-Data: 1\r\n"sv);
   }
-#endif // NGHTTP2_GENUINE_OPENSSL || NGHTTP2_OPENSSL_IS_BORINGSSL ||
-       // NGHTTP2_OPENSSL_IS_WOLFSSL
+#endif // defined(NGHTTP2_GENUINE_OPENSSL) ||
+       // defined(NGHTTP2_OPENSSL_IS_BORINGSSL) ||
+       // defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 
   auto fwd =
     fwdconf.strip_incoming ? nullptr : req.fs.header(http2::HD_FORWARDED);

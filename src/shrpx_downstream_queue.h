@@ -112,4 +112,4 @@ private:
 
 } // namespace shrpx
 
-#endif // SHRPX_DOWNSTREAM_QUEUE_H
+#endif // !defined(SHRPX_DOWNSTREAM_QUEUE_H)

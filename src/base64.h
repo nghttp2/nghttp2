@@ -197,4 +197,4 @@ std::span<const uint8_t> decode(BlockAllocator &balloc, R &&r) {
 
 } // namespace nghttp2
 
-#endif // BASE64_H
+#endif // !defined(BASE64_H)

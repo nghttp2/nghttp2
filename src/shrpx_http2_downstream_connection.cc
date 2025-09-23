@@ -26,7 +26,7 @@
 
 #ifdef HAVE_UNISTD_H
 #  include <unistd.h>
-#endif // HAVE_UNISTD_H
+#endif // defined(HAVE_UNISTD_H)
 
 #include "llhttp.h"
 
@@ -358,8 +358,9 @@ int Http2DownstreamConnection::push_request_headers() {
   if (conn->tls.ssl && !SSL_is_init_finished(conn->tls.ssl)) {
     nva.push_back(http2::make_field("early-data"sv, "1"sv));
   }
-#endif // NGHTTP2_GENUINE_OPENSSL || NGHTTP2_OPENSSL_IS_BORINGSSL ||
-       // NGHTTP2_OPENSSL_IS_WOLFSSL
+#endif // defined(NGHTTP2_GENUINE_OPENSSL) ||
+       // defined(NGHTTP2_OPENSSL_IS_BORINGSSL) ||
+       // defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 
   auto fwd =
     fwdconf.strip_incoming ? nullptr : req.fs.header(http2::HD_FORWARDED);

@@ -235,9 +235,9 @@ int APIDownstreamConnection::push_request_headers() {
     char tempname[] = "/tmp/nghttpx-api.XXXXXX";
 #ifdef HAVE_MKOSTEMP
     fd_ = mkostemp(tempname, O_CLOEXEC);
-#else  // !HAVE_MKOSTEMP
+#else  // !defined(HAVE_MKOSTEMP)
     fd_ = mkstemp(tempname);
-#endif // !HAVE_MKOSTEMP
+#endif // !defined(HAVE_MKOSTEMP)
     if (fd_ == -1) {
       send_reply(500, APIStatusCode::FAILURE);
 
@@ -245,7 +245,7 @@ int APIDownstreamConnection::push_request_headers() {
     }
 #ifndef HAVE_MKOSTEMP
     util::make_socket_closeonexec(fd_);
-#endif // HAVE_MKOSTEMP
+#endif // !defined(HAVE_MKOSTEMP)
     unlink(tempname);
     break;
   }

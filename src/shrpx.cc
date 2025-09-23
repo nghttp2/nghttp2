@@ -29,38 +29,38 @@
 #include <sys/stat.h>
 #ifdef HAVE_SYS_SOCKET_H
 #  include <sys/socket.h>
-#endif // HAVE_SYS_SOCKET_H
+#endif // defined(HAVE_SYS_SOCKET_H)
 #include <sys/un.h>
 #ifdef HAVE_NETDB_H
 #  include <netdb.h>
-#endif // HAVE_NETDB_H
+#endif // defined(HAVE_NETDB_H)
 #include <signal.h>
 #ifdef HAVE_NETINET_IN_H
 #  include <netinet/in.h>
-#endif // HAVE_NETINET_IN_H
+#endif // defined(HAVE_NETINET_IN_H)
 #ifdef HAVE_ARPA_INET_H
 #  include <arpa/inet.h>
-#endif // HAVE_ARPA_INET_H
+#endif // defined(HAVE_ARPA_INET_H)
 #ifdef HAVE_UNISTD_H
 #  include <unistd.h>
-#endif // HAVE_UNISTD_H
+#endif // defined(HAVE_UNISTD_H)
 #include <getopt.h>
 #ifdef HAVE_SYSLOG_H
 #  include <syslog.h>
-#endif // HAVE_SYSLOG_H
+#endif // defined(HAVE_SYSLOG_H)
 #ifdef HAVE_LIMITS_H
 #  include <limits.h>
-#endif // HAVE_LIMITS_H
+#endif // defined(HAVE_LIMITS_H)
 #ifdef HAVE_SYS_TIME_H
 #  include <sys/time.h>
-#endif // HAVE_SYS_TIME_H
+#endif // defined(HAVE_SYS_TIME_H)
 #include <sys/resource.h>
 #ifdef HAVE_LIBSYSTEMD
 #  include <systemd/sd-daemon.h>
-#endif // HAVE_LIBSYSTEMD
+#endif // defined(HAVE_LIBSYSTEMD)
 #ifdef HAVE_LIBBPF
 #  include <bpf/libbpf.h>
-#endif // HAVE_LIBBPF
+#endif // defined(HAVE_LIBBPF)
 
 #include <cinttypes>
 #include <limits>
@@ -79,11 +79,11 @@
 #  include <wolfssl/openssl/ssl.h>
 #  include <wolfssl/openssl/err.h>
 #  include <wolfssl/openssl/rand.h>
-#else // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#else // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 #  include <openssl/ssl.h>
 #  include <openssl/err.h>
 #  include <openssl/rand.h>
-#endif // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#endif // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 #include <ev.h>
 
 #include <nghttp2/nghttp2.h>
@@ -98,8 +98,8 @@
          // defined(HAVE_LIBNGTCP2_CRYPTO_LIBRESSL)
 #  ifdef HAVE_LIBNGTCP2_CRYPTO_OSSL
 #    include <ngtcp2/ngtcp2_crypto_ossl.h>
-#  endif // HAVE_LIBNGTCP2_CRYPTO_OSSL
-#endif   // ENABLE_HTTP3
+#  endif // defined(HAVE_LIBNGTCP2_CRYPTO_OSSL)
+#endif   // defined(ENABLE_HTTP3)
 
 #include "shrpx_config.h"
 #include "shrpx_tls.h"
@@ -189,7 +189,7 @@ struct WorkerProcess {
 #ifdef ENABLE_HTTP3
                 ,
                 int quic_ipc_fd, std::vector<WorkerID> worker_ids, uint16_t seq
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
                 )
     : loop(loop),
       worker_pid(worker_pid),
@@ -199,7 +199,7 @@ struct WorkerProcess {
       quic_ipc_fd(quic_ipc_fd),
       worker_ids(std::move(worker_ids)),
       seq(seq)
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
   {
     ev_child_init(&worker_process_childev, worker_process_child_cb, worker_pid,
                   0);
@@ -214,7 +214,7 @@ struct WorkerProcess {
     if (quic_ipc_fd != -1) {
       close(quic_ipc_fd);
     }
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
     if (ipc_fd != -1) {
       shutdown(ipc_fd, SHUT_WR);
@@ -231,7 +231,7 @@ struct WorkerProcess {
   int quic_ipc_fd;
   std::vector<WorkerID> worker_ids;
   uint16_t seq;
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 };
 
 namespace {
@@ -243,7 +243,7 @@ std::deque<std::unique_ptr<WorkerProcess>> worker_processes;
 
 #ifdef ENABLE_HTTP3
 uint16_t worker_process_seq;
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 } // namespace
 
 namespace {
@@ -439,7 +439,7 @@ void shrpx_sd_notifyf(int unset_environment, const char *format, ...) {
   va_start(args, format);
   sd_notifyf(unset_environment, format, va_arg(args, char *));
   va_end(args);
-#endif // HAVE_LIBSYSTEMD
+#endif // defined(HAVE_LIBSYSTEMD)
 }
 } // namespace
 
@@ -566,7 +566,7 @@ void exec_binary() {
     quic_lwps.emplace_back(s);
     envp[envidx++] = const_cast<char *>(quic_lwps.back().c_str());
   }
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
   for (size_t i = 0; i < envlen; ++i) {
     auto env = std::string_view{environ[i]};
@@ -719,7 +719,7 @@ int create_unix_domain_server_socket(
                << xsi_strerror(error, errbuf.data(), errbuf.size());
     return -1;
   }
-#else  // !SOCK_NONBLOCK
+#else  // !defined(SOCK_NONBLOCK)
   auto fd = socket(AF_UNIX, SOCK_STREAM, 0);
   if (fd == -1) {
     auto error = errno;
@@ -728,7 +728,7 @@ int create_unix_domain_server_socket(
     return -1;
   }
   util::make_socket_nonblocking(fd);
-#endif // !SOCK_NONBLOCK
+#endif // !defined(SOCK_NONBLOCK)
   int val = 1;
   if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &val,
                  static_cast<socklen_t>(sizeof(val))) == -1) {
@@ -985,7 +985,7 @@ get_inherited_quic_lingering_worker_process_from_env() {
   return lwps;
 }
 } // namespace
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
 namespace {
 int create_unix_domain_listener_socket(
@@ -1022,16 +1022,16 @@ namespace {
 int call_daemon() {
 #ifdef __sgi
   return _daemonize(0, 0, 0, 0);
-#else // !__sgi
+#else // !defined(__sgi)
 #  ifdef HAVE_LIBSYSTEMD
   if (sd_booted() && (getenv("NOTIFY_SOCKET") != nullptr)) {
     LOG(NOTICE) << "Daemonising disabled under systemd";
     chdir("/");
     return 0;
   }
-#  endif // HAVE_LIBSYSTEMD
+#  endif // defined(HAVE_LIBSYSTEMD)
   return util::daemonize(0, 0);
-#endif   // !__sgi
+#endif   // !defined(__sgi)
 }
 } // namespace
 
@@ -1155,7 +1155,7 @@ collect_quic_lingering_worker_processes() {
   return quic_lwps;
 }
 } // namespace
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
 namespace {
 ev_signal reopen_log_signalev;
@@ -1291,14 +1291,14 @@ pid_t fork_worker_process(int &main_ipc_fd
 #ifdef ENABLE_HTTP3
                           ,
                           int &wp_quic_ipc_fd
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
                           ,
                           const std::vector<InheritedUNIXDomainAddr> &iaddrs
 #ifdef ENABLE_HTTP3
                           ,
                           std::vector<WorkerID> worker_ids,
                           std::vector<QUICLingeringWorkerProcess> quic_lwps
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 ) {
   std::array<char, STRERROR_BUFSIZE> errbuf;
   int rv;
@@ -1318,7 +1318,7 @@ pid_t fork_worker_process(int &main_ipc_fd
   if (rv != 0) {
     return -1;
   }
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
   rv = shrpx_signal_block_all(&oldset);
   if (rv != 0) {
@@ -1364,7 +1364,7 @@ pid_t fork_worker_process(int &main_ipc_fd
       // Do not close quic_ipc_fd.
       wp->quic_ipc_fd = -1;
     }
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
     if (!config->single_process) {
       close(worker_process_ready_ipc_fd[0]);
@@ -1398,7 +1398,7 @@ pid_t fork_worker_process(int &main_ipc_fd
       close(ipc_fd[1]);
 #ifdef ENABLE_HTTP3
       close(quic_ipc_fd[1]);
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
     }
 
     WorkerProcessConfig wpconf{
@@ -1408,7 +1408,7 @@ pid_t fork_worker_process(int &main_ipc_fd
       .worker_ids = std::move(worker_ids),
       .quic_ipc_fd = quic_ipc_fd[0],
       .quic_lingering_worker_processes = std::move(quic_lwps),
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
     };
     rv = worker_process_event_loop(&wpconf);
     if (rv != 0) {
@@ -1453,7 +1453,7 @@ pid_t fork_worker_process(int &main_ipc_fd
 #ifdef ENABLE_HTTP3
     close(quic_ipc_fd[0]);
     close(quic_ipc_fd[1]);
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
     return -1;
   }
@@ -1461,7 +1461,7 @@ pid_t fork_worker_process(int &main_ipc_fd
   close(ipc_fd[0]);
 #ifdef ENABLE_HTTP3
   close(quic_ipc_fd[0]);
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
   main_ipc_fd = ipc_fd[1];
 #ifdef ENABLE_HTTP3

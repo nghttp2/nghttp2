@@ -115,4 +115,4 @@ private:
 
 } // namespace shrpx
 
-#endif // SHRPX_DNS_RESOLVER_H
+#endif // !defined(SHRPX_DNS_RESOLVER_H)

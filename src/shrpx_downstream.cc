@@ -40,7 +40,7 @@
 #include "shrpx_log.h"
 #ifdef HAVE_MRUBY
 #  include "shrpx_mruby.h"
-#endif // HAVE_MRUBY
+#endif // defined(HAVE_MRUBY)
 #include "util.h"
 #include "http2.h"
 
@@ -190,7 +190,7 @@ Downstream::Downstream(Upstream *upstream, MemchunkPool *mcpool,
   rcbufs_.reserve(32);
 #ifdef ENABLE_HTTP3
   rcbufs3_.reserve(32);
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 }
 
 Downstream::~Downstream() {
@@ -214,7 +214,7 @@ Downstream::~Downstream() {
     auto mruby_ctx = worker->get_mruby_context();
 
     mruby_ctx->delete_downstream(this);
-#endif // HAVE_MRUBY
+#endif // defined(HAVE_MRUBY)
   }
 
 #ifdef HAVE_MRUBY
@@ -225,7 +225,7 @@ Downstream::~Downstream() {
       mruby_ctx->delete_downstream(this);
     }
   }
-#endif // HAVE_MRUBY
+#endif // defined(HAVE_MRUBY)
 
   // DownstreamConnection may refer to this object.  Delete it now
   // explicitly.
@@ -235,7 +235,7 @@ Downstream::~Downstream() {
   for (auto rcbuf : rcbufs3_) {
     nghttp3_rcbuf_decref(rcbuf);
   }
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
   for (auto rcbuf : rcbufs_) {
     nghttp2_rcbuf_decref(rcbuf);
@@ -268,7 +268,7 @@ void Downstream::detach_downstream_connection() {
     const auto &mruby_ctx = group->shared_addr->mruby_ctx;
     mruby_ctx->delete_downstream(this);
   }
-#endif // HAVE_MRUBY
+#endif // defined(HAVE_MRUBY)
 
   dconn_->detach_downstream(this);
 
@@ -293,7 +293,7 @@ std::unique_ptr<DownstreamConnection> Downstream::pop_downstream_connection() {
     const auto &mruby_ctx = group->shared_addr->mruby_ctx;
     mruby_ctx->delete_downstream(this);
   }
-#endif // HAVE_MRUBY
+#endif // defined(HAVE_MRUBY)
 
   return std::unique_ptr<DownstreamConnection>(dconn_.release());
 }
@@ -1173,7 +1173,7 @@ void Downstream::add_rcbuf(nghttp3_rcbuf *rcbuf) {
   nghttp3_rcbuf_incref(rcbuf);
   rcbufs3_.push_back(rcbuf);
 }
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
 void Downstream::set_downstream_addr_group(
   const std::shared_ptr<DownstreamAddrGroup> &group) {

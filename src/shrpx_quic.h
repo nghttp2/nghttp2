@@ -39,10 +39,10 @@
 #  include <wolfssl/options.h>
 #  include <wolfssl/openssl/evp.h>
 #  include <wolfssl/openssl/rand.h>
-#else // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#else // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 #  include <openssl/evp.h>
 #  include <openssl/rand.h>
-#endif // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#endif // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 
 #include <ngtcp2/ngtcp2.h>
 
@@ -176,4 +176,4 @@ select_quic_keying_material(const QUICKeyingMaterials &qkms, uint8_t km_id);
 
 } // namespace shrpx
 
-#endif // SHRPX_QUIC_H
+#endif // !defined(SHRPX_QUIC_H)

@@ -27,13 +27,13 @@
 
 #ifdef HAVE_CONFIG_H
 #  include <config.h>
-#endif /* HAVE_CONFIG_H */
+#endif /* defined(HAVE_CONFIG_H) */
 
 #include <stddef.h>
 
 #ifdef __cplusplus
 extern "C" {
-#endif /* __cplusplus */
+#endif /* defined(__cplusplus) */
 
 /* Looks like error message is quite small, but we really don't know
    how much longer they become. */
@@ -50,6 +50,6 @@ char *xsi_strerror(int errnum, char *buf, size_t buflen);
 
 #ifdef __cplusplus
 }
-#endif /* __cplusplus */
+#endif /* defined(__cplusplus) */
 
-#endif /* XSI_STRERROR_H */
+#endif /* !defined(XSI_STRERROR_H) */

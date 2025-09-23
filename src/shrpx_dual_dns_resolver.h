@@ -66,4 +66,4 @@ private:
 
 } // namespace shrpx
 
-#endif // SHRPX_DUAL_DNS_RESOLVER_H
+#endif // !defined(SHRPX_DUAL_DNS_RESOLVER_H)

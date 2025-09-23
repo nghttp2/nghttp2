@@ -152,4 +152,4 @@ private:
 
 } // namespace shrpx
 
-#endif // SHRPX_MEMCACHED_CONNECTION_H
+#endif // !defined(SHRPX_MEMCACHED_CONNECTION_H)

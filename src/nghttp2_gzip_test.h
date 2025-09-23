@@ -27,11 +27,11 @@
 
 #ifdef HAVE_CONFIG_H
 #  include <config.h>
-#endif /* HAVE_CONFIG_H */
+#endif /* defined(HAVE_CONFIG_H) */
 
 #ifdef __cplusplus
 extern "C" {
-#endif
+#endif /* defined(__cplusplus) */
 
 #define MUNIT_ENABLE_ASSERT_ALIASES
 
@@ -43,6 +43,6 @@ munit_void_test_decl(test_nghttp2_gzip_inflate)
 
 #ifdef __cplusplus
 }
-#endif
+#endif /* defined(__cplusplus) */
 
-#endif /* NGHTTP2_GZIP_TEST_H */
+#endif /* !defined(NGHTTP2_GZIP_TEST_H) */

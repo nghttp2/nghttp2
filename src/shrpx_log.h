@@ -48,9 +48,9 @@ using namespace nghttp2;
 
 #ifdef __FILE_NAME__
 #  define NGHTTP2_FILE_NAME __FILE_NAME__
-#else // !__FILE_NAME__
+#else // !defined(__FILE_NAME__)
 #  define NGHTTP2_FILE_NAME __FILE__
-#endif // !__FILE_NAME__
+#endif // !defined(__FILE_NAME__)
 
 #define LOG(SEVERITY) shrpx::Log(SEVERITY, NGHTTP2_FILE_NAME, __LINE__)
 
@@ -327,4 +327,4 @@ int open_log_file(const char *path);
 
 } // namespace shrpx
 
-#endif // SHRPX_LOG_H
+#endif // !defined(SHRPX_LOG_H)

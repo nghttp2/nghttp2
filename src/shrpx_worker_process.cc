@@ -27,7 +27,7 @@
 #include <sys/types.h>
 #ifdef HAVE_UNISTD_H
 #  include <unistd.h>
-#endif // HAVE_UNISTD_H
+#endif // defined(HAVE_UNISTD_H)
 #include <sys/resource.h>
 #include <sys/wait.h>
 #include <grp.h>
@@ -40,9 +40,9 @@
 #ifdef NGHTTP2_OPENSSL_IS_WOLFSSL
 #  include <wolfssl/options.h>
 #  include <wolfssl/openssl/rand.h>
-#else // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#else // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 #  include <openssl/rand.h>
-#endif // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#endif // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 
 #include <ev.h>
 
@@ -73,7 +73,7 @@ namespace {
 void drop_privileges(
 #ifdef HAVE_NEVERBLEED
   neverbleed_t *nb
-#endif // HAVE_NEVERBLEED
+#endif // defined(HAVE_NEVERBLEED)
 ) {
   std::array<char, STRERROR_BUFSIZE> errbuf;
   auto config = get_config();
@@ -83,7 +83,7 @@ void drop_privileges(
     if (nb) {
       neverbleed_setuidgid(nb, config->user.data(), 1);
     }
-#endif // HAVE_NEVERBLEED
+#endif // defined(HAVE_NEVERBLEED)
 
     if (initgroups(config->user.data(),
 #ifndef __APPLE__
@@ -199,7 +199,7 @@ void quic_ipc_readcb(struct ev_loop *loop, ev_io *w, int revents) {
   }
 }
 } // namespace
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
 namespace {
 int generate_ticket_key(TicketKey &ticket_key) {
@@ -414,7 +414,7 @@ void nb_child_cb(struct ev_loop *loop, ev_child *w, int revents) {
   nghttp2_Exit(EXIT_FAILURE);
 }
 } // namespace
-#endif // HAVE_NEVERBLEED
+#endif // defined(HAVE_NEVERBLEED)
 
 namespace {
 int send_ready_event(int ready_ipc_fd) {
@@ -476,19 +476,19 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
   ev_child_init(&nb_childev, nb_child_cb, nb->daemon_pid, 0);
   nb_childev.data = nullptr;
   ev_child_start(loop, &nb_childev);
-#endif // HAVE_NEVERBLEED
+#endif // defined(HAVE_NEVERBLEED)
 
   auto conn_handler = std::make_unique<ConnectionHandler>(loop, gen);
 
 #ifdef HAVE_NEVERBLEED
   conn_handler->set_neverbleed(nb.get());
-#endif // HAVE_NEVERBLEED
+#endif // defined(HAVE_NEVERBLEED)
 
 #ifdef ENABLE_HTTP3
   conn_handler->set_quic_ipc_fd(wpconf->quic_ipc_fd);
   conn_handler->set_quic_lingering_worker_processes(
     wpconf->quic_lingering_worker_processes);
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
   MemchunkPool mcpool;
 
@@ -618,7 +618,7 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
   conn_handler->set_worker_ids(wpconf->worker_ids);
   conn_handler->set_quic_lingering_worker_processes(
     wpconf->quic_lingering_worker_processes);
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
   if (config->single_thread) {
     rv = conn_handler->create_single_worker();
@@ -637,7 +637,7 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
                  << xsi_strerror(rv, errbuf.data(), errbuf.size());
       return -1;
     }
-#endif // !NOTHREADS
+#endif // !defined(NOTHREADS)
 
     rv = conn_handler->create_worker_thread(config->num_worker);
     if (rv != 0) {
@@ -651,7 +651,7 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
                  << xsi_strerror(rv, errbuf.data(), errbuf.size());
       return -1;
     }
-#endif // !NOTHREADS
+#endif // !defined(NOTHREADS)
   }
 
   // UNIX domain sockets are copied in AcceptHandler.  No need to keep
@@ -669,7 +669,7 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
   drop_privileges(
 #ifdef HAVE_NEVERBLEED
     nb.get()
-#endif // HAVE_NEVERBLEED
+#endif // defined(HAVE_NEVERBLEED)
   );
 
   ev_io ipcev;
@@ -682,7 +682,7 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
   ev_io_init(&quic_ipcev, quic_ipc_readcb, wpconf->quic_ipc_fd, EV_READ);
   quic_ipcev.data = conn_handler.get();
   ev_io_start(loop, &quic_ipcev);
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
   if (LOG_ENABLED(INFO)) {
     LOG(INFO) << "Entering event loop";
@@ -716,7 +716,7 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
                   "of neverbleed process: errno="
                << error;
   }
-#endif // HAVE_NEVERBLEED
+#endif // defined(HAVE_NEVERBLEED)
 
   ares_library_cleanup();
 

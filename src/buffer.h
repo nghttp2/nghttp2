@@ -76,4 +76,4 @@ template <size_t N> struct Buffer {
 
 } // namespace nghttp2
 
-#endif // BUFFER_H
+#endif // !defined(BUFFER_H)

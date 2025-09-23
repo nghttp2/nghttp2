@@ -26,11 +26,11 @@
 
 #ifdef __sgi
 #  define daemon _daemonize
-#endif
+#endif // defined(__sgi)
 
 #ifdef HAVE_UNISTD_H
 #  include <unistd.h>
-#endif // HAVE_UNISTD_H
+#endif // defined(HAVE_UNISTD_H)
 #include <signal.h>
 #include <getopt.h>
 
@@ -274,14 +274,14 @@ int main(int argc, char **argv) {
 #ifdef NOTHREADS
       std::cerr << "-n: WARNING: Threading disabled at build time, "
                 << "no threads created." << std::endl;
-#else
+#else  // !defined(NOTHREADS)
       auto n = util::parse_uint(optarg);
       if (!n) {
         std::cerr << "-n: Bad option value: " << optarg << std::endl;
         exit(EXIT_FAILURE);
       }
       config.num_worker = static_cast<size_t>(*n);
-#endif // NOTHREADS
+#endif // !defined(NOTHREADS)
       break;
     }
     case 'h':
@@ -458,9 +458,9 @@ int main(int argc, char **argv) {
     }
 #ifdef __sgi
     if (daemon(0, 0, 0, 0) == -1) {
-#else
+#else  // !defined(__sgi)
     if (util::daemonize(0, 0) == -1) {
-#endif
+#endif // !defined(__sgi)
       perror("daemon");
       exit(EXIT_FAILURE);
     }

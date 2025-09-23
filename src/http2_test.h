@@ -22,12 +22,12 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#ifndef SHRPX_HTTP2_TEST_H
-#define SHRPX_HTTP2_TEST_H
+#ifndef HTTP2_TEST_H
+#define HTTP2_TEST_H
 
 #ifdef HAVE_CONFIG_H
 #  include <config.h>
-#endif // HAVE_CONFIG_H
+#endif // defined(HAVE_CONFIG_H)
 
 #define MUNIT_ENABLE_ASSERT_ALIASES
 
@@ -57,4 +57,4 @@ munit_void_test_decl(test_http2_capitalize)
 
 } // namespace shrpx
 
-#endif // SHRPX_HTTP2_TEST_H
+#endif // !defined(HTTP2_TEST_H)

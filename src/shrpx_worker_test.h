@@ -27,7 +27,7 @@
 
 #ifdef HAVE_CONFIG_H
 #  include <config.h>
-#endif // HAVE_CONFIG_H
+#endif // defined(HAVE_CONFIG_H)
 
 #define MUNIT_ENABLE_ASSERT_ALIASES
 
@@ -41,4 +41,4 @@ munit_void_test_decl(test_shrpx_worker_match_downstream_addr_group)
 
 } // namespace shrpx
 
-#endif // SHRPX_WORKER_TEST_H
+#endif // !defined(SHRPX_WORKER_TEST_H)

@@ -26,7 +26,7 @@
 
 #ifdef HAVE_UNISTD_H
 #  include <unistd.h>
-#endif // HAVE_UNISTD_H
+#endif // defined(HAVE_UNISTD_H)
 
 #include <cstdlib>
 
