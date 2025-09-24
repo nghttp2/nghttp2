@@ -1020,18 +1020,14 @@ int create_unix_domain_listener_socket(
 
 namespace {
 int call_daemon() {
-#ifdef __sgi
-  return _daemonize(0, 0, 0, 0);
-#else // !defined(__sgi)
-#  ifdef HAVE_LIBSYSTEMD
+#ifdef HAVE_LIBSYSTEMD
   if (sd_booted() && (getenv("NOTIFY_SOCKET") != nullptr)) {
     LOG(NOTICE) << "Daemonising disabled under systemd";
     chdir("/");
     return 0;
   }
-#  endif // defined(HAVE_LIBSYSTEMD)
+#endif // defined(HAVE_LIBSYSTEMD)
   return util::daemonize(0, 0);
-#endif   // !defined(__sgi)
 }
 } // namespace
 

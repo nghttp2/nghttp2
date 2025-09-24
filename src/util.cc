@@ -1835,9 +1835,14 @@ int daemonize(int nochdir, int noclose) {
     }
   }
   return 0;
-#else  // !defined(__APPLE__)
+#elif defined(__sgi)
+  // TODO nochdir and noclose are ignored.  _daemonize is called with
+  // hard-coded zeros to preserve original behavior due to lack of a
+  // test environment.
+  return _daemonize(0, 0, 0, 0);
+#else  // !defined(__APPLE__) && !defined(__sgi)
   return daemon(nochdir, noclose);
-#endif // !defined(__APPLE__)
+#endif // !defined(__APPLE__) && !defined(__sgi)
 }
 
 std::string_view rstrip(BlockAllocator &balloc, const std::string_view &s) {
