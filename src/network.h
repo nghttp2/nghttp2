@@ -27,23 +27,23 @@
 
 #ifdef HAVE_CONFIG_H
 #  include <config.h>
-#endif // HAVE_CONFIG_H
+#endif // defined(HAVE_CONFIG_H)
 
 #include <sys/types.h>
 #ifdef HAVE_SYS_SOCKET_H
 #  include <sys/socket.h>
-#endif // HAVE_SYS_SOCKET_H
+#endif // defined(HAVE_SYS_SOCKET_H)
 #ifdef _WIN32
 #  include <ws2tcpip.h>
-#else // !_WIN32
+#else // !defined(_WIN32)
 #  include <sys/un.h>
-#endif // !_WIN32
+#endif // !defined(_WIN32)
 #ifdef HAVE_NETINET_IN_H
 #  include <netinet/in.h>
-#endif // HAVE_NETINET_IN_H
+#endif // defined(HAVE_NETINET_IN_H)
 #ifdef HAVE_ARPA_INET_H
 #  include <arpa/inet.h>
-#endif // HAVE_ARPA_INET_H
+#endif // defined(HAVE_ARPA_INET_H)
 
 namespace nghttp2 {
 
@@ -54,7 +54,7 @@ union sockaddr_union {
   sockaddr_in in;
 #ifndef _WIN32
   sockaddr_un un;
-#endif // !_WIN32
+#endif // !defined(_WIN32)
 };
 
 struct Address {
@@ -64,4 +64,4 @@ struct Address {
 
 } // namespace nghttp2
 
-#endif // NETWORK_H
+#endif // !defined(NETWORK_H)

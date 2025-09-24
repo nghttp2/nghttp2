@@ -65,4 +65,4 @@ private:
 
 } // namespace shrpx
 
-#endif // SHRPX_NULL_DOWNSTREAM_CONNECTION_H
+#endif // !defined(SHRPX_NULL_DOWNSTREAM_CONNECTION_H)

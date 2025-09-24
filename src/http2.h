@@ -433,4 +433,4 @@ std::string encode_extpri(const nghttp2_extpri &extpri);
 
 } // namespace nghttp2
 
-#endif // HTTP2_H
+#endif // !defined(HTTP2_H)

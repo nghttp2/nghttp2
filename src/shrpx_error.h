@@ -44,4 +44,4 @@ enum ErrorCode {
 
 } // namespace shrpx
 
-#endif // SHRPX_ERROR_H
+#endif // !defined(SHRPX_ERROR_H)

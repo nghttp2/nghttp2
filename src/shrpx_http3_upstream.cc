@@ -43,7 +43,7 @@
 #include "shrpx_connection_handler.h"
 #ifdef HAVE_MRUBY
 #  include "shrpx_mruby.h"
-#endif // HAVE_MRUBY
+#endif // defined(HAVE_MRUBY)
 #include "http3.h"
 #include "util.h"
 
@@ -128,7 +128,7 @@ Http3Upstream::Http3Upstream(ClientHandler *handler)
       .data = std::unique_ptr<uint8_t[]>(new uint8_t[QUIC_TX_DATALEN]),
 #ifndef UDP_SEGMENT
       .no_gso = true,
-#endif // UDP_SEGMENT
+#endif // !defined(UDP_SEGMENT)
     } {
   auto conn = handler_->get_connection();
   conn->conn_ref.get_conn = shrpx::get_conn;
@@ -702,7 +702,7 @@ int Http3Upstream::init(const UpstreamAddr *faddr, const Address &remote_addr,
       return -1;
     }
   }
-#endif // NGHTTP2_OPENSSL_IS_BORINGSSL
+#endif // defined(NGHTTP2_OPENSSL_IS_BORINGSSL)
 
   if (odcid) {
     params.original_dcid = *odcid;
@@ -1268,7 +1268,7 @@ int Http3Upstream::on_downstream_header_complete(Downstream *downstream) {
       return -1;
     }
   }
-#endif // HAVE_MRUBY
+#endif // defined(HAVE_MRUBY)
 
   auto nva = std::vector<nghttp3_nv>();
   // 4 means :status and possible server, via, and set-cookie (for
@@ -2330,7 +2330,7 @@ int Http3Upstream::http_end_request_headers(Downstream *downstream, int fin) {
     }
     return 0;
   }
-#endif // HAVE_MRUBY
+#endif // defined(HAVE_MRUBY)
 
   if (downstream->get_response_state() == DownstreamState::MSG_COMPLETE) {
     return 0;
@@ -2355,7 +2355,7 @@ void Http3Upstream::initiate_downstream(Downstream *downstream) {
 
 #ifdef HAVE_MRUBY
   DownstreamConnection *dconn_ptr;
-#endif // HAVE_MRUBY
+#endif // defined(HAVE_MRUBY)
 
   for (;;) {
     auto dconn = handler_->get_downstream_connection(rv, downstream);
@@ -2378,7 +2378,7 @@ void Http3Upstream::initiate_downstream(Downstream *downstream) {
 
 #ifdef HAVE_MRUBY
     dconn_ptr = dconn.get();
-#endif // HAVE_MRUBY
+#endif // defined(HAVE_MRUBY)
     rv = downstream->attach_downstream_connection(std::move(dconn));
     if (rv == 0) {
       break;
@@ -2403,7 +2403,7 @@ void Http3Upstream::initiate_downstream(Downstream *downstream) {
       return;
     }
   }
-#endif // HAVE_MRUBY
+#endif // defined(HAVE_MRUBY)
 
   rv = downstream->push_request_headers();
   if (rv != 0) {
@@ -2895,7 +2895,7 @@ int Http3Upstream::open_qlog_file(const std::string_view &dir,
                     S_IRUSR | S_IWUSR | S_IRGRP)) == -1 &&
          errno == EINTR)
     ;
-#else  // !O_CLOEXEC
+#else  // !defined(O_CLOEXEC)
   while ((fd = open(path.c_str(), O_WRONLY | O_CREAT | O_TRUNC,
                     S_IRUSR | S_IWUSR | S_IRGRP)) == -1 &&
          errno == EINTR)
@@ -2904,7 +2904,7 @@ int Http3Upstream::open_qlog_file(const std::string_view &dir,
   if (fd != -1) {
     util::make_socket_closeonexec(fd);
   }
-#endif // !O_CLOEXEC
+#endif // !defined(O_CLOEXEC)
 
   if (fd == -1) {
     auto error = errno;

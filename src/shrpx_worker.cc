@@ -26,7 +26,7 @@
 
 #ifdef HAVE_UNISTD_H
 #  include <unistd.h>
-#endif // HAVE_UNISTD_H
+#endif // defined(HAVE_UNISTD_H)
 #include <netinet/tcp.h>
 #include <netinet/udp.h>
 
@@ -39,14 +39,14 @@
 #ifdef NGHTTP2_OPENSSL_IS_WOLFSSL
 #  include <wolfssl/options.h>
 #  include <wolfssl/openssl/rand.h>
-#else // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#else // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 #  include <openssl/rand.h>
-#endif // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#endif // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 
 #ifdef HAVE_LIBBPF
 #  include <bpf/bpf.h>
 #  include <bpf/libbpf.h>
-#endif // HAVE_LIBBPF
+#endif // defined(HAVE_LIBBPF)
 
 #include "shrpx_tls.h"
 #include "shrpx_log.h"
@@ -55,10 +55,10 @@
 #include "shrpx_log_config.h"
 #ifdef HAVE_MRUBY
 #  include "shrpx_mruby.h"
-#endif // HAVE_MRUBY
+#endif // defined(HAVE_MRUBY)
 #ifdef ENABLE_HTTP3
 #  include "shrpx_quic_listener.h"
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 #include "shrpx_connection_handler.h"
 #include "shrpx_accept_handler.h"
 #include "util.h"
@@ -72,8 +72,8 @@ namespace shrpx {
 // conditional define for TCP_FASTOPEN mostly on ubuntu
 #  ifndef TCP_FASTOPEN
 #    define TCP_FASTOPEN 23
-#  endif
-#endif
+#  endif // !defined(TCP_FASTOPEN)
+#endif   // !defined(_KERNEL_FASTOPEN)
 
 namespace {
 void eventcb(struct ev_loop *loop, ev_async *w, int revents) {
@@ -180,7 +180,7 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
 #ifdef ENABLE_HTTP3
                SSL_CTX *quic_sv_ssl_ctx, tls::CertLookupTree *quic_cert_tree,
                WorkerID wid,
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
                size_t index, const std::shared_ptr<TicketKeys> &ticket_keys,
                ConnectionHandler *conn_handler,
                std::shared_ptr<DownstreamConfig> downstreamconf)
@@ -192,7 +192,7 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
 #ifdef ENABLE_HTTP3
     worker_id_{std::move(wid)},
     quic_upstream_addrs_{get_config()->conn.quic_listener.addrs},
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
     loop_(loop),
     sv_ssl_ctx_(sv_ssl_ctx),
     cl_ssl_ctx_(cl_ssl_ctx),
@@ -202,7 +202,7 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
     quic_sv_ssl_ctx_{quic_sv_ssl_ctx},
     quic_cert_tree_{quic_cert_tree},
     quic_conn_handler_{this},
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
     ticket_keys_(ticket_keys),
     connect_blocker_(
       std::make_unique<ConnectBlocker>(randgen_, loop_, nullptr, nullptr)),
@@ -285,7 +285,7 @@ void Worker::replace_downstream_config(
   // use std::make_shared.
   std::unordered_map<std::string_view, std::shared_ptr<mruby::MRubyContext>>
     shared_mruby_ctxs;
-#endif // HAVE_MRUBY
+#endif // defined(HAVE_MRUBY)
 
   auto old_addr_group_it = old_addr_groups.begin();
 
@@ -354,7 +354,7 @@ void Worker::replace_downstream_config(
     } else {
       shared_addr->mruby_ctx = (*mruby_ctx_it).second;
     }
-#endif // HAVE_MRUBY
+#endif // defined(HAVE_MRUBY)
 
     // share the connection if patterns have the same set of backend
     // addresses.
@@ -472,7 +472,7 @@ void Worker::schedule_clear_mcpool() {
 void Worker::wait() {
 #ifndef NOTHREADS
   fut_.get();
-#endif // !NOTHREADS
+#endif // !defined(NOTHREADS)
 }
 
 void Worker::run_async() {
@@ -483,9 +483,9 @@ void Worker::run_async() {
 
 #  ifdef NGHTTP2_OPENSSL_IS_WOLFSSL
     wc_ecc_fp_free();
-#  endif // NGHTTP2_OPENSSL_IS_WOLFSSL
+#  endif // defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
   });
-#endif // !NOTHREADS
+#endif // !defined(NOTHREADS)
 }
 
 void Worker::send(WorkerEvent event) {
@@ -574,7 +574,7 @@ void Worker::process_events() {
 
     break;
   }
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
   default:
     if (LOG_ENABLED(INFO)) {
       WLOG(INFO, this) << "unknown event type " << static_cast<int>(wev.type);
@@ -619,25 +619,25 @@ tls::CertLookupTree *Worker::get_cert_lookup_tree() const { return cert_tree_; }
 tls::CertLookupTree *Worker::get_quic_cert_lookup_tree() const {
   return quic_cert_tree_;
 }
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
 std::shared_ptr<TicketKeys> Worker::get_ticket_keys() {
 #ifdef HAVE_ATOMIC_STD_SHARED_PTR
   return ticket_keys_.load(std::memory_order_acquire);
-#else  // !HAVE_ATOMIC_STD_SHARED_PTR
+#else  // !defined(HAVE_ATOMIC_STD_SHARED_PTR)
   std::lock_guard<std::mutex> g(ticket_keys_m_);
   return ticket_keys_;
-#endif // !HAVE_ATOMIC_STD_SHARED_PTR
+#endif // !defined(HAVE_ATOMIC_STD_SHARED_PTR)
 }
 
 void Worker::set_ticket_keys(std::shared_ptr<TicketKeys> ticket_keys) {
 #ifdef HAVE_ATOMIC_STD_SHARED_PTR
   // This is single writer
   ticket_keys_.store(std::move(ticket_keys), std::memory_order_release);
-#else  // !HAVE_ATOMIC_STD_SHARED_PTR
+#else  // !defined(HAVE_ATOMIC_STD_SHARED_PTR)
   std::lock_guard<std::mutex> g(ticket_keys_m_);
   ticket_keys_ = std::move(ticket_keys);
-#endif // !HAVE_ATOMIC_STD_SHARED_PTR
+#endif // !defined(HAVE_ATOMIC_STD_SHARED_PTR)
 }
 
 WorkerStat *Worker::get_worker_stat() { return &worker_stat_; }
@@ -650,7 +650,7 @@ SSL_CTX *Worker::get_cl_ssl_ctx() const { return cl_ssl_ctx_; }
 
 #ifdef ENABLE_HTTP3
 SSL_CTX *Worker::get_quic_sv_ssl_ctx() const { return quic_sv_ssl_ctx_; }
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
 void Worker::set_graceful_shutdown(bool f) { graceful_shutdown_ = f; }
 
@@ -673,7 +673,7 @@ int Worker::create_mruby_context() {
 mruby::MRubyContext *Worker::get_mruby_context() const {
   return mruby_ctx_.get();
 }
-#endif // HAVE_MRUBY
+#endif // defined(HAVE_MRUBY)
 
 std::vector<std::shared_ptr<DownstreamAddrGroup>> &
 Worker::get_downstream_addr_groups() {
@@ -747,7 +747,7 @@ int Worker::create_tcp_server_socket(UpstreamAddr &faddr) {
     .ai_flags = AI_PASSIVE
 #ifdef AI_ADDRCONFIG
                 | AI_ADDRCONFIG
-#endif // AI_ADDRCONFIG
+#endif // defined(AI_ADDRCONFIG)
     ,
     .ai_family = faddr.family,
     .ai_socktype = SOCK_STREAM,
@@ -763,7 +763,7 @@ int Worker::create_tcp_server_socket(UpstreamAddr &faddr) {
     hints.ai_flags &= ~AI_ADDRCONFIG;
     rv = getaddrinfo(node, service.c_str(), &hints, &res);
   }
-#endif // AI_ADDRCONFIG
+#endif // defined(AI_ADDRCONFIG)
   if (rv != 0) {
     LOG(FATAL) << "Unable to get IPv" << (faddr.family == AF_INET ? "4" : "6")
                << " address for " << faddr.host << ", port " << faddr.port
@@ -793,7 +793,7 @@ int Worker::create_tcp_server_socket(UpstreamAddr &faddr) {
                 << xsi_strerror(error, errbuf.data(), errbuf.size());
       continue;
     }
-#else  // !SOCK_NONBLOCK
+#else  // !defined(SOCK_NONBLOCK)
     fd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
     if (fd == -1) {
       auto error = errno;
@@ -803,7 +803,7 @@ int Worker::create_tcp_server_socket(UpstreamAddr &faddr) {
     }
     util::make_socket_nonblocking(fd);
     util::make_socket_closeonexec(fd);
-#endif // !SOCK_NONBLOCK
+#endif // !defined(SOCK_NONBLOCK)
     int val = 1;
     if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &val,
                    static_cast<socklen_t>(sizeof(val))) == -1) {
@@ -834,7 +834,7 @@ int Worker::create_tcp_server_socket(UpstreamAddr &faddr) {
         continue;
       }
     }
-#endif // IPV6_V6ONLY
+#endif // defined(IPV6_V6ONLY)
 
 #ifdef TCP_DEFER_ACCEPT
     val = 3;
@@ -844,7 +844,7 @@ int Worker::create_tcp_server_socket(UpstreamAddr &faddr) {
       LOG(WARN) << "Failed to set TCP_DEFER_ACCEPT option to listener socket: "
                 << xsi_strerror(error, errbuf.data(), errbuf.size());
     }
-#endif // TCP_DEFER_ACCEPT
+#endif // defined(TCP_DEFER_ACCEPT)
 
     // When we are executing new binary, and the old binary did not
     // bind privileged port (< 1024) for some reason, binding to those
@@ -899,7 +899,7 @@ int Worker::create_tcp_server_socket(UpstreamAddr &faddr) {
 QUICConnectionHandler *Worker::get_quic_connection_handler() {
   return &quic_conn_handler_;
 }
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
 DNSTracker *Worker::get_dns_tracker() { return &dns_tracker_; }
 
@@ -938,7 +938,7 @@ uint32_t Worker::compute_sk_index() const {
 
   return static_cast<uint32_t>(index_);
 }
-#  endif // HAVE_LIBBPF
+#  endif // defined(HAVE_LIBBPF)
 
 int Worker::setup_quic_server_socket() {
   size_t n = 0;
@@ -1079,7 +1079,7 @@ void KeyExpansion(uint8_t *RoundKey, const uint8_t *Key) {
   }
 }
 } // namespace
-#  endif // HAVE_LIBBPF
+#  endif // defined(HAVE_LIBBPF)
 
 int Worker::create_quic_server_socket(UpstreamAddr &faddr) {
   std::array<char, STRERROR_BUFSIZE> errbuf;
@@ -1091,7 +1091,7 @@ int Worker::create_quic_server_socket(UpstreamAddr &faddr) {
     .ai_flags = AI_PASSIVE
 #  ifdef AI_ADDRCONFIG
                 | AI_ADDRCONFIG
-#  endif // AI_ADDRCONFIG
+#  endif // defined(AI_ADDRCONFIG)
     ,
     .ai_family = faddr.family,
     .ai_socktype = SOCK_DGRAM,
@@ -1107,7 +1107,7 @@ int Worker::create_quic_server_socket(UpstreamAddr &faddr) {
     hints.ai_flags &= ~AI_ADDRCONFIG;
     rv = getaddrinfo(node, service.c_str(), &hints, &res);
   }
-#  endif // AI_ADDRCONFIG
+#  endif // defined(AI_ADDRCONFIG)
   if (rv != 0) {
     LOG(FATAL) << "Unable to get IPv" << (faddr.family == AF_INET ? "4" : "6")
                << " address for " << faddr.host << ", port " << faddr.port
@@ -1136,7 +1136,7 @@ int Worker::create_quic_server_socket(UpstreamAddr &faddr) {
                 << xsi_strerror(error, errbuf.data(), errbuf.size());
       continue;
     }
-#  else  // !SOCK_NONBLOCK
+#  else  // !defined(SOCK_NONBLOCK)
     fd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
     if (fd == -1) {
       auto error = errno;
@@ -1146,7 +1146,7 @@ int Worker::create_quic_server_socket(UpstreamAddr &faddr) {
     }
     util::make_socket_nonblocking(fd);
     util::make_socket_closeonexec(fd);
-#  endif // !SOCK_NONBLOCK
+#  endif // !defined(SOCK_NONBLOCK)
 
     int val = 1;
     if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &val,
@@ -1177,7 +1177,7 @@ int Worker::create_quic_server_socket(UpstreamAddr &faddr) {
         close(fd);
         continue;
       }
-#  endif // IPV6_V6ONLY
+#  endif // defined(IPV6_V6ONLY)
 
       if (setsockopt(fd, IPPROTO_IPV6, IPV6_RECVPKTINFO, &val,
                      static_cast<socklen_t>(sizeof(val))) == -1) {
@@ -1250,7 +1250,7 @@ int Worker::create_quic_server_socket(UpstreamAddr &faddr) {
       close(fd);
       continue;
     }
-#  endif // UDP_GRO
+#  endif // defined(UDP_GRO)
 
     if (bind(fd, rp->ai_addr, rp->ai_addrlen) == -1) {
       auto error = errno;
@@ -1404,7 +1404,7 @@ int Worker::create_quic_server_socket(UpstreamAddr &faddr) {
         return -1;
       }
     }
-#  endif // HAVE_LIBBPF
+#  endif // defined(HAVE_LIBBPF)
 
     break;
   }
@@ -1493,7 +1493,7 @@ const UpstreamAddr *Worker::find_quic_upstream_addr(const Address &local_addr) {
 
   return fallback_faddr;
 }
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
 namespace {
 size_t match_downstream_addr_group_host(

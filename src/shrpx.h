@@ -27,12 +27,12 @@
 
 #ifdef HAVE_CONFIG_H
 #  include <config.h>
-#endif // HAVE_CONFIG_H
+#endif // defined(HAVE_CONFIG_H)
 
 #include <sys/types.h>
 #ifdef HAVE_SYS_SOCKET_H
 #  include <sys/socket.h>
-#endif // HAVE_SYS_SOCKET_H
+#endif // defined(HAVE_SYS_SOCKET_H)
 
 #include <cassert>
 
@@ -40,9 +40,9 @@
 
 #ifndef HAVE__EXIT
 #  define nghttp2_Exit(status) _exit(status)
-#else // HAVE__EXIT
+#else // defined(HAVE__EXIT)
 #  define nghttp2_Exit(status) _Exit(status)
-#endif // HAVE__EXIT
+#endif // defined(HAVE__EXIT)
 
 #define DIE() nghttp2_Exit(EXIT_FAILURE)
 
@@ -55,10 +55,10 @@ inline int initgroups(const char *user, gid_t group) { return 0; }
 enum bpf_stats_type {
   BPF_STATS_RUN_TIME = 0,
 };
-#endif // !HAVE_BPF_STATS_TYPE
+#endif // !defined(HAVE_BPF_STATS_TYPE)
 
 #ifdef NOTHREADS
 #  define thread_local
 #endif // defined(NOTHREADS)
 
-#endif // SHRPX_H
+#endif // !defined(SHRPX_H)

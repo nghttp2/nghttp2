@@ -57,4 +57,4 @@ int shrpx_signal_unset_worker_proc_ign_handler();
 
 } // namespace shrpx
 
-#endif // SHRPX_SIGNAL_H
+#endif // !defined(SHRPX_SIGNAL_H)

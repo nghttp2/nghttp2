@@ -36,15 +36,15 @@
 #ifdef NGHTTP2_OPENSSL_IS_WOLFSSL
 #  include <wolfssl/options.h>
 #  include <wolfssl/openssl/ssl.h>
-#else // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#else // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 #  include <openssl/ssl.h>
-#endif // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#endif // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 
 #include <nghttp2/nghttp2.h>
 
 #ifdef ENABLE_HTTP3
 #  include <ngtcp2/ngtcp2_crypto.h>
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
 #include "shrpx_rate_limit.h"
 #include "shrpx_error.h"
@@ -159,7 +159,7 @@ struct Connection {
 #ifdef ENABLE_HTTP3
   // This must be the first member of Connection.
   ngtcp2_crypto_conn_ref conn_ref;
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
   TLSConnection tls;
   ev_io wev;
   ev_io rev;
@@ -186,8 +186,8 @@ struct Connection {
 #ifdef ENABLE_HTTP3
 static_assert(std::is_standard_layout<Connection>::value,
               "Connection is not standard layout");
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
 } // namespace shrpx
 
-#endif // SHRPX_CONNECTION_H
+#endif // !defined(SHRPX_CONNECTION_H)

@@ -87,4 +87,4 @@ void check_phase(mrb_state *mrb, int phase, int phase_mask);
 
 } // namespace shrpx
 
-#endif // SHRPX_MRUBY_H
+#endif // !defined(SHRPX_MRUBY_H)

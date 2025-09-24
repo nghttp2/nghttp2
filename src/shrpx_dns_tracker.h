@@ -118,4 +118,4 @@ private:
 
 } // namespace shrpx
 
-#endif // SHRPX_DNS_TRACKER_H
+#endif // !defined(SHRPX_DNS_TRACKER_H)

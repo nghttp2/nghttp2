@@ -29,14 +29,14 @@
 
 #ifdef HAVE_UNISTD_H
 #  include <unistd.h>
-#endif // HAVE_UNISTD_H
+#endif // defined(HAVE_UNISTD_H)
 #include <getopt.h>
 #ifdef HAVE_NETDB_H
 #  include <netdb.h>
-#endif // HAVE_NETDB_H
+#endif // defined(HAVE_NETDB_H)
 #ifdef __QNX__
 #  include <sys/time.h>
-#endif // __QNX__
+#endif // defined(__QNX__)
 
 #include <cmath>
 #include <cstring>
@@ -55,7 +55,7 @@
 
 #ifdef HAVE_LIBEV
 #  include <ev.h>
-#endif // HAVE_LIBEV
+#endif // defined(HAVE_LIBEV)
 
 #include "urlparse.h"
 
@@ -1115,7 +1115,7 @@ Duration duration_from(ev_tstamp d) {
 template <typename Duration> ev_tstamp ev_tstamp_from(const Duration &d) {
   return std::chrono::duration<double>(d).count();
 }
-#endif // HAVE_LIBEV
+#endif // defined(HAVE_LIBEV)
 
 int make_socket_closeonexec(int fd);
 int make_socket_nonblocking(int fd);
@@ -1384,10 +1384,10 @@ uint8_t msghdr_get_ecn(msghdr *msg, int family);
 // msghdr_get_udp_gro returns UDP_GRO value from |msg|.  If UDP_GRO is
 // not found, or UDP_GRO is not supported, this function returns 0.
 size_t msghdr_get_udp_gro(msghdr *msg);
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
 } // namespace util
 
 } // namespace nghttp2
 
-#endif // UTIL_H
+#endif // !defined(UTIL_H)

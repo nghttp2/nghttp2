@@ -149,4 +149,4 @@ nghttp2_session_callbacks *create_http2_upstream_callbacks();
 
 } // namespace shrpx
 
-#endif // SHRPX_HTTP2_UPSTREAM_H
+#endif // !defined(SHRPX_HTTP2_UPSTREAM_H)

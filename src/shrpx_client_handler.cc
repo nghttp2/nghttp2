@@ -26,13 +26,13 @@
 
 #ifdef HAVE_UNISTD_H
 #  include <unistd.h>
-#endif // HAVE_UNISTD_H
+#endif // defined(HAVE_UNISTD_H)
 #ifdef HAVE_SYS_SOCKET_H
 #  include <sys/socket.h>
-#endif // HAVE_SYS_SOCKET_H
+#endif // defined(HAVE_SYS_SOCKET_H)
 #ifdef HAVE_NETDB_H
 #  include <netdb.h>
-#endif // HAVE_NETDB_H
+#endif // defined(HAVE_NETDB_H)
 
 #include <cerrno>
 #include <algorithm>
@@ -54,7 +54,7 @@
 #include "shrpx_null_downstream_connection.h"
 #ifdef ENABLE_HTTP3
 #  include "shrpx_http3_upstream.h"
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 #include "shrpx_log.h"
 #include "util.h"
 #include "template.h"
@@ -345,7 +345,7 @@ int ClientHandler::read_quic(const UpstreamAddr *faddr,
 }
 
 int ClientHandler::write_quic() { return upstream_->on_write(); }
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
 int ClientHandler::upstream_noop() { return 0; }
 
@@ -569,7 +569,7 @@ void ClientHandler::setup_http3_upstream(
 
   reset_upstream_read_timeout(config->conn.upstream.timeout.http3_idle);
 }
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
 ClientHandler::~ClientHandler() {
   if (LOG_ENABLED(INFO)) {

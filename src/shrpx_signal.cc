@@ -49,9 +49,9 @@ int shrpx_signal_block_all(sigset_t *oldset) {
   }
 
   return 0;
-#else  // NOTHREADS
+#else  // defined(NOTHREADS)
   return sigprocmask(SIG_SETMASK, &newset, oldset);
-#endif // NOTHREADS
+#endif // defined(NOTHREADS)
 }
 
 int shrpx_signal_unblock_all() {
@@ -70,9 +70,9 @@ int shrpx_signal_unblock_all() {
   }
 
   return 0;
-#else  // NOTHREADS
+#else  // defined(NOTHREADS)
   return sigprocmask(SIG_SETMASK, &newset, nullptr);
-#endif // NOTHREADS
+#endif // defined(NOTHREADS)
 }
 
 int shrpx_signal_set(sigset_t *set) {
@@ -87,9 +87,9 @@ int shrpx_signal_set(sigset_t *set) {
   }
 
   return 0;
-#else  // NOTHREADS
+#else  // defined(NOTHREADS)
   return sigprocmask(SIG_SETMASK, set, nullptr);
-#endif // NOTHREADS
+#endif // defined(NOTHREADS)
 }
 
 namespace {

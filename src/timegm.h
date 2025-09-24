@@ -27,13 +27,13 @@
 
 #ifdef HAVE_CONFIG_H
 #  include <config.h>
-#endif /* HAVE_CONFIG_H */
+#endif /* defined(HAVE_CONFIG_H) */
 
 #include <time.h>
 
 #ifdef __cplusplus
 extern "C" {
-#endif /* __cplusplus */
+#endif /* defined(__cplusplus) */
 
 time_t nghttp2_timegm(struct tm *tm);
 
@@ -44,6 +44,6 @@ time_t nghttp2_timegm_without_yday(struct tm *tm);
 
 #ifdef __cplusplus
 }
-#endif /* __cplusplus */
+#endif /* defined(__cplusplus) */
 
-#endif /* TIMEGM_H */
+#endif /* !defined(TIMEGM_H) */

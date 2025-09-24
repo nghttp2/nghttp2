@@ -39,7 +39,7 @@
 #include "shrpx_log.h"
 #ifdef HAVE_MRUBY
 #  include "shrpx_mruby.h"
-#endif // HAVE_MRUBY
+#endif // defined(HAVE_MRUBY)
 #include "http2.h"
 #include "util.h"
 #include "template.h"
@@ -471,7 +471,7 @@ int htp_hdrs_completecb(llhttp_t *htp) {
     resp.http_status = 500;
     return -1;
   }
-#endif // HAVE_MRUBY
+#endif // defined(HAVE_MRUBY)
 
   // mruby hook may change method value
 
@@ -487,7 +487,7 @@ int htp_hdrs_completecb(llhttp_t *htp) {
 
 #ifdef HAVE_MRUBY
   DownstreamConnection *dconn_ptr;
-#endif // HAVE_MRUBY
+#endif // defined(HAVE_MRUBY)
 
   for (;;) {
     auto dconn = handler->get_downstream_connection(rv, downstream);
@@ -502,7 +502,7 @@ int htp_hdrs_completecb(llhttp_t *htp) {
 
 #ifdef HAVE_MRUBY
     dconn_ptr = dconn.get();
-#endif // HAVE_MRUBY
+#endif // defined(HAVE_MRUBY)
     if (downstream->attach_downstream_connection(std::move(dconn)) == 0) {
       break;
     }
@@ -522,7 +522,7 @@ int htp_hdrs_completecb(llhttp_t *htp) {
       return 0;
     }
   }
-#endif // HAVE_MRUBY
+#endif // defined(HAVE_MRUBY)
 
   rv = downstream->push_request_headers();
 
@@ -1153,7 +1153,7 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
       return -1;
     }
   }
-#endif // HAVE_MRUBY
+#endif // defined(HAVE_MRUBY)
 
   auto connect_method = req.method == HTTP_CONNECT;
 

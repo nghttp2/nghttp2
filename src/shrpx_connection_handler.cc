@@ -26,7 +26,7 @@
 
 #ifdef HAVE_UNISTD_H
 #  include <unistd.h>
-#endif // HAVE_UNISTD_H
+#endif // defined(HAVE_UNISTD_H)
 #include <sys/types.h>
 #include <sys/wait.h>
 
@@ -71,13 +71,13 @@ ConnectionHandler::ConnectionHandler(struct ev_loop *loop, std::mt19937 &gen)
   :
 #ifdef ENABLE_HTTP3
     quic_ipc_fd_(-1),
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
     gen_(gen),
     single_worker_(nullptr),
     loop_(loop),
 #ifdef HAVE_NEVERBLEED
     nb_(nullptr),
-#endif // HAVE_NEVERBLEED
+#endif // defined(HAVE_NEVERBLEED)
     tls_ticket_key_memcached_get_retry_count_(0),
     tls_ticket_key_memcached_fail_count_(0),
     worker_round_robin_cnt_(get_config()->api.enabled ? 1 : 0),
@@ -105,7 +105,7 @@ ConnectionHandler::~ConnectionHandler() {
     delete tls_ctx_data;
     SSL_CTX_free(ssl_ctx);
   }
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
   for (auto ssl_ctx : all_ssl_ctx_) {
     auto tls_ctx_data =
@@ -154,7 +154,7 @@ int ConnectionHandler::create_single_worker() {
 #ifdef HAVE_NEVERBLEED
                                       ,
     nb_
-#endif // HAVE_NEVERBLEED
+#endif // defined(HAVE_NEVERBLEED)
   );
 
 #ifdef ENABLE_HTTP3
@@ -164,45 +164,45 @@ int ConnectionHandler::create_single_worker() {
 #  ifdef HAVE_NEVERBLEED
                                                 ,
     nb_
-#  endif // HAVE_NEVERBLEED
+#  endif // defined(HAVE_NEVERBLEED)
   );
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
   auto cl_ssl_ctx = tls::setup_downstream_client_ssl_context(
 #ifdef HAVE_NEVERBLEED
     nb_
-#endif // HAVE_NEVERBLEED
+#endif // defined(HAVE_NEVERBLEED)
   );
 
   if (cl_ssl_ctx) {
     all_ssl_ctx_.push_back(cl_ssl_ctx);
 #ifdef ENABLE_HTTP3
     quic_all_ssl_ctx_.push_back(nullptr);
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
   }
 
   auto config = get_config();
 
 #if defined(ENABLE_HTTP3) && defined(HAVE_LIBBPF)
   quic_bpf_refs_.resize(config->conn.quic_listener.addrs.size());
-#endif // ENABLE_HTTP3 && HAVE_LIBBPF
+#endif // defined(ENABLE_HTTP3) && defined(HAVE_LIBBPF)
 
 #ifdef ENABLE_HTTP3
   assert(worker_ids_.size() == 1);
   const auto &wid = worker_ids_[0];
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
   single_worker_ = std::make_unique<Worker>(
     loop_, sv_ssl_ctx, cl_ssl_ctx, cert_tree_.get(),
 #ifdef ENABLE_HTTP3
     quic_sv_ssl_ctx, quic_cert_tree_.get(), wid,
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
     /* index = */ 0, ticket_keys_, this, config->conn.downstream);
 #ifdef HAVE_MRUBY
   if (single_worker_->create_mruby_context() != 0) {
     return -1;
   }
-#endif // HAVE_MRUBY
+#endif // defined(HAVE_MRUBY)
 
   if (single_worker_->setup_server_socket() != 0) {
     return -1;
@@ -212,7 +212,7 @@ int ConnectionHandler::create_single_worker() {
   if (single_worker_->setup_quic_server_socket() != 0) {
     return -1;
   }
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
   return 0;
 }
@@ -227,7 +227,7 @@ int ConnectionHandler::create_worker_thread(size_t num) {
 #  ifdef HAVE_NEVERBLEED
                                       ,
     nb_
-#  endif // HAVE_NEVERBLEED
+#  endif // defined(HAVE_NEVERBLEED)
   );
 
 #  ifdef ENABLE_HTTP3
@@ -237,21 +237,21 @@ int ConnectionHandler::create_worker_thread(size_t num) {
 #    ifdef HAVE_NEVERBLEED
                                                 ,
     nb_
-#    endif // HAVE_NEVERBLEED
+#    endif // defined(HAVE_NEVERBLEED)
   );
-#  endif // ENABLE_HTTP3
+#  endif // defined(ENABLE_HTTP3)
 
   auto cl_ssl_ctx = tls::setup_downstream_client_ssl_context(
 #  ifdef HAVE_NEVERBLEED
     nb_
-#  endif // HAVE_NEVERBLEED
+#  endif // defined(HAVE_NEVERBLEED)
   );
 
   if (cl_ssl_ctx) {
     all_ssl_ctx_.push_back(cl_ssl_ctx);
 #  ifdef ENABLE_HTTP3
     quic_all_ssl_ctx_.push_back(nullptr);
-#  endif // ENABLE_HTTP3
+#  endif // defined(ENABLE_HTTP3)
   }
 
   auto config = get_config();
@@ -259,7 +259,7 @@ int ConnectionHandler::create_worker_thread(size_t num) {
 
 #  if defined(ENABLE_HTTP3) && defined(HAVE_LIBBPF)
   quic_bpf_refs_.resize(config->conn.quic_listener.addrs.size());
-#  endif // ENABLE_HTTP3 && HAVE_LIBBPF
+#  endif // defined(ENABLE_HTTP3) && defined(HAVE_LIBBPF)
 
   // We have dedicated worker for API request processing.
   if (apiconf.enabled) {
@@ -268,26 +268,26 @@ int ConnectionHandler::create_worker_thread(size_t num) {
 
 #  ifdef ENABLE_HTTP3
   assert(worker_ids_.size() == num);
-#  endif // ENABLE_HTTP3
+#  endif // defined(ENABLE_HTTP3)
 
   for (size_t i = 0; i < num; ++i) {
     auto loop = ev_loop_new(config->ev_loop_flags);
 
 #  ifdef ENABLE_HTTP3
     const auto &wid = worker_ids_[i];
-#  endif // ENABLE_HTTP3
+#  endif // defined(ENABLE_HTTP3)
 
     auto worker =
       std::make_unique<Worker>(loop, sv_ssl_ctx, cl_ssl_ctx, cert_tree_.get(),
 #  ifdef ENABLE_HTTP3
                                quic_sv_ssl_ctx, quic_cert_tree_.get(), wid,
-#  endif // ENABLE_HTTP3
+#  endif // defined(ENABLE_HTTP3)
                                i, ticket_keys_, this, config->conn.downstream);
 #  ifdef HAVE_MRUBY
     if (worker->create_mruby_context() != 0) {
       return -1;
     }
-#  endif // HAVE_MRUBY
+#  endif // defined(HAVE_MRUBY)
 
     if (worker->setup_server_socket() != 0) {
       return -1;
@@ -298,7 +298,7 @@ int ConnectionHandler::create_worker_thread(size_t num) {
         worker->setup_quic_server_socket() != 0) {
       return -1;
     }
-#  endif // ENABLE_HTTP3
+#  endif // defined(ENABLE_HTTP3)
 
     workers_.push_back(std::move(worker));
     worker_loops_.push_back(loop);
@@ -310,7 +310,7 @@ int ConnectionHandler::create_worker_thread(size_t num) {
     worker->run_async();
   }
 
-#endif // NOTHREADS
+#endif // !defined(NOTHREADS)
 
   return 0;
 }
@@ -331,7 +331,7 @@ void ConnectionHandler::join_worker() {
     }
     ++n;
   }
-#endif // NOTHREADS
+#endif // !defined(NOTHREADS)
 }
 
 void ConnectionHandler::graceful_shutdown_worker() {
@@ -357,7 +357,7 @@ void ConnectionHandler::graceful_shutdown_worker() {
     join_worker();
     ev_async_send(get_loop(), &thread_join_asyncev_);
   });
-#endif // NOTHREADS
+#endif // !defined(NOTHREADS)
 }
 
 struct ev_loop *ConnectionHandler::get_loop() const { return loop_; }
@@ -494,20 +494,20 @@ SSL_CTX *ConnectionHandler::create_tls_ticket_key_memcached_ssl_ctx() {
   auto ssl_ctx = tls::create_ssl_client_context(
 #ifdef HAVE_NEVERBLEED
     nb_,
-#endif // HAVE_NEVERBLEED
+#endif // defined(HAVE_NEVERBLEED)
     tlsconf.cacert, memcachedconf.cert_file, memcachedconf.private_key_file);
 
   all_ssl_ctx_.push_back(ssl_ctx);
 #ifdef ENABLE_HTTP3
   quic_all_ssl_ctx_.push_back(nullptr);
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
   return ssl_ctx;
 }
 
 #ifdef HAVE_NEVERBLEED
 void ConnectionHandler::set_neverbleed(neverbleed_t *nb) { nb_ = nb; }
-#endif // HAVE_NEVERBLEED
+#endif // defined(HAVE_NEVERBLEED)
 
 void ConnectionHandler::handle_serial_event() {
   std::vector<SerialEvent> q;
@@ -568,7 +568,7 @@ const std::vector<SSL_CTX *> &
 ConnectionHandler::get_quic_indexed_ssl_ctx(size_t idx) const {
   return quic_indexed_ssl_ctx_[idx];
 }
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
 #ifdef ENABLE_HTTP3
 int ConnectionHandler::forward_quic_packet(const UpstreamAddr *faddr,
@@ -661,7 +661,7 @@ void ConnectionHandler::unload_bpf_objects() {
     ref.obj = nullptr;
   }
 }
-#  endif // HAVE_LIBBPF
+#  endif // defined(HAVE_LIBBPF)
 
 void ConnectionHandler::set_quic_ipc_fd(int fd) { quic_ipc_fd_ = fd; }
 
@@ -883,6 +883,6 @@ int ConnectionHandler::quic_ipc_read() {
 
   return 0;
 }
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
 } // namespace shrpx

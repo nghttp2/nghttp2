@@ -43,9 +43,9 @@
 #ifdef NGHTTP2_OPENSSL_IS_WOLFSSL
 #  include <wolfssl/options.h>
 #  include <wolfssl/openssl/ssl.h>
-#else // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#else // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 #  include <openssl/ssl.h>
-#endif // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#endif // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 
 #include <ev.h>
 
@@ -260,4 +260,4 @@ nghttp2_ssize file_read_callback(nghttp2_session *session, int32_t stream_id,
 
 } // namespace nghttp2
 
-#endif // HTTP_SERVER_H
+#endif // !defined(HTTP_SERVER_H)

@@ -77,4 +77,4 @@ void copy_headers_to_nva_nocopy(std::vector<nghttp3_nv> &nva,
 
 } // namespace nghttp2
 
-#endif // HTTP3_H
+#endif // !defined(HTTP3_H)

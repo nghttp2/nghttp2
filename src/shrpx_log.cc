@@ -26,18 +26,18 @@
 
 #ifdef HAVE_SYSLOG_H
 #  include <syslog.h>
-#endif // HAVE_SYSLOG_H
+#endif // defined(HAVE_SYSLOG_H)
 #ifdef HAVE_UNISTD_H
 #  include <unistd.h>
-#endif // HAVE_UNISTD_H
+#endif // defined(HAVE_UNISTD_H)
 #ifdef HAVE_INTTYPES_H
 #  include <inttypes.h>
-#endif // HAVE_INTTYPES_H
+#endif // defined(HAVE_INTTYPES_H)
 #include <sys/types.h>
 #include <sys/stat.h>
 #ifdef HAVE_FCNTL_H
 #  include <fcntl.h>
-#endif // HAVE_FCNTL_H
+#endif // defined(HAVE_FCNTL_H)
 #include <sys/wait.h>
 
 #include <cerrno>
@@ -889,7 +889,7 @@ int open_log_file(const char *path) {
 
   auto fd = open(path, O_WRONLY | O_APPEND | O_CREAT | O_CLOEXEC,
                  S_IRUSR | S_IWUSR | S_IRGRP);
-#else // !O_CLOEXEC
+#else // !defined(O_CLOEXEC)
 
   auto fd =
     open(path, O_WRONLY | O_APPEND | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP);
@@ -899,7 +899,7 @@ int open_log_file(const char *path) {
     util::make_socket_closeonexec(fd);
   }
 
-#endif // !O_CLOEXEC
+#endif // !defined(O_CLOEXEC)
 
   if (fd == -1) {
     return -1;

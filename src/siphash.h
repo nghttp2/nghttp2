@@ -58,4 +58,4 @@ template <std::integral T> T byteswap(T v) {
   return std::bit_cast<T>(c);
 }
 
-#endif // SIPHASH_H
+#endif // !defined(SIPHASH_H)

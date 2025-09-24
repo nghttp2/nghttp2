@@ -24,7 +24,7 @@
  */
 #ifdef HAVE_CONFIG_H
 #  include <config.h>
-#endif // HAVE_CONFIG_H
+#endif // defined(HAVE_CONFIG_H)
 
 #include "munit.h"
 
@@ -47,7 +47,7 @@
 #include "shrpx_log.h"
 #ifdef ENABLE_HTTP3
 #  include "siphash_test.h"
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
 int main(int argc, char *argv[]) {
   shrpx::create_config();
@@ -68,7 +68,7 @@ int main(int argc, char *argv[]) {
     base64_suite,
 #ifdef ENABLE_HTTP3
     siphash_suite,
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
     {},
   };
   const MunitSuite suite = {

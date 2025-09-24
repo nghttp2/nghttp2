@@ -33,7 +33,7 @@
 #include "shrpx_connection_handler.h"
 #ifdef ENABLE_HTTP3
 #  include "shrpx_quic.h"
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
 namespace shrpx {
 
@@ -57,11 +57,11 @@ struct WorkerProcessConfig {
   // Lingering worker processes which were created before this worker
   // process to forward QUIC UDP datagram during reload.
   std::vector<QUICLingeringWorkerProcess> quic_lingering_worker_processes;
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 };
 
 int worker_process_event_loop(WorkerProcessConfig *wpconf);
 
 } // namespace shrpx
 
-#endif // SHRPX_WORKER_PROCESS_H
+#endif // !defined(SHRPX_WORKER_PROCESS_H)

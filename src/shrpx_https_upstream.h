@@ -111,4 +111,4 @@ private:
 
 } // namespace shrpx
 
-#endif // SHRPX_HTTPS_UPSTREAM_H
+#endif // !defined(SHRPX_HTTPS_UPSTREAM_H)

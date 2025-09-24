@@ -39,4 +39,4 @@ void init_env_class(mrb_state *mrb, RClass *module);
 
 } // namespace shrpx
 
-#endif // SHRPX_MRUBY_MODULE_ENV_H
+#endif // !defined(SHRPX_MRUBY_MODULE_ENV_H)

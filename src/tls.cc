@@ -34,7 +34,7 @@
 #ifdef HAVE_LIBBROTLI
 #  include <brotli/encode.h>
 #  include <brotli/decode.h>
-#endif // HAVE_LIBBROTLI
+#endif // defined(HAVE_LIBBROTLI)
 
 #include "ssl_compat.h"
 
@@ -42,10 +42,10 @@
 #  include <wolfssl/options.h>
 #  include <wolfssl/openssl/crypto.h>
 #  include <wolfssl/openssl/conf.h>
-#else // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#else // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 #  include <openssl/crypto.h>
 #  include <openssl/conf.h>
-#endif // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#endif // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 
 namespace nghttp2 {
 
@@ -60,7 +60,7 @@ std::string_view get_tls_protocol(SSL *ssl) {
 #ifdef TLS1_3_VERSION
   case TLS1_3_VERSION:
     return "TLSv1.3"sv;
-#endif // TLS1_3_VERSION
+#endif // defined(TLS1_3_VERSION)
   case TLS1_2_VERSION:
     return "TLSv1.2"sv;
   case TLS1_1_VERSION:
@@ -184,7 +184,8 @@ int cert_decompress(SSL *ssl, CRYPTO_BUFFER **out, size_t uncompressed_len,
 
   return 1;
 }
-#endif // NGHTTP2_OPENSSL_IS_BORINGSSL && HAVE_LIBBROTLI
+#endif // defined(NGHTTP2_OPENSSL_IS_BORINGSSL) &&
+       // defined(HAVE_LIBBROTLI)
 
 #if defined(NGHTTP2_GENUINE_OPENSSL) ||                                        \
   defined(NGHTTP2_OPENSSL_IS_BORINGSSL) ||                                     \
@@ -215,13 +216,17 @@ int setup_keylog_callback(SSL_CTX *ssl_ctx) {
 
   return 0;
 }
-#else  // !NGHTTP2_GENUINE_OPENSSL && !NGHTTP2_OPENSSL_IS_BORINGSSL &&
-       // !NGHTTP2_OPENSSL_IS_LIBRESSL && !(NGHTTP2_OPENSSL_IS_WOLFSSL &&
-       // HAVE_SECRET_CALLBACK)
+#else  // !defined(NGHTTP2_GENUINE_OPENSSL) &&
+       // !defined(NGHTTP2_OPENSSL_IS_BORINGSSL) &&
+       // !defined(NGHTTP2_OPENSSL_IS_LIBRESSL) &&
+       // (!defined(NGHTTP2_OPENSSL_IS_WOLFSSL) ||
+       // !defined(HAVE_SECRET_CALLBACK))
 int setup_keylog_callback(SSL_CTX *ssl_ctx) { return 0; }
-#endif // !NGHTTP2_GENUINE_OPENSSL && !NGHTTP2_OPENSSL_IS_BORINGSSL &&
-       // !NGHTTP2_OPENSSL_IS_LIBRESSL && !(NGHTTP2_OPENSSL_IS_WOLFSSL &&
-       // HAVE_SECRET_CALLBACK)
+#endif // !defined(NGHTTP2_GENUINE_OPENSSL) &&
+       // !defined(NGHTTP2_OPENSSL_IS_BORINGSSL) &&
+       // !defined(NGHTTP2_OPENSSL_IS_LIBRESSL) &&
+       // (!defined(NGHTTP2_OPENSSL_IS_WOLFSSL) ||
+       // !defined(HAVE_SECRET_CALLBACK))
 
 } // namespace tls
 

@@ -50,4 +50,4 @@ private:
 
 } // namespace shrpx
 
-#endif // SHRPX_DOWNSTREAM_CONNECTION_POOL_H
+#endif // !defined(SHRPX_DOWNSTREAM_CONNECTION_POOL_H)

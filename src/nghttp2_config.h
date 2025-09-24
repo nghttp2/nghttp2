@@ -27,6 +27,6 @@
 
 #ifdef HAVE_CONFIG_H
 #  include <config.h>
-#endif // HAVE_CONFIG_H
+#endif // defined(HAVE_CONFIG_H)
 
-#endif // NGHTTP2_CONFIG_H
+#endif // !defined(NGHTTP2_CONFIG_H)

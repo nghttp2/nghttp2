@@ -31,10 +31,8 @@
 #include <string>
 
 #ifdef HAVE_LIBXML2
-
 #  include <libxml/HTMLparser.h>
-
-#endif // HAVE_LIBXML2
+#endif // defined(HAVE_LIBXML2)
 
 namespace nghttp2 {
 
@@ -72,7 +70,7 @@ private:
   ParserData parser_data_;
 };
 
-#else // !HAVE_LIBXML2
+#else // !defined(HAVE_LIBXML2)
 
 class HtmlParser {
 public:
@@ -87,8 +85,8 @@ private:
   std::vector<std::pair<std::string, ResourceType>> links_;
 };
 
-#endif // !HAVE_LIBXML2
+#endif // !defined(HAVE_LIBXML2)
 
 } // namespace nghttp2
 
-#endif // HTML_PARSER_H
+#endif // !defined(HTML_PARSER_H)

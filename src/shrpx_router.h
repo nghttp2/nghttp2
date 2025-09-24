@@ -106,4 +106,4 @@ private:
 
 } // namespace shrpx
 
-#endif // SHRPX_ROUTER_H
+#endif // !defined(SHRPX_ROUTER_H)

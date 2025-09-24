@@ -30,10 +30,10 @@
 #include <sys/types.h>
 #ifdef HAVE_SYS_SOCKET_H
 #  include <sys/socket.h>
-#endif // HAVE_SYS_SOCKET_H
+#endif // defined(HAVE_SYS_SOCKET_H)
 #ifdef HAVE_NETDB_H
 #  include <netdb.h>
-#endif // HAVE_NETDB_H
+#endif // defined(HAVE_NETDB_H)
 
 #include <string>
 #include <vector>
@@ -46,9 +46,9 @@
 #ifdef NGHTTP2_OPENSSL_IS_WOLFSSL
 #  include <wolfssl/options.h>
 #  include <wolfssl/openssl/ssl.h>
-#else // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#else // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 #  include <openssl/ssl.h>
-#endif // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#endif // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 
 #include <ev.h>
 
@@ -261,7 +261,7 @@ struct HttpClient {
 
 #ifdef HAVE_JANSSON
   void output_har(FILE *outfile);
-#endif // HAVE_JANSSON
+#endif // defined(HAVE_JANSSON)
 
   MemchunkPool mcpool;
   DefaultMemchunks wb;
@@ -313,4 +313,4 @@ struct HttpClient {
 
 } // namespace nghttp2
 
-#endif // NGHTTP_H
+#endif // !defined(NGHTTP_H)

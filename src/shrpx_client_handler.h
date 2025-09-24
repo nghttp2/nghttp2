@@ -36,9 +36,9 @@
 #ifdef NGHTTP2_OPENSSL_IS_WOLFSSL
 #  include <wolfssl/options.h>
 #  include <wolfssl/openssl/ssl.h>
-#else // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#else // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 #  include <openssl/ssl.h>
-#endif // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#endif // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 
 #include "shrpx_rate_limit.h"
 #include "shrpx_connection.h"
@@ -63,7 +63,7 @@ struct SharedDownstreamAddr;
 struct DownstreamAddr;
 #ifdef ENABLE_HTTP3
 class Http3Upstream;
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
 class ClientHandler {
 public:
@@ -163,7 +163,7 @@ public:
                 const Address &local_addr, const ngtcp2_pkt_info &pi,
                 std::span<const uint8_t> data);
   int write_quic();
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
   // Returns string suitable for use in "by" parameter of Forwarded
   // header field.
@@ -248,4 +248,4 @@ private:
 
 } // namespace shrpx
 
-#endif // SHRPX_CLIENT_HANDLER_H
+#endif // !defined(SHRPX_CLIENT_HANDLER_H)

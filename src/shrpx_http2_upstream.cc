@@ -40,7 +40,7 @@
 #include "shrpx_log.h"
 #ifdef HAVE_MRUBY
 #  include "shrpx_mruby.h"
-#endif // HAVE_MRUBY
+#endif // defined(HAVE_MRUBY)
 #include "http2.h"
 #include "util.h"
 #include "base64.h"
@@ -407,7 +407,7 @@ int Http2Upstream::on_request_headers(Downstream *downstream,
     }
     return 0;
   }
-#endif // HAVE_MRUBY
+#endif // defined(HAVE_MRUBY)
 
   if (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
     downstream->disable_upstream_rtimer();
@@ -438,7 +438,7 @@ void Http2Upstream::initiate_downstream(Downstream *downstream) {
 
 #ifdef HAVE_MRUBY
   DownstreamConnection *dconn_ptr;
-#endif // HAVE_MRUBY
+#endif // defined(HAVE_MRUBY)
 
   for (;;) {
     auto dconn = handler_->get_downstream_connection(rv, downstream);
@@ -460,7 +460,7 @@ void Http2Upstream::initiate_downstream(Downstream *downstream) {
 
 #ifdef HAVE_MRUBY
     dconn_ptr = dconn.get();
-#endif // HAVE_MRUBY
+#endif // defined(HAVE_MRUBY)
     rv = downstream->attach_downstream_connection(std::move(dconn));
     if (rv == 0) {
       break;
@@ -485,7 +485,7 @@ void Http2Upstream::initiate_downstream(Downstream *downstream) {
       return;
     }
   }
-#endif // HAVE_MRUBY
+#endif // defined(HAVE_MRUBY)
 
   rv = downstream->push_request_headers();
   if (rv != 0) {
@@ -751,7 +751,7 @@ int on_frame_send_callback(nghttp2_session *session, const nghttp2_frame *frame,
       }
       return 0;
     }
-#endif // HAVE_MRUBY
+#endif // defined(HAVE_MRUBY)
 
     upstream->start_downstream(ptr);
 
@@ -1690,7 +1690,7 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
       return -1;
     }
   }
-#endif // HAVE_MRUBY
+#endif // defined(HAVE_MRUBY)
 
   auto &http2conf = config->http2;
 

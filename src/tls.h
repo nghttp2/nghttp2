@@ -37,9 +37,9 @@ using namespace std::literals;
 #ifdef NGHTTP2_OPENSSL_IS_WOLFSSL
 #  include <wolfssl/options.h>
 #  include <wolfssl/openssl/ssl.h>
-#else // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#else // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 #  include <openssl/ssl.h>
-#endif // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#endif // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 
 namespace nghttp2 {
 
@@ -64,17 +64,21 @@ inline constexpr auto DEFAULT_TLS13_CIPHER_LIST =
   defined(NGHTTP2_OPENSSL_IS_LIBRESSL) || defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
   "TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:"
   "TLS_CHACHA20_POLY1305_SHA256"sv
-#else  // !NGHTTP2_GENUINE_OPENSSL && !NGHTTP2_OPENSSL_IS_LIBRESSL
+#else  // !defined(NGHTTP2_GENUINE_OPENSSL) &&
+       // !defined(NGHTTP2_OPENSSL_IS_LIBRESSL) &&
+       // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
   ""sv
-#endif // !NGHTTP2_GENUINE_OPENSSL && !NGHTTP2_OPENSSL_IS_LIBRESSL
+#endif // !defined(NGHTTP2_GENUINE_OPENSSL) &&
+       // !defined(NGHTTP2_OPENSSL_IS_LIBRESSL) &&
+       // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
   ;
 
 inline constexpr auto NGHTTP2_TLS_MIN_VERSION = TLS1_VERSION;
 #ifdef TLS1_3_VERSION
 inline constexpr auto NGHTTP2_TLS_MAX_VERSION = TLS1_3_VERSION;
-#else  // !TLS1_3_VERSION
+#else  // !defined(TLS1_3_VERSION)
 inline constexpr auto NGHTTP2_TLS_MAX_VERSION = TLS1_2_VERSION;
-#endif // !TLS1_3_VERSION
+#endif // !defined(TLS1_3_VERSION)
 
 std::string_view get_tls_protocol(SSL *ssl);
 
@@ -114,7 +118,8 @@ int cert_compress(SSL *ssl, CBB *out, const uint8_t *in, size_t in_len);
 
 int cert_decompress(SSL *ssl, CRYPTO_BUFFER **out, size_t uncompressed_len,
                     const uint8_t *in, size_t in_len);
-#endif // NGHTTP2_OPENSSL_IS_BORINGSSL && HAVE_LIBBROTLI
+#endif // defined(NGHTTP2_OPENSSL_IS_BORINGSSL) &&
+       // defined(HAVE_LIBBROTLI)
 
 // Setup keylog callback.  It returns 0 if it succeeds, or -1.
 int setup_keylog_callback(SSL_CTX *ssl_ctx);
@@ -123,4 +128,4 @@ int setup_keylog_callback(SSL_CTX *ssl_ctx);
 
 } // namespace nghttp2
 
-#endif // TLS_H
+#endif // !defined(TLS_H)

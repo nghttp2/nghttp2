@@ -137,4 +137,4 @@ private:
 
 } // namespace shrpx
 
-#endif // SHRPX_QUIC_CONNECTION_HANDLER_H
+#endif // !defined(SHRPX_QUIC_CONNECTION_HANDLER_H)

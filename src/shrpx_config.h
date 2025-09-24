@@ -30,14 +30,14 @@
 #include <sys/types.h>
 #ifdef HAVE_SYS_SOCKET_H
 #  include <sys/socket.h>
-#endif // HAVE_SYS_SOCKET_H
+#endif // defined(HAVE_SYS_SOCKET_H)
 #include <sys/un.h>
 #ifdef HAVE_NETINET_IN_H
 #  include <netinet/in.h>
-#endif // HAVE_NETINET_IN_H
+#endif // defined(HAVE_NETINET_IN_H)
 #ifdef HAVE_ARPA_INET_H
 #  include <arpa/inet.h>
-#endif // HAVE_ARPA_INET_H
+#endif // defined(HAVE_ARPA_INET_H)
 #include <cinttypes>
 #include <cstdio>
 #include <vector>
@@ -50,9 +50,9 @@
 #ifdef NGHTTP2_OPENSSL_IS_WOLFSSL
 #  include <wolfssl/options.h>
 #  include <wolfssl/openssl/ssl.h>
-#else // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#else // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 #  include <openssl/ssl.h>
-#endif // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#endif // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 
 #include <ev.h>
 
@@ -60,9 +60,9 @@
 
 #include "shrpx_log.h"
 #include "shrpx_router.h"
-#if ENABLE_HTTP3
+#ifdef ENABLE_HTTP3
 #  include "shrpx_quic.h"
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 #include "template.h"
 #include "http2.h"
 #include "network.h"
@@ -636,7 +636,7 @@ struct QUICKeyingMaterial {
 struct QUICKeyingMaterials {
   std::vector<QUICKeyingMaterial> keying_materials;
 };
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
 struct HttpProxy {
   Address addr;
@@ -782,7 +782,7 @@ struct Http3Config {
     int32_t max_connection_window_size;
   } upstream;
 };
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
 // custom error page
 struct ErrorPage {
@@ -1002,7 +1002,7 @@ struct ConnectionConfig {
   struct {
     std::vector<UpstreamAddr> addrs;
   } quic_listener;
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
   struct {
     struct {
@@ -1049,7 +1049,7 @@ struct Config {
       tls{},
 #ifdef ENABLE_HTTP3
       quic{},
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
       logging{},
       conn{},
       api{},
@@ -1090,7 +1090,7 @@ struct Config {
 #ifdef ENABLE_HTTP3
   QUICConfig quic;
   Http3Config http3;
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
   LoggingConfig logging;
   ConnectionConfig conn;
   APIConfig api;
@@ -1403,7 +1403,7 @@ read_tls_ticket_key_file(const std::vector<std::string_view> &files,
 #ifdef ENABLE_HTTP3
 std::shared_ptr<QUICKeyingMaterials>
 read_quic_secret_file(const std::string_view &path);
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
 // Returns string representation of |proto|.
 std::string_view strproto(Proto proto);
@@ -1417,4 +1417,4 @@ int resolve_hostname(Address *addr, const char *hostname, uint16_t port,
 
 } // namespace shrpx
 
-#endif // SHRPX_CONFIG_H
+#endif // !defined(SHRPX_CONFIG_H)

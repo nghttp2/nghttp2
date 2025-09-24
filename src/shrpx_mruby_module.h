@@ -49,4 +49,4 @@ mrb_value create_headers_hash(mrb_state *mrb, const HeaderRefs &headers);
 
 } // namespace shrpx
 
-#endif // SHRPX_MRUBY_MODULE_H
+#endif // !defined(SHRPX_MRUBY_MODULE_H)

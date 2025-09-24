@@ -55,4 +55,4 @@ private:
 
 } // namespace shrpx
 
-#endif // SHRPX_IO_CONTROL_H
+#endif // !defined(SHRPX_IO_CONTROL_H)

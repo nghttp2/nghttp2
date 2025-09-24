@@ -112,4 +112,4 @@ private:
 
 } // namespace shrpx
 
-#endif // SHRPX_API_DOWNSTREAM_CONNECTION_H
+#endif // !defined(SHRPX_API_DOWNSTREAM_CONNECTION_H)

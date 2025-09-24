@@ -29,9 +29,9 @@
 #ifdef NGHTTP2_OPENSSL_IS_WOLFSSL
 #  include <wolfssl/options.h>
 #  include <wolfssl/openssl/rand.h>
-#else // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#else // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 #  include <openssl/rand.h>
-#endif // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#endif // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 
 #include <ngtcp2/ngtcp2.h>
 #include <ngtcp2/ngtcp2_crypto.h>
@@ -391,7 +391,8 @@ ClientHandler *QUICConnectionHandler::handle_new_connection(
 #if !OPENSSL_3_5_0_API &&                                                      \
   (defined(NGHTTP2_GENUINE_OPENSSL) || defined(NGHTTP2_OPENSSL_IS_WOLFSSL))
   assert(SSL_is_quic(ssl));
-#endif // NGHTTP2_GENUINE_OPENSSL || NGHTTP2_OPENSSL_IS_WOLFSSL
+#endif // !OPENSSL_3_5_0_API && (defined(NGHTTP2_GENUINE_OPENSSL) ||
+       // defined(NGHTTP2_OPENSSL_IS_WOLFSSL))
 
   SSL_set_accept_state(ssl);
 
@@ -406,7 +407,7 @@ ClientHandler *QUICConnectionHandler::handle_new_connection(
     SSL_set_quic_early_data_enabled(ssl, 1);
 #elif defined(NGHTTP2_OPENSSL_IS_BORINGSSL)
     SSL_set_early_data_enabled(ssl, 1);
-#endif // NGHTTP2_OPENSSL_IS_BORINGSSL
+#endif // defined(NGHTTP2_OPENSSL_IS_BORINGSSL)
   }
 
   // Disable TLS session ticket if we don't have working ticket

@@ -39,4 +39,4 @@ void init_request_class(mrb_state *mrb, RClass *module);
 
 } // namespace shrpx
 
-#endif // SHRPX_MRUBY_MODULE_REQUEST_H
+#endif // !defined(SHRPX_MRUBY_MODULE_REQUEST_H)

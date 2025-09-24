@@ -110,4 +110,4 @@ public:
 
 } // namespace shrpx
 
-#endif // SHRPX_UPSTREAM_H
+#endif // !defined(SHRPX_UPSTREAM_H)

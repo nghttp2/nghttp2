@@ -73,4 +73,4 @@ LogConfig *log_config();
 
 } // namespace shrpx
 
-#endif // SHRPX_LOG_CONFIG_H
+#endif // !defined(SHRPX_LOG_CONFIG_H)

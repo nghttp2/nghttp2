@@ -26,7 +26,7 @@
 
 #ifdef HAVE_UNISTD_H
 #  include <unistd.h>
-#endif // HAVE_UNISTD_H
+#endif // defined(HAVE_UNISTD_H)
 #include <netinet/tcp.h>
 
 #include <limits>
@@ -36,9 +36,9 @@
 #ifdef NGHTTP2_OPENSSL_IS_WOLFSSL
 #  include <wolfssl/options.h>
 #  include <wolfssl/openssl/err.h>
-#else // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#else // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 #  include <openssl/err.h>
-#endif // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#endif // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 
 #include "shrpx_tls.h"
 #include "shrpx_log.h"
@@ -61,7 +61,7 @@ Connection::Connection(struct ev_loop *loop, int fd, SSL *ssl,
   :
 #ifdef ENABLE_HTTP3
     conn_ref{nullptr, this},
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
     tls{DefaultMemchunks(mcpool)},
     wlimit(loop, &wev, write_limit.rate, write_limit.burst),
     rlimit(loop, &rev, read_limit.rate, read_limit.burst, this),
@@ -168,8 +168,10 @@ int Connection::tls_handshake() {
   (defined(NGHTTP2_OPENSSL_IS_WOLFSSL) && defined(WOLFSSL_EARLY_DATA))
   auto &tlsconf = get_config()->tls;
   std::array<uint8_t, 16_k> buf;
-#endif // NGHTTP2_GENUINE_OPENSSL || NGHTTP2_OPENSSL_IS_BORINGSSL ||
-       // (NGHTTP2_OPENSSL_IS_WOLFSSL && WOLFSSL_EARLY_DATA)
+#endif // defined(NGHTTP2_GENUINE_OPENSSL) ||
+       // defined(NGHTTP2_OPENSSL_IS_BORINGSSL) ||
+       // (defined(NGHTTP2_OPENSSL_IS_WOLFSSL) &&
+       // defined(WOLFSSL_EARLY_DATA))
 
   ERR_clear_error();
 
@@ -267,11 +269,13 @@ int Connection::tls_handshake() {
       }
     }
   }
-#else  // !NGHTTP2_GENUINE_OPENSSL && !(NGHTTP2_OPENSSL_IS_WOLFSSL &&
-       // WOLFSSL_EARLY_DATA)
+#else  // !defined(NGHTTP2_GENUINE_OPENSSL) &&
+       // (!defined(NGHTTP2_OPENSSL_IS_WOLFSSL) ||
+       // !defined(WOLFSSL_EARLY_DATA))
   rv = SSL_do_handshake(tls.ssl);
-#endif // !NGHTTP2_GENUINE_OPENSSL && !(NGHTTP2_OPENSSL_IS_WOLFSSL &&
-       // WOLFSSL_EARLY_DATA)
+#endif // !defined(NGHTTP2_GENUINE_OPENSSL) &&
+       // (!defined(NGHTTP2_OPENSSL_IS_WOLFSSL) ||
+       // !defined(WOLFSSL_EARLY_DATA))
 
   if (rv <= 0) {
     auto err = SSL_get_error(tls.ssl, rv);
@@ -336,7 +340,7 @@ int Connection::tls_handshake() {
       return SHRPX_ERR_INPROGRESS;
     }
   }
-#endif // NGHTTP2_OPENSSL_IS_BORINGSSL
+#endif // defined(NGHTTP2_OPENSSL_IS_BORINGSSL)
 
   // Handshake was done
 
@@ -379,7 +383,7 @@ int Connection::write_tls_pending_handshake() {
       }
     }
   }
-#endif // NGHTTP2_OPENSSL_IS_BORINGSSL
+#endif // defined(NGHTTP2_OPENSSL_IS_BORINGSSL)
 
   // We have to start read watcher, since later stage of code expects
   // this.
@@ -512,9 +516,9 @@ nghttp2_ssize Connection::write_tls(const void *data, size_t len) {
       rv = static_cast<int>(nwrite);
     }
   }
-#else  // !NGHTTP2_GENUINE_OPENSSL
+#else  // !defined(NGHTTP2_GENUINE_OPENSSL)
   auto rv = SSL_write(tls.ssl, data, static_cast<int>(len));
-#endif // !NGHTTP2_GENUINE_OPENSSL
+#endif // !defined(NGHTTP2_GENUINE_OPENSSL)
 
   if (rv <= 0) {
     auto err = SSL_get_error(tls.ssl, rv);
@@ -563,7 +567,8 @@ nghttp2_ssize Connection::read_tls(void *data, size_t len) {
   if (tls.earlybuf.rleft()) {
     return as_signed(tls.earlybuf.remove(data, len));
   }
-#endif // NGHTTP2_GENUINE_OPENSSL || NGHTTP2_OPENSSL_IS_BORINGSSL ||
+#endif // defined(NGHTTP2_GENUINE_OPENSSL) ||
+       // defined(NGHTTP2_OPENSSL_IS_BORINGSSL) ||
        // defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 
   // SSL_read requires the same arguments (buf pointer and its
@@ -625,7 +630,7 @@ nghttp2_ssize Connection::read_tls(void *data, size_t len) {
 
     return as_signed(nread);
   }
-#endif // NGHTTP2_GENUINE_OPENSSL
+#endif // defined(NGHTTP2_GENUINE_OPENSSL)
 
 #if defined(NGHTTP2_OPENSSL_IS_WOLFSSL) && defined(WOLFSSL_EARLY_DATA)
   if (!tls.early_data_finish) {
@@ -669,7 +674,8 @@ nghttp2_ssize Connection::read_tls(void *data, size_t len) {
 
     return as_signed(nread);
   }
-#endif // NGHTTP2_OPENSSL_IS_WOLFSSL && WOLFSSL_EARLY_DATA
+#endif // defined(NGHTTP2_OPENSSL_IS_WOLFSSL) &&
+       // defined(WOLFSSL_EARLY_DATA)
 
   auto rv = SSL_read(tls.ssl, data, static_cast<int>(len));
 
@@ -855,7 +861,7 @@ int Connection::get_tcp_hint(TCPHint *hint) const {
   if (SSL_version(tls.ssl) == TLS1_3_VERSION) {
     tls_overhead = 22;
   } else
-#  endif // TLS1_3_VERSION
+#  endif // defined(TLS1_3_VERSION)
   {
     tls_overhead = 29;
   }

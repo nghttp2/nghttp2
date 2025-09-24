@@ -27,29 +27,29 @@
 #include <sys/types.h>
 #ifdef HAVE_SYS_SOCKET_H
 #  include <sys/socket.h>
-#endif // HAVE_SYS_SOCKET_H
+#endif // defined(HAVE_SYS_SOCKET_H)
 #ifdef HAVE_NETDB_H
 #  include <netdb.h>
-#endif // HAVE_NETDB_H
+#endif // defined(HAVE_NETDB_H)
 #include <sys/stat.h>
 #ifdef HAVE_FCNTL_H
 #  include <fcntl.h>
-#endif // HAVE_FCNTL_H
+#endif // defined(HAVE_FCNTL_H)
 #ifdef HAVE_NETINET_IN_H
 #  include <netinet/in.h>
-#endif // HAVE_NETINET_IN_H
+#endif // defined(HAVE_NETINET_IN_H)
 #ifdef HAVE_NETINET_IP_H
 #  include <netinet/ip.h>
-#endif // HAVE_NETINET_IP_H
+#endif // defined(HAVE_NETINET_IP_H)
 #include <netinet/udp.h>
 #ifdef _WIN32
 #  include <ws2tcpip.h>
-#else // !_WIN32
+#else // !defined(_WIN32)
 #  include <netinet/tcp.h>
-#endif // !_WIN32
+#endif // !defined(_WIN32)
 #ifdef HAVE_ARPA_INET_H
 #  include <arpa/inet.h>
-#endif // HAVE_ARPA_INET_H
+#endif // defined(HAVE_ARPA_INET_H)
 
 #include <cmath>
 #include <cerrno>
@@ -67,10 +67,10 @@
 #  include <wolfssl/options.h>
 #  include <wolfssl/openssl/evp.h>
 #  include <wolfssl/openssl/rand.h>
-#else // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#else // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 #  include <openssl/evp.h>
 #  include <openssl/rand.h>
-#endif // !NGHTTP2_OPENSSL_IS_WOLFSSL
+#endif // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 
 #include <nghttp2/nghttp2.h>
 
@@ -86,13 +86,13 @@ int nghttp2_inet_pton(int af, const char *src, void *dst) {
   return inet_pton(af, src, dst);
 }
 } // namespace
-#else // _WIN32
+#else // defined(_WIN32)
 namespace {
 // inet_pton-wrapper for Windows
 int nghttp2_inet_pton(int af, const char *src, void *dst) {
 #  if _WIN32_WINNT >= 0x0600
   return InetPtonA(af, src, dst);
-#  else
+#  else  // _WIN32_WINNT < 0x0600
   // the function takes a 'char*', so we need to make a copy
   char addr[INET6_ADDRSTRLEN + 1];
   strncpy(addr, src, sizeof(addr));
@@ -103,10 +103,10 @@ int nghttp2_inet_pton(int af, const char *src, void *dst) {
   if (WSAStringToAddress(addr, af, nullptr, (LPSOCKADDR)dst, &size) == 0)
     return 1;
   return 0;
-#  endif
+#  endif // _WIN32_WINNT < 0x0600
 }
 } // namespace
-#endif // _WIN32
+#endif   // defined(_WIN32)
 
 namespace {
 template <std::weakly_incrementable O>
@@ -411,9 +411,9 @@ char *iso8601_date(char *out, const std::chrono::system_clock::time_point &tp) {
 
 #  ifdef HAVE_STRUCT_TM_TM_GMTOFF
   auto gmtoff = tms.tm_gmtoff;
-#  else  // !HAVE_STRUCT_TM_TM_GMTOFF
+#  else  // !defined(HAVE_STRUCT_TM_TM_GMTOFF)
   auto gmtoff = nghttp2_timegm(&tms) - sec;
-#  endif // !HAVE_STRUCT_TM_TM_GMTOFF
+#  endif // !defined(HAVE_STRUCT_TM_TM_GMTOFF)
   if (gmtoff == 0) {
     *p++ = 'Z';
   } else {
@@ -465,9 +465,9 @@ char *iso8601_basic_date(char *out,
 
 #  ifdef HAVE_STRUCT_TM_TM_GMTOFF
   auto gmtoff = tms.tm_gmtoff;
-#  else  // !HAVE_STRUCT_TM_TM_GMTOFF
+#  else  // !defined(HAVE_STRUCT_TM_TM_GMTOFF)
   auto gmtoff = nghttp2_timegm(&tms) - sec;
-#  endif // !HAVE_STRUCT_TM_TM_GMTOFF
+#  endif // !defined(HAVE_STRUCT_TM_TM_GMTOFF)
   if (gmtoff == 0) {
     *p++ = 'Z';
   } else {
@@ -521,9 +521,9 @@ char *common_log_date(char *out,
 
 #  ifdef HAVE_STRUCT_TM_TM_GMTOFF
   auto gmtoff = tms.tm_gmtoff;
-#  else  // !HAVE_STRUCT_TM_TM_GMTOFF
+#  else  // !defined(HAVE_STRUCT_TM_TM_GMTOFF)
   auto gmtoff = nghttp2_timegm(&tms) - t;
-#  endif // !HAVE_STRUCT_TM_TM_GMTOFF
+#  endif // !defined(HAVE_STRUCT_TM_TM_GMTOFF)
   if (gmtoff >= 0) {
     *p++ = '+';
   } else {
@@ -594,12 +594,12 @@ time_t parse_http_date(const std::string_view &s) {
   if (sstr.fail()) {
     return 0;
   }
-#else  // !_WIN32
+#else  // !defined(_WIN32)
   char *r = strptime(s.data(), "%a, %d %b %Y %H:%M:%S GMT", &tm);
   if (r == 0) {
     return 0;
   }
-#endif // !_WIN32
+#endif // !defined(_WIN32)
   return nghttp2_timegm_without_yday(&tm);
 }
 
@@ -848,7 +848,7 @@ std::string to_numeric_addr(const struct sockaddr *sa, socklen_t salen) {
   if (family == AF_UNIX) {
     return reinterpret_cast<const sockaddr_un *>(sa)->sun_path;
   }
-#endif // !_WIN32
+#endif // !defined(_WIN32)
 
   std::array<char, NI_MAXHOST> hostbuf;
   std::array<char, NI_MAXSERV> servbuf;
@@ -1089,7 +1089,7 @@ int make_socket_closeonexec(int fd) {
 #ifdef _WIN32
   (void)fd;
   return 0;
-#else  // !_WIN32
+#else  // !defined(_WIN32)
   int flags;
   int rv;
   while ((flags = fcntl(fd, F_GETFD)) == -1 && errno == EINTR)
@@ -1097,7 +1097,7 @@ int make_socket_closeonexec(int fd) {
   while ((rv = fcntl(fd, F_SETFD, flags | FD_CLOEXEC)) == -1 && errno == EINTR)
     ;
   return rv;
-#endif // !_WIN32
+#endif // !defined(_WIN32)
 }
 
 int make_socket_nonblocking(int fd) {
@@ -1107,13 +1107,13 @@ int make_socket_nonblocking(int fd) {
   u_long mode = 1;
 
   rv = ioctlsocket(fd, FIONBIO, &mode);
-#else  // !_WIN32
+#else  // !defined(_WIN32)
   int flags;
   while ((flags = fcntl(fd, F_GETFL, 0)) == -1 && errno == EINTR)
     ;
   while ((rv = fcntl(fd, F_SETFL, flags | O_NONBLOCK)) == -1 && errno == EINTR)
     ;
-#endif // !_WIN32
+#endif // !defined(_WIN32)
 
   return rv;
 }
@@ -1134,7 +1134,7 @@ int create_nonblock_socket(int family) {
   if (fd == -1) {
     return -1;
   }
-#else  // !SOCK_NONBLOCK
+#else  // !defined(SOCK_NONBLOCK)
   auto fd = socket(family, SOCK_STREAM, 0);
 
   if (fd == -1) {
@@ -1143,7 +1143,7 @@ int create_nonblock_socket(int family) {
 
   make_socket_nonblocking(fd);
   make_socket_closeonexec(fd);
-#endif // !SOCK_NONBLOCK
+#endif // !defined(SOCK_NONBLOCK)
 
   if (family == AF_INET || family == AF_INET6) {
     make_socket_nodelay(fd);
@@ -1159,7 +1159,7 @@ int create_nonblock_udp_socket(int family) {
   if (fd == -1) {
     return -1;
   }
-#else  // !SOCK_NONBLOCK
+#else  // !defined(SOCK_NONBLOCK)
   auto fd = socket(family, SOCK_DGRAM, 0);
 
   if (fd == -1) {
@@ -1168,7 +1168,7 @@ int create_nonblock_udp_socket(int family) {
 
   make_socket_nonblocking(fd);
   make_socket_closeonexec(fd);
-#endif // !SOCK_NONBLOCK
+#endif // !defined(SOCK_NONBLOCK)
 
   return fd;
 }
@@ -1835,9 +1835,9 @@ int daemonize(int nochdir, int noclose) {
     }
   }
   return 0;
-#else  // !__APPLE__
+#else  // !defined(__APPLE__)
   return daemon(nochdir, noclose);
-#endif // !__APPLE__
+#endif // !defined(__APPLE__)
 }
 
 std::string_view rstrip(BlockAllocator &balloc, const std::string_view &s) {
@@ -1906,9 +1906,9 @@ uint8_t msghdr_get_ecn(msghdr *msg, int family) {
       if (cmsg->cmsg_level == IPPROTO_IP &&
 #  ifdef __APPLE__
           cmsg->cmsg_type == IP_RECVTOS
-#  else  // !__APPLE__
+#  else  // !defined(__APPLE__)
           cmsg->cmsg_type == IP_TOS
-#  endif // !__APPLE__
+#  endif // !defined(__APPLE__)
           && cmsg->cmsg_len) {
         return *reinterpret_cast<uint8_t *>(CMSG_DATA(cmsg)) & IPTOS_ECN_MASK;
       }
@@ -1944,11 +1944,11 @@ size_t msghdr_get_udp_gro(msghdr *msg) {
       break;
     }
   }
-#  endif // UDP_GRO
+#  endif // defined(UDP_GRO)
 
   return static_cast<size_t>(gso_size);
 }
-#endif // ENABLE_HTTP3
+#endif // defined(ENABLE_HTTP3)
 
 } // namespace util
 

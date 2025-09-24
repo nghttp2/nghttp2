@@ -121,4 +121,4 @@ private:
 
 } // namespace shrpx
 
-#endif // SHRPX_HTTP_DOWNSTREAM_CONNECTION_H
+#endif // !defined(SHRPX_HTTP_DOWNSTREAM_CONNECTION_H)

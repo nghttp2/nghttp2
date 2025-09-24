@@ -57,4 +57,4 @@ private:
 
 } // namespace h2load
 
-#endif // H2LOAD_HTTP1_SESSION_H
+#endif // !defined(H2LOAD_HTTP1_SESSION_H)
