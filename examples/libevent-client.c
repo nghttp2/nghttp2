@@ -31,26 +31,26 @@
     }
 #  define warnx(format, args...) fprintf(stderr, format "\n", ##args)
 char *strndup(const char *s, size_t size);
-#endif
+#endif /* defined(__sgi) */
 
 #ifdef HAVE_CONFIG_H
 #  include <config.h>
-#endif /* HAVE_CONFIG_H */
+#endif /* defined(HAVE_CONFIG_H) */
 
 #include <sys/types.h>
 #ifdef HAVE_UNISTD_H
 #  include <unistd.h>
-#endif /* HAVE_UNISTD_H */
+#endif /* defined(HAVE_UNISTD_H) */
 #ifdef HAVE_SYS_SOCKET_H
 #  include <sys/socket.h>
-#endif /* HAVE_SYS_SOCKET_H */
+#endif /* defined(HAVE_SYS_SOCKET_H) */
 #ifdef HAVE_NETINET_IN_H
 #  include <netinet/in.h>
-#endif /* HAVE_NETINET_IN_H */
+#endif /* defined(HAVE_NETINET_IN_H) */
 #include <netinet/tcp.h>
 #ifndef __sgi
 #  include <err.h>
-#endif
+#endif /* !defined(__sgi) */
 #include <signal.h>
 #include <string.h>
 

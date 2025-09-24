@@ -30,35 +30,35 @@
     }
 #  define warn(format, args...) warnx(format ": %s", ##args, strerror(errno))
 #  define warnx(format, args...) fprintf(stderr, format "\n", ##args)
-#endif
+#endif /* defined(__sgi) */
 
 #ifdef HAVE_CONFIG_H
 #  include <config.h>
-#endif /* HAVE_CONFIG_H */
+#endif /* defined(HAVE_CONFIG_H) */
 
 #include <sys/types.h>
 #ifdef HAVE_SYS_SOCKET_H
 #  include <sys/socket.h>
-#endif /* HAVE_SYS_SOCKET_H */
+#endif /* defined(HAVE_SYS_SOCKET_H) */
 #ifdef HAVE_NETDB_H
 #  include <netdb.h>
-#endif /* HAVE_NETDB_H */
+#endif /* defined(HAVE_NETDB_H) */
 #include <signal.h>
 #ifdef HAVE_UNISTD_H
 #  include <unistd.h>
-#endif /* HAVE_UNISTD_H */
+#endif /* defined(HAVE_UNISTD_H) */
 #include <sys/stat.h>
 #ifdef HAVE_FCNTL_H
 #  include <fcntl.h>
-#endif /* HAVE_FCNTL_H */
+#endif /* defined(HAVE_FCNTL_H) */
 #include <ctype.h>
 #ifdef HAVE_NETINET_IN_H
 #  include <netinet/in.h>
-#endif /* HAVE_NETINET_IN_H */
+#endif /* defined(HAVE_NETINET_IN_H) */
 #include <netinet/tcp.h>
 #ifndef __sgi
 #  include <err.h>
-#endif
+#endif /* !defined(__sgi) */
 #include <string.h>
 #include <errno.h>
 
@@ -140,7 +140,7 @@ static SSL_CTX *create_ssl_ctx(const char *key_file, const char *cert_file) {
     errx(1, "SSL_CTX_set1_groups_list failed: %s",
          ERR_error_string(ERR_get_error(), NULL));
   }
-#else  /* !(OPENSSL_VERSION_NUMBER >= 0x30000000L) */
+#else  /* OPENSSL_VERSION_NUMBER < 0x30000000L */
   {
     EC_KEY *ecdh;
     ecdh = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
@@ -151,7 +151,7 @@ static SSL_CTX *create_ssl_ctx(const char *key_file, const char *cert_file) {
     SSL_CTX_set_tmp_ecdh(ssl_ctx, ecdh);
     EC_KEY_free(ecdh);
   }
-#endif /* !(OPENSSL_VERSION_NUMBER >= 0x30000000L) */
+#endif /* OPENSSL_VERSION_NUMBER < 0x30000000L */
 
   if (SSL_CTX_use_PrivateKey_file(ssl_ctx, key_file, SSL_FILETYPE_PEM) != 1) {
     errx(1, "Could not read private key file %s", key_file);
@@ -727,7 +727,7 @@ static void start_listen(struct event_base *evbase, const char *service,
   hints.ai_flags = AI_PASSIVE;
 #ifdef AI_ADDRCONFIG
   hints.ai_flags |= AI_ADDRCONFIG;
-#endif /* AI_ADDRCONFIG */
+#endif /* defined(AI_ADDRCONFIG) */
 
   rv = getaddrinfo(NULL, service, &hints, &res);
   if (rv != 0) {
