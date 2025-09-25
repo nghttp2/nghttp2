@@ -127,8 +127,8 @@ following libraries are required:
   wolfSSL; or LibreSSL (does not support 0RTT); or aws-lc; or
   `BoringSSL <https://boringssl.googlesource.com/boringssl/>`_ (commit
   fa47b1d0f9d3d30601d7e5ed158d3055cbe6ff44); or OpenSSL >= 3.5.0
-* `ngtcp2 <https://github.com/ngtcp2/ngtcp2>`_ >= 1.15.0
-* `nghttp3 <https://github.com/ngtcp2/nghttp3>`_ >= 1.11.0
+* `ngtcp2 <https://github.com/ngtcp2/ngtcp2>`_ >= 1.16.0
+* `nghttp3 <https://github.com/ngtcp2/nghttp3>`_ >= 1.12.0
 
 Use ``--enable-http3`` configure option to enable HTTP/3 feature for
 h2load and nghttpx.
