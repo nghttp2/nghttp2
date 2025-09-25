@@ -328,7 +328,7 @@ namespace {
 std::span<char> copy_hex_low(std::span<const uint8_t> src,
                              std::span<char> dest) {
   auto n = std::min(dest.size(), src.size() * 2) / 2;
-  auto d = util::format_hex(src.first(n), dest.begin());
+  auto d = util::format_hex(src.first(n), std::ranges::begin(dest));
 
   if (n < src.size()) {
     return {d, d};
@@ -428,7 +428,7 @@ std::span<char> copy_escape(const std::string_view &src, std::span<char> dest) {
 
     dest[0] = '\\';
     dest[1] = 'x';
-    util::format_hex(c, dest.begin() + 2);
+    util::format_hex(c, std::ranges::begin(dest) + 2);
     dest = dest.subspan(4);
 
     safe_first = p + 1;

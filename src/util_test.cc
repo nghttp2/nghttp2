@@ -195,25 +195,29 @@ void test_util_percent_encode_token(void) {
   std::array<char, 64> buf;
 
   assert_stdsv_equal(
-    "h2"sv, as_string_view(buf.begin(),
-                           util::percent_encode_token("h2"sv, buf.begin())));
+    "h2"sv, as_string_view(
+              std::ranges::begin(buf),
+              util::percent_encode_token("h2"sv, std::ranges::begin(buf))));
 
   assert_size("h2"sv.size(), ==, util::percent_encode_tokenlen("h2"sv));
 
   assert_stdsv_equal(
-    "h3~"sv, as_string_view(buf.begin(),
-                            util::percent_encode_token("h3~"sv, buf.begin())));
+    "h3~"sv, as_string_view(
+               std::ranges::begin(buf),
+               util::percent_encode_token("h3~"sv, std::ranges::begin(buf))));
 
   assert_size("h3~"sv.size(), ==, util::percent_encode_tokenlen("h3~"sv));
 
   assert_stdsv_equal("100%25"sv,
-                     as_string_view(buf.begin(), util::percent_encode_token(
-                                                   "100%"sv, buf.begin())));
+                     as_string_view(std::ranges::begin(buf),
+                                    util::percent_encode_token(
+                                      "100%"sv, std::ranges::begin(buf))));
   assert_size("100%25"sv.size(), ==, util::percent_encode_tokenlen("100%"sv));
 
   assert_stdsv_equal("http%202"sv,
-                     as_string_view(buf.begin(), util::percent_encode_token(
-                                                   "http 2"sv, buf.begin())));
+                     as_string_view(std::ranges::begin(buf),
+                                    util::percent_encode_token(
+                                      "http 2"sv, std::ranges::begin(buf))));
 
   assert_size("http%202"sv.size(), ==,
               util::percent_encode_tokenlen("http 2"sv));
@@ -260,23 +264,29 @@ void test_util_utox(void) {
   std::array<char, 16> buf;
 
   assert_stdsv_equal(
-    "0"sv, (std::string_view{buf.begin(), util::utox(0, buf.begin())}));
+    "0"sv, (std::string_view{std::ranges::begin(buf),
+                             util::utox(0, std::ranges::begin(buf))}));
   assert_stdsv_equal(
-    "1"sv, (std::string_view{buf.begin(), util::utox(1, buf.begin())}));
+    "1"sv, (std::string_view{std::ranges::begin(buf),
+                             util::utox(1, std::ranges::begin(buf))}));
   assert_stdsv_equal(
-    "F"sv, (std::string_view{buf.begin(), util::utox(15, buf.begin())}));
+    "F"sv, (std::string_view{std::ranges::begin(buf),
+                             util::utox(15, std::ranges::begin(buf))}));
   assert_stdsv_equal(
-    "10"sv, (std::string_view{buf.begin(), util::utox(16, buf.begin())}));
+    "10"sv, (std::string_view{std::ranges::begin(buf),
+                              util::utox(16, std::ranges::begin(buf))}));
   assert_stdsv_equal(
     "3B9ACA07"sv,
-    (std::string_view{buf.begin(), util::utox(1000000007, buf.begin())}));
-  assert_stdsv_equal(
-    "B5EA98F3663B14A"sv,
-    (std::string_view{buf.begin(),
-                      util::utox(819278614785929546, buf.begin())}));
+    (std::string_view{std::ranges::begin(buf),
+                      util::utox(1000000007, std::ranges::begin(buf))}));
+  assert_stdsv_equal("B5EA98F3663B14A"sv,
+                     (std::string_view{std::ranges::begin(buf),
+                                       util::utox(819278614785929546,
+                                                  std::ranges::begin(buf))}));
   assert_stdsv_equal(
     "100000000"sv,
-    (std::string_view{buf.begin(), util::utox(1LL << 32, buf.begin())}));
+    (std::string_view{std::ranges::begin(buf),
+                      util::utox(1LL << 32, std::ranges::begin(buf))}));
 }
 
 void test_util_http_date(void) {
@@ -855,28 +865,31 @@ void test_util_format_hex(void) {
   std::array<char, 64> buf;
 
   assert_stdsv_equal(
-    "00"sv,
-    (std::string_view{
-      buf.begin(), util::format_hex(static_cast<uint8_t>(0u), buf.begin())}));
+    "00"sv, (std::string_view{std::ranges::begin(buf),
+                              util::format_hex(static_cast<uint8_t>(0u),
+                                               std::ranges::begin(buf))}));
   assert_stdsv_equal(
-    "ec"sv,
-    (std::string_view{buf.begin(), util::format_hex(static_cast<uint8_t>(0xecu),
-                                                    buf.begin())}));
+    "ec"sv, (std::string_view{std::ranges::begin(buf),
+                              util::format_hex(static_cast<uint8_t>(0xecu),
+                                               std::ranges::begin(buf))}));
   assert_stdsv_equal(
     "00000000"sv,
-    (std::string_view{buf.begin(), util::format_hex(0u, buf.begin())}));
+    (std::string_view{std::ranges::begin(buf),
+                      util::format_hex(0u, std::ranges::begin(buf))}));
   assert_stdsv_equal(
     "0000ab01"sv,
-    (std::string_view{buf.begin(), util::format_hex(0xab01u, buf.begin())}));
+    (std::string_view{std::ranges::begin(buf),
+                      util::format_hex(0xab01u, std::ranges::begin(buf))}));
   assert_stdsv_equal(
     "deadbeefbaadf00d"sv,
-    (std::string_view{buf.begin(),
-                      util::format_hex(0xdeadbeefbaadf00du, buf.begin())}));
+    (std::string_view{
+      std::ranges::begin(buf),
+      util::format_hex(0xdeadbeefbaadf00du, std::ranges::begin(buf))}));
   assert_stdsv_equal(
     "ffffffffffffffff"sv,
-    (std::string_view{
-      buf.begin(),
-      util::format_hex(std::numeric_limits<uint64_t>::max(), buf.begin())}));
+    (std::string_view{std::ranges::begin(buf),
+                      util::format_hex(std::numeric_limits<uint64_t>::max(),
+                                       std::ranges::begin(buf))}));
 }
 
 void test_util_format_upper_hex(void) {
@@ -884,19 +897,24 @@ void test_util_format_upper_hex(void) {
 
   assert_stdsv_equal(
     "00"sv,
-    (std::string_view{buf.begin(), util::format_upper_hex(0, buf.begin())}));
+    (std::string_view{std::ranges::begin(buf),
+                      util::format_upper_hex(0, std::ranges::begin(buf))}));
   assert_stdsv_equal(
     "0A"sv,
-    (std::string_view{buf.begin(), util::format_upper_hex(0xa, buf.begin())}));
+    (std::string_view{std::ranges::begin(buf),
+                      util::format_upper_hex(0xa, std::ranges::begin(buf))}));
   assert_stdsv_equal(
-    "7C"sv, (std::string_view{buf.begin(),
-                              util::format_upper_hex(0x07c, buf.begin())}));
+    "7C"sv,
+    (std::string_view{std::ranges::begin(buf),
+                      util::format_upper_hex(0x07c, std::ranges::begin(buf))}));
   assert_stdsv_equal(
     "EB"sv,
-    (std::string_view{buf.begin(), util::format_upper_hex(0xeb, buf.begin())}));
+    (std::string_view{std::ranges::begin(buf),
+                      util::format_upper_hex(0xeb, std::ranges::begin(buf))}));
   assert_stdsv_equal(
     "FF"sv,
-    (std::string_view{buf.begin(), util::format_upper_hex(0xff, buf.begin())}));
+    (std::string_view{std::ranges::begin(buf),
+                      util::format_upper_hex(0xff, std::ranges::begin(buf))}));
 }
 
 void test_util_is_hex_string(void) {

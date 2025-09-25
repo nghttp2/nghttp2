@@ -58,7 +58,9 @@ std::span<uint64_t, 2> generate_siphash_key();
 
 namespace std {
 template <> struct hash<ngtcp2_cid> {
-  hash() { std::ranges::copy(shrpx::generate_siphash_key(), key.begin()); }
+  hash() {
+    std::ranges::copy(shrpx::generate_siphash_key(), std::ranges::begin(key));
+  }
 
   std::size_t operator()(const ngtcp2_cid &cid) const noexcept {
     return static_cast<size_t>(siphash24(key, {cid.data, cid.datalen}));

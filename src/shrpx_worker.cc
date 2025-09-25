@@ -287,7 +287,7 @@ void Worker::replace_downstream_config(
     shared_mruby_ctxs;
 #endif // defined(HAVE_MRUBY)
 
-  auto old_addr_group_it = old_addr_groups.begin();
+  auto old_addr_group_it = std::ranges::begin(old_addr_groups);
 
   for (size_t i = 0; i < groups.size(); ++i) {
     auto &src = groups[i];
@@ -296,7 +296,7 @@ void Worker::replace_downstream_config(
     dst = std::make_shared<DownstreamAddrGroup>();
     dst->pattern = ImmutableString{src.pattern};
 
-    for (; old_addr_group_it != old_addr_groups.end() &&
+    for (; old_addr_group_it != std::ranges::end(old_addr_groups) &&
            (*old_addr_group_it)->pattern < dst->pattern;
          ++old_addr_group_it)
       ;
@@ -418,7 +418,7 @@ void Worker::replace_downstream_config(
         assert(num_wgs == 0);
 
         auto copy_cycle =
-          old_addr_group_it != old_addr_groups.end() &&
+          old_addr_group_it != std::ranges::end(old_addr_groups) &&
           (*old_addr_group_it)->pattern == dst->pattern &&
           (*old_addr_group_it)->shared_addr->affinity.type ==
             SessionAffinity::NONE &&

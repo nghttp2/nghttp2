@@ -131,17 +131,17 @@ std::string_view create_forwarded(BlockAllocator &balloc, uint32_t params,
 std::string colorize_headers(const std::string_view &hdrs) {
   std::string nhdrs;
   auto p = std::ranges::find(hdrs, '\n');
-  if (p == hdrs.end()) {
+  if (p == std::ranges::end(hdrs)) {
     // Not valid HTTP header
     return std::string{hdrs};
   }
 
-  nhdrs.append(hdrs.begin(), ++p);
+  nhdrs.append(std::ranges::begin(hdrs), ++p);
 
   while (1) {
-    auto np = std::ranges::find(p, hdrs.end(), ':');
-    if (np == hdrs.end()) {
-      nhdrs.append(p, hdrs.end());
+    auto np = std::ranges::find(p, std::ranges::end(hdrs), ':');
+    if (np == std::ranges::end(hdrs)) {
+      nhdrs.append(p, std::ranges::end(hdrs));
       break;
     }
 
@@ -153,7 +153,7 @@ std::string colorize_headers(const std::string_view &hdrs) {
 
     p = np;
 
-    np = std::ranges::find(p, hdrs.end(), '\n');
+    np = std::ranges::find(p, std::ranges::end(hdrs), '\n');
 
     if (redact) {
       nhdrs.append(": <redacted>"sv);
@@ -161,7 +161,7 @@ std::string colorize_headers(const std::string_view &hdrs) {
       nhdrs.append(p, np);
     }
 
-    if (np == hdrs.end()) {
+    if (np == std::ranges::end(hdrs)) {
       return nhdrs;
     }
 

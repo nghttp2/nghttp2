@@ -274,15 +274,16 @@ namespace {
 void capitalize_long(DefaultMemchunks *buf, const std::string_view &s) {
   buf->append(util::upcase(s[0]));
 
-  auto it = s.begin() + 1;
+  auto it = std::ranges::begin(s) + 1;
 
-  for (; it != s.end();) {
-    auto p = std::ranges::find(it, s.end(), '-');
-    p = std::ranges::find_if(p, s.end(), [](auto c) { return c != '-'; });
+  for (; it != std::ranges::end(s);) {
+    auto p = std::ranges::find(it, std::ranges::end(s), '-');
+    p = std::ranges::find_if(p, std::ranges::end(s),
+                             [](auto c) { return c != '-'; });
 
     buf->append(it, p);
 
-    if (p == s.end()) {
+    if (p == std::ranges::end(s)) {
       return;
     }
 

@@ -2791,7 +2791,7 @@ int main(int argc, char **argv) {
 
   // serialize the APLN tokens
   for (auto &proto : config.alpn_list) {
-    proto.insert(proto.begin(), static_cast<char>(proto.size()));
+    proto.insert(std::ranges::begin(proto), static_cast<char>(proto.size()));
   }
 
   std::vector<std::string> reqlines;
