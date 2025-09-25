@@ -177,15 +177,17 @@ void test_template_as_string_view(void) {
     auto a = std::to_array<uint8_t>({'a', 'l', 'p', 'h', 'a'});
 
     assert_stdsv_equal("alpha"sv, as_string_view(a));
-    assert_stdsv_equal("alpha"sv, as_string_view(a.begin(), a.end()));
-    assert_stdsv_equal("alp"sv, as_string_view(a.begin(), 3));
+    assert_stdsv_equal(
+      "alpha"sv, as_string_view(std::ranges::begin(a), std::ranges::end(a)));
+    assert_stdsv_equal("alp"sv, as_string_view(std::ranges::begin(a), 3));
   }
 
   {
     auto s = ""s;
 
     assert_stdsv_equal(""sv, as_string_view(s));
-    assert_stdsv_equal(""sv, as_string_view(s.begin(), s.end()));
+    assert_stdsv_equal(
+      ""sv, as_string_view(std::ranges::begin(s), std::ranges::end(s)));
   }
 }
 

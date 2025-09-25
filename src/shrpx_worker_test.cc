@@ -70,7 +70,9 @@ void test_shrpx_worker_match_downstream_addr_group(void) {
 
   for (size_t i = 0; i < groups.size(); ++i) {
     auto &g = groups[i];
-    router.add_route(std::string_view{g->pattern.begin(), g->pattern.end()}, i);
+    router.add_route(std::string_view{std::ranges::begin(g->pattern),
+                                      std::ranges::end(g->pattern)},
+                     i);
   }
 
   assert_size(0, ==,

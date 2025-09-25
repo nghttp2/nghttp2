@@ -613,7 +613,8 @@ time_t parse_openssl_asn1_time_print(const std::string_view &s) {
 }
 
 void to_token68(std::string &base64str) {
-  for (auto it = base64str.begin(); it != base64str.end(); ++it) {
+  for (auto it = std::ranges::begin(base64str);
+       it != std::ranges::end(base64str); ++it) {
     switch (*it) {
     case '+':
       *it = '-';
@@ -622,7 +623,7 @@ void to_token68(std::string &base64str) {
       *it = '_';
       break;
     case '=':
-      base64str.erase(it, base64str.end());
+      base64str.erase(it, std::ranges::end(base64str));
       return;
     }
   }
