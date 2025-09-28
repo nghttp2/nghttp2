@@ -1878,7 +1878,7 @@ void resolve_host() {
 
     config.addrs = res.release();
     return;
-  };
+  }
 
   int rv;
   addrinfo *res;
