@@ -2196,9 +2196,9 @@ Options:
       << util::utos_unit(config.max_frame_size) << R"(
   -w, --window-bits=<N>
               Sets the stream level initial window size to (2**<N>)-1.
-              For QUIC, <N> is capped to 26 (roughly 64MiB).
-              Default: )"
-      << config.window_bits << R"(
+              For  QUIC, <N>  is  capped to  26  (roughly 64MiB).   It
+              defaults  to  24 (16MiB)  for  QUIC,  and 30  for  other
+              protocols.
   -W, --connection-window-bits=<N>
               Sets  the  connection  level   initial  window  size  to
               (2**<N>)-1.
@@ -2373,6 +2373,7 @@ int main(int argc, char **argv) {
   std::string datafile;
   std::string logfile;
   bool nreqs_set_manually = false;
+  auto window_bits_set_manually = false;
   while (1) {
     static int flag = 0;
     constexpr static option long_options[] = {
@@ -2478,6 +2479,7 @@ int main(int argc, char **argv) {
         exit(EXIT_FAILURE);
       }
       if (c == 'w') {
+        window_bits_set_manually = true;
         config.window_bits = static_cast<size_t>(*n);
       } else {
         config.connection_window_bits = static_cast<size_t>(*n);
@@ -2792,6 +2794,10 @@ int main(int argc, char **argv) {
   // serialize the APLN tokens
   for (auto &proto : config.alpn_list) {
     proto.insert(std::ranges::begin(proto), static_cast<char>(proto.size()));
+  }
+
+  if (config.is_quic() && !window_bits_set_manually) {
+    config.window_bits = 24;
   }
 
   std::vector<std::string> reqlines;
