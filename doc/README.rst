@@ -111,7 +111,7 @@ The example follows::
 
 ``@struct`` is used to refer to the struct. Currently, only struct
 typedefs are supported. The comment block is used for the document for
-the struct type itself.To document each member, put comment block
+the struct type itself. To document each member, put comment block
 starting with the line ``/**`` and ending with the ``*/`` just before
 the member.  When the line starts with ``}`` is encountered, the
 ``mkapiref.py`` extracts strings next to ``}`` as the name of struct.
