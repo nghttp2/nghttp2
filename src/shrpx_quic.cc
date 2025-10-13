@@ -419,4 +419,9 @@ std::span<uint64_t, 2> generate_siphash_key() {
   return key;
 }
 
+bool recv_pkt_time_threshold_exceeded(bool time_sensitive, size_t pktcnt,
+                                      ngtcp2_tstamp start, ngtcp2_tstamp now) {
+  return time_sensitive && pktcnt && now - start >= NGTCP2_MILLISECONDS;
+}
+
 } // namespace shrpx

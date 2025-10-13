@@ -68,8 +68,17 @@ void QUICListener::on_read() {
   };
 
   auto quic_conn_handler = worker_->get_quic_connection_handler();
+  auto config = get_config();
+  auto &quicconf = config->quic;
+  auto bbr_cc = quicconf.upstream.congestion_controller == NGTCP2_CC_ALGO_BBR;
+  auto start = quic_timestamp();
 
-  for (; pktcnt < 10;) {
+  for (; pktcnt < 64;) {
+    if (recv_pkt_time_threshold_exceeded(bbr_cc, pktcnt, start,
+                                         quic_timestamp())) {
+      return;
+    }
+
     msg.msg_namelen = sizeof(remote_addr.su);
     msg.msg_controllen = sizeof(msg_ctrl);
 

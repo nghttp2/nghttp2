@@ -176,6 +176,9 @@ int generate_quic_connection_id_encryption_key(std::span<uint8_t> key,
 const QUICKeyingMaterial *
 select_quic_keying_material(const QUICKeyingMaterials &qkms, uint8_t km_id);
 
+bool recv_pkt_time_threshold_exceeded(bool time_sensitive, size_t pktcnt,
+                                      ngtcp2_tstamp start, ngtcp2_tstamp now);
+
 } // namespace shrpx
 
 #endif // !defined(SHRPX_QUIC_H)
