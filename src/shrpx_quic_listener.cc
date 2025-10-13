@@ -69,7 +69,7 @@ void QUICListener::on_read() {
 
   auto quic_conn_handler = worker_->get_quic_connection_handler();
 
-  for (; pktcnt < 10;) {
+  for (; pktcnt < 64;) {
     msg.msg_namelen = sizeof(remote_addr.su);
     msg.msg_controllen = sizeof(msg_ctrl);
 
