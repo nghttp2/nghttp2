@@ -300,7 +300,6 @@ enum class WorkerEventType {
 
 struct WorkerEvent {
   WorkerEventType type;
-  std::shared_ptr<TicketKeys> ticket_keys;
   std::shared_ptr<DownstreamConfig> downstreamconf;
 #ifdef ENABLE_HTTP3
   std::unique_ptr<QUICPacket> quic_pkt;
