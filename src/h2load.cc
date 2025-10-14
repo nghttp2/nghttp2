@@ -512,6 +512,8 @@ Client::Client(uint32_t id, Worker *worker, size_t req_todo)
 #  endif // !defined(UDP_SEGMENT)
 
   if (config.is_quic()) {
+    ev_set_priority(&rev, EV_MAXPRI);
+
     quic.tx.data = std::make_unique<uint8_t[]>(QUIC_TX_DATALEN);
   }
 

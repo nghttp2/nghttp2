@@ -53,9 +53,11 @@ namespace {
 void timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
   auto upstream = static_cast<Http3Upstream *>(w->data);
 
-  if (upstream->handle_expiry() != 0 || upstream->on_write() != 0) {
+  if (upstream->handle_expiry() != 0) {
     goto fail;
   }
+
+  upstream->get_client_handler()->signal_write();
 
   return;
 

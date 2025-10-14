@@ -549,7 +549,9 @@ int Client::quic_pkt_timeout() {
     return -1;
   }
 
-  return write_quic();
+  signal_write();
+
+  return 0;
 }
 
 void Client::quic_restart_pkt_timer() {

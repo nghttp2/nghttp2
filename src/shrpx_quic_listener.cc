@@ -39,6 +39,7 @@ void readcb(struct ev_loop *loop, ev_io *w, int revent) {
 QUICListener::QUICListener(const UpstreamAddr *faddr, Worker *worker)
   : faddr_{faddr}, worker_{worker} {
   ev_io_init(&rev_, readcb, faddr_->fd, EV_READ);
+  ev_set_priority(&rev_, EV_MAXPRI);
   rev_.data = this;
   ev_io_start(worker_->get_loop(), &rev_);
 }
