@@ -9,7 +9,7 @@ RUN apt-get update && \
         zlib1g-dev libev-dev libjemalloc-dev ruby-dev libc-ares-dev bison \
         libelf-dev libbrotli-dev
 
-RUN git clone --recursive --shallow-submodules --depth 1 -b v1.61.2 https://github.com/aws/aws-lc && \
+RUN git clone --recursive --shallow-submodules --depth 1 -b v1.62.0 https://github.com/aws/aws-lc && \
     cd aws-lc && \
     export CC=clang-19 CXX=clang++-19 && \
     cmake -B build -DDISABLE_GO=ON && \
@@ -28,7 +28,7 @@ RUN git clone --recursive --shallow-submodules --depth 1 -b v1.12.0 https://gith
     cd .. && \
     rm -rf nghttp3
 
-RUN git clone --recursive --shallow-submodules --depth 1 -b v1.16.0 https://github.com/ngtcp2/ngtcp2 && \
+RUN git clone --recursive --shallow-submodules --depth 1 -b v1.17.0 https://github.com/ngtcp2/ngtcp2 && \
     cd ngtcp2 && \
     autoreconf -i && \
     ./configure --disable-dependency-tracking --enable-lib-only \
