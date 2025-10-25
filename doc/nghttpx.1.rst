@@ -643,8 +643,8 @@ SSL/TLS
 
     Set allowed  cipher list  for frontend  connection.  The
     format of the string is described in OpenSSL ciphers(1).
-    This option  sets cipher suites for  TLSv1.2 or earlier.
-    Use :option:`--tls13-ciphers` for TLSv1.3.
+    This  option  sets  cipher   suites  for  TLSv1.2.   Use
+    :option:`--tls13-ciphers` for TLSv1.3.
 
     Default: ``ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384``
 
@@ -653,7 +653,7 @@ SSL/TLS
     Set allowed  cipher list  for frontend  connection.  The
     format of the string is described in OpenSSL ciphers(1).
     This  option  sets  cipher   suites  for  TLSv1.3.   Use
-    :option:`--ciphers` for TLSv1.2 or earlier.
+    :option:`--ciphers` for TLSv1.2.
 
     Default: ``TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256``
 
@@ -661,8 +661,8 @@ SSL/TLS
 
     Set  allowed cipher  list for  backend connection.   The
     format of the string is described in OpenSSL ciphers(1).
-    This option  sets cipher suites for  TLSv1.2 or earlier.
-    Use :option:`--tls13-client-ciphers` for TLSv1.3.
+    This  option  sets  cipher   suites  for  TLSv1.2.   Use
+    :option:`--tls13-client-ciphers` for TLSv1.3.
 
     Default: ``ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384``
 
@@ -671,14 +671,14 @@ SSL/TLS
     Set  allowed cipher  list for  backend connection.   The
     format of the string is described in OpenSSL ciphers(1).
     This  option  sets  cipher   suites  for  TLSv1.3.   Use
-    :option:`--tls13-client-ciphers` for TLSv1.2 or earlier.
+    :option:`--client-ciphers` for TLSv1.2.
 
     Default: ``TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256``
 
-.. option:: --ecdh-curves=<LIST>
+.. option:: --groups=<LIST>
 
-    Set  supported  curve  list  for  frontend  connections.
-    <LIST> is a  colon separated list of curve  NID or names
+    Set the  supported group list for  frontend connections.
+    <LIST> is a  colon separated list of group  NID or names
     in the preference order.  The supported curves depend on
     the  linked  OpenSSL  library.  This  function  requires
     OpenSSL >= 1.0.2.
@@ -710,12 +710,12 @@ SSL/TLS
     Specify  additional certificate  and  private key  file.
     nghttpx will  choose certificates based on  the hostname
     indicated by client using TLS SNI extension.  If nghttpx
-    is  built with  OpenSSL  >= 1.0.2,  the shared  elliptic
-    curves (e.g., P-256) between  client and server are also
-    taken into  consideration.  This allows nghttpx  to send
-    ECDSA certificate  to modern clients, while  sending RSA
-    based certificate to older  clients.  This option can be
-    used  multiple  times.
+    is built with OpenSSL >= 1.0.2, the signature algorithms
+    (e.g., ECDSA+SHA256) presented by  client are also taken
+    into consideration.  This allows  nghttpx to send ML-DSA
+    or ECDSA  certificate to  modern clients,  while sending
+    RSA based certificate to older clients.  This option can
+    be used multiple times.
 
     Additional parameter  can be specified in  <PARAM>.  The
     available <PARAM> is "sct-dir=<DIR>".
@@ -776,12 +776,8 @@ SSL/TLS
     :option:`--tls-min-proto-version` and  :option:`\--tls-max-proto-version` are
     enabled.  If the protocol list advertised by client does
     not  overlap  this range,  you  will  receive the  error
-    message "unknown protocol".  If a protocol version lower
-    than TLSv1.2 is specified, make sure that the compatible
-    ciphers are  included in :option:`--ciphers` option.   The default
-    cipher  list  only   includes  ciphers  compatible  with
-    TLSv1.2 or above.  The available versions are:
-    TLSv1.3, TLSv1.2, TLSv1.1, and TLSv1.0
+    message "unknown protocol".  The available versions are:
+    TLSv1.3 and TLSv1.2
 
     Default: ``TLSv1.2``
 
@@ -793,7 +789,7 @@ SSL/TLS
     enabled.  If the protocol list advertised by client does
     not  overlap  this range,  you  will  receive the  error
     message "unknown protocol".  The available versions are:
-    TLSv1.3, TLSv1.2, TLSv1.1, and TLSv1.0
+    TLSv1.3 and TLSv1.2
 
     Default: ``TLSv1.3``
 

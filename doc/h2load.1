@@ -27,7 +27,7 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
-.TH "H2LOAD" "1" "Sep 02, 2025" "1.67.0" "nghttp2"
+.TH "H2LOAD" "1" "Oct 25, 2025" "1.68.0" "nghttp2"
 .SH NAME
 h2load \- HTTP/2 benchmarking tool
 .SH SYNOPSIS
@@ -109,9 +109,9 @@ Default: \fB16K\fP
 .TP
 .B \-w, \-\-window\-bits=<N>
 Sets the stream level initial window size to (2**<N>)\-1.
-For QUIC, <N> is capped to 26 (roughly 64MiB).
-.sp
-Default: \fB30\fP
+For  QUIC, <N>  is  capped to  26  (roughly 64MiB).   It
+defaults  to  24 (16MiB)  for  QUIC,  and 30  for  other
+protocols.
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -388,7 +388,7 @@ The number of requests completed.
 .TP
 .B succeeded
 The number of requests completed successfully.  Only HTTP status
-code 2xx or3xx are considered as success.
+code 2xx or 3xx are considered as success.
 .TP
 .B failed
 The number of requests failed, including HTTP level failures

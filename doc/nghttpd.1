@@ -27,7 +27,7 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
-.TH "NGHTTPD" "1" "Sep 02, 2025" "1.67.0" "nghttp2"
+.TH "NGHTTPD" "1" "Oct 25, 2025" "1.68.0" "nghttp2"
 .SH NAME
 nghttpd \- HTTP/2 server
 .SH SYNOPSIS
@@ -201,6 +201,13 @@ Default: \fB/etc/mime.types\fP
 .TP
 .B \-\-no\-content\-length
 Don\(aqt send content\-length header field.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-groups=<GROUPS>
+Specify the supported groups.
+.sp
+Default: \fBX25519:P\-256:P\-384:P\-521\fP
 .UNINDENT
 .INDENT 0.0
 .TP
