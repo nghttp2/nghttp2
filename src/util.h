@@ -375,18 +375,23 @@ constexpr size_t quote_stringlen(R &&r) {
   return n;
 }
 
-inline constexpr auto hexdigits = []() {
-  constexpr char LOWER_XDIGITS[] = "0123456789abcdef";
+inline constexpr char LOWER_XDIGITS[] = "0123456789abcdef";
 
-  std::array<char, 512> tbl;
+template <std::weakly_incrementable O>
+requires(std::indirectly_writable<O, char>)
+constexpr O format_hex_uint8(uint8_t b, O result) {
+#ifdef __GNUC__
+#  pragma GCC diagnostic push
+#  pragma GCC diagnostic ignored "-Wsign-conversion"
+#endif // __GNUC__
+  *result++ = LOWER_XDIGITS[b >> 4];
+  *result++ = LOWER_XDIGITS[b & 0xf];
+#ifdef __GNUC__
+#  pragma GCC diagnostic pop
+#endif // __GNUC__
 
-  for (size_t i = 0; i < 256; ++i) {
-    tbl[i * 2] = LOWER_XDIGITS[static_cast<size_t>(i >> 4)];
-    tbl[i * 2 + 1] = LOWER_XDIGITS[static_cast<size_t>(i & 0xf)];
-  }
-
-  return tbl;
-}();
+  return result;
+}
 
 // Converts a range [|first|, |last|) in hex format, and stores the
 // result in another range, beginning at |result|.  It returns an
@@ -396,9 +401,7 @@ requires(std::indirectly_writable<O, char> &&
          sizeof(std::iter_value_t<I>) == sizeof(uint8_t))
 constexpr O format_hex(I first, I last, O result) {
   for (; first != last; ++first) {
-    result = std::ranges::copy_n(
-               hexdigits.data() + static_cast<uint8_t>(*first) * 2, 2, result)
-               .out;
+    result = format_hex_uint8(static_cast<uint8_t>(*first), result);
   }
 
   return result;
@@ -449,7 +452,7 @@ template <std::unsigned_integral T, std::weakly_incrementable O>
 requires(std::indirectly_writable<O, char>)
 constexpr O format_hex(T n, O result) {
   if constexpr (sizeof(n) == 1) {
-    return std::ranges::copy_n(hexdigits.data() + n * 2, 2, result).out;
+    return format_hex_uint8(n, result);
   }
 
   if constexpr (std::endian::native == std::endian::little) {
@@ -457,38 +460,36 @@ constexpr O format_hex(T n, O result) {
     auto p = end + sizeof(n);
 
     for (; p != end; --p) {
-      result =
-        std::ranges::copy_n(hexdigits.data() + *(p - 1) * 2, 2, result).out;
+      result = format_hex_uint8(*(p - 1), result);
     }
   } else {
     auto p = reinterpret_cast<uint8_t *>(&n);
     auto end = p + sizeof(n);
 
     for (; p != end; ++p) {
-      result = std::ranges::copy_n(hexdigits.data() + *p * 2, 2, result).out;
+      result = format_hex_uint8(*p, result);
     }
   }
 
   return result;
 }
 
-inline constexpr auto upper_hexdigits = []() {
-  constexpr char UPPER_XDIGITS[] = "0123456789ABCDEF";
-
-  std::array<char, 512> tbl;
-
-  for (size_t i = 0; i < 256; ++i) {
-    tbl[i * 2] = UPPER_XDIGITS[static_cast<size_t>(i >> 4)];
-    tbl[i * 2 + 1] = UPPER_XDIGITS[static_cast<size_t>(i & 0xf)];
-  }
-
-  return tbl;
-}();
+inline constexpr char UPPER_XDIGITS[] = "0123456789ABCDEF";
 
 template <std::weakly_incrementable O>
 requires(std::indirectly_writable<O, char>)
-constexpr O format_upper_hex(uint8_t c, O result) {
-  return std::ranges::copy_n(upper_hexdigits.data() + c * 2, 2, result).out;
+constexpr O format_upper_hex_uint8(uint8_t b, O result) {
+#ifdef __GNUC__
+#  pragma GCC diagnostic push
+#  pragma GCC diagnostic ignored "-Wsign-conversion"
+#endif // __GNUC__
+  *result++ = UPPER_XDIGITS[b >> 4];
+  *result++ = UPPER_XDIGITS[b & 0xf];
+#ifdef __GNUC__
+#  pragma GCC diagnostic pop
+#endif // __GNUC__
+
+  return result;
 }
 
 // decode_hex decodes hex string in a range [|first|, |last|), and
@@ -558,7 +559,7 @@ constexpr O percent_encode_token(I first, I last, O result) noexcept {
     }
 
     *result++ = '%';
-    result = format_upper_hex(c, result);
+    result = format_upper_hex_uint8(c, result);
   }
 
   return result;
@@ -893,11 +894,11 @@ struct CompactHexFormatter {
       assert(p != end);
 
       if (*(p - 1) < 16) {
-        *result++ = static_cast<result_type>(upper_hexdigits[*--p * 2 + 1]);
+        *result++ = static_cast<result_type>(UPPER_XDIGITS[(*--p) & 0xf]);
       }
 
       for (; p != end; --p) {
-        result = format_upper_hex(*(p - 1), result);
+        result = format_upper_hex_uint8(*(p - 1), result);
       }
     } else {
       auto p = reinterpret_cast<uint8_t *>(&n);
@@ -907,11 +908,11 @@ struct CompactHexFormatter {
         ;
 
       if (*p < 16) {
-        *result++ = static_cast<result_type>(upper_hexdigits[*p++ * 2 + 1]);
+        *result++ = static_cast<result_type>(UPPER_XDIGITS[(*p++) & 0xf]);
       }
 
       for (; p != end; ++p) {
-        result = format_upper_hex(*p, result);
+        result = format_upper_hex_uint8(*p, result);
       }
     }
 
