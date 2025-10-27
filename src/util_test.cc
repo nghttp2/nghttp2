@@ -82,7 +82,7 @@ const MunitTest tests[]{
   munit_void_test(test_util_make_hostport),
   munit_void_test(test_util_random_alpha_digit),
   munit_void_test(test_util_format_hex),
-  munit_void_test(test_util_format_upper_hex),
+  munit_void_test(test_util_format_upper_hex_uint8),
   munit_void_test(test_util_is_hex_string),
   munit_void_test(test_util_decode_hex),
   munit_void_test(test_util_extract_host),
@@ -890,31 +890,45 @@ void test_util_format_hex(void) {
     (std::string_view{std::ranges::begin(buf),
                       util::format_hex(std::numeric_limits<uint64_t>::max(),
                                        std::ranges::begin(buf))}));
+
+  std::vector<char> char_vec;
+  util::format_hex(0xdeadbeef, std::back_inserter(char_vec));
+
+  assert_stdsv_equal("deadbeef"sv,
+                     (std::string_view{std::ranges::begin(char_vec),
+                                       std::ranges::end(char_vec)}));
+
+  std::vector<uint8_t> uint8_vec;
+  util::format_hex(0xdeadbeef, std::back_inserter(uint8_vec));
+
+  assert_stdsv_equal(
+    "deadbeef"sv,
+    (std::string_view{reinterpret_cast<const char *>(uint8_vec.data()),
+                      uint8_vec.size()}));
 }
 
-void test_util_format_upper_hex(void) {
+void test_util_format_upper_hex_uint8(void) {
   std::array<char, 64> buf;
 
+  assert_stdsv_equal("00"sv, (std::string_view{std::ranges::begin(buf),
+                                               util::format_upper_hex_uint8(
+                                                 0, std::ranges::begin(buf))}));
   assert_stdsv_equal(
-    "00"sv,
-    (std::string_view{std::ranges::begin(buf),
-                      util::format_upper_hex(0, std::ranges::begin(buf))}));
+    "0A"sv, (std::string_view{
+              std::ranges::begin(buf),
+              util::format_upper_hex_uint8(0xa, std::ranges::begin(buf))}));
   assert_stdsv_equal(
-    "0A"sv,
-    (std::string_view{std::ranges::begin(buf),
-                      util::format_upper_hex(0xa, std::ranges::begin(buf))}));
+    "7C"sv, (std::string_view{
+              std::ranges::begin(buf),
+              util::format_upper_hex_uint8(0x07c, std::ranges::begin(buf))}));
   assert_stdsv_equal(
-    "7C"sv,
-    (std::string_view{std::ranges::begin(buf),
-                      util::format_upper_hex(0x07c, std::ranges::begin(buf))}));
+    "EB"sv, (std::string_view{
+              std::ranges::begin(buf),
+              util::format_upper_hex_uint8(0xeb, std::ranges::begin(buf))}));
   assert_stdsv_equal(
-    "EB"sv,
-    (std::string_view{std::ranges::begin(buf),
-                      util::format_upper_hex(0xeb, std::ranges::begin(buf))}));
-  assert_stdsv_equal(
-    "FF"sv,
-    (std::string_view{std::ranges::begin(buf),
-                      util::format_upper_hex(0xff, std::ranges::begin(buf))}));
+    "FF"sv, (std::string_view{
+              std::ranges::begin(buf),
+              util::format_upper_hex_uint8(0xff, std::ranges::begin(buf))}));
 }
 
 void test_util_is_hex_string(void) {
