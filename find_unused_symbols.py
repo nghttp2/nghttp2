@@ -90,7 +90,8 @@ def extract_definitions(filepath):
         if func_name not in ['if', 'for', 'while', 'switch', 'main']:
             functions[func_name] = filepath
     
-    # Extract macros
+    # Extract macros (uppercase convention only - lowercase macros not detected)
+    # This is intentional to focus on constant-like macros and avoid false positives
     macro_pattern = r'^\s*#define\s+([A-Z_][A-Z0-9_]*)'
     for match in re.finditer(macro_pattern, content, re.MULTILINE):
         macro_name = match.group(1)
@@ -105,7 +106,7 @@ def extract_definitions(filepath):
     enum_member_pattern = r'(?:typedef\s+)?enum\s*(?:[a-zA-Z_][a-zA-Z0-9_]*)?\s*\{([^}]+)\}'
     for match in re.finditer(enum_member_pattern, no_comments, re.DOTALL):
         members = match.group(1)
-        for member in re.finditer(r'\b([A-Z_][A-Z0-9_]*)\s*(?:=|,|\})', members):
+        for member in re.finditer(r'\b([A-Z_][A-Z0-9_]*)\s*(?:=|,|(?=\}))', members):
             member_name = member.group(1)
             if member_name not in ['INT32_MIN', 'INT32_MAX', 'UINT32_MAX']:
                 enums[member_name] = filepath
