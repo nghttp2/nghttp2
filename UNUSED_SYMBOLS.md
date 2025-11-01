@@ -69,7 +69,17 @@ Both unused enum values appear to be reserved for specific features:
 
 ## Recommendations
 
-1. Review each symbol to determine if it should be removed or is kept for a specific reason
-2. Consider adding comments to explain why symbols are kept if they appear unused but serve a purpose
-3. Remove confirmed unused symbols to reduce code complexity and maintenance burden
-4. Update documentation if any symbols were intended for public use but are not actually exposed
+1. **Review each symbol** to determine if it should be removed or is kept for a specific reason (e.g., future use, compatibility)
+2. **Consider adding comments** to explain why symbols are kept if they appear unused but serve a purpose
+3. **Remove confirmed unused symbols** to reduce code complexity and maintenance burden
+4. **Update documentation** if any symbols were intended for public use but are not actually exposed
+
+## Re-running the Analysis
+
+A Python script is provided to re-run this analysis:
+
+```bash
+python3 find_unused_symbols.py
+```
+
+This script can be used to verify that unused symbols have been removed or to check for new unused symbols in the future.
