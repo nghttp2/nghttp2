@@ -8,9 +8,9 @@ This document lists unused functions, macros, and enums found in the nghttp2 lib
 ## Summary
 
 - **Unused Functions:** 0
-- **Unused Macros:** 6
+- **Unused Macros:** 3
 - **Unused Enums:** 2
-- **Total Unused Symbols:** 8
+- **Total Unused Symbols:** 5
 
 ## Methodology
 
@@ -27,16 +27,15 @@ Note: All private functions that were initially detected as potentially unused w
 - Through function pointers or callbacks
 
 
-## Unused Private Macros (6)
+## Unused Private Macros (3)
 
 | Macro Name | File Location | Description |
 |-----------|---------------|-------------|
 | `NGHTTP2_PRIORITY_MASK` | lib/nghttp2_frame.h | Mask for priority value, defined but never used |
 | `NGHTTP2_PRI_GROUP_ID_MASK` | lib/nghttp2_frame.h | Mask for priority group ID, defined but never used |
 | `NGHTTP2_SETTINGS_ID_MASK` | lib/nghttp2_frame.h | Mask for settings ID, defined but never used |
-| `SFPARSE_STATE_DICT` | lib/sfparse.c | Parser state constant, defined but only used in macros |
-| `SFPARSE_STATE_ITEM` | lib/sfparse.c | Parser state constant, defined but only used in macros |
-| `SFPARSE_STATE_LIST` | lib/sfparse.c | Parser state constant, defined but only used in macros |
+
+**Note:** The SFPARSE_STATE_* macros (`SFPARSE_STATE_DICT`, `SFPARSE_STATE_ITEM`, `SFPARSE_STATE_LIST`) were initially identified as unused, but they are actually used through token concatenation in macro expansions (e.g., `SFPARSE_STATE_##NAME`). They are not truly unused.
 
 ## Unused Private Enums (2)
 
@@ -49,17 +48,21 @@ Note: All private functions that were initially detected as potentially unused w
 
 - All symbols listed are **private** (not part of the public API in `lib/includes/nghttp2/`)
 - These symbols have only one reference (their definition) in the entire codebase
-- The SFPARSE_STATE_* macros are used indirectly through other macros, but the base constants themselves are not directly referenced
 - All detected private functions were found to be in active use through various means (conditional compilation, static helpers, callbacks)
+
+**Important Note:** This analysis uses simple pattern matching and may not detect all forms of indirect usage, particularly:
+- Macro token concatenation (e.g., `##NAME` in macro expansions)
+- Function pointers passed through complex call chains
+- Symbols used in platform-specific conditional compilation
 
 ## Detailed Findings
 
 ### Macros
-The unused macros fall into two categories:
+The 3 unused macros are frame header masks that appear to be leftover definitions from earlier versions or reserved for future use:
 
-1. **Frame header masks** (`NGHTTP2_PRIORITY_MASK`, `NGHTTP2_PRI_GROUP_ID_MASK`, `NGHTTP2_SETTINGS_ID_MASK`): These appear to be leftover definitions from earlier versions or reserved for future use.
-
-2. **Parser state constants** (`SFPARSE_STATE_DICT`, `SFPARSE_STATE_ITEM`, `SFPARSE_STATE_LIST`): While these base constants are defined, they are only used to construct derived macros like `SFPARSE_STATE_LIST_AFTER`. The base constants themselves are never directly referenced.
+- **NGHTTP2_PRIORITY_MASK**: Mask for priority value
+- **NGHTTP2_PRI_GROUP_ID_MASK**: Mask for priority group ID  
+- **NGHTTP2_SETTINGS_ID_MASK**: Mask for settings ID
 
 ### Enums
 Both unused enum values appear to be reserved for specific features:

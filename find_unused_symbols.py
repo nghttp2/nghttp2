@@ -114,14 +114,18 @@ def extract_definitions(filepath):
 
 
 def count_symbol_usage(files, symbol, is_macro=False):
-    """Count how many times a symbol is referenced."""
+    """Count how many times a symbol is referenced.
+    
+    Note: This function uses simple pattern matching and may not detect all
+    forms of indirect usage, such as macro token concatenation (##NAME).
+    """
     count = 0
     
     for filepath in files:
         try:
             with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
                 content = f.read()
-        except:
+        except (IOError, OSError):
             continue
         
         # Remove comments
@@ -247,6 +251,11 @@ def main():
         print("\nNo unused private symbols found!")
     else:
         print(f"\nTotal: {len(unused_functions)} functions, {len(unused_macros)} macros, {len(unused_enums)} enums")
+        print("\nNote: This analysis uses simple pattern matching and may not detect:")
+        print("  - Macro token concatenation (e.g., ##NAME in macro expansions)")
+        print("  - Function pointers passed through complex call chains")
+        print("  - Symbols used only in platform-specific conditional compilation")
+        print("\nManual verification is recommended before removing any symbols.")
     
     return 0
 
