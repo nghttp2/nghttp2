@@ -356,8 +356,8 @@ def _build_transition_table(ctx, node):
 def huffman_tree_build_transition_table(ctx):
     _build_transition_table(ctx, ctx.root)
 
-NGHTTP2_HUFF_ACCEPTED = 1 << 14
-NGHTTP2_HUFF_SYM = 1 << 15
+NGHTTP2_HUFF_ACCEPTED = 1
+NGHTTP2_HUFF_SYM = 1 << 1
 
 def _print_transition_table(node):
     if node.term is not None:
@@ -381,7 +381,7 @@ def _print_transition_table(node):
                 flags |= NGHTTP2_HUFF_ACCEPTED
             elif nd.accept:
                 flags |= NGHTTP2_HUFF_ACCEPTED
-        print('  {{0x{:02x}, {}}},'.format(id | flags, out))
+        print('  {{0x{:02x}, {}, {}}},'.format(id, flags, out))
     print('},')
     _print_transition_table(node.left)
     _print_transition_table(node.right)
@@ -390,22 +390,10 @@ def huffman_tree_print_transition_table(ctx):
     _print_transition_table(ctx.root)
     print('/* 256 */')
     print('{')
-    print('  {0x100, 0},')
-    print('  {0x100, 0},')
-    print('  {0x100, 0},')
-    print('  {0x100, 0},')
-    print('  {0x100, 0},')
-    print('  {0x100, 0},')
-    print('  {0x100, 0},')
-    print('  {0x100, 0},')
-    print('  {0x100, 0},')
-    print('  {0x100, 0},')
-    print('  {0x100, 0},')
-    print('  {0x100, 0},')
-    print('  {0x100, 0},')
-    print('  {0x100, 0},')
-    print('  {0x100, 0},')
-    print('  {0x100, 0},')
+
+    for _ in range(16):
+        print('  {0x100, 0, 0},')
+
     print('},')
 
 if __name__ == '__main__':
@@ -458,6 +446,7 @@ enum {{
     print('''\
 typedef struct {
   uint16_t fstate;
+  uint8_t flags;
   uint8_t sym;
 } nghttp2_huff_decode;
 ''')
