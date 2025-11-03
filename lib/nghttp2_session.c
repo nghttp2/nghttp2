@@ -438,7 +438,7 @@ static int session_new(nghttp2_session **session_ptr,
   size_t max_deflate_dynamic_table_size =
     NGHTTP2_HD_DEFAULT_MAX_DEFLATE_BUFFER_SIZE;
   size_t i;
-  uint32_t map_seed;
+  uint64_t map_seed;
 
   if (mem == NULL) {
     mem = nghttp2_mem_default();
