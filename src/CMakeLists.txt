@@ -249,6 +249,7 @@ if(ENABLE_HPACK_TOOLS)
     comp_helper.c
     util.cc
     timegm.c
+    tls.cc
   )
   add_executable(inflatehd ${inflatehd_SOURCES})
   add_executable(deflatehd ${deflatehd_SOURCES})

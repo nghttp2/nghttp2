@@ -182,7 +182,7 @@ read_tls_ticket_key_file(const std::vector<std::string_view> &files,
   keys.resize(files.size());
   auto enc_keylen = static_cast<size_t>(EVP_CIPHER_key_length(cipher));
   auto hmac_keylen = static_cast<size_t>(EVP_MD_size(hmac));
-  if (cipher == EVP_aes_128_cbc()) {
+  if (cipher == nghttp2::tls::aes_128_cbc()) {
     // backward compatibility, as a legacy of using same file format
     // with nginx and apache.
     hmac_keylen = 16;
@@ -3615,9 +3615,9 @@ int parse_config(
   }
   case SHRPX_OPTID_TLS_TICKET_KEY_CIPHER:
     if (util::strieq("aes-128-cbc"sv, optarg)) {
-      config->tls.ticket.cipher = EVP_aes_128_cbc();
+      config->tls.ticket.cipher = nghttp2::tls::aes_128_cbc();
     } else if (util::strieq("aes-256-cbc"sv, optarg)) {
-      config->tls.ticket.cipher = EVP_aes_256_cbc();
+      config->tls.ticket.cipher = nghttp2::tls::aes_256_cbc();
     } else {
       LOG(ERROR) << opt
                  << ": unsupported cipher for ticket encryption: " << optarg;

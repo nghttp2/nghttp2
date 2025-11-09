@@ -1643,7 +1643,7 @@ void fill_default_config(Config *config) {
       memcachedconf.family = AF_UNSPEC;
     }
 
-    ticketconf.cipher = EVP_aes_128_cbc();
+    ticketconf.cipher = nghttp2::tls::aes_128_cbc();
   }
 
   {

@@ -124,6 +124,15 @@ int cert_decompress(SSL *ssl, CRYPTO_BUFFER **out, size_t uncompressed_len,
 // Setup keylog callback.  It returns 0 if it succeeds, or -1.
 int setup_keylog_callback(SSL_CTX *ssl_ctx);
 
+const EVP_CIPHER *aes_128_cbc();
+
+const EVP_CIPHER *aes_256_cbc();
+
+const EVP_CIPHER *aes_128_ecb();
+
+const EVP_MD *sha256();
+
+const EVP_MD *sha1();
 } // namespace tls
 
 } // namespace nghttp2
