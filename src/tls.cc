@@ -228,6 +228,43 @@ int setup_keylog_callback(SSL_CTX *ssl_ctx) { return 0; }
        // (!defined(NGHTTP2_OPENSSL_IS_WOLFSSL) ||
        // !defined(HAVE_SECRET_CALLBACK))
 
+#if OPENSSL_3_0_0_API
+const EVP_CIPHER *aes_128_cbc() {
+  static const auto c = EVP_CIPHER_fetch(nullptr, "AES-128-CBC", nullptr);
+  return c;
+}
+
+const EVP_CIPHER *aes_256_cbc() {
+  static const auto c = EVP_CIPHER_fetch(nullptr, "AES-256-CBC", nullptr);
+  return c;
+}
+
+const EVP_CIPHER *aes_128_ecb() {
+  static const auto c = EVP_CIPHER_fetch(nullptr, "AES-128-ECB", nullptr);
+  return c;
+}
+
+const EVP_MD *sha256() {
+  static const auto md = EVP_MD_fetch(nullptr, "sha256", nullptr);
+  return md;
+}
+
+const EVP_MD *sha1() {
+  static const auto md = EVP_MD_fetch(nullptr, "sha1", nullptr);
+  return md;
+}
+#else  //  !OPENSSL_3_0_0_API
+const EVP_CIPHER *aes_128_cbc() { return EVP_aes_128_cbc(); }
+
+const EVP_CIPHER *aes_256_cbc() { return EVP_aes_256_cbc(); }
+
+const EVP_CIPHER *aes_128_ecb() { return EVP_aes_128_ecb(); }
+
+const EVP_MD *sha256() { return EVP_sha256(); }
+
+const EVP_MD *sha1() { return EVP_sha1(); }
+#endif //  !OPENSSL_3_0_0_API
+
 } // namespace tls
 
 } // namespace nghttp2

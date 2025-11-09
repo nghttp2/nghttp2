@@ -204,7 +204,7 @@ void quic_ipc_readcb(struct ev_loop *loop, ev_io *w, int revents) {
 namespace {
 int generate_ticket_key(TicketKey &ticket_key) {
   ticket_key.cipher = get_config()->tls.ticket.cipher;
-  ticket_key.hmac = EVP_sha256();
+  ticket_key.hmac = nghttp2::tls::sha256();
   ticket_key.hmac_keylen = static_cast<size_t>(EVP_MD_size(ticket_key.hmac));
 
   assert(static_cast<size_t>(EVP_CIPHER_key_length(ticket_key.cipher)) <=
@@ -336,11 +336,11 @@ void memcached_get_ticket_key_cb(struct ev_loop *loop, ev_timer *w,
     size_t expectedlen;
     size_t enc_keylen;
     size_t hmac_keylen;
-    if (ticketconf.cipher == EVP_aes_128_cbc()) {
+    if (ticketconf.cipher == nghttp2::tls::aes_128_cbc()) {
       expectedlen = 48;
       enc_keylen = 16;
       hmac_keylen = 16;
-    } else if (ticketconf.cipher == EVP_aes_256_cbc()) {
+    } else if (ticketconf.cipher == nghttp2::tls::aes_256_cbc()) {
       expectedlen = 80;
       enc_keylen = 32;
       hmac_keylen = 32;
@@ -372,7 +372,7 @@ void memcached_get_ticket_key_cb(struct ev_loop *loop, ev_timer *w,
       }
       auto key = TicketKey();
       key.cipher = ticketconf.cipher;
-      key.hmac = EVP_sha256();
+      key.hmac = nghttp2::tls::sha256();
       key.hmac_keylen = hmac_keylen;
 
       p = std::ranges::copy_n(p, key.data.name.size(),
@@ -527,7 +527,7 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
                "becomes aes-256-cbc";
         }
         auto ticket_keys = read_tls_ticket_key_file(
-          ticketconf.files, ticketconf.cipher, EVP_sha256());
+          ticketconf.files, ticketconf.cipher, nghttp2::tls::sha256());
         if (!ticket_keys) {
           LOG(WARN) << "Use internal session ticket key generator";
         } else {
@@ -593,8 +593,8 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
     }
 
     qkm.cid_encryption_ctx = EVP_CIPHER_CTX_new();
-    if (!EVP_EncryptInit_ex(qkm.cid_encryption_ctx, EVP_aes_128_ecb(), nullptr,
-                            qkm.cid_encryption_key.data(), nullptr)) {
+    if (!EVP_EncryptInit_ex(qkm.cid_encryption_ctx, nghttp2::tls::aes_128_ecb(),
+                            nullptr, qkm.cid_encryption_key.data(), nullptr)) {
       LOG(ERROR)
         << "Failed to initialize QUIC Connection ID encryption context";
       return -1;
@@ -603,8 +603,8 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
     EVP_CIPHER_CTX_set_padding(qkm.cid_encryption_ctx, 0);
 
     qkm.cid_decryption_ctx = EVP_CIPHER_CTX_new();
-    if (!EVP_DecryptInit_ex(qkm.cid_decryption_ctx, EVP_aes_128_ecb(), nullptr,
-                            qkm.cid_encryption_key.data(), nullptr)) {
+    if (!EVP_DecryptInit_ex(qkm.cid_decryption_ctx, nghttp2::tls::aes_128_ecb(),
+                            nullptr, qkm.cid_encryption_key.data(), nullptr)) {
       LOG(ERROR)
         << "Failed to initialize QUIC Connection ID decryption context";
       return -1;

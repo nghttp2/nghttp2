@@ -189,9 +189,9 @@ void test_shrpx_config_read_tls_ticket_key_file(void) {
 
   close(fd1);
   close(fd2);
-  auto ticket_keys =
-    read_tls_ticket_key_file({std::string_view{file1}, std::string_view{file2}},
-                             EVP_aes_128_cbc(), EVP_sha256());
+  auto ticket_keys = read_tls_ticket_key_file(
+    {std::string_view{file1}, std::string_view{file2}},
+    nghttp2::tls::aes_128_cbc(), nghttp2::tls::sha256());
   unlink(file1);
   unlink(file2);
   assert_not_null(ticket_keys.get());
@@ -233,9 +233,9 @@ void test_shrpx_config_read_tls_ticket_key_file_aes_256(void) {
 
   close(fd1);
   close(fd2);
-  auto ticket_keys =
-    read_tls_ticket_key_file({std::string_view{file1}, std::string_view{file2}},
-                             EVP_aes_256_cbc(), EVP_sha256());
+  auto ticket_keys = read_tls_ticket_key_file(
+    {std::string_view{file1}, std::string_view{file2}},
+    nghttp2::tls::aes_256_cbc(), nghttp2::tls::sha256());
   unlink(file1);
   unlink(file2);
   assert_not_null(ticket_keys.get());

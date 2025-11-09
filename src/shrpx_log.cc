@@ -670,8 +670,9 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
       std::array<uint8_t, 32> buf;
       auto len = tls::get_x509_fingerprint(
         buf.data(), buf.size(), x,
-        lf.type == LogFragmentType::TLS_CLIENT_FINGERPRINT_SHA256 ? EVP_sha256()
-                                                                  : EVP_sha1());
+        lf.type == LogFragmentType::TLS_CLIENT_FINGERPRINT_SHA256
+          ? nghttp2::tls::sha256()
+          : nghttp2::tls::sha1());
 #if !OPENSSL_3_0_0_API
       X509_free(x);
 #endif // !OPENSSL_3_0_0_API

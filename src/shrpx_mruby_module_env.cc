@@ -183,13 +183,13 @@ mrb_value env_get_tls_client_fingerprint_md(mrb_state *mrb, const EVP_MD *md) {
 namespace {
 mrb_value env_get_tls_client_fingerprint_sha256(mrb_state *mrb,
                                                 mrb_value self) {
-  return env_get_tls_client_fingerprint_md(mrb, EVP_sha256());
+  return env_get_tls_client_fingerprint_md(mrb, nghttp2::tls::sha256());
 }
 } // namespace
 
 namespace {
 mrb_value env_get_tls_client_fingerprint_sha1(mrb_state *mrb, mrb_value self) {
-  return env_get_tls_client_fingerprint_md(mrb, EVP_sha1());
+  return env_get_tls_client_fingerprint_md(mrb, nghttp2::tls::sha1());
 }
 } // namespace
 

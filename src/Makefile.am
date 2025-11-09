@@ -262,7 +262,8 @@ bin_PROGRAMS += inflatehd deflatehd
 HPACK_TOOLS_COMMON_SRCS = \
 	comp_helper.c comp_helper.h \
 	util.cc util.h \
-	timegm.c timegm.h
+	timegm.c timegm.h \
+	tls.cc tls.h
 
 inflatehd_SOURCES = inflatehd.cc $(HPACK_TOOLS_COMMON_SRCS)
 
