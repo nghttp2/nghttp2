@@ -349,7 +349,9 @@ int APIDownstreamConnection::handle_backendconfig() {
     return 0;
   }
 
-  auto unmapper = defer(munmap, rp, req.recv_body_length);
+  auto unmapper = defer([rp, size = req.recv_body_length] {
+    munmap(rp, static_cast<size_t>(size));
+  });
 
   Config new_config{};
   new_config.conn.downstream = std::make_shared<DownstreamConfig>();

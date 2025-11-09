@@ -1705,7 +1705,7 @@ int message_digest(uint8_t *res, const EVP_MD *meth,
     return -1;
   }
 
-  auto ctx_deleter = defer(EVP_MD_CTX_free, ctx);
+  auto ctx_deleter = defer([ctx] { EVP_MD_CTX_free(ctx); });
 
   rv = EVP_DigestInit_ex(ctx, meth, nullptr);
   if (rv != 1) {

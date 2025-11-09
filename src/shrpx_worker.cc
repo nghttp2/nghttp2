@@ -771,7 +771,7 @@ int Worker::create_tcp_server_socket(UpstreamAddr &faddr) {
     return -1;
   }
 
-  auto res_d = defer(freeaddrinfo, res);
+  auto res_d = defer([res] { freeaddrinfo(res); });
 
   std::array<char, NI_MAXHOST> host;
 
@@ -1115,7 +1115,7 @@ int Worker::create_quic_server_socket(UpstreamAddr &faddr) {
     return -1;
   }
 
-  auto res_d = defer(freeaddrinfo, res);
+  auto res_d = defer([res] { freeaddrinfo(res); });
 
   std::array<char, NI_MAXHOST> host;
 

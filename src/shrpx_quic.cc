@@ -258,7 +258,7 @@ int generate_quic_hashed_connection_id(ngtcp2_cid &dest,
                                        const Address &local_addr,
                                        const ngtcp2_cid &cid) {
   auto ctx = EVP_MD_CTX_new();
-  auto d = defer(EVP_MD_CTX_free, ctx);
+  auto d = defer([ctx] { EVP_MD_CTX_free(ctx); });
 
   std::array<uint8_t, 32> h;
   auto hlen = static_cast<unsigned int>(EVP_MD_size(EVP_sha256()));
