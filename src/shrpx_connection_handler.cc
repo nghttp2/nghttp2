@@ -352,7 +352,7 @@ void ConnectionHandler::graceful_shutdown_worker() {
 #ifndef NOTHREADS
   ev_async_start(loop_, &thread_join_asyncev_);
 
-  thread_join_fut_ = std::async(std::launch::async, [this]() {
+  thread_join_fut_ = std::async(std::launch::async, [this] {
     (void)reopen_log_files(get_config()->logging);
     join_worker();
     ev_async_send(get_loop(), &thread_join_asyncev_);

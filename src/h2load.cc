@@ -3241,7 +3241,7 @@ int main(int argc, char **argv) {
                                     nclients, rate, max_samples_per_thread));
     auto &worker = workers.back();
     futures.push_back(
-      std::async(std::launch::async, [&worker, &mu, &cv, &ready]() {
+      std::async(std::launch::async, [&worker, &mu, &cv, &ready] {
         {
           std::unique_lock<std::mutex> ulk(mu);
           cv.wait(ulk, [&ready] { return ready; });

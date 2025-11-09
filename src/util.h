@@ -219,7 +219,7 @@ constexpr bool in_attr_char(char c) noexcept {
   return in_attr_char_tbl[static_cast<uint8_t>(c)];
 }
 
-inline constexpr auto hex_to_uint_tbl = []() {
+inline constexpr auto hex_to_uint_tbl = [] {
   std::array<uint32_t, 256> tbl;
 
   std::ranges::fill(tbl, 256);
@@ -601,7 +601,7 @@ time_t parse_http_date(const std::string_view &s);
 // ASN1_TIME_print().
 time_t parse_openssl_asn1_time_print(const std::string_view &s);
 
-inline constexpr auto upcase_tbl = []() {
+inline constexpr auto upcase_tbl = [] {
   std::array<char, 256> tbl;
 
   for (size_t i = 0; i < 256; ++i) {
@@ -723,7 +723,7 @@ constexpr O tolower(R &&r, O result) {
 // Returns string representation of |n| with 2 fractional digits.
 std::string dtos(double n);
 
-inline constexpr auto count_digit_tbl = []() {
+inline constexpr auto count_digit_tbl = [] {
   std::array<uint64_t, std::numeric_limits<uint64_t>::digits10> tbl;
 
   uint64_t x = 1;
@@ -751,7 +751,7 @@ template <std::unsigned_integral T> constexpr size_t count_digit(T x) {
   return y + 1;
 }
 
-inline constexpr auto utos_digits = []() {
+inline constexpr auto utos_digits = [] {
   std::array<char, 200> a;
 
   for (size_t i = 0; i < 100; ++i) {
@@ -1290,7 +1290,7 @@ template <std::input_or_output_iterator O, typename Generator>
 void random_bytes(O first, O last, Generator &&gen) {
   std::uniform_int_distribution<uint8_t> dis;
   std::ranges::generate(std::move(first), std::move(last),
-                        [&dis, &gen]() { return dis(gen); });
+                        [&dis, &gen] { return dis(gen); });
 }
 
 // Fills the buffer pointed by |data| of length |destlen| with the

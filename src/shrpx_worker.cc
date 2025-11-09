@@ -367,7 +367,7 @@ void Worker::replace_downstream_config(
 
       for (auto &addr : shared_addr->addrs) {
         addr.connect_blocker = std::make_unique<ConnectBlocker>(
-          randgen_, loop_, nullptr, [shared_addr_ptr, &addr]() {
+          randgen_, loop_, nullptr, [shared_addr_ptr, &addr] {
             if (!addr.queued) {
               if (!addr.wg) {
                 return;

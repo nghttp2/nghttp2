@@ -400,7 +400,7 @@ select_quic_keying_material(const QUICKeyingMaterials &qkms, uint8_t km_id) {
 
 std::span<uint64_t, 2> generate_siphash_key() {
   // Use the same technique rust does.
-  thread_local static auto key = []() {
+  thread_local static auto key = [] {
     std::array<uint64_t, 2> key;
 
     auto s = as_writable_uint8_span(std::span{key});
