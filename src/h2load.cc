@@ -883,8 +883,7 @@ void print_server_tmp_key(SSL *ssl) {
       cname = curve_name.data();
     }
 #  else  // !OPENSSL_3_0_0_API
-    auto ec = EVP_PKEY_get1_EC_KEY(key);
-    auto ec_del = defer([ec] { EC_KEY_free(ec); });
+    auto ec = EVP_PKEY_get0_EC_KEY(key);
     auto nid = EC_GROUP_get_curve_name(EC_KEY_get0_group(ec));
     auto cname = EC_curve_nid2nist(nid);
     if (!cname) {
