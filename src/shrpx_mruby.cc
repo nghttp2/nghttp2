@@ -57,7 +57,7 @@ int MRubyContext::run_app(Downstream *downstream, int phase) {
 
   int rv = 0;
   auto ai = mrb_gc_arena_save(mrb_);
-  auto ai_d = defer([ai, this]() { mrb_gc_arena_restore(mrb_, ai); });
+  auto ai_d = defer([mrb = mrb_, ai] { mrb_gc_arena_restore(mrb, ai); });
 
   const char *method;
   switch (phase) {
@@ -149,21 +149,21 @@ RProc *compile(mrb_state *mrb, const std::string_view &filename) {
     LOG(ERROR) << "Could not open mruby file " << filename;
     return nullptr;
   }
-  auto infile_d = defer(fclose, infile);
+  auto infile_d = defer([infile] { fclose(infile); });
 
   auto mrbc = mrb_ccontext_new(mrb);
   if (mrbc == nullptr) {
     LOG(ERROR) << "mrb_context_new failed";
     return nullptr;
   }
-  auto mrbc_d = defer(mrb_ccontext_free, mrb, mrbc);
+  auto mrbc_d = defer([mrb, mrbc] { mrb_ccontext_free(mrb, mrbc); });
 
   auto parser = mrb_parse_file(mrb, infile, nullptr);
   if (parser == nullptr) {
     LOG(ERROR) << "mrb_parse_nstring failed";
     return nullptr;
   }
-  auto parser_d = defer(mrb_parser_free, parser);
+  auto parser_d = defer([parser] { mrb_parser_free(parser); });
 
   if (parser->nerr != 0) {
     LOG(ERROR) << "mruby parser detected parse error";

@@ -2381,7 +2381,8 @@ int run(char **uris, int n) {
   nghttp2_session_callbacks *callbacks;
 
   nghttp2_session_callbacks_new(&callbacks);
-  auto cbsdel = defer(nghttp2_session_callbacks_del, callbacks);
+  auto cbsdel =
+    defer([callbacks] { nghttp2_session_callbacks_del(callbacks); });
 
   nghttp2_session_callbacks_set_on_stream_close_callback(
     callbacks, on_stream_close_callback);

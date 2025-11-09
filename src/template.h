@@ -41,6 +41,7 @@
 #include <span>
 #include <string_view>
 #include <compare>
+#include <type_traits>
 
 namespace nghttp2 {
 
@@ -62,20 +63,21 @@ template <typename T, size_t N> constexpr size_t str_size(T (&)[N]) {
   return N - 1;
 }
 
-// inspired by <http://blog.korfuri.fr/post/go-defer-in-cpp/>, but our
-// template can take functions returning other than void.
-template <typename F, typename... T> struct Defer {
-  Defer(F &&f, T &&...t)
-    : f(std::bind(std::forward<F>(f), std::forward<T>(t)...)) {}
-  Defer(Defer &&o) noexcept : f(std::move(o.f)) {}
-  ~Defer() { f(); }
+template <typename F> struct Defer {
+  explicit Defer(F &&f) noexcept(std::is_nothrow_constructible_v<F, F &&>)
+    : f(std::forward<F>(f)) {}
+  ~Defer() noexcept { f(); }
 
-  using ResultType = std::invoke_result_t<F, T...>;
-  std::function<ResultType()> f;
+  Defer(Defer &&o) = delete;
+  Defer(const Defer &) = delete;
+  Defer &operator=(const Defer &) = delete;
+  Defer &operator=(Defer &&) = delete;
+
+  F f;
 };
 
-template <typename F, typename... T> Defer<F, T...> defer(F &&f, T &&...t) {
-  return Defer<F, T...>(std::forward<F>(f), std::forward<T>(t)...);
+template <typename F> [[nodiscard]] Defer<std::decay_t<F>> defer(F &&f) {
+  return Defer<std::decay_t<F>>(std::forward<F>(f));
 }
 
 template <typename T, typename F> bool test_flags(T t, F flags) {

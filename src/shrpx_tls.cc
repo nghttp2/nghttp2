@@ -1721,7 +1721,7 @@ int verify_numeric_hostname(X509 *cert, const std::string_view &hostname,
   auto altnames = static_cast<GENERAL_NAMES *>(
     X509_get_ext_d2i(cert, NID_subject_alt_name, nullptr, nullptr));
   if (altnames) {
-    auto altnames_deleter = defer(GENERAL_NAMES_free, altnames);
+    auto altnames_deleter = defer([altnames] { GENERAL_NAMES_free(altnames); });
     auto n = static_cast<size_t>(sk_GENERAL_NAME_num(altnames));
     auto ip_found = false;
     for (size_t i = 0; i < n; ++i) {
@@ -1769,7 +1769,7 @@ int verify_dns_hostname(X509 *cert, const std::string_view &hostname) {
     X509_get_ext_d2i(cert, NID_subject_alt_name, nullptr, nullptr));
   if (altnames) {
     auto dns_found = false;
-    auto altnames_deleter = defer(GENERAL_NAMES_free, altnames);
+    auto altnames_deleter = defer([altnames] { GENERAL_NAMES_free(altnames); });
     auto n = static_cast<size_t>(sk_GENERAL_NAME_num(altnames));
     for (size_t i = 0; i < n; ++i) {
       auto altname = sk_GENERAL_NAME_value(
@@ -1858,7 +1858,7 @@ int check_cert(SSL *ssl, const Address *addr, const std::string_view &host) {
     return 0;
   }
 #if !OPENSSL_3_0_0_API
-  auto cert_deleter = defer(X509_free, cert);
+  auto cert_deleter = defer([cert] { X509_free(cert); });
 #endif // !OPENSSL_3_0_0_API
 
   if (verify_hostname(cert, host, addr) != 0) {
@@ -2009,7 +2009,7 @@ int cert_lookup_tree_add_ssl_ctx(
   auto altnames = static_cast<GENERAL_NAMES *>(
     X509_get_ext_d2i(cert, NID_subject_alt_name, nullptr, nullptr));
   if (altnames) {
-    auto altnames_deleter = defer(GENERAL_NAMES_free, altnames);
+    auto altnames_deleter = defer([altnames] { GENERAL_NAMES_free(altnames); });
     auto n = static_cast<size_t>(sk_GENERAL_NAME_num(altnames));
     auto dns_found = false;
     for (size_t i = 0; i < n; ++i) {
@@ -2132,7 +2132,7 @@ X509 *load_certificate(const char *filename) {
     fprintf(stderr, "BIO_new() failed\n");
     return nullptr;
   }
-  auto bio_deleter = defer(BIO_vfree, bio);
+  auto bio_deleter = defer([bio] { BIO_vfree(bio); });
   if (!BIO_read_filename(bio, filename)) {
     fprintf(stderr, "Could not read certificate file '%s'\n", filename);
     return nullptr;
@@ -2358,7 +2358,7 @@ std::string_view get_x509_name(BlockAllocator &balloc, X509_NAME *nm) {
     return ""sv;
   }
 
-  auto b_deleter = defer(BIO_free, b);
+  auto b_deleter = defer([b] { BIO_free(b); });
 
   // Not documented, but it seems that X509_NAME_print_ex returns the
   // number of bytes written into b.
@@ -2385,7 +2385,7 @@ std::string_view get_x509_issuer_name(BlockAllocator &balloc, X509 *x) {
 std::string_view get_x509_serial(BlockAllocator &balloc, X509 *x) {
   auto sn = X509_get_serialNumber(x);
   auto bn = BN_new();
-  auto bn_d = defer(BN_free, bn);
+  auto bn_d = defer([bn] { BN_free(bn); });
   if (!ASN1_INTEGER_to_BN(sn, bn) || BN_num_bytes(bn) > 20) {
     return ""sv;
   }
@@ -2420,7 +2420,7 @@ int time_t_from_asn1_time(time_t &t, const ASN1_TIME *at) {
     return -1;
   }
 
-  auto bio_deleter = defer(BIO_free, b);
+  auto bio_deleter = defer([b] { BIO_free(b); });
 
   rv = ASN1_TIME_print(b, at);
   if (rv != 1) {
