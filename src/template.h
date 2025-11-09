@@ -66,7 +66,7 @@ template <typename T, size_t N> constexpr size_t str_size(T (&)[N]) {
 template <typename F> struct Defer {
   explicit Defer(F &&f) noexcept(std::is_nothrow_constructible_v<F, F &&>)
     : f(std::forward<F>(f)) {}
-  ~Defer() noexcept { f(); }
+  ~Defer() { f(); }
 
   Defer(Defer &&o) = delete;
   Defer(const Defer &) = delete;
