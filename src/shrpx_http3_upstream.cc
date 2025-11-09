@@ -111,10 +111,6 @@ ngtcp2_conn *get_conn(ngtcp2_crypto_conn_ref *conn_ref) {
 }
 } // namespace
 
-namespace {
-constexpr size_t QUIC_TX_DATALEN = 64_k;
-} // namespace
-
 Http3Upstream::Http3Upstream(ClientHandler *handler)
   : handler_{handler},
     qlog_fd_{-1},
@@ -127,7 +123,6 @@ Http3Upstream::Http3Upstream(ClientHandler *handler)
     downstream_queue_{downstream_queue_size(handler->get_worker()),
                       !get_config()->http2_proxy},
     tx_{
-      .data = std::unique_ptr<uint8_t[]>(new uint8_t[QUIC_TX_DATALEN]),
 #ifndef UDP_SEGMENT
       .no_gso = true,
 #endif // !defined(UDP_SEGMENT)
@@ -912,7 +907,7 @@ ngtcp2_ssize Http3Upstream::write_pkt(ngtcp2_path *path, ngtcp2_pkt_info *pi,
 int Http3Upstream::write_streams() {
   ngtcp2_path_storage ps;
   ngtcp2_pkt_info pi;
-  auto txbuf = std::span{tx_.data.get(), QUIC_TX_DATALEN};
+  auto txbuf = std::span{txbuf_};
   size_t gso_size = 0;
 
   ngtcp2_path_storage_zero(&ps);

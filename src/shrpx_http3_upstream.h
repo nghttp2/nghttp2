@@ -190,9 +190,9 @@ private:
       std::span<const uint8_t> data;
       size_t gso_size;
     } blocked;
-    std::unique_ptr<uint8_t[]> data;
     bool no_gso;
   } tx_;
+  std::array<uint8_t, 64_k> txbuf_;
 };
 
 } // namespace shrpx
