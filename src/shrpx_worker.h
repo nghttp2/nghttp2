@@ -58,6 +58,7 @@
 #include "shrpx_live_check.h"
 #include "shrpx_connect_blocker.h"
 #include "shrpx_dns_tracker.h"
+#include "shrpx_http2_session.h"
 #ifdef ENABLE_HTTP3
 #  include "shrpx_quic_connection_handler.h"
 #  include "shrpx_quic.h"
@@ -118,7 +119,7 @@ struct DownstreamAddr {
   // server advertised maximum concurrency is not reached).  We will
   // coalesce as much stream as possible in one Http2Session to fully
   // utilize TCP connection.
-  DList<Http2Session> http2_extra_freelist;
+  SList<Http2Session, &Http2Session::slent> http2_extra_freelist;
   WeightGroup *wg;
   // total number of streams created in HTTP/2 connections for this
   // address.

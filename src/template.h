@@ -42,6 +42,7 @@
 #include <string_view>
 #include <compare>
 #include <type_traits>
+#include <iterator>
 
 namespace nghttp2 {
 
@@ -84,74 +85,226 @@ template <typename T, typename F> bool test_flags(T t, F flags) {
   return (t & flags) == flags;
 }
 
-// doubly linked list of element T*.  T must have field T *dlprev and
-// T *dlnext, which point to previous element and next element in the
-// list respectively.
-template <typename T> struct DList {
-  DList() : head(nullptr), tail(nullptr), len(0) {}
+template <typename T> struct SListEntry {
+  SListEntry() noexcept : prev_next{nullptr}, next{nullptr} {}
+  T **prev_next;
+  T *next;
+};
 
-  DList(const DList &) = delete;
-  DList &operator=(const DList &) = delete;
+template <typename T, SListEntry<T> T::*E>
+SListEntry<T> *slist_entry_from(T *o) {
+  return &(o->*E);
+}
 
-  DList(DList &&other) noexcept
-    : head{std::exchange(other.head, nullptr)},
-      tail{std::exchange(other.tail, nullptr)},
-      len{std::exchange(other.len, 0)} {}
+template <bool Const, typename T, SListEntry<T> T::*E> class SListIterator {
+private:
+  using maybe_const = std::conditional_t<Const, const T *, T *>;
+  using maybe_const_obj = std::conditional_t<Const, T **const *, T ***>;
 
-  DList &operator=(DList &&other) noexcept {
-    if (this == &other) {
-      return *this;
-    }
-    head = std::exchange(other.head, nullptr);
-    tail = std::exchange(other.tail, nullptr);
-    len = std::exchange(other.len, 0);
+public:
+  using value_type = T *;
+  using size_type = size_t;
+  using difference_type = ptrdiff_t;
+  using pointer = maybe_const *;
+  using reference = maybe_const &;
+  using iterator_category = std::forward_iterator_tag;
+
+  SListIterator() noexcept : o_{nullptr} {}
+  SListIterator(maybe_const_obj ptail, T *ent) noexcept
+    : ptail_{ptail}, o_{ent} {}
+  SListIterator(const SListIterator &other) noexcept
+    : ptail_{other.ptail_}, o_{other.o_} {}
+  SListIterator(SListIterator &&other) noexcept
+    : ptail_{std::exchange(other.ptail_, nullptr)},
+      o_{std::exchange(other.o_, nullptr)} {}
+
+  [[nodiscard]]
+  T *operator*() {
+    return o_;
+  }
+
+  [[nodiscard]]
+  const T *operator*() const {
+    return o_;
+  }
+
+  SListIterator &operator++() {
+    o_ = slist_entry_from<T, E>(o_)->next;
 
     return *this;
   }
 
-  void append(T *t) {
-    ++len;
-    if (tail) {
-      tail->dlnext = t;
-      t->dlprev = tail;
-      tail = t;
-      return;
-    }
-    head = tail = t;
+  SListIterator operator++(int) {
+    auto p = *this;
+    ++*this;
+
+    return p;
   }
 
-  void remove(T *t) {
-    --len;
-    auto p = t->dlprev;
-    auto n = t->dlnext;
-    if (p) {
-      p->dlnext = n;
-    }
-    if (head == t) {
-      head = n;
-    }
-    if (n) {
-      n->dlprev = p;
-    }
-    if (tail == t) {
-      tail = p;
-    }
-    t->dlprev = t->dlnext = nullptr;
+  bool operator==(const SListIterator &other) const {
+    return get_sentinel() == other.get_sentinel();
   }
 
-  bool empty() const { return head == nullptr; }
+  SListIterator &operator=(const SListIterator &other) noexcept {
+    ptail_ = other.ptail_;
+    o_ = other.o_;
 
-  size_t size() const { return len; }
+    return *this;
+  }
 
-  T *head, *tail;
-  size_t len;
+  SListIterator &operator=(SListIterator &&other) noexcept {
+    ptail_ = std::exchange(other.ptail_, nullptr);
+    o_ = std::exchange(other.o_, nullptr);
+
+    return *this;
+  }
+
+private:
+  T **get_sentinel() const {
+    return o_ ? slist_entry_from<T, E>(o_)->prev_next : *ptail_;
+  }
+
+  maybe_const_obj ptail_;
+  T *o_;
 };
 
-template <typename T> void dlist_delete_all(DList<T> &dl) {
-  for (auto e = dl.head; e;) {
-    auto next = e->dlnext;
-    delete e;
-    e = next;
+// SList is a singly linked list.  Appending and removing an element
+// is performed in O(1).  SList is an intrusive linked list, and
+// requires that SListEntry is embedded into the object.  The pointer
+// to the embedded member must be the 2nd template parameter.  While
+// front() and iterator return mutable reference, mutating the
+// embedded SListEntry destroys SList, and is considered as undefined
+// behavior.  So do not do that.
+template <typename T, SListEntry<T> T::*E> class SList {
+public:
+  using value_type = T *;
+  using size_type = size_t;
+  using difference_type = ptrdiff_t;
+  using reference = value_type &;
+  using const_reference = const value_type &;
+  using const_pointer = const value_type *;
+  using iterator = SListIterator<false, T, E>;
+  using const_iterator = SListIterator<true, T, E>;
+
+  SList() noexcept : head_{nullptr}, tail_{&head_}, size_{0} {}
+
+  SList(const SList &) = delete;
+  SList &operator=(const SList &) = delete;
+
+  SList(SList &&other) noexcept
+    : head_{std::exchange(other.head_, nullptr)},
+      tail_{std::exchange(other.tail_, &other.head_)},
+      size_{std::exchange(other.size_, 0)} {
+    if (size_) {
+      slist_entry_from<T, E>(head_)->prev_next = &head_;
+    } else {
+      tail_ = &head_;
+    }
+  }
+
+  SList &operator=(SList &&other) noexcept {
+    if (this == &other) {
+      return *this;
+    }
+
+    head_ = std::exchange(other.head_, nullptr);
+    tail_ = std::exchange(other.tail_, &other.head_);
+    size_ = std::exchange(other.size_, 0);
+
+    if (size_) {
+      slist_entry_from<T, E>(head_)->prev_next = &head_;
+    } else {
+      tail_ = &head_;
+    }
+
+    return *this;
+  }
+
+  void append(T *o) {
+    auto ent = slist_entry_from<T, E>(o);
+
+    ++size_;
+
+    ent->prev_next = tail_;
+    ent->next = nullptr;
+    *tail_ = o;
+    tail_ = &ent->next;
+  }
+
+  void remove(T *o) { remove_slist_entry(o); }
+
+  // erase removes the element at |pos|.  It returns the iterator
+  // following the removed element.
+  iterator erase(iterator pos) {
+    auto o = *pos;
+
+    return SListIterator<false, T, E>{&tail_, remove_slist_entry(o)};
+  }
+
+  [[nodiscard]]
+  T *front() {
+    return head_;
+  }
+
+  [[nodiscard]]
+  const T *front() const {
+    return head_;
+  }
+
+  bool empty() const { return size_ == 0; }
+
+  size_t size() const { return size_; }
+
+  iterator begin() { return SListIterator<false, T, E>{&tail_, head_}; }
+
+  const_iterator begin() const {
+    return SListIterator<true, T, E>{&tail_, head_};
+  }
+
+  iterator end() { return SListIterator<false, T, E>{&tail_, nullptr}; }
+
+  const_iterator end() const {
+    return SListIterator<true, T, E>{&tail_, nullptr};
+  }
+
+  void clear() {
+    head_ = nullptr;
+    tail_ = &head_;
+    size_ = 0;
+  }
+
+private:
+  T *remove_slist_entry(T *o) {
+    auto ent = slist_entry_from<T, E>(o);
+    auto prev_next = ent->prev_next;
+
+    *prev_next = ent->next;
+
+    if (ent->next) {
+      slist_entry_from<T, E>(ent->next)->prev_next = prev_next;
+    } else {
+      tail_ = prev_next;
+    }
+
+    ent->prev_next = nullptr;
+    ent->next = nullptr;
+
+    --size_;
+
+    return *prev_next;
+  }
+
+  T *head_;
+  T **tail_;
+  size_t size_;
+};
+
+template <typename T, SListEntry<T> T::*E>
+void slist_delete_all(SList<T, E> &sl) {
+  for (auto it = std::ranges::begin(sl); it != std::ranges::end(sl);) {
+    auto o = *it;
+    it = sl.erase(it);
+    delete o;
   }
 }
 

@@ -538,7 +538,7 @@ public:
     EVENT_TIMEOUT = 0x2,
   };
 
-  Downstream *dlnext, *dlprev;
+  SListEntry<Downstream> slent;
 
   // the length of response body sent to upstream client
   int64_t response_sent_body_length;

@@ -132,9 +132,7 @@ void downstream_wtimeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
 // upstream could be nullptr for unittests
 Downstream::Downstream(Upstream *upstream, MemchunkPool *mcpool,
                        int64_t stream_id)
-  : dlnext(nullptr),
-    dlprev(nullptr),
-    response_sent_body_length(0),
+  : response_sent_body_length(0),
     balloc_(1024, 1024),
     req_(balloc_),
     resp_(balloc_),

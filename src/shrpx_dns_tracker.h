@@ -40,8 +40,6 @@ struct DNSQuery {
   DNSQuery(std::string_view host, CompleteCb cb)
     : host(std::move(host)),
       cb(std::move(cb)),
-      dlnext(nullptr),
-      dlprev(nullptr),
       status(DNSResolverStatus::IDLE),
       in_qlist(false) {}
 
@@ -51,7 +49,7 @@ struct DNSQuery {
   // callback is not called if name lookup finishes within
   // DNSTracker::resolve().
   CompleteCb cb;
-  DNSQuery *dlnext, *dlprev;
+  SListEntry<DNSQuery> slent;
   DNSResolverStatus status;
   // true if this object is in linked list ResolverEntry::qlist.
   bool in_qlist;
@@ -65,7 +63,7 @@ struct ResolverEntry {
   std::unique_ptr<DualDNSResolver> resolv;
   // DNSQuery interested in this name lookup result.  The result is
   // notified to them all.
-  DList<DNSQuery> qlist;
+  SList<DNSQuery, &DNSQuery::slent> qlist;
   // Use the same enum with DNSResolverStatus
   DNSResolverStatus status;
   // result and its expiry time

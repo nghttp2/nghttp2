@@ -765,8 +765,9 @@ Http2Session *ClientHandler::get_http2_session(
                      << ", index=" << (addr - shared_addr->addrs.data());
   }
 
-  for (auto session = addr->http2_extra_freelist.head; session;) {
-    auto next = session->dlnext;
+  for (auto it = std::ranges::begin(addr->http2_extra_freelist);
+       it != std::ranges::end(addr->http2_extra_freelist);) {
+    auto session = *it++;
 
     if (session->max_concurrency_reached(0)) {
       if (LOG_ENABLED(INFO)) {
@@ -776,7 +777,6 @@ Http2Session *ClientHandler::get_http2_session(
       }
 
       session->remove_from_freelist();
-      session = next;
 
       continue;
     }

@@ -41,10 +41,10 @@ DownstreamQueue::DownstreamQueue(size_t conn_max_per_host, bool unified_host)
     unified_host_(unified_host) {}
 
 DownstreamQueue::~DownstreamQueue() {
-  dlist_delete_all(downstreams_);
+  slist_delete_all(downstreams_);
   for (auto &p : host_entries_) {
     auto &ent = p.second;
-    dlist_delete_all(ent.blocked);
+    slist_delete_all(ent.blocked);
   }
 }
 
@@ -145,11 +145,11 @@ Downstream *DownstreamQueue::remove_and_get_blocked(Downstream *downstream,
     return nullptr;
   }
 
-  auto link = ent.blocked.head;
-
-  if (!link) {
+  if (ent.blocked.empty()) {
     return nullptr;
   }
+
+  auto link = ent.blocked.front();
 
   auto next_downstream = link->downstream;
   auto link2 = next_downstream->detach_blocked_link();
@@ -163,8 +163,9 @@ Downstream *DownstreamQueue::remove_and_get_blocked(Downstream *downstream,
   return next_downstream;
 }
 
-Downstream *DownstreamQueue::get_downstreams() const {
-  return downstreams_.head;
+const SList<Downstream, &Downstream::slent> &
+DownstreamQueue::get_downstreams() const {
+  return downstreams_;
 }
 
 } // namespace shrpx

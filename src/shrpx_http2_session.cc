@@ -189,9 +189,7 @@ Http2Session::Http2Session(struct ev_loop *loop, SSL_CTX *ssl_ctx,
                            Worker *worker,
                            const std::shared_ptr<DownstreamAddrGroup> &group,
                            DownstreamAddr *addr)
-  : dlnext(nullptr),
-    dlprev(nullptr),
-    conn_(loop, -1, nullptr, worker->get_mcpool(),
+  : conn_(loop, -1, nullptr, worker->get_mcpool(),
           group->shared_addr->timeout.write, group->shared_addr->timeout.read,
           {}, {}, writecb, readcb, timeoutcb, this,
           get_config()->tls.dyn_rec.warmup_threshold,
@@ -285,8 +283,9 @@ int Http2Session::disconnect(bool hard) {
   // object.  Upstream::on_downstream_reset() may add
   // Http2DownstreamConnection to another Http2Session.
 
-  for (auto dc = dconns_.head; dc;) {
-    auto next = dc->dlnext;
+  for (auto it = std::ranges::begin(dconns_);
+       it != std::ranges::end(dconns_);) {
+    auto dc = *it++;
     auto downstream = dc->get_downstream();
     auto upstream = downstream->get_upstream();
 
@@ -297,15 +296,9 @@ int Http2Session::disconnect(bool hard) {
     }
 
     // dc was deleted
-    dc = next;
   }
 
-  auto streams = std::move(streams_);
-  for (auto s = streams.head; s;) {
-    auto next = s->dlnext;
-    delete s;
-    s = next;
-  }
+  slist_delete_all(streams_);
 
   return 0;
 }
@@ -741,7 +734,7 @@ int Http2Session::submit_request(Http2DownstreamConnection *dconn,
                                  const nghttp2_data_provider2 *data_prd) {
   assert(state_ == Http2SessionState::CONNECTED);
   auto sd = std::make_unique<StreamData>();
-  sd->dlnext = sd->dlprev = nullptr;
+
   // TODO Specify nullptr to pri_spec for now
   auto stream_id =
     nghttp2_submit_request2(session_, nullptr, nva, nvlen, data_prd, sd.get());
@@ -1900,7 +1893,7 @@ void Http2Session::connection_alive() {
 }
 
 void Http2Session::submit_pending_requests() {
-  for (auto dconn = dconns_.head; dconn; dconn = dconn->dlnext) {
+  for (auto dconn : dconns_) {
     auto downstream = dconn->get_downstream();
 
     if (!downstream->get_request_pending() ||

@@ -39,6 +39,7 @@
 #include <nghttp2/nghttp2.h>
 
 #include "shrpx_downstream_connection.h"
+#include "template.h"
 
 namespace shrpx {
 
@@ -83,7 +84,7 @@ public:
   int submit_rst_stream(Downstream *downstream,
                         uint32_t error_code = NGHTTP2_INTERNAL_ERROR);
 
-  Http2DownstreamConnection *dlnext, *dlprev;
+  nghttp2::SListEntry<Http2DownstreamConnection> slent;
 
 private:
   Http2Session *http2session_;

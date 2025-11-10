@@ -42,6 +42,7 @@ const MunitTest tests[]{
   munit_void_test(test_template_as_uint8_span),
   munit_void_test(test_template_as_string_view),
   munit_void_test(test_template_as_string_view),
+  munit_void_test(test_template_slist),
   munit_test_end(),
 };
 } // namespace
@@ -189,6 +190,146 @@ void test_template_as_string_view(void) {
     assert_stdsv_equal(
       ""sv, as_string_view(std::ranges::begin(s), std::ranges::end(s)));
   }
+}
+
+struct Foo {
+  Foo(int x) : x{x} {}
+
+  SListEntry<Foo> slent;
+  int x;
+};
+
+void test_template_slist(void) {
+  std::array<std::unique_ptr<Foo>, 10> arr;
+  int idx = 0;
+  for (auto &f : arr) {
+    f = std::make_unique<Foo>(++idx);
+  }
+
+  SList<Foo, &Foo::slent> sl;
+
+  // append
+  size_t n = 0;
+
+  for (auto &f : arr) {
+    ++n;
+    sl.append(f.get());
+
+    assert_size(n, ==, sl.size());
+  }
+
+  // iterator: ranged for
+  n = 0;
+
+  for (auto f : sl) {
+    ++n;
+
+    assert_int(static_cast<int>(n), ==, f->x);
+  }
+
+  // move
+  auto sl_move = std::move(sl);
+
+  assert_size(0, ==, sl.size());
+  assert_size(arr.size(), ==, sl_move.size());
+
+  n = 0;
+
+  for (auto f : sl_move) {
+    ++n;
+
+    assert_int(static_cast<int>(n), ==, f->x);
+  }
+
+  sl = std::move(sl_move);
+
+  assert_size(0, ==, sl_move.size());
+  assert_size(arr.size(), ==, sl.size());
+
+  n = 0;
+
+  for (auto f : sl) {
+    ++n;
+
+    assert_int(static_cast<int>(n), ==, f->x);
+  }
+
+  // remove
+  sl.remove(arr[0].get());
+
+  assert_size(arr.size() - 1, ==, sl.size());
+
+  sl.remove(arr[1].get());
+
+  assert_size(arr.size() - 2, ==, sl.size());
+
+  sl.remove(arr[9].get());
+
+  assert_size(arr.size() - 3, ==, sl.size());
+
+  // erase
+  auto it = std::ranges::begin(sl);
+
+  for (size_t i = 0; i < 3; ++i) {
+    ++it;
+  }
+
+  it = sl.erase(it);
+
+  assert_size(arr.size() - 4, ==, sl.size());
+
+  ++it;
+  it = sl.erase(it);
+
+  assert_size(arr.size() - 5, ==, sl.size());
+
+  // left: 3, 4, 5, 7, 9
+  it = sl.begin();
+
+  assert_int(3, ==, (*it++)->x);
+  assert_int(4, ==, (*it++)->x);
+  assert_int(5, ==, (*it++)->x);
+  assert_int(7, ==, (*it++)->x);
+  assert_int(9, ==, (*it++)->x);
+  assert_true(std::ranges::end(sl) == it);
+
+  // copy iterator
+  it = std::ranges::begin(sl);
+  auto it_copy = it++;
+
+  assert_int(4, ==, (*it)->x);
+  assert_int(3, ==, (*it_copy)->x);
+
+  it_copy = it;
+
+  assert_int(4, ==, (*it)->x);
+  assert_int(4, ==, (*it_copy)->x);
+
+  ++it;
+
+  // move iterator
+  auto it_move = std::move(it);
+
+  assert_int(5, ==, (*it_move)->x);
+
+  it_move = std::move(it_copy);
+
+  assert_int(4, ==, (*it_move)->x);
+
+  // not empty
+  assert_false(sl.empty());
+
+  // delete elements while removing from slist
+  for (auto it = std::ranges::begin(sl); it != std::ranges::end(sl);) {
+    auto f = *it;
+
+    it = sl.erase(it);
+
+    arr[static_cast<size_t>(f->x - 1)].reset();
+  }
+
+  // empty
+  assert_true(sl.empty());
 }
 
 } // namespace nghttp2

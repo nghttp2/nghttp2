@@ -31,20 +31,19 @@
 #include <unordered_map>
 #include <memory>
 
+#include "shrpx_downstream.h"
 #include "template.h"
 
 using namespace nghttp2;
 
 namespace shrpx {
 
-class Downstream;
-
 // Link entry in HostEntry.blocked and downstream because downstream
 // could be deleted in anytime and we'd like to find Downstream in
 // O(1).  Downstream has field to link back to this object.
 struct BlockedLink {
   Downstream *downstream;
-  BlockedLink *dlnext, *dlprev;
+  SListEntry<BlockedLink> slent;
 };
 
 class DownstreamQueue {
@@ -61,7 +60,7 @@ public:
     // Key that associates this object
     ImmutableString key;
     // Set of stream ID that blocked by conn_max_per_host_.
-    DList<BlockedLink> blocked;
+    SList<BlockedLink, &BlockedLink::slent> blocked;
     // The number of connections currently made to this host.
     size_t num_active;
   };
@@ -93,7 +92,7 @@ public:
   // conn_max_per_host_ limit.
   Downstream *remove_and_get_blocked(Downstream *downstream,
                                      bool next_blocked = true);
-  Downstream *get_downstreams() const;
+  const SList<Downstream, &Downstream::slent> &get_downstreams() const;
   HostEntry &find_host_entry(const std::string_view &host);
   std::string_view make_host_key(const std::string_view &host) const;
   std::string_view make_host_key(Downstream *downstream) const;
@@ -102,7 +101,7 @@ private:
   // Per target host structure to keep track of the number of
   // connections to the same host.
   HostEntryMap host_entries_;
-  DList<Downstream> downstreams_;
+  SList<Downstream, &Downstream::slent> downstreams_;
   // Maximum number of concurrent connections to the same host.
   size_t conn_max_per_host_;
   // true if downstream host is treated as the same.  Used for reverse

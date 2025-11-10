@@ -109,8 +109,6 @@ struct FileEntry {
       mtime(mtime),
       last_valid(last_valid),
       content_type(content_type),
-      dlnext(nullptr),
-      dlprev(nullptr),
       fd(fd),
       usecount(1),
       stale(stale) {}
@@ -120,7 +118,7 @@ struct FileEntry {
   int64_t mtime;
   std::chrono::steady_clock::time_point last_valid;
   const std::string *content_type;
-  FileEntry *dlnext, *dlprev;
+  SListEntry<FileEntry> slent;
   int fd;
   int usecount;
   bool stale;

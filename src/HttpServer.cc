@@ -384,7 +384,7 @@ public:
     fd_cache_lru_.append(res.get());
 
     while (fd_cache_.size() > FILE_ENTRY_EVICT_THRES) {
-      auto ent = fd_cache_lru_.head;
+      auto ent = fd_cache_lru_.front();
       if (ent->usecount) {
         break;
       }
@@ -429,7 +429,7 @@ private:
   std::unordered_set<Http2Handler *> handlers_;
   // cache for file descriptors to read file.
   std::unordered_multimap<std::string, std::unique_ptr<FileEntry>> fd_cache_;
-  DList<FileEntry> fd_cache_lru_;
+  SList<FileEntry, &FileEntry::slent> fd_cache_lru_;
   HttpServer *sv_;
   struct ev_loop *loop_;
   const Config *config_;

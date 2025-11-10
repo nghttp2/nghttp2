@@ -46,6 +46,7 @@
 #include "llhttp.h"
 
 #include "shrpx_connection.h"
+#include "shrpx_http2_downstream_connection.h"
 #include "buffer.h"
 #include "template.h"
 
@@ -61,7 +62,7 @@ struct DownstreamAddr;
 struct DNSQuery;
 
 struct StreamData {
-  StreamData *dlnext, *dlprev;
+  SListEntry<StreamData> slent;
   Http2DownstreamConnection *dconn;
 };
 
@@ -252,7 +253,7 @@ public:
 
   using ReadBuf = Buffer<8_k>;
 
-  Http2Session *dlnext, *dlprev;
+  SListEntry<Http2Session> slent;
 
 private:
   Connection conn_;
@@ -266,8 +267,8 @@ private:
   // timer to initiate connection.  usually, this fires immediately.
   ev_timer initiate_connection_timer_;
   ev_prepare prep_;
-  DList<Http2DownstreamConnection> dconns_;
-  DList<StreamData> streams_;
+  SList<Http2DownstreamConnection, &Http2DownstreamConnection::slent> dconns_;
+  SList<StreamData, &StreamData::slent> streams_;
   std::function<int(Http2Session &)> read_, write_;
   std::function<int(Http2Session &, const uint8_t *, size_t)> on_read_;
   std::function<int(Http2Session &)> on_write_;

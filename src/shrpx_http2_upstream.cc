@@ -1621,7 +1621,7 @@ void Http2Upstream::remove_downstream(Downstream *downstream) {
     initiate_downstream(next_downstream);
   }
 
-  if (downstream_queue_.get_downstreams() == nullptr) {
+  if (downstream_queue_.get_downstreams().empty()) {
     // There is no downstream at the moment.  Start idle timer now.
     auto config = get_config();
     auto &upstreamconf = config->conn.upstream;
@@ -2056,10 +2056,10 @@ int Http2Upstream::on_timeout(Downstream *downstream) {
 }
 
 void Http2Upstream::on_handler_delete() {
-  for (auto d = downstream_queue_.get_downstreams(); d; d = d->dlnext) {
+  for (auto d : downstream_queue_.get_downstreams()) {
     if (d->get_dispatch_state() == DispatchState::ACTIVE &&
         d->accesslog_ready()) {
-      handler_->write_accesslog(d);
+      handler_->write_accesslog(const_cast<Downstream *>(d));
     }
   }
 }

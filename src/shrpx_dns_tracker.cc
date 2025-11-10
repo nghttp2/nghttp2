@@ -48,7 +48,7 @@ DNSTracker::~DNSTracker() {
   for (auto &p : ents_) {
     auto &qlist = p.second.qlist;
     while (!qlist.empty()) {
-      auto head = qlist.head;
+      auto head = qlist.front();
       qlist.remove(head);
       head->status = DNSResolverStatus::ERROR;
       head->in_qlist = false;
@@ -259,7 +259,7 @@ void DNSTracker::add_to_qlist(ResolverEntry &ent, DNSQuery *dnsq) {
     [&ent](DNSResolverStatus status, const Address *result) {
       auto &qlist = ent.qlist;
       while (!qlist.empty()) {
-        auto head = qlist.head;
+        auto head = qlist.front();
         qlist.remove(head);
         head->status = status;
         head->in_qlist = false;
