@@ -323,14 +323,14 @@ func (st *serverTester) Close() {
 			close(done)
 		}()
 
-		if err := st.cmd.Process.Signal(syscall.SIGQUIT); err != nil {
+		if err := st.cmd.Process.Signal(syscall.SIGQUIT); err != nil && !errors.Is(err, os.ErrProcessDone) {
 			st.t.Errorf("Error st.cmd.Process.Signal() = %v", err)
 		}
 
 		select {
 		case <-done:
 		case <-time.After(10 * time.Second):
-			if err := st.cmd.Process.Kill(); err != nil {
+			if err := st.cmd.Process.Kill(); err != nil && !errors.Is(err, os.ErrProcessDone) {
 				st.t.Errorf("Error st.cmd.Process.Kill() = %v", err)
 			}
 
