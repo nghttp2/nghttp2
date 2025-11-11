@@ -41,7 +41,6 @@ const MunitTest tests[]{
   munit_void_test(test_template_immutable_string),
   munit_void_test(test_template_as_uint8_span),
   munit_void_test(test_template_as_string_view),
-  munit_void_test(test_template_as_string_view),
   munit_void_test(test_template_dlist),
   munit_test_end(),
 };
