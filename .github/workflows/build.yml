@@ -4,6 +4,10 @@ on: [push, pull_request]
 
 permissions: read-all
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 env:
   LIBBPF_VERSION: v1.6.2
   OPENSSL1_VERSION: 1_1_1w+quic
