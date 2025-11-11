@@ -126,14 +126,12 @@ template <typename T> struct DList {
     auto n = t->dlnext;
     if (p) {
       p->dlnext = n;
-    }
-    if (head == t) {
+    } else {
       head = n;
     }
     if (n) {
       n->dlprev = p;
-    }
-    if (tail == t) {
+    } else {
       tail = p;
     }
     t->dlprev = t->dlnext = nullptr;

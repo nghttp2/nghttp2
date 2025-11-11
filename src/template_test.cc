@@ -42,6 +42,7 @@ const MunitTest tests[]{
   munit_void_test(test_template_as_uint8_span),
   munit_void_test(test_template_as_string_view),
   munit_void_test(test_template_as_string_view),
+  munit_void_test(test_template_dlist),
   munit_test_end(),
 };
 } // namespace
@@ -189,6 +190,109 @@ void test_template_as_string_view(void) {
     assert_stdsv_equal(
       ""sv, as_string_view(std::ranges::begin(s), std::ranges::end(s)));
   }
+}
+
+struct Foo {
+  Foo(int n) : dlprev{nullptr}, dlnext{nullptr}, n{n} {}
+
+  Foo *dlprev, *dlnext;
+  int n;
+};
+
+void test_template_dlist(void) {
+  std::array<std::unique_ptr<Foo>, 10> arr;
+  int n = 0;
+  for (auto &f : arr) {
+    f = std::make_unique<Foo>(++n);
+  }
+
+  DList<Foo> dl;
+
+  // append
+  n = 0;
+
+  for (auto &f : arr) {
+    ++n;
+    dl.append(f.get());
+
+    assert_size(static_cast<size_t>(n), ==, dl.size());
+  }
+
+  // iteration
+  n = 0;
+
+  for (auto f = dl.head; f; f = f->dlnext) {
+    ++n;
+
+    assert_int(n, ==, f->n);
+  }
+
+  // move constructor
+  auto dl_move = std::move(dl);
+
+  assert_size(0, ==, dl.size());
+  assert_size(arr.size(), ==, dl_move.size());
+
+  n = 0;
+
+  for (auto f = dl_move.head; f; f = f->dlnext) {
+    ++n;
+
+    assert_int(n, ==, f->n);
+  }
+
+  // move assignment
+  dl = std::move(dl_move);
+
+  assert_size(0, ==, dl_move.size());
+  assert_size(arr.size(), ==, dl.size());
+
+  n = 0;
+
+  for (auto f = dl.head; f; f = f->dlnext) {
+    ++n;
+
+    assert_int(n, ==, f->n);
+  }
+
+  // remove
+  auto del = std::to_array({1, 2, 10, 6, 8});
+
+  for (size_t i = 0; i < del.size(); ++i) {
+    dl.remove(arr[static_cast<size_t>(del[i] - 1)].get());
+
+    assert_size(arr.size() - i - 1, ==, dl.size());
+  }
+
+  auto left = std::to_array<int>({3, 4, 5, 7, 9});
+  auto head = dl.head;
+
+  for (size_t i = 0; i < left.size(); ++i, head = head->dlnext) {
+    assert_not_null(head);
+    assert_int(left[i], ==, head->n);
+  }
+
+  head = dl.tail;
+
+  for (size_t i = left.size(); i > 0; --i, head = head->dlprev) {
+    assert_not_null(head);
+    assert_int(left[i - 1], ==, head->n);
+  }
+
+  // not empty
+  assert_false(dl.empty());
+
+  // delete elements while iterating list
+  for (auto head = dl.head; head;) {
+    auto next = head->dlnext;
+
+    dl.remove(head);
+
+    head = next;
+  }
+
+  // empty
+  assert_true(dl.empty());
 }
 
 } // namespace nghttp2
