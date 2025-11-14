@@ -51,7 +51,8 @@ Http2DownstreamConnection::Http2DownstreamConnection(Http2Session *http2session)
   : dlnext(nullptr),
     dlprev(nullptr),
     http2session_(http2session),
-    sd_(nullptr) {}
+    sd_(nullptr),
+    stream_closed_(false) {}
 
 Http2DownstreamConnection::~Http2DownstreamConnection() {
   if (LOG_ENABLED(INFO)) {
@@ -147,19 +148,24 @@ int Http2DownstreamConnection::submit_rst_stream(Downstream *downstream,
     switch (downstream->get_response_state()) {
     case DownstreamState::MSG_RESET:
     case DownstreamState::MSG_BAD_HEADER:
-    case DownstreamState::MSG_COMPLETE:
-      break;
+      return rv;
     default:
-      if (LOG_ENABLED(INFO)) {
-        DCLOG(INFO, this) << "Submit RST_STREAM for DOWNSTREAM:" << downstream
-                          << ", stream_id="
-                          << downstream->get_downstream_stream_id()
-                          << ", error_code=" << error_code;
-      }
-      rv = http2session_->submit_rst_stream(
-        static_cast<int32_t>(downstream->get_downstream_stream_id()),
-        error_code);
+      break;
     }
+
+    // If the stream has been closed, no need to submit RESET_STREAM.
+    if (stream_closed_) {
+      return rv;
+    }
+
+    if (LOG_ENABLED(INFO)) {
+      DCLOG(INFO, this) << "Submit RST_STREAM for DOWNSTREAM:" << downstream
+                        << ", stream_id="
+                        << downstream->get_downstream_stream_id()
+                        << ", error_code=" << error_code;
+    }
+    rv = http2session_->submit_rst_stream(
+      static_cast<int32_t>(downstream->get_downstream_stream_id()), error_code);
   }
   return rv;
 }
@@ -621,5 +627,9 @@ Http2DownstreamConnection::get_downstream_addr_group() const {
 }
 
 DownstreamAddr *Http2DownstreamConnection::get_addr() const { return nullptr; }
+
+void Http2DownstreamConnection::set_stream_closed(bool f) {
+  stream_closed_ = f;
+}
 
 } // namespace shrpx

@@ -83,11 +83,16 @@ public:
   int submit_rst_stream(Downstream *downstream,
                         uint32_t error_code = NGHTTP2_INTERNAL_ERROR);
 
+  void set_stream_closed(bool f);
+
   Http2DownstreamConnection *dlnext, *dlprev;
 
 private:
   Http2Session *http2session_;
   StreamData *sd_;
+  // stream_closed_ is true if the stream is closed (i.e.,
+  // nghttp2_on_stream_close_callback is called).
+  bool stream_closed_;
 };
 
 } // namespace shrpx

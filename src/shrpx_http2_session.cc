@@ -826,6 +826,8 @@ int on_stream_close_callback(nghttp2_session *session, int32_t stream_id,
     auto downstream = dconn->get_downstream();
     auto upstream = downstream->get_upstream();
 
+    dconn->set_stream_closed(true);
+
     if (downstream->get_downstream_stream_id() % 2 == 0 &&
         downstream->get_request_state() == DownstreamState::INITIAL) {
       // Downstream is canceled in backend before it is submitted in
