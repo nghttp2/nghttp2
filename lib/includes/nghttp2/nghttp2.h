@@ -72,7 +72,7 @@ extern "C" {
 #  endif /* !BUILDING_NGHTTP2 */
 #endif   /* !defined(WIN32) */
 
-#ifdef BUILDING_NGHTTP2
+#if defined(BUILDING_NGHTTP2) && !defined(_MSC_VER)
 #  undef NGHTTP2_NO_SSIZE_T
 #endif /* BUILDING_NGHTTP2 */
 
