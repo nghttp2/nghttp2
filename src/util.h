@@ -634,7 +634,7 @@ inline constexpr auto lowcase_tbl = [] {
 }();
 
 constexpr char lowcase(char c) noexcept {
-  return static_cast<char>(lowcase_tbl[static_cast<uint8_t>(c)]);
+  return lowcase_tbl[static_cast<uint8_t>(c)];
 }
 
 template <std::ranges::input_range R1, std::ranges::input_range R2>
