@@ -1264,13 +1264,13 @@ ssize_t parse_proxy_line_port(const uint8_t *first, const uint8_t *last) {
   }
 
   if (*p == '0') {
-    if (p + 1 != last && util::is_digit(as_signed(*(p + 1)))) {
+    if (p + 1 != last && util::is_digit(static_cast<char>(*(p + 1)))) {
       return -1;
     }
     return 1;
   }
 
-  for (; p != last && util::is_digit(as_signed(*p)); ++p) {
+  for (; p != last && util::is_digit(static_cast<char>(*p)); ++p) {
     port *= 10;
     port += *p - '0';
 

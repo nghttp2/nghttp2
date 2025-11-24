@@ -553,7 +553,7 @@ constexpr O percent_encode_token(I first, I last, O result) noexcept {
   for (; first != last; ++first) {
     auto c = static_cast<uint8_t>(*first);
 
-    if (c != '%' && in_token(as_signed(c))) {
+    if (c != '%' && in_token(static_cast<char>(c))) {
       *result++ = static_cast<result_type>(c);
       continue;
     }

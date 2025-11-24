@@ -961,7 +961,7 @@ void Client::on_header(int64_t stream_id, const uint8_t *name, size_t namelen,
       ":status"sv == as_string_view(name, namelen)) {
     int status = 0;
     for (auto c : std::span{value, valuelen}) {
-      if (util::is_digit(as_signed(c))) {
+      if (util::is_digit(static_cast<char>(c))) {
         status *= 10;
         status += c - '0';
         if (status > 999) {
