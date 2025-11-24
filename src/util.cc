@@ -928,7 +928,7 @@ std::string ascii_dump(const uint8_t *data, size_t len) {
     auto c = data[i];
 
     if (c >= 0x20 && c < 0x7f) {
-      res += as_signed(c);
+      res += static_cast<char>(c);
     } else {
       res += '.';
     }
