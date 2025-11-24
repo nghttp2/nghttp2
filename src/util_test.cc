@@ -99,6 +99,7 @@ const MunitTest tests[]{
   munit_void_test(test_util_in_token),
   munit_void_test(test_util_in_attr_char),
   munit_void_test(test_util_upcase),
+  munit_void_test(test_util_lowcase),
   munit_void_test(test_util_to_numeric_addr),
   munit_test_end(),
 };
@@ -1177,6 +1178,17 @@ void test_util_upcase(void) {
       assert_char(static_cast<char>(c - 'a' + 'A'), ==, util::upcase(c));
     } else {
       assert_char(c, ==, util::upcase(c));
+    }
+  }
+}
+
+void test_util_lowcase(void) {
+  for (size_t i = 0; i < 256; ++i) {
+    auto c = static_cast<char>(i);
+    if ('A' <= c && c <= 'Z') {
+      assert_char(static_cast<char>(c - 'A' + 'a'), ==, util::lowcase(c));
+    } else {
+      assert_char(c, ==, util::lowcase(c));
     }
   }
 }
