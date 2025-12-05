@@ -2584,7 +2584,7 @@ static int session_after_frame_sent1(nghttp2_session *session) {
       }
       /* We assume aux_data is a pointer to nghttp2_headers_aux_data */
       aux_data = &item->aux_data.headers;
-      if (aux_data->dpw.data_prd.read_callback) {
+      if (nghttp2_data_provider_wrap_contains_read_callback(&aux_data->dpw)) {
         /* nghttp2_submit_data_shared() makes a copy of
            aux_data->dpw */
         rv = nghttp2_submit_data_shared(session, NGHTTP2_FLAG_END_STREAM,
@@ -2615,7 +2615,7 @@ static int session_after_frame_sent1(nghttp2_session *session) {
       }
       /* We assume aux_data is a pointer to nghttp2_headers_aux_data */
       aux_data = &item->aux_data.headers;
-      if (aux_data->dpw.data_prd.read_callback) {
+      if (nghttp2_data_provider_wrap_contains_read_callback(&aux_data->dpw)) {
         rv = nghttp2_submit_data_shared(session, NGHTTP2_FLAG_END_STREAM,
                                         frame->hd.stream_id, &aux_data->dpw);
         if (nghttp2_is_fatal(rv)) {
@@ -2795,7 +2795,10 @@ static int session_call_send_data(nghttp2_session *session,
   aux_data = &item->aux_data.data;
 
   rv = session->callbacks.send_data_callback(session, frame, buf->pos, length,
-                                             &aux_data->dpw.data_prd.source,
+                                             /* This is fine because
+                                                of Common Initial
+                                                Sequence rule. */
+                                             &aux_data->dpw.data_prd.v2.source,
                                              session->user_data);
 
   switch (rv) {
@@ -7370,13 +7373,13 @@ int nghttp2_session_pack_data(nghttp2_session *session, nghttp2_bufs *bufs,
   case NGHTTP2_DATA_PROVIDER_V1:
     payloadlen = (nghttp2_ssize)aux_data->dpw.data_prd.v1.read_callback(
       session, frame->hd.stream_id, buf->pos, datamax, &data_flags,
-      &aux_data->dpw.data_prd.source, session->user_data);
+      &aux_data->dpw.data_prd.v1.source, session->user_data);
 
     break;
   case NGHTTP2_DATA_PROVIDER_V2:
     payloadlen = aux_data->dpw.data_prd.v2.read_callback(
       session, frame->hd.stream_id, buf->pos, datamax, &data_flags,
-      &aux_data->dpw.data_prd.source, session->user_data);
+      &aux_data->dpw.data_prd.v2.source, session->user_data);
 
     break;
   default:
