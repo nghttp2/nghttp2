@@ -97,26 +97,15 @@ inline constexpr size_t SHRPX_QUIC_SALTLEN = 32;
 inline constexpr uint8_t SHRPX_QUIC_DCID_KM_ID_MASK = 0xe0;
 
 struct WorkerID {
-  union {
-    struct {
-      uint32_t server;
-      uint16_t worker_process;
-      uint16_t thread;
-    };
-    uint64_t worker;
-  };
+  uint32_t server;
+  uint16_t worker_process;
+  uint16_t thread;
+
+  auto operator<=>(const WorkerID &) const = default;
 };
 
 static_assert(sizeof(WorkerID) == SHRPX_QUIC_WORKER_IDLEN,
               "WorkerID length assertion failure");
-
-inline bool operator==(const WorkerID &lhd, const WorkerID &rhd) {
-  return lhd.worker == rhd.worker;
-}
-
-inline bool operator!=(const WorkerID &lhd, const WorkerID &rhd) {
-  return lhd.worker != rhd.worker;
-}
 
 struct ConnectionID {
   WorkerID worker;
