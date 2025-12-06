@@ -264,8 +264,8 @@ int generate_quic_hashed_connection_id(ngtcp2_cid &dest,
   auto hlen = static_cast<unsigned int>(EVP_MD_size(nghttp2::tls::sha256()));
 
   if (!EVP_DigestInit_ex(ctx, nghttp2::tls::sha256(), nullptr) ||
-      !EVP_DigestUpdate(ctx, &remote_addr.su.sa, remote_addr.len) ||
-      !EVP_DigestUpdate(ctx, &local_addr.su.sa, local_addr.len) ||
+      !EVP_DigestUpdate(ctx, remote_addr.as_sockaddr(), remote_addr.size()) ||
+      !EVP_DigestUpdate(ctx, local_addr.as_sockaddr(), local_addr.size()) ||
       !EVP_DigestUpdate(ctx, cid.data, cid.datalen) ||
       !EVP_DigestFinal_ex(ctx, h.data(), &hlen)) {
     return -1;

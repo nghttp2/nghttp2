@@ -60,14 +60,14 @@ AcceptHandler::~AcceptHandler() {
 }
 
 void AcceptHandler::accept_connection() {
-  sockaddr_union sockaddr;
-  socklen_t addrlen = sizeof(sockaddr);
+  sockaddr_storage ss;
+  socklen_t addrlen = sizeof(ss);
 
 #ifdef HAVE_ACCEPT4
-  auto cfd =
-    accept4(faddr_->fd, &sockaddr.sa, &addrlen, SOCK_NONBLOCK | SOCK_CLOEXEC);
+  auto cfd = accept4(faddr_->fd, reinterpret_cast<sockaddr *>(&ss), &addrlen,
+                     SOCK_NONBLOCK | SOCK_CLOEXEC);
 #else  // !defined(HAVE_ACCEPT4)
-  auto cfd = accept(faddr_->fd, &sockaddr.sa, &addrlen);
+  auto cfd = accept(faddr_->fd, reinterpret_cast<sockaddr *>(&ss), &addrlen);
 #endif // !defined(HAVE_ACCEPT4)
 
   if (cfd == -1) {
@@ -100,7 +100,8 @@ void AcceptHandler::accept_connection() {
   util::make_socket_closeonexec(cfd);
 #endif // !defined(HAVE_ACCEPT4)
 
-  worker_->handle_connection(cfd, &sockaddr.sa, addrlen, faddr_);
+  worker_->handle_connection(cfd, reinterpret_cast<const sockaddr *>(&ss),
+                             addrlen, faddr_);
 }
 
 void AcceptHandler::enable() { ev_io_start(worker_->get_loop(), &wev_); }

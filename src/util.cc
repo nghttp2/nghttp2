@@ -841,7 +841,7 @@ std::string numeric_name(const struct sockaddr *sa, socklen_t salen) {
 }
 
 std::string to_numeric_addr(const Address *addr) {
-  return to_numeric_addr(&addr->su.sa, addr->len);
+  return to_numeric_addr(addr->as_sockaddr(), addr->size());
 }
 
 std::string to_numeric_addr(const struct sockaddr *sa, socklen_t salen) {
@@ -884,28 +884,6 @@ std::string to_numeric_addr(const struct sockaddr *sa, socklen_t salen) {
   std::ranges::copy(serv, p);
 
   return s;
-}
-
-void set_port(Address &addr, uint16_t port) {
-  switch (addr.su.storage.ss_family) {
-  case AF_INET:
-    addr.su.in.sin_port = htons(port);
-    break;
-  case AF_INET6:
-    addr.su.in6.sin6_port = htons(port);
-    break;
-  }
-}
-
-uint16_t get_port(const sockaddr_union *su) {
-  switch (su->storage.ss_family) {
-  case AF_INET:
-    return ntohs(su->in.sin_port);
-  case AF_INET6:
-    return ntohs(su->in6.sin6_port);
-  default:
-    return 0;
-  }
 }
 
 bool quic_prohibited_port(uint16_t port) {
@@ -1876,9 +1854,10 @@ int msghdr_get_local_addr(Address &dest, msghdr *msg, int family) {
     for (auto cmsg = CMSG_FIRSTHDR(msg); cmsg; cmsg = CMSG_NXTHDR(msg, cmsg)) {
       if (cmsg->cmsg_level == IPPROTO_IP && cmsg->cmsg_type == IP_PKTINFO) {
         in_pktinfo pktinfo;
+
         memcpy(&pktinfo, CMSG_DATA(cmsg), sizeof(pktinfo));
-        dest.len = sizeof(dest.su.in);
-        auto &sa = dest.su.in;
+
+        auto &sa = dest.skaddr.emplace<sockaddr_in>();
         sa.sin_family = AF_INET;
         sa.sin_addr = pktinfo.ipi_addr;
 
@@ -1891,11 +1870,13 @@ int msghdr_get_local_addr(Address &dest, msghdr *msg, int family) {
     for (auto cmsg = CMSG_FIRSTHDR(msg); cmsg; cmsg = CMSG_NXTHDR(msg, cmsg)) {
       if (cmsg->cmsg_level == IPPROTO_IPV6 && cmsg->cmsg_type == IPV6_PKTINFO) {
         in6_pktinfo pktinfo;
+
         memcpy(&pktinfo, CMSG_DATA(cmsg), sizeof(pktinfo));
-        dest.len = sizeof(dest.su.in6);
-        auto &sa = dest.su.in6;
+
+        auto &sa = dest.skaddr.emplace<sockaddr_in6>();
         sa.sin6_family = AF_INET6;
         sa.sin6_addr = pktinfo.ipi6_addr;
+
         return 0;
       }
     }

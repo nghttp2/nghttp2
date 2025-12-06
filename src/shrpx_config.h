@@ -482,7 +482,7 @@ struct UpstreamAddr {
   std::string_view hostport;
   // Binary representation of this address.  Only filled if quic is
   // true.
-  sockaddr_union sockaddr;
+  Address sockaddr;
   // frontend port.  0 if |host_unix| is true.
   uint16_t port;
   // For TCP socket, this is either AF_INET or AF_INET6.  For UNIX

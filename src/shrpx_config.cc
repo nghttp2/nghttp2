@@ -4657,10 +4657,11 @@ int configure_downstream_group(Config *config, bool http2_proxy,
 
         auto path = addr.host.data();
         auto pathlen = addr.host.size();
+        auto &unaddr = addr.addr.skaddr.emplace<sockaddr_un>();
 
-        if (pathlen + 1 > sizeof(addr.addr.su.un.sun_path)) {
+        if (pathlen + 1 > sizeof(unaddr.sun_path)) {
           LOG(FATAL) << "UNIX domain socket path " << path << " is too long > "
-                     << sizeof(addr.addr.su.un.sun_path);
+                     << sizeof(unaddr.sun_path);
           return -1;
         }
 
@@ -4669,11 +4670,9 @@ int configure_downstream_group(Config *config, bool http2_proxy,
                     << " for backend connection";
         }
 
-        addr.addr.su.un.sun_family = AF_UNIX;
+        unaddr.sun_family = AF_UNIX;
         // copy path including terminal NULL
-        std::ranges::copy_n(path, as_signed(pathlen + 1),
-                            addr.addr.su.un.sun_path);
-        addr.addr.len = sizeof(addr.addr.su.un);
+        std::ranges::copy_n(path, as_signed(pathlen + 1), unaddr.sun_path);
 
         continue;
       }
@@ -4723,8 +4722,9 @@ int configure_downstream_group(Config *config, bool http2_proxy,
             key = addr.hostport;
           }
         } else {
-          key = std::string_view{reinterpret_cast<char *>(&addr.addr.su),
-                                 addr.addr.len};
+          key = std::string_view{
+            reinterpret_cast<const char *>(addr.addr.as_sockaddr()),
+            addr.addr.size()};
         }
         rv = compute_affinity_hash(g.affinity_hash, idx, key);
         if (rv != 0) {
@@ -4805,8 +4805,7 @@ int resolve_hostname(Address *addr, const char *hostname, uint16_t port,
               << " succeeded: " << host.data();
   }
 
-  memcpy(&addr->su, res->ai_addr, res->ai_addrlen);
-  addr->len = res->ai_addrlen;
+  addr->set(res->ai_addr);
 
   return 0;
 }

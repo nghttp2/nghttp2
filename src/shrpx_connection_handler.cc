@@ -677,19 +677,23 @@ int ConnectionHandler::forward_quic_packet_to_lingering_worker_process(
   std::array<uint8_t, 512> header;
 
   assert(header.size() >= 1 + 1 + 1 + 1 + sizeof(sockaddr_storage) * 2);
-  assert(remote_addr.len > 0);
-  assert(local_addr.len > 0);
+  assert(!remote_addr.empty());
+  assert(!local_addr.empty());
 
   auto p = header.data();
 
   *p++ = static_cast<uint8_t>(QUICIPCType::DGRAM_FORWARD);
-  *p++ = static_cast<uint8_t>(remote_addr.len - 1);
-  p = std::ranges::copy_n(reinterpret_cast<const uint8_t *>(&remote_addr.su),
-                          as_signed(remote_addr.len), p)
+  auto remote_addrlen = remote_addr.size();
+  *p++ = static_cast<uint8_t>(remote_addrlen - 1);
+  p = std::ranges::copy_n(
+        reinterpret_cast<const uint8_t *>(remote_addr.as_sockaddr()),
+        as_signed(remote_addrlen), p)
         .out;
-  *p++ = static_cast<uint8_t>(local_addr.len - 1);
-  p = std::ranges::copy_n(reinterpret_cast<const uint8_t *>(&local_addr.su),
-                          as_signed(local_addr.len), p)
+  auto local_addrlen = local_addr.size();
+  *p++ = static_cast<uint8_t>(local_addrlen - 1);
+  p = std::ranges::copy_n(
+        reinterpret_cast<const uint8_t *>(local_addr.as_sockaddr()),
+        as_signed(local_addrlen), p)
         .out;
   *p++ = pi.ecn;
 
@@ -790,8 +794,9 @@ int ConnectionHandler::quic_ipc_read() {
     return -1;
   }
 
-  pkt->remote_addr.len = remote_addrlen;
-  memcpy(&pkt->remote_addr.su, p, remote_addrlen);
+  sockaddr_storage ss;
+  memcpy(&ss, p, remote_addrlen);
+  pkt->remote_addr.set(reinterpret_cast<const sockaddr *>(&ss));
 
   p += remote_addrlen;
 
@@ -810,8 +815,8 @@ int ConnectionHandler::quic_ipc_read() {
     return -1;
   }
 
-  pkt->local_addr.len = local_addrlen;
-  memcpy(&pkt->local_addr.su, p, local_addrlen);
+  memcpy(&ss, p, local_addrlen);
+  pkt->local_addr.set(reinterpret_cast<const sockaddr *>(&ss));
 
   p += local_addrlen;
 

@@ -160,7 +160,7 @@ int MemcachedConnection::initiate_connection() {
     conn_.tls.client_session_cache = &tls_session_cache_;
   }
 
-  conn_.fd = util::create_nonblock_socket(addr_->su.storage.ss_family);
+  conn_.fd = util::create_nonblock_socket(addr_->family());
 
   if (conn_.fd == -1) {
     auto error = errno;
@@ -170,7 +170,7 @@ int MemcachedConnection::initiate_connection() {
   }
 
   int rv;
-  rv = connect(conn_.fd, &addr_->su.sa, addr_->len);
+  rv = connect(conn_.fd, addr_->as_sockaddr(), addr_->size());
   if (rv != 0 && errno != EINPROGRESS) {
     auto error = errno;
     MCLOG(WARN, this) << "connect() failed; errno=" << error;

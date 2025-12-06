@@ -361,13 +361,13 @@ int HttpDownstreamConnection::initiate_connection() {
         }
       }
 
+      resolved_addr_->port(addr_->port);
       raddr = resolved_addr_.get();
-      util::set_port(*resolved_addr_, addr_->port);
     } else {
       raddr = &addr_->addr;
     }
 
-    conn_.fd = util::create_nonblock_socket(raddr->su.storage.ss_family);
+    conn_.fd = util::create_nonblock_socket(raddr->family());
 
     if (conn_.fd == -1) {
       auto error = errno;
@@ -381,7 +381,7 @@ int HttpDownstreamConnection::initiate_connection() {
 
     worker_blocker->on_success();
 
-    rv = connect(conn_.fd, &raddr->su.sa, raddr->len);
+    rv = connect(conn_.fd, raddr->as_sockaddr(), raddr->size());
     if (rv != 0 && errno != EINPROGRESS) {
       auto error = errno;
       DCLOG(WARN, this) << "connect() failed; addr="

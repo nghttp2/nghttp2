@@ -568,14 +568,16 @@ int Client::make_socket(addrinfo *addr) {
       return -1;
     }
 
-    socklen_t addrlen = sizeof(local_addr.su.storage);
-    rv = getsockname(fd, &local_addr.su.sa, &addrlen);
+    sockaddr_storage ss;
+    socklen_t addrlen = sizeof(ss);
+    rv = getsockname(fd, reinterpret_cast<sockaddr *>(&ss), &addrlen);
     if (rv == -1) {
       return -1;
     }
-    local_addr.len = addrlen;
 
-    if (quic_init(&local_addr.su.sa, local_addr.len, addr->ai_addr,
+    local_addr.set(reinterpret_cast<const sockaddr *>(&ss));
+
+    if (quic_init(local_addr.as_sockaddr(), local_addr.size(), addr->ai_addr,
                   addr->ai_addrlen) != 0) {
       std::cerr << "quic_init failed" << std::endl;
       return -1;

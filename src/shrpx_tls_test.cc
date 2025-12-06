@@ -246,8 +246,7 @@ static Address parse_addr(const char *ipaddr) {
   assert_not_null(res);
 
   Address addr;
-  addr.len = res->ai_addrlen;
-  memcpy(&addr.su, res->ai_addr, res->ai_addrlen);
+  addr.set(res->ai_addr);
 
   freeaddrinfo(res);
 

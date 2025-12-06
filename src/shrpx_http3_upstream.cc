@@ -720,15 +720,9 @@ int Http3Upstream::init(const UpstreamAddr *faddr, const Address &remote_addr,
   params.stateless_reset_token_present = 1;
 
   auto path = ngtcp2_path{
-    {
-      const_cast<sockaddr *>(&local_addr.su.sa),
-      local_addr.len,
-    },
-    {
-      const_cast<sockaddr *>(&remote_addr.su.sa),
-      remote_addr.len,
-    },
-    const_cast<UpstreamAddr *>(faddr),
+    .local{as_ngtcp2_addr(local_addr)},
+    .remote{as_ngtcp2_addr(remote_addr)},
+    .user_data = const_cast<UpstreamAddr *>(faddr),
   };
 
   rv = ngtcp2_conn_server_new(&conn_, &initial_hd.scid, &scid, &path,
@@ -1760,15 +1754,9 @@ int Http3Upstream::on_read(const UpstreamAddr *faddr,
   int rv;
 
   auto path = ngtcp2_path{
-    {
-      const_cast<sockaddr *>(&local_addr.su.sa),
-      local_addr.len,
-    },
-    {
-      const_cast<sockaddr *>(&remote_addr.su.sa),
-      remote_addr.len,
-    },
-    const_cast<UpstreamAddr *>(faddr),
+    .local{as_ngtcp2_addr(local_addr)},
+    .remote{as_ngtcp2_addr(remote_addr)},
+    .user_data = const_cast<UpstreamAddr *>(faddr),
   };
 
   rv = ngtcp2_conn_read_pkt(conn_, &path, &pi, data.data(), data.size(),
@@ -1901,11 +1889,8 @@ void Http3Upstream::on_send_blocked(const ngtcp2_path &path,
 
   auto &p = tx_.blocked;
 
-  memcpy(&p.local_addr.su, path.local.addr, path.local.addrlen);
-  memcpy(&p.remote_addr.su, path.remote.addr, path.remote.addrlen);
-
-  p.local_addr.len = path.local.addrlen;
-  p.remote_addr.len = path.remote.addrlen;
+  p.local_addr.set(path.local.addr);
+  p.remote_addr.set(path.remote.addr);
   p.faddr = static_cast<UpstreamAddr *>(path.user_data);
   p.pi = pi;
   p.data = data;
@@ -1917,9 +1902,9 @@ int Http3Upstream::send_blocked_packet() {
 
   auto &p = tx_.blocked;
 
-  auto [rest, rv] = send_packet(p.faddr, &p.remote_addr.su.sa,
-                                p.remote_addr.len, &p.local_addr.su.sa,
-                                p.local_addr.len, p.pi, p.data, p.gso_size);
+  auto [rest, rv] = send_packet(
+    p.faddr, p.remote_addr.as_sockaddr(), p.remote_addr.size(),
+    p.local_addr.as_sockaddr(), p.local_addr.size(), p.pi, p.data, p.gso_size);
   if (rv == SHRPX_ERR_SEND_BLOCKED) {
     p.data = rest;
 

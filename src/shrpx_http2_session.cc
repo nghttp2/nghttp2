@@ -317,7 +317,7 @@ int Http2Session::resolve_name() {
 
       if (status == DNSResolverStatus::OK) {
         *resolved_addr_ = *result;
-        util::set_port(*this->resolved_addr_, this->addr_->port);
+        resolved_addr_->port(addr_->port);
       }
 
       rv = this->initiate_connection();
@@ -335,7 +335,7 @@ int Http2Session::resolve_name() {
     state_ = Http2SessionState::RESOLVING_NAME;
     return 0;
   case DNSResolverStatus::OK:
-    util::set_port(*resolved_addr_, addr_->port);
+    resolved_addr_->port(addr_->port);
     return 0;
   default:
     assert(0);
@@ -378,7 +378,7 @@ int Http2Session::initiate_connection() {
                         << proxy.port;
     }
 
-    conn_.fd = util::create_nonblock_socket(proxy.addr.su.storage.ss_family);
+    conn_.fd = util::create_nonblock_socket(proxy.addr.family());
 
     if (conn_.fd == -1) {
       auto error = errno;
@@ -390,7 +390,7 @@ int Http2Session::initiate_connection() {
       return -1;
     }
 
-    rv = connect(conn_.fd, &proxy.addr.su.sa, proxy.addr.len);
+    rv = connect(conn_.fd, proxy.addr.as_sockaddr(), proxy.addr.size());
     if (rv != 0 && errno != EINPROGRESS) {
       auto error = errno;
       SSLOG(WARN, this) << "Backend proxy connect() failed; addr="
@@ -499,7 +499,7 @@ int Http2Session::initiate_connection() {
       if (state_ == Http2SessionState::DISCONNECTED) {
         assert(conn_.fd == -1);
 
-        conn_.fd = util::create_nonblock_socket(raddr_->su.storage.ss_family);
+        conn_.fd = util::create_nonblock_socket(raddr_->family());
         if (conn_.fd == -1) {
           auto error = errno;
           SSLOG(WARN, this)
@@ -514,7 +514,7 @@ int Http2Session::initiate_connection() {
 
         rv = connect(conn_.fd,
                      // TODO maybe not thread-safe?
-                     &raddr_->su.sa, raddr_->len);
+                     raddr_->as_sockaddr(), raddr_->size());
         if (rv != 0 && errno != EINPROGRESS) {
           auto error = errno;
           SSLOG(WARN, this)
@@ -563,7 +563,7 @@ int Http2Session::initiate_connection() {
         // Without TLS and proxy.
         assert(conn_.fd == -1);
 
-        conn_.fd = util::create_nonblock_socket(raddr_->su.storage.ss_family);
+        conn_.fd = util::create_nonblock_socket(raddr_->family());
 
         if (conn_.fd == -1) {
           auto error = errno;
@@ -577,7 +577,7 @@ int Http2Session::initiate_connection() {
 
         worker_blocker->on_success();
 
-        rv = connect(conn_.fd, &raddr_->su.sa, raddr_->len);
+        rv = connect(conn_.fd, raddr_->as_sockaddr(), raddr_->size());
         if (rv != 0 && errno != EINPROGRESS) {
           auto error = errno;
           SSLOG(WARN, this)

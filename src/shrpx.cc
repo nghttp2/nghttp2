@@ -739,22 +739,24 @@ int create_unix_domain_server_socket(
     return -1;
   }
 
-  sockaddr_union addr;
-  addr.un.sun_family = AF_UNIX;
-  if (faddr.host.size() + 1 > sizeof(addr.un.sun_path)) {
+  Address addr;
+  auto &unaddr = addr.skaddr.emplace<sockaddr_un>();
+  unaddr.sun_family = AF_UNIX;
+  if (faddr.host.size() + 1 > sizeof(unaddr.sun_path)) {
     LOG(FATAL) << "UNIX domain socket path " << faddr.host << " is too long > "
-               << sizeof(addr.un.sun_path);
+               << sizeof(unaddr.sun_path);
     close(fd);
     return -1;
   }
   // copy path including terminal NULL
   std::ranges::copy_n(faddr.host.data(), as_signed(faddr.host.size() + 1),
-                      addr.un.sun_path);
+                      unaddr.sun_path);
 
   // unlink (remove) already existing UNIX domain socket path
   unlink(faddr.host.data());
 
-  if (bind(fd, &addr.sa, sizeof(addr.un)) != 0) {
+  if (bind(fd, reinterpret_cast<const sockaddr *>(&unaddr), sizeof(unaddr)) !=
+      0) {
     auto error = errno;
     LOG(FATAL) << "Failed to bind UNIX domain socket: "
                << xsi_strerror(error, errbuf.data(), errbuf.size());

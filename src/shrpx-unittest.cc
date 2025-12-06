@@ -45,6 +45,7 @@
 #include "tls.h"
 #include "shrpx_router_test.h"
 #include "shrpx_log.h"
+#include "network_test.h"
 #ifdef ENABLE_HTTP3
 #  include "siphash_test.h"
 #endif // defined(ENABLE_HTTP3)
@@ -66,6 +67,7 @@ int main(int argc, char *argv[]) {
     memchunk_suite,
     template_suite,
     base64_suite,
+    network_suite,
 #ifdef ENABLE_HTTP3
     siphash_suite,
 #endif // defined(ENABLE_HTTP3)
