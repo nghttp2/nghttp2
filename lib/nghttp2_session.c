@@ -1189,6 +1189,10 @@ int nghttp2_session_add_rst_stream_continue(nghttp2_session *session,
   frame = &item->frame;
 
   nghttp2_frame_rst_stream_init(&frame->rst_stream, stream_id, error_code);
+
+  item->aux_data.rst_stream.continue_without_stream =
+    (uint8_t)(continue_without_stream != 0);
+
   rv = nghttp2_session_add_item(session, item);
   if (rv != 0) {
     nghttp2_frame_rst_stream_free(&frame->rst_stream);
@@ -2141,6 +2145,12 @@ static int session_prep_frame(nghttp2_session *session,
     if (session_is_closing(session)) {
       return NGHTTP2_ERR_SESSION_CLOSING;
     }
+
+    if (!item->aux_data.rst_stream.continue_without_stream &&
+        !nghttp2_session_get_stream(session, frame->rst_stream.hd.stream_id)) {
+      return NGHTTP2_ERR_STREAM_CLOSED;
+    }
+
     nghttp2_frame_pack_rst_stream(&session->aob.framebufs, &frame->rst_stream);
     return 0;
   case NGHTTP2_SETTINGS: {
@@ -2856,8 +2866,12 @@ static nghttp2_ssize nghttp2_session_mem_send_internal(nghttp2_session *session,
           nghttp2_frame *frame = &item->frame;
           /* The library is responsible for the transmission of
              WINDOW_UPDATE frame, so we don't call error callback for
-             it. */
+             it.  As for RST_STREAM, if it is not sent due to missing
+             stream, we also do not call error callback because it may
+             cause a lot of noises.*/
           if (frame->hd.type != NGHTTP2_WINDOW_UPDATE &&
+              (frame->hd.type != NGHTTP2_RST_STREAM ||
+               rv != NGHTTP2_ERR_STREAM_CLOSED) &&
               session->callbacks.on_frame_not_send_callback(
                 session, frame, rv, session->user_data) != 0) {
             nghttp2_outbound_item_free(item, mem);

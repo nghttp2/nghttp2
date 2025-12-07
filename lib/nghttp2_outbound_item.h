@@ -111,6 +111,12 @@ typedef struct {
   uint8_t flags;
 } nghttp2_goaway_aux_data;
 
+typedef struct {
+  /* nonzero if RST_STREAM should be sent even if stream is not
+     found. */
+  uint8_t continue_without_stream;
+} nghttp2_rst_stream_aux_data;
+
 /* struct used for extension frame */
 typedef struct {
   /* nonzero if this extension frame is serialized by library
@@ -123,6 +129,7 @@ typedef union {
   nghttp2_data_aux_data data;
   nghttp2_headers_aux_data headers;
   nghttp2_goaway_aux_data goaway;
+  nghttp2_rst_stream_aux_data rst_stream;
   nghttp2_ext_aux_data ext;
 } nghttp2_aux_data;
 
