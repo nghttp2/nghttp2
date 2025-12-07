@@ -1051,7 +1051,6 @@ int nghttp2_session_add_item(nghttp2_session *session,
       nghttp2_outbound_queue_push(&session->ob_syn, item);
       item->queued = 1;
       return 0;
-      ;
     }
 
     nghttp2_outbound_queue_push(&session->ob_reg, item);
