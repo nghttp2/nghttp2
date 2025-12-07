@@ -238,7 +238,7 @@ DNSResolverStatus DNSResolver::get_status(Address *result) const {
   }
 
   if (result) {
-    memcpy(result, &result_, sizeof(result_));
+    *result = result_;
   }
 
   return status_;
@@ -311,24 +311,32 @@ void DNSResolver::on_result(int status, ares_addrinfo *ai) {
 
   for (; ap; ap = ap->ai_next) {
     switch (ap->ai_family) {
-    case AF_INET:
+    case AF_INET: {
       status_ = DNSResolverStatus::OK;
-      result_.len = sizeof(result_.su.in);
 
-      assert(sizeof(result_.su.in) == ap->ai_addrlen);
+      sockaddr_in sa;
 
-      memcpy(&result_.su.in, ap->ai_addr, sizeof(result_.su.in));
+      assert(sizeof(sa) == ap->ai_addrlen);
+
+      memcpy(&sa, ap->ai_addr, sizeof(sa));
+
+      result_.skaddr.emplace<sockaddr_in>(sa);
 
       break;
-    case AF_INET6:
+    }
+    case AF_INET6: {
       status_ = DNSResolverStatus::OK;
-      result_.len = sizeof(result_.su.in6);
 
-      assert(sizeof(result_.su.in6) == ap->ai_addrlen);
+      sockaddr_in6 sa;
 
-      memcpy(&result_.su.in6, ap->ai_addr, sizeof(result_.su.in6));
+      assert(sizeof(sa) == ap->ai_addrlen);
+
+      memcpy(&sa, ap->ai_addr, sizeof(sa));
+
+      result_.skaddr.emplace<sockaddr_in6>(sa);
 
       break;
+    }
     default:
       continue;
     }
@@ -348,7 +356,7 @@ void DNSResolver::on_result(int status, ares_addrinfo *ai) {
   if (status_ == DNSResolverStatus::OK) {
     if (LOG_ENABLED(INFO)) {
       LOG(INFO) << "Name lookup succeeded: " << name_ << " -> "
-                << util::numeric_name(&result_.su.sa, result_.len);
+                << util::numeric_name(result_.as_sockaddr(), result_.size());
     }
     return;
   }

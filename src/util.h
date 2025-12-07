@@ -964,12 +964,6 @@ std::string to_numeric_addr(const Address *addr);
 
 std::string to_numeric_addr(const struct sockaddr *sa, socklen_t salen);
 
-// Sets |port| to |addr|.
-void set_port(Address &addr, uint16_t port);
-
-// Get port from |su|.
-uint16_t get_port(const sockaddr_union *su);
-
 // Returns true if |port| is prohibited as a QUIC client port.
 bool quic_prohibited_port(uint16_t port);
 

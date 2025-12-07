@@ -56,6 +56,7 @@ if(ENABLE_APP)
   set(HELPER_OBJECTS
     util.cc
     http2.cc timegm.c app_helper.cc nghttp2_gzip.c
+    network.cc
   )
 
   # nghttp client
@@ -82,6 +83,7 @@ if(ENABLE_APP)
     http2.cc h2load.cc
     timegm.c
     tls.cc
+    network.cc
     h2load_http2_session.cc
     h2load_http1_session.cc
   )
@@ -97,6 +99,7 @@ if(ENABLE_APP)
     util.cc http2.cc timegm.c
     app_helper.cc
     tls.cc
+    network.cc
     shrpx_config.cc
     shrpx_accept_handler.cc
     shrpx_connection_handler.cc
@@ -190,6 +193,7 @@ if(ENABLE_APP)
       memchunk_test.cc
       template_test.cc
       base64_test.cc
+      network_test.cc
       ${CMAKE_SOURCE_DIR}/tests/munit/munit.c
     )
     if(ENABLE_HTTP3)
@@ -250,6 +254,7 @@ if(ENABLE_HPACK_TOOLS)
     util.cc
     timegm.c
     tls.cc
+    network.cc
   )
   add_executable(inflatehd ${inflatehd_SOURCES})
   add_executable(deflatehd ${deflatehd_SOURCES})

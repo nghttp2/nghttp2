@@ -1560,7 +1560,7 @@ SSL *create_ssl(SSL_CTX *ssl_ctx) {
   return ssl;
 }
 
-ClientHandler *accept_connection(Worker *worker, int fd, sockaddr *addr,
+ClientHandler *accept_connection(Worker *worker, int fd, const sockaddr *addr,
                                  socklen_t addrlen, const UpstreamAddr *faddr) {
   std::array<char, NI_MAXHOST> host;
   std::array<char, NI_MAXSERV> service;
@@ -1608,11 +1608,12 @@ ClientHandler *accept_connection(Worker *worker, int fd, sockaddr *addr,
   auto &fwdconf = config->http.forwarded;
 
   if (addr->sa_family != AF_UNIX && fwdconf.params & FORWARDED_BY) {
-    sockaddr_union su;
-    socklen_t sulen = sizeof(su);
+    sockaddr_storage ss;
+    socklen_t sslen = sizeof(ss);
 
-    if (getsockname(fd, &su.sa, &sulen) == 0) {
-      handler->set_local_hostport(&su.sa, sulen);
+    if (getsockname(fd, reinterpret_cast<sockaddr *>(&ss), &sslen) == 0) {
+      handler->set_local_hostport(reinterpret_cast<const sockaddr *>(&ss),
+                                  sslen);
     }
   }
 
@@ -1703,18 +1704,23 @@ std::string_view get_common_name(X509 *cert) {
 
 int verify_numeric_hostname(X509 *cert, const std::string_view &hostname,
                             const Address *addr) {
-  const void *saddr;
-  size_t saddrlen;
-  switch (addr->su.storage.ss_family) {
-  case AF_INET:
-    saddr = &addr->su.in.sin_addr;
-    saddrlen = sizeof(addr->su.in.sin_addr);
-    break;
-  case AF_INET6:
-    saddr = &addr->su.in6.sin6_addr;
-    saddrlen = sizeof(addr->su.in6.sin6_addr);
-    break;
-  default:
+  auto [saddr, saddrlen] = std::visit(
+    [](auto &&arg) -> std::tuple<const void *, size_t> {
+      using T = std::decay_t<decltype(arg)>;
+
+      if constexpr (std::is_same_v<T, sockaddr_in>) {
+        return {&arg.sin_addr, sizeof(arg.sin_addr)};
+      }
+
+      if constexpr (std::is_same_v<T, sockaddr_in6>) {
+        return {&arg.sin6_addr, sizeof(arg.sin6_addr)};
+      }
+
+      return {};
+    },
+    addr->skaddr);
+
+  if (saddrlen == 0) {
     return -1;
   }
 

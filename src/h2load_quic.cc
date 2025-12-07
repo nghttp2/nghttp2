@@ -565,7 +565,7 @@ void Client::quic_restart_pkt_timer() {
 
 int Client::read_quic() {
   std::array<uint8_t, 64_k> buf;
-  sockaddr_union su;
+  sockaddr_storage ss;
   int rv;
   size_t pktcnt = 0;
   ngtcp2_pkt_info pi;
@@ -578,7 +578,7 @@ int Client::read_quic() {
   uint8_t msg_ctrl[CMSG_SPACE(sizeof(int))];
 
   msghdr msg{
-    .msg_name = &su,
+    .msg_name = &ss,
     .msg_iov = &msg_iov,
     .msg_iovlen = 1,
     .msg_control = msg_ctrl,
@@ -587,7 +587,7 @@ int Client::read_quic() {
   auto ts = quic_timestamp();
 
   for (;;) {
-    msg.msg_namelen = sizeof(su);
+    msg.msg_namelen = sizeof(ss);
     msg.msg_controllen = sizeof(msg_ctrl);
 
     auto nread = recvmsg(fd, &msg, 0);
@@ -610,13 +610,10 @@ int Client::read_quic() {
     }
 
     auto path = ngtcp2_path{
-      {
-        &local_addr.su.sa,
-        local_addr.len,
-      },
-      {
-        &su.sa,
-        msg.msg_namelen,
+      .local{as_ngtcp2_addr(local_addr)},
+      .remote{
+        .addr = reinterpret_cast<sockaddr *>(&ss),
+        .addrlen = msg.msg_namelen,
       },
     };
 
@@ -794,9 +791,7 @@ void Client::on_send_blocked(const ngtcp2_addr &remote_addr,
 
   auto &p = quic.tx.blocked;
 
-  memcpy(&p.remote_addr.su, remote_addr.addr, remote_addr.addrlen);
-
-  p.remote_addr.len = remote_addr.addrlen;
+  p.remote_addr.set(remote_addr.addr);
   p.data = data;
   p.gso_size = gso_size;
 
@@ -808,8 +803,8 @@ int Client::send_blocked_packet() {
 
   auto &p = quic.tx.blocked;
 
-  auto rest =
-    write_udp(&p.remote_addr.su.sa, p.remote_addr.len, p.data, p.gso_size);
+  auto rest = write_udp(p.remote_addr.as_sockaddr(), p.remote_addr.size(),
+                        p.data, p.gso_size);
   if (!rest.empty()) {
     p.data = rest;
 

@@ -61,8 +61,10 @@ void QUICListener::on_read() {
   uint8_t msg_ctrl[CMSG_SPACE(sizeof(int)) + CMSG_SPACE(sizeof(in6_pktinfo)) +
                    CMSG_SPACE(sizeof(int))];
 
+  sockaddr_storage ss;
+
   msghdr msg{
-    .msg_name = &remote_addr.su,
+    .msg_name = &ss,
     .msg_iov = &msg_iov,
     .msg_iovlen = 1,
     .msg_control = msg_ctrl,
@@ -71,7 +73,7 @@ void QUICListener::on_read() {
   auto quic_conn_handler = worker_->get_quic_connection_handler();
 
   for (; pktcnt < 64;) {
-    msg.msg_namelen = sizeof(remote_addr.su);
+    msg.msg_namelen = sizeof(ss);
     msg.msg_controllen = sizeof(msg_ctrl);
 
     auto nread = recvmsg(faddr_->fd, &msg, 0);
@@ -86,24 +88,25 @@ void QUICListener::on_read() {
       continue;
     }
 
-    if (util::quic_prohibited_port(util::get_port(&remote_addr.su))) {
+    remote_addr.set(reinterpret_cast<const sockaddr *>(&ss));
+
+    if (util::quic_prohibited_port(remote_addr.port())) {
       ++pktcnt;
 
       continue;
     }
 
-    Address local_addr{};
-    if (util::msghdr_get_local_addr(local_addr, &msg,
-                                    remote_addr.su.storage.ss_family) != 0) {
+    Address local_addr;
+    if (util::msghdr_get_local_addr(local_addr, &msg, ss.ss_family) != 0) {
       ++pktcnt;
 
       continue;
     }
 
-    util::set_port(local_addr, faddr_->port);
+    local_addr.port(faddr_->port);
 
     ngtcp2_pkt_info pi{
-      .ecn = util::msghdr_get_ecn(&msg, remote_addr.su.storage.ss_family),
+      .ecn = util::msghdr_get_ecn(&msg, ss.ss_family),
     };
 
     auto gso_size = util::msghdr_get_udp_gro(&msg);
@@ -117,8 +120,6 @@ void QUICListener::on_read() {
       auto datalen = std::min(data.size(), gso_size);
 
       ++pktcnt;
-
-      remote_addr.len = msg.msg_namelen;
 
       if (LOG_ENABLED(INFO)) {
         LOG(INFO) << "QUIC received packet: local="

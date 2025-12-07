@@ -269,13 +269,13 @@ int LiveCheck::initiate_connection() {
       }
     }
 
-    util::set_port(*resolved_addr_, addr_->port);
+    resolved_addr_->port(addr_->port);
     raddr_ = resolved_addr_.get();
   } else {
     raddr_ = &addr_->addr;
   }
 
-  conn_.fd = util::create_nonblock_socket(raddr_->su.storage.ss_family);
+  conn_.fd = util::create_nonblock_socket(raddr_->family());
 
   if (conn_.fd == -1) {
     auto error = errno;
@@ -284,7 +284,7 @@ int LiveCheck::initiate_connection() {
     return -1;
   }
 
-  rv = connect(conn_.fd, &raddr_->su.sa, raddr_->len);
+  rv = connect(conn_.fd, raddr_->as_sockaddr(), raddr_->size());
   if (rv != 0 && errno != EINPROGRESS) {
     auto error = errno;
     LOG(WARN) << "connect() failed; addr=" << util::to_numeric_addr(raddr_)

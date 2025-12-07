@@ -1419,22 +1419,26 @@ int Worker::create_quic_server_socket(UpstreamAddr &faddr) {
   faddr.fd = fd;
   faddr.hostport = util::make_http_hostport(
     mod_config()->balloc, std::string_view{host.data()}, faddr.port);
-  memcpy(&faddr.sockaddr, rp->ai_addr, rp->ai_addrlen);
+  faddr.sockaddr.set(rp->ai_addr);
 
   switch (faddr.family) {
   case AF_INET: {
     static constexpr auto inaddr_any = INADDR_ANY;
 
+    const auto &inaddr = std::get<sockaddr_in>(faddr.sockaddr.skaddr);
+
     faddr.sockaddr_any =
-      memcmp(&inaddr_any, &faddr.sockaddr.in.sin_addr, sizeof(inaddr_any)) == 0;
+      memcmp(&inaddr_any, &inaddr.sin_addr, sizeof(inaddr_any)) == 0;
 
     break;
   }
   case AF_INET6: {
     static constexpr in6_addr in6addr_any = IN6ADDR_ANY_INIT;
 
-    faddr.sockaddr_any = memcmp(&in6addr_any, &faddr.sockaddr.in6.sin6_addr,
-                                sizeof(in6addr_any)) == 0;
+    const auto &in6addr = std::get<sockaddr_in6>(faddr.sockaddr.skaddr);
+
+    faddr.sockaddr_any =
+      memcmp(&in6addr_any, &in6addr.sin6_addr, sizeof(in6addr_any)) == 0;
 
     break;
   }
@@ -1450,48 +1454,53 @@ int Worker::create_quic_server_socket(UpstreamAddr &faddr) {
 const WorkerID &Worker::get_worker_id() const { return worker_id_; }
 
 const UpstreamAddr *Worker::find_quic_upstream_addr(const Address &local_addr) {
-  const UpstreamAddr *fallback_faddr = nullptr;
+  return std::visit(
+    [&faddrs = quic_upstream_addrs_](auto &&arg) {
+      const UpstreamAddr *fallback_faddr = nullptr;
 
-  for (auto &faddr : quic_upstream_addrs_) {
-    if (local_addr.su.sa.sa_family != faddr.family) {
-      continue;
-    }
+      using T = std::decay_t<decltype(arg)>;
 
-    switch (faddr.family) {
-    case AF_INET: {
-      const auto &addr = faddr.sockaddr.in;
-      if (local_addr.su.in.sin_port != addr.sin_port) {
-        continue;
+      for (const auto &faddr : faddrs) {
+        if constexpr (std::is_same_v<T, sockaddr_in>) {
+          if (faddr.family != AF_INET) {
+            continue;
+          }
+
+          const auto &addr = std::get<sockaddr_in>(faddr.sockaddr.skaddr);
+          if (arg.sin_port != addr.sin_port) {
+            continue;
+          }
+
+          if (memcmp(&arg.sin_addr, &addr.sin_addr, sizeof(addr.sin_addr)) ==
+              0) {
+            return &faddr;
+          }
+        }
+
+        if constexpr (std::is_same_v<T, sockaddr_in6>) {
+          if (faddr.family != AF_INET6) {
+            continue;
+          }
+
+          const auto &addr = std::get<sockaddr_in6>(faddr.sockaddr.skaddr);
+          if (arg.sin6_port != addr.sin6_port) {
+            continue;
+          }
+
+          if (memcmp(&arg.sin6_addr, &addr.sin6_addr, sizeof(addr.sin6_addr)) ==
+              0) {
+            return &faddr;
+          }
+        }
+
+        if (faddr.sockaddr_any) {
+          fallback_faddr = &faddr;
+        }
       }
 
-      if (memcmp(&local_addr.su.in.sin_addr, &addr.sin_addr,
-                 sizeof(addr.sin_addr)) == 0) {
-        return &faddr;
-      }
-
-      break;
-    }
-    case AF_INET6: {
-      const auto &addr = faddr.sockaddr.in6;
-      if (local_addr.su.in6.sin6_port != addr.sin6_port) {
-        continue;
-      }
-
-      if (memcmp(&local_addr.su.in6.sin6_addr, &addr.sin6_addr,
-                 sizeof(addr.sin6_addr)) == 0) {
-        return &faddr;
-      }
-
-      break;
-    }
-    }
-
-    if (faddr.sockaddr_any) {
-      fallback_faddr = &faddr;
-    }
-  }
-
-  return fallback_faddr;
+      return fallback_faddr;
+    },
+    local_addr.skaddr);
 }
 #endif // defined(ENABLE_HTTP3)
 
@@ -1665,7 +1674,7 @@ void downstream_failure(DownstreamAddr *addr, const Address *raddr) {
   }
 }
 
-int Worker::handle_connection(int fd, sockaddr *addr, socklen_t addrlen,
+int Worker::handle_connection(int fd, const sockaddr *addr, socklen_t addrlen,
                               const UpstreamAddr *faddr) {
   if (LOG_ENABLED(INFO)) {
     LLOG(INFO, this) << "Accepted connection from "
