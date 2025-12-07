@@ -51,8 +51,7 @@ Http2DownstreamConnection::Http2DownstreamConnection(Http2Session *http2session)
   : dlnext(nullptr),
     dlprev(nullptr),
     http2session_(http2session),
-    sd_(nullptr),
-    stream_closed_(false) {}
+    sd_(nullptr) {}
 
 Http2DownstreamConnection::~Http2DownstreamConnection() {
   if (LOG_ENABLED(INFO)) {
@@ -151,11 +150,6 @@ int Http2DownstreamConnection::submit_rst_stream(Downstream *downstream,
       return rv;
     default:
       break;
-    }
-
-    // If the stream has been closed, no need to submit RESET_STREAM.
-    if (stream_closed_) {
-      return rv;
     }
 
     if (LOG_ENABLED(INFO)) {
@@ -627,9 +621,5 @@ Http2DownstreamConnection::get_downstream_addr_group() const {
 }
 
 DownstreamAddr *Http2DownstreamConnection::get_addr() const { return nullptr; }
-
-void Http2DownstreamConnection::set_stream_closed(bool f) {
-  stream_closed_ = f;
-}
 
 } // namespace shrpx
