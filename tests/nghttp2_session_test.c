@@ -7043,8 +7043,13 @@ void test_nghttp2_submit_rst_stream(void) {
   int32_t stream_id;
   nghttp2_ssize datalen;
   const uint8_t *data;
+  nghttp2_bufs bufs;
+  nghttp2_buf *buf;
+  nghttp2_frame frame;
+  nghttp2_ssize nread;
 
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
+  frame_pack_bufs_init(&bufs);
 
   /* Sending RST_STREAM to idle stream (local) is ignored */
   nghttp2_session_client_new(&session, &callbacks, NULL);
@@ -7171,6 +7176,41 @@ void test_nghttp2_submit_rst_stream(void) {
   assert_null(item);
 
   nghttp2_session_del(session);
+
+  /* Cancel sending RST_STREAM if stream is closed */
+  nghttp2_session_client_new(&session, &callbacks, NULL);
+
+  open_sent_stream(session, 1);
+
+  rv =
+    nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, 1, NGHTTP2_NO_ERROR);
+
+  assert_int(0, ==, rv);
+
+  item = nghttp2_outbound_queue_top(&session->ob_reg);
+
+  assert_not_null(item);
+  assert_uint8(NGHTTP2_RST_STREAM, ==, item->frame.hd.type);
+  assert_int32(1, ==, item->frame.hd.stream_id);
+  assert_false(item->aux_data.rst_stream.continue_without_stream);
+
+  nghttp2_frame_rst_stream_init(&frame.rst_stream, 1, NGHTTP2_NO_ERROR);
+  nghttp2_frame_pack_rst_stream(&bufs, &frame.rst_stream);
+  nghttp2_frame_rst_stream_free(&frame.rst_stream);
+
+  buf = &bufs.head->buf;
+  nread = nghttp2_session_mem_recv2(session, buf->pos, nghttp2_buf_len(buf));
+
+  assert_ptrdiff((nghttp2_ssize)nghttp2_buf_len(buf), ==, nread);
+  assert_null(nghttp2_session_get_stream(session, 1));
+
+  datalen = nghttp2_session_mem_send2(session, &data);
+
+  assert_ptrdiff(0, ==, datalen);
+
+  nghttp2_session_del(session);
+
+  nghttp2_bufs_free(&bufs);
 }
 
 void test_nghttp2_session_open_stream(void) {
