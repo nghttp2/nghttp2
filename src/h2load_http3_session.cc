@@ -113,8 +113,8 @@ int64_t Http3Session::submit_request_internal() {
   };
 
   rv = nghttp3_conn_submit_request(
-    conn_, stream_id, reinterpret_cast<nghttp3_nv *>(nva.data()), nva.size(),
-    config->data_fd == -1 ? nullptr : &dr, nullptr);
+    conn_, stream_id, reinterpret_cast<const nghttp3_nv *>(nva.data()),
+    nva.size(), config->data_fd == -1 ? nullptr : &dr, nullptr);
   if (rv != 0) {
     return rv;
   }

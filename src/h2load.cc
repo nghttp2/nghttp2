@@ -3156,19 +3156,24 @@ int main(int argc, char **argv) {
     config.h1reqs.push_back(std::move(h1req));
 
     // For nghttp2
-    std::vector<nghttp2_nv> nva;
+    std::vector<SharedNV> nva;
     // 2 for :path, and possible content-length
     nva.reserve(2 + shared_nva.size());
 
-    nva.push_back(http2::make_field_v(":path"sv, req));
+    nva.emplace_back(SharedNV{
+      .nv2 = http2::make_field_v(":path"sv, req),
+    });
 
     for (auto &nv : shared_nva) {
-      nva.push_back(http2::make_field_nv(nv.name, nv.value));
+      nva.emplace_back(SharedNV{
+        .nv2 = http2::make_field_nv(nv.name, nv.value),
+      });
     }
 
     if (!content_length_str.empty()) {
-      nva.push_back(
-        http2::make_field_nv("content-length"sv, content_length_str));
+      nva.emplace_back(SharedNV{
+        .nv2 = http2::make_field_nv("content-length"sv, content_length_str),
+      });
     }
 
     config.nva.push_back(std::move(nva));

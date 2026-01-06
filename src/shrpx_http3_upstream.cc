@@ -811,7 +811,7 @@ ngtcp2_ssize write_pkt(ngtcp2_conn *conn, ngtcp2_path *path,
 ngtcp2_ssize Http3Upstream::write_pkt(ngtcp2_path *path, ngtcp2_pkt_info *pi,
                                       uint8_t *dest, size_t destlen,
                                       ngtcp2_tstamp ts) {
-  std::array<nghttp3_vec, 16> vec;
+  std::array<http3::SharedVec, 16> vec;
   int rv;
 
   for (;;) {
@@ -820,8 +820,9 @@ ngtcp2_ssize Http3Upstream::write_pkt(ngtcp2_path *path, ngtcp2_pkt_info *pi,
     nghttp3_ssize sveccnt = 0;
 
     if (httpconn_ && ngtcp2_conn_get_max_data_left(conn_)) {
-      sveccnt = nghttp3_conn_writev_stream(httpconn_, &stream_id, &fin,
-                                           vec.data(), vec.size());
+      sveccnt = nghttp3_conn_writev_stream(
+        httpconn_, &stream_id, &fin,
+        reinterpret_cast<nghttp3_vec *>(vec.data()), vec.size());
       if (sveccnt < 0) {
         ULOG(ERROR, this) << "nghttp3_conn_writev_stream: "
                           << nghttp3_strerror(static_cast<int>(sveccnt));
@@ -834,7 +835,6 @@ ngtcp2_ssize Http3Upstream::write_pkt(ngtcp2_path *path, ngtcp2_pkt_info *pi,
     }
 
     ngtcp2_ssize ndatalen;
-    auto v = vec.data();
     auto vcnt = static_cast<size_t>(sveccnt);
 
     uint32_t flags =
@@ -845,7 +845,7 @@ ngtcp2_ssize Http3Upstream::write_pkt(ngtcp2_path *path, ngtcp2_pkt_info *pi,
 
     auto nwrite = ngtcp2_conn_writev_stream(
       conn_, path, pi, dest, destlen, &ndatalen, flags, stream_id,
-      reinterpret_cast<const ngtcp2_vec *>(v), vcnt, ts);
+      reinterpret_cast<const ngtcp2_vec *>(vec.data()), vcnt, ts);
     if (nwrite < 0) {
       switch (nwrite) {
       case NGTCP2_ERR_STREAM_DATA_BLOCKED:
