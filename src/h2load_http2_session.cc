@@ -267,9 +267,9 @@ int Http2Session::submit_request() {
 
   nghttp2_data_provider2 prd{{0}, file_read_callback};
 
-  auto stream_id =
-    nghttp2_submit_request2(session_, nullptr, nva.data(), nva.size(),
-                            config->data_fd == -1 ? nullptr : &prd, nullptr);
+  auto stream_id = nghttp2_submit_request2(
+    session_, nullptr, reinterpret_cast<const nghttp2_nv *>(nva.data()),
+    nva.size(), config->data_fd == -1 ? nullptr : &prd, nullptr);
   if (stream_id < 0) {
     return -1;
   }
