@@ -390,7 +390,8 @@ void test_nghttp2_frame_pack_ping(void) {
   assert_size(NGHTTP2_FRAME_HDLEN + 8, ==, nghttp2_bufs_len(&bufs));
   assert_int(0, ==, unpack_framebuf((nghttp2_frame *)&oframe, &bufs));
   check_frame_header(8, NGHTTP2_PING, NGHTTP2_FLAG_ACK, 0, &oframe.hd);
-  assert_memory_equal(sizeof(opaque_data) - 1, opaque_data, oframe.opaque_data);
+  assert_memory_equal(nghttp2_strlen_lit(opaque_data), opaque_data,
+                      oframe.opaque_data);
 
   nghttp2_bufs_free(&bufs);
   nghttp2_frame_ping_free(&oframe);
@@ -487,14 +488,15 @@ void test_nghttp2_frame_pack_altsvc(void) {
   rawbuf = nghttp2_mem_malloc(mem, 32);
   nghttp2_buf_wrap_init(&buf, rawbuf, 32);
 
-  buf.last = nghttp2_cpymem(buf.last, origin, sizeof(origin) - 1);
-  buf.last = nghttp2_cpymem(buf.last, field_value, sizeof(field_value) - 1);
+  buf.last = nghttp2_cpymem(buf.last, origin, nghttp2_strlen_lit(origin));
+  buf.last =
+    nghttp2_cpymem(buf.last, field_value, nghttp2_strlen_lit(field_value));
 
-  nghttp2_frame_altsvc_init(&frame, 1000000007, buf.pos, sizeof(origin) - 1,
-                            buf.pos + sizeof(origin) - 1,
-                            sizeof(field_value) - 1);
+  nghttp2_frame_altsvc_init(
+    &frame, 1000000007, buf.pos, nghttp2_strlen_lit(origin),
+    buf.pos + nghttp2_strlen_lit(origin), nghttp2_strlen_lit(field_value));
 
-  payloadlen = 2 + sizeof(origin) - 1 + sizeof(field_value) - 1;
+  payloadlen = 2 + nghttp2_strlen_lit(origin) + nghttp2_strlen_lit(field_value);
 
   nghttp2_frame_pack_altsvc(&bufs, &frame);
 
@@ -507,10 +509,10 @@ void test_nghttp2_frame_pack_altsvc(void) {
   check_frame_header(payloadlen, NGHTTP2_ALTSVC, NGHTTP2_FLAG_NONE, 1000000007,
                      &oframe.hd);
 
-  assert_size(sizeof(origin) - 1, ==, oaltsvc.origin_len);
-  assert_memory_equal(sizeof(origin) - 1, origin, oaltsvc.origin);
-  assert_size(sizeof(field_value) - 1, ==, oaltsvc.field_value_len);
-  assert_memory_equal(sizeof(field_value) - 1, field_value,
+  assert_size(nghttp2_strlen_lit(origin), ==, oaltsvc.origin_len);
+  assert_memory_equal(nghttp2_strlen_lit(origin), origin, oaltsvc.origin);
+  assert_size(nghttp2_strlen_lit(field_value), ==, oaltsvc.field_value_len);
+  assert_memory_equal(nghttp2_strlen_lit(field_value), field_value,
                       oaltsvc.field_value);
 
   nghttp2_frame_altsvc_free(&oframe, mem);
@@ -530,7 +532,7 @@ void test_nghttp2_frame_pack_origin(void) {
   nghttp2_origin_entry ov[] = {
     {
       (uint8_t *)example,
-      sizeof(example) - 1,
+      nghttp2_strlen_lit(example),
     },
     {
       NULL,
@@ -538,7 +540,7 @@ void test_nghttp2_frame_pack_origin(void) {
     },
     {
       (uint8_t *)nghttp2,
-      sizeof(nghttp2) - 1,
+      nghttp2_strlen_lit(nghttp2),
     },
   };
   nghttp2_mem *mem;
@@ -552,7 +554,8 @@ void test_nghttp2_frame_pack_origin(void) {
 
   nghttp2_frame_origin_init(&frame, ov, 3);
 
-  payloadlen = 2 + sizeof(example) - 1 + 2 + 2 + sizeof(nghttp2) - 1;
+  payloadlen =
+    2 + nghttp2_strlen_lit(example) + 2 + 2 + nghttp2_strlen_lit(nghttp2);
 
   rv = nghttp2_frame_pack_origin(&bufs, &frame);
 
@@ -567,10 +570,12 @@ void test_nghttp2_frame_pack_origin(void) {
                      &oframe.hd);
 
   assert_size(2, ==, oorigin.nov);
-  assert_size(sizeof(example) - 1, ==, oorigin.ov[0].origin_len);
-  assert_memory_equal(sizeof(example) - 1, example, oorigin.ov[0].origin);
-  assert_size(sizeof(nghttp2) - 1, ==, oorigin.ov[1].origin_len);
-  assert_memory_equal(sizeof(nghttp2) - 1, nghttp2, oorigin.ov[1].origin);
+  assert_size(nghttp2_strlen_lit(example), ==, oorigin.ov[0].origin_len);
+  assert_memory_equal(nghttp2_strlen_lit(example), example,
+                      oorigin.ov[0].origin);
+  assert_size(nghttp2_strlen_lit(nghttp2), ==, oorigin.ov[1].origin_len);
+  assert_memory_equal(nghttp2_strlen_lit(nghttp2), nghttp2,
+                      oorigin.ov[1].origin);
 
   nghttp2_frame_origin_free(&oframe, mem);
 
@@ -624,9 +629,9 @@ void test_nghttp2_frame_pack_priority_update(void) {
   oframe.payload = &opriority_update;
 
   nghttp2_frame_priority_update_init(&frame, 1000000007, (uint8_t *)field_value,
-                                     sizeof(field_value) - 1);
+                                     nghttp2_strlen_lit(field_value));
 
-  payloadlen = 4 + sizeof(field_value) - 1;
+  payloadlen = 4 + nghttp2_strlen_lit(field_value);
 
   nghttp2_frame_pack_priority_update(&bufs, &frame);
 
@@ -639,8 +644,9 @@ void test_nghttp2_frame_pack_priority_update(void) {
   check_frame_header(payloadlen, NGHTTP2_PRIORITY_UPDATE, NGHTTP2_FLAG_NONE, 0,
                      &oframe.hd);
 
-  assert_size(sizeof(field_value) - 1, ==, opriority_update.field_value_len);
-  assert_memory_equal(sizeof(field_value) - 1, field_value,
+  assert_size(nghttp2_strlen_lit(field_value), ==,
+              opriority_update.field_value_len);
+  assert_memory_equal(nghttp2_strlen_lit(field_value), field_value,
                       opriority_update.field_value);
 
   nghttp2_bufs_free(&bufs);

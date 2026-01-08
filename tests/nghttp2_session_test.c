@@ -2738,14 +2738,16 @@ void test_nghttp2_session_recv_altsvc(void) {
 
   nghttp2_session_client_new2(&session, &callbacks, &ud, option);
 
-  nghttp2_frame_hd_init(&hd, 2 + sizeof(origin) - 1 + sizeof(field_value) - 1,
-                        NGHTTP2_ALTSVC, NGHTTP2_FLAG_NONE, 0);
+  nghttp2_frame_hd_init(
+    &hd, 2 + nghttp2_strlen_lit(origin) + nghttp2_strlen_lit(field_value),
+    NGHTTP2_ALTSVC, NGHTTP2_FLAG_NONE, 0);
   nghttp2_frame_pack_frame_hd(buf.last, &hd);
   buf.last += NGHTTP2_FRAME_HDLEN;
-  nghttp2_put_uint16be(buf.last, sizeof(origin) - 1);
+  nghttp2_put_uint16be(buf.last, nghttp2_strlen_lit(origin));
   buf.last += 2;
-  buf.last = nghttp2_cpymem(buf.last, origin, sizeof(origin) - 1);
-  buf.last = nghttp2_cpymem(buf.last, field_value, sizeof(field_value) - 1);
+  buf.last = nghttp2_cpymem(buf.last, origin, nghttp2_strlen_lit(origin));
+  buf.last =
+    nghttp2_cpymem(buf.last, field_value, nghttp2_strlen_lit(field_value));
 
   ud.frame_recv_cb_called = 0;
   rv = nghttp2_session_mem_recv2(session, buf.pos, nghttp2_buf_len(&buf));
@@ -2763,13 +2765,13 @@ void test_nghttp2_session_recv_altsvc(void) {
 
   nghttp2_session_client_new2(&session, &callbacks, &ud, option);
 
-  nghttp2_frame_hd_init(&hd, 2 + sizeof(origin) - 1 - 1, NGHTTP2_ALTSVC,
+  nghttp2_frame_hd_init(&hd, 2 + nghttp2_strlen_lit(origin) - 1, NGHTTP2_ALTSVC,
                         NGHTTP2_FLAG_NONE, 0);
   nghttp2_frame_pack_frame_hd(buf.last, &hd);
   buf.last += NGHTTP2_FRAME_HDLEN;
-  nghttp2_put_uint16be(buf.last, sizeof(origin) - 1);
+  nghttp2_put_uint16be(buf.last, nghttp2_strlen_lit(origin));
   buf.last += 2;
-  buf.last = nghttp2_cpymem(buf.last, origin, sizeof(origin) - 1 - 1);
+  buf.last = nghttp2_cpymem(buf.last, origin, nghttp2_strlen_lit(origin) - 1);
 
   ud.frame_recv_cb_called = 0;
   rv = nghttp2_session_mem_recv2(session, buf.pos, nghttp2_buf_len(&buf));
@@ -2784,13 +2786,13 @@ void test_nghttp2_session_recv_altsvc(void) {
 
   nghttp2_session_client_new2(&session, &callbacks, &ud, option);
 
-  nghttp2_frame_hd_init(&hd, 2 + sizeof(origin) - 1, NGHTTP2_ALTSVC,
+  nghttp2_frame_hd_init(&hd, 2 + nghttp2_strlen_lit(origin), NGHTTP2_ALTSVC,
                         NGHTTP2_FLAG_NONE, 0);
   nghttp2_frame_pack_frame_hd(buf.last, &hd);
   buf.last += NGHTTP2_FRAME_HDLEN;
-  nghttp2_put_uint16be(buf.last, sizeof(origin) - 1);
+  nghttp2_put_uint16be(buf.last, nghttp2_strlen_lit(origin));
   buf.last += 2;
-  buf.last = nghttp2_cpymem(buf.last, origin, sizeof(origin) - 1);
+  buf.last = nghttp2_cpymem(buf.last, origin, nghttp2_strlen_lit(origin));
 
   ud.invalid_frame_recv_cb_called = 0;
   rv = nghttp2_session_mem_recv2(session, buf.pos, nghttp2_buf_len(&buf));
@@ -2807,14 +2809,16 @@ void test_nghttp2_session_recv_altsvc(void) {
 
   open_sent_stream(session, 1);
 
-  nghttp2_frame_hd_init(&hd, 2 + sizeof(origin) - 1 + sizeof(field_value) - 1,
-                        NGHTTP2_ALTSVC, NGHTTP2_FLAG_NONE, 1);
+  nghttp2_frame_hd_init(
+    &hd, 2 + nghttp2_strlen_lit(origin) + nghttp2_strlen_lit(field_value),
+    NGHTTP2_ALTSVC, NGHTTP2_FLAG_NONE, 1);
   nghttp2_frame_pack_frame_hd(buf.last, &hd);
   buf.last += NGHTTP2_FRAME_HDLEN;
-  nghttp2_put_uint16be(buf.last, sizeof(origin) - 1);
+  nghttp2_put_uint16be(buf.last, nghttp2_strlen_lit(origin));
   buf.last += 2;
-  buf.last = nghttp2_cpymem(buf.last, origin, sizeof(origin) - 1);
-  buf.last = nghttp2_cpymem(buf.last, field_value, sizeof(field_value) - 1);
+  buf.last = nghttp2_cpymem(buf.last, origin, nghttp2_strlen_lit(origin));
+  buf.last =
+    nghttp2_cpymem(buf.last, field_value, nghttp2_strlen_lit(field_value));
 
   ud.invalid_frame_recv_cb_called = 0;
   rv = nghttp2_session_mem_recv2(session, buf.pos, nghttp2_buf_len(&buf));
@@ -2829,13 +2833,14 @@ void test_nghttp2_session_recv_altsvc(void) {
 
   nghttp2_session_client_new2(&session, &callbacks, &ud, option);
 
-  nghttp2_frame_hd_init(&hd, 2 + sizeof(field_value) - 1, NGHTTP2_ALTSVC,
-                        NGHTTP2_FLAG_NONE, 0);
+  nghttp2_frame_hd_init(&hd, 2 + nghttp2_strlen_lit(field_value),
+                        NGHTTP2_ALTSVC, NGHTTP2_FLAG_NONE, 0);
   nghttp2_frame_pack_frame_hd(buf.last, &hd);
   buf.last += NGHTTP2_FRAME_HDLEN;
   nghttp2_put_uint16be(buf.last, 0);
   buf.last += 2;
-  buf.last = nghttp2_cpymem(buf.last, field_value, sizeof(field_value) - 1);
+  buf.last =
+    nghttp2_cpymem(buf.last, field_value, nghttp2_strlen_lit(field_value));
 
   ud.invalid_frame_recv_cb_called = 0;
   rv = nghttp2_session_mem_recv2(session, buf.pos, nghttp2_buf_len(&buf));
@@ -2854,9 +2859,9 @@ void test_nghttp2_session_recv_altsvc(void) {
                         NGHTTP2_FLAG_NONE, 0);
   nghttp2_frame_pack_frame_hd(buf.last, &hd);
   buf.last += NGHTTP2_FRAME_HDLEN;
-  nghttp2_put_uint16be(buf.last, sizeof(origin) - 1);
+  nghttp2_put_uint16be(buf.last, nghttp2_strlen_lit(origin));
   buf.last += 2;
-  buf.last = nghttp2_cpymem(buf.last, origin, sizeof(origin) - 1);
+  buf.last = nghttp2_cpymem(buf.last, origin, nghttp2_strlen_lit(origin));
   memset(buf.last, 0, nghttp2_buf_avail(&buf));
   buf.last += nghttp2_buf_avail(&buf);
 
@@ -2881,9 +2886,9 @@ void test_nghttp2_session_recv_altsvc(void) {
                         NGHTTP2_FLAG_NONE, 0);
   nghttp2_frame_pack_frame_hd(buf.last, &hd);
   buf.last += NGHTTP2_FRAME_HDLEN;
-  nghttp2_put_uint16be(buf.last, sizeof(origin) - 1);
+  nghttp2_put_uint16be(buf.last, nghttp2_strlen_lit(origin));
   buf.last += 2;
-  buf.last = nghttp2_cpymem(buf.last, origin, sizeof(origin) - 1);
+  buf.last = nghttp2_cpymem(buf.last, origin, nghttp2_strlen_lit(origin));
   memset(buf.last, 0, nghttp2_buf_avail(&buf));
   buf.last += nghttp2_buf_avail(&buf);
 
@@ -2900,14 +2905,16 @@ void test_nghttp2_session_recv_altsvc(void) {
 
   nghttp2_session_server_new2(&session, &callbacks, &ud, option);
 
-  nghttp2_frame_hd_init(&hd, 2 + sizeof(origin) - 1 + sizeof(field_value) - 1,
-                        NGHTTP2_ALTSVC, NGHTTP2_FLAG_NONE, 0);
+  nghttp2_frame_hd_init(
+    &hd, 2 + nghttp2_strlen_lit(origin) + nghttp2_strlen_lit(field_value),
+    NGHTTP2_ALTSVC, NGHTTP2_FLAG_NONE, 0);
   nghttp2_frame_pack_frame_hd(buf.last, &hd);
   buf.last += NGHTTP2_FRAME_HDLEN;
-  nghttp2_put_uint16be(buf.last, sizeof(origin) - 1);
+  nghttp2_put_uint16be(buf.last, nghttp2_strlen_lit(origin));
   buf.last += 2;
-  buf.last = nghttp2_cpymem(buf.last, origin, sizeof(origin) - 1);
-  buf.last = nghttp2_cpymem(buf.last, field_value, sizeof(field_value) - 1);
+  buf.last = nghttp2_cpymem(buf.last, origin, nghttp2_strlen_lit(origin));
+  buf.last =
+    nghttp2_cpymem(buf.last, field_value, nghttp2_strlen_lit(field_value));
 
   ud.frame_recv_cb_called = 0;
   rv = nghttp2_session_mem_recv2(session, buf.pos, nghttp2_buf_len(&buf));
@@ -2922,14 +2929,16 @@ void test_nghttp2_session_recv_altsvc(void) {
 
   nghttp2_session_server_new2(&session, &callbacks, &ud, option);
 
-  nghttp2_frame_hd_init(&hd, 2 + sizeof(origin) - 1 + sizeof(field_value) - 1,
-                        NGHTTP2_ALTSVC, NGHTTP2_FLAG_NONE, 0);
+  nghttp2_frame_hd_init(
+    &hd, 2 + nghttp2_strlen_lit(origin) + nghttp2_strlen_lit(field_value),
+    NGHTTP2_ALTSVC, NGHTTP2_FLAG_NONE, 0);
   nghttp2_frame_pack_frame_hd(buf.last, &hd);
   buf.last += NGHTTP2_FRAME_HDLEN;
-  nghttp2_put_uint16be(buf.last, sizeof(origin) - 1);
+  nghttp2_put_uint16be(buf.last, nghttp2_strlen_lit(origin));
   buf.last += 2;
-  buf.last = nghttp2_cpymem(buf.last, origin, sizeof(origin) - 1);
-  buf.last = nghttp2_cpymem(buf.last, field_value, sizeof(field_value) - 1);
+  buf.last = nghttp2_cpymem(buf.last, origin, nghttp2_strlen_lit(origin));
+  buf.last =
+    nghttp2_cpymem(buf.last, field_value, nghttp2_strlen_lit(field_value));
 
   for (;;) {
     rv = nghttp2_session_mem_recv2(session, buf.pos, nghttp2_buf_len(&buf));
@@ -2971,7 +2980,7 @@ void test_nghttp2_session_recv_origin(void) {
   frame.payload = &origin;
 
   ov.origin = (uint8_t *)nghttp2;
-  ov.origin_len = sizeof(nghttp2) - 1;
+  ov.origin_len = nghttp2_strlen_lit(nghttp2);
 
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
 
@@ -3150,7 +3159,7 @@ void test_nghttp2_session_recv_priority_update(void) {
   mem = nghttp2_mem_default();
 
   memset(large_field_value, ' ', sizeof(large_field_value));
-  memcpy(large_field_value, field_value, sizeof(field_value) - 1);
+  memcpy(large_field_value, field_value, nghttp2_strlen_lit(field_value));
 
   frame_pack_bufs_init(&bufs);
 
@@ -3169,7 +3178,7 @@ void test_nghttp2_session_recv_priority_update(void) {
   session->pending_no_rfc7540_priorities = 1;
 
   nghttp2_frame_priority_update_init(&frame, 1, (uint8_t *)field_value,
-                                     sizeof(field_value) - 1);
+                                     nghttp2_strlen_lit(field_value));
 
   nghttp2_frame_pack_priority_update(&bufs, &frame);
 
@@ -3200,7 +3209,7 @@ void test_nghttp2_session_recv_priority_update(void) {
   session->pending_no_rfc7540_priorities = 1;
 
   nghttp2_frame_priority_update_init(&frame, 1, (uint8_t *)field_value,
-                                     sizeof(field_value) - 1);
+                                     nghttp2_strlen_lit(field_value));
 
   nghttp2_frame_pack_priority_update(&bufs, &frame);
 
@@ -3275,7 +3284,7 @@ void test_nghttp2_session_recv_priority_update(void) {
   session->pending_no_rfc7540_priorities = 1;
 
   nghttp2_frame_priority_update_init(&frame, 1, (uint8_t *)field_value,
-                                     sizeof(field_value) - 1);
+                                     nghttp2_strlen_lit(field_value));
 
   nghttp2_frame_pack_priority_update(&bufs, &frame);
 
@@ -3303,8 +3312,9 @@ void test_nghttp2_session_recv_priority_update(void) {
 
   for (i = 0; i < 101; ++i) {
     stream_id = (int32_t)(i * 2 + 1);
-    nghttp2_frame_priority_update_init(
-      &frame, stream_id, (uint8_t *)field_value, sizeof(field_value) - 1);
+    nghttp2_frame_priority_update_init(&frame, stream_id,
+                                       (uint8_t *)field_value,
+                                       nghttp2_strlen_lit(field_value));
 
     nghttp2_frame_pack_priority_update(&bufs, &frame);
 
@@ -4836,8 +4846,8 @@ void test_nghttp2_session_on_altsvc_received(void) {
 
   /* We just pass the strings without making a copy.  This is OK,
      since we never call nghttp2_frame_altsvc_free(). */
-  nghttp2_frame_altsvc_init(&frame.ext, 0, origin, sizeof(origin) - 1,
-                            field_value, sizeof(field_value) - 1);
+  nghttp2_frame_altsvc_init(&frame.ext, 0, origin, nghttp2_strlen_lit(origin),
+                            field_value, nghttp2_strlen_lit(field_value));
 
   ud.frame_recv_cb_called = 0;
   rv = nghttp2_session_on_altsvc_received(session, &frame);
@@ -4853,7 +4863,7 @@ void test_nghttp2_session_on_altsvc_received(void) {
   frame.ext.payload = &session->iframe.ext_frame_payload;
 
   nghttp2_frame_altsvc_init(&frame.ext, 0, origin, 0, field_value,
-                            sizeof(field_value) - 1);
+                            nghttp2_strlen_lit(field_value));
 
   ud.frame_recv_cb_called = 0;
   rv = nghttp2_session_on_altsvc_received(session, &frame);
@@ -4870,8 +4880,8 @@ void test_nghttp2_session_on_altsvc_received(void) {
 
   open_sent_stream(session, 1);
 
-  nghttp2_frame_altsvc_init(&frame.ext, 1, origin, sizeof(origin) - 1,
-                            field_value, sizeof(field_value) - 1);
+  nghttp2_frame_altsvc_init(&frame.ext, 1, origin, nghttp2_strlen_lit(origin),
+                            field_value, nghttp2_strlen_lit(field_value));
 
   ud.frame_recv_cb_called = 0;
   rv = nghttp2_session_on_altsvc_received(session, &frame);
@@ -4889,7 +4899,7 @@ void test_nghttp2_session_on_altsvc_received(void) {
   open_sent_stream(session, 1);
 
   nghttp2_frame_altsvc_init(&frame.ext, 1, origin, 0, field_value,
-                            sizeof(field_value) - 1);
+                            nghttp2_strlen_lit(field_value));
 
   ud.frame_recv_cb_called = 0;
   rv = nghttp2_session_on_altsvc_received(session, &frame);
@@ -4905,7 +4915,7 @@ void test_nghttp2_session_on_altsvc_received(void) {
   frame.ext.payload = &session->iframe.ext_frame_payload;
 
   nghttp2_frame_altsvc_init(&frame.ext, 1, origin, 0, field_value,
-                            sizeof(field_value) - 1);
+                            nghttp2_strlen_lit(field_value));
 
   ud.frame_recv_cb_called = 0;
   rv = nghttp2_session_on_altsvc_received(session, &frame);
@@ -6788,8 +6798,8 @@ void test_nghttp2_submit_altsvc(void) {
   nghttp2_session_server_new(&session, &callbacks, &ud);
 
   rv = nghttp2_submit_altsvc(session, NGHTTP2_FLAG_NONE, 0, origin,
-                             sizeof(origin) - 1, field_value,
-                             sizeof(field_value) - 1);
+                             nghttp2_strlen_lit(origin), field_value,
+                             nghttp2_strlen_lit(field_value));
 
   assert_int(0, ==, rv);
 
@@ -6797,34 +6807,36 @@ void test_nghttp2_submit_altsvc(void) {
 
   len = nghttp2_session_mem_send2(session, &data);
 
-  assert_ptrdiff(NGHTTP2_FRAME_HDLEN + 2 + sizeof(origin) - 1 +
-                   sizeof(field_value) - 1,
+  assert_ptrdiff(NGHTTP2_FRAME_HDLEN + 2 + nghttp2_strlen_lit(origin) +
+                   nghttp2_strlen_lit(field_value),
                  ==, len);
 
   nghttp2_frame_unpack_frame_hd(&hd, data);
 
-  assert_size(2 + sizeof(origin) - 1 + sizeof(field_value) - 1, ==, hd.length);
+  assert_size(2 + nghttp2_strlen_lit(origin) + nghttp2_strlen_lit(field_value),
+              ==, hd.length);
   assert_uint8(NGHTTP2_ALTSVC, ==, hd.type);
   assert_uint8(NGHTTP2_FLAG_NONE, ==, hd.flags);
 
   origin_len = nghttp2_get_uint16(data + NGHTTP2_FRAME_HDLEN);
 
-  assert_size(sizeof(origin) - 1, ==, origin_len);
-  assert_memory_equal(sizeof(origin) - 1, origin,
+  assert_size(nghttp2_strlen_lit(origin), ==, origin_len);
+  assert_memory_equal(nghttp2_strlen_lit(origin), origin,
                       data + NGHTTP2_FRAME_HDLEN + 2);
-  assert_memory_equal(hd.length - (sizeof(origin) - 1) - 2, field_value,
-                      data + NGHTTP2_FRAME_HDLEN + 2 + sizeof(origin) - 1);
+  assert_memory_equal(hd.length - nghttp2_strlen_lit(origin) - 2, field_value,
+                      data + NGHTTP2_FRAME_HDLEN + 2 +
+                        nghttp2_strlen_lit(origin));
 
   /* submitting empty origin with stream_id == 0 is error */
   rv = nghttp2_submit_altsvc(session, NGHTTP2_FLAG_NONE, 0, NULL, 0,
-                             field_value, sizeof(field_value) - 1);
+                             field_value, nghttp2_strlen_lit(field_value));
 
   assert_int(NGHTTP2_ERR_INVALID_ARGUMENT, ==, rv);
 
   /* submitting non-empty origin with stream_id != 0 is error */
   rv = nghttp2_submit_altsvc(session, NGHTTP2_FLAG_NONE, 1, origin,
-                             sizeof(origin) - 1, field_value,
-                             sizeof(field_value) - 1);
+                             nghttp2_strlen_lit(origin), field_value,
+                             nghttp2_strlen_lit(field_value));
 
   assert_int(NGHTTP2_ERR_INVALID_ARGUMENT, ==, rv);
 
@@ -6834,8 +6846,8 @@ void test_nghttp2_submit_altsvc(void) {
   nghttp2_session_client_new(&session, &callbacks, NULL);
 
   rv = nghttp2_submit_altsvc(session, NGHTTP2_FLAG_NONE, 0, origin,
-                             sizeof(origin) - 1, field_value,
-                             sizeof(field_value) - 1);
+                             nghttp2_strlen_lit(origin), field_value,
+                             nghttp2_strlen_lit(field_value));
 
   assert_int(NGHTTP2_ERR_INVALID_STATE, ==, rv);
 
@@ -6854,11 +6866,11 @@ void test_nghttp2_submit_origin(void) {
   static const nghttp2_origin_entry ov[] = {
     {
       (uint8_t *)nghttp2,
-      sizeof(nghttp2) - 1,
+      nghttp2_strlen_lit(nghttp2),
     },
     {
       (uint8_t *)examples,
-      sizeof(examples) - 1,
+      nghttp2_strlen_lit(examples),
     },
   };
   nghttp2_frame frame;
@@ -6893,10 +6905,12 @@ void test_nghttp2_submit_origin(void) {
   assert_int32(0, ==, frame.hd.stream_id);
   assert_uint8(NGHTTP2_ORIGIN, ==, frame.hd.type);
   assert_size(2, ==, origin.nov);
-  assert_memory_equal(sizeof(nghttp2) - 1, nghttp2, origin.ov[0].origin);
-  assert_size(sizeof(nghttp2) - 1, ==, origin.ov[0].origin_len);
-  assert_memory_equal(sizeof(examples) - 1, examples, origin.ov[1].origin);
-  assert_size(sizeof(examples) - 1, ==, origin.ov[1].origin_len);
+  assert_memory_equal(nghttp2_strlen_lit(nghttp2), nghttp2,
+                      origin.ov[0].origin);
+  assert_size(nghttp2_strlen_lit(nghttp2), ==, origin.ov[0].origin_len);
+  assert_memory_equal(nghttp2_strlen_lit(examples), examples,
+                      origin.ov[1].origin);
+  assert_size(nghttp2_strlen_lit(examples), ==, origin.ov[1].origin_len);
 
   nghttp2_frame_origin_free(&frame.ext, mem);
 
@@ -6960,7 +6974,8 @@ void test_nghttp2_submit_priority_update(void) {
   assert_ptrdiff(0, <, len);
 
   rv = nghttp2_submit_priority_update(session, NGHTTP2_FLAG_NONE, stream_id,
-                                      field_value, sizeof(field_value) - 1);
+                                      field_value,
+                                      nghttp2_strlen_lit(field_value));
 
   assert_int(0, ==, rv);
 
@@ -6980,8 +6995,9 @@ void test_nghttp2_submit_priority_update(void) {
   assert_int32(0, ==, frame.hd.stream_id);
   assert_uint8(NGHTTP2_PRIORITY_UPDATE, ==, frame.hd.type);
   assert_int32(stream_id, ==, priority_update.stream_id);
-  assert_size(sizeof(field_value) - 1, ==, priority_update.field_value_len);
-  assert_memory_equal(sizeof(field_value) - 1, field_value,
+  assert_size(nghttp2_strlen_lit(field_value), ==,
+              priority_update.field_value_len);
+  assert_memory_equal(nghttp2_strlen_lit(field_value), field_value,
                       priority_update.field_value);
 
   nghttp2_session_del(session);
@@ -6991,8 +7007,9 @@ void test_nghttp2_submit_priority_update(void) {
 
   open_recv_stream(session, 1);
 
-  rv = nghttp2_submit_priority_update(session, NGHTTP2_FLAG_NONE, 1,
-                                      field_value, sizeof(field_value) - 1);
+  rv =
+    nghttp2_submit_priority_update(session, NGHTTP2_FLAG_NONE, 1, field_value,
+                                   nghttp2_strlen_lit(field_value));
 
   assert_int(NGHTTP2_ERR_INVALID_STATE, ==, rv);
 
@@ -9368,7 +9385,7 @@ void test_nghttp2_session_change_extpri_stream_priority(void) {
   /* Client can still update stream priority. */
   frame.payload = &priority_update;
   nghttp2_frame_priority_update_init(&frame, 1, (uint8_t *)field_value,
-                                     sizeof(field_value) - 1);
+                                     nghttp2_strlen_lit(field_value));
   nghttp2_frame_pack_priority_update(&bufs, &frame);
 
   buf = &bufs.head->buf;
