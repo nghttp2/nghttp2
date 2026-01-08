@@ -242,7 +242,7 @@ static void run_nghttp2_session_send_server(void) {
   static const uint8_t nghttp2[] = "https://nghttp2.org";
   static const nghttp2_origin_entry ov = {
     (uint8_t *)nghttp2,
-    sizeof(nghttp2) - 1,
+    nghttp2_strlen_lit(nghttp2),
   };
 
   rv = nghttp2_session_callbacks_new(&callbacks);
@@ -260,8 +260,8 @@ static void run_nghttp2_session_send_server(void) {
   }
 
   rv = nghttp2_submit_altsvc(session, NGHTTP2_FLAG_NONE, 0, origin,
-                             sizeof(origin) - 1, altsvc_field_value,
-                             sizeof(altsvc_field_value) - 1);
+                             nghttp2_strlen_lit(origin), altsvc_field_value,
+                             nghttp2_strlen_lit(altsvc_field_value));
   if (rv != 0) {
     goto fail;
   }

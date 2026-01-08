@@ -154,7 +154,7 @@ void test_nghttp2_adjust_local_window_size(void) {
 }
 
 #define check_header_name(S)                                                   \
-  nghttp2_check_header_name((const uint8_t *)S, sizeof(S) - 1)
+  nghttp2_check_header_name((const uint8_t *)S, nghttp2_strlen_lit(S))
 
 void test_nghttp2_check_header_name(void) {
   assert_true(check_header_name(":path"));
@@ -167,7 +167,7 @@ void test_nghttp2_check_header_name(void) {
 }
 
 #define check_header_value(S)                                                  \
-  nghttp2_check_header_value((const uint8_t *)S, sizeof(S) - 1)
+  nghttp2_check_header_value((const uint8_t *)S, nghttp2_strlen_lit(S))
 
 void test_nghttp2_check_header_value(void) {
   uint8_t goodval[] = {'a', 'b', 0x80u, 'c', 0xffu, 'd', '\t', ' '};
@@ -184,7 +184,7 @@ void test_nghttp2_check_header_value(void) {
 }
 
 #define check_header_value_rfc9113(S)                                          \
-  nghttp2_check_header_value_rfc9113((const uint8_t *)S, sizeof(S) - 1)
+  nghttp2_check_header_value_rfc9113((const uint8_t *)S, nghttp2_strlen_lit(S))
 
 void test_nghttp2_check_header_value_rfc9113(void) {
   uint8_t goodval[] = {'a', 'b', 0x80u, 'c', 0xffu, 'd'};
