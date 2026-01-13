@@ -5489,15 +5489,6 @@ nghttp2_ssize nghttp2_session_mem_recv2(nghttp2_session *session,
           DEBUGF("recv: DATA not allowed stream_id=%d\n",
                  iframe->frame.hd.stream_id);
 
-          rv = session_update_glitch_ratelim(session);
-          if (rv != 0) {
-            return rv;
-          }
-
-          if (iframe->state == NGHTTP2_IB_IGN_ALL) {
-            return (nghttp2_ssize)inlen;
-          }
-
           iframe->state = NGHTTP2_IB_IGN_DATA;
           break;
         }
