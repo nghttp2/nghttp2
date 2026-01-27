@@ -49,7 +49,6 @@
 #endif // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 
 #include "h2load_http3_session.h"
-#include "http3.h"
 
 namespace h2load {
 
@@ -669,7 +668,7 @@ ngtcp2_ssize write_pkt(ngtcp2_conn *conn, ngtcp2_path *path,
 ngtcp2_ssize Client::write_quic_pkt(ngtcp2_path *path, ngtcp2_pkt_info *pi,
                                     uint8_t *dest, size_t destlen,
                                     ngtcp2_tstamp ts) {
-  std::array<http3::SharedVec, 16> vec;
+  std::array<nghttp3_vec, 16> vec;
   auto s = static_cast<Http3Session *>(session.get());
 
   for (;;) {
@@ -678,15 +677,14 @@ ngtcp2_ssize Client::write_quic_pkt(ngtcp2_path *path, ngtcp2_pkt_info *pi,
     ssize_t sveccnt = 0;
 
     if (session && ngtcp2_conn_get_max_data_left(quic.conn)) {
-      sveccnt = s->write_stream(stream_id, fin,
-                                reinterpret_cast<nghttp3_vec *>(vec.data()),
-                                vec.size());
+      sveccnt = s->write_stream(stream_id, fin, vec.data(), vec.size());
       if (sveccnt == -1) {
         return NGTCP2_ERR_CALLBACK_FAILURE;
       }
     }
 
     ngtcp2_ssize ndatalen;
+    auto v = vec.data();
     auto vcnt = static_cast<size_t>(sveccnt);
 
     uint32_t flags =
@@ -697,7 +695,7 @@ ngtcp2_ssize Client::write_quic_pkt(ngtcp2_path *path, ngtcp2_pkt_info *pi,
 
     auto nwrite = ngtcp2_conn_writev_stream(
       quic.conn, path, nullptr, dest, destlen, &ndatalen, flags, stream_id,
-      reinterpret_cast<const ngtcp2_vec *>(vec.data()), vcnt, ts);
+      reinterpret_cast<const ngtcp2_vec *>(v), vcnt, ts);
     if (nwrite < 0) {
       switch (nwrite) {
       case NGTCP2_ERR_STREAM_DATA_BLOCKED:

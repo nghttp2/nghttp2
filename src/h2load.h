@@ -50,7 +50,6 @@
 #ifdef ENABLE_HTTP3
 #  include <ngtcp2/ngtcp2.h>
 #  include <ngtcp2/ngtcp2_crypto.h>
-#  include <nghttp3/nghttp3.h>
 #endif // defined(ENABLE_HTTP3)
 
 #include <ev.h>
@@ -81,15 +80,8 @@ inline constexpr auto BACKOFF_WRITE_BUFFER_THRES = 16_k;
 class Session;
 struct Worker;
 
-union SharedNV {
-  nghttp2_nv nv2;
-#ifdef ENABLE_HTTP3
-  nghttp3_nv nv3;
-#endif // defined(ENABLE_HTTP3)
-};
-
 struct Config {
-  std::vector<std::vector<SharedNV>> nva;
+  std::vector<std::vector<nghttp2_nv>> nva;
   std::vector<std::string> h1reqs;
   std::vector<std::chrono::steady_clock::duration> timings;
   nghttp2::Headers custom_headers;
