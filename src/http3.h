@@ -40,11 +40,6 @@ namespace nghttp2 {
 
 namespace http3 {
 
-union SharedVec {
-  ngtcp2_vec v2;
-  nghttp3_vec v3;
-};
-
 // Create nghttp3_nv from |name|, |value| and |flags|.
 inline nghttp3_nv make_field_flags(const std::string_view &name,
                                    const std::string_view &value,
