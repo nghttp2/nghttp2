@@ -517,6 +517,24 @@ void test_nghttp2_frame_pack_altsvc(void) {
 
   nghttp2_frame_altsvc_free(&oframe, mem);
   nghttp2_frame_altsvc_free(&frame, mem);
+
+  /* 0 length origin and field_value */
+  nghttp2_frame_altsvc_init(&frame, 0, NULL, 0, NULL, 0);
+
+  payloadlen = 2;
+
+  nghttp2_bufs_reset(&bufs);
+  nghttp2_frame_pack_altsvc(&bufs, &frame);
+
+  assert_size(NGHTTP2_FRAME_HDLEN + payloadlen, ==, nghttp2_bufs_len(&bufs));
+
+  nghttp2_frame_unpack_altsvc_payload(&oframe, 0, NULL, 0);
+
+  assert_size(0, ==, oaltsvc.origin_len);
+  assert_null(oaltsvc.origin);
+  assert_size(0, ==, oaltsvc.field_value_len);
+  assert_null(oaltsvc.field_value);
+
   nghttp2_bufs_free(&bufs);
 }
 
