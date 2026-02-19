@@ -5482,6 +5482,10 @@ nghttp2_ssize nghttp2_session_mem_recv2(nghttp2_session *session,
         busy = 1;
 
         rv = session_on_data_received_fail_fast(session);
+        if (nghttp2_is_fatal(rv)) {
+          return rv;
+        }
+
         if (iframe->state == NGHTTP2_IB_IGN_ALL) {
           return (nghttp2_ssize)inlen;
         }
@@ -5491,10 +5495,6 @@ nghttp2_ssize nghttp2_session_mem_recv2(nghttp2_session *session,
 
           iframe->state = NGHTTP2_IB_IGN_DATA;
           break;
-        }
-
-        if (nghttp2_is_fatal(rv)) {
-          return rv;
         }
 
         rv = inbound_frame_handle_pad(iframe, &iframe->frame.hd);
@@ -6778,12 +6778,12 @@ nghttp2_ssize nghttp2_session_mem_recv2(nghttp2_session *session,
             rv = session->callbacks.on_data_chunk_recv_callback(
               session, iframe->frame.hd.flags, iframe->frame.hd.stream_id,
               in - readlen, (size_t)data_readlen, session->user_data);
-            if (rv == NGHTTP2_ERR_PAUSE) {
-              return (nghttp2_ssize)(in - first);
-            }
-
             if (nghttp2_is_fatal(rv)) {
               return NGHTTP2_ERR_CALLBACK_FAILURE;
+            }
+
+            if (rv == NGHTTP2_ERR_PAUSE) {
+              return (nghttp2_ssize)(in - first);
             }
           }
         }
