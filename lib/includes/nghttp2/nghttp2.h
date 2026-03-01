@@ -154,7 +154,7 @@ typedef struct nghttp2_session nghttp2_session;
  * This struct is what `nghttp2_version()` returns.  It holds
  * information about the particular nghttp2 version.
  */
-typedef struct {
+typedef struct nghttp2_info {
   /**
    * Age of this struct.  This instance of nghttp2 sets it to
    * :macro:`NGHTTP2_VERSION_AGE` but a future version may bump it and
@@ -483,7 +483,7 @@ typedef enum {
  *
  * The object representing single contiguous buffer.
  */
-typedef struct {
+typedef struct nghttp2_vec {
   /**
    * The pointer to the buffer.
    */
@@ -571,7 +571,7 @@ typedef enum {
  *
  * The name/value pair, which mainly used to represent header fields.
  */
-typedef struct {
+typedef struct nghttp2_nv {
   /**
    * The |name| byte string.  If this struct is presented from library
    * (e.g., :type:`nghttp2_on_frame_recv_callback`), |name| is
@@ -837,7 +837,7 @@ typedef enum {
  * @struct
  * The frame header.
  */
-typedef struct {
+typedef struct nghttp2_frame_hd {
   /**
    * The length field of this frame, excluding frame header.
    */
@@ -867,7 +867,7 @@ typedef struct {
  * This union represents the some kind of data source passed to
  * :type:`nghttp2_data_source_read_callback2`.
  */
-typedef union {
+typedef union nghttp2_data_source {
   /**
    * The integer field, suitable for a file descriptor.
    */
@@ -1060,7 +1060,7 @@ typedef nghttp2_ssize (*nghttp2_data_source_read_callback2)(
  * This struct represents the data source and the way to read a chunk
  * of data from it.
  */
-typedef struct {
+typedef struct nghttp2_data_provider {
   /**
    * The data source.
    */
@@ -1079,7 +1079,7 @@ typedef struct {
  * This struct represents the data source and the way to read a chunk
  * of data from it.
  */
-typedef struct {
+typedef struct nghttp2_data_provider2 {
   /**
    * The data source.
    */
@@ -1096,7 +1096,7 @@ typedef struct {
  * The DATA frame.  The received data is delivered via
  * :type:`nghttp2_on_data_chunk_recv_callback`.
  */
-typedef struct {
+typedef struct nghttp2_data {
   nghttp2_frame_hd hd;
   /**
    * The length of the padding in this frame.  This includes PAD_HIGH
@@ -1150,7 +1150,7 @@ typedef enum {
  *
  * The structure to specify stream dependency.
  */
-typedef struct {
+typedef struct nghttp2_priority_spec {
   /**
    * The stream ID of the stream to depend on.  Specifying 0 makes
    * stream not depend any other stream.
@@ -1171,7 +1171,7 @@ typedef struct {
  *
  * The HEADERS frame.  It has the following members:
  */
-typedef struct {
+typedef struct nghttp2_headers {
   /**
    * The frame header.
    */
@@ -1216,7 +1216,7 @@ typedef struct {
  *
  * The PRIORITY frame.  It has the following members:
  */
-typedef struct {
+typedef struct nghttp2_priority {
   /**
    * The frame header.
    */
@@ -1232,7 +1232,7 @@ typedef struct {
  *
  * The RST_STREAM frame.  It has the following members:
  */
-typedef struct {
+typedef struct nghttp2_rst_stream {
   /**
    * The frame header.
    */
@@ -1248,7 +1248,7 @@ typedef struct {
  *
  * The SETTINGS ID/Value pair.  It has the following members:
  */
-typedef struct {
+typedef struct nghttp2_settings_entry {
   /**
    * The SETTINGS ID.  See :type:`nghttp2_settings_id`.
    */
@@ -1264,7 +1264,7 @@ typedef struct {
  *
  * The SETTINGS frame.  It has the following members:
  */
-typedef struct {
+typedef struct nghttp2_settings {
   /**
    * The frame header.
    */
@@ -1284,7 +1284,7 @@ typedef struct {
  *
  * The PUSH_PROMISE frame.  It has the following members:
  */
-typedef struct {
+typedef struct nghttp2_push_promise {
   /**
    * The frame header.
    */
@@ -1318,7 +1318,7 @@ typedef struct {
  *
  * The PING frame.  It has the following members:
  */
-typedef struct {
+typedef struct nghttp2_ping {
   /**
    * The frame header.
    */
@@ -1334,7 +1334,7 @@ typedef struct {
  *
  * The GOAWAY frame.  It has the following members:
  */
-typedef struct {
+typedef struct nghttp2_goaway {
   /**
    * The frame header.
    */
@@ -1367,7 +1367,7 @@ typedef struct {
  *
  * The WINDOW_UPDATE frame.  It has the following members:
  */
-typedef struct {
+typedef struct nghttp2_window_update {
   /**
    * The frame header.
    */
@@ -1388,7 +1388,7 @@ typedef struct {
  *
  * The extension frame.  It has following members:
  */
-typedef struct {
+typedef struct nghttp2_extension {
   /**
    * The frame header.
    */
@@ -1410,7 +1410,7 @@ typedef struct {
  * calls as nghttp2_frame type.  The CONTINUATION frame is omitted
  * from here because the library deals with it internally.
  */
-typedef union {
+typedef union nghttp2_frame {
   /**
    * The frame header, which is convenient to inspect frame header.
    */
@@ -2927,7 +2927,7 @@ typedef void *(*nghttp2_realloc)(void *ptr, size_t size, void *mem_user_data);
  *       ...
  *     }
  */
-typedef struct {
+typedef struct nghttp2_mem {
   /**
    * An arbitrary user supplied data.  This is passed to each
    * allocator function.
@@ -5439,7 +5439,7 @@ NGHTTP2_EXTERN int nghttp2_submit_extension(nghttp2_session *session,
  *
  * It has the following members:
  */
-typedef struct {
+typedef struct nghttp2_ext_altsvc {
   /**
    * The pointer to origin which this alternative service is
    * associated with.  This is not necessarily NULL-terminated.
@@ -5505,7 +5505,7 @@ NGHTTP2_EXTERN int nghttp2_submit_altsvc(nghttp2_session *session,
  *
  * The single entry of an origin.
  */
-typedef struct {
+typedef struct nghttp2_origin_entry {
   /**
    * The pointer to origin.  No validation is made against this field
    * by the library.  This is not necessarily NULL-terminated.
@@ -5532,7 +5532,7 @@ typedef struct {
  *
  * It has the following members:
  */
-typedef struct {
+typedef struct nghttp2_ext_origin {
   /**
    * The number of origins contained in |ov|.
    */
@@ -5587,7 +5587,7 @@ NGHTTP2_EXTERN int nghttp2_submit_origin(nghttp2_session *session,
  *
  * It has the following members:
  */
-typedef struct {
+typedef struct nghttp2_ext_priority_update {
   /**
    * The stream ID of the stream whose priority is updated.
    */
