@@ -1805,6 +1805,18 @@ SDStat compute_time_stat(const std::vector<double> &samples,
   res.sd = sqrt(q / static_cast<double>(sampling && n > 1 ? n - 1 : n));
   res.within_sd = within_sd(samples, res.mean, res.sd);
 
+  if (samples.size() & 1) {
+    res.median = samples[samples.size() / 2];
+  } else {
+    auto half = samples.size() / 2;
+    res.median = (samples[half - 1] + samples[half]) / 2;
+  }
+
+  res.p95 =
+    samples[static_cast<size_t>(static_cast<double>(samples.size()) * 0.95)];
+  res.p99 =
+    samples[static_cast<size_t>(static_cast<double>(samples.size()) * 0.99)];
+
   return res;
 }
 } // namespace
@@ -1877,6 +1889,11 @@ process_time_stats(const std::vector<std::unique_ptr<Worker>> &workers) {
           .count());
     }
   }
+
+  std::ranges::sort(request_times);
+  std::ranges::sort(connect_times);
+  std::ranges::sort(ttfb_times);
+  std::ranges::sort(rps_values);
 
   return {compute_time_stat(request_times, request_times_sampling),
           compute_time_stat(connect_times, client_times_sampling),
@@ -3387,29 +3404,39 @@ traffic: )" << util::utos_funit(as_unsigned(stats.bytes_total))
   }
 #endif // defined(ENABLE_HTTP3)
   std::cout
-    << R"(                     min         max         mean         sd        +/- sd
+    << R"(                     min         max         median     p95        p99        mean         sd        +/- sd
 time for request: )"
     << std::setw(10) << util::format_duration(ts.request.min) << "  "
     << std::setw(10) << util::format_duration(ts.request.max) << "  "
+    << std::setw(10) << util::format_duration(ts.request.median) << " "
+    << std::setw(10) << util::format_duration(ts.request.p95) << " "
+    << std::setw(10) << util::format_duration(ts.request.p99) << " "
     << std::setw(10) << util::format_duration(ts.request.mean) << "  "
     << std::setw(10) << util::format_duration(ts.request.sd) << std::setw(9)
     << util::dtos(ts.request.within_sd) << "%"
     << "\ntime for connect: " << std::setw(10)
     << util::format_duration(ts.connect.min) << "  " << std::setw(10)
     << util::format_duration(ts.connect.max) << "  " << std::setw(10)
+    << util::format_duration(ts.connect.median) << " " << std::setw(10)
+    << util::format_duration(ts.connect.p95) << " " << std::setw(10)
+    << util::format_duration(ts.connect.p99) << " " << std::setw(10)
     << util::format_duration(ts.connect.mean) << "  " << std::setw(10)
     << util::format_duration(ts.connect.sd) << std::setw(9)
     << util::dtos(ts.connect.within_sd) << "%"
     << "\ntime to 1st byte: " << std::setw(10)
     << util::format_duration(ts.ttfb.min) << "  " << std::setw(10)
     << util::format_duration(ts.ttfb.max) << "  " << std::setw(10)
+    << util::format_duration(ts.ttfb.median) << " " << std::setw(10)
+    << util::format_duration(ts.ttfb.p95) << " " << std::setw(10)
+    << util::format_duration(ts.ttfb.p99) << " " << std::setw(10)
     << util::format_duration(ts.ttfb.mean) << "  " << std::setw(10)
     << util::format_duration(ts.ttfb.sd) << std::setw(9)
     << util::dtos(ts.ttfb.within_sd) << "%"
     << "\nreq/s           : " << std::setw(10) << ts.rps.min << "  "
-    << std::setw(10) << ts.rps.max << "  " << std::setw(10) << ts.rps.mean
-    << "  " << std::setw(10) << ts.rps.sd << std::setw(9)
-    << util::dtos(ts.rps.within_sd) << "%" << std::endl;
+    << std::setw(10) << ts.rps.max << "  " << std::setw(10) << ts.rps.median
+    << " " << std::setw(10) << ts.rps.p95 << " " << std::setw(10) << ts.rps.p99
+    << " " << std::setw(10) << ts.rps.mean << "  " << std::setw(10) << ts.rps.sd
+    << std::setw(9) << util::dtos(ts.rps.within_sd) << "%" << std::endl;
 
   SSL_CTX_free(ssl_ctx);
 

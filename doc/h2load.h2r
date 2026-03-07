@@ -50,6 +50,12 @@ time for request
     The minimum time taken for request and response.
   max
     The maximum time taken for request and response.
+  median
+    The median time taken for request and response.
+  p95
+    The 95th percentile time taken for request and response.
+  p99
+    The 99th percentile time taken for request and response.
   mean
     The mean time taken for request and response.
   sd
@@ -65,6 +71,15 @@ time for connect
   max
     The maximum time taken to connect to a server including TLS
     handshake.
+  median
+    The median time taken to connect to a server including TLS
+    handshake.
+  p95
+    The 95th percentile time taken to connect to a server including
+    TLS handshake.
+  p99
+    The 99th percentile time taken to connect to a server including
+    TLS handshake.
   mean
     The mean time taken to connect to a server including TLS
     handshake.
@@ -80,6 +95,12 @@ time for 1st byte (of (decrypted in case of TLS) application data)
     The minimum time taken to get 1st byte from a server.
   max
     The maximum time taken to get 1st byte from a server.
+  median
+    The median time taken to get 1st byte from a server.
+  p95
+    The 95th percentile time taken to get 1st byte from a server.
+  p99
+    The 99th percentile time taken to get 1st byte from a server.
   mean
     The mean time taken to get 1st byte from a server.
   sd
@@ -95,6 +116,12 @@ req/s
     The minimum request per second among all clients.
   max
     The maximum request per second among all clients.
+  median
+    The median request per second among all clients.
+  p95
+    The 95th percentile request per second among all clients.
+  p99
+    The 99th percentile request per second among all clients.
   mean
     The mean request per second among all clients.
   sd

@@ -200,8 +200,8 @@ struct ClientStat {
 };
 
 struct SDStat {
-  // min, max, mean and sd (standard deviation)
-  double min, max, mean, sd;
+  // min, max, median, p95, p99, mean and sd (standard deviation)
+  double min, max, median, p95, p99, mean, sd;
   // percentage of samples inside mean -/+ sd
   double within_sd;
 };
