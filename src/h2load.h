@@ -313,7 +313,7 @@ struct Worker {
   // worker
   Phase current_phase;
   // We need to keep track of the clients in order to stop them when needed
-  std::vector<Client *> clients;
+  std::unordered_map<uint32_t, Client *> clients;
   // This is only active when there is not a bounded number of requests
   // specified
   ev_timer duration_watcher;
@@ -442,9 +442,10 @@ struct Client {
   void process_abandoned_streams();
   void report_tls_info();
   void report_app_info();
-  void terminate_session();
+  int terminate_session();
   // Asks client to create new connection, instead of just fail.
   void try_new_connection();
+  uint32_t get_id() const;
 
   int do_read();
   int do_write();
