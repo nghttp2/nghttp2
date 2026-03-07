@@ -263,8 +263,8 @@ void rate_period_timeout_w_cb(struct ev_loop *loop, ev_timer *w, int revents) {
       ++req_todo;
       --worker->nreqs_rem;
     }
-    auto client =
-      std::make_unique<Client>(worker->next_client_id++, worker, req_todo);
+    auto client_id = worker->next_client_id++;
+    auto client = std::make_unique<Client>(client_id, worker, req_todo);
 
     ++worker->nconns_made;
 
@@ -273,7 +273,7 @@ void rate_period_timeout_w_cb(struct ev_loop *loop, ev_timer *w, int revents) {
       client->fail();
     } else {
       if (worker->config->is_timing_based_mode()) {
-        worker->clients.push_back(client.release());
+        worker->clients.emplace(client_id, client.release());
       } else {
         client.release();
       }
@@ -317,7 +317,7 @@ void warmup_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
   assert(worker->stats.req_started == 0);
   assert(worker->stats.req_done == 0);
 
-  for (auto client : worker->clients) {
+  for (const auto [_, client] : worker->clients) {
     if (client) {
       assert(client->req_todo == 0);
       assert(client->req_left == 1);
@@ -928,7 +928,7 @@ void Client::report_app_info() {
   }
 }
 
-void Client::terminate_session() {
+int Client::terminate_session() {
 #ifdef ENABLE_HTTP3
   if (config.is_quic()) {
     quic.close_requested = true;
@@ -936,9 +936,14 @@ void Client::terminate_session() {
 #endif // defined(ENABLE_HTTP3)
   if (session) {
     session->terminate();
+  } else {
+    return -1;
   }
+
   // http1 session needs writecb to tear down session.
   signal_write();
+
+  return 0;
 }
 
 void Client::on_request(int64_t stream_id) { streams[stream_id] = Stream(); }
@@ -1580,6 +1585,8 @@ void Client::signal_write() { ev_io_start(worker->loop, &wev); }
 
 void Client::try_new_connection() { new_connection_requested = true; }
 
+uint32_t Client::get_id() const { return id; }
+
 namespace {
 unsigned int get_ev_loop_flags() {
   if (ev_supported_backends() & ~ev_recommended_backends() & EVBACKEND_KQUEUE) {
@@ -1651,23 +1658,32 @@ Worker::~Worker() {
 }
 
 void Worker::stop_all_clients() {
-  for (auto client : clients) {
+  for (auto [_, client] : clients) {
     if (client) {
-      client->terminate_session();
+      if (client->terminate_session() != 0) {
+        client->fail();
+        free_client(client);
+        delete client;
+      }
     }
   }
 }
 
 void Worker::free_client(Client *deleted_client) {
-  for (auto &client : clients) {
-    if (client == deleted_client) {
-      client->req_todo = client->req_done;
-      stats.req_todo += client->req_todo;
-      auto index = as_unsigned(&client - &clients[0]);
-      clients[index] = nullptr;
-      return;
-    }
+  auto it = clients.find(deleted_client->get_id());
+  if (it == std::ranges::end(clients)) {
+    return;
   }
+
+  auto &client = (*it).second;
+  if (!client) {
+    return;
+  }
+
+  client->req_todo = client->req_done;
+  stats.req_todo += client->req_todo;
+
+  client = nullptr;
 }
 
 void Worker::run() {

@@ -190,8 +190,6 @@ int Http1Session::submit_request() {
   if (config->data_fd == -1 || config->data_length == 0) {
     // increment for next request
     stream_req_counter_ += 2;
-
-    return 0;
   }
 
   return on_write();
