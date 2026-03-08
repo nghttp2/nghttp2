@@ -60,6 +60,18 @@ Metric Definitions
     received from the server.
   req/s
     The requests per second measured individually across all clients.
+  min RTT
+    The minimum RTT (QUIC).
+  smoothed RTT
+    The smoothed RTT (QUIC).
+  packets sent
+    The number of packets sent (QUIC).
+  packets recv
+    The number of packets received (QUIC).
+  packets lost
+    The number of packets declared lost (QUIC).
+  GRO packets
+    The number of packets received in a single recvmsg call (QUIC).
 
 Distribution Fields
   min / max

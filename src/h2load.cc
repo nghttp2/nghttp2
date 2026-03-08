@@ -1636,6 +1636,7 @@ Worker::Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t req_todo, size_t nclients,
 
   sampling_init(request_times_smp, max_samples);
   sampling_init(client_smp, max_samples);
+  sampling_init(gro_smp, max_samples);
 
   ev_timer_init(&duration_watcher, duration_timeout_cb, config->duration, 0.);
   duration_watcher.data = this;
@@ -1739,6 +1740,10 @@ void Worker::sample_client_stat(ClientStat *cstat) {
   sample(client_smp, stats.client_stats, cstat);
 }
 
+void Worker::sample_gro_stat(const GROStat &gro_stat) {
+  sample(gro_smp, stats.gro_stats, &gro_stat);
+}
+
 void Worker::report_progress() {
   if (id != 0 || config->is_rate_mode() || stats.req_done % progress_interval ||
       config->is_timing_based_mode()) {
@@ -1780,7 +1785,7 @@ namespace {
 SDStat compute_time_stat(const std::vector<double> &samples,
                          bool sampling = false) {
   if (samples.empty()) {
-    return {0.0, 0.0, 0.0, 0.0, 0.0};
+    return {};
   }
   // standard deviation calculated using Rapid calculation method:
   // https://en.wikipedia.org/wiki/Standard_deviation#Rapid_calculation_methods
@@ -1826,23 +1831,42 @@ SDStats
 process_time_stats(const std::vector<std::unique_ptr<Worker>> &workers) {
   auto request_times_sampling = false;
   auto client_times_sampling = false;
+  auto gro_pkts_sampling = false;
   size_t nrequest_times = 0;
   size_t nclient_times = 0;
+  size_t ngro_pkts = 0;
   for (const auto &w : workers) {
     nrequest_times += w->stats.req_stats.size();
     request_times_sampling = w->request_times_smp.n > w->stats.req_stats.size();
 
     nclient_times += w->stats.client_stats.size();
     client_times_sampling = w->client_smp.n > w->stats.client_stats.size();
+
+    ngro_pkts += w->stats.gro_stats.size();
+    gro_pkts_sampling = w->gro_smp.n > w->stats.gro_stats.size();
   }
 
   std::vector<double> request_times;
   request_times.reserve(nrequest_times);
 
-  std::vector<double> connect_times, ttfb_times, rps_values;
+  std::vector<double> connect_times, ttfb_times, rps_values, min_rtt_times,
+    smoothed_rtt_times, pkt_sent_values, pkt_recv_values, pkt_lost_values;
   connect_times.reserve(nclient_times);
   ttfb_times.reserve(nclient_times);
   rps_values.reserve(nclient_times);
+
+  if (config.is_quic()) {
+    min_rtt_times.reserve(nclient_times);
+    smoothed_rtt_times.reserve(nclient_times);
+    pkt_sent_values.reserve(nclient_times);
+    pkt_recv_values.reserve(nclient_times);
+    pkt_lost_values.reserve(nclient_times);
+  }
+
+  std::vector<double> gro_pkts;
+  if (config.is_quic()) {
+    gro_pkts.reserve(ngro_pkts);
+  }
 
   for (const auto &w : workers) {
     for (const auto &req_stat : w->stats.req_stats) {
@@ -1868,6 +1892,16 @@ process_time_stats(const std::vector<std::unique_ptr<Worker>> &workers) {
         }
       }
 
+      if (config.is_quic()) {
+        min_rtt_times.push_back(
+          std::chrono::duration<double>(cstat.min_rtt).count());
+        smoothed_rtt_times.push_back(
+          std::chrono::duration<double>(cstat.smoothed_rtt).count());
+        pkt_sent_values.push_back(static_cast<double>(cstat.pkt_sent));
+        pkt_recv_values.push_back(static_cast<double>(cstat.pkt_recv));
+        pkt_lost_values.push_back(static_cast<double>(cstat.pkt_lost));
+      }
+
       // We will get connect event before FFTB.
       if (!recorded(cstat.connect_start_time) ||
           !recorded(cstat.connect_time)) {
@@ -1888,17 +1922,40 @@ process_time_stats(const std::vector<std::unique_ptr<Worker>> &workers) {
           cstat.ttfb - cstat.connect_start_time)
           .count());
     }
+
+    if (config.is_quic()) {
+      for (const auto &gstat : stat.gro_stats) {
+        gro_pkts.push_back(static_cast<double>(gstat.num_pkts));
+      }
+    }
   }
 
   std::ranges::sort(request_times);
   std::ranges::sort(connect_times);
   std::ranges::sort(ttfb_times);
   std::ranges::sort(rps_values);
+  if (config.is_quic()) {
+    std::ranges::sort(min_rtt_times);
+    std::ranges::sort(smoothed_rtt_times);
+    std::ranges::sort(pkt_sent_values);
+    std::ranges::sort(pkt_recv_values);
+    std::ranges::sort(pkt_lost_values);
+    std::ranges::sort(gro_pkts);
+  }
 
-  return {compute_time_stat(request_times, request_times_sampling),
-          compute_time_stat(connect_times, client_times_sampling),
-          compute_time_stat(ttfb_times, client_times_sampling),
-          compute_time_stat(rps_values, client_times_sampling)};
+  return {
+    .request = compute_time_stat(request_times, request_times_sampling),
+    .connect = compute_time_stat(connect_times, client_times_sampling),
+    .ttfb = compute_time_stat(ttfb_times, client_times_sampling),
+    .rps = compute_time_stat(rps_values, client_times_sampling),
+    .min_rtt = compute_time_stat(min_rtt_times, client_times_sampling),
+    .smoothed_rtt =
+      compute_time_stat(smoothed_rtt_times, client_times_sampling),
+    .pkt_sent = compute_time_stat(pkt_sent_values, client_times_sampling),
+    .pkt_recv = compute_time_stat(pkt_recv_values, client_times_sampling),
+    .pkt_lost = compute_time_stat(pkt_lost_values, client_times_sampling),
+    .gro_pkts = compute_time_stat(gro_pkts, gro_pkts_sampling),
+  };
 }
 } // namespace
 
@@ -3441,6 +3498,16 @@ traffic: )" << util::utos_funit(as_unsigned(stats.bytes_total))
   output_sd_stat_duration(std::cout, "time for connect"sv, ts.connect);
   output_sd_stat_duration(std::cout, "time to 1st byte"sv, ts.ttfb);
   output_sd_stat(std::cout, "req/s"sv, ts.rps);
+#ifdef ENABLE_HTTP3
+  if (config.is_quic()) {
+    output_sd_stat_duration(std::cout, "min RTT"sv, ts.min_rtt);
+    output_sd_stat_duration(std::cout, "smoothed RTT"sv, ts.smoothed_rtt);
+    output_sd_stat(std::cout, "packets sent"sv, ts.pkt_sent);
+    output_sd_stat(std::cout, "packets recv"sv, ts.pkt_recv);
+    output_sd_stat(std::cout, "packets lost"sv, ts.pkt_lost);
+    output_sd_stat(std::cout, "GRO packets"sv, ts.gro_pkts);
+  }
+#endif // ENABLE_HTTP3
 
   SSL_CTX_free(ssl_ctx);
 

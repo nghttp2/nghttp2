@@ -197,6 +197,22 @@ struct ClientStat {
   std::chrono::steady_clock::time_point connect_time;
   // time to first byte (TTFB)
   std::chrono::steady_clock::time_point ttfb;
+
+  // The minimum RTT (QUIC)
+  std::chrono::nanoseconds min_rtt;
+  // The smoothed RTT (QUIC)
+  std::chrono::nanoseconds smoothed_rtt;
+  // The number of packets sent (QUIC)
+  uint64_t pkt_sent;
+  // The number of packets received (QUIC)
+  uint64_t pkt_recv;
+  // The number of packets declared lost (QUIC)
+  uint64_t pkt_lost;
+};
+
+struct GROStat {
+  // The number of packets received in a single recvmsg (QUIC)
+  size_t num_pkts;
 };
 
 struct SDStat {
@@ -215,6 +231,18 @@ struct SDStats {
   SDStat ttfb;
   // request per second for each client
   SDStat rps;
+  // minimum RTT (QUIC)
+  SDStat min_rtt;
+  // smoothed RTT (QUIC)
+  SDStat smoothed_rtt;
+  // the number of packets sent (QUIC)
+  SDStat pkt_sent;
+  // the number of packets received (QUIC)
+  SDStat pkt_recv;
+  // the number of packets declared lost (QUIC)
+  SDStat pkt_lost;
+  // the number of packets received in a single recvmsg call (QUIC)
+  SDStat gro_pkts;
 };
 
 struct Stats {
@@ -256,6 +284,8 @@ struct Stats {
   std::vector<RequestStat> req_stats;
   // The statistics per client
   std::vector<ClientStat> client_stats;
+  // The statistics about GRO, sampled across all clients.
+  std::vector<GROStat> gro_stats;
   // The number of UDP datagrams received.
   size_t udp_dgram_recv;
   // The number of UDP datagrams sent.
@@ -289,6 +319,7 @@ struct Worker {
   Stats stats;
   Sampling request_times_smp;
   Sampling client_smp;
+  Sampling gro_smp;
   struct ev_loop *loop;
   SSL_CTX *ssl_ctx;
   Config *config;
@@ -326,6 +357,7 @@ struct Worker {
   void run();
   void sample_req_stat(RequestStat *req_stat);
   void sample_client_stat(ClientStat *cstat);
+  void sample_gro_stat(const GROStat &gro_stat);
   void report_progress();
   void report_rate_progress();
   // This function calls the destructors of all the clients.
