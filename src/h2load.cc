@@ -2160,6 +2160,37 @@ std::string make_http_authority(const Config &config) {
 } // namespace
 
 namespace {
+template <typename F>
+requires std::invocable<F, double>
+void output_sd_stat(std::ostream &o, const std::string_view &title,
+                    const SDStat &st, F formatter) {
+  o << std::left << std::setw(16) << title << ": " << std::right;
+  o << std::setw(10) << formatter(st.min) << "  ";
+  o << std::setw(10) << formatter(st.max) << "  ";
+  o << std::setw(10) << formatter(st.median) << " ";
+  o << std::setw(10) << formatter(st.p95) << " ";
+  o << std::setw(10) << formatter(st.p99) << " ";
+  o << std::setw(10) << formatter(st.mean) << "  ";
+  o << std::setw(10) << formatter(st.sd);
+  o << std::setw(9) << util::dtos(st.within_sd) << "%\n";
+}
+} // namespace
+
+namespace {
+void output_sd_stat_duration(std::ostream &o, const std::string_view &title,
+                             const SDStat &st) {
+  output_sd_stat(o, title, st, [](auto v) { return util::format_duration(v); });
+}
+} // namespace
+
+namespace {
+void output_sd_stat(std::ostream &o, const std::string_view &title,
+                    const SDStat &st) {
+  output_sd_stat(o, title, st, std::identity{});
+}
+} // namespace
+
+namespace {
 void print_version(std::ostream &out) {
   out << "h2load nghttp2/" NGHTTP2_VERSION << std::endl;
 }
@@ -3403,40 +3434,13 @@ traffic: )" << util::utos_funit(as_unsigned(stats.bytes_total))
               << stats.udp_dgram_recv << " received" << std::endl;
   }
 #endif // defined(ENABLE_HTTP3)
-  std::cout
-    << R"(                     min         max         median     p95        p99        mean         sd        +/- sd
-time for request: )"
-    << std::setw(10) << util::format_duration(ts.request.min) << "  "
-    << std::setw(10) << util::format_duration(ts.request.max) << "  "
-    << std::setw(10) << util::format_duration(ts.request.median) << " "
-    << std::setw(10) << util::format_duration(ts.request.p95) << " "
-    << std::setw(10) << util::format_duration(ts.request.p99) << " "
-    << std::setw(10) << util::format_duration(ts.request.mean) << "  "
-    << std::setw(10) << util::format_duration(ts.request.sd) << std::setw(9)
-    << util::dtos(ts.request.within_sd) << "%"
-    << "\ntime for connect: " << std::setw(10)
-    << util::format_duration(ts.connect.min) << "  " << std::setw(10)
-    << util::format_duration(ts.connect.max) << "  " << std::setw(10)
-    << util::format_duration(ts.connect.median) << " " << std::setw(10)
-    << util::format_duration(ts.connect.p95) << " " << std::setw(10)
-    << util::format_duration(ts.connect.p99) << " " << std::setw(10)
-    << util::format_duration(ts.connect.mean) << "  " << std::setw(10)
-    << util::format_duration(ts.connect.sd) << std::setw(9)
-    << util::dtos(ts.connect.within_sd) << "%"
-    << "\ntime to 1st byte: " << std::setw(10)
-    << util::format_duration(ts.ttfb.min) << "  " << std::setw(10)
-    << util::format_duration(ts.ttfb.max) << "  " << std::setw(10)
-    << util::format_duration(ts.ttfb.median) << " " << std::setw(10)
-    << util::format_duration(ts.ttfb.p95) << " " << std::setw(10)
-    << util::format_duration(ts.ttfb.p99) << " " << std::setw(10)
-    << util::format_duration(ts.ttfb.mean) << "  " << std::setw(10)
-    << util::format_duration(ts.ttfb.sd) << std::setw(9)
-    << util::dtos(ts.ttfb.within_sd) << "%"
-    << "\nreq/s           : " << std::setw(10) << ts.rps.min << "  "
-    << std::setw(10) << ts.rps.max << "  " << std::setw(10) << ts.rps.median
-    << " " << std::setw(10) << ts.rps.p95 << " " << std::setw(10) << ts.rps.p99
-    << " " << std::setw(10) << ts.rps.mean << "  " << std::setw(10) << ts.rps.sd
-    << std::setw(9) << util::dtos(ts.rps.within_sd) << "%" << std::endl;
+  std::cout << "                     min         max         median     p95    "
+               "    p99        mean         sd        +/- sd\n";
+
+  output_sd_stat_duration(std::cout, "time for request"sv, ts.request);
+  output_sd_stat_duration(std::cout, "time for connect"sv, ts.connect);
+  output_sd_stat_duration(std::cout, "time to 1st byte"sv, ts.ttfb);
+  output_sd_stat(std::cout, "req/s"sv, ts.rps);
 
   SSL_CTX_free(ssl_ctx);
 
