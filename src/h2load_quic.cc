@@ -479,6 +479,18 @@ int Client::quic_init(const sockaddr *local_addr, socklen_t local_addrlen,
 }
 
 void Client::quic_free() {
+  if (quic.conn) {
+    ngtcp2_conn_info ci;
+
+    ngtcp2_conn_get_conn_info(quic.conn, &ci);
+
+    cstat.min_rtt = std::chrono::nanoseconds(ci.min_rtt);
+    cstat.smoothed_rtt = std::chrono::nanoseconds(ci.smoothed_rtt);
+    cstat.pkt_sent = ci.pkt_sent;
+    cstat.pkt_recv = ci.pkt_recv;
+    cstat.pkt_lost = ci.pkt_lost;
+  }
+
 #if OPENSSL_3_5_0_API
   ngtcp2_crypto_ossl_ctx_del(quic.ossl_ctx);
 #endif // OPENSSL_3_5_0_API
@@ -602,12 +614,18 @@ int Client::read_quic() {
 
     assert(quic.conn);
 
+    size_t num_pkts;
+
     if (gso_size) {
-      worker->stats.udp_dgram_recv +=
-        (as_unsigned(nread) + gso_size - 1) / gso_size;
+      num_pkts = (as_unsigned(nread) + gso_size - 1) / gso_size;
     } else {
-      ++worker->stats.udp_dgram_recv;
+      num_pkts = 1;
     }
+
+    worker->stats.udp_dgram_recv += num_pkts;
+    worker->sample_gro_stat(GROStat{
+      .num_pkts = num_pkts,
+    });
 
     auto path = ngtcp2_path{
       .local{as_ngtcp2_addr(local_addr)},
