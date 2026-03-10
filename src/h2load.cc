@@ -1782,8 +1782,7 @@ namespace {
 // percentage of number of samples within mean +/- sd are computed.
 // If |sampling| is true, this computes sample variance.  Otherwise,
 // population variance.
-SDStat compute_time_stat(const std::vector<double> &samples,
-                         bool sampling = false) {
+SDStat compute_time_stat(std::vector<double> samples, bool sampling = false) {
   if (samples.empty()) {
     return {};
   }
@@ -1821,6 +1820,7 @@ SDStat compute_time_stat(const std::vector<double> &samples,
     samples[static_cast<size_t>(static_cast<double>(samples.size()) * 0.95)];
   res.p99 =
     samples[static_cast<size_t>(static_cast<double>(samples.size()) * 0.99)];
+  res.samples = std::move(samples);
 
   return res;
 }
@@ -1944,17 +1944,23 @@ process_time_stats(const std::vector<std::unique_ptr<Worker>> &workers) {
   }
 
   return {
-    .request = compute_time_stat(request_times, request_times_sampling),
-    .connect = compute_time_stat(connect_times, client_times_sampling),
-    .ttfb = compute_time_stat(ttfb_times, client_times_sampling),
-    .rps = compute_time_stat(rps_values, client_times_sampling),
-    .min_rtt = compute_time_stat(min_rtt_times, client_times_sampling),
+    .request =
+      compute_time_stat(std::move(request_times), request_times_sampling),
+    .connect =
+      compute_time_stat(std::move(connect_times), client_times_sampling),
+    .ttfb = compute_time_stat(std::move(ttfb_times), client_times_sampling),
+    .rps = compute_time_stat(std::move(rps_values), client_times_sampling),
+    .min_rtt =
+      compute_time_stat(std::move(min_rtt_times), client_times_sampling),
     .smoothed_rtt =
-      compute_time_stat(smoothed_rtt_times, client_times_sampling),
-    .pkt_sent = compute_time_stat(pkt_sent_values, client_times_sampling),
-    .pkt_recv = compute_time_stat(pkt_recv_values, client_times_sampling),
-    .pkt_lost = compute_time_stat(pkt_lost_values, client_times_sampling),
-    .gro_pkts = compute_time_stat(gro_pkts, gro_pkts_sampling),
+      compute_time_stat(std::move(smoothed_rtt_times), client_times_sampling),
+    .pkt_sent =
+      compute_time_stat(std::move(pkt_sent_values), client_times_sampling),
+    .pkt_recv =
+      compute_time_stat(std::move(pkt_recv_values), client_times_sampling),
+    .pkt_lost =
+      compute_time_stat(std::move(pkt_lost_values), client_times_sampling),
+    .gro_pkts = compute_time_stat(std::move(gro_pkts), gro_pkts_sampling),
   };
 }
 } // namespace
@@ -2217,6 +2223,89 @@ std::string make_http_authority(const Config &config) {
 } // namespace
 
 namespace {
+// plot_histogram plots histogram.  It assumes that data is sorted in
+// ascending order.
+template <typename F>
+requires std::invocable<F, double>
+void plot_histogram(std::ostream &o, const std::vector<double> &data,
+                    F formatter) {
+  if (data.empty()) {
+    return;
+  }
+
+  constexpr size_t nbkts = 10;
+  constexpr size_t max_bar = 40;
+
+  auto min = data[0];
+  auto max = data.back();
+
+  if (min == max) {
+    return;
+  }
+
+  auto range = max - min;
+  auto width = range / nbkts;
+
+  std::vector<size_t> counts(nbkts, 0);
+
+  for (auto v : data) {
+    auto idx = static_cast<size_t>((v - min) / width);
+    if (idx >= nbkts) {
+      idx = counts.size() - 1;
+    }
+
+    ++counts[idx];
+  }
+
+  auto max_count = *std::ranges::max_element(counts);
+
+  size_t cum_counts = 0;
+
+  auto flags = o.flags();
+  auto prec = o.precision();
+  auto guard = defer([&o, flags, prec]() {
+    o.flags(flags);
+    o.precision(prec);
+  });
+
+  for (size_t i = 0; i < counts.size(); ++i) {
+    auto lower = min + static_cast<double>(i) * width;
+    auto upper = min + static_cast<double>(i + 1) * width;
+
+    o << std::setw(10) << formatter(lower) << "-" << std::setw(10)
+      << formatter(upper) << " [";
+
+    cum_counts += counts[i];
+
+    size_t len;
+
+    if (counts[i]) {
+      len = std::max(static_cast<size_t>(1), counts[i] * max_bar / max_count);
+    } else {
+      len = 0;
+    }
+
+    size_t j;
+    for (j = 0; j < len; ++j) {
+      o << '/';
+    }
+
+    for (; j < max_bar; ++j) {
+      o << ' ';
+    }
+
+    o << "](" << std::fixed << std::setprecision(2) << std::setw(6)
+      << static_cast<double>(counts[i]) * 100. /
+           static_cast<double>(data.size())
+      << "/" << std::setw(6)
+      << static_cast<double>(cum_counts) * 100. /
+           static_cast<double>(data.size())
+      << "%)\n";
+  }
+}
+} // namespace
+
+namespace {
 template <typename F>
 requires std::invocable<F, double>
 void output_sd_stat(std::ostream &o, const std::string_view &title,
@@ -2230,6 +2319,10 @@ void output_sd_stat(std::ostream &o, const std::string_view &title,
   o << std::setw(10) << formatter(st.mean) << "  ";
   o << std::setw(10) << formatter(st.sd);
   o << std::setw(9) << util::dtos(st.within_sd) << "%\n";
+
+  if (config.histogram) {
+    plot_histogram(o, st.samples, formatter);
+  }
 }
 } // namespace
 
@@ -2475,6 +2568,8 @@ Options:
   --sni=<DNSNAME>
               Send  <DNSNAME> in  TLS  SNI, overriding  the host  name
               specified in URI.
+  --histogram
+              Plot histogram for performance statistics.
   -v, --verbose
               Output debug information.
   --version   Display version information and exit.
@@ -2539,6 +2634,7 @@ int main(int argc, char **argv) {
       {"ktls", no_argument, &flag, 18},
       {"alpn-list", required_argument, &flag, 19},
       {"sni", required_argument, &flag, 20},
+      {"histogram", no_argument, &flag, 21},
       {nullptr, 0, nullptr, 0}};
     int option_index = 0;
     auto c = getopt_long(argc, argv,
@@ -2890,6 +2986,10 @@ int main(int argc, char **argv) {
       case 20:
         // --sni
         config.sni = optarg;
+        break;
+      case 21:
+        // --histogram
+        config.histogram = true;
         break;
       }
       break;

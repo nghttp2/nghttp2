@@ -151,6 +151,8 @@ struct Config {
   // sni is the value sent in TLS SNI, overriding DNS name of the
   // remote host.
   std::string sni;
+  // Plot histogram.
+  bool histogram{};
 
   Config();
   ~Config();
@@ -220,6 +222,8 @@ struct SDStat {
   double min, max, median, p95, p99, mean, sd;
   // percentage of samples inside mean -/+ sd
   double within_sd;
+  // sampled data
+  std::vector<double> samples;
 };
 
 struct SDStats {
