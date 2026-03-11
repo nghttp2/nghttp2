@@ -43,7 +43,14 @@ namespace shrpx {
 namespace {
 void acceptcb(struct ev_loop *loop, ev_io *w, int revent) {
   auto h = static_cast<AcceptHandler *>(w->data);
-  h->accept_connection();
+
+  constexpr size_t max_num_accept = 10;
+
+  for (size_t i = 0; i < max_num_accept; ++i) {
+    if (h->accept_connection() != 0) {
+      break;
+    }
+  }
 }
 } // namespace
 
@@ -59,7 +66,7 @@ AcceptHandler::~AcceptHandler() {
   close(faddr_->fd);
 }
 
-void AcceptHandler::accept_connection() {
+int AcceptHandler::accept_connection() {
   sockaddr_storage ss;
   socklen_t addrlen = sizeof(ss);
 
@@ -83,15 +90,15 @@ void AcceptHandler::accept_connection() {
     case EHOSTUNREACH:
     case EOPNOTSUPP:
     case ENETUNREACH:
-      return;
+      return -1;
     case EMFILE:
     case ENFILE:
       LOG(WARN) << "acceptor: running out file descriptor; disable acceptor "
                    "temporarily";
       worker_->sleep_listener(get_config()->conn.listener.timeout.sleep);
-      return;
+      return -1;
     default:
-      return;
+      return -1;
     }
   }
 
@@ -102,6 +109,8 @@ void AcceptHandler::accept_connection() {
 
   worker_->handle_connection(cfd, reinterpret_cast<const sockaddr *>(&ss),
                              addrlen, faddr_);
+
+  return 0;
 }
 
 void AcceptHandler::enable() { ev_io_start(worker_->get_loop(), &wev_); }
