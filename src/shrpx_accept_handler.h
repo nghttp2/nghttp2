@@ -38,7 +38,7 @@ class AcceptHandler {
 public:
   AcceptHandler(Worker *worker, const UpstreamAddr *faddr);
   ~AcceptHandler();
-  void accept_connection();
+  int accept_connection();
   void enable();
   void disable();
   int get_fd() const;

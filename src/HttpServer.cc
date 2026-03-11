@@ -1906,7 +1906,9 @@ public:
     ev_io_start(sessions_->get_loop(), &w_);
   }
   void accept_connection() {
-    for (;;) {
+    constexpr size_t max_num_accept = 10;
+
+    for (size_t i = 0; i < max_num_accept; ++i) {
 #ifdef HAVE_ACCEPT4
       auto fd = accept4(fd_, nullptr, nullptr, SOCK_NONBLOCK);
 #else  // !defined(HAVE_ACCEPT4)
