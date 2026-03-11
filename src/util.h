@@ -76,7 +76,7 @@ inline constexpr auto NGHTTP2_H1_1 = "http/1.1"sv;
 namespace util {
 
 template <std::predicate<size_t> Pred>
-consteval auto pred_tbl_gen256(Pred pred) {
+constexpr auto pred_tbl_gen256(Pred pred) {
   std::array<bool, 256> tbl;
 
   for (size_t i = 0; i < tbl.size(); ++i) {
@@ -86,7 +86,7 @@ consteval auto pred_tbl_gen256(Pred pred) {
   return tbl;
 }
 
-consteval auto alpha_pred(size_t i) noexcept {
+constexpr auto alpha_pred(size_t i) noexcept {
   return ('A' <= i && i <= 'Z') || ('a' <= i && i <= 'z');
 }
 
@@ -96,7 +96,7 @@ constexpr bool is_alpha(char c) noexcept {
   return is_alpha_tbl[static_cast<uint8_t>(c)];
 }
 
-consteval auto digit_pred(size_t i) noexcept { return '0' <= i && i <= '9'; }
+constexpr auto digit_pred(size_t i) noexcept { return '0' <= i && i <= '9'; }
 
 inline constexpr auto is_digit_tbl = pred_tbl_gen256(digit_pred);
 
@@ -104,7 +104,7 @@ constexpr bool is_digit(char c) noexcept {
   return is_digit_tbl[static_cast<uint8_t>(c)];
 }
 
-consteval auto hex_digit_pred(size_t i) noexcept {
+constexpr auto hex_digit_pred(size_t i) noexcept {
   return digit_pred(i) || ('A' <= i && i <= 'F') || ('a' <= i && i <= 'f');
 }
 
@@ -127,7 +127,7 @@ constexpr bool is_hex_string(R &&r) {
   return is_hex_string(std::ranges::begin(r), std::ranges::end(r));
 }
 
-consteval auto rfc3986_unreserved_chars_pred(size_t i) noexcept {
+constexpr auto rfc3986_unreserved_chars_pred(size_t i) noexcept {
   switch (i) {
   case '-':
   case '.':
@@ -146,7 +146,7 @@ constexpr bool in_rfc3986_unreserved_chars(char c) noexcept {
   return in_rfc3986_unreserved_chars_tbl[static_cast<uint8_t>(c)];
 }
 
-consteval auto rfc3986_sub_delims_pred(size_t i) noexcept {
+constexpr auto rfc3986_sub_delims_pred(size_t i) noexcept {
   switch (i) {
   case '!':
   case '$':
@@ -172,7 +172,7 @@ constexpr bool in_rfc3986_sub_delims(char c) noexcept {
   return in_rfc3986_sub_delims_tbl[static_cast<uint8_t>(c)];
 }
 
-consteval auto token_pred(size_t i) noexcept {
+constexpr auto token_pred(size_t i) noexcept {
   switch (i) {
   case '!':
   case '#':
@@ -202,7 +202,7 @@ constexpr bool in_token(char c) noexcept {
   return in_token_tbl[static_cast<uint8_t>(c)];
 }
 
-consteval auto attr_char_pred(size_t i) noexcept {
+constexpr auto attr_char_pred(size_t i) noexcept {
   switch (i) {
   case '*':
   case '\'':
