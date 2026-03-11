@@ -344,6 +344,8 @@ int Client::quic_init(const sockaddr *local_addr, socklen_t local_addrlen,
                       const sockaddr *remote_addr, socklen_t remote_addrlen) {
   int rv;
 
+  auto config = worker->config;
+
   if (!ssl) {
     ssl = SSL_new(worker->ssl_ctx);
 
@@ -368,6 +370,14 @@ int Client::quic_init(const sockaddr *local_addr, socklen_t local_addrlen,
 #else  // !OPENSSL_3_5_0_API
     SSL_set_quic_use_legacy_codepoint(ssl, 0);
 #endif // !OPENSSL_3_5_0_API
+
+    if (config->tls_session && !SSL_set_session(ssl, config->tls_session)) {
+      std::cerr << "Could not set TLS session" << std::endl;
+    }
+
+    if (!config->tls_session_file.empty()) {
+      SSL_set_ex_data(ssl, 1, worker);
+    }
   }
 
   auto callbacks = ngtcp2_callbacks{
@@ -401,8 +411,6 @@ int Client::quic_init(const sockaddr *local_addr, socklen_t local_addrlen,
   if (generate_cid(dcid) != 0) {
     return -1;
   }
-
-  auto config = worker->config;
 
   ngtcp2_settings settings;
   ngtcp2_settings_default(&settings);
