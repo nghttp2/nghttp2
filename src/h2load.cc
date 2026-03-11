@@ -142,6 +142,10 @@ Config::Config()
     ktls(false) {}
 
 Config::~Config() {
+  if (tls_session) {
+    SSL_SESSION_free(tls_session);
+  }
+
   if (addrs) {
     if (base_uri_unix) {
       delete addrs;
@@ -591,6 +595,14 @@ int Client::make_socket(addrinfo *addr) {
     if (config.scheme == "https") {
       if (!ssl) {
         ssl = SSL_new(worker->ssl_ctx);
+
+        if (config.tls_session && !SSL_set_session(ssl, config.tls_session)) {
+          std::cerr << "Could not set TLS session" << std::endl;
+        }
+
+        if (!config.tls_session_file.empty()) {
+          SSL_set_ex_data(ssl, 1, worker);
+        }
       }
 
       SSL_set_connect_state(ssl);
@@ -1061,6 +1073,9 @@ void Client::report_tls_info() {
 
     print_server_cert(ssl);
     print_negotiated_group(ssl);
+
+    std::cout << "Resumption: " << (SSL_session_reused(ssl) ? "yes"sv : "no"sv)
+              << std::endl;
   }
 }
 
@@ -1795,6 +1810,10 @@ Worker::Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t req_todo, size_t nclients,
 }
 
 Worker::~Worker() {
+  if (tls_session) {
+    SSL_SESSION_free(tls_session);
+  }
+
   ev_timer_stop(loop, &timeout_watcher);
   ev_timer_stop(loop, &duration_watcher);
   ev_timer_stop(loop, &warmup_watcher);
@@ -1905,6 +1924,68 @@ void Worker::report_rate_progress() {
   std::cout << "progress: " << nconns_made * 100 / nclients
             << "% of clients started" << std::endl;
 }
+
+void Worker::write_tls_session(const std::string &path) {
+  if (!tls_session) {
+    return;
+  }
+
+#ifdef NGHTTP2_OPENSSL_IS_WOLFSSL
+  auto datalen = wolfSSL_i2d_SSL_SESSION(tls_session, nullptr);
+  if (datalen <= 0) {
+    std::cerr << "Could not write TLS session to " << path << std::endl;
+    return;
+  }
+
+  auto data =
+    std::make_unique_for_overwrite<uint8_t[]>(static_cast<size_t>(datalen));
+  auto p = data.get();
+
+  datalen = wolfSSL_i2d_SSL_SESSION(tls_session, &p);
+
+  assert(datalen > 0);
+
+  auto f = wolfSSL_BIO_new_file(path.c_str(), "w");
+  if (!f) {
+    std::cerr << "Could not write TLS session to " << path << std::endl;
+    return;
+  }
+
+  if (!wolfSSL_PEM_write_bio(f, "WOLFSSL SESSION PARAMETERS", "", data.get(),
+                             datalen)) {
+    std::cerr << "Could not write TLS session to " << path << std::endl;
+  }
+
+  wolfSSL_BIO_free(f);
+#else  // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
+  auto f = BIO_new_file(path.c_str(), "w");
+  if (!f) {
+    std::cerr << "Could not write TLS session to " << path << std::endl;
+    return;
+  }
+
+  if (!PEM_write_bio_SSL_SESSION(f, tls_session)) {
+    std::cerr << "Could not write TLS session to " << path << std::endl;
+  }
+
+  BIO_free(f);
+#endif // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
+}
+
+namespace {
+int new_session_cb(SSL *ssl, SSL_SESSION *session) {
+  auto worker = static_cast<Worker *>(SSL_get_ex_data(ssl, 1));
+
+  if (!worker || worker->id != 0 || worker->tls_session_store_done) {
+    return 0;
+  }
+
+  worker->tls_session = session;
+  worker->tls_session_store_done = true;
+
+  return 1;
+}
+} // namespace
 
 namespace {
 // Returns percentage of number of samples within mean +/- sd.
@@ -2484,6 +2565,66 @@ void output_sd_stat(std::ostream &o, const std::string_view &title,
 } // namespace
 
 namespace {
+std::optional<SSL_SESSION *> read_tls_session(const std::string &path) {
+#ifdef NGHTTP2_OPENSSL_IS_WOLFSSL
+  auto f = wolfSSL_BIO_new_file(path.c_str(), "r");
+  if (!f) {
+    std::cerr << "Could not read TLS session file from " << path << std::endl;
+    return {};
+  }
+
+  auto f_del = defer([f] { wolfSSL_BIO_free(f); });
+
+  char *name, *header;
+  uint8_t *data;
+  long datalen;
+
+  if (!wolfSSL_PEM_read_bio(f, &name, &header, &data, &datalen)) {
+    std::cerr << "Could not read TLS session file from " << path << std::endl;
+    return {};
+  }
+
+  auto data_del = defer([name, header, data] {
+    wolfSSL_OPENSSL_free(name);
+    wolfSSL_OPENSSL_free(header);
+    wolfSSL_OPENSSL_free(data);
+  });
+
+  if ("WOLFSSL SESSION PARAMETERS"sv != name) {
+    std::cerr << "Could not read TLS session file from " << path << std::endl;
+    return {};
+  }
+
+  const uint8_t *pdata = data;
+
+  auto session = wolfSSL_d2i_SSL_SESSION(nullptr, &pdata, datalen);
+  if (!session) {
+    std::cerr << "Could not read TLS session file from " << path << std::endl;
+    return {};
+  }
+
+  return session;
+#else  // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
+  auto f = BIO_new_file(path.c_str(), "r");
+  if (!f) {
+    std::cerr << "Could not read TLS session file from " << path << std::endl;
+    return {};
+  }
+
+  auto session = PEM_read_bio_SSL_SESSION(f, nullptr, 0, nullptr);
+  BIO_free(f);
+
+  if (!session) {
+    std::cerr << "Could not read TLS session file from " << path << std::endl;
+    return {};
+  }
+
+  return session;
+#endif // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
+}
+} // namespace
+
+namespace {
 void print_version(std::ostream &out) {
   out << "h2load nghttp2/" NGHTTP2_VERSION << std::endl;
 }
@@ -2713,6 +2854,11 @@ Options:
               specified in URI.
   --histogram
               Plot histogram for performance statistics.
+  --tls-session-file=<PATH>
+              Read  TLS session  from <PATH>,  and set  it to  all TLS
+              connections to  perform the  session resumption.   It is
+              also used  to store  the new TLS  session.  At  most one
+              session is written to the given file.
   -v, --verbose
               Output debug information.
   --version   Display version information and exit.
@@ -2778,6 +2924,7 @@ int main(int argc, char **argv) {
       {"alpn-list", required_argument, &flag, 19},
       {"sni", required_argument, &flag, 20},
       {"histogram", no_argument, &flag, 21},
+      {"tls-session-file", required_argument, &flag, 22},
       {nullptr, 0, nullptr, 0}};
     int option_index = 0;
     auto c = getopt_long(argc, argv,
@@ -3134,6 +3281,10 @@ int main(int argc, char **argv) {
         // --histogram
         config.histogram = true;
         break;
+      case 22:
+        // --tls-session-file
+        config.tls_session_file = optarg;
+        break;
       }
       break;
     default:
@@ -3165,6 +3316,13 @@ int main(int argc, char **argv) {
 
   if (config.is_quic() && !window_bits_set_manually) {
     config.window_bits = 24;
+  }
+
+  if (!config.tls_session_file.empty()) {
+    auto session = read_tls_session(config.tls_session_file);
+    if (session) {
+      config.tls_session = *session;
+    }
   }
 
   std::vector<std::string> reqlines;
@@ -3440,6 +3598,12 @@ int main(int argc, char **argv) {
     exit(EXIT_FAILURE);
   }
 
+  if (!config.tls_session_file.empty()) {
+    SSL_CTX_set_session_cache_mode(ssl_ctx, SSL_SESS_CACHE_CLIENT |
+                                              SSL_SESS_CACHE_NO_INTERNAL);
+    SSL_CTX_sess_set_new_cb(ssl_ctx, new_session_cb);
+  }
+
 #if defined(NGHTTP2_OPENSSL_IS_BORINGSSL) && defined(HAVE_LIBBROTLI)
   if (!SSL_CTX_add_cert_compression_alg(
         ssl_ctx, nghttp2::tls::CERTIFICATE_COMPRESSION_ALGO_BROTLI,
@@ -3648,6 +3812,8 @@ int main(int argc, char **argv) {
   auto end = std::chrono::steady_clock::now();
   auto duration =
     std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+
+  workers[0]->write_tls_session(config.tls_session_file);
 
   Stats stats(0, 0);
   for (const auto &w : workers) {

@@ -153,6 +153,10 @@ struct Config {
   std::string sni;
   // Plot histogram.
   bool histogram{};
+  // Path to TLS session file.
+  std::string tls_session_file;
+  // TLS session read from file.
+  SSL_SESSION *tls_session{};
 
   Config();
   ~Config();
@@ -331,6 +335,8 @@ struct Worker {
   uint32_t id;
   bool tls_info_report_done;
   bool app_info_report_done;
+  bool tls_session_store_done{};
+  SSL_SESSION *tls_session{};
   size_t nconns_made;
   // number of clients this worker handles
   size_t nclients;
@@ -368,6 +374,7 @@ struct Worker {
   void stop_all_clients();
   // This function frees a client from the list of clients for this Worker.
   void free_client(Client *);
+  void write_tls_session(const std::string &path);
 };
 
 struct Stream {
