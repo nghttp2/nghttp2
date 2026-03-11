@@ -853,6 +853,95 @@ void Client::process_request_failure() {
             << std::endl;
 }
 
+namespace {
+#if OPENSSL_3_0_0_API
+std::string pkey_get_group_name(EVP_PKEY *pkey) {
+  std::array<char, 64> name;
+  size_t nwrite;
+
+  if (!EVP_PKEY_get_group_name(pkey, name.data(), name.size(), &nwrite)) {
+    return ""s;
+  }
+
+  return name.data();
+}
+#else  // !OPENSSL_3_0_0_API
+std::string_view pkey_get_group_name(EVP_PKEY *pkey) {
+  auto nid = EVP_PKEY_id(pkey);
+  if (nid == EVP_PKEY_EC) {
+    auto ec = EVP_PKEY_get0_EC_KEY(pkey);
+
+    nid = EC_GROUP_get_curve_name(EC_KEY_get0_group(ec));
+  }
+
+  auto cname = EC_curve_nid2nist(nid);
+  if (cname) {
+    return cname;
+  }
+
+  cname = OBJ_nid2sn(nid);
+  if (cname) {
+    return cname;
+  }
+
+  return ""sv;
+}
+#endif // !OPENSSL_3_0_0_API
+} // namespace
+
+namespace {
+std::string_view get_negotiated_group_name(SSL *ssl) {
+#if OPENSSL_3_5_0_API
+  auto name = SSL_get0_group_name(ssl);
+  if (!name) {
+    return ""sv;
+  }
+
+  return name;
+#elif OPENSSL_3_0_0_API
+  auto name =
+    SSL_group_to_name(ssl, static_cast<int>(SSL_get_negotiated_group(ssl)));
+  if (!name) {
+    return ""sv;
+  }
+
+  return name;
+#elif defined(NGHTTP2_OPENSSL_IS_BORINGSSL)
+  auto name = SSL_get_group_name(SSL_get_group_id(ssl));
+  if (!name) {
+    return ""sv;
+  }
+
+  return name;
+#elif defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
+  auto name = wolfSSL_get_curve_name(ssl);
+  if (!name) {
+    return ""sv;
+  }
+
+  return name;
+#elif defined(NGHTTP2_OPENSSL_IS_LIBRESSL)
+  return ""sv;
+#else  // !OPENSSL_3_5_0_API && !OPENSSL_3_0_0_API &&
+       // !defined(NGHTTP2_OPENSSL_IS_BORINGSSL) &&
+       // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL) &&
+       // !defined(NGHTTP2_OPENSSL_IS_LIBRESSL)
+  EVP_PKEY *pkey;
+
+  if (!SSL_get_tmp_key(ssl, &pkey)) {
+    return ""sv;
+  }
+
+  auto key_del = defer([pkey] { EVP_PKEY_free(pkey); });
+
+  return pkey_get_group_name(pkey);
+#endif // !OPENSSL_3_5_0_API && !OPENSSL_3_0_0_API &&
+       // !defined(NGHTTP2_OPENSSL_IS_BORINGSSL) &&
+       // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL) &&
+       // !defined(NGHTTP2_OPENSSL_IS_LIBRESSL)
+}
+} // namespace
+
 #ifndef NGHTTP2_OPENSSL_IS_BORINGSSL
 namespace {
 void print_server_tmp_key(SSL *ssl) {
@@ -875,28 +964,12 @@ void print_server_tmp_key(SSL *ssl) {
     std::cout << "DH " << EVP_PKEY_bits(key) << " bits" << std::endl;
     break;
   case EVP_PKEY_EC: {
-#  if OPENSSL_3_0_0_API
-    std::array<char, 64> curve_name;
-    const char *cname;
-    if (!EVP_PKEY_get_utf8_string_param(key, "group", curve_name.data(),
-                                        curve_name.size(), nullptr)) {
-      cname = "<unknown>";
-    } else {
-      cname = curve_name.data();
+    auto group = pkey_get_group_name(key);
+    if (group.empty()) {
+      group = "<unknown>"sv;
     }
-#  else  // !OPENSSL_3_0_0_API
-    auto ec = EVP_PKEY_get0_EC_KEY(key);
-    auto nid = EC_GROUP_get_curve_name(EC_KEY_get0_group(ec));
-    auto cname = EC_curve_nid2nist(nid);
-    if (!cname) {
-      cname = OBJ_nid2sn(nid);
-      if (!cname) {
-        cname = "<unknown>";
-      }
-    }
-#  endif // !OPENSSL_3_0_0_API
 
-    std::cout << "ECDH " << cname << " " << EVP_PKEY_bits(key) << " bits"
+    std::cout << "ECDH " << group << " " << EVP_PKEY_bits(key) << " bits"
               << std::endl;
     break;
   }
@@ -909,6 +982,73 @@ void print_server_tmp_key(SSL *ssl) {
 } // namespace
 #endif // !defined(NGHTTP2_OPENSSL_IS_BORINGSSL)
 
+namespace {
+void print_server_cert(SSL *ssl) {
+#if OPENSSL_3_0_0_API
+  auto cert = SSL_get0_peer_certificate(ssl);
+#else  // !OPENSSL_3_0_0_API
+  auto cert = SSL_get_peer_certificate(ssl);
+#endif // !OPENSSL_3_0_0_API
+  if (!cert) {
+    return;
+  }
+
+#if !OPENSSL_3_0_0_API
+  auto cert_d = defer([cert] { X509_free(cert); });
+#endif // !OPENSSL_3_0_0_API
+
+  auto pkey = X509_get0_pubkey(cert);
+  if (!pkey) {
+    return;
+  }
+
+#ifdef NGHTTP2_OPENSSL_IS_WOLFSSL
+  auto pkey_d = defer([pkey] {
+    // X509_get0_pubkey is mapped to wolfSSL_X509_get_pubkey, which
+    // increases the reference count despite the name "get0" suggests.
+    EVP_PKEY_free(pkey);
+  });
+#endif // defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
+
+  std::cout << "Certificate: ";
+
+  switch (EVP_PKEY_id(pkey)) {
+  case EVP_PKEY_RSA:
+    std::cout << "RSA ";
+    break;
+  case EVP_PKEY_EC:
+    std::cout << "ECDSA " << pkey_get_group_name(pkey) << " ";
+    break;
+#ifdef NGHTTP2_GENUINE_OPENSSL
+  case EVP_PKEY_ED448:
+    std::cout << "ED448 ";
+    break;
+  case EVP_PKEY_ED25519:
+    std::cout << "ED25519 ";
+    break;
+#endif // defined(NGHTTP2_GENUINE_OPENSSL)
+  default:
+#if OPENSSL_3_0_0_API
+    if (auto name = EVP_PKEY_get0_type_name(pkey); name) {
+      std::cout << name << " ";
+      break;
+    }
+#endif // OPENSSL_3_0_0_API
+
+    std::cout << "<unknown> ";
+  }
+
+  std::cout << EVP_PKEY_bits(pkey) << " bits" << std::endl;
+}
+} // namespace
+
+namespace {
+void print_negotiated_group(SSL *ssl) {
+  std::cout << "Negotiated Group: " << get_negotiated_group_name(ssl)
+            << std::endl;
+}
+} // namespace
+
 void Client::report_tls_info() {
   if (worker->id == 0 && !worker->tls_info_report_done) {
     worker->tls_info_report_done = true;
@@ -918,6 +1058,9 @@ void Client::report_tls_info() {
 #ifndef NGHTTP2_OPENSSL_IS_BORINGSSL
     print_server_tmp_key(ssl);
 #endif // !defined(NGHTTP2_OPENSSL_IS_BORINGSSL)
+
+    print_server_cert(ssl);
+    print_negotiated_group(ssl);
   }
 }
 
