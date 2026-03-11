@@ -243,6 +243,10 @@ exists and serves incoming requests.
 If you want to just reload configuration file without executing new
 binary, send SIGHUP to nghttpx main process.
 
+For TCP connections, nghttpx does moderate effort not to lose a
+connection during this process.  To make it more robust, consider to
+enable ``net.ipv4.tcp_migrate_req``.
+
 Re-opening log files
 --------------------
 

@@ -69,17 +69,21 @@ AcceptHandler::~AcceptHandler() {
 int AcceptHandler::accept_connection() {
   sockaddr_storage ss;
   socklen_t addrlen = sizeof(ss);
+  int cfd;
 
+  while ((
 #ifdef HAVE_ACCEPT4
-  auto cfd = accept4(faddr_->fd, reinterpret_cast<sockaddr *>(&ss), &addrlen,
-                     SOCK_NONBLOCK | SOCK_CLOEXEC);
+           cfd = accept4(faddr_->fd, reinterpret_cast<sockaddr *>(&ss),
+                         &addrlen, SOCK_NONBLOCK | SOCK_CLOEXEC)
 #else  // !defined(HAVE_ACCEPT4)
-  auto cfd = accept(faddr_->fd, reinterpret_cast<sockaddr *>(&ss), &addrlen);
+           cfd = accept(faddr_->fd, reinterpret_cast<sockaddr *>(&ss), &addrlen)
 #endif // !defined(HAVE_ACCEPT4)
+             ) == -1 &&
+         errno == EINTR)
+    ;
 
   if (cfd == -1) {
     switch (errno) {
-    case EINTR:
     case ENETDOWN:
     case EPROTO:
     case ENOPROTOOPT:
@@ -111,6 +115,48 @@ int AcceptHandler::accept_connection() {
                              addrlen, faddr_);
 
   return 0;
+}
+
+void AcceptHandler::drain_connection() {
+  sockaddr_storage ss;
+  socklen_t addrlen = sizeof(ss);
+  int cfd;
+
+  for (;;) {
+    while ((
+#ifdef HAVE_ACCEPT4
+             cfd = accept4(faddr_->fd, reinterpret_cast<sockaddr *>(&ss),
+                           &addrlen, SOCK_NONBLOCK | SOCK_CLOEXEC)
+#else  // !defined(HAVE_ACCEPT4)
+             cfd =
+               accept(faddr_->fd, reinterpret_cast<sockaddr *>(&ss), &addrlen)
+#endif // !defined(HAVE_ACCEPT4)
+               ) == -1 &&
+           errno == EINTR)
+      ;
+
+    if (cfd == -1) {
+      switch (errno) {
+      case EAGAIN:
+#if EAGAIN != EWOULDBLOCK
+      case EWOULDBLOCK:
+#endif // EAGAIN != EWOULDBLOCK
+      case EMFILE:
+      case ENFILE:
+        return;
+      default:
+        continue;
+      }
+    }
+
+#ifndef HAVE_ACCEPT4
+    util::make_socket_nonblocking(cfd);
+    util::make_socket_closeonexec(cfd);
+#endif // !defined(HAVE_ACCEPT4)
+
+    worker_->handle_connection(cfd, reinterpret_cast<const sockaddr *>(&ss),
+                               addrlen, faddr_);
+  }
 }
 
 void AcceptHandler::enable() { ev_io_start(worker_->get_loop(), &wev_); }

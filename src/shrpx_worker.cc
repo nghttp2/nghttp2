@@ -531,8 +531,7 @@ void Worker::process_events() {
 
     graceful_shutdown_ = true;
 
-    accept_pending_connection();
-    delete_listener();
+    drain_and_delete_listener();
 
     if (worker_stat_.num_connections == 0 &&
         worker_stat_.num_close_waits == 0) {
@@ -727,12 +726,13 @@ int Worker::setup_server_socket() {
   return 0;
 }
 
-void Worker::delete_listener() { listeners_.clear(); }
-
-void Worker::accept_pending_connection() {
+void Worker::drain_and_delete_listener() {
   for (auto &l : listeners_) {
-    l->accept_connection();
+    l->drain_connection();
+    l.reset(nullptr);
   }
+
+  listeners_.clear();
 }
 
 int Worker::create_tcp_server_socket(UpstreamAddr &faddr) {
