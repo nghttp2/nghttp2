@@ -2625,6 +2625,110 @@ std::optional<SSL_SESSION *> read_tls_session(const std::string &path) {
 } // namespace
 
 namespace {
+void write_sd_stat_result(std::ostream &o, const std::string_view &title,
+                          const SDStat &st) {
+  o << R"(")" << title << R"(":{)"
+    << R"("min":)" << st.min << ","
+    << R"("max":)" << st.max << ","
+    << R"("median":)" << st.median << ","
+    << R"("p95":)" << st.p95 << ","
+    << R"("p99":)" << st.p99 << ","
+    << R"("mean":)" << st.mean << ","
+    << R"("sd":)" << st.sd << ","
+    << R"("within_sd":)" << st.within_sd << ","
+    << R"("samples":[)";
+
+  if (!st.samples.empty()) {
+    o << st.samples[0];
+
+    for (size_t i = 1; i < st.samples.size(); ++i) {
+      o << ',' << st.samples[i];
+    }
+  }
+
+  o << "]}";
+}
+} // namespace
+
+namespace {
+void write_result(const std::string &path,
+                  std::chrono::duration<double> duration, double rps,
+                  int64_t bps, const Stats &stats, const SDStats &ts) {
+  std::ofstream o{path};
+
+  if (!o) {
+    std::cerr << "Could not write the result to file " << path << std::endl;
+    return;
+  }
+
+  auto prec = o.precision();
+  auto guard = defer([&o, prec]() { o.precision(prec); });
+
+  o << std::setprecision(9) << R"({"version":"v1","metadata":{)"
+    << R"("generator":"h2load )" << NGHTTP2_VERSION << R"(")"
+    << "},"
+    << R"("measurements":{)"
+    << R"("duration":)" << duration.count() << ","
+    << R"("request_per_second":)" << rps << ","
+    << R"("bytes_per_second":)" << bps << ","
+    << R"("requests":{)"
+    << R"("total":)" << stats.req_todo << ","
+    << R"("started":)" << stats.req_started << ","
+    << R"("done":)" << stats.req_done << ","
+    << R"("succeeded":)" << stats.req_status_success << ","
+    << R"("failed":)" << stats.req_failed << ","
+    << R"("errored":)" << stats.req_error << ","
+    << R"("timeout":)" << stats.req_timedout << "},"
+    << R"("status_codes":{)"
+    << R"("2xx":)" << stats.status[2] << ","
+    << R"("3xx":)" << stats.status[3] << ","
+    << R"("4xx":)" << stats.status[4] << ","
+    << R"("5xx":)" << stats.status[5] << "},"
+    << R"("traffic":{)"
+    << R"("total":)" << stats.bytes_total << ","
+    << R"("headers":)" << stats.bytes_head << ","
+    << R"("headers_decompressed":)" << stats.bytes_head_decomp << ","
+    << R"("data":)" << stats.bytes_body << "},";
+
+#ifdef ENABLE_HTTP3
+  if (config.is_quic()) {
+    o << R"("udp_datagram":{)"
+      << R"("sent":)" << stats.udp_dgram_sent << ","
+      << R"("recv":)" << stats.udp_dgram_recv << "},";
+  }
+#endif // ENABLE_HTTP3
+
+  o << R"("performance":{)";
+  write_sd_stat_result(o, "request", ts.request);
+  o << ",";
+  write_sd_stat_result(o, "connect", ts.connect);
+  o << ",";
+  write_sd_stat_result(o, "ttfb", ts.ttfb);
+  o << ",";
+  write_sd_stat_result(o, "request_per_second", ts.rps);
+
+#ifdef ENABLE_HTTP3
+  if (config.is_quic()) {
+    o << ",";
+    write_sd_stat_result(o, "min_rtt", ts.min_rtt);
+    o << ",";
+    write_sd_stat_result(o, "smoothed_rtt", ts.smoothed_rtt);
+    o << ",";
+    write_sd_stat_result(o, "packets_sent", ts.pkt_sent);
+    o << ",";
+    write_sd_stat_result(o, "packets_recv", ts.pkt_recv);
+    o << ",";
+    write_sd_stat_result(o, "packets_lost", ts.pkt_lost);
+    o << ",";
+    write_sd_stat_result(o, "gro_packets", ts.gro_pkts);
+  }
+#endif // ENABLE_HTTP3
+
+  o << "}}}";
+}
+} // namespace
+
+namespace {
 void print_version(std::ostream &out) {
   out << "h2load nghttp2/" NGHTTP2_VERSION << std::endl;
 }
@@ -2859,6 +2963,11 @@ Options:
               connections to  perform the  session resumption.   It is
               also used  to store  the new TLS  session.  At  most one
               session is written to the given file.
+  --output-file=<PATH>
+              Write the measurement results  to <PATH> in JSON format.
+              This  basically includes  all  numbers  reported to  the
+              normal   output.     In   addition,    for   performance
+              measurements, all raw samples are included.
   -v, --verbose
               Output debug information.
   --version   Display version information and exit.
@@ -2925,6 +3034,7 @@ int main(int argc, char **argv) {
       {"sni", required_argument, &flag, 20},
       {"histogram", no_argument, &flag, 21},
       {"tls-session-file", required_argument, &flag, 22},
+      {"output-file", required_argument, &flag, 23},
       {nullptr, 0, nullptr, 0}};
     int option_index = 0;
     auto c = getopt_long(argc, argv,
@@ -3284,6 +3394,10 @@ int main(int argc, char **argv) {
       case 22:
         // --tls-session-file
         config.tls_session_file = optarg;
+        break;
+      case 23:
+        // --output-file
+        config.output_file = optarg;
         break;
       }
       break;
@@ -3917,6 +4031,10 @@ traffic: )" << util::utos_funit(as_unsigned(stats.bytes_total))
     output_sd_stat(std::cout, "GRO packets"sv, ts.gro_pkts);
   }
 #endif // ENABLE_HTTP3
+
+  if (!config.output_file.empty()) {
+    write_result(config.output_file, duration, rps, bps, stats, ts);
+  }
 
   SSL_CTX_free(ssl_ctx);
 
