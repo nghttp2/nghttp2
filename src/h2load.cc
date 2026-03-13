@@ -2534,7 +2534,7 @@ template <typename F>
 requires std::invocable<F, double>
 void output_sd_stat(std::ostream &o, const std::string_view &title,
                     const SDStat &st, F formatter) {
-  o << std::left << std::setw(16) << title << ": " << std::right;
+  o << std::left << std::setw(12) << title << ": " << std::right;
   o << std::setw(10) << formatter(st.min) << "  ";
   o << std::setw(10) << formatter(st.max) << "  ";
   o << std::setw(10) << formatter(st.median) << " ";
@@ -3900,12 +3900,12 @@ traffic: )" << util::utos_funit(as_unsigned(stats.bytes_total))
               << stats.udp_dgram_recv << " received" << std::endl;
   }
 #endif // defined(ENABLE_HTTP3)
-  std::cout << "                     min         max         median     p95    "
+  std::cout << "                 min         max         median     p95    "
                "    p99        mean         sd        +/- sd\n";
 
-  output_sd_stat_duration(std::cout, "time for request"sv, ts.request);
-  output_sd_stat_duration(std::cout, "time for connect"sv, ts.connect);
-  output_sd_stat_duration(std::cout, "time to 1st byte"sv, ts.ttfb);
+  output_sd_stat_duration(std::cout, "request"sv, ts.request);
+  output_sd_stat_duration(std::cout, "connect"sv, ts.connect);
+  output_sd_stat_duration(std::cout, "TTFB"sv, ts.ttfb);
   output_sd_stat(std::cout, "req/s"sv, ts.rps);
 #ifdef ENABLE_HTTP3
   if (config.is_quic()) {

@@ -55,13 +55,13 @@ PERFORMANCE STATISTICS
 ~~~~~~~~~~~~~~~~~~~~~~
 
 Metric Definitions
-  time for request
+  request
     The duration from sending the first byte of a request to receiving
     the last byte of the response.
-  time for connect
+  connect
     The time taken to establish a connection, including TLS
     handshakes.
-  time to 1st byte
+  TTFB
     The duration until the first byte of application data is received
     from the server (decrypted if using TLS).
   req/s
