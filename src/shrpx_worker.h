@@ -368,8 +368,7 @@ public:
   ConnectionHandler *get_connection_handler() const;
 
   int setup_server_socket();
-  void delete_listener();
-  void accept_pending_connection();
+  void drain_and_delete_listener();
   int create_tcp_server_socket(UpstreamAddr &addr);
   void enable_listener();
   void disable_listener();

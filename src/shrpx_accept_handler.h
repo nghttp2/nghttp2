@@ -39,6 +39,7 @@ public:
   AcceptHandler(Worker *worker, const UpstreamAddr *faddr);
   ~AcceptHandler();
   int accept_connection();
+  void drain_connection();
   void enable();
   void disable();
   int get_fd() const;
