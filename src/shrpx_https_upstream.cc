@@ -463,6 +463,14 @@ int htp_hdrs_completecb(llhttp_t *htp) {
     return -1;
   }
 
+  if ((req.scheme == "http" || req.scheme == "https") &&
+      (req.path.empty() || req.path[0] != '/') &&
+      // req.path gets empty string in case of "OPTIONS *".
+      (req.method != HTTP_OPTIONS || !req.path.empty())) {
+    resp.http_status = 400;
+    return -1;
+  }
+
 #ifdef HAVE_MRUBY
   auto worker = handler->get_worker();
   auto mruby_ctx = worker->get_mruby_context();
