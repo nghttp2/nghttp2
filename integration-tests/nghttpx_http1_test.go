@@ -1970,3 +1970,33 @@ func TestH1H1RequestHTTP10TransferEncoding(t *testing.T) {
 		t.Errorf("status: %v; want %v", got, want)
 	}
 }
+
+// TestH1H2BadHost tests that invalid character in host is treated as
+// bad request.
+func TestH1H2BadHost(t *testing.T) {
+	opts := options{
+		args: []string{"--http2-bridge"},
+	}
+
+	st := newServerTester(t, opts)
+	defer st.Close()
+
+	if _, err := io.WriteString(st.conn, "GET / HTTP/1.1\r\nTest-Case: TestH1H2BadHost\r\nHost: 127.0.0.1\x8c\r\n\r\n"); err != nil {
+		t.Fatalf("Error io.WriteString() = %v", err)
+	}
+
+	resp, err := http.ReadResponse(bufio.NewReader(st.conn), nil)
+	if err != nil {
+		t.Fatalf("Error http.ReadResponse() = %v", err)
+	}
+
+	defer resp.Body.Close()
+
+	if got, want := resp.StatusCode, http.StatusBadRequest; got != want {
+		t.Errorf("status: %v; want %v", got, want)
+	}
+
+	if _, err := io.ReadAll(resp.Body); err != nil {
+		t.Fatalf("Error io.ReadAll() = %v", err)
+	}
+}
