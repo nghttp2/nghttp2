@@ -507,23 +507,29 @@ int QUICConnectionHandler::send_retry(
     return -1;
   }
 
-  std::vector<uint8_t> buf;
-  buf.resize(std::min(max_pktlen, static_cast<size_t>(256)));
+  std::array<uint8_t, NGTCP2_MAX_UDP_PAYLOAD_SIZE> buf;
+  auto buflen = std::min(max_pktlen, buf.size());
 
-  auto nwrite = ngtcp2_crypto_write_retry(buf.data(), buf.size(), version,
-                                          &iscid, &retry_scid, &idcid,
-                                          token->data(), token->size());
+  auto nwrite =
+    ngtcp2_crypto_write_retry(buf.data(), buflen, version, &iscid, &retry_scid,
+                              &idcid, token->data(), token->size());
   if (nwrite < 0) {
     LOG(ERROR) << "ngtcp2_crypto_write_retry: "
                << ngtcp2_strerror(static_cast<int>(nwrite));
     return -1;
   }
 
-  buf.resize(as_unsigned(nwrite));
+  assert(nwrite);
+
+  auto retrylen = as_unsigned(nwrite);
+  auto retry = std::make_unique_for_overwrite<uint8_t[]>(retrylen);
+
+  std::ranges::copy_n(std::ranges::begin(buf), as_signed(retrylen),
+                      retry.get());
 
   quic_send_packet(faddr, remote_sockaddr, remote_sockaddrlen,
                    local_addr.as_sockaddr(), local_addr.size(),
-                   ngtcp2_pkt_info{}, buf, buf.size());
+                   ngtcp2_pkt_info{}, {retry.get(), retrylen}, retrylen);
 
   if (generate_quic_hashed_connection_id(idcid, remote_addr, local_addr,
                                          idcid) != 0) {
@@ -534,12 +540,12 @@ int QUICConnectionHandler::send_retry(
     static_cast<ev_tstamp>(NGTCP2_DEFAULT_INITIAL_RTT * 3) / NGTCP2_SECONDS;
 
   if (LOG_ENABLED(INFO)) {
-    LOG(INFO) << "Enter close-wait period " << d << "s with " << buf.size()
+    LOG(INFO) << "Enter close-wait period " << d << "s with " << retrylen
               << " bytes sentinel packet";
   }
 
   auto cw = std::make_unique<CloseWait>(worker_, std::vector<ngtcp2_cid>{idcid},
-                                        std::move(buf), d);
+                                        std::move(retry), retrylen, d);
 
   add_close_wait(cw.release());
 
@@ -728,10 +734,12 @@ static void close_wait_timeoutcb(struct ev_loop *loop, ev_timer *w,
 }
 
 CloseWait::CloseWait(Worker *worker, std::vector<ngtcp2_cid> scids,
-                     std::vector<uint8_t> pkt, ev_tstamp period)
+                     std::unique_ptr<uint8_t[]> pkt, size_t pktlen,
+                     ev_tstamp period)
   : worker{worker},
     scids{std::move(scids)},
     pkt{std::move(pkt)},
+    pktlen{pktlen},
     bytes_recv{0},
     bytes_sent{0},
     num_pkts_recv{0},
@@ -763,28 +771,27 @@ int CloseWait::handle_packet(const UpstreamAddr *faddr,
                              const Address &local_addr,
                              const ngtcp2_pkt_info &pi,
                              std::span<const uint8_t> data) {
-  if (pkt.empty()) {
+  if (pktlen == 0) {
     return 0;
   }
 
   ++num_pkts_recv;
   bytes_recv += data.size();
 
-  if (bytes_sent + pkt.size() > 3 * bytes_recv ||
-      next_pkts_recv > num_pkts_recv) {
+  if (bytes_sent + pktlen > 3 * bytes_recv || next_pkts_recv > num_pkts_recv) {
     return 0;
   }
 
   auto rv =
     quic_send_packet(faddr, remote_addr.as_sockaddr(), remote_addr.size(),
                      local_addr.as_sockaddr(), local_addr.size(),
-                     ngtcp2_pkt_info{}, pkt, pkt.size());
+                     ngtcp2_pkt_info{}, {pkt.get(), pktlen}, pktlen);
   if (rv != 0) {
     return -1;
   }
 
   next_pkts_recv *= 2;
-  bytes_sent += pkt.size();
+  bytes_sent += pktlen;
 
   return 0;
 }

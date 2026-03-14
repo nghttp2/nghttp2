@@ -51,7 +51,7 @@ class Worker;
 // closing period).
 struct CloseWait {
   CloseWait(Worker *worker, std::vector<ngtcp2_cid> scids,
-            std::vector<uint8_t> pkt, ev_tstamp period);
+            std::unique_ptr<uint8_t[]> pkt, size_t pktlen, ev_tstamp period);
   ~CloseWait();
 
   int handle_packet(const UpstreamAddr *faddr, const Address &remote_addr,
@@ -63,7 +63,9 @@ struct CloseWait {
   std::vector<ngtcp2_cid> scids;
   // QUIC packet which is sent in response to the incoming packet.  It
   // might be empty.
-  std::vector<uint8_t> pkt;
+  std::unique_ptr<uint8_t[]> pkt;
+  // The length of pkt.
+  size_t pktlen;
   // Close-wait (draining or closing period) timer.
   ev_timer timer;
   // The number of bytes received during close-wait period.
