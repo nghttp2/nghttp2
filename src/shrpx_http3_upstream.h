@@ -106,6 +106,7 @@ public:
                          size_t destlen, ngtcp2_tstamp ts);
 
   int handle_error();
+  int send_connection_close(const ngtcp2_ccerr &ccerr);
 
   int handle_expiry();
   void reset_timer();
@@ -177,7 +178,8 @@ private:
 #endif // OPENSSL_3_5_0_API
   nghttp3_conn *httpconn_;
   DownstreamQueue downstream_queue_;
-  std::vector<uint8_t> conn_close_;
+  std::unique_ptr<uint8_t[]> conn_close_;
+  size_t conn_closelen_{};
 
   struct {
     bool send_blocked;

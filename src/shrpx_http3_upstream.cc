@@ -1497,12 +1497,6 @@ void Http3Upstream::on_handler_delete() {
   // If this is not idle close, send CONNECTION_CLOSE.
   if (!ngtcp2_conn_in_closing_period(conn_) &&
       !ngtcp2_conn_in_draining_period(conn_)) {
-    ngtcp2_path_storage ps;
-    ngtcp2_pkt_info pi;
-    conn_close_.resize(SHRPX_QUIC_CONN_CLOSE_PKTLEN);
-
-    ngtcp2_path_storage_zero(&ps);
-
     ngtcp2_ccerr ccerr;
     ngtcp2_ccerr_default(&ccerr);
 
@@ -1511,23 +1505,8 @@ void Http3Upstream::on_handler_delete() {
       ccerr.error_code = NGTCP2_CONNECTION_REFUSED;
     }
 
-    auto nwrite = ngtcp2_conn_write_connection_close(
-      conn_, &ps.path, &pi, conn_close_.data(), conn_close_.size(), &ccerr,
-      quic_timestamp());
-    if (nwrite < 0) {
-      if (nwrite != NGTCP2_ERR_INVALID_STATE) {
-        ULOG(ERROR, this) << "ngtcp2_conn_write_connection_close: "
-                          << ngtcp2_strerror(static_cast<int>(nwrite));
-      }
-
-      return;
-    }
-
-    conn_close_.resize(as_unsigned(nwrite));
-
-    send_packet(static_cast<UpstreamAddr *>(ps.path.user_data),
-                ps.path.remote.addr, ps.path.remote.addrlen, ps.path.local.addr,
-                ps.path.local.addrlen, pi, conn_close_, conn_close_.size());
+    // Ignore return value.  We always enter into close-wait.
+    send_connection_close(ccerr);
   }
 
   auto d =
@@ -1535,11 +1514,11 @@ void Http3Upstream::on_handler_delete() {
 
   if (LOG_ENABLED(INFO)) {
     ULOG(INFO, this) << "Enter close-wait period " << d << "s with "
-                     << conn_close_.size() << " bytes sentinel packet";
+                     << conn_closelen_ << " bytes sentinel packet";
   }
 
-  auto cw = std::make_unique<CloseWait>(worker, std::move(scids),
-                                        std::move(conn_close_), d);
+  auto cw = std::make_unique<CloseWait>(
+    worker, std::move(scids), std::move(conn_close_), conn_closelen_, d);
 
   quic_conn_handler->add_close_wait(cw.release());
 }
@@ -1938,33 +1917,42 @@ int Http3Upstream::handle_error() {
     return -1;
   }
 
+  return send_connection_close(last_error_);
+}
+
+int Http3Upstream::send_connection_close(const ngtcp2_ccerr &ccerr) {
   ngtcp2_path_storage ps;
   ngtcp2_pkt_info pi;
 
   ngtcp2_path_storage_zero(&ps);
 
-  auto ts = quic_timestamp();
+  std::array<uint8_t, NGTCP2_MAX_UDP_PAYLOAD_SIZE> buf;
 
-  conn_close_.resize(SHRPX_QUIC_CONN_CLOSE_PKTLEN);
-
-  auto nwrite =
-    ngtcp2_conn_write_connection_close(conn_, &ps.path, &pi, conn_close_.data(),
-                                       conn_close_.size(), &last_error_, ts);
+  auto nwrite = ngtcp2_conn_write_connection_close(
+    conn_, &ps.path, &pi, buf.data(), buf.size(), &ccerr, quic_timestamp());
   if (nwrite < 0) {
-    ULOG(ERROR, this) << "ngtcp2_conn_write_connection_close: "
-                      << ngtcp2_strerror(static_cast<int>(nwrite));
+    if (nwrite != NGTCP2_ERR_INVALID_STATE) {
+      ULOG(ERROR, this) << "ngtcp2_conn_write_connection_close: "
+                        << ngtcp2_strerror(static_cast<int>(nwrite));
+    }
+
     return -1;
   }
-
-  conn_close_.resize(static_cast<size_t>(nwrite));
 
   if (nwrite == 0) {
     return -1;
   }
 
+  conn_closelen_ = as_unsigned(nwrite);
+  conn_close_ = std::make_unique_for_overwrite<uint8_t[]>(conn_closelen_);
+
+  std::ranges::copy_n(std::ranges::begin(buf), as_signed(conn_closelen_),
+                      conn_close_.get());
+
   send_packet(static_cast<UpstreamAddr *>(ps.path.user_data),
               ps.path.remote.addr, ps.path.remote.addrlen, ps.path.local.addr,
-              ps.path.local.addrlen, pi, conn_close_, conn_close_.size());
+              ps.path.local.addrlen, pi, {conn_close_.get(), conn_closelen_},
+              conn_closelen_);
 
   return -1;
 }

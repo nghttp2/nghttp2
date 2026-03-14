@@ -89,7 +89,6 @@ inline constexpr size_t SHRPX_QUIC_DECRYPTED_DCIDLEN =
 inline constexpr size_t SHRPX_QUIC_SCIDLEN =
   SHRPX_QUIC_CID_WORKER_ID_OFFSET + SHRPX_QUIC_DECRYPTED_DCIDLEN;
 inline constexpr size_t SHRPX_QUIC_CID_ENCRYPTION_KEYLEN = 16;
-inline constexpr size_t SHRPX_QUIC_CONN_CLOSE_PKTLEN = 256;
 inline constexpr size_t SHRPX_QUIC_STATELESS_RESET_BURST = 100;
 inline constexpr size_t SHRPX_QUIC_SECRET_RESERVEDLEN = 4;
 inline constexpr size_t SHRPX_QUIC_SECRETLEN = 32;
