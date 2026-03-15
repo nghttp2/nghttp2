@@ -63,9 +63,13 @@ template <typename T, size_t N> constexpr size_t str_size(T (&)[N]) {
   return N - 1;
 }
 
-template <typename F> struct Defer {
-  explicit Defer(F &&f) noexcept(std::is_nothrow_constructible_v<F, F &&>)
-    : f(std::forward<F>(f)) {}
+template <std::invocable F> struct Defer {
+  using Invocable = std::decay_t<F>;
+
+  template <typename G>
+  [[nodiscard]] explicit Defer(G &&g) noexcept(
+    std::is_nothrow_constructible_v<Invocable, G &&>)
+    : f{std::forward<G>(g)} {}
   ~Defer() { f(); }
 
   Defer(Defer &&o) = delete;
@@ -73,10 +77,10 @@ template <typename F> struct Defer {
   Defer &operator=(const Defer &) = delete;
   Defer &operator=(Defer &&) = delete;
 
-  F f;
+  Invocable f;
 };
 
-template <typename F> [[nodiscard]] Defer<std::decay_t<F>> defer(F &&f) {
+template <std::invocable F> [[nodiscard]] Defer<std::decay_t<F>> defer(F &&f) {
   return Defer<std::decay_t<F>>(std::forward<F>(f));
 }
 
