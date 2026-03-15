@@ -150,7 +150,7 @@ public:
               socklen_t local_salen, const ngtcp2_pkt_info &pi,
               std::span<const uint8_t> data, size_t gso_size);
   void send_packet(const ngtcp2_path &path, const ngtcp2_pkt_info &pi,
-                   const std::span<const uint8_t> data, size_t gso_size);
+                   std::span<const uint8_t> data, size_t gso_size);
 
   void qlog_write(const void *data, size_t datalen, bool fin);
   int open_qlog_file(const std::string_view &dir, const ngtcp2_cid &scid) const;

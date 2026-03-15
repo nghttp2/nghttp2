@@ -924,7 +924,7 @@ int Http3Upstream::write_streams() {
 
 void Http3Upstream::send_packet(const ngtcp2_path &path,
                                 const ngtcp2_pkt_info &pi,
-                                const std::span<const uint8_t> data,
+                                std::span<const uint8_t> data,
                                 size_t gso_size) {
   auto faddr = static_cast<UpstreamAddr *>(path.user_data);
 
