@@ -924,9 +924,8 @@ int Http2Handler::verify_alpn_result() {
   return -1;
 }
 
-int Http2Handler::submit_file_response(const std::string_view &status,
-                                       Stream *stream, time_t last_modified,
-                                       off_t file_length,
+int Http2Handler::submit_file_response(std::string_view status, Stream *stream,
+                                       time_t last_modified, off_t file_length,
                                        const std::string *content_type,
                                        nghttp2_data_provider2 *data_prd) {
   std::string last_modified_str;
@@ -962,8 +961,8 @@ int Http2Handler::submit_file_response(const std::string_view &status,
                                   nvlen, data_prd);
 }
 
-int Http2Handler::submit_response(const std::string_view &status,
-                                  int32_t stream_id, const HeaderRefs &headers,
+int Http2Handler::submit_response(std::string_view status, int32_t stream_id,
+                                  const HeaderRefs &headers,
                                   nghttp2_data_provider2 *data_prd) {
   auto nva = std::vector<nghttp2_nv>();
   nva.reserve(4 + headers.size());
@@ -987,8 +986,7 @@ int Http2Handler::submit_response(const std::string_view &status,
   return r;
 }
 
-int Http2Handler::submit_response(const std::string_view &status,
-                                  int32_t stream_id,
+int Http2Handler::submit_response(std::string_view status, int32_t stream_id,
                                   nghttp2_data_provider2 *data_prd) {
   auto nva = std::to_array({
     http2::make_field(":status"sv, status),
@@ -1017,7 +1015,7 @@ int Http2Handler::submit_non_final_response(const std::string &status,
 }
 
 int Http2Handler::submit_push_promise(Stream *stream,
-                                      const std::string_view &push_path) {
+                                      std::string_view push_path) {
   auto authority = stream->header.authority;
 
   if (authority.empty()) {
@@ -1213,7 +1211,7 @@ bool prepare_upload_temp_store(Stream *stream, Http2Handler *hd) {
 
 namespace {
 void prepare_redirect_response(Stream *stream, Http2Handler *hd,
-                               const std::string_view &path, int status) {
+                               std::string_view path, int status) {
   auto scheme = stream->header.scheme;
 
   auto authority = stream->header.authority;

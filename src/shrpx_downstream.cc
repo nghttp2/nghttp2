@@ -321,7 +321,7 @@ void Downstream::force_resume_read() {
 namespace {
 const HeaderRefs::value_type *
 search_header_linear_backwards(const HeaderRefs &headers,
-                               const std::string_view &name) {
+                               std::string_view name) {
   for (auto it = headers.rbegin(); it != headers.rend(); ++it) {
     auto &kv = *it;
     if (kv.name == name) {
@@ -374,7 +374,7 @@ std::string_view Downstream::assemble_request_cookie() {
   return as_string_view(std::ranges::begin(iov), p);
 }
 
-uint32_t Downstream::find_affinity_cookie(const std::string_view &name) {
+uint32_t Downstream::find_affinity_cookie(std::string_view name) {
   for (auto &kv : req_.fs.headers()) {
     if (kv.token != http2::HD_COOKIE) {
       continue;
@@ -467,8 +467,8 @@ void Downstream::crumble_request_cookie(std::vector<nghttp2_nv> &nva) {
 }
 
 namespace {
-void add_header(size_t &sum, HeaderRefs &headers, const std::string_view &name,
-                const std::string_view &value, bool no_index, int32_t token) {
+void add_header(size_t &sum, HeaderRefs &headers, std::string_view name,
+                std::string_view value, bool no_index, int32_t token) {
   sum += name.size() + value.size();
   headers.emplace_back(name, value, no_index, token);
 }
@@ -476,7 +476,7 @@ void add_header(size_t &sum, HeaderRefs &headers, const std::string_view &name,
 
 namespace {
 std::string_view alloc_header_name(BlockAllocator &balloc,
-                                   const std::string_view &name) {
+                                   std::string_view name) {
   auto iov = make_byte_ref(balloc, name.size() + 1);
   auto p = util::tolower(name, std::ranges::begin(iov));
   *p = '\0';
@@ -487,7 +487,7 @@ std::string_view alloc_header_name(BlockAllocator &balloc,
 
 namespace {
 void append_last_header_key(BlockAllocator &balloc, bool &key_prev, size_t &sum,
-                            HeaderRefs &headers, const std::string_view &data) {
+                            HeaderRefs &headers, std::string_view data) {
   assert(key_prev);
   sum += data.size();
   auto &item = headers.back();
@@ -502,7 +502,7 @@ void append_last_header_key(BlockAllocator &balloc, bool &key_prev, size_t &sum,
 namespace {
 void append_last_header_value(BlockAllocator &balloc, bool &key_prev,
                               size_t &sum, HeaderRefs &headers,
-                              const std::string_view &data) {
+                              std::string_view data) {
   key_prev = false;
   sum += data.size();
   auto &item = headers.back();
@@ -550,30 +550,28 @@ HeaderRefs::value_type *FieldStore::header(int32_t token) {
   return nullptr;
 }
 
-const HeaderRefs::value_type *
-FieldStore::header(const std::string_view &name) const {
+const HeaderRefs::value_type *FieldStore::header(std::string_view name) const {
   return search_header_linear_backwards(headers_, name);
 }
 
-void FieldStore::add_header_token(const std::string_view &name,
-                                  const std::string_view &value, bool no_index,
-                                  int32_t token) {
+void FieldStore::add_header_token(std::string_view name, std::string_view value,
+                                  bool no_index, int32_t token) {
   shrpx::add_header(buffer_size_, headers_, name, value, no_index, token);
 }
 
-void FieldStore::alloc_add_header_name(const std::string_view &name) {
+void FieldStore::alloc_add_header_name(std::string_view name) {
   auto name_ref = alloc_header_name(balloc_, name);
   auto token = http2::lookup_token(name_ref);
   add_header_token(name_ref, ""sv, false, token);
   header_key_prev_ = true;
 }
 
-void FieldStore::append_last_header_key(const std::string_view &data) {
+void FieldStore::append_last_header_key(std::string_view data) {
   shrpx::append_last_header_key(balloc_, header_key_prev_, buffer_size_,
                                 headers_, data);
 }
 
-void FieldStore::append_last_header_value(const std::string_view &data) {
+void FieldStore::append_last_header_value(std::string_view data) {
   shrpx::append_last_header_value(balloc_, header_key_prev_, buffer_size_,
                                   headers_, data);
 }
@@ -583,27 +581,27 @@ void FieldStore::clear_headers() {
   header_key_prev_ = false;
 }
 
-void FieldStore::add_trailer_token(const std::string_view &name,
-                                   const std::string_view &value, bool no_index,
+void FieldStore::add_trailer_token(std::string_view name,
+                                   std::string_view value, bool no_index,
                                    int32_t token) {
   // Header size limit should be applied to all header and trailer
   // fields combined.
   shrpx::add_header(buffer_size_, trailers_, name, value, no_index, token);
 }
 
-void FieldStore::alloc_add_trailer_name(const std::string_view &name) {
+void FieldStore::alloc_add_trailer_name(std::string_view name) {
   auto name_ref = alloc_header_name(balloc_, name);
   auto token = http2::lookup_token(name_ref);
   add_trailer_token(name_ref, ""sv, false, token);
   trailer_key_prev_ = true;
 }
 
-void FieldStore::append_last_trailer_key(const std::string_view &data) {
+void FieldStore::append_last_trailer_key(std::string_view data) {
   shrpx::append_last_header_key(balloc_, trailer_key_prev_, buffer_size_,
                                 trailers_, data);
 }
 
-void FieldStore::append_last_trailer_value(const std::string_view &data) {
+void FieldStore::append_last_trailer_value(std::string_view data) {
   shrpx::append_last_header_value(balloc_, trailer_key_prev_, buffer_size_,
                                   trailers_, data);
 }
@@ -721,7 +719,7 @@ int Downstream::end_upload_data() {
 }
 
 void Downstream::rewrite_location_response_header(
-  const std::string_view &upstream_scheme) {
+  std::string_view upstream_scheme) {
   auto hd = resp_.fs.header(http2::HD_LOCATION);
   if (!hd) {
     return;
@@ -1104,7 +1102,7 @@ void Downstream::add_retry() { ++num_retry_; }
 
 bool Downstream::no_more_retry() const { return num_retry_ > 50; }
 
-void Downstream::set_request_downstream_host(const std::string_view &host) {
+void Downstream::set_request_downstream_host(std::string_view host) {
   request_downstream_host_ = host;
 }
 
@@ -1210,7 +1208,7 @@ void Downstream::set_blocked_request_data_eof(bool f) {
   blocked_request_data_eof_ = f;
 }
 
-void Downstream::set_ws_key(const std::string_view &key) { ws_key_ = key; }
+void Downstream::set_ws_key(std::string_view key) { ws_key_ = key; }
 
 bool Downstream::get_expect_100_continue() const {
   return expect_100_continue_;

@@ -58,7 +58,7 @@ void DownstreamQueue::mark_failure(Downstream *downstream) {
 }
 
 DownstreamQueue::HostEntry &
-DownstreamQueue::find_host_entry(const std::string_view &host) {
+DownstreamQueue::find_host_entry(std::string_view host) {
   auto itr = host_entries_.find(host);
   if (itr == std::ranges::end(host_entries_)) {
     auto key = ImmutableString{host};
@@ -69,8 +69,7 @@ DownstreamQueue::find_host_entry(const std::string_view &host) {
   return (*itr).second;
 }
 
-std::string_view
-DownstreamQueue::make_host_key(const std::string_view &host) const {
+std::string_view DownstreamQueue::make_host_key(std::string_view host) const {
   return unified_host_ ? ""sv : host;
 }
 
@@ -95,7 +94,7 @@ void DownstreamQueue::mark_blocked(Downstream *downstream) {
   ent.blocked.append(link);
 }
 
-bool DownstreamQueue::can_activate(const std::string_view &host) const {
+bool DownstreamQueue::can_activate(std::string_view host) const {
   auto itr = host_entries_.find(make_host_key(host));
   if (itr == std::ranges::end(host_entries_)) {
     return true;
@@ -107,7 +106,7 @@ bool DownstreamQueue::can_activate(const std::string_view &host) const {
 namespace {
 bool remove_host_entry_if_empty(const DownstreamQueue::HostEntry &ent,
                                 DownstreamQueue::HostEntryMap &host_entries,
-                                const std::string_view &host) {
+                                std::string_view host) {
   if (ent.blocked.empty() && ent.num_active == 0) {
     host_entries.erase(host);
     return true;

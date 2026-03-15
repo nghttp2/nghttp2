@@ -466,8 +466,8 @@ private:
 // group.  The catch-all group index is given in |catch_all|.  All
 // patterns are given in |groups|.
 size_t match_downstream_addr_group(
-  const RouterConfig &routerconfig, const std::string_view &hostport,
-  const std::string_view &path,
+  const RouterConfig &routerconfig, std::string_view hostport,
+  std::string_view path,
   const std::vector<std::shared_ptr<DownstreamAddrGroup>> &groups,
   size_t catch_all, BlockAllocator &balloc);
 

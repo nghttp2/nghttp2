@@ -84,7 +84,7 @@ int Log::severity_thres_ = NOTICE;
 
 void Log::set_severity_level(int severity) { severity_thres_ = severity; }
 
-int Log::get_severity_level_by_name(const std::string_view &name) {
+int Log::get_severity_level_by_name(std::string_view name) {
   for (size_t i = 0, max = array_size(SEVERITY_STR); i < max; ++i) {
     if (name == SEVERITY_STR[i]) {
       return static_cast<int>(i);
@@ -217,7 +217,7 @@ Log &Log::operator<<(const std::string &s) {
   return *this;
 }
 
-Log &Log::operator<<(const std::string_view &s) {
+Log &Log::operator<<(std::string_view s) {
   write_seq(s);
   return *this;
 }
@@ -409,7 +409,7 @@ constexpr uint8_t ESCAPE_TBL[] = {
 } // namespace
 
 namespace {
-std::span<char> copy_escape(const std::string_view &src, std::span<char> dest) {
+std::span<char> copy_escape(std::string_view src, std::span<char> dest) {
   auto safe_first = std::ranges::begin(src);
   for (auto p = safe_first; p != std::ranges::end(src) && !dest.empty(); ++p) {
     auto c = as_unsigned(*p);

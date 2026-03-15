@@ -2255,7 +2255,7 @@ constexpr auto UNIX_PATH_PREFIX = "unix:"sv;
 } // namespace
 
 namespace {
-bool parse_base_uri(const std::string_view &base_uri) {
+bool parse_base_uri(std::string_view base_uri) {
   urlparse_url u;
   if (urlparse_parse_url(base_uri.data(), base_uri.size(), 0, &u) != 0 ||
       !util::has_uri_field(u, URLPARSE_SCHEMA) ||
@@ -2532,8 +2532,8 @@ void plot_histogram(std::ostream &o, const std::vector<double> &data,
 namespace {
 template <typename F>
 requires std::invocable<F, double>
-void output_sd_stat(std::ostream &o, const std::string_view &title,
-                    const SDStat &st, F formatter) {
+void output_sd_stat(std::ostream &o, std::string_view title, const SDStat &st,
+                    F formatter) {
   o << std::left << std::setw(12) << title << ": " << std::right;
   o << std::setw(10) << formatter(st.min) << "  ";
   o << std::setw(10) << formatter(st.max) << "  ";
@@ -2551,15 +2551,14 @@ void output_sd_stat(std::ostream &o, const std::string_view &title,
 } // namespace
 
 namespace {
-void output_sd_stat_duration(std::ostream &o, const std::string_view &title,
+void output_sd_stat_duration(std::ostream &o, std::string_view title,
                              const SDStat &st) {
   output_sd_stat(o, title, st, [](auto v) { return util::format_duration(v); });
 }
 } // namespace
 
 namespace {
-void output_sd_stat(std::ostream &o, const std::string_view &title,
-                    const SDStat &st) {
+void output_sd_stat(std::ostream &o, std::string_view title, const SDStat &st) {
   output_sd_stat(o, title, st, std::identity{});
 }
 } // namespace
@@ -2625,7 +2624,7 @@ std::optional<SSL_SESSION *> read_tls_session(const std::string &path) {
 } // namespace
 
 namespace {
-void write_sd_stat_result(std::ostream &o, const std::string_view &title,
+void write_sd_stat_result(std::ostream &o, std::string_view title,
                           const SDStat &st) {
   o << R"(")" << title << R"(":{)"
     << R"("min":)" << st.min << ","

@@ -1697,8 +1697,7 @@ int Http3Upstream::send_reply(Downstream *downstream, const uint8_t *body,
   return 0;
 }
 
-int Http3Upstream::initiate_push(Downstream *downstream,
-                                 const std::string_view &uri) {
+int Http3Upstream::initiate_push(Downstream *downstream, std::string_view uri) {
   return 0;
 }
 
@@ -2846,7 +2845,7 @@ int Http3Upstream::submit_goaway() {
   return 0;
 }
 
-int Http3Upstream::open_qlog_file(const std::string_view &dir,
+int Http3Upstream::open_qlog_file(std::string_view dir,
                                   const ngtcp2_cid &scid) const {
   std::array<char, sizeof("20141115T125824.741+0900")> buf;
 

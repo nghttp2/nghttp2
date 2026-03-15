@@ -67,9 +67,8 @@ class Http3Upstream;
 
 class ClientHandler {
 public:
-  ClientHandler(Worker *worker, int fd, SSL *ssl,
-                const std::string_view &ipaddr, const std::string_view &port,
-                int family, const UpstreamAddr *faddr);
+  ClientHandler(Worker *worker, int fd, SSL *ssl, std::string_view ipaddr,
+                std::string_view port, int family, const UpstreamAddr *faddr);
   ~ClientHandler();
 
   int noop();
@@ -107,7 +106,7 @@ public:
   void reset_upstream_write_timeout(ev_tstamp t);
 
   int validate_next_proto();
-  const std::string_view &get_ipaddr() const;
+  std::string_view get_ipaddr() const;
   bool get_should_close_after_write() const;
   void set_should_close_after_write(bool f);
   Upstream *get_upstream();
@@ -143,7 +142,7 @@ public:
   Worker *get_worker() const;
 
   // Initializes forwarded_for_.
-  void init_forwarded_for(int family, const std::string_view &ipaddr);
+  void init_forwarded_for(int family, std::string_view ipaddr);
 
   using ReadBuf = DefaultMemchunkBuffer;
 
@@ -179,7 +178,7 @@ public:
   // Returns an affinity cookie value for |downstream|.  |cookie_name|
   // is used to inspect cookie header field in request header fields.
   uint32_t get_affinity_cookie(Downstream *downstream,
-                               const std::string_view &cookie_name);
+                               std::string_view cookie_name);
 
   DownstreamAddr *get_downstream_addr_strict_affinity(
     int &err, const std::shared_ptr<SharedDownstreamAddr> &shared_addr,
@@ -194,7 +193,7 @@ public:
 
   // Stores |sni| which is TLS SNI extension value client sent in this
   // connection.
-  void set_tls_sni(const std::string_view &sni);
+  void set_tls_sni(std::string_view sni);
   // Returns TLS SNI extension value client sent in this connection.
   std::string_view get_tls_sni() const;
 

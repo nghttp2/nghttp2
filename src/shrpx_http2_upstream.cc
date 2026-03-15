@@ -2192,9 +2192,9 @@ int Http2Upstream::prepare_push_promise(Downstream *downstream) {
   return 0;
 }
 
-int Http2Upstream::submit_push_promise(const std::string_view &scheme,
-                                       const std::string_view &authority,
-                                       const std::string_view &path,
+int Http2Upstream::submit_push_promise(std::string_view scheme,
+                                       std::string_view authority,
+                                       std::string_view path,
                                        Downstream *downstream) {
   const auto &req = downstream->request();
 
@@ -2265,8 +2265,7 @@ bool Http2Upstream::push_enabled() const {
            config->http2_proxy);
 }
 
-int Http2Upstream::initiate_push(Downstream *downstream,
-                                 const std::string_view &uri) {
+int Http2Upstream::initiate_push(Downstream *downstream, std::string_view uri) {
   int rv;
 
   if (uri.empty() || !push_enabled() ||

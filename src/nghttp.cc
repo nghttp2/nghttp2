@@ -234,7 +234,7 @@ std::string Request::make_reqpath() const {
 namespace {
 // Perform special handling |host| if it is IPv6 literal and includes
 // zone ID per RFC 6874.
-std::string decode_host(const std::string_view &host) {
+std::string decode_host(std::string_view host) {
   auto zone_start = std::ranges::find(host, '%');
   if (zone_start == std::ranges::end(host) ||
       !util::ipv6_numeric_addr(

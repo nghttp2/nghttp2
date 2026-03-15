@@ -39,7 +39,7 @@ HtmlParser::HtmlParser(const std::string &base_uri)
 HtmlParser::~HtmlParser() { htmlFreeParserCtxt(parser_ctx_); }
 
 namespace {
-std::string_view get_attr(const xmlChar **attrs, const std::string_view &name) {
+std::string_view get_attr(const xmlChar **attrs, std::string_view name) {
   if (attrs == nullptr) {
     return ""sv;
   }
@@ -55,7 +55,7 @@ std::string_view get_attr(const xmlChar **attrs, const std::string_view &name) {
 
 namespace {
 ResourceType
-get_resource_type_for_preload_as(const std::string_view &attribute_value) {
+get_resource_type_for_preload_as(std::string_view attribute_value) {
   if (util::strieq("image"sv, attribute_value)) {
     return REQ_IMG;
   } else if (util::strieq("style"sv, attribute_value)) {
@@ -69,7 +69,7 @@ get_resource_type_for_preload_as(const std::string_view &attribute_value) {
 } // namespace
 
 namespace {
-void add_link(ParserData *parser_data, const std::string_view &uri,
+void add_link(ParserData *parser_data, std::string_view uri,
               ResourceType res_type) {
   auto u = xmlBuildURI(
     reinterpret_cast<const xmlChar *>(uri.data()),

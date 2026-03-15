@@ -95,14 +95,14 @@ SSL_CTX *create_ssl_client_context(
 #ifdef HAVE_NEVERBLEED
   neverbleed_t *nb,
 #endif // defined(HAVE_NEVERBLEED)
-  const std::string_view &cacert, const std::string_view &cert_file,
-  const std::string_view &private_key_file);
+  std::string_view cacert, std::string_view cert_file,
+  std::string_view private_key_file);
 
 ClientHandler *accept_connection(Worker *worker, int fd, const sockaddr *addr,
                                  socklen_t addrlen, const UpstreamAddr *faddr);
 
 // Check peer's certificate against given |address| and |host|.
-int check_cert(SSL *ssl, const Address *addr, const std::string_view &host);
+int check_cert(SSL *ssl, const Address *addr, std::string_view host);
 // Check peer's certificate against given host name described in
 // |addr| and numeric address in |raddr|.  Note that |raddr| might not
 // point to &addr->addr.
@@ -111,15 +111,15 @@ int check_cert(SSL *ssl, const DownstreamAddr *addr, const Address *raddr);
 // Verify |cert| using numeric IP address.  |hostname| and |addr|
 // should contain the same numeric IP address.  This function returns
 // 0 if it succeeds, or -1.
-int verify_numeric_hostname(X509 *cert, const std::string_view &hostname,
+int verify_numeric_hostname(X509 *cert, std::string_view hostname,
                             const Address *addr);
 
 // Verify |cert| using DNS name hostname.  This function returns 0 if
 // it succeeds, or -1.
-int verify_dns_hostname(X509 *cert, const std::string_view &hostname);
+int verify_dns_hostname(X509 *cert, std::string_view hostname);
 
 struct WildcardRevPrefix {
-  WildcardRevPrefix(const std::string_view &prefix, size_t idx)
+  WildcardRevPrefix(std::string_view prefix, size_t idx)
     : prefix(std::ranges::begin(prefix), std::ranges::end(prefix)), idx(idx) {}
 
   // "Prefix" of wildcard pattern.  It is reversed from original form.
@@ -158,7 +158,7 @@ public:
   // |index|, then hostname is added to the tree with the value
   // |index|.  If it is not -1, and does not equal to |index|, same
   // hostname has already been added to the tree.
-  ssize_t add_cert(const std::string_view &hostname, size_t index);
+  ssize_t add_cert(std::string_view hostname, size_t index);
 
   // Looks up index using the given |hostname|.  The exact match takes
   // precedence over wildcard match.  For wildcard match, longest
@@ -167,7 +167,7 @@ public:
   //
   // The caller should lower-case |hostname| since this function
   // performs case-sensitive match.
-  ssize_t lookup(const std::string_view &hostname);
+  ssize_t lookup(std::string_view hostname);
 
   // Dumps the contents of this lookup tree to stderr.
   void dump() const;
@@ -194,7 +194,7 @@ int cert_lookup_tree_add_ssl_ctx(
 // Returns true if |proto| is included in the
 // protocol list |protos|.
 bool in_proto_list(const std::vector<std::string_view> &protos,
-                   const std::string_view &proto);
+                   std::string_view proto);
 
 // Returns true if security requirement for HTTP/2 is fulfilled.
 bool check_http2_requirement(SSL *ssl);
@@ -263,8 +263,7 @@ bool upstream_tls_enabled(const ConnectionConfig &connconf);
 // character '*', which matches prefix of target hostname.  There are
 // several restrictions to make wildcard work.  The matching algorithm
 // is based on RFC 6125.
-bool tls_hostname_match(const std::string_view &pattern,
-                        const std::string_view &hostname);
+bool tls_hostname_match(std::string_view pattern, std::string_view hostname);
 
 // Caches |session|.  |session| is serialized into ASN1
 // representation, and stored.  |t| is used as a time stamp.
@@ -284,7 +283,7 @@ X509 *load_certificate(const char *filename);
 // Returns TLS version from |v|.  The returned value is defined in
 // OpenSSL header file.  This function returns -1 if |v| is not valid
 // TLS version string.
-int proto_version_from_string(const std::string_view &v);
+int proto_version_from_string(std::string_view v);
 
 // Stores fingerprint of |x| in |dst| of length |dstlen|.  |md|
 // specifies hash function to use, and |dstlen| must be large enough

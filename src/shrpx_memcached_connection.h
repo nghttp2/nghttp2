@@ -98,7 +98,7 @@ inline constexpr uint8_t MEMCACHED_RES_MAGIC = 0x81;
 class MemcachedConnection {
 public:
   MemcachedConnection(const Address *addr, struct ev_loop *loop,
-                      SSL_CTX *ssl_ctx, const std::string_view &sni_name,
+                      SSL_CTX *ssl_ctx, std::string_view sni_name,
                       MemchunkPool *mcpool, std::mt19937 &gen);
   ~MemcachedConnection();
 

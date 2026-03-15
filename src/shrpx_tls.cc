@@ -191,7 +191,7 @@ std::string_view get_servername(SSL *ssl) {
 } // namespace
 
 namespace {
-void select_ssl_ctx(SSL *ssl, const std::string_view &servername) {
+void select_ssl_ctx(SSL *ssl, std::string_view servername) {
   auto conn = static_cast<Connection *>(SSL_get_app_data(ssl));
   auto handler = static_cast<ClientHandler *>(conn->data);
   auto worker = handler->get_worker();
@@ -1433,8 +1433,8 @@ SSL_CTX *create_ssl_client_context(
 #ifdef HAVE_NEVERBLEED
   neverbleed_t *nb,
 #endif // defined(HAVE_NEVERBLEED)
-  const std::string_view &cacert, const std::string_view &cert_file,
-  const std::string_view &private_key_file) {
+  std::string_view cacert, std::string_view cert_file,
+  std::string_view private_key_file) {
   auto ssl_ctx = SSL_CTX_new(TLS_client_method());
   if (!ssl_ctx) {
     LOG(FATAL) << ERR_error_string(ERR_get_error(), nullptr);
@@ -1620,8 +1620,7 @@ ClientHandler *accept_connection(Worker *worker, int fd, const sockaddr *addr,
   return handler;
 }
 
-bool tls_hostname_match(const std::string_view &pattern,
-                        const std::string_view &hostname) {
+bool tls_hostname_match(std::string_view pattern, std::string_view hostname) {
   auto ptWildcard = std::ranges::find(pattern, '*');
   if (ptWildcard == std::ranges::end(pattern)) {
     return util::strieq(pattern, hostname);
@@ -1702,7 +1701,7 @@ std::string_view get_common_name(X509 *cert) {
 }
 } // namespace
 
-int verify_numeric_hostname(X509 *cert, const std::string_view &hostname,
+int verify_numeric_hostname(X509 *cert, std::string_view hostname,
                             const Address *addr) {
   auto [saddr, saddrlen] = std::visit(
     [](auto &&arg) -> std::tuple<const void *, size_t> {
@@ -1770,7 +1769,7 @@ int verify_numeric_hostname(X509 *cert, const std::string_view &hostname,
   return -1;
 }
 
-int verify_dns_hostname(X509 *cert, const std::string_view &hostname) {
+int verify_dns_hostname(X509 *cert, std::string_view hostname) {
   auto altnames = static_cast<GENERAL_NAMES *>(
     X509_get_ext_d2i(cert, NID_subject_alt_name, nullptr, nullptr));
   if (altnames) {
@@ -1841,7 +1840,7 @@ int verify_dns_hostname(X509 *cert, const std::string_view &hostname) {
 }
 
 namespace {
-int verify_hostname(X509 *cert, const std::string_view &hostname,
+int verify_hostname(X509 *cert, std::string_view hostname,
                     const Address *addr) {
   if (util::numeric_host(hostname.data())) {
     return verify_numeric_hostname(cert, hostname, addr);
@@ -1851,7 +1850,7 @@ int verify_hostname(X509 *cert, const std::string_view &hostname,
 }
 } // namespace
 
-int check_cert(SSL *ssl, const Address *addr, const std::string_view &host) {
+int check_cert(SSL *ssl, const Address *addr, std::string_view host) {
 #if OPENSSL_3_0_0_API
   auto cert = SSL_get0_peer_certificate(ssl);
 #else  // !OPENSSL_3_0_0_API
@@ -1881,7 +1880,7 @@ int check_cert(SSL *ssl, const DownstreamAddr *addr, const Address *raddr) {
 
 CertLookupTree::CertLookupTree() {}
 
-ssize_t CertLookupTree::add_cert(const std::string_view &hostname, size_t idx) {
+ssize_t CertLookupTree::add_cert(std::string_view hostname, size_t idx) {
   std::array<char, NI_MAXHOST> buf;
 
   // NI_MAXHOST includes terminal NULL byte
@@ -1933,7 +1932,7 @@ ssize_t CertLookupTree::add_cert(const std::string_view &hostname, size_t idx) {
   return as_signed(router_.add_route(hostname, idx));
 }
 
-ssize_t CertLookupTree::lookup(const std::string_view &hostname) {
+ssize_t CertLookupTree::lookup(std::string_view hostname) {
   std::array<char, NI_MAXHOST> buf;
 
   // NI_MAXHOST includes terminal NULL byte
@@ -2111,7 +2110,7 @@ int cert_lookup_tree_add_ssl_ctx(
 }
 
 bool in_proto_list(const std::vector<std::string_view> &protos,
-                   const std::string_view &needle) {
+                   std::string_view needle) {
   for (auto &proto : protos) {
     if (proto == needle) {
       return true;
@@ -2336,7 +2335,7 @@ SSL_SESSION *reuse_tls_session(const TLSSessionCache &cache) {
   return d2i_SSL_SESSION(nullptr, &p, as_signed(cache.session_data.size()));
 }
 
-int proto_version_from_string(const std::string_view &v) {
+int proto_version_from_string(std::string_view v) {
 #ifdef TLS1_3_VERSION
   if (util::strieq("TLSv1.3"sv, v)) {
     return TLS1_3_VERSION;

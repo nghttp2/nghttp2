@@ -89,19 +89,18 @@ public:
   HeaderRefs::value_type *header(int32_t token);
   // Returns pointer to the header field with the name |name|.  If no
   // such header is found, returns nullptr.
-  const HeaderRefs::value_type *header(const std::string_view &name) const;
+  const HeaderRefs::value_type *header(std::string_view name) const;
 
-  void add_header_token(const std::string_view &name,
-                        const std::string_view &value, bool no_index,
-                        int32_t token);
+  void add_header_token(std::string_view name, std::string_view value,
+                        bool no_index, int32_t token);
 
   // Adds header field name |name|.  First, the copy of header field
   // name pointed by name.c_str() of length name.size() is made, and
   // stored.
-  void alloc_add_header_name(const std::string_view &name);
+  void alloc_add_header_name(std::string_view name);
 
-  void append_last_header_key(const std::string_view &data);
-  void append_last_header_value(const std::string_view &data);
+  void append_last_header_key(std::string_view data);
+  void append_last_header_value(std::string_view data);
 
   bool header_key_prev() const { return header_key_prev_; }
 
@@ -112,17 +111,16 @@ public:
   // Empties headers.
   void clear_headers();
 
-  void add_trailer_token(const std::string_view &name,
-                         const std::string_view &value, bool no_index,
-                         int32_t token);
+  void add_trailer_token(std::string_view name, std::string_view value,
+                         bool no_index, int32_t token);
 
   // Adds trailer field name |name|.  First, the copy of trailer field
   // name pointed by name.c_str() of length name.size() is made, and
   // stored.
-  void alloc_add_trailer_name(const std::string_view &name);
+  void alloc_add_trailer_name(std::string_view name);
 
-  void append_last_trailer_key(const std::string_view &data);
-  void append_last_trailer_value(const std::string_view &data);
+  void append_last_trailer_key(std::string_view data);
+  void append_last_trailer_value(std::string_view data);
 
   bool trailer_key_prev() const { return trailer_key_prev_; }
 
@@ -253,9 +251,8 @@ struct Response {
 
   // returns true if a resource denoted by scheme, authority, and path
   // has already been pushed.
-  bool is_resource_pushed(const std::string_view &scheme,
-                          const std::string_view &authority,
-                          const std::string_view &path) const {
+  bool is_resource_pushed(std::string_view scheme, std::string_view authority,
+                          std::string_view path) const {
     if (!pushed_resources) {
       return false;
     }
@@ -266,9 +263,8 @@ struct Response {
 
   // remember that a resource denoted by scheme, authority, and path
   // is pushed.
-  void resource_pushed(const std::string_view &scheme,
-                       const std::string_view &authority,
-                       const std::string_view &path) {
+  void resource_pushed(std::string_view scheme, std::string_view authority,
+                       std::string_view path) {
     if (!pushed_resources) {
       pushed_resources = std::make_unique<std::vector<
         std::tuple<std::string_view, std::string_view, std::string_view>>>();
@@ -397,7 +393,7 @@ public:
   // Validates that received request body length and content-length
   // matches.
   bool validate_request_recv_body_length() const;
-  void set_request_downstream_host(const std::string_view &host);
+  void set_request_downstream_host(std::string_view host);
   bool expect_response_body() const;
   bool expect_response_trailer() const;
   void set_request_state(DownstreamState state);
@@ -422,8 +418,7 @@ public:
   Response &response() { return resp_; }
 
   // Rewrites the location response header field.
-  void
-  rewrite_location_response_header(const std::string_view &upstream_scheme);
+  void rewrite_location_response_header(std::string_view upstream_scheme);
 
   bool get_chunked_response() const;
   void set_chunked_response(bool f);
@@ -518,7 +513,7 @@ public:
   // cookie is given in |name|.  If an affinity cookie is found, it is
   // assigned to a member function, and is returned.  If it is not
   // found, or is malformed, returns 0.
-  uint32_t find_affinity_cookie(const std::string_view &name);
+  uint32_t find_affinity_cookie(std::string_view name);
   // Set |h| as affinity cookie.
   void renew_affinity_cookie(uint32_t h);
   // Returns affinity cookie to send.  If it does not need to be sent,
@@ -526,7 +521,7 @@ public:
   // field, returns 0.
   uint32_t get_affinity_cookie_to_send() const;
 
-  void set_ws_key(const std::string_view &key);
+  void set_ws_key(std::string_view key);
 
   bool get_expect_100_continue() const;
 
