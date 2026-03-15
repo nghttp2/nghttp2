@@ -157,6 +157,8 @@ struct Config {
   std::string tls_session_file;
   // TLS session read from file.
   SSL_SESSION *tls_session{};
+  // Path to file to write the measurement results.
+  std::string output_file;
 
   Config();
   ~Config();
