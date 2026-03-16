@@ -223,36 +223,38 @@ struct GROStat {
   size_t num_pkts;
 };
 
-struct SDStat {
-  // min, max, median, p95, p99, mean and sd (standard deviation)
-  double min, max, median, p95, p99, mean, sd;
+template <typename T> struct SDStat {
+  // min, max, median, p95, and p99
+  T min, max, median, p95, p99;
+  // mean and sd (standard deviation)
+  double mean, sd;
   // percentage of samples inside mean -/+ sd
   double within_sd;
   // sampled data
-  std::vector<double> samples;
+  std::vector<T> samples;
 };
 
 struct SDStats {
   // time for request
-  SDStat request;
+  SDStat<double> request;
   // time for connect
-  SDStat connect;
+  SDStat<double> connect;
   // time to first byte (TTFB)
-  SDStat ttfb;
+  SDStat<double> ttfb;
   // request per second for each client
-  SDStat rps;
+  SDStat<double> rps;
   // minimum RTT (QUIC)
-  SDStat min_rtt;
+  SDStat<double> min_rtt;
   // smoothed RTT (QUIC)
-  SDStat smoothed_rtt;
+  SDStat<double> smoothed_rtt;
   // the number of packets sent (QUIC)
-  SDStat pkt_sent;
+  SDStat<uint64_t> pkt_sent;
   // the number of packets received (QUIC)
-  SDStat pkt_recv;
+  SDStat<uint64_t> pkt_recv;
   // the number of packets declared lost (QUIC)
-  SDStat pkt_lost;
+  SDStat<uint64_t> pkt_lost;
   // the number of packets received in a single recvmsg call (QUIC)
-  SDStat gro_pkts;
+  SDStat<uint64_t> gro_pkts;
 };
 
 struct Stats {

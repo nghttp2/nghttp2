@@ -1989,14 +1989,16 @@ int new_session_cb(SSL *ssl, SSL_SESSION *session) {
 
 namespace {
 // Returns percentage of number of samples within mean +/- sd.
-double within_sd(const std::vector<double> &samples, double mean, double sd) {
+template <typename T>
+double within_sd(const std::vector<T> &samples, double mean, double sd) {
   if (samples.size() == 0) {
     return 0.0;
   }
   auto lower = mean - sd;
   auto upper = mean + sd;
   auto m = std::ranges::count_if(
-    samples, [&lower, &upper](double t) { return lower <= t && t <= upper; });
+    samples, [&lower, &upper](auto t) { return lower <= t && t <= upper; },
+    [](auto t) { return static_cast<double>(t); });
   return (static_cast<double>(m) / static_cast<double>(samples.size())) * 100;
 }
 } // namespace
@@ -2006,7 +2008,8 @@ namespace {
 // percentage of number of samples within mean +/- sd are computed.
 // If |sampling| is true, this computes sample variance.  Otherwise,
 // population variance.
-SDStat compute_time_stat(std::vector<double> samples, bool sampling = false) {
+template <typename T>
+SDStat<T> compute_time_stat(std::vector<T> samples, bool sampling = false) {
   if (samples.empty()) {
     return {};
   }
@@ -2014,22 +2017,23 @@ SDStat compute_time_stat(std::vector<double> samples, bool sampling = false) {
   // https://en.wikipedia.org/wiki/Standard_deviation#Rapid_calculation_methods
   double a = 0, q = 0;
   size_t n = 0;
-  double sum = 0;
-  auto res = SDStat{std::numeric_limits<double>::max(),
-                    std::numeric_limits<double>::min()};
+  T sum = 0;
+  auto res =
+    SDStat<T>{std::numeric_limits<T>::max(), std::numeric_limits<T>::min()};
   for (const auto &t : samples) {
     ++n;
     res.min = std::min(res.min, t);
     res.max = std::max(res.max, t);
     sum += t;
 
-    auto na = a + (t - a) / static_cast<double>(n);
-    q += (t - a) * (t - na);
+    auto d = static_cast<double>(t);
+    auto na = a + (d - a) / static_cast<double>(n);
+    q += (d - a) * (d - na);
     a = na;
   }
 
   assert(n > 0);
-  res.mean = sum / static_cast<double>(n);
+  res.mean = static_cast<double>(sum) / static_cast<double>(n);
   res.sd = sqrt(q / static_cast<double>(sampling && n > 1 ? n - 1 : n));
   res.within_sd = within_sd(samples, res.mean, res.sd);
 
@@ -2074,10 +2078,12 @@ process_time_stats(const std::vector<std::unique_ptr<Worker>> &workers) {
   request_times.reserve(nrequest_times);
 
   std::vector<double> connect_times, ttfb_times, rps_values, min_rtt_times,
-    smoothed_rtt_times, pkt_sent_values, pkt_recv_values, pkt_lost_values;
+    smoothed_rtt_times;
   connect_times.reserve(nclient_times);
   ttfb_times.reserve(nclient_times);
   rps_values.reserve(nclient_times);
+
+  std::vector<uint64_t> pkt_sent_values, pkt_recv_values, pkt_lost_values;
 
   if (config.is_quic()) {
     min_rtt_times.reserve(nclient_times);
@@ -2087,7 +2093,7 @@ process_time_stats(const std::vector<std::unique_ptr<Worker>> &workers) {
     pkt_lost_values.reserve(nclient_times);
   }
 
-  std::vector<double> gro_pkts;
+  std::vector<uint64_t> gro_pkts;
   if (config.is_quic()) {
     gro_pkts.reserve(ngro_pkts);
   }
@@ -2121,9 +2127,9 @@ process_time_stats(const std::vector<std::unique_ptr<Worker>> &workers) {
           std::chrono::duration<double>(cstat.min_rtt).count());
         smoothed_rtt_times.push_back(
           std::chrono::duration<double>(cstat.smoothed_rtt).count());
-        pkt_sent_values.push_back(static_cast<double>(cstat.pkt_sent));
-        pkt_recv_values.push_back(static_cast<double>(cstat.pkt_recv));
-        pkt_lost_values.push_back(static_cast<double>(cstat.pkt_lost));
+        pkt_sent_values.push_back(cstat.pkt_sent);
+        pkt_recv_values.push_back(cstat.pkt_recv);
+        pkt_lost_values.push_back(cstat.pkt_lost);
       }
 
       // We will get connect event before FFTB.
@@ -2149,7 +2155,7 @@ process_time_stats(const std::vector<std::unique_ptr<Worker>> &workers) {
 
     if (config.is_quic()) {
       for (const auto &gstat : stat.gro_stats) {
-        gro_pkts.push_back(static_cast<double>(gstat.num_pkts));
+        gro_pkts.push_back(gstat.num_pkts);
       }
     }
   }
@@ -2449,10 +2455,8 @@ std::string make_http_authority(const Config &config) {
 namespace {
 // plot_histogram plots histogram.  It assumes that data is sorted in
 // ascending order.
-template <typename F>
-requires std::invocable<F, double>
-void plot_histogram(std::ostream &o, const std::vector<double> &data,
-                    F formatter) {
+template <typename F, typename T>
+void plot_histogram(std::ostream &o, const std::vector<T> &data, F formatter) {
   if (data.empty()) {
     return;
   }
@@ -2468,12 +2472,12 @@ void plot_histogram(std::ostream &o, const std::vector<double> &data,
   }
 
   auto range = max - min;
-  auto width = range / nbkts;
+  auto width = static_cast<double>(range) / nbkts;
 
   std::vector<size_t> counts(nbkts, 0);
 
   for (auto v : data) {
-    auto idx = static_cast<size_t>((v - min) / width);
+    auto idx = static_cast<size_t>(static_cast<double>(v - min) / width);
     if (idx >= nbkts) {
       idx = counts.size() - 1;
     }
@@ -2492,9 +2496,19 @@ void plot_histogram(std::ostream &o, const std::vector<double> &data,
     o.precision(prec);
   });
 
+  T last_upper{};
+
   for (size_t i = 0; i < counts.size(); ++i) {
-    auto lower = min + static_cast<double>(i) * width;
-    auto upper = min + static_cast<double>(i + 1) * width;
+    auto lower = min + static_cast<T>(static_cast<double>(i) * width);
+    auto upper = i == counts.size() - 1
+                   ? max
+                   : min + static_cast<T>(static_cast<double>(i + 1) * width);
+
+    if (i > 0 && upper == last_upper) {
+      continue;
+    }
+
+    last_upper = upper;
 
     o << std::setw(10) << formatter(lower) << "-" << std::setw(10)
       << formatter(upper) << " [";
@@ -2530,10 +2544,9 @@ void plot_histogram(std::ostream &o, const std::vector<double> &data,
 } // namespace
 
 namespace {
-template <typename F>
-requires std::invocable<F, double>
-void output_sd_stat(std::ostream &o, std::string_view title, const SDStat &st,
-                    F formatter) {
+template <typename F, typename T>
+void output_sd_stat(std::ostream &o, std::string_view title,
+                    const SDStat<T> &st, F formatter) {
   o << std::left << std::setw(12) << title << ": " << std::right;
   o << std::setw(10) << formatter(st.min) << "  ";
   o << std::setw(10) << formatter(st.max) << "  ";
@@ -2551,14 +2564,17 @@ void output_sd_stat(std::ostream &o, std::string_view title, const SDStat &st,
 } // namespace
 
 namespace {
+template <typename T>
 void output_sd_stat_duration(std::ostream &o, std::string_view title,
-                             const SDStat &st) {
+                             const SDStat<T> &st) {
   output_sd_stat(o, title, st, [](auto v) { return util::format_duration(v); });
 }
 } // namespace
 
 namespace {
-void output_sd_stat(std::ostream &o, std::string_view title, const SDStat &st) {
+template <typename T>
+void output_sd_stat(std::ostream &o, std::string_view title,
+                    const SDStat<T> &st) {
   output_sd_stat(o, title, st, std::identity{});
 }
 } // namespace
@@ -2624,8 +2640,9 @@ std::optional<SSL_SESSION *> read_tls_session(const std::string &path) {
 } // namespace
 
 namespace {
+template <typename T>
 void write_sd_stat_result(std::ostream &o, std::string_view title,
-                          const SDStat &st) {
+                          const SDStat<T> &st) {
   o << R"(")" << title << R"(":{)"
     << R"("min":)" << st.min << ","
     << R"("max":)" << st.max << ","
