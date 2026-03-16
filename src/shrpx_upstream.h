@@ -76,8 +76,7 @@ public:
   // Starts server push.  The |downstream| is an associated stream for
   // the pushed resource.  This function returns 0 if it succeeds,
   // otherwise -1.
-  virtual int initiate_push(Downstream *downstream,
-                            const std::string_view &uri) = 0;
+  virtual int initiate_push(Downstream *downstream, std::string_view uri) = 0;
 
   // Fills response data in |iov| whose capacity is |iovcnt|.  Returns
   // the number of iovs filled.

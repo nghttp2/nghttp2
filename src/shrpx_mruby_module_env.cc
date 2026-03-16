@@ -88,7 +88,7 @@ mrb_value env_get_remote_addr(mrb_state *mrb, mrb_value self) {
   auto upstream = downstream->get_upstream();
   auto handler = upstream->get_client_handler();
 
-  auto &ipaddr = handler->get_ipaddr();
+  auto ipaddr = handler->get_ipaddr();
 
   return mrb_str_new(mrb, ipaddr.data(), static_cast<mrb_int>(ipaddr.size()));
 }

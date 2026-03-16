@@ -56,10 +56,10 @@ std::string_view create_error_html(BlockAllocator &balloc,
 }
 
 std::string_view create_forwarded(BlockAllocator &balloc, uint32_t params,
-                                  const std::string_view &node_by,
-                                  const std::string_view &node_for,
-                                  const std::string_view &host,
-                                  const std::string_view &proto) {
+                                  std::string_view node_by,
+                                  std::string_view node_for,
+                                  std::string_view host,
+                                  std::string_view proto) {
   size_t len = 0;
   if ((params & FORWARDED_BY) && !node_by.empty()) {
     len += str_size("by=\"") + node_by.size() + str_size("\";");
@@ -128,7 +128,7 @@ std::string_view create_forwarded(BlockAllocator &balloc, uint32_t params,
   return as_string_view(std::ranges::begin(iov), p);
 }
 
-std::string colorize_headers(const std::string_view &hdrs) {
+std::string colorize_headers(std::string_view hdrs) {
   std::string nhdrs;
   auto p = std::ranges::find(hdrs, '\n');
   if (p == std::ranges::end(hdrs)) {
@@ -180,10 +180,9 @@ nghttp2_ssize select_padding_callback(nghttp2_session *session,
 }
 
 std::string_view create_affinity_cookie(BlockAllocator &balloc,
-                                        const std::string_view &name,
+                                        std::string_view name,
                                         uint32_t affinity_cookie,
-                                        const std::string_view &path,
-                                        bool secure) {
+                                        std::string_view path, bool secure) {
   static constexpr auto PATH_PREFIX = "; Path="sv;
   static constexpr auto SECURE = "; Secure"sv;
   // <name>=<value>[; Path=<path>][; Secure]
@@ -213,7 +212,7 @@ std::string_view create_affinity_cookie(BlockAllocator &balloc,
 }
 
 bool require_cookie_secure_attribute(SessionAffinityCookieSecure secure,
-                                     const std::string_view &scheme) {
+                                     std::string_view scheme) {
   switch (secure) {
   case SessionAffinityCookieSecure::AUTO:
     return scheme == "https"sv;
@@ -276,7 +275,7 @@ create_altsvc_header_value(BlockAllocator &balloc,
   return as_string_view(std::ranges::begin(iov), p);
 }
 
-bool check_http_scheme(const std::string_view &scheme, bool encrypted) {
+bool check_http_scheme(std::string_view scheme, bool encrypted) {
   return encrypted ? scheme == "https"sv : scheme == "http"sv;
 }
 

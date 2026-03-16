@@ -133,7 +133,7 @@ using DownstreamKey = std::tuple<
 namespace {
 DownstreamKey
 create_downstream_key(const std::shared_ptr<SharedDownstreamAddr> &shared_addr,
-                      const std::string_view &mruby_file) {
+                      std::string_view mruby_file) {
   DownstreamKey dkey;
 
   auto &addrs = std::get<0>(dkey);
@@ -1506,8 +1506,7 @@ const UpstreamAddr *Worker::find_quic_upstream_addr(const Address &local_addr) {
 
 namespace {
 size_t match_downstream_addr_group_host(
-  const RouterConfig &routerconf, const std::string_view &host,
-  const std::string_view &path,
+  const RouterConfig &routerconf, std::string_view host, std::string_view path,
   const std::vector<std::shared_ptr<DownstreamAddrGroup>> &groups,
   size_t catch_all, BlockAllocator &balloc) {
   const auto &router = routerconf.router;
@@ -1587,8 +1586,8 @@ size_t match_downstream_addr_group_host(
 } // namespace
 
 size_t match_downstream_addr_group(
-  const RouterConfig &routerconf, const std::string_view &hostport,
-  const std::string_view &raw_path,
+  const RouterConfig &routerconf, std::string_view hostport,
+  std::string_view raw_path,
   const std::vector<std::shared_ptr<DownstreamAddrGroup>> &groups,
   size_t catch_all, BlockAllocator &balloc) {
   if (util::contains(hostport, '/')) {

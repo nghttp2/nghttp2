@@ -91,7 +91,7 @@ void APIDownstreamConnection::detach_downstream(Downstream *downstream) {
 
 int APIDownstreamConnection::send_reply(unsigned int http_status,
                                         APIStatusCode api_status,
-                                        const std::string_view &data) {
+                                        std::string_view data) {
   shutdown_read_ = true;
 
   auto upstream = downstream_->get_upstream();
@@ -158,7 +158,7 @@ int APIDownstreamConnection::send_reply(unsigned int http_status,
 }
 
 namespace {
-const APIEndpoint *lookup_api(const std::string_view &path) {
+const APIEndpoint *lookup_api(std::string_view path) {
   switch (path.size()) {
   case 26:
     switch (path[25]) {

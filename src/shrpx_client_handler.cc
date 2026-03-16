@@ -446,8 +446,8 @@ int ClientHandler::upstream_http1_connhd_read() {
 }
 
 ClientHandler::ClientHandler(Worker *worker, int fd, SSL *ssl,
-                             const std::string_view &ipaddr,
-                             const std::string_view &port, int family,
+                             std::string_view ipaddr, std::string_view port,
+                             int family,
                              const UpstreamAddr *faddr)
   : // We use balloc_ for TLS session ID (64), ipaddr (IPv6) (39),
     // port (5), forwarded-for (IPv6) (41), alpn (5), proxyproto
@@ -520,8 +520,7 @@ ClientHandler::ClientHandler(Worker *worker, int fd, SSL *ssl,
   }
 }
 
-void ClientHandler::init_forwarded_for(int family,
-                                       const std::string_view &ipaddr) {
+void ClientHandler::init_forwarded_for(int family, std::string_view ipaddr) {
   if (family == AF_INET6) {
     // 2 for '[' and ']'
     auto len = 2 + ipaddr.size();
@@ -707,7 +706,7 @@ int ClientHandler::on_read() {
 }
 int ClientHandler::on_write() { return on_write_(*this); }
 
-const std::string_view &ClientHandler::get_ipaddr() const { return ipaddr_; }
+std::string_view ClientHandler::get_ipaddr() const { return ipaddr_; }
 
 bool ClientHandler::get_should_close_after_write() const {
   return should_close_after_write_;
@@ -739,7 +738,7 @@ void ClientHandler::pool_downstream_connection(
 
 namespace {
 // Computes 32bits hash for session affinity for IP address |ip|.
-uint32_t compute_affinity_from_ip(const std::string_view &ip) {
+uint32_t compute_affinity_from_ip(std::string_view ip) {
   int rv;
   std::array<uint8_t, 32> buf;
 
@@ -809,9 +808,8 @@ Http2Session *ClientHandler::get_http2_session(
   return session;
 }
 
-uint32_t
-ClientHandler::get_affinity_cookie(Downstream *downstream,
-                                   const std::string_view &cookie_name) {
+uint32_t ClientHandler::get_affinity_cookie(Downstream *downstream,
+                                            std::string_view cookie_name) {
   auto h = downstream->find_affinity_cookie(cookie_name);
   if (h) {
     return h;
@@ -1693,7 +1691,7 @@ const UpstreamAddr *ClientHandler::get_upstream_addr() const { return faddr_; }
 
 Connection *ClientHandler::get_connection() { return &conn_; }
 
-void ClientHandler::set_tls_sni(const std::string_view &sni) {
+void ClientHandler::set_tls_sni(std::string_view sni) {
   sni_ = make_string_ref(balloc_, sni);
 }
 

@@ -594,12 +594,12 @@ constexpr size_t percent_encode_tokenlen(R &&r) noexcept {
   return n;
 }
 
-time_t parse_http_date(const std::string_view &s);
+time_t parse_http_date(std::string_view s);
 
 // Parses time formatted as "MMM DD HH:MM:SS YYYY [GMT]" (e.g., Feb 3
 // 00:55:52 2015 GMT), which is specifically used by OpenSSL
 // ASN1_TIME_print().
-time_t parse_openssl_asn1_time_print(const std::string_view &s);
+time_t parse_openssl_asn1_time_print(std::string_view s);
 
 inline constexpr auto upcase_tbl = [] {
   std::array<char, 256> tbl;
@@ -921,8 +921,7 @@ O utox(T n, O result) {
 
 void to_token68(std::string &base64str);
 
-std::string_view to_base64(BlockAllocator &balloc,
-                           const std::string_view &token68str);
+std::string_view to_base64(BlockAllocator &balloc, std::string_view token68str);
 
 void show_candidates(const char *unkopt, const option *options);
 
@@ -935,7 +934,7 @@ bool fieldeq(const char *uri, const urlparse_url &u, urlparse_url_fields field,
              const char *t);
 
 bool fieldeq(const char *uri, const urlparse_url &u, urlparse_url_fields field,
-             const std::string_view &t);
+             std::string_view t);
 
 std::string_view get_uri_field(const char *uri, const urlparse_url &u,
                                urlparse_url_fields field);
@@ -991,7 +990,7 @@ int64_t to_time64(const timeval &tv);
 
 // Returns true if ALPN ID |proto| is supported HTTP/2 protocol
 // identifier.
-bool check_h2_is_selected(const std::string_view &proto);
+bool check_h2_is_selected(std::string_view proto);
 
 // Selects h2 protocol ALPN ID if one of supported h2 versions are
 // present in |in| of length inlen.  Returns true if h2 version is
@@ -1009,18 +1008,18 @@ bool select_protocol(const unsigned char **out, unsigned char *outlen,
 // Parses delimited strings in |s| and returns the array of substring,
 // delimited by |delim|.  The any white spaces around substring are
 // treated as a part of substring.
-std::vector<std::string> parse_config_str_list(const std::string_view &s,
+std::vector<std::string> parse_config_str_list(std::string_view s,
                                                char delim = ',');
 
 // Parses delimited strings in |s| and returns Substrings in |s|
 // delimited by |delim|.  The any white spaces around substring are
 // treated as a part of substring.
-std::vector<std::string_view> split_str(const std::string_view &s, char delim);
+std::vector<std::string_view> split_str(std::string_view s, char delim);
 
 // Behaves like split_str, but this variant splits at most |n| - 1
 // times and returns at most |n| sub-strings.  If |n| is zero, it
 // falls back to split_str.
-std::vector<std::string_view> split_str(const std::string_view &s, char delim,
+std::vector<std::string_view> split_str(std::string_view s, char delim,
                                         size_t n);
 
 // Writes given time |tp| in Common Log format (e.g.,
@@ -1128,10 +1127,10 @@ bool ipv6_numeric_addr(const char *host);
 // Additionally, if |s| ends with 'k', 'm', 'g' and its upper case
 // characters, multiply the integer by 1024, 1024 * 1024 and 1024 *
 // 1024 respectively.  If there is an error, returns no value.
-std::optional<int64_t> parse_uint_with_unit(const std::string_view &s);
+std::optional<int64_t> parse_uint_with_unit(std::string_view s);
 
 // Parses |s| as unsigned integer and returns the parsed integer..
-std::optional<int64_t> parse_uint(const std::string_view &s);
+std::optional<int64_t> parse_uint(std::string_view s);
 
 // Parses |s| as unsigned integer and returns the parsed integer
 // casted to double.  If |s| ends with "s", the parsed value's unit is
@@ -1139,7 +1138,7 @@ std::optional<int64_t> parse_uint(const std::string_view &s);
 // Similarly, it also supports 'm' and 'h' for minutes and hours
 // respectively.  If none of them are given, the unit is second.  This
 // function returns no value if error occurs.
-std::optional<double> parse_duration_with_unit(const std::string_view &s);
+std::optional<double> parse_duration_with_unit(std::string_view s);
 
 // Returns string representation of time duration |t|.  If t has
 // fractional part (at least more than or equal to 1e-3), |t| is
@@ -1164,13 +1163,12 @@ inline constexpr size_t max_hostport = NI_MAXHOST + /* [] for IPv6 */ 2 +
 
 // Just like make_http_hostport(), but doesn't treat 80 and 443
 // specially.
-std::string_view make_hostport(BlockAllocator &balloc,
-                               const std::string_view &host, uint16_t port);
+std::string_view make_hostport(BlockAllocator &balloc, std::string_view host,
+                               uint16_t port);
 
 template <std::weakly_incrementable O>
 requires(std::indirectly_writable<O, char>)
-std::string_view make_hostport(const std::string_view &host, uint16_t port,
-                               O result) {
+std::string_view make_hostport(std::string_view host, uint16_t port, O result) {
   auto ipv6 = ipv6_numeric_addr(host.data());
   auto p = result;
 
@@ -1197,12 +1195,11 @@ std::string_view make_hostport(const std::string_view &host, uint16_t port,
 // |host| is numeric IPv6 address (e.g., ::1), it is enclosed by "["
 // and "]".  If |port| is 80 or 443, port part is omitted.
 std::string_view make_http_hostport(BlockAllocator &balloc,
-                                    const std::string_view &host,
-                                    uint16_t port);
+                                    std::string_view host, uint16_t port);
 
 template <std::weakly_incrementable O>
 requires(std::indirectly_writable<O, char>)
-std::string_view make_http_hostport(const std::string_view &host, uint16_t port,
+std::string_view make_http_hostport(std::string_view host, uint16_t port,
                                     O result) {
   if (port != 80 && port != 443) {
     return make_hostport(host, port, std::move(result));
@@ -1314,20 +1311,20 @@ void shuffle(R &&r, Generator &&gen, Swap swap) {
 // Returns x**y
 double int_pow(double x, size_t y);
 
-uint32_t hash32(const std::string_view &s);
+uint32_t hash32(std::string_view s);
 
 // Computes SHA-256 of |s|, and stores it in |buf|.  This function
 // returns 0 if it succeeds, or -1.
-int sha256(uint8_t *buf, const std::string_view &s);
+int sha256(uint8_t *buf, std::string_view s);
 
 // Computes SHA-1 of |s|, and stores it in |buf|.  This function
 // returns 0 if it succeeds, or -1.
-int sha1(uint8_t *buf, const std::string_view &s);
+int sha1(uint8_t *buf, std::string_view s);
 
 // Returns host from |hostport|.  If host cannot be found in
 // |hostport|, returns empty string.  The returned string might not be
 // NULL-terminated.
-std::string_view extract_host(const std::string_view &hostport);
+std::string_view extract_host(std::string_view hostport);
 
 // split_hostport splits host and port in |hostport|.  Unlike
 // extract_host, square brackets enclosing host name is stripped.  If
@@ -1335,7 +1332,7 @@ std::string_view extract_host(const std::string_view &hostport);
 // string.  The returned string might not be NULL-terminated.  On any
 // error, it returns a pair which has empty strings.
 std::pair<std::string_view, std::string_view>
-split_hostport(const std::string_view &hostport);
+split_hostport(std::string_view hostport);
 
 // Returns new std::mt19937 object.
 std::mt19937 make_mt19937();
@@ -1348,7 +1345,7 @@ int daemonize(int nochdir, int noclose);
 // removed.  If any white spaces are removed, new string is allocated
 // by |balloc| and returned.  Otherwise, the copy of |s| is returned
 // without allocation.
-std::string_view rstrip(BlockAllocator &balloc, const std::string_view &s);
+std::string_view rstrip(BlockAllocator &balloc, std::string_view s);
 
 // contains returns true if |r| contains |value|.
 template <std::ranges::input_range R, typename T>

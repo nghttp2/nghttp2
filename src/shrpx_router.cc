@@ -33,7 +33,7 @@ namespace shrpx {
 
 RNode::RNode() : index(-1), wildcard_index(-1) {}
 
-RNode::RNode(const std::string_view &s, ssize_t index, ssize_t wildcard_index)
+RNode::RNode(std::string_view s, ssize_t index, ssize_t wildcard_index)
   : s(s), index(index), wildcard_index(wildcard_index) {}
 
 Router::Router() : balloc_(1024, 1024), root_{} {}
@@ -63,15 +63,14 @@ void add_next_node(RNode *node, std::unique_ptr<RNode> new_node) {
 }
 } // namespace
 
-void Router::add_node(RNode *node, const std::string_view &pattern,
-                      ssize_t index, ssize_t wildcard_index) {
+void Router::add_node(RNode *node, std::string_view pattern, ssize_t index,
+                      ssize_t wildcard_index) {
   auto pat = make_string_ref(balloc_, pattern);
   auto new_node = std::make_unique<RNode>(pat, index, wildcard_index);
   add_next_node(node, std::move(new_node));
 }
 
-size_t Router::add_route(const std::string_view &pattern, size_t idx,
-                         bool wildcard) {
+size_t Router::add_route(std::string_view pattern, size_t idx, bool wildcard) {
   ssize_t index = -1, wildcard_index = -1;
   if (wildcard) {
     wildcard_index = as_signed(idx);
@@ -310,8 +309,7 @@ const RNode *match_partial(bool *pattern_is_wildcard, const RNode *node,
 }
 } // namespace
 
-ssize_t Router::match(const std::string_view &host,
-                      const std::string_view &path) const {
+ssize_t Router::match(std::string_view host, std::string_view path) const {
   const RNode *node;
   size_t offset;
 
@@ -331,7 +329,7 @@ ssize_t Router::match(const std::string_view &host,
   return pattern_is_wildcard ? node->wildcard_index : node->index;
 }
 
-ssize_t Router::match(const std::string_view &s) const {
+ssize_t Router::match(std::string_view s) const {
   const RNode *node;
   size_t offset;
 
@@ -391,7 +389,7 @@ const RNode *match_prefix(size_t *nread, const RNode *node, const char *first,
 } // namespace
 
 ssize_t Router::match_prefix(size_t *nread, const RNode **last_node,
-                             const std::string_view &s) const {
+                             std::string_view s) const {
   if (*last_node == nullptr) {
     *last_node = &root_;
   }

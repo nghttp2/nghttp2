@@ -38,7 +38,7 @@ namespace shrpx {
 
 struct RNode {
   RNode();
-  RNode(const std::string_view &s, ssize_t index, ssize_t wildcard_index);
+  RNode(std::string_view s, ssize_t index, ssize_t wildcard_index);
   RNode(RNode &&) = default;
   RNode(const RNode &) = delete;
   RNode &operator=(RNode &&) = default;
@@ -72,15 +72,14 @@ public:
   // |wildcard| is true, |pattern| is considered as wildcard pattern,
   // and all paths which have the |pattern| as prefix and are strictly
   // longer than |pattern| match.  The wildcard pattern only works
-  // with match(const std::string_view&, const std::string_view&).
-  size_t add_route(const std::string_view &pattern, size_t index,
+  // with match(std::string_view, std::string_view).
+  size_t add_route(std::string_view pattern, size_t index,
                    bool wildcard = false);
   // Returns the matched index of pattern.  -1 if there is no match.
-  ssize_t match(const std::string_view &host,
-                const std::string_view &path) const;
+  ssize_t match(std::string_view host, std::string_view path) const;
   // Returns the matched index of pattern |s|.  -1 if there is no
   // match.
-  ssize_t match(const std::string_view &s) const;
+  ssize_t match(std::string_view s) const;
   // Returns the matched index of pattern if a pattern is a suffix of
   // |s|, otherwise -1.  If |*last_node| is not nullptr, it specifies
   // the first node to start matching.  If it is nullptr, match will
@@ -90,9 +89,9 @@ public:
   // match the longer pattern using the returned |*last_node| to the
   // another invocation of this function until it returns -1.
   ssize_t match_prefix(size_t *nread, const RNode **last_node,
-                       const std::string_view &s) const;
+                       std::string_view s) const;
 
-  void add_node(RNode *node, const std::string_view &pattern, ssize_t index,
+  void add_node(RNode *node, std::string_view pattern, ssize_t index,
                 ssize_t wildcard_index);
 
   void dump() const;

@@ -35,7 +35,7 @@ enum {''')
 
 def gen_index_header(tokens, prefix, comp_fun, return_type, fail_value):
     print('''\
-{} lookup_token(const std::string_view &name) {{
+{} lookup_token(std::string_view name) {{
   switch (name.size()) {{'''.format(return_type))
     b = build_header(tokens)
     for size in sorted(b.keys()):

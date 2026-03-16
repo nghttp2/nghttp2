@@ -109,7 +109,7 @@ public:
   Log(int severity, const char *filename, int linenum);
   ~Log();
   Log &operator<<(const std::string &s);
-  Log &operator<<(const std::string_view &s);
+  Log &operator<<(std::string_view s);
   Log &operator<<(const char *s);
   Log &operator<<(const ImmutableString &s);
   template <std::signed_integral T> Log &operator<<(T n) {
@@ -202,7 +202,7 @@ public:
   static void set_severity_level(int severity);
   // Returns the severity level by |name|.  Returns -1 if |name| is
   // unknown.
-  static int get_severity_level_by_name(const std::string_view &name);
+  static int get_severity_level_by_name(std::string_view name);
   static bool log_enabled(int severity) { return severity >= severity_thres_; }
 
   enum {

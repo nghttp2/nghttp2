@@ -555,7 +555,7 @@ struct AffinityHash {
 };
 
 struct DownstreamAddrGroupConfig {
-  DownstreamAddrGroupConfig(const std::string_view &pattern)
+  DownstreamAddrGroupConfig(std::string_view pattern)
     : pattern(pattern),
       affinity{SessionAffinity::NONE},
       redirect_if_not_tls(false),
@@ -920,7 +920,7 @@ struct RateLimitConfig {
 // field.  router includes all path patterns sharing the same wildcard
 // host.
 struct WildcardPattern {
-  WildcardPattern(const std::string_view &host) : host(host) {}
+  WildcardPattern(std::string_view host) : host(host) {}
 
   // This might not be NULL terminated.  Currently it is only used for
   // comparison.
@@ -1343,7 +1343,7 @@ enum {
 };
 
 // Looks up token for given option name |name|.
-int option_lookup_token(const std::string_view &name);
+int option_lookup_token(std::string_view name);
 
 // Parses option name |opt| and value |optarg|.  The results are
 // stored into the object pointed by |config|. This function returns 0
@@ -1354,15 +1354,14 @@ int option_lookup_token(const std::string_view &name);
 // It is introduced to speed up loading configuration file with lots
 // of backends.
 int parse_config(
-  Config *config, const std::string_view &opt, const std::string_view &optarg,
+  Config *config, std::string_view opt, std::string_view optarg,
   std::unordered_set<std::string_view> &included_set,
   std::unordered_map<std::string_view, size_t> &pattern_addr_indexer);
 
 // Similar to parse_config() above, but additional |optid| which
 // should be the return value of option_lookup_token(opt).
 int parse_config(
-  Config *config, int optid, const std::string_view &opt,
-  const std::string_view &optarg,
+  Config *config, int optid, std::string_view opt, std::string_view optarg,
   std::unordered_set<std::string_view> &included_set,
   std::unordered_map<std::string_view, size_t> &pattern_addr_indexer);
 
@@ -1379,16 +1378,16 @@ int load_config(
 // is allowed at the start of the NAME, but NAME == ":" is not
 // allowed.  This function returns pair of NAME and VALUE.
 HeaderRefs::value_type parse_header(BlockAllocator &balloc,
-                                    const std::string_view &optarg);
+                                    std::string_view optarg);
 
 std::vector<LogFragment> parse_log_format(BlockAllocator &balloc,
-                                          const std::string_view &optarg);
+                                          std::string_view optarg);
 
 // Returns string for syslog |facility|.
 std::string_view str_syslog_facility(int facility);
 
 // Returns integer value of syslog |facility| string.
-int int_syslog_facility(const std::string_view &strfacility);
+int int_syslog_facility(std::string_view strfacility);
 
 FILE *open_file_for_write(const char *filename);
 
@@ -1402,7 +1401,7 @@ read_tls_ticket_key_file(const std::vector<std::string_view> &files,
 
 #ifdef ENABLE_HTTP3
 std::shared_ptr<QUICKeyingMaterials>
-read_quic_secret_file(const std::string_view &path);
+read_quic_secret_file(std::string_view path);
 #endif // defined(ENABLE_HTTP3)
 
 // Returns string representation of |proto|.

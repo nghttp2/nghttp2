@@ -92,7 +92,7 @@ public:
   virtual DownstreamAddr *get_addr() const;
 
   int send_reply(unsigned int http_status, APIStatusCode api_status,
-                 const std::string_view &data = ""sv);
+                 std::string_view data = ""sv);
   int error_method_not_allowed();
 
   // Handles backendconfig API request.

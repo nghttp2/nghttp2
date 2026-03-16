@@ -74,7 +74,7 @@ public:
   ~DNSResolver();
 
   // Starts resolving hostname |name|.
-  int resolve(const std::string_view &name, int family);
+  int resolve(std::string_view name, int family);
   // Returns status.  If status_ is DNSResolverStatus::SUCCESS &&
   // |result| is not nullptr, |*result| is filled.
   DNSResolverStatus get_status(Address *result) const;

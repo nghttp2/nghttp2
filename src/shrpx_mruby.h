@@ -71,10 +71,9 @@ struct MRubyAssocData {
   int phase;
 };
 
-RProc *compile(mrb_state *mrb, const std::string_view &filename);
+RProc *compile(mrb_state *mrb, std::string_view filename);
 
-std::unique_ptr<MRubyContext>
-create_mruby_context(const std::string_view &filename);
+std::unique_ptr<MRubyContext> create_mruby_context(std::string_view filename);
 
 // Return interned |ptr|.
 mrb_sym intern_ptr(mrb_state *mrb, void *ptr);

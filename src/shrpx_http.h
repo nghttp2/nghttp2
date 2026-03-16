@@ -72,13 +72,13 @@ OutputIt create_via_header_value(OutputIt dst, int major, int minor) {
 // |params| is bitwise-OR of zero or more of shrpx_forwarded_param
 // defined in shrpx_config.h.
 std::string_view create_forwarded(BlockAllocator &balloc, uint32_t params,
-                                  const std::string_view &node_by,
-                                  const std::string_view &node_for,
-                                  const std::string_view &host,
-                                  const std::string_view &proto);
+                                  std::string_view node_by,
+                                  std::string_view node_for,
+                                  std::string_view host,
+                                  std::string_view proto);
 
 // Adds ANSI color codes to HTTP headers |hdrs|.
-std::string colorize_headers(const std::string_view &hdrs);
+std::string colorize_headers(std::string_view hdrs);
 
 nghttp2_ssize select_padding_callback(nghttp2_session *session,
                                       const nghttp2_frame *frame,
@@ -88,15 +88,14 @@ nghttp2_ssize select_padding_callback(nghttp2_session *session,
 // not empty, "; <path>" is added.  If |secure| is true, "; Secure" is
 // added.
 std::string_view create_affinity_cookie(BlockAllocator &balloc,
-                                        const std::string_view &name,
+                                        std::string_view name,
                                         uint32_t affinity_cookie,
-                                        const std::string_view &path,
-                                        bool secure);
+                                        std::string_view path, bool secure);
 
 // Returns true if |secure| indicates that Secure attribute should be
 // set.
 bool require_cookie_secure_attribute(SessionAffinityCookieSecure secure,
-                                     const std::string_view &scheme);
+                                     std::string_view scheme);
 
 // Returns RFC 7838 alt-svc header field value.
 std::string_view create_altsvc_header_value(BlockAllocator &balloc,
@@ -106,7 +105,7 @@ std::string_view create_altsvc_header_value(BlockAllocator &balloc,
 // - scheme is https and encrypted is true
 // - scheme is http and encrypted is false
 // Otherwise returns false.
-bool check_http_scheme(const std::string_view &scheme, bool encrypted);
+bool check_http_scheme(std::string_view scheme, bool encrypted);
 
 } // namespace http
 

@@ -264,7 +264,7 @@ std::string_view concat_string_ref(BlockAllocator &alloc, Args &&...args) {
 // then just call concat_string_ref().
 template <std::ranges::input_range... Args>
 std::string_view realloc_concat_string_ref(BlockAllocator &alloc,
-                                           const std::string_view &value,
+                                           std::string_view value,
                                            Args &&...args) {
   if (value.empty()) {
     return concat_string_ref(alloc, std::forward<Args>(args)...);

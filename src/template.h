@@ -328,8 +328,7 @@ inline std::string &operator+=(std::string &lhs, const ImmutableString &rhs) {
   return lhs;
 }
 
-inline bool operator==(const ImmutableString &lhs,
-                       const std::string_view &rhs) {
+inline bool operator==(const ImmutableString &lhs, std::string_view rhs) {
   return std::ranges::equal(lhs, rhs);
 }
 

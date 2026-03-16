@@ -241,8 +241,7 @@ int htp_hdr_valcb(llhttp_t *htp, const char *data, size_t len) {
 
 namespace {
 void rewrite_request_host_path_from_uri(BlockAllocator &balloc, Request &req,
-                                        const std::string_view &uri,
-                                        urlparse_url &u) {
+                                        std::string_view uri, urlparse_url &u) {
   assert(u.field_set & (1 << URLPARSE_HOST));
 
   // As per https://tools.ietf.org/html/rfc7230#section-5.4, we
@@ -1522,8 +1521,7 @@ fail:
   return 0;
 }
 
-int HttpsUpstream::initiate_push(Downstream *downstream,
-                                 const std::string_view &uri) {
+int HttpsUpstream::initiate_push(Downstream *downstream, std::string_view uri) {
   return 0;
 }
 
