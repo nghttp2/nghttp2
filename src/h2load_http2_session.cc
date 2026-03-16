@@ -50,7 +50,7 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
   if (frame->hd.type != NGHTTP2_HEADERS) {
     return 0;
   }
-  client->on_header(frame->hd.stream_id, name, namelen, value, valuelen);
+  client->on_header(frame->hd.stream_id, {name, namelen}, {value, valuelen});
   client->worker->stats.bytes_head_decomp += namelen + valuelen;
 
   if (client->worker->config->verbose) {
@@ -279,13 +279,13 @@ int Http2Session::submit_request() {
   return 0;
 }
 
-int Http2Session::on_read(const uint8_t *data, size_t len) {
-  auto rv = nghttp2_session_mem_recv2(session_, data, len);
+int Http2Session::on_read(std::span<const uint8_t> data) {
+  auto rv = nghttp2_session_mem_recv2(session_, data.data(), data.size());
   if (rv < 0) {
     return -1;
   }
 
-  assert(static_cast<size_t>(rv) == len);
+  assert(static_cast<size_t>(rv) == data.size());
 
   if (nghttp2_session_want_read(session_) == 0 &&
       nghttp2_session_want_write(session_) == 0 && client_->wb.rleft() == 0) {

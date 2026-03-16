@@ -127,7 +127,7 @@ int64_t Http3Session::submit_request_internal() {
   return stream_id;
 }
 
-int Http3Session::on_read(const uint8_t *data, size_t len) { return -1; }
+int Http3Session::on_read(std::span<const uint8_t> data) { return -1; }
 
 int Http3Session::on_write() { return -1; }
 
@@ -178,16 +178,15 @@ namespace {
 int recv_data(nghttp3_conn *conn, int64_t stream_id, const uint8_t *data,
               size_t datalen, void *user_data, void *stream_user_data) {
   auto s = static_cast<Http3Session *>(user_data);
-  s->recv_data(stream_id, data, datalen);
+  s->recv_data(stream_id, {data, datalen});
   return 0;
 }
 } // namespace
 
-void Http3Session::recv_data(int64_t stream_id, const uint8_t *data,
-                             size_t datalen) {
+void Http3Session::recv_data(int64_t stream_id, std::span<const uint8_t> data) {
   client_->record_ttfb();
-  client_->worker->stats.bytes_body += datalen;
-  consume(stream_id, datalen);
+  client_->worker->stats.bytes_body += data.size();
+  consume(stream_id, data.size());
 }
 
 namespace {
@@ -228,15 +227,15 @@ int recv_header(nghttp3_conn *conn, int64_t stream_id, int32_t token,
   auto s = static_cast<Http3Session *>(user_data);
   auto k = nghttp3_rcbuf_get_buf(name);
   auto v = nghttp3_rcbuf_get_buf(value);
-  s->recv_header(stream_id, &k, &v);
+  s->recv_header(stream_id, {k.base, k.len}, {v.base, v.len});
   return 0;
 }
 } // namespace
 
-void Http3Session::recv_header(int64_t stream_id, const nghttp3_vec *name,
-                               const nghttp3_vec *value) {
-  client_->on_header(stream_id, name->base, name->len, value->base, value->len);
-  client_->worker->stats.bytes_head_decomp += name->len + value->len;
+void Http3Session::recv_header(int64_t stream_id, std::span<const uint8_t> name,
+                               std::span<const uint8_t> value) {
+  client_->on_header(stream_id, name, value);
+  client_->worker->stats.bytes_head_decomp += name.size() + value.size();
 }
 
 namespace {
@@ -423,10 +422,11 @@ int Http3Session::init_conn() {
 }
 
 ssize_t Http3Session::read_stream(uint32_t flags, int64_t stream_id,
-                                  const uint8_t *data, size_t datalen) {
-  auto nconsumed = nghttp3_conn_read_stream2(
-    conn_, stream_id, data, datalen, flags & NGTCP2_STREAM_DATA_FLAG_FIN,
-    ngtcp2_conn_get_timestamp(client_->quic.conn));
+                                  std::span<const uint8_t> data) {
+  auto nconsumed =
+    nghttp3_conn_read_stream2(conn_, stream_id, data.data(), data.size(),
+                              flags & NGTCP2_STREAM_DATA_FLAG_FIN,
+                              ngtcp2_conn_get_timestamp(client_->quic.conn));
   if (nconsumed < 0) {
     std::cerr << "nghttp3_conn_read_stream2: "
               << nghttp3_strerror(static_cast<int>(nconsumed)) << std::endl;

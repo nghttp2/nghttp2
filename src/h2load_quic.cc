@@ -71,7 +71,7 @@ int recv_stream_data(ngtcp2_conn *conn, uint32_t flags, int64_t stream_id,
                      uint64_t offset, const uint8_t *data, size_t datalen,
                      void *user_data, void *stream_user_data) {
   auto c = static_cast<Client *>(user_data);
-  if (c->quic_recv_stream_data(flags, stream_id, data, datalen) != 0) {
+  if (c->quic_recv_stream_data(flags, stream_id, {data, datalen}) != 0) {
     // TODO Better to do this gracefully rather than
     // NGTCP2_ERR_CALLBACK_FAILURE.  Perhaps, call
     // ngtcp2_conn_write_application_close() ?
@@ -82,13 +82,13 @@ int recv_stream_data(ngtcp2_conn *conn, uint32_t flags, int64_t stream_id,
 } // namespace
 
 int Client::quic_recv_stream_data(uint32_t flags, int64_t stream_id,
-                                  const uint8_t *data, size_t datalen) {
+                                  std::span<const uint8_t> data) {
   if (worker->current_phase == Phase::MAIN_DURATION) {
-    worker->stats.bytes_total += datalen;
+    worker->stats.bytes_total += data.size();
   }
 
   auto s = static_cast<Http3Session *>(session.get());
-  auto nconsumed = s->read_stream(flags, stream_id, data, datalen);
+  auto nconsumed = s->read_stream(flags, stream_id, data);
   if (nconsumed == -1) {
     return -1;
   }
@@ -532,22 +532,6 @@ void Client::quic_close_connection() {
             as_unsigned(nwrite));
 }
 
-int Client::quic_write_client_handshake(ngtcp2_encryption_level level,
-                                        const uint8_t *data, size_t datalen) {
-  int rv;
-
-  assert(level < 2);
-
-  rv = ngtcp2_conn_submit_crypto_data(quic.conn, level, data, datalen);
-  if (rv != 0) {
-    std::cerr << "ngtcp2_conn_submit_crypto_data: " << ngtcp2_strerror(rv)
-              << std::endl;
-    return -1;
-  }
-
-  return 0;
-}
-
 void quic_pkt_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
   auto c = static_cast<Client *>(w->data);
 
@@ -687,13 +671,12 @@ ngtcp2_ssize write_pkt(ngtcp2_conn *conn, ngtcp2_path *path,
                        ngtcp2_tstamp ts, void *user_data) {
   auto c = static_cast<Client *>(user_data);
 
-  return c->write_quic_pkt(path, pi, dest, destlen, ts);
+  return c->write_quic_pkt(path, pi, {dest, destlen}, ts);
 }
 } // namespace
 
 ngtcp2_ssize Client::write_quic_pkt(ngtcp2_path *path, ngtcp2_pkt_info *pi,
-                                    uint8_t *dest, size_t destlen,
-                                    ngtcp2_tstamp ts) {
+                                    std::span<uint8_t> dest, ngtcp2_tstamp ts) {
   std::array<nghttp3_vec, 16> vec;
   auto s = static_cast<Http3Session *>(session.get());
 
@@ -720,8 +703,8 @@ ngtcp2_ssize Client::write_quic_pkt(ngtcp2_path *path, ngtcp2_pkt_info *pi,
     }
 
     auto nwrite = ngtcp2_conn_writev_stream(
-      quic.conn, path, nullptr, dest, destlen, &ndatalen, flags, stream_id,
-      reinterpret_cast<const ngtcp2_vec *>(v), vcnt, ts);
+      quic.conn, path, nullptr, dest.data(), dest.size(), &ndatalen, flags,
+      stream_id, reinterpret_cast<const ngtcp2_vec *>(v), vcnt, ts);
     if (nwrite < 0) {
       switch (nwrite) {
       case NGTCP2_ERR_STREAM_DATA_BLOCKED:
