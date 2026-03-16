@@ -150,7 +150,7 @@ struct Request {
   void init_inflater();
 
   void init_html_parser();
-  int update_html_parser(const uint8_t *data, size_t len, int fin);
+  int update_html_parser(std::span<const uint8_t> data, int fin);
 
   std::string make_reqpath() const;
 
@@ -239,8 +239,8 @@ struct HttpClient {
   int do_write();
 
   int on_upgrade_connect();
-  int on_upgrade_read(const uint8_t *data, size_t len);
-  int on_read(const uint8_t *data, size_t len);
+  int on_upgrade_read(std::span<const uint8_t> data);
+  int on_read(std::span<const uint8_t> data);
   int on_write();
 
   int connection_made();
@@ -281,7 +281,7 @@ struct HttpClient {
   ev_timer rt;
   ev_timer settings_timer;
   std::function<int(HttpClient &)> readfn, writefn;
-  std::function<int(HttpClient &, const uint8_t *, size_t)> on_readfn;
+  std::function<int(HttpClient &, std::span<const uint8_t>)> on_readfn;
   std::function<int(HttpClient &)> on_writefn;
   nghttp2_session *session;
   const nghttp2_session_callbacks *callbacks;
