@@ -545,8 +545,6 @@ Http2Handler::Http2Handler(Sessions *sessions, int fd, SSL *ssl,
     session_(nullptr),
     sessions_(sessions),
     ssl_(ssl),
-    data_pending_(nullptr),
-    data_pendinglen_(0),
     fd_(fd) {
   ev_timer_init(&settings_timerev_, settings_timeout_cb, 10., 0.);
   ev_io_init(&wev_, writecb, fd, EV_WRITE);
@@ -599,17 +597,15 @@ void Http2Handler::start_settings_timer() {
 }
 
 int Http2Handler::fill_wb() {
-  if (data_pending_) {
-    auto n = std::min(wb_.wleft(), data_pendinglen_);
-    wb_.write(data_pending_, n);
-    if (n < data_pendinglen_) {
-      data_pending_ += n;
-      data_pendinglen_ -= n;
+  if (!data_pending_.empty()) {
+    auto n = std::min(wb_.wleft(), data_pending_.size());
+    wb_.write(data_pending_.data(), n);
+    if (n < data_pending_.size()) {
+      data_pending_ = data_pending_.subspan(n);
       return 0;
     }
 
-    data_pending_ = nullptr;
-    data_pendinglen_ = 0;
+    data_pending_ = {};
   }
 
   for (;;) {
@@ -626,8 +622,7 @@ int Http2Handler::fill_wb() {
     }
     auto n = wb_.write(data, as_unsigned(datalen));
     if (n < static_cast<decltype(n)>(datalen)) {
-      data_pending_ = data + n;
-      data_pendinglen_ = as_unsigned(datalen) - n;
+      data_pending_ = {data + n, as_unsigned(datalen) - n};
       break;
     }
   }

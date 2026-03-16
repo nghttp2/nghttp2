@@ -37,6 +37,7 @@
 #include <unordered_map>
 #include <memory>
 #include <string_view>
+#include <span>
 
 #include "ssl_compat.h"
 
@@ -230,8 +231,7 @@ private:
   nghttp2_session *session_;
   Sessions *sessions_;
   SSL *ssl_;
-  const uint8_t *data_pending_;
-  size_t data_pendinglen_;
+  std::span<const uint8_t> data_pending_;
   int fd_;
 };
 
