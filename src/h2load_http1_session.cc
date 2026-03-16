@@ -195,17 +195,17 @@ int Http1Session::submit_request() {
   return on_write();
 }
 
-int Http1Session::on_read(const uint8_t *data, size_t len) {
-  auto htperr =
-    llhttp_execute(&htp_, reinterpret_cast<const char *>(data), len);
+int Http1Session::on_read(std::span<const uint8_t> data) {
+  auto htperr = llhttp_execute(
+    &htp_, reinterpret_cast<const char *>(data.data()), data.size());
   auto nread = htperr == HPE_OK
-                 ? len
+                 ? data.size()
                  : static_cast<size_t>(reinterpret_cast<const uint8_t *>(
                                          llhttp_get_error_pos(&htp_)) -
-                                       data);
+                                       data.data());
 
   if (client_->worker->config->verbose) {
-    std::cout.write(reinterpret_cast<const char *>(data),
+    std::cout.write(reinterpret_cast<const char *>(data.data()),
                     static_cast<std::streamsize>(nread));
   }
 

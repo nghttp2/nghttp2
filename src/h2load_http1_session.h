@@ -41,7 +41,7 @@ public:
   virtual ~Http1Session();
   virtual void on_connect();
   virtual int submit_request();
-  virtual int on_read(const uint8_t *data, size_t len);
+  virtual int on_read(std::span<const uint8_t> data);
   virtual int on_write();
   virtual void terminate();
   virtual size_t max_concurrent_streams();

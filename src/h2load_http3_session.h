@@ -39,7 +39,7 @@ public:
   virtual ~Http3Session();
   virtual void on_connect();
   virtual int submit_request();
-  virtual int on_read(const uint8_t *data, size_t len);
+  virtual int on_read(std::span<const uint8_t> data);
   virtual int on_write();
   virtual void terminate();
   virtual size_t max_concurrent_streams();
@@ -47,11 +47,11 @@ public:
   int init_conn();
   int stream_close(int64_t stream_id, uint64_t app_error_code);
   int end_stream(int64_t stream_id);
-  void recv_data(int64_t stream_id, const uint8_t *data, size_t datalen);
+  void recv_data(int64_t stream_id, std::span<const uint8_t> data);
   void consume(int64_t stream_id, size_t nconsumed);
   void begin_headers(int64_t stream_id);
-  void recv_header(int64_t stream_id, const nghttp3_vec *name,
-                   const nghttp3_vec *value);
+  void recv_header(int64_t stream_id, std::span<const uint8_t> name,
+                   std::span<const uint8_t> value);
   int stop_sending(int64_t stream_id, uint64_t app_error_code);
   int reset_stream(int64_t stream_id, uint64_t app_error_code);
 
@@ -60,8 +60,8 @@ public:
   int extend_max_local_streams();
   int64_t submit_request_internal();
 
-  ssize_t read_stream(uint32_t flags, int64_t stream_id, const uint8_t *data,
-                      size_t datalen);
+  ssize_t read_stream(uint32_t flags, int64_t stream_id,
+                      std::span<const uint8_t> data);
   ssize_t write_stream(int64_t &stream_id, int &fin, nghttp3_vec *vec,
                        size_t veccnt);
   void block_stream(int64_t stream_id);

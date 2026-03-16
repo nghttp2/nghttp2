@@ -1106,8 +1106,8 @@ int Client::terminate_session() {
 
 void Client::on_request(int64_t stream_id) { streams[stream_id] = Stream(); }
 
-void Client::on_header(int64_t stream_id, const uint8_t *name, size_t namelen,
-                       const uint8_t *value, size_t valuelen) {
+void Client::on_header(int64_t stream_id, std::span<const uint8_t> name,
+                       std::span<const uint8_t> value) {
   auto itr = streams.find(stream_id);
   if (itr == std::ranges::end(streams)) {
     return;
@@ -1122,10 +1122,10 @@ void Client::on_header(int64_t stream_id, const uint8_t *name, size_t namelen,
     return;
   }
 
-  if (stream.status_success == -1 && namelen == 7 &&
-      ":status"sv == as_string_view(name, namelen)) {
+  if (stream.status_success == -1 && name.size() == 7 &&
+      ":status"sv == as_string_view(name)) {
     int status = 0;
-    for (auto c : std::span{value, valuelen}) {
+    for (auto c : value) {
       if (util::is_digit(static_cast<char>(c))) {
         status *= 10;
         status += c - '0';
@@ -1420,10 +1420,10 @@ int Client::connection_made() {
   return 0;
 }
 
-int Client::on_read(const uint8_t *data, size_t len) {
-  auto rv = session->on_read(data, len);
+int Client::on_read(std::span<const uint8_t> data) {
+  auto rv = session->on_read(data);
   if (worker->current_phase == Phase::MAIN_DURATION) {
-    worker->stats.bytes_total += len;
+    worker->stats.bytes_total += data.size();
   }
   if (rv != 0) {
     return -1;
@@ -1461,7 +1461,7 @@ int Client::read_clear() {
       return -1;
     }
 
-    if (on_read(buf, as_unsigned(nread)) != 0) {
+    if (on_read({buf, as_unsigned(nread)}) != 0) {
       return -1;
     }
   }
@@ -1581,7 +1581,7 @@ int Client::read_tls() {
       }
     }
 
-    if (on_read(buf, static_cast<size_t>(rv)) != 0) {
+    if (on_read({buf, static_cast<size_t>(rv)}) != 0) {
       return -1;
     }
   }
