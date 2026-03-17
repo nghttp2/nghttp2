@@ -727,10 +727,9 @@ int HttpClient::read_clear() {
   ev_timer_again(loop, &rt);
 
   std::array<uint8_t, 8_k> rawbuf;
+  auto buf = std::span<uint8_t>{rawbuf};
 
   for (;;) {
-    auto buf = std::span<uint8_t>{rawbuf};
-
     ssize_t nread;
     while ((nread = read(fd, buf.data(), buf.size())) == -1 && errno == EINTR)
       ;
@@ -1249,9 +1248,9 @@ int HttpClient::read_tls() {
   ERR_clear_error();
 
   std::array<uint8_t, 8_k> rawbuf;
-  for (;;) {
-    auto buf = std::span<uint8_t>{rawbuf};
+  auto buf = std::span<uint8_t>{rawbuf};
 
+  for (;;) {
     auto rv = SSL_read(ssl, buf.data(), static_cast<int>(buf.size()));
 
     if (rv <= 0) {
