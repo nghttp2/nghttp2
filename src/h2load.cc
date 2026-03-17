@@ -1444,11 +1444,12 @@ int Client::on_write() {
 }
 
 int Client::read_clear() {
-  uint8_t buf[8_k];
+  std::array<uint8_t, 8_k> rawbuf;
+  auto buf = std::span<uint8_t>{rawbuf};
 
   for (;;) {
     ssize_t nread;
-    while ((nread = read(fd, buf, sizeof(buf))) == -1 && errno == EINTR)
+    while ((nread = read(fd, buf.data(), buf.size())) == -1 && errno == EINTR)
       ;
     if (nread == -1) {
       if (errno == EAGAIN || errno == EWOULDBLOCK) {
@@ -1461,7 +1462,7 @@ int Client::read_clear() {
       return -1;
     }
 
-    if (on_read({buf, as_unsigned(nread)}) != 0) {
+    if (on_read(buf.first(as_unsigned(nread))) != 0) {
       return -1;
     }
   }
@@ -1561,12 +1562,14 @@ int Client::tls_handshake() {
 }
 
 int Client::read_tls() {
-  uint8_t buf[8_k];
+  std::array<uint8_t, 8_k> rawbuf;
 
   ERR_clear_error();
 
+  auto buf = std::span<uint8_t>{rawbuf};
+
   for (;;) {
-    auto rv = SSL_read(ssl, buf, sizeof(buf));
+    auto rv = SSL_read(ssl, buf.data(), static_cast<int>(buf.size()));
 
     if (rv <= 0) {
       auto err = SSL_get_error(ssl, rv);
@@ -1581,7 +1584,7 @@ int Client::read_tls() {
       }
     }
 
-    if (on_read({buf, static_cast<size_t>(rv)}) != 0) {
+    if (on_read(buf.first(static_cast<size_t>(rv))) != 0) {
       return -1;
     }
   }
