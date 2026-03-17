@@ -175,27 +175,30 @@ xmlSAXHandler saxHandler = {
 };
 } // namespace
 
-int HtmlParser::parse_chunk(const char *chunk, size_t size, int fin) {
+int HtmlParser::parse_chunk(std::span<const uint8_t> chunk, int fin) {
   if (!parser_ctx_) {
     parser_ctx_ = htmlCreatePushParserCtxt(
-      &saxHandler, &parser_data_, chunk, static_cast<int>(size),
-      base_uri_.c_str(), XML_CHAR_ENCODING_NONE);
+      &saxHandler, &parser_data_, reinterpret_cast<const char *>(chunk.data()),
+      static_cast<int>(chunk.size()), base_uri_.c_str(),
+      XML_CHAR_ENCODING_NONE);
     if (!parser_ctx_) {
       return -1;
     } else {
       if (fin) {
-        return parse_chunk_internal(nullptr, 0, fin);
+        return parse_chunk_internal({}, fin);
       } else {
         return 0;
       }
     }
   } else {
-    return parse_chunk_internal(chunk, size, fin);
+    return parse_chunk_internal(chunk, fin);
   }
 }
 
-int HtmlParser::parse_chunk_internal(const char *chunk, size_t size, int fin) {
-  int rv = htmlParseChunk(parser_ctx_, chunk, static_cast<int>(size), fin);
+int HtmlParser::parse_chunk_internal(std::span<const uint8_t> chunk, int fin) {
+  int rv =
+    htmlParseChunk(parser_ctx_, reinterpret_cast<const char *>(chunk.data()),
+                   static_cast<int>(chunk.size()), fin);
   if (rv == 0) {
     return 0;
   } else {
