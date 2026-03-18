@@ -49,31 +49,31 @@ class DownstreamConnectionPool;
 class Http2DownstreamConnection : public DownstreamConnection {
 public:
   Http2DownstreamConnection(Http2Session *http2session);
-  virtual ~Http2DownstreamConnection();
-  virtual int attach_downstream(Downstream *downstream);
-  virtual void detach_downstream(Downstream *downstream);
+  ~Http2DownstreamConnection() override;
+  int attach_downstream(Downstream *downstream) override;
+  void detach_downstream(Downstream *downstream) override;
 
-  virtual int push_request_headers();
-  virtual int push_upload_data_chunk(const uint8_t *data, size_t datalen);
-  virtual int end_upload_data();
+  int push_request_headers() override;
+  int push_upload_data_chunk(const uint8_t *data, size_t datalen) override;
+  int end_upload_data() override;
 
-  virtual void pause_read(IOCtrlReason reason) {}
-  virtual int resume_read(IOCtrlReason reason, size_t consumed);
-  virtual void force_resume_read() {}
+  void pause_read(IOCtrlReason reason) override {}
+  int resume_read(IOCtrlReason reason, size_t consumed) override;
+  void force_resume_read() override {}
 
-  virtual int on_read();
-  virtual int on_write();
-  virtual int on_timeout();
+  int on_read() override;
+  int on_write() override;
+  int on_timeout() override;
 
-  virtual void on_upstream_change(Upstream *upstream) {}
+  void on_upstream_change(Upstream *upstream) override {}
 
   // This object is not poolable because we don't have facility to
   // migrate to another Http2Session object.
-  virtual bool poolable() const { return false; }
+  bool poolable() const override { return false; }
 
-  virtual const std::shared_ptr<DownstreamAddrGroup> &
-  get_downstream_addr_group() const;
-  virtual DownstreamAddr *get_addr() const;
+  const std::shared_ptr<DownstreamAddrGroup> &
+  get_downstream_addr_group() const override;
+  DownstreamAddr *get_addr() const override;
 
   int send();
 

@@ -38,13 +38,13 @@ struct Client;
 class Http1Session : public Session {
 public:
   Http1Session(Client *client);
-  virtual ~Http1Session();
-  virtual void on_connect();
-  virtual int submit_request();
-  virtual int on_read(std::span<const uint8_t> data);
-  virtual int on_write();
-  virtual void terminate();
-  virtual size_t max_concurrent_streams();
+  ~Http1Session() override;
+  void on_connect() override;
+  int submit_request() override;
+  int on_read(std::span<const uint8_t> data) override;
+  int on_write() override;
+  void terminate() override;
+  size_t max_concurrent_streams() override;
   Client *get_client();
   int32_t stream_req_counter_;
   int32_t stream_resp_counter_;

@@ -36,13 +36,13 @@ struct Client;
 class Http2Session : public Session {
 public:
   Http2Session(Client *client);
-  virtual ~Http2Session();
-  virtual void on_connect();
-  virtual int submit_request();
-  virtual int on_read(std::span<const uint8_t> data);
-  virtual int on_write();
-  virtual void terminate();
-  virtual size_t max_concurrent_streams();
+  ~Http2Session() override;
+  void on_connect() override;
+  int submit_request() override;
+  int on_read(std::span<const uint8_t> data) override;
+  int on_write() override;
+  void terminate() override;
+  size_t max_concurrent_streams() override;
 
 private:
   Client *client_;
