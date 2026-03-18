@@ -598,8 +598,7 @@ void Http2Handler::start_settings_timer() {
 
 int Http2Handler::fill_wb() {
   if (!data_pending_.empty()) {
-    auto n = std::min(wb_.wleft(), data_pending_.size());
-    wb_.write(data_pending_.data(), n);
+    auto n = wb_.write(data_pending_);
     if (n < data_pending_.size()) {
       data_pending_ = data_pending_.subspan(n);
       return 0;
@@ -620,9 +619,10 @@ int Http2Handler::fill_wb() {
     if (datalen == 0) {
       break;
     }
-    auto n = wb_.write(data, as_unsigned(datalen));
-    if (n < static_cast<decltype(n)>(datalen)) {
-      data_pending_ = {data + n, as_unsigned(datalen) - n};
+    auto chunk = std::span{data, as_unsigned(datalen)};
+    auto n = wb_.write(chunk);
+    if (n < chunk.size()) {
+      data_pending_ = chunk.subspan(n);
       break;
     }
   }
