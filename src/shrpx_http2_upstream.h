@@ -48,20 +48,20 @@ class HttpsUpstream;
 class Http2Upstream : public Upstream {
 public:
   Http2Upstream(ClientHandler *handler);
-  virtual ~Http2Upstream();
-  virtual int on_read();
-  virtual int on_write();
-  virtual int on_timeout(Downstream *downstream);
-  virtual int on_downstream_abort_request(Downstream *downstream,
-                                          unsigned int status_code);
-  virtual int
-  on_downstream_abort_request_with_https_redirect(Downstream *downstream);
-  virtual ClientHandler *get_client_handler() const;
+  ~Http2Upstream() override;
+  int on_read() override;
+  int on_write() override;
+  int on_timeout(Downstream *downstream) override;
+  int on_downstream_abort_request(Downstream *downstream,
+                                  unsigned int status_code) override;
+  int on_downstream_abort_request_with_https_redirect(
+    Downstream *downstream) override;
+  ClientHandler *get_client_handler() const override;
 
-  virtual int downstream_read(DownstreamConnection *dconn);
-  virtual int downstream_write(DownstreamConnection *dconn);
-  virtual int downstream_eof(DownstreamConnection *dconn);
-  virtual int downstream_error(DownstreamConnection *dconn, int events);
+  int downstream_read(DownstreamConnection *dconn) override;
+  int downstream_write(DownstreamConnection *dconn) override;
+  int downstream_eof(DownstreamConnection *dconn) override;
+  int downstream_error(DownstreamConnection *dconn, int events) override;
 
   void add_pending_downstream(std::unique_ptr<Downstream> downstream);
   void remove_downstream(Downstream *downstream);
@@ -70,31 +70,30 @@ public:
   int terminate_session(uint32_t error_code);
   int error_reply(Downstream *downstream, unsigned int status_code);
 
-  virtual void pause_read(IOCtrlReason reason);
-  virtual int resume_read(IOCtrlReason reason, Downstream *downstream,
-                          size_t consumed);
+  void pause_read(IOCtrlReason reason) override;
+  int resume_read(IOCtrlReason reason, Downstream *downstream,
+                  size_t consumed) override;
 
-  virtual int on_downstream_header_complete(Downstream *downstream);
-  virtual int on_downstream_body(Downstream *downstream, const uint8_t *data,
-                                 size_t len, bool flush);
-  virtual int on_downstream_body_complete(Downstream *downstream);
+  int on_downstream_header_complete(Downstream *downstream) override;
+  int on_downstream_body(Downstream *downstream, const uint8_t *data,
+                         size_t len, bool flush) override;
+  int on_downstream_body_complete(Downstream *downstream) override;
 
-  virtual void on_handler_delete();
-  virtual int on_downstream_reset(Downstream *downstream, bool no_retry);
-  virtual int send_reply(Downstream *downstream, const uint8_t *body,
-                         size_t bodylen);
-  virtual int initiate_push(Downstream *downstream, std::string_view uri);
-  virtual int response_riovec(struct iovec *iov, int iovcnt) const;
-  virtual void response_drain(size_t n);
-  virtual bool response_empty() const;
+  void on_handler_delete() override;
+  int on_downstream_reset(Downstream *downstream, bool no_retry) override;
+  int send_reply(Downstream *downstream, const uint8_t *body,
+                 size_t bodylen) override;
+  int initiate_push(Downstream *downstream, std::string_view uri) override;
+  int response_riovec(struct iovec *iov, int iovcnt) const override;
+  void response_drain(size_t n) override;
+  bool response_empty() const override;
 
-  virtual Downstream *on_downstream_push_promise(Downstream *downstream,
-                                                 int32_t promised_stream_id);
-  virtual int
-  on_downstream_push_promise_complete(Downstream *downstream,
-                                      Downstream *promised_downstream);
-  virtual bool push_enabled() const;
-  virtual void cancel_premature_downstream(Downstream *promised_downstream);
+  Downstream *on_downstream_push_promise(Downstream *downstream,
+                                         int32_t promised_stream_id) override;
+  int on_downstream_push_promise_complete(
+    Downstream *downstream, Downstream *promised_downstream) override;
+  bool push_enabled() const override;
+  void cancel_premature_downstream(Downstream *promised_downstream) override;
 
   bool get_flow_control() const;
   // Perform HTTP/2 upgrade from |upstream|. On success, this object

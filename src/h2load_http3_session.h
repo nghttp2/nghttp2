@@ -36,13 +36,13 @@ struct Client;
 class Http3Session : public Session {
 public:
   Http3Session(Client *client);
-  virtual ~Http3Session();
-  virtual void on_connect();
-  virtual int submit_request();
-  virtual int on_read(std::span<const uint8_t> data);
-  virtual int on_write();
-  virtual void terminate();
-  virtual size_t max_concurrent_streams();
+  ~Http3Session() override;
+  void on_connect() override;
+  int submit_request() override;
+  int on_read(std::span<const uint8_t> data) override;
+  int on_write() override;
+  void terminate() override;
+  size_t max_concurrent_streams() override;
 
   int init_conn();
   int stream_close(int64_t stream_id, uint64_t app_error_code);

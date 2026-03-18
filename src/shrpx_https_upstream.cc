@@ -805,8 +805,6 @@ int HttpsUpstream::on_write() {
   return downstream->resume_read(SHRPX_NO_BUFFER, resp.unconsumed_body_length);
 }
 
-int HttpsUpstream::on_event() { return 0; }
-
 ClientHandler *HttpsUpstream::get_client_handler() const { return handler_; }
 
 void HttpsUpstream::pause_read(IOCtrlReason reason) {
