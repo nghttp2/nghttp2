@@ -703,7 +703,7 @@ void MemcachedConnection::make_request(MemcachedSendbuf *sendbuf,
     break;
   }
 
-  headbuf.write(req->key.c_str(), req->key.size());
+  headbuf.write(as_uint8_span(std::span{req->key}));
 
   sendbuf->send_value_left = req->value.size();
 }

@@ -41,13 +41,12 @@ template <size_t N> struct Buffer {
   constexpr size_t wleft() const noexcept {
     return as_unsigned(&buf[N] - last);
   }
-  // Writes up to min(wleft(), |count|) bytes from buffer pointed by
-  // |src|.  Returns number of bytes written.
-  constexpr size_t write(const void *src, size_t count) {
-    count = std::min(count, wleft());
-    auto p = static_cast<const uint8_t *>(src);
-    last = std::ranges::copy_n(p, as_signed(count), last).out;
-    return count;
+  // Writes up to min(wleft(), |src|.size()) bytes from |src|.
+  // Returns number of bytes written.
+  constexpr size_t write(std::span<const uint8_t> src) {
+    src = src.first(std::min(src.size(), wleft()));
+    last = std::ranges::copy(src, last).out;
+    return src.size();
   }
   constexpr size_t write(size_t count) {
     count = std::min(count, wleft());
