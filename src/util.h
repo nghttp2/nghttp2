@@ -115,13 +115,14 @@ constexpr bool is_hex_digit(char c) noexcept {
 }
 
 // Returns true if a range [|first|, |last|) is hex string.
-template <std::input_iterator I> constexpr bool is_hex_string(I first, I last) {
+template <std::forward_iterator I>
+constexpr bool is_hex_string(I first, I last) {
   return !(std::ranges::distance(first, last) & 1) &&
          std::ranges::all_of(first, last, is_hex_digit);
 }
 
 // Returns true if |r| is hex string.
-template <std::ranges::input_range R>
+template <std::ranges::forward_range R>
 requires(!std::is_array_v<std::remove_cvref_t<R>>)
 constexpr bool is_hex_string(R &&r) {
   return is_hex_string(std::ranges::begin(r), std::ranges::end(r));
@@ -277,7 +278,7 @@ constexpr O percent_decode(I first, I last, O result) {
   return result;
 }
 
-template <std::input_iterator I>
+template <std::forward_iterator I>
 constexpr std::string percent_decode(I first, I last) {
   std::string result;
 
@@ -292,13 +293,13 @@ constexpr std::string percent_decode(I first, I last) {
   return result;
 }
 
-template <std::ranges::input_range R>
+template <std::ranges::forward_range R>
 requires(!std::is_array_v<std::remove_cvref_t<R>>)
 constexpr std::string percent_decode(R &&r) {
   return percent_decode(std::ranges::begin(r), std::ranges::end(r));
 }
 
-template <std::ranges::input_range R>
+template <std::ranges::sized_range R>
 requires(!std::is_array_v<std::remove_cvref_t<R>>)
 std::string_view percent_decode(BlockAllocator &balloc, R &&r) {
   auto iov = make_byte_ref(balloc, std::ranges::size(r) + 1);
@@ -338,7 +339,7 @@ constexpr O quote_string(R &&r, O result) {
                       std::move(result));
 }
 
-template <std::ranges::input_range R>
+template <std::ranges::sized_range R>
 requires(!std::is_array_v<std::remove_cvref_t<R>>)
 std::string_view quote_string(BlockAllocator &balloc, R &&r) {
   auto cnt = std::ranges::count(r, '"');
@@ -422,7 +423,7 @@ constexpr O format_hex(R &&r, O result) {
 // Converts |R| in hex format, and stores the result in a buffer
 // allocated by |balloc|.  It returns std::string_view that is backed by the
 // allocated buffer.  The returned string is NULL terminated.
-template <std::ranges::input_range R>
+template <std::ranges::sized_range R>
 requires(!std::is_array_v<std::remove_cvref_t<R>> &&
          sizeof(std::ranges::range_value_t<R>) == sizeof(uint8_t))
 std::string_view format_hex(BlockAllocator &balloc, R &&r) {
@@ -435,7 +436,7 @@ std::string_view format_hex(BlockAllocator &balloc, R &&r) {
 }
 
 // Converts |R| in hex format, and returns the result.
-template <std::ranges::input_range R>
+template <std::ranges::forward_range R>
 requires(!std::is_array_v<std::remove_cvref_t<R>> &&
          sizeof(std::ranges::range_value_t<R>) == sizeof(uint8_t))
 constexpr std::string format_hex(R &&r) {
@@ -524,7 +525,7 @@ constexpr O decode_hex(R &&r, O result) {
 // the decoded byte string, which is not NULL terminated.  This
 // function assumes a range [|first|, |last|) is hex string, that is
 // is_hex_string(|first|, |last|) == true.
-template <std::input_iterator I>
+template <std::forward_iterator I>
 std::span<const uint8_t> decode_hex(BlockAllocator &balloc, I first, I last) {
   auto iov =
     make_byte_ref(balloc, as_unsigned(std::ranges::distance(first, last) / 2));
@@ -537,7 +538,7 @@ std::span<const uint8_t> decode_hex(BlockAllocator &balloc, I first, I last) {
 // decode_hex decodes hex string |r|, returns the decoded byte string,
 // which is not NULL terminated.  This function assumes |r| is hex
 // string, that is is_hex_string(r) == true.
-template <std::ranges::input_range R>
+template <std::ranges::forward_range R>
 requires(!std::is_array_v<std::remove_cvref_t<R>>)
 std::span<const uint8_t> decode_hex(BlockAllocator &balloc, R &&r) {
   return decode_hex(balloc, std::ranges::begin(r), std::ranges::end(r));
@@ -637,7 +638,7 @@ constexpr char lowcase(char c) noexcept {
   return lowcase_tbl[static_cast<uint8_t>(c)];
 }
 
-template <std::ranges::input_range R1, std::ranges::input_range R2>
+template <std::ranges::forward_range R1, std::ranges::forward_range R2>
 constexpr bool starts_with(R1 &&s, R2 &&prefix) {
   auto prefixlen = std::ranges::distance(prefix);
   return std::ranges::distance(s) >= prefixlen &&
@@ -651,7 +652,7 @@ struct CaseCmp {
   }
 };
 
-template <std::ranges::input_range R1, std::ranges::input_range R2>
+template <std::ranges::forward_range R1, std::ranges::forward_range R2>
 constexpr bool istarts_with(R1 &&s, R2 &&prefix) {
   auto prefixlen = std::ranges::distance(prefix);
   return std::ranges::distance(s) >= prefixlen &&
@@ -659,7 +660,7 @@ constexpr bool istarts_with(R1 &&s, R2 &&prefix) {
                             std::forward<R2>(prefix), CaseCmp());
 }
 
-template <std::ranges::input_range R1, std::ranges::input_range R2>
+template <std::ranges::forward_range R1, std::ranges::forward_range R2>
 constexpr bool ends_with(R1 &&s, R2 &&suffix) {
   auto slen = std::ranges::distance(s);
   auto suffixlen = std::ranges::distance(suffix);
@@ -669,7 +670,7 @@ constexpr bool ends_with(R1 &&s, R2 &&suffix) {
            std::forward<R2>(suffix));
 }
 
-template <std::ranges::input_range R1, std::ranges::input_range R2>
+template <std::ranges::forward_range R1, std::ranges::forward_range R2>
 constexpr bool iends_with(R1 &&s, R2 &&suffix) {
   auto slen = std::ranges::distance(s);
   auto suffixlen = std::ranges::distance(suffix);
@@ -1301,7 +1302,7 @@ void shuffle(I first, I last, Generator &&gen, Swap swap) {
   }
 }
 
-template <std::ranges::input_range R, typename Generator, typename Swap>
+template <std::ranges::random_access_range R, typename Generator, typename Swap>
 requires(!std::is_array_v<std::remove_cvref_t<R>>)
 void shuffle(R &&r, Generator &&gen, Swap swap) {
   return shuffle(std::ranges::begin(r), std::ranges::end(r),

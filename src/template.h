@@ -221,14 +221,14 @@ public:
 
   ImmutableString(std::nullptr_t) = delete;
 
-  template <std::ranges::input_range R>
+  template <std::ranges::sized_range R>
   requires(std::is_same_v<std::ranges::range_value_t<R>, value_type> &&
            !std::is_same_v<std::remove_cvref_t<R>, ImmutableString> &&
            !std::is_array_v<std::remove_cvref_t<R>>)
   constexpr explicit ImmutableString(R &&r)
     : len(std::ranges::size(r)), base(copystr(std::forward<R>(r))) {}
 
-  template <std::input_iterator I>
+  template <std::forward_iterator I>
   requires(std::is_same_v<std::iter_value_t<I>, value_type>)
   constexpr ImmutableString(I first, I last)
     : len(as_unsigned(std::ranges::distance(first, last))),
@@ -298,7 +298,7 @@ public:
   }
 
 private:
-  template <std::input_iterator I>
+  template <std::forward_iterator I>
   constexpr const char *copystr(I first, I last) {
     auto len = static_cast<size_t>(std::ranges::distance(first, last));
     if (len == 0) {
@@ -309,7 +309,7 @@ private:
     return res;
   }
 
-  template <std::ranges::input_range R>
+  template <std::ranges::forward_range R>
   requires(!std::is_array_v<std::remove_cvref_t<R>>)
   constexpr const char *copystr(R &&r) {
     return copystr(std::ranges::begin(r), std::ranges::end(r));

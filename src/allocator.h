@@ -198,7 +198,7 @@ struct BlockAllocator {
 
 // Makes a copy of a range [|first|, |last|).  The resulting string
 // will be NULL-terminated.
-template <std::input_iterator I>
+template <std::forward_iterator I>
 std::string_view make_string_ref(BlockAllocator &alloc, I first, I last) {
   auto dst = static_cast<char *>(
     alloc.alloc(static_cast<size_t>(std::ranges::distance(first, last) + 1)));
@@ -210,7 +210,7 @@ std::string_view make_string_ref(BlockAllocator &alloc, I first, I last) {
 
 // Makes a copy of |r| as std::string_view.  The resulting string will be
 // NULL-terminated.
-template <std::ranges::input_range R>
+template <std::ranges::forward_range R>
 requires(!std::is_array_v<std::remove_cvref_t<R>>)
 std::string_view make_string_ref(BlockAllocator &alloc, R &&r) {
   return make_string_ref(alloc, std::ranges::begin(r), std::ranges::end(r));
@@ -223,7 +223,7 @@ constexpr size_t concat_string_ref_count(size_t acc) { return acc; }
 // private function used in concat_string_ref.  This function counts
 // the sum of length of given arguments.  The calculated length is
 // accumulated, and passed to the next function.
-template <std::ranges::input_range R, std::ranges::input_range... Args>
+template <std::ranges::sized_range R, std::ranges::sized_range... Args>
 requires(!std::is_array_v<std::remove_cvref_t<R>>)
 constexpr size_t concat_string_ref_count(size_t acc, R &&r, Args &&...args) {
   return concat_string_ref_count(acc + std::ranges::size(r), args...);
@@ -246,7 +246,7 @@ uint8_t *concat_string_ref_copy(uint8_t *p, R &&r, Args &&...args) {
 
 // Returns the string which is the concatenation of |args| in the
 // given order.  The resulting string will be NULL-terminated.
-template <std::ranges::input_range... Args>
+template <std::ranges::sized_range... Args>
 std::string_view concat_string_ref(BlockAllocator &alloc, Args &&...args) {
   auto len = concat_string_ref_count(0, args...);
   auto dst = static_cast<uint8_t *>(alloc.alloc(len + 1));
@@ -262,7 +262,7 @@ std::string_view concat_string_ref(BlockAllocator &alloc, Args &&...args) {
 // obtained from alloc.alloc() or alloc.realloc(), and attempts to use
 // unused memory region by using alloc.realloc().  If value is empty,
 // then just call concat_string_ref().
-template <std::ranges::input_range... Args>
+template <std::ranges::sized_range... Args>
 std::string_view realloc_concat_string_ref(BlockAllocator &alloc,
                                            std::string_view value,
                                            Args &&...args) {
