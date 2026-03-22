@@ -347,18 +347,14 @@ constexpr ImmutableString operator""_is(const char *str, size_t len) {
 }
 
 template <typename T, std::size_t N>
-[[nodiscard]] std::span<
-  const uint8_t, N == std::dynamic_extent ? std::dynamic_extent : N * sizeof(T)>
-as_uint8_span(std::span<T, N> s) noexcept {
+[[nodiscard]] auto as_uint8_span(std::span<T, N> s) noexcept {
   return std::span<const uint8_t, N == std::dynamic_extent ? std::dynamic_extent
                                                            : N * sizeof(T)>{
     reinterpret_cast<const uint8_t *>(s.data()), s.size_bytes()};
 }
 
 template <typename T, std::size_t N>
-[[nodiscard]] std::span<uint8_t, N == std::dynamic_extent ? std::dynamic_extent
-                                                          : N * sizeof(T)>
-as_writable_uint8_span(std::span<T, N> s) noexcept {
+[[nodiscard]] auto as_writable_uint8_span(std::span<T, N> s) noexcept {
   return std::span<uint8_t, N == std::dynamic_extent ? std::dynamic_extent
                                                      : N * sizeof(T)>{
     reinterpret_cast<uint8_t *>(s.data()), s.size_bytes()};
