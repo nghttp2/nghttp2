@@ -172,7 +172,7 @@ template <typename Memchunk> struct Memchunks {
     *tail->last++ = as_unsigned(c);
     ++len;
   }
-  template <std::input_iterator I> void append(I first, I last) {
+  template <std::forward_iterator I> void append(I first, I last) {
     if (first == last) {
       return;
     }
@@ -181,14 +181,16 @@ template <typename Memchunk> struct Memchunks {
       head = tail = pool->get();
     }
 
+    auto inlen = static_cast<size_t>(std::ranges::distance(first, last));
+
     for (;;) {
-      auto n = std::min(static_cast<size_t>(std::ranges::distance(first, last)),
-                        tail->left());
+      auto n = std::min(inlen, tail->left());
       auto iores = std::ranges::copy_n(first, as_signed(n), tail->last);
       first = iores.in;
       tail->last = iores.out;
       len += n;
-      if (first == last) {
+      inlen -= n;
+      if (inlen == 0) {
         break;
       }
 
@@ -202,7 +204,7 @@ template <typename Memchunk> struct Memchunks {
     auto s = static_cast<const uint8_t *>(src);
     append(s, s + count);
   }
-  template <std::ranges::input_range R>
+  template <std::ranges::forward_range R>
   requires(!std::is_array_v<std::remove_cvref_t<R>>)
   void append(R &&r) {
     append(std::ranges::begin(r), std::ranges::end(r));

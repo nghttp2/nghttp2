@@ -46,7 +46,7 @@ inline constexpr char B64_CHARS[] = {
 
 constexpr size_t encode_length(size_t n) { return (n + 2) / 3 * 4; }
 
-template <std::input_iterator I, std::weakly_incrementable O>
+template <std::forward_iterator I, std::weakly_incrementable O>
 requires(std::indirectly_writable<O, char>)
 constexpr O encode(I first, I last, O result) {
   using result_type = std::iter_value_t<O>;
@@ -96,14 +96,14 @@ constexpr O encode(I first, I last, O result) {
   return p;
 }
 
-template <std::ranges::input_range R, std::weakly_incrementable O>
+template <std::ranges::forward_range R, std::weakly_incrementable O>
 requires(std::indirectly_writable<O, char> &&
          !std::is_array_v<std::remove_cvref_t<R>>)
 constexpr O encode(R &&r, O result) {
   return encode(std::ranges::begin(r), std::ranges::end(r), std::move(result));
 }
 
-template <std::ranges::input_range R>
+template <std::ranges::sized_range R>
 requires(!std::is_array_v<std::remove_cvref_t<R>>)
 constexpr std::string encode(R &&r) {
   std::string res;
@@ -135,7 +135,7 @@ inline constexpr int B64_INDEX_TABLE[] = {
   -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
   -1, -1, -1, -1, -1, -1, -1, -1, -1};
 
-template <std::input_iterator I, std::weakly_incrementable O>
+template <std::forward_iterator I, std::weakly_incrementable O>
 requires(std::indirectly_writable<O, uint8_t>)
 constexpr O decode(I first, I last, O result) {
   using result_type = std::iter_value_t<O>;
@@ -177,7 +177,7 @@ constexpr O decode(I first, I last, O result) {
   return p;
 }
 
-template <std::ranges::input_range R>
+template <std::ranges::sized_range R>
 requires(!std::is_array_v<std::remove_cvref_t<R>>)
 std::span<const uint8_t> decode(BlockAllocator &balloc, R &&r) {
   auto len = std::ranges::size(r);
