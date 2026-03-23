@@ -28,6 +28,7 @@
 #include "shrpx.h"
 
 #include <memory>
+#include <span>
 
 #include "shrpx_io_control.h"
 
@@ -47,7 +48,7 @@ public:
   virtual void detach_downstream(Downstream *downstream) = 0;
 
   virtual int push_request_headers() = 0;
-  virtual int push_upload_data_chunk(const uint8_t *data, size_t datalen) = 0;
+  virtual int push_upload_data_chunk(std::span<const uint8_t> data) = 0;
   virtual int end_upload_data() = 0;
 
   virtual void pause_read(IOCtrlReason reason) = 0;

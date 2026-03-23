@@ -51,7 +51,7 @@ public:
   void detach_downstream(Downstream *downstream) override;
 
   int push_request_headers() override;
-  int push_upload_data_chunk(const uint8_t *data, size_t datalen) override;
+  int push_upload_data_chunk(std::span<const uint8_t> data) override;
   int end_upload_data() override;
   void end_upload_data_chunk();
 
@@ -78,7 +78,7 @@ public:
   int read_tls();
   int write_tls();
 
-  int process_input(const uint8_t *data, size_t datalen);
+  int process_input(std::span<const uint8_t> data);
   int tls_handshake();
 
   int connected();

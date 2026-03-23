@@ -612,7 +612,7 @@ int on_data_chunk_recv_callback(nghttp2_session *session, uint8_t flags,
 
   downstream->reset_upstream_rtimer();
 
-  if (downstream->push_upload_data_chunk(data, len) != 0) {
+  if (downstream->push_upload_data_chunk({data, len}) != 0) {
     if (downstream->get_response_state() != DownstreamState::MSG_COMPLETE) {
       upstream->rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
     }

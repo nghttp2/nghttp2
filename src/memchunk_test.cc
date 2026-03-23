@@ -45,6 +45,7 @@ const MunitTest tests[]{
   munit_void_test(test_memchunks_reset),
   munit_void_test(test_memchunks_reserve),
   munit_void_test(test_memchunkbuffer_drain_reset),
+  munit_void_test(test_memchunkbuffer_peek),
   munit_test_end(),
 };
 } // namespace
@@ -296,6 +297,18 @@ void test_memchunkbuffer_drain_reset(void) {
   assert_true(buf.begin() == buf.chunk->pos);
   assert_size(7, ==, buf.rleft());
   assert_true(buf.begin() + buf.rleft() == buf.chunk->last);
+}
+
+void test_memchunkbuffer_peek(void) {
+  MemchunkPool16 pool;
+  MemchunkBuffer16 buf(&pool);
+
+  buf.ensure_chunk();
+  auto data = "0123456789"sv;
+  std::ranges::copy(data, buf.begin());
+  buf.write(data.size());
+
+  assert_stdsv_equal(data, as_string_view(buf.peek()));
 }
 
 } // namespace nghttp2

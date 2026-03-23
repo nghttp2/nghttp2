@@ -643,9 +643,9 @@ int htp_hdrs_completecb(llhttp_t *htp) {
 }
 } // namespace
 
-int Http2Session::downstream_read_proxy(const uint8_t *data, size_t datalen) {
-  auto htperr = llhttp_execute(proxy_htp_.get(),
-                               reinterpret_cast<const char *>(data), datalen);
+int Http2Session::downstream_read_proxy(std::span<const uint8_t> data) {
+  auto htperr = llhttp_execute(
+    proxy_htp_.get(), reinterpret_cast<const char *>(data.data()), data.size());
   if (htperr == HPE_PAUSED) {
     switch (state_) {
     case Http2SessionState::PROXY_CONNECTED:
@@ -1729,14 +1729,14 @@ int Http2Session::connection_made() {
 int Http2Session::do_read() { return read_(*this); }
 int Http2Session::do_write() { return write_(*this); }
 
-int Http2Session::on_read(const uint8_t *data, size_t datalen) {
-  return on_read_(*this, data, datalen);
+int Http2Session::on_read(std::span<const uint8_t> data) {
+  return on_read_(*this, data);
 }
 
 int Http2Session::on_write() { return on_write_(*this); }
 
-int Http2Session::downstream_read(const uint8_t *data, size_t datalen) {
-  auto rv = nghttp2_session_mem_recv2(session_, data, datalen);
+int Http2Session::downstream_read(std::span<const uint8_t> data) {
+  auto rv = nghttp2_session_mem_recv2(session_, data.data(), data.size());
   if (rv < 0) {
     SSLOG(ERROR, this) << "nghttp2_session_mem_recv2() returned error: "
                        << nghttp2_strerror(static_cast<int>(rv));
@@ -1939,7 +1939,7 @@ ConnectionCheck Http2Session::get_connection_check_state() const {
 
 int Http2Session::noop() { return 0; }
 
-int Http2Session::read_noop(const uint8_t *data, size_t datalen) { return 0; }
+int Http2Session::read_noop(std::span<const uint8_t> data) { return 0; }
 
 int Http2Session::write_noop() { return 0; }
 
@@ -1991,7 +1991,8 @@ int Http2Session::connected() {
 int Http2Session::read_clear() {
   conn_.last_read = std::chrono::steady_clock::now();
 
-  std::array<uint8_t, 16_k> buf;
+  std::array<uint8_t, 16_k> rawbuf;
+  auto buf = std::span{rawbuf};
 
   for (;;) {
     auto nread = conn_.read_clear(buf.data(), buf.size());
@@ -2004,7 +2005,7 @@ int Http2Session::read_clear() {
       return static_cast<int>(nread);
     }
 
-    if (on_read(buf.data(), as_unsigned(nread)) != 0) {
+    if (on_read(buf.first(as_unsigned(nread))) != 0) {
       return -1;
     }
   }
@@ -2093,7 +2094,8 @@ int Http2Session::tls_handshake() {
 int Http2Session::read_tls() {
   conn_.last_read = std::chrono::steady_clock::now();
 
-  std::array<uint8_t, 16_k> buf;
+  std::array<uint8_t, 16_k> rawbuf;
+  auto buf = std::span{rawbuf};
 
   ERR_clear_error();
 
@@ -2108,7 +2110,7 @@ int Http2Session::read_tls() {
       return static_cast<int>(nread);
     }
 
-    if (on_read(buf.data(), as_unsigned(nread)) != 0) {
+    if (on_read(buf.first(as_unsigned(nread))) != 0) {
       return -1;
     }
   }

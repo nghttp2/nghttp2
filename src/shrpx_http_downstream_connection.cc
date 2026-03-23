@@ -742,13 +742,13 @@ int HttpDownstreamConnection::process_blocked_request_buf() {
   return 0;
 }
 
-int HttpDownstreamConnection::push_upload_data_chunk(const uint8_t *data,
-                                                     size_t datalen) {
+int HttpDownstreamConnection::push_upload_data_chunk(
+  std::span<const uint8_t> data) {
   if (!downstream_->get_request_header_sent()) {
     auto output = downstream_->get_blocked_request_buf();
     auto &req = downstream_->request();
-    output->append(data, datalen);
-    req.unconsumed_body_length += datalen;
+    output->append(data);
+    req.unconsumed_body_length += data.size();
     if (request_header_written_) {
       signal_write();
     }
@@ -759,12 +759,12 @@ int HttpDownstreamConnection::push_upload_data_chunk(const uint8_t *data,
   auto output = downstream_->get_request_buf();
 
   if (chunked) {
-    output->append(sizeof(datalen) * 2,
-                   std::bind_front(util::CompactHexFormatter{}, datalen));
+    output->append(sizeof(data.size()) * 2,
+                   std::bind_front(util::CompactHexFormatter{}, data.size()));
     output->append("\r\n"sv);
   }
 
-  output->append(data, datalen);
+  output->append(data);
 
   if (chunked) {
     output->append("\r\n"sv);
@@ -1240,7 +1240,8 @@ int HttpDownstreamConnection::write_first() {
 int HttpDownstreamConnection::read_clear() {
   conn_.last_read = std::chrono::steady_clock::now();
 
-  std::array<uint8_t, 16_k> buf;
+  std::array<uint8_t, 16_k> rawbuf;
+  auto buf = std::span{rawbuf};
   int rv;
 
   for (;;) {
@@ -1265,7 +1266,7 @@ int HttpDownstreamConnection::read_clear() {
       return static_cast<int>(nread);
     }
 
-    rv = process_input(buf.data(), as_unsigned(nread));
+    rv = process_input(buf.first(as_unsigned(nread)));
     if (rv != 0) {
       return rv;
     }
@@ -1371,7 +1372,8 @@ int HttpDownstreamConnection::read_tls() {
 
   ERR_clear_error();
 
-  std::array<uint8_t, 16_k> buf;
+  std::array<uint8_t, 16_k> rawbuf;
+  auto buf = std::span{rawbuf};
   int rv;
 
   for (;;) {
@@ -1396,7 +1398,7 @@ int HttpDownstreamConnection::read_tls() {
       return static_cast<int>(nread);
     }
 
-    rv = process_input(buf.data(), as_unsigned(nread));
+    rv = process_input(buf.first(as_unsigned(nread)));
     if (rv != 0) {
       return rv;
     }
@@ -1458,14 +1460,13 @@ int HttpDownstreamConnection::write_tls() {
   return 0;
 }
 
-int HttpDownstreamConnection::process_input(const uint8_t *data,
-                                            size_t datalen) {
+int HttpDownstreamConnection::process_input(std::span<const uint8_t> data) {
   int rv;
 
   if (downstream_->get_upgraded()) {
     // For upgraded connection, just pass data to the upstream.
-    rv = downstream_->get_upstream()->on_downstream_body(downstream_,
-                                                         {data, datalen}, true);
+    rv =
+      downstream_->get_upstream()->on_downstream_body(downstream_, data, true);
     if (rv != 0) {
       return rv;
     }
@@ -1478,13 +1479,13 @@ int HttpDownstreamConnection::process_input(const uint8_t *data,
     return 0;
   }
 
-  auto htperr = llhttp_execute(&response_htp_,
-                               reinterpret_cast<const char *>(data), datalen);
+  auto htperr = llhttp_execute(
+    &response_htp_, reinterpret_cast<const char *>(data.data()), data.size());
   auto nproc = htperr == HPE_OK
-                 ? datalen
+                 ? data.size()
                  : static_cast<size_t>(reinterpret_cast<const uint8_t *>(
                                          llhttp_get_error_pos(&response_htp_)) -
-                                       data);
+                                       data.data());
 
   if (htperr != HPE_OK &&
       (!downstream_->get_upgraded() || htperr != HPE_PAUSED_UPGRADE)) {
@@ -1504,10 +1505,10 @@ int HttpDownstreamConnection::process_input(const uint8_t *data,
   }
 
   if (downstream_->get_upgraded()) {
-    if (nproc < datalen) {
+    if (nproc < data.size()) {
       // Data from data + nproc are for upgraded protocol.
       rv = downstream_->get_upstream()->on_downstream_body(
-        downstream_, {data + nproc, datalen - nproc}, true);
+        downstream_, data.subspan(nproc), true);
       if (rv != 0) {
         return rv;
       }

@@ -2414,7 +2414,7 @@ int Http3Upstream::http_recv_data(Downstream *downstream,
                                   std::span<const uint8_t> data) {
   downstream->reset_upstream_rtimer();
 
-  if (downstream->push_upload_data_chunk(data.data(), data.size()) != 0) {
+  if (downstream->push_upload_data_chunk(data) != 0) {
     if (downstream->get_response_state() != DownstreamState::MSG_COMPLETE) {
       shutdown_stream(downstream, NGHTTP3_H3_INTERNAL_ERROR);
     }

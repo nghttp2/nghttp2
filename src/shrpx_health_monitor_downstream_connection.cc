@@ -64,7 +64,7 @@ int HealthMonitorDownstreamConnection::push_request_headers() {
 }
 
 int HealthMonitorDownstreamConnection::push_upload_data_chunk(
-  const uint8_t *data, size_t datalen) {
+  std::span<const uint8_t> data) {
   return 0;
 }
 

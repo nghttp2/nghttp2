@@ -562,6 +562,8 @@ template <typename Memchunk> struct MemchunkBuffer {
   uint8_t *begin() { return std::ranges::begin(chunk->buf); }
   uint8_t &operator[](size_t n) { return chunk->buf[n]; }
   const uint8_t &operator[](size_t n) const { return chunk->buf[n]; }
+  // Returns the readable chunk of data.
+  std::span<const uint8_t> peek() const { return {chunk->pos, chunk->len()}; }
 
   Pool<Memchunk> *pool;
   Memchunk *chunk;
