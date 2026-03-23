@@ -556,8 +556,7 @@ int htp_bodycb(llhttp_t *htp, const char *data, size_t len) {
   int rv;
   auto upstream = static_cast<HttpsUpstream *>(htp->data);
   auto downstream = upstream->get_downstream();
-  rv = downstream->push_upload_data_chunk(
-    reinterpret_cast<const uint8_t *>(data), len);
+  rv = downstream->push_upload_data_chunk(as_uint8_span(std::span{data, len}));
   if (rv != 0) {
     // Ignore error if response has been completed.  We will end up in
     // htp_msg_completecb, and request will end gracefully.
@@ -630,7 +629,7 @@ int HttpsUpstream::on_read() {
   // downstream can be nullptr here, because it is initialized in the
   // callback chain called by llhttp_execute()
   if (downstream && downstream->get_upgraded()) {
-    auto rv = downstream->push_upload_data_chunk(rb->pos(), rb->rleft());
+    auto rv = downstream->push_upload_data_chunk(rb->peek());
 
     if (rv != 0) {
       return -1;

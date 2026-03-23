@@ -292,8 +292,8 @@ int APIDownstreamConnection::error_method_not_allowed() {
   return send_reply(405, APIStatusCode::FAILURE);
 }
 
-int APIDownstreamConnection::push_upload_data_chunk(const uint8_t *data,
-                                                    size_t datalen) {
+int APIDownstreamConnection::push_upload_data_chunk(
+  std::span<const uint8_t> data) {
   if (shutdown_read_ || !api_->require_body) {
     return 0;
   }
@@ -308,7 +308,8 @@ int APIDownstreamConnection::push_upload_data_chunk(const uint8_t *data,
   }
 
   ssize_t nwrite;
-  while ((nwrite = write(fd_, data, datalen)) == -1 && errno == EINTR)
+  while ((nwrite = write(fd_, data.data(), data.size())) == -1 &&
+         errno == EINTR)
     ;
   if (nwrite == -1) {
     auto error = errno;

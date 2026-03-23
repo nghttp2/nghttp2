@@ -388,7 +388,7 @@ public:
   int push_request_headers();
   bool get_chunked_request() const;
   void set_chunked_request(bool f);
-  int push_upload_data_chunk(const uint8_t *data, size_t datalen);
+  int push_upload_data_chunk(std::span<const uint8_t> data);
   int end_upload_data();
   // Validates that received request body length and content-length
   // matches.

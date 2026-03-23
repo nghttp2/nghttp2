@@ -682,12 +682,12 @@ int Downstream::push_request_headers() {
   return dconn_->push_request_headers();
 }
 
-int Downstream::push_upload_data_chunk(const uint8_t *data, size_t datalen) {
-  req_.recv_body_length += datalen;
+int Downstream::push_upload_data_chunk(std::span<const uint8_t> data) {
+  req_.recv_body_length += data.size();
 
   if (!dconn_ && !request_header_sent_) {
-    blocked_request_buf_.append(data, datalen);
-    req_.unconsumed_body_length += datalen;
+    blocked_request_buf_.append(data);
+    req_.unconsumed_body_length += data.size();
     return 0;
   }
 
@@ -697,11 +697,11 @@ int Downstream::push_upload_data_chunk(const uint8_t *data, size_t datalen) {
     DLOG(INFO, this) << "dconn_ is NULL";
     return -1;
   }
-  if (dconn_->push_upload_data_chunk(data, datalen) != 0) {
+  if (dconn_->push_upload_data_chunk(data) != 0) {
     return -1;
   }
 
-  req_.unconsumed_body_length += datalen;
+  req_.unconsumed_body_length += data.size();
 
   return 0;
 }
