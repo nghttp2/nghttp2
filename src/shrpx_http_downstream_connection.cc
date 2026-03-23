@@ -1157,7 +1157,7 @@ int htp_bodycb(llhttp_t *htp, const char *data, size_t len) {
   resp.recv_body_length += len;
 
   return downstream->get_upstream()->on_downstream_body(
-    downstream, reinterpret_cast<const uint8_t *>(data), len, true);
+    downstream, as_uint8_span(std::span{data, len}), true);
 }
 } // namespace
 
@@ -1464,8 +1464,8 @@ int HttpDownstreamConnection::process_input(const uint8_t *data,
 
   if (downstream_->get_upgraded()) {
     // For upgraded connection, just pass data to the upstream.
-    rv = downstream_->get_upstream()->on_downstream_body(downstream_, data,
-                                                         datalen, true);
+    rv = downstream_->get_upstream()->on_downstream_body(downstream_,
+                                                         {data, datalen}, true);
     if (rv != 0) {
       return rv;
     }
@@ -1507,7 +1507,7 @@ int HttpDownstreamConnection::process_input(const uint8_t *data,
     if (nproc < datalen) {
       // Data from data + nproc are for upgraded protocol.
       rv = downstream_->get_upstream()->on_downstream_body(
-        downstream_, data + nproc, datalen - nproc, true);
+        downstream_, {data + nproc, datalen - nproc}, true);
       if (rv != 0) {
         return rv;
       }

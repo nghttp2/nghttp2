@@ -56,8 +56,8 @@ public:
   virtual ClientHandler *get_client_handler() const = 0;
 
   virtual int on_downstream_header_complete(Downstream *downstream) = 0;
-  virtual int on_downstream_body(Downstream *downstream, const uint8_t *data,
-                                 size_t len, bool flush) = 0;
+  virtual int on_downstream_body(Downstream *downstream,
+                                 std::span<const uint8_t> data, bool flush) = 0;
   virtual int on_downstream_body_complete(Downstream *downstream) = 0;
 
   virtual void on_handler_delete() = 0;
@@ -70,8 +70,8 @@ public:
   virtual void pause_read(IOCtrlReason reason) = 0;
   virtual int resume_read(IOCtrlReason reason, Downstream *downstream,
                           size_t consumed) = 0;
-  virtual int send_reply(Downstream *downstream, const uint8_t *body,
-                         size_t bodylen) = 0;
+  virtual int send_reply(Downstream *downstream,
+                         std::span<const uint8_t> body) = 0;
 
   // Starts server push.  The |downstream| is an associated stream for
   // the pushed resource.  This function returns 0 if it succeeds,

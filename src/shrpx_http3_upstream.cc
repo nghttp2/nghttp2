@@ -1415,10 +1415,10 @@ int Http3Upstream::on_downstream_header_complete(Downstream *downstream) {
 }
 
 int Http3Upstream::on_downstream_body(Downstream *downstream,
-                                      const uint8_t *data, size_t len,
+                                      std::span<const uint8_t> data,
                                       bool flush) {
   auto body = downstream->get_response_buf();
-  body->append(data, len);
+  body->append(data);
 
   if (flush) {
     nghttp3_conn_resume_stream(httpconn_, downstream->get_stream_id());
@@ -1618,21 +1618,21 @@ int Http3Upstream::resume_read(IOCtrlReason reason, Downstream *downstream,
   return 0;
 }
 
-int Http3Upstream::send_reply(Downstream *downstream, const uint8_t *body,
-                              size_t bodylen) {
+int Http3Upstream::send_reply(Downstream *downstream,
+                              std::span<const uint8_t> body) {
   int rv;
 
   nghttp3_data_reader data_read, *data_read_ptr = nullptr;
 
   const auto &req = downstream->request();
 
-  if (req.method != HTTP_HEAD && bodylen) {
+  if (req.method != HTTP_HEAD && !body.empty()) {
     data_read.read_data = downstream_read_data_callback;
     data_read_ptr = &data_read;
 
     auto buf = downstream->get_response_buf();
 
-    buf->append(body, bodylen);
+    buf->append(body);
   }
 
   const auto &resp = downstream->response();

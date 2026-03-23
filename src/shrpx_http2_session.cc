@@ -1214,7 +1214,7 @@ int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
     }
     auto downstream = sd->dconn->get_downstream();
     auto upstream = downstream->get_upstream();
-    rv = upstream->on_downstream_body(downstream, nullptr, 0, true);
+    rv = upstream->on_downstream_body(downstream, {}, true);
     if (rv != 0) {
       http2session->submit_rst_stream(frame->hd.stream_id,
                                       NGHTTP2_INTERNAL_ERROR);
@@ -1426,7 +1426,7 @@ int on_data_chunk_recv_callback(nghttp2_session *session, uint8_t flags,
   resp.unconsumed_body_length += len;
 
   auto upstream = downstream->get_upstream();
-  rv = upstream->on_downstream_body(downstream, data, len, false);
+  rv = upstream->on_downstream_body(downstream, {data, len}, false);
   if (rv != 0) {
     http2session->submit_rst_stream(stream_id, NGHTTP2_INTERNAL_ERROR);
 
