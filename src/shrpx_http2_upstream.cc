@@ -1472,22 +1472,22 @@ nghttp2_ssize downstream_data_read_callback(nghttp2_session *session,
 }
 } // namespace
 
-int Http2Upstream::send_reply(Downstream *downstream, const uint8_t *body,
-                              size_t bodylen) {
+int Http2Upstream::send_reply(Downstream *downstream,
+                              std::span<const uint8_t> body) {
   int rv;
 
   nghttp2_data_provider2 data_prd, *data_prd_ptr = nullptr;
 
   const auto &req = downstream->request();
 
-  if (req.method != HTTP_HEAD && bodylen) {
+  if (req.method != HTTP_HEAD && !body.empty()) {
     data_prd.source.ptr = downstream;
     data_prd.read_callback = downstream_data_read_callback;
     data_prd_ptr = &data_prd;
 
     auto buf = downstream->get_response_buf();
 
-    buf->append(body, bodylen);
+    buf->append(body);
   }
 
   const auto &resp = downstream->response();
@@ -1896,10 +1896,10 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
 // WARNING: Never call directly or indirectly nghttp2_session_send or
 // nghttp2_session_recv. These calls may delete downstream.
 int Http2Upstream::on_downstream_body(Downstream *downstream,
-                                      const uint8_t *data, size_t len,
+                                      std::span<const uint8_t> data,
                                       bool flush) {
   auto body = downstream->get_response_buf();
-  body->append(data, len);
+  body->append(data);
 
   if (flush) {
     nghttp2_session_resume_data(
@@ -2008,7 +2008,7 @@ int Http2Upstream::redirect_to_https(Downstream *downstream) {
   resp.http_status = 308;
   resp.fs.add_header_token("location"sv, loc, false, http2::HD_LOCATION);
 
-  return send_reply(downstream, nullptr, 0);
+  return send_reply(downstream, {});
 }
 
 int Http2Upstream::consume(int32_t stream_id, size_t len) {

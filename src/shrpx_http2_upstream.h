@@ -75,14 +75,14 @@ public:
                   size_t consumed) override;
 
   int on_downstream_header_complete(Downstream *downstream) override;
-  int on_downstream_body(Downstream *downstream, const uint8_t *data,
-                         size_t len, bool flush) override;
+  int on_downstream_body(Downstream *downstream, std::span<const uint8_t> data,
+                         bool flush) override;
   int on_downstream_body_complete(Downstream *downstream) override;
 
   void on_handler_delete() override;
   int on_downstream_reset(Downstream *downstream, bool no_retry) override;
-  int send_reply(Downstream *downstream, const uint8_t *body,
-                 size_t bodylen) override;
+  int send_reply(Downstream *downstream,
+                 std::span<const uint8_t> body) override;
   int initiate_push(Downstream *downstream, std::string_view uri) override;
   int response_riovec(struct iovec *iov, int iovcnt) const override;
   void response_drain(size_t n) override;

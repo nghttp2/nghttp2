@@ -77,7 +77,7 @@ int HealthMonitorDownstreamConnection::end_upload_data() {
   resp.fs.add_header_token("content-length"sv, "0"sv, false,
                            http2::HD_CONTENT_LENGTH);
 
-  if (upstream->send_reply(downstream_, nullptr, 0) != 0) {
+  if (upstream->send_reply(downstream_, {}) != 0) {
     return -1;
   }
 

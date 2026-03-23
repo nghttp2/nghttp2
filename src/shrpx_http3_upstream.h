@@ -64,8 +64,8 @@ public:
   ClientHandler *get_client_handler() const override;
 
   int on_downstream_header_complete(Downstream *downstream) override;
-  int on_downstream_body(Downstream *downstream, const uint8_t *data,
-                         size_t len, bool flush) override;
+  int on_downstream_body(Downstream *downstream, std::span<const uint8_t> data,
+                         bool flush) override;
   int on_downstream_body_complete(Downstream *downstream) override;
 
   void on_handler_delete() override;
@@ -74,8 +74,8 @@ public:
   void pause_read(IOCtrlReason reason) override;
   int resume_read(IOCtrlReason reason, Downstream *downstream,
                   size_t consumed) override;
-  int send_reply(Downstream *downstream, const uint8_t *body,
-                 size_t bodylen) override;
+  int send_reply(Downstream *downstream,
+                 std::span<const uint8_t> body) override;
 
   int initiate_push(Downstream *downstream, std::string_view uri) override;
 

@@ -217,16 +217,14 @@ mrb_value response_return(mrb_state *mrb, mrb_value self) {
   mrb_int vallen;
   mrb_get_args(mrb, "|s", &val, &vallen);
 
-  const uint8_t *body = nullptr;
-  size_t bodylen = 0;
+  std::span<const uint8_t> body;
 
   if (resp.http_status == 0) {
     resp.http_status = 200;
   }
 
   if (downstream->expect_response_body() && vallen > 0) {
-    body = reinterpret_cast<const uint8_t *>(val);
-    bodylen = as_unsigned(vallen);
+    body = as_uint8_span(std::span{val, as_unsigned(vallen)});
   }
 
   auto cl = resp.fs.header(http2::HD_CONTENT_LENGTH);
@@ -240,8 +238,7 @@ mrb_value response_return(mrb_state *mrb, mrb_value self) {
 
     resp.fs.content_length = -1;
   } else {
-    auto content_length =
-      util::make_string_ref_uint(balloc, as_unsigned(vallen));
+    auto content_length = util::make_string_ref_uint(balloc, body.size());
 
     if (cl) {
       cl->value = content_length;
@@ -250,7 +247,7 @@ mrb_value response_return(mrb_state *mrb, mrb_value self) {
                                http2::HD_CONTENT_LENGTH);
     }
 
-    resp.fs.content_length = vallen;
+    resp.fs.content_length = static_cast<int64_t>(body.size());
   }
 
   auto date = resp.fs.header(http2::HD_DATE);
@@ -264,7 +261,7 @@ mrb_value response_return(mrb_state *mrb, mrb_value self) {
 
   auto upstream = downstream->get_upstream();
 
-  rv = upstream->send_reply(downstream, body, bodylen);
+  rv = upstream->send_reply(downstream, body);
   if (rv != 0) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "could not send response");
   }
