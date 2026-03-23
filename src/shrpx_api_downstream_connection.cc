@@ -308,15 +308,20 @@ int APIDownstreamConnection::push_upload_data_chunk(
   }
 
   ssize_t nwrite;
-  while ((nwrite = write(fd_, data.data(), data.size())) == -1 &&
-         errno == EINTR)
-    ;
-  if (nwrite == -1) {
-    auto error = errno;
-    LOG(ERROR) << "Could not write API request body: errno=" << error;
-    send_reply(500, APIStatusCode::FAILURE);
 
-    return 0;
+  for (; !data.empty();) {
+    while ((nwrite = write(fd_, data.data(), data.size())) == -1 &&
+           errno == EINTR)
+      ;
+    if (nwrite == -1) {
+      auto error = errno;
+      LOG(ERROR) << "Could not write API request body: errno=" << error;
+      send_reply(500, APIStatusCode::FAILURE);
+
+      return 0;
+    }
+
+    data = data.subspan(as_unsigned(nwrite));
   }
 
   // We don't have to call Upstream::resume_read() here, because
