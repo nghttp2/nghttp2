@@ -1532,6 +1532,16 @@ int HttpsUpstream::response_riovec(struct iovec *iov, int iovcnt) const {
   return buf->riovec(iov, iovcnt);
 }
 
+std::span<const uint8_t> HttpsUpstream::response_peek() const {
+  if (!downstream_) {
+    return {};
+  }
+
+  auto buf = downstream_->get_response_buf();
+
+  return buf->peek();
+}
+
 void HttpsUpstream::response_drain(size_t n) {
   if (!downstream_) {
     return;

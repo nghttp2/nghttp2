@@ -121,7 +121,7 @@ struct Connection {
   // underlying connection blocks), return 0.  SHRPX_ERR_EOF is
   // returned in case of EOF and no data was read.  Otherwise
   // SHRPX_ERR_NETWORK is return in case of error.
-  nghttp2_ssize write_tls(const void *data, size_t len);
+  nghttp2_ssize write_tls(std::span<const uint8_t> data);
   nghttp2_ssize read_tls(void *data, size_t len);
 
   size_t get_tls_write_limit();
@@ -131,7 +131,7 @@ struct Connection {
   // determine fallback to short record size mode.
   void start_tls_write_idle();
 
-  nghttp2_ssize write_clear(const void *data, size_t len);
+  nghttp2_ssize write_clear(std::span<const uint8_t> data);
   nghttp2_ssize writev_clear(struct iovec *iov, int iovcnt);
   nghttp2_ssize read_clear(void *data, size_t len);
   // Read at most |len| bytes of data from socket without rate limit.

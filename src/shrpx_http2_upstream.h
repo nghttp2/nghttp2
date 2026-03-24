@@ -85,6 +85,7 @@ public:
                  std::span<const uint8_t> body) override;
   int initiate_push(Downstream *downstream, std::string_view uri) override;
   int response_riovec(struct iovec *iov, int iovcnt) const override;
+  std::span<const uint8_t> response_peek() const override;
   void response_drain(size_t n) override;
   bool response_empty() const override;
 

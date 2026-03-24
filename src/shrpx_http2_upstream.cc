@@ -2323,6 +2323,10 @@ int Http2Upstream::response_riovec(struct iovec *iov, int iovcnt) const {
   return wb_.riovec(iov, iovcnt);
 }
 
+std::span<const uint8_t> Http2Upstream::response_peek() const {
+  return wb_.peek();
+}
+
 void Http2Upstream::response_drain(size_t n) { wb_.drain(n); }
 
 bool Http2Upstream::response_empty() const { return wb_.rleft() == 0; }

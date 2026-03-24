@@ -41,6 +41,7 @@ const MunitTest tests[]{
   munit_void_test(test_memchunks_append),
   munit_void_test(test_memchunks_drain),
   munit_void_test(test_memchunks_riovec),
+  munit_void_test(test_memchunks_peek),
   munit_void_test(test_memchunks_recycle),
   munit_void_test(test_memchunks_reset),
   munit_void_test(test_memchunks_reserve),
@@ -199,6 +200,24 @@ void test_memchunks_riovec(void) {
   m = chunks.head;
   assert_ptr_equal(m->buf.data(), iov[0].iov_base);
   assert_size(m->len(), ==, iov[0].iov_len);
+}
+
+void test_memchunks_peek(void) {
+  MemchunkPool16 pool;
+  Memchunks16 chunks(&pool);
+
+  assert_true(chunks.peek().empty());
+
+  std::array<char, 3 * 16> buf{};
+
+  chunks.append(buf.data(), buf.size());
+
+  auto data = chunks.peek();
+
+  auto m = chunks.head;
+
+  assert_ptr_equal(m->buf.data(), data.data());
+  assert_size(m->len(), ==, data.size());
 }
 
 void test_memchunks_recycle(void) {
