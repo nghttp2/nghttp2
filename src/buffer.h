@@ -69,6 +69,7 @@ template <size_t N> struct Buffer {
   constexpr uint8_t *begin() noexcept { return buf; }
   constexpr uint8_t &operator[](size_t n) { return buf[n]; }
   constexpr const uint8_t &operator[](size_t n) const { return buf[n]; }
+  constexpr std::span<uint8_t> wbuffer() { return {last, wleft()}; }
   uint8_t buf[N];
   uint8_t *pos, *last;
 };

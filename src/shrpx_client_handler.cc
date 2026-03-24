@@ -133,7 +133,7 @@ int ClientHandler::read_clear() {
       return 0;
     }
 
-    auto nread = conn_.read_clear(rb_.last(), rb_.wleft());
+    auto nread = conn_.read_clear(rb_.wbuffer());
 
     if (nread == 0) {
       if (rb_.rleft() == 0) {
@@ -187,7 +187,7 @@ int ClientHandler::proxy_protocol_peek_clear() {
 
   assert(rb_.rleft() == 0);
 
-  auto nread = conn_.peek_clear(rb_.last(), rb_.wleft());
+  auto nread = conn_.peek_clear(rb_.wbuffer());
   if (nread < 0) {
     return -1;
   }
@@ -263,7 +263,7 @@ int ClientHandler::read_tls() {
       return 0;
     }
 
-    auto nread = conn_.read_tls(rb_.last(), rb_.wleft());
+    auto nread = conn_.read_tls(rb_.wbuffer());
 
     if (nread == 0) {
       if (rb_.rleft() == 0) {
@@ -1288,7 +1288,7 @@ int ClientHandler::on_proxy_protocol_finish() {
 
   rb_.reset();
 
-  if (conn_.read_nolim_clear(rb_.pos(), len) < 0) {
+  if (conn_.read_nolim_clear({rb_.pos(), len}) < 0) {
     return -1;
   }
 

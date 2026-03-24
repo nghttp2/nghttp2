@@ -240,26 +240,25 @@ template <typename Memchunk> struct Memchunks {
     }
     return len;
   }
-  size_t remove(void *dest, size_t count) {
+  size_t remove(std::span<uint8_t> dest) {
     assert(mark == nullptr);
 
-    if (!tail || count == 0) {
+    if (!tail || dest.empty()) {
       return 0;
     }
 
-    auto first = static_cast<uint8_t *>(dest);
-    auto last = first + count;
-
+    auto destlen = dest.size();
     auto m = head;
 
     while (m) {
       auto next = m->next;
-      auto n = std::min(static_cast<size_t>(last - first), m->len());
+      auto n = std::min(dest.size(), m->len());
 
       assert(m->len());
-      auto iores = std::ranges::copy_n(m->pos, as_signed(n), first);
-      m->pos = iores.in;
-      first = iores.out;
+
+      m->pos =
+        std::ranges::copy_n(m->pos, as_signed(n), std::ranges::begin(dest)).in;
+      dest = dest.subspan(n);
       len -= n;
       if (m->len() > 0) {
         break;
@@ -272,7 +271,7 @@ template <typename Memchunk> struct Memchunks {
       tail = nullptr;
     }
 
-    return as_unsigned(first - static_cast<uint8_t *>(dest));
+    return destlen - dest.size();
   }
   size_t remove(Memchunks &dest, size_t count) {
     assert(mark == nullptr);
@@ -571,6 +570,7 @@ template <typename Memchunk> struct MemchunkBuffer {
   const uint8_t &operator[](size_t n) const { return chunk->buf[n]; }
   // Returns the readable chunk of data.
   std::span<const uint8_t> peek() const { return {chunk->pos, chunk->len()}; }
+  std::span<uint8_t> wbuffer() { return {chunk->last, chunk->left()}; }
 
   Pool<Memchunk> *pool;
   Memchunk *chunk;
