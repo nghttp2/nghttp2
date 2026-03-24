@@ -124,10 +124,11 @@ int generate_quic_retry_connection_id(ngtcp2_cid &cid, uint32_t server_id,
 int generate_quic_connection_id(ngtcp2_cid &cid, const WorkerID &wid,
                                 uint8_t km_id, EVP_CIPHER_CTX *ctx);
 
-int encrypt_quic_connection_id(uint8_t *dest, const uint8_t *src,
+int encrypt_quic_connection_id(std::span<uint8_t> dest,
+                               std::span<const uint8_t> src,
                                EVP_CIPHER_CTX *ctx);
 
-int decrypt_quic_connection_id(ConnectionID &dest, const uint8_t *src,
+int decrypt_quic_connection_id(ConnectionID &dest, std::span<const uint8_t> src,
                                EVP_CIPHER_CTX *ctx);
 
 int generate_quic_hashed_connection_id(ngtcp2_cid &dest,
@@ -135,9 +136,9 @@ int generate_quic_hashed_connection_id(ngtcp2_cid &dest,
                                        const Address &local_addr,
                                        const ngtcp2_cid &cid);
 
-int generate_quic_stateless_reset_token(uint8_t *token, const ngtcp2_cid &cid,
-                                        const uint8_t *secret,
-                                        size_t secretlen);
+int generate_quic_stateless_reset_token(
+  std::span<uint8_t, NGTCP2_STATELESS_RESET_TOKENLEN> token,
+  const ngtcp2_cid &cid, std::span<const uint8_t> secret);
 
 std::optional<std::span<const uint8_t>>
 generate_retry_token(std::span<uint8_t> token, uint32_t version,

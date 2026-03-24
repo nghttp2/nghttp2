@@ -204,12 +204,13 @@ int generate_quic_retry_connection_id(ngtcp2_cid &cid, uint32_t server_id,
   cid.datalen = SHRPX_QUIC_SCIDLEN;
   cid.data[0] = (cid.data[0] & (~SHRPX_QUIC_DCID_KM_ID_MASK)) | km_id;
 
-  auto p = cid.data + SHRPX_QUIC_CID_WORKER_ID_OFFSET;
+  auto b =
+    std::span{cid.data, cid.datalen}.subspan(SHRPX_QUIC_CID_WORKER_ID_OFFSET);
 
   std::ranges::copy_n(reinterpret_cast<uint8_t *>(&server_id),
-                      sizeof(server_id), p);
+                      sizeof(server_id), std::ranges::begin(b));
 
-  return encrypt_quic_connection_id(p, p, ctx);
+  return encrypt_quic_connection_id(b, b, ctx);
 }
 
 int generate_quic_connection_id(ngtcp2_cid &cid, const WorkerID &wid,
@@ -221,31 +222,40 @@ int generate_quic_connection_id(ngtcp2_cid &cid, const WorkerID &wid,
   cid.datalen = SHRPX_QUIC_SCIDLEN;
   cid.data[0] = (cid.data[0] & (~SHRPX_QUIC_DCID_KM_ID_MASK)) | km_id;
 
-  auto p = cid.data + SHRPX_QUIC_CID_WORKER_ID_OFFSET;
+  auto b =
+    std::span{cid.data, cid.datalen}.subspan(SHRPX_QUIC_CID_WORKER_ID_OFFSET);
 
-  std::ranges::copy_n(reinterpret_cast<const uint8_t *>(&wid), sizeof(wid), p);
+  std::ranges::copy_n(reinterpret_cast<const uint8_t *>(&wid), sizeof(wid),
+                      std::ranges::begin(b));
 
-  return encrypt_quic_connection_id(p, p, ctx);
+  return encrypt_quic_connection_id(b, b, ctx);
 }
 
-int encrypt_quic_connection_id(uint8_t *dest, const uint8_t *src,
+int encrypt_quic_connection_id(std::span<uint8_t> dest,
+                               std::span<const uint8_t> src,
                                EVP_CIPHER_CTX *ctx) {
+  assert(src.size() == SHRPX_QUIC_DECRYPTED_DCIDLEN);
+
   int len;
 
-  if (!EVP_EncryptUpdate(ctx, dest, &len, src, SHRPX_QUIC_DECRYPTED_DCIDLEN) ||
-      !EVP_EncryptFinal_ex(ctx, dest + len, &len)) {
+  if (!EVP_EncryptUpdate(ctx, dest.data(), &len, src.data(),
+                         static_cast<int>(src.size())) ||
+      !EVP_EncryptFinal_ex(ctx, dest.data() + len, &len)) {
     return -1;
   }
 
   return 0;
 }
 
-int decrypt_quic_connection_id(ConnectionID &dest, const uint8_t *src,
+int decrypt_quic_connection_id(ConnectionID &dest, std::span<const uint8_t> src,
                                EVP_CIPHER_CTX *ctx) {
+  assert(src.size() == SHRPX_QUIC_DECRYPTED_DCIDLEN);
+
   int len;
   auto p = reinterpret_cast<uint8_t *>(&dest);
 
-  if (!EVP_DecryptUpdate(ctx, p, &len, src, SHRPX_QUIC_DECRYPTED_DCIDLEN) ||
+  if (!EVP_DecryptUpdate(ctx, p, &len, src.data(),
+                         static_cast<int>(src.size())) ||
       !EVP_DecryptFinal_ex(ctx, p + len, &len)) {
     return -1;
   }
@@ -280,11 +290,11 @@ int generate_quic_hashed_connection_id(ngtcp2_cid &dest,
   return 0;
 }
 
-int generate_quic_stateless_reset_token(uint8_t *token, const ngtcp2_cid &cid,
-                                        const uint8_t *secret,
-                                        size_t secretlen) {
-  if (ngtcp2_crypto_generate_stateless_reset_token(token, secret, secretlen,
-                                                   &cid) != 0) {
+int generate_quic_stateless_reset_token(
+  std::span<uint8_t, NGTCP2_STATELESS_RESET_TOKENLEN> token,
+  const ngtcp2_cid &cid, std::span<const uint8_t> secret) {
+  if (ngtcp2_crypto_generate_stateless_reset_token(token.data(), secret.data(),
+                                                   secret.size(), &cid) != 0) {
     return -1;
   }
 

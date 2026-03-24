@@ -139,7 +139,8 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
         *qkms.get(), vc.dcid[0] & SHRPX_QUIC_DCID_KM_ID_MASK);
 
       if (decrypt_quic_connection_id(decrypted_dcid,
-                                     vc.dcid + SHRPX_QUIC_CID_WORKER_ID_OFFSET,
+                                     std::span{vc.dcid, vc.dcidlen}.subspan(
+                                       SHRPX_QUIC_CID_WORKER_ID_OFFSET),
                                      qkm->cid_decryption_ctx) != 0) {
         return 0;
       }
@@ -187,9 +188,10 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
         if (qkm != &qkms->keying_materials.front()) {
           qkm = &qkms->keying_materials.front();
 
-          if (decrypt_quic_connection_id(
-                decrypted_dcid, vc.dcid + SHRPX_QUIC_CID_WORKER_ID_OFFSET,
-                qkm->cid_decryption_ctx) != 0) {
+          if (decrypt_quic_connection_id(decrypted_dcid,
+                                         std::span{vc.dcid, vc.dcidlen}.subspan(
+                                           SHRPX_QUIC_CID_WORKER_ID_OFFSET),
+                                         qkm->cid_decryption_ctx) != 0) {
             return 0;
           }
         }
@@ -609,8 +611,7 @@ int QUICConnectionHandler::send_stateless_reset(const UpstreamAddr *faddr,
   auto &qkms = conn_handler->get_quic_keying_materials();
   auto &qkm = qkms->keying_materials.front();
 
-  if (auto rv = generate_quic_stateless_reset_token(
-        token.data(), cid, qkm.secret.data(), qkm.secret.size());
+  if (auto rv = generate_quic_stateless_reset_token(token, cid, qkm.secret);
       rv != 0) {
     return -1;
   }
