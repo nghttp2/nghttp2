@@ -864,9 +864,10 @@ int ConnectionHandler::quic_ipc_read() {
 
   ConnectionID decrypted_dcid;
 
-  if (decrypt_quic_connection_id(decrypted_dcid,
-                                 vc.dcid + SHRPX_QUIC_CID_WORKER_ID_OFFSET,
-                                 qkm.cid_decryption_ctx) != 0) {
+  if (decrypt_quic_connection_id(
+        decrypted_dcid,
+        std::span{vc.dcid, vc.dcidlen}.subspan(SHRPX_QUIC_CID_WORKER_ID_OFFSET),
+        qkm.cid_decryption_ctx) != 0) {
     return -1;
   }
 
