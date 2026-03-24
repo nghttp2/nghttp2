@@ -804,7 +804,7 @@ int Worker::create_tcp_server_socket(UpstreamAddr &faddr) {
     util::make_socket_nonblocking(fd);
     util::make_socket_closeonexec(fd);
 #endif // !defined(SOCK_NONBLOCK)
-    int val = 1;
+    const int val = 1;
     if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &val,
                    static_cast<socklen_t>(sizeof(val))) == -1) {
       auto error = errno;
@@ -837,7 +837,6 @@ int Worker::create_tcp_server_socket(UpstreamAddr &faddr) {
 #endif // defined(IPV6_V6ONLY)
 
 #ifdef TCP_DEFER_ACCEPT
-    val = 3;
     if (setsockopt(fd, IPPROTO_TCP, TCP_DEFER_ACCEPT, &val,
                    static_cast<socklen_t>(sizeof(val))) == -1) {
       auto error = errno;
@@ -858,7 +857,7 @@ int Worker::create_tcp_server_socket(UpstreamAddr &faddr) {
     }
 
     if (listenerconf.fastopen > 0) {
-      val = listenerconf.fastopen;
+      const int val = listenerconf.fastopen;
       if (setsockopt(fd, IPPROTO_TCP, TCP_FASTOPEN, &val,
                      static_cast<socklen_t>(sizeof(val))) == -1) {
         auto error = errno;
