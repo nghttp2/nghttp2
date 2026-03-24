@@ -440,7 +440,8 @@ int LiveCheck::tls_handshake() {
 int LiveCheck::read_tls() {
   conn_.last_read = std::chrono::steady_clock::now();
 
-  std::array<uint8_t, 4_k> buf;
+  std::array<uint8_t, 4_k> rawbuf;
+  auto buf = std::span{rawbuf};
 
   ERR_clear_error();
 
@@ -455,7 +456,7 @@ int LiveCheck::read_tls() {
       return static_cast<int>(nread);
     }
 
-    if (on_read(buf.data(), as_unsigned(nread)) != 0) {
+    if (on_read(buf.first(as_unsigned(nread))) != 0) {
       return -1;
     }
   }
@@ -513,7 +514,8 @@ int LiveCheck::write_tls() {
 int LiveCheck::read_clear() {
   conn_.last_read = std::chrono::steady_clock::now();
 
-  std::array<uint8_t, 4_k> buf;
+  std::array<uint8_t, 4_k> rawbuf;
+  auto buf = std::span{rawbuf};
 
   for (;;) {
     auto nread = conn_.read_clear(buf.data(), buf.size());
@@ -526,7 +528,7 @@ int LiveCheck::read_clear() {
       return static_cast<int>(nread);
     }
 
-    if (on_read(buf.data(), as_unsigned(nread)) != 0) {
+    if (on_read(buf.first(as_unsigned(nread))) != 0) {
       return -1;
     }
   }
@@ -578,8 +580,8 @@ int LiveCheck::write_clear() {
   return 0;
 }
 
-int LiveCheck::on_read(const uint8_t *data, size_t len) {
-  auto rv = nghttp2_session_mem_recv2(session_, data, len);
+int LiveCheck::on_read(std::span<const uint8_t> data) {
+  auto rv = nghttp2_session_mem_recv2(session_, data.data(), data.size());
   if (rv < 0) {
     LOG(ERROR) << "nghttp2_session_mem_recv2() returned error: "
                << nghttp2_strerror(static_cast<int>(rv));

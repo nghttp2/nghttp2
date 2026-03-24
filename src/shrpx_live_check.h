@@ -82,7 +82,7 @@ public:
 
   // These functions are used to feed / extract data to
   // nghttp2_session object.
-  int on_read(const uint8_t *data, size_t len);
+  int on_read(std::span<const uint8_t> data);
   int on_write();
 
   // Call this function when HTTP/2 connection was established.  We
