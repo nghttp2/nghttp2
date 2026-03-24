@@ -1245,7 +1245,7 @@ int HttpDownstreamConnection::read_clear() {
   int rv;
 
   for (;;) {
-    auto nread = conn_.read_clear(buf.data(), buf.size());
+    auto nread = conn_.read_clear(buf);
     if (nread == 0) {
       return 0;
     }

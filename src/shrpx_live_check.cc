@@ -515,7 +515,7 @@ int LiveCheck::read_clear() {
   auto buf = std::span{rawbuf};
 
   for (;;) {
-    auto nread = conn_.read_clear(buf.data(), buf.size());
+    auto nread = conn_.read_clear(buf);
 
     if (nread == 0) {
       return 0;

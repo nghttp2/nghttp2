@@ -402,7 +402,7 @@ int MemcachedConnection::read_clear() {
   conn_.last_read = std::chrono::steady_clock::now();
 
   for (;;) {
-    auto nread = conn_.read_clear(recvbuf_.last, recvbuf_.wleft());
+    auto nread = conn_.read_clear(recvbuf_.wbuffer());
 
     if (nread == 0) {
       return 0;

@@ -764,14 +764,14 @@ nghttp2_ssize Connection::writev_clear(struct iovec *iov, int iovcnt) {
   return nwrite;
 }
 
-nghttp2_ssize Connection::read_clear(void *data, size_t len) {
-  len = std::min(len, rlimit.avail());
-  if (len == 0) {
+nghttp2_ssize Connection::read_clear(std::span<uint8_t> data) {
+  data = data.first(std::min(data.size(), rlimit.avail()));
+  if (data.empty()) {
     return 0;
   }
 
   ssize_t nread;
-  while ((nread = read(fd, data, len)) == -1 && errno == EINTR)
+  while ((nread = read(fd, data.data(), data.size())) == -1 && errno == EINTR)
     ;
   if (nread == -1) {
     if (errno == EAGAIN || errno == EWOULDBLOCK) {
@@ -789,9 +789,9 @@ nghttp2_ssize Connection::read_clear(void *data, size_t len) {
   return nread;
 }
 
-nghttp2_ssize Connection::read_nolim_clear(void *data, size_t len) {
+nghttp2_ssize Connection::read_nolim_clear(std::span<uint8_t> data) {
   ssize_t nread;
-  while ((nread = read(fd, data, len)) == -1 && errno == EINTR)
+  while ((nread = read(fd, data.data(), data.size())) == -1 && errno == EINTR)
     ;
   if (nread == -1) {
     if (errno == EAGAIN || errno == EWOULDBLOCK) {
@@ -807,9 +807,10 @@ nghttp2_ssize Connection::read_nolim_clear(void *data, size_t len) {
   return nread;
 }
 
-nghttp2_ssize Connection::peek_clear(void *data, size_t len) {
+nghttp2_ssize Connection::peek_clear(std::span<uint8_t> data) {
   ssize_t nread;
-  while ((nread = recv(fd, data, len, MSG_PEEK)) == -1 && errno == EINTR)
+  while ((nread = recv(fd, data.data(), data.size(), MSG_PEEK)) == -1 &&
+         errno == EINTR)
     ;
   if (nread == -1) {
     if (errno == EAGAIN || errno == EWOULDBLOCK) {
