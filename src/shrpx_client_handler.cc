@@ -263,7 +263,7 @@ int ClientHandler::read_tls() {
       return 0;
     }
 
-    auto nread = conn_.read_tls(rb_.last(), rb_.wleft());
+    auto nread = conn_.read_tls(rb_.wbuffer());
 
     if (nread == 0) {
       if (rb_.rleft() == 0) {

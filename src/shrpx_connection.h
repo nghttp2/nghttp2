@@ -122,7 +122,7 @@ struct Connection {
   // returned in case of EOF and no data was read.  Otherwise
   // SHRPX_ERR_NETWORK is return in case of error.
   nghttp2_ssize write_tls(std::span<const uint8_t> data);
-  nghttp2_ssize read_tls(void *data, size_t len);
+  nghttp2_ssize read_tls(std::span<uint8_t> data);
 
   size_t get_tls_write_limit();
   // Updates the number of bytes written in warm up period.

@@ -2100,7 +2100,7 @@ int Http2Session::read_tls() {
   ERR_clear_error();
 
   for (;;) {
-    auto nread = conn_.read_tls(buf.data(), buf.size());
+    auto nread = conn_.read_tls(buf);
 
     if (nread == 0) {
       return write_tls();

@@ -40,6 +40,7 @@ const MunitTest tests[]{
   munit_void_test(test_pool_recycle),
   munit_void_test(test_memchunks_append),
   munit_void_test(test_memchunks_drain),
+  munit_void_test(test_memchunks_remove),
   munit_void_test(test_memchunks_riovec),
   munit_void_test(test_memchunks_peek),
   munit_void_test(test_memchunks_recycle),
@@ -130,19 +131,19 @@ void test_memchunks_append(void) {
   assert_size(15, ==, m->left());
   assert_size(17, ==, chunks.rleft());
 
-  char buf[16];
+  std::array<uint8_t, 16> buf;
   size_t nread;
 
-  nread = chunks.remove(buf, 8);
+  nread = chunks.remove(std::span{buf}.first(8));
 
   assert_size(8, ==, nread);
-  assert_memory_equal(nread, "01234567", buf);
+  assert_memory_equal(nread, "01234567", buf.data());
   assert_size(9, ==, chunks.rleft());
 
-  nread = chunks.remove(buf, sizeof(buf));
+  nread = chunks.remove(buf);
 
   assert_size(9, ==, nread);
-  assert_memory_equal(nread, "89abcdef@", buf);
+  assert_memory_equal(nread, "89abcdef@", buf.data());
   assert_size(0, ==, chunks.rleft());
   assert_null(chunks.head);
   assert_null(chunks.tail);
@@ -161,12 +162,31 @@ void test_memchunks_drain(void) {
 
   assert_size(3, ==, nread);
 
-  char buf[16];
+  std::array<uint8_t, 16> buf;
 
-  nread = chunks.remove(buf, sizeof(buf));
+  nread = chunks.remove(buf);
 
   assert_size(7, ==, nread);
-  assert_memory_equal(nread, "3456789", buf);
+  assert_memory_equal(nread, "3456789", buf.data());
+}
+
+void test_memchunks_remove(void) {
+  MemchunkPool16 pool;
+  Memchunks16 chunks(&pool);
+
+  chunks.append("0123456789"sv);
+
+  std::array<uint8_t, 16> buf;
+
+  auto nread = chunks.remove(std::span{buf}.first(1));
+
+  assert_size(1, ==, nread);
+  assert_memory_equal(nread, "0", buf.data());
+
+  nread = chunks.remove(buf);
+
+  assert_size(9, ==, nread);
+  assert_memory_equal(nread, "123456789", buf.data());
 }
 
 void test_memchunks_riovec(void) {

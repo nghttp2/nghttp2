@@ -559,13 +559,13 @@ nghttp2_ssize Connection::write_tls(std::span<const uint8_t> data) {
   return rv;
 }
 
-nghttp2_ssize Connection::read_tls(void *data, size_t len) {
+nghttp2_ssize Connection::read_tls(std::span<uint8_t> data) {
   ERR_clear_error();
 
 #if defined(NGHTTP2_GENUINE_OPENSSL) ||                                        \
   defined(NGHTTP2_OPENSSL_IS_BORINGSSL) || defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
   if (tls.earlybuf.rleft()) {
-    return as_signed(tls.earlybuf.remove(data, len));
+    return as_signed(tls.earlybuf.remove(data));
   }
 #endif // defined(NGHTTP2_GENUINE_OPENSSL) ||
        // defined(NGHTTP2_OPENSSL_IS_BORINGSSL) ||
@@ -579,12 +579,12 @@ nghttp2_ssize Connection::read_tls(void *data, size_t len) {
   // to SSL_read to tls_last_readlen_ if SSL_read indicated I/O
   // blocking.
   if (tls.last_readlen == 0) {
-    len = std::min(len, rlimit.avail());
-    if (len == 0) {
+    data = data.first(std::min(data.size(), rlimit.avail()));
+    if (data.empty()) {
       return 0;
     }
   } else {
-    len = tls.last_readlen;
+    data = data.first(tls.last_readlen);
     tls.last_readlen = 0;
   }
 
@@ -592,12 +592,12 @@ nghttp2_ssize Connection::read_tls(void *data, size_t len) {
   if (!tls.early_data_finish) {
     // TLSv1.3 handshake is still going on.
     size_t nread;
-    auto rv = SSL_read_early_data(tls.ssl, data, len, &nread);
+    auto rv = SSL_read_early_data(tls.ssl, data.data(), data.size(), &nread);
     if (rv == SSL_READ_EARLY_DATA_ERROR) {
       auto err = SSL_get_error(tls.ssl, rv);
       switch (err) {
       case SSL_ERROR_WANT_READ:
-        tls.last_readlen = len;
+        tls.last_readlen = data.size();
         return 0;
       case SSL_ERROR_SSL:
         if (LOG_ENABLED(INFO)) {
@@ -636,12 +636,12 @@ nghttp2_ssize Connection::read_tls(void *data, size_t len) {
   if (!tls.early_data_finish) {
     // TLSv1.3 handshake is still going on.
     size_t nread = 0;
-    auto rv = SSL_read_early_data(tls.ssl, data, len, &nread);
+    auto rv = SSL_read_early_data(tls.ssl, data.data(), data.size(), &nread);
     if (rv < 0) {
       auto err = SSL_get_error(tls.ssl, rv);
       switch (err) {
       case SSL_ERROR_WANT_READ:
-        tls.last_readlen = len;
+        tls.last_readlen = data.size();
         return 0;
       case SSL_ERROR_SSL:
         if (LOG_ENABLED(INFO)) {
@@ -677,13 +677,13 @@ nghttp2_ssize Connection::read_tls(void *data, size_t len) {
 #endif // defined(NGHTTP2_OPENSSL_IS_WOLFSSL) &&
        // defined(WOLFSSL_EARLY_DATA)
 
-  auto rv = SSL_read(tls.ssl, data, static_cast<int>(len));
+  auto rv = SSL_read(tls.ssl, data.data(), static_cast<int>(data.size()));
 
   if (rv <= 0) {
     auto err = SSL_get_error(tls.ssl, rv);
     switch (err) {
     case SSL_ERROR_WANT_READ:
-      tls.last_readlen = len;
+      tls.last_readlen = data.size();
       return 0;
     case SSL_ERROR_WANT_WRITE:
       if (LOG_ENABLED(INFO)) {

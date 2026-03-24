@@ -346,7 +346,7 @@ int MemcachedConnection::read_tls() {
   conn_.last_read = std::chrono::steady_clock::now();
 
   for (;;) {
-    auto nread = conn_.read_tls(recvbuf_.last, recvbuf_.wleft());
+    auto nread = conn_.read_tls(recvbuf_.wbuffer());
 
     if (nread == 0) {
       return 0;
