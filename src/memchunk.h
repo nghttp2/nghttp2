@@ -433,6 +433,13 @@ template <typename Memchunk> struct Memchunks {
   }
   size_t rleft() const { return len; }
   size_t rleft_mark() const { return len - mark_offset; }
+  std::span<const uint8_t> peek() const {
+    if (!head) {
+      return {};
+    }
+
+    return {head->pos, head->len()};
+  }
   void reset() {
     for (auto m = head; m;) {
       auto next = m->next;

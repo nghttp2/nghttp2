@@ -81,6 +81,7 @@ public:
   // Fills response data in |iov| whose capacity is |iovcnt|.  Returns
   // the number of iovs filled.
   virtual int response_riovec(struct iovec *iov, int iovcnt) const = 0;
+  virtual std::span<const uint8_t> response_peek() const = 0;
   virtual void response_drain(size_t n) = 0;
   virtual bool response_empty() const = 0;
 

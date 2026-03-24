@@ -282,26 +282,19 @@ int ClientHandler::read_tls() {
 }
 
 int ClientHandler::write_tls() {
-  struct iovec iov;
-
   ERR_clear_error();
 
-  if (on_write() != 0) {
-    return -1;
-  }
-
-  auto iovcnt = upstream_->response_riovec(&iov, 1);
-  if (iovcnt == 0) {
-    conn_.start_tls_write_idle();
-
-    conn_.wlimit.stopw();
-    ev_timer_stop(conn_.loop, &conn_.wt);
-
-    return 0;
-  }
-
   for (;;) {
-    auto nwrite = conn_.write_tls(iov.iov_base, iov.iov_len);
+    if (on_write() != 0) {
+      return -1;
+    }
+
+    auto data = upstream_->response_peek();
+    if (data.empty()) {
+      break;
+    }
+
+    auto nwrite = conn_.write_tls(data);
     if (nwrite < 0) {
       return -1;
     }
@@ -311,12 +304,14 @@ int ClientHandler::write_tls() {
     }
 
     upstream_->response_drain(as_unsigned(nwrite));
-
-    iovcnt = upstream_->response_riovec(&iov, 1);
-    if (iovcnt == 0) {
-      return 0;
-    }
   }
+
+  conn_.start_tls_write_idle();
+
+  conn_.wlimit.stopw();
+  ev_timer_stop(conn_.loop, &conn_.wt);
+
+  return 0;
 }
 
 #ifdef ENABLE_HTTP3

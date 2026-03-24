@@ -121,7 +121,7 @@ struct Connection {
   // underlying connection blocks), return 0.  SHRPX_ERR_EOF is
   // returned in case of EOF and no data was read.  Otherwise
   // SHRPX_ERR_NETWORK is return in case of error.
-  nghttp2_ssize write_tls(const void *data, size_t len);
+  nghttp2_ssize write_tls(std::span<const uint8_t> data);
   nghttp2_ssize read_tls(void *data, size_t len);
 
   size_t get_tls_write_limit();

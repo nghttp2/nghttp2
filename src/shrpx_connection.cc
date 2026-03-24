@@ -482,7 +482,7 @@ void Connection::start_tls_write_idle() {
   }
 }
 
-nghttp2_ssize Connection::write_tls(const void *data, size_t len) {
+nghttp2_ssize Connection::write_tls(std::span<const uint8_t> data) {
   // SSL_write requires the same arguments (buf pointer and its
   // length) on SSL_ERROR_WANT_READ or SSL_ERROR_WANT_WRITE.
   // get_write_limit() may return smaller length than previously
@@ -490,13 +490,13 @@ nghttp2_ssize Connection::write_tls(const void *data, size_t len) {
   // this, we keep last length passed to SSL_write to
   // tls.last_writelen if SSL_write indicated I/O blocking.
   if (tls.last_writelen == 0) {
-    len = std::min(len, wlimit.avail());
-    len = std::min(len, get_tls_write_limit());
-    if (len == 0) {
+    data = data.first(
+      std::ranges::min({data.size(), wlimit.avail(), get_tls_write_limit()}));
+    if (data.empty()) {
       return 0;
     }
   } else {
-    len = tls.last_writelen;
+    data = data.first(tls.last_writelen);
     tls.last_writelen = 0;
   }
 
@@ -507,17 +507,17 @@ nghttp2_ssize Connection::write_tls(const void *data, size_t len) {
 #ifdef NGHTTP2_GENUINE_OPENSSL
   int rv;
   if (SSL_is_init_finished(tls.ssl)) {
-    rv = SSL_write(tls.ssl, data, static_cast<int>(len));
+    rv = SSL_write(tls.ssl, data.data(), static_cast<int>(data.size()));
   } else {
     size_t nwrite;
-    rv = SSL_write_early_data(tls.ssl, data, len, &nwrite);
+    rv = SSL_write_early_data(tls.ssl, data.data(), data.size(), &nwrite);
     // Use the same semantics with SSL_write.
     if (rv == 1) {
       rv = static_cast<int>(nwrite);
     }
   }
 #else  // !defined(NGHTTP2_GENUINE_OPENSSL)
-  auto rv = SSL_write(tls.ssl, data, static_cast<int>(len));
+  auto rv = SSL_write(tls.ssl, data.data(), static_cast<int>(data.size()));
 #endif // !defined(NGHTTP2_GENUINE_OPENSSL)
 
   if (rv <= 0) {
@@ -529,7 +529,7 @@ nghttp2_ssize Connection::write_tls(const void *data, size_t len) {
       }
       return SHRPX_ERR_NETWORK;
     case SSL_ERROR_WANT_WRITE:
-      tls.last_writelen = len;
+      tls.last_writelen = data.size();
       wlimit.startw();
       ev_timer_again(loop, &wt);
 

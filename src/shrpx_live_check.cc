@@ -467,16 +467,11 @@ int LiveCheck::write_tls() {
 
   ERR_clear_error();
 
-  struct iovec iov;
+  auto data = wb_.peek();
 
   for (;;) {
-    if (wb_.rleft() > 0) {
-      auto iovcnt = wb_.riovec(&iov, 1);
-      if (iovcnt != 1) {
-        assert(0);
-        return -1;
-      }
-      auto nwrite = conn_.write_tls(iov.iov_base, iov.iov_len);
+    if (!data.empty()) {
+      auto nwrite = conn_.write_tls(data);
 
       if (nwrite == 0) {
         return 0;
@@ -487,6 +482,7 @@ int LiveCheck::write_tls() {
       }
 
       wb_.drain(as_unsigned(nwrite));
+      data = wb_.peek();
 
       continue;
     }
@@ -495,7 +491,8 @@ int LiveCheck::write_tls() {
       return -1;
     }
 
-    if (wb_.rleft() == 0) {
+    data = wb_.peek();
+    if (data.empty()) {
       conn_.start_tls_write_idle();
       break;
     }

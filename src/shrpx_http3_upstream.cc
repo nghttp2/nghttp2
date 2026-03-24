@@ -1705,6 +1705,8 @@ int Http3Upstream::response_riovec(struct iovec *iov, int iovcnt) const {
   return 0;
 }
 
+std::span<const uint8_t> Http3Upstream::response_peek() const { return {}; }
+
 void Http3Upstream::response_drain(size_t n) {}
 
 bool Http3Upstream::response_empty() const { return false; }

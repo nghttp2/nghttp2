@@ -321,8 +321,7 @@ int MemcachedConnection::write_tls() {
       }
     }
 
-    auto nwrite =
-      conn_.write_tls(buf.data(), as_unsigned(p - std::ranges::begin(buf)));
+    auto nwrite = conn_.write_tls({std::ranges::begin(buf), p});
     if (nwrite < 0) {
       return -1;
     }

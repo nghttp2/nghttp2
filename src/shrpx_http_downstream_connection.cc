@@ -1417,15 +1417,13 @@ int HttpDownstreamConnection::write_tls() {
   auto upstream = downstream_->get_upstream();
   auto input = downstream_->get_request_buf();
 
-  struct iovec iov;
-
-  while (input->rleft() > 0) {
-    auto iovcnt = input->riovec(&iov, 1);
-    if (iovcnt != 1) {
-      assert(0);
-      return -1;
+  for (;;) {
+    auto data = input->peek();
+    if (data.empty()) {
+      break;
     }
-    auto nwrite = conn_.write_tls(iov.iov_base, iov.iov_len);
+
+    auto nwrite = conn_.write_tls(data);
 
     if (nwrite == 0) {
       return 0;
@@ -1451,6 +1449,8 @@ int HttpDownstreamConnection::write_tls() {
   ev_timer_stop(conn_.loop, &conn_.wt);
 
   if (input->rleft() == 0) {
+    conn_.start_tls_write_idle();
+
     auto &req = downstream_->request();
 
     upstream->resume_read(SHRPX_NO_BUFFER, downstream_,
