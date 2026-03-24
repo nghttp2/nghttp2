@@ -131,7 +131,7 @@ struct Connection {
   // determine fallback to short record size mode.
   void start_tls_write_idle();
 
-  nghttp2_ssize write_clear(const void *data, size_t len);
+  nghttp2_ssize write_clear(std::span<const uint8_t> data);
   nghttp2_ssize writev_clear(struct iovec *iov, int iovcnt);
   nghttp2_ssize read_clear(void *data, size_t len);
   // Read at most |len| bytes of data from socket without rate limit.

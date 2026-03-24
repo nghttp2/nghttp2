@@ -710,14 +710,14 @@ nghttp2_ssize Connection::read_tls(void *data, size_t len) {
   return rv;
 }
 
-nghttp2_ssize Connection::write_clear(const void *data, size_t len) {
-  len = std::min(len, wlimit.avail());
-  if (len == 0) {
+nghttp2_ssize Connection::write_clear(std::span<const uint8_t> data) {
+  data = data.first(std::min(data.size(), wlimit.avail()));
+  if (data.empty()) {
     return 0;
   }
 
   ssize_t nwrite;
-  while ((nwrite = write(fd, data, len)) == -1 && errno == EINTR)
+  while ((nwrite = write(fd, data.data(), data.size())) == -1 && errno == EINTR)
     ;
   if (nwrite == -1) {
     if (errno == EAGAIN || errno == EWOULDBLOCK) {

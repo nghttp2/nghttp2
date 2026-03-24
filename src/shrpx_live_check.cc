@@ -534,16 +534,11 @@ int LiveCheck::read_clear() {
 int LiveCheck::write_clear() {
   conn_.last_read = std::chrono::steady_clock::now();
 
-  struct iovec iov;
+  auto data = wb_.peek();
 
   for (;;) {
-    if (wb_.rleft() > 0) {
-      auto iovcnt = wb_.riovec(&iov, 1);
-      if (iovcnt != 1) {
-        assert(0);
-        return -1;
-      }
-      auto nwrite = conn_.write_clear(iov.iov_base, iov.iov_len);
+    if (!data.empty()) {
+      auto nwrite = conn_.write_clear(data);
 
       if (nwrite == 0) {
         return 0;
@@ -554,6 +549,7 @@ int LiveCheck::write_clear() {
       }
 
       wb_.drain(as_unsigned(nwrite));
+      data = wb_.peek();
 
       continue;
     }
@@ -562,7 +558,8 @@ int LiveCheck::write_clear() {
       return -1;
     }
 
-    if (wb_.rleft() == 0) {
+    data = wb_.peek();
+    if (data.empty()) {
       break;
     }
   }
