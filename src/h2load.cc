@@ -2924,6 +2924,8 @@ Options:
   --h1        Short        hand        for        --alpn-list=http/1.1
               --no-tls-proto=http/1.1,    which   effectively    force
               http/1.1 for both http and https URI.
+  --h3        Short hand for  --alpn-list=h3, which effectively forces
+              HTTP/3.
   --header-table-size=<SIZE>
               Specify decoder header table size.
               Default: )"
@@ -3045,6 +3047,7 @@ int main(int argc, char **argv) {
       {"histogram", no_argument, &flag, 21},
       {"tls-session-file", required_argument, &flag, 22},
       {"output-file", required_argument, &flag, 23},
+      {"h3", no_argument, &flag, 24},
       {nullptr, 0, nullptr, 0}};
     int option_index = 0;
     auto c = getopt_long(argc, argv,
@@ -3408,6 +3411,10 @@ int main(int argc, char **argv) {
       case 23:
         // --output-file
         config.output_file = optarg;
+        break;
+      case 24:
+        // --h3
+        config.alpn_list = util::parse_config_str_list("h3"sv);
         break;
       }
       break;
