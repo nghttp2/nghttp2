@@ -737,14 +737,16 @@ nghttp2_ssize Connection::write_clear(std::span<const uint8_t> data) {
   return nwrite;
 }
 
-nghttp2_ssize Connection::writev_clear(struct iovec *iov, int iovcnt) {
-  iovcnt = limit_iovec(iov, iovcnt, wlimit.avail());
-  if (iovcnt == 0) {
+nghttp2_ssize Connection::writev_clear(std::span<struct iovec> iov) {
+  iov = limit_iovec(iov, wlimit.avail());
+  if (iov.empty()) {
     return 0;
   }
 
   ssize_t nwrite;
-  while ((nwrite = writev(fd, iov, iovcnt)) == -1 && errno == EINTR)
+  while ((nwrite = writev(fd, iov.data(), static_cast<int>(iov.size()))) ==
+           -1 &&
+         errno == EINTR)
     ;
   if (nwrite == -1) {
     if (errno == EAGAIN || errno == EWOULDBLOCK) {

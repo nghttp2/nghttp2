@@ -1522,14 +1522,15 @@ int HttpsUpstream::initiate_push(Downstream *downstream, std::string_view uri) {
   return 0;
 }
 
-int HttpsUpstream::response_riovec(struct iovec *iov, int iovcnt) const {
+std::span<struct iovec>
+HttpsUpstream::response_riovec(std::span<struct iovec> iov) const {
   if (!downstream_) {
-    return 0;
+    return {};
   }
 
   auto buf = downstream_->get_response_buf();
 
-  return buf->riovec(iov, iovcnt);
+  return buf->riovec(iov);
 }
 
 std::span<const uint8_t> HttpsUpstream::response_peek() const {

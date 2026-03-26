@@ -2315,12 +2315,9 @@ int Http2Upstream::initiate_push(Downstream *downstream, std::string_view uri) {
   return 0;
 }
 
-int Http2Upstream::response_riovec(struct iovec *iov, int iovcnt) const {
-  if (iovcnt == 0 || wb_.rleft() == 0) {
-    return 0;
-  }
-
-  return wb_.riovec(iov, iovcnt);
+std::span<struct iovec>
+Http2Upstream::response_riovec(std::span<struct iovec> iov) const {
+  return wb_.riovec(iov);
 }
 
 std::span<const uint8_t> Http2Upstream::response_peek() const {

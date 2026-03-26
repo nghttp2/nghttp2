@@ -118,7 +118,7 @@ public:
   int write_tls();
   int read_tls();
 
-  size_t fill_request_buffer(struct iovec *iov, size_t iovlen);
+  std::span<struct iovec> fill_request_buffer(std::span<struct iovec> iov);
   void drain_send_queue(size_t nwrite);
 
   void make_request(MemcachedSendbuf *sendbuf, MemcachedRequest *req);

@@ -303,14 +303,13 @@ int MemcachedConnection::write_tls() {
 
   conn_.last_read = std::chrono::steady_clock::now();
 
-  std::array<struct iovec, MAX_WR_IOVCNT> iov;
+  std::array<struct iovec, MAX_WR_IOVCNT> iovbuf;
   std::array<uint8_t, 16_k> buf;
 
   for (; !sendq_.empty();) {
-    auto iovcnt = fill_request_buffer(iov.data(), iov.size());
+    auto iov = fill_request_buffer(iovbuf);
     auto p = std::ranges::begin(buf);
-    for (size_t i = 0; i < iovcnt; ++i) {
-      auto &v = iov[i];
+    for (auto &v : iov) {
       auto n =
         std::min(static_cast<size_t>(std::ranges::end(buf) - p), v.iov_len);
       p =
@@ -373,11 +372,11 @@ int MemcachedConnection::write_clear() {
 
   conn_.last_read = std::chrono::steady_clock::now();
 
-  std::array<struct iovec, MAX_WR_IOVCNT> iov;
+  std::array<struct iovec, MAX_WR_IOVCNT> iovbuf;
 
   for (; !sendq_.empty();) {
-    auto iovcnt = fill_request_buffer(iov.data(), iov.size());
-    auto nwrite = conn_.writev_clear(iov.data(), static_cast<int>(iovcnt));
+    auto iov = fill_request_buffer(iovbuf);
+    auto nwrite = conn_.writev_clear(iov);
     if (nwrite < 0) {
       return -1;
     }
@@ -592,8 +591,8 @@ int MemcachedConnection::parse_packet() {
 #  define MAX_WR_IOVCNT DEFAULT_WR_IOVCNT
 #endif // !defined(IOV_MAX) || IOV_MAX >= DEFAULT_WR_IOVCNT
 
-size_t MemcachedConnection::fill_request_buffer(struct iovec *iov,
-                                                size_t iovlen) {
+std::span<struct iovec>
+MemcachedConnection::fill_request_buffer(std::span<struct iovec> iov) {
   if (sendsum_ == 0) {
     for (auto &req : sendq_) {
       if (req->canceled) {
@@ -610,13 +609,13 @@ size_t MemcachedConnection::fill_request_buffer(struct iovec *iov,
 
     if (sendsum_ == 0) {
       sendq_.clear();
-      return 0;
+      return {};
     }
   }
 
   size_t iovcnt = 0;
   for (auto &buf : sendbufv_) {
-    if (iovcnt + 2 > iovlen) {
+    if (iovcnt + 2 > iov.size()) {
       break;
     }
 
@@ -631,7 +630,7 @@ size_t MemcachedConnection::fill_request_buffer(struct iovec *iov,
     }
   }
 
-  return iovcnt;
+  return iov.first(iovcnt);
 }
 
 void MemcachedConnection::drain_send_queue(size_t nwrite) {

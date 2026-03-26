@@ -385,24 +385,24 @@ template <typename Memchunk> struct Memchunks {
     }
     return ndata - count;
   }
-  int riovec(struct iovec *iov, int iovcnt) const {
-    if (!head) {
-      return 0;
+  std::span<struct iovec> riovec(std::span<struct iovec> iov) const {
+    if (!head || iov.empty()) {
+      return {};
     }
     auto m = head;
-    int i;
-    for (i = 0; i < iovcnt && m; ++i, m = m->next) {
+    size_t i;
+    for (i = 0; i < iov.size() && m; ++i, m = m->next) {
       iov[i].iov_base = m->pos;
       iov[i].iov_len = m->len();
     }
-    return i;
+    return iov.first(i);
   }
-  int riovec_mark(struct iovec *iov, int iovcnt) {
-    if (!head || iovcnt == 0) {
-      return 0;
+  std::span<struct iovec> riovec_mark(std::span<struct iovec> iov) {
+    if (!head || iov.empty()) {
+      return {};
     }
 
-    int i = 0;
+    size_t i = 0;
     Memchunk *m;
     if (mark) {
       if (mark_pos != mark->last) {
@@ -419,7 +419,7 @@ template <typename Memchunk> struct Memchunks {
       m = head;
     }
 
-    for (; i < iovcnt && m; ++i, m = m->next) {
+    for (; i < iov.size() && m; ++i, m = m->next) {
       iov[i].iov_base = m->pos;
       iov[i].iov_len = m->len();
 
@@ -428,7 +428,7 @@ template <typename Memchunk> struct Memchunks {
       mark_offset += m->len();
     }
 
-    return i;
+    return iov.first(i);
   }
   size_t rleft() const { return len; }
   size_t rleft_mark() const { return len - mark_offset; }
@@ -463,19 +463,27 @@ using Memchunk16K = Memchunk<16_k>;
 using MemchunkPool = Pool<Memchunk16K>;
 using DefaultMemchunks = Memchunks<Memchunk16K>;
 
-inline int limit_iovec(struct iovec *iov, int iovcnt, size_t max) {
+inline std::span<struct iovec> limit_iovec(std::span<struct iovec> iov,
+                                           size_t max) {
   if (max == 0) {
-    return 0;
+    return {};
   }
-  for (int i = 0; i < iovcnt; ++i) {
-    auto d = std::min(max, iov[i].iov_len);
-    iov[i].iov_len = d;
-    max -= d;
-    if (max == 0) {
-      return i + 1;
+
+  size_t i;
+  for (i = 0; i < iov.size(); ++i) {
+    auto &v = iov[i];
+
+    if (max <= v.iov_len) {
+      v.iov_len = max;
+      ++i;
+
+      break;
     }
+
+    max -= v.iov_len;
   }
-  return iovcnt;
+
+  return iov.first(i);
 }
 
 // MemchunkBuffer is similar to Buffer, but it uses pooled Memchunk

@@ -1283,12 +1283,15 @@ int HttpDownstreamConnection::write_clear() {
   auto upstream = downstream_->get_upstream();
   auto input = downstream_->get_request_buf();
 
-  std::array<struct iovec, MAX_WR_IOVCNT> iov;
+  std::array<struct iovec, MAX_WR_IOVCNT> iovbuf;
 
-  while (input->rleft() > 0) {
-    auto iovcnt = input->riovec(iov.data(), iov.size());
+  for (;;) {
+    auto iov = input->riovec(iovbuf);
+    if (iov.empty()) {
+      break;
+    }
 
-    auto nwrite = conn_.writev_clear(iov.data(), iovcnt);
+    auto nwrite = conn_.writev_clear(iov);
 
     if (nwrite == 0) {
       return 0;

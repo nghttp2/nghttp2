@@ -197,12 +197,12 @@ void test_memchunks_riovec(void) {
 
   chunks.append(buf.data(), buf.size());
 
-  std::array<struct iovec, 2> iov;
-  auto iovcnt = chunks.riovec(iov.data(), iov.size());
+  std::array<struct iovec, 2> iovbuf;
+  auto iov = chunks.riovec(iovbuf);
 
   auto m = chunks.head;
 
-  assert_int(2, ==, iovcnt);
+  assert_size(2, ==, iov.size());
   assert_ptr_equal(m->buf.data(), iov[0].iov_base);
   assert_size(m->len(), ==, iov[0].iov_len);
 
@@ -213,9 +213,9 @@ void test_memchunks_riovec(void) {
 
   chunks.drain(2 * 16);
 
-  iovcnt = chunks.riovec(iov.data(), iov.size());
+  iov = chunks.riovec(iovbuf);
 
-  assert_int(1, ==, iovcnt);
+  assert_size(1, ==, iov.size());
 
   m = chunks.head;
   assert_ptr_equal(m->buf.data(), iov[0].iov_base);
@@ -283,7 +283,7 @@ void test_memchunks_reset(void) {
 void test_memchunks_reserve(void) {
   MemchunkPool16 pool;
   Memchunks16 chunks(&pool);
-  std::array<iovec, 2> iov;
+  std::array<iovec, 2> iovbuf;
 
   chunks.append(8, [](auto result) {
     return std::ranges::copy("foobar00"sv, std::move(result)).out;
@@ -291,9 +291,9 @@ void test_memchunks_reserve(void) {
 
   assert_size(8, ==, chunks.rleft());
 
-  auto iovcnt = chunks.riovec(iov.data(), iov.size());
+  auto iov = chunks.riovec(iovbuf);
 
-  assert_int(1, ==, iovcnt);
+  assert_size(1, ==, iov.size());
   assert_stdsv_equal(
     "foobar00"sv,
     (std::string_view{reinterpret_cast<const char *>(iov[0].iov_base),
@@ -308,9 +308,9 @@ void test_memchunks_reserve(void) {
 
   assert_size(17, ==, chunks.rleft());
 
-  iovcnt = chunks.riovec(iov.data(), iov.size());
+  iov = chunks.riovec(iovbuf);
 
-  assert_int(2, ==, iovcnt);
+  assert_size(2, ==, iov.size());
   assert_stdsv_equal(
     "012345678"sv,
     (std::string_view{reinterpret_cast<const char *>(iov[0].iov_base),
