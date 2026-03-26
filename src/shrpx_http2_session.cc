@@ -2122,40 +2122,36 @@ int Http2Session::write_tls() {
 
   ERR_clear_error();
 
-  auto data = wb_.peek();
-
   for (;;) {
-    if (!data.empty()) {
-      auto nwrite = conn_.write_tls(data);
-
-      if (nwrite == 0) {
-        return 0;
+    auto data = wb_.peek();
+    if (data.empty()) {
+      if (on_write() != 0) {
+        return -1;
       }
 
-      if (nwrite < 0) {
-        // We may have pending data in receive buffer which may
-        // contain part of response body.  So keep reading.  Invoke
-        // read event to get read(2) error just in case.
-        ev_feed_event(conn_.loop, &conn_.rev, EV_READ);
-        write_ = &Http2Session::write_void;
+      data = wb_.peek();
+      if (data.empty()) {
+        conn_.start_tls_write_idle();
         break;
       }
-
-      wb_.drain(as_unsigned(nwrite));
-      data = wb_.peek();
-
-      continue;
     }
 
-    if (on_write() != 0) {
-      return -1;
+    auto nwrite = conn_.write_tls(data);
+
+    if (nwrite == 0) {
+      return 0;
     }
 
-    data = wb_.peek();
-    if (data.empty()) {
-      conn_.start_tls_write_idle();
+    if (nwrite < 0) {
+      // We may have pending data in receive buffer which may
+      // contain part of response body.  So keep reading.  Invoke
+      // read event to get read(2) error just in case.
+      ev_feed_event(conn_.loop, &conn_.rev, EV_READ);
+      write_ = &Http2Session::write_void;
       break;
     }
+
+    wb_.drain(as_unsigned(nwrite));
   }
 
   conn_.wlimit.stopw();
