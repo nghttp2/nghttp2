@@ -467,35 +467,31 @@ int LiveCheck::write_tls() {
 
   ERR_clear_error();
 
-  auto data = wb_.peek();
-
   for (;;) {
-    if (!data.empty()) {
-      auto nwrite = conn_.write_tls(data);
-
-      if (nwrite == 0) {
-        return 0;
-      }
-
-      if (nwrite < 0) {
-        return static_cast<int>(nwrite);
-      }
-
-      wb_.drain(as_unsigned(nwrite));
-      data = wb_.peek();
-
-      continue;
-    }
-
-    if (on_write() != 0) {
-      return -1;
-    }
-
-    data = wb_.peek();
+    auto data = wb_.peek();
     if (data.empty()) {
-      conn_.start_tls_write_idle();
-      break;
+      if (on_write() != 0) {
+        return -1;
+      }
+
+      data = wb_.peek();
+      if (data.empty()) {
+        conn_.start_tls_write_idle();
+        break;
+      }
     }
+
+    auto nwrite = conn_.write_tls(data);
+
+    if (nwrite == 0) {
+      return 0;
+    }
+
+    if (nwrite < 0) {
+      return static_cast<int>(nwrite);
+    }
+
+    wb_.drain(as_unsigned(nwrite));
   }
 
   conn_.wlimit.stopw();
@@ -534,34 +530,30 @@ int LiveCheck::read_clear() {
 int LiveCheck::write_clear() {
   conn_.last_read = std::chrono::steady_clock::now();
 
-  auto data = wb_.peek();
-
   for (;;) {
-    if (!data.empty()) {
-      auto nwrite = conn_.write_clear(data);
-
-      if (nwrite == 0) {
-        return 0;
-      }
-
-      if (nwrite < 0) {
-        return static_cast<int>(nwrite);
-      }
-
-      wb_.drain(as_unsigned(nwrite));
-      data = wb_.peek();
-
-      continue;
-    }
-
-    if (on_write() != 0) {
-      return -1;
-    }
-
-    data = wb_.peek();
+    auto data = wb_.peek();
     if (data.empty()) {
-      break;
+      if (on_write() != 0) {
+        return -1;
+      }
+
+      data = wb_.peek();
+      if (data.empty()) {
+        break;
+      }
     }
+
+    auto nwrite = conn_.write_clear(data);
+
+    if (nwrite == 0) {
+      return 0;
+    }
+
+    if (nwrite < 0) {
+      return static_cast<int>(nwrite);
+    }
+
+    wb_.drain(as_unsigned(nwrite));
   }
 
   conn_.wlimit.stopw();
