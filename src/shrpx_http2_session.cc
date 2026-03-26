@@ -2014,36 +2014,37 @@ int Http2Session::read_clear() {
 int Http2Session::write_clear() {
   conn_.last_read = std::chrono::steady_clock::now();
 
-  std::array<struct iovec, MAX_WR_IOVCNT> iov;
+  std::array<struct iovec, MAX_WR_IOVCNT> iovbuf;
 
   for (;;) {
-    if (wb_.rleft() > 0) {
-      auto iovcnt = wb_.riovec(iov.data(), iov.size());
-      auto nwrite = conn_.writev_clear(iov.data(), iovcnt);
-
-      if (nwrite == 0) {
-        return 0;
+    auto iov = wb_.riovec(iovbuf);
+    if (iov.empty()) {
+      if (on_write() != 0) {
+        return -1;
       }
 
-      if (nwrite < 0) {
-        // We may have pending data in receive buffer which may
-        // contain part of response body.  So keep reading.  Invoke
-        // read event to get read(2) error just in case.
-        ev_feed_event(conn_.loop, &conn_.rev, EV_READ);
-        write_ = &Http2Session::write_void;
+      iov = wb_.riovec(iovbuf);
+      if (iov.empty()) {
         break;
       }
-
-      wb_.drain(as_unsigned(nwrite));
-      continue;
     }
 
-    if (on_write() != 0) {
-      return -1;
+    auto nwrite = conn_.writev_clear(iov);
+
+    if (nwrite == 0) {
+      return 0;
     }
-    if (wb_.rleft() == 0) {
+
+    if (nwrite < 0) {
+      // We may have pending data in receive buffer which may
+      // contain part of response body.  So keep reading.  Invoke
+      // read event to get read(2) error just in case.
+      ev_feed_event(conn_.loop, &conn_.rev, EV_READ);
+      write_ = &Http2Session::write_void;
       break;
     }
+
+    wb_.drain(as_unsigned(nwrite));
   }
 
   conn_.wlimit.stopw();

@@ -1161,88 +1161,69 @@ void test_http2_check_transfer_encoding(void) {
 void test_http2_capitalize(void) {
   MemchunkPool pool;
   DefaultMemchunks m{&pool};
-  iovec iov;
 
   {
     http2::capitalize(&m, "content-length"sv);
-    auto iovcnt = m.riovec(&iov, 1);
+    auto iov = m.peek();
 
-    assert_int(1, ==, iovcnt);
-    assert_stdsv_equal(
-      "Content-Length"sv,
-      (std::string_view{static_cast<const char *>(iov.iov_base), iov.iov_len}));
+    assert_stdsv_equal("Content-Length"sv, as_string_view(iov));
 
     m.reset();
   }
 
   {
     http2::capitalize(&m, "altsvc"sv);
-    auto iovcnt = m.riovec(&iov, 1);
+    auto iov = m.peek();
 
-    assert_int(1, ==, iovcnt);
-    assert_stdsv_equal(
-      "Altsvc"sv,
-      (std::string_view{static_cast<const char *>(iov.iov_base), iov.iov_len}));
+    assert_stdsv_equal("Altsvc"sv, as_string_view(iov));
 
     m.reset();
   }
 
   {
     http2::capitalize(&m, "altsvc-"sv);
-    auto iovcnt = m.riovec(&iov, 1);
+    auto iov = m.peek();
 
-    assert_int(1, ==, iovcnt);
-    assert_stdsv_equal(
-      "Altsvc-"sv,
-      (std::string_view{static_cast<const char *>(iov.iov_base), iov.iov_len}));
+    assert_stdsv_equal("Altsvc-"sv, as_string_view(iov));
 
     m.reset();
   }
 
   {
     http2::capitalize(&m, "alt--svc"sv);
-    auto iovcnt = m.riovec(&iov, 1);
+    auto iov = m.peek();
 
-    assert_int(1, ==, iovcnt);
-    assert_stdsv_equal(
-      "Alt--Svc"sv,
-      (std::string_view{static_cast<const char *>(iov.iov_base), iov.iov_len}));
+    assert_stdsv_equal("Alt--Svc"sv, as_string_view(iov));
 
     m.reset();
   }
 
   {
     http2::capitalize(&m, "sec-websocket----------------key"sv);
-    auto iovcnt = m.riovec(&iov, 1);
+    auto iov = m.peek();
 
-    assert_int(1, ==, iovcnt);
-    assert_stdsv_equal(
-      "Sec-Websocket----------------Key"sv,
-      (std::string_view{static_cast<const char *>(iov.iov_base), iov.iov_len}));
+    assert_stdsv_equal("Sec-Websocket----------------Key"sv,
+                       as_string_view(iov));
 
     m.reset();
   }
 
   {
     http2::capitalize(&m, "content--------------------length"sv);
-    auto iovcnt = m.riovec(&iov, 1);
+    auto iov = m.peek();
 
-    assert_int(1, ==, iovcnt);
-    assert_stdsv_equal(
-      "Content--------------------Length"sv,
-      (std::string_view{static_cast<const char *>(iov.iov_base), iov.iov_len}));
+    assert_stdsv_equal("Content--------------------Length"sv,
+                       as_string_view(iov));
 
     m.reset();
   }
 
   {
     http2::capitalize(&m, "content--------------------length-"sv);
-    auto iovcnt = m.riovec(&iov, 1);
+    auto iov = m.peek();
 
-    assert_int(1, ==, iovcnt);
-    assert_stdsv_equal(
-      "Content--------------------Length-"sv,
-      (std::string_view{static_cast<const char *>(iov.iov_base), iov.iov_len}));
+    assert_stdsv_equal("Content--------------------Length-"sv,
+                       as_string_view(iov));
 
     m.reset();
   }

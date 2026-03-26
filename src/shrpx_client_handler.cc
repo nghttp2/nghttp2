@@ -152,19 +152,19 @@ int ClientHandler::read_clear() {
 }
 
 int ClientHandler::write_clear() {
-  std::array<iovec, 2> iov;
+  std::array<iovec, 2> iovbuf;
 
   for (;;) {
     if (on_write() != 0) {
       return -1;
     }
 
-    auto iovcnt = upstream_->response_riovec(iov.data(), iov.size());
-    if (iovcnt == 0) {
+    auto iov = upstream_->response_riovec(iovbuf);
+    if (iov.empty()) {
       break;
     }
 
-    auto nwrite = conn_.writev_clear(iov.data(), iovcnt);
+    auto nwrite = conn_.writev_clear(iov);
     if (nwrite < 0) {
       return -1;
     }

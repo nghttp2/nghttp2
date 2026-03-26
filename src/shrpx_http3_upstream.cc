@@ -1182,24 +1182,23 @@ nghttp3_ssize downstream_read_data_callback(nghttp3_conn *conn,
 
   downstream->reset_upstream_wtimer();
 
-  veccnt = static_cast<size_t>(body->riovec_mark(
-    reinterpret_cast<struct iovec *>(vec), static_cast<int>(veccnt)));
+  auto iov = body->riovec_mark({reinterpret_cast<struct iovec *>(vec), veccnt});
 
   if (downstream->get_response_state() == DownstreamState::MSG_COMPLETE &&
       body->rleft_mark() == 0) {
     *pflags |= NGHTTP3_DATA_FLAG_EOF;
   }
 
-  assert((*pflags & NGHTTP3_DATA_FLAG_EOF) || veccnt);
+  assert((*pflags & NGHTTP3_DATA_FLAG_EOF) || !iov.empty());
 
-  downstream->response_sent_body_length += nghttp3_vec_len(vec, veccnt);
+  downstream->response_sent_body_length += nghttp3_vec_len(vec, iov.size());
 
   if ((*pflags & NGHTTP3_DATA_FLAG_EOF) &&
       upstream->shutdown_stream_read(stream_id, NGHTTP3_H3_NO_ERROR) != 0) {
     return NGHTTP3_ERR_CALLBACK_FAILURE;
   }
 
-  return as_signed(veccnt);
+  return as_signed(iov.size());
 }
 } // namespace
 
@@ -1703,8 +1702,9 @@ int Http3Upstream::initiate_push(Downstream *downstream, std::string_view uri) {
   return 0;
 }
 
-int Http3Upstream::response_riovec(struct iovec *iov, int iovcnt) const {
-  return 0;
+std::span<struct iovec>
+Http3Upstream::response_riovec(std::span<struct iovec> iov) const {
+  return {};
 }
 
 std::span<const uint8_t> Http3Upstream::response_peek() const { return {}; }

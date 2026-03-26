@@ -132,7 +132,7 @@ struct Connection {
   void start_tls_write_idle();
 
   nghttp2_ssize write_clear(std::span<const uint8_t> data);
-  nghttp2_ssize writev_clear(struct iovec *iov, int iovcnt);
+  nghttp2_ssize writev_clear(std::span<struct iovec> iov);
   nghttp2_ssize read_clear(std::span<uint8_t> data);
   // Read at most |len| bytes of data from socket without rate limit.
   nghttp2_ssize read_nolim_clear(std::span<uint8_t> data);

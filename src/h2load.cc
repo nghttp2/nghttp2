@@ -1471,21 +1471,23 @@ int Client::read_clear() {
 }
 
 int Client::write_clear() {
-  std::array<struct iovec, 2> iov;
+  std::array<struct iovec, 2> iovbuf;
 
   for (;;) {
     if (on_write() != 0) {
       return -1;
     }
 
-    auto iovcnt = wb.riovec(iov.data(), iov.size());
+    auto iov = wb.riovec(iovbuf);
 
-    if (iovcnt == 0) {
+    if (iov.empty()) {
       break;
     }
 
     ssize_t nwrite;
-    while ((nwrite = writev(fd, iov.data(), iovcnt)) == -1 && errno == EINTR)
+    while ((nwrite = writev(fd, iov.data(), static_cast<int>(iov.size()))) ==
+             -1 &&
+           errno == EINTR)
       ;
 
     if (nwrite == -1) {
@@ -1593,20 +1595,18 @@ int Client::read_tls() {
 int Client::write_tls() {
   ERR_clear_error();
 
-  struct iovec iov;
-
   for (;;) {
     if (on_write() != 0) {
       return -1;
     }
 
-    auto iovcnt = wb.riovec(&iov, 1);
+    auto data = wb.peek();
 
-    if (iovcnt == 0) {
+    if (data.empty()) {
       break;
     }
 
-    auto rv = SSL_write(ssl, iov.iov_base, static_cast<int>(iov.iov_len));
+    auto rv = SSL_write(ssl, data.data(), static_cast<int>(data.size()));
 
     if (rv <= 0) {
       auto err = SSL_get_error(ssl, rv);
