@@ -1113,7 +1113,7 @@ ClientHandler::get_downstream_connection(int &err, Downstream *downstream) {
     auto dconn = addr->dconn_pool->pop_downstream_connection();
     if (dconn) {
       dconn->set_client_handler(this);
-      return dconn;
+      return std::move(dconn);
     }
 
     if (worker_->get_connect_blocker()->blocked()) {
@@ -1132,7 +1132,7 @@ ClientHandler::get_downstream_connection(int &err, Downstream *downstream) {
     dconn = std::make_unique<HttpDownstreamConnection>(group, addr, conn_.loop,
                                                        worker_);
     dconn->set_client_handler(this);
-    return dconn;
+    return std::move(dconn);
   }
 
   if (LOG_ENABLED(INFO)) {
@@ -1143,7 +1143,7 @@ ClientHandler::get_downstream_connection(int &err, Downstream *downstream) {
   auto http2session = get_http2_session(group, addr);
   auto dconn = std::make_unique<Http2DownstreamConnection>(http2session);
   dconn->set_client_handler(this);
-  return dconn;
+  return std::move(dconn);
 }
 
 MemchunkPool *ClientHandler::get_mcpool() { return worker_->get_mcpool(); }
