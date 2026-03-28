@@ -22,7 +22,7 @@ jobs:
   build-cache:
     strategy:
       matrix:
-        os: [ubuntu-24.04, ubuntu-24.04-arm, macos-14, macos-15]
+        os: [ubuntu-24.04, ubuntu-24.04-arm, macos-26, macos-15]
 
     runs-on: ${{ matrix.os }}
 
@@ -221,7 +221,7 @@ jobs:
 
     strategy:
       matrix:
-        os: [ubuntu-24.04, macos-14, macos-15]
+        os: [ubuntu-24.04, macos-26, macos-15]
         compiler: [gcc, clang]
         buildtool: [autotools, cmake]
         http3: [http3, no-http3]
@@ -229,17 +229,17 @@ jobs:
         exclude:
         - http3: no-http3
           openssl: openssl3
-        - os: macos-14
+        - os: macos-26
           compiler: gcc
         - os: macos-15
           compiler: gcc
         - # disable macos cmake because of include path issue
-          os: macos-14
+          os: macos-26
           buildtool: cmake
         - # disable macos cmake because of include path issue
           os: macos-15
           buildtool: cmake
-        - os: macos-14
+        - os: macos-26
           openssl: boringssl
         - os: macos-15
           openssl: boringssl
@@ -247,7 +247,7 @@ jobs:
           buildtool: cmake
         - openssl: boringssl
           compiler: gcc
-        - os: macos-14
+        - os: macos-26
           openssl: awslc
         - os: macos-15
           openssl: awslc
