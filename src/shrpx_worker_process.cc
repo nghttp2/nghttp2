@@ -165,6 +165,13 @@ void ipc_readcb(struct ev_loop *loop, ev_io *w, int revents) {
   if (nread == -1) {
     auto error = errno;
     LOG(ERROR) << "Failed to read data from ipc channel: errno=" << error;
+
+    if (error == ECONNRESET) {
+      LOG(FATAL)
+        << "IPC socket connection was reset.  Perform immediate shutdown.";
+      nghttp2_Exit(EXIT_FAILURE);
+    }
+
     return;
   }
 
