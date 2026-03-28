@@ -138,5 +138,5 @@ HTTP/3
 h2load supports HTTP/3 if it is built with HTTP/3 enabled.  HTTP/3
 support is experimental.
 
-In order to send HTTP/3 request, specify ``h3`` to
-:option:`--alpn-list`.
+In order to send HTTP/3 request, use :option:`--h3`, or specify ``h3``
+to :option:`--alpn-list`.
