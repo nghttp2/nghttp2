@@ -149,11 +149,16 @@ int stream_close(nghttp3_conn *conn, int64_t stream_id, uint64_t app_error_code,
 } // namespace
 
 int Http3Session::stream_close(int64_t stream_id, uint64_t app_error_code) {
-  if (!ngtcp2_is_bidi_stream(stream_id)) {
-    assert(!ngtcp2_conn_is_local_stream(client_->quic.conn, stream_id));
+  if (ngtcp2_is_bidi_stream(stream_id)) {
+    client_->on_stream_close(stream_id, app_error_code == NGHTTP3_H3_NO_ERROR);
+
+    return 0;
+  }
+
+  if (!ngtcp2_conn_is_local_stream(client_->quic.conn, stream_id)) {
     ngtcp2_conn_extend_max_streams_uni(client_->quic.conn, 1);
   }
-  client_->on_stream_close(stream_id, app_error_code == NGHTTP3_H3_NO_ERROR);
+
   return 0;
 }
 
