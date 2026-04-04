@@ -12,7 +12,7 @@ DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     zlib1g-dev libev-dev libjemalloc-dev ruby-dev libc-ares-dev bison \
     libelf-dev libbrotli-dev
 
-git clone --recursive --shallow-submodules --depth 1 -b v1.66.2 \
+git clone --recursive --shallow-submodules --depth 1 -b v1.71.0 \
     https://github.com/aws/aws-lc
 cd aws-lc
 export CC=clang-19 CXX=clang++-19
@@ -33,7 +33,7 @@ make install-strip
 cd ..
 rm -rf nghttp3
 
-git clone --recursive --shallow-submodules --depth 1 -b v1.20.0 \
+git clone --recursive --shallow-submodules --depth 1 -b v1.22.0 \
     https://github.com/ngtcp2/ngtcp2
 cd ngtcp2
 autoreconf -i
@@ -48,7 +48,7 @@ make install-strip
 cd ..
 rm -rf ngtcp2
 
-git clone --depth 1 -b v1.6.2 https://github.com/libbpf/libbpf
+git clone --depth 1 -b v1.7.0 https://github.com/libbpf/libbpf
 cd libbpf
 CC=clang-19 PREFIX=/usr/local make -C src install
 cd ..
