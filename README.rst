@@ -126,7 +126,7 @@ following libraries are required:
   <https://github.com/quictls/openssl/tree/OpenSSL_1_1_1w+quic>`_; or
   wolfSSL; or LibreSSL (does not support 0RTT); or aws-lc; or
   `BoringSSL <https://boringssl.googlesource.com/boringssl/>`_ (commit
-  52975ff6ea9fb076e53025b82f2e80a23b027a5c); or OpenSSL >= 3.5.0
+  664a985707470a62f436cca862ccec9524c561ca); or OpenSSL >= 3.5.0
 * `ngtcp2 <https://github.com/ngtcp2/ngtcp2>`_ >= 1.16.0
 * `nghttp3 <https://github.com/ngtcp2/nghttp3>`_ >= 1.12.0
 
@@ -340,7 +340,7 @@ Build aws-lc:
 
 .. code-block:: text
 
-   $ git clone --depth 1 -b v1.66.2 https://github.com/aws/aws-lc
+   $ git clone --depth 1 -b v1.71.0 https://github.com/aws/aws-lc
    $ cd aws-lc
    $ cmake -B build -DDISABLE_GO=ON --install-prefix=$PWD/opt
    $ make -j$(nproc) -C build
@@ -364,7 +364,7 @@ Build ngtcp2:
 
 .. code-block:: text
 
-   $ git clone --depth 1 -b v1.20.0 https://github.com/ngtcp2/ngtcp2
+   $ git clone --depth 1 -b v1.22.0 https://github.com/ngtcp2/ngtcp2
    $ cd ngtcp2
    $ git submodule update --init --depth 1
    $ autoreconf -i
@@ -380,7 +380,7 @@ from source:
 
 .. code-block:: text
 
-   $ git clone --depth 1 -b v1.6.2 https://github.com/libbpf/libbpf
+   $ git clone --depth 1 -b v1.7.0 https://github.com/libbpf/libbpf
    $ cd libbpf
    $ PREFIX=$PWD/build make -C src install
    $ cd ..
