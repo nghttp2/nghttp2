@@ -50,7 +50,8 @@ struct MemBlock {
   uint8_t *begin, *last, *end;
 };
 
-static_assert((sizeof(MemBlock) & 0xf) == 0);
+inline constexpr size_t ALIGNMENT = 16;
+static_assert((sizeof(MemBlock) & (ALIGNMENT - 1)) == 0);
 
 struct ChunkHead {
   union {
@@ -60,7 +61,7 @@ struct ChunkHead {
   uint64_t pad2;
 };
 
-static_assert(sizeof(ChunkHead) == 16);
+static_assert(sizeof(ChunkHead) == ALIGNMENT);
 
 // BlockAllocator allocates memory block with given size at once, and
 // cuts the region from it when allocation is requested.  If the
@@ -102,7 +103,8 @@ struct BlockAllocator {
   void reset() {
     for (auto mb = retain; mb;) {
       auto next = mb->next;
-      operator delete[](reinterpret_cast<uint8_t *>(mb), std::align_val_t(16));
+      operator delete[](reinterpret_cast<uint8_t *>(mb),
+                        std::align_val_t(ALIGNMENT));
       mb = next;
     }
 
@@ -111,13 +113,15 @@ struct BlockAllocator {
   }
 
   MemBlock *alloc_mem_block(size_t size) {
-    auto block = new (std::align_val_t(16)) uint8_t[sizeof(MemBlock) + size];
-    auto mb = reinterpret_cast<MemBlock *>(block);
+    auto space = sizeof(MemBlock) + size;
+    auto block = new (std::align_val_t(ALIGNMENT)) uint8_t[space];
+    auto mb = new (block) MemBlock{
+      .next = retain,
+      .begin = block + sizeof(MemBlock),
+      .last = block + sizeof(MemBlock),
+      .end = block + space,
+    };
 
-    mb->next = retain;
-    mb->begin = mb->last = reinterpret_cast<uint8_t *>(
-      (reinterpret_cast<intptr_t>(block + sizeof(MemBlock)) + 0xf) & ~0xf);
-    mb->end = mb->begin + size;
     retain = mb;
     return mb;
   }
@@ -128,7 +132,7 @@ struct BlockAllocator {
     auto au = alloc_unit(size);
 
     if (au >= isolation_threshold) {
-      size = std::max(static_cast<size_t>(16), size);
+      size = std::max(ALIGNMENT, size);
       // We will store the allocated size in size_t field.
       auto mb = alloc_mem_block(alloc_unit(size));
       auto ch = reinterpret_cast<ChunkHead *>(mb->begin);
@@ -142,12 +146,19 @@ struct BlockAllocator {
     }
 
     // We will store the allocated size in size_t field.
-    auto res = head->last + sizeof(ChunkHead);
-    auto ch = reinterpret_cast<ChunkHead *>(head->last);
+    auto ch = new (head->last) ChunkHead();
     ch->size = size;
 
-    head->last = reinterpret_cast<uint8_t *>(
-      (reinterpret_cast<intptr_t>(res + size) + 0xf) & ~0xf);
+    auto res = head->last + sizeof(ChunkHead);
+    head->last += au;
+
+    auto space = as_unsigned(head->end - head->last);
+    void *ptr = head->last;
+    if (std::align(ALIGNMENT, sizeof(ChunkHead), ptr, space)) {
+      head->last = static_cast<uint8_t *>(ptr);
+    } else {
+      head->last = head->end;
+    }
 
     return res;
   }
