@@ -49,29 +49,23 @@
 #ifdef ENABLE_HTTP3
 #  include "siphash_test.h"
 #endif // defined(ENABLE_HTTP3)
+#include "allocator_test.h"
 
 int main(int argc, char *argv[]) {
   shrpx::create_config();
 
   const MunitSuite suites[] = {
-    shrpx::tls_suite,
-    shrpx::downstream_suite,
-    shrpx::config_suite,
-    shrpx::worker_suite,
-    shrpx::http_suite,
-    shrpx::router_suite,
-    shrpx::http2_suite,
-    shrpx::util_suite,
-    gzip_suite,
-    buffer_suite,
-    memchunk_suite,
-    template_suite,
-    base64_suite,
-    network_suite,
+    shrpx::tls_suite,    shrpx::downstream_suite,
+    shrpx::config_suite, shrpx::worker_suite,
+    shrpx::http_suite,   shrpx::router_suite,
+    shrpx::http2_suite,  shrpx::util_suite,
+    gzip_suite,          buffer_suite,
+    memchunk_suite,      template_suite,
+    base64_suite,        network_suite,
 #ifdef ENABLE_HTTP3
     siphash_suite,
 #endif // defined(ENABLE_HTTP3)
-    {},
+    allocator_suite,     {},
   };
   const MunitSuite suite = {
     "", nullptr, suites, 1, MUNIT_SUITE_OPTION_NONE,
