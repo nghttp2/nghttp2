@@ -1675,7 +1675,7 @@ void downstream_failure(DownstreamAddr *addr, const Address *raddr) {
 int Worker::handle_connection(int fd, const sockaddr *addr, socklen_t addrlen,
                               const UpstreamAddr *faddr) {
   if (LOG_ENABLED(INFO)) {
-    LLOG(INFO, this) << "Accepted connection from "
+    WLOG(INFO, this) << "Accepted connection from "
                      << util::numeric_name(addr, addrlen) << ", fd=" << fd;
   }
 
