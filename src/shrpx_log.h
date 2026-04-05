@@ -50,6 +50,13 @@ namespace shrpx {
 class Downstream;
 struct DownstreamAddr;
 struct LoggingConfig;
+class ConnectionHandler;
+class Worker;
+class ClientHandler;
+class Upstream;
+class DownstreamConnection;
+class Http2Session;
+class MemcachedConnection;
 
 enum SeverityLevel { INFO, NOTICE, WARN, ERROR, FATAL };
 
@@ -59,7 +66,52 @@ class Log {
 public:
   Log(int severity,
       const std::source_location loc = std::source_location::current());
+  Log(SeverityLevel severity, const ConnectionHandler *obj,
+      const std::source_location loc = std::source_location::current())
+    : Log{severity, loc} {
+    // TODO: This should be CONNECTION_HANDLER.
+    *this << "[LISTEN:" << obj << "] ";
+  }
+  Log(SeverityLevel severity, const Worker *obj,
+      const std::source_location loc = std::source_location::current())
+    : Log{severity, loc} {
+    *this << "[WORKER:" << obj << "] ";
+  }
+  Log(SeverityLevel severity, const ClientHandler *obj,
+      const std::source_location loc = std::source_location::current())
+    : Log{severity, loc} {
+    *this << "[CLIENT_HANDLER:" << obj << "] ";
+  }
+  Log(SeverityLevel severity, const Upstream *obj,
+      const std::source_location loc = std::source_location::current())
+    : Log{severity, loc} {
+    *this << "[UPSTREAM:" << obj << "] ";
+  }
+  Log(SeverityLevel severity, const Downstream *obj,
+      const std::source_location loc = std::source_location::current())
+    : Log{severity, loc} {
+    *this << "[DOWNSTREAM:" << obj << "] ";
+  }
+  Log(SeverityLevel severity, const DownstreamConnection *obj,
+      const std::source_location loc = std::source_location::current())
+    : Log{severity, loc} {
+    *this << "[DCONN:" << obj << "] ";
+  }
+  Log(SeverityLevel severity, const Http2Session *obj,
+      const std::source_location loc = std::source_location::current())
+    : Log{severity, loc} {
+    *this << "[DHTTP2:" << obj << "] ";
+  }
+  Log(SeverityLevel severity, const MemcachedConnection *obj,
+      const std::source_location loc = std::source_location::current())
+    : Log{severity, loc} {
+    *this << "[MCONN:" << obj << "] ";
+  }
+  Log(const Log &) = delete;
+  Log(Log &&) = delete;
   ~Log();
+  Log &operator=(const Log &) = delete;
+  Log &operator=(Log &&) = delete;
   Log &operator<<(const std::string &s);
   Log &operator<<(std::string_view s);
   Log &operator<<(const char *s);
@@ -195,73 +247,59 @@ LOG(SeverityLevel severity,
 
 // Listener log
 // TODO: This should be ConnectionHandler log.
-class ConnectionHandler;
-
 inline auto
 LLOG(SeverityLevel severity, const ConnectionHandler *obj,
      const std::source_location loc = std::source_location::current()) {
-  return LOG(severity, loc) << "[LISTEN:" << obj << "] ";
+  return Log{severity, obj, loc};
 }
 
 // Worker log
-class Worker;
-
 inline auto
 WLOG(SeverityLevel severity, const Worker *obj,
      const std::source_location loc = std::source_location::current()) {
-  return LOG(severity, loc) << "[WORKER:" << obj << "] ";
+  return Log{severity, obj, loc};
 }
 
 // ClientHandler log
-class ClientHandler;
-
 inline auto
 CLOG(SeverityLevel severity, const ClientHandler *obj,
      const std::source_location loc = std::source_location::current()) {
-  return LOG(severity, loc) << "[CLIENT_HANDLER:" << obj << "] ";
+  return Log{severity, obj, loc};
 }
 
 // Upstream log
-class Upstream;
-
 inline auto
 ULOG(SeverityLevel severity, const Upstream *obj,
      const std::source_location loc = std::source_location::current()) {
-  return LOG(severity, loc) << "[UPSTREAM:" << obj << "] ";
+  return Log{severity, obj, loc};
 }
 
 // Downstream log
 inline auto
 DLOG(SeverityLevel severity, const Downstream *obj,
      const std::source_location loc = std::source_location::current()) {
-  return LOG(severity, loc) << "[DOWNSTREAM:" << obj << "] ";
+  return Log{severity, obj, loc};
 }
 
 // Downstream connection log
-class DownstreamConnection;
-
 inline auto
 DCLOG(SeverityLevel severity, const DownstreamConnection *obj,
       const std::source_location loc = std::source_location::current()) {
-  return LOG(severity, loc) << "[DCONN:" << obj << "] ";
+  return Log{severity, obj, loc};
 }
 
 // Downstream HTTP2 session log
-class Http2Session;
-
 inline auto
 SSLOG(SeverityLevel severity, const Http2Session *obj,
       const std::source_location loc = std::source_location::current()) {
-  return LOG(severity, loc) << "[DHTTP2:" << obj << "] ";
+  return Log{severity, obj, loc};
 }
 
 // Memcached connection log
-class MemcachedConnection;
-
 inline auto
 MCLOG(SeverityLevel severity, const MemcachedConnection *obj,
       const std::source_location loc = std::source_location::current()) {
-  return LOG(severity, loc) << "[MCONN:" << obj << "] ";
+  return Log{severity, obj, loc};
 }
 
 namespace log {
