@@ -232,6 +232,7 @@ nghttpx_unittest_SOURCES = shrpx-unittest.cc \
 	template_test.cc template_test.h \
 	base64_test.cc base64_test.h \
 	network_test.cc network_test.h \
+	allocator_test.cc allocator_test.h \
 	$(top_srcdir)/tests/munit/munit.c $(top_srcdir)/tests/munit/munit.h \
 	$(top_srcdir)/tests/munit/munitxx.h
 if ENABLE_HTTP3

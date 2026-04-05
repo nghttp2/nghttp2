@@ -194,6 +194,7 @@ if(ENABLE_APP)
       template_test.cc
       base64_test.cc
       network_test.cc
+      allocator_test.cc
       ${CMAKE_SOURCE_DIR}/tests/munit/munit.c
     )
     if(ENABLE_HTTP3)
