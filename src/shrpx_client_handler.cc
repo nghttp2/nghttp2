@@ -1118,7 +1118,7 @@ ClientHandler::get_downstream_connection(int &err, Downstream *downstream) {
 
     if (worker_->get_connect_blocker()->blocked()) {
       if (LOG_ENABLED(INFO)) {
-        DCLOG(INFO, this)
+        CLOG(INFO, this)
           << "Worker wide backend connection was blocked temporarily";
       }
       return nullptr;

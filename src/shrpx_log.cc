@@ -110,15 +110,15 @@ int severity_to_syslog_level(int severity) {
   }
 }
 
-Log::Log(int severity, const char *filename, int linenum)
+Log::Log(int severity, const std::source_location loc)
   : buf_(*get_logbuf()),
     begin_(buf_.data()),
     end_(begin_ + buf_.size()),
     last_(begin_),
-    filename_(filename),
+    filename_(loc.file_name()),
     flags_(0),
     severity_(severity),
-    linenum_(linenum),
+    linenum_(loc.line()),
     full_(false) {
   auto config = get_config();
 

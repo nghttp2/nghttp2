@@ -34,6 +34,7 @@
 #include <chrono>
 #include <algorithm>
 #include <ranges>
+#include <source_location>
 
 #include "shrpx_log_config.h"
 #include "tls.h"
@@ -43,56 +44,6 @@
 using namespace nghttp2;
 
 #define ENABLE_LOG 1
-
-#define LOG_ENABLED(SEVERITY) (ENABLE_LOG && shrpx::Log::log_enabled(SEVERITY))
-
-#ifdef __FILE_NAME__
-#  define NGHTTP2_FILE_NAME __FILE_NAME__
-#else // !defined(__FILE_NAME__)
-#  define NGHTTP2_FILE_NAME __FILE__
-#endif // !defined(__FILE_NAME__)
-
-#define LOG(SEVERITY) shrpx::Log(SEVERITY, NGHTTP2_FILE_NAME, __LINE__)
-
-// Listener log
-#define LLOG(SEVERITY, LISTEN)                                                 \
-  (shrpx::Log(SEVERITY, NGHTTP2_FILE_NAME, __LINE__)                           \
-   << "[LISTEN:" << LISTEN << "] ")
-
-// Worker log
-#define WLOG(SEVERITY, WORKER)                                                 \
-  (shrpx::Log(SEVERITY, NGHTTP2_FILE_NAME, __LINE__)                           \
-   << "[WORKER:" << WORKER << "] ")
-
-// ClientHandler log
-#define CLOG(SEVERITY, CLIENT_HANDLER)                                         \
-  (shrpx::Log(SEVERITY, NGHTTP2_FILE_NAME, __LINE__)                           \
-   << "[CLIENT_HANDLER:" << CLIENT_HANDLER << "] ")
-
-// Upstream log
-#define ULOG(SEVERITY, UPSTREAM)                                               \
-  (shrpx::Log(SEVERITY, NGHTTP2_FILE_NAME, __LINE__)                           \
-   << "[UPSTREAM:" << UPSTREAM << "] ")
-
-// Downstream log
-#define DLOG(SEVERITY, DOWNSTREAM)                                             \
-  (shrpx::Log(SEVERITY, NGHTTP2_FILE_NAME, __LINE__)                           \
-   << "[DOWNSTREAM:" << DOWNSTREAM << "] ")
-
-// Downstream connection log
-#define DCLOG(SEVERITY, DCONN)                                                 \
-  (shrpx::Log(SEVERITY, NGHTTP2_FILE_NAME, __LINE__)                           \
-   << "[DCONN:" << DCONN << "] ")
-
-// Downstream HTTP2 session log
-#define SSLOG(SEVERITY, HTTP2)                                                 \
-  (shrpx::Log(SEVERITY, NGHTTP2_FILE_NAME, __LINE__)                           \
-   << "[DHTTP2:" << HTTP2 << "] ")
-
-// Memcached connection log
-#define MCLOG(SEVERITY, MCONN)                                                 \
-  (shrpx::Log(SEVERITY, NGHTTP2_FILE_NAME, __LINE__)                           \
-   << "[MCONN:" << MCONN << "] ")
 
 namespace shrpx {
 
@@ -106,7 +57,8 @@ using LogBuffer = std::array<uint8_t, 4_k>;
 
 class Log {
 public:
-  Log(int severity, const char *filename, int linenum);
+  Log(int severity,
+      const std::source_location loc = std::source_location::current());
   ~Log();
   Log &operator<<(const std::string &s);
   Log &operator<<(std::string_view s);
@@ -226,10 +178,91 @@ private:
   std::string_view filename_;
   uint32_t flags_;
   int severity_;
-  int linenum_;
+  uint32_t linenum_;
   bool full_;
   static int severity_thres_;
 };
+
+inline auto LOG_ENABLED(SeverityLevel severity) {
+  return ENABLE_LOG && Log::log_enabled(severity);
+}
+
+inline auto
+LOG(SeverityLevel severity,
+    const std::source_location loc = std::source_location::current()) {
+  return Log{severity, loc};
+}
+
+// Listener log
+// TODO: This should be ConnectionHandler log.
+class ConnectionHandler;
+
+inline auto
+LLOG(SeverityLevel severity, const ConnectionHandler *obj,
+     const std::source_location loc = std::source_location::current()) {
+  return LOG(severity, loc) << "[LISTEN:" << obj << "] ";
+}
+
+// Worker log
+class Worker;
+
+inline auto
+WLOG(SeverityLevel severity, const Worker *obj,
+     const std::source_location loc = std::source_location::current()) {
+  return LOG(severity, loc) << "[WORKER:" << obj << "] ";
+}
+
+// ClientHandler log
+class ClientHandler;
+
+inline auto
+CLOG(SeverityLevel severity, const ClientHandler *obj,
+     const std::source_location loc = std::source_location::current()) {
+  return LOG(severity, loc) << "[CLIENT_HANDLER:" << obj << "] ";
+}
+
+// Upstream log
+class Upstream;
+
+inline auto
+ULOG(SeverityLevel severity, const Upstream *obj,
+     const std::source_location loc = std::source_location::current()) {
+  return LOG(severity, loc) << "[UPSTREAM:" << obj << "] ";
+}
+
+// Downstream log
+inline auto
+DLOG(SeverityLevel severity, const Downstream *obj,
+     const std::source_location loc = std::source_location::current()) {
+  return LOG(severity, loc) << "[DOWNSTREAM:" << obj << "] ";
+}
+
+// Downstream connection log
+class DownstreamConnection;
+
+inline auto
+DCLOG(SeverityLevel severity, const DownstreamConnection *obj,
+      const std::source_location loc = std::source_location::current()) {
+  return LOG(severity, loc) << "[DCONN:" << obj << "] ";
+}
+
+// Downstream HTTP2 session log
+class Http2Session;
+
+inline auto
+SSLOG(SeverityLevel severity, const Http2Session *obj,
+      const std::source_location loc = std::source_location::current()) {
+  return LOG(severity, loc) << "[DHTTP2:" << obj << "] ";
+}
+
+// Memcached connection log
+class MemcachedConnection;
+
+inline auto
+MCLOG(SeverityLevel severity, const MemcachedConnection *obj,
+      const std::source_location loc = std::source_location::current()) {
+  return LOG(severity, loc) << "[MCONN:" << obj << "] ";
+}
 
 namespace log {
 void hex(Log &log);
