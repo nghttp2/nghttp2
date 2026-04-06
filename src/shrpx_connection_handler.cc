@@ -319,14 +319,14 @@ void ConnectionHandler::join_worker() {
 #ifndef NOTHREADS
   int n = 0;
 
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     Log{INFO, this} << "Waiting for worker thread to join: n="
                     << workers_.size();
   }
 
   for (auto &worker : workers_) {
     worker->wait();
-    if (LOG_ENABLED(INFO)) {
+    if (log_enabled(INFO)) {
       Log{INFO, this} << "Thread #" << n << " joined";
     }
     ++n;
@@ -339,7 +339,7 @@ void ConnectionHandler::graceful_shutdown_worker() {
     return;
   }
 
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     Log{INFO, this} << "Sending graceful shutdown signal to worker";
   }
 
@@ -466,7 +466,7 @@ void ConnectionHandler::on_tls_ticket_key_get_success(
     return;
   }
 
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     Log{INFO} << "ticket keys get done";
     Log{INFO} << 0 << " enc+dec: "
               << util::format_hex(ticket_keys->keys[0].data.name);
@@ -873,7 +873,7 @@ int ConnectionHandler::quic_ipc_read() {
 
   auto worker = find_worker(decrypted_dcid.worker);
   if (worker == nullptr) {
-    if (LOG_ENABLED(INFO)) {
+    if (log_enabled(INFO)) {
       Log{INFO} << "No worker to match Worker ID";
     }
 

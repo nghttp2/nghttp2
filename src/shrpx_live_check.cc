@@ -92,7 +92,7 @@ namespace {
 void settings_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
   auto live_check = static_cast<LiveCheck *>(w->data);
 
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     Log{INFO} << "SETTINGS timeout";
   }
 
@@ -196,7 +196,7 @@ int LiveCheck::initiate_connection() {
 
   auto worker_blocker = worker_->get_connect_blocker();
   if (worker_blocker->blocked()) {
-    if (LOG_ENABLED(INFO)) {
+    if (log_enabled(INFO)) {
       Log{INFO} << "Worker wide backend connection was blocked temporarily";
     }
     return -1;
@@ -329,7 +329,7 @@ int LiveCheck::initiate_connection() {
 int LiveCheck::connected() {
   auto sock_error = util::get_socket_error(conn_.fd);
   if (sock_error != 0) {
-    if (LOG_ENABLED(INFO)) {
+    if (log_enabled(INFO)) {
       Log{INFO} << "Backend connect failed; addr="
                 << util::to_numeric_addr(raddr_) << ": errno=" << sock_error;
     }
@@ -337,7 +337,7 @@ int LiveCheck::connected() {
     return -1;
   }
 
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     Log{INFO} << "Connection established";
   }
 
@@ -390,7 +390,7 @@ int LiveCheck::tls_handshake() {
     return rv;
   }
 
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     Log{INFO} << "SSL/TLS handshake completed";
   }
 
@@ -584,7 +584,7 @@ int LiveCheck::on_read(std::span<const uint8_t> data) {
 
   if (nghttp2_session_want_read(session_) == 0 &&
       nghttp2_session_want_write(session_) == 0 && wb_.rleft() == 0) {
-    if (LOG_ENABLED(INFO)) {
+    if (log_enabled(INFO)) {
       Log{INFO} << "No more read/write for this session";
     }
 
@@ -623,7 +623,7 @@ int LiveCheck::on_write() {
 
   if (nghttp2_session_want_read(session_) == 0 &&
       nghttp2_session_want_write(session_) == 0 && wb_.rleft() == 0) {
-    if (LOG_ENABLED(INFO)) {
+    if (log_enabled(INFO)) {
       Log{INFO} << "No more read/write for this session";
     }
 
@@ -640,7 +640,7 @@ int LiveCheck::on_write() {
 void LiveCheck::on_failure() {
   ++fail_count_;
 
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     Log{INFO} << "Liveness check for " << addr_->host << ":" << addr_->port
               << " failed " << fail_count_ << " time(s) in a row";
   }
@@ -654,7 +654,7 @@ void LiveCheck::on_success() {
   ++success_count_;
   fail_count_ = 0;
 
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     Log{INFO} << "Liveness check for " << addr_->host << ":" << addr_->port
               << " succeeded " << success_count_ << " time(s) in a row";
   }
@@ -757,7 +757,7 @@ int LiveCheck::connection_made() {
     addr_->tls && !nghttp2::tls::check_http2_requirement(conn_.tls.ssl);
 
   if (must_terminate) {
-    if (LOG_ENABLED(INFO)) {
+    if (log_enabled(INFO)) {
       Log{INFO} << "TLSv1.2 was not negotiated. HTTP/2 must not be negotiated.";
     }
 

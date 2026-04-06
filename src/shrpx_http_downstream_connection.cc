@@ -62,7 +62,7 @@ void timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
     return;
   }
 
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     Log{INFO, dconn} << "Time out";
   }
 
@@ -229,7 +229,7 @@ HttpDownstreamConnection::HttpDownstreamConnection(
     request_header_written_(false) {}
 
 HttpDownstreamConnection::~HttpDownstreamConnection() {
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     Log{INFO, this} << "Deleted";
   }
 
@@ -242,7 +242,7 @@ HttpDownstreamConnection::~HttpDownstreamConnection() {
 int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
   int rv;
 
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     Log{INFO, this} << "Attaching to DOWNSTREAM:" << downstream;
   }
 
@@ -282,7 +282,7 @@ int HttpDownstreamConnection::initiate_connection() {
 
   auto worker_blocker = worker_->get_connect_blocker();
   if (worker_blocker->blocked()) {
-    if (LOG_ENABLED(INFO)) {
+    if (log_enabled(INFO)) {
       Log{INFO, this}
         << "Worker wide backend connection was blocked temporarily";
     }
@@ -301,7 +301,7 @@ int HttpDownstreamConnection::initiate_connection() {
     auto &connect_blocker = addr_->connect_blocker;
 
     if (connect_blocker->blocked()) {
-      if (LOG_ENABLED(INFO)) {
+      if (log_enabled(INFO)) {
         Log{INFO, this} << "Backend server " << addr_->host << ":"
                         << addr_->port << " was not available temporarily";
       }
@@ -391,7 +391,7 @@ int HttpDownstreamConnection::initiate_connection() {
       return SHRPX_ERR_NETWORK;
     }
 
-    if (LOG_ENABLED(INFO)) {
+    if (log_enabled(INFO)) {
       Log{INFO, this} << "Connecting to downstream server";
     }
 
@@ -688,7 +688,7 @@ int HttpDownstreamConnection::push_request_headers() {
 
   buf->append("\r\n"sv);
 
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     std::string nhdrs;
     for (auto chunk = buf->head; chunk; chunk = chunk->next) {
       nhdrs.append(chunk->pos, chunk->last);
@@ -821,7 +821,7 @@ namespace {
 void idle_readcb(struct ev_loop *loop, ev_io *w, int revents) {
   auto conn = static_cast<Connection *>(w->data);
   auto dconn = static_cast<HttpDownstreamConnection *>(conn->data);
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     Log{INFO, dconn} << "Idle connection EOF";
   }
 
@@ -839,7 +839,7 @@ void idle_timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
     return;
   }
 
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     Log{INFO, dconn} << "Idle connection timeout";
   }
 
@@ -849,7 +849,7 @@ void idle_timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
 } // namespace
 
 void HttpDownstreamConnection::detach_downstream(Downstream *downstream) {
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     Log{INFO, this} << "Detaching from DOWNSTREAM:" << downstream;
   }
   downstream_ = nullptr;
@@ -1036,7 +1036,7 @@ int htp_hdrs_completecb(llhttp_t *htp) {
       return -1;
     }
     downstream->set_request_state(DownstreamState::HEADER_COMPLETE);
-    if (LOG_ENABLED(INFO)) {
+    if (log_enabled(INFO)) {
       Log{INFO} << "HTTP upgrade success. stream_id="
                 << downstream->get_stream_id();
     }
@@ -1060,7 +1060,7 @@ int ensure_header_field_buffer(const Downstream *downstream,
   auto &resp = downstream->response();
 
   if (resp.fs.buffer_size() + len > httpconf.response_header_field_buffer) {
-    if (LOG_ENABLED(INFO)) {
+    if (log_enabled(INFO)) {
       Log{INFO, downstream} << "Too large header header field size="
                             << resp.fs.buffer_size() + len;
     }
@@ -1077,7 +1077,7 @@ int ensure_max_header_fields(const Downstream *downstream,
   auto &resp = downstream->response();
 
   if (resp.fs.num_fields() >= httpconf.max_response_header_fields) {
-    if (LOG_ENABLED(INFO)) {
+    if (log_enabled(INFO)) {
       Log{INFO, downstream} << "Too many header field num="
                             << resp.fs.num_fields() + 1;
     }
@@ -1253,7 +1253,7 @@ int HttpDownstreamConnection::read_clear() {
       if (nread == SHRPX_ERR_EOF && !downstream_->get_upgraded()) {
         auto htperr = llhttp_finish(&response_htp_);
         if (htperr != HPE_OK) {
-          if (LOG_ENABLED(INFO)) {
+          if (log_enabled(INFO)) {
             Log{INFO, this} << "HTTP response ended prematurely: "
                             << llhttp_errno_name(htperr);
           }
@@ -1341,7 +1341,7 @@ int HttpDownstreamConnection::tls_handshake() {
     return rv;
   }
 
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     Log{INFO, this} << "SSL/TLS handshake completed";
   }
 
@@ -1388,7 +1388,7 @@ int HttpDownstreamConnection::read_tls() {
       if (nread == SHRPX_ERR_EOF && !downstream_->get_upgraded()) {
         auto htperr = llhttp_finish(&response_htp_);
         if (htperr != HPE_OK) {
-          if (LOG_ENABLED(INFO)) {
+          if (log_enabled(INFO)) {
             Log{INFO, this} << "HTTP response ended prematurely: "
                             << llhttp_errno_name(htperr);
           }
@@ -1497,7 +1497,7 @@ int HttpDownstreamConnection::process_input(std::span<const uint8_t> data) {
       return SHRPX_ERR_DCONN_CANCELED;
     }
 
-    if (LOG_ENABLED(INFO)) {
+    if (log_enabled(INFO)) {
       Log{INFO, this} << "HTTP parser failure: "
                       << "(" << llhttp_errno_name(htperr) << ") "
                       << llhttp_get_error_reason(&response_htp_);
@@ -1547,7 +1547,7 @@ int HttpDownstreamConnection::connected() {
     return -1;
   }
 
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     Log{INFO, this} << "Connected to downstream host";
   }
 

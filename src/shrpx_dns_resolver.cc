@@ -142,7 +142,7 @@ int DNSResolver::resolve(std::string_view name, int family) {
     return -1;
   }
 
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     Log{INFO} << "Start resolving host " << name << " in IPv"
               << (family == AF_INET ? "4" : "6");
   }
@@ -166,7 +166,7 @@ int DNSResolver::resolve(std::string_view name, int family) {
   ares_channel chan;
   rv = ares_init_options(&chan, &opts, optmask);
   if (rv != ARES_SUCCESS) {
-    if (LOG_ENABLED(INFO)) {
+    if (log_enabled(INFO)) {
       Log{INFO} << "ares_init_options failed: " << ares_strerror(rv);
     }
     status_ = DNSResolverStatus::ERROR;
@@ -299,7 +299,7 @@ void DNSResolver::on_result(int status, ares_addrinfo *ai) {
   ev_timer_stop(loop_, &timer_);
 
   if (status != ARES_SUCCESS) {
-    if (LOG_ENABLED(INFO)) {
+    if (log_enabled(INFO)) {
       Log{INFO} << "Name lookup for " << name_
                 << " failed: " << ares_strerror(status);
     }
@@ -345,7 +345,7 @@ void DNSResolver::on_result(int status, ares_addrinfo *ai) {
   }
 
   if (!ap) {
-    if (LOG_ENABLED(INFO)) {
+    if (log_enabled(INFO)) {
       Log{INFO} << "Name lookup for " << name_
                 << " failed: no address returned";
     }
@@ -354,7 +354,7 @@ void DNSResolver::on_result(int status, ares_addrinfo *ai) {
   }
 
   if (status_ == DNSResolverStatus::OK) {
-    if (LOG_ENABLED(INFO)) {
+    if (log_enabled(INFO)) {
       Log{INFO} << "Name lookup succeeded: " << name_ << " -> "
                 << util::numeric_name(result_.as_sockaddr(), result_.size());
     }

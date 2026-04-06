@@ -446,7 +446,7 @@ void Worker::replace_downstream_config(
     } else {
       auto &g = *(std::ranges::begin(downstream_addr_groups_) +
                   as_signed((*it).second));
-      if (LOG_ENABLED(INFO)) {
+      if (log_enabled(INFO)) {
         Log{INFO} << dst->pattern << " shares the same backend group with "
                   << g->pattern;
       }
@@ -575,14 +575,14 @@ void Worker::process_events() {
   }
 #endif // defined(ENABLE_HTTP3)
   default:
-    if (LOG_ENABLED(INFO)) {
+    if (log_enabled(INFO)) {
       Log{INFO, this} << "unknown event type " << static_cast<int>(wev.type);
     }
   }
 }
 
 void Worker::enable_listener() {
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     Log{INFO, this} << "Enable listeners";
   }
 
@@ -592,7 +592,7 @@ void Worker::enable_listener() {
 }
 
 void Worker::disable_listener() {
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     Log{INFO, this} << "Disable listeners";
   }
 
@@ -1512,14 +1512,14 @@ size_t match_downstream_addr_group_host(
   const auto &rev_wildcard_router = routerconf.rev_wildcard_router;
   const auto &wildcard_patterns = routerconf.wildcard_patterns;
 
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     Log{INFO} << "Perform mapping selection, using host=" << host
               << ", path=" << path;
   }
 
   auto group = router.match(host, path);
   if (group != -1) {
-    if (LOG_ENABLED(INFO)) {
+    if (log_enabled(INFO)) {
       Log{INFO} << "Found pattern with query " << host << path
                 << ", matched pattern=" << groups[as_unsigned(group)]->pattern;
     }
@@ -1553,7 +1553,7 @@ size_t match_downstream_addr_group_host(
       if (group != -1) {
         // We sorted wildcard_patterns in a way that first match is the
         // longest host pattern.
-        if (LOG_ENABLED(INFO)) {
+        if (log_enabled(INFO)) {
           Log{INFO} << "Found wildcard pattern with query " << host << path
                     << ", matched pattern="
                     << groups[as_unsigned(group)]->pattern;
@@ -1570,14 +1570,14 @@ size_t match_downstream_addr_group_host(
 
   group = router.match(""sv, path);
   if (group != -1) {
-    if (LOG_ENABLED(INFO)) {
+    if (log_enabled(INFO)) {
       Log{INFO} << "Found pattern with query " << path
                 << ", matched pattern=" << groups[as_unsigned(group)]->pattern;
     }
     return as_unsigned(group);
   }
 
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     Log{INFO} << "None match.  Use catch-all pattern";
   }
   return catch_all;
@@ -1674,7 +1674,7 @@ void downstream_failure(DownstreamAddr *addr, const Address *raddr) {
 
 int Worker::handle_connection(int fd, const sockaddr *addr, socklen_t addrlen,
                               const UpstreamAddr *faddr) {
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     Log{INFO, this} << "Accepted connection from "
                     << util::numeric_name(addr, addrlen) << ", fd=" << fd;
   }
@@ -1684,7 +1684,7 @@ int Worker::handle_connection(int fd, const sockaddr *addr, socklen_t addrlen,
   auto max_conns = config->conn.upstream.worker_connections;
 
   if (worker_stat_.num_connections >= max_conns) {
-    if (LOG_ENABLED(INFO)) {
+    if (log_enabled(INFO)) {
       Log{INFO, this} << "Too many connections >= " << max_conns;
     }
 
@@ -1695,7 +1695,7 @@ int Worker::handle_connection(int fd, const sockaddr *addr, socklen_t addrlen,
 
   auto client_handler = tls::accept_connection(this, fd, addr, addrlen, faddr);
   if (!client_handler) {
-    if (LOG_ENABLED(INFO)) {
+    if (log_enabled(INFO)) {
       Log{ERROR, this} << "ClientHandler creation failed";
     }
 
@@ -1704,7 +1704,7 @@ int Worker::handle_connection(int fd, const sockaddr *addr, socklen_t addrlen,
     return -1;
   }
 
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     Log{INFO, this} << "CLIENT_HANDLER:" << client_handler << " created";
   }
 

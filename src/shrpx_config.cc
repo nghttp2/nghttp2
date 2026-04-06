@@ -227,7 +227,7 @@ read_tls_ticket_key_file(const std::vector<std::string_view> &files,
     key.hmac = hmac;
     key.hmac_keylen = hmac_keylen;
 
-    if (LOG_ENABLED(INFO)) {
+    if (log_enabled(INFO)) {
       Log{INFO} << "enc_keylen=" << enc_keylen
                 << ", hmac_keylen=" << key.hmac_keylen;
     }
@@ -242,7 +242,7 @@ read_tls_ticket_key_file(const std::vector<std::string_view> &files,
     std::ranges::copy_n(p, as_signed(hmac_keylen),
                         std::ranges::begin(key.data.hmac_key));
 
-    if (LOG_ENABLED(INFO)) {
+    if (log_enabled(INFO)) {
       Log{INFO} << "session ticket key: " << util::format_hex(key.data.name);
     }
   }
@@ -4505,7 +4505,7 @@ int configure_downstream_group(Config *config, bool http2_proxy,
     }
   }
 
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     Log{INFO} << "Resolving backend address";
   }
 
@@ -4578,7 +4578,7 @@ int configure_downstream_group(Config *config, bool http2_proxy,
     if (g.pattern == "/"sv) {
       catch_all_group = as_signed(i);
     }
-    if (LOG_ENABLED(INFO)) {
+    if (log_enabled(INFO)) {
       Log{INFO} << "Host-path pattern: group " << i << ": '" << g.pattern
                 << "'";
       for (auto &addr : g.addrs) {
@@ -4621,7 +4621,7 @@ int configure_downstream_group(Config *config, bool http2_proxy,
 
   downstreamconf.addr_group_catch_all = as_unsigned(catch_all_group);
 
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     Log{INFO} << "Catch-all pattern is group " << catch_all_group;
   }
 
@@ -4658,7 +4658,7 @@ int configure_downstream_group(Config *config, bool http2_proxy,
           return -1;
         }
 
-        if (LOG_ENABLED(INFO)) {
+        if (log_enabled(INFO)) {
           Log{INFO} << "Use UNIX domain socket path " << path
                     << " for backend connection";
         }
@@ -4683,7 +4683,7 @@ int configure_downstream_group(Config *config, bool http2_proxy,
           return -1;
         }
 
-        if (LOG_ENABLED(INFO)) {
+        if (log_enabled(INFO)) {
           Log{INFO} << "Resolved backend address: " << hostport << " -> "
                     << util::to_numeric_addr(&addr.addr);
         }
@@ -4793,7 +4793,7 @@ int resolve_hostname(Address *addr, const char *hostname, uint16_t port,
     return -1;
   }
 
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     Log{INFO} << "Address resolution for " << hostname
               << " succeeded: " << host.data();
   }
